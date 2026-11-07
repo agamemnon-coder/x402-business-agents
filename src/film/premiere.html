@@ -421,9 +421,9 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       var rea = put(L, E("div", "body muted", S.reason), 1064, 232);
       var tl = put(L, E("div", "kick", S.txLabel), 1064, 330);
       var tx = put(L, E("div", "hm mono", S.tx), 1060, 370);
-      var tf = put(L, width(E("div", "tiny mono brk", S.txFull), 700), 1064, 452);
-      var tw = put(L, E("div", "small", S.txWhere), 1064, 528);
-      var foot = put(L, width(E("div", "tiny", S.label), 1640), 140, 728);
+      // v7 (Max: too much to read): the full hash and the long footnote are off the screen; the short hash, where to
+      // check it, and "let through on purpose" stay.
+      var tw = put(L, E("div", "small", S.txWhere), 1064, 452);
       // The line: flat from 3.0 s, the rise with "doubled its price, past the mandate's cap", then flat at the new
       // price. Metal's refusal appears the moment the line crosses the cap (TC).
       var R0 = 2.6, R1 = 4.0, TC = R0 + (R1 - R0) * Math.acos(1 - 2 * k) / Math.PI;
@@ -450,7 +450,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
         fade(endv, t, R1 + .6);
         rise(ref, t, TC); rise(rea, t, TC + .4);
         rise(lt, t, 4.8);
-        rise(tl, t, 7.8); rise(tx, t, 7.9); rise(tf, t, 8.1); rise(tw, t, 8.2); fade(foot, t, 8.6);
+        rise(tl, t, 8.6); rise(tx, t, 8.7); rise(tw, t, 9.0);
       };
     },
     "05b-treasury": function (L, S) {
@@ -569,12 +569,6 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
         rise(tl, t, 4.4); rise(tr, t, 4.5); rise(de, t, 4.8);
         rise(lk, t, 5.6); rise(wh, t, 6.0); fade(foot, t, 6.4);
       };
-    },
-    "10-why": function (L, S) {
-      var qn = put(L, E("div", "hl c acc", S.q), 0, 132);
-      var at = [1.8, 3.8, 5.2]; // the last line holds nearly 3 s before the cut (Max, 5 Nov: at 1:33 it left too fast to read)
-      var lines = S.a.map(function (s, i) { return put(L, E("div", "hm c", s), 0, 300 + i * 78); });
-      return function (t) { rise(qn, t, .2); lines.forEach(function (n, i) { rise(n, t, at[i]); }); };
     },
     "11-turn": function (L, S, ov, seconds, rec) {
       // v6: the walk of the live page, recorded and laid into the frame by ffmpeg (RECORDING); without one (--check,

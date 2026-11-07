@@ -522,9 +522,12 @@ export function sideFacts(x: SideRuns): Record<string, Fact> {
  * 7 November, 13b and 13c): the script (premiereScript.ts) checks its scenes against these.
  */
 export const SCENE_SECONDS: Record<string, number> = {
-  "01-hook": 6, "02-purser": 4, "03-agents": 10, "04-how": 8, "05-price": 11, "05b-treasury": 8, "06-metal": 6, "07-dispute": 9,
-  "08-faceid": 8, "09-six": 9, "10-why": 8, "11-turn": 13, "12-tamper": 6, "13-proof": 12, "13b-awx": 11, "13c-airi": 14, "13d-value": 4,
-  "14-real": 8, "15-close": 13, "16-end": 11,
+  // v7 (Max, 7 November: "the slides go a little too fast"): 10-why is out (12-tamper says the same), and its eight
+  // seconds go to the scenes with the most to read: 05-price +3, 14-real +3 (the voice now reads both columns),
+  // 07-dispute +1, 13b-awx +1. Still 2:59.
+  "01-hook": 6, "02-purser": 4, "03-agents": 10, "04-how": 8, "05-price": 14, "05b-treasury": 8, "06-metal": 6, "07-dispute": 10,
+  "08-faceid": 8, "09-six": 9, "11-turn": 13, "12-tamper": 6, "13-proof": 12, "13b-awx": 12, "13c-airi": 14, "13d-value": 4,
+  "14-real": 11, "15-close": 13, "16-end": 11,
 };
 
 /** How long a line takes at the narrator's calm pace, about 2.5 words a second (to the hundredth). */
@@ -605,8 +608,9 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
     },
     "05-price": {
       kicker: `The main run · ${v("run.day")} · test money`,
-      supplier: v("price.supplier"), rise: "raised its price",
-      from: v("price.old"), to: v("price.new"), unit: "test USD a stock check",
+      // v7: said plainly what the price is for (Max: "is it clear to people?").
+      supplier: `${v("price.supplier")},`, rise: `our data supplier, ${cents(v("price.new")) === 2 * cents(v("price.old")) ? "doubled" : "raised"} its price`,
+      from: v("price.old"), to: v("price.new"), unit: "test USD for each stock check the agent buys",
       cap: `The Sourcing agent's mandate on Metal: at most ${v("price.cap")} a payment`, capValue: v("price.cap"), capTag: `cap ${v("price.cap")}`,
       letThrough: "Let through on purpose. Purser normally refuses first.",
       refused: "Metal refused it.", reason: `${v("price.reason")} · nothing moved`,
@@ -757,7 +761,7 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
     "01-hook": ["AI agents are starting to spend money.", "So who signs off?"],
     "02-purser": ["This is Purser, built by Max Geurtsen."],
     "03-agents": [`${cap1(said("run.agents"))} Claude agents`, "its own Airwallex card, and its own Metal mandate"],
-    "05-price": [`${cents(v("price.new")) === 2 * cents(v("price.old")) ? "doubles" : "raises"} its price, past the Sourcing agent's cap`, "Metal refused it"],
+    "05-price": [`${cents(v("price.new")) === 2 * cents(v("price.old")) ? "doubles" : "raises"} its price`, `from ${spoken(cents(v("price.old")))} to ${spoken(cents(v("price.new")))} cents a stock check`, `the ${spoken(cents(v("price.cap")))}-cent cap`, "Metal refused it"],
     "05b-treasury": ["two ways", `within the same ${spoken(Number(dollars("treasury.total")))} dollars`, "with Face ID"],
     "06-metal": [`${cap1(said("metal.payments"))} Metal payments`, "No emulator"],
     "07-dispute": [`disputes ${said("dispute.count")} orders`, `Only the ${said("dispute.refundCount")} with wrong data`],
@@ -770,6 +774,8 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
     "13b-awx": [`Airwallex itself declined ${said("awx.declines")} charges`, "over the limit", "in the wrong category", "asked the CFO for a raise, not a retry"],
     "13c-airi": ["Airwallex's Airi", "single-use Visa credential", "alone within the limit", "only after the CFO's Face ID", "Terms changed after that Face ID were refused before Airi was asked"],
     "13d-value": ["The agents do the work. The CFO signs only the exceptions."],
+    // v7 (Max: the voice did not read all of it): both columns, as the screen has them.
+    "14-real": ["Real: the Airwallex sandbox, Metal testnet, Claude, Face ID, and Airi with a test card.", "Ours or simulated: the suppliers, the customer, the merchant, and a test second approver."],
     "15-close": [CLOSING[0], `${CLOSING[1]} ${CLOSING[2]}`, CLOSING[3]],
   };
   const voice: PremiereData["voice"] = {};
