@@ -60,7 +60,7 @@ button.run:disabled { opacity: .5; cursor: wait; }
 .rails { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .railtile { border: 1px solid var(--border); border-radius: 14px; padding: 12px; background: var(--surface); transition: all .35s ease; }
 .railtile.on { opacity: 1; background: var(--surface); border-color: var(--accent); box-shadow: 0 6px 18px rgba(91,76,240,.12); }
-.railtile .lg { display: inline-flex; background: #fff; border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; }
+.railtile .lg { display: inline-flex; background: var(--surface); color: var(--text); font-weight: 750; border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; }
 .railtile .lg img { height: 16px; width: auto; display: block; }
 .railtile small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 8px; line-height: 1.4; }
 .outcome { display: grid; grid-template-columns: 52px 1fr; gap: 14px; align-items: start; padding: 20px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); opacity: 0; transform: translateY(10px); transition: all .45s ease; }
@@ -146,8 +146,8 @@ button.run:disabled { opacity: .5; cursor: wait; }
         <div class="node" id="n-purser"><div class="ic">✦</div><div><b>__TRY_NODE__</b><small id="n-purser-s">__TRY_NODE_SUB__</small></div></div>
         <div class="link" id="l2"></div>
         <div class="rails">
-          <div class="railtile" id="r-awx"><span class="lg"><img src="assets/logo-airwallex.png" alt="Airwallex" width="131" height="18"></span><small id="r-awx-s">Company cards (Issuing), FX and SWIFT payouts</small></div>
-          <div class="railtile" id="r-mtl"><span class="lg"><img src="assets/logo-metal.svg" alt="Metal" width="57" height="18"></span><small id="r-mtl-s">Mandates: pay per request (x402), on chain</small></div>
+          <div class="railtile" id="r-awx"><span class="lg">Airwallex</span><small id="r-awx-s">Company cards (Issuing), FX and SWIFT payouts</small></div>
+          <div class="railtile" id="r-mtl"><span class="lg">Metal</span><small id="r-mtl-s">Mandates: pay per request (x402), on chain</small></div>
         </div>
         <div class="link" id="l3"></div>
         <div id="outcome-slot"><div class="node" id="n-out"><div class="ic">?</div><div><b>The outcome</b><small>paid · Face ID · refused · blocked</small></div></div></div>

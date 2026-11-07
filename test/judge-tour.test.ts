@@ -9,7 +9,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { pageResponse } from "../worker/src/core.js";
-import { buildPages } from "../src/relay/assets.js";
+import { buildPages, flowLinks } from "../src/relay/assets.js";
 import { JUDGE_CSP, JUDGE_PAGE } from "../src/servers/dashboard.js";
 import { JUDGE_CODE_HREF, JUDGE_LINK, JUDGE_STEPS, JUDGE_URL, judgePage } from "../src/redesign/judge.js";
 import { FILM_URL } from "../src/config/brand.js";
@@ -129,22 +129,21 @@ describe("/judge: in the browser only", () => {
     const r = pageResponse(new Request(`${SITE}/judge`), ON);
     expect(r?.status).toBe(200);
     expect(r?.headers.get("content-security-policy")).toBe(JUDGE_CSP);
-    expect(ON.judge).toBe(JUDGE_PAGE);
+    // As served: the header's "Try" tab leads to /try/sign in this bundle (src/relay/assets.ts flowLinks).
+    expect(ON.judge).toBe(flowLinks(JUDGE_PAGE, true));
     expect(pageResponse(new Request(`${SITE}/judge`), OFF)).toBeNull();
     expect(OFF.judge).toBeUndefined();
   });
 });
 
 describe("the way in: Home, the README and the form", () => {
-  it("Home has one link to /judge, at the top, and only when the bundle has /judge", () => {
-    const home = ON.home!;
-    expect(home.match(/href="judge"/g)).toHaveLength(1);
-    expect(home).toContain(`<a href="judge">${JUDGE_LINK}</a>`);
+  it("Home shows the way through itself (Max, 7 Nov: watch, try, proof), with the tour as one quiet text link under the one button", () => {
     expect(JUDGE_LINK).toBe("Judge it in 3 minutes →");
-    // At the top: before the hero and its heading.
-    expect(home.indexOf('href="judge"')).toBeLessThan(home.indexOf('<section class="hero">'));
-    expect(home.indexOf('href="judge"')).toBeGreaterThan(home.indexOf("<main>"));
+    expect(ON.home!.match(/href="judge"/g)).toHaveLength(1);
+    expect(ON.home).toContain('<p class="judgeline"><a href="judge">Judging? Take the 3-minute tour →</a></p>');
     expect(OFF.home).not.toContain('href="judge"');
+    // Home's three steps are /judge's first ones: the agents, then /try/sign, then the proof.
+    expect(ON.home).toContain('<a href="watch">'); expect(ON.home).toContain('<a href="try/sign">'); expect(ON.home).toContain('<a href="proof">');
   });
 
   it("the README has one line to /judge near the top", () => {

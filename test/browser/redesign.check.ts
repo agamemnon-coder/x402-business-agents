@@ -78,10 +78,11 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await page.screenshot({ path: join(shots, `home-first-${tag}.png`) });
     await page.waitForTimeout(9000);
     await look(page, `/home ${tag}`, w);
-    if ((await page.locator(".scene").count()) !== 3) fail(`/home ${tag}: not three moments`);
-    if ((await page.locator(".tiles .tile").count()) !== 5) fail(`/home ${tag}: not five proof numbers`);
-    // The stylesheet parsed to the end (a stray brace once dropped the tiles' style).
-    if (await page.locator(".tiles .tile").first().evaluate((e) => getComputedStyle(e).display) !== "flex") fail(`/home ${tag}: the proof tiles lost their style`);
+    // One flow (Max, 7 Nov): three steps and one primary button; the proof numbers live on /proof.
+    if ((await page.locator("ol.flow > li").count()) !== 3) fail(`/home ${tag}: not three steps`);
+    if ((await page.locator("main a.btn.primary").count()) !== 1) fail(`/home ${tag}: not one primary button`);
+    // The stylesheet parsed to the end (a stray brace once dropped a block's style).
+    if (await page.locator("ol.flow").evaluate((e) => getComputedStyle(e).display) !== "grid") fail(`/home ${tag}: the flow lost its style`);
     if ((await page.locator("nav.tabs a").count()) !== 4) fail(`/home ${tag}: not four tabs`);
     if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(await page.evaluate(() => document.body.innerText))) fail(`/home ${tag}: no run label`);
     // The rail's line is said in full (Max, 2 Nov: it was cut off).
@@ -127,7 +128,8 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
 
     await page.goto(`${base}/proof`, { waitUntil: "load" });
     await look(page, `/proof ${tag}`, w);
-    if ((await page.locator(".pcard").count()) !== 4) fail(`/proof ${tag}: not four partner cards`);
+    // Metal, Airwallex, Claude (Visa TAP is a footer link to /visa since the jury review of 6 Nov).
+    if ((await page.locator(".pcard").count()) !== 3) fail(`/proof ${tag}: not three partner cards`);
     await page.screenshot({ path: join(shots, `proof-${tag}.png`) });
     await page.evaluate(() => document.querySelectorAll("details").forEach((d) => { d.open = true; }));
     await look(page, `/proof open ${tag}`, w);

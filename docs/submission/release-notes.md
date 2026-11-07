@@ -294,7 +294,7 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   pay an invoice above its limit." with one button, "Sign with Face ID", which makes the test passkey on the way; (2)
   "Signed and verified."; (3) "Try to cheat.": one cent, another IBAN or another currency, refused by the server; (4)
   "Change the rule.": how much the agent may pay alone, a looser rule signed, a stricter one applied at once; (5) "The
-  agent pays it alone.": its next invoice (T-0003, EUR 1,850.00, fixed text, no quote, no model call), which arrives once
+  agent pays it alone.": its next invoice (T-0003, fixed text, no quote, no model call), which arrives once
   T-0002 is signed, runs without a signature under the new rule. Every field of the policy (#71) behind "Show all
   fields". The test world opens when the page is shown (Max's choice), one quote and one model call per world as before.
   The server's checks are unchanged; the next invoice is checked by the same rules. On every screen at most 60 words in
@@ -302,6 +302,30 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   1440 px, light and dark); the whole story runs in WebKit too, with a test-only software passkey whose signatures the
   server verifies. /judge's steps 1 and 2, the README, the form and the pitch follow the new order.
   2864 tests in 281 files, all passing.
+- 7 November, the worst case counts what an agent may pay alone (Max): in the /try/sign test world the Treasury agent's
+  "may pay alone up to" is counted, at most 3 payments alone in 24 hours (Purser's existing per-day rule for what an
+  agent does without a person, now enforced where payments run alone), 31 days a month; choosing EUR 2,000 on screen 4
+  raises the figure before you sign, and the server sends the figure for each amount. Purser's own policy has no
+  payments alone, so the README's and the CFO's figure stay as they were. The phone strip "One policy, three locks" is
+  gone; the lock lines are shorter. 2868 tests in 281 files, all passing.
+- 7 November, /try/sign as the demo's strongest minute (Max's plan "De demo geweldig maken", part 1): an opening line
+  ("You're the CFO. Your AI agents pay suppliers on their own. One of them wants €1,850.") and one button; a new step,
+  "Try to trick the agent": two fixed fake invoices ("Pre-approved by the CFO", a lookalike supplier) run through
+  Purser's own injection screen and invoice-fraud check (src/policy/fraudCore.ts, the pure part of fraud.ts, now shared
+  by the runner and the Worker), each blocked before anything is proposed, "A prompt is not a control."; a split invoice
+  is left out, as no rule in the code detects one. The worst case in a CFO's words ("the agent may pay up to €X alone, at
+  most 3 times a day") with what a looser rule adds a month ("+€139,500"), and why the main run's is EUR 300 behind
+  "more". A closing card: what you did in about a minute, then "See the real run", "Trace a real payment", "Read the
+  code". 2875 tests in 282 files, all passing.
+- 7 November, the real agent in "Try to trick the agent" (Max's section 6, part 1): the agent that reads invoices, live
+  (Claude Sonnet, the runner's own reader: the same system prompt, instruction and schema, now in
+  src/claude/invoiceReading.ts and shared by runner and Worker), reads each fixed fake invoice; code checks its reading
+  against the document's own lines, as the runner does; then Purser's code blocks it whatever the agent read. The page
+  shows what the agent read ("Claude Sonnet · live"), "Purser's code checks it either way.", the verdict, and "What the
+  agent did" (the call, its model, time and request id). Without the live agent (no key, switched off, over budget,
+  past 8 s) code reads the invoice, labelled so. One budget for every live call on the page, USD 10 a day (was USD 1
+  for the sentence alone), per-address and overall limits, the emergency switch TRY_SIGN_HAIKU for all of them, and
+  today's spend on /health. 2881 tests in 282 files, all passing.
 
 ## Real, and ours
 

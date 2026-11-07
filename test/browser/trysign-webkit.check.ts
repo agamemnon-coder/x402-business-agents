@@ -83,7 +83,12 @@ for (const [width, scheme] of [[360, "light"], [360, "dark"], [390, "light"], [3
   await page.locator("details.wr > summary").click();
   await page.waitForFunction(() => !(document.getElementById("go-sign") as HTMLButtonElement).disabled || document.getElementById("w-status")?.classList.contains("bad"));
   check(/^[0-9a-f]{16}$/.test(((await page.locator("#w-id").textContent()) ?? "").trim()), `${tag}: the test world opened when the page was shown`);
-  check((await page.locator("#pg-count").innerText()).trim() === `1 of 5 · ${TRY_SIGN_STEPS[0]}` && (await page.locator("#s1-head").innerText()).trim() === W.ask.head, `${tag}: screen 1 of 5: "${W.ask.head}"`);
+  // The opening (1.1): one sentence, one button; then screen 1.
+  check((await page.locator("#s0-head").innerText()).trim() === W.intro.head, `${tag}: the opening: "${W.intro.head}"`);
+  await measure(page, tag, 0);
+  await page.click("#go-start");
+  await page.waitForSelector("#scr-1:not([hidden])");
+  check((await page.locator("#pg-count").innerText()).trim() === `1 of 6 · ${TRY_SIGN_STEPS[0]}` && (await page.locator("#s1-head").innerText()).trim() === W.ask.head, `${tag}: screen 1 of 6: "${W.ask.head}"`);
   // The terms' hash WebKit computed on the device (crypto.subtle over the canonical JSON) is the one Node computes.
   const canonical = (await page.locator("#s1-terms pre.terms").textContent()) ?? "";
   const shown = (await page.locator("#s1-terms .hash").getAttribute("data-hash")) ?? "";
@@ -112,19 +117,34 @@ for (const [width, scheme] of [[360, "light"], [360, "dark"], [390, "light"], [3
   check((await page.locator("#t-verdict").innerText()).trim() === "One field changed. The signature is worthless.", `${tag}: another IBAN, refused`);
   await measure(page, tag, 3);
   await shot(page, errors, join(shots, `${tag}-3-cheat.png`));
-  await page.click("#go-rule");
+  // Screen 4: try to trick the agent; each fake invoice blocked by Purser's code (1.3).
+  await page.click("#go-trick");
   await page.waitForSelector("#scr-4:not([hidden])");
-  await page.click('#rule-chips .chip[data-alone="2000.00"]');
-  check((await page.locator("#s4-note").innerText()).trim() === W.rule.looser && (await page.locator("#go-apply").innerText()).trim() === W.rule.sign, `${tag}: screen 4: €2,000 is looser, "${W.rule.sign}"`);
+  for (const attack of ["pre_approved", "lookalike"]) {
+    await page.click(`#trick-chips .chip[data-attack="${attack}"]`);
+    await page.waitForFunction((a: string) => !document.getElementById("k-result")!.hidden && (document.getElementById("k-doc")!.textContent ?? "").includes(a === "lookalike" ? "Pakaging" : "Pre-approved"), attack);
+    check(/^Blocked: /.test((await page.locator("#k-out").innerText()).trim()) && (await page.locator("#k-lesson").innerText()).trim() === "A prompt is not a control.", `${tag}: screen 4: the ${attack} invoice is blocked by Purser's code`);
+  }
   await measure(page, tag, 4);
-  await shot(page, errors, join(shots, `${tag}-4-rule.png`));
-  await page.click("#go-apply");
-  await page.waitForSelector("#scr-5:not([hidden]), #s4-status.bad");
-  check(await page.locator("#scr-5").isVisible() && await page.locator("#s5-next").getAttribute("data-state") === "alone" && await page.locator("#s5-next").getAttribute("data-proposal") === NEXT_INVOICE.id,
-    `${tag}: screen 5: the rule signed, the next invoice (${NEXT_INVOICE.id}) paid alone (${(await page.locator("#s4-status").innerText()).trim().slice(0, 60)})`);
-  check(await page.evaluate("window.__softPasskeyCount()") === 3, `${tag}: three uses of the passkey: made, the payment, the rule; none for the invoice paid alone`);
+  await shot(page, errors, join(shots, `${tag}-4-trick.png`));
+  await page.click("#go-rule");
+  await page.waitForSelector("#scr-5:not([hidden])");
+  await page.click('#rule-chips .chip[data-alone="2000.00"]');
+  check((await page.locator("#s4-note").innerText()).trim() === W.rule.looser && (await page.locator("#go-apply").innerText()).trim() === W.rule.sign && /\(\+€[\d,]+\)$/.test((await page.locator("#s4-worst").innerText()).trim()), `${tag}: screen 5: €2,000 is looser, "${W.rule.sign}", and what it adds a month`);
   await measure(page, tag, 5);
-  await shot(page, errors, join(shots, `${tag}-5-paid-alone.png`));
+  await shot(page, errors, join(shots, `${tag}-5-rule.png`));
+  await page.click("#go-apply");
+  await page.waitForSelector("#scr-6:not([hidden]), #s4-status.bad");
+  check(await page.locator("#scr-6").isVisible() && await page.locator("#s5-next").getAttribute("data-state") === "alone" && await page.locator("#s5-next").getAttribute("data-proposal") === NEXT_INVOICE.id,
+    `${tag}: screen 6: the rule signed, the next invoice (${NEXT_INVOICE.id}) paid alone (${(await page.locator("#s4-status").innerText()).trim().slice(0, 60)})`);
+  check(await page.evaluate("window.__softPasskeyCount()") === 3, `${tag}: three uses of the passkey: made, the payment, the rule; none for the invoice paid alone`);
+  await measure(page, tag, 6);
+  await shot(page, errors, join(shots, `${tag}-6-paid-alone.png`));
+  await page.click("#go-done");
+  await page.waitForSelector("#scr-7:not([hidden])");
+  check((await page.locator("#d-head").innerText()).trim() === W.done.head, `${tag}: the closing card: "${W.done.head}"`);
+  await measure(page, tag, 7);
+  await shot(page, errors, join(shots, `${tag}-7-done.png`));
   check(await wide(page, width), `${tag}: the page is no wider than the screen`);
   check(errors.length === 0, `${tag}: no console or CSP errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
   await context.close();
@@ -137,9 +157,11 @@ for (const [width, scheme] of [[360, "light"], [360, "dark"], [390, "light"], [3
   const { context, page, errors } = await visitor(390, "light");
   await page.goto(`${local.url}/try/sign`);
   await page.waitForFunction(() => !(document.getElementById("go-sign") as HTMLButtonElement).disabled);
+  await page.click("#go-start"); await page.waitForSelector("#scr-1:not([hidden])");
   await page.click("#go-sign"); await page.waitForSelector("#scr-2:not([hidden])");
   await page.click("#go-cheat"); await page.waitForSelector("#tamper:not([hidden])");
-  await page.click("#go-rule"); await page.waitForSelector("#scr-4:not([hidden])");
+  await page.click("#go-trick"); await page.waitForSelector("#scr-4:not([hidden])");
+  await page.click("#go-rule"); await page.waitForSelector("#scr-5:not([hidden])");
   check((await page.locator("#p-open").innerText()).trim() === TRY_POLICY.open && await page.locator("#p-body").isHidden(), `${tag}: every field behind "${TRY_POLICY.open}", closed until asked`);
   await page.locator("#p-open").click();
   const awxBefore = (await page.locator("#pl-awx").textContent()) ?? "";

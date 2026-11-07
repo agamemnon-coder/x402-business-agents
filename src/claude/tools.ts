@@ -12,6 +12,7 @@ import type { FraudFinding } from "../policy/fraud.js";
 import { findInjections } from "../policy/injection.js";
 import { sha256Hex } from "../lib/terms.js";
 import { ClaudeReader, type Read } from "./reader.js";
+import { checkInvoiceReading, INVOICE_INSTRUCTION, InvoiceSchema } from "./invoiceReading.js";
 
 const MONEY = /^\d+\.\d{2}$/;
 
@@ -59,16 +60,7 @@ const CorrectionsSchema = z.object({
   corrections: z.array(z.object({ seq: z.number().int(), on_hand: z.number().int(), reserved: z.number().int(), excerpt: z.string() })),
 });
 
-const InvoiceSchema = z.object({
-  invoice_no: z.string(),
-  vendor: z.string(),
-  amount: z.string(),
-  currency: z.string(),
-  due_date: z.string(),
-  iban: z.string(),
-  bic: z.string(),
-  reference: z.string(),
-});
+
 
 export const ReviewSchema = z.object({
   summary: z.string(),
@@ -199,23 +191,10 @@ export class Tools {
   async invoice(document: string): Promise<Read<Invoice>> {
     const r = await this.reader.ask(
       { task: "extract_invoice", role: "act", actor: "treasury", schema: InvoiceSchema, document,
-        instruction: "Extract the invoice: number, vendor (the issuing company's legal name), total due as a plain decimal with two decimals and no thousands separators, currency code, due date as YYYY-MM-DD, IBAN without spaces, BIC, and the payment reference." },
+        instruction: INVOICE_INSTRUCTION },
       () => parseInvoiceFallback(document),
     );
-    return checked(this.db, "extract_invoice", r, (v) => {
-      if (!(MONEY.test(v.amount) && /^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(v.iban) && /^\d{4}-\d{2}-\d{2}$/.test(v.due_date))) return "amount, IBAN or due date malformed";
-      // Where the document's own lines can be read without a model, the model's reading must agree with them: a
-      // model that followed a planted line (another IBAN, another amount, the real supplier's name) is not used.
-      let lines: Invoice;
-      try {
-        lines = parseInvoiceFallback(document);
-      } catch {
-        return null;
-      }
-      const norm = (k: keyof Invoice, s: string) => (k === "iban" || k === "bic" ? s.replace(/\s+/g, "").toUpperCase() : s.trim());
-      const differ = (["invoice_no", "vendor", "amount", "currency", "iban", "bic"] as const).filter((k) => norm(k, v[k]) !== norm(k, lines[k]));
-      return differ.length ? `the reading differs from the document's own lines: ${differ.join(", ")}` : null;
-    }, () => parseInvoiceFallback(document));
+    return checked(this.db, "extract_invoice", r, (v) => checkInvoiceReading(v, document), () => parseInvoiceFallback(document));
   }
 
   /** Opus: an advisory risk review of exact terms, shown under the code-computed numbers. Never parsed for amounts. */

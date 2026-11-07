@@ -230,7 +230,7 @@ details.tech a { color: var(--accent); text-decoration: none; }
 .money .m .k { font-size: 13px; color: var(--muted); }
 .money .m .v { font-size: 22px; font-weight: 700; letter-spacing: -.02em; margin-top: 4px; }
 /* Claude's official logo has white letters: it sits on a dark ground in both themes, colours unchanged. */
-.claudelogo { display: inline-flex; align-items: center; background: #191919; border-radius: 999px; padding: 7px 14px; }
+.claudelogo { display: inline-flex; align-items: center; background: var(--surface); color: var(--text); border: 1px solid var(--border); font-weight: 750; border-radius: 999px; padding: 7px 14px; }
 .claudelogo img { height: 16px; width: auto; display: block; }
 .panel.claude, .panel.ask { margin-top: 20px; }
 /* Design 4.3: the Dispute desk as an evidence board, the counts before the rows. */
@@ -501,7 +501,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
 .rails-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 28px; }
 .rail { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 22px 22px 8px; }
 .rail header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
-.rail .logo { display: inline-flex; background: #fff; border: 1px solid var(--border); border-radius: 999px; padding: 8px 16px; }
+.rail .logo { display: inline-flex; background: var(--surface); color: var(--text); font-weight: 750; border: 1px solid var(--border); border-radius: 999px; padding: 8px 16px; }
 .rail .logo img { height: 20px; width: auto; display: block; }
 .rail .what { color: var(--muted); font-size: 14px; font-weight: 600; }
 .rail ul { list-style: none; margin: 0; padding: 0; }
@@ -675,8 +675,8 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   <div class="tablewrap"><table class="agents" id="agents-table" aria-label="Per agent"></table></div>
   <div id="dash-rails" hidden><div class="sect"><h2>On each rail</h2><span class="hint">What Airwallex and Metal did, each with its proof</span></div>
   <div class="rails-grid dash">
-    <article class="rail awx"><header><span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="131" height="18"></span><span class="what">Cards, FX and payouts</span></header><ul id="drail-awx"></ul></article>
-    <article class="rail mtl"><header><span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="57" height="18"></span><span class="what">Mandates, per-request payments, disputes</span></header><ul id="drail-mtl"></ul></article>
+    <article class="rail awx"><header><span class="logo">Airwallex</span><span class="what">Cards, FX and payouts</span></header><ul id="drail-awx"></ul></article>
+    <article class="rail mtl"><header><span class="logo">Metal</span><span class="what">Mandates, per-request payments, disputes</span></header><ul id="drail-mtl"></ul></article>
   </div></div>
   <section class="panel" id="awx-hooks" aria-labelledby="h-hooks" hidden><div class="sect flush"><h2 id="h-hooks">Webhooks from Airwallex</h2><span class="hint">each one signed by Airwallex, checked at the relay and again here, then compared with the ledger</span></div><div id="awx-hooks-body"></div></section>
   <div class="cols">
@@ -688,7 +688,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     <section class="panel" aria-labelledby="h-refusals"><div class="sect flush"><h2 id="h-refusals">Refused and blocked</h2><span class="pill bad" id="refusals-count">0</span></div><div id="refusals"></div></section>
   </div>
   <section class="panel ask" id="ask-panel" aria-labelledby="h-ask" hidden><div class="sect flush"><h2 id="h-ask">Ask Purser</h2><span class="hint">from the CFO policy page on your phone</span></div><ul class="chat" id="ask"></ul></section>
-  <section class="panel claude" id="claude-panel" aria-labelledby="h-claude" hidden><div class="sect flush"><h2 id="h-claude">Powered by Claude</h2><span class="claudelogo"><img src="assets/logo-claude.png" alt="Claude" width="73" height="16"></span></div><div id="claude"></div></section>
+  <section class="panel claude" id="claude-panel" aria-labelledby="h-claude" hidden><div class="sect flush"><h2 id="h-claude">Powered by Claude</h2><span class="claudelogo">Claude</span></div><div id="claude"></div></section>
   </div>
   <div class="foot"><span id="auditline"></span><span id="passkey"></span></div>
 </main>

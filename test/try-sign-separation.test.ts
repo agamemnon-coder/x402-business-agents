@@ -115,7 +115,7 @@ describe("/try/sign is apart from the CFO's world", () => {
     const db = new Database(":memory:");
     new TrySignDesk(sqlOver(db));
     const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all() as { name: string }[]).map((r) => r.name);
-    expect(tables).toEqual(["ts_creds", "ts_hits", "ts_lines", "ts_policy", "ts_proposals", "ts_spend", "ts_worlds"]);
+    expect(tables).toEqual(["ts_creds", "ts_hits", "ts_lines", "ts_policy", "ts_proposals", "ts_spend", "ts_tricks", "ts_worlds"]);
   });
 });
 
@@ -168,7 +168,7 @@ describe("/try/sign in the bundle (TRY_SIGN_ENABLED)", () => {
     expect(html).toContain("url(/assets/inter.woff2)");
     // The landing's button, only in this bundle.
     expect(on.home).toContain('href="try/sign"');
-    expect(on.home).toContain("Sign with your own Face ID");
+    expect(on.home).toContain("Sign with your Face ID");
   });
 
   it("the local relay: off, /try/sign and its API are 404; on, the whole visit works", async () => {

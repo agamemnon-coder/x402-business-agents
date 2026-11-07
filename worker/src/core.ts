@@ -6,6 +6,7 @@
 import { verifyAssertion, type PublicKeyXY } from "./webauthn.js";
 import { normalizeCode } from "../../src/passkey/code.js";
 import { publicHealth, publicStatus, type Health } from "../../src/ops/publicHealth.js";
+import { AGENT_LINE_DAILY_USD } from "./agentLine.js";
 
 export type SqlValue = string | number | null;
 export interface Sql {
@@ -413,6 +414,17 @@ export class Relay {
     return s ? (JSON.parse(s) as StoredState) : null;
   }
 
+  /** /try/sign's live agents today (same storage as its desk): USD spent of the daily budget, or null before the first call. */
+  private liveAgentsToday(): { usd: number; budget_usd: number } | null {
+    try {
+      const day = new Date().toISOString().slice(0, 10);
+      const row = (this.sql.exec("SELECT usd FROM ts_spend WHERE day = ?", day).toArray() as { usd: number }[])[0];
+      return { usd: Math.round((row?.usd ?? 0) * 10_000) / 10_000, budget_usd: AGENT_LINE_DAILY_USD };
+    } catch {
+      return null;
+    }
+  }
+
   private relayInfo(state: StoredState) {
     const synced = this.get("synced_at") ?? state.generated_at;
     return { synced_at: synced, generated_at: state.generated_at, age_ms: Math.max(0, this.now().getTime() - Date.parse(synced)) };
@@ -462,7 +474,9 @@ export class Relay {
       const ok = raw && typeof raw.at === "string" && Array.isArray(raw.alerts) ? raw : null;
       const info = state ? this.relayInfo(state) : null;
       const h = path === "/health/live" ? publicHealth(ok, info?.age_ms ?? null) : publicStatus(ok, info?.age_ms ?? null, { liveRun: this.opts.liveRun, lastSync: info?.synced_at ?? null });
-      return json(h.status, h.body);
+      // Section 6 (Max, 7 Nov): today's spend on /try/sign's live agents, against its daily budget, on /health.
+      const live = path === "/health" ? this.liveAgentsToday() : null;
+      return json(h.status, live ? { ...h.body, live_agents_today: live } : h.body);
     }
     // An address that keeps failing the viewer key or the webhook signature is refused before either is checked,
     // so guessing is slowed and shows up (HF1). The runner's route has its own token and is not counted.

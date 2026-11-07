@@ -139,12 +139,18 @@ describe("the claims say what PROOF_SENTENCES says (src/config/brand.ts)", () =>
   });
 });
 
-describe("/proof as served: each card opens with its claims, linked", () => {
+describe("/proof as served: each card shows 2–3 facts first, its claims linked in the fold (Max, 7 Nov)", () => {
   for (const [id, partner] of [["airwallex", "airwallex"], ["metal", "metal"], ["claude", "claude"]] as const) {
-    it(`${id}: the claims come first, before the card's description, in order, each a link`, () => {
+    it(`${id}: the name, then 2–3 facts with a bold number and no brackets; the claims in the fold, in order, each a link`, () => {
       const card = cardOf(html, id), first = afterHeader(card);
-      expect(first.startsWith('<ul class="lead">')).toBe(true);
-      const list = first.slice(0, first.indexOf("</ul>"));
+      expect(first.startsWith('<div class="facts">')).toBe(true);
+      const facts = [...first.slice(0, first.indexOf("</div>")).matchAll(/<span class="fact"><b>([^<]+)<\/b> ([^<]+)<\/span>/g)];
+      expect(facts.length).toBeGreaterThanOrEqual(2);
+      expect(facts.length).toBeLessThanOrEqual(3);
+      for (const f of facts) expect({ id, fact: f[0], plain: /^[\d][\d ,.ofx/]*$/.test(f[1]!) && !/[()]|four eyes|rel-\d|eval/i.test(f[2]!) }).toEqual({ id, fact: f[0], plain: true });
+      expect(card).not.toMatch(/<img /);
+      const fold = card.slice(card.indexOf('<details class="fold">'));
+      const list = fold.slice(fold.indexOf('<ul class="lead">'), fold.indexOf("</ul>", fold.indexOf('<ul class="lead">')));
       let at = 0;
       for (const l of leads[partner]) {
         const i = list.indexOf(`href="${l.href.split("&").join("&amp;")}"`, at);

@@ -6,7 +6,7 @@ import { notFoundResponse, pageResponse, Relay } from "./core.js";
 import { TryDesk } from "./try.js";
 import { isTrySignPath, trySignNotFound, trySignRoute, TrySignDesk } from "./trySign.js";
 import { SandboxQuotes } from "./fxQuote.js";
-import { agentLineSource } from "./agentLine.js";
+import { agentLineSource, invoiceReaderSource } from "./agentLine.js";
 import { PAGES } from "./pages.gen.js";
 
 export interface Env {
@@ -50,6 +50,8 @@ export class RelayObject extends DurableObject<Env> {
         fx: id && key ? new SandboxQuotes({ clientId: id, apiKey: key }) : null,
         // Only a function that asks Haiku for one sentence: the desk never holds the key itself.
         agentLine: agentLineSource(this.env, fetch),
+        // Section 6: the runner's invoice reader (Sonnet), live, under the same switch and budget.
+        reader: invoiceReaderSource(this.env, fetch),
         // 1.1: the main run's recorded rate, built in with the pages, for step 0's worst case.
         rate: PAGES.exposureRate ?? null,
       })).fetch(req);

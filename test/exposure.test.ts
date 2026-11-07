@@ -11,8 +11,8 @@ import { toCents } from "../src/lib/money.js";
 import { policyValue } from "../src/policy/rules.js";
 import { createHash } from "node:crypto";
 import { EXPOSURE_HOW, EXPOSURE_TASK_CARDS, MONTH_DAYS, approxEurCents, exposureOf, exposureWords, moneyShort, type ExposurePolicy } from "../src/policy/exposure.js";
-import { exposurePolicyFromDb, exposurePolicyFromRecord, readmeWorstCase, recordedRate, startPolicy, worstCaseLine, worstCaseWords } from "../src/policy/exposureSources.js";
-import { STEP0_CHAIN, exposurePolicyOfWorld } from "../src/try/policy.js";
+import { exposurePolicyFromDb, exposurePolicyFromRecord, readmeWorstCase, recordedRate, startPolicy, worstCaseLine, worstCaseWords, worstCaseWordsOf } from "../src/policy/exposureSources.js";
+import { ALONE_PER_DAY, STEP0_CHAIN, defaultPolicy, exposurePolicyOfWorld } from "../src/try/policy.js";
 import { BASE, RP, call, challengeOf, desk, withPasskey } from "./support/trySign.js";
 
 const record = JSON.parse(readFileSync(new URL("../docs/demo/main-run.json", import.meta.url), "utf8")) as Parameters<typeof exposurePolicyFromRecord>[0] & Parameters<typeof recordedRate>[0];
@@ -144,16 +144,23 @@ describe("the CFO's view, the README and step 0 show identical numbers", () => {
     const { esc } = await import("../src/redesign/ui.js");
     const block = /<div class="pexpo" id="p-expo"[^>]*>([\s\S]*?)<\/div>/.exec(html)![1]!;
     expect(start.headline.startsWith(TRY_POLICY.worstCase)).toBe(true);
-    for (const t of [start.headline, start.tasks, start.above, ...start.how, TRY_POLICY.worstCaseChain]) expect(block).toContain(esc(t));
+    // The test world's own figure (Max, 7 Nov: it counts what the Treasury agent may pay alone), by the Worker's code.
+    const world = worstCaseWordsOf(exposurePolicyOfWorld(defaultPolicy(new Date(), { reserve_floor: "25000.00", alone_limit: "500.00" })));
+    for (const t of [world.headline, world.tasks, world.above, ...world.how, TRY_POLICY.worstCaseChain]) expect(block).toContain(esc(t));
     expect(block).toMatch(new RegExp(`<details class="how"><summary>${EXPOSURE_HOW}</summary>`));
     expect(block).not.toMatch(/<details[^>]* open/);
     expect(html).toContain(esc(TRY_POLICY.open));
   });
-  it("a test world opens with the same words, computed by the Worker from its starting policy (B1)", async () => {
+  it("a test world opens with Purser's figure plus what its Treasury agent may pay alone, computed by the Worker (B1)", async () => {
     const { d } = desk(undefined, null, recordedRate(record));
     const res = await call(d, "world", {});
-    const w = (await res.json()) as { exposure: ReturnType<typeof worstCaseWords> };
-    expect(w.exposure).toEqual(start);
+    const w = (await res.json()) as { exposure: ReturnType<typeof worstCaseWords>; policy: Parameters<typeof exposurePolicyOfWorld>[0] };
+    const ep = exposurePolicyOfWorld(w.policy);
+    expect(w.exposure).toEqual(exposureWords(exposureOf(ep), ep, recordedRate(record)));
+    const eur = (h: string) => Number(/EUR ([\d,]+) (?:on cards|incl\.)/.exec(h)![1]!.replace(/,/g, ""));
+    expect(eur(w.exposure.headline)).toBe(eur(start.headline) + 500 * ALONE_PER_DAY * MONTH_DAYS);
+    expect(w.exposure.above).toBe(start.above);
+    expect(w.exposure.tasks).toBe(`Plus the Treasury agent's task cards: up to ${moneyShort("EUR", startPolicy().taskCardEurCents * startPolicy().taskCardsPerDay)} a day.`);
   });
   it("the CFO's view: the same figure as the README and step 0", () => {
     const p = exposurePolicyFromRecord(record);
@@ -175,7 +182,7 @@ describe("the CFO's view, the README and step 0 show identical numbers", () => {
   it("one switch for decision B: B2 takes the chain part from the test world's mandate (budget = the card's month)", () => {
     const p = startPolicy();
     const world = { reserve_floor: "25000.00", agents: Object.fromEntries(AGENTS.map((a) => [a, { per_tx: "1.00", monthly: (p.cardMonthlyCents[a] / 100).toFixed(2), mccs: [], currencies: [], end_date: "2027-01-01", alone: "500.00" }])) } as unknown as Parameters<typeof exposurePolicyOfWorld>[0];
-    expect(exposurePolicyOfWorld(world, "purser")).toEqual(p);
+    expect(exposurePolicyOfWorld(world, "purser")).toEqual({ ...p, invoiceAloneCents: { sourcing: 0, support: 0, treasury: 50_000 }, invoicesAlonePerDay: ALONE_PER_DAY });
     expect(exposurePolicyOfWorld(world, "test_world").mandateBudgetCents).toEqual(p.cardMonthlyCents);
     expect(STEP0_CHAIN).toBe("purser");
   });
@@ -202,20 +209,22 @@ describe("in step 0: a stricter policy lowers it at once, a looser one raises it
     const setOf = (monthly: string) => ({ ...start.agents.support, monthly, reserve_floor: start.reserve_floor });
     return { d, w, auth, setOf };
   }
-  const eurMonth = (h: string) => Number(/EUR ([\d,]+(?:\.\d{2})?) on cards/.exec(h)![1]!.replace(/,/g, ""));
+  const eurMonth = (h: string) => Number(/EUR ([\d,]+(?:\.\d{2})?) (?:on cards|incl\.)/.exec(h)![1]!.replace(/,/g, ""));
   it("stricter: the support card's month from 150.00 to 100.00 lowers the figure by EUR 50.00 at once", async () => {
     const v = await visitor();
-    const before = eurMonth(worstCaseWords(record).headline);
+    const opening = (v.w as unknown as { exposure: { headline: string } }).exposure.headline;
+    const before = eurMonth(opening);
     const r = await call(v.d, "policy", { token: v.w.world.token, agent: "support", set: v.setOf("100.00") });
-    const out = (await r.json()) as { applied: boolean; exposure: { headline: string } };
+    const out = (await r.json()) as { applied: boolean; exposure: { headline: string }; policy: Parameters<typeof exposurePolicyOfWorld>[0] };
     expect(out.applied).toBe(true);
     expect(eurMonth(out.exposure.headline)).toBe(before - 50);
-    const p = { ...startPolicy(), cardMonthlyCents: { ...startPolicy().cardMonthlyCents, support: 10000 } };
+    const p = exposurePolicyOfWorld(out.policy);
+    expect(p.cardMonthlyCents.support).toBe(10000);
     expect(out.exposure.headline).toBe(exposureWords(exposureOf(p), p, recordedRate(record)).headline);
   });
   it("looser: refused, the figure in force unchanged and the one it would set shown; signed, it holds", async () => {
     const v = await visitor();
-    const before = worstCaseWords(record).headline;
+    const before = (v.w as unknown as { exposure: { headline: string } }).exposure.headline;
     const r = await call(v.d, "policy", { token: v.w.world.token, agent: "support", set: v.setOf("400.00") });
     const out = (await r.json()) as { applied: boolean; canonical: string; exposure: { headline: string }; proposed_exposure: { headline: string; figure: string } };
     expect(out.applied).toBe(false);
@@ -226,5 +235,38 @@ describe("in step 0: a stricter policy lowers it at once, a looser one raises it
     const signed = (await s.json()) as { applied: boolean; exposure: { headline: string } };
     expect(signed.applied).toBe(true);
     expect(signed.exposure.headline).toBe(out.proposed_exposure.headline);
+  });
+});
+
+describe("payments an agent may make alone count in the worst case (Max, 7 Nov)", () => {
+  const now = new Date("2026-11-07T08:00:00Z");
+  const world = (alone: string) => {
+    const p = defaultPolicy(now, { reserve_floor: "25000.00", alone_limit: "500.00" });
+    return { ...p, agents: { ...p.agents, treasury: { ...p.agents.treasury, alone } } };
+  };
+  it("raising what the Treasury agent may pay alone from EUR 500 to EUR 2,000 raises the worst case, by the limit a day", () => {
+    const at500 = exposureOf(exposurePolicyOfWorld(world("500.00"))), at2000 = exposureOf(exposurePolicyOfWorld(world("2000.00")));
+    expect(at2000.total.month.eurCents).toBeGreaterThan(at500.total.month.eurCents);
+    expect(at2000.total.month.eurCents - at500.total.month.eurCents).toBe((200_000 - 50_000) * ALONE_PER_DAY * MONTH_DAYS);
+    expect(at2000.total.day.eurCents - at500.total.day.eurCents).toBe((200_000 - 50_000) * ALONE_PER_DAY);
+    expect(ALONE_PER_DAY).toBe(TASK_WITHIN_PER_DAY);
+  });
+  it("the Treasury agent's limit (the only payments that run alone here), at most ALONE_PER_DAY a day, 31 days a month; USD untouched", () => {
+    const p = exposurePolicyOfWorld(world("2000.00"));
+    const x = exposureOf(p);
+    for (const a of AGENTS) {
+      const e = x.agents.find((y) => y.agent === a)!;
+      const each = a === "treasury" ? 200_000 : 0;
+      expect(e.invoices).toEqual({ dayEurCents: each * ALONE_PER_DAY, monthEurCents: each * ALONE_PER_DAY * MONTH_DAYS });
+    }
+    expect(x.total.month.usdCents).toBe(exposureOf(startPolicy()).total.month.usdCents);
+  });
+  it("says so where it counts them, and Purser's own policy (no invoices paid alone) keeps its words", () => {
+    const p = exposurePolicyOfWorld(world("2000.00"));
+    const w = exposureWords(exposureOf(p), p, null);
+    expect(w.figure).toMatch(/^EUR [\d,]+ incl\. payments alone \+ USD [\d,]+ on chain a month$/);
+    expect(w.how.join(" ")).toContain(`Payments alone: up to each agent's limit, at most ${ALONE_PER_DAY} a day`);
+    const s = startPolicy();
+    expect(exposureWords(exposureOf(s), s, null).figure).toMatch(/^EUR [\d,]+ on cards \+ USD [\d,]+ on chain a month$/);
   });
 });

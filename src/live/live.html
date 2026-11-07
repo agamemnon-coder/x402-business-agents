@@ -30,7 +30,7 @@ a { color: var(--accent); }
 .lane { transition: opacity .4s ease; }
 .lane.off { opacity: .38; }
 .lane .hd { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.lg { display: inline-flex; background: #fff; border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; }
+.lg { display: inline-flex; background: var(--surface); color: var(--text); font-weight: 750; border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; }
 .lg img { height: 18px; width: auto; display: block; }
 .lane .hd small { color: var(--muted); font-size: 13px; font-weight: 600; }
 .track { position: relative; height: 74px; border-radius: 16px; overflow: hidden; }
@@ -83,7 +83,7 @@ a.pf { color: var(--accent); }
 .logos { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
 .logos span { font-size: 13px; color: var(--muted); }
 .logos img { height: 24px; width: auto; display: block; }
-.logos .lg.dark { background: #191919; border-color: #191919; }
+.logos .lg.dark { background: var(--surface); border-color: var(--border); }
 .bar { max-width: 1320px; margin: 0 auto; padding: 18px 28px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .ticks { flex: 1; display: flex; gap: 4px; min-width: 200px; }
 .tick { flex: 1; height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; cursor: pointer; border: 0; padding: 0; }
@@ -143,7 +143,8 @@ html.present .bar button, html.present .bar select, html.present .top nav { disp
     if (p.href) { a.href = p.href; a.target = "_blank"; a.rel = "noopener"; }
     return a;
   }
-  function logo(src, alt, cls) { var im = document.createElement("img"); im.src = src; im.alt = alt; im.height = 18; return el("span", "lg" + (cls ? " " + cls : ""), [im]); }
+  // Partner names as text, never a brand logo (Max, 7 Nov).
+  function logo(src, alt, cls) { void src; return el("span", "lg" + (cls ? " " + cls : ""), [alt]); }
 
   // Reduced motion: every scene as a still list, nothing moves.
   if (reduce || q.get("still") === "1") {
@@ -165,9 +166,9 @@ html.present .bar button, html.present .bar select, html.present .top nav { disp
   var ACTOR_OF = { sourcing: "Sourcing agent", support: "Support agent", treasury: "Treasury agent", customer: "Summit's agent", stranger: "An unknown address (not a customer)" };
   var cast = el("aside", "cast", ACTORS.map(function (a) { var n = el("div", "who", [txt("b", "", a[1]), a[0]]); n.dataset.name = a[0]; return n; }));
   function lane(cls, src, alt, w, caption) {
-    var im = document.createElement("img"); im.src = src; im.alt = alt; im.width = w; im.height = 18;
+    void src; void w;
     var track = el("div", "track", [txt("div", "dest", "")]);
-    var l = el("div", "lane " + cls, [el("div", "hd", [el("span", "lg", [im]), txt("small", "", caption)]), track]);
+    var l = el("div", "lane " + cls, [el("div", "hd", [el("span", "lg", [alt]), txt("small", "", caption)]), track]);
     return { root: l, track: track, dest: track.firstChild };
   }
   var L = {
@@ -175,7 +176,7 @@ html.present .bar button, html.present .bar select, html.present .top nav { disp
     metal: lane("mtl", "assets/logo-metal.svg", "Metal", 57, "Mandates, pay per request, receive policy: on chain"),
   };
   // A scene where nothing happens on either rail names the two rails, without empty boxes.
-  function railName(src, alt, w, caption) { var im = document.createElement("img"); im.src = src; im.alt = alt; im.width = w; im.height = 18; return el("div", "hd", [el("span", "lg", [im]), txt("small", "", caption)]); }
+  function railName(src, alt, w, caption) { void src; void w; return el("div", "hd", [el("span", "lg", [alt]), txt("small", "", caption)]); }
   var legend = el("div", "legend", [railName("assets/logo-airwallex.png", "Airwallex", 131, "Company cards, FX and SWIFT payouts"), railName("assets/logo-metal.svg", "Metal", 57, "Mandates, pay per request, receive policy: on chain")]);
   var phoneAsk = el("div", "ask", ["", el("b", "", ["Face ID ✓"])]);
   var phone = el("div", "phone", [txt("div", "who-cfo", "CFO's phone"), txt("div", "idle", "Nothing to approve: the agents stay inside their limits."), phoneAsk]);
