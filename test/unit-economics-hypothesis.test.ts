@@ -9,7 +9,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PRICE_LINE, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
 import { PRICES, callCostMicros } from "../src/claude/pricing.js";
-import { homePage } from "../src/redesign/home.js";
+import { proofPage } from "../src/redesign/proof.js";
 import { payments, split } from "../src/redesign/run.js";
 import { buildPages } from "../src/relay/assets.js";
 import {
@@ -146,7 +146,7 @@ describe("the price, word for word everywhere (Max, 6 Nov)", () => {
       }
     };
     walk("docs"); walk("src");
-    out.push(["README.md", read("README.md")], ["home", homePage()], ["deck", DECK_TEXT]);
+    out.push(["README.md", read("README.md")], ["proof", proofPage()], ["deck", DECK_TEXT]);
     return out;
   }
 
@@ -166,7 +166,7 @@ describe("the price, word for word everywhere (Max, 6 Nov)", () => {
       }
       expect({ name, old: /EUR 49|EUR 10 (?:a month )?for each extra agent|including 5 agents;|€10 a month for each extra agent/.test(t) }).toEqual({ name, old: false });
     }
-    for (const name of ["README.md", "docs/submission/README.md", "docs/business/model.md", "docs/submission/qa.md", "docs/claims.md", "home", "deck", "src/config/brand.ts"]) expect({ name, said: seen.has(name) }).toEqual({ name, said: true });
+    for (const name of ["README.md", "docs/submission/README.md", "docs/business/model.md", "docs/submission/qa.md", "docs/claims.md", "proof", "deck", "src/config/brand.ts"]) expect({ name, said: seen.has(name) }).toEqual({ name, said: true });
   });
 });
 

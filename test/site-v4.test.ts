@@ -42,7 +42,10 @@ describe("the site after v4", () => {
     // the three short partner cards.
     // Proof: 560 since Max's last round (item 2), for each partner card opening with its strongest claims (the TAP lines gone).
     // Home: 890 since Max's last round (item 5.2), for the price with Claude decisions included.
-    const budget: Record<string, number> = { home: 890, watch: 100, try: 180, proof: 560, metal: 150, airwallex: 190, visa: 150, claude: 150, notFound: 40 };
+    // Home: 130 since Max's round of 7 Nov ("a picture says more than a thousand words"): the heading, what Purser is,
+    // the three steps, one button; the numbers, the partners and the business moved to /proof, behind closed lines.
+    // Watch: 125 since then, for the next step under the replay ("Now try it yourself") and the film's link.
+    const budget: Record<string, number> = { home: 130, watch: 125, try: 180, proof: 560, metal: 150, airwallex: 190, visa: 150, claude: 150, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 

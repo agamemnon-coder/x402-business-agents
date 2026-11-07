@@ -93,6 +93,8 @@ export const FIRST_SCREEN_TEXT = FIRST_SCREEN.join(" ");
 
 /** Where the business case lives (docs/business/), linked from each "Why this is a company" line. */
 export const BUSINESS_DOCS = "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/business/";
+/** "Why this is a company": one link to the whole case (Max, 7 Nov), not one per line. */
+export const BUSINESS_CASE_LINK = "Read the business case ↗";
 /**
  * "Why this is a company" (section D, 6 Nov): five lines, on the README and on Home, each linked to docs/business/.
  * Every line is what docs/business/ says; the pricing is the hypothesis in model.md, and the one outside source is
@@ -105,6 +107,8 @@ export const BUSINESS_DOCS = "https://github.com/agamemnon-coder/x402-business-a
  */
 export const PRICE_LINE = "€49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions.";
 export const WHY_COMPANY_NOTE = "Not validated with customers yet: no interviews, no pilots, no revenue. Every line below is a hypothesis except the cited source.";
+/** The same, as one small line under the lines (Proof, Max 7 Nov: the content first, the disclaimer last). */
+export const WHY_COMPANY_NOTE_LAST = "Not validated with customers yet: no interviews, no pilots, no revenue; every line above is a hypothesis except the cited source.";
 export const WHY_COMPANY: readonly { label: string; text: string; page: string }[] = [
   { label: "The problem", text: "when an AI agent pays today, its limit lives in a prompt it can be talked out of, or in a month-end review that finds the money after it has left.", page: "problem.md#what-goes-wrong" },
   { label: "Who buys", text: "the finance team of a small company or scale-up that already banks with Airwallex and lets AI agents pay; the CFO uses it and decides.", page: "model.md#who-buys-and-who-uses-it-hypothesis" },
@@ -187,3 +191,6 @@ export const CFO_VIEW_URL = "./?autonomy";
 export const CFO_VIEW_LINE = "This is what the CFO opens: what the agents did, what waits for a signature, and each limit the CFO set.";
 /** The heading over PROOF_SENTENCES wherever they are listed. */
 export const PROOF_HEADING = "The proof, one sentence per partner";
+
+/** Home's one quiet way to the judge's tour, under the one button (Max, 7 Nov): a text link, not a second button. */
+export const JUDGE_LINE = "Judging? Take the 3-minute tour";

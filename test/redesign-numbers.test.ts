@@ -107,7 +107,6 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
     expect(steps).toContain("€240 licence PAID by SWIFT · 6 s after Face ID · in the sandbox, where the settlement is simulated");
     expect(steps.filter((t) => /licence/.test(t))).toHaveLength(1);
     expect(run.scenes[2]!.sentence).toMatch(/licence paid by SWIFT after Face ID/);
-    expect(homePage()).toContain("€240 licence PAID by SWIFT · 6 s after Face ID · in the sandbox, where the settlement is simulated");
     expect(run.scenes[0]!.steps.map((s) => s.text).join(" ")).toMatch(/options in 40 s/);
   });
 
@@ -137,12 +136,8 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
     expect(t.separate).toBe(TAP_LINE);
     // Proof leaves it out since Max's last round (item 2): TAP is on /visa, linked from Proof's footer.
     expect(proofPage()).not.toContain(TAP_LINE);
-    for (const html of [homePage()]) {
-      // The run and its date said once (final review, 4 Nov): no "Separate test, 2 November:" before the line that names them.
-      expect(html).toContain(`<p class="septest">${TAP_LINE}; <b>not counted in the figures above</b>.</p>`);
-      expect(html).not.toContain("Separate test, 2 November");
-      expect(html).not.toContain(`<span class="note">${TAP_LINE}</span>`);
-    }
+    // Home shows no figures since Max's round of 7 Nov: no TAP line there either; it is on /visa.
+    expect(homePage()).not.toContain(TAP_LINE);
     // Metal's two in detail, in the tooltip.
     expect(t.tip).toContain(`Metal's 2: ${metalDetail(story)}.`);
     expect(metalDetail(story)).toBe("1 over the mandate's cap, 1 on a mandate that had just been replaced");
@@ -220,7 +215,7 @@ describe("the redesigned public pages", () => {
     // No refusal on chain is claimed unless the record has one with its tx.
     const chain = record.snapshot.flows.some((f) => f.refused?.by === "metal" && f.proof.href);
     expect(JSON.stringify(run.scenes).includes("Metal refused it · on chain")).toBe(chain);
-    expect(homePage().includes("Metal refused the purchase on chain")).toBe(chain);
+    expect(homePage().includes("Metal refused the purchase on chain")).toBe(false);
     expect(run.scenes.map((s) => s.n)).toEqual([1, 2, 3]);
     expect(run.scenes[2]!.steps.map((s) => s.text)).toContain("€240 licence PAID by SWIFT · 6 s after Face ID · in the sandbox, where the settlement is simulated");
     expect(run.scenes[0]!.steps.map((s) => s.text)).toEqual(expect.arrayContaining(["2 of 2 signatures"]));
@@ -265,7 +260,7 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
   const text = (s: string) => s.replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/[*\\]/g, "").replace(/\s+/g, " ");
   const shots = new Proxy({}, { get: () => "" }) as DeckShots;
   const SOURCES: [string, string][] = [
-    ["home", homePage()], ["proof", proofPage()],
+    ["proof", proofPage()],
     ["README.md", doc("README.md")], ["docs/claims.md", doc("docs/claims.md")], ["docs/submission/README.md", doc("docs/submission/README.md")],
     ["docs/submission/long-description.md", doc("docs/submission/long-description.md")],
     ["deck", deckHtml(packFacts(), shots, "")], ["docs/video-script.md", doc("docs/video-script.md")],
@@ -302,7 +297,7 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
       else expect({ name, after: t.lastIndexOf(TAP_LINE) > t.indexOf(LINE) }).toEqual({ name, after: true });
     }
     // On the site's tiles, a big "16 stops" with "nothing paid over a limit" under it, then the sentence.
-    for (const [name, raw] of SOURCES.filter(([n]) => ["home", "proof"].includes(n))) expect({ name, tile: text(raw).includes(`${stopFigure(st)} ${stopSub(st)}`) }).toEqual({ name, tile: true });
+    for (const [name, raw] of SOURCES.filter(([n]) => ["proof"].includes(n))) expect({ name, tile: text(raw).includes(`${stopFigure(st)} ${stopSub(st)}`) }).toEqual({ name, tile: true });
   });
 
   it("no longer says \"stopped at a limit\" anywhere it is shown (Max, 5 Nov)", () => {
@@ -375,8 +370,8 @@ describe("one payment breakdown everywhere, and a clean refusal line (jury revie
   });
 
   it("shows that one set on Home, Proof and /metal, and no 87 or 82 beside it (jury review, 6 Nov, #5)", () => {
-    expect(words(homePage())).toContain(`${pay.onChain} Metal payments + 1 card charge`);
-    expect(words(homePage())).toContain(`${pay.metalParts} on Metal`);
+    // Home shows no figures since Max's round of 7 Nov (the way through: watch, try, proof).
+    expect(words(homePage())).not.toMatch(/Metal payments \+ 1 card charge/);
     expect(words(proofPage())).toContain(`${pay.onChain} Metal payments + 1 card charge`);
     expect(words(proofPage())).toContain(pay.onChainLine);
     expect(words(PAGES.metal!)).toContain(pay.line);
@@ -408,7 +403,8 @@ describe("the dispute, one text everywhere (jury review, 4 Nov)", () => {
   it("is told from the run's own dispute case", () => {
     expect(disputeStory(record)).toBe(STORY);
     expect(agentRun().scenes.find((x) => x.n === 2)!.sentence).toBe(STORY);
-    expect(homePage().replace(/&quot;/g, '"').replace(/&#39;/g, "'")).toContain(STORY);
+    // Home tells no scene since Max's round of 7 Nov; the form and the README tell it (next test).
+    expect(homePage().replace(/&quot;/g, '"').replace(/&#39;/g, "'")).not.toContain(STORY);
   });
   it("is the same text in the submission form and the README, and the same figures in the deck's one-line beat", () => {
     expect(doc("docs/submission/README.md")).toContain(STORY);
