@@ -455,3 +455,7 @@ Claude Code, on Max's go; in production a second person). Sources for every clai
   currency next to a number must be one of code's amounts as written (another currency's "USD 1,850.00" still fails),
   and a currency named on its own is no amount; every digit and number word must still be code's. 3028 tests in 295
   files, all passing.
+- 7 November, the recorded Treasury advice is usable again when the live agent cannot answer: it was refused only for
+  naming its own quote's end ("runs out today at 13:00:35Z"), a time and no amount. Its amounts are still checked
+  against today's numbers (another quote's amounts still fail); only the times and days it was recorded with are its
+  own. 3029 tests in 295 files, all passing.
