@@ -434,6 +434,12 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   linking there (src/redesign/airiRun.ts, test/airi-run-page.test.ts). README, docs/claims.md, docs/airwallex.md (with
   the PaymentIntent endpoints the rail calls), the long text and qa.md (18, 19) carry it; the form's Description does
   not (no room). 3001 tests in 291 files, all passing.
+- 7 November, the repo tidied for a cold read: the README's first screen is what Purser is, the three sentences, Try it,
+  the badges, the Kit 11 line with the live site, the entry line, then "Look here first" (Watch, Try, Proof, the Airi
+  run) and "How to run" (`npm run judge`, offline). The seven /try/sign steps moved lower, to "Try it, step by step";
+  no fact or figure changed. New: docs/README.md, the docs grouped by reader (juror, builder, video). Five internal or
+  superseded notes moved to docs/internal/ (its README lists them). package.json has `homepage` and `repository`;
+  .gitignore ignores `out` as a file or symlink too. 3049 tests in 295 files, all passing.
 
 ## Real, and ours
 
