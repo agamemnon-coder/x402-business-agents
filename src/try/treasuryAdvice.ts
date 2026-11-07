@@ -57,7 +57,7 @@ export async function adviseTry(ask: AgentAsk, f: TimingFacts, extra: readonly s
       const r = await Promise.race([
         ask(req),
         new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("deadline")), left); }),
-      ]).finally(() => clearTimeout(timer));
+      ]).finally(() => { if (timer !== undefined) clearTimeout(timer); });
       costUsd += r.costUsd; model = r.model;
       const call: AdviceCall = { step: "advise", model: r.model, request_id: idOk(r.requestId), ms: r.ms, tools: [] };
       calls.push(call);
