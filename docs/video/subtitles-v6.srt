@@ -1,0 +1,203 @@
+1
+00:00:00,500 --> 00:00:03,650
+AI agents are starting to spend money.
+
+2
+00:00:03,800 --> 00:00:05,750
+So who signs off?
+
+3
+00:00:06,500 --> 00:00:09,650
+This is Purser, built by Max Geurtsen.
+
+4
+00:00:10,500 --> 00:00:12,781
+Three Claude agents run a small
+
+5
+00:00:12,831 --> 00:00:15,413
+company that sells live stock data.
+
+6
+00:00:15,463 --> 00:00:19,850
+Each has its own Airwallex card, and its own Metal mandate.
+
+7
+00:00:20,500 --> 00:00:23,279
+Inside its limits, an agent pays alone.
+
+8
+00:00:23,329 --> 00:00:27,850
+Beyond them, nothing moves until the CFO signs the exact terms.
+
+9
+00:00:28,300 --> 00:00:32,516
+Our supplier doubles its price, past the Sourcing agent's cap.
+
+10
+00:00:32,566 --> 00:00:35,200
+We let one purchase through on purpose.
+
+11
+00:00:35,350 --> 00:00:38,850
+Metal refused it, and the refusal is on chain.
+
+12
+00:00:39,500 --> 00:00:44,434
+Treasury proposes two ways to stay within the same twenty dollars.
+
+13
+00:00:44,484 --> 00:00:46,850
+The CFO picks one, with Face ID.
+
+14
+00:00:47,350 --> 00:00:49,724
+Eighty-six Metal payments in this run,
+
+15
+00:00:49,774 --> 00:00:52,850
+each its own transaction on testnet. No emulator.
+
+16
+00:00:53,500 --> 00:00:56,401
+Then a customer disputes twelve orders,
+
+17
+00:00:56,451 --> 00:00:58,520
+all signed by its own agent.
+
+18
+00:00:58,570 --> 00:01:01,850
+Only the three with wrong data are refunded.
+
+19
+00:01:02,000 --> 00:01:05,787
+Anything beyond the limits goes to the CFO's phone.
+
+20
+00:01:05,837 --> 00:01:09,850
+The CFO reads the exact terms, and signs with Face ID.
+
+21
+00:01:10,500 --> 00:01:13,505
+Six seconds later, Airwallex pays the euro
+
+22
+00:01:13,555 --> 00:01:15,905
+invoice by SWIFT, in its sandbox.
+
+23
+00:01:15,955 --> 00:01:17,650
+Every I.D. is published.
+
+24
+00:01:19,500 --> 00:01:20,915
+Why not a password?
+
+25
+00:01:20,965 --> 00:01:24,075
+A password is the same for every payment.
+
+26
+00:01:24,125 --> 00:01:26,850
+The passkey signs these exact terms.
+
+27
+00:01:27,500 --> 00:01:30,432
+Now it's your turn, on the live page.
+
+28
+00:01:30,482 --> 00:01:33,978
+Claude Sonnet reads the invoice, Claude Opus
+
+29
+00:01:34,028 --> 00:01:36,799
+advises, and you sign with Face ID.
+
+30
+00:01:36,849 --> 00:01:38,250
+Then try to cheat.
+
+31
+00:01:40,150 --> 00:01:44,100
+Change one cent, and the same signature is refused.
+
+32
+00:01:44,750 --> 00:01:45,850
+One cent. Worthless.
+
+33
+00:01:46,000 --> 00:01:48,266
+All twenty-four decisions by Claude.
+
+34
+00:01:48,316 --> 00:01:50,903
+Sixteen stops, nothing paid over a limit:
+
+35
+00:01:50,953 --> 00:01:54,184
+twelve skipped by Claude, two refused by Metal, one
+
+36
+00:01:54,234 --> 00:01:57,850
+rejected by the CFO, and one planted instruction ignored.
+
+37
+00:01:58,500 --> 00:02:01,421
+Airwallex itself declined two charges:
+
+38
+00:02:01,471 --> 00:02:05,018
+one over the limit, one in the wrong category.
+
+39
+00:02:05,068 --> 00:02:08,850
+The agent asked the CFO for a raise, not a retry.
+
+40
+00:02:09,500 --> 00:02:14,167
+With Airwallex's Airi, agents paid with a single-use Visa credential:
+
+41
+00:02:14,217 --> 00:02:16,355
+alone within the limit, above it
+
+42
+00:02:16,405 --> 00:02:18,338
+only after the CFO's Face ID.
+
+43
+00:02:18,388 --> 00:02:22,850
+A disallowed merchant was refused by Purser before Airi was asked.
+
+44
+00:02:23,000 --> 00:02:24,524
+The agents do the work.
+
+45
+00:02:24,574 --> 00:02:26,850
+The CFO signs only the exceptions.
+
+46
+00:02:27,350 --> 00:02:31,231
+Real: the Airwallex sandbox, Metal testnet, Claude and Face ID.
+
+47
+00:02:31,281 --> 00:02:34,850
+Ours: the customer, the suppliers, a test second approver.
+
+48
+00:02:35,500 --> 00:02:38,980
+A price shock, a dispute, a euro bill.
+
+49
+00:02:39,130 --> 00:02:43,149
+Claude decided, Airwallex and Metal held the limits, and
+
+50
+00:02:43,199 --> 00:02:46,200
+the CFO signed only what went beyond them.
+
+51
+00:02:46,350 --> 00:02:47,850
+Purser. Starter Kit 11.
