@@ -90,6 +90,21 @@ async function executeApproved(db: DB, proposalId: string): Promise<void> {
     await executeOwnersExecute(db, proposalId, liveRelay());
     return;
   }
+  if (row.kind === "airi_purchase") {
+    // The Airi rail (src/airi/purchase.ts), only with KIT11_AIRI_RAIL=on. The executor re-checks the approved hash
+    // before the mandate and again before the credential; its outcome (refused, declined) is in the audit log.
+    const { airiRailOn } = await import("../airi/policy.js");
+    if (!airiRailOn()) throw new Error("the Airi rail is off (KIT11_AIRI_RAIL); nothing was run");
+    const { liveAiriDeps, fileLinkSink } = await import("../airi/deps.js");
+    const log = (line: string) => console.log(line);
+    const deps = liveAiriDeps(fileLinkSink(log), log);
+    if (!deps) throw new Error("Airwallex sandbox keys are not set; the Airi purchase's checkout cannot run");
+    const { executeAiriPurchase } = await import("../airi/purchase.js");
+    const out = await executeAiriPurchase(db, deps, proposalId);
+    if (out.status === "refused") throw new Error(`refused by ${out.by}: ${out.code}`);
+    if (out.status === "unconfirmed") throw new Error(`the checkout's outcome is not known (${out.reason}); nothing is retried`);
+    return;
+  }
   if (row.kind === "agent_onboard") {
     const issuing = issuingFromEnv();
     if (!issuing) throw new Error("Airwallex sandbox keys are not set; the card cannot be issued");
