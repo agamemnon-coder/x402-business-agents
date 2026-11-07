@@ -208,10 +208,24 @@ const clearOfBar = async (page: Page, sel: string, n: number) => page.evaluate(`
   return r.bottom <= bar.top + 0.5 || r.top >= bar.bottom;
 })()`) as Promise<boolean>;
 
+/**
+ * The page's animations running or holding their end now (inside the story: the screens and the diagram), each with its
+ * duration and delay in ms: the motion pass (Max, 7 Nov) keeps every one between 150 and 400 ms.
+ */
+const motion = (page: Page) => page.evaluate(`document.getAnimations().filter((a) => a.effect && a.effect.target && a.effect.target.closest(".story")).map((a) => {
+  const t = a.effect.getTiming();
+  return { name: a.animationName || a.transitionProperty || "?", ms: Number(t.duration), delay: Number(t.delay) };
+})`) as Promise<{ name: string; ms: number; delay: number }[]>;
+async function motionOk(page: Page, tag: string, where: string, want: string[]): Promise<void> {
+  const m = await motion(page);
+  const names = [...new Set(m.map((a) => a.name))];
+  check(want.every((w) => names.includes(w)) && m.every((a) => a.ms >= 150 && a.ms <= 400), `${tag}: ${where}: ${want.join(", ")} play, each between 150 and 400 ms (${m.map((a) => `${a.name} ${a.ms}`).join(", ")})`);
+}
+
 /** A browser context with Chromium's virtual authenticator (user verification on): the visitor's Face ID. */
-async function visitor(o: { width: number; scheme?: "light" | "dark"; ip: string }) {
+async function visitor(o: { width: number; scheme?: "light" | "dark"; ip: string; reducedMotion?: "reduce" }) {
   const mobile = o.width < 600;
-  const context = await browser.newContext({ viewport: { width: o.width, height: mobile ? 844 : 900 }, deviceScaleFactor: mobile ? 2 : 1, isMobile: mobile, hasTouch: mobile, colorScheme: o.scheme ?? "light", ...(args.live ? {} : { extraHTTPHeaders: { "cf-connecting-ip": o.ip } }) });
+  const context = await browser.newContext({ viewport: { width: o.width, height: mobile ? 844 : 900 }, deviceScaleFactor: mobile ? 2 : 1, isMobile: mobile, hasTouch: mobile, colorScheme: o.scheme ?? "light", ...(o.reducedMotion ? { reducedMotion: o.reducedMotion } : {}), ...(args.live ? {} : { extraHTTPHeaders: { "cf-connecting-ip": o.ip } }) });
   await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: local.url });
   const page = await context.newPage();
   const cdp = await context.newCDPSession(page);
@@ -335,6 +349,7 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
     await page.waitForTimeout(400);
     const lit = (await page.evaluate(`[...document.querySelectorAll("#diagram .dn")].filter((n) => getComputedStyle(n).opacity === "1" && !n.classList.contains("d-policy")).map((n) => n.classList[1]).join()`)) as string;
     check(lit === "d-purser,d-sign", `${tag}: on screen 1 the diagram lights Purser's limit and the signature (${lit})`);
+    check((await motion(page)).filter((a) => a.name === "dnlit").length === 2, `${tag}: the diagram's lit parts light up as the step opens`);
     // 1.2 on desktop: the lock that just stopped another payment, in one line, with the real example as a link.
     check(await page.locator("#diagram .dstop").isVisible() && /^Just stopped another payment · a real one$/.test((await page.locator("#diagram .dstop").innerText()).trim()) && !!(await page.locator("#dg-real").getAttribute("href")),
       `${tag}: on screen 1 the diagram says the Purser lock just stopped another payment, with a real example linked`);
@@ -536,6 +551,7 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   // ── Sign: one tap, the passkey made first. Screen 2. ──
   await page.click("#go-sign");
   await page.waitForSelector("#scr-2:not([hidden])");
+  await motionOk(page, tag, "screen 2, the tick draws itself in with a soft green glow", ["draw", "glow"]);
   check(/registered in this world only|is kept/.test(await page.locator("#k-status").textContent() ?? ""), `${tag}: the test passkey is made and registered, then the signature (one tap)`);
   check(JSON.stringify(await dots(page)) === '["done","on","-","-","-","-"]' && (await page.locator("#pg-count").innerText()).trim() === `2 of 6 · ${TRY_SIGN_STEPS[1]}`, `${tag}: verified: step 2 of 6`);
   const ok = await page.locator("#scr-2 .bigok svg").boundingBox();
@@ -634,7 +650,12 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
       await shot(page, `${tag}-3-cheat-refused.png`);
     }
     const expect = canonical(field === "fx.client_rate" ? { ...terms, fx: { ...terms.fx, client_rate: value } } : { ...terms, [field]: value });
+    if (field === "amount") await motionOk(page, tag, "a refused cheat: the card shakes, the changed field lights red", ["shake", "lightred"]);
     const changedRows = await page.locator("#t-table tr.chg").evaluateAll((rs: Element[]) => rs.map((r) => (r as HTMLElement).dataset.row));
+    const pair = await page.locator("#t-table tr.hrow code.hp").evaluateAll((cs: Element[]) => cs.map((c) => ({ title: c.getAttribute("title"), text: (c.textContent ?? "").trim(), marked: c.querySelectorAll(".hx").length }))) as { title: string; text: string; marked: number }[];
+    check(pair.length === 2 && pair[0]!.title === hash && pair[1]!.title === sha256(canonical(field === "fx.client_rate" ? { ...terms, fx: { ...terms.fx, client_rate: value } } : { ...terms, [field]: value }))
+      && pair[0]!.text === `${hash.slice(0, 12)}…` && pair[0]!.marked === 0 && pair[1]!.marked === [...pair[1]!.title.slice(0, 12)].filter((c, i) => c !== hash[i]).length && pair[1]!.marked > 0,
+      `${tag}: cheat ${field}: both hashes side by side in sight (${pair.map((x) => x.text).join(" | ")}), the ${pair[1]?.marked} characters that differ marked`);
     check(JSON.stringify(changedRows) === JSON.stringify([field]) && (await page.locator("#t-table tr.chg").innerText()).includes(shown), `${tag}: cheat ${field}: "You signed / Sent now" marks ${field}, and only it (now ${shown})`);
     await page.locator("#tamper details.more > summary").click();
     const oldH = await page.locator("#t-what .hash.old").getAttribute("data-hash"), newH = await page.locator("#t-what .hash.new").getAttribute("data-hash");
@@ -667,6 +688,11 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
     const full = (await page.locator("#k-full").innerText()).trim();
     await page.locator("#k-did > summary").click();
     const want = await runTrick(attack, await readerStandIn(TRICKS[attack].text));
+    const ibans = await page.locator("#k-ibans .ib").evaluateAll((bs: Element[]) => bs.map((b) => ({ iban: (b as HTMLElement).dataset.iban, text: (b.textContent ?? "").trim(), marked: [...b.querySelectorAll(".hx")].map((x) => x.textContent).join("") }))) as { iban: string; text: string; marked: string }[];
+    check(ibans.length === 2 && ibans[0]!.iban === want.known.iban && ibans[0]!.text === want.known.iban && ibans[0]!.marked === "" && ibans[1]!.iban === want.invoice.iban && ibans[1]!.text === want.invoice.iban
+      && ibans[1]!.marked === [...want.invoice.iban].filter((c, i) => c !== (i < 4 ? want.known.iban[i] : want.known.iban[want.known.iban.length - want.invoice.iban.length + i])).join("") && ibans[1]!.marked.length > 0,
+      `${tag}: trick ${attack}: the new IBAN next to the one on file (${ibans.map((b) => b.text).join(" ≠ ")}), what differs in red (${ibans[1]?.marked})`);
+    if (attack === ATTACKS[0]) await motionOk(page, tag, "a fake invoice: it slides in, then the block", ["slidein", "blockin"]);
     check((await page.locator("#k-out").innerText()).trim() === want.outcome && want.blocked && (await page.locator("#k-lesson").innerText()).trim() === "A prompt is not a control." && (await page.locator("#k-says").innerText()).trim() === want.agent.read && await page.locator("#k-says").evaluate((n: Element) => n.tagName + getComputedStyle(n, "::before").content) === "SPANnone"
       && (args.live ? LIVE_TRICK_LABEL.test((await page.locator("#k-label").innerText()).trim()) : (await page.locator("#k-label").innerText()).trim() === "stand-in, not Claude") && (await page.locator("#k-doc").innerText()).trim() === TRICKS[attack].shows && full === TRICKS[attack].text,
       `${tag}: trick ${attack}: the invoice, what the agent read (labelled), then "${want.outcome}" and "A prompt is not a control."`);
@@ -700,6 +726,10 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   await page.click('#rule-chips .chip[data-alone="500.00"]');
   check(await page.locator("#go-apply").isDisabled() && (await page.locator("#s4-note").innerText()).trim() === W.rule.same, `${tag}: the rule in force: "${W.rule.same}"`);
   await page.click('#rule-chips .chip[data-alone="2000.00"]');
+  // The figures count up to the new value (drawn over the final words, which are there at once), the locks light one by one.
+  check(await page.locator("#s4-worst.counting[data-count]").count() === 1 && await page.locator("#s4-locks.lit").count() === 1, `${tag}: choosing €2,000: the worst case counts up, the three locks light up one by one`);
+  await motionOk(page, tag, "choosing an amount", ["lockon"]);
+  await page.waitForFunction(() => !document.querySelector("#s4-worst.counting"), undefined, { timeout: 2000 });
   check((await page.locator("#s4-note").innerText()).trim() === W.rule.looser && (await page.locator("#go-apply").innerText()).trim() === W.rule.sign && await page.locator("#go-apply").isEnabled(),
     `${tag}: €2,000 is looser: "${W.rule.looser}", the button "${W.rule.sign}"`);
   // The worst case moves with the choice (Max, 7 Nov, 1.4): the line names €2,000, and what it adds a month shows beside it.
@@ -721,6 +751,9 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   // ── Screen 6: the agent pays its next invoice alone. ──
   const next = page.locator("#s5-next");
   check(JSON.stringify(await dots(page)) === '["done","done","done","done","done","on"]' && (await page.locator("#s5-head").innerText()).trim() === W.alone.head, `${tag}: screen 6 of 6: "${W.alone.head}"`);
+  await motionOk(page, tag, "paid alone: the payment moves through the three locks", ["fill", "stop"]);
+  check(JSON.stringify(await page.locator("#s5-next ol.flow li").evaluateAll((ls: Element[]) => ls.map((l) => `${(l as HTMLElement).dataset.stop}:${(l.textContent ?? "").trim()}`))) === JSON.stringify(["purser:Purser", "rail:Airwallex · Metal", "paid:Paid"]) && await page.locator('#s5-next ol.flow[data-state="alone"]').count() === 1,
+    `${tag}: screen 6: the payment goes Purser → Airwallex · Metal → Paid`);
   check(await next.getAttribute("data-proposal") === NEXT_INVOICE.id && await next.getAttribute("data-state") === "alone" && (await next.innerText()).includes("EUR 1,240.00")
     && (await next.innerText()).includes("Paid alone under your new policy (up to €2,000). No signature needed."), `${tag}: the next invoice (${NEXT_INVOICE.id}, EUR 1,240.00) "Paid alone under your new policy (up to €2,000). No signature needed."`);
   check(((await v.signCount())[0] ?? 0) === before + 1 && (await page.locator("#w-balance").textContent())?.trim() === "EUR 25,020.00",
@@ -965,6 +998,44 @@ if (!args.live && !ONLY) {
     await page.waitForTimeout(500);
     check(dialogs.length === 0 && await page.locator(".says img, .says b").count() === 0, `markup in the agent's sentence: no <b> or <img> made, no script run (${dialogs.length} dialogs)`);
     await context.close();
+  }
+
+  // ── prefers-reduced-motion: every screen shows its end state at once, with no animation and nothing counting. ──
+  for (const width of [390, 1440] as const) {
+    const tag = `still-${width}`;
+    const v = await visitor({ width, ip: `198.51.12${width === 390 ? 6 : 7}.7`, reducedMotion: "reduce" });
+    const { page, errors } = v;
+    const none = async (where: string) => { const m = await motion(page); check(m.length === 0, `${tag}: ${where}: no animation (${m.map((a) => a.name).join(", ") || "none"})`); };
+    await openWorld(page, tag);
+    await start(page);
+    await page.click("#go-sign");
+    await page.waitForSelector("#scr-2:not([hidden])");
+    await none("screen 2");
+    check(JSON.stringify(await page.locator("#scr-2 .bigok svg > *").evaluateAll((ps: Element[]) => ps.map((p) => getComputedStyle(p).strokeDashoffset))) === '["0px","0px"]', `${tag}: the tick is drawn in full at once`);
+    await page.click("#go-cheat");
+    await page.waitForSelector("#tamper:not([hidden])");
+    await none("screen 3, refused");
+    check(await page.locator("#tamper.shake").count() === 0 && await page.locator("#t-table tr.hrow code.hp").count() === 2, `${tag}: no shake; the two hashes side by side`);
+    await page.click("#go-trick");
+    await page.waitForSelector("#scr-4:not([hidden])");
+    await page.click('#trick-chips .chip[data-attack="pre_approved"]');
+    await page.waitForSelector("#k-result:not([hidden])");
+    await none("screen 4, the fake invoice");
+    check(await page.locator("#k-result.go").count() === 0 && await page.locator("#k-ibans .ib").count() === 2, `${tag}: the invoice, the IBANs and the block in place at once`);
+    await page.click("#go-rule");
+    await page.waitForSelector("#scr-5:not([hidden])");
+    await page.click('#rule-chips .chip[data-alone="2000.00"]');
+    check(await page.locator("#s4-worst[data-count], #s4-worst.counting, #s4-locks.lit").count() === 0 && /\(\+€[\d,]+\)$/.test((await page.locator("#s4-worst").innerText()).trim()), `${tag}: choosing €2,000: the new worst case and its difference at once, nothing counting`);
+    await none("screen 5");
+    await page.click("#go-apply");
+    await page.waitForSelector("#scr-6:not([hidden])");
+    await none("screen 6");
+    const paid = await page.locator("#s5-next ol.flow .f-paid .fd").evaluate((n: Element) => [getComputedStyle(n).backgroundColor, getComputedStyle(n.closest("ol")!, "::after").transform]) as [string, string];
+    const ok = await page.evaluate(`(() => { const d = document.createElement("i"); d.style.color = "var(--ok)"; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; })()`) as string;
+    check(paid[0] === ok && paid[1] === "none", `${tag}: paid alone: the payment is through the locks and green at once (${paid.join(", ")})`);
+    if (width >= 1024) await none("the diagram");
+    check(errors.length === 0, `${tag}: 0 console errors (${errors.length}${errors.length ? `: ${errors.join(" | ")}` : ""})`);
+    await v.context.close();
   }
 
   // ── Timed (4.2): the whole story, scripted, from opening the page to the closing card, in at most 75 s. ──

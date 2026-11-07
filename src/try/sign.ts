@@ -494,6 +494,28 @@ const JS = `
   function more(text) { return el("details", "more", [el("summary", "", ["more"]), el("p", "", [text])]); }
   function ic(name) { var s = document.createElement("span"); s.innerHTML = D.icons[name]; return s.firstChild; }
   function status(id, text, tone) { var n = $(id); n.textContent = text; n.className = "status" + (tone ? " " + tone : ""); }
+  // Motion (150 to 400 ms each, never in the way): with prefers-reduced-motion, the end state at once.
+  function still() { return !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches); }
+  // A class whose animation plays again each time (taken off, the layout read, put back).
+  function replay(n, cls) { n.classList.remove(cls); if (still()) return; void n.offsetWidth; n.classList.add(cls); }
+  // A number that counts up: the element holds its final words at once (what a screen reader and a test read); while
+  // it counts, those words are see-through and the counting words are drawn over them (data-count, a ::after).
+  function countTo(n, text, at) {
+    n.textContent = text;
+    if (n.raf) cancelAnimationFrame(n.raf);
+    var end = function () { n.raf = 0; n.classList.remove("counting"); n.removeAttribute("data-count"); };
+    if (still() || !at) { end(); return; }
+    var t0 = performance.now();
+    n.classList.add("counting");
+    n.dataset.count = at(0);
+    var f = function (now) {
+      var p = Math.min(1, (now - t0) / 360);
+      if (p >= 1) { end(); return; }
+      n.dataset.count = at(1 - Math.pow(1 - p, 3));
+      n.raf = requestAnimationFrame(f);
+    };
+    n.raf = requestAnimationFrame(f);
+  }
 
   // ── The five screens: one shows at a time; the dots, the count and the diagram follow it. ──
   function go(n) {
@@ -1032,7 +1054,10 @@ const JS = `
         tr.dataset.row = k;
         return tr;
       });
-      $("t-table").replaceChildren(el("table", "diff", [el("thead", "", [el("tr", "", [el("th", "", ["Field"]), el("th", "", ["You signed"]), el("th", "", ["Sent with it"])])]), el("tbody", "", rows)]));
+      // The two hashes side by side under the fields, every character that differs marked.
+      var hr = el("tr", "hrow", [el("td", "", ["Hash"]), el("td", "", [hashPair(s.x.mine, s.x.mine)]), el("td", "", [hashPair(h, s.x.mine)])]);
+      hr.dataset.row = "hash";
+      $("t-table").replaceChildren(el("table", "diff", [el("thead", "", [el("tr", "", [Object.assign(el("th", "", []), { ariaLabel: "Field" }), el("th", "", ["Signed"]), el("th", "", ["Sent"])])]), el("tbody", "", rows.concat([hr]))]));
       $("t-what").replaceChildren(el("div", "hashes", [
         el("div", "", [el("p", "small muted", ["Signed terms hash to:"]), hashBox(s.x.mine, "old")]),
         el("div", "", [el("p", "small muted", ["Your changed terms hash to:"]), hashBox(h, "new")])
@@ -1049,11 +1074,18 @@ const JS = `
         v.hidden = !refused;
         if (refused) S.did.cheat = true;
         $("tamper").hidden = false;
+        if (refused) replay($("tamper"), "shake");
         bs.forEach(function (b) { b.disabled = false; });
         edited();
         S.lastField = r.changed[r.changed.length - 1];
       });
     });
+  }
+  // The first 12 characters of a hash, those that differ from the other one marked.
+  function hashPair(h, other) {
+    var c = el("code", "hp", h.slice(0, 12).split("").map(function (x, i) { return x === other.charAt(i) ? x : el("span", "hx", [x]); }).concat(["…"]));
+    c.title = h;
+    return c;
   }
   function refusal(q) {
     var d = q.data || {};
@@ -1161,7 +1193,7 @@ const JS = `
     $("p-expo-head").textContent = x.headline; $("p-expo-tasks").textContent = x.tasks;
     // Screen 4, in one line beside the choice: "Worst case: …" (the figure as everywhere; "set by policy" is the screen).
     // Screens 5 and 6: the worst case in a CFO's words, from the rule in force; the full figure behind "more".
-    if (S.policy && S.expoMonth) $("s4-worst").textContent = W.rule.worst + " " + euro(String(S.expoMonth.in_force / 100)) + " a month";
+    if (S.policy && S.expoMonth) { countTo($("s4-worst"), W.rule.worst + " " + euro(String(S.expoMonth.in_force / 100)) + " a month", null); S.shown = null; }
     $("s4-full").textContent = x.headline;
     var ul = $("p-expo-how");
     ul.replaceChildren.apply(ul, x.how.concat([D.policy.worstCaseChain]).map(function (l) { return el("li", "", [l]); }));
@@ -1213,8 +1245,15 @@ const JS = `
     var m = S.expoMonth;
     var at = m && v && m.alone[v] !== undefined ? m.alone[v] : m ? m.in_force : 0, delta = m ? at - m.in_force : 0;
     S.delta = delta;
-    $("s4-worst").textContent = W.rule.worst + " " + monthEuro(at) + " a month" + (delta ? " (" + (delta > 0 ? "+" : "−") + monthEuro(Math.abs(delta)) + ")" : "");
+    var worstWords = function (a, d) { return W.rule.worst + " " + monthEuro(a) + " a month" + (d ? " (" + (d > 0 ? "+" : "−") + monthEuro(Math.abs(d)) + ")" : ""); };
+    // The worst case and the difference count up (or down) from what was shown to the new figures.
+    var was = S.shown || { at: at, delta: delta };
+    var whole = function (c) { return Math.round(c / 100) * 100; };
+    countTo($("s4-worst"), worstWords(at, delta), v && (was.at !== at || was.delta !== delta) ? function (p) { return worstWords(whole(was.at + (at - was.at) * p), whole(was.delta + (delta - was.delta) * p)); } : null);
+    S.shown = { at: at, delta: delta };
     $("s4-worst").classList.toggle("chg", !!delta);
+    // The three locks light up one by one for the amount chosen.
+    if (v) replay($("s4-locks"), "lit");
     var looser = v && cents(v) > cents(now), stricter = v && cents(v) < cents(now);
     var btn = $("go-apply"), note = $("s4-note");
     btn.replaceChildren(looser ? ic("scan-face") : "", looser ? W.rule.sign : W.rule.apply);
@@ -1357,10 +1396,19 @@ const JS = `
     box.replaceChildren(
       el("p", "small muted", [x.terms.payee.replace(/ \\(test payee\\)$/, "") + " · a new invoice, ", el("span", "nw", [x.terms.reference.replace(/^Invoice /, "")])]),
       el("p", "amt", [amt(x.terms.currency, x.terms.amount)]),
+      flowOf(box.dataset.state),
       el("p", "nv", [alone ? "Paid alone under your new policy (up to " + limit + "). No signature needed." : ran ? "Signed, verified and run in your test world." : p.check === "fail" ? "Blocked: " + p.rule : "Waits for your signature: above the " + limit + " the agent may pay alone."]),
       alone ? el("details", "more", [el("summary", "", ["more"]), el("p", "", ["Test transfer " + p.execution.id + ", balance after " + eur(p.execution.balance_after) + ", by the stand-in, in your test world only. Bound to these terms' hash and to the rule you signed (policy v" + p.execution.policy_version + ")."]),
         el("div", "", [agentLine(p), el("p", "says", [p.says]), el("span", "pill said-before", [D.policy.saidBefore])])]) : null
     );
+  }
+  // The payment on its way: Purser's rule, then the card and mandate limits, then paid (green); or held at Purser's rule.
+  function flowOf(state) {
+    var stop = function (name, words) { var li = el("li", "fs f-" + name, [el("span", "fd", [ic(name === "paid" ? "check" : "lock")]), words]); li.dataset.stop = name; return li; };
+    var f = el("ol", "flow", [stop("purser", "Purser"), stop("rail", "Airwallex · Metal"), stop("paid", "Paid")]);
+    f.dataset.state = state;
+    f.setAttribute("aria-label", state === "alone" || state === "signed" ? "Through Purser's rule, the card and mandate limits, then paid" : state === "blocked" ? "Stopped at Purser's rule" : "Held at Purser's rule: it waits for your signature");
+    return f;
   }
   // Payments other than the story's, when the visitor's policy changed what they do: each as it is, signable when it waits.
   function drawOthers(rows) {
@@ -1413,6 +1461,14 @@ const JS = `
       if (q.status !== 200 || !r) { status("k2-status", (q.data && q.data.error) || ("error " + q.status), "bad"); return; }
       status("k2-status", "");
       $("k-doc").textContent = r.invoice.shows; $("k-full").textContent = r.invoice.text;
+      // The IBAN on file for the payee it claims to be, and the invoice's own, side by side: what differs in red.
+      // Country and check digits compared in place, the account number from the right (IBANs differ in length by country).
+      var mark = function (s, other) { return el("code", "", s.split("").map(function (x, i) { var o = i < 4 ? other.charAt(i) : other.charAt(other.length - s.length + i); return x === o ? x : el("span", "hx", [x]); })); };
+      var known = el("span", "ib known", [ic("check"), mark(r.known.iban, r.known.iban)]), now = el("span", "ib new", [ic("triangle-alert"), mark(r.invoice.iban, r.known.iban)]);
+      known.setAttribute("role", "group"); known.setAttribute("aria-label", "The IBAN on file for " + r.known.vendor + ": " + r.known.iban);
+      now.setAttribute("role", "group"); now.setAttribute("aria-label", "The IBAN on this invoice: " + r.invoice.iban);
+      known.dataset.iban = r.known.iban; now.dataset.iban = r.invoice.iban;
+      $("k-ibans").replaceChildren(known, el("span", "neq", ["≠"]), now);
       // What the agent read (live Sonnet, labelled; or code's reading, labelled why), then the code's verdict.
       $("k-says").textContent = r.agent.read;
       $("k-label").textContent = r.agent.label;
@@ -1427,6 +1483,7 @@ const JS = `
         .concat([el("li", "small muted", [r.by])]));
       $("k-result").className = "tricked" + (r.blocked ? "" : " passed");
       $("k-result").hidden = false;
+      replay($("k-result"), "go");
       if (r.blocked) S.did.trick = true;
     });
   }
@@ -1468,6 +1525,9 @@ const li = (lines: readonly string[]) => lines.map((l) => `<li>${esc(l)}</li>`).
 /** €2,000 for 2000.00, as the rule's chips and lines write it. */
 const euro = (s: string) => { const [i, c] = s.split("."); return `€${i!.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}${c && c !== "00" ? `.${c}` : ""}`; };
 
+/** The page's own style: its layout, the diagram's steps and the motion pass (a test reads every duration in it). */
+export const trySignCss = () => CSS + DIAGRAM_STEPS + MOTION;
+
 /** The page, its links and assets absolute (it answers at /try/sign, one level down). */
 export function trySignPage(): string {
   const locks = tryLocks().map((l) => ({ ...l, href: /^https?:\/\//.test(l.href) ? l.href : `/${l.href}` }));
@@ -1491,7 +1551,7 @@ ${scr(1, `  <h2 tabindex="-1" id="s1-head">${esc(W.ask.head)}</h2>
   <p class="status" id="q-status" aria-live="polite"></p>
   <p class="status small" id="k-status" aria-live="polite"></p>
   <div class="bar"><button class="btn primary big" type="button" id="go-sign" data-world="1" disabled>${icon("scan-face", 20)}${esc(W.ask.sign)}</button><button class="btn primary big" type="button" id="go-quote" data-world="1" hidden>${icon("undo-2", 20)}Get a new quote</button><button class="btn primary big" type="button" id="go-retry" hidden>${icon("undo-2", 20)}Try again</button></div>`)}
-${scr(2, `  <div class="bigok">${icon("circle-check", 56)}<h2 tabindex="-1" id="r-head">${esc(W.signed.head)}</h2></div>
+${scr(2, `  <div class="bigok">${icon("circle-check", 56).replace(/<(circle|path) /g, '<$1 pathLength="100" ')}<h2 tabindex="-1" id="r-head">${esc(W.signed.head)}</h2></div>
   <p class="lead1" id="r-line">${esc(W.signed.line)}</p>
   <div class="line ok">${icon("circle-check", 22)}<span><b>${esc(W.signed.executed)}</b><span id="r-exec"></span></span></div>
   <p class="links"><button class="tlink" type="button" id="r-receipt">${icon("receipt", 18)}${esc(W.signed.receipt)}</button><a class="tlink" id="r-verify" href="/try/verify" target="_blank" rel="noopener">${icon("shield-check", 18)}${esc(W.signed.verify)}</a></p>
@@ -1526,11 +1586,11 @@ ${scr(4, `  <h2 tabindex="-1" id="k-head">${esc(W.trick.head)}</h2>
   <p class="status" id="k2-status" aria-live="polite"></p>
   <div class="tricked" id="k-result" hidden aria-live="polite">
     <p class="doc" id="k-doc"></p>
+    <div class="ibans" id="k-ibans"></div>
     <p class="fooled"><span class="pill said-before" id="k-label"></span> <span id="k-says"></span></p>
-    <p class="small muted">${esc(W.trick.decides)}</p>
     <p class="outcome" id="k-out"></p>
     <p class="lesson" id="k-lesson"></p>
-    <details class="more" id="k-did"><summary>${esc(W.trick.did)}</summary><ul class="small calls" id="k-calls"></ul><pre class="doc" id="k-full"></pre><ul class="small" id="k-why"></ul></details>
+    <details class="more" id="k-did"><summary>${esc(W.trick.did)}</summary><p class="small">${esc(W.trick.decides)}</p><ul class="small calls" id="k-calls"></ul><pre class="doc" id="k-full"></pre><ul class="small" id="k-why"></ul></details>
   </div>
   <div class="bar"><button class="btn primary big" type="button" id="go-rule" data-world="1">${esc(W.trick.next)}${icon("arrow-right", 20)}</button></div>`)}
 ${scr(5, `  <h2 tabindex="-1" id="s4-head">${esc(W.rule.head)}</h2>
@@ -1597,7 +1657,7 @@ ${scr(7, `  <h2 tabindex="-1" id="d-head">${esc(W.done.head)}</h2>
 </div></main>`;
   const html = page({
     title: "Sign with your own Face ID", description: "Try it yourself in 60 seconds: an agent asks to pay, you sign the exact terms with Face ID, try to cheat, change the rule, and see the agent pay alone. A test world of your own; nothing real moves.",
-    tab: "try", css: CSS + DIAGRAM_STEPS, body, js: JS, stage: false,
+    tab: "try", css: trySignCss(), body, js: JS, stage: false,
     data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check", "check", "lock", "external-link", "arrow-right", "receipt", "bot", "shield-check", "arrow-left-right"]), locks, cfo: cfoApproval().line, fields: TAMPER_FIELDS, verdict: TAMPER_VERDICT, receipt: RECEIPT_FORMAT, recordedFx: recordedQuote(), end: TRY_SIGN_END, film: TRY_SIGN_FILM, codeLabel: CODE_LABEL,
       steps: TRY_SIGN_STEPS, screens: TRY_SIGN_SCREENS, perDay: ALONE_PER_DAY, waiting: WAITING.id, blocked: FIXED_PROPOSALS.find((p) => p.id !== WAITING.id)!.id, next: NEXT, otherIban: OTHER_IBAN,
       policy: { fields: POLICY_FIELDS, words: FIELD_WORDS, state: TRY_POLICY.state, paidAlone: PAID_ALONE, worstCase: TRY_POLICY.worstCase, saidBefore: TRY_POLICY.saidBefore, worstCaseChain: TRY_POLICY.worstCaseChain, ifSigned: TRY_POLICY.ifSigned } },
@@ -1627,8 +1687,71 @@ ${scr(7, `  <h2 tabindex="-1" id="d-head">${esc(W.done.head)}</h2>
 const DIAGRAM_STEPS = `
 @media (min-width: 1024px) {
   .diagram[data-step="1"] .d-purser, .diagram[data-step="1"] .d-sign, .diagram[data-step="2"] .d-sign, .diagram[data-step="3"] .d-sign,
-  .diagram[data-step="4"] .d-purser, .diagram[data-step="5"] .dlocks .dn, .diagram[data-step="6"] .d-alone, .diagram[data-step="7"] .dn { opacity: 1; border-color: var(--accent); background: var(--accent-soft); }
+  .diagram[data-step="4"] .d-purser, .diagram[data-step="5"] .dlocks .dn, .diagram[data-step="6"] .d-alone, .diagram[data-step="7"] .dn { opacity: 1; border-color: var(--accent); background: var(--accent-soft); animation: dnlit .35s ease-out both; }
+  /* Each step lights its part as it opens: the locks one after the other. */
+  .diagram .dlocks li:nth-child(2) { animation-delay: .08s; } .diagram .dlocks li:nth-child(3) { animation-delay: .16s; }
   .diagram[data-step="6"] .d-alone { border-color: var(--ok); background: var(--ok-soft, var(--accent-soft)); }
   .diagram .dstop { display: none; } .diagram[data-step="1"] .dstop { display: block; color: var(--bad); font-weight: 650; }
   .diagram[data-step="1"] .dstop a { color: inherit; }
+}`;
+
+/** Motion (Max, 7 Nov: "the most impressive moment"): the same colours, type and layout; cards with a subtle shadow and a
+ * light gradient, no glass and no glow that costs contrast. Each animation runs 150 to 400 ms and holds nothing up
+ * (nothing waits for it); with prefers-reduced-motion the end state shows at once, and the script counts nothing. */
+export const MOTION = `
+.story .card { background: linear-gradient(180deg, color-mix(in srgb, var(--sunken) 55%, var(--surface)) 0, var(--surface) 180px); }
+/* Signed and verified: the tick draws itself in, with a soft green glow. */
+.bigok .i { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ok) 35%, transparent)); animation: glow .4s ease-out both; }
+.bigok .i > * { stroke-dasharray: 100; stroke-dashoffset: 0; animation: draw .32s cubic-bezier(.65, 0, .35, 1) both; }
+.bigok .i > :last-child { animation-duration: .24s; animation-delay: .16s; }
+@keyframes draw { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+@keyframes glow { from { filter: drop-shadow(0 0 0 transparent); } to { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ok) 35%, transparent)); } }
+/* Try to cheat: the card shakes once; the changed field lights red; the two hashes side by side. */
+.refused.shake { animation: shake .34s cubic-bezier(.36, .07, .19, .97) both; }
+@keyframes shake { 15%, 85% { transform: translateX(-2px); } 30%, 70% { transform: translateX(4px); } 45% { transform: translateX(-4px); } 60% { transform: translateX(3px); } }
+table.diff tr.chg td { animation: lightred .4s ease-out both; }
+table.diff tr.chg td:first-child { box-shadow: inset 3px 0 0 var(--bad); }
+@keyframes lightred { from { background: color-mix(in srgb, var(--bad) 30%, var(--surface)); } to { background: var(--surface); } }
+table.diff tr.hrow td { border-bottom: 0; }
+code.hp { font: 600 13.5px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text); overflow-wrap: anywhere; }
+.hx { color: var(--bad); font-weight: 800; }
+/* Trick the agent: the fake invoice slides in, the IBANs side by side, then the block. */
+.tricked.go .doc, .tricked.go .ibans { animation: slidein .3s ease-out both; }
+.tricked.go .ibans { animation-delay: .06s; }
+.tricked.go .outcome { animation: blockin .22s ease-out .18s both; }
+@keyframes slidein { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes blockin { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+.ibans { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0; }
+.ibans .ib { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); min-width: 0; }
+.ibans .ib code { font: 600 14px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; min-width: 0; }
+.ibans .ib .i { flex: none; } .ibans .known .i { color: var(--ok); } .ibans .new { border-color: var(--bad); } .ibans .new .i { color: var(--bad); }
+.ibans .neq { font-weight: 750; color: var(--bad); }
+/* Change the rule: the figures count (countTo in the script), the three locks light up one by one. */
+.counting { position: relative; -webkit-text-fill-color: transparent; }
+.counting::after { content: attr(data-count); position: absolute; inset: 0; padding: inherit; -webkit-text-fill-color: currentColor; overflow: hidden; }
+ul.locks1 li { border-radius: 8px; margin: 0 -6px; padding: 2px 6px; }
+ul.locks1.lit li { animation: lockon .26s ease-out both; }
+ul.locks1.lit li:nth-child(2) { animation-delay: .1s; } ul.locks1.lit li:nth-child(3) { animation-delay: .2s; }
+@keyframes lockon { from { background: var(--accent-soft); transform: translateX(-3px); } to { background: transparent; transform: none; } }
+/* Pays alone: the payment moves through the locks (Purser, then Airwallex and Metal, then paid) and ends green. */
+ol.flow { list-style: none; margin: 4px 0 2px; padding: 0; position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+ol.flow::before, ol.flow::after { content: ""; position: absolute; top: 13px; left: 16.6%; right: 16.6%; height: 3px; border-radius: 3px; background: var(--border); }
+ol.flow::after { background: var(--ok); transform-origin: left; transform: scaleX(0); }
+ol.flow li { position: relative; z-index: 1; display: grid; justify-items: center; gap: 4px; text-align: center; font: 650 13.5px/1.3 Inter, system-ui, sans-serif; color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
+ol.flow .fd { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); border: 2px solid var(--border); color: var(--muted); }
+ol.flow .fd .i { width: 14px; height: 14px; }
+ol.flow[data-state="alone"]::after, ol.flow[data-state="signed"]::after { transform: none; animation: fill .4s ease-in-out both; }
+ol.flow[data-state="alone"] li, ol.flow[data-state="signed"] li { color: var(--text); }
+ol.flow[data-state="alone"] .fd, ol.flow[data-state="signed"] .fd { border-color: var(--ok); background: var(--ok); color: var(--surface); animation: stop .18s ease-out both; }
+ol.flow[data-state="alone"] li:nth-child(2) .fd, ol.flow[data-state="signed"] li:nth-child(2) .fd { animation-delay: .14s; }
+ol.flow[data-state="alone"] li:nth-child(3) .fd, ol.flow[data-state="signed"] li:nth-child(3) .fd { animation-delay: .3s; }
+ol.flow[data-state="waits"] .f-purser .fd { border-color: var(--accent); color: var(--accent); animation: stop .2s ease-out both; }
+ol.flow[data-state="waits"] .f-purser, ol.flow[data-state="blocked"] .f-purser { color: var(--text); }
+ol.flow[data-state="blocked"] .f-purser .fd { border-color: var(--bad); color: var(--bad); }
+@keyframes fill { from { transform: scaleX(0); } to { transform: none; } }
+@keyframes stop { from { transform: scale(.7); background: var(--surface); border-color: var(--border); color: var(--muted); } }
+@keyframes dnlit { from { transform: translateX(-4px); box-shadow: 0 0 0 0 transparent; } 50% { box-shadow: 0 0 0 4px var(--accent-soft); } to { transform: none; box-shadow: 0 0 0 0 transparent; } }
+/* prefers-reduced-motion: the end state, at once. */
+@media (prefers-reduced-motion: reduce) {
+  .story *, .story *::before, .story *::after { animation: none !important; transition: none !important; }
 }`;

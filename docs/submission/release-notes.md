@@ -357,6 +357,16 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   one or two plain sentences of at most 400 characters ("Not recorded: …"), in the runner and on /try/sign alike (one
   rule, src/agents/timingCore.ts plainReason), and the agent writes again within its turns. The quote's end as a time
   of day, and code's own phrases ("EUR free 0.00"), count as code's numbers. 2915 tests in 283 files, all passing.
+- 7 November, /try/sign in motion (Max: the demo as the hackathon's most impressive moment): the same colours, type and
+  layout; the cards with a subtle shadow and a light gradient, no glass. "Signed and verified": the tick draws itself in,
+  with a soft green glow. A refused cheat: the card shakes once, the changed field lights red, and both hashes stand side
+  by side in the table, every character that differs marked. "Trick the agent": the fake invoice slides in, its IBAN
+  beside the one on file with the difference in red, then the block. "Change the rule": the worst case and what it adds
+  count up to the new figures (the final words are in the page at once; the counting is drawn over them) and the three
+  locks light up one by one. "Pays alone": the payment moves through Purser, Airwallex and Metal, and ends green. On a
+  laptop the diagram lights each step's part as it opens. Each animation runs 150 to 400 ms and nothing waits for one;
+  with prefers-reduced-motion the end state shows at once (a browser check walks that path). 2980 tests in 289 files,
+  all passing.
 
 ## Real, and ours
 
