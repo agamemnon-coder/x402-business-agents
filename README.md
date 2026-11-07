@@ -8,7 +8,7 @@ AI agents can now spend company money; Purser lets them, through Airwallex and M
 
 **[Try it in 30 seconds.](https://kit11.max-31b.workers.dev/try/sign)**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 2994 passing](https://img.shields.io/badge/tests-2994%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 3001 passing](https://img.shields.io/badge/tests-3001%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
 
 **[Judge it in 3 minutes →](https://kit11.max-31b.workers.dev/judge)**
 
@@ -85,7 +85,7 @@ npm run judge -- --check
 ```
 
 - `npm ci` (under a minute): installs the exact versions in the lockfile; every dependency is pinned.
-- `npm test` (3 to 4 min): **2994 tests in 290 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included.
+- `npm test` (3 to 4 min): **3001 tests in 291 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included.
 - `npm run judge -- --check` (about 3 s): builds the site's 17 pages from the main run's committed record, offline, and fetches each once.
 - `npm run verify-receipt -- receipt.json` (under 1 s): after you sign on [/try/sign](https://kit11.max-31b.workers.dev/try/sign), checks its receipt offline with Node's own crypto: your passkey signed exactly those terms; change one cent and it says NOT VALID. Getting the receipt needs the live site and your own passkey.
 
@@ -175,6 +175,22 @@ supplier purchases + 3 refunds + 1 sweep on Metal, and 1 card charge at Airwalle
 agent is buying. Visa's public reference verifier accepted the signatures in a separate test on 2 November; the
 merchant is ours.
 
+## The Airi run (7 November; Airwallex sandbox, test card, test money)
+
+A separate world: the Sourcing agent pays with a single-use card credential from Airwallex's Airi wallet, on
+Airwallex's hosted checkout page for our own Airwallex sandbox merchant. Airi's test card, test money only; passed,
+all five checks, in the second attempt in its world (the attempts before it are in the log). Log:
+[docs/runs/2026-11-07-vic-1.md](docs/runs/2026-11-07-vic-1.md); record:
+[docs/demo/airi-run.json](docs/demo/airi-run.json); on the site:
+[/airwallex](https://kit11.max-31b.workers.dev/airwallex#airi-run).
+
+- **Within the CFO's limit:** EUR 12.00, the agent alone; Max confirmed it once in Airi with his passkey, and the
+  PaymentIntent (`int_sgpvzc9hjhnxvpblt2r`) SUCCEEDED.
+- **Above the limit:** EUR 45.00 waited for the CFO's Face ID on its exact terms (P-0002); only then did Purser ask
+  Airi for the credential (mandate `mdt_nlpdgv8gqhnxvxcjxbv`); Max confirmed it in Airi, and the PaymentIntent
+  (`int_sgpvzc9hjhnxvxc26ie`) SUCCEEDED.
+- **A merchant the CFO does not allow:** refused by Purser (`PURSER_MERCHANT_NOT_ALLOWED`) before any call to Airi.
+
 ## What is real, what is mock
 
 - **Live, in the main run:** the Airwallex sandbox calls and Metal testnet transactions above, the Claude decisions and
@@ -195,7 +211,7 @@ merchant is ours.
   the T:0 books sink: T:0 bookkeeping is built; posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted. ([record](docs/runs/2026-11-05-t0-live.md)); the emergency stop and `npm run smoke:sandbox`
   (on stand-ins).
 
-**Other live tests (separate worlds, dated):** the TAP run (2 November), four eyes on chain, the compliance contract
+**Other live tests (separate worlds, dated):** the Airi run (7 November, above; Airwallex sandbox, test card, test money), the TAP run (2 November), four eyes on chain, the compliance contract
 and clearing under load (30 October): [docs/runs/](docs/runs/) and [docs/metal-award.md](docs/metal-award.md).
 
 ## Words

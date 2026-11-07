@@ -158,6 +158,13 @@ pressed by our build tool, Claude Code, on Max's go; in production the second ap
 Not part of the main run; each ran live on the Airwallex sandbox or Metal testnet (test money), in its own test world,
 with its own date.
 
+- **The Airi run (7 November; Airwallex sandbox, Airi's test card, test money).** The Sourcing agent pays with a
+  single-use card credential from Airwallex's Airi wallet, on Airwallex's hosted checkout page for our own sandbox
+  merchant. EUR 12.00 within the CFO's limit ran with the agent alone (Max confirmed once in Airi with his passkey);
+  EUR 45.00 above it ran only after the CFO's Face ID on its exact terms (P-0002); a merchant the CFO does not allow was
+  refused by Purser before any call to Airi. Both payments SUCCEEDED in the sandbox; all five checks passed, in the
+  second attempt in its world. The earlier attempts that day (a changed answer format, a confirm the sandbox refuses, a
+  missed tap, a reused order reference; nothing charged) are in the log: docs/runs/2026-11-07-vic-1.md.
 - **Visa TAP run (2 November).** Visa's reference registry self-hosted with a test key, and our own TAP merchant;
   Airwallex approved one card buy and declined EUR 45.00 over the card limit (LIMIT_EXCEEDED).
 - **Single-use task cards (30 October).** One sentence (a flight, a hotel or a train, with an amount) becomes one card

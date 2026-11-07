@@ -24,6 +24,9 @@ AI agents can now spend company money; Purser lets them, through Airwallex and M
 Characters: **3,995** (the text between the markers, as pasted). Max's target is 3,000–4,000; the form's own limit is
 not known yet. `test/submission.test.ts` checks this count and keeps the text under 4,000. The long text, as it stood on
 5 November, with Airwallex, Metal, Claude, the controls and the other live tests in full: [long-description.md](long-description.md).
+The Airi run of 7 November (an agent paying with a single-use card credential from Airwallex's Airi wallet; Airwallex
+sandbox, test card, test money) is in the long text under "Other live tests", not in the Description: the Description
+is for the main run, and at 3,995 characters it has room for no other sentence without cutting one of Max's.
 
 <!-- description -->
 **The problem.** AI agents can now spend company money. Today an agent's limit lives in a prompt it can be talked out of, or in a month-end review that finds the money after it has left.
