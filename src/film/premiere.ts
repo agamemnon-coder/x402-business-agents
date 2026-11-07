@@ -522,12 +522,10 @@ export function sideFacts(x: SideRuns): Record<string, Fact> {
  * 7 November, 13b and 13c): the script (premiereScript.ts) checks its scenes against these.
  */
 export const SCENE_SECONDS: Record<string, number> = {
-  // v7 (Max, 7 November: "the slides go a little too fast"): 10-why is out (12-tamper says the same), and its eight
-  // seconds go to the scenes with the most to read: 05-price +3, 14-real +3 (the voice now reads both columns),
-  // 07-dispute +1, 13b-awx +1. Still 2:59.
-  "01-hook": 6, "02-purser": 4, "03-agents": 10, "04-how": 8, "05-price": 14, "05b-treasury": 8, "06-metal": 6, "07-dispute": 10,
-  "08-faceid": 8, "09-six": 9, "11-turn": 13, "12-tamper": 6, "13-proof": 12, "13b-awx": 12, "13c-airi": 14, "13d-value": 4,
-  "14-real": 11, "15-close": 13, "16-end": 11,
+  // v8 (Max, 7 November: "under 5 minutes, so it may be longer"): every scene longer, so each can be read before the
+  // cut; 03-agents and 05b-treasury now say what their cards show. 10-why stays out (12-tamper says the same).
+  "01-hook": 7, "02-purser": 6, "03-agents": 22, "04-how": 11, "05-price": 16, "05b-treasury": 15, "06-metal": 8, "07-dispute": 13,
+  "08-faceid": 11, "09-six": 13, "11-turn": 13, "12-tamper": 8, "13-proof": 15, "13b-awx": 15, "13c-airi": 17, "13d-value": 6, "14-real": 13, "15-close": 15, "16-end": 14,
 };
 
 /** How long a line takes at the narrator's calm pace, about 2.5 words a second (to the hundredth). */
@@ -760,9 +758,9 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
   const says: Record<string, string[]> = {
     "01-hook": ["AI agents are starting to spend money.", "So who signs off?"],
     "02-purser": ["This is Purser, built by Max Geurtsen."],
-    "03-agents": [`${cap1(said("run.agents"))} Claude agents`, "its own Airwallex card, and its own Metal mandate"],
+    "03-agents": [`${cap1(said("run.agents"))} Claude agents`, "its own Airwallex card, and its own Metal mandate", "The Sourcing agent, on Claude Haiku", "The Support agent, on Claude Sonnet", "The Treasury agent, on Claude Opus"],
     "05-price": [`${cents(v("price.new")) === 2 * cents(v("price.old")) ? "doubles" : "raises"} its price`, `from ${spoken(cents(v("price.old")))} to ${spoken(cents(v("price.new")))} cents a stock check`, `the ${spoken(cents(v("price.cap")))}-cent cap`, "Metal refused it"],
-    "05b-treasury": ["two ways", `within the same ${spoken(Number(dollars("treasury.total")))} dollars`, "with Face ID"],
+    "05b-treasury": ["two ways", `within the same ${spoken(Number(dollars("treasury.total")))} dollars`, "with Face ID", `cap to ${spoken(cents(v("treasury.aCap")))} cents`, `our price to ${spoken(cents(v("treasury.bPrice")))} cents`],
     "06-metal": [`${cap1(said("metal.payments"))} Metal payments`, "No emulator"],
     "07-dispute": [`disputes ${said("dispute.count")} orders`, `Only the ${said("dispute.refundCount")} with wrong data`],
     "09-six": [`${cap1(said("paid.seconds"))} ${n("paid.seconds") === 1 ? "second" : "seconds"} later`, "Airwallex pays the euro invoice by SWIFT, in its sandbox"],
@@ -785,6 +783,9 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
     for (const w of says[id] ?? []) if (!line.includes(w)) throw new Missing(`premiere: the voice script's ${id} line does not say "${w}", as the record has it`);
     voice[id] = timeLine(id, line, seconds);
   }
+  // v8: each agent's card lights while the voice names it (the three middle lines of 03-agents), the limits after.
+  const agentLines = voice["03-agents"]!;
+  if (agentLines.length === 5) Object.assign(screen["03-agents"] as Record<string, unknown>, { litAt: agentLines.slice(1, 5).map((l) => l.at) });
   return { facts: F, screen, voice, credits: CREDITS };
 }
 

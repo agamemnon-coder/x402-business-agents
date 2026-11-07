@@ -347,8 +347,10 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       return function (t) {
         rise(h, t, .1, null, 18);
         // Each card lit for 3 s in turn (Max, v5: 3 s a card), then the limits line.
-        cards.forEach(function (c, i) { rise(c, t, at[i], null, 30); c.lims.forEach(function (l, k) { fade(l, t, at[i] + .3 + k * .2); l.classList.toggle("lit", t >= LIM + i * .15); }); c.classList.toggle("on", t >= ON + i * 3 && t < ON + (i + 1) * 3); });
-        fade(note, t, 2.6); rise(ln, t, LIM);
+        // v8: lit while the voice names each agent (S.litAt: the three agents' lines, then the limits line); else 3 s each.
+        var lit = S.litAt || [ON, ON + 3, ON + 6, LIM], lim = S.litAt ? S.litAt[3] : LIM;
+        cards.forEach(function (c, i) { rise(c, t, at[i], null, 30); c.lims.forEach(function (l, k) { fade(l, t, at[i] + .3 + k * .2); l.classList.toggle("lit", t >= lim + i * .15); }); c.classList.toggle("on", t >= lit[i] && t < lit[i + 1]); });
+        fade(note, t, 2.6); rise(ln, t, lim);
       };
     },
     "04-how": function (L, S) {
@@ -596,7 +598,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       var w = put(L, E("div", "hl c", S.last), 0, 590);
       L.push = { to: 1.04, x: 960, y: 402 };
       return function (t) {
-        var flip = t >= 1.2, W = 4.75;
+        var flip = t >= 1.2, W = 5.1;
         last.style.display = flip ? "none" : ""; now.style.display = flip ? "" : "none";
         var dim = 1 - .62 * prog(t, W - .2, W + .5);
         a.style.opacity = prog(t, 0, .25) * dim; a.style.transform = flip && t < 1.6 ? "scale(" + mix(1.04, 1, prog(t, 1.2, 1.6)) + ")" : "";

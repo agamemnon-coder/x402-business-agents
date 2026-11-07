@@ -1,6 +1,6 @@
 # The premiere: edit guide
 
-**Purser in 2:59**, film v6 (7 November), **the current film and the submission video**: the premiere-style film made
+**Purser in 3:58**, film v8 (7 November), **the current film and the submission video**: the premiere-style film made
 from the main run of 3 November 2026 (world `main-1`, [run log](../runs/2026-11-03-main-run.md)), with the two live runs
 of 7 November (awx-1 on Airwallex alone, [run log](../runs/2026-11-07-awx-1.md); the Airi run, Visa Intelligent
 Commerce via Airwallex's Airi, [run log](../runs/2026-11-07-vic-1.md)) and a recorded walk of the live /try/sign page.
@@ -15,6 +15,15 @@ Studio, written from the same times. The script with every picture, line and sou
 
 Film v5 (2:42, 5 November, the main run only) is kept as it was: [narrator-script.md](narrator-script.md),
 [premiere-script-v5.md](premiere-script-v5.md), [script-v5.md](script-v5.md), `scenes-v5.json` and `subtitles-v5.srt`.
+
+## Film v8 (7 November, night): 3:58, every scene long enough to read
+
+Max: the film may run up to five minutes, so it can be slower and better. Every scene is longer (the table below);
+03-agents now names each agent as its card lights (the cards follow the voice, `litAt`), and 05b-treasury reads both
+options. The voice is the same ElevenLabs voice and settings: v6's takes for the lines that did not change, new takes
+for 03, 05-price, 05b, 13c and 14-real, each placed at its line's time in the script. New music (ElevenLabs) for 3:58.
+Every scene was rendered again at full quality, except 11-turn: the walk of the live page is v6's clip (the recording
+is not in this checkout), 13 s as before. Encoded at CRF 14 with 320 kb/s audio, -14 LUFS.
 
 ## Film v7 (7 November, evening): slower to read, the second Airi run, new music
 
@@ -66,7 +75,7 @@ parallel runs (the clips split three ways) it took about half an hour. It needs 
 |---|---|
 | `clips/01-hook.mp4` … `clips/16-end.mp4` | One clip per scene: 1920×1080, 60 frames a second, silent, the picture letterboxed to 2.39:1 (black bars of 138 px above and below). Each clip fades in and out over the background, which runs on the film's own clock, so in order the clips join seamlessly; the hook is on black. |
 | `overlays/08-faceid.png`, `overlays/11-turn.png` | Transparent 1920×1080 PNGs: the letterbox bars with the corner credits, and the label for a recording laid over that scene, for an editor who lays a recording in by hand. |
-| `master-v6.mp4` | **The deliverable picture:** all twenty clips in order (2:59), no audio track, no burned-in subtitles, the walk of the live page laid into 11-turn. |
+| `master-v6.mp4` | **The deliverable picture:** all clips in order (3:58 in v8), no audio track, no burned-in subtitles, the walk of the live page laid into 11-turn. |
 | `scenes-v6.json` | Each scene's `{id, start, end}` in seconds, for the mix (a copy is in this folder). |
 | `subtitles-v6.srt` | The voice-over as English subtitles, each line about half a second into its scene, for YouTube's captions (a copy is in this folder). Nothing is burned in. |
 | `elevenlabs-studio-prompt-v6.md` | The prompt for ElevenLabs Studio: the voice brief, every line at its time, the music brief on the cuts (a copy is in this folder). |
@@ -81,29 +90,29 @@ disagree; the proof scene shows 24/24 and the run's stops, not the test count.
 ## Which clip goes where
 
 The times are the scenes' (`scenes-v6.json`); the music is cut to them afterwards. **The drop goes on the cut to
-`09-six.mp4` (1:14).**
+`09-six.mp4` (1:49).**
 
 | Time | Clip | What | Recording |
 |---|---|---|---|
 | 0:00 | `01-hook.mp4` | Black, a beat of silence, then “AI agents are starting to spend money.” slams in; at 3.6 s a hard cut to “So who signs off?”, a pen stroke drawn under it | |
-| 0:06 | `02-purser.mp4` | The wordmark Purser, a line drawn under it, and the core line in two lines | |
-| 0:10 | `03-agents.mp4` | Three Claude agents, their cards 0.7 s apart and each lit 3 s in turn: name, model, job, its own Airwallex card and its own Metal mandate (as the run began); “The rails and the code hold the limits.” | |
-| 0:20 | `04-how.mp4` | The diagram: agent → rules → person → Airwallex or Metal → books; a refused payment: the Airwallex or Metal box flashes red, “Refused at the limit” under it, both gone within a second | |
-| 0:28 | `05-price.mp4` | The price rise; let through on purpose; Metal refuses; the tx | |
-| 0:42 | `05b-treasury.mp4` | Treasury's two options (P-0002 A: the Sourcing agent's cap to 0.04, our price stays 0.05; P-0003 B: our price to 0.07), both within the same 20.00; A signed with Face ID at 11:26:28 UTC; “four eyes · second approver: a labelled test passkey” | |
-| 0:50 | `06-metal.mp4` | 86 payments, each its own transaction on Metal testnet, no emulator; + 6 mandate transactions, 1 refusal on chain | |
-| 0:56 | `07-dispute.mp4` | Twelve orders, three refunded, “refund the other 9” rejected with Face ID | |
-| 1:06 | `08-faceid.mp4` | P-0005's approval sheet, its exact terms; Face ID, then “Approved”, labelled as a reconstruction with the real Face ID's time (11:31:18 UTC) | |
-| 1:14 | `09-six.mp4` | 6 seconds from Face ID to PAID, counting up from the cut; “In the sandbox, the settlement is simulated.”; the transfer id; “Every id is on /proof” | |
-| 1:23 | `11-turn.mp4` | The walk of the live /try/sign page in a phone frame, cut to its steps; beside it each step as it comes; “Recorded from the live page · test world · test money” | `recordings/trysign-live-1.mp4`, laid in by `npm run video` |
-| 1:36 | `12-tamper.mp4` | +0.01, refused; a second of silence; “One cent. Worthless.” at 1:40.75 | |
-| 1:42 | `13-proof.mp4` | The main run named; 24/24 decisions by Claude; the run's stops (1:44.6): the figure with “nothing paid over a limit”, then who stopped what in four rows, each as the voice names it | |
-| 1:54 | `13b-awx.mp4` | awx-1 (7 Nov): `LIMIT_EXCEEDED` and `MERCHANT_CATEGORY_NOT_ALLOWED`, each declined by Airwallex; the raise asked of the CFO (P-0001), approved with Face ID; the signed hash in the SWIFT payouts' metadata, both PAID; the run's own label | |
-| 2:06 | `13c-airi.mp4` | “Visa Intelligent Commerce via Airwallex's Airi: a live run (7 Nov)”, Max's line; ✓ Paid alone (EUR 12.00) · ✓ Paid after Face ID (EUR 45.00, P-0002) · ✕ Changed after Face ID (EUR 30 → 190, the second run); “5 of 5 and 7 of 7 checks”; “Airwallex sandbox · test card · test money” | |
-| 2:20 | `13d-value.mp4` | “The agents do the work. The CFO signs only the exceptions.” | |
-| 2:24 | `14-real.mp4` | What's real, what's ours; the voice reads both columns | |
-| 2:35 | `15-close.mp4` | The ending mirrors the intro: “A price shock.” / “A dispute.” / “A euro bill.”, the closing line in two lines, then the intro's wordmark with “Starter Kit 11” (2:46); Max's name lower left; under the narrator's closing line | |
-| 2:48 | `16-end.mp4` | “Try it yourself”, https://kit11.max-31b.workers.dev/try/sign; from 2:51.5 the end credits (text only, no logos): who does what (built by Max Geurtsen; Airwallex, Metal and Claude by Anthropic, each with its role); thank you to Airwallex, Metal, Anthropic and the hackathon organisers and mentors; the AI-generated voice and music; test money only; the end at 2:59 | |
+| 0:07 | `02-purser.mp4` | The wordmark Purser, a line drawn under it, and the core line in two lines | |
+| 0:13 | `03-agents.mp4` | Three Claude agents, their cards 0.7 s apart and each lit 3 s in turn: name, model, job, its own Airwallex card and its own Metal mandate (as the run began); “The rails and the code hold the limits.” | |
+| 0:35 | `04-how.mp4` | The diagram: agent → rules → person → Airwallex or Metal → books; a refused payment: the Airwallex or Metal box flashes red, “Refused at the limit” under it, both gone within a second | |
+| 0:46 | `05-price.mp4` | The price rise; let through on purpose; Metal refuses; the tx | |
+| 1:02 | `05b-treasury.mp4` | Treasury's two options (P-0002 A: the Sourcing agent's cap to 0.04, our price stays 0.05; P-0003 B: our price to 0.07), both within the same 20.00; A signed with Face ID at 11:26:28 UTC; “four eyes · second approver: a labelled test passkey” | |
+| 1:17 | `06-metal.mp4` | 86 payments, each its own transaction on Metal testnet, no emulator; + 6 mandate transactions, 1 refusal on chain | |
+| 1:25 | `07-dispute.mp4` | Twelve orders, three refunded, “refund the other 9” rejected with Face ID | |
+| 1:38 | `08-faceid.mp4` | P-0005's approval sheet, its exact terms; Face ID, then “Approved”, labelled as a reconstruction with the real Face ID's time (11:31:18 UTC) | |
+| 1:49 | `09-six.mp4` | 6 seconds from Face ID to PAID, counting up from the cut; “In the sandbox, the settlement is simulated.”; the transfer id; “Every id is on /proof” | |
+| 2:02 | `11-turn.mp4` | The walk of the live /try/sign page in a phone frame, cut to its steps; beside it each step as it comes; “Recorded from the live page · test world · test money” | `recordings/trysign-live-1.mp4`, laid in by `npm run video` |
+| 2:15 | `12-tamper.mp4` | +0.01, refused; a second of silence; “One cent. Worthless.” at 2:20.1 | |
+| 2:23 | `13-proof.mp4` | The main run named; 24/24 decisions by Claude; the run's stops (2:25.6): the figure with “nothing paid over a limit”, then who stopped what in four rows, each as the voice names it | |
+| 2:38 | `13b-awx.mp4` | awx-1 (7 Nov): `LIMIT_EXCEEDED` and `MERCHANT_CATEGORY_NOT_ALLOWED`, each declined by Airwallex; the raise asked of the CFO (P-0001), approved with Face ID; the signed hash in the SWIFT payouts' metadata, both PAID; the run's own label | |
+| 2:53 | `13c-airi.mp4` | “Visa Intelligent Commerce via Airwallex's Airi: a live run (7 Nov)”, Max's line; ✓ Paid alone (EUR 12.00) · ✓ Paid after Face ID (EUR 45.00, P-0002) · ✕ Changed after Face ID (EUR 30 → 190, the second run); “5 of 5 and 7 of 7 checks”; “Airwallex sandbox · test card · test money” | |
+| 3:10 | `13d-value.mp4` | “The agents do the work. The CFO signs only the exceptions.” | |
+| 3:16 | `14-real.mp4` | What's real, what's ours; the voice reads both columns | |
+| 3:29 | `15-close.mp4` | The ending mirrors the intro: “A price shock.” / “A dispute.” / “A euro bill.”, the closing line in two lines, then the intro's wordmark with “Starter Kit 11” (3:40); Max's name lower left; under the narrator's closing line | |
+| 3:44 | `16-end.mp4` | “Try it yourself”, https://kit11.max-31b.workers.dev/try/sign; from 3:47.5 the end credits (text only, no logos): who does what (built by Max Geurtsen; Airwallex, Metal and Claude by Anthropic, each with its role); thank you to Airwallex, Metal, Anthropic and the hackathon organisers and mentors; the AI-generated voice and music; test money only; the end at 3:58 | |
 
 ## Recordings
 
@@ -138,7 +147,7 @@ Not in this render: the mix session adds it to `scenes-v6.json`.
 
 - **The track:** AI-generated (ElevenLabs). The end card credits it with the voice: “Voice-over: an AI-generated voice
   (ElevenLabs) · Music: AI-generated (ElevenLabs)”.
-- **The drop:** on the cut to `09-six` (1:10), where “6” counts up. Leave the second before “One cent. Worthless.”
+- **The drop:** on the cut to `09-six` (1:49), where “6” counts up. Leave the second before “One cent. Worthless.”
   (1:43.75 to 1:44.75) silent.
 - Under a voice, keep the music 18 to 22 dB lower.
 
@@ -155,7 +164,7 @@ subtitles burned in and no voice.
 3. The voice files (the narrator, ElevenLabs) on A1 at the times in [script.md](script.md); the music on A2, lowered under the voice.
 4. No subtitles in the picture: give YouTube the `.srt` (below).
 5. Deliver: the YouTube 1080p preset, H.264, 60 frames a second, at a high bitrate (the small text must stay crisp),
-   and check the length: 2:59, under three minutes.
+   and check the length: 3:58, under five minutes.
 
 **CapCut** (desktop or phone): a 1080p, 60 fps project; `master-v6.mp4` (or the clips in order) on the main track;
 voice and music as audio layers; export at 1080p, 60 fps.
@@ -166,7 +175,7 @@ Music: AI-generated (ElevenLabs)”.
 
 ## Before you upload
 
-- 2:59, under three minutes.
+- 3:58, under five minutes.
 - Nothing private on screen: no keys, e-mail addresses, notifications, other tabs or bookmarks; the walk of /try/sign
   shows only the page's public test world (no one-time Airi link, no viewer key).
 - The Face ID scene keeps its label (“Reconstruction of the approval screen …”), and the walk of the live page its own.
@@ -187,7 +196,7 @@ typed into the page, or a file in this folder that the code would write differen
 
 **The look.** Behind the text, calm and still: deep navy (#0a1020), a very faint static dot grid (a dot every 36 px,
 white at 7%), a soft vignette, and a drift of half a pixel a second, hardly seen; in the picture only, never the bars.
-It fades in from 0:06, so the hook stays on black. In the top bar, 0:06 to 2:48, quiet: “Max Geurtsen ·
+It fades in from 0:07, so the hook stays on black. In the top bar, 0:07 to 3:44, quiet: “Max Geurtsen ·
 Purser” left and “Built on Airwallex · Metal · Claude” right (Inter Medium 20 px, grey: white at 46%, 64 px from the
 edges), text only, no logos. Every text colour is WCAG AA over the brightest point of that background (a dot; the
 test computes it), and the corner credits 4.6:1 on the black bar.
