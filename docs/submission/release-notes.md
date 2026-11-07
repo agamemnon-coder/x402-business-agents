@@ -344,6 +344,11 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   to advise paying and said why. Now the plan names the shortfall with or without a rate, code checks the agent's facts
   against the plan before asking, and the licence numbers refuse a negative amount (the runner falls back, labelled).
   2911 tests in 283 files, all passing.
+- 7 November, the Treasury agent's own tool holds its reason to the page's rule: live Opus advised well but in three
+  sentences (321 to 326 characters), which the page refused every time. submit_advice now refuses a reason that is not
+  one or two plain sentences of at most 400 characters ("Not recorded: …"), in the runner and on /try/sign alike (one
+  rule, src/agents/timingCore.ts plainReason), and the agent writes again within its turns. The quote's end as a time
+  of day counts as one of code's numbers. 2914 tests in 283 files, all passing.
 
 ## Real, and ours
 

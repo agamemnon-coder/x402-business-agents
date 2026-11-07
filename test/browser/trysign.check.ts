@@ -157,7 +157,7 @@ async function layout(page: Page, tag: string, stage: string, width: number): Pr
  */
 async function measure(page: Page, tag: string, n: number, ms?: number): Promise<void> {
   await page.evaluate("window.scrollTo({ top: 0, behavior: 'instant' })");
-  // Screen 1's count leaves out the agent's own reason (Opus's one or two sentences, at most 300 characters, checked by
+  // Screen 1's count leaves out the agent's own reason (Opus's one or two sentences, at most 400 characters, checked by
   // the server): the page's own words stay within 60 around it.
   const m = await page.evaluate(`(() => {
     const scr = document.getElementById("scr-${n}");

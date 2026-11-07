@@ -84,6 +84,22 @@ export interface TimingAdviceValue { timing: "pay_now" | "wait_until"; date: str
 export interface TimingToolResult { text: string; blocked?: string; final?: boolean }
 export interface TimingTool { name: string; description: string; input: z.ZodType; run(input: never): TimingToolResult }
 
+/** The most a reason may hold (7 Nov: live Opus's two-sentence advice ran to 326 characters). */
+export const REASON_MAX_CHARS = 400;
+/** How many sentences a text has: a sentence ends at . ! or ? before a space or the end (a decimal point has a digit after it). */
+export const sentenceCount = (t: string) => t.split(/[.!?](?=\s|$)/).filter((x) => x.trim()).length;
+/**
+ * The reason as the CFO may read it, or null: one or two plain sentences, 20 to REASON_MAX_CHARS characters, no markup,
+ * quote marks around it taken off. One rule for the agent's tool (submit_advice refuses anything else, so the agent
+ * writes again) and for the page (worker/src/agentLine.ts checkReason).
+ */
+export function plainReason(s: string): string | null {
+  const t = s.replace(/\s+/g, " ").trim().replace(/^["“'‘]+|["”'’]+$/g, "").trim();
+  if (t.length < 20 || t.length > REASON_MAX_CHARS || /[<>{}`\\]/.test(t) || !/[.!?]$/.test(t)) return null;
+  const n = sentenceCount(t);
+  return n >= 1 && n <= 2 ? t : null;
+}
+
 /** The earliest and latest day a wait may end: not today, and two days before the due date (SWIFT time). */
 export const adviceBounds = (f: Pick<TimingFacts, "today" | "dueDate">) => ({ earliest: addDays(f.today, 1), latest: addDays(f.dueDate, -2) });
 
@@ -94,6 +110,10 @@ export const adviceBounds = (f: Pick<TimingFacts, "today" | "dueDate">) => ({ ea
 export function adviceOutOfBounds(f: Pick<TimingFacts, "today" | "dueDate">, a: TimingAdviceValue): string | null {
   const { earliest, latest } = adviceBounds(f);
   if (a.reason.trim().length < 20) return "Not recorded: give the CFO a reason in a sentence.";
+  if (!plainReason(a.reason)) {
+    const t = a.reason.replace(/\s+/g, " ").trim();
+    return `Not recorded: give the CFO one or two sentences (at most ${REASON_MAX_CHARS} characters); this was ${sentenceCount(t)} sentence${sentenceCount(t) === 1 ? "" : "s"} and ${t.length} characters.`;
+  }
   if (a.timing === "wait_until") {
     if (earliest > latest) return `Not recorded: the invoice is due ${f.dueDate}; with two days for SWIFT there is no time to wait. Advise pay_now or say why not.`;
     if (!a.date || a.date < earliest || a.date > latest) return `Not recorded: a wait must end between ${earliest} and ${latest} (two days before the due date ${f.dueDate}, not today).`;

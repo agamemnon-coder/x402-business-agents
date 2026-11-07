@@ -271,8 +271,12 @@ describe("the amounts in the reason: each one of code's numbers, as code gave it
       "The invoice of EUR 1850.005 is above my limit, so please sign it.",
     ]) expect({ bad, check: checkReason(bad, GIVEN) }).toEqual({ bad, check: { bad: "amounts" } });
     expect(checkReason("One. Two sentences here. Three sentences is too many.", GIVEN)).toEqual({ bad: "shape" });
+    // At most 400 characters (7 Nov: live Opus's two-sentence advice ran to 326; Max's rule is two sentences).
+    const sentence = (n: number) => `${"a".repeat(n - 1)}.`; // n characters, one sentence
+    expect(cleanReason(`${sentence(200)} ${sentence(199)}`)?.length).toBe(400);
+    expect(cleanReason(`${sentence(200)} ${sentence(200)}`)).toBeNull();
     expect(checkReason("Please sign <b>now</b> for the invoice.", GIVEN)).toEqual({ bad: "shape" });
-    expect(cleanReason(`${"x".repeat(301)}.`)).toBeNull();
+    expect(cleanReason(`${"x".repeat(401)}.`)).toBeNull();
     expect(cleanReason("  “Pay it now; it needs your signature.”  ")).toBe("Pay it now; it needs your signature.");
   });
 
@@ -374,7 +378,48 @@ describe("the reason is text on the page, never markup", () => {
       const advisor = new StandInAdvisor();
       advisor.reason = bad;
       const { t2 } = await world(deskWith(advisor).d);
-      expect({ bad, says: t2.says, label: t2.voice!.label }).toEqual({ bad, says: FIXED_PROPOSALS[1]!.says, label: `${FIXED_TEXT} · the live advice was not used: its reason was not one or two plain sentences` });
+      // The agent's own tool refuses it (not plain sentences), every time this stand-in sends it, so there is no advice.
+      expect({ bad, says: t2.says, label: t2.voice!.label }).toEqual({ bad, says: FIXED_PROPOSALS[1]!.says, label: `${FIXED_TEXT} · no advice within 5 calls` });
     }
+  });
+});
+
+describe("submit_advice refuses a reason that is not one or two sentences of at most 400 characters; the agent writes again", () => {
+  // Live Opus (7 Nov) wrote three sentences, 321 to 326 characters, every time: the page then refused its advice. Now the
+  // agent's own tool refuses it, in the runner's words for its bounds, and the agent retries within its turns.
+  const THREE = "The locked quote (buy EUR 870.00 for USD 982.82) covers exactly the shortfall EUR 870.00. After the payment, EUR free is 0.00 and USD is 7017.18, so both floors hold. Waiting would mean a new quote and a new Face ID request.";
+  const TWO = "The locked quote covers exactly the EUR 870.00 shortfall and both floors hold after the payment. Waiting would mean a new quote and a new Face ID request.";
+  const submit = (reason: string, id: string) => ({ type: "tool_use" as const, id, name: "submit_advice", input: { timing: "pay_now", date: null, reason } });
+
+  it("in the Worker's loop: the three-sentence submit is blocked (\"advice bounds\"), the next one is the advice", async () => {
+    const seen: unknown[] = [];
+    let n = 0;
+    const ask: Parameters<typeof adviseTry>[0] = async (req) => {
+      seen.push(JSON.parse(JSON.stringify(req.messages)));
+      const content = [submit(n++ === 0 ? THREE : TWO, `t${n}`)];
+      return { content, raw: content, stop_reason: "tool_use", model: "claude-opus-5-5", ms: 10, costUsd: 0, requestId: `req_test_${n}` };
+    };
+    const r = await adviseTry(ask, FACTS, [signatureLine("EUR 500.00")]);
+    expect(r.advice).toEqual({ timing: "pay_now", date: null, reason: TWO });
+    expect(r.calls[0]!.tools[0]).toMatchObject({ name: "submit_advice", blocked: "advice bounds", answer: "Not recorded: give the CFO one or two sentences (at most 400 characters); this was 3 sentences and 224 characters." });
+    // The agent read the refusal as the tool's answer before it wrote again.
+    expect(JSON.stringify(seen[1])).toContain("Not recorded: give the CFO one or two sentences (at most 400 characters)");
+  });
+
+  it("in the runner (src/agents/timingAgent.ts): the same bound, the same retry", async () => {
+    const { adviseTiming } = await import("../src/agents/timingAgent.js");
+    const { openDb } = await import("../src/db/open.js");
+    let i = 0;
+    const turns = [[submit(THREE, "a")], [submit(TWO, "b")]];
+    const client = { beta: { messages: { create: async () => ({ content: turns[i++], stop_reason: "tool_use", model: "claude-opus-5-5", usage: { input_tokens: 100, output_tokens: 50 } }) } } } as never;
+    const r = await adviseTiming(openDb(":memory:"), { ...FACTS, proposalId: "P-0009" }, client);
+    expect(r.run.calls.map((c) => c.blocked ?? "ok")).toEqual(["advice bounds", "ok"]);
+    expect(r.run.calls[0]!.text).toBe("Not recorded: give the CFO one or two sentences (at most 400 characters); this was 3 sentences and 224 characters.");
+    expect(r).toMatchObject({ source: "claude", timing: "pay_now", reason: TWO });
+  });
+
+  it("the quote's end as a time of day is one of code's numbers in the reason", () => {
+    expect(amountsFit("The quote expires today at 10:15:00Z, so paying now keeps it.", adviceGiven(FACTS, "500.00"))).toBe(true);
+    expect(amountsFit("The quote expires today at 10:16:00Z, so paying now keeps it.", adviceGiven(FACTS, "500.00"))).toBe(false);
   });
 });

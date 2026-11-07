@@ -12,13 +12,13 @@
 // TRY_SIGN_HAIKU, still works the same way, so a Worker deployed with it stays off. Any other value, or none, leaves
 // them on.
 //
-// Opus's reason is checked by code before it is shown: one or two plain sentences, at most 300 characters, and every
+// Opus's reason is checked by code before it is shown: one or two plain sentences, at most 400 characters, and every
 // amount in it one of code's numbers, written as code gave it (see amountsFit); else the fixed sentence is shown,
 // labelled.
 
 import { claudeAgentAsk, claudeReadInvoice, type InvoiceReadSource } from "../../src/try/claude.js";
 import type { AgentAsk } from "../../src/try/world.js";
-import { adviceBounds, licenceNumbers, type TimingFacts } from "../../src/agents/timingCore.js";
+import { adviceBounds, licenceNumbers, plainReason, type TimingFacts } from "../../src/agents/timingCore.js";
 
 /** Model spend allowed per UTC day for every live agent call on /try/sign together, in US dollars. */
 export const AGENT_LINE_DAILY_USD = 10;
@@ -87,6 +87,11 @@ const dayForms = (iso: string): string[] => {
   return [iso, `${d} ${name} ${y}`, `${name} ${d}, ${y}`, `${d} ${name}`, `${name} ${d}`, `${d} ${name.slice(0, 3)}`];
 };
 
+const timeForms = (iso: string): string[] => {
+  const m = /T(\d{2}):(\d{2}):(\d{2})Z$/.exec(iso);
+  return m ? [iso, `${m[1]}:${m[2]}:${m[3]}Z`, `${m[1]}:${m[2]}:${m[3]}`, `${m[1]}:${m[2]}`] : [iso];
+};
+
 /**
  * Code's numbers for the advice, the only ones its reason may name: the invoice, the fee ceiling, EUR needed, free
  * EUR, the shortfall, the FX buy and sell, the rate, the limit the agent may pay alone, the balances and floors and the
@@ -102,7 +107,8 @@ export function adviceGiven(f: TimingFacts, aloneLimit: string, extraDays: reado
   const days = [f.today, f.dueDate, b.earliest, b.latest, ...extraDays].flatMap(dayForms);
   return {
     amounts: [...eurs.flatMap((a) => forms("EUR", a)), ...usds.flatMap((a) => forms("USD", a)), ...(f.quote ? [f.quote.rate] : [])],
-    references: [f.invoiceNo, `Invoice ${f.invoiceNo}`, f.proposalId, ...(f.quote ? [f.quote.validTo] : []), ...days],
+    // The quote's end as the agent may write it: whole, or its time of day ("12:44:52Z", "12:44:52", "12:44").
+    references: [f.invoiceNo, `Invoice ${f.invoiceNo}`, f.proposalId, ...(f.quote ? timeForms(f.quote.validTo) : []), ...days],
   };
 }
 
@@ -117,14 +123,9 @@ export function amountsFit(sentence: string, given: Given): boolean {
   return !/\d|[€$£¥₹¢]|\b(?:EUR|USD|GBP|CHF|JPY|euros?|dollars?|cents?|thousand|hundred|million|billion|grand)\b/i.test(rest);
 }
 
-/** The reason as the page may show it, or null: one or two plain sentences, 20 to 300 characters, no markup. */
-export function cleanReason(s: string): string | null {
-  const t = s.replace(/\s+/g, " ").trim().replace(/^["“'‘]+|["”'’]+$/g, "").trim();
-  if (t.length < 20 || t.length > 300 || /[<>{}`\\]/.test(t) || !/[.!?]$/.test(t)) return null;
-  // Sentences end at . ! or ? before a space or the end (a decimal point has a digit after it).
-  const sentences = t.split(/[.!?](?=\s|$)/).filter((x) => x.trim()).length;
-  return sentences >= 1 && sentences <= 2 ? t : null;
-}
+/** The reason as the page may show it, or null: one or two plain sentences, 20 to 400 characters, no markup (the
+ * agent's own tool refuses anything else first: src/agents/timingCore.ts plainReason, one rule for both). */
+export const cleanReason = plainReason;
 
 /** The reason the page may show, or why not: not one or two plain sentences ("shape"), or an amount not code's ("amounts"). */
 export function checkReason(s: string, given: Given): { says: string } | { bad: "shape" | "amounts" } {
