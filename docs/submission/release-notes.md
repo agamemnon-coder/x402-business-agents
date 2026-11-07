@@ -497,3 +497,9 @@ Claude Code, on Max's go; in production a second person). Sources for every clai
   page), and film v6 (2:59: the Airi run as Visa Intelligent Commerce, awx-1, and a recording of the live /try/sign; voice
   and music still to add). /proof's partner order in the accessibility test follows the new order. 3049 tests in 295
   files, all passing.
+- 7 November, after the day's last release: how a VIC purchase runs, drawn on /visa under the Airi run's block (seven
+  steps, left to right at desktop and top to bottom on a phone; whose step each is; purchase B's ids and values from the
+  record; C's branch, refused by Purser with 0 Airi calls), linked from /proof's Airi block ("How it works"); /visa's
+  word budget 375 (was 275). The Sourcing agent's rail choice can offer Airi (VIC) as a third rail, for a purchase at a
+  merchant on the CFO's Airi allowlist that Purser would take, with KIT11_AIRI_RAIL=on only; the offer and its reason
+  are in the audit trail, and the payment still goes through every Purser check (no caller offers it yet).

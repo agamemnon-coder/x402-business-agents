@@ -30,7 +30,7 @@ export function visibleWords(html: string): number {
 const allText = (html: string) => decode(html.replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " "));
 
 describe("the site after v4", () => {
-  it("keeps every page within its text budget (Home 190 with the three sentences; partner pages at most 150, /metal 175 with the explorer note, /airwallex 345 with its read-back, awx-1 and the Airi run, /visa 275 with the Airi run on top)", () => {
+  it("keeps every page within its text budget (Home 190 with the three sentences; partner pages at most 150, /metal 175 with the explorer note, /airwallex 345 with its read-back, awx-1 and the Airi run, /visa 375 with the Airi run on top and the VIC flow under it)", () => {
     // Proof: 480 since 4 Nov, for the TAP run's decline on its own line below the stop figure (Max).
     // Home: 600 since 6 Nov, for the three sentences under the heading, the Kit 11 line and the one caveat line (jury review, #1, #7).
     // Proof 520 and Airwallex 190 since 6 Nov, for Airwallex read back (section B): the hash the CFO signed beside the one
@@ -55,7 +55,9 @@ describe("the site after v4", () => {
     // at 560 with the same block in sight under the partners (516 as built).
     // Home: 190 since the jury review of 7 Nov (#2), for the three sentences back under the subtitle (188 words).
     // Metal: 175 since then (#3), for what the explorer shows beside the refusal's link (172 words).
-    const budget: Record<string, number> = { home: 190, watch: 125, try: 180, proof: 560, metal: 175, airwallex: 345, visa: 275, claude: 150, notFound: 40 };
+    // Visa: 375 since the VIC flow (7 Nov, src/redesign/vicFlow.ts): seven steps under the Airi block, each with whose
+    // step it is, its title, one short line and purchase B's id or value, and C's branch off step 2 (100 words; 372 as built).
+    const budget: Record<string, number> = { home: 190, watch: 125, try: 180, proof: 560, metal: 175, airwallex: 345, visa: 375, claude: 150, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 
