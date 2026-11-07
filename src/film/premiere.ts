@@ -7,7 +7,9 @@
 
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { FIXED_PROPOSALS, TEST_WORLD, canonical, checkPayment, proposalTerms } from "../../worker/src/trySign.js";
+import { FIXED_PROPOSALS, TEST_BALANCES, TEST_RULES, TEST_WORLD, canonical, checkPayment, proposalTerms, rateOfRecord } from "../../worker/src/trySign.js";
+import { recordedRate, type RecordForExposure } from "../policy/exposureSources.js";
+import { loadRecord } from "../redesign/run.js";
 import { TRY_SIGN_LABEL } from "../try/sign.js";
 import { AGENT_DISPLAY } from "../config/brand.js";
 import { CARDS, INITIAL_MANDATES } from "../config/policy.js";
@@ -129,16 +131,19 @@ export const TRY_SIGN_WORDS = {
 
 /** The proposal a visitor signs on /try/sign (the one that waits for a person), as the page's code has it. */
 export function trySignExample() {
-  const p = need(FIXED_PROPOSALS.find((x) => checkPayment(x.amount, TEST_WORLD.balance).check === "pass"), "/try/sign proposal that waits for a person");
-  const check = checkPayment(p.amount, TEST_WORLD.balance);
+  // Checked as the test world checks it with no live quote: at the main run's recorded EUR/USD rate.
+  const rate = rateOfRecord(need(recordedRate(loadRecord().record as unknown as RecordForExposure), "the main run's recorded rate"));
+  const checkOf = (amount: string) => checkPayment(amount, TEST_BALANCES, TEST_RULES, { rate });
+  const p = need(FIXED_PROPOSALS.find((x) => checkOf(x.amount).check === "pass"), "/try/sign proposal that waits for a person");
+  const check = checkOf(p.amount);
   // The terms of an example world (the live page binds them to the visitor's own world id and expiry): a real hash of
   // real example terms, so the mock shows what the page shows, not a made-up string.
   // They are the terms as the page had them when the film and docs/media/social-preview.png were made (schema
-  // kit11.try-terms/v1, 4 Nov): v2 (6 Nov) added the payee's IBAN for the visitor's own tamper and v3 the live FX quote,
+  // kit11.try-terms/v1, 4 Nov): v2 (6 Nov) added the payee's IBAN for the visitor's own tamper, v3 the live FX quote and v4 the agent's advice,
   // and the rendered film and image keep showing the v1 hashes, so these are v1's: today's terms without the IBAN and
   // the quote, under v1's schema name.
   const world = createHash("sha256").update("premiere example world").digest("hex").slice(0, 16);
-  const { payee_iban: _iban, fx: _fx, ...rest } = proposalTerms(p, world, "2026-11-04T12:00:00.000Z");
+  const { payee_iban: _iban, fx: _fx, agent_advice: _advice, ...rest } = proposalTerms(p, world, "2026-11-04T12:00:00.000Z");
   const terms: ReturnType<typeof proposalTerms> = { ...rest, schema: "kit11.try-terms/v1" };
   const tampered = { ...terms, amount: fromCents(cents(p.amount) + 1) };
   const sha = (t: typeof terms) => createHash("sha256").update(canonical(t)).digest("hex");

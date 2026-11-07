@@ -36,6 +36,8 @@ type Block = { type: "text"; text: string } | { type: "tool_use"; id: string; na
 type Content = string | unknown[];
 export interface AgentRequest {
   model: string; system: string;
+  /** The effort the runtime sends for this agent (src/agents/loop.ts: "medium" unless the agent says otherwise). */
+  effort?: "low" | "medium" | "high";
   tools: { name: string; description: string; input_schema: Record<string, unknown> }[];
   messages: { role: "user" | "assistant"; content: Content }[];
 }

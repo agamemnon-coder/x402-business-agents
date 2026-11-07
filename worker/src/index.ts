@@ -6,7 +6,7 @@ import { notFoundResponse, pageResponse, Relay } from "./core.js";
 import { TryDesk } from "./try.js";
 import { isTrySignPath, trySignNotFound, trySignRoute, TrySignDesk } from "./trySign.js";
 import { SandboxQuotes } from "./fxQuote.js";
-import { agentLineSource, invoiceReaderSource } from "./agentLine.js";
+import { invoiceReaderSource, treasuryAdvisorSource } from "./agentLine.js";
 import { PAGES } from "./pages.gen.js";
 
 export interface Env {
@@ -17,11 +17,15 @@ export interface Env {
   MFA_SESSIONS?: string;
   /** Airwallex's webhook signing secret, set by npm run cards -- webhook. Without it the webhook route answers 503. */
   AIRWALLEX_WEBHOOK_SECRET?: string;
-  /** Claude for Try Purser, and for /try/sign's Treasury agent sentence (Haiku): a Worker secret Max sets himself; no
-   *  script in this repo sets it (test/try-fx.test.ts). Without it the pages read by code alone and show fixed text. */
+  /** Claude for Try Purser, and for /try/sign's live agents (Sonnet reads the invoice, Opus advises): a Worker secret
+   *  Max sets himself; no script in this repo sets it (test/try-fx.test.ts). Without it the pages read by code alone,
+   *  show a recorded output or fixed text, labelled. */
   ANTHROPIC_API_KEY?: string;
-  /** /try/sign's emergency switch for the Haiku sentence: "off" (any case, trimmed) stops the call; any other value,
-   *  or none, leaves it on. Max sets it himself when needed (dashboard or wrangler); no script or config here does. */
+  /** /try/sign's emergency switch for every live agent call (Sonnet and Opus): "off" (any case, trimmed) stops them;
+   *  any other value, or none, leaves them on. Max sets it himself when needed (dashboard or wrangler); no script or
+   *  config here does. */
+  TRY_SIGN_AGENTS?: string;
+  /** The switch's old name, still honoured: "off" here stops every live agent call too (a Worker deployed with it stays off). */
   TRY_SIGN_HAIKU?: string;
   /**
    * /try/sign's live FX quote (read-only, sandbox only): a Worker secret Max sets himself, from a scoped sandbox key
@@ -37,7 +41,7 @@ export interface Env {
 export class RelayObject extends DurableObject<Env> {
   // Each desk is made on its instance's first request, so an instance holds only its own desk's tables: the try-sign
   // instance never has the relay's, and is handed only the Airwallex sandbox key, inside a client that can do nothing but
-  // ask for an FX quote (worker/src/fxQuote.ts), and the Anthropic key inside a function that asks Haiku for one sentence.
+  // ask for an FX quote (worker/src/fxQuote.ts), and the Anthropic key inside the functions that read the invoice and ask for the advice.
   private relay?: Relay;
   private tryDesk?: TryDesk;
   private trySign?: TrySignDesk;
@@ -48,10 +52,12 @@ export class RelayObject extends DurableObject<Env> {
       const { AIRWALLEX_CLIENT_ID: id, AIRWALLEX_API_KEY: key } = this.env;
       return (this.trySign ??= new TrySignDesk(this.ctx.storage.sql, {
         fx: id && key ? new SandboxQuotes({ clientId: id, apiKey: key }) : null,
-        // Only a function that asks Haiku for one sentence: the desk never holds the key itself.
-        agentLine: agentLineSource(this.env, fetch),
-        // Section 6: the runner's invoice reader (Sonnet), live, under the same switch and budget.
+        // Section 6: the runner's invoice reader (Sonnet), live; spec 6b: the Treasury agent's advice (Opus). Only
+        // functions that make those calls: the desk never holds the key itself. Both under the switch and the budget.
         reader: invoiceReaderSource(this.env, fetch),
+        advisor: treasuryAdvisorSource(this.env, fetch),
+        // The recorded real outputs, built into the bundle, for when a live agent is unavailable.
+        recorded: PAGES.tryAgentsRecorded ?? null,
         // 1.1: the main run's recorded rate, built in with the pages, for step 0's worst case.
         rate: PAGES.exposureRate ?? null,
       })).fetch(req);

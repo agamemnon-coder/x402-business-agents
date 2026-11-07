@@ -139,7 +139,7 @@ describe("field by field: looser needs a signature, stricter applies at once, ou
     expect(v.stored()).toEqual(before);
   });
 
-  it("names its bounds: amounts up to the world's balance (EUR 30,000.00), limits from EUR 1.00, an end date within a year", () => {
+  it("names its bounds: amounts up to the world's bound (EUR 30,000.00), limits from EUR 1.00, an end date within a year", () => {
     expect(POLICY_MAX_CENTS).toBe(3_000_000);
   });
 
@@ -235,9 +235,11 @@ describe("(d) the world follows the policy", () => {
     expect(t1).toMatchObject({ check: "pass", status: "waiting" });
     expect(t1.waits).toMatch(/waits for a person/);
     expect(s.out.world.reserve_floor).toBe("20000.00");
+    // Free EUR above the new floor is 6,000.00 of the 6,520.00 needed: code converts the 520.00 short (USD 587.44).
+    expect((t1 as unknown as { plan: unknown }).plan).toMatchObject({ needed: "6520.00", free: "6000.00", buy: "520.00", sell: "587.44" });
     // Now it can be signed, and the stand-in runs it.
     const res = await call(v.d, "sign", signBody(v.w.world.token, t1, v.signed(t1.canonical)));
-    expect(await res.json()).toMatchObject({ verified: true, executed: { amount: "6500.00", balance_after: "23500.00" } });
+    expect(await res.json()).toMatchObject({ verified: true, executed: { amount: "6500.00", balance_after: "20020.00", usd_after: "7412.56" } });
   });
 
   it("a higher reserve floor: the payment that was allowed is blocked, and no signature runs it", async () => {
@@ -246,7 +248,7 @@ describe("(d) the world follows the policy", () => {
     expect(r.out.applied).toBe(true);
     const t2 = r.out.proposals.find((p) => p.proposal_id === "T-0002")!;
     expect(t2).toMatchObject({ check: "fail", status: "blocked" });
-    expect(t2.rule).toMatch(/Reserve floor: the balance may not go below EUR 29,000\.00/);
+    expect(t2.rule).toMatch(/Reserve floor: the EUR balance is already below its floor of EUR 29,000\.00/);
     const res = await call(v.d, "sign", signBody(v.w.world.token, v.b, v.signed(v.b.canonical)));
     expect(res.status).toBe(409);
     expect(v.db.prepare("SELECT status FROM ts_proposals WHERE world = ? AND id = 'T-0002'").get(v.w.world.id)).toEqual({ status: "blocked" });
@@ -263,11 +265,12 @@ describe("(d) the world follows the policy", () => {
   it("executed payments stay executed, and the payment check after a run uses the policy", async () => {
     const v = await visitor();
     expect((await (await call(v.d, "sign", signBody(v.w.world.token, v.b, v.signed(v.b.canonical)))).json() as { verified: boolean }).verified).toBe(true);
-    // Balance 28,150.00: with the floor at 20,000.00, T-0001 (6,500.00) would leave 21,650.00, so it passes.
+    // EUR 25,020.00 and USD 7,017.18 after T-0002: with the EUR floor at 20,000.00, T-0001 (6,500.00) needs 6,520.00 with
+    // 5,020.00 free, so 1,500.00 is converted (USD 1,694.52, within the 4,017.18 free above the USD floor): it passes.
     const s = await v.signedChange("treasury", { reserve_floor: "20000.00" });
     // Signing T-0002 brought the agent's next invoice (T-0003, test/try-next-invoice.test.ts); it waits for a signature.
     expect(s.out.proposals.map((p) => `${p.proposal_id}:${p.status}`)).toEqual(["T-0001:waiting", "T-0002:executed", "T-0003:waiting"]);
-    expect(s.out.world.balance).toBe("28150.00");
+    expect(s.out.world.balance).toBe("25020.00");
   });
 });
 
@@ -293,17 +296,17 @@ describe("\"may pay alone up to\": raised and signed, a payment within it runs w
     const t2 = t2Of(s.out);
     expect(PAID_ALONE).toBe("paid alone under your new policy");
     expect(t2.status).toBe("executed");
-    expect(t2.execution).toMatchObject({ alone: true, label: PAID_ALONE, amount: "1850.00", balance_after: "28150.00", terms_sha256: v.b.terms_sha256, policy_change_sha256: sha(first.out.canonical!), policy_version: "2" });
+    expect(t2.execution).toMatchObject({ alone: true, label: PAID_ALONE, amount: "1850.00", balance_after: "25020.00", usd_after: "7017.18", terms_sha256: v.b.terms_sha256, policy_change_sha256: sha(first.out.canonical!), policy_version: "2" });
     expect(t2.execution!.by).toMatch(/^stand-in executor: recorded in this test world only; nothing paid or converted at Airwallex, no Metal call$/);
     expect(t2.execution!.terms_sha256).toBe(sha(v.b.canonical));
-    expect(s.out.world.balance).toBe("28150.00");
+    expect(s.out.world.balance).toBe("25020.00");
     expect((s.out.locks.treasury as { purser: { payments: { proposal_id: string; check: string; alone?: boolean }[] } }).purser.payments.find((p) => p.proposal_id === "T-0002")).toMatchObject({ check: "executed", alone: true });
     // Once only: its signature runs nothing more, and the next policy change does not run it again.
     const res = await call(v.d, "sign", signBody(v.w.world.token, v.b, v.signed(v.b.canonical)));
     expect(res.status).toBe(409);
     const again = await v.send("treasury", { per_tx: "20.00" });
     expect(again.out.paid_alone).toEqual([]);
-    expect(again.out.world.balance).toBe("28150.00");
+    expect(again.out.world.balance).toBe("25020.00");
   });
 
   it("raised but unsigned: refused, and nothing runs or changes", async () => {
@@ -315,7 +318,7 @@ describe("\"may pay alone up to\": raised and signed, a payment within it runs w
     expect(v.stored()).toEqual(before);
     expect(t2Of(r.out)).toMatchObject({ status: "waiting", check: "pass" });
     expect(t2Of(r.out).waits).toMatch(/Above the EUR 500\.00 an agent may pay alone/);
-    expect(r.out.world.balance).toBe("30000.00");
+    expect(r.out.world.balance).toBe("26000.00");
     // Signed over other terms (the same change asked for EUR 1,000.00): refused too, nothing runs.
     const other = await v.send("treasury", { alone: "1000.00" });
     const bad = await v.send("treasury", { alone: "2000.00" }, { canonical: r.out.canonical, credential: v.signed(other.out.canonical!) });
@@ -349,7 +352,7 @@ describe("\"may pay alone up to\": raised and signed, a payment within it runs w
     expect(t1Of(floor.out)).toMatchObject({ status: "waiting", check: "pass" });
     expect(t1Of(floor.out).waits).toMatch(/Above the EUR 1,000\.00 an agent may pay alone/);
     expect(t2Of(floor.out)).toMatchObject({ status: "executed", execution: { alone: true, label: PAID_ALONE } });
-    expect(floor.out.world.balance).toBe("28150.00");
+    expect(floor.out.world.balance).toBe("25020.00");
   });
 
   it("raised high enough for both, with the floor lowered: both run alone, one after the other, the floor checked on each", async () => {
@@ -357,14 +360,16 @@ describe("\"may pay alone up to\": raised and signed, a payment within it runs w
     await v.signedChange("treasury", { reserve_floor: "20000.00" });
     const s = await v.signedChange("treasury", { alone: "7000.00" });
     expect(s.out.paid_alone).toEqual(["T-0001", "T-0002"]);
-    expect(s.out.world.balance).toBe("21650.00");
-    // With a floor that holds for one only, the first in line runs and the other is blocked by the floor.
+    // T-0001: 520.00 converted (USD 587.44), EUR 20,020.00; T-0002: 1,850.00 converted (USD 2,089.91), EUR 20,020.00.
+    expect(s.out.world).toMatchObject({ balance: "20020.00", usd_balance: "5322.65" });
+    // With floors that hold for one only, the first in line runs and the other is blocked by them: at EUR 23,000.00,
+    // T-0001 converts 3,520.00 (USD 3,976.47), which leaves USD 1,023.53 above its floor, too little for T-0002's 2,089.91.
     const w = await visitor();
-    await w.signedChange("treasury", { reserve_floor: "22000.00" });
+    await w.signedChange("treasury", { reserve_floor: "23000.00" });
     const t = await w.signedChange("treasury", { alone: "7000.00" });
     expect(t.out.paid_alone).toEqual(["T-0001"]);
     expect(t2Of(t.out)).toMatchObject({ status: "blocked", check: "fail" });
-    expect(t.out.world.balance).toBe("23500.00");
+    expect(t.out.world).toMatchObject({ balance: "23020.00", usd_balance: "4023.53" });
   });
 
   it("its quote expired: it does not run alone; with a new quote, it runs alone then", async () => {
