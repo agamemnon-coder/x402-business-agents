@@ -1,16 +1,18 @@
-// Optional recordings in the premiere, unused in the final film (npm run video -- --slot 08-faceid=<file>[@<start>-<end>] --slot 11-turn=<file>):
+// Recordings in the premiere (npm run video -- --slot 08-faceid=<file>[@<start>-<end>] --slot 11-turn=<file>[@a-b,c-d,…]):
 // portrait phone recordings, composed into a rounded phone frame beside the scene's captions. The page draws the scene
 // with an empty frame at the box below (?rec=x,y,w,h&recfor=<scene>); ffmpeg then lays the recording, cut to its
-// window, scaled to the box, its corners rounded by a mask, into that frame, fading with the scene. Without a file the
-// scene keeps its rendered picture: the Face ID reconstruction (08) or the /try/sign mock (10).
+// windows (one after the other, hard cuts), scaled to the box, its corners rounded by a mask, into that frame, fading
+// with the scene. Film v6 lays one in: the walk of the live /try/sign page (11-turn, src/film/premiereScript.ts
+// RECORDING); 08-faceid keeps its rendered reconstruction.
 
 /** The scenes that take a phone recording. */
 export const SLOT_SCENES = ["08-faceid", "11-turn"] as const;
 export type SlotScene = (typeof SLOT_SCENES)[number];
 
-export interface SlotFile { id: SlotScene; file: string; from: number | null; to: number | null }
+/** A recording for a scene and the windows of it that play, in order (none: the whole recording). */
+export interface SlotFile { id: SlotScene; file: string; windows: [number, number][] }
 
-/** `--slot 08-faceid=<file>@<start>-<end>` (or `--slot=…`), any number of times; the rest of the arguments unchanged. */
+/** `--slot 08-faceid=<file>@<start>-<end>[,<start>-<end>…]` (or `--slot=…`), any number of times; the rest unchanged. */
 export function parseSlotArgs(argv: string[]): { slots: SlotFile[]; rest: string[] } {
   const slots: SlotFile[] = [], rest: string[] = [];
   for (let i = 0; i < argv.length; i++) {
@@ -20,14 +22,14 @@ export function parseSlotArgs(argv: string[]): { slots: SlotFile[]; rest: string
     else if (a.startsWith("--slot=")) spec = a.slice("--slot=".length);
     else { rest.push(a); continue; }
     if (!spec) throw new Error("video: --slot needs <scene>=<file>[@<start>-<end>]");
-    const m = /^([0-9]{2}-[a-z-]+)=(.+?)(?:@(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?))?$/.exec(spec);
-    if (!m) throw new Error(`video: --slot ${spec}: expected <scene>=<file>[@<start>-<end>] (seconds)`);
+    const m = /^([0-9]{2}-[a-z-]+)=(.+?)(?:@(\d+(?:\.\d+)?-\d+(?:\.\d+)?(?:,\d+(?:\.\d+)?-\d+(?:\.\d+)?)*))?$/.exec(spec);
+    if (!m) throw new Error(`video: --slot ${spec}: expected <scene>=<file>[@<start>-<end>[,<start>-<end>…]] (seconds)`);
     const id = m[1] as SlotScene;
     if (!SLOT_SCENES.includes(id)) throw new Error(`video: --slot ${id}: only ${SLOT_SCENES.join(" and ")} take a recording`);
-    const from = m[3] === undefined ? null : Number(m[3]), to = m[4] === undefined ? null : Number(m[4]);
-    if (from !== null && to !== null && to <= from) throw new Error(`video: --slot ${spec}: the window ends before it starts`);
+    const windows = (m[3] ?? "").split(",").filter(Boolean).map((w) => w.split("-").map(Number) as [number, number]);
+    if (windows.some(([a, b]) => b <= a)) throw new Error(`video: --slot ${spec}: a window ends before it starts`);
     if (slots.some((s) => s.id === id)) throw new Error(`video: --slot ${id} given twice`);
-    slots.push({ id, file: m[2]!, from, to });
+    slots.push({ id, file: m[2]!, windows });
   }
   return { slots, rest };
 }
@@ -61,16 +63,24 @@ export function maskExpr(r: number): string {
   ].join("+")})`;
 }
 
+/** How long the windows play together (seconds); none: the recording's own length. */
+export const windowsSeconds = (windows: [number, number][], whole: number) => (windows.length ? Math.round(windows.reduce((k, [a, b]) => k + b - a, 0) * 1000) / 1000 : whole);
+
 /**
- * The filter that lays the recording (input 1, already cut to its window) and the mask (input 2) into the scene's clip
- * (input 0): sped up when needed, at 60 fps, cover-scaled to the box, held on its last frame, cut to the scene, faded
- * with the scene, its corners rounded.
+ * The filter that lays the recording (input 1) and the mask (input 2) into the scene's clip (input 0): its windows cut
+ * out and joined in order (hard cuts), sped up when needed, at 60 fps, cover-scaled to the box, held on its last frame,
+ * cut to the scene, faded with the scene, its corners rounded.
  */
-export function slotFilter(o: { box: { x: number; y: number; w: number; h: number }; seconds: number; speed: number; fade: [number, number] }): string {
+export function slotFilter(o: { box: { x: number; y: number; w: number; h: number }; seconds: number; speed: number; fade: [number, number]; windows?: [number, number][] }): string {
   const { box, seconds, speed, fade } = o;
+  const windows = o.windows ?? [];
   const fades = [fade[0] > 0 ? `fade=t=in:st=0:d=${fade[0]}:alpha=1` : "", fade[1] > 0 ? `fade=t=out:st=${(seconds - fade[1]).toFixed(3)}:d=${fade[1]}:alpha=1` : ""].filter(Boolean);
+  const cut = windows.length
+    ? [...windows.map(([a, b], i) => `[1:v]trim=start=${a}:end=${b},setpts=PTS-STARTPTS[w${i}]`), `${windows.map((_, i) => `[w${i}]`).join("")}concat=n=${windows.length}:v=1:a=0[cut]`]
+    : ["[1:v]null[cut]"];
   return [
-    `[1:v]setpts=(PTS-STARTPTS)/${speed},fps=60,scale=${box.w}:${box.h}:force_original_aspect_ratio=increase,crop=${box.w}:${box.h},setsar=1,tpad=stop_mode=clone:stop_duration=${seconds},trim=duration=${seconds},format=yuva420p[r]`,
+    ...cut,
+    `[cut]setpts=(PTS-STARTPTS)/${speed},fps=60,scale=${box.w}:${box.h}:force_original_aspect_ratio=increase,crop=${box.w}:${box.h},setsar=1,tpad=stop_mode=clone:stop_duration=${seconds},trim=duration=${seconds},format=yuva420p[r]`,
     `[2:v]scale=${box.w}:${box.h},format=gray[m]`,
     `[r][m]alphamerge${fades.length ? `,${fades.join(",")}` : ""}[rm]`,
     `[0:v][rm]overlay=${box.x}:${box.y}:eof_action=pass,format=yuv420p[v]`,

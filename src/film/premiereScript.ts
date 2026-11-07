@@ -1,21 +1,27 @@
-// The premiere's script (film v5, 2:42): its eighteen scenes in order, how long each runs and what the picture is. The
-// final film is the rendered clips only (a portrait phone recording can still be laid into 08 or 11 with --slot; the
-// final film uses none). The voice-over is the narrator's script (docs/video/narrator-script.md), read by an
-// AI-generated voice (ElevenLabs) in the third person; the music, AI-generated (ElevenLabs), is mixed afterwards, to
-// the scene times in scenes-v5.json. The page (src/film/premiere.html)
-// draws each scene for exactly its seconds; npm run video records one clip per scene from it and writes, from the same
-// data, the subtitles, the read-aloud script and the script table (docs/video/premiere-script.md), so the words, the
-// figures and the pictures cannot drift apart.
+// The premiere's script (film v6, 2:59): its twenty scenes in order, how long each runs and what the picture is. The
+// final film is the rendered clips, with one recording laid in: the walk of the live /try/sign page in 11-turn
+// (RECORDING, premiere.ts; --slot can lay another into 08 or 11). The voice-over is the narrator's script
+// (docs/video/narrator-script-v6.md), read by an AI-generated voice (ElevenLabs) in the third person; the music,
+// AI-generated (ElevenLabs), is mixed afterwards, to the scene times in scenes-v6.json. The page
+// (src/film/premiere.html) draws each scene for exactly its seconds; npm run video records one clip per scene from it and
+// writes, from the same data, the subtitles, the read-aloud script, the script table (docs/video/premiere-script.md) and
+// the prompt for ElevenLabs Studio, so the words, the figures and the pictures cannot drift apart.
 
 import type { Beat } from "../video/plan.js";
-import { SCENE_SECONDS, speechSeconds, type PremiereData, type VoiceLine } from "./premiere.js";
+import { RECORDED_LABEL, RECORDING, SCENE_SECONDS, speechSeconds, type PremiereData, type VoiceLine } from "./premiere.js";
+
+export { RECORDING };
+/** Film v6's files (v5's stay in docs/video/ as they were: scenes-v5.json, subtitles-v5.srt, narrator-script.md). */
+export const MASTER = "master-v6.mp4";
+export const SCENES_JSON = "scenes-v6.json";
+export const SUBTITLES = "subtitles-v6.srt";
 
 export interface PremiereScene {
   id: string;
   title: string;
   seconds: number;
-  /** "render": the clip is the scene. "slot": a recording goes here; the clip is a stand-in, the overlay labels it. */
-  kind: "render" | "slot";
+  /** "render": the clip is the scene. "recording": a recording is laid into the frame the clip draws (RECORDING). */
+  kind: "render" | "recording";
   /** What the picture shows (the script table's picture column). */
   picture: string;
   /** The recording that fills a slot, and who makes it. */
@@ -31,45 +37,50 @@ export interface PremiereScene {
 }
 
 export const PREMIERE_SCENES: PremiereScene[] = [
-  { id: "01-hook", title: "The hook", seconds: 6, kind: "render", music: "None in this render (v5: the music is mixed afterwards).", fade: [0, 0], credits: false,
-    picture: "Black, a beat of silence, then “AI agents can now spend money.” slams in, large; a hard cut to “So who signs off?”, large, still on black, a pen stroke drawing itself under it." },
+  { id: "01-hook", title: "The hook", seconds: 6, kind: "render", music: "None in this render (the music is mixed afterwards).", fade: [0, 0], credits: false,
+    picture: "Black, a beat of silence, then “AI agents are starting to spend money.” slams in, large; a hard cut to “So who signs off?”, large, still on black, a pen stroke drawing itself under it." },
   { id: "02-purser", title: "Purser", seconds: 4, kind: "render", music: "None in this render.", fade: [0, 0.5],
     picture: "A straight cut to the wordmark: Purser's own pen mark, the name wiped in, a line drawn under it, and the core line in two lines." },
   { id: "03-agents", title: "Three Claude agents", seconds: 10, kind: "render", music: "None in this render.",
     picture: "Three cards come in 0.7 s apart, one per agent, and each is lit for 3 s in turn: its name, its Claude model and its job, and the limits that hold it: its own Airwallex card and its own Metal mandate, each with the record's figures as the run began; then the limits line." },
   { id: "04-how", title: "How Purser works", seconds: 8, kind: "render", music: "None in this render.",
     picture: "The diagram builds left to right: agent → rules → person → Airwallex or Metal → books, a payment travelling along it as a soft light pulse; then a second pulse turns red at Airwallex or Metal: the box flashes red, “Refused at the limit” under it, both gone within a second. No logos." },
-  { id: "05-price", title: "The price rise, refused by Metal", seconds: 12, kind: "render", music: "None in this render.",
+  { id: "05-price", title: "The price rise, refused by Metal", seconds: 11, kind: "render", music: "None in this render.",
     picture: "The supplier's price as a line chart, rising from the old price to the new one across the mandate's cap (dashed); Metal's refusal appears as it crosses; the honest label; the refusal's transaction on chain." },
   { id: "05b-treasury", title: "Treasury's two options", seconds: 8, kind: "render", music: "None in this render.",
     picture: "Treasury's two plans side by side, each within the same total: A (the Sourcing agent's cap up, our price unchanged) and B (our price up); then A is signed with Face ID, with the time, and a small honest line that a labelled test passkey co-signed it." },
-  { id: "06-metal", title: "Every Metal payment on chain", seconds: 8, kind: "render", music: "None in this render.",
+  { id: "06-metal", title: "Every Metal payment on chain", seconds: 6, kind: "render", music: "None in this render.",
     picture: "A spec card: the run's Metal payments, counting up to the record's figure, each its own transaction on Metal testnet, no emulator; small under it, the mandate transactions and the refusal on chain." },
-  { id: "07-dispute", title: "The dispute", seconds: 10, kind: "render", music: "None in this render.",
+  { id: "07-dispute", title: "The dispute", seconds: 9, kind: "render", music: "None in this render.",
     picture: "Twelve order chips, each checked “signed”; the three with wrong data turn “refunded”; the refund of the rest is stamped rejected with Face ID." },
   { id: "08-faceid", title: "Face ID", seconds: 8, kind: "render", music: "None in this render.", fade: [0.3, 0.3],
-    picture: "A rendered iPhone with P-0005's approval sheet, its exact terms and their hash from the record: “Confirm with Face ID” is pressed, the Face ID glyph scans, then “Approved”. A slow camera push-in on the phone. Labelled the whole time as a reconstruction, with the real Face ID's time. The final film uses this reconstruction." },
-  { id: "09-six", title: "6 seconds to PAID", seconds: 10, kind: "render", music: "None in this render; the drop goes on its cut.",
+    picture: "A rendered iPhone with P-0005's approval sheet, its exact terms and their hash from the record: “Confirm with Face ID” is pressed, the Face ID glyph scans, then “Approved”. A slow camera push-in on the phone. Labelled the whole time as a reconstruction, with the real Face ID's time." },
+  { id: "09-six", title: "6 seconds to PAID", seconds: 9, kind: "render", music: "None in this render; the drop goes on its cut.",
     picture: "The spec card: the seconds from Face ID to PAID, counting up to the record's figure from the cut, said plainly to be simulated in the sandbox; the five timestamps, SENT and PAID marked simulated; the transfer id; “Every id is on /proof”." },
-  { id: "10-why", title: "Why Face ID, not a password", seconds: 10, kind: "render", music: "None in this render.",
+  { id: "10-why", title: "Why Face ID, not a password", seconds: 8, kind: "render", music: "None in this render.",
     picture: "The question, then the answer in one sentence." },
-  { id: "11-turn", title: "Your turn: /try/sign", seconds: 7, kind: "render", music: "None in this render.",
-    picture: "A mock of the live /try/sign page in a phone (drawn from its code) beside large captions, labelled as a mock. The final film uses this mock." },
-  { id: "12-tamper", title: "One cent. Worthless.", seconds: 8, kind: "render", music: "None in this render; leave the second before “One cent. Worthless.” silent.", fade: [0, 0.45],
+  { id: "11-turn", title: "Your turn: the live /try/sign page", seconds: 13, kind: "recording", music: "None in this render.",
+    picture: "A walk of the live /try/sign page, recorded in headless Chromium at phone size and laid into a phone frame, cut to its steps: Claude Sonnet reads the invoice, Purser's code checks it, Claude Opus advises, Face ID signs (Chromium's virtual authenticator), one cent changed is refused, a planted trick is blocked. Beside it, each step as it comes, and the label “" + RECORDED_LABEL + "”.",
+    slot: "the walk of the live page, out/video/recordings/trysign-live-1.mp4 (npx tsx src/cli/recordTrySign.ts), cut to RECORDING's windows; what the page showed is in docs/video/recording-trysign-v6.json" },
+  { id: "12-tamper", title: "One cent. Worthless.", seconds: 6, kind: "render", music: "None in this render; leave the second before “One cent. Worthless.” silent.", fade: [0, 0.45],
     picture: "A slow camera push-in: the amount changes by one cent, its hash changes completely, the same signature is refused; a second of silence; then “One cent. Worthless.”" },
-  { id: "13-proof", title: "The proof", seconds: 13, kind: "render", music: "None in this render.", beats: [0, 2.6],
-    picture: "Two cards: decisions by Claude, counting up; then the run's stops, the figure with “nothing paid over a limit” beside it, and who stopped what in four rows, each coming in as the voice names it." },
-  { id: "13b-value", title: "The agents do the work", seconds: 4, kind: "render", music: "None in this render.",
+  { id: "13-proof", title: "The proof", seconds: 12, kind: "render", music: "None in this render.", beats: [0, 2.6],
+    picture: "Two cards, the main run named above them: decisions by Claude, counting up; then the run's stops, the figure with “nothing paid over a limit” beside it, and who stopped what in four rows, each coming in as the voice names it." },
+  { id: "13b-awx", title: "Airwallex holds the limits itself (awx-1)", seconds: 11, kind: "render", music: "None in this render.",
+    picture: "The second live run (7 November, Airwallex only): two declines by Airwallex itself, each its code in red, the charge and the card's own limit or category; the agent's raise asked of the CFO, approved with Face ID; the hash the CFO signed in the SWIFT payouts' metadata, each payout PAID; the run's own label." },
+  { id: "13c-airi", title: "Visa Intelligent Commerce via Airi", seconds: 14, kind: "render", music: "None in this render.",
+    picture: "The Airi run (7 November): the heading and Max's line; three outcome rows, each the record's amount: paid alone, paid after Face ID (its proposal), refused by Purser; then the checks passed and the run's own label." },
+  { id: "13d-value", title: "The agents do the work", seconds: 4, kind: "render", music: "None in this render.",
     picture: "One large line: “The agents do the work. The CFO signs only the exceptions.”" },
-  { id: "14-real", title: "What's real, what's ours", seconds: 10, kind: "render", music: "None in this render.",
+  { id: "14-real", title: "What's real, what's ours", seconds: 8, kind: "render", music: "None in this render.",
     picture: "Two columns: real (test money) and ours or simulated." },
   { id: "15-close", title: "The closing line", seconds: 13, kind: "render", music: "None in this render.",
     picture: "The rendered ending, under the narrator's closing line, mirrors the intro: the three beats one by one, the closing line in two lines, then the intro's wordmark lockup with “Starter Kit 11” under it; Max's name and role lower left." },
-  { id: "16-end", title: "Try it yourself, and the credits", seconds: 13, kind: "render", music: "None in this render.", fade: [0.45, 1], credits: false,
-    picture: "End card: “Try it yourself” and the /try/sign address, test money; after four seconds it gives way to the end credits (9 s, text only, no logos): who does what (built by Max Geurtsen; Airwallex, Metal and Claude by Anthropic, each with its role), the thanks, the AI-generated voice and music, test money only." },
+  { id: "16-end", title: "Try it yourself, and the credits", seconds: 11, kind: "render", music: "None in this render.", fade: [0.45, 1], credits: false,
+    picture: "End card: “Try it yourself” and the /try/sign address, test money; after three seconds it gives way to the end credits (text only, no logos): who does what (built by Max Geurtsen; Airwallex, Metal and Claude by Anthropic, each with its role), the thanks, the AI-generated voice and music, test money only." },
 ];
 
-// The scene lengths are Max's (SCENE_SECONDS, film v5), and the voice-over is timed in them: they must agree.
+// The scene lengths are SCENE_SECONDS (film v6), and the voice-over is timed in them: they must agree.
 for (const s of PREMIERE_SCENES) if (SCENE_SECONDS[s.id] !== s.seconds) throw new Error(`premiere: ${s.id} is ${s.seconds} s here and ${SCENE_SECONDS[s.id]} s in SCENE_SECONDS`);
 if (Object.keys(SCENE_SECONDS).join() !== PREMIERE_SCENES.map((s) => s.id).join()) throw new Error("premiere: the scenes and SCENE_SECONDS list different scenes");
 
@@ -93,11 +104,11 @@ export function premiereBeats(data: PremiereData): Beat[] {
 
 /** The scenes in the master, in order. */
 export const MASTER_CLIPS = PREMIERE_SCENES.map((s) => s.id);
-/** The scenes a portrait recording can still be laid into, each with its overlay (letterbox bars and label, a
- * transparent PNG). The final film lays in none. */
+/** The scenes a portrait recording can be laid into, each with its overlay (letterbox bars and label, a transparent
+ * PNG). The final film (v6) lays the walk of the live page into 11-turn; 08 keeps its rendered reconstruction. */
 export const OVERLAYS = ["08-faceid", "11-turn"] as const;
 
-/** The scene times for the mix (scenes-v5.json): each scene's id, start and end, in seconds. */
+/** The scene times for the mix (scenes-v6.json): each scene's id, start and end, in seconds. */
 export const scenesJson = () => premiereTimeline().map((s) => ({ id: s.id, start: s.start, end: s.start + s.seconds }));
 
 // ---- Words: a voice-over line lasts as long as it takes to say at an unhurried pace ----
@@ -163,7 +174,7 @@ export function premiereCues(data: PremiereData): { from: number; to: number; te
   return out;
 }
 
-/** English subtitles (out/video/subtitles.srt, docs/video/subtitles.srt): text only. */
+/** English subtitles (subtitles-v6.srt, out/video/ and docs/video/): text only. */
 export function premiereSrt(data: PremiereData): string {
   return premiereCues(data).map((c, i) => `${i + 1}\n${stamp(c.from)} --> ${stamp(c.to)}\n${c.text}\n`).join("\n");
 }
@@ -175,7 +186,7 @@ export function premiereReadAloud(data: PremiereData): string {
   const lines = [
     `# Purser, the premiere: the voice-over (${clock(total)})`, "",
     "Generated by `npm run video` from `src/film/premiere.ts` (the words and figures) and `src/film/premiereScript.ts` (the times); the script with its pictures and sources is [premiere-script.md](premiere-script.md).",
-    `Each line starts at the time shown. ${words} words in ${clock(total)}: calm, with the silences left in. The narrator is an AI-generated voice (ElevenLabs), speaking in the third person; it reads every line of [narrator-script.md](narrator-script.md), and the music is AI-generated too (ElevenLabs), as the end card credits both. The times are the scenes' (scenes-v5.json), each line about half a second in.`, "",
+    `Film v6. Each line starts at the time shown. ${words} words in ${clock(total)}: calm, with the silences left in. The narrator is an AI-generated voice (ElevenLabs), speaking in the third person; it reads every line of [narrator-script-v6.md](narrator-script-v6.md), and the music is AI-generated too (ElevenLabs), as the end card credits both. The times are the scenes' (${SCENES_JSON}), each line about half a second in. The script of film v5 (2:42) is [script-v5.md](script-v5.md).`, "",
   ];
   for (const s of premiereTimeline()) {
     const vs = data.voice[s.id] ?? [];
@@ -205,12 +216,14 @@ function onScreen(id: string, sc: Record<string, unknown>): string {
     case "07-dispute": return [sc.kicker, q(sc.claim), `Orders ${list(sc.orders).join(" ")}: ${sc.signed}`, `${list(sc.refunded).join(", ")}: ${sc.refundLine}`, `${sc.rest} → **${sc.rejected}** (${sc.rejectedWhen})`].join("\n");
     case "08-faceid": return [`Phone: ${sc.pid}; ${q(sc.what)}; ${q(sc.button)} → ${q(sc.approved)}`, `Beside it: ${list(sc.side).join(" ")} ${sc.when}`, `Label, the whole scene: ${q(sc.recon)}`].join("\n");
     case "09-six": return [`**${sc.big} ${sc.unit}** ${sc.line}`, `**${sc.simulated}**`, ...list(sc.steps).map((x) => `${x.replace(": ", " UTC: ")}`), `${sc.transferLabel} \`${sc.transfer}\` · ${sc.detail}`, `**${sc.look}** (${sc.where})`, `Footnote: ${sc.foot}`].join("\n");
-    case "11-turn": return [`Label ${q(sc.label)} · ${sc.url}`, `Phone (mock): ${q(sc.h1)}; ${sc.agent} (${sc.tag}): ${q(sc.says)}`, ...list(sc.facts), `${q(sc.check)}; ${q(sc.sign)} → ${q(sc.verified)}, ${q(sc.executed)} → ${q(sc.tamper)}`, `Captions: ${list(sc.side).join(" ")}`, `Under the phone: ${sc.mockNote}`].join("\n");
+    case "11-turn": return [`Phone: the recorded walk of the live page (${sc.url}), cut to its steps`, `**${sc.head}**`, `Captions, each as its step comes: ${list(sc.side).join(" ")}`, `Label: ${q(sc.label)}`, `Small: ${sc.note}`].join("\n");
+    case "13b-awx": return [sc.kicker, `**${sc.head}**`, ...(sc.declines as { code: string; line: string }[]).map((d) => `**${d.code}**: ${d.line} · ${sc.by}`), `${sc.raise} → ${sc.raised}`, `${sc.hash}: ${list(sc.payouts).join("; ")}`, `Footnote, the run's own label: ${q(sc.foot)}`].join("\n");
+    case "13c-airi": return [`**${sc.head}**`, q(sc.line), ...(sc.rows as { label: string; amount: string; detail: string }[]).map((r) => `**${r.label}** ${r.amount} · ${r.detail}`), `**${sc.checks}**`, `Label: ${sc.label}`].join("\n");
     case "12-tamper": return [`**${sc.from}** ${sc.plus} → **${sc.to}**`, sc.hashes, q(sc.refused), `**${q(sc.last)}**`].join("\n");
     case "10-why": return `**${sc.q}**\n${list(sc.a).join(" ")}`;
-    case "13-proof": return (sc.cards as { big?: string; label?: string; small?: string; figure?: string; sub?: string; rows?: { big: string; label: string }[] }[])
+    case "13-proof": return `${sc.kicker}\n` + (sc.cards as { big?: string; label?: string; small?: string; figure?: string; sub?: string; rows?: { big: string; label: string }[] }[])
       .map((c) => (c.rows ? `**${c.figure}** · ${c.sub}: ${c.rows.map((r) => `**${r.big}** ${r.label}`).join(" | ")}` : `**${c.big}** ${c.label} (${c.small})`)).join("\n");
-    case "13b-value": return `**${list(sc.line).join(" ")}**`;
+    case "13d-value": return `**${list(sc.line).join(" ")}**`;
     case "14-real": return `**${sc.realHead}** (${sc.realNote}): ${list(sc.real).join(", ")}\n**${sc.oursHead}:** ${list(sc.ours).join(", ")}`;
     case "15-close": return `${list(sc.beats).join(" / ")} → ${list(sc.line).join(" ")} → **${sc.title}** (the intro's wordmark) · ${sc.sub}\nLower left: ${sc.name} · ${sc.role}`;
     case "16-end": return `**${sc.cta}** · ${sc.url}\n${sc.foot}\n${sc.mark}\nEnd credits, ${sc.head}: ${(sc.roll as [string, string][]).map((r) => `**${r[0]}**: ${r[1]}`).join(" · ")} · ${sc.thanks} · ${q(sc.credit)} · ${sc.last}`;
@@ -227,20 +240,22 @@ const USES: Record<string, string[]> = {
   "07-dispute": ["dispute.customer", "dispute.claim", "dispute.orders", "dispute.count", "dispute.signed", "dispute.refunded", "dispute.refundCount", "dispute.refundTotal", "dispute.rest", "dispute.proposal", "dispute.rejectedAt"],
   "08-faceid": ["licence.proposal", "licence.vendor", "licence.amount", "licence.method", "licence.invoice", "licence.fxBuy", "licence.fxSell", "licence.feeMax", "licence.by", "licence.model", "licence.expires", "licence.hash", "paid.faceAt"],
   "09-six": ["paid.seconds", "paid.faceAt", "paid.fxAt", "paid.createdAt", "paid.sentAt", "paid.paidAt", "paid.simulated", "paid.transfer", "paid.fee", "paid.conversion"],
-  "11-turn": ["try.proposal", "try.amount", "try.aloneLimit", "try.hash"],
+  "11-turn": ["rec.reader", "rec.advisor", "rec.tamper", "rec.trick", "rec.day"],
   "12-tamper": ["try.amount", "try.tampered", "try.hash", "try.tamperedHash"],
-  "13-proof": ["specs.decisions", "specs.byClaude", "specs.fallbacks", "specs.sourcing", "specs.support", "specs.treasury", "specs.stops", "specs.overLimit", "specs.stopsClaude", "specs.stopsMetal", "specs.stopsCfo", "specs.stopsPlanted"],
+  "13b-awx": ["awx.day", "awx.declines", "awx.limitCode", "awx.limitAmount", "awx.limitAgent", "awx.limit", "awx.mccCode", "awx.mcc", "awx.mccAgent", "awx.mccAllowed", "awx.raise", "awx.payouts", "awx.payoutCount", "awx.note"],
+  "13c-airi": ["airi.day", "airi.alone", "airi.limit", "airi.cfo", "airi.proposal", "airi.refused", "airi.checks", "airi.label"],
+  "13-proof": ["run.day", "specs.decisions", "specs.byClaude", "specs.fallbacks", "specs.sourcing", "specs.support", "specs.treasury", "specs.stops", "specs.overLimit", "specs.stopsClaude", "specs.stopsMetal", "specs.stopsCfo", "specs.stopsPlanted"],
 };
 export const factsUsed = (id: string) => USES[id] ?? [];
 
 /** No figure: where the scene's words come from instead. */
 const WORDS_FROM: Record<string, string> = {
-  "01-hook": "No figure. The hook, as Max wrote it for the film (5 November).",
-  "13b-value": "No figure. Max's line for the film (v5): the agents do the work, the CFO signs only the exceptions.",
+  "01-hook": "No figure. The hook, as Max wrote it for the film (5 November); v6 (7 November): \"are starting to spend money\", not \"can now\" (accuracy).",
+  "13d-value": "No figure. Max's line for the film (v5): the agents do the work, the CFO signs only the exceptions.",
   "02-purser": "No figure. Who built it, as the README's \"Who does what\" says; the core line under the wordmark is the README's first line, word for word.",
   "04-how": "No figure. The books: Purser's own double-entry books (src/accounting/); the film shows no booking in an outside accounting system.",
   "10-why": "No figure. The reason: docs/phone-approval.md (\"The passkey signs the SHA-256 of the exact terms … any change after signing makes it worthless\"); README.md, Words (\"the CFO's Face ID signs that hash\"). \"Password\", not \"PIN\": a passkey may itself be unlocked with the device's PIN, or Touch ID (README.md, Try it yourself); what counts is that it signs these exact terms, so the film does not say Face ID is required.",
-  "14-real": "No figure. README.md, \"What is real, what is mock\"; docs/claims.md (the second approver: `SECOND_APPROVER` in src/config/brand.ts).",
+  "14-real": "No figure. README.md, \"What is real, what is mock\"; docs/claims.md (the second approver: `SECOND_APPROVER` in src/config/brand.ts); Airi with a test card: docs/demo/airi-run.json (`test_card`, `label`).",
   "15-close": "No figure. The closing line (docs/video/narrator-script.md, 15-close); what it says of the run: see the 13-proof and 05–09 rows, and the Face ID decisions below.",
   "16-end": "No figure. The address: the hosted /try/sign (live since 4 November). The credits: who does what, as README.md (\"Who does what\") and docs/claims.md have it; the voice-over and the music of the final film, both AI-generated (ElevenLabs).",
 };
@@ -254,8 +269,8 @@ export function premiereTable(data: PremiereData): string {
     "(`test/premiere.test.ts` fails when it is out of date). The same code draws the film (`src/film/premiere.html`, recorded",
     "at 1920×1080 and 60 frames a second, letterboxed to 2.39:1), writes the subtitles and the read-aloud script, and",
     "stops the build when a figure is missing from its source.", "",
-    `One run only: the main run of 3 November 2026 in world \`main-1\` ([run log](../runs/2026-11-03-main-run.md)). Every figure about the run is read from its record, \`docs/demo/main-run.json\`; the test count from the README's test line; the /try/sign mock's figures from that page's own code. Test money throughout: the Airwallex sandbox and Metal testnet. Total ${clock(total)}.`, "",
-    "How to cut it and where the music goes: [README.md](README.md). The voice-over is an AI-generated voice (ElevenLabs) reading [narrator-script.md](narrator-script.md) in the third person; the music is AI-generated (ElevenLabs); the film needs no recording of Max.", "",
+    `Film v6. The main run of 3 November 2026 in world \`main-1\` ([run log](../runs/2026-11-03-main-run.md)), every figure about it read from its record, \`docs/demo/main-run.json\`; the two live runs of 7 November, each read from its own record: awx-1 on Airwallex alone (\`docs/demo/airwallex-run.json\`) and the Airi run (\`docs/demo/airi-run.json\`, [run log](../runs/2026-11-07-vic-1.md)); the walk of the live /try/sign page, recorded once, and what it showed (\`docs/video/recording-trysign-v6.json\`); the one-cent example's figures from that page's own code. Test money throughout: the Airwallex sandbox, Metal testnet and a test card. Total ${clock(total)}. Film v5 (2:42): [premiere-script-v5.md](premiere-script-v5.md).`, "",
+    "How to cut it and where the music goes: [README.md](README.md). The voice-over is an AI-generated voice (ElevenLabs) reading [narrator-script-v6.md](narrator-script-v6.md) in the third person; the music is AI-generated (ElevenLabs); the film needs no recording of Max.", "",
     "| Time | Clip | Picture | Text on screen | Voice-over | Source of each figure |",
     "|---|---|---|---|---|---|",
   ];
@@ -264,7 +279,7 @@ export function premiereTable(data: PremiereData): string {
     const vo = (data.voice[s.id] ?? []).map((v) => `**${v.who}:** ${v.text}`).join("\n") || "—";
     const used = factsUsed(s.id).map((k) => `${k.replace(/^\w+\./, "")} = \`${data.facts[k]!.value.length > 70 ? `${data.facts[k]!.value.slice(0, 67)}…` : data.facts[k]!.value}\`: ${data.facts[k]!.source}`);
     const src = used.length ? used.join("\n") : WORDS_FROM[s.id] ?? "";
-    const pic = `${s.kind === "slot" ? "**Slot.** " : ""}${s.picture}${s.slot ? `\nRecording: ${s.slot}.` : ""}`;
+    const pic = `${s.kind === "recording" ? "**Recording.** " : ""}${s.picture}${s.slot ? `\nRecording: ${s.slot}.` : ""}`;
     lines.push(`| ${clock(s.start)}–${clock(s.start + s.seconds)} | \`${s.id}.mp4\` (${s.seconds} s) | ${cell(pic)} | ${cell(onScreen(s.id, sc))} | ${cell(vo)} | ${cell(src)} |`);
   }
   lines.push("", "## Checked against the run", "",
@@ -272,8 +287,80 @@ export function premiereTable(data: PremiereData): string {
     `- **The stops (${data.facts["specs.stops"]!.value}, ${data.facts["specs.overLimit"]!.value} paid over a limit):** Claude ${data.facts["specs.stopsClaude"]!.value}, Metal ${data.facts["specs.stopsMetal"]!.value}, the CFO ${data.facts["specs.stopsCfo"]!.value}, the planted instruction ${data.facts["specs.stopsPlanted"]!.value}; the film stops when they do not add up to the record's count, or when Metal's differ from the record's refusals on chain. The site, the README and the form say the same sentence (\`test/premiere.test.ts\` compares it with \`src/redesign/run.ts\`). Not in the film, because it is another run's: the line the site shows below that figure, about the separate TAP run of 2 November.`,
     `- **The closing line** ("Claude decided, Airwallex and Metal held the limits, and the CFO signed only what went beyond them"): ${data.facts["specs.byClaude"]!.value} of ${data.facts["specs.decisions"]!.value} decisions by Claude; ${data.facts["run.faceIds"]!.value} decisions with Max's Face ID (${data.facts["run.faceIds"]!.source}).`,
     "- **The agents' limits (03b)** are each card's and each mandate's as the run began (src/config/policy.ts), checked against the record where it shows them; in the run the Sourcing agent's mandate was replaced (P-0002, 0.04 a payment) after the price rise, and its card raised to EUR 46.00 a purchase (P-0006).",
+    `- **The two runs of 7 November (13b, 13c)** are read from their own records, never the main run's: awx-1's ${data.facts["awx.declines"]!.value} declines are Airwallex's own codes on the sandbox's simulated charges (the run's label says so on screen); the Airi run's ${data.facts["airi.checks"]!.value} checks are its record's, and its rows say what Airi itself asked: one passkey tap in Airi for each purchase, besides the CFO's Face ID in Purser above the limit.`,
+    `- **The /try/sign walk (11) is a recording of the live page** (${data.facts["rec.day"]!.value}, one walk), cut to its steps, labelled on screen; the reader and the advice are the live Claude models only because the page itself labelled them so (\`docs/video/recording-trysign-v6.json\`); the passkey was Chromium's virtual authenticator, and the scene says so.`,
     "- **Face ID (08) is a reconstruction:** the rendered approval sheet carries P-0005's exact terms from the record, and says on screen that it is a reconstruction and when the real Face ID was (the record's `proposal.approved`).",
     "- **Face ID, not a password:** the reason is the docs' own (docs/phone-approval.md); \"password\", because a passkey may itself be unlocked with a PIN. The film does not say the server proves Face ID: /try/sign checks no attestation (docs/claims.md), so it says the server checks the signature.",
-    "- **Kept out:** logos of others, any seal of approval, safety counts, and other runs' figures.", "");
+    "- **Kept out:** logos of others, any seal of approval, safety counts, and any run's figures on a scene that does not name that run.", "");
   return lines.join("\n");
+}
+
+// ---- The prompt for ElevenLabs Studio (v6): the voice brief, the timed lines and the music brief, from the timeline ----
+
+/** "0:06.5": a time to the tenth of a second. */
+const tenth = (t: number) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, "0")}`;
+
+/**
+ * The prompt Max pastes into ElevenLabs Studio to add the voice and the music to master-v6.mp4 (as for v5): every line
+ * at its time, its pauses written out, the cuts and the music's shape on the scenes' times.
+ */
+export function elevenLabsPrompt(data: PremiereData): string {
+  const tl = premiereTimeline(), total = premiereSeconds();
+  const at = (id: string) => tl.find((s) => s.id === id)!.start;
+  const end = tl.find((s) => s.id === "16-end")!;
+  const lines: string[] = [];
+  for (const s of tl) {
+    const vs = data.voice[s.id] ?? [];
+    if (!vs.length) continue;
+    // A line in parts (pauses between them): one entry, the pauses written out as the gaps between the parts.
+    let text = vs[0]!.text;
+    for (let i = 1; i < vs.length; i++) text += ` [pause ${(vs[i]!.at - (vs[i - 1]!.at + vs[i - 1]!.seconds)).toFixed(1)}s] ${vs[i]!.text}`;
+    lines.push(`${tenth(s.start + vs[0]!.at)}  ${text}`);
+  }
+  const worthless = at("12-tamper") + data.voice["12-tamper"]!.at(-1)!.at;
+  const cuts = tl.slice(1).map((s) => clock(s.start)).join(", ");
+  return [
+    `Add a voice-over and music to this ${clock(total)} video (1920×1080, 60 fps, no audio yet). It is "Purser", a product film for a fintech hackathon: three AI agents spend a small company's test money, and a CFO signs off on anything beyond their limits with Face ID. Keep the video exactly as it is. Do not cut, retime or re-generate any shots.`,
+    "",
+    "VOICE",
+    "- One narrator for the whole film, using a stock ElevenLabs voice: calm, warm, confident, mid-range, clear international English. A trustworthy fintech keynote voice, not a hype ad.",
+    "- Do not clone or imitate any real person.",
+    "- Pace about 2.5 words per second. Each line must end before its scene ends.",
+    "- Say the names as written: Purser (PUR-ser), Airwallex (AIR-wall-ex), Airi (AIR-ee), SWIFT (one word), testnet (test-net), Face ID, Claude, Sonnet, Opus, Visa.",
+    "- Put each line on the timeline at the time given. \"[pause 0.5s]\" means a half-second pause.",
+    "",
+    ...lines,
+    `${clock(end.start)}–${clock(end.start + end.seconds)}  End card and credits: no voice.`,
+    "",
+    "MUSIC",
+    `- Generate one original instrumental track for the full ${clock(total)}: no vocals, no samples of existing songs, no copyrighted melodies.`,
+    "- Vibe: modern, minimal, confident fintech or enterprise. A clean electronic pulse, soft synth pads, a light kick. Calm tension that builds; premium and trustworthy, not EDM, not cinematic trailer bombast. Think of a product keynote for a bank.",
+    `- Tempo: 120 BPM, so every scene cut (each on a whole second) falls on a beat. The cuts are at ${cuts}.`,
+    "- Shape, synced to the picture:",
+    `  - 0:00–${clock(at("02-purser"))}: near silence, one soft low tone under the black opening.`,
+    `  - ${clock(at("02-purser"))}: the music starts with the "Purser" logo, low and steady.`,
+    `  - ${clock(at("02-purser"))}–${clock(at("09-six"))}: slowly builds through the agents, the price rise and the dispute. A small accent at ${clock(at("05-price"))} when the price jumps, a tense lift around ${clock(at("05-price") + 2)}–${clock(at("05b-treasury"))} when "Metal refused it" appears.`,
+    `  - ${clock(at("08-faceid"))}–${clock(at("09-six"))}: thins out under the Face ID scene, almost only a pad. Let the Face ID breathe.`,
+    `  - ${clock(at("09-six"))}: THE DROP. The main beat comes in exactly on the cut to "6 seconds".`,
+    `  - ${clock(at("09-six"))}–${clock(at("12-tamper"))}: full but controlled energy, through "Why Face ID" and the recording of the live page.`,
+    `  - ${tenth(worthless - 1)}–${tenth(worthless)}: stops dead for one second of silence before "One cent. Worthless.", then comes back softly at ${tenth(worthless)}.`,
+    `  - ${clock(at("13-proof"))}–${clock(at("13d-value"))}: steady pulse under the proof cards and the two live runs of 7 November, a soft hit on each new card (${clock(at("13-proof") + 3)}, ${clock(at("13b-awx"))}, ${clock(at("13c-airi"))}).`,
+    `  - ${clock(at("13d-value"))}–${clock(at("15-close"))}: lower.`,
+    `  - ${clock(at("15-close"))}–${clock(end.start)}: warm swell under the closing line.`,
+    `  - ${clock(end.start)}–${clock(total)}: resolves under the end credits and fades out with the picture by ${clock(total)}.`,
+    "",
+    "MIX",
+    "- Voice first. Keep the music 18–22 dB under the voice whenever someone speaks, and let it come up a little in the gaps.",
+    "- Final loudness about −14 LUFS integrated, true peak −1 dBTP, stereo, 48 kHz.",
+    "",
+    "CAPTIONS",
+    "- Add English captions with exactly the narrator lines above, on the same times. Keep them as a separate caption track; do not burn them into the picture.",
+    "",
+    "EXPORT",
+    "- MP4, 1920×1080, 60 fps, H.264 high bitrate, AAC 320 kbps.",
+    "- Also export the voice-only and music-only stems as WAV.",
+    "",
+    `Do not change any on-screen text, numbers or labels. The end card already credits "${data.screen["16-end"]!.credit as string}".`,
+    "",
+  ].join("\n");
 }

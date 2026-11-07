@@ -1,0 +1,32 @@
+{
+  "file": "trysign-live-1.mp4",
+  "page": "https://kit11.max-31b.workers.dev/try/sign",
+  "recorded_at": "2026-11-07T15:43:36Z",
+  "viewport": "390x844, dark",
+  "passkey": "Chromium's virtual authenticator (WebAuthn over CDP, user verification on)",
+  "walks": 1,
+  "frames": 177,
+  "at": {
+    "open": -0.01,
+    "start": 1.83,
+    "agentsDone": 13.77,
+    "sign": 16.38,
+    "signed": 17.19,
+    "cheat": 19.79,
+    "refused": 20,
+    "trick": 23,
+    "chip": 24.54,
+    "blocked": 26.86,
+    "end": 30.37
+  },
+  "labels": {
+    "read": "Claude Sonnet · live · invoice reader",
+    "advice": "Claude Opus · live · treasury advice"
+  },
+  "tamper": "Refused by Purser",
+  "trick": {
+    "label": "Claude Sonnet · live · invoice reader",
+    "blocked": "Blocked: a new IBAN needs a person's Face ID."
+  },
+  "errors": []
+}

@@ -1,20 +1,22 @@
 // npm run video [-- <clip id>...]: records the premiere (src/film/premiere.html, its script in
-// src/film/premiereScript.ts), Purser in 2:42 made from the main run of 3 November, one clip per
-// scene, at 1920x1080, letterboxed to 2.39:1 and exactly 60 frames a second. The browser runs on virtual time: each
-// frame moves the clock by 1/60 s and is captured, so nothing loads or stutters on screen. Each frame is drawn at twice
-// the size (3840x2160) and scaled down with lanczos, then encoded with x264 (preset slow, CRF 14), so small text stays
-// crisp. Every figure comes from the run's record through src/film/premiere.ts, which stops the build when one is
-// missing. Writes to out/video/: clips/, overlays/ (a transparent PNG per recording slot), the silent master
-// (master-v5.mp4, no audio and no burned-in subtitles), scenes-v5.json (each scene's start and end, for the mix),
-// subtitles-v5.srt (for YouTube), script.md (the voice-over) and premiere-script.md
-// (the script table).
-//   --docs     writes docs/video/premiere-script.md, subtitles-v5.srt, scenes-v5.json and script.md, and nothing else
+// src/film/premiereScript.ts), film v6: Purser in 2:59, made from the main run of 3 November and the two live runs of
+// 7 November (awx-1, and the Airi run vic-1), one clip per scene, at 1920x1080, letterboxed to 2.39:1 and exactly 60
+// frames a second. The browser runs on virtual time: each frame moves the clock by 1/60 s and is captured, so nothing
+// loads or stutters on screen. Each frame is drawn at twice the size (3840x2160) and scaled down with lanczos, then
+// encoded with x264 (preset slow, CRF 14), so small text stays crisp. Every figure comes from the runs' records through
+// src/film/premiere.ts, which stops the build when one is missing. Scene 11-turn lays in the walk of the live /try/sign
+// page (out/video/recordings/, made by src/cli/recordTrySign.ts; RECORDING in premiereScript.ts), cut to its windows.
+// Writes to out/video/: clips/, overlays/ (a transparent PNG per recording slot), the silent master (master-v6.mp4, no
+// audio and no burned-in subtitles), scenes-v6.json (each scene's start and end, for the mix), subtitles-v6.srt (for
+// YouTube), script.md (the voice-over), premiere-script.md (the script table) and elevenlabs-studio-prompt-v6.md.
+//   --docs     writes those words into docs/video/ (premiere-script.md, subtitles-v6.srt, scenes-v6.json, script.md and
+//              elevenlabs-studio-prompt-v6.md), and nothing else
 //   --stills   a PNG of three moments of each scene in out/video/stills/, for a quick look, and nothing else
 //   --check    draws every scene in a browser and fails on a page error, and nothing else
 //   --film     the earlier film of the 30 October recording (src/video/plan.ts) into out/video/film/, as before
-//   --slot 08-faceid=<file>[@<start>-<end>], --slot 11-turn=<file>[@<start>-<end>]: a portrait phone
-//              recording, laid into a phone frame beside the scene's captions (src/film/slots.ts); without one the
-//              scene keeps its rendered picture (the Face ID reconstruction, the /try/sign mock), as the final film does
+//   --slot 08-faceid=<file>[@<start>-<end>], --slot 11-turn=<file>[@<start>-<end>[,<start>-<end>…]]: a portrait phone
+//              recording, laid into a phone frame beside the scene's captions (src/film/slots.ts), cut to its windows;
+//              without one 08 keeps its rendered reconstruction and 11 takes the film's own recording
 // VIDEO_PREVIEW=1 makes a quick preview instead: drawn at 1920x1080 (no supersampling) and encoded with x264 preset
 // veryfast at CRF 18, for a first look; it is not the deliverable.
 // Nothing here is live: the pages are the recordings, as npm run judge serves them.
@@ -28,16 +30,14 @@ import { chromium } from "playwright";
 import { CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, MONTH_CSP, PAGE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
 import { BEATS, scriptMarkdown, subtitlesSrt, totalSeconds, type Action, type Beat } from "../video/plan.js";
 import { PREMIERE_CSP, loadPremiere, premierePage } from "../film/premiere.js";
-import { MASTER_CLIPS, OVERLAYS, pageScenes, scenesJson, premiereBeats, premiereReadAloud, premiereSeconds, premiereSrt, premiereTable, premiereTimeline, sceneFade } from "../film/premiereScript.js";
-import { SLOT_RADIUS, maskExpr, parseSlotArgs, slotBox, slotFilter, slotSpeed, type SlotFile } from "../film/slots.js";
+import { MASTER, MASTER_CLIPS, OVERLAYS, RECORDING, SCENES_JSON, SUBTITLES, elevenLabsPrompt, pageScenes, scenesJson, premiereBeats, premiereReadAloud, premiereSeconds, premiereSrt, premiereTable, premiereTimeline, sceneFade } from "../film/premiereScript.js";
+import { SLOT_RADIUS, maskExpr, parseSlotArgs, slotBox, slotFilter, slotSpeed, windowsSeconds, type SlotFile } from "../film/slots.js";
 
 const FPS = 60;
 /** The encoder for every clip: x264, preset slow, CRF 14 (small text stays crisp), 4:2:0, exactly 60 fps. */
 const X264 = ["-c:v", "libx264", "-preset", "slow", "-crf", "14", "-pix_fmt", "yuv420p", "-r", String(FPS)];
 /** The premiere is drawn at twice its size (3840x2160) and scaled down to 1920x1080 with lanczos. */
 const PREMIERE_SCALE = 2;
-/** The premiere's master (film v5): silent, no audio track; the mix adds the voice and the music to scenes-v5.json. */
-const MASTER = "master-v5.mp4";
 /** VIDEO_PREVIEW=1: a quick look (1x, a fast preset), not the deliverable. */
 const PREVIEW = process.env.VIDEO_PREVIEW === "1";
 const ENCODE = PREVIEW ? ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-r", String(FPS)] : X264;
@@ -220,28 +220,36 @@ function probe(file: string): { w: number; h: number; duration: number } {
   return { w: turned ? st.height : st.width, h: turned ? st.width : st.height, duration: Number(j.format?.duration ?? 0) };
 }
 
-/** Each recording given with --slot: its scene, the box it fills, its window and how fast it plays. */
-const slots = new Map(args.slots.map((sl: SlotFile) => {
+/**
+ * Each recording laid in: the ones given with --slot, and the film's own (v6: the walk of the live /try/sign page in
+ * 11-turn, RECORDING in premiereScript.ts, cut to its windows) unless --slot gives another. Its scene, the box it fills,
+ * its windows and how fast it plays.
+ */
+const recordingFile = resolve(out, RECORDING.file);
+const given: SlotFile[] = [...args.slots];
+if (!film && !given.some((x) => x.id === RECORDING.scene) && existsSync(recordingFile)) given.push({ id: RECORDING.scene, file: recordingFile, windows: RECORDING.windows });
+const slots = new Map(given.map((sl: SlotFile) => {
   const scene = timeline.find((x) => x.id === sl.id)!;
   const p = probe(sl.file);
-  const from = sl.from ?? 0, to = sl.to ?? p.duration;
-  if (to > p.duration + 0.05) throw new Error(`video: --slot ${sl.id}: the window ends at ${to} s, the recording at ${p.duration.toFixed(2)} s`);
+  const last = sl.windows.reduce((k, [, b]) => Math.max(k, b), 0);
+  if (last > p.duration + 0.05) throw new Error(`video: --slot ${sl.id}: a window ends at ${last} s, the recording at ${p.duration.toFixed(2)} s`);
   const box = slotBox(sl.id, p.w / p.h);
-  return [sl.id, { ...sl, scene, box, from, seconds: to - from, speed: slotSpeed(to - from, scene.seconds) }] as const;
+  const seconds = windowsSeconds(sl.windows, p.duration);
+  return [sl.id, { ...sl, scene, box, seconds, speed: slotSpeed(seconds, scene.seconds) }] as const;
 }));
 
-/** Lays a recording into its scene's clip: cut to its window, into the frame the page drew, corners rounded, faded with the scene. */
+/** Lays a recording into its scene's clip: cut to its windows, into the frame the page drew, corners rounded, faded with the scene. */
 async function laySlot(id: string): Promise<void> {
   const sl = slots.get(id as SlotFile["id"])!;
   const clip = resolve(out, "clips", `${id}.mp4`), tmp = resolve(out, "clips", `${id}.with-recording.mp4`);
   mkdirSync(resolve(out, "slots"), { recursive: true });
   const mask = resolve(out, "slots", `mask-${sl.box.w}x${sl.box.h}.png`);
   await ffmpeg(["-f", "lavfi", "-i", `color=c=black:s=${sl.box.w}x${sl.box.h},format=gray`, "-vf", `geq=lum='${maskExpr(SLOT_RADIUS)}'`, "-frames:v", "1", mask]);
-  await ffmpeg(["-i", clip, "-ss", String(sl.from), "-t", String(sl.seconds), "-i", sl.file, "-loop", "1", "-i", mask,
-    "-filter_complex", slotFilter({ box: sl.box, seconds: sl.scene.seconds, speed: sl.speed, fade: sceneFade(sl.scene) }), "-map", "[v]", "-an",
+  await ffmpeg(["-i", clip, "-i", sl.file, "-loop", "1", "-i", mask,
+    "-filter_complex", slotFilter({ box: sl.box, seconds: sl.scene.seconds, speed: sl.speed, fade: sceneFade(sl.scene), windows: sl.windows }), "-map", "[v]", "-an",
     ...X264, "-t", String(sl.scene.seconds), "-movflags", "+faststart", tmp]);
   renameSync(tmp, clip);
-  console.log(`slot     ${id}: ${sl.file} ${sl.from}–${sl.from + sl.seconds} s${sl.speed > 1 ? ` at ${sl.speed}× speed` : ""}, laid into its frame`);
+  console.log(`slot     ${id}: ${sl.file} ${sl.windows.length ? sl.windows.map(([a, b]) => `${a}–${b}`).join(", ") : "whole"} (${sl.seconds} s)${sl.speed > 1 ? ` at ${sl.speed}× speed` : ""}, laid into its frame`);
 }
 
 /** --check for the premiere: every scene drawn at several moments, with no page error and its layer on screen. */
@@ -319,15 +327,16 @@ async function stills(browser: import("playwright").Browser, base: string): Prom
 /** The premiere's words, written next to the clips (and, with --docs, into docs/video/). */
 function writeWords(dir: string): void {
   mkdirSync(dir, { recursive: true });
-  writeFileSync(resolve(dir, "subtitles-v5.srt"), premiereSrt(premiere));
-  writeFileSync(resolve(dir, "scenes-v5.json"), `${JSON.stringify(scenesJson(), null, 2)}\n`);
+  writeFileSync(resolve(dir, SUBTITLES), premiereSrt(premiere));
+  writeFileSync(resolve(dir, SCENES_JSON), `${JSON.stringify(scenesJson(), null, 2)}\n`);
   writeFileSync(resolve(dir, "script.md"), premiereReadAloud(premiere));
   writeFileSync(resolve(dir, "premiere-script.md"), premiereTable(premiere));
+  writeFileSync(resolve(dir, "elevenlabs-studio-prompt-v6.md"), elevenLabsPrompt(premiere));
 }
 
 if (process.argv.includes("--docs")) {
   writeWords(resolve(root, "docs/video"));
-  console.log("docs     docs/video/premiere-script.md, subtitles-v5.srt, scenes-v5.json and script.md");
+  console.log(`docs     docs/video/premiere-script.md, ${SUBTITLES}, ${SCENES_JSON}, script.md and elevenlabs-studio-prompt-v6.md`);
   process.exit(0);
 }
 
@@ -359,6 +368,11 @@ const beats: Beat[] = (film ? BEATS : premiereBeats(premiere)).map((b) => {
   const sl = slots.get(b.id as SlotFile["id"]);
   return sl ? { ...b, shots: b.shots.map((x) => ({ ...x, path: `${x.path}&rec=${sl.box.x},${sl.box.y},${sl.box.w},${sl.box.h}&recfor=${b.id}&speed=${sl.speed}` })) } : b;
 });
+// The film's own recording (v6, 11-turn) is part of the deliverable: a full render, or one of that scene, needs it.
+if (!film && (!only.size || only.has(RECORDING.scene)) && !slots.has(RECORDING.scene)) {
+  await browser.close(); srv.close();
+  throw new Error(`video: ${RECORDING.scene} lays in the walk of the live /try/sign page (${recordingFile}), which is not there: record it with npx tsx src/cli/recordTrySign.ts --name ${RECORDING.file.replace(/^recordings\/|\.mp4$/g, "")}, or give another with --slot ${RECORDING.scene}=<file>`);
+}
 const t0 = Date.now();
 for (const beat of beats) {
   if (only.size && !only.has(beat.id)) continue;

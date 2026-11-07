@@ -60,7 +60,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
 .lower span { display: block; font-size: 24px; color: #d5d9e2; margin-top: 4px; }
 /* The hook and the wordmark (Max, 5 November): the line slams in on black; the question, large, a pen stroke drawn
    under it; a straight cut to the wordmark, a drawn line under it, the core line in two lines. */
-.slam { font-size: 104px; font-weight: 800; letter-spacing: -.035em; line-height: 1; }
+.slam { font-size: 92px; font-weight: 800; letter-spacing: -.035em; line-height: 1; }
 .pen { overflow: visible; }
 .pen path { fill: none; stroke: var(--accent); stroke-width: 7; stroke-linecap: round; }
 .word { left: 0; width: 1920px; display: flex; align-items: center; justify-content: center; gap: 46px; }
@@ -198,6 +198,17 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
 .bul { display: flex; gap: 22px; align-items: baseline; }
 .bul i { font-style: normal; flex: none; width: 22px; height: 22px; border-radius: 50%; transform: translateY(-4px); }
 .bul i.real { background: var(--ok); } .bul i.ours { border: 3px solid var(--muted); }
+/* awx-1 (v6): Airwallex's own declines, each its code and what it stopped. */
+.dcl { border-radius: 26px; background: var(--surface); border: 1px solid var(--line); padding: 24px 32px 26px; display: flex; flex-direction: column; gap: 10px; }
+.dcl .code { font-size: 36px; line-height: 1.15; }
+.dcl .dby { font-size: 28px; font-weight: 700; color: var(--bad); }
+.payout { display: inline-block; padding: 10px 20px; border-radius: 12px; background: var(--sunken); border: 1px solid var(--line); font-size: 26px; color: var(--ok); }
+/* The Airi run (v6): three outcome rows, each its label, its amount and what happened. */
+.orow { display: flex; align-items: baseline; gap: 28px; padding: 18px 28px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); }
+.orow b { flex: none; width: 480px; font-size: 40px; font-weight: 800; letter-spacing: -.015em; }
+.orow .amt { flex: none; width: 360px; font-size: 36px; font-weight: 700; }
+.orow span { font-size: 26px; color: var(--muted); }
+.orow.no { border-color: rgba(255,107,112,.45); }
 </style>
 </head>
 <body>
@@ -297,7 +308,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       // All on black: a beat of silence, the line slams in, large; at Q a hard cut to the question, large, a pen stroke
       // drawing itself under it.
       L.classList.add("black");
-      var Q = 3.2;
+      var Q = 3.6;
       var h = put(L, E("div", "slam c", S.line), 0, 350);
       var qg = put(L, E("div", "full"), 0, 0);
       var qn = put(qg, E("div", "huge c", S.question), 0, 298);
@@ -495,9 +506,9 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
           c.querySelector("i").textContent = refunded ? "refunded" : t >= s0 ? "✓ signed" : "";
         });
         cnt.textContent = signed ? String(signed) : ""; fade(cnt, t, 1.6); rise(of, t, 1.8);
-        rise(rl, t, 5.4); rise(rest, t, 7.0);
-        var sp = prog(t, 7.6, 8.0); st.style.opacity = sp; st.style.transform = "rotate(" + TILT + "deg) scale(" + mix(2.0, 1, out3(sp)) + ")";
-        rise(wh, t, 8.2);
+        rise(rl, t, 5.4); rise(rest, t, 6.4);
+        var sp = prog(t, 6.9, 7.3); st.style.opacity = sp; st.style.transform = "rotate(" + TILT + "deg) scale(" + mix(2.0, 1, out3(sp)) + ")";
+        rise(wh, t, 7.5);
       };
     },
     "08-faceid": function (L, S, ov, seconds, rec) {
@@ -556,64 +567,27 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
         steps.forEach(function (s, i) { rise(s, t, 1.2 + i * .35, null, 14); });
         rise(sim, t, 3.2);
         rise(tl, t, 4.4); rise(tr, t, 4.5); rise(de, t, 4.8);
-        rise(lk, t, 6.3); rise(wh, t, 6.7); fade(foot, t, 7.2);
+        rise(lk, t, 5.6); rise(wh, t, 6.0); fade(foot, t, 6.4);
       };
     },
     "10-why": function (L, S) {
       var qn = put(L, E("div", "hl c acc", S.q), 0, 132);
-      var at = [2.0, 4.2, 6.2]; // the last line holds about 3 s before the cut (Max, 5 Nov: at 1:33 it left too fast to read)
+      var at = [1.8, 3.8, 5.2]; // the last line holds nearly 3 s before the cut (Max, 5 Nov: at 1:33 it left too fast to read)
       var lines = S.a.map(function (s, i) { return put(L, E("div", "hm c", s), 0, 300 + i * 78); });
       return function (t) { rise(qn, t, .2); lines.forEach(function (n, i) { rise(n, t, at[i]); }); };
     },
     "11-turn": function (L, S, ov, seconds, rec) {
-      if (ov) { put(L, E("div", "ovl", S.label), 48, 36); put(L, E("div", "ovl sub", S.overlay + " · " + S.url), 48, 718); return function () {}; }
-      if (rec) {
-        ring(L, rec);
-        var ry = [74, 268, 350, 432, 530];
-        var rl = S.side.map(function (s, i) { return put(L, E("div", i ? "hm" : "hl", s), 760, ry[i]); });
-        rl[4].classList.add("okc");
-        var ru = put(L, E("div", "hs acc", S.url), 762, 176), rp = put(L, E("div", "pill", S.label), 760, 640);
-        var rn = put(L, E("div", "tiny", S.overlay + (rec.speed > 1 ? " · shown at " + rec.speed + "× speed" : "")), 764, 726);
-        return function (t) { rise(rl[0], t, .3); rise(ru, t, .9); rise(rl[1], t, 2.0); rise(rl[2], t, 2.9); rise(rl[3], t, 3.8); rise(rl[4], t, 5.4); fade(rp, t, .6); fade(rn, t, .9); };
-      }
-      var ph = put(L, E("div", "phone"), 180, 16);
-      var scr = E("div", "scr"); ph.appendChild(scr); scr.appendChild(E("div", "notch"));
-      var pg = E("div", "pg"); scr.appendChild(pg);
-      pg.appendChild(E("div", "tb", S.label));
-      pg.appendChild(E("div", "hdr", null, [mark(26), E("span", null, "Purser")]));
-      var inner = E("div", "in"); pg.appendChild(inner);
-      inner.appendChild(E("div", "eb", S.eyebrow)); inner.appendChild(E("div", "ph", S.h1));
-      var dl = E("dl"); S.facts.forEach(function (f) { dl.appendChild(E("dt", null, f[0])); dl.appendChild(E("dd", null, f[1])); });
-      var sign = E("div", "btn", S.sign), done = E("div", "done", S.done);
-      var card = E("div", "card", null, [E("div", "who", null, [E("i"), E("span", null, S.agent), E("span", "tag", S.tag)]), E("div", "says", "“" + S.says + "”"), dl,
-        E("div", "chk", null, [E("b", null, S.check), E("span", null, S.waits)]), E("div", "note", S.hashNote), E("div", "hash mono", S.hash), sign, done]);
-      inner.appendChild(card);
-      var ver = E("div", "ln", null, [E("i", null, "✓"), E("span", null, S.verified)]), exe = E("div", "ln", null, [E("i", null, "✓"), E("span", null, S.executed)]);
-      var tam = E("div", "btn alt", S.tamper);
-      var res = E("div", "res", null, [E("div", "rh", S.signed), E("div", "hash mono", S.hash), ver, exe, tam]);
-      pg.appendChild(res);
-      var sc = E("div", "scan", null, [faceGlyph()]); scr.appendChild(sc);
-      var face = sc.firstChild;
-      var Y = [74, 268, 350, 432, 530];
-      var lines = S.side.map(function (s, i) { return put(L, E("div", i ? "hm" : "hl", s), 760, Y[i]); });
-      var url = put(L, E("div", "hs acc", S.url), 762, 176);
-      lines[4].classList.add("okc");
-      var lab = put(L, E("div", "pill", S.label), 760, 640);
-      var mn = put(L, E("div", "tiny", S.mockNote), 764, 726);
-      return function (t) {
-        rise(ph, t, .1, null, 40);
-        rise(lines[0], t, .3); rise(url, t, .9); rise(lines[1], t, 2.0); rise(lines[2], t, 2.9); rise(lines[3], t, 3.8); rise(lines[4], t, 5.4); fade(lab, t, .6); fade(mn, t, .9);
-        // Into the card, a press on "Sign with Face ID", the Face ID scan, then the result scrolled into view.
-        sign.style.display = t >= 4.3 ? "none" : ""; done.style.display = t >= 4.3 ? "" : "none";
-        var into = Math.max(0, card.offsetTop - 190), toRes = Math.max(0, res.offsetTop - 250);
-        var y = mix(0, into, out3(prog(t, 1.2, 2.0))); y = mix(y, toRes, out3(prog(t, 4.4, 5.2)));
-        pg.style.transform = "translateY(" + (-y) + "px)";
-        sign.classList.toggle("lit", t > 2.8 && t < 3.5);
-        sc.style.opacity = prog(t, 3.3, 3.5) * (1 - prog(t, 4.2, 4.4)); scan(face, t, 3.35);
-        res.style.opacity = prog(t, 4.3, 4.6);
-        ver.classList.toggle("lit", t > 5.4); exe.classList.toggle("lit", t > 5.9);
-        tam.classList.toggle("lit", t > 6.4);
-      };
+      // v6: the walk of the live page, recorded and laid into the frame by ffmpeg (RECORDING); without one (--check,
+      // --stills), the empty frame where it goes. Beside it, each step as its window comes, and the label.
+      if (ov) { put(L, E("div", "ovl", S.label), 48, 36); put(L, E("div", "ovl sub", S.note), 48, 718); return function () {}; }
+      var box = rec || { x: 190, y: BAR + 52, w: Math.round(700 * S.aspect[0] / S.aspect[1] / 2) * 2, h: 700 };
+      ring(L, box);
+      var x = box.x + box.w + 110;
+      var hd = put(L, E("div", "hl", S.head), x, 40), url = put(L, E("div", "hs acc", S.url), x + 2, 146);
+      var lines = S.side.map(function (s, i) { return put(L, E("div", "hm" + (i >= 3 ? " okc" : ""), s), x, 232 + i * 74); });
+      var lab = put(L, E("div", "pill", S.label), x, 616);
+      var nt = put(L, width(E("div", "tiny", S.note), 1860 - x), x + 4, 704);
+      return function (t) { rise(hd, t, .2); rise(url, t, .6); lines.forEach(function (n, i) { rise(n, t, S.at[i], null, 16); }); fade(lab, t, .3); fade(nt, t, .6); };
     },
     "12-tamper": function (L, S) {
       L.classList.add("black");
@@ -628,7 +602,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       var w = put(L, E("div", "hl c", S.last), 0, 590);
       L.push = { to: 1.04, x: 960, y: 402 };
       return function (t) {
-        var flip = t >= 1.2, W = 5.1;
+        var flip = t >= 1.2, W = 4.75;
         last.style.display = flip ? "none" : ""; now.style.display = flip ? "" : "none";
         var dim = 1 - .62 * prog(t, W - .2, W + .5);
         a.style.opacity = prog(t, 0, .25) * dim; a.style.transform = flip && t < 1.6 ? "scale(" + mix(1.04, 1, prog(t, 1.2, 1.6)) + ")" : "";
@@ -639,6 +613,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
     "13-proof": function (L, S, ov, seconds, rec, beats) {
       // One card on each beat (the script's beats; evenly spread without them).
       var at = beats || S.cards.map(function (c, i) { return i * seconds / S.cards.length; });
+      var kk = put(L, E("div", "kick c", S.kicker), 0, 40);
       var cards = S.cards.map(function (c) {
         var n = put(L, E("div", "spec"), 0, 0);
         if (c.rows) {
@@ -656,6 +631,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
         return n;
       });
       return function (t) {
+        fade(kk, t, .1);
         cards.forEach(function (c, i) {
           var t0 = at[i], t1 = i + 1 < at.length ? at[i + 1] : seconds;
           var o = prog(t, t0, t0 + .3) * (i === cards.length - 1 ? 1 : 1 - prog(t, t1 - .3, t1));
@@ -666,7 +642,38 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
         });
       };
     },
-    "13b-value": function (L, S) {
+    "13b-awx": function (L, S) {
+      // awx-1 (7 November): Airwallex's own two declines, as the voice names them; the raise asked of the CFO, signed with
+      // Face ID; the hash the CFO signed in the SWIFT payouts' metadata; the run's own label.
+      var k = put(L, E("div", "kick", S.kicker), 140, 40), h = put(L, E("div", "hm", S.head), 140, 84);
+      var W = 800, G = 40, AT = [2.4, 4.0];
+      var cards = S.declines.map(function (d, i) { return put(L, width(E("div", "dcl", null, [E("div", "code mono badc", d.code), E("div", "body", d.line), E("div", "dby", "✕ " + S.by)]), W), 140 + i * (W + G), 190); });
+      var f = put(L, faceGlyph("mini"), 140, 446);
+      var rs = put(L, E("div", "hs", S.raise), 244, 448), ok = put(L, E("div", "small okc", "✓ " + S.raised), 246, 504);
+      var hs = put(L, E("div", "hs", S.hash), 140, 574);
+      var po = S.payouts.map(function (p, i) { return put(L, E("div", "payout mono", p), 140 + i * 620, 640); });
+      var foot = put(L, width(E("div", "tiny", S.foot), 1640), 140, 728);
+      return function (t) {
+        fade(k, t, .1); rise(h, t, .3);
+        cards.forEach(function (c, i) { rise(c, t, AT[i], null, 24); });
+        fade(f, t, 6.0); scan(f, t, 6.1); rise(rs, t, 6.0); rise(ok, t, 7.3, null, 12);
+        rise(hs, t, 8.0); po.forEach(function (p, i) { rise(p, t, 8.4 + i * .3, null, 12); }); fade(foot, t, 8.8);
+      };
+    },
+    "13c-airi": function (L, S) {
+      // The Airi run (7 November): Max's heading and line; the three outcomes as the voice names them; the checks; the
+      // run's own label, from the start.
+      var h = put(L, width(E("div", "hs", S.head), 1640), 140, 36), ln = put(L, width(E("div", "body muted", S.line), 1640), 140, 104);
+      var AT = [4.4, 6.1, 9.3];
+      var rows = S.rows.map(function (r, i) { return put(L, width(E("div", "orow" + (r.ok ? "" : " no"), null, [E("b", r.ok ? "okc" : "badc", r.label), E("div", "amt tn", r.amount), E("span", null, r.detail)]), 1640), 140, 276 + i * 104); });
+      var ck = put(L, E("div", "hm okc", S.checks), 140, 596), lb = put(L, E("div", "pill", S.label), 140, 682);
+      return function (t) {
+        rise(h, t, .2); rise(ln, t, .8);
+        rows.forEach(function (r, i) { rise(r, t, AT[i], null, 20); });
+        rise(ck, t, 11.5); fade(lb, t, .6);
+      };
+    },
+    "13d-value": function (L, S) {
       var l1 = put(L, E("div", "hl c", S.line[0]), 0, 250), l2 = put(L, E("div", "hl c acc", S.line[1]), 0, 360);
       return function (t) { rise(l1, t, .1, null, 16); rise(l2, t, .8, null, 16); };
     },
@@ -675,12 +682,12 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       var rh = put(L, E("div", "hl okc", S.realHead), 240, 132), rn = put(L, E("div", "small", S.realNote), 244, 236);
       var oh = put(L, E("div", "hl muted", S.oursHead), 1000, 132);
       var item = function (text, cls) { return E("div", "bul hs", null, [E("i", cls), E("span", null, text)]); };
-      var ri = S.real.map(function (s, i) { return put(L, item(s, "real"), 244, 312 + i * 84); });
-      var oi = S.ours.map(function (s, i) { return put(L, width(item(s, "ours"), 840), 1004, 312 + i * 84); });
+      var ri = S.real.map(function (s, i) { return put(L, item(s, "real"), 244, 312 + i * 80); });
+      var oi = S.ours.map(function (s, i) { return put(L, width(item(s, "ours"), 840), 1004, 312 + i * 80); });
       return function (t) {
         fade(k, t, .1); rise(rh, t, .3); rise(rn, t, .5);
-        ri.forEach(function (n, i) { rise(n, t, .8 + i * .6, null, 14); });
-        rise(oh, t, 3.9); oi.forEach(function (n, i) { rise(n, t, 4.5 + i * .9, null, 14); });
+        ri.forEach(function (n, i) { rise(n, t, .8 + i * .5, null, 14); });
+        rise(oh, t, 3.6); oi.forEach(function (n, i) { rise(n, t, 4.1 + i * .7, null, 14); });
       };
     },
     "15-close": function (L, S, ov) {
@@ -716,9 +723,9 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       roll.push(put(L, E("div", "small c", S.credit), 0, y)); y += 84;
       roll.push(put(L, E("div", "kick c waitc", S.last), 0, y)); y += 58;
       roll.push(put(L, E("div", "small c acc", S.short), 0, y));
-      var A = [mk, ct, url, ft, mt], out = 3.6, at = 4.3;
+      var A = [mk, ct, url, ft, mt], out = 2.9, at = 3.5;
       return function (t) {
-        fade(mk, t, .2, out); rise(ct, t, .4, out); rise(url, t, 1.1, out); fade(ft, t, 1.9, out); fade(mt, t, 2.3, out);
+        fade(mk, t, .2, out); rise(ct, t, .3, out); rise(url, t, .7, out); fade(ft, t, 1.1, out); fade(mt, t, 1.4, out);
         A.forEach(function (n) { n.style.visibility = t < out + .6 ? "visible" : "hidden"; });
         roll.forEach(function (n, i) { rise(n, t, at + i * .3, null, 14); });
       };

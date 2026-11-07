@@ -1,21 +1,28 @@
-// The premiere (docs/video/premiere-script.md): Purser in 2:42, a premiere-style film made from the main
-// run of 3 November (docs/demo/main-run.json). Every number on screen and in the voice-over is read here, through
-// code, each with where it comes from: the run's record for everything about the run, the README's test line for the
-// test count, and the /try/sign page's own code for its mock. A number that cannot be found stops the build, so the
-// film is never rendered with a figure typed in by hand (test/premiere.test.ts). The page (src/film/premiere.html)
-// only places these strings; it computes no figure of its own.
+// The premiere (docs/video/premiere-script.md), film v6: Purser in 2:59, a premiere-style film made from the main run
+// of 3 November (docs/demo/main-run.json) and the two live runs of 7 November: awx-1, on Airwallex alone
+// (docs/demo/airwallex-run.json), and the Airi run, Visa Intelligent Commerce through Airwallex's Airi
+// (docs/demo/airi-run.json); with a recorded walk of the live /try/sign page (docs/video/recording-trysign-v6.json).
+// Every number on screen and in the voice-over is read here, through code, each with where it comes from: the runs'
+// records, the README's test line for the test count, the /try/sign page's own code for its example terms, and the
+// recording's own record for what the page showed. A number that cannot be found stops the build, so the film is never
+// rendered with a figure typed in by hand (test/premiere.test.ts). The page (src/film/premiere.html) only places these
+// strings; it computes no figure of its own.
 
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { FIXED_PROPOSALS, TEST_BALANCES, TEST_RULES, TEST_WORLD, canonical, checkPayment, proposalTerms, rateOfRecord } from "../../worker/src/trySign.js";
 import { recordedRate, type RecordForExposure } from "../policy/exposureSources.js";
 import { loadRecord } from "../redesign/run.js";
-import { TRY_SIGN_LABEL } from "../try/sign.js";
 import { AGENT_DISPLAY } from "../config/brand.js";
 import { CARDS, INITIAL_MANDATES } from "../config/policy.js";
 
-/** The run the premiere tells, and nothing else. */
+/** The run the premiere tells (05 to 09, 13). */
 export const MAIN_RUN_FILE = "docs/demo/main-run.json";
+/** The two live runs of 7 November (v6): awx-1 on Airwallex alone (13b), and the Airi run (13c). */
+export const AWX_RUN_FILE = "docs/demo/airwallex-run.json";
+export const AIRI_RUN_FILE = "docs/demo/airi-run.json";
+/** The walk of the live /try/sign page laid into 11-turn: what the page showed, as src/cli/recordTrySign.ts wrote it. */
+export const RECORDING_FILE = "docs/video/recording-trysign-v6.json";
 /** The hosted page a viewer can try (live since 4 November): the end card and the /try/sign scene. */
 export const TRY_SIGN_URL = "https://kit11.max-31b.workers.dev/try/sign";
 
@@ -108,8 +115,8 @@ export function testBadge(readme: string): string | null {
   return /badge\/tests-(\d+)%20passing/.exec(readme)?.[1] ?? null;
 }
 
-/** The narrator's voice-over (docs/video/narrator-script.md): each scene's line, as the script's table has it. */
-export const VOICE_SCRIPT_FILE = "docs/video/narrator-script.md";
+/** The narrator's voice-over (film v6, docs/video/narrator-script-v6.md; v5's is narrator-script.md): each scene's line, as the script's table has it. */
+export const VOICE_SCRIPT_FILE = "docs/video/narrator-script-v6.md";
 export function voiceScript(md: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const row of md.split("\n")) {
@@ -363,12 +370,145 @@ export function premiereFacts(r: MainRun, readme: string): Record<string, Fact> 
   return F;
 }
 
+// ---- The two live runs of 7 November (v6) and the recorded walk of /try/sign ----
+
+/** awx-1 (docs/demo/airwallex-run.json), as far as the film reads it. */
+export interface AwxRun {
+  run: string; mode: string; test_money: boolean; note: string;
+  cards: { agent: string; read_back: { per_tx: string; mccs: string[]; currency: string } }[];
+  card_transactions: { id: string; agent: string; mcc: string; amount: string; currency: string; approved: boolean; decline_code: string | null; occurred_at: string }[];
+  declines_met: { transaction_id: string; agent: string; decline_code: string; by: string; proposal_id: string | null }[];
+  proposals: { proposal_id: string; kind: string; created_by: string; status: string; terms_sha256: string; method: string; virtual_test_passkey: boolean }[];
+  invoices: { invoice_no: string; proposal_id: string; amount: string; transfer_id: string; status: string; approval_sha256: string }[];
+  verify: { level: string; what: string; detail: string }[];
+  checks: Record<string, { ok: boolean; detail: string }>;
+}
+/** The Airi run (docs/demo/airi-run.json), as far as the film reads it. */
+export interface AiriRun {
+  run: string; world: string; mode: string; test_money: boolean; test_card: boolean; label: string; started_at: string; credential: string;
+  preflight: { card: string };
+  policy: { alone_max_eur: string; merchants_allowed: string[] };
+  purchases: { step: string; route: "alone" | "cfo" | "refused"; amount: string; currency: string; merchant: string; outcome?: string; status?: string; tap?: string; proposal_id?: string; approved_by?: string; method?: string; proposal_end?: string; by?: string; code?: string; airi_calls?: number }[];
+  checks: Record<string, { ok: boolean; detail: string }>;
+}
+/** The walk of the live /try/sign page (docs/video/recording-trysign-v6.json, src/cli/recordTrySign.ts). */
+export interface TrySignRecording {
+  file: string; page: string; recorded_at: string; passkey: string; walks: number;
+  at: Record<"start" | "agentsDone" | "sign" | "signed" | "cheat" | "refused" | "trick" | "chip" | "blocked" | "end", number>;
+  labels: { read: string; advice: string }; tamper: string; trick: { label: string; blocked: string }; errors: string[];
+}
+export interface SideRuns { awx: AwxRun; airi: AiriRun; recording: TrySignRecording }
+
+/**
+ * The walk laid into 11-turn (v6): the recording (out/video/recordings/, not in git) and its windows, one after the
+ * other with hard cuts, each inside one step of the walk as its record times it: the reader at work, its reading and
+ * Purser's checks, the advice and "Sign with Face ID", signed, one cent refused, the trick blocked.
+ */
+export const RECORDING = {
+  scene: "11-turn" as const, file: "recordings/trysign-live-1.mp4",
+  windows: [[1.9, 4.4], [7.0, 9.2], [13.8, 15.9], [17.25, 19.25], [20.05, 22.15], [26.9, 29.0]] as [number, number][],
+  /** Which step each window shows: the window must lie between these two marks of the walk. */
+  steps: [["start", "agentsDone"], ["start", "agentsDone"], ["agentsDone", "sign"], ["signed", "cheat"], ["refused", "trick"], ["blocked", "end"]] as [keyof TrySignRecording["at"], keyof TrySignRecording["at"]][],
+};
+
+/** The records of the side runs and the recording, read now. */
+export function loadSideRuns(root = new URL("../../", import.meta.url)): SideRuns {
+  const json = <T>(f: string) => JSON.parse(readFileSync(new URL(f, root), "utf8")) as T;
+  return { awx: json<AwxRun>(AWX_RUN_FILE), airi: json<AiriRun>(AIRI_RUN_FILE), recording: json<TrySignRecording>(RECORDING_FILE) };
+}
+
+const SHORT_MONTHS = MONTHS.map((m) => m.slice(0, 3));
+const shortDay = (iso: string) => { const d = new Date(need(Date.parse(iso), `a date in "${iso}"`)); return `${d.getUTCDate()} ${SHORT_MONTHS[d.getUTCMonth()]}`; };
+
+/** Every figure of the 7 November scenes and the recorded walk, each from its record; throws when one is missing. */
+export function sideFacts(x: SideRuns): Record<string, Fact> {
+  const F: Record<string, Fact> = {};
+  const fact = (key: string, value: unknown, source: string) => { F[key] = { value: str(value, key), source }; };
+  const miss = (what: string) => new Missing(`premiere: ${what}; nothing is rendered without it`);
+
+  // awx-1: Airwallex itself declined over the limit and in the wrong category; the agent asked the CFO for a raise.
+  const a = x.awx;
+  if (a?.run !== "awx-1" || a.mode !== "live" || a.test_money !== true) throw miss(`${AWX_RUN_FILE} is not the live test-money run awx-1`);
+  const declined = need(a.card_transactions?.filter((t) => !t.approved && t.decline_code), "awx-1's declined card transactions");
+  const card = (agent: string) => need(a.cards.find((c) => c.agent === agent)?.read_back, `awx-1's ${agent} card as Airwallex read it back`);
+  const overLimit = need(declined.find((t) => t.decline_code === "LIMIT_EXCEEDED"), "awx-1's LIMIT_EXCEEDED decline");
+  const wrongMcc = need(declined.find((t) => t.decline_code === "MERCHANT_CATEGORY_NOT_ALLOWED"), "awx-1's MERCHANT_CATEGORY_NOT_ALLOWED decline");
+  const limit = card(overLimit.agent).per_tx, mccs = card(wrongMcc.agent).mccs;
+  if (!(cents(overLimit.amount) > cents(limit))) throw miss(`awx-1's LIMIT_EXCEEDED charge (${overLimit.amount}) over its card's limit (${limit})`);
+  if (mccs.includes(wrongMcc.mcc)) throw miss(`awx-1's MERCHANT_CATEGORY_NOT_ALLOWED charge in a category its card does not allow`);
+  // The agent read the decline and asked the CFO for a raise (one proposal), and did not try the same charge again.
+  const met = need(a.declines_met?.find((d) => d.transaction_id === overLimit.id && d.by === "claude"), "awx-1's agent reading the LIMIT_EXCEEDED decline");
+  const raise = need(a.proposals.find((p) => p.proposal_id === met.proposal_id && p.kind === "policy_change" && p.created_by === overLimit.agent), "awx-1's raise proposal");
+  if (raise.status !== "EXECUTED" || raise.method !== "passkey" || raise.virtual_test_passkey) throw miss(`awx-1's raise ${raise.proposal_id} approved with the CFO's passkey`);
+  const retries = a.card_transactions.filter((t) => t.agent === overLimit.agent && t.amount === overLimit.amount && !t.approved).length;
+  if (retries !== 1 || a.checks?.e?.ok !== true || !/instead of retrying/.test(a.checks.e.detail)) throw miss("awx-1's check that the agent asked instead of retrying");
+  // The hash the CFO signed, in Airwallex's SWIFT payout metadata, for each invoice paid.
+  const paid = a.invoices.filter((i) => i.status === "PAID");
+  for (const i of paid) {
+    const p = a.proposals.find((q) => q.proposal_id === i.proposal_id);
+    if (!p || p.terms_sha256 !== i.approval_sha256 || p.method !== "passkey") throw miss(`awx-1's ${i.invoice_no}: the signed hash in its payout`);
+    if (!a.verify.some((v) => v.level === "ok" && v.what.includes(i.transfer_id) && /approval hash in metadata, PAID/.test(v.detail))) throw miss(`awx-1's read-back of ${i.invoice_no}'s payout metadata`);
+  }
+  if (!paid.length || a.checks?.g?.ok !== true || !/SWIFT, Face ID, approval_sha256 in Airwallex's metadata, PAID/.test(a.checks.g.detail)) throw miss("awx-1's SWIFT payouts with the signed hash in Airwallex's metadata");
+  const agentName = (id: string) => need(AGENT_DISPLAY[id as keyof typeof AGENT_DISPLAY]?.name, `the ${id} agent's name`);
+  fact("awx.day", longDay(need(a.card_transactions[0]?.occurred_at, "awx-1's first card transaction")), `${AWX_RUN_FILE} \`card_transactions[0].occurred_at\``);
+  fact("awx.declines", declined.length, `${AWX_RUN_FILE} \`card_transactions\` declined by Airwallex (counted)`);
+  fact("awx.limitCode", overLimit.decline_code, `${AWX_RUN_FILE} \`card_transactions\` ${overLimit.id}`);
+  fact("awx.limitAmount", `${overLimit.currency} ${overLimit.amount}`, `${AWX_RUN_FILE} \`card_transactions\` ${overLimit.id}`);
+  fact("awx.limitAgent", agentName(overLimit.agent), `${AWX_RUN_FILE} \`card_transactions\` ${overLimit.id} \`agent\``);
+  fact("awx.limit", `${card(overLimit.agent).currency} ${limit}`, `${AWX_RUN_FILE} \`cards\` (${overLimit.agent}) \`read_back.per_tx\`, as Airwallex holds it`);
+  fact("awx.mccCode", wrongMcc.decline_code, `${AWX_RUN_FILE} \`card_transactions\` ${wrongMcc.id}`);
+  fact("awx.mcc", wrongMcc.mcc, `${AWX_RUN_FILE} \`card_transactions\` ${wrongMcc.id} \`mcc\``);
+  fact("awx.mccAgent", agentName(wrongMcc.agent), `${AWX_RUN_FILE} \`card_transactions\` ${wrongMcc.id} \`agent\``);
+  fact("awx.mccAllowed", mccs.join(", "), `${AWX_RUN_FILE} \`cards\` (${wrongMcc.agent}) \`read_back.mccs\`, as Airwallex holds it`);
+  fact("awx.raise", raise.proposal_id, `${AWX_RUN_FILE} \`declines_met\` (the agent, Claude, read LIMIT_EXCEEDED) and \`proposals\` (${raise.kind}, ${raise.status}, passkey); \`checks.e\``);
+  fact("awx.payouts", paid.map((i) => `${i.invoice_no} · ${eur(i.amount)} · ${i.status}`).join("; "), `${AWX_RUN_FILE} \`invoices\` (approval_sha256 = the proposal's terms_sha256) and \`verify\` ("approval hash in metadata, PAID"); \`checks.g\``);
+  fact("awx.payoutCount", paid.length, `${AWX_RUN_FILE} \`invoices\` PAID (counted)`);
+  fact("awx.note", a.note, `${AWX_RUN_FILE} \`note\`, the run's own label`);
+
+  // The Airi run: Visa Intelligent Commerce through Airwallex's Airi, a single-use Visa credential per purchase.
+  const r = x.airi;
+  if (r?.mode !== "live" || r.test_money !== true || r.test_card !== true) throw miss(`${AIRI_RUN_FILE} is not a live run with a test card and test money`);
+  const step = (route: "alone" | "cfo" | "refused") => need(r.purchases?.find((q) => q.route === route), `the Airi run's ${route} purchase`);
+  const alone = step("alone"), cfo = step("cfo"), refused = step("refused");
+  const max = need(r.policy?.alone_max_eur, "the Airi run's limit (`policy.alone_max_eur`)");
+  if (!/single-use/.test(r.credential) || !/^visa\b/i.test(r.preflight?.card ?? "")) throw miss("the Airi run's single-use Visa credential");
+  if (alone.outcome !== "SUCCEEDED" || alone.status !== "SETTLED" || !(cents(alone.amount) <= cents(max)) || !/once, with a passkey in Airi/.test(alone.tap ?? "")) throw miss("the Airi run's purchase within the limit, paid");
+  if (cfo.outcome !== "SUCCEEDED" || cfo.status !== "SETTLED" || cfo.proposal_end !== "EXECUTED" || cfo.method !== "passkey" || !(cents(cfo.amount) > cents(max)) || !/after the CFO's Face ID/.test(cfo.tap ?? "")) throw miss("the Airi run's purchase above the limit, paid after the CFO's Face ID");
+  if (refused.by !== "purser" || refused.code !== "PURSER_MERCHANT_NOT_ALLOWED" || refused.airi_calls !== 0 || r.policy.merchants_allowed.includes(refused.merchant)) throw miss("the Airi run's merchant refused by Purser before Airi was asked");
+  const checks = Object.values(need(r.checks, "the Airi run's checks"));
+  fact("airi.day", shortDay(r.started_at), `${AIRI_RUN_FILE} \`started_at\``);
+  fact("airi.label", need(r.label === "Airwallex sandbox, test card, test money" ? r.label.replace(/, /g, " · ") : null, "the Airi run's own label"), `${AIRI_RUN_FILE} \`label\`, the run's own words`);
+  fact("airi.limit", eur(max), `${AIRI_RUN_FILE} \`policy.alone_max_eur\``);
+  fact("airi.alone", `${alone.currency} ${alone.amount}`, `${AIRI_RUN_FILE} \`purchases\` step ${alone.step} (alone, ${alone.outcome}, ${alone.status})`);
+  fact("airi.cfo", `${cfo.currency} ${cfo.amount}`, `${AIRI_RUN_FILE} \`purchases\` step ${cfo.step} (cfo, ${cfo.outcome}, ${cfo.status})`);
+  fact("airi.proposal", cfo.proposal_id, `${AIRI_RUN_FILE} \`purchases\` step ${cfo.step} \`proposal_id\` (${cfo.proposal_end}, ${cfo.method})`);
+  fact("airi.refused", `${refused.currency} ${refused.amount}`, `${AIRI_RUN_FILE} \`purchases\` step ${refused.step} (refused by Purser, ${refused.code}, ${refused.airi_calls} Airi calls)`);
+  fact("airi.checks", `${checks.filter((c) => c.ok).length} of ${checks.length}`, `${AIRI_RUN_FILE} \`checks\` (ok, counted)`);
+
+  // The recorded walk: the labels the live page showed, and each window inside its step.
+  const w = x.recording;
+  if (!w?.page?.endsWith("/try/sign") || w.walks < 1 || w.walks > 3 || w.errors?.length) throw miss(`${RECORDING_FILE}: one clean walk of the live /try/sign page`);
+  if (!/virtual authenticator/.test(w.passkey)) throw miss(`${RECORDING_FILE}: the passkey the walk used`);
+  RECORDING.windows.forEach(([s, e], i) => { const [a0, a1] = RECORDING.steps[i]!; if (!(s >= w.at[a0] && e <= w.at[a1])) throw miss(`${RECORDING_FILE}: window ${s}–${e} inside the walk's ${a0} to ${a1}`); });
+  fact("rec.reader", need(/^Claude Sonnet · live\b/.test(w.labels.read) ? "Claude Sonnet" : null, "the live reader on the recorded page"), `${RECORDING_FILE} \`labels.read\`: "${w.labels.read}"`);
+  fact("rec.advisor", need(/^Claude Opus · live\b/.test(w.labels.advice) ? "Claude Opus" : null, "the live advice on the recorded page"), `${RECORDING_FILE} \`labels.advice\`: "${w.labels.advice}"`);
+  fact("rec.tamper", need(w.tamper === "Refused by Purser" ? "refused" : null, "the refused cent on the recorded page"), `${RECORDING_FILE} \`tamper\`: "${w.tamper}"`);
+  fact("rec.trick", need(/^Blocked: /.test(w.trick.blocked) ? "blocked" : null, "the blocked trick on the recorded page"), `${RECORDING_FILE} \`trick.blocked\`: "${w.trick.blocked}"`);
+  fact("rec.day", longDay(w.recorded_at), `${RECORDING_FILE} \`recorded_at\``);
+  return F;
+}
+
 // ---- What each scene shows and says ----
 
-/** Each scene's length in seconds (film v5, Max): the script (premiereScript.ts) checks its scenes against these. */
+/**
+ * Each scene's length in seconds (film v6, 2:59: v5's scenes trimmed, the recorded walk in 11-turn, and the two runs of
+ * 7 November, 13b and 13c): the script (premiereScript.ts) checks its scenes against these.
+ */
 export const SCENE_SECONDS: Record<string, number> = {
-  "01-hook": 6, "02-purser": 4, "03-agents": 10, "04-how": 8, "05-price": 12, "05b-treasury": 8, "06-metal": 8, "07-dispute": 10,
-  "08-faceid": 8, "09-six": 10, "10-why": 10, "11-turn": 7, "12-tamper": 8, "13-proof": 13, "13b-value": 4, "14-real": 10, "15-close": 13, "16-end": 13,
+  "01-hook": 6, "02-purser": 4, "03-agents": 10, "04-how": 8, "05-price": 11, "05b-treasury": 8, "06-metal": 6, "07-dispute": 9,
+  "08-faceid": 8, "09-six": 9, "10-why": 8, "11-turn": 13, "12-tamper": 6, "13-proof": 12, "13b-awx": 11, "13c-airi": 14, "13d-value": 4,
+  "14-real": 8, "15-close": 13, "16-end": 11,
 };
 
 /** How long a line takes at the narrator's calm pace, about 2.5 words a second (to the hundredth). */
@@ -412,12 +552,11 @@ export function timeLine(id: string, line: string, seconds: number): VoiceLine[]
 }
 
 /** The film's data: the facts, the strings on screen and the voice-over. Throws when a figure is missing. */
-export function buildPremiere(r: MainRun, readme: string, script: string = readFileSync(new URL(`../../${VOICE_SCRIPT_FILE}`, import.meta.url), "utf8")): PremiereData {
-  const F = premiereFacts(r, readme);
+export function buildPremiere(r: MainRun, readme: string, script: string = readFileSync(new URL(`../../${VOICE_SCRIPT_FILE}`, import.meta.url), "utf8"), runs: SideRuns = loadSideRuns()): PremiereData {
+  const F = { ...premiereFacts(r, readme), ...sideFacts(runs) };
   const v = (k: string) => need(F[k], k).value;
   const n = (k: string) => Number(v(k));
   const said = (k: string) => spoken(n(k));
-  const m = trySignExample();
   const site = TRY_SIGN_URL.replace(/^https:\/\//, "").replace(/\/try\/sign$/, "");
 
   // P-0005's terms as its approval sheet shows them (the reconstruction on 08).
@@ -425,7 +564,8 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
 
   const screen: PremiereData["screen"] = {
     // The hook (Max, 5 November): the line slams in on black; the question, large, a pen stroke drawn under it.
-    "01-hook": { line: "AI agents can now spend money.", question: "So who signs off?" },
+    // v6 (Max, 7 November): "are starting to", not "can now" (accuracy).
+    "01-hook": { line: "AI agents are starting to spend money.", question: "So who signs off?" },
     // A straight cut to the wordmark, the core line under it word for word (the README's first line), in two lines.
     "02-purser": { title: "Purser", core: CORE_LINE, sub: "Starter Kit 11" },
     "03-agents": {
@@ -506,13 +646,18 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
       // The passkey signs; Face ID unlocks it (the claims, /try/sign).
       a: ["A password is the same for every payment;", "the passkey behind Face ID signs the hash of these exact terms:", "change anything after signing, and the signature is worthless."],
     },
+    // The walk of the live page (v6), recorded and laid into the phone frame; beside it, each step as the recording shows
+    // it, in the order of its windows, and the label that says what it is.
     "11-turn": {
-      label: TRY_SIGN_LABEL, url: TRY_SIGN_URL.replace(/^https:\/\//, ""), ...TRY_SIGN_WORDS,
-      agent: m.p.agent, says: m.p.says, facts: [["Pay", m.p.payee], ["Amount", v("try.amount")], ["Reference", m.p.reference], ["Proposal", v("try.proposal")]],
-      waits: m.waits, hash: v("try.hash"),
-      side: ["Your turn.", "Your own test world.", "Your own test passkey.", "Sign the exact terms with Face ID.", "The server checks the signature."],
-      mockNote: "A mock of the live page, drawn from its code",
-      overlay: "Max's iPhone · the live page",
+      head: "Your turn: the live page.", url: TRY_SIGN_URL.replace(/^https:\/\//, ""),
+      side: [`${v("rec.reader")} reads the invoice.`, `${v("rec.advisor")} advises.`, "Face ID signs the exact terms.", `One cent changed: ${v("rec.tamper")}.`, `A planted trick: ${v("rec.trick")}.`],
+      // When each caption comes in: the start of the window that shows its step (the reading, the advice, signed, the
+      // cent, the trick), from RECORDING's windows.
+      at: [1, 2, 3, 4, 5].map((i) => Math.round(RECORDING.windows.slice(0, i).reduce((k, [a0, a1]) => k + a1 - a0, 0) * 100) / 100),
+      label: RECORDED_LABEL,
+      note: `Cut to its steps · the passkey: Chromium's virtual authenticator · recorded ${v("rec.day")}`,
+      // An empty frame where the recording goes, when none is laid in (--check, --stills): its aspect, 390 by 844.
+      aspect: [390, 844],
     },
     "12-tamper": {
       from: v("try.amount"), plus: "+0.01", to: v("try.tampered"),
@@ -520,6 +665,8 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
       refused: TRY_SIGN_WORDS.refused, last: "One cent. Worthless.",
     },
     "13-proof": {
+      // v6: the run is named, as the runs of 7 November follow.
+      kicker: `The main run · ${v("run.day")}`,
       cards: [
         { big: `${v("specs.byClaude")}/${v("specs.decisions")}`, label: "decisions by Claude", small: `Sourcing ${v("specs.sourcing")} · Support ${v("specs.support")} · Treasury ${v("specs.treasury")} · ${v("specs.fallbacks")} fallbacks` },
         // The stops (Max, 5 November, second round: "1 + 1" told too little): all of the run's stops and who stopped
@@ -533,10 +680,37 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
           ] },
       ],
     },
-    "13b-value": { line: ["The agents do the work.", "The CFO signs only the exceptions."] },
+    // awx-1 (7 November): Airwallex itself declined over the limit and in the wrong category; the agent asked the CFO
+    // for a raise, not a retry; the hash the CFO signed rides in Airwallex's SWIFT payout metadata.
+    "13b-awx": {
+      kicker: `A second live run · Airwallex only · ${v("awx.day")}`,
+      head: "Airwallex holds the card limits itself.",
+      declines: [
+        { code: v("awx.limitCode"), line: `${v("awx.limitAmount")} on the ${v("awx.limitAgent")}'s card, over its ${v("awx.limit")} limit` },
+        { code: v("awx.mccCode"), line: `MCC ${v("awx.mcc")} on the ${v("awx.mccAgent")}'s card, which allows ${v("awx.mccAllowed")}` },
+      ],
+      by: "Declined by Airwallex",
+      raise: `The ${v("awx.limitAgent")} asked the CFO for a raise (${v("awx.raise")}), not a retry`, raised: "Approved with Face ID",
+      hash: "The hash the CFO signed rides in Airwallex's SWIFT payout metadata",
+      payouts: v("awx.payouts").split("; "),
+      foot: v("awx.note"),
+    },
+    // The Airi run (7 November): Visa Intelligent Commerce through Airwallex's Airi (Max's words, 7 November).
+    "13c-airi": {
+      head: `Visa Intelligent Commerce via Airwallex's Airi: a live run (${v("airi.day")})`,
+      line: "Agents paid with a single-use Visa (VIC) credential from Airi: within the limit on their own, above it only after the CFO's Face ID, and a disallowed merchant was refused by Purser before Airi was asked.",
+      rows: [
+        { ok: true, label: "✓ Paid alone", amount: v("airi.alone"), detail: `within the ${v("airi.limit")} limit · one passkey tap in Airi` },
+        { ok: true, label: "✓ Paid after Face ID", amount: `${v("airi.cfo")} · ${v("airi.proposal")}`, detail: "the CFO's Face ID in Purser, then one tap in Airi" },
+        { ok: false, label: "✕ Refused by Purser", amount: v("airi.refused"), detail: "a merchant not allowed · Airi was never asked" },
+      ],
+      checks: `${v("airi.checks")} checks`,
+      label: v("airi.label"),
+    },
+    "13d-value": { line: ["The agents do the work.", "The CFO signs only the exceptions."] },
     "14-real": {
       kicker: "What's real, what's ours",
-      realHead: "Real", real: ["the Airwallex sandbox", "Metal testnet", "Claude", "Face ID"], realNote: "test money only",
+      realHead: "Real", real: ["the Airwallex sandbox", "Metal testnet", "Claude", "Face ID", "Airi, with a test card"], realNote: "test money only",
       oursHead: "Ours or simulated", ours: ["the suppliers", "the customer", "the merchant", "the second approver: a labelled test passkey"],
     },
     "15-close": {
@@ -562,19 +736,22 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
   const lines = voiceScript(script);
   const dollars = (k: string) => need(/^(\d+)\.00$/.exec(v(k))?.[1], `${k} in whole dollars`);
   const says: Record<string, string[]> = {
-    "01-hook": ["AI agents can now spend money.", "So who signs off?"],
+    "01-hook": ["AI agents are starting to spend money.", "So who signs off?"],
     "02-purser": ["This is Purser, built by Max Geurtsen."],
     "03-agents": [`${cap1(said("run.agents"))} Claude agents`, "its own Airwallex card, and its own Metal mandate"],
     "05-price": [`${cents(v("price.new")) === 2 * cents(v("price.old")) ? "doubles" : "raises"} its price, past the Sourcing agent's cap`, "Metal refused it"],
     "05b-treasury": ["two ways", `within the same ${spoken(Number(dollars("treasury.total")))} dollars`, "with Face ID"],
-    "06-metal": [`${cap1(said("metal.payments"))} of them`, "No emulator"],
+    "06-metal": [`${cap1(said("metal.payments"))} Metal payments`, "No emulator"],
     "07-dispute": [`disputes ${said("dispute.count")} orders`, `Only the ${said("dispute.refundCount")} with wrong data`],
     "09-six": [`${cap1(said("paid.seconds"))} ${n("paid.seconds") === 1 ? "second" : "seconds"} later`, "Airwallex pays the euro invoice by SWIFT, in its sandbox"],
+    "11-turn": ["on the live page", `${v("rec.reader")} reads the invoice`, `${v("rec.advisor")} advises`, "you sign with Face ID"],
     "12-tamper": ["Change one cent", "One cent. Worthless."],
     "13-proof": [`${v("specs.byClaude") === v("specs.decisions") ? "All" : `${cap1(said("specs.byClaude"))} of`} ${said("specs.decisions")} decisions by Claude`,
       `${cap1(said("specs.stops"))} stops, ${v("specs.overLimit")} paid over a limit`, `${said("specs.stopsClaude")} skipped by Claude`, `${said("specs.stopsMetal")} refused by Metal`,
       `${said("specs.stopsCfo")} rejected by the CFO`, `${said("specs.stopsPlanted")} planted ${n("specs.stopsPlanted") === 1 ? "instruction" : "instructions"} ignored`],
-    "13b-value": ["The agents do the work. The CFO signs only the exceptions."],
+    "13b-awx": [`Airwallex itself declined ${said("awx.declines")} charges`, "over the limit", "in the wrong category", "asked the CFO for a raise, not a retry"],
+    "13c-airi": ["Airwallex's Airi", "single-use Visa credential", "alone within the limit", "only after the CFO's Face ID", "refused by Purser before Airi was asked"],
+    "13d-value": ["The agents do the work. The CFO signs only the exceptions."],
     "15-close": [CLOSING[0], `${CLOSING[1]} ${CLOSING[2]}`, CLOSING[3]],
   };
   const voice: PremiereData["voice"] = {};
@@ -587,6 +764,9 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
   return { facts: F, screen, voice, credits: CREDITS };
 }
 
+
+/** The label on the recorded walk of the live page (Max, 7 November). */
+export const RECORDED_LABEL = "Recorded from the live page · test world · test money";
 
 /** The corner credits (Max, 4 November): who made it, and what it is built on, in words. */
 export const CREDITS = { left: "Max Geurtsen · Purser", right: "Built on Airwallex · Metal · Claude" } as const;
@@ -633,10 +813,10 @@ export const PREMIERE_CSP = [
   "font-src 'self'", "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
 ].join("; ");
 
-/** The record and the README, read now (the film is built when it is recorded). */
+/** The records and the README, read now (the film is built when it is recorded). */
 export function loadPremiere(root = new URL("../../", import.meta.url)): PremiereData {
   const record = JSON.parse(readFileSync(new URL(MAIN_RUN_FILE, root), "utf8")) as MainRun;
-  return buildPremiere(record, readFileSync(new URL("README.md", root), "utf8"), readFileSync(new URL(VOICE_SCRIPT_FILE, root), "utf8"));
+  return buildPremiere(record, readFileSync(new URL("README.md", root), "utf8"), readFileSync(new URL(VOICE_SCRIPT_FILE, root), "utf8"), loadSideRuns(root));
 }
 
 /** The film page, its data inside it ("<" escaped); the scenes' times come from the script (premiereScript.ts). */
