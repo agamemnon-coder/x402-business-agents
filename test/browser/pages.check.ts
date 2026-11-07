@@ -271,6 +271,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     await page.goto(`${base}/trace`, { waitUntil: "load" });
     await look(page, `/trace ${tag}`, w);
     {
+      // The page keeps the site's gutter (live screenshot, 6 Nov: at 390 px the heading touched the screen's edge).
+      const hb = await page.locator("h1").first().boundingBox();
+      if (!hb || hb.x < 15) fail(`/trace ${tag}: the heading sits outside the page's gutter (x = ${hb?.x})`);
       const t = await page.evaluate(() => document.body.innerText);
       if (!/Pick any of the 88 payments \(86 on Metal \+ 1 card charge \+ 1 SWIFT transfer\)\. Every step is shown; the audit rows themselves are summarised, not published\./.test(t)) fail(`/trace ${tag}: the header is not the computed one`);
       if (!/Derived from the main run's ledger \(3 Nov\), sanitized, generated \d{4}-\d\d-\d\d\. The main run's record is unchanged\./.test(t)) fail(`/trace ${tag}: no label`);
