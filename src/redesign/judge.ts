@@ -24,14 +24,14 @@ export function judgeSteps(record = loadRecord().record): JudgeStep[] {
   const refusal = metalStory(record).refusal?.proof.href;
   return [
     {
-      id: "sign", title: "Sign one yourself, and tamper one cent", seconds: 60,
-      see: "A test world of your own: sign the waiting payment with your passkey, then “Try to tamper: change the amount by 0.01”. The server refuses the same signature.",
+      id: "sign", title: "Sign, then try to cheat", seconds: 60,
+      see: "A test world of your own: sign the agent's payment with your passkey, then “Now try to cheat: change one cent”. The server refuses the same signature.",
       links: [{ label: "Open /try/sign", href: "/try/sign" }],
     },
     {
-      id: "policy", title: "Set a looser policy and see the worst case change", seconds: 30,
-      see: "Step 0 of the same page, “Optional: set the policy first”: loosen a limit and the worst case changes; a looser policy holds only once you sign it.",
-      links: [{ label: "Step 0 on /try/sign", href: "/try/sign" }],
+      id: "policy", title: "Change the rule", seconds: 30,
+      see: "Next on the same page: let the agent pay more alone. A looser rule needs your signature; then its next invoice pays without you, and the worst case is in sight.",
+      links: [{ label: "Change the rule on /try/sign", href: "/try/sign" }],
     },
     {
       id: "trace", title: "Trace any payment from policy to bank", seconds: 30,

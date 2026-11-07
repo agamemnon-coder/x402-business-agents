@@ -204,6 +204,17 @@ export const FIXED_PROPOSALS: FixedProposal[] = [
   { id: "T-0001", agent: "Treasury agent", says: "Stockline's spring order is ready; I would pay it now to keep the price.", payee: "Stockline GmbH (test payee)", iban: TEST_IBAN.stockline, amount: "6500.00", reference: "Stock order SO-4471" },
   { id: "T-0002", agent: "Treasury agent", says: "Alpine Packaging's invoice is due Friday. It is more than I may pay alone, so I ask you.", payee: "Alpine Packaging (test payee)", iban: TEST_IBAN.alpine, amount: "1850.00", reference: "Invoice INV-2026-118" },
 ];
+/**
+ * The agent's next invoice (Max, 7 Nov: the demo's last screen): Alpine Packaging's next one, for the same amount. It
+ * arrives in the world only once the visitor has signed T-0002, so the world opens with the two above, as before. It is
+ * fixed text with no FX quote and no model sentence (no outside call), and it is checked by the same rules: above what
+ * the agent may pay alone it waits for a signature; at or below a limit the visitor signed, it runs alone (runAlone).
+ */
+export const NEXT_INVOICE: FixedProposal = {
+  id: "T-0003", agent: "Treasury agent", says: "Alpine Packaging's next invoice is in; it is the same amount as the one you signed.", payee: "Alpine Packaging (test payee)", iban: TEST_IBAN.alpine, amount: "1850.00", reference: "Invoice INV-2026-131",
+};
+/** Any proposal this world can hold, by its id: the two it opens with, and the next invoice. */
+const fixedOf = (id: string): FixedProposal => [...FIXED_PROPOSALS, NEXT_INVOICE].find((x) => x.id === id)!;
 
 export type Check = { check: "fail"; rule: string } | { check: "pass"; waits: string };
 /** The two rules a payment is checked against: the world's at the start, or the policy the visitor set (step 0). */
@@ -514,7 +525,7 @@ export class TrySignDesk {
   }
   /** A proposal as the page gets it, with its sentence and where that came from (the blocked one: fixed text). */
   private view(worldId: string, p: ProposalRow & { checked: Check }) {
-    const f = FIXED_PROPOSALS.find((x) => x.id === p.id)!;
+    const f = fixedOf(p.id);
     const line = (this.sql.exec("SELECT says, voice FROM ts_lines WHERE world = ? AND id = ?", worldId, p.id).toArray() as { says: string; voice: string }[])[0];
     return { proposal_id: p.id, agent: f.agent, says: line?.says ?? f.says, voice: line ? (JSON.parse(line.voice) as Voice) : null, canonical: p.canonical, terms_sha256: p.sha, status: p.status, ...p.checked,
       ...(p.execution ? { execution: JSON.parse(p.execution) as unknown } : {}) };
@@ -642,7 +653,8 @@ export class TrySignDesk {
     return Object.fromEntries(AGENTS.map((a) => {
       const l = threeLocks(policy, a, now, worldId);
       if (a !== "treasury") return [a, l];
-      const payments = FIXED_PROPOSALS.map((f) => rows.find((x) => x.id === f.id)?.status === "executed"
+      // The world's payments as they are (the next invoice only once it has arrived).
+      const payments = rows.map((r) => fixedOf(r.id)).map((f) => rows.find((x) => x.id === f.id)?.status === "executed"
         ? { proposal_id: f.id, amount: f.amount, check: "executed", alone: (JSON.parse(rows.find((x) => x.id === f.id)!.execution ?? "{}") as { alone?: boolean }).alone === true }
         : { proposal_id: f.id, amount: f.amount, ...checkPayment(f.amount, balance, rulesOf(policy)) });
       return [a, { ...l, purser: { ...l.purser, payments } }];
@@ -717,6 +729,23 @@ export class TrySignDesk {
       this.recheck(worldId);
       ran.push(next.id);
     }
+  }
+
+  /**
+   * The agent's next invoice (T-0003), once T-0002 is signed: written once, checked under the policy in force against the
+   * balance now (blocked, or waiting for a person), then any payment within what the agent may pay alone runs (runAlone).
+   * No outside call. Returns the ids that ran alone. The hash is computed first; from the read to the writes no await.
+   */
+  private async nextInvoice(worldId: string): Promise<string[]> {
+    const w = (this.sql.exec("SELECT expires FROM ts_worlds WHERE id = ?", worldId).toArray() as { expires: number }[])[0];
+    if (!w) return [];
+    const expiresAt = new Date(w.expires).toISOString().replace(/\.\d{3}Z$/, "Z");
+    const c = canonical(proposalTerms(NEXT_INVOICE, worldId, expiresAt, null, TrySignDesk.by(NEXT_INVOICE, null)));
+    const sha = await sha256Hex(c);
+    if ((this.sql.exec("SELECT 1 FROM ts_proposals WHERE world = ? AND id = ?", worldId, NEXT_INVOICE.id).toArray()).length) return [];
+    const check = checkPayment(NEXT_INVOICE.amount, this.balanceOf(worldId), rulesOf(this.policyOf(worldId).policy));
+    this.sql.exec("INSERT INTO ts_proposals (world, id, canonical, sha, check_json, status, execution) VALUES (?, ?, ?, ?, ?, ?, NULL)", worldId, NEXT_INVOICE.id, c, sha, JSON.stringify(check), check.check === "fail" ? "blocked" : "waiting");
+    return this.runAlone(worldId);
   }
 
   /**
@@ -841,11 +870,15 @@ export class TrySignDesk {
     this.sql.exec("UPDATE ts_worlds SET balance = ? WHERE id = ?", execution.balance_after, world.id);
     // The other payment is checked again against the new balance (under the world's policy).
     this.recheck(world.id);
+    // Signed T-0002: the agent's next invoice arrives, checked under the policy in force (and run alone if within it).
+    const next = p.id === QUOTED.id ? await this.nextInvoice(world.id) : [];
     // The public key it verified against (public by nature: it can check signatures, never make one), so the page can
     // hand the visitor a receipt anyone can verify offline (npm run verify-receipt).
     return answer(200, {
       verified: true, checks: ["signature (ES256)", "challenge = the terms' SHA-256", "origin", "RP id", "user present", "user verified", "counter"], terms_sha256: sha, executed: execution,
-      public_key: { kty: "EC", crv: "P-256", x: cred.x, y: cred.y }, algorithm: "ES256",
+      public_key: { kty: "EC", crv: "P-256", x: cred.x, y: cred.y }, algorithm: "ES256", ...(next.length ? { paid_alone: next } : {}),
+      // The world as it is now (the next invoice among its payments), as a policy answer gives it.
+      ...this.policyAnswer(world.id, this.now()),
     });
   }
 }

@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import { cfoApproval, floorsHeld, tryLocks } from "../src/try/examples.js";
-import { TAMPER_FIELDS, TAMPER_VERDICT, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_SIGNED, TRY_SIGN_START_NOTE, TRY_SIGN_STEPS, WHATS_REAL, trySignPage } from "../src/try/sign.js";
+import { TAMPER_FIELDS, TAMPER_VERDICT, TRY_SIGN_LABEL, TRY_SIGN_SCREENS, TRY_SIGN_STEPS, WHATS_REAL, trySignPage } from "../src/try/sign.js";
 import { proposalTerms, FIXED_PROPOSALS } from "../worker/src/trySign.js";
 
 const read = <T>(p: string) => JSON.parse(readFileSync(new URL(`../${p}`, import.meta.url), "utf8")) as T;
@@ -101,63 +101,80 @@ describe("the approval sheet follows the CFO's real one", () => {
   });
 });
 
-describe("the page's frame: three steps, one line of disclaimer, \"What's real?\"", () => {
+describe("the page's frame: five screens, one line of disclaimer, \"What's real?\"", () => {
   const main = block(page, "<main>", "main").whole;
+  const screen = (n: number) => block(main, `<section class="card scr" id="scr-${n}"`, "section").whole;
+  // The main buttons a screen shows when it opens (a button with the hidden attribute is not shown).
+  const primaries = (html: string) => (html.match(/<(?:button|a) class="btn primary[^"]*"[^>]*>/g) ?? []).filter((b) => !/\shidden(?=[\s>])/.test(b));
 
-  it("three steps with a progress indicator, the first under way, and the start button right after them", () => {
-    expect(TRY_SIGN_STEPS).toEqual(["The agent proposes", "You sign with Face ID", "Purser verifies"]);
-    const ol = block(main, '<ol class="progress"', "ol").whole;
+  it("five screens with one progress indicator, the first under way", () => {
+    expect(TRY_SIGN_STEPS).toEqual(["The agent asks", "Signed", "Try to cheat", "Change the rule", "Pays alone"]);
+    const ol = block(main, '<ol class="dots"', "ol").whole;
     expect(ol.split('<span class="t">').slice(1).map((x) => x.slice(0, x.indexOf("</span>")))).toEqual([...TRY_SIGN_STEPS]);
     expect(ol).toContain('<li id="pg-1" class="on" aria-current="step">');
-    expect(main.indexOf('id="go-world"')).toBeGreaterThan(main.indexOf("</ol>"));
-    expect(main.indexOf('id="go-world"')).toBeLessThan(main.indexOf('id="s-props"'));
+    expect(main).toContain(`<p class="count" id="pg-count" aria-live="polite">1 of 5 · ${TRY_SIGN_STEPS[0]}</p>`);
+    // One indicator only: the step bar of before is gone.
+    expect(page).not.toContain('class="progress"');
+    for (let n = 1; n <= 5; n++) expect(screen(n)).toContain(n === 1 ? `id="scr-${n}" data-screen="${n}">` : `id="scr-${n}" data-screen="${n}" hidden>`);
   });
 
-  it("from 1024 px, under the start button: one short line, not the steps a second time", () => {
-    const go = block(main, '<div class="go">', "div").whole;
-    expect(go).toContain(`<p class="gonote" id="go-note">${TRY_SIGN_START_NOTE}</p>`);
-    expect(go.indexOf('id="go-world"')).toBeLessThan(go.indexOf('id="go-note"'));
-    expect(TRY_SIGN_START_NOTE.split(" ").length).toBeLessThanOrEqual(14);
-    // The steps are said once, in the step bar at the top.
-    for (const s of TRY_SIGN_STEPS) expect(main.split(`>${s}<`).length - 1).toBe(1);
-    expect(go).not.toMatch(/<ol|<li/);
-    // Hidden below 1024 px.
-    expect(page).toMatch(/\.diagram, \.gonote \{ display: none; \}/);
+  it("each screen says what Max wrote, with one main button", () => {
+    const W = TRY_SIGN_SCREENS;
+    expect(screen(1)).toContain(`<h1 tabindex="-1" id="s1-head">${W.ask.head}</h1>`);
+    expect(W.ask.head).toBe("Your Treasury agent wants to pay an invoice above its limit.");
+    expect(screen(2)).toContain(`<h2 tabindex="-1" id="r-head">${W.signed.head}</h2>`);
+    expect(screen(2)).toContain(`<p class="lead1" id="r-line">${W.signed.line}</p>`);
+    expect(W.signed.line).toBe("Purser checked your signature. It only fits these exact terms.");
+    expect(screen(3)).toContain(`<h2 tabindex="-1" id="s3-head">${W.cheat.head}</h2>`);
+    expect(screen(4)).toContain(`<h2 tabindex="-1" id="s4-head">${W.rule.head}</h2>`);
+    expect(screen(5)).toContain(`<h2 tabindex="-1" id="s5-head">${W.alone.head}</h2>`);
+    // One main button in sight per screen: Sign / Now try to cheat / Next / Sign or Apply / See the real run.
+    expect([1, 2, 3, 4, 5].map((n) => primaries(screen(n)).length)).toEqual([1, 1, 1, 1, 1]);
+    expect(screen(1)).toContain(W.ask.sign); expect(screen(2)).toContain(W.signed.cheat); expect(screen(3)).toContain(W.cheat.next);
+    // The second action is a text link, never a second button.
+    expect(screen(2)).toContain('class="tlink" type="button" id="r-receipt"');
+    expect(screen(2)).toContain('class="tlink" id="r-verify"');
   });
 
-  it("on a phone: the terms' labels stay on one line, and the sheet scrolls clear of the sticky parts", () => {
-    expect(page).toContain("dl.facts { grid-template-columns: max-content minmax(0, 1fr);");
-    expect(page).toContain("dl.facts dt { white-space: nowrap; }");
-    expect(page).toContain("scroll-margin-top: var(--stick, 150px)");
+  it("no start button: the test world opens when the page is shown, not while hidden or prerendered", () => {
+    expect(page).not.toContain('id="go-world"');
+    expect(page).toContain('if (document.visibilityState === "visible") openWorld();');
+    expect(page).toContain('document.addEventListener("visibilitychange"');
+  });
+
+  it("from 1024 px the diagram beside the story, the part of each screen lit; below it, hidden", () => {
+    expect(page).toMatch(/\.diagram \{ display: none; \}/);
+    const d = block(main, '<aside class="card diagram" id="diagram"', "aside").whole;
+    expect((d.match(/<li class="dn d-/g) ?? []).length).toBe(3);
+    for (const n of ["d-purser", "d-airwallex", "d-metal", "d-sign", "d-alone"]) expect(d).toContain(n);
+    for (const step of ["1", "2", "3", "4", "5"]) expect(page).toContain(`.diagram[data-step="${step}"]`);
+  });
+
+  it("on a phone: the terms' labels stay on one line, and the main button sticks to the bottom", () => {
+    expect(page).toContain("dl.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr);");
+    expect(page).toContain("dl.facts dt { color: var(--muted); white-space: nowrap; }");
+    expect(page).toContain(".bar { position: sticky; bottom: 0;");
     expect(page).toContain('el("dt", "", ["Proposal expires"])');
     expect(page).toContain('el("dt", "", ["Quote expires"])');
   });
 
-  it("one line of disclaimer at the top, the honest detail inside \"What's real?\"", () => {
-    expect(page).toContain(`<div class="testband" role="note">`);
+  it("one line of disclaimer at the top, with one link, \"What's real?\", to the honest detail", () => {
+    expect(page).toContain(`<div class="testband" role="note"><div class="row"><span class="tl">`);
     expect(page).toContain(TRY_SIGN_LABEL);
-    const wr = block(main, '<details class="wr">', "details").whole;
+    const wr = block(page, '<details class="wr">', "details").whole;
     for (const l of [...WHATS_REAL.simulated, ...WHATS_REAL.real, ...WHATS_REAL.limits, ...WHATS_REAL.sources]) expect(wr).toContain(l);
     for (const w of ["test world", "No payment or conversion at Airwallex, no Metal call, and no money moves", "fixed text", "stand-in", "passkey signature", "server's check", "docs/demo/main-run.json"]) expect(wr).toContain(w);
-    // The old paragraph under the steps is gone: what it said is inside the expander.
-    expect(main).not.toContain('class="note"');
     // One "What's real?" on the page: the footer's copy is gone.
     expect(page.split("What's real?</summary>").length - 1).toBe(1);
     expect(page).not.toContain('<details class="real"');
   });
 
-  it("the first screen: under the start button, one line of what is at stake", () => {
-    expect(TRY_SIGN_HOOK).toBe("A Treasury agent wants to pay an invoice above its limit. You decide.");
-    const go = main.indexOf('id="go-world"');
-    expect(main.indexOf(`<p class="hook" id="hook">${TRY_SIGN_HOOK}</p>`)).toBe(main.indexOf("</button>", go) + "</button>\n  ".length);
-  });
-
-  it("after signing, a big green check with its one sentence; after a refused tamper, one closing line", () => {
-    expect(TRY_SIGN_SIGNED).toBe("Signed and verified. This signature only fits these exact terms.");
-    expect(main).toContain(`<h2 id="r-head">${TRY_SIGN_SIGNED}</h2>`);
+  it("after a refused cheat, one closing line, said first", () => {
     expect(TAMPER_VERDICT).toEqual({ cent: "One cent changed. The signature is worthless.", field: "One field changed. The signature is worthless." });
     expect(data.verdict).toEqual(TAMPER_VERDICT);
-    expect(main).toContain('<p class="outcome" id="t-verdict" hidden></p>');
+    const t = block(main, '<div class="refused" id="tamper"', "div").whole;
+    expect(t.indexOf('<p class="outcome" id="t-verdict" hidden></p>')).toBeGreaterThan(-1);
+    expect(t.indexOf('id="t-verdict"')).toBeLessThan(t.indexOf('id="t-table"'));
   });
 
   it("its one inline script parses (it lives in a template string, where a stray escape breaks it)", () => {

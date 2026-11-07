@@ -45,8 +45,8 @@ const ownLinks = (s: (typeof JUDGE_STEPS)[number]) => s.links.map((l) => l.href)
  * not show. Step 3's page (/trace) is not built yet, so only its route is checked.
  */
 const SEES: Record<string, { path: string; marks: (string | RegExp)[] }[]> = {
-  sign: [{ path: "/try/sign", marks: ["Try to tamper: change the amount by 0.01", 'id="go-tamper"'] }],
-  policy: [{ path: "/try/sign", marks: ["Optional: set the policy first", /worst.case/i] }],
+  sign: [{ path: "/try/sign", marks: ["Now try to cheat: change one cent", 'id="go-cheat"', "Sign with Face ID"] }],
+  policy: [{ path: "/try/sign", marks: ["Change the rule.", 'id="rule-chips"', /worst.case/i, "The agent pays it alone."] }],
   trace: [],
   rails: [{ path: "/airwallex", marks: ['id="controls"', "LIMIT_EXCEEDED"] }, { path: "/metal", marks: [metalStory(loadRecord().record).refusal?.proof.href ?? "no refusal in the record"] }],
   verify: [{ path: "/try/verify", marks: ["Don't trust our server: check it yourself.", "connect-src 'none'"] }],
@@ -55,8 +55,8 @@ const SEES: Record<string, { path: string; marks: (string | RegExp)[] }[]> = {
 describe("/judge: the five steps", () => {
   it("are the five Max named, in his order, with his times, three minutes in all", () => {
     expect(JUDGE_STEPS.map((s) => [s.title, s.seconds])).toEqual([
-      ["Sign one yourself, and tamper one cent", 60],
-      ["Set a looser policy and see the worst case change", 30],
+      ["Sign, then try to cheat", 60],
+      ["Change the rule", 30],
       ["Trace any payment from policy to bank", 30],
       ["See Airwallex and Metal enforce it themselves", 30],
       ["Check the receipt yourself, no server", 30],

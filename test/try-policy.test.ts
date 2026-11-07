@@ -265,7 +265,8 @@ describe("(d) the world follows the policy", () => {
     expect((await (await call(v.d, "sign", signBody(v.w.world.token, v.b, v.signed(v.b.canonical)))).json() as { verified: boolean }).verified).toBe(true);
     // Balance 28,150.00: with the floor at 20,000.00, T-0001 (6,500.00) would leave 21,650.00, so it passes.
     const s = await v.signedChange("treasury", { reserve_floor: "20000.00" });
-    expect(s.out.proposals.map((p) => `${p.proposal_id}:${p.status}`)).toEqual(["T-0001:waiting", "T-0002:executed"]);
+    // Signing T-0002 brought the agent's next invoice (T-0003, test/try-next-invoice.test.ts); it waits for a signature.
+    expect(s.out.proposals.map((p) => `${p.proposal_id}:${p.status}`)).toEqual(["T-0001:waiting", "T-0002:executed", "T-0003:waiting"]);
     expect(s.out.world.balance).toBe("28150.00");
   });
 });
@@ -431,7 +432,8 @@ describe("the page's step 0", () => {
     const { trySignPage, TRY_POLICY } = await import("../src/try/sign.js");
     const { POLICY_FIELDS, POLICY_MCCS, POLICY_CURRENCIES } = await import("../src/try/policy.js");
     const html = trySignPage();
-    expect(html).toContain('<section class="card policy" id="policy" hidden>');
+    // Behind one closed line on screen 4, "All fields, and what Purser sends" (Max, 7 Nov).
+    expect(html).toContain(`<details class="fold quiet policy" id="policy"><summary id="p-open">${TRY_POLICY.open}</summary>`);
     for (const f of POLICY_FIELDS) expect(html).toContain(`data-pfield="${f}"`);
     for (const m of POLICY_MCCS) expect(html).toContain(`name="pf-mccs" value="${m}"`);
     for (const c of POLICY_CURRENCIES) expect(html).toContain(`name="pf-currencies" value="${c}"`);
