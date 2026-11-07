@@ -8,7 +8,7 @@ AI agents can now spend company money; Purser lets them, through Airwallex and M
 
 **[Try it in 30 seconds.](https://kit11.max-31b.workers.dev/try/sign)**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 2858 passing](https://img.shields.io/badge/tests-2858%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 2864 passing](https://img.shields.io/badge/tests-2864%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
 
 **[Judge it in 3 minutes →](https://kit11.max-31b.workers.dev/judge)**
 
@@ -23,12 +23,13 @@ every id below.
 
 **Claude agents propose and pay; Purser's code, Airwallex and Metal each hold a limit; above them, the CFO signs the exact terms with Face ID.**
 
-**Try it yourself: [sign with your own Face ID](https://kit11.max-31b.workers.dev/try/sign).** In a test world of your
-own, an agent proposes two payments: a rule blocks one (the page shows which of three locks stopped it: Purser's policy,
-Airwallex's card limit or Metal's mandate, each with a real example), and you sign the other's exact terms, shown as
-the CFO's approval sheet, with a passkey your phone or laptop makes (Face ID, Touch ID or a PIN). The server checks the
-signature; change one cent, the IBAN or the currency and the same signature is refused. Nothing real moves. Live since
-4 November 2026. Then download the receipt and check it offline, with no server: `npm run verify-receipt -- receipt.json`.
+**Try it yourself: [sign with your own Face ID](https://kit11.max-31b.workers.dev/try/sign).** About a minute, in a test
+world of your own. Your Treasury agent asks to pay an invoice above its limit: you sign its exact terms with a passkey
+your phone or laptop makes (Face ID, Touch ID or a PIN), and the server checks the signature. Then try to cheat: change
+one cent, the IBAN or the currency, and the same signature is refused. Then change the rule: let the agent pay more
+alone (a looser rule needs your signature), and its next invoice is paid without you. Which of three locks stopped the
+other payment (Purser's policy, Airwallex's card limit or Metal's mandate) is one tap away, each with a real example.
+Nothing real moves. Live since 4 November 2026. Then download the receipt and check it offline, with no server: `npm run verify-receipt -- receipt.json`.
 
 **Also:** [the site](https://kit11.max-31b.workers.dev/) replays the main run; [`/try`](https://kit11.max-31b.workers.dev/try)
 gives an agent a task of yours: Claude reads it, code applies the CFO's limits, no money moves.
@@ -84,7 +85,7 @@ npm run judge -- --check
 ```
 
 - `npm ci` (under a minute): installs the exact versions in the lockfile; every dependency is pinned.
-- `npm test` (3 to 4 min): **2858 tests in 280 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included.
+- `npm test` (3 to 4 min): **2864 tests in 281 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included.
 - `npm run judge -- --check` (about 3 s): builds the site's 17 pages from the main run's committed record, offline, and fetches each once.
 - `npm run verify-receipt -- receipt.json` (under 1 s): after you sign on [/try/sign](https://kit11.max-31b.workers.dev/try/sign), checks its receipt offline with Node's own crypto: your passkey signed exactly those terms; change one cent and it says NOT VALID. Getting the receipt needs the live site and your own passkey.
 

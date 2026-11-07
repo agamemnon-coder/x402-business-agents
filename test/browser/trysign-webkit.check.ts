@@ -99,7 +99,7 @@ for (const [width, scheme] of [[360, "light"], [360, "dark"], [390, "light"], [3
   // Sign (the software passkey made, then the signature): the server verifies it.
   await page.click("#go-sign");
   await page.waitForSelector("#scr-2:not([hidden]), #s1-status.bad");
-  check(await page.locator("#scr-2").isVisible() && (await page.locator("#r-head").innerText()).trim() === W.signed.head && /Test transfer test-[0-9a-f]{12}: EUR 1,850\.00/.test(await page.locator("#r-exec").innerText()),
+  check(await page.locator("#scr-2").isVisible() && (await page.locator("#r-head").innerText()).trim() === W.signed.head && /Test transfer test-[0-9a-f]{12}: EUR 1,850\.00/.test(await page.locator("#r-exec details.more").textContent() ?? ""),
     `${tag}: screen 2: "${W.signed.head}", verified by the server, run by the stand-in (${(await page.locator("#s1-status").innerText()).trim().slice(0, 60)})`);
   await measure(page, tag, 2);
   await shot(page, errors, join(shots, `${tag}-2-signed.png`));

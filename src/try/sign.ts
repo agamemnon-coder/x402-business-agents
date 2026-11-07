@@ -53,11 +53,12 @@ export const TRY_SIGN_SCREENS = {
     executed: "Executed in your test world",
     cheat: "Now try to cheat: change one cent",
     receipt: "Download your receipt",
-    verify: "Check it yourself",
+    verify: "Check the receipt yourself",
     details: "Show the details",
   },
   cheat: {
     head: "Try to cheat.",
+    refused: "Refused by Purser",
     chips: [{ id: "cent", label: "+ 1 cent" }, { id: "iban", label: "Other IBAN" }, { id: "currency", label: "USD instead of EUR" }],
     any: "Change any field",
     next: "Next: change the rule",
@@ -66,12 +67,12 @@ export const TRY_SIGN_SCREENS = {
     head: "Change the rule.",
     question: "How much may the agent pay alone?",
     chips: ["500.00", "2000.00", "5000.00"],
-    looser: "Looser: needs your signature.",
-    stricter: "Stricter: it applies at once.",
+    looser: "Raising a limit needs your signature.",
+    stricter: "Lowering a limit applies at once.",
     same: "This is the rule in force. Pick another amount.",
     sign: "Sign with Face ID",
     apply: "Apply",
-    all: "All fields, and what Purser sends",
+    all: "Show all fields",
   },
   alone: {
     head: "The agent pays it alone.",
@@ -128,6 +129,8 @@ export const TRY_POLICY = {
   metalNote: "Cap = the limit per purchase, budget = the limit per month, expiry = the end date.",
 } as const;
 
+/** Screens 4 and 5 say the worst case as one line, and whom it counts: all three agents' cards and mandates. */
+export const allAgents = (headline: string) => headline.replace("Worst case, set by policy:", "Worst case, all agents:");
 /** The worst case before a world opens: the starting policy's, as the README and the CFO's view show it. */
 const START_WORST = worstCaseWords();
 
@@ -181,6 +184,10 @@ ol.dots li { width: 10px; height: 10px; border-radius: 50%; background: var(--bo
 ol.dots li.done { background: var(--ok); } ol.dots li.on { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
 ol.dots li .t { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .prog .count { margin: 0; font: 650 14.5px/1.3 Inter, system-ui, sans-serif; color: var(--muted); }
+.prog { flex-wrap: wrap; }
+.mstrip { flex-basis: 100%; margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font: 600 13.5px/1.3 Inter, system-ui, sans-serif; color: var(--muted); }
+.mstrip .lk1 { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: var(--sunken); color: var(--text); }
+@media (min-width: 1024px) { .mstrip { display: none; } }
 /* The story: one screen at a time, one card; from 1024 px the diagram beside it. */
 .story { display: grid; gap: 20px; align-items: start; }
 .scr { padding: 22px 20px 0; display: grid; gap: 14px; max-width: 640px; min-width: 0; }
@@ -281,11 +288,12 @@ pre.terms { margin: 0; white-space: pre-wrap; font: 13.5px/1.5 ui-monospace, SFM
 .chip { min-height: 46px; padding: 0 16px; border-radius: 999px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text); font: 650 16px/1 Inter, system-ui, sans-serif; cursor: pointer; font-variant-numeric: tabular-nums; }
 .chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
 .chip[disabled] { opacity: .5; cursor: not-allowed; }
-.chip .now { font-weight: 500; color: var(--muted); }
+.chip .now { display: inline-flex; vertical-align: -3px; margin-left: 6px; color: var(--ok); }
 /* The refusal: what was signed and what was sent, the changed row marked, the others quiet. */
 .refused { display: grid; gap: 10px; padding: 14px 16px; border-radius: 16px; background: var(--bad-soft); }
 .refused[hidden] { display: none; }
 .refused > * { min-width: 0; margin: 0; }
+.refused .tagr { justify-self: start; display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: var(--bad); color: var(--on-bad, #fff); font: 700 13.5px/1.3 Inter, system-ui, sans-serif; }
 .refused .rh { display: flex; align-items: center; gap: 8px; color: var(--bad); font-weight: 650; font-size: 15px; }
 .refused .outcome { order: -1; }
 table.diff { width: 100%; border-collapse: collapse; font-size: 14.5px; table-layout: fixed; }
@@ -308,7 +316,7 @@ ul.locks1 { list-style: none; padding: 0; display: grid; gap: 6px; }
 ul.locks1 li { display: flex; align-items: flex-start; gap: 8px; font-size: 15.5px; line-height: 1.4; }
 ul.locks1 li .i { color: var(--ok); flex: none; margin-top: 2px; }
 ul.locks1 li.chg { font-weight: 700; } ul.locks1 li.chg .i { color: var(--accent); }
-.note { font-weight: 650; } .note.looser { color: var(--bad); } .note.stricter { color: var(--ok); }
+.note { font-weight: 650; } .note.looser { color: var(--accent); } .note.stricter { color: var(--ok); }
 /* Screen 5: the next invoice, and the way on. */
 .next { display: grid; gap: 6px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--border); }
 .next > * { margin: 0; min-width: 0; overflow-wrap: anywhere; }
@@ -763,7 +771,7 @@ const JS = `
     $("r-hash").replaceChildren(hashBox(d.terms_sha256));
     $("r-checks").replaceChildren(el("span", "small muted", ["Checked by the server with the relay's passkey verifier."]), more("Checked: " + d.checks.join(", ") + "."));
     var e = d.executed;
-    $("r-exec").replaceChildren(el("span", "small muted", ["Test transfer " + e.id + ": " + eur(e.amount) + " to " + e.payee + "."]), more("Test balance now " + eur(e.balance_after) + ". By the " + e.by + "."));
+    $("r-exec").replaceChildren(el("span", "small muted", [eur(e.amount) + " to " + e.payee.replace(/ \\(test payee\\)$/, "") + "."]), more("Test transfer " + e.id + ": " + eur(e.amount) + " to " + e.payee + ". Test balance now " + eur(e.balance_after) + ". By the " + e.by + "."));
     // The receipt to /try/verify in the link's #fragment, which a browser never sends to a server.
     $("r-verify").href = "/try/verify#receipt=" + toB64u(new TextEncoder().encode(JSON.stringify(receipt())));
     resetTamper();
@@ -856,7 +864,7 @@ const JS = `
         tr.dataset.row = k;
         return tr;
       });
-      $("t-table").replaceChildren(el("table", "diff", [el("thead", "", [el("tr", "", [el("th", "", ["Field"]), el("th", "", ["You signed"]), el("th", "", ["Sent now"])])]), el("tbody", "", rows)]));
+      $("t-table").replaceChildren(el("table", "diff", [el("thead", "", [el("tr", "", [el("th", "", ["Field"]), el("th", "", ["You signed"]), el("th", "", ["Sent with it"])])]), el("tbody", "", rows)]));
       $("t-what").replaceChildren(el("div", "hashes", [
         el("div", "", [el("p", "small muted", ["Signed terms hash to:"]), hashBox(s.x.mine, "old")]),
         el("div", "", [el("p", "small muted", ["Your changed terms hash to:"]), hashBox(h, "new")])
@@ -982,7 +990,7 @@ const JS = `
     if (!x) return;
     $("p-expo-head").textContent = x.headline; $("p-expo-tasks").textContent = x.tasks;
     // Screen 4, in one line beside the choice: "Worst case: …" (the figure as everywhere; "set by policy" is the screen).
-    $("s4-worst").textContent = x.headline.replace(D.policy.worstCase + ":", "Worst case:"); $("s5-worst").textContent = x.headline;
+    $("s4-worst").textContent = x.headline.replace(D.policy.worstCase + ":", "Worst case, all agents:"); $("s5-worst").textContent = x.headline.replace(D.policy.worstCase + ":", "Worst case, all agents:");
     var ul = $("p-expo-how");
     ul.replaceChildren.apply(ul, x.how.concat([D.policy.worstCaseChain]).map(function (l) { return el("li", "", [l]); }));
   }
@@ -1012,7 +1020,9 @@ const JS = `
     // The diagram says the same, beside the story.
     $("dg-purser").textContent = "Pays alone up to " + euro(v); $("dg-awx").textContent = euro(a.per_tx) + " a purchase, " + euro(a.monthly) + " a month"; $("dg-metal").textContent = String(Number(m.cap)) + " test USD a payment";
     document.querySelectorAll("#rule-chips .chip").forEach(function (b) {
-      b.replaceChildren(euro(b.dataset.alone), b.dataset.alone === now ? el("span", "now", [" (now)"]) : "");
+      // The amount in force is marked with a tick (its name says so to a screen reader).
+      b.replaceChildren(euro(b.dataset.alone), b.dataset.alone === now ? Object.assign(el("span", "now", [ic("check")]), { title: "in force" }) : "");
+      b.setAttribute("aria-label", euro(b.dataset.alone) + (b.dataset.alone === now ? ", in force" : ""));
     });
   }
   // A chip: the rule the visitor would set, and what it takes: a signature if looser, nothing if stricter.
@@ -1157,7 +1167,7 @@ const JS = `
     box.dataset.proposal = p.proposal_id;
     box.dataset.state = alone ? "alone" : ran ? "signed" : p.check === "fail" ? "blocked" : "waits";
     box.replaceChildren(
-      el("p", "small muted", [x.terms.payee.replace(/ \\(test payee\\)$/, "") + " · next invoice ", el("span", "nw", [x.terms.reference.replace(/^Invoice /, "")])]),
+      el("p", "small muted", [x.terms.payee.replace(/ \\(test payee\\)$/, "") + " · a new invoice, ", el("span", "nw", [x.terms.reference.replace(/^Invoice /, "")])]),
       el("p", "amt", [amt(x.terms.currency, x.terms.amount)]),
       el("p", "nv", [alone ? "Paid alone under your new policy (up to " + limit + "). No signature needed." : ran ? "Signed, verified and run in your test world." : p.check === "fail" ? "Blocked: " + p.rule : "Waits for your signature: above the " + limit + " the agent may pay alone."]),
       alone ? el("details", "more", [el("summary", "", ["more"]), el("p", "", ["Test transfer " + p.execution.id + ", balance after " + eur(p.execution.balance_after) + ", by the stand-in, in your test world only. Bound to these terms' hash and to the rule you signed (policy v" + p.execution.policy_version + ")."]),
@@ -1234,7 +1244,7 @@ export function trySignPage(): string {
   const W = TRY_SIGN_SCREENS;
   const scr = (n: number, inner: string, extra = "") => `<section class="card scr" id="scr-${n}" data-screen="${n}"${n === 1 ? "" : " hidden"}${extra}>\n${inner}\n</section>`;
   const body = `<main><div class="wrap">
-<div class="prog"><ol class="dots" aria-label="Five steps">${TRY_SIGN_STEPS.map((s, i) => `<li id="pg-${i + 1}"${i === 0 ? ' class="on" aria-current="step"' : ""}><span class="t">${esc(s)}</span></li>`).join("")}</ol><p class="count" id="pg-count" aria-live="polite">1 of 5 · ${esc(TRY_SIGN_STEPS[0])}</p></div>
+<div class="prog"><ol class="dots" aria-label="Five steps">${TRY_SIGN_STEPS.map((s, i) => `<li id="pg-${i + 1}"${i === 0 ? ' class="on" aria-current="step"' : ""}><span class="t">${esc(s)}</span></li>`).join("")}</ol><p class="count" id="pg-count" aria-live="polite">1 of 5 · ${esc(TRY_SIGN_STEPS[0])}</p><p class="mstrip" aria-label="One policy, three locks">One policy, three locks: <span class="lk1">${icon("lock", 13)}Purser</span><span class="lk1">${icon("lock", 13)}Airwallex card</span><span class="lk1">${icon("lock", 13)}Metal mandate</span></p></div>
 <div class="story">
 <div class="screens">
 ${scr(1, `  <h1 tabindex="-1" id="s1-head">${esc(W.ask.head)}</h1>
@@ -1261,6 +1271,7 @@ ${scr(2, `  <div class="bigok">${icon("circle-check", 56)}<h2 tabindex="-1" id="
 ${scr(3, `  <h2 tabindex="-1" id="s3-head">${esc(W.cheat.head)}</h2>
   <div class="chips" id="cheat-chips" role="group" aria-label="What to change">${W.cheat.chips.map((c) => `<button class="chip" type="button" data-cheat="${c.id}" data-world="1" aria-pressed="false">${esc(c.label)}</button>`).join("")}</div>
   <div class="refused" id="tamper" hidden aria-live="polite">
+    <p class="tagr">${icon("octagon-x", 16)}${esc(W.cheat.refused)}</p>
     <p class="outcome" id="t-verdict" hidden></p>
     <div id="t-table"></div>
     <details class="more"><summary>more</summary><p class="rh"><span id="t-icon"></span><span id="t-head"></span></p><div id="t-why" class="small"></div><div id="t-what"></div></details>
@@ -1278,8 +1289,8 @@ ${scr(3, `  <h2 tabindex="-1" id="s3-head">${esc(W.cheat.head)}</h2>
   <div class="bar"><button class="btn primary big" type="button" id="go-rule" data-world="1">${esc(W.cheat.next)}${icon("arrow-right", 20)}</button></div>`)}
 ${scr(4, `  <h2 tabindex="-1" id="s4-head">${esc(W.rule.head)}</h2>
   <p class="q">${esc(W.rule.question)}</p>
-  <div class="chips" id="rule-chips" role="group" aria-label="${esc(W.rule.question)}">${W.rule.chips.map((v) => `<button class="chip" type="button" data-alone="${v}" data-world="1" aria-pressed="false">${esc(euro(v))}${v === TEST_WORLD.alone_limit ? '<span class="now"> (now)</span>' : ""}</button>`).join("")}</div>
-  <p class="worst" id="s4-worst">${esc(START_WORST.headline.replace(`${TRY_POLICY.worstCase}:`, "Worst case:"))}</p>
+  <div class="chips" id="rule-chips" role="group" aria-label="${esc(W.rule.question)}">${W.rule.chips.map((v) => `<button class="chip" type="button" data-alone="${v}" data-world="1" aria-pressed="false">${esc(euro(v))}${v === TEST_WORLD.alone_limit ? `<span class="now" title="in force">${icon("check", 16)}</span>` : ""}</button>`).join("")}</div>
+  <p class="worst" id="s4-worst">${esc(allAgents(START_WORST.headline))}</p>
   <ul class="locks1" id="s4-locks"><li id="rl-purser">${icon("check", 18)}<span></span></li><li id="rl-awx">${icon("check", 18)}<span></span></li><li id="rl-metal">${icon("check", 18)}<span></span></li></ul>
   <p class="note" id="s4-note" aria-live="polite"></p>
   <p class="status" id="s4-status" aria-live="polite"></p>
@@ -1314,7 +1325,7 @@ ${scr(4, `  <h2 tabindex="-1" id="s4-head">${esc(W.rule.head)}</h2>
   <div class="bar"><button class="btn primary big" type="button" id="go-apply" data-world="1" disabled>${esc(W.rule.apply)}</button></div>`)}
 ${scr(5, `  <h2 tabindex="-1" id="s5-head">${esc(W.alone.head)}</h2>
   <div class="next" id="s5-next" hidden></div>
-  <p class="worst big" id="s5-worst">${esc(START_WORST.headline)}</p>
+  <p class="worst big" id="s5-worst">${esc(allAgents(START_WORST.headline))}</p>
   <details class="fold quiet" id="s5-others-fold" hidden><summary>Other payments in your test world (<span id="s5-others-n">0</span>)</summary><div class="fbody others" id="s5-others"></div></details>
   <nav class="end" id="t-end" aria-label="What next">${TRY_SIGN_END.map((e, i) => `<a class="btn${i === 0 ? " primary" : ""}" data-end="${i}">${icon(e.icon, 18)}${esc(e.label)}</a>`).join("")}</nav>
   <p class="links"><a class="tlink" id="t-film" target="_blank" rel="noopener noreferrer">${icon("play", 18)}${esc(TRY_SIGN_FILM.label)}</a><button class="tlink" type="button" id="go-again" data-world="1">${icon("undo-2", 18)}${esc(W.alone.again)}</button></p>`)}

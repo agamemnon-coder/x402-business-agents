@@ -44,7 +44,7 @@ const { StandInQuotes } = await import("../support/fxStandIn.js");
 const fxStandIn = new StandInQuotes();
 const { StandInLine } = await import("../support/lineStandIn.js");
 const lineStandIn = new StandInLine();
-const { OTHER_IBAN, TAMPER_VERDICT, TRY_POLICY, TRY_SIGN_END, TRY_SIGN_FILM, TRY_SIGN_LABEL, TRY_SIGN_SCREENS: W, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
+const { allAgents, OTHER_IBAN, TAMPER_VERDICT, TRY_POLICY, TRY_SIGN_END, TRY_SIGN_FILM, TRY_SIGN_LABEL, TRY_SIGN_SCREENS: W, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
 const { PAID_ALONE, threeLocks } = await import("../../src/try/policy.js");
 // 1.1: the worst case, read from the policy code (src/policy/exposure.ts) with the main run's recorded rate.
 const { exposureOf, exposureWords, startPolicy } = await import("../../src/policy/exposure.js");
@@ -444,7 +444,8 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   const ok = await page.locator("#scr-2 .bigok svg").boundingBox();
   check((await page.locator("#r-head").innerText()).trim() === W.signed.head && (await page.locator("#r-line").innerText()).trim() === W.signed.line && !!ok && ok.width >= 48,
     `${tag}: a big green check (${ok ? Math.round(ok.width) : "?"} px): "${W.signed.head}" "${W.signed.line}"`);
-  check(/Test transfer test-[0-9a-f]{12}: EUR 1,850\.00/.test(await page.locator("#r-exec").innerText()) && (await page.locator("#scr-2").innerText()).includes(W.signed.executed), `${tag}: "Executed in your test world" by the stand-in`);
+  check((await page.locator("#r-exec > span").innerText()).trim() === "EUR 1,850.00 to Alpine Packaging." && /Test transfer test-[0-9a-f]{12}: EUR 1,850\.00/.test(await page.locator("#r-exec details.more").textContent() ?? "") && (await page.locator("#scr-2").innerText()).includes(W.signed.executed),
+    `${tag}: "Executed in your test world" by the stand-in: the amount and the payee in sight, the test transfer's id behind "more"`);
   await measure(page, tag, 2);
   await shot(page, `${tag}-2-signed.png`);
   await page.locator("#r-details > summary").click();
@@ -547,7 +548,7 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
     check(head.startsWith("Refused") && why.trim() === `The server refused it: the signature was made for hash ${hash.slice(0, 12)}…, not for your terms (${(newH ?? "").slice(0, 12)}…).` && !/…\.|\.\.\.\./.test(why),
       `${tag}: cheat ${field}: the server refuses the same signature, said once (${why.slice(0, 60)}…)`);
     await page.locator("#tamper details.more > summary").click();
-    check((await page.locator("#t-verdict").innerText()).trim() === last && await page.locator("#t-verdict").isVisible(), `${tag}: cheat ${field}: "${last}"`);
+    check((await page.locator("#t-verdict").innerText()).trim() === last && await page.locator("#t-verdict").isVisible() && (await page.locator("#tamper .tagr").innerText()).trim() === W.cheat.refused, `${tag}: cheat ${field}: "${W.cheat.refused}", "${last}"`);
   }
   const chipLines = await page.locator("#cheat-chips .chip").evaluateAll((bs: Element[]) => bs.map((b) => { const r = document.createRange(); r.selectNodeContents(b); return new Set([...r.getClientRects()].map((x) => Math.round(x.top))).size; })) as number[];
   check(chipLines.every((n) => n === 1), `${tag}: each cheat's label is on one line (${chipLines.join(", ")})`);
@@ -562,9 +563,11 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   check(JSON.stringify(await dots(page)) === '["done","done","done","on","-"]' && (await page.locator("#s4-head").innerText()).trim() === W.rule.head && (await page.locator("#scr-4 .q").innerText()).trim() === W.rule.question,
     `${tag}: screen 4 of 5: "${W.rule.head}" "${W.rule.question}"`);
   const chips = (await page.locator("#rule-chips .chip").allInnerTexts()).map((t: string) => t.trim());
-  check(JSON.stringify(chips) === JSON.stringify(["€500 (now)", "€2,000", "€5,000"]), `${tag}: three amounts: ${chips.join(" · ")}`);
+  const labelsOf = async () => await page.locator("#rule-chips .chip").evaluateAll((bs: Element[]) => bs.map((b) => b.getAttribute("aria-label"))) as string[];
+  check(JSON.stringify(chips) === JSON.stringify(["€500", "€2,000", "€5,000"]) && JSON.stringify(await labelsOf()) === JSON.stringify(["€500, in force", "€2,000", "€5,000"]) && await page.locator('#rule-chips .chip[data-alone="500.00"] .now svg').count() === 1,
+    `${tag}: three amounts: ${chips.join(" · ")}, €500 marked in force (a tick, and its name)`);
   const rl = (await page.locator("#s4-locks li").allInnerTexts()).map((t: string) => t.trim());
-  check((await page.locator("#s4-worst").innerText()).trim() === WORST.headline.replace(`${TRY_POLICY.worstCase}:`, "Worst case:") && JSON.stringify(rl) === JSON.stringify(["Purser: alone up to €500", "Airwallex card: €25 a purchase, €50 a month", "Metal mandate: 25 test USD a payment"]),
+  check((await page.locator("#s4-worst").innerText()).trim() === allAgents(WORST.headline) && JSON.stringify(rl) === JSON.stringify(["Purser: alone up to €500", "Airwallex card: €25 a purchase, €50 a month", "Metal mandate: 25 test USD a payment"]),
     `${tag}: the worst case (${WORST.headline}) and the three locks, one line each: ${rl.join(" · ")}`);
   check(await page.locator("#go-apply").isDisabled() && (await page.locator("#s4-note").innerText()).trim() === "", `${tag}: nothing chosen yet: the one button is off`);
   await page.click('#rule-chips .chip[data-alone="500.00"]');
@@ -591,7 +594,7 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
     && (await next.innerText()).includes("Paid alone under your new policy (up to €2,000). No signature needed."), `${tag}: the next invoice (${NEXT_INVOICE.id}, EUR 1,850.00) "Paid alone under your new policy (up to €2,000). No signature needed."`);
   check(((await v.signCount())[0] ?? 0) === before + 1 && (await page.locator("#w-balance").textContent())?.trim() === "EUR 26,300.00",
     `${tag}: one signature, over the rule; none for the invoice; the stand-in ran it (balance EUR 26,300.00)`);
-  check((await page.locator("#s5-worst").innerText()).trim() === WORST.headline, `${tag}: the worst case, large: ${WORST.headline}`);
+  check((await page.locator("#s5-worst").innerText()).trim() === allAgents(WORST.headline) && allAgents(WORST.headline) !== WORST.headline, `${tag}: the worst case, large, saying whom it counts: ${allAgents(WORST.headline)}`);
   const ends = await page.locator("#t-end a").evaluateAll((as: Element[]) => as.map((a) => ({ text: (a.textContent ?? "").trim(), href: a.getAttribute("href") }))) as { text: string; href: string }[];
   check(JSON.stringify(ends) === JSON.stringify(TRY_SIGN_END.map((e) => ({ text: e.label, href: e.href }))) && await page.locator("#t-film").getAttribute("href") === TRY_SIGN_FILM.href,
     `${tag}: three ways on: ${ends.map((e) => `"${e.text}" (${e.href})`).join(", ")}; "${TRY_SIGN_FILM.label}" as a text link`);
@@ -707,7 +710,7 @@ if (!args.live && !ONLY) {
     await page.click("#p-apply");
     await page.waitForFunction(() => /^Stricter/.test(document.getElementById("p-status")?.textContent ?? ""));
     const lower = (() => { const p = startPolicy(); const q = { ...p, cardMonthlyCents: { ...p.cardMonthlyCents, treasury: 4000 } }; return exposureWords(exposureOf(q), q, WORST_RATE); })();
-    check((await page.locator("#p-expo-head").innerText()).trim() === lower.headline && lower.headline !== WORST.headline && (await page.locator("#s4-worst").innerText()).trim() === lower.headline.replace(`${TRY_POLICY.worstCase}:`, "Worst case:"),
+    check((await page.locator("#p-expo-head").innerText()).trim() === lower.headline && lower.headline !== WORST.headline && (await page.locator("#s4-worst").innerText()).trim() === allAgents(lower.headline),
       `${tag}: a stricter month lowers it at once, on screen 4's line too: ${lower.headline.slice(0, 60)}…`);
     await page.fill("#pf-alone", "2000.00");
     await page.click("#p-apply");
@@ -755,7 +758,7 @@ if (!args.live && !ONLY) {
     await page.waitForFunction(() => /ok/.test(document.getElementById("p-status")?.className ?? ""));
     await page.locator("#p-open").click();
     const signed = (await v.signCount())[0] ?? 0;
-    check((await page.locator('#rule-chips .chip[data-alone="500.00"]').innerText()).trim() === "€500" && (await page.locator("#rl-purser").innerText()).trim() === "Purser: alone up to €1,000", `${tag}: in force now: €1,000 (signed); €500 no longer marked "(now)"`);
+    check(await page.locator('#rule-chips .chip[data-alone="500.00"]').getAttribute("aria-label") === "€500" && await page.locator("#rule-chips .chip .now").count() === 0 && (await page.locator("#rl-purser").innerText()).trim() === "Purser: alone up to €1,000", `${tag}: in force now: €1,000 (signed); no chip marked in force`);
     await page.click('#rule-chips .chip[data-alone="500.00"]');
     check((await page.locator("#s4-note").innerText()).trim() === W.rule.stricter && (await page.locator("#go-apply").innerText()).trim() === W.rule.apply && await page.locator("#go-apply").isEnabled(), `${tag}: €500 is stricter: "${W.rule.stricter}", the button "${W.rule.apply}"`);
     await shot(page, `${tag}-1-stricter.png`);

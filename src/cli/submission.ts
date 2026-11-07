@@ -135,19 +135,15 @@ async function takeScreens(): Promise<void> {
       await cdp.send("WebAuthn.enable");
       await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
       await p.goto(`${relay.url}/try/sign`, { waitUntil: "load" });
-      await p.click("#go-world");
-      await p.waitForSelector("#s-props:not([hidden])");
-      await p.click("#go-key");
-      await p.waitForFunction(() => document.getElementById("k-status")?.classList.contains("ok"));
-      await p.locator("article.prop", { hasText: "T-0002" }).locator("button[data-sign]").click();
-      await p.waitForSelector("#result:not([hidden])");
-      await p.click("#go-tamper");
+      // The world opens when the page is shown; one button signs (the passkey made on the way); then one cent changed.
+      await p.waitForFunction(() => !(document.getElementById("go-sign") as HTMLButtonElement).disabled);
+      await p.click("#go-sign");
+      await p.waitForSelector("#scr-2:not([hidden])");
+      await p.click("#go-cheat");
       await p.waitForSelector("#tamper:not([hidden])");
       await p.waitForTimeout(900);
-      await p.evaluate(() => { const e = document.querySelector("#result")!; window.scrollTo({ top: e.getBoundingClientRect().top + window.scrollY - 84, behavior: "instant" }); });
-      await p.waitForTimeout(500);
       await p.screenshot({ path: resolve(shots, "18-try-sign.png") });
-      console.log("screens/18-try-sign.png  /try/sign (local relay): signed and verified, then the tamper refused");
+      console.log("screens/18-try-sign.png  /try/sign (local relay): signed and verified, then one cent changed and refused");
       await ctx.close();
     } finally {
       relay.server.close();

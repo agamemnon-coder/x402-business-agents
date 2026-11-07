@@ -290,6 +290,18 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   not serve. 2671 tests in 270 files, all passing (with main's).
 - 7 November, /judge merged with the worst case, the unit economics, /trace, the month-end pack and awx-1's
   preparation: every step's route now served. 2858 tests in 280 files, all passing.
+- 7 November, /try/sign as one story of five screens (Max's plan "De demo opnieuw"): (1) "Your Treasury agent wants to
+  pay an invoice above its limit." with one button, "Sign with Face ID", which makes the test passkey on the way; (2)
+  "Signed and verified."; (3) "Try to cheat.": one cent, another IBAN or another currency, refused by the server; (4)
+  "Change the rule.": how much the agent may pay alone, a looser rule signed, a stricter one applied at once; (5) "The
+  agent pays it alone.": its next invoice (T-0003, EUR 1,850.00, fixed text, no quote, no model call), which arrives once
+  T-0002 is signed, runs without a signature under the new rule. Every field of the policy (#71) behind "Show all
+  fields". The test world opens when the page is shown (Max's choice), one quote and one model call per world as before.
+  The server's checks are unchanged; the next invoice is checked by the same rules. On every screen at most 60 words in
+  sight and one main button, on the screen without scrolling (test/browser/trysign.check.ts measures it at 360, 390 and
+  1440 px, light and dark); the whole story runs in WebKit too, with a test-only software passkey whose signatures the
+  server verifies. /judge's steps 1 and 2, the README, the form and the pitch follow the new order.
+  2864 tests in 281 files, all passing.
 
 ## Real, and ours
 

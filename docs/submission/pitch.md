@@ -31,17 +31,17 @@ The words are counted the way `test/demo-day-pack.test.ts` counts them (the "Max
 
 - **The problem, and why now:** 0:00–0:20 (20 s); budget 46 words; written 38 words; about 17 s of speech, 3 s
   for a pause.
-- **Live: sign, then tamper:** 0:20–1:30 (70 s); budget 161 words; written 116 words; about 50 s of speech, 20 s for
-  two Face ID prompts and the server's answers.
+- **Live: sign, try to cheat, change the rule:** 0:20–1:30 (70 s); budget 161 words; written 115 words; about 50 s of speech, 20 s for
+  three Face ID prompts and the server's answers.
 - **The proof:** 1:30–2:20 (50 s); budget 115 words; written 102 words; about 44 s of speech, 6 s for two tab
   switches.
 - **The business and the ask:** 2:20–3:00 (40 s); budget 92 words; written 84 words; about 37 s of speech, 3 s for a
   pause.
-- **Total:** 3:00; budget 414 words; written 340 words; about 2:28 of speech, 32 s for taps and pauses.
+- **Total:** 3:00; budget 414 words; written 339 words; about 2:28 of speech, 32 s for taps and pauses.
 
 Before you start: the shared screen shows the deck, slide 1. Your iPhone is mirrored to the screen (the path tested on
-6 November: Safari, Face ID), with `/try/sign` open and **not started**: a world started now gets a fresh FX quote,
-which lasts up to 15 minutes. Tabs on the laptop: [/proof](https://kit11.max-31b.workers.dev/proof),
+6 November: Safari, Face ID), with `/try/sign` opened a minute before you start (the test world opens when the page is shown, with a fresh FX quote
+that lasts up to 15 minutes; if it has run out, the page offers **Get a new quote**). Tabs on the laptop: [/proof](https://kit11.max-31b.workers.dev/proof),
 [/metal](https://kit11.max-31b.workers.dev/metal). If the room cannot show a phone, run `/try/sign` in the laptop's
 browser instead (Touch ID). What to do when a step fails: [demo-day.md](demo-day.md), "The Demo Day script".
 
@@ -55,24 +55,21 @@ browser instead (Touch ID). What to do when a step fails: [demo-day.md](demo-day
 | Pause one beat. | So who signs off? | The film's hook (`01-hook`) |
 | Pick up the phone. | This is Purser. | README, title |
 
-### 0:20–1:30 · Live: sign, then tamper (`/try/sign`)
+### 0:20–1:30 · Live: sign, try to cheat, change the rule (`/try/sign`)
 
 | Do | Max says | Source |
 |---|---|---|
-| Hold the phone up; the mirror shows `/try/sign`. | Live, on my phone. | Try: `/try/sign`, tested on Max's iPhone on 6 November ([release-notes.md](release-notes.md)) |
-| Tap **Start: show me the proposal**. | This is a test world, made for me just now; nothing real moves. | `TRY_SIGN_LABEL` (`src/try/sign.ts`); `TRY_SIGN_TTL_MS`, one hour (`worker/src/trySign.ts`) |
-| Point at the first card, blocked. | A Treasury agent proposes two payments. | `FIXED_PROPOSALS` (`worker/src/trySign.ts`): T-0001 and T-0002 |
-| | The first would take us below the reserve floor. | `checkPayment`: the reserve floor blocks T-0001 |
-| | A rule in code blocks it; no signature can approve it. | `worker/src/trySign.ts`: "blocked by a rule: … No signature can approve it." |
-| Scroll to the second card, the approval sheet. | The second is over the agent's own limit, so it waits for me. | `checkPayment`: above what an agent may pay alone, T-0002 waits for a signature |
-| Point at payee, IBAN, amount and the FX quote. | The sheet shows payee, IBAN, amount and an FX quote. | The sheet in `src/try/sign.ts`; the quote from `worker/src/fxQuote.ts` (live from the Airwallex sandbox, or the main run's, labelled) |
-| Point at the hash under them. | My Face ID signs the hash of exactly these terms. | `src/try/sign.ts`: "The hash of the exact terms, which your passkey signs" |
-| Tap **Create your test passkey** (Face ID), then **Sign with Face ID** (Face ID). Wait for the green check. | | `src/try/sign.ts`: the two buttons |
-| | Signed and verified: this signature only fits these exact terms. | `TRY_SIGN_SIGNED` |
-| | Now I change the amount by one cent. | Try: the button "Try to tamper: change the amount by 0.01" |
-| Tap **Try to tamper: change the amount by 0.01**. | Same signature. | `worker/src/trySign.ts`: the same verifier checks the changed terms |
-| Point at the red line. | Refused. | Try: "Refused: the same signature does not verify for the changed terms" |
-| | One cent changed. The signature is worthless. | `TAMPER_VERDICT.cent` (`src/try/sign.ts`) |
+| Hold the phone up; the mirror shows `/try/sign`, opened a minute before. | Live, on my phone. | Try: `/try/sign`, five screens since 7 November ([release-notes.md](release-notes.md)) |
+| Point at the label at the top. | This is a test world, made for me just now; nothing real moves. | `TRY_SIGN_LABEL` (`src/try/sign.ts`); `TRY_SIGN_TTL_MS`, one hour (`worker/src/trySign.ts`) |
+| Point at the heading. | My Treasury agent wants to pay an invoice above its limit. | `TRY_SIGN_SCREENS.ask.head` (`src/try/sign.ts`); T-0002 in `FIXED_PROPOSALS` (`worker/src/trySign.ts`) |
+| Point at its sentence and the amount. | Claude wrote the request; the amount, the quote and the limits are code. | The pill "Claude Haiku · live"; `checkLine` (`worker/src/agentLine.ts`) checks every amount; the quote from `worker/src/fxQuote.ts` |
+| Tap **Sign with Face ID** (two prompts: the test passkey, then the signature). Wait for the green check. | My Face ID signs the hash of exactly these terms. | `src/try/sign.ts`: one button, the passkey made on the way |
+| | Signed and verified: it only fits these exact terms. | `TRY_SIGN_SCREENS.signed` |
+| Tap **Now try to cheat: change one cent**. | Now I change one cent, and send the same signature. | `TRY_SIGN_SCREENS.signed.cheat`; the same verifier checks the changed terms (`worker/src/trySign.ts`) |
+| Point at the red line. | One cent changed. The signature is worthless. | `TAMPER_VERDICT.cent` (`src/try/sign.ts`) |
+| Tap **Next: change the rule**, then **€2,000**. | Now I let the agent pay up to two thousand alone. | `TRY_SIGN_SCREENS.rule` (`src/try/sign.ts`) |
+| Tap **Sign with Face ID**. | A looser rule needs my signature too. | `setPolicy` (`worker/src/trySign.ts`): looser needs a signature, stricter applies at once |
+| Point at the green card. | Its next invoice: paid alone, no signature needed. | `NEXT_INVOICE`, T-0003, and `runAlone` (`worker/src/trySign.ts`) |
 | Put the phone down. | A button says yes to anything; this signature fits one payment only. | `DIFFERENTIATORS` (`src/config/brand.ts`); [docs/phone-approval.md](../phone-approval.md) |
 
 ### 1:30–2:20 · The proof
