@@ -188,7 +188,7 @@ export function chains(r: RunRecord, t: RunTrace): Chain[] {
   });
 }
 
-const CSS = `.tracep { padding: 26px 0 40px; }
+const CSS = `.tracep { padding-top: 26px; padding-bottom: 40px; }
 .tracep h1 { font-size: clamp(28px, 3.2vw, 40px); font-weight: 780; margin: 0 0 8px; }
 .tracep .lead2 { font-size: 18px; font-weight: 650; margin: 0 0 4px; max-width: 46em; }
 .tracep .sub { color: var(--muted); margin: 0 0 6px; font-size: 15.5px; max-width: 52em; }
