@@ -168,7 +168,7 @@ describe("/try/sign in the bundle (TRY_SIGN_ENABLED)", () => {
     expect(html).toContain("url(/assets/inter.woff2)");
     // The landing's button, only in this bundle.
     expect(on.home).toContain('href="try/sign"');
-    expect(on.home).toContain("Sign with your own Face ID");
+    expect(on.home).toContain("Sign with your Face ID");
   });
 
   it("the local relay: off, /try/sign and its API are 404; on, the whole visit works", async () => {

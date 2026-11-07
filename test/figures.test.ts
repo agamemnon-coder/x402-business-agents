@@ -6,6 +6,8 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
+import { cardControlRows } from "../src/redesign/airwallexProof.js";
+import { loadRecord } from "../src/redesign/run.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 interface Raw {
@@ -59,6 +61,11 @@ function expected(): Record<string, string | string[]> {
     "Claude cost per decision": `$${(sum((a) => a.cost_usd_micros) / decisions / 1e6).toFixed(4)}`,
     "payments on chain": String(s.flows.filter((f) => (f.rail === "metal" || f.rail === "purser") && !f.refused).reduce((k, f) => k + n(f), 0)),
     "refused by Metal at the cap": String(metalRefusals),
+    // Proof's cards in plain words (Max, 7 Nov): the same counts.
+    "refused by Metal at the limit": String(metalRefusals),
+    "limits replaced on chain": String(ev.filter((e) => e.event === "mandate.replaced").length),
+    "calls to Claude, each logged": String(sum((a) => a.claude_calls)),
+    "cards carry the CFO's limits": (() => { const rows = cardControlRows(loadRecord().record); return `${rows.filter((r) => r.match).length} of ${rows.length}`; })(),
     "refused by Metal: mandate just replaced": String(revoked),
     "mandates replaced": String(ev.filter((e) => e.event === "mandate.replaced").length),
     // The FX conversion (fx.converted in the ledger) is a movement at Airwallex too.

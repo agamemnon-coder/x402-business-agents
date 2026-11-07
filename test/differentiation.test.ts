@@ -70,21 +70,24 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     expect(readme.indexOf(KIT11_RUN_LINE.replace(/\.$/, ""))).toBeGreaterThan(readme.indexOf("[![CI]"));
   });
 
-  it("open Home under the heading and what Purser is, with Try it in 30 seconds linked to /try/sign, then the badges, the Kit 11 line and one caveat line", () => {
+  it("open Home only as the README's and the form's first screen; Home itself shows what Purser is and the way through (Max, 7 Nov)", () => {
     const html = PAGES.home!;
     const hero = /<section class="hero">[\s\S]*?<\/section>/.exec(html)![0];
     const t = words(hero);
-    expect(t.indexOf("AI agents spend. You sign off.")).toBeLessThan(t.indexOf(DIFFERENTIATORS[0]));
-    expect(t).toContain(`AI agents spend. You sign off. ${WHAT_IT_IS} ${DIFFERENTIATORS.join(" ")} ${TRY_IT} ${KIT_LINE.replace(" · entered", " entered")} ${KIT11_RUN_LINE} Watch the film (2:42) ↗ ${CAVEAT_LINE} Details →`);
-    expect(hero).toMatch(/<a href="try\/sign"><svg[\s\S]*?<\/svg>Try it in 30 seconds\.<\/a>/);
+    // Max, 7 Nov: the one button right under the heading and its sentence, then the three steps.
+    expect(t.startsWith(`AI agents spend. You sign off. ${WHAT_IT_IS} Start: watch the agents`)).toBe(true);
+    expect(t).toContain("1 Watch the agents");
+    for (const d of DIFFERENTIATORS) expect(t.includes(d)).toBe(false);
+    expect(t).toContain(`${CAVEAT_LINE} Details →`);
     // The caveat's link opens the footer's "What's real?", which lists what the line names.
     expect(hero).toContain('<a href="#real" data-real>Details →</a>');
     expect(html).toContain('<details class="real" id="real">');
     const real = words(/<details class="real"[\s\S]*?<\/details>/.exec(html)![0]);
     for (const x of ["customer", "supplier", "settlement", "second approver", "Test money"]) expect({ x, has: real.includes(x) }).toEqual({ x, has: true });
-    // Without /try/sign in the bundle the sentence stays text, never a dead link.
+    // The Kit 11 badges stay, beside the picture.
+    expect(hero).toContain(KIT_LINE.split(" · entered")[0]!);
+    // Without /try/sign in the bundle step 2 leads to /try, never to a dead link.
     expect(homePage()).not.toContain('href="try/sign"');
-    expect(words(homePage())).toContain(`${DIFFERENTIATORS[0]}`);
   });
 
   it("open the form's synopsis (after what Purser is) and Description, word for word", () => {

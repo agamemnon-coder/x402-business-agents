@@ -75,7 +75,7 @@ describe("1. the main run's CFO dashboard (/?autonomy) counts as Home, Watch and
     expect([c.calls, agentCalls, agentUsd]).toEqual([58, 50, "0.3170"]);
     // All of them, said as all of them, and adding up to Proof's: the agents' 50 and the reader's 8 (documents, reviews).
     expect(replay.figures.claude).toBe("58 Claude calls in all, $0.38: the agents' own 50 (USD 0.3170, as on Proof) and 8 more that read documents or review proposals.");
-    expect(words(proofPage())).toContain(`${agentCalls} calls, each with a request id`);
+    expect(words(proofPage())).toContain(`${agentCalls} calls to Claude, each logged`);
   });
 
   it("words a refused purchase by who refused it (refused_by), never 'refused before signing' for Metal's refusal", () => {
@@ -209,7 +209,8 @@ describe("5. PAID in the sandbox, where the settlement is simulated", () => {
     expect(SANDBOX_SETTLED).toBe("in the sandbox, where the settlement is simulated");
     expect(timings(record).faceToPaid).toBe(6);
     const pages = buildPages();
-    expect(words(homePage())).toContain(`€240 licence PAID by SWIFT · 6 s after Face ID · ${SANDBOX_SETTLED}`);
+    // The moment's own step (src/redesign/run.ts) keeps the qualifier; Home shows no scene text since 7 Nov (Max).
+    expect(agentRun().scenes[2]!.steps.map((s) => s.text)).toContain(`€240 licence PAID by SWIFT · 6 s after Face ID · ${SANDBOX_SETTLED}`);
     expect(words(pages.airwallex!)).toContain(`6 s after Face ID, ${SANDBOX_SETTLED}`);
     for (const [name, html] of Object.entries({ home: homePage(), proof: proofPage(), watch: pages.watch!, airwallex: pages.airwallex!, dashboard: PAGE })) {
       const t = words(html);
@@ -250,8 +251,9 @@ describe("6. TAP's status (Visa, 5 Nov: not eligible Visa tooling), said once, o
 describe("7. copy slips", () => {
   it("Home's first scene says the purchase Metal refused was a test of the chain: our own check switched off once (jury review, 6 Nov, #8)", () => {
     expect(agentRun().scenes[0]!.sentence).toBe("Stockline raises its price to 0.04 → we switched off our own check once to prove the chain holds the line: Metal refused the purchase on chain → Treasury replans → two signatures → the mandate is replaced.");
-    const card = /<a class="scene card" href="watch\?scene=1">[\s\S]*?<\/a>/.exec(homePage())![0];
-    expect(words(card)).toContain("we switched off our own check once to prove the chain holds the line");
+    // Home shows no scene cards since Max's round of 7 Nov; where the refusal is replayed (/watch), its step says why.
+    expect(homePage()).not.toContain('class="scene card"');
+    expect(buildPages().watch!).toContain("To prove the rail itself enforces the limit");
     // Both layers where the refusal is told in full: Purser refuses first; with that check off once, Metal refused anyway.
     for (const html of [proofPage(), buildPages().metal]) expect(words(html)).toContain(CHAIN_TEST);
   });
@@ -271,10 +273,11 @@ describe("7. copy slips", () => {
     expect(t).toContain(`${pay.metalParts} on Metal, all inside the limits.`);
   });
 
-  it("says 'separate TAP run, 2 November' once on Home; Proof and the deck leave that other run out (Max, 5 Nov; Proof since Max's last round, item 2)", () => {
+  it("leaves the separate TAP run of 2 November out of Home, Proof and the deck: it is on /visa (Max, 5 Nov; Proof since his last round, item 2; Home since 7 Nov)", () => {
     expect(deckHtml(packFacts(), shots, "")).not.toMatch(/TAP run|2 November|LIMIT_EXCEEDED/);
     expect(proofPage()).not.toMatch(/class="(?:septest|sep)"|TAP run|LIMIT_EXCEEDED/);
-    for (const [name, html] of Object.entries({ home: homePage() })) {
+    expect(homePage()).not.toMatch(/class="(?:septest|sep)"|TAP run|LIMIT_EXCEEDED/);
+    for (const [name, html] of Object.entries({} as Record<string, string>)) {
       expect({ name, label: /Separate test, 2 November/.test(html) }).toEqual({ name, label: false });
       const rows = html.match(/<p class="(?:septest|sep)">[\s\S]*?<\/p>/g) ?? [];
       expect({ name, rows: rows.length > 0 }).toEqual({ name, rows: true });

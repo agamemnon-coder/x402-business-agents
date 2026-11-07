@@ -4,8 +4,8 @@
 // truth: src/config/brand.ts (FIRST_SCREEN, WHY_COMPANY). Breaks when a place drops, adds or reorders a word.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { BUSINESS_DOCS, DIFFERENTIATORS, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
-import { homePage } from "../src/redesign/home.js";
+import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, JUDGE_LINE, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
+import { FLOW, START, homePage } from "../src/redesign/home.js";
 import { buildPages } from "../src/relay/assets.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
@@ -14,6 +14,7 @@ const words = (s: string) => s.replace(/<[^>]+>/g, " ").replace(/\[([^\]]+)\]\([
   .replace(/[*`]/g, "").replace(/^\s*- /gm, "").replace(/\s+/g, " ").trim();
 const README = read("README.md");
 const HOME = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).home!;
+const PROOF = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).proof!;
 const FORM = read("docs/submission/README.md");
 const hero = (html: string) => /<section class="hero">[\s\S]*?<\/section>/.exec(html)![0];
 /** Every Markdown heading's GitHub anchor in a file. */
@@ -39,17 +40,22 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines.slice(1, badges).join("\n")).toContain(`[${TRY_IT}](${TRY_SIGN_URL})`);
   });
 
-  it("opens Home under its heading, with Try it linked to /try/sign, and the badges only after it", () => {
+  it("opens Home under its heading with what Purser is, then the way through in three steps and one button (Max, 7 Nov)", () => {
     const t = words(hero(HOME));
-    expect(t.startsWith(`${HERO} ${FIRST_SCREEN_TEXT} Kit 11`)).toBe(true);
-    // By position, not by a pattern: the line opens with the link to /try/sign and closes with TRY_IT.
-    const line = hero(HOME).slice(hero(HOME).indexOf('<p class="tryline">'));
-    expect(line.startsWith('<p class="tryline"><a href="try/sign">')).toBe(true);
-    expect(line.slice(0, line.indexOf("</p>") + 4).endsWith(`${TRY_IT}</a></p>`)).toBe(true);
-    expect(hero(HOME).indexOf('class="badges"')).toBeGreaterThan(hero(HOME).indexOf('class="tryline"'));
-    // Without /try/sign in the bundle the line stays text, never a dead link.
-    expect(words(hero(homePage()))).toContain(FIRST_SCREEN_TEXT);
+    expect(t.startsWith(`${HERO} ${WHAT_IT_IS} ${START} ${JUDGE_LINE} → 1 Watch the agents A real run, replayed · 1 min 2 Try it yourself Sign with your Face ID · 1 min 3 See the proof Every id, checkable`)).toBe(true);
+    expect(FLOW.map((f) => f.href)).toEqual(["watch", "try/sign", "proof"]);
+    expect(hero(HOME)).toContain('<a href="try/sign">');
+    // One button, the first step's.
+    expect(hero(HOME).match(/class="btn[^"]*"/g)).toEqual(['class="btn primary big start"']);
+    expect(hero(HOME)).toContain(`<a class="btn primary big start" href="watch">`);
+    // The three sentences are the README's and the form's first screen; Home says what Purser is and shows it.
+    for (const d of DIFFERENTIATORS) expect(t.includes(d)).toBe(false);
+    // Without /try/sign in the bundle step 2 leads to /try, never to a dead link.
     expect(homePage()).not.toContain('href="try/sign"');
+    expect(hero(homePage())).toContain('<a href="try">');
+    // The judge's tour: a text link under the one button, only where /judge exists (Max, 7 Nov).
+    expect(hero(HOME)).toContain(`<p class="judgeline"><a href="judge">${JUDGE_LINE} →</a></p>`);
+    expect(homePage()).not.toContain('href="judge"');
   });
 
   it("is the form's synopsis, word for word, within 500 characters", () => {
@@ -61,23 +67,29 @@ describe("the first screen (section D, 6 Nov)", () => {
 
 describe("why this is a company (section D, 6 Nov)", () => {
   const section = README.slice(README.indexOf("## Why this is a company"), README.indexOf("\n## ", README.indexOf("## Why this is a company") + 5));
-  const band = /<section class="band" aria-labelledby="h-company">[\s\S]*?<\/section>/.exec(HOME)?.[0] ?? "";
+  // On /proof since Max's round of 7 Nov (Home shows the way through), behind its own closed line.
+  const band = /<section class="band" aria-labelledby="h-company">[\s\S]*?<\/section>/.exec(PROOF)?.[0] ?? "";
 
   it("has five lines: the problem, who buys, the intended pricing, why now, why Purser", () => {
     expect(WHY_COMPANY.map((l) => l.label)).toEqual(["The problem", "Who buys", "Intended pricing", "Why now", "Why Purser"]);
     expect(WHY_COMPANY[2]!.text).toBe("€49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions. A hypothesis.");
   });
 
-  it("is on the README and on Home, word for word, each line linked to its page in docs/business/", () => {
+  it("is on the README and on /proof, word for word; the README links each line to its page, /proof once to the case (Max, 7 Nov)", () => {
     expect(section).not.toBe("");
     expect(band).not.toBe("");
     for (const l of WHY_COMPANY) {
       const [file, anchor] = l.page.split("#") as [string, string];
       expect(section).toContain(`- **${l.label}:** ${l.text} ([${file}](docs/business/${l.page}))`);
       expect(words(band)).toContain(`${l.label}: ${l.text}`);
-      expect(band).toContain(`href="${BUSINESS_DOCS}${l.page}"`);
       expect({ page: l.page, found: anchors(read(`docs/business/${file}`)).includes(anchor) }).toEqual({ page: l.page, found: true });
     }
+    // On /proof: the content first, one link "Read the business case ↗", the disclaimer as one small line at the bottom.
+    expect(band.match(/<a /g)).toHaveLength(1);
+    expect(band).toContain(`<p class="clink"><a href="${BUSINESS_DOCS}" target="_blank" rel="noopener">${BUSINESS_CASE_LINK}</a></p>`);
+    expect(BUSINESS_CASE_LINK).toBe("Read the business case ↗");
+    expect(band.indexOf('class="company"')).toBeLessThan(band.indexOf('class="cnote"'));
+    expect(band.indexOf('class="clink"')).toBeLessThan(band.indexOf('class="cnote"'));
   });
 
   it("says each line as docs/business/ does: the price from model.md, the cited source from problem.md", () => {
@@ -93,7 +105,7 @@ describe("why this is a company (section D, 6 Nov)", () => {
 
   it("says \"not validated\" once on each surface, and names no other company", () => {
     expect(WHY_COMPANY_NOTE.startsWith("Not validated with customers yet")).toBe(true);
-    for (const [name, t] of [["README", words(section)], ["home", words(band)]] as const) {
+    for (const [name, t] of [["README", words(section)], ["proof", words(band)]] as const) {
       expect({ name, n: t.match(/not validated/gi)?.length ?? 0 }).toEqual({ name, n: 1 });
       expect({ name, other: OTHERS.exec(t)?.[0] ?? null }).toEqual({ name, other: null });
     }

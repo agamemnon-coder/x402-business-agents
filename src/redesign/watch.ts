@@ -1,13 +1,19 @@
 // Watch: the whole recorded agent run as an animation, event by event, from its record: each agent's decision in its
 // own words with its model and tools, the money on its rail with the result and its proof (a testnet tx or an
-// Airwallex id), the CFO's Face ID on the phone (both signatures when four eyes applies). Play/pause, speed and jumps
-// to the three moments; labelled with the run's own name.
+// Airwallex id), the CFO's Face ID on the phone (both signatures when four eyes applies). Play/pause and one switch
+// (Highlights / Full run), nothing more (Max, 7 Nov); labelled with the run's own name.
 
-import { WORLD_SETUP } from "../config/brand.js";
+import { WORLD_SETUP, FILM_LINK, FILM_URL } from "../config/brand.js";
 import { agentRun, callBadge, callTip, highlights, moments, type AgentRun, type Ev } from "./run.js";
 import { AVATAR, esc, icon, iconSet, page, stageHtml } from "./ui.js";
 
-const CSS = `.watch { padding: 26px 0 24px; }
+const CSS = `/* The next step (Max, 7 Nov: watch, then try, then the proof). */
+.filmlink { color: var(--accent); font-weight: 650; font-size: 15px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+.wside { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.nextstep { display: grid; grid-template-columns: 30px minmax(0, 1fr) 22px; align-items: center; gap: 12px; padding: 14px 16px; text-decoration: none; color: var(--text); border: 2px solid var(--accent); }
+.nextstep .fn { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; font-weight: 750; }
+.nextstep b { display: block; font-size: 17px; } .nextstep small { color: var(--muted); font-size: 14.5px; } .nextstep .i { color: var(--accent); }
+.watch { padding: 26px 0 24px; }
 .whead { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 8px; }
 .whead h1 { font-size: clamp(30px, 3.2vw, 40px); font-weight: 760; margin-right: auto; }
 .setup { font-size: 15px; color: var(--muted); margin: 0 0 16px; max-width: 60em; }
@@ -18,10 +24,6 @@ const CSS = `.watch { padding: 26px 0 24px; }
 .seg { display: inline-flex; background: var(--sunken); border-radius: 999px; padding: 4px; }
 .seg button { border: 0; background: none; font: 650 15px/1 Inter, system-ui, sans-serif; color: var(--muted); padding: 11px 14px; border-radius: 999px; cursor: pointer; min-width: 44px; }
 .seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
-.chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chips button { border: 1px solid var(--border); background: var(--surface); color: var(--text); font: 600 15px/1 Inter, system-ui, sans-serif; padding: 11px 14px; border-radius: 999px; cursor: pointer; display: inline-flex; gap: 8px; align-items: center; min-height: 44px; }
-.chips button b { width: 22px; height: 22px; border-radius: 50%; background: var(--text); color: var(--bg); display: grid; place-items: center; font-size: 13px; }
-.chips button.on { border-color: var(--accent); color: var(--accent); }
 .progress { position: relative; height: 6px; border-radius: 6px; background: var(--sunken); margin-top: 14px; }
 .progress i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; background: var(--accent); width: 0; transition: width .4s; }
 .progress em { position: absolute; top: -3px; width: 2px; height: 12px; background: var(--text); opacity: .5; }
@@ -60,7 +62,7 @@ const JS = `
   var st = Stage(document.querySelector("[data-stage]"), run);
   var log = document.getElementById("log"), bar = document.querySelector(".progress i"), count = document.getElementById("count"), playBtn = document.getElementById("play");
   var names = {}; run.agents.forEach(function (a) { names[a.id] = a; });
-  var i = 0, playing = false, speed = 1, timer = null;
+  var i = 0, playing = false, timer = null;
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   function svg(name) { var t = document.createElement("template"); t.innerHTML = IC[name]; return t.content.firstChild; }
   function time(at) { return at.slice(11, 19) + " UTC"; }
@@ -150,7 +152,6 @@ const JS = `
     bar.style.width = (i / ev.length * 100) + "%";
     count.textContent = "step " + i + " of " + ev.length;
     var s = sceneOf(Math.max(0, i - 1));
-    document.querySelectorAll("#scenes button").forEach(function (b) { b.classList.toggle("on", +b.getAttribute("data-scene") === s); });
   }
   function setPlay(on) {
     playing = on; playBtn.textContent = ""; playBtn.appendChild(svg(on ? "pause" : i >= ev.length ? "rotate-ccw" : "play"));
@@ -160,7 +161,7 @@ const JS = `
   function tick() {
     if (i >= ev.length) { setPlay(false); return; }
     var e = ev[i++]; log.insertBefore(entry(e), log.firstChild); var ms = st.show(e, { sentences: 2 }); mark();
-    timer = setTimeout(function () { if (playing) tick(); }, ms / speed);
+    timer = setTimeout(function () { if (playing) tick(); }, ms);
   }
   function jump(k) {
     clearTimeout(timer); st.reset(); log.textContent = "";
@@ -169,8 +170,6 @@ const JS = `
     st.clear(); mark();
   }
   playBtn.addEventListener("click", function () { if (!playing && i >= ev.length) jump(0); setPlay(!playing); });
-  document.querySelectorAll("#speed button").forEach(function (b) { b.addEventListener("click", function () { speed = +b.getAttribute("data-speed"); document.querySelectorAll("#speed button").forEach(function (x) { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b)); }); }); });
-  document.querySelectorAll("#scenes button").forEach(function (b) { b.addEventListener("click", function () { var n = +b.getAttribute("data-scene"); var sc = SC.filter(function (x) { return x.n === n; })[0]; jump(sc ? sc.start : 0); setPlay(true); }); });
   function marks() { var pr = document.querySelector(".progress"); pr.querySelectorAll("em").forEach(function (m) { m.remove(); }); SC.forEach(function (s) { var m = el("em"); m.style.left = (s.start / ev.length * 100) + "%"; pr.appendChild(m); }); }
   marks();
   document.querySelectorAll("#mode button").forEach(function (b) {
@@ -187,7 +186,7 @@ const JS = `
   if (still || st.reduce) { setPlay(false); if (startAt < ev.length) { var e0 = ev[startAt]; if (e0) { st.show(e0, { instant: true, sentences: 2 }); log.insertBefore(entry(e0), log.firstChild); i = startAt + 1; mark(); } } } else setPlay(true);
 })();`;
 
-/** Watch's four jumps, the same four moments as Home's animation, each at its anchor event. */
+/** Watch's four moments, the same as Home's animation, each at its anchor event: marks on the progress bar and ?scene=n. */
 const JUMPS: [1 | 2 | 3 | 4, string, keyof ReturnType<typeof moments>][] = [[1, "Price rise", "refusal"], [2, "Replan", "replan"], [3, "Dispute", "dispute"], [4, "Euros", "sweep"]];
 
 /** An event as the page's script reads it: a decision carries its Claude call badge (D2). */
@@ -200,21 +199,22 @@ export function watchPage(run: AgentRun = agentRun()): string {
   const hlScenes = full.map((j) => ({ ...j, start: Math.max(0, hl.findIndex((e) => e.at === run.events[j.start]!.at && e.k === run.events[j.start]!.k)) }));
   const s1 = run.scenes.find((s) => s.n === 1);
   const body = `<main class="watch"><div class="wrap">
-  <div class="whead"><h1>Watch the agents work</h1><span class="pill run">${icon("database", 14)}${esc(run.label)}</span></div>
+  <div class="whead"><h1>Watch the agents work</h1><span class="pill run">${icon("database", 14)}${esc(run.label)}</span><a class="filmlink" href="${FILM_URL}" target="_blank" rel="noopener">${icon("play", 14)}${esc(FILM_LINK)} ↗</a></div>
   <p class="setup">${esc(WORLD_SETUP)}</p>
   <div class="wgrid">
     <div>
       ${stageHtml(run.agents, s1?.steps[0]?.text ?? "Northwind Outdoor sells live stock data per query")}
       <div class="controls">
         <button class="ibtn" id="play" type="button" aria-label="Play">${icon("play", 20)}</button>
-        <div class="seg" id="speed" role="group" aria-label="Speed"><button type="button" data-speed="1" class="on" aria-pressed="true">1×</button><button type="button" data-speed="2" aria-pressed="false">2×</button><button type="button" data-speed="4" aria-pressed="false">4×</button></div>
+        <div class="seg" id="mode" role="group" aria-label="What to watch"><button type="button" data-mode="hl" class="on" aria-pressed="true">Highlights</button><button type="button" data-mode="full" aria-pressed="false">Full run (${run.events.length} steps)</button></div>
         <span class="count" id="count"></span>
       </div>
-      <div class="controls"><div class="seg" id="mode" role="group" aria-label="What to watch"><button type="button" data-mode="hl" class="on" aria-pressed="true">Highlights</button><button type="button" data-mode="full" aria-pressed="false">Full run (${run.events.length} steps)</button></div></div>
-      <div class="controls"><div class="chips" id="scenes" role="group" aria-label="Jump to a moment"><button type="button" data-scene="0">Start</button>${full.map((s) => `<button type="button" data-scene="${s.n}"><b>${s.n}</b>${esc(s.title)}</button>`).join("")}</div></div>
       <div class="progress" aria-hidden="true"><i></i></div>
     </div>
-    <section class="card logp" aria-labelledby="h-log"><h2 id="h-log">Every step, newest first</h2><ol class="log" id="log" aria-live="polite"></ol></section>
+    <div class="wside">
+      <a class="nextstep card" href="try" data-next="try"><span class="fn">2</span><span class="ft"><b>Now try it yourself</b><small>Sign with your Face ID · 1 min</small></span>${icon("arrow-right", 20)}</a>
+      <section class="card logp" aria-labelledby="h-log"><h2 id="h-log">Every step, newest first</h2><ol class="log" id="log" aria-live="polite"></ol></section>
+    </div>
   </div>
 </div></main>`;
   return page({

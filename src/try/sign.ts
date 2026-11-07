@@ -89,9 +89,9 @@ const WAITING = FIXED_PROPOSALS.find((p) => p.id === "T-0002")!;
 /** The last line after a refused tamper: one cent off the amount, or any other single change (Max, 6 Nov). */
 export const TAMPER_VERDICT = { cent: "One cent changed. The signature is worthless.", field: "One field changed. The signature is worthless." } as const;
 
-/** Screen 5's three ways on, word for word. P-0005 is the main run's invoice the CFO signed with Face ID. */
+/** Screen 5's ways on, word for word: the proof (the third step, Max 7 Nov) as the one button, the rest as text links. */
 export const TRY_SIGN_END = [
-  { label: "See the real run", href: "/proof#faceid", icon: "shield-check" },
+  { label: "See the proof", href: "/proof", icon: "shield-check" },
   { label: "Trace this payment", href: "/trace", icon: "link-2" },
   { label: "Read the code", href: REPO_URL, icon: "external-link" },
 ] as const;
@@ -324,8 +324,8 @@ ul.locks1 li.chg { font-weight: 700; } ul.locks1 li.chg .i { color: var(--accent
 .next.alone { border-color: var(--ok); background: var(--ok-soft, var(--sunken)); }
 .next .nv { font-weight: 700; } .next.alone .nv { color: var(--ok); }
 .worst.big { font-size: clamp(19px, 2.2vw, 22px); }
-nav.end { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-nav.end .btn { justify-content: center; white-space: normal; text-align: center; min-height: 52px; height: auto; padding: 8px 10px; }
+nav.end { display: grid; gap: 4px; }
+nav.end .btn { justify-content: center; min-height: 56px; font-size: 17px; }
 .pill.alone { white-space: normal; background: var(--ok-soft, var(--accent-soft)); color: var(--ok); justify-self: start; }
 .pill.said-before { white-space: normal; justify-self: start; }
 .polnote { white-space: normal; background: var(--accent-soft); color: var(--accent); justify-self: start; }
@@ -390,7 +390,6 @@ nav.end .btn { justify-content: center; white-space: normal; text-align: center;
 @media (max-width: 640px) {
   .scr { padding: 18px 16px 0; gap: 12px; } .bar { margin: 2px -16px 0; padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); }
   .scr h1, .scr h2 { font-size: 24px; }
-  nav.end { grid-template-columns: minmax(0, 1fr); }
   .btn { white-space: normal; height: auto; min-height: 48px; }
 }`;
 
@@ -1330,7 +1329,7 @@ ${scr(5, `  <h2 tabindex="-1" id="s5-head">${esc(W.alone.head)}</h2>
   <div class="next" id="s5-next" hidden></div>
   <p class="worst big" id="s5-worst">${esc(allAgents(START_WORST.headline))}</p>
   <details class="fold quiet" id="s5-others-fold" hidden><summary>Other payments in your test world (<span id="s5-others-n">0</span>)</summary><div class="fbody others" id="s5-others"></div></details>
-  <nav class="end" id="t-end" aria-label="What next">${TRY_SIGN_END.map((e, i) => `<a class="btn${i === 0 ? " primary" : ""}" data-end="${i}">${icon(e.icon, 18)}${esc(e.label)}</a>`).join("")}</nav>
+  <nav class="end" id="t-end" aria-label="What next">${TRY_SIGN_END.slice(0, 1).map((e) => `<a class="btn primary big" data-end="0">${icon(e.icon, 18)}${esc(e.label)}</a>`).join("")}<p class="links">${TRY_SIGN_END.slice(1).map((e, i) => `<a class="tlink" data-end="${i + 1}">${icon(e.icon, 18)}${esc(e.label)}</a>`).join("")}</p></nav>
   <p class="links"><a class="tlink" id="t-film" target="_blank" rel="noopener noreferrer">${icon("play", 18)}${esc(TRY_SIGN_FILM.label)}</a><button class="tlink" type="button" id="go-again" data-world="1">${icon("undo-2", 18)}${esc(W.alone.again)}</button></p>`)}
 </div>
 <aside class="card diagram" id="diagram" data-step="1" aria-label="One policy, three locks">

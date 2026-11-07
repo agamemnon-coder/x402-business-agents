@@ -82,16 +82,17 @@ describe("the proof, one sentence per partner (section D, 6 Nov)", () => {
     expect(slides[7]).toContain(text("Claude"));
   });
 
-  it("is word for word on the README, Home and the form's Description", () => {
+  it("is word for word on the README and the form's Description; Home no longer carries it (Max, 7 Nov)", () => {
     const readme = read("README.md");
     const home = decode(buildPages().home!);
     const form = read("docs/submission/README.md");
     const desc = form.slice(form.indexOf("<!-- description -->"), form.indexOf("<!-- /description -->"));
     expect(readme).toContain(`## ${PROOF_HEADING}`);
-    expect(home).toContain(PROOF_HEADING);
+    expect(home).not.toContain(PROOF_HEADING);
     for (const p of PROOF_SENTENCES) {
-      for (const [where, body] of [["README", readme], ["home", home], ["form", desc]] as const) expect({ where, p: p.partner, has: body.includes(p.text) }).toEqual({ where, p: p.partner, has: true });
-      expect(home).toContain(`href="proof#${p.anchor}"`);
+      for (const [where, body] of [["README", readme], ["form", desc]] as const) expect({ where, p: p.partner, has: body.includes(p.text) }).toEqual({ where, p: p.partner, has: true });
+      // Each partner's place on /proof, where the sentences point.
+      expect(buildPages().proof!).toContain(`id="${p.anchor}"`);
     }
   });
 });

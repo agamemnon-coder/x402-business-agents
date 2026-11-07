@@ -28,8 +28,19 @@ const PHONE_CSP = [
 /** 1.1: the main run's recorded rate, for /try/sign's worst case (the Worker cannot read the record itself). */
 const EXPOSURE_RATE = (() => { try { return recordedRate(loadRecord().record as unknown as RecordForExposure); } catch { return null; } })();
 
+/**
+ * The site's one way through (Max, 7 Nov: watch the agents, try it yourself, see the proof). With /try/sign in the
+ * bundle the header's "Try" tab leads there; without it, a link to /try/sign (the next step under /watch) leads to /try,
+ * so no page links to a 404.
+ */
+export function flowLinks(html: string, trySign: boolean): string {
+  if (!trySign) return html.replace(/href="(\/?)try\/sign"/g, 'href="$1try"');
+  return html.replace(/(<nav class="tabs" aria-label="Main">(?:(?!<\/nav>)[\s\S])*?<a href=")(\/?)try"/, "$1$2try/sign\"").replace(/href="try" data-next="try"/g, 'href="try/sign" data-next="try"');
+}
+
 export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
   const trySign = trySignOn(env);
+  const flow = (html: string) => flowLinks(html, trySign);
   const home = trySign ? homeWithTrySign() : { page: HOME_PAGE, csp: HOME_CSP };
   const client = ts.transpileModule(read("../approve/client.ts"), {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, removeComments: false },
@@ -44,19 +55,19 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     demo: demoPage(),
     live: livePage(),
     film: filmPage(),
-    try: TRY_PAGE,
+    try: flow(TRY_PAGE),
     lab: labPage(),
-    metal: METAL_PAGE,
+    metal: flow(METAL_PAGE),
     metalReport: METAL_REPORT ?? "",
-    visa: VISA_PAGE,
-    airwallex: AIRWALLEX_PAGE,
-    claude: CLAUDE_PAGE,
-    home: home.page,
-    watch: WATCH_PAGE,
-    proof: PROOF_PAGE,
-    trace: TRACE_PAGE,
-    notFound: NOT_FOUND_PAGE,
-    ...(trySign ? { trySign: TRY_SIGN_PAGE, tryVerify: TRY_VERIFY_PAGE, judge: JUDGE_PAGE } : {}),
+    visa: flow(VISA_PAGE),
+    airwallex: flow(AIRWALLEX_PAGE),
+    claude: flow(CLAUDE_PAGE),
+    home: flow(home.page),
+    watch: flow(WATCH_PAGE),
+    proof: flow(PROOF_PAGE),
+    trace: flow(TRACE_PAGE),
+    notFound: flow(NOT_FOUND_PAGE),
+    ...(trySign ? { trySign: flow(TRY_SIGN_PAGE), tryVerify: flow(TRY_VERIFY_PAGE), judge: flow(JUDGE_PAGE) } : {}),
     redirects: REDIRECTS,
     // The CFO's own pages are private and reference nothing outside the relay (test/relay-assets.test.ts): no
     // link-preview tags with an absolute image there.
