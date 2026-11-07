@@ -73,6 +73,7 @@ const LIVE_READ_LABEL = /^(Claude Sonnet · live · invoice reader|recorded: the
 const LIVE_ADVICE_LABEL = /^(Claude Opus · live · treasury advice|recorded: the live agent was unavailable|fixed text · .+)$/;
 const LIVE_TRICK_LABEL = /^(Claude Sonnet · live · invoice reader|recorded: the live agent was unavailable|live agent unavailable · read by code)$/;
 const { verifyReceipt } = await import("../../src/try/receipt.js");
+const { checkChain } = await import("../../worker/src/worldChain.js");
 const sha256 = (s: string) => createHash("sha256").update(s, "utf8").digest("hex");
 // The examples the page must link, from the records themselves (not from the page's code).
 const LOCKS = tryLocks();
@@ -577,13 +578,17 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   const [download] = await Promise.all([page.waitForEvent("download"), page.click("#r-receipt")]);
   const saved = join(shots, `${tag}-receipt.json`);
   await download.saveAs(saved);
-  const receipt = JSON.parse(readFileSync(saved, "utf8")) as { terms: Record<string, string>; terms_sha256: string };
+  const receipt = JSON.parse(readFileSync(saved, "utf8")) as { terms: Record<string, string>; terms_sha256: string; chain: { length: number; head: string; rows: { kind: string; hash: string }[] } };
   const verdict = verifyReceipt(receipt);
+  // 6c: the receipt carries the world's hash chain as it was when signed; its checks find this signature's row in it.
+  check(verdict.checks.filter((c) => c.check === "chain" || c.check === "chain signature").map((c) => `${c.check}:${c.ok}`).join() === "chain:true,chain signature:true"
+    && checkChain(receipt.chain.rows).ok && receipt.chain.rows[0]!.kind === "world_opened" && receipt.chain.rows.some((r) => r.kind === "signature"),
+    `${tag}: the receipt carries the world's hash chain (${receipt.chain.length} rows), checked offline, its signature row found`);
   check(download.suggestedFilename() === "receipt.json" && verdict.ok && receipt.terms_sha256 === hash && JSON.stringify(receipt.terms) === JSON.stringify(terms),
     `${tag}: receipt.json downloads and verifies offline (${verdict.checks.filter((c) => c.ok).length} of ${verdict.checks.length} checks)`);
   check(!verifyReceipt({ ...receipt, terms: { ...receipt.terms, amount: "1850.01" } }).ok && !verifyReceipt({ ...receipt, terms: { ...receipt.terms, payee_iban: OTHER_IBAN } }).ok,
     `${tag}: the receipt with one cent more, or another IBAN, fails`);
-  check(!/"token"/.test(readFileSync(saved, "utf8")) && Object.keys(receipt).sort().join() === "algorithm,assertion,credential_id,note,origin,public_key,receipt,rp_id,terms,terms_sha256,verified_by_server_at,verify",
+  check(!/"token"/.test(readFileSync(saved, "utf8")) && Object.keys(receipt).sort().join() === "algorithm,assertion,chain,credential_id,note,origin,public_key,receipt,rp_id,terms,terms_sha256,verified_by_server_at,verify",
     `${tag}: the receipt carries what it needs and no world token`);
   // /try/verify (A3): "Check it yourself" opens the receipt in a page that checks it with WebCrypto, with no server call.
   if (!args.live) {
@@ -599,6 +604,8 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
     check((await p2.locator("#v-lead").innerText()).trim() === "Don't trust our server: check it yourself." && new URL(p2.url()).hash === "", `${tag}: /try/verify: "Don't trust our server: check it yourself."; the receipt came in the link's fragment, then cleared`);
     const good = await vv();
     check(good.ok === "true" && good.text === "Signature valid for these terms", `${tag}: /try/verify: "${good.text}"`);
+    check(JSON.stringify(await p2.locator("#v-checks li").evaluateAll((ls: Element[]) => ls.slice(-2).map((l) => `${(l as HTMLElement).dataset.check}:${l.className}`))) === '["chain:ok","chain signature:ok"]'
+      && (await p2.locator('#v-terms dd[data-field="chain"]').innerText()).startsWith(`${receipt.chain.length} rows, head ${receipt.chain.head.slice(0, 12)}`), `${tag}: /try/verify checks the receipt's hash chain too, in the browser`);
     await p2.screenshot({ path: join(shots, `${tag}-2b-verify-valid.png`) });
     await layout(p2, tag, "/try/verify, valid", width);
     await p2.click("#v-flip");
@@ -778,8 +785,28 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
 
   // ── The closing card (1.5): what the visitor did, then three ways on. ──
   check((await page.locator("#go-done").innerText()).trim() === W.alone.finish, `${tag}: screen 6's one button: "${W.alone.finish}"`);
-  await page.click("#go-done");
+  // 6c: on the last screen, the world's hash chain: its length, its head, and "Verify the chain" in the browser. At 390 px
+  // dark one row comes back changed on its way to the page (as a server that rewrote it would send it): the page finds it.
+  const tamper = !args.live && tag === "390-dark";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (tamper) await page.route("**/api/try-sign/chain", async (route: any) => { const res = await route.fetch(); const j = await res.json(); j.chain.rows[2].data_sha256 = sha256("not what happened"); await route.fulfill({ response: res, body: JSON.stringify(j) }); });
+  const [chainRes] = await Promise.all([page.waitForResponse("**/api/try-sign/chain"), page.click("#go-done")]);
   await page.waitForSelector("#scr-7:not([hidden])");
+  const served = ((await chainRes.json()) as { chain: { length: number; head: string; rows: { hash: string }[] } }).chain;
+  await page.waitForSelector("#c-box:not([hidden])");
+  // (With the changed row, the chain as served no longer checks: that is what "Verify the chain" must find below.)
+  check(checkChain(served.rows).ok === !tamper && served.length > receipt.chain.length && (tamper || JSON.stringify(served.rows.slice(0, receipt.chain.length)) === JSON.stringify(receipt.chain.rows))
+    && (await page.locator("#c-len").innerText()).trim() === `${served.length} events` && (await page.locator("#c-head").innerText()).trim() === `${served.head.slice(0, 12)}…` && await page.locator("#c-head").getAttribute("title") === served.head
+    && (await page.locator("#c-verify").innerText()).trim() === W.done.chain.verify && !(await page.locator("#c-verify").getAttribute("class"))!.includes("primary"),
+    `${tag}: the last screen: the hash chain's length (${served.length} events) and head (${served.head.slice(0, 12)}…), the receipt's chain its start, and "${W.done.chain.verify}"`);
+  await page.click("#c-verify");
+  await page.waitForFunction(() => /ok|bad/.test(document.getElementById("c-status")?.className ?? ""));
+  const cv = (await page.locator("#c-status").innerText()).trim();
+  if (tamper) {
+    await page.unroute("**/api/try-sign/chain");
+    check(cv === "Broken at row 3: its hash does not match." && await page.locator("#c-box").getAttribute("data-verified") === "false", `${tag}: a row changed on its way: "Verify the chain" finds it (${cv})`);
+  } else check(cv === `${W.done.chain.ok}: ${served.length} of ${served.length} rows.` && await page.locator("#c-verify").isHidden() && await page.locator("#c-box").getAttribute("data-verified") === "true",
+    `${tag}: "Verify the chain" recomputes every row in the browser: "${cv}"`);
   const did = `${W.done.lead} ${[W.done.items.signed, W.done.items.cheat, W.done.items.trick, W.done.items.rule, W.done.items.alone].join(" · ")}.`;
   check((await page.locator("#d-head").innerText()).trim() === W.done.head && (await page.locator("#scr-7 .lead1").innerText()).trim() === did && JSON.stringify(await dots(page)) === '["done","done","done","done","done","done"]',
     `${tag}: the closing card: "${did} ${W.done.head}"`);

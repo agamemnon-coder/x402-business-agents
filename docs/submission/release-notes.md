@@ -374,6 +374,16 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   plain card, red only for what differs and for the block, the invoice's IBAN beside the one on file. The band at the
   top is thin: 22 px in one line from 390 px (it was 63 px in two at 390 px, 44 px on a laptop). A fix: with no advice
   from the agent, screen 1 no longer shows a stray "null". 2985 tests in 290 files, all passing.
+- 7 November, a hash chain per /try/sign test world (6c): every event in a world (opened, each agent's step, each
+  proposal, signature, refusal and execution, each policy change) appends a row {seq, at, kind, data_sha256, prev,
+  hash}, its hash the SHA-256 of the row's canonical JSON without the hash, so each row covers the one before
+  (worker/src/worldChain.ts; written in the same synchronous stretch as the event, so with a plain-code SHA-256 checked
+  against Node's). The last screen shows the chain's length and head, and "Verify the chain" recomputes every row in
+  the browser. The receipt carries the chain as it was when signed; `npm run verify-receipt` and /try/verify check it
+  and find the row that records this signature (its data is the proposal and the hash signed). Tests: a tampered row is
+  found (its data, time, kind, order, a dropped row, a rewritten hash), the chain survives a reload of the store, and it
+  is per world. The server keeps the chain: it shows the order and that no row changed after the next was written, not
+  that the server could not rewrite all of it. 2992 tests in 291 files, all passing.
 
 ## Real, and ours
 

@@ -117,6 +117,8 @@ export const TRY_SIGN_SCREENS = {
   // 1.5: the closing card, after the last step.
   done: {
     head: "That's Purser.",
+    /** 6c: the world's hash chain, its length and head, and the check the browser makes of it. */
+    chain: { label: "Hash chain:", verify: "Verify the chain", ok: "Verified in your browser" },
     lead: "In about a minute you:",
     items: { signed: "signed one payment", cheat: "tried to cheat (refused)", trick: "tried to trick the agent (blocked)", rule: "changed the rule (signed)", alone: "watched the agent pay alone" },
   },
@@ -210,6 +212,7 @@ export const WHATS_REAL = {
     "Limits: USD 10 a day for every live agent on this page together, a few calls a minute, 8 s a call. When a live agent is unavailable, the page shows a recorded real answer of the same agent, labelled “recorded: the live agent was unavailable” with the reason, and checked by code like a live one; without a recording, code's reading or a fixed sentence, labelled with the reason. An emergency switch on the server (TRY_SIGN_AGENTS=off) stops every live agent call; the labels then say so.",
     "The FX quotes are live from the Airwallex sandbox (a test environment): read-only, nothing is converted, no money moves; two per world, one for each invoice's shortfall. A quote is in the terms, so the signature covers its quote id, and an expired quote is refused. Without a live quote (no sandbox key on the server, or the limit reached) the page shows the main run's recorded quote instead, labelled, and it is not in the signature.",
     "The receipt: receipt.json holds the exact terms, their hash, your passkey's signature, its public key and the algorithm. Anyone can check it offline, with no server: npm run verify-receipt -- receipt.json in the repository. Change one field or one cent and it fails. It proves that the holder of that key signed those terms, not who holds it.",
+    "The hash chain: every event in your test world (opened, each agent's step, each proposal, signature, refusal and execution, each policy change) adds a row whose hash covers the row before; the last screen shows its length and head, and “Verify the chain” recomputes every hash in your browser. The receipt carries the chain as it was when you signed, and its checks find your signature's row in it. The server keeps the chain, so it shows the order and that no row was changed after the next was written, not that the server could not have rewritten all of it: a head you noted down earlier can.",
   ],
   limits: [
     "The server checks no attestation, so it cannot tell which authenticator made the key, and a key made in software would verify too: Face ID is what your device asks for, not something the server proves.",
@@ -392,6 +395,10 @@ table.diff tr.chg td:last-child { color: var(--bad); }
 .tricked ul { margin: 6px 0 0; padding-left: 18px; } .tricked li.blocks { color: var(--bad); font-weight: 600; }
 /* 1.4: what a looser rule adds to the worst case. */
 .wdiff { margin: 4px 0 0; font-weight: 750; font-size: 17px; } .wdiff.up { color: var(--bad); } .wdiff.down { color: var(--ok, var(--accent)); }
+/* 6c: the world's hash chain on the closing card. */
+.chainbox { display: grid; gap: 8px; justify-items: start; padding: 12px 14px; border-radius: 14px; background: var(--sunken); }
+.chainbox[hidden], #c-verify[hidden] { display: none; }
+.chainbox .cline { margin: 0; font-size: 15.5px; overflow-wrap: anywhere; } .chainbox code { font: 600 14px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 /* 1.5: the closing card's two other ways on, as buttons. */
 .end .ends { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0 0; }
 .outcome[hidden] { display: none; }
@@ -999,7 +1006,9 @@ const JS = `
       terms: JSON.parse(s.x.p.canonical), terms_sha256: s.d.terms_sha256, algorithm: s.d.algorithm,
       public_key: { kty: k.kty, crv: k.crv, x: k.x, y: k.y }, credential_id: a.id, rp_id: location.hostname, origin: location.origin,
       assertion: { authenticatorData: a.response.authenticatorData, clientDataJSON: a.response.clientDataJSON, signature: a.response.signature },
-      verified_by_server_at: s.d.executed.at, verify: "npm run verify-receipt -- receipt.json"
+      verified_by_server_at: s.d.executed.at, verify: "npm run verify-receipt -- receipt.json",
+      // 6c: the world's hash chain when it was signed; its signature row is this signature (the checks find it).
+      chain: s.d.chain ? { length: s.d.chain.length, head: s.d.chain.head, rows: s.d.chain.rows } : undefined
     };
   }
   $("r-receipt").addEventListener("click", function () {
@@ -1522,6 +1531,44 @@ const JS = `
     if (d.alone) parts.push(it.alone);
     $("d-list").textContent = parts.join(" · ") + ".";
     go(7);
+    // 6c: the world's hash chain, as the server has it now.
+    if (S.token) post("chain", { token: S.token }).then(function (r) {
+      if (r.status !== 200 || !r.data.chain) return;
+      S.fullChain = r.data.chain;
+      $("c-len").textContent = r.data.chain.length + " events";
+      $("c-head").textContent = r.data.chain.head ? r.data.chain.head.slice(0, 12) + "…" : "none";
+      $("c-head").title = r.data.chain.head || "";
+      $("c-box").hidden = false; $("c-verify").hidden = false; $("c-verify").disabled = false;
+      status("c-status", "");
+    });
+  });
+  // The chain, recomputed here: each row's SHA-256 over its canonical JSON (without its hash), each prev the row before's.
+  function rowCanon(r) { return "{\\"at\\":" + JSON.stringify(r.at) + ",\\"data_sha256\\":" + JSON.stringify(r.data_sha256) + ",\\"kind\\":" + JSON.stringify(r.kind) + ",\\"prev\\":" + JSON.stringify(r.prev) + ",\\"seq\\":" + r.seq + "}"; }
+  function checkChain(rows) {
+    var prev = "0".repeat(64), i = 0;
+    var next = function () {
+      if (i >= rows.length) return Promise.resolve({ ok: true, n: rows.length, head: prev });
+      var r = rows[i];
+      if (!r || r.seq !== i + 1 || r.prev !== prev) return Promise.resolve({ ok: false, at: i + 1, why: "it does not follow the row before" });
+      return sha256(rowCanon(r)).then(function (h) {
+        if (h !== r.hash) return { ok: false, at: i + 1, why: "its hash does not match" };
+        prev = h; i++;
+        return next();
+      });
+    };
+    return next();
+  }
+  $("c-verify").addEventListener("click", function () {
+    var c = S.fullChain, b = $("c-verify");
+    if (!c) return;
+    b.disabled = true;
+    checkChain(c.rows).then(function (v) {
+      var ok = v.ok && v.n === c.length && v.head === c.head;
+      $("c-box").dataset.verified = String(ok);
+      if (ok) { b.hidden = true; status("c-status", W.done.chain.ok + ": " + v.n + " of " + c.length + " rows.", "ok"); return; }
+      b.disabled = false;
+      status("c-status", v.ok ? "The length or the head does not match the rows." : "Broken at row " + v.at + ": " + v.why + ".", "bad");
+    });
   });
   $("go-start").addEventListener("click", function () { go(1); });
 
@@ -1661,6 +1708,7 @@ ${scr(6, `  <h2 tabindex="-1" id="s5-head">${esc(W.alone.head)}</h2>
   <div class="bar"><button class="btn primary big" type="button" id="go-done">${esc(W.alone.finish)}${icon("arrow-right", 20)}</button></div>`)}
 ${scr(7, `  <h2 tabindex="-1" id="d-head">${esc(W.done.head)}</h2>
   <p class="lead1">${esc(W.done.lead)} <span id="d-list"></span></p>
+  <div class="chainbox" id="c-box" hidden><p class="cline"><span>${esc(W.done.chain.label)}</span> <b id="c-len"></b> · head <code id="c-head"></code></p><button class="btn" type="button" id="c-verify" data-world="1">${icon("link-2", 18)}${esc(W.done.chain.verify)}</button><p class="status" id="c-status" aria-live="polite"></p></div>
   <nav class="end" id="t-end" aria-label="What next">${TRY_SIGN_END.slice(0, 1).map((e) => `<a class="btn primary big" data-end="0">${icon(e.icon, 18)}${esc(e.label)}</a>`).join("")}<p class="ends">${TRY_SIGN_END.slice(1).map((e, i) => `<a class="btn" data-end="${i + 1}">${icon(e.icon, 18)}${esc(e.label)}</a>`).join("")}</p></nav>
   <a id="t-film" hidden></a>`)}
 </div>
@@ -1681,7 +1729,7 @@ ${scr(7, `  <h2 tabindex="-1" id="d-head">${esc(W.done.head)}</h2>
   const html = page({
     title: "Sign with your own Face ID", description: "Try it yourself in 60 seconds: an agent asks to pay, you sign the exact terms with Face ID, try to cheat, change the rule, and see the agent pay alone. A test world of your own; nothing real moves.",
     tab: "try", css: trySignCss(), body, js: JS, stage: false,
-    data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check", "check", "lock", "external-link", "arrow-right", "receipt", "bot", "shield-check", "arrow-left-right"]), locks, cfo: cfoApproval().line, fields: TAMPER_FIELDS, verdict: TAMPER_VERDICT, receipt: RECEIPT_FORMAT, recordedFx: recordedQuote(), end: TRY_SIGN_END, film: TRY_SIGN_FILM, codeLabel: CODE_LABEL,
+    data: { icons: iconSet(["link-2", "landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check", "check", "lock", "external-link", "arrow-right", "receipt", "bot", "shield-check", "arrow-left-right"]), locks, cfo: cfoApproval().line, fields: TAMPER_FIELDS, verdict: TAMPER_VERDICT, receipt: RECEIPT_FORMAT, recordedFx: recordedQuote(), end: TRY_SIGN_END, film: TRY_SIGN_FILM, codeLabel: CODE_LABEL,
       steps: TRY_SIGN_STEPS, screens: TRY_SIGN_SCREENS, channels: LOCK_CHANNELS, perDay: ALONE_PER_DAY, waiting: WAITING.id, blocked: FIXED_PROPOSALS.find((p) => p.id !== WAITING.id)!.id, next: NEXT, otherIban: OTHER_IBAN,
       policy: { fields: POLICY_FIELDS, words: FIELD_WORDS, state: TRY_POLICY.state, paidAlone: PAID_ALONE, worstCase: TRY_POLICY.worstCase, saidBefore: TRY_POLICY.saidBefore, worstCaseChain: TRY_POLICY.worstCaseChain, ifSigned: TRY_POLICY.ifSigned } },
     source: "Source: a test world made for you (worker/src/trySign.ts); nothing in it is recorded anywhere else. The lock examples: docs/demo/main-run.json and docs/runs/visa-tap-live-2026-11-02.json.",
