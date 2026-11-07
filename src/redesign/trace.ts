@@ -113,9 +113,9 @@ export function chains(r: RunRecord, t: RunTrace): Chain[] {
     if (actor === "agent") {
       add("decision", "shown", `The ${agentName(str(o.agent))} decided, with Claude ${family(str(o.model))}.`, [{ label: "agent", value: str(o.agent) }, { label: "model", value: str(o.model) }, { label: "request id", value: str(o.request_id) }]);
     } else if (actor === "code" && setBy) {
-      add("decision", "shown", `Code decided, under ${str(o.rule)}, which the ${agentName(str(setBy.agent))} set with Claude ${family(str(setBy.model))}. No Claude call for this payment itself.`, [{ label: "agent", value: str(setBy.agent) }, { label: "model", value: str(setBy.model) }, { label: "request id", value: str(setBy.request_id) }]);
+      add("decision", "shown", `Applied by code under ${str(o.rule)}, which the ${agentName(str(setBy.agent))} set with Claude ${family(str(setBy.model))}. No Claude call for this payment itself.`, [{ label: "agent", value: str(setBy.agent) }, { label: "model", value: str(setBy.model) }, { label: "request id", value: str(setBy.request_id) }]);
     } else if (actor === "code") {
-      add("decision", "shown", `Code decided, under ${str(o.rule)}. No Claude call behind this payment: no model or request id.`, [{ label: "agent", value: str(o.agent) }]);
+      add("decision", "shown", `Applied by code under ${str(o.rule)}. No Claude call behind this payment: no model or request id.`, [{ label: "agent", value: str(o.agent) }]);
     } else if (actor === "external") {
       add("decision", "shown", "The simulated customer's agent bought a stock check and paid for it. Not one of our agents: no model or request id of ours.", [{ label: "payer", value: "the simulated customer" }]);
     } else if (actor === "cfo" && p.proposal_id) {

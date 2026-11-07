@@ -55,7 +55,9 @@ export const TRY_SIGN_SCREENS = {
     head: "Your Treasury agent wants to pay an invoice above its limit.",
     sign: "Sign with Face ID",
     terms: "Show the exact terms",
-    other: "Just now, Purser's lock stopped another payment.",
+    /** The payment a rule stopped in this test world (jury review, 7 Nov, #6: said as the test it is), and a real example. */
+    other: "Purser stopped a test payment in your world just now",
+    real: "see a real example ↗",
     opening: "Opening your test world…",
     /** The fold with the agents' steps, calls and plan (Max, 7 Nov). */
     did: "What the agents did",
@@ -1282,6 +1284,9 @@ const JS = `
     var whole = function (c) { return Math.round(c / 100) * 100; };
     countTo($("s4-worst"), worstWords(at, delta), v && (was.at !== at || was.delta !== delta) ? function (p) { return worstWords(whole(was.at + (at - was.at) * p), whole(was.delta + (delta - was.delta) * p)); } : null);
     S.shown = { at: at, delta: delta };
+    // The difference in brackets keeps to one line (jury review, 7 Nov, #26): its own span, white-space: nowrap.
+    var wn = $("s4-worst"), cut = delta ? wn.textContent.lastIndexOf(" (") : -1;
+    if (cut > 0) { var ds = document.createElement("span"); ds.className = "delta"; ds.textContent = wn.textContent.slice(cut + 1); wn.textContent = wn.textContent.slice(0, cut + 1); wn.appendChild(ds); }
     $("s4-worst").classList.toggle("chg", !!delta);
     // The three locks light up one by one for the amount chosen.
     if (v) replay($("s4-locks"), "lit");
@@ -1616,7 +1621,7 @@ ${scr(1, `  <h2 tabindex="-1" id="s1-head">${esc(W.ask.head)}</h2>
   <p class="status" id="w-status" aria-live="polite"></p>
   <details class="fold" id="s1-did" hidden><summary>${esc(W.ask.did)}</summary><div class="fbody" id="s1-did-body"><ul class="small calls" id="s1-calls"></ul><p class="small" id="s1-plan"></p><p class="small" id="s1-read"></p></div></details>
   <details class="fold" id="s1-terms" hidden><summary>${esc(W.ask.terms)}</summary><div class="fbody" id="s1-terms-body"></div></details>
-  <details class="fold quiet" id="s1-other"><summary>${esc(W.ask.other)}</summary><div class="fbody" id="s1-blocked"></div></details>
+  <details class="fold quiet" id="s1-other"><summary><span>${esc(W.ask.other)} · <a id="s1-real" href="${esc(locks.find((l) => l.id === "purser")?.href ?? "/proof")}">${esc(W.ask.real)}</a></span></summary><div class="fbody" id="s1-blocked"></div></details>
   <p class="status" id="s1-status" aria-live="polite"></p>
   <p class="status" id="q-status" aria-live="polite"></p>
   <p class="status small" id="k-status" aria-live="polite"></p>
@@ -1716,7 +1721,7 @@ ${scr(7, `  <h2 tabindex="-1" id="d-head">${esc(W.done.head)}</h2>
   <p class="eyebrow">One policy → three locks</p>
   <div class="dn d-policy">${icon("shield-check", 20)}<span><b>The CFO's policy</b><small>One set of limits, written once.</small></span></div>
   <ol class="dlocks">
-    <li class="dn d-purser">${icon("lock", 18)}<span><b>Purser</b><small class="ch">${esc(LOCK_CHANNELS.purser.long)}</small><small id="dg-purser">${esc(euro(TEST_WORLD.alone_limit))} alone, ${ALONE_PER_DAY} a day</small><small class="dstop">Just stopped another payment · <a id="dg-real" href="${esc(locks.find((l) => l.id === "purser")?.href ?? "/proof")}">a real one</a></small></span></li>
+    <li class="dn d-purser">${icon("lock", 18)}<span><b>Purser</b><small class="ch">${esc(LOCK_CHANNELS.purser.long)}</small><small id="dg-purser">${esc(euro(TEST_WORLD.alone_limit))} alone, ${ALONE_PER_DAY} a day</small><small class="dstop">${esc(W.ask.other)} · <a id="dg-real" href="${esc(locks.find((l) => l.id === "purser")?.href ?? "/proof")}">${esc(W.ask.real)}</a></small></span></li>
     <li class="dn d-airwallex">${icon("lock", 18)}<span><b>Airwallex card</b><small class="ch">${esc(LOCK_CHANNELS.airwallex.long)}</small><small id="dg-awx">€25 each, €50 a month</small></span></li>
     <li class="dn d-metal">${icon("lock", 18)}<span><b>Metal mandate</b><small class="ch">${esc(LOCK_CHANNELS.metal.long)}</small><small id="dg-metal">25 test USD each</small></span></li>
   </ol>
@@ -1800,6 +1805,7 @@ code.hp { font: 600 13.5px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, m
 /* On a phone the two IBANs one above the other, right-aligned, so the account numbers line up digit for digit. */
 @media (max-width: 640px) { .ibans { display: grid; grid-template-columns: max-content; gap: 6px; } .ibans .ib { justify-content: space-between; } .ibans .neq { display: none; } }
 /* Change the rule: the figures count (countTo in the script), the three locks light up one by one. */
+#s4-worst .delta { white-space: nowrap; }
 .counting { position: relative; -webkit-text-fill-color: transparent; }
 .counting::after { content: attr(data-count); position: absolute; inset: 0; padding: inherit; -webkit-text-fill-color: currentColor; overflow: hidden; }
 ul.locks1 li { border-radius: 8px; margin: 0 -6px; padding: 2px 6px; }

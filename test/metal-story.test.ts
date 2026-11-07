@@ -5,7 +5,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { metalStoryHtml } from "../src/redesign/partners.js";
-import { EXPLORER, MAIN_RUN_CHECK, REPO_BLOB, SEPARATE_RUNS, explorerLink, metalStory, separateRuns } from "../src/redesign/metalStory.js";
+import { EXPLORER, MAIN_RUN_CHECK, REPO_BLOB, SEPARATE_RUNS, explorerLink, metalStory, refusalNote, separateRuns } from "../src/redesign/metalStory.js";
 import { loadRecord } from "../src/redesign/run.js";
 import { esc } from "../src/redesign/ui.js";
 import { METAL_PAGE } from "../src/servers/dashboard.js";
@@ -67,9 +67,17 @@ describe("the top of /metal tells the main run's Metal story from its record", (
   it("shows #24 refused on chain with the tx, the amount and the cap the ledger recorded", () => {
     const onChain = rec.ledger.events.find((e) => e.event === "upstream.refused_on_chain")!;
     const let1 = rec.ledger.events.find((e) => e.event === "upstream.let_through" && e.subject === onChain.subject)!;
-    expect(story.refusal).toEqual({ seq: "24", amount: String(onChain.payload.amount), cap: String(let1.payload.bound_cap), code: "mandate_cap_exceeded", proof: { label: expect.any(String), href: `${EXPLORER}/tx/${String(onChain.payload.tx)}` } });
+    expect(story.refusal).toEqual({ seq: "24", amount: String(onChain.payload.amount), cap: String(let1.payload.bound_cap), code: "mandate_cap_exceeded", proof: { label: expect.any(String), href: `${EXPLORER}/tx/${String(onChain.payload.tx)}` },
+      agent: "sourcing", mandate: String(onChain.payload.mandate) });
     expect(text).toContain("#24 refused on chain");
     expect(text).toContain("0.04 over the 0.03 cap");
+    // What the explorer shows beside the link (jury review, 7 Nov, #3), the mandate and the amount from the same row.
+    const m = String(onChain.payload.mandate);
+    expect(refusalNote(story.refusal)).toBe(`On the explorer: log #0 is Metal's MandateRefused event (undecoded there); topic 1 is the Sourcing mandate ${m.slice(0, 8)}…${m.slice(-4)} and its data carries ${String(onChain.payload.amount)}.`);
+    expect(refusalNote(story.refusal)).toBe("On the explorer: log #0 is Metal's MandateRefused event (undecoded there); topic 1 is the Sourcing mandate 0x11734e…9901 and its data carries 0.04.");
+    expect(text).toContain(refusalNote(story.refusal)!);
+    expect(refusalNote(null)).toBeNull();
+    expect(refusalNote({ ...story.refusal!, mandate: "" })).toBeNull();
   });
 
   it("shows the mandate replace after Face ID: both replace txs of P-0002, its two signers, #37 refused on the old mandate", () => {
@@ -89,7 +97,8 @@ describe("the top of /metal tells the main run's Metal story from its record", (
       ...story.replace!.steps.map((s) => s.cap),
     ]);
     for (const v of allowed) expect(raw).toContain(v);
-    const shown = text.replace(/tx 0x[0-9a-f]+…[0-9a-f]+/g, "").match(/\d+(\.\d+)?/g) ?? [];
+    // Ids and the explorer's own positions (log #0, topic 1) are names, not figures.
+    const shown = text.replace(/tx 0x[0-9a-f]+…[0-9a-f]+/g, "").replace(/0x[0-9a-f]+…[0-9a-f]+|log #0|topic 1/g, "").match(/\d+(\.\d+)?/g) ?? [];
     expect(shown.length).toBeGreaterThan(10);
     for (const n of shown) expect(allowed, `${n} is not from the record`).toContain(n);
   });

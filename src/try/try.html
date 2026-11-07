@@ -232,7 +232,7 @@ button.run:disabled { opacity: .5; cursor: wait; }
     });
     if (r.outcome === "blocked") list.appendChild((function () { var li = el("li", "step show"); li.appendChild(el("span", "by model", "Claude")); var mid = el("div"); mid.appendChild(el("b", null, "Never saw this message")); mid.appendChild(el("span", "d", "Code stopped the planted instruction before any model could read it, so it cannot steer one. That is the point: words in a message never reach Claude unchecked.")); li.appendChild(mid); li.appendChild(el("span", "meta", "")); return li; })());
     var sum = el("div", "sum");
-    sum.appendChild(el("span", "chip", modelRan ? "Read by Claude · decided by code" : r.outcome === "blocked" ? "Stopped by code before any model read it" : "Read by code alone · decided by code"));
+    sum.appendChild(el("span", "chip", modelRan ? "Read by Claude · checked by code" : r.outcome === "blocked" ? "Stopped by code before any model read it" : "Read and checked by code alone"));
     sum.appendChild(el("span", "chip", "Model cost of this try: " + usd(r.costUsd)));
     wrap.replaceChildren(el("p", "chip", "How Purser handled it, step by step"), list, sum);
 

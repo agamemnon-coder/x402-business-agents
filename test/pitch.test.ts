@@ -147,7 +147,9 @@ describe("one set of figures, the main run's record (3 November)", () => {
   it("says Metal's refusal one way, and the passkey as Max's (Max, 5 Nov)", () => {
     for (const name of ["pitch", "qa", "deck", "spiekkaart"]) expect({ name, has: TEXT[name]!.includes(REFUSAL_LINE) }).toEqual({ name, has: true });
     for (const name of ["form", "form (long)", "README"]) expect({ name, has: /the refusal is recorded on chain/i.test(TEXT[name]!) }).toEqual({ name, has: true });
-    for (const name of ["deck", "spiekkaart", "form", "form (long)", "README"]) expect({ name, has: TEXT[name]!.includes("Max's passkey (Face ID on his phone)") }).toEqual({ name, has: true });
+    for (const name of ["deck", "spiekkaart", "form (long)", "README"]) expect({ name, has: TEXT[name]!.includes("Max's passkey (Face ID on his phone)") }).toEqual({ name, has: true });
+    // The form's short Description since the jury review of 7 Nov (#17): no name twice, no "his".
+    expect(TEXT.form).toContain("Max plays the CFO and signs with a personal passkey (Face ID on a phone).");
     // The form's short Description (Max, 5 Nov): Metal's tx "on chain, checkable", Airwallex's ids "published".
     // Since section D (6 Nov) the form says where each partner's proof is in one sentence each (PROOF_SENTENCES,
     // test/proof-sentences.test.ts).
@@ -196,11 +198,13 @@ describe("one set of figures, the main run's record (3 November)", () => {
 describe("T:0 in one sentence, Metal counted (Max, 5 Nov)", () => {
   const flat = (p: string) => words(read(p)).replace(/, \[record\]\([^)]*\)/g, "");
 
-  it("says the T:0 sentence word for word in the README, the form, the claims, docs/t0.md, the run logs and the Q&A", () => {
+  it("says the T:0 sentence word for word in the form, the claims, docs/t0.md, the run logs and the Q&A", () => {
     expect(T0_STATUS).toBe("T:0 bookkeeping is built; posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted.");
     // Not in the form's short Description since 6 Nov (jury review, #7: no error codes there); the long text keeps it.
     expect(words(read("docs/submission/README.md").split("<!-- description -->")[1]!.split("<!-- /description -->")[0]!)).not.toContain("CAPI");
-    for (const p of ["README.md", "docs/submission/long-description.md", "docs/claims.md", "docs/t0.md", "docs/runs/2026-11-05-t0-live.md", "docs/runs/2026-11-03-t0-sandbox.md", "docs/submission/qa.md", "docs/internal/spiekkaart-demo.html"]) expect({ p, has: flat(p).includes(T0_STATUS) }).toEqual({ p, has: true });
+    // The README says it in its own words since the jury review of 7 Nov (#16), with the same codes and days.
+    expect(flat("README.md")).toContain("T:0 books: built, but posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted");
+    for (const p of ["docs/submission/long-description.md", "docs/claims.md", "docs/t0.md", "docs/runs/2026-11-05-t0-live.md", "docs/runs/2026-11-03-t0-sandbox.md", "docs/submission/qa.md", "docs/internal/spiekkaart-demo.html"]) expect({ p, has: flat(p).includes(T0_STATUS) }).toEqual({ p, has: true });
     // The codes as the run logs have them.
     expect(read("docs/runs/2026-11-03-t0-sandbox.md")).toMatch(/refused the first POST with `403 CAPI71`/);
     expect(read("docs/runs/2026-11-05-t0-live.md")).toMatch(/on 5 November[\s\S]*?`401 CAPI11`/i);
@@ -267,7 +271,7 @@ describe("the deck", () => {
     expect(DECK).toMatch(/html, body \{ background: #0b1020; \}/);
     expect(DECK).toMatch(/<div class="qr"><svg><\/svg><\/div><div><p class="url">kit11\.max-31b\.workers\.dev\/try\/sign<\/p>/);
     expect(DECK).not.toMatch(/<img[^>]*(visa|Visa)/);
-    for (const title of ["AI agents spend. You sign off.", "The hash the CFO signed is in Airwallex's record", "Checked in code, on every push", "Unit economics (hypothesis)", "AI agents can now spend money. So who signs off?", "Each agent its own card and its own mandate", "One live run, three beats", "Sign one yourself", "Every id is published", "What is real, and what is not", "From test rails to production"]) expect(DECK).toContain(`<h1>${title}</h1>`);
+    for (const title of ["AI agents spend. You sign off.", "The hash the CFO signed is in Airwallex's record", "Checked in code, on every push", "Unit economics (hypothesis)", "AI agents are starting to spend money. So who signs off?", "Each agent its own card and its own mandate", "One live run, three beats", "Sign one yourself", "Every id is published", "What is real, and what is not", "From test rails to production"]) expect(DECK).toContain(`<h1>${title}</h1>`);
   });
 
   it("follows Max's review (5 Nov) and section D's order (6 Nov): no logos, not opening with the awards, the rule on slide 2, the QR again on the last slide, no TAP run", () => {
@@ -317,7 +321,8 @@ describe("the hook (Max, 5 November): \"So who signs off?\"", () => {
     for (const [name, text] of [...Object.entries(SOURCES), ["film", film], ["live", read("src/live/timeline.ts")]] as const) {
       expect({ name, pen: /holds? the pen|keeps the pen/i.test(text) }).toEqual({ name, pen: false });
     }
-    expect(TEXT.deck).toContain("AI agents can now spend money. So who signs off?");
+    // The site's wording since the jury review of 7 Nov (#21); the film keeps its own ("can now").
+    expect(TEXT.deck).toContain("AI agents are starting to spend money. So who signs off?");
     expect(TEXT.pitch).toContain("So who signs off?");
     expect(read("docs/video/narrator-script.md")).toContain("AI agents can now spend money. … So who signs off?");
   });
@@ -332,7 +337,7 @@ describe("the cheat sheet", () => {
 
   it("has the opening and the close word for word, the three figures and the URLs", () => {
     const s = TEXT.spiekkaart!;
-    expect(s).toContain("AI agents can now spend money. So who signs off? I'm Max Geurtsen, and this is Purser.");
+    expect(s).toContain("AI agents are starting to spend money. So who signs off? I'm Max Geurtsen, and this is Purser.");
     expect(s).toContain(`${CORE_LINE} On mine, signed before, I change the amount by one cent. The same signature is refused. One cent. Worthless.`);
     expect(s).toContain(`${RULE_LINE} In this demo, I play the CFO.`);
     expect(s).toContain(stopsLine(st));

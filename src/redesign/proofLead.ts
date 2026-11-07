@@ -10,7 +10,7 @@
 
 import { readFileSync } from "node:fs";
 import { AWX_CONTROLS_ID, AWX_HASH_ID, awxCardId, cardControlRows, cardsReadback, hashTravel, transferReadback, type CardsReadback, type TransferReadback } from "./airwallexProof.js";
-import { metalStory, REPO_BLOB } from "./metalStory.js";
+import { metalStory, refusalNote, REPO_BLOB } from "./metalStory.js";
 import { split, type RunRecord } from "./run.js";
 import { esc } from "./ui.js";
 
@@ -65,7 +65,8 @@ export function proofLeads(record: RunRecord, o: { transfer?: { file: string; re
       }] : []),
     ],
     metal: [
-      ...(m.refusal?.proof.href ? [{ text: `#${m.refusal.seq} refused on chain`, href: m.refusal.proof.href }] : []),
+      // What the explorer shows for it, beside the link (jury review, 7 Nov, #3): the log is not decoded there.
+      ...(m.refusal?.proof.href ? [{ text: `#${m.refusal.seq} refused on chain`, href: m.refusal.proof.href, ...(refusalNote(m.refusal) ? { note: refusalNote(m.refusal)! } : {}) }] : []),
       ...(m.payments.total && m.payments.account.href ? [{ text: `${m.payments.total} payments, each its own tx`, href: m.payments.account.href }] : []),
     ],
     claude: [

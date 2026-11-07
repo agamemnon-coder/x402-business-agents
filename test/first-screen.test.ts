@@ -23,10 +23,10 @@ const anchors = (md: string) => [...md.matchAll(/^#+ (.+)$/gm)].map((m) => m[1]!
 const OTHERS = /\b(Pleo|Ramp|Brex|Spendesk|Payhawk|Expensify|Mercury|Revolut|Wise|Stripe|Mastercard|Coinbase|Google|Visa)\b/;
 
 describe("the first screen (section D, 6 Nov)", () => {
-  it("is what Purser is, the three sentences, then Try it in 30 seconds", () => {
+  it("is what Purser is, the three sentences, then Try it in a minute", () => {
     expect(FIRST_SCREEN).toEqual([WHAT_IT_IS, ...DIFFERENTIATORS, TRY_IT]);
-    expect(WHAT_IT_IS).toBe("AI agents can now spend company money; Purser lets them, through Airwallex and Metal, only within limits the CFO signs with Face ID.");
-    expect(TRY_IT).toBe("Try it in 30 seconds.");
+    expect(WHAT_IT_IS).toBe("AI agents are starting to spend company money; Purser lets them, through Airwallex and Metal, only within limits the CFO signs with Face ID.");
+    expect(TRY_IT).toBe("Try it in a minute.");
     expect(TRY_SIGN_URL).toBe("https://kit11.max-31b.workers.dev/try/sign");
     // No absolute claim in what Purser is (the stale lines of the jury review).
     expect(WHAT_IT_IS).not.toMatch(/cannot break|can't break|every limit|holds? no keys?/i);
@@ -40,16 +40,17 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines.slice(1, badges).join("\n")).toContain(`[${TRY_IT}](${TRY_SIGN_URL})`);
   });
 
-  it("opens Home under its heading with what Purser is, then the way through in three steps and one button (Max, 7 Nov)", () => {
+  it("opens Home under its heading with what Purser is and the three sentences, then the way through in three steps and one button (Max and the jury review, 7 Nov)", () => {
     const t = words(hero(HOME));
-    expect(t.startsWith(`${HERO} ${WHAT_IT_IS} ${START} ${JUDGE_LINE} → 1 Watch the agents A real run, replayed · 1 min 2 Try it yourself Sign with your Face ID · 1 min 3 See the proof Every id, checkable`)).toBe(true);
+    expect(t.startsWith(`${HERO} ${WHAT_IT_IS} ${DIFFERENTIATORS.join(" ")} ${START} ${JUDGE_LINE} → 1 Watch the agents A real run, replayed · about 40 s 2 Try it yourself Sign with your Face ID · about a minute 3 See the proof Every id, checkable`)).toBe(true);
     expect(FLOW.map((f) => f.href)).toEqual(["watch", "try/sign", "proof"]);
     expect(hero(HOME)).toContain('<a href="try/sign">');
     // One button, the first step's.
     expect(hero(HOME).match(/class="btn[^"]*"/g)).toEqual(['class="btn primary big start"']);
     expect(hero(HOME)).toContain(`<a class="btn primary big start" href="watch">`);
-    // The three sentences are the README's and the form's first screen; Home says what Purser is and shows it.
-    for (const d of DIFFERENTIATORS) expect(t.includes(d)).toBe(false);
+    // The three sentences, back under the subtitle (jury review, 7 Nov, #2), each once, as their own list.
+    for (const d of DIFFERENTIATORS) expect(t.split(d).length - 1).toBe(1);
+    expect(hero(HOME)).toContain(`<ul class="three">${DIFFERENTIATORS.map((d) => `<li>${d}</li>`).join("")}</ul>`);
     // Without /try/sign in the bundle step 2 leads to /try, never to a dead link.
     expect(homePage()).not.toContain('href="try/sign"');
     expect(hero(homePage())).toContain('<a href="try">');

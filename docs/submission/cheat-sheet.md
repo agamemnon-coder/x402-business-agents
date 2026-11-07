@@ -5,7 +5,7 @@
 
 ## The three sentences
 
-1. An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. Try it in 30 seconds.
+1. An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. Try it in a minute.
 2. One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control.
 3. Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude.
 

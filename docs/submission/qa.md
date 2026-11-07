@@ -1,11 +1,11 @@
-# Q&A: the 15 hardest questions
+# Q&A: the hardest questions
 
 For Max, for Demo Day (19 November). Each answer is three sentences or fewer, then the evidence: a page, a record or a
 test. Figures are the main run's (3 November 2026, [log](../runs/2026-11-03-main-run.md),
 [record](../demo/main-run.json)) or a dated record's; `test/pitch.test.ts` checks them, and
-`test/demo-day-pack.test.ts` checks the length of each answer and that it names its evidence. Questions 18 to 22, on
-/try/sign's live agents and on awx-1 (the Airwallex-only run of 7 November, [log](../runs/2026-11-07-awx-1.md)), were
-added on 7 November. When you do not know:
+`test/demo-day-pack.test.ts` checks the length of each answer and that it names its evidence. Questions 18 to 24, on
+/try/sign's live agents, on awx-1 (the Airwallex-only run of 7 November, [log](../runs/2026-11-07-awx-1.md)) and on
+that day's other separate run, were added on 7 November. When you do not know:
 "Good question. I'll check and send it to you." Never guess.
 
 The pitch: [pitch.md](pitch.md). The one page beside the laptop: [cheat-sheet.pdf](cheat-sheet.pdf).

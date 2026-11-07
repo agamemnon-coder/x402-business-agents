@@ -136,6 +136,6 @@ export async function runTrick(attack: Attack, live: InvoiceReadingLive | { unav
     signals: finding.signals,
     injections,
     proposal: null,
-    by: "Purser's code decided: src/policy/injection.ts screened the document, src/policy/fraud.ts checked the payee against the allowlist. Nothing was proposed, quoted or paid.",
+    by: "Checked by Purser's code: src/policy/injection.ts screened the document, src/policy/fraud.ts checked the payee against the allowlist. Nothing was proposed, quoted or paid.",
   };
 }

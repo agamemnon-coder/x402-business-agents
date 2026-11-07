@@ -85,7 +85,7 @@ Screen shared: one browser window, the tabs below in this order, zoom 110 %. Max
 
 | Time (length) | Max says | On screen (URL, scene) | Click | Plan B |
 |---|---|---|---|---|
-| 0:00 (15 s) | "AI agents can now spend money. So who signs off? I'm Max Geurtsen, and this is Purser." | Deck, slide 1 (the core line, the four figures) | — | Deck as PDF; the deck needs no network |
+| 0:00 (15 s) | "AI agents are starting to spend money. So who signs off? I'm Max Geurtsen, and this is Purser." | Deck, slide 1 (the core line, the four figures) | — | Deck as PDF; the deck needs no network |
 | 0:15 (25 s) | "Picture a small company that sells live stock data, per query. … Inside its limits an agent pays alone; beyond them, the CFO signs. In this demo, I play the CFO." | Deck, slide 2 (the rule), then slide 3 (agent → rules → person → Airwallex · Metal → books) | Next slide (twice) | Same |
 | 0:40 (30 s) | "A replay of our main run, 3 November. The supplier doubles its price … Metal refused it; the refusal is recorded on chain. … Option A … Option B … I sign A with Face ID; a second approver co-signs." | Tab 2: [/watch?scene=1](https://kit11.max-31b.workers.dev/watch?scene=1), scene 1 "The price rise"; point at Metal's refusal and its tx, then the two options | Tab 2; it plays from scene 1 | Site slow or down: tab 7, `npm run judge` on `http://localhost:4311/watch?scene=1`. `/watch` stutters: clip `out/video/clips/05-price.mp4` |
 | 1:10 (15 s) | "A customer then disputes 12 orders its own agent signed. Support refunds the 3 with wrong data itself. The rest I reject, with Face ID." | `/watch`, scene 2 "The dispute": 12 orders signed, #7, #10, #13 refunded, P-0004 rejected | Chip **2** | Clip `07-dispute.mp4`; Face ID moment: clip `08-faceid.mp4` |

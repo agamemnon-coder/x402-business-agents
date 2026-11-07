@@ -7,7 +7,7 @@ import { whyCompanyHtml } from "./home.js";
 import { readFileSync } from "node:fs";
 import { CFO_VIEW_LINK, CFO_VIEW_URL, CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, SPLIT_LINE, VISA_EXTRA_LINK } from "../config/brand.js";
 import { agentRun, faceIdDecisions, faceIdLine, family, letThroughOf, ownTap, payments, sandboxRails, runName, split, metalDetail, stopFigure, stopStory, stopSub, stops, stopsLine, tapRun, type AgentRun, type Ev, type RunRecord, type Tile } from "./run.js";
-import { READBACK_CSS, cardControlRows, cardsReadback, controlsShortHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
+import { AWX_HASH_ID, READBACK_CSS, cardControlRows, cardsReadback, controlsShortHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { airiRunBlock } from "./airiRun.js";
 import { awxRunBlock } from "./awxRun.js";
 import { esc, icon, page } from "./ui.js";
@@ -51,6 +51,7 @@ h2.sec { font-size: clamp(22px, 2.2vw, 28px); font-weight: 750; margin: 36px 0 1
 .facts { display: flex; flex-wrap: wrap; gap: 6px; }
 .fact { font: 650 14px/1.35 Inter, system-ui, sans-serif; padding: 4px 10px; border-radius: 999px; background: var(--sunken); color: var(--text); }
 .fact b { font-variant-numeric: tabular-nums; }
+a.fact.hash { text-decoration: none; background: var(--ok-soft); color: var(--ok); } a.fact.hash:hover { text-decoration: underline; }
 .logo { display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 10px; background: #fff; border: 1px solid var(--border); flex: none; }
 .logo.dark { background: #191919; border-color: #191919; } .logo img { display: block; height: 15px; width: auto; }
 .logo.txt { background: var(--surface); color: var(--text); font-weight: 750; font-size: 14px; white-space: nowrap; }
@@ -101,17 +102,29 @@ const li = (text: string, tone = "", link?: { label: string; href: string | null
 /**
  * The purchase let through to Metal (main run), in one clean line: who refused what, at what price, over which cap,
  * with the code as written; both layers in one line (CHAIN_TEST: Purser refuses first; with that check off once, Metal
- * refused anyway; jury review, 6 Nov, #8), and the run's Defense-in-depth label on its own line below it.
+ * refused anyway; jury review, 6 Nov, #8). The run's Defense-in-depth label says the same again, so it is not shown
+ * beside it (jury review, 7 Nov, #13); it stays in the run's ledger row.
  */
 export function letThroughLi(r: RunRecord, e: Extract<Ev, { k: "money" }>, prefix = "Refused by Metal: "): string {
   const cap = letThroughOf(r)?.cap ?? "";
   const link = e.proof.href ? ` <a class="pf" href="${esc(e.proof.href)}" target="_blank" rel="noopener">${esc(e.proof.label)} ↗</a>` : "";
-  return `<li class="no">${esc(`${prefix}${e.what} at ${e.amount}${cap ? `, over the ${cap} cap` : ""} `)}(<code>${esc(e.refused?.code ?? "mandate_cap_exceeded")}</code>); nothing moved.${link}<small>${esc(CHAIN_TEST)}</small><small>${esc(e.refused?.reason ?? "")}</small></li>`;
+  return `<li class="no">${esc(`${prefix}${e.what} at ${e.amount}${cap ? `, over the ${cap} cap` : ""} `)}(<code>${esc(e.refused?.code ?? "mandate_cap_exceeded")}</code>); nothing moved.${link}<small>${esc(CHAIN_TEST)}</small></li>`;
 }
 /** A failed licence attempt and what followed, from the run's ledger: "The first licence transfer (P-0005) was refused …". */
 export function earlierLine(e: Extract<Ev, { k: "money" }>): string {
   const id = /\((P-\d+)\)/.exec(e.what)?.[1] ?? "";
   return `The first licence transfer${id ? ` (${id})` : ""} was refused by the sandbox (${e.refused?.code ?? ""}; nothing paid); it is not a limit.${e.retried ? ` It was proposed again as ${e.retried.id}, approved with Face ID and ${e.retried.status || "paid"} at ${e.retried.at.slice(11, 16)} UTC.` : ""}`;
+}
+/**
+ * A planted instruction the record caught, in plain words (jury review, 7 Nov, #14), its count and its document's kind
+ * from the record's own reason ("An incoming document (dispute) contains 1 line aimed at the AI; …"). The planted text
+ * itself is not repeated. Falls back to the reason without the quote when the record says it another way.
+ */
+export function plantedLine(reason: string): string {
+  const m = /document \(([a-z ]+)\) contains (\d+) lines? aimed at the AI/.exec(reason);
+  if (!m) return reason.replace(/: "[\s\S]*$/, "");
+  const n = Number(m[2]);
+  return n === 1 ? `A line aimed at the AI in the ${m[1]} document was treated as data and changed nothing.` : `${n} lines aimed at the AI in the ${m[1]} document were treated as data and changed nothing.`;
 }
 /** A separate labelled line below a figure, in its own words (codes kept as written). */
 const noteHtml = (note: string | undefined, tag = "p") => (note ? `<${tag} class="note">${esc(note)}</${tag}>` : "");
@@ -144,7 +157,7 @@ export function partnerProof(run: AgentRun, o: { tap?: boolean } = {}): Record<"
     ],
     airwallex: [
       ...sandboxRails(s.rails.airwallex).map((r) => li(`${r.what}: ${r.detail}`, "", r.proof)),
-      ...(tapDecline ? [li(`The limit, enforced by Airwallex (${tap!.label}): EUR ${tapDecline.amount} declined, ${tapDecline.reason ?? ""}`, "no", { label: `Airwallex ${tapDecline.txId.slice(0, 8)}… · read back with GET: ${tapDecline.getStatus}`, href: null })] : []),
+      ...(tapDecline ? [li(`The limit, enforced by Airwallex (${tap!.label}): EUR ${tapDecline.amount} declined, ${tapDecline.reason ?? ""}`, "no", { label: `Airwallex ${tapDecline.txId.slice(0, 8)}… · read back with GET: status ${tapDecline.getStatus}${tapDecline.getStatus === "FAILED" ? " (Airwallex's decline)" : ""}`, href: null })] : []),
       ...money.filter((e) => e.rail === "airwallex" && e.refused?.by === "airwallex-sandbox").map((e) => li(`${earlierLine(e)}`, "no", null)),
     ],
     visa: [
@@ -173,9 +186,14 @@ function partnerCards(run: AgentRun): string {
   const card = (id: "metal" | "airwallex" | "claude", name: string, what: string, facts: string, items: string[], extra = "") =>
     `<article class="pcard card" id="${id}"><div class="ph"><h3>${esc(name)}</h3><a class="open" href="${id}">More ${icon("arrow-right", 14)}</a></div><div class="facts">${facts}</div><details class="fold"><summary>Show the live proof</summary>${leadHtml(lead[id])}<p class="what">${esc(what)}</p>${extra}${items.length ? `<ul class="pl">${items.join("")}</ul>` : ""}</details></article>`;
   const cardsMatch = /^(\d+ of \d+) cards carry the CFO's policy$/.exec(lead.airwallex.find((l) => / cards carry the CFO's policy$/.test(l.text))?.text ?? "");
+  // The strongest Airwallex proof as the card's first chip (jury review, 7 Nov, #12), linked to where it is shown: only
+  // when the two read-backs agree (hashTravel), as the lead claim in the fold.
+  const h = hashTravel(run.record);
+  const hashChip = h?.match ? `<a class="fact hash" href="airwallex#${AWX_HASH_ID}">${esc(`Signed hash in Airwallex's ${h.transferMethod} record ✓`)}</a>` : "";
+  // In the README's order (jury review, 7 Nov, #12): Airwallex, Metal, Claude.
   return `<div class="partners">
+${card("airwallex", "Airwallex", "Earnings booked once final, the euro licence by SWIFT, cards with limits the bank enforces.", hashChip + fact(String(awx), "movements at Airwallex") + (cardsMatch ? fact(cardsMatch[1]!, "cards carry the CFO's limits") : "") + (st.airwallex ? fact(String(st.airwallex), "declined by Airwallex") : ""), p.airwallex)}
 ${card("metal", "Metal", "Each agent's limit is a mandate on chain; payments per query over x402.", fact(String(onChain), "payments on chain") + fact(String(st.metal), "refused by Metal at the limit") + fact(String(mandates), "limits replaced on chain"), p.metal, (st.revoked ? `<p class="note">${esc(`${st.revoked} refused by Metal because its mandate had just been replaced.`)}</p>` : "") + (pay.sums && pay.onChain === onChain ? `<p class="note">${esc(`${pay.onChainLine}.`)}</p>` : ""))}
-${card("airwallex", "Airwallex", "Earnings booked once final, the euro licence by SWIFT, cards with limits the bank enforces.", fact(String(awx), "movements at Airwallex") + (cardsMatch ? fact(cardsMatch[1]!, "cards carry the CFO's limits") : "") + (st.airwallex ? fact(String(st.airwallex), "declined by Airwallex") : ""), p.airwallex)}
 ${card("claude", "Claude", `The agents decide with Claude: ${run.agents.map((a) => `${a.short} on ${a.family}`).join(", ")}.`, fact(`${sp.byClaude}/${sp.decisions}`, "decisions by Claude") + fact(String(s.agent_stats.reduce((n, a) => n + a.claude_calls, 0)), "calls to Claude, each logged"), p.claude)}
 </div>`;
 }
@@ -194,7 +212,7 @@ function moreCards(run: AgentRun): string {
     ...money.filter((e) => e.refused?.by === "metal" && e.refused.code !== "mandate_revoked").map((e) => (e.letThrough ? letThroughLi(r, e, "By Metal: ") : li(`By Metal: ${e.what}, ${e.refused!.reason} (${e.refused!.code ?? ""})`, "no", e.proof.href ? e.proof : null))),
     ...money.filter((e) => e.refused?.code === "mandate_revoked").map((e) => li(`By Metal: ${e.what}, refused on chain because its mandate had just been replaced`, "no", e.proof.href ? e.proof : null)),
     ...faces.filter((f) => f.status === "REJECTED").map((f) => li(`By the CFO with Face ID: ${f.id} · ${f.title} rejected`, "no")),
-    ...s.refusals.filter((x) => /planted instruction/i.test(x.what)).map((x) => li(`${x.what}: ${x.reason.replace(/: "[\s\S]*$/, "")}`, "no")),
+    ...s.refusals.filter((x) => /planted instruction/i.test(x.what)).map((x) => li(plantedLine(x.reason), "no")),
   ];
   // One Face ID number from one source (faceIdDecisions): the proposals the CFO decided with his passkey, from the run's ledger.
   const faceItems = faces.map((f) => li(`${f.id} · ${f.title}: ${f.status === "COSIGNED" ? `1 of 2 signatures, by ${f.signers[0]}` : `${f.status === "REJECTED" ? "rejected" : "approved"} by ${f.signers.join(" and ")}${f.signers.length > 1 ? ` (${f.signers.length} of ${f.signers.length} signatures)` : ""}`}`, "face", null, f.signers.length > 1 ? SECOND_APPROVER : undefined));
@@ -255,7 +273,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
     { cls: "face", value: String(faceIdDecisions(r)), label: faceIdLine(faceIdDecisions(r), run.events.filter((e) => e.k === "face").length).label, explain: "", href: "#faceid" },
     // No TAP remark under the figures (Max's last round, item 2): TAP is on /visa, linked from the footer.
     { cls: "stop", value: stopFigure(story), label: stopSub(story), explain: "", href: "#stops" },
-    { cls: "", value: `$${run.derived.perDecision}`, label: "Claude cost per decision", explain: "", href: "#claude" },
+    { cls: "", value: `$${run.derived.perDecision}`, label: "Claude cost per decision (agent calls)", explain: "", href: "#claude" },
   ];
   const body = `<main class="proofp"><div class="wrap">
   <div class="phead"><h1>Proof</h1><span class="pill run">${icon("database", 14)}${esc(run.label)}</span><a class="open" href="${FILM_URL}" target="_blank" rel="noopener">${icon("play", 14)}${esc(FILM_LINK)} ↗</a><a class="open" href="${CFO_VIEW_URL}">${icon("layout-dashboard", 14)}${esc(CFO_VIEW_LINK)}</a><a class="open" href="${TRACE_URL}">${icon("receipt", 14)}${esc(TRACE_LINK)}</a><a class="open" href="assets/${PACK_NAME}" download>${icon("file-check", 14)}${esc(PACK_LINK)}</a></div>

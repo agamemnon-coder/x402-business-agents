@@ -31,7 +31,7 @@ speaks at about **2.3 words a second**; each part's budget is its seconds times 
 it, so the taps, the Face ID prompts and the tab switches fit in the rest. The words are counted the way
 `test/demo-day-pack.test.ts` counts them (the "Max says" column only).
 
-- **The problem, and the agents at work:** 0:00–0:20 (20 s); budget 46 words; written 39 words; about 17 s of speech, 3 s
+- **The problem, and the agents at work:** 0:00–0:20 (20 s); budget 46 words; written 40 words; about 17 s of speech, 3 s
   for one click.
 - **Live: sign, cheat, trick, change the rule:** 0:20–1:30 (70 s); budget 161 words; written 117 words; about 51 s of
   speech, 19 s for three Face ID prompts, the fake invoice and the server's answers.
@@ -39,7 +39,7 @@ it, so the taps, the Face ID prompts and the tab switches fit in the rest. The w
   switches.
 - **The business and the ask:** 2:20–3:00 (40 s); budget 92 words; written 84 words; about 37 s of speech, 3 s for a
   pause.
-- **Total:** 3:00; budget 414 words; written 341 words; about 2:28 of speech, 32 s for taps and pauses.
+- **Total:** 3:00; budget 414 words; written 342 words; about 2:29 of speech, 31 s for taps and pauses.
 
 Before you start: the laptop's shared screen shows Home ([kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/)).
 Your iPhone is mirrored to the screen (the path tested on 6 November: Safari, Face ID), with `/try/sign` opened a minute
@@ -54,7 +54,7 @@ Demo Day script".
 
 | Do | Max says | Source |
 |---|---|---|
-| Laptop: Home. Look at the jury, not the screen. | AI agents can now spend company money. | [docs/business/problem.md](../business/problem.md), "Why now (sourced)" |
+| Laptop: Home. Look at the jury, not the screen. | AI agents are starting to spend company money. | [docs/business/problem.md](../business/problem.md), "Why now (sourced)" |
 | | But a prompt is not a financial control; Airwallex says so itself. | [docs/business/problem.md](../business/problem.md) [S1]: "A prompt is not a financial control." (Airwallex, 5 October 2026) |
 | Pause one beat. | So who signs off? | The film's hook (`01-hook`) |
 | Click **Start: watch the agents**: [/watch](https://kit11.max-31b.workers.dev/watch) plays the main run. | This is Purser: three Claude agents running a company, replayed. | `START` and `FLOW` (`src/redesign/home.ts`); `/watch` label "Replay of the main run" (`runLabel`, `src/redesign/run.ts`) |
@@ -134,7 +134,7 @@ screen at each step: [demo-day.md](demo-day.md), "The runbook".
 
 | When | Max says | Source |
 |---|---|---|
-| **0:00 Hook** | AI agents can now spend money. | The film's first line (`01-hook`) |
+| **0:00 Hook** | AI agents are starting to spend money. | The film's first line (`01-hook`), in the site's wording since the jury review of 7 Nov (the film says “can now”) |
 | | So who signs off? | The film (`01-hook`) |
 | | I'm Max Geurtsen, and this is Purser. | Max, live (the film's narrator, an AI voice, says “This is Purser, built by Max Geurtsen.”: `docs/video/narrator-script.md`) |
 | **0:15 Who and what** | Picture a small company that sells live stock data, per query. | `NORTHWIND_LINE`, `src/config/brand.ts` |
@@ -150,7 +150,7 @@ screen at each step: [demo-day.md](demo-day.md), "The runbook".
 | | Option A: cap 0.04, and our price stays 0.05. | Record: P-0002 terms (option A, Sourcing cap 0.04, `query_price` 0.05) |
 | | Option B: the same cap, our price up to 0.07. | Record: P-0003 terms (option B, Sourcing cap 0.04, `query_price` 0.07) |
 | | I sign A with Face ID; a second approver co-signs. | Record: P-0002 cosigned 1 of 2, then 2 of 2 |
-| | A customer then disputes 12 orders its own agent signed. | Record: `disputeStory` (12 orders claimed `never_placed`; every order `signed_order`) |
+| | A customer disputes 12 orders its own agent signed. | Record: `disputeStory` (12 orders claimed `never_placed`; every order `signed_order`) |
 | | Support refunds the 3 with wrong data itself. | Record: refunds #7, #10, #13, 0.15 test USD |
 | | The rest I reject, with Face ID. | Record: P-0004 (`refund_batch`, the other 9) rejected by Max, 11:29:37 |
 | | Last, a 240 euro licence is due. | Record: P-0005, EUR 240.00 |
@@ -223,13 +223,13 @@ own signature and "One cent. Worthless." stay last.
 
 | Max says | Source |
 |---|---|
-| Who is it for? | Form text, Description ("Purser is for the CFO or controller…") |
-| Small cross-border companies on Airwallex that let AI agents spend. | `docs/roadmap.md`; form text |
-| We charge a monthly fee per company and per active agent. | Business model (a plan, not a price list), earlier deck |
-| We take no cut of the payments. | Same plan |
-| Why now? | `docs/claims.md`, market facts |
-| In 2025, Mastercard and Google launched protocols for agents that pay. | `docs/claims.md` (Agent Pay, April 2025; AP2, 16 September 2025) |
-| Agents can pay now; the pen still has to stay with a person. | Core message; `docs/roadmap.md`, "The CFO signs off" |
+| Who is it for? | [docs/business/model.md](../business/model.md), "Who buys and who uses it (hypothesis)" |
+| Finance teams at small companies on Airwallex whose AI agents pay. | `WHY_COMPANY` "Who buys" in `src/config/brand.ts`, as the README and /proof's "Why this is a company" say it; [model.md](../business/model.md) |
+| The CFO uses it and decides. | Same line; [model.md](../business/model.md), the user and the decider |
+| €49 a company a month, five agents included; a hypothesis. | `PRICE_LINE` in `src/config/brand.ts` (the form's Description, "The business"); [model.md](../business/model.md), "Intended pricing (hypothesis)" |
+| Why now? | [docs/business/problem.md](../business/problem.md), "Why now (sourced)" |
+| Airwallex wrote it on 5 October: limits belong in infrastructure, not prompts. | [problem.md](../business/problem.md) [S1] (Airwallex, "Agentic banking starts with governance") |
+| Agents can pay now; the sign-off still has to stay with a person. | Core message; `docs/roadmap.md`, "The CFO signs off" |
 
 About 640 words in all: 4:30 of speech, plus the demo.
 

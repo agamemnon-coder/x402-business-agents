@@ -93,7 +93,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
     },
     {
       kicker: "The problem",
-      title: "AI agents can now spend money. So who signs off?",
+      title: "AI agents are starting to spend money. So who signs off?",
       wide: true,
       points: [
         "An agent pays as fast as it is told to, also by a fake invoice.",
@@ -105,7 +105,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       kicker: "What only Purser has",
       title: "Each agent its own card and its own mandate",
       wide: true,
-      // What only Purser has (jury review, 6 Nov, #1): the three sentences word for word, then "Try it in 30 seconds."
+      // What only Purser has (jury review, 6 Nov, #1): the three sentences word for word, then "Try it in a minute."
       extra: `<ul class="why">${DIFFERENTIATORS.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
         <p class="tryline">${esc(TRY_IT)} <span>${esc(QR_URL.replace(/^https:\/\//, ""))}</span></p>
         <div class="flow">

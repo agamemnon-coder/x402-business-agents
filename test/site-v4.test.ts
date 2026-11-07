@@ -30,7 +30,7 @@ export function visibleWords(html: string): number {
 const allText = (html: string) => decode(html.replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " "));
 
 describe("the site after v4", () => {
-  it("keeps every page within its text budget (Home about 60 words plus the Visa TAP link; partner pages at most 150, /airwallex 235 with its read-back, awx-1 and the Airi run)", () => {
+  it("keeps every page within its text budget (Home 190 with the three sentences; partner pages at most 150, /metal 175 with the explorer note, /airwallex 235 with its read-back, awx-1 and the Airi run)", () => {
     // Proof: 480 since 4 Nov, for the TAP run's decline on its own line below the stop figure (Max).
     // Home: 600 since 6 Nov, for the three sentences under the heading, the Kit 11 line and the one caveat line (jury review, #1, #7).
     // Proof 520 and Airwallex 190 since 6 Nov, for Airwallex read back (section B): the hash the CFO signed beside the one
@@ -49,7 +49,9 @@ describe("the site after v4", () => {
     // label, its checks passed, and the summary of its fold (every step and id folded).
     // Airwallex: 235 since 7 Nov, for the Airi run in the same form (date, name, "sandbox, test card, test money", its
     // checks passed, the summary of its fold): 23 words.
-    const budget: Record<string, number> = { home: 130, watch: 125, try: 180, proof: 560, metal: 150, airwallex: 235, visa: 150, claude: 150, notFound: 40 };
+    // Home: 190 since the jury review of 7 Nov (#2), for the three sentences back under the subtitle (188 words).
+    // Metal: 175 since then (#3), for what the explorer shows beside the refusal's link (172 words).
+    const budget: Record<string, number> = { home: 190, watch: 125, try: 180, proof: 560, metal: 175, airwallex: 235, visa: 150, claude: 150, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 
@@ -93,6 +95,19 @@ describe("the site after v4", () => {
     // The 404 answers at any depth, so its links and assets are absolute.
     expect(pages.notFound).toMatch(/href="\/home"/);
     expect(pages.notFound).not.toMatch(/(href|src)="(?!https?:|#|\/)/);
+  });
+
+  it("sends a path pasted with the sentence's full stop or comma to the same path without it (jury review, 7 Nov, #18)", () => {
+    const p = pages as Pages;
+    const go = (path: string) => pageResponse(new Request(`https://x.test${path}`), p);
+    for (const [from, to] of [["/judge.", "/judge"], ["/try/sign,", "/try/sign"], ["/proof.", "/proof"], ["/watch.,", "/watch"], ["/,", "/"], ["/airwallex.?x=1", "/airwallex?x=1"]] as const) {
+      const r = go(from);
+      expect({ from, status: r?.status, to: r?.headers.get("location") }).toEqual({ from, status: 302, to });
+    }
+    // Only a trailing "." or ","; anything else is answered as before, and a POST is not redirected.
+    expect(go("/proof")?.status).toBe(200);
+    expect(go("/no/such/page")).toBeNull();
+    expect(pageResponse(new Request("https://x.test/judge.", { method: "POST" }), p)).toBeNull();
   });
 
   it("reaches the archive (/lab, /film, /month, /metal/report) only through Proof's folded, labelled Archive", () => {

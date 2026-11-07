@@ -105,11 +105,11 @@ for (const [width, scheme] of [[360, "light"], [360, "dark"], [390, "light"], [3
     `${tag}: the five steps came in and fold under "${W.ask.did}"; without a key, the sentence is labelled "fixed text · this server has no model key"`);
   await measure(page, tag, 1);
   await shot(page, errors, join(shots, `${tag}-1-ask.png`));
-  await page.locator("#s1-other > summary").click();
+  await page.locator("#s1-other > summary").click({ position: { x: 8, y: 8 } });
   const locks = await page.locator("#s1-blocked .lock").evaluateAll((ls: Element[]) => ls.map((l) => `${(l as HTMLElement).dataset.lock}${l.classList.contains("hit") ? "!" : ""} ${l.querySelector("a")?.getAttribute("href") ?? ""}`)) as string[];
   check(locks.length === 3 && /^purser! \/proof#airwallex$/.test(locks[0]!) && /^airwallex https:\/\/github\.com\/.+visa-tap-live-2026-11-02\.json$/.test(locks[1]!) && /^metal https:\/\/testnet\.metalntwx\.com\/tx\/0x[0-9a-f]{64}$/.test(locks[2]!)
     && await page.locator("#s1-blocked button").count() === 0, `${tag}: the payment a rule stopped: no button, three locks, Purser's marked, each with its real example's link`);
-  await page.locator("#s1-other > summary").click();
+  await page.locator("#s1-other > summary").click({ position: { x: 8, y: 8 } });
   // Sign (the software passkey made, then the signature): the server verifies it.
   await page.click("#go-sign");
   await page.waitForSelector("#scr-2:not([hidden]), #s1-status.bad");
