@@ -18,7 +18,7 @@ import { COMMON_HEADERS, rateKey, type Sql } from "./core.js";
 import { verifyAssertion, type PublicKeyXY } from "./webauthn.js";
 import { QuoteUnavailable, type FxQuote, type FxSource } from "./fxQuote.js";
 import { AGENTS, type Agent } from "../../src/config/policy.js";
-import { PAID_ALONE, exposurePolicyOfWorld } from "../../src/try/policy.js";
+import { ALONE_CHOICES, ALONE_PER_DAY, PAID_ALONE, exposurePolicyOfWorld } from "../../src/try/policy.js";
 import { exposureOf, exposureWords, type RecordedRate } from "../../src/policy/exposure.js";
 export { PAID_ALONE };
 import { defaultPolicy, FIELD_WORDS, policyBounds, policyChanges, readSet, threeLocks, withSet, type Locks, type PolicyChange, type WorldPolicy } from "../../src/try/policy.js";
@@ -230,6 +230,15 @@ export function checkPayment(amount: string, balance: string, rules: PaymentRule
 }
 /** The payment rules a policy sets: the company's reserve floor and what the Treasury agent (the one that pays here) may pay alone. */
 export const rulesOf = (p: WorldPolicy): PaymentRules => ({ reserve_floor: p.reserve_floor, alone_limit: p.agents.treasury.alone });
+
+/**
+ * Room for one more payment alone: fewer than ALONE_PER_DAY ran alone in the 24 hours before now (Max, 7 Nov: the worst
+ * case counts payments alone, so they have a limit per day; src/policy/exposure.ts counts the same number).
+ */
+export function aloneRoom(executions: readonly { alone?: boolean; at?: string }[], nowMs: number): boolean {
+  const since = nowMs - 24 * 3_600_000;
+  return executions.filter((e) => e.alone === true && Date.parse(String(e.at)) > since).length < ALONE_PER_DAY;
+}
 /** The payment that waits for a person when a world opens, and carries the live quote (T-0002). */
 const QUOTED = FIXED_PROPOSALS.find((p) => checkPayment(p.amount, TEST_WORLD.balance).check === "pass")!;
 
@@ -663,7 +672,9 @@ export class TrySignDesk {
   /** What the page is told about the policy: the policy in force, its locks, and the world's payments under it. */
   private policyState(worldId: string, now: Date) {
     const { version, policy } = this.policyOf(worldId);
-    return { policy, policy_version: String(version), locks: this.locksOf(worldId, policy, now), bounds: policyBounds(now), exposure: this.exposure(policy) };
+    // Screen 4's figure for each amount the visitor may choose (Max, 7 Nov: the worst case moves with "may pay alone").
+    const exposure_alone = Object.fromEntries(ALONE_CHOICES.map((v) => [v, this.exposure({ ...policy, agents: { ...policy.agents, treasury: { ...policy.agents.treasury, alone: v } } }).headline]));
+    return { policy, policy_version: String(version), locks: this.locksOf(worldId, policy, now), bounds: policyBounds(now), exposure: this.exposure(policy), exposure_alone };
   }
   private policyAnswer(worldId: string, now: Date) {
     const state = this.policyState(worldId, now);
@@ -692,7 +703,8 @@ export class TrySignDesk {
 
   /**
    * Payments within what the agent may pay alone run without a signature (Max, 6 Nov), by the same stand-in executor and
-   * after the same checks a signed payment gets at the moment it runs: the world has not expired; it has not run; the
+   * after the same checks a signed payment gets at the moment it runs: the world has not expired; fewer than
+   * ALONE_PER_DAY ran alone in the last 24 hours (aloneRoom); it has not run; the
    * reserve floor holds on the balance now; its amount is at or below the "may pay alone" limit in force (which only a
    * policy the visitor signed can raise above the world's EUR 500.00, and no payment here is that small); its quote,
    * if it has one, is still valid (else it waits for a new quote, and runs alone then). It is bound to its terms by their
@@ -708,6 +720,8 @@ export class TrySignDesk {
       const pol = (this.sql.exec("SELECT version, json, signed_sha FROM ts_policy WHERE world = ?", worldId).toArray() as { version: number; json: string; signed_sha: string | null }[])[0];
       if (!pol) return ran;
       const rules = rulesOf(JSON.parse(pol.json) as WorldPolicy);
+      const done = (this.sql.exec("SELECT execution FROM ts_proposals WHERE world = ? AND status = 'executed'", worldId).toArray() as { execution: string | null }[]).map((r) => JSON.parse(r.execution ?? "{}") as { alone?: boolean; at?: string });
+      if (!aloneRoom(done, nowMs)) return ran;
       const next = this.proposals(worldId).find((p) => {
         if (p.status !== "waiting") return false;
         const c = checkPayment((p.terms as { amount: string }).amount, w.balance, rules);
