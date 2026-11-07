@@ -245,6 +245,20 @@ async function quarantineTick(): Promise<void> {
   if (holds.settled + holds.released + holds.open) console.log(`${stamp()} recover  holds: ${holds.settled} settled, ${holds.released} released, ${holds.open} still open`);
   recordPullsTick();
   for (const r of await resumeInterrupted(db, execute)) console.log(`${stamp()} recover  ${r.id} resumed after a restart: ${redactSecrets(r.outcome)}`);
+  // The Airi rail (KIT11_AIRI_RAIL=on): purchases a crash left open are looked up at the checkout or cancelled at Airi.
+  if (process.env.KIT11_AIRI_RAIL === "on") {
+    const { liveAiriDeps, fileLinkSink } = await import("../airi/deps.js");
+    const { recoverAiriPurchases } = await import("../airi/purchase.js");
+    const log = (line: string) => console.log(`${stamp()} ${line}`);
+    const deps = liveAiriDeps(fileLinkSink(log), log);
+    if (deps) {
+      try {
+        for (const r of await recoverAiriPurchases(db, deps)) console.log(`${stamp()} recover  Airi ${r.actionId}: ${r.status}`);
+      } catch (e) {
+        console.error(`${stamp()} recover  Airi purchases: ${redactSecrets((e as Error).message)}`);
+      }
+    }
+  }
   // A dispute decision a restart cut off (refunds partly paid, the CFO's proposal not yet made): carried out now, once,
   // by the dispute flow from the ledger (npm run s2 -- --resume-only). It is never decided again.
   const undone = openDecisions(db);

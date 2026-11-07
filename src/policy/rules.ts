@@ -9,8 +9,9 @@ import { fromCents, toCents } from "../lib/money.js";
 import { stopped } from "./velocity.js";
 import { agentsOn } from "../config/agents.js";
 import { cardLimitsFrom } from "./cardRules.js";
+import { airiRailOn, airiRuleDefs } from "../airi/policy.js";
 
-export type PolicyKey = "freeze" | `stop.${string}` | `pause.${string}` | "approval.four_eyes_eur" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | "approval.task_card_eur" | `counterparty:${string}`;
+export type PolicyKey = "approval.airi_alone" | "approval.airi_alone_per_day" | `airi.merchant.${string}` | "freeze" | `stop.${string}` | `pause.${string}` | "approval.four_eyes_eur" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | "approval.task_card_eur" | `counterparty:${string}`;
 
 export interface Rule {
   key: PolicyKey;
@@ -77,7 +78,9 @@ export function rules(db: DB): Rule[] {
   const payees = (db.prepare("SELECT DISTINCT name FROM beneficiaries ORDER BY name").all() as { name: string }[]).map((b): Rule => ({
     key: `counterparty:${b.name}`, label: `${b.name} (Airwallex payee)`, unit: "", kind: "choice", choices: ["allowed", "blocked"], fallback: "allowed",
   }));
-  return [...STATIC, ...pauseRules(db), ...outside, ...tasks, ...payees];
+  // The Airi rail's keys (src/airi/policy.ts): only with KIT11_AIRI_RAIL=on, or once the CFO has set one of them.
+  const airi = airiRailOn() || db.prepare("SELECT 1 FROM settings WHERE key LIKE 'approval.airi_%' OR key LIKE 'airi.merchant.%'").get() ? airiRuleDefs() as Rule[] : [];
+  return [...STATIC, ...pauseRules(db), ...outside, ...tasks, ...payees, ...airi];
 }
 
 /**
@@ -122,7 +125,10 @@ export function validateChange(db: DB, c: { key: string; from: string; to: strin
   const now = policyValue(db, c.key);
   if (c.from !== now) return `${r.label} is now ${now || "not set"}, not ${c.from || "not set"}`;
   if (c.to === now) return `no change to ${r.label}`;
-  if (r.kind === "choice") return r.choices!.includes(c.to) ? null : `${r.label} must be allowed or blocked`;
+  if (r.kind === "choice") {
+    if (r.choices!.includes(c.to)) return null;
+    return r.choices!.join() === "allowed,blocked" ? `${r.label} must be allowed or blocked` : `${r.label} must be one of ${r.choices!.join(", ")}`;
+  }
   if (r.kind === "optional_money" && c.to === "") return null;
   if (!MONEY.test(c.to)) return `${r.label}: bad format ${JSON.stringify(c.to)}; write an amount like 0.03`;
   const cents = toCents(c.to);
