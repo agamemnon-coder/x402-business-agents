@@ -338,8 +338,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await look(page, `${path} ${tag}`, w);
       const pt = await page.evaluate(() => document.body.innerText);
       const words = pt.split(/\s+/).filter((x) => /\w/.test(x)).length;
-      // /airwallex carries Airwallex read back (section B, 6 Nov; cards folded): budget 190 there (test/site-v4.test.ts), plus the frame.
-      const budget = path === "/airwallex" ? 190 : 150;
+      // /airwallex carries Airwallex read back (section B, 6 Nov; cards folded) and awx-1 (7 Nov, its steps folded):
+      // budget 210 there (test/site-v4.test.ts), plus the frame.
+      const budget = path === "/airwallex" ? 210 : 150;
       if (words > budget + 25) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(pt)) fail(`${path} ${tag}: its run is not labelled`);
       if ((await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
@@ -352,6 +353,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (path === "/airwallex" && !/LIMIT_EXCEEDED|over the card's limit/.test(open)) fail(`/airwallex ${tag}: no decline by Airwallex`);
       // Section B: the hash the CFO signed beside the one Airwallex returns, matched in code; each card's controls beside the policy.
       if (path === "/airwallex" && (!/The hash the CFO signed travels with the payment\./.test(pt) || (pt.match(/\b[0-9a-f]{64}\b/g) ?? []).length !== 2 || !/Match: the same hash/.test(pt))) fail(`/airwallex ${tag}: the CFO's hash and Airwallex's are not shown side by side, or do not match`);
+      // awx-1 (7 Nov): the separate Airwallex-only run, dated and labelled, its checks in sight, every step and id in its fold.
+      if (path === "/airwallex" && (!/\d{1,2} November, awx-1: a separate run · Airwallex sandbox, test money/.test(pt) || !/7 of 7 checks pass/.test(pt) || !/LIMIT_EXCEEDED[\s\S]*MERCHANT_CATEGORY_NOT_ALLOWED[\s\S]*738a4263-6d6c-4de8-94a3-93da1c175fb4[\s\S]*4140dee2-6373-4eb4-a71f-bf69130f96a7/.test(open))) fail(`/airwallex ${tag}: awx-1 is not shown, dated and labelled, with its steps`);
       if (path === "/airwallex" && ((await page.locator("#controls .awcard").count()) !== 3 || (await page.locator("#controls .awrow .k.ok").count()) !== 15)) fail(`/airwallex ${tag}: not three cards with five controls each, all matching the CFO policy`);
       if (path === "/claude" && (!/Claude call ✓ · (Haiku|Sonnet|Opus) · [\d,]+ tokens · [\d.]+ s · req_/.test(open) || !/routine payments by code/.test(open))) fail(`/claude ${tag}: no Claude call badges or no split`);
       if (path === "/metal" && (await page.locator("a.pf[href*='testnet.metalntwx.com/tx/0x']").count()) < 3) fail(`/metal ${tag}: fewer than three transactions`);
@@ -363,6 +366,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     {
       await page.evaluate(() => document.querySelectorAll("details.deep").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
       const rb = await page.locator("#airwallex-readback + .awrb").innerText().catch(() => "");
+      if (!/awx-1: a separate run · Airwallex sandbox, test money/.test(await page.locator("#awx-1").innerText().catch(() => ""))) fail(`/proof ${tag}: awx-1 missing under Airwallex read back`);
       if (!/The hash the CFO signed travels with the payment\./.test(rb) || (rb.match(/\b[0-9a-f]{64}\b/g) ?? []).length !== 2 || !/Match: the same hash/.test(rb) || !/3 of 3 cards match the CFO policy/.test(rb)) fail(`/proof ${tag}: Airwallex read back missing or not matching`);
     }
     // The strongest proof first (Max's last round, item 2): each partner card opens with its claims, each a link, right

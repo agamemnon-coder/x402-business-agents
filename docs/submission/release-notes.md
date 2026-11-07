@@ -326,6 +326,37 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   past 8 s) code reads the invoice, labelled so. One budget for every live call on the page, USD 10 a day (was USD 1
   for the sentence alone), per-address and overall limits, the emergency switch TRY_SIGN_HAIKU for all of them, and
   today's spend on /health. 2881 tests in 282 files, all passing.
+- 7 November, awx-1 recorded and on the site: the Airwallex-only run (a separate world, Airwallex sandbox, test money,
+  0 Metal calls) ran live that day and was accepted, checks a–g all passed. Its log, docs/runs/2026-11-07-awx-1.md, has
+  every id, decline code, webhook and attempt and the Claude calls with their request ids; its record is
+  docs/demo/airwallex-run.json. /airwallex shows it dated and labelled "Airwallex sandbox, test money" (7 of 7 checks,
+  every step and id in a fold; the page's word budget 190 → 210 for it), Proof's "Airwallex, read back" a short version
+  linking there (no decline code on /proof); every figure and id from the record (src/redesign/awxRun.ts,
+  test/awx-run-page.test.ts). README, docs/claims.md and docs/airwallex.md carry it; its 0.0839 USD of Claude is booked
+  in docs/runs/api-budget.jsonl. 2887 tests in 283 files, all passing.
+- 7 November, the Treasury agent works live on /try/sign's first screen, Purser-style (spec 6b): the test world holds
+  EUR 26,000.00 (floor EUR 25,000.00) and USD 8,000.00 (floor USD 3,000.00). The agents' work comes in step by step,
+  one request each (POST /agents): Claude Sonnet, the runner's invoice reader, reads Alpine Packaging's invoice (a
+  document code writes); Purser's code checks the reading against the invoice's own lines, the payee against the
+  allowlist and the amount against the limit; code plans the payment with Purser's planInvoice (EUR 1,870.00 needed,
+  EUR 1,000.00 free) and the Airwallex sandbox quotes the EUR 870.00 short; Claude Opus, the runner's Treasury timing
+  agent (the same prompt, tools, effort and turns, now in src/agents/timingCore.ts), advises paying now or waiting, its
+  reason checked by code against code's numbers. The terms (kit11.try-terms/v4) come from the checked reading and carry
+  the agent's advice; T-0001 stays blocked by the floors; the next invoice gets a second live quote of its own. Never
+  silent: without a live answer the page shows a recorded real one (docs/demo/try-agents-recorded.json, written by
+  `npm run record-try-agents`; not recorded yet) or code's reading and a fixed sentence, each labelled with the reason.
+  The emergency switch is now TRY_SIGN_AGENTS (TRY_SIGN_HAIKU still works). 2906 tests in 283 files, all passing.
+- 7 November, a fix found by live Claude Opus while recording: without a recorded rate the plan before the quote
+  could not price the conversion, the quote step read that as "no FX needed", and the agent was told EUR free after the
+  payment -870.00, which the shared licence numbers read as +870.00 ("free EUR 2,740.00, shortfall 0.00"). Opus refused
+  to advise paying and said why. Now the plan names the shortfall with or without a rate, code checks the agent's facts
+  against the plan before asking, and the licence numbers refuse a negative amount (the runner falls back, labelled).
+  2911 tests in 283 files, all passing.
+- 7 November, the Treasury agent's own tool holds its reason to the page's rule: live Opus advised well but in three
+  sentences (321 to 326 characters), which the page refused every time. submit_advice now refuses a reason that is not
+  one or two plain sentences of at most 400 characters ("Not recorded: …"), in the runner and on /try/sign alike (one
+  rule, src/agents/timingCore.ts plainReason), and the agent writes again within its turns. The quote's end as a time
+  of day, and code's own phrases ("EUR free 0.00"), count as code's numbers. 2915 tests in 283 files, all passing.
 - 7 November, the Airi rail after its first live run (vic-1b): our Airwallex sandbox refuses a PaymentIntent confirm
   with raw card fields over the API ("This account is not enabled for native API access"), so the agent now pays on
   Airwallex's own Hosted Payment Page, typing the card from Airi's single-use credential into it like a shopper in
@@ -334,7 +365,9 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   Airwallex's test card paid on the sandbox's hosted page headless (SUCCEEDED). The vic-1 conductor now prints the
   one-time Airi link for a purchase above the limit as a labelled "AIRI TAP B" line the moment the runner writes it,
   with a notice in the run log, and waits until that purchase has an outcome or its 5-minute tap window has run out.
-  Not yet run live again. 2953 tests in 288 files, all passing.
+  The checkout's order ref (Airwallex's request_id, unique per account) is now the purchase's id plus its start, not
+  the bare proposal id: every world numbers from P-0001, and vic-1c's first B was refused as duplicate_request before
+  any card was used. CI's test job now has Chromium for the hosted-page test. 2994 tests in 290 files, all passing.
 
 ## Real, and ours
 

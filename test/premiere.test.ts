@@ -13,7 +13,7 @@ import { TRY_SIGN_LABEL, TRY_SIGN_SCREENS, trySignPage } from "../src/try/sign.j
 import { DEFENSE_IN_DEPTH } from "../src/config/brand.js";
 import { CARDS, INITIAL_MANDATES } from "../src/config/policy.js";
 import { maskExpr, parseSlotArgs, slotBox, slotFilter, slotSpeed } from "../src/film/slots.js";
-import { FIXED_PROPOSALS, TEST_WORLD, canonical, checkPayment } from "../worker/src/trySign.js";
+import { FIXED_PROPOSALS, TEST_BALANCES, TEST_RULES, canonical, checkPayment } from "../worker/src/trySign.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const README = read("README.md");
@@ -384,7 +384,7 @@ describe("the /try/sign mock says what the live page says", () => {
 
   it("with the page's own proposal and its tamper step: EUR 1,850.00, then EUR 1,850.01", () => {
     const p = FIXED_PROPOSALS.find((x) => x.id === fact("try.proposal"))!;
-    const c = checkPayment(p.amount, TEST_WORLD.balance);
+    const c = checkPayment(p.amount, TEST_BALANCES, TEST_RULES, { rate: { usdPerEur: "1.10", from: "a rate" } });
     expect(c.check).toBe("pass");
     expect(screen("11-turn")).toMatchObject({ says: p.says, waits: c.check === "pass" ? c.waits : "" });
     expect(screen("11-turn").facts).toEqual([["Pay", p.payee], ["Amount", "EUR 1,850.00"], ["Reference", p.reference], ["Proposal", p.id]]);

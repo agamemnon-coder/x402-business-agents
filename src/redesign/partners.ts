@@ -2,7 +2,8 @@
 // (about 150 visible words at most): a picture of the flow first, three or four numbers, one sentence, and everything
 // else folded (<details>): the live proof from the main run (the same list as Proof's card), the docs we built on, what
 // is simulated. /airwallex also carries Airwallex read back (section B, 6 Nov; src/redesign/airwallexProof.ts): the hash
-// the CFO signed beside the one Airwallex returns with the payment, and each card's controls beside the CFO policy.
+// the CFO signed beside the one Airwallex returns with the payment, and each card's controls beside the CFO policy; and
+// below them awx-1 (7 Nov, src/redesign/awxRun.ts), the separate Airwallex-only run, dated, every step folded.
 // Every figure from the record (src/redesign/run.ts), the TAP run's record or the read-back records; logos only as "built on",
 // never a Visa logo. No script. Also the clean 404 page.
 
@@ -13,6 +14,7 @@ import { agentRun, callBadge, cardRaiseOf, decisionsOf, faceIdDecisions, family,
 import { LOGO, earlierLine, fold, partnerProof } from "./proof.js";
 import { metalStory, separateRuns, type MetalStory } from "./metalStory.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
+import { awxRunBlock } from "./awxRun.js";
 import { OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
 
 const CSS = `.pp { padding: 26px 0 24px; }
@@ -140,7 +142,9 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
   const eur = licence ? `€${licence.amount.replace(/\.00$/, "")}` : "";
   // Airwallex, read back (section B): the CFO's hash with the payment, and each card's controls beside the CFO policy.
   const hash = hashTravel(run.record), cards = cardsReadback(), rows = cards ? cardControlRows(run.record, cards) : [];
-  const readBack = hash || rows.length ? `<div class="awrb">${hashBlockHtml(hash)}${cards ? controlsSideBySideHtml(rows, cards.rec.read_at, cards.file) : ""}</div>` : "";
+  // awx-1 (7 Nov): the Airwallex-only run, a separate world, dated and labelled, below the main run's read-backs.
+  const awx1 = awxRunBlock();
+  const readBack = hash || rows.length || awx1 ? `<div class="awrb">${hashBlockHtml(hash)}${cards ? controlsSideBySideHtml(rows, cards.rec.read_at, cards.file) : ""}${awx1}</div>` : "";
   return shell(run, {
     title: "Airwallex", description: "How Purser uses Airwallex: earnings booked once final, the euro licence paid by SWIFT after the CFO's Face ID, card limits the bank enforces.",
     logo: LOGO.airwallex, h1: "The bank side of the agents", proofHash: "airwallex",

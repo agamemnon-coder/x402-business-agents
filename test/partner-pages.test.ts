@@ -12,7 +12,8 @@ import { buildPages } from "../src/relay/assets.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const AGENT_RUN = loadRecord().file;
-const RECORDED = read("docs/demo/snapshot.json") + read(AGENT_RUN);
+// awx-1 (7 Nov), the separate Airwallex-only run on /airwallex: its ids come from its own record.
+const RECORDED = read("docs/demo/snapshot.json") + read(AGENT_RUN) + read("docs/demo/airwallex-run.json");
 const auto = JSON.parse(read(AGENT_RUN)) as { snapshot: { agent_stats: { agent: string; decisions: number; by_claude: number; fallback: number; claude_calls: number; models: string[] }[] } };
 
 describe("the partner pages", () => {

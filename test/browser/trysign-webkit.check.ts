@@ -3,7 +3,7 @@
 // Playwright's WebKit has no virtual authenticator, so this check injects a software passkey before the page loads
 // (test/browser/support/softPasskey.ts, test only): a real ES256 key in WebCrypto, whose registrations and signatures
 // the server checks for real, as it checks a phone's. With it, at 360, 390 and 1440 px, light and dark, the whole story
-// runs in WebKit as an iPhone or a Mac visitor sees it: (1) the agent's request, the terms' hash computed in WebKit equal
+// runs in WebKit as an iPhone or a Mac visitor sees it: (1) the agents' steps (no model key here: labelled), the agent's request, the terms' hash computed in WebKit equal
 // to the one computed here in Node; (2) signed and verified by the server; (3) one cent changed, refused; (4) a looser
 // rule signed; (5) the next invoice paid alone. On every screen: at most 60 words in sight, exactly one main button,
 // on the screen without scrolling; the page no wider than the screen; no console or CSP error. Then the full policy
@@ -48,7 +48,10 @@ async function measure(page: Page, tag: string, n: number): Promise<void> {
   await page.evaluate("window.scrollTo(0, 0)");
   const m = await page.evaluate(`(() => {
     const scr = document.getElementById("scr-${n}");
-    const words = scr.innerText.split(/\\s+/).filter((w) => /[A-Za-z0-9]/.test(w)).length;
+    // Screen 1's count leaves out the agent's own sentence (its reason, or the fixed one), as trysign.check.ts does.
+    const count = (t) => t.split(/\\s+/).filter((w) => /[A-Za-z0-9]/.test(w)).length;
+    const says = scr.querySelector("#s1-ask .says");
+    const words = count(scr.innerText) - (says && says.checkVisibility() ? count(says.innerText) : 0);
     const vis = (b) => b.getClientRects().length > 0 && getComputedStyle(b).visibility !== "hidden" && !b.closest("[hidden]");
     const prim = [...document.querySelectorAll(".btn.primary")].filter(vis);
     const head = document.querySelector("header.top").getBoundingClientRect().bottom;
@@ -61,9 +64,10 @@ async function measure(page: Page, tag: string, n: number): Promise<void> {
 const wide = async (page: Page, width: number) => (await page.evaluate("Math.max(document.documentElement.scrollWidth, document.body.scrollWidth)") as number) <= width;
 
 let ip = 0;
+// Each visitor from a network of its own: the agents' steps add requests, and the relay limits each /24 a minute.
 async function visitor(width: number, scheme: "light" | "dark", soft = true) {
   const mobile = width < 600;
-  const context = await browser.newContext({ viewport: { width, height: mobile ? 844 : 900 }, deviceScaleFactor: mobile ? 2 : 1, isMobile: mobile, hasTouch: mobile, colorScheme: scheme, extraHTTPHeaders: { "cf-connecting-ip": `198.51.150.${++ip}` } });
+  const context = await browser.newContext({ viewport: { width, height: mobile ? 844 : 900 }, deviceScaleFactor: mobile ? 2 : 1, isMobile: mobile, hasTouch: mobile, colorScheme: scheme, extraHTTPHeaders: { "cf-connecting-ip": `198.51.${150 + ++ip}.7` } });
   const page = await context.newPage();
   if (soft) await page.addInitScript(SOFT_PASSKEY);
   const errors: string[] = [];
@@ -94,6 +98,11 @@ for (const [width, scheme] of [[360, "light"], [360, "dark"], [390, "light"], [3
   const shown = (await page.locator("#s1-terms .hash").getAttribute("data-hash")) ?? "";
   check(/^[0-9a-f]{64}$/.test(shown) && shown === sha256(canonical) && (await page.locator("#s1-terms-body").textContent() ?? "").includes("checked on this device"),
     `${tag}: the terms' hash computed in WebKit equals SHA-256 of the canonical terms (${shown.slice(0, 12)}…), checked against the server's`);
+  // Spec 6b: the agents' steps came in, each from the server; with no key here, each label says why (never silently).
+  const steps = await page.locator("#s1-steps li.st").evaluateAll((ls: Element[]) => ls.map((l) => (l as HTMLElement).dataset.state)) as string[];
+  check(steps.join() === "done,done,done,done,done" && (await page.locator("#s1-did > summary").innerText()).trim() === W.ask.did
+    && (await page.locator("#s1-ask .pill").innerText()).trim() === "fixed text · this server has no model key",
+    `${tag}: the five steps came in and fold under "${W.ask.did}"; without a key, the sentence is labelled "fixed text · this server has no model key"`);
   await measure(page, tag, 1);
   await shot(page, errors, join(shots, `${tag}-1-ask.png`));
   await page.locator("#s1-other > summary").click();
