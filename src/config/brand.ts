@@ -73,7 +73,7 @@ export const DIFFERENTIATORS = [
   "Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude.",
 ] as const;
 /** The one line after the three sentences, linked to /try/sign wherever a surface can link (section D, 6 Nov). */
-export const TRY_IT = "Try it in 30 seconds.";
+export const TRY_IT = "Try it in a minute.";
 /** Where TRY_IT goes: a test world of the visitor's own, signed with their own passkey; nothing real moves. */
 export const TRY_SIGN_URL = "https://kit11.max-31b.workers.dev/try/sign";
 /**
@@ -81,18 +81,18 @@ export const TRY_SIGN_URL = "https://kit11.max-31b.workers.dev/try/sign";
  * README, under Home's heading and at the start of the form's synopsis. "Only within limits the CFO signs": the CFO's
  * policy is signed with Face ID (docs/cfo-policy.md), and anything beyond it is a proposal the CFO signs with Face ID.
  */
-export const WHAT_IT_IS = "AI agents can now spend company money; Purser lets them, through Airwallex and Metal, only within limits the CFO signs with Face ID.";
+export const WHAT_IT_IS = "AI agents are starting to spend company money; Purser lets them, through Airwallex and Metal, only within limits the CFO signs with Face ID.";
 /**
- * The first screen, in this order, on the README, on Home (under the heading) and in the form's synopsis: what Purser
- * is, the three sentences, then "Try it in 30 seconds." Only then the badges and the details.
- * test/first-screen.test.ts checks that the three places say exactly this.
+ * The first screen, in this order, on the README and in the form's synopsis: what Purser is, the three sentences, then
+ * "Try it in a minute." Only then the badges and the details. Home says what Purser is and the three sentences under its
+ * heading, then its one button and three steps (jury review, 7 Nov, #2). test/first-screen.test.ts checks all three.
  */
 export const FIRST_SCREEN = [WHAT_IT_IS, ...DIFFERENTIATORS, TRY_IT] as const;
 /** The first screen as one paragraph (the form's synopsis). */
 export const FIRST_SCREEN_TEXT = FIRST_SCREEN.join(" ");
 
-/** Where the business case lives (docs/business/), linked from each "Why this is a company" line. */
-export const BUSINESS_DOCS = "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/business/";
+/** Where the business case lives (docs/business/, the folder on GitHub: tree, not blob, which answers 404 for a folder). */
+export const BUSINESS_DOCS = "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/business";
 /** "Why this is a company": one link to the whole case (Max, 7 Nov), not one per line. */
 export const BUSINESS_CASE_LINK = "Read the business case ↗";
 /**
@@ -165,8 +165,8 @@ export function agentName(id: string): string {
 }
 
 /**
- * The proof, one sentence per partner (section D, 6 Nov), word for word wherever it appears: the README, Home, the
- * form's Description and the deck. Every number is read from its record by test/proof-sentences.test.ts:
+ * The proof, one sentence per partner (section D, 6 Nov), word for word wherever it appears: the README, the form's
+ * Description and the deck (on the site, /proof's partner cards say the same claims in fewer words: proofLead.ts). Every number is read from its record by test/proof-sentences.test.ts:
  * - Airwallex: the GET-only read-backs docs/runs/airwallex-transfer-approval-2026-11-06.json (the terms hash the CFO
  *   signed for P-0005, in the SWIFT transfer's metadata) and docs/runs/airwallex-cards-2026-11-06.json (3 of 3 cards
  *   matching the CFO policy), computed in src/redesign/airwallexProof.ts;

@@ -42,7 +42,7 @@ export interface StoryMandate { agent: AgentId; cap: string; budget: string; pay
 export interface MetalStory {
   mandates: StoryMandate[];
   payments: { total: number; sales: number; purchases: number; refunds: number; sweeps: number; account: Proof; checked: Proof };
-  refusal: { seq: string; amount: string; cap: string; code: string; proof: Proof } | null;
+  refusal: { seq: string; amount: string; cap: string; code: string; proof: Proof; agent: string; mandate: string } | null;
   replace: { proposal: string; signers: string[]; steps: { agent: AgentId; cap: string; budget: string; proof: Proof }[]; revoked: { seq: string; code: string } | null } | null;
 }
 
@@ -73,6 +73,7 @@ export function metalStory(record: RunRecord): MetalStory {
     refusal: onChain ? {
       seq: String(onChain.payload.seq ?? onChain.subject ?? ""), amount: String(onChain.payload.amount ?? ""), cap: String(letThrough?.payload.bound_cap ?? ""),
       code: /^[a-z_]+/.exec(String(onChain.payload.metal_reason ?? ""))?.[0] ?? "", proof: txLink(String(onChain.payload.tx)),
+      agent: String((onChain.payload.origin as { agent?: unknown } | undefined)?.agent ?? onChain.subject ?? ""), mandate: String(onChain.payload.mandate ?? ""),
     } : null,
     replace: proposal ? {
       proposal,
@@ -81,6 +82,20 @@ export function metalStory(record: RunRecord): MetalStory {
       revoked: revoked ? { seq: /#(\d+)/.exec(revoked.reason)?.[1] ?? "", code: "mandate_revoked" } : null,
     } : null,
   };
+}
+
+/** Metal's event for a refusal it records on chain, as metal-pay's Mandate Binding ABI names it (docs/metal-qa-2026-11-01-week.md). */
+export const REFUSAL_EVENT = "MandateRefused";
+
+/**
+ * What a juror sees on the explorer for the refusal on chain (jury review, 7 Nov, #3): the explorer shows the transaction
+ * as "finalized · unknown method", with one undecoded log. Metal's MandateRefused(ref, to, l3aDigest, agentKey, amount,
+ * reason) has `ref` indexed, so topic 1 is the mandate the record names; the amount is in the log's data. The mandate and
+ * the amount come from the record's upstream.refused_on_chain row; null when it does not name them.
+ */
+export function refusalNote(r: MetalStory["refusal"]): string | null {
+  if (!r || !/^0x[0-9a-f]{64}$/i.test(r.mandate) || !r.amount || !r.agent) return null;
+  return `On the explorer: log #0 is Metal's ${REFUSAL_EVENT} event (undecoded there); topic 1 is the ${r.agent[0]!.toUpperCase()}${r.agent.slice(1)} mandate ${r.mandate.slice(0, 8)}…${r.mandate.slice(-4)} and its data carries ${r.amount}.`;
 }
 
 /**

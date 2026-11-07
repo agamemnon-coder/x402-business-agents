@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import type { Server } from "node:http";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { startJudge } from "../src/cli/judge.js";
-import { CORE_SENTENCE, HERO, WHAT_IT_IS } from "../src/config/brand.js";
+import { CORE_SENTENCE, DIFFERENTIATORS, HERO, WHAT_IT_IS } from "../src/config/brand.js";
 import { CFO_FORWARD_JS } from "../src/redesign/home.js";
 import { esc } from "../src/redesign/ui.js";
 import { buildPages } from "../src/relay/assets.js";
@@ -36,11 +36,12 @@ describe("/ for a guest", () => {
   it("says the film's line as its heading (Max, 5 Nov): \"AI agents spend. You sign off.\", the three sentences under it (jury review, 6 Nov)", () => {
     expect(HERO).toBe("AI agents spend. You sign off.");
     expect(readFileSync(new URL("../docs/media/social-preview.html", import.meta.url), "utf8")).toContain("<h1>AI agents spend.<br><em>You sign off.</em></h1>");
-    // Section D (6 Nov): what Purser is, the three sentences, Try it in 30 seconds, then the badges and the Kit 11 line.
+    // Section D (6 Nov): what Purser is, the three sentences, Try it in 30 seconds (in a minute since 7 Nov), then the badges and the Kit 11 line.
     // Max, 7 Nov: the heading, what Purser is, then the way through in three steps and one button (the three sentences
     // stay in the README, the form and the deck).
-    // Max, 7 Nov (second round): the one button right under the heading, with only that one sentence between.
-    expect(pages.home).toContain(`<h1 class="h-hero">${HERO}</h1>\n    <p class="what">${esc(WHAT_IT_IS)}</p>\n    <a class="btn primary big start" href="watch">`);
+    // Max, 7 Nov (second round): the one button right under the heading, with only that sentence between; since the
+    // jury review of 7 Nov (#2) the three sentences under it too, then the button.
+    expect(pages.home).toContain(`<h1 class="h-hero">${HERO}</h1>\n    <p class="what">${esc(WHAT_IT_IS)}</p>\n    <ul class="three">${DIFFERENTIATORS.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>\n    <a class="btn primary big start" href="watch">`);
     // The core sentence stays the page's description.
     expect(pages.home).toContain(`<meta name="description" content="${HERO} ${CORE_SENTENCE}">`);
   });

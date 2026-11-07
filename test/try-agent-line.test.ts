@@ -10,7 +10,7 @@ import { readFileSync } from "node:fs";
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import { claudeAgentAsk } from "../src/try/claude.js";
-import { ADVICE_DEADLINE_MS, adviceRequest, adviseTry, signatureLine } from "../src/try/treasuryAdvice.js";
+import { ADVICE_DEADLINE_MS, ADVICE_STYLE_LINE, adviceRequest, adviseTry, signatureLine } from "../src/try/treasuryAdvice.js";
 import { TIMING_EFFORT, TIMING_MAX_TURNS, TIMING_MODEL, TIMING_SYSTEM, timingPrompt, type TimingFacts } from "../src/agents/timingCore.js";
 import { MODELS } from "../src/claude/reader.js";
 import {
@@ -74,6 +74,8 @@ describe("what the agent is given: the runner's Treasury timing agent, and the t
     const sent = JSON.stringify(advisor.requests);
     expect(sent).toContain("Invoice INV-2026-118 from Alpine Packaging: EUR 1850.00");
     expect(sent).toContain("invoice EUR 1850.00 + SWIFT fee ceiling EUR 20.00 = EUR 1870.00 needed; free EUR before the payment 1000.00; shortfall EUR 870.00");
+    // And how to write for the CFO's phone (jury review, 7 Nov, #5), after the runner's prompt.
+    expect(sent).toContain(JSON.stringify(ADVICE_STYLE_LINE).slice(1, -1));
     for (const x of ["203.0.113", w.world.id, w.world.token, w.passkey_options.challenge]) expect({ x, in: sent.includes(x) }).toEqual({ x, in: false });
   });
 
@@ -449,6 +451,19 @@ describe("submit_advice refuses a reason that is not one or two sentences of at 
   it("the quote's end as a time of day is one of code's numbers in the reason", () => {
     expect(amountsFit("The quote expires today at 10:15:00Z, so paying now keeps it.", adviceGiven(FACTS, "500.00"))).toBe(true);
     expect(amountsFit("The quote expires today at 10:16:00Z, so paying now keeps it.", adviceGiven(FACTS, "500.00"))).toBe(false);
+  });
+
+  it("for a CFO on a phone (jury review, 7 Nov, #5): /try/sign asks for one short sentence, HH:MM UTC and grouped amounts, and the check takes them", () => {
+    expect(ADVICE_STYLE_LINE).toBe("Write for a CFO on a phone: one sentence of at most 25 words; write times as HH:MM UTC and amounts as code gives them with thousands separators (e.g. USD 7,017.05).");
+    // Only on /try/sign: the runner's timing prompt, which the evals pin, does not carry it.
+    expect(timingPrompt(FACTS)).not.toContain("CFO on a phone");
+    const f: TimingFacts = { ...FACTS, dueDate: "2026-11-14", today: "2026-11-07", quote: { sell: "USD 982.95", buy: "EUR 870.00", rate: "1.129828", validTo: "2026-11-07T12:52:41Z" }, after: { eurFree: "0.00", usdAvailable: "7017.05" } };
+    const reason = "Pay now: the quote ends at 12:52 UTC, waiting gains nothing, and USD 7,017.05 stays above the floor after EUR 1,850.00 goes out.";
+    expect(reason.split(/\s+/).length).toBeLessThanOrEqual(25);
+    expect(checkReason(reason, adviceGiven(f, "500.00"))).toEqual({ says: reason });
+    // A time or an amount code did not give still does not pass.
+    expect(checkReason(reason.replace("12:52 UTC", "12:53 UTC"), adviceGiven(f, "500.00"))).toEqual({ bad: "amounts" });
+    expect(checkReason(reason.replace("USD 7,017.05", "USD 7,017.50"), adviceGiven(f, "500.00"))).toEqual({ bad: "amounts" });
   });
 });
 

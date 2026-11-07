@@ -16,6 +16,15 @@ export const ADVICE_DEADLINE_MS = 15_000;
 /** The one line of code's facts the Worker adds to the runner's prompt: why the signature is needed, from the policy in force. */
 export const signatureLine = (aloneLimitForPeople: string) => `Above the ${aloneLimitForPeople} the agent may pay alone, so the CFO signs this payment with Face ID.`;
 
+/**
+ * How /try/sign asks the agent to write (jury review, 7 Nov, #5): its live advice ran to about 60 words with a raw ISO
+ * time and bare numbers on a phone screen. Added on /try/sign only, after the runner's prompt (the runner's own prompt in
+ * src/agents/timingCore.ts, which the evals pin, is unchanged); code still checks the reason as before (one or two
+ * sentences, every amount and time one of code's: worker/src/agentLine.ts adviceGiven gives the grouped amounts and the
+ * quote's end as HH:MM).
+ */
+export const ADVICE_STYLE_LINE = "Write for a CFO on a phone: one sentence of at most 25 words; write times as HH:MM UTC and amounts as code gives them with thousands separators (e.g. USD 7,017.05).";
+
 /** One call of the agent, as "What the agents did" shows it: the tools it asked for and what code answered. */
 export interface AdviceCall {
   step: string; model: string | null; request_id: string | null; ms: number | null;

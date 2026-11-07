@@ -93,7 +93,7 @@ function decisionCheck(r: Row, p: P): string {
   if (r.event === "card.decline_met") return str(p.proposal_id) ? `a raise within code's bounds went to the CFO (${str(p.proposal_id)}), who decides with Face ID; Airwallex enforces the limit` : "no raise proposed: the limit did not cause it";
   if (r.event === "purchase.rails_chosen") return str(p.source) === "claude" ? "every supplier paid on a rail it accepts (code's check); Metal and Airwallex enforced the limits" : "code paid on the registry's rails (the agent did not finish)";
   if (r.event === "dispute.settled_by_agent") return "complete: every wrong order refunded, the rest sent to the CFO, who decides with Face ID";
-  if (r.event === "price_rise.met") return str(p.source) === "claude" ? "Metal decided on chain; the agent's message goes to the Treasury agent" : "code decided (the agent did not try)";
+  if (r.event === "price_rise.met") return str(p.source) === "claude" ? "Metal decided on chain; the agent's message goes to the Treasury agent" : "applied by code (the agent did not try)";
   return "";
 }
 

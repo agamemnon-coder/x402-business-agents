@@ -112,10 +112,10 @@ describe("Dispute desk events in the CFO's feed", () => {
     expect(describeFeed(row("dispute.opened", { claim: "never_ordered", sales: "5,6,7", customer: "0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25" }) as never, () => undefined).text)
       .toBe("Summit Outfitters disputes 3 sales: \"our agent never ordered this\" (case DD-a88e8959)");
     expect(describeFeed(row("dispute.decided", { claim: "never_ordered", outcome: "rejected", refund: "0.00", route: "none" }) as never, () => undefined))
-      .toMatchObject({ text: "Dispute DD-a88e8959 decided by code: not refunded, every order signed and paid inside the customer's mandate", tone: "ok" });
+      .toMatchObject({ text: "Dispute DD-a88e8959 handled by code: not refunded, every order signed and paid inside the customer's mandate", tone: "ok" });
     expect(describeFeed(row("dispute.decided", { claim: "wrong_data", outcome: "refund", refund: "0.10", route: "approval", proposal_id: "P-0007" }) as never, () => undefined).text)
-      .toBe("Dispute DD-a88e8959 decided by code: refund 0.10 test USD, waiting for your Face ID (P-0007)");
+      .toBe("Dispute DD-a88e8959 handled by code: refund 0.10 test USD, waiting for your Face ID (P-0007)");
     expect(describeFeed(row("dispute.decided", { claim: "double_charged", outcome: "partial_refund", refund: "0.05", route: "auto" }) as never, () => undefined).text)
-      .toBe("Dispute DD-a88e8959 decided by code: refund 0.05 test USD, within the automatic limits");
+      .toBe("Dispute DD-a88e8959 handled by code: refund 0.05 test USD, within the automatic limits");
   });
 });

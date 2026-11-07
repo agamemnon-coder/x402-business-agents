@@ -7,7 +7,7 @@
 // the record (test/redesign-numbers.test.ts fails on a number the record lacks).
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { AGENT_DISPLAY, DEFENSE_IN_DEPTH, SANDBOX_SETTLED } from "../config/brand.js";
+import { AGENT_DISPLAY, CHAIN_TEST, DEFENSE_IN_DEPTH, SANDBOX_SETTLED } from "../config/brand.js";
 import { REFUSED_PURCHASE_LINE, refusedPurchaseLine } from "../dashboard/agentStats.js";
 import type { RunLedger } from "../demo/runLedger.js";
 
@@ -204,7 +204,8 @@ function events(r: RunRecord): Ev[] {
       }
     }
     // The main run: one purchase let through past Purser's pre-check; Metal's facilitator refused it itself (a 402, no
-    // tx), and the same refusal was then put on chain. One attempt, one step, with the run's own label.
+    // tx), and the same refusal was then put on chain. One attempt, one step, framed as the test it was (CHAIN_TEST);
+    // the run's own label (DEFENSE_IN_DEPTH) stays in its ledger row and is not shown beside it (jury review, 7 Nov, #13).
     let amount = f.amount, letThrough = false;
     if (f.refused?.by === "metal" && !f.proof.href && !/mandate_revoked/.test(f.refused.reason)) {
       const onChain = flows.find((g) => g !== f && g.refused?.by === "metal" && g.proof.href && g.agent === f.agent && Date.parse(g.at) >= Date.parse(f.at) && Date.parse(g.at) - Date.parse(f.at) < 15_000);
@@ -213,7 +214,7 @@ function events(r: RunRecord): Ev[] {
         merged.add(onChain);
         letThrough = true;
         amount = onChain.amount;
-        refused = { by: "metal", reason: lt.label, code: refused?.code };
+        refused = { by: "metal", reason: CHAIN_TEST, code: refused?.code };
         proof = { label: onChain.proof.label, href: onChain.proof.href };
       }
     }

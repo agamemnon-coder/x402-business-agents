@@ -59,6 +59,8 @@ function expected(): Record<string, string | string[]> {
     // it, not counted (Max, 4 Nov). Counted here from the raw rows, not the record's own count.
     [Number((R.proof as { over_limit_eur?: string }).over_limit_eur) === 0 ? "nothing paid over a limit" : "paid over a limit"]: `${stopRows} stops`,
     "Claude cost per decision": `$${(sum((a) => a.cost_usd_micros) / decisions / 1e6).toFixed(4)}`,
+    // Proof's tile says which cost it is (jury review, 7 Nov, #20): the agents' calls, as summed here.
+    "Claude cost per decision (agent calls)": `$${(sum((a) => a.cost_usd_micros) / decisions / 1e6).toFixed(4)}`,
     "payments on chain": String(s.flows.filter((f) => (f.rail === "metal" || f.rail === "purser") && !f.refused).reduce((k, f) => k + n(f), 0)),
     "refused by Metal at the cap": String(metalRefusals),
     // Proof's cards in plain words (Max, 7 Nov): the same counts.

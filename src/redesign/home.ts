@@ -1,10 +1,10 @@
 // Home: one screen, picture first (Max, 7 Nov: "a picture says more than a thousand words"). The heading, what Purser
-// is in one sentence, the stage playing the run's Metal moment (the price rise refused on chain, Treasury replans, two
+// is in one sentence, the three sentences (DIFFERENTIATORS), the stage playing the run's Metal moment (the price rise refused on chain, Treasury replans, two
 // signatures, the mandate replaced), and the way through the site in three steps: watch the agents, try it yourself,
 // see the proof. One button. The numbers, the partners' proof and the business live on /proof. Everything from the
 // recorded run (src/redesign/run.ts).
 
-import { BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CAVEAT_LINK, CORE_SENTENCE, HERO, JUDGE_LINE, KIT_LINE, VISA_AWARD_ON, VISA_EXTRA_LINK, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
+import { BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CAVEAT_LINK, CORE_SENTENCE, DIFFERENTIATORS, HERO, JUDGE_LINE, KIT_LINE, VISA_AWARD_ON, VISA_EXTRA_LINK, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
 import { agentRun, type AgentRun } from "./run.js";
 import { esc, icon, page, stageHtml } from "./ui.js";
 
@@ -24,6 +24,9 @@ ol.flow b { display: block; font-size: 17px; } ol.flow small { display: block; c
 .btn.big.start { margin-top: 18px; height: 56px; font-size: 17px; padding: 0 26px; }
 @media (max-width: 979px) { .btn.big.start { width: 100%; justify-content: center; } }
 .hero .what { margin: 14px 0 0; font-size: 19px; line-height: 1.45; font-weight: 600; max-width: 34em; }
+/* The three sentences (jury review, 6 Nov, #1; back under the subtitle since the jury review of 7 Nov, #2). */
+ul.three { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; max-width: 36em; }
+ul.three li { font-size: 16px; line-height: 1.45; color: var(--muted); border-left: 3px solid var(--accent); padding-left: 11px; }
 .badges .pill.kit { background: var(--text); color: var(--bg); white-space: nowrap; }
 .badges .pill.kit.award { background: var(--accent-soft); color: var(--accent); }
 .caveat a { color: var(--accent); font-weight: 650; }
@@ -147,10 +150,14 @@ export function whyCompanyHtml(): string {
 </div></section>`;
 }
 
-/** The way through the site, Max's three steps (7 Nov): watch the agents, try it yourself, see the proof. */
+/**
+ * The way through the site, Max's three steps (7 Nov): watch the agents, try it yourself, see the proof. One time per
+ * step everywhere (jury review, 7 Nov, #25): the Highlights replay on /watch plays 14 steps in 42 s by the stage's own
+ * timings (src/redesign/ui.ts show()), so "about 40 s"; /try/sign says "about a minute" itself.
+ */
 export const FLOW = [
-  { n: 1, icon: "play", title: "Watch the agents", sub: "A real run, replayed · 1 min", href: "watch" },
-  { n: 2, icon: "scan-face", title: "Try it yourself", sub: "Sign with your Face ID · 1 min", href: "try/sign" },
+  { n: 1, icon: "play", title: "Watch the agents", sub: "A real run, replayed · about 40 s", href: "watch" },
+  { n: 2, icon: "scan-face", title: "Try it yourself", sub: "Sign with your Face ID · about a minute", href: "try/sign" },
   { n: 3, icon: "shield-check", title: "See the proof", sub: "Every id, checkable", href: "proof" },
 ] as const;
 /** Home's one button, word for word. */
@@ -161,12 +168,14 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean }
   const moments = heroMoments(run);
   const s1 = run.scenes.find((s) => s.n === 1);
   const flow = FLOW.map((f) => ({ ...f, href: f.href === "try/sign" && !opts.trySign ? "try" : f.href }));
-  // Picture first, few words (Max, 7 Nov): the heading, one sentence, the one button right under it, then the three steps.
+  // Picture first, few words (Max, 7 Nov): the heading, one sentence and the three sentences under it (jury review,
+  // 7 Nov, #2), the one button right under them, then the three steps.
   const body = `<main>
 <section class="hero"><div class="wrap">
   <div class="copy">
     <h1 class="h-hero">${esc(HERO)}</h1>
     <p class="what">${esc(WHAT_IT_IS)}</p>
+    <ul class="three">${DIFFERENTIATORS.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
     <a class="btn primary big start" href="watch">${icon("play", 18)}${esc(START)}</a>
     ${opts.trySign ? `<p class="judgeline"><a href="judge">${esc(JUDGE_LINE)} →</a></p>` : ""}
     <ol class="flow" aria-label="Three steps">${flow.map((f) => `<li><a href="${esc(f.href)}"><span class="fn">${f.n}</span>${icon(f.icon, 20)}<span class="ft"><b>${esc(f.title)}</b><small>${esc(f.sub)}</small></span></a></li>`).join("")}</ol>

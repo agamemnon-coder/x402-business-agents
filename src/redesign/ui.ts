@@ -261,7 +261,12 @@ function Stage(root, run) {
     bubble.classList.toggle("noone", !(agent && names[agent]));
     if (agent && names[agent]) bubble.style.setProperty("--cx", (names[agent].i * 2 + 1) / 6 * 100 + "%");
   }
-  function amount(ev) { return !ev.amount ? "" : ev.unit === "EUR" ? "EUR " + ev.amount : ev.unit === "USD" ? "USD " + ev.amount : ev.amount + " test USD"; }
+  // Several payments of one amount say so, and their total (jury review, 7 Nov, #24): "3 × 0.05 test USD (0.15)".
+  function amount(ev) {
+    if (!ev.amount) return "";
+    var one = ev.unit === "EUR" ? "EUR " + ev.amount : ev.unit === "USD" ? "USD " + ev.amount : ev.amount + " test USD";
+    return ev.count > 1 ? ev.count + " × " + one + " (" + (Math.round(parseFloat(ev.amount) * 100) * ev.count / 100).toFixed(2) + ")" : one;
+  }
   /** What happened to a payment, in plain words; the raw code goes into the tooltip. */
   function result(ev) {
     var r = ev.refused;

@@ -340,8 +340,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const words = pt.split(/\s+/).filter((x) => /\w/.test(x)).length;
       // /airwallex carries Airwallex read back (section B, 6 Nov; cards folded) and awx-1 (7 Nov, its steps folded):
       // budget 210 there (test/site-v4.test.ts), plus the frame; 235 since the Airi run (7 Nov) joined it; 345 since the
-      // Airi run's block in the owner's copy (7 Nov), which also tops /visa (275 there).
-      const budget = path === "/airwallex" ? 345 : path === "/visa" ? 275 : 150;
+      // Airi run's block in the owner's copy (7 Nov), which also tops /visa (275 there). /metal: 175 since the jury
+      // review of 7 Nov (#3), for what the explorer shows beside the refusal's link.
+      const budget = path === "/airwallex" ? 345 : path === "/visa" ? 275 : path === "/metal" ? 175 : 150;
       if (words > budget + 25) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(pt)) fail(`${path} ${tag}: its run is not labelled`);
       if ((await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);

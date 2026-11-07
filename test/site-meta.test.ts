@@ -89,9 +89,9 @@ describe("the submission pack (Q6, Q7)", () => {
     expect(read("docs/submission/README.md")).toContain(`\`purser-deck.pdf\`: ${words[n]} slides`);
   });
 
-  it("the claims' section on the four tabs is the main run's, checked on 6 November", () => {
+  it("the claims' section on the four tabs is the main run's, checked on 7 November (and on 6 November before)", () => {
     const claims = read("docs/claims.md");
-    expect(claims).toContain("Last checked on 6 November 2026");
+    expect(claims).toContain("Last checked on 7 November 2026");
     const tabs = claims.slice(claims.indexOf("## The four tabs"), claims.indexOf("## The video"));
     for (const want of ["24 of 24 by Claude", "0.69 swept", "P-0005", "fee EUR 13.42", "P-0001, P-0002, P-0004, P-0005, P-0006", "412 audit rows"]) expect({ want, has: tabs.includes(want) }).toEqual({ want, has: true });
     // Agent run 1's figures only as what the section said before.

@@ -468,3 +468,32 @@ Claude Code, on Max's go; in production a second person). Sources for every clai
   naming its own quote's end ("runs out today at 13:00:35Z"), a time and no amount. Its amounts are still checked
   against today's numbers (another quote's amounts still fail); only the times and days it was recorded with are its
   own. 3029 tests in 295 files, all passing.
+- 7 November, a fresh juror's review (jury-fixes): Home has the three sentences back under the subtitle (its word
+  budget 130 → 190); one time per step everywhere ("about 40 s" for Watch's highlights, measured at 42 s by the
+  stage's own timings; "about a minute" and "Try it in a minute." for /try/sign; /judge 40 + 40 + 30 + 30 + 40 s);
+  "AI agents are starting to spend company money" on the site, the README, the form, the deck source and the pitch (the
+  film keeps its own line). /metal, Proof and /judge say what Metal's explorer shows for the refusal of #24 (the
+  MandateRefused log, undecoded there; topic 1 the Sourcing mandate, 0.04 in its data; /metal's budget 150 → 175);
+  the Defense-in-depth label is no longer shown beside the chain test that says the same. No page says code
+  "decided" any more: a payment by code reads "Applied by code under the default buy policy" (Watch, /trace), the fake invoice's
+  "Checked by Purser's code". Proof: the Airwallex card first, its first chip "Signed hash in Airwallex's SWIFT record
+  ✓"; the cost tile says "(agent calls)"; the planted line in plain words; the business case link fixed (a folder:
+  tree, not blob). /airwallex: the TAP decline's GET status said as Airwallex's decline; awx-1's amounts grouped
+  ("EUR 1,500.00"), its calls "71 Airwallex API calls (run budget: 96)". /claude: the 24 decisions include holding
+  and doing nothing. Watch: "3 × 0.05 test USD (0.15)" for the refunds. /try/sign: the payment stopped on screen 1
+  said as the visitor's own test payment, with a real example linked; the worst case's difference kept on one line;
+  the Treasury agent asked for one short sentence a CFO can read on a phone (HH:MM UTC, grouped amounts), on /try/sign
+  only, still checked by code. The Worker sends a path pasted with a trailing "." or "," to the same path without it.
+  The form: one character count, no punctuation glued to a link, "Max plays the CFO and signs with a personal passkey
+  (Face ID on a phone)."; pitch 3e with the current price; qa.md's title and range (questions 18 to 26); README's TAP
+  and T:0 lines rewritten; claims checked on 7 November. Merged with main after the Visa Intelligent Commerce
+  release: the VIC block as main has it, the Airwallex card still first on /proof; budgets /airwallex 345, /visa 275,
+  /metal 175, Home 190; the form's Description 3,996 characters with the VIC line (a few more words tightened, no fact
+  dropped). The deck (purser-deck.pdf and its slide PNGs), the cheat sheet and the spiekkaart printed again from their
+  sources. 3032 tests in 295 files, all passing.
+- 7 November, the day's last release: the jury review's fixes (Home's three sentences back, the Metal refusal
+  explained beside the explorer link, one try time, short advice on /try/sign, the test-world stop line, no "code
+  decided" anywhere, the business-case link, Airwallex first on /proof), the accessibility fixes (#97, 100 on every jury
+  page), and film v6 (2:59: the Airi run as Visa Intelligent Commerce, awx-1, and a recording of the live /try/sign; voice
+  and music still to add). /proof's partner order in the accessibility test follows the new order. 3049 tests in 295
+  files, all passing.

@@ -14,7 +14,7 @@
 // example; (2) signed and verified by the server, run by the stand-in, the receipt downloaded and verified offline and on
 // /try/verify; (3) try to cheat: one cent, another IBAN, another currency, the FX rate, each refused by the server with
 // the same signature; (4) change the rule: what the Treasury agent may pay alone, a looser rule signed; (5) the agent's
-// next invoice paid alone under it. On every screen: at most 60 words in sight, exactly one main button in sight and
+// next invoice paid alone under it. On every screen: at most 65 words in sight, exactly one main button in sight and
 // within the screen without scrolling, nothing outside its card, the page no wider than the screen, no console error.
 // Then, apart: the full policy behind "Show all fields and what Purser sends" (#71: a stricter change holds at once, a
 // looser one is refused until signed, the panels follow); a stricter rule by its chip (applied at once, no signature);
@@ -172,7 +172,9 @@ async function measure(page: Page, tag: string, n: number, ms?: number): Promise
   })()`) as { words: number; primaries: number; inView: boolean; label: string };
   if (process.env.WORDS) console.log(`words ${tag} ${n}: ${await page.evaluate(`document.getElementById("scr-${n}").innerText.split(/\\s+/).filter((w) => /[A-Za-z0-9]/.test(w)).join(" | ")`)}`);
   metrics.push({ tag, screen: n, words: m.words, primaries: m.primaries, primaryInView: m.inView, ...(ms === undefined ? {} : { ms }) });
-  check(m.words <= 60, `${tag} screen ${n}: ${m.words} words in sight (at most 60)`);
+  // 65 since the jury review of 7 Nov (#6): screen 1's stopped payment says it is the visitor's test payment, with a
+  // real example linked (7 words more than before).
+  check(m.words <= 65, `${tag} screen ${n}: ${m.words} words in sight (at most 65)`);
   check(m.primaries === 1, `${tag} screen ${n}: exactly one main button in sight (${m.primaries}: ${m.label})`);
   check(m.inView, `${tag} screen ${n}: the main button "${m.label}" is on the screen without scrolling`);
 }
@@ -353,13 +355,13 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
     const lit = (await page.evaluate(`[...document.querySelectorAll("#diagram .dn")].filter((n) => getComputedStyle(n).opacity === "1" && !n.classList.contains("d-policy")).map((n) => n.classList[1]).join()`)) as string;
     check(lit === "d-purser,d-sign", `${tag}: on screen 1 the diagram lights Purser's limit and the signature (${lit})`);
     check((await motion(page)).filter((a) => a.name === "dnlit").length === 2, `${tag}: the diagram's lit parts light up as the step opens`);
-    // 1.2 on desktop: the lock that just stopped another payment, in one line, with the real example as a link.
-    check(await page.locator("#diagram .dstop").isVisible() && /^Just stopped another payment · a real one$/.test((await page.locator("#diagram .dstop").innerText()).trim()) && !!(await page.locator("#dg-real").getAttribute("href")),
-      `${tag}: on screen 1 the diagram says the Purser lock just stopped another payment, with a real example linked`);
+    // 1.2 on desktop: the lock that just stopped a test payment in this world, in one line, with a real example linked.
+    check(await page.locator("#diagram .dstop").isVisible() && (await page.locator("#diagram .dstop").innerText()).trim() === `${W.ask.other} · ${W.ask.real}` && !!(await page.locator("#dg-real").getAttribute("href")),
+      `${tag}: on screen 1 the diagram says Purser just stopped a test payment in this world, with a real example linked`);
   } else check(dg === null, `${tag}: below 1024 px the diagram is not shown`);
 
   // ── Screen 1: the agent's request. ──
-  check((await page.locator("#s1-head").innerText()).trim() === W.ask.head && (await page.locator("#s1-other > summary").innerText()).trim() === W.ask.other, `${tag}: screen 1 says "${W.ask.head}", and "${W.ask.other}" in one line`);
+  check((await page.locator("#s1-head").innerText()).trim() === W.ask.head && (await page.locator("#s1-other > summary").innerText()).trim() === `${W.ask.other} · ${W.ask.real}` && !!(await page.locator("#s1-real").getAttribute("href")), `${tag}: screen 1 says "${W.ask.head}", and "${W.ask.other} · ${W.ask.real}" in one line, the example linked`);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const terms = JSON.parse((await page.locator("#s1-terms pre.terms").textContent()) ?? "{}") as Record<string, any>;
   check((await page.locator("#s1-amt").innerText()).trim() === "EUR 1,850.00" && (await page.locator("#s1-to").innerText()).includes(terms.payee.replace(/ \(test payee\)$/, "")) && (await page.locator("#s1-to").innerText()).includes("INV-2026-118") && !(await page.locator("#s1-ask").innerText()).includes("Treasury agent"),
@@ -523,8 +525,8 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   await page.evaluate(`document.getElementById("s1-terms").open = false`);
 
   // The payment a rule stopped, behind its closed line: nothing to sign, and the three locks.
-  check((await page.locator("#s1-other > summary").innerText()).trim() === W.ask.other && !(await page.locator("#s1-other").evaluate((d: HTMLDetailsElement) => d.open)), `${tag}: "${W.ask.other}" closed`);
-  await page.locator("#s1-other > summary").click();
+  check((await page.locator("#s1-other > summary").innerText()).trim() === `${W.ask.other} · ${W.ask.real}` && !(await page.locator("#s1-other").evaluate((d: HTMLDetailsElement) => d.open)), `${tag}: "${W.ask.other}" closed`);
+  await page.locator("#s1-other > summary").click({ position: { x: 8, y: 8 } });
   const blocked = page.locator("#s1-blocked article.prop.blocked");
   check((await blocked.innerText()).includes("T-0001") && (await blocked.innerText()).includes("Check: fail"), `${tag}: (a) shows "Check: fail" and its rule`);
   check((await blocked.innerText()).includes("Reserve floor"), `${tag}: (a) names the blocking rule`);
@@ -549,7 +551,7 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   await blocked.locator(".locks").scrollIntoViewIfNeeded();
   await shot(page, `${tag}-1d-locks.png`);
   await layout(page, tag, "screen 1, all open", width);
-  await page.locator("#s1-other > summary").click();
+  await page.locator("#s1-other > summary").click({ position: { x: 8, y: 8 } });
 
   // ── Sign: one tap, the passkey made first. Screen 2. ──
   await page.click("#go-sign");

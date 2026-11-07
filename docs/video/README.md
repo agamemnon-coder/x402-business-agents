@@ -1,132 +1,173 @@
 # The premiere: edit guide
 
-**Purser in 2:42**, a premiere-style film made from the main run of 3 November 2026 (world `main-1`,
-[run log](../runs/2026-11-03-main-run.md)). Dark, large and slow, letterboxed to 2.39:1. Every figure on screen is read
-from the run's record by code, and the render stops when one is missing. Film v5, final cut (5 November): the
-voice-over is [narrator-script.md](narrator-script.md) read by an AI-generated voice (ElevenLabs), a narrator in the
-third person, with AI-generated music (ElevenLabs); the film needs no recording of Max. The end card credits both: “Voice-over: an AI-generated voice (ElevenLabs) · Music: AI-generated (ElevenLabs)”.
+**Purser in 2:59**, film v6 (7 November), **the current film and the submission video**: the premiere-style film made
+from the main run of 3 November 2026 (world `main-1`, [run log](../runs/2026-11-03-main-run.md)), with the two live runs
+of 7 November (awx-1 on Airwallex alone, [run log](../runs/2026-11-07-awx-1.md); the Airi run, Visa Intelligent
+Commerce via Airwallex's Airi, [run log](../runs/2026-11-07-vic-1.md)) and a recorded walk of the live /try/sign page.
+Dark, large and slow, letterboxed to 2.39:1. Every figure on screen is read from its run's record by code, and the
+render stops when one is missing. The voice-over is [narrator-script-v6.md](narrator-script-v6.md) read by an
+AI-generated voice (ElevenLabs), a narrator in the third person, with AI-generated music (ElevenLabs); the film needs no
+recording of Max. The end card credits both: “Voice-over: an AI-generated voice (ElevenLabs) · Music: AI-generated (ElevenLabs)”.
 The render has **no music and no audio track**, and the mix (voice, music, loudness) is done afterwards to the scene
-times in `scenes-v5.json`. The script with every picture, line and source is
+times in `scenes-v6.json`; [elevenlabs-studio-prompt-v6.md](elevenlabs-studio-prompt-v6.md) is the prompt for ElevenLabs
+Studio, written from the same times. The script with every picture, line and source is
 [premiere-script.md](premiere-script.md); the voice-over with its times is [script.md](script.md).
+
+Film v5 (2:42, 5 November, the main run only) is kept as it was: [narrator-script.md](narrator-script.md),
+[premiere-script-v5.md](premiere-script-v5.md), [script-v5.md](script-v5.md), `scenes-v5.json` and `subtitles-v5.srt`.
+
+## What changed since v5
+
+- **The hook:** “AI agents are starting to spend money.” (was “can now”: accuracy).
+- **11-turn:** the labelled mock of /try/sign is replaced by a recording of the live page, walked once in headless
+  Chromium with a virtual authenticator (`src/cli/recordTrySign.ts`): Claude Sonnet reads the invoice, Claude Opus
+  advises, Face ID signs, one cent changed is refused, a planted trick is blocked. It is labelled “Recorded from the live
+  page · test world · test money”, and says that it is cut to its steps and that the passkey was Chromium's virtual
+  authenticator. What the page showed is in [recording-trysign-v6.json](recording-trysign-v6.json); the film says only
+  what the page labelled (the live models), and stops otherwise.
+- **13b-awx (new):** awx-1: Airwallex itself declined a charge over the limit (`LIMIT_EXCEEDED`) and one in the wrong
+  category (`MERCHANT_CATEGORY_NOT_ALLOWED`); the agent asked the CFO for a raise instead of retrying; the hash the CFO
+  signed rides in Airwallex's SWIFT payout metadata. Figures from `docs/demo/airwallex-run.json`.
+- **13c-airi (new):** Visa Intelligent Commerce via Airwallex's Airi: paid alone (EUR 12.00), paid after Face ID
+  (EUR 45.00, P-0002), refused by Purser; 5 of 5 checks; “Airwallex sandbox · test card · test money”. Figures from
+  `docs/demo/airi-run.json`.
+- **Trimmed to 2:59:** 05, 06, 07, 09, 10, 12, 13, 14 and 16 are shorter; 13b-value is now `13d-value`; 13-proof names
+  the main run on screen.
 
 ## The files
 
-`npm run video` makes everything below in `out/video/` (not in git; about 25 minutes on the dev machine in three
-parallel runs: every frame is drawn at 3840×2160 and scaled down with lanczos, then encoded with x264 at preset slow,
-CRF 14, so small text stays crisp). The words are also in this folder.
+`npm run video` makes everything below in `out/video/` (not in git): every frame is drawn at 3840×2160 and scaled down
+with lanczos, then encoded with x264 at preset slow, CRF 14, so small text stays crisp. On a 4-CPU machine in three
+parallel runs (the clips split three ways) it took about half an hour. It needs the walk of the live page at
+`out/video/recordings/trysign-live-1.mp4` (below); the words are also in this folder.
 
 | File | What it is |
 |---|---|
 | `clips/01-hook.mp4` … `clips/16-end.mp4` | One clip per scene: 1920×1080, 60 frames a second, silent, the picture letterboxed to 2.39:1 (black bars of 138 px above and below). Each clip fades in and out over the background, which runs on the film's own clock, so in order the clips join seamlessly; the hook is on black. |
-| `overlays/08-faceid.png`, `overlays/11-turn.png` | Transparent 1920×1080 PNGs: the letterbox bars with the corner credits, and the label for a recording laid over that scene, should one ever be laid in (the final film lays in none). |
-| `master-v5.mp4` | **The deliverable picture:** all eighteen clips in order (2:42), no audio track, no burned-in subtitles. The closing (15) is the rendered ending, under the voice-over. |
-| `scenes-v5.json` | Each scene's `{id, start, end}` in seconds, for the mix (a copy is in this folder). |
-| `subtitles-v5.srt` | The voice-over as English subtitles, each line about half a second into its scene, for YouTube's captions (a copy is in this folder). Nothing is burned in. |
+| `overlays/08-faceid.png`, `overlays/11-turn.png` | Transparent 1920×1080 PNGs: the letterbox bars with the corner credits, and the label for a recording laid over that scene, for an editor who lays a recording in by hand. |
+| `master-v6.mp4` | **The deliverable picture:** all twenty clips in order (2:59), no audio track, no burned-in subtitles, the walk of the live page laid into 11-turn. |
+| `scenes-v6.json` | Each scene's `{id, start, end}` in seconds, for the mix (a copy is in this folder). |
+| `subtitles-v6.srt` | The voice-over as English subtitles, each line about half a second into its scene, for YouTube's captions (a copy is in this folder). Nothing is burned in. |
+| `elevenlabs-studio-prompt-v6.md` | The prompt for ElevenLabs Studio: the voice brief, every line at its time, the music brief on the cuts (a copy is in this folder). |
 | `script.md`, `premiere-script.md` | The voice-over with its times, and the script table (copies are in this folder). |
 
-Again: `npm run video` for everything; `npm run video -- 13-proof` for one clip (the master is rebuilt when every clip
+Again: `npm run video` for everything; `npm run video -- 13c-airi` for one clip (the master is rebuilt when every clip
 is there); `npm run video -- --stills` for three PNGs of each scene in `out/video/stills/`; `npm run video -- --docs`
 for the files in this folder; `VIDEO_PREVIEW=1 npm run video` for a quick preview (drawn at 1×, x264 veryfast, CRF 18),
 not the deliverable. The film still reads the README's test line and its tests badge, and renders nothing when they
-disagree; since 5 November the proof scene shows 24/24 and the run's stops, not the test count.
+disagree; the proof scene shows 24/24 and the run's stops, not the test count.
 
 ## Which clip goes where
 
-The times are the scenes' (`scenes-v5.json`); the music is cut to them afterwards. **The drop goes on the cut to
-`09-six.mp4` (1:14).**
+The times are the scenes' (`scenes-v6.json`); the music is cut to them afterwards. **The drop goes on the cut to
+`09-six.mp4` (1:10).**
 
-| Time | Clip | What | Recording slot (none in the final film) |
+| Time | Clip | What | Recording |
 |---|---|---|---|
-| 0:00 | `01-hook.mp4` | Black, a beat of silence, then “AI agents can now spend money.” slams in; at 3.2 s a hard cut to “So who signs off?”, a pen stroke drawn under it | |
+| 0:00 | `01-hook.mp4` | Black, a beat of silence, then “AI agents are starting to spend money.” slams in; at 3.6 s a hard cut to “So who signs off?”, a pen stroke drawn under it | |
 | 0:06 | `02-purser.mp4` | The wordmark Purser, a line drawn under it, and the core line in two lines | |
 | 0:10 | `03-agents.mp4` | Three Claude agents, their cards 0.7 s apart and each lit 3 s in turn: name, model, job, its own Airwallex card and its own Metal mandate (as the run began); “The rails and the code hold the limits.” | |
 | 0:20 | `04-how.mp4` | The diagram: agent → rules → person → Airwallex or Metal → books; a refused payment: the Airwallex or Metal box flashes red, “Refused at the limit” under it, both gone within a second | |
 | 0:28 | `05-price.mp4` | The price rise; let through on purpose; Metal refuses; the tx | |
-| 0:40 | `05b-treasury.mp4` | Treasury's two options (P-0002 A: the Sourcing agent's cap to 0.04, our price stays 0.05; P-0003 B: our price to 0.07), both within the same 20.00; A signed with Face ID at 11:26:28 UTC; “four eyes · second approver: a labelled test passkey” | |
-| 0:48 | `06-metal.mp4` | 86 payments, each its own transaction on Metal testnet, no emulator; + 6 mandate transactions, 1 refusal on chain | |
-| 0:56 | `07-dispute.mp4` | Twelve orders, three refunded, “refund the other 9” rejected with Face ID | |
-| 1:06 | `08-faceid.mp4` | P-0005's approval sheet, its exact terms; Face ID, then “Approved”, labelled as a reconstruction with the real Face ID's time (11:31:18 UTC) | |
-| 1:14 | `09-six.mp4` | 6 seconds from Face ID to PAID, counting up from the cut; “In the sandbox, the settlement is simulated.”; the transfer id; “Every id is on /proof” | |
-| 1:24 | `10-why.mp4` | Why Face ID, not a password | |
-| 1:34 | `11-turn.mp4` | A mock of the live /try/sign page, labelled as a mock | |
-| 1:41 | `12-tamper.mp4` | +0.01, refused; a second of silence; “One cent. Worthless.” at 1:46 | |
-| 1:49 | `13-proof.mp4` | 24/24 decisions by Claude (1:49); the run's stops (1:51): the figure with “nothing paid over a limit”, then who stopped what in four rows, each as the voice names it | |
-| 2:02 | `13b-value.mp4` | “The agents do the work. The CFO signs only the exceptions.” | |
-| 2:06 | `14-real.mp4` | What's real, what's ours | |
-| 2:16 | `15-close.mp4` | The ending mirrors the intro: “A price shock.” / “A dispute.” / “A euro bill.”, the closing line in two lines, then the intro's wordmark with “Starter Kit 11” (2:27); Max's name lower left; under the narrator's closing line | |
-| 2:29 | `16-end.mp4` | “Try it yourself”, https://kit11.max-31b.workers.dev/try/sign; from 2:33 the end credits (9 s, text only, no logos): who does what (built by Max Geurtsen; Airwallex, Metal and Claude by Anthropic, each with its role); thank you to Airwallex, Metal, Anthropic and the hackathon organisers and mentors; the AI-generated voice and music; test money only; the end at 2:42 | |
+| 0:39 | `05b-treasury.mp4` | Treasury's two options (P-0002 A: the Sourcing agent's cap to 0.04, our price stays 0.05; P-0003 B: our price to 0.07), both within the same 20.00; A signed with Face ID at 11:26:28 UTC; “four eyes · second approver: a labelled test passkey” | |
+| 0:47 | `06-metal.mp4` | 86 payments, each its own transaction on Metal testnet, no emulator; + 6 mandate transactions, 1 refusal on chain | |
+| 0:53 | `07-dispute.mp4` | Twelve orders, three refunded, “refund the other 9” rejected with Face ID | |
+| 1:02 | `08-faceid.mp4` | P-0005's approval sheet, its exact terms; Face ID, then “Approved”, labelled as a reconstruction with the real Face ID's time (11:31:18 UTC) | |
+| 1:10 | `09-six.mp4` | 6 seconds from Face ID to PAID, counting up from the cut; “In the sandbox, the settlement is simulated.”; the transfer id; “Every id is on /proof” | |
+| 1:19 | `10-why.mp4` | Why Face ID, not a password | |
+| 1:27 | `11-turn.mp4` | The walk of the live /try/sign page in a phone frame, cut to its steps; beside it each step as it comes; “Recorded from the live page · test world · test money” | `recordings/trysign-live-1.mp4`, laid in by `npm run video` |
+| 1:40 | `12-tamper.mp4` | +0.01, refused; a second of silence; “One cent. Worthless.” at 1:44.75 | |
+| 1:46 | `13-proof.mp4` | The main run named; 24/24 decisions by Claude; the run's stops (1:48.6): the figure with “nothing paid over a limit”, then who stopped what in four rows, each as the voice names it | |
+| 1:58 | `13b-awx.mp4` | awx-1 (7 Nov): `LIMIT_EXCEEDED` and `MERCHANT_CATEGORY_NOT_ALLOWED`, each declined by Airwallex; the raise asked of the CFO (P-0001), approved with Face ID; the signed hash in the SWIFT payouts' metadata, both PAID; the run's own label | |
+| 2:09 | `13c-airi.mp4` | “Visa Intelligent Commerce via Airwallex's Airi: a live run (7 Nov)”, Max's line; ✓ Paid alone (EUR 12.00) · ✓ Paid after Face ID (EUR 45.00, P-0002) · ✕ Refused by Purser; “5 of 5 checks”; “Airwallex sandbox · test card · test money” | |
+| 2:23 | `13d-value.mp4` | “The agents do the work. The CFO signs only the exceptions.” | |
+| 2:27 | `14-real.mp4` | What's real, what's ours | |
+| 2:35 | `15-close.mp4` | The ending mirrors the intro: “A price shock.” / “A dispute.” / “A euro bill.”, the closing line in two lines, then the intro's wordmark with “Starter Kit 11” (2:46); Max's name lower left; under the narrator's closing line | |
+| 2:48 | `16-end.mp4` | “Try it yourself”, https://kit11.max-31b.workers.dev/try/sign; from 2:51.5 the end credits (text only, no logos): who does what (built by Max Geurtsen; Airwallex, Metal and Claude by Anthropic, each with its role); thank you to Airwallex, Metal, Anthropic and the hackathon organisers and mentors; the AI-generated voice and music; test money only; the end at 2:59 | |
 
 ## Recordings
 
-No recording is needed, and nobody records a voice: the Face ID (08) is rendered, a reconstruction of P-0005's
-approval sheet labelled as one (“Reconstruction of the approval screen · the real Face ID was at 11:31:18 UTC (main
-run)”), and /try/sign (11) is a mock of the live page drawn from its code.
+Nobody records a voice. One recording is in the film, made by code, not by hand:
 
-1. **The voice-over:** an AI-generated voice (ElevenLabs), the narrator, in the third person; one file per scene, the
-   lines in [narrator-script.md](narrator-script.md), each placed about half a second into its scene
-   ([script.md](script.md) has the times). The closing (2:16) goes over `15-close.mp4`.
-2. **Not used in the final film: a phone recording.** `npm run video` can still lay a portrait (9:16) recording into a
-   rounded phone frame beside the scene's captions, with its honesty label, and rebuild the master:
+1. **The walk of the live /try/sign page (11-turn).** `npx tsx src/cli/recordTrySign.ts --name trysign-live-1` (writes
+   `out/video/recordings/`): headless Chromium at phone size (390×844, dark), the visitor's Face ID played by
+   Chromium's virtual authenticator, the page's own test world only. Each walk spends real Claude calls on the live
+   page (the reader, the advice, the trick's reader): v6 was made from one walk (7 November, 15:43 UTC). `npm run video`
+   lays it into the phone frame, cut to the windows in `RECORDING` (`src/film/premiere.ts`), each inside one step of
+   the walk as [recording-trysign-v6.json](recording-trysign-v6.json) times it. Copy that file's labels from the new
+   walk's `.json` when the walk is recorded again; the film stops if the page did not label the reader and the advice
+   as the live Claude models.
+2. **The voice-over:** an AI-generated voice (ElevenLabs), the narrator, in the third person; the lines in
+   [narrator-script-v6.md](narrator-script-v6.md), each placed about half a second into its scene ([script.md](script.md)
+   has the times; [elevenlabs-studio-prompt-v6.md](elevenlabs-studio-prompt-v6.md) puts them on the timeline).
+3. **Not used: a phone recording of Face ID.** `npm run video` can still lay a portrait (9:16) recording into 08's
+   phone frame, with its honesty label, and rebuild the master:
 
    ```sh
-   npm run video -- 11-turn --slot 11-turn=<trysign.mov>
    npm run video -- 08-faceid --slot 08-faceid=<faceid.mov>@<start>-<end>
+   npm run video -- 11-turn --slot 11-turn=<walk.mp4>@<start>-<end>,<start>-<end>
    ```
 
-   `@<start>-<end>` (seconds) takes a window. A window longer than its scene plays faster to fit, and the scene says
-   so (“shown at 1.25× speed”); a shorter one holds its last frame. Without a file the scene keeps its rendered
-   picture, as the final film does. In an editor instead, put the recording above the clip and the scene's overlay
-   PNG above it, for the scene's full length.
+   `@<start>-<end>` (seconds) takes a window, and several, comma-separated, are joined with hard cuts. Windows longer
+   than their scene play faster to fit, and the scene says so (“shown at 1.25× speed”); shorter ones hold the last
+   frame. In an editor instead, put the recording above the clip and the scene's overlay PNG above it.
 
 ## Music
 
-Not in this render: the mix session adds it to `scenes-v5.json`.
+Not in this render: the mix session adds it to `scenes-v6.json`.
 
 - **The track:** AI-generated (ElevenLabs). The end card credits it with the voice: “Voice-over: an AI-generated voice
   (ElevenLabs) · Music: AI-generated (ElevenLabs)”.
-- **The drop:** on the cut to `09-six` (1:14), where “6” counts up. Leave the second before “One cent. Worthless.”
-  (1:45 to 1:46) silent.
+- **The drop:** on the cut to `09-six` (1:10), where “6” counts up. Leave the second before “One cent. Worthless.”
+  (1:43.75 to 1:44.75) silent.
 - Under a voice, keep the music 18 to 22 dB lower.
 
 ## Cutting it
 
+**ElevenLabs Studio** (as for v5): upload `master-v6.mp4` and paste [elevenlabs-studio-prompt-v6.md](elevenlabs-studio-prompt-v6.md).
+To check the picture and the words first, `preview-v6-subtitled.mp4` (made next to the master, not in git) has the
+subtitles burned in and no voice.
+
 **DaVinci Resolve**
 
 1. New project; in Project Settings set the timeline to 1920×1080 and 60 frames a second **before** importing.
-2. Import `master-v5.mp4` on V1 (or the eighteen clips in order).
+2. Import `master-v6.mp4` on V1 (or the twenty clips in order).
 3. The voice files (the narrator, ElevenLabs) on A1 at the times in [script.md](script.md); the music on A2, lowered under the voice.
 4. No subtitles in the picture: give YouTube the `.srt` (below).
 5. Deliver: the YouTube 1080p preset, H.264, 60 frames a second, at a high bitrate (the small text must stay crisp),
-   and check the length: 2:42, under three minutes.
+   and check the length: 2:59, under three minutes.
 
-**CapCut** (desktop or phone): a 1080p, 60 fps project; `master-v5.mp4` (or the clips in order) on the main track; a
-recording and its overlay PNG as overlay layers, if any; voice and music as audio layers; export at 1080p, 60 fps.
+**CapCut** (desktop or phone): a 1080p, 60 fps project; `master-v6.mp4` (or the clips in order) on the main track;
+voice and music as audio layers; export at 1080p, 60 fps.
 
-**Upload:** YouTube, visibility **Unlisted**. Add `subtitles-v5.srt` as English captions. In the description: “Test
-money only: the Airwallex sandbox and Metal testnet” and “Voice-over: an AI-generated voice (ElevenLabs) · Music:
-AI-generated (ElevenLabs)”.
+**Upload:** YouTube, visibility **Unlisted**. Add `subtitles-v6.srt` as English captions. In the description: “Test
+money only: the Airwallex sandbox, Metal testnet and a test card” and “Voice-over: an AI-generated voice (ElevenLabs) ·
+Music: AI-generated (ElevenLabs)”.
 
 ## Before you upload
 
-- 2:42, under three minutes.
-- Nothing private on screen: no keys, e-mail addresses, notifications, other tabs or bookmarks.
-- The Face ID scene keeps its label (“Reconstruction of the approval screen …”), and a recording laid in keeps its own.
-- No logos of others anywhere (the rendered clips have none; check the recordings).
+- 2:59, under three minutes.
+- Nothing private on screen: no keys, e-mail addresses, notifications, other tabs or bookmarks; the walk of /try/sign
+  shows only the page's public test world (no one-time Airi link, no viewer key).
+- The Face ID scene keeps its label (“Reconstruction of the approval screen …”), and the walk of the live page its own.
+- No logos of others anywhere (the rendered clips have none; the recorded page shows Purser's own mark only).
 - The AI-generated voice and music, and `16-end.mp4` as the end card, which credits both.
 
 ## How the clips are made
 
-`src/film/premiere.ts` reads every figure from `docs/demo/main-run.json` (and the test count from the README's test
-line, and the /try/sign mock's figures from that page's code) and stops when one is missing; `src/film/premiere.html`
-draws each scene from those strings and types in no figure of its own; `src/film/premiereScript.ts` holds the scenes'
-times; the voice-over is the narrator's script in narrator-script.md, read by premiere.ts and checked against the record. `npm run video` (`src/cli/video.ts`) plays the page on a virtual
-clock, one frame every 1/60 s, so every clip is exactly its length at 60 frames a second. `test/premiere.test.ts`
-counts the figures again from the record and fails on a difference, a missing figure, a figure typed into the page,
-or a file in this folder that the code would write differently.
+`src/film/premiere.ts` reads every figure from `docs/demo/main-run.json`, `docs/demo/airwallex-run.json` and
+`docs/demo/airi-run.json` (and the test count from the README's test line, the one-cent example's figures from the
+/try/sign page's code, and what the recorded page showed from `recording-trysign-v6.json`) and stops when one is
+missing; `src/film/premiere.html` draws each scene from those strings and types in no figure of its own;
+`src/film/premiereScript.ts` holds the scenes' times; the voice-over is the narrator's script in
+narrator-script-v6.md, read by premiere.ts and checked against the records. `npm run video` (`src/cli/video.ts`) plays
+the page on a virtual clock, one frame every 1/60 s, so every clip is exactly its length at 60 frames a second.
+`test/premiere.test.ts` counts the figures again from the records and fails on a difference, a missing figure, a figure
+typed into the page, or a file in this folder that the code would write differently.
 
 **The look.** Behind the text, calm and still: deep navy (#0a1020), a very faint static dot grid (a dot every 36 px,
 white at 7%), a soft vignette, and a drift of half a pixel a second, hardly seen; in the picture only, never the bars.
-It fades in from 0:06, so the hook stays on black. In the top bar, 0:06 to 2:29, quiet: “Max Geurtsen ·
+It fades in from 0:06, so the hook stays on black. In the top bar, 0:06 to 2:48, quiet: “Max Geurtsen ·
 Purser” left and “Built on Airwallex · Metal · Claude” right (Inter Medium 20 px, grey: white at 46%, 64 px from the
 edges), text only, no logos. Every text colour is WCAG AA over the brightest point of that background (a dot; the
 test computes it), and the corner credits 4.6:1 on the black bar.

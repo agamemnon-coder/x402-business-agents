@@ -178,6 +178,10 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
     });
   }
   if (path === "/assets/approve.css") return new Response(pages.css, { headers: { ...COMMON_HEADERS, "content-type": "text/css; charset=utf-8" } });
+  // A link pasted with the sentence's full stop or comma on it ("…/judge." in a form, jury review, 7 Nov, #18) goes to
+  // the same path without it, its query kept. Only a trailing "." or ","; the page itself is then answered as usual.
+  const trimmed = path.replace(/[.,]+$/, "");
+  if (trimmed !== path && trimmed.startsWith("/")) return new Response(null, { status: 302, headers: { ...COMMON_HEADERS, location: trimmed + new URL(req.url).search } });
   return null;
 }
 

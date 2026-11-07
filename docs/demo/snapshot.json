@@ -222,7 +222,7 @@
         "model": null,
         "tx": null,
         "awx_id": null,
-        "text": "Dispute DD-a88e8959 decided by code: not refunded, every order signed and paid inside the customer's mandate",
+        "text": "Dispute DD-a88e8959 handled by code: not refunded, every order signed and paid inside the customer's mandate",
         "tone": "ok"
       },
       {
