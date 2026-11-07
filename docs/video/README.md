@@ -112,7 +112,7 @@ The times are the scenes' (`scenes-v6.json`); the music is cut to them afterward
 | 3:10 | `13d-value.mp4` | “The agents do the work. The CFO signs only the exceptions.” | |
 | 3:16 | `14-real.mp4` | What's real, what's ours; the voice reads both columns | |
 | 3:29 | `15-close.mp4` | The ending mirrors the intro: “A price shock.” / “A dispute.” / “A euro bill.”, the closing line in two lines, then the intro's wordmark with “Starter Kit 11” (3:40); Max's name lower left; under the narrator's closing line | |
-| 3:44 | `16-end.mp4` | “Try it yourself”, https://kit11.max-31b.workers.dev/try/sign; from 3:47.5 the end credits (text only, no logos): who does what (built by Max Geurtsen; Airwallex, Metal and Claude by Anthropic, each with its role); thank you to Airwallex, Metal, Anthropic and the hackathon organisers and mentors; the AI-generated voice and music; test money only; the end at 3:58 | |
+| 3:44 | `16-end.mp4` | “Try it yourself”, https://kit11.max-31b.workers.dev/try/sign; from 3:47.5 the end credits (text only, no logos): who does what (built by Max Geurtsen; Airwallex, Metal and Claude by Anthropic, each with its role); thank you to Airwallex, Visa, Metal, Anthropic and the hackathon organisers and mentors; the AI-generated voice and music; test money only; the end at 3:58 | |
 
 ## Recordings
 
