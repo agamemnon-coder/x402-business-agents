@@ -375,3 +375,8 @@ Real: the Airwallex sandbox, Metal testnet, Claude, and Face ID; all money is te
 suppliers, the customer, the merchant, and the second approver (a labelled test passkey, pressed by our build tool,
 Claude Code, on Max's go; in production a second person). Sources for every claim:
 [docs/claims.md](../claims.md).
+- 7 November, the Treasury agent's own tool also holds its reason to the page's amount rule: after the deploy of #87,
+  live Opus once named a number the page did not accept, and the page fell back to the fixed text. submit_advice on
+  /try/sign now refuses such a reason first ("Not recorded: "…" is not one of code's numbers", with code's numbers as
+  it may write them), and the agent writes again within its turns; the page's own check stays behind it
+  (worker/src/agentLine.ts strayRefusal, test/try-agent-line.test.ts).

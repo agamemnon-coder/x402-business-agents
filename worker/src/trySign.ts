@@ -40,7 +40,7 @@ import { alpineInvoice } from "../../src/try/invoiceDoc.js";
 import { adviseTry, signatureLine, type AdviceCall } from "../../src/try/treasuryAdvice.js";
 import { adviceOutOfBounds, licenceNumbers, type TimingFacts } from "../../src/agents/timingCore.js";
 import type { RecordedAgents } from "../../src/try/recorded.js";
-import { AGENT_LINE_DAILY_USD, CODE_LABEL, FIXED_TEXT, READ_BY_CODE, RECORDED_LABEL, adviceGiven, checkReason, liveLabel, moneyForPeople } from "./agentLine.js";
+import { AGENT_LINE_DAILY_USD, CODE_LABEL, FIXED_TEXT, READ_BY_CODE, RECORDED_LABEL, adviceGiven, checkReason, liveLabel, moneyForPeople, strayRefusal } from "./agentLine.js";
 export { PAID_ALONE };
 
 /** Live agent calls (section 6): kept aside per call before it, settled after; per address an hour; everyone a minute. */
@@ -891,8 +891,9 @@ export class TrySignDesk {
     if (!f) return notAsked("code's numbers for this payment did not agree, so the agent was not asked");
     const alone = rulesOf(this.policyOf(world.id).policy).alone_limit;
     const extra = [cents(f.amount) > cents(alone) ? signatureLine(eur(alone)) : `At or below the ${eur(alone)} the agent may pay alone, so this payment needs no signature.`];
-    const live = await this.liveCall(ip, ADVICE_RESERVE_USD, (ask: AgentAsk) => adviseTry(ask, f, extra, { deadlineMs: this.adviceDeadlineMs }), this.advisor);
     const given = (date: string | null) => adviceGiven(f, alone, date ? [date] : []);
+    const reasonCheck = (a: { timing: string; date: string | null; reason: string }) => strayRefusal(a.reason, given(a.date), f);
+    const live = await this.liveCall(ip, ADVICE_RESERVE_USD, (ask: AgentAsk) => adviseTry(ask, f, extra, { deadlineMs: this.adviceDeadlineMs, reasonCheck }), this.advisor);
     const verdict = (a: { timing: "pay_now" | "wait_until"; date: string | null; reason: string }): { says: string } | { bad: string } => {
       const out = adviceOutOfBounds(f, a);
       if (out) return { bad: "its advice is outside code's bounds for today" };

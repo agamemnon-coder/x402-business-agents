@@ -29,8 +29,8 @@ const idOk = (s: string | null | undefined) => (s && /^[A-Za-z0-9_-]{1,128}$/.te
 const shown = (input: Record<string, unknown>): Record<string, unknown> => Object.fromEntries(Object.entries(input ?? {}).slice(0, 6).map(([k, v]) => [k.slice(0, 40), typeof v === "string" ? v.slice(0, 400) : typeof v === "number" || typeof v === "boolean" || v === null ? v : "…"]));
 
 /** The request the agent's first call sends: the runner's model, system prompt, tools and prompt, and one more line of facts. */
-export function adviceRequest(f: TimingFacts, extra: readonly string[], onAdvice: (a: TimingAdviceValue) => void) {
-  const tools = timingTools(f, onAdvice);
+export function adviceRequest(f: TimingFacts, extra: readonly string[], onAdvice: (a: TimingAdviceValue) => void, reasonCheck?: (a: TimingAdviceValue) => string | null) {
+  const tools = timingTools(f, onAdvice, reasonCheck);
   const req: AgentRequest = {
     model: TIMING_MODEL, system: TIMING_SYSTEM, effort: TIMING_EFFORT,
     tools: tools.map((t) => ({ name: t.name, description: t.description, input_schema: apiInputSchema(t.input) })),
@@ -40,12 +40,12 @@ export function adviceRequest(f: TimingFacts, extra: readonly string[], onAdvice
 }
 
 /** The agent's run: at most TIMING_MAX_TURNS calls within the deadline; the advice, or why there is none. Never throws. */
-export async function adviseTry(ask: AgentAsk, f: TimingFacts, extra: readonly string[], o: { deadlineMs?: number; now?: () => number } = {}): Promise<AdviceRun> {
+export async function adviseTry(ask: AgentAsk, f: TimingFacts, extra: readonly string[], o: { deadlineMs?: number; now?: () => number; reasonCheck?: (a: TimingAdviceValue) => string | null } = {}): Promise<AdviceRun> {
   const now = o.now ?? Date.now;
   const started = now();
   const deadline = started + (o.deadlineMs ?? ADVICE_DEADLINE_MS);
   let advice: TimingAdviceValue | null = null;
-  const { req, tools } = adviceRequest(f, extra, (a) => { advice = a; });
+  const { req, tools } = adviceRequest(f, extra, (a) => { advice = a; }, o.reasonCheck);
   const byName = new Map(tools.map((t) => [t.name, t]));
   const calls: AdviceCall[] = [];
   let costUsd = 0, model: string | null = null, why: string | null = null, nudged = false, done = false;
