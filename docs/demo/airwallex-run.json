@@ -1,0 +1,834 @@
+{
+  "run": "awx-1",
+  "mode": "live",
+  "test_money": true,
+  "cards": [
+    {
+      "agent": "sourcing",
+      "last4": "2441",
+      "card_id_last4": "17d0",
+      "read_back": {
+        "active_to": "2027-02-05T12:07:37.841Z",
+        "agent": "sourcing",
+        "currencies": [
+          "EUR"
+        ],
+        "currency": "EUR",
+        "last4": "2441",
+        "mccs": [
+          "5734"
+        ],
+        "monthly": "100.00",
+        "per_tx": "30.00",
+        "policy": {
+          "active_days": 90,
+          "currencies": [
+            "EUR"
+          ],
+          "mccs": [
+            "5734"
+          ],
+          "monthly": "100.00",
+          "per_tx": "30.00"
+        },
+        "run": "awx-1",
+        "status": "ACTIVE"
+      },
+      "read_back_end": {
+        "agent": "sourcing",
+        "last4": "2441",
+        "monthly": "100.00",
+        "per_tx": "45.00",
+        "run": "awx-1",
+        "status": "ACTIVE"
+      }
+    },
+    {
+      "agent": "support",
+      "last4": "4175",
+      "card_id_last4": "bd3b",
+      "read_back": {
+        "active_to": "2027-02-05T12:07:37.841Z",
+        "agent": "support",
+        "currencies": [
+          "EUR"
+        ],
+        "currency": "EUR",
+        "last4": "4175",
+        "mccs": [
+          "7372"
+        ],
+        "monthly": "150.00",
+        "per_tx": "60.00",
+        "policy": {
+          "active_days": 90,
+          "currencies": [
+            "EUR"
+          ],
+          "mccs": [
+            "7372"
+          ],
+          "monthly": "150.00",
+          "per_tx": "60.00"
+        },
+        "run": "awx-1",
+        "status": "ACTIVE"
+      },
+      "read_back_end": {
+        "agent": "support",
+        "last4": "4175",
+        "monthly": "150.00",
+        "per_tx": "60.00",
+        "run": "awx-1",
+        "status": "ACTIVE"
+      }
+    },
+    {
+      "agent": "treasury",
+      "last4": "1562",
+      "card_id_last4": "84cd",
+      "read_back": {
+        "active_to": "2027-02-05T12:07:37.841Z",
+        "agent": "treasury",
+        "currencies": [
+          "EUR"
+        ],
+        "currency": "EUR",
+        "last4": "1562",
+        "mccs": [
+          "5734"
+        ],
+        "monthly": "50.00",
+        "per_tx": "25.00",
+        "policy": {
+          "active_days": 90,
+          "currencies": [
+            "EUR"
+          ],
+          "mccs": [
+            "5734"
+          ],
+          "monthly": "50.00",
+          "per_tx": "25.00"
+        },
+        "run": "awx-1",
+        "status": "ACTIVE"
+      },
+      "read_back_end": {
+        "agent": "treasury",
+        "last4": "1562",
+        "monthly": "50.00",
+        "per_tx": "25.00",
+        "run": "awx-1",
+        "status": "ACTIVE"
+      }
+    }
+  ],
+  "card_transactions": [
+    {
+      "id": "01a1b5e8-5933-7000-94c1-0a9d4115f515",
+      "agent": "sourcing",
+      "last4": "2441",
+      "merchant": "Packwise",
+      "mcc": "5734",
+      "amount": "19.99",
+      "currency": "EUR",
+      "approved": true,
+      "decline_code": null,
+      "source": "webhook",
+      "step": "b",
+      "occurred_at": "2026-11-07T12:07:45.715Z"
+    },
+    {
+      "id": "01a1b5e8-6dc2-7000-95bf-c8fc5e6e2f38",
+      "agent": "sourcing",
+      "last4": "2441",
+      "merchant": "Packwise",
+      "mcc": "5734",
+      "amount": "45.00",
+      "currency": "EUR",
+      "approved": false,
+      "decline_code": "LIMIT_EXCEEDED",
+      "source": "webhook",
+      "step": "c",
+      "occurred_at": "2026-11-07T12:07:50.978Z"
+    },
+    {
+      "id": "01a1b5eb-5c54-7000-8227-1f077fc047f5",
+      "agent": "sourcing",
+      "last4": "2441",
+      "merchant": "Packwise",
+      "mcc": "5734",
+      "amount": "45.00",
+      "currency": "EUR",
+      "approved": true,
+      "decline_code": null,
+      "source": "webhook",
+      "step": "c",
+      "occurred_at": "2026-11-07T12:11:03.124Z"
+    },
+    {
+      "id": "01a1b5eb-6784-7000-8bb2-ecf137506d3f",
+      "agent": "support",
+      "last4": "4175",
+      "merchant": "Packwise",
+      "mcc": "5734",
+      "amount": "19.99",
+      "currency": "EUR",
+      "approved": false,
+      "decline_code": "MERCHANT_CATEGORY_NOT_ALLOWED",
+      "source": "webhook",
+      "step": "d",
+      "occurred_at": "2026-11-07T12:11:05.988Z"
+    }
+  ],
+  "webhooks": [
+    {
+      "event_id": "b32bf82b-8312-3225-a291-4efca74182d5",
+      "name": "issuing.card.active",
+      "object": "card",
+      "object_id": "347c0a41-2b43-487d-ab05-af2a714617d0",
+      "status": "ACTIVE",
+      "amount_cents": null,
+      "currency": null,
+      "agrees": true,
+      "outcome": "sourcing's card is ACTIVE at Airwallex, which matches the policy (ACTIVE)",
+      "received_at": "2026-11-07T12:07:43.633Z"
+    },
+    {
+      "event_id": "73509f88-d674-3e1d-a6ba-a1f0b8ad3956",
+      "name": "issuing.card.active",
+      "object": "card",
+      "object_id": "81a6999f-9ac9-4b6e-ab70-a1e82a8cbd3b",
+      "status": "ACTIVE",
+      "amount_cents": null,
+      "currency": null,
+      "agrees": true,
+      "outcome": "support's card is ACTIVE at Airwallex, which matches the policy (ACTIVE)",
+      "received_at": "2026-11-07T12:07:43.635Z"
+    },
+    {
+      "event_id": "2121d0ff-cc6a-3096-850b-2011729ec2d0",
+      "name": "issuing.card.active",
+      "object": "card",
+      "object_id": "dbbc5675-f539-434b-9942-599c359e84cd",
+      "status": "ACTIVE",
+      "amount_cents": null,
+      "currency": null,
+      "agrees": true,
+      "outcome": "treasury's card is ACTIVE at Airwallex, which matches the policy (ACTIVE)",
+      "received_at": "2026-11-07T12:07:45.728Z"
+    },
+    {
+      "event_id": "8837e56f-ff76-3960-b66f-8051a64eeb4c",
+      "name": "issuing.transaction.succeeded",
+      "object": "card_transaction",
+      "object_id": "01a1b5e8-5933-7000-94c1-0a9d4115f515",
+      "status": "APPROVED",
+      "amount_cents": 1999,
+      "currency": "EUR",
+      "agrees": true,
+      "outcome": "Airwallex approved 19.99 EUR at Packwise",
+      "received_at": "2026-11-07T12:07:47.827Z"
+    },
+    {
+      "event_id": "03ae028a-5ab5-33a0-9afe-793a5e09eb95",
+      "name": "issuing.card_transaction_event.success",
+      "object": "card_transaction",
+      "object_id": "01a1b5e8-5933-7000-94c1-0a9d4115f515",
+      "status": "APPROVED",
+      "amount_cents": 1999,
+      "currency": "EUR",
+      "agrees": true,
+      "outcome": "01a1b5e8 already recorded",
+      "received_at": "2026-11-07T12:07:52.030Z"
+    },
+    {
+      "event_id": "7b6e9b3c-d66c-32af-b3f9-e18ca794a457",
+      "name": "issuing.transaction.failed",
+      "object": "card_transaction",
+      "object_id": "01a1b5e8-6dc2-7000-95bf-c8fc5e6e2f38",
+      "status": "DECLINED",
+      "amount_cents": 4500,
+      "currency": "EUR",
+      "agrees": true,
+      "outcome": "Airwallex declined 45.00 EUR at Packwise",
+      "received_at": "2026-11-07T12:07:54.129Z"
+    },
+    {
+      "event_id": "5c1f6f0f-fd2f-30ea-9d1f-c575741215d2",
+      "name": "issuing.card_transaction_event.failed",
+      "object": "card_transaction",
+      "object_id": "01a1b5e8-6dc2-7000-95bf-c8fc5e6e2f38",
+      "status": "DECLINED",
+      "amount_cents": 4500,
+      "currency": "EUR",
+      "agrees": true,
+      "outcome": "01a1b5e8 already recorded",
+      "received_at": "2026-11-07T12:07:58.333Z"
+    },
+    {
+      "event_id": "f471902b-214d-3023-a564-866c5c3282c7",
+      "name": "issuing.transaction.succeeded",
+      "object": "card_transaction",
+      "object_id": "01a1b5eb-5c54-7000-8227-1f077fc047f5",
+      "status": "APPROVED",
+      "amount_cents": 4500,
+      "currency": "EUR",
+      "agrees": true,
+      "outcome": "Airwallex approved 45.00 EUR at Packwise",
+      "received_at": "2026-11-07T12:11:05.326Z"
+    },
+    {
+      "event_id": "b25d4482-cc47-3269-be54-8b76b8e7f9ca",
+      "name": "issuing.card_transaction_event.success",
+      "object": "card_transaction",
+      "object_id": "01a1b5eb-5c54-7000-8227-1f077fc047f5",
+      "status": "APPROVED",
+      "amount_cents": 4500,
+      "currency": "EUR",
+      "agrees": true,
+      "outcome": "01a1b5eb already recorded",
+      "received_at": "2026-11-07T12:11:07.423Z"
+    },
+    {
+      "event_id": "f90a66dd-fe64-3992-9416-d5ae700fa201",
+      "name": "issuing.transaction.failed",
+      "object": "card_transaction",
+      "object_id": "01a1b5eb-6784-7000-8bb2-ecf137506d3f",
+      "status": "DECLINED",
+      "amount_cents": 1999,
+      "currency": "EUR",
+      "agrees": true,
+      "outcome": "Airwallex declined 19.99 EUR at Packwise",
+      "received_at": "2026-11-07T12:11:07.425Z"
+    },
+    {
+      "event_id": "ae320910-5247-3d8b-a9fa-7267d7ebec27",
+      "name": "issuing.card_transaction_event.failed",
+      "object": "card_transaction",
+      "object_id": "01a1b5eb-6784-7000-8bb2-ecf137506d3f",
+      "status": "DECLINED",
+      "amount_cents": 1999,
+      "currency": "EUR",
+      "agrees": true,
+      "outcome": "01a1b5eb already recorded",
+      "received_at": "2026-11-07T12:11:11.649Z"
+    },
+    {
+      "event_id": "6c961ad3-c431-4e4c-bf4e-9ff762a148ea",
+      "name": "payout.transfer.scheduled",
+      "object": "transfer",
+      "object_id": "738a4263-6d6c-4de8-94a3-93da1c175fb4",
+      "status": "SCHEDULED",
+      "amount_cents": 24000,
+      "currency": "EUR",
+      "agrees": true,
+      "outcome": "payout for SLL-2026-11 is SCHEDULED at Airwallex, which matches the ledger (SCHEDULED)",
+      "received_at": "2026-11-07T12:12:24.464Z"
+    },
+    {
+      "event_id": "89f0feb0-2c4a-48e9-9609-478e89e06dad",
+      "name": "payout.transfer.processing",
+      "object": "transfer",
+      "object_id": "738a4263-6d6c-4de8-94a3-93da1c175fb4",
+      "status": "PROCESSING",
+      "amount_cents": 24000,
+      "currency": "EUR",
+      "agrees": true,
+      "outcome": "payout for SLL-2026-11 is PROCESSING at Airwallex, which matches the ledger (SCHEDULED)",
+      "received_at": "2026-11-07T12:12:24.466Z"
+    },
+    {
+      "event_id": "f5f8b974-9ce2-41c8-80b2-9bd590848647",
+      "name": "payout.transfer.sent",
+      "object": "transfer",
+      "object_id": "738a4263-6d6c-4de8-94a3-93da1c175fb4",
+      "status": "SENT",
+      "amount_cents": 24000,
+      "currency": "EUR",
+      "agrees": true,
+      "outcome": "payout for SLL-2026-11 is SENT at Airwallex, which matches the ledger (PAID)",
+      "received_at": "2026-11-07T12:12:26.575Z"
+    },
+    {
+      "event_id": "00ea25aa-a578-48cf-bca7-701b1e0e2578",
+      "name": "payout.transfer.paid",
+      "object": "transfer",
+      "object_id": "738a4263-6d6c-4de8-94a3-93da1c175fb4",
+      "status": "PAID",
+      "amount_cents": 24000,
+      "currency": "EUR",
+      "agrees": true,
+      "outcome": "payout for SLL-2026-11 is PAID at Airwallex, which matches the ledger (PAID)",
+      "received_at": "2026-11-07T12:12:26.576Z"
+    },
+    {
+      "event_id": "fafcc208-bd1e-43d9-bd09-69191a8aa81fSCHEDULED",
+      "name": "conversion.scheduled",
+      "object": "conversion",
+      "object_id": "fafcc208-bd1e-43d9-bd09-69191a8aa81f",
+      "status": "SCHEDULED",
+      "amount_cents": 62350,
+      "currency": "EUR",
+      "agrees": true,
+      "outcome": "conversion is SCHEDULED at Airwallex, which matches the ledger (SETTLED)",
+      "received_at": "2026-11-07T12:13:20.839Z"
+    },
+    {
+      "event_id": "fafcc208-bd1e-43d9-bd09-69191a8aa81fSETTLED",
+      "name": "conversion.settled",
+      "object": "conversion",
+      "object_id": "fafcc208-bd1e-43d9-bd09-69191a8aa81f",
+      "status": "SETTLED",
+      "amount_cents": 62350,
+      "currency": "EUR",
+      "agrees": true,
+      "outcome": "conversion is SETTLED at Airwallex, which matches the ledger (SETTLED)",
+      "received_at": "2026-11-07T12:13:20.840Z"
+    },
+    {
+      "event_id": "2274416f-f59b-4d82-a5fd-82c02884bdf7",
+      "name": "payout.transfer.processing",
+      "object": "transfer",
+      "object_id": "4140dee2-6373-4eb4-a71f-bf69130f96a7",
+      "status": "PROCESSING",
+      "amount_cents": 185000,
+      "currency": "EUR",
+      "agrees": true,
+      "outcome": "payout for BTX-2026-11 is PROCESSING at Airwallex, which matches the ledger (SCHEDULED)",
+      "received_at": "2026-11-07T12:13:20.841Z"
+    },
+    {
+      "event_id": "fe0ac872-f8de-4d50-98c3-86ac8ae77ac7",
+      "name": "payout.transfer.scheduled",
+      "object": "transfer",
+      "object_id": "4140dee2-6373-4eb4-a71f-bf69130f96a7",
+      "status": "SCHEDULED",
+      "amount_cents": 185000,
+      "currency": "EUR",
+      "agrees": true,
+      "outcome": "payout for BTX-2026-11 is SCHEDULED at Airwallex, which matches the ledger (SCHEDULED)",
+      "received_at": "2026-11-07T12:13:20.841Z"
+    },
+    {
+      "event_id": "0ad9d33d-d75d-48fd-b322-c6e7e700bb52",
+      "name": "payout.transfer.sent",
+      "object": "transfer",
+      "object_id": "4140dee2-6373-4eb4-a71f-bf69130f96a7",
+      "status": "SENT",
+      "amount_cents": 185000,
+      "currency": "EUR",
+      "agrees": true,
+      "outcome": "payout for BTX-2026-11 is SENT at Airwallex, which matches the ledger (SENT)",
+      "received_at": "2026-11-07T12:13:22.962Z"
+    },
+    {
+      "event_id": "20b8fbdb-0352-48eb-9360-226a3bf5fa90",
+      "name": "payout.transfer.paid",
+      "object": "transfer",
+      "object_id": "4140dee2-6373-4eb4-a71f-bf69130f96a7",
+      "status": "PAID",
+      "amount_cents": 185000,
+      "currency": "EUR",
+      "agrees": true,
+      "outcome": "payout for BTX-2026-11 is PAID at Airwallex, which matches the ledger (SENT)",
+      "received_at": "2026-11-07T12:13:22.963Z"
+    }
+  ],
+  "declines_met": [
+    {
+      "transaction_id": "01a1b5e8-6dc2-7000-95bf-c8fc5e6e2f38",
+      "agent": "sourcing",
+      "decline_code": "LIMIT_EXCEEDED",
+      "by": "claude",
+      "model": "claude-haiku-5-5",
+      "proposal_id": "P-0001",
+      "said": "The 45.00 EUR Packwise software purchase was declined only because it exceeds the 30.00 EUR per-purchase limit, and the monthly limit still has room (19.99 of 100.00 spent), so I am requesting a per-purchase limit of 45.00 EUR for this one purchase."
+    },
+    {
+      "transaction_id": "01a1b5eb-6784-7000-8bb2-ecf137506d3f",
+      "agent": "support",
+      "decline_code": "MERCHANT_CATEGORY_NOT_ALLOWED",
+      "by": "claude",
+      "model": "claude-haiku-5-5",
+      "proposal_id": null,
+      "said": "The decline was MERCHANT_CATEGORY_NOT_ALLOWED, not a limit. The card is within its 60.00 per-purchase and 150.00 monthly limits with 0.00 spent, so raising limits would not help. To buy from Packwise, ask the CFO to allow this merchant category on the card, or use another payment method or a permitted vendor."
+    }
+  ],
+  "proposals": [
+    {
+      "proposal_id": "P-0001",
+      "kind": "policy_change",
+      "created_by": "sourcing",
+      "status": "EXECUTED",
+      "terms_sha256": "cea29e5b08c1bfefd44437cfe469196b47a18afcc65487cb5e6b4649ebe6c622",
+      "decided_by": "max (passkey GOvzfcV_)",
+      "method": "passkey",
+      "virtual_test_passkey": false
+    },
+    {
+      "proposal_id": "P-0002",
+      "kind": "invoice_payment",
+      "created_by": "treasury",
+      "status": "EXECUTED",
+      "terms_sha256": "b0f075d94da077084d7fc6745f99e2c2253548d967e9c0413bffa9748dbbf7bb",
+      "decided_by": "max (passkey GOvzfcV_)",
+      "method": "passkey",
+      "virtual_test_passkey": false
+    },
+    {
+      "proposal_id": "P-0003",
+      "kind": "invoice_payment",
+      "created_by": "treasury",
+      "status": "EXECUTED",
+      "terms_sha256": "68f85b999c30fbf0ed2a79d574cafc447dfb92db77e707a2a208feb62823e38a",
+      "decided_by": "max (passkey GOvzfcV_)",
+      "method": "passkey",
+      "virtual_test_passkey": false
+    }
+  ],
+  "invoices": [
+    {
+      "invoice_no": "SLL-2026-11",
+      "proposal_id": "P-0002",
+      "plan": "pay_from_eur",
+      "eur_available_before": "9968920.73",
+      "eur_floor": "25000.00",
+      "eur_committed": "9942420.73",
+      "free_eur": "1500.00",
+      "need_eur": "260.00",
+      "amount": "240.00",
+      "fee_max": "20.00",
+      "quote": null,
+      "conversion_id": null,
+      "transfer_id": "738a4263-6d6c-4de8-94a3-93da1c175fb4",
+      "transfer_request_id": "0439af88-a9c7-45f6-8d15-d15f66b70f0e",
+      "status": "PAID",
+      "fee": "EUR 13.50",
+      "approval_sha256": "b0f075d94da077084d7fc6745f99e2c2253548d967e9c0413bffa9748dbbf7bb",
+      "planned_at": "2026-11-07T12:11:13.896Z",
+      "paid_at": "2026-11-07T12:12:26.568Z"
+    },
+    {
+      "invoice_no": "BTX-2026-11",
+      "proposal_id": "P-0003",
+      "plan": "convert_shortfall",
+      "eur_available_before": "9968667.23",
+      "eur_floor": "25000.00",
+      "eur_committed": "9942420.73",
+      "free_eur": "1246.50",
+      "need_eur": "1870.00",
+      "amount": "1850.00",
+      "fee_max": "20.00",
+      "quote": {
+        "quote_id": "1605354b-5f6f-3ab5-8dbc-3af479c54b33",
+        "buy_eur": "623.50",
+        "sell_usd": "704.45",
+        "rate": "1.129833",
+        "valid_from": "2026-11-07T12:12:33.000Z"
+      },
+      "conversion_id": "fafcc208-bd1e-43d9-bd09-69191a8aa81f",
+      "transfer_id": "4140dee2-6373-4eb4-a71f-bf69130f96a7",
+      "transfer_request_id": "fb899744-ae5e-4ffb-a73c-0770fffedd50",
+      "status": "PAID",
+      "fee": "EUR 13.50",
+      "approval_sha256": "68f85b999c30fbf0ed2a79d574cafc447dfb92db77e707a2a208feb62823e38a",
+      "planned_at": "2026-11-07T12:12:31.711Z",
+      "paid_at": "2026-11-07T12:13:23.039Z"
+    }
+  ],
+  "attempts": [
+    {
+      "step": "a",
+      "outcome": "started",
+      "cause": null,
+      "at": "2026-11-07T12:07:37.839Z"
+    },
+    {
+      "step": "a",
+      "outcome": "done",
+      "cause": null,
+      "at": "2026-11-07T12:07:45.223Z"
+    },
+    {
+      "step": "b",
+      "outcome": "started",
+      "cause": null,
+      "at": "2026-11-07T12:07:45.224Z"
+    },
+    {
+      "step": "b",
+      "outcome": "done",
+      "cause": null,
+      "at": "2026-11-07T12:07:49.457Z"
+    },
+    {
+      "step": "c",
+      "outcome": "started",
+      "cause": null,
+      "at": "2026-11-07T12:07:49.458Z"
+    },
+    {
+      "step": "c",
+      "outcome": "done",
+      "cause": null,
+      "at": "2026-11-07T12:11:05.649Z"
+    },
+    {
+      "step": "d",
+      "outcome": "started",
+      "cause": null,
+      "at": "2026-11-07T12:11:05.649Z"
+    },
+    {
+      "step": "d",
+      "outcome": "done",
+      "cause": null,
+      "at": "2026-11-07T12:11:08.492Z"
+    },
+    {
+      "step": "f1",
+      "outcome": "started",
+      "cause": null,
+      "at": "2026-11-07T12:11:08.492Z"
+    },
+    {
+      "step": "f1",
+      "outcome": "done",
+      "cause": null,
+      "at": "2026-11-07T12:12:28.559Z"
+    },
+    {
+      "step": "f2",
+      "outcome": "started",
+      "cause": null,
+      "at": "2026-11-07T12:12:28.560Z"
+    },
+    {
+      "step": "f2",
+      "outcome": "done",
+      "cause": null,
+      "at": "2026-11-07T12:13:24.138Z"
+    },
+    {
+      "step": "close",
+      "outcome": "started",
+      "cause": null,
+      "at": "2026-11-07T12:13:24.138Z"
+    },
+    {
+      "step": "close",
+      "outcome": "done",
+      "cause": null,
+      "at": "2026-11-07T12:13:26.563Z"
+    }
+  ],
+  "verify": [
+    {
+      "level": "ok",
+      "what": "audit log hash chain",
+      "detail": "89 rows, head 238d81738c12018672b1b48cfd3dcecef1e1fc5cdd6e5c0c8be0f096ee204a7c"
+    },
+    {
+      "level": "ok",
+      "what": "passkey approval P-0001",
+      "detail": "signed by max's passkey GOvzfcV_ over cea29e5b…"
+    },
+    {
+      "level": "ok",
+      "what": "passkey approval P-0002",
+      "detail": "signed by max's passkey GOvzfcV_ over b0f075d9…"
+    },
+    {
+      "level": "ok",
+      "what": "passkey approval P-0003",
+      "detail": "signed by max's passkey GOvzfcV_ over 68f85b99…"
+    },
+    {
+      "level": "ok",
+      "what": "approval methods",
+      "detail": "every approval since the passkey was enrolled was signed with it"
+    },
+    {
+      "level": "ok",
+      "what": "policy v1",
+      "detail": "22 rules, sha256 40fd91d2…, from 2026-11-07T12:07:54.131Z"
+    },
+    {
+      "level": "ok",
+      "what": "policy v2",
+      "detail": "24 rules, sha256 e54693ea…, from 2026-11-07T12:11:13.896Z"
+    },
+    {
+      "level": "ok",
+      "what": "P-0001 approved",
+      "detail": "under policy v1 (sha256 40fd91d2…), policy_change"
+    },
+    {
+      "level": "ok",
+      "what": "P-0002 approved",
+      "detail": "under policy v2 (sha256 e54693ea…), invoice_payment"
+    },
+    {
+      "level": "ok",
+      "what": "P-0003 approved",
+      "detail": "under policy v2 (sha256 e54693ea…), invoice_payment"
+    },
+    {
+      "level": "note",
+      "what": "finality certificates",
+      "detail": "none looked up in this ledger (the runner fetches them every minute)"
+    },
+    {
+      "level": "ok",
+      "what": "P-0002 transfer 738a4263-6d6c-4de8-94a3-93da1c175fb4",
+      "detail": "EUR 240.00 to Stockline Data GmbH, approval hash in metadata, PAID"
+    },
+    {
+      "level": "ok",
+      "what": "P-0002 fee",
+      "detail": "EUR 13.50, ceiling EUR 20.00"
+    },
+    {
+      "level": "ok",
+      "what": "P-0003 conversion fafcc208-bd1e-43d9-bd09-69191a8aa81f",
+      "detail": "EUR 623.50 for USD 704.45 on quote 1605354b…, SETTLED"
+    },
+    {
+      "level": "ok",
+      "what": "P-0003 transfer 4140dee2-6373-4eb4-a71f-bf69130f96a7",
+      "detail": "EUR 1850.00 to Bergtex Textil GmbH, approval hash in metadata, PAID"
+    },
+    {
+      "level": "ok",
+      "what": "P-0003 fee",
+      "detail": "EUR 13.50, ceiling EUR 20.00"
+    }
+  ],
+  "reconcile": {
+    "at": "2026-11-07T12:23:56.278Z",
+    "checked": 6,
+    "differences": 0,
+    "skipped": [
+      "Metal payments (no RPC)"
+    ]
+  },
+  "calls": {
+    "airwallex": [
+      {
+        "endpoint": "POST /authentication/login",
+        "calls": 8
+      },
+      {
+        "endpoint": "GET /balances/current",
+        "calls": 9
+      },
+      {
+        "endpoint": "GET /webhooks",
+        "calls": 1
+      },
+      {
+        "endpoint": "GET /issuing/cardholders",
+        "calls": 3
+      },
+      {
+        "endpoint": "GET /issuing/cards",
+        "calls": 4
+      },
+      {
+        "endpoint": "POST /issuing/cards/create",
+        "calls": 3
+      },
+      {
+        "endpoint": "GET /issuing/cards/{id}",
+        "calls": 8
+      },
+      {
+        "endpoint": "POST /simulation/issuing/create",
+        "calls": 4
+      },
+      {
+        "endpoint": "POST /issuing/cards/{id}/update",
+        "calls": 1
+      },
+      {
+        "endpoint": "GET /deposits",
+        "calls": 2
+      },
+      {
+        "endpoint": "GET /beneficiaries",
+        "calls": 2
+      },
+      {
+        "endpoint": "POST /transfers/create",
+        "calls": 2
+      },
+      {
+        "endpoint": "GET /transfers/{id}",
+        "calls": 8
+      },
+      {
+        "endpoint": "POST /simulation/transfers/{id}/transition",
+        "calls": 4
+      },
+      {
+        "endpoint": "GET /fx/rates/current",
+        "calls": 1
+      },
+      {
+        "endpoint": "POST /fx/quotes/create",
+        "calls": 1
+      },
+      {
+        "endpoint": "POST /fx/conversions/create",
+        "calls": 1
+      },
+      {
+        "endpoint": "GET /issuing/transactions",
+        "calls": 6
+      },
+      {
+        "endpoint": "GET /transfers",
+        "calls": 2
+      },
+      {
+        "endpoint": "GET /fx/conversions",
+        "calls": 1
+      }
+    ],
+    "airwallex_total": 71,
+    "budget": 96
+  },
+  "note": "Airwallex sandbox, test money only. Merchant charges and SENT/PAID are the sandbox's simulation endpoints; every approve, decline and decline code is Airwallex's own.",
+  "checks": {
+    "a": {
+      "ok": true,
+      "detail": "3 cards: Airwallex holds each policy limit, MCC list, EUR only and an end date"
+    },
+    "b": {
+      "ok": true,
+      "detail": "01a1b5e8-5933-7000-94c1-0a9d4115f515: 19.99 EUR within the 30.00 limit, approved by Airwallex"
+    },
+    "c": {
+      "ok": true,
+      "detail": "01a1b5e8-6dc2-7000-95bf-c8fc5e6e2f38: 45.00 EUR over the 30.00 limit, declined by Airwallex LIMIT_EXCEEDED"
+    },
+    "d": {
+      "ok": true,
+      "detail": "01a1b5eb-6784-7000-8bb2-ecf137506d3f: MCC 5734 on a card for MCC 7372, declined by Airwallex MERCHANT_CATEGORY_NOT_ALLOWED"
+    },
+    "e": {
+      "ok": true,
+      "detail": "4 card transactions recorded from Airwallex webhooks; sourcing (claude) read LIMIT_EXCEEDED and asked the CFO (P-0001) instead of retrying"
+    },
+    "f": {
+      "ok": true,
+      "detail": "SLL-2026-11: free EUR 1500.00 ≥ 260.00, no FX; BTX-2026-11: free EUR 1246.50 < 1870.00, bought only 623.50 on quote 1605354b-5f6f-3ab5-8dbc-3af479c54b33"
+    },
+    "g": {
+      "ok": true,
+      "detail": "738a4263-6d6c-4de8-94a3-93da1c175fb4 (P-0002), 4140dee2-6373-4eb4-a71f-bf69130f96a7 (P-0003): SWIFT, Face ID, approval_sha256 in Airwallex's metadata, PAID"
+    }
+  }
+}
