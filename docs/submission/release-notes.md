@@ -446,3 +446,7 @@ Claude Code, on Max's go; in production a second person). Sources for every clai
   /try/sign now refuses such a reason first ("Not recorded: "…" is not one of code's numbers", with code's numbers as
   it may write them), and the agent writes again within its turns; the page's own check stays behind it
   (worker/src/agentLine.ts strayRefusal, test/try-agent-line.test.ts).
+- 7 November, one release of the day's branches together (release-7nov): the Airi hosted-page checkout and its order
+  ref fix (#89), the Treasury advice retry, /try/sign's animations, review points and hash chain (#90), the jury texts in
+  the demo's order (#91), the phone approval page on one screen with an explicit switch to a new run's key (#92), and
+  the Airi run on /airwallex, /proof and in the docs (vic-1-record). 3028 tests in 295 files, all passing.
