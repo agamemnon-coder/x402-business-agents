@@ -155,49 +155,53 @@ one over the limit, one in the wrong category.
 The agent asked the CFO for a raise, not a retry.
 
 40
-00:02:09,500 --> 00:02:14,167
+00:02:09,350 --> 00:02:14,046
 With Airwallex's Airi, agents paid with a single-use Visa credential:
 
 41
-00:02:14,217 --> 00:02:16,355
+00:02:14,096 --> 00:02:16,247
 alone within the limit, above it
 
 42
-00:02:16,405 --> 00:02:18,338
+00:02:16,297 --> 00:02:18,242
 only after the CFO's Face ID.
 
 43
-00:02:18,388 --> 00:02:22,850
-A disallowed merchant was refused by Purser before Airi was asked.
+00:02:18,292 --> 00:02:20,443
+Terms changed after that Face ID
 
 44
+00:02:20,493 --> 00:02:22,850
+were refused before Airi was asked.
+
+45
 00:02:23,000 --> 00:02:24,524
 The agents do the work.
 
-45
+46
 00:02:24,574 --> 00:02:26,850
 The CFO signs only the exceptions.
 
-46
+47
 00:02:27,350 --> 00:02:31,231
 Real: the Airwallex sandbox, Metal testnet, Claude and Face ID.
 
-47
+48
 00:02:31,281 --> 00:02:34,850
 Ours: the customer, the suppliers, a test second approver.
 
-48
+49
 00:02:35,500 --> 00:02:38,980
 A price shock, a dispute, a euro bill.
 
-49
+50
 00:02:39,130 --> 00:02:43,149
 Claude decided, Airwallex and Metal held the limits, and
 
-50
+51
 00:02:43,199 --> 00:02:46,200
 the CFO signed only what went beyond them.
 
-51
+52
 00:02:46,350 --> 00:02:47,850
 Purser. Starter Kit 11.

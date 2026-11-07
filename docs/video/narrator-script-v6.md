@@ -33,7 +33,7 @@ the length at a calm pace, about 2.5 words a second.
 | 12-tamper | EUR 1,850.01 (6) | Change one cent, and the same signature is refused. … … One cent. Worthless. | 5 s + 1 s silence |
 | 13-proof | 24/24, then the stops (12) | All twenty-four decisions by Claude. Sixteen stops, nothing paid over a limit: twelve skipped by Claude, two refused by Metal, one rejected by the CFO, and one planted instruction ignored. | 12 s |
 | 13b-awx | Airwallex declines, awx-1 (11) | Airwallex itself declined two charges: one over the limit, one in the wrong category. The agent asked the CFO for a raise, not a retry. | 10 s |
-| 13c-airi | Visa Intelligent Commerce via Airi (14) | With Airwallex's Airi, agents paid with a single-use Visa credential: alone within the limit, above it only after the CFO's Face ID. A disallowed merchant was refused by Purser before Airi was asked. | 13 s |
+| 13c-airi | Visa Intelligent Commerce via Airi (14) | With Airwallex's Airi, agents paid with a single-use Visa credential: alone within the limit, above it only after the CFO's Face ID. Terms changed after that Face ID were refused before Airi was asked. | 13 s |
 | 13d-value | "The agents do the work. The CFO signs only the exceptions." (4) | The agents do the work. The CFO signs only the exceptions. | 4 s |
 | 14-real | What's real, what's ours (8) | Real: the Airwallex sandbox, Metal testnet, Claude and Face ID. Ours: the customer, the suppliers, a test second approver. | 7.5 s |
 | 15-close | The ending, the wordmark (13) | A price shock, a dispute, a euro bill. … Claude decided, Airwallex and Metal held the limits, and the CFO signed only what went beyond them. … Purser. Starter Kit 11. | 11 s |

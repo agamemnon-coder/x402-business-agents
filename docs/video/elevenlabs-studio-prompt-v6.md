@@ -22,7 +22,7 @@ VOICE
 1:40.2  Change one cent, and the same signature is refused. [pause 1.0s] One cent. Worthless.
 1:46.0  All twenty-four decisions by Claude. Sixteen stops, nothing paid over a limit: twelve skipped by Claude, two refused by Metal, one rejected by the CFO, and one planted instruction ignored.
 1:58.5  Airwallex itself declined two charges: one over the limit, one in the wrong category. The agent asked the CFO for a raise, not a retry.
-2:09.5  With Airwallex's Airi, agents paid with a single-use Visa credential: alone within the limit, above it only after the CFO's Face ID. A disallowed merchant was refused by Purser before Airi was asked.
+2:09.3  With Airwallex's Airi, agents paid with a single-use Visa credential: alone within the limit, above it only after the CFO's Face ID. Terms changed after that Face ID were refused before Airi was asked.
 2:23.0  The agents do the work. The CFO signs only the exceptions.
 2:27.3  Real: the Airwallex sandbox, Metal testnet, Claude and Face ID. Ours: the customer, the suppliers, a test second approver.
 2:35.5  A price shock, a dispute, a euro bill. [pause 0.4s] Claude decided, Airwallex and Metal held the limits, and the CFO signed only what went beyond them. [pause 0.4s] Purser. Starter Kit 11.

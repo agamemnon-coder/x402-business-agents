@@ -16,6 +16,15 @@ Studio, written from the same times. The script with every picture, line and sou
 Film v5 (2:42, 5 November, the main run only) is kept as it was: [narrator-script.md](narrator-script.md),
 [premiere-script-v5.md](premiere-script-v5.md), [script-v5.md](script-v5.md), `scenes-v5.json` and `subtitles-v5.srt`.
 
+## Film v7 (7 November, evening): 13c with the second Airi run
+
+The same film as v6, 2:59, with one scene changed: **13c-airi** now shows the second live Airi run (vic-2,
+[run log](../runs/2026-11-07-vic-2.md), record `docs/demo/vic-2-run.json`) as its third row, "✕ Changed after Face ID ·
+EUR 30 → 190 · not what the CFO signed · Airi was never asked", and "5 of 5 and 7 of 7 checks"; the disallowed merchant
+stays in Max's line above the rows. The voice-over's second sentence is now "Terms changed after that Face ID were
+refused before Airi was asked." (the same voice and settings, the same scene times). Only 13c was rendered again; the
+rest of the picture and the music are v6's. The file names in this folder keep their v6 names.
+
 ## What changed since v5
 
 - **The hook:** “AI agents are starting to spend money.” (was “can now”: accuracy).

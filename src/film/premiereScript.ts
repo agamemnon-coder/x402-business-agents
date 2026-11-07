@@ -243,7 +243,7 @@ const USES: Record<string, string[]> = {
   "11-turn": ["rec.reader", "rec.advisor", "rec.tamper", "rec.trick", "rec.day"],
   "12-tamper": ["try.amount", "try.tampered", "try.hash", "try.tamperedHash"],
   "13b-awx": ["awx.day", "awx.declines", "awx.limitCode", "awx.limitAmount", "awx.limitAgent", "awx.limit", "awx.mccCode", "awx.mcc", "awx.mccAgent", "awx.mccAllowed", "awx.raise", "awx.payouts", "awx.payoutCount", "awx.note"],
-  "13c-airi": ["airi.day", "airi.alone", "airi.limit", "airi.cfo", "airi.proposal", "airi.refused", "airi.checks", "airi.label"],
+  "13c-airi": ["airi.day", "airi.alone", "airi.limit", "airi.cfo", "airi.proposal", "airi.refused", "airi.checks", "airi.label", "vic2.from", "vic2.to", "vic2.checks"],
   "13-proof": ["run.day", "specs.decisions", "specs.byClaude", "specs.fallbacks", "specs.sourcing", "specs.support", "specs.treasury", "specs.stops", "specs.overLimit", "specs.stopsClaude", "specs.stopsMetal", "specs.stopsCfo", "specs.stopsPlanted"],
 };
 export const factsUsed = (id: string) => USES[id] ?? [];

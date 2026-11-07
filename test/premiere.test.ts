@@ -465,22 +465,22 @@ describe("the two live runs of 7 November (v6): each figure its own record's", (
     expect(data.voice["13b-awx"]!.map((l) => l.text).join(" ")).toBe("Airwallex itself declined two charges: one over the limit, one in the wrong category. The agent asked the CFO for a raise, not a retry.");
   });
 
-  it("the Airi run (13c): Max's heading and line, three outcomes, 5 of 5 checks, the run's own label", () => {
+  it("the Airi run (13c): Max's heading and line, three outcomes and the second run's refusal after the Face ID, the checks of both, the run's own label", () => {
     expect(screen("13c-airi")).toEqual({
       head: "Visa Intelligent Commerce via Airwallex's Airi: a live run (7 Nov)",
       line: "Agents paid with a single-use Visa (VIC) credential from Airi: within the limit on their own, above it only after the CFO's Face ID, and a disallowed merchant was refused by Purser before Airi was asked.",
       rows: [
         { ok: true, label: "✓ Paid alone", amount: "EUR 12.00", detail: "within the EUR 20.00 limit · one passkey tap in Airi" },
         { ok: true, label: "✓ Paid after Face ID", amount: "EUR 45.00 · P-0002", detail: "the CFO's Face ID in Purser, then one tap in Airi" },
-        { ok: false, label: "✕ Refused by Purser", amount: "EUR 5.00", detail: "a merchant not allowed · Airi was never asked" },
+        { ok: false, label: "✕ Changed after Face ID", amount: "EUR 30 → 190", detail: "not what the CFO signed · Airi was never asked" },
       ],
-      checks: "5 of 5 checks",
+      checks: "5 of 5 and 7 of 7 checks",
       label: "Airwallex sandbox · test card · test money",
     });
     const by = (route: string) => airi.purchases.find((p) => p.route === route)!;
     expect([by("alone").amount, by("cfo").amount, by("cfo").proposal_id, by("refused").amount, by("refused").airi_calls, airi.policy.alone_max_eur]).toEqual(["12.00", "45.00", "P-0002", "5.00", 0, "20.00"]);
     expect(Object.values(airi.checks).filter((c) => c.ok)).toHaveLength(5);
-    expect(data.voice["13c-airi"]!.map((l) => l.text).join(" ")).toBe("With Airwallex's Airi, agents paid with a single-use Visa credential: alone within the limit, above it only after the CFO's Face ID. A disallowed merchant was refused by Purser before Airi was asked.");
+    expect(data.voice["13c-airi"]!.map((l) => l.text).join(" ")).toBe("With Airwallex's Airi, agents paid with a single-use Visa credential: alone within the limit, above it only after the CFO's Face ID. Terms changed after that Face ID were refused before Airi was asked.");
   });
 
   const broken: [string, (x: SideRuns) => void, RegExp][] = [
@@ -649,7 +649,7 @@ describe("docs/video/ holds what the code writes", () => {
   it("says the film's length and pace as the code has them, and its voice as what it is", () => {
     const words = voiceTimeline(asWritten).reduce((k, l) => k + l.text.split(/\s+/).length, 0);
     const length = clock(premiereSeconds());
-    expect([words, length]).toEqual([377, "2:59"]);
+    expect([words, length]).toEqual([378, "2:59"]);
     // The README, the claims and Max's checklist describe the film on YouTube, v5 (319 words in 2:42), until v6 is
     // voiced and uploaded; they are not changed here.
     const published = { words: 319, length: "2:42" };
