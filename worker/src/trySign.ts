@@ -15,6 +15,7 @@
 // registered. A proposal that fails a check has nothing to sign, and the server refuses a signature for it anyway.
 
 import { COMMON_HEADERS, rateKey, type Sql } from "./core.js";
+import { ATTACKS, runTrick, type Attack } from "./trick.js";
 import { verifyAssertion, type PublicKeyXY } from "./webauthn.js";
 import { QuoteUnavailable, type FxQuote, type FxSource } from "./fxQuote.js";
 import { AGENTS, type Agent } from "../../src/config/policy.js";
@@ -317,6 +318,7 @@ const BODY: Record<string, Record<string, (v: unknown) => boolean>> = {
   "/world": {},
   "/passkey": { token: optional((v) => typeof v === "string"), credential: () => true },
   "/quote": { token: optional((v) => typeof v === "string") },
+  "/trick": { token: optional((v) => typeof v === "string"), attack: (v) => typeof v === "string" && (ATTACKS as readonly string[]).includes(v) },
   "/sign": { token: optional((v) => typeof v === "string"), proposal_id: (v) => typeof v === "string" && PROPOSAL_ID.test(v), canonical: (v) => typeof v === "string" && v.length <= MAX_TERMS, credential: () => true },
   // Step 0: the agent's whole policy (read field by field in src/try/policy.ts); a looser one with its terms and signature.
   "/policy": {
@@ -330,7 +332,7 @@ const fits = (o: Record<string, unknown>, shape: Record<string, (v: unknown) => 
 export function wellFormed(sub: string, body: Record<string, unknown>): boolean {
   const shape = BODY[sub];
   if (!shape || !fits(body, shape)) return false;
-  if (sub === "/world" || sub === "/quote") return true;
+  if (sub === "/world" || sub === "/quote" || sub === "/trick") return true;
   if (sub === "/policy" && body.credential === undefined) return body.canonical === undefined;
   if (sub === "/policy" && body.canonical === undefined) return false;
   const c = body.credential;
@@ -387,7 +389,7 @@ export class TrySignDesk {
     const path = url.pathname;
     if (!isTrySignPath(path)) return trySignNotFound();
     const sub = path.slice("/api/try-sign".length);
-    if (!["/world", "/passkey", "/sign", "/quote", "/policy"].includes(sub)) return trySignNotFound();
+    if (!["/world", "/passkey", "/sign", "/quote", "/policy", "/trick"].includes(sub)) return trySignNotFound();
     if (req.method !== "POST") return answer(405, { error: "use POST" });
     // Only this site's own page may ask: a browser on another site sends its own origin, or none on a form post.
     if (req.headers.get("origin") !== url.origin || req.headers.get("sec-fetch-site") === "cross-site") return answer(403, { error: "ask from the /try/sign page on this site" });
@@ -414,7 +416,8 @@ export class TrySignDesk {
     if (sub !== "/world" && body.token === undefined) return gone();
     if (!wellFormed(sub, body)) {
       return answer(400, { error: sub === "/sign" ? "malformed signature" : sub === "/passkey" ? "malformed passkey" : sub === "/quote" ? "send the world's token only"
-        : sub === "/policy" ? "send the world's token, an agent (sourcing, support or treasury) and its policy; a signature only with its terms" : "send an empty JSON object" });
+        : sub === "/policy" ? "send the world's token, an agent (sourcing, support or treasury) and its policy; a signature only with its terms"
+        : sub === "/trick" ? `send the world's token and an attack: ${ATTACKS.join(" or ")}` : "send an empty JSON object" });
     }
 
     if (sub === "/world") return this.newWorld(url, req.headers.get("cf-connecting-ip") ?? "unknown", nowMs);
@@ -423,6 +426,8 @@ export class TrySignDesk {
     if (sub === "/passkey") return this.registerPasskey(url, ip, world, body);
     if (sub === "/quote") return this.newQuote(ip, world);
     if (sub === "/policy") return this.setPolicy(url, ip, world, body);
+    // 1.3: a fixed attack through Purser's own fraud and injection code; no proposal, no quote, no model call.
+    if (sub === "/trick") return answer(200, { trick: await runTrick(body.attack as Attack) });
     return this.sign(url, ip, world, body);
   }
 
