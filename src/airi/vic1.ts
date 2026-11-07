@@ -75,16 +75,16 @@ export async function preflight(d: Vic1Deps): Promise<{ cli: string; sessionExpi
  * The rail's initial policy in a fresh vic-1 ledger: written once, before any Airi purchase, and audited. Refused in a
  * ledger that already has an Airi setting or purchase: from then on only the CFO changes it (policy_change, Face ID).
  */
-export function seedPolicy(db: DB, now: Date): void {
+export function seedPolicy(db: DB, now: Date, run: string = RUN): void {
   const set = db.prepare("SELECT key FROM settings WHERE key LIKE 'approval.airi_%' OR key LIKE 'airi.merchant.%'").all() as { key: string }[];
   const any = db.prepare("SELECT 1 FROM airi_purchases LIMIT 1").get();
   if (set.length || any) {
     const p = airiPolicy(db);
-    if (p.aloneMaxCents !== 2000 || !p.merchants.includes(new URL(MERCHANT.url).origin)) throw new Vic1Stop("this ledger's Airi policy is not the run's (20.00 alone, the test shop allowed); use a fresh vic-1 ledger");
+    if (p.aloneMaxCents !== 2000 || !p.merchants.includes(new URL(MERCHANT.url).origin)) throw new Vic1Stop(`this ledger's Airi policy is not the run's (20.00 alone, the test shop allowed); use a fresh ${run} ledger`);
     return;
   }
   for (const [k, v] of Object.entries(INITIAL_POLICY)) db.prepare("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)").run(k, v, now.toISOString());
-  audit(db, "system", "airi.policy_initial", RUN, { run: RUN, values: INITIAL_POLICY }, now);
+  audit(db, "system", "airi.policy_initial", run, { run, values: INITIAL_POLICY }, now);
 }
 
 const order = (paymentMethodId: string, p: { amount: string; item: string; url?: string; name?: string; description: string }): AiriPurchaseRequest => ({

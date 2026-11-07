@@ -8,7 +8,7 @@ AI agents are starting to spend company money; Purser lets them, through Airwall
 
 **[Try it in a minute.](https://kit11.max-31b.workers.dev/try/sign)**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 3066 passing](https://img.shields.io/badge/tests-3066%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 3081 passing](https://img.shields.io/badge/tests-3081%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
 
 **[Judge it in 3 minutes →](https://kit11.max-31b.workers.dev/judge)**
 
@@ -100,7 +100,7 @@ npm run judge -- --check
 ```
 
 - `npm ci` (under a minute): installs the exact versions in the lockfile; every dependency is pinned.
-- `npm test` (3 to 4 min): **3066 tests in 297 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included.
+- `npm test` (3 to 4 min): **3081 tests in 299 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included.
 - `npm run judge -- --check` (about 3 s): builds the site's 17 pages from the main run's committed record, offline, and fetches each once.
 - `npm run verify-receipt -- receipt.json` (under 1 s): after you sign on [/try/sign](https://kit11.max-31b.workers.dev/try/sign), checks its receipt offline with Node's own crypto: your passkey signed exactly those terms; change one cent and it says NOT VALID. Getting the receipt needs the live site and your own passkey.
 
@@ -234,6 +234,20 @@ attempt in its world (the attempts before it are in the log). Log:
   and the PaymentIntent (`int_sgpvzc9hjhnxvxc26ie`) SUCCEEDED.
 - **✕ Refused by Purser:** EUR 5.00 at a merchant the CFO does not allow (`PURSER_MERCHANT_NOT_ALLOWED`), before any
   call to Airi.
+
+**A second live run (vic-2, 7 Nov, 19:06–19:08 UTC): what Purser adds around Airi.** The CFO's Face ID on a phone,
+three times; 0 Airi and 0 Airwallex calls in the whole run, so nothing was bought.
+[7 of 7 checks](docs/runs/2026-11-07-vic-2.md#checks); log:
+[docs/runs/2026-11-07-vic-2.md](docs/runs/2026-11-07-vic-2.md); on the site:
+[/visa](https://kit11.max-31b.workers.dev/visa#airi-run-2).
+
+- **✕ Changed after Face ID: refused.** EUR 30.00, above the limit, approved with the CFO's Face ID. Our own labelled
+  test then changed it to EUR 190.00 in the database; Purser refused it ("terms do not match the approved hash"), 0
+  Airi calls.
+- **✕ Shop locked by the CFO: refused.** The CFO blocked the test shop for Airi with Face ID (P-0002); the agent's next
+  purchase, EUR 12.00, within the limit, was refused before Airi was asked (`PURSER_MERCHANT_NOT_ALLOWED`).
+- **✓ Unlocked: offered again.** After the CFO's Face ID lifted the block (P-0003), the same purchase was offered on
+  Airi again; the run stopped there.
 
 ## Try it, step by step
 

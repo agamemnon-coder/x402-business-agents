@@ -16,6 +16,7 @@ import { metalStory, refusalNote, separateRuns, type MetalStory } from "./metalS
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { AIRI_CSS, airiRunBlock } from "./airiRun.js";
 import { awxRunBlock } from "./awxRun.js";
+import { vic2RunBlock } from "./vic2Run.js";
 import { VIC_FLOW_CSS, vicFlowBlock } from "./vicFlow.js";
 import { OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
 
@@ -151,7 +152,8 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
   // awx-1 (7 Nov): the Airwallex-only run, a separate world, dated and labelled, below the main run's read-backs.
   const awx1 = awxRunBlock();
   // The Airi run (7 Nov): Visa Intelligent Commerce via Airwallex's Airi, a separate world, dated and labelled.
-  const airi = airiRunBlock();
+  // vic-2 (7 Nov): what Purser adds around Airi, under the first Airi run.
+  const airi = airiRunBlock() + vic2RunBlock(undefined, { short: true });
   const readBack = hash || rows.length || awx1 || airi ? `<h2 class="vh">Airwallex, read back</h2><div class="awrb">${hashBlockHtml(hash)}${cards ? controlsSideBySideHtml(rows, cards.rec.read_at, cards.file) : ""}${awx1}${airi}</div>` : "";
   return shell(run, {
     title: "Airwallex", description: "How Purser uses Airwallex: earnings booked once final, the euro licence paid by SWIFT after the CFO's Face ID, card limits the bank enforces.",
@@ -195,7 +197,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
   return shell(run, {
     top: airi,
     // Under it, how a VIC purchase runs (7 Nov): seven steps, purchase B's ids, C's branch (src/redesign/vicFlow.ts).
-    underTop: airi ? vicFlowBlock() : "",
+    underTop: airi ? vicFlowBlock() + vic2RunBlock(undefined, { fold: false }) : "",
     title: "Visa TAP", description: "The Sourcing agent signs its card checkout with Visa's Trusted Agent Protocol before its Airwallex card pays.",
     logo: LOGO.visa, h1: "The agent signs before it pays", proofHash: "visa",
     picture: [node("package", "Agent signs", buy?.model ? `Sourcing · Claude ${family(buy.model)}` : "TAP signature"), arrow,

@@ -274,11 +274,14 @@ checks.
 
 ### 26. What does Purser add to Airi?
 
-The CFO's policy, applied before Airi is asked: a limit per purchase (EUR 20.00 in the run), the merchants allowed,
-and Face ID on the exact terms above the limit (EUR 45.00, P-0002, paid only after it). A purchase outside the policy
-is refused before any call (EUR 5.00 at a merchant the CFO does not allow: `PURSER_MERCHANT_NOT_ALLOWED`, 0 Airi
-calls), and every step lands in the audit trail. Airi's own passkey confirmation stays: Purser sits in front of it, not
-instead of it.
+The CFO's policy, applied before Airi is asked: a limit per purchase (EUR 20.00 in the run), the merchants allowed
+(which the CFO can lock with Face ID: a EUR 12.00 purchase was then refused, 0 Airi calls), and Face ID on the exact
+terms above the limit (EUR 45.00, P-0002, paid only after it). A purchase outside the policy is refused before any
+call (`PURSER_MERCHANT_NOT_ALLOWED`), terms changed after the CFO's Face ID are refused because they no longer match
+the signed hash (EUR 30.00 → EUR 190.00, our own labelled test in the second live run,
+[log](../runs/2026-11-07-vic-2.md)), and every step lands in the audit trail. Airi's own passkey confirmation stays:
+Purser sits in front of it, not instead of it.
 
 **Evidence:** [docs/runs/2026-11-07-vic-1.md](../runs/2026-11-07-vic-1.md), "The rail's policy", "The purchases" and
-"Checks"; [docs/demo/airi-run.json](../demo/airi-run.json) (`policy`, `purchases[].audit_seq`).
+"Checks"; [docs/demo/airi-run.json](../demo/airi-run.json) (`policy`, `purchases[].audit_seq`);
+[docs/runs/2026-11-07-vic-2.md](../runs/2026-11-07-vic-2.md), "Checks"; [docs/demo/vic-2-run.json](../demo/vic-2-run.json).
