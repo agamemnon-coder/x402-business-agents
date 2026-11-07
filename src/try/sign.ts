@@ -269,7 +269,7 @@ details.more > p { margin: 4px 0 0; }
 .who .av { width: 32px; height: 32px; background: var(--a-treasury); color: #fff; }
 .who .av .i { width: 17px; height: 17px; }
 .says { font-size: 17px; line-height: 1.45; margin: 0; }
-.says::before { content: "“"; } .says::after { content: "”"; }
+/* The agent's own words as they are: no quote marks around them (Max's review). */
 /* Screen 1: the agents' steps, each one a real answer from the server; the fields fade in as they arrive. */
 ol.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .st { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; align-items: start; }
@@ -373,7 +373,7 @@ table.diff tr.chg td:last-child { color: var(--bad); }
 /* 1.3: the fake invoice, the fooled agent, the verdict (code's), the lesson. */
 .tricked { display: grid; gap: 10px; padding: 14px 16px; border-radius: 16px; background: var(--bad-soft); }
 .tricked .doc { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--surface); border: 1px dashed var(--border); font: 500 13.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
-.tricked .fooled { margin: 0; font-size: 16px; } .tricked .fooled q { font-style: italic; }
+.tricked .fooled { margin: 0; font-size: 16px; } .tricked .fooled #k-says { font-style: italic; }
 .pill.live { background: var(--ok-soft, var(--accent-soft)); color: var(--text); font-weight: 700; }
 .tricked ul.calls { list-style: none; padding: 0; } .tricked ul.calls li { overflow-wrap: anywhere; margin-top: 6px; }
 .tricked .lesson { margin: 0; font-weight: 750; font-size: 17px; }
@@ -1526,7 +1526,7 @@ ${scr(4, `  <h2 tabindex="-1" id="k-head">${esc(W.trick.head)}</h2>
   <p class="status" id="k2-status" aria-live="polite"></p>
   <div class="tricked" id="k-result" hidden aria-live="polite">
     <p class="doc" id="k-doc"></p>
-    <p class="fooled"><span class="pill said-before" id="k-label"></span> <q id="k-says"></q></p>
+    <p class="fooled"><span class="pill said-before" id="k-label"></span> <span id="k-says"></span></p>
     <p class="small muted">${esc(W.trick.decides)}</p>
     <p class="outcome" id="k-out"></p>
     <p class="lesson" id="k-lesson"></p>

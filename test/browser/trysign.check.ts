@@ -437,6 +437,10 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
         `${tag}: "Show the exact terms" names who wrote the reason, and its "more" the request id and what the agent was given`);
     }
   }
+  // No quote marks around the agent's words (Max's review): none in the text, none drawn by CSS.
+  const marks = await page.evaluate(`[...document.querySelectorAll(".says, #k-says")].map((n) => [getComputedStyle(n, "::before").content, getComputedStyle(n, "::after").content, n.tagName, (n.textContent || "").trim()])`) as [string, string, string, string][];
+  check(marks.length > 0 && marks.every(([b, a, tag, t]) => (b === "none" || b === "normal") && (a === "none" || a === "normal") && tag !== "Q" && !/^["“'‘]|["”'’]$/.test(t)),
+    `${tag}: the agent's words stand without quote marks (${marks.length} places: ${marks.map(([b, a, t]) => `${t} ${b}/${a}`).join(", ")})`);
   // The exact terms, behind "Show the exact terms".
   await page.evaluate(`document.getElementById("s1-terms").open = true`);
   const facts = Object.fromEntries((await page.locator("#s1-terms dl.facts").evaluate((d: Element) => [...d.querySelectorAll("dt")].map((t) => [t.textContent, t.nextElementSibling?.textContent])))) as Record<string, string>;
@@ -625,7 +629,7 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
     const full = (await page.locator("#k-full").innerText()).trim();
     await page.locator("#k-did > summary").click();
     const want = await runTrick(attack, await readerStandIn(TRICKS[attack].text));
-    check((await page.locator("#k-out").innerText()).trim() === want.outcome && want.blocked && (await page.locator("#k-lesson").innerText()).trim() === "A prompt is not a control." && (await page.locator("#k-says").innerText()).trim() === want.agent.read
+    check((await page.locator("#k-out").innerText()).trim() === want.outcome && want.blocked && (await page.locator("#k-lesson").innerText()).trim() === "A prompt is not a control." && (await page.locator("#k-says").innerText()).trim() === want.agent.read && await page.locator("#k-says").evaluate((n: Element) => n.tagName + getComputedStyle(n, "::before").content) === "SPANnone"
       && (await page.locator("#k-label").innerText()).trim() === "stand-in, not Claude" && (await page.locator("#k-doc").innerText()).trim() === TRICKS[attack].shows && full === TRICKS[attack].text,
       `${tag}: trick ${attack}: the invoice, what the agent read (labelled), then "${want.outcome}" and "A prompt is not a control."`);
     await page.locator("#k-did > summary").click();
