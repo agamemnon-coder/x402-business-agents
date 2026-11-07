@@ -64,7 +64,7 @@ export function vicFlow(rec: AiriRunRecord): VicFlow {
     steps: [
       { owner: "agent", title: "Agent asks to buy", what: `${need(b, "agent").charAt(0).toUpperCase()}${b.agent.slice(1)} agent`, value: `${need(b, "currency")} ${need(b, "amount")}` },
       { owner: "purser", title: "Purser's policy", what: `Limit ${b.currency} ${limit}, allowed merchants; above it, the CFO's Face ID on the exact terms`, value: `${need(b, "proposal_id")} · terms ${short(need(b, "terms_sha256"))}` },
-      { owner: "airi", title: "Airi mandate", what: "Amount, merchant, items, order hash", value: need(b, "mandate_id") },
+      { owner: "airi", title: "Airi mandate", what: "Amount, merchant and items, for this one purchase", value: need(b, "mandate_id") },
       { owner: "airi", title: "Cardholder confirms", what: "Passkey in Airi", value: "Once" },
       { owner: "airi", title: "Single-use Visa credential (VIC)", what: "From Airwallex's Airi wallet", value: `${need(b, "credential_type")} · test card` },
       { owner: "airwallex", title: "Airwallex hosted checkout", what: "Our own sandbox merchant", value: need(b, "payment_intent_id") },
