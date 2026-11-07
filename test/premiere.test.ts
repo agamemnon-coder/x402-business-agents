@@ -86,7 +86,7 @@ describe("the premiere's figures are the main run's record's", () => {
     expect(screen("09-six").foot).toBe("Purser moved the transfer to SENT and then PAID itself, through Airwallex's sandbox simulation API. Test money.");
     const s9 = timeline.find((s) => s.id === "09-six")!;
     expect(data.voice["09-six"]!.map((l) => [clock(s9.start + l.at), l.text])).toEqual([
-      ["1:10", "Six seconds later, Airwallex pays the euro invoice by SWIFT, in its sandbox. Every I.D. is published."],
+      ["1:49", "Six seconds later, Airwallex pays the euro invoice by SWIFT, in its sandbox. Every I.D. is published."],
     ]);
     // A sandbox transfer id cannot be looked up publicly: nothing asks anyone to.
     expect(JSON.stringify(data.screen) + JSON.stringify(data.voice) + premiereTable(data)).not.toMatch(/look it up/i);
@@ -119,7 +119,7 @@ describe("the premiere's figures are the main run's record's", () => {
     // Two cards, one on each beat; the stops take the rest of the 12 s, as the voice names them; the main run named
     // above them (v6: the runs of 7 November follow).
     expect(cards).toHaveLength(2);
-    expect(timeline.find((x) => x.id === "13-proof")).toMatchObject({ seconds: 12, beats: [0, 2.6] });
+    expect(timeline.find((x) => x.id === "13-proof")).toMatchObject({ seconds: 15, beats: [0, 2.6] });
     expect(screen("13-proof").kicker).toBe("The main run · 3 November 2026");
   });
 
@@ -168,7 +168,7 @@ describe("the premiere's figures are the main run's record's", () => {
     expect(log).toContain("| 11:24:07 | Treasury's options | P-0002 (A, recommended: cap 0.04, price 0.05) and P-0003 (B, price 0.07). Total stays 20.00. |");
     expect(log).toMatch(/\| 11:26:28 \/ 11:26:46 \| Four eyes \| Max signed P-0002 \(1 of 2\)/);
     // The voice says the record's total; a script that says another stops the build.
-    expect(data.voice["05b-treasury"]![0]!.text).toBe("Treasury proposes two ways to stay within the same twenty dollars. The CFO picks one, with Face ID.");
+    expect(data.voice["05b-treasury"]!.map((l) => l.text).join(" ")).toBe("Treasury proposes two ways to stay within the same twenty dollars: raise the Sourcing agent's cap to four cents and keep our price, or raise our price to seven cents. The CFO picks the first, with Face ID.");
     expect(() => buildPremiere(raw(), README, read("docs/video/narrator-script-v6.md").replace("same twenty dollars", "same thirty dollars"))).toThrow(/05b-treasury line does not say "within the same twenty dollars"/);
     const broken = raw();
     broken.ledger.proposals = broken.ledger.proposals.filter((x) => x.proposal_id !== "P-0003");
@@ -178,11 +178,11 @@ describe("the premiere's figures are the main run's record's", () => {
   it("the value line (v5, now 13d): the agents do the work; the CFO, on screen and in the narrator's voice alike", () => {
     expect(screen("13d-value")).toEqual({ line: ["The agents do the work.", "The CFO signs only the exceptions."] });
     expect(data.voice["13d-value"]!.map((l) => l.text)).toEqual(["The agents do the work. The CFO signs only the exceptions."]);
-    // Eleven words in 4 s: read a little faster than the calm pace, from the scene's start, never over 3 words a second.
+    // Eleven words in 6 s (v8): at the calm pace, half a second in, never over 3 words a second.
     const [l] = data.voice["13d-value"]!;
-    expect([l!.at, l!.seconds]).toEqual([0, 3.95]);
+    expect([l!.at, l!.seconds]).toEqual([0.5, 4.4]);
     expect(11 / l!.seconds).toBeLessThanOrEqual(3);
-    expect(() => buildPremiere(raw(), README, read("docs/video/narrator-script-v6.md").replace("The CFO signs only the exceptions. |", "The CFO signs only the exceptions. Every one of them, today. |"))).toThrow(/13d-value line takes/);
+    expect(() => buildPremiere(raw(), README, read("docs/video/narrator-script-v6.md").replace("The CFO signs only the exceptions. |", "The CFO signs only the exceptions. Every one of them, today, in every company, in every single country we can think of. |"))).toThrow(/13d-value line takes/);
   });
   it("the stops card (Max, 5 November, second round: \"1 + 1\" told too little): the run's stops, who stopped what, nothing paid over a limit", () => {
     // Counted again here from the raw record: the refusal rows by who stopped them, the record's own count and proof.
@@ -255,7 +255,9 @@ describe("the premiere's figures are the main run's record's", () => {
     expect(agents.find((a) => a.id === "treasury")!.job).toContain("Airwallex FX and SWIFT");
     expect(r.ledger.proposals.filter((p) => p.created_by === "treasury").map((p) => p.kind)).toContain("mandate_replace");
     expect(screen("03-agents")).toMatchObject({ head: "Three Claude agents run a small company's money.", cardLabel: "Its own Airwallex card", mandateLabel: "Its own Metal mandate", note: "Each agent's limits as the run began · test money", limits: "The rails and the code hold the limits." });
-    expect(data.voice["03-agents"]!.map((l) => l.text)).toEqual(["Three Claude agents run a small company that sells live stock data. Each has its own Airwallex card, and its own Metal mandate."]);
+    expect(data.voice["03-agents"]!.map((l) => l.text)).toEqual(["Three Claude agents run a small company that sells live stock data.", "The Sourcing agent, on Claude Haiku, buys data per query, over x402 on Metal.", "The Support agent, on Claude Sonnet, handles disputes and refunds.", "The Treasury agent, on Claude Opus, runs FX, SWIFT and budgets.", "Each has its own Airwallex card, and its own Metal mandate."]);
+    // v8: each card lights while the voice names its agent.
+    expect(screen("03-agents").litAt).toEqual(data.voice["03-agents"]!.slice(1, 5).map((l) => l.at));
   });
 
   it("the intro's limits: each agent's own card and own mandate as the run began, the config's, as the record shows them", () => {
@@ -348,7 +350,7 @@ describe("the premiere refuses to render when a figure is missing", () => {
     const html = premierePage(data, scenesForPage);
     expect(html).not.toContain("__PREMIERE_JSON__");
     const block = /<script type="application\/json" id="premiere-data">([\s\S]*?)<\/script>/.exec(html)![1]!;
-    expect(JSON.parse(block)).toEqual({ screen: data.screen, scenes: scenesForPage, credits: data.credits, background: { ...BACKGROUND, start: 6 } });
+    expect(JSON.parse(block)).toEqual({ screen: data.screen, scenes: scenesForPage, credits: data.credits, background: { ...BACKGROUND, start: 7 } });
   });
 });
 
@@ -465,22 +467,22 @@ describe("the two live runs of 7 November (v6): each figure its own record's", (
     expect(data.voice["13b-awx"]!.map((l) => l.text).join(" ")).toBe("Airwallex itself declined two charges: one over the limit, one in the wrong category. The agent asked the CFO for a raise, not a retry.");
   });
 
-  it("the Airi run (13c): Max's heading and line, three outcomes, 5 of 5 checks, the run's own label", () => {
+  it("the Airi run (13c): Max's heading and line, three outcomes and the second run's refusal after the Face ID, the checks of both, the run's own label", () => {
     expect(screen("13c-airi")).toEqual({
       head: "Visa Intelligent Commerce via Airwallex's Airi: a live run (7 Nov)",
       line: "Agents paid with a single-use Visa (VIC) credential from Airi: within the limit on their own, above it only after the CFO's Face ID, and a disallowed merchant was refused by Purser before Airi was asked.",
       rows: [
         { ok: true, label: "✓ Paid alone", amount: "EUR 12.00", detail: "within the EUR 20.00 limit · one passkey tap in Airi" },
         { ok: true, label: "✓ Paid after Face ID", amount: "EUR 45.00 · P-0002", detail: "the CFO's Face ID in Purser, then one tap in Airi" },
-        { ok: false, label: "✕ Refused by Purser", amount: "EUR 5.00", detail: "a merchant not allowed · Airi was never asked" },
+        { ok: false, label: "✕ Changed after Face ID", amount: "EUR 30 → 190", detail: "not what the CFO signed · Airi was never asked" },
       ],
-      checks: "5 of 5 checks",
+      checks: "5 of 5 and 7 of 7 checks",
       label: "Airwallex sandbox · test card · test money",
     });
     const by = (route: string) => airi.purchases.find((p) => p.route === route)!;
     expect([by("alone").amount, by("cfo").amount, by("cfo").proposal_id, by("refused").amount, by("refused").airi_calls, airi.policy.alone_max_eur]).toEqual(["12.00", "45.00", "P-0002", "5.00", 0, "20.00"]);
     expect(Object.values(airi.checks).filter((c) => c.ok)).toHaveLength(5);
-    expect(data.voice["13c-airi"]!.map((l) => l.text).join(" ")).toBe("With Airwallex's Airi, agents paid with a single-use Visa credential: alone within the limit, above it only after the CFO's Face ID. A disallowed merchant was refused by Purser before Airi was asked.");
+    expect(data.voice["13c-airi"]!.map((l) => l.text).join(" ")).toBe("With Airwallex's Airi, agents paid with a single-use Visa credential: alone within the limit, above it only after the CFO's Face ID. Terms changed after that Face ID were refused before Airi was asked.");
   });
 
   const broken: [string, (x: SideRuns) => void, RegExp][] = [
@@ -511,13 +513,13 @@ describe("the two live runs of 7 November (v6): each figure its own record's", (
 });
 
 describe("the premiere's script", () => {
-  it("runs 2:59 (v6), at most three minutes: v5 trimmed, the walk of the live page and the two runs of 7 November", () => {
-    expect(premiereSeconds()).toBeLessThanOrEqual(180);
-    expect(premiereSeconds()).toBe(179);
+  it("runs 3:58 (v8), under five minutes: every scene long enough to read, the walk of the live page and the two runs of 7 November", () => {
+    expect(premiereSeconds()).toBeLessThan(300);
+    expect(premiereSeconds()).toBe(238);
     expect(timeline.at(-1)!.start + timeline.at(-1)!.seconds).toBe(premiereSeconds());
-    expect(timeline.map((s) => [s.id, s.seconds])).toEqual([["01-hook", 6], ["02-purser", 4], ["03-agents", 10], ["04-how", 8], ["05-price", 11], ["05b-treasury", 8], ["06-metal", 6], ["07-dispute", 9], ["08-faceid", 8], ["09-six", 9], ["10-why", 8], ["11-turn", 13], ["12-tamper", 6], ["13-proof", 12], ["13b-awx", 11], ["13c-airi", 14], ["13d-value", 4], ["14-real", 8], ["15-close", 13], ["16-end", 11]]);
-    // 6 seconds → Why Face ID → Your turn → One cent → the proof → the runs of 7 November → the value line → what's real → the close.
-    const order = ["09-six", "10-why", "11-turn", "12-tamper", "13-proof", "13b-awx", "13c-airi", "13d-value", "14-real", "15-close"].map((id) => timeline.findIndex((s) => s.id === id));
+    expect(timeline.map((s) => [s.id, s.seconds])).toEqual([["01-hook", 7], ["02-purser", 6], ["03-agents", 22], ["04-how", 11], ["05-price", 16], ["05b-treasury", 15], ["06-metal", 8], ["07-dispute", 13], ["08-faceid", 11], ["09-six", 13], ["11-turn", 13], ["12-tamper", 8], ["13-proof", 15], ["13b-awx", 15], ["13c-airi", 17], ["13d-value", 6], ["14-real", 13], ["15-close", 15], ["16-end", 14]]);
+    // 6 seconds → Your turn (v7: 10-why is out) → One cent → the proof → the runs of 7 November → the value line → what's real → the close.
+    const order = ["09-six", "11-turn", "12-tamper", "13-proof", "13b-awx", "13c-airi", "13d-value", "14-real", "15-close"].map((id) => timeline.findIndex((s) => s.id === id));
     expect([...order].sort((x, y) => x - y)).toEqual(order);
     for (const s of timeline) expect({ id: s.id, whole: Number.isInteger(s.start) && Number.isInteger(s.seconds) }).toEqual({ id: s.id, whole: true });
     // One recording in the final film (v6): the walk of the live page, in 11-turn; 08 stays the rendered reconstruction.
@@ -529,9 +531,9 @@ describe("the premiere's script", () => {
     expect(JSON.stringify(data.screen).replace(String(screen("16-end").credit), "")).not.toMatch(/AI-generated|AI hook/);
   });
 
-  it("writes scenes-v6.json for the mix: each scene's id, start and end; 09-six, where the drop goes, at 1:10; v5's kept", () => {
+  it("writes scenes-v6.json for the mix: each scene's id, start and end; 09-six, where the drop goes, at 1:49 (v8); v5's kept", () => {
     expect(scenesJson()).toEqual(timeline.map((s) => ({ id: s.id, start: s.start, end: s.start + s.seconds })));
-    expect(scenesJson().find((s) => s.id === "09-six")).toEqual({ id: "09-six", start: 70, end: 79 });
+    expect(scenesJson().find((s) => s.id === "09-six")).toEqual({ id: "09-six", start: 109, end: 122 });
     expect(JSON.parse(read("docs/video/scenes-v6.json"))).toEqual(scenesJson());
     expect((JSON.parse(read("docs/video/scenes-v5.json")) as { end: number }[]).at(-1)!.end).toBe(162);
   });
@@ -541,23 +543,26 @@ describe("the premiere's script", () => {
     expect(worthless!.at - (change!.at + lineSeconds(change!.text))).toBeCloseTo(1, 5);
     const page = read("src/film/premiere.html");
     // On screen "One cent. Worthless." comes in as it is said.
-    expect(page).toMatch(/var flip = t >= 1\.2, W = 4\.75;/);
-    expect(worthless!.at).toBe(4.75);
+    expect(page).toMatch(/var flip = t >= 1\.2, W = 5\.1;/);
+    expect(worthless!.at).toBe(5.1);
     expect(page).toContain("rise(six, t, 0, null, 40); count(big, t, 0);");
     const s13 = timeline.find((s) => s.id === "13-proof")!;
     expect(s13.beats).toEqual([0, 2.6]);
     expect(pageScenes().find((x) => x.id === "13-proof")!.beats).toEqual(s13.beats);
   });
 
-  it("gives the agent cards at least 9 s together on screen, each lit 3 s in turn (v5)", () => {
+  it("gives the agent cards at least 9 s together on screen, each lit while the voice names it (v8)", () => {
     const s3 = /\n {4}"03-agents": function[\s\S]*?\n {4}\},/.exec(read("src/film/premiere.html"))![0];
     const at = /at = \[([^\]]+)\], ON = ([.\d]+)/.exec(s3)!;
     const appear = at[1]!.split(",").map(Number), on = Number(at[2]);
     const scene = timeline.find((s) => s.id === "03-agents")!.seconds;
     expect(scene - appear[0]!).toBeGreaterThanOrEqual(9);
     for (const a of appear) expect(scene - a).toBeGreaterThanOrEqual(8);
-    expect(s3).toContain('c.classList.toggle("on", t >= ON + i * 3 && t < ON + (i + 1) * 3);');
+    expect(s3).toContain('c.classList.toggle("on", t >= lit[i] && t < lit[i + 1]);');
     expect(on + 3 * 3).toBeLessThanOrEqual(scene);
+    const lit = screen("03-agents").litAt as number[];
+    expect(lit).toHaveLength(4);
+    for (let i = 1; i < 4; i++) expect(lit[i]! - lit[i - 1]!).toBeGreaterThanOrEqual(3);
   });
   it("records one clip per scene from the page, the end card with the one credit for the AI voice and music", () => {
     const beats = premiereBeats(data);
@@ -586,8 +591,9 @@ describe("the premiere's script", () => {
     for (const [id, lines] of Object.entries(data.voice)) expect({ id, said: lines.map((l) => l.text).join(" ") }).toEqual({ id, said: script[id]!.replace(/\s*(?:…\s*)+/g, " ").trim() });
     expect(data.voice["15-close"]!.map((l) => l.text).join(" ")).toBe(CLOSING.join(" "));
     // Each line about half a second into its scene (a long one a little earlier).
-    // (13d, 08 and 13 say a line as long as their scene, from its start; 12 keeps its second of silence and starts early.)
-    for (const [id, lines] of Object.entries(data.voice)) expect({ id, early: lines[0]!.at <= 0.5 && lines[0]!.at >= (["13d-value", "08-faceid", "13-proof", "12-tamper"].includes(id) ? 0 : 0.3) }).toEqual({ id, early: true });
+    // (13d, 08 and 13 say a line as long as their scene, from its start; 12 keeps its second of silence and starts early;
+    // 05-price and 14-real, v7, say more and start at their cut.)
+    for (const [id, lines] of Object.entries(data.voice)) expect({ id, early: lines[0]!.at <= 0.5 && lines[0]!.at >= (["13d-value", "08-faceid", "13-proof", "12-tamper", "05-price", "14-real", "03-agents", "05b-treasury"].includes(id) ? 0 : 0.3) }).toEqual({ id, early: true });
   });
   it("times the subtitles in order, inside the film, carrying every word of the voice-over", () => {
     const cues = premiereSrt(data).trim().split(/\n\n/).map((c) => { const [, time, ...text] = c.split("\n"); const [a, b] = time!.split(" --> "); return { a: toSeconds(a!), b: toSeconds(b!), text: text.join(" ") }; });
@@ -636,12 +642,12 @@ describe("docs/video/ holds what the code writes", () => {
 
   it("writes the prompt for ElevenLabs Studio as v5's: the voice brief, every line at its time, the music on the cuts", () => {
     const prompt = elevenLabsPrompt(asWritten);
-    for (const part of ["VOICE", "MUSIC", "MIX", "CAPTIONS", "EXPORT", "Do not clone or imitate any real person.", "this 2:59 video", "1:10: THE DROP"]) expect(prompt).toContain(part);
+    for (const part of ["VOICE", "MUSIC", "MIX", "CAPTIONS", "EXPORT", "Do not clone or imitate any real person.", "this 3:58 video", "1:49: THE DROP"]) expect(prompt).toContain(part);
     // Every line, word for word, at its time; the second of silence before "One cent. Worthless."
     for (const l of voiceTimeline(asWritten)) expect(prompt).toContain(l.text);
     expect(prompt).toContain("0:00.5  AI agents are starting to spend money. [pause 0.5s] So who signs off?");
-    expect(prompt).toContain("1:40.2  Change one cent, and the same signature is refused. [pause 1.0s] One cent. Worthless.");
-    expect(prompt).toContain("1:43.8–1:44.8: stops dead for one second of silence");
+    expect(prompt).toContain("2:15.5  Change one cent, and the same signature is refused. [pause 1.0s] One cent. Worthless.");
+    expect(prompt).toContain("2:19.1–2:20.1: stops dead for one second of silence");
     expect(prompt).toContain(`The cuts are at ${timeline.slice(1).map((s) => clock(s.start)).join(", ")}.`);
     expect(prompt).toContain(AI_CREDIT);
   });
@@ -649,7 +655,7 @@ describe("docs/video/ holds what the code writes", () => {
   it("says the film's length and pace as the code has them, and its voice as what it is", () => {
     const words = voiceTimeline(asWritten).reduce((k, l) => k + l.text.split(/\s+/).length, 0);
     const length = clock(premiereSeconds());
-    expect([words, length]).toEqual([377, "2:59"]);
+    expect([words, length]).toEqual([438, "3:58"]);
     // The README, the claims and Max's checklist describe the film on YouTube, v5 (319 words in 2:42), until v6 is
     // voiced and uploaded; they are not changed here.
     const published = { words: 319, length: "2:42" };
@@ -716,7 +722,7 @@ describe("the premiere's look (Max, 4 November)", () => {
     // No flowing gradient, no grain; the drift is under a pixel a second.
     expect(template).not.toMatch(/<canvas|grain|createRadialGradient|mix-blend-mode/);
     expect(Math.hypot(...BACKGROUND.drift)).toBeLessThan(1);
-    expect(pageScenes().find((x) => x.credits)!.start).toBe(6);
+    expect(pageScenes().find((x) => x.credits)!.start).toBe(7);
   });
 
   it("keeps every text colour at WCAG AA over the brightest point of the background", () => {
@@ -729,10 +735,10 @@ describe("the premiere's look (Max, 4 November)", () => {
     }
   });
 
-  it("shows the corner credits in the top bar, 0:06 to 2:48, quiet (grey, 20 px) and text only (no logos of others)", () => {
+  it("shows the corner credits in the top bar, 0:07 to 3:44, quiet (grey, 20 px) and text only (no logos of others)", () => {
     expect(data.credits).toEqual({ left: "Max Geurtsen · Purser", right: "Built on Airwallex · Metal · Claude" });
     const on = pageScenes().filter((x) => x.credits);
-    expect([clock(on[0]!.start), clock(on.at(-1)!.start + on.at(-1)!.seconds)]).toEqual(["0:06", "2:48"]);
+    expect([clock(on[0]!.start), clock(on.at(-1)!.start + on.at(-1)!.seconds)]).toEqual(["0:07", "3:44"]);
     expect(pageScenes().filter((x) => !x.credits).map((x) => x.id)).toEqual(["01-hook", "16-end"]);
     const m = /\.credit \{ position: absolute; top: 0; height: 138px; display: flex; align-items: center; font-size: 20px; font-weight: 500; color: rgba\(255,255,255,(\.\d+)\)/.exec(template);
     expect(m).toBeTruthy();
@@ -746,7 +752,7 @@ describe("the premiere's look (Max, 4 November)", () => {
 
   it("ends with the credits, text only (Max, 5 November): who does what, the thanks, the AI voice and music, test money only", () => {
     const end = timeline.find((s) => s.id === "16-end")!;
-    expect(end.seconds).toBe(11);
+    expect(end.seconds).toBe(14);
     expect(END_CREDITS).toEqual([
       ["Built by Max Geurtsen", "Purser: the CFO's limits, Face ID approvals, the agents' tools, the audit log"],
       ["Airwallex", "the agents' cards and card limits, FX, the SWIFT euro payout (sandbox)"],
@@ -756,10 +762,10 @@ describe("the premiere's look (Max, 4 November)", () => {
     expect(screen("16-end")).toMatchObject({ head: "Who does what", roll: END_CREDITS, thanks: THANKS, credit: AI_CREDIT, last: "Test money only", short: "kit11.max-31b.workers.dev/try/sign" });
     // Each partner's line as the README's "Who does what" says it.
     for (const [who, what] of END_CREDITS.slice(1)) expect({ who, said: read("README.md").includes(who) && read("README.md").includes(what.replace(/ \((sandbox|testnet)\)$/, "")) }).toEqual({ who, said: true });
-    // The credits come in at 3.5 s and stay to the end (v6: 11 s, trimmed): 7 to 10 seconds on screen.
+    // The credits come in at 3.5 s and stay to the end (v8: 14 s): 7 to 11 seconds on screen.
     expect(template).toContain("var A = [mk, ct, url, ft, mt], out = 2.9, at = 3.5;");
     expect(end.seconds - 3.5).toBeGreaterThanOrEqual(7);
-    expect(end.seconds - 3.5).toBeLessThanOrEqual(10);
+    expect(end.seconds - 3.5).toBeLessThanOrEqual(11);
   });
 
   it("credits the AI-generated voice and music on the end card and in the edit guide, and never Max's voice", () => {
@@ -812,7 +818,7 @@ describe("the premiere's animations (Max, 5 November): pulses, the price chart, 
     const [r0, r1] = /var R0 = ([.\d]+), R1 = ([.\d]+),/.exec(s5)!.slice(1).map(Number) as [number, number];
     const k = (Number(fact("price.cap")) - Number(fact("price.old"))) / (Number(fact("price.new")) - Number(fact("price.old")));
     const tc = r0 + (r1 - r0) * Math.acos(1 - 2 * k) / Math.PI;
-    const line = data.voice["05-price"]!.find((l) => /past the Sourcing agent's cap/.test(l.text))!;
+    const line = data.voice["05-price"]!.find((l) => /past the three-cent cap/.test(l.text))!;
     expect(tc).toBeGreaterThan(line.at);
     expect(tc).toBeLessThan(line.at + lineSeconds(line.text));
   });

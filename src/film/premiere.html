@@ -347,8 +347,10 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       return function (t) {
         rise(h, t, .1, null, 18);
         // Each card lit for 3 s in turn (Max, v5: 3 s a card), then the limits line.
-        cards.forEach(function (c, i) { rise(c, t, at[i], null, 30); c.lims.forEach(function (l, k) { fade(l, t, at[i] + .3 + k * .2); l.classList.toggle("lit", t >= LIM + i * .15); }); c.classList.toggle("on", t >= ON + i * 3 && t < ON + (i + 1) * 3); });
-        fade(note, t, 2.6); rise(ln, t, LIM);
+        // v8: lit while the voice names each agent (S.litAt: the three agents' lines, then the limits line); else 3 s each.
+        var lit = S.litAt || [ON, ON + 3, ON + 6, LIM], lim = S.litAt ? S.litAt[3] : LIM;
+        cards.forEach(function (c, i) { rise(c, t, at[i], null, 30); c.lims.forEach(function (l, k) { fade(l, t, at[i] + .3 + k * .2); l.classList.toggle("lit", t >= lim + i * .15); }); c.classList.toggle("on", t >= lit[i] && t < lit[i + 1]); });
+        fade(note, t, 2.6); rise(ln, t, lim);
       };
     },
     "04-how": function (L, S) {
@@ -421,9 +423,9 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       var rea = put(L, E("div", "body muted", S.reason), 1064, 232);
       var tl = put(L, E("div", "kick", S.txLabel), 1064, 330);
       var tx = put(L, E("div", "hm mono", S.tx), 1060, 370);
-      var tf = put(L, width(E("div", "tiny mono brk", S.txFull), 700), 1064, 452);
-      var tw = put(L, E("div", "small", S.txWhere), 1064, 528);
-      var foot = put(L, width(E("div", "tiny", S.label), 1640), 140, 728);
+      // v7 (Max: too much to read): the full hash and the long footnote are off the screen; the short hash, where to
+      // check it, and "let through on purpose" stay.
+      var tw = put(L, E("div", "small", S.txWhere), 1064, 452);
       // The line: flat from 3.0 s, the rise with "doubled its price, past the mandate's cap", then flat at the new
       // price. Metal's refusal appears the moment the line crosses the cap (TC).
       var R0 = 2.6, R1 = 4.0, TC = R0 + (R1 - R0) * Math.acos(1 - 2 * k) / Math.PI;
@@ -450,7 +452,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
         fade(endv, t, R1 + .6);
         rise(ref, t, TC); rise(rea, t, TC + .4);
         rise(lt, t, 4.8);
-        rise(tl, t, 7.8); rise(tx, t, 7.9); rise(tf, t, 8.1); rise(tw, t, 8.2); fade(foot, t, 8.6);
+        rise(tl, t, 8.6); rise(tx, t, 8.7); rise(tw, t, 9.0);
       };
     },
     "05b-treasury": function (L, S) {
@@ -570,12 +572,6 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
         rise(lk, t, 5.6); rise(wh, t, 6.0); fade(foot, t, 6.4);
       };
     },
-    "10-why": function (L, S) {
-      var qn = put(L, E("div", "hl c acc", S.q), 0, 132);
-      var at = [1.8, 3.8, 5.2]; // the last line holds nearly 3 s before the cut (Max, 5 Nov: at 1:33 it left too fast to read)
-      var lines = S.a.map(function (s, i) { return put(L, E("div", "hm c", s), 0, 300 + i * 78); });
-      return function (t) { rise(qn, t, .2); lines.forEach(function (n, i) { rise(n, t, at[i]); }); };
-    },
     "11-turn": function (L, S, ov, seconds, rec) {
       // v6: the walk of the live page, recorded and laid into the frame by ffmpeg (RECORDING); without one (--check,
       // --stills), the empty frame where it goes. Beside it, each step as its window comes, and the label.
@@ -602,7 +598,7 @@ html.overlay, html.overlay body, html.overlay #stage, html.overlay #pic { backgr
       var w = put(L, E("div", "hl c", S.last), 0, 590);
       L.push = { to: 1.04, x: 960, y: 402 };
       return function (t) {
-        var flip = t >= 1.2, W = 4.75;
+        var flip = t >= 1.2, W = 5.1;
         last.style.display = flip ? "none" : ""; now.style.display = flip ? "" : "none";
         var dim = 1 - .62 * prog(t, W - .2, W + .5);
         a.style.opacity = prog(t, 0, .25) * dim; a.style.transform = flip && t < 1.6 ? "scale(" + mix(1.04, 1, prog(t, 1.2, 1.6)) + ")" : "";

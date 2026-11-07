@@ -21,6 +21,8 @@ export const MAIN_RUN_FILE = "docs/demo/main-run.json";
 /** The two live runs of 7 November (v6): awx-1 on Airwallex alone (13b), and the Airi run (13c). */
 export const AWX_RUN_FILE = "docs/demo/airwallex-run.json";
 export const AIRI_RUN_FILE = "docs/demo/airi-run.json";
+/** The second Airi run (vic-2, 7 Nov): what Purser adds around Airi; 13c names its refusal after the Face ID (v7). */
+export const VIC2_RUN_FILE = "docs/demo/vic-2-run.json";
 /** The walk of the live /try/sign page laid into 11-turn: what the page showed, as src/cli/recordTrySign.ts wrote it. */
 export const RECORDING_FILE = "docs/video/recording-trysign-v6.json";
 /** The hosted page a viewer can try (live since 4 November): the end card and the /try/sign scene. */
@@ -397,7 +399,13 @@ export interface TrySignRecording {
   at: Record<"start" | "agentsDone" | "sign" | "signed" | "cheat" | "refused" | "trick" | "chip" | "blocked" | "end", number>;
   labels: { read: string; advice: string }; tamper: string; trick: { label: string; blocked: string }; errors: string[];
 }
-export interface SideRuns { awx: AwxRun; airi: AiriRun; recording: TrySignRecording }
+export interface Vic2Run {
+  run: string; mode: string; started_at: string;
+  steps: { D: { request: { amount: string; currency: string }; end: string; alteration: { changed: { amount: { from: string; to: string } } }; executor: { refused: string }; airi_calls: number } };
+  checks: Record<string, { ok: boolean }>;
+  outside_calls: { airi: number; airwallex: number };
+}
+export interface SideRuns { awx: AwxRun; airi: AiriRun; vic2: Vic2Run; recording: TrySignRecording }
 
 /**
  * The walk laid into 11-turn (v6): the recording (out/video/recordings/, not in git) and its windows, one after the
@@ -414,7 +422,7 @@ export const RECORDING = {
 /** The records of the side runs and the recording, read now. */
 export function loadSideRuns(root = new URL("../../", import.meta.url)): SideRuns {
   const json = <T>(f: string) => JSON.parse(readFileSync(new URL(f, root), "utf8")) as T;
-  return { awx: json<AwxRun>(AWX_RUN_FILE), airi: json<AiriRun>(AIRI_RUN_FILE), recording: json<TrySignRecording>(RECORDING_FILE) };
+  return { awx: json<AwxRun>(AWX_RUN_FILE), airi: json<AiriRun>(AIRI_RUN_FILE), vic2: json<Vic2Run>(VIC2_RUN_FILE), recording: json<TrySignRecording>(RECORDING_FILE) };
 }
 
 const SHORT_MONTHS = MONTHS.map((m) => m.slice(0, 3));
@@ -485,6 +493,14 @@ export function sideFacts(x: SideRuns): Record<string, Fact> {
   fact("airi.proposal", cfo.proposal_id, `${AIRI_RUN_FILE} \`purchases\` step ${cfo.step} \`proposal_id\` (${cfo.proposal_end}, ${cfo.method})`);
   fact("airi.refused", `${refused.currency} ${refused.amount}`, `${AIRI_RUN_FILE} \`purchases\` step ${refused.step} (refused by Purser, ${refused.code}, ${refused.airi_calls} Airi calls)`);
   fact("airi.checks", `${checks.filter((c) => c.ok).length} of ${checks.length}`, `${AIRI_RUN_FILE} \`checks\` (ok, counted)`);
+  // The second Airi run (vic-2): terms changed after the CFO's Face ID, refused on the hash before Airi was asked.
+  const v2 = x.vic2, d = v2?.steps?.D;
+  const v2checks = Object.values(need(v2?.checks, "the second Airi run's checks"));
+  if (v2?.mode !== "live" || v2.outside_calls?.airi !== 0 || v2.outside_calls?.airwallex !== 0 || !v2checks.every((c) => c.ok)) throw miss(`${VIC2_RUN_FILE} is not a clean live run with 0 Airi and 0 Airwallex calls`);
+  if (!d || d.airi_calls !== 0 || d.end !== "NEEDS_REAPPROVAL" || !/terms do not match the approved hash/.test(d.executor?.refused ?? "")) throw miss("the second Airi run's refusal after the Face ID (step D)");
+  fact("vic2.from", `${d.request.currency} ${need(d.alteration?.changed?.amount?.from, "step D's signed amount")}`, `${VIC2_RUN_FILE} \`steps.D.alteration.changed.amount.from\` (signed with the CFO's Face ID)`);
+  fact("vic2.to", `${d.request.currency} ${need(d.alteration?.changed?.amount?.to, "step D's altered amount")}`, `${VIC2_RUN_FILE} \`steps.D.alteration.changed.amount.to\` (our own labelled test)`);
+  fact("vic2.checks", `${v2checks.length} of ${v2checks.length}`, `${VIC2_RUN_FILE} \`checks\` (ok, counted)`);
 
   // The recorded walk: the labels the live page showed, and each window inside its step.
   const w = x.recording;
@@ -506,9 +522,10 @@ export function sideFacts(x: SideRuns): Record<string, Fact> {
  * 7 November, 13b and 13c): the script (premiereScript.ts) checks its scenes against these.
  */
 export const SCENE_SECONDS: Record<string, number> = {
-  "01-hook": 6, "02-purser": 4, "03-agents": 10, "04-how": 8, "05-price": 11, "05b-treasury": 8, "06-metal": 6, "07-dispute": 9,
-  "08-faceid": 8, "09-six": 9, "10-why": 8, "11-turn": 13, "12-tamper": 6, "13-proof": 12, "13b-awx": 11, "13c-airi": 14, "13d-value": 4,
-  "14-real": 8, "15-close": 13, "16-end": 11,
+  // v8 (Max, 7 November: "under 5 minutes, so it may be longer"): every scene longer, so each can be read before the
+  // cut; 03-agents and 05b-treasury now say what their cards show. 10-why stays out (12-tamper says the same).
+  "01-hook": 7, "02-purser": 6, "03-agents": 22, "04-how": 11, "05-price": 16, "05b-treasury": 15, "06-metal": 8, "07-dispute": 13,
+  "08-faceid": 11, "09-six": 13, "11-turn": 13, "12-tamper": 8, "13-proof": 15, "13b-awx": 15, "13c-airi": 17, "13d-value": 6, "14-real": 13, "15-close": 15, "16-end": 14,
 };
 
 /** How long a line takes at the narrator's calm pace, about 2.5 words a second (to the hundredth). */
@@ -589,8 +606,9 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
     },
     "05-price": {
       kicker: `The main run · ${v("run.day")} · test money`,
-      supplier: v("price.supplier"), rise: "raised its price",
-      from: v("price.old"), to: v("price.new"), unit: "test USD a stock check",
+      // v7: said plainly what the price is for (Max: "is it clear to people?").
+      supplier: `${v("price.supplier")},`, rise: `our data supplier, ${cents(v("price.new")) === 2 * cents(v("price.old")) ? "doubled" : "raised"} its price`,
+      from: v("price.old"), to: v("price.new"), unit: "test USD for each stock check the agent buys",
       cap: `The Sourcing agent's mandate on Metal: at most ${v("price.cap")} a payment`, capValue: v("price.cap"), capTag: `cap ${v("price.cap")}`,
       letThrough: "Let through on purpose. Purser normally refuses first.",
       refused: "Metal refused it.", reason: `${v("price.reason")} · nothing moved`,
@@ -702,9 +720,11 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
       rows: [
         { ok: true, label: "✓ Paid alone", amount: v("airi.alone"), detail: `within the ${v("airi.limit")} limit · one passkey tap in Airi` },
         { ok: true, label: "✓ Paid after Face ID", amount: `${v("airi.cfo")} · ${v("airi.proposal")}`, detail: "the CFO's Face ID in Purser, then one tap in Airi" },
-        { ok: false, label: "✕ Refused by Purser", amount: v("airi.refused"), detail: "a merchant not allowed · Airi was never asked" },
+        // v7: the third row is the second live run's refusal after the Face ID (vic-2, our own labelled test changed the
+        // signed terms); the disallowed merchant (C) stays in the line above, Max's words, since four rows do not fit.
+        { ok: false, label: "✕ Changed after Face ID", amount: `${v("vic2.from").replace(/\.00$/, "")} → ${v("vic2.to").replace(/^[A-Z]{3} /, "").replace(/\.00$/, "")}`, detail: "not what the CFO signed · Airi was never asked" },
       ],
-      checks: `${v("airi.checks")} checks`,
+      checks: `${v("airi.checks")} and ${v("vic2.checks")} checks`,
       label: v("airi.label"),
     },
     "13d-value": { line: ["The agents do the work.", "The CFO signs only the exceptions."] },
@@ -738,9 +758,9 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
   const says: Record<string, string[]> = {
     "01-hook": ["AI agents are starting to spend money.", "So who signs off?"],
     "02-purser": ["This is Purser, built by Max Geurtsen."],
-    "03-agents": [`${cap1(said("run.agents"))} Claude agents`, "its own Airwallex card, and its own Metal mandate"],
-    "05-price": [`${cents(v("price.new")) === 2 * cents(v("price.old")) ? "doubles" : "raises"} its price, past the Sourcing agent's cap`, "Metal refused it"],
-    "05b-treasury": ["two ways", `within the same ${spoken(Number(dollars("treasury.total")))} dollars`, "with Face ID"],
+    "03-agents": [`${cap1(said("run.agents"))} Claude agents`, "its own Airwallex card, and its own Metal mandate", "The Sourcing agent, on Claude Haiku", "The Support agent, on Claude Sonnet", "The Treasury agent, on Claude Opus"],
+    "05-price": [`${cents(v("price.new")) === 2 * cents(v("price.old")) ? "doubles" : "raises"} its price`, `from ${spoken(cents(v("price.old")))} to ${spoken(cents(v("price.new")))} cents a stock check`, `the ${spoken(cents(v("price.cap")))}-cent cap`, "Metal refused it"],
+    "05b-treasury": ["two ways", `within the same ${spoken(Number(dollars("treasury.total")))} dollars`, "with Face ID", `cap to ${spoken(cents(v("treasury.aCap")))} cents`, `our price to ${spoken(cents(v("treasury.bPrice")))} cents`],
     "06-metal": [`${cap1(said("metal.payments"))} Metal payments`, "No emulator"],
     "07-dispute": [`disputes ${said("dispute.count")} orders`, `Only the ${said("dispute.refundCount")} with wrong data`],
     "09-six": [`${cap1(said("paid.seconds"))} ${n("paid.seconds") === 1 ? "second" : "seconds"} later`, "Airwallex pays the euro invoice by SWIFT, in its sandbox"],
@@ -750,8 +770,10 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
       `${cap1(said("specs.stops"))} stops, ${v("specs.overLimit")} paid over a limit`, `${said("specs.stopsClaude")} skipped by Claude`, `${said("specs.stopsMetal")} refused by Metal`,
       `${said("specs.stopsCfo")} rejected by the CFO`, `${said("specs.stopsPlanted")} planted ${n("specs.stopsPlanted") === 1 ? "instruction" : "instructions"} ignored`],
     "13b-awx": [`Airwallex itself declined ${said("awx.declines")} charges`, "over the limit", "in the wrong category", "asked the CFO for a raise, not a retry"],
-    "13c-airi": ["Airwallex's Airi", "single-use Visa credential", "alone within the limit", "only after the CFO's Face ID", "refused by Purser before Airi was asked"],
+    "13c-airi": ["Airwallex's Airi", "single-use Visa credential", "alone within the limit", "only after the CFO's Face ID", "Terms changed after that Face ID were refused before Airi was asked"],
     "13d-value": ["The agents do the work. The CFO signs only the exceptions."],
+    // v7 (Max: the voice did not read all of it): both columns, as the screen has them.
+    "14-real": ["Real: the Airwallex sandbox, Metal testnet, Claude, Face ID, and Airi with a test card.", "Ours or simulated: the suppliers, the customer, the merchant, and a test second approver."],
     "15-close": [CLOSING[0], `${CLOSING[1]} ${CLOSING[2]}`, CLOSING[3]],
   };
   const voice: PremiereData["voice"] = {};
@@ -761,6 +783,9 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
     for (const w of says[id] ?? []) if (!line.includes(w)) throw new Missing(`premiere: the voice script's ${id} line does not say "${w}", as the record has it`);
     voice[id] = timeLine(id, line, seconds);
   }
+  // v8: each agent's card lights while the voice names it (the three middle lines of 03-agents), the limits after.
+  const agentLines = voice["03-agents"]!;
+  if (agentLines.length === 5) Object.assign(screen["03-agents"] as Record<string, unknown>, { litAt: agentLines.slice(1, 5).map((l) => l.at) });
   return { facts: F, screen, voice, credits: CREDITS };
 }
 

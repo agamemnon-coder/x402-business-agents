@@ -7,197 +7,233 @@ AI agents are starting to spend money.
 So who signs off?
 
 3
-00:00:06,500 --> 00:00:09,650
+00:00:07,500 --> 00:00:10,650
 This is Purser, built by Max Geurtsen.
 
 4
-00:00:10,500 --> 00:00:12,781
+00:00:13,000 --> 00:00:15,054
 Three Claude agents run a small
 
 5
-00:00:12,831 --> 00:00:15,413
+00:00:15,104 --> 00:00:17,430
 company that sells live stock data.
 
 6
-00:00:15,463 --> 00:00:19,850
-Each has its own Airwallex card, and its own Metal mandate.
+00:00:17,580 --> 00:00:20,341
+The Sourcing agent, on Claude Haiku, buys
 
 7
-00:00:20,500 --> 00:00:23,279
-Inside its limits, an agent pays alone.
+00:00:20,391 --> 00:00:22,740
+data per query, over x402 on Metal.
 
 8
-00:00:23,329 --> 00:00:27,850
-Beyond them, nothing moves until the CFO signs the exact terms.
+00:00:22,890 --> 00:00:26,600
+The Support agent, on Claude Sonnet, handles disputes and refunds.
 
 9
-00:00:28,300 --> 00:00:32,516
-Our supplier doubles its price, past the Sourcing agent's cap.
+00:00:26,750 --> 00:00:30,820
+The Treasury agent, on Claude Opus, runs FX, SWIFT and budgets.
 
 10
-00:00:32,566 --> 00:00:35,200
-We let one purchase through on purpose.
+00:00:30,970 --> 00:00:34,850
+Each has its own Airwallex card, and its own Metal mandate.
 
 11
-00:00:35,350 --> 00:00:38,850
-Metal refused it, and the refusal is on chain.
+00:00:35,500 --> 00:00:38,356
+Inside its limits, an agent pays alone.
 
 12
-00:00:39,500 --> 00:00:44,434
-Treasury proposes two ways to stay within the same twenty dollars.
+00:00:38,406 --> 00:00:43,050
+Beyond them, nothing moves until the CFO signs the exact terms.
 
 13
-00:00:44,484 --> 00:00:46,850
-The CFO picks one, with Face ID.
+00:00:46,100 --> 00:00:49,304
+Our data supplier doubles its price, from two
 
 14
-00:00:47,350 --> 00:00:49,724
-Eighty-six Metal payments in this run,
+00:00:49,354 --> 00:00:51,980
+to four cents a stock check, past the
 
 15
-00:00:49,774 --> 00:00:52,850
-each its own transaction on testnet. No emulator.
+00:00:52,030 --> 00:00:55,379
+three-cent cap on the Sourcing agent's mandate.
 
 16
-00:00:53,500 --> 00:00:56,401
-Then a customer disputes twelve orders,
+00:00:55,429 --> 00:00:58,200
+We let one purchase through on purpose.
 
 17
-00:00:56,451 --> 00:00:58,520
-all signed by its own agent.
+00:00:58,350 --> 00:01:01,850
+Metal refused it, and the refusal is on chain.
 
 18
-00:00:58,570 --> 00:01:01,850
-Only the three with wrong data are refunded.
+00:01:02,000 --> 00:01:06,210
+Treasury proposes two ways to stay within the same twenty dollars:
 
 19
-00:01:02,000 --> 00:01:05,787
-Anything beyond the limits goes to the CFO's phone.
+00:01:06,360 --> 00:01:08,735
+raise the Sourcing agent's cap to
 
 20
-00:01:05,837 --> 00:01:09,850
-The CFO reads the exact terms, and signs with Face ID.
+00:01:08,785 --> 00:01:10,940
+four cents and keep our price,
 
 21
-00:01:10,500 --> 00:01:13,505
-Six seconds later, Airwallex pays the euro
+00:01:11,090 --> 00:01:13,810
+or raise our price to seven cents.
 
 22
-00:01:13,555 --> 00:01:15,905
-invoice by SWIFT, in its sandbox.
+00:01:13,960 --> 00:01:16,850
+The CFO picks the first, with Face ID.
 
 23
-00:01:15,955 --> 00:01:17,650
-Every I.D. is published.
+00:01:17,500 --> 00:01:20,071
+Eighty-six Metal payments in this run,
 
 24
-00:01:19,500 --> 00:01:20,915
-Why not a password?
+00:01:20,121 --> 00:01:23,450
+each its own transaction on testnet. No emulator.
 
 25
-00:01:20,965 --> 00:01:24,075
-A password is the same for every payment.
+00:01:25,500 --> 00:01:28,401
+Then a customer disputes twelve orders,
 
 26
-00:01:24,125 --> 00:01:26,850
-The passkey signs these exact terms.
+00:01:28,451 --> 00:01:30,520
+all signed by its own agent.
 
 27
-00:01:27,500 --> 00:01:30,432
-Now it's your turn, on the live page.
+00:01:30,570 --> 00:01:33,850
+Only the three with wrong data are refunded.
 
 28
-00:01:30,482 --> 00:01:33,978
-Claude Sonnet reads the invoice, Claude Opus
+00:01:38,500 --> 00:01:42,530
+Anything beyond the limits goes to the CFO's phone.
 
 29
-00:01:34,028 --> 00:01:36,799
-advises, and you sign with Face ID.
+00:01:42,580 --> 00:01:46,850
+The CFO reads the exact terms, and signs with Face ID.
 
 30
-00:01:36,849 --> 00:01:38,250
-Then try to cheat.
+00:01:49,500 --> 00:01:52,505
+Six seconds later, Airwallex pays the euro
 
 31
-00:01:40,150 --> 00:01:44,100
-Change one cent, and the same signature is refused.
+00:01:52,555 --> 00:01:54,905
+invoice by SWIFT, in its sandbox.
 
 32
-00:01:44,750 --> 00:01:45,850
-One cent. Worthless.
+00:01:54,955 --> 00:01:56,650
+Every I.D. is published.
 
 33
-00:01:46,000 --> 00:01:48,266
-All twenty-four decisions by Claude.
+00:02:02,500 --> 00:02:05,432
+Now it's your turn, on the live page.
 
 34
-00:01:48,316 --> 00:01:50,903
-Sixteen stops, nothing paid over a limit:
+00:02:05,482 --> 00:02:08,978
+Claude Sonnet reads the invoice, Claude Opus
 
 35
-00:01:50,953 --> 00:01:54,184
-twelve skipped by Claude, two refused by Metal, one
+00:02:09,028 --> 00:02:11,799
+advises, and you sign with Face ID.
 
 36
-00:01:54,234 --> 00:01:57,850
-rejected by the CFO, and one planted instruction ignored.
+00:02:11,849 --> 00:02:13,250
+Then try to cheat.
 
 37
-00:01:58,500 --> 00:02:01,421
-Airwallex itself declined two charges:
+00:02:15,500 --> 00:02:19,450
+Change one cent, and the same signature is refused.
 
 38
-00:02:01,471 --> 00:02:05,018
-one over the limit, one in the wrong category.
+00:02:20,100 --> 00:02:21,650
+One cent. Worthless.
 
 39
-00:02:05,068 --> 00:02:08,850
-The agent asked the CFO for a raise, not a retry.
+00:02:23,500 --> 00:02:25,863
+All twenty-four decisions by Claude.
 
 40
-00:02:09,500 --> 00:02:14,167
-With Airwallex's Airi, agents paid with a single-use Visa credential:
+00:02:25,913 --> 00:02:28,611
+Sixteen stops, nothing paid over a limit:
 
 41
-00:02:14,217 --> 00:02:16,355
-alone within the limit, above it
+00:02:28,661 --> 00:02:32,029
+twelve skipped by Claude, two refused by Metal, one
 
 42
-00:02:16,405 --> 00:02:18,338
-only after the CFO's Face ID.
+00:02:32,079 --> 00:02:35,850
+rejected by the CFO, and one planted instruction ignored.
 
 43
-00:02:18,388 --> 00:02:22,850
-A disallowed merchant was refused by Purser before Airi was asked.
+00:02:38,500 --> 00:02:41,421
+Airwallex itself declined two charges:
 
 44
-00:02:23,000 --> 00:02:24,524
-The agents do the work.
+00:02:41,471 --> 00:02:45,018
+one over the limit, one in the wrong category.
 
 45
-00:02:24,574 --> 00:02:26,850
-The CFO signs only the exceptions.
+00:02:45,068 --> 00:02:48,850
+The agent asked the CFO for a raise, not a retry.
 
 46
-00:02:27,350 --> 00:02:31,231
-Real: the Airwallex sandbox, Metal testnet, Claude and Face ID.
+00:02:53,500 --> 00:02:58,354
+With Airwallex's Airi, agents paid with a single-use Visa credential:
 
 47
-00:02:31,281 --> 00:02:34,850
-Ours: the customer, the suppliers, a test second approver.
+00:02:58,404 --> 00:03:00,628
+alone within the limit, above it
 
 48
-00:02:35,500 --> 00:02:38,980
-A price shock, a dispute, a euro bill.
+00:03:00,678 --> 00:03:02,689
+only after the CFO's Face ID.
 
 49
-00:02:39,130 --> 00:02:43,149
-Claude decided, Airwallex and Metal held the limits, and
+00:03:02,739 --> 00:03:04,963
+Terms changed after that Face ID
 
 50
-00:02:43,199 --> 00:02:46,200
-the CFO signed only what went beyond them.
+00:03:05,013 --> 00:03:07,450
+were refused before Airi was asked.
 
 51
-00:02:46,350 --> 00:02:47,850
+00:03:10,500 --> 00:03:12,387
+The agents do the work.
+
+52
+00:03:12,437 --> 00:03:15,250
+The CFO signs only the exceptions.
+
+53
+00:03:16,500 --> 00:03:20,312
+Real: the Airwallex sandbox, Metal testnet, Claude, Face
+
+54
+00:03:20,362 --> 00:03:22,381
+ID, and Airi with a test card.
+
+55
+00:03:22,431 --> 00:03:23,622
+Ours or simulated:
+
+56
+00:03:23,672 --> 00:03:28,450
+the suppliers, the customer, the merchant, and a test second approver.
+
+57
+00:03:29,500 --> 00:03:33,050
+A price shock, a dispute, a euro bill.
+
+58
+00:03:33,200 --> 00:03:37,264
+Claude decided, Airwallex and Metal held the limits, and
+
+59
+00:03:37,314 --> 00:03:40,350
+the CFO signed only what went beyond them.
+
+60
+00:03:40,500 --> 00:03:42,450
 Purser. Starter Kit 11.
