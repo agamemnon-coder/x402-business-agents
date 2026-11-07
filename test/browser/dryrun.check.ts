@@ -176,20 +176,19 @@ async function sign(p: { page: Page }, id: string, o: { option?: "A" | "B"; tag:
   const page = p.page;
   await page.goto(`${url}/approve/${id}`);
   try {
-    await page.waitForSelector(o.reject ? "button.reject-btn" : "button.option", { timeout: 120_000 });
+    await page.waitForSelector(o.reject ? "#reject" : "#approve", { timeout: 120_000 });
   } catch (e) {
     await shot(page, `${o.tag}-no-proposal`);
     say(`  the phone shows: ${((await page.textContent("body")) ?? "").replace(/\s+/g, " ").slice(0, 300)}`);
     throw e;
   }
-  if (o.reject) await page.click("button.reject-btn");
-  else if (o.option) await page.locator("button.option", { hasText: `Option ${o.option}` }).first().tap();
-  else await page.locator("button.option").first().tap();
-  await page.waitForSelector("#sheet:not([hidden]) .sheet-title");
-  await page.waitForFunction(() => !(document.querySelector("#sheet button.confirm") as HTMLButtonElement).disabled, null, { timeout: 5000 });
+  // The approval view: choose the option (alternatives only), then the button arms after a moment and signs.
+  if (!o.reject && o.option) await page.locator(".choices button.option", { hasText: `Option ${o.option}` }).first().tap();
+  const button = o.reject ? "#reject" : "#approve";
+  await page.waitForFunction((q: string) => !(document.querySelector(q) as HTMLButtonElement | null)?.disabled, button, { timeout: 5000 });
   await shot(page, `${o.tag}-confirm`);
   if (o.beforeConfirm) await o.beforeConfirm();
-  await page.click("#sheet button.confirm");
+  await page.click(button);
   if (o.expectNoVerdict) {
     // The approval cannot reach the runner (no network, or the passkey refused): give the page time, then report.
     await page.waitForTimeout(8000);
@@ -222,20 +221,24 @@ async function linksStep(): Promise<void> {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const first = await ctx.newPage();
   await first.goto(url);
-  await first.evaluate(() => localStorage.setItem("kit11.runner", "AAAAold-runner-key"));
+  const oldKey = "A".repeat(122); // the last run's key, still pinned on this phone
+  await first.evaluate((k: string) => localStorage.setItem("kit11.runner", k), oldKey);
   await first.close();
   // A fresh page, as a phone opens the link: going to the same page with only a new #fragment would not reload it.
   const page = await ctx.newPage();
   await page.goto(viewer);
   await page.waitForTimeout(2000);
-  // The dashboard only shows data and keeps the first pinned key; the approval page is where it counts: it signs
-  // nothing for a runner it does not know, and says how to fix it (a private tab, or clear the site's data).
+  // The dashboard keeps the pinned key and keeps the link's new key apart; the approval page asks once, with both
+  // fingerprints, and only the press switches (Max, 7 Nov: no private tabs, no clearing the site's data).
   const approve = await ctx.newPage();
   await approve.goto(`${url}/approve/P-0001`);
-  await approve.waitForTimeout(3000);
-  const said = (await approve.textContent("body")) ?? "";
-  check(/not signed by the runner this phone knows|another runner key/.test(said) && !(await approve.$("button.option")), "a phone that pinned another runner signs nothing there, and is told to use a private tab");
+  await approve.waitForSelector("#use-new-key", { timeout: 20_000 });
+  check(!(await approve.$("#approve")) && /own runner key/.test((await approve.textContent(".keychange")) ?? ""), "a phone that pinned the last run's key signs nothing, and offers the new run's key with one button");
   await shot(approve, "pinned-conflict");
+  await approve.click("#use-new-key");
+  await approve.waitForSelector("#approve, #app > h1", { timeout: 20_000 });
+  const pinnedNow = await approve.evaluate(() => localStorage.getItem("kit11.runner"));
+  check(pinnedNow !== oldKey && !/not signed by the runner/.test((await approve.textContent("body")) ?? ""), "one press: the phone uses this run's key");
   await ctx.close();
 }
 
@@ -580,15 +583,15 @@ await timed("5 Four eyes on chain (2-of-2 account in this world)", async () => {
   check(/reverted.*CFO alone/.test(text.replace(/\n/g, " ")) || /reverted/.test(text), "the CFO's signature alone reverted on chain");
   check(r.status === 0, "four-eyes run finished");
 });
-await timed("Mis-tap: A tapped by mistake, then Back; nothing signed", async () => {
+await timed("Mis-tap: A chosen by mistake, then B; nothing signed", async () => {
   const page = cfo.page;
   await page.goto(`${url}/approve/${optB}`);
-  await page.waitForSelector("button.option");
-  await page.locator("button.option", { hasText: "Option A" }).first().tap();
-  await page.waitForSelector("#sheet:not([hidden]) .sheet-title");
-  check(/Option A/.test((await page.textContent(".sheet-title")) ?? ""), "the summary names the option tapped (A)");
-  await page.click("#sheet button.secondary");
-  check(await page.isHidden("#sheet"), "Back closes it");
+  await page.waitForSelector(".choices button.option");
+  await page.locator(".choices button.option", { hasText: "Option A" }).first().tap();
+  check(/Option A/.test((await page.textContent(".what-title")) ?? "") && (await page.textContent("#approve")) === "Approve option A with Face ID", "the view and the button name the option chosen (A)");
+  check(await page.isDisabled("#approve"), "the button arms again after the change");
+  await page.locator(".choices button.option", { hasText: "Option B" }).first().tap();
+  check((await page.textContent("#approve")) === "Approve option B with Face ID", "choosing B again: the button names B");
   check((db().prepare("SELECT COUNT(*) AS n FROM cosignatures").get() as { n: number }).n === 0, "nothing was signed");
 });
 await timed("6 Mandates replaced: option B, test-cfo then test-controller", async () => {
@@ -607,15 +610,12 @@ await timed("7 Dispute on signed orders; 'refund all 12' rejected (Opus advises 
   check(!!all, `"refund all 12" waits for the CFO (${all})`);
   const page = cfo.page;
   await page.goto(`${url}/approve/${all}`);
-  await page.waitForSelector("button.option");
-  await page.click("button.option");
-  await page.waitForSelector("#sheet:not([hidden]) .sheet-title");
-  check((await page.textContent("#sheet .eyebrow")) === "You are approving" && (await page.textContent("#sheet button.confirm.against")) === "Approve anyway with Face ID", "a tap on 'refund all 12': warned, 'Approve anyway', armed after 3 s");
+  await page.waitForSelector("#reject");
+  const order = await page.$$eval(".actions button", (n: Element[]) => n.map((x) => x.id));
+  check(order.join() === "reject,approve" && (await page.textContent("#approve")) === "Approve anyway with Face ID", "'refund all 12': warned, Reject first, 'Approve anyway' second, armed after 3 s");
   await shot(page, "refund-all-warning");
-  await page.click("#sheet button.instead");
-  await page.waitForFunction(() => !(document.querySelector("#sheet button.confirm") as HTMLButtonElement).disabled, null, { timeout: 5000 });
-  check((await page.textContent("#sheet .eyebrow")) === "You are rejecting", "'Reject instead' turns it into a rejection");
-  await page.click("#sheet button.confirm");
+  await page.waitForFunction(() => !(document.querySelector("#reject") as HTMLButtonElement).disabled, null, { timeout: 5000 });
+  await page.click("#reject");
   await page.waitForFunction(() => document.querySelector(".verdict-head")?.textContent === "Rejected", null, { timeout: 60_000 });
   check(status(all!) === "REJECTED", `${all} rejected with the passkey`);
 });
@@ -675,10 +675,9 @@ await timed("10 Licence EUR 240.00 (FX + SWIFT); the runner is killed right afte
   await cfo.setVerified(true);
   const page = cfo.page;
   await page.goto(`${url}/approve/${lic}`);
-  await page.waitForSelector("button.option");
-  await page.locator("button.option").first().tap();
-  await page.waitForFunction(() => !(document.querySelector("#sheet button.confirm") as HTMLButtonElement).disabled, null, { timeout: 5000 });
-  await page.click("#sheet button.confirm");
+  await page.waitForSelector("#approve");
+  await page.waitForFunction(() => !(document.querySelector("#approve") as HTMLButtonElement).disabled, null, { timeout: 5000 });
+  await page.click("#approve");
   await until(`${lic} approved`, () => { const s = status(lic); return s && s !== "PENDING_APPROVAL" ? s : undefined; }, 120_000);
   await killRunner("SIGKILL");
   say(`  runner killed with ${lic} at ${status(lic)}`);

@@ -410,6 +410,16 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   found (its data, time, kind, order, a dropped row, a rewritten hash), the chain survives a reload of the store, and it
   is per world. The server keeps the chain: it shows the order and that no row changed after the next was written, not
   that the server could not rewrite all of it. 2992 tests in 291 files, all passing.
+- 7 November, the approval view and a new run's key (Max, on his iPhone in the live runs): the approval page puts
+  what he decides on in the first screen at 390 × 844: the amount, the payee, the agent, why it needs him in one line,
+  "Approve with Face ID" and Reject; the exact terms, the hash, the options it is not and the review sit behind one
+  fold, "Details". The checks stay: the page hashes the terms itself and shows only what the runner signed; the buttons
+  arm after 0.8 s (3 s against Opus's advice, Reject first), and choosing an option signs nothing. A new run's viewer
+  link no longer locks the phone out: the page shows the old and new runner key's fingerprints (the runner prints its
+  own beside the viewer link) and one button, "This is a new run: use the new key"; only that press replaces the pin,
+  only for a key a link brought and that signed what the relay sends; a key no link offered is still refused
+  (test/approve-runner-key.test.ts, the browser check). Live after the relay is redeployed. 2950 tests in 288 files,
+  all passing.
 
 ## Real, and ours
 

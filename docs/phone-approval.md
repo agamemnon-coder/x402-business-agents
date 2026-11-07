@@ -44,14 +44,24 @@ phone (pages, WebCrypto, passkey)  ⇄  relay Worker on Cloudflare  ⇄  runner 
 - **The phone checks the hash too.** The page canonicalises the terms and hashes them itself (WebCrypto), and will
   not offer anything that does not hash to the hash it would sign. Every line of the confirm screen is built from
   those hashed terms, never from text the relay sends.
-- **Mis-tap prevention.** Price options sit side by side. A tap opens a full-screen summary of that one option: what
-  it does in one sentence, amount, margin, recipient, the options it is *not*, the countdown and the hash prefix.
-  Only "Confirm with Face ID" there starts the passkey (it arms after 0.8 s, so a double tap cannot reach it); Back
-  signs nothing. Once one option is approved, the runner refuses the others.
-- **Rejecting with Face ID.** Every proposal has a Reject button beside it (marked when Opus advises it). The same
-  summary opens, saying "You are rejecting", and the passkey signs a rejection hash derived from the terms hash
+- **The approval view.** The first screen, at 390 × 844, holds what the CFO decides on: what (the amount, the payee,
+  the agent), why it needs him in one line (the rule that sends it to him, with the policy's own numbers), and two
+  buttons, "Approve with Face ID" and Reject. Everything else (the sentence, the exact terms, the hash, the options it
+  is *not*, the agents' advice and Opus's review) is behind one fold, "Details". Warnings (a planted line code
+  ignored, an account holder who is not the vendor) stay in the first screen. The buttons stay on screen as he scrolls.
+- **Mis-tap prevention.** Price options sit side by side above the view; choosing one only changes what the view shows,
+  and the button names it ("Approve option B with Face ID"). The buttons arm 0.8 s after the view opens or the choice
+  changes, so a double tap cannot reach them; the passkey's challenge is that one option's hash. When Opus advises
+  rejecting, Reject comes first and "Approve anyway with Face ID" arms only after 3 s, under a loud line. Once one
+  option is approved, the runner refuses the others.
+- **Rejecting with Face ID.** Reject signs a rejection hash derived from the terms hash
   (`sha256("kit11 reject v1 " + terms hash)`), so a rejection signature can never be replayed as an approval, nor an
   approval as a rejection. The runner verifies it the same way and records the rejection; nothing runs.
+- **A new run's key.** The viewer link pins the runner's key on the phone, and each run has its own key. A link with
+  another key never replaces the pin by itself: the page shows both keys' fingerprints (the runner prints its own as
+  `key` beside the viewer link) and one button, "This is a new run: use the new key". Only the person's press switches,
+  and only to a key a link brought and that signed what the relay sends now; anything signed by another key, or by
+  none, is refused. Switching signs nothing.
 - **Enrolment:** `npm run relay -- --enrol` prints a one-time code (ten minutes, five tries); the approver opens
   `/enrol` on the phone, types it and creates the passkey with Face ID. The runner checks the code and the new
   passkey itself and pins it in the ledger; the dashboard shows which passkey approvals need.
@@ -77,7 +87,7 @@ unless that signature checks out. A new passkey counts only after `npm run passk
 runner, with the fingerprint the phone shows. Limits: a page served by a compromised Cloudflare account could show one thing and sign
 another hash, but the runner still executes nothing that is not a waiting proposal's exact terms.
 
-| Choose an option | Confirm what it does | Done | Or reject |
+| The approval view | Against Opus's advice | Done | A new run's key |
 |---|---|---|---|
-| ![Options](approve-options.png) | ![Confirm](approve-confirm.png) | ![Done](approve-done.png) | ![Reject](approve-reject.png) |
+| ![The approval view](approve-view.png) | ![Against advice](approve-against-advice.png) | ![Done](approve-done.png) | ![A new run's key](approve-keychange.png) |
 

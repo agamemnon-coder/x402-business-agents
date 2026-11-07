@@ -3,7 +3,7 @@
 // viewer link (out of band, never from the relay) and refuses anything the relay changed. A relay that serves a
 // different script could still lie on screen; that residual risk is in docs/security.md.
 
-import { createPrivateKey, createPublicKey, generateKeyPairSync, sign } from "node:crypto";
+import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, sign } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
@@ -26,6 +26,14 @@ export function displayKey(path: string): DisplayKey {
   const key = createPrivateKey(readFileSync(path, "utf8"));
   const publicSpki = createPublicKey(key).export({ type: "spki", format: "der" }).toString("base64url");
   return { publicSpki, sign: (text) => sign("sha256", Buffer.from(text, "utf8"), { key, dsaEncoding: "ieee-p1363" }).toString("base64url") };
+}
+
+/**
+ * The runner key's fingerprint: SHA-256 of the SPKI, first 16 hex in groups of four, as the phone shows it when a new
+ * run's link brings a new key (src/approve/client.ts runnerKeyFingerprint), so the two can be compared.
+ */
+export function displayKeyFingerprint(publicSpki: string): string {
+  return createHash("sha256").update(Buffer.from(publicSpki, "base64url")).digest("hex").slice(0, 16).toUpperCase().match(/.{4}/g)!.join("-");
 }
 
 /** Exactly the part of the approvals the phone verifies, as canonical JSON (RFC 8785). */
