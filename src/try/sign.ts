@@ -73,6 +73,9 @@ export const TRY_SIGN_SCREENS = {
   trick: {
     head: "Try to trick the agent.",
     lead: "Send your agent a fake invoice",
+    /** Max, 7 Nov: true whether the agent was fooled or not. */
+    decides: "The code decides, not the agent.",
+    did: "What the agent did",
     next: "Next: change the rule",
   },
   rule: {
@@ -335,6 +338,8 @@ table.diff tr.chg td:last-child { color: var(--bad); }
 .tricked { display: grid; gap: 10px; padding: 14px 16px; border-radius: 16px; background: var(--bad-soft); }
 .tricked .doc { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--surface); border: 1px dashed var(--border); font: 500 13.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 .tricked .fooled { margin: 0; font-size: 16px; } .tricked .fooled q { font-style: italic; }
+.pill.live { background: var(--ok-soft, var(--accent-soft)); color: var(--text); font-weight: 700; }
+.tricked ul.calls { list-style: none; padding: 0; } .tricked ul.calls li { overflow-wrap: anywhere; margin-top: 6px; }
 .tricked .lesson { margin: 0; font-weight: 750; font-size: 17px; }
 .tricked ul { margin: 6px 0 0; padding-left: 18px; } .tricked li.blocks { color: var(--bad); font-weight: 600; }
 /* 1.4: what a looser rule adds to the worst case. */
@@ -1284,8 +1289,13 @@ const JS = `
       if (q.status !== 200 || !r) { status("k2-status", (q.data && q.data.error) || ("error " + q.status), "bad"); return; }
       status("k2-status", "");
       $("k-doc").textContent = r.invoice.shows; $("k-full").textContent = r.invoice.text;
-      $("k-says").textContent = r.agent_says;
-      $("k-label").textContent = r.agent_label;
+      // What the agent read (live Sonnet, labelled; or code's reading, labelled why), then the code's verdict.
+      $("k-says").textContent = r.agent.read;
+      $("k-label").textContent = r.agent.label;
+      $("k-label").className = "pill " + (r.agent.live ? "live" : "said-before");
+      $("k-calls").replaceChildren.apply($("k-calls"), r.agent.calls.map(function (c) {
+        return el("li", "", [el("b", "", [c.step]), " · " + (c.model || "no model") + (c.ms != null ? " · " + (c.ms / 1000).toFixed(1) + " s" : "") + (c.request_id ? " · " + c.request_id : ""), el("br", "", []), c.input + " → " + c.output]);
+      }).concat(r.agent.note ? [el("li", "small muted", [r.agent.note])] : []));
       $("k-out").textContent = r.outcome;
       $("k-lesson").textContent = r.lesson;
       $("k-why").replaceChildren.apply($("k-why"), r.signals.map(function (g) { return el("li", g.blocks ? "blocks" : "", [(g.blocks ? "Blocks: " : "Evidence: ") + g.detail]); })
@@ -1392,9 +1402,10 @@ ${scr(4, `  <h2 tabindex="-1" id="k-head">${esc(W.trick.head)}</h2>
   <div class="tricked" id="k-result" hidden aria-live="polite">
     <p class="doc" id="k-doc"></p>
     <p class="fooled"><span class="pill said-before" id="k-label"></span> <q id="k-says"></q></p>
+    <p class="small muted">${esc(W.trick.decides)}</p>
     <p class="outcome" id="k-out"></p>
     <p class="lesson" id="k-lesson"></p>
-    <details class="more"><summary>more</summary><pre class="doc" id="k-full"></pre><ul class="small" id="k-why"></ul></details>
+    <details class="more" id="k-did"><summary>${esc(W.trick.did)}</summary><ul class="small calls" id="k-calls"></ul><pre class="doc" id="k-full"></pre><ul class="small" id="k-why"></ul></details>
   </div>
   <div class="bar"><button class="btn primary big" type="button" id="go-rule" data-world="1">${esc(W.trick.next)}${icon("arrow-right", 20)}</button></div>`)}
 ${scr(5, `  <h2 tabindex="-1" id="s4-head">${esc(W.rule.head)}</h2>

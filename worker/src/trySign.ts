@@ -15,7 +15,13 @@
 // registered. A proposal that fails a check has nothing to sign, and the server refuses a signature for it anyway.
 
 import { COMMON_HEADERS, rateKey, type Sql } from "./core.js";
-import { ATTACKS, runTrick, type Attack } from "./trick.js";
+import { ATTACKS, TRICKS, runTrick, type Attack } from "./trick.js";
+import type { InvoiceReadSource } from "../../src/try/claude.js";
+
+/** Live agent calls (section 6): kept aside per call before it, settled after; per address an hour; everyone a minute. */
+export const TRICK_RESERVE_USD = 0.03;
+export const LIVE_PER_HOUR = 20;
+export const LIVE_ALL_PER_MINUTE = 30;
 import { verifyAssertion, type PublicKeyXY } from "./webauthn.js";
 import { QuoteUnavailable, type FxQuote, type FxSource } from "./fxQuote.js";
 import { AGENTS, type Agent } from "../../src/config/policy.js";
@@ -347,12 +353,17 @@ export class TrySignDesk {
   private readonly line: SentenceSource | "off" | null;
   /** 1.1: the main run's recorded EUR/USD rate, for step 0's worst case; null: no EUR total is shown. */
   private readonly rate: RecordedRate | null;
+  /** Section 6: the runner's invoice reader, live (Sonnet), "off" under the emergency switch, or none without a key. */
+  private readonly reader: InvoiceReadSource | "off" | null;
   /** The last live quote, shared only after a limit or a failure while it has time left (FX_REUSE_MIN_MS). */
   private lastQuote: FxQuote | null = null;
 
   /** It takes a SQL handle, a clock and, when the Worker has the sandbox key, the FX quote source; nothing else. */
-  constructor(private readonly sql: Sql, opts: { now?: () => Date; fx?: FxSource | null; agentLine?: SentenceSource | "off" | null; rate?: RecordedRate | null } = {}) {
+  constructor(private readonly sql: Sql, opts: { now?: () => Date; fx?: FxSource | null; agentLine?: SentenceSource | "off" | null; reader?: InvoiceReadSource | "off" | null; rate?: RecordedRate | null } = {}) {
     this.now = opts.now ?? (() => new Date());
+    this.reader = opts.reader ?? null;
+    // Each world's trick readings, kept: a second click on the same attack asks no model again.
+    this.sql.exec("CREATE TABLE IF NOT EXISTS ts_tricks (world TEXT NOT NULL, attack TEXT NOT NULL, json TEXT NOT NULL, PRIMARY KEY (world, attack))");
     this.rate = opts.rate ?? null;
     this.fx = opts.fx ?? null;
     this.line = opts.agentLine ?? null;
@@ -427,7 +438,7 @@ export class TrySignDesk {
     if (sub === "/quote") return this.newQuote(ip, world);
     if (sub === "/policy") return this.setPolicy(url, ip, world, body);
     // 1.3: a fixed attack through Purser's own fraud and injection code; no proposal, no quote, no model call.
-    if (sub === "/trick") return answer(200, { trick: await runTrick(body.attack as Attack) });
+    if (sub === "/trick") return this.trick(ip, world, body.attack as Attack);
     return this.sign(url, ip, world, body);
   }
 
@@ -533,6 +544,47 @@ export class TrySignDesk {
       return fixed("unavailable", "the model did not answer in time, or not in the expected shape");
     }
   }
+  /**
+   * 1.3 and section 6: one fixed fake invoice, read live by the runner's invoice reader when it can be (the shared
+   * daily budget, the per-address and overall limits, the 8 s timeout and the emergency switch, as the sentence's), then
+   * decided by Purser's code. Kept per world, so asking again costs nothing.
+   */
+  private async trick(ip: string, world: WorldRow, attack: Attack): Promise<Response> {
+    const kept = (this.sql.exec("SELECT json FROM ts_tricks WHERE world = ? AND attack = ?", world.id, attack).toArray() as { json: string }[])[0];
+    if (kept) return answer(200, { trick: JSON.parse(kept.json) as unknown });
+    const live = await this.liveCall(ip, TRICK_RESERVE_USD, (r: InvoiceReadSource) => r(TRICKS[attack].text), this.reader);
+    const result = await runTrick(attack, live);
+    this.sql.exec("INSERT OR REPLACE INTO ts_tricks (world, attack, json) VALUES (?, ?, ?)", world.id, attack, JSON.stringify(result));
+    return answer(200, { trick: result });
+  }
+
+  /**
+   * One live agent call under the page's shared rules (Max, 7 Nov): the emergency switch first (no request, no limit hit,
+   * nothing kept aside); then today's budget (AGENT_LINE_DAILY_USD for every live call on this page together), the
+   * overall per-minute and per-address per-hour limits; the cost settled after. Any failure is a reason, never thrown.
+   */
+  private async liveCall<S, T extends { costUsd: number }>(ip: string, reserveUsd: number, call: (source: S) => Promise<T>, source: S | "off" | null): Promise<T | { unavailable: string }> {
+    if (source === "off") return { unavailable: "the live agents are switched off on this server" };
+    if (!source) return { unavailable: "this server has no model key" };
+    const nowMs = this.now().getTime();
+    const day = this.now().toISOString().slice(0, 10);
+    const spent = (this.sql.exec("SELECT usd FROM ts_spend WHERE day = ?", day).toArray() as { usd: number }[])[0]?.usd ?? 0;
+    const add = (usd: number) => this.sql.exec("INSERT INTO ts_spend (day, usd) VALUES (?, ?) ON CONFLICT(day) DO UPDATE SET usd = usd + excluded.usd", day, usd);
+    if (spent + reserveUsd > AGENT_LINE_DAILY_USD) return { unavailable: `today's USD ${AGENT_LINE_DAILY_USD.toFixed(2)} for live agents on this page is spent` };
+    if (this.hits("*", "live-all", nowMs - 60_000) >= LIVE_ALL_PER_MINUTE || this.hits(ip, "live", nowMs - 3_600_000) >= LIVE_PER_HOUR) return { unavailable: "the live agents' limit for this minute (or for your address this hour) is reached" };
+    this.hit("*", "live-all", nowMs);
+    this.hit(ip, "live", nowMs);
+    add(reserveUsd);
+    try {
+      const r = await call(source);
+      add(r.costUsd - reserveUsd);
+      return r;
+    } catch {
+      console.error("try-sign: a live agent call failed");
+      return { unavailable: "the live agent did not answer in time, or not in the expected shape" };
+    }
+  }
+
   /** Who proposed it, in the terms: the agent, and whether its sentence was the model's or fixed text. */
   private static by(p: FixedProposal, voice: Voice | null): string {
     return `${p.agent} (${voice?.source === "model" ? "sentence by Claude Haiku; amounts and checks by code" : "fixed text"})`;

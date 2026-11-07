@@ -5,6 +5,8 @@
 // relay Worker can run it; the key stays on the server and never reaches the page.
 
 import { callCostMicros } from "../claude/pricing.js";
+import { INVOICE_INSTRUCTION, InvoiceSchema, READER_SYSTEM, readerTurn, type Invoice } from "../claude/invoiceReading.js";
+import { apiInputSchema } from "../agents/toolSchema.js";
 import type { Intent, Reading, TryModels } from "./engine.js";
 import type { AgentAsk, AgentReply } from "./world.js";
 
@@ -153,6 +155,53 @@ export function claudeSentence(apiKey: string, fetcher: typeof fetch = fetch, ti
       const model = j.model ?? HAIKU;
       const micros = callCostMicros(model, { input: j.usage.input_tokens, output: j.usage.output_tokens, cache_read: j.usage.cache_read_input_tokens ?? 0, cache_write: j.usage.cache_creation_input_tokens ?? 0 }) ?? 0;
       return { text, requestId: res.headers.get("request-id"), costUsd: micros / 1e6, model };
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+}
+
+/** What the invoice reader returned, live: the reading, the API's request id, its cost, the model, how long it took. */
+export interface InvoiceReadingLive { value: Invoice; requestId: string | null; costUsd: number; model: string; ms: number }
+/** Reads one invoice document the way the runner's reader does (src/claude/reader.ts ask, task extract_invoice). */
+export type InvoiceReadSource = (document: string) => Promise<InvoiceReadingLive>;
+
+/**
+ * /try/sign (Max, 7 Nov, section 6): the runner's invoice reader, live, over fetch. The same system prompt
+ * (READER_SYSTEM), instruction and schema (src/claude/invoiceReading.ts), the same model (Sonnet, the reader's "act"
+ * role), effort low, structured output; the document goes in wrapped and labelled as untrusted. The answer is checked
+ * against the schema here and against the document's own lines by the caller (checkInvoiceReading), as in the runner.
+ * Only fixed documents written by us are ever sent; no visitor's words.
+ */
+/** The invoice schema as the API takes it (no "$schema" key). */
+const READING_SCHEMA = (({ $schema: _drop, ...rest }) => rest)(apiInputSchema(InvoiceSchema));
+
+export function claudeReadInvoice(apiKey: string, fetcher: typeof fetch = fetch, timeoutMs = 8_000): InvoiceReadSource {
+  return async (document) => {
+    const started = Date.now();
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), timeoutMs);
+    try {
+      const res = await fetcher("https://api.anthropic.com/v1/messages", {
+        method: "POST", signal: ctl.signal,
+        headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+        body: JSON.stringify({
+          model: SONNET, max_tokens: 1000,
+          system: [{ type: "text", text: READER_SYSTEM, cache_control: { type: "ephemeral" } }],
+          output_config: { effort: "low", format: { type: "json_schema", schema: READING_SCHEMA } },
+          messages: [{ role: "user", content: readerTurn(INVOICE_INSTRUCTION, document) }],
+        }),
+      });
+      if (!res.ok) throw new Error(`the model answered HTTP ${res.status}`);
+      const j = (await res.json()) as ApiResult & { model?: string };
+      if (j.stop_reason === "refusal") throw new Error("the model declined");
+      let v: unknown;
+      try { v = JSON.parse(j.content.find((b) => b.type === "text")?.text ?? ""); } catch { throw new Error("the model gave no answer in the expected shape"); }
+      const fits = InvoiceSchema.safeParse(v);
+      if (!fits.success) throw new Error("the model gave no answer in the expected shape");
+      const model = j.model ?? SONNET;
+      const micros = callCostMicros(model, { input: j.usage.input_tokens, output: j.usage.output_tokens, cache_read: j.usage.cache_read_input_tokens ?? 0, cache_write: j.usage.cache_creation_input_tokens ?? 0 }) ?? 0;
+      return { value: fits.data, requestId: res.headers.get("request-id"), costUsd: micros / 1e6, model, ms: Date.now() - started };
     } finally {
       clearTimeout(timer);
     }

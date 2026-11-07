@@ -317,6 +317,15 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   most 3 times a day") with what a looser rule adds a month ("+€139,500"), and why the main run's is EUR 300 behind
   "more". A closing card: what you did in about a minute, then "See the real run", "Trace a real payment", "Read the
   code". 2875 tests in 282 files, all passing.
+- 7 November, the real agent in "Try to trick the agent" (Max's section 6, part 1): the agent that reads invoices, live
+  (Claude Sonnet, the runner's own reader: the same system prompt, instruction and schema, now in
+  src/claude/invoiceReading.ts and shared by runner and Worker), reads each fixed fake invoice; code checks its reading
+  against the document's own lines, as the runner does; then Purser's code blocks it whatever the agent read. The page
+  shows what the agent read ("Claude Sonnet · live"), "The code decides, not the agent.", the verdict, and "What the
+  agent did" (the call, its model, time and request id). Without the live agent (no key, switched off, over budget,
+  past 8 s) code reads the invoice, labelled so. One budget for every live call on the page, USD 10 a day (was USD 1
+  for the sentence alone), per-address and overall limits, the emergency switch TRY_SIGN_HAIKU for all of them, and
+  today's spend on /health. 2881 tests in 282 files, all passing.
 
 ## Real, and ours
 
