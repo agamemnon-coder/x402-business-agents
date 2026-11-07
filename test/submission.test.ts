@@ -167,8 +167,12 @@ describe("the short Description (Max, 5 Nov)", () => {
     at("Max plays the CFO and signs with a personal passkey (Face ID on a phone).");
     expect(flat).not.toMatch(/\bhis\b|Max's passkey/);
     // The caveats are one line plus a link: no T:0 error codes, no Visa TAP, no TAP run in the form's Description (they
-    // stay in the long text and the claims).
-    expect(flat).not.toMatch(/CAPI\d+|T:0|Visa|TAP/);
+    // stay in the long text and the claims). Visa is named once since 7 Nov (the owner's decision): the Airi run, Visa
+    // Intelligent Commerce via Airwallex's Airi, labelled, with its 5 of 5 checks; never a Visa Award until Visa confirms
+    // eligibility (docs/submission/visa-award-pending.md).
+    expect(flat).not.toMatch(/CAPI\d+|T:0|TAP|Trusted Agent|Visa Award/);
+    expect(flat.match(/Visa/g)).toHaveLength(1);
+    expect(flat).toContain("Visa Intelligent Commerce via Airwallex's Airi (7 Nov; Airwallex sandbox, test card, test money): 5 of 5 checks; paid alone within the limit, after Face ID above it; Purser refused a disallowed merchant before Airi.");
     expect(flat).toContain("Details → https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/submission/long-description.md#what-is-real-and-what-is-simulated");
     expect(long).toContain(T0_STATUS);
     expect(longRaw).toMatch(/^### What is real and what is simulated$/m);

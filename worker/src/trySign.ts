@@ -947,10 +947,18 @@ export class TrySignDesk {
         rejected = { timing: live.advice.timing, date: live.advice.date, reason: live.advice.reason.slice(0, 1000) };
       } else unavailable = live.why ?? "the agent did not advise";
     } else unavailable = live.unavailable;
-    // The recorded advice, checked as a live one against today's facts (another quote's amounts do not pass).
+    // The recorded advice, checked as a live one against today's facts (another quote's amounts do not pass); only the
+    // times and days it was recorded with (its quote's end, its "today") are its own: a time is no amount.
     const rec = this.recorded?.advice ?? null;
     if (rec) {
-      const v = verdict({ timing: rec.timing, date: rec.advised_date, reason: rec.reason });
+      const own = adviceGiven(rec.facts, alone).references;
+      const recGiven = (date: string | null) => { const g = given(date); return { ...g, references: [...g.references, ...own] }; };
+      const recVerdict = (a: { timing: "pay_now" | "wait_until"; date: string | null; reason: string }): { says: string } | { bad: string } => {
+        if (adviceOutOfBounds(f, a)) return { bad: "its advice is outside code's bounds for today" };
+        const c = checkReason(a.reason, recGiven(a.date));
+        return "says" in c ? c : { bad: c.bad === "shape" ? "its reason was not one or two plain sentences" : "an amount in its reason was not one of code's numbers" };
+      };
+      const v = recVerdict({ timing: rec.timing, date: rec.advised_date, reason: rec.reason });
       for (const c of rec.calls) state.calls.push({ step: "advise", model: c.model, request_id: c.request_id, ms: c.ms, input: `recorded ${rec.date}: ${c.tools.map((t) => t.name).join(", ") || "no tool"}`, output: c.tools.some((t) => t.name === "submit_advice") ? "advice" : "read" });
       if ("says" in v) {
         state.advice = { source: "recorded", label: RECORDED_LABEL, says: v.says, advice: adviceOf({ timing: rec.timing, date: rec.advised_date }), timing: rec.timing, date: rec.advised_date, why: unavailable, model: rec.model, request_id: rec.calls[rec.calls.length - 1]?.request_id ?? null };

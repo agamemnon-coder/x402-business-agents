@@ -455,6 +455,19 @@ Claude Code, on Max's go; in production a second person). Sources for every clai
   currency next to a number must be one of code's amounts as written (another currency's "USD 1,850.00" still fails),
   and a currency named on its own is no amount; every digit and number word must still be code's. 3028 tests in 295
   files, all passing.
+- 7 November, the Airi run named (the owner's decision, word for word): "Visa Intelligent Commerce via Airwallex's Airi:
+  a live run (7 Nov)", with one summary sentence, purchase A's sentence fixed ("Within Purser's limit, no Purser approval
+  is needed. Airi itself asks the cardholder to confirm each purchase with a passkey."), three outcome badges ("✓ Paid
+  alone", "✓ Paid after Face ID", "✕ Refused by Purser"), "5 of 5 checks pass" linked to the run log's checks and the ids
+  behind "Details"; on /airwallex, at the top of /visa (above the TAP run) and on /proof under the partners
+  (src/redesign/airiRun.ts, test/airi-run-page.test.ts). Also in the README, one sentence in the form (Description
+  3,999 characters), the long text, the deck's Airwallex slide, the pitch and Q&A 25 and 26. Still entered for the Metal
+  Award only; the Visa Award lines wait for Visa's confirmation (docs/submission/visa-award-pending.md). Page budgets:
+  /airwallex 345, /visa 275 words. 3029 tests in 295 files, all passing.
+- 7 November, the recorded Treasury advice is usable again when the live agent cannot answer: it was refused only for
+  naming its own quote's end ("runs out today at 13:00:35Z"), a time and no amount. Its amounts are still checked
+  against today's numbers (another quote's amounts still fail); only the times and days it was recorded with are its
+  own. 3029 tests in 295 files, all passing.
 - 7 November, a fresh juror's review (jury-fixes): Home has the three sentences back under the subtitle (its word
   budget 130 → 190); one time per step everywhere ("about 40 s" for Watch's highlights, measured at 42 s by the
   stage's own timings; "about a minute" and "Try it in a minute." for /try/sign; /judge 40 + 40 + 30 + 30 + 40 s);
@@ -472,5 +485,9 @@ Claude Code, on Max's go; in production a second person). Sources for every clai
   the Treasury agent asked for one short sentence a CFO can read on a phone (HH:MM UTC, grouped amounts), on /try/sign
   only, still checked by code. The Worker sends a path pasted with a trailing "." or "," to the same path without it.
   The form: one character count, no punctuation glued to a link, "Max plays the CFO and signs with a personal passkey
-  (Face ID on a phone)."; pitch 3e with the current price; qa.md's title and range; README's TAP and T:0 lines
-  rewritten; claims checked on 7 November.
+  (Face ID on a phone)."; pitch 3e with the current price; qa.md's title and range (questions 18 to 26); README's TAP
+  and T:0 lines rewritten; claims checked on 7 November. Merged with main after the Visa Intelligent Commerce
+  release: the VIC block as main has it, the Airwallex card still first on /proof; budgets /airwallex 345, /visa 275,
+  /metal 175, Home 190; the form's Description 3,996 characters with the VIC line (a few more words tightened, no fact
+  dropped). The deck (purser-deck.pdf and its slide PNGs), the cheat sheet and the spiekkaart printed again from their
+  sources. 3032 tests in 295 files, all passing.

@@ -332,6 +332,18 @@ describe("the recorded advice: a real one, shown when the live agent is unavaila
     expect(termsOf(t2)).toMatchObject({ agent_advice: "pay_now", proposed_by: "Treasury agent (invoice read by code, advice recorded from Claude Opus; amounts and checks by code)" });
   });
 
+  it("a recorded reason may name its own quote's end (a time is no amount): shown, labelled, its amounts still today's", async () => {
+    // 7 Nov, after the release: live Opus ran past the deadline once and the recorded advice was refused only for
+    // "runs out today at 13:00:35Z", the recorded quote's end, though every amount in it was today's.
+    const reason = "The locked quote (buy EUR 870.00 for USD 982.82) runs out today at 13:00:35Z, so paying now keeps it. It is above the EUR 500.00 I may pay alone, so you sign it.";
+    const rec = recorded(reason);
+    rec.advice!.facts = { ...rec.advice!.facts, quote: { ...rec.advice!.facts.quote!, validTo: "2026-11-07T13:00:35Z" } };
+    const { d } = deskWith("off", { recorded: rec });
+    const { t2 } = await world(d);
+    expect(t2.says).toBe(reason);
+    expect(t2.voice).toMatchObject({ source: "recorded", label: RECORDED_LABEL });
+  });
+
   it("a recorded reason with another quote's amount is refused by the amount check: the fixed sentence, labelled", async () => {
     const { d } = deskWith("off", { recorded: recorded("The FX buys the EUR 870.00 short for USD 990.15. It is above the EUR 500.00 I may pay alone, so you sign it.", "USD 990.15") });
     const { t2 } = await world(d);

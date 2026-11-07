@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { CFO_VIEW_LINK, CFO_VIEW_URL, CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, SPLIT_LINE, VISA_EXTRA_LINK } from "../config/brand.js";
 import { agentRun, faceIdDecisions, faceIdLine, family, letThroughOf, ownTap, payments, sandboxRails, runName, split, metalDetail, stopFigure, stopStory, stopSub, stops, stopsLine, tapRun, type AgentRun, type Ev, type RunRecord, type Tile } from "./run.js";
 import { AWX_HASH_ID, READBACK_CSS, cardControlRows, cardsReadback, controlsShortHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
-import { airiRunBlock } from "./airiRun.js";
+import { AIRI_CSS, airiRunBlock } from "./airiRun.js";
 import { awxRunBlock } from "./awxRun.js";
 import { esc, icon, page } from "./ui.js";
 import { LEAD_CSS, leadHtml, proofLeads } from "./proofLead.js";
@@ -76,6 +76,7 @@ a.pf { color: var(--accent); font-weight: 600; text-decoration: none; font-size:
 .more h3 .n { font-variant-numeric: tabular-nums; color: var(--accent); white-space: nowrap; flex: none; }
 .more p { margin: 0; color: var(--muted); font-size: 15.5px; }
 ${READBACK_CSS}
+${AIRI_CSS}
 ${LEAD_CSS}`;
 
 const JS = `
@@ -254,18 +255,20 @@ ${box("archive", "clock", "Archive", "", "Earlier runs and tools, kept as they w
  */
 export function readBack(run: AgentRun): string {
   const h = hashTravel(run.record), cards = cardsReadback(), rows = cards ? cardControlRows(run.record, cards) : [];
-  // awx-1 (7 Nov): the separate Airwallex-only run, dated and labelled, under the main run's read-backs.
+  // awx-1 (7 Nov): the separate Airwallex-only run, dated and labelled, under the main run's read-backs. (The Airi run,
+  // Visa Intelligent Commerce, is in sight under the partners since 7 Nov: airiRunBlock in proofPage.)
   const awx1 = awxRunBlock(undefined, { short: true });
-  // The Airi run (7 Nov): one short line, dated and labelled, linking to every step on /airwallex.
-  const airi = airiRunBlock(undefined, { short: true });
-  if (!h && !rows.length && !awx1 && !airi) return "";
+  if (!h && !rows.length && !awx1) return "";
   return `<h2 class="sec" id="airwallex-readback">Airwallex, read back</h2>
-  <div class="awrb two">${hashBlockHtml(h)}${cards ? controlsShortHtml(rows, cards.rec.read_at, cards.file) : ""}</div>${awx1 || airi ? `
-  <div class="awrb">${awx1}${airi}</div>` : ""}`;
+  <div class="awrb two">${hashBlockHtml(h)}${cards ? controlsShortHtml(rows, cards.rec.read_at, cards.file) : ""}</div>${awx1 ? `
+  <div class="awrb">${awx1}</div>` : ""}`;
 }
 
 export function proofPage(run: AgentRun = agentRun()): string {
   const r = run.record, sp = split(r), story = stopStory(r), pay = payments(r);
+  // The Airi run (7 Nov): Visa Intelligent Commerce via Airwallex's Airi, in sight under the partners (owner, 7 Nov),
+  // short: its outcomes and checks, then a link to every id on /airwallex.
+  const airi = airiRunBlock(undefined, { short: true });
   const nums: (Tile & { cls: string })[] = [
     { cls: "claude", value: String(sp.byClaude), label: `decisions by Claude (${sp.fallbacks} fallbacks)`, explain: "", href: "#claude" },
     // One canonical set (jury review, 6 Nov, #5): "86 Metal payments + 1 card charge", never 82 or 87 beside it.
@@ -281,6 +284,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   <div class="nums">${nums.map((n) => `<a class="num card ${n.cls}" href="${n.href}"><span class="v">${esc(n.value)}</span><span class="l">${esc(n.label)}</span>${noteHtml(n.note, "span")}</a>`).join("")}</div>
   <h2 class="sec">The partners</h2>
   ${partnerCards(run)}
+  ${airi ? `<div class="awrb">${airi}</div>` : ""}
   <details class="deep"><summary>Airwallex, read back</summary>${readBack(run)}</details>
   <details class="deep"><summary>Every check</summary>${moreCards(run)}</details>
   <details class="deep"><summary>Why this is a company</summary>${whyCompanyHtml()}</details>

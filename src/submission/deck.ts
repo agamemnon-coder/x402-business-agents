@@ -10,6 +10,7 @@ import { readFileSync } from "node:fs";
 import type { PackFacts } from "./facts.js";
 import { DIFFERENTIATORS, HERO, KIT11_RUN_LINE, NORTHWIND_LINE, PROOF_SENTENCES, TRY_IT, VISA_TAP_STATUS, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../config/brand.js";
 import { cardControlRows, hashTravel } from "../redesign/airwallexProof.js";
+import { AIRI_RUN_LABEL, AIRI_SUMMARY, airiRun, airiRunSummary } from "../redesign/airiRun.js";
 import { agentRun, homeFilm, stopsLine } from "../redesign/run.js";
 import { INPUTS, USAGE_LABEL, figures, opusLine, paymentsLine, unitEconomics } from "../business/unitEconomics.js";
 
@@ -78,6 +79,9 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
   const hash = hashTravel(record);
   const cards = cardControlRows(record);
   const tests = testCount();
+  // The Airi run (7 Nov), Visa Intelligent Commerce via Airwallex's Airi, on the Airwallex slide in the owner's copy: its
+  // heading, label, summary sentence, outcome badges and checks, from its record (docs/demo/airi-run.json).
+  const airiRec = airiRun(), airi = airiRec ? airiRunSummary(airiRec) : null;
   const ue = unitEconomics(), uf = figures(ue);
   const slides: Slide[] = [
     {
@@ -151,7 +155,8 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
           <div><h2>Each agent's card: the CFO policy as Airwallex's own controls</h2><ul class="cards">${cards.map((r) => `<li><b>${esc(r.name)}</b> ····${esc(r.last4)}: ${r.checks.filter((c) => c.ok).length} of ${r.checks.length} controls match${r.match ? "" : " (not all)"}</li>`).join("")}</ul>
           <p class="small">Limit per purchase and per month, merchant category, currency, end date.</p></div>
         </div>
-        <p class="src">Read on ${esc(hash?.readAt.slice(0, 10) ?? "")} from the sandbox: <code>${esc(hash?.file ?? "")}</code> and the cards' record beside it. Also on /proof and /airwallex.</p>`,
+        ${airi ? `<div class="vic"><b>${esc(airi.heading)}</b> <span>${esc(AIRI_RUN_LABEL)}</span><p>${esc(AIRI_SUMMARY)}</p><p class="badges">${airi.outcomes.map((o) => `<em class="${o.ok ? "ok" : "bad"}">${esc(o.badge)}</em>`).join("")}<em class="${airi.checksOk === airi.checksAll ? "ok" : "bad"}">${esc(`${airi.checksOk} of ${airi.checksAll} checks pass`)}</em></p></div>` : ""}
+        <p class="src">Read on ${esc(hash?.readAt.slice(0, 10) ?? "")} from the sandbox: <code>${esc(hash?.file ?? "")}</code> and the cards' record beside it. Also on /proof and /airwallex; the Airi run on /airwallex, /visa and /proof (<code>docs/demo/airi-run.json</code>).</p>`,
     },
     {
       kicker: "Metal proof · testnet",
@@ -307,6 +312,15 @@ ul.why li { font-size: 25px; line-height: 1.32; font-weight: 600; color: #ffffff
 .what { font-size: 30px; margin: 0 0 18px; }
 .tryline { font-size: 24px; font-weight: 700; color: #a5abff; margin: 4px 0 18px; } .tryline span { color: #ffffff; margin-left: 10px; }
 .sentence { font-size: 22px; line-height: 1.4; color: #ffffff; font-weight: 600; margin: 0 0 22px; max-width: 1120px; }
+.vic { margin-top: 12px; background: #141a2e; border: 1px solid #232b45; border-radius: 14px; padding: 10px 18px; font-size: 15.5px; line-height: 1.35; }
+.vic b { color: #ffffff; font-size: 17px; } .vic span { color: #9aa4bf; font-size: 14px; margin-left: 8px; } .vic p { margin: 4px 0 0; }
+.vic .badges { display: flex; flex-wrap: wrap; gap: 8px; } .vic em { font-style: normal; font-weight: 700; font-size: 14px; padding: 1px 12px; border-radius: 999px; }
+/* The Airwallex slide with the Airi run under it: the same parts, tighter, so all of it fits. */
+section:has(.vic) h1 { font-size: 44px; margin-bottom: 14px; } section:has(.vic) .sentence { font-size: 19px; margin-bottom: 14px; }
+section:has(.vic) .cols > div { padding: 14px 20px; } section:has(.vic) .cols h2 { margin-bottom: 8px; font-size: 20px; }
+section:has(.vic) .cols li { margin-bottom: 4px; font-size: 17px; } section:has(.vic) .pairs { gap: 6px 14px; font-size: 17px; }
+section:has(.vic) .src { font-size: 14px; margin-top: 10px; }
+.vic em.ok { background: #12351f; color: #7ee2a0; } .vic em.bad { background: #3a1820; color: #ff9aa8; }
 .pairs { display: grid; grid-template-columns: 200px 1fr; gap: 10px 14px; font-size: 18px; margin: 0; } .pairs dt { color: #9aa4bf; } .pairs dd { margin: 0; }
 .ok { color: #3ccf82; } .bad { color: #ff6b6b; }
 ul.cards li, ul.sec li, ul.biz li { font-size: 19px; line-height: 1.4; margin-bottom: 10px; }

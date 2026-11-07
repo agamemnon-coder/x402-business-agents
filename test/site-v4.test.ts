@@ -30,7 +30,7 @@ export function visibleWords(html: string): number {
 const allText = (html: string) => decode(html.replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " "));
 
 describe("the site after v4", () => {
-  it("keeps every page within its text budget (Home 190 with the three sentences; partner pages at most 150, /metal 175 with the explorer note, /airwallex 235 with its read-back, awx-1 and the Airi run)", () => {
+  it("keeps every page within its text budget (Home 190 with the three sentences; partner pages at most 150, /metal 175 with the explorer note, /airwallex 345 with its read-back, awx-1 and the Airi run, /visa 275 with the Airi run on top)", () => {
     // Proof: 480 since 4 Nov, for the TAP run's decline on its own line below the stop figure (Max).
     // Home: 600 since 6 Nov, for the three sentences under the heading, the Kit 11 line and the one caveat line (jury review, #1, #7).
     // Proof 520 and Airwallex 190 since 6 Nov, for Airwallex read back (section B): the hash the CFO signed beside the one
@@ -49,9 +49,13 @@ describe("the site after v4", () => {
     // label, its checks passed, and the summary of its fold (every step and id folded).
     // Airwallex: 235 since 7 Nov, for the Airi run in the same form (date, name, "sandbox, test card, test money", its
     // checks passed, the summary of its fold): 23 words.
+    // Airwallex 345 and Visa 275 since 7 Nov (owner's copy, Visa Intelligent Commerce via Airwallex's Airi): the Airi
+    // block in sight on both, with its heading, label, one summary sentence, the three purchases with their outcome
+    // badges and the 5 of 5 checks (ids still folded): 342 and 272 words as built, a few words of margin. Proof stays
+    // at 560 with the same block in sight under the partners (516 as built).
     // Home: 190 since the jury review of 7 Nov (#2), for the three sentences back under the subtitle (188 words).
     // Metal: 175 since then (#3), for what the explorer shows beside the refusal's link (172 words).
-    const budget: Record<string, number> = { home: 190, watch: 125, try: 180, proof: 560, metal: 175, airwallex: 235, visa: 150, claude: 150, notFound: 40 };
+    const budget: Record<string, number> = { home: 190, watch: 125, try: 180, proof: 560, metal: 175, airwallex: 345, visa: 275, claude: 150, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 
@@ -180,7 +184,12 @@ describe("the site after v4", () => {
   it("makes the partner pages picture first, numbers next, details folded, and no Visa logo", () => {
     for (const name of ["metal", "airwallex", "visa", "claude"] as const) {
       const html = PUBLIC[name]!;
-      const main = /<main[\s\S]*<\/main>/.exec(html)![0];
+      // /visa opens with the Airi run (Visa Intelligent Commerce via Airwallex's Airi, owner, 7 Nov), above the TAP run;
+      // the TAP page under it keeps its own order, picture first (test/airi-run-page.test.ts holds the block).
+      const whole = /<main[\s\S]*<\/main>/.exec(html)![0];
+      const airi = /<div class="awrb"><div class="card airi" id="airi-run">[\s\S]*?<\/details><\/div><\/div>/.exec(whole)?.[0] ?? "";
+      expect({ name, airiFirst: name === "visa" ? airi.length > 0 && whole.indexOf(airi) < whole.indexOf('class="flow card"') : true }).toEqual({ name, airiFirst: true });
+      const main = name === "visa" ? whole.replace(airi, "") : whole;
       expect(main.indexOf('class="flow card"')).toBeLessThan(main.indexOf("<details"));
       expect((main.match(/<details class="fold">/g) ?? []).length).toBeGreaterThanOrEqual(2);
       expect(html).not.toMatch(/<img[^>]*visa/i);
