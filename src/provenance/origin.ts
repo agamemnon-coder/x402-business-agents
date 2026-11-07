@@ -69,6 +69,8 @@ export const MONEY_EVENTS = new Set([
   "transfer.closed_unsent",
   // Test money for a fresh world, and the passkey owners' own transfer.
   "business.funded", "treasury.seeded", "owners.sent",
+  // The Airi rail (src/airi/purchase.ts): the checkout's answer, or that it is not known.
+  "airi.checkout_result", "airi.checkout_unconfirmed",
 ]);
 
 /** The CFO's `npm run licence` when a person runs it (a tool that starts it passes its own origin, which wins). */
