@@ -11,6 +11,27 @@ Two marks are used in the tables:
 
 Run logs are in `docs/runs/`. Tests are in `test/`.
 
+## awx-1: the whole Airwallex path in one run (7 November; sandbox, test money)
+
+One fresh world on the Airwallex sandbox only (0 Metal calls), accepted with all seven checks passed. Log:
+[`docs/runs/2026-11-07-awx-1.md`](runs/2026-11-07-awx-1.md); record:
+[`docs/demo/airwallex-run.json`](demo/airwallex-run.json); plan and call budget: [`docs/runs/awx-1-plan.md`](runs/awx-1-plan.md).
+Shown on `/airwallex` and in Proof's "Airwallex, read back".
+
+| Step | What Airwallex did | Ids |
+|---|---|---|
+| a | 3 virtual cards issued with the policy's `PER_TRANSACTION` and `MONTHLY` limits, merchant category, EUR only and `active_to`; each read back with `GET /issuing/cards/{id}` | ····2441 (Sourcing, 30.00 / 100.00, MCC 5734), ····4175 (Support, 60.00 / 150.00, MCC 7372), ····1562 (Treasury, 25.00 / 50.00, MCC 5734) |
+| b | 19.99 EUR at Packwise approved | `01a1b5e8-5933-7000-94c1-0a9d4115f515` |
+| c | 45.00 EUR over the 30.00 limit declined `LIMIT_EXCEEDED`; the Sourcing agent (Claude Haiku) asked the CFO for a raise (P-0001) instead of retrying; after Max's Face ID (12:11:01 UTC) `POST /issuing/cards/{id}/update` set 45.00, and the same charge was approved | `01a1b5e8-6dc2-7000-95bf-c8fc5e6e2f38` (declined), `01a1b5eb-5c54-7000-8227-1f077fc047f5` (approved) |
+| d | 19.99 EUR (MCC 5734) on the Support card (MCC 7372 only) declined `MERCHANT_CATEGORY_NOT_ALLOWED`; the Support agent asked for no raise | `01a1b5eb-6784-7000-8bb2-ecf137506d3f` |
+| e | 21 webhooks, each signature checked by the relay and the runner, all recorded and agreeing: `issuing.card.active` ×3, `issuing.transaction.succeeded` / `.failed` ×2 each, `issuing.card_transaction_event.success` / `.failed` ×2 each, `payout.transfer.scheduled` / `.processing` / `.sent` / `.paid` ×2 each, `conversion.scheduled`, `conversion.settled`; every card transaction recorded from them (card poll off) | event ids in the record |
+| f1 | SLL-2026-11, EUR 240.00: free EUR 1,500.00 ≥ 260.00 (with the fee ceiling), no quote, no conversion; SWIFT after Max's Face ID (12:12:20 UTC) | transfer `738a4263-6d6c-4de8-94a3-93da1c175fb4`, PAID, fee EUR 13.50 |
+| f2 | BTX-2026-11, EUR 1,850.00: free EUR 1,246.50 < 1,870.00, so a fresh quote for the shortfall only: EUR 623.50 for USD 704.45 at 1.129833 (market 1.128941, 8 bps over); conversion, then SWIFT after Max's Face ID (12:13:16 UTC) | quote `1605354b-5f6f-3ab5-8dbc-3af479c54b33`, conversion `fafcc208-bd1e-43d9-bd09-69191a8aa81f` (SETTLED), transfer `4140dee2-6373-4eb4-a71f-bf69130f96a7`, PAID, fee EUR 13.50 |
+| g | Each payout's `metadata.approval_sha256` is the hash of the terms Max signed; `npm run verify` read both back (`GET /transfers`, `GET /fx/conversions`): all checks pass; `npm run reconcile`: 0 differences | P-0002 `b0f075d9…`, P-0003 `68f85b99…` |
+
+71 of the 96 approved Airwallex calls (85 expected). Simulated by the sandbox, as everywhere on this page: the merchants'
+charges (`POST /simulation/issuing/create`) and each payout's SENT and PAID (`POST /simulation/transfers/{id}/transition`).
+
 ## How Purser talks to Airwallex
 
 - One client holds the client id, the API key and the bearer token. Nothing else does.
@@ -39,7 +60,7 @@ Each agent has a DELEGATE cardholder and one virtual Visa card. The CFO policy s
 
 Airwallex tells the relay about each change as it happens. The relay checks the signature and keeps the event. The runner then checks the signature again with its own copy of the secret, because it trusts no relay.
 
-**Live since 30 October** (`docs/runs/2026-10-30-webhooks.md`): one subscription with 23 events: card transactions, cards, payouts, conversions and deposits. `conversion.overdue` is left out: this key lacks the permission. Shown live: deposits matched by the webhook alone (EUR 300.00 matched in about 2 seconds; GBP 100.00 short by 20.00, escalated) and a card transaction in both of Airwallex's event shapes. Payout, conversion and card status events are subscribed but were not caused in that run; their checks are covered by tests.
+**Live since 30 October** (`docs/runs/2026-10-30-webhooks.md`): one subscription with 23 events: card transactions, cards, payouts, conversions and deposits. `conversion.overdue` is left out: this key lacks the permission. Shown live: deposits matched by the webhook alone (EUR 300.00 matched in about 2 seconds; GBP 100.00 short by 20.00, escalated) and a card transaction in both of Airwallex's event shapes. Payout, conversion and card status events are subscribed but were not caused in that run; their checks are covered by tests. On 7 November awx-1 caused them live: 3 `issuing.card.active`, 8 `payout.transfer.*` and 2 `conversion.*` events, each checked against the ledger and agreeing ([log](runs/2026-11-07-awx-1.md#e-webhooks-every-one-that-arrived)).
 How each object is handled (`src/policy/airwallexEvents.ts`, `test/airwallex-events.test.ts`). Each signed event is
 recorded once and checked against the ledger:
 

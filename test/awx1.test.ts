@@ -231,8 +231,11 @@ describe("awx-1 on the stand-ins", () => {
     expect(db.prepare("SELECT COUNT(*) AS n FROM airwallex_events").get()).toEqual({ n: 0 });
   });
 
-  it("is not the live record: the run's record files are not written by the stand-in", () => {
-    // docs/demo/airwallex-run.json and docs/runs/2026-11-xx-awx-1.md come from the live run only.
-    expect(() => readFileSync(new URL("../docs/demo/airwallex-run.json", import.meta.url))).toThrow();
+  it("is not the live record: the committed record is the live run's, never the stand-in's", () => {
+    // docs/demo/airwallex-run.json and docs/runs/2026-11-07-awx-1.md come from the live run only (7 Nov, ACCEPTED).
+    const rec = JSON.parse(readFileSync(new URL("../docs/demo/airwallex-run.json", import.meta.url), "utf8")) as Awx1Record;
+    expect(rec).toMatchObject({ run: "awx-1", mode: "live", test_money: true });
+    expect(rec.proposals.every((p) => !p.virtual_test_passkey)).toBe(true);
+    expect(accepted(rec)).toEqual({ ok: true, why: [] });
   });
 });
