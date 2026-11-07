@@ -8,7 +8,7 @@ AI agents can now spend company money; Purser lets them, through Airwallex and M
 
 **[Try it in 30 seconds.](https://kit11.max-31b.workers.dev/try/sign)**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 3001 passing](https://img.shields.io/badge/tests-3028%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 3030 passing](https://img.shields.io/badge/tests-3030%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
 
 **[Judge it in 3 minutes →](https://kit11.max-31b.workers.dev/judge)**
 
@@ -97,7 +97,7 @@ npm run judge -- --check
 ```
 
 - `npm ci` (under a minute): installs the exact versions in the lockfile; every dependency is pinned.
-- `npm test` (3 to 4 min): **3028 tests in 295 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included.
+- `npm test` (3 to 4 min): **3030 tests in 295 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included.
 - `npm run judge -- --check` (about 3 s): builds the site's 17 pages from the main run's committed record, offline, and fetches each once.
 - `npm run verify-receipt -- receipt.json` (under 1 s): after you sign on [/try/sign](https://kit11.max-31b.workers.dev/try/sign), checks its receipt offline with Node's own crypto: your passkey signed exactly those terms; change one cent and it says NOT VALID. Getting the receipt needs the live site and your own passkey.
 
@@ -211,21 +211,26 @@ one attempt. Max signed all three proposals with Face ID on his own phone. Log:
 - **Calls:** 71 of the 96 approved Airwallex calls; 14 Claude calls (0.0839 USD). Merchant charges and SENT/PAID are
   the sandbox's simulation endpoints; every approve, decline and code is Airwallex's own.
 
-## The Airi run (7 November; Airwallex sandbox, test card, test money)
+## Visa Intelligent Commerce via Airwallex's Airi: a live run (7 Nov)
 
-A separate world: the Sourcing agent pays with a single-use card credential from Airwallex's Airi wallet, on
-Airwallex's hosted checkout page for our own Airwallex sandbox merchant. Airi's test card, test money only; passed,
-all five checks, in the second attempt in its world (the attempts before it are in the log). Log:
+Agents paid with a single-use Visa (VIC) credential from Airi: within the limit on their own, above it only after the
+CFO's Face ID, and a disallowed merchant was refused by Purser before Airi was asked. A separate world: Airwallex
+sandbox, test card, test money; the Sourcing agent paid on Airwallex's hosted checkout page for our own Airwallex
+sandbox merchant. Passed, [5 of 5 checks](docs/runs/2026-11-07-vic-1.md#checks-the-records-checks), in the second
+attempt in its world (the attempts before it are in the log). Log:
 [docs/runs/2026-11-07-vic-1.md](docs/runs/2026-11-07-vic-1.md); record:
 [docs/demo/airi-run.json](docs/demo/airi-run.json); on the site:
-[/airwallex](https://kit11.max-31b.workers.dev/airwallex#airi-run).
+[/airwallex](https://kit11.max-31b.workers.dev/airwallex#airi-run),
+[/visa](https://kit11.max-31b.workers.dev/visa#airi-run) and [/proof](https://kit11.max-31b.workers.dev/proof#airi-run).
 
-- **Within the CFO's limit:** EUR 12.00, the agent alone; the CFO confirmed it once in Airi with a passkey, and the
-  PaymentIntent (`int_sgpvzc9hjhnxvpblt2r`) SUCCEEDED.
-- **Above the limit:** EUR 45.00 waited for the CFO's Face ID on its exact terms (P-0002); only then did Purser ask
-  Airi for the credential (mandate `mdt_nlpdgv8gqhnxvxcjxbv`); the CFO confirmed it in Airi, and the PaymentIntent
-  (`int_sgpvzc9hjhnxvxc26ie`) SUCCEEDED.
-- **A merchant the CFO does not allow:** refused by Purser (`PURSER_MERCHANT_NOT_ALLOWED`) before any call to Airi.
+- **✓ Paid alone:** EUR 12.00 (Purser's limit: EUR 20.00). Within Purser's limit, no Purser approval is needed. Airi
+  itself asks the cardholder to confirm each purchase with a passkey. PaymentIntent `int_sgpvzc9hjhnxvpblt2r`
+  SUCCEEDED.
+- **✓ Paid after Face ID:** EUR 45.00, above the limit, waited for the CFO's Face ID on its exact terms (P-0002); only
+  then did Purser ask Airi for the credential (mandate `mdt_nlpdgv8gqhnxvxcjxbv`); the cardholder confirmed it in Airi,
+  and the PaymentIntent (`int_sgpvzc9hjhnxvxc26ie`) SUCCEEDED.
+- **✕ Refused by Purser:** EUR 5.00 at a merchant the CFO does not allow (`PURSER_MERCHANT_NOT_ALLOWED`), before any
+  call to Airi.
 
 ## What is real, what is mock
 
@@ -248,7 +253,7 @@ all five checks, in the second attempt in its world (the attempts before it are 
   the T:0 books sink: T:0 bookkeeping is built; posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted. ([record](docs/runs/2026-11-05-t0-live.md)); the emergency stop and `npm run smoke:sandbox`
   (on stand-ins).
 
-**Other live tests (separate worlds, dated):** awx-1, the Airwallex-only run (7 November, above), the Airi run (7 November, above;
+**Other live tests (separate worlds, dated):** awx-1, the Airwallex-only run (7 November, above), the Airi run (Visa Intelligent Commerce via Airwallex's Airi, 7 November, above;
 Airwallex sandbox, test card, test money), the TAP run (2 November), four eyes on chain, the compliance contract and
 clearing under load (30 October): [docs/runs/](docs/runs/) and [docs/metal-award.md](docs/metal-award.md).
 
