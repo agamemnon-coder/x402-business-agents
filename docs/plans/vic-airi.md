@@ -1,7 +1,38 @@
 # Airi single-use credentials (the route Airwallex calls VIC): step 0 findings and the step 1 plan
 
-Status: research and groundwork only, 7 November 2026. No airi-cli installed, no Airi or Airwallex call made, no
-account opened. The code on this branch is a stand-in and the executor's decisions, tested without network.
+Status, 7 November 2026: step 0 researched; **step 1 built** on branch `vic` (Max's go), not yet run live. The run
+plan is [docs/runs/vic-1-plan.md](../runs/vic-1-plan.md). Since step 0: airi-cli 0.1.0-beta.4 is installed in the
+container (skills and telemetry off), Max's allowlist is active, and agent use is on. Our Airwallex sandbox takes
+PaymentIntents (the coordinator's probe, with Max's ok: create answered 201, REQUIRES_PAYMENT_METHOD).
+
+**Step 1 as built** (all behind `KIT11_AIRI_RAIL=on`; tests on stand-ins only):
+- `src/airi/cli.ts`: the real client. It runs the Go binary itself with execFile (no shell), checks its SHA-256 and
+  `version` 0.1.0-beta.4, and passes `-o json --no-telemetry` with a child environment that holds no Purser key. Each
+  command has a time limit; get-credential waits 300 s. Every answer is parsed with zod, using the shapes seen on
+  7 Nov: whoami `{authenticated, session_expires}`; payment-methods an array of
+  `{asDefault, card, createdAt, nickName, paymentMethodId, type}`, of whose `card` only a plain brand and last four
+  are read. CLI error text is scrubbed of links, long digit runs and e-mails.
+- `src/airi/credential.ts`: the credential file is read only by the checkout, in memory, from a 0600 regular file
+  (no symlink). Its field names are not documented: the reader matches the documented words, and a file it does not
+  recognise is refused, naming its keys and never its values.
+- `src/airi/checkout.ts`: the Airwallex sandbox checkout. It creates a PaymentIntent, then confirms it with the card
+  (docs URLs in the file). Airwallex's state and its own code decide: accepted, declined, or not known (then it is
+  looked up by the intent's id, never resent). Errors never carry the card.
+- `src/airi/purchase.ts`: reservation (`airi_purchases`, the hold, the day's count under the write lock), steps in
+  `money_steps`, the hash re-checked before the mandate and before the credential. `mandate result` after every
+  submitted checkout, `mandate cancel` whenever Purser stops before it. Crash recovery (`recoverAiriPurchases`, at the
+  runner's start). Audit rows with safe references only.
+- `src/airi/policy.ts`, `src/policy/rules.ts`, `src/policy/loosens.ts`: three new CFO policy settings.
+  `approval.airi_alone` is the amount a purchase may reach without Face ID (20.00 EUR). `approval.airi_alone_per_day`
+  is how many such purchases a day (3). `airi.merchant.<id>` allows a merchant; it is blocked until the CFO allows it.
+  The hard cap is 200.00 EUR.
+- The runner: `airi_purchase` in `src/executors/index.ts`, recovery in `src/cli/relay.ts`, and the phone page
+  "Airi purchase" in `src/approve/client.ts`. That page reaches the phone only after the relay Worker is deployed
+  again, which is Max's call.
+- `npm run airi:vic-1` (`src/airi/vic1.ts`, `src/cli/airiVic1.ts`): preflight, A, B and C, a record and a run log
+  without secrets, and `--dry` on the stand-ins.
+
+The rest of this page is the step 0 research as written then.
 
 Trigger: Terry Yin (Airwallex, 7 November) says Visa Intelligent Commerce (VIC) is available inside Airi, along
 Kit 9's route: an account on app.airi.com, an allowlist for airi-cli, a card with agent use on, and then a credential
