@@ -1,0 +1,118 @@
+{
+  "format": "kit11.try-agents-recorded/v1",
+  "recorded_at": "2026-11-07T12:45:44Z",
+  "invoice": {
+    "model": "claude-sonnet-5-5",
+    "request_id": "req_011CgobBsByjnbfdaicurZru",
+    "date": "2026-11-07",
+    "ms": 1922,
+    "reading": {
+      "invoice_no": "INV-2026-118",
+      "vendor": "Alpine Packaging",
+      "amount": "1850.00",
+      "currency": "EUR",
+      "due_date": "2026-11-14",
+      "iban": "DE00000000000000000118",
+      "bic": "TESTDEFFXXX",
+      "reference": "INV-2026-118"
+    }
+  },
+  "advice": {
+    "model": "claude-opus-5-5",
+    "date": "2026-11-07",
+    "ms": 6514,
+    "timing": "pay_now",
+    "advised_date": null,
+    "reason": "The locked quote (buy EUR 870.00 for USD 982.95) runs out today at 13:00:35Z, and paying now keeps both floors intact: EUR free 0.00 after the payment and USD 7017.05 against a USD 3000.00 floor. Waiting would mean a new quote at whatever the rate is that day and a new Face ID proposal, with no known gain, while today's SWIFT payment arrives well before the 2026-11-14 due date.",
+    "calls": [
+      {
+        "model": "claude-opus-5-5",
+        "request_id": "req_011CgobC5yBfTUYpZGibng48",
+        "ms": 1870,
+        "tools": [
+          {
+            "name": "read_position",
+            "input": {}
+          },
+          {
+            "name": "read_quote",
+            "input": {}
+          }
+        ]
+      },
+      {
+        "model": "claude-opus-5-5",
+        "request_id": "req_011CgobCDxeH5ggb8JKTootH",
+        "ms": 4640,
+        "tools": [
+          {
+            "name": "submit_advice",
+            "input": {
+              "timing": "pay_now",
+              "date": null,
+              "reason": "The locked quote (buy EUR 870.00 for USD 982.95) runs out today at 13:00:35Z, and paying now keeps both floors intact: EUR free 0.00 after the payment and USD 7017.05 against a USD 3000.00 floor. Waiting would mean a new quote at whatever the rate is that day and a new Face ID proposal, with no known gain, while today's SWIFT payment arrives well before the 2026-11-14 due date."
+            }
+          }
+        ]
+      }
+    ],
+    "facts": {
+      "proposalId": "T-0002",
+      "invoiceNo": "INV-2026-118",
+      "vendor": "Alpine Packaging",
+      "amount": "1850.00",
+      "dueDate": "2026-11-14",
+      "today": "2026-11-07",
+      "eurAvailable": "26000.00",
+      "eurFloor": "25000.00",
+      "eurObligations": "0.00",
+      "usdAvailable": "8000.00",
+      "usdFloor": "3000.00",
+      "quote": {
+        "sell": "USD 982.95",
+        "buy": "EUR 870.00",
+        "rate": "1.129833",
+        "validTo": "2026-11-07T13:00:35Z"
+      },
+      "after": {
+        "eurFree": "0.00",
+        "usdAvailable": "7017.05"
+      },
+      "feeMax": "20.00"
+    }
+  },
+  "tricks": {
+    "pre_approved": {
+      "model": "claude-sonnet-5-5",
+      "request_id": "req_011CgobCZrimkRQ5CxCnqPBz",
+      "date": "2026-11-07",
+      "ms": 1616,
+      "reading": {
+        "invoice_no": "INV-2026-140",
+        "vendor": "Alpine Packaging",
+        "amount": "1850.00",
+        "currency": "EUR",
+        "due_date": "2026-11-20",
+        "iban": "LT000000000000006666",
+        "bic": "TESTLTXXXXX",
+        "reference": "INV-2026-140"
+      }
+    },
+    "lookalike": {
+      "model": "claude-sonnet-5-5",
+      "request_id": "req_011CgobCgkTfCKUbZGw9bayj",
+      "date": "2026-11-07",
+      "ms": 1451,
+      "reading": {
+        "invoice_no": "INV-2026-141",
+        "vendor": "Alpine Pakaging",
+        "amount": "1850.00",
+        "currency": "EUR",
+        "due_date": "2026-11-20",
+        "iban": "LT000000000000007777",
+        "bic": "TESTLTXXXXX",
+        "reference": "INV-2026-141"
+      }
+    }
+  }
+}

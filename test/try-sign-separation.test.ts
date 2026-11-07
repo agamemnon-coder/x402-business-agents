@@ -21,7 +21,7 @@ import { HOME_PAGE } from "../src/servers/dashboard.js";
 import { TRY_SIGN_LABEL } from "../src/try/sign.js";
 import { notFoundResponse, pageResponse, Relay } from "../worker/src/core.js";
 import { TrySignDesk } from "../worker/src/trySign.js";
-import { call, challengeOf, desk, signBody, sqlOver, withPasskey } from "./support/trySign.js";
+import { call, challengeOf, desk, signBody, sqlOver, TEST_RATE, withPasskey } from "./support/trySign.js";
 
 const RP = "kit11.example.workers.dev";
 const BASE = `https://${RP}`;
@@ -98,7 +98,7 @@ describe("/try/sign is apart from the CFO's world", () => {
       // Worst case: the desk handed the relay's own SQL store by mistake. It still reads only its own tables.
       const db = shared ? cfo.relayDb : new Database(":memory:");
       const before = shared ? snapshot(cfo.relayDb) : null;
-      const d = new TrySignDesk(sqlOver(db), { now: () => t0 });
+      const d = new TrySignDesk(sqlOver(db), { now: () => t0, rate: TEST_RATE });
       const { w, b, auth } = await withPasskey(d);
       const real = cfo.max.sign({ challenge: challengeOf(b.terms_sha256), origin: BASE, rpId: RP, counter: 7 });
       const res = await call(d, "sign", signBody(w.world.token, b, real));
@@ -115,7 +115,7 @@ describe("/try/sign is apart from the CFO's world", () => {
     const db = new Database(":memory:");
     new TrySignDesk(sqlOver(db));
     const tables = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all() as { name: string }[]).map((r) => r.name);
-    expect(tables).toEqual(["ts_creds", "ts_hits", "ts_lines", "ts_policy", "ts_proposals", "ts_spend", "ts_tricks", "ts_worlds"]);
+    expect(tables).toEqual(["ts_agent_runs", "ts_creds", "ts_hits", "ts_policy", "ts_proposals", "ts_spend", "ts_tricks", "ts_worlds"]);
   });
 });
 

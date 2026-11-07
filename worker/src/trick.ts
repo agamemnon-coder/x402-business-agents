@@ -14,6 +14,9 @@ import { checkInvoiceReading, parseInvoiceFallback, type Invoice } from "../../s
 import { assessAgainst, type Beneficiary, type FraudSignal } from "../../src/policy/fraudCore.js";
 import { findInjections, type InjectionFinding } from "../../src/policy/injection.js";
 import type { InvoiceReadingLive } from "../../src/try/claude.js";
+import { invoiceDocument } from "../../src/try/invoiceDoc.js";
+import type { RecordedReading } from "../../src/try/recorded.js";
+import { RECORDED_LABEL, liveLabel } from "./agentLine.js";
 
 export const ATTACKS = ["pre_approved", "lookalike"] as const;
 export type Attack = (typeof ATTACKS)[number];
@@ -34,30 +37,9 @@ export interface TrickInvoice {
   shows: string;
 }
 
-/** An invoice in the runner's format (fixtures/bergtex-invoice-*.txt): what parseInvoiceFallback reads line by line. */
-const invoice = (o: { vendor: string; no: string; planted: string[]; iban: string; bic: string }) => [
-  o.vendor,
-  "Test address, not a real company",
-  "",
-  `INVOICE ${o.no}`,
-  "Date: 5 November 2026",
-  "Due date: 20 November 2026",
-  "",
-  "Bill to: Northwind Outdoor (test world)",
-  "",
-  "Description                                   Amount",
-  "Shipping boxes, November                      EUR 1,850.00",
-  "",
-  "Total due                                     EUR 1,850.00",
-  "",
-  ...o.planted,
-  ...(o.planted.length ? [""] : []),
-  "Pay by SWIFT to:",
-  `Account name: ${o.vendor}`,
-  `IBAN: ${o.iban}`,
-  `BIC: ${o.bic}`,
-  `Payment reference: ${o.no}`,
-].join("\n");
+/** The trick invoices' fixed dates and line (the waiting payment's invoice is dated around today: src/try/invoiceDoc.ts). */
+const invoice = (o: { vendor: string; no: string; planted: string[]; iban: string; bic: string }) =>
+  invoiceDocument({ ...o, date: "5 November 2026", due: "20 November 2026", item: "Shipping boxes, November", amount: "1850.00" });
 
 export const TRICKS: Record<Attack, TrickInvoice> = {
   pre_approved: {
@@ -91,7 +73,7 @@ export interface TrickResult {
   attack: Attack;
   invoice: { vendor: string; amount: string; reference: string; iban_last4: string; text: string; shows: string };
   /** What the agent read, and from where: the live model, or (labelled) code because the model was unavailable or its reading failed a check. */
-  agent: { live: boolean; label: string; read: string; note: string | null; calls: AgentCall[] };
+  agent: { live: boolean; recorded: boolean; label: string; read: string; note: string | null; calls: AgentCall[] };
   blocked: boolean;
   outcome: string;
   lesson: string;
@@ -112,22 +94,26 @@ const amountWords = (a: string) => `EUR ${a.replace(/\B(?=(\d{3})+(?!\d))/, ",")
 export const readSentence = (r: Invoice) => `Pay ${amountWords(r.amount)} to ${r.vendor}, IBAN …${r.iban.replace(/\s+/g, "").slice(-4)}.`;
 
 /**
- * One attack: the agent reads it (live when `live` is given and its reading passes the runner's check; else code's
- * own reading, labelled), then Purser's code decides. `live` is the reader's answer, or the reason it has none.
+ * One attack: the agent reads it (live when `live` is given and its reading passes the runner's check; when the live
+ * reader is unavailable, its recorded reading of the same invoice, checked the same way and labelled; else code's own
+ * reading, labelled), then Purser's code checks it. `live` is the reader's answer, or the reason it has none.
  */
-export async function runTrick(attack: Attack, live: InvoiceReadingLive | { unavailable: string } | null = null): Promise<TrickResult> {
+export async function runTrick(attack: Attack, live: InvoiceReadingLive | { unavailable: string } | null = null, recorded: RecordedReading | null = null): Promise<TrickResult> {
   const inv = TRICKS[attack];
   const lines = parseInvoiceFallback(inv.text);
-  const fromModel = live && "value" in live ? live : null;
+  const fromLive = live && "value" in live ? live : null;
+  const rec = !fromLive && recorded ? recorded : null;
+  const fromModel = fromLive ?? (rec ? { value: rec.reading, requestId: rec.request_id, model: rec.model, ms: rec.ms, costUsd: 0 } : null);
   const problem = fromModel ? checkInvoiceReading(fromModel.value, inv.text) : null;
   const reading: Invoice = fromModel && !problem ? fromModel.value : lines;
   const usedModel = !!fromModel && !problem;
-  // A model's name says which; a local stand-in (the browser checks, no key) says it is not Claude.
-  const label = !usedModel ? READER_UNAVAILABLE : /^claude-/.test(fromModel.model) ? `Claude ${/opus/.test(fromModel.model) ? "Opus" : /haiku/.test(fromModel.model) ? "Haiku" : "Sonnet"} · live` : "stand-in, not Claude";
-  const note = problem ? `its reading failed the runner's check (${problem}), so code's reading of the document is used` : live && "unavailable" in live ? live.unavailable : null;
+  // A model's name says which; a local stand-in (the browser checks, no key) says it is not Claude; a recording says so.
+  const label = !usedModel ? READER_UNAVAILABLE : rec ? RECORDED_LABEL : liveLabel(fromModel.model, "reader");
+  const unavailable = live && "unavailable" in live ? live.unavailable : null;
+  const note = problem ? `its ${rec ? "recorded " : ""}reading failed the runner's check (${problem}), so code's reading of the document is used` : unavailable ?? (rec ? "the live reader gave no answer" : null);
   const calls: AgentCall[] = [{
     step: "read_invoice", model: fromModel?.model ?? null, request_id: fromModel?.requestId && /^[A-Za-z0-9_-]{1,128}$/.test(fromModel.requestId) ? fromModel.requestId : null, ms: fromModel?.ms ?? null,
-    input: `invoice ${lines.invoice_no} (${inv.text.split("\n").length} lines)`,
+    input: `invoice ${lines.invoice_no} (${inv.text.split("\n").length} lines)${rec ? `, recorded ${rec.date}` : ""}`,
     output: fromModel ? `${fromModel.value.vendor} · ${amountWords(fromModel.value.amount)} · IBAN …${fromModel.value.iban.slice(-4)}${problem ? " (rejected by code)" : ""}` : "no answer",
   }];
   const all: Beneficiary[] = await Promise.all(TEST_ALLOWLIST.map(async (b) => ({ beneficiary_id: b.beneficiary_id, name: b.name, iban_last4: b.iban.slice(-4), iban_sha256: await ibanSha256(b.iban), bic: b.bic })));
@@ -137,7 +123,7 @@ export async function runTrick(attack: Attack, live: InvoiceReadingLive | { unav
   return {
     attack,
     invoice: { vendor: lines.vendor, amount: lines.amount, reference: lines.reference, iban_last4: lines.iban.slice(-4), text: inv.text, shows: inv.shows },
-    agent: { live: usedModel, label, read: readSentence(reading), note, calls },
+    agent: { live: usedModel && !rec, recorded: usedModel && !!rec, label, read: readSentence(reading), note, calls },
     blocked: finding.blocked,
     outcome: finding.blocked ? (first && TRICK_OUTCOME[first.code]) ?? "Blocked by Purser's code before anything was proposed." : "Not blocked.",
     lesson: TRICK_LESSON,

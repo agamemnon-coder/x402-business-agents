@@ -1,58 +1,69 @@
-// /try/sign (A2): the Treasury agent's sentence on the payment it proposes, from a real Claude Haiku call. What goes
-// to the model is the test world only, written by code: the invoice (payee, reference, amount), the balance, the
-// reserve floor and the limit an agent may pay alone. Nothing a visitor sends (no body, no address, no world id or
-// token) is ever part of it. The model only proposes words: the checks, the limits and the approval stay in code and
-// the visitor's passkey, and its sentence is not in the signed terms. Limits: a budget of USD 1 a UTC day, a few calls a
-// minute for everyone and a few an hour per address, an 8 s timeout; past any of them, or on any error, the fixed
-// sentence is shown, labelled. The call is made whenever the Worker has its ANTHROPIC_API_KEY secret (Max sets it
-// himself; no script or config in this repo does), unless the emergency switch is thrown: the Worker var
-// TRY_SIGN_HAIKU set to "off" (any case, trimmed) stops it, with no request to Anthropic and no budget spent; the
-// fixed sentence is shown, labelled "fixed text (live model switched off)". Any other value, or none, leaves it on.
+// /try/sign's live agents (Max, 7 Nov, section 6 and spec 6b): Claude Sonnet reads the invoice (the runner's reader) and
+// Claude Opus advises when to pay (the runner's Treasury timing agent). What goes to a model is written by code: the
+// fixed invoice documents and the test world's facts. Nothing a visitor sends (no body, no address, no world id or
+// token) is ever part of it. The models only read and advise: the amounts, the payee, the plan, the checks and the
+// approval stay in code and the visitor's passkey. Limits: a budget of USD 10 a UTC day for every live agent call on the
+// page together, a few calls a minute for everyone and a few an hour per address, an 8 s timeout per call; past any of
+// them, or on any error, the page shows a recorded real output of the same agent (docs/demo/try-agents-recorded.json,
+// labelled "recorded: the live agent was unavailable") or, without one, code's reading and a fixed sentence, labelled
+// with the reason. The calls are made whenever the Worker has its ANTHROPIC_API_KEY secret (Max sets it himself; no
+// script or config in this repo does), unless the emergency switch is thrown: the Worker var TRY_SIGN_AGENTS set to
+// "off" (any case, trimmed) stops every live agent call, with no request to Anthropic and no budget spent. The old name,
+// TRY_SIGN_HAIKU, still works the same way, so a Worker deployed with it stays off. Any other value, or none, leaves
+// them on.
 //
-// The amounts go in already written the page's way ("EUR 1,850.00"), and code checks the sentence that comes back:
-// every amount in it must be one of the amounts it was given, written exactly as given (see amountsFit), else the
-// fixed sentence is shown, labelled "fixed text (sentence did not match the terms)".
+// Opus's reason is checked by code before it is shown: one or two plain sentences, at most 400 characters, and every
+// amount in it one of code's numbers, written as code gave it (see amountsFit); else the fixed sentence is shown,
+// labelled.
 
-import { claudeReadInvoice, claudeSentence, type InvoiceReadSource, type SentenceSource } from "../../src/try/claude.js";
+import { claudeAgentAsk, claudeReadInvoice, type InvoiceReadSource } from "../../src/try/claude.js";
+import type { AgentAsk } from "../../src/try/world.js";
+import { adviceBounds, licenceNumbers, plainReason, type TimingFacts } from "../../src/agents/timingCore.js";
 
-/** Model spend allowed per UTC day for these sentences, in US dollars. */
+/** Model spend allowed per UTC day for every live agent call on /try/sign together, in US dollars. */
 export const AGENT_LINE_DAILY_USD = 10;
-/** Sentences a minute from everyone together. */
-export const AGENT_LINE_ALL_PER_MINUTE = 10;
-/** Sentences an hour per address (as many as the test worlds it may open). */
-export const AGENT_LINE_PER_HOUR = 6;
-/** A call that takes longer is dropped and the fixed sentence shown. */
+/** A live call that takes longer is dropped (the reader's call, and each of Opus's calls). */
 export const AGENT_LINE_TIMEOUT_MS = 8_000;
-/** Kept aside before a call, so calls at once cannot pass the budget by more than this each. */
-export const AGENT_LINE_RESERVE_USD = 0.002;
 
-/** Where a proposal's sentence came from, as the page labels it. */
-export type Voice =
-  | { source: "model"; model: string; request_id: string | null }
-  | { source: "fixed"; reason: "budget" | "unavailable" | "mismatch" | "off"; why: string };
+/** The labels, word for word (Max, 7 Nov). */
+export const READER_LIVE_LABEL = "Claude Sonnet · live · invoice reader";
+export const ADVICE_LIVE_LABEL = "Claude Opus · live · treasury advice";
+export const CODE_LABEL = "Purser's code";
+export const RECORDED_LABEL = "recorded: the live agent was unavailable";
+export const STAND_IN_LABEL = "stand-in, not Claude";
+/** Without a live or recorded answer: "read by code · <reason>" and "fixed text · <reason>". */
+export const READ_BY_CODE = "read by code";
+export const FIXED_TEXT = "fixed text";
 
-/** The emergency switch: only "off" (any case, surrounding spaces ignored) stops the call; anything else leaves it on. */
-export const agentLineSwitchedOff = (value: string | undefined) => (value ?? "").trim().toLowerCase() === "off";
+/** A live answer's label by the model that gave it: a Claude model by its name and role; a local stand-in says it is not Claude. */
+export function liveLabel(model: string, role: "reader" | "advice"): string {
+  if (!/^claude-/.test(model)) return STAND_IN_LABEL;
+  const name = /opus/.test(model) ? "Opus" : /haiku/.test(model) ? "Haiku" : "Sonnet";
+  return `Claude ${name} · live · ${role === "reader" ? "invoice reader" : "treasury advice"}`;
+}
 
 /**
- * Where the desk's sentence comes from, from the Worker's env: a function that asks Haiku for one sentence when the
- * Worker has its Anthropic key, else null (the fixed sentence); "off" when TRY_SIGN_HAIKU is "off" (the emergency
- * switch: no call at all). The desk is handed that function, never the key itself.
+ * The emergency switch: "off" (any case, surrounding spaces ignored) in TRY_SIGN_AGENTS, or in the old TRY_SIGN_HAIKU,
+ * stops every live agent call; anything else leaves them on.
  */
+export const agentsSwitchedOff = (env: { TRY_SIGN_AGENTS?: string; TRY_SIGN_HAIKU?: string }) =>
+  [env.TRY_SIGN_AGENTS, env.TRY_SIGN_HAIKU].some((v) => (v ?? "").trim().toLowerCase() === "off");
+
+type AgentEnv = { ANTHROPIC_API_KEY?: string; TRY_SIGN_AGENTS?: string; TRY_SIGN_HAIKU?: string };
+
 /**
- * The live invoice reader (section 6), from the Worker's env the same way: Sonnet through the runner's reader when the
- * Worker has its key, null without one, "off" under the same emergency switch (TRY_SIGN_HAIKU=off turns every live
- * agent call off, Max 7 Nov). The desk is handed the function, never the key.
+ * The live invoice reader (section 6), from the Worker's env: Sonnet through the runner's reader when the Worker has its
+ * key, null without one, "off" under the emergency switch. The desk is handed the function, never the key.
  */
-export function invoiceReaderSource(env: { ANTHROPIC_API_KEY?: string; TRY_SIGN_HAIKU?: string }, fetcher: typeof fetch = fetch): InvoiceReadSource | "off" | null {
-  if (agentLineSwitchedOff(env.TRY_SIGN_HAIKU)) return "off";
+export function invoiceReaderSource(env: AgentEnv, fetcher: typeof fetch = fetch): InvoiceReadSource | "off" | null {
+  if (agentsSwitchedOff(env)) return "off";
   return env.ANTHROPIC_API_KEY ? claudeReadInvoice(env.ANTHROPIC_API_KEY, fetcher, AGENT_LINE_TIMEOUT_MS) : null;
 }
 
-export function agentLineSource(env: { ANTHROPIC_API_KEY?: string; TRY_SIGN_HAIKU?: string }, fetcher: typeof fetch = fetch): SentenceSource | "off" | null {
-  if (agentLineSwitchedOff(env.TRY_SIGN_HAIKU)) return "off";
-  const model = env.ANTHROPIC_API_KEY;
-  return model ? claudeSentence(model, fetcher, AGENT_LINE_TIMEOUT_MS) : null;
+/** The Treasury agent's advice (Opus, one Messages API call with tools per turn), from the Worker's env the same way. */
+export function treasuryAdvisorSource(env: AgentEnv, fetcher: typeof fetch = fetch): AgentAsk | "off" | null {
+  if (agentsSwitchedOff(env)) return "off";
+  return env.ANTHROPIC_API_KEY ? claudeAgentAsk(env.ANTHROPIC_API_KEY, fetcher, AGENT_LINE_TIMEOUT_MS) : null;
 }
 
 /**
@@ -64,56 +75,64 @@ export function moneyForPeople(currency: string, amount: string): string {
   return `${currency} ${whole!.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}${cents === undefined ? "" : `.${cents}`}`;
 }
 
-export const AGENT_LINE_SYSTEM = "You are the Treasury agent of a company's test world on a public demo of Purser, a spending control for AI agents. Write one plain sentence, at most 30 words, to the CFO: propose paying this invoice now and say why it needs their signature. You only propose: you cannot pay, approve, or change any limit. Use only the facts given; no quotes, no markup. Copy every amount exactly as the facts write it (currency code, commas and cents, as in EUR 1,850.00), and write no other amount or number.";
+/** What a reason may contain that has a digit in it: code's amounts, references and dates, each only as written here. */
+export interface Given { amounts: readonly string[]; references: readonly string[] }
 
-type LineInvoice = { payee: string; reference: string; amount: string; currency: string };
-type LineWorld = { balance: string; reserve_floor: string; alone_limit: string; currency: string };
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+/** A day the ways a sentence may write it: 2026-11-12, 12 November 2026, 12 November, November 12, 12 Nov. */
+const dayForms = (iso: string): string[] => {
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return [iso];
+  const name = MONTHS[m - 1]!;
+  return [iso, `${d} ${name} ${y}`, `${name} ${d}, ${y}`, `${d} ${name}`, `${name} ${d}`, `${d} ${name.slice(0, 3)}`];
+};
 
-/** The facts the model is given, all from the test world's constants, every amount already written the page's way. */
-export function agentLineFacts(p: LineInvoice, w: LineWorld): string {
-  const m = moneyForPeople;
-  return [
-    `Invoice: ${p.reference}, from ${p.payee}, ${m(p.currency, p.amount)}.`,
-    `Balance: ${m(w.currency, w.balance)}. Reserve floor (the balance may not go below it): ${m(w.currency, w.reserve_floor)}.`,
-    `An agent may pay alone up to ${m(w.currency, w.alone_limit)}.`,
-  ].join("\n");
-}
+const timeForms = (iso: string): string[] => {
+  const m = /T(\d{2}):(\d{2}):(\d{2})Z$/.exec(iso);
+  return m ? [iso, `${m[1]}:${m[2]}:${m[3]}Z`, `${m[1]}:${m[2]}:${m[3]}`, `${m[1]}:${m[2]}`] : [iso];
+};
 
 /**
- * What the sentence may contain that has a digit in it: the amounts the model was given (the invoice's, which is the
- * signed amount, and the balance, the reserve floor and the limit, the only other amounts in the facts), each only
- * exactly as given ("EUR 1,850.00"), and the invoice's reference ("Invoice INV-2026-118", or "INV-2026-118").
+ * Code's numbers for the advice, the only ones its reason may name: the invoice, the fee ceiling, EUR needed, free
+ * EUR, the shortfall, the FX buy and sell, the rate, the limit the agent may pay alone, the balances and floors and the
+ * position after, each as the facts write it ("EUR 1850.00") or as the page does ("EUR 1,850.00"); the invoice number,
+ * the proposal id; and the days in the facts (today, the due date, the bounds of a wait, the quote's end).
  */
-export function agentLineGiven(p: LineInvoice, w: LineWorld): { amounts: string[]; references: string[] } {
+export function adviceGiven(f: TimingFacts, aloneLimit: string, extraDays: readonly string[] = []): Given {
+  const n = licenceNumbers(f);
+  const eurs = [f.amount, f.feeMax, n.needed, n.freeBefore, n.shortfall, n.fxBuy, aloneLimit, f.eurAvailable, f.eurFloor, f.eurObligations, f.after.eurFree].filter((x): x is string => !!x);
+  const usds = [f.usdAvailable, f.usdFloor, f.after.usdAvailable, f.quote?.sell.replace(/^[A-Z]{3}\s*/, "")].filter((x): x is string => !!x);
+  const forms = (cur: string, a: string) => [`${cur} ${a}`, moneyForPeople(cur, a), a, moneyForPeople(cur, a).slice(4)];
+  const b = adviceBounds(f);
+  const days = [f.today, f.dueDate, b.earliest, b.latest, ...extraDays].flatMap(dayForms);
   return {
-    amounts: [p.amount, w.balance, w.reserve_floor, w.alone_limit].map((a, i) => moneyForPeople(i === 0 ? p.currency : w.currency, a)),
-    references: [p.reference, ...(p.reference.match(/[A-Z]{2,}-[\d-]*\d/g) ?? [])],
+    // And the phrases code's facts use, word for word (read_position: "EUR available 26000.00", "EUR free 0.00",
+    // "USD available 8000.00"): live Opus quoted "EUR free 0.00" exactly, 7 Nov, and the bare "EUR" was refused.
+    amounts: [...eurs.flatMap((a) => forms("EUR", a)), ...usds.flatMap((a) => forms("USD", a)), ...(f.quote ? [f.quote.rate] : []),
+      ...forms("EUR free", f.after.eurFree), ...forms("EUR available", f.eurAvailable), ...forms("USD available", f.usdAvailable)],
+    // The quote's end as the agent may write it: whole, or its time of day ("12:44:52Z", "12:44:52", "12:44").
+    references: [f.invoiceNo, `Invoice ${f.invoiceNo}`, f.proposalId, ...(f.quote ? timeForms(f.quote.validTo) : []), ...days],
   };
 }
 
 /**
- * Whether every amount in the sentence is one it was given, written exactly as given. The given amounts and the
- * reference are taken out; if anything money-like is left (any digit at all, as in "1850", "EUR 1850.00", "1,850 EUR",
- * "€1,850", "EUR 1,850.005", or a currency sign or code, or a number word such as "thousand"), it does not fit.
+ * Whether every amount in the sentence is one it was given, written as given. The given amounts and references are
+ * taken out, longest first; if anything money-like is left (any digit at all, as in "1850", "EUR 1850.005", "1,850 EUR",
+ * "€1,850", or a currency sign or code, or a number word such as "thousand"), it does not fit.
  */
-export function amountsFit(sentence: string, given: { amounts: readonly string[]; references: readonly string[] }): boolean {
+export function amountsFit(sentence: string, given: Given): boolean {
   let rest = sentence;
   for (const t of [...given.amounts, ...given.references].sort((a, b) => b.length - a.length)) rest = rest.split(t).join(" | ");
   return !/\d|[€$£¥₹¢]|\b(?:EUR|USD|GBP|CHF|JPY|euros?|dollars?|cents?|thousand|hundred|million|billion|grand)\b/i.test(rest);
 }
 
-/** The model's sentence as the page may show it, or null: one line, 12 to 240 characters, no markup, ends a sentence. */
-export function cleanLine(s: string): string | null {
-  const t = s.replace(/\s+/g, " ").trim().replace(/^["“'‘]+|["”'’]+$/g, "").trim();
-  if (t.length < 12 || t.length > 240 || /[<>{}`\\]/.test(t) || !/[.!?]$/.test(t)) return null;
-  return t;
-}
+/** The reason as the page may show it, or null: one or two plain sentences, 20 to 400 characters, no markup (the
+ * agent's own tool refuses anything else first: src/agents/timingCore.ts plainReason, one rule for both). */
+export const cleanReason = plainReason;
 
-/** The sentence the page may show, or why not: not one plain sentence ("shape"), or an amount not as given ("amounts"). */
-export function checkLine(s: string, given: { amounts: readonly string[]; references: readonly string[] }): { says: string } | { bad: "shape" | "amounts" } {
-  const says = cleanLine(s);
+/** The reason the page may show, or why not: not one or two plain sentences ("shape"), or an amount not code's ("amounts"). */
+export function checkReason(s: string, given: Given): { says: string } | { bad: "shape" | "amounts" } {
+  const says = cleanReason(s);
   if (!says) return { bad: "shape" };
   return amountsFit(says, given) ? { says } : { bad: "amounts" };
 }
-
-export type { SentenceSource };
