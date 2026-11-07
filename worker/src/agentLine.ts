@@ -117,8 +117,9 @@ export function adviceGiven(f: TimingFacts, aloneLimit: string, extraDays: reado
 
 /**
  * Whether every amount in the sentence is one it was given, written as given. The given amounts and references are
- * taken out, longest first; if anything money-like is left (any digit at all, as in "1850", "EUR 1850.005", "1,850 EUR",
- * "€1,850", or a currency sign or code, or a number word such as "thousand"), it does not fit.
+ * taken out, longest first; if any digit is left (as in "1850", "EUR 1850.005") or a number word such as "thousand", it
+ * does not fit. A currency next to a number must be a given amount as written ("1,850 EUR", "€1,850" and another
+ * currency's "USD 1,850.00" are not); a currency named apart from any number ("a USD floor of 3000.00") is no amount.
  */
 export function amountsFit(sentence: string, given: Given): boolean {
   return strayIn(sentence, given) === null;
@@ -126,9 +127,16 @@ export function amountsFit(sentence: string, given: Given): boolean {
 
 /** What is left in the sentence once code's amounts and references are taken out that still looks like money, or null. */
 export function strayIn(sentence: string, given: Given): string | null {
+  // A currency next to a number must be one of code's amounts as written ("USD 1,850.00" for a EUR invoice is not);
+  // a currency named apart from any number ("a USD floor of 3000.00", "free euros") is no amount.
+  const amounts = new Set(given.amounts);
+  const CUR = String.raw`(?:EUR|USD|GBP|CHF|JPY|euros?|dollars?|[€$£¥₹¢])`;
+  for (const m of sentence.matchAll(new RegExp(String.raw`${CUR}\s?\d[\d,.]*\d|\d[\d,.]*\d\s?${CUR}(?![a-z])`, "gi"))) {
+    if (!amounts.has(m[0])) return m[0];
+  }
   let rest = sentence;
   for (const t of [...given.amounts, ...given.references].sort((a, b) => b.length - a.length)) rest = rest.split(t).join(" | ");
-  const m = /(?:\b(?:EUR|USD|GBP|CHF|JPY)\s?|[€$£¥₹¢]\s?)?\d[\d,.:\-]*|[€$£¥₹¢]|\b(?:EUR|USD|GBP|CHF|JPY|euros?|dollars?|cents?|thousand|hundred|million|billion|grand)\b/i.exec(rest);
+  const m = /\d[\d,.:\-]*|\b(?:thousand|hundred|million|billion|grand)\b/i.exec(rest);
   return m ? m[0].trim().replace(/[.,:\-]+$/, "") || m[0].trim() : null;
 }
 

@@ -450,3 +450,8 @@ Claude Code, on Max's go; in production a second person). Sources for every clai
   ref fix (#89), the Treasury advice retry, /try/sign's animations, review points and hash chain (#90), the jury texts in
   the demo's order (#91), the phone approval page on one screen with an explicit switch to a new run's key (#92), and
   the Airi run on /airwallex, /proof and in the docs (vic-1-record). 3028 tests in 295 files, all passing.
+- 7 November, after the release deploy: live Opus's advice was refused for naming a currency apart from its amount ("a
+  USD floor of 3000.00", "free euros"), so it often took two extra turns and sometimes ran past the deadline. Now a
+  currency next to a number must be one of code's amounts as written (another currency's "USD 1,850.00" still fails),
+  and a currency named on its own is no amount; every digit and number word must still be code's. 3028 tests in 295
+  files, all passing.
