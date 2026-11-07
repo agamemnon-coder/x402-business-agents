@@ -45,13 +45,13 @@ export interface Vic2Line { badge: string; ok: boolean; text: string }
 const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
 const capital = (t: string) => `${t.charAt(0).toUpperCase()}${t.slice(1)}`;
 
-/** The three outcomes, each from the record. */
+/** The three outcomes, each from the record; a refusal wears the red ✕ badge, as purchase C's does on the first Airi run. */
 export function vic2Lines(rec: Vic2Record): Vic2Line[] {
   const { D, E, F } = rec.steps;
   const ch = D.alteration.changed.amount;
   return [
-    { badge: VIC2_BADGES.D, ok: true, text: `${D.request.currency} ${ch.from} approved with Face ID; our own labelled test then changed it to ${D.request.currency} ${ch.to}. Refused: not what the CFO signed.` },
-    { badge: VIC2_BADGES.E, ok: true, text: `After the CFO's Face ID blocked the test shop, ${E.purchase.currency} ${E.purchase.amount} within the limit was refused before Airi was asked.` },
+    { badge: VIC2_BADGES.D, ok: false, text: `${D.request.currency} ${ch.from} approved with Face ID; our own labelled test then changed it to ${D.request.currency} ${ch.to}. Refused: not what the CFO signed.` },
+    { badge: VIC2_BADGES.E, ok: false, text: `After the CFO's Face ID blocked the test shop, ${E.purchase.currency} ${E.purchase.amount} within the limit was refused before Airi was asked.` },
     { badge: VIC2_BADGES.F, ok: F.offer.offered, text: "A second Face ID lifted the block; the run stopped there." },
   ];
 }
