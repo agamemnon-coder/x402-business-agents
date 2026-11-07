@@ -49,7 +49,7 @@ const advisor = new StandInAdvisor();
 // Section 6: the invoice reader's stand-in, as the line's: it reads the document's own lines, labelled "stand-in, not Claude".
 const { parseInvoiceFallback } = await import("../../src/claude/invoiceReading.js");
 const readerStandIn = async (doc: string) => ({ value: parseInvoiceFallback(doc), requestId: "req_standin_reader", costUsd: 0, model: "stand-in", ms: 300 });
-const { mainRunWorst, OTHER_IBAN, TAMPER_VERDICT, TRY_POLICY, TRY_SIGN_END, TRY_SIGN_LABEL, TRY_SIGN_SCREENS: W, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
+const { LOCK_CHANNELS, mainRunWorst, OTHER_IBAN, TAMPER_VERDICT, TRY_POLICY, TRY_SIGN_END, TRY_SIGN_LABEL, TRY_SIGN_SCREENS: W, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
 const { ALONE_PER_DAY, PAID_ALONE, defaultPolicy, exposurePolicyOfWorld, threeLocks } = await import("../../src/try/policy.js");
 // 1.1: the worst case, read from the policy code (src/policy/exposure.ts) with the main run's recorded rate.
 const { exposureOf, exposureWords } = await import("../../src/policy/exposure.js");
@@ -73,6 +73,7 @@ const LIVE_READ_LABEL = /^(Claude Sonnet · live · invoice reader|recorded: the
 const LIVE_ADVICE_LABEL = /^(Claude Opus · live · treasury advice|recorded: the live agent was unavailable|fixed text · .+)$/;
 const LIVE_TRICK_LABEL = /^(Claude Sonnet · live · invoice reader|recorded: the live agent was unavailable|live agent unavailable · read by code)$/;
 const { verifyReceipt } = await import("../../src/try/receipt.js");
+const { checkChain } = await import("../../worker/src/worldChain.js");
 const sha256 = (s: string) => createHash("sha256").update(s, "utf8").digest("hex");
 // The examples the page must link, from the records themselves (not from the page's code).
 const LOCKS = tryLocks();
@@ -208,10 +209,24 @@ const clearOfBar = async (page: Page, sel: string, n: number) => page.evaluate(`
   return r.bottom <= bar.top + 0.5 || r.top >= bar.bottom;
 })()`) as Promise<boolean>;
 
+/**
+ * The page's animations running or holding their end now (inside the story: the screens and the diagram), each with its
+ * duration and delay in ms: the motion pass (Max, 7 Nov) keeps every one between 150 and 400 ms.
+ */
+const motion = (page: Page) => page.evaluate(`document.getAnimations().filter((a) => a.effect && a.effect.target && a.effect.target.closest(".story")).map((a) => {
+  const t = a.effect.getTiming();
+  return { name: a.animationName || a.transitionProperty || "?", ms: Number(t.duration), delay: Number(t.delay) };
+})`) as Promise<{ name: string; ms: number; delay: number }[]>;
+async function motionOk(page: Page, tag: string, where: string, want: string[]): Promise<void> {
+  const m = await motion(page);
+  const names = [...new Set(m.map((a) => a.name))];
+  check(want.every((w) => names.includes(w)) && m.every((a) => a.ms >= 150 && a.ms <= 400), `${tag}: ${where}: ${want.join(", ")} play, each between 150 and 400 ms (${m.map((a) => `${a.name} ${a.ms}`).join(", ")})`);
+}
+
 /** A browser context with Chromium's virtual authenticator (user verification on): the visitor's Face ID. */
-async function visitor(o: { width: number; scheme?: "light" | "dark"; ip: string }) {
+async function visitor(o: { width: number; scheme?: "light" | "dark"; ip: string; reducedMotion?: "reduce" }) {
   const mobile = o.width < 600;
-  const context = await browser.newContext({ viewport: { width: o.width, height: mobile ? 844 : 900 }, deviceScaleFactor: mobile ? 2 : 1, isMobile: mobile, hasTouch: mobile, colorScheme: o.scheme ?? "light", ...(args.live ? {} : { extraHTTPHeaders: { "cf-connecting-ip": o.ip } }) });
+  const context = await browser.newContext({ viewport: { width: o.width, height: mobile ? 844 : 900 }, deviceScaleFactor: mobile ? 2 : 1, isMobile: mobile, hasTouch: mobile, colorScheme: o.scheme ?? "light", ...(o.reducedMotion ? { reducedMotion: o.reducedMotion } : {}), ...(args.live ? {} : { extraHTTPHeaders: { "cf-connecting-ip": o.ip } }) });
   await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: local.url });
   const page = await context.newPage();
   const cdp = await context.newCDPSession(page);
@@ -287,6 +302,8 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   check((await page.locator(".testband .tl").innerText()).trim() === TRY_SIGN_LABEL, `${tag}: the label at the top reads "${TRY_SIGN_LABEL}"`);
   const band = await page.locator(".testband").boundingBox();
   check(!!band && band.y === 0, `${tag}: the label is the first thing on the page`);
+  // A thin band (Max's review): about half its height before (44 px in one line, 63 px in two at 390 px).
+  check(!!band && band.height <= (width >= 390 ? 24 : 40), `${tag}: the band at the top is thin (${band?.height} px)`);
   const labelLines = await page.locator(".testband .tl").evaluate((e: Element) => { const r = document.createRange(); r.selectNodeContents(e.lastChild as Node); return new Set([...r.getClientRects()].map((b) => Math.round(b.top))).size; }) as number;
   if (width >= 390) check(labelLines === 1, `${tag}: the disclaimer is one line (${labelLines})`);
   // "What's real?": one link in the band, closed until asked, opening to the honest lines.
@@ -335,6 +352,7 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
     await page.waitForTimeout(400);
     const lit = (await page.evaluate(`[...document.querySelectorAll("#diagram .dn")].filter((n) => getComputedStyle(n).opacity === "1" && !n.classList.contains("d-policy")).map((n) => n.classList[1]).join()`)) as string;
     check(lit === "d-purser,d-sign", `${tag}: on screen 1 the diagram lights Purser's limit and the signature (${lit})`);
+    check((await motion(page)).filter((a) => a.name === "dnlit").length === 2, `${tag}: the diagram's lit parts light up as the step opens`);
     // 1.2 on desktop: the lock that just stopped another payment, in one line, with the real example as a link.
     check(await page.locator("#diagram .dstop").isVisible() && /^Just stopped another payment · a real one$/.test((await page.locator("#diagram .dstop").innerText()).trim()) && !!(await page.locator("#dg-real").getAttribute("href")),
       `${tag}: on screen 1 the diagram says the Purser lock just stopped another payment, with a real example linked`);
@@ -536,6 +554,7 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   // ── Sign: one tap, the passkey made first. Screen 2. ──
   await page.click("#go-sign");
   await page.waitForSelector("#scr-2:not([hidden])");
+  await motionOk(page, tag, "screen 2, the tick draws itself in with a soft green glow", ["draw", "glow"]);
   check(/registered in this world only|is kept/.test(await page.locator("#k-status").textContent() ?? ""), `${tag}: the test passkey is made and registered, then the signature (one tap)`);
   check(JSON.stringify(await dots(page)) === '["done","on","-","-","-","-"]' && (await page.locator("#pg-count").innerText()).trim() === `2 of 6 · ${TRY_SIGN_STEPS[1]}`, `${tag}: verified: step 2 of 6`);
   const ok = await page.locator("#scr-2 .bigok svg").boundingBox();
@@ -559,13 +578,17 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   const [download] = await Promise.all([page.waitForEvent("download"), page.click("#r-receipt")]);
   const saved = join(shots, `${tag}-receipt.json`);
   await download.saveAs(saved);
-  const receipt = JSON.parse(readFileSync(saved, "utf8")) as { terms: Record<string, string>; terms_sha256: string };
+  const receipt = JSON.parse(readFileSync(saved, "utf8")) as { terms: Record<string, string>; terms_sha256: string; chain: { length: number; head: string; rows: { kind: string; hash: string }[] } };
   const verdict = verifyReceipt(receipt);
+  // 6c: the receipt carries the world's hash chain as it was when signed; its checks find this signature's row in it.
+  check(verdict.checks.filter((c) => c.check === "chain" || c.check === "chain signature").map((c) => `${c.check}:${c.ok}`).join() === "chain:true,chain signature:true"
+    && checkChain(receipt.chain.rows).ok && receipt.chain.rows[0]!.kind === "world_opened" && receipt.chain.rows.some((r) => r.kind === "signature"),
+    `${tag}: the receipt carries the world's hash chain (${receipt.chain.length} rows), checked offline, its signature row found`);
   check(download.suggestedFilename() === "receipt.json" && verdict.ok && receipt.terms_sha256 === hash && JSON.stringify(receipt.terms) === JSON.stringify(terms),
     `${tag}: receipt.json downloads and verifies offline (${verdict.checks.filter((c) => c.ok).length} of ${verdict.checks.length} checks)`);
   check(!verifyReceipt({ ...receipt, terms: { ...receipt.terms, amount: "1850.01" } }).ok && !verifyReceipt({ ...receipt, terms: { ...receipt.terms, payee_iban: OTHER_IBAN } }).ok,
     `${tag}: the receipt with one cent more, or another IBAN, fails`);
-  check(!/"token"/.test(readFileSync(saved, "utf8")) && Object.keys(receipt).sort().join() === "algorithm,assertion,credential_id,note,origin,public_key,receipt,rp_id,terms,terms_sha256,verified_by_server_at,verify",
+  check(!/"token"/.test(readFileSync(saved, "utf8")) && Object.keys(receipt).sort().join() === "algorithm,assertion,chain,credential_id,note,origin,public_key,receipt,rp_id,terms,terms_sha256,verified_by_server_at,verify",
     `${tag}: the receipt carries what it needs and no world token`);
   // /try/verify (A3): "Check it yourself" opens the receipt in a page that checks it with WebCrypto, with no server call.
   if (!args.live) {
@@ -581,6 +604,8 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
     check((await p2.locator("#v-lead").innerText()).trim() === "Don't trust our server: check it yourself." && new URL(p2.url()).hash === "", `${tag}: /try/verify: "Don't trust our server: check it yourself."; the receipt came in the link's fragment, then cleared`);
     const good = await vv();
     check(good.ok === "true" && good.text === "Signature valid for these terms", `${tag}: /try/verify: "${good.text}"`);
+    check(JSON.stringify(await p2.locator("#v-checks li").evaluateAll((ls: Element[]) => ls.slice(-2).map((l) => `${(l as HTMLElement).dataset.check}:${l.className}`))) === '["chain:ok","chain signature:ok"]'
+      && (await p2.locator('#v-terms dd[data-field="chain"]').innerText()).startsWith(`${receipt.chain.length} rows, head ${receipt.chain.head.slice(0, 12)}`), `${tag}: /try/verify checks the receipt's hash chain too, in the browser`);
     await p2.screenshot({ path: join(shots, `${tag}-2b-verify-valid.png`) });
     await layout(p2, tag, "/try/verify, valid", width);
     await p2.click("#v-flip");
@@ -634,7 +659,12 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
       await shot(page, `${tag}-3-cheat-refused.png`);
     }
     const expect = canonical(field === "fx.client_rate" ? { ...terms, fx: { ...terms.fx, client_rate: value } } : { ...terms, [field]: value });
+    if (field === "amount") await motionOk(page, tag, "a refused cheat: the card shakes, the changed field lights red", ["shake", "lightred"]);
     const changedRows = await page.locator("#t-table tr.chg").evaluateAll((rs: Element[]) => rs.map((r) => (r as HTMLElement).dataset.row));
+    const pair = await page.locator("#t-table tr.hrow code.hp").evaluateAll((cs: Element[]) => cs.map((c) => ({ title: c.getAttribute("title"), text: (c.textContent ?? "").trim(), marked: c.querySelectorAll(".hx").length }))) as { title: string; text: string; marked: number }[];
+    check(pair.length === 2 && pair[0]!.title === hash && pair[1]!.title === sha256(canonical(field === "fx.client_rate" ? { ...terms, fx: { ...terms.fx, client_rate: value } } : { ...terms, [field]: value }))
+      && pair[0]!.text === `${hash.slice(0, 12)}…` && pair[0]!.marked === 0 && pair[1]!.marked === [...pair[1]!.title.slice(0, 12)].filter((c, i) => c !== hash[i]).length && pair[1]!.marked > 0,
+      `${tag}: cheat ${field}: both hashes side by side in sight (${pair.map((x) => x.text).join(" | ")}), the ${pair[1]?.marked} characters that differ marked`);
     check(JSON.stringify(changedRows) === JSON.stringify([field]) && (await page.locator("#t-table tr.chg").innerText()).includes(shown), `${tag}: cheat ${field}: "You signed / Sent now" marks ${field}, and only it (now ${shown})`);
     await page.locator("#tamper details.more > summary").click();
     const oldH = await page.locator("#t-what .hash.old").getAttribute("data-hash"), newH = await page.locator("#t-what .hash.new").getAttribute("data-hash");
@@ -667,6 +697,11 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
     const full = (await page.locator("#k-full").innerText()).trim();
     await page.locator("#k-did > summary").click();
     const want = await runTrick(attack, await readerStandIn(TRICKS[attack].text));
+    const ibans = await page.locator("#k-ibans .ib").evaluateAll((bs: Element[]) => bs.map((b) => ({ iban: (b as HTMLElement).dataset.iban, text: (b.textContent ?? "").trim(), marked: [...b.querySelectorAll(".hx")].map((x) => x.textContent).join("") }))) as { iban: string; text: string; marked: string }[];
+    check(ibans.length === 2 && ibans[0]!.iban === want.known.iban && ibans[0]!.text === want.known.iban && ibans[0]!.marked === "" && ibans[1]!.iban === want.invoice.iban && ibans[1]!.text === want.invoice.iban
+      && ibans[1]!.marked === [...want.invoice.iban].filter((c, i) => c !== (i < 4 ? want.known.iban[i] : want.known.iban[want.known.iban.length - want.invoice.iban.length + i])).join("") && ibans[1]!.marked.length > 0,
+      `${tag}: trick ${attack}: the new IBAN next to the one on file (${ibans.map((b) => b.text).join(" ≠ ")}), what differs in red (${ibans[1]?.marked})`);
+    if (attack === ATTACKS[0]) await motionOk(page, tag, "a fake invoice: it slides in, then the block", ["slidein", "blockin"]);
     check((await page.locator("#k-out").innerText()).trim() === want.outcome && want.blocked && (await page.locator("#k-lesson").innerText()).trim() === "A prompt is not a control." && (await page.locator("#k-says").innerText()).trim() === want.agent.read && await page.locator("#k-says").evaluate((n: Element) => n.tagName + getComputedStyle(n, "::before").content) === "SPANnone"
       && (args.live ? LIVE_TRICK_LABEL.test((await page.locator("#k-label").innerText()).trim()) : (await page.locator("#k-label").innerText()).trim() === "stand-in, not Claude") && (await page.locator("#k-doc").innerText()).trim() === TRICKS[attack].shows && full === TRICKS[attack].text,
       `${tag}: trick ${attack}: the invoice, what the agent read (labelled), then "${want.outcome}" and "A prompt is not a control."`);
@@ -689,9 +724,14 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   const labelsOf = async () => await page.locator("#rule-chips .chip").evaluateAll((bs: Element[]) => bs.map((b) => b.getAttribute("aria-label"))) as string[];
   check(JSON.stringify(chips) === JSON.stringify(["€500", "€2,000", "€5,000"]) && JSON.stringify(await labelsOf()) === JSON.stringify(["€500, in force", "€2,000", "€5,000"]) && await page.locator('#rule-chips .chip[data-alone="500.00"] .now svg').count() === 1,
     `${tag}: three amounts: ${chips.join(" · ")}, €500 marked in force (a tick, and its name)`);
-  const rl = (await page.locator("#s4-locks li").allInnerTexts()).map((t: string) => t.trim());
+  const rl = (await page.locator("#s4-locks li > span:last-child").allInnerTexts()).map((t: string) => t.trim());
+  // Each lock with its channel in front (Max's review): Purser the invoices, the Airwallex card the card spend, Metal on chain.
+  const channels = (await page.locator("#s4-locks li .ch").allInnerTexts()).map((t: string) => t.trim());
+  check(JSON.stringify(channels) === JSON.stringify([LOCK_CHANNELS.purser.short, LOCK_CHANNELS.airwallex.short, LOCK_CHANNELS.metal.short]) && JSON.stringify(channels) === '["Invoices","Card spend","On-chain"]',
+    `${tag}: each lock shows its channel: ${channels.join(" · ")}`);
+  if (width >= 1024) check(JSON.stringify(await page.locator("#diagram .dlocks small.ch").allTextContents()) === JSON.stringify([LOCK_CHANNELS.purser.long, LOCK_CHANNELS.airwallex.long, LOCK_CHANNELS.metal.long]), `${tag}: the diagram names each lock's channel`);
   const eurOf = (h: string) => Number(/EUR ([\d,]+)/.exec(h)![1]!.replace(/,/g, ""));
-  check((await page.locator("#s4-worst").innerText()).trim() === `${W.rule.worst} €${eurOf(WORST.headline).toLocaleString("en-US")} a month` && JSON.stringify(rl) === JSON.stringify([`Purser: pays alone up to €500, ${ALONE_PER_DAY} times a day`, "Airwallex card: €25 each, €50 a month", "Metal mandate: 25 test USD each"]),
+  check((await page.locator("#s4-worst").innerText()).trim() === `${W.rule.worst} €${eurOf(WORST.headline).toLocaleString("en-US")} a month` && JSON.stringify(rl) === JSON.stringify([`Purser: up to €500 alone, ${ALONE_PER_DAY} a day`, "Airwallex card: €25 each, €50 a month", "Metal mandate: 25 test USD each"]),
     `${tag}: one honest worst case (€${eurOf(WORST.headline).toLocaleString("en-US")} a month) and the three locks, Purser first: ${rl.join(" · ")}`);
   await page.locator("#s4-more > summary").click();
   check((await page.locator("#s4-full").innerText()).trim() === WORST.headline && (await page.locator("#s4-more").innerText()).includes(mainRunWorst()), `${tag}: behind "more": the full figure and why the main run's is EUR 300 (${mainRunWorst()})`);
@@ -700,11 +740,16 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   await page.click('#rule-chips .chip[data-alone="500.00"]');
   check(await page.locator("#go-apply").isDisabled() && (await page.locator("#s4-note").innerText()).trim() === W.rule.same, `${tag}: the rule in force: "${W.rule.same}"`);
   await page.click('#rule-chips .chip[data-alone="2000.00"]');
+  // The figures count up to the new value (drawn over the final words, which are there at once), the locks light one by one.
+  check(await page.locator("#s4-worst.counting[data-count]").count() === 1 && await page.locator("#s4-locks.lit").count() === 1, `${tag}: choosing €2,000: the worst case counts up, the three locks light up one by one`);
+  await motionOk(page, tag, "choosing an amount", ["lockon"]);
+  await page.waitForFunction(() => !document.querySelector("#s4-worst.counting"), undefined, { timeout: 2000 });
+  check(await page.locator("#s4-argue #s4-worst + #s4-note").count() === 1 && await page.locator("#s4-argue.looser").count() === 1, `${tag}: the worst case is the argument: "${W.rule.looser}" right under it`);
   check((await page.locator("#s4-note").innerText()).trim() === W.rule.looser && (await page.locator("#go-apply").innerText()).trim() === W.rule.sign && await page.locator("#go-apply").isEnabled(),
     `${tag}: €2,000 is looser: "${W.rule.looser}", the button "${W.rule.sign}"`);
   // The worst case moves with the choice (Max, 7 Nov, 1.4): the line names €2,000, and what it adds a month shows beside it.
   const addMonth = (Number(/EUR ([\d,]+)/.exec(worldExpo("2000.00").headline)![1]!.replace(/,/g, "")) - Number(/EUR ([\d,]+)/.exec(WORST.headline)![1]!.replace(/,/g, "")));
-  check((await page.locator("#s4-worst").innerText()).trim() === `${W.rule.worst} €${eurOf(worldExpo("2000.00").headline).toLocaleString("en-US")} a month (+€${addMonth.toLocaleString("en-US")})` && addMonth === 1500 * ALONE_PER_DAY * 31 && (await page.locator("#rl-purser").innerText()).trim() === `Purser: pays alone up to €2,000, ${ALONE_PER_DAY} times a day`,
+  check((await page.locator("#s4-worst").innerText()).trim() === `${W.rule.worst} €${eurOf(worldExpo("2000.00").headline).toLocaleString("en-US")} a month (+€${addMonth.toLocaleString("en-US")})` && addMonth === 1500 * ALONE_PER_DAY * 31 && (await page.locator("#rl-purser > span:last-child").innerText()).trim() === `Purser: up to €2,000 alone, ${ALONE_PER_DAY} a day`,
     `${tag}: choosing €2,000: the worst case with what it adds (+€${addMonth.toLocaleString("en-US")}), Purser's lock follows`);
   if (width >= 1024) {
     await page.waitForTimeout(400);
@@ -721,6 +766,9 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   // ── Screen 6: the agent pays its next invoice alone. ──
   const next = page.locator("#s5-next");
   check(JSON.stringify(await dots(page)) === '["done","done","done","done","done","on"]' && (await page.locator("#s5-head").innerText()).trim() === W.alone.head, `${tag}: screen 6 of 6: "${W.alone.head}"`);
+  await motionOk(page, tag, "paid alone: the payment moves through the three locks", ["fill", "stop"]);
+  check(JSON.stringify(await page.locator("#s5-next ol.flow li").evaluateAll((ls: Element[]) => ls.map((l) => `${(l as HTMLElement).dataset.stop}:${(l.textContent ?? "").trim()}`))) === JSON.stringify(["purser:Purser", "rail:Airwallex · Metal", "paid:Paid"]) && await page.locator('#s5-next ol.flow[data-state="alone"]').count() === 1,
+    `${tag}: screen 6: the payment goes Purser → Airwallex · Metal → Paid`);
   check(await next.getAttribute("data-proposal") === NEXT_INVOICE.id && await next.getAttribute("data-state") === "alone" && (await next.innerText()).includes("EUR 1,240.00")
     && (await next.innerText()).includes("Paid alone under your new policy (up to €2,000). No signature needed."), `${tag}: the next invoice (${NEXT_INVOICE.id}, EUR 1,240.00) "Paid alone under your new policy (up to €2,000). No signature needed."`);
   check(((await v.signCount())[0] ?? 0) === before + 1 && (await page.locator("#w-balance").textContent())?.trim() === "EUR 25,020.00",
@@ -737,8 +785,28 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
 
   // ── The closing card (1.5): what the visitor did, then three ways on. ──
   check((await page.locator("#go-done").innerText()).trim() === W.alone.finish, `${tag}: screen 6's one button: "${W.alone.finish}"`);
-  await page.click("#go-done");
+  // 6c: on the last screen, the world's hash chain: its length, its head, and "Verify the chain" in the browser. At 390 px
+  // dark one row comes back changed on its way to the page (as a server that rewrote it would send it): the page finds it.
+  const tamper = !args.live && tag === "390-dark";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (tamper) await page.route("**/api/try-sign/chain", async (route: any) => { const res = await route.fetch(); const j = await res.json(); j.chain.rows[2].data_sha256 = sha256("not what happened"); await route.fulfill({ response: res, body: JSON.stringify(j) }); });
+  const [chainRes] = await Promise.all([page.waitForResponse("**/api/try-sign/chain"), page.click("#go-done")]);
   await page.waitForSelector("#scr-7:not([hidden])");
+  const served = ((await chainRes.json()) as { chain: { length: number; head: string; rows: { hash: string }[] } }).chain;
+  await page.waitForSelector("#c-box:not([hidden])");
+  // (With the changed row, the chain as served no longer checks: that is what "Verify the chain" must find below.)
+  check(checkChain(served.rows).ok === !tamper && served.length > receipt.chain.length && (tamper || JSON.stringify(served.rows.slice(0, receipt.chain.length)) === JSON.stringify(receipt.chain.rows))
+    && (await page.locator("#c-len").innerText()).trim() === `${served.length} events` && (await page.locator("#c-head").innerText()).trim() === `${served.head.slice(0, 12)}…` && await page.locator("#c-head").getAttribute("title") === served.head
+    && (await page.locator("#c-verify").innerText()).trim() === W.done.chain.verify && !(await page.locator("#c-verify").getAttribute("class"))!.includes("primary"),
+    `${tag}: the last screen: the hash chain's length (${served.length} events) and head (${served.head.slice(0, 12)}…), the receipt's chain its start, and "${W.done.chain.verify}"`);
+  await page.click("#c-verify");
+  await page.waitForFunction(() => /ok|bad/.test(document.getElementById("c-status")?.className ?? ""));
+  const cv = (await page.locator("#c-status").innerText()).trim();
+  if (tamper) {
+    await page.unroute("**/api/try-sign/chain");
+    check(cv === "Broken at row 3: its hash does not match." && await page.locator("#c-box").getAttribute("data-verified") === "false", `${tag}: a row changed on its way: "Verify the chain" finds it (${cv})`);
+  } else check(cv === `${W.done.chain.ok}: ${served.length} of ${served.length} rows.` && await page.locator("#c-verify").isHidden() && await page.locator("#c-box").getAttribute("data-verified") === "true",
+    `${tag}: "Verify the chain" recomputes every row in the browser: "${cv}"`);
   const did = `${W.done.lead} ${[W.done.items.signed, W.done.items.cheat, W.done.items.trick, W.done.items.rule, W.done.items.alone].join(" · ")}.`;
   check((await page.locator("#d-head").innerText()).trim() === W.done.head && (await page.locator("#scr-7 .lead1").innerText()).trim() === did && JSON.stringify(await dots(page)) === '["done","done","done","done","done","done"]',
     `${tag}: the closing card: "${did} ${W.done.head}"`);
@@ -791,7 +859,7 @@ if (!args.live && !ONLY) {
     const stricter = await formPolicy(page);
     pn = await panels(page);
     check(/^Stricter: it holds at once/.test(await pstatus()) && stricter.agents.treasury.per_tx === "20.00" && pn.state === "in-force" && panelsMatch(pn, expectedLocks(stricter, worldId))
-      && /"amount": 20,/.test(pn.awx) && pn.metal[0] === "20.00" && pn.purser.includes('"card.treasury.per_tx": "20.00"') && pn.changed >= 3 && (await page.locator("#rl-awx").innerText()).trim() === "Airwallex card: €20 each, €50 a month",
+      && /"amount": 20,/.test(pn.awx) && pn.metal[0] === "20.00" && pn.purser.includes('"card.treasury.per_tx": "20.00"') && pn.changed >= 3 && (await page.locator("#rl-awx > span:last-child").innerText()).trim() === "Airwallex card: €20 each, €50 a month",
       `${tag}: stricter (25.00 → 20.00 a purchase) holds at once; the three panels follow it, the changed lines marked (${pn.changed}); the card's line too`);
     check(await clearOfBar(page, "#p-status", 4), `${tag}: the result line, scrolled to, is not under the sticky button`);
     await shot(page, `${tag}-2-stricter.png`);
@@ -901,7 +969,7 @@ if (!args.live && !ONLY) {
     await page.waitForFunction(() => /ok/.test(document.getElementById("p-status")?.className ?? ""));
     await page.locator("#p-open").click();
     const signed = (await v.signCount())[0] ?? 0;
-    check(await page.locator('#rule-chips .chip[data-alone="500.00"]').getAttribute("aria-label") === "€500" && await page.locator("#rule-chips .chip .now").count() === 0 && (await page.locator("#rl-purser").innerText()).trim() === `Purser: pays alone up to €1,000, ${ALONE_PER_DAY} times a day`, `${tag}: in force now: €1,000 (signed); no chip marked in force`);
+    check(await page.locator('#rule-chips .chip[data-alone="500.00"]').getAttribute("aria-label") === "€500" && await page.locator("#rule-chips .chip .now").count() === 0 && (await page.locator("#rl-purser > span:last-child").innerText()).trim() === `Purser: up to €1,000 alone, ${ALONE_PER_DAY} a day`, `${tag}: in force now: €1,000 (signed); no chip marked in force`);
     await page.click('#rule-chips .chip[data-alone="500.00"]');
     check((await page.locator("#s4-note").innerText()).trim() === W.rule.stricter && (await page.locator("#go-apply").innerText()).trim() === W.rule.apply && await page.locator("#go-apply").isEnabled(), `${tag}: €500 is stricter: "${W.rule.stricter}", the button "${W.rule.apply}"`);
     await shot(page, `${tag}-1-stricter.png`);
@@ -965,6 +1033,44 @@ if (!args.live && !ONLY) {
     await page.waitForTimeout(500);
     check(dialogs.length === 0 && await page.locator(".says img, .says b").count() === 0, `markup in the agent's sentence: no <b> or <img> made, no script run (${dialogs.length} dialogs)`);
     await context.close();
+  }
+
+  // ── prefers-reduced-motion: every screen shows its end state at once, with no animation and nothing counting. ──
+  for (const width of [390, 1440] as const) {
+    const tag = `still-${width}`;
+    const v = await visitor({ width, ip: `198.51.12${width === 390 ? 6 : 7}.7`, reducedMotion: "reduce" });
+    const { page, errors } = v;
+    const none = async (where: string) => { const m = await motion(page); check(m.length === 0, `${tag}: ${where}: no animation (${m.map((a) => a.name).join(", ") || "none"})`); };
+    await openWorld(page, tag);
+    await start(page);
+    await page.click("#go-sign");
+    await page.waitForSelector("#scr-2:not([hidden])");
+    await none("screen 2");
+    check(JSON.stringify(await page.locator("#scr-2 .bigok svg > *").evaluateAll((ps: Element[]) => ps.map((p) => getComputedStyle(p).strokeDashoffset))) === '["0px","0px"]', `${tag}: the tick is drawn in full at once`);
+    await page.click("#go-cheat");
+    await page.waitForSelector("#tamper:not([hidden])");
+    await none("screen 3, refused");
+    check(await page.locator("#tamper.shake").count() === 0 && await page.locator("#t-table tr.hrow code.hp").count() === 2, `${tag}: no shake; the two hashes side by side`);
+    await page.click("#go-trick");
+    await page.waitForSelector("#scr-4:not([hidden])");
+    await page.click('#trick-chips .chip[data-attack="pre_approved"]');
+    await page.waitForSelector("#k-result:not([hidden])");
+    await none("screen 4, the fake invoice");
+    check(await page.locator("#k-result.go").count() === 0 && await page.locator("#k-ibans .ib").count() === 2, `${tag}: the invoice, the IBANs and the block in place at once`);
+    await page.click("#go-rule");
+    await page.waitForSelector("#scr-5:not([hidden])");
+    await page.click('#rule-chips .chip[data-alone="2000.00"]');
+    check(await page.locator("#s4-worst[data-count], #s4-worst.counting, #s4-locks.lit").count() === 0 && /\(\+€[\d,]+\)$/.test((await page.locator("#s4-worst").innerText()).trim()), `${tag}: choosing €2,000: the new worst case and its difference at once, nothing counting`);
+    await none("screen 5");
+    await page.click("#go-apply");
+    await page.waitForSelector("#scr-6:not([hidden])");
+    await none("screen 6");
+    const paid = await page.locator("#s5-next ol.flow .f-paid .fd").evaluate((n: Element) => [getComputedStyle(n).backgroundColor, getComputedStyle(n.closest("ol")!, "::after").transform]) as [string, string];
+    const ok = await page.evaluate(`(() => { const d = document.createElement("i"); d.style.color = "var(--ok)"; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; })()`) as string;
+    check(paid[0] === ok && paid[1] === "none", `${tag}: paid alone: the payment is through the locks and green at once (${paid.join(", ")})`);
+    if (width >= 1024) await none("the diagram");
+    check(errors.length === 0, `${tag}: 0 console errors (${errors.length}${errors.length ? `: ${errors.join(" | ")}` : ""})`);
+    await v.context.close();
   }
 
   // ── Timed (4.2): the whole story, scripted, from opening the page to the closing card, in at most 75 s. ──

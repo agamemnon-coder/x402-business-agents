@@ -23,7 +23,16 @@ export interface TryReceipt {
   assertion: { authenticatorData: string; clientDataJSON: string; signature: string };
   verified_by_server_at?: string;
   verify?: string;
+  /** 6c: the test world's hash chain when it was signed (worker/src/worldChain.ts); checked when present. */
+  chain?: { length: number; head: string | null; rows: ChainRowOf[] };
 }
+/** One row of a world's hash chain: hash = SHA-256 of the canonical JSON of the other five fields. */
+export interface ChainRowOf { seq: number; at: string; kind: string; data_sha256: string; prev: string; hash: string }
+/** The prev of a chain's first row. */
+export const CHAIN_START = "0".repeat(64);
+/** A chain row without its hash, as canonical JSON (RFC 8785: keys sorted; seq the one number, a whole one). */
+export const chainRowCanonical = (r: Omit<ChainRowOf, "hash">) =>
+  `{"at":${JSON.stringify(r.at)},"data_sha256":${JSON.stringify(r.data_sha256)},"kind":${JSON.stringify(r.kind)},"prev":${JSON.stringify(r.prev)},"seq":${String(r.seq)}}`;
 
 export interface ReceiptCheck { check: string; ok: boolean; detail: string }
 export interface ReceiptResult { ok: boolean; checks: ReceiptCheck[] }
@@ -114,6 +123,31 @@ export function verifyReceipt(input: unknown): ReceiptResult {
   } catch {
     add("signature", false, "the public key or the signature is malformed");
   }
+
+  // 5. The world's hash chain (6c), when the receipt carries one: every row's hash recomputed, each prev the row
+  // before's, the length and head as stated; and one signature row whose data is this signature (its proposal and the
+  // hash signed), so the chain records it.
+  if (R.chain !== undefined) {
+    const c = R.chain as unknown;
+    const rows = isObj(c) && Array.isArray(c.rows) ? (c.rows as unknown[]) : null;
+    let bad: string | null = rows ? null : "the chain has no rows";
+    let prev = CHAIN_START;
+    for (let i = 0; rows && !bad && i < rows.length; i++) {
+      const r = rows[i] as Partial<ChainRowOf>;
+      if (!isObj(r) || r.seq !== i + 1 || typeof r.at !== "string" || typeof r.kind !== "string" || typeof r.data_sha256 !== "string" || typeof r.hash !== "string") bad = `row ${i + 1} is not a chain row`;
+      else if (r.prev !== prev) bad = `row ${i + 1} does not follow the row before (its prev is not that row's hash)`;
+      else if (sha256(chainRowCanonical({ seq: r.seq, at: r.at, kind: r.kind, data_sha256: r.data_sha256, prev: r.prev })).toString("hex") !== r.hash) bad = `row ${i + 1}'s hash is not the SHA-256 of the row: it was changed`;
+      else prev = r.hash;
+    }
+    if (rows && !bad && (!isObj(c) || c.length !== rows.length || c.head !== (rows.length ? prev : null))) bad = "the chain's length or head is not its rows'";
+    add("chain", !bad, bad ?? `${rows!.length} rows, each covering the one before; head ${prev}`);
+    if (!bad) {
+      let want: string | null = null;
+      try { want = sha256(canonicalTerms({ proposal_id: R.terms.proposal_id, terms_sha256: R.terms_sha256 })).toString("hex"); } catch { want = null; }
+      const row = (rows as ChainRowOf[]).find((r) => r.kind === "signature" && r.data_sha256 === want);
+      add("chain signature", !!row, row ? `row ${row.seq} records this signature (${String(R.terms.proposal_id)}, the terms hash signed)` : "no row of the chain records this signature");
+    }
+  }
   return done();
 }
 
@@ -123,4 +157,6 @@ export const RECEIPT_MEANS = [
   "Does not prove: who holds the key, or that it was Face ID (no attestation is checked). A test world's terms: nothing real moved.",
 ];
 /** The extra line when the terms carry an FX quote. */
+/** The extra line when the receipt carries the world's hash chain. */
+export const RECEIPT_CHAIN_MEANS = "The hash chain: every row covers the one before and one records this signature; the server kept it, so it shows the order and that no row changed after the next, not who wrote them.";
 export const RECEIPT_FX_MEANS = "The FX quote: the signature covers this quote id and its expiry; the receipt cannot show offline that Airwallex issued it.";

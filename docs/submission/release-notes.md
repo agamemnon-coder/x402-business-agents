@@ -368,6 +368,33 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   The checkout's order ref (Airwallex's request_id, unique per account) is now the purchase's id plus its start, not
   the bare proposal id: every world numbers from P-0001, and vic-1c's first B was refused as duplicate_request before
   any card was used. CI's test job now has Chromium for the hosted-page test. 2994 tests in 290 files, all passing.
+- 7 November, /try/sign in motion (Max: the demo as the hackathon's most impressive moment): the same colours, type and
+  layout; the cards with a subtle shadow and a light gradient, no glass. "Signed and verified": the tick draws itself in,
+  with a soft green glow. A refused cheat: the card shakes once, the changed field lights red, and both hashes stand side
+  by side in the table, every character that differs marked. "Trick the agent": the fake invoice slides in, its IBAN
+  beside the one on file with the difference in red, then the block. "Change the rule": the worst case and what it adds
+  count up to the new figures (the final words are in the page at once; the counting is drawn over them) and the three
+  locks light up one by one. "Pays alone": the payment moves through Purser, Airwallex and Metal, and ends green. On a
+  laptop the diagram lights each step's part as it opens. Each animation runs 150 to 400 ms and nothing waits for one;
+  with prefers-reduced-motion the end state shows at once (a browser check walks that path). 2980 tests in 289 files,
+  all passing.
+- 7 November, /try/sign after Max's review: each lock shows its channel (Purser: invoices and proposals; the Airwallex
+  card: card spend; the Metal mandate: on-chain payments), on screen 5's lines, in the diagram, on the blocked payment's
+  locks and on the full policy's panels. The worst case is the argument for the signature: a looser rule shows the
+  figure with what it adds, and right under it "That risk needs your Face ID." "Try to trick the agent" is calmer: a
+  plain card, red only for what differs and for the block, the invoice's IBAN beside the one on file. The band at the
+  top is thin: 22 px in one line from 390 px (it was 63 px in two at 390 px, 44 px on a laptop). A fix: with no advice
+  from the agent, screen 1 no longer shows a stray "null". 2985 tests in 290 files, all passing.
+- 7 November, a hash chain per /try/sign test world (6c): every event in a world (opened, each agent's step, each
+  proposal, signature, refusal and execution, each policy change) appends a row {seq, at, kind, data_sha256, prev,
+  hash}, its hash the SHA-256 of the row's canonical JSON without the hash, so each row covers the one before
+  (worker/src/worldChain.ts; written in the same synchronous stretch as the event, so with a plain-code SHA-256 checked
+  against Node's). The last screen shows the chain's length and head, and "Verify the chain" recomputes every row in
+  the browser. The receipt carries the chain as it was when signed; `npm run verify-receipt` and /try/verify check it
+  and find the row that records this signature (its data is the proposal and the hash signed). Tests: a tampered row is
+  found (its data, time, kind, order, a dropped row, a rewritten hash), the chain survives a reload of the store, and it
+  is per world. The server keeps the chain: it shows the order and that no row changed after the next was written, not
+  that the server could not rewrite all of it. 2992 tests in 291 files, all passing.
 
 ## Real, and ours
 

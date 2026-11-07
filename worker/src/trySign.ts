@@ -40,6 +40,7 @@ import { alpineInvoice } from "../../src/try/invoiceDoc.js";
 import { adviseTry, signatureLine, type AdviceCall } from "../../src/try/treasuryAdvice.js";
 import { adviceOutOfBounds, licenceNumbers, type TimingFacts } from "../../src/agents/timingCore.js";
 import type { RecordedAgents } from "../../src/try/recorded.js";
+import { CHAIN_MAX_ROWS, nextRow, type ChainData, type ChainKind, type ChainRow } from "./worldChain.js";
 import { AGENT_LINE_DAILY_USD, CODE_LABEL, FIXED_TEXT, READ_BY_CODE, RECORDED_LABEL, adviceGiven, checkReason, liveLabel, moneyForPeople, strayRefusal } from "./agentLine.js";
 export { PAID_ALONE };
 
@@ -424,6 +425,8 @@ const BODY: Record<string, Record<string, (v: unknown) => boolean>> = {
   "/quote": { token: optional((v) => typeof v === "string") },
   // Spec 6b: the agents' next step on the waiting payment; with a step's name, that step (done: its stored result).
   "/agents": { token: optional((v) => typeof v === "string"), step: optional((v) => typeof v === "string" && (AGENT_STEPS as readonly string[]).includes(v)) },
+  // 6c: the world's hash chain, every row of it.
+  "/chain": { token: optional((v) => typeof v === "string") },
   "/trick": { token: optional((v) => typeof v === "string"), attack: (v) => typeof v === "string" && (ATTACKS as readonly string[]).includes(v) },
   "/sign": { token: optional((v) => typeof v === "string"), proposal_id: (v) => typeof v === "string" && PROPOSAL_ID.test(v), canonical: (v) => typeof v === "string" && v.length <= MAX_TERMS, credential: () => true },
   // Step 0: the agent's whole policy (read field by field in src/try/policy.ts); a looser one with its terms and signature.
@@ -438,7 +441,7 @@ const fits = (o: Record<string, unknown>, shape: Record<string, (v: unknown) => 
 export function wellFormed(sub: string, body: Record<string, unknown>): boolean {
   const shape = BODY[sub];
   if (!shape || !fits(body, shape)) return false;
-  if (sub === "/world" || sub === "/quote" || sub === "/trick" || sub === "/agents") return true;
+  if (sub === "/world" || sub === "/quote" || sub === "/trick" || sub === "/agents" || sub === "/chain") return true;
   if (sub === "/policy" && body.credential === undefined) return body.canonical === undefined;
   if (sub === "/policy" && body.canonical === undefined) return false;
   const c = body.credential;
@@ -497,6 +500,8 @@ export class TrySignDesk {
     this.sql.exec("CREATE TABLE IF NOT EXISTS ts_creds (world TEXT NOT NULL, id TEXT NOT NULL, x TEXT NOT NULL, y TEXT NOT NULL, counter INTEGER NOT NULL, PRIMARY KEY (world, id))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS ts_proposals (world TEXT NOT NULL, id TEXT NOT NULL, canonical TEXT NOT NULL, sha TEXT NOT NULL, check_json TEXT NOT NULL, status TEXT NOT NULL, execution TEXT, PRIMARY KEY (world, id))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS ts_hits (ip TEXT NOT NULL, kind TEXT NOT NULL, at INTEGER NOT NULL)");
+    // 6c: each world's hash chain, one row per event (worker/src/worldChain.ts); data: the event's data, as hashed.
+    this.sql.exec("CREATE TABLE IF NOT EXISTS ts_chain (world TEXT NOT NULL, seq INTEGER NOT NULL, at TEXT NOT NULL, kind TEXT NOT NULL, data_sha256 TEXT NOT NULL, prev TEXT NOT NULL, hash TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY (world, seq))");
     // Step 0: the policy the visitor set in their world, numbered (a signature names the version it changes).
     // signed_sha: the SHA-256 of the last policy change the visitor signed (a payment run alone names it).
     this.sql.exec("CREATE TABLE IF NOT EXISTS ts_policy (world TEXT PRIMARY KEY, version INTEGER NOT NULL, json TEXT NOT NULL, signed_sha TEXT)");
@@ -523,7 +528,7 @@ export class TrySignDesk {
     const path = url.pathname;
     if (!isTrySignPath(path)) return trySignNotFound();
     const sub = path.slice("/api/try-sign".length);
-    if (!["/world", "/passkey", "/sign", "/quote", "/policy", "/trick", "/agents"].includes(sub)) return trySignNotFound();
+    if (!["/world", "/passkey", "/sign", "/quote", "/policy", "/trick", "/agents", "/chain"].includes(sub)) return trySignNotFound();
     if (req.method !== "POST") return answer(405, { error: "use POST" });
     // Only this site's own page may ask: a browser on another site sends its own origin, or none on a form post.
     if (req.headers.get("origin") !== url.origin || req.headers.get("sec-fetch-site") === "cross-site") return answer(403, { error: "ask from the /try/sign page on this site" });
@@ -549,7 +554,7 @@ export class TrySignDesk {
     // No token at all is no world (as before); anything else must have the endpoint's shape before it is looked at.
     if (sub !== "/world" && body.token === undefined) return gone();
     if (!wellFormed(sub, body)) {
-      return answer(400, { error: sub === "/sign" ? "malformed signature" : sub === "/passkey" ? "malformed passkey" : sub === "/quote" ? "send the world's token only"
+      return answer(400, { error: sub === "/sign" ? "malformed signature" : sub === "/passkey" ? "malformed passkey" : sub === "/quote" || sub === "/chain" ? "send the world's token only"
         : sub === "/policy" ? "send the world's token, an agent (sourcing, support or treasury) and its policy; a signature only with its terms"
         : sub === "/agents" ? `send the world's token, and a step if you like: ${AGENT_STEPS.join(", ")}`
         : sub === "/trick" ? `send the world's token and an attack: ${ATTACKS.join(" or ")}` : "send an empty JSON object" });
@@ -564,6 +569,7 @@ export class TrySignDesk {
     // 1.3: a fixed attack through Purser's own fraud and injection code; no proposal, no quote.
     if (sub === "/trick") return this.trick(ip, world, body.attack as Attack);
     if (sub === "/agents") return this.agents(ip, world, body.step as AgentStep | undefined);
+    if (sub === "/chain") return answer(200, { chain: this.chainOf(world.id) });
     return this.sign(url, ip, world, body);
   }
 
@@ -575,12 +581,32 @@ export class TrySignDesk {
     this.sql.exec("INSERT INTO ts_hits (ip, kind, at) VALUES (?, ?, ?)", ip, kind, at);
   }
 
+  // ── 6c: the world's hash chain ──
+
+  /**
+   * One event, one row, after the row before (synchronous: called in the same stretch as the write it records, with no
+   * await between). Past CHAIN_MAX_ROWS a world records no more (the answer says so).
+   */
+  private chain(worldId: string, kind: ChainKind, data: ChainData): void {
+    const last = (this.sql.exec("SELECT seq, hash FROM ts_chain WHERE world = ? ORDER BY seq DESC LIMIT 1", worldId).toArray() as { seq: number; hash: string }[])[0] ?? null;
+    if (last && last.seq >= CHAIN_MAX_ROWS) return;
+    const r = nextRow(last, this.now().toISOString(), kind, data);
+    this.sql.exec("INSERT INTO ts_chain (world, seq, at, kind, data_sha256, prev, hash, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", worldId, r.seq, r.at, r.kind, r.data_sha256, r.prev, r.hash, JSON.stringify(data));
+  }
+  /** The world's chain as the page and the receipt get it: every row, its length and its head. */
+  private chainOf(worldId: string): { length: number; head: string | null; full: boolean; max: number; rows: ChainRow[] } {
+    const rows = this.sql.exec("SELECT seq, at, kind, data_sha256, prev, hash FROM ts_chain WHERE world = ? ORDER BY seq", worldId).toArray() as unknown as ChainRow[];
+    const plain = rows.map((r) => ({ seq: Number(r.seq), at: r.at, kind: r.kind, data_sha256: r.data_sha256, prev: r.prev, hash: r.hash }));
+    return { length: plain.length, head: plain[plain.length - 1]?.hash ?? null, full: plain.length >= CHAIN_MAX_ROWS, max: CHAIN_MAX_ROWS, rows: plain };
+  }
+
   private dropWorld(id: string): void {
     this.sql.exec("DELETE FROM ts_creds WHERE world = ?", id);
     this.sql.exec("DELETE FROM ts_proposals WHERE world = ?", id);
     this.sql.exec("DELETE FROM ts_agent_runs WHERE world = ?", id);
     this.sql.exec("DELETE FROM ts_tricks WHERE world = ?", id);
     this.sql.exec("DELETE FROM ts_policy WHERE world = ?", id);
+    this.sql.exec("DELETE FROM ts_chain WHERE world = ?", id);
     this.sql.exec("DELETE FROM ts_worlds WHERE id = ?", id);
   }
 
@@ -646,6 +672,7 @@ export class TrySignDesk {
     const live = await this.liveCall(ip, TRICK_RESERVE_USD, (r: InvoiceReadSource) => r(TRICKS[attack].text), this.reader);
     const result = await runTrick(attack, live, this.recorded?.tricks[attack] ?? null);
     this.sql.exec("INSERT OR REPLACE INTO ts_tricks (world, attack, json) VALUES (?, ?, ?)", world.id, attack, JSON.stringify(result));
+    this.chain(world.id, "refusal", { what: "trick", attack, blocked: result.blocked, outcome: result.outcome });
     return answer(200, { trick: result });
   }
 
@@ -724,6 +751,7 @@ export class TrySignDesk {
     // Written only if the world is still there and the step is still this one (no await from here on).
     const still = this.sql.exec("SELECT 1 FROM ts_worlds WHERE id = ? AND expires > ?", world.id, this.now().getTime()).toArray();
     if (!still.length) return answer(410, { error: "this test world expired; start a new one", expired: true });
+    this.chain(world.id, "agent_step", { step: next, by: typeof result.by === "string" ? result.by : null });
     if (next === "ready") this.writeT2(world.id, state, result);
     this.sql.exec("UPDATE ts_agent_runs SET step = ?, busy = 0, json = ? WHERE world = ? AND step = ?", done + 1, JSON.stringify(state), world.id, done);
     // With the quote kept, the world's payments (T-0001, blocked by the floors) are checked again at its rate.
@@ -964,6 +992,7 @@ export class TrySignDesk {
     const check: Check = state.used!.blocked ? { check: "fail", rule: `Blocked by Purser's fraud check: ${state.used!.blocked}` }
       : checkPayment(terms.amount, this.balancesOf(worldId), rulesOf(this.policyOf(worldId).policy), { quote: terms.fx, rate: this.rateFor(worldId) });
     this.sql.exec("INSERT INTO ts_proposals (world, id, canonical, sha, check_json, status, execution) VALUES (?, ?, ?, ?, ?, ?, NULL)", worldId, QUOTED, String(ready.canonical), String(ready.terms_sha256), JSON.stringify(check), check.check === "fail" ? "blocked" : "waiting");
+    this.chain(worldId, "proposal", { proposal_id: QUOTED, terms_sha256: String(ready.terms_sha256), check: check.check });
   }
 
   /** A proposal as the page gets it, with its sentence and where that came from (T-0001 and T-0003: fixed text). */
@@ -1014,6 +1043,7 @@ export class TrySignDesk {
     const still = (this.sql.exec("SELECT status FROM ts_proposals WHERE world = ? AND id = ?", world.id, p.id).toArray() as { status: string }[])[0];
     if (still?.status !== "waiting") return answer(409, { error: `${p.id} is already signed and ran; there is nothing to quote again` });
     this.sql.exec("UPDATE ts_proposals SET canonical = ?, sha = ? WHERE world = ? AND id = ?", c, sha, world.id, p.id);
+    this.chain(world.id, "proposal", { proposal_id: p.id, terms_sha256: sha, check: p.checked.check, why: "a new quote, so new terms" });
     if (p.id === QUOTED) {
       const run = this.agentRow(world.id);
       if (run) { run.state.quote = fx; this.sql.exec("UPDATE ts_agent_runs SET json = ? WHERE world = ?", JSON.stringify(run.state), world.id); }
@@ -1059,6 +1089,8 @@ export class TrySignDesk {
     this.sql.exec("INSERT INTO ts_agent_runs (world, step, busy, json) VALUES (?, 0, 0, ?)", id, JSON.stringify(state));
     const policy = defaultPolicy(new Date(nowMs), TEST_WORLD);
     this.sql.exec("INSERT INTO ts_policy (world, version, json) VALUES (?, 1, ?)", id, JSON.stringify(policy));
+    this.chain(id, "world_opened", { world: id, expires_at: expiresAt, terms_schema: TRY_TERMS_SCHEMA });
+    this.chain(id, "proposal", { proposal_id: t1.id, terms_sha256: sha1, check: check1.check });
     return answer(201, {
       world: { id, token, expires_at: expiresAt, ...TEST_WORLD },
       agents: { steps: [], next: AGENT_STEPS[0], all: AGENT_STEPS },
@@ -1165,6 +1197,7 @@ export class TrySignDesk {
     const now = this.policyOf(worldId).version;
     if (now !== version) return answer(200, { applied: false, why: "stale", reason: "Refused: the policy changed meanwhile, so these are not its terms any more. Nothing changed; try again.", ...this.policyAnswer(worldId, this.now()) });
     this.sql.exec("UPDATE ts_policy SET version = ?, json = ?, signed_sha = COALESCE(?, signed_sha) WHERE world = ? AND version = ?", version + 1, JSON.stringify(next), signedSha, worldId, version);
+    this.chain(worldId, "policy_change", { version: String(version + 1), signed: signedSha !== null, terms_sha256: signedSha, changes: ((extra.changes ?? []) as PolicyChange[]).map((c) => c.field) });
     this.recheck(worldId);
     const alone = this.runAlone(worldId);
     return answer(200, { ...extra, paid_alone: alone, ...this.policyAnswer(worldId, this.now()) });
@@ -1226,6 +1259,7 @@ export class TrySignDesk {
         terms_sha256: next.sha, policy_version: String(pol.version), policy_change_sha256: pol.signed_sha,
       };
       this.sql.exec("UPDATE ts_proposals SET status = 'executed', execution = ? WHERE world = ? AND id = ? AND status = 'waiting'", JSON.stringify(execution), worldId, next.id);
+      this.chain(worldId, "execution", { proposal_id: next.id, execution_id: execution.id, terms_sha256: next.sha, alone: true, policy_version: execution.policy_version });
       this.sql.exec("UPDATE ts_worlds SET balance = ?, usd = ? WHERE id = ?", execution.balance_after, execution.usd_after, worldId);
       this.recheck(worldId);
       ran.push(next.id);
@@ -1253,6 +1287,7 @@ export class TrySignDesk {
     if ((this.sql.exec("SELECT 1 FROM ts_proposals WHERE world = ? AND id = ?", worldId, NEXT_INVOICE.id).toArray()).length) return [];
     const check = checkPayment(NEXT_INVOICE.amount, this.balancesOf(worldId), rulesOf(this.policyOf(worldId).policy), { quote, rate: this.rateFor(worldId) });
     this.sql.exec("INSERT INTO ts_proposals (world, id, canonical, sha, check_json, status, execution) VALUES (?, ?, ?, ?, ?, ?, NULL)", worldId, NEXT_INVOICE.id, c, sha, JSON.stringify(check), check.check === "fail" ? "blocked" : "waiting");
+    this.chain(worldId, "proposal", { proposal_id: NEXT_INVOICE.id, terms_sha256: sha, check: check.check });
     return this.runAlone(worldId);
   }
 
@@ -1280,6 +1315,7 @@ export class TrySignDesk {
     if (looser.length === 0) return this.applyPolicy(world.id, cur.version, next, { applied: true, signed: false, changes, reason: "Stricter: applied at once. A stricter policy needs no signature." }, null);
     if (body.credential === undefined) {
       const which = looser.map((f) => FIELD_WORDS[f].toLowerCase()).join(", ");
+      this.chain(world.id, "refusal", { what: "policy", why: "needs_signature", terms_sha256: sha, looser: looser.map(String) });
       return answer(200, {
         applied: false, needs_signature: true, looser, changes, canonical: terms, terms_sha256: sha, proposed: this.locksOf(world.id, next, now), proposed_exposure: this.exposure(next),
         reason: `Refused: this change makes the policy looser (${which}), and a looser policy needs your passkey's signature over its exact terms, as the CFO's does in Purser. Nothing changed.`,
@@ -1295,6 +1331,7 @@ export class TrySignDesk {
     const cred = (this.sql.exec("SELECT id, x, y, counter FROM ts_creds WHERE world = ? AND id = ?", world.id, credential.id).toArray() as CredRow[])[0];
     if (!cred) {
       this.hit(ip, "fail", now.getTime());
+      this.chain(world.id, "refusal", { what: "policy", why: "unknown passkey", terms_sha256: sha });
       return answer(403, { error: "this passkey is not this test world's: it signs no policy here", verified: false, why: "unknown passkey", applied: false });
     }
     const r = credential.response;
@@ -1303,6 +1340,7 @@ export class TrySignDesk {
       { x: cred.x, y: cred.y }, { challenge: hexToB64u(sentSha), origin: url.origin, rpId: url.hostname, lastCounter: cred.counter });
     const refuse = (why: string, reason: string) => {
       this.hit(ip, "fail", this.now().getTime());
+      this.chain(world.id, "refusal", { what: "policy", why, terms_sha256: sentSha });
       return answer(200, { applied: false, verified: false, why, reason, error: reason, ...this.policyAnswer(world.id, this.now()) });
     };
     if (!v.ok) return refuse(v.why, `Refused: the server's verifier did not accept this signature (${v.why === "challenge" ? "it was made for other terms" : v.why}). Nothing changed.`);
@@ -1325,10 +1363,14 @@ export class TrySignDesk {
     if (!p && proposal_id === QUOTED) return answer(409, { error: "T-0002 is not ready yet: the agents are still preparing it; nothing to sign", not_ready: true, verified: false });
     if (!p) return answer(404, { error: `no proposal ${proposal_id} in this test world` });
     // A proposal that fails a check has nothing to sign: no signature, however good, runs it.
-    if (p.checked.check === "fail") return answer(409, { error: `blocked by a rule: ${p.checked.rule} No signature can approve it.`, blocked: true, rule: p.checked.rule, verified: false });
+    if (p.checked.check === "fail") {
+      this.chain(world.id, "refusal", { what: "signature", proposal_id: p.id, why: "blocked by a rule", terms_sha256: p.sha });
+      return answer(409, { error: `blocked by a rule: ${p.checked.rule} No signature can approve it.`, blocked: true, rule: p.checked.rule, verified: false });
+    }
     const cred = (this.sql.exec("SELECT id, x, y, counter FROM ts_creds WHERE world = ? AND id = ?", world.id, credential.id).toArray() as CredRow[])[0];
     if (!cred) {
       this.hit(ip, "fail", this.now().getTime());
+      this.chain(world.id, "refusal", { what: "signature", proposal_id: p.id, why: "unknown passkey", terms_sha256: null });
       return answer(403, { error: "this passkey is not this test world's: a passkey from another world, or a real one, signs nothing here", verified: false, why: "unknown passkey" });
     }
     const r = credential.response;
@@ -1346,6 +1388,7 @@ export class TrySignDesk {
       // A refused signature is an answer, not an error (A6): 200 with verified false and the reason, so the page shows
       // it without the browser logging a failed request. Malformed requests and limits stay 4xx.
       const reason = `refused: the server's verifier did not accept this signature (${why})`;
+      this.chain(world.id, "refusal", { what: "signature", proposal_id: p.id, why: v.why, terms_sha256: sha });
       return answer(200, { verified: false, reason, error: reason, why: v.why, terms_sha256: sha, signed_sha256: signed });
     }
     // Read again after the awaits above: the terms may have moved (a new quote) since the page fetched them.
@@ -1353,33 +1396,40 @@ export class TrySignDesk {
     const fresh = (this.sql.exec("SELECT status, canonical, execution FROM ts_proposals WHERE world = ? AND id = ?", world.id, p.id).toArray() as { status: string; canonical: string }[])[0];
     const w = (this.sql.exec("SELECT expires FROM ts_worlds WHERE id = ?", world.id).toArray() as { expires: number }[])[0];
     if (!fresh || !w || w.expires <= now) return answer(410, { error: "this test world expired while signing; start a new one", expired: true, verified: false });
-    if (fresh.status !== "waiting" && terms === p.canonical) return answer(409, { error: `refused: ${p.id} already ran once; a replayed signature runs nothing`, verified: true, why: "replay", terms_sha256: sha });
+    const refused = (why: string) => this.chain(world.id, "refusal", { what: "signature", proposal_id: p.id, why, terms_sha256: sha });
+    if (fresh.status !== "waiting" && terms === p.canonical) { refused("replay"); return answer(409, { error: `refused: ${p.id} already ran once; a replayed signature runs nothing`, verified: true, why: "replay", terms_sha256: sha }); }
     if (terms !== fresh.canonical) {
       this.hit(ip, "fail", this.now().getTime());
+      refused("terms");
       const reason = "refused: these are not this proposal's terms";
       return answer(200, { verified: false, reason, error: reason, why: "terms", terms_sha256: sha });
     }
-    if (fresh.status !== "waiting") return answer(409, { error: `refused: ${p.id} already ran once; a replayed signature runs nothing`, verified: true, why: "replay", terms_sha256: sha });
+    if (fresh.status !== "waiting") { refused("replay"); return answer(409, { error: `refused: ${p.id} already ran once; a replayed signature runs nothing`, verified: true, why: "replay", terms_sha256: sha }); }
     // The quote is part of what was signed, and it has an end: after it, even a good signature runs nothing.
     const quote = (p.terms as { fx?: { valid_to_at?: string } | null }).fx;
     if (quote && !(Date.parse(String(quote.valid_to_at)) > now)) {
+      refused("quote_expired");
       return answer(409, { error: "Quote expired. Get a fresh one and sign again.", expired_at: String(quote.valid_to_at), verified: true, why: "quote_expired", quote_expired: true, terms_sha256: sha });
     }
     const latest = (this.sql.exec("SELECT counter FROM ts_creds WHERE world = ? AND id = ?", world.id, cred.id).toArray() as { counter: number }[])[0]?.counter ?? 0;
     if ((v.counter !== 0 || latest !== 0) && v.counter <= latest) {
       const reason = "refused: the signature counter did not move forward (a replay)";
+      refused("counter");
       return answer(200, { verified: false, reason, error: reason, why: "counter" });
     }
     const amount = (p.terms as { amount: string }).amount;
     const bal = this.balancesOf(world.id);
     const again = this.checkTerms(world.id, p.terms, bal, rulesOf(this.policyOf(world.id).policy));
-    if (again.check === "fail") return answer(409, { error: `blocked by a rule: ${again.rule}`, blocked: true, verified: true });
+    if (again.check === "fail") { refused("blocked by a rule"); return answer(409, { error: `blocked by a rule: ${again.rule}`, blocked: true, verified: true }); }
     const execution = {
       id: `test-${hex(random(6))}`, at: new Date(now).toISOString(), amount, currency: TEST_WORLD.currency, payee: (p.terms as { payee: string }).payee,
       ...TrySignDesk.executed(amount, bal, again), fx_quote_id: (quote as { quote_id?: string } | null | undefined)?.quote_id ?? null, by: "stand-in executor: recorded in this test world only; nothing paid or converted at Airwallex, no Metal call",
     };
     this.sql.exec("UPDATE ts_creds SET counter = ? WHERE world = ? AND id = ?", v.counter, world.id, cred.id);
     this.sql.exec("UPDATE ts_proposals SET status = 'executed', execution = ? WHERE world = ? AND id = ?", JSON.stringify(execution), world.id, p.id);
+    // The signature row's data is exactly the proposal and the hash signed: a receipt's verifier recomputes it.
+    this.chain(world.id, "signature", { proposal_id: p.id, terms_sha256: sha });
+    this.chain(world.id, "execution", { proposal_id: p.id, execution_id: execution.id, terms_sha256: sha, alone: false, policy_version: null });
     this.sql.exec("UPDATE ts_worlds SET balance = ?, usd = ? WHERE id = ?", execution.balance_after, execution.usd_after, world.id);
     // The other payments are checked again against the new balances (under the world's policy).
     this.recheck(world.id);
@@ -1390,6 +1440,8 @@ export class TrySignDesk {
     return answer(200, {
       verified: true, checks: ["signature (ES256)", "challenge = the terms' SHA-256", "origin", "RP id", "user present", "user verified", "counter"], terms_sha256: sha, executed: execution,
       public_key: { kty: "EC", crv: "P-256", x: cred.x, y: cred.y }, algorithm: "ES256", ...(next.length ? { paid_alone: next } : {}),
+      // 6c: the world's hash chain as it is now (the signature in it), for the receipt.
+      chain: this.chainOf(world.id),
       // The world as it is now (the next invoice among its payments), as a policy answer gives it.
       ...this.policyAnswer(world.id, this.now()),
     });
