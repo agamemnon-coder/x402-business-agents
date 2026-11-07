@@ -464,3 +464,7 @@ Claude Code, on Max's go; in production a second person). Sources for every clai
   3,999 characters), the long text, the deck's Airwallex slide, the pitch and Q&A 25 and 26. Still entered for the Metal
   Award only; the Visa Award lines wait for Visa's confirmation (docs/submission/visa-award-pending.md). Page budgets:
   /airwallex 345, /visa 275 words. 3029 tests in 295 files, all passing.
+- 7 November, the recorded Treasury advice is usable again when the live agent cannot answer: it was refused only for
+  naming its own quote's end ("runs out today at 13:00:35Z"), a time and no amount. Its amounts are still checked
+  against today's numbers (another quote's amounts still fail); only the times and days it was recorded with are its
+  own. 3029 tests in 295 files, all passing.
