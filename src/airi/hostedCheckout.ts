@@ -75,8 +75,10 @@ export function sdkOpener(sdkUrl: string = SDK_URL, env: "sandbox" = "sandbox"):
       await page.goto(`http://127.0.0.1:${port}/`);
       await page.waitForFunction("!!(window.AirwallexComponentsSDK && window.AirwallexComponentsSDK.init)", null, { timeout: 30_000 });
       const props = { env, mode: "payment", intent_id: intent.id, client_secret: intent.clientSecret, currency: intent.currency, methods: ["card"], ...(intent.countryCode ? { country_code: intent.countryCode } : {}) };
-      // A string, not a closure: the function body reaches the page as written (tsx would otherwise add helpers).
-      await page.evaluate(`(async (p) => { const { payments } = await window.AirwallexComponentsSDK.init({ env: p.env, enabledElements: ["payments"] }); payments.redirectToCheckout(p); })(${JSON.stringify(props)})`);
+      // A string, not a closure: the function body reaches the page as written (tsx would otherwise add helpers). The
+      // values go in as Playwright's argument, never into the code's text (CodeQL: no code built from data).
+      await page.evaluate((p) => { (window as unknown as { purserCheckout: unknown }).purserCheckout = p; }, props);
+      await page.evaluate("(async () => { const p = window.purserCheckout; delete window.purserCheckout; const { payments } = await window.AirwallexComponentsSDK.init({ env: p.env, enabledElements: [\"payments\"] }); payments.redirectToCheckout(p); })()");
       await page.waitForURL((u) => u.hostname !== "127.0.0.1", { timeout: 30_000 });
     } finally {
       server.close();

@@ -60,8 +60,9 @@ async function stub(): Promise<Stub> {
     if (q.url === "/sdk.js") {
       // A stand-in for Airwallex.js: records init and redirectToCheckout's props, then goes to the stub page (on
       // "localhost", another host than the 127.0.0.1 launch page, as the real one leaves for Airwallex's host).
-      return send("text/javascript", `window.AirwallexComponentsSDK = { init: async (o) => ({ payments: { redirectToCheckout: (p) => {
-        fetch(${JSON.stringify(s.origin)} + "/sdk-called", { method: "POST", mode: "no-cors", body: JSON.stringify({ init: o, props: p }) }).then(() => { location.href = ${JSON.stringify(s.origin)} + "/hpp"; });
+      return send("text/javascript", `const SDK_SRC = document.currentScript.src; window.AirwallexComponentsSDK = { init: async (o) => ({ payments: { redirectToCheckout: (p) => {
+        const home = new URL(document.currentScript ? document.currentScript.src : SDK_SRC).origin;
+        fetch(home + "/sdk-called", { method: "POST", mode: "no-cors", body: JSON.stringify({ init: o, props: p }) }).then(() => { location.href = home + "/hpp"; });
       } } }) };`);
     }
     r.writeHead(404); r.end();
