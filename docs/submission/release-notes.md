@@ -420,6 +420,20 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   only for a key a link brought and that signed what the relay sends; a key no link offered is still refused
   (test/approve-runner-key.test.ts, the browser check). Live after the relay is redeployed. 2950 tests in 288 files,
   all passing.
+- 7 November, the Airi run recorded and on the site: vic-1 passed live that day in world vic-1c, its second attempt
+  there (13:56–14:10 UTC; Airwallex sandbox, Airi's test card, test money; 0 Metal and 0 Claude calls), all five
+  checks. The Sourcing agent paid with a single-use card credential from Airwallex's Airi wallet on Airwallex's hosted
+  checkout page for our own sandbox merchant: EUR 12.00 within the CFO's limit alone (Max tapped once in Airi with his
+  passkey; PaymentIntent int_sgpvzc9hjhnxvpblt2r SUCCEEDED); EUR 45.00 above it only after the CFO's Face ID on P-0002,
+  then Max's tap in Airi (mandate mdt_nlpdgv8gqhnxvxcjxbv, PaymentIntent int_sgpvzc9hjhnxvxc26ie SUCCEEDED, P-0002
+  EXECUTED); a merchant the CFO does not allow refused by Purser, PURSER_MERCHANT_NOT_ALLOWED, 0 Airi calls. Its log,
+  docs/runs/2026-11-07-vic-1.md, has every id, step, timing and call, and the three attempts before it as they
+  happened (vic-1, vic-1b, vic-1c's first; nothing charged in any). Its sanitised record is docs/demo/airi-run.json.
+  /airwallex shows it below awx-1, dated and labelled "Airwallex sandbox, test card, test money" (5 of 5 checks, every
+  step and id in a fold; the page's word budget 210 → 235 for it); Proof's "Airwallex, read back" a short version
+  linking there (src/redesign/airiRun.ts, test/airi-run-page.test.ts). README, docs/claims.md, docs/airwallex.md (with
+  the PaymentIntent endpoints the rail calls), the long text and qa.md (18, 19) carry it; the form's Description does
+  not (no room). 3001 tests in 291 files, all passing.
 
 ## Real, and ours
 

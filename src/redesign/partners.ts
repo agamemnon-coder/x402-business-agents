@@ -14,6 +14,7 @@ import { agentRun, callBadge, cardRaiseOf, decisionsOf, faceIdDecisions, family,
 import { LOGO, earlierLine, fold, partnerProof } from "./proof.js";
 import { metalStory, separateRuns, type MetalStory } from "./metalStory.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
+import { airiRunBlock } from "./airiRun.js";
 import { awxRunBlock } from "./awxRun.js";
 import { OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
 
@@ -144,7 +145,9 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
   const hash = hashTravel(run.record), cards = cardsReadback(), rows = cards ? cardControlRows(run.record, cards) : [];
   // awx-1 (7 Nov): the Airwallex-only run, a separate world, dated and labelled, below the main run's read-backs.
   const awx1 = awxRunBlock();
-  const readBack = hash || rows.length || awx1 ? `<div class="awrb">${hashBlockHtml(hash)}${cards ? controlsSideBySideHtml(rows, cards.rec.read_at, cards.file) : ""}${awx1}</div>` : "";
+  // The Airi run (7 Nov): a single-use card credential from Airwallex's Airi wallet, a separate world, dated and labelled.
+  const airi = airiRunBlock();
+  const readBack = hash || rows.length || awx1 || airi ? `<div class="awrb">${hashBlockHtml(hash)}${cards ? controlsSideBySideHtml(rows, cards.rec.read_at, cards.file) : ""}${awx1}${airi}</div>` : "";
   return shell(run, {
     title: "Airwallex", description: "How Purser uses Airwallex: earnings booked once final, the euro licence paid by SWIFT after the CFO's Face ID, card limits the bank enforces.",
     logo: LOGO.airwallex, h1: "The bank side of the agents", proofHash: "airwallex",
@@ -155,7 +158,7 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
     line: "Airwallex enforces each card's limit itself, and pays an invoice only after the CFO's Face ID.",
     extra: readBack,
     // Proof's "Policy and card side by side" opens the cards' fold here (#controls, or one card's #card-<agent>).
-    ...(rows.length ? { js: OPEN_TARGET_JS } : {}),
+    ...(rows.length || airi ? { js: OPEN_TARGET_JS } : {}),
     folds: fold("The live proof, with every Airwallex id", p.airwallex) + fold("The Airwallex features we use, and their docs", used.map((f) => docsLi(f.title, f.docs)))
       + fold("What is simulated", [plainLi("The Airwallex sandbox, with test money only."),
         ...(licence ? [plainLi(`The SWIFT payout's settlement: Purser moves the sandbox transfer to SENT, then PAID, through Airwallex's simulation API${t.faceToPaid !== null ? `; the ${t.faceToPaid} s are measured from the CFO's Face ID to PAID` : ""}.`)] : []),

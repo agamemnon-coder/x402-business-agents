@@ -236,3 +236,24 @@ for the first, EUR 623.50 for USD 704.45 on a quote for the second.
 
 **Evidence:** [docs/runs/2026-11-07-awx-1.md](../runs/2026-11-07-awx-1.md), "What the agents said" and "f–g. The two
 invoices"; [/airwallex](https://kit11.max-31b.workers.dev/airwallex#awx-1), "Every step and id".
+
+### 23. Can the agents pay with Airwallex's own agent wallet, Airi?
+
+Yes, in a separate run on 7 November (Airwallex sandbox, Airi's test card, test money): the Sourcing agent paid with a
+single-use card credential from Airwallex's Airi wallet, on Airwallex's hosted checkout page for our own sandbox
+merchant. EUR 12.00 within the CFO's limit ran with the agent alone after the CFO confirmed it in Airi; EUR 45.00 above it
+waited for the CFO's Face ID on its exact terms first, and a merchant the CFO does not allow was refused by Purser
+before Airi was called. Purser's policy and the CFO's signature sit in front of Airi's own passkey confirmation, not
+instead of it.
+
+**Evidence:** [docs/runs/2026-11-07-vic-1.md](../runs/2026-11-07-vic-1.md); [docs/demo/airi-run.json](../demo/airi-run.json);
+[/airwallex](https://kit11.max-31b.workers.dev/airwallex#airi-run).
+
+### 24. Did the Airi run work the first time?
+
+No: it passed on the fourth attempt that day, the second in its world. The three before it stopped on an answer format
+the docs did not show, a card confirm our sandbox refuses over the API (so the agent now pays on Airwallex's hosted
+page), a tap link that never reached Max, a missed tap and a reused order reference; nothing was charged in any of them.
+Each is in the run log, with what changed after it.
+
+**Evidence:** [docs/runs/2026-11-07-vic-1.md](../runs/2026-11-07-vic-1.md), "The attempts before this one".

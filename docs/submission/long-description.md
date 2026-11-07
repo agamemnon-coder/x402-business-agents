@@ -167,6 +167,13 @@ with its own date.
   updated at Airwallex and the same 45.00 approved. Two invoices paid by SWIFT after Max's Face ID, one from free
   euros, one with FX for the shortfall only, each payout carrying the hash of the signed terms in Airwallex's metadata;
   21 webhooks, all recorded. The merchant charges and each payout's SENT and PAID are the sandbox's simulation. Log: [docs/runs/2026-11-07-awx-1.md](../runs/2026-11-07-awx-1.md).
+- **The Airi run (7 November; Airwallex sandbox, Airi's test card, test money).** The Sourcing agent pays with a
+  single-use card credential from Airwallex's Airi wallet, on Airwallex's hosted checkout page for our own sandbox
+  merchant. EUR 12.00 within the CFO's limit ran with the agent alone (the CFO confirmed once in Airi with a passkey);
+  EUR 45.00 above it ran only after the CFO's Face ID on its exact terms (P-0002); a merchant the CFO does not allow was
+  refused by Purser before any call to Airi. Both payments SUCCEEDED in the sandbox; all five checks passed, in the
+  second attempt in its world. The earlier attempts that day (a changed answer format, a confirm the sandbox refuses, a
+  missed tap, a reused order reference; nothing charged) are in the log: docs/runs/2026-11-07-vic-1.md.
 - **Visa TAP run (2 November).** Visa's reference registry self-hosted with a test key, and our own TAP merchant;
   Airwallex approved one card buy and declined EUR 45.00 over the card limit (LIMIT_EXCEEDED).
 - **Single-use task cards (30 October).** One sentence (a flight, a hotel or a train, with an amount) becomes one card
