@@ -509,3 +509,12 @@ Claude Code, on Max's go; in production a second person). Sources for every clai
   word budget 375 (was 275). The Sourcing agent's rail choice can offer Airi (VIC) as a third rail, for a purchase at a
   merchant on the CFO's Airi allowlist that Purser would take, with KIT11_AIRI_RAIL=on only; the offer and its reason
   are in the audit trail, and the payment still goes through every Purser check (no caller offers it yet).
+- 7 November, the form's 8 screenshots retaken from the live site (deployed from main 877151f), 1280 px at 2×, light,
+  each PNG under 500 KB: Home's first screen; /try/sign's step 1 with the Treasury agent's live Claude Opus advice and
+  the live Airwallex quote, signed and verified, the one-cent cheat refused (all three from one test world); /airwallex
+  with the signed hash, the cards, awx-1 and the Visa Intelligent Commerce run via Airwallex's Airi; /metal; /claude;
+  /proof's "Why this is a company" opened. Each description line in the submission README says what its shot now shows.
+  /try/sign on a phone: the full policy and its three panels (from screen 5) are drawn when the browser is idle after
+  the world opens and after the agents' answers, and at once on any screen change, so neither answer is one long
+  task; the first screen scrolls to the top with the first frame instead of forcing a layout in the middle of the
+  script. Same behaviour and words; the browser checks (Chromium and WebKit) pass. 3049 tests in 295 files, all passing.
