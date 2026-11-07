@@ -5,7 +5,8 @@ test. Figures are the main run's (3 November 2026, [log](../runs/2026-11-03-main
 [record](../demo/main-run.json)) or a dated record's; `test/pitch.test.ts` checks them, and
 `test/demo-day-pack.test.ts` checks the length of each answer and that it names its evidence. Questions 18 to 22, on
 /try/sign's live agents and on awx-1 (the Airwallex-only run of 7 November, [log](../runs/2026-11-07-awx-1.md)), were
-added on 7 November. When you do not know:
+added on 7 November, and so were 25 and 26, on Visa Intelligent Commerce via Airwallex's Airi (the Airi run of
+7 November, [log](../runs/2026-11-07-vic-1.md)), answered only from that log and the docs. When you do not know:
 "Good question. I'll check and send it to you." Never guess.
 
 The pitch: [pitch.md](pitch.md). The one page beside the laptop: [cheat-sheet.pdf](cheat-sheet.pdf).
@@ -241,9 +242,9 @@ invoices"; [/airwallex](https://kit11.max-31b.workers.dev/airwallex#awx-1), "Eve
 
 Yes, in a separate run on 7 November (Airwallex sandbox, Airi's test card, test money): the Sourcing agent paid with a
 single-use card credential from Airwallex's Airi wallet, on Airwallex's hosted checkout page for our own sandbox
-merchant. EUR 12.00 within the CFO's limit ran with the agent alone after the CFO confirmed it in Airi; EUR 45.00 above it
-waited for the CFO's Face ID on its exact terms first, and a merchant the CFO does not allow was refused by Purser
-before Airi was called. Purser's policy and the CFO's signature sit in front of Airi's own passkey confirmation, not
+merchant. EUR 12.00 within Purser's limit needed no Purser approval (Airi itself asks the cardholder to confirm each
+purchase with a passkey); EUR 45.00 above it waited for the CFO's Face ID on its exact terms first, and a merchant the
+CFO does not allow was refused by Purser before Airi was called. Purser's policy and the CFO's signature sit in front of Airi's own passkey confirmation, not
 instead of it.
 
 **Evidence:** [docs/runs/2026-11-07-vic-1.md](../runs/2026-11-07-vic-1.md); [docs/demo/airi-run.json](../demo/airi-run.json);
@@ -257,3 +258,26 @@ page), a tap link that never reached Max, a missed tap and a reused order refere
 Each is in the run log, with what changed after it.
 
 **Evidence:** [docs/runs/2026-11-07-vic-1.md](../runs/2026-11-07-vic-1.md), "The attempts before this one".
+
+## Visa Intelligent Commerce (added 7 November)
+
+### 25. What is VIC?
+
+VIC is Visa Intelligent Commerce: an agent gets a single-use Visa credential for one purchase. Here it is issued
+through Airwallex's Airi wallet and confirmed by the cardholder's passkey, and the agent pays with it on Airwallex's
+hosted checkout page. In our run of 7 November (Airwallex sandbox, Airi's test card, test money) it passed 5 of 5
+checks.
+
+**Evidence:** [docs/runs/2026-11-07-vic-1.md](../runs/2026-11-07-vic-1.md), "The run" and "Checks";
+[docs/demo/airi-run.json](../demo/airi-run.json); [/visa](https://kit11.max-31b.workers.dev/visa#airi-run).
+
+### 26. What does Purser add to Airi?
+
+The CFO's policy, applied before Airi is asked: a limit per purchase (EUR 20.00 in the run), the merchants allowed,
+and Face ID on the exact terms above the limit (EUR 45.00, P-0002, paid only after it). A purchase outside the policy
+is refused before any call (EUR 5.00 at a merchant the CFO does not allow: `PURSER_MERCHANT_NOT_ALLOWED`, 0 Airi
+calls), and every step lands in the audit trail. Airi's own passkey confirmation stays: Purser sits in front of it, not
+instead of it.
+
+**Evidence:** [docs/runs/2026-11-07-vic-1.md](../runs/2026-11-07-vic-1.md), "The rail's policy", "The purchases" and
+"Checks"; [docs/demo/airi-run.json](../demo/airi-run.json) (`policy`, `purchases[].audit_seq`).

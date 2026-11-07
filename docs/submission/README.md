@@ -4,8 +4,10 @@ Copy each block into the form. Max submits; nothing here is sent by itself. Ever
 of 3 November (`docs/demo/main-run.json`, log `docs/runs/2026-11-03-main-run.md`) and the reports in this repo
 (`src/submission/facts.ts`); `test/submission.test.ts` checks this page against them. The Description tells the demo in
 the site's order (Home, Watch, Try, Proof), then the main run, plus one labelled sentence on the reliability run of
-6 November (in Claude's proof sentence) and one on awx-1, the Airwallex-only run of 7 November (its record:
-`docs/demo/airwallex-run.json`, log `docs/runs/2026-11-07-awx-1.md`); the long text ([long-description.md](long-description.md)) has every other live run under "Other live tests
+6 November (in Claude's proof sentence), one on awx-1, the Airwallex-only run of 7 November (its record:
+`docs/demo/airwallex-run.json`, log `docs/runs/2026-11-07-awx-1.md`), and one on the Airi run of 7 November, Visa
+Intelligent Commerce via Airwallex's Airi (its record: `docs/demo/airi-run.json`, log
+`docs/runs/2026-11-07-vic-1.md`); the long text ([long-description.md](long-description.md)) has every other live run under "Other live tests
 (separate worlds, dated)", with its date, and what ran only on stand-ins under "Tested on stand-ins (not live)". Sources
 for each claim: [docs/claims.md](../claims.md), section "The submission pack".
 
@@ -23,27 +25,32 @@ AI agents can now spend company money; Purser lets them, through Airwallex and M
 
 ## Description
 
-Characters: **3,998** (the text between the markers, as pasted). Max's target is 3,000–4,000; the form's own limit is
+Characters: **3,999** (the text between the markers, as pasted). Max's target is 3,000–4,000; the form's own limit is
 not known yet. `test/submission.test.ts` checks this count and keeps the text under 4,000. The long text, as it stood on
 5 November, with Airwallex, Metal, Claude, the controls and the other live tests in full: [long-description.md](long-description.md).
-The Airi run of 7 November (an agent paying with a single-use card credential from Airwallex's Airi wallet; Airwallex
-sandbox, test card, test money) is in the long text under "Other live tests", not in the Description: the Description
-is for the main run, and at 3,995 characters it has room for no other sentence without cutting one of Max's.
+The Airi run of 7 November (Visa Intelligent Commerce via Airwallex's Airi; Airwallex sandbox, test card, test money)
+has one sentence in the Description since 7 November (the owner's decision to name Visa Intelligent Commerce), at the
+end of "Airwallex, Metal and Claude", and its full story in the long text under "Other live tests". To fit it (3,998
+before), other sentences were tightened, no fact dropped: the solution keeps the card and the mandate (the CFO's
+signature over the exact terms is the next line); the demo line keeps the fake invoice and the rule (signing and the
+one-cent cheat are in the first bullet); the euro bill drops the repeated "after the CFO's Face ID" and the settlement
+note ("What's real" says the settlement is simulated); awx-1's line is shorter. The award wording stays: entered for
+the Metal Award only, until Visa confirms eligibility ([visa-award-pending.md](visa-award-pending.md)).
 
 <!-- description -->
 **The problem.** AI agents can now spend company money. An agent's limit lives in a prompt it can be talked out of, or in a review after the money has left.
 
-**The solution.** Purser gives each AI agent its own Airwallex card and Metal mandate; beyond their limits, the CFO signs the exact terms with Face ID.
+**The solution.** Purser gives each AI agent its own Airwallex card and Metal mandate.
 - An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. Try it in 30 seconds. https://kit11.max-31b.workers.dev/try/sign
 - One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control.
 - Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude.
 
-**The demo: Home → Watch → Try → Proof.** Try: sign with Face ID, try to cheat, trick the agent (Claude Sonnet reads a fake invoice live; Purser's code stops it), change the rule; the agent pays alone.
+**Demo: Home → Watch → Try → Proof.** Try: Purser's code stops a fake invoice Claude Sonnet reads live; change the rule and the agent pays alone.
 
-**The proof.** The Kit 11 scenario, run live on 3 November. Starter Kit 11 (x402 Business Agents), entered for the Metal Award. Three Claude agents run Northwind Outdoor, an outdoor wholesaler that sells live stock data to retailers per query, on 20 test dollars; Max plays the CFO, with Max's passkey (Face ID on his phone). The CFO signed 5 decisions with Face ID (+1 co-signature).
-1. **The price rise.** The supplier doubled its price. We switched off our own check once to prove the chain holds the line: Purser refuses an over-cap purchase before signing; with that check off for one purchase, Metal refused it anyway. That was purchase #24; the refusal is recorded on chain (tx `0x2e92f9cb…1871`). The CFO signed option A (P-0002).
+**The proof.** The Kit 11 scenario, run live on 3 November. Starter Kit 11 (x402 Business Agents), entered for the Metal Award. Three Claude agents run Northwind Outdoor, an outdoor wholesaler that sells live stock data to retailers per query, on 20 test USD; Max plays the CFO with Max's passkey (Face ID on his phone). The CFO signed 5 decisions with Face ID (+1 co-signature).
+1. **The price rise.** The supplier's price doubled. We switched off our own check once to prove the chain holds the line: Purser refuses an over-cap purchase before signing; with that check off for one purchase, Metal refused it anyway. That was purchase #24; the refusal is recorded on chain (tx `0x2e92f9cb…1871`). The CFO signed option A (P-0002).
 2. **The dispute.** A simulated customer disputes 12 orders, saying its agent never placed them. Every order carries its agent's signature, so that claim fails. Three orders had wrong data; the Support agent refunds those 3 (0.15 test USD) itself. "Refund the other 9" goes to the CFO, who rejects it with Face ID. Refunds #7, #10 and #13, each on chain.
-3. **The euro bill.** The EUR 240.00 licence: after the CFO's Face ID, EUR 110.00 bought by FX for USD 124.29, then SWIFT: transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, PAID 6 s after Face ID (settlement simulated in the sandbox).
+3. **The euro bill.** The EUR 240.00 licence: EUR 110.00 bought by FX for USD 124.29, SWIFT transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, PAID 6 s after Face ID.
 
 86 Metal payments + 1 card charge, all inside the limits. 16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.
 
@@ -51,7 +58,8 @@ is for the main run, and at 3,995 characters it has room for no other sentence w
 - Airwallex (sandbox): the hash of the exact terms the CFO signed with Face ID is in Airwallex's own record of the EUR 240.00 SWIFT payment, and 3 of 3 agent cards carry the CFO's policy as Airwallex's own controls, read back from Airwallex.
 - Metal (testnet): a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded); the mandates replaced on chain after the CFO's Face ID (four eyes; second approver a labelled test passkey).
 - Claude: 24 of 24 decisions in the main run, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment went from 6/10 to 10/10 and the next run (rel-1b) passed every step.
-- awx-1 (7 Nov, Airwallex only): 7 of 7 checks passed; Airwallex itself declined two card charges, and two SWIFT payouts carry the hash the CFO signed.
+- awx-1 (7 Nov, Airwallex only): 7 of 7 checks; Airwallex declined two card charges; two SWIFT payouts carry the CFO's signed hash.
+- Visa Intelligent Commerce via Airwallex's Airi (7 Nov; Airwallex sandbox, test card, test money): 5 of 5 checks; paid alone within the limit, after Face ID above it; Purser refused a disallowed merchant before Airi.
 
 **The business (not validated with customers yet).** €49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions. A hypothesis.
 
@@ -75,7 +83,8 @@ is for the main run, and at 3,995 characters it has room for no other sentence w
      live, and Purser's code stops it. Change the rule and see the worst case; the agent pays its next invoice alone; a
      closing card sums it up.
    - Proof: every id from the main run on https://kit11.max-31b.workers.dev/proof, the Metal ones checkable on Metal's
-     testnet explorer, and awx-1, the Airwallex-only run of 7 November (all seven checks passed). The film (2:42):
+     testnet explorer, awx-1, the Airwallex-only run of 7 November (all seven checks passed), and Visa Intelligent
+     Commerce via Airwallex's Airi (7 November; Airwallex sandbox, test card, test money; 5 of 5 checks). The film (2:42):
      https://youtu.be/jaqO2M2V6NY.
 3. Then the repository, offline, no keys and no network after `npm ci` (Node.js 22.13 or later):
    `npm ci`, then `npm test` (the full suite, on stand-ins), then `npm run judge -- --check` (serves Home, Watch, Proof,
@@ -92,6 +101,8 @@ is for the main run, and at 3,995 characters it has room for no other sentence w
   the agent, change the rule and see the worst case, and the agent pays alone, in a test world of your own; nothing real
   moves (live since 4 November 2026).
 - The Airwallex-only run, awx-1 (7 November; sandbox, test money): <https://kit11.max-31b.workers.dev/airwallex#awx-1>
+- Visa Intelligent Commerce via Airwallex's Airi, a live run (7 November; Airwallex sandbox, test card, test money):
+  <https://kit11.max-31b.workers.dev/airwallex#airi-run>
 - Repository: <https://github.com/agamemnon-coder/x402-business-agents> (tag `v1.0-submission`)
 - Extra, not an award entry: <https://kit11.max-31b.workers.dev/visa>. Each agent signs its card checkout with Visa's
   Trusted Agent Protocol (TAP); Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa
