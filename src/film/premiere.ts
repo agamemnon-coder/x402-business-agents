@@ -816,7 +816,8 @@ export const END_CREDITS: [string, string][] = [
   ["Claude by Anthropic", "the three agents' decisions"],
 ];
 /** The thanks under the credits. */
-export const THANKS = "Thank you to Airwallex, Metal, Anthropic, and the hackathon organisers and mentors";
+// v8 (Max, 7 November): Visa thanked too, since Purser is entered for the Visa Award with the VIC runs.
+export const THANKS = "Thank you to Airwallex, Visa, Metal, Anthropic, and the hackathon organisers and mentors";
 
 /** Purser's core line (the README's first line), word for word, in the two lines the wordmark shows it. */
 export const CORE_LINE = ["Claude explains and proposes, the rules in code hold every limit,", "and a person signs before money moves beyond them."] as const;
