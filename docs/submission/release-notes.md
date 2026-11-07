@@ -302,6 +302,12 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   1440 px, light and dark); the whole story runs in WebKit too, with a test-only software passkey whose signatures the
   server verifies. /judge's steps 1 and 2, the README, the form and the pitch follow the new order.
   2864 tests in 281 files, all passing.
+- 7 November, the worst case counts what an agent may pay alone (Max): in the /try/sign test world the Treasury agent's
+  "may pay alone up to" is counted, at most 3 payments alone in 24 hours (Purser's existing per-day rule for what an
+  agent does without a person, now enforced where payments run alone), 31 days a month; choosing EUR 2,000 on screen 4
+  raises the figure before you sign, and the server sends the figure for each amount. Purser's own policy has no
+  payments alone, so the README's and the CFO's figure stay as they were. The phone strip "One policy, three locks" is
+  gone; the lock lines are shorter. 2868 tests in 281 files, all passing.
 
 ## Real, and ours
 

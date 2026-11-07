@@ -24,8 +24,8 @@ import { cfoApproval, recordedQuote, tryLocks } from "./examples.js";
 import { RECEIPT_FORMAT } from "./receipt.js";
 import { AGENTS, MCC_WORDS } from "../config/policy.js";
 import { agentName } from "../config/brand.js";
-import { FIELD_WORDS, PAID_ALONE, POLICY_CURRENCIES, POLICY_FIELDS, POLICY_MCCS, STEP0_CHAIN } from "./policy.js";
-import { worstCaseWords } from "../policy/exposureSources.js";
+import { ALONE_CHOICES, ALONE_PER_DAY, defaultPolicy, exposurePolicyOfWorld, FIELD_WORDS, PAID_ALONE, POLICY_CURRENCIES, POLICY_FIELDS, POLICY_MCCS, STEP0_CHAIN } from "./policy.js";
+import { worstCaseWordsOf } from "../policy/exposureSources.js";
 import { EXPOSURE_HOW } from "../policy/exposure.js";
 import { FIXED_PROPOSALS, NEXT_INVOICE, TEST_WORLD } from "../../worker/src/trySign.js";
 
@@ -65,9 +65,9 @@ export const TRY_SIGN_SCREENS = {
   },
   rule: {
     head: "Change the rule.",
-    question: "How much may the agent pay alone?",
-    chips: ["500.00", "2000.00", "5000.00"],
-    looser: "Raising a limit needs your signature.",
+    question: "How much may it pay alone?",
+    chips: ALONE_CHOICES,
+    looser: "Raising it needs your signature.",
     stricter: "Lowering a limit applies at once.",
     same: "This is the rule in force. Pick another amount.",
     sign: "Sign with Face ID",
@@ -132,7 +132,9 @@ export const TRY_POLICY = {
 /** Screens 4 and 5 say the worst case as one line, and whom it counts: all three agents' cards and mandates. */
 export const allAgents = (headline: string) => headline.replace("Worst case, set by policy:", "Worst case, all agents:");
 /** The worst case before a world opens: the starting policy's, as the README and the CFO's view show it. */
-const START_WORST = worstCaseWords();
+// The test world's opening figure (Max, 7 Nov): Purser's policy plus what its Treasury agent may pay alone, by the code
+// the Worker uses (exposurePolicyOfWorld), with the main run's rate; the page shows it before the world answers.
+const START_WORST = worstCaseWordsOf(exposurePolicyOfWorld(defaultPolicy(new Date(), TEST_WORLD)));
 
 /** The fields a visitor may change to tamper, as the terms name them. */
 export const TAMPER_FIELDS = ["amount", "payee_iban", "currency", "fx.client_rate"] as const;
@@ -185,9 +187,6 @@ ol.dots li.done { background: var(--ok); } ol.dots li.on { background: var(--acc
 ol.dots li .t { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .prog .count { margin: 0; font: 650 14.5px/1.3 Inter, system-ui, sans-serif; color: var(--muted); }
 .prog { flex-wrap: wrap; }
-.mstrip { flex-basis: 100%; margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font: 600 13.5px/1.3 Inter, system-ui, sans-serif; color: var(--muted); }
-.mstrip .lk1 { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: var(--sunken); color: var(--text); }
-@media (min-width: 1024px) { .mstrip { display: none; } }
 /* The story: one screen at a time, one card; from 1024 px the diagram beside it. */
 .story { display: grid; gap: 20px; align-items: start; }
 .scr { padding: 22px 20px 0; display: grid; gap: 14px; max-width: 640px; min-width: 0; }
@@ -315,6 +314,7 @@ table.diff tr.chg td:last-child { color: var(--bad); }
 ul.locks1 { list-style: none; padding: 0; display: grid; gap: 6px; }
 ul.locks1 li { display: flex; align-items: flex-start; gap: 8px; font-size: 15.5px; line-height: 1.4; }
 ul.locks1 li .i { color: var(--ok); flex: none; margin-top: 2px; }
+p.worst.chg { color: var(--accent); }
 ul.locks1 li.chg { font-weight: 700; } ul.locks1 li.chg .i { color: var(--accent); }
 .note { font-weight: 650; } .note.looser { color: var(--accent); } .note.stricter { color: var(--ok); }
 /* Screen 5: the next invoice, and the way on. */
@@ -994,7 +994,7 @@ const JS = `
     ul.replaceChildren.apply(ul, x.how.concat([D.policy.worstCaseChain]).map(function (l) { return el("li", "", [l]); }));
   }
   function policyState(d) {
-    S.policy = d.policy; S.locks = d.locks; if (d.bounds) S.bounds = d.bounds;
+    S.policy = d.policy; S.locks = d.locks; if (d.bounds) S.bounds = d.bounds; S.expoAlone = d.exposure_alone || null;
     if (!S.agent) S.agent = "treasury";
     worstCase(d.exposure);
     $("p-ver").textContent = "Policy v" + d.policy_version;
@@ -1012,12 +1012,12 @@ const JS = `
     if (!S.policy) return;
     var a = S.policy.agents.treasury, m = S.locks.treasury.metal.params;
     var now = a.alone, v = alone || now;
-    $("rl-purser").lastChild.textContent = "Purser: alone up to " + euro(v);
+    $("rl-purser").lastChild.textContent = "Purser: " + euro(v) + " alone, ${ALONE_PER_DAY} a day";
     $("rl-purser").classList.toggle("chg", v !== now);
-    $("rl-awx").lastChild.textContent = "Airwallex card: " + euro(a.per_tx) + " a purchase, " + euro(a.monthly) + " a month";
-    $("rl-metal").lastChild.textContent = "Metal mandate: " + String(Number(m.cap)) + " test USD a payment";
+    $("rl-awx").lastChild.textContent = "Airwallex card: " + euro(a.per_tx) + " each, " + euro(a.monthly) + " a month";
+    $("rl-metal").lastChild.textContent = "Metal mandate: " + String(Number(m.cap)) + " test USD each";
     // The diagram says the same, beside the story.
-    $("dg-purser").textContent = "Pays alone up to " + euro(v); $("dg-awx").textContent = euro(a.per_tx) + " a purchase, " + euro(a.monthly) + " a month"; $("dg-metal").textContent = String(Number(m.cap)) + " test USD a payment";
+    $("dg-purser").textContent = euro(v) + " alone, ${ALONE_PER_DAY} a day"; $("dg-awx").textContent = euro(a.per_tx) + " each, " + euro(a.monthly) + " a month"; $("dg-metal").textContent = String(Number(m.cap)) + " test USD each";
     document.querySelectorAll("#rule-chips .chip").forEach(function (b) {
       // The amount in force is marked with a tick (its name says so to a screen reader).
       b.replaceChildren(euro(b.dataset.alone), b.dataset.alone === now ? Object.assign(el("span", "now", [ic("check")]), { title: "in force" }) : "");
@@ -1030,6 +1030,9 @@ const JS = `
     var now = S.policy.agents.treasury.alone;
     document.querySelectorAll("#rule-chips .chip").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.alone === v)); });
     ruleLines(v);
+    // The worst case moves with the choice: the server's figure for that amount, marked as not yet in force.
+    var x = S.expoAlone && v ? S.expoAlone[v] : null;
+    if (x) { $("s4-worst").textContent = x.replace(D.policy.worstCase + ":", "Worst case, all agents:"); $("s4-worst").classList.toggle("chg", v !== now); }
     var looser = v && cents(v) > cents(now), stricter = v && cents(v) < cents(now);
     var btn = $("go-apply"), note = $("s4-note");
     btn.replaceChildren(looser ? ic("scan-face") : "", looser ? W.rule.sign : W.rule.apply);
@@ -1243,7 +1246,7 @@ export function trySignPage(): string {
   const W = TRY_SIGN_SCREENS;
   const scr = (n: number, inner: string, extra = "") => `<section class="card scr" id="scr-${n}" data-screen="${n}"${n === 1 ? "" : " hidden"}${extra}>\n${inner}\n</section>`;
   const body = `<main><div class="wrap">
-<div class="prog"><ol class="dots" aria-label="Five steps">${TRY_SIGN_STEPS.map((s, i) => `<li id="pg-${i + 1}"${i === 0 ? ' class="on" aria-current="step"' : ""}><span class="t">${esc(s)}</span></li>`).join("")}</ol><p class="count" id="pg-count" aria-live="polite">1 of 5 · ${esc(TRY_SIGN_STEPS[0])}</p><p class="mstrip" aria-label="One policy, three locks">One policy, three locks: <span class="lk1">${icon("lock", 13)}Purser</span><span class="lk1">${icon("lock", 13)}Airwallex card</span><span class="lk1">${icon("lock", 13)}Metal mandate</span></p></div>
+<div class="prog"><ol class="dots" aria-label="Five steps">${TRY_SIGN_STEPS.map((s, i) => `<li id="pg-${i + 1}"${i === 0 ? ' class="on" aria-current="step"' : ""}><span class="t">${esc(s)}</span></li>`).join("")}</ol><p class="count" id="pg-count" aria-live="polite">1 of 5 · ${esc(TRY_SIGN_STEPS[0])}</p></div>
 <div class="story">
 <div class="screens">
 ${scr(1, `  <h1 tabindex="-1" id="s1-head">${esc(W.ask.head)}</h1>
@@ -1333,9 +1336,9 @@ ${scr(5, `  <h2 tabindex="-1" id="s5-head">${esc(W.alone.head)}</h2>
   <p class="eyebrow">One policy → three locks</p>
   <div class="dn d-policy">${icon("shield-check", 20)}<span><b>The CFO's policy</b><small>One set of limits, written once.</small></span></div>
   <ol class="dlocks">
-    <li class="dn d-purser">${icon("lock", 18)}<span><b>Purser</b><small id="dg-purser">Pays alone up to ${esc(euro(TEST_WORLD.alone_limit))}</small></span></li>
-    <li class="dn d-airwallex">${icon("lock", 18)}<span><b>Airwallex card</b><small id="dg-awx">€25 a purchase, €50 a month</small></span></li>
-    <li class="dn d-metal">${icon("lock", 18)}<span><b>Metal mandate</b><small id="dg-metal">25 test USD a payment</small></span></li>
+    <li class="dn d-purser">${icon("lock", 18)}<span><b>Purser</b><small id="dg-purser">${esc(euro(TEST_WORLD.alone_limit))} alone, ${ALONE_PER_DAY} a day</small></span></li>
+    <li class="dn d-airwallex">${icon("lock", 18)}<span><b>Airwallex card</b><small id="dg-awx">€25 each, €50 a month</small></span></li>
+    <li class="dn d-metal">${icon("lock", 18)}<span><b>Metal mandate</b><small id="dg-metal">25 test USD each</small></span></li>
   </ol>
   <div class="dn d-sign">${icon("scan-face", 20)}<span><b>Above the limit: your signature</b><small>Face ID over the exact terms; change one cent and it is worthless.</small></span></div>
   <div class="dn d-alone">${icon("circle-check", 20)}<span><b>Within the limit: paid alone</b><small>No signature needed, and nothing above it.</small></span></div>

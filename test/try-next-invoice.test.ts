@@ -6,7 +6,8 @@
 // The world still opens with its two proposals, as before.
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { NEXT_INVOICE, PAID_ALONE, canonical, proposalTerms } from "../worker/src/trySign.js";
+import { NEXT_INVOICE, PAID_ALONE, aloneRoom, canonical, proposalTerms } from "../worker/src/trySign.js";
+import { ALONE_PER_DAY } from "../src/try/policy.js";
 import { BASE, call, challengeOf, desk, RP, signBody, withPasskey, type Proposal } from "./support/trySign.js";
 import { StandInQuotes } from "./support/fxStandIn.js";
 
@@ -84,5 +85,18 @@ describe("the agent's next invoice (T-0003)", () => {
     await v.alone("2000.00", true);
     expect(fx.calls).toBe(1);
     expect((v.db.prepare("SELECT COUNT(*) AS n FROM ts_proposals WHERE world = ? AND id = 'T-0003'").get(v.w.world.id) as { n: number }).n).toBe(1);
+  });
+});
+
+describe("payments alone have a limit per day (Max, 7 Nov: the worst case counts them)", () => {
+  const now = Date.parse("2026-11-07T12:00:00Z");
+  const ran = (hoursAgo: number) => ({ alone: true, at: new Date(now - hoursAgo * 3_600_000).toISOString() });
+  it("room until ALONE_PER_DAY ran alone in the last 24 hours; older ones and signed ones do not count", () => {
+    expect(ALONE_PER_DAY).toBe(3);
+    expect(aloneRoom([], now)).toBe(true);
+    expect(aloneRoom([ran(1), ran(2)], now)).toBe(true);
+    expect(aloneRoom([ran(1), ran(2), ran(3)], now)).toBe(false);
+    expect(aloneRoom([ran(1), ran(2), ran(25)], now)).toBe(true);
+    expect(aloneRoom([ran(1), ran(2), { alone: false, at: ran(3).at }], now)).toBe(true);
   });
 });
