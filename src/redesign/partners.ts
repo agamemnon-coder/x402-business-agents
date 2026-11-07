@@ -16,6 +16,7 @@ import { metalStory, refusalNote, separateRuns, type MetalStory } from "./metalS
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { AIRI_CSS, airiRunBlock } from "./airiRun.js";
 import { awxRunBlock } from "./awxRun.js";
+import { VIC_FLOW_CSS, vicFlowBlock } from "./vicFlow.js";
 import { OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
 
 const CSS = `.pp { padding: 26px 0 24px; }
@@ -68,7 +69,8 @@ a.pf { color: var(--accent); font-weight: 600; text-decoration: none; font-size:
 .nf { padding: 64px 0; } .nf .wrap { display: grid; gap: 16px; justify-items: start; } .nf h1 { font-size: clamp(34px, 5vw, 56px); font-weight: 800; }
 .nf .tabs2 { display: flex; flex-wrap: wrap; gap: 10px; }
 ${READBACK_CSS}
-${AIRI_CSS}`;
+${AIRI_CSS}
+${VIC_FLOW_CSS}`;
 
 const SOURCE = (run: AgentRun) => `Source: ${run.file} (${run.name}); the card run from ${tapRun()?.file ?? "docs/runs"}.`;
 const node = (ic: string, title: string, sub: string, tone = "") => `<div class="node ${tone}"><span class="ic">${icon(ic, 22)}</span><b>${esc(title)}</b><span>${esc(sub)}</span></div>`;
@@ -77,9 +79,9 @@ const nums = (items: [string, string][]) => `<div class="nums">${items.map(([v, 
 const docsLi = (title: string, docs: { label: string; href: string }[]) => `<li>${esc(title)}: ${docs.map((d) => `<a class="pf" href="${esc(d.href)}" target="_blank" rel="noopener">${esc(d.label)} ↗</a>`).join(" · ")}</li>`;
 const plainLi = (t: string) => `<li>${esc(t)}</li>`;
 
-function shell(run: AgentRun, o: { top?: string; label?: string; title: string; description: string; logo: string; h1: string; picture: string; flowClass?: string; nums: string; line: string; extra?: string; folds: string; proofHash: string; js?: string }): string {
+function shell(run: AgentRun, o: { top?: string; underTop?: string; label?: string; title: string; description: string; logo: string; h1: string; picture: string; flowClass?: string; nums: string; line: string; extra?: string; folds: string; proofHash: string; js?: string }): string {
   const body = `<main class="pp"><div class="wrap">
-  ${o.top ? `<div class="awrb">${o.top}</div>` : ""}
+  ${o.top ? `<div class="awrb">${o.top}</div>` : ""}${o.underTop ?? ""}
   <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(o.label ?? run.label)}</span><h1>${esc(o.h1)}</h1></div>
   ${o.flowClass ? `<div class="flow card ${o.flowClass}">${o.picture}</div>` : `<div class="flow card" role="img" aria-label="${esc(`How ${o.title} fits in, step by step`)}">${o.picture}</div>`}
   ${o.nums}
@@ -192,6 +194,8 @@ export function visaPage(run: AgentRun = agentRun()): string {
   const airi = airiRunBlock(undefined, { h: "h2" });
   return shell(run, {
     top: airi,
+    // Under it, how a VIC purchase runs (7 Nov): seven steps, purchase B's ids, C's branch (src/redesign/vicFlow.ts).
+    underTop: airi ? vicFlowBlock() : "",
     title: "Visa TAP", description: "The Sourcing agent signs its card checkout with Visa's Trusted Agent Protocol before its Airwallex card pays.",
     logo: LOGO.visa, h1: "The agent signs before it pays", proofHash: "visa",
     picture: [node("package", "Agent signs", buy?.model ? `Sourcing · Claude ${family(buy.model)}` : "TAP signature"), arrow,

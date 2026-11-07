@@ -20,6 +20,8 @@ export const AIRI_RUN_FILE = "docs/demo/airi-run.json";
 export const AIRI_RUN_LOG = "docs/runs/2026-11-07-vic-1.md";
 /** The block's anchor on /airwallex and /proof. */
 export const AIRI_RUN_ID = "airi-run";
+/** The VIC flow on /visa (src/redesign/vicFlow.ts, VIC_FLOW_ID): Proof's short block links to it ("How it works"). */
+export const VIC_FLOW_ANCHOR = "vic-flow";
 /** The fold with every step on /airwallex: Proof links here, and the page opens it on arrival (OPEN_TARGET_JS). */
 export const AIRI_RUN_STEPS_ID = "airi-run-steps";
 /** The label every showing of the run carries: a date, and sandbox, test card, test money. */
@@ -44,6 +46,7 @@ export interface AiriPurchase {
   amount: string;
   currency: string;
   merchant: string;
+  item?: string;
   action_id?: string;
   proposal_id?: string;
   terms_sha256?: string;
@@ -53,6 +56,8 @@ export interface AiriPurchase {
   payment_intent_id?: string;
   mandate_id?: string;
   credential_type?: string;
+  /** Who confirmed the mandate in Airi, and how (the record's words). */
+  tap?: string;
   outcome?: string;
   reported_to_airi?: string;
   proposal_end?: string;
@@ -162,14 +167,15 @@ ${checksLink(s)}
 <p class="src">${esc(s.source)} · <a class="pf" href="${esc(`${REPO_BLOB}${AIRI_RUN_LOG}`)}" target="_blank" rel="noopener">${esc("run log")} ↗</a></p></details></div>`;
 }
 
-/** Proof's version: the same heading, label, summary, outcomes and checks, then a link to every id on /airwallex. */
+/** Proof's version: the same heading, label, summary, outcomes and checks, then a link to every id on /airwallex and one to the VIC flow on /visa. */
 export function airiRunShortHtml(s: AiriRunSummary | null): string {
   if (!s) return "";
   return `<div class="card airi" id="${AIRI_RUN_ID}">${heading(s, "h3")}
 ${outcomes(s)}
 ${checksLink(s)}
 <p class="src">${esc(s.source)}</p>
-<a class="open" href="airwallex#${AIRI_RUN_STEPS_ID}">${esc("Details: every step and id")} ${icon("arrow-right", 14)}</a></div>`;
+<a class="open" href="airwallex#${AIRI_RUN_STEPS_ID}">${esc("Details: every step and id")} ${icon("arrow-right", 14)}</a>
+<a class="open" href="visa#${VIC_FLOW_ANCHOR}">${esc("How it works")} ${icon("arrow-right", 14)}</a></div>`;
 }
 
 /** The block's own styles, for the pages that show it (with READBACK_CSS). */
