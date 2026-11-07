@@ -658,3 +658,15 @@ wording, once per surface: "Visa TAP: built and verified against Visa's public r
 tooling for this hackathon (Visa, 5 Nov)." Still text only, no logo, never "certified", "endorsed" or "confirmed by
 Visa". VIC is explored separately on branch `vic`; nothing about it is claimed. This replaces the 2 November
 correction under D25.
+
+### D28. Visa: the VIC run counts; entered for the Metal Award and the Visa Award (the owner, 7 November)
+
+On 7 November Visa confirmed in the hackathon Slack, as reported by the owner, that the VIC run counts: the Airi run
+(Visa Intelligent Commerce via Airwallex's Airi, 7 November; Airwallex sandbox, test card, test money; log
+[docs/runs/2026-11-07-vic-1.md](runs/2026-11-07-vic-1.md)) makes Purser eligible for the Visa Award. So Purser is
+entered for the Metal Award and the Visa Award. The Kit line on Home reads "Kit 11 · x402 Business Agents · entered for
+the Metal Award and the Visa Award"; the form, the README and the long text say the same. The entry rests on the VIC
+run only: TAP stays "not eligible Visa tooling for this hackathon (Visa, 5 Nov)", so `VISA_AWARD_ON` stays off (it
+would add "Visa TAP" to "Built on") and the TAP work stays on /visa as a labelled extra. Nothing more is claimed: no
+"certified", "endorsed" or "confirmed by Visa" about TAP or anything else, no Visa logo. D27 stands for 5 to 7
+November; this entry replaces its "Metal only" from 7 November.

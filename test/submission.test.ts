@@ -80,16 +80,17 @@ describe("the submission pack", () => {
     expect(description).not.toMatch(/30 October|31 October|Other live tests|red team|Scenario Lab/i);
   });
 
-  it("opens the synopsis with the first screen (section D, 6 Nov): what Purser is, the three sentences, Try it; and says the Visa paragraph once, with TAP's status as one note (Metal Award only)", () => {
+  it("opens the synopsis with the first screen (section D, 6 Nov): what Purser is, the three sentences, Try it; and says the Visa paragraph once, with TAP's status as one note (entered for the Metal Award and the Visa Award, the Visa Award on the VIC run, since 7 Nov)", () => {
     const synopsis = raw.split("<!-- synopsis -->")[1]!.split("<!-- /synopsis -->")[0]!.trim();
     expect(synopsis).toBe(FIRST_SCREEN_TEXT);
     expect(synopsis.startsWith(DIFFERENTIATORS[0])).toBe(false);
     for (const t of [pack, long]) {
       expect(t.match(/Trusted Agent Protocol/g)).toHaveLength(1);
-      // Visa, 5 Nov: TAP is not eligible Visa tooling for this hackathon; Max's wording, once, and the entry is Metal only.
+      // Visa, 5 Nov: TAP is not eligible Visa tooling for this hackathon; Max's wording, once, with no "Metal Award only"
+      // tail since Visa said on 7 Nov that the VIC run counts: the entry is the Metal Award and the Visa Award.
       expect(t.match(/built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon \(Visa, 5 Nov\)/g)).toHaveLength(1);
-      expect(t).not.toMatch(/still being confirmed with Visa|entered for[^.]{0,40}Visa Award|\+ Visa Award/i);
-      expect(t).toContain("Starter Kit 11 (x402 Business Agents), entered for the Metal Award");
+      expect(t).not.toMatch(/still being confirmed with Visa|\+ Visa Award|Metal Award only|TAP counts as Visa tooling|Visa Award (with|on|for) (Visa )?TAP/i);
+      expect(t).toContain("Starter Kit 11 (x402 Business Agents), entered for the Metal Award and the Visa Award");
       expect(t).not.toMatch(/open[- ]source/i);
     }
   });
@@ -167,11 +168,13 @@ describe("the short Description (Max, 5 Nov)", () => {
     at("Max plays the CFO and signs with a personal passkey (Face ID on a phone).");
     expect(flat).not.toMatch(/\bhis\b|Max's passkey/);
     // The caveats are one line plus a link: no T:0 error codes, no Visa TAP, no TAP run in the form's Description (they
-    // stay in the long text and the claims). Visa is named once since 7 Nov (the owner's decision): the Airi run, Visa
-    // Intelligent Commerce via Airwallex's Airi, labelled, with its 5 of 5 checks; never a Visa Award until Visa confirms
-    // eligibility (docs/submission/visa-award-pending.md).
-    expect(flat).not.toMatch(/CAPI\d+|T:0|TAP|Trusted Agent|Visa Award/);
-    expect(flat.match(/Visa/g)).toHaveLength(1);
+    // stay in the long text and the claims). Visa is named twice since 7 Nov: the Airi run, Visa Intelligent Commerce via
+    // Airwallex's Airi, labelled, with its 5 of 5 checks (the owner's decision), and the Visa Award once, in the Kit 11
+    // line (Visa, 7 Nov: the VIC run counts; docs/decisions.md D28).
+    expect(flat).not.toMatch(/CAPI\d+|T:0|TAP|Trusted Agent/);
+    expect(flat.match(/Visa Award/g)).toHaveLength(1);
+    expect(flat).toContain("Starter Kit 11 (x402 Business Agents), entered for the Metal Award and the Visa Award.");
+    expect(flat.match(/Visa/g)).toHaveLength(2);
     expect(flat).toContain("Visa Intelligent Commerce via Airwallex's Airi (7 Nov; Airwallex sandbox, test card, test money): 5 of 5 checks; paid alone within the limit, after Face ID above it; Purser refused a disallowed merchant before Airi.");
     expect(flat).toContain("Details → https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/submission/long-description.md#what-is-real-and-what-is-simulated");
     expect(long).toContain(T0_STATUS);

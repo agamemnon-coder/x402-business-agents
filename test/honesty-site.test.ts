@@ -241,12 +241,12 @@ describe("5. PAID in the sandbox, where the settlement is simulated", () => {
 });
 
 describe("6. TAP's status (Visa, 5 Nov: not eligible Visa tooling), said once, on /visa", () => {
-  it("is on /visa only; Home and Proof link to /visa as an extra, not an award entry; no page enters the Visa Award", () => {
+  it("is on /visa only; Home and Proof link to /visa as an extra, not an award entry; the Visa Award only in the Kit line (since 7 Nov, on the VIC run), never on TAP", () => {
     const pages = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv) as unknown as Record<string, unknown>;
     expect(String(pages.visa)).toContain(VISA_TAP_STATUS);
     for (const [name, body] of Object.entries(pages)) if (typeof body === "string" && name !== "visa") expect({ name, has: body.includes(VISA_TAP_STATUS) }).toEqual({ name, has: false });
     for (const [name, html] of Object.entries({ home: homePage(), proof: proofPage() })) expect({ name, link: /<a [^>]*href="visa"[^>]*>Extra, not an award entry: Visa TAP[^<]*<\/a>/.test(html) && html.includes(VISA_EXTRA_LINK) }).toEqual({ name, link: true });
-    for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, entered: /entered for[^.<]{0,40}Visa Award|\+ Visa Award/i.test(body) }).toEqual({ name, entered: false });
+    for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, entered: /\+ Visa Award|TAP counts as Visa tooling/i.test(body) || /Visa Award/i.test(body.split("entered for the Metal Award and the Visa Award").join(" ")) }).toEqual({ name, entered: false });
   });
 });
 

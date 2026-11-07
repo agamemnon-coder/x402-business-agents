@@ -4,7 +4,7 @@ Drie dry runs op rij, op exact de code en de relay van de hoofdrun, in drie vers
 **alles** hieronder voldoen, gaat de code op slot (freeze) en plannen we de hoofdrun. Eén rode run: oorzaak vinden,
 fixen, en de telling begint opnieuw.
 
-## 1. De eisen uit de audit (docs/requirements-audit-2026-11-02.md) — in elke run ✅, met bewijs per run
+## 1. De eisen uit de audit (docs/internal/requirements-audit-2026-11-02.md) — in elke run ✅, met bewijs per run
 
 | # | Eis | Bewijs dat in de run-log moet staan |
 |---|---|---|

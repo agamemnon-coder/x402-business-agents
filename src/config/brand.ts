@@ -5,10 +5,12 @@ export const PRODUCT = "Purser";
 export const TAGLINE = "Give every AI agent its own company card, with limits the CFO sets.";
 
 /**
- * The Visa Award in the Kit line and Home's badge, and "Visa TAP" (text, never a logo) in "Built on": off since 5 Nov.
- * Visa (hackathon Slack, 5 Nov): TAP is not available as Visa tooling for this hackathon; only Visa Intelligent
- * Commerce (VIC) or Intelligent Commerce Connect (ICC) are. So Purser is entered for the Metal Award only
- * (docs/decisions.md D27, docs/evidence/README.md). The TAP work stays on /visa as a labelled extra (VISA_TAP_STATUS).
+ * "Visa TAP" (text, never a logo) in "Built on": off since 5 Nov, and staying off. Visa (hackathon Slack, 5 Nov): TAP is not available as Visa tooling for this hackathon; only Visa
+ * Intelligent Commerce (VIC) or Intelligent Commerce Connect (ICC) are. Visa (hackathon Slack, 7 Nov): the VIC run
+ * counts, so since 7 Nov Purser is entered for the Metal Award and the Visa Award, on the Airi run (Visa Intelligent
+ * Commerce via Airwallex's Airi, docs/runs/2026-11-07-vic-1.md), never on TAP (docs/decisions.md D28,
+ * docs/evidence/README.md). KIT_LINE says so on its own; this switch stays off. The TAP work stays on /visa as a
+ * labelled extra (VISA_TAP_STATUS).
  */
 export const VISA_AWARD_ON = false;
 /**
@@ -22,13 +24,16 @@ export const VISA_CLAIM = "Visa: each agent signs its card checkout with Visa's 
  * form, the deck): built and verified against Visa's public reference verifier, not eligible Visa tooling for this
  * hackathon. Never "certified", "endorsed" or "confirmed by Visa".
  */
-export const VISA_TAP_STATUS = "Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov), so Purser is entered for the Metal Award only.";
+export const VISA_TAP_STATUS = "Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov).";
 /** How Home and Proof link to /visa since 5 Nov: the TAP work as a labelled extra, not an award entry. */
 export const VISA_EXTRA_LINK = "Extra, not an award entry: Visa TAP and its status, on /visa";
-/** The big line under the heading: the kit, the track and the awards entered. */
-export const KIT_LINE = `Kit 11 · x402 Business Agents · entered for the Metal Award${VISA_AWARD_ON ? " + Visa Award" : ""}`;
-/** Home's badge (Max's mega-prompt v4, C2), word for word: the kit, the awards entered, what it is built on. Visa TAP is a separate text badge, never a logo. */
-export const HOME_BADGE = `Kit 11 · Metal Award${VISA_AWARD_ON ? " + Visa Award" : ""} · built on Airwallex, Metal, Claude`;
+/**
+ * The big line under the heading: the kit, the track and the awards entered. The Visa Award since 7 Nov (Visa: the VIC
+ * run counts), on the Airi run, not on TAP: it does not follow VISA_AWARD_ON, which would add "Visa TAP" to "Built on".
+ */
+export const KIT_LINE = "Kit 11 · x402 Business Agents · entered for the Metal Award and the Visa Award";
+/** Home's badge (Max's mega-prompt v4, C2): the kit, the awards entered (the Visa Award since 7 Nov, on the Airi run, as KIT_LINE), what it is built on. Visa TAP is never in it. */
+export const HOME_BADGE = "Kit 11 · Metal Award and Visa Award · built on Airwallex, Metal, Claude";
 /** D3, in one sentence: who decides what. */
 export const SPLIT_LINE = "Claude decides the exceptions; routine buying and selling per query is code.";
 /**

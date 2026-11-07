@@ -1,8 +1,9 @@
 # Purser v1.0-submission
 
 The version submitted to the Airwallex Agentic Banking Hackathon: Starter Kit 11 (x402 Business Agents), entered for
-the Metal Award. Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for
-this hackathon (Visa, 5 Nov). Tag `v1.0-submission`.
+the Metal Award and the Visa Award (Visa: the Airi run, Visa Intelligent Commerce via Airwallex's Airi, 7 Nov). Visa
+TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa,
+5 Nov). Tag `v1.0-submission`.
 
 Three Claude agents run a small data business on test money through Metal (testnet) and Airwallex (sandbox). Metal
 holds each agent's on-chain budget, Airwallex holds each card's limit, Purser's code holds the rest; the CFO approves
@@ -434,6 +435,12 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   linking there (src/redesign/airiRun.ts, test/airi-run-page.test.ts). README, docs/claims.md, docs/airwallex.md (with
   the PaymentIntent endpoints the rail calls), the long text and qa.md (18, 19) carry it; the form's Description does
   not (no room). 3001 tests in 291 files, all passing.
+- 7 November, the repo tidied for a cold read: the README's first screen is what Purser is, the three sentences, Try it,
+  the badges, the Kit 11 line with the live site, the entry line, then "Look here first" (Watch, Try, Proof, the Airi
+  run) and "How to run" (`npm run judge`, offline). The seven /try/sign steps moved lower, to "Try it, step by step";
+  no fact or figure changed. New: docs/README.md, the docs grouped by reader (juror, builder, video). Five internal or
+  superseded notes moved to docs/internal/ (its README lists them). package.json has `homepage` and `repository`;
+  .gitignore ignores `out` as a file or symlink too. 3049 tests in 295 files, all passing.
 
 ## Real, and ours
 
@@ -503,3 +510,24 @@ Claude Code, on Max's go; in production a second person). Sources for every clai
   word budget 375 (was 275). The Sourcing agent's rail choice can offer Airi (VIC) as a third rail, for a purchase at a
   merchant on the CFO's Airi allowlist that Purser would take, with KIT11_AIRI_RAIL=on only; the offer and its reason
   are in the audit trail, and the payment still goes through every Purser check (no caller offers it yet).
+- 7 November, the form's 8 screenshots retaken from the live site (deployed from main 877151f), 1280 px at 2×, light,
+  each PNG under 500 KB: Home's first screen; /try/sign's step 1 with the Treasury agent's live Claude Opus advice and
+  the live Airwallex quote, signed and verified, the one-cent cheat refused (all three from one test world); /airwallex
+  with the signed hash, the cards, awx-1 and the Visa Intelligent Commerce run via Airwallex's Airi; /metal; /claude;
+  /proof's "Why this is a company" opened. Each description line in the submission README says what its shot now shows.
+  /try/sign on a phone: the full policy and its three panels (from screen 5) are drawn when the browser is idle after
+  the world opens and after the agents' answers, and at once on any screen change, so neither answer is one long
+  task; the first screen scrolls to the top with the first frame instead of forcing a layout in the middle of the
+  script. Same behaviour and words; the browser checks (Chromium and WebKit) pass. 3049 tests in 295 files, all passing.
+- 7 November, Visa's word on the VIC run: Visa said in the hackathon Slack that the VIC run counts, so Purser is entered
+  for the Metal Award and the Visa Award, the Visa Award on the Airi run (Visa Intelligent Commerce via Airwallex's
+  Airi, docs/runs/2026-11-07-vic-1.md), not on TAP. Home's award pill reads "entered for the Metal Award and the Visa
+  Award" (Home's word budget 190 → 195); "Visa TAP" stays out of "Built on" (`VISA_AWARD_ON` stays off). TAP's status
+  line keeps "not eligible Visa tooling for this hackathon (Visa, 5 Nov)" and drops ", so Purser is entered for the
+  Metal Award only" (/visa, the form's Links, the long text, the deck's last slide). The form's Description says
+  "entered for the Metal Award and the Visa Award." (3,997 characters; awx-1's line "7 of 7 checks; 2 Airwallex card
+  declines; the CFO's hash in 2 SWIFT payouts."); the README, the long text, docs/rules.md, docs/requirements-matrix.md
+  (V1 entered, V2 VIC), docs/claims.md, docs/evidence/README.md and docs/decisions.md (D28) say the same, with the
+  earlier wording kept as "Was". The tests that held the Metal-only wording hold the new one, and still refuse TAP as
+  eligible Visa tooling. The deck (purser-deck.pdf and its slide PNGs) printed again. 3066 tests in 297 files, all
+  passing.

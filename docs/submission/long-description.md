@@ -12,7 +12,7 @@ main run of 3 November (`docs/demo/main-run.json`, log `docs/runs/2026-11-03-mai
 
 The Kit 11 scenario, run live on 3 November.
 
-**Starter Kit 11 (x402 Business Agents), entered for the Metal Award (Visa TAP is an extra: see the note under Visa).**
+**Starter Kit 11 (x402 Business Agents), entered for the Metal Award and the Visa Award (Visa: the Airi run, Visa Intelligent Commerce, under "Other live tests"; Visa TAP is an extra: see the note under Visa).**
 
 **A supplier doubles its price. A customer disputes 12 orders. A €240 bill is due in euros.** Three Claude agents run a
 small data business on 20 test dollars through Metal and Airwallex; the CFO signed 5 times with Face ID. One live run,
@@ -99,7 +99,7 @@ company card whose limits Airwallex enforces.
 
 Visa: each agent signs its card checkout with Visa's Trusted Agent Protocol (TAP), so a merchant can check which agent is buying. Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours.
 
-*Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov), so Purser is entered for the Metal Award only.*
+*Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov).*
 
 ### Where Claude is used
 

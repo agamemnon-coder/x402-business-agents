@@ -25,7 +25,7 @@ AI agents are starting to spend company money; Purser lets them, through Airwall
 
 ## Description
 
-Characters: **3,996** (the text between the markers, as pasted). Max's target is 3,000–4,000; the form's own limit is
+Characters: **3,997** (the text between the markers, as pasted). Max's target is 3,000–4,000; the form's own limit is
 not known yet. `test/submission.test.ts` checks this count and keeps the text under 4,000. The long text, as it stood on
 5 November, with Airwallex, Metal, Claude, the controls and the other live tests in full: [long-description.md](long-description.md).
 The Airi run of 7 November (Visa Intelligent Commerce via Airwallex's Airi; Airwallex sandbox, test card, test money)
@@ -36,8 +36,9 @@ signature over the exact terms is the next line); the demo line keeps the fake i
 one-cent cheat are in the first bullet); the euro bill drops the repeated "after the CFO's Face ID" and the settlement
 note ("What's real" says the settlement is simulated); awx-1's line is shorter. After the jury review of 7 November
 (the hook "are starting to", "Try it in a minute.", the CFO's passkey without a name or "his") a few more words went:
-"sits", "once the money left", "AI" before "agent" in the solution (the problem says it), the supplier by its name (Stockline), the demo's order with commas, figures for "two". The award wording stays: entered for
-the Metal Award only, until Visa confirms eligibility ([visa-award-pending.md](visa-award-pending.md)).
+"sits", "once the money left", "AI" before "agent" in the solution (the problem says it), the supplier by its name (Stockline), the demo's order with commas, figures for "two". Since 7 November (Visa, in the hackathon Slack: the VIC run counts) the award wording is: entered for
+the Metal Award and the Visa Award; to fit it, awx-1's line became "7 of 7 checks; 2 Airwallex card declines; the CFO's
+hash in 2 SWIFT payouts." (no fact dropped).
 
 <!-- description -->
 **The problem.** AI agents are starting to spend company money. An agent's limit sits in a prompt it can be talked out of, or in a review once the money left.
@@ -49,7 +50,7 @@ the Metal Award only, until Visa confirms eligibility ([visa-award-pending.md](v
 
 **Demo: Home, Watch, Try, Proof.** Try: Purser's code stops a fake invoice Claude Sonnet reads live; change the rule; the agent pays alone.
 
-**The proof.** The Kit 11 scenario, run live on 3 November. Starter Kit 11 (x402 Business Agents), entered for the Metal Award. Three Claude agents run Northwind Outdoor, an outdoor wholesaler that sells live stock data to retailers per query, on 20 test USD; Max plays the CFO and signs with a personal passkey (Face ID on a phone). The CFO signed 5 decisions with Face ID (+1 co-signature).
+**The proof.** The Kit 11 scenario, run live on 3 November. Starter Kit 11 (x402 Business Agents), entered for the Metal Award and the Visa Award. Three Claude agents run Northwind Outdoor, an outdoor wholesaler that sells live stock data to retailers per query, on 20 test USD; Max plays the CFO and signs with a personal passkey (Face ID on a phone). The CFO signed 5 decisions with Face ID (+1 co-signature).
 1. **The price rise.** Stockline's price doubled. We switched off our own check once to prove the chain holds the line: Purser refuses an over-cap purchase before signing; with that check off for one purchase, Metal refused it anyway. That was purchase #24; the refusal is recorded on chain (tx `0x2e92f9cb…1871`). The CFO signed option A (P-0002).
 2. **The dispute.** A simulated customer disputes 12 orders, saying its agent never placed them. Every order carries its agent's signature, so that claim fails. Three orders had wrong data; the Support agent refunds those 3 (0.15 test USD) itself. "Refund the other 9" goes to the CFO, who rejects it with Face ID. Refunds #7, #10 and #13, each on chain.
 3. **The euro bill.** The EUR 240.00 licence: EUR 110.00 bought by FX for USD 124.29, SWIFT transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, PAID 6 s after Face ID.
@@ -60,7 +61,7 @@ the Metal Award only, until Visa confirms eligibility ([visa-award-pending.md](v
 - Airwallex (sandbox): the hash of the exact terms the CFO signed with Face ID is in Airwallex's own record of the EUR 240.00 SWIFT payment, and 3 of 3 agent cards carry the CFO's policy as Airwallex's own controls, read back from Airwallex.
 - Metal (testnet): a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded); the mandates replaced on chain after the CFO's Face ID (four eyes; second approver a labelled test passkey).
 - Claude: 24 of 24 decisions in the main run, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment went from 6/10 to 10/10 and the next run (rel-1b) passed every step.
-- awx-1 (7 Nov, Airwallex only): 7 of 7 checks; Airwallex declined 2 card charges; 2 SWIFT payouts carry the CFO's signed hash.
+- awx-1 (7 Nov, Airwallex only): 7 of 7 checks; 2 Airwallex card declines; the CFO's hash in 2 SWIFT payouts.
 - Visa Intelligent Commerce via Airwallex's Airi (7 Nov; Airwallex sandbox, test card, test money): 5 of 5 checks; paid alone within the limit, after Face ID above it; Purser refused a disallowed merchant before Airi.
 
 **The business (not validated with customers yet).** €49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions. A hypothesis.
@@ -106,33 +107,40 @@ the Metal Award only, until Visa confirms eligibility ([visa-award-pending.md](v
 - Visa Intelligent Commerce via Airwallex's Airi, a live run (7 November; Airwallex sandbox, test card, test money):
   <https://kit11.max-31b.workers.dev/airwallex#airi-run>
 - Repository: <https://github.com/agamemnon-coder/x402-business-agents> (tag `v1.0-submission`)
-- Extra, not an award entry: <https://kit11.max-31b.workers.dev/visa>. Each agent signs its card checkout with Visa's
-  Trusted Agent Protocol (TAP); Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa
-  tooling for this hackathon (Visa, 5 Nov), so Purser is entered for the Metal Award only.
+- Extra, not an award entry: Visa TAP, on <https://kit11.max-31b.workers.dev/visa>. Each agent signs its card checkout
+  with Visa's Trusted Agent Protocol (TAP); Visa TAP: built and verified against Visa's public reference verifier; not
+  eligible Visa tooling for this hackathon (Visa, 5 Nov). The Visa Award entry is the Airi run above (Visa Intelligent
+  Commerce).
 
 ## Screenshots
 
-From the live site (https://kit11.max-31b.workers.dev, main 60569ef, Worker 3e8cd078) on 6 November, 1280 px wide at
-2× (2560 px; 1600 px high, screens 2–4 as tall as their card), light mode, in the form's order: the problem, try it, the proof per partner, the business. Screens
-2–4 come from one test world on /try/sign (one live Airwallex FX quote, read-only, and one live Claude Haiku
-sentence; a test passkey; nothing real moves). The other pages replay the main run (3 November) and make no outside
-call.
+From the live site (https://kit11.max-31b.workers.dev, deployed from main 877151f) on 7 November, 1280 px wide at 2×
+(2560 px; screens 1, 6 and 7 the first 800 px of the page, the others as tall as their part of the page), light mode,
+PNG under 500 KB each, in the form's order: the problem, try it, the proof per partner, the business. Screens 2–4 come
+from one test world on /try/sign (one live Airwallex FX quote, read-only, and the Treasury agent's advice by Claude
+Opus, live; a test passkey; nothing real moves). The other pages replay the main run (3 November) or show the separate
+runs of 7 November, and make no outside call.
 
-1. `screens/form/form-1-home.png`: Home's first screen: what Purser is, the three sentences, "Try it in 30 seconds." (as
-   taken on 6 November; Home and the form now say "Try it in a minute.")
-2. `screens/form/form-2-try-sign-sheet.png`: /try/sign, the approval sheet: the Treasury agent's sentence by Claude
-   Haiku (live), the exact terms with the FX quote; beside it the payment a rule stopped, and which lock stopped it
-3. `screens/form/form-3-try-sign-verified.png`: signed with the test passkey and verified by the server: "Signed and
-   verified. This signature only fits these exact terms."
-4. `screens/form/form-4-try-sign-tamper.png`: the amount + 0.01 sent with the same signature: refused, the two hashes
-   side by side
+1. `screens/form/form-1-home.png`: Home's first screen: "AI agents spend. You sign off.", the synopsis line, the three
+   sentences, "Start: watch the agents" and the 3-minute tour; beside it the main run replayed: the three agents and
+   Metal's on-chain refusal
+2. `screens/form/form-2-try-sign-sheet.png`: /try/sign, step 1 of 6, "The agent asks": the Treasury agent's advice by
+   Claude Opus (live), the invoice above the agent's limit with the live Airwallex quote, "Sign with Face ID"; beside it
+   one policy, three locks, and the test payment Purser stopped in this world
+3. `screens/form/form-3-try-sign-verified.png`: step 2, signed with the test passkey: "Signed and verified. Purser checked
+   your signature. It only fits these exact terms.", executed in the test world, the receipt to download and check
+4. `screens/form/form-4-try-sign-tamper.png`: step 3, "Try to cheat": the amount + 1 cent sent with the same signature:
+   "One cent changed. The signature is worthless.", refused by Purser, signed and sent side by side with both hashes
 5. `screens/form/form-5-airwallex.png`: /airwallex: the hash the CFO signed beside the one Airwallex returns with the
-   EUR 240.00 SWIFT payment (match), then 3 of 3 cards matching the CFO policy, the cards' fold open
+   EUR 240.00 SWIFT payment (match), 3 of 3 cards matching the CFO policy, awx-1 (7 of 7 checks), and Visa Intelligent
+   Commerce via Airwallex's Airi, a live run (7 November; Airwallex sandbox, test card, test money): paid alone, paid
+   after Face ID, refused by Purser, 5 of 5 checks
 6. `screens/form/form-6-metal.png`: /metal: 3 mandates on chain, 86 payments each its own transaction, #24 refused on
    chain, the mandates replaced after Face ID
-7. `screens/form/form-7-claude.png`: /claude: 24 of 24 decisions by Claude, 0 fallbacks; Haiku, Sonnet, Opus
-8. `screens/form/form-8-business.png`: Home's "Why this is a company": the problem, who buys, the intended pricing, why
-   now, why Purser (not validated with customers yet)
+7. `screens/form/form-7-claude.png`: /claude: Sourcing · Haiku, Support · Sonnet, Treasury · Opus; 24/24 decisions by
+   Claude (0 fallbacks), 82 routine payments by code, 50 Claude calls each with a request id, 5 Face ID decisions
+8. `screens/form/form-8-business.png`: /proof, "Why this is a company" opened: the problem, who buys, the intended
+   pricing, why now, why Purser; not validated with customers yet
 
 The earlier set, made by `npm run submission` from the pages that replay the main run (1440 × 900), stays in
 `screens/` for the deck.
