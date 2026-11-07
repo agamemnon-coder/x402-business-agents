@@ -98,14 +98,15 @@ export const TRY_SIGN_SCREENS = {
     head: "Change the rule.",
     question: "How much may it pay alone?",
     chips: ALONE_CHOICES,
-    looser: "Raising the limit needs your Face ID.",
-    stricter: "Lowering a limit applies at once.",
+    /** Right under the worst case (Max's review): the risk it adds is the reason for the signature. */
+    looser: "That risk needs your Face ID.",
+    stricter: "Less risk: it applies at once.",
     same: "This is the rule in force. Pick another amount.",
     sign: "Sign with Face ID",
     apply: "Apply",
     all: "Show all fields",
     /** The worst case in one honest number, EUR a month, from the server (with what the choice adds, when it adds). */
-    worst: "Worst case in your test world:",
+    worst: "Worst case:",
   },
   alone: {
     head: "The agent pays it alone.",
@@ -168,6 +169,14 @@ export const TRY_POLICY = {
   metalNote: "Cap = the limit per purchase, budget = the limit per month, expiry = the end date.",
 } as const;
 
+/** What each lock holds (Max's review, 7 Nov): Purser's rule the invoices and proposals, the Airwallex card the card spend,
+ * the Metal mandate the payments on chain. Short, as screen 5's lines say it; long, as the diagram and the locks do. */
+export const LOCK_CHANNELS = {
+  purser: { short: "Invoices", long: "Invoices and proposals" },
+  airwallex: { short: "Card spend", long: "Card spend" },
+  metal: { short: "On-chain", long: "On-chain payments" },
+} as const;
+
 /** Screens 4 and 5 say the worst case as one line, and whom it counts: all three agents' cards and mandates. */
 export const allAgents = (headline: string) => headline.replace("Worst case, set by policy:", "Worst case, all agents:");
 /** The worst case before a world opens: the starting policy's, as the README and the CFO's view show it. */
@@ -212,11 +221,12 @@ export const WHATS_REAL = {
   ],
 } as const;
 
-const CSS = `.testband { background: var(--text); color: var(--bg); text-align: center; font: 700 clamp(12.5px, 3.4vw, 15px)/1.3 Inter, system-ui, sans-serif; padding: 8px 12px; letter-spacing: .01em; }
-.testband .i { vertical-align: -3px; margin-right: 6px; }
-.testband .row { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px 10px; }
+const CSS = `.testband { background: var(--text); color: var(--bg); text-align: center; font: 700 12px/16px Inter, system-ui, sans-serif; padding: 3px 10px; letter-spacing: 0; }
+.testband .i { width: 13px; height: 13px; vertical-align: -2px; margin-right: 5px; }
+.testband .row { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0 10px; }
+.testband .tl { white-space: nowrap; }
 /* "What's real?": one link in the band, opened on demand; its lines in a panel under the band. */
-.testband details.wr > summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; min-height: 28px; color: inherit; text-decoration: underline; text-underline-offset: 3px; font-weight: 650; }
+.testband details.wr > summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; min-height: 24px; margin: -4px 0; color: inherit; text-decoration: underline; text-underline-offset: 2px; font-weight: 650; }
 .testband details.wr > summary::-webkit-details-marker { display: none; }
 .testband details.wr[open] { flex-basis: 100%; }
 .wr-body { display: grid; gap: 10px; padding: 14px 16px; margin: 8px auto 4px; max-width: 760px; font: 400 15px/1.5 Inter, system-ui, sans-serif; text-align: left; color: var(--text); letter-spacing: 0; }
@@ -370,10 +380,12 @@ table.diff th { font-weight: 650; font-size: 13.5px; }
 table.diff tr.chg td { color: var(--text); font-weight: 750; background: var(--surface); }
 table.diff tr.chg td:last-child { color: var(--bad); }
 .outcome { font-size: clamp(19px, 2vw, 22px); font-weight: 750; color: var(--bad); }
-/* 1.3: the fake invoice, the fooled agent, the verdict (code's), the lesson. */
-.tricked { display: grid; gap: 10px; padding: 14px 16px; border-radius: 16px; background: var(--bad-soft); }
+/* 1.3: the fake invoice, the fooled agent, the verdict (code's), the lesson. Calm (Max's review): a plain card, the red
+   kept for what differs and for the block. */
+.tricked { display: grid; gap: 10px; padding: 14px 16px; border-radius: 16px; background: var(--sunken); border: 1px solid var(--border); }
 .tricked .doc { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--surface); border: 1px dashed var(--border); font: 500 13.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
-.tricked .fooled { margin: 0; font-size: 16px; } .tricked .fooled #k-says { font-style: italic; }
+.tricked .fooled { margin: 0; font-size: 15.5px; color: var(--muted); }
+.tricked .outcome { padding: 8px 12px; border-radius: 10px; background: var(--bad-soft); font-size: clamp(17px, 1.8vw, 19px); }
 .pill.live { background: var(--ok-soft, var(--accent-soft)); color: var(--text); font-weight: 700; }
 .tricked ul.calls { list-style: none; padding: 0; } .tricked ul.calls li { overflow-wrap: anywhere; margin-top: 6px; }
 .tricked .lesson { margin: 0; font-weight: 750; font-size: 17px; }
@@ -395,6 +407,15 @@ table.diff tr.chg td:last-child { color: var(--bad); }
 ul.locks1 { list-style: none; padding: 0; display: grid; gap: 6px; }
 ul.locks1 li { display: flex; align-items: flex-start; gap: 8px; font-size: 15.5px; line-height: 1.4; }
 ul.locks1 li .i { color: var(--ok); flex: none; margin-top: 2px; }
+/* Each lock's channel, in front of its line (Max's review). */
+ul.locks1 li .ch, .lock .ch, .lkh .ch { flex: none; display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 999px; background: var(--sunken); color: var(--muted); font: 650 12.5px/1.5 Inter, system-ui, sans-serif; white-space: nowrap; }
+ul.locks1 li .ch { min-width: 76px; justify-content: center; }
+/* The worst case, and right under it why a looser rule needs a signature. */
+.argue { display: grid; gap: 6px; padding: 10px 12px; border-left: 4px solid var(--accent); border-radius: 10px; background: var(--sunken); }
+.argue > * { margin: 0; min-width: 0; } .argue .worst { padding: 0; border: 0; background: none; border-radius: 0; }
+.argue.looser .worst.chg { color: var(--bad); }
+.argue .note:empty { display: none; } .argue .note { margin: 0; }
+.argue.looser { border-left-color: var(--bad); } .argue.looser .note.looser { color: var(--bad); }
 p.worst.chg { color: var(--accent); }
 ul.locks1 li.chg { font-weight: 700; } ul.locks1 li.chg .i { color: var(--accent); }
 .note { font-weight: 650; } .note.looser { color: var(--accent); } .note.stricter { color: var(--ok); }
@@ -459,6 +480,7 @@ nav.end .btn { justify-content: center; min-height: 56px; font-size: 17px; }
   .diagram .eyebrow { margin: 0; }
   .dn { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; padding: 11px 13px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); transition: background .25s, border-color .25s, opacity .25s; opacity: .55; }
   .dn b { display: block; font-size: 15.5px; } .dn small { display: block; color: var(--muted); font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+  .dn small.ch { font-size: 12.5px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; color: var(--faint); }
   .dn.d-policy { opacity: 1; }
   ol.dlocks { list-style: none; margin: 0 0 0 22px; padding: 0 0 0 16px; border-left: 2px solid var(--border); display: grid; gap: 8px; }
   ol.dlocks li { position: relative; } ol.dlocks li::before { content: ""; position: absolute; left: -18px; top: 22px; width: 16px; border-top: 2px solid var(--border); }
@@ -814,7 +836,7 @@ const JS = `
     var adv = adviceWords(t.agent_advice);
     var advice = adv ? el("p", "advice", [adv]) : null;
     if (advice) advice.id = "s1-advice";
-    $("s1-ask").replaceChildren(askLine(p), el("p", "says", [p.says]), advice);
+    $("s1-ask").replaceChildren.apply($("s1-ask"), [askLine(p), el("p", "says", [p.says]), advice].filter(Boolean));
     $("s1-ask").hidden = false; $("s1-pay").hidden = false; $("s1-terms").hidden = false;
     // One line: the payee as a person reads it (the terms behind "Show the exact terms" name it in full, "(test payee)").
     $("s1-to").replaceChildren(t.payee.replace(/ \\(test payee\\)$/, "") + " · ", el("span", "nw", [t.reference.replace(/^Invoice /, "")]));
@@ -905,7 +927,7 @@ const JS = `
       a.href = l.href;
       if (/^https?:/.test(l.href)) { a.target = "_blank"; a.rel = "noopener noreferrer"; }
       var row = el("div", "lock " + l.id + (hit ? " hit" : ""), [
-        el("div", "lh", [ic(hit ? "octagon-x" : "lock"), l.name, el("span", "tag", [hit ? "Stopped this one (simulated)" : "Not this one"])]),
+        el("div", "lh", [ic(hit ? "octagon-x" : "lock"), l.name, el("span", "ch", [D.channels[l.id] ? D.channels[l.id].long : ""]), el("span", "tag", [hit ? "Stopped this one (simulated)" : "Not this one"])]),
         el("span", "", [hit ? p.rule : l.what]), a, more("Real example, " + l.run + ": " + l.example)
       ]);
       row.dataset.lock = l.id;
@@ -1219,7 +1241,7 @@ const JS = `
     if (!S.policy) return;
     var a = S.policy.agents.treasury, m = S.locks.treasury.metal.params;
     var now = a.alone, v = alone || now;
-    $("rl-purser").lastChild.textContent = "Purser: pays alone up to " + euro(v) + ", ${ALONE_PER_DAY} times a day";
+    $("rl-purser").lastChild.textContent = "Purser: up to " + euro(v) + " alone, ${ALONE_PER_DAY} a day";
     $("rl-purser").classList.toggle("chg", v !== now);
     $("rl-awx").lastChild.textContent = "Airwallex card: " + euro(a.per_tx) + " each, " + euro(a.monthly) + " a month";
     $("rl-metal").lastChild.textContent = "Metal mandate: " + String(Number(m.cap)) + " test USD each";
@@ -1260,6 +1282,7 @@ const JS = `
     btn.disabled = !(looser || stricter);
     note.textContent = looser ? W.rule.looser : stricter ? W.rule.stricter : v ? W.rule.same : "";
     note.className = "note" + (looser ? " looser" : stricter ? " stricter" : "");
+    $("s4-argue").className = "argue" + (looser ? " looser" : stricter ? " stricter" : "");
     status("s4-status", "");
   }
   document.querySelectorAll("#rule-chips .chip").forEach(function (b) { b.addEventListener("click", function () { pick(b.dataset.alone); }); });
@@ -1596,10 +1619,10 @@ ${scr(4, `  <h2 tabindex="-1" id="k-head">${esc(W.trick.head)}</h2>
 ${scr(5, `  <h2 tabindex="-1" id="s4-head">${esc(W.rule.head)}</h2>
   <p class="q">${esc(W.rule.question)}</p>
   <div class="chips" id="rule-chips" role="group" aria-label="${esc(W.rule.question)}">${W.rule.chips.map((v) => `<button class="chip" type="button" data-alone="${v}" data-world="1" aria-pressed="false">${esc(euro(v))}${v === TEST_WORLD.alone_limit ? `<span class="now" title="in force">${icon("check", 16)}</span>` : ""}</button>`).join("")}</div>
-  <p class="worst" id="s4-worst">${esc(`${TRY_SIGN_SCREENS.rule.worst} €${(START_WORST_EUR_MONTH / 100).toLocaleString("en-US")} a month`)}</p>
+  <div class="argue" id="s4-argue"><p class="worst" id="s4-worst">${esc(`${TRY_SIGN_SCREENS.rule.worst} €${(START_WORST_EUR_MONTH / 100).toLocaleString("en-US")} a month`)}</p>
+  <p class="note" id="s4-note" aria-live="polite"></p></div>
   <details class="more" id="s4-more"><summary>more</summary><p id="s4-full">${esc(START_WORST.headline)}</p><p>${esc(mainRunWorst())}</p></details>
-  <ul class="locks1" id="s4-locks"><li id="rl-purser">${icon("check", 18)}<span></span></li><li id="rl-awx">${icon("check", 18)}<span></span></li><li id="rl-metal">${icon("check", 18)}<span></span></li></ul>
-  <p class="note" id="s4-note" aria-live="polite"></p>
+  <ul class="locks1" id="s4-locks">${([["rl-purser", "purser"], ["rl-awx", "airwallex"], ["rl-metal", "metal"]] as const).map(([id, k]) => `<li id="${id}">${icon("check", 18)}<span class="ch">${esc(LOCK_CHANNELS[k].short)}</span><span></span></li>`).join("")}</ul>
   <p class="status" id="s4-status" aria-live="polite"></p>
   <details class="fold quiet policy" id="policy"><summary id="p-open">${esc(TRY_POLICY.open)}</summary><div class="fbody pbody" id="p-body">
     <dl class="world" id="w-facts"><div><dt>Test world</dt><dd id="w-id"></dd></div><div><dt>EUR</dt><dd id="w-balance"></dd></div><div><dt>EUR floor</dt><dd id="w-floor"></dd></div><div><dt>USD</dt><dd id="w-usd"></dd></div><div><dt>USD floor</dt><dd id="w-usd-floor"></dd></div><div><dt>An agent pays alone up to</dt><dd id="w-alone"></dd></div><div><dt>Deleted</dt><dd id="w-left" data-left="in"></dd></div></dl>
@@ -1623,9 +1646,9 @@ ${scr(5, `  <h2 tabindex="-1" id="s4-head">${esc(W.rule.head)}</h2>
       <p class="status" id="p-sstatus" aria-live="polite"></p>
     </div>
     <div class="locks3" id="p-locks">
-      <article class="lk lk-purser" data-panel="purser"><div class="lkh"><span class="n">1</span><b>${esc(TRY_POLICY.panels.purser)}</b><span class="pill state"></span></div><p class="ns">Rules in code, checked before anything is signed</p><ul id="pl-rules"></ul><pre id="pl-purser"></pre><ul id="pl-pay" hidden></ul></article>
-      <article class="lk lk-awx" data-panel="airwallex"><div class="lkh"><span class="n">2</span><b>${esc(TRY_POLICY.panels.airwallex)}</b><span class="pill state"></span></div><p class="ns">${esc(TRY_POLICY.notSent.airwallex)}</p><pre id="pl-awx"></pre></article>
-      <article class="lk lk-metal" data-panel="metal"><div class="lkh"><span class="n">3</span><b>${esc(TRY_POLICY.panels.metal)}</b><span class="pill state"></span></div><p class="ns">${esc(TRY_POLICY.notSent.metal)}</p><p class="unit" id="pl-unit">${esc(TRY_POLICY.metalUnit)}</p><dl id="pl-metal"></dl><pre id="pl-margs"></pre><p class="small muted">${esc(TRY_POLICY.metalNote)}</p></article>
+      <article class="lk lk-purser" data-panel="purser"><div class="lkh"><span class="n">1</span><b>${esc(TRY_POLICY.panels.purser)}</b><span class="ch">${esc(LOCK_CHANNELS.purser.long)}</span><span class="pill state"></span></div><p class="ns">Rules in code, checked before anything is signed</p><ul id="pl-rules"></ul><pre id="pl-purser"></pre><ul id="pl-pay" hidden></ul></article>
+      <article class="lk lk-awx" data-panel="airwallex"><div class="lkh"><span class="n">2</span><b>${esc(TRY_POLICY.panels.airwallex)}</b><span class="ch">${esc(LOCK_CHANNELS.airwallex.long)}</span><span class="pill state"></span></div><p class="ns">${esc(TRY_POLICY.notSent.airwallex)}</p><pre id="pl-awx"></pre></article>
+      <article class="lk lk-metal" data-panel="metal"><div class="lkh"><span class="n">3</span><b>${esc(TRY_POLICY.panels.metal)}</b><span class="ch">${esc(LOCK_CHANNELS.metal.long)}</span><span class="pill state"></span></div><p class="ns">${esc(TRY_POLICY.notSent.metal)}</p><p class="unit" id="pl-unit">${esc(TRY_POLICY.metalUnit)}</p><dl id="pl-metal"></dl><pre id="pl-margs"></pre><p class="small muted">${esc(TRY_POLICY.metalNote)}</p></article>
     </div>
     <p class="basis">${esc(TRY_POLICY.source)}</p>
   </div></details>
@@ -1645,9 +1668,9 @@ ${scr(7, `  <h2 tabindex="-1" id="d-head">${esc(W.done.head)}</h2>
   <p class="eyebrow">One policy → three locks</p>
   <div class="dn d-policy">${icon("shield-check", 20)}<span><b>The CFO's policy</b><small>One set of limits, written once.</small></span></div>
   <ol class="dlocks">
-    <li class="dn d-purser">${icon("lock", 18)}<span><b>Purser</b><small id="dg-purser">${esc(euro(TEST_WORLD.alone_limit))} alone, ${ALONE_PER_DAY} a day</small><small class="dstop">Just stopped another payment · <a id="dg-real" href="${esc(locks.find((l) => l.id === "purser")?.href ?? "/proof")}">a real one</a></small></span></li>
-    <li class="dn d-airwallex">${icon("lock", 18)}<span><b>Airwallex card</b><small id="dg-awx">€25 each, €50 a month</small></span></li>
-    <li class="dn d-metal">${icon("lock", 18)}<span><b>Metal mandate</b><small id="dg-metal">25 test USD each</small></span></li>
+    <li class="dn d-purser">${icon("lock", 18)}<span><b>Purser</b><small class="ch">${esc(LOCK_CHANNELS.purser.long)}</small><small id="dg-purser">${esc(euro(TEST_WORLD.alone_limit))} alone, ${ALONE_PER_DAY} a day</small><small class="dstop">Just stopped another payment · <a id="dg-real" href="${esc(locks.find((l) => l.id === "purser")?.href ?? "/proof")}">a real one</a></small></span></li>
+    <li class="dn d-airwallex">${icon("lock", 18)}<span><b>Airwallex card</b><small class="ch">${esc(LOCK_CHANNELS.airwallex.long)}</small><small id="dg-awx">€25 each, €50 a month</small></span></li>
+    <li class="dn d-metal">${icon("lock", 18)}<span><b>Metal mandate</b><small class="ch">${esc(LOCK_CHANNELS.metal.long)}</small><small id="dg-metal">25 test USD each</small></span></li>
   </ol>
   <div class="dn d-sign">${icon("scan-face", 20)}<span><b>Above the limit: your signature</b><small>Face ID over the exact terms; change one cent and it is worthless.</small></span></div>
   <div class="dn d-alone">${icon("circle-check", 20)}<span><b>Within the limit: paid alone</b><small>No signature needed, and nothing above it.</small></span></div>
@@ -1659,7 +1682,7 @@ ${scr(7, `  <h2 tabindex="-1" id="d-head">${esc(W.done.head)}</h2>
     title: "Sign with your own Face ID", description: "Try it yourself in 60 seconds: an agent asks to pay, you sign the exact terms with Face ID, try to cheat, change the rule, and see the agent pay alone. A test world of your own; nothing real moves.",
     tab: "try", css: trySignCss(), body, js: JS, stage: false,
     data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check", "check", "lock", "external-link", "arrow-right", "receipt", "bot", "shield-check", "arrow-left-right"]), locks, cfo: cfoApproval().line, fields: TAMPER_FIELDS, verdict: TAMPER_VERDICT, receipt: RECEIPT_FORMAT, recordedFx: recordedQuote(), end: TRY_SIGN_END, film: TRY_SIGN_FILM, codeLabel: CODE_LABEL,
-      steps: TRY_SIGN_STEPS, screens: TRY_SIGN_SCREENS, perDay: ALONE_PER_DAY, waiting: WAITING.id, blocked: FIXED_PROPOSALS.find((p) => p.id !== WAITING.id)!.id, next: NEXT, otherIban: OTHER_IBAN,
+      steps: TRY_SIGN_STEPS, screens: TRY_SIGN_SCREENS, channels: LOCK_CHANNELS, perDay: ALONE_PER_DAY, waiting: WAITING.id, blocked: FIXED_PROPOSALS.find((p) => p.id !== WAITING.id)!.id, next: NEXT, otherIban: OTHER_IBAN,
       policy: { fields: POLICY_FIELDS, words: FIELD_WORDS, state: TRY_POLICY.state, paidAlone: PAID_ALONE, worstCase: TRY_POLICY.worstCase, saidBefore: TRY_POLICY.saidBefore, worstCaseChain: TRY_POLICY.worstCaseChain, ifSigned: TRY_POLICY.ifSigned } },
     source: "Source: a test world made for you (worker/src/trySign.ts); nothing in it is recorded anywhere else. The lock examples: docs/demo/main-run.json and docs/runs/visa-tap-live-2026-11-02.json.",
     real: [
@@ -1726,6 +1749,8 @@ code.hp { font: 600 13.5px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, m
 .ibans .ib code { font: 600 14px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; min-width: 0; }
 .ibans .ib .i { flex: none; } .ibans .known .i { color: var(--ok); } .ibans .new { border-color: var(--bad); } .ibans .new .i { color: var(--bad); }
 .ibans .neq { font-weight: 750; color: var(--bad); }
+/* On a phone the two IBANs one above the other, right-aligned, so the account numbers line up digit for digit. */
+@media (max-width: 640px) { .ibans { display: grid; grid-template-columns: max-content; gap: 6px; } .ibans .ib { justify-content: space-between; } .ibans .neq { display: none; } }
 /* Change the rule: the figures count (countTo in the script), the three locks light up one by one. */
 .counting { position: relative; -webkit-text-fill-color: transparent; }
 .counting::after { content: attr(data-count); position: absolute; inset: 0; padding: inherit; -webkit-text-fill-color: currentColor; overflow: hidden; }

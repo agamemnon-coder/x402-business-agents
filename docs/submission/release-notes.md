@@ -367,6 +367,13 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   laptop the diagram lights each step's part as it opens. Each animation runs 150 to 400 ms and nothing waits for one;
   with prefers-reduced-motion the end state shows at once (a browser check walks that path). 2980 tests in 289 files,
   all passing.
+- 7 November, /try/sign after Max's review: each lock shows its channel (Purser: invoices and proposals; the Airwallex
+  card: card spend; the Metal mandate: on-chain payments), on screen 5's lines, in the diagram, on the blocked payment's
+  locks and on the full policy's panels. The worst case is the argument for the signature: a looser rule shows the
+  figure with what it adds, and right under it "That risk needs your Face ID." "Try to trick the agent" is calmer: a
+  plain card, red only for what differs and for the block, the invoice's IBAN beside the one on file. The band at the
+  top is thin: 22 px in one line from 390 px (it was 63 px in two at 390 px, 44 px on a laptop). A fix: with no advice
+  from the agent, screen 1 no longer shows a stray "null". 2985 tests in 290 files, all passing.
 
 ## Real, and ours
 

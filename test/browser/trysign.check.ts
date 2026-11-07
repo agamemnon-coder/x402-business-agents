@@ -49,7 +49,7 @@ const advisor = new StandInAdvisor();
 // Section 6: the invoice reader's stand-in, as the line's: it reads the document's own lines, labelled "stand-in, not Claude".
 const { parseInvoiceFallback } = await import("../../src/claude/invoiceReading.js");
 const readerStandIn = async (doc: string) => ({ value: parseInvoiceFallback(doc), requestId: "req_standin_reader", costUsd: 0, model: "stand-in", ms: 300 });
-const { mainRunWorst, OTHER_IBAN, TAMPER_VERDICT, TRY_POLICY, TRY_SIGN_END, TRY_SIGN_LABEL, TRY_SIGN_SCREENS: W, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
+const { LOCK_CHANNELS, mainRunWorst, OTHER_IBAN, TAMPER_VERDICT, TRY_POLICY, TRY_SIGN_END, TRY_SIGN_LABEL, TRY_SIGN_SCREENS: W, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
 const { ALONE_PER_DAY, PAID_ALONE, defaultPolicy, exposurePolicyOfWorld, threeLocks } = await import("../../src/try/policy.js");
 // 1.1: the worst case, read from the policy code (src/policy/exposure.ts) with the main run's recorded rate.
 const { exposureOf, exposureWords } = await import("../../src/policy/exposure.js");
@@ -301,6 +301,8 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   check((await page.locator(".testband .tl").innerText()).trim() === TRY_SIGN_LABEL, `${tag}: the label at the top reads "${TRY_SIGN_LABEL}"`);
   const band = await page.locator(".testband").boundingBox();
   check(!!band && band.y === 0, `${tag}: the label is the first thing on the page`);
+  // A thin band (Max's review): about half its height before (44 px in one line, 63 px in two at 390 px).
+  check(!!band && band.height <= (width >= 390 ? 24 : 40), `${tag}: the band at the top is thin (${band?.height} px)`);
   const labelLines = await page.locator(".testband .tl").evaluate((e: Element) => { const r = document.createRange(); r.selectNodeContents(e.lastChild as Node); return new Set([...r.getClientRects()].map((b) => Math.round(b.top))).size; }) as number;
   if (width >= 390) check(labelLines === 1, `${tag}: the disclaimer is one line (${labelLines})`);
   // "What's real?": one link in the band, closed until asked, opening to the honest lines.
@@ -715,9 +717,14 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   const labelsOf = async () => await page.locator("#rule-chips .chip").evaluateAll((bs: Element[]) => bs.map((b) => b.getAttribute("aria-label"))) as string[];
   check(JSON.stringify(chips) === JSON.stringify(["€500", "€2,000", "€5,000"]) && JSON.stringify(await labelsOf()) === JSON.stringify(["€500, in force", "€2,000", "€5,000"]) && await page.locator('#rule-chips .chip[data-alone="500.00"] .now svg').count() === 1,
     `${tag}: three amounts: ${chips.join(" · ")}, €500 marked in force (a tick, and its name)`);
-  const rl = (await page.locator("#s4-locks li").allInnerTexts()).map((t: string) => t.trim());
+  const rl = (await page.locator("#s4-locks li > span:last-child").allInnerTexts()).map((t: string) => t.trim());
+  // Each lock with its channel in front (Max's review): Purser the invoices, the Airwallex card the card spend, Metal on chain.
+  const channels = (await page.locator("#s4-locks li .ch").allInnerTexts()).map((t: string) => t.trim());
+  check(JSON.stringify(channels) === JSON.stringify([LOCK_CHANNELS.purser.short, LOCK_CHANNELS.airwallex.short, LOCK_CHANNELS.metal.short]) && JSON.stringify(channels) === '["Invoices","Card spend","On-chain"]',
+    `${tag}: each lock shows its channel: ${channels.join(" · ")}`);
+  if (width >= 1024) check(JSON.stringify(await page.locator("#diagram .dlocks small.ch").allTextContents()) === JSON.stringify([LOCK_CHANNELS.purser.long, LOCK_CHANNELS.airwallex.long, LOCK_CHANNELS.metal.long]), `${tag}: the diagram names each lock's channel`);
   const eurOf = (h: string) => Number(/EUR ([\d,]+)/.exec(h)![1]!.replace(/,/g, ""));
-  check((await page.locator("#s4-worst").innerText()).trim() === `${W.rule.worst} €${eurOf(WORST.headline).toLocaleString("en-US")} a month` && JSON.stringify(rl) === JSON.stringify([`Purser: pays alone up to €500, ${ALONE_PER_DAY} times a day`, "Airwallex card: €25 each, €50 a month", "Metal mandate: 25 test USD each"]),
+  check((await page.locator("#s4-worst").innerText()).trim() === `${W.rule.worst} €${eurOf(WORST.headline).toLocaleString("en-US")} a month` && JSON.stringify(rl) === JSON.stringify([`Purser: up to €500 alone, ${ALONE_PER_DAY} a day`, "Airwallex card: €25 each, €50 a month", "Metal mandate: 25 test USD each"]),
     `${tag}: one honest worst case (€${eurOf(WORST.headline).toLocaleString("en-US")} a month) and the three locks, Purser first: ${rl.join(" · ")}`);
   await page.locator("#s4-more > summary").click();
   check((await page.locator("#s4-full").innerText()).trim() === WORST.headline && (await page.locator("#s4-more").innerText()).includes(mainRunWorst()), `${tag}: behind "more": the full figure and why the main run's is EUR 300 (${mainRunWorst()})`);
@@ -730,11 +737,12 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   check(await page.locator("#s4-worst.counting[data-count]").count() === 1 && await page.locator("#s4-locks.lit").count() === 1, `${tag}: choosing €2,000: the worst case counts up, the three locks light up one by one`);
   await motionOk(page, tag, "choosing an amount", ["lockon"]);
   await page.waitForFunction(() => !document.querySelector("#s4-worst.counting"), undefined, { timeout: 2000 });
+  check(await page.locator("#s4-argue #s4-worst + #s4-note").count() === 1 && await page.locator("#s4-argue.looser").count() === 1, `${tag}: the worst case is the argument: "${W.rule.looser}" right under it`);
   check((await page.locator("#s4-note").innerText()).trim() === W.rule.looser && (await page.locator("#go-apply").innerText()).trim() === W.rule.sign && await page.locator("#go-apply").isEnabled(),
     `${tag}: €2,000 is looser: "${W.rule.looser}", the button "${W.rule.sign}"`);
   // The worst case moves with the choice (Max, 7 Nov, 1.4): the line names €2,000, and what it adds a month shows beside it.
   const addMonth = (Number(/EUR ([\d,]+)/.exec(worldExpo("2000.00").headline)![1]!.replace(/,/g, "")) - Number(/EUR ([\d,]+)/.exec(WORST.headline)![1]!.replace(/,/g, "")));
-  check((await page.locator("#s4-worst").innerText()).trim() === `${W.rule.worst} €${eurOf(worldExpo("2000.00").headline).toLocaleString("en-US")} a month (+€${addMonth.toLocaleString("en-US")})` && addMonth === 1500 * ALONE_PER_DAY * 31 && (await page.locator("#rl-purser").innerText()).trim() === `Purser: pays alone up to €2,000, ${ALONE_PER_DAY} times a day`,
+  check((await page.locator("#s4-worst").innerText()).trim() === `${W.rule.worst} €${eurOf(worldExpo("2000.00").headline).toLocaleString("en-US")} a month (+€${addMonth.toLocaleString("en-US")})` && addMonth === 1500 * ALONE_PER_DAY * 31 && (await page.locator("#rl-purser > span:last-child").innerText()).trim() === `Purser: up to €2,000 alone, ${ALONE_PER_DAY} a day`,
     `${tag}: choosing €2,000: the worst case with what it adds (+€${addMonth.toLocaleString("en-US")}), Purser's lock follows`);
   if (width >= 1024) {
     await page.waitForTimeout(400);
@@ -824,7 +832,7 @@ if (!args.live && !ONLY) {
     const stricter = await formPolicy(page);
     pn = await panels(page);
     check(/^Stricter: it holds at once/.test(await pstatus()) && stricter.agents.treasury.per_tx === "20.00" && pn.state === "in-force" && panelsMatch(pn, expectedLocks(stricter, worldId))
-      && /"amount": 20,/.test(pn.awx) && pn.metal[0] === "20.00" && pn.purser.includes('"card.treasury.per_tx": "20.00"') && pn.changed >= 3 && (await page.locator("#rl-awx").innerText()).trim() === "Airwallex card: €20 each, €50 a month",
+      && /"amount": 20,/.test(pn.awx) && pn.metal[0] === "20.00" && pn.purser.includes('"card.treasury.per_tx": "20.00"') && pn.changed >= 3 && (await page.locator("#rl-awx > span:last-child").innerText()).trim() === "Airwallex card: €20 each, €50 a month",
       `${tag}: stricter (25.00 → 20.00 a purchase) holds at once; the three panels follow it, the changed lines marked (${pn.changed}); the card's line too`);
     check(await clearOfBar(page, "#p-status", 4), `${tag}: the result line, scrolled to, is not under the sticky button`);
     await shot(page, `${tag}-2-stricter.png`);
@@ -934,7 +942,7 @@ if (!args.live && !ONLY) {
     await page.waitForFunction(() => /ok/.test(document.getElementById("p-status")?.className ?? ""));
     await page.locator("#p-open").click();
     const signed = (await v.signCount())[0] ?? 0;
-    check(await page.locator('#rule-chips .chip[data-alone="500.00"]').getAttribute("aria-label") === "€500" && await page.locator("#rule-chips .chip .now").count() === 0 && (await page.locator("#rl-purser").innerText()).trim() === `Purser: pays alone up to €1,000, ${ALONE_PER_DAY} times a day`, `${tag}: in force now: €1,000 (signed); no chip marked in force`);
+    check(await page.locator('#rule-chips .chip[data-alone="500.00"]').getAttribute("aria-label") === "€500" && await page.locator("#rule-chips .chip .now").count() === 0 && (await page.locator("#rl-purser > span:last-child").innerText()).trim() === `Purser: up to €1,000 alone, ${ALONE_PER_DAY} a day`, `${tag}: in force now: €1,000 (signed); no chip marked in force`);
     await page.click('#rule-chips .chip[data-alone="500.00"]');
     check((await page.locator("#s4-note").innerText()).trim() === W.rule.stricter && (await page.locator("#go-apply").innerText()).trim() === W.rule.apply && await page.locator("#go-apply").isEnabled(), `${tag}: €500 is stricter: "${W.rule.stricter}", the button "${W.rule.apply}"`);
     await shot(page, `${tag}-1-stricter.png`);
