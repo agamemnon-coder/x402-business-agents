@@ -124,8 +124,11 @@ describe("the Airi run on the site", () => {
       expect(b).not.toMatch(/\b[0-9a-f]{64}\b/);
       expect(text(b)).not.toMatch(/vic-1|emulat|\bMax\b|\b(he|him|his|she|her|hers)\b|Visa Award|code decides/i);
     }
-    // No "Visa Award" anywhere on the pages until Visa confirms eligibility (docs/submission/visa-award-pending.md).
-    for (const name of ["home", ...PAGES] as const) expect({ name, award: /Visa Award/.test(text(pages[name]!)) }).toEqual({ name, award: false });
+    // Since 7 Nov (Visa: the VIC run counts) the Visa Award is named once, in Home's Kit line, "entered for the Metal Award
+    // and the Visa Award"; nowhere else on these pages, and never with TAP.
+    expect(text(pages.home!).match(/Visa Award/g)).toHaveLength(1);
+    expect(text(pages.home!)).toContain("entered for the Metal Award and the Visa Award");
+    for (const name of PAGES) expect({ name, award: /Visa Award/.test(text(pages[name]!)) }).toEqual({ name, award: false });
     // The record and the run log too: ids, hashes and codes only.
     for (const [name, body] of [["record", RAW], ["run log", LOG]] as const) {
       for (const re of PRIVATE) expect({ name, re: String(re), found: re.exec(body)?.[0] ?? null }).toEqual({ name, re: String(re), found: null });

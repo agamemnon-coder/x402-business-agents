@@ -14,7 +14,7 @@ AI agents are starting to spend company money; Purser lets them, through Airwall
 
 The Kit 11 scenario, run live on 3 November, and a demo you sign yourself: **[kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/)**.
 
-Starter Kit 11 · x402 Business Agents · entered for the Metal Award (Visa TAP is an extra: [note](docs/submission/long-description.md#visa)). Northwind Outdoor,
+Starter Kit 11 · x402 Business Agents · entered for the Metal Award and the Visa Award (Visa: [the Airi run](#visa-intelligent-commerce-via-airwallexs-airi-a-live-run-7-nov), Visa Intelligent Commerce; TAP is an extra: [note](docs/submission/long-description.md#visa)). Northwind Outdoor,
 the example company, is an outdoor wholesaler that sells live stock data to retailers per query: the kit's data business.
 
 ## Look here first

@@ -42,7 +42,7 @@ cautious reading in the right column.
 | Question | Working assumption |
 |---|---|
 | Can one project win the Metal Award and also Founder's or Judges' Choice? | Possible; nothing forbids it. We build for the Metal Award and judge-level quality. |
-| Can one project win both the Metal and the Visa Award? | Yes (organisers, 1 November), but moot: Visa said on 5 November that TAP is not eligible Visa tooling for this hackathon (VIC or ICC only), so Purser is entered for the Metal Award only (D27). |
+| Can one project win both the Metal and the Visa Award? | Yes (organisers, 1 November). Visa said on 5 November that TAP is not eligible Visa tooling for this hackathon (VIC or ICC only) (D27), and on 7 November that the VIC run counts (the Airi run, Visa Intelligent Commerce via Airwallex's Airi), so Purser is entered for the Metal Award and the Visa Award (D28). Was, 5 to 7 November: Metal Award only. |
 | Video: hard limit of 5:00, and where to host it (YouTube unlisted, Loom, file upload)? | Stay under 4:45; unlisted YouTube plus a link in the README. |
 | Must the repo be public at submission, or may it stay private with judge access? | Public by Nov 12 (HackerEarth FAQ), after gitleaks on the full history. |
 | Any rule on AI-written code? | None found. We say openly that it was built with Claude Code (Anthropic sponsors the credits). |

@@ -1,8 +1,9 @@
 # Purser v1.0-submission
 
 The version submitted to the Airwallex Agentic Banking Hackathon: Starter Kit 11 (x402 Business Agents), entered for
-the Metal Award. Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for
-this hackathon (Visa, 5 Nov). Tag `v1.0-submission`.
+the Metal Award and the Visa Award (Visa: the Airi run, Visa Intelligent Commerce via Airwallex's Airi, 7 Nov). Visa
+TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa,
+5 Nov). Tag `v1.0-submission`.
 
 Three Claude agents run a small data business on test money through Metal (testnet) and Airwallex (sandbox). Metal
 holds each agent's on-chain budget, Airwallex holds each card's limit, Purser's code holds the rest; the CFO approves
@@ -518,3 +519,15 @@ Claude Code, on Max's go; in production a second person). Sources for every clai
   the world opens and after the agents' answers, and at once on any screen change, so neither answer is one long
   task; the first screen scrolls to the top with the first frame instead of forcing a layout in the middle of the
   script. Same behaviour and words; the browser checks (Chromium and WebKit) pass. 3049 tests in 295 files, all passing.
+- 7 November, Visa's word on the VIC run: Visa said in the hackathon Slack that the VIC run counts, so Purser is entered
+  for the Metal Award and the Visa Award, the Visa Award on the Airi run (Visa Intelligent Commerce via Airwallex's
+  Airi, docs/runs/2026-11-07-vic-1.md), not on TAP. Home's award pill reads "entered for the Metal Award and the Visa
+  Award" (Home's word budget 190 → 195); "Visa TAP" stays out of "Built on" (`VISA_AWARD_ON` stays off). TAP's status
+  line keeps "not eligible Visa tooling for this hackathon (Visa, 5 Nov)" and drops ", so Purser is entered for the
+  Metal Award only" (/visa, the form's Links, the long text, the deck's last slide). The form's Description says
+  "entered for the Metal Award and the Visa Award." (3,997 characters; awx-1's line "7 of 7 checks; 2 Airwallex card
+  declines; the CFO's hash in 2 SWIFT payouts."); the README, the long text, docs/rules.md, docs/requirements-matrix.md
+  (V1 entered, V2 VIC), docs/claims.md, docs/evidence/README.md and docs/decisions.md (D28) say the same, with the
+  earlier wording kept as "Was". The tests that held the Metal-only wording hold the new one, and still refuse TAP as
+  eligible Visa tooling. The deck (purser-deck.pdf and its slide PNGs) printed again. 3066 tests in 297 files, all
+  passing.

@@ -203,13 +203,15 @@ describe("the redesigned public pages", () => {
     }
   });
 
-  it("carry Home's badge with the Metal Award only (Visa, 5 Nov: TAP is not eligible Visa tooling), and Visa only as text, never certified or endorsed", () => {
+  it("carry Home's badge with the Metal Award and the Visa Award (Visa, 7 Nov: the VIC run counts; TAP still not eligible, 5 Nov), no Visa TAP in \"Built on\", and Visa only as text, never certified or endorsed", () => {
+    // VISA_AWARD_ON stays off: it would add "Visa TAP" to "Built on", and TAP is not the eligible tooling.
     expect(VISA_AWARD_ON).toBe(false);
-    expect(KIT_LINE).toBe("Kit 11 · x402 Business Agents · entered for the Metal Award");
-    expect(HOME_BADGE).toBe("Kit 11 · Metal Award · built on Airwallex, Metal, Claude");
-    // Two pills, each on one line: the kit, and the award entered (never read as already won).
+    expect(KIT_LINE).toBe("Kit 11 · x402 Business Agents · entered for the Metal Award and the Visa Award");
+    expect(HOME_BADGE).toBe("Kit 11 · Metal Award and Visa Award · built on Airwallex, Metal, Claude");
+    // Two pills, each on one line: the kit, and the awards entered (never read as already won).
     expect(homePage()).toContain(">Kit 11 · x402 Business Agents<");
-    expect(homePage()).toContain(">entered for the Metal Award<");
+    expect(homePage()).toContain(">entered for the Metal Award and the Visa Award<");
+    expect(/<div class="built">([\s\S]*?)<\/div>/.exec(homePage())?.[1]).not.toMatch(/Visa|TAP/);
     // The TAP work stays reachable from Home as a labelled extra, a footer link to /visa (jury review, 6 Nov, #7: no
     // partner card, nothing in the three moments).
     expect(homePage()).toContain(`<a class="flink" href="visa">${VISA_EXTRA_LINK}</a>`);
@@ -231,16 +233,16 @@ describe("the redesigned public pages", () => {
     expect(run.scenes[0]!.steps.map((s) => s.text)).toEqual(expect.arrayContaining(["2 of 2 signatures"]));
   });
 
-  it("TAP's status is Max's wording (5 Nov), said once, on /visa (Home and Proof link to it as an extra), and no page enters Purser for the Visa Award", () => {
+  it("TAP's status is Max's wording (5 Nov), said once, on /visa (Home and Proof link to it as an extra); the Visa Award only in the Kit line, never on TAP", () => {
     const pages = buildPages() as unknown as Record<string, unknown>;
-    expect(VISA_TAP_STATUS).toBe("Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov), so Purser is entered for the Metal Award only.");
+    expect(VISA_TAP_STATUS).toBe("Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov).");
     // Said once: on /visa; Home and Proof only link to /visa, labelled as an extra, not an award entry.
     for (const name of ["home", "proof", "visa"]) {
       const html = name === "home" ? homePage() : name === "proof" ? proofPage() : String(pages.visa);
       expect({ name, has: html.split(esc(VISA_TAP_STATUS)).length - 1 }).toEqual({ name, has: name === "visa" ? 1 : 0 });
       if (name !== "visa") expect({ name, link: html.includes(`href="visa">${esc(VISA_EXTRA_LINK)}</a>`) }).toEqual({ name, link: true });
     }
-    for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, bad: /confirmed (that )?TAP|TAP counts as Visa tooling|counts as Visa tooling|still being confirmed with Visa|entered for the (Metal Award and the |Metal Award \+ )?Visa Award|\+ Visa Award|Visa Award entry/i.test(body) }).toEqual({ name, bad: false });
+    for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, bad: /confirmed (that )?TAP|TAP counts as Visa tooling|counts as Visa tooling|still being confirmed with Visa|\+ Visa Award|Visa Award entry/i.test(body) || /Visa Award/i.test(body.split("entered for the Metal Award and the Visa Award").join(" ")) }).toEqual({ name, bad: false });
   });
 
   it("labels the licence payment by who planned it: the Treasury agent itself in the main run; agent run 1's honest note is kept", () => {
