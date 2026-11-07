@@ -1,8 +1,10 @@
 // The phone's side of passkey approvals (tier 2 item 5), served as /assets/approve.js to the approval and
 // enrolment pages. It trusts nothing it is sent: it canonicalises and hashes each proposal's terms itself
-// (WebCrypto), refuses anything that does not hash to the hash it would sign, and builds every line of the confirm
-// screen from those hashed terms. Mis-tap prevention: a tap on an option opens a full-screen summary of that one
-// option; only "Confirm with Face ID" there starts the passkey, whose challenge is that option's hash.
+// (WebCrypto), refuses anything that does not hash to the hash it would sign, and builds every line of the approval
+// view from those hashed terms, only after checking the runner signed them (the runner's key is pinned from the
+// viewer link; a new run's key replaces it only on the person's press). Mis-tap prevention: the approval view shows
+// the one proposal (or the one option chosen) with "Approve with Face ID", which arms after a moment; the passkey's
+// challenge is that proposal's hash.
 //
 // No imports: the deploy step only strips the types (TypeScript transpileModule) and serves the result as is.
 
@@ -399,6 +401,55 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
   };
 }
 
+const cap1 = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/**
+ * The agent behind a proposal, for the first line of the approval view: from the hashed terms where they name one
+ * (who asked for a task card, the agent an Airi purchase or a mandate is for), else who proposed it (runner-signed).
+ */
+export function agentOf(createdBy: string, t: Obj): string {
+  const kind = str(t.kind);
+  if (kind === "task_card") {
+    const by = str(t.asked_by);
+    if (by === "cfo-at-runner") return "None: you asked at the runner";
+    if (by.startsWith("agent:")) return `${cap1(by.slice(6))} agent`;
+    if (by.startsWith("ext:")) return `Outside agent ${by.slice(4)}`;
+    return "None: a chat message with the dashboard link";
+  }
+  if (kind === "agent_onboard") return `${str(t.display_name)} (outside agent ${str(t.agent_id)})`;
+  if (kind === "airi_purchase" && str(t.agent)) return `${cap1(str(t.agent))} agent`;
+  if (kind === "owners_execute" && isObj(t.action) && str(t.action.agent)) return `${cap1(str(t.action.agent))} agent`;
+  if (createdBy === "human") return "None: a change made by a person";
+  if (createdBy === "system" || createdBy === "") return "Purser";
+  if (createdBy.startsWith("ext:")) return `Outside agent ${createdBy.slice(4)}`;
+  return `${cap1(createdBy)} agent`;
+}
+
+/**
+ * Why this waits for the CFO, in one line: the rule that sends it here, from the hashed terms and the runner-signed
+ * policy; and when two people must approve it, that too.
+ */
+export function whyYou(t: Obj, policy: { key: string; value: string }[] = [], fourEyes?: { approved_by: string[] }): string {
+  const val = (k: string) => policy.find((e) => e.key === k)?.value ?? "";
+  const kind = str(t.kind);
+  const [each, perDispute, cardEur] = [val("approval.refund_each"), val("approval.refund_per_dispute"), val("approval.task_card_eur")];
+  const why = kind === "mandate_replace" ? "It changes what agents may pay on chain, and a mandate changes only with your Face ID."
+    : kind === "refund_batch" ? (each && perDispute ? `Your policy sends refunds above ${each} USDZ each, or ${perDispute} per dispute, to you.` : "Your policy sends refunds above its limits to you.")
+    : kind === "invoice_payment" ? "A supplier is paid from the Airwallex account only with your Face ID."
+    : kind === "policy_change" ? "The CFO policy changes only with your Face ID."
+    : kind === "payee_change" ? "A supplier's bank details change only with your Face ID."
+    : kind === "quarantine_release" ? "Money Metal held in quarantine moves only with your Face ID."
+    : kind === "task_card" ? (cardEur ? `Without your Face ID, a task card is issued only when you ask at the runner, up to ${cardEur} EUR.` : "A task card is issued only with your Face ID.")
+    : kind === "airi_purchase" ? "An agent's purchase through Airi starts only with your Face ID."
+    : kind === "agent_onboard" ? "An outside agent gets a company card only with your Face ID."
+    : kind === "owners_execute" ? "The business account on chain runs this only with your passkey and the controller's."
+    : kind === "dev_test" ? "It checks Face ID on this phone; nothing moves."
+    : "This kind of proposal cannot be approved on the phone.";
+  if (!fourEyes) return why;
+  const so = fourEyes.approved_by.length ? ` Approved so far: ${fourEyes.approved_by.join(", ")}.` : "";
+  return `${why} It needs two people (four eyes).${so}`;
+}
+
 /** "0,03" (a decimal comma, as many phones type it) reads as 0.03; nothing else is guessed. */
 export function normalizeAmount(input: string): string {
   const v = input.trim();
@@ -513,19 +564,81 @@ export function takeViewKey(hash: string, store: Pick<Storage, "getItem" | "setI
 }
 
 const RUNNER_STORE = "kit11.runner";
-/**
- * The runner's public key from the same link (base64url SPKI), pinned on this device. The first one stays: a later
- * link with another key does not replace it (review N3); to re-pin, clear this site's data on the phone.
- */
-export function takeRunnerKey(hash: string, store: Pick<Storage, "getItem" | "setItem"> | null): { key: string; conflict: boolean } {
-  let pinned: string;
-  try { pinned = store?.getItem(RUNNER_STORE) ?? ""; } catch { pinned = ""; }
-  const fromLink = /(?:^#|&)runner=([A-Za-z0-9_-]{80,200})(?:&|$)/.exec(hash)?.[1];
-  if (pinned) return { key: pinned, conflict: fromLink !== undefined && fromLink !== pinned };
-  return { key: takeFromLink(hash, store, "runner", /^[A-Za-z0-9_-]{80,200}$/, RUNNER_STORE), conflict: false };
+/** Another runner key a link brought to this device: kept apart, never used to verify until the person accepts it. */
+const OFFER_STORE = "kit11.runner.offer";
+const RUNNER_KEY = /^[A-Za-z0-9_-]{80,200}$/;
+const SEQ_STORE = "kit11.seq";
+
+/** The runner key this device has pinned, and another one a link offered (null when none). */
+export interface RunnerPin {
+  key: string;
+  offered: string | null;
 }
 
-const SEQ_STORE = "kit11.seq";
+/**
+ * The runner's public key from the same link (base64url SPKI), pinned on this device. A link never replaces a pinned
+ * key by itself (review N3): another key in a link is kept apart as an offer. Each new run has its own key, so the
+ * page then asks; only the person's press on "This is a new run: use the new key" makes the offer the pin
+ * (useNewRunnerKey), and only when that key signed what the relay sends now (judgeRunnerKey).
+ */
+export function takeRunnerKey(hash: string, store: Pick<Storage, "getItem" | "setItem"> | null): RunnerPin {
+  const get = (k: string) => { try { return store?.getItem(k) ?? ""; } catch { return ""; } };
+  const set = (k: string, v: string) => { try { store?.setItem(k, v); } catch { /* private mode: this page only */ } };
+  const raw = /(?:^#|&)runner=([^&]*)(?:&|$)/.exec(hash)?.[1];
+  const fromLink = raw !== undefined && RUNNER_KEY.test(raw) ? raw : null;
+  const pinned = get(RUNNER_STORE);
+  if (!pinned) {
+    // The first link on this device pins its key, as before.
+    if (fromLink) { set(RUNNER_STORE, fromLink); set(OFFER_STORE, ""); }
+    return { key: fromLink ?? "", offered: null };
+  }
+  if (fromLink === pinned) { set(OFFER_STORE, ""); return { key: pinned, offered: null }; }
+  if (fromLink) { set(OFFER_STORE, fromLink); return { key: pinned, offered: fromLink }; }
+  const kept = get(OFFER_STORE);
+  return { key: pinned, offered: RUNNER_KEY.test(kept) && kept !== pinned ? kept : null };
+}
+
+export type RunnerVerdict =
+  | { state: "signed"; key: string }
+  | { state: "new_run"; pinned: string; offered: string }
+  | { state: "unsigned" };
+
+/**
+ * Whose signature the relay's answer carries. The pinned key's: show it. Not the pinned key's but the key a link
+ * offered: a new run, and the page asks before it uses that key. Neither: refuse it, whatever any link said.
+ */
+export async function judgeRunnerKey(a: Obj, pin: RunnerPin): Promise<RunnerVerdict> {
+  if (pin.key && (await verifyRunnerSignature(a, pin.key))) return { state: "signed", key: pin.key };
+  if (pin.key && pin.offered && pin.offered !== pin.key && (await verifyRunnerSignature(a, pin.offered))) {
+    return { state: "new_run", pinned: pin.key, offered: pin.offered };
+  }
+  return { state: "unsigned" };
+}
+
+/**
+ * The person's press on "This is a new run: use the new key": the offered key becomes the pin, and the ledger counter
+ * starts again (a new run's ledger counts from its own start). Anything but a real press (a click the browser marks
+ * as the user's, isTrusted) or a verdict other than new_run changes nothing and returns null.
+ */
+export function useNewRunnerKey(v: RunnerVerdict, press: { isTrusted: boolean } | null | undefined, store: Pick<Storage, "getItem" | "setItem"> | null): RunnerPin | null {
+  if (v.state !== "new_run" || press?.isTrusted !== true || !RUNNER_KEY.test(v.offered)) return null;
+  try {
+    store?.setItem(RUNNER_STORE, v.offered);
+    store?.setItem(OFFER_STORE, "");
+    store?.setItem(SEQ_STORE, "0");
+  } catch { /* private mode: the new key holds for this page only */ }
+  return { key: v.offered, offered: null };
+}
+
+/** A runner key's fingerprint, as the runner prints it beside the viewer link: SHA-256 of the SPKI, first 16 hex. */
+export async function runnerKeyFingerprint(spki: string): Promise<string> {
+  try {
+    return await passkeyFingerprint(b64urlToBytes(spki).buffer);
+  } catch {
+    return "unreadable";
+  }
+}
+
 /** The newest ledger counter this phone has seen signed; an older signed set is a replay (review N4). */
 export function freshEnough(seq: number, store: Pick<Storage, "getItem" | "setItem"> | null): boolean {
   if (!Number.isInteger(seq) || seq < 0) return false;
@@ -545,12 +658,66 @@ function takeFromLink(hash: string, store: Pick<Storage, "getItem" | "setItem"> 
   try { return store?.getItem(storeKey) ?? ""; } catch { return ""; }
 }
 
-let runnerKey = "";
-let runnerConflict = false;
+let runnerPin: RunnerPin = { key: "", offered: null };
 let deviceStore: Pick<Storage, "getItem" | "setItem"> | null = null;
-const KEY_CONFLICT = "This link carries another runner key than the one this phone pinned, so it was not accepted. If the runner really changed, clear this site's data on the phone and open the new link.";
 const REPLAYED = "The relay sent an older signed state than this phone already saw. Nothing can be signed here; tell Claude.";
-const UNSIGNED = "What the relay sent is not signed by the runner this phone knows. Nothing can be signed here. If you opened another run's viewer link on this phone before, it still holds that runner's key: open this run's viewer link in a private tab, or clear this site's data and open it again. Tell Claude if this stays.";
+const UNSIGNED = "What the relay sent is not signed by the runner this phone knows, nor by a key from a link opened on it. Nothing can be signed here. Open this run's viewer link from Claude on this phone: if it is a new run, this page then asks once to use its key. Tell Claude if this stays.";
+
+/**
+ * The relay's answer may be shown only when the pinned runner key signed it and it is not older than what this phone
+ * saw. A new run's key, offered by a link, gets the question first (keyChangePanel); anything else is refused.
+ */
+async function trusted(app: HTMLElement, data: Obj, again: () => void): Promise<boolean> {
+  const v = await judgeRunnerKey(data, runnerPin);
+  if (v.state === "new_run") {
+    keyChangePanel(app, v, again);
+    return false;
+  }
+  if (v.state === "unsigned") {
+    app.replaceChildren(txt("p", "alarm", UNSIGNED));
+    return false;
+  }
+  if (!freshEnough(Number(data.ledger_seq), deviceStore)) {
+    app.replaceChildren(txt("p", "alarm", REPLAYED));
+    return false;
+  }
+  return true;
+}
+
+/**
+ * The key changed because the run did: the old and new key's fingerprints, and one button. Only its press replaces
+ * the pin (useNewRunnerKey checks the press is the person's); nothing is signed or approved by it.
+ */
+function keyChangePanel(app: HTMLElement, v: Extract<RunnerVerdict, { state: "new_run" }>, again: () => void): void {
+  const oldFp = txt("dd", "mono fp", "…");
+  const newFp = txt("dd", "mono fp", "…");
+  void runnerKeyFingerprint(v.pinned).then((t) => { oldFp.textContent = t; });
+  void runnerKeyFingerprint(v.offered).then((t) => { newFp.textContent = t; });
+  const use = el("button", "confirm", ["This is a new run: use the new key"]) as HTMLButtonElement;
+  use.type = "button";
+  use.id = "use-new-key";
+  const status = el("p", "sheet-status");
+  use.addEventListener("click", (e) => {
+    const next = useNewRunnerKey(v, e, deviceStore);
+    if (!next) {
+      status.textContent = "The key was not changed.";
+      return;
+    }
+    runnerPin = next;
+    use.disabled = true;
+    status.textContent = "This phone now uses the new run's key. Loading…";
+    again();
+  });
+  app.replaceChildren(el("section", "keychange", [
+    txt("p", "eyebrow", "New run"),
+    txt("h1", "", "This link is from a new run"),
+    txt("p", "lead", "Each run of Purser has its own runner key, so this phone still knows the last run's key."),
+    el("dl", "facts", [txt("dt", "", "This phone knows"), oldFp, txt("dt", "", "The new link has"), newFp]),
+    txt("p", "muted small", "What the relay sends now is signed by the new key. Use it only if Claude just gave you this run's link. Switching signs and approves nothing."),
+    use,
+    status,
+  ]));
+}
 
 const NEEDS_LINK = "This device needs the viewer link. Open the link Claude gave you once on this phone, then come back.";
 
@@ -750,12 +917,53 @@ interface SheetContext {
  */
 export function againstAdvice(decision: "APPROVED" | "REJECTED", review: { recommendation: string } | null | undefined): string[] {
   return decision === "APPROVED" && review?.recommendation === "reject"
-    ? ["Opus advises rejecting this, and you are about to APPROVE it. To reject, go Back and tap Reject."]
+    ? ["Opus advises rejecting this. \"Approve anyway\" means you are about to APPROVE it; to say no, tap Reject."]
     : [];
 }
 
 /**
- * The full-screen summary of one proposal (mis-tap prevention): built only from its hashed terms; Confirm arms
+ * Checks once more and asks the passkey (Face ID) to sign: an approval signs the terms hash (Block 1: an
+ * owners_execute signs the account's Execute digest from the hashed terms), a rejection the rejection hash. Says on
+ * `status` why not, with `retry` true when the same button may be pressed again.
+ */
+async function askPasskey(o: PhoneProposal, terms: Obj, decision: "APPROVED" | "REJECTED", credentials: { id: string }[], status: HTMLElement):
+  Promise<{ assertion: Obj; retry?: undefined } | { assertion: null; retry: boolean }> {
+  const rejecting = decision === "REJECTED";
+  status.textContent = rejecting ? "Waiting for Face ID to reject…" : "Waiting for Face ID…";
+  // Rejecting is always safe, so it does not need the terms to check out; approving does.
+  const again = rejecting ? { ok: true, problem: "" } : await checkOption(o);
+  if (!again.ok) {
+    status.textContent = `Not signed: ${again.problem}.`;
+    return { assertion: null, retry: false };
+  }
+  if (Date.parse(o.expires_at) - Date.now() < 3000) {
+    status.textContent = "This proposal has expired. Nothing was signed.";
+    return { assertion: null, retry: false };
+  }
+  let cred: PublicKeyCredential | null;
+  try {
+    cred = (await navigator.credentials.get({
+      publicKey: {
+        challenge: hexToBytes(rejecting ? await rejectionHash(o.terms_sha256) : str(terms.kind) === "owners_execute" ? str(terms.onchain_digest).slice(2) : o.terms_sha256),
+        rpId: location.hostname,
+        allowCredentials: credentials.map((c) => ({ type: "public-key" as const, id: b64urlToBytes(c.id) })),
+        userVerification: "required",
+        timeout: 60_000,
+      },
+    })) as PublicKeyCredential | null;
+  } catch (e) {
+    status.textContent = passkeyError(e);
+    return { assertion: null, retry: true };
+  }
+  if (!cred) {
+    status.textContent = "Cancelled. Nothing was signed.";
+    return { assertion: null, retry: true };
+  }
+  return { assertion: serializeAssertion(cred) };
+}
+
+/**
+ * The full-screen summary of one change made on the phone (the policy editor): built only from its hashed terms; Confirm arms
  * after 0.8 s and only it starts the passkey, whose challenge is this proposal's hash; Back signs nothing.
  */
 function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
@@ -820,46 +1028,14 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
   confirm.addEventListener("click", async () => {
     confirm.disabled = true;
     backBtn.disabled = true;
-    status.textContent = "Waiting for Face ID…";
-    // Rejecting is always safe, so it does not need the terms to check out; approving does.
-    const again = rejecting ? { ok: true, problem: "" } : await checkOption(o);
-    if (!again.ok) {
-      status.textContent = `Not signed: ${again.problem}.`;
+    const got = await askPasskey(o, terms, rejecting ? "REJECTED" : "APPROVED", x.credentials, status);
+    if (!got.assertion) {
       backBtn.disabled = false;
-      return;
-    }
-    if (Date.parse(o.expires_at) - Date.now() < 3000) {
-      status.textContent = "This proposal has expired. Nothing was signed.";
-      backBtn.disabled = false;
-      return;
-    }
-    let cred: PublicKeyCredential | null;
-    try {
-      cred = (await navigator.credentials.get({
-        publicKey: {
-          // Block 1: an owners_execute approval signs the account's Execute digest from the hashed terms (the runner
-          // checks it follows from their calls); a rejection always signs the rejection hash.
-          challenge: hexToBytes(rejecting ? await rejectionHash(o.terms_sha256) : str(terms.kind) === "owners_execute" ? str(terms.onchain_digest).slice(2) : o.terms_sha256),
-          rpId: location.hostname,
-          allowCredentials: x.credentials.map((c) => ({ type: "public-key" as const, id: b64urlToBytes(c.id) })),
-          userVerification: "required",
-          timeout: 60_000,
-        },
-      })) as PublicKeyCredential | null;
-    } catch (e) {
-      status.textContent = passkeyError(e);
-      backBtn.disabled = false;
-      confirm.disabled = false;
-      return;
-    }
-    if (!cred) {
-      status.textContent = "Cancelled. Nothing was signed.";
-      backBtn.disabled = false;
-      confirm.disabled = false;
+      confirm.disabled = !got.retry;
       return;
     }
     status.textContent = "Sending the signature…";
-    const sent = await x.send(serializeAssertion(cred), rejecting ? "REJECTED" : "APPROVED")
+    const sent = await x.send(got.assertion, rejecting ? "REJECTED" : "APPROVED")
       .catch(() => ({ status: 0, data: { error: "the relay cannot be reached" } as Obj }));
     if (sent.status !== 202) {
       status.textContent = `Not accepted: ${str(sent.data.error) || `error ${sent.status}`}. ${rejecting ? "Nothing was rejected." : "Nothing was approved."}`;
@@ -884,6 +1060,14 @@ function parsedOrEmpty(canonical: string): Obj {
   }
 }
 
+/**
+ * The approval view (Max, 7 Nov: the first screen holds what he decides on). At 390 × 844 the first screen shows what
+ * (amount, payee, agent), why it needs him in one line, "Approve with Face ID" and Reject; the rest (the exact terms,
+ * the hash, the review, the options it is not) is behind one fold, "Details". Every line is built from the hashed
+ * terms (the agent and the policy from the runner-signed part). Mis-tap prevention: the buttons arm only 0.8 s after
+ * the view or the chosen option changes (3 s to approve against Opus's advice, where Reject comes first), alternatives
+ * are chosen apart from signing and the button names the one chosen, and Face ID itself is the last confirmation.
+ */
 async function approvePage(attempt = 0): Promise<void> {
   const app = document.getElementById("app")!;
   if (guestWithoutLink(app)) return;
@@ -893,19 +1077,8 @@ async function approvePage(attempt = 0): Promise<void> {
     app.replaceChildren(txt("p", "alarm", status === 401 ? NEEDS_LINK : status === 503 ? "The runner has not connected yet. Try again in a moment." : "Cannot reach the approval relay."));
     return;
   }
-  if (runnerConflict) {
-    app.replaceChildren(txt("p", "alarm", KEY_CONFLICT));
-    return;
-  }
-  if (!(await verifyRunnerSignature(data, runnerKey))) {
-    app.replaceChildren(txt("p", "alarm", UNSIGNED));
-    return;
-  }
-  if (!freshEnough(Number(data.ledger_seq), deviceStore)) {
-    app.replaceChildren(txt("p", "alarm", REPLAYED));
-    return;
-  }
-  const a = data as unknown as Approvals;
+  if (!(await trusted(app, data, () => void approvePage(attempt)))) return;
+  const a = data as unknown as Approvals & { policy?: { key: string; value: string }[] };
   const p = a.proposals.find((x) => x.proposal_id === id);
   const back = el("a", "back", ["← Dashboard"]) as HTMLAnchorElement;
   back.href = "/";
@@ -924,59 +1097,145 @@ async function approvePage(attempt = 0): Promise<void> {
   const checked = await Promise.all(group.map(async (g) => ({ p: g, check: await checkOption(g) })));
   const enrolled = a.passkey.credentials.length > 0;
   const stale = a.relay.age_ms > 15_000;
+  const many = checked.length > 1;
+  let chosen = checked.find((c) => c.p.proposal_id === id) ?? checked[0]!;
 
-  const cards = checked.map(({ p: o, check }) => {
-    const f = check.terms ? describeTerms(check.terms, a.names) : null;
-    const cd = el("span", "countdown");
-    cd.dataset.expires = o.expires_at;
-    const card = el("button", `option${o.proposal_id === id ? " suggested" : ""}`, [
-      txt("span", "option-title", f ? f.label : o.proposal_id),
+  // Alternatives (price options): choosing one only changes what the view shows; nothing is signed by it.
+  const choices = many ? checked.map((c) => {
+    const f = c.check.terms ? describeTerms(c.check.terms, a.names) : null;
+    const b = el("button", "option", [
+      txt("span", "option-title", f ? f.label : c.p.proposal_id),
       f?.big ? el("span", "option-amount", [f.big, txt("small", "", ` ${f.unit}`)]) : null,
       f?.margin ? txt("span", "option-margin", `margin ${f.margin}`) : null,
-      f && group.length === 1 ? txt("span", "option-sentence", f.sentence) : null,
-      o.agent_advice?.recommends ? txt("span", "chip approve", `${o.agent_advice.agent} recommends this`) : null,
-      o.review ? txt("span", `chip ${o.review.recommendation}`, o.review.recommendation === "drafted" ? "Drafted by Opus from your words" : `Opus: ${o.review.recommendation.replace(/_/g, " ")} (advisory)`) : null,
-      el("span", "option-meta", [cd, el("span", "mono", [`hash ${o.terms_sha256.slice(0, 8)}`])]),
-      check.ok ? null : txt("span", "alarm", `Do not approve: ${check.problem}.`),
-      check.ok && f && !f.approvable ? txt("span", "alarm", f.sentence) : null,
-      ...(o.warnings ?? []).map((w) => txt("span", "alarm", w)),
-      o.four_eyes ? txt("span", "chip", `Needs two people (four eyes)${o.four_eyes.approved_by.length ? ` · approved so far: ${o.four_eyes.approved_by.join(", ")}` : ""}`) : null,
+      c.p.agent_advice?.recommends ? txt("span", "chip approve", `${c.p.agent_advice.agent} recommends this`) : null,
+      c.check.ok ? null : txt("span", "chip reject", "Do not approve"),
     ]) as HTMLButtonElement;
-    card.type = "button";
-    card.disabled = !check.ok || !f || !f.approvable;
-    card.setAttribute("aria-label", `${f ? f.title : o.proposal_id}. Opens a summary to confirm.`);
-    card.addEventListener("click", () => openSummary(o, check.terms!, card));
-    // Rejecting needs no working terms: whatever this proposal is, a person may say no to it.
-    const advisedNo = o.review?.recommendation === "reject";
-    const no = el("button", advisedNo ? "reject-btn advised" : "reject-btn", [advisedNo ? "Reject (Opus advises this)" : "Reject"]) as HTMLButtonElement;
-    no.type = "button";
-    no.disabled = !enrolled;
-    no.setAttribute("aria-label", `Reject ${f ? f.title : o.proposal_id}. Opens a summary to confirm.`);
-    no.addEventListener("click", () => openSummary(o, check.terms ?? parsedOrEmpty(o.canonical), no, "REJECTED"));
-    // When Opus advises against it, saying no comes first.
-    return el("div", advisedNo ? "option-wrap advised-no" : "option-wrap", advisedNo ? [no, card] : [card, no]);
-  });
-
+    b.type = "button";
+    b.setAttribute("role", "radio");
+    b.setAttribute("aria-label", `${f ? f.title : c.p.proposal_id}. Shows it; signs nothing.`);
+    b.addEventListener("click", () => { if (chosen !== c) { chosen = c; render(); } });
+    return { c, b };
+  }) : [];
+  const view = el("div", "approval");
   app.replaceChildren(...[
     el("div", "toprow", [back, txt("span", "pid mono", group.map((g) => g.proposal_id).join(" · "))]),
-    txt("h1", "", group.length > 1 ? "Choose one option" : "Review this proposal"),
-    txt("p", "lead", group.length > 1
-      ? "Tap the option you want, or reject one. You will see exactly what it does before Face ID signs."
-      : "Tap the proposal, or Reject, to see exactly what it does before Face ID signs."),
     stale ? txt("p", "warn-box", `The runner last synced ${Math.round(a.relay.age_ms / 1000)} s ago. Your approval waits until it is back.`) : null,
     enrolled ? null : txt("p", "warn-box", "No passkey is enrolled yet, so nothing can be signed here."),
-    el("div", `options n${cards.length}`, cards),
-    txt("p", "fineprint", "Your passkey signs the SHA-256 of these exact terms. This page computes that hash itself; any change to the terms makes the signature worthless."),
+    many ? el("div", `choices n${choices.length}`, choices.map((x) => x.b)) : null,
+    view,
   ].filter((n): n is HTMLElement => n !== null));
-  tickCountdowns();
+  if (many) choices[0]!.b.parentElement!.setAttribute("role", "radiogroup");
+  if (many) choices[0]!.b.parentElement!.setAttribute("aria-label", "Options");
 
-  function openSummary(o: PhoneProposal, terms: Obj, from: HTMLButtonElement, decision: "APPROVED" | "REJECTED" = "APPROVED"): void {
-    openSheet(o, terms, {
-      names: a.names, nots: notList(o, checked.filter((c) => c.check.ok).map((c) => c.p), a.names), enrolled,
-      credentials: a.passkey.credentials, from, decision,
-      send: (credential, d) => api("/api/assertions", { proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, decision: d, credential }),
-    });
+  let timers: ReturnType<typeof setTimeout>[] = [];
+  function render(): void {
+    for (const t of timers) clearTimeout(t);
+    timers = [];
+    for (const { c, b } of choices) {
+      b.setAttribute("aria-checked", String(c === chosen));
+      b.classList.toggle("chosen", c === chosen);
+    }
+    const o = chosen.p;
+    const check = chosen.check;
+    const f = check.terms ? describeTerms(check.terms, a.names) : null;
+    const terms = check.terms ?? parsedOrEmpty(o.canonical);
+    const approvable = check.ok && !!f && f.approvable;
+    // When Opus advises against it, saying no comes first, and approving is the slow, second choice (twice in live
+    // runs a CFO who meant to reject approved by tapping the proposal).
+    const against = o.review?.recommendation === "reject";
+    const cd = el("span", "countdown");
+    cd.dataset.expires = o.expires_at;
+    const essentials = el("section", "essentials", [
+      el("p", "eyebrow need", [o.four_eyes ? "Needs your approval, and a second person's" : "Needs your approval", " · ", cd]),
+      txt("h1", "what-title", f ? f.title : o.proposal_id),
+      f ? el("p", "hero", [txt("span", "hero-label", f.amountLabel ?? "Amount"), txt("span", "hero-amount num", f.amount)]) : null,
+      f ? el("dl", "key-facts", [
+        txt("dt", "", "Payee"), el("dd", "lines", f.recipient.split("; ").map((r) => txt("span", "", r))),
+        txt("dt", "", "Agent"), txt("dd", "", agentOf(o.created_by, terms)),
+        txt("dt", "", "Why you"), txt("dd", "why", whyYou(terms, a.policy ?? [], o.four_eyes)),
+      ]) : null,
+    ]);
+    // The warnings stay in the first screen: they are what a person must see before Face ID.
+    const warnings = [...(f?.warnings ?? []), ...(o.warnings ?? [])];
+    const alarms = [
+      check.ok ? null : txt("p", "alarm big", `Do not approve: ${check.problem}.`),
+      check.ok && f && !f.approvable ? txt("p", "alarm", f.sentence) : null,
+      ...againstAdvice("APPROVED", o.review).map((w) => txt("p", "alarm big", w)),
+      warnings.length ? el("div", "alarm list", [el("ul", "", warnings.map((w) => txt("li", "", w)))]) : null,
+    ];
+    const name = many && f ? `${f.label.charAt(0).toLowerCase()}${f.label.slice(1)} ` : "";
+    const approve = el("button", against ? "confirm against" : "confirm", [against ? `Approve ${name}anyway with Face ID` : `Approve ${name}with Face ID`]) as HTMLButtonElement;
+    approve.id = "approve";
+    const reject = el("button", against ? "confirm reject" : "reject-btn", [against ? "Reject (Opus advises this)" : "Reject"]) as HTMLButtonElement;
+    reject.id = "reject";
+    for (const b of [approve, reject]) b.type = "button";
+    approve.setAttribute("aria-label", `Approve ${f ? f.title : o.proposal_id} with Face ID`);
+    reject.setAttribute("aria-label", `Reject ${f ? f.title : o.proposal_id} with Face ID`);
+    // A double tap (on the dashboard's link, or on an option) must not land on a button: they arm after a moment.
+    approve.disabled = true;
+    reject.disabled = true;
+    const armApprove = () => { approve.disabled = !enrolled || !approvable || countdown(o.expires_at).over; };
+    const armReject = () => { reject.disabled = !enrolled; };
+    timers.push(setTimeout(armApprove, against ? 3000 : 800), setTimeout(armReject, 800));
+    const signStatus = el("p", "sheet-status");
+    signStatus.id = "sign-status";
+    signStatus.setAttribute("role", "status");
+    const actions = el("div", against ? "actions against" : "actions", against ? [reject, approve, signStatus] : [approve, reject, signStatus]);
+
+    const cd2 = el("span", "countdown big");
+    cd2.dataset.expires = o.expires_at;
+    const nots = many ? notList(o, checked.filter((c) => c.check.ok).map((c) => c.p), a.names) : [];
+    const details = el("details", "more", [
+      txt("summary", "", "Details"),
+      f ? txt("p", "sentence", f.sentence) : null,
+      el("dl", "facts", [
+        ...(f ? [txt("dt", "", f.amountLabel ?? "Amount"), txt("dd", "num", f.amount)] : []),
+        ...(f?.margin ? [txt("dt", "", "Margin"), txt("dd", "num", f.margin)] : []),
+        ...(f ? [txt("dt", "", "Recipient"), el("dd", "lines", f.recipient.split("; ").map((r) => txt("span", "", r)))] : []),
+        txt("dt", "", "Expires"), el("dd", "", [cd2]),
+        txt("dt", "", "Hash"), hashCell(o.terms_sha256),
+        txt("dt", "", "Proposal"), txt("dd", "mono", o.proposal_id),
+      ]),
+      nots.length ? el("div", "nots", [txt("p", "eyebrow", "This is not"), el("ul", "", nots.map((n) => txt("li", "", n)))]) : null,
+      o.agent_advice ? el("div", "review", [txt("p", "eyebrow", `${o.agent_advice.agent}${o.agent_advice.model ? ` (${modelWord(o.agent_advice.model)})` : ""}, advisory: ${o.agent_advice.verdict ?? (o.agent_advice.recommends ? "recommends this option" : "recommends the other option")}`), txt("p", "", o.agent_advice.text)]) : null,
+      o.review ? el("div", "review", [txt("p", "eyebrow", o.review.recommendation === "drafted" ? "Drafted by Opus from your words, each rule checked by code" : `Opus review, advisory: ${o.review.recommendation.replace(/_/g, " ")}`), txt("p", "", o.review.text)]) : null,
+      f ? el("details", "all", [txt("summary", "", "All terms (exactly what is hashed)"), el("dl", "rows", f.rows.flatMap(([k, v]) => [txt("dt", "", k), txt("dd", "", v)])), termsTable(terms)]) : null,
+      txt("p", "fineprint", "Your passkey signs the SHA-256 of these exact terms. This page computes that hash itself, and the runner signed what the relay sent; any change to the terms makes the signature worthless."),
+    ]);
+    view.replaceChildren(...[essentials, ...alarms, actions, details].filter((n): n is HTMLElement => n !== null));
+    tickCountdowns();
+
+    const go = async (decision: "APPROVED" | "REJECTED") => {
+      for (const t of timers) clearTimeout(t);
+      approve.disabled = true;
+      reject.disabled = true;
+      for (const { b } of choices) b.disabled = true;
+      const unlock = (retry: boolean) => {
+        armReject();
+        if (retry) armApprove();
+        for (const { b } of choices) b.disabled = false;
+      };
+      const got = await askPasskey(o, terms, decision, a.passkey.credentials, signStatus);
+      if (!got.assertion) {
+        unlock(got.retry);
+        return;
+      }
+      signStatus.textContent = "Sending the signature…";
+      const sent = await api("/api/assertions", { proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, decision, credential: got.assertion })
+        .catch(() => ({ status: 0, data: { error: "the relay cannot be reached" } as Obj }));
+      if (sent.status !== 202) {
+        signStatus.textContent = `Not accepted: ${str(sent.data.error) || `error ${sent.status}`}. ${decision === "REJECTED" ? "Nothing was rejected." : "Nothing was approved."}`;
+        unlock(true);
+        return;
+      }
+      const home = el("a", "back", ["← Dashboard"]) as HTMLAnchorElement;
+      home.href = "/";
+      await follow(str(sent.data.ticket), app, home, f ? f.title : o.proposal_id);
+    };
+    approve.addEventListener("click", () => void go("APPROVED"));
+    reject.addEventListener("click", () => void go("REJECTED"));
   }
+  render();
 }
 
 function enrolPage(): void {
@@ -1077,18 +1336,7 @@ async function policyPage(): Promise<void> {
     app.replaceChildren(txt("p", "alarm", status === 401 ? NEEDS_LINK : status === 503 ? "The runner has not connected yet. Try again in a moment." : "Cannot reach the relay."));
     return;
   }
-  if (runnerConflict) {
-    app.replaceChildren(txt("p", "alarm", KEY_CONFLICT));
-    return;
-  }
-  if (!(await verifyRunnerSignature(data, runnerKey))) {
-    app.replaceChildren(txt("p", "alarm", UNSIGNED));
-    return;
-  }
-  if (!freshEnough(Number(data.ledger_seq), deviceStore)) {
-    app.replaceChildren(txt("p", "alarm", REPLAYED));
-    return;
-  }
+  if (!(await trusted(app, data, () => void policyPage()))) return;
   const a = data as unknown as Approvals & { policy: PolicyRow[] };
   const enrolled = a.passkey.credentials.length > 0;
   const back = el("a", "back", ["← Dashboard"]) as HTMLAnchorElement;
@@ -1299,7 +1547,7 @@ export function boot(): void {
   try { store = localStorage; } catch { store = null; }
   viewKey = takeViewKey(location.hash, store);
   deviceStore = store;
-  ({ key: runnerKey, conflict: runnerConflict } = takeRunnerKey(location.hash, store));
+  runnerPin = takeRunnerKey(location.hash, store);
   if (location.hash.includes("view=") || location.hash.includes("runner=")) history.replaceState(null, "", location.pathname + location.search);
   setInterval(tickCountdowns, 1000);
   if (document.body.dataset.page === "approve") void approvePage();

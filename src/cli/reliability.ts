@@ -195,20 +195,19 @@ async function sign(p: { page: Page }, id: string, o: { option?: "A" | "B"; tag:
   const page = p.page;
   await page.goto(`${url}/approve/${id}`);
   try {
-    await page.waitForSelector(o.reject ? "button.reject-btn" : "button.option", { timeout: 120_000 });
+    await page.waitForSelector(o.reject ? "#reject" : "#approve", { timeout: 120_000 });
   } catch (e) {
     await shot(page, `${o.tag}-no-proposal`);
     say(`  the phone shows: ${((await page.textContent("body")) ?? "").replace(/\s+/g, " ").slice(0, 300)}`);
     throw e;
   }
   const text = ((await page.textContent("body")) ?? "").replace(/\s+/g, " ");
-  if (o.reject) await page.click("button.reject-btn");
-  else if (o.option) await page.locator("button.option", { hasText: `Option ${o.option}` }).first().tap();
-  else await page.locator("button.option").first().tap();
-  await page.waitForSelector("#sheet:not([hidden]) .sheet-title");
-  await page.waitForFunction(() => !(document.querySelector("#sheet button.confirm") as HTMLButtonElement).disabled, null, { timeout: 5000 });
+  // The approval view: choose the option (alternatives only), then the button arms after a moment and signs.
+  if (!o.reject && o.option) await page.locator(".choices button.option", { hasText: `Option ${o.option}` }).first().tap();
+  const button = o.reject ? "#reject" : "#approve";
+  await page.waitForFunction((q: string) => !(document.querySelector(q) as HTMLButtonElement | null)?.disabled, button, { timeout: 5000 });
   await shot(page, `${o.tag}-confirm`);
-  await page.click("#sheet button.confirm");
+  await page.click(button);
   const FINAL = ["Approved", "Done", "1 of 2 approvals", "Rejected", "Refused", "Too late", "Already decided", "Approved, but execution stopped"];
   try {
     await page.waitForFunction((f: string[]) => f.includes(document.querySelector(".verdict-head")?.textContent ?? ""), FINAL, { timeout: 180_000 });

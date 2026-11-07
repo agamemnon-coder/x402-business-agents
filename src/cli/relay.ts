@@ -8,7 +8,7 @@
 //   --once     one sync (and the executions it starts), then exit
 
 import { envWithoutOrigin, MONEY_EVENTS } from "../provenance/origin.js";
-import { displayKey } from "../relay/sign.js";
+import { displayKey, displayKeyFingerprint } from "../relay/sign.js";
 import { reconcile } from "../finance/reconcile.js";
 import { certifyPending } from "../metal/finality.js";
 import { reconcileSourcesFromEnv } from "../finance/sources.js";
@@ -81,6 +81,7 @@ const stamp = () => new Date().toISOString().slice(11, 19);
 console.log(`relay    ${cfg.url}/  (approvals ${cfg.url}/approve/<id>; ledger ${process.env.KIT11_DB ?? "data/kit11.sqlite"})`);
 const signer = displayKey(keyPath("relay-display-key.pem"));
 console.log(`viewer   ${viewerLink(cfg, signer.publicSpki)}  (open once on each device: it unlocks the dashboard and pins this runner's key; it approves nothing${mfaOn() ? "; with MFA on it reads only and expires after next week: the CFO's actions need a passkey sign-in" : ""})`);
+console.log(`key      ${displayKeyFingerprint(signer.publicSpki)}  (this runner's key; each run has its own, and a phone that knew another asks once before it uses this one)`);
 // D20: under MFA the viewer link changes every Monday; print the new one, so devices can renew without a restart.
 if (mfaOn()) {
   let shown = viewerLink(cfg, signer.publicSpki);
