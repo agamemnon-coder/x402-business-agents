@@ -15,11 +15,12 @@
 // registered. A proposal that fails a check has nothing to sign, and the server refuses a signature for it anyway.
 
 import { COMMON_HEADERS, rateKey, type Sql } from "./core.js";
+import { ATTACKS, runTrick, type Attack } from "./trick.js";
 import { verifyAssertion, type PublicKeyXY } from "./webauthn.js";
 import { QuoteUnavailable, type FxQuote, type FxSource } from "./fxQuote.js";
 import { AGENTS, type Agent } from "../../src/config/policy.js";
 import { ALONE_CHOICES, ALONE_PER_DAY, PAID_ALONE, exposurePolicyOfWorld } from "../../src/try/policy.js";
-import { exposureOf, exposureWords, type RecordedRate } from "../../src/policy/exposure.js";
+import { EXPOSURE_TASK_CARDS, exposureOf, exposureWords, type RecordedRate } from "../../src/policy/exposure.js";
 export { PAID_ALONE };
 import { defaultPolicy, FIELD_WORDS, policyBounds, policyChanges, readSet, threeLocks, withSet, type Locks, type PolicyChange, type WorldPolicy } from "../../src/try/policy.js";
 import { AGENT_LINE_ALL_PER_MINUTE, AGENT_LINE_DAILY_USD, AGENT_LINE_PER_HOUR, AGENT_LINE_RESERVE_USD, AGENT_LINE_SYSTEM, agentLineFacts, agentLineGiven, checkLine, moneyForPeople, type SentenceSource, type Voice } from "./agentLine.js";
@@ -211,7 +212,7 @@ export const FIXED_PROPOSALS: FixedProposal[] = [
  * the agent may pay alone it waits for a signature; at or below a limit the visitor signed, it runs alone (runAlone).
  */
 export const NEXT_INVOICE: FixedProposal = {
-  id: "T-0003", agent: "Treasury agent", says: "Alpine Packaging's next invoice is in; it is the same amount as the one you signed.", payee: "Alpine Packaging (test payee)", iban: TEST_IBAN.alpine, amount: "1850.00", reference: "Invoice INV-2026-131",
+  id: "T-0003", agent: "Treasury agent", says: "Alpine Packaging's next invoice is in, for November's boxes.", payee: "Alpine Packaging (test payee)", iban: TEST_IBAN.alpine, amount: "1240.00", reference: "Invoice INV-2026-131",
 };
 /** Any proposal this world can hold, by its id: the two it opens with, and the next invoice. */
 const fixedOf = (id: string): FixedProposal => [...FIXED_PROPOSALS, NEXT_INVOICE].find((x) => x.id === id)!;
@@ -317,6 +318,7 @@ const BODY: Record<string, Record<string, (v: unknown) => boolean>> = {
   "/world": {},
   "/passkey": { token: optional((v) => typeof v === "string"), credential: () => true },
   "/quote": { token: optional((v) => typeof v === "string") },
+  "/trick": { token: optional((v) => typeof v === "string"), attack: (v) => typeof v === "string" && (ATTACKS as readonly string[]).includes(v) },
   "/sign": { token: optional((v) => typeof v === "string"), proposal_id: (v) => typeof v === "string" && PROPOSAL_ID.test(v), canonical: (v) => typeof v === "string" && v.length <= MAX_TERMS, credential: () => true },
   // Step 0: the agent's whole policy (read field by field in src/try/policy.ts); a looser one with its terms and signature.
   "/policy": {
@@ -330,7 +332,7 @@ const fits = (o: Record<string, unknown>, shape: Record<string, (v: unknown) => 
 export function wellFormed(sub: string, body: Record<string, unknown>): boolean {
   const shape = BODY[sub];
   if (!shape || !fits(body, shape)) return false;
-  if (sub === "/world" || sub === "/quote") return true;
+  if (sub === "/world" || sub === "/quote" || sub === "/trick") return true;
   if (sub === "/policy" && body.credential === undefined) return body.canonical === undefined;
   if (sub === "/policy" && body.canonical === undefined) return false;
   const c = body.credential;
@@ -387,7 +389,7 @@ export class TrySignDesk {
     const path = url.pathname;
     if (!isTrySignPath(path)) return trySignNotFound();
     const sub = path.slice("/api/try-sign".length);
-    if (!["/world", "/passkey", "/sign", "/quote", "/policy"].includes(sub)) return trySignNotFound();
+    if (!["/world", "/passkey", "/sign", "/quote", "/policy", "/trick"].includes(sub)) return trySignNotFound();
     if (req.method !== "POST") return answer(405, { error: "use POST" });
     // Only this site's own page may ask: a browser on another site sends its own origin, or none on a form post.
     if (req.headers.get("origin") !== url.origin || req.headers.get("sec-fetch-site") === "cross-site") return answer(403, { error: "ask from the /try/sign page on this site" });
@@ -414,7 +416,8 @@ export class TrySignDesk {
     if (sub !== "/world" && body.token === undefined) return gone();
     if (!wellFormed(sub, body)) {
       return answer(400, { error: sub === "/sign" ? "malformed signature" : sub === "/passkey" ? "malformed passkey" : sub === "/quote" ? "send the world's token only"
-        : sub === "/policy" ? "send the world's token, an agent (sourcing, support or treasury) and its policy; a signature only with its terms" : "send an empty JSON object" });
+        : sub === "/policy" ? "send the world's token, an agent (sourcing, support or treasury) and its policy; a signature only with its terms"
+        : sub === "/trick" ? `send the world's token and an attack: ${ATTACKS.join(" or ")}` : "send an empty JSON object" });
     }
 
     if (sub === "/world") return this.newWorld(url, req.headers.get("cf-connecting-ip") ?? "unknown", nowMs);
@@ -423,6 +426,8 @@ export class TrySignDesk {
     if (sub === "/passkey") return this.registerPasskey(url, ip, world, body);
     if (sub === "/quote") return this.newQuote(ip, world);
     if (sub === "/policy") return this.setPolicy(url, ip, world, body);
+    // 1.3: a fixed attack through Purser's own fraud and injection code; no proposal, no quote, no model call.
+    if (sub === "/trick") return answer(200, { trick: await runTrick(body.attack as Attack) });
     return this.sign(url, ip, world, body);
   }
 
@@ -673,8 +678,14 @@ export class TrySignDesk {
   private policyState(worldId: string, now: Date) {
     const { version, policy } = this.policyOf(worldId);
     // Screen 4's figure for each amount the visitor may choose (Max, 7 Nov: the worst case moves with "may pay alone").
-    const exposure_alone = Object.fromEntries(ALONE_CHOICES.map((v) => [v, this.exposure({ ...policy, agents: { ...policy.agents, treasury: { ...policy.agents.treasury, alone: v } } }).headline]));
-    return { policy, policy_version: String(version), locks: this.locksOf(worldId, policy, now), bounds: policyBounds(now), exposure: this.exposure(policy), exposure_alone };
+    const withAlone = (v: string): WorldPolicy => ({ ...policy, agents: { ...policy.agents, treasury: { ...policy.agents.treasury, alone: v } } });
+    const exposure_alone = Object.fromEntries(ALONE_CHOICES.map((v) => [v, this.exposure(withAlone(v)).headline]));
+    // 1.4 (Max, 7 Nov): each amount's EUR worst case a month, in cents, and the one in force, so the page can say what a
+    // looser rule adds ("+€139,500 a month") by Purser's code, not its own arithmetic.
+    // The figure the words show: task cards apart (Max's decision A, EXPOSURE_TASK_CARDS), as in the headline.
+    const monthOf = (p: WorldPolicy) => { const x = exposureOf(exposurePolicyOfWorld(p)); return x.total.month.eurCents - (EXPOSURE_TASK_CARDS === "apart" ? x.agents.find((e) => e.agent === "treasury")!.alone.monthEurCents : 0); };
+    const exposure_month = { in_force: monthOf(policy), alone: Object.fromEntries(ALONE_CHOICES.map((v) => [v, monthOf(withAlone(v))])) };
+    return { policy, policy_version: String(version), locks: this.locksOf(worldId, policy, now), bounds: policyBounds(now), exposure: this.exposure(policy), exposure_alone, exposure_month };
   }
   private policyAnswer(worldId: string, now: Date) {
     const state = this.policyState(worldId, now);

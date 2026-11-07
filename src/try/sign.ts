@@ -25,9 +25,10 @@ import { RECEIPT_FORMAT } from "./receipt.js";
 import { AGENTS, MCC_WORDS } from "../config/policy.js";
 import { agentName } from "../config/brand.js";
 import { ALONE_CHOICES, ALONE_PER_DAY, defaultPolicy, exposurePolicyOfWorld, FIELD_WORDS, PAID_ALONE, POLICY_CURRENCIES, POLICY_FIELDS, POLICY_MCCS, STEP0_CHAIN } from "./policy.js";
-import { worstCaseWordsOf } from "../policy/exposureSources.js";
-import { EXPOSURE_HOW } from "../policy/exposure.js";
+import { worstCaseWords, worstCaseWordsOf } from "../policy/exposureSources.js";
+import { EXPOSURE_HOW, exposureOf } from "../policy/exposure.js";
 import { FIXED_PROPOSALS, NEXT_INVOICE, TEST_WORLD } from "../../worker/src/trySign.js";
+import { ATTACKS, TRICKS } from "../../worker/src/trick.js";
 
 /** The feature flag, read where the bundle is built: on, the page, its API and the links to it are in the bundle. */
 export const trySignOn = (env: NodeJS.ProcessEnv = process.env) => ["on", "1", "true"].includes(env.TRY_SIGN_ENABLED ?? "");
@@ -35,16 +36,21 @@ export const trySignOn = (env: NodeJS.ProcessEnv = process.env) => ["on", "1", "
 /** The label at the top of the page, word for word: the one-line disclaimer. */
 export const TRY_SIGN_LABEL = "Test world · test passkey · nothing real moves";
 
-/** The five screens, in order (the progress indicator's names for them). */
-export const TRY_SIGN_STEPS = ["The agent asks", "Signed", "Try to cheat", "Change the rule", "Pays alone"] as const;
+/** The six steps, in order (the progress indicator's names for them; Max, 7 Nov: "Trick the agent" after the cheat). */
+export const TRY_SIGN_STEPS = ["The agent asks", "Signed", "Try to cheat", "Trick the agent", "Change the rule", "Pays alone"] as const;
 
 /** Each screen's words, word for word (tests read them). */
 export const TRY_SIGN_SCREENS = {
+  // 1.1 (Max, 7 Nov): one sentence and one button before the first step; the amount is T-0002's (a test checks it).
+  intro: {
+    head: "You're the CFO. Your AI agents pay suppliers on their own. One of them wants €1,850.",
+    start: "Show me",
+  },
   ask: {
     head: "Your Treasury agent wants to pay an invoice above its limit.",
     sign: "Sign with Face ID",
     terms: "Show the exact terms",
-    other: "One other payment was stopped. Which lock stopped it?",
+    other: "Just now, Purser's lock stopped another payment.",
     opening: "Opening your test world…",
   },
   signed: {
@@ -61,25 +67,45 @@ export const TRY_SIGN_SCREENS = {
     refused: "Refused by Purser",
     chips: [{ id: "cent", label: "+ 1 cent" }, { id: "iban", label: "Other IBAN" }, { id: "currency", label: "USD instead of EUR" }],
     any: "Change any field",
+    next: "Next: trick the agent",
+  },
+  // 1.3: two fixed fake invoices (worker/src/trick.ts), each blocked by Purser's own fraud and injection code.
+  trick: {
+    head: "Try to trick the agent.",
+    lead: "Send your agent a fake invoice",
     next: "Next: change the rule",
   },
   rule: {
     head: "Change the rule.",
     question: "How much may it pay alone?",
     chips: ALONE_CHOICES,
-    looser: "Raising it needs your signature.",
+    looser: "Raising the limit needs your Face ID.",
     stricter: "Lowering a limit applies at once.",
     same: "This is the rule in force. Pick another amount.",
     sign: "Sign with Face ID",
     apply: "Apply",
     all: "Show all fields",
+    /** The worst case in one honest number, EUR a month, from the server (with what the choice adds, when it adds). */
+    worst: "Worst case in your test world:",
   },
   alone: {
     head: "The agent pays it alone.",
     waits: "Still waits for you.",
     again: "Change the rule again",
+    finish: "Finish",
+  },
+  // 1.5: the closing card, after the last step.
+  done: {
+    head: "That's Purser.",
+    lead: "In about a minute you:",
+    items: { signed: "signed one payment", cheat: "tried to cheat (refused)", trick: "tried to trick the agent (blocked)", rule: "changed the rule (signed)", alone: "watched the agent pay alone" },
   },
 } as const;
+
+/** 1.4: screen 5's worst case in words a CFO reads at once, from the rule in force (Max, 7 Nov). */
+export const worstAloneLine = (alone: string, perDay: number) => `Worst case in your test world: the agent may pay up to ${euro(alone)} alone, at most ${perDay} times a day.`;
+/** Why the main run's figure is far lower: there the agents may pay nothing alone. */
+export const mainRunWorst = (): string => `The main run's worst case is ${README_WORST.figure}: there the agents may pay nothing alone.`;
 
 /** The other invoice the page shows on screen 5, as the server's test world has it (worker/src/trySign.ts). */
 const NEXT = { id: NEXT_INVOICE.id, amount: NEXT_INVOICE.amount, payee: NEXT_INVOICE.payee, reference: NEXT_INVOICE.reference };
@@ -89,10 +115,10 @@ const WAITING = FIXED_PROPOSALS.find((p) => p.id === "T-0002")!;
 /** The last line after a refused tamper: one cent off the amount, or any other single change (Max, 6 Nov). */
 export const TAMPER_VERDICT = { cent: "One cent changed. The signature is worthless.", field: "One field changed. The signature is worthless." } as const;
 
-/** Screen 5's ways on, word for word: the proof (the third step, Max 7 Nov) as the one button, the rest as text links. */
+/** The closing card's three ways on (Max, 7 Nov, 1.5), word for word: the real run as the one main button. */
 export const TRY_SIGN_END = [
-  { label: "See the proof", href: "/proof", icon: "shield-check" },
-  { label: "Trace this payment", href: "/trace", icon: "link-2" },
+  { label: "See the real run", href: "/proof", icon: "shield-check" },
+  { label: "Trace a real payment", href: "/trace", icon: "link-2" },
   { label: "Read the code", href: REPO_URL, icon: "external-link" },
 ] as const;
 /** Under them, as a text link. */
@@ -135,6 +161,10 @@ export const allAgents = (headline: string) => headline.replace("Worst case, set
 // The test world's opening figure (Max, 7 Nov): Purser's policy plus what its Treasury agent may pay alone, by the code
 // the Worker uses (exposurePolicyOfWorld), with the main run's rate; the page shows it before the world answers.
 const START_WORST = worstCaseWordsOf(exposurePolicyOfWorld(defaultPolicy(new Date(), TEST_WORLD)));
+/** Purser's own figure (the README's and the main run's): no payments alone there. */
+const README_WORST = worstCaseWords();
+/** The test world's opening worst case, EUR cents a month (cards and payments alone), as the Worker computes it. */
+const START_WORST_EUR_MONTH = ((x) => x.total.month.eurCents - x.agents.find((e) => e.agent === "treasury")!.alone.monthEurCents)(exposureOf(exposurePolicyOfWorld(defaultPolicy(new Date(), TEST_WORLD))));
 
 /** The fields a visitor may change to tamper, as the terms name them. */
 export const TAMPER_FIELDS = ["amount", "payee_iban", "currency", "fx.client_rate"] as const;
@@ -301,6 +331,16 @@ table.diff th { font-weight: 650; font-size: 13.5px; }
 table.diff tr.chg td { color: var(--text); font-weight: 750; background: var(--surface); }
 table.diff tr.chg td:last-child { color: var(--bad); }
 .outcome { font-size: clamp(19px, 2vw, 22px); font-weight: 750; color: var(--bad); }
+/* 1.3: the fake invoice, the fooled agent, the verdict (code's), the lesson. */
+.tricked { display: grid; gap: 10px; padding: 14px 16px; border-radius: 16px; background: var(--bad-soft); }
+.tricked .doc { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--surface); border: 1px dashed var(--border); font: 500 13.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.tricked .fooled { margin: 0; font-size: 16px; } .tricked .fooled q { font-style: italic; }
+.tricked .lesson { margin: 0; font-weight: 750; font-size: 17px; }
+.tricked ul { margin: 6px 0 0; padding-left: 18px; } .tricked li.blocks { color: var(--bad); font-weight: 600; }
+/* 1.4: what a looser rule adds to the worst case. */
+.wdiff { margin: 4px 0 0; font-weight: 750; font-size: 17px; } .wdiff.up { color: var(--bad); } .wdiff.down { color: var(--ok, var(--accent)); }
+/* 1.5: the closing card's two other ways on, as buttons. */
+.end .ends { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0 0; }
 .outcome[hidden] { display: none; }
 .hashes { display: grid; gap: 8px; } .hashes p { margin: 0; }
 #t-what, #t-why { overflow-wrap: anywhere; }
@@ -400,7 +440,7 @@ const JS = `
   "use strict";
   var D = JSON.parse(document.getElementById("run-data").textContent);
   var $ = function (id) { return document.getElementById(id); };
-  var S = { token: null, world: null, options: null, credId: null, signed: null, timer: null, screen: 1, choice: null };
+  var S = { token: null, world: null, options: null, credId: null, signed: null, timer: null, screen: 0, choice: null, did: {} };
   var W = D.screens;
 
   function el(tag, cls, kids) {
@@ -417,17 +457,17 @@ const JS = `
   // ── The five screens: one shows at a time; the dots, the count and the diagram follow it. ──
   function go(n) {
     S.screen = n;
-    for (var i = 1; i <= 5; i++) {
-      $("scr-" + i).hidden = i !== n;
+    for (var k = 0; k <= 7; k++) $("scr-" + k).hidden = k !== n;
+    for (var i = 1; i <= 6; i++) {
       var li = $("pg-" + i);
       li.classList.toggle("done", i < n); li.classList.toggle("on", i === n);
       if (i === n) li.setAttribute("aria-current", "step"); else li.removeAttribute("aria-current");
     }
-    $("pg-count").textContent = n + " of 5 · " + D.steps[n - 1];
+    $("pg-count").textContent = n === 0 ? "6 steps · about a minute" : n === 7 ? "Done" : n + " of 6 · " + D.steps[n - 1];
     $("diagram").dataset.step = String(n);
     window.scrollTo({ top: 0, behavior: "instant" });
     var h = $("scr-" + n).querySelector("h1, h2");
-    if (h && n > 1) h.focus({ preventScroll: true });
+    if (h && n > 0) h.focus({ preventScroll: true });
   }
 
   // A hash as the page shows it: the first 12 and last 8 characters (the first 8 stressed), the whole hash on a tap,
@@ -774,6 +814,7 @@ const JS = `
     // The receipt to /try/verify in the link's #fragment, which a browser never sends to a server.
     $("r-verify").href = "/try/verify#receipt=" + toB64u(new TextEncoder().encode(JSON.stringify(receipt())));
     resetTamper();
+    S.did.signed = true;
     go(2);
   }
   $("go-cheat").addEventListener("click", function () { go(3); cheat("cent"); });
@@ -878,6 +919,7 @@ const JS = `
         var v = $("t-verdict");
         v.textContent = refused ? verdict(r.changed, s.x.terms, r.terms) : "";
         v.hidden = !refused;
+        if (refused) S.did.cheat = true;
         $("tamper").hidden = false;
         bs.forEach(function (b) { b.disabled = false; });
         edited();
@@ -900,7 +942,8 @@ const JS = `
     return ["", "", "Two", "Three", "Four"][changed.length] + " fields changed. The signature is worthless.";
   }
   $("t-send").addEventListener("click", function () { document.querySelectorAll("#cheat-chips .chip").forEach(function (b) { b.setAttribute("aria-pressed", "false"); }); tamper(); });
-  $("go-rule").addEventListener("click", function () { go(4); pick(null); });
+  $("go-trick").addEventListener("click", function () { go(4); });
+  $("go-rule").addEventListener("click", function () { go(5); pick(null); });
 
   // ── Screen 4: change the rule. One question; the full policy (#71) behind "Show all fields and what Purser sends". ──
   // The values in force and the three locks come from the server, computed there by Purser's own code; this page only
@@ -989,12 +1032,15 @@ const JS = `
     if (!x) return;
     $("p-expo-head").textContent = x.headline; $("p-expo-tasks").textContent = x.tasks;
     // Screen 4, in one line beside the choice: "Worst case: …" (the figure as everywhere; "set by policy" is the screen).
-    $("s4-worst").textContent = x.headline.replace(D.policy.worstCase + ":", "Worst case, all agents:"); $("s5-worst").textContent = x.headline.replace(D.policy.worstCase + ":", "Worst case, all agents:");
+    // Screens 5 and 6: the worst case in a CFO's words, from the rule in force; the full figure behind "more".
+    if (S.policy && S.expoMonth) $("s4-worst").textContent = W.rule.worst + " " + euro(String(S.expoMonth.in_force / 100)) + " a month";
+    $("s4-full").textContent = x.headline;
     var ul = $("p-expo-how");
     ul.replaceChildren.apply(ul, x.how.concat([D.policy.worstCaseChain]).map(function (l) { return el("li", "", [l]); }));
   }
+  function monthEuro(c) { return euro((c / 100).toFixed(2)); }
   function policyState(d) {
-    S.policy = d.policy; S.locks = d.locks; if (d.bounds) S.bounds = d.bounds; S.expoAlone = d.exposure_alone || null;
+    S.policy = d.policy; S.locks = d.locks; if (d.bounds) S.bounds = d.bounds; S.expoAlone = d.exposure_alone || null; S.expoMonth = d.exposure_month || null;
     if (!S.agent) S.agent = "treasury";
     worstCase(d.exposure);
     $("p-ver").textContent = "Policy v" + d.policy_version;
@@ -1012,7 +1058,7 @@ const JS = `
     if (!S.policy) return;
     var a = S.policy.agents.treasury, m = S.locks.treasury.metal.params;
     var now = a.alone, v = alone || now;
-    $("rl-purser").lastChild.textContent = "Purser: " + euro(v) + " alone, ${ALONE_PER_DAY} a day";
+    $("rl-purser").lastChild.textContent = "Purser: pays alone up to " + euro(v) + ", ${ALONE_PER_DAY} times a day";
     $("rl-purser").classList.toggle("chg", v !== now);
     $("rl-awx").lastChild.textContent = "Airwallex card: " + euro(a.per_tx) + " each, " + euro(a.monthly) + " a month";
     $("rl-metal").lastChild.textContent = "Metal mandate: " + String(Number(m.cap)) + " test USD each";
@@ -1032,7 +1078,14 @@ const JS = `
     ruleLines(v);
     // The worst case moves with the choice: the server's figure for that amount, marked as not yet in force.
     var x = S.expoAlone && v ? S.expoAlone[v] : null;
-    if (x) { $("s4-worst").textContent = x.replace(D.policy.worstCase + ":", "Worst case, all agents:"); $("s4-worst").classList.toggle("chg", v !== now); }
+    if (x) $("s4-full").textContent = x;
+    // One honest number (a juror, 7 Nov): the worst case a month this choice sets, and what it adds or takes, both
+    // as the server computed them (1.4).
+    var m = S.expoMonth;
+    var at = m && v && m.alone[v] !== undefined ? m.alone[v] : m ? m.in_force : 0, delta = m ? at - m.in_force : 0;
+    S.delta = delta;
+    $("s4-worst").textContent = W.rule.worst + " " + monthEuro(at) + " a month" + (delta ? " (" + (delta > 0 ? "+" : "−") + monthEuro(Math.abs(delta)) + ")" : "");
+    $("s4-worst").classList.toggle("chg", !!delta);
     var looser = v && cents(v) > cents(now), stricter = v && cents(v) < cents(now);
     var btn = $("go-apply"), note = $("s4-note");
     btn.replaceChildren(looser ? ic("scan-face") : "", looser ? W.rule.sign : W.rule.apply);
@@ -1078,8 +1131,11 @@ const JS = `
     S.pending = null; $("p-refused").hidden = true; $("p-expo-next").hidden = true;
     S.base = renderLocks(S.locks[S.agent], false, before);
     S.lastRule = { signed: signed, alone: S.policy.agents.treasury.alone, ran: d.paid_alone || [] };
+    S.did.rule = signed ? "signed" : "applied";
+    // Screen 6, one small line (Max, 7 Nov): the new rule and what it did to the worst case.
+    $("s5-worst").textContent = "Your new rule: up to " + euro(S.policy.agents.treasury.alone) + " alone, ${ALONE_PER_DAY} times a day" + (S.delta ? " (" + (S.delta > 0 ? "+" : "−") + monthEuro(Math.abs(S.delta)) + " a month worst case)" : "") + ".";
     status("s4-status", "");
-    return showProposals(d.proposals).then(function () { go(5); });
+    return showProposals(d.proposals).then(function () { go(6); });
   }
 
   // The full policy (#71): every field, the three panels and the worst case, as before.
@@ -1153,8 +1209,8 @@ const JS = `
       });
     }, function (e) { status("p-sstatus", passkeyError(e), "bad"); btn.disabled = false; });
   });
-  $("go-see").addEventListener("click", function () { go(5); });
-  $("go-again").addEventListener("click", function () { go(4); pick(null); });
+  $("go-see").addEventListener("click", function () { go(6); });
+  $("go-again").addEventListener("click", function () { go(5); pick(null); });
 
   // ── Screen 5: the next invoice under the rule in force; any other payment the visitor's policy changed. ──
   function drawNext(rows) {
@@ -1168,6 +1224,7 @@ const JS = `
     box.className = "next" + (alone ? " alone" : "");
     box.dataset.proposal = p.proposal_id;
     box.dataset.state = alone ? "alone" : ran ? "signed" : p.check === "fail" ? "blocked" : "waits";
+    S.did.alone = alone;
     box.replaceChildren(
       el("p", "small muted", [x.terms.payee.replace(/ \\(test payee\\)$/, "") + " · a new invoice, ", el("span", "nw", [x.terms.reference.replace(/^Invoice /, "")])]),
       el("p", "amt", [amt(x.terms.currency, x.terms.amount)]),
@@ -1216,6 +1273,44 @@ const JS = `
     return a;
   }
 
+  // ── Screen 4: try to trick the agent. A fixed fake invoice goes to the server, which runs Purser's own fraud and
+  // injection code on it (worker/src/trick.ts); the page shows the invoice, the fooled agent's words and the verdict. ──
+  function trick(attack) {
+    document.querySelectorAll("#trick-chips .chip").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.attack === attack)); b.disabled = true; });
+    status("k2-status", "Purser is checking the invoice…");
+    return post("trick", { token: S.token, attack: attack }).then(function (q) {
+      document.querySelectorAll("#trick-chips .chip").forEach(function (b) { b.disabled = false; });
+      var r = q.data && q.data.trick;
+      if (q.status !== 200 || !r) { status("k2-status", (q.data && q.data.error) || ("error " + q.status), "bad"); return; }
+      status("k2-status", "");
+      $("k-doc").textContent = r.invoice.shows; $("k-full").textContent = r.invoice.text;
+      $("k-says").textContent = r.agent_says;
+      $("k-label").textContent = r.agent_label;
+      $("k-out").textContent = r.outcome;
+      $("k-lesson").textContent = r.lesson;
+      $("k-why").replaceChildren.apply($("k-why"), r.signals.map(function (g) { return el("li", g.blocks ? "blocks" : "", [(g.blocks ? "Blocks: " : "Evidence: ") + g.detail]); })
+        .concat(r.injections.map(function (i) { return el("li", "", ["Flagged as planted (" + i.kind.replace(/_/g, " ") + "): " + i.excerpt]); }))
+        .concat([el("li", "small muted", [r.by])]));
+      $("k-result").className = "tricked" + (r.blocked ? "" : " passed");
+      $("k-result").hidden = false;
+      if (r.blocked) S.did.trick = true;
+    });
+  }
+  document.querySelectorAll("#trick-chips .chip").forEach(function (b) { b.addEventListener("click", function () { trick(b.dataset.attack); }); });
+
+  // ── The closing card (1.5): what this visitor did, in order, then the three ways on. ──
+  $("go-done").addEventListener("click", function () {
+    var it = W.done.items, d = S.did, parts = [];
+    if (d.signed) parts.push(it.signed);
+    if (d.cheat) parts.push(it.cheat);
+    if (d.trick) parts.push(it.trick);
+    if (d.rule) parts.push(d.rule === "signed" ? it.rule : it.rule.replace("(signed)", "(applied)"));
+    if (d.alone) parts.push(it.alone);
+    $("d-list").textContent = parts.join(" · ") + ".";
+    go(7);
+  });
+  $("go-start").addEventListener("click", function () { go(1); });
+
   // The end's links (from the data block, as the locks': the page's markup carries no outside link).
   document.querySelectorAll("#t-end a[data-end]").forEach(function (a) {
     var e = D.end[Number(a.dataset.end)];
@@ -1230,7 +1325,7 @@ const JS = `
     $("go-sign").disabled = true;
     return;
   }
-  go(1);
+  go(0);
   if (document.visibilityState === "visible") openWorld();
   else document.addEventListener("visibilitychange", function once() { if (document.visibilityState === "visible") { document.removeEventListener("visibilitychange", once); openWorld(); } });
 })();`;
@@ -1244,12 +1339,14 @@ const money = (cur: string, s: string) => { const [i, c] = s.split("."); return 
 export function trySignPage(): string {
   const locks = tryLocks().map((l) => ({ ...l, href: /^https?:\/\//.test(l.href) ? l.href : `/${l.href}` }));
   const W = TRY_SIGN_SCREENS;
-  const scr = (n: number, inner: string, extra = "") => `<section class="card scr" id="scr-${n}" data-screen="${n}"${n === 1 ? "" : " hidden"}${extra}>\n${inner}\n</section>`;
+  const scr = (n: number, inner: string, extra = "") => `<section class="card scr" id="scr-${n}" data-screen="${n}"${n === 0 ? "" : " hidden"}${extra}>\n${inner}\n</section>`;
   const body = `<main><div class="wrap">
-<div class="prog"><ol class="dots" aria-label="Five steps">${TRY_SIGN_STEPS.map((s, i) => `<li id="pg-${i + 1}"${i === 0 ? ' class="on" aria-current="step"' : ""}><span class="t">${esc(s)}</span></li>`).join("")}</ol><p class="count" id="pg-count" aria-live="polite">1 of 5 · ${esc(TRY_SIGN_STEPS[0])}</p></div>
+<div class="prog"><ol class="dots" aria-label="Six steps">${TRY_SIGN_STEPS.map((s, i) => `<li id="pg-${i + 1}"><span class="t">${esc(s)}</span></li>`).join("")}</ol><p class="count" id="pg-count" aria-live="polite">6 steps · about a minute</p></div>
 <div class="story">
 <div class="screens">
-${scr(1, `  <h1 tabindex="-1" id="s1-head">${esc(W.ask.head)}</h1>
+${scr(0, `  <h1 tabindex="-1" id="s0-head">${esc(W.intro.head)}</h1>
+  <div class="bar"><button class="btn primary big" type="button" id="go-start">${esc(W.intro.start)}${icon("arrow-right", 20)}</button></div>`)}
+${scr(1, `  <h2 tabindex="-1" id="s1-head">${esc(W.ask.head)}</h2>
   <div class="ask" id="s1-ask"><div class="skel w60"></div><div class="skel"></div><div class="skel w80"></div></div>
   <div class="pay"><p class="to" id="s1-to">${esc(WAITING.payee.replace(/ \(test payee\)$/, ""))} · <span class="nw">${esc(WAITING.reference.replace(/^Invoice /, ""))}</span></p><p class="amt"><span id="s1-amt">${esc(money(TEST_WORLD.currency, WAITING.amount))}</span><span class="fx" id="s1-fx"><span class="skel inl"></span></span></p></div>
   <p class="status" id="w-status" aria-live="polite"></p>
@@ -1288,11 +1385,23 @@ ${scr(3, `  <h2 tabindex="-1" id="s3-head">${esc(W.cheat.head)}</h2>
     <div><button class="btn" type="button" id="t-send" data-world="1" disabled>Send with the same signature</button></div>
     <p class="status" id="t-status" aria-live="polite"></p>
   </div></details>
-  <div class="bar"><button class="btn primary big" type="button" id="go-rule" data-world="1">${esc(W.cheat.next)}${icon("arrow-right", 20)}</button></div>`)}
-${scr(4, `  <h2 tabindex="-1" id="s4-head">${esc(W.rule.head)}</h2>
+  <div class="bar"><button class="btn primary big" type="button" id="go-trick" data-world="1">${esc(W.cheat.next)}${icon("arrow-right", 20)}</button></div>`)}
+${scr(4, `  <h2 tabindex="-1" id="k-head">${esc(W.trick.head)}</h2>
+  <div class="chips" id="trick-chips" role="group" aria-label="${esc(W.trick.lead)}">${ATTACKS.map((a) => `<button class="chip" type="button" data-attack="${a}" data-world="1" aria-pressed="false">${esc(TRICKS[a].label)}</button>`).join("")}</div>
+  <p class="status" id="k2-status" aria-live="polite"></p>
+  <div class="tricked" id="k-result" hidden aria-live="polite">
+    <p class="doc" id="k-doc"></p>
+    <p class="fooled"><span class="pill said-before" id="k-label"></span> <q id="k-says"></q></p>
+    <p class="outcome" id="k-out"></p>
+    <p class="lesson" id="k-lesson"></p>
+    <details class="more"><summary>more</summary><pre class="doc" id="k-full"></pre><ul class="small" id="k-why"></ul></details>
+  </div>
+  <div class="bar"><button class="btn primary big" type="button" id="go-rule" data-world="1">${esc(W.trick.next)}${icon("arrow-right", 20)}</button></div>`)}
+${scr(5, `  <h2 tabindex="-1" id="s4-head">${esc(W.rule.head)}</h2>
   <p class="q">${esc(W.rule.question)}</p>
   <div class="chips" id="rule-chips" role="group" aria-label="${esc(W.rule.question)}">${W.rule.chips.map((v) => `<button class="chip" type="button" data-alone="${v}" data-world="1" aria-pressed="false">${esc(euro(v))}${v === TEST_WORLD.alone_limit ? `<span class="now" title="in force">${icon("check", 16)}</span>` : ""}</button>`).join("")}</div>
-  <p class="worst" id="s4-worst">${esc(allAgents(START_WORST.headline))}</p>
+  <p class="worst" id="s4-worst">${esc(`${TRY_SIGN_SCREENS.rule.worst} €${(START_WORST_EUR_MONTH / 100).toLocaleString("en-US")} a month`)}</p>
+  <details class="more" id="s4-more"><summary>more</summary><p id="s4-full">${esc(START_WORST.headline)}</p><p>${esc(mainRunWorst())}</p></details>
   <ul class="locks1" id="s4-locks"><li id="rl-purser">${icon("check", 18)}<span></span></li><li id="rl-awx">${icon("check", 18)}<span></span></li><li id="rl-metal">${icon("check", 18)}<span></span></li></ul>
   <p class="note" id="s4-note" aria-live="polite"></p>
   <p class="status" id="s4-status" aria-live="polite"></p>
@@ -1325,18 +1434,22 @@ ${scr(4, `  <h2 tabindex="-1" id="s4-head">${esc(W.rule.head)}</h2>
     <p class="basis">${esc(TRY_POLICY.source)}</p>
   </div></details>
   <div class="bar"><button class="btn primary big" type="button" id="go-apply" data-world="1" disabled>${esc(W.rule.apply)}</button></div>`)}
-${scr(5, `  <h2 tabindex="-1" id="s5-head">${esc(W.alone.head)}</h2>
+${scr(6, `  <h2 tabindex="-1" id="s5-head">${esc(W.alone.head)}</h2>
   <div class="next" id="s5-next" hidden></div>
-  <p class="worst big" id="s5-worst">${esc(allAgents(START_WORST.headline))}</p>
+  <p class="small muted" id="s5-worst"></p>
   <details class="fold quiet" id="s5-others-fold" hidden><summary>Other payments in your test world (<span id="s5-others-n">0</span>)</summary><div class="fbody others" id="s5-others"></div></details>
-  <nav class="end" id="t-end" aria-label="What next">${TRY_SIGN_END.slice(0, 1).map((e) => `<a class="btn primary big" data-end="0">${icon(e.icon, 18)}${esc(e.label)}</a>`).join("")}<p class="links">${TRY_SIGN_END.slice(1).map((e, i) => `<a class="tlink" data-end="${i + 1}">${icon(e.icon, 18)}${esc(e.label)}</a>`).join("")}</p></nav>
-  <p class="links"><a class="tlink" id="t-film" target="_blank" rel="noopener noreferrer">${icon("play", 18)}${esc(TRY_SIGN_FILM.label)}</a><button class="tlink" type="button" id="go-again" data-world="1">${icon("undo-2", 18)}${esc(W.alone.again)}</button></p>`)}
+  <p class="links"><button class="tlink" type="button" id="go-again" data-world="1">${icon("undo-2", 18)}${esc(W.alone.again)}</button></p>
+  <div class="bar"><button class="btn primary big" type="button" id="go-done">${esc(W.alone.finish)}${icon("arrow-right", 20)}</button></div>`)}
+${scr(7, `  <h2 tabindex="-1" id="d-head">${esc(W.done.head)}</h2>
+  <p class="lead1">${esc(W.done.lead)} <span id="d-list"></span></p>
+  <nav class="end" id="t-end" aria-label="What next">${TRY_SIGN_END.slice(0, 1).map((e) => `<a class="btn primary big" data-end="0">${icon(e.icon, 18)}${esc(e.label)}</a>`).join("")}<p class="ends">${TRY_SIGN_END.slice(1).map((e, i) => `<a class="btn" data-end="${i + 1}">${icon(e.icon, 18)}${esc(e.label)}</a>`).join("")}</p></nav>
+  <a id="t-film" hidden></a>`)}
 </div>
 <aside class="card diagram" id="diagram" data-step="1" aria-label="One policy, three locks">
   <p class="eyebrow">One policy → three locks</p>
   <div class="dn d-policy">${icon("shield-check", 20)}<span><b>The CFO's policy</b><small>One set of limits, written once.</small></span></div>
   <ol class="dlocks">
-    <li class="dn d-purser">${icon("lock", 18)}<span><b>Purser</b><small id="dg-purser">${esc(euro(TEST_WORLD.alone_limit))} alone, ${ALONE_PER_DAY} a day</small></span></li>
+    <li class="dn d-purser">${icon("lock", 18)}<span><b>Purser</b><small id="dg-purser">${esc(euro(TEST_WORLD.alone_limit))} alone, ${ALONE_PER_DAY} a day</small><small class="dstop">Just stopped another payment · <a id="dg-real" href="${esc(locks.find((l) => l.id === "purser")?.href ?? "/proof")}">a real one</a></small></span></li>
     <li class="dn d-airwallex">${icon("lock", 18)}<span><b>Airwallex card</b><small id="dg-awx">€25 each, €50 a month</small></span></li>
     <li class="dn d-metal">${icon("lock", 18)}<span><b>Metal mandate</b><small id="dg-metal">25 test USD each</small></span></li>
   </ol>
@@ -1350,7 +1463,7 @@ ${scr(5, `  <h2 tabindex="-1" id="s5-head">${esc(W.alone.head)}</h2>
     title: "Sign with your own Face ID", description: "Try it yourself in 60 seconds: an agent asks to pay, you sign the exact terms with Face ID, try to cheat, change the rule, and see the agent pay alone. A test world of your own; nothing real moves.",
     tab: "try", css: CSS + DIAGRAM_STEPS, body, js: JS, stage: false,
     data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check", "check", "lock", "external-link", "arrow-right", "receipt"]), locks, cfo: cfoApproval().line, fields: TAMPER_FIELDS, verdict: TAMPER_VERDICT, receipt: RECEIPT_FORMAT, recordedFx: recordedQuote(), end: TRY_SIGN_END, film: TRY_SIGN_FILM, voiceLabels: VOICE_LABELS,
-      steps: TRY_SIGN_STEPS, screens: TRY_SIGN_SCREENS, waiting: WAITING.id, blocked: FIXED_PROPOSALS.find((p) => p.id !== WAITING.id)!.id, next: NEXT, otherIban: OTHER_IBAN,
+      steps: TRY_SIGN_STEPS, screens: TRY_SIGN_SCREENS, perDay: ALONE_PER_DAY, waiting: WAITING.id, blocked: FIXED_PROPOSALS.find((p) => p.id !== WAITING.id)!.id, next: NEXT, otherIban: OTHER_IBAN,
       policy: { fields: POLICY_FIELDS, words: FIELD_WORDS, state: TRY_POLICY.state, paidAlone: PAID_ALONE, worstCase: TRY_POLICY.worstCase, saidBefore: TRY_POLICY.saidBefore, worstCaseChain: TRY_POLICY.worstCaseChain, ifSigned: TRY_POLICY.ifSigned } },
     source: "Source: a test world made for you (worker/src/trySign.ts); nothing in it is recorded anywhere else. The lock examples: docs/demo/main-run.json and docs/runs/visa-tap-live-2026-11-02.json.",
     real: [
@@ -1378,6 +1491,8 @@ ${scr(5, `  <h2 tabindex="-1" id="s5-head">${esc(W.alone.head)}</h2>
 const DIAGRAM_STEPS = `
 @media (min-width: 1024px) {
   .diagram[data-step="1"] .d-purser, .diagram[data-step="1"] .d-sign, .diagram[data-step="2"] .d-sign, .diagram[data-step="3"] .d-sign,
-  .diagram[data-step="4"] .dlocks .dn, .diagram[data-step="5"] .d-alone { opacity: 1; border-color: var(--accent); background: var(--accent-soft); }
-  .diagram[data-step="5"] .d-alone { border-color: var(--ok); background: var(--ok-soft, var(--accent-soft)); }
+  .diagram[data-step="4"] .d-purser, .diagram[data-step="5"] .dlocks .dn, .diagram[data-step="6"] .d-alone, .diagram[data-step="7"] .dn { opacity: 1; border-color: var(--accent); background: var(--accent-soft); }
+  .diagram[data-step="6"] .d-alone { border-color: var(--ok); background: var(--ok-soft, var(--accent-soft)); }
+  .diagram .dstop { display: none; } .diagram[data-step="1"] .dstop { display: block; color: var(--bad); font-weight: 650; }
+  .diagram[data-step="1"] .dstop a { color: inherit; }
 }`;

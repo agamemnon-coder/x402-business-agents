@@ -101,7 +101,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // view is linked from Proof's head (checked below), not from Home.
     {
       const steps = await page.locator("ol.flow > li a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
-      if (JSON.stringify(steps) !== JSON.stringify(["watch", "try", "proof"])) fail(`/ ${tag}: the flow is not watch, try, proof (${JSON.stringify(steps)})`);
+      // Step 2 is "try", or "try/sign" where the relay serves /try/sign (the live site: TRY_SIGN_ENABLED=on).
+      if (!["watch,try,proof", "watch,try/sign,proof"].includes(steps.join(","))) fail(`/ ${tag}: the flow is not watch, try, proof (${JSON.stringify(steps)})`);
       const primaries = page.locator("main a.btn.primary");
       const box = await primaries.first().boundingBox();
       if ((await primaries.count()) !== 1 || (await primaries.first().getAttribute("href")) !== "watch" || !box || box.y + box.height > h) fail(`/ ${tag}: not one primary button, to watch, in the first screen`);
