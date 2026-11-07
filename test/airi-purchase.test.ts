@@ -180,6 +180,25 @@ describe("above the limit: the CFO's Face ID over the terms", () => {
     expect(await executeAiriPurchase(db, d, p.proposal_id, T0)).toMatchObject({ status: "refused", code: "PURSER_ALREADY_RAN" });
   });
 
+  it("every world numbers its proposals from P-0001, so the checkout's order ref is unique per run (vic-1c: Airwallex said duplicate_request)", async () => {
+    const refs: string[] = [];
+    class Seen extends StandInCheckout {
+      override prepare(order: { ref: string; amount: string; currency: string; description: string }) { refs.push(order.ref); return super.prepare(order); }
+    }
+    for (const at of [T0, new Date(T0.getTime() + 3_600_000)]) {
+      const db = fresh();
+      const d = deps({ checkout: new Seen() });
+      const out = await requestAiriPurchase(db, d, big(), at);
+      if (out.status !== "pending_approval") throw new Error(`expected a proposal, got ${out.status}`);
+      approve(db, out.proposalId);
+      expect(await executeAiriPurchase(db, d, out.proposalId, at)).toMatchObject({ status: "succeeded" });
+    }
+    expect(refs).toHaveLength(2);
+    expect(refs[0]).toMatch(/^P-0001-/);
+    expect(refs[1]).toMatch(/^P-0001-/);
+    expect(refs[0]).not.toBe(refs[1]);
+  });
+
   it("terms changed after the CFO signed: the hash check stops it before Airi is called", async () => {
     const db = fresh();
     const d = deps();
