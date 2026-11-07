@@ -4,7 +4,7 @@
 // truth: src/config/brand.ts (FIRST_SCREEN, WHY_COMPANY). Breaks when a place drops, adds or reorders a word.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { BUSINESS_DOCS, DIFFERENTIATORS, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
+import { BUSINESS_DOCS, DIFFERENTIATORS, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, JUDGE_LINE, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
 import { FLOW, START, homePage } from "../src/redesign/home.js";
 import { buildPages } from "../src/relay/assets.js";
 
@@ -53,6 +53,9 @@ describe("the first screen (section D, 6 Nov)", () => {
     // Without /try/sign in the bundle step 2 leads to /try, never to a dead link.
     expect(homePage()).not.toContain('href="try/sign"');
     expect(hero(homePage())).toContain('<a href="try">');
+    // The judge's tour: a text link under the one button, only where /judge exists (Max, 7 Nov).
+    expect(hero(HOME)).toContain(`<p class="judgeline"><a href="judge">${JUDGE_LINE} →</a></p>`);
+    expect(homePage()).not.toContain('href="judge"');
   });
 
   it("is the form's synopsis, word for word, within 500 characters", () => {

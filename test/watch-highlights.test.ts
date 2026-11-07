@@ -63,7 +63,9 @@ describe("Watch highlights", () => {
     const html = watchPage();
     expect(html).toContain(`Full run (${run.events.length} steps)`);
     expect(html).toMatch(/aria-pressed="true"[^>]*>Highlights|>Highlights<\/button>/);
-    // The same four jumps as Home's animation.
-    expect([...html.matchAll(/data-scene="(\d)"><b>\d<\/b>([^<]+)</g)].map((m) => m[2])).toEqual(["Price rise", "Replan", "Dispute", "Euros"]);
+    // The minimum (Max, 7 Nov): play/pause and this one switch; no speed buttons, no jump chips.
+    expect(html).not.toContain('id="speed"');
+    expect(html).not.toContain('id="scenes"');
+    expect(html.match(/<button /g)?.length).toBe(3);
   });
 });

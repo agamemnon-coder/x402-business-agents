@@ -454,17 +454,22 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
 
     // /judge, "Judge it in 3 minutes" (item 5.1): five steps, each with a checkbox and a time, three minutes in all; the
     // ticks survive a reload; the page asks nothing of any server (no request but the page, its font and its icon);
-    // and with /try/sign on, Home's flow leads to it: watch, then try/sign, then proof (the judge's tour is linked from
-    // the form and the README, not from Home: one button there, Max 7 Nov).
+    // and with /try/sign on, Home's flow leads to it (watch, then try/sign, then proof) and one quiet text link under the
+    // one button opens the tour, in the first screen (Max, 7 Nov).
     if (judgeBase) {
       const asked: string[] = [];
       const onRequest = (r: { url(): string }) => { const u = new URL(r.url()); if (u.origin !== new URL(judgeBase).origin || !["/judge", "/assets/inter.woff2", "/assets/favicon.svg", "/favicon.ico"].includes(u.pathname)) asked.push(r.url()); };
       await page.goto(`${judgeBase}/`, { waitUntil: "load" });
       const flow = await page.locator("ol.flow > li a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
       if (JSON.stringify(flow) !== JSON.stringify(["watch", "try/sign", "proof"])) fail(`/ (Home, with /try/sign) ${tag}: the flow is not watch, try/sign, proof (${JSON.stringify(flow)})`);
+      const top = page.locator("p.judgeline a");
+      const box = await top.boundingBox();
+      if ((await page.locator('a[href="judge"]').count()) !== 1 || (await top.innerText()).trim() !== "Judging? Take the 3-minute tour →" || !box || box.y + box.height > h || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: no one "Judging? Take the 3-minute tour →" link under the button, in the first screen, inside the page's gutter`);
+      if ((await page.locator("main a.btn").count()) !== 1) fail(`/ (Home, with /try/sign) ${tag}: more than one button`);
       await look(page, `/ (Home, with /try/sign) ${tag}`, w);
       await page.screenshot({ path: join(shots, `home-trysign-${tag}.png`) });
-      await page.goto(`${judgeBase}/judge`, { waitUntil: "load" });
+      await top.click();
+      await page.waitForURL(/\/judge$/);
       await page.evaluate((key) => { try { localStorage.removeItem(key); } catch { /* blocked */ } }, JUDGE_KEY);
       page.on("request", onRequest);
       await page.reload({ waitUntil: "load" });

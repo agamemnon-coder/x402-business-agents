@@ -4,7 +4,7 @@
 // see the proof. One button. The numbers, the partners' proof and the business live on /proof. Everything from the
 // recorded run (src/redesign/run.ts).
 
-import { BUSINESS_DOCS, CAVEAT_LINE, CAVEAT_LINK, CORE_SENTENCE, HERO, KIT_LINE, VISA_AWARD_ON, VISA_EXTRA_LINK, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../config/brand.js";
+import { BUSINESS_DOCS, CAVEAT_LINE, CAVEAT_LINK, CORE_SENTENCE, HERO, JUDGE_LINE, KIT_LINE, VISA_AWARD_ON, VISA_EXTRA_LINK, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../config/brand.js";
 import { agentRun, type AgentRun } from "./run.js";
 import { esc, icon, page, stageHtml } from "./ui.js";
 
@@ -27,6 +27,7 @@ ol.flow b { display: block; font-size: 17px; } ol.flow small { display: block; c
 .badges .pill.kit { background: var(--text); color: var(--bg); white-space: nowrap; }
 .badges .pill.kit.award { background: var(--accent-soft); color: var(--accent); }
 .caveat a { color: var(--accent); font-weight: 650; }
+.judgeline { margin: 10px 0 0; font-size: 15px; } .judgeline a { color: var(--accent); font-weight: 650; text-decoration: none; }
 .caveat { margin: 6px 0 0; font-size: 14.5px; color: var(--muted); }
 .built { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 22px; color: var(--faint); font-size: 14px; font-weight: 600; }
 .logo { display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 10px; background: #fff; border: 1px solid var(--border); }
@@ -167,6 +168,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean }
     <p class="what">${esc(WHAT_IT_IS)}</p>
     <ol class="flow" aria-label="Three steps">${flow.map((f) => `<li><a href="${esc(f.href)}"><span class="fn">${f.n}</span>${icon(f.icon, 20)}<span class="ft"><b>${esc(f.title)}</b><small>${esc(f.sub)}</small></span></a></li>`).join("")}</ol>
     <a class="btn primary big start" href="watch">${icon("play", 18)}${esc(START)}</a>
+    ${opts.trySign ? `<p class="judgeline"><a href="judge">${esc(JUDGE_LINE)} →</a></p>` : ""}
     <p class="caveat">${esc(CAVEAT_LINE)} <a href="#real" data-real>${esc(CAVEAT_LINK)}</a></p>
   </div>
   <div class="show">${stageHtml(run.agents, s1?.steps[0]?.text ?? "Northwind Outdoor sells live stock data per query")}<div class="runlabel">${icon("database", 14)}<span>${esc(run.label)}</span></div>

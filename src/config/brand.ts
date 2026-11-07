@@ -187,3 +187,6 @@ export const CFO_VIEW_URL = "./?autonomy";
 export const CFO_VIEW_LINE = "This is what the CFO opens: what the agents did, what waits for a signature, and each limit the CFO set.";
 /** The heading over PROOF_SENTENCES wherever they are listed. */
 export const PROOF_HEADING = "The proof, one sentence per partner";
+
+/** Home's one quiet way to the judge's tour, under the one button (Max, 7 Nov): a text link, not a second button. */
+export const JUDGE_LINE = "Judging? Take the 3-minute tour";
