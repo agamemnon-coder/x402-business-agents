@@ -70,5 +70,16 @@ describe("the partner pages", () => {
     expect(pages.csp.claude).toMatch(/^default-src 'none'; style-src 'sha256-/);
     // /airwallex: its one script, hashed like its style; it connects nowhere.
     expect(pages.csp.airwallex).toMatch(/^default-src 'none'; script-src 'sha256-[A-Za-z0-9+/=]+'; style-src 'sha256-[A-Za-z0-9+/=]+'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'$/);
+    // Live QA (7 Nov, Lighthouse): on the jury's pages no heading skips a level (/airwallex went h1 to h3), Proof's
+    // "More" links each name their partner for screen readers, /metal's tx links are at least 24 px tall, and the
+    // stage never fades its words below readable contrast (it greys them instead).
+    const jury = { home: pages.home, watch: pages.watch, proof: pages.proof, airwallex: pages.airwallex, metal: pages.metal, claude: pages.claude, visa: pages.visa };
+    for (const [name, html] of Object.entries(jury)) {
+      const levels = [...String(html).matchAll(/<h([1-6])\b/g)].map((m) => Number(m[1]));
+      expect({ name, skips: levels.filter((l, i) => i > 0 && l > levels[i - 1]! + 1) }).toEqual({ name, skips: [] });
+    }
+    expect([...String(pages.proof).matchAll(/<a class="open" href="(metal|airwallex|claude)">More<span class="vh"> about ([A-Za-z]+)<\/span>/g)].map((m) => m[2]!.toLowerCase())).toEqual(["metal", "airwallex", "claude"]);
+    expect(String(pages.metal)).toContain(".st .tx a.pf { font-size: 14.5px; display: inline-flex; align-items: center; min-height: 24px; }");
+    expect(String(pages.home)).not.toMatch(/\.lane\.past \{ opacity|\.ag:not\(\.on\) \{ opacity|\.coin\.ghost \{ opacity/);
   });
 });
