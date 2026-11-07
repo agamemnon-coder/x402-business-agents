@@ -258,6 +258,9 @@ describe("the amounts in the reason: each one of code's numbers, as code gave it
       "It needs EUR 1870.00 with the fee ceiling and only EUR 1000.00 is free, so the FX buys the EUR 870.00 short for USD 982.82. It is above the EUR 500.00 I may pay alone, so you sign it with Face ID.",
       "Pay now: the quote locks the EUR 870.00 shortfall, and the invoice is above what I may pay alone, so it needs your Face ID.",
       "I advise waiting until 8 November: INV-2026-118 is due 2026-11-11 and the quote can be renewed then.",
+      // Live Opus, 7 Nov: a currency named apart from its amount ("a USD floor of 3000.00", "free euros") is no amount.
+      "Both floors hold after the payment (EUR free 0.00 and USD 7017.18, against a USD floor of 3000.00), so pay now.",
+      "After the payment free euros drop to EUR 0.00 with the EUR 25000.00 floor untouched, so pay now.",
     ]) expect({ ok, fits: amountsFit(ok, GIVEN), check: checkReason(ok, GIVEN) }).toEqual({ ok, fits: true, check: { says: ok } });
   });
 
@@ -269,6 +272,9 @@ describe("the amounts in the reason: each one of code's numbers, as code gave it
       "The FX buys 870 euros of the shortfall, so please sign it with Face ID.",
       "Pay within 3 days: the quote is locked and the invoice is above my limit.",
       "The invoice of EUR 1850.005 is above my limit, so please sign it.",
+      "The invoice is 1,850.00 USD, above my limit, so please sign it with Face ID.", // the wrong currency, after the amount
+      "The quote sells $982.82 of dollars for the shortfall, so please sign it.", // a sign that is not code's
+      "It is over a thousand euros, so please sign it with Face ID.", // a number word
     ]) expect({ bad, check: checkReason(bad, GIVEN) }).toEqual({ bad, check: { bad: "amounts" } });
     expect(checkReason("One. Two sentences here. Three sentences is too many.", GIVEN)).toEqual({ bad: "shape" });
     // At most 400 characters (7 Nov: live Opus's two-sentence advice ran to 326; Max's rule is two sentences).
