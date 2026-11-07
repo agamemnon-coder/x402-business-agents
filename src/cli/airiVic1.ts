@@ -58,7 +58,7 @@ if (cmd === "dry") {
     const calls: { op: string; by: string }[] = [];
     const airi = counted(new StandInAiriClient(), "airi", calls);
     const checkout = counted(new StandInCheckout(), "checkout", calls);
-    const rail = { airi, checkout, say: log, showPasskeyUrl: () => log("AIRI TAP   (dry: a stand-in link; no tap needed)") };
+    const rail = { airi, checkout, say: log, showPasskeyUrl: (_url: string, i: { actionId: string }) => log(`AIRI TAP ${i.actionId.startsWith("P-") ? "B" : "A"}  ${i.actionId} (dry: a stand-in link, not printed; no tap needed)`) };
     const rec = await runVic1({
       db, mode: "dry", rail, airi, log,
       awaitCfo: async (id) => {
@@ -101,12 +101,16 @@ if (cmd === "dry") {
   const { runVic1, preflight, counted, Vic1Stop } = vic1Mod;
   const { openDb } = await import("../db/open.js");
   const { AiriCliClient } = await import("../airi/cli.js");
-  const { consoleLinkSink, liveAiriDeps, takeTapLink } = await import("../airi/deps.js");
+  const { awaitWithTap, consoleLinkSink, liveAiriDeps, takeTapLink } = await import("../airi/deps.js");
   const { approvalHint } = await import("./hint.js");
   const db = openDb();
   const log = makeLog("");
   /** The one-time link: the console only, never the run log. */
   const tap = (line: string) => console.log(line);
+  // Why B's link went unseen on 7 November (vic-1b): this process did print it (its console, conductor.log), but as an
+  // unlabelled, untimestamped line that never reached the run log, so nothing watching the run's log or its
+  // timestamped lines saw it come. Now: a labelled "AIRI TAP B" line with the time on the console the moment the
+  // runner writes the link, and a notice (without the link) in the run log, repeated each minute while the tap waits.
   const calls: { op: string; by: string }[] = [];
   const budget = Number(process.env.VIC1_AIRI_CALL_BUDGET ?? "12");
   const airi = counted(new AiriCliClient(), "airi", calls, budget);
@@ -114,27 +118,22 @@ if (cmd === "dry") {
     if (cmd === "preflight") {
       await preflight({ db, mode: "live", airi, rail: null as never, log, awaitCfo: async () => "" });
     } else {
-      const live = liveAiriDeps(consoleLinkSink(tap), log);
+      const live = liveAiriDeps(consoleLinkSink(tap, "A"), log);
       if (!live) throw new Vic1Stop("no Airwallex sandbox keys; nothing was called");
       const rail = { ...live, airi, checkout: counted(live.checkout, "checkout", calls) };
       if (cmd === "recover") {
         const { recoverAiriPurchases } = await import("../airi/purchase.js");
         for (const r of await recoverAiriPurchases(db, rail)) log(`recover    ${r.actionId}: ${r.status}`);
       } else {
-        const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
         const rec = await runVic1({
           db, mode: "live", rail, airi, log,
           awaitCfo: async (id) => {
             log(`FACE ID    ${approvalHint(db, id)}`);
-            const until = Date.now() + 70 * 60_000;
-            for (;;) {
-              const link = takeTapLink(id);
-              if (link) tap(`AIRI TAP   ${id}: ${link.amount} ${link.currency} at ${link.merchant}. Open this one-time link on your phone and confirm with your passkey:\n           ${link.url}`);
-              const s = (db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(id) as { status: string }).status;
-              if (["EXECUTED", "FAILED", "REJECTED", "EXPIRED", "NEEDS_REAPPROVAL", "SUPERSEDED"].includes(s)) return s;
-              if (Date.now() > until) return `still ${s} after 70 minutes`;
-              await sleep(2000);
-            }
+            log(`AIRI TAP B  after the Face ID the runner asks Airi for B's mandate; its one-time link will show here, on this console, as an "AIRI TAP B" line`);
+            return awaitWithTap({
+              id, which: "B", tap, log, takeLink: () => takeTapLink(id),
+              status: () => (db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(id) as { status: string }).status,
+            });
           },
         }, () => calls);
         for (const [k, v] of Object.entries(rec.checks)) log(`${v.ok ? "ok  " : "FAIL"}  ${k}  ${v.detail}`);

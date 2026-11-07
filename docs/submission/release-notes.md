@@ -326,6 +326,15 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   past 8 s) code reads the invoice, labelled so. One budget for every live call on the page, USD 10 a day (was USD 1
   for the sentence alone), per-address and overall limits, the emergency switch TRY_SIGN_HAIKU for all of them, and
   today's spend on /health. 2881 tests in 282 files, all passing.
+- 7 November, the Airi rail after its first live run (vic-1b): our Airwallex sandbox refuses a PaymentIntent confirm
+  with raw card fields over the API ("This account is not enabled for native API access"), so the agent now pays on
+  Airwallex's own Hosted Payment Page, typing the card from Airi's single-use credential into it like a shopper in
+  headless Chromium; one read of the PaymentIntent then gives the real outcome, and 3DS that does not finish by itself
+  is a decline, THREE_DS_REQUIRED (src/airi/hostedCheckout.ts; AIRI_CHECKOUT=api keeps the old confirm). A probe with
+  Airwallex's test card paid on the sandbox's hosted page headless (SUCCEEDED). The vic-1 conductor now prints the
+  one-time Airi link for a purchase above the limit as a labelled "AIRI TAP B" line the moment the runner writes it,
+  with a notice in the run log, and waits until that purchase has an outcome or its 5-minute tap window has run out.
+  Not yet run live again. 2953 tests in 288 files, all passing.
 
 ## Real, and ours
 

@@ -4,7 +4,8 @@
 //   C  at a merchant the CFO does not allow: refused by Purser, Airi is not called.
 // Then a record with safe references only. `--dry` runs the same code on the stand-ins, 0 network, and says so.
 //
-// The run log gets every line but the one-time Airi link: that goes to the console only (`tap`).
+// The run log gets every line but the one-time Airi link: that goes to the console only (`tap`), as an "AIRI TAP A" or
+// "AIRI TAP B" line (src/airi/deps.ts). The checkout is Airwallex's Hosted Payment Page by default (AIRI_CHECKOUT).
 
 import type { Json } from "@metalntwx/metal-pay/mandates";
 import { audit } from "../audit/log.js";
@@ -131,7 +132,7 @@ export async function runVic1(d: Vic1Deps, calls: () => { op: string; by: string
   };
   const record: Vic1Record = {
     run: RUN, mode: d.mode,
-    label: d.mode === "dry" ? "DRY RUN on stand-ins: no Airi, no Airwallex, no card; not the run's evidence" : "live: airi-cli 0.1.0-beta.4 and the Airwallex sandbox (test money)",
+    label: d.mode === "dry" ? "DRY RUN on stand-ins: no Airi, no Airwallex, no card; not the run's evidence" : `live: airi-cli 0.1.0-beta.4 and the Airwallex sandbox (test money); checkout: ${d.rail.checkout.label}`,
     started_at: started.toISOString(), ended_at: clock().toISOString(),
     preflight: { cli: pf.cli, session_expires: pf.sessionExpires, payment_methods: { count: 1, selected: pf.method.display } },
     purchases: { A: brief(a), B: { ...(brief(b) as Record<string, Json>), end: bEnd, row: bRow }, C: { ...(brief(c) as Record<string, Json>), airi_calls: cCalls } },

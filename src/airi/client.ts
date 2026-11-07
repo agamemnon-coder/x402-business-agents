@@ -109,7 +109,7 @@ export type CheckoutAnswer =
 
 /** The merchant's checkout: the only code that reads the credential file. */
 export interface AiriCheckout {
-  readonly kind: "stand-in" | "airwallex-sandbox";
+  readonly kind: "stand-in" | "airwallex-sandbox" | "airwallex-sandbox-hosted";
   readonly label: string;
   /** Opens the order at the merchant, without the card (Airwallex: a PaymentIntent). Its reference is recorded
    *  before the card is sent, so a crash can be looked up. NOT_SUBMITTED when the merchant cannot take it. */

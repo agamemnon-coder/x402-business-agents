@@ -359,7 +359,7 @@ async function run(db: DB, deps: AiriDeps, row: Row, recheck: () => boolean, now
       deps.clearPasskeyUrl?.(row.action_id);
     }
     audit(db, "system", "airi.credential_received", subject, { ...ids, mandate_id: mandate.mandateId, status: safe(receipt.status), token_type: safe(receipt.tokenType), token_expiration: safe(receipt.tokenExpiration) }, now);
-    say(`AIRI TAP   ${row.action_id}: tapped; credential received (kept in a private file for this checkout only)`);
+    say(`AIRI TAPPED ${row.action_id}: credential received (kept in a private file for this checkout only)`);
 
     // 5. The checkout pays. STARTED first: after a crash the payment is looked up by its reference, never resent.
     setRow(db, row.action_id, { status: "PAYING" }, now);

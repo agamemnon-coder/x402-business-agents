@@ -1,6 +1,7 @@
 # Airi single-use credentials (the route Airwallex calls VIC): step 0 findings and the step 1 plan
 
-Status, 7 November 2026: step 0 researched; **step 1 built** on branch `vic` (Max's go), not yet run live. The run
+Status, 7 November 2026: step 0 researched; **step 1 built** on branch `vic` (Max's go), run live once as vic-1b
+(the API confirm refused, B's tap link unseen; both fixed on `airi-camelcase`, see the run plan). The run
 plan is [docs/runs/vic-1-plan.md](../runs/vic-1-plan.md). Since step 0: airi-cli 0.1.0-beta.4 is installed in the
 container (skills and telemetry off), Max's allowlist is active, and agent use is on. Our Airwallex sandbox takes
 PaymentIntents (the coordinator's probe, with Max's ok: create answered 201, REQUIRES_PAYMENT_METHOD).
@@ -17,7 +18,12 @@ PaymentIntents (the coordinator's probe, with Max's ok: create answered 201, REQ
   recognise is refused, naming its keys and never its values.
 - `src/airi/checkout.ts`: the Airwallex sandbox checkout. It creates a PaymentIntent, then confirms it with the card
   (docs URLs in the file). Airwallex's state and its own code decide: accepted, declined, or not known (then it is
-  looked up by the intent's id, never resent). Errors never carry the card.
+  looked up by the intent's id, never resent). Errors never carry the card. Since vic-1b (7 Nov) this is
+  `AIRI_CHECKOUT=api` only: our sandbox refuses the confirm ("not enabled for native API access").
+- `src/airi/hostedCheckout.ts` (since vic-1b, the default): the same PaymentIntent, paid on Airwallex's Hosted Payment
+  Page in headless Chromium. Airwallex.js `redirectToCheckout`, the card typed in like a shopper, Pay, then one GET
+  for the outcome. 3DS that does not finish by itself is `THREE_DS_REQUIRED`. Findings and the probe:
+  [docs/runs/vic-1-plan.md](../runs/vic-1-plan.md).
 - `src/airi/purchase.ts`: reservation (`airi_purchases`, the hold, the day's count under the write lock), steps in
   `money_steps`, the hash re-checked before the mandate and before the credential. `mandate result` after every
   submitted checkout, `mandate cancel` whenever Purser stops before it. Crash recovery (`recoverAiriPurchases`, at the
