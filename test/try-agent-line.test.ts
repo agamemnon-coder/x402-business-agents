@@ -285,9 +285,11 @@ describe("the amounts in the reason: each one of code's numbers, as code gave it
     advisor.reason = "It needs EUR 1,880.00 with the fee, so the FX buys the shortfall. Please sign it.";
     const { d } = deskWith(advisor);
     const { t2 } = await world(d);
-    expect(advisor.calls).toBe(2);
+    // The agent's own tool refuses it every time this stand-in sends it (it never writes again), so there is no advice;
+    // the page's own check stays behind it (the next test).
+    expect(advisor.calls).toBe(5);
     expect(t2.says).toBe(FIXED_PROPOSALS[1]!.says);
-    expect(t2.voice!.label).toBe(`${FIXED_TEXT} · the live advice was not used: an amount in its reason was not one of code's numbers`);
+    expect(t2.voice!.label).toBe(`${FIXED_TEXT} · no advice within 5 calls`);
     expect(termsOf(t2).agent_advice).toBe("none");
   });
 
@@ -429,5 +431,28 @@ describe("submit_advice refuses a reason that is not one or two sentences of at 
   it("the quote's end as a time of day is one of code's numbers in the reason", () => {
     expect(amountsFit("The quote expires today at 10:15:00Z, so paying now keeps it.", adviceGiven(FACTS, "500.00"))).toBe(true);
     expect(amountsFit("The quote expires today at 10:16:00Z, so paying now keeps it.", adviceGiven(FACTS, "500.00"))).toBe(false);
+  });
+});
+
+describe("submit_advice refuses an amount that is not one of code's numbers; the agent writes again (live Opus, 7 Nov)", () => {
+  // Live Opus on /try/sign (7 Nov, after the deploy of #87) gave a reason the page refused for an amount it was not
+  // given; the page then showed the fixed text. Now the agent's own tool refuses it first, says what is not code's and
+  // which numbers are, and the agent writes again within its turns: the page shows its second reason, live.
+  it("the first reason names EUR 1234.56: blocked (\"advice amounts\"), the second is shown live", async () => {
+    const advisor = new StandInAdvisor();
+    let submits = 0;
+    const ask: StandInAdvisor["ask"] = async (req) => {
+      const r = await advisor.ask(req);
+      const c = r.content[0] as { name?: string; input?: { reason?: string } };
+      if (c.name === "submit_advice" && submits++ === 0) c.input!.reason = "Paying now saves EUR 1234.56 against waiting, and the floors hold after the payment.";
+      return r;
+    };
+    const d = new TrySignDesk(sqlOver(new Database(":memory:")), { now: () => t0, fx: new StandInQuotes(() => t0.getTime()), rate: TEST_RATE, reader, advisor: ask });
+    const { t2, advise } = await world(d);
+    expect(t2.voice).toMatchObject({ source: "live" });
+    expect(t2.says).not.toContain("1234.56");
+    const blocked = (advise.calls as { tools: { name: string; blocked: string | null; answer: string }[] }[]).flatMap((c) => c.tools).find((t) => t.blocked === "advice amounts");
+    expect(blocked?.answer).toMatch(/^Not recorded: "EUR 1234\.56" is not one of code's numbers/);
+    expect(blocked?.answer).toContain("EUR 870.00");
   });
 });

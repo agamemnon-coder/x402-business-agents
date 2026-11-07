@@ -121,8 +121,8 @@ export function adviceOutOfBounds(f: Pick<TimingFacts, "today" | "dueDate">, a: 
   return null;
 }
 
-/** The three tools, over these facts; submit_advice hands an advice within the bounds to `onAdvice`. */
-export function timingTools(f: TimingFacts, onAdvice: (a: TimingAdviceValue) => void): TimingTool[] {
+/** The three tools, over these facts; submit_advice hands an advice within the bounds (and `reasonCheck`, if given) to `onAdvice`. */
+export function timingTools(f: TimingFacts, onAdvice: (a: TimingAdviceValue) => void, reasonCheck?: (a: TimingAdviceValue) => string | null): TimingTool[] {
   const { earliest, latest } = adviceBounds(f);
   return [
     {
@@ -147,6 +147,9 @@ export function timingTools(f: TimingFacts, onAdvice: (a: TimingAdviceValue) => 
       run: (a: TimingAdviceValue) => {
         const no = adviceOutOfBounds(f, a);
         if (no) return { text: no, blocked: "advice bounds" };
+        // Where code checks the reason's amounts before showing it (/try/sign), the tool says so first: the agent writes again.
+        const stray = reasonCheck?.(a) ?? null;
+        if (stray) return { text: stray, blocked: "advice amounts" };
         onAdvice({ timing: a.timing, date: a.timing === "wait_until" ? a.date : null, reason: a.reason.trim().slice(0, 500) });
         return { text: "Your advice is beside the proposal on the CFO's phone.", final: true };
       },

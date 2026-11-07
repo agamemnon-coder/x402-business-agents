@@ -334,6 +334,21 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   linking there (no decline code on /proof); every figure and id from the record (src/redesign/awxRun.ts,
   test/awx-run-page.test.ts). README, docs/claims.md and docs/airwallex.md carry it; its 0.0839 USD of Claude is booked
   in docs/runs/api-budget.jsonl. 2887 tests in 283 files, all passing.
+- 7 November, every jury-facing text in the demo's order (Max): Home → Watch → Try (/try/sign) → Proof, and /try/sign's
+  story as it now runs: the agent asks (Claude Sonnet reads the invoice, Purser's code checks the reading and the terms
+  come from it, Claude Opus advises live as the Treasury agent), signed with Face ID, try to cheat, try to trick the
+  agent (Claude Sonnet reads a fake invoice live; Purser's code blocks it), change the rule and see the worst case, the
+  agent pays alone, the closing card. /judge's five steps follow it (watch the agents 30 s; sign, then try to cheat
+  40 s; try to trick the agent 30 s; change the rule, see the worst case 30 s; see the proof 50 s, with awx-1 on
+  /airwallex), with /trace and the receipt check under "More time?"; test/judge-tour.test.ts checks each line against
+  its page. The README's top tells the same order and the seven steps, and its evidence carries awx-1 again (its
+  section, its line among the proof sentences and under "Other live tests", which a merge had dropped on main; the
+  same for its rows in docs/claims.md). The form's Description (3,998 characters, under the 4,000 the test allows)
+  adds the demo's order and one line on awx-1; the Instructions go /judge, then Home, Watch, Try and Proof; the long
+  text lists awx-1 under "Other live tests". The Demo Day pitch opens on Home and /watch, then the live demo with the
+  trick, the worst case and the closing card, then the proof with awx-1 (341 words, about 2:28 of speech); the runbook
+  has a fallback for each of its 14 steps. The Q&A adds five questions (18–22) on the live agents and on awx-1.
+  2941 tests in 287 files, all passing.
 - 7 November, the Treasury agent works live on /try/sign's first screen, Purser-style (spec 6b): the test world holds
   EUR 26,000.00 (floor EUR 25,000.00) and USD 8,000.00 (floor USD 3,000.00). The agents' work comes in step by step,
   one request each (POST /agents): Claude Sonnet, the runner's invoice reader, reads Alpine Packaging's invoice (a
@@ -357,6 +372,68 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   one or two plain sentences of at most 400 characters ("Not recorded: …"), in the runner and on /try/sign alike (one
   rule, src/agents/timingCore.ts plainReason), and the agent writes again within its turns. The quote's end as a time
   of day, and code's own phrases ("EUR free 0.00"), count as code's numbers. 2915 tests in 283 files, all passing.
+- 7 November, the Airi rail after its first live run (vic-1b): our Airwallex sandbox refuses a PaymentIntent confirm
+  with raw card fields over the API ("This account is not enabled for native API access"), so the agent now pays on
+  Airwallex's own Hosted Payment Page, typing the card from Airi's single-use credential into it like a shopper in
+  headless Chromium; one read of the PaymentIntent then gives the real outcome, and 3DS that does not finish by itself
+  is a decline, THREE_DS_REQUIRED (src/airi/hostedCheckout.ts; AIRI_CHECKOUT=api keeps the old confirm). A probe with
+  Airwallex's test card paid on the sandbox's hosted page headless (SUCCEEDED). The vic-1 conductor now prints the
+  one-time Airi link for a purchase above the limit as a labelled "AIRI TAP B" line the moment the runner writes it,
+  with a notice in the run log, and waits until that purchase has an outcome or its 5-minute tap window has run out.
+  The checkout's order ref (Airwallex's request_id, unique per account) is now the purchase's id plus its start, not
+  the bare proposal id: every world numbers from P-0001, and vic-1c's first B was refused as duplicate_request before
+  any card was used. CI's test job now has Chromium for the hosted-page test. 2994 tests in 290 files, all passing.
+- 7 November, /try/sign in motion (Max: the demo as the hackathon's most impressive moment): the same colours, type and
+  layout; the cards with a subtle shadow and a light gradient, no glass. "Signed and verified": the tick draws itself in,
+  with a soft green glow. A refused cheat: the card shakes once, the changed field lights red, and both hashes stand side
+  by side in the table, every character that differs marked. "Trick the agent": the fake invoice slides in, its IBAN
+  beside the one on file with the difference in red, then the block. "Change the rule": the worst case and what it adds
+  count up to the new figures (the final words are in the page at once; the counting is drawn over them) and the three
+  locks light up one by one. "Pays alone": the payment moves through Purser, Airwallex and Metal, and ends green. On a
+  laptop the diagram lights each step's part as it opens. Each animation runs 150 to 400 ms and nothing waits for one;
+  with prefers-reduced-motion the end state shows at once (a browser check walks that path). 2980 tests in 289 files,
+  all passing.
+- 7 November, /try/sign after Max's review: each lock shows its channel (Purser: invoices and proposals; the Airwallex
+  card: card spend; the Metal mandate: on-chain payments), on screen 5's lines, in the diagram, on the blocked payment's
+  locks and on the full policy's panels. The worst case is the argument for the signature: a looser rule shows the
+  figure with what it adds, and right under it "That risk needs your Face ID." "Try to trick the agent" is calmer: a
+  plain card, red only for what differs and for the block, the invoice's IBAN beside the one on file. The band at the
+  top is thin: 22 px in one line from 390 px (it was 63 px in two at 390 px, 44 px on a laptop). A fix: with no advice
+  from the agent, screen 1 no longer shows a stray "null". 2985 tests in 290 files, all passing.
+- 7 November, a hash chain per /try/sign test world (6c): every event in a world (opened, each agent's step, each
+  proposal, signature, refusal and execution, each policy change) appends a row {seq, at, kind, data_sha256, prev,
+  hash}, its hash the SHA-256 of the row's canonical JSON without the hash, so each row covers the one before
+  (worker/src/worldChain.ts; written in the same synchronous stretch as the event, so with a plain-code SHA-256 checked
+  against Node's). The last screen shows the chain's length and head, and "Verify the chain" recomputes every row in
+  the browser. The receipt carries the chain as it was when signed; `npm run verify-receipt` and /try/verify check it
+  and find the row that records this signature (its data is the proposal and the hash signed). Tests: a tampered row is
+  found (its data, time, kind, order, a dropped row, a rewritten hash), the chain survives a reload of the store, and it
+  is per world. The server keeps the chain: it shows the order and that no row changed after the next was written, not
+  that the server could not rewrite all of it. 2992 tests in 291 files, all passing.
+- 7 November, the approval view and a new run's key (Max, on his iPhone in the live runs): the approval page puts
+  what he decides on in the first screen at 390 × 844: the amount, the payee, the agent, why it needs him in one line,
+  "Approve with Face ID" and Reject; the exact terms, the hash, the options it is not and the review sit behind one
+  fold, "Details". The checks stay: the page hashes the terms itself and shows only what the runner signed; the buttons
+  arm after 0.8 s (3 s against Opus's advice, Reject first), and choosing an option signs nothing. A new run's viewer
+  link no longer locks the phone out: the page shows the old and new runner key's fingerprints (the runner prints its
+  own beside the viewer link) and one button, "This is a new run: use the new key"; only that press replaces the pin,
+  only for a key a link brought and that signed what the relay sends; a key no link offered is still refused
+  (test/approve-runner-key.test.ts, the browser check). Live after the relay is redeployed. 2950 tests in 288 files,
+  all passing.
+- 7 November, the Airi run recorded and on the site: vic-1 passed live that day in world vic-1c, its second attempt
+  there (13:56–14:10 UTC; Airwallex sandbox, Airi's test card, test money; 0 Metal and 0 Claude calls), all five
+  checks. The Sourcing agent paid with a single-use card credential from Airwallex's Airi wallet on Airwallex's hosted
+  checkout page for our own sandbox merchant: EUR 12.00 within the CFO's limit alone (Max tapped once in Airi with his
+  passkey; PaymentIntent int_sgpvzc9hjhnxvpblt2r SUCCEEDED); EUR 45.00 above it only after the CFO's Face ID on P-0002,
+  then Max's tap in Airi (mandate mdt_nlpdgv8gqhnxvxcjxbv, PaymentIntent int_sgpvzc9hjhnxvxc26ie SUCCEEDED, P-0002
+  EXECUTED); a merchant the CFO does not allow refused by Purser, PURSER_MERCHANT_NOT_ALLOWED, 0 Airi calls. Its log,
+  docs/runs/2026-11-07-vic-1.md, has every id, step, timing and call, and the three attempts before it as they
+  happened (vic-1, vic-1b, vic-1c's first; nothing charged in any). Its sanitised record is docs/demo/airi-run.json.
+  /airwallex shows it below awx-1, dated and labelled "Airwallex sandbox, test card, test money" (5 of 5 checks, every
+  step and id in a fold; the page's word budget 210 → 235 for it); Proof's "Airwallex, read back" a short version
+  linking there (src/redesign/airiRun.ts, test/airi-run-page.test.ts). README, docs/claims.md, docs/airwallex.md (with
+  the PaymentIntent endpoints the rail calls), the long text and qa.md (18, 19) carry it; the form's Description does
+  not (no room). 3001 tests in 291 files, all passing.
 
 ## Real, and ours
 
@@ -364,3 +441,12 @@ Real: the Airwallex sandbox, Metal testnet, Claude, and Face ID; all money is te
 suppliers, the customer, the merchant, and the second approver (a labelled test passkey, pressed by our build tool,
 Claude Code, on Max's go; in production a second person). Sources for every claim:
 [docs/claims.md](../claims.md).
+- 7 November, the Treasury agent's own tool also holds its reason to the page's amount rule: after the deploy of #87,
+  live Opus once named a number the page did not accept, and the page fell back to the fixed text. submit_advice on
+  /try/sign now refuses such a reason first ("Not recorded: "…" is not one of code's numbers", with code's numbers as
+  it may write them), and the agent writes again within its turns; the page's own check stays behind it
+  (worker/src/agentLine.ts strayRefusal, test/try-agent-line.test.ts).
+- 7 November, one release of the day's branches together (release-7nov): the Airi hosted-page checkout and its order
+  ref fix (#89), the Treasury advice retry, /try/sign's animations, review points and hash chain (#90), the jury texts in
+  the demo's order (#91), the phone approval page on one screen with an explicit switch to a new run's key (#92), and
+  the Airi run on /airwallex, /proof and in the docs (vic-1-record). 3028 tests in 295 files, all passing.

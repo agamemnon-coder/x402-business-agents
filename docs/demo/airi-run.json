@@ -1,0 +1,163 @@
+{
+  "run": "vic-1",
+  "world": "vic-1c",
+  "attempt": 2,
+  "mode": "live",
+  "test_money": true,
+  "test_card": true,
+  "label": "Airwallex sandbox, test card, test money",
+  "source": "data/vic-1c-try2-record.json, written by npm run airi:vic-1 -- live on 7 November 2026 (code 2016aac), with the run log, the runner log and the Airwallex call log of the world's keys folder. Sanitised for the site: no passkey credential, assertion or label, no Airi payment method id. The one-time Airi links were never in the record or the run log. Full log: docs/runs/2026-11-07-vic-1.md",
+  "started_at": "2026-11-07T13:56:57.873Z",
+  "ended_at": "2026-11-07T14:10:17.437Z",
+  "client": "airi-cli 0.1.0-beta.4",
+  "credential": "single-use card credential from Airwallex's Airi wallet",
+  "checkout": {
+    "kind": "airwallex-sandbox-hosted",
+    "what": "Airwallex's Hosted Payment Page on the Airwallex sandbox, for our own Airwallex sandbox merchant account; the agent types the card from Airi's credential into Airwallex's page and presses Pay, then one GET of the PaymentIntent reads the outcome",
+    "merchant": "Northwind Outdoor test shop (Airwallex sandbox)"
+  },
+  "preflight": {
+    "cli": "0.1.0-beta.4",
+    "session_expires": "2026-11-07T14:56:58Z",
+    "agent_enabled_cards": 1,
+    "card": "visa •••• 1111 (Airi's test card)"
+  },
+  "policy": {
+    "alone_max_eur": "20.00",
+    "alone_per_day": 3,
+    "merchants_allowed": ["Northwind Outdoor test shop (Airwallex sandbox)"],
+    "audited_as": "airi.policy_initial",
+    "seq": 5
+  },
+  "purchases": [
+    {
+      "step": "A",
+      "route": "alone",
+      "agent": "sourcing",
+      "amount": "12.00",
+      "currency": "EUR",
+      "item": "Trail map pack",
+      "merchant": "Northwind Outdoor test shop (Airwallex sandbox)",
+      "action_id": "airi-mw6gw810-4f53f4f0",
+      "order_sha256": "cefb8220f250bbd2d8d481117be8193574b933a5be3bfe4e667026c95ab6e935",
+      "payment_intent_id": "int_sgpvzc9hjhnxvpblt2r",
+      "mandate_id": "mdt_nlpdgv8gqhnxvpbv09m",
+      "tap": "the CFO, once, with a passkey in Airi",
+      "tapped_at": "2026-11-07T13:59:41.648Z",
+      "credential_type": "DPAN",
+      "outcome": "SUCCEEDED",
+      "status": "SETTLED",
+      "reported_to_airi": "SUCCEEDED",
+      "origin": "an Airi purchase within the CFO's limit for this rail (code, the Sourcing agent)",
+      "audit_seq": [21, 22, 23, 24, 26, 27, 28]
+    },
+    {
+      "step": "B",
+      "route": "cfo",
+      "agent": "sourcing",
+      "amount": "45.00",
+      "currency": "EUR",
+      "item": "Field repair kit",
+      "merchant": "Northwind Outdoor test shop (Airwallex sandbox)",
+      "proposal_id": "P-0002",
+      "terms_sha256": "8bbfffc9f400d1184a99d9d739df9d04680299b9ccc96a28ba8a9ab48061d66e",
+      "proposal_created_at": "2026-11-07T13:59:54.549Z",
+      "approved_at": "2026-11-07T14:05:02.460Z",
+      "approved_by": "max",
+      "method": "passkey",
+      "payment_intent_id": "int_sgpvzc9hjhnxvxc26ie",
+      "mandate_id": "mdt_nlpdgv8gqhnxvxcjxbv",
+      "tap": "the CFO, once, with a passkey in Airi, after the CFO's Face ID",
+      "credential_type": "DPAN",
+      "outcome": "SUCCEEDED",
+      "status": "SETTLED",
+      "reported_to_airi": "SUCCEEDED",
+      "proposal_end": "EXECUTED",
+      "executed_at": "2026-11-07T14:10:17.431Z",
+      "audit_seq": [29, 30, 31, 33, 34, 35, 36, 37, 38, 39]
+    },
+    {
+      "step": "C",
+      "route": "refused",
+      "agent": "sourcing",
+      "amount": "5.00",
+      "currency": "EUR",
+      "item": "Sticker",
+      "merchant": "Example shop (not allowed)",
+      "merchant_url": "https://shop.example",
+      "by": "purser",
+      "code": "PURSER_MERCHANT_NOT_ALLOWED",
+      "airi_calls": 0,
+      "audit_seq": [40, 41]
+    }
+  ],
+  "checks": {
+    "a_alone": {
+      "ok": true,
+      "detail": "A ran without the CFO: succeeded"
+    },
+    "a_answered": {
+      "ok": true,
+      "detail": "the checkout answered for A (accepted), reported to Airi"
+    },
+    "b_cfo_first": {
+      "ok": true,
+      "detail": "B waited for the CFO: P-0002"
+    },
+    "b_ran_after_face_id": {
+      "ok": true,
+      "detail": "B after the CFO: EXECUTED, SETTLED, SUCCEEDED, mandate mdt_nlpdgv8gqhnxvxcjxbv, PaymentIntent int_sgpvzc9hjhnxvxc26ie"
+    },
+    "c_refused_by_purser": {
+      "ok": true,
+      "detail": "C: refused PURSER_MERCHANT_NOT_ALLOWED, 0 Airi call(s)"
+    }
+  },
+  "calls": {
+    "airi_cli": {
+      "conductor": ["version", "auth whoami", "payment-methods list", "mandate create", "mandate get-credential", "mandate result"],
+      "runner_b": ["mandate create", "mandate get-credential", "mandate result"],
+      "note": "version makes no network call; the runner's three are read from B's ledger rows (mandate created, credential received, result reported)"
+    },
+    "airwallex": {
+      "this_attempt": 6,
+      "world_total": 10,
+      "budget": 14,
+      "endpoints": [
+        { "endpoint": "POST /authentication/login", "calls": 2 },
+        { "endpoint": "POST /pa/payment_intents/create", "calls": 2 },
+        { "endpoint": "GET /pa/payment_intents/{id}", "calls": 2 }
+      ],
+      "hosted_page_loads": 2
+    }
+  },
+  "attempts": [
+    {
+      "world": "vic-1",
+      "at": "2026-11-07T12:51:45.618Z",
+      "outcome": "stopped",
+      "cause": "A: AIRI_OUTPUT_UNRECOGNISED (airi-cli answers mandate create in camelCase); the mandate was cancelled at once. the CFO's passkey was not confirmed within the enrolment window, so B could not be approved. Nothing charged. Fixed in 1b5cbd4."
+    },
+    {
+      "world": "vic-1b",
+      "at": "2026-11-07T12:56:28.438Z",
+      "outcome": "failed",
+      "cause": "A: the CFO tapped and Airi gave a credential, but our Airwallex sandbox refused the API confirm, validation_error (\"This account is not enabled for native API access\"). B: P-0001 approved with Face ID, but its one-time Airi link did not reach Max: PURSER_NO_TAP. Nothing charged. Fixed in b252cd3 (the hosted checkout page; a labelled tap line)."
+    },
+    {
+      "world": "vic-1c",
+      "attempt": 1,
+      "at": "2026-11-07T13:30:51.129Z",
+      "outcome": "failed",
+      "cause": "A: no tap within 5 minutes, PURSER_NO_TAP, mandate cancelled. B: P-0001 approved with Face ID, then Airwallex refused the PaymentIntent create, duplicate_request: the order reference was the bare proposal id P-0001, already used in vic-1b. No mandate, nothing charged. C refused as planned. Fixed in 2016aac (order reference = purchase id + its start)."
+    },
+    {
+      "world": "vic-1c",
+      "attempt": 2,
+      "at": "2026-11-07T13:56:57.873Z",
+      "outcome": "passed",
+      "cause": null
+    }
+  ],
+  "not_shown": "The sandbox cannot show a real shop or a real card: the card is Airi's test card, whose credential is a test credential, and the merchant is our own Airwallex sandbox account. Airwallex (hackathon Slack, 7 November) confirmed that our own sandbox merchant with their checkout page is fine."
+}

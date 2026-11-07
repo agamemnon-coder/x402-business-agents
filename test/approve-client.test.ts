@@ -7,7 +7,7 @@ import { fingerprintOf, spkiSha256OfCose } from "../src/passkey/ledger.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
-import { amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, freshEnough, passkeyFingerprint, policyLoosens, rejectionHash, takeRunnerKey, takeViewKey, type PhoneProposal } from "../src/approve/client.js";
+import { agentOf, whyYou, amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, freshEnough, passkeyFingerprint, policyLoosens, rejectionHash, takeRunnerKey, takeViewKey, type PhoneProposal } from "../src/approve/client.js";
 import { rejectionSha256, sha256Hex } from "../src/lib/terms.js";
 import { challengeFor } from "../src/passkey/webauthn.js";
 
@@ -209,11 +209,15 @@ describe("the runner's pinned key and its ledger counter (N3, N4)", () => {
   const A = "A".repeat(122);
   const B = "B".repeat(122);
 
-  it("keeps the first runner key; a later link with another key does not replace it", () => {
+  it("keeps the first runner key; a later link with another key does not replace it, it only offers it", () => {
     const store = mem();
-    expect(takeRunnerKey(`#runner=${A}`, store)).toEqual({ key: A, conflict: false });
-    expect(takeRunnerKey(`#runner=${B}`, store)).toEqual({ key: A, conflict: true });
-    expect(takeRunnerKey("", store)).toEqual({ key: A, conflict: false });
+    expect(takeRunnerKey(`#runner=${A}`, store)).toEqual({ key: A, offered: null });
+    expect(takeRunnerKey(`#runner=${B}`, store)).toEqual({ key: A, offered: B });
+    expect(takeRunnerKey("", store)).toEqual({ key: A, offered: B });
+    expect(store.getItem("kit11.runner")).toBe(A);
+    // The link with the pinned key again withdraws the offer.
+    expect(takeRunnerKey(`#runner=${A}`, store)).toEqual({ key: A, offered: null });
+    expect(takeRunnerKey("", store)).toEqual({ key: A, offered: null });
   });
 
   it("refuses signed approvals older than the newest this phone has seen", () => {
@@ -243,5 +247,27 @@ describe("a task card one of Northwind's own agents asked for (D22)", () => {
     expect(d.rows).toContainEqual(["Asked by", "the Sourcing agent"]);
     expect(d.recipient).toBe("a software or data seller (merchant category 5734)");
     expect(d.warnings[0]).toMatch(/^The Sourcing agent chose this purchase and asked for the card; it cannot pay before you approve, and the card pays once\./);
+  });
+});
+
+describe("the approval view's first screen: the agent, and why it needs the CFO", () => {
+  it("names the agent from the hashed terms where they name one, else from who proposed it", () => {
+    expect(agentOf("treasury", byId("P-0002").terms)).toBe("Treasury agent");
+    expect(agentOf("support", byId("P-0003").terms)).toBe("Support agent");
+    expect(agentOf("treasury", { kind: "task_card", asked_by: "agent:sourcing" })).toBe("Sourcing agent");
+    expect(agentOf("treasury", { kind: "task_card", asked_by: "cfo-at-runner" })).toBe("None: you asked at the runner");
+    expect(agentOf("ext:acme-buyer", { kind: "agent_onboard", display_name: "Acme Buyer", agent_id: "acme-buyer" })).toBe("Acme Buyer (outside agent acme-buyer)");
+    expect(agentOf("sourcing", { kind: "airi_purchase", agent: "sourcing" })).toBe("Sourcing agent");
+    expect(agentOf("human", { kind: "policy_change" })).toBe("None: a change made by a person");
+    expect(agentOf("system", { kind: "dev_test" })).toBe("Purser");
+  });
+
+  it("says in one line which rule sends it to the CFO, with the policy's own numbers, and when two people must approve", () => {
+    const policy = [{ key: "approval.refund_each", value: "0.10" }, { key: "approval.refund_per_dispute", value: "0.30" }, { key: "approval.task_card_eur", value: "50.00" }];
+    expect(whyYou(byId("P-0003").terms, policy)).toBe("Your policy sends refunds above 0.10 USDZ each, or 0.30 per dispute, to you.");
+    expect(whyYou({ kind: "task_card" }, policy)).toBe("Without your Face ID, a task card is issued only when you ask at the runner, up to 50.00 EUR.");
+    expect(whyYou(byId("P-0004").terms, policy, { approved_by: ["controller"] })).toBe("A supplier is paid from the Airwallex account only with your Face ID. It needs two people (four eyes). Approved so far: controller.");
+    for (const f of F.proposals) expect(whyYou(f.terms, policy)).not.toMatch(/\n|cannot be approved/);
+    expect(whyYou({ kind: "wire_everything" })).toMatch(/cannot be approved on the phone/);
   });
 });

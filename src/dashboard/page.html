@@ -1677,8 +1677,15 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     var vm = /(?:^#|&)view=([0-9a-f]{32})(?:&|$)/.exec(location.hash);
     // The same link pins the runner's key, which the approval pages check signatures with (M3).
     var rm = /(?:^#|&)runner=([A-Za-z0-9_-]{80,200})(?:&|$)/.exec(location.hash);
-    // The first pinned key stays; the approval pages refuse a link that carries another (review N3).
-    if (rm) { try { if (!localStorage.getItem("kit11.runner")) localStorage.setItem("kit11.runner", rm[1]); } catch (e) {} }
+    // The first pinned key stays (review N3). Another key (a new run's) is kept apart as an offer: the approval pages
+    // use it only after the CFO presses "This is a new run: use the new key" there (src/approve/client.ts).
+    if (rm) {
+      try {
+        var pinned = localStorage.getItem("kit11.runner");
+        if (!pinned) localStorage.setItem("kit11.runner", rm[1]);
+        else localStorage.setItem("kit11.runner.offer", pinned === rm[1] ? "" : rm[1]);
+      } catch (e) {}
+    }
     if (vm) { viewKey = vm[1]; try { localStorage.setItem("kit11.view", viewKey); } catch (e) {} }
     else { viewKey = localStorage.getItem("kit11.view") || ""; }
     if (vm || rm) history.replaceState(null, "", location.pathname + location.search);

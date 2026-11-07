@@ -152,6 +152,12 @@ for (const [width, scheme] of [[360, "light"], [360, "dark"], [390, "light"], [3
   await page.click("#go-done");
   await page.waitForSelector("#scr-7:not([hidden])");
   check((await page.locator("#d-head").innerText()).trim() === W.done.head, `${tag}: the closing card: "${W.done.head}"`);
+  // 6c: the world's hash chain, recomputed in WebKit.
+  await page.waitForSelector("#c-box:not([hidden])");
+  await page.click("#c-verify");
+  await page.waitForFunction(() => /ok|bad/.test(document.getElementById("c-status")?.className ?? ""));
+  check(/^Verified in your browser: (\d+) of \1 rows\.$/.test((await page.locator("#c-status").innerText()).trim()) && /^\d+ events$/.test((await page.locator("#c-len").innerText()).trim()),
+    `${tag}: the hash chain (${(await page.locator("#c-len").innerText()).trim()}) verified in WebKit: ${(await page.locator("#c-status").innerText()).trim()}`);
   await measure(page, tag, 7);
   await shot(page, errors, join(shots, `${tag}-7-done.png`));
   check(await wide(page, width), `${tag}: the page is no wider than the screen`);

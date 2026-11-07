@@ -64,6 +64,12 @@ describe("AiriCliClient: the answers, parsed strictly", () => {
     expect(e.message).not.toContain("4111");
   });
 
+  it("reads mandate create's camelCase answer, as airi-cli 0.1.0-beta.4 gives it live", async () => {
+    const { c } = client({ "mandate create": ok({ expiresAt: "2026-11-07T13:01:47Z", mandateId: "mdt_live", passkeyUrl: "https://app.airi.com/pay/xyz", status: "CREATED" }) });
+    const m = await c.createMandate({ source: "Purser sourcing agent", paymentMethodId: "pm_123", merchantName: "Shop", merchantUrl: "https://shop.example/", merchantCountry: "NL", totalAmount: "12.00", currency: "EUR", items: [{ name: "Map", unitPrice: "12.00", quantity: "1" }], description: "order [airi-1]" });
+    expect(m).toEqual({ mandateId: "mdt_live", passkeyUrl: "https://app.airi.com/pay/xyz" });
+  });
+
   it("mandate create: the documented flags, the id and the one-time link", async () => {
     const { c, seen } = client({ "mandate create": ok({ mandate_id: "mdt_1", passkey_url: "https://app.airi.com/pay/abc" }) });
     const m = await c.createMandate({ source: "Purser sourcing agent", paymentMethodId: "pm_123", merchantName: "Shop", merchantUrl: "https://shop.example/", merchantCountry: "NL", totalAmount: "12.00", currency: "EUR", items: [{ name: "Map", unitPrice: "12.00", quantity: "1" }], description: "order [airi-1]" });

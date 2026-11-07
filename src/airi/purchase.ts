@@ -304,7 +304,10 @@ async function run(db: DB, deps: AiriDeps, row: Row, recheck: () => boolean, now
 
   // 1. The merchant's order, without the card. A checkout that cannot take it stops everything before Airi is asked.
   startStep(db, row.action_id, 1, "airi.checkout_prepare", row.action_id, now);
-  const prepared = await deps.checkout.prepare({ ref: row.action_id, amount: terms.amount, currency: terms.currency, description: terms.description });
+  // The order ref is Airwallex's request_id: unique per Airwallex account, and every world numbers its proposals from
+  // P-0001, so the row's own start (to the millisecond) goes with it. Stable for this row, so a retry reuses it.
+  const orderRef = `${row.action_id}-${Date.parse(row.created_at).toString(36)}`;
+  const prepared = await deps.checkout.prepare({ ref: orderRef, amount: terms.amount, currency: terms.currency, description: terms.description });
   if ("outcome" in prepared) return refuse(db, row, "checkout", prepared.code, prepared.reason, now);
   finishStep(db, row.action_id, "airi.checkout_prepare", { reference: prepared.reference }, now);
   setRow(db, row.action_id, { checkout_ref: prepared.reference }, now);
@@ -359,14 +362,14 @@ async function run(db: DB, deps: AiriDeps, row: Row, recheck: () => boolean, now
       deps.clearPasskeyUrl?.(row.action_id);
     }
     audit(db, "system", "airi.credential_received", subject, { ...ids, mandate_id: mandate.mandateId, status: safe(receipt.status), token_type: safe(receipt.tokenType), token_expiration: safe(receipt.tokenExpiration) }, now);
-    say(`AIRI TAP   ${row.action_id}: tapped; credential received (kept in a private file for this checkout only)`);
+    say(`AIRI TAPPED ${row.action_id}: credential received (kept in a private file for this checkout only)`);
 
     // 5. The checkout pays. STARTED first: after a crash the payment is looked up by its reference, never resent.
     setRow(db, row.action_id, { status: "PAYING" }, now);
     startStep(db, row.action_id, 3, "airi.checkout_pay", prepared.reference, now);
     let answer: CheckoutAnswer;
     try {
-      answer = await deps.checkout.pay(prepared.reference, row.action_id, file);
+      answer = await deps.checkout.pay(prepared.reference, orderRef, file);
     } catch (e) {
       const reason = e instanceof CheckoutOutcomeUnknown ? e.message : `the checkout failed without an answer: ${safe((e as Error).message ?? "")}`;
       return unconfirmed(db, row, mandate.mandateId, prepared.reference, reason, now);

@@ -27,6 +27,9 @@ export const TEST_ALLOWLIST = [
   { beneficiary_id: "test-stockline", name: "Stockline GmbH", iban: "DE00000000000000004471", bic: "TESTDEFFXXX" },
 ] as const;
 
+/** Both fake invoices pose as Alpine Packaging: the payee on file they are measured against. */
+const KNOWN = TEST_ALLOWLIST[0];
+
 export interface TrickInvoice {
   attack: Attack;
   /** The chip's words. */
@@ -71,7 +74,9 @@ export interface AgentCall { step: string; model: string | null; request_id: str
 
 export interface TrickResult {
   attack: Attack;
-  invoice: { vendor: string; amount: string; reference: string; iban_last4: string; text: string; shows: string };
+  invoice: { vendor: string; amount: string; reference: string; iban_last4: string; iban: string; text: string; shows: string };
+  /** The allowlisted payee the invoice claims to be, and the IBAN Purser has on file for it: the page sets the two IBANs side by side. */
+  known: { vendor: string; iban: string };
   /** What the agent read, and from where: the live model, or (labelled) code because the model was unavailable or its reading failed a check. */
   agent: { live: boolean; recorded: boolean; label: string; read: string; note: string | null; calls: AgentCall[] };
   blocked: boolean;
@@ -122,7 +127,8 @@ export async function runTrick(attack: Attack, live: InvoiceReadingLive | { unav
   const first = finding.signals.find((s) => s.blocks);
   return {
     attack,
-    invoice: { vendor: lines.vendor, amount: lines.amount, reference: lines.reference, iban_last4: lines.iban.slice(-4), text: inv.text, shows: inv.shows },
+    invoice: { vendor: lines.vendor, amount: lines.amount, reference: lines.reference, iban_last4: lines.iban.slice(-4), iban: lines.iban.replace(/\s+/g, "").toUpperCase(), text: inv.text, shows: inv.shows },
+    known: { vendor: KNOWN.name, iban: KNOWN.iban },
     agent: { live: usedModel && !rec, recorded: usedModel && !!rec, label, read: readSentence(reading), note, calls },
     blocked: finding.blocked,
     outcome: finding.blocked ? (first && TRICK_OUTCOME[first.code]) ?? "Blocked by Purser's code before anything was proposed." : "Not blocked.",

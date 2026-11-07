@@ -1,5 +1,10 @@
-// The checkout for the Airi rail on our own Airwallex sandbox account: a PaymentIntent, confirmed with the card from
-// Airi's single-use credential. Our sandbox takes PaymentIntents (probe, 7 November, with Max's ok: create answered
+// The API checkout for the Airi rail on our own Airwallex sandbox account (AIRI_CHECKOUT=api): a PaymentIntent,
+// confirmed over the REST API with the card from Airi's single-use credential. Not the default any more: on 7 November
+// (vic-1b) our sandbox refused that confirm with validation_error, and a probe with Airwallex's own test card gave the
+// reason, "This account is not enabled for native API access". The default is the hosted page (hostedCheckout.ts),
+// which shares this file's PaymentIntent create, state mapping and lookup.
+//
+// Earlier notes: Our sandbox takes PaymentIntents (probe, 7 November, with Max's ok: create answered
 // 201, REQUIRES_PAYMENT_METHOD). Whether a confirm accepts Airi's credential is only known from a live run; whatever
 // Airwallex answers is recorded as it is, its own code included.
 //
@@ -26,7 +31,7 @@ import { AirwallexBudgetSpent } from "../airwallex/callBudget.js";
 import { CheckoutOutcomeUnknown, scrubText, type AiriCheckout, type CheckoutAnswer } from "./client.js";
 import { CredentialFileError, readCredentialFile, type CardForCheckout } from "./credential.js";
 
-const Intent = z.object({
+export const Intent = z.object({
   id: z.string().min(1).max(100),
   status: z.string().max(60),
   latest_payment_attempt: z.object({
@@ -35,9 +40,9 @@ const Intent = z.object({
     provider_original_response_code: z.string().max(100).nullish(),
   }).nullish(),
 });
-type Intent = z.infer<typeof Intent>;
+export type Intent = z.infer<typeof Intent>;
 
-const code = (s: string | null | undefined) => (s ? scrubText(s).slice(0, 100) : undefined);
+export const code = (s: string | null | undefined) => (s ? scrubText(s).slice(0, 100) : undefined);
 
 /** What a PaymentIntent's state means for the order. null: not final yet (PENDING, PENDING_REVIEW, or unknown). */
 export function answerOf(i: Intent): CheckoutAnswer | null {
@@ -64,18 +69,23 @@ function errCode(e: AirwallexError): string {
 }
 
 export class AirwallexSandboxCheckout implements AiriCheckout {
-  readonly kind = "airwallex-sandbox" as const;
-  readonly label = "Airwallex sandbox PaymentIntent (our own test shop; test money)";
+  readonly kind: AiriCheckout["kind"] = "airwallex-sandbox";
+  readonly label: string = "Airwallex sandbox PaymentIntent, confirmed over the API (our own test shop; test money)";
 
-  constructor(private readonly api: Pick<Airwallex, "call">, private readonly readCard: (file: string) => CardForCheckout = readCredentialFile) {}
+  constructor(protected readonly api: Pick<Airwallex, "call">, protected readonly readCard: (file: string) => CardForCheckout = readCredentialFile) {}
+
+  /** The create's raw answer, for a subclass that needs more of it than the id (the hosted page: its client_secret). */
+  protected created(_id: string, _raw: unknown): void {}
 
   async prepare(order: { ref: string; amount: string; currency: string; description: string }): ReturnType<AiriCheckout["prepare"]> {
     if (!/^\d+\.\d{2}$/.test(order.amount)) throw new Error("the amount must be a two-decimal string");
     try {
-      const i = Intent.parse(await this.api.call("POST", "/pa/payment_intents/create", {
+      const raw = await this.api.call("POST", "/pa/payment_intents/create", {
         request_id: `${order.ref}-pi`.slice(0, 64), amount: Number(order.amount), currency: order.currency,
         merchant_order_id: order.ref.slice(0, 64), descriptor: scrubText(order.description).slice(0, 22),
-      }));
+      });
+      const i = Intent.parse(raw);
+      this.created(i.id, raw);
       return { reference: i.id };
     } catch (e) {
       if (e instanceof AirwallexError) {

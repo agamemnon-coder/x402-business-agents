@@ -48,6 +48,8 @@ function derToRaw(d) {
   [r, s].forEach(function (x, i) { while (x.length > 32 && x[0] === 0) x = x.subarray(1); if (x.length > 32) ok = false; else out.set(x, i * 32 + 32 - x.length); });
   return ok ? out : null;
 }
+function chainRowCanonical(x) { return "{\\"at\\":" + JSON.stringify(x.at) + ",\\"data_sha256\\":" + JSON.stringify(x.data_sha256) + ",\\"kind\\":" + JSON.stringify(x.kind) + ",\\"prev\\":" + JSON.stringify(x.prev) + ",\\"seq\\":" + String(x.seq) + "}"; }
+function hexDigest(s) { return digest(utf8(s)).then(hexOf); }
 function verifyReceiptWeb(r) {
   var checks = [];
   function add(check, ok, detail) { checks.push({ check: check, ok: ok, detail: detail }); return ok; }
@@ -60,6 +62,36 @@ function verifyReceiptWeb(r) {
     && isObj(pk) && pk.kty === "EC" && pk.crv === "P-256" && typeof pk.x === "string" && typeof pk.y === "string";
   if (!add("format", shaped, shaped ? FORMAT : "not a " + FORMAT + " receipt (a field is missing or of the wrong type)")) return Promise.resolve(done());
   add("algorithm", r.algorithm === "ES256", r.algorithm === "ES256" ? "ES256 (ECDSA on P-256 with SHA-256)" : "ES256 expected, not " + String(r.algorithm));
+  // 5. The world's hash chain (6c), when the receipt carries one: as src/try/receipt.ts checks it.
+  function chain() {
+    if (r.chain === undefined) return done();
+    var c = r.chain, rows = isObj(c) && Array.isArray(c.rows) ? c.rows : null, prev = "0".repeat(64), i = 0;
+    var finish = function (bad) {
+      if (rows && !bad && (!isObj(c) || c.length !== rows.length || c.head !== (rows.length ? prev : null))) bad = "the chain's length or head is not its rows'";
+      add("chain", !bad, bad || rows.length + " rows, each covering the one before; head " + prev);
+      if (bad) return done();
+      var want;
+      try { want = canonicalTerms({ proposal_id: r.terms.proposal_id, terms_sha256: r.terms_sha256 }); } catch (e) { want = null; }
+      return (want === null ? Promise.resolve(null) : hexDigest(want)).then(function (w) {
+        var row = rows.filter(function (x) { return x.kind === "signature" && x.data_sha256 === w; })[0];
+        add("chain signature", !!row, row ? "row " + row.seq + " records this signature (" + String(r.terms.proposal_id) + ", the terms hash signed)" : "no row of the chain records this signature");
+        return done();
+      });
+    };
+    var step = function () {
+      if (!rows) return finish("the chain has no rows");
+      if (i >= rows.length) return finish(null);
+      var x = rows[i];
+      if (!isObj(x) || x.seq !== i + 1 || typeof x.at !== "string" || typeof x.kind !== "string" || typeof x.data_sha256 !== "string" || typeof x.hash !== "string") return finish("row " + (i + 1) + " is not a chain row");
+      if (x.prev !== prev) return finish("row " + (i + 1) + " does not follow the row before (its prev is not that row's hash)");
+      return hexDigest(chainRowCanonical(x)).then(function (h) {
+        if (h !== x.hash) return finish("row " + (i + 1) + "'s hash is not the SHA-256 of the row: it was changed");
+        prev = x.hash; i++;
+        return step();
+      });
+    };
+    return step();
+  }
   var canonical = null;
   try { canonical = canonicalTerms(r.terms); } catch (e) { add("terms", false, e.message); }
   var auth = b64uBytes(a.authenticatorData), cdj = b64uBytes(a.clientDataJSON);
@@ -91,7 +123,7 @@ function verifyReceiptWeb(r) {
         add("fx quote", fs, fs ? "quote " + String(fx.quote_id) + ", " + String(fx.buy_currency) + " " + String(fx.buy_amount) + " for " + String(fx.sell_currency) + " " + String(fx.sell_amount) + " at " + String(fx.client_rate) + ", valid to " + String(fx.valid_to_at) + ": in the signed terms (that Airwallex issued it is not checked offline)" : "the terms' fx block is not a quote");
       }
       // The signature: ES256 over the authenticator data followed by the SHA-256 of the client data.
-      var bad = function () { add("signature", false, "the public key or the signature is malformed"); return done(); };
+      var bad = function () { add("signature", false, "the public key or the signature is malformed"); return chain(); };
       var key;
       try { key = crypto.subtle.importKey("jwk", { kty: "EC", crv: "P-256", x: pk.x, y: pk.y, ext: true }, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]); } catch (e) { return bad(); }
       return Promise.all([key, digest(cdj)]).then(function (k) {
@@ -100,7 +132,7 @@ function verifyReceiptWeb(r) {
         var ok = raw ? crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, k[0], raw, signed) : Promise.resolve(false);
         return ok.then(function (v) {
           add("signature", v, v ? "the ES256 signature verifies with the receipt's public key" : "the signature does not verify with the receipt's public key");
-          return done();
+          return chain();
         });
       }, bad);
     });
@@ -186,6 +218,7 @@ const JS = `
       var rows = [].concat(row("payee", "Payee", t.payee), row("amount", "Amount", (t.currency || "") + " " + t.amount), row("payee_iban", "IBAN", t.payee_iban));
       if (isObj(t.fx)) rows = rows.concat(row("fx.client_rate", "FX rate", t.fx.client_rate));
       rows = rows.concat(row("proposal_id", "Proposal", t.proposal_id));
+      if (isObj(mine.chain) && Array.isArray(mine.chain.rows)) rows = rows.concat(row("chain", "Hash chain", mine.chain.rows.length + " rows, head " + String(mine.chain.head).slice(0, 12) + "…"));
       $("v-terms").replaceChildren.apply($("v-terms"), rows);
       $("v-terms").hidden = false;
       $("v-flipbox").hidden = !terms;

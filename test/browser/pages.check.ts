@@ -339,8 +339,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const pt = await page.evaluate(() => document.body.innerText);
       const words = pt.split(/\s+/).filter((x) => /\w/.test(x)).length;
       // /airwallex carries Airwallex read back (section B, 6 Nov; cards folded) and awx-1 (7 Nov, its steps folded):
-      // budget 210 there (test/site-v4.test.ts), plus the frame.
-      const budget = path === "/airwallex" ? 210 : 150;
+      // budget 210 there (test/site-v4.test.ts), plus the frame; 235 since the Airi run (7 Nov) joined it.
+      const budget = path === "/airwallex" ? 235 : 150;
       if (words > budget + 25) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(pt)) fail(`${path} ${tag}: its run is not labelled`);
       if ((await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
@@ -355,6 +355,11 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (path === "/airwallex" && (!/The hash the CFO signed travels with the payment\./.test(pt) || (pt.match(/\b[0-9a-f]{64}\b/g) ?? []).length !== 2 || !/Match: the same hash/.test(pt))) fail(`/airwallex ${tag}: the CFO's hash and Airwallex's are not shown side by side, or do not match`);
       // awx-1 (7 Nov): the separate Airwallex-only run, dated and labelled, its checks in sight, every step and id in its fold.
       if (path === "/airwallex" && (!/\d{1,2} November, awx-1: a separate run · Airwallex sandbox, test money/.test(pt) || !/7 of 7 checks pass/.test(pt) || !/LIMIT_EXCEEDED[\s\S]*MERCHANT_CATEGORY_NOT_ALLOWED[\s\S]*738a4263-6d6c-4de8-94a3-93da1c175fb4[\s\S]*4140dee2-6373-4eb4-a71f-bf69130f96a7/.test(open))) fail(`/airwallex ${tag}: awx-1 is not shown, dated and labelled, with its steps`);
+      // The Airi run (7 Nov): dated and labelled "Airwallex sandbox, test card, test money", its checks in sight, every
+      // step and id in its fold, the credential in the plan's words; never an Airi link or a card number.
+      if (path === "/airwallex" && (!/\d{1,2} November, the Airi run: a separate run · Airwallex sandbox, test card, test money/.test(pt) || !/5 of 5 checks pass/.test(pt)
+        || !/single-use card credential from Airwallex's Airi wallet[\s\S]*int_sgpvzc9hjhnxvpblt2r[\s\S]*P-0002[\s\S]*int_sgpvzc9hjhnxvxc26ie[\s\S]*PURSER_MERCHANT_NOT_ALLOWED/.test(open)
+        || /airi\.com\/|\b\d{13,19}\b/.test(open))) fail(`/airwallex ${tag}: the Airi run is not shown, dated and labelled, with its steps`);
       if (path === "/airwallex" && ((await page.locator("#controls .awcard").count()) !== 3 || (await page.locator("#controls .awrow .k.ok").count()) !== 15)) fail(`/airwallex ${tag}: not three cards with five controls each, all matching the CFO policy`);
       if (path === "/claude" && (!/Claude call ✓ · (Haiku|Sonnet|Opus) · [\d,]+ tokens · [\d.]+ s · req_/.test(open) || !/routine payments by code/.test(open))) fail(`/claude ${tag}: no Claude call badges or no split`);
       if (path === "/metal" && (await page.locator("a.pf[href*='testnet.metalntwx.com/tx/0x']").count()) < 3) fail(`/metal ${tag}: fewer than three transactions`);
@@ -367,6 +372,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.evaluate(() => document.querySelectorAll("details.deep").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
       const rb = await page.locator("#airwallex-readback + .awrb").innerText().catch(() => "");
       if (!/awx-1: a separate run · Airwallex sandbox, test money/.test(await page.locator("#awx-1").innerText().catch(() => ""))) fail(`/proof ${tag}: awx-1 missing under Airwallex read back`);
+      if (!/the Airi run: a separate run · Airwallex sandbox, test card, test money/.test(await page.locator("#airi-run").innerText().catch(() => ""))
+        || (await page.locator('#airi-run a[href="airwallex#airi-run-steps"]').count()) !== 1) fail(`/proof ${tag}: the Airi run missing under Airwallex read back, or no link to its steps`);
       if (!/The hash the CFO signed travels with the payment\./.test(rb) || (rb.match(/\b[0-9a-f]{64}\b/g) ?? []).length !== 2 || !/Match: the same hash/.test(rb) || !/3 of 3 cards match the CFO policy/.test(rb)) fail(`/proof ${tag}: Airwallex read back missing or not matching`);
     }
     // The strongest proof first (Max's last round, item 2): each partner card opens with its claims, each a link, right
@@ -491,13 +498,13 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (steps.length !== 5 || steps.some((s) => !s.box || !s.secs || !s.links)) fail(`/judge ${tag}: not five steps, each with a checkbox, a time and a link (${JSON.stringify(steps)})`);
       if (steps.reduce((t, s) => t + s.secs, 0) !== 180) fail(`/judge ${tag}: the times do not add up to 3 minutes`);
       if (!(await page.isVisible("text=Want the code?")) || !(await page.isVisible("section.more >> text=How it works in 5 files"))) fail(`/judge ${tag}: no "Want the code? How it works in 5 files" at the bottom`);
-      // Tick steps 1 and 3 (one by its box, one by its title), reload: both still ticked, the count says so.
+      // Tick steps 2 and 3 (one by its box, one by its title), reload: both still ticked, the count says so.
       await page.locator("#step-sign").check();
-      await page.locator('label[for="step-trace"]').click();
+      await page.locator('label[for="step-trick"]').click();
       if ((await page.locator("#prog").innerText()) !== "2 of 5 done") fail(`/judge ${tag}: the count does not follow the ticks`);
       await page.reload({ waitUntil: "load" });
       const kept = await page.locator('input[type="checkbox"]').evaluateAll((bs) => bs.filter((b) => (b as HTMLInputElement).checked).map((b) => b.id));
-      if (kept.join() !== "step-sign,step-trace" || (await page.locator("#prog").innerText()) !== "2 of 5 done") fail(`/judge ${tag}: the ticks do not survive a reload (${kept.join() || "none"})`);
+      if (kept.join() !== "step-sign,step-trick" || (await page.locator("#prog").innerText()) !== "2 of 5 done") fail(`/judge ${tag}: the ticks do not survive a reload (${kept.join() || "none"})`);
       await look(page, `/judge ticked ${tag}`, w);
       await page.screenshot({ path: join(shots, `judge-${tag}.png`), fullPage: true });
       page.off("request", onRequest);
@@ -511,8 +518,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       bp.on("pageerror", (e) => fail(`${tag} /judge (storage blocked): page error: ${e.message}`));
       await bp.goto(`${judgeBase}/judge`, { waitUntil: "load" });
       if (await bp.evaluate(() => { try { return typeof window.localStorage; } catch { return "throws"; } }) !== "throws") fail(`/judge (storage blocked) ${tag}: localStorage did not throw`);
-      await bp.locator("#step-verify").check();
-      if ((await bp.locator("#prog").innerText()) !== "1 of 5 done" || !(await bp.locator("#s-verify").evaluate((li) => li.classList.contains("done")))) fail(`/judge (storage blocked) ${tag}: the box does not tick`);
+      await bp.locator("#step-proof").check();
+      if ((await bp.locator("#prog").innerText()) !== "1 of 5 done" || !(await bp.locator("#s-proof").evaluate((li) => li.classList.contains("done")))) fail(`/judge (storage blocked) ${tag}: the box does not tick`);
       await look(bp, `/judge (storage blocked) ${tag}`, w);
       await blocked.close();
     }

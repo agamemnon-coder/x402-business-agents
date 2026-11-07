@@ -1,7 +1,8 @@
 # Purser: the long description
 
 The form's Description as it stood on 5 November (about 15,000 characters), before Max asked for a short one. The form
-now uses the short Description in [README.md](README.md#description), which links here. Every run figure comes from the
+now uses the short Description in [README.md](README.md#description), which links here. One run added since: awx-1, the
+Airwallex-only run of 7 November, under "Other live tests". Every run figure comes from the
 main run of 3 November (`docs/demo/main-run.json`, log `docs/runs/2026-11-03-main-run.md`) and the reports in this repo
 (`src/submission/facts.ts`); `test/submission.test.ts` checks this page against them, as it checks the short one.
 
@@ -158,6 +159,21 @@ pressed by our build tool, Claude Code, on Max's go; in production the second ap
 Not part of the main run; each ran live on the Airwallex sandbox or Metal testnet (test money), in its own test world,
 with its own date.
 
+- **awx-1, the Airwallex-only run (7 November).** Airwallex sandbox only, test money, 0 Metal calls; accepted, all
+  seven checks passed in one attempt each. Three agent cards, read back with the policy's limits, merchant category,
+  EUR only and an end date. Airwallex approved EUR 19.99, declined EUR 45.00 over the 30.00 limit (LIMIT_EXCEEDED) and
+  declined a charge outside the Support card's merchant category (MERCHANT_CATEGORY_NOT_ALLOWED). The Sourcing agent
+  (Claude Haiku) read its decline and asked the CFO for a raise instead of retrying; after Max's Face ID the card was
+  updated at Airwallex and the same 45.00 approved. Two invoices paid by SWIFT after Max's Face ID, one from free
+  euros, one with FX for the shortfall only, each payout carrying the hash of the signed terms in Airwallex's metadata;
+  21 webhooks, all recorded. The merchant charges and each payout's SENT and PAID are the sandbox's simulation. Log: [docs/runs/2026-11-07-awx-1.md](../runs/2026-11-07-awx-1.md).
+- **The Airi run (7 November; Airwallex sandbox, Airi's test card, test money).** The Sourcing agent pays with a
+  single-use card credential from Airwallex's Airi wallet, on Airwallex's hosted checkout page for our own sandbox
+  merchant. EUR 12.00 within the CFO's limit ran with the agent alone (the CFO confirmed once in Airi with a passkey);
+  EUR 45.00 above it ran only after the CFO's Face ID on its exact terms (P-0002); a merchant the CFO does not allow was
+  refused by Purser before any call to Airi. Both payments SUCCEEDED in the sandbox; all five checks passed, in the
+  second attempt in its world. The earlier attempts that day (a changed answer format, a confirm the sandbox refuses, a
+  missed tap, a reused order reference; nothing charged) are in the log: docs/runs/2026-11-07-vic-1.md.
 - **Visa TAP run (2 November).** Visa's reference registry self-hosted with a test key, and our own TAP merchant;
   Airwallex approved one card buy and declined EUR 45.00 over the card limit (LIMIT_EXCEEDED).
 - **Single-use task cards (30 October).** One sentence (a flight, a hotel or a train, with an amount) becomes one card
@@ -167,7 +183,7 @@ with its own date.
   receivables agent matches each payment to its invoice by reference and sends anything short or unknown to the CFO.
   Each webhook delivery is signature-checked at the relay and again on the runner. Shown live: two retailer deposits,
   one matched and one sent to the CFO as short, by the webhook alone, and a card transaction. Payout and conversion
-  events are subscribed but were not caused live.
+  events are subscribed but were not caused live that day (awx-1 caused them on 7 November).
 - **For a bigger company, more control on chain (separate test worlds, Metal testnet, 30 October):**
   - **Four eyes on chain.** A 2-of-2 Metal account: the CFO and a controller. A payment signed by the CFO alone, the
     same payment co-signed by a stranger's key, and a mandate revoke by the CFO alone each reverted on chain; with both

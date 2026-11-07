@@ -32,6 +32,35 @@ Shown on `/airwallex` and in Proof's "Airwallex, read back".
 71 of the 96 approved Airwallex calls (85 expected). Simulated by the sandbox, as everywhere on this page: the merchants'
 charges (`POST /simulation/issuing/create`) and each payout's SENT and PAID (`POST /simulation/transfers/{id}/transition`).
 
+## The Airi run: an agent pays with a single-use card credential from Airwallex's Airi wallet (7 November; Airwallex sandbox, test card, test money)
+
+A separate world (vic-1c; 0 Metal calls, 0 Claude calls): the Sourcing agent buys at our own Airwallex sandbox
+merchant with a single-use card credential from Airwallex's Airi wallet (airi-cli 0.1.0-beta.4, Airi's test card visa
+•••• 1111, test money). Passed, all five checks, in the second attempt in its world. Log:
+[`docs/runs/2026-11-07-vic-1.md`](runs/2026-11-07-vic-1.md) (every attempt, the failed ones included); record:
+[`docs/demo/airi-run.json`](demo/airi-run.json); plan and call budget: [`docs/runs/vic-1-plan.md`](runs/vic-1-plan.md).
+Shown on `/airwallex` and in Proof's "Airwallex, read back". Airwallex (hackathon Slack, 7 November) confirmed that
+our own sandbox merchant with their checkout page is fine.
+
+| Purchase | What happened | Ids |
+|---|---|---|
+| A, EUR 12.00 | within the CFO's limit for this rail (EUR 20.00 alone): the agent alone. Purser opened the order (`POST /pa/payment_intents/create`, no card), Airi created the mandate, the CFO confirmed it once in Airi with a passkey, and the agent typed the card from Airi's credential into Airwallex's Hosted Payment Page and pressed Pay; `GET /pa/payment_intents/{id}` read SUCCEEDED, reported to Airi | PaymentIntent `int_sgpvzc9hjhnxvpblt2r`, mandate `mdt_nlpdgv8gqhnxvpbv09m` |
+| B, EUR 45.00 | above the limit: P-0002 waited for Max's Face ID on its exact terms (14:05:02 UTC); then the runner opened the order and the mandate, the CFO confirmed it in Airi, and the hosted page paid it: SUCCEEDED, P-0002 EXECUTED | PaymentIntent `int_sgpvzc9hjhnxvxc26ie`, mandate `mdt_nlpdgv8gqhnxvxcjxbv`, terms `8bbfffc9…` |
+| C, EUR 5.00 | a merchant the CFO does not allow: refused by Purser, `PURSER_MERCHANT_NOT_ALLOWED`, before any call to Airi or Airwallex | — |
+
+6 Airwallex API calls in that attempt (2 logins, 2 PaymentIntent creates, 2 reads), 10 in the world, of the 14
+approved; the hosted page's two loads are page loads, not API calls. What the sandbox cannot show: the credential comes
+from Airi's test card, and the merchant is our own sandbox account, not a real shop.
+
+### Payments: the endpoints the Airi rail calls
+
+| Endpoint | What Purser uses it for | Why it is a necessary financial action | Evidence |
+|---|---|---|---|
+| `POST /pa/payment_intents/create` | Opens the order at our own sandbox merchant: amount, currency, `merchant_order_id`, with a `request_id` unique per purchase (the purchase id plus its start). No card. | The checkout the agent pays; the order is fixed before Airi's mandate is asked for. | `docs/runs/2026-11-07-vic-1.md` (`int_sgpvzc9hjhnxvpblt2r`, `int_sgpvzc9hjhnxvxc26ie`); `test/airi-checkout.test.ts` |
+| Airwallex's Hosted Payment Page (`checkout.sandbox.airwallex.com`, through Airwallex.js `redirectToCheckout`) | The agent types the card from Airi's credential into Airwallex's own page and presses Pay, like a shopper, in headless Chromium. Not an API call. | Our sandbox may not confirm with raw card data over the API ("This account is not enabled for native API access", vic-1b); Airi's credential is meant to be used at a checkout. | `src/airi/hostedCheckout.ts`; `test/airi-hosted-checkout.test.ts` |
+| `GET /pa/payment_intents/{id}` | Reads the real outcome after the hosted page (SUCCEEDED, or the decline code as given). | The result reported to Airi and booked is Airwallex's, not the page's. | `docs/runs/2026-11-07-vic-1.md` |
+| `POST /pa/payment_intents/{id}/confirm` | Only with `AIRI_CHECKOUT=api`: the confirm with the card's fields. Refused for our sandbox (`validation_error`, vic-1b). | — | `docs/runs/vic-1-plan.md` |
+
 ## How Purser talks to Airwallex
 
 - One client holds the client id, the API key and the bearer token. Nothing else does.

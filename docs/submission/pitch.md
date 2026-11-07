@@ -1,6 +1,7 @@
 # Purser: the pitch
 
-For Max, in English, to say out loud. First the **Demo Day pitch** (3 minutes, the live demo of `/try/sign` first);
+For Max, in English, to say out loud. First the **Demo Day pitch** (3 minutes, in the site's order: Home, Watch, the
+live demo of `/try/sign`, then the proof);
 below it the earlier three lengths, kept for when there is no live demo (the 3-minute version there plays the main
 run's replay instead). One sentence per row, at most 14 words, one message each; the only longer one is the core line,
 word for word. Every figure is the main run's (3 November 2026, world `main-1`, frozen commit `35e1cac`) or a dated
@@ -25,61 +26,66 @@ Max says the figures as words ("twenty-four"); they are written as digits here s
 
 ## Demo Day: the 3-minute pitch (19 November)
 
-Four parts, with the live demo early. Max speaks at about **2.3 words a second**; each part's budget is its seconds
-times 2.3, and the words written stay under it, so the taps, the Face ID prompts and the tab switches fit in the rest.
-The words are counted the way `test/demo-day-pack.test.ts` counts them (the "Max says" column only).
+Four parts, in the site's order (Max, 7 Nov): Home, then Watch, then the live demo of `/try/sign`, then the proof. Max
+speaks at about **2.3 words a second**; each part's budget is its seconds times 2.3, and the words written stay under
+it, so the taps, the Face ID prompts and the tab switches fit in the rest. The words are counted the way
+`test/demo-day-pack.test.ts` counts them (the "Max says" column only).
 
-- **The problem, and why now:** 0:00–0:20 (20 s); budget 46 words; written 38 words; about 17 s of speech, 3 s
-  for a pause.
-- **Live: sign, try to cheat, change the rule:** 0:20–1:30 (70 s); budget 161 words; written 115 words; about 50 s of speech, 20 s for
-  three Face ID prompts and the server's answers.
-- **The proof:** 1:30–2:20 (50 s); budget 115 words; written 102 words; about 44 s of speech, 6 s for two tab
+- **The problem, and the agents at work:** 0:00–0:20 (20 s); budget 46 words; written 39 words; about 17 s of speech, 3 s
+  for one click.
+- **Live: sign, cheat, trick, change the rule:** 0:20–1:30 (70 s); budget 161 words; written 117 words; about 51 s of
+  speech, 19 s for three Face ID prompts, the fake invoice and the server's answers.
+- **The proof:** 1:30–2:20 (50 s); budget 115 words; written 101 words; about 44 s of speech, 6 s for two tab
   switches.
 - **The business and the ask:** 2:20–3:00 (40 s); budget 92 words; written 84 words; about 37 s of speech, 3 s for a
   pause.
-- **Total:** 3:00; budget 414 words; written 339 words; about 2:28 of speech, 32 s for taps and pauses.
+- **Total:** 3:00; budget 414 words; written 341 words; about 2:28 of speech, 32 s for taps and pauses.
 
-Before you start: the shared screen shows the deck, slide 1. Your iPhone is mirrored to the screen (the path tested on
-6 November: Safari, Face ID), with `/try/sign` opened a minute before you start (the test world opens when the page is shown, with a fresh FX quote
-that lasts up to 15 minutes; if it has run out, the page offers **Get a new quote**). Tabs on the laptop: [/proof](https://kit11.max-31b.workers.dev/proof),
-[/metal](https://kit11.max-31b.workers.dev/metal). If the room cannot show a phone, run `/try/sign` in the laptop's
-browser instead (Touch ID). What to do when a step fails: [demo-day.md](demo-day.md), "The Demo Day script".
+Before you start: the laptop's shared screen shows Home ([kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/)).
+Your iPhone is mirrored to the screen (the path tested on 6 November: Safari, Face ID), with `/try/sign` opened a minute
+before you start (the test world opens when the page is shown, and its agents start at once, with a fresh FX quote
+that lasts up to 15 minutes; if it has run out, the page offers **Get a new quote**). Tabs on the laptop: Home,
+[/watch](https://kit11.max-31b.workers.dev/watch), [/proof](https://kit11.max-31b.workers.dev/proof),
+[/metal](https://kit11.max-31b.workers.dev/metal), the deck (slide 12, the QR). If the room cannot show a phone, run
+`/try/sign` in the laptop's browser instead (Touch ID). What to do when a step fails: [demo-day.md](demo-day.md), "The
+Demo Day script".
 
-### 0:00–0:20 · The problem, and why now
+### 0:00–0:20 · The problem, and the agents at work
 
 | Do | Max says | Source |
 |---|---|---|
-| Deck slide 1. Look at the jury, not the screen. | AI agents can now spend company money. | [docs/business/problem.md](../business/problem.md), "Why now (sourced)" |
+| Laptop: Home. Look at the jury, not the screen. | AI agents can now spend company money. | [docs/business/problem.md](../business/problem.md), "Why now (sourced)" |
 | | But a prompt is not a financial control; Airwallex says so itself. | [docs/business/problem.md](../business/problem.md) [S1]: "A prompt is not a financial control." (Airwallex, 5 October 2026) |
-| | Why now? Since 2025, the payment networks have launched rails for agents. | [docs/business/problem.md](../business/problem.md), "Why now (sourced)": the agent-payment programmes of April 2025 onwards |
 | Pause one beat. | So who signs off? | The film's hook (`01-hook`) |
-| Pick up the phone. | This is Purser. | README, title |
+| Click **Start: watch the agents**: [/watch](https://kit11.max-31b.workers.dev/watch) plays the main run. | This is Purser: three Claude agents running a company, replayed. | `START` and `FLOW` (`src/redesign/home.ts`); `/watch` label "Replay of the main run" (`runLabel`, `src/redesign/run.ts`) |
+| Pick up the phone. | Now I take the CFO's chair. | Home's step 2, "Try it yourself" (`FLOW`) |
 
-### 0:20–1:30 · Live: sign, try to cheat, change the rule (`/try/sign`)
+### 0:20–1:30 · Live: sign, cheat, trick, change the rule (`/try/sign`)
 
 | Do | Max says | Source |
 |---|---|---|
-| Hold the phone up; the mirror shows `/try/sign`, opened a minute before. | Live, on my phone. | Try: `/try/sign`, five screens since 7 November ([release-notes.md](release-notes.md)) |
-| Point at the label at the top. | This is a test world, made for me just now; nothing real moves. | `TRY_SIGN_LABEL` (`src/try/sign.ts`); `TRY_SIGN_TTL_MS`, one hour (`worker/src/trySign.ts`) |
+| Hold the phone up; the mirror shows `/try/sign`, opened a minute before. | Live, on my phone, in a test world; nothing real moves. | `TRY_SIGN_LABEL` (`src/try/sign.ts`); `TRY_SIGN_TTL_MS`, one hour (`worker/src/trySign.ts`) |
 | Point at the heading. | My Treasury agent wants to pay an invoice above its limit. | `TRY_SIGN_SCREENS.ask.head` (`src/try/sign.ts`); T-0002 in `FIXED_PROPOSALS` (`worker/src/trySign.ts`) |
-| Point at its sentence and the amount. | Claude wrote the request; the amount, the quote and the limits are code. | The pill "Claude Haiku · live"; `checkLine` (`worker/src/agentLine.ts`) checks every amount; the quote from `worker/src/fxQuote.ts` |
+| Point at the agents' steps and the advice. | Claude Sonnet read the invoice, code checked it, and Claude Opus advises. | Screen 1's live agents (`AGENT_STEPS`, `worker/src/trySign.ts`): Sonnet reads, Purser's code checks and writes the terms, Opus advises, each labelled live, recorded or fixed |
 | Tap **Sign with Face ID** (two prompts: the test passkey, then the signature). Wait for the green check. | My Face ID signs the hash of exactly these terms. | `src/try/sign.ts`: one button, the passkey made on the way |
-| | Signed and verified: it only fits these exact terms. | `TRY_SIGN_SCREENS.signed` |
 | Tap **Now try to cheat: change one cent**. | Now I change one cent, and send the same signature. | `TRY_SIGN_SCREENS.signed.cheat`; the same verifier checks the changed terms (`worker/src/trySign.ts`) |
 | Point at the red line. | One cent changed. The signature is worthless. | `TAMPER_VERDICT.cent` (`src/try/sign.ts`) |
+| Tap **Next: trick the agent**, then a fake invoice. | Now a fake invoice: Claude Sonnet reads it, live. | `TRY_SIGN_SCREENS.trick` (`src/try/sign.ts`); `ATTACKS`, `runTrick` (`worker/src/trick.ts`) |
+| Point at the verdict. | Whatever it reads, Purser's code blocks it. | `TRICKS` (`worker/src/trick.ts`): each fake invoice blocked by Purser's own fraud and injection code |
 | Tap **Next: change the rule**, then **€2,000**. | Now I let the agent pay up to two thousand alone. | `TRY_SIGN_SCREENS.rule` (`src/try/sign.ts`) |
+| Point at the worst case. | Here is my worst case, in one line. | `TRY_SIGN_SCREENS.rule.worst`; `worstAloneLine` (`src/try/sign.ts`) |
 | Tap **Sign with Face ID**. | A looser rule needs my signature too. | `setPolicy` (`worker/src/trySign.ts`): looser needs a signature, stricter applies at once |
-| Point at the green card. | Its next invoice: paid alone, no signature needed. | `NEXT_INVOICE`, T-0003, and `runAlone` (`worker/src/trySign.ts`) |
-| Put the phone down. | A button says yes to anything; this signature fits one payment only. | `DIFFERENTIATORS` (`src/config/brand.ts`); [docs/phone-approval.md](../phone-approval.md) |
+| Point at the green card. | Its next invoice: paid alone, no signature needed. | `NEXT_INVOICE` and `runAlone` (`worker/src/trySign.ts`) |
+| Tap **Finish**: the closing card. Put the phone down. | That's Purser, in about a minute. | `TRY_SIGN_SCREENS.done` (`src/try/sign.ts`) |
 
 ### 1:30–2:20 · The proof
 
 | Do | Max says | Source |
 |---|---|---|
-| Laptop: tab [/proof](https://kit11.max-31b.workers.dev/proof), at "The hash the CFO signed travels with the payment." | On 3 November, three Claude agents ran it live, on test money. | Log: [the main run](../runs/2026-11-03-main-run.md), Airwallex sandbox and Metal testnet |
-| | Proof one: Airwallex's own record of our 240 euro SWIFT payment. | [airwallex-transfer-approval-2026-11-06.json](../runs/airwallex-transfer-approval-2026-11-06.json): transfer `03360bfa…3985`, EUR 240, SWIFT, PAID (read with GET only) |
+| Laptop: tab [/proof](https://kit11.max-31b.workers.dev/proof), at "The hash the CFO signed travels with the payment." | Proof one, from that run: Airwallex's record of our 240 euro SWIFT payment. | [airwallex-transfer-approval-2026-11-06.json](../runs/airwallex-transfer-approval-2026-11-06.json): transfer `03360bfa…3985`, EUR 240, SWIFT, PAID (read with GET only) |
 | Point at the two hashes, side by side. | It carries the hash I signed with Face ID. | Same record, `metadata.approval_sha256` `797d4483…abcd` = P-0005's `terms_sha256`, approved by Max with his passkey (record seq 360); matched in code (`hashTravel`, `src/redesign/airwallexProof.ts`) |
 | | All 3 agent cards carry my policy as Airwallex's own controls. | [airwallex-cards-2026-11-06.json](../runs/airwallex-cards-2026-11-06.json); `cardControlRows`: 3 of 3 cards match the CFO policy |
+| Point at awx-1 below, "a separate run · Airwallex sandbox, test money". | On 7 November, an Airwallex-only run passed every check. | [docs/runs/2026-11-07-awx-1.md](../runs/2026-11-07-awx-1.md): ACCEPTED, checks a–g all passed; on `/proof` through `awxRunBlock` (`src/redesign/awxRun.ts`) |
 | Tab [/metal](https://kit11.max-31b.workers.dev/metal); point at #24's refusal and its tx. | Proof two: each agent has its own mandate on Metal. | `/metal` (`src/redesign/metalStory.ts`): one mandate per agent, on chain |
 | | We switched off our own check once; Metal refused purchase 24 anyway. | `CHAIN_TEST`; Record: `mandate_cap_exceeded`, tx `0x2e92f9cb…1871` |
 | | That refusal is on chain, next to 86 payments, each its own transaction. | README, "On Metal testnet"; Record: `payments` (onChain 86) |
@@ -100,8 +106,8 @@ browser instead (Touch ID). What to do when a step fails: [demo-day.md](demo-day
 | Point at the QR; leave it up for the questions. | Scan the code, and sign one yourself. | Deck slide 12; `docs/media/try-sign-qr.png` |
 | | Thank you. | Max |
 
-If a part runs over in rehearsal, cut in this order: "Put the phone down" line ("A button says yes…"), then "Finance
-teams whose agents already spend, or soon will.", then "The more agent features Airwallex ships…".
+If a part runs over in rehearsal, cut in this order: "Here is my worst case, in one line." (the screen shows it), then
+"Finance teams whose agents already spend, or soon will.", then "The more agent features Airwallex ships…".
 
 ## 1. The elevator pitch (30 seconds)
 
