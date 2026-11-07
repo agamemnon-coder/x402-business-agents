@@ -35,8 +35,8 @@ export interface WorldPolicy { reserve_floor: string; agents: Record<Agent, Agen
 /** What the page sends for one agent: its whole policy, and the reserve floor. */
 export type PolicySet = AgentPolicy & { reserve_floor: string };
 
-// The bounds (Max: caps derived from the test world). Every amount is at most the world's starting balance,
-// EUR 30,000.00; a card limit at least EUR 1.00 (as Purser's own card rules), the floor and "alone" from 0.00; the
+// The bounds (Max: caps derived from the test world). Every amount is at most EUR 30,000.00, the test world's bound
+// (its starting balances, EUR 26,000.00 and USD 8,000.00, are below it together); a card limit at least EUR 1.00 (as Purser's own card rules), the floor and "alone" from 0.00; the
 // limit per purchase no higher than the limit per month (a mandate's cap may not exceed its budget); an end date from
 // today to a year ahead; categories and currencies from the lists below, each once, at least one.
 export const POLICY_MAX_CENTS = 3_000_000;
@@ -109,7 +109,7 @@ const words = (c: number) => `EUR ${fromCents(c).replace(/\B(?=(\d{3})+(?!\d))/g
 function money(field: Field, v: unknown, minCents: number): string | { error: string } {
   if (typeof v !== "string" || !MONEY.test(v)) return { error: `${FIELD_WORDS[field]}: write an amount in euros with two decimals, like 25.00 (no minus sign)` };
   const c = toCents(v);
-  if (c < minCents || c > POLICY_MAX_CENTS) return { error: `${FIELD_WORDS[field]}: from ${words(minCents)} to ${words(POLICY_MAX_CENTS)} (the test world's balance)` };
+  if (c < minCents || c > POLICY_MAX_CENTS) return { error: `${FIELD_WORDS[field]}: from ${words(minCents)} to ${words(POLICY_MAX_CENTS)} (the test world's bound)` };
   return v;
 }
 function list(field: Field, v: unknown, allowed: readonly string[]): string[] | { error: string } {

@@ -326,6 +326,18 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   past 8 s) code reads the invoice, labelled so. One budget for every live call on the page, USD 10 a day (was USD 1
   for the sentence alone), per-address and overall limits, the emergency switch TRY_SIGN_HAIKU for all of them, and
   today's spend on /health. 2881 tests in 282 files, all passing.
+- 7 November, the Treasury agent works live on /try/sign's first screen, Purser-style (spec 6b): the test world holds
+  EUR 26,000.00 (floor EUR 25,000.00) and USD 8,000.00 (floor USD 3,000.00). The agents' work comes in step by step,
+  one request each (POST /agents): Claude Sonnet, the runner's invoice reader, reads Alpine Packaging's invoice (a
+  document code writes); Purser's code checks the reading against the invoice's own lines, the payee against the
+  allowlist and the amount against the limit; code plans the payment with Purser's planInvoice (EUR 1,870.00 needed,
+  EUR 1,000.00 free) and the Airwallex sandbox quotes the EUR 870.00 short; Claude Opus, the runner's Treasury timing
+  agent (the same prompt, tools, effort and turns, now in src/agents/timingCore.ts), advises paying now or waiting, its
+  reason checked by code against code's numbers. The terms (kit11.try-terms/v4) come from the checked reading and carry
+  the agent's advice; T-0001 stays blocked by the floors; the next invoice gets a second live quote of its own. Never
+  silent: without a live answer the page shows a recorded real one (docs/demo/try-agents-recorded.json, written by
+  `npm run record-try-agents`; not recorded yet) or code's reading and a fixed sentence, each labelled with the reason.
+  The emergency switch is now TRY_SIGN_AGENTS (TRY_SIGN_HAIKU still works). 2906 tests in 283 files, all passing.
 
 ## Real, and ours
 

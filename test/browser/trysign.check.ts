@@ -42,8 +42,10 @@ function parseArgs(argv: string[]): { live: boolean; base: string | null; shots:
 const args = parseArgs(process.argv.slice(2));
 const { StandInQuotes } = await import("../support/fxStandIn.js");
 const fxStandIn = new StandInQuotes();
-const { StandInLine } = await import("../support/lineStandIn.js");
-const lineStandIn = new StandInLine();
+// Spec 6b: the Treasury agent's advice (Opus on the Worker) from a labelled stand-in: it plays the runner's tool loop
+// and quotes code's numbers; the page labels it "stand-in, not Claude".
+const { StandInAdvisor } = await import("../support/adviceStandIn.js");
+const advisor = new StandInAdvisor();
 // Section 6: the invoice reader's stand-in, as the line's: it reads the document's own lines, labelled "stand-in, not Claude".
 const { parseInvoiceFallback } = await import("../../src/claude/invoiceReading.js");
 const readerStandIn = async (doc: string) => ({ value: parseInvoiceFallback(doc), requestId: "req_standin_reader", costUsd: 0, model: "stand-in", ms: 300 });
@@ -86,7 +88,7 @@ if (args.base) {
   const { startLocalRelay } = await import("../../src/relay/local.js");
   // The FX quote from a labelled stand-in (no network in CI): it says "stand-in" wherever the page shows it.
   // The agent's sentence from a labelled stand-in too (no model call in CI): the page says "Stand-in sentence".
-  local = await startLocalRelay({ port: 0, token: "browser-check", trySignFx: fxStandIn, trySignLine: lineStandIn.source, trySignReader: readerStandIn });
+  local = await startLocalRelay({ port: 0, token: "browser-check", trySignFx: fxStandIn, trySignAdvisor: advisor.ask, trySignReader: readerStandIn, trySignRecorded: null });
 }
 const require = createRequire(import.meta.url);
 // Playwright is not a dependency of this repo; it comes with the environment (Chromium pre-installed).
@@ -150,9 +152,13 @@ async function layout(page: Page, tag: string, stage: string, width: number): Pr
  */
 async function measure(page: Page, tag: string, n: number, ms?: number): Promise<void> {
   await page.evaluate("window.scrollTo({ top: 0, behavior: 'instant' })");
+  // Screen 1's count leaves out the agent's own reason (Opus's one or two sentences, at most 300 characters, checked by
+  // the server): the page's own words stay within 60 around it.
   const m = await page.evaluate(`(() => {
     const scr = document.getElementById("scr-${n}");
-    const words = scr.innerText.split(/\\s+/).filter((w) => /[A-Za-z0-9]/.test(w)).length;
+    const count = (t) => t.split(/\\s+/).filter((w) => /[A-Za-z0-9]/.test(w)).length;
+    const says = scr.querySelector("#s1-ask .says");
+    const words = count(scr.innerText) - (says && says.checkVisibility() ? count(says.innerText) : 0);
     const prim = [...document.querySelectorAll(".btn.primary")].filter((b) => b.checkVisibility() && b.getClientRects().length > 0);
     const head = document.querySelector("header.top").getBoundingClientRect().bottom;
     const r = prim[0] ? prim[0].getBoundingClientRect() : null;
@@ -255,8 +261,8 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   const tag = `${args.live ? "live-" : ""}${width}-${scheme}`;
   // A short quote at 390 px: light, expiring before anything is signed; dark, expiring once the passkey is made.
   if (!args.live && (tag === "390-light" || tag === "390-dark")) fxStandIn.validityMs = 12_000;
-  // At 360 px dark the model is down: the fixed sentence, labelled "fixed text (model unavailable)".
-  lineStandIn.fail = !args.live && tag === "360-dark";
+  // At 360 px dark the Treasury agent is down: the fixed sentence, labelled "fixed text · <why>".
+  advisor.fail = !args.live && tag === "360-dark";
   const v = await visitor({ width, scheme, ip: `198.51.${100 + run++}.7` });
   const { page, errors, mobile, height } = v;
 
@@ -332,9 +338,27 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   const terms = JSON.parse((await page.locator("#s1-terms pre.terms").textContent()) ?? "{}") as Record<string, any>;
   check((await page.locator("#s1-amt").innerText()).trim() === "EUR 1,850.00" && (await page.locator("#s1-to").innerText()).includes(terms.payee.replace(/ \(test payee\)$/, "")) && (await page.locator("#s1-to").innerText()).includes("INV-2026-118") && !(await page.locator("#s1-ask").innerText()).includes("Treasury agent"),
     `${tag}: the payment in sight: EUR 1,850.00 to ${terms.payee}, invoice INV-2026-118`);
+  // Spec 6b: the agents' steps came in one by one, each from the server's answer; then they fold under "What the agents did".
+  const steps = await page.locator("#s1-steps li.st").evaluateAll((ls: Element[]) => ls.map((l) => `${(l as HTMLElement).dataset.step}:${(l as HTMLElement).dataset.state}`)) as string[];
+  check(steps.join() === "read:done,check:done,quote:done,advise:done,ready:done" && !(await page.locator("#s1-steps").isVisible()) && (await page.locator("#s1-did > summary").innerText()).trim() === W.ask.did,
+    `${tag}: the five steps came in (${steps.join(" ")}) and fold under "${W.ask.did}"`);
+  if (!args.live) {
+    check(terms.agent_advice === (tag === "360-dark" ? "none" : "pay_now") && (tag === "360-dark" ? await page.locator("#s1-advice").count() === 0 : (await page.locator("#s1-advice").innerText()).trim() === "Advice: pay now"),
+      `${tag}: the agent's advice in sight and in the signed terms (agent_advice ${terms.agent_advice})`);
+    await page.locator("#s1-did > summary").click();
+    const did = await page.locator("#s1-did").innerText();
+    const ticks = await page.locator("#s1-did ul.ticks li.ok").count();
+    check(/read_invoice · stand-in · 0\.3 s · req_standin_reader/.test(did) && /quote · stand-in · [\d.]+ s · stand-in-\d{4}/.test(did) && (tag === "360-dark" || /advise · stand-in · 0\.4 s · req_stand-in-advice-\d{4}/.test(did)) && ticks === 4
+      && did.includes("Needed EUR 1,870.00 (invoice + EUR 20.00 fee ceiling). Free EUR 1,000.00 above the floor. Code converts the EUR 870.00 short.") && did.includes("The stand-in read: Pay EUR 1,850.00 to Alpine Packaging, IBAN …0118."),
+      `${tag}: "${W.ask.did}": each call with its model, time and request id, Purser's code's four checks, the plan in code's words, what the reader read`);
+    check((await page.locator('#st-read .pill[data-label]').innerText()).trim() === "stand-in, not Claude" && (await page.locator('#st-check .sl b').innerText()).trim() === "Purser's code",
+      `${tag}: each step says who did it: the reader (labelled), Purser's code`);
+    await shot(page, `${tag}-1e-agents.png`);
+    await page.locator("#s1-did > summary").click();
+  }
   if (!args.live) {
     const q = terms.fx as { sell_amount: string; sell_currency: string } | null;
-    check(!!q && (await page.locator("#s1-fx").innerText()).trim() === `stand-in quote: ${q.sell_currency} ${q.sell_amount.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`,
+    check(!!q && q.sell_amount === "982.82" && (await page.locator("#s1-fx").innerText()).trim() === `stand-in quote: ${q.sell_currency} ${q.sell_amount.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`,
       `${tag}: the quote in one line under the amount (${(await page.locator("#s1-fx").innerText()).trim()}), labelled a stand-in here`);
   }
   check((await page.locator("#k-status").innerText()).trim() === "" && await page.locator("#go-sign").isEnabled() && (await page.locator("#go-sign").innerText()).trim() === W.ask.sign,
@@ -401,16 +425,16 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
     const pill = page.locator("#s1-ask .who .pill");
     const says = (await page.locator("#s1-ask .says").innerText()).trim();
     if (tag === "360-dark") {
-      check((await pill.innerText()).trim() === "fixed text (model unavailable)" && await pill.getAttribute("data-voice") === "fixed-unavailable" && says === "Alpine Packaging's invoice is due Friday. It is more than I may pay alone, so I ask you.",
-        `${tag}: the model down: the fixed sentence, labelled "fixed text (model unavailable)"`);
+      check((await pill.innerText()).trim() === "fixed text · the live agent did not answer in time, or not in the expected shape" && await pill.getAttribute("data-voice") === "code" && says === "Alpine Packaging's invoice is due Friday. It is more than I may pay alone, so I ask you.",
+        `${tag}: the agent down: the fixed sentence, labelled with why`);
     } else {
-      check((await pill.innerText()).trim() === "stand-in, not Claude" && await pill.getAttribute("data-voice") === "model" && says === lineStandIn.text,
-        `${tag}: the agent's sentence from the (labelled) stand-in for Claude Haiku: "${says.slice(0, 40)}…"`);
+      check((await pill.innerText()).trim() === "stand-in, not Claude" && await pill.getAttribute("data-voice") === "live" && says === "It needs EUR 1870.00 with the fee ceiling and only EUR 1000.00 is free, so the FX buys the EUR 870.00 short for USD 982.82. It is above the EUR 500.00 I may pay alone, so you sign it with Face ID.",
+        `${tag}: the agent's reason from the (labelled) stand-in for Claude Opus, code's numbers in it: "${says.slice(0, 40)}…"`);
       await page.evaluate(`document.getElementById("s1-terms").open = true`);
       const vm = page.locator("#s1-terms-body > div:nth-child(2) details.more");
       await vm.locator("summary").click();
-      check(/^Request id req_stand-in-\d{4} \(stand-in\)\. The model was given only this test world's invoice, balance, reserve floor and limit, never your words\./.test((await vm.locator("p").innerText()).trim()),
-        `${tag}: "Show the exact terms" names who wrote the sentence, and its "more" the request id and what the model was given`);
+      check(/^Request id req_stand-in-advice-\d{4} \(stand-in\)\. The agent was given only the invoice and this test world's balances, floors, plan and quote, never your words\./.test((await vm.locator("p").innerText()).trim()),
+        `${tag}: "Show the exact terms" names who wrote the reason, and its "more" the request id and what the agent was given`);
     }
   }
   // The exact terms, behind "Show the exact terms".
@@ -422,7 +446,7 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   const hash = (await page.locator("#s1-terms .hash").getAttribute("data-hash")) ?? "";
   if (!args.live) {
     const q = terms.fx as { quote_id: string; source: string };
-    check(!!q && q.source === "stand-in" && (facts["FX quote"] ?? "").startsWith("EUR 1,850.00 for USD ") && (facts["FX quote"] ?? "").includes(`quote ${q.quote_id.slice(0, 8)}…`) && /^in \d+ min/.test(facts["Quote expires"] ?? ""),
+    check(!!q && q.source === "stand-in" && (facts["FX quote"] ?? "").startsWith("EUR 870.00 for USD 982.82 ") && (facts["FX quote"] ?? "").includes(`quote ${q.quote_id.slice(0, 8)}…`) && /^in \d+ min/.test(facts["Quote expires"] ?? ""),
       `${tag}: the FX quote is in the terms and the table (${facts["FX quote"]}), with its countdown`);
     const fxq = page.locator("#s1-terms .fxq.live");
     check(await fxq.count() === 1 && (await fxq.innerText()).includes("Used in this signature") && (await fxq.innerText()).includes("Stand-in quote (local check, not Airwallex)") && (await fxq.innerText()).includes(`Quote ${q.quote_id.slice(0, 8)}…${q.quote_id.slice(-4)}`),
@@ -654,8 +678,8 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   check(JSON.stringify(await dots(page)) === '["done","done","done","done","done","on"]' && (await page.locator("#s5-head").innerText()).trim() === W.alone.head, `${tag}: screen 6 of 6: "${W.alone.head}"`);
   check(await next.getAttribute("data-proposal") === NEXT_INVOICE.id && await next.getAttribute("data-state") === "alone" && (await next.innerText()).includes("EUR 1,240.00")
     && (await next.innerText()).includes("Paid alone under your new policy (up to €2,000). No signature needed."), `${tag}: the next invoice (${NEXT_INVOICE.id}, EUR 1,240.00) "Paid alone under your new policy (up to €2,000). No signature needed."`);
-  check(((await v.signCount())[0] ?? 0) === before + 1 && (await page.locator("#w-balance").textContent())?.trim() === "EUR 26,910.00",
-    `${tag}: one signature, over the rule; none for the invoice; the stand-in ran it (balance EUR 26,910.00)`);
+  check(((await v.signCount())[0] ?? 0) === before + 1 && (await page.locator("#w-balance").textContent())?.trim() === "EUR 25,020.00",
+    `${tag}: one signature, over the rule; none for the invoice; the stand-in ran it (balance EUR 25,020.00)`);
   check((await page.locator("#s5-worst").innerText()).trim() === `Your new rule: up to €2,000 alone, ${ALONE_PER_DAY} times a day (+€${(1500 * ALONE_PER_DAY * 31).toLocaleString("en-US")} a month worst case).`, `${tag}: screen 6: the new rule in one small line, with what it did to the worst case`);
   if (width >= 1024) {
     await page.waitForTimeout(400);
@@ -795,8 +819,8 @@ if (!args.live && !ONLY) {
     check(pterms.changes.length === 1 && pterms.changes[0]!.field === "alone" && pterms.changes[0]!.to === "2000.00" && pterms.policy.alone === "2000.00"
       && /pay alone up to EUR 2,000\.00/.test(await page.locator("#p-effect").innerText()) && await page.locator("#p-effect").isVisible(),
       `${tag}: raising "may pay alone" to 2,000.00 is refused until signed; what is signed shows the new amount, and the page says what it does`);
-    check(await page.locator(`#pl-pay li[data-proposal="${NEXT_INVOICE.id}"]`).getAttribute("data-check") === "pass" && ((await page.locator("#w-balance").textContent()) ?? "").trim() === "EUR 28,150.00",
-      `${tag}: refused, so nothing ran: ${NEXT_INVOICE.id} still waits, the balance EUR 28,150.00`);
+    check(await page.locator(`#pl-pay li[data-proposal="${NEXT_INVOICE.id}"]`).getAttribute("data-check") === "pass" && ((await page.locator("#w-balance").textContent()) ?? "").trim() === "EUR 25,020.00",
+      `${tag}: refused, so nothing ran: ${NEXT_INVOICE.id} still waits, the balance EUR 25,020.00`);
     const before = (await v.signCount())[0] ?? 0;
     await page.click("#p-sign");
     await page.waitForFunction(() => /ok/.test(document.getElementById("p-status")?.className ?? "") || /bad/.test(document.getElementById("p-sstatus")?.className ?? ""));
@@ -806,8 +830,8 @@ if (!args.live && !ONLY) {
     const next = page.locator("#s5-next");
     check(await next.getAttribute("data-state") === "alone" && (await next.innerText()).includes("Paid alone under your new policy (up to €2,000)"), `${tag}: screen 5: the next invoice, paid alone`);
     await next.locator("details.more > summary").click();
-    check(/Test transfer test-[0-9a-f]{12}, balance after EUR 26,910\.00/.test(await next.innerText()) && (await next.locator(".pill.said-before").innerText()).trim() === TRY_POLICY.saidBefore && await page.locator(".pill.said-before:visible").count() === 1,
-      `${tag}: the agent's sentence stays, labelled "${TRY_POLICY.saidBefore}", on the paid-alone invoice only; the stand-in ran it (balance EUR 26,910.00)`);
+    check(/Test transfer test-[0-9a-f]{12}, balance after EUR 25,020\.00/.test(await next.innerText()) && (await next.locator(".pill.said-before").innerText()).trim() === TRY_POLICY.saidBefore && await page.locator(".pill.said-before:visible").count() === 1,
+      `${tag}: the agent's sentence stays, labelled "${TRY_POLICY.saidBefore}", on the paid-alone invoice only; the stand-in ran it (balance EUR 25,020.00)`);
     check(JSON.stringify(await dots(page)) === '["done","done","done","done","done","on"]' && await page.locator('ol.dots li[aria-current="step"]').count() === 1, `${tag}: the dots show the last step`);
     check(((await v.signCount())[0] ?? 0) === before + 1, `${tag}: one signature for the policy change, none for the invoice (sign count ${before} → ${(await v.signCount())[0]})`);
     check(await page.locator(`#pl-pay li[data-proposal="T-0001"]`).getAttribute("data-check") === "fail", `${tag}: T-0001 is still blocked by the reserve floor`);
@@ -846,6 +870,32 @@ if (!args.live && !ONLY) {
     await v.context.close();
   }
 
+  // ── Spec 6b: the agents' steps come in one by one, each drawn from the server's answer, with who works on what. ──
+  {
+    const tag = "steps-390";
+    const v = await visitor({ width: 390, ip: "198.51.125.7" });
+    const { page, errors } = v;
+    // Each step's answer held back a moment, as a live model's would take.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await page.route("**/api/try-sign/agents", async (route: any) => { const res = await route.fetch(); await new Promise((r) => setTimeout(r, 900)); await route.fulfill({ response: res }); });
+    await page.goto(`${local.url}/try/sign`);
+    await start(page);
+    await page.waitForSelector('#st-read[data-state="done"]');
+    const state = async () => (await page.locator("#s1-steps li.st").evaluateAll((ls: Element[]) => ls.map((l) => (l as HTMLElement).dataset.state))) as string[];
+    const first = await state();
+    check(first[0] === "done" && first[1] === "pending" && first.slice(2).every((x) => x === "waiting") && (await page.locator("#st-check .sl").innerText()).trim() === "Purser's code is checking the reading…"
+      && /^Read stand-in, not Claude$/.test((await page.locator("#st-read .sl").innerText()).trim()) && (await page.locator("#st-read .fld").count()) === 5 && await page.locator("#go-sign").isDisabled(),
+      `${tag}: the reading came in (its five fields), the next step says who works on what, nothing to sign yet (${first.join(" ")})`);
+    await shot(page, `${tag}-1-progress.png`);
+    await page.waitForSelector('#st-quote[data-state="done"]');
+    check((await page.locator("#st-check ul.ticks li.ok").count()) === 4 && /EUR 870\.00 for USD 982\.82/.test(await page.locator("#st-quote").innerText()) && (await page.locator("#st-advise .sl").innerText()).trim() === "Claude Opus is advising on the timing…",
+      `${tag}: Purser's code ticked its four checks; the quote buys the EUR 870.00 short; then Claude Opus advises`);
+    await page.waitForFunction(() => !(document.getElementById("go-sign") as HTMLButtonElement).disabled);
+    check((await state()).every((x) => x === "done") && await page.locator("#s1-ask .says").isVisible(), `${tag}: after "ready", the agent's reason and "Sign with Face ID"`);
+    check(errors.length === 0, `${tag}: 0 console errors (${errors.length}${errors.length ? `: ${errors.join(" | ")}` : ""})`);
+    await v.context.close();
+  }
+
   // ── The agent's sentence is text on the page, never markup (A2 review). ──
   {
     const MARKUP = "Pay <b>x</b> now <img src=x onerror=alert(1)>.";
@@ -854,10 +904,11 @@ if (!args.live && !ONLY) {
     const dialogs: string[] = [];
     page.on("dialog", (d: { message(): string; dismiss(): Promise<void> }) => { dialogs.push(d.message()); void d.dismiss(); });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await page.route("**/api/try-sign/world", async (route: any) => {
+    await page.route(/\/api\/try-sign\/(world|agents)$/, async (route: any) => {
       const res = await route.fetch();
-      const j = (await res.json()) as { proposals: { says: string }[] };
-      for (const p of j.proposals) p.says = MARKUP;
+      const j = (await res.json()) as { proposals?: { says: string }[]; result?: { proposal?: { says: string } } };
+      for (const p of j.proposals ?? []) p.says = MARKUP;
+      if (j.result?.proposal) j.result.proposal.says = MARKUP;
       await route.fulfill({ response: res, body: JSON.stringify(j) });
     });
     await page.goto(`${local.url}/try/sign`);

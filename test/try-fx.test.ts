@@ -1,5 +1,5 @@
 // /try/sign's live FX quote (P2, 6 Nov): the Worker asks the Airwallex sandbox for a read-only quote, puts it in the
-// terms (schema v3, `fx`), so the signature binds to the quote id; an expired quote is refused even with a good
+// terms (schema v3, `fx`; v4 adds the agent's advice), so the signature binds to the quote id; an expired quote is refused even with a good
 // signature, and "Get a new quote" means new terms, signed again. The client may make two calls, to one host, and
 // nothing else; the key and the token never leave it; the quotes are rate-limited; without a live quote the terms carry
 // none and the page shows the main run's recorded quote, labelled. No network here: Airwallex is a fake fetch.
@@ -14,7 +14,7 @@ import { SANDBOX_BASE } from "../src/airwallex/client.js";
 import { AirwallexCallNotAllowed, AWX_ALLOWED, AWX_SANDBOX_HOST, QuoteUnavailable, SandboxQuotes, allowedUrl, toQuote, type FxQuote } from "../worker/src/fxQuote.js";
 import { FIXED_PROPOSALS, TRY_SIGN_FX_ALL_PER_MINUTE, TRY_SIGN_FX_PER_HOUR, TRY_TERMS_SCHEMA, canonical, proposalTerms, wellFormed } from "../worker/src/trySign.js";
 import { StandInQuotes } from "./support/fxStandIn.js";
-import { BASE, RP, call, challengeOf, desk, signBody, t0, type Proposal } from "./support/trySign.js";
+import { BASE, RP, call, challengeOf, desk, signBody, t0, walkAgents, type Proposal } from "./support/trySign.js";
 
 const KEY = "test-key-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const ID = "test-client-id-aaaa";
@@ -80,15 +80,16 @@ describe("the key: Max's scoped sandbox key, set by Max, never by the repo", () 
     expect(readFileSync(join(root, "worker/wrangler.jsonc"), "utf8")).not.toMatch(names);
   });
 
-  // The Haiku sentence's emergency switch (TRY_SIGN_HAIKU=off) is Max's, set by hand when needed: nothing here sets it.
-  it("no script, config or workflow sets TRY_SIGN_HAIKU; the Worker only reads it", () => {
+  // The live agents' emergency switch (TRY_SIGN_AGENTS=off, or its old name TRY_SIGN_HAIKU=off) is Max's, set by hand
+  // when needed: nothing here sets it.
+  it.each(["TRY_SIGN_AGENTS", "TRY_SIGN_HAIKU"])("no script, config or workflow sets %s; the Worker only reads it", (name) => {
+    const re = new RegExp(`(^|[\\s{,"'])${name}"?\\s*[=:](?!=)|--var[\\s=]+"?${name}|secret\\s*(put|bulk)[^\\n]*${name}|"${name}"\\s*\\]`);
     for (const f of all) {
-      const sets = readFileSync(f, "utf8").split("\n").filter((l) => !/^\s*(\/\/|\/?\*)/.test(l))
-        .filter((l) => /(^|[\s{,"'])TRY_SIGN_HAIKU"?\s*[=:](?!=)|--var[\s=]+"?TRY_SIGN_HAIKU|secret\s*(put|bulk)[^\n]*TRY_SIGN_HAIKU|"TRY_SIGN_HAIKU"\s*\]/.test(l));
+      const sets = readFileSync(f, "utf8").split("\n").filter((l) => !/^\s*(\/\/|\/?\*)/.test(l)).filter((l) => re.test(l));
       expect({ f: f.slice(root.length), sets }).toEqual({ f: f.slice(root.length), sets: [] });
     }
-    expect(readFileSync(join(root, "worker/wrangler.jsonc"), "utf8")).not.toMatch(/TRY_SIGN_HAIKU/);
-    expect(readFileSync(join(root, "src/cli/relay-deploy.ts"), "utf8")).not.toMatch(/TRY_SIGN_HAIKU/);
+    expect(readFileSync(join(root, "worker/wrangler.jsonc"), "utf8")).not.toMatch(new RegExp(name));
+    expect(readFileSync(join(root, "src/cli/relay-deploy.ts"), "utf8")).not.toMatch(new RegExp(name));
   });
 
   it("the Worker reads the key from its secrets only, and only into the quote client", () => {
@@ -171,7 +172,10 @@ async function visitor(fx: StandInQuotes | null, ip = "203.0.113.50") {
   const auth = new FakeAuthenticator();
   const res = await call(d.d, "world", {}, { ip });
   expect(res.status).toBe(201);
-  const w = (await res.json()) as { world: { id: string; token: string; expires_at: string }; proposals: Proposal[]; passkey_options: { challenge: string }; fx: { status: string; quote?: FxQuote; reason?: string } };
+  const opened = (await res.json()) as { world: { id: string; token: string; expires_at: string }; proposals: Proposal[]; passkey_options: { challenge: string } };
+  // The agents' steps; the quote is step 3's (spec 6b).
+  const steps = await walkAgents(d.d, opened.world.token, ip);
+  const w = { ...opened, proposals: (steps.ready as unknown as { proposals: Proposal[] }).proposals, fx: (steps.quote!.result as { fx: { status: string; quote?: FxQuote; reason?: string } }).fx };
   expect((await call(d.d, "passkey", { token: w.world.token, credential: auth.register({ challenge: w.passkey_options.challenge, origin: BASE, rpId: RP }) }, { ip })).status).toBe(201);
   return { ...d, w, auth, ip, b: w.proposals.find((p) => p.check === "pass")! };
 }
@@ -181,8 +185,9 @@ describe("the quote in the terms (v3): the signature binds to it", () => {
   it("the waiting payment's terms carry the live quote; the blocked one's none", async () => {
     const fx = new StandInQuotes(() => t0.getTime());
     const v = await visitor(fx);
-    expect(TRY_TERMS_SCHEMA).toBe("kit11.try-terms/v3");
-    expect(v.w.fx).toMatchObject({ status: "live", quote: { buy_currency: "EUR", sell_currency: "USD", buy_amount: "1850.00", client_rate: "1.129677" } });
+    expect(TRY_TERMS_SCHEMA).toBe("kit11.try-terms/v4");
+    // The quote buys exactly the shortfall code planned: EUR 1,870.00 needed, EUR 1,000.00 free, EUR 870.00 short.
+    expect(v.w.fx).toMatchObject({ status: "live", quote: { buy_currency: "EUR", sell_currency: "USD", buy_amount: "870.00", sell_amount: "982.82", client_rate: "1.129677" } });
     expect(termsOf(v.b).fx).toEqual(v.w.fx.quote);
     expect(termsOf(v.w.proposals.find((p) => p.check === "fail")!).fx).toBeNull();
     // The terms' fields, now with fx: the hash covers every one of them.
@@ -221,8 +226,10 @@ describe("the quote in the terms (v3): the signature binds to it", () => {
     const ok = await call(v.d, "sign", signBody(v.w.world.token, nq.proposal, sig2), { ip: v.ip });
     expect(ok.status).toBe(200);
     expect(((await ok.json()) as { executed: { fx_quote_id: string } }).executed.fx_quote_id).toBe(termsOf(nq.proposal).fx!.quote_id);
-    // Once it ran, there is nothing to quote again.
-    expect((await call(v.d, "quote", { token: v.w.world.token }, { ip: v.ip })).status).toBe(409);
+    // Once it ran, it is not quoted again: a new quote goes to the next invoice (T-0003), which waits with its own.
+    const next = await call(v.d, "quote", { token: v.w.world.token }, { ip: v.ip });
+    expect(next.status).toBe(200);
+    expect(((await next.json()) as { proposal: Proposal }).proposal.proposal_id).toBe("T-0003");
   });
 
   it("/quote takes the world's token and nothing else", () => {
@@ -259,8 +266,10 @@ describe("limits and fallbacks: never a made-up quote", () => {
     const fx = new StandInQuotes(() => t0.getTime());
     const d = desk(undefined, fx);
     for (let i = 0; i < TRY_SIGN_FX_ALL_PER_MINUTE + 3; i++) {
-      const w = (await (await call(d.d, "world", {}, { ip: `198.18.${i}.1` })).json()) as { fx: { status: string } };
-      expect(w.fx.status).toBe(i < TRY_SIGN_FX_ALL_PER_MINUTE ? "live" : "reused");
+      const ip = `198.18.${i}.1`;
+      const w = (await (await call(d.d, "world", {}, { ip })).json()) as { world: { token: string } };
+      const steps = await walkAgents(d.d, w.world.token, ip);
+      expect((steps.quote!.result as { fx: { status: string } }).fx.status).toBe(i < TRY_SIGN_FX_ALL_PER_MINUTE ? "live" : "reused");
     }
     expect(fx.calls).toBe(TRY_SIGN_FX_ALL_PER_MINUTE);
   });
@@ -291,7 +300,7 @@ describe("the receipt carries the quote", () => {
     const r = verifyReceipt(receipt);
     expect(r.ok).toBe(true);
     const q = termsOf(v.b).fx!;
-    expect(r.checks.find((c) => c.check === "fx quote")!.detail).toBe(`quote ${q.quote_id}, EUR 1850.00 for USD ${q.sell_amount} at 1.129677, valid to ${q.valid_to_at}: in the signed terms (that Airwallex issued it is not checked offline)`);
+    expect(r.checks.find((c) => c.check === "fx quote")!.detail).toBe(`quote ${q.quote_id}, EUR 870.00 for USD ${q.sell_amount} at 1.129677, valid to ${q.valid_to_at}: in the signed terms (that Airwallex issued it is not checked offline)`);
     const t = receipt.terms as { fx: Record<string, string> };
     const bad = verifyReceipt({ ...receipt, terms: { ...t, fx: { ...t.fx, quote_id: "another-quote-0000" } } });
     expect(bad.checks.filter((c) => !c.ok).map((c) => c.check)).toEqual(["terms hash"]);
