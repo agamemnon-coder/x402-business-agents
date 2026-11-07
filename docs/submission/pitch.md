@@ -35,11 +35,11 @@ it, so the taps, the Face ID prompts and the tab switches fit in the rest. The w
   for one click.
 - **Live: sign, cheat, trick, change the rule:** 0:20–1:30 (70 s); budget 161 words; written 117 words; about 51 s of
   speech, 19 s for three Face ID prompts, the fake invoice and the server's answers.
-- **The proof:** 1:30–2:20 (50 s); budget 115 words; written 101 words; about 44 s of speech, 6 s for two tab
-  switches.
+- **The proof:** 1:30–2:20 (50 s); budget 115 words; written 111 words; about 48 s of speech, 2 s for two tab
+  switches (tight: cut the Airi line first if it runs over).
 - **The business and the ask:** 2:20–3:00 (40 s); budget 92 words; written 84 words; about 37 s of speech, 3 s for a
   pause.
-- **Total:** 3:00; budget 414 words; written 341 words; about 2:28 of speech, 32 s for taps and pauses.
+- **Total:** 3:00; budget 414 words; written 351 words; about 2:33 of speech, 27 s for taps and pauses.
 
 Before you start: the laptop's shared screen shows Home ([kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/)).
 Your iPhone is mirrored to the screen (the path tested on 6 November: Safari, Face ID), with `/try/sign` opened a minute
@@ -86,6 +86,7 @@ Demo Day script".
 | Point at the two hashes, side by side. | It carries the hash I signed with Face ID. | Same record, `metadata.approval_sha256` `797d4483…abcd` = P-0005's `terms_sha256`, approved by Max with his passkey (record seq 360); matched in code (`hashTravel`, `src/redesign/airwallexProof.ts`) |
 | | All 3 agent cards carry my policy as Airwallex's own controls. | [airwallex-cards-2026-11-06.json](../runs/airwallex-cards-2026-11-06.json); `cardControlRows`: 3 of 3 cards match the CFO policy |
 | Point at awx-1 below, "a separate run · Airwallex sandbox, test money". | On 7 November, an Airwallex-only run passed every check. | [docs/runs/2026-11-07-awx-1.md](../runs/2026-11-07-awx-1.md): ACCEPTED, checks a–g all passed; on `/proof` through `awxRunBlock` (`src/redesign/awxRun.ts`) |
+| Scroll up to the Airi run under the partners: ✓ Paid alone · ✓ Paid after Face ID · ✕ Refused by Purser. | Agents also paid with Visa Intelligent Commerce, through Airwallex's Airi. | [docs/runs/2026-11-07-vic-1.md](../runs/2026-11-07-vic-1.md): PASSED, 5 of 5 checks (Airwallex sandbox, test card, test money); on `/proof` through `airiRunBlock` (`src/redesign/airiRun.ts`) |
 | Tab [/metal](https://kit11.max-31b.workers.dev/metal); point at #24's refusal and its tx. | Proof two: each agent has its own mandate on Metal. | `/metal` (`src/redesign/metalStory.ts`): one mandate per agent, on chain |
 | | We switched off our own check once; Metal refused purchase 24 anyway. | `CHAIN_TEST`; Record: `mandate_cap_exceeded`, tx `0x2e92f9cb…1871` |
 | | That refusal is on chain, next to 86 payments, each its own transaction. | README, "On Metal testnet"; Record: `payments` (onChain 86) |
@@ -106,7 +107,8 @@ Demo Day script".
 | Point at the QR; leave it up for the questions. | Scan the code, and sign one yourself. | Deck slide 12; `docs/media/try-sign-qr.png` |
 | | Thank you. | Max |
 
-If a part runs over in rehearsal, cut in this order: "Here is my worst case, in one line." (the screen shows it), then
+If a part runs over in rehearsal, cut in this order: "Agents also paid with Visa Intelligent Commerce…" (the screen
+shows the badges), then "Here is my worst case, in one line." (the screen shows it), then
 "Finance teams whose agents already spend, or soon will.", then "The more agent features Airwallex ships…".
 
 ## 1. The elevator pitch (30 seconds)
