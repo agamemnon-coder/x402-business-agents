@@ -121,9 +121,29 @@ export function adviceGiven(f: TimingFacts, aloneLimit: string, extraDays: reado
  * "€1,850", or a currency sign or code, or a number word such as "thousand"), it does not fit.
  */
 export function amountsFit(sentence: string, given: Given): boolean {
+  return strayIn(sentence, given) === null;
+}
+
+/** What is left in the sentence once code's amounts and references are taken out that still looks like money, or null. */
+export function strayIn(sentence: string, given: Given): string | null {
   let rest = sentence;
   for (const t of [...given.amounts, ...given.references].sort((a, b) => b.length - a.length)) rest = rest.split(t).join(" | ");
-  return !/\d|[€$£¥₹¢]|\b(?:EUR|USD|GBP|CHF|JPY|euros?|dollars?|cents?|thousand|hundred|million|billion|grand)\b/i.test(rest);
+  const m = /(?:\b(?:EUR|USD|GBP|CHF|JPY)\s?|[€$£¥₹¢]\s?)?\d[\d,.:\-]*|[€$£¥₹¢]|\b(?:EUR|USD|GBP|CHF|JPY|euros?|dollars?|cents?|thousand|hundred|million|billion|grand)\b/i.exec(rest);
+  return m ? m[0].trim().replace(/[.,:\-]+$/, "") || m[0].trim() : null;
+}
+
+/**
+ * The agent's own tool's answer when its reason names something code did not give it (submit_advice, on /try/sign):
+ * what is not code's, and code's numbers as it may write them, so it writes again within its turns. Null when it fits.
+ */
+export function strayRefusal(reason: string, given: Given, f: TimingFacts): string | null {
+  const stray = strayIn(cleanReason(reason) ?? reason, given);
+  if (stray === null) return null;
+  const n = licenceNumbers(f);
+  const eur = [f.amount, f.feeMax, n.needed, n.freeBefore, n.shortfall, n.fxBuy, f.eurFloor, f.after.eurFree].filter((x): x is string => !!x).map((a) => `EUR ${a}`);
+  const usd = [f.quote?.sell.replace(/^[A-Z]{3}\s*/, ""), f.usdFloor, f.after.usdAvailable].filter((x): x is string => !!x).map((a) => `USD ${a}`);
+  const when = [f.quote ? `the quote's end ${f.quote.validTo}` : "", `due ${f.dueDate}`, `today ${f.today}`].filter(Boolean);
+  return `Not recorded: "${stray}" is not one of code's numbers. Write every amount, date and time exactly as code gave it (${[...new Set([...eur, ...usd])].join(", ")}; ${when.join(", ")}), or leave it out.`;
 }
 
 /** The reason as the page may show it, or null: one or two plain sentences, 20 to 400 characters, no markup (the
