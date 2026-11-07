@@ -29,7 +29,7 @@ Shown on `/airwallex` and in Proof's "Airwallex, read back".
 | f2 | BTX-2026-11, EUR 1,850.00: free EUR 1,246.50 < 1,870.00, so a fresh quote for the shortfall only: EUR 623.50 for USD 704.45 at 1.129833 (market 1.128941, 8 bps over); conversion, then SWIFT after Max's Face ID (12:13:16 UTC) | quote `1605354b-5f6f-3ab5-8dbc-3af479c54b33`, conversion `fafcc208-bd1e-43d9-bd09-69191a8aa81f` (SETTLED), transfer `4140dee2-6373-4eb4-a71f-bf69130f96a7`, PAID, fee EUR 13.50 |
 | g | Each payout's `metadata.approval_sha256` is the hash of the terms Max signed; `npm run verify` read both back (`GET /transfers`, `GET /fx/conversions`): all checks pass; `npm run reconcile`: 0 differences | P-0002 `b0f075d9…`, P-0003 `68f85b99…` |
 
-71 of the 96 approved Airwallex calls (85 expected). Simulated by the sandbox, as everywhere on this page: the merchants'
+71 Airwallex API calls (run budget: 96; 85 expected). Simulated by the sandbox, as everywhere on this page: the merchants'
 charges (`POST /simulation/issuing/create`) and each payout's SENT and PAID (`POST /simulation/transfers/{id}/transition`).
 
 ## The Airi run: an agent pays with a single-use card credential from Airwallex's Airi wallet (7 November; Airwallex sandbox, test card, test money)

@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import type { Awx1Record } from "../src/awx/scenario.js";
 import { AWX_RUN_FILE, AWX_RUN_LABEL, AWX_RUN_LOG, awxRun, awxRunBlock, awxRunHtml, awxRunSummary } from "../src/redesign/awxRun.js";
+import { moneyForPeople } from "../worker/src/agentLine.js";
 
 const RAW = readFileSync(AWX_RUN_FILE, "utf8");
 const rec = JSON.parse(RAW) as Awx1Record;
@@ -42,7 +43,10 @@ describe("awx-1 on the site", () => {
     const fx = rec.invoices.find((i) => i.quote)!;
     expect(t).toContain(`only EUR ${fx.quote!.buy_eur} bought for USD ${fx.quote!.sell_usd} at ${fx.quote!.rate} (quote ${fx.quote!.quote_id}, conversion ${fx.conversion_id})`);
     expect(t).toContain(`${rec.webhooks.length} webhooks from Airwallex`);
-    expect(t).toContain(`${rec.calls!.airwallex_total} of ${rec.calls!.budget} approved Airwallex calls`);
+    expect(t).toContain(`${rec.calls!.airwallex_total} Airwallex API calls (run budget: ${rec.calls!.budget})`);
+    // Amounts with thousands grouped (jury review, 7 Nov, #23), as the page writes money elsewhere.
+    for (const i of rec.invoices) expect(t).toContain(`Invoice ${i.invoice_no}, ${moneyForPeople("EUR", i.amount)}:`);
+    expect(t).toContain("free EUR 1,500.00");
     expect(t).toContain("P-0001, instead of retrying");
     expect(t).toContain("(Claude Haiku)");
     expect(t).toContain(AWX_RUN_FILE);
@@ -54,7 +58,7 @@ describe("awx-1 on the site", () => {
       String(rec.declines_met.length), String(rec.declines_met.filter((m) => m.proposal_id).length), String(rec.invoices.length), String(rec.invoices.filter((i) => i.quote).length)]);
     const inRecord = new Set((RAW.match(/\d+(?:\.\d+)*/g) ?? []));
     // Ids and the record's file name are names, not figures; the date is the record's own (2026-11-07).
-    const t = text(block(pages.airwallex!) + block(pages.proof!)).replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, " ").replace(/(SLL|BTX)-\d{4}-\d{2}/g, " ").replace(/P-\d{4}/g, " ").replace(/airwallex-run\.json|2026-11-07-awx-1\.md|awx-1/g, " ");
+    const t = text(block(pages.airwallex!) + block(pages.proof!)).replace(/(\d),(?=\d{3}\b)/g, "$1").replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, " ").replace(/(SLL|BTX)-\d{4}-\d{2}/g, " ").replace(/P-\d{4}/g, " ").replace(/airwallex-run\.json|2026-11-07-awx-1\.md|awx-1/g, " ");
     const unknown = (t.match(/\d+(?:\.\d+)*/g) ?? []).filter((n) => !inRecord.has(n) && !counted.has(n));
     expect(unknown).toEqual([]);
     expect(rec.attempts[0]!.at.slice(0, 10)).toBe("2026-11-07");

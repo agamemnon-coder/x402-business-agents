@@ -9,7 +9,7 @@ import { packFacts } from "../src/submission/facts.js";
 import { homePage } from "../src/redesign/home.js";
 import { watchPage } from "../src/redesign/watch.js";
 import { proofPage } from "../src/redesign/proof.js";
-import { DEFENSE_IN_DEPTH, HOME_BADGE, KIT_LINE, PRICE_LINE, SECOND_APPROVER, VISA_AWARD_ON, VISA_CLAIM, VISA_EXTRA_LINK, VISA_TAP_STATUS } from "../src/config/brand.js";
+import { CHAIN_TEST, DEFENSE_IN_DEPTH, HOME_BADGE, KIT_LINE, PRICE_LINE, SECOND_APPROVER, VISA_AWARD_ON, VISA_CLAIM, VISA_EXTRA_LINK, VISA_TAP_STATUS } from "../src/config/brand.js";
 import { buildPages } from "../src/relay/assets.js";
 import { esc } from "../src/redesign/ui.js";
 
@@ -78,10 +78,11 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
   const run = agentRun();
   const money = run.events.filter((e): e is Extract<typeof e, { k: "money" }> => e.k === "money");
 
-  it("one attempt, one step: the purchase let through to Metal, refused by Metal itself, with the run's own label", () => {
+  it("one attempt, one step: the purchase let through to Metal, refused by Metal itself, framed as the test it was", () => {
     const lt = money.filter((e) => e.letThrough);
     expect(lt).toHaveLength(1);
-    expect(lt[0]!.refused).toMatchObject({ by: "metal", reason: DEFENSE_IN_DEPTH, code: "mandate_cap_exceeded" });
+    // Jury review, 7 Nov (#13): CHAIN_TEST says it; the run's own label stays in its ledger row, not beside it.
+    expect(lt[0]!.refused).toMatchObject({ by: "metal", reason: CHAIN_TEST, code: "mandate_cap_exceeded" });
     expect(lt[0]!.amount).toBe("0.04");
     expect(lt[0]!.proof.href).toMatch(/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871$/);
     // The facilitator's 402 and its record on chain are one step, not two; and counted once at the limit.
@@ -92,7 +93,10 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
     // The run's own ledger row carries Max's label word for word.
     expect(record.ledger!.events.find((e) => e.event === "upstream.let_through_refused")!.payload.label).toBe(DEFENSE_IN_DEPTH);
     const pages = buildPages() as unknown as Record<string, string>;
-    for (const [name, html] of [["watch", watchPage()], ["proof", proofPage()], ["metal", pages.metal!]] as const) expect({ name, has: html.replace(/&#39;/g, "'").includes(DEFENSE_IN_DEPTH) }).toEqual({ name, has: true });
+    for (const [name, html] of [["watch", watchPage()], ["proof", proofPage()], ["metal", pages.metal!]] as const) {
+      const t = html.replace(/&#39;/g, "'");
+      expect({ name, label: t.includes(DEFENSE_IN_DEPTH), test: t.includes(CHAIN_TEST) }).toEqual({ name, label: false, test: true });
+    }
   });
 
   it("the licence: euros for the shortfall bought by FX first, then PAID by SWIFT 6 s after the CFO's Face ID; Treasury's options 40 s after the refusal", () => {
@@ -300,6 +304,8 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
       // The form's Description leaves it out too since 6 Nov (jury review, #7: no TAP there; the long text keeps it).
       // Proof leaves it out too since Max's last round (item 2): TAP only on /visa and in Proof's footer link.
       if (name === "deck" || name === "docs/submission/README.md" || name === "proof") expect({ name, tap: t.includes(TAP_LINE) }).toEqual({ name, tap: false });
+      // The README says it in its own words since the jury review of 7 Nov (#15): what is not counted first.
+      else if (name === "README.md") expect({ name, after: t.lastIndexOf("Not counted (a separate TAP run, 2 November): Airwallex declined EUR 45.00 over the card limit (`LIMIT_EXCEEDED`).") > t.indexOf(LINE) }).toEqual({ name, after: true });
       else expect({ name, after: t.lastIndexOf(TAP_LINE) > t.indexOf(LINE) }).toEqual({ name, after: true });
     }
     // On the site's tiles, a big "16 stops" with "nothing paid over a limit" under it, then the sentence.
@@ -387,12 +393,12 @@ describe("one payment breakdown everywhere, and a clean refusal line (jury revie
     }
   });
 
-  it("says the let-through refusal in one clean line, the Defense-in-depth label on its own line", () => {
+  it("says the let-through refusal in one clean line, the chain test on its own line and no Defense-in-depth label beside it", () => {
     for (const [name, html] of [["proof", proofPage()], ["metal", PAGES.metal!]] as const) {
       const t = words(html);
       expect({ name, line: t.includes("Refused by Metal: Stockline at 0.04, over the 0.03 cap (mandate_cap_exceeded); nothing moved.") }).toEqual({ name, line: true });
       expect({ name, garbled: /Stockline, Defense in depth|nothing moved\.; nothing moved/.test(t) }).toEqual({ name, garbled: false });
-      expect({ name, own: html.replace(/&#39;/g, "'").includes(`<small>${DEFENSE_IN_DEPTH}</small>`) }).toEqual({ name, own: true });
+      expect({ name, own: html.replace(/&#39;/g, "'").includes(`<small>${CHAIN_TEST}</small>`), label: html.replace(/&#39;/g, "'").includes(DEFENSE_IN_DEPTH) }).toEqual({ name, own: true, label: false });
     }
   });
 

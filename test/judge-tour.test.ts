@@ -61,11 +61,11 @@ const SEES: Record<string, { path: string; marks: (string | RegExp)[] }[]> = {
 describe("/judge: the five steps", () => {
   it("go in the demo's order (Max, 7 Nov: Home, Watch, Try, Proof), with their times, three minutes in all", () => {
     expect(JUDGE_STEPS.map((s) => [s.title, s.seconds])).toEqual([
-      ["Watch the agents", 30],
+      ["Watch the agents", 40],
       ["Sign, then try to cheat", 40],
       ["Try to trick the agent", 30],
       ["Change the rule, see the worst case", 30],
-      ["See the proof", 50],
+      ["See the proof", 40],
     ]);
     expect(JUDGE_STEPS.reduce((t, s) => t + s.seconds, 0)).toBe(180);
     expect(JUDGE_STEPS.map((s) => s.links.map((l) => l.href))).toEqual([
@@ -173,7 +173,9 @@ describe("the way in: Home, the README and the form", () => {
   it("the form's jury instructions start with /judge, and the form stays under 4,000 characters", () => {
     const form = read("docs/submission/README.md");
     const ins = form.split("<!-- instructions -->")[1]!.split("<!-- /instructions -->")[0]!.trim();
-    expect(ins.startsWith(`1. ${JUDGE_LINK.replace(/ →$/, "")}: ${JUDGE_URL}`)).toBe(true);
+    // The link in <…>, no full stop glued to it (jury review, 7 Nov, #18).
+    expect(ins.startsWith(`1. ${JUDGE_LINK.replace(/ →$/, "")}: <${JUDGE_URL}>`)).toBe(true);
+    expect(ins).not.toMatch(/https:\/\/[^\s<>]*[.,](?=\s|$)/);
     expect(ins.length).toBeLessThan(4000);
     const description = form.split("<!-- description -->")[1]!.split("<!-- /description -->")[0]!.trim();
     expect(description.length).toBeLessThan(4000);

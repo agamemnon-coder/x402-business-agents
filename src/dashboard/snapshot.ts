@@ -821,9 +821,9 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
       return out(`${who} disputes ${n} sale${n === 1 ? "" : "s"}: "${words}" (case ${s})`);
     }
     case "dispute.decided": {
-      if (str(p.outcome) === "rejected") return out(`Dispute ${s} decided by code: not refunded, every order signed and paid inside the customer's mandate`, "ok");
+      if (str(p.outcome) === "rejected") return out(`Dispute ${s} handled by code: not refunded, every order signed and paid inside the customer's mandate`, "ok");
       const then = str(p.route) === "approval" ? `waiting for your Face ID (${str(p.proposal_id)})` : str(p.route) === "auto" ? "within the automatic limits" : "";
-      return out(`Dispute ${s} decided by code: refund ${str(p.refund)} test USD${then ? `, ${then}` : ""}`, "ok");
+      return out(`Dispute ${s} handled by code: refund ${str(p.refund)} test USD${then ? `, ${then}` : ""}`, "ok");
     }
     case "dispute.decision_recorded": {
       const list = (v: unknown) => (Array.isArray(v) ? (v as unknown[]).map(str).join(", ") : "");

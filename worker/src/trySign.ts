@@ -37,7 +37,7 @@ import { checkInvoiceReading, parseInvoiceFallback, type Invoice } from "../../s
 import { assessAgainst, type Beneficiary } from "../../src/policy/fraudCore.js";
 import { findInjections } from "../../src/policy/injection.js";
 import { alpineInvoice } from "../../src/try/invoiceDoc.js";
-import { adviseTry, signatureLine, type AdviceCall } from "../../src/try/treasuryAdvice.js";
+import { ADVICE_STYLE_LINE, adviseTry, signatureLine, type AdviceCall } from "../../src/try/treasuryAdvice.js";
 import { adviceOutOfBounds, licenceNumbers, type TimingFacts } from "../../src/agents/timingCore.js";
 import type { RecordedAgents } from "../../src/try/recorded.js";
 import { CHAIN_MAX_ROWS, nextRow, type ChainData, type ChainKind, type ChainRow } from "./worldChain.js";
@@ -918,7 +918,7 @@ export class TrySignDesk {
     const f = this.timingFacts(world, state);
     if (!f) return notAsked("code's numbers for this payment did not agree, so the agent was not asked");
     const alone = rulesOf(this.policyOf(world.id).policy).alone_limit;
-    const extra = [cents(f.amount) > cents(alone) ? signatureLine(eur(alone)) : `At or below the ${eur(alone)} the agent may pay alone, so this payment needs no signature.`];
+    const extra = [cents(f.amount) > cents(alone) ? signatureLine(eur(alone)) : `At or below the ${eur(alone)} the agent may pay alone, so this payment needs no signature.`, ADVICE_STYLE_LINE];
     const given = (date: string | null) => adviceGiven(f, alone, date ? [date] : []);
     const reasonCheck = (a: { timing: string; date: string | null; reason: string }) => strayRefusal(a.reason, given(a.date), f);
     const live = await this.liveCall(ip, ADVICE_RESERVE_USD, (ask: AgentAsk) => adviseTry(ask, f, extra, { deadlineMs: this.adviceDeadlineMs, reasonCheck }), this.advisor);

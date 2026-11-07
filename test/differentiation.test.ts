@@ -70,14 +70,14 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     expect(readme.indexOf(KIT11_RUN_LINE.replace(/\.$/, ""))).toBeGreaterThan(readme.indexOf("[![CI]"));
   });
 
-  it("open Home only as the README's and the form's first screen; Home itself shows what Purser is and the way through (Max, 7 Nov)", () => {
+  it("open Home under its heading: what Purser is and the three sentences, then the way through (Max and the jury review, 7 Nov)", () => {
     const html = PAGES.home!;
     const hero = /<section class="hero">[\s\S]*?<\/section>/.exec(html)![0];
     const t = words(hero);
-    // Max, 7 Nov: the one button right under the heading and its sentence, then the three steps.
-    expect(t.startsWith(`AI agents spend. You sign off. ${WHAT_IT_IS} Start: watch the agents`)).toBe(true);
+    // Max, 7 Nov: the one button right under the heading and its sentences, then the three steps; the three sentences
+    // back under the subtitle since the jury review of 7 Nov (#2).
+    expect(t.startsWith(`AI agents spend. You sign off. ${WHAT_IT_IS} ${DIFFERENTIATORS.join(" ")} Start: watch the agents`)).toBe(true);
     expect(t).toContain("1 Watch the agents");
-    for (const d of DIFFERENTIATORS) expect(t.includes(d)).toBe(false);
     expect(t).toContain(`${CAVEAT_LINE} Details →`);
     // The caveat's link opens the footer's "What's real?", which lists what the line names.
     expect(hero).toContain('<a href="#real" data-real>Details →</a>');
@@ -94,7 +94,7 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     expect(between(form, "<!-- synopsis -->", "<!-- /synopsis -->")).toBe(`${WHAT_IT_IS} ${DIFFERENTIATORS.join(" ")} ${TRY_IT}`);
     const desc = words(between(form, "<!-- description -->", "<!-- /description -->"));
     // Section D (6 Nov): the Description opens with the problem, then the solution and the three sentences.
-    expect(desc.startsWith("The problem. AI agents can now spend company money.")).toBe(true);
+    expect(desc.startsWith("The problem. AI agents are starting to spend company money.")).toBe(true);
     let at = 0;
     for (const s of [...DIFFERENTIATORS, KIT11_RUN_LINE, CAVEAT_LINE]) { const i = desc.indexOf(s, at); expect({ s, found: i >= at }).toEqual({ s, found: true }); at = i; }
   });

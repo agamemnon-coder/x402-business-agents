@@ -12,7 +12,7 @@ import { SANDBOX_SETTLED, SPLIT_LINE, VISA_CLAIM, VISA_TAP_STATUS } from "../con
 import { airwallexData } from "../partners/data.js";
 import { agentRun, callBadge, cardRaiseOf, decisionsOf, faceIdDecisions, family, fxOf, ownTap, payments, split, stops, tapRun, timings, type AgentRun, type Ev } from "./run.js";
 import { LOGO, earlierLine, fold, partnerProof } from "./proof.js";
-import { metalStory, separateRuns, type MetalStory } from "./metalStory.js";
+import { metalStory, refusalNote, separateRuns, type MetalStory } from "./metalStory.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { AIRI_CSS, airiRunBlock } from "./airiRun.js";
 import { awxRunBlock } from "./awxRun.js";
@@ -58,6 +58,7 @@ a.pf { color: var(--accent); font-weight: 600; text-decoration: none; font-size:
 .st { display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 12px; align-content: start; padding: 14px; border-radius: 16px; background: var(--sunken); min-width: 0; }
 .st .ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--surface); color: var(--metal); grid-row: span 3; }
 .st.bad .ic { color: var(--bad); } .st.ok .ic { color: var(--ok); }
+.st .xn { grid-column: -2 / -1; font-size: 14px; line-height: 1.4; color: var(--muted); margin-top: 4px; overflow-wrap: anywhere; }
 .st b { font-size: 19px; line-height: 1.25; letter-spacing: -.01em; } .st span { font-size: 15px; color: var(--muted); line-height: 1.4; }
 .st .tx { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 4px; } .st .tx a.pf { font-size: 14.5px; display: inline-flex; align-items: center; min-height: 24px; }
 .st code { font: 600 13.5px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
@@ -100,14 +101,14 @@ const AGENT_NAME = (a: string) => `${a[0]!.toUpperCase()}${a.slice(1)}`;
  * explorer, every figure from the record (src/redesign/metalStory.ts). Nothing here is typed in.
  */
 export function metalStoryHtml(st: MetalStory): string {
-  const block = (ic: string, tone: string, head: string, sub: string, links: string[]) =>
-    `<div class="st ${tone}"><span class="ic">${icon(ic, 20)}</span><b>${esc(head)}</b><span>${sub}</span><span class="tx">${links.filter(Boolean).join("")}</span></div>`;
+  const block = (ic: string, tone: string, head: string, sub: string, links: string[], note: string | null = null) =>
+    `<div class="st ${tone}"><span class="ic">${icon(ic, 20)}</span><b>${esc(head)}</b><span>${sub}</span><span class="tx">${links.filter(Boolean).join("")}</span>${note ? `<small class="xn">${esc(note)}</small>` : ""}</div>`;
   const p = st.payments, r = st.refusal, x = st.replace;
   return [
     block("shield-check", "", `${st.mandates.length} mandates on chain, one per agent`, esc("cap per payment, on the company's account"),
       st.mandates.map((m) => ext(m.proof, `${AGENT_NAME(m.agent)} ${m.cap}${m.how === "bound" ? "" : ", a payment under it"}`))),
     block("receipt", "", `${p.total} Metal payments, each its own transaction`, esc(`${p.sales} sales · ${p.purchases} supplier purchases · ${p.refunds} refunds · ${p.sweeps} sweep`), [ext(p.account), ext(p.checked)]),
-    ...(r ? [block("ban", "bad", `#${r.seq} refused on chain`, `${esc(`${r.amount} over the ${r.cap} cap`)}: <code>${esc(r.code)}</code>; nothing moved`, [ext(r.proof)])] : []),
+    ...(r ? [block("ban", "bad", `#${r.seq} refused on chain`, `${esc(`${r.amount} over the ${r.cap} cap`)}: <code>${esc(r.code)}</code>; nothing moved`, [ext(r.proof)], refusalNote(r))] : []),
     ...(x ? [block("scan-face", "ok", `Mandates replaced after Face ID`, esc(`${x.proposal}: the CFO's Face ID + a labelled test passkey${x.revoked ? `; #${x.revoked.seq} on the old mandate: ${x.revoked.code}` : ""}`),
       x.steps.map((s) => ext(s.proof, `${AGENT_NAME(s.agent)} ${s.cap}`)))] : []),
   ].join("");
@@ -218,7 +219,8 @@ export function claudePage(run: AgentRun = agentRun()): string {
     logo: LOGO.claude, h1: "Claude decides the exceptions", proofHash: "claude",
     picture: run.agents.map((a) => node(a.id === "sourcing" ? "package" : a.id === "support" ? "headphones" : "landmark", `${a.short} · ${a.family}`, `${s.agent_stats.find((x) => x.agent === a.id)?.decisions ?? 0} decisions`, "claude")).join(arrow),
     nums: nums([[`${sp.byClaude}/${sp.decisions}`, `decisions by Claude (${sp.fallbacks} fallbacks)`], [String(sp.routine), "routine payments by code"], [String(calls), "Claude calls, each with a request id"], [String(faceIdDecisions(run.record)), "Face ID decisions by the CFO"]]),
-    line: SPLIT_LINE,
+    // What a decision is here (jury review, 7 Nov, #19): holding and doing nothing count, as the record's own rows show.
+    line: `${SPLIT_LINE} ${sp.decisions} decisions, including the ones to hold or do nothing.`,
     folds: fold("Each agent: decisions, calls, cost", p.claude)
       // All the decisions the headline counts (final review, 4 Nov: the chat's 21 of 24), cut at a word, never inside a number.
       + fold("Every decision, with its Claude call", decisionsOf(run.record).map((d) => `<li class="ok">${esc(`${d.agent[0]!.toUpperCase()}${d.agent.slice(1)}, ${d.at.slice(11, 16)} UTC: ${d.text.length > 140 ? `${d.text.slice(0, 140).replace(/\s+\S*$/, "")}…` : d.text}`)}${d.call ? `<br><span class="call" title="${esc(d.call.requestIds.join(", "))}">${esc(callBadge(d.call))}</span>` : ""}</li>`))

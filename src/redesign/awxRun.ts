@@ -7,6 +7,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import type { Awx1Record } from "../awx/scenario.js";
+import { moneyForPeople } from "../../worker/src/agentLine.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { family } from "./run.js";
 import { esc, icon } from "./ui.js";
@@ -30,6 +31,8 @@ export function awxRun(file = AWX_RUN_FILE): Awx1Record | null {
 
 const dayLong = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(iso));
 const AGENT = (a: string) => `${a[0]!.toUpperCase()}${a.slice(1)}`;
+/** Amounts as people read them, thousands grouped (jury review, 7 Nov, #23): "EUR 1,500.00"; num() the figure alone. */
+const eur = (a: string) => moneyForPeople("EUR", a), usd = (a: string) => moneyForPeople("USD", a), num = (a: string) => moneyForPeople("EUR", a).slice(4);
 
 export interface AwxRunSummary {
   run: string; date: string; checksOk: number; checksAll: number; lines: string[]; source: string;
@@ -55,15 +58,16 @@ export function awxRunSummary(rec: Awx1Record): AwxRunSummary | null {
   const verifyOk = rec.verify.length > 0 && rec.verify.every((v) => v.level !== "FAIL");
   const lines = [
     `${rec.cards.length} cards issued, one per agent, each with the CFO policy's limits, merchant category, EUR only and an end date, read back from Airwallex: ${rec.cards.map((c) => `····${c.last4}`).join(", ")}.`,
-    `${b.merchant} charged EUR ${b.amount} on the ${AGENT(b.agent)} card ····${b.last4}, within its EUR ${rb(src, "per_tx")} limit: approved by Airwallex (${b.id}).`,
-    `EUR ${cNo.amount}, over that limit: declined by Airwallex, ${cNo.decline_code} (${cNo.id}). The ${AGENT(cMet.agent)} agent (Claude ${family(cMet.model)}) read the code and asked the CFO for a raise, ${cMet.proposal_id}, instead of retrying. After ${faceId(cMet.proposal_id ?? "")} the card was updated at Airwallex to EUR ${String(src.read_back_end?.per_tx ?? "")} a purchase, and the same charge was approved (${cYes.id}).`,
-    `EUR ${dNo.amount} at ${dNo.merchant} (MCC ${dNo.mcc}) on the ${AGENT(dNo.agent)} card ····${dNo.last4}, which may pay MCC ${mccs(sup)} only: declined by Airwallex, ${dNo.decline_code} (${dNo.id}). The ${AGENT(dMet.agent)} agent asked for no raise.`,
+    `${b.merchant} charged ${eur(b.amount)} on the ${AGENT(b.agent)} card ····${b.last4}, within its ${eur(rb(src, "per_tx"))} limit: approved by Airwallex (${b.id}).`,
+    `${eur(cNo.amount)}, over that limit: declined by Airwallex, ${cNo.decline_code} (${cNo.id}). The ${AGENT(cMet.agent)} agent (Claude ${family(cMet.model)}) read the code and asked the CFO for a raise, ${cMet.proposal_id}, instead of retrying. After ${faceId(cMet.proposal_id ?? "")} the card was updated at Airwallex to ${eur(String(src.read_back_end?.per_tx ?? ""))} a purchase, and the same charge was approved (${cYes.id}).`,
+    `${eur(dNo.amount)} at ${dNo.merchant} (MCC ${dNo.mcc}) on the ${AGENT(dNo.agent)} card ····${dNo.last4}, which may pay MCC ${mccs(sup)} only: declined by Airwallex, ${dNo.decline_code} (${dNo.id}). The ${AGENT(dMet.agent)} agent asked for no raise.`,
     `${rec.webhooks.length} webhooks from Airwallex, each signature checked; all ${rec.card_transactions.length} card transactions recorded from them.`,
-    `Invoice ${lic.invoice_no}, EUR ${lic.amount}: free EUR ${lic.free_eur} covers the ${lic.need_eur} needed with the fee ceiling, so no FX. After ${faceId(lic.proposal_id)}, SWIFT transfer ${lic.transfer_id}: ${lic.status}, fee ${lic.fee}.`,
-    `Invoice ${sup2.invoice_no}, EUR ${sup2.amount}: free EUR ${sup2.free_eur}, short of the ${sup2.need_eur} needed, so only EUR ${sup2.quote.buy_eur} bought for USD ${sup2.quote.sell_usd} at ${sup2.quote.rate} (quote ${sup2.quote.quote_id}, conversion ${sup2.conversion_id}). After ${faceId(sup2.proposal_id)}, SWIFT transfer ${sup2.transfer_id}: ${sup2.status}, fee ${sup2.fee}.`,
+    `Invoice ${lic.invoice_no}, ${eur(lic.amount)}: free ${eur(lic.free_eur)} covers the ${num(lic.need_eur)} needed with the fee ceiling, so no FX. After ${faceId(lic.proposal_id)}, SWIFT transfer ${lic.transfer_id}: ${lic.status}, fee ${lic.fee}.`,
+    `Invoice ${sup2.invoice_no}, ${eur(sup2.amount)}: free ${eur(sup2.free_eur)}, short of the ${num(sup2.need_eur)} needed, so only ${eur(sup2.quote.buy_eur)} bought for ${usd(sup2.quote.sell_usd)} at ${sup2.quote.rate} (quote ${sup2.quote.quote_id}, conversion ${sup2.conversion_id}). After ${faceId(sup2.proposal_id)}, SWIFT transfer ${sup2.transfer_id}: ${sup2.status}, fee ${sup2.fee}.`,
     `Both payouts carry the hash of the terms the CFO signed (approval_sha256) in Airwallex's own metadata.${verifyOk ? " verify: all checks pass." : ""}${rec.reconcile ? ` reconcile: ${rec.reconcile.differences === 0 ? "no differences" : `${rec.reconcile.differences} differences`}.` : ""}`,
   ];
-  const calls = rec.calls ? `${rec.calls.airwallex_total} of ${rec.calls.budget ?? rec.calls.airwallex_total} approved Airwallex calls · ` : "";
+  // The calls the run made, beside the budget it was given (jury review, 7 Nov, #22: "of the approved" read as approvals).
+  const calls = rec.calls ? `${rec.calls.airwallex_total} Airwallex API calls${rec.calls.budget ? ` (run budget: ${rec.calls.budget})` : ""} · ` : "";
   return {
     run: rec.run, date: dayLong(start), checksOk: checks.filter((c) => c.ok).length, checksAll: checks.length, lines,
     short: `${rec.cards.length} agent cards with the CFO policy's controls; ${rec.declines_met.length} declines by Airwallex, each read by its agent and none retried (${rec.declines_met.filter((m) => m.proposal_id).length} raise asked of the CFO); ${rec.invoices.filter((i) => i.status === "PAID").length} invoices paid by SWIFT after the CFO's Face ID, ${rec.invoices.filter((i) => i.quote).length} with FX for the shortfall only.`,

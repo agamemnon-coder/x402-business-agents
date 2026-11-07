@@ -20,35 +20,37 @@ Purser · AI agents spend. You sign off.
 ## Synopsis
 
 <!-- synopsis -->
-AI agents can now spend company money; Purser lets them, through Airwallex and Metal, only within limits the CFO signs with Face ID. An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control. Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude. Try it in 30 seconds.
+AI agents are starting to spend company money; Purser lets them, through Airwallex and Metal, only within limits the CFO signs with Face ID. An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control. Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude. Try it in a minute.
 <!-- /synopsis -->
 
 ## Description
 
-Characters: **3,999** (the text between the markers, as pasted). Max's target is 3,000–4,000; the form's own limit is
+Characters: **3,996** (the text between the markers, as pasted). Max's target is 3,000–4,000; the form's own limit is
 not known yet. `test/submission.test.ts` checks this count and keeps the text under 4,000. The long text, as it stood on
 5 November, with Airwallex, Metal, Claude, the controls and the other live tests in full: [long-description.md](long-description.md).
 The Airi run of 7 November (Visa Intelligent Commerce via Airwallex's Airi; Airwallex sandbox, test card, test money)
 has one sentence in the Description since 7 November (the owner's decision to name Visa Intelligent Commerce), at the
-end of "Airwallex, Metal and Claude", and its full story in the long text under "Other live tests". To fit it (3,998
-before), other sentences were tightened, no fact dropped: the solution keeps the card and the mandate (the CFO's
+end of "Airwallex, Metal and Claude", and its full story in the long text under "Other live tests". To fit it, other
+sentences were tightened, no fact dropped: the solution keeps the card and the mandate (the CFO's
 signature over the exact terms is the next line); the demo line keeps the fake invoice and the rule (signing and the
 one-cent cheat are in the first bullet); the euro bill drops the repeated "after the CFO's Face ID" and the settlement
-note ("What's real" says the settlement is simulated); awx-1's line is shorter. The award wording stays: entered for
+note ("What's real" says the settlement is simulated); awx-1's line is shorter. After the jury review of 7 November
+(the hook "are starting to", "Try it in a minute.", the CFO's passkey without a name or "his") a few more words went:
+"sits", "once the money left", "AI" before "agent" in the solution (the problem says it), the supplier by its name (Stockline), the demo's order with commas, figures for "two". The award wording stays: entered for
 the Metal Award only, until Visa confirms eligibility ([visa-award-pending.md](visa-award-pending.md)).
 
 <!-- description -->
-**The problem.** AI agents can now spend company money. An agent's limit lives in a prompt it can be talked out of, or in a review after the money has left.
+**The problem.** AI agents are starting to spend company money. An agent's limit sits in a prompt it can be talked out of, or in a review once the money left.
 
-**The solution.** Purser gives each AI agent its own Airwallex card and Metal mandate.
-- An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. Try it in 30 seconds. https://kit11.max-31b.workers.dev/try/sign
+**The solution.** Purser gives each agent its own Airwallex card and Metal mandate.
+- An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. Try it in a minute. https://kit11.max-31b.workers.dev/try/sign
 - One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control.
 - Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude.
 
-**Demo: Home → Watch → Try → Proof.** Try: Purser's code stops a fake invoice Claude Sonnet reads live; change the rule and the agent pays alone.
+**Demo: Home, Watch, Try, Proof.** Try: Purser's code stops a fake invoice Claude Sonnet reads live; change the rule; the agent pays alone.
 
-**The proof.** The Kit 11 scenario, run live on 3 November. Starter Kit 11 (x402 Business Agents), entered for the Metal Award. Three Claude agents run Northwind Outdoor, an outdoor wholesaler that sells live stock data to retailers per query, on 20 test USD; Max plays the CFO with Max's passkey (Face ID on his phone). The CFO signed 5 decisions with Face ID (+1 co-signature).
-1. **The price rise.** The supplier's price doubled. We switched off our own check once to prove the chain holds the line: Purser refuses an over-cap purchase before signing; with that check off for one purchase, Metal refused it anyway. That was purchase #24; the refusal is recorded on chain (tx `0x2e92f9cb…1871`). The CFO signed option A (P-0002).
+**The proof.** The Kit 11 scenario, run live on 3 November. Starter Kit 11 (x402 Business Agents), entered for the Metal Award. Three Claude agents run Northwind Outdoor, an outdoor wholesaler that sells live stock data to retailers per query, on 20 test USD; Max plays the CFO and signs with a personal passkey (Face ID on a phone). The CFO signed 5 decisions with Face ID (+1 co-signature).
+1. **The price rise.** Stockline's price doubled. We switched off our own check once to prove the chain holds the line: Purser refuses an over-cap purchase before signing; with that check off for one purchase, Metal refused it anyway. That was purchase #24; the refusal is recorded on chain (tx `0x2e92f9cb…1871`). The CFO signed option A (P-0002).
 2. **The dispute.** A simulated customer disputes 12 orders, saying its agent never placed them. Every order carries its agent's signature, so that claim fails. Three orders had wrong data; the Support agent refunds those 3 (0.15 test USD) itself. "Refund the other 9" goes to the CFO, who rejects it with Face ID. Refunds #7, #10 and #13, each on chain.
 3. **The euro bill.** The EUR 240.00 licence: EUR 110.00 bought by FX for USD 124.29, SWIFT transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, PAID 6 s after Face ID.
 
@@ -58,7 +60,7 @@ the Metal Award only, until Visa confirms eligibility ([visa-award-pending.md](v
 - Airwallex (sandbox): the hash of the exact terms the CFO signed with Face ID is in Airwallex's own record of the EUR 240.00 SWIFT payment, and 3 of 3 agent cards carry the CFO's policy as Airwallex's own controls, read back from Airwallex.
 - Metal (testnet): a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded); the mandates replaced on chain after the CFO's Face ID (four eyes; second approver a labelled test passkey).
 - Claude: 24 of 24 decisions in the main run, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment went from 6/10 to 10/10 and the next run (rel-1b) passed every step.
-- awx-1 (7 Nov, Airwallex only): 7 of 7 checks; Airwallex declined two card charges; two SWIFT payouts carry the CFO's signed hash.
+- awx-1 (7 Nov, Airwallex only): 7 of 7 checks; Airwallex declined 2 card charges; 2 SWIFT payouts carry the CFO's signed hash.
 - Visa Intelligent Commerce via Airwallex's Airi (7 Nov; Airwallex sandbox, test card, test money): 5 of 5 checks; paid alone within the limit, after Face ID above it; Purser refused a disallowed merchant before Airi.
 
 **The business (not validated with customers yet).** €49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions. A hypothesis.
@@ -71,21 +73,21 @@ the Metal Award only, until Visa confirms eligibility ([visa-award-pending.md](v
 ## Instructions
 
 <!-- instructions -->
-1. Judge it in 3 minutes: https://kit11.max-31b.workers.dev/judge. Five steps in the demo's order, each with its time
-   and a link.
-2. Or the same way on your own: Home (https://kit11.max-31b.workers.dev/), then Watch, then Try, then Proof.
-   - Watch (about a minute): https://kit11.max-31b.workers.dev/watch, the main run of 3 November replayed: three Claude
+1. Judge it in 3 minutes: <https://kit11.max-31b.workers.dev/judge> (five steps in the demo's order, each with its time
+   and a link).
+2. Or the same way on your own: Home (<https://kit11.max-31b.workers.dev/>), then Watch, then Try, then Proof.
+   - Watch (about 40 s): <https://kit11.max-31b.workers.dev/watch> replays the main run of 3 November: three Claude
      agents, a price rise, a dispute and a euro bill, and the CFO's Face ID where a limit is crossed.
-   - Try (about a minute): https://kit11.max-31b.workers.dev/try/sign, a test world of your own; nothing real moves.
+   - Try (about a minute): <https://kit11.max-31b.workers.dev/try/sign> opens a test world of your own; nothing real moves.
      The agent asks: Claude Sonnet reads the invoice, Purser's code checks the reading and the terms come from it,
      Claude Opus advises live as the Treasury agent. You sign with your own passkey (Face ID, Touch ID or a PIN). Try to
      cheat: one cent changed, the same signature is refused. Try to trick the agent: Claude Sonnet reads a fake invoice
      live, and Purser's code stops it. Change the rule and see the worst case; the agent pays its next invoice alone; a
      closing card sums it up.
-   - Proof: every id from the main run on https://kit11.max-31b.workers.dev/proof, the Metal ones checkable on Metal's
-     testnet explorer, awx-1, the Airwallex-only run of 7 November (all seven checks passed), and Visa Intelligent
-     Commerce via Airwallex's Airi (7 November; Airwallex sandbox, test card, test money; 5 of 5 checks). The film (2:42):
-     https://youtu.be/jaqO2M2V6NY.
+   - Proof: <https://kit11.max-31b.workers.dev/proof> has every id from the main run, the Metal ones checkable on
+     Metal's testnet explorer, awx-1, the Airwallex-only run of 7 November (all seven checks passed), and Visa Intelligent
+     Commerce via Airwallex's Airi (7 November; Airwallex sandbox, test card, test money; 5 of 5 checks). The film
+     (2:42): <https://youtu.be/jaqO2M2V6NY>
 3. Then the repository, offline, no keys and no network after `npm ci` (Node.js 22.13 or later):
    `npm ci`, then `npm test` (the full suite, on stand-ins), then `npm run judge -- --check` (serves Home, Watch, Proof,
    the partner pages, the CFO dashboard and the Scenario Lab from the main run's record, fetches each page once and
@@ -116,7 +118,8 @@ From the live site (https://kit11.max-31b.workers.dev, main 60569ef, Worker 3e8c
 sentence; a test passkey; nothing real moves). The other pages replay the main run (3 November) and make no outside
 call.
 
-1. `screens/form/form-1-home.png`: Home's first screen: what Purser is, the three sentences, "Try it in 30 seconds."
+1. `screens/form/form-1-home.png`: Home's first screen: what Purser is, the three sentences, "Try it in 30 seconds." (as
+   taken on 6 November; Home and the form now say "Try it in a minute.")
 2. `screens/form/form-2-try-sign-sheet.png`: /try/sign, the approval sheet: the Treasury agent's sentence by Claude
    Haiku (live), the exact terms with the FX quote; beside it the payment a rule stopped, and which lock stopped it
 3. `screens/form/form-3-try-sign-verified.png`: signed with the test passkey and verified by the server: "Signed and
@@ -145,8 +148,9 @@ The earlier set, made by `npm run submission` from the pages that replay the mai
 
 ## Proof sentences
 
-One sentence per partner (Airwallex, Metal, Claude), word for word in the Description above, the README, Home and the
-deck, from one source: `PROOF_SENTENCES` in `src/config/brand.ts`. `test/proof-sentences.test.ts` reads every number in
+One sentence per partner (Airwallex, Metal, Claude), word for word in the Description above, the README and the deck,
+from one source: `PROOF_SENTENCES` in `src/config/brand.ts`. On the site, /proof's partner cards open with the same
+claims in fewer words, each linked to its proof (`src/redesign/proofLead.ts`, `test/proof-first.test.ts`). `test/proof-sentences.test.ts` reads every number in
 them from its record (the GET-only Airwallex read-backs `docs/runs/airwallex-transfer-approval-2026-11-06.json` and
 `docs/runs/airwallex-cards-2026-11-06.json`, the main run's record, `docs/demo/reliability.json`,
 `docs/runs/reliability-2026-11.md` and `docs/evals/agents.json`). Sources: [docs/claims.md](../claims.md).

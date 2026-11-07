@@ -1,14 +1,14 @@
 # Purser · AI agents spend. You sign off.
 
-AI agents can now spend company money; Purser lets them, through Airwallex and Metal, only within limits the CFO signs with Face ID.
+AI agents are starting to spend company money; Purser lets them, through Airwallex and Metal, only within limits the CFO signs with Face ID.
 
 - An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless.
 - One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control.
 - Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude.
 
-**[Try it in 30 seconds.](https://kit11.max-31b.workers.dev/try/sign)**
+**[Try it in a minute.](https://kit11.max-31b.workers.dev/try/sign)**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 3030 passing](https://img.shields.io/badge/tests-3030%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 3032 passing](https://img.shields.io/badge/tests-3032%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
 
 **[Judge it in 3 minutes →](https://kit11.max-31b.workers.dev/judge)**
 
@@ -97,7 +97,7 @@ npm run judge -- --check
 ```
 
 - `npm ci` (under a minute): installs the exact versions in the lockfile; every dependency is pinned.
-- `npm test` (3 to 4 min): **3030 tests in 295 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included.
+- `npm test` (3 to 4 min): **3032 tests in 295 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included.
 - `npm run judge -- --check` (about 3 s): builds the site's 17 pages from the main run's committed record, offline, and fetches each once.
 - `npm run verify-receipt -- receipt.json` (under 1 s): after you sign on [/try/sign](https://kit11.max-31b.workers.dev/try/sign), checks its receipt offline with Node's own crypto: your passkey signed exactly those terms; change one cent and it says NOT VALID. Getting the receipt needs the live site and your own passkey.
 
@@ -168,7 +168,7 @@ check while Stockline asked 0.04, over its 0.03 cap; nothing signed, no customer
 recorded in the tx above), 1 on a mandate that had just been replaced (#37, `mandate_revoked`, no tx of its own). The
 CFO's 1: P-0004, with Face ID. The planted instruction: a line aimed at the AI inside the dispute document, treated as
 data.\
-*Separate run, not counted:* Airwallex declined EUR 45.00 over the card limit (LIMIT_EXCEEDED), separate TAP run, 2 November
+*Not counted (a separate TAP run, 2 November):* Airwallex declined EUR 45.00 over the card limit (`LIMIT_EXCEEDED`).
 
 **Payments:** 86 Metal payments + 1 card charge, all inside the limits with no approval at the time: 41 sales + 41
 supplier purchases + 3 refunds + 1 sweep on Metal, and 1 card charge at Airwallex. 14 of the 55 queries got an error and were not charged. `verify` passes,
@@ -208,7 +208,7 @@ one attempt. Max signed all three proposals with Face ID on his own phone. Log:
   only EUR 623.50 bought for USD 704.45 at 1.129833 (quote `1605354b-5f6f-3ab5-8dbc-3af479c54b33`, conversion
   `fafcc208-bd1e-43d9-bd09-69191a8aa81f`, SETTLED), then transfer `4140dee2-6373-4eb4-a71f-bf69130f96a7`, PAID, fee
   EUR 13.50. Each payout carries `approval_sha256` in Airwallex's metadata; `verify` passes, `reconcile` 0 differences.
-- **Calls:** 71 of the 96 approved Airwallex calls; 14 Claude calls (0.0839 USD). Merchant charges and SENT/PAID are
+- **Calls:** 71 Airwallex API calls (run budget: 96); 14 Claude calls (0.0839 USD). Merchant charges and SENT/PAID are
   the sandbox's simulation endpoints; every approve, decline and code is Airwallex's own.
 
 ## Visa Intelligent Commerce via Airwallex's Airi: a live run (7 Nov)
@@ -250,8 +250,7 @@ attempt in its world (the attempts before it are in the log). Log:
   payment reaches Airwallex or Metal. Real: your passkey's signature and the server's check of it, the Airwallex sandbox
   FX quote (read-only), and the Claude agents' calls, each labelled live, or labelled as a fallback when none answered.
 - **Built, not yet live:** the Cardputer hub push and gate (a fake hub in the tests);
-  the T:0 books sink: T:0 bookkeeping is built; posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted. ([record](docs/runs/2026-11-05-t0-live.md)); the emergency stop and `npm run smoke:sandbox`
-  (on stand-ins).
+  T:0 books: built, but posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted ([record](docs/runs/2026-11-05-t0-live.md)). Also built, on stand-ins only: the emergency stop and `npm run smoke:sandbox`.
 
 **Other live tests (separate worlds, dated):** awx-1, the Airwallex-only run (7 November, above), the Airi run (Visa Intelligent Commerce via Airwallex's Airi, 7 November, above;
 Airwallex sandbox, test card, test money), the TAP run (2 November), four eyes on chain, the compliance contract and

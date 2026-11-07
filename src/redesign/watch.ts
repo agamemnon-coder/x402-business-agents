@@ -102,12 +102,14 @@ const JS = `
       if (e.run) meta.appendChild(el("span", "res face", e.run));
       meta.appendChild(el("span", "", time(e.at)));
       body.appendChild(meta);
-      var amt = e.amount ? (e.unit === "EUR" ? "EUR " + e.amount : e.unit === "USD" ? "USD " + e.amount : e.amount + " test USD") + " · " : "";
-      var p = el("p", "", amt + e.what + (e.count > 1 ? " (" + e.count + ")" : "") + (r && r.by !== "recorded" ? ": " + r.reason : r ? ": Purser refused it before signing, and Metal recorded the refusal on chain" : "") + " ");
+      var one = e.unit === "EUR" ? "EUR " + e.amount : e.unit === "USD" ? "USD " + e.amount : e.amount + " test USD";
+      // Several payments of one amount: how many, each, and the total (jury review, 7 Nov, #24): "3 × 0.05 test USD (0.15)".
+      var amt = e.amount ? (e.count > 1 ? e.count + " × " + one + " (" + (Math.round(parseFloat(e.amount) * 100) * e.count / 100).toFixed(2) + ")" : one) + " · " : "";
+      var p = el("p", "", amt + e.what + (r && r.by !== "recorded" ? ": " + r.reason : r ? ": Purser refused it before signing, and Metal recorded the refusal on chain" : "") + " ");
       var pe = proofEl(e.proof); if (pe) p.appendChild(pe);
       body.appendChild(p);
-      // Who decided it: code (inside the limits) or the agent's Claude model, as the record says.
-      if (e.by) body.appendChild(el("p", "by", "Decided by " + e.by.replace(/^code: /, "code, ")));
+      // Who decided it, as the record says: the agent's Claude model, or code applying a rule inside the limits.
+      if (e.by) body.appendChild(el("p", "by", /^code: the /.test(e.by) ? "Applied by code under " + e.by.slice(6) : /^code: /.test(e.by) ? "Applied by code: " + e.by.slice(6) : "Decided by " + e.by));
     } else if (e.k === "routine") {
       head = el("span", "ic"); head.appendChild(svg("clock"));
       meta.appendChild(el("b", "", "Routine checks")); meta.appendChild(el("span", "", time(e.at)));
@@ -212,7 +214,7 @@ export function watchPage(run: AgentRun = agentRun()): string {
       <div class="progress" aria-hidden="true"><i></i></div>
     </div>
     <div class="wside">
-      <a class="nextstep card" href="try" data-next="try"><span class="fn">2</span><span class="ft"><b>Now try it yourself</b><small>Sign with your Face ID · 1 min</small></span>${icon("arrow-right", 20)}</a>
+      <a class="nextstep card" href="try" data-next="try"><span class="fn">2</span><span class="ft"><b>Now try it yourself</b><small>Sign with your Face ID · about a minute</small></span>${icon("arrow-right", 20)}</a>
       <section class="card logp" aria-labelledby="h-log"><h2 id="h-log">Every step, newest first</h2><ol class="log" id="log" aria-live="polite"></ol></section>
     </div>
   </div>

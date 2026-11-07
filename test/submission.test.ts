@@ -157,13 +157,15 @@ describe("the short Description (Max, 5 Nov)", () => {
 
   it("goes problem, solution (the three sentences), proof, Airwallex and Metal, business, what's real, links, with Max's lines word for word (section D, 6 Nov)", () => {
     const at = (s: string) => { const i = flat.indexOf(s); expect({ s, found: i >= 0 }).toEqual({ s, found: true }); return i; };
-    expect(flat.startsWith("The problem. AI agents can now spend company money.")).toBe(true);
+    expect(flat.startsWith("The problem. AI agents are starting to spend company money.")).toBe(true);
     const order = [at("The problem."), at("The solution."), at(DIFFERENTIATORS[0]), at(`${DIFFERENTIATORS[0]} ${TRY_IT} https://kit11.max-31b.workers.dev/try/sign`), at(DIFFERENTIATORS[1]), at(DIFFERENTIATORS[2]), at("The proof."), at(KIT11_RUN_LINE), at("1. The price rise."), at("2. The dispute."), at("3. The euro bill."),
       at(f.main.stop_line), at("Airwallex, Metal and Claude."), ...PROOF_SENTENCES.map((p) => at(p.text)), at("The business (not validated with customers yet)."), at(WHY_COMPANY[2]!.text),
       at("What's real."), at(`${CAVEAT_LINE} Details →`), at("Links.")];
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(flat.match(/not validated/gi)).toHaveLength(1);
-    for (const line of ["Max's passkey (Face ID on his phone)", "Max plays the CFO"]) at(line);
+    // Jury review, 7 Nov (#17): no "his", no name twice.
+    at("Max plays the CFO and signs with a personal passkey (Face ID on a phone).");
+    expect(flat).not.toMatch(/\bhis\b|Max's passkey/);
     // The caveats are one line plus a link: no T:0 error codes, no Visa TAP, no TAP run in the form's Description (they
     // stay in the long text and the claims). Visa is named once since 7 Nov (the owner's decision): the Airi run, Visa
     // Intelligent Commerce via Airwallex's Airi, labelled, with its 5 of 5 checks; never a Visa Award until Visa confirms

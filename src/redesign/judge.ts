@@ -7,7 +7,7 @@
 
 import { FILM_LINK, FILM_URL } from "../config/brand.js";
 import { REPO_URL } from "../submission/deck.js";
-import { metalStory } from "./metalStory.js";
+import { metalStory, refusalNote } from "./metalStory.js";
 import { loadRecord } from "./run.js";
 import { esc, icon, page } from "./ui.js";
 
@@ -18,7 +18,7 @@ export const JUDGE_URL = "https://kit11.max-31b.workers.dev/judge";
 export const JUDGE_CODE_HREF = `${REPO_URL}#how-it-works-in-5-files`;
 
 export interface JudgeLink { label: string; href: string }
-export interface JudgeStep { id: string; title: string; seconds: number; see: string; links: JudgeLink[] }
+export interface JudgeStep { id: string; title: string; seconds: number; see: string; links: JudgeLink[]; note?: string }
 
 /**
  * The five steps, in the demo's order (Max, 7 Nov): watch the agents, then /try/sign as its story goes (the agent asks,
@@ -26,10 +26,10 @@ export interface JudgeStep { id: string; title: string; seconds: number; see: st
  * alone, the closing card), then the proof.
  */
 export function judgeSteps(record = loadRecord().record): JudgeStep[] {
-  const refusal = metalStory(record).refusal?.proof.href;
+  const st = metalStory(record), refusal = st.refusal?.proof.href, note = refusalNote(st.refusal);
   return [
     {
-      id: "watch", title: "Watch the agents", seconds: 30,
+      id: "watch", title: "Watch the agents", seconds: 40,
       see: "The main run of 3 November, replayed: each Claude agent's decision in its own words, the money on its rail, the CFO's Face ID.",
       links: [{ label: "Open /watch", href: "/watch" }],
     },
@@ -49,12 +49,14 @@ export function judgeSteps(record = loadRecord().record): JudgeStep[] {
       links: [{ label: "Change the rule on /try/sign", href: "/try/sign" }],
     },
     {
-      id: "proof", title: "See the proof", seconds: 50,
+      id: "proof", title: "See the proof", seconds: 40,
       see: "Every id of the main run; awx-1, the Airwallex-only run of 7 November, every check passed; Airwallex's own decline; Metal's refusal on chain.",
       links: [
         { label: "Open /proof", href: "/proof" }, { label: "awx-1 on /airwallex", href: "/airwallex#awx-1" }, { label: "Open /metal", href: "/metal" },
         ...(refusal ? [{ label: "The refusal on the explorer", href: refusal }] : []),
       ],
+      // What the explorer shows for the refusal (jury review, 7 Nov, #3): its log is not decoded there.
+      ...(refusal && note ? { note } : {}),
     },
   ];
 }
@@ -77,6 +79,7 @@ ol.steps { list-style: none; margin: 28px 0 0; padding: 0; display: grid; gap: 1
 .step .secs { display: inline-flex; align-items: center; gap: 5px; font: 650 14px/1.35 Inter, system-ui, sans-serif; padding: 3px 10px; border-radius: 999px; background: var(--sunken); color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .step .see { margin: 8px 0 0; color: var(--muted); font-size: 16.5px; line-height: 1.5; }
 .step .go { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.step .xn { margin: 10px 0 0; font-size: 14.5px; line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
 .step .go .btn { height: 42px; padding: 0 16px; font-size: 15px; white-space: normal; text-align: left; }
 .step.done { border-color: var(--ok); }
 .step.done .n { background: var(--ok); color: var(--surface); }
@@ -129,7 +132,7 @@ export function judgePage(steps: JudgeStep[] = JUDGE_STEPS): string {
 ${steps.map((s, i) => `<li class="step card" id="s-${s.id}"><input type="checkbox" id="step-${s.id}" data-step="${s.id}">
   <div><label class="t" for="step-${s.id}"><span class="n">${i + 1}</span><b>${esc(s.title)}</b><span class="secs">${s.seconds} s</span></label>
   <p class="see">${esc(s.see)}</p>
-  <div class="go">${s.links.map(linkHtml).join("")}</div></div></li>`).join("\n")}
+  <div class="go">${s.links.map(linkHtml).join("")}</div>${s.note ? `<p class="xn">${esc(s.note)}</p>` : ""}</div></li>`).join("\n")}
 </ol>
 <section class="more" aria-label="More">
   <p><b>More time?</b> <a href="/trace">Trace any payment from policy to bank</a> · <a href="/try/verify">Check your receipt yourself, no server</a></p>
