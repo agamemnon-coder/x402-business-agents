@@ -24,6 +24,18 @@ jobs:
       # The ISO 20022 export is validated against the official XSD with xmllint (test/iso20022.test.ts).
       - name: xmllint
         run: command -v xmllint || (sudo apt-get update && sudo apt-get install -y libxml2-utils)
+      # The hosted-page checkout test (test/airi-hosted-checkout.test.ts) drives headless Chromium against a local stub
+      # page; the same lockfile-keyed cache as the judge job below.
+      - name: Playwright browsers (cache)
+        id: pw-cache
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-chromium
+      - name: Playwright browsers (download on a cache miss)
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 5
+        run: npx playwright install chromium
       - name: Tests with coverage, per area
         run: npm run test:coverage
       - run: npm run relay:pages
