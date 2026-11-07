@@ -33,7 +33,9 @@ const BLOCKS = ["recorded-data", "autonomy-data", "agent-names", "redteam-data"]
 describe("See the CFO's view: on Home and /proof, to the main run's dashboard replay", () => {
   it("is one link on each, to /?autonomy, worded as Max asked", () => {
     expect([CFO_VIEW_LINK, CFO_VIEW_URL]).toEqual(["See the CFO's view", "./?autonomy"]);
-    for (const [name, html] of [["home", homePage()], ["proof", proofPage()]] as const) {
+    // Home shows only the way through since Max's round of 7 Nov (watch, try, proof): the CFO's view is on /proof.
+    expect(decode(homePage()).includes(`href="${CFO_VIEW_URL}"`)).toBe(false);
+    for (const [name, html] of [["proof", proofPage()]] as const) {
       // Proof also keeps its "Open the CFO dashboard" under the audit rows, to the same view.
       const links = decode(html).split(`href="${CFO_VIEW_URL}"`).length - 1;
       const a = decode(html).indexOf(`href="${CFO_VIEW_URL}"`), end = decode(html).indexOf("</a>", a);

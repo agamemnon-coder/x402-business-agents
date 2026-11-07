@@ -3,6 +3,7 @@
 // their live proof folded, who stopped what, the Face ID decisions (one number, from the run's ledger), the earlier
 // licence attempt that paid nothing, the checks, and a folded, labelled Archive. Nothing typed in by hand.
 
+import { whyCompanyHtml } from "./home.js";
 import { readFileSync } from "node:fs";
 import { CFO_VIEW_LINK, CFO_VIEW_URL, CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, SPLIT_LINE, VISA_EXTRA_LINK } from "../config/brand.js";
 import { agentRun, faceIdDecisions, faceIdLine, family, letThroughOf, ownTap, payments, sandboxRails, runName, split, metalDetail, stopFigure, stopStory, stopSub, stops, stopsLine, tapRun, type AgentRun, type Ev, type RunRecord, type Tile } from "./run.js";
@@ -14,7 +15,18 @@ import { PACK_LINK, PACK_NAME } from "../accounting/monthPack.js";
 
 const readJson = <T>(p: string): T => JSON.parse(readFileSync(new URL(`../../${p}`, import.meta.url), "utf8")) as T;
 
-const CSS = `.proofp { padding: 26px 0 24px; }
+const CSS = `/* The deep proof, one closed line each (Max, 7 Nov: less text in sight). */
+details.deep { margin-top: 14px; border-top: 1px solid var(--border); }
+details.deep > summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; min-height: 56px; font-size: 20px; font-weight: 750; letter-spacing: -.01em; }
+details.deep > summary::-webkit-details-marker { display: none; }
+details.deep > summary::after { content: "▾"; font-size: 16px; color: var(--accent); } details.deep[open] > summary::after { content: "▴"; }
+details.deep h2.sec { display: none; }
+.cnote { margin: -10px 0 16px; font-size: 15px; color: var(--muted); max-width: 52em; }
+.company { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; max-width: 60em; }
+.company li { font-size: 17px; line-height: 1.45; border-left: 3px solid var(--accent); padding-left: 12px; }
+.company a { color: var(--accent); font-weight: 600; text-decoration: none; white-space: nowrap; }
+details.deep section.band { padding: 8px 0 20px; border-top: 0; } details.deep section.band .wrap { padding: 0; } details.deep .sechead { display: none; }
+.proofp { padding: 26px 0 24px; }
 .phead { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 10px; }
 .phead h1 { font-size: clamp(32px, 3.4vw, 44px); font-weight: 780; margin-right: auto; }
 .split { margin: 0 0 18px; font-size: clamp(18px, 1.8vw, 21px); font-weight: 650; max-width: 46em; }
@@ -62,7 +74,9 @@ a.pf { color: var(--accent); font-weight: 600; text-decoration: none; font-size:
 ${READBACK_CSS}
 ${LEAD_CSS}`;
 
-const JS = `(function () { var h = location.hash.slice(1); if (!h) return; var t = document.getElementById(h); if (!t) return; t.querySelectorAll("details").forEach(function (d) { d.open = true; }); })();`;
+const JS = `
+// A link to a part behind a closed line (#airwallex-readback, say) opens that line.
+(function () { var open = function () { var t = location.hash && document.getElementById(location.hash.slice(1)); var d = t && t.closest("details.deep"); if (d) { d.open = true; t.scrollIntoView(); } }; open(); window.addEventListener("hashchange", open); })();(function () { var h = location.hash.slice(1); if (!h) return; var t = document.getElementById(h); if (!t) return; t.querySelectorAll("details").forEach(function (d) { d.open = true; }); })();`;
 
 /** Plain words, with the raw code (a refusal code, a proposal id) kept in a tooltip. */
 const CODES: [RegExp, (m: RegExpExecArray) => string][] = [
@@ -237,9 +251,9 @@ export function proofPage(run: AgentRun = agentRun()): string {
   <div class="nums">${nums.map((n) => `<a class="num card ${n.cls}" href="${n.href}"><span class="v">${esc(n.value)}</span><span class="l">${esc(n.label)}</span>${noteHtml(n.note, "span")}</a>`).join("")}</div>
   <h2 class="sec">The partners</h2>
   ${partnerCards(run)}
-  ${readBack(run)}
-  <h2 class="sec">Checks</h2>
-  ${moreCards(run)}
+  <details class="deep"><summary>Airwallex, read back</summary>${readBack(run)}</details>
+  <details class="deep"><summary>Every check</summary>${moreCards(run)}</details>
+  <details class="deep"><summary>Why this is a company</summary>${whyCompanyHtml()}</details>
 </div></main>`;
   return page({
     title: "Proof", description: "Every proof of the main run in one place: who decided, who paid, who stopped what, each partner's live proof.", tab: "proof", css: CSS, body, js: JS, stage: false,

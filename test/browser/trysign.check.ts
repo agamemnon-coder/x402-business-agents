@@ -51,7 +51,6 @@ const { exposureOf, exposureWords, startPolicy } = await import("../../src/polic
 const { recordedRate, worstCaseWords } = await import("../../src/policy/exposureSources.js");
 const WORST = worstCaseWords();
 const WORST_RATE = recordedRate((await import("../../src/redesign/run.js")).loadRecord().record as unknown as Parameters<typeof recordedRate>[0]);
-const { TRY_IT } = await import("../../src/config/brand.js");
 const { cfoApproval, tryLocks } = await import("../../src/try/examples.js");
 const { letThroughOf, loadRecord } = await import("../../src/redesign/run.js");
 const { canonical, NEXT_INVOICE } = await import("../../worker/src/trySign.js");
@@ -241,12 +240,13 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   const v = await visitor({ width, scheme, ip: `198.51.${100 + run++}.7` });
   const { page, errors, mobile, height } = v;
 
-  // The landing carries the button in this bundle, and it leads here.
+  // One flow (Max, 7 Nov): Home's second step leads here, and so does Watch's "Now try it yourself", the way a visitor
+  // comes: they watch the agents first, then try it.
   await page.goto(`${local.url}/home`);
-  const button = page.locator('a.btn[href="try/sign"]');
-  check(await button.count() === 1, `${tag}: the landing has the "Sign with your own Face ID" button`);
-  const tryLine = page.locator('.why + .tryline a[href="try/sign"]');
-  check(await tryLine.count() === 1 && (await tryLine.innerText()).trim() === TRY_IT, `${tag}: "${TRY_IT}" under the three sentences links here`);
+  check(await page.locator('ol.flow a[href="try/sign"]').count() === 1, `${tag}: Home's flow leads to /try/sign`);
+  await page.goto(`${local.url}/watch`);
+  const button = page.locator('a.nextstep[href="try/sign"]');
+  check(await button.count() === 1, `${tag}: Watch ends in "Now try it yourself", to /try/sign`);
   await button.click();
   await page.waitForURL(`${local.url}/try/sign`);
   const t0 = Date.now();

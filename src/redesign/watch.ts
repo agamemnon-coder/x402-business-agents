@@ -3,11 +3,17 @@
 // Airwallex id), the CFO's Face ID on the phone (both signatures when four eyes applies). Play/pause, speed and jumps
 // to the three moments; labelled with the run's own name.
 
-import { WORLD_SETUP } from "../config/brand.js";
+import { WORLD_SETUP, FILM_LINK, FILM_URL } from "../config/brand.js";
 import { agentRun, callBadge, callTip, highlights, moments, type AgentRun, type Ev } from "./run.js";
 import { AVATAR, esc, icon, iconSet, page, stageHtml } from "./ui.js";
 
-const CSS = `.watch { padding: 26px 0 24px; }
+const CSS = `/* The next step (Max, 7 Nov: watch, then try, then the proof). */
+.filmlink { color: var(--accent); font-weight: 650; font-size: 15px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+.wside { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.nextstep { display: grid; grid-template-columns: 30px minmax(0, 1fr) 22px; align-items: center; gap: 12px; padding: 14px 16px; text-decoration: none; color: var(--text); border: 2px solid var(--accent); }
+.nextstep .fn { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; font-weight: 750; }
+.nextstep b { display: block; font-size: 17px; } .nextstep small { color: var(--muted); font-size: 14.5px; } .nextstep .i { color: var(--accent); }
+.watch { padding: 26px 0 24px; }
 .whead { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 8px; }
 .whead h1 { font-size: clamp(30px, 3.2vw, 40px); font-weight: 760; margin-right: auto; }
 .setup { font-size: 15px; color: var(--muted); margin: 0 0 16px; max-width: 60em; }
@@ -200,7 +206,7 @@ export function watchPage(run: AgentRun = agentRun()): string {
   const hlScenes = full.map((j) => ({ ...j, start: Math.max(0, hl.findIndex((e) => e.at === run.events[j.start]!.at && e.k === run.events[j.start]!.k)) }));
   const s1 = run.scenes.find((s) => s.n === 1);
   const body = `<main class="watch"><div class="wrap">
-  <div class="whead"><h1>Watch the agents work</h1><span class="pill run">${icon("database", 14)}${esc(run.label)}</span></div>
+  <div class="whead"><h1>Watch the agents work</h1><span class="pill run">${icon("database", 14)}${esc(run.label)}</span><a class="filmlink" href="${FILM_URL}" target="_blank" rel="noopener">${icon("play", 14)}${esc(FILM_LINK)} ↗</a></div>
   <p class="setup">${esc(WORLD_SETUP)}</p>
   <div class="wgrid">
     <div>
@@ -214,7 +220,10 @@ export function watchPage(run: AgentRun = agentRun()): string {
       <div class="controls"><div class="chips" id="scenes" role="group" aria-label="Jump to a moment"><button type="button" data-scene="0">Start</button>${full.map((s) => `<button type="button" data-scene="${s.n}"><b>${s.n}</b>${esc(s.title)}</button>`).join("")}</div></div>
       <div class="progress" aria-hidden="true"><i></i></div>
     </div>
-    <section class="card logp" aria-labelledby="h-log"><h2 id="h-log">Every step, newest first</h2><ol class="log" id="log" aria-live="polite"></ol></section>
+    <div class="wside">
+      <a class="nextstep card" href="try" data-next="try"><span class="fn">2</span><span class="ft"><b>Now try it yourself</b><small>Sign with your Face ID · 1 min</small></span>${icon("arrow-right", 20)}</a>
+      <section class="card logp" aria-labelledby="h-log"><h2 id="h-log">Every step, newest first</h2><ol class="log" id="log" aria-live="polite"></ol></section>
+    </div>
   </div>
 </div></main>`;
   return page({

@@ -97,10 +97,14 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     await page.waitForTimeout(1500);
     if (new URL(page.url()).pathname !== "/" || !(await page.isVisible("h1.h-hero"))) fail(`/ ${tag}: a guest does not get Home at / (${page.url()})`);
     await look(page, `/ (Home) ${tag}`, w);
-    // "See the CFO's view" (Max's last round, item 4): a visible link on Home to the main run's dashboard replay.
+    // One flow (Max, 7 Nov): three steps, watch, try, proof; one primary button, to watch, in the first screen. The CFO's
+    // view is linked from Proof's head (checked below), not from Home.
     {
-      const cfo = page.locator(".ctas a", { hasText: "See the CFO's view" });
-      if (!(await cfo.isVisible()) || (await cfo.getAttribute("href")) !== "./?autonomy") fail(`/ ${tag}: no visible "See the CFO's view" to ./?autonomy`);
+      const steps = await page.locator("ol.flow > li a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+      if (JSON.stringify(steps) !== JSON.stringify(["watch", "try", "proof"])) fail(`/ ${tag}: the flow is not watch, try, proof (${JSON.stringify(steps)})`);
+      const primaries = page.locator("main a.btn.primary");
+      const box = await primaries.first().boundingBox();
+      if ((await primaries.count()) !== 1 || (await primaries.first().getAttribute("href")) !== "watch" || !box || box.y + box.height > h) fail(`/ ${tag}: not one primary button, to watch, in the first screen`);
     }
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
 
@@ -353,6 +357,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     await page.goto(`${base}/proof`, { waitUntil: "load" });
     await look(page, `/proof ${tag}`, w);
     {
+      await page.evaluate(() => document.querySelectorAll("details.deep").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
       const rb = await page.locator("#airwallex-readback + .awrb").innerText().catch(() => "");
       if (!/The hash the CFO signed travels with the payment\./.test(rb) || (rb.match(/\b[0-9a-f]{64}\b/g) ?? []).length !== 2 || !/Match: the same hash/.test(rb) || !/3 of 3 cards match the CFO policy/.test(rb)) fail(`/proof ${tag}: Airwallex read back missing or not matching`);
     }
@@ -417,6 +422,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         const head = document.querySelector("header.top").getBoundingClientRect().bottom, r = t.getBoundingClientRect();
         return { open: d.open, cards: [...d.querySelectorAll(".awcard")].filter((c) => c.getClientRects().length > 0 && c.getBoundingClientRect().height > 0).length, top: Math.round(r.top), head: Math.round(head), inView: r.top >= head - 2 && r.top < innerHeight / 2 };
       })()`)) as { open: boolean; cards: number; top: number; head: number; inView: boolean };
+      // The read-back sits in a fold on Proof (one flow, Max 7 Nov): open it as a reader does, by its summary.
+      await page.locator("details.deep > summary", { hasText: "Airwallex, read back" }).click();
       const link = page.locator("a.open", { hasText: "Policy and card side by side" });
       if ((await link.getAttribute("href")) !== "airwallex#controls") fail(`/proof ${tag}: "Policy and card side by side" does not point at airwallex#controls`);
       await link.click();
@@ -447,18 +454,17 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
 
     // /judge, "Judge it in 3 minutes" (item 5.1): five steps, each with a checkbox and a time, three minutes in all; the
     // ticks survive a reload; the page asks nothing of any server (no request but the page, its font and its icon);
-    // and Home links to it at the top, above the fold.
+    // and with /try/sign on, Home's flow leads to it: watch, then try/sign, then proof (the judge's tour is linked from
+    // the form and the README, not from Home: one button there, Max 7 Nov).
     if (judgeBase) {
       const asked: string[] = [];
       const onRequest = (r: { url(): string }) => { const u = new URL(r.url()); if (u.origin !== new URL(judgeBase).origin || !["/judge", "/assets/inter.woff2", "/assets/favicon.svg", "/favicon.ico"].includes(u.pathname)) asked.push(r.url()); };
       await page.goto(`${judgeBase}/`, { waitUntil: "load" });
-      const top = page.locator("main > p.judgebar a");
-      const box = await top.boundingBox();
-      if ((await page.locator('a[href="judge"]').count()) !== 1 || (await top.innerText()).trim() !== "Judge it in 3 minutes →" || !box || box.y + box.height > h || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: no one "Judge it in 3 minutes →" link at the top, in the first screen, inside the page's gutter`);
+      const flow = await page.locator("ol.flow > li a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+      if (JSON.stringify(flow) !== JSON.stringify(["watch", "try/sign", "proof"])) fail(`/ (Home, with /try/sign) ${tag}: the flow is not watch, try/sign, proof (${JSON.stringify(flow)})`);
       await look(page, `/ (Home, with /try/sign) ${tag}`, w);
-      await page.screenshot({ path: join(shots, `home-judge-link-${tag}.png`) });
-      await top.click();
-      await page.waitForURL(/\/judge$/);
+      await page.screenshot({ path: join(shots, `home-trysign-${tag}.png`) });
+      await page.goto(`${judgeBase}/judge`, { waitUntil: "load" });
       await page.evaluate((key) => { try { localStorage.removeItem(key); } catch { /* blocked */ } }, JUDGE_KEY);
       page.on("request", onRequest);
       await page.reload({ waitUntil: "load" });
