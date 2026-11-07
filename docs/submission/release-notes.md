@@ -434,6 +434,12 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   linking there (src/redesign/airiRun.ts, test/airi-run-page.test.ts). README, docs/claims.md, docs/airwallex.md (with
   the PaymentIntent endpoints the rail calls), the long text and qa.md (18, 19) carry it; the form's Description does
   not (no room). 3001 tests in 291 files, all passing.
+- 7 November, the repo tidied for a cold read: the README's first screen is what Purser is, the three sentences, Try it,
+  the badges, the Kit 11 line with the live site, the entry line, then "Look here first" (Watch, Try, Proof, the Airi
+  run) and "How to run" (`npm run judge`, offline). The seven /try/sign steps moved lower, to "Try it, step by step";
+  no fact or figure changed. New: docs/README.md, the docs grouped by reader (juror, builder, video). Five internal or
+  superseded notes moved to docs/internal/ (its README lists them). package.json has `homepage` and `repository`;
+  .gitignore ignores `out` as a file or symlink too. 3049 tests in 295 files, all passing.
 
 ## Real, and ours
 
@@ -503,3 +509,12 @@ Claude Code, on Max's go; in production a second person). Sources for every clai
   word budget 375 (was 275). The Sourcing agent's rail choice can offer Airi (VIC) as a third rail, for a purchase at a
   merchant on the CFO's Airi allowlist that Purser would take, with KIT11_AIRI_RAIL=on only; the offer and its reason
   are in the audit trail, and the payment still goes through every Purser check (no caller offers it yet).
+- 7 November, the form's 8 screenshots retaken from the live site (deployed from main 877151f), 1280 px at 2×, light,
+  each PNG under 500 KB: Home's first screen; /try/sign's step 1 with the Treasury agent's live Claude Opus advice and
+  the live Airwallex quote, signed and verified, the one-cent cheat refused (all three from one test world); /airwallex
+  with the signed hash, the cards, awx-1 and the Visa Intelligent Commerce run via Airwallex's Airi; /metal; /claude;
+  /proof's "Why this is a company" opened. Each description line in the submission README says what its shot now shows.
+  /try/sign on a phone: the full policy and its three panels (from screen 5) are drawn when the browser is idle after
+  the world opens and after the agents' answers, and at once on any screen change, so neither answer is one long
+  task; the first screen scrolls to the top with the first frame instead of forcing a layout in the middle of the
+  script. Same behaviour and words; the browser checks (Chromium and WebKit) pass. 3049 tests in 295 files, all passing.

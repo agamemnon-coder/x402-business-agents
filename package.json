@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "description": "Purser: give every AI agent its own company card, with limits the CFO sets. Airwallex cards, FX and SWIFT; Metal mandates, x402 and clearing. Airwallex Agentic Banking Hackathon, Starter Kit 11.",
   "license": "MIT",
+  "homepage": "https://kit11.max-31b.workers.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agamemnon-coder/x402-business-agents.git"
+  },
   "private": true,
   "type": "module",
   "engines": {

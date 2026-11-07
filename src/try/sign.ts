@@ -550,6 +550,7 @@ const JS = `
 
   // ── The five screens: one shows at a time; the dots, the count and the diagram follow it. ──
   function go(n) {
+    panelNow();
     S.screen = n;
     for (var k = 0; k <= 7; k++) $("scr-" + k).hidden = k !== n;
     for (var i = 1; i <= 6; i++) {
@@ -559,7 +560,10 @@ const JS = `
     }
     $("pg-count").textContent = n === 0 ? "6 steps · about a minute" : n === 7 ? "Done" : n + " of 6 · " + D.steps[n - 1];
     $("diagram").dataset.step = String(n);
-    window.scrollTo({ top: 0, behavior: "instant" });
+    // At the start the page is already at the top: scrolling there now would force a layout in the middle of the
+    // script (a long task on a phone), so the first call scrolls with the first frame instead.
+    if (S.begun) window.scrollTo({ top: 0, behavior: "instant" });
+    else { S.begun = true; requestAnimationFrame(function () { window.scrollTo({ top: 0, behavior: "instant" }); }); }
     var h = $("scr-" + n).querySelector("h1, h2");
     if (h && n > 0) h.focus({ preventScroll: true });
   }
@@ -675,7 +679,7 @@ const JS = `
       $("w-id").textContent = S.world.id;
       worldFacts(S.world);
       S.timer = setInterval(tick, 1000);
-      policyState(r.data); fillForm(); inForceView();
+      policyState(r.data); panelLater();
       return showProposals(r.data.proposals).then(function () { tick(); status("w-status", ""); runAgents(); });
     });
   }
@@ -738,7 +742,7 @@ const JS = `
         drawStep(r.data.step, r.data.result);
         if (r.data.step !== "ready") { next(); return; }
         S.agentsBusy = false; S.agentsDone = true; S.agents = r.data.agents;
-        policyState(r.data); worldFacts(r.data.world); fillForm(); inForceView();
+        policyState(r.data); worldFacts(r.data.world); panelLater();
         agentsFold(r.data.agents);
         showProposals(r.data.proposals);
       });
@@ -1245,6 +1249,21 @@ const JS = `
     if (w.usd_balance) { $("w-usd").textContent = amt("USD", w.usd_balance); $("w-usd-floor").textContent = amt("USD", w.usd_floor); }
   }
   function inForceView() { S.pending = null; $("p-refused").hidden = true; $("p-expo-next").hidden = true; S.base = renderLocks(S.locks[S.agent], false); }
+  // The full policy and its three panels (behind "Show all fields and what Purser sends", from screen 5): drawn when
+  // the browser is idle after the world opens and after the agents' answers, not in the same task as screen 1, so
+  // neither is one long task on a phone; any screen change draws a pending one at once, before it is shown.
+  var panelJob = null;
+  function panelLater() {
+    if (panelJob) return;
+    var run = function () { panelJob = null; fillForm(); inForceView(); };
+    panelJob = window.requestIdleCallback ? { idle: requestIdleCallback(run, { timeout: 2000 }), run: run } : { timer: setTimeout(run, 50), run: run };
+  }
+  function panelNow() {
+    if (!panelJob) return;
+    var j = panelJob;
+    if (j.idle !== undefined) cancelIdleCallback(j.idle); else clearTimeout(j.timer);
+    j.run();
+  }
 
   // The three locks in one line each, for the Treasury agent: Purser's limit to pay alone (the chosen one, when one is
   // chosen), the Airwallex card's limits, the Metal mandate's cap; from the policy in force, as Purser's code made them.
