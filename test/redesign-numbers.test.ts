@@ -61,6 +61,9 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   // /metal's separate runs, each dated with its own run record; their figures are checked against those records in
   // test/metal-story.test.ts.
   .replace(/Beyond the kit: separate runs, each dated \(not the main run\)[\s\S]*?(?=The Metal features we use)/, " ")
+  // awx-1 (7 Nov), the separate Airwallex-only run on /airwallex and /proof, dated with its own record; its figures are
+  // checked against that record (docs/demo/airwallex-run.json) in test/awx-run-page.test.ts.
+  .replace(/\d{1,2} November, awx-1: a separate run[\s\S]*?docs\/demo\/airwallex-run\.json/g, " ")
   // The intended price (a hypothesis, not a figure of the run): one sentence, its numbers checked against
   // src/business/unitEconomics.ts's inputs in test/unit-economics-hypothesis.test.ts.
   .replace(PRICE_LINE, " ");
