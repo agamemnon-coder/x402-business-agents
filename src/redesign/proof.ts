@@ -9,6 +9,7 @@ import { CFO_VIEW_LINK, CFO_VIEW_URL, CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_AP
 import { agentRun, faceIdDecisions, faceIdLine, family, letThroughOf, ownTap, payments, sandboxRails, runName, split, metalDetail, stopFigure, stopStory, stopSub, stops, stopsLine, tapRun, type AgentRun, type Ev, type RunRecord, type Tile } from "./run.js";
 import { AWX_HASH_ID, READBACK_CSS, cardControlRows, cardsReadback, controlsShortHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { AIRI_CSS, airiRunBlock } from "./airiRun.js";
+import { vic2RunBlock } from "./vic2Run.js";
 import { awxRunBlock } from "./awxRun.js";
 import { esc, icon, page } from "./ui.js";
 import { LEAD_CSS, leadHtml, proofLeads } from "./proofLead.js";
@@ -268,7 +269,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   const r = run.record, sp = split(r), story = stopStory(r), pay = payments(r);
   // The Airi run (7 Nov): Visa Intelligent Commerce via Airwallex's Airi, in sight under the partners (owner, 7 Nov),
   // short: its outcomes and checks, then a link to every id on /airwallex.
-  const airi = airiRunBlock(undefined, { short: true });
+  const airi = airiRunBlock(undefined, { short: true }) + vic2RunBlock(undefined, { short: true });
   const nums: (Tile & { cls: string })[] = [
     { cls: "claude", value: String(sp.byClaude), label: `decisions by Claude (${sp.fallbacks} fallbacks)`, explain: "", href: "#claude" },
     // One canonical set (jury review, 6 Nov, #5): "86 Metal payments + 1 card charge", never 82 or 87 beside it.

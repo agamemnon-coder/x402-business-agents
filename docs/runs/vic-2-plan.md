@@ -4,8 +4,7 @@
 > P-0001 (Airi-aankoop EUR 30,00; de telefoon meldt daarna "execution stopped": klopt), P-0002 (slot: testwinkel
 > geblokkeerd voor Airi), P-0003 (slot eraf). Geen Airi-tik, geen Airi-link, niets betaald.
 
-**Status: not run yet.** The dry run (`npm run airi:vic-2 -- --dry`, 0 network) passes all seven checks; it shows the
-code path only and is never the run's evidence. The live run waits for the CFO's go.
+**Status: run live on 7 November 2026, all seven checks passed: [run log](2026-11-07-vic-2.md).** The dry run (`npm run airi:vic-2 -- --dry`, 0 network) shows the code path only and is never the run's evidence.
 
 vic-1 (7 November, [record](2026-11-07-vic-1.md)) showed the rail itself: a purchase within the CFO's limit paid
 alone, one above it paid only after the CFO's Face ID, one at a disallowed merchant refused with 0 Airi calls. vic-2

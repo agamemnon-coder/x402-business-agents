@@ -1,0 +1,378 @@
+{
+  "source": "data/vic-2-record.json, written by npm run airi:vic-2 -- live on 7 November 2026 (branch vic-2, code cb4b6fe), on the hosted relay with the CFO's Face ID. Sanitised for the site: no passkey credential id or assertion. Nothing was bought: 0 Airi and 0 Airwallex calls. Full log: docs/runs/2026-11-07-vic-2.md",
+  "run": "vic-2",
+  "mode": "live",
+  "label": "live: the CFO's Face ID on the relay; Airi (airi-cli 0.1.0-beta.4 (Airwallex's Airi wallet)) and Airwallex each at a budget of 0 calls",
+  "started_at": "2026-11-07T19:06:36.703Z",
+  "ended_at": "2026-11-07T19:08:23.904Z",
+  "planted_attack": "our own planted attack: a red-team step of the vic-2 conductor rewrote the stored terms in the ledger after the CFO signed, as someone with write access to the database could; no outside attacker was involved",
+  "steps": {
+    "D": {
+      "request": {
+        "amount": "30.00",
+        "currency": "EUR",
+        "merchant": "Northwind Outdoor test shop (Airwallex sandbox)"
+      },
+      "outcome": {
+        "status": "pending_approval",
+        "proposalId": "P-0001",
+        "termsSha256": "8fc413311562b5d2dc96cc1c502c869dd4582a2a28c2ec918c35a5c78ba52f3e"
+      },
+      "end": "NEEDS_REAPPROVAL",
+      "approval": {
+        "method": "passkey",
+        "at": "2026-11-07T19:07:24.898Z",
+        "approved_sha256": "8fc413311562b5d2dc96cc1c502c869dd4582a2a28c2ec918c35a5c78ba52f3e"
+      },
+      "alteration": {
+        "label": "our own planted attack: a red-team step of the vic-2 conductor rewrote the stored terms in the ledger after the CFO signed, as someone with write access to the database could; no outside attacker was involved",
+        "signed_sha256": "8fc413311562b5d2dc96cc1c502c869dd4582a2a28c2ec918c35a5c78ba52f3e",
+        "altered_sha256": "127717619bc2ac0434113e387649925b79ce479114362d17190475fc1f39ccf7",
+        "changed": {
+          "amount": {
+            "from": "30.00",
+            "to": "190.00"
+          },
+          "item_price": {
+            "from": "30.00",
+            "to": "190.00"
+          }
+        }
+      },
+      "policy_alone_on_the_altered_terms": "passes (route cfo): 190.00 EUR is below the rail's hard cap, the items add up and the merchant is allowed, so Purser's policy re-check alone would let the altered terms through with the CFO's approval; only the hash stops them",
+      "executor": {
+        "refused": "P-0001: terms do not match the approved hash",
+        "by": "purser (the executor's hash check, before any Airi call)"
+      },
+      "airi_calls": 0,
+      "purchase_row": null
+    },
+    "E": {
+      "lock": {
+        "proposal_id": "P-0002",
+        "change": "airi.merchant.northwind-sandbox: allowed -> blocked",
+        "end": "EXECUTED",
+        "approval": {
+          "method": "passkey",
+          "at": "2026-11-07T19:07:58.343Z"
+        },
+        "value_after": "blocked"
+      },
+      "offer_after_lock": {
+        "offered": false,
+        "merchant": "northwind-sandbox",
+        "why": "PURSER_MERCHANT_NOT_ALLOWED: https://kit11.max-31b.workers.dev is not a merchant the CFO allows on this rail"
+      },
+      "purchase": {
+        "amount": "12.00",
+        "currency": "EUR",
+        "outcome": {
+          "status": "refused",
+          "by": "purser",
+          "code": "PURSER_MERCHANT_NOT_ALLOWED",
+          "reason": "https://kit11.max-31b.workers.dev is not a merchant the CFO allows on this rail"
+        }
+      },
+      "airi_calls": 0
+    },
+    "F": {
+      "unlock": {
+        "proposal_id": "P-0003",
+        "change": "airi.merchant.northwind-sandbox: blocked -> allowed",
+        "end": "EXECUTED",
+        "approval": {
+          "method": "passkey",
+          "at": "2026-11-07T19:08:23.364Z"
+        },
+        "value_after": "allowed"
+      },
+      "offer": {
+        "offered": true,
+        "merchant": "northwind-sandbox",
+        "why": "Northwind Outdoor test shop (Airwallex sandbox) is on the CFO's Airi allowlist and 12.00 EUR is within the CFO's limit of 20.00 for this rail"
+      },
+      "purser_route": "alone",
+      "stopped": "before any request to Airi: no mandate, no tap, no charge",
+      "airi_calls": 0
+    }
+  },
+  "checks": {
+    "d_cfo_signed": {
+      "ok": true,
+      "detail": "D (P-0001, 30.00 EUR) approved by the CFO's Face ID (passkey) at 2026-11-07T19:07:24.898Z over terms 8fc413311562b5d2…"
+    },
+    "d_refused_hash_mismatch_0_airi_calls": {
+      "ok": true,
+      "detail": "after the planted alteration (30.00 -> 190.00 EUR): refused, \"P-0001: terms do not match the approved hash\"; 0 Airi call(s); no purchase row"
+    },
+    "e_lock_signed_with_face_id": {
+      "ok": true,
+      "detail": "P-0002 (airi.merchant.northwind-sandbox allowed -> blocked) EXECUTED, approved by the CFO's Face ID (passkey) at 2026-11-07T19:07:58.343Z; now blocked"
+    },
+    "e_refused_by_purser_0_airi_calls": {
+      "ok": true,
+      "detail": "E (12.00 EUR, within the limit): refused PURSER_MERCHANT_NOT_ALLOWED by purser; 0 Airi call(s)"
+    },
+    "f_unlock_signed_with_face_id": {
+      "ok": true,
+      "detail": "P-0003 (airi.merchant.northwind-sandbox blocked -> allowed) EXECUTED, approved by the CFO's Face ID (passkey) at 2026-11-07T19:08:23.364Z; now allowed"
+    },
+    "f_offered_again_stopped_before_airi": {
+      "ok": true,
+      "detail": "12.00 EUR at the test shop: offered, Purser's route alone; the run stopped before any request: 0 Airi call(s), no mandate, no tap, no charge"
+    },
+    "no_outside_calls": {
+      "ok": true,
+      "detail": "0 Airi and 0 checkout (Airwallex) call(s) tried in the whole run (each would have been refused)"
+    }
+  },
+  "outside_calls": {
+    "airi": 0,
+    "airwallex": 0,
+    "refused_attempts": []
+  },
+  "audit": [
+    {
+      "seq": 5,
+      "ts": "2026-11-07T19:06:36.703Z",
+      "actor": "system",
+      "event": "airi.policy_initial",
+      "subject": "vic-2",
+      "payload": {
+        "run": "vic-2",
+        "values": {
+          "airi.merchant.northwind-sandbox": "allowed",
+          "approval.airi_alone": "20.00",
+          "approval.airi_alone_per_day": "3"
+        }
+      }
+    },
+    {
+      "seq": 6,
+      "ts": "2026-11-07T19:06:36.705Z",
+      "actor": "sourcing",
+      "event": "airi.purchase_requested",
+      "subject": "https://kit11.max-31b.workers.dev",
+      "payload": {
+        "agent": "sourcing",
+        "amount": "30.00",
+        "client": "airi-cli",
+        "currency": "EUR",
+        "merchant": "Northwind Outdoor test shop (Airwallex sandbox)",
+        "route": "cfo"
+      }
+    },
+    {
+      "seq": 8,
+      "ts": "2026-11-07T19:06:36.705Z",
+      "actor": "sourcing",
+      "event": "proposal.created",
+      "subject": "P-0001",
+      "payload": {
+        "kind": "airi_purchase",
+        "origin": null,
+        "policy_version": 1,
+        "terms_sha256": "8fc413311562b5d2dc96cc1c502c869dd4582a2a28c2ec918c35a5c78ba52f3e"
+      }
+    },
+    {
+      "seq": 9,
+      "ts": "2026-11-07T19:07:24.898Z",
+      "actor": "human",
+      "event": "proposal.approved",
+      "subject": "P-0001",
+      "payload": {
+        "approver": "the CFO (passkey t0qdR52h)",
+        "method": "passkey",
+        "note": null,
+        "policy_version": 1,
+        "terms_sha256": "8fc413311562b5d2dc96cc1c502c869dd4582a2a28c2ec918c35a5c78ba52f3e"
+      }
+    },
+    {
+      "seq": 10,
+      "ts": "2026-11-07T19:07:25.792Z",
+      "actor": "system",
+      "event": "vic2.redteam_alteration",
+      "subject": "P-0001",
+      "payload": {
+        "altered_sha256": "127717619bc2ac0434113e387649925b79ce479114362d17190475fc1f39ccf7",
+        "changed": {
+          "amount": {
+            "from": "30.00",
+            "to": "190.00"
+          },
+          "item_price": {
+            "from": "30.00",
+            "to": "190.00"
+          }
+        },
+        "label": "our own planted attack: a red-team step of the vic-2 conductor rewrote the stored terms in the ledger after the CFO signed, as someone with write access to the database could; no outside attacker was involved",
+        "proposal_id": "P-0001",
+        "run": "vic-2",
+        "signed_sha256": "8fc413311562b5d2dc96cc1c502c869dd4582a2a28c2ec918c35a5c78ba52f3e"
+      }
+    },
+    {
+      "seq": 11,
+      "ts": "2026-11-07T19:07:25.798Z",
+      "actor": "system",
+      "event": "proposal.needs_reapproval",
+      "subject": "P-0001",
+      "payload": {
+        "error": "the stored terms no longer hash to what the CFO signed (vic-2: our own planted attack: a red-team step of the vic-2 conductor rewrote the stored terms in the ledger after the CFO signed, as someone with write access to the database could; no outside attacker was involved)",
+        "from": "APPROVED"
+      }
+    },
+    {
+      "seq": 12,
+      "ts": "2026-11-07T19:07:25.799Z",
+      "actor": "human",
+      "event": "proposal.created",
+      "subject": "P-0002",
+      "payload": {
+        "kind": "policy_change",
+        "origin": null,
+        "policy_version": 1,
+        "terms_sha256": "1434e3a6596fa2cd79d3b2f54559a0a1a202a0c4f50872f5f8d4bcdf2895dedb"
+      }
+    },
+    {
+      "seq": 13,
+      "ts": "2026-11-07T19:07:58.343Z",
+      "actor": "human",
+      "event": "proposal.approved",
+      "subject": "P-0002",
+      "payload": {
+        "approver": "the CFO (passkey t0qdR52h)",
+        "method": "passkey",
+        "note": null,
+        "policy_version": 1,
+        "terms_sha256": "1434e3a6596fa2cd79d3b2f54559a0a1a202a0c4f50872f5f8d4bcdf2895dedb"
+      }
+    },
+    {
+      "seq": 14,
+      "ts": "2026-11-07T19:07:58.348Z",
+      "actor": "system",
+      "event": "proposal.executing",
+      "subject": "P-0002",
+      "payload": {
+        "terms_sha256": "1434e3a6596fa2cd79d3b2f54559a0a1a202a0c4f50872f5f8d4bcdf2895dedb"
+      }
+    },
+    {
+      "seq": 15,
+      "ts": "2026-11-07T19:07:58.348Z",
+      "actor": "human",
+      "event": "policy.changed",
+      "subject": "airi.merchant.northwind-sandbox",
+      "payload": {
+        "from": "allowed",
+        "key": "airi.merchant.northwind-sandbox",
+        "label": "Northwind Outdoor test shop (Airwallex sandbox): Airi purchases",
+        "proposal_id": "P-0002",
+        "to": "blocked"
+      }
+    },
+    {
+      "seq": 16,
+      "ts": "2026-11-07T19:07:58.348Z",
+      "actor": "system",
+      "event": "proposal.executed",
+      "subject": "P-0002",
+      "payload": {
+        "changes": "1"
+      }
+    },
+    {
+      "seq": 17,
+      "ts": "2026-11-07T19:07:58.857Z",
+      "actor": "sourcing",
+      "event": "airi.purchase_requested",
+      "subject": "https://kit11.max-31b.workers.dev",
+      "payload": {
+        "agent": "sourcing",
+        "amount": "12.00",
+        "client": "airi-cli",
+        "currency": "EUR",
+        "merchant": "Northwind Outdoor test shop (Airwallex sandbox)",
+        "route": "refused"
+      }
+    },
+    {
+      "seq": 18,
+      "ts": "2026-11-07T19:07:58.857Z",
+      "actor": "system",
+      "event": "airi.purchase_refused",
+      "subject": "https://kit11.max-31b.workers.dev",
+      "payload": {
+        "agent": "sourcing",
+        "by": "purser",
+        "code": "PURSER_MERCHANT_NOT_ALLOWED",
+        "reason": "[link] is not a merchant the CFO allows on this rail"
+      }
+    },
+    {
+      "seq": 20,
+      "ts": "2026-11-07T19:07:58.859Z",
+      "actor": "human",
+      "event": "proposal.created",
+      "subject": "P-0003",
+      "payload": {
+        "kind": "policy_change",
+        "origin": null,
+        "policy_version": 2,
+        "terms_sha256": "bb011e74d09bffeaac0edf0d0bb9f7f3b2c7b3eead802faf8068a89d4ebd6490"
+      }
+    },
+    {
+      "seq": 21,
+      "ts": "2026-11-07T19:08:23.364Z",
+      "actor": "human",
+      "event": "proposal.approved",
+      "subject": "P-0003",
+      "payload": {
+        "approver": "the CFO (passkey t0qdR52h)",
+        "method": "passkey",
+        "note": null,
+        "policy_version": 2,
+        "terms_sha256": "bb011e74d09bffeaac0edf0d0bb9f7f3b2c7b3eead802faf8068a89d4ebd6490"
+      }
+    },
+    {
+      "seq": 22,
+      "ts": "2026-11-07T19:08:23.371Z",
+      "actor": "system",
+      "event": "proposal.executing",
+      "subject": "P-0003",
+      "payload": {
+        "terms_sha256": "bb011e74d09bffeaac0edf0d0bb9f7f3b2c7b3eead802faf8068a89d4ebd6490"
+      }
+    },
+    {
+      "seq": 23,
+      "ts": "2026-11-07T19:08:23.371Z",
+      "actor": "human",
+      "event": "policy.changed",
+      "subject": "airi.merchant.northwind-sandbox",
+      "payload": {
+        "from": "blocked",
+        "key": "airi.merchant.northwind-sandbox",
+        "label": "Northwind Outdoor test shop (Airwallex sandbox): Airi purchases",
+        "proposal_id": "P-0003",
+        "to": "allowed"
+      }
+    },
+    {
+      "seq": 24,
+      "ts": "2026-11-07T19:08:23.371Z",
+      "actor": "system",
+      "event": "proposal.executed",
+      "subject": "P-0003",
+      "payload": {
+        "changes": "1"
+      }
+    }
+  ]
+}

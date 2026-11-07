@@ -67,6 +67,9 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   // The Airi run (7 Nov, Visa Intelligent Commerce via Airwallex's Airi; /airwallex, /visa and /proof), the same way:
   // dated with its own record, its figures checked against docs/demo/airi-run.json in test/airi-run-page.test.ts.
   .replace(/Visa Intelligent Commerce via Airwallex's Airi: a live run[\s\S]*?docs\/demo\/airi-run\.json/g, " ")
+  // The second Airi run (vic-2, 7 Nov), dated with its own record; its figures are checked against docs/demo/vic-2-run.json
+  // in test/vic2-run-page.test.ts.
+  .replace(/What Purser adds around Airi: a second live run[\s\S]{0,4000}?run log/g, " ")
   // The intended price (a hypothesis, not a figure of the run): one sentence, its numbers checked against
   // src/business/unitEconomics.ts's inputs in test/unit-economics-hypothesis.test.ts.
   .replace(PRICE_LINE, " ");

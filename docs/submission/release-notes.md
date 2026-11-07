@@ -531,3 +531,12 @@ Claude Code, on Max's go; in production a second person). Sources for every clai
   earlier wording kept as "Was". The tests that held the Metal-only wording hold the new one, and still refuse TAP as
   eligible Visa tooling. The deck (purser-deck.pdf and its slide PNGs) printed again. 3066 tests in 297 files, all
   passing.
+- 7 November, the second Airi run (vic-2, 19:06–19:08 UTC): what Purser adds around Airi, with the CFO's Face ID on a
+  phone three times and 0 Airi and 0 Airwallex calls in the whole run, so nothing was bought. Terms changed in the
+  database after the CFO's Face ID (EUR 30.00 → EUR 190.00, our own labelled test) were refused, "terms do not match
+  the approved hash"; the CFO locked the test shop for Airi with Face ID and a EUR 12.00 purchase within the limit was
+  refused before Airi was asked; a second Face ID lifted the lock and the purchase was offered again. 7 of 7 checks.
+  The conductor (`npm run airi:vic-2`, src/airi/vic2.ts), its run log (docs/runs/2026-11-07-vic-2.md) and record
+  (docs/demo/vic-2-run.json, sanitised); on the site under the VIC flow on /visa (the three outcomes; /visa's word
+  budget 375 → 465) and as a heading with its checks on /airwallex (budget 345 → 365) and /proof; README, claims and
+  Q&A 26. 3081 tests in 299 files, all passing.
