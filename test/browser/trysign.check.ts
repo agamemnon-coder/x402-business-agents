@@ -44,7 +44,7 @@ const { StandInQuotes } = await import("../support/fxStandIn.js");
 const fxStandIn = new StandInQuotes();
 const { StandInLine } = await import("../support/lineStandIn.js");
 const lineStandIn = new StandInLine();
-const { allAgents, mainRunWorst, OTHER_IBAN, TAMPER_VERDICT, TRY_POLICY, TRY_SIGN_END, TRY_SIGN_FILM, TRY_SIGN_LABEL, TRY_SIGN_SCREENS: W, TRY_SIGN_STEPS, WHATS_REAL, worstAloneLine } = await import("../../src/try/sign.js");
+const { mainRunWorst, OTHER_IBAN, TAMPER_VERDICT, TRY_POLICY, TRY_SIGN_END, TRY_SIGN_LABEL, TRY_SIGN_SCREENS: W, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
 const { ALONE_PER_DAY, PAID_ALONE, defaultPolicy, exposurePolicyOfWorld, threeLocks } = await import("../../src/try/policy.js");
 // 1.1: the worst case, read from the policy code (src/policy/exposure.ts) with the main run's recorded rate.
 const { exposureOf, exposureWords } = await import("../../src/policy/exposure.js");
@@ -615,8 +615,9 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   check(JSON.stringify(chips) === JSON.stringify(["€500", "€2,000", "€5,000"]) && JSON.stringify(await labelsOf()) === JSON.stringify(["€500, in force", "€2,000", "€5,000"]) && await page.locator('#rule-chips .chip[data-alone="500.00"] .now svg').count() === 1,
     `${tag}: three amounts: ${chips.join(" · ")}, €500 marked in force (a tick, and its name)`);
   const rl = (await page.locator("#s4-locks li").allInnerTexts()).map((t: string) => t.trim());
-  check((await page.locator("#s4-worst").innerText()).trim() === worstAloneLine("500.00", ALONE_PER_DAY) && JSON.stringify(rl) === JSON.stringify(["Airwallex card: €25 each, €50 a month", "Metal mandate: 25 test USD each"]) && await page.locator("#s4-diff").isHidden(),
-    `${tag}: the worst case in a CFO's words (${worstAloneLine("500.00", ALONE_PER_DAY)}) and the card's and mandate's lines: ${rl.join(" · ")}`);
+  const eurOf = (h: string) => Number(/EUR ([\d,]+)/.exec(h)![1]!.replace(/,/g, ""));
+  check((await page.locator("#s4-worst").innerText()).trim() === `${W.rule.worst} €${eurOf(WORST.headline).toLocaleString("en-US")} a month` && JSON.stringify(rl) === JSON.stringify([`Purser: pays alone up to €500, ${ALONE_PER_DAY} times a day`, "Airwallex card: €25 each, €50 a month", "Metal mandate: 25 test USD each"]),
+    `${tag}: one honest worst case (€${eurOf(WORST.headline).toLocaleString("en-US")} a month) and the three locks, Purser first: ${rl.join(" · ")}`);
   await page.locator("#s4-more > summary").click();
   check((await page.locator("#s4-full").innerText()).trim() === WORST.headline && (await page.locator("#s4-more").innerText()).includes(mainRunWorst()), `${tag}: behind "more": the full figure and why the main run's is EUR 300 (${mainRunWorst()})`);
   await page.locator("#s4-more > summary").click();
@@ -628,8 +629,8 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
     `${tag}: €2,000 is looser: "${W.rule.looser}", the button "${W.rule.sign}"`);
   // The worst case moves with the choice (Max, 7 Nov, 1.4): the line names €2,000, and what it adds a month shows beside it.
   const addMonth = (Number(/EUR ([\d,]+)/.exec(worldExpo("2000.00").headline)![1]!.replace(/,/g, "")) - Number(/EUR ([\d,]+)/.exec(WORST.headline)![1]!.replace(/,/g, "")));
-  check((await page.locator("#s4-worst").innerText()).trim() === worstAloneLine("2000.00", ALONE_PER_DAY) && (await page.locator("#s4-diff").innerText()).trim() === `+€${addMonth.toLocaleString("en-US")} a month` && addMonth === 1500 * ALONE_PER_DAY * 31,
-    `${tag}: choosing €2,000: "${worstAloneLine("2000.00", ALONE_PER_DAY)}", and "+€${addMonth.toLocaleString("en-US")} a month"`);
+  check((await page.locator("#s4-worst").innerText()).trim() === `${W.rule.worst} €${eurOf(worldExpo("2000.00").headline).toLocaleString("en-US")} a month (+€${addMonth.toLocaleString("en-US")})` && addMonth === 1500 * ALONE_PER_DAY * 31 && (await page.locator("#rl-purser").innerText()).trim() === `Purser: pays alone up to €2,000, ${ALONE_PER_DAY} times a day`,
+    `${tag}: choosing €2,000: the worst case with what it adds (+€${addMonth.toLocaleString("en-US")}), Purser's lock follows`);
   if (width >= 1024) {
     await page.waitForTimeout(400);
     const lit = (await page.evaluate(`[...document.querySelectorAll("#diagram .dn")].filter((n) => getComputedStyle(n).opacity === "1" && !n.classList.contains("d-policy")).map((n) => n.classList[1]).join()`)) as string;
@@ -645,11 +646,11 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   // ── Screen 6: the agent pays its next invoice alone. ──
   const next = page.locator("#s5-next");
   check(JSON.stringify(await dots(page)) === '["done","done","done","done","done","on"]' && (await page.locator("#s5-head").innerText()).trim() === W.alone.head, `${tag}: screen 6 of 6: "${W.alone.head}"`);
-  check(await next.getAttribute("data-proposal") === NEXT_INVOICE.id && await next.getAttribute("data-state") === "alone" && (await next.innerText()).includes("EUR 1,850.00")
-    && (await next.innerText()).includes("Paid alone under your new policy (up to €2,000). No signature needed."), `${tag}: the next invoice (${NEXT_INVOICE.id}, EUR 1,850.00) "Paid alone under your new policy (up to €2,000). No signature needed."`);
-  check(((await v.signCount())[0] ?? 0) === before + 1 && (await page.locator("#w-balance").textContent())?.trim() === "EUR 26,300.00",
-    `${tag}: one signature, over the rule; none for the invoice; the stand-in ran it (balance EUR 26,300.00)`);
-  check((await page.locator("#s5-worst").innerText()).trim() === worstAloneLine("2000.00", ALONE_PER_DAY), `${tag}: the worst case under the signed rule: ${worstAloneLine("2000.00", ALONE_PER_DAY)}`);
+  check(await next.getAttribute("data-proposal") === NEXT_INVOICE.id && await next.getAttribute("data-state") === "alone" && (await next.innerText()).includes("EUR 1,240.00")
+    && (await next.innerText()).includes("Paid alone under your new policy (up to €2,000). No signature needed."), `${tag}: the next invoice (${NEXT_INVOICE.id}, EUR 1,240.00) "Paid alone under your new policy (up to €2,000). No signature needed."`);
+  check(((await v.signCount())[0] ?? 0) === before + 1 && (await page.locator("#w-balance").textContent())?.trim() === "EUR 26,910.00",
+    `${tag}: one signature, over the rule; none for the invoice; the stand-in ran it (balance EUR 26,910.00)`);
+  check((await page.locator("#s5-worst").innerText()).trim() === `Your new rule: up to €2,000 alone, ${ALONE_PER_DAY} times a day (+€${(1500 * ALONE_PER_DAY * 31).toLocaleString("en-US")} a month worst case).`, `${tag}: screen 6: the new rule in one small line, with what it did to the worst case`);
   if (width >= 1024) {
     await page.waitForTimeout(400);
     const lit = (await page.evaluate(`[...document.querySelectorAll("#diagram .dn")].filter((n) => getComputedStyle(n).opacity === "1" && !n.classList.contains("d-policy")).map((n) => n.classList[1]).join()`)) as string;
@@ -667,8 +668,8 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   check((await page.locator("#d-head").innerText()).trim() === W.done.head && (await page.locator("#scr-7 .lead1").innerText()).trim() === did && JSON.stringify(await dots(page)) === '["done","done","done","done","done","done"]',
     `${tag}: the closing card: "${did} ${W.done.head}"`);
   const ends = await page.locator("#t-end a").evaluateAll((as: Element[]) => as.map((a) => ({ text: (a.textContent ?? "").trim(), href: a.getAttribute("href") }))) as { text: string; href: string }[];
-  check(JSON.stringify(ends) === JSON.stringify(TRY_SIGN_END.map((e) => ({ text: e.label, href: e.href }))) && await page.locator("#t-film").getAttribute("href") === TRY_SIGN_FILM.href,
-    `${tag}: three ways on: ${ends.map((e) => `"${e.text}" (${e.href})`).join(", ")}; "${TRY_SIGN_FILM.label}" as a text link`);
+  check(JSON.stringify(ends) === JSON.stringify(TRY_SIGN_END.map((e) => ({ text: e.label, href: e.href }))),
+    `${tag}: three ways on: ${ends.map((e) => `"${e.text}" (${e.href})`).join(", ")}`);
   check(await page.locator("#scr-7 .btn.primary").count() === 1 && await page.locator("#scr-7 .ends .btn").count() === 2, `${tag}: the closing card: one main button, two more buttons`);
   if (!args.live) {
     const proof = await (await fetch(`${local.url}/proof`)).text();
@@ -799,8 +800,8 @@ if (!args.live && !ONLY) {
     const next = page.locator("#s5-next");
     check(await next.getAttribute("data-state") === "alone" && (await next.innerText()).includes("Paid alone under your new policy (up to €2,000)"), `${tag}: screen 5: the next invoice, paid alone`);
     await next.locator("details.more > summary").click();
-    check(/Test transfer test-[0-9a-f]{12}, balance after EUR 26,300\.00/.test(await next.innerText()) && (await next.locator(".pill.said-before").innerText()).trim() === TRY_POLICY.saidBefore && await page.locator(".pill.said-before:visible").count() === 1,
-      `${tag}: the agent's sentence stays, labelled "${TRY_POLICY.saidBefore}", on the paid-alone invoice only; the stand-in ran it (balance EUR 26,300.00)`);
+    check(/Test transfer test-[0-9a-f]{12}, balance after EUR 26,910\.00/.test(await next.innerText()) && (await next.locator(".pill.said-before").innerText()).trim() === TRY_POLICY.saidBefore && await page.locator(".pill.said-before:visible").count() === 1,
+      `${tag}: the agent's sentence stays, labelled "${TRY_POLICY.saidBefore}", on the paid-alone invoice only; the stand-in ran it (balance EUR 26,910.00)`);
     check(JSON.stringify(await dots(page)) === '["done","done","done","done","done","on"]' && await page.locator('ol.dots li[aria-current="step"]').count() === 1, `${tag}: the dots show the last step`);
     check(((await v.signCount())[0] ?? 0) === before + 1, `${tag}: one signature for the policy change, none for the invoice (sign count ${before} → ${(await v.signCount())[0]})`);
     check(await page.locator(`#pl-pay li[data-proposal="T-0001"]`).getAttribute("data-check") === "fail", `${tag}: T-0001 is still blocked by the reserve floor`);
@@ -825,7 +826,7 @@ if (!args.live && !ONLY) {
     await page.waitForFunction(() => /ok/.test(document.getElementById("p-status")?.className ?? ""));
     await page.locator("#p-open").click();
     const signed = (await v.signCount())[0] ?? 0;
-    check(await page.locator('#rule-chips .chip[data-alone="500.00"]').getAttribute("aria-label") === "€500" && await page.locator("#rule-chips .chip .now").count() === 0 && (await page.locator("#s4-worst").innerText()).trim() === worstAloneLine("1000.00", ALONE_PER_DAY), `${tag}: in force now: €1,000 (signed); no chip marked in force`);
+    check(await page.locator('#rule-chips .chip[data-alone="500.00"]').getAttribute("aria-label") === "€500" && await page.locator("#rule-chips .chip .now").count() === 0 && (await page.locator("#rl-purser").innerText()).trim() === `Purser: pays alone up to €1,000, ${ALONE_PER_DAY} times a day`, `${tag}: in force now: €1,000 (signed); no chip marked in force`);
     await page.click('#rule-chips .chip[data-alone="500.00"]');
     check((await page.locator("#s4-note").innerText()).trim() === W.rule.stricter && (await page.locator("#go-apply").innerText()).trim() === W.rule.apply && await page.locator("#go-apply").isEnabled(), `${tag}: €500 is stricter: "${W.rule.stricter}", the button "${W.rule.apply}"`);
     await shot(page, `${tag}-1-stricter.png`);

@@ -130,7 +130,7 @@ for (const [width, scheme] of [[360, "light"], [360, "dark"], [390, "light"], [3
   await page.click("#go-rule");
   await page.waitForSelector("#scr-5:not([hidden])");
   await page.click('#rule-chips .chip[data-alone="2000.00"]');
-  check((await page.locator("#s4-note").innerText()).trim() === W.rule.looser && (await page.locator("#go-apply").innerText()).trim() === W.rule.sign && /^\+€[\d,]+ a month$/.test((await page.locator("#s4-diff").innerText()).trim()), `${tag}: screen 5: €2,000 is looser, "${W.rule.sign}", and what it adds a month`);
+  check((await page.locator("#s4-note").innerText()).trim() === W.rule.looser && (await page.locator("#go-apply").innerText()).trim() === W.rule.sign && /\(\+€[\d,]+\)$/.test((await page.locator("#s4-worst").innerText()).trim()), `${tag}: screen 5: €2,000 is looser, "${W.rule.sign}", and what it adds a month`);
   await measure(page, tag, 5);
   await shot(page, errors, join(shots, `${tag}-5-rule.png`));
   await page.click("#go-apply");

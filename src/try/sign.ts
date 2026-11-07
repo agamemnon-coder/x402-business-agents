@@ -26,7 +26,7 @@ import { AGENTS, MCC_WORDS } from "../config/policy.js";
 import { agentName } from "../config/brand.js";
 import { ALONE_CHOICES, ALONE_PER_DAY, defaultPolicy, exposurePolicyOfWorld, FIELD_WORDS, PAID_ALONE, POLICY_CURRENCIES, POLICY_FIELDS, POLICY_MCCS, STEP0_CHAIN } from "./policy.js";
 import { worstCaseWords, worstCaseWordsOf } from "../policy/exposureSources.js";
-import { EXPOSURE_HOW } from "../policy/exposure.js";
+import { EXPOSURE_HOW, exposureOf } from "../policy/exposure.js";
 import { FIXED_PROPOSALS, NEXT_INVOICE, TEST_WORLD } from "../../worker/src/trySign.js";
 import { ATTACKS, TRICKS } from "../../worker/src/trick.js";
 
@@ -79,12 +79,14 @@ export const TRY_SIGN_SCREENS = {
     head: "Change the rule.",
     question: "How much may it pay alone?",
     chips: ALONE_CHOICES,
-    looser: "That needs your signature.",
+    looser: "Raising the limit needs your Face ID.",
     stricter: "Lowering a limit applies at once.",
     same: "This is the rule in force. Pick another amount.",
     sign: "Sign with Face ID",
     apply: "Apply",
     all: "Show all fields",
+    /** The worst case in one honest number, EUR a month, from the server (with what the choice adds, when it adds). */
+    worst: "Worst case in your test world:",
   },
   alone: {
     head: "The agent pays it alone.",
@@ -161,6 +163,8 @@ export const allAgents = (headline: string) => headline.replace("Worst case, set
 const START_WORST = worstCaseWordsOf(exposurePolicyOfWorld(defaultPolicy(new Date(), TEST_WORLD)));
 /** Purser's own figure (the README's and the main run's): no payments alone there. */
 const README_WORST = worstCaseWords();
+/** The test world's opening worst case, EUR cents a month (cards and payments alone), as the Worker computes it. */
+const START_WORST_EUR_MONTH = ((x) => x.total.month.eurCents - x.agents.find((e) => e.agent === "treasury")!.alone.monthEurCents)(exposureOf(exposurePolicyOfWorld(defaultPolicy(new Date(), TEST_WORLD))));
 
 /** The fields a visitor may change to tamper, as the terms name them. */
 export const TAMPER_FIELDS = ["amount", "payee_iban", "currency", "fx.client_rate"] as const;
@@ -1029,12 +1033,12 @@ const JS = `
     $("p-expo-head").textContent = x.headline; $("p-expo-tasks").textContent = x.tasks;
     // Screen 4, in one line beside the choice: "Worst case: …" (the figure as everywhere; "set by policy" is the screen).
     // Screens 5 and 6: the worst case in a CFO's words, from the rule in force; the full figure behind "more".
-    if (S.policy) { var wl = worstLine(S.policy.agents.treasury.alone); $("s4-worst").textContent = wl; $("s5-worst").textContent = wl; }
+    if (S.policy && S.expoMonth) $("s4-worst").textContent = W.rule.worst + " " + euro(String(S.expoMonth.in_force / 100)) + " a month";
     $("s4-full").textContent = x.headline;
     var ul = $("p-expo-how");
     ul.replaceChildren.apply(ul, x.how.concat([D.policy.worstCaseChain]).map(function (l) { return el("li", "", [l]); }));
   }
-  function worstLine(alone) { return "Worst case in your test world: the agent may pay up to " + euro(alone) + " alone, at most " + D.perDay + " times a day."; }
+  function monthEuro(c) { return euro((c / 100).toFixed(2)); }
   function policyState(d) {
     S.policy = d.policy; S.locks = d.locks; if (d.bounds) S.bounds = d.bounds; S.expoAlone = d.exposure_alone || null; S.expoMonth = d.exposure_month || null;
     if (!S.agent) S.agent = "treasury";
@@ -1054,6 +1058,8 @@ const JS = `
     if (!S.policy) return;
     var a = S.policy.agents.treasury, m = S.locks.treasury.metal.params;
     var now = a.alone, v = alone || now;
+    $("rl-purser").lastChild.textContent = "Purser: pays alone up to " + euro(v) + ", ${ALONE_PER_DAY} times a day";
+    $("rl-purser").classList.toggle("chg", v !== now);
     $("rl-awx").lastChild.textContent = "Airwallex card: " + euro(a.per_tx) + " each, " + euro(a.monthly) + " a month";
     $("rl-metal").lastChild.textContent = "Metal mandate: " + String(Number(m.cap)) + " test USD each";
     // The diagram says the same, beside the story.
@@ -1072,13 +1078,14 @@ const JS = `
     ruleLines(v);
     // The worst case moves with the choice: the server's figure for that amount, marked as not yet in force.
     var x = S.expoAlone && v ? S.expoAlone[v] : null;
-    $("s4-worst").textContent = worstLine(v || now); $("s4-worst").classList.toggle("chg", !!v && v !== now);
     if (x) $("s4-full").textContent = x;
-    // What the choice adds to (or takes from) the worst case a month, as the server computed it (1.4).
-    var m = S.expoMonth, dd = $("s4-diff");
-    var delta = m && v && m.alone[v] !== undefined ? m.alone[v] - m.in_force : 0;
-    dd.textContent = delta ? (delta > 0 ? "+" : "−") + euro((Math.abs(delta) / 100).toFixed(2)) + " a month" : "";
-    dd.hidden = !delta; dd.className = "wdiff" + (delta > 0 ? " up" : " down");
+    // One honest number (a juror, 7 Nov): the worst case a month this choice sets, and what it adds or takes, both
+    // as the server computed them (1.4).
+    var m = S.expoMonth;
+    var at = m && v && m.alone[v] !== undefined ? m.alone[v] : m ? m.in_force : 0, delta = m ? at - m.in_force : 0;
+    S.delta = delta;
+    $("s4-worst").textContent = W.rule.worst + " " + monthEuro(at) + " a month" + (delta ? " (" + (delta > 0 ? "+" : "−") + monthEuro(Math.abs(delta)) + ")" : "");
+    $("s4-worst").classList.toggle("chg", !!delta);
     var looser = v && cents(v) > cents(now), stricter = v && cents(v) < cents(now);
     var btn = $("go-apply"), note = $("s4-note");
     btn.replaceChildren(looser ? ic("scan-face") : "", looser ? W.rule.sign : W.rule.apply);
@@ -1125,6 +1132,8 @@ const JS = `
     S.base = renderLocks(S.locks[S.agent], false, before);
     S.lastRule = { signed: signed, alone: S.policy.agents.treasury.alone, ran: d.paid_alone || [] };
     S.did.rule = signed ? "signed" : "applied";
+    // Screen 6, one small line (Max, 7 Nov): the new rule and what it did to the worst case.
+    $("s5-worst").textContent = "Your new rule: up to " + euro(S.policy.agents.treasury.alone) + " alone, ${ALONE_PER_DAY} times a day" + (S.delta ? " (" + (S.delta > 0 ? "+" : "−") + monthEuro(Math.abs(S.delta)) + " a month worst case)" : "") + ".";
     status("s4-status", "");
     return showProposals(d.proposals).then(function () { go(6); });
   }
@@ -1391,10 +1400,9 @@ ${scr(4, `  <h2 tabindex="-1" id="k-head">${esc(W.trick.head)}</h2>
 ${scr(5, `  <h2 tabindex="-1" id="s4-head">${esc(W.rule.head)}</h2>
   <p class="q">${esc(W.rule.question)}</p>
   <div class="chips" id="rule-chips" role="group" aria-label="${esc(W.rule.question)}">${W.rule.chips.map((v) => `<button class="chip" type="button" data-alone="${v}" data-world="1" aria-pressed="false">${esc(euro(v))}${v === TEST_WORLD.alone_limit ? `<span class="now" title="in force">${icon("check", 16)}</span>` : ""}</button>`).join("")}</div>
-  <p class="worst" id="s4-worst">${esc(worstAloneLine(TEST_WORLD.alone_limit, ALONE_PER_DAY))}</p>
-  <p class="wdiff" id="s4-diff" hidden></p>
+  <p class="worst" id="s4-worst">${esc(`${TRY_SIGN_SCREENS.rule.worst} €${(START_WORST_EUR_MONTH / 100).toLocaleString("en-US")} a month`)}</p>
   <details class="more" id="s4-more"><summary>more</summary><p id="s4-full">${esc(START_WORST.headline)}</p><p>${esc(mainRunWorst())}</p></details>
-  <ul class="locks1" id="s4-locks"><li id="rl-awx">${icon("check", 18)}<span></span></li><li id="rl-metal">${icon("check", 18)}<span></span></li></ul>
+  <ul class="locks1" id="s4-locks"><li id="rl-purser">${icon("check", 18)}<span></span></li><li id="rl-awx">${icon("check", 18)}<span></span></li><li id="rl-metal">${icon("check", 18)}<span></span></li></ul>
   <p class="note" id="s4-note" aria-live="polite"></p>
   <p class="status" id="s4-status" aria-live="polite"></p>
   <details class="fold quiet policy" id="policy"><summary id="p-open">${esc(TRY_POLICY.open)}</summary><div class="fbody pbody" id="p-body">
@@ -1428,14 +1436,14 @@ ${scr(5, `  <h2 tabindex="-1" id="s4-head">${esc(W.rule.head)}</h2>
   <div class="bar"><button class="btn primary big" type="button" id="go-apply" data-world="1" disabled>${esc(W.rule.apply)}</button></div>`)}
 ${scr(6, `  <h2 tabindex="-1" id="s5-head">${esc(W.alone.head)}</h2>
   <div class="next" id="s5-next" hidden></div>
-  <p class="worst big" id="s5-worst">${esc(worstAloneLine(TEST_WORLD.alone_limit, ALONE_PER_DAY))}</p>
+  <p class="small muted" id="s5-worst"></p>
   <details class="fold quiet" id="s5-others-fold" hidden><summary>Other payments in your test world (<span id="s5-others-n">0</span>)</summary><div class="fbody others" id="s5-others"></div></details>
   <p class="links"><button class="tlink" type="button" id="go-again" data-world="1">${icon("undo-2", 18)}${esc(W.alone.again)}</button></p>
   <div class="bar"><button class="btn primary big" type="button" id="go-done">${esc(W.alone.finish)}${icon("arrow-right", 20)}</button></div>`)}
 ${scr(7, `  <h2 tabindex="-1" id="d-head">${esc(W.done.head)}</h2>
   <p class="lead1">${esc(W.done.lead)} <span id="d-list"></span></p>
   <nav class="end" id="t-end" aria-label="What next">${TRY_SIGN_END.slice(0, 1).map((e) => `<a class="btn primary big" data-end="0">${icon(e.icon, 18)}${esc(e.label)}</a>`).join("")}<p class="ends">${TRY_SIGN_END.slice(1).map((e, i) => `<a class="btn" data-end="${i + 1}">${icon(e.icon, 18)}${esc(e.label)}</a>`).join("")}</p></nav>
-  <p class="links"><a class="tlink" id="t-film" target="_blank" rel="noopener noreferrer">${icon("play", 18)}${esc(TRY_SIGN_FILM.label)}</a></p>`)}
+  <a id="t-film" hidden></a>`)}
 </div>
 <aside class="card diagram" id="diagram" data-step="1" aria-label="One policy, three locks">
   <p class="eyebrow">One policy → three locks</p>

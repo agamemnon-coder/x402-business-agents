@@ -20,7 +20,7 @@ import { verifyAssertion, type PublicKeyXY } from "./webauthn.js";
 import { QuoteUnavailable, type FxQuote, type FxSource } from "./fxQuote.js";
 import { AGENTS, type Agent } from "../../src/config/policy.js";
 import { ALONE_CHOICES, ALONE_PER_DAY, PAID_ALONE, exposurePolicyOfWorld } from "../../src/try/policy.js";
-import { exposureOf, exposureWords, type RecordedRate } from "../../src/policy/exposure.js";
+import { EXPOSURE_TASK_CARDS, exposureOf, exposureWords, type RecordedRate } from "../../src/policy/exposure.js";
 export { PAID_ALONE };
 import { defaultPolicy, FIELD_WORDS, policyBounds, policyChanges, readSet, threeLocks, withSet, type Locks, type PolicyChange, type WorldPolicy } from "../../src/try/policy.js";
 import { AGENT_LINE_ALL_PER_MINUTE, AGENT_LINE_DAILY_USD, AGENT_LINE_PER_HOUR, AGENT_LINE_RESERVE_USD, AGENT_LINE_SYSTEM, agentLineFacts, agentLineGiven, checkLine, moneyForPeople, type SentenceSource, type Voice } from "./agentLine.js";
@@ -212,7 +212,7 @@ export const FIXED_PROPOSALS: FixedProposal[] = [
  * the agent may pay alone it waits for a signature; at or below a limit the visitor signed, it runs alone (runAlone).
  */
 export const NEXT_INVOICE: FixedProposal = {
-  id: "T-0003", agent: "Treasury agent", says: "Alpine Packaging's next invoice is in; it is the same amount as the one you signed.", payee: "Alpine Packaging (test payee)", iban: TEST_IBAN.alpine, amount: "1850.00", reference: "Invoice INV-2026-131",
+  id: "T-0003", agent: "Treasury agent", says: "Alpine Packaging's next invoice is in, for November's boxes.", payee: "Alpine Packaging (test payee)", iban: TEST_IBAN.alpine, amount: "1240.00", reference: "Invoice INV-2026-131",
 };
 /** Any proposal this world can hold, by its id: the two it opens with, and the next invoice. */
 const fixedOf = (id: string): FixedProposal => [...FIXED_PROPOSALS, NEXT_INVOICE].find((x) => x.id === id)!;
@@ -682,7 +682,8 @@ export class TrySignDesk {
     const exposure_alone = Object.fromEntries(ALONE_CHOICES.map((v) => [v, this.exposure(withAlone(v)).headline]));
     // 1.4 (Max, 7 Nov): each amount's EUR worst case a month, in cents, and the one in force, so the page can say what a
     // looser rule adds ("+€139,500 a month") by Purser's code, not its own arithmetic.
-    const monthOf = (p: WorldPolicy) => exposureOf(exposurePolicyOfWorld(p)).total.month.eurCents;
+    // The figure the words show: task cards apart (Max's decision A, EXPOSURE_TASK_CARDS), as in the headline.
+    const monthOf = (p: WorldPolicy) => { const x = exposureOf(exposurePolicyOfWorld(p)); return x.total.month.eurCents - (EXPOSURE_TASK_CARDS === "apart" ? x.agents.find((e) => e.agent === "treasury")!.alone.monthEurCents : 0); };
     const exposure_month = { in_force: monthOf(policy), alone: Object.fromEntries(ALONE_CHOICES.map((v) => [v, monthOf(withAlone(v))])) };
     return { policy, policy_version: String(version), locks: this.locksOf(worldId, policy, now), bounds: policyBounds(now), exposure: this.exposure(policy), exposure_alone, exposure_month };
   }

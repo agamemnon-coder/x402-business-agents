@@ -294,7 +294,7 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   pay an invoice above its limit." with one button, "Sign with Face ID", which makes the test passkey on the way; (2)
   "Signed and verified."; (3) "Try to cheat.": one cent, another IBAN or another currency, refused by the server; (4)
   "Change the rule.": how much the agent may pay alone, a looser rule signed, a stricter one applied at once; (5) "The
-  agent pays it alone.": its next invoice (T-0003, EUR 1,850.00, fixed text, no quote, no model call), which arrives once
+  agent pays it alone.": its next invoice (T-0003, fixed text, no quote, no model call), which arrives once
   T-0002 is signed, runs without a signature under the new rule. Every field of the policy (#71) behind "Show all
   fields". The test world opens when the page is shown (Max's choice), one quote and one model call per world as before.
   The server's checks are unchanged; the next invoice is checked by the same rules. On every screen at most 60 words in
