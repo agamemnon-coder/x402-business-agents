@@ -418,6 +418,14 @@ describe("submit_advice refuses a reason that is not one or two sentences of at 
     expect(r).toMatchObject({ source: "claude", timing: "pay_now", reason: TWO });
   });
 
+  it("code's own phrases, word for word: live Opus's two-sentence advice of 7 Nov passes the check", () => {
+    // The recording run's facts and the reason Opus gave (refused then for its bare "EUR" in "EUR free 0.00").
+    const f: TimingFacts = { ...FACTS, dueDate: "2026-11-14", today: "2026-11-07", quote: { sell: "USD 982.95", buy: "EUR 870.00", rate: "1.129828", validTo: "2026-11-07T12:52:41Z" }, after: { eurFree: "0.00", usdAvailable: "7017.05" } };
+    const reason = "The locked quote (buy EUR 870.00 for USD 982.95) expires today at 12:52 UTC, and waiting means a new quote at that day's rate and a new Face ID request, with no sure gain. The floors hold after the payment (EUR free 0.00, USD 7017.05 against the USD 3000.00 floor), so paying now settles INV-2026-118 well before the 2026-11-14 due date.";
+    expect(checkReason(reason, adviceGiven(f, "500.00"))).toEqual({ says: reason });
+    expect(checkReason(reason.replace("EUR free 0.00", "EUR free 0.01"), adviceGiven(f, "500.00"))).toEqual({ bad: "amounts" });
+  });
+
   it("the quote's end as a time of day is one of code's numbers in the reason", () => {
     expect(amountsFit("The quote expires today at 10:15:00Z, so paying now keeps it.", adviceGiven(FACTS, "500.00"))).toBe(true);
     expect(amountsFit("The quote expires today at 10:16:00Z, so paying now keeps it.", adviceGiven(FACTS, "500.00"))).toBe(false);

@@ -106,7 +106,10 @@ export function adviceGiven(f: TimingFacts, aloneLimit: string, extraDays: reado
   const b = adviceBounds(f);
   const days = [f.today, f.dueDate, b.earliest, b.latest, ...extraDays].flatMap(dayForms);
   return {
-    amounts: [...eurs.flatMap((a) => forms("EUR", a)), ...usds.flatMap((a) => forms("USD", a)), ...(f.quote ? [f.quote.rate] : [])],
+    // And the phrases code's facts use, word for word (read_position: "EUR available 26000.00", "EUR free 0.00",
+    // "USD available 8000.00"): live Opus quoted "EUR free 0.00" exactly, 7 Nov, and the bare "EUR" was refused.
+    amounts: [...eurs.flatMap((a) => forms("EUR", a)), ...usds.flatMap((a) => forms("USD", a)), ...(f.quote ? [f.quote.rate] : []),
+      ...forms("EUR free", f.after.eurFree), ...forms("EUR available", f.eurAvailable), ...forms("USD available", f.usdAvailable)],
     // The quote's end as the agent may write it: whole, or its time of day ("12:44:52Z", "12:44:52", "12:44").
     references: [f.invoiceNo, `Invoice ${f.invoiceNo}`, f.proposalId, ...(f.quote ? timeForms(f.quote.validTo) : []), ...days],
   };

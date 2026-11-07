@@ -348,7 +348,7 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   sentences (321 to 326 characters), which the page refused every time. submit_advice now refuses a reason that is not
   one or two plain sentences of at most 400 characters ("Not recorded: …"), in the runner and on /try/sign alike (one
   rule, src/agents/timingCore.ts plainReason), and the agent writes again within its turns. The quote's end as a time
-  of day counts as one of code's numbers. 2914 tests in 283 files, all passing.
+  of day, and code's own phrases ("EUR free 0.00"), count as code's numbers. 2915 tests in 283 files, all passing.
 
 ## Real, and ours
 
