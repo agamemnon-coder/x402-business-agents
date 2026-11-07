@@ -19,19 +19,21 @@ const count = (db: Database.Database, table: string) => (db.prepare(`SELECT COUN
 afterEach(() => { vi.restoreAllMocks(); });
 
 describe("/try/sign: the visitor's test world", () => {
-  it("opens a world with two fixed proposals: one a rule blocks, one waiting for a person; terms hashed as the real approvals", async () => {
+  it("opens a world with the payment a rule blocks; the agents' steps add the one waiting for a person; terms hashed as the real approvals", async () => {
     const { d } = desk();
+    const opened = await newWorld(d, undefined, { agents: false });
+    expect(opened.proposals.map((p) => [p.proposal_id, p.check, p.status])).toEqual([["T-0001", "fail", "blocked"]]);
     const w = await newWorld(d);
     expect(w.world.token).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(Date.parse(w.world.expires_at) - t0.getTime()).toBe(TRY_SIGN_TTL_MS);
     expect(w.proposals.map((p) => [p.proposal_id, p.check, p.status])).toEqual([["T-0001", "fail", "blocked"], ["T-0002", "pass", "waiting"]]);
-    expect(w.proposals[0]!.rule).toBe("Reserve floor: the balance may not go below EUR 25,000.00; after this payment it would be EUR 23,500.00.");
+    expect(w.proposals[0]!.rule).toBe("Reserve floors: it needs EUR 6,520.00 (the invoice + the EUR 20.00 fee ceiling) and only EUR 1,000.00 is free above the EUR floor. Converting the EUR 5,520.00 short takes USD 6,235.82 at the recorded rate (1.129677 USD per EUR, 2026-11-02), more than the USD 5,000.00 free above the USD floor of USD 3,000.00.");
     for (const p of w.proposals) {
       const terms = JSON.parse(p.canonical) as Record<string, string>;
       // The same canonical JSON (RFC 8785) the real terms use, and the hash is its SHA-256.
       expect(p.canonical).toBe(jcs(terms));
       expect(p.terms_sha256).toBe(sha(p.canonical));
-      expect(terms).toMatchObject({ schema: "kit11.try-terms/v3", test_world: w.world.id, nothing_real_moves: true, expires_at: w.world.expires_at });
+      expect(terms).toMatchObject({ schema: "kit11.try-terms/v4", test_world: w.world.id, nothing_real_moves: true, expires_at: w.world.expires_at });
     }
     // The payee's IBAN is in the terms (v2), and it is a test one: check digits 00, which ISO 13616's mod 97 never gives.
     for (const p of w.proposals) {
@@ -40,7 +42,7 @@ describe("/try/sign: the visitor's test world", () => {
       const digits = (iban.slice(4) + iban.slice(0, 4)).replace(/[A-Z]/g, (c) => String(c.charCodeAt(0) - 55));
       expect(BigInt(digits) % 97n).not.toBe(1n);
     }
-    // The agent's words are fixed text, the same for everyone.
+    // The fixed sentences, shown (labelled) when no live or recorded agent answers.
     expect(FIXED_PROPOSALS.map((p) => p.says).every((s) => s.length > 20)).toBe(true);
   });
 
@@ -65,7 +67,7 @@ describe("/try/sign: the visitor's test world", () => {
     const res = await call(d, "sign", signBody(w.world.token, b, auth.sign({ challenge: challengeOf(b.terms_sha256), origin: BASE, rpId: RP, counter: 1 })));
     expect(res.status).toBe(200);
     const out = (await res.json()) as { verified: boolean; terms_sha256: string; executed: { id: string; amount: string; balance_after: string; by: string } };
-    expect(out).toMatchObject({ verified: true, terms_sha256: b.terms_sha256, executed: { amount: "1850.00", balance_after: "28150.00" } });
+    expect(out).toMatchObject({ verified: true, terms_sha256: b.terms_sha256, executed: { amount: "1850.00", balance_after: "25020.00" } });
     expect(out.executed.id).toMatch(/^test-[0-9a-f]{12}$/);
     expect(out.executed.by).toMatch(/stand-in.*nothing paid or converted at Airwallex, no Metal call/);
     expect(db.prepare("SELECT status FROM ts_proposals WHERE id = 'T-0002'").get()).toEqual({ status: "executed" });
@@ -130,7 +132,7 @@ describe("/try/sign: the visitor's test world", () => {
     const s = race.auth.sign({ challenge: challengeOf(race.b.terms_sha256), origin: BASE, rpId: RP, counter: 0 });
     const both = await Promise.all([call(d, "sign", signBody(race.w.world.token, race.b, s)), call(d, "sign", signBody(race.w.world.token, race.b, s))]);
     expect(both.map((x) => x.status).sort()).toEqual([200, 409]);
-    expect(db.prepare("SELECT balance FROM ts_worlds WHERE id = ?").get(race.w.world.id)).toEqual({ balance: "28150.00" });
+    expect(db.prepare("SELECT balance FROM ts_worlds WHERE id = ?").get(race.w.world.id)).toEqual({ balance: "25020.00" });
   });
 
   it("red team, a passkey from another world: refused, whatever it signs", async () => {
@@ -160,7 +162,7 @@ describe("/try/sign: the visitor's test world", () => {
     expect(out).toMatchObject({ blocked: true, verified: false });
     expect(out.rule).toMatch(/Reserve floor/);
     expect(db.prepare("SELECT status, execution FROM ts_proposals WHERE id = 'T-0001'").get()).toEqual({ status: "blocked", execution: null });
-    expect(db.prepare("SELECT balance FROM ts_worlds").get()).toEqual({ balance: "30000.00" });
+    expect(db.prepare("SELECT balance, usd FROM ts_worlds").get()).toEqual({ balance: "26000.00", usd: "8000.00" });
   });
 
   it("red team, an expired world: after one hour it answers nothing and is deleted with its passkey and proposals", async () => {

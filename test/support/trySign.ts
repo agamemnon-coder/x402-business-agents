@@ -2,7 +2,7 @@
 import Database from "better-sqlite3";
 import { expect } from "vitest";
 import { FakeAuthenticator } from "../../src/redteam/authenticator.js";
-import { TrySignDesk } from "../../worker/src/trySign.js";
+import { AGENT_STEPS, TrySignDesk, type TrySignOptions } from "../../worker/src/trySign.js";
 import type { Sql } from "../../worker/src/core.js";
 import type { FxSource } from "../../worker/src/fxQuote.js";
 
@@ -13,9 +13,14 @@ export const t0 = new Date("2026-11-04T10:00:00Z");
 export function sqlOver(db: Database.Database): Sql {
   return { exec(q, ...b) { const st = db.prepare(q); const rows = st.reader ? st.all(...b) : (st.run(...b), []); return { toArray: () => rows }; } };
 }
-export function desk(db = new Database(":memory:"), fx: FxSource | null = null, rate: { usdPerEur: string; date: string; source: string } | null = null) {
+/**
+ * A recorded EUR/USD rate for the tests (the stand-in quote's): with no live quote, the test world checks a payment that
+ * needs FX at the recorded rate; with no rate at all it blocks it ("no rate to plan the conversion").
+ */
+export const TEST_RATE = { usdPerEur: "1.129677", date: "2026-11-02", source: "test rate" } as const;
+export function desk(db = new Database(":memory:"), fx: FxSource | null = null, rate: { usdPerEur: string; date: string; source: string } | null = TEST_RATE, opts: Omit<TrySignOptions, "now" | "fx" | "rate"> = {}) {
   let clock = t0;
-  const d = new TrySignDesk(sqlOver(db), { now: () => clock, fx, rate });
+  const d = new TrySignDesk(sqlOver(db), { now: () => clock, fx, rate, ...opts });
   return { d, db, at: (t: Date) => { clock = t; } };
 }
 let ipN = 0;
@@ -26,12 +31,28 @@ export const call = (d: TrySignDesk, sub: string, body: unknown, o: { ip?: strin
 }));
 
 export interface Proposal { proposal_id: string; canonical: string; terms_sha256: string; status: string; check: "pass" | "fail"; rule?: string; waits?: string }
-export interface WorldAnswer { world: { id: string; token: string; expires_at: string; balance: string }; proposals: Proposal[]; passkey_options: Record<string, unknown> & { challenge: string; user: { id: string; name: string; displayName: string }; authenticatorSelection: Record<string, unknown> } }
+export interface WorldAnswer { world: { id: string; token: string; expires_at: string; balance: string }; proposals: Proposal[]; steps?: Record<string, Record<string, unknown>>; passkey_options: Record<string, unknown> & { challenge: string; user: { id: string; name: string; displayName: string }; authenticatorSelection: Record<string, unknown> } }
 
-export async function newWorld(d: TrySignDesk, ip = `198.51.100.${++ipN % 250}`): Promise<WorldAnswer> {
+/** The agents' steps on T-0002, one request each, in order (spec 6b); the answers, by step. */
+export async function walkAgents(d: TrySignDesk, token: string, ip = "203.0.113.9"): Promise<Record<string, Record<string, unknown>>> {
+  const out: Record<string, Record<string, unknown>> = {};
+  for (const step of AGENT_STEPS) {
+    const res = await call(d, "agents", { token }, { ip });
+    expect(res.status).toBe(200);
+    const j = (await res.json()) as Record<string, unknown> & { step: string };
+    expect(j.step).toBe(step);
+    out[step] = j;
+  }
+  return out;
+}
+/** A new world; by default with its agents' steps walked, so T-0002 is there (its proposals as the last step gives them). */
+export async function newWorld(d: TrySignDesk, ip = `198.51.100.${++ipN % 250}`, o: { agents?: boolean } = {}): Promise<WorldAnswer> {
   const res = await call(d, "world", {}, { ip });
   expect(res.status).toBe(201);
-  return (await res.json()) as WorldAnswer;
+  const w = (await res.json()) as WorldAnswer;
+  if (o.agents === false) return w;
+  const steps = await walkAgents(d, w.world.token, ip);
+  return { ...w, proposals: (steps.ready as unknown as { proposals: Proposal[] }).proposals, steps } as WorldAnswer;
 }
 export async function withPasskey(d: TrySignDesk, auth = new FakeAuthenticator()) {
   const w = await newWorld(d);

@@ -101,7 +101,8 @@
     "redteam-night": "tsx src/cli/redteamNight.ts",
     "holdouts": "tsx src/cli/holdouts.ts",
     "blind-holdouts": "tsx src/cli/blindHoldouts.ts",
-    "reliability": "tsx src/cli/reliability.ts"
+    "reliability": "tsx src/cli/reliability.ts",
+    "record-try-agents": "tsx src/cli/recordTryAgents.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",

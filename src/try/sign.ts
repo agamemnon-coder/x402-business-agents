@@ -1,19 +1,23 @@
 // /try/sign (TRY_SIGN_ENABLED): the demo, as one story of five screens, about 60 seconds (Max, 7 Nov: "De demo
 // opnieuw"). One main action per screen, at most about 60 words in sight, the details behind "Show …":
-//   1. "Your Treasury agent wants to pay an invoice above its limit." The agent's sentence (Claude Haiku, live, labelled),
-//      the payment and its live Airwallex quote, and one button, "Sign with Face ID" (it makes the visitor's test
-//      passkey first when there is none, then signs: one tap, two prompts). The exact terms and the hash behind "Show
-//      the exact terms"; the other payment, stopped by a rule, and the three locks behind a closed line.
+//   1. "Your Treasury agent wants to pay an invoice above its limit." The agents' work comes in step by step, each step a
+//      real answer from the server (POST /agents, spec 6b): Claude Sonnet reads the invoice, Purser's code checks it,
+//      code plans the payment and Airwallex quotes the shortfall, Claude Opus advises. Then the agent's reason (Opus,
+//      live, labelled; or recorded or fixed, labelled with why), its advice, the payment and its live quote, and one
+//      button, "Sign with Face ID" (it makes the visitor's test passkey first when there is none, then signs: one tap,
+//      two prompts). The steps behind "What the agents did"; the exact terms and the hash behind "Show the exact terms";
+//      the other payment, stopped by a rule, and the three locks behind a closed line.
 //   2. "Signed and verified." The server checked the signature over the SHA-256 of the exact terms; the stand-in ran it
 //      in the test world. The receipt and /try/verify as two text links.
 //   3. "Try to cheat." Change one cent, the IBAN or the currency and send it with the same signature: the server refuses.
 //   4. "Change the rule." How much the Treasury agent may pay alone: a looser rule needs the visitor's signature, a
 //      stricter one applies at once. The worst case and the three locks, one line each; every field and what Purser
 //      would send to Airwallex and Metal behind "Show all fields and what Purser sends".
-//   5. "The agent pays it alone." The agent's next invoice (EUR 1,850.00) runs without a signature under the new rule, or
-//      still waits for one. Then three ways on.
-// The test world opens when the page is shown (Max, 7 Nov), so screen 1 has the agent's sentence and the live quote at
-// once; per world, still one quote and one model call. The page's API is worker/src/trySign.ts, unchanged in its checks.
+//   5. "The agent pays it alone." The agent's next invoice (EUR 1,240.00, with its own live quote) runs without a
+//      signature under the new rule, or still waits for one. Then three ways on.
+// The test world opens when the page is shown (Max, 7 Nov) and the agents start at once, so their steps are mostly done
+// by the time the visitor reaches screen 1; per world, one reading, one advice and two quotes. The page's API is
+// worker/src/trySign.ts.
 // One inline script and one inline style, hashed into the CSP like the other public pages; everything it shows from the
 // server goes in as text, never as markup.
 
@@ -27,7 +31,8 @@ import { agentName } from "../config/brand.js";
 import { ALONE_CHOICES, ALONE_PER_DAY, defaultPolicy, exposurePolicyOfWorld, FIELD_WORDS, PAID_ALONE, POLICY_CURRENCIES, POLICY_FIELDS, POLICY_MCCS, STEP0_CHAIN } from "./policy.js";
 import { worstCaseWords, worstCaseWordsOf } from "../policy/exposureSources.js";
 import { EXPOSURE_HOW, exposureOf } from "../policy/exposure.js";
-import { FIXED_PROPOSALS, NEXT_INVOICE, TEST_WORLD } from "../../worker/src/trySign.js";
+import { AGENT_STEPS, FIXED_PROPOSALS, NEXT_INVOICE, TEST_WORLD, type AgentStep } from "../../worker/src/trySign.js";
+import { CODE_LABEL } from "../../worker/src/agentLine.js";
 import { ATTACKS, TRICKS } from "../../worker/src/trick.js";
 
 /** The feature flag, read where the bundle is built: on, the page, its API and the links to it are in the bundle. */
@@ -52,6 +57,17 @@ export const TRY_SIGN_SCREENS = {
     terms: "Show the exact terms",
     other: "Just now, Purser's lock stopped another payment.",
     opening: "Opening your test world…",
+    /** The fold with the agents' steps, calls and plan (Max, 7 Nov). */
+    did: "What the agents did",
+    /** Each step while it runs: who works on what (no spinner). */
+    pending: {
+      read: ["Claude Sonnet", "is reading Alpine Packaging's invoice…"],
+      check: ["Purser's code", "is checking the reading…"],
+      quote: ["Airwallex sandbox", "is quoting what Purser's code plans to convert…"],
+      advise: ["Claude Opus", "is advising on the timing…"],
+      ready: ["Purser's code", "is writing the terms…"],
+    },
+    ready: "The exact terms are ready to sign.",
   },
   signed: {
     head: "Signed and verified.",
@@ -74,7 +90,7 @@ export const TRY_SIGN_SCREENS = {
     head: "Try to trick the agent.",
     lead: "Send your agent a fake invoice",
     /** Max, 7 Nov: true whether the agent was fooled or not. */
-    decides: "Purser's code checks it either way.",
+    decides: "Purser's code checks it.",
     did: "What the agent did",
     next: "Next: change the rule",
   },
@@ -112,7 +128,9 @@ export const mainRunWorst = (): string => `The main run's worst case is ${README
 
 /** The other invoice the page shows on screen 5, as the server's test world has it (worker/src/trySign.ts). */
 const NEXT = { id: NEXT_INVOICE.id, amount: NEXT_INVOICE.amount, payee: NEXT_INVOICE.payee, reference: NEXT_INVOICE.reference };
-/** The payment that waits on screen 1 (T-0002), for the page's first paint before the world answers. */
+/** Who does each of the agents' steps, by its icon: the reader agent, Purser's code, Airwallex, the Treasury agent, the terms. */
+const STEP_ICONS: Record<AgentStep, string> = { read: "bot", check: "shield-check", quote: "arrow-left-right", advise: "landmark", ready: "scan-face" };
+/** The payment that waits on screen 1 (T-0002), by its id. */
 const WAITING = FIXED_PROPOSALS.find((p) => p.id === "T-0002")!;
 
 /** The last line after a refused tamper: one cent off the amount, or any other single change (Max, 6 Nov). */
@@ -126,14 +144,6 @@ export const TRY_SIGN_END = [
 ] as const;
 /** Under them, as a text link. */
 export const TRY_SIGN_FILM = { label: "Watch the film", href: FILM_URL } as const;
-
-/** Why the Treasury agent's sentence is the fixed one, as its pill says it, by the reason the server gives (worker/src/agentLine.ts). */
-export const VOICE_LABELS = {
-  off: "fixed text (live model switched off)",
-  budget: "fixed text (budget reached)",
-  mismatch: "fixed text (sentence did not match the terms)",
-  unavailable: "fixed text (model unavailable)",
-} as const;
 
 /** Screen 4's full policy, behind "Show all fields and what Purser sends" (#71, Max's item 1): its words, word for word. */
 export const TRY_POLICY = {
@@ -181,19 +191,21 @@ export const WHATS_REAL = {
     "No payment or conversion at Airwallex, no Metal call, and no money moves: the executor is a stand-in that only records in your test world.",
     "The blocked payment and the lock that stops it are a simulation in your test world. The three examples it links to are real, each from the run it names.",
     "The rule and the policy: your test world's CFO policy and the three locks made of it (Purser's rule, the Airwallex card controls, the Metal mandate's terms), computed by Purser's own code and sent nowhere: nothing reaches Airwallex or Metal. As in Purser, a looser policy needs your passkey's signature and a stricter one applies at once.",
-    "Once you have signed, the Treasury agent's next invoice arrives in your test world: fixed text, EUR 1,850.00, with no quote and no model call. If you raise what the agent may pay alone to that amount or more and sign it, the invoice runs without your signature, by the same stand-in, labelled “" + PAID_ALONE + "”.",
+    "Your test world holds EUR 26,000.00 (floor EUR 25,000.00) and USD 8,000.00 (floor USD 3,000.00). The stand-in converts at the quote and charges no SWIFT fee; the EUR 20.00 fee ceiling code reserves stays in the balance.",
+    "Once you have signed, the Treasury agent's next invoice arrives in your test world: fixed text, EUR 1,240.00, with a live quote of its own for the EUR it is short and no model call. If you raise what the agent may pay alone to that amount or more and sign it, the invoice runs without your signature, by the same stand-in, labelled “" + PAID_ALONE + "”.",
   ],
   real: [
     "Your device's passkey signature over the SHA-256 of the exact terms, and the server's check of it against the public key your device registered (the same verifier as the CFO's passkey sign-in).",
     "The tamper: the server checks your changed terms against the same signature, for real, and refuses them.",
-    "The Treasury agent's sentence on the waiting payment is a live Claude Haiku call, labelled “Claude Haiku · live”: only the test world's invoice, balance, reserve floor and limit go in, never anything you type. The model only proposes; the limits, the checks and the approval are code and your passkey. Code checks every amount in its sentence against the amounts it was given, written exactly as given. Without it (no key on the server, the day's USD 1 budget or the rate limit reached, no answer in 8 s, or a sentence that does not match the terms) the fixed sentence is shown, labelled “fixed text”. An emergency switch on the server (TRY_SIGN_HAIKU=off) stops the call; the fixed sentence is then shown, labelled “fixed text (live model switched off)”.",
-    "The FX quote is live from the Airwallex sandbox (a test environment): read-only, nothing is converted, no money moves. It is in the terms, so the signature covers its quote id, and an expired quote is refused. Without a live quote (no sandbox key on the server, or the limit reached) the page shows the main run's recorded quote instead, labelled, and it is not in the signature.",
+    "The agents on the waiting payment are live: Claude Sonnet, the runner's invoice reader, reads Alpine Packaging's invoice (a document written by code), labelled “Claude Sonnet · live · invoice reader”; Purser's code checks the reading against the invoice's own lines, the payee against the allowlist and the amount against the limit, and plans the payment as Purser does (the invoice plus the EUR 20.00 fee ceiling, converting only what is short); Claude Opus, the runner's Treasury agent, advises paying now or waiting, labelled “Claude Opus · live · treasury advice”. Only the invoice and the test world's facts go in, never anything you type. No model sets an amount, a payee, the conversion or the plan: the terms come from the checked reading, and code checks every amount in Opus's reason against its own numbers.",
+    "Limits: USD 10 a day for every live agent on this page together, a few calls a minute, 8 s a call. When a live agent is unavailable, the page shows a recorded real answer of the same agent, labelled “recorded: the live agent was unavailable” with the reason, and checked by code like a live one; without a recording, code's reading or a fixed sentence, labelled with the reason. An emergency switch on the server (TRY_SIGN_AGENTS=off) stops every live agent call; the labels then say so.",
+    "The FX quotes are live from the Airwallex sandbox (a test environment): read-only, nothing is converted, no money moves; two per world, one for each invoice's shortfall. A quote is in the terms, so the signature covers its quote id, and an expired quote is refused. Without a live quote (no sandbox key on the server, or the limit reached) the page shows the main run's recorded quote instead, labelled, and it is not in the signature.",
     "The receipt: receipt.json holds the exact terms, their hash, your passkey's signature, its public key and the algorithm. Anyone can check it offline, with no server: npm run verify-receipt -- receipt.json in the repository. Change one field or one cent and it fails. It proves that the holder of that key signed those terms, not who holds it.",
   ],
   limits: [
     "The server checks no attestation, so it cannot tell which authenticator made the key, and a key made in software would verify too: Face ID is what your device asks for, not something the server proves.",
     "This world, its passkey and its proposals live in their own store, apart from Northwind's: a test passkey is enrolled nowhere else, so it can never approve a real proposal or sign in to the CFO's pages.",
-    "Your test world opens when this page is shown, so the agent's sentence and the live quote are there at once: one quote and one model call per world, within the limits per address and for everyone.",
+    "Your test world opens when this page is shown and the agents start at once, one step per request, each step a real answer from the server: one reading, one advice and two quotes per world, within the limits per address and for everyone.",
   ],
   sources: [
     "The test world: worker/src/trySign.ts; nothing in it is recorded anywhere else. The locks' real examples: docs/demo/main-run.json and docs/runs/visa-tap-live-2026-11-02.json.",
@@ -257,7 +269,31 @@ details.more > p { margin: 4px 0 0; }
 .who .av { width: 32px; height: 32px; background: var(--a-treasury); color: #fff; }
 .who .av .i { width: 17px; height: 17px; }
 .says { font-size: 17px; line-height: 1.45; margin: 0; }
-.says::before { content: "“"; } .says::after { content: "”"; }
+/* The agent's own words as they are: no quote marks around them (Max's review). */
+/* Screen 1: the agents' steps, each one a real answer from the server; the fields fade in as they arrive. */
+ol.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.st { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; align-items: start; }
+.st > * { min-width: 0; }
+.st .sic { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--sunken); color: var(--muted); }
+.st.done .sic { background: var(--accent-soft); color: var(--accent); }
+.st.waiting { opacity: .5; }
+.st .sl { margin: 0; font-size: 15.5px; line-height: 1.4; overflow-wrap: anywhere; }
+.st .sl .pill { margin-left: 4px; font-size: 12.5px; padding: 1px 8px; white-space: normal; }
+.st.pending .sw, .st.waiting .sw { color: var(--muted); }
+.st .sd { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 4px; font-size: 14.5px; }
+.st .sd:empty { display: none; }
+.st .fld { padding: 2px 8px; border-radius: 999px; background: var(--sunken); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; animation: fin .35s ease both; }
+.st .fld:nth-child(2) { animation-delay: .12s; } .st .fld:nth-child(3) { animation-delay: .24s; } .st .fld:nth-child(4) { animation-delay: .36s; } .st .fld:nth-child(5) { animation-delay: .48s; } .st .fld:nth-child(6) { animation-delay: .6s; }
+@keyframes fin { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .st .fld { animation: none; } }
+/* Once folded under "What the agents did", the fields stay as they are: opening the fold does not reveal them again. */
+ol.steps.settled .fld { animation: none; }
+ul.ticks { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; flex-basis: 100%; }
+ul.ticks li { display: flex; gap: 6px; align-items: flex-start; overflow-wrap: anywhere; } ul.ticks li .i { flex: none; margin-top: 2px; color: var(--ok); } ul.ticks li.bad .i { color: var(--bad); }
+.advice { margin: 0; font-weight: 650; font-size: 15.5px; color: var(--muted); }
+.pay[hidden], .ask[hidden], details.fold[hidden], ol.steps[hidden] { display: none; }
+#s1-did ul.calls { list-style: none; padding: 0; margin: 0; } #s1-did ul.calls li { overflow-wrap: anywhere; margin-top: 6px; }
+#s1-did .fbody > * { min-width: 0; overflow-wrap: anywhere; margin: 0; }
 .ask { display: grid; gap: 8px; padding: 14px 16px; border-radius: 16px; background: var(--sunken); }
 .ask > * { min-width: 0; }
 .pay { display: grid; gap: 4px; }
@@ -337,7 +373,7 @@ table.diff tr.chg td:last-child { color: var(--bad); }
 /* 1.3: the fake invoice, the fooled agent, the verdict (code's), the lesson. */
 .tricked { display: grid; gap: 10px; padding: 14px 16px; border-radius: 16px; background: var(--bad-soft); }
 .tricked .doc { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--surface); border: 1px dashed var(--border); font: 500 13.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
-.tricked .fooled { margin: 0; font-size: 16px; } .tricked .fooled q { font-style: italic; }
+.tricked .fooled { margin: 0; font-size: 16px; } .tricked .fooled #k-says { font-style: italic; }
 .pill.live { background: var(--ok-soft, var(--accent-soft)); color: var(--text); font-weight: 700; }
 .tricked ul.calls { list-style: none; padding: 0; } .tricked ul.calls li { overflow-wrap: anywhere; margin-top: 6px; }
 .tricked .lesson { margin: 0; font-weight: 750; font-size: 17px; }
@@ -568,9 +604,10 @@ const JS = `
     status("q-status", "Quote expired. Get a fresh one and sign again.", "bad");
   }
 
-  // ── Screen 1: the world opens when the page is shown; the agent's request, and one button. ──
+  // ── Screen 1: the world opens when the page is shown; the agents' steps; the agent's request, and one button. ──
   function openWorld() {
-    if (S.opening || S.world) return;
+    if (S.opening) return;
+    if (S.world) { runAgents(); return; }
     S.opening = true;
     $("go-retry").hidden = true; $("go-sign").hidden = false; $("go-sign").disabled = true;
     status("w-status", W.ask.opening);
@@ -583,14 +620,95 @@ const JS = `
       }
       S.token = r.data.world.token; S.world = r.data.world; S.options = r.data.passkey_options;
       $("w-id").textContent = S.world.id;
-      worldFacts({ balance: S.world.balance, reserve_floor: S.world.reserve_floor, alone_limit: S.world.alone_limit });
+      worldFacts(S.world);
       S.timer = setInterval(tick, 1000);
-      S.fx = r.data.fx;
       policyState(r.data); fillForm(); inForceView();
-      return showProposals(r.data.proposals).then(function () { tick(); status("w-status", ""); });
+      return showProposals(r.data.proposals).then(function () { tick(); status("w-status", ""); runAgents(); });
     });
   }
   $("go-retry").addEventListener("click", openWorld);
+
+  // The agents' steps (spec 6b): one request per step, in order; each step drawn from the server's own answer. While a
+  // step runs elsewhere the server says "busy" and the page asks again in a moment.
+  function stepRow(name) { return $("st-" + name); }
+  function stepWho(row, who, label, live) {
+    var b = el("b", "", [who]);
+    var kids = [b, " "];
+    if (label) { var pl = el("span", "pill" + (live ? " live" : ""), [label]); pl.dataset.label = "1"; kids.push(pl); }
+    row.querySelector(".sl").replaceChildren.apply(row.querySelector(".sl"), kids);
+  }
+  function fld(text) { return el("span", "fld", [text]); }
+  function day(iso) { var m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(iso || ""); return m ? Number(m[3]) + " " + ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][Number(m[2]) - 1] : iso; }
+  function adviceWords(a) {
+    var m = /^wait_until (\\d{4}-\\d{2}-\\d{2})$/.exec(a || "");
+    return a === "pay_now" ? "Advice: pay now" : m ? "Advice: wait until " + day(m[1]) + " — you decide" : null;
+  }
+  function drawStep(name, r) {
+    var row = stepRow(name), sd = row.querySelector(".sd");
+    row.className = "st done"; row.dataset.state = "done";
+    if (name === "read") {
+      stepWho(row, "Read", r.by, r.source === "live");
+      var f = r.fields;
+      sd.replaceChildren(fld(f.vendor), fld(amt(f.currency, f.amount)), fld("IBAN …" + String(f.iban).slice(-4)), fld(f.invoice_no), fld("due " + day(f.due_date)));
+    } else if (name === "check") {
+      stepWho(row, D.codeLabel, null, false);
+      sd.replaceChildren(el("ul", "ticks", r.ticks.map(function (t) { var li = el("li", t.ok ? "ok" : "bad", [ic(t.ok ? "check" : "octagon-x"), t.label]); li.dataset.tick = t.id; return li; })));
+    } else if (name === "quote") {
+      stepWho(row, r.fx && r.fx.status !== "unavailable" ? "Quote" : D.codeLabel, r.fx && r.fx.status !== "unavailable" ? r.by : null, false);
+      var q = r.fx && r.fx.status !== "unavailable" ? r.fx.quote : null;
+      S.fx = r.fx || null; S.agentsPlan = r.plan_words || "";
+      sd.replaceChildren.apply(sd, r.skipped ? [fld("Not planned: the invoice is blocked.")] : r.no_fx ? [fld("No FX needed.")]
+        : [fld(amt(q ? q.buy_currency : "EUR", r.plan.buy) + (q ? " for " + amt(q.sell_currency, q.sell_amount) : " short")), fld(q ? "quote " + q.quote_id.slice(0, 8) + "…" : "no live quote")]);
+    } else if (name === "advise") {
+      stepWho(row, "Advice", r.label || r.by, r.source === "live");
+      sd.replaceChildren(fld(adviceWords(r.advice) || "No advice"));
+    } else if (name === "ready") {
+      stepWho(row, D.codeLabel, null, false);
+      sd.replaceChildren(fld(W.ask.ready));
+    }
+    var next = row.nextElementSibling;
+    if (next) { next.className = "st pending"; next.dataset.state = "pending"; }
+  }
+  function runAgents() {
+    if (S.agentsBusy || S.agentsDone || !S.token) return;
+    S.agentsBusy = true;
+    $("go-retry").hidden = true;
+    (function next() {
+      post("agents", { token: S.token }).then(function (r) {
+        if (r.status === 409 && r.data.busy) { setTimeout(next, 700); return; }
+        if (r.status !== 200) {
+          S.agentsBusy = false;
+          status("w-status", "The agents stopped: " + (r.data.error || ("error " + r.status)) + ".", "bad");
+          $("go-sign").hidden = true; $("go-retry").hidden = false; $("go-retry").disabled = false;
+          return;
+        }
+        drawStep(r.data.step, r.data.result);
+        if (r.data.step !== "ready") { next(); return; }
+        S.agentsBusy = false; S.agentsDone = true; S.agents = r.data.agents;
+        policyState(r.data); worldFacts(r.data.world); fillForm(); inForceView();
+        agentsFold(r.data.agents);
+        showProposals(r.data.proposals);
+      });
+    })();
+  }
+  // "What the agents did": the steps (moved into the fold), each call with its model, time and request id, the plan in
+  // code's words and what the reader read.
+  function agentsFold(a) {
+    var body = $("s1-did-body");
+    $("s1-steps").classList.add("settled");
+    body.insertBefore($("s1-steps"), body.firstChild);
+    $("s1-calls").replaceChildren.apply($("s1-calls"), a.calls.map(function (c) {
+      return el("li", "", [el("b", "", [c.step]), " · " + (c.model || D.codeLabel) + (c.ms != null ? " · " + (c.ms / 1000).toFixed(1) + " s" : "") + (c.request_id ? " · " + c.request_id : ""), el("br", "", []), c.input + " → " + c.output]);
+    }));
+    var plan = S.agentsPlan || "";
+    $("s1-plan").textContent = plan;
+    var rd = a.reading;
+    if (rd) {
+      var who = rd.source === "live" ? (/^stand-in/.test(rd.label) ? "The stand-in" : "Claude Sonnet") : rd.source === "recorded" ? "Claude Sonnet (recorded)" : D.codeLabel;
+      $("s1-read").textContent = who + " read: Pay " + amt(rd.currency, rd.amount) + " to " + rd.vendor + ", IBAN …" + String(rd.iban).slice(-4) + "." + (rd.note ? " " + rd.note + "." : "");
+    }
+    $("s1-did").hidden = false;
+  }
 
   function makePasskey() {
     var o = S.options;
@@ -609,15 +727,12 @@ const JS = `
     }, function (e) { return { ok: false, again: true, msg: passkeyError(e) }; });
   }
 
-  // Who wrote the agent's sentence: Claude Haiku live, a labelled stand-in (local checks only), or the fixed text and why.
-  function voiceLabel(v) {
-    if (v && v.source === "model") return /^claude-haiku/.test(v.model) ? "Claude Haiku · live" : "stand-in, not Claude";
-    if (v) return D.voiceLabels[v.reason] || D.voiceLabels.unavailable;
-    return "fixed text, no model call";
-  }
+  // Who wrote the agent's sentence: Claude Opus live, a labelled stand-in (local checks only), its recording, or the
+  // fixed text, each with why, as the server labels it.
+  function voiceLabel(v) { return v ? v.label : "fixed text, no model call"; }
   function agentLine(p) {
-    var pill = el("span", "pill", [voiceLabel(p.voice)]);
-    pill.dataset.voice = p.voice ? (p.voice.source === "model" ? "model" : "fixed-" + p.voice.reason) : "fixed";
+    var pill = el("span", "pill" + (p.voice && p.voice.source === "live" ? " live" : ""), [voiceLabel(p.voice)]);
+    pill.dataset.voice = p.voice ? p.voice.source : "fixed";
     return el("div", "who", [el("span", "av", [ic("landmark")]), p.agent, pill]);
   }
   // On screen 1 the heading names the agent: its avatar and who wrote the sentence only.
@@ -630,7 +745,8 @@ const JS = `
   function voiceMore(p) {
     var v = p.voice;
     if (!v) return null;
-    if (v.source === "model") return more("Request id " + (v.request_id || "none") + " (" + v.model + "). The model was given only this test world's invoice, balance, reserve floor and limit, never your words. It only proposes: the limits, the checks and the approval are code and your passkey.");
+    if (v.source === "live") return more("Request id " + (v.request_id || "none") + " (" + v.model + "). The agent was given only the invoice and this test world's balances, floors, plan and quote, never your words. It only advises: the amounts, the checks and the approval are code and your passkey.");
+    if (v.source === "recorded") return more("A recorded real answer (request id " + (v.request_id || "none") + ", " + v.model + "), checked by code like a live one. Shown because: " + v.why + ".");
     return more("The fixed sentence: " + v.why + ".");
   }
   function factsOf(p, t) {
@@ -659,7 +775,9 @@ const JS = `
       return sha256(canon(terms)).then(function (h) { return { p: p, terms: terms, mine: h, same: canon(terms) === p.canonical && h === p.terms_sha256 }; });
     })).then(function (rows) {
       S.rows = rows;
-      if (!S.firstCheck) { S.firstCheck = {}; rows.forEach(function (x) { S.firstCheck[x.p.proposal_id] = x.p.check; }); }
+      // Each payment's check as it was first seen (T-0002 arrives with the agents' last step, T-0003 after signing).
+      if (!S.firstCheck) S.firstCheck = {};
+      rows.forEach(function (x) { if (!(x.p.proposal_id in S.firstCheck)) S.firstCheck[x.p.proposal_id] = x.p.check; });
       var t2 = rows.filter(function (x) { return x.p.proposal_id === D.waiting; })[0];
       if (t2 && !S.signed) drawAsk(t2);
       var t1 = rows.filter(function (x) { return x.p.proposal_id === D.blocked; })[0];
@@ -671,7 +789,11 @@ const JS = `
   function drawAsk(x) {
     S.x = x;
     var p = x.p, t = x.terms;
-    $("s1-ask").replaceChildren(askLine(p), el("p", "says", [p.says]));
+    var adv = adviceWords(t.agent_advice);
+    var advice = adv ? el("p", "advice", [adv]) : null;
+    if (advice) advice.id = "s1-advice";
+    $("s1-ask").replaceChildren(askLine(p), el("p", "says", [p.says]), advice);
+    $("s1-ask").hidden = false; $("s1-pay").hidden = false; $("s1-terms").hidden = false;
     // One line: the payee as a person reads it (the terms behind "Show the exact terms" name it in full, "(test payee)").
     $("s1-to").replaceChildren(t.payee.replace(/ \\(test payee\\)$/, "") + " · ", el("span", "nw", [t.reference.replace(/^Invoice /, "")]));
     $("s1-amt").textContent = amt(t.currency, t.amount);
@@ -720,6 +842,7 @@ const JS = `
       S.quoteGone = false;
       if (r.data.paid_alone && r.data.paid_alone.length) { policyState(r.data); worldFacts(r.data.world); S.base = renderLocks(S.locks[S.agent], false, S.base); }
       var p = r.data.proposal, terms = JSON.parse(p.canonical);
+      if (p.proposal_id !== D.waiting) { status("q-status", "A new quote for " + p.proposal_id + ": new terms.", "ok"); btn.hidden = true; return; }
       return sha256(canon(terms)).then(function (h) {
         drawAsk({ p: p, terms: terms, mine: h, same: canon(terms) === p.canonical && h === p.terms_sha256 });
         tick();
@@ -815,7 +938,7 @@ const JS = `
     $("r-hash").replaceChildren(hashBox(d.terms_sha256));
     $("r-checks").replaceChildren(el("span", "small muted", ["Checked by the server with the relay's passkey verifier."]), more("Checked: " + d.checks.join(", ") + "."));
     var e = d.executed;
-    $("r-exec").replaceChildren(el("span", "small muted", [eur(e.amount) + " to " + e.payee.replace(/ \\(test payee\\)$/, "") + "."]), more("Test transfer " + e.id + ": " + eur(e.amount) + " to " + e.payee + ". Test balance now " + eur(e.balance_after) + ". By the " + e.by + "."));
+    $("r-exec").replaceChildren(el("span", "small muted", [eur(e.amount) + " to " + e.payee.replace(/ \\(test payee\\)$/, "") + "."]), more("Test transfer " + e.id + ": " + eur(e.amount) + " to " + e.payee + (e.fx_bought ? ", after converting " + eur(e.fx_bought) + " for " + amt("USD", e.fx_sold) : "") + ". Test balances now " + eur(e.balance_after) + " and " + amt("USD", e.usd_after) + ". " + (e.fee ? e.fee + " " : "") + "By the " + e.by + "."));
     // The receipt to /try/verify in the link's #fragment, which a browser never sends to a server.
     $("r-verify").href = "/try/verify#receipt=" + toB64u(new TextEncoder().encode(JSON.stringify(receipt())));
     resetTamper();
@@ -1054,6 +1177,7 @@ const JS = `
   function worldFacts(w) {
     if (!w) return;
     $("w-balance").textContent = eur(w.balance); $("w-floor").textContent = eur(w.reserve_floor); $("w-alone").textContent = eur(w.alone_limit);
+    if (w.usd_balance) { $("w-usd").textContent = amt("USD", w.usd_balance); $("w-usd-floor").textContent = amt("USD", w.usd_floor); }
   }
   function inForceView() { S.pending = null; $("p-refused").hidden = true; $("p-expo-next").hidden = true; S.base = renderLocks(S.locks[S.agent], false); }
 
@@ -1343,7 +1467,6 @@ const JS = `
 const li = (lines: readonly string[]) => lines.map((l) => `<li>${esc(l)}</li>`).join("");
 /** €2,000 for 2000.00, as the rule's chips and lines write it. */
 const euro = (s: string) => { const [i, c] = s.split("."); return `€${i!.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}${c && c !== "00" ? `.${c}` : ""}`; };
-const money = (cur: string, s: string) => { const [i, c] = s.split("."); return `${cur} ${i!.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}.${c ?? "00"}`; };
 
 /** The page, its links and assets absolute (it answers at /try/sign, one level down). */
 export function trySignPage(): string {
@@ -1357,10 +1480,12 @@ export function trySignPage(): string {
 ${scr(0, `  <h1 tabindex="-1" id="s0-head">${esc(W.intro.head)}</h1>
   <div class="bar"><button class="btn primary big" type="button" id="go-start">${esc(W.intro.start)}${icon("arrow-right", 20)}</button></div>`)}
 ${scr(1, `  <h2 tabindex="-1" id="s1-head">${esc(W.ask.head)}</h2>
-  <div class="ask" id="s1-ask"><div class="skel w60"></div><div class="skel"></div><div class="skel w80"></div></div>
-  <div class="pay"><p class="to" id="s1-to">${esc(WAITING.payee.replace(/ \(test payee\)$/, ""))} · <span class="nw">${esc(WAITING.reference.replace(/^Invoice /, ""))}</span></p><p class="amt"><span id="s1-amt">${esc(money(TEST_WORLD.currency, WAITING.amount))}</span><span class="fx" id="s1-fx"><span class="skel inl"></span></span></p></div>
+  <ol class="steps" id="s1-steps" aria-live="polite" aria-label="What the agents do">${AGENT_STEPS.map((n, i) => `<li class="st ${i === 0 ? "pending" : "waiting"}" id="st-${n}" data-step="${n}" data-state="${i === 0 ? "pending" : "waiting"}"><span class="sic">${icon(STEP_ICONS[n], 18)}</span><div><p class="sl"><b>${esc(W.ask.pending[n][0])}</b> <span class="sw">${esc(W.ask.pending[n][1])}</span></p><div class="sd"></div></div></li>`).join("")}</ol>
+  <div class="ask" id="s1-ask" hidden></div>
+  <div class="pay" id="s1-pay" hidden><p class="to" id="s1-to"></p><p class="amt"><span id="s1-amt"></span><span class="fx" id="s1-fx"></span></p></div>
   <p class="status" id="w-status" aria-live="polite"></p>
-  <details class="fold" id="s1-terms"><summary>${esc(W.ask.terms)}</summary><div class="fbody" id="s1-terms-body"></div></details>
+  <details class="fold" id="s1-did" hidden><summary>${esc(W.ask.did)}</summary><div class="fbody" id="s1-did-body"><ul class="small calls" id="s1-calls"></ul><p class="small" id="s1-plan"></p><p class="small" id="s1-read"></p></div></details>
+  <details class="fold" id="s1-terms" hidden><summary>${esc(W.ask.terms)}</summary><div class="fbody" id="s1-terms-body"></div></details>
   <details class="fold quiet" id="s1-other"><summary>${esc(W.ask.other)}</summary><div class="fbody" id="s1-blocked"></div></details>
   <p class="status" id="s1-status" aria-live="polite"></p>
   <p class="status" id="q-status" aria-live="polite"></p>
@@ -1401,7 +1526,7 @@ ${scr(4, `  <h2 tabindex="-1" id="k-head">${esc(W.trick.head)}</h2>
   <p class="status" id="k2-status" aria-live="polite"></p>
   <div class="tricked" id="k-result" hidden aria-live="polite">
     <p class="doc" id="k-doc"></p>
-    <p class="fooled"><span class="pill said-before" id="k-label"></span> <q id="k-says"></q></p>
+    <p class="fooled"><span class="pill said-before" id="k-label"></span> <span id="k-says"></span></p>
     <p class="small muted">${esc(W.trick.decides)}</p>
     <p class="outcome" id="k-out"></p>
     <p class="lesson" id="k-lesson"></p>
@@ -1417,7 +1542,7 @@ ${scr(5, `  <h2 tabindex="-1" id="s4-head">${esc(W.rule.head)}</h2>
   <p class="note" id="s4-note" aria-live="polite"></p>
   <p class="status" id="s4-status" aria-live="polite"></p>
   <details class="fold quiet policy" id="policy"><summary id="p-open">${esc(TRY_POLICY.open)}</summary><div class="fbody pbody" id="p-body">
-    <dl class="world" id="w-facts"><div><dt>Test world</dt><dd id="w-id"></dd></div><div><dt>Balance</dt><dd id="w-balance"></dd></div><div><dt>Reserve floor</dt><dd id="w-floor"></dd></div><div><dt>An agent pays alone up to</dt><dd id="w-alone"></dd></div><div><dt>Deleted</dt><dd id="w-left" data-left="in"></dd></div></dl>
+    <dl class="world" id="w-facts"><div><dt>Test world</dt><dd id="w-id"></dd></div><div><dt>EUR</dt><dd id="w-balance"></dd></div><div><dt>EUR floor</dt><dd id="w-floor"></dd></div><div><dt>USD</dt><dd id="w-usd"></dd></div><div><dt>USD floor</dt><dd id="w-usd-floor"></dd></div><div><dt>An agent pays alone up to</dt><dd id="w-alone"></dd></div><div><dt>Deleted</dt><dd id="w-left" data-left="in"></dd></div></dl>
     <div class="phead"><span class="pt"><b id="p-head">${esc(TRY_POLICY.title)}</b><small>${esc(TRY_POLICY.lead)}</small></span></div>
     <div class="pexpo" id="p-expo" aria-live="polite"><p class="hl" id="p-expo-head">${esc(START_WORST.headline)}</p><p class="small" id="p-expo-tasks">${esc(START_WORST.tasks)}</p><p class="small">${esc(START_WORST.above)}</p><p class="small" id="p-expo-next" hidden></p><details class="how"><summary>${esc(EXPOSURE_HOW)}</summary><ul id="p-expo-how">${[...START_WORST.how, TRY_POLICY.worstCaseChain].map((l) => `<li>${esc(l)}</li>`).join("")}</ul></details></div>
     <div class="ptop"><label>Agent<select id="p-agent" data-world="1">${AGENTS.map((a) => `<option value="${esc(a)}">${esc(agentName(a))}</option>`).join("")}</select></label><span class="pill" id="p-ver"></span></div>
@@ -1473,13 +1598,13 @@ ${scr(7, `  <h2 tabindex="-1" id="d-head">${esc(W.done.head)}</h2>
   const html = page({
     title: "Sign with your own Face ID", description: "Try it yourself in 60 seconds: an agent asks to pay, you sign the exact terms with Face ID, try to cheat, change the rule, and see the agent pay alone. A test world of your own; nothing real moves.",
     tab: "try", css: CSS + DIAGRAM_STEPS, body, js: JS, stage: false,
-    data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check", "check", "lock", "external-link", "arrow-right", "receipt"]), locks, cfo: cfoApproval().line, fields: TAMPER_FIELDS, verdict: TAMPER_VERDICT, receipt: RECEIPT_FORMAT, recordedFx: recordedQuote(), end: TRY_SIGN_END, film: TRY_SIGN_FILM, voiceLabels: VOICE_LABELS,
+    data: { icons: iconSet(["landmark", "octagon-x", "clock", "scan-face", "triangle-alert", "circle-check", "check", "lock", "external-link", "arrow-right", "receipt", "bot", "shield-check", "arrow-left-right"]), locks, cfo: cfoApproval().line, fields: TAMPER_FIELDS, verdict: TAMPER_VERDICT, receipt: RECEIPT_FORMAT, recordedFx: recordedQuote(), end: TRY_SIGN_END, film: TRY_SIGN_FILM, codeLabel: CODE_LABEL,
       steps: TRY_SIGN_STEPS, screens: TRY_SIGN_SCREENS, perDay: ALONE_PER_DAY, waiting: WAITING.id, blocked: FIXED_PROPOSALS.find((p) => p.id !== WAITING.id)!.id, next: NEXT, otherIban: OTHER_IBAN,
       policy: { fields: POLICY_FIELDS, words: FIELD_WORDS, state: TRY_POLICY.state, paidAlone: PAID_ALONE, worstCase: TRY_POLICY.worstCase, saidBefore: TRY_POLICY.saidBefore, worstCaseChain: TRY_POLICY.worstCaseChain, ifSigned: TRY_POLICY.ifSigned } },
     source: "Source: a test world made for you (worker/src/trySign.ts); nothing in it is recorded anywhere else. The lock examples: docs/demo/main-run.json and docs/runs/visa-tap-live-2026-11-02.json.",
     real: [
       "A test world made for you, deleted after one hour: a test copy of Northwind Outdoor; its balance, payees, IBANs and the agent's proposals are test data.",
-      "No payment or conversion at Airwallex, no Metal call, and no money moves: the executor only records, in your test world. The Treasury agent's sentence may come from Claude Haiku, given the test world's facts only; it only proposes.",
+      "No payment or conversion at Airwallex, no Metal call, and no money moves: the executor only records, in your test world. Claude Sonnet reads the invoice and Claude Opus advises, given the invoice and the test world's facts only; the amounts and the checks are Purser's code.",
       "Real: your device's passkey signature over the hash of the exact terms, and the server's check of it against the public key your device registered.",
     ],
   }).replace("<body>\n", () => `<body>\n<div class="testband" role="note"><div class="row"><span class="tl">${icon("lock", 16)}${esc(TRY_SIGN_LABEL)}</span><details class="wr"><summary>What's real?</summary><div class="card wr-body">

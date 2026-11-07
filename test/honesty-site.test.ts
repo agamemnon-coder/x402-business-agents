@@ -108,7 +108,7 @@ describe("2. What's real?, on each page its own", () => {
   const real = (html: string) => words(/<details class="real"[^>]*>[\s\S]*?<\/details>/.exec(html)?.[0] ?? "");
   const MAIN = "Real Claude decisions, real Metal testnet and Airwallex sandbox calls";
 
-  it("/try/sign says what it is: a test world, no Airwallex payment or Metal call, no money, the agent's sentence from Haiku labelled; none of the main run's lines", () => {
+  it("/try/sign says what it is: a test world, no Airwallex payment or Metal call, no money, the live agents (Sonnet reads, Opus advises) labelled; none of the main run's lines", () => {
     // Its one "What's real?" is the expander under the disclaimer (6 Nov: the footer's copy is gone), found by position.
     const html = trySignPage(), a = html.indexOf('<details class="wr">');
     const r = words(html.slice(a, html.indexOf("</details>", a)));
@@ -116,7 +116,9 @@ describe("2. What's real?, on each page its own", () => {
     expect(html).not.toContain('<details class="real"');
     expect(r).toContain("No payment or conversion at Airwallex, no Metal call, and no money moves");
     expect(r).toContain("read-only, nothing is converted, no money moves");
-    expect(r).toContain("only the test world's invoice, balance, reserve floor and limit go in, never anything you type");
+    expect(r).toContain("Only the invoice and the test world's facts go in, never anything you type");
+    expect(r).toContain("No model sets an amount, a payee, the conversion or the plan");
+    expect(r).toContain("labelled “recorded: the live agent was unavailable” with the reason");
     expect(r).toContain("no money moves");
     for (const x of [MAIN, WORLD_SETUP, SECOND_APPROVER, "Ridgeline"]) expect({ x, has: r.includes(x) }).toEqual({ x, has: false });
   });
