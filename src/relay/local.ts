@@ -9,7 +9,7 @@ import type { AddressInfo } from "node:net";
 import { notFoundResponse, pageResponse, Relay, type Sql } from "../../worker/src/core.js";
 import { isTrySignPath, trySignNotFound, TrySignDesk } from "../../worker/src/trySign.js";
 import type { FxSource } from "../../worker/src/fxQuote.js";
-import type { SentenceSource } from "../try/claude.js";
+import type { InvoiceReadSource, SentenceSource } from "../try/claude.js";
 import { buildPages } from "./assets.js";
 
 /** The Durable Object's SQL call shape over better-sqlite3. */
@@ -24,11 +24,12 @@ export function sqlOver(db: Database.Database): Sql {
 }
 
 export async function startLocalRelay(opts: { port: number; token: string; /** /try/sign's FX quote source (the browser checks pass a stand-in; none: the recorded quote). */ trySignFx?: FxSource;
-  /** /try/sign's Treasury agent sentence (the browser checks pass a labelled stand-in; "off": the emergency switch; none: the fixed text). */ trySignLine?: SentenceSource | "off" }): Promise<{ server: Server; url: string; relay: Relay }> {
+  /** /try/sign's Treasury agent sentence (the browser checks pass a labelled stand-in; "off": the emergency switch; none: the fixed text). */ trySignLine?: SentenceSource | "off";
+  /** Section 6: /try/sign's invoice reader (the browser checks pass a labelled stand-in; none: code reads, labelled). */ trySignReader?: InvoiceReadSource | "off" }): Promise<{ server: Server; url: string; relay: Relay }> {
   const relay = new Relay(sqlOver(new Database(":memory:")), { relayToken: opts.token, mfa: mfaOn() });
   const pages = buildPages();
   // /try/sign's test worlds, as on the Worker: their own store (another in-memory database), only when the bundle has the page.
-  const trySign = pages.trySign ? new TrySignDesk(sqlOver(new Database(":memory:")), { fx: opts.trySignFx ?? null, agentLine: opts.trySignLine ?? null, rate: pages.exposureRate ?? null }) : null;
+  const trySign = pages.trySign ? new TrySignDesk(sqlOver(new Database(":memory:")), { fx: opts.trySignFx ?? null, agentLine: opts.trySignLine ?? null, reader: opts.trySignReader ?? null, rate: pages.exposureRate ?? null }) : null;
   let base = "";
   const server = createServer((req, res) => {
     const chunks: Buffer[] = [];

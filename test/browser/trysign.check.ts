@@ -44,6 +44,9 @@ const { StandInQuotes } = await import("../support/fxStandIn.js");
 const fxStandIn = new StandInQuotes();
 const { StandInLine } = await import("../support/lineStandIn.js");
 const lineStandIn = new StandInLine();
+// Section 6: the invoice reader's stand-in, as the line's: it reads the document's own lines, labelled "stand-in, not Claude".
+const { parseInvoiceFallback } = await import("../../src/claude/invoiceReading.js");
+const readerStandIn = async (doc: string) => ({ value: parseInvoiceFallback(doc), requestId: "req_standin_reader", costUsd: 0, model: "stand-in", ms: 300 });
 const { mainRunWorst, OTHER_IBAN, TAMPER_VERDICT, TRY_POLICY, TRY_SIGN_END, TRY_SIGN_LABEL, TRY_SIGN_SCREENS: W, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
 const { ALONE_PER_DAY, PAID_ALONE, defaultPolicy, exposurePolicyOfWorld, threeLocks } = await import("../../src/try/policy.js");
 // 1.1: the worst case, read from the policy code (src/policy/exposure.ts) with the main run's recorded rate.
@@ -83,7 +86,7 @@ if (args.base) {
   const { startLocalRelay } = await import("../../src/relay/local.js");
   // The FX quote from a labelled stand-in (no network in CI): it says "stand-in" wherever the page shows it.
   // The agent's sentence from a labelled stand-in too (no model call in CI): the page says "Stand-in sentence".
-  local = await startLocalRelay({ port: 0, token: "browser-check", trySignFx: fxStandIn, trySignLine: lineStandIn.source });
+  local = await startLocalRelay({ port: 0, token: "browser-check", trySignFx: fxStandIn, trySignLine: lineStandIn.source, trySignReader: readerStandIn });
 }
 const require = createRequire(import.meta.url);
 // Playwright is not a dependency of this repo; it comes with the environment (Chromium pre-installed).
@@ -594,13 +597,16 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   for (const attack of ATTACKS) {
     await page.click(`#trick-chips .chip[data-attack="${attack}"]`);
     await page.waitForFunction((a: string) => !document.getElementById("k-result")!.hidden && (document.getElementById("k-doc")!.textContent ?? "").includes(a === "lookalike" ? "Pakaging" : "Pre-approved"), attack);
-    await page.locator("#k-result details.more > summary").click();
+    await page.locator("#k-did > summary").click();
     const full = (await page.locator("#k-full").innerText()).trim();
-    await page.locator("#k-result details.more > summary").click();
-    const want = await runTrick(attack);
-    check((await page.locator("#k-out").innerText()).trim() === want.outcome && want.blocked && (await page.locator("#k-lesson").innerText()).trim() === "A prompt is not a control." && (await page.locator("#k-says").innerText()).includes(TRICKS[attack].agentSays)
-      && (await page.locator("#k-label").innerText()).trim() === want.agent_label && (await page.locator("#k-doc").innerText()).trim() === TRICKS[attack].shows && full === TRICKS[attack].text,
-      `${tag}: trick ${attack}: the invoice, the fooled agent (labelled), then "${want.outcome}" and "A prompt is not a control."`);
+    await page.locator("#k-did > summary").click();
+    const want = await runTrick(attack, await readerStandIn(TRICKS[attack].text));
+    check((await page.locator("#k-out").innerText()).trim() === want.outcome && want.blocked && (await page.locator("#k-lesson").innerText()).trim() === "A prompt is not a control." && (await page.locator("#k-says").innerText()).trim() === want.agent.read
+      && (await page.locator("#k-label").innerText()).trim() === "stand-in, not Claude" && (await page.locator("#k-doc").innerText()).trim() === TRICKS[attack].shows && full === TRICKS[attack].text,
+      `${tag}: trick ${attack}: the invoice, what the agent read (labelled), then "${want.outcome}" and "A prompt is not a control."`);
+    await page.locator("#k-did > summary").click();
+    check(/read_invoice · stand-in · 0\.3 s · req_standin_reader/.test(await page.locator("#k-calls").innerText()), `${tag}: trick ${attack}: "What the agent did" lists its call with model, time and request id`);
+    await page.locator("#k-did > summary").click();
     if (attack === "pre_approved") { await measure(page, tag, 4); await shot(page, `${tag}-4-trick.png`); }
   }
   await layout(page, tag, "screen 4", width);

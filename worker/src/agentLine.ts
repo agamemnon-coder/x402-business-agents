@@ -13,10 +13,10 @@
 // every amount in it must be one of the amounts it was given, written exactly as given (see amountsFit), else the
 // fixed sentence is shown, labelled "fixed text (sentence did not match the terms)".
 
-import { claudeSentence, type SentenceSource } from "../../src/try/claude.js";
+import { claudeReadInvoice, claudeSentence, type InvoiceReadSource, type SentenceSource } from "../../src/try/claude.js";
 
 /** Model spend allowed per UTC day for these sentences, in US dollars. */
-export const AGENT_LINE_DAILY_USD = 1;
+export const AGENT_LINE_DAILY_USD = 10;
 /** Sentences a minute from everyone together. */
 export const AGENT_LINE_ALL_PER_MINUTE = 10;
 /** Sentences an hour per address (as many as the test worlds it may open). */
@@ -39,6 +39,16 @@ export const agentLineSwitchedOff = (value: string | undefined) => (value ?? "")
  * Worker has its Anthropic key, else null (the fixed sentence); "off" when TRY_SIGN_HAIKU is "off" (the emergency
  * switch: no call at all). The desk is handed that function, never the key itself.
  */
+/**
+ * The live invoice reader (section 6), from the Worker's env the same way: Sonnet through the runner's reader when the
+ * Worker has its key, null without one, "off" under the same emergency switch (TRY_SIGN_HAIKU=off turns every live
+ * agent call off, Max 7 Nov). The desk is handed the function, never the key.
+ */
+export function invoiceReaderSource(env: { ANTHROPIC_API_KEY?: string; TRY_SIGN_HAIKU?: string }, fetcher: typeof fetch = fetch): InvoiceReadSource | "off" | null {
+  if (agentLineSwitchedOff(env.TRY_SIGN_HAIKU)) return "off";
+  return env.ANTHROPIC_API_KEY ? claudeReadInvoice(env.ANTHROPIC_API_KEY, fetcher, AGENT_LINE_TIMEOUT_MS) : null;
+}
+
 export function agentLineSource(env: { ANTHROPIC_API_KEY?: string; TRY_SIGN_HAIKU?: string }, fetcher: typeof fetch = fetch): SentenceSource | "off" | null {
   if (agentLineSwitchedOff(env.TRY_SIGN_HAIKU)) return "off";
   const model = env.ANTHROPIC_API_KEY;

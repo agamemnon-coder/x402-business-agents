@@ -1,5 +1,5 @@
 // /try/sign (A2): the Treasury agent's sentence on the waiting payment comes from a real Claude Haiku call, given the
-// test world only (invoice, balance, floor, limit), never a visitor's words; a budget of USD 1 a day, limits per minute
+// test world only (invoice, balance, floor, limit), never a visitor's words; a budget of USD 10 a day (for every live agent on the page), limits per minute
 // and per address, an 8 s timeout; otherwise the fixed sentence, labelled. The model only proposes: the checks, the
 // terms (but for who proposed) and the approval stay in code and the passkey. No network: Anthropic is a fake fetch.
 
@@ -156,7 +156,8 @@ describe("on the page: the model's sentence, labelled, or the fixed one, labelle
   it(`a budget of USD ${AGENT_LINE_DAILY_USD} a UTC day: once spent, "budget reached" and no call until the next day`, async () => {
     const line = new StandInLine();
     const { d, db, at } = deskWith(line);
-    db.prepare("INSERT INTO ts_spend (day, usd) VALUES (?, ?)").run(t0.toISOString().slice(0, 10), 0.999);
+    // The day's budget all but spent (USD 10 for every live agent on the page together since section 6, Max 7 Nov).
+    db.prepare("INSERT INTO ts_spend (day, usd) VALUES (?, ?)").run(t0.toISOString().slice(0, 10), AGENT_LINE_DAILY_USD - 0.001);
     const b = waiting(await world(d));
     expect(b.voice).toMatchObject({ source: "fixed", reason: "budget" });
     expect(line.calls).toBe(0);
