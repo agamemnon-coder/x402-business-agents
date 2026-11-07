@@ -56,9 +56,10 @@ not known yet. `test/submission.test.ts` checks this count and keeps the text un
 
 <!-- instructions -->
 1. Judge it in 3 minutes: https://kit11.max-31b.workers.dev/judge. Five steps, each with its time and a link.
-2. Or step by step. First, sign one yourself (about 30 seconds): https://kit11.max-31b.workers.dev/try/sign. A test
-   world of your own: a rule blocks one payment, you sign the other's exact terms with your own passkey (Face ID,
-   Touch ID or a PIN), and the same signature is refused once one cent changes. Nothing real moves.
+2. Or step by step. First, the demo (about a minute): https://kit11.max-31b.workers.dev/try/sign. A test world of
+   your own: sign the agent's payment with your own passkey (Face ID, Touch ID or a PIN), try to cheat (one cent
+   changed: the same signature is refused), change the rule, and the agent pays its next invoice alone. Nothing real
+   moves.
 3. Then the proof and the film: every id from the main run (3 November) on https://kit11.max-31b.workers.dev/proof, the
    Metal ones checkable on Metal's testnet explorer; the film (2:42) at https://youtu.be/jaqO2M2V6NY.
 4. Then the repository, offline, no keys and no network after `npm ci` (Node.js 22.13 or later):
@@ -72,8 +73,8 @@ not known yet. `test/submission.test.ts` checks this count and keeps the text un
 
 - Video (2:42; voice-over: an AI-generated voice, music: AI-generated, both ElevenLabs): <https://youtu.be/jaqO2M2V6NY>
 - Live: <https://kit11.max-31b.workers.dev/>
-- Try it yourself: <https://kit11.max-31b.workers.dev/try/sign>: sign a test proposal with your own Face ID, in a test
-  world of your own; nothing real moves (live since 4 November 2026).
+- Try it yourself: <https://kit11.max-31b.workers.dev/try/sign>: sign, try to cheat, change the rule, with your own
+  Face ID, in a test world of your own; nothing real moves (live since 4 November 2026).
 - Repository: <https://github.com/agamemnon-coder/x402-business-agents> (tag `v1.0-submission`)
 - Extra, not an award entry: <https://kit11.max-31b.workers.dev/visa>. Each agent signs its card checkout with Visa's
   Trusted Agent Protocol (TAP); Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa

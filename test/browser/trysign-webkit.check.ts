@@ -1,32 +1,27 @@
-// /try/sign in WebKit (Safari's engine), up to the passkey step (not part of npm test; needs Playwright's WebKit):
+// /try/sign in WebKit (Safari's engine), the whole story (not part of npm test; needs Playwright's WebKit):
 //   npx tsx test/browser/trysign-webkit.check.ts [screenshot dir]
-// Playwright's WebKit has no virtual authenticator, so nothing here makes or uses a passkey, and nothing stands in for
-// one: the passkey and the signature are checked in Chromium (test/browser/trysign.check.ts, with a virtual
-// authenticator) and by the server's tests. What WebKit checks is everything before them, as an iPhone visitor sees it:
-// the label, a test world opened by the server, (a) blocked by a rule with nothing to sign, (b) with its terms' hash
-// computed on the device (canonical JSON and SHA-256 in WebKit) and equal to the hash the server sent and to one
-// computed here in Node, its signing button off until there is a passkey, the passkey button ready; no console or CSP
-// error; the page no wider than the screen. If this WebKit build has no WebAuthn at all, the page must say so and offer
-// nothing to click, and the check says which of the two it saw. Either way (6 Nov) it checks the demo's frame as Safari
-// draws it: the three steps with step 1 under way, the start button above the fold at 390 px, the one-line disclaimer
-// and "What's real?" opening to its honest lines; with WebAuthn, the approval sheet's terms (IBAN included) and the
-// three locks with their links. CI runs it (.github/workflows/ci.yml, job webkit, in Playwright's image); there
-// (Playwright's WebKit on Ubuntu, 6 Nov) the build has no PublicKeyCredential, so CI sees the fallback and the layout.
-// Step 0, "Set the policy" (Max, item 1), runs in WebKit either way: a stricter change and a refused loosening need no
-// passkey. Where the build has no WebAuthn, a second page defines bare PublicKeyCredential and navigator.credentials
-// (empty, nothing behind them) before the page loads, only so its presence check lets "Start" open a world; nothing
-// makes, uses or simulates a passkey (no button that would call them is pressed). The one step left out in WebKit is the signed loosening (it needs a passkey): it is
-// skipped by name below and checked in Chromium with a virtual authenticator.
+// Playwright's WebKit has no virtual authenticator, so this check injects a software passkey before the page loads
+// (test/browser/support/softPasskey.ts, test only): a real ES256 key in WebCrypto, whose registrations and signatures
+// the server checks for real, as it checks a phone's. With it, at 360, 390 and 1440 px, light and dark, the whole story
+// runs in WebKit as an iPhone or a Mac visitor sees it: (1) the agent's request, the terms' hash computed in WebKit equal
+// to the one computed here in Node; (2) signed and verified by the server; (3) one cent changed, refused; (4) a looser
+// rule signed; (5) the next invoice paid alone. On every screen: at most 60 words in sight, exactly one main button,
+// on the screen without scrolling; the page no wider than the screen; no console or CSP error. Then the full policy
+// (#71) in WebKit: a stricter month holds at once, one more merchant category is refused until signed. And without any
+// WebAuthn (no software passkey): the page says so, offers nothing to click and opens no test world.
+// CI runs it (.github/workflows/ci.yml, job webkit, in Playwright's image).
 
 import { createHash } from "node:crypto";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 
 const shots = resolve(process.argv[2] ?? "out/try-sign-webkit");
 mkdirSync(shots, { recursive: true });
 process.env.TRY_SIGN_ENABLED = "on";
-const { TRY_POLICY, TRY_SIGN_HOOK, TRY_SIGN_LABEL, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
+const { TRY_POLICY, TRY_SIGN_LABEL, TRY_SIGN_SCREENS: W, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
+const { SOFT_PASSKEY } = await import("./support/softPasskey.js");
+const { NEXT_INVOICE } = await import("../../worker/src/trySign.js");
 const { startLocalRelay } = await import("../../src/relay/local.js");
 const local = await startLocalRelay({ port: 0, token: "browser-check-webkit" });
 const require = createRequire(import.meta.url);
@@ -37,143 +32,161 @@ const browser = await webkit.launch();
 let failures = 0;
 const check = (ok: boolean, what: string) => { console.log(`${ok ? "ok  " : "FAIL"}  ${what}`); if (!ok) failures++; };
 const sha256 = (s: string) => createHash("sha256").update(s, "utf8").digest("hex");
-
-// Step 0 (Max, item 1) in WebKit, up to the signature: a stricter change holds at once and the three panels follow it;
-// the result line lands below the sticky step bar; a looser one is refused with its terms to sign, their hash computed
-// in WebKit, the refusal below the bar, and nothing changes. The signed loosening is the one step skipped here.
+const metrics: { tag: string; screen: number; words: number; primaries: number; primaryInView: boolean }[] = [];
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function policyStep(page: any, tag: string, errors: string[]): Promise<void> {
-  // As above: only the console error Playwright's own screenshot stylesheet causes, during the screenshot, is set aside.
-  const shot = async (path: string) => {
-    const before = errors.length;
-    await page.screenshot({ path });
-    errors.splice(before, errors.length - before, ...errors.slice(before).filter((e) => !/^Refused to apply a stylesheet/.test(e)));
-  };
-  const belowBar = async (id: string) => {
-    await page.waitForTimeout(1200); // the page's own smooth scroll settles
-    return page.evaluate((elId: string) => ({ top: document.getElementById(elId)!.getBoundingClientRect().top, bar: document.querySelector("ol.progress")!.getBoundingClientRect().bottom }), id) as Promise<{ top: number; bar: number }>;
-  };
-  check(await page.locator("#policy").isVisible() && await page.locator("#p-body").isHidden() && (await page.locator("#p-open").innerText()).trim() === TRY_POLICY.open,
-    `${tag}: step 0 is behind the button "${TRY_POLICY.open}", closed until asked`);
-  await page.click("#p-open");
+type Page = any;
+
+/** Playwright's screenshot in WebKit adds a stylesheet of its own, which this page's CSP refuses: that console error is
+ * the screenshot's, not the page's, so only it is set aside (the page's own errors are counted). */
+async function shot(page: Page, errors: string[], path: string): Promise<void> {
+  await page.waitForTimeout(350);
+  const before = errors.length;
+  await page.screenshot({ path });
+  errors.splice(before, errors.length - before, ...errors.slice(before).filter((e) => !/^Refused to apply a stylesheet/.test(e)));
+}
+async function measure(page: Page, tag: string, n: number): Promise<void> {
+  await page.evaluate("window.scrollTo(0, 0)");
+  const m = await page.evaluate(`(() => {
+    const scr = document.getElementById("scr-${n}");
+    const words = scr.innerText.split(/\\s+/).filter((w) => /[A-Za-z0-9]/.test(w)).length;
+    const vis = (b) => b.getClientRects().length > 0 && getComputedStyle(b).visibility !== "hidden" && !b.closest("[hidden]");
+    const prim = [...document.querySelectorAll(".btn.primary")].filter(vis);
+    const head = document.querySelector("header.top").getBoundingClientRect().bottom;
+    const r = prim[0] ? prim[0].getBoundingClientRect() : null;
+    return { words, primaries: prim.length, inView: !!r && r.top >= head && r.bottom <= innerHeight, label: prim.map((b) => b.textContent.trim()).join(" | ") };
+  })()`) as { words: number; primaries: number; inView: boolean; label: string };
+  metrics.push({ tag, screen: n, words: m.words, primaries: m.primaries, primaryInView: m.inView });
+  check(m.words <= 60 && m.primaries === 1 && m.inView, `${tag} screen ${n}: ${m.words} words in sight (≤ 60), ${m.primaries} main button ("${m.label}"), on the screen without scrolling`);
+}
+const wide = async (page: Page, width: number) => (await page.evaluate("Math.max(document.documentElement.scrollWidth, document.body.scrollWidth)") as number) <= width;
+
+let ip = 0;
+async function visitor(width: number, scheme: "light" | "dark", soft = true) {
+  const mobile = width < 600;
+  const context = await browser.newContext({ viewport: { width, height: mobile ? 844 : 900 }, deviceScaleFactor: mobile ? 2 : 1, isMobile: mobile, hasTouch: mobile, colorScheme: scheme, extraHTTPHeaders: { "cf-connecting-ip": `198.51.150.${++ip}` } });
+  const page = await context.newPage();
+  if (soft) await page.addInitScript(SOFT_PASSKEY);
+  const errors: string[] = [];
+  page.on("pageerror", (e: Error) => errors.push(e.message));
+  page.on("console", (m: { type(): string; text(): string }) => { if (m.type() === "error") errors.push(m.text()); });
+  return { context, page, errors };
+}
+
+for (const [width, scheme] of [[360, "light"], [360, "dark"], [390, "light"], [390, "dark"], [1440, "light"], [1440, "dark"]] as const) {
+  const tag = `webkit-${width}-${scheme}`;
+  const { context, page, errors } = await visitor(width, scheme);
+  await page.goto(`${local.url}/try/sign`);
+  check((await page.locator(".testband .tl").innerText()).trim() === TRY_SIGN_LABEL, `${tag}: the label at the top reads "${TRY_SIGN_LABEL}"`);
+  await page.locator("details.wr > summary").click();
+  const wr = await page.locator("details.wr").innerText();
+  check([...WHATS_REAL.simulated, ...WHATS_REAL.real, ...WHATS_REAL.limits, ...WHATS_REAL.sources].every((l) => wr.includes(l)) && await page.locator("footer details").count() === 0, `${tag}: one "What's real?", opening to its honest lines`);
+  await page.locator("details.wr > summary").click();
+  await page.waitForFunction(() => !(document.getElementById("go-sign") as HTMLButtonElement).disabled || document.getElementById("w-status")?.classList.contains("bad"));
+  check(/^[0-9a-f]{16}$/.test(((await page.locator("#w-id").textContent()) ?? "").trim()), `${tag}: the test world opened when the page was shown`);
+  check((await page.locator("#pg-count").innerText()).trim() === `1 of 5 · ${TRY_SIGN_STEPS[0]}` && (await page.locator("#s1-head").innerText()).trim() === W.ask.head, `${tag}: screen 1 of 5: "${W.ask.head}"`);
+  // The terms' hash WebKit computed on the device (crypto.subtle over the canonical JSON) is the one Node computes.
+  const canonical = (await page.locator("#s1-terms pre.terms").textContent()) ?? "";
+  const shown = (await page.locator("#s1-terms .hash").getAttribute("data-hash")) ?? "";
+  check(/^[0-9a-f]{64}$/.test(shown) && shown === sha256(canonical) && (await page.locator("#s1-terms-body").textContent() ?? "").includes("checked on this device"),
+    `${tag}: the terms' hash computed in WebKit equals SHA-256 of the canonical terms (${shown.slice(0, 12)}…), checked against the server's`);
+  await measure(page, tag, 1);
+  await shot(page, errors, join(shots, `${tag}-1-ask.png`));
+  await page.locator("#s1-other > summary").click();
+  const locks = await page.locator("#s1-blocked .lock").evaluateAll((ls: Element[]) => ls.map((l) => `${(l as HTMLElement).dataset.lock}${l.classList.contains("hit") ? "!" : ""} ${l.querySelector("a")?.getAttribute("href") ?? ""}`)) as string[];
+  check(locks.length === 3 && /^purser! \/proof#airwallex$/.test(locks[0]!) && /^airwallex https:\/\/github\.com\/.+visa-tap-live-2026-11-02\.json$/.test(locks[1]!) && /^metal https:\/\/testnet\.metalntwx\.com\/tx\/0x[0-9a-f]{64}$/.test(locks[2]!)
+    && await page.locator("#s1-blocked button").count() === 0, `${tag}: the payment a rule stopped: no button, three locks, Purser's marked, each with its real example's link`);
+  await page.locator("#s1-other > summary").click();
+  // Sign (the software passkey made, then the signature): the server verifies it.
+  await page.click("#go-sign");
+  await page.waitForSelector("#scr-2:not([hidden]), #s1-status.bad");
+  check(await page.locator("#scr-2").isVisible() && (await page.locator("#r-head").innerText()).trim() === W.signed.head && /Test transfer test-[0-9a-f]{12}: EUR 1,850\.00/.test(await page.locator("#r-exec details.more").textContent() ?? ""),
+    `${tag}: screen 2: "${W.signed.head}", verified by the server, run by the stand-in (${(await page.locator("#s1-status").innerText()).trim().slice(0, 60)})`);
+  await measure(page, tag, 2);
+  await shot(page, errors, join(shots, `${tag}-2-signed.png`));
+  await page.click("#go-cheat");
+  await page.waitForSelector("#tamper:not([hidden])");
+  check((await page.locator("#t-verdict").innerText()).trim() === "One cent changed. The signature is worthless." && JSON.stringify(await page.locator("#t-table tr.chg").evaluateAll((rs: Element[]) => rs.map((r) => (r as HTMLElement).dataset.row))) === '["amount"]',
+    `${tag}: screen 3: one cent changed, refused by the server with the same signature`);
+  await page.click('#cheat-chips .chip[data-cheat="iban"]');
+  await page.waitForFunction(() => document.querySelector("#t-table tr.chg")?.getAttribute("data-row") === "payee_iban" && /One field/.test(document.getElementById("t-verdict")?.textContent ?? ""));
+  check((await page.locator("#t-verdict").innerText()).trim() === "One field changed. The signature is worthless.", `${tag}: another IBAN, refused`);
+  await measure(page, tag, 3);
+  await shot(page, errors, join(shots, `${tag}-3-cheat.png`));
+  await page.click("#go-rule");
+  await page.waitForSelector("#scr-4:not([hidden])");
+  await page.click('#rule-chips .chip[data-alone="2000.00"]');
+  check((await page.locator("#s4-note").innerText()).trim() === W.rule.looser && (await page.locator("#go-apply").innerText()).trim() === W.rule.sign, `${tag}: screen 4: €2,000 is looser, "${W.rule.sign}"`);
+  await measure(page, tag, 4);
+  await shot(page, errors, join(shots, `${tag}-4-rule.png`));
+  await page.click("#go-apply");
+  await page.waitForSelector("#scr-5:not([hidden]), #s4-status.bad");
+  check(await page.locator("#scr-5").isVisible() && await page.locator("#s5-next").getAttribute("data-state") === "alone" && await page.locator("#s5-next").getAttribute("data-proposal") === NEXT_INVOICE.id,
+    `${tag}: screen 5: the rule signed, the next invoice (${NEXT_INVOICE.id}) paid alone (${(await page.locator("#s4-status").innerText()).trim().slice(0, 60)})`);
+  check(await page.evaluate("window.__softPasskeyCount()") === 3, `${tag}: three uses of the passkey: made, the payment, the rule; none for the invoice paid alone`);
+  await measure(page, tag, 5);
+  await shot(page, errors, join(shots, `${tag}-5-paid-alone.png`));
+  check(await wide(page, width), `${tag}: the page is no wider than the screen`);
+  check(errors.length === 0, `${tag}: no console or CSP errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
+  await context.close();
+}
+
+// The full policy (#71) in WebKit, behind "Show all fields and what Purser sends": a stricter month holds at once and the
+// panels follow; one more merchant category is looser, refused until signed, its terms' hash computed in WebKit.
+{
+  const tag = "webkit-policy-390";
+  const { context, page, errors } = await visitor(390, "light");
+  await page.goto(`${local.url}/try/sign`);
+  await page.waitForFunction(() => !(document.getElementById("go-sign") as HTMLButtonElement).disabled);
+  await page.click("#go-sign"); await page.waitForSelector("#scr-2:not([hidden])");
+  await page.click("#go-cheat"); await page.waitForSelector("#tamper:not([hidden])");
+  await page.click("#go-rule"); await page.waitForSelector("#scr-4:not([hidden])");
+  check((await page.locator("#p-open").innerText()).trim() === TRY_POLICY.open && await page.locator("#p-body").isHidden(), `${tag}: every field behind "${TRY_POLICY.open}", closed until asked`);
+  await page.locator("#p-open").click();
   const awxBefore = (await page.locator("#pl-awx").textContent()) ?? "";
   await page.fill("#pf-monthly", "40.00");
   await page.click("#p-apply");
   await page.waitForFunction(() => /^Stricter/.test(document.getElementById("p-status")?.textContent ?? ""));
   const awxAfter = (await page.locator("#pl-awx").textContent()) ?? "";
-  check(/"amount": 50,/.test(awxBefore) && /"amount": 40,/.test(awxAfter) && (await page.locator('#pl-metal dd[data-value="40.00"]').count()) === 1 && (await page.locator("#pl-purser").textContent() ?? "").includes('"card.treasury.monthly": "40.00"')
-    && (await page.locator("#p-locks").getAttribute("data-state")) === "in-force",
-    `${tag}: step 0: a stricter month (50.00 → 40.00) holds at once; Purser's rule, the Airwallex body and the Metal budget follow it`);
-  const res = await belowBar("p-status");
-  check(res.top >= res.bar, `${tag}: step 0: after the change the result line is below the sticky step bar (its top ${Math.round(res.top)} px, bar bottom ${Math.round(res.bar)} px)`);
-  await shot(join(shots, `${tag}-policy-stricter.png`));
-  check(JSON.stringify(await page.locator("#p-locks .ns").allInnerTexts()) === JSON.stringify(["Rules in code, checked before anything is signed", TRY_POLICY.notSent.airwallex, TRY_POLICY.notSent.metal]), `${tag}: step 0: the Airwallex and Metal panels say they are not sent`);
+  check(/"amount": 50,/.test(awxBefore) && /"amount": 40,/.test(awxAfter) && (await page.locator('#pl-metal dd[data-value="40.00"]').count()) === 1 && ((await page.locator("#pl-purser").textContent()) ?? "").includes('"card.treasury.monthly": "40.00"')
+    && (await page.locator("#p-locks").getAttribute("data-state")) === "in-force", `${tag}: a stricter month (50.00 → 40.00) holds at once; Purser's rule, the Airwallex body and the Metal budget follow it`);
+  check(JSON.stringify(await page.locator("#p-locks .ns").allInnerTexts()) === JSON.stringify(["Rules in code, checked before anything is signed", TRY_POLICY.notSent.airwallex, TRY_POLICY.notSent.metal]), `${tag}: the Airwallex and Metal panels say they are not sent`);
+  await shot(page, errors, join(shots, `${tag}-stricter.png`));
   const purserBefore = (await page.locator("#pl-purser").textContent()) ?? "";
-  const floorBefore = (await page.locator("#w-floor").innerText()).trim();
   await page.click(`input[name="pf-mccs"][value="7372"]`);
   await page.click("#p-apply");
   await page.waitForSelector("#p-refused:not([hidden])");
   const pterms = (await page.locator("#p-terms").textContent()) ?? "";
   check((await page.locator("#p-rhead").innerText()).trim() === TRY_POLICY.refused && /merchant categories/.test(await page.locator("#p-why").innerText()) && /Nothing changed\.$/.test((await page.locator("#p-why").innerText()).trim())
     && (await page.locator("#p-hash .hash").getAttribute("data-hash")) === sha256(pterms) && (await page.locator("#p-locks").getAttribute("data-state")) === "proposed",
-    `${tag}: step 0: one more merchant category is looser: refused until signed, the terms' hash computed in WebKit`);
-  const ref = await belowBar("p-refused");
-  check(ref.top >= ref.bar, `${tag}: step 0: the refusal is below the sticky step bar (its top ${Math.round(ref.top)} px, bar bottom ${Math.round(ref.bar)} px)`);
-  await shot(join(shots, `${tag}-policy-refused.png`));
-  // Refused, so the policy in force is the one before: "Undo my edits" shows it again, unchanged; the world too.
+    `${tag}: one more merchant category is looser: refused until signed, the terms' hash computed in WebKit`);
+  await shot(page, errors, join(shots, `${tag}-refused.png`));
   await page.click("#p-reset");
-  check((await page.locator("#p-locks").getAttribute("data-state")) === "in-force" && ((await page.locator("#pl-purser").textContent()) ?? "") === purserBefore && (await page.locator("#p-ver").innerText()).trim() === "Policy v2"
-    && (await page.locator("#w-floor").innerText()).trim() === floorBefore && await page.locator('article.prop.blocked[data-proposal="T-0001"]').count() === 1,
-    `${tag}: step 0: after the refusal the policy in force is unchanged (v2, MCC 5734 only), T-0001 still blocked`);
-  console.log(`skip  ${tag}: step 0: signing the looser policy (needs a passkey; WebKit here has no virtual authenticator; checked in Chromium)`);
-}
-
-for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
-  const tag = `webkit-${width}-${scheme}`;
-  const mobile = width < 600;
-  const context = await browser.newContext({ viewport: { width, height: mobile ? 844 : 900 }, deviceScaleFactor: mobile ? 2 : 1, isMobile: mobile, hasTouch: mobile, colorScheme: scheme });
-  const page = await context.newPage();
-  const errors: string[] = [];
-  page.on("pageerror", (e: Error) => errors.push(e.message));
-  page.on("console", (m: { type(): string; text(): string }) => { if (m.type() === "error") errors.push(m.text()); });
-
-  await page.goto(`${local.url}/try/sign`);
-  check((await page.locator(".testband").innerText()).trim() === TRY_SIGN_LABEL, `${tag}: the label at the top reads "${TRY_SIGN_LABEL}"`);
-  check(!(await page.locator("#w-facts").isVisible()), `${tag}: the world's facts stay hidden until there is a world`);
-  const height = mobile ? 844 : 900;
-  check(JSON.stringify((await page.locator("ol.progress li .t").allInnerTexts()).map((t: string) => t.trim())) === JSON.stringify(TRY_SIGN_STEPS)
-    && await page.locator("#pg-1").getAttribute("aria-current") === "step", `${tag}: three steps (${TRY_SIGN_STEPS.join(" → ")}), step 1 under way`);
-  const go = await page.locator("#go-world").boundingBox();
-  check(!!go && go.y + go.height <= height, `${tag}: the start button is above the fold (its bottom at ${go ? Math.round(go.y + go.height) : "?"} of ${height} px)`);
-  check((await page.locator("#go-world + #hook").innerText()).trim() === TRY_SIGN_HOOK, `${tag}: under the start button: "${TRY_SIGN_HOOK}"`);
-  check(await page.locator("summary", { hasText: "What's real?" }).count() === 1 && await page.locator("footer details").count() === 0, `${tag}: one "What's real?" on the page`);
-  const header = await page.evaluate(`getComputedStyle(document.querySelector("header.top")).backgroundColor`) as string;
-  check(/^rgb\(/.test(header), `${tag}: the sticky header is opaque (${header})`);
-  const band = await page.locator(".testband").boundingBox();
-  check(!!band && band.y === 0 && band.height <= 44, `${tag}: the disclaimer is one line at the top (${band?.height} px high)`);
-  await page.locator("details.wr > summary").click();
-  const wr = await page.locator("details.wr").innerText();
-  check([...WHATS_REAL.simulated, ...WHATS_REAL.real, ...WHATS_REAL.limits, ...WHATS_REAL.sources].every((l) => wr.includes(l)), `${tag}: "What's real?" opens to its honest lines`);
-  // Playwright's screenshot in WebKit adds a stylesheet of its own, which this page's CSP refuses: that console error is
-  // the screenshot's, not the page's, so only it is set aside (the page's own errors are counted below).
-  const beforeShot = errors.length;
-  await page.screenshot({ path: join(shots, `${tag}-whats-real.png`) });
-  errors.splice(beforeShot, errors.length - beforeShot, ...errors.slice(beforeShot).filter((e) => !/^Refused to apply a stylesheet/.test(e)));
-  await page.locator("details.wr > summary").click();
-  const webauthn = await page.evaluate("Boolean(window.PublicKeyCredential && navigator.credentials)") as boolean;
-  console.log(`info  ${tag}: this WebKit build ${webauthn ? "has" : "has no"} WebAuthn (PublicKeyCredential)`);
-  if (!webauthn) {
-    // The honest fallback: it says so, and there is nothing to start.
-    check(/has no passkeys/.test(await page.locator("#w-status").innerText()) && await page.locator("#go-world").isDisabled(), `${tag}: without WebAuthn the page says so and its start button is off`);
-    // Step 0 lives in a test world, so without one it stays hidden (and offers nothing to change).
-    check(await page.locator("#policy").count() === 1 && await page.locator("#policy").isHidden(), `${tag}: step 0 "${TRY_POLICY.title}" waits for a test world (hidden)`);
-    // Step 0 needs no passkey, so it is checked here too: a second page where WebAuthn's two names exist and nothing
-    // more (no passkey is made, used or simulated), so "Start" opens a world.
-    const p0 = await context.newPage();
-    p0.on("pageerror", (e: Error) => errors.push(e.message));
-    p0.on("console", (m: { type(): string; text(): string }) => { if (m.type() === "error") errors.push(m.text()); });
-    // Bare names, nothing behind them: any call to make or use a passkey would throw (and none is made on this path).
-    await p0.addInitScript(`
-      if (!window.PublicKeyCredential) window.PublicKeyCredential = function PublicKeyCredential() {};
-      if (!navigator.credentials) Object.defineProperty(navigator, "credentials", { value: Object.freeze({}), configurable: true });
-    `);
-    await p0.goto(`${local.url}/try/sign`);
-    await p0.click("#go-world");
-    await p0.waitForSelector("#s-props:not([hidden])");
-    check(/^[0-9a-f]{16}$/.test((await p0.locator("#w-id").innerText()).trim()), `${tag}: step 0: a test world of its own is open`);
-    await policyStep(p0, tag, errors);
-    const wide0 = await p0.evaluate("Math.max(document.documentElement.scrollWidth, document.body.scrollWidth)") as number;
-    check(wide0 <= width, `${tag}: step 0: the page is no wider than the screen (${wide0} ≤ ${width})`);
-    await p0.close();
-  } else {
-    await page.click("#go-world");
-    await page.waitForSelector("#s-props:not([hidden])");
-    check(/^[0-9a-f]{16}$/.test((await page.locator("#w-id").innerText()).trim()), `${tag}: a test world of its own is open`);
-    const blocked = page.locator("article.prop.blocked");
-    check((await blocked.innerText()).includes("Check: fail") && (await blocked.innerText()).includes("Reserve floor"), `${tag}: (a) shows "Check: fail" and the rule that blocks it`);
-    check(await blocked.locator("button").count() === 0, `${tag}: (a) has no signing button`);
-    const locks = await blocked.locator(".lock").evaluateAll((ls: Element[]) => ls.map((l) => `${(l as HTMLElement).dataset.lock}${l.classList.contains("hit") ? "!" : ""} ${l.querySelector("a")?.getAttribute("href") ?? ""}`)) as string[];
-    check(locks.length === 3 && /^purser! \/proof#airwallex$/.test(locks[0]!) && /^airwallex https:\/\/github\.com\/.+visa-tap-live-2026-11-02\.json$/.test(locks[1]!) && /^metal https:\/\/testnet\.metalntwx\.com\/tx\/0x2e92f9cb[0-9a-f]{52}1871$/.test(locks[2]!),
-      `${tag}: (a) the three locks, Purser's policy marked, each with its real example's link`);
-    const waiting = page.locator("article.prop.sheet");
-    const shown = (await waiting.locator(".hash").getAttribute("data-hash")) ?? "";
-    const canonical = await waiting.locator("details.terms pre").textContent() ?? "";
-    // The hash WebKit computed on the device (crypto.subtle over the page's canonical JSON) is the one Node computes.
-    check(/^[0-9a-f]{64}$/.test(shown) && shown === sha256(canonical), `${tag}: (b) the terms' hash computed in WebKit equals SHA-256 of the canonical terms (${shown.slice(0, 12)}…)`);
-    check((await waiting.innerText()).includes("checked on this device") && await waiting.locator(".status.bad").count() === 0, `${tag}: (b) the page found its own hash equal to the server's`);
-    check(await waiting.locator("button[data-sign]").isDisabled(), `${tag}: (b) cannot be signed before there is a passkey`);
-    const terms = JSON.parse(canonical) as Record<string, string>;
-    check((await waiting.innerText()).includes(String(terms.payee_iban).replace(/(.{4})/g, "$1 ").trim()) && /you are approving/i.test(await waiting.innerText()), `${tag}: (b) the approval sheet shows the beneficiary's IBAN`);
-    check(await page.locator("#go-key").isVisible() && !(await page.locator("#go-key").isDisabled()), `${tag}: the passkey step is ready (not taken: WebKit has no virtual authenticator)`);
-    await policyStep(page, tag, errors);
-  }
-  const wide = await page.evaluate("Math.max(document.documentElement.scrollWidth, document.body.scrollWidth)") as number;
-  check(wide <= width, `${tag}: the page is no wider than the screen (${wide} ≤ ${width})`);
-  check(errors.length === 0, `${tag}: no console or CSP errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
-  await page.screenshot({ path: join(shots, `${tag}.png`), fullPage: true });
+  check((await page.locator("#p-locks").getAttribute("data-state")) === "in-force" && ((await page.locator("#pl-purser").textContent()) ?? "") === purserBefore && (await page.locator("#p-ver").innerText()).trim() === "Policy v2",
+    `${tag}: after the refusal the policy in force is unchanged (v2, MCC 5734 only)`);
+  check(await wide(page, 390) && errors.length === 0, `${tag}: no wider than the screen, no console or CSP errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
   await context.close();
 }
 
+// Without any WebAuthn (no software passkey, as in Playwright's WebKit build on CI): the page says so and opens no world.
+{
+  const tag = "webkit-no-webauthn-390";
+  const { context, page, errors } = await visitor(390, "light", false);
+  const worlds: string[] = [];
+  page.on("request", (q: { url(): string; method(): string }) => { if (q.method() === "POST") worlds.push(q.url()); });
+  await page.goto(`${local.url}/try/sign`);
+  const has = await page.evaluate("Boolean(window.PublicKeyCredential && navigator.credentials)") as boolean;
+  console.log(`info  ${tag}: this WebKit build ${has ? "has" : "has no"} WebAuthn of its own`);
+  if (!has) {
+    await page.waitForTimeout(800);
+    check(/has no passkeys/.test(await page.locator("#w-status").innerText()) && await page.locator("#go-sign").isDisabled() && worlds.length === 0,
+      `${tag}: without WebAuthn the page says so, its button is off, and no test world is opened (${worlds.length} requests)`);
+    await shot(page, errors, join(shots, `${tag}.png`));
+  }
+  check(errors.length === 0, `${tag}: no console or CSP errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
+  await context.close();
+}
+
+writeFileSync(join(shots, "metrics-webkit.json"), `${JSON.stringify(metrics, null, 2)}\n`);
 await browser.close();
 local.server.close();
 console.log(failures ? `\n${failures} check(s) failed` : `\nall checks passed; screenshots in ${shots}`);

@@ -9,7 +9,7 @@ import { AI_CREDIT, BACKGROUND, CLOSING, CORE_LINE, END_CREDITS, THANKS, MAIN_RU
 import { MASTER_CLIPS, OVERLAYS, PREMIERE_SCENES, scenesJson, clock, factsUsed, pageScenes, lineSeconds, premiereBeats, premiereReadAloud, premiereSeconds, premiereSrt, premiereTable, premiereTimeline, voiceTimeline } from "../src/film/premiereScript.js";
 import { agentRun, payments } from "../src/redesign/run.js";
 import { TRY_URL } from "../src/submission/deck.js";
-import { TRY_SIGN_LABEL, trySignPage } from "../src/try/sign.js";
+import { TRY_SIGN_LABEL, TRY_SIGN_SCREENS, trySignPage } from "../src/try/sign.js";
 import { DEFENSE_IN_DEPTH } from "../src/config/brand.js";
 import { CARDS, INITIAL_MANDATES } from "../src/config/policy.js";
 import { maskExpr, parseSlotArgs, slotBox, slotFilter, slotSpeed } from "../src/film/slots.js";
@@ -373,6 +373,9 @@ describe("the /try/sign mock says what the live page says", () => {
   const page = trySignPage();
   it("word for word, from the page's own code", () => {
     for (const [k, w] of Object.entries(TRY_SIGN_WORDS)) {
+      // The film was recorded with the page of 4 November; the story of 7 November (five screens) calls the tamper
+      // "Now try to cheat: change one cent". That one word is checked as it is on the page now, the rest as filmed.
+      if (k === "tamper") { expect(w).toBe("Try to tamper: change the amount by 0.01"); expect(page).toContain(TRY_SIGN_SCREENS.signed.cheat); continue; }
       // The hash note is two strings on the page ("… which your passkey signs" + " (checked on this device):").
       for (const part of k === "hashNote" ? w.split(/(?= \()/) : [w]) expect({ k, on: page.includes(part) }).toEqual({ k, on: true });
     }

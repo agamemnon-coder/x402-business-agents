@@ -96,9 +96,9 @@ describe("the Demo Day pitch (docs/submission/pitch.md)", () => {
     expect([Number(total?.[1]), Number(total?.[2])]).toEqual([parts.reduce((a, p) => a + budget(p.to - p.from), 0), parts.reduce((a, p) => a + p.words, 0)]);
   });
 
-  it("demos /try/sign live (sign, then tamper), shows the three proofs and ends on the ask", () => {
+  it("demos /try/sign live (sign, try to cheat, change the rule), shows the three proofs and ends on the ask", () => {
     const t = prose(demo);
-    for (const s of ["Tap Start: show me the proposal", "Sign with Face ID", "Try to tamper: change the amount by 0.01", "One cent changed. The signature is worthless.",
+    for (const s of ["Tap Sign with Face ID", "Now try to cheat: change one cent", "One cent changed. The signature is worthless.", "Next: change the rule", "A looser rule needs my signature too.", "paid alone, no signature needed",
       "Proof one", "Proof two", "Proof three: Claude made 24 of 24 decisions, with 0 fallbacks.", "we're looking for design partners on Airwallex"]) expect({ s, has: t.includes(s) }).toEqual({ s, has: true });
   });
 });

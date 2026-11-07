@@ -161,7 +161,7 @@ describe("/try/sign in the bundle (TRY_SIGN_ENABLED)", () => {
     expect(html).not.toMatch(/(?:src|href)="https?:/);
     expect(res.headers.get("permissions-policy")).toContain("publickey-credentials-create=(self)");
     // The label, first thing in the body.
-    expect(html).toMatch(new RegExp(`<body>\\n<div class="testband" role="note">.*${TRY_SIGN_LABEL}</div>`));
+    expect(html).toMatch(new RegExp(`<body>\\n<div class="testband" role="note"><div class="row"><span class="tl">.*${TRY_SIGN_LABEL}</span>`));
     expect(TRY_SIGN_LABEL).toBe("Test world · test passkey · nothing real moves");
     // Links and assets absolute, so they work one level down.
     expect(html).not.toMatch(/(?:src|href)="(?!\/|#|https?:)/);
