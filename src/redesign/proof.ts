@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import { CFO_VIEW_LINK, CFO_VIEW_URL, CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, SPLIT_LINE, VISA_EXTRA_LINK } from "../config/brand.js";
 import { agentRun, faceIdDecisions, faceIdLine, family, letThroughOf, ownTap, payments, sandboxRails, runName, split, metalDetail, stopFigure, stopStory, stopSub, stops, stopsLine, tapRun, type AgentRun, type Ev, type RunRecord, type Tile } from "./run.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsShortHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
+import { awxRunBlock } from "./awxRun.js";
 import { esc, icon, page } from "./ui.js";
 import { LEAD_CSS, leadHtml, proofLeads } from "./proofLead.js";
 import { TRACE_LINK, TRACE_URL } from "./trace.js";
@@ -234,9 +235,12 @@ ${box("archive", "clock", "Archive", "", "Earlier runs and tools, kept as they w
  */
 export function readBack(run: AgentRun): string {
   const h = hashTravel(run.record), cards = cardsReadback(), rows = cards ? cardControlRows(run.record, cards) : [];
-  if (!h && !rows.length) return "";
+  // awx-1 (7 Nov): the separate Airwallex-only run, dated and labelled, under the main run's read-backs.
+  const awx1 = awxRunBlock(undefined, { short: true });
+  if (!h && !rows.length && !awx1) return "";
   return `<h2 class="sec" id="airwallex-readback">Airwallex, read back</h2>
-  <div class="awrb two">${hashBlockHtml(h)}${cards ? controlsShortHtml(rows, cards.rec.read_at, cards.file) : ""}</div>`;
+  <div class="awrb two">${hashBlockHtml(h)}${cards ? controlsShortHtml(rows, cards.rec.read_at, cards.file) : ""}</div>${awx1 ? `
+  <div class="awrb">${awx1}</div>` : ""}`;
 }
 
 export function proofPage(run: AgentRun = agentRun()): string {

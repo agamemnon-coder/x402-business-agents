@@ -30,7 +30,7 @@ export function visibleWords(html: string): number {
 const allText = (html: string) => decode(html.replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " "));
 
 describe("the site after v4", () => {
-  it("keeps every page within its text budget (Home about 60 words plus the Visa TAP link; partner pages at most 150, /airwallex 190 with its read-back)", () => {
+  it("keeps every page within its text budget (Home about 60 words plus the Visa TAP link; partner pages at most 150, /airwallex 210 with its read-back and awx-1)", () => {
     // Proof: 480 since 4 Nov, for the TAP run's decline on its own line below the stop figure (Max).
     // Home: 600 since 6 Nov, for the three sentences under the heading, the Kit 11 line and the one caveat line (jury review, #1, #7).
     // Proof 520 and Airwallex 190 since 6 Nov, for Airwallex read back (section B): the hash the CFO signed beside the one
@@ -45,7 +45,9 @@ describe("the site after v4", () => {
     // Home: 130 since Max's round of 7 Nov ("a picture says more than a thousand words"): the heading, what Purser is,
     // the three steps, one button; the numbers, the partners and the business moved to /proof, behind closed lines.
     // Watch: 125 since then, for the next step under the replay ("Now try it yourself") and the film's link.
-    const budget: Record<string, number> = { home: 130, watch: 125, try: 180, proof: 560, metal: 150, airwallex: 190, visa: 150, claude: 150, notFound: 40 };
+    // Airwallex: 210 since 7 Nov, for awx-1 (the separate Airwallex-only run): its date, name and "sandbox, test money"
+    // label, its checks passed, and the summary of its fold (every step and id folded).
+    const budget: Record<string, number> = { home: 130, watch: 125, try: 180, proof: 560, metal: 150, airwallex: 210, visa: 150, claude: 150, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 

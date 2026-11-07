@@ -326,6 +326,14 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   past 8 s) code reads the invoice, labelled so. One budget for every live call on the page, USD 10 a day (was USD 1
   for the sentence alone), per-address and overall limits, the emergency switch TRY_SIGN_HAIKU for all of them, and
   today's spend on /health. 2881 tests in 282 files, all passing.
+- 7 November, awx-1 recorded and on the site: the Airwallex-only run (a separate world, Airwallex sandbox, test money,
+  0 Metal calls) ran live that day and was accepted, checks a–g all passed. Its log, docs/runs/2026-11-07-awx-1.md, has
+  every id, decline code, webhook and attempt and the Claude calls with their request ids; its record is
+  docs/demo/airwallex-run.json. /airwallex shows it dated and labelled "Airwallex sandbox, test money" (7 of 7 checks,
+  every step and id in a fold; the page's word budget 190 → 210 for it), Proof's "Airwallex, read back" a short version
+  linking there (no decline code on /proof); every figure and id from the record (src/redesign/awxRun.ts,
+  test/awx-run-page.test.ts). README, docs/claims.md and docs/airwallex.md carry it; its 0.0839 USD of Claude is booked
+  in docs/runs/api-budget.jsonl. 2887 tests in 283 files, all passing.
 - 7 November, the Treasury agent works live on /try/sign's first screen, Purser-style (spec 6b): the test world holds
   EUR 26,000.00 (floor EUR 25,000.00) and USD 8,000.00 (floor USD 3,000.00). The agents' work comes in step by step,
   one request each (POST /agents): Claude Sonnet, the runner's invoice reader, reads Alpine Packaging's invoice (a

@@ -9,6 +9,9 @@
 export function loosens(c: { key: string; from: string; to: string }): boolean {
   const cents = (v: string) => (/^\d+\.\d{2}$/.test(v) ? Number(v.replace(".", "")) : null);
   const [from, to] = [cents(c.from), cents(c.to)];
+  // The Airi rail (src/airi/policy.ts): more purchases a day without Face ID, or a merchant allowed, loosens.
+  if (c.key === "approval.airi_alone_per_day") return /^\d+$/.test(c.from) && (!/^\d+$/.test(c.to) || Number(c.to) > Number(c.from));
+  if (c.key.startsWith("airi.merchant.")) return c.from !== "allowed" && c.to === "allowed";
   if (c.key.startsWith("cap.")) return from !== null && (to === null || to > from);
   if (c.key.startsWith("card.")) return from !== null && (to === null || to > from);
   // Four eyes: turning it off or raising the threshold loosens; turning it on or lowering it tightens.

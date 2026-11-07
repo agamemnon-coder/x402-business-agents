@@ -701,3 +701,26 @@ CREATE TABLE IF NOT EXISTS agent_cursors (
   last_message_id INTEGER NOT NULL DEFAULT 0,
   last_tick_at TEXT
 );
+
+-- The Airi rail (src/airi/purchase.ts): one row per purchase, from its reservation (HELD, which is its hold: the day's
+-- count of purchases without Face ID is taken under the write lock) to SETTLED, RELEASED or UNCONFIRMED (the
+-- checkout's outcome is not known; it keeps counting until a look-up or a person settles it). Safe references only:
+-- never the credential, its file or the passkey link.
+CREATE TABLE IF NOT EXISTS airi_purchases (
+  action_id TEXT PRIMARY KEY,
+  agent TEXT NOT NULL,
+  route TEXT NOT NULL CHECK (route IN ('alone', 'cfo')),
+  proposal_id TEXT,
+  order_sha256 TEXT NOT NULL,
+  terms_json TEXT NOT NULL,
+  cents INTEGER NOT NULL CHECK (cents > 0),
+  day TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('HELD', 'WAITING_FOR_TAP', 'PAYING', 'SETTLED', 'RELEASED', 'UNCONFIRMED')),
+  mandate_id TEXT,
+  checkout_ref TEXT,
+  outcome TEXT,
+  code TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS airi_purchases_day ON airi_purchases (day, route, status);

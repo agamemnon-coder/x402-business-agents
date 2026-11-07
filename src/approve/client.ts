@@ -324,6 +324,23 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
     };
   }
 
+  if (kind === "airi_purchase") {
+    // The Airi rail (src/airi/purchase.ts): the CFO signs agent, amount, currency, merchant and items. Airi's own tap
+    // (the wallet owner's passkey in Airi) comes after this, for the same mandate.
+    const m = isObj(t.merchant) ? t.merchant : {};
+    const items = arr(t.items).filter(isObj).map((i) => `${str(i.quantity)} × ${str(i.name)} at ${money(i.unit_price)}`).join("; ");
+    const agent = str(t.agent);
+    return {
+      approvable: true, title: "Airi purchase",
+      sentence: `Let the ${agent} agent pay ${str(t.currency)} ${money(t.amount)} to ${str(m.name)} (${str(m.url)}) with a single-use card credential from Airi, for: ${str(t.description)}.`,
+      amount: `${str(t.currency)} ${money(t.amount)}`, margin: null, recipient: `${str(m.name)}, ${str(m.country)}`,
+      rows: [["Agent", agent], ["Amount", `${str(t.currency)} ${money(t.amount)}`], ["Merchant", `${str(m.name)} (${str(m.url)})`], ["Items", items], ["For", str(t.description)]],
+      short: "this Airi purchase",
+      warnings: ["After your Face ID, Airi asks the wallet owner to confirm the same purchase with a passkey; Purser re-checks these exact terms before it asks Airi for the card."],
+      amountLabel: "Pays", label: "Airi purchase", big: money(t.amount), unit: str(t.currency),
+    };
+  }
+
   if (kind === "agent_onboard") {
     const c = isObj(t.card) ? t.card : {};
     return {

@@ -90,7 +90,7 @@ export const TRY_SIGN_SCREENS = {
     head: "Try to trick the agent.",
     lead: "Send your agent a fake invoice",
     /** Max, 7 Nov: true whether the agent was fooled or not. */
-    decides: "Purser's code checks it either way.",
+    decides: "Purser's code checks it.",
     did: "What the agent did",
     next: "Next: change the rule",
   },
