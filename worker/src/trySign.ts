@@ -678,8 +678,13 @@ export class TrySignDesk {
   private policyState(worldId: string, now: Date) {
     const { version, policy } = this.policyOf(worldId);
     // Screen 4's figure for each amount the visitor may choose (Max, 7 Nov: the worst case moves with "may pay alone").
-    const exposure_alone = Object.fromEntries(ALONE_CHOICES.map((v) => [v, this.exposure({ ...policy, agents: { ...policy.agents, treasury: { ...policy.agents.treasury, alone: v } } }).headline]));
-    return { policy, policy_version: String(version), locks: this.locksOf(worldId, policy, now), bounds: policyBounds(now), exposure: this.exposure(policy), exposure_alone };
+    const withAlone = (v: string): WorldPolicy => ({ ...policy, agents: { ...policy.agents, treasury: { ...policy.agents.treasury, alone: v } } });
+    const exposure_alone = Object.fromEntries(ALONE_CHOICES.map((v) => [v, this.exposure(withAlone(v)).headline]));
+    // 1.4 (Max, 7 Nov): each amount's EUR worst case a month, in cents, and the one in force, so the page can say what a
+    // looser rule adds ("+€139,500 a month") by Purser's code, not its own arithmetic.
+    const monthOf = (p: WorldPolicy) => exposureOf(exposurePolicyOfWorld(p)).total.month.eurCents;
+    const exposure_month = { in_force: monthOf(policy), alone: Object.fromEntries(ALONE_CHOICES.map((v) => [v, monthOf(withAlone(v))])) };
+    return { policy, policy_version: String(version), locks: this.locksOf(worldId, policy, now), bounds: policyBounds(now), exposure: this.exposure(policy), exposure_alone, exposure_month };
   }
   private policyAnswer(worldId: string, now: Date) {
     const state = this.policyState(worldId, now);

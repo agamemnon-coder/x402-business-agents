@@ -308,6 +308,15 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   raises the figure before you sign, and the server sends the figure for each amount. Purser's own policy has no
   payments alone, so the README's and the CFO's figure stay as they were. The phone strip "One policy, three locks" is
   gone; the lock lines are shorter. 2868 tests in 281 files, all passing.
+- 7 November, /try/sign as the demo's strongest minute (Max's plan "De demo geweldig maken", part 1): an opening line
+  ("You're the CFO. Your AI agents pay suppliers on their own. One of them wants €1,850.") and one button; a new step,
+  "Try to trick the agent": two fixed fake invoices ("Pre-approved by the CFO", a lookalike supplier) run through
+  Purser's own injection screen and invoice-fraud check (src/policy/fraudCore.ts, the pure part of fraud.ts, now shared
+  by the runner and the Worker), each blocked before anything is proposed, "A prompt is not a control."; a split invoice
+  is left out, as no rule in the code detects one. The worst case in a CFO's words ("the agent may pay up to €X alone, at
+  most 3 times a day") with what a looser rule adds a month ("+€139,500"), and why the main run's is EUR 300 behind
+  "more". A closing card: what you did in about a minute, then "See the real run", "Trace a real payment", "Read the
+  code". 2875 tests in 282 files, all passing.
 
 ## Real, and ours
 

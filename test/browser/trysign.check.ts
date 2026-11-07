@@ -18,7 +18,7 @@
 // within the screen without scrolling, nothing outside its card, the page no wider than the screen, no console error.
 // Then, apart: the full policy behind "Show all fields and what Purser sends" (#71: a stricter change holds at once, a
 // looser one is refused until signed, the panels follow); a stricter rule by its chip (applied at once, no signature);
-// the agent's sentence shown as text, never markup; and one timed visit, start to screen 5 in under 60 s.
+// the agent's sentence shown as text, never markup; and one timed visit, the opening to the closing card in at most 75 s.
 // CI runs it (.github/workflows/ci.yml, job judge). A test world only: nothing here reaches the runner, Airwallex or Metal.
 
 import { createHash } from "node:crypto";
@@ -44,7 +44,7 @@ const { StandInQuotes } = await import("../support/fxStandIn.js");
 const fxStandIn = new StandInQuotes();
 const { StandInLine } = await import("../support/lineStandIn.js");
 const lineStandIn = new StandInLine();
-const { allAgents, OTHER_IBAN, TAMPER_VERDICT, TRY_POLICY, TRY_SIGN_END, TRY_SIGN_FILM, TRY_SIGN_LABEL, TRY_SIGN_SCREENS: W, TRY_SIGN_STEPS, WHATS_REAL } = await import("../../src/try/sign.js");
+const { allAgents, mainRunWorst, OTHER_IBAN, TAMPER_VERDICT, TRY_POLICY, TRY_SIGN_END, TRY_SIGN_FILM, TRY_SIGN_LABEL, TRY_SIGN_SCREENS: W, TRY_SIGN_STEPS, WHATS_REAL, worstAloneLine } = await import("../../src/try/sign.js");
 const { ALONE_PER_DAY, PAID_ALONE, defaultPolicy, exposurePolicyOfWorld, threeLocks } = await import("../../src/try/policy.js");
 // 1.1: the worst case, read from the policy code (src/policy/exposure.ts) with the main run's recorded rate.
 const { exposureOf, exposureWords } = await import("../../src/policy/exposure.js");
@@ -61,6 +61,7 @@ const WORST = worldExpo("500.00");
 const { cfoApproval, tryLocks } = await import("../../src/try/examples.js");
 const { letThroughOf, loadRecord } = await import("../../src/redesign/run.js");
 const { canonical, NEXT_INVOICE } = await import("../../worker/src/trySign.js");
+const { ATTACKS, TRICKS, runTrick } = await import("../../worker/src/trick.js");
 const { verifyReceipt } = await import("../../src/try/receipt.js");
 const sha256 = (s: string) => createHash("sha256").update(s, "utf8").digest("hex");
 // The examples the page must link, from the records themselves (not from the page's code).
@@ -220,14 +221,23 @@ async function openWorld(page: Page, tag: string, goto = true): Promise<void> {
     await page.waitForTimeout(61_000);
   }
 }
-/** Screens 1 to 4 the short way: sign, one cheat, on to the rule. */
+/** Past the opening line to screen 1 (Max, 7 Nov, 1.1: one sentence and one button first). */
+async function start(page: Page): Promise<void> {
+  if (await page.locator("#scr-0").isVisible()) { await page.click("#go-start"); await page.waitForSelector("#scr-1:not([hidden])"); }
+}
+/** Screens 1 to 5 the short way: sign, one cheat, one trick, on to the rule. */
 async function toRule(page: Page): Promise<void> {
+  await start(page);
   await page.click("#go-sign");
   await page.waitForSelector("#scr-2:not([hidden])");
   await page.click("#go-cheat");
   await page.waitForSelector("#tamper:not([hidden])");
-  await page.click("#go-rule");
+  await page.click("#go-trick");
   await page.waitForSelector("#scr-4:not([hidden])");
+  await page.click('#trick-chips .chip[data-attack="pre_approved"]');
+  await page.waitForSelector("#k-result:not([hidden])");
+  await page.click("#go-rule");
+  await page.waitForSelector("#scr-5:not([hidden])");
 }
 const dots = async (page: Page) => (await page.locator("ol.dots li").evaluateAll((ls: Element[]) => ls.map((l) => (l.classList.contains("done") ? "done" : l.classList.contains("on") ? "on" : "-")))) as string[];
 const shot = async (page: Page, name: string) => { await page.waitForTimeout(350); await page.screenshot({ path: join(shots, name) }); };
@@ -271,11 +281,19 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   await page.locator("details.wr > summary").click();
   check(await page.locator("summary", { hasText: "What's real?" }).count() === 1 && await page.locator("footer details").count() === 0 && await page.locator(".testband details.wr").count() === 1,
     `${tag}: one "What's real?" on the page, in the band at the top`);
-  // One progress indicator: five dots, "1 of 5 · The agent asks".
-  check(JSON.stringify((await page.locator("ol.dots li .t").allTextContents()).map((t: string) => t.trim())) === JSON.stringify(TRY_SIGN_STEPS) && await page.locator("ol.progress").count() === 0,
-    `${tag}: one progress indicator, five steps: ${TRY_SIGN_STEPS.join(" → ")}`);
-  check(JSON.stringify(await dots(page)) === '["on","-","-","-","-"]' && await page.locator("#pg-1").getAttribute("aria-current") === "step" && (await page.locator("#pg-count").innerText()).trim() === `1 of 5 · ${TRY_SIGN_STEPS[0]}`,
-    `${tag}: step 1 of 5 under way`);
+  // One progress indicator: six dots (Max, 7 Nov: "Trick the agent" after the cheat).
+  check(JSON.stringify((await page.locator("ol.dots li .t").allTextContents()).map((t: string) => t.trim())) === JSON.stringify(TRY_SIGN_STEPS) && await page.locator("ol.progress").count() === 0 && TRY_SIGN_STEPS.length === 6,
+    `${tag}: one progress indicator, six steps: ${TRY_SIGN_STEPS.join(" → ")}`);
+  // ── The opening (1.1): one sentence, one button. ──
+  check(await page.locator("#scr-0").isVisible() && (await page.locator("#s0-head").innerText()).trim() === W.intro.head && (await page.locator("#go-start").innerText()).trim() === W.intro.start
+    && JSON.stringify(await dots(page)) === '["-","-","-","-","-","-"]' && (await page.locator("#pg-count").innerText()).trim() === "6 steps · about a minute",
+    `${tag}: the opening: "${W.intro.head}", one button "${W.intro.start}"`);
+  await measure(page, tag, 0);
+  await shot(page, `${tag}-0-intro.png`);
+  await page.click("#go-start");
+  await page.waitForSelector("#scr-1:not([hidden])");
+  check(JSON.stringify(await dots(page)) === '["on","-","-","-","-","-"]' && await page.locator("#pg-1").getAttribute("aria-current") === "step" && (await page.locator("#pg-count").innerText()).trim() === `1 of 6 · ${TRY_SIGN_STEPS[0]}`,
+    `${tag}: step 1 of 6 under way`);
   // The header and the sticky main button are opaque: nothing shows through them while the card scrolls.
   const opaque = await page.evaluate(`(() => {
     const alpha = (c) => { const m = /rgba?\\(([^)]+)\\)/.exec(c); const p = m ? m[1].split(",").map((x) => x.trim()) : []; return p.length === 4 ? Number(p[3]) : p.length === 3 ? 1 : 0; };
@@ -300,10 +318,13 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
     await page.waitForTimeout(400);
     const lit = (await page.evaluate(`[...document.querySelectorAll("#diagram .dn")].filter((n) => getComputedStyle(n).opacity === "1" && !n.classList.contains("d-policy")).map((n) => n.classList[1]).join()`)) as string;
     check(lit === "d-purser,d-sign", `${tag}: on screen 1 the diagram lights Purser's limit and the signature (${lit})`);
+    // 1.2 on desktop: the lock that just stopped another payment, in one line, with the real example as a link.
+    check(await page.locator("#diagram .dstop").isVisible() && /^Just stopped another payment · a real one$/.test((await page.locator("#diagram .dstop").innerText()).trim()) && !!(await page.locator("#dg-real").getAttribute("href")),
+      `${tag}: on screen 1 the diagram says the Purser lock just stopped another payment, with a real example linked`);
   } else check(dg === null, `${tag}: below 1024 px the diagram is not shown`);
 
   // ── Screen 1: the agent's request. ──
-  check((await page.locator("#s1-head").innerText()).trim() === W.ask.head, `${tag}: screen 1 says "${W.ask.head}"`);
+  check((await page.locator("#s1-head").innerText()).trim() === W.ask.head && (await page.locator("#s1-other > summary").innerText()).trim() === W.ask.other, `${tag}: screen 1 says "${W.ask.head}", and "${W.ask.other}" in one line`);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const terms = JSON.parse((await page.locator("#s1-terms pre.terms").textContent()) ?? "{}") as Record<string, any>;
   check((await page.locator("#s1-amt").innerText()).trim() === "EUR 1,850.00" && (await page.locator("#s1-to").innerText()).includes(terms.payee.replace(/ \(test payee\)$/, "")) && (await page.locator("#s1-to").innerText()).includes("INV-2026-118") && !(await page.locator("#s1-ask").innerText()).includes("Treasury agent"),
@@ -447,7 +468,7 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   await page.click("#go-sign");
   await page.waitForSelector("#scr-2:not([hidden])");
   check(/registered in this world only|is kept/.test(await page.locator("#k-status").textContent() ?? ""), `${tag}: the test passkey is made and registered, then the signature (one tap)`);
-  check(JSON.stringify(await dots(page)) === '["done","on","-","-","-"]' && (await page.locator("#pg-count").innerText()).trim() === `2 of 5 · ${TRY_SIGN_STEPS[1]}`, `${tag}: verified: step 2 of 5`);
+  check(JSON.stringify(await dots(page)) === '["done","on","-","-","-","-"]' && (await page.locator("#pg-count").innerText()).trim() === `2 of 6 · ${TRY_SIGN_STEPS[1]}`, `${tag}: verified: step 2 of 6`);
   const ok = await page.locator("#scr-2 .bigok svg").boundingBox();
   check((await page.locator("#r-head").innerText()).trim() === W.signed.head && (await page.locator("#r-line").innerText()).trim() === W.signed.line && !!ok && ok.width >= 48,
     `${tag}: a big green check (${ok ? Math.round(ok.width) : "?"} px): "${W.signed.head}" "${W.signed.line}"`);
@@ -539,7 +560,7 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
     await page.waitForSelector("#tamper:not([hidden])");
     await page.waitForFunction(() => !(document.querySelector("#cheat-chips .chip") as HTMLButtonElement).disabled);
     if (field === "amount") {
-      check(JSON.stringify(await dots(page)) === '["done","done","on","-","-"]' && (await page.locator("#s3-head").innerText()).trim() === W.cheat.head, `${tag}: screen 3 of 5, "${W.cheat.head}"`);
+      check(JSON.stringify(await dots(page)) === '["done","done","on","-","-","-"]' && (await page.locator("#s3-head").innerText()).trim() === W.cheat.head, `${tag}: screen 3 of 6, "${W.cheat.head}"`);
       await measure(page, tag, 3);
       await shot(page, `${tag}-3-cheat-refused.png`);
     }
@@ -564,63 +585,99 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   await layout(page, tag, "screen 3, all open", width);
   await page.evaluate(`document.querySelectorAll("#scr-3 details").forEach((d) => { d.open = false; })`);
 
-  // ── Screen 4: change the rule. ──
-  await page.click("#go-rule");
+  // ── Screen 4: try to trick the agent (1.3). Each fixed fake invoice is blocked by Purser's own code. ──
+  check((await page.locator("#go-trick").innerText()).trim() === W.cheat.next, `${tag}: screen 3's one button: "${W.cheat.next}"`);
+  await page.click("#go-trick");
   await page.waitForSelector("#scr-4:not([hidden])");
-  check(JSON.stringify(await dots(page)) === '["done","done","done","on","-"]' && (await page.locator("#s4-head").innerText()).trim() === W.rule.head && (await page.locator("#scr-4 .q").innerText()).trim() === W.rule.question,
-    `${tag}: screen 4 of 5: "${W.rule.head}" "${W.rule.question}"`);
+  check(JSON.stringify(await dots(page)) === '["done","done","done","on","-","-"]' && (await page.locator("#k-head").innerText()).trim() === W.trick.head && JSON.stringify((await page.locator("#trick-chips .chip").allInnerTexts()).map((t: string) => t.trim())) === JSON.stringify(ATTACKS.map((a) => TRICKS[a].label)),
+    `${tag}: screen 4 of 6: "${W.trick.head}", two fake invoices: ${ATTACKS.map((a) => TRICKS[a].label).join(" · ")}`);
+  for (const attack of ATTACKS) {
+    await page.click(`#trick-chips .chip[data-attack="${attack}"]`);
+    await page.waitForFunction((a: string) => !document.getElementById("k-result")!.hidden && (document.getElementById("k-doc")!.textContent ?? "").includes(a === "lookalike" ? "Pakaging" : "Pre-approved"), attack);
+    await page.locator("#k-result details.more > summary").click();
+    const full = (await page.locator("#k-full").innerText()).trim();
+    await page.locator("#k-result details.more > summary").click();
+    const want = await runTrick(attack);
+    check((await page.locator("#k-out").innerText()).trim() === want.outcome && want.blocked && (await page.locator("#k-lesson").innerText()).trim() === "A prompt is not a control." && (await page.locator("#k-says").innerText()).includes(TRICKS[attack].agentSays)
+      && (await page.locator("#k-label").innerText()).trim() === want.agent_label && (await page.locator("#k-doc").innerText()).trim() === TRICKS[attack].shows && full === TRICKS[attack].text,
+      `${tag}: trick ${attack}: the invoice, the fooled agent (labelled), then "${want.outcome}" and "A prompt is not a control."`);
+    if (attack === "pre_approved") { await measure(page, tag, 4); await shot(page, `${tag}-4-trick.png`); }
+  }
+  await layout(page, tag, "screen 4", width);
+
+  // ── Screen 5: change the rule. ──
+  await page.click("#go-rule");
+  await page.waitForSelector("#scr-5:not([hidden])");
+  check(JSON.stringify(await dots(page)) === '["done","done","done","done","on","-"]' && (await page.locator("#s4-head").innerText()).trim() === W.rule.head && (await page.locator("#scr-5 .q").innerText()).trim() === W.rule.question,
+    `${tag}: screen 5 of 6: "${W.rule.head}" "${W.rule.question}"`);
   const chips = (await page.locator("#rule-chips .chip").allInnerTexts()).map((t: string) => t.trim());
   const labelsOf = async () => await page.locator("#rule-chips .chip").evaluateAll((bs: Element[]) => bs.map((b) => b.getAttribute("aria-label"))) as string[];
   check(JSON.stringify(chips) === JSON.stringify(["€500", "€2,000", "€5,000"]) && JSON.stringify(await labelsOf()) === JSON.stringify(["€500, in force", "€2,000", "€5,000"]) && await page.locator('#rule-chips .chip[data-alone="500.00"] .now svg').count() === 1,
     `${tag}: three amounts: ${chips.join(" · ")}, €500 marked in force (a tick, and its name)`);
   const rl = (await page.locator("#s4-locks li").allInnerTexts()).map((t: string) => t.trim());
-  check((await page.locator("#s4-worst").innerText()).trim() === allAgents(WORST.headline) && JSON.stringify(rl) === JSON.stringify([`Purser: €500 alone, ${ALONE_PER_DAY} a day`, "Airwallex card: €25 each, €50 a month", "Metal mandate: 25 test USD each"]),
-    `${tag}: the worst case (${WORST.headline}) and the three locks, one line each: ${rl.join(" · ")}`);
+  check((await page.locator("#s4-worst").innerText()).trim() === worstAloneLine("500.00", ALONE_PER_DAY) && JSON.stringify(rl) === JSON.stringify(["Airwallex card: €25 each, €50 a month", "Metal mandate: 25 test USD each"]) && await page.locator("#s4-diff").isHidden(),
+    `${tag}: the worst case in a CFO's words (${worstAloneLine("500.00", ALONE_PER_DAY)}) and the card's and mandate's lines: ${rl.join(" · ")}`);
+  await page.locator("#s4-more > summary").click();
+  check((await page.locator("#s4-full").innerText()).trim() === WORST.headline && (await page.locator("#s4-more").innerText()).includes(mainRunWorst()), `${tag}: behind "more": the full figure and why the main run's is EUR 300 (${mainRunWorst()})`);
+  await page.locator("#s4-more > summary").click();
   check(await page.locator("#go-apply").isDisabled() && (await page.locator("#s4-note").innerText()).trim() === "", `${tag}: nothing chosen yet: the one button is off`);
   await page.click('#rule-chips .chip[data-alone="500.00"]');
   check(await page.locator("#go-apply").isDisabled() && (await page.locator("#s4-note").innerText()).trim() === W.rule.same, `${tag}: the rule in force: "${W.rule.same}"`);
   await page.click('#rule-chips .chip[data-alone="2000.00"]');
-  check((await page.locator("#s4-note").innerText()).trim() === W.rule.looser && (await page.locator("#go-apply").innerText()).trim() === W.rule.sign && await page.locator("#go-apply").isEnabled()
-    && (await page.locator("#rl-purser").innerText()).trim() === `Purser: €2,000 alone, ${ALONE_PER_DAY} a day`, `${tag}: €2,000 is looser: "${W.rule.looser}", the button "${W.rule.sign}", Purser's line follows`);
-  // The worst case moves with the choice (Max, 7 Nov): €2,000 alone, 3 a day, raises it; back to €500, it is back.
-  check((await page.locator("#s4-worst").innerText()).trim() === allAgents(worldExpo("2000.00").headline) && worldExpo("2000.00").headline !== WORST.headline,
-    `${tag}: choosing €2,000 shows the worst case it would set: ${allAgents(worldExpo("2000.00").headline)}`);
+  check((await page.locator("#s4-note").innerText()).trim() === W.rule.looser && (await page.locator("#go-apply").innerText()).trim() === W.rule.sign && await page.locator("#go-apply").isEnabled(),
+    `${tag}: €2,000 is looser: "${W.rule.looser}", the button "${W.rule.sign}"`);
+  // The worst case moves with the choice (Max, 7 Nov, 1.4): the line names €2,000, and what it adds a month shows beside it.
+  const addMonth = (Number(/EUR ([\d,]+)/.exec(worldExpo("2000.00").headline)![1]!.replace(/,/g, "")) - Number(/EUR ([\d,]+)/.exec(WORST.headline)![1]!.replace(/,/g, "")));
+  check((await page.locator("#s4-worst").innerText()).trim() === worstAloneLine("2000.00", ALONE_PER_DAY) && (await page.locator("#s4-diff").innerText()).trim() === `+€${addMonth.toLocaleString("en-US")} a month` && addMonth === 1500 * ALONE_PER_DAY * 31,
+    `${tag}: choosing €2,000: "${worstAloneLine("2000.00", ALONE_PER_DAY)}", and "+€${addMonth.toLocaleString("en-US")} a month"`);
   if (width >= 1024) {
     await page.waitForTimeout(400);
     const lit = (await page.evaluate(`[...document.querySelectorAll("#diagram .dn")].filter((n) => getComputedStyle(n).opacity === "1" && !n.classList.contains("d-policy")).map((n) => n.classList[1]).join()`)) as string;
-    check(lit === "d-purser,d-airwallex,d-metal" && (await page.locator("#dg-purser").innerText()).trim() === `€2,000 alone, ${ALONE_PER_DAY} a day`, `${tag}: on screen 4 the diagram lights the three locks, Purser's with the new amount (${lit})`);
+    check(lit === "d-purser,d-airwallex,d-metal" && (await page.locator("#dg-purser").innerText()).trim() === `€2,000 alone, ${ALONE_PER_DAY} a day`, `${tag}: on screen 5 the diagram lights the three locks, Purser's with the new amount (${lit})`);
   }
-  await measure(page, tag, 4);
-  await shot(page, `${tag}-4-rule.png`);
-  await layout(page, tag, "screen 4", width);
+  await measure(page, tag, 5);
+  await shot(page, `${tag}-5-rule.png`);
+  await layout(page, tag, "screen 5", width);
   const before = (await v.signCount())[0] ?? 0;
   await page.click("#go-apply");
-  await page.waitForSelector("#scr-5:not([hidden])");
+  await page.waitForSelector("#scr-6:not([hidden])");
 
-  // ── Screen 5: the agent pays its next invoice alone. ──
+  // ── Screen 6: the agent pays its next invoice alone. ──
   const next = page.locator("#s5-next");
-  check(JSON.stringify(await dots(page)) === '["done","done","done","done","on"]' && (await page.locator("#s5-head").innerText()).trim() === W.alone.head, `${tag}: screen 5 of 5: "${W.alone.head}"`);
+  check(JSON.stringify(await dots(page)) === '["done","done","done","done","done","on"]' && (await page.locator("#s5-head").innerText()).trim() === W.alone.head, `${tag}: screen 6 of 6: "${W.alone.head}"`);
   check(await next.getAttribute("data-proposal") === NEXT_INVOICE.id && await next.getAttribute("data-state") === "alone" && (await next.innerText()).includes("EUR 1,850.00")
     && (await next.innerText()).includes("Paid alone under your new policy (up to €2,000). No signature needed."), `${tag}: the next invoice (${NEXT_INVOICE.id}, EUR 1,850.00) "Paid alone under your new policy (up to €2,000). No signature needed."`);
   check(((await v.signCount())[0] ?? 0) === before + 1 && (await page.locator("#w-balance").textContent())?.trim() === "EUR 26,300.00",
     `${tag}: one signature, over the rule; none for the invoice; the stand-in ran it (balance EUR 26,300.00)`);
-  check((await page.locator("#s5-worst").innerText()).trim() === allAgents(worldExpo("2000.00").headline) && allAgents(WORST.headline) !== WORST.headline, `${tag}: the worst case under the signed rule, large, saying whom it counts: ${allAgents(worldExpo("2000.00").headline)}`);
-  const ends = await page.locator("#t-end a").evaluateAll((as: Element[]) => as.map((a) => ({ text: (a.textContent ?? "").trim(), href: a.getAttribute("href") }))) as { text: string; href: string }[];
-  check(JSON.stringify(ends) === JSON.stringify(TRY_SIGN_END.map((e) => ({ text: e.label, href: e.href }))) && await page.locator("#t-film").getAttribute("href") === TRY_SIGN_FILM.href,
-    `${tag}: three ways on: ${ends.map((e) => `"${e.text}" (${e.href})`).join(", ")}; "${TRY_SIGN_FILM.label}" as a text link`);
-  if (!args.live) {
-    const proof = await (await fetch(`${local.url}/proof`)).text();
-    check(/id="faceid"/.test(proof) && /P-0005/.test(proof.slice(proof.indexOf('id="faceid"'))), `${tag}: /proof#faceid is the section with the CFO's Face ID approvals, P-0005 among them`);
-    check((await fetch(`${local.url}/trace`)).status === 200, `${tag}: "Trace this payment" leads to a page the site serves (/trace)`);
-  }
+  check((await page.locator("#s5-worst").innerText()).trim() === worstAloneLine("2000.00", ALONE_PER_DAY), `${tag}: the worst case under the signed rule: ${worstAloneLine("2000.00", ALONE_PER_DAY)}`);
   if (width >= 1024) {
     await page.waitForTimeout(400);
     const lit = (await page.evaluate(`[...document.querySelectorAll("#diagram .dn")].filter((n) => getComputedStyle(n).opacity === "1" && !n.classList.contains("d-policy")).map((n) => n.classList[1]).join()`)) as string;
-    check(lit === "d-alone", `${tag}: on screen 5 the diagram lights "paid alone" (${lit})`);
+    check(lit === "d-alone", `${tag}: on screen 6 the diagram lights "paid alone" (${lit})`);
   }
-  await measure(page, tag, 5, Date.now() - t0);
-  await shot(page, `${tag}-5-paid-alone.png`);
-  await layout(page, tag, "screen 5", width);
+  await measure(page, tag, 6, Date.now() - t0);
+  await shot(page, `${tag}-6-paid-alone.png`);
+  await layout(page, tag, "screen 6", width);
+
+  // ── The closing card (1.5): what the visitor did, then three ways on. ──
+  check((await page.locator("#go-done").innerText()).trim() === W.alone.finish, `${tag}: screen 6's one button: "${W.alone.finish}"`);
+  await page.click("#go-done");
+  await page.waitForSelector("#scr-7:not([hidden])");
+  const did = `${W.done.lead} ${[W.done.items.signed, W.done.items.cheat, W.done.items.trick, W.done.items.rule, W.done.items.alone].join(" · ")}.`;
+  check((await page.locator("#d-head").innerText()).trim() === W.done.head && (await page.locator("#scr-7 .lead1").innerText()).trim() === did && JSON.stringify(await dots(page)) === '["done","done","done","done","done","done"]',
+    `${tag}: the closing card: "${did} ${W.done.head}"`);
+  const ends = await page.locator("#t-end a").evaluateAll((as: Element[]) => as.map((a) => ({ text: (a.textContent ?? "").trim(), href: a.getAttribute("href") }))) as { text: string; href: string }[];
+  check(JSON.stringify(ends) === JSON.stringify(TRY_SIGN_END.map((e) => ({ text: e.label, href: e.href }))) && await page.locator("#t-film").getAttribute("href") === TRY_SIGN_FILM.href,
+    `${tag}: three ways on: ${ends.map((e) => `"${e.text}" (${e.href})`).join(", ")}; "${TRY_SIGN_FILM.label}" as a text link`);
+  check(await page.locator("#scr-7 .btn.primary").count() === 1 && await page.locator("#scr-7 .ends .btn").count() === 2, `${tag}: the closing card: one main button, two more buttons`);
+  if (!args.live) {
+    const proof = await (await fetch(`${local.url}/proof`)).text();
+    check(/id="faceid"/.test(proof) && /P-0005/.test(proof.slice(proof.indexOf('id="faceid"'))), `${tag}: /proof#faceid is the section with the CFO's Face ID approvals, P-0005 among them`);
+    check((await fetch(`${local.url}/trace`)).status === 200, `${tag}: "Trace a real payment" leads to a page the site serves (/trace)`);
+  }
+  await measure(page, tag, 7, Date.now() - t0);
+  await shot(page, `${tag}-7-done.png`);
+  await layout(page, tag, "the closing card", width);
   // A6: a refused signature is an answer (HTTP 200, verified false), so the whole visit logs no console error at all.
   check(errors.length === 0, `${tag}: A6: 0 console errors across the whole visit (${errors.length}${errors.length ? `: ${errors.join(" | ")}` : ""})`);
   await v.context.close();
@@ -684,7 +741,7 @@ if (!args.live && !ONLY) {
     check(/^Signed and verified: the looser policy holds/.test(await pstatus()) && ((await page.locator("#w-floor").textContent()) ?? "").trim() === "EUR 20,000.00" && (await panels(page)).state === "in-force",
       `${tag}: signed with the passkey and verified by the server, the looser floor holds (${await pstatus()})`);
     await page.click("#go-see");
-    await page.waitForSelector("#scr-5:not([hidden])");
+    await page.waitForSelector("#scr-6:not([hidden])");
     check((await page.locator("#s5-head").innerText()).trim() === W.alone.waits && await page.locator("#s5-next").getAttribute("data-state") === "waits",
       `${tag}: the next invoice "${W.alone.waits}" (above the EUR 500.00 the agent may pay alone)`);
     await page.locator("#s5-others-fold > summary").click();
@@ -720,8 +777,8 @@ if (!args.live && !ONLY) {
     await page.click("#p-apply");
     await page.waitForFunction(() => /^Stricter/.test(document.getElementById("p-status")?.textContent ?? ""));
     const lower = worldExpo("500.00", "40.00");
-    check((await page.locator("#p-expo-head").innerText()).trim() === lower.headline && lower.headline !== WORST.headline && (await page.locator("#s4-worst").innerText()).trim() === allAgents(lower.headline),
-      `${tag}: a stricter month lowers it at once, on screen 4's line too: ${lower.headline.slice(0, 60)}…`);
+    check((await page.locator("#p-expo-head").innerText()).trim() === lower.headline && lower.headline !== WORST.headline && (await page.locator("#s4-full").textContent())?.trim() === lower.headline,
+      `${tag}: a stricter month lowers it at once, behind screen 5's "more" too: ${lower.headline.slice(0, 60)}…`);
     await page.fill("#pf-alone", "2000.00");
     await page.click("#p-apply");
     await page.waitForSelector("#p-refused:not([hidden])");
@@ -738,13 +795,13 @@ if (!args.live && !ONLY) {
     await page.waitForFunction(() => /ok/.test(document.getElementById("p-status")?.className ?? "") || /bad/.test(document.getElementById("p-sstatus")?.className ?? ""));
     check(new RegExp(`${NEXT_INVOICE.id}: paid alone under your new policy\\.$`).test((await page.locator("#p-status").innerText()).trim()), `${tag}: signed: ${NEXT_INVOICE.id} ran without a signature (${PAID_ALONE})`);
     await page.click("#go-see");
-    await page.waitForSelector("#scr-5:not([hidden])");
+    await page.waitForSelector("#scr-6:not([hidden])");
     const next = page.locator("#s5-next");
     check(await next.getAttribute("data-state") === "alone" && (await next.innerText()).includes("Paid alone under your new policy (up to €2,000)"), `${tag}: screen 5: the next invoice, paid alone`);
     await next.locator("details.more > summary").click();
     check(/Test transfer test-[0-9a-f]{12}, balance after EUR 26,300\.00/.test(await next.innerText()) && (await next.locator(".pill.said-before").innerText()).trim() === TRY_POLICY.saidBefore && await page.locator(".pill.said-before:visible").count() === 1,
       `${tag}: the agent's sentence stays, labelled "${TRY_POLICY.saidBefore}", on the paid-alone invoice only; the stand-in ran it (balance EUR 26,300.00)`);
-    check(JSON.stringify(await dots(page)) === '["done","done","done","done","on"]' && await page.locator('ol.dots li[aria-current="step"]').count() === 1, `${tag}: the dots show the last step`);
+    check(JSON.stringify(await dots(page)) === '["done","done","done","done","done","on"]' && await page.locator('ol.dots li[aria-current="step"]').count() === 1, `${tag}: the dots show the last step`);
     check(((await v.signCount())[0] ?? 0) === before + 1, `${tag}: one signature for the policy change, none for the invoice (sign count ${before} → ${(await v.signCount())[0]})`);
     check(await page.locator(`#pl-pay li[data-proposal="T-0001"]`).getAttribute("data-check") === "fail", `${tag}: T-0001 is still blocked by the reserve floor`);
     await shot(page, `${tag}-1-paid-alone.png`);
@@ -768,12 +825,12 @@ if (!args.live && !ONLY) {
     await page.waitForFunction(() => /ok/.test(document.getElementById("p-status")?.className ?? ""));
     await page.locator("#p-open").click();
     const signed = (await v.signCount())[0] ?? 0;
-    check(await page.locator('#rule-chips .chip[data-alone="500.00"]').getAttribute("aria-label") === "€500" && await page.locator("#rule-chips .chip .now").count() === 0 && (await page.locator("#rl-purser").innerText()).trim() === `Purser: €1,000 alone, ${ALONE_PER_DAY} a day`, `${tag}: in force now: €1,000 (signed); no chip marked in force`);
+    check(await page.locator('#rule-chips .chip[data-alone="500.00"]').getAttribute("aria-label") === "€500" && await page.locator("#rule-chips .chip .now").count() === 0 && (await page.locator("#s4-worst").innerText()).trim() === worstAloneLine("1000.00", ALONE_PER_DAY), `${tag}: in force now: €1,000 (signed); no chip marked in force`);
     await page.click('#rule-chips .chip[data-alone="500.00"]');
     check((await page.locator("#s4-note").innerText()).trim() === W.rule.stricter && (await page.locator("#go-apply").innerText()).trim() === W.rule.apply && await page.locator("#go-apply").isEnabled(), `${tag}: €500 is stricter: "${W.rule.stricter}", the button "${W.rule.apply}"`);
     await shot(page, `${tag}-1-stricter.png`);
     await page.click("#go-apply");
-    await page.waitForSelector("#scr-5:not([hidden])");
+    await page.waitForSelector("#scr-6:not([hidden])");
     check((await page.locator("#s5-head").innerText()).trim() === W.alone.waits && await page.locator("#s5-next").getAttribute("data-state") === "waits" && (await page.locator("#s5-next").innerText()).includes("above the €500"),
       `${tag}: applied at once: the next invoice "${W.alone.waits}" (above the €500 the agent may pay alone)`);
     check(((await v.signCount())[0] ?? 0) === signed, `${tag}: no signature for a stricter rule (sign count stays ${signed})`);
@@ -797,7 +854,7 @@ if (!args.live && !ONLY) {
       await route.fulfill({ response: res, body: JSON.stringify(j) });
     });
     await page.goto(`${local.url}/try/sign`);
-    await page.waitForSelector("#s1-ask .says");
+    await page.waitForSelector("#s1-ask .says", { state: "attached" });
     await page.waitForSelector("#s1-blocked .says", { state: "attached" });
     const says = (await page.locator(".says").evaluateAll((ns: Element[]) => ns.map((n) => ({ text: n.textContent, kids: n.children.length, html: n.innerHTML })))) as { text: string | null; kids: number; html: string }[];
     check(says.length === 2 && says.every((x) => x.text === MARKUP && x.kids === 0 && x.html === MARKUP.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")),
@@ -807,19 +864,23 @@ if (!args.live && !ONLY) {
     await context.close();
   }
 
-  // ── Timed: the whole story, scripted, from opening the page to screen 5, in under 60 s. ──
+  // ── Timed (4.2): the whole story, scripted, from opening the page to the closing card, in at most 75 s. ──
   {
     const v = await visitor({ width: 390, ip: "198.51.125.7" });
     const { page } = v;
     const t0 = Date.now();
     await openWorld(page, "timed");
+    await start(page);
     await page.click("#go-sign"); await page.waitForSelector("#scr-2:not([hidden])");
     await page.click("#go-cheat"); await page.waitForSelector("#tamper:not([hidden])");
-    await page.click("#go-rule"); await page.waitForSelector("#scr-4:not([hidden])");
-    await page.click('#rule-chips .chip[data-alone="2000.00"]'); await page.click("#go-apply"); await page.waitForSelector("#scr-5:not([hidden])");
+    await page.click("#go-trick"); await page.waitForSelector("#scr-4:not([hidden])");
+    await page.click('#trick-chips .chip[data-attack="pre_approved"]'); await page.waitForSelector("#k-result:not([hidden])");
+    await page.click("#go-rule"); await page.waitForSelector("#scr-5:not([hidden])");
+    await page.click('#rule-chips .chip[data-alone="2000.00"]'); await page.click("#go-apply"); await page.waitForSelector("#scr-6:not([hidden])");
+    await page.click("#go-done"); await page.waitForSelector("#scr-7:not([hidden])");
     const ms = Date.now() - t0;
-    metrics.push({ tag: "timed-390", screen: 5, words: 0, primaries: 0, primaryInView: true, ms });
-    check(ms < 60_000 && await page.locator("#s5-next").getAttribute("data-state") === "alone", `timed: screen 1 to 5, scripted, in ${(ms / 1000).toFixed(1)} s (under 60 s)`);
+    metrics.push({ tag: "timed-390", screen: 7, words: 0, primaries: 0, primaryInView: true, ms });
+    check(ms <= 75_000 && await page.locator("#s5-next").getAttribute("data-state") === "alone", `timed: the opening to the closing card, scripted, in ${(ms / 1000).toFixed(1)} s (at most 75 s)`);
     await v.context.close();
   }
 }

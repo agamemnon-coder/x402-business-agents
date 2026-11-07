@@ -101,36 +101,41 @@ describe("the approval sheet follows the CFO's real one", () => {
   });
 });
 
-describe("the page's frame: five screens, one line of disclaimer, \"What's real?\"", () => {
+describe("the page's frame: an opening, six steps, a closing card, one line of disclaimer, \"What's real?\"", () => {
   const main = block(page, "<main>", "main").whole;
   const screen = (n: number) => block(main, `<section class="card scr" id="scr-${n}"`, "section").whole;
   // The main buttons a screen shows when it opens (a button with the hidden attribute is not shown).
   const primaries = (html: string) => (html.match(/<(?:button|a) class="btn primary[^"]*"[^>]*>/g) ?? []).filter((b) => !/\shidden(?=[\s>])/.test(b));
 
-  it("five screens with one progress indicator, the first under way", () => {
-    expect(TRY_SIGN_STEPS).toEqual(["The agent asks", "Signed", "Try to cheat", "Change the rule", "Pays alone"]);
+  it("six steps with one progress indicator (Max, 7 Nov: \"Trick the agent\" after the cheat); the opening shows first", () => {
+    expect(TRY_SIGN_STEPS).toEqual(["The agent asks", "Signed", "Try to cheat", "Trick the agent", "Change the rule", "Pays alone"]);
     const ol = block(main, '<ol class="dots"', "ol").whole;
     expect(ol.split('<span class="t">').slice(1).map((x) => x.slice(0, x.indexOf("</span>")))).toEqual([...TRY_SIGN_STEPS]);
-    expect(ol).toContain('<li id="pg-1" class="on" aria-current="step">');
-    expect(main).toContain(`<p class="count" id="pg-count" aria-live="polite">1 of 5 · ${TRY_SIGN_STEPS[0]}</p>`);
+    expect(main).toContain('<p class="count" id="pg-count" aria-live="polite">6 steps · about a minute</p>');
     // One indicator only: the step bar of before is gone.
     expect(page).not.toContain('class="progress"');
-    for (let n = 1; n <= 5; n++) expect(screen(n)).toContain(n === 1 ? `id="scr-${n}" data-screen="${n}">` : `id="scr-${n}" data-screen="${n}" hidden>`);
+    for (let n = 0; n <= 7; n++) expect(screen(n)).toContain(n === 0 ? `id="scr-${n}" data-screen="${n}">` : `id="scr-${n}" data-screen="${n}" hidden>`);
   });
 
   it("each screen says what Max wrote, with one main button", () => {
     const W = TRY_SIGN_SCREENS;
-    expect(screen(1)).toContain(`<h1 tabindex="-1" id="s1-head">${W.ask.head}</h1>`);
+    // 1.1: the opening, one sentence and one button; its amount is the waiting invoice's.
+    expect(screen(0)).toContain(`<h1 tabindex="-1" id="s0-head">${W.intro.head}</h1>`);
+    expect(W.intro.head).toBe("You're the CFO. Your AI agents pay suppliers on their own. One of them wants €1,850.");
+    expect(FIXED_PROPOSALS.find((p) => p.id === "T-0002")!.amount).toBe("1850.00");
+    expect(screen(1)).toContain(`<h2 tabindex="-1" id="s1-head">${W.ask.head}</h2>`);
     expect(W.ask.head).toBe("Your Treasury agent wants to pay an invoice above its limit.");
     expect(screen(2)).toContain(`<h2 tabindex="-1" id="r-head">${W.signed.head}</h2>`);
     expect(screen(2)).toContain(`<p class="lead1" id="r-line">${W.signed.line}</p>`);
     expect(W.signed.line).toBe("Purser checked your signature. It only fits these exact terms.");
     expect(screen(3)).toContain(`<h2 tabindex="-1" id="s3-head">${W.cheat.head}</h2>`);
-    expect(screen(4)).toContain(`<h2 tabindex="-1" id="s4-head">${W.rule.head}</h2>`);
-    expect(screen(5)).toContain(`<h2 tabindex="-1" id="s5-head">${W.alone.head}</h2>`);
-    // One main button in sight per screen: Sign / Now try to cheat / Next / Sign or Apply / See the real run.
-    expect([1, 2, 3, 4, 5].map((n) => primaries(screen(n)).length)).toEqual([1, 1, 1, 1, 1]);
-    expect(screen(1)).toContain(W.ask.sign); expect(screen(2)).toContain(W.signed.cheat); expect(screen(3)).toContain(W.cheat.next);
+    expect(screen(4)).toContain(`<h2 tabindex="-1" id="k-head">${W.trick.head}</h2>`);
+    expect(screen(5)).toContain(`<h2 tabindex="-1" id="s4-head">${W.rule.head}</h2>`);
+    expect(screen(6)).toContain(`<h2 tabindex="-1" id="s5-head">${W.alone.head}</h2>`);
+    expect(screen(7)).toContain(`<h2 tabindex="-1" id="d-head">${W.done.head}</h2>`);
+    // One main button in sight per screen: Show me / Sign / Now try to cheat / Next / Next / Sign or Apply / Finish / See the real run.
+    expect([0, 1, 2, 3, 4, 5, 6, 7].map((n) => primaries(screen(n)).length)).toEqual([1, 1, 1, 1, 1, 1, 1, 1]);
+    expect(screen(1)).toContain(W.ask.sign); expect(screen(2)).toContain(W.signed.cheat); expect(screen(3)).toContain(W.cheat.next); expect(screen(4)).toContain(W.trick.next);
     // The second action is a text link, never a second button.
     expect(screen(2)).toContain('class="tlink" type="button" id="r-receipt"');
     expect(screen(2)).toContain('class="tlink" id="r-verify"');
