@@ -74,7 +74,9 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     const html = PAGES.home!;
     const hero = /<section class="hero">[\s\S]*?<\/section>/.exec(html)![0];
     const t = words(hero);
-    expect(t.startsWith(`AI agents spend. You sign off. ${WHAT_IT_IS} 1 Watch the agents`)).toBe(true);
+    // Max, 7 Nov: the one button right under the heading and its sentence, then the three steps.
+    expect(t.startsWith(`AI agents spend. You sign off. ${WHAT_IT_IS} Start: watch the agents`)).toBe(true);
+    expect(t).toContain("1 Watch the agents");
     for (const d of DIFFERENTIATORS) expect(t.includes(d)).toBe(false);
     expect(t).toContain(`${CAVEAT_LINE} Details →`);
     // The caveat's link opens the footer's "What's real?", which lists what the line names.

@@ -39,7 +39,8 @@ describe("/ for a guest", () => {
     // Section D (6 Nov): what Purser is, the three sentences, Try it in 30 seconds, then the badges and the Kit 11 line.
     // Max, 7 Nov: the heading, what Purser is, then the way through in three steps and one button (the three sentences
     // stay in the README, the form and the deck).
-    expect(pages.home).toContain(`<h1 class="h-hero">${HERO}</h1>\n    <p class="what">${esc(WHAT_IT_IS)}</p>\n    <ol class="flow" aria-label="Three steps">`);
+    // Max, 7 Nov (second round): the one button right under the heading, with only that one sentence between.
+    expect(pages.home).toContain(`<h1 class="h-hero">${HERO}</h1>\n    <p class="what">${esc(WHAT_IT_IS)}</p>\n    <a class="btn primary big start" href="watch">`);
     // The core sentence stays the page's description.
     expect(pages.home).toContain(`<meta name="description" content="${HERO} ${CORE_SENTENCE}">`);
   });

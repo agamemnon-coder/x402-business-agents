@@ -75,7 +75,7 @@ describe("1. the main run's CFO dashboard (/?autonomy) counts as Home, Watch and
     expect([c.calls, agentCalls, agentUsd]).toEqual([58, 50, "0.3170"]);
     // All of them, said as all of them, and adding up to Proof's: the agents' 50 and the reader's 8 (documents, reviews).
     expect(replay.figures.claude).toBe("58 Claude calls in all, $0.38: the agents' own 50 (USD 0.3170, as on Proof) and 8 more that read documents or review proposals.");
-    expect(words(proofPage())).toContain(`${agentCalls} calls, each with a request id`);
+    expect(words(proofPage())).toContain(`${agentCalls} calls to Claude, each logged`);
   });
 
   it("words a refused purchase by who refused it (refused_by), never 'refused before signing' for Metal's refusal", () => {

@@ -367,9 +367,11 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // The strongest proof first (Max's last round, item 2): each partner card opens with its claims, each a link, right
     // under the card's header; no TAP remark under the figures (TAP is the footer link to /visa).
     {
+      // Max, 7 Nov: each card shows its name, then 2–3 facts with a bold number; its claims, each a link, in its fold.
       const leads = (await page.evaluate(`[...document.querySelectorAll("article.pcard")].map((c) => {
-        const first = c.querySelector(".ph").nextElementSibling;
-        return { id: c.id, lead: !!first && first.matches("ul.lead"), claims: first && first.matches("ul.lead") ? [...first.querySelectorAll("a.c")].map((a) => a.textContent.trim()) : [] };
+        const first = c.querySelector(".ph").nextElementSibling, ul = c.querySelector("details.fold > ul.lead");
+        const facts = first && first.matches(".facts") ? first.querySelectorAll(".fact > b").length : 0;
+        return { id: c.id, lead: facts >= 2 && facts <= 3 && !c.querySelector("img") && !!ul, claims: ul ? [...ul.querySelectorAll("a.c")].map((a) => a.textContent.trim()) : [] };
       })`)) as { id: string; lead: boolean; claims: string[] }[];
       const want: Record<string, RegExp[]> = {
         airwallex: [/^The hash the CFO signed is in Airwallex's own record of the SWIFT payment$/, /^3 of 3 cards carry the CFO's policy$/],
@@ -378,7 +380,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       };
       for (const [id, res] of Object.entries(want)) {
         const c = leads.find((x) => x.id === id);
-        if (!c?.lead || c.claims.length !== res.length || res.some((re, i) => !re.test(c.claims[i] ?? ""))) fail(`/proof ${tag}: the ${id} card does not open with its claims (${JSON.stringify(c?.claims)})`);
+        if (!c?.lead || c.claims.length !== res.length || res.some((re, i) => !re.test(c.claims[i] ?? ""))) fail(`/proof ${tag}: the ${id} card does not show 2–3 facts, then its claims in the fold (${JSON.stringify(c?.claims)})`);
       }
       if (await page.locator(".septest").count()) fail(`/proof ${tag}: a TAP remark under the figures`);
       if (/\bTAP\b/.test((await page.locator("main").innerText()))) fail(`/proof ${tag}: TAP outside the footer link`);
@@ -405,6 +407,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     if (w === 390 || w === 1440) {
       for (const [claim, id, open] of [["The hash the CFO signed is in", "awx-hash", false], ["3 of 3 cards carry", "controls", true], ["Treasury ····", "card-treasury", true]] as const) {
         await page.goto(`${base}/proof`, { waitUntil: "load" });
+        await page.locator("#airwallex details.fold > summary").click();
         await page.locator("#airwallex ul.lead a", { hasText: claim }).first().click();
         await page.waitForURL(new RegExp(`/airwallex#${id}$`));
         await page.waitForTimeout(300);

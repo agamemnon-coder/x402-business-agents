@@ -21,7 +21,8 @@ details.deep > summary { cursor: pointer; list-style: none; display: flex; align
 details.deep > summary::-webkit-details-marker { display: none; }
 details.deep > summary::after { content: "▾"; font-size: 16px; color: var(--accent); } details.deep[open] > summary::after { content: "▴"; }
 details.deep h2.sec { display: none; }
-.cnote { margin: -10px 0 16px; font-size: 15px; color: var(--muted); max-width: 52em; }
+.cnote { margin: 12px 0 0; font-size: 13.5px; color: var(--muted); max-width: 60em; }
+.clink { margin: 14px 0 0; } .clink a { color: var(--accent); font-weight: 650; text-decoration: none; }
 .company { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; max-width: 60em; }
 .company li { font-size: 17px; line-height: 1.45; border-left: 3px solid var(--accent); padding-left: 12px; }
 .company a { color: var(--accent); font-weight: 600; text-decoration: none; white-space: nowrap; }
@@ -114,10 +115,11 @@ export function earlierLine(e: Extract<Ev, { k: "money" }>): string {
 const noteHtml = (note: string | undefined, tag = "p") => (note ? `<${tag} class="note">${esc(note)}</${tag}>` : "");
 export const fold = (summary: string, items: string[], open = false) => items.length ? `<details class="fold"${open ? " open" : ""}><summary>${esc(summary)}</summary><ul class="pl">${items.join("")}</ul></details>` : "";
 const fact = (v: string, l: string) => `<span class="fact"><b>${esc(v)}</b> ${esc(l)}</span>`;
+/** Partner names as text, never a brand logo (Max, 7 Nov: "overal alleen tekst"). */
 export const LOGO = {
-  metal: '<span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="48" height="15"></span>',
-  airwallex: '<span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="109" height="15"></span>',
-  claude: '<span class="logo dark"><img src="assets/logo-claude.png" alt="Claude" width="69" height="15"></span>',
+  metal: '<span class="logo txt">Metal</span>',
+  airwallex: '<span class="logo txt">Airwallex</span>',
+  claude: '<span class="logo txt">Claude</span>',
   visa: '<span class="logo txt">Visa TAP</span>',
 };
 
@@ -164,12 +166,15 @@ function partnerCards(run: AgentRun): string {
   const onChain = money.filter((e) => e.rail === "metal" && !e.refused).reduce((n, e) => n + e.count, 0);
   const mandates = run.events.filter((e) => e.k === "mandate").length;
   const awx = money.filter((e) => e.rail === "airwallex" && !e.refused).length;
-  const card = (id: "metal" | "airwallex" | "claude", logo: string, name: string, what: string, facts: string, items: string[], extra = "") =>
-    `<article class="pcard card" id="${id}"><div class="ph">${logo}<h3>${esc(name)}</h3><a class="open" href="${id}">More ${icon("arrow-right", 14)}</a></div>${leadHtml(lead[id])}<p class="what">${esc(what)}</p><div class="facts">${facts}</div>${extra}${fold("Show the live proof", items)}</article>`;
+  // Max, 7 Nov: the name above, 2–3 short facts each with its number in bold, no brackets or jargon; the claims, the
+  // sentence and the live proof behind one fold. Names as text, never a brand logo.
+  const card = (id: "metal" | "airwallex" | "claude", name: string, what: string, facts: string, items: string[], extra = "") =>
+    `<article class="pcard card" id="${id}"><div class="ph"><h3>${esc(name)}</h3><a class="open" href="${id}">More ${icon("arrow-right", 14)}</a></div><div class="facts">${facts}</div><details class="fold"><summary>Show the live proof</summary>${leadHtml(lead[id])}<p class="what">${esc(what)}</p>${extra}${items.length ? `<ul class="pl">${items.join("")}</ul>` : ""}</details></article>`;
+  const cardsMatch = /^(\d+ of \d+) cards carry the CFO's policy$/.exec(lead.airwallex.find((l) => / cards carry the CFO's policy$/.test(l.text))?.text ?? "");
   return `<div class="partners">
-${card("metal", LOGO.metal, "Metal", "Each agent's limit is a mandate on chain; payments per query over x402.", fact(String(onChain), "payments on chain") + fact(String(st.metal), "refused by Metal at the cap") + (st.revoked ? fact(String(st.revoked), "refused by Metal: mandate just replaced") : "") + fact(String(mandates), "mandates replaced"), p.metal, pay.sums && pay.onChain === onChain ? `<p class="note">${esc(`${pay.onChainLine}.`)}</p>` : "")}
-${card("airwallex", LOGO.airwallex, "Airwallex", "Earnings booked once final, the euro licence by SWIFT, cards with limits the bank enforces.", fact(String(awx), "movements at Airwallex"), p.airwallex)}
-${card("claude", LOGO.claude, "Claude", `The agents decide with Claude: ${run.agents.map((a) => `${a.short} on ${a.family}`).join(", ")}.`, fact(`${sp.byClaude}/${sp.decisions}`, "decisions by Claude") + fact(String(s.agent_stats.reduce((n, a) => n + a.claude_calls, 0)), "calls, each with a request id"), p.claude)}
+${card("metal", "Metal", "Each agent's limit is a mandate on chain; payments per query over x402.", fact(String(onChain), "payments on chain") + fact(String(st.metal), "refused by Metal at the limit") + fact(String(mandates), "limits replaced on chain"), p.metal, (st.revoked ? `<p class="note">${esc(`${st.revoked} refused by Metal because its mandate had just been replaced.`)}</p>` : "") + (pay.sums && pay.onChain === onChain ? `<p class="note">${esc(`${pay.onChainLine}.`)}</p>` : ""))}
+${card("airwallex", "Airwallex", "Earnings booked once final, the euro licence by SWIFT, cards with limits the bank enforces.", fact(String(awx), "movements at Airwallex") + (cardsMatch ? fact(cardsMatch[1]!, "cards carry the CFO's limits") : "") + (st.airwallex ? fact(String(st.airwallex), "declined by Airwallex") : ""), p.airwallex)}
+${card("claude", "Claude", `The agents decide with Claude: ${run.agents.map((a) => `${a.short} on ${a.family}`).join(", ")}.`, fact(`${sp.byClaude}/${sp.decisions}`, "decisions by Claude") + fact(String(s.agent_stats.reduce((n, a) => n + a.claude_calls, 0)), "calls to Claude, each logged"), p.claude)}
 </div>`;
 }
 

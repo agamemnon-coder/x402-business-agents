@@ -70,7 +70,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
 .chat.me { border-radius: 30px 30px 8px 30px; background: var(--accent); border-color: var(--accent); }
 .stop { width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #ff8a80, #d42a1f); display: grid; place-items: center; font-size: 34px; font-weight: 900; color: #fff; box-shadow: 0 0 0 14px rgba(255,93,82,.18), 0 30px 60px rgba(0,0,0,.5); text-align: center; line-height: 1.05; }
 .logos { display: flex; align-items: center; gap: 34px; padding: 26px 44px; border-radius: 26px; background: #f5f6fa; }
-.logos img { display: block; } .logos .cl { background: #141413; border-radius: 999px; padding: 10px 22px; } .logos .sep { width: 2px; height: 44px; background: #d8dbe5; } .logos .w { font-size: 22px; color: #5b6172; font-weight: 600; }
+.logos img { display: block; } .logos .lgt { color: #141413; font-weight: 800; letter-spacing: -.01em; } .logos .cl { border-radius: 999px; padding: 10px 22px; } .logos .sep { width: 2px; height: 44px; background: #d8dbe5; } .logos .w { font-size: 22px; color: #5b6172; font-weight: 600; }
 .foot { position: absolute; left: 60px; right: 60px; bottom: 26px; font-size: 18px; color: #6b7286; display: flex; justify-content: space-between; }
 .ticker { font-family: ui-monospace, Menlo, monospace; font-size: 22px; color: var(--metal); }
 .feat { display: flex; gap: 16px; flex-wrap: wrap; width: 1500px; }
@@ -123,7 +123,8 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
     return { n: ph, at: function (t) { fc.at(t); var done = prog(t, t0 + 2.2, t0 + 2.4); ok.textContent = done > 0 ? "Approved ✓" : "Approve with Face ID"; ok.style.background = done > 0 ? "var(--ok)" : "var(--accent)"; } };
   }
   function toast(kind, title, sub, amt) { var n = E("div", "toast " + kind, null, [E("div", "ic", kind === "ok" ? "✓" : "✕"), E("div", null, title, [E("small", null, sub)]), E("div", "amt", amt)]); return n; }
-  function logo(name, h) { var i = document.createElement("img"); i.src = "assets/" + name; i.style.height = h + "px"; i.alt = ""; return i; }
+  // Partner names as text, never a brand logo (Max, 7 Nov).
+  function logo(name, h) { var t = document.createElement("b"); t.className = "lgt"; t.textContent = { "logo-airwallex.png": "Airwallex", "logo-metal.svg": "Metal", "logo-claude.png": "Claude" }[name] || ""; t.style.fontSize = Math.round(h * 0.75) + "px"; return t; }
   var d = D.data;
 
   // ---- the scenes; their lengths and words come from the film's script (src/film/script.ts). ----
@@ -298,7 +299,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       var s = put(L, E("div", "h2 muted", "AI agents spend. You sign off."), 140, 420); s.style.width = "1500px";
       // "Powered by Claude" only for a recording in which the agents decided; the 30 October one predates them.
       var decided = d.claude === "decided";
-      var lg = put(L, E("div", "logos", null, [E("span", "w", "Built on"), logo("logo-airwallex.png", 40), E("span", "sep"), logo("logo-metal.svg", 40), E("span", "sep")].concat(decided ? [E("span", "w", "Powered by"), E("span", "cl", null, [logo("logo-claude.png", 34)])] : [E("span", "cl", null, [(function () { var i = logo("logo-claude.png", 34); i.alt = "Claude"; return i; })()]), E("span", "w", "read the documents")])), 140, 640);
+      var lg = put(L, E("div", "logos", null, [E("span", "w", "Built on"), logo("logo-airwallex.png", 40), E("span", "sep"), logo("logo-metal.svg", 40), E("span", "sep")].concat(decided ? [E("span", "w", "Powered by"), E("span", "cl", null, [logo("logo-claude.png", 34)])] : [E("span", "cl", null, [logo("logo-claude.png", 34)]), E("span", "w", "read the documents")])), 140, 640);
       var e = put(L, E("div", "h2", "Every payment has a proof."), 140, 820); e.style.color = "var(--accent2)";
       var note = put(L, E("div", "muted", decided ? "“Built on” and “Powered by” name the services Purser uses; they are not an endorsement." : "“Built on” names the services Purser uses; the Claude logo names the model that read the documents. Neither is an endorsement."), 140, 950); note.style.fontSize = "20px";
       return function (t) { rise(p, t, .2); rise(s, t, .8); rise(lg, t, 2); rise(e, t, 3.5); rise(note, t, 4); };

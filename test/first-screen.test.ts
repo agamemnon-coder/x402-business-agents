@@ -4,7 +4,7 @@
 // truth: src/config/brand.ts (FIRST_SCREEN, WHY_COMPANY). Breaks when a place drops, adds or reorders a word.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { BUSINESS_DOCS, DIFFERENTIATORS, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, JUDGE_LINE, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
+import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, JUDGE_LINE, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
 import { FLOW, START, homePage } from "../src/redesign/home.js";
 import { buildPages } from "../src/relay/assets.js";
 
@@ -42,7 +42,7 @@ describe("the first screen (section D, 6 Nov)", () => {
 
   it("opens Home under its heading with what Purser is, then the way through in three steps and one button (Max, 7 Nov)", () => {
     const t = words(hero(HOME));
-    expect(t.startsWith(`${HERO} ${WHAT_IT_IS} 1 Watch the agents A real run, replayed · 1 min 2 Try it yourself Sign with your Face ID · 1 min 3 See the proof Every id, checkable ${START}`)).toBe(true);
+    expect(t.startsWith(`${HERO} ${WHAT_IT_IS} ${START} ${JUDGE_LINE} → 1 Watch the agents A real run, replayed · 1 min 2 Try it yourself Sign with your Face ID · 1 min 3 See the proof Every id, checkable`)).toBe(true);
     expect(FLOW.map((f) => f.href)).toEqual(["watch", "try/sign", "proof"]);
     expect(hero(HOME)).toContain('<a href="try/sign">');
     // One button, the first step's.
@@ -75,16 +75,21 @@ describe("why this is a company (section D, 6 Nov)", () => {
     expect(WHY_COMPANY[2]!.text).toBe("€49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions. A hypothesis.");
   });
 
-  it("is on the README and on /proof, word for word, each line linked to its page in docs/business/", () => {
+  it("is on the README and on /proof, word for word; the README links each line to its page, /proof once to the case (Max, 7 Nov)", () => {
     expect(section).not.toBe("");
     expect(band).not.toBe("");
     for (const l of WHY_COMPANY) {
       const [file, anchor] = l.page.split("#") as [string, string];
       expect(section).toContain(`- **${l.label}:** ${l.text} ([${file}](docs/business/${l.page}))`);
       expect(words(band)).toContain(`${l.label}: ${l.text}`);
-      expect(band).toContain(`href="${BUSINESS_DOCS}${l.page}"`);
       expect({ page: l.page, found: anchors(read(`docs/business/${file}`)).includes(anchor) }).toEqual({ page: l.page, found: true });
     }
+    // On /proof: the content first, one link "Read the business case ↗", the disclaimer as one small line at the bottom.
+    expect(band.match(/<a /g)).toHaveLength(1);
+    expect(band).toContain(`<p class="clink"><a href="${BUSINESS_DOCS}" target="_blank" rel="noopener">${BUSINESS_CASE_LINK}</a></p>`);
+    expect(BUSINESS_CASE_LINK).toBe("Read the business case ↗");
+    expect(band.indexOf('class="company"')).toBeLessThan(band.indexOf('class="cnote"'));
+    expect(band.indexOf('class="clink"')).toBeLessThan(band.indexOf('class="cnote"'));
   });
 
   it("says each line as docs/business/ does: the price from model.md, the cited source from problem.md", () => {

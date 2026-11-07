@@ -4,7 +4,7 @@
 // see the proof. One button. The numbers, the partners' proof and the business live on /proof. Everything from the
 // recorded run (src/redesign/run.ts).
 
-import { BUSINESS_DOCS, CAVEAT_LINE, CAVEAT_LINK, CORE_SENTENCE, HERO, JUDGE_LINE, KIT_LINE, VISA_AWARD_ON, VISA_EXTRA_LINK, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../config/brand.js";
+import { BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CAVEAT_LINK, CORE_SENTENCE, HERO, JUDGE_LINE, KIT_LINE, VISA_AWARD_ON, VISA_EXTRA_LINK, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
 import { agentRun, type AgentRun } from "./run.js";
 import { esc, icon, page, stageHtml } from "./ui.js";
 
@@ -78,9 +78,9 @@ export function heroMoments(run: AgentRun): number[] {
 
 /** The partners' logos, as Home has always shown them. */
 const LOGOS: Record<"Airwallex" | "Metal" | "Claude", string> = {
-  Airwallex: '<span class="logo"><img src="assets/logo-airwallex.png" alt="Airwallex" width="109" height="15"></span>',
-  Metal: '<span class="logo"><img src="assets/logo-metal.svg" alt="Metal" width="48" height="15"></span>',
-  Claude: '<span class="logo dark"><img src="assets/logo-claude.png" alt="Claude" width="69" height="15"></span>',
+  Airwallex: '<span class="logo txt">Airwallex</span>',
+  Metal: '<span class="logo txt">Metal</span>',
+  Claude: '<span class="logo txt">Claude</span>',
 };
 
 /**
@@ -141,8 +141,9 @@ const JS = `${CFO_FORWARD_JS}
 export function whyCompanyHtml(): string {
   return `<section class="band" aria-labelledby="h-company"><div class="wrap">
   <div class="sechead"><h2 class="h-sec" id="h-company">Why this is a company</h2></div>
-  <p class="cnote">${esc(WHY_COMPANY_NOTE)}</p>
-  <ul class="company">${WHY_COMPANY.map((l) => `<li><b>${esc(l.label)}:</b> ${esc(l.text)} <a href="${esc(BUSINESS_DOCS + l.page)}" target="_blank" rel="noopener">Read it ↗</a></li>`).join("")}</ul>
+  <ul class="company">${WHY_COMPANY.map((l) => `<li><b>${esc(l.label)}:</b> ${esc(l.text)}</li>`).join("")}</ul>
+  <p class="clink"><a href="${esc(BUSINESS_DOCS)}" target="_blank" rel="noopener">${esc(BUSINESS_CASE_LINK)}</a></p>
+  <p class="cnote">${esc(WHY_COMPANY_NOTE_LAST)}</p>
 </div></section>`;
 }
 
@@ -160,15 +161,15 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean }
   const moments = heroMoments(run);
   const s1 = run.scenes.find((s) => s.n === 1);
   const flow = FLOW.map((f) => ({ ...f, href: f.href === "try/sign" && !opts.trySign ? "try" : f.href }));
-  // Picture first, few words (Max, 7 Nov): the heading, one sentence, the agents at work, the three steps, one button.
+  // Picture first, few words (Max, 7 Nov): the heading, one sentence, the one button right under it, then the three steps.
   const body = `<main>
 <section class="hero"><div class="wrap">
   <div class="copy">
     <h1 class="h-hero">${esc(HERO)}</h1>
     <p class="what">${esc(WHAT_IT_IS)}</p>
-    <ol class="flow" aria-label="Three steps">${flow.map((f) => `<li><a href="${esc(f.href)}"><span class="fn">${f.n}</span>${icon(f.icon, 20)}<span class="ft"><b>${esc(f.title)}</b><small>${esc(f.sub)}</small></span></a></li>`).join("")}</ol>
     <a class="btn primary big start" href="watch">${icon("play", 18)}${esc(START)}</a>
     ${opts.trySign ? `<p class="judgeline"><a href="judge">${esc(JUDGE_LINE)} →</a></p>` : ""}
+    <ol class="flow" aria-label="Three steps">${flow.map((f) => `<li><a href="${esc(f.href)}"><span class="fn">${f.n}</span>${icon(f.icon, 20)}<span class="ft"><b>${esc(f.title)}</b><small>${esc(f.sub)}</small></span></a></li>`).join("")}</ol>
     <p class="caveat">${esc(CAVEAT_LINE)} <a href="#real" data-real>${esc(CAVEAT_LINK)}</a></p>
   </div>
   <div class="show">${stageHtml(run.agents, s1?.steps[0]?.text ?? "Northwind Outdoor sells live stock data per query")}<div class="runlabel">${icon("database", 14)}<span>${esc(run.label)}</span></div>
