@@ -36,13 +36,25 @@ export const TIMING_MAX_TURNS = 5;
  * the floor and the obligations; the shortfall = needed - free (0 when free covers it); FX buys exactly the shortfall.
  */
 export function licenceNumbers(f: Pick<TimingFacts, "amount" | "feeMax" | "quote" | "after">): { needed: string; freeBefore: string; shortfall: string; fxBuy: string | null } {
-  const cents = (x: string) => Math.round(Number(x.replace(/[^0-9.]/g, "")) * 100);
+  // A plain amount only, an optional currency code before it ("EUR 110.00"): a minus sign or anything else is refused,
+  // never stripped (spec 6b: "-870.00" once read as 870.00 made the free EUR 2,740.00 and the shortfall 0.00).
+  const cents = (x: string) => {
+    const m = /^(?:[A-Z]{3} ?)?(\d+)(?:\.(\d{1,2}))?$/.exec(x.trim());
+    if (!m) throw new InconsistentFacts(`not a plain amount: ${JSON.stringify(x)}`);
+    return Number(m[1]) * 100 + Number((m[2] ?? "").padEnd(2, "0"));
+  };
   const need = cents(f.amount) + cents(f.feeMax);
   const buy = f.quote ? cents(f.quote.buy) : 0;
   // The plan's after = free + buy - need (never below 0 once it converts exactly the shortfall), so free = after + need - buy.
   const free = cents(f.after.eurFree) + need - buy;
+  if (free < 0) throw new InconsistentFacts("the free EUR before the payment would be negative");
   const eur = (c: number) => (c / 100).toFixed(2);
   return { needed: eur(need), freeBefore: eur(free), shortfall: eur(Math.max(0, need - free)), fxBuy: f.quote ? eur(buy) : null };
+}
+
+/** Code's facts for the agent do not add up (a negative or malformed amount): the agent is not asked; the caller falls back. */
+export class InconsistentFacts extends Error {
+  constructor(why: string) { super(`code's numbers for this payment do not add up: ${why}`); this.name = "InconsistentFacts"; }
 }
 
 /** The numbers as one line of code's facts, for the agent to quote. */

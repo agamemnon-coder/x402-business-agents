@@ -38,7 +38,7 @@ import { assessAgainst, type Beneficiary } from "../../src/policy/fraudCore.js";
 import { findInjections } from "../../src/policy/injection.js";
 import { alpineInvoice } from "../../src/try/invoiceDoc.js";
 import { adviseTry, signatureLine, type AdviceCall } from "../../src/try/treasuryAdvice.js";
-import { adviceOutOfBounds, type TimingFacts } from "../../src/agents/timingCore.js";
+import { adviceOutOfBounds, licenceNumbers, type TimingFacts } from "../../src/agents/timingCore.js";
 import type { RecordedAgents } from "../../src/try/recorded.js";
 import { AGENT_LINE_DAILY_USD, CODE_LABEL, FIXED_TEXT, READ_BY_CODE, RECORDED_LABEL, adviceGiven, checkReason, liveLabel, moneyForPeople } from "./agentLine.js";
 export { PAID_ALONE };
@@ -49,6 +49,8 @@ export const TRICK_RESERVE_USD = 0.03;
 export const ADVICE_RESERVE_USD = 0.15;
 export const LIVE_PER_HOUR = 20;
 export const LIVE_ALL_PER_MINUTE = 30;
+const SWITCHED_OFF = "the live agents are switched off on this server";
+const NO_MODEL_KEY = "this server has no model key";
 
 /** A test world lives one hour, then everything in it is deleted. */
 export const TRY_SIGN_TTL_MS = 60 * 60 * 1000;
@@ -286,6 +288,8 @@ export function checkPayment(amount: string, bal: Balances = TEST_BALANCES, rule
   let buy = 0, sell = 0;
   if (plan.kind === "convert_shortfall") {
     buy = plan.buyEurCents;
+    // What to convert is the plan's (the shortfall), with or without a rate: a missing rate leaves only the USD unknown.
+    numbers.buy = money(buy);
     const q = fx.quote && /^\d+\.\d{2}$/.test(fx.quote.buy_amount) && cents(fx.quote.buy_amount) === buy && /^\d+\.\d{2}$/.test(fx.quote.sell_amount) ? fx.quote : null;
     let from: string;
     if (q) { sell = cents(q.sell_amount); from = "its quote"; }
@@ -651,8 +655,8 @@ export class TrySignDesk {
    * overall per-minute and per-address per-hour limits; the cost settled after. Any failure is a reason, never thrown.
    */
   private async liveCall<S, T extends { costUsd: number }>(ip: string, reserveUsd: number, call: (source: S) => Promise<T>, source: S | "off" | null): Promise<T | { unavailable: string }> {
-    if (source === "off") return { unavailable: "the live agents are switched off on this server" };
-    if (!source) return { unavailable: "this server has no model key" };
+    if (source === "off") return { unavailable: SWITCHED_OFF };
+    if (!source) return { unavailable: NO_MODEL_KEY };
     const nowMs = this.now().getTime();
     const day = this.now().toISOString().slice(0, 10);
     const spent = (this.sql.exec("SELECT usd FROM ts_spend WHERE day = ?", day).toArray() as { usd: number }[])[0]?.usd ?? 0;
@@ -807,6 +811,13 @@ export class TrySignDesk {
     const rules = rulesOf(this.policyOf(world.id).policy);
     const before = checkPayment(used.reading.amount, bal, rules, { rate: this.rate ? rateOfRecord(this.rate) : null });
     const plan = before.plan!;
+    // EUR already under its floor: nothing is planned, quoted or advised (planInvoice's "underfunded").
+    if (!plan.buy && before.check === "fail") {
+      state.plan = { ...plan, kind: "underfunded" };
+      state.quote = null;
+      state.calls.push({ step: "quote", model: null, request_id: null, ms: null, input: "the plan", output: before.rule });
+      return { by: CODE_LABEL, plan, plan_words: before.rule, fx: null, underfunded: true };
+    }
     const planWords = `Needed ${eur(plan.needed)} (invoice + ${eur(FEE_MAX)} fee ceiling). Free ${eur(plan.free)} above the floor. ${plan.buy ? `Code converts the ${eur(plan.buy)} short.` : "No FX needed."}`;
     if (!plan.buy) {
       state.plan = { ...plan, kind: "pay_from_eur" };
@@ -831,7 +842,7 @@ export class TrySignDesk {
   }
 
   /** The facts code gives the Treasury agent: the runner's TimingFacts, from this world's numbers. */
-  private timingFacts(world: WorldRow, state: AgentState): TimingFacts {
+  private timingFacts(world: WorldRow, state: AgentState): TimingFacts | null {
     const r = state.used!.reading;
     const bal = this.balancesOf(world.id);
     const rules = rulesOf(this.policyOf(world.id).policy);
@@ -839,8 +850,8 @@ export class TrySignDesk {
     const plan = state.plan!;
     const sell = q ? q.sell_amount : plan.sell;
     const buy = plan.buy;
-    const freeAfter = buy ? money(cents(plan.free) + cents(buy) - cents(plan.needed)) : money(cents(plan.free) - cents(plan.needed));
-    return {
+    const freeAfter = money(cents(plan.free) + (buy ? cents(buy) : 0) - cents(plan.needed));
+    const f: TimingFacts = {
       proposalId: QUOTED, invoiceNo: r.invoice_no, vendor: r.vendor, amount: r.amount,
       // The due date from the invoice's own line (code's), so a recorded reading cannot bring an old date.
       dueDate: parseInvoiceFallback(state.document).due_date, today: this.now().toISOString().slice(0, 10),
@@ -848,6 +859,13 @@ export class TrySignDesk {
       quote: q ? { sell: `USD ${q.sell_amount}`, buy: `EUR ${q.buy_amount}`, rate: q.client_rate, validTo: q.valid_to_at } : null,
       after: { eurFree: freeAfter, usdAvailable: sell ? money(cents(bal.usd) - cents(sell)) : bal.usd }, feeMax: FEE_MAX,
     };
+    // The agent quotes code's numbers word for word, so they must agree with the plan: the numbers the prompt derives
+    // (licenceNumbers) are the plan's, or the agent is not asked (a negative or inconsistent figure is refused there).
+    try {
+      const n = licenceNumbers(f);
+      if (n.needed !== plan.needed || n.freeBefore !== plan.free || n.shortfall !== plan.shortfall || (n.fxBuy ?? null) !== (q ? plan.buy : null)) return null;
+    } catch { return null; }
+    return f;
   }
 
   /**
@@ -861,13 +879,19 @@ export class TrySignDesk {
       state.advice = { source: "code", label: `${FIXED_TEXT} · the invoice is blocked`, says: "", advice: "none", timing: null, date: null, why: "the invoice is blocked", model: null, request_id: null };
       return { by: state.advice.label, skipped: "blocked", ...state.advice };
     }
+    const notAsked = (why: string) => {
+      state.advice = { source: "code", label: `${FIXED_TEXT} · ${why}`, says: fixed, advice: "none", timing: null, date: null, why, model: null, request_id: null };
+      return { by: state.advice.label, ...state.advice };
+    };
+    if (state.plan?.kind === "underfunded") return notAsked("the EUR balance is below its floor, so nothing is planned");
+    // A conversion with no live quote: nothing to advise on (and, with no agent to ask, the reason is that one).
+    const needsQuote = !!state.plan?.buy && !(state.quote && state.quote.status !== "unavailable");
+    if (needsQuote) return notAsked(this.advisor === "off" ? SWITCHED_OFF : !this.advisor ? NO_MODEL_KEY : "there is no live quote to advise on");
     const f = this.timingFacts(world, state);
+    if (!f) return notAsked("code's numbers for this payment did not agree, so the agent was not asked");
     const alone = rulesOf(this.policyOf(world.id).policy).alone_limit;
     const extra = [cents(f.amount) > cents(alone) ? signatureLine(eur(alone)) : `At or below the ${eur(alone)} the agent may pay alone, so this payment needs no signature.`];
-    const needsQuote = !!state.plan?.buy && !f.quote;
-    // Without a live quote there is nothing to advise on; without a key or under the switch, liveCall says so first.
-    const live = needsQuote && this.advisor && this.advisor !== "off" ? { unavailable: "there is no live quote to advise on" }
-      : await this.liveCall(ip, ADVICE_RESERVE_USD, (ask: AgentAsk) => adviseTry(ask, f, extra, { deadlineMs: this.adviceDeadlineMs }), this.advisor);
+    const live = await this.liveCall(ip, ADVICE_RESERVE_USD, (ask: AgentAsk) => adviseTry(ask, f, extra, { deadlineMs: this.adviceDeadlineMs }), this.advisor);
     const given = (date: string | null) => adviceGiven(f, alone, date ? [date] : []);
     const verdict = (a: { timing: "pay_now" | "wait_until"; date: string | null; reason: string }): { says: string } | { bad: string } => {
       const out = adviceOutOfBounds(f, a);
@@ -877,6 +901,7 @@ export class TrySignDesk {
     };
     const adviceOf = (a: { timing: string; date: string | null }) => (a.timing === "wait_until" ? `wait_until ${a.date}` : "pay_now");
     let unavailable: string | null = null;
+    let rejected: { timing: string; date: string | null; reason: string } | null = null;
     if ("advice" in live) {
       for (const c of live.calls) state.calls.push(this.callOf(c));
       if (live.advice) {
@@ -889,6 +914,8 @@ export class TrySignDesk {
           return { by: state.advice.label, ...state.advice, calls: live.calls, facts: f, ms: live.ms };
         }
         unavailable = `the live advice was not used: ${v.bad}`;
+        // Model output, not a secret: kept in the step's answer (the page does not show it; the recording script prints it).
+        rejected = { timing: live.advice.timing, date: live.advice.date, reason: live.advice.reason.slice(0, 1000) };
       } else unavailable = live.why ?? "the agent did not advise";
     } else unavailable = live.unavailable;
     // The recorded advice, checked as a live one against today's facts (another quote's amounts do not pass).
@@ -903,7 +930,7 @@ export class TrySignDesk {
       unavailable = `${unavailable}; the recorded advice was not used: ${v.bad}`;
     }
     state.advice = { source: "code", label: `${FIXED_TEXT} · ${unavailable}`, says: fixed, advice: "none", timing: null, date: null, why: unavailable, model: null, request_id: null };
-    return { by: state.advice.label, ...state.advice };
+    return { by: state.advice.label, ...state.advice, ...(rejected ? { rejected } : {}) };
   }
   private callOf(c: AdviceCall): AgentCall {
     return { step: "advise", model: c.model, request_id: c.request_id, ms: c.ms, input: c.tools.map((t) => t.name).join(", ") || "no tool", output: c.tools.map((t) => (t.name === "submit_advice" ? `${t.blocked ? `refused (${t.blocked})` : `advice: ${String(t.input.timing ?? "")}`}` : "read")).join(", ") || "no tool call" };

@@ -67,6 +67,11 @@ const { cfoApproval, tryLocks } = await import("../../src/try/examples.js");
 const { letThroughOf, loadRecord } = await import("../../src/redesign/run.js");
 const { canonical, NEXT_INVOICE } = await import("../../worker/src/trySign.js");
 const { ATTACKS, TRICKS, runTrick } = await import("../../worker/src/trick.js");
+const { adviceGiven, amountsFit, cleanReason } = await import("../../worker/src/agentLine.js");
+/** Live mode: the labels the deployed page may show, live, recorded or a labelled fallback (spec 6b). */
+const LIVE_READ_LABEL = /^(Claude Sonnet · live · invoice reader|recorded: the live agent was unavailable|read by code · .+)$/;
+const LIVE_ADVICE_LABEL = /^(Claude Opus · live · treasury advice|recorded: the live agent was unavailable|fixed text · .+)$/;
+const LIVE_TRICK_LABEL = /^(Claude Sonnet · live · invoice reader|recorded: the live agent was unavailable|live agent unavailable · read by code)$/;
 const { verifyReceipt } = await import("../../src/try/receipt.js");
 const sha256 = (s: string) => createHash("sha256").update(s, "utf8").digest("hex");
 // The examples the page must link, from the records themselves (not from the page's code).
@@ -263,6 +268,9 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   if (!args.live && (tag === "390-light" || tag === "390-dark")) fxStandIn.validityMs = 12_000;
   // At 360 px dark the Treasury agent is down: the fixed sentence, labelled "fixed text · <why>".
   advisor.fail = !args.live && tag === "360-dark";
+  // Live, every visit comes from this machine's one address: the relay allows it 30 requests a minute (the agents' steps
+  // are five of them), so the second visit starts a minute after the first.
+  if (args.live && run > 0) { console.log(`info  ${tag}: a minute's pause for the relay's per-address limit`); await new Promise((r) => setTimeout(r, 61_000)); }
   const v = await visitor({ width, scheme, ip: `198.51.${100 + run++}.7` });
   const { page, errors, mobile, height } = v;
 
@@ -355,6 +363,36 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
       `${tag}: each step says who did it: the reader (labelled), Purser's code`);
     await shot(page, `${tag}-1e-agents.png`);
     await page.locator("#s1-did > summary").click();
+  } else {
+    // Live (spec 6b): the real agents, or their recordings, or code, each labelled; their structure, not a stand-in's words.
+    const readLabel = ((await page.locator("#st-read .pill[data-label]").textContent()) ?? "").trim(); // in the closed fold
+    const adviceLabel = (await page.locator("#s1-ask .who .pill").innerText()).trim();
+    check(LIVE_READ_LABEL.test(readLabel) && LIVE_ADVICE_LABEL.test(adviceLabel), `${tag}: the reader and the adviser are labelled (${readLabel} · ${adviceLabel})`);
+    await page.locator("#s1-did > summary").click();
+    const did = await page.locator("#s1-did").innerText();
+    const ticks = await page.locator("#s1-did ul.ticks li.ok").count();
+    check(ticks === 4 && did.includes("Needed EUR 1,870.00 (invoice + EUR 20.00 fee ceiling). Free EUR 1,000.00 above the floor. Code converts the EUR 870.00 short.")
+      && (!/^Claude Sonnet/.test(readLabel) || /read_invoice · claude-[a-z0-9-]+ · [\d.]+ s · req_\S+/.test(did)) && (!/^Claude Opus/.test(adviceLabel) || /advise · claude-[a-z0-9-]+ · [\d.]+ s · req_\S+/.test(did)),
+      `${tag}: "${W.ask.did}": Purser's code's four checks, the plan in code's words, and each live call with its Claude model and request id (req_…)`);
+    await shot(page, `${tag}-1e-agents.png`);
+    await page.locator("#s1-did > summary").click();
+    if (/^Claude Opus/.test(adviceLabel)) {
+      // The reason: every amount in it one of code's numbers for this payment, as the server checked it.
+      const says = (await page.locator("#s1-ask .says").innerText()).trim();
+      const fx = terms.fx as { sell_amount: string; buy_amount: string; client_rate: string; valid_to_at: string } | null;
+      const today = new Date(Date.parse(String(terms.expires_at)) - 3_600_000).toISOString().slice(0, 10); // the world opened an hour before it expires
+      const due = new Date(Date.parse(`${today}T00:00:00Z`) + 7 * 86_400_000).toISOString().slice(0, 10);
+      const sold = fx ? (Math.round(800_000 - Number(fx.sell_amount) * 100) / 100).toFixed(2) : "8000.00";
+      const facts = { proposalId: "T-0002", invoiceNo: "INV-2026-118", vendor: "Alpine Packaging", amount: String(terms.amount), dueDate: due, today, eurAvailable: "26000.00", eurFloor: "25000.00", eurObligations: "0.00",
+        usdAvailable: "8000.00", usdFloor: "3000.00", quote: fx ? { sell: `USD ${fx.sell_amount}`, buy: `EUR ${fx.buy_amount}`, rate: fx.client_rate, validTo: fx.valid_to_at } : null, after: { eurFree: "0.00", usdAvailable: sold }, feeMax: "20.00" };
+      const advised = /^wait_until (\S+)$/.exec(String(terms.agent_advice))?.[1];
+      check(amountsFit(says, adviceGiven(facts, "500.00", advised ? [advised] : [])) && cleanReason(says) === says, `${tag}: Opus's reason is one or two plain sentences, every amount one of code's numbers: "${says.slice(0, 60)}…"`);
+      await page.evaluate(`document.getElementById("s1-terms").open = true`);
+      const vm = page.locator("#s1-terms-body > div:nth-child(2) details.more");
+      await vm.locator("summary").click();
+      check(/^Request id req_\S+ \(claude-[a-z0-9-]+\)\./.test((await vm.locator("p").innerText()).trim()), `${tag}: "Show the exact terms" names the reason's request id (req_…) and its Claude model`);
+      await page.evaluate(`document.getElementById("s1-terms").open = false`);
+    }
   }
   if (!args.live) {
     const q = terms.fx as { sell_amount: string; sell_currency: string } | null;
@@ -630,10 +668,13 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
     await page.locator("#k-did > summary").click();
     const want = await runTrick(attack, await readerStandIn(TRICKS[attack].text));
     check((await page.locator("#k-out").innerText()).trim() === want.outcome && want.blocked && (await page.locator("#k-lesson").innerText()).trim() === "A prompt is not a control." && (await page.locator("#k-says").innerText()).trim() === want.agent.read && await page.locator("#k-says").evaluate((n: Element) => n.tagName + getComputedStyle(n, "::before").content) === "SPANnone"
-      && (await page.locator("#k-label").innerText()).trim() === "stand-in, not Claude" && (await page.locator("#k-doc").innerText()).trim() === TRICKS[attack].shows && full === TRICKS[attack].text,
+      && (args.live ? LIVE_TRICK_LABEL.test((await page.locator("#k-label").innerText()).trim()) : (await page.locator("#k-label").innerText()).trim() === "stand-in, not Claude") && (await page.locator("#k-doc").innerText()).trim() === TRICKS[attack].shows && full === TRICKS[attack].text,
       `${tag}: trick ${attack}: the invoice, what the agent read (labelled), then "${want.outcome}" and "A prompt is not a control."`);
     await page.locator("#k-did > summary").click();
-    check(/read_invoice · stand-in · 0\.3 s · req_standin_reader/.test(await page.locator("#k-calls").innerText()), `${tag}: trick ${attack}: "What the agent did" lists its call with model, time and request id`);
+    const kcalls = await page.locator("#k-calls").innerText();
+    const klabel = (await page.locator("#k-label").innerText()).trim();
+    check(args.live ? /read_invoice/.test(kcalls) && (!/^Claude Sonnet/.test(klabel) && !klabel.startsWith("recorded") || /read_invoice · claude-[a-z0-9-]+ · [\d.]+ s · req_\S+/.test(kcalls)) : /read_invoice · stand-in · 0\.3 s · req_standin_reader/.test(kcalls),
+      `${tag}: trick ${attack}: "What the agent did" lists its call with model, time and request id`);
     await page.locator("#k-did > summary").click();
     if (attack === "pre_approved") { await measure(page, tag, 4); await shot(page, `${tag}-4-trick.png`); }
   }

@@ -10,7 +10,7 @@ import { audit } from "../audit/log.js";
 import { claudeClient, MODELS } from "../claude/reader.js";
 import type { DB } from "../db/open.js";
 import { runAgent, type AgentRun, type AgentTool } from "./loop.js";
-import { TIMING_EFFORT, TIMING_MAX_TURNS, TIMING_SYSTEM, TIMING_UNFINISHED, timingPrompt, timingTools, type TimingAdviceValue, type TimingFacts } from "./timingCore.js";
+import { TIMING_EFFORT, TIMING_MAX_TURNS, TIMING_SYSTEM, TIMING_UNFINISHED, licenceNumbers, timingPrompt, timingTools, type TimingAdviceValue, type TimingFacts } from "./timingCore.js";
 import type { z } from "zod";
 
 export { licenceNumbers, licenceNumbersLine, type TimingFacts } from "./timingCore.js";
@@ -18,6 +18,11 @@ export { licenceNumbers, licenceNumbersLine, type TimingFacts } from "./timingCo
 export interface TimingAdvice { source: "claude" | "fallback"; timing: "pay_now" | "wait_until" | null; date: string | null; reason: string; run: AgentRun }
 
 export async function adviseTiming(db: DB, f: TimingFacts, client: Anthropic | null = claudeClient(), model: string = MODELS.review): Promise<TimingAdvice> {
+  // Code's numbers must add up before the agent quotes them: if not, no call, and the proposal stands as code planned it.
+  try { licenceNumbers(f); } catch (e) {
+    const note = (e as Error).message;
+    return { source: "fallback", timing: null, date: null, reason: "", run: { status: "unavailable", model: null, calls: [], text: "", turns: 0, costMicros: 0, note } };
+  }
   let advice: TimingAdviceValue | null = null;
   const tools = timingTools(f, (a) => { advice = a; }).map((t): AgentTool<z.ZodType> => ({ name: t.name, description: t.description, input: t.input, run: async (input) => t.run(input as never) }));
   const run = await runAgent(db, {

@@ -24,6 +24,8 @@ import { sqlOver } from "../relay/local.js";
 import { SandboxQuotes } from "../../worker/src/fxQuote.js";
 import { ATTACKS, TRICKS } from "../../worker/src/trick.js";
 import { AGENT_STEPS, TrySignDesk } from "../../worker/src/trySign.js";
+import { recordedRate, type RecordForExposure } from "../policy/exposureSources.js";
+import { loadRecord } from "../redesign/run.js";
 
 const args = process.argv.slice(2);
 const at = args.indexOf("--out");
@@ -39,8 +41,11 @@ const day = new Date().toISOString().slice(0, 10);
 const claude = (m: string | null | undefined) => !!m && /^claude-/.test(m);
 
 const reader = claudeReadInvoice(key, fetch, 60_000);
+// The Worker's desk as the Worker builds it: the main run's recorded rate too (src/relay/assets.ts), so the record path
+// plans exactly as the deployed page does.
+const rate = (() => { try { return recordedRate(loadRecord().record as unknown as RecordForExposure); } catch { return null; } })();
 const desk = new TrySignDesk(sqlOver(new Database(":memory:")), {
-  reader, advisor: claudeAgentAsk(key, fetch, 60_000), fx: new SandboxQuotes({ clientId: awx.clientId, apiKey: awx.apiKey }), adviceDeadlineMs: 180_000,
+  reader, advisor: claudeAgentAsk(key, fetch, 60_000), fx: new SandboxQuotes({ clientId: awx.clientId, apiKey: awx.apiKey }), adviceDeadlineMs: 180_000, rate,
 });
 const BASE = "https://record.try-sign.local";
 const post = async (sub: string, body: unknown) => {
@@ -72,7 +77,13 @@ if (reading.amount !== fields.amount || checkInvoiceReading(reading, doc)) stop(
 const invoice: RecordedReading = { model: String(read.model), request_id: String(read.request_id), date: day, ms: Number(read.ms), reading };
 
 const adv = results.advise!;
-if (adv.source !== "live" || !claude(adv.model as string)) stop(`the advice was not Claude's live advice (${String(adv.by)})`);
+if (adv.source !== "live" || !claude(adv.model as string)) {
+  // What the agent advised, when code refused it: model output, not a secret, printed so the refusal can be judged.
+  const r = adv.rejected as { timing: string; date: string | null; reason: string } | undefined;
+  if (r) console.error(`REJECTED ADVICE  ${r.timing}${r.date ? ` ${r.date}` : ""} (${r.reason.length} characters): ${r.reason}`);
+  console.error(`FACTS  ${JSON.stringify((results.quote as { plan?: unknown }).plan ?? null)}`);
+  stop(`the advice was not Claude's live advice (${String(adv.by)})`);
+}
 const calls = (adv.calls as AdviceCall[]).map((c) => {
   if (!c.request_id || !claude(c.model)) stop("an advice call has no Claude request id");
   return { model: c.model!, request_id: c.request_id!, ms: c.ms ?? 0, tools: c.tools.map((t) => ({ name: t.name, input: t.input })) };

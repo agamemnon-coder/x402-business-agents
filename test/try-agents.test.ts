@@ -19,6 +19,11 @@ import { CODE_LABEL, READ_BY_CODE, RECORDED_LABEL } from "../worker/src/agentLin
 import { TEST_ALLOWLIST } from "../worker/src/trick.js";
 import { AGENT_STEPS, FEE_MAX, NEXT_INVOICE, TEST_BALANCES, TEST_RULES, TEST_WORLD, TrySignDesk, checkPayment, rateOfQuote, wellFormed } from "../worker/src/trySign.js";
 import type { InvoiceReadSource } from "../src/try/claude.js";
+import type Anthropic from "@anthropic-ai/sdk";
+import type { FxSource } from "../worker/src/fxQuote.js";
+import { InconsistentFacts, licenceNumbers, type TimingFacts } from "../src/agents/timingCore.js";
+import { adviseTiming } from "../src/agents/timingAgent.js";
+import { openDb } from "../src/db/open.js";
 import { StandInAdvisor } from "./support/adviceStandIn.js";
 import { StandInQuotes } from "./support/fxStandIn.js";
 import { BASE, RP, TEST_RATE, call, challengeOf, signBody, sqlOver, t0, walkAgents, type Proposal } from "./support/trySign.js";
@@ -286,5 +291,58 @@ describe("the quote step: no FX needed, or no live quote", () => {
     const t2 = (s.ready as unknown as { proposals: (Proposal & { voice: { label: string } })[] }).proposals.find((p) => p.proposal_id === "T-0002")!;
     expect(terms(t2).fx).toBeNull();
     expect(t2.voice.label).toBe("fixed text · there is no live quote to advise on");
+  });
+});
+
+describe("the facts the Treasury agent is given add up (live Opus found them inconsistent, 7 Nov)", () => {
+  // The bug: with no recorded rate (the recording script's desk), the plan before the quote could not price the
+  // conversion, so it came back with no buy; the quote step read that as "no FX needed", asked for no quote, and gave
+  // the agent EUR free after the payment -870.00 with no quote, which licenceNumbers read as +870.00 (it stripped the
+  // sign): "free EUR before 2740.00, shortfall 0.00". Opus saw the contradiction and refused to advise paying.
+  const sandboxShaped: FxSource = {
+    quote: async (a) => ({ quote_id: "0b6f1d1c-4b8e-4f62-9a57-8c2f0f4a1e93", sell_currency: a.sellCurrency, buy_currency: a.buyCurrency, buy_amount: a.buyAmount,
+      sell_amount: "982.10", client_rate: "1.128851", valid_to_at: new Date(t0.getTime() + 15 * 60_000).toISOString().replace(/\.\d{3}Z$/, "Z"), source: "airwallex-sandbox" }),
+  };
+  const LINE = "Code's numbers for this payment (quote these; do not compute your own): invoice EUR 1850.00 + SWIFT fee ceiling EUR 20.00 = EUR 1870.00 needed; free EUR before the payment 1000.00; shortfall EUR 870.00 (EUR needed minus free EUR); the FX converts exactly that: buy EUR 870.00 for USD 982.10.";
+
+  for (const [path, rate] of [["the recording script's desk (no recorded rate)", null], ["the Worker's desk (the recorded rate)", TEST_RATE]] as const) {
+    it(`${path}: needed 1,870.00, free 1,000.00, shortfall 870.00, buy EUR 870.00, and the position after agrees`, async () => {
+      const advisor = new StandInAdvisor();
+      const d = new TrySignDesk(sqlOver(new Database(":memory:")), { now: () => t0, fx: sandboxShaped, rate, reader: readerStandIn().source, advisor: advisor.ask });
+      const { w, ip } = await opened(d);
+      const s = await walkAgents(d, w.world.token, ip);
+      expect((s.quote as { result: Record<string, unknown> }).result).toMatchObject({ plan: { needed: "1870.00", free: "1000.00", shortfall: "870.00", buy: "870.00", sell: "982.10" }, fx: { status: "live" } });
+      const prompt = String(advisor.requests[0]!.messages[0]!.content);
+      expect(prompt).toContain(LINE);
+      // read_position, as the agent read it: EUR free after the payment 0.00, never negative.
+      const position = JSON.stringify(advisor.requests[1]!.messages[2]!.content);
+      expect(position).toContain("After the payment as planned: EUR free 0.00, USD 7017.90.");
+      expect((s.advise as { result: { facts: Record<string, unknown>; source: string } }).result).toMatchObject({ source: "live",
+        facts: { amount: "1850.00", feeMax: "20.00", eurAvailable: "26000.00", usdAvailable: "8000.00", quote: { sell: "USD 982.10", buy: "EUR 870.00" }, after: { eurFree: "0.00", usdAvailable: "7017.90" } } });
+    });
+  }
+
+  it("the plan names what to convert with or without a rate; only the USD is unknown without one", () => {
+    const c = checkPayment("1850.00");
+    expect(c).toMatchObject({ check: "fail", plan: { needed: "1870.00", free: "1000.00", shortfall: "870.00", buy: "870.00", sell: null } });
+  });
+
+  it("licenceNumbers refuses a negative or malformed amount instead of stripping its sign; valid ones as before", () => {
+    const f = { amount: "1850.00", feeMax: "20.00", quote: null, after: { eurFree: "-870.00", usdAvailable: "8000.00" } };
+    expect(() => licenceNumbers(f)).toThrow(InconsistentFacts);
+    expect(() => licenceNumbers({ ...f, after: { ...f.after, eurFree: "870 EUR" } })).toThrow(/not a plain amount/);
+    expect(() => licenceNumbers({ ...f, amount: "100.00", after: { ...f.after, eurFree: "0.00" }, quote: { sell: "USD 500.00", buy: "EUR 400.00", rate: "1.1", validTo: "x" } })).toThrow(/negative/);
+    expect(licenceNumbers({ ...f, after: { ...f.after, eurFree: "0.00" }, quote: { sell: "USD 982.10", buy: "EUR 870.00", rate: "1.128851", validTo: "x" } })).toEqual({ needed: "1870.00", freeBefore: "1000.00", shortfall: "870.00", fxBuy: "870.00" });
+  });
+
+  it("the runner's agent is not asked on numbers that do not add up: no call, the proposal stands as code planned it", async () => {
+    let calls = 0;
+    const client = { beta: { messages: { create: async () => { calls++; throw new Error("not to be called"); } } } } as unknown as Anthropic;
+    const f: TimingFacts = { proposalId: "P-1", invoiceNo: "X-1", vendor: "V", amount: "1850.00", dueDate: "2026-11-15", today: "2026-11-05", eurAvailable: "26000.00", eurFloor: "25000.00", eurObligations: "0.00",
+      usdAvailable: "8000.00", usdFloor: "3000.00", quote: null, after: { eurFree: "-870.00", usdAvailable: "8000.00" }, feeMax: "20.00" };
+    const r = await adviseTiming(openDb(":memory:"), f, client);
+    expect(r).toMatchObject({ source: "fallback", timing: null, run: { status: "unavailable" } });
+    expect(r.run.note).toMatch(/^code's numbers for this payment do not add up/);
+    expect(calls).toBe(0);
   });
 });

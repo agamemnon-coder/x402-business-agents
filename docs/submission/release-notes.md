@@ -338,6 +338,12 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   silent: without a live answer the page shows a recorded real one (docs/demo/try-agents-recorded.json, written by
   `npm run record-try-agents`; not recorded yet) or code's reading and a fixed sentence, each labelled with the reason.
   The emergency switch is now TRY_SIGN_AGENTS (TRY_SIGN_HAIKU still works). 2906 tests in 283 files, all passing.
+- 7 November, a fix found by live Claude Opus while recording: without a recorded rate the plan before the quote
+  could not price the conversion, the quote step read that as "no FX needed", and the agent was told EUR free after the
+  payment -870.00, which the shared licence numbers read as +870.00 ("free EUR 2,740.00, shortfall 0.00"). Opus refused
+  to advise paying and said why. Now the plan names the shortfall with or without a rate, code checks the agent's facts
+  against the plan before asking, and the licence numbers refuse a negative amount (the runner falls back, labelled).
+  2911 tests in 283 files, all passing.
 
 ## Real, and ours
 
