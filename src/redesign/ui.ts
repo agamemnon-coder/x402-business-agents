@@ -62,6 +62,8 @@ export const CSS = `${TOKENS}
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 400 17px/1.55 Inter, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
 a { color: inherit; }
+/* Words for screen readers and search engines only (a link's full name, a section's heading), not shown. */
+.vh { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .i { flex: none; vertical-align: -3px; }
 .wrap { max-width: 1200px; margin: 0 auto; padding: 0 var(--gut); }
 /* Header: brand, four tabs, nothing else. */
@@ -95,10 +97,13 @@ h1, h2, h3 { margin: 0; letter-spacing: -.025em; line-height: 1.08; }
 .st-world .tag { flex: none; }
 .st-world .txt { min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; padding-top: 2px; }
 .st-agents { grid-area: agents; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.ag { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 10px 4px; border-radius: 16px; transition: background .3s, transform .3s, opacity .3s; }
+.ag { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 10px 4px; border-radius: 16px; transition: background .3s, transform .3s; }
 .ag .nm { font-weight: 700; font-size: 15.5px; line-height: 1.2; }
 .ag.on { background: var(--sunken); transform: translateY(-2px); }
-.stage.focus .ag:not(.on) { opacity: .55; }
+/* The agents not speaking step back: the avatar fades, the words turn grey but stay readable (contrast 4.5:1 or more). */
+.stage.focus .ag:not(.on) .av { opacity: .45; }
+.stage.focus .ag:not(.on) .nm { color: var(--muted); }
+.stage.focus .ag:not(.on) .model { color: var(--muted); background: var(--sunken); }
 .ag.on .av { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--text); }
 .st-bubble { grid-area: bubble; position: relative; min-height: 104px; background: var(--sunken); border-radius: 16px; padding: 12px 14px; font-size: 16.5px; line-height: 1.45; --cx: 50%; }
 .st-bubble::before { content: ""; position: absolute; top: -8px; left: calc(var(--cx) - 8px); border: 8px solid transparent; border-top: 0; border-bottom-color: var(--sunken); transition: left .35s, opacity .2s; }
@@ -110,8 +115,12 @@ h1, h2, h3 { margin: 0; letter-spacing: -.025em; line-height: 1.08; }
 .dots { display: inline-flex; gap: 4px; } .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); animation: blink 1s infinite; } .dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
 @keyframes blink { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
 .st-rails { grid-area: rails; display: grid; gap: 14px; align-content: center; min-width: 0; }
-.lane { display: grid; gap: 6px; transition: opacity .3s; }
-.lane.past { opacity: .4; }
+/* The lane not in play turns grey instead of fading, so its words and coin stay readable. */
+.lane { display: grid; gap: 6px; }
+.lane.past .ln, .lane.past.metal .ln, .lane.past.awx .ln { color: var(--muted); }
+.lane.past .verdict { background: var(--sunken); color: var(--muted); }
+.lane.past.metal .track, .lane.past.awx .track { background: var(--sunken); }
+.lane.past.metal .coin, .lane.past.awx .coin { background: var(--muted); }
 .lane .ln { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; font-size: 15px; font-weight: 750; min-height: 26px; min-width: 0; }
 /* The rail's line in full, on its own row under the name and the result (never cut off). */
 .lane .ln small { order: 3; flex-basis: 100%; font-weight: 550; color: var(--faint); font-size: 14px; white-space: normal; }
@@ -126,7 +135,8 @@ h1, h2, h3 { margin: 0; letter-spacing: -.025em; line-height: 1.08; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lane .coin { color: #06121a; } }
 :root[data-theme="dark"] .lane .coin { color: #06121a; }
 .coin.bad { background: var(--bad) !important; color: var(--on-bad) !important; }
-.coin.ghost { opacity: .5; }
+.lane.past .coin.bad { background: var(--bad-soft) !important; color: var(--bad) !important; }
+.coin.ghost { background: var(--surface) !important; color: var(--muted) !important; box-shadow: inset 0 0 0 1px var(--border); }
 .wall { position: absolute; top: -5px; bottom: -5px; left: 58%; width: 5px; border-radius: 4px; background: var(--bad); opacity: 0; transition: opacity .2s; }
 .wall.on { opacity: 1; }
 /* One pill style everywhere: rounded, 14 px, a soft ground and its own colour. */
