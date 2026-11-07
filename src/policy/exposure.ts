@@ -11,6 +11,9 @@
 //            profile lists it (src/agents/profiles.ts): for the Treasury agent, task cards issued without Face ID, each
 //            up to approval.task_card_eur, at most TASK_WITHIN_PER_DAY in 24 hours; per day that many cards, per month
 //            that many on each of MONTH_DAYS days. Refunds and sweeps are paid under the mandates, so already counted.
+//   invoices (EUR): payments an agent may make alone, without a signature, where a policy sets a "may pay alone up to"
+//            (the /try/sign test world; Purser's own policy sets none, so 0): up to that limit each, at most
+//            invoicesAlonePerDay of them in 24 hours (enforced where they run); per month that many on MONTH_DAYS days.
 // EUR and USD are never added together here; approxEurCents converts USD only at a rate given to it, with its source.
 
 import { AGENTS, CARDS, INITIAL_MANDATES, TASK_CARD_EUR_FALLBACK, TASK_WITHIN_PER_DAY, type Agent } from "../config/policy.js";
@@ -28,6 +31,10 @@ export interface ExposurePolicy {
   taskCardEurCents: number;
   /** TASK_WITHIN_PER_DAY: at most this many such task cards in 24 hours. */
   taskCardsPerDay: number;
+  /** "May pay alone up to", per agent, in EUR cents, where a policy has it (absent: none). */
+  invoiceAloneCents?: Record<Agent, number>;
+  /** At most this many payments alone per agent in 24 hours (ALONE_PER_DAY in src/try/policy.ts). */
+  invoicesAlonePerDay?: number;
 }
 
 export interface Amounts { eurCents: number; usdCents: number }
@@ -36,6 +43,7 @@ export interface AgentExposure {
   card: { dayEurCents: number; monthEurCents: number };
   mandate: { dayUsdCents: number; monthUsdCents: number };
   alone: { dayEurCents: number; monthEurCents: number };
+  invoices: { dayEurCents: number; monthEurCents: number };
   day: Amounts;
   month: Amounts;
 }
@@ -55,13 +63,15 @@ export function exposureOf(p: ExposurePolicy): Exposure {
   const agents = AGENTS.map((agent): AgentExposure => {
     const card = p.cardMonthlyCents[agent], budget = p.mandateBudgetCents[agent];
     const tasksDay = agent === "treasury" ? p.taskCardEurCents * p.taskCardsPerDay : 0;
+    const invoicesDay = (p.invoiceAloneCents?.[agent] ?? 0) * (p.invoicesAlonePerDay ?? 0);
     return {
       agent,
       card: { dayEurCents: card, monthEurCents: card },
       mandate: { dayUsdCents: budget, monthUsdCents: budget },
       alone: { dayEurCents: tasksDay, monthEurCents: tasksDay * MONTH_DAYS },
-      day: { eurCents: card + tasksDay, usdCents: budget },
-      month: { eurCents: card + tasksDay * MONTH_DAYS, usdCents: budget },
+      invoices: { dayEurCents: invoicesDay, monthEurCents: invoicesDay * MONTH_DAYS },
+      day: { eurCents: card + tasksDay + invoicesDay, usdCents: budget },
+      month: { eurCents: card + (tasksDay + invoicesDay) * MONTH_DAYS, usdCents: budget },
     };
   });
   const sum = (f: (e: AgentExposure) => Amounts): Amounts => agents.reduce((s, e) => ({ eurCents: s.eurCents + f(e).eurCents, usdCents: s.usdCents + f(e).usdCents }), { eurCents: 0, usdCents: 0 });
@@ -122,23 +132,30 @@ export function exposureWords(x: Exposure, p: ExposurePolicy, rate: RecordedRate
   const counted = taskCards === "counted";
   const less = (a: Amounts, t: number): Amounts => (counted ? a : { eurCents: a.eurCents - t, usdCents: a.usdCents });
   const month = less(x.total.month, tasks.monthEurCents), day = less(x.total.day, tasks.dayEurCents);
+  const invoices = x.agents.some((e) => e.invoices.monthEurCents > 0);
   /** The figure itself, as "If you sign it:" repeats it in step 0. */
-  const figure = `${moneyShort("EUR", month.eurCents)} on cards + ${moneyShort("USD", month.usdCents)} on chain a month`;
+  const figure = `${moneyShort("EUR", month.eurCents)} ${invoices ? "incl. payments alone" : "on cards"} + ${moneyShort("USD", month.usdCents)} on chain a month`;
   const approx = rate ? `≈ ${moneyShort("EUR", approxEurCents(month.eurCents, month.usdCents, rate.usdPerEur))} in all at the main run's rate of ${dayWords(rate.date)} (${rate.usdPerEur} USD per EUR, ${rate.source}); test USD is never added to EUR otherwise.` : "No EUR total: the record has no usable rate, and test USD is never added to EUR without one.";
   return {
     /** In sight, large: "Worst case, set by policy" word for word. */
     headline: `Worst case, set by policy: ${figure}.`,
     figure,
     /** In sight, one short line. */
-    tasks: `${counted ? "Including task" : "Task"} cards the Treasury agent may issue alone: up to ${moneyShort("EUR", tasks.dayEurCents)} a day.`,
+    tasks: invoices && !counted
+      ? `Plus the Treasury agent's task cards: up to ${moneyShort("EUR", tasks.dayEurCents)} a day.`
+      : `${counted ? "Including task" : "Task"} cards the Treasury agent may issue alone: up to ${moneyShort("EUR", tasks.dayEurCents)} a day.`,
     above: EXPOSURE_ABOVE,
     /** Behind the fold, one item each. */
     how: [
       ...x.agents.map((e) => {
         const t = e.agent === "treasury" && counted ? tasks.monthEurCents : 0;
-        return `${agentWords(e.agent)}: ${moneyShort("EUR", e.card.monthEurCents + t)} on its card${t ? " and task cards" : ""} + ${moneyShort("USD", e.mandate.monthUsdCents)} on chain (test USD) a month.`;
+        const i = e.invoices.monthEurCents;
+        return `${agentWords(e.agent)}: ${moneyShort("EUR", e.card.monthEurCents + t + i)} on its card${t ? " and task cards" : ""}${i ? " and payments alone" : ""} + ${moneyShort("USD", e.mandate.monthUsdCents)} on chain (test USD) a month.`;
       }),
-      `A day: ${moneyShort("EUR", day.eurCents)} + ${moneyShort("USD", day.usdCents)}, the same as a month: neither a card nor a mandate has a daily limit.`,
+      invoices
+        ? `A day: ${moneyShort("EUR", day.eurCents)} + ${moneyShort("USD", day.usdCents)}: a card or a mandate can go in one day, payments alone ${p.invoicesAlonePerDay ?? 0} a day.`
+        : `A day: ${moneyShort("EUR", day.eurCents)} + ${moneyShort("USD", day.usdCents)}, the same as a month: neither a card nor a mandate has a daily limit.`,
+      ...(invoices ? [`Payments alone: up to each agent's limit, at most ${p.invoicesAlonePerDay ?? 0} a day per agent, ${MONTH_DAYS} days a month, counted above.`] : []),
       `Counted: each card's monthly limit (card.*.monthly, EUR) and each Metal mandate's budget (test USD, *USDZ; it lasts 40 days and can all go at once). Task cards: up to ${moneyShort("EUR", p.taskCardEurCents)} each (approval.task_card_eur), ${p.taskCardsPerDay} a day, ${counted ? `${MONTH_DAYS} days a month, counted above` : "not counted above"}.`,
       approx,
       EXPOSURE_COMPARISON,

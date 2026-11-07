@@ -10,7 +10,7 @@
 // currencies, a later end date, a lower reserve floor, a higher "may pay alone up to". For the amounts and the floor
 // that is Purser's own loosens() (src/policy/loosens.ts). Pure: no I/O, no Node modules (the Worker imports it).
 
-import { AGENTS, CARDS, INITIAL_MANDATES, MCC_WORDS, type Agent } from "../config/policy.js";
+import { AGENTS, CARDS, INITIAL_MANDATES, MCC_WORDS, TASK_WITHIN_PER_DAY, type Agent } from "../config/policy.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { createControlsBody, type CardControls, type CardLimits } from "../airwallex/cardBody.js";
 import { agentCardControls, cardLimitsFrom } from "../policy/cardRules.js";
@@ -71,8 +71,20 @@ export const STEP0_CHAIN: "purser" | "test_world" = "purser";
 export function exposurePolicyOfWorld(p: WorldPolicy, chain: "purser" | "test_world" = STEP0_CHAIN): ExposurePolicy {
   const start = startPolicy();
   const monthly = Object.fromEntries(AGENTS.map((a) => [a, toCents(p.agents[a].monthly)])) as Record<Agent, number>;
-  return { ...start, cardMonthlyCents: monthly, mandateBudgetCents: chain === "purser" ? start.mandateBudgetCents : { ...monthly } };
+  // Only the Treasury agent's payments run alone in the test world (runAlone reads its limit, rulesOf); another agent's
+  // "may pay alone" has no payment to apply to here, so it adds nothing a payment could reach.
+  const alone = Object.fromEntries(AGENTS.map((a) => [a, a === "treasury" ? toCents(p.agents[a].alone) : 0])) as Record<Agent, number>;
+  return { ...start, cardMonthlyCents: monthly, mandateBudgetCents: chain === "purser" ? start.mandateBudgetCents : { ...monthly }, invoiceAloneCents: alone, invoicesAlonePerDay: ALONE_PER_DAY };
 }
+
+/**
+ * At most this many payments an agent makes alone in 24 hours (Max, 7 Nov: the worst case must count them, so they need
+ * a limit per day). Purser's existing per-day rule for what an agent does without a person, the task cards'
+ * (TASK_WITHIN_PER_DAY), reused; the test world's runAlone enforces it.
+ */
+export const ALONE_PER_DAY = TASK_WITHIN_PER_DAY;
+/** The amounts /try/sign's screen 4 offers for "may pay alone up to"; the server gives each one's worst case. */
+export const ALONE_CHOICES: readonly string[] = ["500.00", "2000.00", "5000.00"];
 
 /** The card's end, as Airwallex takes it: the end of the end date, UTC. */
 export const activeToOf = (endDate: string) => `${endDate}T23:59:59.000Z`;
