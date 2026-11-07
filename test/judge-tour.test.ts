@@ -1,6 +1,7 @@
-// "Judge it in 3 minutes" (Max's last round, item 5.1): /judge, five steps a juror ticks off, each a link to a page that
-// already exists and one line of what they will see there. The ticks live in the browser only (localStorage, in
-// try/catch); the page has no fetch and a CSP that allows no connection.
+// "Judge it in 3 minutes" (Max's last round, item 5.1): /judge, five steps a juror ticks off in the demo's order (Max,
+// 7 Nov: Home, Watch, Try, Proof), each a link to a page that already exists and one line of what they will see there.
+// The ticks live in the browser only (localStorage, in try/catch); the page has no fetch and a CSP that allows no
+// connection.
 //
 // The route check below is the one that sequences the merge: it fails, step by step, while a step links to a page the
 // site does not serve yet (/trace, item 1.2) or to a part of /try/sign that is not built yet (step 0, PR #71, and the
@@ -42,29 +43,37 @@ const ownLinks = (s: (typeof JUDGE_STEPS)[number]) => s.links.map((l) => l.href)
 
 /**
  * What each step's line says the juror will see, as a mark on the page it links to: a step says nothing its page does
- * not show. Step 3's page (/trace) is not built yet, so only its route is checked.
+ * not show. The marks on /try/sign hold before and after screen 1's live Treasury agent ("Purser's code checks it" is in
+ * both of the trick screen's lines).
  */
 const SEES: Record<string, { path: string; marks: (string | RegExp)[] }[]> = {
-  sign: [{ path: "/try/sign", marks: ["Now try to cheat: change one cent", 'id="go-cheat"', "Sign with Face ID"] }],
-  policy: [{ path: "/try/sign", marks: ["Change the rule.", 'id="rule-chips"', /worst.case/i, "The agent pays it alone."] }],
-  trace: [],
-  rails: [{ path: "/airwallex", marks: ['id="controls"', "LIMIT_EXCEEDED"] }, { path: "/metal", marks: [metalStory(loadRecord().record).refusal?.proof.href ?? "no refusal in the record"] }],
-  verify: [{ path: "/try/verify", marks: ["Don't trust our server: check it yourself.", "connect-src 'none'"] }],
+  watch: [{ path: "/watch", marks: ["Watch the agents work", "Replay of the main run"] }],
+  sign: [{ path: "/try/sign", marks: ["Your Treasury agent wants to pay an invoice above its limit.", "Now try to cheat: change one cent", 'id="go-cheat"', "Sign with Face ID"] }],
+  trick: [{ path: "/try/sign", marks: ["Try to trick the agent.", "Send your agent a fake invoice", "Sonnet", "Purser's code checks it"] }],
+  policy: [{ path: "/try/sign", marks: ["Change the rule.", 'id="rule-chips"', /worst.case/i, "The agent pays it alone.", "That's Purser."] }],
+  proof: [
+    { path: "/proof", marks: ['id="awx-1"', /\d of \d checks pass/] },
+    { path: "/airwallex", marks: ['id="awx-1"', "LIMIT_EXCEEDED"] },
+    { path: "/metal", marks: [metalStory(loadRecord().record).refusal?.proof.href ?? "no refusal in the record"] },
+  ],
 };
 
 describe("/judge: the five steps", () => {
-  it("are the five Max named, in his order, with his times, three minutes in all", () => {
+  it("go in the demo's order (Max, 7 Nov: Home, Watch, Try, Proof), with their times, three minutes in all", () => {
     expect(JUDGE_STEPS.map((s) => [s.title, s.seconds])).toEqual([
-      ["Sign, then try to cheat", 60],
-      ["Change the rule", 30],
-      ["Trace any payment from policy to bank", 30],
-      ["See Airwallex and Metal enforce it themselves", 30],
-      ["Check the receipt yourself, no server", 30],
+      ["Watch the agents", 30],
+      ["Sign, then try to cheat", 40],
+      ["Try to trick the agent", 30],
+      ["Change the rule, see the worst case", 30],
+      ["See the proof", 50],
     ]);
     expect(JUDGE_STEPS.reduce((t, s) => t + s.seconds, 0)).toBe(180);
     expect(JUDGE_STEPS.map((s) => s.links.map((l) => l.href))).toEqual([
-      ["/try/sign"], ["/try/sign"], ["/trace"], ["/airwallex", "/metal", metalStory(loadRecord().record).refusal!.proof.href], ["/try/verify"],
+      ["/watch"], ["/try/sign"], ["/try/sign"], ["/try/sign"], ["/proof", "/airwallex#awx-1", "/metal", metalStory(loadRecord().record).refusal!.proof.href],
     ]);
+    // Home's three steps, in Home's order: the tour's first link is Home's first step, its last is Home's last.
+    expect(JUDGE_STEPS[0]!.links[0]!.href).toBe("/watch");
+    expect(JUDGE_STEPS.at(-1)!.links[0]!.href).toBe("/proof");
     // Each says in one line what the juror will see.
     for (const s of JUDGE_STEPS) expect({ step: s.id, oneLine: s.see.length > 0 && !s.see.includes("\n") && s.see.length <= 200 }).toEqual({ step: s.id, oneLine: true });
   });
@@ -91,11 +100,15 @@ describe("/judge: the five steps", () => {
     }
   });
 
-  it("ends with the code (the README's five files) and the film", () => {
+  it("ends with /trace and the receipt check for more time, then the code (the README's five files) and the film", () => {
     expect(JUDGE_CODE_HREF).toBe("https://github.com/agamemnon-coder/x402-business-agents#how-it-works-in-5-files");
     expect(read("README.md")).toMatch(/^## How it works in 5 files$/m);
     const html = judgePage();
     const tail = html.slice(html.indexOf('<section class="more"'));
+    for (const path of ["/trace", "/try/verify"]) {
+      expect(tail).toContain(`href="${path}"`);
+      expect({ path, status: served(path) }).toEqual({ path, status: 200 });
+    }
     expect(tail).toContain("Want the code?");
     expect(tail).toContain(`href="${JUDGE_CODE_HREF}"`);
     expect(tail).toContain("How it works in 5 files");
@@ -126,6 +139,7 @@ describe("/judge: in the browser only", () => {
   });
 
   it("the Worker serves it at /judge, with its CSP, only in a bundle that has /try/sign (three of its steps go there)", () => {
+    expect(JUDGE_STEPS.filter((s) => s.links.some((l) => l.href === "/try/sign"))).toHaveLength(3);
     const r = pageResponse(new Request(`${SITE}/judge`), ON);
     expect(r?.status).toBe(200);
     expect(r?.headers.get("content-security-policy")).toBe(JUDGE_CSP);

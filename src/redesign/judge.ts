@@ -1,8 +1,9 @@
-// /judge, "Judge it in 3 minutes" (Max's last round, item 5.1): five steps for a juror with little time, each with a
-// checkbox and a time. Each step only links to a page that already exists and says in one line what the juror will see
-// there: no new claim (test/judge-tour.test.ts checks every link against the routes the Worker serves, and each line
-// against its page). The ticks live in this browser only (localStorage, every access in try/catch, so the page works
-// where storage is blocked); the page has no fetch and its CSP allows no connection.
+// /judge, "Judge it in 3 minutes" (Max's last round, item 5.1; in the demo's order since 7 Nov: Home, Watch, Try, Proof):
+// five steps for a juror with little time, each with a checkbox and a time. Each step only links to a page that already
+// exists and says in one line what the juror will see there: no new claim (test/judge-tour.test.ts checks every link
+// against the routes the Worker serves, and each line against its page). The ticks live in this browser only
+// (localStorage, every access in try/catch, so the page works where storage is blocked); the page has no fetch and its
+// CSP allows no connection.
 
 import { FILM_LINK, FILM_URL } from "../config/brand.js";
 import { REPO_URL } from "../submission/deck.js";
@@ -19,34 +20,41 @@ export const JUDGE_CODE_HREF = `${REPO_URL}#how-it-works-in-5-files`;
 export interface JudgeLink { label: string; href: string }
 export interface JudgeStep { id: string; title: string; seconds: number; see: string; links: JudgeLink[] }
 
-/** The five steps, Max's titles and times, in his order. */
+/**
+ * The five steps, in the demo's order (Max, 7 Nov): watch the agents, then /try/sign as its story goes (the agent asks,
+ * signed with Face ID, try to cheat, try to trick the agent, change the rule and see the worst case, the agent pays
+ * alone, the closing card), then the proof.
+ */
 export function judgeSteps(record = loadRecord().record): JudgeStep[] {
   const refusal = metalStory(record).refusal?.proof.href;
   return [
     {
-      id: "sign", title: "Sign, then try to cheat", seconds: 60,
-      see: "A test world of your own: sign the agent's payment with your passkey, then “Now try to cheat: change one cent”. The server refuses the same signature.",
+      id: "watch", title: "Watch the agents", seconds: 30,
+      see: "The main run of 3 November, replayed: each Claude agent's decision in its own words, the money on its rail, the CFO's Face ID.",
+      links: [{ label: "Open /watch", href: "/watch" }],
+    },
+    {
+      id: "sign", title: "Sign, then try to cheat", seconds: 40,
+      see: "Your own test world: the agent asks, you sign with your passkey, then “Now try to cheat: change one cent”. The server refuses the same signature.",
       links: [{ label: "Open /try/sign", href: "/try/sign" }],
     },
     {
-      id: "policy", title: "Change the rule", seconds: 30,
-      see: "Next on the same page: let the agent pay more alone. A looser rule needs your signature; then its next invoice pays without you, and the worst case is in sight.",
+      id: "trick", title: "Try to trick the agent", seconds: 30,
+      see: "Next: send your agent a fake invoice. Claude Sonnet reads it live; Purser's code checks it and stops the payment.",
+      links: [{ label: "Trick the agent on /try/sign", href: "/try/sign" }],
+    },
+    {
+      id: "policy", title: "Change the rule, see the worst case", seconds: 30,
+      see: "A looser rule needs your signature, and the worst case is in sight. Then the agent pays its next invoice alone, and a closing card sums it up.",
       links: [{ label: "Change the rule on /try/sign", href: "/try/sign" }],
     },
     {
-      id: "trace", title: "Trace any payment from policy to bank", seconds: 30,
-      see: "Pick any payment and follow it from the CFO's policy to the bank.",
-      links: [{ label: "Open /trace", href: "/trace" }],
-    },
-    {
-      id: "rails", title: "See Airwallex and Metal enforce it themselves", seconds: 30,
-      see: "Airwallex's own card controls and its decline, read back from Airwallex; Metal's refusal on chain, on Metal's testnet explorer.",
-      links: [{ label: "Open /airwallex", href: "/airwallex" }, { label: "Open /metal", href: "/metal" }, ...(refusal ? [{ label: "The refusal on the explorer", href: refusal }] : [])],
-    },
-    {
-      id: "verify", title: "Check the receipt yourself, no server", seconds: 30,
-      see: "Pick the receipt.json from step 1: your browser checks the signature, with no server call. Change one field and it fails.",
-      links: [{ label: "Open /try/verify", href: "/try/verify" }],
+      id: "proof", title: "See the proof", seconds: 50,
+      see: "Every id of the main run; awx-1, the Airwallex-only run of 7 November, every check passed; Airwallex's own decline; Metal's refusal on chain.",
+      links: [
+        { label: "Open /proof", href: "/proof" }, { label: "awx-1 on /airwallex", href: "/airwallex#awx-1" }, { label: "Open /metal", href: "/metal" },
+        ...(refusal ? [{ label: "The refusal on the explorer", href: refusal }] : []),
+      ],
     },
   ];
 }
@@ -114,7 +122,7 @@ export function judgePage(steps: JudgeStep[] = JUDGE_STEPS): string {
 <section class="intro">
   <p class="eyebrow">For the jury</p>
   <h1 class="h-hero">Judge it in ${Math.round(total / 60)} minutes</h1>
-  <p class="lead">${steps.length} steps, each with its time and what you will see. Tick them off as you go: the ticks stay in this browser.</p>
+  <p class="lead">${steps.length} steps in the demo's order: watch the agents, try it yourself, see the proof. Each has its time and what you will see. Tick them off as you go: the ticks stay in this browser.</p>
   <p class="prog" id="prog" aria-live="polite">${steps.length} steps</p>
 </section>
 <ol class="steps">
@@ -124,12 +132,13 @@ ${steps.map((s, i) => `<li class="step card" id="s-${s.id}"><input type="checkbo
   <div class="go">${s.links.map(linkHtml).join("")}</div></div></li>`).join("\n")}
 </ol>
 <section class="more" aria-label="More">
+  <p><b>More time?</b> <a href="/trace">Trace any payment from policy to bank</a> · <a href="/try/verify">Check your receipt yourself, no server</a></p>
   <p><b>Want the code?</b> <a href="${esc(JUDGE_CODE_HREF)}" target="_blank" rel="noopener">How it works in 5 files&nbsp;↗</a></p>
   <p><a href="${esc(FILM_URL)}" target="_blank" rel="noopener">${esc(FILM_LINK)}&nbsp;↗</a></p>
 </section>
 </div></main>`;
   return page({
-    title: "Judge it in 3 minutes", description: "Five steps for the jury, three minutes in all: sign and tamper, set the policy, trace a payment, see the rails enforce it, check the receipt.",
+    title: "Judge it in 3 minutes", description: "Five steps for the jury, three minutes in all, in the demo's order: watch the agents, sign and try to cheat, try to trick the agent, change the rule, see the proof.",
     tab: null, css: CSS, body, js: JS, stage: false,
     source: "Source: src/redesign/judge.ts.",
     real: ["This page only links to Purser's pages and Metal's testnet explorer; each of those says what is real there. Your ticks stay in this browser (localStorage); nothing is sent to any server."],

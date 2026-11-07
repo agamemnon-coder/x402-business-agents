@@ -491,13 +491,13 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (steps.length !== 5 || steps.some((s) => !s.box || !s.secs || !s.links)) fail(`/judge ${tag}: not five steps, each with a checkbox, a time and a link (${JSON.stringify(steps)})`);
       if (steps.reduce((t, s) => t + s.secs, 0) !== 180) fail(`/judge ${tag}: the times do not add up to 3 minutes`);
       if (!(await page.isVisible("text=Want the code?")) || !(await page.isVisible("section.more >> text=How it works in 5 files"))) fail(`/judge ${tag}: no "Want the code? How it works in 5 files" at the bottom`);
-      // Tick steps 1 and 3 (one by its box, one by its title), reload: both still ticked, the count says so.
+      // Tick steps 2 and 3 (one by its box, one by its title), reload: both still ticked, the count says so.
       await page.locator("#step-sign").check();
-      await page.locator('label[for="step-trace"]').click();
+      await page.locator('label[for="step-trick"]').click();
       if ((await page.locator("#prog").innerText()) !== "2 of 5 done") fail(`/judge ${tag}: the count does not follow the ticks`);
       await page.reload({ waitUntil: "load" });
       const kept = await page.locator('input[type="checkbox"]').evaluateAll((bs) => bs.filter((b) => (b as HTMLInputElement).checked).map((b) => b.id));
-      if (kept.join() !== "step-sign,step-trace" || (await page.locator("#prog").innerText()) !== "2 of 5 done") fail(`/judge ${tag}: the ticks do not survive a reload (${kept.join() || "none"})`);
+      if (kept.join() !== "step-sign,step-trick" || (await page.locator("#prog").innerText()) !== "2 of 5 done") fail(`/judge ${tag}: the ticks do not survive a reload (${kept.join() || "none"})`);
       await look(page, `/judge ticked ${tag}`, w);
       await page.screenshot({ path: join(shots, `judge-${tag}.png`), fullPage: true });
       page.off("request", onRequest);
@@ -511,8 +511,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       bp.on("pageerror", (e) => fail(`${tag} /judge (storage blocked): page error: ${e.message}`));
       await bp.goto(`${judgeBase}/judge`, { waitUntil: "load" });
       if (await bp.evaluate(() => { try { return typeof window.localStorage; } catch { return "throws"; } }) !== "throws") fail(`/judge (storage blocked) ${tag}: localStorage did not throw`);
-      await bp.locator("#step-verify").check();
-      if ((await bp.locator("#prog").innerText()) !== "1 of 5 done" || !(await bp.locator("#s-verify").evaluate((li) => li.classList.contains("done")))) fail(`/judge (storage blocked) ${tag}: the box does not tick`);
+      await bp.locator("#step-proof").check();
+      if ((await bp.locator("#prog").innerText()) !== "1 of 5 done" || !(await bp.locator("#s-proof").evaluate((li) => li.classList.contains("done")))) fail(`/judge (storage blocked) ${tag}: the box does not tick`);
       await look(bp, `/judge (storage blocked) ${tag}`, w);
       await blocked.close();
     }

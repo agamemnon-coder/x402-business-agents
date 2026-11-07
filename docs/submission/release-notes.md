@@ -334,6 +334,21 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   linking there (no decline code on /proof); every figure and id from the record (src/redesign/awxRun.ts,
   test/awx-run-page.test.ts). README, docs/claims.md and docs/airwallex.md carry it; its 0.0839 USD of Claude is booked
   in docs/runs/api-budget.jsonl. 2887 tests in 283 files, all passing.
+- 7 November, every jury-facing text in the demo's order (Max): Home → Watch → Try (/try/sign) → Proof, and /try/sign's
+  story as it now runs: the agent asks (Claude Sonnet reads the invoice, Purser's code checks the reading and the terms
+  come from it, Claude Opus advises live as the Treasury agent), signed with Face ID, try to cheat, try to trick the
+  agent (Claude Sonnet reads a fake invoice live; Purser's code blocks it), change the rule and see the worst case, the
+  agent pays alone, the closing card. /judge's five steps follow it (watch the agents 30 s; sign, then try to cheat
+  40 s; try to trick the agent 30 s; change the rule, see the worst case 30 s; see the proof 50 s, with awx-1 on
+  /airwallex), with /trace and the receipt check under "More time?"; test/judge-tour.test.ts checks each line against
+  its page. The README's top tells the same order and the seven steps, and its evidence carries awx-1 again (its
+  section, its line among the proof sentences and under "Other live tests", which a merge had dropped on main; the
+  same for its rows in docs/claims.md). The form's Description (3,998 characters, under the 4,000 the test allows)
+  adds the demo's order and one line on awx-1; the Instructions go /judge, then Home, Watch, Try and Proof; the long
+  text lists awx-1 under "Other live tests". The Demo Day pitch opens on Home and /watch, then the live demo with the
+  trick, the worst case and the closing card, then the proof with awx-1 (341 words, about 2:28 of speech); the runbook
+  has a fallback for each of its 14 steps. The Q&A adds five questions (18–22) on the live agents and on awx-1.
+  2941 tests in 287 files, all passing.
 - 7 November, the Treasury agent works live on /try/sign's first screen, Purser-style (spec 6b): the test world holds
   EUR 26,000.00 (floor EUR 25,000.00) and USD 8,000.00 (floor USD 3,000.00). The agents' work comes in step by step,
   one request each (POST /agents): Claude Sonnet, the runner's invoice reader, reads Alpine Packaging's invoice (a

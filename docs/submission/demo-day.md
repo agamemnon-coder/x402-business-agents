@@ -2,28 +2,33 @@
 
 For Max. Demo Day is **19 November 2026 in San Francisco, remote participation optional**; finalists are selected on
 **15 November** (microsite, read 5 November). The words come from [pitch.md](pitch.md) ("Demo Day: the 3-minute
-pitch", live `/try/sign` first), the answers from [qa.md](qa.md), the one page to keep beside the laptop is
-[cheat-sheet.pdf](cheat-sheet.pdf). Every figure on screen is the main run's (3 November 2026) or a dated record's;
+pitch", in the site's order: Home, Watch, live `/try/sign`, Proof), the answers from [qa.md](qa.md), the one page to
+keep beside the laptop is [cheat-sheet.pdf](cheat-sheet.pdf). Every figure on screen is the main run's (3 November 2026) or a dated record's;
 nothing here moves money.
 
 ## The Demo Day script: a fallback per step
 
-The 3-minute pitch in [pitch.md](pitch.md), step by step. The phone is mirrored to the shared screen (QuickTime
-Player, New Movie Recording, the iPhone as the camera, over the cable; test it in rehearsal). The laptop has the tabs
-of section 4 open, and `npm run judge` already running in a second terminal, so the offline replay is one click away.
+The 3-minute pitch in [pitch.md](pitch.md), step by step, in the site's order (Max, 7 Nov): Home, then Watch, then
+Try (`/try/sign`), then Proof. The phone is mirrored to the shared screen (QuickTime Player, New Movie Recording, the
+iPhone as the camera, over the cable; test it in rehearsal). The laptop has the tabs of section 4 open, and
+`npm run judge` already running in a second terminal, so the offline replay is one click away.
 
 | Step | Time | Tap or show | If it fails |
 |---|---|---|---|
-| 1. The problem | 0:00–0:20 | Deck, slide 1 | The deck is a PDF and needs no network. Screen sharing drops: send the deck PDF in the chat and talk over it ("Let me walk you through the slides while the screen comes back.") |
-| 2. The test world | 0:20 | Phone, `/try/sign`, opened a minute before: the agent's request, with its live quote | **Network down → the /watch replay**, served offline by `npm run judge` (tab 7, `http://localhost:4311/watch?scene=1`; the hosted `/watch` needs the network too). Say: "The network is down, so here is the recorded run; scan the QR afterwards." Then clips `11-turn.mp4` and `12-tamper.mp4` for the signature and the tamper. A busy answer ("many visitors…", "wait a moment"): **Try again**, or the second device, its world opened before |
-| 3. The request | 0:25 | Point at the heading, the agent's sentence and the amount | Nothing to fail: the payment is fixed text in the test world; the sentence falls back to the fixed one, labelled. If the page looks wrong, go to step 2's fallback |
-| 4. Sign with Face ID | 0:50 | **Sign with Face ID** (two prompts: the test passkey, then the signature); wait for the green check | **Face ID fails → a second device, or the recorded run.** Try once more; then the laptop's `/try/sign` (tab 4, its own world, Touch ID); or clip `11-turn.mp4` and say: "Same moment, recorded." |
-| 5. The quote | 0:50–1:05 | Only if the quote ran out: the page says "Quote expired. Get a fresh one and sign again." | **The quote expires → show "Get a new quote" as a feature.** Tap **Get a new quote** and say: "The quote ran out, so the signature for it is worthless too. New quote, new terms: I sign again." Then sign. No live quote at all ("no live quote now"): the terms show the main run's recorded quote, labelled; say "the recorded quote" and go on |
-| 6. Try to cheat, change the rule | 1:05–1:30 | **Now try to cheat: change one cent**; point at "One cent changed. The signature is worthless." Then **Next: change the rule**, **€2,000**, **Sign with Face ID**: the next invoice, paid alone | Clip `12-tamper.mp4`, or the screenshot `screens/18-try-sign.png` (signed, then one cent changed and refused). The rule's signature fails: say "a looser rule needs my signature" and go on to the proof |
-| 7. Proof one: the hash in Airwallex | 1:30 | Laptop, tab 3, [/proof](https://kit11.max-31b.workers.dev/proof): "The hash the CFO signed travels with the payment." | Network down: `http://localhost:4311/proof` (`npm run judge`); else deck slide 6 (the ids) |
-| 8. Proof two: the refusal on Metal | 1:50 | Tab [/metal](https://kit11.max-31b.workers.dev/metal): #24's refusal and its tx | Network down: `http://localhost:4311/metal`; else deck slide 7 |
-| 9. Proof three: Claude 24/24 | 2:05 | Back to `/proof`, the Claude figure ("decisions by Claude (0 fallbacks)") | Deck, slide 1 (the four figures) |
-| 10. The business and the ask | 2:20–3:00 | Deck, slide 10 (the QR to `/try/sign`); leave it up for the questions | The QR does not scan: the short URL is under the code; read it out: kit11.max-31b.workers.dev/try/sign |
+| 1. Home: the problem | 0:00–0:15 | Laptop, Home ([kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/)) | **Network down → the /watch replay** and Home, served offline by `npm run judge` (tab 7, `http://localhost:4311/`; the hosted pages need the network). Screen sharing drops: send the deck PDF in the chat and talk over it ("Let me walk you through the slides while the screen comes back.") |
+| 2. Watch | 0:15–0:20 | **Start: watch the agents**: `/watch` plays the main run's replay | Network down: `http://localhost:4311/watch?scene=1`. `/watch` stutters: clip `out/video/clips/05-price.mp4` |
+| 3. The test world | 0:20 | Phone, `/try/sign`, opened a minute before: the agents' steps (Claude Sonnet's reading, Purser's code, the live quote, Claude Opus's advice) already in | Network down: the `/watch` replay (step 2's fallback); say: "The network is down, so here is the recorded run; scan the QR afterwards." Then clips `11-turn.mp4` and `12-tamper.mp4` for the signature and the tamper. A busy answer ("many visitors…", "wait a moment"): **Try again**, or the second device, its world opened before |
+| 4. The agent asks | 0:25 | Point at the heading, the agents' steps and the advice | A live agent unavailable: the page shows a recorded real answer or code's reading, each labelled with the reason; say "labelled, as you see" and go on. If the page looks wrong, go to step 3's fallback |
+| 5. Sign with Face ID | 0:35 | **Sign with Face ID** (two prompts: the test passkey, then the signature); wait for the green check | **Face ID fails → a second device, or the recorded run.** Try once more; then the laptop's `/try/sign` (tab 4, its own world, Touch ID); or clip `11-turn.mp4` and say: "Same moment, recorded." |
+| 6. The quote | 0:35–0:45 | Only if the quote ran out: the page says "Quote expired. Get a fresh one and sign again." | **The quote expires → show "Get a new quote" as a feature.** Tap **Get a new quote** and say: "The quote ran out, so the signature for it is worthless too. New quote, new terms: I sign again." Then sign. No live quote at all ("no live quote now"): the terms show the main run's recorded quote, labelled; say "the recorded quote" and go on |
+| 7. Try to cheat | 0:45 | **Now try to cheat: change one cent**; point at "One cent changed. The signature is worthless." | Clip `12-tamper.mp4`, or the screenshot `screens/18-try-sign.png` (signed, then one cent changed and refused) |
+| 8. Try to trick the agent | 0:55 | **Next: trick the agent**, then a fake invoice; point at the verdict | The live reader unavailable: the page says "live agent unavailable · read by code"; say "the code reads it instead, and blocks it all the same" and go on |
+| 9. Change the rule, the worst case | 1:05 | **Next: change the rule**, **€2,000**; point at the worst case; **Sign with Face ID** | The rule's signature fails: say "a looser rule needs my signature" and go on to step 10 |
+| 10. The agent pays alone, the closing card | 1:20–1:30 | The next invoice, paid alone; **Finish**: "That's Purser." | Not paid alone (the rule was not signed): say "still waits for me: the rule did not change" and go on to the proof |
+| 11. Proof one: the hash in Airwallex, and awx-1 | 1:30 | Laptop, tab 3, [/proof](https://kit11.max-31b.workers.dev/proof): "The hash the CFO signed travels with the payment.", then awx-1 below it ("7 of 7 checks pass") | Network down: `http://localhost:4311/proof` (`npm run judge`); else deck slide 6 (the ids) |
+| 12. Proof two: the refusal on Metal | 1:50 | Tab [/metal](https://kit11.max-31b.workers.dev/metal): #24's refusal and its tx | Network down: `http://localhost:4311/metal`; else deck slide 7 |
+| 13. Proof three: Claude 24/24 | 2:05 | Back to `/proof`, the Claude figure ("decisions by Claude (0 fallbacks)") | Deck, slide 1 (the four figures) |
+| 14. The business and the ask | 2:20–3:00 | Deck, slide 12 (the QR to `/try/sign`); leave it up for the questions | The QR does not scan: the short URL is under the code; read it out: kit11.max-31b.workers.dev/try/sign |
 
 **The earlier runbook** (section 3 below) plays the main run's replay instead of the live demo. Use it when the
 organisers ask for no live demo, or when the phone cannot be shown at all.
@@ -109,6 +114,8 @@ figure is on the slides. Say: "Let me walk you through the slides while the scre
   5. Home: [kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/);
   6. the terminal, in the repo, `npm run verify` run once, its result on screen;
   7. `http://localhost:4311/watch` from `npm run judge` (already started in a second terminal, as reserve).
+- [ ] For the Demo Day script (the live version): start on tab 5, Home; **Start: watch the agents** opens the Watch
+  step; tab 3 is the proof.
 - [ ] The clips (`out/video/clips/`) open in a player, paused, in the order of the plan B column.
 - [ ] Phone above 80 %, Do Not Disturb on, Face ID works (unlock once).
 - [ ] The phone's hotspot ready as reserve internet (name and password known; tested once that day).
@@ -139,8 +146,8 @@ The Demo Day script (the live version), the same way:
 
 | Part | Target | Run 1 | Run 2 | Run 3 | Too long? What was cut |
 |---|---|---|---|---|---|
-| The problem, and why now | 0:20 | | | | |
-| Live: sign, then tamper | 1:10 | | | | |
+| The problem, and the agents at work (Home, Watch) | 0:20 | | | | |
+| Live: sign, cheat, trick, change the rule | 1:10 | | | | |
 | The proof | 0:50 | | | | |
 | The business and the ask | 0:40 | | | | |
 | **Total** | **3:00** | | | | |

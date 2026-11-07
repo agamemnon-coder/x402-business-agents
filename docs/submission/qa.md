@@ -3,7 +3,9 @@
 For Max, for Demo Day (19 November). Each answer is three sentences or fewer, then the evidence: a page, a record or a
 test. Figures are the main run's (3 November 2026, [log](../runs/2026-11-03-main-run.md),
 [record](../demo/main-run.json)) or a dated record's; `test/pitch.test.ts` checks them, and
-`test/demo-day-pack.test.ts` checks the length of each answer and that it names its evidence. When you do not know:
+`test/demo-day-pack.test.ts` checks the length of each answer and that it names its evidence. Questions 18 to 22, on
+/try/sign's live agents and on awx-1 (the Airwallex-only run of 7 November, [log](../runs/2026-11-07-awx-1.md)), were
+added on 7 November. When you do not know:
 "Good question. I'll check and send it to you." Never guess.
 
 The pitch: [pitch.md](pitch.md). The one page beside the laptop: [cheat-sheet.pdf](cheat-sheet.pdf).
@@ -177,3 +179,60 @@ API. The 6 seconds from Face ID to PAID are measured, but the settlement is simu
 
 **Evidence:** [README](../../README.md), "Earnings and euros"; the record, `timings` (faceToPaid 6); `SANDBOX_SETTLED`
 in `src/config/brand.ts`.
+
+## The live agents and awx-1 (added 7 November)
+
+### 18. Are the agents on /try/sign live, or scripted?
+
+Live, and labelled: on the first screen Claude Sonnet reads the supplier's invoice, Purser's code checks the reading
+and writes the terms from it, and Claude Opus advises as the Treasury agent; on "Try to trick the agent" Claude Sonnet
+reads each fake invoice live. When a live call cannot answer, the page says so, with a recorded real answer or code's
+own reading, labelled with the reason, never silently. All live calls on the page share a budget of USD 10 a day, with
+limits per address and a timeout of 8 s a call, and a switch on the server stops them all.
+
+**Evidence:** [/try/sign](https://kit11.max-31b.workers.dev/try/sign), "What's real?"; `worker/src/trySign.ts`;
+`worker/src/trick.ts`; `test/try-trick.test.ts`.
+
+### 19. What does Claude Opus decide on the first screen?
+
+Only the timing: it advises paying now or waiting, in one or two sentences, and code checks every amount in its reason
+against code's own numbers. No model sets the amount, the payee, the conversion or the plan; the terms come from
+Sonnet's reading after code has checked it against the invoice's own lines, the allowlist and the limit. Nothing
+moves until you sign those terms with your passkey.
+
+**Evidence:** `worker/src/trySign.ts`; `src/agents/timingAgent.ts`; [/try/sign](https://kit11.max-31b.workers.dev/try/sign),
+"What's real?".
+
+### 20. Can a fake invoice talk the agent into paying?
+
+Try it: on /try/sign you send the agent a fake invoice, either "Pre-approved by the CFO" with a new IBAN, or a
+lookalike supplier, and Claude Sonnet reads it live. Whatever it reads, Purser's code blocks the invoice: a new IBAN
+needs a person's Face ID, and only allowlisted payees get paid. A blocked invoice creates no proposal, reads no balance
+and asks for no quote.
+
+**Evidence:** `TRICKS` and `TRICK_OUTCOME` in `worker/src/trick.ts`; `test/try-trick.test.ts`;
+[docs/fraud-and-injection.md](../fraud-and-injection.md).
+
+### 21. What is awx-1?
+
+A separate world on the Airwallex sandbox only, run live on 7 November with test money and 0 Metal calls; I signed
+all three proposals with Face ID on my phone, and it was accepted with all seven checks passed in one attempt. Three
+agent cards carried the policy's limits, read back from Airwallex; Airwallex itself approved the charges within the limits, declined one
+over the limit (`LIMIT_EXCEEDED`) and one outside the card's merchant category (`MERCHANT_CATEGORY_NOT_ALLOWED`); two
+invoices went out by SWIFT after Face ID, each payout carrying the hash of the signed terms in Airwallex's own
+metadata. The merchant charges and each payout's SENT and PAID are the sandbox's simulation; every approval, decline
+and decline code is Airwallex's own.
+
+**Evidence:** [docs/runs/2026-11-07-awx-1.md](../runs/2026-11-07-awx-1.md); the record,
+[docs/demo/airwallex-run.json](../demo/airwallex-run.json); [/airwallex](https://kit11.max-31b.workers.dev/airwallex#awx-1).
+
+### 22. In awx-1, what did the agents do with Airwallex's declines?
+
+The Sourcing agent (Claude Haiku) read `LIMIT_EXCEEDED` and asked the CFO to raise its limit per purchase from 30.00
+to 45.00 instead of retrying; after my Face ID the card was updated at Airwallex and the same EUR 45.00 charge was
+approved. The Support agent read `MERCHANT_CATEGORY_NOT_ALLOWED` and asked for no raise, since a higher limit would not
+help. For the invoices, the Treasury agent (Claude Opus) advised paying now, and code bought only the shortfall: no FX
+for the first, EUR 623.50 for USD 704.45 on a quote for the second.
+
+**Evidence:** [docs/runs/2026-11-07-awx-1.md](../runs/2026-11-07-awx-1.md), "What the agents said" and "f–g. The two
+invoices"; [/airwallex](https://kit11.max-31b.workers.dev/airwallex#awx-1), "Every step and id".
