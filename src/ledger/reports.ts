@@ -8,10 +8,12 @@ import { VAT_CODES, VAT_NOTICE, type VatRubric } from "./vat.js";
 
 interface Row { account: string; currency: string; debit: number; credit: number }
 
-function sums(db: DB, range: { from?: string; to?: string } = {}): Row[] {
+function sums(db: DB, range: { from?: string; to?: string } = {}, beforeClosing = false): Row[] {
+  // beforeClosing: leave out the year-closing entries (src/ledger/close.ts), which bring every P&L account to zero.
   return db.prepare(`SELECT l.account, l.currency, SUM(l.debit_cents) AS debit, SUM(l.credit_cents) AS credit
     FROM ledger_lines l JOIN ledger_entries e ON e.entry_id = l.entry_id
-    WHERE e.posting_date >= ? AND e.posting_date <= ? GROUP BY l.account, l.currency ORDER BY l.account, l.currency`)
+    WHERE e.posting_date >= ? AND e.posting_date <= ? ${beforeClosing ? "AND (e.source_key IS NULL OR e.source_key NOT LIKE 'close-year:%')" : ""}
+    GROUP BY l.account, l.currency ORDER BY l.account, l.currency`)
     .all(range.from ?? "0000-01-01", range.to ?? "9999-12-31") as Row[];
 }
 
@@ -30,9 +32,9 @@ export interface ProfitAndLoss {
 }
 
 /** Revenue (credit minus debit on 4xxx) and expenses (debit minus credit on 5xxx to 8xxx), per currency. */
-export function profitAndLoss(db: DB, range: { from: string; to: string }): Record<string, ProfitAndLoss> {
+export function profitAndLoss(db: DB, range: { from: string; to: string }, opts: { beforeClosing?: boolean } = {}): Record<string, ProfitAndLoss> {
   const out: Record<string, ProfitAndLoss> = {};
-  for (const r of sums(db, range).filter((x) => isProfitAndLoss(x.account))) {
+  for (const r of sums(db, range, opts.beforeClosing).filter((x) => isProfitAndLoss(x.account))) {
     const p = (out[r.currency] ??= { revenue_cents: 0, expense_cents: 0, result_cents: 0, accounts: [] });
     const type = accountType(r.account);
     const cents = type === "revenue" ? r.credit - r.debit : r.debit - r.credit;
