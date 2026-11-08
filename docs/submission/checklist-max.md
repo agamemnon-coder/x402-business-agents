@@ -16,7 +16,7 @@ Zet nooit een sleutel of geheim in de chat. Typ ze alleen in je eigen terminal o
 - Voor de film hoef je niets op te nemen: de voice-over is een AI-stem (ElevenLabs), een verteller in de derde
   persoon, en de muziek is AI-gegenereerd (ElevenLabs); de eindkaart vermeldt beide. Zie
   [docs/video/README.md](../video/README.md).
-- Upload de film op YouTube als **Niet vermeld** (unlisted). De regel is "under five minutes"; de film duurt 2:42.
+- Upload de film op YouTube als **Niet vermeld** (unlisted). De regel is "under five minutes"; de film duurt 3:58 (v8).
   Zet in de beschrijving: "Test money only: the Airwallex sandbox and Metal testnet" en "Voice-over: an AI-generated
   voice (ElevenLabs) · Music: AI-generated (ElevenLabs)".
 - Zet de link in het formulier. Claude zet hem in [README.md](README.md).

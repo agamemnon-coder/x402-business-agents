@@ -22,7 +22,7 @@ the example company, is an outdoor wholesaler that sells live stock data to reta
 1. **[Watch](https://kit11.max-31b.workers.dev/watch): the agents, replayed.** A supplier doubles its price. A customer
    disputes 12 orders. A €240 bill is due in euros. Three Claude agents run a small data business on 20 test dollars
    through Metal and Airwallex; the CFO signed 5 times with Face ID. One live run, every id in
-   [the main run](#the-main-run-3-november). [Film, 2:42](https://youtu.be/jaqO2M2V6NY).
+   [the main run](#the-main-run-3-november). [Film, 3:58](https://youtu.be/kCUsFHrxE-o).
 2. **[Try](https://kit11.max-31b.workers.dev/try/sign): sign with your own Face ID.** About a minute, in a test world of
    your own; nothing real moves. Live since 4 November 2026. The seven steps: [Try it, step by step](#try-it-step-by-step).
 3. **[Proof](https://kit11.max-31b.workers.dev/proof): every id.** The main run's, each checkable, and awx-1, the
