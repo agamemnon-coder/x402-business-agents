@@ -113,13 +113,45 @@ function lastAmount(line: string): string {
   return found.at(-1) ?? "";
 }
 
-function currencyOf(line: string): string {
-  if (/€|\bEUR\b/i.test(line)) return "EUR";
-  if (/£|\bGBP\b/i.test(line)) return "GBP";
-  if (/\bUSD\b|US\$|\$/i.test(line)) return "USD";
-  const iso = /\b(CHF|SEK|NOK|DKK|PLN|CZK|HKD|SGD|AUD|CAD|JPY|CNY|NZD|TRY)\b/.exec(line);
-  return iso ? iso[1]! : "";
+/** Every currency a line names: symbols and ISO codes. */
+function currenciesOf(line: string): string[] {
+  const out = new Set<string>();
+  if (/€|\bEUR\b/i.test(line)) out.add("EUR");
+  if (/£|\bGBP\b/i.test(line)) out.add("GBP");
+  if (/\bUSD\b|US\$|\$/i.test(line)) out.add("USD");
+  for (const m of line.matchAll(/\b(CHF|SEK|NOK|DKK|PLN|CZK|HKD|SGD|AUD|CAD|JPY|CNY|NZD|TRY|HUF|RON|BGN)\b/g)) out.add(m[1]!);
+  return [...out];
 }
+
+/** The one currency a line names, or "" (none, or more than one). */
+function currencyOf(line: string): string {
+  const c = currenciesOf(line);
+  return c.length === 1 ? c[0]! : "";
+}
+
+/**
+ * The invoice's currency: the total line's; else the subtotal's or the tax line's when they agree; else the one
+ * currency the whole text names. Several currencies and none on those lines: "" (a person decides). A euro sign in a
+ * footer ("late payment fee: €40,00") never makes a SEK invoice EUR.
+ */
+function invoiceCurrency(ls: string[], total: { line: string } | null): string {
+  if (total) {
+    const c = currencyOf(total.line);
+    if (c) return c;
+  }
+  const near = [labelledAmount(ls, SUBTOTAL), labelledAmount(ls, TAX)].flatMap((x) => (x ? [currencyOf(x.line)] : [])).filter(Boolean);
+  if (near.length && near.every((c) => c === near[0])) return near[0]!;
+  const all = new Set(ls.flatMap(currenciesOf));
+  return all.size === 1 ? [...all][0]! : "";
+}
+
+/** Whether the total is written as negative ("-1,850.00", "EUR -1.850,00") or in brackets ("(1,850.00)"): a credit. */
+export function totalIsNegative(text: string): boolean {
+  const total = labelledAmount(lines(text ?? ""), TOTAL);
+  if (!total) return false;
+  return /(?:^|[\s:=€$£])[-\u2212\u2013]\s*(?:(?:€|\$|£|[A-Z]{3})\s*)?\d/.test(total.line) || /\(\s*(?:€|\$|£|[A-Z]{3})?\s*\d[\d.,' \u00a0]*\)/.test(total.line);
+}
+
 
 const lines = (text: string) => text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 
@@ -136,7 +168,7 @@ function labelledAmount(ls: string[], labels: RegExp): { amount: string; line: s
 /** A line that names the document rather than its issuer (a heading above the letterhead). */
 const HEADING = /^(?:(?:tax\s+)?invoice|factuur|rechnung|credit\s*note|creditnota|gutschrift|payment\s+reminder|reminder|betalingsherinnering|herinnering|aanmaning|zahlungserinnerung|mahnung|receipt|kwitantie|quittung)\b/i;
 
-const TOTAL = /^(?:total\s+due|amount\s+due|balance\s+due|total\s+amount|grand\s+total|totaal\s+te\s+betalen|te\s+betalen|totaalbedrag|gesamtbetrag|rechnungsbetrag|zu\s+zahlen|endbetrag|total|totaal)(?![a-z])/i;
+const TOTAL = /^(?:total\s+due|amount\s+due|amount\s+payable|total\s+payable|balance\s+due|total\s+amount|invoice\s+total|grand\s+total|totaal\s+te\s+betalen|te\s+betalen|totaalbedrag|factuurbedrag|gesamtbetrag|gesamtsumme|rechnungsbetrag|zu\s+zahlen|endbetrag|endsumme|total|totaal)(?![a-z])/i;
 const SUBTOTAL = /^(?:sub-?total|subtotaal|net\s+amount|nettobetrag|zwischensumme|netto)(?![a-z])/i;
 const TAX = /^(?:vat|btw|mwst\.?|ust\.?|tax|sales\s+tax|umsatzsteuer)(?![a-z])/i;
 
@@ -144,19 +176,30 @@ function firstMatch(text: string, re: RegExp): string {
   return re.exec(text)?.[1]?.trim() ?? "";
 }
 
-/** The IBAN after an "IBAN" label, the longest prefix of the run that passes its checksum. */
+/** The IBAN after an "IBAN" label, exactly as long as its country's IBANs are (a BIC on the same line is not read into it). */
 function ibanIn(text: string): string {
   const m = /IBAN[ \t]*:?[ \t]*([A-Z]{2}\d{2}(?:[ \t]?[A-Z0-9]){10,30})/i.exec(text);
   if (!m) return "";
   const run = m[1]!.replace(/\s+/g, "").toUpperCase();
-  for (let n = run.length; n >= 15; n--) if (ibanValid(run.slice(0, n))) return run.slice(0, n);
-  return run;
+  const len = IBAN_LENGTHS[run.slice(0, 2)];
+  return len && run.length >= len ? run.slice(0, len) : run;
 }
 
-/** ISO 13616 mod-97 check. */
+/** IBAN length per country, from the SWIFT IBAN registry (ISO 13616). A country not listed is not accepted. */
+export const IBAN_LENGTHS: Readonly<Record<string, number>> = {
+  AD: 24, AE: 23, AL: 28, AT: 20, AZ: 28, BA: 20, BE: 16, BG: 22, BH: 22, BR: 29, BY: 28, CH: 21, CR: 22, CY: 28, CZ: 24,
+  DE: 22, DK: 18, DO: 28, EE: 20, EG: 29, ES: 24, FI: 18, FO: 18, FR: 27, GB: 22, GE: 22, GI: 23, GL: 18, GR: 27, GT: 28,
+  HR: 21, HU: 28, IE: 22, IL: 23, IQ: 23, IS: 26, IT: 27, JO: 30, KW: 30, KZ: 20, LB: 28, LC: 32, LI: 21, LT: 20, LU: 20,
+  LV: 21, MC: 27, MD: 24, ME: 22, MK: 19, MR: 27, MT: 31, MU: 30, NL: 18, NO: 15, PK: 24, PL: 28, PS: 29, PT: 25, QA: 29,
+  RO: 24, RS: 22, SA: 24, SC: 31, SE: 24, SI: 19, SK: 24, SM: 27, ST: 25, SV: 28, TL: 23, TN: 24, TR: 26, UA: 29, VA: 22,
+  VG: 24, XK: 20,
+};
+
+/** ISO 13616: a known country, its exact length, and the mod-97 check. */
 export function ibanValid(iban: string): boolean {
   const s = iban.replace(/\s+/g, "").toUpperCase();
   if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(s)) return false;
+  if (IBAN_LENGTHS[s.slice(0, 2)] !== s.length) return false;
   const moved = s.slice(4) + s.slice(0, 4);
   let rest = 0;
   for (const ch of moved) {
@@ -183,7 +226,7 @@ export function parseApFallback(text: string): ApReading {
     invoice_no: invoiceNo,
     issue_date: issued ? readDate(issued) : "",
     due_date: due ? readDate(due) : "",
-    currency: total ? currencyOf(total.line) || currencyOf(text) : currencyOf(text),
+    currency: invoiceCurrency(ls, total),
     subtotal: labelledAmount(ls, SUBTOTAL)?.amount ?? "",
     tax: labelledAmount(ls, TAX)?.amount ?? "",
     total: total?.amount ?? "",
@@ -220,6 +263,12 @@ export function readingCheck(r: ApReading, text: string): string | null {
   if (!amountsIn(text).has(r.total)) return `the total ${r.total} is not in the document`;
   if (r.iban && !doc.includes(compact(r.iban))) return "the IBAN is not in the document";
   const own = parseApFallback(text);
-  const differ = (["total", "iban"] as const).filter((k) => own[k] && r[k] && compact(own[k]) !== compact(r[k]));
-  return differ.length ? `the reading differs from the document's own lines: ${differ.join(", ")}` : null;
+  // A model's figure alone is never accepted: the document's own total line must give the same (red team B).
+  if (!own.total) return "the document's own lines give no total that code can check the reading against";
+  // The currency too: when the document's lines name one it must be the model's; when they are ambiguous, a person decides (A).
+  if (!own.currency) return "the document's own lines do not say the currency unambiguously";
+  const differ: string[] = (["total", "iban", "invoice_no", "currency"] as const).filter((k) => own[k] && compact(own[k]) !== compact(r[k] ?? ""));
+  // A subtotal or tax the document's lines give may not be dropped or changed (dropping them skips the sum check).
+  for (const k of ["subtotal", "tax"] as const) if (own[k] && own[k] !== r[k]) differ.push(k);
+  return differ.length ? `the reading differs from the document's own lines: ${differ.join(", ").replace(/_/g, " ")}` : null;
 }
