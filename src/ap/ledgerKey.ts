@@ -6,8 +6,6 @@
 
 import { invoiceAlreadyHandled } from "../agents/euroBill.js";
 import type { DB } from "../db/open.js";
-import { sameInvoiceNo } from "../lib/invoiceKey.js";
-import { skeleton } from "../policy/fraudCore.js";
 
 /** The payment ledger's number for this supplier's invoice. */
 export function ledgerInvoiceNo(invoiceNo: string, vendor: string): string {
@@ -16,13 +14,10 @@ export function ledgerInvoiceNo(invoiceNo: string, vendor: string): string {
 
 /**
  * Why this supplier's invoice may not be paid again, or null: a payout or proposal under the inbox's number for it,
- * or one the Treasury flow filed under the bare number for the same supplier. Another supplier's invoice with the same
- * number is not this invoice.
+ * or one the Treasury flow filed under the bare number for the same supplier (the ledger's guard compares the number
+ * and the supplier in both forms, src/lib/invoiceKey.ts sameLedgerInvoice). The same supplier is the same name or the
+ * same account (`accountSha256`): another supplier's invoice with the same number is not this invoice.
  */
-export function handledInLedger(db: DB, invoiceNo: string, vendor: string, now: Date): string | null {
-  const own = invoiceAlreadyHandled(db, ledgerInvoiceNo(invoiceNo, vendor), now, invoiceNo);
-  if (own) return own;
-  const sameSupplier = (db.prepare("SELECT invoice_no, vendor FROM invoices").all() as { invoice_no: string; vendor: string }[])
-    .some((r) => sameInvoiceNo(r.invoice_no, invoiceNo) && skeleton(r.vendor) === skeleton(vendor));
-  return sameSupplier ? invoiceAlreadyHandled(db, invoiceNo, now) : null;
+export function handledInLedger(db: DB, invoiceNo: string, vendor: string, now: Date, accountSha256?: string | null): string | null {
+  return invoiceAlreadyHandled(db, ledgerInvoiceNo(invoiceNo, vendor), now, invoiceNo, { vendor, accountSha256: accountSha256 ?? null });
 }

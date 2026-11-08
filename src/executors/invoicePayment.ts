@@ -19,7 +19,8 @@ import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
-import { invoiceKey, snapshot, treasuryState, type InvoicePaymentTerms } from "../agents/euroBill.js";
+import { partyOf, snapshot, treasuryState, type InvoicePaymentTerms } from "../agents/euroBill.js";
+import { sameLedgerInvoice } from "../lib/invoiceKey.js";
 import { eurInFlightCents } from "../policy/available.js";
 import { checkpoint, step } from "../policy/saga.js";
 import { authorize } from "../policy/principals.js";
@@ -57,7 +58,7 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
     if (held) throw new Error(held);
     // Another payout for the same invoice (an older proposal approved elsewhere): stop before any conversion.
     const other = (db.prepare("SELECT invoice_no, status FROM transfers WHERE request_id <> ? AND status <> 'CANCELLED'").all(t.transfer_request_id) as { invoice_no: string; status: string }[])
-      .find((r) => invoiceKey(r.invoice_no) === invoiceKey(t.invoice_no));
+      .find((r) => sameLedgerInvoice(r.invoice_no, partyOf(db, r.invoice_no), t.invoice_no, { ...partyOf(db, t.invoice_no), vendor: t.vendor }));
     if (other) throw new Error(`invoice ${t.invoice_no} ${other.status === "PAID" ? "is already paid" : `already has a payout (${other.status})`} by another proposal; nothing is converted or paid`);
     // A resume after a crash (src/policy/saga.ts): a step already started was decided on when it started; it is now
     // finished, not judged again on balances it has itself changed. The euro check is then made fresh before step 2.

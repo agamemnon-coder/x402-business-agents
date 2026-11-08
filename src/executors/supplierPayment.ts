@@ -15,8 +15,10 @@ import type { PayoutRail, SandboxSim, Transfer } from "../airwallex/port.js";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
-import { sameInvoiceNo } from "../lib/invoiceKey.js";
+import { sameLedgerInvoice } from "../lib/invoiceKey.js";
+import { partyOf } from "../agents/euroBill.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
+import { authorize } from "../policy/principals.js";
 import { counterpartyAllowed, frozen, paused } from "../policy/rules.js";
 import { step } from "../policy/saga.js";
 import { stopped } from "../policy/velocity.js";
@@ -60,10 +62,10 @@ export async function executeSupplierPayment(db: DB, rail: PayoutRail, sim: Sand
     const pre = await rail.balancesAll();
     return beginExecution<SupplierPaymentTerms>(db, proposalId, (t) => {
       if (t.kind !== "supplier_payment") throw new Error(`${proposalId} is not a supplier payment`);
-      const held = holdReason(db, t);
+      const held = holdReason(db, t, now());
       if (held) throw new Error(held);
       const other = (db.prepare("SELECT invoice_no, status FROM transfers WHERE request_id <> ? AND status <> 'CANCELLED'").all(t.transfer_request_id) as { invoice_no: string; status: string }[])
-        .find((r) => sameInvoiceNo(r.invoice_no, t.invoice_no));
+        .find((r) => sameLedgerInvoice(r.invoice_no, partyOf(db, r.invoice_no), t.invoice_no, { ...partyOf(db, t.invoice_no), vendor: t.vendor }));
       if (other) throw new Error(`invoice ${t.invoice_no} ${other.status === "PAID" ? "is already paid" : `already has a payout (${other.status})`} by another proposal; nothing is converted or paid`);
       const row = transferRow(db, t);
       if (row?.status === "CANCELLED") throw closedError(t);
@@ -146,11 +148,15 @@ export async function executeSupplierPayment(db: DB, rail: PayoutRail, sim: Sand
 }
 
 /** Why nothing may be paid now, or null: the CFO's holds, the treasury agent's stops, and the approved payee still on file. */
-function holdReason(db: DB, t: SupplierPaymentTerms): string | null {
+function holdReason(db: DB, t: SupplierPaymentTerms, at: Date): string | null {
   if (!counterpartyAllowed(db, t.beneficiary_name)) return `${t.beneficiary_name} is blocked by the CFO policy; nothing is paid`;
   if (frozen(db)) return "the CFO pulled the emergency stop; nothing is paid until it is lifted";
   if (stopped(db, "treasury")) return "the treasury agent was stopped automatically (velocity limit); nothing is paid until the CFO lifts the stop";
   if (paused(db, "treasury")) return "the treasury agent is paused by the CFO; nothing is paid until the CFO resumes it with Face ID";
+  // The treasury agent's identity (B5), as for Kit 11's payments: still active, and allowed to pay a bank beneficiary in
+  // this currency over Airwallex (red team round 3: a revoked agent still paid suppliers).
+  const denied = authorize(db, "treasury", { rail: "airwallex", currency: t.currency, payee: "beneficiaries" }, at);
+  if (denied) return `${denied}; nothing is paid`;
   const b = db.prepare("SELECT status, currency FROM beneficiaries WHERE beneficiary_id = ?").get(t.beneficiary_id) as { status: string; currency: string } | undefined;
   if (!b || b.status !== "ACTIVE") return `the approved account of ${t.beneficiary_name} is no longer the one on file; nothing is paid (a new proposal pays it)`;
   if (b.currency !== t.currency) return `the approved account receives ${b.currency}, not ${t.currency}; nothing is paid`;

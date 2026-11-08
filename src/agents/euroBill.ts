@@ -157,16 +157,20 @@ export interface InvoicePaymentTerms extends Terms {
  * and once it was executed (the payment went out; review, 2 November: the Treasury agent's plan and the CFO's own
  * `npm run licence` both pass through this guard).
  */
-export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date(), label?: string): string | null {
+export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date(), label?: string, who: LedgerParty = {}): string | null {
   // `label`: the number to name the invoice by in the answer (the agent's facts pass a vouched one, never a row's own).
   // The same invoice with a cosmetically different number ("btx-dup ", another dash) is still the same invoice.
   // However punctuated ("BTX-2026-021", "BTX/2026/21", a zero-width space): the guard before money moves is the loose one.
+  // And however filed: the inbox's "NUM · Supplier" and Kit 11's bare "NUM" for the same supplier are one invoice, in
+  // both orders (red team round 3); the supplier of a bare number is the one its invoices row names.
+  const self = { ...partyOf(db, invoiceNo), ...Object.fromEntries(Object.entries(who).filter(([, v]) => v)) } as LedgerParty;
+  const same = (no: string, vendor?: string | null) => sameLedgerInvoice(invoiceNo, self, no, { ...partyOf(db, no), ...(vendor ? { vendor } : {}) });
   const t = (db.prepare("SELECT invoice_no, status FROM transfers WHERE status <> 'CANCELLED' ORDER BY updated_at DESC").all() as { invoice_no: string; status: string }[])
-    .find((r) => sameInvoiceNo(r.invoice_no, invoiceNo));
+    .find((r) => same(r.invoice_no));
   if (t) { const n = label ?? t.invoice_no; return t.status === "PAID" ? `invoice ${n} is already paid` : `invoice ${n} already has a payout (${t.status})`; }
-  const p = (db.prepare(`SELECT proposal_id, status, json_extract(terms_json, '$.invoice_no') AS invoice_no FROM proposals WHERE kind IN ('invoice_payment', 'supplier_payment')
+  const p = (db.prepare(`SELECT proposal_id, status, json_extract(terms_json, '$.invoice_no') AS invoice_no, json_extract(terms_json, '$.vendor') AS vendor FROM proposals WHERE kind IN ('invoice_payment', 'supplier_payment')
     AND (status IN ('APPROVED', 'EXECUTING', 'EXECUTED') OR (status = 'PENDING_APPROVAL' AND expires_at > ?)) ORDER BY created_at DESC`)
-    .all(now.toISOString()) as { proposal_id: string; invoice_no: string | null; status: string }[]).find((r) => sameInvoiceNo(r.invoice_no ?? "", invoiceNo));
+    .all(now.toISOString()) as { proposal_id: string; invoice_no: string | null; vendor: string | null; status: string }[]).find((r) => same(r.invoice_no ?? "", r.vendor));
   if (!p) return null;
   const n = label ?? p.invoice_no;
   switch (p.status) {
@@ -178,8 +182,14 @@ export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date(
 }
 
 // The duplicate check's invoice key lives in src/lib/invoiceKey.ts (the hub gate needs it without this module's imports).
-import { invoiceKey, sameInvoiceNo } from "../lib/invoiceKey.js";
+import { invoiceKey, sameLedgerInvoice, type LedgerParty } from "../lib/invoiceKey.js";
 export { invoiceKey };
+
+/** Who the payment ledger says an invoice number is from: its invoices row's supplier and account hash, if any. */
+export function partyOf(db: DB, invoiceNo: string): LedgerParty {
+  const r = db.prepare("SELECT vendor, iban_sha256 FROM invoices WHERE invoice_no = ?").get(invoiceNo) as { vendor: string; iban_sha256: string } | undefined;
+  return r ? { vendor: r.vendor, accountSha256: r.iban_sha256 } : {};
+}
 
 export type InvoiceOutcome =
   | { kind: "proposed"; proposal: ProposalRow; terms: InvoicePaymentTerms }
@@ -208,7 +218,7 @@ export async function proposeInvoicePayment(
     return { kind: "escalated", reason: check.reason, ...(check.fraud ? { fraud: check.fraud } : {}) };
   }
   // A second copy of an invoice (a reminder, a resend) is never paid twice: not after a payout, not while one waits.
-  const dup = invoiceAlreadyHandled(db, inv.invoice_no, now);
+  const dup = invoiceAlreadyHandled(db, inv.invoice_no, now, undefined, { vendor: inv.vendor, accountSha256: ibanSha(inv.iban) });
   if (dup) {
     const reason = `${dup}; a second copy is not paid again. Options: check with ${check.name} whether this is a reminder, or reject the open proposal first if this copy replaces it`;
     audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);
@@ -320,7 +330,7 @@ export async function proposeInvoicePayment(
   // another run (the CFO's `npm run licence`, the agent's plan_invoice) while this one waited for Airwallex is seen here.
   let proposal: ProposalRow;
   try {
-    proposal = createProposal(db, { terms, createdBy: "treasury", evidence: terms.evidence, guard: (tx) => invoiceAlreadyHandled(tx, inv.invoice_no, now), assignId: true }, now);
+    proposal = createProposal(db, { terms, createdBy: "treasury", evidence: terms.evidence, guard: (tx) => invoiceAlreadyHandled(tx, inv.invoice_no, now, undefined, { vendor: inv.vendor, accountSha256: ibanSha(inv.iban) }), assignId: true }, now);
   } catch (e) {
     if (!(e instanceof ProposalRefused)) throw e;
     const reason = `${e.reason}; a second copy is not paid again (another plan was filed while this one was being prepared)`;

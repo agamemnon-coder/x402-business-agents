@@ -1,4 +1,4 @@
-import { CONFUSABLES } from "../policy/fraudCore.js";
+import { CONFUSABLES, skeleton } from "../policy/fraudCore.js";
 
 /**
  * An invoice number as a duplicate check compares it: Unicode-normalised, invisible format characters (zero-width
@@ -46,4 +46,34 @@ export function invoiceKeyLoose(invoiceNo: string): string {
 /** Whether two invoice numbers are the same invoice however punctuated (the guard before any money moves). */
 export function sameInvoiceNo(a: string, b: string): boolean {
   return invoiceKeyLoose(a) === invoiceKeyLoose(b);
+}
+
+/** The separator the payables inbox puts between a supplier's number and its name in the payment ledger (src/ap/ledgerKey.ts). */
+export const LEDGER_SEPARATOR = " · ";
+
+/** Who an invoice in the payment ledger is from, as far as is known: the supplier's name and its account's hash. */
+export interface LedgerParty { vendor?: string | null; accountSha256?: string | null }
+
+/** A ledger number split into the supplier's own number and, for the inbox's form "NUM · Supplier", the supplier. */
+export function ledgerParts(ledgerNo: string): { no: string; vendor: string | null } {
+  const at = ledgerNo.lastIndexOf(LEDGER_SEPARATOR);
+  return at < 0 ? { no: ledgerNo, vendor: null } : { no: ledgerNo.slice(0, at), vendor: ledgerNo.slice(at + LEDGER_SEPARATOR.length).trim() || null };
+}
+
+/**
+ * Whether two payment-ledger numbers are the same invoice (red team round 3: the inbox files "BTX-2026-21 · Bergtex
+ * Textil GmbH", Kit 11 the bare "BTX-2026-21", and each guard missed the other): the supplier's numbers are the same
+ * however written, and the supplier is the same, by name (its skeleton) or by the account it is paid to (a supplier on
+ * file under a second name: round 3). An invoice whose supplier is not known matches any supplier's: before money
+ * moves, the guard errs on refusing.
+ */
+export function sameLedgerInvoice(a: string, aParty: LedgerParty, b: string, bParty: LedgerParty): boolean {
+  const x = ledgerParts(a);
+  const y = ledgerParts(b);
+  if (!sameInvoiceNo(x.no, y.no)) return false;
+  const xv = x.vendor ?? aParty.vendor ?? null;
+  const yv = y.vendor ?? bParty.vendor ?? null;
+  if (!xv || !yv) return true;
+  if (skeleton(xv) === skeleton(yv)) return true;
+  return !!aParty.accountSha256 && aParty.accountSha256 === bParty.accountSha256;
 }

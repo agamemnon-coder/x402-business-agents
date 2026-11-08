@@ -137,7 +137,7 @@ export async function proposeSupplierPayment(
   if (ben.currency !== inv.currency) return escalate(`${inv.vendor}'s account on file receives ${ben.currency}, but the invoice is in ${inv.currency}: a person checks which account to pay`);
   if (!counterpartyAllowed(db, ben.name)) return escalate(`${ben.name} is blocked by the CFO policy`);
   if (frozen(db)) return escalate("the CFO pulled the emergency stop");
-  const dup = invoiceAlreadyHandled(db, inv.invoice_no, now);
+  const dup = invoiceAlreadyHandled(db, inv.invoice_no, now, undefined, { vendor: inv.vendor, accountSha256: ben.details.account_key_sha256 });
   if (dup) return escalate(`${dup}; a second copy is not paid again`);
 
   const amount = toCents(inv.amount);
@@ -210,7 +210,7 @@ export async function proposeSupplierPayment(
   };
   let proposal: ProposalRow;
   try {
-    proposal = createProposal(db, { terms, createdBy: "treasury", evidence: terms.evidence, guard: (tx) => invoiceAlreadyHandled(tx, inv.invoice_no, now), assignId: true }, now);
+    proposal = createProposal(db, { terms, createdBy: "treasury", evidence: terms.evidence, guard: (tx) => invoiceAlreadyHandled(tx, inv.invoice_no, now, undefined, { vendor: inv.vendor, accountSha256: ben.details.account_key_sha256 }), assignId: true }, now);
   } catch (e) {
     if (!(e instanceof ProposalRefused)) throw e;
     return escalate(`${e.reason}; a second copy is not paid again (another plan was filed while this one was being prepared)`);
