@@ -163,7 +163,7 @@ export const OWNER_SELECTORS = { bind: "0x240c29bb", revoke: "0xb75c7dc6" } as c
 function amountNotInLine(t: Obj, cur: string): string[] {
   if (t.document_total_line === undefined) return [];
   const want = str(t.amount).replace(/\D/g, "").replace(/^0+(?=\d)/, "");
-  const numbers = (str(t.document_total_line).match(/\d[\d.,'’ʼ   ]*\d/g) ?? []).map((n) => n.replace(/\D/g, "").replace(/^0+(?=\d)/, ""));
+  const numbers = (str(t.document_total_line).match(/\d[\d.,'\u2019\u02bc \u00a0\u202f]*\d/g) ?? []).map((n) => n.replace(/\D/g, "").replace(/^0+(?=\d)/, ""));
   return want && numbers.includes(want) ? [] : [`The amount ${cur} ${money(t.amount)} is not written in the invoice's own total line shown above; check the document before you approve`];
 }
 

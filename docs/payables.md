@@ -112,6 +112,22 @@ rule cites the Airwallex guide it comes from in `src/payouts/routes.ts`.
   (never offered for payment again) and its row stays under way until a re-run of the same proposal finds it, or
   `npm run reconcile` settles it. A conversion whose answer was lost keeps its hold on the funding currency the same
   way.
+- Money stuck as under way. Two kinds, each with its own command; both read Airwallex and never write to it:
+  - A payout row left `SUBMITTING` with no transfer behind it (a refused first send, a crash before the first create):
+    `npm run reconcile -- --close-unsent <request_id>` closes it only when its proposal can no longer run, nothing
+    changed for 30 minutes, and a strict look-up by request_id at Airwallex finds no transfer
+    (`src/finance/closeUnsent.ts`).
+  - A hold in `payout_reservations` left `HELD` by an execution that died before its payout row or conversion was
+    recorded: `npm run reconcile -- --holds` lists them (older than 30 minutes, proposal not approved or running);
+    `npm run reconcile -- --release-hold <key>` releases one only when the money is counted elsewhere (the payout row
+    is written, the conversion is recorded) or a strict look-up at Airwallex finds no transfer or conversion under the
+    key. Anything Airwallex does hold, or a look-up that fails, is refused: a re-run of the proposal adopts it
+    (`src/finance/stuckHolds.ts`). Each release is audited (`payout.hold_released`).
+- Supplier payments and Kit 11's invoice payments share one lock and one ledger of money held
+  (`src/policy/payoutLock.ts`): two payments executed at once, by either executor, never both count the same free
+  money. The treasury agent's identity is checked before every supplier payment; its currencies were widened
+  deliberately to every currency Purser pays (two-decimal currencies SWIFT carries), since a supplier payment in GBP
+  or TRY is the same job as a Kit 11 euro payment and the CFO's Face ID still decides each one.
 
 ## To confirm in the Airwallex sandbox
 

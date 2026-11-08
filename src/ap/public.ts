@@ -11,16 +11,18 @@ import type { ApInvoiceRow } from "./store.js";
 
 const last4 = (s: string) => (s ? `…${s.replace(/\s+/g, "").slice(-4)}` : "");
 
-/** The reading with its account masked, and the account's hash beside it ("" when it names no account). */
-export function maskedReading(r: ApReading): ApReading & { account_sha256: string } {
-  let sha = "";
+function accountSha(r: ApReading): string {
   try {
     const key = r.iban || r.account_number ? accountKey(bankFromReading(r)) : "";
-    sha = key ? ibanSha(key) : "";
+    return key ? ibanSha(key) : "";
   } catch {
-    sha = "";
+    return "";
   }
-  return { ...r, iban: last4(r.iban), account_number: last4(r.account_number), account_sha256: sha };
+}
+
+/** The reading with its account masked, and the account's hash beside it ("" when it names no account). */
+export function maskedReading(r: ApReading): ApReading & { account_sha256: string } {
+  return { ...r, iban: last4(r.iban), account_number: last4(r.account_number), account_sha256: accountSha(r) };
 }
 
 /** An inbox invoice as the JSON routes and the cloud receive it. */

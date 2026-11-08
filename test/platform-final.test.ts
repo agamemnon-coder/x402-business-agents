@@ -31,6 +31,7 @@ import { syncLedger } from "../src/ledger/feed.js";
 import { ledgerApp } from "../src/ledger/serve.js";
 import { cashByCurrency } from "../src/ledger/reports.js";
 import { executeInvoicePayment } from "../src/executors/invoicePayment.js";
+import { releaseStuckHold, stuckHolds } from "../src/finance/stuckHolds.js";
 import { executeSupplierPayment } from "../src/executors/supplierPayment.js";
 import { fromCents } from "../src/lib/money.js";
 import { decide } from "../src/policy/approvals.js";
@@ -397,6 +398,27 @@ describe("L3: the books page answers only requests addressed to this machine", (
     } finally {
       server.close();
     }
+  });
+});
+
+describe("L4: a hold left behind by a dead execution is resolved, never guessed", () => {
+  it("lists it; refuses while Airwallex holds a transfer or cannot be asked; releases it when nothing is there", async () => {
+    const id = await add(US, "us.pdf");
+    await addSupplier(id);
+    const pid = await filed(id);
+    const key = (JSON.parse((db.prepare("SELECT terms_json FROM proposals WHERE proposal_id = ?").get(pid) as { terms_json: string }).terms_json) as { transfer_request_id: string }).transfer_request_id;
+    const old = new Date(now.getTime() - 2 * 3600_000).toISOString();
+    db.prepare("INSERT INTO payout_reservations (key, proposal_id, currency, cents, status, updated_at) VALUES (?, ?, 'USD', 242500, 'HELD', ?)").run(key, pid, old);
+    db.prepare("UPDATE proposals SET status = 'APPROVED' WHERE proposal_id = ?").run(pid);
+    expect(stuckHolds(db, now)).toEqual([]);
+    db.prepare("UPDATE proposals SET status = 'FAILED' WHERE proposal_id = ?").run(pid);
+    expect(stuckHolds(db, now)).toMatchObject([{ key, proposal_id: pid, kind: "payout", currency: "USD", cents: 242500 }]);
+    const none = { transfer: async () => undefined, conversion: async () => undefined };
+    expect(await releaseStuckHold(db, key, { ...none, transfer: async () => ({ id: "t-1", status: "SENT" }) }, now)).toMatchObject({ released: false, reason: expect.stringMatching(/holds transfer t-1/) });
+    expect(await releaseStuckHold(db, key, { ...none, transfer: async () => { throw new Error("timeout"); } }, now)).toMatchObject({ released: false, reason: expect.stringMatching(/look-up .* failed/) });
+    expect(await releaseStuckHold(db, key, none, now)).toMatchObject({ released: true, key });
+    expect(db.prepare("SELECT status FROM payout_reservations WHERE key = ?").get(key)).toEqual({ status: "RELEASED" });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'payout.hold_released' AND subject = ?").get(key)).toEqual({ n: 1 });
   });
 });
 
