@@ -181,7 +181,8 @@ export function monthData(db: DB, month: string): MonthData {
   const { from, to } = monthRange(month);
   const end = `${to}T23:59:59.999Z`;
   const inMonth = (iso: string | null) => !!iso && iso.slice(0, 7) === month;
-  const all = apInvoices(db).filter((i) => MONEY.test(i.total) && i.currency);
+  // Credit notes are not invoices received or open to pay (screenshot pass S2): a person sets them against invoices.
+  const all = apInvoices(db).filter((i) => MONEY.test(i.total) && i.currency && i.doc_kind !== "credit_note");
   const received = all.filter((i) => inMonth(i.received_at));
   const paidOn = new Map(all.filter((i) => i.status === "paid").map((i) => [i.id, paymentDay(db, i)]));
   const paid = all.filter((i) => inMonth(paidOn.get(i.id) ?? null));

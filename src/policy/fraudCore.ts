@@ -45,6 +45,18 @@ export function skeleton(name: string): string {
     .replace(/[^a-z0-9]/g, "");
 }
 
+/**
+ * An account in words, leaving out what is not known (screenshot pass S1: "and BIC ; on file: IBAN …3000 () and BIC ."):
+ * "IBAN ...3000 (DE) and BIC COBADEFFXXX", "IBAN ...3000", "an account with no IBAN".
+ */
+export function accountWords(last4: string, country: string, bic: string): string {
+  const l4 = (last4 ?? "").trim();
+  const cc = (country ?? "").trim();
+  const b = (bic ?? "").trim();
+  const iban = l4 ? `IBAN ...${l4}${cc ? ` (${cc})` : ""}` : "an account with no IBAN";
+  return b ? `${iban} and BIC ${b}` : iban;
+}
+
 /** Edits (insert, delete, change, or swap two neighbours) between two strings. */
 export function editDistance(a: string, b: string): number {
   const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) => Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)));
@@ -99,7 +111,7 @@ export function assessAgainst(all: Beneficiary[], inv: { vendor: string; iban: s
     const iban = inv.iban.replace(/\s+/g, "").toUpperCase();
     signals.push({
       code: "bank_details_changed", blocks: true,
-      detail: `the invoice asks for IBAN ...${iban.slice(-4)} (${iban.slice(0, 2)}) and BIC ${inv.bic}; on file: IBAN ...${onFile.iban_last4} (${onFile.bic.slice(4, 6)}) and BIC ${onFile.bic}`,
+      detail: `the invoice asks for ${accountWords(iban.slice(-4), iban.slice(0, 2), inv.bic)}; on file: ${accountWords(onFile.iban_last4, onFile.bic.slice(4, 6), onFile.bic)}`,
     });
   }
   const holder = /^Account name:\s*(.+)$/m.exec(text)?.[1]?.trim();

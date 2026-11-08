@@ -49,7 +49,9 @@ function median(xs: number[]): number {
 const addDays = (d: Date, n: number) => new Date(d.getTime() + n * 86_400_000).toISOString().slice(0, 10);
 
 export function insights(db: DB, asOf = new Date()): Insights {
-  const all = apInvoices(db);
+  // A credit note is money the supplier owes back, never an amount open to pay (screenshot pass S2): left out here; a
+  // person sets it against the supplier's invoices.
+  const all = apInvoices(db).filter((i) => i.doc_kind !== "credit_note");
   const today = asOf.toISOString().slice(0, 10);
   const open = all.filter((i) => OPEN.has(i.status));
   const due = (to: string) => open.filter((i) => i.due_date && i.due_date >= today && i.due_date <= to);

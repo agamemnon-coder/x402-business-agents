@@ -19,7 +19,9 @@ import { validateVendor, type Payment, type PurchaseInvoice, type Vendor } from 
 import { ledgerItems } from "../src/erp/source.js";
 import { dataSha, monthData, receiptData } from "../src/vault/data.js";
 import { safeSegment } from "../src/vault/layout.js";
+import { insights } from "../src/ap/insights.js";
 import { apInvoice } from "../src/ap/store.js";
+import { accountWords } from "../src/policy/fraudCore.js";
 import { describeTerms } from "../src/approve/client.js";
 import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAdd, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
 import { journal } from "../src/accounting/gl.js";
@@ -419,6 +421,35 @@ describe("L4: a hold left behind by a dead execution is resolved, never guessed"
     expect(await releaseStuckHold(db, key, none, now)).toMatchObject({ released: true, key });
     expect(db.prepare("SELECT status FROM payout_reservations WHERE key = ?").get(key)).toEqual({ status: "RELEASED" });
     expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'payout.hold_released' AND subject = ?").get(key)).toEqual({ n: 1 });
+  });
+});
+
+describe("S1, S2: fraud reasons without empty parts; credit notes read and kept out of what is open", () => {
+  it("an account with no BIC on file reads cleanly", () => {
+    expect(accountWords("3000", "", "")).toBe("IBAN ...3000");
+    expect(accountWords("3000", "DE", "COBADEFFXXX")).toBe("IBAN ...3000 (DE) and BIC COBADEFFXXX");
+    expect(accountWords("", "", "")).toBe("an account with no IBAN");
+  });
+
+  const GUTSCHRIFT = `Lagerhaus Nord GmbH
+Gutschrift
+Gutschriftnummer: GS-2026-0007
+Datum: 05.11.2026
+Gesamtbetrag -119,00 EUR
+IBAN: DE75 5121 0800 1245 1261 99`;
+  it("Gutschriftnummer, Gutschrift-Nr., Credit note no. and Creditnota nr. are the document's number", () => {
+    expect(parseApFallback(GUTSCHRIFT).invoice_no).toBe("GS-2026-0007");
+    expect(parseApFallback(GUTSCHRIFT.replace("Gutschriftnummer:", "Gutschrift-Nr.")).invoice_no).toBe("GS-2026-0007");
+    expect(parseApFallback(GUTSCHRIFT.replace("Gutschriftnummer:", "Credit note no.")).invoice_no).toBe("GS-2026-0007");
+    expect(parseApFallback(GUTSCHRIFT.replace("Gutschriftnummer:", "Creditnota nr.")).invoice_no).toBe("GS-2026-0007");
+  });
+
+  it("a credit note is not counted as open in the insight panel nor as received in the month report", async () => {
+    const out = await ingestDocument(db, deps, { bytes: await pdfOf(GUTSCHRIFT.replace("-119,00", "119,00")), filename: "gs.pdf", source: "upload" });
+    if (out.kind !== "invoice") throw new Error(out.kind);
+    expect(apInvoice(db, out.invoice.id)!.doc_kind).toBe("credit_note");
+    expect(insights(db, now).open).toEqual([]);
+    expect(monthData(db, now.toISOString().slice(0, 7)).received).toEqual([]);
   });
 });
 
