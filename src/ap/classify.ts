@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 import type { DB } from "../db/open.js";
-import type { Asker } from "./read.js";
+import { MODEL_TEXT_LIMIT, type Asker } from "./read.js";
 
 export const DOC_KINDS = ["invoice", "credit_note", "receipt", "reminder", "other"] as const;
 export type DocKind = (typeof DOC_KINDS)[number];
@@ -17,7 +17,7 @@ const INSTRUCTION = [
   "reminder (a supplier reminds us of an unpaid invoice), or other (anything else).",
 ].join("\n");
 
-const CREDIT = /\b(credit\s*note|creditnota|credit\s*memo|gutschrift|rechnungskorrektur)\b/i;
+const CREDIT = /\b(credit\s*note|creditnota|credit\s*memo|credit\s*invoice|creditfactuur|gutschrift|rechnungskorrektur|korrektur|stornorechnung|storno)\b/i;
 const REMINDER = /\b(payment\s+reminder|reminder|betalingsherinnering|herinnering|aanmaning|zahlungserinnerung|mahnung)\b/i;
 const RECEIPT = /\b(receipt|kwitantie|quittung|kassenbon|payment\s+received|betaling\s+ontvangen)\b/i;
 const INVOICE = /\b(invoice|factuur|rechnung|bill)\b/i;
@@ -34,7 +34,7 @@ export function classifyFallback(text: string): DocKind {
 export async function classifyDocument(_db: DB, reader: Asker, text: string, docSha: string): Promise<{ kind: DocKind; by: string }> {
   const rules = classifyFallback(text);
   const read = await reader.ask(
-    { task: `ap.classify:${docSha.slice(0, 16)}`, role: "classify", actor: "treasury", schema: ClassifySchema, instruction: INSTRUCTION, document: text },
+    { task: `ap.classify:${docSha.slice(0, 16)}`, role: "classify", actor: "treasury", schema: ClassifySchema, instruction: INSTRUCTION, document: text.slice(0, MODEL_TEXT_LIMIT) },
     () => ({ kind: rules }),
   );
   const label = String((read.value as { kind?: unknown }).kind ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");

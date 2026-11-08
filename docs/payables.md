@@ -54,6 +54,25 @@ paying is off.
 8. **Booked.** On receipt, once checked clean: expense and input VAT against accounts payable. When paid: accounts
    payable against the bank, and the SWIFT fee Airwallex charged. Debits equal credits in every entry.
 
+### Hardening after the independent review and red team (8 November)
+
+- **A model's reading** is used only when the document's own total line, currency, invoice number, IBAN, subtotal and
+  tax agree with it. No total line code can read, or a currency the lines leave open: a person decides. A euro sign in a
+  footer never makes another currency's invoice EUR; an IBAN is read at its country's length (ISO 13616), so a BIC on
+  the same line is not read into it.
+- **Duplicates:** a number written differently (`BTX-2026-021`, `BTX/2026/21`, a zero-width space) is a possible
+  duplicate for a person; the same supplier and total dated within a week is too. Only earlier invoices count, so a
+  resent copy never blocks its original. A reminder is never paid on its own: it is blocked as the copy of an invoice on
+  file, or goes to a person.
+- **Credit notes** written as a negative or bracketed total are never paid; storno and correction keywords mark one.
+- **E-mail:** at most 20 PDFs per e-mail (the rest refused with the reason), one bad attachment does not stop the others,
+  an e-mail inside an e-mail is not opened. A PDF over 200 pages or taking over 10 s is refused; models get at most
+  50,000 characters (the checks still read the whole text).
+- **Books:** each event reaches the sink once (`ap_sink_events`); an accrual the sink missed is pushed before the
+  payment, and a rejected payment's accrual is reversed there. Supplier adds run with the configured sink.
+- **Stuck states:** a proposal that expired, was rejected, superseded or needs reapproval puts its invoice back to ready
+  and closes its supplier request (`CLOSED`), so a new one may follow.
+
 ## What is real, what is not in v1
 
 - Real: the reading and checks, the documents and the ledger, the payments in the Airwallex sandbox, Face ID.

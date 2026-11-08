@@ -13,7 +13,7 @@ import type { AirwallexRail } from "../airwallex/port.js";
 import type { DB } from "../db/open.js";
 import { TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { ibanSha } from "../agents/invoice.js";
-import { beginExecution, createProposal, finishExecution, nextProposalId, type ProposalRow } from "../policy/approvals.js";
+import { beginExecution, createProposal, expireDue, finishExecution, nextProposalId, type ProposalRow } from "../policy/approvals.js";
 import { assessAgainst, type Beneficiary } from "../policy/fraudCore.js";
 import { recheck, type InboxDeps } from "./inbox.js";
 import { ibanValid } from "./reading.js";
@@ -69,7 +69,8 @@ export function requestPayeeAdd(db: DB, a: { vendor: string; iban: string; bic: 
   const finding = assessAgainst(all, { vendor, iban, bic }, "", ibanSha(iban));
   const odd = finding.signals.filter((s) => s.blocks && s.code !== "unknown_vendor");
   if (odd.length) throw new Error(`${odd.map((s) => s.detail).join("; ")}: a name that looks like a supplier on file is not added as a new one`);
-  const open = db.prepare("SELECT add_id FROM payee_adds WHERE vendor = ? AND status <> 'APPLIED'").get(vendor) as { add_id: string } | undefined;
+  closeDeadAdds(db, now);
+  const open = db.prepare("SELECT add_id FROM payee_adds WHERE vendor = ? AND status NOT IN ('APPLIED', 'CLOSED')").get(vendor) as { add_id: string } | undefined;
   if (open) throw new Error(`${vendor} is already requested as ${open.add_id}`);
   const n = (db.prepare("SELECT COUNT(*) AS n FROM payee_adds").get() as { n: number }).n;
   const id = `N-${String(n + 1).padStart(4, "0")}`;
@@ -105,7 +106,22 @@ export function recordPayeeAddVerification(db: DB, id: string, v: { by: string; 
   return row(db, id);
 }
 
+/**
+ * A request whose proposal expired, was rejected, was superseded or can no longer run is CLOSED (review, 8 November):
+ * the supplier is not locked out, a new request may follow. A FAILED one stays: its approved terms may still run.
+ */
+export function closeDeadAdds(db: DB, now = new Date()): void {
+  expireDue(db, now);
+  const dead = db.prepare(`SELECT a.add_id, a.vendor, p.status FROM payee_adds a JOIN proposals p ON p.proposal_id = a.proposal_id
+    WHERE a.status = 'PROPOSED' AND p.status IN ('EXPIRED', 'REJECTED', 'SUPERSEDED', 'NEEDS_REAPPROVAL')`).all() as { add_id: string; vendor: string; status: string }[];
+  for (const d of dead) {
+    db.prepare("UPDATE payee_adds SET status = 'CLOSED' WHERE add_id = ? AND status = 'PROPOSED'").run(d.add_id);
+    audit(db, "system", "payee.add_closed", d.add_id, { vendor: d.vendor, proposal: d.status.toLowerCase() }, now);
+  }
+}
+
 export function proposePayeeAdd(db: DB, id: string, by: Actor, now = new Date()): ProposalRow {
+  closeDeadAdds(db, now);
   const r = row(db, id);
   if (r.status !== "VERIFIED" || !r.verification_json) throw new Error(`${id} is not verified by a person yet; nothing to propose`);
   if (onFile(db).some((b) => b.name.trim() === r.vendor)) throw new Error(`${r.vendor} is on file already`);

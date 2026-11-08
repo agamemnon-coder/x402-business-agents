@@ -7,8 +7,8 @@ import { readFileSync } from "node:fs";
 import type { AirwallexRail } from "../airwallex/port.js";
 import { proposeInvoicePayment, type InvoiceOutcome } from "../agents/euroBill.js";
 import type { DB } from "../db/open.js";
-import { paymentEntries, pushToSink, type BookkeepingSink } from "./books.js";
-import { audit } from "../audit/log.js";
+import { accrualEntries, accrualPushed, paymentEntries, pushOnce, reversalEntries, type BookkeepingSink } from "./books.js";
+import { expireDue } from "../policy/approvals.js";
 import { pdfText } from "./pdfText.js";
 import type { Asker } from "./read.js";
 import { writeReviewNote } from "./review.js";
@@ -46,20 +46,26 @@ export async function payApInvoice(db: DB, rail: AirwallexRail, id: string, now 
 /** Follows each invoice waiting for the CFO: paid when its transfer is PAID; rejected; or ready again when its terms ran out. */
 export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: BookkeepingSink } = {}): Promise<ApInvoiceRow[]> {
   const now = (opts.now ?? (() => new Date()))();
+  // A proposal past its time that nothing has marked yet is expired first, so its invoice is not left waiting forever.
+  expireDue(db, now);
   const changed: ApInvoiceRow[] = [];
   for (const inv of apInvoices(db, { status: "waiting_cfo" })) {
     const p = inv.proposal_id ? db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(inv.proposal_id) as { status: string } | undefined : undefined;
     if (!p) continue;
     if (p.status === "REJECTED") {
-      changed.push(setStatus(db, inv.id, "rejected", "human", { reason: `the CFO rejected ${inv.proposal_id}` }, now));
-    } else if (p.status === "EXPIRED" || p.status === "FAILED") {
+      const next = setStatus(db, inv.id, "rejected", "human", { reason: `the CFO rejected ${inv.proposal_id}` }, now);
+      // The accrual a sink already holds is taken back there, so the payable is closed in the books too.
+      if (opts.sink && accrualPushed(db, next, opts.sink)) await pushOnce(db, opts.sink, "reversal", reversalEntries(next, now.toISOString().slice(0, 10)), next, now);
+      changed.push(next);
+    } else if (["EXPIRED", "FAILED", "NEEDS_REAPPROVAL", "SUPERSEDED"].includes(p.status)) {
       changed.push(setStatus(db, inv.id, "ready", "system", { proposal_id: null, reason: `${inv.proposal_id} ${p.status.toLowerCase()}; it can be filed again` }, now));
     } else if (p.status === "EXECUTED") {
       const paid = db.prepare("SELECT 1 FROM transfers WHERE invoice_no = ? AND status = 'PAID'").get(ledgerInvoiceNo(inv.invoice_no, inv.vendor));
       if (!paid) continue;
       const next = setStatus(db, inv.id, "paid", "awx-executor", { paid_at: now.toISOString(), reason: `paid under ${inv.proposal_id}` }, now);
-      const failed = await pushToSink(opts.sink, paymentEntries(db, next), next);
-      if (failed) audit(db, "system", "ap.sink_failed", inv.id, { sink: failed }, now);
+      // The accrual first if the sink never got it (a supplier added by the executor, a sink that was down), then the payment.
+      await pushOnce(db, opts.sink, "accrual", accrualEntries(next), next, now);
+      await pushOnce(db, opts.sink, "payment", paymentEntries(db, next), next, now);
       changed.push(next);
     }
   }

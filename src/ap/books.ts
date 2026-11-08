@@ -4,7 +4,9 @@
 // always complete; a BookkeepingSink receives them as they happen (the CSV file is the first; a bookkeeping package's
 // API can be the next without touching the inbox).
 
-import { appendFileSync, existsSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { audit } from "../audit/log.js";
 import { AP_CHART, CHART } from "../config/gl.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
@@ -17,7 +19,7 @@ export const AP_ACCOUNTS = { inputVat: "1510", payable: "2100", bank: "1200", fe
 export interface ApEntry {
   date: string;
   invoice_id: string;
-  event: "accrual" | "payment";
+  event: "accrual" | "payment" | "reversal";
   account: string;
   account_name: string;
   debit: string;
@@ -94,12 +96,18 @@ export function invoicesCsv(invs: ApInvoiceRow[]): string {
   return csv([...INVOICE_COLUMNS], invs.map((i) => INVOICE_COLUMNS.map((k) => String(i[k] ?? ""))));
 }
 
+/** The accrual taken back when the CFO rejects the payment: the same lines, debit and credit swapped. */
+export function reversalEntries(inv: ApInvoiceRow, date: string): ApEntry[] {
+  return accrualEntries(inv).map((e) => ({ ...e, event: "reversal" as const, date, debit: e.credit, credit: e.debit, memo: `${e.memo}: reversed, the CFO rejected the payment` }));
+}
+
 /** The first sink: appends each event's entries to one CSV file, for any bookkeeping package's import. */
 export class CsvFileSink implements BookkeepingSink {
   readonly name = "csv";
   constructor(private readonly path: string) {}
   push(entries: ApEntry[]): void {
     if (entries.length === 0) return;
+    mkdirSync(dirname(this.path), { recursive: true });
     const body = journalCsv(entries);
     appendFileSync(this.path, existsSync(this.path) ? body.slice(body.indexOf("\n") + 1) : body);
   }
@@ -115,3 +123,25 @@ export async function pushToSink(sink: BookkeepingSink | undefined, entries: ApE
     return `${sink.name}: ${(e as Error).message}`;
   }
 }
+
+/** The sink this installation books to: the CSV journal in the payables folder (KIT11_AP_DIR, default data/ap). */
+export function payablesSink(env: Record<string, string | undefined> = process.env): BookkeepingSink {
+  return new CsvFileSink(join(env.KIT11_AP_DIR ?? "data/ap", "journal.csv"));
+}
+
+/**
+ * Hands one event of one invoice to the sink, once (ap_sink_events): a second call does nothing, a failed push is
+ * logged and tried again on the next call. Without a sink nothing is recorded, so a later call with one still pushes.
+ */
+export async function pushOnce(db: DB, sink: BookkeepingSink | undefined, event: ApEntry["event"], entries: ApEntry[], inv: ApInvoiceRow, now: Date): Promise<boolean> {
+  if (!sink || entries.length === 0) return false;
+  if (db.prepare("SELECT 1 FROM ap_sink_events WHERE invoice_id = ? AND event = ? AND sink = ?").get(inv.id, event, sink.name)) return false;
+  const failed = await pushToSink(sink, entries, inv);
+  if (failed) { audit(db, "system", "ap.sink_failed", inv.id, { sink: failed, event }, now); return false; }
+  db.prepare("INSERT OR IGNORE INTO ap_sink_events (invoice_id, event, sink, pushed_at) VALUES (?, ?, ?, ?)").run(inv.id, event, sink.name, now.toISOString());
+  return true;
+}
+
+/** Whether this invoice's accrual reached the sink. */
+export const accrualPushed = (db: DB, inv: ApInvoiceRow, sink: BookkeepingSink): boolean =>
+  !!db.prepare("SELECT 1 FROM ap_sink_events WHERE invoice_id = ? AND event = 'accrual' AND sink = ?").get(inv.id, sink.name);
