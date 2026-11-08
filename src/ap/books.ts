@@ -7,7 +7,7 @@
 import { appendFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { audit } from "../audit/log.js";
-import { AP_CHART, CHART } from "../config/gl.js";
+import { AP_CHART, bankAccountFor, CHART } from "../config/gl.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import type { ApInvoiceRow } from "./store.js";
@@ -17,9 +17,7 @@ import { ledgerInvoiceNo } from "./ledgerKey.js";
 export const AP_ACCOUNTS = { inputVat: "1510", payable: "2100", bank: "1200", fees: "6800", transit: "1590" } as const;
 
 /** The Airwallex bank account per currency: EUR, USD and GBP have their own in the chart; others share 1203. */
-export function bankAccountFor(currency: string): string {
-  return currency === "EUR" ? "1200" : currency === "USD" ? "1201" : currency === "GBP" ? "1202" : "1203";
-}
+export { bankAccountFor };
 
 export interface ApEntry {
   date: string;

@@ -3,7 +3,7 @@
 // Only money that moved is booked: refused purchases, declined card charges, aborted sales and refused sweeps are not.
 // The coding comes from src/config/gl.ts; `rule` says which mapping chose each account, so a bookkeeper can check it.
 
-import { CHART, COST_CENTRE_NAMES, COST_CENTRES, MCC_GL, VENDOR_GL } from "../config/gl.js";
+import { bankAccountFor, CHART, COST_CENTRE_NAMES, COST_CENTRES, MCC_GL, VENDOR_GL } from "../config/gl.js";
 import type { DB } from "../db/open.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
 
@@ -77,14 +77,14 @@ export function journal(db: DB): JournalLine[] {
     const approval = proposalOf(t.approval_sha256);
     add({
       date: t.updated_at, source: "transfer", ref: t.request_id, description: `Invoice ${t.invoice_no}`, counterparty: t.vendor, agent: "treasury",
-      gl_account: gl, bank_account: "1200", cents: -toCents(t.amount), currency: t.currency, proof: t.transfer_id ?? "", approval,
+      gl_account: gl, bank_account: bankAccountFor(t.currency), cents: -toCents(t.amount), currency: t.currency, proof: t.transfer_id ?? "", approval,
       rule: VENDOR_GL[t.vendor] ? `supplier invoice, vendor ${t.vendor}` : "supplier invoice, default",
     });
     const fee = /^([A-Z]{3}) (\d+\.\d{2})$/.exec(t.fee_actual ?? "");
     if (fee) {
       add({
         date: t.updated_at, source: "transfer", ref: t.request_id, description: `Transfer fee, invoice ${t.invoice_no}`, counterparty: "Airwallex", agent: "treasury",
-        gl_account: "6800", bank_account: fee[1] === "USD" ? "1201" : "1200", cents: -toCents(fee[2]!), currency: fee[1]!, proof: t.transfer_id ?? "", approval, rule: "transfer fee",
+        gl_account: "6800", bank_account: bankAccountFor(fee[1]!), cents: -toCents(fee[2]!), currency: fee[1]!, proof: t.transfer_id ?? "", approval, rule: "transfer fee",
       });
     }
   }
@@ -92,7 +92,7 @@ export function journal(db: DB): JournalLine[] {
     { conversion_id: string; buy_amount: string; sell_amount: string | null; approval_sha256: string; pair: string; valid_from: string }[]) {
     const [sell, buy] = f.pair.split("/") as [string, string];
     const approval = proposalOf(f.approval_sha256);
-    const bank = (cur: string) => (cur === "USD" ? "1201" : "1200");
+    const bank = bankAccountFor;
     const common = { date: f.valid_from, source: "fx" as const, ref: f.conversion_id, counterparty: "Airwallex", agent: "treasury", gl_account: "1590", proof: f.conversion_id, approval, rule: "currency conversion: own accounts" };
     if (f.sell_amount) add({ ...common, description: `Convert ${sell} to ${buy}`, bank_account: bank(sell), cents: -toCents(f.sell_amount), currency: sell });
     add({ ...common, description: `Convert ${sell} to ${buy}`, bank_account: bank(buy), cents: toCents(f.buy_amount), currency: buy });

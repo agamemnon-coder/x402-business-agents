@@ -29,6 +29,11 @@ export const CHART: Record<string, string> = {
  * The payables accounts (src/ap/books.ts): input VAT and what we owe suppliers, for the accrual entries. Kept out of
  * CHART on purpose: CHART is the chart the cash journal and the T:0 sink mirror, and T:0 has no such accounts yet.
  */
+/** The Airwallex bank account a currency's balance is booked on: EUR 1200, USD 1201, GBP 1202, any other 1203. */
+export function bankAccountFor(currency: string): string {
+  return currency === "EUR" ? "1200" : currency === "USD" ? "1201" : currency === "GBP" ? "1202" : "1203";
+}
+
 export const AP_CHART: Record<string, string> = {
   "1510": "Input VAT receivable (supplier invoices)",
   "2100": "Accounts payable (supplier invoices)",

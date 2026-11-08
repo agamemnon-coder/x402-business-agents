@@ -15,7 +15,10 @@ import { safeSegment } from "../src/vault/layout.js";
 import { apInvoice } from "../src/ap/store.js";
 import { describeTerms } from "../src/approve/client.js";
 import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAdd, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
+import { journal } from "../src/accounting/gl.js";
 import { openDb, type DB } from "../src/db/open.js";
+import { syncLedger } from "../src/ledger/feed.js";
+import { cashByCurrency } from "../src/ledger/reports.js";
 import { executeInvoicePayment } from "../src/executors/invoicePayment.js";
 import { executeSupplierPayment } from "../src/executors/supplierPayment.js";
 import { fromCents } from "../src/lib/money.js";
@@ -238,6 +241,27 @@ describe("R9: one supplier's payments on one day are held to the route's limit t
     const out = await payApInvoice(db, awx, small, now);
     expect(out.kind).toBe("escalated");
     expect((out as { reason: string }).reason).toMatch(/already paid or on its way to Bursa Tekstil AS today.*TRY 250,000\.00/);
+  });
+});
+
+describe("B1: payouts and conversions post to the bank account of their currency", () => {
+  it("USD, TRY and GBP payouts, and the FX legs, land on 1201, 1203 and 1202 in the journal and the stored ledger", async () => {
+    for (const [text, name] of [[US, "us.pdf"], [TR, "tr.pdf"], [UK, "uk.pdf"]] as const) {
+      const id = await add(text, name);
+      await addSupplier(id);
+      await executeSupplierPayment(db, awx, awx, await approvedInbox(id));
+    }
+    const lines = journal(db);
+    const banks = (cur: string) => [...new Set(lines.filter((l) => l.currency === cur && l.bank_account !== "1210").map((l) => l.bank_account))];
+    expect(banks("USD")).toEqual(["1201"]);
+    expect(banks("TRY")).toEqual(["1203"]);
+    expect(banks("GBP")).toEqual(["1202"]);
+    syncLedger(db, now);
+    // Each bank account in the stored ledger holds only its own currency; cashByCurrency agrees.
+    const posted = db.prepare("SELECT DISTINCT account, currency FROM ledger_lines WHERE account IN ('1200', '1201', '1202', '1203') ORDER BY account, currency").all();
+    expect(posted).toEqual(expect.arrayContaining([{ account: "1200", currency: "EUR" }, { account: "1201", currency: "USD" }, { account: "1202", currency: "GBP" }, { account: "1203", currency: "TRY" }]));
+    expect(posted.filter((r) => (r as { account: string }).account === "1200")).toEqual([{ account: "1200", currency: "EUR" }]);
+    expect(cashByCurrency(db).filter((c) => c.account === "1200").map((c) => c.currency)).toEqual(["EUR"]);
   });
 });
 
