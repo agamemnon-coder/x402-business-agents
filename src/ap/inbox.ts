@@ -12,11 +12,15 @@ import { VENDOR_GL } from "../config/gl.js";
 import type { DB } from "../db/open.js";
 import { skeleton } from "../policy/fraudCore.js";
 import { accrualEntries, bookable, pushToSink, type BookkeepingSink } from "./books.js";
-import { evaluate } from "./checks.js";
+import { evaluate, statusOf } from "./checks.js";
+import { classifyDocument, type DocKind } from "./classify.js";
+import { needsNote, writeReviewNote } from "./review.js";
+import { parseApFallback } from "./reading.js";
 import { parseEml } from "./eml.js";
 import { isPdf, pdfText } from "./pdfText.js";
 import { EXPENSE_ACCOUNTS, readDocument, type Asker } from "./read.js";
 import type { ApReading } from "./reading.js";
+import type { Finding } from "./store.js";
 import { apInvoice, apInvoices, nextApId, setStatus, type ApInvoiceRow } from "./store.js";
 
 export type Source = "upload" | "folder" | "email" | "api";
@@ -63,6 +67,13 @@ function glFor(db: DB, r: ApReading, readBy: string): { account: string; rule: s
   return { account: "6900", rule: "default for supplier invoices" };
 }
 
+/** A receipt or anything else that is not an invoice: kept, not read in full, handed to a person. */
+function notAnInvoice(kind: DocKind | "unread"): { findings: Finding[] } {
+  return kind === "receipt"
+    ? { findings: [{ code: "receipt", level: "review", detail: "a receipt for a payment already made: nothing to pay; a person files it" }] }
+    : { findings: [{ code: "not_an_invoice", level: "review", detail: "this document does not look like an invoice, credit note or reminder; a person looks at it" }] };
+}
+
 /** Every way in calls this. A PDF is filed and read; an e-mail's PDFs are each filed; anything else is refused. */
 export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocument): Promise<IngestResult> {
   if (doc.bytes.length > MAX_DOCUMENT_BYTES) throw new Error(`${doc.filename} is larger than ${MAX_DOCUMENT_BYTES / 1024 / 1024} MB; nothing was filed`);
@@ -98,18 +109,26 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
   db.prepare("INSERT INTO ap_documents (sha256, filename, mime, bytes, path, source, meta_json, text_chars, received_at) VALUES (?, ?, 'application/pdf', ?, ?, ?, ?, ?, ?)")
     .run(sha, doc.filename.slice(0, 200), doc.bytes.length, path, doc.source, JSON.stringify(doc.meta ?? {}), text.length, now.toISOString());
 
-  const { reading, readBy } = await readDocument(db, deps.reader, text, sha);
+  // Haiku labels the document first; only an invoice, a credit note or a reminder is read in full (Sonnet).
+  const cls = noText ? { kind: "unread" as const, by: "none" } : await classifyDocument(db, deps.reader, text, sha);
+  const readFully = cls.kind === "invoice" || cls.kind === "credit_note" || cls.kind === "reminder";
+  const { reading, readBy } = readFully ? await readDocument(db, deps.reader, text, sha) : { reading: parseApFallback(text), readBy: "parser" };
   const id = nextApId(db);
-  const { status, findings } = evaluate(db, reading, text, { docSha: sha, now, ...(noText ? { noText } : {}) });
+  const checked = readFully || noText ? evaluate(db, reading, text, { docSha: sha, now, ...(noText ? { noText } : {}) }) : notAnInvoice(cls.kind);
+  const findings = [...checked.findings];
+  if (cls.kind === "credit_note") findings.push({ code: "credit_note", level: "review", detail: "a credit note: nothing is paid; a person sets it against this supplier's next invoice" });
+  if (cls.kind === "reminder") findings.push({ code: "reminder", level: "warn", detail: "a payment reminder: it is checked like any copy, and an invoice is never paid twice" });
+  const status = statusOf(findings);
   const gl = glFor(db, reading, readBy);
-  db.prepare(`INSERT INTO ap_invoices (id, doc_sha256, vendor, invoice_no, issue_date, due_date, currency, subtotal, tax, total, iban_last4, bic, reading_json, read_by,
-    gl_account, gl_rule, cost_centre, status, findings_json, received_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .run(id, sha, reading.vendor, reading.invoice_no, reading.issue_date, reading.due_date, reading.currency, reading.subtotal, reading.tax, reading.total,
+  db.prepare(`INSERT INTO ap_invoices (id, doc_sha256, doc_kind, classified_by, vendor, invoice_no, issue_date, due_date, currency, subtotal, tax, total, iban_last4, bic, reading_json, read_by,
+    gl_account, gl_rule, cost_centre, status, findings_json, received_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(id, sha, cls.kind, cls.by, reading.vendor, reading.invoice_no, reading.issue_date, reading.due_date, reading.currency, reading.subtotal, reading.tax, reading.total,
       reading.iban.slice(-4), reading.bic, JSON.stringify(reading), readBy, gl.account, gl.rule, AP_COST_CENTRE, status, JSON.stringify(findings), now.toISOString(), now.toISOString());
   audit(db, "system", "ap.received", id, {
-    doc_sha256: sha, filename: doc.filename.slice(0, 200), source: doc.source, read_by: readBy, vendor: reading.vendor, invoice_no: reading.invoice_no,
+    doc_sha256: sha, filename: doc.filename.slice(0, 200), source: doc.source, doc_kind: cls.kind, classified_by: cls.by, read_by: readBy, vendor: reading.vendor, invoice_no: reading.invoice_no,
     total: reading.total, currency: reading.currency, status, findings: findings.map((x) => ({ code: x.code, level: x.level })) as unknown as Json,
   }, now);
+  if (needsNote({ status, findings })) await writeReviewNote(db, deps.reader, id, now);
   const inv = apInvoice(db, id)!;
   await book(db, deps, inv);
   return { kind: "invoice", invoice: inv };
@@ -140,21 +159,22 @@ async function book(db: DB, deps: Pick<InboxDeps, "sink">, inv: ApInvoiceRow): P
  * Checks again the invoices waiting for a supplier (after one was added) and any the caller names. An invoice already
  * on its way to payment, paid or rejected is never re-checked.
  */
-export async function recheck(db: DB, deps: Pick<InboxDeps, "now" | "sink">, ids?: string[]): Promise<ApInvoiceRow[]> {
+export async function recheck(db: DB, deps: Pick<InboxDeps, "now" | "sink"> & { reader?: Asker }, ids?: string[]): Promise<ApInvoiceRow[]> {
   const now = (deps.now ?? (() => new Date()))();
   const targets = ids ? ids.map((id) => apInvoice(db, id)).filter((x): x is ApInvoiceRow => x !== null) : apInvoices(db, { status: "needs_vendor" });
   const out: ApInvoiceRow[] = [];
   for (const inv of targets) {
     if (!["needs_vendor", "needs_review", "blocked", "ready"].includes(inv.status)) continue;
+    if (!["invoice", "credit_note", "reminder"].includes(inv.doc_kind)) continue;
     const doc = db.prepare("SELECT path, text_chars FROM ap_documents WHERE sha256 = ?").get(inv.doc_sha256) as { path: string; text_chars: number };
     let text: string;
     try { text = doc.text_chars ? (await pdfText(readFileSync(doc.path))).text : ""; } catch { text = ""; }
     if (!text) { out.push(inv); continue; }
     const wasBookable = bookable(inv);
     const { status, findings } = evaluate(db, inv.reading, text, { docSha: inv.doc_sha256, now, selfId: inv.id });
-    const next = setStatus(db, inv.id, status, "system", { findings, reason: "checked again" }, now);
+    const next = setStatus(db, inv.id, status, "system", { findings: [...findings, ...inv.findings.filter((x) => x.code === "credit_note" || x.code === "reminder")], reason: "checked again" }, now);
     if (!wasBookable) await book(db, deps, next);
-    out.push(next);
+    out.push(needsNote(next) ? await writeReviewNote(db, deps.reader, next.id, now) : next);
   }
   return out;
 }

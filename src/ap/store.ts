@@ -11,9 +11,10 @@ export type ApStatus = "blocked" | "needs_review" | "needs_vendor" | "ready" | "
 export interface Finding { code: string; level: "block" | "review" | "wait" | "warn"; detail: string }
 
 interface Row {
-  id: string; doc_sha256: string; vendor: string; invoice_no: string; issue_date: string; due_date: string; currency: string;
+  id: string; doc_sha256: string; doc_kind: string; classified_by: string; vendor: string; invoice_no: string; issue_date: string; due_date: string; currency: string;
   subtotal: string; tax: string; total: string; iban_last4: string; bic: string; reading_json: string; read_by: string;
   gl_account: string; gl_rule: string; cost_centre: string; status: ApStatus; findings_json: string; proposal_id: string | null;
+  review_note: string | null; review_by: string | null;
   received_at: string; updated_at: string; paid_at: string | null;
 }
 

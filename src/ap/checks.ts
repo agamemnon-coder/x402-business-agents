@@ -101,7 +101,11 @@ export function evaluate(db: DB, r: ApReading, text: string, ctx: CheckContext):
     f.push({ code: "overdue", level: "warn", detail: `the due date ${r.due_date} has passed` });
   }
 
+  return { status: statusOf(f), findings: f };
+}
+
+/** The fixed precedence: block, then review, then wait; else ready. */
+export function statusOf(f: Finding[]): ApStatus {
   const has = (level: Finding["level"]) => f.some((x) => x.level === level);
-  const status: ApStatus = has("block") ? "blocked" : has("review") ? "needs_review" : has("wait") ? "needs_vendor" : "ready";
-  return { status, findings: f };
+  return has("block") ? "blocked" : has("review") ? "needs_review" : has("wait") ? "needs_vendor" : "ready";
 }

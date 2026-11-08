@@ -10,9 +10,11 @@ import type { DB } from "../db/open.js";
 import { paymentEntries, pushToSink, type BookkeepingSink } from "./books.js";
 import { audit } from "../audit/log.js";
 import { pdfText } from "./pdfText.js";
+import type { Asker } from "./read.js";
+import { writeReviewNote } from "./review.js";
 import { apInvoice, apInvoices, setStatus, type ApInvoiceRow, type Finding } from "./store.js";
 
-export async function payApInvoice(db: DB, rail: AirwallexRail, id: string, now = new Date()): Promise<InvoiceOutcome> {
+export async function payApInvoice(db: DB, rail: AirwallexRail, id: string, now = new Date(), reader?: Asker): Promise<InvoiceOutcome> {
   const inv = apInvoice(db, id);
   if (!inv) throw new Error(`no payables invoice ${id}`);
   if (inv.status !== "ready") {
@@ -29,6 +31,9 @@ export async function payApInvoice(db: DB, rail: AirwallexRail, id: string, now 
   }, text, now);
   if (out.kind === "proposed") {
     setStatus(db, id, "waiting_cfo", "treasury", { proposal_id: out.proposal.proposal_id, reason: "payment filed for the CFO's Face ID" }, now);
+    // Opus's advisory note goes with the proposal the CFO sees (its explanation; never part of the signed terms).
+    const noted = await writeReviewNote(db, reader, id, now);
+    db.prepare("UPDATE proposals SET explanation = ? WHERE proposal_id = ? AND explanation IS NULL").run(noted.review_note, out.proposal.proposal_id);
     return out;
   }
   // Not planned (the reserve is short, a quote refused, a duplicate found late): the invoice stays as it is, with the reason.

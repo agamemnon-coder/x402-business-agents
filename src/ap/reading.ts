@@ -133,6 +133,9 @@ function labelledAmount(ls: string[], labels: RegExp): { amount: string; line: s
   return null;
 }
 
+/** A line that names the document rather than its issuer (a heading above the letterhead). */
+const HEADING = /^(?:(?:tax\s+)?invoice|factuur|rechnung|credit\s*note|creditnota|gutschrift|payment\s+reminder|reminder|betalingsherinnering|herinnering|aanmaning|zahlungserinnerung|mahnung|receipt|kwitantie|quittung)\b/i;
+
 const TOTAL = /^(?:total\s+due|amount\s+due|balance\s+due|total\s+amount|grand\s+total|totaal\s+te\s+betalen|te\s+betalen|totaalbedrag|gesamtbetrag|rechnungsbetrag|zu\s+zahlen|endbetrag|total|totaal)(?![a-z])/i;
 const SUBTOTAL = /^(?:sub-?total|subtotaal|net\s+amount|nettobetrag|zwischensumme|netto)(?![a-z])/i;
 const TAX = /^(?:vat|btw|mwst\.?|ust\.?|tax|sales\s+tax|umsatzsteuer)(?![a-z])/i;
@@ -175,7 +178,7 @@ export function parseApFallback(text: string): ApReading {
   const issued = firstMatch(text, /^\s*(?:invoice\s+date|date\s+of\s+issue|issue\s+date|factuurdatum|rechnungsdatum|datum|date)\s*:?\s*(.+)$/im);
   const reference = firstMatch(text, /^\s*(?:payment\s+reference|reference|ref\.?|betalingskenmerk|kenmerk|verwendungszweck)\s*:?\s*(\S+)/im);
   return {
-    vendor: ls[0]!,
+    vendor: ls.find((l) => /\p{L}/u.test(l) && !HEADING.test(l)) ?? "",
     vat_id: firstMatch(text, /\b(?:VAT(?:\s*(?:ID|number|no\.?|reg\.?\s*no\.?))?|BTW(?:-nummer|\s*nr\.?|-id)?|USt-?IdNr\.?|UID)\s*:?\s*([A-Z]{2}[A-Z0-9]{8,12})\b/).toUpperCase(),
     invoice_no: invoiceNo,
     issue_date: issued ? readDate(issued) : "",

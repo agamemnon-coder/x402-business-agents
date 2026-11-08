@@ -743,6 +743,10 @@ CREATE TABLE IF NOT EXISTS ap_documents (
 CREATE TABLE IF NOT EXISTS ap_invoices (
   id TEXT PRIMARY KEY,
   doc_sha256 TEXT NOT NULL UNIQUE REFERENCES ap_documents(sha256),
+  -- What the document is (Claude Haiku's label, checked by code, or keyword rules): only an invoice, a credit note or a
+  -- reminder is read in full; a reminder goes through the duplicate check like any copy.
+  doc_kind TEXT NOT NULL CHECK (doc_kind IN ('invoice', 'credit_note', 'receipt', 'reminder', 'other', 'unread')),
+  classified_by TEXT NOT NULL,
   vendor TEXT NOT NULL,
   invoice_no TEXT NOT NULL,
   issue_date TEXT NOT NULL,
@@ -761,6 +765,10 @@ CREATE TABLE IF NOT EXISTS ap_invoices (
   status TEXT NOT NULL CHECK (status IN ('blocked', 'needs_review', 'needs_vendor', 'ready', 'waiting_cfo', 'paid', 'rejected')),
   findings_json TEXT NOT NULL,
   proposal_id TEXT,
+  -- Claude Opus's advisory note on an irregular invoice (blocked, warned, or waiting for Face ID), or the code's own
+  -- reasons without a key. Advisory only: it never changes a status.
+  review_note TEXT,
+  review_by TEXT,
   received_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   paid_at TEXT
