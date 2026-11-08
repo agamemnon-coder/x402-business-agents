@@ -16,7 +16,7 @@ describe("syncing the ledger from Purser's own records", () => {
     await buyPlan(w.db, w.issuing, "replyhub-starter", w.now());
     const first = syncLedger(w.db, w.now());
     expect(first.posted).toBeGreaterThan(0);
-    expect(syncLedger(w.db, w.now())).toEqual({ posted: 0, already: first.posted });
+    expect(syncLedger(w.db, w.now())).toEqual({ posted: 0, already: first.posted, reversed: 0 });
 
     const stored = trialBalance(w.db).map((t) => [t.account, t.currency, t.balance_cents]);
     const computed = books(w.db).trial.filter((t) => t.balance_cents !== 0 || t.debit_cents !== 0).map((t) => [t.account, t.currency, t.balance_cents]);
@@ -60,5 +60,53 @@ describe("syncing the ledger from Purser's own records", () => {
     const json = JSON.parse(exportJson(w.db)) as { check: { ok: boolean; head: string }; entries: unknown[] };
     expect(json.check.ok).toBe(true);
     expect(json.entries).toHaveLength(ledgerRows(w.db).length);
+  });
+
+  // Review of PR #108, finding 1: a source line's key held its date, and a payout's date changes from SENT to PAID.
+  const transferWorld = async () => {
+    const w = await redTeamWorld();
+    w.db.prepare("INSERT INTO invoices (invoice_no, vendor, amount, currency, due_date, iban_sha256, bic, doc_sha256, status) VALUES ('INV-1', 'Bergtex Textil GmbH', '1000.00', 'EUR', '2026-11-30', 'h', 'b', 'd', 'RECEIVED')").run();
+    w.db.prepare("INSERT INTO transfers (transfer_id, request_id, invoice_no, amount, currency, method, fee_estimate, status, approval_sha256, updated_at) VALUES ('tr-1', 'req-1', 'INV-1', '1000.00', 'EUR', 'SWIFT', 'EUR 5.00', 'SENT', 'a', '2026-11-03T10:00:00.000Z')").run();
+    return w;
+  };
+  const netOf = (db: Parameters<typeof trialBalance>[0], account: string, currency = "EUR") => trialBalance(db).find((t) => t.account === account && t.currency === currency)?.balance_cents ?? 0;
+
+  it("posts a supplier payment once when its payout goes from SENT to PAID", async () => {
+    const w = await transferWorld();
+    syncLedger(w.db, w.now());
+    const before = netOf(w.db, "6900") + netOf(w.db, "6200");
+    w.db.prepare("UPDATE transfers SET status = 'PAID', updated_at = '2026-11-04T09:00:00.000Z' WHERE request_id = 'req-1'").run();
+    const again = syncLedger(w.db, w.now());
+    expect(netOf(w.db, "6900") + netOf(w.db, "6200")).toBe(before);
+    expect(before).toBe(100_000);
+    expect(again).toMatchObject({ posted: 0, reversed: 0 });
+    expect(verifyLedger(w.db).ok).toBe(true);
+  });
+
+  it("does not post a card charge again when Airwallex re-keys it, and reverses one that is reversed or merged away", async () => {
+    const w = await redTeamWorld();
+    await buyPlan(w.db, w.issuing, "packwise-starter", w.now());
+    syncLedger(w.db, w.now());
+    const spend = () => netOf(w.db, "6100");
+    const charged = spend();
+    expect(charged).toBeGreaterThan(0);
+    const id = (w.db.prepare("SELECT transaction_id FROM card_transactions WHERE approved = 1").get() as { transaction_id: string }).transaction_id;
+    // Re-keyed under the card transaction id: the same authorisation, nothing new to post.
+    w.db.prepare("UPDATE card_transactions SET transaction_id = 'ctx-new' WHERE transaction_id = ?").run(id);
+    expect(syncLedger(w.db, w.now())).toMatchObject({ posted: 0, reversed: 0 });
+    expect(spend()).toBe(charged);
+    // Recorded twice (old and new id), then merged into one: the second posting is reversed, not kept.
+    const row = w.db.prepare("SELECT * FROM card_transactions WHERE transaction_id = 'ctx-new'").get() as Record<string, unknown>;
+    w.db.prepare("INSERT INTO card_transactions (transaction_id, card_id, agent, merchant, mcc, amount_cents, currency, status, approved, failure_reason, purpose, source, occurred_at, recorded_at) VALUES (@x, @card_id, @agent, @merchant, @mcc, @amount_cents, @currency, @status, @approved, @failure_reason, @purpose, @source, @occurred_at, @recorded_at)").run({ ...row, x: "legacy-dup" });
+    syncLedger(w.db, w.now());
+    expect(spend()).toBe(2 * charged);
+    w.db.prepare("DELETE FROM card_transactions WHERE transaction_id = 'legacy-dup'").run();
+    expect(syncLedger(w.db, w.now()).reversed).toBe(1);
+    expect(spend()).toBe(charged);
+    // Reversed by the card network later: the spend is reversed in the ledger too.
+    w.db.prepare("UPDATE card_transactions SET approved = 0, status = 'REVERSED' WHERE transaction_id = 'ctx-new'").run();
+    expect(syncLedger(w.db, w.now()).reversed).toBe(1);
+    expect(spend()).toBe(0);
+    expect(verifyLedger(w.db).ok).toBe(true);
   });
 });

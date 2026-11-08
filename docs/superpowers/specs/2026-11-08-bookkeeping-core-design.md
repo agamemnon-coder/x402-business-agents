@@ -22,8 +22,9 @@ for good.
      mistake is corrected by a reversing entry that names the one it reverses.
    - **Hash chain:** each entry's hash covers the previous entry's hash and the entry with its lines (JCS, as the audit
      log does). `npm run ledger -- verify` recomputes the chain from the start.
-   - **Period locks:** a closed month cannot be posted into. A late item from a closed month posts on the first day of
-     the next open month and keeps its document date.
+   - **Period locks:** a closed month cannot be posted into, and closing a month closes every month before it (the
+     books are closed through the latest lock). A late item posts on the first day after the last closed month and
+     keeps its document date.
 2. **Fed from Purser, no typing** (`src/ledger/feed.ts`). `syncLedger` posts every line `books.ts` already derives
    (opening balances, data sales, purchases, refunds, card spend, invoice payments and fees, conversions, sweeps,
    clearing, receipts). Each source line posts once: its source key is unique, so a second sync posts nothing new.

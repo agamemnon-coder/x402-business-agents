@@ -60,6 +60,9 @@ function migrate(db: DB): void {
     (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).some((c) => c.name === column);
   // Backend review B4: the policy version a proposal, an approval and a hold were made under.
   for (const t of ["proposals", "approvals", "holds"]) if (!has(t, "policy_version")) db.exec(`ALTER TABLE ${t} ADD COLUMN policy_version INTEGER`);
+  // Bookkeeping core: a sale's key on its stock move (review of PR #108, finding 4), once per sale.
+  if (!has("stock_moves", "ref")) db.exec("ALTER TABLE stock_moves ADD COLUMN ref TEXT");
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS stock_moves_ref ON stock_moves (sku, ref) WHERE ref IS NOT NULL");
   if (!has("sales", "requirements_json")) db.exec("ALTER TABLE sales ADD COLUMN requirements_json TEXT");
   if (!has("upstream_purchases", "supplier")) db.exec("ALTER TABLE upstream_purchases ADD COLUMN supplier TEXT");
   if (!has("transfers", "fee_actual")) db.exec("ALTER TABLE transfers ADD COLUMN fee_actual TEXT");

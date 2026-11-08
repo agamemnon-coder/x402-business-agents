@@ -120,15 +120,23 @@ export function settleOpenItem(db: DB, s: Settlement, now = new Date()): Posted 
   if (!isBank(s.bank)) throw new LedgerRefused(`${s.bank} is not a bank account`);
   if (!Number.isInteger(s.amount_cents) || s.amount_cents <= 0) throw new LedgerRefused("an amount in whole cents above zero");
   const kind = s.kind === "pay" ? "payables" : "receivables";
-  const open = openAmount(db, kind, s.party, s.doc_ref, s.currency);
-  if (open === null) throw new LedgerRefused(`no open ${kind === "payables" ? "supplier invoice" : "customer invoice"} ${s.doc_ref} for ${s.party} in ${s.currency}`);
-  if (s.amount_cents > open) throw new LedgerRefused(`${s.doc_ref} has ${open} cents open; ${s.amount_cents} is more than that`);
-  const item = { account: s.kind === "pay" ? PAYABLES : RECEIVABLES, currency: s.currency, party: s.party, doc_ref: s.doc_ref };
-  const lines: LineInput[] = s.kind === "pay"
-    ? [{ ...item, debit: s.amount_cents }, { account: s.bank, credit: s.amount_cents, currency: s.currency, doc_ref: s.doc_ref }]
-    : [{ account: s.bank, debit: s.amount_cents, currency: s.currency, doc_ref: s.doc_ref }, { ...item, credit: s.amount_cents }];
-  return postEntry(db, {
-    date: s.date, description: s.kind === "pay" ? `Payment of ${s.doc_ref} to ${s.party}` : `Receipt of ${s.doc_ref} from ${s.party}`, created_by: s.created_by,
-    source_key: s.source_key, doc_ref: s.proof ?? s.doc_ref, lines,
-  }, now);
+  // Review of PR #108, finding 5: a retried payment (a webhook delivered again) is the payment already posted, and the
+  // open amount is read inside the same write transaction, so two processes cannot both pay what is open once.
+  return db.transaction((): Posted => {
+    if (s.source_key) {
+      const had = db.prepare("SELECT entry_id, posting_date FROM ledger_entries WHERE source_key = ?").get(s.source_key) as { entry_id: number; posting_date: string } | undefined;
+      if (had) return { ...had, duplicate: true };
+    }
+    const open = openAmount(db, kind, s.party, s.doc_ref, s.currency);
+    if (open === null) throw new LedgerRefused(`no open ${kind === "payables" ? "supplier invoice" : "customer invoice"} ${s.doc_ref} for ${s.party} in ${s.currency}`);
+    if (s.amount_cents > open) throw new LedgerRefused(`${s.doc_ref} has ${open} cents open; ${s.amount_cents} is more than that`);
+    const item = { account: s.kind === "pay" ? PAYABLES : RECEIVABLES, currency: s.currency, party: s.party, doc_ref: s.doc_ref };
+    const lines: LineInput[] = s.kind === "pay"
+      ? [{ ...item, debit: s.amount_cents }, { account: s.bank, credit: s.amount_cents, currency: s.currency, doc_ref: s.doc_ref }]
+      : [{ account: s.bank, debit: s.amount_cents, currency: s.currency, doc_ref: s.doc_ref }, { ...item, credit: s.amount_cents }];
+    return postEntry(db, {
+      date: s.date, description: s.kind === "pay" ? `Payment of ${s.doc_ref} to ${s.party}` : `Receipt of ${s.doc_ref} from ${s.party}`, created_by: s.created_by,
+      source_key: s.source_key, doc_ref: s.proof ?? s.doc_ref, lines,
+    }, now);
+  }).immediate();
 }

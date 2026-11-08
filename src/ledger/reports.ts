@@ -8,11 +8,15 @@ import { VAT_CODES, VAT_NOTICE, type VatRubric } from "./vat.js";
 
 interface Row { account: string; currency: string; debit: number; credit: number }
 
-function sums(db: DB, range: { from?: string; to?: string } = {}): Row[] {
+/** The year close's own entries (src/ledger/close.ts): they move the result to equity, they are not part of it. */
+export const CLOSING_KEY_PREFIX = "close-year:";
+
+function sums(db: DB, range: { from?: string; to?: string } = {}, opts: { withoutClosing?: boolean } = {}): Row[] {
   return db.prepare(`SELECT l.account, l.currency, SUM(l.debit_cents) AS debit, SUM(l.credit_cents) AS credit
     FROM ledger_lines l JOIN ledger_entries e ON e.entry_id = l.entry_id
-    WHERE e.posting_date >= ? AND e.posting_date <= ? GROUP BY l.account, l.currency ORDER BY l.account, l.currency`)
-    .all(range.from ?? "0000-01-01", range.to ?? "9999-12-31") as Row[];
+    WHERE e.posting_date >= ? AND e.posting_date <= ? AND (? = 0 OR e.source_key IS NULL OR e.source_key NOT LIKE '${CLOSING_KEY_PREFIX}%')
+    GROUP BY l.account, l.currency ORDER BY l.account, l.currency`)
+    .all(range.from ?? "0000-01-01", range.to ?? "9999-12-31", opts.withoutClosing ? 1 : 0) as Row[];
 }
 
 export interface TrialRow { account: string; name: string; type: string; currency: string; debit_cents: number; credit_cents: number; balance_cents: number }
@@ -29,10 +33,13 @@ export interface ProfitAndLoss {
   accounts: { account: string; name: string; type: string; cents: number }[];
 }
 
-/** Revenue (credit minus debit on 4xxx) and expenses (debit minus credit on 5xxx to 8xxx), per currency. */
+/**
+ * Revenue (credit minus debit on 4xxx) and expenses (debit minus credit on 5xxx to 8xxx), per currency. The year
+ * close's entry is left out (review of PR #108, finding 2), so a closed year still shows its own result.
+ */
 export function profitAndLoss(db: DB, range: { from: string; to: string }): Record<string, ProfitAndLoss> {
   const out: Record<string, ProfitAndLoss> = {};
-  for (const r of sums(db, range).filter((x) => isProfitAndLoss(x.account))) {
+  for (const r of sums(db, range, { withoutClosing: true }).filter((x) => isProfitAndLoss(x.account))) {
     const p = (out[r.currency] ??= { revenue_cents: 0, expense_cents: 0, result_cents: 0, accounts: [] });
     const type = accountType(r.account);
     const cents = type === "revenue" ? r.credit - r.debit : r.debit - r.credit;
@@ -131,8 +138,10 @@ export function quarterRange(quarter: string): { from: string; to: string } {
 /** The quarter's lines added up into the rubrics of the Dutch VAT return. An overview, not a filing. */
 export function vatOverview(db: DB, quarter: string): VatOverview {
   const { from, to } = quarterRange(quarter);
+  // The year close's entry carries no VAT and is no transaction: it is not counted as an uncoded line.
   const rows = db.prepare(`SELECT l.account, l.currency, l.debit_cents, l.credit_cents, l.vat_code, l.vat_cents
-    FROM ledger_lines l JOIN ledger_entries e ON e.entry_id = l.entry_id WHERE e.posting_date >= ? AND e.posting_date <= ?`)
+    FROM ledger_lines l JOIN ledger_entries e ON e.entry_id = l.entry_id WHERE e.posting_date >= ? AND e.posting_date <= ?
+    AND (e.source_key IS NULL OR e.source_key NOT LIKE '${CLOSING_KEY_PREFIX}%')`)
     .all(from, to) as { account: string; currency: string; debit_cents: number; credit_cents: number; vat_code: string | null; vat_cents: number | null }[];
   const rubrics = Object.fromEntries(RUBRICS.map((r) => [r, { base_cents: 0, vat_cents: 0 }])) as VatOverview["rubrics"];
   let input = 0;

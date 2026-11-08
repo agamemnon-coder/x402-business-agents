@@ -52,14 +52,24 @@ export function sellGoods(db: DB, s: { sku: string; qty: number; date: string; d
     const had = db.prepare("SELECT e.entry_id, e.posting_date, l.debit_cents FROM ledger_entries e JOIN ledger_lines l ON l.entry_id = e.entry_id AND l.account = ? WHERE e.source_key = ?")
       .get(COST_OF_GOODS_SOLD, key) as { entry_id: number; posting_date: string; debit_cents: number } | undefined;
     if (had) return { entry_id: had.entry_id, posting_date: had.posting_date, duplicate: true, cost_cents: had.debit_cents };
+    // A sale too small to carry a cent of cost has no entry, only its stock move under the sale's key.
+    const free = db.prepare("SELECT at FROM stock_moves WHERE sku = ? AND ref = ?").get(s.sku, key) as { at: string } | undefined;
+    if (free) return { entry_id: 0, posting_date: free.at.slice(0, 10), duplicate: true, cost_cents: 0 };
     const h = onHand(db, s.sku);
     if (s.qty > h.qty) throw new LedgerRefused(`${s.qty} x ${s.sku} asked, ${h.qty} on hand`);
     const cost = s.qty === h.qty ? h.value : Math.round((h.value * s.qty) / h.qty);
+    const move = db.prepare("INSERT INTO stock_moves (sku, qty_delta, value_delta_cents, entry_id, at, ref) VALUES (?, ?, ?, ?, ?, ?)");
+    if (cost === 0) {
+      // Review of PR #108, finding 4: a zero-cent line is refused, so the move goes without one; the last unit still
+      // takes exactly what is left.
+      move.run(s.sku, -s.qty, 0, null, now.toISOString(), key);
+      return { entry_id: 0, posting_date: s.date.slice(0, 10), duplicate: false, cost_cents: 0 };
+    }
     const posted = postEntry(db, {
       date: s.date, description: `Cost of ${s.qty} x ${s.sku} sold (${s.doc_ref})`, created_by: s.created_by, source_key: key, doc_ref: s.doc_ref,
       lines: [{ account: COST_OF_GOODS_SOLD, debit: cost, currency: item.currency, memo: `${s.qty} x ${s.sku} at average cost` }, { account: STOCK, credit: cost, currency: item.currency }],
     }, now);
-    db.prepare("INSERT INTO stock_moves (sku, qty_delta, value_delta_cents, entry_id, at) VALUES (?, ?, ?, ?, ?)").run(s.sku, -s.qty, -cost, posted.entry_id, now.toISOString());
+    move.run(s.sku, -s.qty, -cost, posted.entry_id, now.toISOString(), key);
     return { ...posted, cost_cents: cost };
   }).immediate();
 }

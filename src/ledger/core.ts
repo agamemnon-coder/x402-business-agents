@@ -80,8 +80,11 @@ const CURRENCY = /^[A-Z]{3,4}$/;
 
 function dayOf(date: string): string {
   const m = DAY.exec(date);
-  if (!m || Number.isNaN(Date.parse(`${m[1]}-${m[2]}-${m[3]}T00:00:00Z`)) || Number(m[2]) < 1 || Number(m[2]) > 12) throw new LedgerRefused(`not a date: ${date}`);
-  return `${m[1]}-${m[2]}-${m[3]}`;
+  const day = m ? `${m[1]}-${m[2]}-${m[3]}` : "";
+  // Date.parse rolls 2027-02-31 over to 2027-03-03: a day only counts when it reads back as itself.
+  const t = m ? Date.parse(`${day}T00:00:00Z`) : NaN;
+  if (!m || Number.isNaN(t) || new Date(t).toISOString().slice(0, 10) !== day) throw new LedgerRefused(`not a date: ${date}`);
+  return day;
 }
 
 const nextMonth = (month: string): string => {
@@ -93,13 +96,20 @@ export function lockedMonths(db: DB): Set<string> {
   return new Set((db.prepare("SELECT month FROM ledger_locks").all() as { month: string }[]).map((r) => r.month));
 }
 
-/** The date an entry dated `docDay` posts on: its own, or the first day of the first open month after a closed one. */
+/**
+ * The last closed month, or null. Closing a month closes every month before it (review of PR #108, finding 6): a
+ * late item for February must not change the balances already reported at the close of March.
+ */
+export function closedThrough(db: DB): string | null {
+  return (db.prepare("SELECT MAX(month) AS m FROM ledger_locks").get() as { m: string | null }).m;
+}
+
+/** The date an entry dated `docDay` posts on: its own, or the first day of the first month after the last closed one. */
 export function postingDay(db: DB, docDay: string): string {
-  const locked = lockedMonths(db);
-  let month = docDay.slice(0, 7);
-  if (!locked.has(month)) return docDay;
-  while (locked.has(month)) month = nextMonth(month);
-  return `${month}-01`;
+  const through = closedThrough(db);
+  const month = docDay.slice(0, 7);
+  if (through === null || month > through) return docDay;
+  return `${nextMonth(through)}-01`;
 }
 
 function checkLines(lines: LineInput[]): LedgerLine[] {
@@ -186,7 +196,17 @@ export function reverseEntry(db: DB, entryId: number, reason: string, by: string
     if (!orig) throw new LedgerRefused(`no ledger entry ${entryId}`);
     if (orig.reverses !== null) throw new LedgerRefused(`entry ${entryId} is itself a reversal; post a new entry instead`);
     const lines = orig.lines.map((l) => ({ ...l, debit_cents: l.credit_cents, credit_cents: l.debit_cents, vat_cents: l.vat_cents === null ? null : -l.vat_cents }));
-    return write(db, { docDay: now.toISOString().slice(0, 10), description: `Reversal of entry ${entryId}: ${reason}`, source_key: key, doc_ref: orig.doc_ref, doc_sha256: orig.doc_sha256, created_by: by, reverses: entryId }, lines, now);
+    // Stock moved with the entry moves back with its reversal (review of PR #108, finding 3), or the reversal is refused
+    // when the goods are no longer there to take back.
+    const moves = db.prepare("SELECT sku, qty_delta, value_delta_cents FROM stock_moves WHERE entry_id = ?").all(entryId) as { sku: string; qty_delta: number; value_delta_cents: number }[];
+    for (const m of moves) {
+      const h = db.prepare("SELECT COALESCE(SUM(qty_delta), 0) AS qty, COALESCE(SUM(value_delta_cents), 0) AS value FROM stock_moves WHERE sku = ?").get(m.sku) as { qty: number; value: number };
+      if (h.qty - m.qty_delta < 0 || h.value - m.value_delta_cents < 0) throw new LedgerRefused(`entry ${entryId} moved ${m.qty_delta} x ${m.sku}; only ${h.qty} are on hand to take back`);
+    }
+    const posted = write(db, { docDay: now.toISOString().slice(0, 10), description: `Reversal of entry ${entryId}: ${reason}`, source_key: key, doc_ref: orig.doc_ref, doc_sha256: orig.doc_sha256, created_by: by, reverses: entryId }, lines, now);
+    const move = db.prepare("INSERT INTO stock_moves (sku, qty_delta, value_delta_cents, entry_id, at) VALUES (?, ?, ?, ?, ?)");
+    for (const m of moves) move.run(m.sku, -m.qty_delta, -m.value_delta_cents, posted.entry_id, now.toISOString());
+    return posted;
   }).immediate();
 }
 

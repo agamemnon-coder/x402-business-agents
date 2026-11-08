@@ -50,8 +50,11 @@ CREATE TABLE IF NOT EXISTS stock_moves (
   sku TEXT NOT NULL REFERENCES stock_items(sku),
   qty_delta INTEGER NOT NULL,
   value_delta_cents INTEGER NOT NULL,
-  entry_id INTEGER NOT NULL REFERENCES ledger_entries(entry_id),
-  at TEXT NOT NULL
+  -- The entry that moved the value; none for a sale whose share of the cost rounds to zero cents (no entry to post).
+  entry_id INTEGER REFERENCES ledger_entries(entry_id),
+  at TEXT NOT NULL,
+  -- A sale's own key (cogs:<sku>:<doc>), so a sale moves stock once even when no entry was posted for it.
+  ref TEXT
 );
 CREATE TRIGGER IF NOT EXISTS ledger_entries_no_update BEFORE UPDATE ON ledger_entries BEGIN SELECT RAISE(ABORT, 'the ledger is append-only'); END;
 CREATE TRIGGER IF NOT EXISTS ledger_entries_no_delete BEFORE DELETE ON ledger_entries BEGIN SELECT RAISE(ABORT, 'the ledger is append-only'); END;
