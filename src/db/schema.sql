@@ -724,3 +724,58 @@ CREATE TABLE IF NOT EXISTS airi_purchases (
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS airi_purchases_day ON airi_purchases (day, route, status);
+
+-- Payables (src/ap): every supplier document as it came in, kept unchanged at `path` (data/ap/docs/<sha256>.<ext>);
+-- the invoice read from it, its checks and where it stands; and new suppliers, added only after a person verified
+-- the account and the CFO approved (src/ap/vendors.ts, like payee_changes).
+CREATE TABLE IF NOT EXISTS ap_documents (
+  sha256 TEXT PRIMARY KEY,
+  filename TEXT NOT NULL,
+  mime TEXT NOT NULL,
+  bytes INTEGER NOT NULL,
+  path TEXT NOT NULL,
+  source TEXT NOT NULL CHECK (source IN ('upload', 'folder', 'email', 'api')),
+  meta_json TEXT NOT NULL DEFAULT '{}',
+  text_chars INTEGER NOT NULL,
+  received_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ap_invoices (
+  id TEXT PRIMARY KEY,
+  doc_sha256 TEXT NOT NULL UNIQUE REFERENCES ap_documents(sha256),
+  vendor TEXT NOT NULL,
+  invoice_no TEXT NOT NULL,
+  issue_date TEXT NOT NULL,
+  due_date TEXT NOT NULL,
+  currency TEXT NOT NULL,
+  subtotal TEXT NOT NULL,
+  tax TEXT NOT NULL,
+  total TEXT NOT NULL,
+  iban_last4 TEXT NOT NULL,
+  bic TEXT NOT NULL,
+  reading_json TEXT NOT NULL,
+  read_by TEXT NOT NULL,
+  gl_account TEXT NOT NULL,
+  gl_rule TEXT NOT NULL,
+  cost_centre TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('blocked', 'needs_review', 'needs_vendor', 'ready', 'waiting_cfo', 'paid', 'rejected')),
+  findings_json TEXT NOT NULL,
+  proposal_id TEXT,
+  received_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  paid_at TEXT
+);
+CREATE INDEX IF NOT EXISTS ap_invoices_vendor ON ap_invoices (vendor, received_at);
+
+CREATE TABLE IF NOT EXISTS payee_adds (
+  add_id TEXT PRIMARY KEY,
+  vendor TEXT NOT NULL,
+  iban TEXT NOT NULL,
+  bic TEXT NOT NULL,
+  source TEXT,
+  requested_by TEXT NOT NULL,
+  verification_json TEXT,
+  proposal_id TEXT,
+  status TEXT NOT NULL CHECK (status IN ('REQUESTED', 'VERIFIED', 'PROPOSED', 'APPLIED')),
+  created_at TEXT NOT NULL
+);

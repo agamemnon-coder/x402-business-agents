@@ -121,6 +121,13 @@ async function executeApproved(db: DB, proposalId: string): Promise<void> {
       if (!awx) throw new Error("Airwallex sandbox keys are not set; the new account cannot be added");
       await executePayeeChange(db, awx.rail, proposalId);
       return;
+    case "payee_add": {
+      // Payables: a new supplier, after a person's verification and the CFO's Face ID (src/ap/vendors.ts).
+      if (!awx) throw new Error("Airwallex sandbox keys are not set; the new supplier cannot be added");
+      const { executePayeeAdd } = await import("../ap/vendors.js");
+      await executePayeeAdd(db, awx.rail, proposalId);
+      return;
+    }
     case "invoice_payment":
       if (!awx) throw new Error("Airwallex sandbox keys are not set; the payment cannot run");
       await executeInvoicePayment(db, awx.rail, awx.sim, proposalId);

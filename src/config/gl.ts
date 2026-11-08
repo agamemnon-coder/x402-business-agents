@@ -25,6 +25,15 @@ export const CHART: Record<string, string> = {
   "6900": "Other supplier invoices",
 };
 
+/**
+ * The payables accounts (src/ap/books.ts): input VAT and what we owe suppliers, for the accrual entries. Kept out of
+ * CHART on purpose: CHART is the chart the cash journal and the T:0 sink mirror, and T:0 has no such accounts yet.
+ */
+export const AP_CHART: Record<string, string> = {
+  "1510": "Input VAT receivable (supplier invoices)",
+  "2100": "Accounts payable (supplier invoices)",
+};
+
 export const COST_CENTRES: Record<Agent, string> & Record<string, string> = {
   sourcing: "CC100",
   support: "CC200",

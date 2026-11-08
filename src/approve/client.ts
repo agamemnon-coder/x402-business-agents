@@ -290,6 +290,21 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
     };
   }
 
+  if (kind === "payee_add") {
+    const v = (isObj(t.verification) ? t.verification : {}) as Obj;
+    const a = (isObj(t.address) ? t.address : {}) as Obj;
+    const iban = str(t.iban);
+    return {
+      approvable: true, title: "New supplier",
+      sentence: `Add ${str(t.vendor)} as a supplier, paid to IBAN ${iban.replace(/(.{4})/g, "$1 ").trim()} (BIC ${str(t.bic)}). ${str(v.by)} recorded that the supplier confirmed it: ${str(v.how)}.`,
+      amount: "0.00 (nothing moves now)", margin: null, recipient: `${str(t.vendor)}, account ending ${iban.slice(-4)}`,
+      rows: [["Supplier", str(t.vendor)], ["IBAN", iban], ["BIC", str(t.bic)], ["Address", `${str(a.street)}, ${str(a.postcode)} ${str(a.city)}`], ["Verified by", str(v.by)], ["How", str(v.how)]],
+      short: "this new supplier",
+      warnings: ["A supplier's own invoice is how invoice fraud works. Approve only if the IBAN matches what the supplier told you on a number you already had."],
+      amountLabel: "Moves now", label: "New supplier", big: `…${iban.slice(-4)}`, unit: "new supplier",
+    };
+  }
+
   if (kind === "quarantine_release") {
     const back = str(t.action) === "return";
     return {
@@ -438,6 +453,7 @@ export function whyYou(t: Obj, policy: { key: string; value: string }[] = [], fo
     : kind === "invoice_payment" ? "A supplier is paid from the Airwallex account only with your Face ID."
     : kind === "policy_change" ? "The CFO policy changes only with your Face ID."
     : kind === "payee_change" ? "A supplier's bank details change only with your Face ID."
+    : kind === "payee_add" ? "A new supplier is paid only after your Face ID."
     : kind === "quarantine_release" ? "Money Metal held in quarantine moves only with your Face ID."
     : kind === "task_card" ? (cardEur ? `Without your Face ID, a task card is issued only when you ask at the runner, up to ${cardEur} EUR.` : "A task card is issued only with your Face ID.")
     : kind === "airi_purchase" ? "An agent's purchase through Airi starts only with your Face ID."
