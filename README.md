@@ -309,6 +309,7 @@ clearing under load (30 October): [docs/runs/](docs/runs/) and [docs/metal-award
 - [docs/controls.md](docs/controls.md): every guard in code, its test, and what needs a person
 - [docs/claims.md](docs/claims.md): every claim in this repo and its source
 - [docs/metal-award.md](docs/metal-award.md) and [docs/airwallex.md](docs/airwallex.md): what Purser uses from each
+- [docs/payables.md](docs/payables.md): the invoice inbox, built after the submission (its own branch, not in the submitted run)
 - [docs/security.md](docs/security.md): threat model, attacks and what stops each one
 - [docs/submission/README.md](docs/submission/README.md): the submission text, with the short Description
 - [docs/submission/long-description.md](docs/submission/long-description.md): the long form text it replaced, in full

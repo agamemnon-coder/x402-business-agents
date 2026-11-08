@@ -55,6 +55,7 @@
     "video": "tsx src/cli/video.ts",
     "agent-evals": "tsx src/cli/agentEvals.ts",
     "budget": "tsx src/cli/budget.ts",
+    "payables": "tsx src/cli/payables.ts",
     "sbom": "npm sbom --sbom-format cyclonedx --omit dev > docs/security/sbom.cdx.json",
     "receivables": "tsx src/cli/receivables.ts",
     "receive-policy": "tsx src/cli/receivePolicy.ts",
