@@ -19,6 +19,8 @@ import { validateVendor, type Payment, type PurchaseInvoice, type Vendor } from 
 import { ledgerItems } from "../src/erp/source.js";
 import { dataSha, monthData, receiptData } from "../src/vault/data.js";
 import { safeSegment } from "../src/vault/layout.js";
+import { ACCOUNT_NAMES_NL, accountName, PDF_STRINGS } from "../src/vault/pdf.js";
+import { LEDGER_ACCOUNTS } from "../src/ledger/accounts.js";
 import { insights } from "../src/ap/insights.js";
 import { publicInvoice } from "../src/ap/public.js";
 import { apInvoice } from "../src/ap/store.js";
@@ -474,6 +476,16 @@ describe("S6: the phone's terms carry the invoice line and the test-money flag, 
     expect(agentOf(row.created_by, t)).toBe("Payables inbox");
     expect(transferReason("6200")).toBe("goods_purchased");
     expect(transferReason("6900")).toBe("professional_business_services");
+  });
+});
+
+describe("S7: the Dutch PDFs have Dutch account names and statuses; English stays", () => {
+  it("every ledger account has a Dutch name; statuses are words in both languages", () => {
+    for (const k of Object.keys(LEDGER_ACCOUNTS)) expect(ACCOUNT_NAMES_NL[k], k).toBeTruthy();
+    expect(accountName("6200", "Goods from the manufacturer", "nl")).toBe("Goederen van de fabrikant");
+    expect(accountName("6200", "Goods from the manufacturer", "en")).toBe("Goods from the manufacturer");
+    expect(PDF_STRINGS.nl.apStatus.waiting_cfo).toBe("wacht op Face ID van de CFO");
+    expect(PDF_STRINGS.en.apStatus.needs_vendor).toBe("waits for a new supplier");
   });
 });
 

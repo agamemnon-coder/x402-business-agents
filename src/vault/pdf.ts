@@ -9,7 +9,8 @@ import type { VatOverview } from "../ledger/reports.js";
 
 export type Lang = "nl" | "en";
 
-const T = {
+/** The PDFs' words in Dutch and English. */
+export const PDF_STRINGS = {
   nl: {
     testMoney: "Testgeld (Airwallex sandbox)", testMoneyLine: "Alle bedragen in dit document zijn testgeld uit de Airwallex-sandbox; er is geen echt geld bewogen.",
     made: "Gemaakt door Purser uit de administratie: elk bedrag komt uit het grootboek of de inkoopadministratie.",
@@ -29,6 +30,10 @@ const T = {
     openResult: "Resultaat (nog niet afgesloten)", balanced: "Sluitend", notBalanced: "NIET sluitend", trial: "Proefbalans", debit: "Debet", credit: "Credit", saldo: "Saldo",
     suppliers: "Leveranciers", onDay: "Stand op", iban: "IBAN (laatste 4)", bic: "BIC", currency: "Valuta", invoices: "Facturen",
     statusWord: { ACTIVE: "actief", REPLACED: "vervangen" } as Record<string, string>,
+    apStatus: {
+      blocked: "geblokkeerd", needs_review: "wacht op een mens", needs_vendor: "wacht op een nieuwe leverancier", ready: "klaar om te betalen",
+      waiting_cfo: "wacht op Face ID van de CFO", paid: "betaald", rejected: "afgewezen",
+    } as Record<string, string>,
   },
   en: {
     testMoney: "Test money (Airwallex sandbox)", testMoneyLine: "Every amount in this document is test money from the Airwallex sandbox; no real money moved.",
@@ -49,8 +54,33 @@ const T = {
     openResult: "Result (not yet closed)", balanced: "Balances", notBalanced: "DOES NOT balance", trial: "Trial balance", debit: "Debit", credit: "Credit", saldo: "Balance",
     suppliers: "Suppliers", onDay: "As of", iban: "IBAN (last 4)", bic: "BIC", currency: "Currency", invoices: "Invoices",
     statusWord: { ACTIVE: "active", REPLACED: "replaced" } as Record<string, string>,
+    apStatus: {
+      blocked: "blocked", needs_review: "needs a person", needs_vendor: "waits for a new supplier", ready: "ready to pay",
+      waiting_cfo: "waits for the CFO's Face ID", paid: "paid", rejected: "rejected",
+    } as Record<string, string>,
   },
 } as const;
+const T = PDF_STRINGS;
+
+/**
+ * The chart's account names in Dutch, for the Dutch PDFs (screenshot pass S7); English stays as the chart has it. An
+ * account without a Dutch name keeps its own.
+ */
+export const ACCOUNT_NAMES_NL: Readonly<Record<string, string>> = {
+  "1200": "Bank: Airwallex EUR (incl. bedrijfskaarten)", "1201": "Bank: Airwallex USD", "1202": "Bank: Airwallex GBP",
+  "1203": "Bank: Airwallex, overige valuta", "1210": "Bank: Metal-rekening (*USDZ, testnet)", "1220": "Bank: Metal clearing (*USDZ, testnet)",
+  "1300": "Debiteuren", "1510": "Te vorderen btw (inkoopfacturen)", "1590": "Kruisposten (tussen eigen rekeningen)", "1700": "Voorraad",
+  "2100": "Crediteuren (inkoopfacturen)", "2200": "Te betalen btw", "2210": "Af te dragen btw (aan klanten berekend)", "2900": "Nog niet geïdentificeerde ontvangsten",
+  "3000": "Eigen vermogen: beginsaldi en inbreng eigenaar", "3100": "Ingehouden winst",
+  "4000": "Omzet: voorraaddata aan winkeliers", "4100": "Terugbetalingen aan klanten", "4200": "Omzet: groothandel aan winkeliers",
+  "5000": "Ingekochte voorraaddata (warehouse-API)", "6100": "Softwareabonnementen (bedrijfskaarten)", "6150": "Advertenties (bedrijfskaarten)",
+  "6200": "Goederen van de fabrikant", "6300": "Reiskosten (taakkaarten)", "6350": "Datalicentie (Stockline, maandelijks)",
+  "6800": "Bank- en overboekingskosten", "6900": "Overige inkoopfacturen", "8000": "Kostprijs van de omzet",
+};
+
+export function accountName(account: string, name: string, lang: Lang): string {
+  return lang === "nl" ? ACCOUNT_NAMES_NL[account] ?? name : name;
+}
 
 /** "EUR 1.850,00" (nl) or "EUR 1,850.00" (en), from a plain decimal like "1850.00" or "-12.50". */
 export function formatMoney(currency: string, amount: string, lang: Lang = "nl"): string {
@@ -170,7 +200,7 @@ function pnlBlock(doc: Doc, pnl: MonthData["pnl"], lang: Lang) {
   const t = T[lang];
   if (!pnl.length) { table(doc, [], [], [], [], lang); return; }
   for (const p of pnl) {
-    table(doc, [t.account, "", p.currency], p.accounts.map((a) => [a.account, a.name, formatMoney("", a.amount, lang)]), [60, 335, 100], [2], lang);
+    table(doc, [t.account, "", p.currency], p.accounts.map((a) => [a.account, accountName(a.account, a.name, lang), formatMoney("", a.amount, lang)]), [60, 335, 100], [2], lang);
     kv(doc, [[t.revenue, formatMoney(p.currency, p.revenue, lang)], [t.expense, formatMoney(p.currency, p.expense, lang)], [t.result, formatMoney(p.currency, p.result, lang)]]);
   }
 }
@@ -184,7 +214,7 @@ export function monthReportPdf(company: string, m: MonthData, lang: Lang = "nl")
     section(doc, t.paid);
     table(doc, [t.supplier, t.invoice, t.paidOn, t.amount], m.paid.map((p) => [p.vendor, p.invoice_no, p.paid_on, money(p.amount, lang)]), [175, 110, 90, 120], [3], lang);
     section(doc, t.open);
-    table(doc, [t.supplier, t.invoice, t.dueDate, t.status, t.amount], m.open.map((o) => [o.vendor, o.invoice_no, o.due_date || t.none, o.status.replace(/_/g, " "), money(o.amount, lang)]), [150, 95, 75, 75, 100], [4], lang);
+    table(doc, [t.supplier, t.invoice, t.dueDate, t.status, t.amount], m.open.map((o) => [o.vendor, o.invoice_no, o.due_date || t.none, t.apStatus[o.status] ?? o.status.replace(/_/g, " "), money(o.amount, lang)]), [150, 95, 75, 75, 100], [4], lang);
     section(doc, t.blocked);
     table(doc, [t.supplier, t.invoice, t.amount, t.reasons], m.blocked.map((b) => [b.vendor, b.invoice_no, money(b.amount, lang), b.reasons.join("; ")]), [110, 85, 90, 210], [2], lang);
     section(doc, t.spend);
@@ -219,7 +249,7 @@ export function yearReportPdf(company: string, y: YearData, lang: Lang = "nl"): 
     pnlBlock(doc, y.pnl, lang);
     section(doc, `${t.balanceSheet} ${y.year}-12-31`);
     for (const b of y.balance) {
-      table(doc, [t.account, "", b.currency], b.accounts.map((a) => [a.account, a.name, formatMoney("", a.amount, lang)]), [60, 335, 100], [2], lang);
+      table(doc, [t.account, "", b.currency], b.accounts.map((a) => [a.account, accountName(a.account, a.name, lang), formatMoney("", a.amount, lang)]), [60, 335, 100], [2], lang);
       kv(doc, [[t.assets, formatMoney(b.currency, b.assets, lang)], [t.liabilities, formatMoney(b.currency, b.liabilities, lang)], [t.equity, formatMoney(b.currency, b.equity, lang)],
         [t.openResult, formatMoney(b.currency, b.result, lang)], ["", b.balanced ? t.balanced : t.notBalanced]]);
     }
