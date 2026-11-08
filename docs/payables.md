@@ -24,7 +24,7 @@ npm run payables -- add invoice.pdf mail.eml
 npm run payables -- watch ./inbox
 ```
 
-`list`, `show <id>`, `insights`, `pay <id>`, `sync`, `supplier-request <id>`, `supplier-verify <N-id> ...`,
+`list`, `show <id>`, `insights`, `pay <id>`, `sync`, `supplier-request <id>`, `supplier-verify <N-id> ...`, `not-duplicate <id> ...`,
 `supplier-propose <N-id>` and `export journal|invoices` are listed at the top of `src/cli/payables.ts`. The ledger is
 `KIT11_DB` (default `data/kit11.sqlite`); documents go to `KIT11_AP_DIR` (default `data/ap`). Without
 `KIT11_ANTHROPIC_API_KEY` the keyword rules and the parser read instead of Claude; without Airwallex sandbox keys,
@@ -61,7 +61,7 @@ paying is off.
   footer never makes another currency's invoice EUR; an IBAN is read at its country's length (ISO 13616), so a BIC on
   the same line is not read into it.
 - **Duplicates:** a number written differently (`BTX-2026-021`, `BTX/2026/21`, a zero-width space) is a possible
-  duplicate for a person; the same supplier and total dated within a week is too. Only earlier invoices count, so a
+  duplicate for a person; the same supplier and total dated close together is too (see round 2). Only earlier invoices count, so a
   resent copy never blocks its original. A reminder is never paid on its own: it is blocked as the copy of an invoice on
   file, or goes to a person.
 - **Credit notes** written as a negative or bracketed total are never paid; storno and correction keywords mark one.
@@ -72,6 +72,40 @@ paying is off.
   payment, and a rejected payment's accrual is reversed there. Supplier adds run with the configured sink.
 - **Stuck states:** a proposal that expired, was rejected, superseded or needs reapproval puts its invoice back to ready
   and closes its supplier request (`CLOSED`), so a new one may follow.
+
+### Red team round 2 (8 November)
+
+The rule behind every fix: the code's own reading of the document is the authority; anything ambiguous goes to a
+person; nothing is guessed.
+
+- **Currency** comes from the total line only; when that line names none, from the subtotal and tax lines when they
+  agree. Never from the rest of the text. A currency code does not know on the total line (`kr`, `Kč`, `Fr.`, `zł`,
+  `ISK`, a lower-case `sek`) leaves the currency empty: a person decides.
+- **Which total:** labels are ranked (amount due, balance due, amount payable, to pay, te betalen, zu zahlen, à payer
+  first; a bare "Total" last). Total lines with different amounts (a deposit, an early-payment discount, a line item
+  that starts with "Total") go to a person with every amount named (`ambiguous_total`). "Total excl. VAT" is a
+  subtotal, "Total VAT" a tax line.
+- **Lookalike numbers:** the loose duplicate key folds lookalike letters (the fraud check's confusables: Cyrillic
+  "В"), every script's digits ("٢٠٢٦") and O/0, I/l/1. A number the document's own lines cannot read is never taken
+  from a model. The same supplier and total within 45 days (was a week) waits for a person as a possible duplicate.
+- **Monthly invoices** (rent, a subscription) with the same total and a new number therefore wait once: a person clears
+  the pair, with who and why, in `ap_duplicate_clearances` and the audit log (`ap.duplicate_cleared`). On the page this
+  needs the code shown in the terminal that runs it; in the CLI (`not-duplicate <id> --by ... --note ...`) the person
+  types the invoice's total back. A match on the invoice number itself is never cleared this way.
+- **Credit notes and reminders** are flagged when either the keyword rules or the model say so: a model that calls a
+  "Gutschrift" or a reminder an invoice cannot make it payable. A minus after the amount (`1,850.00-`), `CR`, and every
+  Unicode dash before it mark a credit; so do avoir, nota di credito, abono, refund and rimborso.
+- **PDFs** are read in a worker thread with a 256 MB heap, stopped after 10 s (a busy pdf.js cannot be interrupted on
+  the main thread). Before that, the compressed streams are inflated against a budget (64 MB together, deflate inside
+  deflate included): a deflate bomb is refused with the reason and the process stays up. The watched folder checks a
+  file's size before reading it.
+- **The page:** a malformed file name is a 400; a document is served with `default-src 'none'; sandbox`. Recording that
+  a person verified a new supplier's bank details needs a code shown only in the terminal that runs the page
+  (`POST .../verify-code`, six digits, ten minutes, three tries, used once) and the IBAN's last four characters typed
+  back; the page token alone is not enough. The CLI's `supplier-verify` asks for the last four interactively. Either
+  way the CFO's Face ID still gates the add.
+- **What the CFO signs:** the payment terms carry the document's own total line (sanitised, at most 120 characters) and
+  the currency read from that line; the approval screen shows both and warns when that currency is not the one paid.
 
 ## What is real, what is not in v1
 

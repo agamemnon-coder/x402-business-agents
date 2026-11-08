@@ -4,14 +4,14 @@
 // approves with Face ID on the phone; a new supplier is requested here and verified and approved as in src/ap/vendors.ts.
 // The same handlers can later sit behind the authenticated agent API.
 
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { readFileSync } from "node:fs";
 import express from "express";
 import { rateLimit } from "express-rate-limit";
 import type { Request, Response } from "express";
 import type { AirwallexRail } from "../airwallex/port.js";
 import { apJournal, invoicesCsv, journalCsv } from "../ap/books.js";
-import { ingestDocument, recheck, type InboxDeps } from "../ap/inbox.js";
+import { clearPossibleDuplicate, ingestDocument, recheck, type InboxDeps } from "../ap/inbox.js";
 import { insights } from "../ap/insights.js";
 import { payApInvoice, syncPayments } from "../ap/pay.js";
 import { apInvoice, apInvoices } from "../ap/store.js";
@@ -24,10 +24,19 @@ export interface PayablesOptions {
   rail: AirwallexRail | null;
   /** Requests per window per client; the default suits one person working on the page. */
   rateLimit?: { windowMs: number; limit: number };
+  /**
+   * Where a supplier verification code is shown: the terminal that runs this page (the default prints it there). A
+   * local process that can fetch the page token cannot read it, so it cannot record a verification on its own.
+   */
+  notify?: (line: string) => void;
 }
 
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
 const TOKEN_TTL_MS = 30 * 60 * 1000;
+/** A supplier verification code: six digits, ten minutes, three wrong tries, used once. */
+const CODE_TTL_MS = 10 * 60 * 1000;
+const CODE_TRIES = 3;
+const sha = (s: string) => createHash("sha256").update(s).digest();
 
 const PAGE = (csrf: string) => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -86,9 +95,9 @@ load();
 
 function statusFor(message: string): number {
   if (/^no (payables invoice|supplier request) /.test(message)) return 404;
-  if (/not a PDF|larger than|not an IBAN|not a BIC|checksum|needs a name|say how|address/.test(message)) return 400;
-  if (/not ready|not waiting|already|German \(DE\)|looks like|on file|not verified|pays EUR only/.test(message)) return 409;
-  if (/only a person/.test(message)) return 403;
+  if (/not a PDF|larger than|not an IBAN|not a BIC|checksum|needs a name|say how|say who|say why|address/.test(message)) return 400;
+  if (/not ready|not waiting|already|German \(DE\)|looks like|on file|not verified|pays EUR only|never cleared/.test(message)) return 409;
+  if (/only a person|verification code|last four/.test(message)) return 403;
   return 500;
 }
 
@@ -126,6 +135,24 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
   const csp = (res: Response) => res.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'");
   const fail = (res: Response, e: unknown) => { const m = (e as Error).message; res.status(statusFor(m)).json({ error: m }); };
   const deps = (): InboxDeps => opts.inbox;
+  const notify = opts.notify ?? ((line: string) => { process.stdout.write(`${line}\n`); });
+  // One verification code per supplier request, shown only in this terminal (red team round 2: the page token alone
+  // let any local process record "a person verified these bank details").
+  const codes = new Map<string, { hash: Buffer; exp: number; tries: number }>();
+  const issueCode = (key: string): string => {
+    const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+    codes.set(key, { hash: sha(`${key}:${code}`), exp: Date.now() + CODE_TTL_MS, tries: 0 });
+    return code;
+  };
+  /** Uses the code for `key` once; throws (403) when it is missing, expired, wrong, or `also` fails; three misses void it. */
+  const takeCode = (key: string, given: unknown, also: () => boolean, alsoWhy: string): void => {
+    const held = codes.get(key);
+    if (!held || held.exp <= Date.now()) { codes.delete(key); throw new Error("ask for a verification code first (it is shown in the terminal that runs this page); a code works once, for 10 minutes"); }
+    const miss = (why: string) => { if (++held.tries >= CODE_TRIES) codes.delete(key); return new Error(why); };
+    if (!timingSafeEqual(held.hash, sha(`${key}:${typeof given === "string" ? given.trim() : ""}`))) throw miss("the verification code is not the one shown in the terminal");
+    if (!also()) throw miss(alsoWhy);
+    codes.delete(key);
+  };
 
   app.get("/", (_req, res) => { csp(res); res.type("html").send(PAGE(issue())); });
 
@@ -139,6 +166,8 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
     const inv = apInvoice(db, String(req.params.id));
     const doc = inv && (db.prepare("SELECT path, filename FROM ap_documents WHERE sha256 = ?").get(inv.doc_sha256) as { path: string; filename: string } | undefined);
     if (!doc) { res.status(404).json({ error: `no payables invoice ${req.params.id}` }); return; }
+    // The document is the supplier's file: it may not run anything or load anything in this origin (red team round 2).
+    res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
     res.setHeader("Content-Disposition", `inline; filename="${doc.filename.replace(/[^\w.-]+/g, "_")}"`);
     res.type("application/pdf").send(readFileSync(doc.path));
   });
@@ -148,7 +177,11 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
 
   app.post("/api/payables/documents", express.raw({ type: () => true, limit: "16mb" }), async (req: Request, res: Response) => {
     try {
-      const filename = decodeURIComponent(String(req.headers["x-filename"] ?? "upload.pdf")).slice(0, 200);
+      let filename: string;
+      try { filename = decodeURIComponent(String(req.headers["x-filename"] ?? "upload.pdf")).slice(0, 200); } catch {
+        res.status(400).json({ error: "the file name is not valid percent-encoding; nothing was filed" });
+        return;
+      }
       const bytes = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
       res.json(await ingestDocument(db, deps(), { bytes, filename, source: "upload" }));
     } catch (e) { fail(res, e); }
@@ -164,11 +197,44 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
   app.post("/api/payables/invoices/:id/supplier-request", (req, res) => {
     try { res.json(requestPayeeAddForInvoice(db, String(req.params.id), "human")); } catch (e) { fail(res, e); }
   });
+  app.post("/api/payables/suppliers/:addId/verify-code", (req, res) => {
+    const addId = String(req.params.addId);
+    const add = db.prepare("SELECT vendor, status FROM payee_adds WHERE add_id = ?").get(addId) as { vendor: string; status: string } | undefined;
+    if (!add) { res.status(404).json({ error: `no supplier request ${addId}` }); return; }
+    if (add.status !== "REQUESTED") { res.status(409).json({ error: `${addId} is ${add.status.toLowerCase()}, not waiting for a verification` }); return; }
+    const code = issueCode(`verify:${addId}`);
+    notify(`Payables: the verification code for ${addId} (${add.vendor}) is ${code}. Type it on the page with the last four characters of the IBAN you checked with the supplier. It works once, for 10 minutes.`);
+    res.json({ ok: true, shown: "in the terminal that runs this page" });
+  });
   app.post("/api/payables/suppliers/:addId/verify", express.json({ limit: "10kb" }), (req, res) => {
     try {
-      const b = (req.body ?? {}) as { by?: unknown; how?: unknown; street?: unknown; city?: unknown; postcode?: unknown };
+      const b = (req.body ?? {}) as { by?: unknown; how?: unknown; street?: unknown; city?: unknown; postcode?: unknown; code?: unknown; iban_last4?: unknown };
       const s = (v: unknown) => (typeof v === "string" ? v : "");
-      res.json(recordPayeeAddVerification(db, String(req.params.addId), { by: s(b.by), how: s(b.how), actor: "human", address: { street: s(b.street), city: s(b.city), postcode: s(b.postcode) } }));
+      const addId = String(req.params.addId);
+      // The person proves they are at this terminal (the code) and read the bank details back (the IBAN's last four).
+      const add = db.prepare("SELECT iban FROM payee_adds WHERE add_id = ?").get(addId) as { iban: string } | undefined;
+      takeCode(`verify:${addId}`, b.code, () => !!add && s(b.iban_last4).replace(/\s+/g, "").toUpperCase() === add.iban.replace(/\s+/g, "").toUpperCase().slice(-4),
+        "the last four characters of the IBAN are not those of this request: check the bank details with the supplier again");
+      res.json(recordPayeeAddVerification(db, addId, { by: s(b.by), how: s(b.how), actor: "human", address: { street: s(b.street), city: s(b.city), postcode: s(b.postcode) } }));
+    } catch (e) { fail(res, e); }
+  });
+  // "Not a duplicate": the same supplier and total as an earlier invoice under another number (monthly rent). A person
+  // at this terminal clears it once; a match on the invoice number itself is never cleared (clearPossibleDuplicate).
+  app.post("/api/payables/invoices/:id/not-duplicate-code", (req, res) => {
+    const id = String(req.params.id);
+    const inv = apInvoice(db, id);
+    if (!inv) { res.status(404).json({ error: `no payables invoice ${id}` }); return; }
+    const code = issueCode(`dup:${id}`);
+    notify(`Payables: the code to clear ${id} (${inv.vendor} ${inv.invoice_no}, ${inv.currency} ${inv.total}) as not a duplicate is ${code}. It works once, for 10 minutes.`);
+    res.json({ ok: true, shown: "in the terminal that runs this page" });
+  });
+  app.post("/api/payables/invoices/:id/not-duplicate", express.json({ limit: "10kb" }), async (req, res) => {
+    try {
+      const b = (req.body ?? {}) as { by?: unknown; note?: unknown; code?: unknown };
+      const s = (v: unknown) => (typeof v === "string" ? v : "");
+      const id = String(req.params.id);
+      takeCode(`dup:${id}`, b.code, () => true, "");
+      res.json(await clearPossibleDuplicate(db, opts.inbox, id, { by: s(b.by), note: s(b.note), actor: "human" }));
     } catch (e) { fail(res, e); }
   });
   app.post("/api/payables/suppliers/:addId/propose", (req, res) => {

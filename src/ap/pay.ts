@@ -13,6 +13,7 @@ import { pdfText } from "./pdfText.js";
 import type { Asker } from "./read.js";
 import { writeReviewNote } from "./review.js";
 import { ledgerInvoiceNo } from "./ledgerKey.js";
+import { totalLine, totalLineCurrency } from "./reading.js";
 import { apInvoice, apInvoices, setStatus, type ApInvoiceRow, type Finding } from "./store.js";
 
 export async function payApInvoice(db: DB, rail: AirwallexRail, id: string, now = new Date(), reader?: Asker): Promise<InvoiceOutcome> {
@@ -29,7 +30,7 @@ export async function payApInvoice(db: DB, rail: AirwallexRail, id: string, now 
   const out = await proposeInvoicePayment(db, rail, {
     invoice_no: ledgerInvoiceNo(r.invoice_no, r.vendor), vendor: r.vendor, amount: r.total, currency: r.currency, due_date: r.due_date || now.toISOString().slice(0, 10),
     iban: r.iban, bic: r.bic, reference: r.reference || r.invoice_no,
-  }, text, now);
+  }, text, now, "MIN_15", { total_line: totalLine(text), currency: totalLineCurrency(text) });
   if (out.kind === "proposed") {
     setStatus(db, id, "waiting_cfo", "treasury", { proposal_id: out.proposal.proposal_id, reason: "payment filed for the CFO's Face ID" }, now);
     // Opus's advisory note goes with the proposal the CFO sees (its explanation; never part of the signed terms).

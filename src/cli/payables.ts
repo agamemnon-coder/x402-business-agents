@@ -7,15 +7,20 @@
 // npm run payables -- supplier-request <id>                  ask for the new supplier of an invoice waiting for one
 // npm run payables -- supplier-verify <N-id> --by <name> --how "<who you called, on which number from your records>"
 //                                       --street <street> --city <city> --postcode <postcode>
+//                                       (asks you to type the IBAN's last four characters back, in this terminal)
 // npm run payables -- supplier-propose <N-id>                the new supplier goes to the CFO (Face ID)
+// npm run payables -- not-duplicate <id> --by <name> --note "<why it is a new invoice>"
+//                                       an invoice with the same supplier and total as an earlier one (monthly rent) is
+//                                       new: asks you to type its total back, in this terminal; recorded in the audit log
 // npm run payables -- export journal|invoices [--out <file>]
 // Test money only: the Airwallex sandbox. Every payment and every new supplier needs the CFO's Face ID.
 
 import { readFileSync, writeFileSync } from "node:fs";
+import { createInterface } from "node:readline/promises";
 import { basename } from "node:path";
 import { airwallexFromEnv } from "../airwallex/adapter.js";
 import { apJournal, invoicesCsv, journalCsv, payablesSink } from "../ap/books.js";
-import { ingestDocument, recheck, type InboxDeps, type IngestResult } from "../ap/inbox.js";
+import { clearPossibleDuplicate, ingestDocument, recheck, type InboxDeps, type IngestResult } from "../ap/inbox.js";
 import { insights } from "../ap/insights.js";
 import { payApInvoice, syncPayments } from "../ap/pay.js";
 import { apInvoice, apInvoices } from "../ap/store.js";
@@ -34,6 +39,21 @@ const deps: InboxDeps = { dir, reader: new ClaudeReader(db), sink: payablesSink(
 const line = (r: IngestResult): string => r.kind === "invoice"
   ? `${r.invoice.id}  ${r.invoice.status.replace(/_/g, " ").padEnd(13)} ${r.invoice.vendor} ${r.invoice.invoice_no} ${r.invoice.currency} ${r.invoice.total}`
   : r.kind === "duplicate_document" ? `already filed (${r.invoice_id ?? r.sha256.slice(0, 12)})` : r.results.map(line).join("\n") || "an e-mail with no PDF attached";
+
+/**
+ * A person at this terminal types the expected text back (red team round 2: a step that says "a person did this" is
+ * not done by a script). Refused without a terminal.
+ */
+async function typedBack(question: string, expected: string): Promise<void> {
+  if (!process.stdin.isTTY) throw new Error("this step is for a person at a terminal: run it in an interactive terminal");
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const answer = (await rl.question(question)).replace(/\s+/g, "").toUpperCase();
+    if (answer !== expected.replace(/\s+/g, "").toUpperCase()) throw new Error("that is not it; nothing was recorded");
+  } finally {
+    rl.close();
+  }
+}
 
 async function main(): Promise<void> {
   const cmd = args[0] ?? "serve";
@@ -81,6 +101,9 @@ async function main(): Promise<void> {
     const r = requestPayeeAddForInvoice(db, args[1] ?? "", "human");
     console.log(`${r.add_id}: ${r.vendor}, account ending ${r.iban.slice(-4)}. Now call the supplier on a number from your own records, then: npm run payables -- supplier-verify ${r.add_id} --by ... --how ... --street ... --city ... --postcode ...`);
   } else if (cmd === "supplier-verify") {
+    const add = db.prepare("SELECT vendor, iban FROM payee_adds WHERE add_id = ?").get(args[1] ?? "") as { vendor: string; iban: string } | undefined;
+    if (!add) throw new Error(`no supplier request ${args[1]}`);
+    await typedBack(`Type the last four characters of the IBAN you checked with ${add.vendor}: `, add.iban.slice(-4));
     const r = recordPayeeAddVerification(db, args[1] ?? "", {
       by: flag("--by") ?? "", how: flag("--how") ?? "", actor: "human",
       address: { street: flag("--street") ?? "", city: flag("--city") ?? "", postcode: flag("--postcode") ?? "" },
@@ -89,6 +112,13 @@ async function main(): Promise<void> {
   } else if (cmd === "supplier-propose") {
     const p = proposePayeeAdd(db, args[1] ?? "", "human");
     console.log(`${p.proposal_id}: the new supplier waits for the CFO's Face ID on the phone`);
+  } else if (cmd === "not-duplicate") {
+    const i = apInvoice(db, args[1] ?? "");
+    if (!i) throw new Error(`no payables invoice ${args[1]}`);
+    for (const f of i.findings.filter((x) => x.code === "possible_duplicate")) console.log(`${i.id}: ${f.detail}`);
+    await typedBack(`Type the total of ${i.id} (${i.vendor} ${i.invoice_no}) to confirm it is a new invoice: `, i.total);
+    const next = await clearPossibleDuplicate(db, deps, i.id, { by: flag("--by") ?? "", note: flag("--note") ?? "", actor: "human" });
+    console.log(`${next.id}  ${next.status.replace(/_/g, " ")}`);
   } else if (cmd === "export") {
     const what = args[1] ?? "journal";
     const csv = what === "invoices" ? invoicesCsv(apInvoices(db)) : journalCsv(apJournal(db));
