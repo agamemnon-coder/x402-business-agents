@@ -68,7 +68,7 @@ export class OneDriveSink implements VaultSink {
 
   private async put(path: string, bytes: Buffer, mime: string): Promise<void> {
     const parent = await this.folderId(path.split("/").slice(0, -1).join("/"));
-    await this.call(`${this.base}/items/${encodeURIComponent(parent)}:/${encodeURIComponent(path.split("/").pop()!)}:/content`, { method: "PUT", headers: { "Content-Type": mime }, body: bytes });
+    await this.call(`${this.base}/items/${encodeURIComponent(parent)}:/${encodeURIComponent(path.split("/").pop()!)}:/content`, { method: "PUT", headers: { "Content-Type": mime }, body: new Uint8Array(bytes) });
   }
 
   async create(path: string, bytes: Buffer, _sha256: string, mime = "application/pdf"): Promise<void> {

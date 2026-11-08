@@ -65,7 +65,7 @@ export class FakeDrive {
     const get = /^\/drive\/v3\/files\/([^/]+)$/.exec(url.pathname);
     if (method === "GET" && get && url.searchParams.get("alt") === "media") {
       const f = this.files.get(decodeURIComponent(get[1]!));
-      return f ? new Response(f.content, { status: 200 }) : json(404, {});
+      return f ? new Response(new Uint8Array(f.content), { status: 200 }) : json(404, {});
     }
     return json(400, { error: `unexpected ${method} ${url.pathname}` });
   };
@@ -122,7 +122,7 @@ export class FakeGraph {
       const i = this.items.get(decodeURIComponent(content[1]!));
       if (!i) return json(404, {});
       if (method === "PUT") { i.content = Buffer.from(String(init.body)); return json(200, this.view(i)); }
-      return new Response(i.content, { status: 200 });
+      return new Response(new Uint8Array(i.content), { status: 200 });
     }
     return json(400, { error: `unexpected ${method} ${p}` });
   };
