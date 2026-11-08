@@ -145,6 +145,7 @@ a.row:hover { background: color-mix(in srgb, var(--accent-soft) 45%, var(--surfa
 .actions { margin-top: 18px; padding: 14px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .actions .note { color: var(--muted); font-size: 13.5px; flex: 1 1 260px; min-width: 0; }
 .actions .note b { color: var(--text); font-weight: 650; }
+.actions p:empty { display: none; }
 .rejectbox { margin-top: 10px; padding: 14px 16px; display: none; gap: 10px; flex-direction: column; }
 .rejectbox.open { display: flex; }
 .rejectbox textarea { font: inherit; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text); min-height: 72px; resize: vertical; }
