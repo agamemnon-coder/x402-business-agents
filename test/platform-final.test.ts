@@ -10,7 +10,11 @@ import { payApInvoice, syncPayments } from "../src/ap/pay.js";
 import type { Asker } from "../src/ap/read.js";
 import { readDocument } from "../src/ap/read.js";
 import { parseApFallback, readingCheck, totalAmbiguity, totalLine } from "../src/ap/reading.js";
-import { validateVendor, type Vendor } from "../src/erp/model.js";
+import { staticToken } from "../src/erp/auth.js";
+import { BusinessCentralConnector, type BcConfig } from "../src/erp/businessCentral.js";
+import { RecordingTransport } from "../src/erp/connector.js";
+import { validateVendor, type Payment, type PurchaseInvoice, type Vendor } from "../src/erp/model.js";
+import { ledgerItems } from "../src/erp/source.js";
 import { dataSha, monthData, receiptData } from "../src/vault/data.js";
 import { safeSegment } from "../src/vault/layout.js";
 import { apInvoice } from "../src/ap/store.js";
@@ -28,7 +32,7 @@ import { decide } from "../src/policy/approvals.js";
 import { fourEyes, FOUR_EYES_KEY } from "../src/policy/fourEyes.js";
 import { revokePrincipal } from "../src/policy/principals.js";
 import { setSetting } from "../src/world/settings.js";
-import { DE, EN } from "./fakes/apInvoices.js";
+import { DE, EN, NL } from "./fakes/apInvoices.js";
 import { FakeAirwallex } from "./fakes/airwallex.js";
 import { TR, UK, US } from "./fakes/fxInvoices.js";
 import { pdfOf } from "./fakes/pdf.js";
@@ -307,6 +311,38 @@ describe("B2: the vault keeps to the ledger's closed periods", () => {
     lockMonth(db, paidDay.slice(0, 7), "the CFO", now);
     expect(receiptData(db, id)!.paid_at.slice(0, 10)).toBe(paidDay);
     expect(monthData(db, paidDay.slice(0, 7)).paid.map((p) => p.paid_on)).toEqual([paidDay]);
+  });
+});
+
+describe("B3: the ERP gets the supplier's own invoice, not the ledger's key", () => {
+  it("number, issue date, VAT and GL account from the inbox; a rejected invoice is not sent", async () => {
+    const bergtex = await add(EN, "bergtex.pdf");
+    await executeInvoicePayment(db, awx, awx, await approvedInbox(bergtex));
+    const zeeland = await add(NL, "zeeland.pdf");
+    await addSupplier(zeeland);
+    const pz = await filed(zeeland);
+    const invoices = () => ledgerItems(db).filter((i) => i.kind === "invoice").map((i) => i.object as PurchaseInvoice);
+    const b = invoices().find((i) => i.id === "BTX-2026-21 · Bergtex Textil GmbH")!;
+    expect(b).toMatchObject({ number: "BTX-2026-21", issueDate: "2026-11-02", dueDate: "2026-11-16" });
+    expect(b.lines[0]).toMatchObject({ glAccount: apInvoice(db, bergtex)!.gl_account, netCents: 185000, vatCents: 0, vatCode: "NONE" });
+    const z = invoices().find((i) => i.number === "ZV-4471")!;
+    expect(z.lines[0]).toMatchObject({ netCents: 40000, vatCents: 8400, vatCode: "NL21" });
+    // The payment still names the invoice by the id the ERP knows it under.
+    expect(ledgerItems(db).filter((i) => i.kind === "payment").map((i) => (i.object as Payment).invoiceId)).toEqual([b.id]);
+    // The CFO rejects Zeeland's payment: its invoice is rejected and is not sent.
+    const p = db.prepare("SELECT terms_sha256 FROM proposals WHERE proposal_id = ?").get(pz) as { terms_sha256: string };
+    decide(db, { proposalId: pz, decision: "REJECTED", typedPrefix: p.terms_sha256.slice(0, 8), approver: "cfo", method: "cli", reason: "not ours" } as never, now);
+    await syncPayments(db, { now: () => now });
+    expect(apInvoice(db, zeeland)!.status).toBe("rejected");
+    expect(invoices().map((i) => i.number)).not.toContain("ZV-4471");
+  });
+
+  it("Business Central refuses a vendor invoice number longer than its field (Code[35]) before any request", async () => {
+    const tr = new RecordingTransport(() => ({ status: 201, headers: {}, body: "{}" }));
+    const c = new BusinessCentralConnector({ tenant: "t", environment: "e", companyId: "c", localCurrency: "EUR", generalJournalId: "g", paymentJournalId: "p", vatCodes: {}, glMap: {}, postInvoices: false } as unknown as BcConfig, tr, staticToken("bc"));
+    const inv = { id: "x", vendorId: "v", number: "N".repeat(36), issueDate: "2026-11-02", dueDate: "2026-11-16", currency: "EUR", lines: [], totals: { netCents: 0, vatCents: 0, grossCents: 0 }, documentSha256: "0".repeat(64) } as unknown as PurchaseInvoice;
+    await expect(c.pushPurchaseInvoice(inv, { vendor: () => "v", invoice: () => null } as never)).rejects.toThrow(/35/);
+    expect(tr.sent).toHaveLength(0);
   });
 });
 

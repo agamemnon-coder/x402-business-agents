@@ -13,6 +13,13 @@ import { ErpError, step, type ErpAccount, type ErpConnector, type ErpVendorRow, 
 import { amount, type InvoiceLine, type JournalEntry, type ObjectKind, type Payment, type PurchaseInvoice, type VatCode, type Vendor } from "./model.js";
 import { callJson, odataString } from "./rest.js";
 
+/**
+ * Business Central's Vendor Invoice No. on the purchase header: Code[35]
+ * (https://learn.microsoft.com/en-us/dynamics365/business-central/application/base-application/table/microsoft.purchases.document.purchase-header).
+ * Line descriptions are cut at 100 characters (below).
+ */
+export const BC_VENDOR_INVOICE_NUMBER_MAX = 35;
+
 export interface BcConfig {
   /** The tenant id or domain (contoso.onmicrosoft.com). */
   tenant: string;
@@ -116,6 +123,9 @@ export class BusinessCentralConnector implements ErpConnector {
   // pricesIncludeTax is read-only on purchaseInvoice and purchaseCreditMemo in API v2.0: not sent.
   // Each request is one step (src/erp/connector.ts step): a retry resumes after the last one that succeeded.
   async pushPurchaseInvoice(inv: PurchaseInvoice, refs: RefResolver, progress?: PushProgress): Promise<string> {
+    // The purchase header's "Vendor Invoice No." is Code[35] (Microsoft Learn, table Purchase Header, checked 8 November
+    // 2026): a longer number is refused here, never cut (a cut number could name another invoice).
+    if (inv.number.length > BC_VENDOR_INVOICE_NUMBER_MAX) throw new ErpError("validation", `invoice ${inv.id}: the supplier's number has ${inv.number.length} characters; Business Central's Vendor Invoice No. holds ${BC_VENDOR_INVOICE_NUMBER_MAX}`);
     const vendorId = this.vendorOf(inv.vendorId, refs);
     const lines = inv.lines.map((l) => this.line(l));
     const head = await step(progress, "header", async () => (await this.post<{ id: string }>("purchaseInvoices", {
