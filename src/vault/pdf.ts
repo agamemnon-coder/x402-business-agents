@@ -78,6 +78,30 @@ export const ACCOUNT_NAMES_NL: Readonly<Record<string, string>> = {
   "6800": "Bank- en overboekingskosten", "6900": "Overige inkoopfacturen", "8000": "Kostprijs van de omzet",
 };
 
+/** Why an invoice is blocked, in Dutch, by the finding's code (the code's own words stay the English; red team S7). */
+export const BLOCK_REASONS_NL: Readonly<Record<string, string>> = {
+  iban_invalid: "het IBAN klopt niet (controlegetal): een typefout of een vervalst nummer; er wordt niets op betaald",
+  bank_details_invalid: "de bankgegevens zijn ongeldig; er wordt niets op betaald",
+  sum_mismatch: "subtotaal plus btw is niet het totaal",
+  duplicate: "dezelfde factuur staat al in de administratie; een tweede exemplaar wordt nooit betaald",
+  payee_blocked: "deze leverancier is geblokkeerd in het CFO-beleid",
+  bank_details_changed: "de factuur vraagt om betaling op een andere rekening dan bekend",
+  lookalike_vendor: "de naam lijkt op die van een bekende leverancier, maar is het niet",
+  mixed_scripts: "de naam van de leverancier bevat letters uit een ander alfabet",
+  account_name_mismatch: "de rekeninghouder is niet de leverancier",
+  unknown_vendor: "de leverancier is niet bekend",
+};
+
+/** A blocked invoice's reason in the PDF's language: Dutch from its code where Purser has the words, else the code's English. */
+export function blockedReason(f: { code: string; detail: string; signals: string[] }, lang: Lang): string {
+  if (lang !== "nl") return f.detail;
+  if (f.code === "possible_fraud") {
+    const why = f.signals.map((c) => BLOCK_REASONS_NL[c]).filter(Boolean);
+    return `mogelijke factuurfraude: ${why.length ? why.join("; ") : "de factuur wijkt af van wat over deze leverancier bekend is"}; er wordt niets betaald tot iemand de leverancier belt op een nummer dat al bekend is`;
+  }
+  return BLOCK_REASONS_NL[f.code] ?? f.detail;
+}
+
 export function accountName(account: string, name: string, lang: Lang): string {
   return lang === "nl" ? ACCOUNT_NAMES_NL[account] ?? name : name;
 }
@@ -216,7 +240,7 @@ export function monthReportPdf(company: string, m: MonthData, lang: Lang = "nl")
     section(doc, t.open);
     table(doc, [t.supplier, t.invoice, t.dueDate, t.status, t.amount], m.open.map((o) => [o.vendor, o.invoice_no, o.due_date || t.none, t.apStatus[o.status] ?? o.status.replace(/_/g, " "), money(o.amount, lang)]), [150, 95, 75, 75, 100], [4], lang);
     section(doc, t.blocked);
-    table(doc, [t.supplier, t.invoice, t.amount, t.reasons], m.blocked.map((b) => [b.vendor, b.invoice_no, money(b.amount, lang), b.reasons.join("; ")]), [110, 85, 90, 210], [2], lang);
+    table(doc, [t.supplier, t.invoice, t.amount, t.reasons], m.blocked.map((b) => [b.vendor, b.invoice_no, money(b.amount, lang), (b.why ?? b.reasons.map((detail) => ({ code: "", detail, signals: [] }))).map((f) => blockedReason(f, lang)).join("; ")]), [110, 85, 90, 210], [2], lang);
     section(doc, t.spend);
     table(doc, [t.supplier, t.count, t.amount], m.spend.map((s) => [s.vendor, String(s.count), formatMoney(s.currency, s.total, lang)]), [255, 80, 160], [1, 2], lang);
     section(doc, `${t.fees} · ${t.fxTitle}`);
@@ -254,7 +278,7 @@ export function yearReportPdf(company: string, y: YearData, lang: Lang = "nl"): 
         [t.openResult, formatMoney(b.currency, b.result, lang)], ["", b.balanced ? t.balanced : t.notBalanced]]);
     }
     section(doc, t.trial);
-    table(doc, [t.account, "", t.currency, t.debit, t.credit, t.saldo], y.trial.map((r) => [r.account, r.name, r.currency, formatMoney("", r.debit, lang), formatMoney("", r.credit, lang), formatMoney("", r.balance, lang)]),
+    table(doc, [t.account, "", t.currency, t.debit, t.credit, t.saldo], y.trial.map((r) => [r.account, accountName(r.account, r.name, lang), r.currency, formatMoney("", r.debit, lang), formatMoney("", r.credit, lang), formatMoney("", r.balance, lang)]),
       [45, 170, 45, 75, 75, 85], [3, 4, 5], lang);
     footer(doc, lang);
   });

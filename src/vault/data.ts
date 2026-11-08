@@ -141,7 +141,7 @@ export interface MonthData {
   received: Amounts[];
   paid: { vendor: string; invoice_no: string; amount: string; paid_on: string }[];
   open: { vendor: string; invoice_no: string; amount: string; due_date: string; status: string }[];
-  blocked: { vendor: string; invoice_no: string; amount: string; reasons: string[] }[];
+  blocked: { vendor: string; invoice_no: string; amount: string; reasons: string[]; why?: { code: string; detail: string; signals: string[] }[] }[];
   spend: { vendor: string; currency: string; total: string; count: number }[];
   fees: Amounts[];
   fx: { conversions: number; bought: Amounts[]; sold: Amounts[] };
@@ -208,7 +208,8 @@ export function monthData(db: DB, month: string): MonthData {
     received: byCur(received),
     paid: paid.map((i) => ({ vendor: i.vendor, invoice_no: i.invoice_no, amount: `${i.currency} ${i.total}`, paid_on: paidOn.get(i.id)! })),
     open: open.map((i) => ({ vendor: i.vendor, invoice_no: i.invoice_no, amount: `${i.currency} ${i.total}`, due_date: i.due_date, status: atEnd.get(i.id)! })),
-    blocked: blocked.map((i) => ({ vendor: i.vendor, invoice_no: i.invoice_no, amount: `${i.currency} ${i.total}`, reasons: i.findings.filter((f) => f.level === "block").map((f) => f.detail) })),
+    blocked: blocked.map((i) => ({ vendor: i.vendor, invoice_no: i.invoice_no, amount: `${i.currency} ${i.total}`, reasons: i.findings.filter((f) => f.level === "block").map((f) => f.detail),
+      why: i.findings.filter((f) => f.level === "block").map((f) => ({ code: f.code, detail: f.detail, signals: (f.signals ?? []).map((x) => x.code) })) })),
     spend: [...spend.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([k, x]) => { const [vendor, currency] = k.split("\u0000") as [string, string]; return { vendor, currency, total: fromCents(x.cents), count: x.count }; }),
     fees: byCur(fees),
     fx: { conversions: bought.length, bought: byCur(bought), sold: byCur(sold) },

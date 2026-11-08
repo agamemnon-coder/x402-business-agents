@@ -4,7 +4,7 @@ import { rmSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { pdfText } from "../src/ap/pdfText.js";
 import { monthData, receiptData, suppliersData, vatData, yearData } from "../src/vault/data.js";
-import { formatMoney, monthReportPdf, receiptPdf, suppliersPdf, vatPdf, yearReportPdf } from "../src/vault/pdf.js";
+import { blockedReason, formatMoney, monthReportPdf, receiptPdf, suppliersPdf, vatPdf, yearReportPdf } from "../src/vault/pdf.js";
 import { vaultWorld, type VaultWorld } from "./fakes/vaultWorld.js";
 
 let w: VaultWorld;
@@ -73,5 +73,17 @@ describe("generated PDFs", () => {
     const { text } = await pdfText(await receiptPdf("Northwind Outdoor", receiptData(w.db, w.paidId)!, "en"));
     expect(text).toContain("Payment receipt");
     expect(text).toContain("Test money (Airwallex sandbox)");
+  });
+});
+
+describe("a blocked invoice's reason in the Dutch PDFs", () => {
+  const fraud = { code: "possible_fraud", detail: "possible invoice fraud: the invoice asks for IBAN …4780 (DE); on file: IBAN …3000. Nothing is paid until a person checks", signals: ["bank_details_changed"] };
+  it("reads in Dutch from the finding's code, the fraud signals included", () => {
+    expect(blockedReason(fraud, "nl")).toBe("mogelijke factuurfraude: de factuur vraagt om betaling op een andere rekening dan bekend; er wordt niets betaald tot iemand de leverancier belt op een nummer dat al bekend is");
+    expect(blockedReason({ code: "iban_invalid", detail: "x", signals: [] }, "nl")).toMatch(/^het IBAN klopt niet/);
+  });
+  it("keeps the code's own English, and the English for a code without Dutch words", () => {
+    expect(blockedReason(fraud, "en")).toBe(fraud.detail);
+    expect(blockedReason({ code: "something_new", detail: "a new reason", signals: [] }, "nl")).toBe("a new reason");
   });
 });
