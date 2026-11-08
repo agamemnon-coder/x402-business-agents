@@ -82,13 +82,24 @@ rule cites the Airwallex guide it comes from in `src/payouts/routes.ts`.
   shortfall plus the fee reserve is bought from the funding currency (`payout.funding_currency`, EUR by default), on a
   locked quote no dearer than the market's rate plus the existing markup cap, and only from money above the funding
   currency's floor and commitments. Each currency's floor is `floor.<CUR>` (EUR and USD keep `eur_floor` and
-  `usd_floor`); each method's fee reserve is `fee_reserve.<LOCAL|SWIFT>.<CUR>`.
+  `usd_floor`); each method's fee reserve is `fee_reserve.<LOCAL|SWIFT>.<CUR>`. All three are rules in the CFO's policy
+  (`src/policy/rules.ts`): shown with the policy for the currencies in use, bounded (a floor from 0 up; a fee reserve at
+  most ten times the SWIFT default in that currency; the funding currency one Purser pays), and changed only through an
+  approved `policy_change` (Face ID). Lowering a floor or a fee reserve, or changing the funding currency, loosens the
+  policy, so the phone cannot do it alone.
+- **Per-payout limits** from the guides' "Maximum transaction limit" rows are checked when the payment is planned,
+  before any rate, quote or conversion: US ACH 15,000,000 USD, UK Faster Payments 1,000,000 GBP, local TRY 250,000
+  (at least 1 TRY). Local EUR (SEPA) and SWIFT state no limit. An invoice above its route's limit goes to a person.
 - **What the CFO signs** (`supplier_payment`): amount and currency, the method, the masked account, the fee reserve,
   and the conversion (sell, buy, rate, quote expiry). The executor checks the approved hash, the quote's expiry, the
   floors and the supplier again before anything moves; a lost answer from Airwallex is resolved by looking the request
   up, never by sending again.
-- The Kit 11 EUR invoice payment (`invoice_payment`) is unchanged: suppliers added before this change are paid as
-  before.
+- **Which path an EUR invoice takes:** a supplier added before this change (a Kit 11 payee, IBAN and BIC only) is paid
+  through `invoice_payment` exactly as before. An EUR invoice from a supplier added through the inbox is paid through
+  `supplier_payment`: EUR by SEPA (LOCAL) from the EUR balance. That path converts only from the funding currency, and
+  with the default funding currency (EUR) an EUR invoice is never funded from USD the way `invoice_payment` funds it:
+  when the EUR balance above its floor and commitments is short, the payment escalates to a person (add EUR, lower the
+  floor or change the funding currency with Face ID, or pay later).
 
 ## What still needs a person
 
@@ -96,8 +107,11 @@ rule cites the Airwallex guide it comes from in `src/payouts/routes.ts`.
   (adding a country is a table row plus its guide's rules and a test).
 - CNY to a Chinese account by LOCAL: Airwallex needs declarant information and the names in Chinese characters, which
   an invoice does not give. Purser pays CNY by SWIFT instead.
-- Floors and fee reserves for currencies other than EUR and USD are settings, not yet rules in the CFO's policy that
-  only change with Face ID.
+- An invoice above its route's per-payout limit (a split, or another route, is agreed with the supplier).
+- A payout whose answer was lost and that Airwallex does not list yet: its proposal fails, its invoice stays waiting
+  (never offered for payment again) and its row stays under way until a re-run of the same proposal finds it, or
+  `npm run reconcile` settles it. A conversion whose answer was lost keeps its hold on the funding currency the same
+  way.
 
 ## To confirm in the Airwallex sandbox
 
@@ -137,6 +151,22 @@ Points the documentation leaves open; each is a setting or a single line, not a 
   payment, and a rejected payment's accrual is reversed there. Supplier adds run with the configured sink.
 - **Stuck states:** a proposal that expired, was rejected, superseded or needs reapproval puts its invoice back to ready
   and closes its supplier request (`CLOSED`), so a new one may follow.
+
+### Red team of the FX payouts (8 November)
+
+- **No second payout after a lost answer.** The payout follows Kit 11's discipline (`submitTransfer`): a row with a
+  transfer id is fetched; a row Airwallex refused is closed and never sent again under its request_id; a row written
+  before is looked up strictly by request_id before anything is sent; a row is closed as refused only on its first send
+  and only for Airwallex's documented 400 refusals; a `duplicate_request` answer resolves the transfer Airwallex holds.
+  A failed proposal whose payout may be live never puts its invoice back to ready.
+- **The floor on every send.** Whenever no transfer exists yet, the floor is checked again on fresh balances, whatever
+  an earlier attempt began; the same for a conversion a re-run has to make after all.
+- **Payments at the same time.** The balances are read, judged and what the payment speaks for is held
+  (`payout_reservations`: the conversion on its way, the payout not yet written) in one step, before another payment can
+  read them; `freeCents` counts those holds. Within one process (the runner executes approvals).
+- **A new supplier once.** Before creating a beneficiary, Purser looks for one with the same name, method and account
+  details at Airwallex (an earlier create whose answer was lost) and adopts it (`payee.adopted`).
+- **The phone page** for a new supplier paid to an IBAN names the currency and method too.
 
 ## What is real, what is not in v1
 

@@ -10,6 +10,9 @@
 //   TR https://www.airwallex.com/docs/payouts/payout-network/bank-accounts/turkey.md
 //   NL https://www.airwallex.com/docs/payouts/payout-network/bank-accounts/netherlands.md
 //   DE https://www.airwallex.com/docs/payouts/payout-network/bank-accounts/germany.md
+// Per-payout limits ("Maximum transaction limit" in each guide's method table, read 8 November 2026): US ACH 15,000,000
+// USD; GB Faster Payments 1,000,000 GBP; TR local 250,000 TRY (at least 1 TRY); local EUR in GB, NL and DE and SWIFT
+// everywhere: "No limit". China's local CNY limit (4,999,999 CNY) is not used: Purser pays CNY by SWIFT.
 // Precision (two decimals; JPY has none): https://www.airwallex.com/docs/payouts/how-airwallex-payouts-work/currency-precision.md
 
 import { ibanValid } from "../ap/reading.js";
@@ -47,6 +50,9 @@ export interface Route {
   account?: RegExp;
   /** Characters the account name may use, where the guide narrows it (2-200 characters everywhere). */
   doc: string;
+  /** The guide's per-payout limits in cents of the route's currency, where it states one ("No limit" otherwise). */
+  maxCents?: number;
+  minCents?: number;
 }
 
 /** The 22 currencies every guide lists for SWIFT payouts. */
@@ -70,7 +76,7 @@ const COUNTRIES: Record<string, Country> = {
   US: {
     doc: guide("united-states"),
     // "Local ACH/Next Day ACH payout": account_number up to 17 digits, account_routing_type1 aba, 9 digits.
-    local: [{ currency: "USD", clearing: "ACH", needs: ["account_number", "routing"], routingType: "aba", account: /^\d{1,17}$/ }],
+    local: [{ currency: "USD", clearing: "ACH", needs: ["account_number", "routing"], routingType: "aba", account: /^\d{1,17}$/, maxCents: 15_000_000_00 }],
     // "SWIFT payout": account_number up to 26 alphanumeric characters, swift_code.
     swift: { needs: ["account_number", "swift_code"], account: /^[A-Z0-9]{1,26}$/ },
   },
@@ -78,7 +84,7 @@ const COUNTRIES: Record<string, Country> = {
     doc: guide("united-kingdom"),
     // "Local GBP payout": account_number 8 digits, sort_code 6 digits; or a GB IBAN when those are not given.
     local: [
-      { currency: "GBP", clearing: "FASTER_PAYMENTS", needs: ["account_number", "routing"], alt: ["iban"], routingType: "sort_code", account: /^\d{8}$/ },
+      { currency: "GBP", clearing: "FASTER_PAYMENTS", needs: ["account_number", "routing"], alt: ["iban"], routingType: "sort_code", account: /^\d{8}$/, maxCents: 1_000_000_00 },
       // "Local EUR payout": a GB IBAN.
       { currency: "EUR", needs: ["iban"] },
     ],
@@ -95,7 +101,7 @@ const COUNTRIES: Record<string, Country> = {
   TR: {
     doc: guide("turkey"),
     // "Local TRY payout" (FAST/EFT): a TR IBAN of 26 characters; at most 250,000 TRY per payout.
-    local: [{ currency: "TRY", needs: ["iban"] }],
+    local: [{ currency: "TRY", needs: ["iban"], maxCents: 250_000_00, minCents: 1_00 }],
     swift: { needs: ["iban"] },
   },
   NL: { doc: guide("netherlands"), local: [{ currency: "EUR", needs: ["iban"] }], swift: { needs: ["iban"] } },
@@ -124,6 +130,22 @@ export function chooseRoute(d: BankDetails): { ok: true; route: Route } | { ok: 
     if (l.needs.every((f) => present(d, f)) || (l.alt ?? []).every((f) => present(d, f)) && l.alt) return { ok: true, route: { ...l, country: d.country, method: "LOCAL", doc: c.doc } };
   }
   return { ok: true, route: { ...c.swift, country: d.country, currency: d.currency, method: "SWIFT", doc: c.doc } };
+}
+
+/**
+ * Why the guide's route cannot carry this amount in one payout, or null. Checked when a payment is planned, before
+ * any conversion (a payout Airwallex would refuse as amount_above_transfer_method_limit is never funded).
+ */
+export function routeLimitReason(r: { country: string; currency: string; method: Method; clearing?: string | null }, amountCents: number): string | null {
+  const c = COUNTRIES[r.country];
+  if (!c || r.method !== "LOCAL") return null;
+  const l = c.local.find((x) => x.currency === r.currency && (x.clearing ?? null) === (r.clearing ?? null));
+  if (!l) return null;
+  const on = `${r.method}${l.clearing ? ` (${l.clearing})` : ""} in ${r.country}`;
+  const amt = (cents: number) => `${r.currency} ${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (l.maxCents !== undefined && amountCents > l.maxCents) return `${amt(amountCents)} is above the most Airwallex's ${on} route carries in one payout, ${amt(l.maxCents)} (${c.doc})`;
+  if (l.minCents !== undefined && amountCents < l.minCents) return `${amt(amountCents)} is below the least Airwallex's ${on} route carries in one payout, ${amt(l.minCents)} (${c.doc})`;
+  return null;
 }
 
 /** ABA routing number checksum (weights 3, 7, 1). */

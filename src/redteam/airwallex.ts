@@ -28,6 +28,12 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
   calls: string[] = [];
   /** Lose the answer to the next transfer create (the transfer is still made). */
   loseNextTransferAnswer = false;
+  /** The next transfer create is lost on its way: Airwallex never gets it, and the answer is lost too. */
+  dropNextTransfer = false;
+  /** The next N look-ups of a transfer by request_id find nothing yet (a list that lags behind a create). */
+  transferLookupMisses = 0;
+  /** The next transfer create is refused outright with this documented code (nothing is made). */
+  refuseNextTransfer: string | null = null;
   clock = () => Date.now();
   rate = "1.0850";
   n = 0;
@@ -92,7 +98,11 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
     if (this.loseNextTransferAnswer) { this.loseNextTransferAnswer = false; throw new AirwallexAmbiguous("/transfers/create", new Error("socket hang up")); }
     return { ...tr };
   }
-  async findTransferByRequestId(requestId: string) { const t = this.transfers.find((x) => x.requestId === requestId); return t && { ...t }; }
+  async findTransferByRequestId(requestId: string) {
+    if (this.transferLookupMisses > 0) { this.transferLookupMisses--; return undefined; }
+    const t = this.transfers.find((x) => x.requestId === requestId);
+    return t && { ...t };
+  }
   async findTransferByRequestIdStrict(requestId: string) { return this.findTransferByRequestId(requestId); }
   async getTransfer(id: string) { return { ...this.transfers.find((x) => x.id === id)! }; }
   async transitionTransfer(id: string, to: "SENT" | "PAID" | "FAILED", failureType?: string): Promise<Transfer> {
@@ -111,6 +121,8 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
   payoutBeneficiaries: (NewPayoutBeneficiary & { id: string })[] = [];
   /** The next beneficiary create is refused as Airwallex's validate would refuse it. */
   refuseNextBeneficiary: string | null = null;
+  /** Lose the answer to the next beneficiary create (the beneficiary is still made). */
+  loseNextBeneficiaryAnswer = false;
   /** The stand-in's fee per method and currency, charged to the payer in the transfer's currency (no real fee data). */
   payoutFeeCents: Record<string, number> = { "SWIFT:EUR": SANDBOX_SWIFT_FEE_CENTS, "SWIFT:USD": 1500, "SWIFT:GBP": 1200, "SWIFT:CNY": 10_000, "SWIFT:TRY": 45_000 };
 
@@ -157,10 +169,21 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
     if (this.refuseNextBeneficiary) { const code = this.refuseNextBeneficiary; this.refuseNextBeneficiary = null; throw Object.assign(new Error(`validation_failed: ${code}`), { code: "validation_failed" }); }
     const ben = { ...structuredClone(b), id: `ben_${++this.n}` };
     this.payoutBeneficiaries.push(ben);
+    if (this.loseNextBeneficiaryAnswer) { this.loseNextBeneficiaryAnswer = false; throw new AirwallexAmbiguous("/beneficiaries/create", new Error("socket hang up")); }
     return { id: ben.id };
+  }
+  /** A beneficiary already at Airwallex with this name, method and these exact bank details (GET /beneficiaries). */
+  async findPayoutBeneficiary(b: NewPayoutBeneficiary): Promise<{ id: string } | undefined> {
+    this.calls.push("findPayoutBeneficiary");
+    const same = (x: NewPayoutBeneficiary) => x.name === b.name && x.method === b.method && (x.clearing ?? "") === (b.clearing ?? "")
+      && (["country", "currency", "iban", "accountNumber", "routingType", "routingValue", "swiftCode"] as const).every((k) => (x.bank[k] ?? "") === (b.bank[k] ?? ""));
+    const hit = this.payoutBeneficiaries.find(same);
+    return hit && { id: hit.id };
   }
   async createPayoutTransfer(t: NewPayoutTransfer): Promise<Transfer> {
     this.calls.push("createPayoutTransfer");
+    if (this.dropNextTransfer) { this.dropNextTransfer = false; throw new AirwallexAmbiguous("/transfers/create", new Error("socket hang up")); }
+    if (this.refuseNextTransfer) { const code = this.refuseNextTransfer; this.refuseNextTransfer = null; throw Object.assign(new Error(code), { code }); }
     if (this.transfers.some((x) => x.requestId === t.requestId)) throw Object.assign(new Error("duplicate request_id"), { code: "duplicate_request" });
     if (t.sourceCurrency !== t.currency) throw Object.assign(new Error("the stand-in pays from the same currency only"), { code: "source_currency_unsupported" });
     const ben = this.payoutBeneficiaries.find((b) => b.id === t.beneficiaryId);

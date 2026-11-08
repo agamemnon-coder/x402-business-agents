@@ -9,16 +9,16 @@ import { randomUUID } from "node:crypto";
 import type { AnyQuote, Balance, MarketRate, PayoutRail } from "../airwallex/port.js";
 import { AirwallexAmbiguous, AirwallexError } from "../airwallex/client.js";
 import { audit } from "../audit/log.js";
-import { FX_QUOTE_MAX_MARKUP_BPS, INVOICE_PROPOSAL_TTL_MS, QUOTE_SAFETY_MS, SWIFT_FEE_MAX_EUR_CENTS } from "../config/policy.js";
+import { FX_QUOTE_MAX_MARKUP_BPS, INVOICE_PROPOSAL_TTL_MS, QUOTE_SAFETY_MS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { invoiceAlreadyHandled, PROPOSAL_ID_PENDING } from "../agents/euroBill.js";
 import { createProposal, ProposalRefused, type ProposalRow } from "../policy/approvals.js";
-import { counterpartyAllowed, frozen } from "../policy/rules.js";
+import { counterpartyAllowed, feeReserveDefaultCents, frozen, policyValue } from "../policy/rules.js";
 import { proposalExpiry } from "../policy/treasury.js";
 import { getSetting } from "../world/settings.js";
-import type { Method } from "./routes.js";
+import { routeLimitReason, type Method } from "./routes.js";
 
 export interface SupplierPaymentTerms extends Terms {
   kind: "supplier_payment";
@@ -67,14 +67,18 @@ export function payoutBeneficiary(db: DB, vendor: string): (PayoutBeneficiaryRow
 
 /** The currency a shortfall is bought with (CFO policy `payout.funding_currency`; EUR for a Dutch company by default). */
 export function fundingCurrency(db: DB): string {
-  return getSetting(db, "payout.funding_currency", "EUR");
+  return policyValue(db, "payout.funding_currency") || "EUR";
 }
 
-/** A currency's reserve floor: EUR and USD keep the Kit 11 settings; any other is `floor.<CUR>`, 0.00 until set. */
+/** The policy key of a currency's reserve floor: EUR and USD keep the Kit 11 keys; any other is `floor.<CUR>`. */
+export function floorKey(currency: string): string {
+  return currency === "EUR" ? "eur_floor" : currency === "USD" ? "usd_floor" : `floor.${currency}`;
+}
+
+/** A currency's reserve floor (CFO policy, src/policy/rules.ts), 0.00 until set. */
 export function floorCents(db: DB, currency: string): number {
-  if (currency === "EUR") return toCents(getSetting(db, "eur_floor", "0.00"));
-  if (currency === "USD") return toCents(getSetting(db, "usd_floor", "0.00"));
-  return toCents(getSetting(db, `floor.${currency}`, "0.00"));
+  if (currency === "EUR" || currency === "USD") return toCents(getSetting(db, floorKey(currency) as "eur_floor" | "usd_floor", "") || "0.00");
+  return toCents(policyValue(db, floorKey(currency)) || "0.00");
 }
 
 /** EUR already committed to other bills (Kit 11's treasury setting); no other currency carries commitments yet. */
@@ -83,25 +87,28 @@ function commitmentsCents(db: DB, currency: string): number {
 }
 
 /**
- * The fee reserve per method and currency (`fee_reserve.<METHOD>.<CUR>`). The defaults are safety margins, not
- * Airwallex's prices (it does not quote a payout fee in advance): SWIFT as the Kit 11 EUR ceiling and an equivalent
- * elsewhere, LOCAL none. To confirm against the sandbox's recorded fees before going live.
+ * The fee reserve per method and currency (CFO policy `fee_reserve.<METHOD>.<CUR>`, src/policy/rules.ts). The defaults
+ * are safety margins, not Airwallex's prices (it does not quote a payout fee in advance): SWIFT as the Kit 11 EUR
+ * ceiling and an equivalent elsewhere, LOCAL none. To confirm against the sandbox's recorded fees before going live.
  */
-const SWIFT_RESERVE_DEFAULT: Record<string, number> = { EUR: SWIFT_FEE_MAX_EUR_CENTS, USD: 2500, GBP: 2000, CHF: 2500, CNY: 20_000, TRY: 100_000 };
 export function feeReserveFor(db: DB, method: Method, currency: string): number {
-  const fallback = method === "SWIFT" ? SWIFT_RESERVE_DEFAULT[currency] ?? 2500 : 0;
-  return toCents(getSetting(db, `fee_reserve.${method}.${currency}`, fromCents(fallback)));
+  return toCents(policyValue(db, `fee_reserve.${method}.${currency}`) || fromCents(feeReserveDefaultCents(method, currency)));
 }
 
-/** Payouts written in this currency but not yet at Airwallex: spoken for, though not yet out of its available balance. */
-export function inFlightCents(db: DB, currency: string, exceptRequestId?: string): number {
+/**
+ * Money in this currency spoken for but not yet out of its available balance: payouts written but not yet at Airwallex,
+ * and what executing supplier payments hold (payout_reservations: a conversion on its way, a payout not yet written).
+ * A payment's own row and holds are left out of its own checks (`exceptRequestId`, `exceptProposalId`).
+ */
+export function inFlightCents(db: DB, currency: string, exceptRequestId?: string, exceptProposalId?: string): number {
   const rows = db.prepare("SELECT amount, fee_estimate FROM transfers WHERE status = 'SUBMITTING' AND currency = ? AND request_id <> ?").all(currency, exceptRequestId ?? "") as { amount: string; fee_estimate: string }[];
-  return rows.reduce((s, r) => s + toCents(r.amount) + toCents(r.fee_estimate), 0);
+  const held = db.prepare("SELECT COALESCE(SUM(cents), 0) AS c FROM payout_reservations WHERE status = 'HELD' AND currency = ? AND proposal_id <> ?").get(currency, exceptProposalId ?? "") as { c: number };
+  return rows.reduce((s, r) => s + toCents(r.amount) + toCents(r.fee_estimate), 0) + held.c;
 }
 
-/** What this currency can still pay: available, less its floor, commitments and payouts under way. */
-export function freeCents(db: DB, balances: Record<string, Balance>, currency: string, exceptRequestId?: string): number {
-  return (balances[currency]?.availableCents ?? 0) - floorCents(db, currency) - commitmentsCents(db, currency) - inFlightCents(db, currency, exceptRequestId);
+/** What this currency can still pay: available, less its floor, commitments and money under way. */
+export function freeCents(db: DB, balances: Record<string, Balance>, currency: string, exceptRequestId?: string, exceptProposalId?: string): number {
+  return (balances[currency]?.availableCents ?? 0) - floorCents(db, currency) - commitmentsCents(db, currency) - inFlightCents(db, currency, exceptRequestId, exceptProposalId);
 }
 
 export interface SupplierInvoice {
@@ -132,6 +139,9 @@ export async function proposeSupplierPayment(db: DB, rail: PayoutRail, inv: Supp
   const amount = toCents(inv.amount);
   if (!Number.isSafeInteger(amount) || amount <= 0) return escalate(`the amount ${inv.amount} is not a payable amount`);
   const method = ben.details.method;
+  // The route's own per-payout limit (Airwallex's payout guide), before anything is quoted or converted.
+  const limit = routeLimitReason({ country: ben.details.country, currency: inv.currency, method, clearing: ben.details.clearing }, amount);
+  if (limit) return escalate(`${limit}: Airwallex would refuse it, so nothing is converted or paid; a person agrees a split with ${inv.vendor} or pays it another way`);
   const reserve = feeReserveFor(db, method, inv.currency);
   db.prepare("INSERT OR IGNORE INTO invoices (invoice_no, vendor, amount, currency, due_date, iban_sha256, bic, beneficiary_id, doc_sha256, extracted_json, status) VALUES (?, ?, ?, ?, ?, ?, '', ?, ?, ?, 'RECEIVED')")
     .run(inv.invoice_no, inv.vendor, inv.amount, inv.currency, inv.due_date, ben.details.account_key_sha256, ben.beneficiary_id, sha256Hex(documentText), JSON.stringify(inv));
@@ -151,7 +161,7 @@ export async function proposeSupplierPayment(db: DB, rail: PayoutRail, inv: Supp
 
   let quote: AnyQuote | null = null;
   if (free < need) {
-    if (funding === cur) return escalate(`${cur} ${fromCents(need)} is needed (fee reserve included) and ${fromCents(free)} is free; the funding currency is ${cur} itself, so nothing can be converted. Add funds, or pay later`);
+    if (funding === cur) return escalate(`${cur} ${fromCents(need)} is needed (fee reserve included) and ${fromCents(free)} is free; the funding currency is ${cur} itself, so nothing can be converted. Add funds, change the funding currency (policy payout.funding_currency) with Face ID, or pay later`);
     const buy = need - free;
     let market: MarketRate;
     try {
@@ -171,7 +181,7 @@ export async function proposeSupplierPayment(db: DB, rail: PayoutRail, inv: Supp
     }
     const fundingFree = freeCents(db, balances, funding);
     if (fundingFree - quote.sellAmountCents < 0) {
-      return escalate(`buying ${cur} ${fromCents(buy)} costs ${funding} ${fromCents(quote.sellAmountCents)}, and ${funding} has ${fromCents(Math.max(0, fundingFree))} free above its floor and commitments; options: add ${funding}, lower its floor with Face ID, or pay later`, { quote_id: quote.quoteId });
+      return escalate(`buying ${cur} ${fromCents(buy)} costs ${funding} ${fromCents(quote.sellAmountCents)}, and ${funding} has ${fromCents(Math.max(0, fundingFree))} free above its floor and commitments; options: add ${funding}, lower its floor (policy ${floorKey(funding)}) with Face ID, or pay later`, { quote_id: quote.quoteId });
     }
     db.prepare("INSERT OR IGNORE INTO fx_quotes (quote_id, pair, buy_amount, sell_amount, client_rate, valid_from, valid_to) VALUES (?, ?, ?, ?, ?, ?, ?)")
       .run(quote.quoteId, `${funding}/${cur}`, fromCents(quote.buyAmountCents), fromCents(quote.sellAmountCents), quote.clientRate, quote.validFrom, quote.validTo);

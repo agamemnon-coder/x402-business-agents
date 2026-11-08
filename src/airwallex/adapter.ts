@@ -276,6 +276,28 @@ export class AirwallexRest implements AirwallexRail, SandboxSim, PayoutRail {
     return { id: r.id };
   }
 
+  /**
+   * GET /beneficiaries, every page: the one with this company name, transfer method and exactly these bank details
+   * (an earlier create whose answer was lost), so a re-run adopts it instead of creating a second.
+   */
+  async findPayoutBeneficiary(b: NewPayoutBeneficiary): Promise<{ id: string } | undefined> {
+    type B = { id: string; transfer_methods?: string[]; beneficiary: { company_name?: string; bank_details?: Record<string, string | undefined> } };
+    const norm = (v: string | undefined) => (v ?? "").replace(/\s+/g, "").toUpperCase();
+    const k = b.bank;
+    // The account itself, as sent to /beneficiaries/create (the clearing system is not compared: the method is).
+    const want: Record<string, string | undefined> = {
+      bank_country_code: k.country, account_currency: k.currency, iban: k.iban, account_number: k.accountNumber,
+      account_routing_value1: k.routingType && k.routingValue ? k.routingValue : undefined, swift_code: k.swiftCode,
+    };
+    for (let page = 0; ; page++) {
+      const r = await this.api.call<{ has_more: boolean; items: B[] }>("GET", "/beneficiaries", undefined, { page_num: String(page), page_size: "100" });
+      const hit = r.items.find((x) => x.beneficiary.company_name === b.name && (x.transfer_methods ?? []).includes(b.method)
+        && Object.entries(want).every(([key, v]) => norm(x.beneficiary.bank_details?.[key]) === norm(v)));
+      if (hit) return { id: hit.id };
+      if (!r.has_more) return undefined;
+    }
+  }
+
   /** POST /transfers/create (create-a-transfer.md: transfer_method LOCAL or SWIFT, transfer_currency, source_currency). */
   async createPayoutTransfer(t: NewPayoutTransfer): Promise<Transfer> {
     const r = await this.api.call<AwxTransfer>("POST", "/transfers/create", {

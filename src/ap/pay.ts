@@ -58,8 +58,13 @@ export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: Book
   expireDue(db, now);
   const changed: ApInvoiceRow[] = [];
   for (const inv of apInvoices(db, { status: "waiting_cfo" })) {
-    const p = inv.proposal_id ? db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(inv.proposal_id) as { status: string } | undefined : undefined;
+    const p = inv.proposal_id ? db.prepare("SELECT status, json_extract(terms_json, '$.transfer_request_id') AS request_id FROM proposals WHERE proposal_id = ?").get(inv.proposal_id) as { status: string; request_id: string | null } | undefined : undefined;
     if (!p) continue;
+    // A proposal that failed with its payout still open at Airwallex (a lost answer, not resolved yet) or already paid
+    // is not over: the invoice is never offered for payment again while that payout may be live (red team, 8 November).
+    const payout = p.request_id ? db.prepare("SELECT status FROM transfers WHERE request_id = ?").get(p.request_id) as { status: string } | undefined : undefined;
+    if (p.status !== "EXECUTED" && payout && payout.status !== "CANCELLED" && payout.status !== "PAID") continue;
+    if (p.status !== "EXECUTED" && payout?.status === "PAID") p.status = "EXECUTED";
     if (p.status === "REJECTED") {
       const next = setStatus(db, inv.id, "rejected", "human", { reason: `the CFO rejected ${inv.proposal_id}` }, now);
       // The accrual a sink already holds is taken back there, so the payable is closed in the books too.

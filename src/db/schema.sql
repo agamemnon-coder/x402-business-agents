@@ -340,6 +340,18 @@ CREATE TABLE IF NOT EXISTS transfers (
 -- Only one live payout per invoice can exist at any moment.
 CREATE UNIQUE INDEX IF NOT EXISTS one_live_transfer_per_invoice ON transfers(invoice_no) WHERE status NOT IN ('CANCELLED');
 
+-- Supplier payouts (src/executors/supplierPayment.ts): money an approved payment has spoken for that Airwallex's
+-- balances do not show yet (a conversion on its way, a payout not yet written). Counted by freeCents
+-- (src/payouts/plan.ts), so two payments executed at once cannot both take a currency under its floor.
+CREATE TABLE IF NOT EXISTS payout_reservations (
+  key TEXT PRIMARY KEY,
+  proposal_id TEXT NOT NULL,
+  currency TEXT NOT NULL,
+  cents INTEGER NOT NULL CHECK (cents >= 0),
+  status TEXT NOT NULL CHECK (status IN ('HELD', 'RELEASED')),
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS balance_snapshots (
   id INTEGER PRIMARY KEY,
   taken_at TEXT NOT NULL,

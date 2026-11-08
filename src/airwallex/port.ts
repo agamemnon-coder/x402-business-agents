@@ -177,6 +177,8 @@ export interface PayoutRail {
   createConversionAny(a: { requestId: string; quote: AnyQuote; approvalSha256: string }): Promise<Conversion>;
   findConversionByRequestId(requestId: string): Promise<Conversion | undefined>;
   createPayoutBeneficiary(b: NewPayoutBeneficiary): Promise<{ id: string }>;
+  /** A beneficiary Airwallex already holds with this name, method and exactly these bank details (GET /beneficiaries). */
+  findPayoutBeneficiary(b: NewPayoutBeneficiary): Promise<{ id: string } | undefined>;
   createPayoutTransfer(t: NewPayoutTransfer): Promise<Transfer>;
   findTransferByRequestIdStrict(requestId: string): Promise<Transfer | undefined>;
   getTransfer(id: string): Promise<Transfer>;

@@ -211,18 +211,22 @@ export async function executePayeeAdd(db: DB, rail: PayoutRail, proposalId: stri
     finishExecution(db, proposalId, "FAILED", { error }, now);
     throw new Error(`${error}; nothing was added`);
   }
+  const wanted = {
+    name: t.vendor, method: bank.method, ...(bank.clearing ? { clearing: bank.clearing } : {}),
+    address: { ...t.address, countryCode: bank.country },
+    bank: {
+      country: bank.country, currency: bank.currency, accountName: bank.accountName,
+      ...(bank.iban ? { iban: bank.iban } : {}), ...(bank.accountNumber ? { accountNumber: bank.accountNumber } : {}),
+      ...(bank.routingType && bank.routingValue ? { routingType: bank.routingType, routingValue: bank.routingValue } : {}),
+      ...(bank.swiftCode ? { swiftCode: bank.swiftCode } : {}),
+    },
+  };
   let ben: { id: string };
   try {
-    ben = await rail.createPayoutBeneficiary({
-      name: t.vendor, method: bank.method, ...(bank.clearing ? { clearing: bank.clearing } : {}),
-      address: { ...t.address, countryCode: bank.country },
-      bank: {
-        country: bank.country, currency: bank.currency, accountName: bank.accountName,
-        ...(bank.iban ? { iban: bank.iban } : {}), ...(bank.accountNumber ? { accountNumber: bank.accountNumber } : {}),
-        ...(bank.routingType && bank.routingValue ? { routingType: bank.routingType, routingValue: bank.routingValue } : {}),
-        ...(bank.swiftCode ? { swiftCode: bank.swiftCode } : {}),
-      },
-    });
+    // An earlier create whose answer was lost may have made it: that beneficiary is adopted, never a second one made.
+    const found = await rail.findPayoutBeneficiary(wanted);
+    if (found) audit(db, "awx-executor", "payee.adopted", t.add_id, { vendor: t.vendor, beneficiary_id: found.id, proposal_id: proposalId }, now);
+    ben = found ?? await rail.createPayoutBeneficiary(wanted);
   } catch (e) {
     finishExecution(db, proposalId, "FAILED", { error: (e as Error).message }, now);
     throw e;
