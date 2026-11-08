@@ -12,6 +12,7 @@ import { audit } from "../audit/log.js";
 import { pdfText } from "./pdfText.js";
 import type { Asker } from "./read.js";
 import { writeReviewNote } from "./review.js";
+import { ledgerInvoiceNo } from "./ledgerKey.js";
 import { apInvoice, apInvoices, setStatus, type ApInvoiceRow, type Finding } from "./store.js";
 
 export async function payApInvoice(db: DB, rail: AirwallexRail, id: string, now = new Date(), reader?: Asker): Promise<InvoiceOutcome> {
@@ -26,7 +27,7 @@ export async function payApInvoice(db: DB, rail: AirwallexRail, id: string, now 
   const text = (await pdfText(readFileSync(doc.path))).text;
   const r = inv.reading;
   const out = await proposeInvoicePayment(db, rail, {
-    invoice_no: r.invoice_no, vendor: r.vendor, amount: r.total, currency: r.currency, due_date: r.due_date || now.toISOString().slice(0, 10),
+    invoice_no: ledgerInvoiceNo(r.invoice_no, r.vendor), vendor: r.vendor, amount: r.total, currency: r.currency, due_date: r.due_date || now.toISOString().slice(0, 10),
     iban: r.iban, bic: r.bic, reference: r.reference || r.invoice_no,
   }, text, now);
   if (out.kind === "proposed") {
@@ -54,7 +55,7 @@ export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: Book
     } else if (p.status === "EXPIRED" || p.status === "FAILED") {
       changed.push(setStatus(db, inv.id, "ready", "system", { proposal_id: null, reason: `${inv.proposal_id} ${p.status.toLowerCase()}; it can be filed again` }, now));
     } else if (p.status === "EXECUTED") {
-      const paid = db.prepare("SELECT 1 FROM transfers WHERE invoice_no = ? AND status = 'PAID'").get(inv.invoice_no);
+      const paid = db.prepare("SELECT 1 FROM transfers WHERE invoice_no = ? AND status = 'PAID'").get(ledgerInvoiceNo(inv.invoice_no, inv.vendor));
       if (!paid) continue;
       const next = setStatus(db, inv.id, "paid", "awx-executor", { paid_at: now.toISOString(), reason: `paid under ${inv.proposal_id}` }, now);
       const failed = await pushToSink(opts.sink, paymentEntries(db, next), next);

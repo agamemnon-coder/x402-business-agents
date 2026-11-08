@@ -6,6 +6,7 @@ import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { skeleton } from "../policy/fraudCore.js";
 import { bookable } from "./books.js";
+import { ledgerInvoiceNo } from "./ledgerKey.js";
 import { apInvoices, type ApInvoiceRow } from "./store.js";
 
 export interface Amounts { currency: string; total: string; count: number }
@@ -83,7 +84,7 @@ export function insights(db: DB, asOf = new Date()): Insights {
   const hours = paid.map((i) => (Date.parse(i.paid_at!) - Date.parse(i.received_at)) / 3_600_000);
 
   // What Airwallex charged for the payables it paid: the SWIFT fee on each transfer, and the FX bought for the shortfall.
-  const paidNos = new Set(paid.map((i) => i.invoice_no));
+  const paidNos = new Set(paid.map((i) => ledgerInvoiceNo(i.invoice_no, i.vendor)));
   const fees = (db.prepare("SELECT invoice_no, fee_actual FROM transfers WHERE status = 'PAID' AND fee_actual IS NOT NULL").all() as { invoice_no: string; fee_actual: string }[])
     .filter((t) => paidNos.has(t.invoice_no) && /^[A-Z]{3} \d+\.\d{2}$/.test(t.fee_actual))
     .map((t) => ({ currency: t.fee_actual.slice(0, 3), total: t.fee_actual.slice(4) }));

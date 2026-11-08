@@ -10,6 +10,7 @@ import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import type { ApInvoiceRow } from "./store.js";
 import { apInvoices } from "./store.js";
+import { ledgerInvoiceNo } from "./ledgerKey.js";
 
 export const AP_ACCOUNTS = { inputVat: "1510", payable: "2100", bank: "1200", fees: "6800" } as const;
 
@@ -61,7 +62,7 @@ export function accrualEntries(inv: ApInvoiceRow): ApEntry[] {
 
 /** The payment, from the ledger's transfer for this invoice: the claim settled from the bank, and the fee charged. */
 export function paymentEntries(db: DB, inv: ApInvoiceRow): ApEntry[] {
-  const t = db.prepare("SELECT transfer_id, amount, fee_actual, updated_at FROM transfers WHERE invoice_no = ? AND status = 'PAID' ORDER BY updated_at DESC").get(inv.invoice_no) as
+  const t = db.prepare("SELECT transfer_id, amount, fee_actual, updated_at FROM transfers WHERE invoice_no = ? AND status = 'PAID' ORDER BY updated_at DESC").get(ledgerInvoiceNo(inv.invoice_no, inv.vendor)) as
     { transfer_id: string | null; amount: string; fee_actual: string | null; updated_at: string } | undefined;
   if (!t) return [];
   const date = (inv.paid_at ?? t.updated_at).slice(0, 10);

@@ -96,7 +96,7 @@ describe("paying a ready invoice", () => {
     const out = await payApInvoice(db, awx, id, now);
     if (out.kind !== "proposed") throw new Error(out.reason);
     expect(apInvoice(db, id)).toMatchObject({ status: "waiting_cfo", proposal_id: out.proposal.proposal_id });
-    expect(JSON.parse(out.proposal.terms_json)).toMatchObject({ kind: "invoice_payment", invoice_no: "BTX-2026-21", amount: "1850.00", vendor: "Bergtex Textil GmbH" });
+    expect(JSON.parse(out.proposal.terms_json)).toMatchObject({ kind: "invoice_payment", invoice_no: "BTX-2026-21 · Bergtex Textil GmbH", amount: "1850.00", vendor: "Bergtex Textil GmbH", reference: "BTX-2026-21" });
     // Nothing moves without the approval.
     expect(awx.transfers).toHaveLength(0);
     expect(await syncPayments(db, { now: () => now })).toEqual([]);
@@ -131,6 +131,64 @@ describe("paying a ready invoice", () => {
   it("refuses an invoice that is not ready", async () => {
     const id = await add(EN.replace("VAT 19% EUR 295.38", "VAT 19% EUR 295.00"));
     await expect(payApInvoice(db, awx, id, now)).rejects.toThrow(/blocked/);
+  });
+});
+
+// Two suppliers may use the same invoice number; only the same supplier's number is the same invoice.
+const STOCKLINE_SAME_NO = `Stockline Data GmbH
+Datenallee 12, 10115 Berlin
+INVOICE BTX-2026-21
+Invoice date: 2 November 2026
+Due date: 16 November 2026
+Subtotal EUR 201.68
+VAT 19% EUR 38.32
+Total due EUR 240.00
+IBAN: DE02 1203 0000 0000 2020 51
+BIC: BYLADEM1001
+Payment reference: STK-NOV`;
+
+describe("the same invoice number from two suppliers", () => {
+  const payAndSettle = async (id: string) => {
+    const out = await payApInvoice(db, awx, id, now);
+    if (out.kind !== "proposed") throw new Error(out.reason);
+    approve(out.proposal.proposal_id);
+    await executeInvoicePayment(db, awx, awx, out.proposal.proposal_id);
+    await syncPayments(db, { now: () => now });
+    return out;
+  };
+
+  it("pays both: another supplier's number is not a duplicate, and each payment and booking finds its own transfer", async () => {
+    const bergtex = await add(EN, "bergtex.pdf");
+    await payAndSettle(bergtex);
+    expect(apInvoice(db, bergtex)!.status).toBe("paid");
+
+    const stockline = await add(STOCKLINE_SAME_NO, "stockline.pdf");
+    const inv = apInvoice(db, stockline)!;
+    expect(inv.findings.filter((f) => f.code === "duplicate")).toEqual([]);
+    expect(inv.status).toBe("ready");
+    const out = await payAndSettle(stockline);
+    // The CFO still sees the supplier's own number, with the supplier's name beside it.
+    expect(JSON.parse(out.proposal.terms_json)).toMatchObject({ invoice_no: "BTX-2026-21 · Stockline Data GmbH", vendor: "Stockline Data GmbH", amount: "240.00" });
+    expect(apInvoice(db, stockline)!.status).toBe("paid");
+    expect(awx.transfers).toHaveLength(2);
+  });
+
+  it("still blocks the same supplier's number a second time, also when it was paid outside the inbox", async () => {
+    const bergtex = await add(EN, "bergtex.pdf");
+    await payAndSettle(bergtex);
+    const again = await add(EN.replace("Payment reference: BTX-2026-21", "Payment reference: BTX-2026-21 (reminder)"), "reminder.pdf");
+    expect(apInvoice(db, again)!.status).toBe("blocked");
+    expect(apInvoice(db, again)!.findings.map((f) => f.code)).toContain("duplicate");
+  });
+
+  it("blocks a supplier's number that the Treasury flow already paid under the bare number, and only that supplier's", async () => {
+    const { proposeInvoicePayment } = await import("../src/agents/euroBill.js");
+    const out = await proposeInvoicePayment(db, awx, { invoice_no: "BTX-2026-21", vendor: "Bergtex Textil GmbH", amount: "1850.00", currency: "EUR", due_date: "2026-11-16", iban: "DE89370400440532013000", bic: "COBADEFFXXX", reference: "BTX-2026-21" }, EN, now);
+    if (out.kind !== "proposed") throw new Error(out.reason);
+    const bergtex = await add(EN, "bergtex.pdf");
+    expect(apInvoice(db, bergtex)!.findings.map((f) => f.code)).toContain("duplicate");
+    const stockline = await add(STOCKLINE_SAME_NO, "stockline.pdf");
+    expect(apInvoice(db, stockline)!.findings.filter((f) => f.code === "duplicate")).toEqual([]);
   });
 });
 

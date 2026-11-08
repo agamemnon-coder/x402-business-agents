@@ -21,8 +21,8 @@ let db: DB;
 let awx: FakeAirwallex;
 let base: string;
 let close: () => void;
-async function start(withRail: boolean) {
-  const server = payablesApp(db, { inbox: { dir, reader: parserOnly }, rail: withRail ? awx : null }).listen(0, "127.0.0.1");
+async function start(withRail: boolean, rateLimit?: { windowMs: number; limit: number }) {
+  const server = payablesApp(db, { inbox: { dir, reader: parserOnly }, rail: withRail ? awx : null, ...(rateLimit ? { rateLimit } : {}) }).listen(0, "127.0.0.1");
   await new Promise<void>((r) => server.once("listening", () => r()));
   close = () => server.close();
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -128,5 +128,13 @@ describe("the payables page", () => {
     // A Dutch account cannot be added at Airwallex in this build: refused with the reason, nothing requested.
     expect(res.status).toBe(409);
     expect(JSON.parse(res.text).error).toMatch(/German \(DE\)/);
+  });
+
+  it("limits how often it can be asked: past the limit it answers 429 and reads nothing", async () => {
+    await start(false, { windowMs: 60_000, limit: 3 });
+    for (let i = 0; i < 3; i++) expect((await fetch(base + "/api/payables/invoices")).status).toBe(200);
+    const over = await fetch(base + "/api/payables/invoices");
+    expect(over.status).toBe(429);
+    expect(await over.text()).not.toMatch(/AP-/);
   });
 });

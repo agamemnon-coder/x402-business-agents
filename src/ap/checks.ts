@@ -3,13 +3,13 @@
 // blocks makes the invoice blocked; else anything a person must look at makes it needs_review; else a supplier not on
 // file makes it needs_vendor; else it is ready. Warnings are shown and change nothing.
 
-import { invoiceAlreadyHandled } from "../agents/euroBill.js";
 import type { DB } from "../db/open.js";
 import { invoiceKey } from "../lib/invoiceKey.js";
 import { toCents, fromCents } from "../lib/money.js";
 import { assessInvoice } from "../policy/fraud.js";
 import { skeleton } from "../policy/fraudCore.js";
 import { counterpartyAllowed } from "../policy/rules.js";
+import { handledInLedger } from "./ledgerKey.js";
 import { ibanValid, type ApReading } from "./reading.js";
 import type { ApStatus, Finding } from "./store.js";
 
@@ -60,7 +60,7 @@ export function evaluate(db: DB, r: ApReading, text: string, ctx: CheckContext):
       .find((x) => invoiceKey(x.invoice_no) === key && skeleton(x.vendor) === skeleton(r.vendor));
     if (same) f.push({ code: "duplicate", level: "block", detail: `${same.id} is the same invoice ${same.invoice_no} from ${same.vendor} (${same.status.replace(/_/g, " ")}); a second copy is never paid` });
     else {
-      const handled = invoiceAlreadyHandled(db, r.invoice_no, ctx.now);
+      const handled = handledInLedger(db, r.invoice_no, r.vendor, ctx.now);
       if (handled) f.push({ code: "duplicate", level: "block", detail: `${handled}; a second copy is never paid` });
     }
   }

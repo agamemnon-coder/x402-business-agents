@@ -7,6 +7,7 @@
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import express from "express";
+import { rateLimit } from "express-rate-limit";
 import type { Request, Response } from "express";
 import type { AirwallexRail } from "../airwallex/port.js";
 import { apJournal, invoicesCsv, journalCsv } from "../ap/books.js";
@@ -21,6 +22,8 @@ export interface PayablesOptions {
   inbox: InboxDeps;
   /** The Airwallex sandbox; null without keys (paying and adding a supplier then answer 503). */
   rail: AirwallexRail | null;
+  /** Requests per window per client; the default suits one person working on the page. */
+  rateLimit?: { windowMs: number; limit: number };
 }
 
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
@@ -103,6 +106,10 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
     return t;
   };
   const valid = (t: unknown) => typeof t === "string" && (tokens.get(t) ?? 0) > Date.now();
+
+  // A runaway script or a page left polling cannot hammer the ledger or the document store (CodeQL: missing rate limit).
+  app.use(rateLimit({ windowMs: opts.rateLimit?.windowMs ?? 60_000, limit: opts.rateLimit?.limit ?? 300, standardHeaders: "draft-8", legacyHeaders: false,
+    message: { error: "too many requests; wait a minute" } }));
 
   app.use((req, res, next) => {
     const host = (req.headers.host ?? "").replace(/:\d+$/, "");
