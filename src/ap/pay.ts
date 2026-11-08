@@ -16,7 +16,7 @@ import { pdfText } from "./pdfText.js";
 import type { Asker } from "./read.js";
 import { writeReviewNote } from "./review.js";
 import { ledgerInvoiceNo } from "./ledgerKey.js";
-import { totalLine, totalLineCurrency } from "./reading.js";
+import { cleanText, totalLine, totalLineCurrency } from "./reading.js";
 import { apInvoice, apInvoices, setStatus, type ApInvoiceRow, type Finding } from "./store.js";
 import { payoutBeneficiary, proposeSupplierPayment, type SupplierPaymentOutcome } from "../payouts/plan.js";
 import { payableCurrency } from "../payouts/routes.js";
@@ -125,7 +125,7 @@ const REJECTABLE = new Set(["blocked", "needs_review", "needs_vendor", "ready"])
 export async function rejectApInvoice(db: DB, id: string, reason: string, deps: Pick<InboxDeps, "sink">, now = new Date()): Promise<ApInvoiceRow> {
   const inv = apInvoice(db, id);
   if (!inv) throw new Error(`no payables invoice ${id}`);
-  const why = reason.replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, " ").replace(/\s+/g, " ").trim().slice(0, 300);
+  const why = cleanText(reason, 300);
   if (!why) throw new Error("say why it is rejected: the reason is kept with the invoice");
   if (inv.status === "waiting_cfo") throw new Error(`${id} waits for the CFO's Face ID: approve or reject it on the phone`);
   if (!REJECTABLE.has(inv.status)) throw new Error(`${id} is ${inv.status.replace(/_/g, " ")} already; it cannot be rejected`);
