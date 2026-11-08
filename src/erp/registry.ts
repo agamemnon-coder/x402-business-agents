@@ -86,9 +86,9 @@ export function liveConnector(name: ConnectorName, env: Env, transport: Transpor
 
 const VAT_EXAMPLE: Record<VatCode, string> = { NL21: "VAT21", NL9: "VAT9", NL0: "VAT0", EU_RC: "EU-RC", NONEU_RC: "IMP-RC", EXEMPT: "EXEMPT", NONE: "NONE" };
 export const EXAMPLE = {
-  exact: { baseUrl: "https://start.exactonline.nl", division: 1000000, purchaseJournal: "60", bankJournals: { "1200": "20", "1201": "21", "1202": "22" }, generalJournal: "90", vatCodes: VAT_EXAMPLE, glMap: {}, apAccount: "1600", documentType: 20, paymentSign: -1 } satisfies ExactConfig,
+  exact: { baseUrl: "https://start.exactonline.nl", division: 1000000, purchaseJournal: "60", bankJournals: { "1200": "20", "1201": "21", "1202": "22", "1203": "23" }, generalJournal: "90", vatCodes: VAT_EXAMPLE, glMap: {}, apAccount: "1600", documentType: 20, paymentSign: -1 } satisfies ExactConfig,
   bc: { tenant: "example.onmicrosoft.com", environment: "sandbox", companyId: "00000000-0000-0000-0000-000000000001", localCurrency: "EUR", generalJournalId: "00000000-0000-0000-0000-00000000000a", paymentJournalId: "00000000-0000-0000-0000-00000000000b", vatCodes: VAT_EXAMPLE, glMap: {}, postInvoices: false, verifyTotals: false } satisfies BcConfig,
-  odoo: { url: "https://example.odoo.com", db: "example", login: "purser@example.com", apiKey: "dry-run", companyCurrency: "EUR", purchaseJournalId: 2, bankJournalIds: { "1200": 6, "1201": 7, "1202": 8 }, generalJournalId: 3, taxIds: { NL21: 21, NL9: 9, NL0: 10, EU_RC: 31, NONEU_RC: 32, EXEMPT: 0, NONE: 0 }, glMap: {}, post: false, verifyTotals: false } satisfies OdooConfig,
+  odoo: { url: "https://example.odoo.com", db: "example", login: "purser@example.com", apiKey: "dry-run", companyCurrency: "EUR", purchaseJournalId: 2, bankJournalIds: { "1200": 6, "1201": 7, "1202": 8, "1203": 9 }, generalJournalId: 3, taxIds: { NL21: 21, NL9: 9, NL0: 10, EU_RC: 31, NONEU_RC: 32, EXEMPT: 0, NONE: 0 }, glMap: {}, post: false, verifyTotals: false } satisfies OdooConfig,
 };
 
 const chartCodes = [...Object.keys(CHART), "1600"];

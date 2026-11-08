@@ -72,7 +72,7 @@ that cannot be read says so and asks to authorise Exact Online again.
 2. A person with access to the administration authorises it once; the code from the redirect is exchanged for a
    refresh token (`ERP_EXACT_REFRESH_TOKEN`). Exact rotates it on every refresh and it expires after 30 days unused.
 3. Settings: `ERP_EXACT_CLIENT_ID`, `ERP_EXACT_CLIENT_SECRET`, `ERP_EXACT_DIVISION`, `ERP_EXACT_PURCHASE_JOURNAL`,
-   `ERP_EXACT_GENERAL_JOURNAL`, `ERP_EXACT_BANK_JOURNALS` (`{"1200":"20"}`), `ERP_EXACT_VAT_CODES`
+   `ERP_EXACT_GENERAL_JOURNAL`, `ERP_EXACT_BANK_JOURNALS` (`{"1200":"20"}`; a payment in a currency other than EUR, USD or GBP leaves from 1203, so map it too when FX payouts are used), `ERP_EXACT_VAT_CODES`
    (`{"NL21":"…","NL9":"…","NL0":"…","EU_RC":"…","NONEU_RC":"…","EXEMPT":"…","NONE":"…"}`, exclusive codes); optional
    `ERP_EXACT_GL_MAP`, `ERP_EXACT_DOCUMENT_TYPE` (from `documents/DocumentTypes`), `ERP_EXACT_AP_ACCOUNT`,
    `ERP_EXACT_BASE_URL` (other countries).
@@ -92,7 +92,7 @@ that cannot be read says so and asks to authorise Exact Online again.
 ### Odoo (17, 18)
 1. Create an API key for an integration user (Preferences, Account Security, New API Key).
 2. Settings: `ERP_ODOO_URL`, `ERP_ODOO_DB`, `ERP_ODOO_LOGIN`, `ERP_ODOO_API_KEY`, `ERP_ODOO_PURCHASE_JOURNAL_ID`,
-   `ERP_ODOO_GENERAL_JOURNAL_ID`, `ERP_ODOO_BANK_JOURNALS` (`{"1200":6}`), `ERP_ODOO_TAX_IDS` (`account.tax` ids per
+   `ERP_ODOO_GENERAL_JOURNAL_ID`, `ERP_ODOO_BANK_JOURNALS` (`{"1200":6}`; map 1203 too for FX payouts), `ERP_ODOO_TAX_IDS` (`account.tax` ids per
    VAT treatment, 0 for none); optional `ERP_ODOO_COMPANY_CURRENCY`, `ERP_ODOO_GL_MAP`, `ERP_ODOO_POST` (`on`).
 3. A person reconciles a payment with its bill in Odoo (the payment register); journal entries go in the company's
    currency only.

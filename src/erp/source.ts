@@ -7,20 +7,21 @@
 // so no ERP can hold them and they are left out; opening balances are the accountant's, not sent.
 
 import { journal as glJournal } from "../accounting/gl.js";
+import { bankAccountFor } from "../ap/books.js";
 import { VENDOR_GL } from "../config/gl.js";
 import type { DB } from "../db/open.js";
 import { toCents } from "../lib/money.js";
 import type { JournalEntry, Payment, PurchaseInvoice, Vendor } from "./model.js";
 import type { SyncItem } from "./sync.js";
 
-const BANK_FOR: Record<string, string> = { EUR: "1200", USD: "1201", GBP: "1202" };
 const ISO = /^[A-Z]{3}$/;
 
 export function ledgerItems(db: DB): SyncItem[] {
   const items: SyncItem[] = [];
   for (const b of db.prepare("SELECT beneficiary_id, name, iban_last4, iban_sha256, bic, currency FROM beneficiaries WHERE status = 'ACTIVE' ORDER BY beneficiary_id").all() as
     { beneficiary_id: string; name: string; iban_last4: string; iban_sha256: string; bic: string; currency: string }[]) {
-    const v: Vendor = { id: b.beneficiary_id, name: b.name, ibanLast4: b.iban_last4, ibanSha256: b.iban_sha256, bic: b.bic, currency: b.currency, ...(VENDOR_GL[b.name] ? { defaultGl: VENDOR_GL[b.name]! } : {}) };
+    // A supplier on a local route (FX payouts: ACH, Faster Payments, ...) may have no BIC: none is sent rather than an empty one.
+    const v: Vendor = { id: b.beneficiary_id, name: b.name, ibanLast4: b.iban_last4, ibanSha256: b.iban_sha256, ...(b.bic ? { bic: b.bic } : {}), currency: b.currency, ...(VENDOR_GL[b.name] ? { defaultGl: VENDOR_GL[b.name]! } : {}) };
     items.push({ kind: "vendor", object: v });
   }
   const invoices = db.prepare("SELECT invoice_no, vendor, amount, currency, due_date, beneficiary_id, doc_sha256 FROM invoices WHERE beneficiary_id IS NOT NULL ORDER BY invoice_no").all() as
@@ -41,7 +42,8 @@ export function ledgerItems(db: DB): SyncItem[] {
     if (!vendorId) continue;
     const p: Payment = {
       id: t.request_id, invoiceId: t.invoice_no, vendorId, date: t.updated_at.slice(0, 10), amountCents: toCents(t.amount), currency: t.currency,
-      bankAccount: BANK_FOR[t.currency] ?? "1200", ...(t.transfer_id ? { airwallexTransferId: t.transfer_id } : {}),
+      // The Airwallex balance it left from: EUR, USD, GBP each their own account, any other currency 1203 (FX payouts).
+      bankAccount: bankAccountFor(t.currency), ...(t.transfer_id ? { airwallexTransferId: t.transfer_id } : {}),
     };
     items.push({ kind: "payment", object: p });
   }
