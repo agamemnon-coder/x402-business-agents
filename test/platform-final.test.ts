@@ -35,7 +35,8 @@ import { proposalCheck, proposalRun, type ProposalLike } from "../src/hub/runs.j
 import { lockMonth } from "../src/ledger/core.js";
 import { syncLedger } from "../src/ledger/feed.js";
 import { ledgerApp } from "../src/ledger/serve.js";
-import { cashByCurrency } from "../src/ledger/reports.js";
+import { ageing, cashByCurrency, vatOverview } from "../src/ledger/reports.js";
+import { apJournal } from "../src/ap/books.js";
 import { executeInvoicePayment } from "../src/executors/invoicePayment.js";
 import { releaseStuckHold, stuckHolds } from "../src/finance/stuckHolds.js";
 import { executeSupplierPayment } from "../src/executors/supplierPayment.js";
@@ -486,6 +487,28 @@ describe("S7: the Dutch PDFs have Dutch account names and statuses; English stay
     expect(accountName("6200", "Goods from the manufacturer", "en")).toBe("Goods from the manufacturer");
     expect(PDF_STRINGS.nl.apStatus.waiting_cfo).toBe("wacht op Face ID van de CFO");
     expect(PDF_STRINGS.en.apStatus.needs_vendor).toBe("waits for a new supplier");
+  });
+});
+
+describe("Accrual: the ledger sees the payables inbox", () => {
+  it("a Dutch 21% invoice: accrued on receipt (5b input VAT), settled by its payout, expense once, idempotent", async () => {
+    const id = await add(NL, "zeeland.pdf");
+    await addSupplier(id);
+    syncLedger(db, now);
+    const quarter = `${now.getUTCFullYear()}Q${Math.ceil((now.getUTCMonth() + 1) / 3)}`;
+    expect(vatOverview(db, quarter).input_5b_cents).toBe(8400);
+    const asOf = "2099-12-31";
+    expect(ageing(db, "payables", asOf).items.map((i) => [i.party, i.open_cents])).toEqual([["Zeeland Verpakkingen B.V.", 48400]]);
+    await executeSupplierPayment(db, awx, awx, await approvedInbox(id));
+    await syncPayments(db, { now: () => now });
+    syncLedger(db, now);
+    expect(ageing(db, "payables", asOf).items).toEqual([]);
+    const gl = apInvoice(db, id)!.gl_account;
+    const expense = db.prepare("SELECT COALESCE(SUM(debit_cents) - SUM(credit_cents), 0) AS n FROM ledger_lines WHERE account = ?").get(gl) as { n: number };
+    expect(expense.n).toBe(40000);
+    expect(syncLedger(db, now).posted).toBe(0);
+    // The CSV sink exports the same accrual.
+    expect(apJournal(db).filter((e) => e.invoice_id === id && e.event === "accrual").map((e) => e.account)).toEqual([gl, "1510", "2100"]);
   });
 });
 

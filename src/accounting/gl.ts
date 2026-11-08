@@ -3,7 +3,10 @@
 // Only money that moved is booked: refused purchases, declined card charges, aborted sales and refused sweeps are not.
 // The coding comes from src/config/gl.ts; `rule` says which mapping chose each account, so a bookkeeper can check it.
 
-import { bankAccountFor, CHART, COST_CENTRE_NAMES, COST_CENTRES, MCC_GL, VENDOR_GL } from "../config/gl.js";
+import { AP_CHART, bankAccountFor, CHART, COST_CENTRE_NAMES, COST_CENTRES, MCC_GL, VENDOR_GL } from "../config/gl.js";
+import { bookable } from "../ap/books.js";
+import { ledgerInvoiceNo } from "../ap/ledgerKey.js";
+import { apInvoices } from "../ap/store.js";
 import type { DB } from "../db/open.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
 
@@ -26,13 +29,23 @@ export interface JournalLine {
   rule: string;
 }
 
+/**
+ * The payment-ledger numbers ("NUM · Supplier") of the payables-inbox invoices the books hold (bookable, not credit
+ * notes): their accrual is posted by the ledger feed (src/ledger/feed.ts), so their payouts settle 2100.
+ */
+export function accruedInboxKeys(db: DB): string[] {
+  if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ap_invoices'").get()) return [];
+  return apInvoices(db).filter((i) => i.doc_kind !== "credit_note" && bookable(i)).map((i) => ledgerInvoiceNo(i.invoice_no, i.vendor));
+}
+
 const signed = (cents: number) => (cents < 0 ? `-${fromCents(-cents)}` : fromCents(cents));
 
 export function journal(db: DB): JournalLine[] {
   const lines: JournalLine[] = [];
+  const accruedInbox = new Set(accruedInboxKeys(db));
   const add = (l: Omit<JournalLine, "gl_name" | "cost_centre" | "amount"> & { cents: number }) => {
     const { cents, ...rest } = l;
-    lines.push({ ...rest, amount: signed(cents), cost_centre: COST_CENTRES[l.agent] ?? (l.agent.startsWith("ext:") ? "CC400" : l.agent.startsWith("task:") ? "CC500" : ""), gl_name: CHART[l.gl_account] ?? "" });
+    lines.push({ ...rest, amount: signed(cents), cost_centre: COST_CENTRES[l.agent] ?? (l.agent.startsWith("ext:") ? "CC400" : l.agent.startsWith("task:") ? "CC500" : ""), gl_name: CHART[l.gl_account] ?? AP_CHART[l.gl_account] ?? "" });
   };
   const proposalOf = (sha: string | null) =>
     sha ? ((db.prepare("SELECT proposal_id FROM proposals WHERE terms_sha256 = ?").get(sha) as { proposal_id: string } | undefined)?.proposal_id ?? "") : "";
@@ -73,12 +86,15 @@ export function journal(db: DB): JournalLine[] {
   }
   for (const t of db.prepare("SELECT t.request_id, t.transfer_id, t.invoice_no, t.amount, t.currency, t.fee_actual, t.approval_sha256, t.updated_at, i.vendor FROM transfers t JOIN invoices i ON i.invoice_no = t.invoice_no WHERE t.status IN ('SENT', 'PAID') ORDER BY t.updated_at").all() as
     { request_id: string; transfer_id: string | null; invoice_no: string; amount: string; currency: string; fee_actual: string | null; approval_sha256: string; updated_at: string; vendor: string }[]) {
-    const gl = VENDOR_GL[t.vendor] ?? "6900";
+    // A payables-inbox invoice the books hold was accrued on receipt (expense and input VAT against 2100, posted by the
+    // ledger feed): its payout settles that payable, so the expense is never booked twice.
+    const accrued = accruedInbox.has(t.invoice_no);
+    const gl = accrued ? "2100" : VENDOR_GL[t.vendor] ?? "6900";
     const approval = proposalOf(t.approval_sha256);
     add({
       date: t.updated_at, source: "transfer", ref: t.request_id, description: `Invoice ${t.invoice_no}`, counterparty: t.vendor, agent: "treasury",
       gl_account: gl, bank_account: bankAccountFor(t.currency), cents: -toCents(t.amount), currency: t.currency, proof: t.transfer_id ?? "", approval,
-      rule: VENDOR_GL[t.vendor] ? `supplier invoice, vendor ${t.vendor}` : "supplier invoice, default",
+      rule: accrued ? "supplier invoice paid: settles the payable booked on receipt" : VENDOR_GL[t.vendor] ? `supplier invoice, vendor ${t.vendor}` : "supplier invoice, default",
     });
     const fee = /^([A-Z]{3}) (\d+\.\d{2})$/.exec(t.fee_actual ?? "");
     if (fee) {
