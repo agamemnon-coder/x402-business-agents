@@ -51,6 +51,7 @@
     "lab": "tsx src/cli/lab.ts",
     "books": "tsx src/cli/books.ts",
     "ledger": "tsx src/cli/ledger.ts",
+    "erp": "tsx src/cli/erp.ts",
     "t0": "tsx src/cli/t0.ts",
     "dispute": "tsx src/cli/dispute.ts",
     "video": "tsx src/cli/video.ts",
