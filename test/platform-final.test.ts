@@ -22,7 +22,8 @@ import { safeSegment } from "../src/vault/layout.js";
 import { insights } from "../src/ap/insights.js";
 import { apInvoice } from "../src/ap/store.js";
 import { accountWords } from "../src/policy/fraudCore.js";
-import { describeTerms } from "../src/approve/client.js";
+import { describeTerms, reviewLabel } from "../src/approve/client.js";
+import { parseReview } from "../src/dashboard/snapshot.js";
 import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAdd, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
 import { journal } from "../src/accounting/gl.js";
 import { batchesFor } from "../src/cloudsync/client.js";
@@ -450,6 +451,22 @@ IBAN: DE75 5121 0800 1245 1261 99`;
     expect(apInvoice(db, out.invoice.id)!.doc_kind).toBe("credit_note");
     expect(insights(db, now).open).toEqual([]);
     expect(monthData(db, now.toISOString().slice(0, 7)).received).toEqual([]);
+  });
+});
+
+describe("S3: notes say who wrote them and go once they no longer hold", () => {
+  it("a code-written note is labelled as Purser's code; the waiting note is gone once paid", async () => {
+    const id = await add(EN, "bergtex.pdf");
+    const pid = await approvedInbox(id);
+    const explanation = (db.prepare("SELECT explanation FROM proposals WHERE proposal_id = ?").get(pid) as { explanation: string }).explanation;
+    const review = parseReview(explanation)!;
+    expect(review.model).toBeNull();
+    expect(reviewLabel(review)).toBe("Purser's code (no model), advisory");
+    expect(reviewLabel({ model: "claude-opus-x", recommendation: "approve" })).toBe("Opus review, advisory: approve");
+    expect(apInvoice(db, id)!.review_note).toMatch(/Waits for the CFO/);
+    await executeInvoicePayment(db, awx, awx, pid);
+    await syncPayments(db, { now: () => now });
+    expect(apInvoice(db, id)).toMatchObject({ status: "paid", review_note: null });
   });
 });
 

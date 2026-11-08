@@ -45,13 +45,24 @@ export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id:
     setStatus(db, id, "waiting_cfo", "treasury", { proposal_id: out.proposal.proposal_id, reason: "payment filed for the CFO's Face ID" }, now);
     // Opus's advisory note goes with the proposal the CFO sees (its explanation; never part of the signed terms).
     const noted = await writeReviewNote(db, reader, id, now);
-    db.prepare("UPDATE proposals SET explanation = ? WHERE proposal_id = ? AND explanation IS NULL").run(noted.review_note, out.proposal.proposal_id);
+    // Stored as every review is ("[model] RECOMMENDATION: text"), so the phone names its real source: the model, or
+    // Purser's code when no model wrote it (screenshot pass S3).
+    const source = noted.review_by?.startsWith("claude:") ? noted.review_by.slice("claude:".length) : "no model";
+    db.prepare("UPDATE proposals SET explanation = ? WHERE proposal_id = ? AND explanation IS NULL").run(`[${source}] NOTE: ${noted.review_note ?? ""}`, out.proposal.proposal_id);
     return out;
   }
   // Not planned (the reserve is short, a quote refused, a duplicate found late): the invoice stays as it is, with the reason.
   const findings: Finding[] = [...inv.findings.filter((f) => f.code !== "payment_not_planned"), { code: "payment_not_planned", level: "warn", detail: `the payment could not be planned: ${out.reason}` }];
   setStatus(db, id, "fraud" in out && out.fraud?.suspicious ? "blocked" : inv.status, "treasury", { findings, reason: out.reason }, now);
   return out;
+}
+
+/**
+ * The note written while the invoice waited for the CFO no longer describes it once paid, rejected or ready again
+ * (screenshot pass S3: a paid invoice still said "Waits for the CFO's Face ID"): it is taken away; the audit log keeps it.
+ */
+function clearStaleNote(db: DB, id: string): void {
+  db.prepare("UPDATE ap_invoices SET review_note = NULL, review_by = NULL WHERE id = ?").run(id);
 }
 
 /** Follows each invoice waiting for the CFO: paid when its transfer is PAID; rejected; or ready again when its terms ran out. */
@@ -70,15 +81,18 @@ export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: Book
     if (p.status !== "EXECUTED" && payout?.status === "PAID") p.status = "EXECUTED";
     if (p.status === "REJECTED") {
       const next = setStatus(db, inv.id, "rejected", "human", { reason: `the CFO rejected ${inv.proposal_id}` }, now);
+      clearStaleNote(db, inv.id);
       // The accrual a sink already holds is taken back there, so the payable is closed in the books too.
       if (opts.sink && accrualPushed(db, next, opts.sink)) await pushOnce(db, opts.sink, "reversal", reversalEntries(next, now.toISOString().slice(0, 10)), next, now);
       changed.push(next);
     } else if (["EXPIRED", "FAILED", "NEEDS_REAPPROVAL", "SUPERSEDED"].includes(p.status)) {
       changed.push(setStatus(db, inv.id, "ready", "system", { proposal_id: null, reason: `${inv.proposal_id} ${p.status.toLowerCase()}; it can be filed again` }, now));
+      clearStaleNote(db, inv.id);
     } else if (p.status === "EXECUTED") {
       const paid = db.prepare("SELECT 1 FROM transfers WHERE invoice_no = ? AND status = 'PAID'").get(ledgerInvoiceNo(inv.invoice_no, inv.vendor));
       if (!paid) continue;
       const next = setStatus(db, inv.id, "paid", "awx-executor", { paid_at: now.toISOString(), reason: `paid under ${inv.proposal_id}` }, now);
+      clearStaleNote(db, inv.id);
       // The accrual first if the sink never got it (a supplier added by the executor, a sink that was down), then the payment.
       await pushOnce(db, opts.sink, "accrual", accrualEntries(next), next, now);
       await pushOnce(db, opts.sink, "payment", paymentEntries(db, next), next, now);

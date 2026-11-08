@@ -1095,7 +1095,7 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
     ]),
     nots.length ? el("div", "nots", [txt("p", "eyebrow", "This is not"), el("ul", "", nots.map((n) => txt("li", "", n)))]) : null,
     o.agent_advice ? el("div", "review", [txt("p", "eyebrow", `${o.agent_advice.agent}${o.agent_advice.model ? ` (${modelWord(o.agent_advice.model)})` : ""}, advisory: ${o.agent_advice.verdict ?? (o.agent_advice.recommends ? "recommends this option" : "recommends the other option")}`), txt("p", "", o.agent_advice.text)]) : null,
-    o.review ? el("div", "review", [txt("p", "eyebrow", o.review.recommendation === "drafted" ? "Drafted by Opus from your words, each rule checked by code" : `Opus review, advisory: ${o.review.recommendation.replace(/_/g, " ")}`), txt("p", "", o.review.text)]) : null,
+    o.review ? el("div", "review", [txt("p", "eyebrow", o.review.recommendation === "drafted" ? "Drafted by Opus from your words, each rule checked by code" : reviewLabel(o.review)), txt("p", "", o.review.text)]) : null,
     el("details", "all", [txt("summary", "", "All terms (exactly what is hashed)"), el("dl", "rows", f.rows.flatMap(([k, v]) => [txt("dt", "", k), txt("dd", "", v)])), termsTable(terms)]),
   ]);
   const status = el("div", "sheet-status");
@@ -1651,6 +1651,15 @@ export function boot(): void {
 if (typeof document !== "undefined") boot();
 
 /** "claude-opus-5-5" → "Opus": the model's family name for a person. */
+/**
+ * Who wrote an advisory note, by its real source (screenshot pass S3): a model's review names the model; a note
+ * Purser's code wrote (no model ran, or its answer was not used) says so.
+ */
+export function reviewLabel(r: { model: string | null; recommendation: string }): string {
+  const rec = r.recommendation === "note" ? "" : `: ${r.recommendation.replace(/_/g, " ")}`;
+  return r.model ? `${modelWord(r.model)} review, advisory${rec}` : `Purser's code (no model), advisory${rec}`;
+}
+
 function modelWord(model: string): string {
   return /opus/i.test(model) ? "Opus" : /sonnet/i.test(model) ? "Sonnet" : /haiku/i.test(model) ? "Haiku" : model;
 }
