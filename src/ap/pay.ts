@@ -22,6 +22,17 @@ import { payableCurrency } from "../payouts/routes.js";
 
 export type PayOutcome = InvoiceOutcome | SupplierPaymentOutcome;
 
+/**
+ * The payout's reason code, from the invoice's expense account (screenshot pass S6: goods were sent as professional
+ * services): goods bought (6200 Goods from the manufacturer) go as goods_purchased, anything else as
+ * professional_business_services, the code Kit 11's recorded sandbox payouts were accepted with. goods_purchased is the
+ * code the supplier payments already sent; its place in Airwallex's list of reasons is to confirm in the sandbox (the
+ * docs page could not be read from this session).
+ */
+export function transferReason(glAccount: string): string {
+  return glAccount === "6200" ? "goods_purchased" : "professional_business_services";
+}
+
 export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id: string, now = new Date(), reader?: Asker): Promise<PayOutcome> {
   const inv = apInvoice(db, id);
   if (!inv) throw new Error(`no payables invoice ${id}`);
@@ -36,10 +47,10 @@ export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id:
   const invoiceNo = ledgerInvoiceNo(r.invoice_no, r.vendor);
   const due = r.due_date || now.toISOString().slice(0, 10);
   // The supplier's own total line and its currency go with the terms, so the CFO sees them beside the amount.
-  const document = { total_line: totalLine(text), currency: totalLineCurrency(text) };
+  const document = { total_line: totalLine(text), currency: totalLineCurrency(text), reason: transferReason(inv.gl_account) };
   // A supplier added through the inbox carries its route; a Kit 11 payee on file is paid in EUR as before.
   const out: PayOutcome = payoutBeneficiary(db, r.vendor) || r.currency !== "EUR"
-    ? await proposeSupplierPayment(db, rail, { invoice_no: invoiceNo, vendor: r.vendor, amount: r.total, currency: r.currency, due_date: due, reference: r.reference || r.invoice_no }, text, now, document)
+    ? await proposeSupplierPayment(db, rail, { invoice_no: invoiceNo, vendor: r.vendor, amount: r.total, currency: r.currency, due_date: due, reference: r.reference || r.invoice_no, reason: document.reason }, text, now, document)
     : await proposeInvoicePayment(db, rail, { invoice_no: invoiceNo, vendor: r.vendor, amount: r.total, currency: r.currency, due_date: due, iban: r.iban, bic: r.bic, reference: r.reference || r.invoice_no }, text, now, "MIN_15", document);
   if (out.kind === "proposed") {
     setStatus(db, id, "waiting_cfo", "treasury", { proposal_id: out.proposal.proposal_id, reason: "payment filed for the CFO's Face ID" }, now);

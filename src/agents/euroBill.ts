@@ -202,7 +202,7 @@ export type InvoiceOutcome =
 export async function proposeInvoicePayment(
   db: DB, rail: AirwallexRail, inv: Invoice, invoiceText: string, now = new Date(),
   quoteValidity: "MIN_1" | "MIN_15" = "MIN_15",
-  document?: { total_line: string; currency: string },
+  document?: { total_line: string; currency: string; reason?: string },
 ): Promise<InvoiceOutcome> {
   const check = checkInvoice(db, inv, invoiceText);
   if (!check.ok) {
@@ -312,7 +312,7 @@ export async function proposeInvoicePayment(
     schema: TERMS_SCHEMA, kind: "invoice_payment", proposal_id: id, expires_at: iso(expires),
     invoice_no: inv.invoice_no, vendor: inv.vendor, amount: inv.amount, currency: "EUR", fee_max: fromCents(feeReserve),
     beneficiary_id: check.beneficiaryId, beneficiary_name: check.name, iban_last4: check.ibanLast4, bic: check.bic, method: "SWIFT",
-    reference: inv.reference, reason: "professional_business_services", transfer_request_id: randomUUID(),
+    reference: inv.reference, reason: document?.reason ?? "professional_business_services", transfer_request_id: randomUUID(),
     conversion: quote && {
       request_id: randomUUID(), quote_id: quote.quoteId, client_rate: quote.clientRate, valid_to: quote.validTo,
       buy_currency: "EUR", buy_amount: fromCents(quote.buyAmountCents), sell_currency: "USD", sell_amount: fromCents(quote.sellAmountCents),
@@ -324,7 +324,9 @@ export async function proposeInvoicePayment(
     // The payables inbox only: the document's own total line, verbatim (sanitised, at most 120 characters), and the
     // currency as read from that line ("" when it names none, or one code does not know), so the CFO sees what the
     // supplier wrote beside the amount signed for (red team round 2). Kit 11's invoices pass none: their terms are unchanged.
-    ...(document ? { document_total_line: document.total_line.slice(0, 120), document_currency: document.currency } : {}),
+    // The payables inbox: the supplier's own total line, and that this is test money (this build only talks to the
+    // Airwallex sandbox, src/airwallex/client.ts), both in the signed terms so the phone shows them first (S6).
+    ...(document ? { document_total_line: document.total_line.slice(0, 120), document_currency: document.currency, test_money: true, source: "payables_inbox" } : {}),
   };
   // The duplicate guard again, inside the transaction that files the proposal (Opus review, 2 November): a plan filed by
   // another run (the CFO's `npm run licence`, the agent's plan_invoice) while this one waited for Airwallex is seen here.

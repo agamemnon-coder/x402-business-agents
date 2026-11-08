@@ -511,6 +511,8 @@ export function agentOf(createdBy: string, t: Obj): string {
   if (kind === "agent_onboard") return `${str(t.display_name)} (outside agent ${str(t.agent_id)})`;
   if (kind === "airi_purchase" && str(t.agent)) return `${cap1(str(t.agent))} agent`;
   if (kind === "owners_execute" && isObj(t.action) && str(t.action.agent)) return `${cap1(str(t.action.agent))} agent`;
+  // A payment the payables inbox filed (its terms carry the invoice's own total line): named as the inbox (S6).
+  if ((kind === "invoice_payment" || kind === "supplier_payment") && (str(t.source) === "payables_inbox" || t.document_total_line !== undefined)) return "Payables inbox";
   if (createdBy === "human") return "None: a change made by a person";
   if (createdBy === "system" || createdBy === "") return "Purser";
   if (createdBy.startsWith("ext:")) return `Outside agent ${createdBy.slice(4)}`;

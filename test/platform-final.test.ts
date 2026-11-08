@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { invoiceAlreadyHandled, proposeInvoicePayment, seedTreasury } from "../src/agents/euroBill.js";
 import { ingestDocument, type InboxDeps } from "../src/ap/inbox.js";
-import { payApInvoice, syncPayments } from "../src/ap/pay.js";
+import { payApInvoice, syncPayments, transferReason } from "../src/ap/pay.js";
 import type { Asker } from "../src/ap/read.js";
 import { readDocument } from "../src/ap/read.js";
 import { parseApFallback, readingCheck, totalAmbiguity, totalLine } from "../src/ap/reading.js";
@@ -23,7 +23,7 @@ import { insights } from "../src/ap/insights.js";
 import { publicInvoice } from "../src/ap/public.js";
 import { apInvoice } from "../src/ap/store.js";
 import { accountWords } from "../src/policy/fraudCore.js";
-import { describeTerms, reviewLabel } from "../src/approve/client.js";
+import { agentOf, describeTerms, reviewLabel } from "../src/approve/client.js";
 import { parseReview } from "../src/dashboard/snapshot.js";
 import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAdd, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
 import { journal } from "../src/accounting/gl.js";
@@ -461,6 +461,19 @@ describe("S4: Pay for every payable currency, statuses in plain words", () => {
     expect(publicInvoice(apInvoice(db, id)!)).toMatchObject({ status: "needs_vendor", status_words: "Waits for a new supplier", payable: false });
     await addSupplier(id);
     expect(publicInvoice(apInvoice(db, id)!)).toMatchObject({ status: "ready", status_words: "Ready to pay", payable: true });
+  });
+});
+
+describe("S6: the phone's terms carry the invoice line and the test-money flag, and name the inbox", () => {
+  it("an inbox payment's signed terms: total line, test money, the reason from the GL account; agent is the inbox", async () => {
+    const id = await add(EN, "bergtex.pdf");
+    const pid = await filed(id);
+    const row = db.prepare("SELECT created_by, terms_json FROM proposals WHERE proposal_id = ?").get(pid) as { created_by: string; terms_json: string };
+    const t = JSON.parse(row.terms_json) as Record<string, unknown>;
+    expect(t).toMatchObject({ document_total_line: "Total due EUR 1,850.00", test_money: true, source: "payables_inbox", reason: transferReason(apInvoice(db, id)!.gl_account) });
+    expect(agentOf(row.created_by, t)).toBe("Payables inbox");
+    expect(transferReason("6200")).toBe("goods_purchased");
+    expect(transferReason("6900")).toBe("professional_business_services");
   });
 });
 

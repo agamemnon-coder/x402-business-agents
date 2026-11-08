@@ -229,7 +229,9 @@ export async function proposeSupplierPayment(
     balances_before: Object.fromEntries(touched.map((c) => [c, fromCents(balances[c]?.availableCents ?? 0)])),
     floors: Object.fromEntries(touched.map((c) => [c, fromCents(floorCents(db, c))])),
     evidence: [{ type: "invoice", ref: inv.invoice_no, sha256: sha256Hex(documentText) }],
-    ...(document ? { document_total_line: document.total_line.slice(0, 120), document_currency: document.currency } : {}),
+    // The payables inbox: the supplier's own total line, and that this is test money (this build only talks to the
+    // Airwallex sandbox, src/airwallex/client.ts), both in the signed terms so the phone shows them first (S6).
+    ...(document ? { document_total_line: document.total_line.slice(0, 120), document_currency: document.currency, test_money: true, source: "payables_inbox" } : {}),
   };
   let proposal: ProposalRow;
   try {
