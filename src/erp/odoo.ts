@@ -12,7 +12,7 @@
 // Not done here: reconciling a payment with its bill (Odoo's payment register wizard; a person matches it), a bank's
 // BIC (it sits on res.bank), and journal entries in a foreign currency.
 
-import { ErpError, errorForStatus, type ErpAccount, type ErpConnector, type ErpVendorRow, type PaymentStatus, type RefResolver, type Transport } from "./connector.js";
+import { ErpError, errorForStatus, step, type ErpAccount, type ErpConnector, type ErpVendorRow, type PaymentStatus, type PushProgress, type RefResolver, type Transport } from "./connector.js";
 import { amount, type JournalEntry, type ObjectKind, type Payment, type PurchaseInvoice, type VatCode, type Vendor } from "./model.js";
 import { base64 } from "./rest.js";
 import { decodeResponse, encodeCall, XmlRpcFault, type XmlValue } from "./xmlrpc.js";
@@ -58,6 +58,28 @@ export class OdooConnector implements ErpConnector {
       }
       throw new ErpError("unexpected", `Odoo ${method}: ${(e as Error).message}`);
     }
+  }
+
+  private major: number | null = null;
+
+  /**
+   * Odoo's major version, from xmlrpc/2/common version() (server_version_info [major, minor, ...]), asked once. It picks
+   * the payment's reference field: account.payment has `memo` from 18.0; in 17.0 it has no such field (create refuses
+   * an unknown field) and takes `ref` through its _inherits of account.move (odoo/odoo 17.0 and 18.0,
+   * addons/account/models/account_payment.py).
+   */
+  private async version(): Promise<number> {
+    if (this.major !== null) return this.major;
+    const v = await this.rpc("common", "version", []);
+    const info = (v as { server_version_info?: XmlValue[] } | null)?.server_version_info;
+    const major = Array.isArray(info) && typeof info[0] === "number" ? info[0] : Number.parseInt(String((v as { server_version?: string } | null)?.server_version ?? ""), 10);
+    if (!Number.isFinite(major)) throw new ErpError("unexpected", "Odoo did not say its version (common.version)");
+    this.major = major;
+    return major;
+  }
+
+  private async paymentRefField(): Promise<"memo" | "ref"> {
+    return (await this.version()) >= 18 ? "memo" : "ref";
   }
 
   private async login(): Promise<number> {
@@ -113,10 +135,14 @@ export class OdooConnector implements ErpConnector {
     return rows.map((r) => ({ externalId: String(r.id), name: r.name, ...(r.vat ? { vatId: r.vat } : {}) }));
   }
 
-  async pushVendor(v: Vendor): Promise<string> {
-    const id = await this.call<number>("res.partner", "create", [{ name: v.name, ...(v.vatId ? { vat: v.vatId } : {}), ...(v.email ? { email: v.email } : {}), is_company: true, supplier_rank: 1 }]);
-    if (v.iban) await this.call("res.partner.bank", "create", [{ acc_number: v.iban, partner_id: id }]);
-    return String(id);
+  // Each create or action is one step (src/erp/connector.ts step): a retry resumes after the last one that succeeded.
+  async pushVendor(v: Vendor, progress?: PushProgress): Promise<string> {
+    const id = await step(progress, "partner", async () => String(await this.call<number>("res.partner", "create", [{ name: v.name, ...(v.vatId ? { vat: v.vatId } : {}), ...(v.email ? { email: v.email } : {}), is_company: true, supplier_rank: 1 }])));
+    if (v.iban) {
+      const iban = v.iban;
+      await step(progress, "bank", async () => String(await this.call<number>("res.partner.bank", "create", [{ acc_number: iban, partner_id: Number(id) }])));
+    }
+    return id;
   }
 
   private async bill(inv: PurchaseInvoice, refs: RefResolver, refund: { of: string } | null): Promise<number> {
@@ -131,51 +157,78 @@ export class OdooConnector implements ErpConnector {
   }
 
   /** Odoo computes the tax itself: post only when its total is the invoice's, to the cent. */
-  private async checkAndPost(id: number, grossCents: number): Promise<void> {
-    if (this.cfg.verifyTotals === false) {
-      if (this.cfg.post) await this.call("account.move", "action_post", [[id]]);
-      return;
+  private async checkAndPost(id: number, grossCents: number, progress?: PushProgress): Promise<void> {
+    if (this.cfg.verifyTotals !== false) {
+      const [m] = await this.call<{ amount_total: number }[]>("account.move", "read", [[id]], { fields: ["amount_total"] });
+      if (!m || Math.round(m.amount_total * 100) !== grossCents) {
+        // The draft stays for a person, and stays theirs: the sync runner never clears needs_review by itself.
+        throw new ErpError("needs_review", `Odoo computed a total of ${m?.amount_total.toFixed(2) ?? "?"} for move ${id}, the invoice says ${amount(grossCents).toFixed(2)}; it is left in draft for a person (check the taxes)`, { externalId: String(id) });
+      }
     }
-    const [m] = await this.call<{ amount_total: number }[]>("account.move", "read", [[id]], { fields: ["amount_total"] });
-    if (!m || Math.round(m.amount_total * 100) !== grossCents) {
-      throw new ErpError("validation", `Odoo computed a total of ${m?.amount_total.toFixed(2) ?? "?"} for move ${id}, the invoice says ${amount(grossCents).toFixed(2)}; it is left in draft for a person (check the taxes)`);
-    }
-    if (this.cfg.post) await this.call("account.move", "action_post", [[id]]);
+    if (this.cfg.post) await step(progress, "posted", async () => { await this.call("account.move", "action_post", [[id]]); return "done"; });
   }
 
-  async pushPurchaseInvoice(inv: PurchaseInvoice, refs: RefResolver): Promise<string> {
-    const id = await this.bill(inv, refs, null);
-    if (inv.pdf) await this.call("ir.attachment", "create", [{ name: inv.pdf.fileName, datas: base64(inv.pdf.bytes), res_model: "account.move", res_id: id, mimetype: "application/pdf" }]);
-    await this.checkAndPost(id, inv.totals.grossCents);
+  async pushPurchaseInvoice(inv: PurchaseInvoice, refs: RefResolver, progress?: PushProgress): Promise<string> {
+    const id = Number(await step(progress, "move", async () => String(await this.bill(inv, refs, null))));
+    if (inv.pdf) {
+      const pdf = inv.pdf;
+      await step(progress, "attachment", async () => String(await this.call<number>("ir.attachment", "create", [{ name: pdf.fileName, datas: base64(pdf.bytes), res_model: "account.move", res_id: id, mimetype: "application/pdf" }])));
+    }
+    await this.checkAndPost(id, inv.totals.grossCents, progress);
     return String(id);
   }
 
-  async pushCreditNote(original: PurchaseInvoice, originalExternalId: string, refs: RefResolver): Promise<string> {
-    const id = await this.bill(original, refs, { of: originalExternalId });
-    await this.checkAndPost(id, original.totals.grossCents);
+  async pushCreditNote(original: PurchaseInvoice, originalExternalId: string, refs: RefResolver, progress?: PushProgress): Promise<string> {
+    const id = Number(await step(progress, "move", async () => String(await this.bill(original, refs, { of: originalExternalId }))));
+    await this.checkAndPost(id, original.totals.grossCents, progress);
     return String(id);
   }
 
-  async pushPayment(p: Payment, refs: RefResolver): Promise<string> {
+  async pushPayment(p: Payment, refs: RefResolver, progress?: PushProgress): Promise<string> {
     const journal = this.cfg.bankJournalIds[p.bankAccount];
     if (journal === undefined) throw new ErpError("config", `no Odoo bank journal for Purser account ${p.bankAccount}; set it in ERP_ODOO_BANK_JOURNALS`);
-    const id = await this.call<number>("account.payment", "create", [{
+    const refField = await this.paymentRefField();
+    const id = Number(await step(progress, "payment", async () => String(await this.call<number>("account.payment", "create", [{
       payment_type: "outbound", partner_type: "supplier", partner_id: this.partnerOf(p.vendorId, refs), amount: amount(p.amountCents),
-      currency_id: await this.currencyId(p.currency), date: p.date, memo: `Purser payment ${p.id}`, journal_id: journal,
-    }]);
-    if (this.cfg.post) await this.call("account.payment", "action_post", [[id]]);
+      currency_id: await this.currencyId(p.currency), date: p.date, [refField]: `Purser payment ${p.id}`, journal_id: journal,
+    }]))));
+    if (this.cfg.post) await step(progress, "posted", async () => { await this.call("account.payment", "action_post", [[id]]); return "done"; });
     return String(id);
   }
 
   private ref(j: JournalEntry) { return `Purser ${j.id}: ${j.memo}`; }
 
-  async pushJournalEntry(j: JournalEntry): Promise<string> {
+  async pushJournalEntry(j: JournalEntry, progress?: PushProgress): Promise<string> {
     if (j.currency !== this.cfg.companyCurrency) throw new ErpError("config", `journal entry ${j.id} is in ${j.currency}; only ${this.cfg.companyCurrency} entries are sent to Odoo so far`);
     const lines: XmlValue[] = [];
     for (const l of j.lines) lines.push([0, 0, { name: l.description ?? j.memo, account_id: await this.accountId(l.glAccount), debit: amount(l.debitCents), credit: amount(l.creditCents) }]);
-    const id = await this.call<number>("account.move", "create", [{ move_type: "entry", journal_id: this.cfg.generalJournalId, date: j.date, ref: this.ref(j), line_ids: lines }]);
-    if (this.cfg.post) await this.call("account.move", "action_post", [[id]]);
+    const id = Number(await step(progress, "move", async () => String(await this.call<number>("account.move", "create", [{ move_type: "entry", journal_id: this.cfg.generalJournalId, date: j.date, ref: this.ref(j), line_ids: lines }]))));
+    if (this.cfg.post) await step(progress, "posted", async () => { await this.call("account.move", "action_post", [[id]]); return "done"; });
     return String(id);
+  }
+
+  /**
+   * An object found with no record of its steps: a supplier's bank account, a bill's PDF, and (with posting on) its
+   * posted state must be there too. A move or payment is created with its lines in one call, so those are whole.
+   */
+  async incomplete(kind: ObjectKind, o: Vendor | PurchaseInvoice | Payment | JournalEntry, externalId: string): Promise<string | null> {
+    const id = Number(externalId);
+    if (kind === "vendor") {
+      if (!(o as Vendor).iban) return null;
+      const banks = await this.call<number[]>("res.partner.bank", "search", [[["partner_id", "=", id]]], { limit: 1 });
+      return banks.length ? null : "its bank account is not there";
+    }
+    const missing: string[] = [];
+    if (kind === "invoice" && (o as PurchaseInvoice).pdf) {
+      const att = await this.call<number[]>("ir.attachment", "search", [[["res_model", "=", "account.move"], ["res_id", "=", id]]], { limit: 1 });
+      if (!att.length) missing.push("its PDF is not attached");
+    }
+    if (this.cfg.post) {
+      const model = kind === "payment" ? "account.payment" : "account.move";
+      const [r] = await this.call<{ state: string }[]>(model, "read", [[id]], { fields: ["state"] });
+      if (r?.state !== "posted") missing.push(`it is ${r?.state ?? "missing"}, not posted`);
+    }
+    return missing.length ? missing.join("; ") : null;
   }
 
   async findExisting(kind: ObjectKind, o: Vendor | PurchaseInvoice | Payment | JournalEntry, refs: RefResolver): Promise<string | null> {
@@ -189,7 +242,7 @@ export class OdooConnector implements ErpConnector {
         ids = await this.call("account.move", "search", [[["move_type", "=", "in_invoice"], ["partner_id", "=", Number(p)], ["ref", "=", inv.number]]], { limit: 1 });
         break;
       }
-      case "payment": ids = await this.call("account.payment", "search", [[["memo", "=", `Purser payment ${o.id}`]]], { limit: 1 }); break;
+      case "payment": ids = await this.call("account.payment", "search", [[[await this.paymentRefField(), "=", `Purser payment ${o.id}`]]], { limit: 1 }); break;
       case "journal": ids = await this.call("account.move", "search", [[["move_type", "=", "entry"], ["ref", "=", this.ref(o as JournalEntry)]]], { limit: 1 }); break;
     }
     return ids[0] !== undefined ? String(ids[0]) : null;

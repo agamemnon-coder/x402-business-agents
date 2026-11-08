@@ -7,7 +7,7 @@
 // VAT codes, the document type for a purchase invoice, and the sign of a payment on a bank entry line.
 
 import type { TokenProvider } from "./auth.js";
-import { ErpError, type ErpAccount, type ErpConnector, type ErpVendorRow, type PaymentStatus, type RefResolver, type Transport } from "./connector.js";
+import { ErpError, step, type ErpAccount, type ErpConnector, type ErpVendorRow, type PaymentStatus, type PushProgress, type RefResolver, type Transport } from "./connector.js";
 import { amount, type JournalEntry, type ObjectKind, type Payment, type PurchaseInvoice, type VatCode, type Vendor } from "./model.js";
 import { base64, callJson, odataString } from "./rest.js";
 
@@ -96,15 +96,24 @@ export class ExactConnector implements ErpConnector {
   }
 
   // crm/Accounts, then crm/BankAccounts (…?name=CRMBankAccounts; Account and BankAccount are mandatory).
-  async pushVendor(v: Vendor): Promise<string> {
-    const acc = await this.post<{ ID: string }>("crm/Accounts", {
+  // Two steps (src/erp/connector.ts step): a retry after the account was made adds only the bank account.
+  async pushVendor(v: Vendor, progress?: PushProgress): Promise<string> {
+    const acc = await step(progress, "account", async () => (await this.post<{ ID: string }>("crm/Accounts", {
       Name: v.name, IsSupplier: true, ...(v.vatId ? { VATNumber: v.vatId } : {}), PurchaseCurrency: v.currency,
       ...(v.country ? { Country: v.country } : {}), ...(v.email ? { Email: v.email } : {}),
-    });
+    })).ID);
     if (v.iban) {
-      await this.post("crm/BankAccounts", { Account: acc.ID, BankAccount: v.iban, ...(v.bic ? { BICCode: v.bic } : {}), Main: true, BankAccountHolderName: v.name });
+      const iban = v.iban;
+      await step(progress, "bank", async () => (await this.post<{ ID?: string }>("crm/BankAccounts", { Account: acc, BankAccount: iban, ...(v.bic ? { BICCode: v.bic } : {}), Main: true, BankAccountHolderName: v.name }))?.ID ?? "done");
     }
-    return acc.ID;
+    return acc;
+  }
+
+  /** A supplier found with no record of its steps: its bank account must be there too. */
+  async incomplete(kind: ObjectKind, o: Vendor | PurchaseInvoice | Payment | JournalEntry, externalId: string): Promise<string | null> {
+    if (kind !== "vendor" || !(o as Vendor).iban) return null;
+    const banks = await this.get<{ ID: string }>(this.filter("crm/BankAccounts", `Account eq ${guid(externalId)}`, "ID"));
+    return banks.length ? null : "its bank account is not there";
   }
 
   private async entryLines(inv: PurchaseInvoice, sign: 1 | -1) {
@@ -120,11 +129,13 @@ export class ExactConnector implements ErpConnector {
 
   // documents/Documents (Subject and Type mandatory) and documents/DocumentAttachments (Attachment as base64, Document,
   // FileName mandatory): …?name=DocumentsDocuments, …?name=DocumentsDocumentAttachments.
-  private async attach(inv: PurchaseInvoice, supplier: string): Promise<string | null> {
+  private async attach(inv: PurchaseInvoice, supplier: string, progress?: PushProgress): Promise<string | null> {
     if (!inv.pdf || this.cfg.documentType === undefined) return null;
-    const doc = await this.post<{ ID: string }>("documents/Documents", { Subject: `Purchase invoice ${inv.number}`, Type: this.cfg.documentType, Account: supplier, DocumentDate: date(inv.issueDate) });
-    await this.post("documents/DocumentAttachments", { Document: doc.ID, FileName: inv.pdf.fileName, Attachment: base64(inv.pdf.bytes) });
-    return doc.ID;
+    const pdf = inv.pdf;
+    const type = this.cfg.documentType;
+    const doc = await step(progress, "document", async () => (await this.post<{ ID: string }>("documents/Documents", { Subject: `Purchase invoice ${inv.number}`, Type: type, Account: supplier, DocumentDate: date(inv.issueDate) })).ID);
+    await step(progress, "document:attachment", async () => (await this.post<{ ID?: string }>("documents/DocumentAttachments", { Document: doc, FileName: pdf.fileName, Attachment: base64(pdf.bytes) }))?.ID ?? "done");
+    return doc;
   }
 
   private supplierOf(vendorId: string, refs: RefResolver): string {
@@ -136,10 +147,10 @@ export class ExactConnector implements ErpConnector {
   // purchaseentry/PurchaseEntries (…?name=PurchaseEntryPurchaseEntries): the header with PurchaseEntryLines in one POST;
   // Type 30 = purchase entry; YourRef holds the supplier's invoice number. Lines: …?name=PurchaseEntryPurchaseEntryLines
   // (AmountFC and GLAccount mandatory; VATAmountFC "to specify a VAT amount that differs from the one calculated").
-  async pushPurchaseInvoice(inv: PurchaseInvoice, refs: RefResolver): Promise<string> {
+  async pushPurchaseInvoice(inv: PurchaseInvoice, refs: RefResolver, progress?: PushProgress): Promise<string> {
     const supplier = this.supplierOf(inv.vendorId, refs);
     const lines = await this.entryLines(inv, 1);
-    const doc = await this.attach(inv, supplier);
+    const doc = await this.attach(inv, supplier, progress);
     const e = await this.post<{ EntryID: string }>("purchaseentry/PurchaseEntries", {
       Journal: this.cfg.purchaseJournal, Supplier: supplier, Currency: inv.currency, EntryDate: date(inv.issueDate), DueDate: date(inv.dueDate),
       YourRef: inv.number, Description: `Invoice ${inv.number}`, Type: 30, ...(inv.paymentReference ? { PaymentReference: inv.paymentReference } : {}),

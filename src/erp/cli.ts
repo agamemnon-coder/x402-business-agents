@@ -3,6 +3,8 @@
 // npm run erp -- sync --connector exact --dry-run       the requests a sync would send, redacted; nothing is sent
 // npm run erp -- sync --connector exact --live          send what changed (needs the connector's settings)
 // npm run erp -- pull --connector exact --live          read the ERP's chart of accounts and suppliers
+// npm run erp -- resolve --connector bc --object invoice:<id> --as synced|retry --by <who>
+//                                                       a person settles an object left for them (needs_review)
 // npm run erp -- correct --connector exact --object invoice:<id> --live
 //                                                       a credit note (or reversal) and the new version
 // The dry run needs no account and no settings: without them it uses example settings and says so.
@@ -11,7 +13,7 @@ import type { DB } from "../db/open.js";
 import { CONNECTOR_NAMES, redactRequest, type ConnectorName, type ErpConnector, type HttpRequest } from "./connector.js";
 import { dryRunConnector, liveConnector, missingSettings, SETTINGS } from "./registry.js";
 import { ledgerItems } from "./source.js";
-import { correct, syncAll, syncStatus, type SyncItem } from "./sync.js";
+import { correct, resolve, syncAll, syncStatus, type SyncItem } from "./sync.js";
 import { decodeCallForTest } from "./xmlrpc.js";
 
 export interface CliDeps {
@@ -69,6 +71,20 @@ export async function runErpCli(args: string[], d: CliDeps): Promise<number> {
     for (const r of rows) d.out(`${r.connector.padEnd(6)} ${r.kind.padEnd(8)} ${r.object_id.padEnd(28)} ${r.status.padEnd(17)} ${r.external_id ?? "-"}${r.last_error ? `  (${r.last_error})` : ""}`);
     return 0;
   }
+  if (cmd === "resolve") {
+    // A person's call on an object the ERP holds in a state they had to look at; nothing is sent to the ERP.
+    const name = connectorArg(args);
+    const [kind, ...rest] = (flag(args, "object") ?? "").split(":");
+    const id = rest.join(":");
+    const as = flag(args, "as");
+    const by = flag(args, "by");
+    if (!kind || !id || !["vendor", "invoice", "payment", "journal"].includes(kind)) throw new Error("say which object: --object invoice:<id>");
+    if (as !== "synced" && as !== "retry") throw new Error("say --as synced (finished in the ERP) or --as retry (send it again from where it stopped)");
+    if (!by) throw new Error("say who resolves it: --by <name or role>");
+    resolve(d.db, name, kind as SyncItem["kind"], id, as, by);
+    d.out(`${kind} ${id}: ${as} by ${by}`);
+    return 0;
+  }
   if (cmd === "sync" || cmd === "pull" || cmd === "correct") {
     const name = connectorArg(args);
     if (dry === live) throw new Error("say --dry-run (send nothing, print the requests) or --live (send them)");
@@ -107,6 +123,6 @@ export async function runErpCli(args: string[], d: CliDeps): Promise<number> {
     for (const r of res) d.out(`${r.kind.padEnd(8)} ${r.id.padEnd(28)} ${r.outcome}${r.externalId ? ` ${r.externalId}` : ""}${r.detail ? `: ${r.detail}` : ""}`);
     return res.some((r) => r.outcome === "failed" || r.outcome === "invalid") ? 1 : 0;
   }
-  d.out("npm run erp -- list | status | sync --connector exact|bc|odoo --dry-run|--live | pull --connector … --live | correct --connector … --object invoice:<id> --live");
+  d.out("npm run erp -- list | status | sync --connector exact|bc|odoo --dry-run|--live | pull --connector … --live | correct --connector … --object invoice:<id> --live | resolve --connector … --object invoice:<id> --as synced|retry --by <who>");
   return cmd ? 2 : 0;
 }

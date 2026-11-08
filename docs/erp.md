@@ -24,15 +24,26 @@ live ERP yet.** Each connector needs a test administration and its credentials f
 - Order: suppliers, then invoices, then payments, then journal entries. Something whose supplier or invoice is not in
   the ERP yet waits for the next run.
 - Sent once: `erp_sync` keeps the ERP's id and the hash of what was sent. Unchanged objects are skipped.
-- Never posted twice: when an answer never came (a network or server error), or a run stopped between sending and
-  recording, the connector first asks the ERP whether the object is already there.
+- Step by step: a push made of several requests (a supplier and its bank account; an invoice header, its lines, the PDF
+  and the post action; journal lines) records each step that succeeded in `erp_sync.progress_json`. A retry or the next
+  run resumes from the first step not done, so a rate limit on a later request never makes a second header or repeats
+  an earlier line.
+- Never posted twice: whenever an earlier run left a row (pending or failed) with no step recorded, or an answer never
+  came, the connector first asks the ERP whether the object is already there. A lookup that fails is retried as a
+  lookup; nothing is sent blind. An object found only in part (an invoice header without all its lines, a supplier
+  without its bank account, an Odoo bill not posted) is not taken as sent: it goes to a person (`needs_review`).
+- Waits for a person (`needs_review`): when the ERP holds the object in a state a person must look at. Business Central
+  and Odoo post an invoice only when their own computed total is the invoice's, to the cent; otherwise it stays in draft
+  with the difference named. Such an object is never sent again, never looked up and never marked sent by a sync, and a
+  payment against it waits. A person settles it: `npm run erp -- resolve --connector bc --object invoice:<id> --as
+  synced --by <who>` once they finished it in the ERP, or `--as retry` to let the next sync try again.
 - Never overwritten: something that changed after it was sent is marked `needs_correction`. An invoice is corrected with
   a credit note plus the new version (`npm run erp -- correct ...`), a journal entry with a reversal plus the new one.
-  A changed supplier or payment goes to a person.
-- Retries: rate limits, server and network errors, with back-off and the ERP's Retry-After. Everything else fails with
-  the ERP's own message. Every result is in the audit log.
-- Invoices are posted in Business Central and Odoo only when the ERP's own computed total is the invoice's, to the cent;
-  otherwise they stay in draft with the difference named.
+  Each part is recorded as soon as it succeeds, so a correction run again after a failure never posts its credit note
+  or reversal twice. A changed supplier or payment goes to a person.
+- Retries: rate limits, server and network errors, with back-off and the ERP's Retry-After up to two minutes; an ERP
+  that asks to wait longer fails the push, naming the wait. Everything else fails with the ERP's own message. Every
+  result is in the audit log.
 
 ## Commands
 
@@ -43,6 +54,7 @@ npm run erp -- sync --connector exact --live         # send what changed
 npm run erp -- pull --connector exact --live         # read the ERP's chart of accounts and suppliers
 npm run erp -- status                                # what was sent, what failed, what needs a correction
 npm run erp -- correct --connector exact --object invoice:<id> --live
+npm run erp -- resolve --connector bc --object invoice:<id> --as synced|retry --by <who>   # a person settles needs_review
 ```
 
 A dry run needs no account: without settings it uses example settings and says so.
@@ -50,7 +62,10 @@ A dry run needs no account: without settings it uses example settings and says s
 ## What is needed to go live
 
 Secrets go in the environment only (or, for Exact's rotating refresh token, `data/erp/exact.token.json`, outside git,
-mode 600). Never in the repository or the chat.
+mode 600). Never in the repository or the chat. Two runs never refresh Exact's token at once: load, refresh and save
+happen under a lock file next to it (`exact.token.json.lock`; one left by a run that died is taken over after a minute),
+and the file is written to a temporary file and renamed, so a crash leaves the old token or the new one. A token file
+that cannot be read says so and asks to authorise Exact Online again.
 
 ### Exact Online
 1. Register an app in the Exact App Center (a client id, a client secret, a redirect URI).
@@ -81,6 +96,10 @@ mode 600). Never in the repository or the chat.
    VAT treatment, 0 for none); optional `ERP_ODOO_COMPANY_CURRENCY`, `ERP_ODOO_GL_MAP`, `ERP_ODOO_POST` (`on`).
 3. A person reconciles a payment with its bill in Odoo (the payment register); journal entries go in the company's
    currency only.
+4. Odoo 17 and 18 differ on a payment's reference: `account.payment.memo` exists from 18.0; 17.0 has no such field
+   (create refuses it) and takes `ref` through its `_inherits` of `account.move` (odoo/odoo 17.0 and 18.0,
+   `addons/account/models/account_payment.py`). The connector asks the server's version once (`common.version`) and
+   uses the right field to create and to find a payment. A dry run asks no server and prints Odoo 18's shapes.
 
 ## What the ledger sends today
 

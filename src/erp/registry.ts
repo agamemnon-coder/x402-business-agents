@@ -104,7 +104,8 @@ function dryAnswer(name: ConnectorName): (req: HttpRequest, n: number) => HttpRe
   if (name === "bc") return (req, n) => (req.method === "GET" ? json({ value: [] }) : req.method === "PATCH" ? json({}) : req.url.endsWith("Microsoft.NAV.post") ? { status: 204, headers: {}, body: "" } : json({ id: `dry-run-${n}`, "@odata.etag": "W/\"dry\"" }, 201));
   return (req, n) => {
     const body = typeof req.body === "string" ? req.body : "";
-    if (req.url.endsWith("/common")) return xml(1);
+    // common.version: a dry run asks no server, so it prints Odoo 18's request shapes (memo on a payment; 17 uses ref).
+    if (req.url.endsWith("/common")) return body.includes("<methodName>version</methodName>") ? xml({ server_version: "18.0", server_version_info: [18, 0, 0, "final", 0, ""] }) : xml(1);
     if (body.includes("<string>account.account</string>") && body.includes("search_read")) return xml(chartCodes.map((c, i) => ({ id: 100 + i, code: c, name: CHART[c] ?? "Accounts payable" })));
     if (body.includes("<string>res.currency</string>")) return xml([1]);
     if (body.includes("<string>search</string>") || body.includes("<string>search_read</string>")) return xml([]);

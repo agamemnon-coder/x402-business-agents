@@ -9,7 +9,7 @@
 
 import { createHash } from "node:crypto";
 import type { TokenProvider } from "./auth.js";
-import { ErpError, type ErpAccount, type ErpConnector, type ErpVendorRow, type PaymentStatus, type RefResolver, type Transport } from "./connector.js";
+import { ErpError, step, type ErpAccount, type ErpConnector, type ErpVendorRow, type PaymentStatus, type PushProgress, type RefResolver, type Transport } from "./connector.js";
 import { amount, type InvoiceLine, type JournalEntry, type ObjectKind, type Payment, type PurchaseInvoice, type VatCode, type Vendor } from "./model.js";
 import { callJson, odataString } from "./rest.js";
 
@@ -113,40 +113,48 @@ export class BusinessCentralConnector implements ErpConnector {
   // (POST purchaseInvoices({id})/purchaseInvoiceLines); api/dynamics_attachment_create (parentType "Purchase Invoice")
   // and api/dynamics_attachment_update (PATCH attachments({id})/attachmentContent, If-Match required); the bound action
   // Microsoft.NAV.post (resources/dynamics_purchaseinvoice, "Bound actions", 204).
-  async pushPurchaseInvoice(inv: PurchaseInvoice, refs: RefResolver): Promise<string> {
+  // pricesIncludeTax is read-only on purchaseInvoice and purchaseCreditMemo in API v2.0: not sent.
+  // Each request is one step (src/erp/connector.ts step): a retry resumes after the last one that succeeded.
+  async pushPurchaseInvoice(inv: PurchaseInvoice, refs: RefResolver, progress?: PushProgress): Promise<string> {
     const vendorId = this.vendorOf(inv.vendorId, refs);
     const lines = inv.lines.map((l) => this.line(l));
-    const head = await this.post<{ id: string }>("purchaseInvoices", {
-      vendorId, vendorInvoiceNumber: inv.number, invoiceDate: inv.issueDate, postingDate: inv.issueDate, dueDate: inv.dueDate, currencyCode: this.currency(inv.currency), pricesIncludeTax: false,
-    });
-    for (const l of lines) await this.post(`purchaseInvoices(${head.id})/purchaseInvoiceLines`, l);
+    const head = await step(progress, "header", async () => (await this.post<{ id: string }>("purchaseInvoices", {
+      vendorId, vendorInvoiceNumber: inv.number, invoiceDate: inv.issueDate, postingDate: inv.issueDate, dueDate: inv.dueDate, currencyCode: this.currency(inv.currency),
+    })).id);
+    for (const [i, l] of lines.entries()) await step(progress, `line:${i}`, async () => (await this.post<{ id?: string }>(`purchaseInvoices(${head})/purchaseInvoiceLines`, l))?.id ?? "done");
     if (inv.pdf) {
-      const att = await this.post<{ id: string; "@odata.etag"?: string }>("attachments", { parentId: head.id, fileName: inv.pdf.fileName, parentType: "Purchase Invoice" });
-      await callJson(this.transport, this.tokens, {
-        method: "PATCH", url: `${this.base}/attachments(${att.id})/attachmentContent`, bytes: { data: inv.pdf.bytes, contentType: "application/octet-stream" }, headers: { "if-match": att["@odata.etag"] ?? "*" },
+      const pdf = inv.pdf;
+      const att = await step(progress, "attachment", async () => JSON.stringify(await this.post<{ id: string; "@odata.etag"?: string }>("attachments", { parentId: head, fileName: pdf.fileName, parentType: "Purchase Invoice" })));
+      const a = JSON.parse(att) as { id: string; "@odata.etag"?: string };
+      await step(progress, "attachment:content", async () => {
+        await callJson(this.transport, this.tokens, {
+          method: "PATCH", url: `${this.base}/attachments(${a.id})/attachmentContent`, bytes: { data: pdf.bytes, contentType: "application/octet-stream" }, headers: { "if-match": a["@odata.etag"] ?? "*" },
+        });
+        return "done";
       });
     }
-    // Business Central computes the tax itself: post only when its total is the invoice's, to the cent.
-    const t = this.cfg.verifyTotals === false ? null : await this.one<{ totalAmountIncludingTax: number }>(`purchaseInvoices(${head.id})?$select=totalAmountIncludingTax,totalTaxAmount`);
+    // Business Central computes the tax itself: post only when its total is the invoice's, to the cent. Otherwise the
+    // draft stays for a person, and stays theirs: the sync runner never clears needs_review by itself.
+    const t = this.cfg.verifyTotals === false ? null : await this.one<{ totalAmountIncludingTax: number }>(`purchaseInvoices(${head})?$select=totalAmountIncludingTax,totalTaxAmount`);
     if (t && Math.round(t.totalAmountIncludingTax * 100) !== inv.totals.grossCents) {
-      throw new ErpError("validation", `Business Central computed a total of ${t.totalAmountIncludingTax.toFixed(2)} for purchase invoice ${head.id}, the invoice says ${amount(inv.totals.grossCents).toFixed(2)}; it is left in Draft for a person (check the tax codes)`);
+      throw new ErpError("needs_review", `Business Central computed a total of ${t.totalAmountIncludingTax.toFixed(2)} for purchase invoice ${head}, the invoice says ${amount(inv.totals.grossCents).toFixed(2)}; it is left in Draft for a person (check the tax codes)`, { externalId: head });
     }
-    if (this.cfg.postInvoices) await this.post(`purchaseInvoices(${head.id})/Microsoft.NAV.post`);
-    return head.id;
+    if (this.cfg.postInvoices) await step(progress, "posted", async () => { await this.post(`purchaseInvoices(${head})/Microsoft.NAV.post`); return "done"; });
+    return head;
   }
 
   // api/dynamics_purchasecreditmemo_create (invoiceId links the invoice it corrects);
   // api/dynamics_purchasecreditmemoline_create: the example body carries documentId, so the line is created on the
   // purchaseCreditMemoLines collection with documentId (the example's URL ends in "({id})", which a create cannot use).
-  async pushCreditNote(original: PurchaseInvoice, originalExternalId: string, refs: RefResolver): Promise<string> {
+  async pushCreditNote(original: PurchaseInvoice, originalExternalId: string, refs: RefResolver, progress?: PushProgress): Promise<string> {
     const vendorId = this.vendorOf(original.vendorId, refs);
     const lines = original.lines.map((l) => this.line(l));
-    const head = await this.post<{ id: string }>("purchaseCreditMemos", {
+    const head = await step(progress, "header", async () => (await this.post<{ id: string }>("purchaseCreditMemos", {
       vendorId, vendorCreditMemoNumber: `${original.number}-CR`, creditMemoDate: original.issueDate, postingDate: original.issueDate, dueDate: original.dueDate,
-      currencyCode: this.currency(original.currency), invoiceId: originalExternalId, pricesIncludeTax: false,
-    });
-    for (const l of lines) await this.post("purchaseCreditMemoLines", { documentId: head.id, ...l });
-    return head.id;
+      currencyCode: this.currency(original.currency), invoiceId: originalExternalId,
+    })).id);
+    for (const [i, l] of lines.entries()) await step(progress, `line:${i}`, async () => (await this.post<{ id?: string }>("purchaseCreditMemoLines", { documentId: head, ...l }))?.id ?? "done");
+    return head;
   }
 
   // api/dynamics_vendorpayment_create: POST companies({id})/vendorPayments; resources/dynamics_vendorpayment (journalId,
@@ -165,16 +173,31 @@ export class BusinessCentralConnector implements ErpConnector {
 
   // api/dynamics_journalline_create: POST companies({id})/journals({id})/journalLines; resources/dynamics_journalline
   // (accountType "G/L Account", accountNumber, postingDate, documentNumber, externalDocumentNumber, amount, taxCode).
-  async pushJournalEntry(j: JournalEntry): Promise<string> {
+  async pushJournalEntry(j: JournalEntry, progress?: PushProgress): Promise<string> {
     if (j.currency !== this.cfg.localCurrency) throw new ErpError("config", `journal entry ${j.id} is in ${j.currency}; Business Central journal lines carry no currency, so only ${this.cfg.localCurrency} entries are sent`);
     const doc = this.docNo(j);
-    for (const l of j.lines) {
-      await this.post(`journals(${this.cfg.generalJournalId})/journalLines`, {
+    for (const [i, l] of j.lines.entries()) {
+      await step(progress, `line:${i}`, async () => (await this.post<{ id?: string }>(`journals(${this.cfg.generalJournalId})/journalLines`, {
         accountType: "G/L Account", accountNumber: this.account(l.glAccount), postingDate: j.date, documentNumber: doc, externalDocumentNumber: `Purser ${j.id}`,
         amount: amount(l.debitCents > 0 ? l.debitCents : -l.creditCents), description: (l.description ?? j.memo).slice(0, 100), ...(l.vatCode ? { taxCode: this.tax(l.vatCode) } : {}),
-      });
+      }))?.id ?? "done");
     }
     return `${this.cfg.generalJournalId}:${doc}`;
+  }
+
+  /** An invoice or journal entry found with no record of its steps: all its lines must be there. */
+  async incomplete(kind: ObjectKind, o: Vendor | PurchaseInvoice | Payment | JournalEntry, externalId: string): Promise<string | null> {
+    if (kind === "invoice") {
+      const want = (o as PurchaseInvoice).lines.length;
+      const have = (await this.list<{ id: string }>(`purchaseInvoices(${externalId})/purchaseInvoiceLines?$select=id`)).length;
+      return have === want ? null : `${have} of its ${want} lines are there`;
+    }
+    if (kind === "journal") {
+      const j = o as JournalEntry;
+      const have = (await this.list<{ id: string }>(this.filter(`journals(${this.cfg.generalJournalId})/journalLines`, `externalDocumentNumber eq ${odataString(`Purser ${j.id}`)}`, "id"))).length;
+      return have === j.lines.length ? null : `${have} of its ${j.lines.length} journal lines are there`;
+    }
+    return null;
   }
 
   async findExisting(kind: ObjectKind, o: Vendor | PurchaseInvoice | Payment | JournalEntry, refs: RefResolver): Promise<string | null> {

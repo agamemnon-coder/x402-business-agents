@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { openDb } from "../src/db/open.js";
 import { runErpCli } from "../src/erp/cli.js";
-import type { SyncItem } from "../src/erp/sync.js";
+import { ensureErpSchema, type SyncItem } from "../src/erp/sync.js";
 import { sampleInvoice, samplePayment, sampleVendor } from "./fakes/erp.js";
 
 const items = (): SyncItem[] => [{ kind: "vendor", object: sampleVendor() }, { kind: "invoice", object: sampleInvoice() }, { kind: "payment", object: samplePayment() }];
@@ -44,5 +44,19 @@ describe("npm run erp", () => {
     expect(text).toMatch(/exact\s+Exact Online: not set up \(missing ERP_EXACT_CLIENT_ID/);
     expect(text).toMatch(/odoo\s+Odoo: not set up \(missing ERP_ODOO_DB/);
     expect(text).not.toContain("secret-value-1");
+  });
+});
+
+describe("npm run erp -- resolve", () => {
+  it("lets a person settle an object that waits for them, naming who; anything else is refused", async () => {
+    const db = openDb(":memory:");
+    const lines: string[] = [];
+    const out = (l: string) => lines.push(l);
+    ensureErpSchema(db);
+    db.prepare("INSERT INTO erp_sync (connector, kind, object_id, external_id, pushed_hash, status, attempts, last_error, updated_at) VALUES ('bc', 'invoice', 'INV-1', 'pi-2', 'h', 'needs_review', 1, 'left in Draft', '2026-11-08T00:00:00Z')").run();
+    await expect(runErpCli(["resolve", "--connector", "bc", "--object", "invoice:INV-1", "--as", "synced"], { db, env: {}, out, items })).rejects.toThrow(/--by/);
+    expect(await runErpCli(["resolve", "--connector", "bc", "--object", "invoice:INV-1", "--as", "synced", "--by", "accountant"], { db, env: {}, out, items })).toBe(0);
+    expect(lines.join("\n")).toMatch(/invoice INV-1: synced by accountant/);
+    await expect(runErpCli(["resolve", "--connector", "bc", "--object", "invoice:INV-1", "--as", "synced", "--by", "accountant"], { db, env: {}, out, items })).rejects.toThrow(/does not wait for a person/);
   });
 });

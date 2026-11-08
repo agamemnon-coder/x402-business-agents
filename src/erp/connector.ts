@@ -55,18 +55,23 @@ export class RecordingTransport implements Transport {
   }
 }
 
-export type ErpErrorKind = "auth" | "rate_limited" | "validation" | "not_found" | "conflict" | "server" | "network" | "config" | "unexpected";
+/** needs_review: the ERP now holds the object, but in a state a person must look at (a draft whose total differs);
+ *  the sync runner keeps it with that person and never clears it by itself. */
+export type ErpErrorKind = "auth" | "rate_limited" | "validation" | "not_found" | "conflict" | "server" | "network" | "config" | "unexpected" | "needs_review";
 
 export class ErpError extends Error {
   readonly retryable: boolean;
   readonly retryAfterMs: number | undefined;
   readonly status: number | undefined;
-  constructor(readonly kind: ErpErrorKind, message: string, o: { retryable?: boolean; retryAfterMs?: number; status?: number } = {}) {
+  /** needs_review: the ERP's id of the object left for a person. */
+  readonly externalId: string | undefined;
+  constructor(readonly kind: ErpErrorKind, message: string, o: { retryable?: boolean; retryAfterMs?: number; status?: number; externalId?: string } = {}) {
     super(message);
     this.name = "ErpError";
     this.retryable = o.retryable ?? false;
     this.retryAfterMs = o.retryAfterMs;
     this.status = o.status;
+    this.externalId = o.externalId;
   }
   /** True when the ERP may have done what was asked although no answer came back: look before trying again. */
   get ambiguous(): boolean {
@@ -130,6 +135,30 @@ export interface RefResolver {
   invoice(invoiceId: string): string | null;
 }
 
+/**
+ * The steps of a push made of several requests (a header, then its lines, an attachment, a post action) that already
+ * succeeded, kept in erp_sync after each one: a retry or the next run resumes from the first step not done instead of
+ * starting over, so a rate limit on the second line never makes a second header or repeats the first line.
+ */
+export interface PushProgress {
+  get(step: string): string | undefined;
+  set(step: string, value: string): void;
+}
+
+/** Runs one step of a push once: a step already done returns what it recorded. */
+export async function step(progress: PushProgress | undefined, name: string, run: () => Promise<string>): Promise<string> {
+  const done = progress?.get(name);
+  if (done !== undefined) return done;
+  const value = await run();
+  progress?.set(name, value);
+  return value;
+}
+
+/** The same steps under a prefix (a correction's credit note and its replacement each keep their own). */
+export function scoped(progress: PushProgress | undefined, prefix: string): PushProgress | undefined {
+  return progress && { get: (s) => progress.get(`${prefix}${s}`), set: (s, v) => progress.set(`${prefix}${s}`, v) };
+}
+
 export interface ErpAccount { code: string; name: string; externalId: string }
 export interface ErpVendorRow { externalId: string; name: string; vatId?: string }
 export type PaymentStatus = "unpaid" | "partial" | "paid" | "unknown";
@@ -140,12 +169,17 @@ export interface ErpConnector {
   pullVendors(): Promise<ErpVendorRow[]>;
   /** The ERP's id for an object Purser may already have created there (a crash between "sent" and "recorded"), or null. */
   findExisting(kind: ObjectKind, object: Vendor | PurchaseInvoice | Payment | JournalEntry, refs: RefResolver): Promise<string | null>;
-  pushVendor(v: Vendor): Promise<string>;
-  pushPurchaseInvoice(inv: PurchaseInvoice, refs: RefResolver): Promise<string>;
+  /**
+   * For an object found by findExisting with no record of its steps (the answer to its first request was lost): null
+   * when the ERP holds all of it, else what is missing. Missing parts go to a person, never 'synced'.
+   */
+  incomplete?(kind: ObjectKind, object: Vendor | PurchaseInvoice | Payment | JournalEntry, externalId: string, refs: RefResolver): Promise<string | null>;
+  pushVendor(v: Vendor, progress?: PushProgress): Promise<string>;
+  pushPurchaseInvoice(inv: PurchaseInvoice, refs: RefResolver, progress?: PushProgress): Promise<string>;
   /** A credit note that cancels `original` as it was sent (`originalExternalId` is its id in the ERP). */
-  pushCreditNote(original: PurchaseInvoice, originalExternalId: string, refs: RefResolver): Promise<string>;
-  pushPayment(p: Payment, refs: RefResolver): Promise<string>;
-  pushJournalEntry(j: JournalEntry): Promise<string>;
+  pushCreditNote(original: PurchaseInvoice, originalExternalId: string, refs: RefResolver, progress?: PushProgress): Promise<string>;
+  pushPayment(p: Payment, refs: RefResolver, progress?: PushProgress): Promise<string>;
+  pushJournalEntry(j: JournalEntry, progress?: PushProgress): Promise<string>;
   pullPaymentStatus(inv: PurchaseInvoice, invoiceExternalId: string, refs: RefResolver): Promise<PaymentStatus>;
 }
 

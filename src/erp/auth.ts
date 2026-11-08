@@ -10,7 +10,8 @@
 // credentials, token URL https://login.microsoftonline.com/<tenantId>/oauth2/v2.0/token, scope
 // https://api.businesscentral.dynamics.com/.default, application permission API.ReadWrite.All.
 
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { chmodSync, closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeSync } from "node:fs";
 import { dirname } from "node:path";
 import { errorForStatus, ErpError, type Transport } from "./connector.js";
 
@@ -21,16 +22,70 @@ export interface TokenProvider {
 }
 
 export interface StoredTokens { access_token?: string; expires_at?: number; refresh_token: string }
-export interface TokenStore { load(): StoredTokens | null; save(t: StoredTokens): void }
+export interface TokenStore {
+  load(): StoredTokens | null;
+  save(t: StoredTokens): void;
+  /** Runs `fn` while no other run on this machine holds the token (load, refresh and save as one step). */
+  withLock?<T>(fn: () => Promise<T>): Promise<T>;
+}
 
-/** A token file outside git, readable by its owner only. */
+/** A lock older than this is taken to be left by a run that died. */
+const STALE_LOCK_MS = 60_000;
+const LOCK_WAIT_MS = 30_000;
+
+/**
+ * A token file outside git, readable by its owner only. Exact rotates the refresh token on every refresh and the old one
+ * stops working, so two runs must never refresh at once (one would write the dead token back): load, refresh and save
+ * happen under an O_EXCL lock file. The file is written to a temporary file, flushed and renamed, so a crash leaves the
+ * old file or the new one, never half of one.
+ */
 export function fileTokenStore(path: string): TokenStore {
+  const lock = `${path}.lock`;
   return {
-    load: () => (existsSync(path) ? (JSON.parse(readFileSync(path, "utf8")) as StoredTokens) : null),
+    load: () => {
+      if (!existsSync(path)) return null;
+      try {
+        const t = JSON.parse(readFileSync(path, "utf8")) as StoredTokens;
+        if (typeof t?.refresh_token !== "string" || !t.refresh_token) throw new Error("no refresh token in it");
+        return t;
+      } catch (e) {
+        throw new ErpError("config", `the Exact Online token file ${path} cannot be read (${(e as Error).message}); remove it and authorise Exact Online again (ERP_EXACT_REFRESH_TOKEN)`);
+      }
+    },
     save: (t) => {
       mkdirSync(dirname(path), { recursive: true });
-      writeFileSync(path, JSON.stringify(t), { mode: 0o600 });
+      const tmp = `${path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
+      const fd = openSync(tmp, "wx", 0o600);
+      try {
+        writeSync(fd, JSON.stringify(t));
+        fsyncSync(fd);
+      } finally {
+        closeSync(fd);
+      }
+      renameSync(tmp, path);
       chmodSync(path, 0o600);
+    },
+    async withLock<T>(fn: () => Promise<T>): Promise<T> {
+      mkdirSync(dirname(path), { recursive: true });
+      const until = Date.now() + LOCK_WAIT_MS;
+      for (;;) {
+        try {
+          closeSync(openSync(lock, "wx", 0o600));
+          break;
+        } catch (e) {
+          if ((e as { code?: string }).code !== "EEXIST") throw e;
+          try {
+            if (Date.now() - statSync(lock).mtimeMs > STALE_LOCK_MS) { unlinkSync(lock); continue; }
+          } catch { continue; }
+          if (Date.now() > until) throw new ErpError("config", `another run has held the Exact Online token lock (${lock}) for over ${LOCK_WAIT_MS / 1000} s`);
+          await new Promise((r) => setTimeout(r, 25));
+        }
+      }
+      try {
+        return await fn();
+      } finally {
+        try { unlinkSync(lock); } catch { /* already gone */ }
+      }
     },
   };
 }
@@ -59,20 +114,30 @@ async function postToken(transport: Transport, url: string, body: Record<string,
 /** Exact Online: refresh only in the token's last 30 seconds; save the rotated refresh token before using the new access token. */
 export function exactTokens(o: { baseUrl: string; clientId: string; clientSecret: string; store: TokenStore; seedRefreshToken?: string; transport: Transport; now?: () => number }): TokenProvider {
   const now = o.now ?? Date.now;
+  const locked = <T>(fn: () => Promise<T>) => (o.store.withLock ? o.store.withLock(fn) : fn());
+  // An access token Exact refused (a 401): not used again, even if the file still says it is valid.
+  let refused: string | null = null;
+  let handed: string | null = null;
+  const hand = (token: string) => { handed = token; return token; };
   return {
-    async token() {
-      const t = o.store.load() ?? (o.seedRefreshToken ? { refresh_token: o.seedRefreshToken } : null);
-      if (!t) throw new ErpError("config", "no Exact Online refresh token: set ERP_EXACT_REFRESH_TOKEN once, from the authorization step");
-      // Valid for more than 30 more seconds: use it (Exact refuses a refresh before then).
-      if (t.access_token && t.expires_at && t.expires_at - now() > 30_000) return t.access_token;
-      const r = await postToken(o.transport, `${o.baseUrl}/api/oauth2/token`, { grant_type: "refresh_token", refresh_token: t.refresh_token, client_id: o.clientId, client_secret: o.clientSecret }, "Exact Online token");
-      // The old refresh token is now invalid: keep the new one first, whatever happens next.
-      o.store.save({ access_token: r.access_token, expires_at: now() + r.expires_in * 1000, refresh_token: r.refresh_token ?? t.refresh_token });
-      return r.access_token;
+    token() {
+      // Load, refresh and save under the store's lock: a second run waits, then finds the first run's new token.
+      return locked(async () => {
+        const t = o.store.load() ?? (o.seedRefreshToken ? { refresh_token: o.seedRefreshToken } : null);
+        if (!t) throw new ErpError("config", "no Exact Online refresh token: set ERP_EXACT_REFRESH_TOKEN once, from the authorization step");
+        // Valid for more than 30 more seconds: use it (Exact refuses a refresh before then).
+        if (t.access_token && t.access_token !== refused && t.expires_at && t.expires_at - now() > 30_000) return hand(t.access_token);
+        const r = await postToken(o.transport, `${o.baseUrl}/api/oauth2/token`, { grant_type: "refresh_token", refresh_token: t.refresh_token, client_id: o.clientId, client_secret: o.clientSecret }, "Exact Online token");
+        // The old refresh token is now invalid: keep the new one first, whatever happens next.
+        o.store.save({ access_token: r.access_token, expires_at: now() + r.expires_in * 1000, refresh_token: r.refresh_token ?? t.refresh_token });
+        refused = null;
+        return hand(r.access_token);
+      });
     },
     invalidate() {
-      const t = o.store.load();
-      if (t) o.store.save({ refresh_token: t.refresh_token });
+      // The token this run used and Exact refused is remembered here, never written: writing the file back could put an
+      // old refresh token over a newer one another run just saved.
+      refused = handed;
     },
   };
 }

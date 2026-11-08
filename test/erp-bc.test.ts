@@ -46,7 +46,7 @@ describe("Business Central connector", () => {
       "POST /purchaseInvoices", "POST /purchaseInvoices(pi-1)/purchaseInvoiceLines", "POST /purchaseInvoices(pi-1)/purchaseInvoiceLines",
       "POST /attachments", "PATCH /attachments(att-1)/attachmentContent", "GET /purchaseInvoices(pi-1)", "POST /purchaseInvoices(pi-1)/Microsoft.NAV.post",
     ]);
-    expect(body(tr.sent[0]!)).toEqual({ vendorId: "v0000000-0000-0000-0000-000000000001", vendorInvoiceNumber: "BT-2026-0042", invoiceDate: "2026-11-02", postingDate: "2026-11-02", dueDate: "2026-12-02", currencyCode: "", pricesIncludeTax: false });
+    expect(body(tr.sent[0]!)).toEqual({ vendorId: "v0000000-0000-0000-0000-000000000001", vendorInvoiceNumber: "BT-2026-0042", invoiceDate: "2026-11-02", postingDate: "2026-11-02", dueDate: "2026-12-02", currencyCode: "" });
     expect(body(tr.sent[1]!)).toEqual({ lineType: "Account", lineObjectNumber: "60100", description: "Rain jackets, 40 pieces", unitCost: 1000, quantity: 1, taxCode: "VAT21" });
     expect(body(tr.sent[2]!)).toMatchObject({ lineObjectNumber: "6900", unitCost: 200, taxCode: "VAT9" });
     expect(body(tr.sent[3]!)).toEqual({ parentId: "pi-1", fileName: "BT-2026-0042.pdf", parentType: "Purchase Invoice" });

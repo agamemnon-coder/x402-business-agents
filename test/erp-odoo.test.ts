@@ -42,7 +42,7 @@ function odoo(route: (model: string, method: string, args: XmlValue[], kwargs: X
   const calls: { model: string; method: string; args: XmlValue[]; kwargs: XmlValue }[] = [];
   const tr = new RecordingTransport((req: HttpRequest) => {
     const call = decodeCallForTest(req.body as string);
-    if (req.url.endsWith("/xmlrpc/2/common")) return xmlOk(int(2));
+    if (req.url.endsWith("/xmlrpc/2/common")) return call.method === "version" ? xmlOk(struct({ server_version: "<string>18.0</string>", server_version_info: arr(int(18), int(0)) })) : xmlOk(int(2));
     const [, , , model, method, args, kwargs] = call.params as [string, number, string, string, string, XmlValue[], XmlValue];
     calls.push({ model, method, args, kwargs });
     return route(model, method, args, kwargs);
