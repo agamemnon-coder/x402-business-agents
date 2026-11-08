@@ -1,7 +1,7 @@
 // The read API: everything the company's apps, its accountant and its ERP connectors ask for, as JSON. Reports are
 // computed by the same functions the runner uses (src/ledger/reports.ts), over the cloud's copy of the ledger.
 
-import { ageingFrom, balanceSheetFrom, profitAndLossFrom, quarterRange, trialFrom, vatOverviewFrom, type PostedLine } from "../../src/ledger/reports.js";
+import { ageingFrom, balanceSheetFrom, isClosingKey, profitAndLossFrom, quarterRange, trialFrom, vatOverviewFrom, type PostedLine } from "../../src/ledger/reports.js";
 import type { Cond, TenantDb, Where } from "./tenant.js";
 
 export class BadRequest extends Error {}
@@ -78,7 +78,11 @@ export async function ledgerEntries(db: TenantDb, q: URLSearchParams): Promise<P
 }
 
 async function lines(db: TenantDb): Promise<PostedLine[]> {
-  return db.select<PostedLine>("ledger_lines", {}, { order: ["entry_id", "line_no"] });
+  const all = await db.select<PostedLine & { entry_id: number }>("ledger_lines", {}, { order: ["entry_id", "line_no"] });
+  // A year close's lines are marked as the runner marks them, so P&L and VAT leave them out here too.
+  const entries = await db.select<{ entry_id: number; entry_json: string }>("ledger_entries", {}, { order: ["entry_id"] });
+  const closing = new Set(entries.filter((e) => isClosingKey((JSON.parse(e.entry_json) as { source_key?: string | null }).source_key)).map((e) => e.entry_id));
+  return all.map((l) => ({ ...l, closing: closing.has(l.entry_id) }));
 }
 
 export async function report(db: TenantDb, name: string, q: URLSearchParams): Promise<unknown> {

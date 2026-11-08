@@ -22,7 +22,7 @@ once; run it as often as you like.
 | `npm run ledger -- vat --quarter 2026Q4` | Overview for the Dutch VAT return (rubrics 1a to 5c) |
 | `npm run ledger -- ageing receivables` / `payables` | Open customer and supplier invoices, by due date |
 | `npm run ledger -- cash` / `stock` | Cash per account and currency; stock at average cost |
-| `npm run ledger -- close --month 2026-11` | Locks a month; a late item posts in the next open month |
+| `npm run ledger -- close --month 2026-11` | Locks a month and every month before it; a late item posts on the first day after the last closed month |
 | `npm run ledger -- close --year 2026` | Moves the year's result to retained earnings and locks the year |
 | `npm run ledger -- export --csv` / `--json` | Every line; the JSON carries the chain check |
 | `npm run ledger -- verify` | Recomputes the ledger's hash chain from the first entry |

@@ -85,6 +85,18 @@ describe("pushing a ledger", () => {
     expect(await get("/v1/reports/vat?quarter=2026Q4")).toEqual(vatOverview(db, "2026Q4"));
   });
 
+  it("keeps a closed year's own result in the cloud's P&L, as the runner does (review of PR #108, finding 2)", async () => {
+    const { closeYear } = await import("../src/ledger/close.js");
+    closeYear(db, 2026, "test", new Date("2027-01-05T09:00:00Z"));
+    await pushToCloud(db, target(), NOW);
+    const get = async (p: string) => (await c.req("GET", p, { key: tenant.key })).json;
+    const runner = profitAndLoss(db, { from: "2026-01-01", to: "2026-12-31" });
+    expect(runner.EUR!.result_cents).not.toBe(0);
+    expect((await get("/v1/reports/pnl?from=2026-01-01&to=2026-12-31")).by_currency).toEqual(runner);
+    expect(await get("/v1/reports/vat?quarter=2026Q4")).toEqual(vatOverview(db, "2026Q4"));
+    expect((await get("/v1/reports/balance?to=2026-12-31")).by_currency).toEqual(balanceSheet(db, "2026-12-31"));
+  });
+
   it("serves the invoices, their documents and the payables picture", async () => {
     await pushToCloud(db, target(), NOW);
     const list = (await c.req("GET", "/v1/invoices?limit=1", { key: tenant.key })).json as { items: { id: string; vendor: string }[]; next_cursor: string | null };

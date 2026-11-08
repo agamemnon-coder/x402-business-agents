@@ -114,4 +114,11 @@ describe("closed months", () => {
     expect(lockMonth(db, "2026-10", "test", NOW)).toBe(false);
     expect(() => lockMonth(db, "2026-13", "test", NOW)).toThrow();
   });
+
+  it("refuses a day that does not exist (review of PR #108, finding 7)", () => {
+    const db = fresh();
+    expect(() => postEntry(db, sale({ date: "2027-02-31" }), NOW)).toThrow(/not a date/);
+    expect(() => postEntry(db, sale({ date: "2026-04-31" }), NOW)).toThrow(/not a date/);
+    expect(postEntry(db, sale({ date: "2028-02-29" }), NOW).duplicate).toBe(false);
+  });
 });

@@ -123,7 +123,8 @@ describe("reports and closing", () => {
     const y = closeYear(db, 2026, "t", new Date("2027-01-05T09:00:00Z"));
     expect(y.locked_months).toHaveLength(12);
     expect(balanceOf(db, "3100")).toBe(-(70_000 - 100));
-    expect(profitAndLoss(db, { from: "2026-01-01", to: "2026-12-31" }).EUR!.result_cents).toBe(0);
+    // The year's own result still shows after the close (review of PR #108, finding 2): the closing entry is left out.
+    expect(profitAndLoss(db, { from: "2026-01-01", to: "2026-12-31" }).EUR!.result_cents).toBe(70_000 - 100);
     expect(balanceSheet(db, "2026-12-31").EUR!.balanced).toBe(true);
     expect(() => closeYear(db, 2026, "t", new Date("2027-01-06T09:00:00Z"))).toThrow(/already closed/);
     expect(verifyLedger(db).ok).toBe(true);
@@ -152,5 +153,48 @@ describe("stock at weighted average cost", () => {
     expect(sellGoods(db, { sku: "S", qty: 1, date: "2026-11-02", doc_ref: "b", created_by: "t" }, NOW).cost_cents).toBe(334);
     expect(sellGoods(db, { sku: "S", qty: 1, date: "2026-11-02", doc_ref: "c", created_by: "t" }, NOW).cost_cents).toBe(333);
     expect(stockOnHand(db)[0]).toMatchObject({ qty: 0, value_cents: 0 });
+  });
+
+  it("reversing a goods purchase takes the goods out of stock too, and refuses when they were sold", async () => {
+    const { reverseEntry } = await import("../src/ledger/core.js");
+    const db = fresh();
+    const b1 = buyGoods(db, { sku: "A", name: "A", qty: 1000, net_cents: 100, vat_code: "P0", supplier: "X", doc_ref: "B1", date: "2026-11-01", due_date: "2026-12-01", currency: "EUR", created_by: "t" }, NOW);
+    reverseEntry(db, b1.entry_id, "booked twice", "t", NOW);
+    expect(balanceOf(db, "1700")).toBe(0);
+    expect(stockOnHand(db)[0]).toMatchObject({ qty: 0, value_cents: 0 });
+    expect(() => sellGoods(db, { sku: "A", qty: 1, date: "2026-11-02", doc_ref: "s", created_by: "t" }, NOW)).toThrow(LedgerRefused);
+    const b2 = buyGoods(db, { sku: "A", name: "A", qty: 2, net_cents: 1_000, vat_code: "P0", supplier: "X", doc_ref: "B2", date: "2026-11-01", due_date: "2026-12-01", currency: "EUR", created_by: "t" }, NOW);
+    sellGoods(db, { sku: "A", qty: 2, date: "2026-11-02", doc_ref: "s2", created_by: "t" }, NOW);
+    expect(() => reverseEntry(db, b2.entry_id, "wrong", "t", NOW)).toThrow(LedgerRefused);
+  });
+
+  it("sells cheap stock whose share of the cost rounds to zero cents, once", () => {
+    const db = fresh();
+    buyGoods(db, { sku: "C", name: "Clip", qty: 1000, net_cents: 100, vat_code: "P0", supplier: "X", doc_ref: "B", date: "2026-11-01", due_date: "2026-12-01", currency: "EUR", created_by: "t" }, NOW);
+    const s = sellGoods(db, { sku: "C", qty: 1, date: "2026-11-02", doc_ref: "s1", created_by: "t" }, NOW);
+    expect(s.cost_cents).toBe(0);
+    expect(sellGoods(db, { sku: "C", qty: 1, date: "2026-11-02", doc_ref: "s1", created_by: "t" }, NOW)).toMatchObject({ duplicate: true, cost_cents: 0 });
+    expect(stockOnHand(db)[0]).toMatchObject({ qty: 999, value_cents: 100 });
+    expect(sellGoods(db, { sku: "C", qty: 999, date: "2026-11-03", doc_ref: "s2", created_by: "t" }, NOW).cost_cents).toBe(100);
+    expect(stockOnHand(db)[0]).toMatchObject({ qty: 0, value_cents: 0 });
+    expect(balanceOf(db, "1700")).toBe(0);
+  });
+});
+
+describe("settling and closing (review of PR #108)", () => {
+  it("a retried payment with the same key is the same payment, not an error", () => {
+    const db = fresh();
+    purchaseInvoice(db, { date: "2026-10-05", supplier: "S", doc_ref: "S-1", due_date: "2026-11-04", currency: "EUR", created_by: "test", lines: [{ account: "6900", net_cents: 1_000, vat_code: "P0" }] }, NOW);
+    const pay = { kind: "pay" as const, party: "S", doc_ref: "S-1", amount_cents: 1_000, currency: "EUR", bank: "1200", date: "2026-11-01", created_by: "test", source_key: "dep1" };
+    const first = settleOpenItem(db, pay, NOW);
+    expect(settleOpenItem(db, pay, NOW)).toEqual({ ...first, duplicate: true });
+    expect(balanceOf(db, "1200")).toBe(-1_000);
+  });
+
+  it("closing a month closes every month before it", () => {
+    const db = fresh();
+    closeMonth(db, "2027-03", "t", NOW);
+    const late = purchaseInvoice(db, { date: "2027-02-10", supplier: "L", doc_ref: "L1", due_date: "2027-03-10", currency: "EUR", created_by: "t", lines: [{ account: "6100", net_cents: 100, vat_code: "P0" }] }, NOW);
+    expect(late.posting_date).toBe("2027-04-01");
   });
 });

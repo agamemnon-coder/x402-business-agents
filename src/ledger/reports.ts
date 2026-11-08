@@ -8,6 +8,9 @@ import { VAT_CODES, VAT_NOTICE, type VatRubric } from "./vat.js";
 
 interface Row { account: string; currency: string; debit: number; credit: number }
 
+/** The year close's own entries (src/ledger/close.ts): they move the result to equity, they are not part of it. */
+export const CLOSING_KEY_PREFIX = "close-year:";
+
 /** A posted line with its entry's posting day: what every report adds up. The cloud (cloud/src/) reads the same rows
  *  from its own store and calls the same functions, so a report is computed one way everywhere. */
 export interface PostedLine {
@@ -21,19 +24,26 @@ export interface PostedLine {
   party: string | null;
   doc_ref: string | null;
   due_date: string | null;
+  /** The line belongs to a year close's entry (review of PR #108, finding 2): left out of P&L and the VAT overview. */
+  closing?: boolean;
 }
+
+/** Whether an entry with this source key is a year close's. */
+export const isClosingKey = (sourceKey: string | null | undefined): boolean => typeof sourceKey === "string" && sourceKey.startsWith(CLOSING_KEY_PREFIX);
 
 export function postedLines(db: DB): PostedLine[] {
-  return db.prepare(`SELECT e.posting_date, l.account, l.currency, l.debit_cents, l.credit_cents, l.vat_code, l.vat_cents, l.party, l.doc_ref, l.due_date
-    FROM ledger_lines l JOIN ledger_entries e ON e.entry_id = l.entry_id ORDER BY e.entry_id, l.line_no`).all() as PostedLine[];
+  return (db.prepare(`SELECT e.posting_date, e.source_key, l.account, l.currency, l.debit_cents, l.credit_cents, l.vat_code, l.vat_cents, l.party, l.doc_ref, l.due_date
+    FROM ledger_lines l JOIN ledger_entries e ON e.entry_id = l.entry_id ORDER BY e.entry_id, l.line_no`).all() as (PostedLine & { source_key: string | null })[])
+    .map(({ source_key, ...l }) => ({ ...l, closing: isClosingKey(source_key) }));
 }
 
-function sumLines(lines: PostedLine[], range: { from?: string; to?: string } = {}): Row[] {
+function sumLines(lines: PostedLine[], range: { from?: string; to?: string } = {}, opts: { withoutClosing?: boolean } = {}): Row[] {
   const from = range.from ?? "0000-01-01";
   const to = range.to ?? "9999-12-31";
   const by = new Map<string, Row>();
   for (const l of lines) {
     if (l.posting_date < from || l.posting_date > to) continue;
+    if (opts.withoutClosing && l.closing) continue;
     const k = `${l.account}\u0000${l.currency}`;
     const r = by.get(k) ?? { account: l.account, currency: l.currency, debit: 0, credit: 0 };
     r.debit += l.debit_cents;
@@ -61,14 +71,17 @@ export interface ProfitAndLoss {
   accounts: { account: string; name: string; type: string; cents: number }[];
 }
 
-/** Revenue (credit minus debit on 4xxx) and expenses (debit minus credit on 5xxx to 8xxx), per currency. */
+/**
+ * Revenue (credit minus debit on 4xxx) and expenses (debit minus credit on 5xxx to 8xxx), per currency. The year
+ * close's entry is left out (review of PR #108, finding 2), so a closed year still shows its own result.
+ */
 export function profitAndLoss(db: DB, range: { from: string; to: string }): Record<string, ProfitAndLoss> {
   return profitAndLossFrom(postedLines(db), range);
 }
 
 export function profitAndLossFrom(lines: PostedLine[], range: { from: string; to: string }): Record<string, ProfitAndLoss> {
   const out: Record<string, ProfitAndLoss> = {};
-  for (const r of sumLines(lines, range).filter((x) => isProfitAndLoss(x.account))) {
+  for (const r of sumLines(lines, range, { withoutClosing: true }).filter((x) => isProfitAndLoss(x.account))) {
     const p = (out[r.currency] ??= { revenue_cents: 0, expense_cents: 0, result_cents: 0, accounts: [] });
     const type = accountType(r.account);
     const cents = type === "revenue" ? r.credit - r.debit : r.debit - r.credit;
@@ -186,7 +199,8 @@ export function vatOverview(db: DB, quarter: string): VatOverview {
 
 export function vatOverviewFrom(lines: PostedLine[], quarter: string): VatOverview {
   const { from, to } = quarterRange(quarter);
-  const rows = lines.filter((l) => l.posting_date >= from && l.posting_date <= to);
+  // The year close's entry carries no VAT and is no transaction: it is not counted as an uncoded line.
+  const rows = lines.filter((l) => l.posting_date >= from && l.posting_date <= to && !l.closing);
   const rubrics = Object.fromEntries(RUBRICS.map((r) => [r, { base_cents: 0, vat_cents: 0 }])) as VatOverview["rubrics"];
   let input = 0;
   let uncoded = 0;
