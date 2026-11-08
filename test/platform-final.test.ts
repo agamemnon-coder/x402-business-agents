@@ -228,6 +228,19 @@ describe("R7: a typographic apostrophe between the digits of a total", () => {
   });
 });
 
+describe("R9: one supplier's payments on one day are held to the route's limit together", () => {
+  it("TRY 249,999.99 and then TRY 2.00 to the same supplier on the same day: the second is escalated", async () => {
+    const big = await add(TR.replace("TRY 52,000.00", "TRY 249,999.99"), "tr1.pdf");
+    await addSupplier(big);
+    expect((await payApInvoice(db, awx, big, now)).kind).toBe("proposed");
+    const small = await add(TR.replace("TRY 52,000.00", "TRY 2.00").replaceAll("BT-5531", "BT-5532"), "tr2.pdf");
+    expect(apInvoice(db, small)!.status).toBe("ready");
+    const out = await payApInvoice(db, awx, small, now);
+    expect(out.kind).toBe("escalated");
+    expect((out as { reason: string }).reason).toMatch(/already paid or on its way to Bursa Tekstil AS today.*TRY 250,000\.00/);
+  });
+});
+
 describe("R8: the supplier's name a model gives is checked and cleaned", () => {
   const claude = (vendor: string): Asker => ({ ask: async () => ({ value: { ...parseApFallback(EN), vendor }, source: "claude", model: "test-model", note: "" }) }) as unknown as Asker;
   it("control and bidi characters are stripped, and the name is capped at 120 characters", async () => {

@@ -112,6 +112,22 @@ export function freeCents(db: DB, balances: Record<string, Balance>, currency: s
   return (balances[currency]?.availableCents ?? 0) - floorCents(db, currency) - commitmentsCents(db, currency) - inFlightCents(db, currency, exceptRequestId, exceptProposalId);
 }
 
+/**
+ * What this supplier account was paid, or has on its way, today (UTC) in this currency on this method: supplier payments
+ * filed today that can still be approved, are approved, running or executed, or whose payout is still live.
+ */
+export function sameDayCents(db: DB, beneficiaryId: string, currency: string, method: string, now: Date): number {
+  const day = now.toISOString().slice(0, 10);
+  const rows = db.prepare("SELECT status, expires_at, terms_json FROM proposals WHERE kind = 'supplier_payment' AND substr(created_at, 1, 10) = ?").all(day) as { status: string; expires_at: string; terms_json: string }[];
+  const live = db.prepare("SELECT 1 FROM transfers WHERE request_id = ? AND status <> 'CANCELLED'");
+  return rows.reduce((sum, r) => {
+    const t = JSON.parse(r.terms_json) as Partial<SupplierPaymentTerms>;
+    if (t.beneficiary_id !== beneficiaryId || t.currency !== currency || t.method !== method || typeof t.amount !== "string") return sum;
+    const counts = ["APPROVED", "EXECUTING", "EXECUTED"].includes(r.status) || (r.status === "PENDING_APPROVAL" && r.expires_at > now.toISOString()) || !!live.get(t.transfer_request_id ?? "");
+    return counts ? sum + toCents(t.amount) : sum;
+  }, 0);
+}
+
 export interface SupplierInvoice {
   /** The payment ledger's number (src/ap/ledgerKey.ts: the supplier's number with its name). */
   invoice_no: string;
@@ -146,6 +162,13 @@ export async function proposeSupplierPayment(
   // The route's own per-payout limit (Airwallex's payout guide), before anything is quoted or converted.
   const limit = routeLimitReason({ country: ben.details.country, currency: inv.currency, method, clearing: ben.details.clearing }, amount);
   if (limit) return escalate(`${limit}: Airwallex would refuse it, so nothing is converted or paid; a person agrees a split with ${inv.vendor} or pays it another way`);
+  // The same limit over the day: one supplier's payments on this route today, paid or on their way, count together, so a
+  // payment split in two never passes the limit unseen (red team round 3: TRY 249,999.99 and then TRY 2.00).
+  const today = sameDayCents(db, ben.beneficiary_id, inv.currency, method, now);
+  const daily = today > 0 ? routeLimitReason({ country: ben.details.country, currency: inv.currency, method, clearing: ben.details.clearing }, today + amount) : null;
+  if (daily && /above the most/.test(daily)) {
+    return escalate(`together with ${inv.currency} ${fromCents(today)} already paid or on its way to ${inv.vendor} today, ${daily}: a person decides whether it goes another day or another way; nothing is converted or paid`);
+  }
   const reserve = feeReserveFor(db, method, inv.currency);
   db.prepare("INSERT OR IGNORE INTO invoices (invoice_no, vendor, amount, currency, due_date, iban_sha256, bic, beneficiary_id, doc_sha256, extracted_json, status) VALUES (?, ?, ?, ?, ?, ?, '', ?, ?, ?, 'RECEIVED')")
     .run(inv.invoice_no, inv.vendor, inv.amount, inv.currency, inv.due_date, ben.details.account_key_sha256, ben.beneficiary_id, sha256Hex(documentText), JSON.stringify(inv));
