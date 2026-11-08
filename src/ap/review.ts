@@ -18,7 +18,8 @@ const INSTRUCTION = [
   "the fields and findings given.",
 ].join("\n");
 
-const STATUS_WORDS: Record<string, string> = {
+/** Each status in plain words, as the CFO reads it (the payables page and its JSON carry these: screenshot pass S4). */
+export const STATUS_WORDS: Record<string, string> = {
   blocked: "Blocked", needs_review: "Needs a person", needs_vendor: "Waits for a new supplier",
   waiting_cfo: "Waits for the CFO's Face ID", ready: "Ready to pay", paid: "Paid", rejected: "Rejected",
 };

@@ -82,9 +82,9 @@ async function load(){
     const why=i.findings.filter(f=>f.level!=='warn').map(f=>f.detail).join('; ')||i.findings.map(f=>f.detail).join('; ');
     const tdWhy=el('td');tdWhy.append(el('div',why));if(i.review_note)tdWhy.append(el('div','Note: '+i.review_note,'muted'));
     const act=el('td');
-    if(i.status==='ready'&&i.currency==='EUR'){const b=el('button','Pay (Face ID)');b.onclick=async()=>{try{const j=await post('/api/payables/invoices/'+i.id+'/pay');msg(j.kind==='proposed'?i.id+': waiting for the CFO\\'s Face ID on the phone':i.id+': '+j.reason);load()}catch(e){msg(e.message)}};act.append(b)}
+    if(i.payable){const b=el('button','Pay (Face ID)');b.onclick=async()=>{try{const j=await post('/api/payables/invoices/'+i.id+'/pay');msg(j.kind==='proposed'?i.id+': waiting for the CFO\\'s Face ID on the phone':i.id+': '+j.reason);load()}catch(e){msg(e.message)}};act.append(b)}
     if(i.status==='needs_vendor'){const b=el('button','Request supplier');b.onclick=async()=>{try{const j=await post('/api/payables/invoices/'+i.id+'/supplier-request');msg(j.add_id+': now verify it with the supplier on a number you already had (npm run payables -- supplier-verify)');load()}catch(e){msg(e.message)}};act.append(b)}
-    tr.append(td0,el('td',i.vendor),el('td',i.invoice_no),el('td',i.due_date),el('td',(i.currency+' '+i.total).trim()),el('td',i.status.replace(/_/g,' '),'st '+i.status),tdWhy,act);
+    tr.append(td0,el('td',i.vendor),el('td',i.invoice_no),el('td',i.due_date),el('td',(i.currency+' '+i.total).trim()),el('td',i.status_words||i.status.replace(/_/g,' '),'st '+i.status),tdWhy,act);
     rows.append(tr)}
 }
 async function send(files){for(const f of files){msg('Filing '+f.name+' ...');try{const j=await post('/api/payables/documents',f,{'content-type':'application/octet-stream','x-filename':encodeURIComponent(f.name)});const n=j.kind==='email'?j.results.length+' PDF(s) from the e-mail':j.kind==='duplicate_document'?'already filed':j.invoice.id+': '+j.invoice.status.replace(/_/g,' ');msg(f.name+': '+n)}catch(e){msg(f.name+': '+e.message)}}load()}

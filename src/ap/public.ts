@@ -4,9 +4,10 @@
 // (screenshot pass S5, seam review L2). The full account stays in the ledger and on the CFO's phone for a new supplier.
 
 import { ibanSha } from "../agents/invoice.js";
-import { accountKey } from "../payouts/routes.js";
+import { accountKey, payableCurrency } from "../payouts/routes.js";
 import { bankFromReading } from "./bank.js";
 import type { ApReading } from "./reading.js";
+import { STATUS_WORDS } from "./review.js";
 import type { ApInvoiceRow } from "./store.js";
 
 const last4 = (s: string) => (s ? `…${s.replace(/\s+/g, "").slice(-4)}` : "");
@@ -25,7 +26,10 @@ export function maskedReading(r: ApReading): ApReading & { account_sha256: strin
   return { ...r, iban: last4(r.iban), account_number: last4(r.account_number), account_sha256: accountSha(r) };
 }
 
-/** An inbox invoice as the JSON routes and the cloud receive it. */
-export function publicInvoice(inv: ApInvoiceRow): Omit<ApInvoiceRow, "reading"> & { reading: ApReading & { account_sha256: string } } {
-  return { ...inv, reading: maskedReading(inv.reading) };
+/**
+ * An inbox invoice as the JSON routes and the cloud receive it: the reading masked, the status in plain words, and
+ * whether Purser can pay it now (ready, in any currency it pays: supplier payments pay more than EUR; S4).
+ */
+export function publicInvoice(inv: ApInvoiceRow): Omit<ApInvoiceRow, "reading"> & { reading: ApReading & { account_sha256: string }; status_words: string; payable: boolean } {
+  return { ...inv, reading: maskedReading(inv.reading), status_words: STATUS_WORDS[inv.status] ?? inv.status.replace(/_/g, " "), payable: inv.status === "ready" && payableCurrency(inv.currency) };
 }

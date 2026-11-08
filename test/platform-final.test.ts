@@ -20,6 +20,7 @@ import { ledgerItems } from "../src/erp/source.js";
 import { dataSha, monthData, receiptData } from "../src/vault/data.js";
 import { safeSegment } from "../src/vault/layout.js";
 import { insights } from "../src/ap/insights.js";
+import { publicInvoice } from "../src/ap/public.js";
 import { apInvoice } from "../src/ap/store.js";
 import { accountWords } from "../src/policy/fraudCore.js";
 import { describeTerms, reviewLabel } from "../src/approve/client.js";
@@ -451,6 +452,15 @@ IBAN: DE75 5121 0800 1245 1261 99`;
     expect(apInvoice(db, out.invoice.id)!.doc_kind).toBe("credit_note");
     expect(insights(db, now).open).toEqual([]);
     expect(monthData(db, now.toISOString().slice(0, 7)).received).toEqual([]);
+  });
+});
+
+describe("S4: Pay for every payable currency, statuses in plain words", () => {
+  it("a ready USD invoice is payable; one waiting for its supplier is not; the status reads as words", async () => {
+    const id = await add(US, "us.pdf");
+    expect(publicInvoice(apInvoice(db, id)!)).toMatchObject({ status: "needs_vendor", status_words: "Waits for a new supplier", payable: false });
+    await addSupplier(id);
+    expect(publicInvoice(apInvoice(db, id)!)).toMatchObject({ status: "ready", status_words: "Ready to pay", payable: true });
   });
 });
 
