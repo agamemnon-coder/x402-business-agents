@@ -4,13 +4,13 @@
 // file makes it needs_vendor; else it is ready. Warnings are shown and change nothing.
 
 import type { DB } from "../db/open.js";
-import { invoiceKey } from "../lib/invoiceKey.js";
+import { invoiceKey, sameInvoiceNo } from "../lib/invoiceKey.js";
 import { toCents, fromCents } from "../lib/money.js";
 import { assessInvoice } from "../policy/fraud.js";
 import { skeleton } from "../policy/fraudCore.js";
 import { counterpartyAllowed } from "../policy/rules.js";
 import { handledInLedger } from "./ledgerKey.js";
-import { ibanValid, type ApReading } from "./reading.js";
+import { ibanValid, totalIsNegative, type ApReading } from "./reading.js";
 import type { ApStatus, Finding } from "./store.js";
 
 /** Only EUR is paid in v1 (SWIFT from the Airwallex EUR account, FX for the shortfall); the rest is read and booked. */
@@ -18,6 +18,9 @@ export const PAID_CURRENCIES = new Set(["EUR"]);
 
 /** An invoice this many times its supplier's usual (the median of its earlier ones) is flagged. */
 export const UNUSUAL_FACTOR = 2;
+
+/** Invoices from one supplier for the same total dated this close together are a possible duplicate under another number. */
+export const TWIN_DAYS = 7;
 
 const MONEY = /^\d+\.\d{2}$/;
 
@@ -53,15 +56,39 @@ export function evaluate(db: DB, r: ApReading, text: string, ctx: CheckContext):
     f.push({ code: "sum_mismatch", level: "block", detail: `the subtotal ${r.subtotal} plus tax ${r.tax} is ${fromCents(toCents(r.subtotal) + toCents(r.tax))}, not the total ${r.total}` });
   }
 
-  // The same invoice twice: in the inbox already (another file), or already paid or on its way through the ledger.
+  // A total written as negative or in brackets is a credit, never paid as an invoice (red team E).
+  if (totalIsNegative(text)) f.push({ code: "credit_note", level: "review", detail: "the total is written as negative or in brackets: a credit note; nothing is paid, a person sets it against this supplier's invoices" });
+
+  // The same invoice twice: in the inbox already (another file), or already paid or on its way through the ledger. Only
+  // invoices received before this one count, and not copies that were themselves refused as a copy: a resent copy never
+  // blocks its original (review, 8 November).
   if (r.invoice_no) {
     const key = invoiceKey(r.invoice_no);
-    const same = (db.prepare("SELECT id, vendor, invoice_no, status FROM ap_invoices WHERE status <> 'rejected' AND (? IS NULL OR id <> ?)").all(ctx.selfId ?? null, ctx.selfId ?? null) as { id: string; vendor: string; invoice_no: string; status: string }[])
-      .find((x) => invoiceKey(x.invoice_no) === key && skeleton(x.vendor) === skeleton(r.vendor));
+    const self = ctx.selfId ? (db.prepare("SELECT received_at FROM ap_invoices WHERE id = ?").get(ctx.selfId) as { received_at: string } | undefined) : undefined;
+    const earlier = (db.prepare("SELECT id, vendor, invoice_no, status, findings_json, received_at FROM ap_invoices WHERE status <> 'rejected' ORDER BY received_at, id").all() as
+      { id: string; vendor: string; invoice_no: string; status: string; findings_json: string; received_at: string }[])
+      .filter((x) => x.id !== ctx.selfId && (!self || x.received_at < self.received_at || (x.received_at === self.received_at && x.id < ctx.selfId!)))
+      .filter((x) => !(x.status === "blocked" && (JSON.parse(x.findings_json) as Finding[]).some((y) => y.code === "duplicate")))
+      .filter((x) => skeleton(x.vendor) === skeleton(r.vendor));
+    const same = earlier.find((x) => invoiceKey(x.invoice_no) === key);
+    const loose = same ? undefined : earlier.find((x) => sameInvoiceNo(x.invoice_no, r.invoice_no));
     if (same) f.push({ code: "duplicate", level: "block", detail: `${same.id} is the same invoice ${same.invoice_no} from ${same.vendor} (${same.status.replace(/_/g, " ")}); a second copy is never paid` });
+    else if (loose) f.push({ code: "possible_duplicate", level: "review", detail: `${loose.id} is invoice ${loose.invoice_no} from the same supplier, written differently; a person checks it is not the same invoice` });
     else {
       const handled = handledInLedger(db, r.invoice_no, r.vendor, ctx.now);
       if (handled) f.push({ code: "duplicate", level: "block", detail: `${handled}; a second copy is never paid` });
+    }
+    // The same supplier, the same total, dated within a week: possibly the same invoice under another number (red team C).
+    // A week, not 60 days: a monthly invoice for the same amount is normal and would otherwise always wait for a person.
+    if (!f.some((x) => x.code === "duplicate" || x.code === "possible_duplicate") && MONEY.test(r.total)) {
+      const day = (s: string) => Date.parse(`${s.slice(0, 10)}T00:00:00Z`);
+      const mine = day(r.issue_date || ctx.now.toISOString());
+      const twin = earlier.find((x) => {
+        if (["blocked", "needs_review"].includes(x.status)) return false;
+        const row = db.prepare("SELECT total, currency, issue_date, received_at FROM ap_invoices WHERE id = ?").get(x.id) as { total: string; currency: string; issue_date: string; received_at: string };
+        return row.total === r.total && row.currency === r.currency && Math.abs(day(row.issue_date || row.received_at) - mine) <= TWIN_DAYS * 86_400_000;
+      });
+      if (twin) f.push({ code: "possible_duplicate", level: "review", detail: `${twin.id} from the same supplier has the same total ${r.currency} ${r.total} within ${TWIN_DAYS} days; a person checks it is not the same invoice under another number` });
     }
   }
 

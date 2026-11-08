@@ -784,6 +784,17 @@ CREATE TABLE IF NOT EXISTS payee_adds (
   requested_by TEXT NOT NULL,
   verification_json TEXT,
   proposal_id TEXT,
-  status TEXT NOT NULL CHECK (status IN ('REQUESTED', 'VERIFIED', 'PROPOSED', 'APPLIED')),
+  -- CLOSED: its proposal expired, was rejected or can no longer run; a new request for the supplier may follow.
+  status TEXT NOT NULL CHECK (status IN ('REQUESTED', 'VERIFIED', 'PROPOSED', 'APPLIED', 'CLOSED')),
   created_at TEXT NOT NULL
+);
+
+-- What each payables invoice has handed to the bookkeeping sink, once per event: an accrual a sink missed is pushed
+-- before the payment, and a rejected invoice's accrual is reversed there (review, 8 November).
+CREATE TABLE IF NOT EXISTS ap_sink_events (
+  invoice_id TEXT NOT NULL REFERENCES ap_invoices(id),
+  event TEXT NOT NULL CHECK (event IN ('accrual', 'payment', 'reversal')),
+  sink TEXT NOT NULL,
+  pushed_at TEXT NOT NULL,
+  PRIMARY KEY (invoice_id, event, sink)
 );
