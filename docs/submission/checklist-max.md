@@ -2,12 +2,12 @@
 
 Claude zet alles klaar. Jij verstuurt.
 
-- **Officieel (zo staat het er op 5 november):** "Nov 13 / Project submissions due"
-  ([airwallex.hackerearth.com](https://airwallex.hackerearth.com/)), zonder tijd. HackerEarth: de bouwfase loopt tot
-  15 nov 2026, 18:29 UTC (19:29 NL-tijd).
-- Dan Kim (Airwallex) schreef op 4 nov '11 more days to go', wat past bij 15 nov.
-- **Plan: donderdag 12 november, vóór 12:00 (NL-tijd).** Dan zit je onder elke lezing van de deadline.
-- **Op de laatste dag (12 november): niets meer deployen.** De site blijft zoals hij is.
+- **Deadline (verschoven, bevestigd door Max op 8 november): zondag 15 november 2026.** HackerEarth: de bouwfase loopt
+  tot 15 nov 2026, 18:29 UTC (19:29 NL-tijd). Eerder stond er "Nov 13 / Project submissions due"
+  ([airwallex.hackerearth.com](https://airwallex.hackerearth.com/)).
+- **Plan: zo vroeg mogelijk inleveren, uiterlijk zondag 15 november vóór 12:00 (NL-tijd).** Dan blijft er ruimte als
+  het formulier iets vraagt wat nog niet klaarstaat.
+- **Op de laatste dag (15 november): niets meer deployen.** De site blijft zoals hij is.
 
 Zet nooit een sleutel of geheim in de chat. Typ ze alleen in je eigen terminal of in het Airwallex- of Cloudflare-scherm.
 
