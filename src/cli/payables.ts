@@ -24,6 +24,7 @@ import { scanFolder } from "../ap/watch.js";
 import { ClaudeReader } from "../claude/reader.js";
 import { openDb } from "../db/open.js";
 import { payablesApp } from "../servers/payables.js";
+import { fileIntoLocalVault } from "../vault/build.js";
 
 const args = process.argv.slice(2);
 const flag = (name: string) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
@@ -47,6 +48,7 @@ async function main(): Promise<void> {
   }
   if (cmd === "add") {
     for (const f of args.slice(1)) console.log(line(await ingestDocument(db, deps, { bytes: readFileSync(f), filename: basename(f), source: "upload" })));
+    console.log(await fileIntoLocalVault(db));
   } else if (cmd === "watch") {
     const folder = args[1];
     if (!folder) throw new Error("usage: npm run payables -- watch <dir> [--once]");
@@ -55,6 +57,7 @@ async function main(): Promise<void> {
       const r = await scanFolder(db, deps, folder);
       for (const x of r.results.filter((y) => y.kind !== "duplicate_document")) console.log(line(x));
       for (const f of r.failed) console.error(`${f.file}: ${f.error}`);
+      if (r.results.some((y) => y.kind !== "duplicate_document")) console.log(await fileIntoLocalVault(db));
     };
     await tick();
     if (!once) { console.log(`watching ${folder} every 10 s (Ctrl-C stops)`); setInterval(() => void tick(), 10_000); return; }
@@ -77,6 +80,7 @@ async function main(): Promise<void> {
     const paid = await syncPayments(db, deps);
     const checked = await recheck(db, deps);
     for (const x of [...paid, ...checked]) console.log(`${x.id}  ${x.status.replace(/_/g, " ")}`);
+    console.log(await fileIntoLocalVault(db));
   } else if (cmd === "supplier-request") {
     const r = requestPayeeAddForInvoice(db, args[1] ?? "", "human");
     console.log(`${r.add_id}: ${r.vendor}, account ending ${r.iban.slice(-4)}. Now call the supplier on a number from your own records, then: npm run payables -- supplier-verify ${r.add_id} --by ... --how ... --street ... --city ... --postcode ...`);

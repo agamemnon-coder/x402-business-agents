@@ -22,6 +22,7 @@ import { syncLedger } from "../ledger/feed.js";
 import { LEDGER_PAGE_CSP, ledgerPage } from "../ledger/page.js";
 import { ageing, balanceSheet, cashByCurrency, profitAndLoss, trialBalance, vatOverview } from "../ledger/reports.js";
 import { stockOnHand } from "../ledger/stock.js";
+import { fileIntoLocalVault } from "../vault/build.js";
 
 const [cmd = "help", ...rest] = process.argv.slice(2);
 const flag = (name: string) => { const i = rest.indexOf(`--${name}`); return i >= 0 ? rest[i + 1] : undefined; };
@@ -82,6 +83,8 @@ switch (cmd) {
     if (month) console.log(closeMonth(db, month, "cli").locked ? `${month} is closed` : `${month} was already closed`);
     else if (year) { const r = closeYear(db, Number(year), "cli"); console.log(`${year} closed${r.entry_id ? ` (closing entry ${r.entry_id})` : ""}; months locked: ${r.locked_months.join(", ")}`); }
     else { console.error("close --month YYYY-MM | close --year YYYY"); process.exitCode = 2; }
+    // A closed period gets its month report, VAT overview or year report in the vault (unless KIT11_VAULT=off).
+    if (month || year) console.log(await fileIntoLocalVault(db));
     break;
   }
   case "export": {
