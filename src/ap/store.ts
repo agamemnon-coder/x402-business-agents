@@ -14,6 +14,8 @@ export interface Finding {
   detail: string;
   /** A possible duplicate by the same supplier and total only: the earlier invoice it may copy (a person may clear it). */
   twin_of?: string;
+  /** possible_fraud only: the signals that make it suspicious (a changed account, a lookalike name), each with its reason. */
+  signals?: { code: string; detail: string }[];
 }
 
 interface Row {

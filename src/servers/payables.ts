@@ -1,5 +1,6 @@
-// Payables: the local page (npm run payables, 127.0.0.1) and its JSON routes under /api/payables. The page renders
-// everything from the JSON with textContent, never as HTML. Like the approvals page: a loopback Host only, and a post
+// Payables: the local pages (npm run payables, 127.0.0.1: the overview at /, one invoice at /invoices/:id, built in
+// src/servers/payablesPage.ts) and their JSON routes under /api/payables. The pages render everything from the JSON
+// with textContent, never as HTML, and run only the script carrying the response's nonce. Like the approvals page: a loopback Host only, and a post
 // needs this page's own Origin and its form token. Nothing here approves money: paying files a proposal that the CFO
 // approves with Face ID on the phone; a new supplier is requested here and verified and approved as in src/ap/vendors.ts.
 // The same handlers can later sit behind the authenticated agent API.
@@ -12,12 +13,14 @@ import type { Request, Response } from "express";
 import type { AirwallexRail, PayoutRail } from "../airwallex/port.js";
 import { apJournal, invoicesCsv, journalCsv } from "../ap/books.js";
 import { clearPossibleDuplicate, ingestDocument, recheck, type InboxDeps } from "../ap/inbox.js";
+import { invoiceDetail } from "../ap/detail.js";
 import { insights } from "../ap/insights.js";
-import { payApInvoice, syncPayments } from "../ap/pay.js";
+import { payApInvoice, rejectApInvoice, syncPayments } from "../ap/pay.js";
 import { publicInvoice } from "../ap/public.js";
 import { apInvoice, apInvoices } from "../ap/store.js";
 import { proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../ap/vendors.js";
 import type { DB } from "../db/open.js";
+import { FONT, PDFJS, detailPage, overviewPage } from "./payablesPage.js";
 
 export interface PayablesOptions {
   inbox: InboxDeps;
@@ -39,65 +42,11 @@ const CODE_TTL_MS = 10 * 60 * 1000;
 const CODE_TRIES = 3;
 const sha = (s: string) => createHash("sha256").update(s).digest();
 
-const PAGE = (csrf: string) => `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="csrf" content="${csrf}">
-<title>Purser · Payables</title>
-<style>
-:root{--bg:#fff;--fg:#14161a;--muted:#5d6470;--line:#e3e6ea;--ok:#127a3e;--warn:#9a6200;--bad:#b42318;--card:#f7f8fa}
-@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--fg:#e8eaee;--muted:#9aa1ad;--line:#262a31;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--card:#171a20}}
-body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif}
-main{max-width:1080px;margin:0 auto;padding:16px}
-h1{font-size:22px;margin:8px 0 4px}h2{font-size:17px;margin:24px 0 8px}
-.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
-.tile{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px}.tile b{display:block;font-size:20px}
-table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-.st{font-weight:600}.st.ready,.st.paid{color:var(--ok)}.st.blocked,.st.rejected{color:var(--bad)}.st.needs_review,.st.needs_vendor,.st.waiting_cfo{color:var(--warn)}
-.drop{border:2px dashed var(--line);border-radius:12px;padding:18px;text-align:center}
-button{font:inherit;padding:4px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
-#msg{min-height:1.5em}.wrap{overflow-x:auto}
-</style></head><body><main>
-<h1>Payables</h1>
-<p class="muted">Supplier invoices in, read, checked, paid with the CFO's Face ID, and booked. Test money only: the Airwallex sandbox.</p>
-<div class="drop"><p>Drop PDF invoices or saved e-mails (.eml) here, or <input type="file" id="file" multiple accept=".pdf,.eml,application/pdf,message/rfc822"></p><p id="msg" class="muted"></p></div>
-<h2>Insight</h2><div id="tiles" class="grid"></div>
-<h2>Invoices</h2><div class="wrap"><table><thead><tr><th>Id</th><th>Supplier</th><th>Number</th><th>Due</th><th>Amount</th><th>Status</th><th>Why</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
-<p><a href="/api/payables/export/journal.csv">Journal (CSV)</a> · <a href="/api/payables/export/invoices.csv">Invoices (CSV)</a> · <button id="sync">Check payments</button></p>
-</main><script>
-const csrf=document.querySelector('meta[name=csrf]').content;
-const msg=(t)=>{document.getElementById('msg').textContent=t};
-const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e};
-async function post(path,body,headers){const r=await fetch(path,{method:'POST',headers:Object.assign({'x-csrf':csrf},headers||{}),body});const j=await r.json().catch(()=>({error:r.statusText}));if(!r.ok)throw new Error(j.error||r.statusText);return j}
-async function load(){
-  const [list,x]=await Promise.all([fetch('/api/payables/invoices').then(r=>r.json()),fetch('/api/payables/insights').then(r=>r.json())]);
-  const tiles=document.getElementById('tiles');tiles.replaceChildren();
-  const sum=(a)=>a.length?a.map(v=>v.currency+' '+v.total).join(' · '):'none';
-  for(const [k,v] of [['Open',sum(x.open)],['Due in 7 days',sum(x.due_7)],['Overdue',sum(x.overdue)],['Blocked',String(x.blocked.count)],['Waiting for a supplier',String(x.waiting.needs_vendor)],['Waiting for Face ID',String(x.waiting.waiting_cfo)],['SWIFT fees paid',sum(x.costs.swift_fees)]]){const t=el('div',undefined,'tile');t.append(el('span',k,'muted'),el('b',v));tiles.append(t)}
-  for(const r of x.price_rises){const t=el('div',undefined,'tile');t.append(el('span','Price rise','muted'),el('b',r.vendor+' +'+r.change_pct+'%'));tiles.append(t)}
-  const rows=document.getElementById('rows');rows.replaceChildren();
-  for(const i of list){
-    const tr=el('tr');
-    const doc=el('a',i.id);doc.href='/api/payables/invoices/'+encodeURIComponent(i.id)+'/document';doc.target='_blank';doc.rel='noopener';
-    const td0=el('td');td0.append(doc);
-    const why=i.findings.filter(f=>f.level!=='warn').map(f=>f.detail).join('; ')||i.findings.map(f=>f.detail).join('; ');
-    const tdWhy=el('td');tdWhy.append(el('div',why));if(i.review_note)tdWhy.append(el('div','Note: '+i.review_note,'muted'));
-    const act=el('td');
-    if(i.payable){const b=el('button','Pay (Face ID)');b.onclick=async()=>{try{const j=await post('/api/payables/invoices/'+i.id+'/pay');msg(j.kind==='proposed'?i.id+': waiting for the CFO\\'s Face ID on the phone':i.id+': '+j.reason);load()}catch(e){msg(e.message)}};act.append(b)}
-    if(i.status==='needs_vendor'){const b=el('button','Request supplier');b.onclick=async()=>{try{const j=await post('/api/payables/invoices/'+i.id+'/supplier-request');msg(j.add_id+': now verify it with the supplier on a number you already had (npm run payables -- supplier-verify)');load()}catch(e){msg(e.message)}};act.append(b)}
-    tr.append(td0,el('td',i.vendor),el('td',i.invoice_no),el('td',i.due_date),el('td',(i.currency+' '+i.total).trim()),el('td',i.status_words||i.status.replace(/_/g,' '),'st '+i.status),tdWhy,act);
-    rows.append(tr)}
-}
-async function send(files){for(const f of files){msg('Filing '+f.name+' ...');try{const j=await post('/api/payables/documents',f,{'content-type':'application/octet-stream','x-filename':encodeURIComponent(f.name)});const n=j.kind==='email'?j.results.length+' PDF(s) from the e-mail':j.kind==='duplicate_document'?'already filed':j.invoice.id+': '+j.invoice.status.replace(/_/g,' ');msg(f.name+': '+n)}catch(e){msg(f.name+': '+e.message)}}load()}
-document.getElementById('file').onchange=(e)=>send(e.target.files);
-const drop=document.querySelector('.drop');drop.ondragover=(e)=>{e.preventDefault()};drop.ondrop=(e)=>{e.preventDefault();send(e.dataTransfer.files)};
-document.getElementById('sync').onclick=async()=>{try{const j=await post('/api/payables/sync');msg(j.changed.length+' invoice(s) changed');load()}catch(e){msg(e.message)}};
-load();
-</script></body></html>`;
 
 function statusFor(message: string): number {
   if (/^no (payables invoice|supplier request) /.test(message)) return 404;
   if (/not a PDF|larger than|not an IBAN|not a BIC|checksum|needs a name|say how|say who|say why|address/.test(message)) return 400;
-  if (/not ready|not waiting|already|German \(DE\)|looks like|on file|not verified|pays EUR only|never cleared/.test(message)) return 409;
+  if (/not ready|not waiting|already|German \(DE\)|looks like|on file|not verified|pays EUR only|never cleared|waits for the CFO/.test(message)) return 409;
   if (/only a person|verification code|last four/.test(message)) return 403;
   return 500;
 }
@@ -133,7 +82,12 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
     res.setHeader("Cache-Control", "no-store");
     next();
   });
-  const csp = (res: Response) => res.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'");
+  /** A page's policy: only the script with this response's nonce, and pdf.js from this origin (the document viewer). */
+  const pageCsp = (res: Response): string => {
+    const nonce = randomBytes(18).toString("base64");
+    res.setHeader("Content-Security-Policy", `default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}' 'self'; connect-src 'self'; font-src 'self'; img-src 'self' data: blob:; form-action 'none'; base-uri 'none'; frame-ancestors 'none'`);
+    return nonce;
+  };
   const fail = (res: Response, e: unknown) => { const m = (e as Error).message; res.status(statusFor(m)).json({ error: m }); };
   const deps = (): InboxDeps => opts.inbox;
   const notify = opts.notify ?? ((line: string) => { process.stdout.write(`${line}\n`); });
@@ -155,13 +109,29 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
     codes.delete(key);
   };
 
-  app.get("/", (_req, res) => { csp(res); res.type("html").send(PAGE(issue())); });
+  app.get("/", (_req, res) => { const nonce = pageCsp(res); res.type("html").send(overviewPage(issue(), nonce)); });
+  app.get("/invoices/:id", (req, res) => {
+    const id = String(req.params.id);
+    if (!apInvoice(db, id)) { res.status(404).type("text/plain").send(`no payables invoice ${id}`); return; }
+    const nonce = pageCsp(res);
+    res.type("html").send(detailPage(issue(), nonce, id));
+  });
+  // The pages' own files: the font, and pdf.js for the document viewer (it draws the supplier's PDF on a canvas, without eval).
+  app.get("/assets/inter.woff2", (_req, res) => { res.setHeader("Cache-Control", "private, max-age=86400"); res.type("font/woff2").send(FONT); });
+  app.get("/assets/pdfjs.mjs", (_req, res) => { res.setHeader("Cache-Control", "private, max-age=86400"); res.type("text/javascript").send(PDFJS); });
 
   app.get("/api/payables/invoices", (_req, res) => { res.json(apInvoices(db).map(publicInvoice)); });
   app.get("/api/payables/invoices/:id", (req, res) => {
     const inv = apInvoice(db, String(req.params.id));
     if (!inv) { res.status(404).json({ error: `no payables invoice ${req.params.id}` }); return; }
     res.json(publicInvoice(inv));
+  });
+  app.get("/api/payables/invoices/:id/detail", async (req, res) => {
+    try {
+      const d = await invoiceDetail(db, String(req.params.id));
+      if (!d) { res.status(404).json({ error: `no payables invoice ${req.params.id}` }); return; }
+      res.json(d);
+    } catch (e) { fail(res, e); }
   });
   app.get("/api/payables/invoices/:id/document", (req, res) => {
     const inv = apInvoice(db, String(req.params.id));
@@ -193,6 +163,15 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
       const id = String(req.params.id);
       const out = await payApInvoice(db, opts.rail, id, new Date(), opts.inbox.reader);
       res.json(out.kind === "proposed" ? { kind: "proposed", proposal_id: out.proposal.proposal_id, invoice: publicInvoice(apInvoice(db, id)!) } : { kind: "escalated", reason: out.reason, invoice: publicInvoice(apInvoice(db, id)!) });
+    } catch (e) { fail(res, e); }
+  });
+  // A person rejects the invoice: it is never paid. Never one filed for the CFO (that is decided on the phone) or paid.
+  app.post("/api/payables/invoices/:id/reject", express.json({ limit: "10kb" }), async (req, res) => {
+    try {
+      const b = (req.body ?? {}) as { reason?: unknown };
+      const id = String(req.params.id);
+      await rejectApInvoice(db, id, typeof b.reason === "string" ? b.reason : "", opts.inbox, opts.inbox.now?.() ?? new Date());
+      res.json(publicInvoice(apInvoice(db, id)!));
     } catch (e) { fail(res, e); }
   });
   app.post("/api/payables/invoices/:id/supplier-request", (req, res) => {

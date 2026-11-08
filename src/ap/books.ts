@@ -117,9 +117,9 @@ export function invoicesCsv(invs: ApInvoiceRow[]): string {
   return csv([...INVOICE_COLUMNS], invs.map((i) => INVOICE_COLUMNS.map((k) => String(i[k] ?? ""))));
 }
 
-/** The accrual taken back when the CFO rejects the payment: the same lines, debit and credit swapped. */
-export function reversalEntries(inv: ApInvoiceRow, date: string): ApEntry[] {
-  return accrualEntries(inv).map((e) => ({ ...e, event: "reversal" as const, date, debit: e.credit, credit: e.debit, memo: `${e.memo}: reversed, the CFO rejected the payment` }));
+/** The accrual taken back when the CFO rejects the payment (or a person rejects the invoice): the same lines, debit and credit swapped. */
+export function reversalEntries(inv: ApInvoiceRow, date: string, why = "the CFO rejected the payment"): ApEntry[] {
+  return accrualEntries(inv).map((e) => ({ ...e, event: "reversal" as const, date, debit: e.credit, credit: e.debit, memo: `${e.memo}: reversed, ${why}` }));
 }
 
 /** The first sink: appends each event's entries to one CSV file, for any bookkeeping package's import. */

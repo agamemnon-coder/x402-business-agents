@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import type { AirwallexRail, PayoutRail } from "../airwallex/port.js";
 import { proposeInvoicePayment, type InvoiceOutcome } from "../agents/euroBill.js";
 import type { DB } from "../db/open.js";
+import type { InboxDeps } from "./inbox.js";
 import { accrualEntries, accrualPushed, paymentEntries, pushOnce, reversalEntries, type BookkeepingSink } from "./books.js";
 import { expireDue } from "../policy/approvals.js";
 import { pdfText } from "./pdfText.js";
@@ -111,4 +112,25 @@ export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: Book
     }
   }
   return changed;
+}
+
+/** The states a person may reject an invoice from on the page: never one filed for the CFO, paid or rejected. */
+const REJECTABLE = new Set(["blocked", "needs_review", "needs_vendor", "ready"]);
+
+/**
+ * A person rejects an invoice on the payables page: it is never paid, with the reason in the audit log. One filed for
+ * the CFO is approved or rejected on the phone only; a paid one is never undone here. The accrual a sink already holds
+ * is taken back there, as when the CFO rejects (the stored ledger reverses it on its next sync, src/ledger/feed.ts).
+ */
+export async function rejectApInvoice(db: DB, id: string, reason: string, deps: Pick<InboxDeps, "sink">, now = new Date()): Promise<ApInvoiceRow> {
+  const inv = apInvoice(db, id);
+  if (!inv) throw new Error(`no payables invoice ${id}`);
+  const why = reason.replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, " ").replace(/\s+/g, " ").trim().slice(0, 300);
+  if (!why) throw new Error("say why it is rejected: the reason is kept with the invoice");
+  if (inv.status === "waiting_cfo") throw new Error(`${id} waits for the CFO's Face ID: approve or reject it on the phone`);
+  if (!REJECTABLE.has(inv.status)) throw new Error(`${id} is ${inv.status.replace(/_/g, " ")} already; it cannot be rejected`);
+  const next = setStatus(db, id, "rejected", "human", { reason: `rejected on the payables page: ${why}` }, now);
+  clearStaleNote(db, id);
+  if (deps.sink && accrualPushed(db, next, deps.sink)) await pushOnce(db, deps.sink, "reversal", reversalEntries(next, now.toISOString().slice(0, 10), "a person rejected the invoice"), next, now);
+  return next;
 }

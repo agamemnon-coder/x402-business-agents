@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { request } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
+import { Script } from "node:vm";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { seedTreasury } from "../src/agents/euroBill.js";
@@ -132,6 +133,62 @@ describe("the payables page", () => {
     expect(res.status).toBe(200);
     expect(JSON.parse(res.text)).toMatchObject({ vendor: "Zeeland Verpakkingen B.V.", status: "REQUESTED" });
     expect(awx.payoutBeneficiaries).toHaveLength(0);
+  });
+
+  it("serves each invoice its own page under a nonce-only script policy, and its detail as JSON", async () => {
+    await start(false);
+    await upload(await pdfOf(EN), "a.pdf");
+    const page = await fetch(base + "/invoices/AP-0001");
+    expect(page.status).toBe(200);
+    const csp = page.headers.get("content-security-policy") ?? "";
+    const nonce = /script-src 'nonce-([A-Za-z0-9+/=]+)'/.exec(csp)?.[1];
+    expect(nonce).toBeTruthy();
+    expect(csp).not.toMatch(/script-src[^;]*unsafe-inline/);
+    const html = await page.text();
+    expect(html).toContain(`nonce="${nonce}"`);
+    expect(html).toMatch(/<meta name="csrf" content="[0-9a-f]{64}">/);
+    expect((await fetch(base + "/invoices/AP-9999")).status).toBe(404);
+    // Every page gets a fresh nonce.
+    const again = (await fetch(base + "/")).headers.get("content-security-policy") ?? "";
+    expect(again).not.toContain(nonce!);
+    const d = await (await fetch(base + "/api/payables/invoices/AP-0001/detail")).json() as { checks: { result: string }[]; timeline: { what: string }[]; total_line: string; actions: { pay: { allowed: boolean } } };
+    expect(d.checks.every((c) => c.result === "passed")).toBe(true);
+    expect(d.timeline[0]!.what).toBe("Received");
+    expect(d.total_line).toMatch(/1,850\.00/);
+    expect(d.actions.pay.allowed).toBe(true);
+    expect((await fetch(base + "/api/payables/invoices/AP-9999/detail")).status).toBe(404);
+  });
+
+  it("ships page scripts that parse (a broken quote in a template would blank the page)", async () => {
+    await start(false);
+    await upload(await pdfOf(EN), "a.pdf");
+    for (const path of ["/", "/invoices/AP-0001"]) {
+      const code = /<script type="module" nonce="[^"]+">([\s\S]*?)<\/script>/.exec(await (await fetch(base + path)).text())?.[1] ?? "";
+      expect(code.length).toBeGreaterThan(500);
+      expect(() => new Script(code)).not.toThrow();
+    }
+  });
+
+  it("serves the document viewer's script and the font from this page's own origin", async () => {
+    await start(false);
+    const js = await fetch(base + "/assets/pdfjs.mjs");
+    expect(js.status).toBe(200);
+    expect(js.headers.get("content-type")).toMatch(/javascript/);
+    const font = await fetch(base + "/assets/inter.woff2");
+    expect(font.headers.get("content-type")).toMatch(/font\/woff2/);
+    expect((await fetch(base + "/assets/../package.json")).status).toBe(404);
+  });
+
+  it("rejects an invoice only with this page's token and a reason", async () => {
+    await start(false);
+    await upload(await pdfOf(EN), "a.pdf");
+    const reject = async (body: string, t?: string) => raw("/api/payables/invoices/AP-0001/reject", body, { "content-type": "application/json", "x-csrf": t ?? (await token()), origin: base });
+    expect((await reject(JSON.stringify({ reason: "ordered twice" }), "bad")).status).toBe(403);
+    expect((await reject(JSON.stringify({ reason: " " }))).status).toBe(400);
+    const ok = await reject(JSON.stringify({ reason: "ordered twice" }));
+    expect(ok.status).toBe(200);
+    expect(JSON.parse(ok.text)).toMatchObject({ id: "AP-0001", status: "rejected", status_words: "Rejected" });
+    expect((await reject(JSON.stringify({ reason: "again" }))).status).toBe(409);
   });
 
   it("limits how often it can be asked: past the limit it answers 429 and reads nothing", async () => {

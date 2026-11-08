@@ -140,7 +140,8 @@ export function evaluate(db: DB, r: ApReading, text: string, ctx: CheckContext):
     const fraud = assessAgainst(suppliersOnFile(db), { vendor: r.vendor, iban: key, bic: "" }, text, ibanSha(key));
     const blocking = fraud.signals.filter((s) => s.blocks && s.code !== "unknown_vendor");
     if (fraud.suspicious) {
-      f.push({ code: "possible_fraud", level: "block", detail: `possible invoice fraud: ${blocking.map((s) => s.detail).join("; ")}. Nothing is paid until a person checks with the supplier on a number already on file` });
+      f.push({ code: "possible_fraud", level: "block", detail: `possible invoice fraud: ${blocking.map((s) => s.detail).join("; ")}. Nothing is paid until a person checks with the supplier on a number already on file`,
+        signals: blocking.map((s) => ({ code: s.code, detail: s.detail })) });
     } else if (fraud.signals.some((s) => s.code === "unknown_vendor")) {
       const pending = db.prepare("SELECT add_id, status FROM payee_adds WHERE vendor = ? AND status <> 'APPLIED' ORDER BY created_at DESC").get(r.vendor) as { add_id: string; status: string } | undefined;
       f.push({ code: "new_supplier", level: "wait", detail: `${r.vendor} is not on file as a supplier yet: a person verifies its bank details with the supplier, then the CFO approves it with Face ID${pending ? ` (request ${pending.add_id}, ${pending.status.toLowerCase()})` : ""}` });
