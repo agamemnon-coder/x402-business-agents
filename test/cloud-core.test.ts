@@ -28,7 +28,8 @@ describe("a company", () => {
     const t = await c.tenant("acme");
     expect(t.key).toMatch(/^pck_k[A-Za-z0-9]{12}_[A-Za-z0-9_-]{43}$/);
     const stored = await c.env.sql.all<{ secret_sha256: string }>("SELECT secret_sha256 FROM api_keys");
-    expect(JSON.stringify(stored)).not.toContain(t.key.split("_")[2]);
+    // The secret is everything after the second underscore (it may itself contain "_": the test was flaky).
+    expect(JSON.stringify(stored)).not.toContain(t.key.split("_").slice(2).join("_"));
     expect((await c.req("POST", "/v1/admin/tenants", { key: ADMIN_TOKEN, body: { slug: "acme", name: "Again", owner: { display_name: "O" } } })).status).toBe(409);
     const me = await c.req("GET", "/v1/me", { key: t.key });
     expect(me.json).toMatchObject({ tenant: { id: t.id, slug: "acme" }, kind: "key", scopes: ["read", "sync", "admin"] });
