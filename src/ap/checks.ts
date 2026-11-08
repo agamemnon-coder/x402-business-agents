@@ -15,6 +15,16 @@ import { handledInLedger } from "./ledgerKey.js";
 import { ibanValid, totalAmbiguity, totalIsNegative, type ApReading } from "./reading.js";
 import type { ApStatus, Finding } from "./store.js";
 
+/** The hash of the account an invoice asks to be paid to, as the ledger keeps it (null when it has none that routes). */
+function accountHash(r: ApReading): string | null {
+  try {
+    const key = accountKey(bankFromReading(r));
+    return key ? ibanSha(key) : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Whether Purser pays this currency (src/payouts/routes.ts: a currency SWIFT carries, with two decimals). EUR invoices
  * to suppliers on file from the Kit 11 payees still go through the invoice_payment path; the rest through
@@ -91,17 +101,20 @@ export function evaluate(db: DB, r: ApReading, text: string, ctx: CheckContext):
   if (r.invoice_no) {
     const key = invoiceKey(r.invoice_no);
     const self = ctx.selfId ? (db.prepare("SELECT received_at FROM ap_invoices WHERE id = ?").get(ctx.selfId) as { received_at: string } | undefined) : undefined;
-    const earlier = (db.prepare("SELECT id, vendor, invoice_no, status, findings_json, received_at FROM ap_invoices WHERE status <> 'rejected' ORDER BY received_at, id").all() as
-      { id: string; vendor: string; invoice_no: string; status: string; findings_json: string; received_at: string }[])
+    // The same supplier is the same name, or the same account under another name (red team round 3: a supplier added
+    // again under a new name, the same invoice paid twice).
+    const account = accountOk ? accountHash(r) : null;
+    const earlier = (db.prepare("SELECT id, vendor, invoice_no, status, findings_json, received_at, reading_json FROM ap_invoices WHERE status <> 'rejected' ORDER BY received_at, id").all() as
+      { id: string; vendor: string; invoice_no: string; status: string; findings_json: string; received_at: string; reading_json: string }[])
       .filter((x) => x.id !== ctx.selfId && (!self || x.received_at < self.received_at || (x.received_at === self.received_at && x.id < ctx.selfId!)))
       .filter((x) => !(x.status === "blocked" && (JSON.parse(x.findings_json) as Finding[]).some((y) => y.code === "duplicate")))
-      .filter((x) => skeleton(x.vendor) === skeleton(r.vendor));
+      .filter((x) => skeleton(x.vendor) === skeleton(r.vendor) || (!!account && accountHash(JSON.parse(x.reading_json) as ApReading) === account));
     const same = earlier.find((x) => invoiceKey(x.invoice_no) === key);
     const loose = same ? undefined : earlier.find((x) => sameInvoiceNo(x.invoice_no, r.invoice_no));
     if (same) f.push({ code: "duplicate", level: "block", detail: `${same.id} is the same invoice ${same.invoice_no} from ${same.vendor} (${same.status.replace(/_/g, " ")}); a second copy is never paid` });
     else if (loose) f.push({ code: "possible_duplicate", level: "review", detail: `${loose.id} is invoice ${loose.invoice_no} from the same supplier, written differently; a person checks it is not the same invoice` });
     else {
-      const handled = handledInLedger(db, r.invoice_no, r.vendor, ctx.now);
+      const handled = handledInLedger(db, r.invoice_no, r.vendor, ctx.now, account);
       if (handled) f.push({ code: "duplicate", level: "block", detail: `${handled}; a second copy is never paid` });
     }
     // The same supplier, the same total, dated within TWIN_DAYS: possibly the same invoice under another number (red team

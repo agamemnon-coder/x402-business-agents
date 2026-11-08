@@ -56,19 +56,19 @@ describe("a new supplier", () => {
     await expect(payApInvoice(db, awx, id, now)).rejects.toThrow(/needs vendor|not ready/);
 
     const req = requestPayeeAddForInvoice(db, id, "treasury", now);
-    expect(req).toMatchObject({ vendor: "Lagerhaus Nord GmbH", iban: "DE02120300000000202051", bic: "BYLADEM1001", status: "REQUESTED", source: id });
+    expect(req).toMatchObject({ vendor: "Lagerhaus Nord GmbH", iban: "DE75512108001245126199", bic: "BYLADEM1001", status: "REQUESTED", source: id });
     expect(() => proposePayeeAdd(db, req.add_id, "treasury", now)).toThrow(/not verified/);
     expect(() => recordPayeeAddVerification(db, req.add_id, { by: "treasury", how: HOW, actor: "treasury", address: ADDRESS }, now)).toThrow(/only a person/);
     expect(() => recordPayeeAddVerification(db, req.add_id, { by: "the CFO", how: "ok", actor: "human", address: ADDRESS }, now)).toThrow(/how it was verified/);
     recordPayeeAddVerification(db, req.add_id, { by: "the CFO", how: HOW, actor: "human", address: ADDRESS }, now);
 
     const p = proposePayeeAdd(db, req.add_id, "treasury", now);
-    expect(JSON.parse(p.terms_json)).toMatchObject({ kind: "payee_add", vendor: "Lagerhaus Nord GmbH", iban: "DE02120300000000202051", address: ADDRESS, verification: { by: "the CFO" } });
+    expect(JSON.parse(p.terms_json)).toMatchObject({ kind: "payee_add", vendor: "Lagerhaus Nord GmbH", iban: "DE75512108001245126199", address: ADDRESS, verification: { by: "the CFO" } });
     // Still waiting until the CFO approves and the executor adds it.
     expect(apInvoice(db, id)!.status).toBe("needs_vendor");
     approve(p.proposal_id);
     await executePayeeAdd(db, awx, p.proposal_id, { now: () => now }, now);
-    expect(awx.payoutBeneficiaries.map((b) => b.bank.iban)).toContain("DE02120300000000202051");
+    expect(awx.payoutBeneficiaries.map((b) => b.bank.iban)).toContain("DE75512108001245126199");
     expect(db.prepare("SELECT name, status FROM beneficiaries WHERE name = 'Lagerhaus Nord GmbH'").get()).toEqual({ name: "Lagerhaus Nord GmbH", status: "ACTIVE" });
     expect(apInvoice(db, id)!.status).toBe("ready");
   });
@@ -93,7 +93,7 @@ describe("a new supplier", () => {
     const { createProposal } = await import("../src/policy/approvals.js");
     const { TERMS_SCHEMA } = await import("../src/lib/terms.js");
     const old = createProposal(db, { terms: { schema: TERMS_SCHEMA, kind: "payee_add", proposal_id: "P-0099", expires_at: new Date(now.getTime() + 3_600_000).toISOString().replace(/\.\d{3}Z$/, "Z"),
-      add_id: req.add_id, vendor: "Lagerhaus Nord GmbH", iban: "DE02120300000000202051", bic: "BYLADEM1001", address: ADDRESS, verification: { by: "the CFO", how: HOW, at: now.toISOString() } } as never, createdBy: "treasury" }, now);
+      add_id: req.add_id, vendor: "Lagerhaus Nord GmbH", iban: "DE75512108001245126199", bic: "BYLADEM1001", address: ADDRESS, verification: { by: "the CFO", how: HOW, at: now.toISOString() } } as never, createdBy: "treasury" }, now);
     db.prepare("UPDATE payee_adds SET status = 'PROPOSED', proposal_id = ? WHERE add_id = ?").run(old.proposal_id, req.add_id);
     approve(old.proposal_id);
     await executePayeeAdd(db, awx, old.proposal_id, { now: () => now }, now);
@@ -110,7 +110,7 @@ describe("a new supplier", () => {
 
   it("asks for two people when four eyes is on, like a change of bank details", () => {
     setSetting(db, "human", "approval.four_eyes_eur", "1000.00");
-    const req = requestPayeeAdd(db, { vendor: "Lagerhaus Nord GmbH", iban: "DE02120300000000202051", bic: "BYLADEM1001", source: null }, "treasury", now);
+    const req = requestPayeeAdd(db, { vendor: "Lagerhaus Nord GmbH", iban: "DE75512108001245126199", bic: "BYLADEM1001", source: null }, "treasury", now);
     recordPayeeAddVerification(db, req.add_id, { by: "the CFO", how: HOW, actor: "human", address: ADDRESS }, now);
     const p = proposePayeeAdd(db, req.add_id, "treasury", now);
     expect(fourEyes(db, p)).toBe(true);
@@ -223,10 +223,10 @@ describe("the same invoice number from two suppliers", () => {
 describe("the phone page", () => {
   it("shows a new supplier with its full IBAN, the verification and the warning, and says why the CFO decides", async () => {
     const { describeTerms, whyYou } = await import("../src/approve/client.js");
-    const t = { kind: "payee_add", vendor: "Lagerhaus Nord GmbH", iban: "DE02120300000000202051", bic: "BYLADEM1001", address: ADDRESS, verification: { by: "the CFO", how: HOW } };
+    const t = { kind: "payee_add", vendor: "Lagerhaus Nord GmbH", iban: "DE75512108001245126199", bic: "BYLADEM1001", address: ADDRESS, verification: { by: "the CFO", how: HOW } };
     const f = describeTerms(t, {});
     expect(f).toMatchObject({ approvable: true, title: "New supplier", amount: "0.00 (nothing moves now)" });
-    expect(f.sentence).toContain("DE02 1203 0000 0000 2020 51");
+    expect(f.sentence).toContain("DE75 5121 0800 1245 1261 99");
     expect(f.warnings[0]).toMatch(/invoice fraud/);
     expect(whyYou(t)).toBe("A new supplier is paid only after your Face ID.");
   });

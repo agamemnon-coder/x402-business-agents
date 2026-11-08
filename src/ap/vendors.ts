@@ -65,6 +65,15 @@ const row = (db: DB, id: string) => {
   if (!r) throw new Error(`no supplier request ${id}`);
   return r;
 };
+/**
+ * The supplier on file already paid to this account (its hash), or null (red team round 3: the same supplier added again
+ * under a new name, and its invoices paid once under each name).
+ */
+export function accountOnFile(db: DB, accountSha256: string): string | null {
+  const r = db.prepare("SELECT name FROM beneficiaries WHERE status = 'ACTIVE' AND iban_sha256 = ?").get(accountSha256) as { name: string } | undefined;
+  return r?.name ?? null;
+}
+
 const onFile = (db: DB) => db.prepare("SELECT beneficiary_id, name, iban_last4, iban_sha256, bic FROM beneficiaries WHERE status = 'ACTIVE'").all() as Beneficiary[];
 
 /** The bank details as given: a full set, or (as before) an IBAN and BIC, with the country taken from the IBAN. */
@@ -111,6 +120,8 @@ export function requestPayeeAdd(db: DB, a: { vendor: string; iban?: string; bic?
   const finding = assessAgainst(all, { vendor, iban: key, bic: "" }, "", ibanSha(key));
   const odd = finding.signals.filter((s) => s.blocks && s.code !== "unknown_vendor");
   if (odd.length) throw new Error(`${odd.map((s) => s.detail).join("; ")}: a name that looks like a supplier on file is not added as a new one`);
+  const sameAccount = accountOnFile(db, ibanSha(key));
+  if (sameAccount) throw new Error(`this account is already on file for ${sameAccount}; one account is never added under a second name (its invoices would be paid twice), so a person checks who ${vendor} is`);
   closeDeadAdds(db, now);
   const open = db.prepare("SELECT add_id FROM payee_adds WHERE vendor = ? AND status NOT IN ('APPLIED', 'CLOSED')").get(vendor) as { add_id: string } | undefined;
   if (open) throw new Error(`${vendor} is already requested as ${open.add_id}`);
@@ -174,6 +185,9 @@ export function proposePayeeAdd(db: DB, id: string, by: Actor, now = new Date())
   const r = row(db, id);
   if (r.status !== "VERIFIED" || !r.verification_json) throw new Error(`${id} is not verified by a person yet; nothing to propose`);
   if (onFile(db).some((b) => b.name.trim() === r.vendor)) throw new Error(`${r.vendor} is on file already`);
+  const proposedBank: PayeeBank = r.details_json ? JSON.parse(r.details_json) as PayeeBank : legacyPayeeBank(r.vendor, r.iban, r.bic);
+  const taken = accountOnFile(db, ibanSha(accountKey(proposedBank)));
+  if (taken) throw new Error(`this account is already on file for ${taken}; one account is never added under a second name`);
   const v = JSON.parse(r.verification_json) as { by: string; how: string; at: string; address: Address };
   const bank: PayeeBank = r.details_json ? JSON.parse(r.details_json) as PayeeBank : legacyPayeeBank(r.vendor, r.iban, r.bic);
   const terms: PayeeAddTerms = {
@@ -194,6 +208,9 @@ export async function executePayeeAdd(db: DB, rail: PayoutRail, proposalId: stri
   const t = beginExecution<PayeeAddTerms>(db, proposalId, (terms) => {
     if (terms.kind !== "payee_add") throw new Error(`${proposalId} is not a new supplier`);
     if (onFile(db).some((b) => b.name.trim() === terms.vendor)) throw new Error(`${terms.vendor} is on file already; nothing was added`);
+    const bank = terms.bank ?? legacyPayeeBank(terms.vendor, terms.iban, terms.bic);
+    const taken = accountOnFile(db, ibanSha(accountKey(bank)));
+    if (taken) throw new Error(`this account is already on file for ${taken}; nothing was added under a second name`);
   }, now);
   // Terms approved before the payout routes carry only the IBAN and BIC the CFO saw: their route is the IBAN's own.
   let bank: PayeeBank;

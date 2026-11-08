@@ -137,3 +137,19 @@ describe("R3: four eyes covers supplier payments", () => {
     expect(fourEyes(db, p({ amount: "10.00", currency: "GBP", conversion: null }))).toBe(true);
   });
 });
+
+describe("R4: the same supplier under a second name", () => {
+  it("a new supplier paid to an account already on file under another name is refused", () => {
+    expect(() => requestPayeeAdd(db, { vendor: "BTX Holding AG", iban: "DE89370400440532013000", bic: "COBADEFFXXX", source: null }, "treasury", now))
+      .toThrow(/already on file for Bergtex Textil GmbH/);
+  });
+
+  it("the ledger's guard knows a paid invoice by its account and number, whatever the name", async () => {
+    const bare = await kit11("BTX-2026-21");
+    approve(bare);
+    await executeInvoicePayment(db, awx, awx, bare);
+    const bergtexAccount = (db.prepare("SELECT iban_sha256 FROM invoices WHERE invoice_no = 'BTX-2026-21'").get() as { iban_sha256: string }).iban_sha256;
+    expect(invoiceAlreadyHandled(db, "BTX-2026-21 · BTX Holding AG", now, undefined, { accountSha256: bergtexAccount })).toMatch(/already paid/);
+    expect(invoiceAlreadyHandled(db, "BTX-2026-21 · BTX Holding AG", now, undefined, { accountSha256: "another" })).toBeNull();
+  });
+});

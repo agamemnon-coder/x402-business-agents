@@ -264,10 +264,10 @@ describe("round 2, 9: the page", () => {
     const code = /(\d{6})/.exec(printed.join("\n"))?.[1] ?? "";
     expect(code).toMatch(/^\d{6}$/);
     expect((await post(`/api/payables/suppliers/${req.add_id}/verify`, { ...body, code, iban_last4: "0000" })).status).toBe(403);
-    const ok = await post(`/api/payables/suppliers/${req.add_id}/verify`, { ...body, code, iban_last4: "2051" });
+    const ok = await post(`/api/payables/suppliers/${req.add_id}/verify`, { ...body, code, iban_last4: "6199" });
     expect(ok.status).toBe(200);
     // The code works once.
-    expect((await post(`/api/payables/suppliers/${req.add_id}/verify`, { ...body, code, iban_last4: "2051" })).status).toBe(403);
+    expect((await post(`/api/payables/suppliers/${req.add_id}/verify`, { ...body, code, iban_last4: "6199" })).status).toBe(403);
   });
   it("'not a duplicate' on the page also needs the terminal's code, and is in the audit log", async () => {
     await fileWith(EN);

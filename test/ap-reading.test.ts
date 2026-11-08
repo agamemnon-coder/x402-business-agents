@@ -25,7 +25,7 @@ describe("reading an invoice without a model", () => {
   it("reads a German invoice", () => {
     expect(parseApFallback(DE)).toMatchObject({
       vendor: "Lagerhaus Nord GmbH", vat_id: "DE987654321", invoice_no: "LN-2026-0815", issue_date: "2026-11-04", due_date: "2026-11-18",
-      currency: "EUR", subtotal: "1000.00", tax: "190.00", total: "1190.00", iban: "DE02120300000000202051", bic: "BYLADEM1001",
+      currency: "EUR", subtotal: "1000.00", tax: "190.00", total: "1190.00", iban: "DE75512108001245126199", bic: "BYLADEM1001",
     });
   });
 
