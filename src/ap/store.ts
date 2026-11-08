@@ -8,7 +8,13 @@ import type { ApReading } from "./reading.js";
 export type ApStatus = "blocked" | "needs_review" | "needs_vendor" | "ready" | "waiting_cfo" | "paid" | "rejected";
 
 /** One thing the checks found. block stops payment; review needs a person; wait is a new supplier; warn is shown. */
-export interface Finding { code: string; level: "block" | "review" | "wait" | "warn"; detail: string }
+export interface Finding {
+  code: string;
+  level: "block" | "review" | "wait" | "warn";
+  detail: string;
+  /** A possible duplicate by the same supplier and total only: the earlier invoice it may copy (a person may clear it). */
+  twin_of?: string;
+}
 
 interface Row {
   id: string; doc_sha256: string; doc_kind: string; classified_by: string; vendor: string; invoice_no: string; issue_date: string; due_date: string; currency: string;

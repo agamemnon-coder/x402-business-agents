@@ -113,8 +113,8 @@ describe("insight", () => {
   it("open payables, due soon, overdue, blocked with reasons, spend per supplier, a price rise, time to pay and fees", async () => {
     const strip = (t: string) => t.replace("Subtotal EUR 1,554.62\nVAT 19% EUR 295.38\n", "");
     await add(strip(EN).replace(/BTX-2026-21/g, "BTX-1").replace("16 November 2026", "1 November 2026"), "1.pdf");
-    // Another invoice for the same amount, a few weeks apart (dated within a week it would be a possible duplicate).
-    await add(strip(EN).replace(/BTX-2026-21/g, "BTX-2").replace("Invoice date: 2 November 2026", "Invoice date: 20 October 2026"), "2.pdf");
+    // Another invoice for the same amount, two months apart (dated within 45 days it would be a possible duplicate).
+    await add(strip(EN).replace(/BTX-2026-21/g, "BTX-2").replace("Invoice date: 2 November 2026", "Invoice date: 2 September 2026"), "2.pdf");
     await add(strip(EN).replace(/BTX-2026-21/g, "BTX-3").replace("1,850.00", "2,220.00").replace("16 November 2026", "1 December 2027"), "3.pdf");
     await add(NL, "nl.pdf");
     await add(EN.replace("VAT 19% EUR 295.38", "VAT 19% EUR 295.00").replace(/BTX-2026-21/g, "BTX-9"), "bad.pdf");

@@ -238,7 +238,10 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       ["Method", str(t.method)],
       ["Conversion", fx ? `${fx} at rate ${str(c!.client_rate)}, quote valid until ${str(c!.valid_to)}` : "none: paid from free EUR"],
       ["After payment", `EUR free above the floor ${money(after.eur_free)}, USD ${money(after.usd_available)}`],
+      // The supplier's own words beside the amount (payables inbox): a mismatch with the amount or currency above is visible.
+      ...(t.document_total_line !== undefined ? [["On the invoice", `"${str(t.document_total_line).slice(0, 120)}" (currency read from that line: ${str(t.document_currency) || "none code knows"})`] as [string, string]] : []),
     ];
+    const docWarn = t.document_total_line !== undefined && str(t.document_currency) !== cur ? [`The invoice's own total line reads ${str(t.document_currency) || "no currency code knows"}, not ${cur}`] : [];
     return {
       approvable: true,
       title: `Pay invoice ${str(t.invoice_no)}`,
@@ -248,7 +251,7 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       recipient,
       rows,
       short: `pay ${cur} ${money(t.amount)} to ${str(t.beneficiary_name)}`,
-      warnings: str(t.vendor) && str(t.vendor) !== str(t.beneficiary_name) ? [`The account holder (${str(t.beneficiary_name)}) is not the vendor on the invoice (${str(t.vendor)})`] : [],
+      warnings: [...(str(t.vendor) && str(t.vendor) !== str(t.beneficiary_name) ? [`The account holder (${str(t.beneficiary_name)}) is not the vendor on the invoice (${str(t.vendor)})`] : []), ...docWarn],
       label: `Invoice ${str(t.invoice_no)}`,
       big: money(t.amount),
       unit: cur,

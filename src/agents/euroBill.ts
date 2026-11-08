@@ -148,6 +148,7 @@ export interface InvoicePaymentTerms extends Terms {
   floors: { eur_floor: string; eur_obligations: string; usd_floor: string };
   after: { eur_free: string; usd_available: string };
   evidence: { type: string; ref: string; sha256: string }[];
+  // The payables inbox adds document_total_line and document_currency (see proposeInvoicePayment's `document`).
 }
 
 /**
@@ -191,6 +192,7 @@ export type InvoiceOutcome =
 export async function proposeInvoicePayment(
   db: DB, rail: AirwallexRail, inv: Invoice, invoiceText: string, now = new Date(),
   quoteValidity: "MIN_1" | "MIN_15" = "MIN_15",
+  document?: { total_line: string; currency: string },
 ): Promise<InvoiceOutcome> {
   const check = checkInvoice(db, inv, invoiceText);
   if (!check.ok) {
@@ -309,6 +311,10 @@ export async function proposeInvoicePayment(
     floors: { eur_floor: fromCents(s.eurFloorCents), eur_obligations: fromCents(s.eurObligationsCents), usd_floor: fromCents(s.usdFloorCents) },
     after: { eur_free: fromCents(Math.max(0, plan.freeEurCents + (quote?.buyAmountCents ?? 0) - plan.needEurCents)), usd_available: fromCents(usdAfter) },
     evidence: [{ type: "invoice", ref: inv.invoice_no, sha256: sha256Hex(invoiceText) }],
+    // The payables inbox only: the document's own total line, verbatim (sanitised, at most 120 characters), and the
+    // currency as read from that line ("" when it names none, or one code does not know), so the CFO sees what the
+    // supplier wrote beside the amount signed for (red team round 2). Kit 11's invoices pass none: their terms are unchanged.
+    ...(document ? { document_total_line: document.total_line.slice(0, 120), document_currency: document.currency } : {}),
   };
   // The duplicate guard again, inside the transaction that files the proposal (Opus review, 2 November): a plan filed by
   // another run (the CFO's `npm run licence`, the agent's plan_invoice) while this one waited for Airwallex is seen here.

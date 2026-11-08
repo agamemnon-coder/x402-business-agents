@@ -775,6 +775,18 @@ CREATE TABLE IF NOT EXISTS ap_invoices (
 );
 CREATE INDEX IF NOT EXISTS ap_invoices_vendor ON ap_invoices (vendor, received_at);
 
+-- A person's word that an invoice is not a copy of an earlier one with the same supplier and total (monthly rent, a
+-- subscription): once per pair, with who and why; the audit log has it too (red team round 2). A match on the invoice
+-- number itself is never cleared this way.
+CREATE TABLE IF NOT EXISTS ap_duplicate_clearances (
+  invoice_id TEXT NOT NULL REFERENCES ap_invoices(id),
+  twin_id TEXT NOT NULL REFERENCES ap_invoices(id),
+  cleared_by TEXT NOT NULL,
+  note TEXT NOT NULL,
+  cleared_at TEXT NOT NULL,
+  PRIMARY KEY (invoice_id, twin_id)
+);
+
 CREATE TABLE IF NOT EXISTS payee_adds (
   add_id TEXT PRIMARY KEY,
   vendor TEXT NOT NULL,

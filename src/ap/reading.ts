@@ -113,64 +113,154 @@ function lastAmount(line: string): string {
   return found.at(-1) ?? "";
 }
 
-/** Every currency a line names: symbols and ISO codes. */
-function currenciesOf(line: string): string[] {
-  const out = new Set<string>();
-  if (/€|\bEUR\b/i.test(line)) out.add("EUR");
-  if (/£|\bGBP\b/i.test(line)) out.add("GBP");
-  if (/\bUSD\b|US\$|\$/i.test(line)) out.add("USD");
-  for (const m of line.matchAll(/\b(CHF|SEK|NOK|DKK|PLN|CZK|HKD|SGD|AUD|CAD|JPY|CNY|NZD|TRY|HUF|RON|BGN)\b/g)) out.add(m[1]!);
-  return [...out];
-}
+/** The currencies code knows, by ISO code. Anything else written beside a total is a currency code does not know. */
+const KNOWN_CODES = new Set(["EUR", "GBP", "USD", "CHF", "SEK", "NOK", "DKK", "PLN", "CZK", "HKD", "SGD", "AUD", "CAD", "JPY", "CNY", "NZD", "TRY", "HUF", "RON", "BGN"]);
+const SYMBOLS: Readonly<Record<string, string>> = { "€": "EUR", "£": "GBP", $: "USD" };
+/** Words a total, subtotal or tax line may carry beside its label, amount and currency (compared in lower case). */
+const FILLER = new Set([
+  "total", "due", "amount", "payable", "to", "pay", "now", "balance", "incl", "including", "inclusive", "excl", "excluding", "inkl", "exkl", "of", "on", "in",
+  "vat", "btw", "mwst", "ust", "tax", "gross", "net", "brutto", "netto", "te", "betalen", "zu", "zahlen", "cr", "sum",
+]);
 
-/** The one currency a line names, or "" (none, or more than one). */
-function currencyOf(line: string): string {
-  const c = currenciesOf(line);
-  return c.length === 1 ? c[0]! : "";
+/**
+ * What a line names beside its label and amounts: the ISO codes and symbols code knows, and whether anything else is
+ * written there (a currency code does not know: "kr", "Kč", "Fr.", "zł", "ISK", a lower-case "sek"). Never guessed.
+ */
+function lineCurrency(rest: string): { known: string[]; unknown: boolean } {
+  const known = new Set<string>();
+  let unknown = false;
+  const s = rest.replace(/US\$/g, " USD ").replace(/\d+/g, " ");
+  for (const tok of s.split(/[^\p{L}\p{Sc}]+/u).filter(Boolean)) {
+    for (const part of tok.split(/(\p{Sc})/u).filter(Boolean)) {
+      if (/^\p{Sc}$/u.test(part)) {
+        const code = SYMBOLS[part];
+        if (code) known.add(code);
+        else unknown = true;
+      } else if (KNOWN_CODES.has(part)) known.add(part);
+      else if (!FILLER.has(part.toLowerCase())) unknown = true;
+    }
+  }
+  return { known: [...known], unknown };
 }
 
 /**
- * The invoice's currency: the total line's; else the subtotal's or the tax line's when they agree; else the one
- * currency the whole text names. Several currencies and none on those lines: "" (a person decides). A euro sign in a
- * footer ("late payment fee: €40,00") never makes a SEK invoice EUR.
+ * The invoice's currency: the total line's; else, when the total line names none, the subtotal's and the tax line's
+ * when they agree. A total line naming a currency code does not know, or more than one, gives "" (a person decides).
+ * Never taken from the rest of the text: a euro sign in a footer ("late payment fee: €6,00") never makes a krona
+ * invoice EUR (red team round 2).
  */
-function invoiceCurrency(ls: string[], total: { line: string } | null): string {
+function invoiceCurrency(ls: string[], total: Labelled | null): string {
   if (total) {
-    const c = currencyOf(total.line);
-    if (c) return c;
+    const c = lineCurrency(total.rest);
+    if (c.unknown || c.known.length > 1) return "";
+    if (c.known.length === 1) return c.known[0]!;
   }
-  const near = [labelledAmount(ls, SUBTOTAL), labelledAmount(ls, TAX)].flatMap((x) => (x ? [currencyOf(x.line)] : [])).filter(Boolean);
-  if (near.length && near.every((c) => c === near[0])) return near[0]!;
-  const all = new Set(ls.flatMap(currenciesOf));
-  return all.size === 1 ? [...all][0]! : "";
+  const near = [labelledAmount(ls, "subtotal"), labelledAmount(ls, "tax")].filter((x): x is Labelled => x !== null).map((x) => lineCurrency(x.rest));
+  if (near.length === 0 || near.some((c) => c.unknown || c.known.length !== 1)) return "";
+  return near.every((c) => c.known[0] === near[0]!.known[0]) ? near[0]!.known[0]! : "";
 }
 
-/** Whether the total is written as negative ("-1,850.00", "EUR -1.850,00") or in brackets ("(1,850.00)"): a credit. */
+/** Any minus: hyphen-minus, every Unicode dash (en, em, hyphen, small and full-width hyphen-minus) and the minus sign. */
+const MINUS = "[\\p{Pd}\\u2212\\uFE63\\uFF0D]";
+const MINUS_BEFORE = new RegExp(`(?:^|[\\s:=€$£(])${MINUS}\\s*(?:(?:€|\\$|£|[A-Z]{3})\\s*)?\\d`, "u");
+const MINUS_AFTER = new RegExp(`\\d[.,]\\d{2}\\s*${MINUS}(?!\\s*\\d)`, "u");
+
+/**
+ * Whether the total is written as a credit: a minus before the amount ("-", "–", "—", "‐", "﹣", "－"), a minus after
+ * it ("1,850.00-"), "CR" before or after it, or brackets ("(1,850.00)").
+ */
 export function totalIsNegative(text: string): boolean {
-  const total = labelledAmount(lines(text ?? ""), TOTAL);
+  const total = chosenTotal(lines(text ?? ""));
   if (!total) return false;
-  return /(?:^|[\s:=€$£])[-\u2212\u2013]\s*(?:(?:€|\$|£|[A-Z]{3})\s*)?\d/.test(total.line) || /\(\s*(?:€|\$|£|[A-Z]{3})?\s*\d[\d.,' \u00a0]*\)/.test(total.line);
+  const r = total.rest;
+  return MINUS_BEFORE.test(r) || MINUS_AFTER.test(r) || /(?:^|[^\p{L}])(?:CR|Cr)(?![\p{L}])/u.test(r) || /\(\s*(?:€|\$|£|[A-Z]{3})?\s*\d[\d.,' \u00a0]*\)/.test(r);
 }
-
 
 const lines = (text: string) => text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 
-/** The first line that starts with one of the labels and carries a two-decimal amount. */
-function labelledAmount(ls: string[], labels: RegExp): { amount: string; line: string } | null {
-  for (const l of ls) {
-    if (!labels.test(l)) continue;
-    const amount = lastAmount(l);
-    if (amount) return { amount, line: l };
+type LineKind = "subtotal" | "tax" | "total";
+/** A labelled line with a two-decimal amount: what it is, its total label's rank (1 is "the amount to pay"), and the line after the label. */
+interface Labelled { kind: LineKind; tier: number; amount: string; line: string; rest: string }
+
+const NOT_LETTER = "(?![\\p{L}])";
+const SUBTOTAL = new RegExp(`^(?:sub-?total|subtotaal|net\\s+amount|nettobetrag|zwischensumme|netto|summe\\s+netto|total\\s+(?:excl\\.?|excluding|ex\\.?|exkl\\.?|before\\s+(?:vat|tax)|net)|totaal\\s+(?:excl\\.?|exclusief))${NOT_LETTER}`, "iu");
+const TAX = new RegExp(`^(?:vat|btw|mwst\\.?|ust\\.?|tax|sales\\s+tax|umsatzsteuer|total\\s+(?:vat|tax|btw|mwst|ust)|totaal\\s+btw)${NOT_LETTER}`, "iu");
+/** Total labels by rank: the amount to pay first, a document total next, a bare "Total" last. */
+const TOTAL_TIERS = [
+  new RegExp(`^(?:total\\s+(?:amount\\s+)?due|amount\\s+due|amount\\s+payable|total\\s+payable|balance\\s+due|amount\\s+to\\s+pay|to\\s+pay|totaal\\s+te\\s+betalen|te\\s+betalen|zu\\s+zahlen(?:der\\s+betrag)?|zahlbetrag|net\\s+à\\s+payer|à\\s+payer|a\\s+payer|montant\\s+dû)${NOT_LETTER}`, "iu"),
+  new RegExp(`^(?:total\\s+amount|invoice\\s+total|grand\\s+total|total\\s+(?:incl\\.?|including|inclusive|inkl\\.?)\\s*(?:of\\s+)?(?:vat|tax|btw|mwst\\.?|ust\\.?)?|totaal\\s+incl\\.?\\s*(?:btw)?|totaalbedrag|factuurbedrag|gesamtbetrag|gesamtsumme|rechnungsbetrag|bruttobetrag|endbetrag|endsumme|total\\s+ttc|montant\\s+ttc)${NOT_LETTER}`, "iu"),
+  new RegExp(`^(?:total|totaal|summe|gesamt)${NOT_LETTER}`, "iu"),
+];
+
+/** What a line is. A subtotal or tax label is checked before a total one: "Total excl. VAT" is a subtotal. */
+function labelled(l: string): Labelled | null {
+  const amount = lastAmount(l);
+  if (!amount) return null;
+  const sub = SUBTOTAL.exec(l);
+  if (sub) return { kind: "subtotal", tier: 0, amount, line: l, rest: l.slice(sub[0].length) };
+  const tax = TAX.exec(l);
+  if (tax) return { kind: "tax", tier: 0, amount, line: l, rest: l.slice(tax[0].length) };
+  for (const [i, re] of TOTAL_TIERS.entries()) {
+    const m = re.exec(l);
+    if (m) return { kind: "total", tier: i + 1, amount, line: l, rest: l.slice(m[0].length) };
   }
   return null;
 }
 
+/** The first subtotal or tax line with an amount. */
+function labelledAmount(ls: string[], kind: Exclude<LineKind, "total">): Labelled | null {
+  for (const l of ls) {
+    const x = labelled(l);
+    if (x?.kind === kind) return x;
+  }
+  return null;
+}
+
+/** Every total-like line with an amount, in document order. */
+function totalLines(ls: string[]): Labelled[] {
+  return ls.map(labelled).filter((x): x is Labelled => x?.kind === "total");
+}
+
+/** The amount to pay: the first line with the best-ranked total label ("Balance due" before a bare "Total"). */
+function chosenTotal(ls: string[]): Labelled | null {
+  const all = totalLines(ls);
+  const best = Math.min(...all.map((x) => x.tier));
+  return all.find((x) => x.tier === best) ?? null;
+}
+
+/**
+ * Why the document's total is not one amount, or null: total lines with different amounts (a deposit, an early-payment
+ * discount, a line item that starts with "Total"). A person checks which one is due; code never picks between them.
+ */
+export function totalAmbiguity(text: string): string | null {
+  const all = totalLines(lines(text ?? ""));
+  const amounts = [...new Set(all.map((x) => x.amount))];
+  if (amounts.length < 2) return null;
+  const shown = all.map((x) => `"${shownLine(x.line, 60)}"`).join(", ");
+  return `the document gives ${amounts.length} different totals (${amounts.join(" and ")}): ${shown}; a person checks which one is due`;
+}
+
+/** A line as shown to a person: no control or invisible format characters, single spaces, at most `max` characters. */
+function shownLine(line: string, max: number): string {
+  return line.replace(/[\p{Cc}\p{Cf}\p{Co}\p{Cn}]/gu, "").replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+/** The document's own total line, as the CFO sees it beside the amount to sign (sanitised, at most 120 characters), or "". */
+export function totalLine(text: string): string {
+  const t = chosenTotal(lines(text ?? ""));
+  return t ? shownLine(t.line, 120) : "";
+}
+
+/** The currency the total line itself names (one code it knows and nothing else beside it), or "". */
+export function totalLineCurrency(text: string): string {
+  const t = chosenTotal(lines(text ?? ""));
+  if (!t) return "";
+  const c = lineCurrency(t.rest);
+  return !c.unknown && c.known.length === 1 ? c.known[0]! : "";
+}
+
 /** A line that names the document rather than its issuer (a heading above the letterhead). */
 const HEADING = /^(?:(?:tax\s+)?invoice|factuur|rechnung|credit\s*note|creditnota|gutschrift|payment\s+reminder|reminder|betalingsherinnering|herinnering|aanmaning|zahlungserinnerung|mahnung|receipt|kwitantie|quittung)\b/i;
-
-const TOTAL = /^(?:total\s+due|amount\s+due|amount\s+payable|total\s+payable|balance\s+due|total\s+amount|invoice\s+total|grand\s+total|totaal\s+te\s+betalen|te\s+betalen|totaalbedrag|factuurbedrag|gesamtbetrag|gesamtsumme|rechnungsbetrag|zu\s+zahlen|endbetrag|endsumme|total|totaal)(?![a-z])/i;
-const SUBTOTAL = /^(?:sub-?total|subtotaal|net\s+amount|nettobetrag|zwischensumme|netto)(?![a-z])/i;
-const TAX = /^(?:vat|btw|mwst\.?|ust\.?|tax|sales\s+tax|umsatzsteuer)(?![a-z])/i;
 
 function firstMatch(text: string, re: RegExp): string {
   return re.exec(text)?.[1]?.trim() ?? "";
@@ -213,10 +303,12 @@ export function ibanValid(iban: string): boolean {
 export function parseApFallback(text: string): ApReading {
   const ls = lines(text ?? "");
   if (ls.length === 0) return { ...EMPTY };
-  const total = labelledAmount(ls, TOTAL);
+  const total = chosenTotal(ls);
+  // A number is read only when it ends where the word ends: "ВTX-2026-21" (a Cyrillic В) or "BTX-2026-2１" is not read
+  // as part of itself; such a number is left empty for a person (red team round 2).
   const invoiceNo =
-    firstMatch(text, /(?:invoice\s*(?:no\.?|number|nr\.?|#)|factuurnummer|factuurnr\.?|rechnungsnummer|rechnungs-?nr\.?)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-/.]*\d[A-Z0-9\-/.]*)/i) ||
-    firstMatch(text, /\b(?:invoice|factuur|rechnung)\s+#?\s*([A-Z0-9][A-Z0-9\-/.]*\d[A-Z0-9\-/.]*)/i);
+    firstMatch(text, /(?:invoice\s*(?:no\.?|number|nr\.?|#)|factuurnummer|factuurnr\.?|rechnungsnummer|rechnungs-?nr\.?)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-/.]*\d[A-Z0-9\-/.]*)(?=[\s,;)]|$)/im) ||
+    firstMatch(text, /\b(?:invoice|factuur|rechnung)\s+#?\s*([A-Z0-9][A-Z0-9\-/.]*\d[A-Z0-9\-/.]*)(?=[\s,;)]|$)/im);
   const due = firstMatch(text, /^\s*(?:due\s+date|payment\s+due|due|vervaldatum|uiterste\s+betaaldatum|fällig\s+am|fällig|zahlbar\s+bis|zahlungsziel)\s*:?\s*(.+)$/im);
   const issued = firstMatch(text, /^\s*(?:invoice\s+date|date\s+of\s+issue|issue\s+date|factuurdatum|rechnungsdatum|datum|date)\s*:?\s*(.+)$/im);
   const reference = firstMatch(text, /^\s*(?:payment\s+reference|reference|ref\.?|betalingskenmerk|kenmerk|verwendungszweck)\s*:?\s*(\S+)/im);
@@ -227,8 +319,8 @@ export function parseApFallback(text: string): ApReading {
     issue_date: issued ? readDate(issued) : "",
     due_date: due ? readDate(due) : "",
     currency: invoiceCurrency(ls, total),
-    subtotal: labelledAmount(ls, SUBTOTAL)?.amount ?? "",
-    tax: labelledAmount(ls, TAX)?.amount ?? "",
+    subtotal: labelledAmount(ls, "subtotal")?.amount ?? "",
+    tax: labelledAmount(ls, "tax")?.amount ?? "",
     total: total?.amount ?? "",
     iban: ibanIn(text),
     bic: firstMatch(text, /\b(?:BIC|SWIFT(?:\/BIC)?)\s*:?\s*([A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)\b/).toUpperCase(),
@@ -265,6 +357,9 @@ export function readingCheck(r: ApReading, text: string): string | null {
   const own = parseApFallback(text);
   // A model's figure alone is never accepted: the document's own total line must give the same (red team B).
   if (!own.total) return "the document's own lines give no total that code can check the reading against";
+  // The invoice number too: one the document's own lines cannot read (a lookalike letter, another script's digits) is
+  // never taken from a model; the duplicate checks would compare a number nobody can check (red team round 2).
+  if (!own.invoice_no) return "the document's own lines give no invoice number that code can check the reading against";
   // The currency too: when the document's lines name one it must be the model's; when they are ambiguous, a person decides (A).
   if (!own.currency) return "the document's own lines do not say the currency unambiguously";
   const differ: string[] = (["total", "iban", "invoice_no", "currency"] as const).filter((k) => own[k] && compact(own[k]) !== compact(r[k] ?? ""));

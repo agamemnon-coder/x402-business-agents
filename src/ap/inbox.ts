@@ -13,7 +13,7 @@ import type { DB } from "../db/open.js";
 import { skeleton } from "../policy/fraudCore.js";
 import { accrualEntries, bookable, pushOnce, type BookkeepingSink } from "./books.js";
 import { evaluate, statusOf } from "./checks.js";
-import { classifyDocument, type DocKind } from "./classify.js";
+import { classifyDocument, ruleSignals, type DocKind } from "./classify.js";
 import { needsNote, writeReviewNote } from "./review.js";
 import { parseApFallback } from "./reading.js";
 import { parseEml } from "./eml.js";
@@ -123,8 +123,13 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
   const id = nextApId(db);
   const checked = readFully || noText ? evaluate(db, reading, text, { docSha: sha, now, ...(noText ? { noText } : {}) }) : notAnInvoice(cls.kind);
   const findings = [...checked.findings];
-  if (cls.kind === "credit_note") findings.push({ code: "credit_note", level: "review", detail: "a credit note: nothing is paid; a person sets it against this supplier's next invoice" });
-  if (cls.kind === "reminder") {
+  // The model's label or the keyword rules: either one saying credit note or reminder is enough (red team round 2: a
+  // model that calls a "Gutschrift" or a reminder an invoice does not make it payable).
+  const rules = readFully ? ruleSignals(text) : { credit_note: false, reminder: false };
+  if ((cls.kind === "credit_note" || rules.credit_note) && !findings.some((x) => x.code === "credit_note")) {
+    findings.push({ code: "credit_note", level: "review", detail: `a credit note${cls.kind === "credit_note" ? "" : " by its own words (whatever the model's label)"}: nothing is paid; a person sets it against this supplier's next invoice` });
+  }
+  if (cls.kind === "reminder" || rules.reminder) {
     // A reminder is never paid on its own: one that matches an invoice on file is blocked as its copy; one that matches
     // none goes to a person (red team D).
     const matched = findings.some((x) => x.code === "duplicate" || x.code === "possible_duplicate");
@@ -199,4 +204,34 @@ export async function recheck(db: DB, deps: Pick<InboxDeps, "now" | "sink"> & { 
     out.push(needsNote(next) ? await writeReviewNote(db, deps.reader, next.id, now) : next);
   }
   return out;
+}
+
+/**
+ * A person's word that an invoice waiting as a possible duplicate (the same supplier and total as an earlier one, under
+ * another number) is a new invoice: monthly rent, a subscription. Kept per pair in ap_duplicate_clearances and in the
+ * audit log, then the invoice is checked again; every other check still applies. Only a person ("human") may do this,
+ * and never for a match on the invoice number itself (a lookalike or re-punctuated number stays with the person who
+ * rejects or pays it by hand). Throws before anything changes.
+ */
+export function clearPossibleDuplicate(db: DB, deps: Pick<InboxDeps, "now" | "sink"> & { reader?: Asker }, id: string, by: { by: string; note: string; actor: string }): Promise<ApInvoiceRow> {
+  if (by.actor !== "human") throw new Error("only a person can say an invoice is not a duplicate; an agent cannot");
+  const who = by.by.trim();
+  const note = by.note.trim();
+  if (!who || who.length > 100) throw new Error("say who checked it (at most 100 characters)");
+  if (note.length < 10 || note.length > 500) throw new Error("say why it is a new invoice (10 to 500 characters), e.g. \"monthly rent for December\"");
+  const inv = apInvoice(db, id);
+  if (!inv) throw new Error(`no invoice ${id}`);
+  if (inv.status !== "needs_review") throw new Error(`${id} is ${inv.status.replace(/_/g, " ")}, not waiting for a person`);
+  const possible = inv.findings.filter((x) => x.code === "possible_duplicate");
+  if (possible.length === 0) throw new Error(`${id} is not waiting as a possible duplicate`);
+  if (possible.some((x) => !x.twin_of)) throw new Error(`${id} matches an earlier invoice by its number, written differently: a number match is never cleared this way; a person rejects it or pays it by hand`);
+  const now = (deps.now ?? (() => new Date()))();
+  const twins = possible.map((x) => x.twin_of!);
+  db.transaction(() => {
+    for (const twin of twins) {
+      db.prepare("INSERT OR IGNORE INTO ap_duplicate_clearances (invoice_id, twin_id, cleared_by, note, cleared_at) VALUES (?, ?, ?, ?, ?)").run(id, twin, who, note, now.toISOString());
+    }
+    audit(db, "human", "ap.duplicate_cleared", id, { by: who, note, twins }, now);
+  })();
+  return recheck(db, deps, [id]).then(([next]) => next ?? apInvoice(db, id)!);
 }

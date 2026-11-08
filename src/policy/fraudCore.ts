@@ -31,7 +31,7 @@ export interface FraudFinding {
 }
 
 // Letters from other alphabets that look like Latin ones (Cyrillic, Greek), and digits that pass for letters.
-const CONFUSABLES: Record<string, string> = {
+export const CONFUSABLES: Readonly<Record<string, string>> = {
   а: "a", в: "b", е: "e", ё: "e", к: "k", м: "m", н: "h", о: "o", р: "p", с: "c", т: "t", у: "y", х: "x", і: "i", ї: "i", ј: "j", ѕ: "s", ԁ: "d", ӏ: "l", ԛ: "q", ԝ: "w",
   α: "a", β: "b", ε: "e", ζ: "z", η: "n", ι: "i", κ: "k", μ: "m", ν: "v", ο: "o", ρ: "p", τ: "t", υ: "u", χ: "x", γ: "y",
   "0": "o", "1": "l",

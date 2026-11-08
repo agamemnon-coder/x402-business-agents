@@ -10,7 +10,7 @@ import { assessInvoice } from "../policy/fraud.js";
 import { skeleton } from "../policy/fraudCore.js";
 import { counterpartyAllowed } from "../policy/rules.js";
 import { handledInLedger } from "./ledgerKey.js";
-import { ibanValid, totalIsNegative, type ApReading } from "./reading.js";
+import { ibanValid, totalAmbiguity, totalIsNegative, type ApReading } from "./reading.js";
 import type { ApStatus, Finding } from "./store.js";
 
 /** Only EUR is paid in v1 (SWIFT from the Airwallex EUR account, FX for the shortfall); the rest is read and booked. */
@@ -19,8 +19,8 @@ export const PAID_CURRENCIES = new Set(["EUR"]);
 /** An invoice this many times its supplier's usual (the median of its earlier ones) is flagged. */
 export const UNUSUAL_FACTOR = 2;
 
-/** Invoices from one supplier for the same total dated this close together are a possible duplicate under another number. */
-export const TWIN_DAYS = 7;
+/** Invoices from one supplier for the same total dated this close together are a possible duplicate under another number (past a month). */
+export const TWIN_DAYS = 45;
 
 const MONEY = /^\d+\.\d{2}$/;
 
@@ -57,7 +57,12 @@ export function evaluate(db: DB, r: ApReading, text: string, ctx: CheckContext):
   }
 
   // A total written as negative or in brackets is a credit, never paid as an invoice (red team E).
-  if (totalIsNegative(text)) f.push({ code: "credit_note", level: "review", detail: "the total is written as negative or in brackets: a credit note; nothing is paid, a person sets it against this supplier's invoices" });
+  if (totalIsNegative(text)) f.push({ code: "credit_note", level: "review", detail: "the total is written as negative, with CR or in brackets: a credit note; nothing is paid, a person sets it against this supplier's invoices" });
+
+  // Total lines with different amounts (a deposit, an early-payment discount, a line item starting "Total"): code never
+  // picks which one is due (red team round 2).
+  const ambiguous = totalAmbiguity(text);
+  if (ambiguous) f.push({ code: "ambiguous_total", level: "review", detail: ambiguous });
 
   // The same invoice twice: in the inbox already (another file), or already paid or on its way through the ledger. Only
   // invoices received before this one count, and not copies that were themselves refused as a copy: a resent copy never
@@ -78,17 +83,19 @@ export function evaluate(db: DB, r: ApReading, text: string, ctx: CheckContext):
       const handled = handledInLedger(db, r.invoice_no, r.vendor, ctx.now);
       if (handled) f.push({ code: "duplicate", level: "block", detail: `${handled}; a second copy is never paid` });
     }
-    // The same supplier, the same total, dated within a week: possibly the same invoice under another number (red team C).
-    // A week, not 60 days: a monthly invoice for the same amount is normal and would otherwise always wait for a person.
+    // The same supplier, the same total, dated within TWIN_DAYS: possibly the same invoice under another number (red team
+    // C; round 2 widened a week to 45 days, past a month). A monthly invoice for the same amount (rent, a subscription)
+    // therefore waits for a person once: their clearance is kept per pair (clearPossibleDuplicate in src/ap/inbox.ts).
     if (!f.some((x) => x.code === "duplicate" || x.code === "possible_duplicate") && MONEY.test(r.total)) {
       const day = (s: string) => Date.parse(`${s.slice(0, 10)}T00:00:00Z`);
       const mine = day(r.issue_date || ctx.now.toISOString());
+      const cleared = new Set(ctx.selfId ? (db.prepare("SELECT twin_id FROM ap_duplicate_clearances WHERE invoice_id = ?").all(ctx.selfId) as { twin_id: string }[]).map((x) => x.twin_id) : []);
       const twin = earlier.find((x) => {
-        if (["blocked", "needs_review"].includes(x.status)) return false;
+        if (["blocked", "needs_review"].includes(x.status) || cleared.has(x.id)) return false;
         const row = db.prepare("SELECT total, currency, issue_date, received_at FROM ap_invoices WHERE id = ?").get(x.id) as { total: string; currency: string; issue_date: string; received_at: string };
         return row.total === r.total && row.currency === r.currency && Math.abs(day(row.issue_date || row.received_at) - mine) <= TWIN_DAYS * 86_400_000;
       });
-      if (twin) f.push({ code: "possible_duplicate", level: "review", detail: `${twin.id} from the same supplier has the same total ${r.currency} ${r.total} within ${TWIN_DAYS} days; a person checks it is not the same invoice under another number` });
+      if (twin) f.push({ code: "possible_duplicate", level: "review", twin_of: twin.id, detail: `${twin.id} from the same supplier has the same total ${r.currency} ${r.total} within ${TWIN_DAYS} days; a person checks it is not the same invoice under another number (once cleared, this pair is not asked again)` });
     }
   }
 

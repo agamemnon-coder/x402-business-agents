@@ -17,7 +17,7 @@ const INSTRUCTION = [
   "reminder (a supplier reminds us of an unpaid invoice), or other (anything else).",
 ].join("\n");
 
-const CREDIT = /\b(credit\s*note|creditnota|credit\s*memo|credit\s*invoice|creditfactuur|gutschrift|rechnungskorrektur|korrektur|stornorechnung|storno)\b/i;
+const CREDIT = /\b(credit\s*note|creditnota|credit\s*memo|credit\s*invoice|creditfactuur|gutschrift|rechnungskorrektur|korrektur|stornorechnung|storno|avoir|facture\s+d.avoir|nota\s+di\s+credito|nota\s+de\s+cr[ée]dito|abono|refund|rimborso)\b/i;
 const REMINDER = /\b(payment\s+reminder|reminder|betalingsherinnering|herinnering|aanmaning|zahlungserinnerung|mahnung)\b/i;
 const RECEIPT = /\b(receipt|kwitantie|quittung|kassenbon|payment\s+received|betaling\s+ontvangen)\b/i;
 const INVOICE = /\b(invoice|factuur|rechnung|bill)\b/i;
@@ -29,6 +29,15 @@ export function classifyFallback(text: string): DocKind {
   if (RECEIPT.test(text)) return "receipt";
   if (INVOICE.test(text)) return "invoice";
   return "other";
+}
+
+/**
+ * What the keyword rules see in a document, whatever the model's label: a credit note's or a reminder's words. The
+ * inbox adds those findings when either the rules or the model say so, so a model that labels a "Gutschrift" or a
+ * payment reminder as an invoice cannot make it payable (red team round 2).
+ */
+export function ruleSignals(text: string): { credit_note: boolean; reminder: boolean } {
+  return { credit_note: CREDIT.test(text), reminder: REMINDER.test(text) };
 }
 
 export async function classifyDocument(_db: DB, reader: Asker, text: string, docSha: string): Promise<{ kind: DocKind; by: string }> {
