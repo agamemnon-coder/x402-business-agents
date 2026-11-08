@@ -5,6 +5,8 @@ import { dirname } from "node:path";
 export type DB = Database.Database;
 
 const SCHEMA = readFileSync(new URL("./schema.sql", import.meta.url), "utf8");
+/** Purser's own books: the stored general ledger (src/ledger/core.ts). */
+const LEDGER = readFileSync(new URL("./ledger.sql", import.meta.url), "utf8");
 
 /** Opens (and creates) the ledger. Use ":memory:" in tests. */
 export function openDb(path = process.env.KIT11_DB ?? "data/kit11.sqlite"): DB {
@@ -45,6 +47,7 @@ function walWithRetry(db: DB): void {
 function prepare(db: DB): void {
   db.transaction(() => {
     db.exec(SCHEMA);
+    db.exec(LEDGER);
     migrate(db);
   }).immediate();
   allowPasskeyApprovals(db);
