@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS users (
   role TEXT NOT NULL CHECK (role IN ('owner', 'cfo', 'accountant', 'viewer')),
   created_at TEXT NOT NULL,
   erased_at TEXT,
+  -- Bumped on sign-out, erasure, a role change or a closed account: every session issued before stops working.
+  session_gen INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (tenant_id, id)
 );
 
@@ -48,9 +50,25 @@ CREATE TABLE IF NOT EXISTS api_keys (
   scopes TEXT NOT NULL,
   secret_sha256 TEXT NOT NULL,
   created_by TEXT NOT NULL,
+  -- The person behind the key (a key made by a key inherits it): erasing that person revokes it.
+  created_by_user TEXT,
   created_at TEXT NOT NULL,
+  expires_at TEXT,
   revoked_at TEXT,
   last_used_at TEXT
+);
+
+-- A passkey enrolment an owner starts for one person: single use, short-lived, only the hash of its secret is kept.
+CREATE TABLE IF NOT EXISTS enrolments (
+  tenant_id TEXT NOT NULL,
+  id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  token_sha256 TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  used_at TEXT,
+  PRIMARY KEY (tenant_id, id)
 );
 
 CREATE TABLE IF NOT EXISTS rate_hits (

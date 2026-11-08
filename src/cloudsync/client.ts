@@ -1,6 +1,7 @@
 // The runner's side of Purser Cloud (cloud/): it pushes what this ledger records (suppliers, payables invoices with
-// their documents, payments, ledger entries, the audit log, the people's passkeys) and pulls the e-mail the cloud
-// received for this company, filing it through the inbox. The cloud never moves money and holds no payment keys.
+// their documents, payments, ledger entries, the audit log) and pulls the e-mail the cloud received for this company,
+// filing it through the inbox. The cloud never moves money and holds no payment keys. Passkeys are never pushed: people
+// enrol their passkey in the cloud itself, with an enrolment an owner starts (docs/cloud.md).
 // The API key comes from the environment (PURSER_CLOUD_KEY), never from code, git or a log.
 
 import { readFileSync } from "node:fs";
@@ -8,7 +9,6 @@ import type { DB } from "../db/open.js";
 import { apInvoices } from "../ap/store.js";
 import { ingestEmail, type InboxDeps } from "../ap/inbox.js";
 import { ledgerRows } from "../ledger/core.js";
-import { es256XY } from "../relay/state.js";
 
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -16,8 +16,6 @@ export interface CloudTarget {
   url: string;
   key: string;
   fetch?: Fetch;
-  /** Which cloud person each local passkey belongs to (the passkey's label → the cloud user id). Unmapped: not pushed. */
-  people?: Record<string, string>;
 }
 
 export interface CloudState { audit: { seq: number; hash: string | null }; ledger: { entry_id: number; hash: string | null }; documents: string[] }
@@ -40,7 +38,7 @@ async function ok(res: Response, what: string): Promise<unknown> {
 const has = (db: DB, table: string) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table);
 
 /** Everything the cloud does not hold yet, in batches small enough for one request each. */
-export function batchesFor(db: DB, state: CloudState, opts: { people?: Record<string, string>; now?: Date; maxDocBytes?: number } = {}): Record<string, unknown>[] {
+export function batchesFor(db: DB, state: CloudState, opts: { now?: Date; maxDocBytes?: number } = {}): Record<string, unknown>[] {
   const now = (opts.now ?? new Date()).toISOString();
   const held = new Set(state.documents);
   const out: Record<string, unknown>[] = [];
@@ -69,18 +67,12 @@ export function batchesFor(db: DB, state: CloudState, opts: { people?: Record<st
     .map((p) => ({ id: p.request_id!, invoice_id: invoices.find((i) => p.invoice_no === `${i.invoice_no} · ${i.vendor}`)?.id ?? null, status: p.status!.toLowerCase(), updated_at: p.updated_at!, body: p }));
   const entries = has(db, "ledger_entries") ? ledgerRows(db).filter((e) => e.entry_id > state.ledger.entry_id) : [];
   const audit = (db.prepare("SELECT seq, ts, actor, event, subject, payload_json, prev_hash, row_hash FROM audit_log WHERE seq > ? ORDER BY seq").all(state.audit.seq) as Record<string, unknown>[]);
-  const credentials = (db.prepare("SELECT credential_id, public_key, counter, label FROM passkeys WHERE status = 'ACTIVE'").all() as { credential_id: string; public_key: string; counter: number; label: string }[])
-    .flatMap((p) => {
-      const user = opts.people?.[p.label];
-      const xy = user ? es256XY(p.public_key) : null;
-      return user && xy ? [{ credential_id: p.credential_id, user_id: user, x: xy.x, y: xy.y, counter: p.counter }] : [];
-    });
 
   // The chains in order, in slices the cloud accepts; everything else rides with the first slice.
   const slices = Math.max(1, Math.ceil(entries.length / 2000), Math.ceil(audit.length / 5000));
   for (let i = 0; i < slices; i++) {
     out.push({
-      ...(i === 0 ? { vendors, invoices: inv, payments, credentials } : {}),
+      ...(i === 0 ? { vendors, invoices: inv, payments } : {}),
       ledger_entries: entries.slice(i * 2000, (i + 1) * 2000),
       audit_rows: audit.slice(i * 5000, (i + 1) * 5000),
     });
@@ -92,7 +84,7 @@ export function batchesFor(db: DB, state: CloudState, opts: { people?: Record<st
 export async function pushToCloud(db: DB, t: CloudTarget, now = new Date()): Promise<unknown[]> {
   const state = (await ok(await call(t, "GET", "/v1/sync/state"), "the state request")) as CloudState;
   const results: unknown[] = [];
-  for (const b of batchesFor(db, state, { people: t.people, now })) results.push(await ok(await call(t, "POST", "/v1/sync", b), "a push"));
+  for (const b of batchesFor(db, state, { now })) results.push(await ok(await call(t, "POST", "/v1/sync", b), "a push"));
   return results;
 }
 

@@ -3,23 +3,29 @@
 // (invoices, documents, ledger, payments, the audit log) are not personal data of that person and must be kept for
 // seven years (Dutch law, Article 52 AWR); a closed company's records are purged only after that, by the scheduled job.
 
-import { toB64u } from "./crypto.js";
 import type { Blobs, Sql } from "./store.js";
 import { TENANT_TABLES, TenantDb } from "./tenant.js";
 
 export class PrivacyRefused extends Error {}
 
-export async function exportTenant(sql: Sql, blobs: Blobs, tenantId: string): Promise<Record<string, unknown>> {
+/** Columns that hold a secret's hash: they never leave, not even in an export. */
+const SECRET_COLUMNS: Record<string, string> = { api_keys: "secret_sha256", enrolments: "token_sha256" };
+
+/**
+ * Everything the cloud holds for the company, as rows. The documents themselves are not inlined (a large company's would
+ * not fit one response in a Worker's memory): `documents_to_fetch` lists each one's path, /v1/documents/{sha256}.
+ */
+export async function exportTenant(sql: Sql, tenantId: string): Promise<Record<string, unknown>> {
   const db = new TenantDb(sql, tenantId);
   const tenant = await sql.first("SELECT id, slug, name, created_at, closed_at, purge_after FROM tenants WHERE id = ?", [tenantId]);
-  const out: Record<string, unknown> = { format: "purser-cloud-export/v1", tenant };
+  const out: Record<string, unknown> = { format: "purser-cloud-export/v2", tenant };
   for (const t of TENANT_TABLES) {
     const rows = await db.select<Record<string, unknown>>(t);
-    // Secrets never leave, not even their hashes.
-    out[t] = t === "api_keys" ? rows.map((r) => { const copy = { ...r }; delete copy.secret_sha256; return copy; }) : rows;
+    const secret = SECRET_COLUMNS[t];
+    out[t] = secret ? rows.map((r) => { const copy = { ...r }; delete copy[secret]; return copy; }) : rows;
   }
-  const docs = await db.select<{ sha256: string; blob_key: string; filename: string; mime: string }>("documents");
-  out.document_bytes = await Promise.all(docs.map(async (d) => ({ sha256: d.sha256, filename: d.filename, mime: d.mime, base64: toB64u((await blobs.get(d.blob_key)) ?? new Uint8Array()) })));
+  const docs = await db.select<{ sha256: string; filename: string; mime: string; size: number }>("documents", {}, { order: ["sha256"] });
+  out.documents_to_fetch = docs.map((d) => ({ sha256: d.sha256, filename: d.filename, mime: d.mime, size: d.size, path: `/v1/documents/${d.sha256}` }));
   return out;
 }
 
@@ -32,35 +38,51 @@ export async function eraseUser(sql: Sql, tenantId: string, userId: string, by: 
     throw new PrivacyRefused("the last owner cannot be erased: add another owner first, or close the company's account");
   }
   const creds = await db.count("credentials", { user_id: userId });
-  const keys = await db.count("api_keys", { created_by: userId, revoked_at: null });
+  // Every key behind this person: the ones they made, and the ones those keys made (created_by_user is inherited).
+  const keys = (await db.count("api_keys", { created_by_user: userId, revoked_at: null })) + (await db.count("api_keys", { created_by: userId, created_by_user: { op: "<>", v: userId }, revoked_at: null }));
   const iso = now.toISOString();
+  const gen = (await db.one<{ session_gen: number }>("users", { id: userId }))?.session_gen ?? 0;
   await db.apply([
-    db.update("users", { id: userId }, { display_name: "[erased]", email: null, erased_at: iso }),
+    db.update("users", { id: userId }, { display_name: "[erased]", email: null, erased_at: iso, session_gen: gen + 1 }),
     db.delete("credentials", { user_id: userId }),
+    db.update("api_keys", { created_by_user: userId, revoked_at: null }, { revoked_at: iso }),
     db.update("api_keys", { created_by: userId, revoked_at: null }, { revoked_at: iso }),
     db.insert("erasures", { id: `e_${iso}_${userId}`, subject: userId, done_at: iso, done_by: by, detail: `name and e-mail erased; ${creds} passkey(s) removed; ${keys} key(s) revoked; bookkeeping records kept (7-year retention)` }),
   ]);
   return { erased: userId, credentials_removed: creds, keys_revoked: keys };
 }
 
+/** A real calendar day YYYY-MM-DD at the start of the text (2027-02-31 is not one). */
+export function realDay(s: string | null | undefined): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s ?? "");
+  if (!m) return null;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  return d.toISOString().slice(0, 10) === m[0] ? m[0] : null;
+}
+
 /** Seven full years after the end of the year of the company's last record. */
 export function purgeDay(lastRecordDay: string): string {
-  return `${Number(lastRecordDay.slice(0, 4)) + 7}-12-31`;
+  const day = realDay(lastRecordDay);
+  if (!day) throw new PrivacyRefused(`not a day: ${JSON.stringify(lastRecordDay)}`);
+  return `${Number(day.slice(0, 4)) + 7}-12-31`;
 }
 
 export async function closeTenant(sql: Sql, tenantId: string, now: Date): Promise<{ closed_at: string; purge_after: string }> {
   const t = await sql.first<{ closed_at: string | null }>("SELECT closed_at FROM tenants WHERE id = ?", [tenantId]);
   if (!t) throw new PrivacyRefused("no such company");
   if (t.closed_at) throw new PrivacyRefused("this company's account is already closed");
-  const last = await sql.first<{ d: string | null }>(`SELECT MAX(d) AS d FROM (
-    SELECT MAX(posting_date) AS d FROM ledger_entries WHERE tenant_id = ? UNION ALL SELECT MAX(received_at) FROM invoices WHERE tenant_id = ?)`, [tenantId, tenantId]);
+  // The latest real day among the records (a malformed date, which the push refuses anyway, is skipped, never the max).
+  const dates = await sql.all<{ d: string | null }>(`SELECT DISTINCT substr(posting_date, 1, 10) AS d FROM ledger_entries WHERE tenant_id = ?
+    UNION SELECT DISTINCT substr(received_at, 1, 10) FROM invoices WHERE tenant_id = ?`, [tenantId, tenantId]);
   const today = now.toISOString().slice(0, 10);
-  const lastDay = [last?.d?.slice(0, 10) ?? today, today].sort().pop()!;
+  const lastDay = [...dates.map((r) => realDay(r.d)).filter((d): d is string => !!d), today].sort().pop()!;
   const purge_after = purgeDay(lastDay);
   const iso = now.toISOString();
   await sql.batch([
     { sql: "UPDATE tenants SET closed_at = ?, purge_after = ? WHERE id = ?", params: [iso, purge_after, tenantId] },
     { sql: "UPDATE api_keys SET revoked_at = ? WHERE tenant_id = ? AND revoked_at IS NULL", params: [iso, tenantId] },
+    // Every session ends at once (fromSession also refuses a closed company).
+    { sql: "UPDATE users SET session_gen = session_gen + 1 WHERE tenant_id = ?", params: [tenantId] },
   ]);
   return { closed_at: iso, purge_after };
 }

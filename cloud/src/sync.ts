@@ -16,28 +16,40 @@ export class SyncRefused extends Error {
 }
 
 const ID = z.string().min(1).max(120);
-const DAY = z.string().regex(/^\d{4}-\d{2}-\d{2}/);
+/** A real calendar day (2027-02-31 is refused), alone or at the start of a timestamp. */
+const isRealDay = (s: string) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  return !!m && new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))).toISOString().slice(0, 10) === m[0];
+};
+const DAY = z.string().max(40).regex(/^\d{4}-\d{2}-\d{2}/, "a date is YYYY-MM-DD").refine(isRealDay, "not a real day");
+/** An ISO timestamp (or a bare day): a real day, and a time Date can read. */
+const STAMP = DAY.refine((s) => !Number.isNaN(Date.parse(s)), "not a timestamp");
 const SHA = z.string().regex(/^[0-9a-f]{64}$/);
 const Body = z.record(z.string(), z.unknown());
+/** Cents: whole, and far below 2^53, so a sum of a few thousand lines stays exact; the balance is summed as BigInt anyway. */
+const MAX_CENTS = 10_000_000_000_000;
+const CENTS = z.number().int().min(0).max(MAX_CENTS);
 const Line = z.object({
-  line_no: z.number().int(), account: z.string().regex(/^\d{4}$/), debit_cents: z.number().int().min(0), credit_cents: z.number().int().min(0), currency: z.string().regex(/^[A-Z]{3,4}$/),
-  cost_centre: z.string().nullable(), vat_code: z.string().nullable(), vat_cents: z.number().int().nullable(), party: z.string().nullable(), due_date: z.string().nullable(), doc_ref: z.string().nullable(), memo: z.string().nullable(),
+  line_no: z.number().int().min(1).max(10_000), account: z.string().regex(/^\d{4}$/), debit_cents: CENTS, credit_cents: CENTS, currency: z.string().regex(/^[A-Z]{3,4}$/),
+  cost_centre: z.string().nullable(), vat_code: z.string().nullable(), vat_cents: z.number().int().min(-MAX_CENTS).max(MAX_CENTS).nullable(), party: z.string().nullable(), due_date: DAY.nullable(), doc_ref: z.string().nullable(), memo: z.string().nullable(),
 }).strict();
+const JSON_TEXT = z.string().refine((s) => { try { JSON.parse(s); return true; } catch { return false; } }, "not JSON");
 
+// Passkeys are never part of a push (security review of 8 November): a sync key that could bring a credential could
+// sign in as anyone, the owner included. People enrol in the cloud itself (POST /v1/auth/enrol).
 export const SyncBatch = z.object({
-  vendors: z.array(z.object({ id: ID, name: z.string().min(1).max(200), status: z.string().max(40), updated_at: z.string(), body: Body }).strict()).max(5000).default([]),
+  vendors: z.array(z.object({ id: ID, name: z.string().min(1).max(200), status: z.string().max(40), updated_at: STAMP, body: Body }).strict()).max(5000).default([]),
   invoices: z.array(z.object({
-    id: ID, vendor: z.string().max(200), invoice_no: z.string().max(120), due_date: z.string().max(10), currency: z.string().max(4), total: z.string().max(24),
-    status: z.string().max(40), doc_sha256: SHA, received_at: z.string(), updated_at: z.string(), body: Body,
+    id: ID, vendor: z.string().max(200), invoice_no: z.string().max(120), due_date: z.union([z.literal(""), DAY]), currency: z.string().max(4), total: z.string().max(24),
+    status: z.string().max(40), doc_sha256: SHA, received_at: STAMP, updated_at: STAMP, body: Body,
   }).strict()).max(5000).default([]),
-  payments: z.array(z.object({ id: ID, invoice_id: ID.nullable(), status: z.string().max(40), updated_at: z.string(), body: Body }).strict()).max(5000).default([]),
+  payments: z.array(z.object({ id: ID, invoice_id: ID.nullable(), status: z.string().max(40), updated_at: STAMP, body: Body }).strict()).max(5000).default([]),
   documents: z.array(z.object({ sha256: SHA, filename: z.string().min(1).max(200), mime: z.string().max(100), base64: z.string() }).strict()).max(200).default([]),
   ledger_entries: z.array(z.object({
     entry_id: z.number().int().positive(), posting_date: DAY, doc_date: DAY, description: z.string().max(500), source_key: z.string().nullable(), doc_ref: z.string().nullable(),
-    doc_sha256: z.string().nullable(), created_by: z.string(), reverses: z.number().int().nullable(), created_at: z.string(), prev_hash: SHA, entry_hash: SHA, lines: z.array(Line).min(2),
+    doc_sha256: z.string().nullable(), created_by: z.string(), reverses: z.number().int().nullable(), created_at: STAMP, prev_hash: SHA, entry_hash: SHA, lines: z.array(Line).min(2).max(1000),
   }).strict()).max(5000).default([]),
-  audit_rows: z.array(z.object({ seq: z.number().int().positive(), ts: z.string(), actor: z.string(), event: z.string(), subject: z.string().nullable(), payload_json: z.string(), prev_hash: SHA, row_hash: SHA }).strict()).max(20000).default([]),
-  credentials: z.array(z.object({ credential_id: z.string().min(8).max(400), user_id: ID, x: z.string().min(40).max(50), y: z.string().min(40).max(50), counter: z.number().int().min(0) }).strict()).max(50).default([]),
+  audit_rows: z.array(z.object({ seq: z.number().int().positive(), ts: STAMP, actor: z.string(), event: z.string(), subject: z.string().nullable(), payload_json: JSON_TEXT, prev_hash: SHA, row_hash: SHA }).strict()).max(20000).default([]),
 }).strict();
 export type SyncBatch = z.infer<typeof SyncBatch>;
 
@@ -76,7 +88,9 @@ async function chainPart<T extends { prev_hash: string }>(rows: T[], n: (r: T) =
   for (const r of sorted) {
     if (n(r) <= head.n) {
       const h = await stored(n(r));
-      if (h !== own(r)) throw new SyncRefused(409, `${what} ${n(r)} changed after it was pushed; a posted record is corrected with a new, reversing one, never edited`);
+      // The hash it comes with must be the stored one, and its content must still hash to it: a row whose content
+      // changed under its old hash is refused, never counted as unchanged.
+      if (h !== own(r) || (await recompute(r)) !== own(r)) throw new SyncRefused(409, `${what} ${n(r)} changed after it was pushed; a posted record is corrected with a new, reversing one, never edited`);
       unchanged += 1;
     } else fresh.push(r);
   }
@@ -85,13 +99,47 @@ async function chainPart<T extends { prev_hash: string }>(rows: T[], n: (r: T) =
   return { fresh, unchanged };
 }
 
+/** The same id twice in one push is refused before anything is read or written. */
+function noDuplicates(batch: SyncBatch): void {
+  const twice = (what: string, ids: (string | number)[]) => {
+    const seen = new Set<string | number>();
+    for (const id of ids) {
+      if (seen.has(id)) throw new SyncRefused(422, `${what} ${id} is in this push twice`);
+      seen.add(id);
+    }
+  };
+  twice("vendor", batch.vendors.map((v) => v.id));
+  twice("invoice", batch.invoices.map((i) => i.id));
+  twice("payment", batch.payments.map((p) => p.id));
+  twice("document", batch.documents.map((d) => d.sha256));
+  twice("ledger entry", batch.ledger_entries.map((e) => e.entry_id));
+  twice("audit row", batch.audit_rows.map((r) => r.seq));
+  for (const e of batch.ledger_entries) {
+    const lines = new Set<number>();
+    for (const l of e.lines) {
+      if (lines.has(l.line_no)) throw new SyncRefused(422, `ledger entry ${e.entry_id} has line ${l.line_no} twice`);
+      lines.add(l.line_no);
+    }
+  }
+}
+
+/** Balanced per currency, summed exactly (BigInt), so no amount can tip a sum past what floats hold. */
+function balances(e: LedgerEntryIn): boolean {
+  const net = new Map<string, bigint>();
+  for (const l of e.lines) net.set(l.currency, (net.get(l.currency) ?? 0n) + BigInt(l.debit_cents) - BigInt(l.credit_cents));
+  return [...net.values()].every((v) => v === 0n);
+}
+
 export async function applySync(db: TenantDb, blobs: Blobs, batch: SyncBatch, now: Date): Promise<SyncResult> {
   const iso = now.toISOString();
   const out: Stmt[] = [];
-  const res: SyncResult = { documents: tally(), vendors: tally(), invoices: tally(), payments: tally(), ledger_entries: tally(), audit_rows: tally(), credentials: tally() };
+  const res: SyncResult = { documents: tally(), vendors: tally(), invoices: tally(), payments: tally(), ledger_entries: tally(), audit_rows: tally() };
+  noDuplicates(batch);
 
-  // Documents: the bytes must hash to the name they are sent under.
+  // Documents: the bytes must hash to the name they are sent under. They are stored only once the whole push has
+  // passed every check (a refused push leaves no bytes behind), and removed again if the database write fails.
   const docs = new Set<string>();
+  const toStore: { key: string; bytes: Uint8Array; meta: Record<string, string> }[] = [];
   for (const d of batch.documents) {
     const bytes = fromB64(d.base64);
     if (bytes.length > MAX_DOCUMENT_BYTES) throw new SyncRefused(422, `document ${d.sha256} is larger than 16 MB`);
@@ -99,7 +147,7 @@ export async function applySync(db: TenantDb, blobs: Blobs, batch: SyncBatch, no
     docs.add(d.sha256);
     if (await db.one("documents", { sha256: d.sha256 })) { res.documents!.unchanged += 1; continue; }
     const key = docBlobKey(db.tenantId, d.sha256);
-    await blobs.put(key, bytes, { filename: d.filename.slice(0, 200), mime: d.mime });
+    toStore.push({ key, bytes, meta: { filename: d.filename.slice(0, 200), mime: d.mime } });
     out.push(db.insert("documents", { sha256: d.sha256, filename: d.filename, mime: d.mime, size: bytes.length, blob_key: key, received_at: iso }));
     res.documents!.added += 1;
   }
@@ -127,9 +175,7 @@ export async function applySync(db: TenantDb, blobs: Blobs, batch: SyncBatch, no
     async (id) => (await db.one<{ entry_hash: string }>("ledger_entries", { entry_id: id }))?.entry_hash ?? null,
     { n: lastEntry?.entry_id ?? 0, hash: lastEntry?.entry_hash ?? GENESIS }, ledgerEntryHash, "ledger entry");
   for (const e of ledger.fresh) {
-    const net = new Map<string, number>();
-    for (const l of e.lines) net.set(l.currency, (net.get(l.currency) ?? 0) + l.debit_cents - l.credit_cents);
-    if ([...net.values()].some((v) => v !== 0)) throw new SyncRefused(422, `ledger entry ${e.entry_id} does not balance`);
+    if (!balances(e)) throw new SyncRefused(422, `ledger entry ${e.entry_id} does not balance`);
     out.push(db.insert("ledger_entries", { entry_id: e.entry_id, posting_date: e.posting_date, doc_date: e.doc_date, description: e.description, entry_json: JSON.stringify(e), prev_hash: e.prev_hash, entry_hash: e.entry_hash }));
     for (const l of e.lines) {
       out.push(db.insert("ledger_lines", {
@@ -140,18 +186,16 @@ export async function applySync(db: TenantDb, blobs: Blobs, batch: SyncBatch, no
   }
   res.ledger_entries = { added: ledger.fresh.length, changed: 0, unchanged: ledger.unchanged };
 
-  // Passkeys the runner enrolled (it verified each enrolment itself): only for people the company added, and a
-  // credential's key never changes once pushed.
-  for (const c of batch.credentials) {
-    const user = await db.one<{ erased_at: string | null }>("users", { id: c.user_id });
-    if (!user || user.erased_at) throw new SyncRefused(422, `credential ${c.credential_id.slice(0, 12)}…: no person ${c.user_id} in this company`);
-    const cur = await db.one<{ x: string; y: string; counter: number }>("credentials", { credential_id: c.credential_id });
-    if (cur && (cur.x !== c.x || cur.y !== c.y)) throw new SyncRefused(409, `credential ${c.credential_id.slice(0, 12)}… was pushed before with another public key`);
-    if (cur) { res.credentials!.unchanged += 1; continue; }
-    out.push(db.insert("credentials", { credential_id: c.credential_id, user_id: c.user_id, x: c.x, y: c.y, counter: c.counter, created_at: iso }));
-    res.credentials!.added += 1;
+  // Every check passed: the bytes first (a row never points at bytes that are not there), then the rows in one
+  // transaction; if that fails, the bytes stored for this push are removed again.
+  const stored: { key: string; sha: string }[] = [];
+  try {
+    for (const b of toStore) { await blobs.put(b.key, b.bytes, b.meta); stored.push({ key: b.key, sha: b.key.slice(b.key.lastIndexOf("/") + 1) }); }
+    await db.apply(out);
+  } catch (e) {
+    // Bytes a concurrent push has meanwhile committed a row for (same content, same key) are kept.
+    for (const s of stored) if (!(await db.one("documents", { sha256: s.sha }).catch(() => null))) await blobs.delete(s.key).catch(() => undefined);
+    throw e;
   }
-
-  await db.apply(out);
   return res;
 }
