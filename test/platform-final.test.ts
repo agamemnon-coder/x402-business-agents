@@ -22,6 +22,7 @@ import { describeTerms } from "../src/approve/client.js";
 import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAdd, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
 import { journal } from "../src/accounting/gl.js";
 import { openDb, type DB } from "../src/db/open.js";
+import { proposalCheck, proposalRun, type ProposalLike } from "../src/hub/runs.js";
 import { lockMonth } from "../src/ledger/core.js";
 import { syncLedger } from "../src/ledger/feed.js";
 import { cashByCurrency } from "../src/ledger/reports.js";
@@ -343,6 +344,24 @@ describe("B3: the ERP gets the supplier's own invoice, not the ledger's key", ()
     const inv = { id: "x", vendorId: "v", number: "N".repeat(36), issueDate: "2026-11-02", dueDate: "2026-11-16", currency: "EUR", lines: [], totals: { netCents: 0, vatCents: 0, grossCents: 0 }, documentSha256: "0".repeat(64) } as unknown as PurchaseInvoice;
     await expect(c.pushPurchaseInvoice(inv, { vendor: () => "v", invoice: () => null } as never)).rejects.toThrow(/35/);
     expect(tr.sent).toHaveLength(0);
+  });
+});
+
+describe("L1: the hub's runs know supplier payments", () => {
+  it("amount and currency, and the duplicate rule across both kinds and both number forms", async () => {
+    const id = await add(US, "us.pdf");
+    await addSupplier(id);
+    const pid = await filed(id);
+    const row = db.prepare("SELECT * FROM proposals WHERE proposal_id = ?").get(pid) as ProposalLike;
+    expect(proposalRun(db, "w-test", row)).toMatchObject({ what: "Supplier payment", amount: "2400.00", currency: "USD", check: "pass", rule: "invoice_payout_needs_person" });
+    db.prepare("INSERT INTO invoices (invoice_no, vendor, amount, currency, due_date, iban_sha256, bic, doc_sha256, status) VALUES ('X', 'Pinecrest Outdoor Supply LLC', '1.00', 'USD', '2026-11-16', 'h', 'b', 'd', 'PAID')").run();
+    const terms = JSON.parse(row.terms_json) as { invoice_no: string };
+    db.prepare("INSERT INTO transfers (request_id, invoice_no, amount, currency, method, fee_estimate, status, approval_sha256, updated_at) VALUES ('r-other', 'X', '1.00', 'USD', 'LOCAL', '0.00', 'PAID', 'x', ?)").run(now.toISOString());
+    expect(proposalCheck(db, row).rule).not.toBe("duplicate_invoice");
+    // The same invoice paid under its bare number (Kit 11's form) for the same supplier: a duplicate.
+    db.prepare("INSERT OR IGNORE INTO invoices (invoice_no, vendor, amount, currency, due_date, iban_sha256, bic, doc_sha256, status) VALUES (?, 'Pinecrest Outdoor Supply LLC', '1.00', 'USD', '2026-11-16', 'h', 'b', 'd', 'PAID')").run(terms.invoice_no.split(" · ")[0]);
+    db.prepare("UPDATE transfers SET invoice_no = ? WHERE request_id = 'r-other'").run(terms.invoice_no.split(" · ")[0]);
+    expect(proposalCheck(db, row)).toEqual({ check: "fail", rule: "duplicate_invoice" });
   });
 });
 
