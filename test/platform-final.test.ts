@@ -11,12 +11,14 @@ import type { Asker } from "../src/ap/read.js";
 import { readDocument } from "../src/ap/read.js";
 import { parseApFallback, readingCheck, totalAmbiguity, totalLine } from "../src/ap/reading.js";
 import { validateVendor, type Vendor } from "../src/erp/model.js";
+import { dataSha, monthData, receiptData } from "../src/vault/data.js";
 import { safeSegment } from "../src/vault/layout.js";
 import { apInvoice } from "../src/ap/store.js";
 import { describeTerms } from "../src/approve/client.js";
 import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAdd, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
 import { journal } from "../src/accounting/gl.js";
 import { openDb, type DB } from "../src/db/open.js";
+import { lockMonth } from "../src/ledger/core.js";
 import { syncLedger } from "../src/ledger/feed.js";
 import { cashByCurrency } from "../src/ledger/reports.js";
 import { executeInvoicePayment } from "../src/executors/invoicePayment.js";
@@ -262,6 +264,49 @@ describe("B1: payouts and conversions post to the bank account of their currency
     expect(posted).toEqual(expect.arrayContaining([{ account: "1200", currency: "EUR" }, { account: "1201", currency: "USD" }, { account: "1202", currency: "GBP" }, { account: "1203", currency: "TRY" }]));
     expect(posted.filter((r) => (r as { account: string }).account === "1200")).toEqual([{ account: "1200", currency: "EUR" }]);
     expect(cashByCurrency(db).filter((c) => c.account === "1200").map((c) => c.currency)).toEqual(["EUR"]);
+  });
+});
+
+describe("B2: the vault keeps to the ledger's closed periods", () => {
+  it("a closed month's report is the state at its end: a later payment changes nothing in it, so no correction", async () => {
+    const october = new Date("2026-10-20T10:00:00Z");
+    const out = await ingestDocument(db, { ...deps, now: () => october }, { bytes: await pdfOf(DE), filename: "de.pdf", source: "upload" });
+    if (out.kind !== "invoice") throw new Error(out.kind);
+    const id = out.invoice.id;
+    lockMonth(db, "2026-10", "the CFO", now);
+    const before = monthData(db, "2026-10");
+    expect(before.open.map((o) => o.status)).toEqual(["needs_vendor"]);
+    await addSupplier(id);
+    await executeSupplierPayment(db, awx, awx, await approvedInbox(id));
+    await syncPayments(db, { now: () => now });
+    expect(apInvoice(db, id)!.status).toBe("paid");
+    expect(dataSha(monthData(db, "2026-10"))).toBe(dataSha(before));
+  });
+
+  it("a payment is dated by the ledger: as posted, or in the first open month when its own month closed first", async () => {
+    const id = await add(DE, "de.pdf");
+    await addSupplier(id);
+    await executeSupplierPayment(db, awx, awx, await approvedInbox(id));
+    await syncPayments(db, { now: () => now });
+    const paidDay = now.toISOString().slice(0, 10);
+    expect(receiptData(db, id)!.paid_at.slice(0, 10)).toBe(paidDay);
+    // Its month closed before the ledger posted it: the ledger posts it in the next open month, and so does the vault.
+    lockMonth(db, paidDay.slice(0, 7), "the CFO", now);
+    const next = receiptData(db, id)!.paid_at.slice(0, 10);
+    expect(next > paidDay && next.endsWith("-01")).toBe(true);
+    expect(monthData(db, paidDay.slice(0, 7)).paid).toEqual([]);
+  });
+
+  it("once the ledger posted a payment, a later close leaves its date alone", async () => {
+    const id = await add(DE, "de.pdf");
+    await addSupplier(id);
+    await executeSupplierPayment(db, awx, awx, await approvedInbox(id));
+    await syncPayments(db, { now: () => now });
+    syncLedger(db, now);
+    const paidDay = now.toISOString().slice(0, 10);
+    lockMonth(db, paidDay.slice(0, 7), "the CFO", now);
+    expect(receiptData(db, id)!.paid_at.slice(0, 10)).toBe(paidDay);
+    expect(monthData(db, paidDay.slice(0, 7)).paid.map((p) => p.paid_on)).toEqual([paidDay]);
   });
 });
 

@@ -13,6 +13,7 @@ import { fromCents, toCents } from "../lib/money.js";
 import type { ApInvoiceRow } from "./store.js";
 import { apInvoices } from "./store.js";
 import { ledgerInvoiceNo } from "./ledgerKey.js";
+import { paymentDay } from "../vault/data.js";
 
 export const AP_ACCOUNTS = { inputVat: "1510", payable: "2100", bank: "1200", fees: "6800", transit: "1590" } as const;
 
@@ -74,7 +75,8 @@ export function paymentEntries(db: DB, inv: ApInvoiceRow): ApEntry[] {
   const t = db.prepare("SELECT transfer_id, amount, fee_actual, updated_at FROM transfers WHERE invoice_no = ? AND status = 'PAID' ORDER BY updated_at DESC").get(ledgerInvoiceNo(inv.invoice_no, inv.vendor)) as
     { transfer_id: string | null; amount: string; fee_actual: string | null; updated_at: string } | undefined;
   if (!t) return [];
-  const date = (inv.paid_at ?? t.updated_at).slice(0, 10);
+  // Dated as the ledger dates the payment (a month closed before it was posted is never posted into: red team round 3).
+  const date = inv.paid_at ? paymentDay(db, inv) : t.updated_at.slice(0, 10);
   const memo = `${inv.vendor} invoice ${inv.invoice_no}, Airwallex transfer ${t.transfer_id ?? "(no id)"}`;
   const amount = toCents(t.amount);
   const bank = bankAccountFor(inv.currency);

@@ -8,6 +8,7 @@ import { ledgerInvoiceNo } from "../ap/ledgerKey.js";
 import { apInvoice, apInvoices, type ApInvoiceRow } from "../ap/store.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
+import { postingDay } from "../ledger/core.js";
 import { balanceSheet, profitAndLoss, quarterRange, trialBalance, vatOverview, type VatOverview } from "../ledger/reports.js";
 
 const MONEY = /^\d+\.\d{2}$/;
@@ -66,6 +67,39 @@ interface PaidTerms {
   conversion: { client_rate: string; buy_currency: string; buy_amount: string; sell_currency: string; sell_amount: string } | null;
 }
 
+/**
+ * The day a paid invoice's payment is in the books: the posting date the ledger gave its transfer, or, before the ledger
+ * posted it, the day the ledger will post it on (its own day, or the first open month's first day when its month is
+ * closed). The vault and the month reports date payments by it, so a closed month is never changed by a later payment
+ * (red team round 3).
+ */
+export function paymentDay(db: DB, inv: ApInvoiceRow): string {
+  const own = day(inv.paid_at);
+  const terms = inv.proposal_id ? db.prepare("SELECT json_extract(terms_json, '$.transfer_request_id') AS rid FROM proposals WHERE proposal_id = ?").get(inv.proposal_id) as { rid: string | null } | undefined : undefined;
+  const posted = terms?.rid
+    ? db.prepare("SELECT posting_date FROM ledger_entries WHERE source_key LIKE ? AND reverses IS NULL ORDER BY entry_id LIMIT 1").get(`transfer|${terms.rid}|%`) as { posting_date: string } | undefined
+    : undefined;
+  return posted?.posting_date ?? (own ? postingDay(db, own) : own);
+}
+
+/** The moment a receipt names: when the invoice was marked paid, or the books' day when the ledger dates it otherwise. */
+function paidAtInBooks(db: DB, inv: ApInvoiceRow): string {
+  const books = paymentDay(db, inv);
+  return books && books !== day(inv.paid_at) ? books : inv.paid_at ?? "";
+}
+
+/**
+ * An invoice's status at a moment, from its status changes in the audit log (each records from and to): the last change
+ * up to then, or the status before its first change; the current status when it never changed.
+ */
+export function statusAt(db: DB, inv: ApInvoiceRow, at: string): string {
+  const changes = db.prepare("SELECT ts, payload_json FROM audit_log WHERE event = 'ap.status' AND subject = ? ORDER BY seq").all(inv.id) as { ts: string; payload_json: string }[];
+  if (changes.length === 0) return inv.status;
+  const upTo = changes.filter((c) => c.ts <= at);
+  const last = upTo.at(-1) ?? null;
+  return last ? (JSON.parse(last.payload_json) as { to: string }).to : (JSON.parse(changes[0]!.payload_json) as { from: string }).from;
+}
+
 /** The receipt of a paid inbox invoice, or null when it is not paid (or its payment is not in the ledger). Either payment
  *  kind: the EUR invoice payment and the multi-currency supplier payment. */
 export function receiptData(db: DB, id: string): ReceiptData | null {
@@ -83,7 +117,8 @@ export function receiptData(db: DB, id: string): ReceiptData | null {
   const c = terms.conversion;
   return {
     key: `receipt:${inv.id}`, id: inv.id, vendor: inv.vendor, invoice_no: inv.invoice_no, invoice_date: invoiceDay(inv), due_date: inv.due_date,
-    reference: terms.reference, currency: terms.currency, amount: terms.amount, paid_at: inv.paid_at ?? "", proposal_id: inv.proposal_id,
+    // Dated as the ledger dates the payment: the moment it was marked paid, unless the books put it on another day.
+    reference: terms.reference, currency: terms.currency, amount: terms.amount, paid_at: paidAtInBooks(db, inv), proposal_id: inv.proposal_id,
     terms_sha256: p.terms_sha256, transfer_id: t?.transfer_id ?? null, fee: t?.fee_actual ?? null, method: terms.method,
     fx: c ? { rate: c.client_rate, bought: `${c.buy_currency} ${c.buy_amount}`, sold: `${c.sell_currency} ${c.sell_amount}` } : null,
     approval: a ? { approver: a.approver, method: a.method, at: a.created_at, signed_sha256: a.approved_sha256 } : null,
@@ -137,14 +172,22 @@ export function monthRange(month: string): { from: string; to: string } {
   return { from: `${month}-01`, to: `${month}-${String(last).padStart(2, "0")}` };
 }
 
+/**
+ * A month's report, as the books stood at the month's end (red team round 3): payments dated by the ledger
+ * (paymentDay), and the open and blocked invoices with their status at the end of the month. Once the month is closed,
+ * nothing that happens later changes it, so the vault never files a correction for it.
+ */
 export function monthData(db: DB, month: string): MonthData {
   const { from, to } = monthRange(month);
+  const end = `${to}T23:59:59.999Z`;
   const inMonth = (iso: string | null) => !!iso && iso.slice(0, 7) === month;
   const all = apInvoices(db).filter((i) => MONEY.test(i.total) && i.currency);
   const received = all.filter((i) => inMonth(i.received_at));
-  const paid = all.filter((i) => i.status === "paid" && inMonth(i.paid_at));
-  const open = all.filter((i) => OPEN.has(i.status) && day(i.received_at) <= to);
-  const blocked = received.filter((i) => i.status === "blocked");
+  const paidOn = new Map(all.filter((i) => i.status === "paid").map((i) => [i.id, paymentDay(db, i)]));
+  const paid = all.filter((i) => inMonth(paidOn.get(i.id) ?? null));
+  const atEnd = new Map(all.filter((i) => day(i.received_at) <= to).map((i) => [i.id, statusAt(db, i, end)]));
+  const open = all.filter((i) => OPEN.has(atEnd.get(i.id) ?? "") && !((paidOn.get(i.id) ?? "9999") <= to));
+  const blocked = received.filter((i) => atEnd.get(i.id) === "blocked");
   const spend = sumBy(paid, (i) => `${i.vendor}\u0000${i.currency}`, (i) => toCents(i.total));
   // What Airwallex charged for the month's payments, and the FX bought for them (from the approved terms).
   const fees: { currency: string; total: string }[] = [];
@@ -162,8 +205,8 @@ export function monthData(db: DB, month: string): MonthData {
   return {
     key: `month:${month}`, month, from, to,
     received: byCur(received),
-    paid: paid.map((i) => ({ vendor: i.vendor, invoice_no: i.invoice_no, amount: `${i.currency} ${i.total}`, paid_on: day(i.paid_at) })),
-    open: open.map((i) => ({ vendor: i.vendor, invoice_no: i.invoice_no, amount: `${i.currency} ${i.total}`, due_date: i.due_date, status: i.status })),
+    paid: paid.map((i) => ({ vendor: i.vendor, invoice_no: i.invoice_no, amount: `${i.currency} ${i.total}`, paid_on: paidOn.get(i.id)! })),
+    open: open.map((i) => ({ vendor: i.vendor, invoice_no: i.invoice_no, amount: `${i.currency} ${i.total}`, due_date: i.due_date, status: atEnd.get(i.id)! })),
     blocked: blocked.map((i) => ({ vendor: i.vendor, invoice_no: i.invoice_no, amount: `${i.currency} ${i.total}`, reasons: i.findings.filter((f) => f.level === "block").map((f) => f.detail) })),
     spend: [...spend.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([k, x]) => { const [vendor, currency] = k.split("\u0000") as [string, string]; return { vendor, currency, total: fromCents(x.cents), count: x.count }; }),
     fees: byCur(fees),
