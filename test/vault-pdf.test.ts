@@ -4,7 +4,7 @@ import { rmSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { pdfText } from "../src/ap/pdfText.js";
 import { monthData, receiptData, suppliersData, vatData, yearData } from "../src/vault/data.js";
-import { blockedReason, formatMoney, monthReportPdf, receiptPdf, suppliersPdf, vatPdf, yearReportPdf } from "../src/vault/pdf.js";
+import { blockedReason, formatMoney, pdfDate, monthReportPdf, receiptPdf, suppliersPdf, vatPdf, yearReportPdf } from "../src/vault/pdf.js";
 import { vaultWorld, type VaultWorld } from "./fakes/vaultWorld.js";
 
 let w: VaultWorld;
@@ -85,5 +85,14 @@ describe("a blocked invoice's reason in the Dutch PDFs", () => {
   it("keeps the code's own English, and the English for a code without Dutch words", () => {
     expect(blockedReason(fraud, "en")).toBe(fraud.detail);
     expect(blockedReason({ code: "something_new", detail: "a new reason", signals: [] }, "nl")).toBe("a new reason");
+  });
+});
+
+describe("dates in the PDFs", () => {
+  it("reads as Dutch words in Dutch, ISO in English", () => {
+    expect(pdfDate("2026-11-02", "nl")).toBe("2 november 2026");
+    expect(pdfDate("2026-11-08T19:38:07.411Z", "nl")).toBe("8 november 2026, 19:38 UTC");
+    expect(pdfDate("2026-11-02", "en")).toBe("2026-11-02");
+    expect(pdfDate("", "nl")).toBe("");
   });
 });

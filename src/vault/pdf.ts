@@ -92,6 +92,15 @@ export const BLOCK_REASONS_NL: Readonly<Record<string, string>> = {
   unknown_vendor: "de leverancier is niet bekend",
 };
 
+const MAANDEN = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
+/** A date as the PDF's language writes it: "2 november 2026" in Dutch (a time in UTC after it); English keeps the ISO date. */
+export function pdfDate(iso: string, lang: Lang): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(iso ?? "");
+  if (lang !== "nl" || !m) return iso;
+  return `${Number(m[3])} ${MAANDEN[Number(m[2]) - 1]} ${m[1]}${m[4] ? `, ${m[4]}:${m[5]} UTC` : ""}`;
+}
+const METHOD_NL: Record<string, string> = { LOCAL: "Lokale overboeking", SWIFT: "SWIFT-overboeking" };
+
 /** A blocked invoice's reason in the PDF's language: Dutch from its code where Purser has the words, else the code's English. */
 export function blockedReason(f: { code: string; detail: string; signals: string[] }, lang: Lang): string {
   if (lang !== "nl") return f.detail;
@@ -201,10 +210,10 @@ export function receiptPdf(company: string, r: ReceiptData, lang: Lang = "nl"): 
   return render(`${t.receipt} ${r.vendor} ${r.invoice_no}`, r.paid_at, (doc) => {
     header(doc, company, t.receipt, `${r.vendor} · ${t.invoice} ${r.invoice_no}`, true, lang);
     section(doc, t.invoice);
-    kv(doc, [[t.supplier, r.vendor], [t.invoice, r.invoice_no], [t.invoiceDate, r.invoice_date || t.none], [t.dueDate, r.due_date || t.none], [t.reference, r.reference || t.none],
+    kv(doc, [[t.supplier, r.vendor], [t.invoice, r.invoice_no], [t.invoiceDate, r.invoice_date ? pdfDate(r.invoice_date, lang) : t.none], [t.dueDate, r.due_date ? pdfDate(r.due_date, lang) : t.none], [t.reference, r.reference || t.none],
       [t.account, r.account]]);
     section(doc, t.paid);
-    kv(doc, [[t.amount, formatMoney(r.currency, r.amount, lang)], [t.paidOn, r.paid_at.slice(0, 10)], [t.method, r.method], [t.transfer, r.transfer_id ?? t.none],
+    kv(doc, [[t.amount, formatMoney(r.currency, r.amount, lang)], [t.paidOn, pdfDate(r.paid_at.slice(0, 10), lang)], [t.method, lang === "nl" ? METHOD_NL[r.method] ?? r.method : r.method], [t.transfer, r.transfer_id ?? t.none],
       [t.fee, r.fee && /^[A-Z]{3} \d+\.\d{2}$/.test(r.fee) ? money(r.fee, lang) : t.none]]);
     if (r.fx) {
       section(doc, t.fx);
@@ -212,7 +221,7 @@ export function receiptPdf(company: string, r: ReceiptData, lang: Lang = "nl"): 
     }
     section(doc, t.approval);
     if (r.approval) {
-      kv(doc, [[t.approvedBy, r.approval.approver], [t.how, r.approval.method === "passkey" ? t.passkey : `${r.approval.method}: ${t.typed}`], [t.when, r.approval.at],
+      kv(doc, [[t.approvedBy, r.approval.approver], [t.how, r.approval.method === "passkey" ? t.passkey : `${r.approval.method}: ${t.typed}`], [t.when, pdfDate(r.approval.at, lang)],
         ...(r.cosigner ? [[t.cosigner, r.cosigner] as [string, string]] : []), [t.proposal, r.proposal_id], [t.termsHash, r.terms_sha256], [t.signed, r.approval.signed_sha256]]);
     } else kv(doc, [[t.approval, t.noApproval], [t.proposal, r.proposal_id], [t.termsHash, r.terms_sha256]]);
     doc.moveDown(0.4).font("Helvetica").fontSize(9).fillColor(INK).text(t.verify, 50, undefined, { width: 495 });
@@ -232,20 +241,20 @@ function pnlBlock(doc: Doc, pnl: MonthData["pnl"], lang: Lang) {
 export function monthReportPdf(company: string, m: MonthData, lang: Lang = "nl"): Promise<Buffer> {
   const t = T[lang];
   return render(`${t.month} ${m.month}`, m.to, (doc) => {
-    header(doc, company, `${t.month} ${m.month}`, `${m.from} – ${m.to}`, true, lang);
+    header(doc, company, `${t.month} ${m.month}`, `${pdfDate(m.from, lang)} – ${pdfDate(m.to, lang)}`, true, lang);
     section(doc, t.received);
     table(doc, [t.currency, t.count, t.amount], m.received.map((a) => [a.currency, String(a.count), formatMoney(a.currency, a.total, lang)]), [120, 120, 255], [1, 2], lang);
     section(doc, t.paid);
-    table(doc, [t.supplier, t.invoice, t.paidOn, t.amount], m.paid.map((p) => [p.vendor, p.invoice_no, p.paid_on, money(p.amount, lang)]), [175, 110, 90, 120], [3], lang);
+    table(doc, [t.supplier, t.invoice, t.paidOn, t.amount], m.paid.map((p) => [p.vendor, p.invoice_no, pdfDate(p.paid_on, lang), money(p.amount, lang)]), [175, 110, 90, 120], [3], lang);
     section(doc, t.open);
-    table(doc, [t.supplier, t.invoice, t.dueDate, t.status, t.amount], m.open.map((o) => [o.vendor, o.invoice_no, o.due_date || t.none, t.apStatus[o.status] ?? o.status.replace(/_/g, " "), money(o.amount, lang)]), [150, 95, 75, 75, 100], [4], lang);
+    table(doc, [t.supplier, t.invoice, t.dueDate, t.status, t.amount], m.open.map((o) => [o.vendor, o.invoice_no, o.due_date ? pdfDate(o.due_date, lang) : t.none, t.apStatus[o.status] ?? o.status.replace(/_/g, " "), money(o.amount, lang)]), [150, 95, 75, 75, 100], [4], lang);
     section(doc, t.blocked);
     table(doc, [t.supplier, t.invoice, t.amount, t.reasons], m.blocked.map((b) => [b.vendor, b.invoice_no, money(b.amount, lang), (b.why ?? b.reasons.map((detail) => ({ code: "", detail, signals: [] }))).map((f) => blockedReason(f, lang)).join("; ")]), [110, 85, 90, 210], [2], lang);
     section(doc, t.spend);
     table(doc, [t.supplier, t.count, t.amount], m.spend.map((s) => [s.vendor, String(s.count), formatMoney(s.currency, s.total, lang)]), [255, 80, 160], [1, 2], lang);
     section(doc, `${t.fees} · ${t.fxTitle}`);
     kv(doc, [[t.fees, m.fees.map((f) => formatMoney(f.currency, f.total, lang)).join(", ") || t.none],
-      [t.fxTitle, m.fx.conversions ? `${m.fx.conversions} ${t.conversions}: ${t.bought} ${m.fx.bought.map((b) => formatMoney(b.currency, b.total, lang)).join(", ")}; ${t.sold} ${m.fx.sold.map((s) => formatMoney(s.currency, s.total, lang)).join(", ")}` : t.none]]);
+      [t.fxTitle, m.fx.conversions ? `${m.fx.conversions} ${m.fx.conversions === 1 && lang === "nl" ? "omwisseling" : m.fx.conversions === 1 ? "conversion" : t.conversions}: ${t.bought} ${m.fx.bought.map((b) => formatMoney(b.currency, b.total, lang)).join(", ")}; ${t.sold} ${m.fx.sold.map((s) => formatMoney(s.currency, s.total, lang)).join(", ")}` : t.none]]);
     section(doc, t.pnl);
     pnlBlock(doc, m.pnl, lang);
     footer(doc, lang);
