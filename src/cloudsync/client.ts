@@ -6,6 +6,7 @@
 
 import { readFileSync } from "node:fs";
 import type { DB } from "../db/open.js";
+import { publicInvoice } from "../ap/public.js";
 import { apInvoices } from "../ap/store.js";
 import { ingestEmail, type InboxDeps } from "../ap/inbox.js";
 import { ledgerRows } from "../ledger/core.js";
@@ -61,7 +62,8 @@ export function batchesFor(db: DB, state: CloudState, opts: { now?: Date; maxDoc
     .map((b) => ({ id: b.beneficiary_id!, name: b.name!, status: b.status!.toLowerCase(), updated_at: now, body: { name: b.name, iban_last4: b.iban_last4, bic: b.bic, currency: b.currency, method: b.method, status: b.status } }));
   const inv = invoices.map((i) => ({
     id: i.id, vendor: i.vendor, invoice_no: i.invoice_no, due_date: i.due_date, currency: i.currency, total: i.total, status: i.status, doc_sha256: i.doc_sha256,
-    received_at: i.received_at, updated_at: i.updated_at, body: i as unknown as Record<string, unknown>,
+    // The reading masked (last four and the account hash): the full account never leaves the runner (seam review L2).
+    received_at: i.received_at, updated_at: i.updated_at, body: publicInvoice(i) as unknown as Record<string, unknown>,
   }));
   const payments = (db.prepare("SELECT request_id, transfer_id, invoice_no, amount, currency, method, fee_actual, status, updated_at FROM transfers ORDER BY updated_at").all() as Record<string, string | null>[])
     .map((p) => ({ id: p.request_id!, invoice_id: invoices.find((i) => p.invoice_no === `${i.invoice_no} · ${i.vendor}`)?.id ?? null, status: p.status!.toLowerCase(), updated_at: p.updated_at!, body: p }));

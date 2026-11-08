@@ -21,6 +21,7 @@ import { apInvoice } from "../src/ap/store.js";
 import { describeTerms } from "../src/approve/client.js";
 import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAdd, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
 import { journal } from "../src/accounting/gl.js";
+import { batchesFor } from "../src/cloudsync/client.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { proposalCheck, proposalRun, type ProposalLike } from "../src/hub/runs.js";
 import { lockMonth } from "../src/ledger/core.js";
@@ -362,6 +363,17 @@ describe("L1: the hub's runs know supplier payments", () => {
     db.prepare("INSERT OR IGNORE INTO invoices (invoice_no, vendor, amount, currency, due_date, iban_sha256, bic, doc_sha256, status) VALUES (?, 'Pinecrest Outdoor Supply LLC', '1.00', 'USD', '2026-11-16', 'h', 'b', 'd', 'PAID')").run(terms.invoice_no.split(" · ")[0]);
     db.prepare("UPDATE transfers SET invoice_no = ? WHERE request_id = 'r-other'").run(terms.invoice_no.split(" · ")[0]);
     expect(proposalCheck(db, row)).toEqual({ check: "fail", rule: "duplicate_invoice" });
+  });
+});
+
+describe("L2: the cloud push carries no full account number", () => {
+  it("the inbox invoices' readings go masked: last four and the account's hash", async () => {
+    await add(EN, "bergtex.pdf");
+    await add(US, "us.pdf");
+    const body = JSON.stringify(batchesFor(db, { documents: [], ledger: { entry_id: 0 }, audit: { seq: 0 } } as never));
+    expect(body).not.toContain("DE89370400440532013000");
+    expect(body).not.toMatch(/"account_number":"\d{5,}"/);
+    expect(body).toContain("…3000");
   });
 });
 

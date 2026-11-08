@@ -14,6 +14,7 @@ import { apJournal, invoicesCsv, journalCsv } from "../ap/books.js";
 import { clearPossibleDuplicate, ingestDocument, recheck, type InboxDeps } from "../ap/inbox.js";
 import { insights } from "../ap/insights.js";
 import { payApInvoice, syncPayments } from "../ap/pay.js";
+import { publicInvoice } from "../ap/public.js";
 import { apInvoice, apInvoices } from "../ap/store.js";
 import { proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../ap/vendors.js";
 import type { DB } from "../db/open.js";
@@ -156,11 +157,11 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
 
   app.get("/", (_req, res) => { csp(res); res.type("html").send(PAGE(issue())); });
 
-  app.get("/api/payables/invoices", (_req, res) => { res.json(apInvoices(db)); });
+  app.get("/api/payables/invoices", (_req, res) => { res.json(apInvoices(db).map(publicInvoice)); });
   app.get("/api/payables/invoices/:id", (req, res) => {
     const inv = apInvoice(db, String(req.params.id));
     if (!inv) { res.status(404).json({ error: `no payables invoice ${req.params.id}` }); return; }
-    res.json(inv);
+    res.json(publicInvoice(inv));
   });
   app.get("/api/payables/invoices/:id/document", (req, res) => {
     const inv = apInvoice(db, String(req.params.id));
@@ -191,7 +192,7 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
     try {
       const id = String(req.params.id);
       const out = await payApInvoice(db, opts.rail, id, new Date(), opts.inbox.reader);
-      res.json(out.kind === "proposed" ? { kind: "proposed", proposal_id: out.proposal.proposal_id, invoice: apInvoice(db, id) } : { kind: "escalated", reason: out.reason, invoice: apInvoice(db, id) });
+      res.json(out.kind === "proposed" ? { kind: "proposed", proposal_id: out.proposal.proposal_id, invoice: publicInvoice(apInvoice(db, id)!) } : { kind: "escalated", reason: out.reason, invoice: publicInvoice(apInvoice(db, id)!) });
     } catch (e) { fail(res, e); }
   });
   app.post("/api/payables/invoices/:id/supplier-request", (req, res) => {

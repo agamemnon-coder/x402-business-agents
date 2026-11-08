@@ -95,7 +95,10 @@ describe("the payables page", () => {
     const list = await (await fetch(base + "/api/payables/invoices")).json() as { id: string; status: string }[];
     expect(list.map((x) => [x.id, x.status])).toEqual([["AP-0001", "ready"]]);
     const one = await (await fetch(base + "/api/payables/invoices/AP-0001")).json() as { reading: { iban: string }; findings: unknown[] };
-    expect(one.reading.iban).toBe("DE89370400440532013000");
+    // Masked like everywhere else (screenshot pass S5): the last four and the account's hash, never the full IBAN.
+    expect(one.reading.iban).toBe("…3000");
+    expect((one.reading as unknown as { account_sha256: string }).account_sha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(JSON.stringify(list)).not.toContain("DE89370400440532013000");
     const doc = await fetch(base + "/api/payables/invoices/AP-0001/document");
     expect(doc.headers.get("content-type")).toBe("application/pdf");
     expect(Buffer.from(await doc.arrayBuffer()).subarray(0, 5).toString()).toBe("%PDF-");
