@@ -5,9 +5,10 @@
 import type { Sql, SqlValue } from "./store.js";
 
 const COLUMNS = {
-  users: ["id", "display_name", "email", "role", "created_at", "erased_at"],
+  users: ["id", "display_name", "email", "role", "created_at", "erased_at", "session_gen"],
   credentials: ["credential_id", "user_id", "x", "y", "counter", "created_at"],
-  api_keys: ["id", "name", "scopes", "secret_sha256", "created_by", "created_at", "revoked_at", "last_used_at"],
+  api_keys: ["id", "name", "scopes", "secret_sha256", "created_by", "created_by_user", "created_at", "expires_at", "revoked_at", "last_used_at"],
+  enrolments: ["id", "user_id", "token_sha256", "created_by", "created_at", "expires_at", "used_at"],
   vendors: ["id", "name", "status", "updated_at", "version", "body_json", "body_sha256"],
   invoices: ["id", "vendor", "invoice_no", "due_date", "currency", "total", "status", "doc_sha256", "received_at", "updated_at", "version", "body_json", "body_sha256"],
   payments: ["id", "invoice_id", "status", "updated_at", "version", "body_json", "body_sha256"],

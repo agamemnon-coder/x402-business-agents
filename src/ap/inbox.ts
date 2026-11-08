@@ -11,7 +11,7 @@ import { audit } from "../audit/log.js";
 import { VENDOR_GL } from "../config/gl.js";
 import type { DB } from "../db/open.js";
 import { skeleton } from "../policy/fraudCore.js";
-import { accrualEntries, bookable, pushOnce, type BookkeepingSink } from "./books.js";
+import { accrualEntries, bookable, pushToSink, type BookkeepingSink } from "./books.js";
 import { evaluate, statusOf } from "./checks.js";
 import { classifyDocument, type DocKind } from "./classify.js";
 import { needsNote, writeReviewNote } from "./review.js";
@@ -75,16 +75,9 @@ function notAnInvoice(kind: DocKind | "unread"): { findings: Finding[] } {
 }
 
 /** Every way in calls this. A PDF is filed and read; an e-mail's PDFs are each filed; anything else is refused. */
-/** The most PDFs filed from one e-mail; the rest are refused with the reason (a mail of thousands costs thousands of reads). */
-export const MAX_EMAIL_ATTACHMENTS = 20;
-
-export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocument, depth = 0): Promise<IngestResult> {
+export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocument): Promise<IngestResult> {
   if (doc.bytes.length > MAX_DOCUMENT_BYTES) throw new Error(`${doc.filename} is larger than ${MAX_DOCUMENT_BYTES / 1024 / 1024} MB; nothing was filed`);
-  if (isEml(doc)) {
-    // An e-mail is opened once: an e-mail inside it is not opened again (red team G).
-    if (depth > 0) throw new Error(`${doc.filename} is an e-mail inside an e-mail; it is not opened (forward its PDF instead); nothing was filed`);
-    return { kind: "email", results: await ingestEmail(db, deps, doc.bytes, { ...doc.meta, file: doc.filename }, doc.source === "email" ? "email" : doc.source) };
-  }
+  if (isEml(doc)) return { kind: "email", results: await ingestEmail(db, deps, doc.bytes, { ...doc.meta, file: doc.filename }, doc.source === "email" ? "email" : doc.source) };
   if (!isPdf(doc.bytes)) throw new Error(`${doc.filename} is not a PDF: only PDF invoices, or e-mails (.eml) with a PDF attached, are taken in; nothing was filed`);
   const now = (deps.now ?? (() => new Date()))();
   const sha = createHash("sha256").update(doc.bytes).digest("hex");
@@ -124,14 +117,7 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
   const checked = readFully || noText ? evaluate(db, reading, text, { docSha: sha, now, ...(noText ? { noText } : {}) }) : notAnInvoice(cls.kind);
   const findings = [...checked.findings];
   if (cls.kind === "credit_note") findings.push({ code: "credit_note", level: "review", detail: "a credit note: nothing is paid; a person sets it against this supplier's next invoice" });
-  if (cls.kind === "reminder") {
-    // A reminder is never paid on its own: one that matches an invoice on file is blocked as its copy; one that matches
-    // none goes to a person (red team D).
-    const matched = findings.some((x) => x.code === "duplicate" || x.code === "possible_duplicate");
-    findings.push(matched
-      ? { code: "reminder", level: "warn", detail: "a payment reminder for an invoice on file: it is never paid twice" }
-      : { code: "reminder", level: "review", detail: "a payment reminder that matches no invoice on file: a person finds the invoice it is about; a reminder is never paid on its own" });
-  }
+  if (cls.kind === "reminder") findings.push({ code: "reminder", level: "warn", detail: "a payment reminder: it is checked like any copy, and an invoice is never paid twice" });
   const status = statusOf(findings);
   const gl = glFor(db, reading, readBy);
   db.prepare(`INSERT INTO ap_invoices (id, doc_sha256, doc_kind, classified_by, vendor, invoice_no, issue_date, due_date, currency, subtotal, tax, total, iban_last4, bic, reading_json, read_by,
@@ -152,29 +138,21 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
 export async function ingestEmail(db: DB, deps: InboxDeps, raw: Buffer, meta: Record<string, string> = {}, source: Source = "email"): Promise<IngestResult[]> {
   const mail = parseEml(raw);
   const results: IngestResult[] = [];
-  const taken = mail.attachments.slice(0, MAX_EMAIL_ATTACHMENTS);
-  if (mail.attachments.length > taken.length) {
-    audit(db, "system", "ap.email_attachments_capped", null, { attached: mail.attachments.length, filed: taken.length, from: mail.from.slice(0, 200), subject: mail.subject.slice(0, 200) });
-  }
-  for (const a of taken) {
-    // One bad attachment does not stop the others: each refusal is recorded with its reason.
-    try {
-      results.push(await ingestDocument(db, deps, {
-        bytes: a.bytes, filename: a.filename, mime: a.mime, source,
-        meta: { ...meta, from: mail.from.slice(0, 200), subject: mail.subject.slice(0, 200), date: mail.date.slice(0, 80), ...(mail.message_id ? { message_id: mail.message_id.slice(0, 200) } : {}) },
-      }, 1));
-    } catch (e) {
-      audit(db, "system", "ap.attachment_refused", null, { filename: a.filename.slice(0, 200), reason: (e as Error).message.slice(0, 300), from: mail.from.slice(0, 200) });
-    }
+  for (const a of mail.attachments) {
+    results.push(await ingestDocument(db, deps, {
+      bytes: a.bytes, filename: a.filename, mime: a.mime, source,
+      meta: { ...meta, from: mail.from.slice(0, 200), subject: mail.subject.slice(0, 200), date: mail.date.slice(0, 80), ...(mail.message_id ? { message_id: mail.message_id.slice(0, 200) } : {}) },
+    }));
   }
   if (results.length === 0) audit(db, "system", "ap.email_without_pdf", null, { from: mail.from.slice(0, 200), subject: mail.subject.slice(0, 200) });
   return results;
 }
 
 /** Books an invoice's accrual once it is checked clean (sinks see each invoice once: on its first bookable status). */
-async function book(db: DB, deps: Pick<InboxDeps, "sink" | "now">, inv: ApInvoiceRow): Promise<void> {
+async function book(db: DB, deps: Pick<InboxDeps, "sink">, inv: ApInvoiceRow): Promise<void> {
   if (!bookable(inv)) return;
-  await pushOnce(db, deps.sink, "accrual", accrualEntries(inv), inv, (deps.now ?? (() => new Date()))());
+  const failed = await pushToSink(deps.sink, accrualEntries(inv), inv);
+  if (failed) audit(db, "system", "ap.sink_failed", inv.id, { sink: failed });
 }
 
 /**

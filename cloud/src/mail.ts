@@ -2,6 +2,7 @@
 // stores the raw message (R2) and queues it; the company's Purser runner pulls it, files its PDF attachments through
 // the inbox (src/ap/inbox.ts, ingestEmail) and marks it done. An unknown address is refused at the door.
 
+import { bump } from "./auth.js";
 import { sha256Hex } from "./crypto.js";
 import type { Blobs, Sql } from "./store.js";
 import { TenantDb } from "./tenant.js";
@@ -16,6 +17,8 @@ export interface InboundEmail {
 }
 
 export const MAX_MAIL_BYTES = 25 * 1024 * 1024;
+/** What one company's address takes in a day (UTC): anyone on the internet can send mail to it. */
+export const MAIL_QUOTA = { messagesPerDay: 500, bytesPerDay: 500 * 1024 * 1024 };
 
 export function mailBlobKey(tenantId: string, sha: string): string { return `t/${tenantId}/mail/${sha}.eml`; }
 
@@ -31,7 +34,7 @@ export function slugOf(address: string, domain: string): string | null {
   return m[1]!.toLowerCase();
 }
 
-export async function receiveEmail(sql: Sql, blobs: Blobs, msg: InboundEmail, opts: { domain: string; now: Date }): Promise<{ queued: boolean; reason?: string; id?: string }> {
+export async function receiveEmail(sql: Sql, blobs: Blobs, msg: InboundEmail, opts: { domain: string; now: Date; quota?: { messagesPerDay: number; bytesPerDay: number } }): Promise<{ queued: boolean; reason?: string; id?: string }> {
   const refuse = (reason: string) => { msg.setReject(reason); return { queued: false, reason }; };
   if (!opts.domain) return refuse("this address does not take mail");
   const slug = slugOf(msg.to, opts.domain);
@@ -46,6 +49,15 @@ export async function receiveEmail(sql: Sql, blobs: Blobs, msg: InboundEmail, op
   const id = `m_${sha.slice(0, 24)}`;
   // The same message twice (a resend, a retry) is queued once.
   if (await db.one("inbound_mail", { id })) return { queued: false, reason: "already received", id };
+  // The company's daily quota, in messages and bytes: past it, mail is refused until the next day.
+  const quota = opts.quota ?? MAIL_QUOTA;
+  const day = Math.floor(opts.now.getTime() / 86_400_000) * 86_400;
+  const used = async (b: string) => (await sql.first<{ count: number }>("SELECT count FROM rate_hits WHERE bucket = ? AND window_start = ?", [b, day]))?.count ?? 0;
+  if ((await used(`mail:${tenant.id}`)) + 1 > quota.messagesPerDay || (await used(`mailbytes:${tenant.id}`)) + bytes.length > quota.bytesPerDay) {
+    return refuse("this address's daily quota is used up; try again tomorrow");
+  }
+  await bump(sql, `mail:${tenant.id}`, day, 1);
+  await bump(sql, `mailbytes:${tenant.id}`, day, bytes.length);
   const key = mailBlobKey(tenant.id, sha);
   await blobs.put(key, bytes, { kind: "email" });
   await db.apply([db.insert("inbound_mail", { id, blob_key: key, sha256: sha, size: bytes.length, received_at: opts.now.toISOString(), status: "queued", note: null })]);

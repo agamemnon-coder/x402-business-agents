@@ -97,14 +97,6 @@ function migrate(db: DB): void {
     db.exec("ALTER TABLE velocity_events ADD COLUMN payment_id TEXT");
     db.exec("CREATE UNIQUE INDEX IF NOT EXISTS velocity_payment_id ON velocity_events (payment_id)");
   }
-  // Payables: a new-supplier request whose proposal died is CLOSED (review, 8 November), for a ledger made before.
-  const pa = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'payee_adds'").get() as { sql: string } | undefined;
-  if (pa && !pa.sql.includes("'CLOSED'")) {
-    db.exec(`ALTER TABLE payee_adds RENAME TO payee_adds_old;
-      CREATE TABLE payee_adds (add_id TEXT PRIMARY KEY, vendor TEXT NOT NULL, iban TEXT NOT NULL, bic TEXT NOT NULL, source TEXT, requested_by TEXT NOT NULL,
-        verification_json TEXT, proposal_id TEXT, status TEXT NOT NULL CHECK (status IN ('REQUESTED', 'VERIFIED', 'PROPOSED', 'APPLIED', 'CLOSED')), created_at TEXT NOT NULL);
-      INSERT INTO payee_adds SELECT * FROM payee_adds_old; DROP TABLE payee_adds_old;`);
-  }
   // Finality evidence (enterprise item 3): CERTIFIED became REPORTED (the BLS signature is not verified), and NOT_FOUND.
   const fe = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'finality_evidence'").get() as { sql: string } | undefined;
   if (fe && !fe.sql.includes("'REPORTED'")) {

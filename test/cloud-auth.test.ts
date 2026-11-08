@@ -1,6 +1,6 @@
-// Purser Cloud's people: they sign in with a passkey (real ES256 assertions from a software passkey, test only) and
-// get a 15-minute session. The challenge is used once; another origin, an unknown passkey, an expired session, a
-// person erased or demoted since: all refused. Only the owner manages the company.
+// Purser Cloud's people: they enrol a passkey with an enrolment an owner starts, sign in with it (real ES256 assertions
+// from a software passkey, test only) and get a 15-minute session. The challenge is used once; another origin, an
+// unknown passkey, an expired session, a person erased or demoted since: all refused. Only the owner manages the company.
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { softPasskey } from "../src/metal/softPasskey.js";
 import { ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
@@ -19,9 +19,14 @@ async function person(role: "owner" | "cfo" | "accountant" | "viewer") {
   const credential_id = b64u(crypto.getRandomValues(new Uint8Array(16)));
   const x = Buffer.from(pk.key.qx.slice(2), "hex").toString("base64url");
   const y = Buffer.from(pk.key.qy.slice(2), "hex").toString("base64url");
-  // The runner verified the enrolment; the push brings the public key.
-  const push = await c.req("POST", "/v1/sync", { key: t.key, body: { credentials: [{ credential_id, user_id: userId, x, y, counter: 0 }] } });
-  expect(push.status).toBe(200);
+  // An owner starts the enrolment; the person's new passkey signs its secret.
+  const e = await c.req("POST", `/v1/users/${userId}/enrolment`, { key: t.key });
+  expect(e.status).toBe(201);
+  const token = e.json.token as string;
+  const ea = pk.assert("0x00", { challenge: token, origin: ORIGIN, rpId: RP });
+  const enrolled = await c.req("POST", "/v1/auth/enrol", { body: { tenant: "acme", enrolment_id: e.json.enrolment_id, token, credential_id, x, y,
+    assertion: { authenticatorData: b64u(ea.authenticatorData), clientDataJSON: b64u(ea.clientDataJSON), signature: b64u(ea.signature) } } });
+  expect(enrolled.status).toBe(201);
   const login = async (o: { origin?: string; challengeId?: string; challenge?: string } = {}) => {
     const ch = o.challengeId ? { challenge_id: o.challengeId, challenge: o.challenge! } : (await c.req("POST", "/v1/auth/challenge", { body: { tenant: "acme" } })).json as { challenge_id: string; challenge: string };
     const a = pk.assert("0x00", { challenge: ch.challenge, origin: o.origin ?? ORIGIN, rpId: RP });
@@ -86,11 +91,12 @@ describe("passkey sign-in", () => {
     expect((await c.req("GET", "/v1/keys", { key: fake })).status).toBe(401);
   });
 
-  it("will not take a passkey for a person the company did not add, nor swap a pushed passkey's key", async () => {
-    expect((await c.req("POST", "/v1/sync", { key: t.key, body: { credentials: [{ credential_id: "c".repeat(20), user_id: "u_nobody", x: "x".repeat(43), y: "y".repeat(43), counter: 0 }] } })).status).toBe(422);
+  it("will not start an enrolment for a person the company did not add, and a push never brings a passkey", async () => {
+    expect((await c.req("POST", "/v1/users/u_nobody/enrolment", { key: t.key })).status).toBe(403);
     const p = await person("viewer");
     const cred = (await c.env.sql.first<{ credential_id: string }>("SELECT credential_id FROM credentials WHERE user_id = ?", [p.userId]))!;
     const swap = await c.req("POST", "/v1/sync", { key: t.key, body: { credentials: [{ credential_id: cred.credential_id, user_id: p.userId, x: "x".repeat(43), y: "y".repeat(43), counter: 0 }] } });
-    expect(swap.status).toBe(409);
+    expect(swap.status).toBe(400);
+    expect((await c.env.sql.first<{ x: string }>("SELECT x FROM credentials WHERE credential_id = ?", [cred.credential_id]))!.x).not.toBe("x".repeat(43));
   });
 });

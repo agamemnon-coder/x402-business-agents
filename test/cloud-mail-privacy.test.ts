@@ -1,6 +1,7 @@
 // Purser Cloud's inbound e-mail (Cloudflare Email Routing → the Worker's email handler → stored and queued → the
 // runner files it through the inbox), and privacy: export, erasure of a person, closing a company and the 7-year
 // retention before anything is purged.
+import { createHash } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -91,9 +92,14 @@ describe("privacy and retention", () => {
     await pushToCloud(db, { url: "https://cloud.test", key: t.key, fetch: c.fetch }, c.clock.now);
     const exp = (await c.req("GET", "/v1/export", { key: t.key })).json as Record<string, unknown[]>;
     expect(exp.invoices).toHaveLength(1);
-    expect(exp.document_bytes).toHaveLength(1);
     expect(exp.audit_rows!.length).toBeGreaterThan(0);
-    expect(JSON.stringify(exp)).not.toMatch(/secret_sha256/);
+    expect(JSON.stringify(exp)).not.toMatch(/secret_sha256|token_sha256/);
+    // The documents are listed, each fetched on its own (one response never has to hold them all).
+    const docs = exp.documents_to_fetch as { sha256: string; path: string }[];
+    expect(docs).toHaveLength(1);
+    const got = await c.req("GET", docs[0]!.path, { key: t.key });
+    expect(got.status).toBe(200);
+    expect(createHash("sha256").update(Buffer.from(await got.res.arrayBuffer())).digest("hex")).toBe(docs[0]!.sha256);
   });
 
   it("erases a person's personal data but keeps the books; the last owner cannot be erased", async () => {

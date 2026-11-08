@@ -3,7 +3,7 @@
 // TenantDb; a route never names a tenant itself.
 
 import { z } from "zod";
-import { AuthError, callerOf, isPlatformAdmin, need, newApiKey, newChallenge, passkeyLogin, ROLES, SCOPES, withinRate, type Caller, type Role, type Scope } from "./auth.js";
+import { AuthError, callerOf, endSessions, enrolPasskey, failedAuthBlocked, isPlatformAdmin, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope } from "./auth.js";
 import { randomToken } from "./crypto.js";
 import { BadRequest, insights, invoiceDocument, ledgerEntries, listInvoices, listPayments, listVendors, oneInvoice, report } from "./read.js";
 import { SCHEMA } from "./schema.js";
@@ -23,8 +23,8 @@ export interface CloudEnv {
   rpId: string;
   origin: string;
   now?: () => Date;
-  /** Requests per minute per key or session, and per address on the sign-in routes. */
-  rate?: { perMinute: number; signInPerMinute: number };
+  /** Requests per minute per key or session; per address on the sign-in routes; failed authentications per address. */
+  rate?: { perMinute: number; signInPerMinute: number; failedAuthPerMinute?: number };
 }
 
 interface Ctx { env: CloudEnv; req: Request; url: URL; now: Date; params: string[]; caller: Caller | null; db: TenantDb | null }
@@ -69,8 +69,8 @@ export const ROUTES: Route[] = [
     const t = new TenantDb(c.env.sql, id);
     const ownerId = `u_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}`;
     await t.apply([t.insert("users", { id: ownerId, display_name: b.owner.display_name, email: b.owner.email ?? null, role: "owner", created_at: iso })]);
-    const key = await newApiKey(t, { name: "owner (first key)", scopes: ["read", "sync", "admin"], createdBy: ownerId, now: c.now });
-    return json(201, { tenant: { id, slug: b.slug, name: b.name }, owner: { id: ownerId }, api_key: key.key, note: "the key is shown once; store it in a secret store" });
+    const key = await newApiKey(t, { name: "owner (first key)", scopes: ["read", "sync", "admin"], createdBy: ownerId, createdByUser: ownerId, now: c.now });
+    return json(201, { tenant: { id, slug: b.slug, name: b.name }, owner: { id: ownerId }, api_key: key.key, expires_at: key.expires_at, note: "the key is shown once; store it in a secret store" });
   } },
 
   { method: "POST", path: "/v1/auth/challenge", summary: "Start a passkey sign-in: a one-time challenge for the company.", need: "public", run: async (c) => {
@@ -86,6 +86,20 @@ export const ROUTES: Route[] = [
     if (!t || t.closed_at) return notFound("company");
     const s = await passkeyLogin(c.env.sql, { tenantId: t.id, challengeId: b.challenge_id, credentialId: b.credential_id, assertion: b.assertion, rpId: c.env.rpId, origin: c.env.origin, secret: c.env.sessionSecret, now: c.now });
     return json(200, { session: s.token, role: s.role, user_id: s.user_id, expires_in: 900 });
+  } },
+  { method: "POST", path: "/v1/auth/enrol", summary: "Enrol a person's passkey with the single-use enrolment an owner started: the new passkey signs the enrolment's secret.", need: "public", run: async (c) => {
+    const b = await body(c, z.object({ tenant: SLUG, enrolment_id: z.string().max(80), token: z.string().min(40).max(80), credential_id: z.string().min(8).max(400),
+      x: z.string().min(40).max(50), y: z.string().min(40).max(50),
+      assertion: z.object({ authenticatorData: z.string().max(4000), clientDataJSON: z.string().max(8000), signature: z.string().max(400) }).strict() }).strict());
+    const t = await c.env.sql.first<{ id: string; closed_at: string | null }>("SELECT id, closed_at FROM tenants WHERE slug = ?", [b.tenant]);
+    if (!t || t.closed_at) return notFound("company");
+    const r = await enrolPasskey(c.env.sql, { tenantId: t.id, enrolmentId: b.enrolment_id, token: b.token, credentialId: b.credential_id, x: b.x, y: b.y, assertion: b.assertion, rpId: c.env.rpId, origin: c.env.origin, now: c.now });
+    return json(201, r);
+  } },
+  { method: "POST", path: "/v1/auth/logout", summary: "Sign out: every session of the signed-in person ends.", need: "read", run: async (c) => {
+    if (c.caller!.kind !== "session") return json(400, { error: "only a signed-in person signs out; revoke a key with DELETE /v1/keys/{id}" });
+    await endSessions(c.env.sql, c.caller!.tenantId, c.caller!.principal);
+    return json(200, { signed_out: true });
   } },
 
   { method: "GET", path: "/v1/me", summary: "Who is calling: the company, and the key's scopes or the person's role.", need: "read", run: async (c) => {
@@ -107,7 +121,14 @@ export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/reports/{name}", summary: "trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger.", need: "read", run: async (c) => json(200, await report(db(c), c.params[0]!, c.url.searchParams)) },
   { method: "GET", path: "/v1/insights", summary: "Payables at a glance: open, due, overdue, waiting, blocked, spend per supplier.", need: "read", run: async (c) => json(200, await insights(db(c), c.now)) },
 
-  { method: "POST", path: "/v1/sync", summary: "The runner's push: vendors, invoices, documents, payments, ledger entries, audit rows, passkeys. Idempotent.", need: "sync", run: async (c) => {
+  { method: "GET", path: "/v1/documents/{sha256}", summary: "A document the company holds, by its SHA-256 (the export lists them).", need: "read", run: async (c) => {
+    const d = await db(c).one<{ blob_key: string; filename: string; mime: string }>("documents", { sha256: c.params[0]! });
+    const bytes = d && (await c.env.blobs.get(d.blob_key));
+    if (!d || !bytes) return notFound("document");
+    return new Response(new Uint8Array(bytes), { status: 200, headers: { "content-type": d.mime === "application/pdf" ? "application/pdf" : "application/octet-stream", "content-disposition": `attachment; filename="${d.filename.replace(/[^\w.-]+/g, "_")}"`, "cache-control": "no-store", "x-content-type-options": "nosniff" } });
+  } },
+
+  { method: "POST", path: "/v1/sync", summary: "The runner's push: vendors, invoices, documents, payments, ledger entries, audit rows. Idempotent. Never passkeys.", need: "sync", run: async (c) => {
     const b = await body(c, SyncBatch, 50_000_000);
     return json(200, { applied: await applySync(db(c), c.env.blobs, b, c.now) });
   } },
@@ -134,9 +155,11 @@ export const ROUTES: Route[] = [
 
   { method: "GET", path: "/v1/keys", summary: "The company's API keys (never their secrets).", need: "admin", run: async (c) => json(200, { items: (await db(c).select<Record<string, unknown>>("api_keys", {}, { order: ["created_at"] })).map(withoutSecret) }) },
   { method: "POST", path: "/v1/keys", summary: "A new API key; returned once.", need: "admin", run: async (c) => {
-    const b = await body(c, z.object({ name: z.string().min(1).max(80), scopes: z.array(z.enum(SCOPES as [Scope, ...Scope[]])).min(1) }).strict());
-    const k = await newApiKey(db(c), { name: b.name, scopes: b.scopes, createdBy: c.caller!.principal, now: c.now });
-    return json(201, { id: k.id, api_key: k.key, note: "shown once" });
+    const b = await body(c, z.object({ name: z.string().min(1).max(80), scopes: z.array(z.enum(SCOPES as [Scope, ...Scope[]])).min(1), expires_in_days: z.number().int().min(1).max(KEY_MAX_DAYS).optional() }).strict());
+    // The person behind the new key is the person behind the caller (a key made by a key inherits it), so erasing that
+    // person revokes the whole chain.
+    const k = await newApiKey(db(c), { name: b.name, scopes: b.scopes, createdBy: c.caller!.principal, createdByUser: c.caller!.user, ...(b.expires_in_days ? { expiresInDays: b.expires_in_days } : {}), now: c.now });
+    return json(201, { id: k.id, api_key: k.key, expires_at: k.expires_at, note: "shown once" });
   } },
   { method: "DELETE", path: "/v1/keys/{id}", summary: "Revoke an API key.", need: "admin", run: async (c) => {
     const t = db(c);
@@ -146,7 +169,8 @@ export const ROUTES: Route[] = [
     return json(200, { id: c.params[0], revoked: true });
   } },
   { method: "GET", path: "/v1/users", summary: "The company's people and their roles.", need: "admin", run: async (c) => json(200, { items: await db(c).select("users", {}, { order: ["created_at"] }) }) },
-  { method: "POST", path: "/v1/users", summary: "Add a person (owner, cfo, accountant, viewer); their passkey arrives through the runner's push.", need: "admin", run: async (c) => {
+  { method: "POST", path: "/v1/users/{id}/enrolment", summary: "Start a person's passkey enrolment: a single-use secret for 30 minutes (an owner's passkey: a signed-in owner only, once any owner has one).", need: "admin", run: async (c) => json(201, await startEnrolment(db(c), c.caller!, c.params[0]!, c.now)) },
+  { method: "POST", path: "/v1/users", summary: "Add a person (owner, cfo, accountant, viewer); they then enrol a passkey with an enrolment an owner starts.", need: "admin", run: async (c) => {
     const b = await body(c, z.object({ display_name: z.string().min(1).max(120), email: z.string().email().max(200).optional(), role: z.enum(ROLES as [Role, ...Role[]]) }).strict());
     const id = `u_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}`;
     const t = db(c);
@@ -154,7 +178,10 @@ export const ROUTES: Route[] = [
     return json(201, { id, role: b.role });
   } },
   { method: "POST", path: "/v1/users/{id}/erase", summary: "Erase a person's personal data (bookkeeping records are kept for 7 years).", need: "admin", run: async (c) => json(200, await eraseUser(c.env.sql, c.caller!.tenantId, c.params[0]!, c.caller!.principal, c.now)) },
-  { method: "GET", path: "/v1/export", summary: "Everything the cloud holds for the company, documents included.", need: "admin", run: async (c) => json(200, await exportTenant(c.env.sql, c.env.blobs, c.caller!.tenantId)) },
+  { method: "GET", path: "/v1/export", summary: "Everything the cloud holds for the company; documents listed, each fetched from /v1/documents/{sha256}. Needs admin and read.", need: "admin", run: async (c) => {
+    need(c.caller!, "read");
+    return json(200, await exportTenant(c.env.sql, c.caller!.tenantId));
+  } },
   { method: "POST", path: "/v1/close", summary: "Close the company's account: access ends; records are kept until the retention day, then purged.", need: "admin", run: async (c) => json(200, await closeTenant(c.env.sql, c.caller!.tenantId, c.now)) },
 ];
 
@@ -164,7 +191,8 @@ function match(path: string, pattern: string): string[] | null {
   const params: string[] = [];
   for (let i = 0; i < a.length; i++) {
     if (b[i]!.startsWith("{")) {
-      const v = decodeURIComponent(a[i]!);
+      let v: string;
+      try { v = decodeURIComponent(a[i]!); } catch { throw new BadRequest("the path is not valid percent-encoding"); }
       if (!/^[A-Za-z0-9_.:-]{1,120}$/.test(v)) return null;
       params.push(v);
     } else if (a[i] !== b[i]) return null;
@@ -194,12 +222,23 @@ export async function handle(req: Request, env: CloudEnv): Promise<Response> {
     if (!hit) return json(405, { error: `use ${candidates.map((x) => x.r.method).join(" or ")}` });
     const ctx: Ctx = { env, req, url, now, params: hit.p!, caller: null, db: null };
     const rate = env.rate ?? { perMinute: 600, signInPerMinute: 30 };
+    // The caller's address: Cloudflare's edge sets cf-connecting-ip and overwrites any value a client sends; behind any
+    // other proxy this header must not be trusted (docs/cloud.md).
+    const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
     if (hit.r.need === "public") {
-      if (hit.r.path.startsWith("/v1/auth/") && !(await withinRate(env.sql, `ip:${req.headers.get("cf-connecting-ip") ?? "unknown"}`, now, { windowSec: 60, max: rate.signInPerMinute }))) return json(429, { error: "too many sign-in attempts; wait a minute" });
+      if (hit.r.path.startsWith("/v1/auth/") && !(await withinRate(env.sql, `ip:${ip}`, now, { windowSec: 60, max: rate.signInPerMinute }))) return json(429, { error: "too many sign-in attempts; wait a minute" });
     } else if (hit.r.need === "platform") {
       if (!(await isPlatformAdmin(env.adminTokenSha256, req.headers.get("authorization")))) return json(401, { error: "platform admin only" });
     } else {
-      const caller = await callerOf(env.sql, env.sessionSecret, req.headers.get("authorization"), now);
+      // Failed keys and sessions are counted per address; past the limit the request is turned away before any lookup.
+      if (await failedAuthBlocked(env.sql, ip, now, rate.failedAuthPerMinute ?? 20)) return json(429, { error: "too many failed sign-ins from this address; wait a minute" });
+      let caller: Caller;
+      try {
+        caller = await callerOf(env.sql, env.sessionSecret, req.headers.get("authorization"), now);
+      } catch (e) {
+        if (e instanceof AuthError) await noteFailedAuth(env.sql, ip, keyIdOf(/^Bearer (\S+)$/.exec(req.headers.get("authorization") ?? "")?.[1]), now);
+        throw e;
+      }
       need(caller, hit.r.need);
       if (!(await withinRate(env.sql, `${caller.kind}:${caller.principal}`, now, { windowSec: 60, max: rate.perMinute }))) return json(429, { error: "too many requests; wait a minute" });
       ctx.caller = caller;

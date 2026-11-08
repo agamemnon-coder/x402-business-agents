@@ -1,8 +1,8 @@
 // npm run cloud -- push | mail
 //   push: send what this ledger records to Purser Cloud (idempotent; only what the cloud does not hold yet).
 //   mail: file the e-mail the cloud received for this company through the payables inbox.
-// Configuration from the environment only: PURSER_CLOUD_URL, PURSER_CLOUD_KEY (a key with the sync scope; never in
-// git or a log), and optionally PURSER_CLOUD_PEOPLE, a JSON map from a passkey's label to the cloud person's id.
+// Configuration from the environment only: PURSER_CLOUD_URL and PURSER_CLOUD_KEY (a key with the sync scope; never in
+// git or a log). Passkeys are not pushed: people enrol in the cloud with an enrolment an owner starts.
 
 import { ClaudeReader } from "../claude/reader.js";
 import { pullMail, pushToCloud } from "../cloudsync/client.js";
@@ -14,9 +14,8 @@ if (!url || !key) {
   console.error("set PURSER_CLOUD_URL and PURSER_CLOUD_KEY (a key with the sync scope) in the environment");
   process.exit(1);
 }
-const people = process.env.PURSER_CLOUD_PEOPLE ? (JSON.parse(process.env.PURSER_CLOUD_PEOPLE) as Record<string, string>) : {};
 const db = openDb();
-const target = { url, key, people };
+const target = { url, key };
 
 const cmd = process.argv[2];
 if (cmd === "push") {

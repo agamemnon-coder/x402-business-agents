@@ -12,9 +12,9 @@
 // Test money only: the Airwallex sandbox. Every payment and every new supplier needs the CFO's Face ID.
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { basename } from "node:path";
+import { basename, join } from "node:path";
 import { airwallexFromEnv } from "../airwallex/adapter.js";
-import { apJournal, invoicesCsv, journalCsv, payablesSink } from "../ap/books.js";
+import { apJournal, CsvFileSink, invoicesCsv, journalCsv } from "../ap/books.js";
 import { ingestDocument, recheck, type InboxDeps, type IngestResult } from "../ap/inbox.js";
 import { insights } from "../ap/insights.js";
 import { payApInvoice, syncPayments } from "../ap/pay.js";
@@ -29,7 +29,7 @@ const args = process.argv.slice(2);
 const flag = (name: string) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
 const db = openDb();
 const dir = process.env.KIT11_AP_DIR ?? "data/ap";
-const deps: InboxDeps = { dir, reader: new ClaudeReader(db), sink: payablesSink() };
+const deps: InboxDeps = { dir, reader: new ClaudeReader(db), sink: new CsvFileSink(join(dir, "journal.csv")) };
 
 const line = (r: IngestResult): string => r.kind === "invoice"
   ? `${r.invoice.id}  ${r.invoice.status.replace(/_/g, " ").padEnd(13)} ${r.invoice.vendor} ${r.invoice.invoice_no} ${r.invoice.currency} ${r.invoice.total}`

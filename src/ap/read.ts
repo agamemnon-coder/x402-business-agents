@@ -21,14 +21,11 @@ const tidy = (r: ApReading): ApReading => ({
   gl_account: r.gl_account.trim(),
 });
 
-/** The most text sent to a model per call: a huge text layer is never a huge prompt (review, 8 November). */
-export const MODEL_TEXT_LIMIT = 50_000;
-
 export async function readDocument(db: DB, reader: Asker, text: string, docSha: string): Promise<{ reading: ApReading; readBy: string }> {
   const own = parseApFallback(text);
   if (!text.trim()) return { reading: own, readBy: "parser" };
   const read = await reader.ask(
-    { task: `ap.read:${docSha.slice(0, 16)}`, role: "act", actor: "treasury", schema: ApReadingSchema, instruction: apInstruction(EXPENSE_ACCOUNTS), document: text.slice(0, MODEL_TEXT_LIMIT) },
+    { task: `ap.read:${docSha.slice(0, 16)}`, role: "act", actor: "treasury", schema: ApReadingSchema, instruction: apInstruction(EXPENSE_ACCOUNTS), document: text },
     () => own,
   );
   if (read.source !== "claude") return { reading: own, readBy: "parser" };

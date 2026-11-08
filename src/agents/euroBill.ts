@@ -159,13 +159,13 @@ export interface InvoicePaymentTerms extends Terms {
 export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date(), label?: string): string | null {
   // `label`: the number to name the invoice by in the answer (the agent's facts pass a vouched one, never a row's own).
   // The same invoice with a cosmetically different number ("btx-dup ", another dash) is still the same invoice.
-  // However punctuated ("BTX-2026-021", "BTX/2026/21", a zero-width space): the guard before money moves is the loose one.
+  const key = invoiceKey(invoiceNo);
   const t = (db.prepare("SELECT invoice_no, status FROM transfers WHERE status <> 'CANCELLED' ORDER BY updated_at DESC").all() as { invoice_no: string; status: string }[])
-    .find((r) => sameInvoiceNo(r.invoice_no, invoiceNo));
+    .find((r) => invoiceKey(r.invoice_no) === key);
   if (t) { const n = label ?? t.invoice_no; return t.status === "PAID" ? `invoice ${n} is already paid` : `invoice ${n} already has a payout (${t.status})`; }
   const p = (db.prepare(`SELECT proposal_id, status, json_extract(terms_json, '$.invoice_no') AS invoice_no FROM proposals WHERE kind = 'invoice_payment'
     AND (status IN ('APPROVED', 'EXECUTING', 'EXECUTED') OR (status = 'PENDING_APPROVAL' AND expires_at > ?)) ORDER BY created_at DESC`)
-    .all(now.toISOString()) as { proposal_id: string; invoice_no: string | null; status: string }[]).find((r) => sameInvoiceNo(r.invoice_no ?? "", invoiceNo));
+    .all(now.toISOString()) as { proposal_id: string; invoice_no: string | null; status: string }[]).find((r) => invoiceKey(r.invoice_no ?? "") === key);
   if (!p) return null;
   const n = label ?? p.invoice_no;
   switch (p.status) {
@@ -177,7 +177,7 @@ export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date(
 }
 
 // The duplicate check's invoice key lives in src/lib/invoiceKey.ts (the hub gate needs it without this module's imports).
-import { invoiceKey, sameInvoiceNo } from "../lib/invoiceKey.js";
+import { invoiceKey } from "../lib/invoiceKey.js";
 export { invoiceKey };
 
 export type InvoiceOutcome =
