@@ -1,6 +1,6 @@
 // The jury's technical QA (6 Nov), items Q3, Q5, Q6, Q7 and Q8: every page carries the same link-preview tags with an
 // absolute image and (where its CSP allows an image) the favicon; one tagline everywhere; /film labelled as the earlier
-// animation, the 2:42 film linked from Home and Proof; the deck's stated slide count is the PDF's; the claims' site
+// animation, the 3:58 film linked from Home and Proof; the deck's stated slide count is the PDF's; the claims' site
 // section is the main run's. Q1 and Q2 (no sideways scroll at 360 and 768 px) are checked in a browser:
 // test/browser/pages.check.ts and root.check.ts.
 import { readFileSync } from "node:fs";
@@ -67,10 +67,10 @@ describe("one tagline (Q8)", () => {
 });
 
 describe("the film (Q3)", () => {
-  it("/film says it is the earlier animation of 30 October, and points to the 2:42 film", () => {
+  it("/film says it is the earlier animation of 30 October, and points to the 3:58 film", () => {
     expect(pages.film).toContain("<title>Purser: the earlier animation (30 October)</title>");
-    expect(pages.film).toContain("The earlier animation of 30 October, not the 2:42 film (youtu.be/jaqO2M2V6NY)");
-    expect(FILM_URL).toBe("https://youtu.be/jaqO2M2V6NY");
+    expect(pages.film).toContain("The earlier animation of 30 October, not the 3:58 film (youtu.be/kCUsFHrxE-o)");
+    expect(FILM_URL).toBe("https://youtu.be/kCUsFHrxE-o");
   });
 
   it("Watch and Proof link the film of the main run; Proof's archive names /film for what it is", () => {

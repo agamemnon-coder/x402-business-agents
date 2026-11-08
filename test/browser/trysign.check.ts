@@ -415,8 +415,8 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
     }
   }
   if (!args.live) {
-    const q = terms.fx as { sell_amount: string; sell_currency: string } | null;
-    check(!!q && q.sell_amount === "982.82" && (await page.locator("#s1-fx").innerText()).trim() === `stand-in quote: ${q.sell_currency} ${q.sell_amount.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`,
+    const q = terms.fx as { sell_amount: string; sell_currency: string; buy_amount: string; buy_currency: string } | null;
+    check(!!q && q.sell_amount === "982.82" && (await page.locator("#s1-fx").innerText()).trim() === `Shortfall ${q.buy_currency} ${q.buy_amount.replace(/\B(?=(\d{3})+(?!\d))/g, ",")} = ${q.sell_currency} ${q.sell_amount.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}, stand-in quote`,
       `${tag}: the quote in one line under the amount (${(await page.locator("#s1-fx").innerText()).trim()}), labelled a stand-in here`);
   }
   check((await page.locator("#k-status").innerText()).trim() === "" && await page.locator("#go-sign").isEnabled() && (await page.locator("#go-sign").innerText()).trim() === W.ask.sign,

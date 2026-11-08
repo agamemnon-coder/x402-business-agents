@@ -113,7 +113,7 @@ describe("/judge: the five steps", () => {
     expect(tail).toContain(`href="${JUDGE_CODE_HREF}"`);
     expect(tail).toContain("How it works in 5 files");
     expect(tail).toContain(`href="${FILM_URL}"`);
-    expect(FILM_URL).toBe("https://youtu.be/jaqO2M2V6NY");
+    expect(FILM_URL).toBe("https://youtu.be/kCUsFHrxE-o");
   });
 });
 

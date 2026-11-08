@@ -315,7 +315,7 @@ ul.ticks li { display: flex; gap: 6px; align-items: flex-start; overflow-wrap: a
 .pay .to { color: var(--muted); font-size: 15.5px; margin: 0; overflow-wrap: anywhere; }
 .pay .amt { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; font-size: clamp(22px, 2.6vw, 28px); font-weight: 750; letter-spacing: -.015em; font-variant-numeric: tabular-nums; }
 .nw { white-space: nowrap; }
-.pay .fx { font-size: 16px; font-weight: 600; letter-spacing: 0; color: var(--muted); white-space: nowrap; }
+.pay .fx { font-size: 16px; font-weight: 600; letter-spacing: 0; color: var(--muted); white-space: normal; overflow-wrap: anywhere; flex-basis: 100%; }
 .pay .fx .tag { font-size: 12.5px; padding: 2px 8px; vertical-align: 1px; }
 .skel { height: 1.1em; border-radius: 8px; background: var(--sunken); } .skel.w60 { width: 60%; } .skel.w80 { width: 80%; } .skel.inl { display: inline-block; width: 14em; }
 dl.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 9px 12px; margin: 0; padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--sunken); font-size: 15.5px; }
@@ -819,7 +819,9 @@ const JS = `
   function fxLine(q) { return amt(q.buy_currency, q.buy_amount) + " for " + amt(q.sell_currency, q.sell_amount) + " at " + q.client_rate + " · quote " + q.quote_id.slice(0, 8) + "…"; }
   // No live quote (no sandbox key, or the limit reached): said in four words; the terms show the main run's, labelled.
   function quoteLine(t) {
-    if (t.fx) return el("span", "fx", [(t.fx.source === "stand-in" ? "stand-in quote: " : "live Airwallex quote: ") + amt(t.fx.sell_currency, t.fx.sell_amount)]);
+    // Max, 8 Nov: "USD 982.95" right under "EUR 1,850.00" read as the price of the whole invoice; it is only the
+    // shortfall's, so the line says which part is bought, and for what.
+    if (t.fx) return el("span", "fx", ["Shortfall " + amt(t.fx.buy_currency, t.fx.buy_amount) + " = " + amt(t.fx.sell_currency, t.fx.sell_amount) + (t.fx.source === "stand-in" ? ", stand-in quote" : ", live Airwallex quote")]);
     return el("span", "fx", ["no live quote now"]);
   }
 

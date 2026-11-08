@@ -68,7 +68,7 @@ hash in 2 SWIFT payouts." (no fact dropped).
 
 **What's real.** Test money. Simulated: customer, supplier, settlement, second approver. Details → https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/submission/long-description.md#what-is-real-and-what-is-simulated
 
-**Links.** https://kit11.max-31b.workers.dev/proof · https://youtu.be/jaqO2M2V6NY · https://github.com/agamemnon-coder/x402-business-agents
+**Links.** https://kit11.max-31b.workers.dev/proof · https://youtu.be/kCUsFHrxE-o · https://github.com/agamemnon-coder/x402-business-agents
 <!-- /description -->
 
 ## Instructions
@@ -88,7 +88,7 @@ hash in 2 SWIFT payouts." (no fact dropped).
    - Proof: <https://kit11.max-31b.workers.dev/proof> has every id from the main run, the Metal ones checkable on
      Metal's testnet explorer, awx-1, the Airwallex-only run of 7 November (all seven checks passed), and Visa Intelligent
      Commerce via Airwallex's Airi (7 November; Airwallex sandbox, test card, test money; 5 of 5 checks). The film
-     (2:42): <https://youtu.be/jaqO2M2V6NY>
+     (3:58): <https://youtu.be/kCUsFHrxE-o>
 3. Then the repository, offline, no keys and no network after `npm ci` (Node.js 22.13 or later):
    `npm ci`, then `npm test` (the full suite, on stand-ins), then `npm run judge -- --check` (serves Home, Watch, Proof,
    the partner pages, the CFO dashboard and the Scenario Lab from the main run's record, fetches each page once and
@@ -98,7 +98,7 @@ hash in 2 SWIFT payouts." (no fact dropped).
 
 ## Links
 
-- Video (2:42; voice-over: an AI-generated voice, music: AI-generated, both ElevenLabs): <https://youtu.be/jaqO2M2V6NY>
+- Video (3:58; voice-over: an AI-generated voice, music: AI-generated, both ElevenLabs): <https://youtu.be/kCUsFHrxE-o>
 - Live: <https://kit11.max-31b.workers.dev/>
 - Try it yourself: <https://kit11.max-31b.workers.dev/try/sign>: sign with your own Face ID, try to cheat, try to trick
   the agent, change the rule and see the worst case, and the agent pays alone, in a test world of your own; nothing real

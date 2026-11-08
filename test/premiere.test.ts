@@ -656,12 +656,11 @@ describe("docs/video/ holds what the code writes", () => {
     const words = voiceTimeline(asWritten).reduce((k, l) => k + l.text.split(/\s+/).length, 0);
     const length = clock(premiereSeconds());
     expect([words, length]).toEqual([438, "3:58"]);
-    // The README, the claims and Max's checklist describe the film on YouTube, v5 (319 words in 2:42), until v6 is
-    // voiced and uploaded; they are not changed here.
-    const published = { words: 319, length: "2:42" };
-    expect(read("docs/claims.md")).toContain(`| Pace | The film is the premiere: ${published.words} words in ${published.length} (`);
-    expect(README).toContain(`[Film, ${published.length}](https://youtu.be/jaqO2M2V6NY)`);
-    expect(read("docs/submission/checklist-max.md")).toContain(`de film duurt ${published.length}.`);
+    // The README, the claims and Max's checklist describe the film on YouTube: v8 (8 November), the length the code has.
+    const published = { words, length };
+    expect(read("docs/claims.md")).toContain(`| Pace | The film is the premiere, v8: ${published.words} words in ${published.length} (`);
+    expect(README).toContain(`[Film, ${published.length}](https://youtu.be/kCUsFHrxE-o)`);
+    expect(read("docs/submission/checklist-max.md")).toContain(`de film duurt ${published.length} (v8).`);
     // The voice-over is an AI voice and the music AI-generated, both ElevenLabs; nowhere does Max voice the film.
     const docs = ["docs/video/README.md", "docs/video/narrator-script.md", "docs/video/narrator-script-v6.md", "docs/video/elevenlabs-studio-prompt-v6.md", "docs/video/opnames-max.md", "docs/video-script.md", "docs/requirements-matrix.md", "docs/claims.md",
       "docs/submission/README.md", "docs/submission/release-notes.md", "docs/submission/checklist-max.md", "docs/video/premiere-script.md", "docs/video/script.md"];
