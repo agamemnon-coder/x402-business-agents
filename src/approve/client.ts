@@ -545,6 +545,31 @@ export function whyYou(t: Obj, policy: { key: string; value: string }[] = [], fo
   return `${why} It needs two people (four eyes).${so}`;
 }
 
+const REASON_WORDS: Record<string, string> = { goods_purchased: "Goods purchased", professional_business_services: "Professional or business services" };
+/** An Airwallex payout reason code in words ("goods_purchased" reads "Goods purchased"). */
+export function reasonWords(code: string): string {
+  const w = REASON_WORDS[code] ?? code.replace(/_/g, " ");
+  return w.charAt(0).toUpperCase() + w.slice(1);
+}
+
+/** Whether the signed terms themselves say this is test money (the payables inbox's payments: S6). */
+export function isTestMoney(t: Obj): boolean {
+  return t.test_money === true;
+}
+
+/**
+ * What the first screen adds for a supplier payment, from the signed terms: the supplier's own total line as the
+ * invoice wrote it, and the payout reason in words. Nothing for any other kind.
+ */
+export function firstScreenFacts(t: Obj): [string, string][] {
+  const kind = str(t.kind);
+  if (kind !== "invoice_payment" && kind !== "supplier_payment") return [];
+  return [
+    ...(t.document_total_line !== undefined ? [["On the invoice", `\u201c${str(t.document_total_line).slice(0, 120)}\u201d`] as [string, string]] : []),
+    ...(str(t.reason) ? [["Reason", reasonWords(str(t.reason))] as [string, string]] : []),
+  ];
+}
+
 /** "0,03" (a decimal comma, as many phones type it) reads as 0.03; nothing else is guessed. */
 export function normalizeAmount(input: string): string {
   const v = input.trim();
@@ -1242,10 +1267,12 @@ async function approvePage(attempt = 0): Promise<void> {
     cd.dataset.expires = o.expires_at;
     const essentials = el("section", "essentials", [
       el("p", "eyebrow need", [o.four_eyes ? "Needs your approval, and a second person's" : "Needs your approval", " · ", cd]),
+      isTestMoney(terms) ? txt("p", "testmoney", "Test money · Airwallex sandbox") : null,
       txt("h1", "what-title", f ? f.title : o.proposal_id),
       f ? el("p", "hero", [txt("span", "hero-label", f.amountLabel ?? "Amount"), txt("span", "hero-amount num", f.amount)]) : null,
       f ? el("dl", "key-facts", [
         txt("dt", "", "Payee"), el("dd", "lines", f.recipient.split("; ").map((r) => txt("span", "", r))),
+        ...firstScreenFacts(terms).flatMap(([k, v]) => [txt("dt", "", k), txt("dd", k === "On the invoice" ? "invoice-line" : "", v)]),
         txt("dt", "", "Agent"), txt("dd", "", agentOf(o.created_by, terms)),
         txt("dt", "", "Why you"), txt("dd", "why", whyYou(terms, a.policy ?? [], o.four_eyes)),
       ]) : null,
@@ -1293,7 +1320,7 @@ async function approvePage(attempt = 0): Promise<void> {
       ]),
       nots.length ? el("div", "nots", [txt("p", "eyebrow", "This is not"), el("ul", "", nots.map((n) => txt("li", "", n)))]) : null,
       o.agent_advice ? el("div", "review", [txt("p", "eyebrow", `${o.agent_advice.agent}${o.agent_advice.model ? ` (${modelWord(o.agent_advice.model)})` : ""}, advisory: ${o.agent_advice.verdict ?? (o.agent_advice.recommends ? "recommends this option" : "recommends the other option")}`), txt("p", "", o.agent_advice.text)]) : null,
-      o.review ? el("div", "review", [txt("p", "eyebrow", o.review.recommendation === "drafted" ? "Drafted by Opus from your words, each rule checked by code" : `Opus review, advisory: ${o.review.recommendation.replace(/_/g, " ")}`), txt("p", "", o.review.text)]) : null,
+      o.review ? el("div", "review", [txt("p", "eyebrow", o.review.recommendation === "drafted" ? "Drafted by Opus from your words, each rule checked by code" : reviewLabel(o.review)), txt("p", "", o.review.text)]) : null,
       f ? el("details", "all", [txt("summary", "", "All terms (exactly what is hashed)"), el("dl", "rows", f.rows.flatMap(([k, v]) => [txt("dt", "", k), txt("dd", "", v)])), termsTable(terms)]) : null,
       txt("p", "fineprint", "Your passkey signs the SHA-256 of these exact terms. This page computes that hash itself, and the runner signed what the relay sent; any change to the terms makes the signature worthless."),
     ]);

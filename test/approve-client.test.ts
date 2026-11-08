@@ -7,7 +7,7 @@ import { fingerprintOf, spkiSha256OfCose } from "../src/passkey/ledger.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
-import { agentOf, whyYou, amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, freshEnough, passkeyFingerprint, policyLoosens, rejectionHash, takeRunnerKey, takeViewKey, type PhoneProposal } from "../src/approve/client.js";
+import { agentOf, firstScreenFacts, isTestMoney, reasonWords, whyYou, amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, freshEnough, passkeyFingerprint, policyLoosens, rejectionHash, takeRunnerKey, takeViewKey, type PhoneProposal } from "../src/approve/client.js";
 import { rejectionSha256, sha256Hex } from "../src/lib/terms.js";
 import { challengeFor } from "../src/passkey/webauthn.js";
 
@@ -269,5 +269,29 @@ describe("the approval view's first screen: the agent, and why it needs the CFO"
     expect(whyYou(byId("P-0004").terms, policy, { approved_by: ["controller"] })).toBe("A supplier is paid from the Airwallex account only with your Face ID. It needs two people (four eyes). Approved so far: controller.");
     for (const f of F.proposals) expect(whyYou(f.terms, policy)).not.toMatch(/\n|cannot be approved/);
     expect(whyYou({ kind: "wire_everything" })).toMatch(/cannot be approved on the phone/);
+  });
+});
+
+describe("the first screen of an inbox payment (S6)", () => {
+  const terms = {
+    kind: "supplier_payment", invoice_no: "PC-7781 · Pinecrest Outdoor Supply LLC", vendor: "Pinecrest Outdoor Supply LLC", amount: "7480.00", currency: "USD",
+    reason: "goods_purchased", document_total_line: "Total due USD 7,480.00", document_currency: "USD", test_money: true, source: "payables_inbox",
+  };
+  it("shows the invoice's own total line and the payout reason in words", () => {
+    expect(firstScreenFacts(terms)).toEqual([
+      ["On the invoice", "“Total due USD 7,480.00”"],
+      ["Reason", "Goods purchased"],
+    ]);
+    expect(reasonWords("professional_business_services")).toBe("Professional or business services");
+    expect(reasonWords("travel_expenses")).toBe("Travel expenses");
+  });
+  it("labels test money from the signed terms only", () => {
+    expect(isTestMoney(terms)).toBe(true);
+    expect(isTestMoney({ ...terms, test_money: "yes" })).toBe(false);
+    expect(isTestMoney({ kind: "invoice_payment" })).toBe(false);
+  });
+  it("adds nothing for a payment without the inbox's fields", () => {
+    expect(firstScreenFacts({ kind: "invoice_payment", vendor: "Stockline" })).toEqual([]);
+    expect(firstScreenFacts({ kind: "policy_change" })).toEqual([]);
   });
 });
