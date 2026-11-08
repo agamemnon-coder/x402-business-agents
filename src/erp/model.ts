@@ -93,6 +93,10 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const CURRENCY = /^[A-Z]{3}$/;
 const HEX64 = /^[0-9a-f]{64}$/;
 const whole = (n: number) => Number.isSafeInteger(n);
+/** A control or invisible format character (a bidi override, a zero-width space, a terminal escape): never sent to an ERP. */
+const HIDDEN = /[\p{Cc}\p{Cf}]/u;
+const hiddenIn = (who: string, fields: Record<string, string | undefined>): string[] =>
+  Object.entries(fields).filter(([, v]) => v !== undefined && HIDDEN.test(v)).map(([k]) => `${who}: the ${k} holds control or direction characters`);
 
 function dateOk(d: string): boolean {
   return DATE.test(d) && !Number.isNaN(Date.parse(`${d}T00:00:00Z`)) && new Date(`${d}T00:00:00Z`).toISOString().slice(0, 10) === d;
@@ -108,6 +112,7 @@ export function validateVendor(v: Vendor): string[] {
   const e: string[] = [];
   if (!v.id) e.push("vendor: no id");
   if (!v.name?.trim()) e.push("vendor: no name");
+  e.push(...hiddenIn(`vendor ${v.id}`, { name: v.name, "VAT number": v.vatId }));
   if (!CURRENCY.test(v.currency)) e.push(`vendor ${v.id}: currency ${JSON.stringify(v.currency)} is not a three-letter code`);
   if (v.ibanSha256 !== undefined && !HEX64.test(v.ibanSha256)) e.push(`vendor ${v.id}: the IBAN hash is not SHA-256 hex`);
   if (v.iban !== undefined && !/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(v.iban)) e.push(`vendor ${v.id}: the IBAN is malformed`);
@@ -123,6 +128,7 @@ export function validateInvoice(inv: PurchaseInvoice): string[] {
   if (!CURRENCY.test(inv.currency)) e.push(`${who}: currency ${JSON.stringify(inv.currency)} is not a three-letter code`);
   if (!HEX64.test(inv.documentSha256)) e.push(`${who}: the document hash is not SHA-256 hex`);
   if (inv.lines.length === 0) e.push(`${who}: no lines`);
+  e.push(...hiddenIn(who, { number: inv.number, ...Object.fromEntries(inv.lines.map((l, i) => [`description of line ${i + 1}`, l.description])) }));
   const nums = [...inv.lines.flatMap((l) => [l.netCents, l.vatCents]), inv.totals.netCents, inv.totals.vatCents, inv.totals.grossCents];
   if (!nums.every(whole)) {
     e.push(`${who}: every amount must be whole cents`);

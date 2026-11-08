@@ -8,6 +8,9 @@ const RESERVED = new Set(["CON", "PRN", "AUX", "NUL", ...Array.from({ length: 9 
 /** One path segment, safe on Windows, macOS, Linux, Drive and OneDrive. The same input always gives the same output. */
 export function safeSegment(raw: string): string {
   let s = raw.normalize("NFC")
+    // Invisible format characters (a right-to-left override, a zero-width space) never reach a file name: a name that
+    // reads one way and sorts or opens another (red team round 3).
+    .replace(/\p{Cf}/gu, "")
     // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u001f\u007f<>:"/\\|?*]+/g, " ")
     .replace(/\.{2,}/g, " ")

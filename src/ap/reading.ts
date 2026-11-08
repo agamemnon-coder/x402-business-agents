@@ -6,6 +6,7 @@
 // with what the parser reads there: a model that followed a planted line, or invented a number, is not used.
 
 import { z } from "zod";
+import { skeleton } from "../policy/fraudCore.js";
 
 export interface ApReading {
   vendor: string;
@@ -364,7 +365,7 @@ export function parseApFallback(text: string): ApReading {
   const iban = ibanIn(text);
   const bic = firstMatch(text, /\b(?:BIC|SWIFT(?:\/BIC)?(?:\s+code)?)\s*:?\s*([A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)\b/).toUpperCase();
   return {
-    vendor: ls.find((l) => /\p{L}/u.test(l) && !HEADING.test(l)) ?? "",
+    vendor: cleanText(ls.find((l) => /\p{L}/u.test(l) && !HEADING.test(cleanText(l))) ?? ""),
     vat_id: firstMatch(text, /\b(?:VAT(?:\s*(?:ID|number|no\.?|reg\.?\s*no\.?))?|BTW(?:-nummer|\s*nr\.?|-id)?|USt-?IdNr\.?|UID)\s*:?\s*([A-Z]{2}[A-Z0-9]{8,12})\b/).toUpperCase(),
     invoice_no: invoiceNo,
     issue_date: issued ? readDate(issued) : "",
@@ -377,9 +378,24 @@ export function parseApFallback(text: string): ApReading {
     iban,
     bic,
     ...accountOf(text, iban, bic),
-    reference: reference || invoiceNo,
+    reference: cleanText(reference || invoiceNo),
     gl_account: "",
   };
+}
+
+/**
+ * A piece of the document's text as Purser stores and shows it (a supplier's name, a reference): no control or invisible
+ * format characters (bidi overrides, zero-width spaces, terminal escapes), single spaces, at most `max` characters (red
+ * team round 3: a right-to-left override in a supplier's name reached the vault, the ERP and the approval card).
+ */
+export function cleanText(s: string, max = 120): string {
+  return (s ?? "").replace(/[\p{Cc}\p{Cf}]/gu, "").replace(/\s+/g, " ").trim().slice(0, max).trim();
+}
+
+/** Whether a supplier's name is written in the document (letters and digits as a reader sees them, lookalikes folded). */
+export function nameInDocument(name: string, text: string): boolean {
+  const n = skeleton(name);
+  return n.length > 0 && skeleton(text).includes(n);
 }
 
 const compact = (s: string) => s.replace(/\s+/g, "").toUpperCase();
@@ -403,6 +419,8 @@ export function amountsIn(text: string): Set<string> {
  */
 export function readingCheck(r: ApReading, text: string): string | null {
   if (!MONEY.test(r.total)) return `the total ${JSON.stringify(r.total)} is not a plain amount with two decimals`;
+  // The supplier's name too: one the document does not carry is never taken from a model (red team round 3).
+  if (!nameInDocument(r.vendor, text)) return `the supplier's name ${JSON.stringify(cleanText(r.vendor, 60))} is not in the document`;
   const doc = compact(text);
   if (!r.invoice_no || !doc.includes(compact(r.invoice_no))) return `the invoice number ${JSON.stringify(r.invoice_no)} is not in the document`;
   if (!amountsIn(text).has(r.total)) return `the total ${r.total} is not in the document`;

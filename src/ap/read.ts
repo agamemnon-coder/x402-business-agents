@@ -6,7 +6,7 @@ import { audit } from "../audit/log.js";
 import type { ClaudeReader } from "../claude/reader.js";
 import { CHART } from "../config/gl.js";
 import type { DB } from "../db/open.js";
-import { apInstruction, ApReadingSchema, parseApFallback, readingCheck, type ApReading } from "./reading.js";
+import { apInstruction, ApReadingSchema, cleanText, parseApFallback, readingCheck, type ApReading } from "./reading.js";
 
 /** What the inbox needs of a reader: ClaudeReader, or a stand-in in tests. */
 export interface Asker { ask: ClaudeReader["ask"] }
@@ -16,7 +16,8 @@ export const EXPENSE_ACCOUNTS: Record<string, string> = Object.fromEntries(Objec
 
 const tidy = (r: ApReading): ApReading => ({
   ...r,
-  vendor: r.vendor.trim(), invoice_no: r.invoice_no.trim(), currency: r.currency.trim().toUpperCase(),
+  // Every text field is cleaned of control and invisible format characters and capped (red team round 3).
+  vendor: cleanText(r.vendor), invoice_no: cleanText(r.invoice_no, 60), currency: r.currency.trim().toUpperCase(), reference: cleanText(r.reference),
   iban: r.iban.replace(/\s+/g, "").toUpperCase(), bic: r.bic.replace(/\s+/g, "").toUpperCase(), account_number: r.account_number.replace(/[\s-]/g, "").toUpperCase(), routing_type: r.routing_type.trim().toLowerCase(), routing_value: r.routing_value.replace(/[\s-]/g, ""), bank_country: r.bank_country.trim().toUpperCase(), vat_id: r.vat_id.replace(/\s+/g, "").toUpperCase(),
   gl_account: r.gl_account.trim(),
 });

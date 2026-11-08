@@ -8,7 +8,10 @@ import { invoiceAlreadyHandled, proposeInvoicePayment, seedTreasury } from "../s
 import { ingestDocument, type InboxDeps } from "../src/ap/inbox.js";
 import { payApInvoice, syncPayments } from "../src/ap/pay.js";
 import type { Asker } from "../src/ap/read.js";
-import { parseApFallback, totalAmbiguity, totalLine } from "../src/ap/reading.js";
+import { readDocument } from "../src/ap/read.js";
+import { parseApFallback, readingCheck, totalAmbiguity, totalLine } from "../src/ap/reading.js";
+import { validateVendor, type Vendor } from "../src/erp/model.js";
+import { safeSegment } from "../src/vault/layout.js";
 import { apInvoice } from "../src/ap/store.js";
 import { describeTerms } from "../src/approve/client.js";
 import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAdd, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
@@ -222,5 +225,28 @@ describe("R7: a typographic apostrophe between the digits of a total", () => {
     const odd = EN.replace("Total due EUR 1,850.00", "Total due CHF 3‘400.00");
     expect(parseApFallback(odd).total).not.toBe("400.00");
     expect(totalAmbiguity(odd)).toMatch(/split/);
+  });
+});
+
+describe("R8: the supplier's name a model gives is checked and cleaned", () => {
+  const claude = (vendor: string): Asker => ({ ask: async () => ({ value: { ...parseApFallback(EN), vendor }, source: "claude", model: "test-model", note: "" }) }) as unknown as Asker;
+  it("control and bidi characters are stripped, and the name is capped at 120 characters", async () => {
+    const { reading } = await readDocument(db, claude("‮Bergtex Textil GmbH​"), EN, "a".repeat(64));
+    expect(reading.vendor).toBe("Bergtex Textil GmbH");
+    const long = parseApFallback(`‮RLO Supplier\u0007 Ltd ${"x".repeat(200)}\n${EN}`).vendor;
+    expect(long).toMatch(/^RLO Supplier Ltd x+$/);
+    expect(long.length).toBeLessThanOrEqual(120);
+  });
+
+  it("a name that is not written in the document is not taken from the model", async () => {
+    expect(readingCheck({ ...parseApFallback(EN), vendor: "Trusted Payee Ltd" }, EN)).toMatch(/supplier's name/);
+    const { reading, readBy } = await readDocument(db, claude("Trusted Payee Ltd"), EN, "b".repeat(64));
+    expect(readBy).toBe("parser");
+    expect(reading.vendor).toBe("Bergtex Textil GmbH");
+  });
+
+  it("vault folder names and the ERP's validation refuse control and bidi characters", () => {
+    expect(safeSegment("Berg‮tex​ GmbH\u0007")).toBe("Bergtex GmbH");
+    expect(validateVendor({ id: "v1", name: "Bergtex‮ GmbH", currency: "EUR" } as Vendor).join(" ")).toMatch(/control or direction/);
   });
 });
