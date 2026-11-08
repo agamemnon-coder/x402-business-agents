@@ -12,14 +12,13 @@
 //   serve [--port 4500]          the read-only page on 127.0.0.1
 // Test money only. Amounts are in each line's own currency.
 
-import express from "express";
 import { openDb } from "../db/open.js";
 import { fromCents } from "../lib/money.js";
 import { closeMonth, closeYear } from "../ledger/close.js";
 import { verifyLedger } from "../ledger/core.js";
 import { exportCsv, exportJson } from "../ledger/export.js";
 import { syncLedger } from "../ledger/feed.js";
-import { LEDGER_PAGE_CSP, ledgerPage } from "../ledger/page.js";
+import { ledgerApp } from "../ledger/serve.js";
 import { ageing, balanceSheet, cashByCurrency, profitAndLoss, trialBalance, vatOverview } from "../ledger/reports.js";
 import { stockOnHand } from "../ledger/stock.js";
 import { fileIntoLocalVault } from "../vault/build.js";
@@ -99,14 +98,8 @@ switch (cmd) {
   }
   case "serve": {
     const port = Number(flag("port") ?? process.env.KIT11_LEDGER_PORT ?? 4500);
-    const app = express();
-    app.disable("x-powered-by");
-    app.get("/", (_req, res) => {
-      res.set({ "content-security-policy": LEDGER_PAGE_CSP, "x-content-type-options": "nosniff", "referrer-policy": "no-referrer", "cache-control": "no-store" });
-      const d = new Date().toISOString().slice(0, 10);
-      res.type("html").send(ledgerPage(db, { asOf: d, quarter: thisQuarter(), year: Number(d.slice(0, 4)) }));
-    });
-    app.listen(port, "127.0.0.1", () => console.log(`Purser's books (read-only): http://127.0.0.1:${port}/`));
+    // The Host check of the payables and vault pages (src/ledger/serve.ts).
+    ledgerApp(db).listen(port, "127.0.0.1", () => console.log(`Purser's books (read-only): http://127.0.0.1:${port}/`));
     break;
   }
   default:

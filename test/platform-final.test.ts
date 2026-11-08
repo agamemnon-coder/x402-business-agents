@@ -1,6 +1,8 @@
 // The final seam review and red team round 3 on the integrated platform, each finding as the scenario that broke it.
 // All against the in-memory Airwallex stand-in: no outside call, test money.
 import { mkdtempSync, rmSync } from "node:fs";
+import { request } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -26,6 +28,7 @@ import { openDb, type DB } from "../src/db/open.js";
 import { proposalCheck, proposalRun, type ProposalLike } from "../src/hub/runs.js";
 import { lockMonth } from "../src/ledger/core.js";
 import { syncLedger } from "../src/ledger/feed.js";
+import { ledgerApp } from "../src/ledger/serve.js";
 import { cashByCurrency } from "../src/ledger/reports.js";
 import { executeInvoicePayment } from "../src/executors/invoicePayment.js";
 import { executeSupplierPayment } from "../src/executors/supplierPayment.js";
@@ -374,6 +377,26 @@ describe("L2: the cloud push carries no full account number", () => {
     expect(body).not.toContain("DE89370400440532013000");
     expect(body).not.toMatch(/"account_number":"\d{5,}"/);
     expect(body).toContain("…3000");
+  });
+});
+
+describe("L3: the books page answers only requests addressed to this machine", () => {
+  it("Host evil.example is refused; 127.0.0.1 gets the page with strict headers", async () => {
+    const server = ledgerApp(db).listen(0, "127.0.0.1");
+    await new Promise<void>((r) => server.once("listening", () => r()));
+    const port = (server.address() as AddressInfo).port;
+    const get = (host: string) => new Promise<{ status: number; csp: string }>((resolve, reject) => {
+      request({ host: "127.0.0.1", port, path: "/", headers: { host } }, (res) => { res.resume(); res.on("end", () => resolve({ status: res.statusCode ?? 0, csp: String(res.headers["content-security-policy"] ?? "") })); }).on("error", reject).end();
+    });
+    try {
+      expect((await get("evil.example")).status).toBe(403);
+      expect((await get(`evil.example:${port}`)).status).toBe(403);
+      const ok = await get(`127.0.0.1:${port}`);
+      expect(ok.status).toBe(200);
+      expect(ok.csp).toContain("default-src");
+    } finally {
+      server.close();
+    }
   });
 });
 
