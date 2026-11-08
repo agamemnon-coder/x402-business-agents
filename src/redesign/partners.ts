@@ -109,7 +109,7 @@ export function metalStoryHtml(st: MetalStory): string {
   const p = st.payments, r = st.refusal, x = st.replace;
   return [
     block("shield-check", "", `${st.mandates.length} mandates on chain, one per agent`, esc("cap per payment, on the company's account"),
-      st.mandates.map((m) => ext(m.proof, `${AGENT_NAME(m.agent)} ${m.cap}${m.how === "bound" ? "" : ", a payment under it"}`))),
+      st.mandates.map((m) => ext(m.proof, `${AGENT_NAME(m.agent)} ${m.cap}${m.how === "bound" ? ", after Face ID" : ", a payment under it"}`))),
     block("receipt", "", `${p.total} Metal payments, each its own transaction`, esc(`${p.sales} sales · ${p.purchases} supplier purchases · ${p.refunds} refunds · ${p.sweeps} sweep`), [ext(p.account), ext(p.checked)]),
     ...(r ? [block("ban", "bad", `#${r.seq} refused on chain`, `${esc(`${r.amount} over the ${r.cap} cap`)}: <code>${esc(r.code)}</code>; nothing moved`, [ext(r.proof)], refusalNote(r))] : []),
     ...(x ? [block("scan-face", "ok", `Mandates replaced after Face ID`, esc(`${x.proposal}: the CFO's Face ID + a labelled test passkey${x.revoked ? `; #${x.revoked.seq} on the old mandate: ${x.revoked.code}` : ""}`),
@@ -199,7 +199,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
     // Under it, how a VIC purchase runs (7 Nov): seven steps, purchase B's ids, C's branch (src/redesign/vicFlow.ts).
     underTop: airi ? vicFlowBlock() + vic2RunBlock(undefined, { fold: false }) : "",
     title: "Visa TAP", description: "The Sourcing agent signs its card checkout with Visa's Trusted Agent Protocol before its Airwallex card pays.",
-    logo: LOGO.visa, h1: "The agent signs before it pays", proofHash: "visa",
+    logo: LOGO.visa, h1: "The agent signs before it pays", proofHash: "airi-run",
     picture: [node("package", "Agent signs", buy?.model ? `Sourcing · Claude ${family(buy.model)}` : "TAP signature"), arrow,
       node("shield-check", own ? "Both signatures verified" : "Reference verifier", own ? "by our layer, in this run" : `Visa's, commit ${tap?.commit ?? "16d59bd"}`), arrow,
       node("credit-card", buy ? `€${buy.amount} paid` : "Card pays", own ? `Airwallex card ····${own.last4}` : "Airwallex card", "ok"), arrow,

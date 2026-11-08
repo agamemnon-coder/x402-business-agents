@@ -375,7 +375,7 @@ function Stage(root, run) {
     if (ev.k === "say" || ev.k === "msg") { speak(ev, sentences, instant); return Math.min(6500, 2600 + first(ev.text, sentences).length * 22); }
     if (ev.k === "money") {
       var rail = (ev.rail === "metal" ? "Metal · " + ev.via : "Airwallex · " + ev.via) + (ev.run ? " · " + ev.run : "");
-      caption(rail, (amount(ev) ? amount(ev) + " · " : "") + ev.what + ": " + result(ev) + ".", ev.agent);
+      caption(rail, (amount(ev) ? amount(ev) + " · " : "") + ev.what + ": " + result(ev).replace(/[.]$/, "") + ".", ev.agent);
       move(ev, instant); return ev.refused ? 3200 : 2200;
     }
     if (ev.k === "mandate") {

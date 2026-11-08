@@ -30,7 +30,7 @@ export function visibleWords(html: string): number {
 const allText = (html: string) => decode(html.replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " "));
 
 describe("the site after v4", () => {
-  it("keeps every page within its text budget (Home 195 with the three sentences and both awards; partner pages at most 150, /metal 175 with the explorer note, /airwallex 365 with its read-back, awx-1, the Airi run and the second Airi run's heading, /visa 465 with the Airi run on top, the VIC flow under it and the second Airi run under that)", () => {
+  it("keeps every page within its text budget (Home 195 with the three sentences and both awards; partner pages at most 150, /metal 180 with the explorer note and the mandates replaced after Face ID, /airwallex 365 with its read-back, awx-1, the Airi run and the second Airi run's heading, /visa 465 with the Airi run on top, the VIC flow under it and the second Airi run under that)", () => {
     // Proof: 480 since 4 Nov, for the TAP run's decline on its own line below the stop figure (Max).
     // Home: 600 since 6 Nov, for the three sentences under the heading, the Kit 11 line and the one caveat line (jury review, #1, #7).
     // Proof 520 and Airwallex 190 since 6 Nov, for Airwallex read back (section B): the hash the CFO signed beside the one
@@ -59,7 +59,7 @@ describe("the site after v4", () => {
     // step it is, its title, one short line and purchase B's id or value, and C's branch off step 2 (100 words; 372 as built).
     // Home: 195 since Visa's word on the VIC run (7 Nov): the award pill reads "entered for the Metal Award and the Visa
     // Award", four words more (192 as built).
-    const budget: Record<string, number> = { home: 195, watch: 125, try: 180, proof: 560, metal: 175, airwallex: 365, visa: 465, claude: 150, notFound: 40 };
+    const budget: Record<string, number> = { home: 195, watch: 125, try: 180, proof: 560, metal: 180, airwallex: 365, visa: 465, claude: 150, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 
