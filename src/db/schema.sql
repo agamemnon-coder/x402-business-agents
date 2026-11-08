@@ -783,6 +783,8 @@ CREATE TABLE IF NOT EXISTS payee_adds (
   source TEXT,
   requested_by TEXT NOT NULL,
   verification_json TEXT,
+  -- The full bank details for the route (src/payouts/routes.ts): country, currency, method, IBAN or account and routing.
+  details_json TEXT,
   proposal_id TEXT,
   status TEXT NOT NULL CHECK (status IN ('REQUESTED', 'VERIFIED', 'PROPOSED', 'APPLIED')),
   created_at TEXT NOT NULL

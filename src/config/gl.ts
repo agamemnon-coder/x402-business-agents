@@ -32,6 +32,7 @@ export const CHART: Record<string, string> = {
 export const AP_CHART: Record<string, string> = {
   "1510": "Input VAT receivable (supplier invoices)",
   "2100": "Accounts payable (supplier invoices)",
+  "1203": "Bank: Airwallex, other currencies (one balance per currency)",
 };
 
 export const COST_CENTRES: Record<Agent, string> & Record<string, string> = {

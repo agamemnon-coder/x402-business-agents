@@ -68,15 +68,16 @@ describe("a new supplier", () => {
     expect(apInvoice(db, id)!.status).toBe("needs_vendor");
     approve(p.proposal_id);
     await executePayeeAdd(db, awx, p.proposal_id, { now: () => now }, now);
-    expect(awx.beneficiaries.map((b) => b.iban)).toContain("DE02120300000000202051");
+    expect(awx.payoutBeneficiaries.map((b) => b.bank.iban)).toContain("DE02120300000000202051");
     expect(db.prepare("SELECT name, status FROM beneficiaries WHERE name = 'Lagerhaus Nord GmbH'").get()).toEqual({ name: "Lagerhaus Nord GmbH", status: "ACTIVE" });
     expect(apInvoice(db, id)!.status).toBe("ready");
   });
 
-  it("refuses a supplier already on file, a name that looks like one, an account this build cannot add, and a bad IBAN", () => {
+  it("refuses a supplier already on file, a name that looks like one, a country without a payout guide, and a bad IBAN", () => {
     expect(() => requestPayeeAdd(db, { vendor: "Bergtex Textil GmbH", iban: "DE02120300000000202051", bic: "BYLADEM1001", source: null }, "treasury", now)).toThrow(/already a supplier on file/);
     expect(() => requestPayeeAdd(db, { vendor: "Bergtex Textil GmbB", iban: "DE02120300000000202051", bic: "BYLADEM1001", source: null }, "treasury", now)).toThrow(/looks like/);
-    expect(() => requestPayeeAdd(db, { vendor: "Zeeland Verpakkingen B.V.", iban: "NL91ABNA0417164300", bic: "ABNANL2A", source: null }, "treasury", now)).toThrow(/German \(DE\)/);
+    // A country Purser has no payout guide for yet (Switzerland) is refused with the reason; nothing is requested.
+    expect(() => requestPayeeAdd(db, { vendor: "Alpen Garn AG", iban: "CH9300762011623852957", bic: "POFICHBEXXX", currency: "CHF", source: null }, "treasury", now)).toThrow(/no payout guide for bank country CH/);
     expect(() => requestPayeeAdd(db, { vendor: "Lagerhaus Nord GmbH", iban: "DE02120300000000202052", bic: "BYLADEM1001", source: null }, "treasury", now)).toThrow(/checksum/);
   });
 

@@ -5,7 +5,7 @@
 
 import { randomUUID } from "node:crypto";
 import { Airwallex, fromEnv } from "./client.js";
-import type { AirwallexRail, Balance, Beneficiary, Conversion, Currency, Deposit, NewBeneficiary, NewTransfer, Quote, SandboxSim, Transfer, MarketRate } from "./port.js";
+import type { AirwallexRail, AnyQuote, Balance, Beneficiary, Conversion, Currency, Deposit, NewBeneficiary, NewPayoutBeneficiary, NewPayoutTransfer, NewTransfer, PayoutRail, Quote, SandboxSim, Transfer, MarketRate } from "./port.js";
 import { fromCents } from "../lib/money.js";
 
 /** Major units (number or numeric string) -> integer cents. Refuses negatives and anything finer than a cent. */
@@ -60,7 +60,7 @@ export function onlyRequestId<T extends { request_id?: unknown }>(r: { items?: T
   return r.items[0];
 }
 
-export class AirwallexRest implements AirwallexRail, SandboxSim {
+export class AirwallexRest implements AirwallexRail, SandboxSim, PayoutRail {
   private usdAccount: string | undefined;
 
   constructor(private readonly api: Airwallex) {}
@@ -217,10 +217,78 @@ export class AirwallexRest implements AirwallexRail, SandboxSim {
   async transitionTransfer(id: string, to: "SENT" | "PAID" | "FAILED", failureType?: string): Promise<Transfer> {
     return toTransfer(await this.api.call<AwxTransfer>("POST", `/simulation/transfers/${id}/transition`, { next_status: to, ...(failureType ? { failure_type: failureType } : {}) }));
   }
+
+  // ---- Payables in any currency (PayoutRail). Cents assume two decimals: src/payouts/routes.ts pays no other currency.
+
+  async balancesAll(): Promise<Record<string, Balance>> {
+    const rows = await this.api.call<{ currency: string; available_amount?: number; pending_amount?: number; reserved_amount?: number }[]>(
+      "GET", "/balances/current", undefined, { account_type: "cash" },
+    );
+    const out: Record<string, Balance> = {};
+    for (const r of rows) out[r.currency] = { availableCents: cents(r.available_amount ?? 0), pendingCents: cents(r.pending_amount ?? 0), reservedCents: cents(r.reserved_amount ?? 0) };
+    return out;
+  }
+
+  async currentRateAny(a: { buyCurrency: string; sellCurrency: string; buyAmountCents: number }): Promise<MarketRate> {
+    return this.currentRate(a as { buyCurrency: Currency; sellCurrency: Currency; buyAmountCents: number });
+  }
+
+  async createQuoteAny(a: { buyCurrency: string; sellCurrency: string; buyAmountCents: number; validity: "MIN_1" | "MIN_15" | "MIN_30" | "HR_1" }): Promise<AnyQuote> {
+    return this.createQuote(a as { buyCurrency: Currency; sellCurrency: Currency; buyAmountCents: number; validity: "MIN_1" | "MIN_15" | "MIN_30" | "HR_1" });
+  }
+
+  async createConversionAny(a: { requestId: string; quote: AnyQuote; approvalSha256: string }): Promise<Conversion> {
+    return this.createConversion({ ...a, quote: a.quote as Quote });
+  }
+
+  /**
+   * POST /beneficiaries/create with bank_details for the route (create-beneficiaries.md: beneficiary.bank_details,
+   * transfer_methods; the US example uses account_number, account_routing_type1/value1 and local_clearing_system).
+   * Airwallex's schema for the country, currency and method is asked first, and /beneficiaries/validate runs before
+   * the create (validate-a-beneficiary.md), as for the Kit 11 payees.
+   */
+  async createPayoutBeneficiary(b: NewPayoutBeneficiary): Promise<{ id: string }> {
+    const k = b.bank;
+    const bank_details: Record<string, string> = { account_currency: k.currency, account_name: k.accountName, bank_country_code: k.country };
+    if (k.iban) bank_details.iban = k.iban;
+    if (k.accountNumber) bank_details.account_number = k.accountNumber;
+    if (k.routingType && k.routingValue) { bank_details.account_routing_type1 = k.routingType; bank_details.account_routing_value1 = k.routingValue; }
+    if (k.swiftCode) bank_details.swift_code = k.swiftCode;
+    if (b.clearing) bank_details.local_clearing_system = b.clearing;
+    const body = {
+      beneficiary: {
+        entity_type: "COMPANY", company_name: b.name, type: "BANK_ACCOUNT",
+        address: { country_code: b.address.countryCode, street_address: b.address.street, city: b.address.city, postcode: b.address.postcode },
+        bank_details,
+      },
+      nickname: `${b.name} ${k.currency} ${b.method}`,
+      transfer_methods: [b.method],
+    };
+    const schema = await this.api.call<{ schema: Record<string, { required?: boolean; relevant?: boolean; type?: string }> }>("POST", "/beneficiaries/schema",
+      { bank_country_code: k.country, account_currency: k.currency, payment_method: b.method, entity_type: "COMPANY", ...(b.clearing ? { local_clearing_system: b.clearing } : {}) });
+    const missing = Object.entries(schema.schema)
+      .filter(([key, v]) => v.required && v.relevant && v.type !== "object" && key.startsWith("create_beneficiary_request."))
+      .map(([key]) => key.slice("create_beneficiary_request.".length))
+      .filter((path) => path.split(".").reduce<unknown>((o, key) => (o && typeof o === "object" ? (o as Record<string, unknown>)[key] : undefined), body) === undefined);
+    if (missing.length) throw new Error(`Airwallex's beneficiary schema for ${k.country}, ${k.currency}, ${b.method} needs ${missing.join(", ")}`);
+    await this.api.call("POST", "/beneficiaries/validate", body);
+    const r = await this.api.call<{ id: string }>("POST", "/beneficiaries/create", body);
+    return { id: r.id };
+  }
+
+  /** POST /transfers/create (create-a-transfer.md: transfer_method LOCAL or SWIFT, transfer_currency, source_currency). */
+  async createPayoutTransfer(t: NewPayoutTransfer): Promise<Transfer> {
+    const r = await this.api.call<AwxTransfer>("POST", "/transfers/create", {
+      request_id: t.requestId, beneficiary_id: t.beneficiaryId, transfer_amount: fromCents(t.amountCents), transfer_currency: t.currency,
+      source_currency: t.sourceCurrency, transfer_method: t.method, reference: t.reference, reason: t.reason,
+      metadata: { approval_sha256: t.approvalSha256 },
+    });
+    return toTransfer(r);
+  }
 }
 
 /** The adapter when the sandbox keys are set; null otherwise, so callers stop instead of pretending. */
-export async function airwallexFromEnv(): Promise<{ rail: AirwallexRail; sim: SandboxSim } | null> {
+export async function airwallexFromEnv(): Promise<{ rail: AirwallexRail & PayoutRail; sim: SandboxSim } | null> {
   const cfg = fromEnv();
   if (!cfg) return null;
   const rest = new AirwallexRest(new Airwallex(cfg));

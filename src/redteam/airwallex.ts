@@ -1,7 +1,7 @@
 // In-memory stand-in for the Airwallex sandbox, for tests, the red team and the evals. It never reaches a live run.
 
 import { AirwallexAmbiguous } from "../airwallex/client.js";
-import type { AirwallexRail, Balance, Beneficiary, Conversion, Currency, Deposit, NewBeneficiary, NewTransfer, Quote, SandboxSim, Transfer, MarketRate } from "../airwallex/port.js";
+import type { AirwallexRail, AnyQuote, Balance, Beneficiary, Conversion, Currency, Deposit, NewBeneficiary, NewPayoutBeneficiary, NewPayoutTransfer, NewTransfer, PayoutRail, Quote, SandboxSim, Transfer, MarketRate } from "../airwallex/port.js";
 
 /**
  * The stand-in's SWIFT fee for a EUR payout: the one constant every simulated rail charges (FakeAirwallex here, the
@@ -16,8 +16,8 @@ import type { AirwallexRail, Balance, Beneficiary, Conversion, Currency, Deposit
  */
 export const SANDBOX_SWIFT_FEE_CENTS = 1340;
 
-export class FakeAirwallex implements AirwallexRail, SandboxSim {
-  bal: Record<Currency, Balance> = { USD: { availableCents: 0, pendingCents: 0, reservedCents: 0 }, EUR: { availableCents: 3_500_000, pendingCents: 0, reservedCents: 0 } };
+export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
+  bal: Record<Currency, Balance> & Record<string, Balance> = { USD: { availableCents: 0, pendingCents: 0, reservedCents: 0 }, EUR: { availableCents: 3_500_000, pendingCents: 0, reservedCents: 0 } };
   deposits: (Deposit & { createdAt: string })[] = [];
   quotes = new Map<string, Quote>();
   conversions: Conversion[] = [];
@@ -32,7 +32,7 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim {
   rate = "1.0850";
   n = 0;
 
-  async balances() { this.calls.push("balances"); return structuredClone(this.bal); }
+  async balances() { this.calls.push("balances"); return structuredClone({ USD: this.bal.USD, EUR: this.bal.EUR }); }
   async usdGlobalAccountId() { return "ga_usd_1"; }
   async findDepositsByReference(reference: string) { return this.deposits.filter((d) => d.reference === reference); }
   async simulateDeposit(a: { globalAccountId: string; amountCents: number; reference: string; payerName: string }): Promise<Deposit> {
@@ -99,8 +99,81 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim {
     this.calls.push(`transition:${to}`);
     const t = this.transfers.find((x) => x.id === id)!;
     t.status = to;
-    if (to === "PAID") this.bal.EUR.reservedCents -= t.amountCents + SANDBOX_SWIFT_FEE_CENTS;
+    if (to === "PAID") this.balOf(t.currency).reservedCents -= t.amountCents + (t.fee?.cents ?? SANDBOX_SWIFT_FEE_CENTS);
     if (to === "FAILED") { t.failureType = failureType ?? "BENEFICIARY_BANK_RETURNED"; t.status = "CANCELLED"; }
     return { ...t };
+  }
+
+  // ---- Payables in any currency (PayoutRail). Rates are sell units per buy unit, by "BUY/SELL"; a test may change them.
+  ratesAny: Record<string, string> = { "USD/EUR": "0.9220", "GBP/EUR": "1.1700", "CNY/EUR": "0.1300", "TRY/EUR": "0.0265", "EUR/USD": "1.0850", "USD/GBP": "0.7880" };
+  /** The market's rate by pair, when a test wants the locked quote to differ from it. */
+  marketRatesAny: Record<string, string> = {};
+  payoutBeneficiaries: (NewPayoutBeneficiary & { id: string })[] = [];
+  /** The next beneficiary create is refused as Airwallex's validate would refuse it. */
+  refuseNextBeneficiary: string | null = null;
+  /** The stand-in's fee per method and currency, charged to the payer in the transfer's currency (no real fee data). */
+  payoutFeeCents: Record<string, number> = { "SWIFT:EUR": SANDBOX_SWIFT_FEE_CENTS, "SWIFT:USD": 1500, "SWIFT:GBP": 1200, "SWIFT:CNY": 10_000, "SWIFT:TRY": 45_000 };
+
+  balOf(currency: string): Balance { return (this.bal[currency] ??= { availableCents: 0, pendingCents: 0, reservedCents: 0 }); }
+  async balancesAll() { this.calls.push("balancesAll"); return structuredClone(this.bal) as Record<string, Balance>; }
+  private rateOf(buy: string, sell: string): string {
+    const r = this.ratesAny[`${buy}/${sell}`];
+    if (!r) throw Object.assign(new Error(`currency_pair_invalid: ${buy}/${sell}`), { code: "currency_pair_invalid" });
+    return r;
+  }
+  async currentRateAny(a: { buyCurrency: string; sellCurrency: string; buyAmountCents: number }): Promise<MarketRate> {
+    this.calls.push("currentRateAny");
+    const rate = this.marketRatesAny[`${a.buyCurrency}/${a.sellCurrency}`] ?? this.rateOf(a.buyCurrency, a.sellCurrency);
+    return { rate, sellAmountCents: Math.ceil(a.buyAmountCents * Number(rate)), at: new Date(this.clock()).toISOString() };
+  }
+  async createQuoteAny(a: { buyCurrency: string; sellCurrency: string; buyAmountCents: number; validity: string }): Promise<AnyQuote> {
+    this.calls.push("createQuoteAny");
+    const ms = { MIN_1: 60_000, MIN_15: 900_000, MIN_30: 1_800_000, HR_1: 3_600_000 }[a.validity]!;
+    const rate = this.rateOf(a.buyCurrency, a.sellCurrency);
+    const q: AnyQuote = {
+      quoteId: `q_${++this.n}`, buyCurrency: a.buyCurrency, sellCurrency: a.sellCurrency, buyAmountCents: a.buyAmountCents,
+      sellAmountCents: Math.ceil(a.buyAmountCents * Number(rate)), clientRate: rate,
+      validFrom: new Date(this.clock()).toISOString(), validTo: new Date(this.clock() + ms).toISOString(),
+    };
+    this.quotes.set(q.quoteId, q as unknown as Quote);
+    return q;
+  }
+  async createConversionAny(a: { requestId: string; quote: AnyQuote; approvalSha256: string }): Promise<Conversion> {
+    this.calls.push("createConversionAny");
+    if (this.conversions.some((c) => c.requestId === a.requestId)) throw Object.assign(new Error("duplicate request_id"), { code: "duplicate_request" });
+    const q = this.quotes.get(a.quote.quoteId) as unknown as AnyQuote | undefined;
+    if (!q) throw Object.assign(new Error("unknown quote"), { code: "invalid_quote" });
+    if (Date.parse(q.validTo) <= this.clock()) throw Object.assign(new Error("expired"), { code: "expired_quote" });
+    if (this.balOf(q.sellCurrency).availableCents < q.sellAmountCents) throw Object.assign(new Error("balance_insufficient"), { code: "balance_insufficient" });
+    this.balOf(q.sellCurrency).availableCents -= q.sellAmountCents;
+    this.balOf(q.buyCurrency).availableCents += q.buyAmountCents;
+    const c = { conversionId: `conv_${++this.n}`, requestId: a.requestId, quoteId: q.quoteId, status: "SETTLED", buyAmountCents: q.buyAmountCents, sellAmountCents: q.sellAmountCents };
+    this.conversions.push(c);
+    this.conversionMetadata.set(c.conversionId, a.approvalSha256);
+    return c;
+  }
+  async createPayoutBeneficiary(b: NewPayoutBeneficiary): Promise<{ id: string }> {
+    this.calls.push("createPayoutBeneficiary");
+    if (this.refuseNextBeneficiary) { const code = this.refuseNextBeneficiary; this.refuseNextBeneficiary = null; throw Object.assign(new Error(`validation_failed: ${code}`), { code: "validation_failed" }); }
+    const ben = { ...structuredClone(b), id: `ben_${++this.n}` };
+    this.payoutBeneficiaries.push(ben);
+    return { id: ben.id };
+  }
+  async createPayoutTransfer(t: NewPayoutTransfer): Promise<Transfer> {
+    this.calls.push("createPayoutTransfer");
+    if (this.transfers.some((x) => x.requestId === t.requestId)) throw Object.assign(new Error("duplicate request_id"), { code: "duplicate_request" });
+    if (t.sourceCurrency !== t.currency) throw Object.assign(new Error("the stand-in pays from the same currency only"), { code: "source_currency_unsupported" });
+    const ben = this.payoutBeneficiaries.find((b) => b.id === t.beneficiaryId);
+    if (!ben) throw Object.assign(new Error("beneficiary_not_found"), { code: "beneficiary_not_found" });
+    if (ben.bank.currency !== t.currency) throw Object.assign(new Error("transfer_currency must match account_currency"), { code: "transfer_currency_unsupported" });
+    const fee = this.payoutFeeCents[`${t.method}:${t.currency}`] ?? 0;
+    const b = this.balOf(t.sourceCurrency);
+    if (b.availableCents < t.amountCents + fee) throw Object.assign(new Error("balance_insufficient"), { code: "balance_insufficient" });
+    b.availableCents -= t.amountCents + fee;
+    b.reservedCents += t.amountCents + fee;
+    const tr = { id: `tr_${++this.n}`, requestId: t.requestId, status: "PROCESSING", amountCents: t.amountCents, currency: t.currency as Currency, metadata: t.approvalSha256, reference: t.reference, fee: { cents: fee, currency: t.currency }, beneficiaryId: t.beneficiaryId };
+    this.transfers.push(tr);
+    if (this.loseNextTransferAnswer) { this.loseNextTransferAnswer = false; throw new AirwallexAmbiguous("/transfers/create", new Error("socket hang up")); }
+    return { ...tr };
   }
 }

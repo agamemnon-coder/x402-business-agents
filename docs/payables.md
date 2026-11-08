@@ -40,26 +40,91 @@ paying is off.
    number, the total and the IBAN are written in the document and agree with the parser; else the parser's reading is
    used and the audit log says why. The account is accepted only from the chart.
 4. **Checked.** Blocks: a duplicate (also a reminder for an invoice already filed or paid), possible fraud (the existing
-   check: changed bank details, a lookalike name, another account holder), an IBAN that fails its checksum, a total that
-   is not subtotal plus tax. A person: a scan without text, a missing field, a currency other than EUR, a credit note, a
-   receipt. Waits: a supplier not on file. Warns: an amount over twice the supplier's usual, a passed due date.
+   check: changed bank details, a lookalike name, another account holder), an IBAN that fails its checksum, an account
+   number or routing code that fails its country's format (an ABA checksum, an 8-digit UK account, a 6-digit sort
+   code), a total that is not subtotal plus tax. A person: a scan without text, a missing field, a currency Purser cannot
+   pay or a bank country it has no payout guide for, a credit note, a receipt. Waits: a supplier not on file. Warns: an amount over twice the supplier's usual, a passed due date.
 5. **A note.** On every irregular invoice Claude Opus writes a short note for the person who decides (the code's own
    reasons without a key). Advisory only: it is shown on the page and with the payment proposal and never changes a
    status.
 6. **A new supplier** is requested from its invoice, verified by a person on a contact already on file (with its
    address), and approved by the CFO with Face ID (`payee_add`; two people with four eyes on). Only then is it added at
    Airwallex, and its waiting invoices are checked again.
-7. **Paid.** A ready EUR invoice goes through the existing invoice payment (reserve floors, FX for the shortfall, the
-   fee reserve) and waits for the CFO's Face ID on the phone. It is marked paid once Airwallex's transfer is PAID.
-8. **Booked.** On receipt, once checked clean: expense and input VAT against accounts payable. When paid: accounts
-   payable against the bank, and the SWIFT fee Airwallex charged. Debits equal credits in every entry.
+7. **Paid.** A ready invoice is paid in its own currency (see below) and waits for the CFO's Face ID on the phone. It
+   is marked paid once Airwallex's transfer is PAID.
+8. **Booked.** On receipt, once checked clean: expense and input VAT against accounts payable, in the invoice's
+   currency. When paid: accounts payable against that currency's bank account (1200 EUR, 1201 USD, 1202 GBP, 1203 the
+   others), the conversion if one was needed (the sold currency out and the bought currency in through money in
+   transit, 1590, with the rate and quote in the memo), and the fee Airwallex charged, in the currency it was charged
+   in. Debits equal credits in every entry and in every currency.
 
-## What is real, what is not in v1
+## Paying suppliers abroad
+
+Design: [superpowers/specs/2026-11-08-fx-payouts-design.md](superpowers/specs/2026-11-08-fx-payouts-design.md). Each
+rule cites the Airwallex guide it comes from in `src/payouts/routes.ts`.
+
+| Bank country | Paid by | Account details |
+| --- | --- | --- |
+| United States | USD by ACH (LOCAL); other currencies by SWIFT | account number and ABA routing number (checksum checked); SWIFT: account number and BIC |
+| United Kingdom | GBP by Faster Payments (LOCAL); EUR to a GB IBAN (LOCAL); others by SWIFT | 8-digit account and 6-digit sort code, or a GB IBAN |
+| China | CNY and others by SWIFT only | account number (8 to 34 characters) and BIC |
+| Turkey | TRY to a TR IBAN (LOCAL); others by SWIFT | TR IBAN (26 characters, checksum checked) |
+| Netherlands | EUR to an NL IBAN (LOCAL); others by SWIFT | NL IBAN (18 characters, checksum checked) |
+| Germany | EUR to a DE IBAN (LOCAL); others by SWIFT | DE IBAN (22 characters, checksum checked) |
+
+- **Currencies:** the two-decimal currencies SWIFT carries at Airwallex: AUD, CAD, CHF, CNY, CZK, DKK, EUR, GBP, HKD,
+  HUF, ILS, NOK, NZD, PLN, RON, SEK, SGD, THB, TRY, USD, ZAR. Any other currency (JPY has no decimals) goes to a person.
+- **A new supplier** in any of these countries keeps the three steps: requested from its invoice, verified by a person
+  on a contact already on file, and approved by the CFO with Face ID, who sees the full account number and routing code.
+  The fraud checks are unchanged and now compare every account on file, IBAN or not: an invoice from a known supplier
+  with another account is blocked as possible fraud.
+- **The plan:** paid from the balance Airwallex holds in the invoice's currency. If that balance is short, only the
+  shortfall plus the fee reserve is bought from the funding currency (`payout.funding_currency`, EUR by default), on a
+  locked quote no dearer than the market's rate plus the existing markup cap, and only from money above the funding
+  currency's floor and commitments. Each currency's floor is `floor.<CUR>` (EUR and USD keep `eur_floor` and
+  `usd_floor`); each method's fee reserve is `fee_reserve.<LOCAL|SWIFT>.<CUR>`.
+- **What the CFO signs** (`supplier_payment`): amount and currency, the method, the masked account, the fee reserve,
+  and the conversion (sell, buy, rate, quote expiry). The executor checks the approved hash, the quote's expiry, the
+  floors and the supplier again before anything moves; a lost answer from Airwallex is resolved by looking the request
+  up, never by sending again.
+- The Kit 11 EUR invoice payment (`invoice_payment`) is unchanged: suppliers added before this change are paid as
+  before.
+
+## What still needs a person
+
+- An invoice in a currency Purser cannot pay, or to a bank country with no payout guide in `src/payouts/routes.ts`
+  (adding a country is a table row plus its guide's rules and a test).
+- CNY to a Chinese account by LOCAL: Airwallex needs declarant information and the names in Chinese characters, which
+  an invoice does not give. Purser pays CNY by SWIFT instead.
+- Floors and fee reserves for currencies other than EUR and USD are settings, not yet rules in the CFO's policy that
+  only change with Face ID.
+
+## To confirm in the Airwallex sandbox
+
+Points the documentation leaves open; each is a setting or a single line, not a redesign.
+
+1. **Fee reserves.** The SWIFT defaults (EUR 20, USD 25, GBP 20, CHF 25, CNY 200, TRY 1,000, others 25) are safety
+   margins, not Airwallex's fees, and LOCAL is assumed to cost nothing. Check the fees charged on sandbox payouts and
+   set `fee_reserve.*` to match.
+2. **Fee currency.** The fake charges the fee in the transfer's currency; check whether Airwallex charges it there or in
+   the account's settlement currency, and book accordingly.
+3. **UK by SWIFT.** The UK guide lists a GB IBAN for SWIFT with no `swift_code` field; confirm a SWIFT payout to a GB
+   IBAN is accepted without a BIC.
+4. **NL account currency.** The Netherlands guide's "Local EUR payout" table permits all 22 currencies for
+   `account_currency` (the German and UK guides say "Should be `EUR`"); Purser sends EUR only. Confirm that is what the
+   sandbox expects.
+5. **Address country.** The beneficiary's address country is taken to be the bank's country; confirm Airwallex accepts
+   that for a supplier whose office and bank are in different countries, or ask for the address country at
+   verification.
+6. **Schema check.** `createPayoutBeneficiary` asks `/beneficiaries/schema` and `/beneficiaries/validate` before
+   creating; confirm both answer for each route in the table above.
+
+## What is real, what is not yet
 
 - Real: the reading and checks, the documents and the ledger, the payments in the Airwallex sandbox, Face ID.
-- Not in v1: paying without Face ID under a limit; reading scans (OCR); a live mailbox; direct links to bookkeeping
-  packages; paying in currencies other than EUR; adding non-German accounts at Airwallex (the existing payee code's
-  limit); several approvers per supplier.
+- Not yet: paying without Face ID under a limit; reading scans (OCR); a live mailbox; direct links to bookkeeping
+  packages; several approvers per supplier; FX booking for the Kit 11 EUR invoice payment's conversions (they are in
+  the treasury ledger, not in the payables books).
 
 ## Where the next parts plug in
 
@@ -69,5 +134,5 @@ paying is off.
   fails is logged and never stops the inbox or a payment.
 - **An API for companies:** the page's JSON routes are under `/api/payables/...` (`src/servers/payables.ts`); the same
   handlers can sit behind the authenticated agent API, with `source: "api"` on `ingestDocument`.
-- **Accounts:** the payables accounts (1510 input VAT, 2100 accounts payable) are in `AP_CHART`, outside the chart the
-  T:0 sink mirrors, until T:0 has them.
+- **Accounts:** the payables accounts (1510 input VAT, 2100 accounts payable, 1203 other-currency balances) are in
+  `AP_CHART`, outside the chart the T:0 sink mirrors, until T:0 has them.

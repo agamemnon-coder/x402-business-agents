@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import express from "express";
 import { rateLimit } from "express-rate-limit";
 import type { Request, Response } from "express";
-import type { AirwallexRail } from "../airwallex/port.js";
+import type { AirwallexRail, PayoutRail } from "../airwallex/port.js";
 import { apJournal, invoicesCsv, journalCsv } from "../ap/books.js";
 import { ingestDocument, recheck, type InboxDeps } from "../ap/inbox.js";
 import { insights } from "../ap/insights.js";
@@ -21,7 +21,7 @@ import type { DB } from "../db/open.js";
 export interface PayablesOptions {
   inbox: InboxDeps;
   /** The Airwallex sandbox; null without keys (paying and adding a supplier then answer 503). */
-  rail: AirwallexRail | null;
+  rail: (AirwallexRail & PayoutRail) | null;
   /** Requests per window per client; the default suits one person working on the page. */
   rateLimit?: { windowMs: number; limit: number };
 }

@@ -255,6 +255,36 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
     };
   }
 
+  if (kind === "supplier_payment") {
+    // A supplier paid in the invoice's own currency on its route (src/payouts/plan.ts).
+    const cur = str(t.currency);
+    const c = isObj(t.conversion) ? t.conversion : null;
+    const fx = c ? `${str(c.sell_currency)} ${money(c.sell_amount)} into ${str(c.buy_currency)} ${money(c.buy_amount)}` : null;
+    const recipient = `${str(t.beneficiary_name)}, ${str(t.account)}`;
+    const how = `${str(t.method)}${str(t.clearing) ? ` (${str(t.clearing)})` : ""}`;
+    return {
+      approvable: true,
+      title: `Pay invoice ${str(t.invoice_no)}`,
+      sentence: `Pay ${str(t.vendor)} ${cur} ${money(t.amount)} for invoice ${str(t.invoice_no)} by ${how}${fx ? `, after converting ${fx}` : `, from the ${cur} balance`}.`,
+      amount: `${cur} ${money(t.amount)}`,
+      margin: null,
+      recipient,
+      rows: [
+        ["Amount", `${cur} ${money(t.amount)}`],
+        ["Fee reserve", `at most ${cur} ${money(t.fee_reserve)} held back (the real fee is recorded)`],
+        ["Pays", recipient],
+        ["Invoice", `${str(t.invoice_no)} from ${str(t.vendor)}, reference ${str(t.reference)}`],
+        ["Method", how],
+        ["Conversion", fx ? `${fx} at rate ${str(c!.client_rate)}, quote valid until ${str(c!.valid_to)}` : `none: paid from the ${cur} balance`],
+      ],
+      short: `pay ${cur} ${money(t.amount)} to ${str(t.beneficiary_name)}`,
+      warnings: str(t.vendor) && str(t.vendor) !== str(t.beneficiary_name) ? [`The account holder (${str(t.beneficiary_name)}) is not the vendor on the invoice (${str(t.vendor)})`] : [],
+      label: `Invoice ${str(t.invoice_no)}`,
+      big: money(t.amount),
+      unit: cur,
+    };
+  }
+
   if (kind === "policy_change") {
     const changes = arr(t.changes).filter(isObj);
     const shown = (v: unknown) => str(v) || "no extra limit";
@@ -287,6 +317,26 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       short: "this bank-detail change",
       warnings: ["Changed bank details are how invoice fraud works. Approve only if the new IBAN matches what the supplier told you on a number you already had."],
       amountLabel: "Moves now", label: "Bank details", big: `…${iban.slice(-4)}`, unit: "new account",
+    };
+  }
+
+  if (kind === "payee_add" && isObj(t.bank) && !str(t.bank.iban)) {
+    // A supplier without an IBAN (US, China, UK): the full account number and routing code the CFO approves.
+    const v = (isObj(t.verification) ? t.verification : {}) as Obj;
+    const a = (isObj(t.address) ? t.address : {}) as Obj;
+    const b = t.bank;
+    const number = str(b.accountNumber);
+    const routing = str(b.routingType) === "aba" ? `ABA ${str(b.routingValue)}` : str(b.routingType) === "sort_code" ? `sort code ${str(b.routingValue).replace(/^(\d\d)(\d\d)(\d\d)$/, "$1-$2-$3")}` : str(b.routingType) ? `${str(b.routingType)} ${str(b.routingValue)}` : "";
+    const where = [routing, str(b.swiftCode) ? `BIC ${str(b.swiftCode)}` : ""].filter(Boolean).join(", ");
+    return {
+      approvable: true, title: "New supplier",
+      sentence: `Add ${str(t.vendor)} as a supplier, paid in ${str(b.currency)} by ${str(b.method)} to account ${number} (${where}, ${str(b.country)}). ${str(v.by)} recorded that the supplier confirmed it: ${str(v.how)}.`,
+      amount: "0.00 (nothing moves now)", margin: null, recipient: `${str(t.vendor)}, account ending ${number.slice(-4)}`,
+      rows: [["Supplier", str(t.vendor)], ["Account number", number], ["Routing", where], ["Bank country", str(b.country)], ["Paid in", `${str(b.currency)} by ${str(b.method)}${str(b.clearing) ? ` (${str(b.clearing)})` : ""}`],
+        ["Address", `${str(a.street)}, ${str(a.postcode)} ${str(a.city)}`], ["Verified by", str(v.by)], ["How", str(v.how)]],
+      short: "this new supplier",
+      warnings: ["A supplier's own invoice is how invoice fraud works. Approve only if the account matches what the supplier told you on a number you already had."],
+      amountLabel: "Moves now", label: "New supplier", big: `…${number.slice(-4)}`, unit: "new supplier",
     };
   }
 
@@ -450,7 +500,7 @@ export function whyYou(t: Obj, policy: { key: string; value: string }[] = [], fo
   const [each, perDispute, cardEur] = [val("approval.refund_each"), val("approval.refund_per_dispute"), val("approval.task_card_eur")];
   const why = kind === "mandate_replace" ? "It changes what agents may pay on chain, and a mandate changes only with your Face ID."
     : kind === "refund_batch" ? (each && perDispute ? `Your policy sends refunds above ${each} USDZ each, or ${perDispute} per dispute, to you.` : "Your policy sends refunds above its limits to you.")
-    : kind === "invoice_payment" ? "A supplier is paid from the Airwallex account only with your Face ID."
+    : kind === "invoice_payment" || kind === "supplier_payment" ? "A supplier is paid from the Airwallex account only with your Face ID."
     : kind === "policy_change" ? "The CFO policy changes only with your Face ID."
     : kind === "payee_change" ? "A supplier's bank details change only with your Face ID."
     : kind === "payee_add" ? "A new supplier is paid only after your Face ID."

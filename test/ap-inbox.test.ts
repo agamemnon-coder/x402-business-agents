@@ -93,7 +93,7 @@ describe("the inbox", () => {
   });
 
   it("asks a person for an invoice in a currency Purser does not pay yet", async () => {
-    await add(DE.replace(/EUR/g, "CHF"));
+    await add(DE.replace(/EUR/g, "JPY")); // JPY has no decimals: Purser counts in cents, so a person pays it
     expect(apInvoice(db, "AP-0001")!.status).toBe("needs_review");
     expect(codes("AP-0001")).toContain("currency_not_paid");
   });
