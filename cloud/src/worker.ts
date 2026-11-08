@@ -1,0 +1,38 @@
+// The Worker's entry point: HTTP (the API), e-mail (Cloudflare Email Routing) and the scheduled job (retention purge,
+// housekeeping). Bindings and secrets come from cloud/wrangler.jsonc and `wrangler secret put`; nothing secret is in git.
+
+import { ensureSchema, handle, type CloudEnv } from "./app.js";
+import { receiveEmail, type InboundEmail } from "./mail.js";
+import { purgeExpired } from "./privacy.js";
+import { d1Sql, r2Blobs, type D1Like, type R2Like } from "./store.js";
+
+export interface Bindings {
+  DB: D1Like;
+  DOCS: R2Like;
+  SESSION_SECRET: string;
+  ADMIN_TOKEN_SHA256: string;
+  RP_ID: string;
+  ORIGIN: string;
+  MAIL_DOMAIN?: string;
+}
+
+function envOf(b: Bindings): CloudEnv {
+  if (!b.SESSION_SECRET || b.SESSION_SECRET.length < 32) throw new Error("SESSION_SECRET is not set (wrangler secret put SESSION_SECRET)");
+  return { sql: d1Sql(b.DB), blobs: r2Blobs(b.DOCS), sessionSecret: b.SESSION_SECRET, adminTokenSha256: b.ADMIN_TOKEN_SHA256 ?? "", rpId: b.RP_ID, origin: b.ORIGIN };
+}
+
+export default {
+  fetch(req: Request, b: Bindings): Promise<Response> {
+    return handle(req, envOf(b));
+  },
+  async email(msg: InboundEmail, b: Bindings): Promise<void> {
+    const env = envOf(b);
+    await ensureSchema(env.sql);
+    await receiveEmail(env.sql, env.blobs, msg, { domain: b.MAIL_DOMAIN ?? "", now: new Date() });
+  },
+  async scheduled(_event: unknown, b: Bindings): Promise<void> {
+    const env = envOf(b);
+    await ensureSchema(env.sql);
+    await purgeExpired(env.sql, env.blobs, new Date());
+  },
+};

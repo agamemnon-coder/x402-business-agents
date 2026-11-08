@@ -1,0 +1,119 @@
+// The runner's side of Purser Cloud (cloud/): it pushes what this ledger records (suppliers, payables invoices with
+// their documents, payments, ledger entries, the audit log, the people's passkeys) and pulls the e-mail the cloud
+// received for this company, filing it through the inbox. The cloud never moves money and holds no payment keys.
+// The API key comes from the environment (PURSER_CLOUD_KEY), never from code, git or a log.
+
+import { readFileSync } from "node:fs";
+import type { DB } from "../db/open.js";
+import { apInvoices } from "../ap/store.js";
+import { ingestEmail, type InboxDeps } from "../ap/inbox.js";
+import { ledgerRows } from "../ledger/core.js";
+import { es256XY } from "../relay/state.js";
+
+export type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
+
+export interface CloudTarget {
+  url: string;
+  key: string;
+  fetch?: Fetch;
+  /** Which cloud person each local passkey belongs to (the passkey's label → the cloud user id). Unmapped: not pushed. */
+  people?: Record<string, string>;
+}
+
+export interface CloudState { audit: { seq: number; hash: string | null }; ledger: { entry_id: number; hash: string | null }; documents: string[] }
+
+async function call(t: CloudTarget, method: string, path: string, body?: unknown): Promise<Response> {
+  const f = t.fetch ?? ((i, init) => fetch(i, init));
+  const res = await f(`${t.url.replace(/\/$/, "")}${path}`, {
+    method,
+    headers: { authorization: `Bearer ${t.key}`, ...(body !== undefined ? { "content-type": "application/json" } : {}) },
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  });
+  return res;
+}
+
+async function ok(res: Response, what: string): Promise<unknown> {
+  if (!res.ok) throw new Error(`Purser Cloud refused ${what}: ${res.status} ${((await res.json().catch(() => ({}))) as { error?: string }).error ?? ""}`.trim());
+  return res.json();
+}
+
+const has = (db: DB, table: string) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table);
+
+/** Everything the cloud does not hold yet, in batches small enough for one request each. */
+export function batchesFor(db: DB, state: CloudState, opts: { people?: Record<string, string>; now?: Date; maxDocBytes?: number } = {}): Record<string, unknown>[] {
+  const now = (opts.now ?? new Date()).toISOString();
+  const held = new Set(state.documents);
+  const out: Record<string, unknown>[] = [];
+
+  // Documents first, a few at a time (each request stays well under the cloud's limit).
+  const invoices = has(db, "ap_invoices") ? apInvoices(db) : [];
+  const docs = has(db, "ap_documents") ? (db.prepare("SELECT sha256, filename, mime, path FROM ap_documents ORDER BY received_at").all() as { sha256: string; filename: string; mime: string; path: string }[]) : [];
+  let chunk: { sha256: string; filename: string; mime: string; base64: string }[] = [];
+  let size = 0;
+  const limit = opts.maxDocBytes ?? 20_000_000;
+  for (const d of docs.filter((x) => !held.has(x.sha256))) {
+    const b64 = readFileSync(d.path).toString("base64");
+    if (chunk.length && size + b64.length > limit) { out.push({ documents: chunk }); chunk = []; size = 0; }
+    chunk.push({ sha256: d.sha256, filename: d.filename, mime: d.mime, base64: b64 });
+    size += b64.length;
+  }
+  if (chunk.length) out.push({ documents: chunk });
+
+  const vendors = (db.prepare("SELECT beneficiary_id, name, iban_last4, bic, currency, method, status FROM beneficiaries ORDER BY name").all() as Record<string, string>[])
+    .map((b) => ({ id: b.beneficiary_id!, name: b.name!, status: b.status!.toLowerCase(), updated_at: now, body: { name: b.name, iban_last4: b.iban_last4, bic: b.bic, currency: b.currency, method: b.method, status: b.status } }));
+  const inv = invoices.map((i) => ({
+    id: i.id, vendor: i.vendor, invoice_no: i.invoice_no, due_date: i.due_date, currency: i.currency, total: i.total, status: i.status, doc_sha256: i.doc_sha256,
+    received_at: i.received_at, updated_at: i.updated_at, body: i as unknown as Record<string, unknown>,
+  }));
+  const payments = (db.prepare("SELECT request_id, transfer_id, invoice_no, amount, currency, method, fee_actual, status, updated_at FROM transfers ORDER BY updated_at").all() as Record<string, string | null>[])
+    .map((p) => ({ id: p.request_id!, invoice_id: invoices.find((i) => p.invoice_no === `${i.invoice_no} · ${i.vendor}`)?.id ?? null, status: p.status!.toLowerCase(), updated_at: p.updated_at!, body: p }));
+  const entries = has(db, "ledger_entries") ? ledgerRows(db).filter((e) => e.entry_id > state.ledger.entry_id) : [];
+  const audit = (db.prepare("SELECT seq, ts, actor, event, subject, payload_json, prev_hash, row_hash FROM audit_log WHERE seq > ? ORDER BY seq").all(state.audit.seq) as Record<string, unknown>[]);
+  const credentials = (db.prepare("SELECT credential_id, public_key, counter, label FROM passkeys WHERE status = 'ACTIVE'").all() as { credential_id: string; public_key: string; counter: number; label: string }[])
+    .flatMap((p) => {
+      const user = opts.people?.[p.label];
+      const xy = user ? es256XY(p.public_key) : null;
+      return user && xy ? [{ credential_id: p.credential_id, user_id: user, x: xy.x, y: xy.y, counter: p.counter }] : [];
+    });
+
+  // The chains in order, in slices the cloud accepts; everything else rides with the first slice.
+  const slices = Math.max(1, Math.ceil(entries.length / 2000), Math.ceil(audit.length / 5000));
+  for (let i = 0; i < slices; i++) {
+    out.push({
+      ...(i === 0 ? { vendors, invoices: inv, payments, credentials } : {}),
+      ledger_entries: entries.slice(i * 2000, (i + 1) * 2000),
+      audit_rows: audit.slice(i * 5000, (i + 1) * 5000),
+    });
+  }
+  return out;
+}
+
+/** Pushes everything new; returns what the cloud applied, batch by batch. */
+export async function pushToCloud(db: DB, t: CloudTarget, now = new Date()): Promise<unknown[]> {
+  const state = (await ok(await call(t, "GET", "/v1/sync/state"), "the state request")) as CloudState;
+  const results: unknown[] = [];
+  for (const b of batchesFor(db, state, { people: t.people, now })) results.push(await ok(await call(t, "POST", "/v1/sync", b), "a push"));
+  return results;
+}
+
+/** Files the e-mail the cloud received for this company through the inbox, and marks each one done or refused. */
+export async function pullMail(db: DB, deps: InboxDeps, t: CloudTarget): Promise<{ id: string; status: "done" | "refused"; note?: string }[]> {
+  const { items } = (await ok(await call(t, "GET", "/v1/mail"), "the mail list")) as { items: { id: string }[] };
+  const out: { id: string; status: "done" | "refused"; note?: string }[] = [];
+  for (const m of items) {
+    const raw = await call(t, "GET", `/v1/mail/${encodeURIComponent(m.id)}/raw`);
+    if (!raw.ok) continue;
+    let status: "done" | "refused" = "done";
+    let note: string | undefined;
+    try {
+      const results = await ingestEmail(db, deps, Buffer.from(await raw.arrayBuffer()), { cloud_mail: m.id }, "email");
+      note = results.length ? `${results.length} attachment(s) filed` : "no PDF attached";
+    } catch (e) {
+      status = "refused";
+      note = (e as Error).message.slice(0, 300);
+    }
+    await ok(await call(t, "POST", `/v1/mail/${encodeURIComponent(m.id)}/done`, { status, ...(note ? { note } : {}) }), "marking mail done");
+    out.push({ id: m.id, status, ...(note ? { note } : {}) });
+  }
+  return out;
+}

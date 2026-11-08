@@ -1,0 +1,192 @@
+-- Purser Cloud: one database for every tenant; every row carries tenant_id and every query is scoped by it
+-- (cloud/src/tenant.ts). Bookkeeping records are append-only or versioned; nothing is overwritten silently.
+
+CREATE TABLE IF NOT EXISTS tenants (
+  id TEXT PRIMARY KEY,
+  slug TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  closed_at TEXT,
+  -- After this day a closed tenant's records may be purged (the end of the seventh year after its last records).
+  purge_after TEXT
+);
+
+CREATE TABLE IF NOT EXISTS users (
+  tenant_id TEXT NOT NULL REFERENCES tenants(id),
+  id TEXT NOT NULL,
+  display_name TEXT NOT NULL,
+  email TEXT,
+  role TEXT NOT NULL CHECK (role IN ('owner', 'cfo', 'accountant', 'viewer')),
+  created_at TEXT NOT NULL,
+  erased_at TEXT,
+  PRIMARY KEY (tenant_id, id)
+);
+
+CREATE TABLE IF NOT EXISTS credentials (
+  tenant_id TEXT NOT NULL,
+  credential_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  x TEXT NOT NULL,
+  y TEXT NOT NULL,
+  counter INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, credential_id)
+);
+
+CREATE TABLE IF NOT EXISTS challenges (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  challenge TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  used_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS api_keys (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id),
+  name TEXT NOT NULL,
+  scopes TEXT NOT NULL,
+  secret_sha256 TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  revoked_at TEXT,
+  last_used_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS rate_hits (
+  bucket TEXT NOT NULL,
+  window_start INTEGER NOT NULL,
+  count INTEGER NOT NULL,
+  PRIMARY KEY (bucket, window_start)
+);
+
+CREATE TABLE IF NOT EXISTS vendors (
+  tenant_id TEXT NOT NULL,
+  id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  status TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  body_json TEXT NOT NULL,
+  body_sha256 TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, id)
+);
+
+CREATE TABLE IF NOT EXISTS invoices (
+  tenant_id TEXT NOT NULL,
+  id TEXT NOT NULL,
+  vendor TEXT NOT NULL,
+  invoice_no TEXT NOT NULL,
+  due_date TEXT NOT NULL,
+  currency TEXT NOT NULL,
+  total TEXT NOT NULL,
+  status TEXT NOT NULL,
+  doc_sha256 TEXT NOT NULL,
+  received_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  body_json TEXT NOT NULL,
+  body_sha256 TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, id)
+);
+CREATE INDEX IF NOT EXISTS invoices_by_status ON invoices (tenant_id, status, received_at);
+
+CREATE TABLE IF NOT EXISTS payments (
+  tenant_id TEXT NOT NULL,
+  id TEXT NOT NULL,
+  invoice_id TEXT,
+  status TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  body_json TEXT NOT NULL,
+  body_sha256 TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, id)
+);
+
+-- Every earlier version of a vendor, invoice or payment, kept when a newer one replaces it.
+CREATE TABLE IF NOT EXISTS object_history (
+  tenant_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  id TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  body_json TEXT NOT NULL,
+  body_sha256 TEXT NOT NULL,
+  replaced_at TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, kind, id, version)
+);
+
+CREATE TABLE IF NOT EXISTS documents (
+  tenant_id TEXT NOT NULL,
+  sha256 TEXT NOT NULL,
+  filename TEXT NOT NULL,
+  mime TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  blob_key TEXT NOT NULL,
+  received_at TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, sha256)
+);
+
+CREATE TABLE IF NOT EXISTS ledger_entries (
+  tenant_id TEXT NOT NULL,
+  entry_id INTEGER NOT NULL,
+  posting_date TEXT NOT NULL,
+  doc_date TEXT NOT NULL,
+  description TEXT NOT NULL,
+  entry_json TEXT NOT NULL,
+  prev_hash TEXT NOT NULL,
+  entry_hash TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, entry_id)
+);
+
+CREATE TABLE IF NOT EXISTS ledger_lines (
+  tenant_id TEXT NOT NULL,
+  entry_id INTEGER NOT NULL,
+  line_no INTEGER NOT NULL,
+  posting_date TEXT NOT NULL,
+  account TEXT NOT NULL,
+  currency TEXT NOT NULL,
+  debit_cents INTEGER NOT NULL,
+  credit_cents INTEGER NOT NULL,
+  vat_code TEXT,
+  vat_cents INTEGER,
+  party TEXT,
+  doc_ref TEXT,
+  due_date TEXT,
+  PRIMARY KEY (tenant_id, entry_id, line_no)
+);
+
+CREATE TABLE IF NOT EXISTS audit_rows (
+  tenant_id TEXT NOT NULL,
+  seq INTEGER NOT NULL,
+  ts TEXT NOT NULL,
+  actor TEXT NOT NULL,
+  event TEXT NOT NULL,
+  subject TEXT,
+  payload_json TEXT NOT NULL,
+  prev_hash TEXT NOT NULL,
+  row_hash TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, seq)
+);
+
+CREATE TABLE IF NOT EXISTS inbound_mail (
+  tenant_id TEXT NOT NULL,
+  id TEXT NOT NULL,
+  blob_key TEXT NOT NULL,
+  sha256 TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  received_at TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('queued', 'done', 'refused')),
+  note TEXT,
+  PRIMARY KEY (tenant_id, id)
+);
+
+-- What the cloud did with a person's data on request, and when (the request itself is kept, its content is not).
+CREATE TABLE IF NOT EXISTS erasures (
+  tenant_id TEXT NOT NULL,
+  id TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  done_at TEXT NOT NULL,
+  done_by TEXT NOT NULL,
+  detail TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, id)
+);

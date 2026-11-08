@@ -8,18 +8,50 @@ import { VAT_CODES, VAT_NOTICE, type VatRubric } from "./vat.js";
 
 interface Row { account: string; currency: string; debit: number; credit: number }
 
-function sums(db: DB, range: { from?: string; to?: string } = {}): Row[] {
-  return db.prepare(`SELECT l.account, l.currency, SUM(l.debit_cents) AS debit, SUM(l.credit_cents) AS credit
-    FROM ledger_lines l JOIN ledger_entries e ON e.entry_id = l.entry_id
-    WHERE e.posting_date >= ? AND e.posting_date <= ? GROUP BY l.account, l.currency ORDER BY l.account, l.currency`)
-    .all(range.from ?? "0000-01-01", range.to ?? "9999-12-31") as Row[];
+/** A posted line with its entry's posting day: what every report adds up. The cloud (cloud/src/) reads the same rows
+ *  from its own store and calls the same functions, so a report is computed one way everywhere. */
+export interface PostedLine {
+  posting_date: string;
+  account: string;
+  currency: string;
+  debit_cents: number;
+  credit_cents: number;
+  vat_code: string | null;
+  vat_cents: number | null;
+  party: string | null;
+  doc_ref: string | null;
+  due_date: string | null;
+}
+
+export function postedLines(db: DB): PostedLine[] {
+  return db.prepare(`SELECT e.posting_date, l.account, l.currency, l.debit_cents, l.credit_cents, l.vat_code, l.vat_cents, l.party, l.doc_ref, l.due_date
+    FROM ledger_lines l JOIN ledger_entries e ON e.entry_id = l.entry_id ORDER BY e.entry_id, l.line_no`).all() as PostedLine[];
+}
+
+function sumLines(lines: PostedLine[], range: { from?: string; to?: string } = {}): Row[] {
+  const from = range.from ?? "0000-01-01";
+  const to = range.to ?? "9999-12-31";
+  const by = new Map<string, Row>();
+  for (const l of lines) {
+    if (l.posting_date < from || l.posting_date > to) continue;
+    const k = `${l.account}\u0000${l.currency}`;
+    const r = by.get(k) ?? { account: l.account, currency: l.currency, debit: 0, credit: 0 };
+    r.debit += l.debit_cents;
+    r.credit += l.credit_cents;
+    by.set(k, r);
+  }
+  return [...by.values()].sort((a, b) => a.account.localeCompare(b.account) || a.currency.localeCompare(b.currency));
 }
 
 export interface TrialRow { account: string; name: string; type: string; currency: string; debit_cents: number; credit_cents: number; balance_cents: number }
 
 /** Per account and currency up to a day: debits, credits and the balance (debit minus credit). */
 export function trialBalance(db: DB, to?: string): TrialRow[] {
-  return sums(db, { to }).map((r) => ({ account: r.account, name: CHART[r.account] ?? "", type: accountType(r.account), currency: r.currency, debit_cents: r.debit, credit_cents: r.credit, balance_cents: r.debit - r.credit }));
+  return trialFrom(postedLines(db), to);
+}
+
+export function trialFrom(lines: PostedLine[], to?: string): TrialRow[] {
+  return sumLines(lines, { to }).map((r) => ({ account: r.account, name: CHART[r.account] ?? "", type: accountType(r.account), currency: r.currency, debit_cents: r.debit, credit_cents: r.credit, balance_cents: r.debit - r.credit }));
 }
 
 export interface ProfitAndLoss {
@@ -31,8 +63,12 @@ export interface ProfitAndLoss {
 
 /** Revenue (credit minus debit on 4xxx) and expenses (debit minus credit on 5xxx to 8xxx), per currency. */
 export function profitAndLoss(db: DB, range: { from: string; to: string }): Record<string, ProfitAndLoss> {
+  return profitAndLossFrom(postedLines(db), range);
+}
+
+export function profitAndLossFrom(lines: PostedLine[], range: { from: string; to: string }): Record<string, ProfitAndLoss> {
   const out: Record<string, ProfitAndLoss> = {};
-  for (const r of sums(db, range).filter((x) => isProfitAndLoss(x.account))) {
+  for (const r of sumLines(lines, range).filter((x) => isProfitAndLoss(x.account))) {
     const p = (out[r.currency] ??= { revenue_cents: 0, expense_cents: 0, result_cents: 0, accounts: [] });
     const type = accountType(r.account);
     const cents = type === "revenue" ? r.credit - r.debit : r.debit - r.credit;
@@ -56,8 +92,12 @@ export interface BalanceSheet {
 
 /** Assets against liabilities, equity and the open result, per currency, on a day. It must balance. */
 export function balanceSheet(db: DB, to: string): Record<string, BalanceSheet> {
+  return balanceSheetFrom(postedLines(db), to);
+}
+
+export function balanceSheetFrom(lines: PostedLine[], to: string): Record<string, BalanceSheet> {
   const out: Record<string, BalanceSheet> = {};
-  for (const r of sums(db, { to })) {
+  for (const r of sumLines(lines, { to })) {
     const b = (out[r.currency] ??= { assets_cents: 0, liabilities_cents: 0, equity_cents: 0, result_cents: 0, balanced: false, accounts: [] });
     const type = accountType(r.account);
     if (type === "revenue" || type === "expense") { b.result_cents += r.credit - r.debit; continue; }
@@ -73,7 +113,7 @@ export function balanceSheet(db: DB, to: string): Record<string, BalanceSheet> {
 
 /** Each bank account's balance per currency (all posted lines). */
 export function cashByCurrency(db: DB): { account: string; currency: string; balance_cents: number }[] {
-  return sums(db).filter((r) => isBank(r.account) && r.debit - r.credit !== 0).map((r) => ({ account: r.account, currency: r.currency, balance_cents: r.debit - r.credit }));
+  return sumLines(postedLines(db)).filter((r) => isBank(r.account) && r.debit - r.credit !== 0).map((r) => ({ account: r.account, currency: r.currency, balance_cents: r.debit - r.credit }));
 }
 
 export type AgeBucket = "not due" | "1-30" | "31-60" | "61-90" | "90+";
@@ -84,10 +124,21 @@ const bucketOf = (days: number): AgeBucket => (days <= 0 ? "not due" : days <= 3
 
 /** The open items on receivables (1300) or payables (2100) on a day, by party and document, oldest due first. */
 export function ageing(db: DB, kind: "receivables" | "payables", asOf: string): { as_of: string; items: OpenItem[]; totals: Record<string, Record<AgeBucket, number>> } {
+  return ageingFrom(postedLines(db), kind, asOf);
+}
+
+export function ageingFrom(lines: PostedLine[], kind: "receivables" | "payables", asOf: string): { as_of: string; items: OpenItem[]; totals: Record<string, Record<AgeBucket, number>> } {
   const account = kind === "receivables" ? RECEIVABLES : PAYABLES;
-  const rows = db.prepare(`SELECT l.party, l.doc_ref, l.currency, MIN(l.due_date) AS due_date, SUM(l.debit_cents - l.credit_cents) AS net
-    FROM ledger_lines l JOIN ledger_entries e ON e.entry_id = l.entry_id WHERE l.account = ? AND e.posting_date <= ?
-    GROUP BY l.party, l.doc_ref, l.currency`).all(account, asOf) as { party: string | null; doc_ref: string | null; currency: string; due_date: string | null; net: number }[];
+  const groups = new Map<string, { party: string | null; doc_ref: string | null; currency: string; due_date: string | null; net: number }>();
+  for (const l of lines) {
+    if (l.account !== account || l.posting_date > asOf) continue;
+    const k = `${l.party ?? ""}\u0000${l.doc_ref ?? ""}\u0000${l.currency}`;
+    const g = groups.get(k) ?? { party: l.party, doc_ref: l.doc_ref, currency: l.currency, due_date: null, net: 0 };
+    g.net += l.debit_cents - l.credit_cents;
+    if (l.due_date && (g.due_date === null || l.due_date < g.due_date)) g.due_date = l.due_date;
+    groups.set(k, g);
+  }
+  const rows = [...groups.values()];
   const items: OpenItem[] = [];
   const totals: Record<string, Record<AgeBucket, number>> = {};
   for (const r of rows) {
@@ -130,10 +181,12 @@ export function quarterRange(quarter: string): { from: string; to: string } {
 
 /** The quarter's lines added up into the rubrics of the Dutch VAT return. An overview, not a filing. */
 export function vatOverview(db: DB, quarter: string): VatOverview {
+  return vatOverviewFrom(postedLines(db), quarter);
+}
+
+export function vatOverviewFrom(lines: PostedLine[], quarter: string): VatOverview {
   const { from, to } = quarterRange(quarter);
-  const rows = db.prepare(`SELECT l.account, l.currency, l.debit_cents, l.credit_cents, l.vat_code, l.vat_cents
-    FROM ledger_lines l JOIN ledger_entries e ON e.entry_id = l.entry_id WHERE e.posting_date >= ? AND e.posting_date <= ?`)
-    .all(from, to) as { account: string; currency: string; debit_cents: number; credit_cents: number; vat_code: string | null; vat_cents: number | null }[];
+  const rows = lines.filter((l) => l.posting_date >= from && l.posting_date <= to);
   const rubrics = Object.fromEntries(RUBRICS.map((r) => [r, { base_cents: 0, vat_cents: 0 }])) as VatOverview["rubrics"];
   let input = 0;
   let uncoded = 0;

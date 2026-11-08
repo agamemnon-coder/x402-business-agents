@@ -176,7 +176,7 @@ export function stateHash(s: RelayState): string {
 }
 
 /** An ES256 passkey's public key (COSE, as stored) as its x and y, base64url; null for any other kind. */
-function es256XY(cose: string): { x: string; y: string } | null {
+export function es256XY(cose: string): { x: string; y: string } | null {
   try {
     const m = isoCBOR.decodeFirst<Map<number, number | Uint8Array>>(Buffer.from(cose, "base64url"));
     if (m.get(1) !== 2 || m.get(-1) !== 1) return null;
