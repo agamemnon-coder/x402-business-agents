@@ -155,6 +155,18 @@ function utcMinute(iso: string): string {
 /** The account calls an owners_execute may carry (src/metal/ownersExecute.ts OWNER_CALL_SELECTORS; a test keeps them equal). */
 export const OWNER_SELECTORS = { bind: "0x240c29bb", revoke: "0xb75c7dc6" } as const;
 
+/**
+ * A warning when the amount to sign is not written in the invoice's own total line as shown (red team round 3: the line
+ * said USD 2,400.00 while USD 24,000.00 was to be paid). Any notation counts ("2,400.00", "2.400,00", "2 400,00",
+ * "2'400.00"): the digits of a number in the line, separators aside, are the amount's.
+ */
+function amountNotInLine(t: Obj, cur: string): string[] {
+  if (t.document_total_line === undefined) return [];
+  const want = str(t.amount).replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+  const numbers = (str(t.document_total_line).match(/\d[\d.,'’ʼ   ]*\d/g) ?? []).map((n) => n.replace(/\D/g, "").replace(/^0+(?=\d)/, ""));
+  return want && numbers.includes(want) ? [] : [`The amount ${cur} ${money(t.amount)} is not written in the invoice's own total line shown above; check the document before you approve`];
+}
+
 export function describeTerms(t: Obj, names: Record<string, string>): Facts {
   const nameOf = (a: string) => names[a.toLowerCase()] ?? null;
   const who = (a: string) => (nameOf(a) ? `${nameOf(a)} ${shortAddr(a)}` : shortAddr(a));
@@ -241,7 +253,10 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       // The supplier's own words beside the amount (payables inbox): a mismatch with the amount or currency above is visible.
       ...(t.document_total_line !== undefined ? [["On the invoice", `"${str(t.document_total_line).slice(0, 120)}" (currency read from that line: ${str(t.document_currency) || "none code knows"})`] as [string, string]] : []),
     ];
-    const docWarn = t.document_total_line !== undefined && str(t.document_currency) !== cur ? [`The invoice's own total line reads ${str(t.document_currency) || "no currency code knows"}, not ${cur}`] : [];
+    const docWarn = [
+      ...(t.document_total_line !== undefined && str(t.document_currency) !== cur ? [`The invoice's own total line reads ${str(t.document_currency) || "no currency code knows"}, not ${cur}`] : []),
+      ...amountNotInLine(t, cur),
+    ];
     return {
       approvable: true,
       title: `Pay invoice ${str(t.invoice_no)}`,
@@ -286,6 +301,7 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       warnings: [
         ...(str(t.vendor) && str(t.vendor) !== str(t.beneficiary_name) ? [`The account holder (${str(t.beneficiary_name)}) is not the vendor on the invoice (${str(t.vendor)})`] : []),
         ...(t.document_total_line !== undefined && str(t.document_currency) !== cur ? [`The invoice's own total line reads ${str(t.document_currency) || "no currency code knows"}, not ${cur}`] : []),
+        ...amountNotInLine(t, cur),
       ],
       label: `Invoice ${str(t.invoice_no)}`,
       big: money(t.amount),

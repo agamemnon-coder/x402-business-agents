@@ -16,6 +16,7 @@ import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { invoiceAlreadyHandled, PROPOSAL_ID_PENDING } from "../agents/euroBill.js";
 import { createProposal, ProposalRefused, type ProposalRow } from "../policy/approvals.js";
 import { counterpartyAllowed, feeReserveDefaultCents, frozen, policyValue } from "../policy/rules.js";
+import { heldPayoutCents } from "../policy/payoutLock.js";
 import { proposalExpiry } from "../policy/treasury.js";
 import { getSetting } from "../world/settings.js";
 import { routeLimitReason, type Method } from "./routes.js";
@@ -103,8 +104,7 @@ export function feeReserveFor(db: DB, method: Method, currency: string): number 
  */
 export function inFlightCents(db: DB, currency: string, exceptRequestId?: string, exceptProposalId?: string): number {
   const rows = db.prepare("SELECT amount, fee_estimate FROM transfers WHERE status = 'SUBMITTING' AND currency = ? AND request_id <> ?").all(currency, exceptRequestId ?? "") as { amount: string; fee_estimate: string }[];
-  const held = db.prepare("SELECT COALESCE(SUM(cents), 0) AS c FROM payout_reservations WHERE status = 'HELD' AND currency = ? AND proposal_id <> ?").get(currency, exceptProposalId ?? "") as { c: number };
-  return rows.reduce((s, r) => s + toCents(r.amount) + toCents(r.fee_estimate), 0) + held.c;
+  return rows.reduce((s, r) => s + toCents(r.amount) + toCents(r.fee_estimate), 0) + heldPayoutCents(db, currency, exceptProposalId);
 }
 
 /** What this currency can still pay: available, less its floor, commitments and money under way. */

@@ -100,9 +100,12 @@ export function readDate(text: string): string {
   return "";
 }
 
-/** "1,554.62", "1.000,00", "400,00", "1 190,00" -> "1554.62" etc.; anything without exactly two decimals -> "". */
+/**
+ * "1,554.62", "1.000,00", "400,00", "1 190,00", Swiss "3'400.00" (also with a typographic apostrophe, \u2019 or \u02bc: red team
+ * round 3) -> "1554.62" etc.; anything without exactly two decimals -> "".
+ */
 export function decimalAmount(token: string): string {
-  const t = token.replace(/[\u00a0\u202f]/g, " ").trim();
+  const t = token.replace(/[\u00a0\u202f]/g, " ").replace(/[\u2019\u02bc]/g, "'").trim();
   const m = /^(\d{1,3}(?:([.,' ])\d{3})*|\d+)([.,])(\d{2})$/.exec(t);
   if (!m) return "";
   if (m[2] && m[2] === m[3]) return "";
@@ -110,19 +113,25 @@ export function decimalAmount(token: string): string {
   return `${whole}.${m[4]}`;
 }
 
-const AMOUNT_TOKEN = /\d[\d.,' \u00a0\u202f]*\d/g;
+const AMOUNT_TOKEN = /\d[\d.,'\u2019\u02bc \u00a0\u202f]*\d/g;
 
-/** The last two-decimal amount on a line, or "" (a percentage or an id on the same line is skipped). */
-function lastAmount(line: string): string {
-  const found = [...line.matchAll(AMOUNT_TOKEN)].map((x) => {
+/** A two-decimal amount on a line: its value, where its digits end, and whether a digit sits right before it, split off by a mark that is no separator. */
+interface Found { amount: string; end: number; split: boolean }
+
+/** Every two-decimal amount on a line, in order (a percentage or an id on the same line is skipped). */
+function amountsOn(line: string): Found[] {
+  return [...line.matchAll(AMOUNT_TOKEN)].map((x) => {
     // "EUR 1 190,00" may have run on into a following number; try the token, then its tail after a space.
     const tok = x[0];
+    const at = x.index;
+    const end = at + tok.length;
+    // "3\u2018400.00": a digit, one mark that is not a separator, then the amount's digits (red team round 3: read as 400.00).
+    const split = /\d[^\d\s\p{L}\p{Sc}]$/u.test(line.slice(Math.max(0, at - 2), at));
     const whole = decimalAmount(tok);
-    if (whole) return whole;
+    if (whole) return { amount: whole, end, split };
     const tail = tok.split(/\s+/).pop() ?? "";
-    return decimalAmount(tail);
-  }).filter(Boolean);
-  return found.at(-1) ?? "";
+    return { amount: decimalAmount(tail), end, split: false };
+  }).filter((f) => f.amount);
 }
 
 /** The currencies code knows, by ISO code. Anything else written beside a total is a currency code does not know. */
@@ -192,7 +201,7 @@ const lines = (text: string) => text.split(/\r?\n/).map((l) => l.trim()).filter(
 
 type LineKind = "subtotal" | "tax" | "total";
 /** A labelled line with a two-decimal amount: what it is, its total label's rank (1 is "the amount to pay"), and the line after the label. */
-interface Labelled { kind: LineKind; tier: number; amount: string; line: string; rest: string }
+interface Labelled { kind: LineKind; tier: number; amount: string; line: string; rest: string; amounts: Found[] }
 
 const NOT_LETTER = "(?![\\p{L}])";
 const SUBTOTAL = new RegExp(`^(?:sub-?total|subtotaal|net\\s+amount|nettobetrag|zwischensumme|netto|summe\\s+netto|total\\s+(?:excl\\.?|excluding|ex\\.?|exkl\\.?|before\\s+(?:vat|tax)|net)|totaal\\s+(?:excl\\.?|exclusief))${NOT_LETTER}`, "iu");
@@ -206,15 +215,16 @@ const TOTAL_TIERS = [
 
 /** What a line is. A subtotal or tax label is checked before a total one: "Total excl. VAT" is a subtotal. */
 function labelled(l: string): Labelled | null {
-  const amount = lastAmount(l);
+  const amounts = amountsOn(l);
+  const amount = amounts.at(-1)?.amount ?? "";
   if (!amount) return null;
   const sub = SUBTOTAL.exec(l);
-  if (sub) return { kind: "subtotal", tier: 0, amount, line: l, rest: l.slice(sub[0].length) };
+  if (sub) return { kind: "subtotal", tier: 0, amount, line: l, rest: l.slice(sub[0].length), amounts };
   const tax = TAX.exec(l);
-  if (tax) return { kind: "tax", tier: 0, amount, line: l, rest: l.slice(tax[0].length) };
+  if (tax) return { kind: "tax", tier: 0, amount, line: l, rest: l.slice(tax[0].length), amounts };
   for (const [i, re] of TOTAL_TIERS.entries()) {
     const m = re.exec(l);
-    if (m) return { kind: "total", tier: i + 1, amount, line: l, rest: l.slice(m[0].length) };
+    if (m) return { kind: "total", tier: i + 1, amount, line: l, rest: l.slice(m[0].length), amounts };
   }
   return null;
 }
@@ -246,6 +256,13 @@ function chosenTotal(ls: string[]): Labelled | null {
  */
 export function totalAmbiguity(text: string): string | null {
   const all = totalLines(lines(text ?? ""));
+  // One total line with two amounts ("Amount due USD 2,400.00 on total USD 24,000.00"): code never picks either (red team round 3).
+  const distinct = (x: Labelled) => [...new Set(x.amounts.map((a) => a.amount))];
+  const two = all.find((x) => distinct(x).length > 1);
+  if (two) return `the total line "${shownLine(two.line, 80)}" carries more than one amount (${distinct(two).join(" and ")}); a person checks which one is due`;
+  // Digits split by a mark that is no thousands separator ("3‘400.00"): never read as the digits after it.
+  const split = all.find((x) => x.amounts.at(-1)?.split);
+  if (split) return `the total line "${shownLine(split.line, 80)}" has its digits split by a mark that is not a thousands separator; a person reads the amount`;
   const amounts = [...new Set(all.map((x) => x.amount))];
   if (amounts.length < 2) return null;
   const shown = all.map((x) => `"${shownLine(x.line, 60)}"`).join(", ");
@@ -257,10 +274,17 @@ function shownLine(line: string, max: number): string {
   return line.replace(/[\p{Cc}\p{Cf}\p{Co}\p{Cn}]/gu, "").replace(/\s+/g, " ").trim().slice(0, max);
 }
 
-/** The document's own total line, as the CFO sees it beside the amount to sign (sanitised, at most 120 characters), or "". */
+/**
+ * The document's own total line, as the CFO sees it beside the amount to sign, or "": sanitised, ending at the chosen
+ * amount (and a currency written right after it), leader dots folded, at most 120 characters. Nothing after the amount
+ * is shown, so no tail past what the CFO reads can carry another amount (red team round 3).
+ */
 export function totalLine(text: string): string {
   const t = chosenTotal(lines(text ?? ""));
-  return t ? shownLine(t.line, 120) : "";
+  if (!t) return "";
+  const end = t.amounts.at(-1)!.end;
+  const after = /^\s*(?:[A-Z]{3}|\p{Sc})(?![\p{L}])/u.exec(t.line.slice(end))?.[0] ?? "";
+  return shownLine(t.line.slice(0, end + after.length).replace(/(?:\s*[.·…_]){4,}\s*/gu, " … "), 120);
 }
 
 /** The currency the total line itself names (one code it knows and nothing else beside it), or "". */
@@ -348,7 +372,8 @@ export function parseApFallback(text: string): ApReading {
     currency: invoiceCurrency(ls, total),
     subtotal: labelledAmount(ls, "subtotal")?.amount ?? "",
     tax: labelledAmount(ls, "tax")?.amount ?? "",
-    total: total?.amount ?? "",
+    // Digits split by a mark that is no separator ("3‘400.00") are never read as the digits after it: left for a person.
+    total: total && !total.amounts.at(-1)!.split ? total.amount : "",
     iban,
     bic,
     ...accountOf(text, iban, bic),

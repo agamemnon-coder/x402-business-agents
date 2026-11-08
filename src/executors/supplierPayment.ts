@@ -20,30 +20,15 @@ import { partyOf } from "../agents/euroBill.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
 import { authorize } from "../policy/principals.js";
 import { counterpartyAllowed, frozen, paused } from "../policy/rules.js";
+import { exclusive, holdPayout, releasePayout } from "../policy/payoutLock.js";
 import { step } from "../policy/saga.js";
 import { stopped } from "../policy/velocity.js";
 import { originJson } from "../provenance/origin.js";
 import { freeCents, type SupplierPaymentTerms } from "../payouts/plan.js";
 import { REFUSED_AT_CREATE } from "./invoicePayment.js";
 
-/**
- * One payment at a time reads Airwallex's balances and changes what is spoken for, so a balance read and the
- * reservations it is judged with always belong together (in this process: the runner executes the approvals).
- */
-let queue: Promise<unknown> = Promise.resolve();
-function exclusive<T>(fn: () => Promise<T> | T): Promise<T> {
-  const run = queue.then(fn, fn);
-  queue = run.then(() => undefined, () => undefined);
-  return run;
-}
-
-function hold(db: DB, proposalId: string, key: string, currency: string, cents: number): void {
-  db.prepare("INSERT INTO payout_reservations (key, proposal_id, currency, cents, status, updated_at) VALUES (?, ?, ?, ?, 'HELD', ?) ON CONFLICT(key) DO UPDATE SET currency = excluded.currency, cents = excluded.cents, status = 'HELD', updated_at = excluded.updated_at")
-    .run(key, proposalId, currency, Math.max(0, cents), new Date().toISOString());
-}
-function release(db: DB, key: string): void {
-  db.prepare("UPDATE payout_reservations SET status = 'RELEASED', updated_at = ? WHERE key = ? AND status = 'HELD'").run(new Date().toISOString(), key);
-}
+const hold = holdPayout;
+const release = releasePayout;
 
 type Row = { transfer_id: string | null; status: string };
 const transferRow = (db: DB, t: SupplierPaymentTerms) => db.prepare("SELECT transfer_id, status FROM transfers WHERE request_id = ?").get(t.transfer_request_id) as Row | undefined;

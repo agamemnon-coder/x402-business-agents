@@ -8,7 +8,9 @@ import { invoiceAlreadyHandled, proposeInvoicePayment, seedTreasury } from "../s
 import { ingestDocument, type InboxDeps } from "../src/ap/inbox.js";
 import { payApInvoice, syncPayments } from "../src/ap/pay.js";
 import type { Asker } from "../src/ap/read.js";
+import { parseApFallback, totalAmbiguity, totalLine } from "../src/ap/reading.js";
 import { apInvoice } from "../src/ap/store.js";
+import { describeTerms } from "../src/approve/client.js";
 import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAdd, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { executeInvoicePayment } from "../src/executors/invoicePayment.js";
@@ -151,5 +153,74 @@ describe("R4: the same supplier under a second name", () => {
     const bergtexAccount = (db.prepare("SELECT iban_sha256 FROM invoices WHERE invoice_no = 'BTX-2026-21'").get() as { iban_sha256: string }).iban_sha256;
     expect(invoiceAlreadyHandled(db, "BTX-2026-21 · BTX Holding AG", now, undefined, { accountSha256: bergtexAccount })).toMatch(/already paid/);
     expect(invoiceAlreadyHandled(db, "BTX-2026-21 · BTX Holding AG", now, undefined, { accountSha256: "another" })).toBeNull();
+  });
+});
+
+describe("R5: payments executed at once keep the EUR floor, whichever executor runs them", () => {
+  /** EUR free above the floor and commitments set to `cents`, after the proposals were filed. */
+  const freeEur = (cents: number) => setSetting(db, "human", "eur_obligations", fromCents(awx.bal.EUR.availableCents - 25_000_00 - cents));
+  const held = () => db.prepare("SELECT COUNT(*) AS n FROM payout_reservations WHERE status = 'HELD'").get();
+
+  it("a Kit 11 invoice payment and a supplier payment at once: one is paid, the other refused", async () => {
+    const lagerhaus = await add(DE, "de.pdf");
+    await addSupplier(lagerhaus);
+    const supplier = await approvedInbox(lagerhaus);
+    const legacy = await approvedInbox(await add(EN, "bergtex.pdf"));
+    // EUR 2,500.00 free: EUR 1,870.00 (Bergtex with its fee ceiling) or EUR 1,190.00 (Lagerhaus) fits, not both.
+    freeEur(2500_00);
+    const out = await Promise.allSettled([executeInvoicePayment(db, awx, awx, legacy), executeSupplierPayment(db, awx, awx, supplier)]);
+    expect(out.filter((o) => o.status === "fulfilled")).toHaveLength(1);
+    expect(String((out.find((o) => o.status === "rejected") as PromiseRejectedResult).reason)).toMatch(/EUR would now drop under its floor/);
+    expect(awx.transfers).toHaveLength(1);
+    expect(held()).toEqual({ n: 0 });
+  });
+
+  it("two Kit 11 invoice payments at once: one is paid, the other refused", async () => {
+    const a = await kit11("BTX-2026-21");
+    const b = await kit11("BTX-2026-22");
+    approve(a);
+    approve(b);
+    freeEur(2500_00);
+    const out = await Promise.allSettled([executeInvoicePayment(db, awx, awx, a), executeInvoicePayment(db, awx, awx, b)]);
+    expect(out.filter((o) => o.status === "fulfilled")).toHaveLength(1);
+    expect(String((out.find((o) => o.status === "rejected") as PromiseRejectedResult).reason)).toMatch(/EUR would now drop under its floor/);
+    expect(awx.transfers).toHaveLength(1);
+    expect(held()).toEqual({ n: 0 });
+  });
+});
+
+describe("R6: two amounts on one total line, and a tail the CFO does not see", () => {
+  const usd = US.replace("Total due USD 2,400.00", "Amount due USD 2,400.00 on total USD 24,000.00");
+  it("a total line with more than one amount is ambiguous: a person decides, code never picks", async () => {
+    expect(totalAmbiguity(usd)).toMatch(/more than one amount/);
+    const id = await add(usd, "two.pdf");
+    expect(apInvoice(db, id)!.findings.map((f) => f.code)).toContain("ambiguous_total");
+    expect(apInvoice(db, id)!.status).not.toBe("ready");
+  });
+
+  it("the line shown to the CFO ends at the chosen amount (its currency kept), leader dots folded", () => {
+    const dotted = EN.replace("Total due EUR 1,850.00", `Total due ${".".repeat(150)} EUR 1,850.00 ${" ".repeat(40)}see page 2 for our terms and the late fee`);
+    expect(totalLine(dotted)).toBe("Total due … EUR 1,850.00");
+    expect(totalLine(DE)).toBe("Gesamtbetrag 1.190,00 EUR");
+  });
+
+  it("the approval card warns when the paid amount is not literally in the shown line", () => {
+    const base = { kind: "supplier_payment", currency: "USD", amount: "24000.00", fee_reserve: "25.00", vendor: "Pinecrest Outdoor Supply LLC", beneficiary_name: "Pinecrest Outdoor Supply LLC", document_currency: "USD", conversion: null };
+    expect(describeTerms({ ...base, document_total_line: "Amount due USD 2,400.00" }, {}).warnings.join(" ")).toMatch(/USD 24,000.00 is not written in the invoice's own total line/);
+    expect(describeTerms({ ...base, document_total_line: "Amount due USD 24,000.00" }, {}).warnings.join(" ")).not.toMatch(/not written/);
+    expect(describeTerms({ ...base, kind: "invoice_payment", currency: "EUR", document_currency: "EUR", amount: "1850.00", document_total_line: "Total due EUR 1.850,00" }, {}).warnings.join(" ")).not.toMatch(/not written/);
+  });
+});
+
+describe("R7: a typographic apostrophe between the digits of a total", () => {
+  it("3’400.00 and 3ʼ400.00 read as 3400.00; digits split by another mark are refused, never read as 400.00", () => {
+    for (const sep of ["’", "ʼ"]) {
+      const text = EN.replace("Total due EUR 1,850.00", `Total due CHF 3${sep}400.00`);
+      expect(parseApFallback(text).total).toBe("3400.00");
+      expect(totalAmbiguity(text)).toBeNull();
+    }
+    const odd = EN.replace("Total due EUR 1,850.00", "Total due CHF 3‘400.00");
+    expect(parseApFallback(odd).total).not.toBe("400.00");
+    expect(totalAmbiguity(odd)).toMatch(/split/);
   });
 });
