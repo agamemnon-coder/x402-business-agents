@@ -17,7 +17,7 @@ export const EXPENSE_ACCOUNTS: Record<string, string> = Object.fromEntries(Objec
 const tidy = (r: ApReading): ApReading => ({
   ...r,
   vendor: r.vendor.trim(), invoice_no: r.invoice_no.trim(), currency: r.currency.trim().toUpperCase(),
-  iban: r.iban.replace(/\s+/g, "").toUpperCase(), bic: r.bic.replace(/\s+/g, "").toUpperCase(), vat_id: r.vat_id.replace(/\s+/g, "").toUpperCase(),
+  iban: r.iban.replace(/\s+/g, "").toUpperCase(), bic: r.bic.replace(/\s+/g, "").toUpperCase(), account_number: r.account_number.replace(/[\s-]/g, "").toUpperCase(), routing_type: r.routing_type.trim().toLowerCase(), routing_value: r.routing_value.replace(/[\s-]/g, ""), bank_country: r.bank_country.trim().toUpperCase(), vat_id: r.vat_id.replace(/\s+/g, "").toUpperCase(),
   gl_account: r.gl_account.trim(),
 });
 

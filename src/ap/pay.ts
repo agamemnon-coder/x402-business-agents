@@ -1,10 +1,12 @@
-// Payables, part 3: paying a ready invoice. The existing invoice payment does the work (src/agents/euroBill.ts:
-// reserve floors, FX for the shortfall only, the fee reserve, the duplicate guard, the fraud check again) and files an
-// invoice_payment proposal; the CFO approves it with Face ID; the existing executor pays by SWIFT. Nothing here moves
-// money or approves anything. syncPayments follows each proposal: paid once the ledger's transfer is PAID.
+// Payables, part 3: paying a ready invoice. A supplier added through the inbox (payee_add, any country and currency)
+// is paid in the invoice's own currency on its route (supplier_payment, src/payouts/plan.ts); a Kit 11 payee on file
+// in EUR still goes through the existing invoice payment (src/agents/euroBill.ts). Either way the plan keeps the reserve
+// floors, buys only the shortfall, holds a fee reserve and guards against paying twice, and the CFO approves the terms
+// with Face ID before an executor pays. Nothing here moves money or approves anything. syncPayments follows each
+// proposal: paid once the ledger's transfer is PAID.
 
 import { readFileSync } from "node:fs";
-import type { AirwallexRail } from "../airwallex/port.js";
+import type { AirwallexRail, PayoutRail } from "../airwallex/port.js";
 import { proposeInvoicePayment, type InvoiceOutcome } from "../agents/euroBill.js";
 import type { DB } from "../db/open.js";
 import { accrualEntries, accrualPushed, paymentEntries, pushOnce, reversalEntries, type BookkeepingSink } from "./books.js";
@@ -15,22 +17,30 @@ import { writeReviewNote } from "./review.js";
 import { ledgerInvoiceNo } from "./ledgerKey.js";
 import { totalLine, totalLineCurrency } from "./reading.js";
 import { apInvoice, apInvoices, setStatus, type ApInvoiceRow, type Finding } from "./store.js";
+import { payoutBeneficiary, proposeSupplierPayment, type SupplierPaymentOutcome } from "../payouts/plan.js";
+import { payableCurrency } from "../payouts/routes.js";
 
-export async function payApInvoice(db: DB, rail: AirwallexRail, id: string, now = new Date(), reader?: Asker): Promise<InvoiceOutcome> {
+export type PayOutcome = InvoiceOutcome | SupplierPaymentOutcome;
+
+export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id: string, now = new Date(), reader?: Asker): Promise<PayOutcome> {
   const inv = apInvoice(db, id);
   if (!inv) throw new Error(`no payables invoice ${id}`);
   if (inv.status !== "ready") {
     const why = inv.findings.filter((f) => f.level !== "warn").map((f) => f.detail).join("; ");
     throw new Error(`${id} is ${inv.status.replace(/_/g, " ")}, not ready to pay${why ? `: ${why}` : ""}`);
   }
-  if (inv.currency !== "EUR") throw new Error(`${id} is in ${inv.currency}; Purser pays EUR only in this version`);
+  if (!payableCurrency(inv.currency)) throw new Error(`${id} is in ${inv.currency}; Purser does not pay that currency (pays EUR only in two-decimal currencies SWIFT carries), so a person pays it`);
   const doc = db.prepare("SELECT path FROM ap_documents WHERE sha256 = ?").get(inv.doc_sha256) as { path: string };
   const text = (await pdfText(readFileSync(doc.path))).text;
   const r = inv.reading;
-  const out = await proposeInvoicePayment(db, rail, {
-    invoice_no: ledgerInvoiceNo(r.invoice_no, r.vendor), vendor: r.vendor, amount: r.total, currency: r.currency, due_date: r.due_date || now.toISOString().slice(0, 10),
-    iban: r.iban, bic: r.bic, reference: r.reference || r.invoice_no,
-  }, text, now, "MIN_15", { total_line: totalLine(text), currency: totalLineCurrency(text) });
+  const invoiceNo = ledgerInvoiceNo(r.invoice_no, r.vendor);
+  const due = r.due_date || now.toISOString().slice(0, 10);
+  // The supplier's own total line and its currency go with the terms, so the CFO sees them beside the amount.
+  const document = { total_line: totalLine(text), currency: totalLineCurrency(text) };
+  // A supplier added through the inbox carries its route; a Kit 11 payee on file is paid in EUR as before.
+  const out: PayOutcome = payoutBeneficiary(db, r.vendor) || r.currency !== "EUR"
+    ? await proposeSupplierPayment(db, rail, { invoice_no: invoiceNo, vendor: r.vendor, amount: r.total, currency: r.currency, due_date: due, reference: r.reference || r.invoice_no }, text, now, document)
+    : await proposeInvoicePayment(db, rail, { invoice_no: invoiceNo, vendor: r.vendor, amount: r.total, currency: r.currency, due_date: due, iban: r.iban, bic: r.bic, reference: r.reference || r.invoice_no }, text, now, "MIN_15", document);
   if (out.kind === "proposed") {
     setStatus(db, id, "waiting_cfo", "treasury", { proposal_id: out.proposal.proposal_id, reason: "payment filed for the CFO's Face ID" }, now);
     // Opus's advisory note goes with the proposal the CFO sees (its explanation; never part of the signed terms).
@@ -40,7 +50,7 @@ export async function payApInvoice(db: DB, rail: AirwallexRail, id: string, now 
   }
   // Not planned (the reserve is short, a quote refused, a duplicate found late): the invoice stays as it is, with the reason.
   const findings: Finding[] = [...inv.findings.filter((f) => f.code !== "payment_not_planned"), { code: "payment_not_planned", level: "warn", detail: `the payment could not be planned: ${out.reason}` }];
-  setStatus(db, id, out.fraud?.suspicious ? "blocked" : inv.status, "treasury", { findings, reason: out.reason }, now);
+  setStatus(db, id, "fraud" in out && out.fraud?.suspicious ? "blocked" : inv.status, "treasury", { findings, reason: out.reason }, now);
   return out;
 }
 
@@ -51,8 +61,13 @@ export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: Book
   expireDue(db, now);
   const changed: ApInvoiceRow[] = [];
   for (const inv of apInvoices(db, { status: "waiting_cfo" })) {
-    const p = inv.proposal_id ? db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(inv.proposal_id) as { status: string } | undefined : undefined;
+    const p = inv.proposal_id ? db.prepare("SELECT status, json_extract(terms_json, '$.transfer_request_id') AS request_id FROM proposals WHERE proposal_id = ?").get(inv.proposal_id) as { status: string; request_id: string | null } | undefined : undefined;
     if (!p) continue;
+    // A proposal that failed with its payout still open at Airwallex (a lost answer, not resolved yet) or already paid
+    // is not over: the invoice is never offered for payment again while that payout may be live (red team, 8 November).
+    const payout = p.request_id ? db.prepare("SELECT status FROM transfers WHERE request_id = ?").get(p.request_id) as { status: string } | undefined : undefined;
+    if (p.status !== "EXECUTED" && payout && payout.status !== "CANCELLED" && payout.status !== "PAID") continue;
+    if (p.status !== "EXECUTED" && payout?.status === "PAID") p.status = "EXECUTED";
     if (p.status === "REJECTED") {
       const next = setStatus(db, inv.id, "rejected", "human", { reason: `the CFO rejected ${inv.proposal_id}` }, now);
       // The accrual a sink already holds is taken back there, so the payable is closed in the books too.

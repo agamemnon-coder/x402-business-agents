@@ -24,6 +24,13 @@ export interface ApReading {
   /** Without spaces, upper case, or "". */
   iban: string;
   bic: string;
+  /** Where there is no IBAN (a US, Chinese or UK account): the account number, without spaces, or "". */
+  account_number: string;
+  /** "aba", "sort_code" or "cnaps" when the invoice names a routing code, else "". */
+  routing_type: string;
+  routing_value: string;
+  /** ISO 3166 alpha-2 country of the bank: from the IBAN, a "Bank country" line or the BIC, or "". */
+  bank_country: string;
   reference: string;
   /** An expense account from the chart the model suggests; code accepts it only from the chart (src/ap/books.ts). */
   gl_account: string;
@@ -41,6 +48,10 @@ export const ApReadingSchema = z.object({
   total: z.string(),
   iban: z.string(),
   bic: z.string(),
+  account_number: z.string(),
+  routing_type: z.string(),
+  routing_value: z.string(),
+  bank_country: z.string(),
   reference: z.string(),
   gl_account: z.string(),
 });
@@ -54,11 +65,12 @@ export function apInstruction(expenseAccounts: Record<string, string>): string {
     "issue_date and due_date as YYYY-MM-DD. currency: the ISO code of the total.",
     "subtotal, tax and total: plain decimals with two decimals and no thousands separators (total is the amount due).",
     "iban without spaces, bic, reference: the payment reference.",
+    "Where the invoice gives no IBAN: account_number without spaces, routing_type (aba, sort_code or cnaps) and routing_value as written, bank_country as the ISO 3166 code of the bank's country.",
     `gl_account: the one expense account that fits best, from this list only: ${chart}.`,
   ].join("\n");
 }
 
-const EMPTY: ApReading = { vendor: "", vat_id: "", invoice_no: "", issue_date: "", due_date: "", currency: "", subtotal: "", tax: "", total: "", iban: "", bic: "", reference: "", gl_account: "" };
+const EMPTY: ApReading = { vendor: "", vat_id: "", invoice_no: "", issue_date: "", due_date: "", currency: "", subtotal: "", tax: "", total: "", iban: "", bic: "", account_number: "", routing_type: "", routing_value: "", bank_country: "", reference: "", gl_account: "" };
 
 const MONTHS: Record<string, number> = {
   january: 1, february: 2, march: 3, april: 4, may: 5, june: 6, july: 7, august: 8, september: 9, october: 10, november: 11, december: 12,
@@ -299,6 +311,19 @@ export function ibanValid(iban: string): boolean {
   return rest === 1;
 }
 
+/** An account without an IBAN (US, China, UK), its routing code, and the bank's country. */
+function accountOf(text: string, iban: string, bic: string): Pick<ApReading, "account_number" | "routing_type" | "routing_value" | "bank_country"> {
+  const number = firstMatch(text, /(?:account\s*(?:no\.?|number|nr\.?|#)|acct\.?\s*no\.?|rekeningnummer|kontonummer)\s*:?\s*([A-Z0-9][A-Z0-9 -]{4,40}[A-Z0-9])\s*$/im)
+    .replace(/[\s-]/g, "").toUpperCase();
+  const aba = firstMatch(text, /\b(?:ABA(?:\s*(?:routing\s*)?(?:no\.?|number))?|routing\s*(?:no\.?|number))\s*:?\s*(\d{9})\b/i);
+  const sort = firstMatch(text, /\bsort\s*code\s*:?\s*(\d{2}[- ]?\d{2}[- ]?\d{2})\b/i).replace(/[- ]/g, "");
+  const cnaps = firstMatch(text, /\bCNAPS(?:\s*code)?\s*:?\s*(\d{12})\b/i);
+  const routing = aba ? { routing_type: "aba", routing_value: aba } : sort ? { routing_type: "sort_code", routing_value: sort } : cnaps ? { routing_type: "cnaps", routing_value: cnaps } : { routing_type: "", routing_value: "" };
+  const named = firstMatch(text, /^\s*(?:bank\s+country|country\s+of\s+(?:the\s+)?bank)\s*:?\s*([A-Z]{2})\b/im).toUpperCase();
+  const country = iban ? iban.slice(0, 2) : named || (bic.length >= 6 ? bic.slice(4, 6) : "");
+  return { account_number: iban ? "" : number, ...routing, bank_country: country };
+}
+
 /** Everything the document's own lines say, without a model. Never throws. */
 export function parseApFallback(text: string): ApReading {
   const ls = lines(text ?? "");
@@ -312,6 +337,8 @@ export function parseApFallback(text: string): ApReading {
   const due = firstMatch(text, /^\s*(?:due\s+date|payment\s+due|due|vervaldatum|uiterste\s+betaaldatum|fällig\s+am|fällig|zahlbar\s+bis|zahlungsziel)\s*:?\s*(.+)$/im);
   const issued = firstMatch(text, /^\s*(?:invoice\s+date|date\s+of\s+issue|issue\s+date|factuurdatum|rechnungsdatum|datum|date)\s*:?\s*(.+)$/im);
   const reference = firstMatch(text, /^\s*(?:payment\s+reference|reference|ref\.?|betalingskenmerk|kenmerk|verwendungszweck)\s*:?\s*(\S+)/im);
+  const iban = ibanIn(text);
+  const bic = firstMatch(text, /\b(?:BIC|SWIFT(?:\/BIC)?(?:\s+code)?)\s*:?\s*([A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)\b/).toUpperCase();
   return {
     vendor: ls.find((l) => /\p{L}/u.test(l) && !HEADING.test(l)) ?? "",
     vat_id: firstMatch(text, /\b(?:VAT(?:\s*(?:ID|number|no\.?|reg\.?\s*no\.?))?|BTW(?:-nummer|\s*nr\.?|-id)?|USt-?IdNr\.?|UID)\s*:?\s*([A-Z]{2}[A-Z0-9]{8,12})\b/).toUpperCase(),
@@ -322,8 +349,9 @@ export function parseApFallback(text: string): ApReading {
     subtotal: labelledAmount(ls, "subtotal")?.amount ?? "",
     tax: labelledAmount(ls, "tax")?.amount ?? "",
     total: total?.amount ?? "",
-    iban: ibanIn(text),
-    bic: firstMatch(text, /\b(?:BIC|SWIFT(?:\/BIC)?)\s*:?\s*([A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)\b/).toUpperCase(),
+    iban,
+    bic,
+    ...accountOf(text, iban, bic),
     reference: reference || invoiceNo,
     gl_account: "",
   };
@@ -354,6 +382,7 @@ export function readingCheck(r: ApReading, text: string): string | null {
   if (!r.invoice_no || !doc.includes(compact(r.invoice_no))) return `the invoice number ${JSON.stringify(r.invoice_no)} is not in the document`;
   if (!amountsIn(text).has(r.total)) return `the total ${r.total} is not in the document`;
   if (r.iban && !doc.includes(compact(r.iban))) return "the IBAN is not in the document";
+  if (r.account_number && !doc.replace(/-/g, "").includes(compact(r.account_number).replace(/-/g, ""))) return "the account number is not in the document";
   const own = parseApFallback(text);
   // A model's figure alone is never accepted: the document's own total line must give the same (red team B).
   if (!own.total) return "the document's own lines give no total that code can check the reading against";
@@ -362,7 +391,7 @@ export function readingCheck(r: ApReading, text: string): string | null {
   if (!own.invoice_no) return "the document's own lines give no invoice number that code can check the reading against";
   // The currency too: when the document's lines name one it must be the model's; when they are ambiguous, a person decides (A).
   if (!own.currency) return "the document's own lines do not say the currency unambiguously";
-  const differ: string[] = (["total", "iban", "invoice_no", "currency"] as const).filter((k) => own[k] && compact(own[k]) !== compact(r[k] ?? ""));
+  const differ: string[] = (["total", "iban", "account_number", "routing_value", "invoice_no", "currency"] as const).filter((k) => own[k] && compact(own[k]) !== compact(r[k] ?? ""));
   // A subtotal or tax the document's lines give may not be dropped or changed (dropping them skips the sum check).
   for (const k of ["subtotal", "tax"] as const) if (own[k] && own[k] !== r[k]) differ.push(k);
   return differ.length ? `the reading differs from the document's own lines: ${differ.join(", ").replace(/_/g, " ")}` : null;

@@ -133,6 +133,13 @@ async function executeApproved(db: DB, proposalId: string): Promise<void> {
       if (!awx) throw new Error("Airwallex sandbox keys are not set; the payment cannot run");
       await executeInvoicePayment(db, awx.rail, awx.sim, proposalId);
       return;
+    case "supplier_payment": {
+      // Payables: a supplier paid in the invoice's own currency on its route (src/payouts/plan.ts).
+      if (!awx) throw new Error("Airwallex sandbox keys are not set; the payment cannot run");
+      const { executeSupplierPayment } = await import("./supplierPayment.js");
+      await executeSupplierPayment(db, awx.rail, awx.sim, proposalId);
+      return;
+    }
     default:
       throw new Error(`no executor for ${row.kind} yet`);
   }

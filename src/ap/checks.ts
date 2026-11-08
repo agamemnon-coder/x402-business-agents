@@ -6,15 +6,21 @@
 import type { DB } from "../db/open.js";
 import { invoiceKey, sameInvoiceNo } from "../lib/invoiceKey.js";
 import { toCents, fromCents } from "../lib/money.js";
-import { assessInvoice } from "../policy/fraud.js";
-import { skeleton } from "../policy/fraudCore.js";
+import { ibanSha } from "../agents/invoice.js";
+import { assessAgainst, skeleton } from "../policy/fraudCore.js";
+import { accountKey, chooseRoute, payableCurrency, validateDetails } from "../payouts/routes.js";
+import { bankFromReading, suppliersOnFile } from "./bank.js";
 import { counterpartyAllowed } from "../policy/rules.js";
 import { handledInLedger } from "./ledgerKey.js";
 import { ibanValid, totalAmbiguity, totalIsNegative, type ApReading } from "./reading.js";
 import type { ApStatus, Finding } from "./store.js";
 
-/** Only EUR is paid in v1 (SWIFT from the Airwallex EUR account, FX for the shortfall); the rest is read and booked. */
-export const PAID_CURRENCIES = new Set(["EUR"]);
+/**
+ * Whether Purser pays this currency (src/payouts/routes.ts: a currency SWIFT carries, with two decimals). EUR invoices
+ * to suppliers on file from the Kit 11 payees still go through the invoice_payment path; the rest through
+ * supplier_payment (src/payouts/plan.ts).
+ */
+export const paysCurrency = payableCurrency;
 
 /** An invoice this many times its supplier's usual (the median of its earlier ones) is flagged. */
 export const UNUSUAL_FACTOR = 2;
@@ -49,8 +55,23 @@ export function evaluate(db: DB, r: ApReading, text: string, ctx: CheckContext):
   if (missing.length) f.push({ code: "missing_fields", level: "review", detail: `needs a person: the reading lacks ${missing.join(", ").replace(/_/g, " ")}` });
   if (r.total && !MONEY.test(r.total)) f.push({ code: "missing_fields", level: "review", detail: `needs a person: the total ${JSON.stringify(r.total)} is not a plain amount` });
 
-  if (!r.iban) f.push({ code: "no_bank_details", level: "review", detail: "the invoice gives no IBAN to pay to; a person checks how this supplier is paid" });
-  else if (!ibanValid(r.iban)) f.push({ code: "iban_invalid", level: "block", detail: `the IBAN ending ${r.iban.slice(-4)} fails its checksum: a typing error or a forged number; nothing is paid to it` });
+  // Where to pay: an IBAN, or an account number with its routing code or BIC, checked against the country's payout
+  // guide before anything else looks at it (src/payouts/routes.ts).
+  const bank = bankFromReading(r);
+  let accountOk = false;
+  if (!r.iban && !r.account_number) f.push({ code: "no_bank_details", level: "review", detail: "the invoice gives no IBAN or account number to pay to; a person checks how this supplier is paid" });
+  else if (r.iban && !ibanValid(r.iban)) f.push({ code: "iban_invalid", level: "block", detail: `the IBAN ending ${r.iban.slice(-4)} fails its checksum: a typing error or a forged number; nothing is paid to it` });
+  else if (r.currency) {
+    const route = chooseRoute(bank);
+    if (!route.ok) {
+      const code = payableCurrency(r.currency) ? "country_not_paid" : "currency_not_paid";
+      f.push({ code, level: "review", detail: `${route.reason}; a person pays this one by hand (it is still booked)` });
+    } else {
+      const wrong = validateDetails(bank, route.route);
+      if (wrong.length) f.push({ code: "bank_details_invalid", level: "block", detail: `${wrong.join("; ")}: nothing is paid to these details` });
+      else accountOk = true;
+    }
+  }
 
   if (MONEY.test(r.subtotal) && MONEY.test(r.tax) && MONEY.test(r.total) && toCents(r.subtotal) + toCents(r.tax) !== toCents(r.total)) {
     f.push({ code: "sum_mismatch", level: "block", detail: `the subtotal ${r.subtotal} plus tax ${r.tax} is ${fromCents(toCents(r.subtotal) + toCents(r.tax))}, not the total ${r.total}` });
@@ -101,8 +122,9 @@ export function evaluate(db: DB, r: ApReading, text: string, ctx: CheckContext):
 
   // Who is paid: the existing invoice-fraud check against the suppliers on file (changed bank details, a lookalike name,
   // another account holder). A supplier that is simply new waits for a person's verification and the CFO's Face ID.
-  if (r.vendor && r.iban && ibanValid(r.iban)) {
-    const fraud = assessInvoice(db, { invoice_no: r.invoice_no, vendor: r.vendor, amount: r.total, currency: r.currency, due_date: r.due_date, iban: r.iban, bic: r.bic, reference: r.reference }, text);
+  if (r.vendor && accountOk) {
+    const key = accountKey(bank);
+    const fraud = assessAgainst(suppliersOnFile(db), { vendor: r.vendor, iban: key, bic: "" }, text, ibanSha(key));
     const blocking = fraud.signals.filter((s) => s.blocks && s.code !== "unknown_vendor");
     if (fraud.suspicious) {
       f.push({ code: "possible_fraud", level: "block", detail: `possible invoice fraud: ${blocking.map((s) => s.detail).join("; ")}. Nothing is paid until a person checks with the supplier on a number already on file` });
@@ -114,10 +136,18 @@ export function evaluate(db: DB, r: ApReading, text: string, ctx: CheckContext):
     if (fraud.allowlisted && !fraud.suspicious && !counterpartyAllowed(db, fraud.allowlisted.name)) {
       f.push({ code: "payee_blocked", level: "block", detail: `${fraud.allowlisted.name} is blocked by the CFO policy` });
     }
+    // A known supplier's account receives one currency: an invoice in another is not paid to it (it would escalate at
+    // planning anyway); a person checks which account and currency are right before it can be paid.
+    const onFile = fraud.allowlisted && !fraud.suspicious
+      ? db.prepare("SELECT currency FROM beneficiaries WHERE beneficiary_id = ?").get(fraud.allowlisted.beneficiary_id) as { currency: string } | undefined
+      : undefined;
+    if (onFile && r.currency && onFile.currency !== r.currency) {
+      f.push({ code: "account_currency", level: "review", detail: `${fraud.allowlisted!.name}'s account on file receives ${onFile.currency}, but the invoice is in ${r.currency}: a person checks which account to pay` });
+    }
   }
 
-  if (r.currency && !PAID_CURRENCIES.has(r.currency)) {
-    f.push({ code: "currency_not_paid", level: "review", detail: `the invoice is in ${r.currency}; Purser pays EUR only in this version, so a person pays this one by hand (it is still booked)` });
+  if (r.currency && !payableCurrency(r.currency) && !f.some((x) => x.code === "currency_not_paid")) {
+    f.push({ code: "currency_not_paid", level: "review", detail: `the invoice is in ${r.currency}; Purser pays only two-decimal currencies that SWIFT carries, so a person pays this one by hand (it is still booked)` });
   }
 
   if (MONEY.test(r.total) && r.vendor) {

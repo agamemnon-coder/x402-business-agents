@@ -15,6 +15,7 @@ import { apInvoice } from "../src/ap/store.js";
 import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { executeInvoicePayment } from "../src/executors/invoicePayment.js";
+import { executeSupplierPayment } from "../src/executors/supplierPayment.js";
 import { decide } from "../src/policy/approvals.js";
 import { DE, EN } from "./fakes/apInvoices.js";
 import { FakeAirwallex } from "./fakes/airwallex.js";
@@ -91,7 +92,9 @@ describe("the books for a new supplier's invoice", () => {
     const out = await payApInvoice(db, awx, id, now);
     if (out.kind !== "proposed") throw new Error(out.reason);
     decideAs(out.proposal.proposal_id, "APPROVED");
-    await executeInvoicePayment(db, awx, awx, out.proposal.proposal_id);
+    // A supplier added through the inbox is paid on its route (supplier_payment); a Kit 11 payee by invoice_payment.
+    if (out.proposal.kind === "supplier_payment") await executeSupplierPayment(db, awx, awx, out.proposal.proposal_id);
+    else await executeInvoicePayment(db, awx, awx, out.proposal.proposal_id);
     await syncPayments(db, { now: () => now, sink });
     expect(apInvoice(db, id)!.status).toBe("paid");
     expect(sink.entries.map((e) => e.event)).toContain("accrual");

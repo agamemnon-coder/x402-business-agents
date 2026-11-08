@@ -164,7 +164,7 @@ export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date(
   const t = (db.prepare("SELECT invoice_no, status FROM transfers WHERE status <> 'CANCELLED' ORDER BY updated_at DESC").all() as { invoice_no: string; status: string }[])
     .find((r) => sameInvoiceNo(r.invoice_no, invoiceNo));
   if (t) { const n = label ?? t.invoice_no; return t.status === "PAID" ? `invoice ${n} is already paid` : `invoice ${n} already has a payout (${t.status})`; }
-  const p = (db.prepare(`SELECT proposal_id, status, json_extract(terms_json, '$.invoice_no') AS invoice_no FROM proposals WHERE kind = 'invoice_payment'
+  const p = (db.prepare(`SELECT proposal_id, status, json_extract(terms_json, '$.invoice_no') AS invoice_no FROM proposals WHERE kind IN ('invoice_payment', 'supplier_payment')
     AND (status IN ('APPROVED', 'EXECUTING', 'EXECUTED') OR (status = 'PENDING_APPROVAL' AND expires_at > ?)) ORDER BY created_at DESC`)
     .all(now.toISOString()) as { proposal_id: string; invoice_no: string | null; status: string }[]).find((r) => sameInvoiceNo(r.invoice_no ?? "", invoiceNo));
   if (!p) return null;

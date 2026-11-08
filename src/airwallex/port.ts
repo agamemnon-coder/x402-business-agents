@@ -121,6 +121,69 @@ export interface AirwallexRail {
   getTransfer(id: string): Promise<Transfer>;
 }
 
+// Payables in any currency, to suppliers in any country Purser has a payout guide for (src/payouts/routes.ts). Kept
+// apart from AirwallexRail, whose EUR and USD types the Kit 11 flows and their recorded figures rely on.
+
+/** A locked quote between any two currencies. */
+export interface AnyQuote {
+  quoteId: string;
+  buyCurrency: string;
+  sellCurrency: string;
+  buyAmountCents: number;
+  sellAmountCents: number;
+  clientRate: string;
+  validFrom: string;
+  validTo: string;
+}
+
+/** A supplier's account for Airwallex's beneficiary create (beneficiary.bank_details, transfer_methods). */
+export interface NewPayoutBeneficiary {
+  name: string;
+  address: { street: string; city: string; postcode: string; countryCode: string };
+  method: "LOCAL" | "SWIFT";
+  /** local_clearing_system, where the route names one. */
+  clearing?: string;
+  bank: {
+    country: string;
+    currency: string;
+    accountName: string;
+    iban?: string;
+    accountNumber?: string;
+    routingType?: string;
+    routingValue?: string;
+    swiftCode?: string;
+  };
+}
+
+export interface NewPayoutTransfer {
+  requestId: string;
+  beneficiaryId: string;
+  amountCents: number;
+  /** transfer_currency: what the supplier receives. */
+  currency: string;
+  /** source_currency: what pays for it (the same currency: any conversion was made before, on its own approved quote). */
+  sourceCurrency: string;
+  method: "LOCAL" | "SWIFT";
+  reference: string;
+  reason: string;
+  approvalSha256: string;
+}
+
+export interface PayoutRail {
+  /** Every currency the account holds (GET /balances/current). */
+  balancesAll(): Promise<Record<string, Balance>>;
+  currentRateAny(a: { buyCurrency: string; sellCurrency: string; buyAmountCents: number }): Promise<MarketRate>;
+  createQuoteAny(a: { buyCurrency: string; sellCurrency: string; buyAmountCents: number; validity: "MIN_1" | "MIN_15" | "MIN_30" | "HR_1" }): Promise<AnyQuote>;
+  createConversionAny(a: { requestId: string; quote: AnyQuote; approvalSha256: string }): Promise<Conversion>;
+  findConversionByRequestId(requestId: string): Promise<Conversion | undefined>;
+  createPayoutBeneficiary(b: NewPayoutBeneficiary): Promise<{ id: string }>;
+  /** A beneficiary Airwallex already holds with this name, method and exactly these bank details (GET /beneficiaries). */
+  findPayoutBeneficiary(b: NewPayoutBeneficiary): Promise<{ id: string } | undefined>;
+  createPayoutTransfer(t: NewPayoutTransfer): Promise<Transfer>;
+  findTransferByRequestIdStrict(requestId: string): Promise<Transfer | undefined>;
+  getTransfer(id: string): Promise<Transfer>;
+}
+
 /** Sandbox-only simulations. Kept apart so no production path can reach them. */
 export interface SandboxSim {
   simulateDeposit(a: { globalAccountId: string; amountCents: number; reference: string; payerName: string }): Promise<Deposit>;

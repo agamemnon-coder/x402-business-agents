@@ -10,6 +10,7 @@ describe("reading an invoice without a model", () => {
     expect(parseApFallback(EN)).toEqual({
       vendor: "Bergtex Textil GmbH", vat_id: "DE123456789", invoice_no: "BTX-2026-21", issue_date: "2026-11-02", due_date: "2026-11-16",
       currency: "EUR", subtotal: "1554.62", tax: "295.38", total: "1850.00", iban: "DE89370400440532013000", bic: "COBADEFFXXX",
+      account_number: "", routing_type: "", routing_value: "", bank_country: "DE",
       reference: "BTX-2026-21", gl_account: "",
     } satisfies ApReading);
   });

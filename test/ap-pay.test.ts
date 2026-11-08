@@ -68,15 +68,43 @@ describe("a new supplier", () => {
     expect(apInvoice(db, id)!.status).toBe("needs_vendor");
     approve(p.proposal_id);
     await executePayeeAdd(db, awx, p.proposal_id, { now: () => now }, now);
-    expect(awx.beneficiaries.map((b) => b.iban)).toContain("DE02120300000000202051");
+    expect(awx.payoutBeneficiaries.map((b) => b.bank.iban)).toContain("DE02120300000000202051");
     expect(db.prepare("SELECT name, status FROM beneficiaries WHERE name = 'Lagerhaus Nord GmbH'").get()).toEqual({ name: "Lagerhaus Nord GmbH", status: "ACTIVE" });
     expect(apInvoice(db, id)!.status).toBe("ready");
   });
 
-  it("refuses a supplier already on file, a name that looks like one, an account this build cannot add, and a bad IBAN", () => {
+  it("a request made before the payout routes (no stored details, terms without bank) still adds the supplier on its route", async () => {
+    const id = await add(DE);
+    const req = requestPayeeAddForInvoice(db, id, "treasury", now);
+    db.prepare("UPDATE payee_adds SET details_json = NULL WHERE add_id = ?").run(req.add_id);
+    recordPayeeAddVerification(db, req.add_id, { by: "the CFO", how: HOW, actor: "human", address: ADDRESS }, now);
+    const p = proposePayeeAdd(db, req.add_id, "treasury", now);
+    expect(JSON.parse(p.terms_json).bank).toMatchObject({ country: "DE", currency: "EUR", method: "LOCAL" });
+    approve(p.proposal_id);
+    await executePayeeAdd(db, awx, p.proposal_id, { now: () => now }, now);
+    expect(db.prepare("SELECT method, status FROM beneficiaries WHERE name = 'Lagerhaus Nord GmbH'").get()).toEqual({ method: "LOCAL", status: "ACTIVE" });
+  });
+
+  it("approved terms from before the payout routes (no bank in them) are executed on the IBAN's route", async () => {
+    const id = await add(DE);
+    const req = requestPayeeAddForInvoice(db, id, "treasury", now);
+    recordPayeeAddVerification(db, req.add_id, { by: "the CFO", how: HOW, actor: "human", address: ADDRESS }, now);
+    // A proposal filed by the earlier build: the same terms, without the bank and account fields (its hash is its own).
+    const { createProposal } = await import("../src/policy/approvals.js");
+    const { TERMS_SCHEMA } = await import("../src/lib/terms.js");
+    const old = createProposal(db, { terms: { schema: TERMS_SCHEMA, kind: "payee_add", proposal_id: "P-0099", expires_at: new Date(now.getTime() + 3_600_000).toISOString().replace(/\.\d{3}Z$/, "Z"),
+      add_id: req.add_id, vendor: "Lagerhaus Nord GmbH", iban: "DE02120300000000202051", bic: "BYLADEM1001", address: ADDRESS, verification: { by: "the CFO", how: HOW, at: now.toISOString() } } as never, createdBy: "treasury" }, now);
+    db.prepare("UPDATE payee_adds SET status = 'PROPOSED', proposal_id = ? WHERE add_id = ?").run(old.proposal_id, req.add_id);
+    approve(old.proposal_id);
+    await executePayeeAdd(db, awx, old.proposal_id, { now: () => now }, now);
+    expect(db.prepare("SELECT method, status FROM beneficiaries WHERE name = 'Lagerhaus Nord GmbH'").get()).toEqual({ method: "LOCAL", status: "ACTIVE" });
+  });
+
+  it("refuses a supplier already on file, a name that looks like one, a country without a payout guide, and a bad IBAN", () => {
     expect(() => requestPayeeAdd(db, { vendor: "Bergtex Textil GmbH", iban: "DE02120300000000202051", bic: "BYLADEM1001", source: null }, "treasury", now)).toThrow(/already a supplier on file/);
     expect(() => requestPayeeAdd(db, { vendor: "Bergtex Textil GmbB", iban: "DE02120300000000202051", bic: "BYLADEM1001", source: null }, "treasury", now)).toThrow(/looks like/);
-    expect(() => requestPayeeAdd(db, { vendor: "Zeeland Verpakkingen B.V.", iban: "NL91ABNA0417164300", bic: "ABNANL2A", source: null }, "treasury", now)).toThrow(/German \(DE\)/);
+    // A country Purser has no payout guide for yet (Switzerland) is refused with the reason; nothing is requested.
+    expect(() => requestPayeeAdd(db, { vendor: "Alpen Garn AG", iban: "CH9300762011623852957", bic: "POFICHBEXXX", currency: "CHF", source: null }, "treasury", now)).toThrow(/no payout guide for bank country CH/);
     expect(() => requestPayeeAdd(db, { vendor: "Lagerhaus Nord GmbH", iban: "DE02120300000000202052", bic: "BYLADEM1001", source: null }, "treasury", now)).toThrow(/checksum/);
   });
 

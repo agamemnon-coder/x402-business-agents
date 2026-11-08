@@ -14,7 +14,12 @@ import type { ApInvoiceRow } from "./store.js";
 import { apInvoices } from "./store.js";
 import { ledgerInvoiceNo } from "./ledgerKey.js";
 
-export const AP_ACCOUNTS = { inputVat: "1510", payable: "2100", bank: "1200", fees: "6800" } as const;
+export const AP_ACCOUNTS = { inputVat: "1510", payable: "2100", bank: "1200", fees: "6800", transit: "1590" } as const;
+
+/** The Airwallex bank account per currency: EUR, USD and GBP have their own in the chart; others share 1203. */
+export function bankAccountFor(currency: string): string {
+  return currency === "EUR" ? "1200" : currency === "USD" ? "1201" : currency === "GBP" ? "1202" : "1203";
+}
 
 export interface ApEntry {
   date: string;
@@ -41,12 +46,12 @@ const MONEY = /^\d+\.\d{2}$/;
 export function bookable(inv: Pick<ApInvoiceRow, "status" | "findings" | "total">): boolean {
   if (!MONEY.test(inv.total)) return false;
   if (inv.status === "ready" || inv.status === "waiting_cfo" || inv.status === "paid") return true;
-  return inv.status === "needs_review" && inv.findings.every((f) => f.level === "warn" || f.code === "currency_not_paid");
+  return inv.status === "needs_review" && inv.findings.every((f) => f.level === "warn" || f.code === "currency_not_paid" || f.code === "country_not_paid");
 }
 
-const line = (inv: ApInvoiceRow, event: ApEntry["event"], date: string, account: string, debitCents: number, creditCents: number, memo: string): ApEntry => ({
+const line = (inv: ApInvoiceRow, event: ApEntry["event"], date: string, account: string, debitCents: number, creditCents: number, memo: string, currency = inv.currency): ApEntry => ({
   date, invoice_id: inv.id, event, account, account_name: CHART[account] ?? AP_CHART[account] ?? "", debit: debitCents ? fromCents(debitCents) : "", credit: creditCents ? fromCents(creditCents) : "",
-  currency: inv.currency, memo, doc_sha256: inv.doc_sha256,
+  currency, memo, doc_sha256: inv.doc_sha256,
 });
 
 /** The invoice as received: expense (net) and input VAT on the debit side, the supplier's claim on the credit side. */
@@ -62,7 +67,11 @@ export function accrualEntries(inv: ApInvoiceRow): ApEntry[] {
   ];
 }
 
-/** The payment, from the ledger's transfer for this invoice: the claim settled from the bank, and the fee charged. */
+/**
+ * The payment, from the ledger's transfer for this invoice: the claim settled from the invoice currency's bank account,
+ * and the fee charged. A supplier payment funded by a conversion also books that conversion, each side in its own
+ * currency through money in transit (1590), so every entry balances per currency.
+ */
 export function paymentEntries(db: DB, inv: ApInvoiceRow): ApEntry[] {
   const t = db.prepare("SELECT transfer_id, amount, fee_actual, updated_at FROM transfers WHERE invoice_no = ? AND status = 'PAID' ORDER BY updated_at DESC").get(ledgerInvoiceNo(inv.invoice_no, inv.vendor)) as
     { transfer_id: string | null; amount: string; fee_actual: string | null; updated_at: string } | undefined;
@@ -70,9 +79,21 @@ export function paymentEntries(db: DB, inv: ApInvoiceRow): ApEntry[] {
   const date = (inv.paid_at ?? t.updated_at).slice(0, 10);
   const memo = `${inv.vendor} invoice ${inv.invoice_no}, Airwallex transfer ${t.transfer_id ?? "(no id)"}`;
   const amount = toCents(t.amount);
-  const out = [line(inv, "payment", date, AP_ACCOUNTS.payable, amount, 0, memo), line(inv, "payment", date, AP_ACCOUNTS.bank, 0, amount, memo)];
-  const fee = t.fee_actual && new RegExp(`^${inv.currency} \\d+\\.\\d{2}$`).test(t.fee_actual) ? toCents(t.fee_actual.split(" ")[1]!) : 0;
-  if (fee) out.push(line(inv, "payment", date, AP_ACCOUNTS.fees, fee, 0, `${memo}: SWIFT fee`), line(inv, "payment", date, AP_ACCOUNTS.bank, 0, fee, `${memo}: SWIFT fee`));
+  const bank = bankAccountFor(inv.currency);
+  const out: ApEntry[] = [];
+  const p = inv.proposal_id ? db.prepare("SELECT kind, terms_json FROM proposals WHERE proposal_id = ? AND status = 'EXECUTED'").get(inv.proposal_id) as { kind: string; terms_json: string } | undefined : undefined;
+  const c = p?.kind === "supplier_payment" ? (JSON.parse(p.terms_json) as { conversion: null | { buy_currency: string; buy_amount: string; sell_currency: string; sell_amount: string; client_rate: string; quote_id: string } }).conversion : null;
+  if (c) {
+    const fx = `${memo}: bought ${c.buy_currency} ${c.buy_amount} for ${c.sell_currency} ${c.sell_amount} (rate ${c.client_rate}, quote ${c.quote_id})`;
+    out.push(
+      line(inv, "payment", date, bankAccountFor(c.buy_currency), toCents(c.buy_amount), 0, fx, c.buy_currency), line(inv, "payment", date, AP_ACCOUNTS.transit, 0, toCents(c.buy_amount), fx, c.buy_currency),
+      line(inv, "payment", date, AP_ACCOUNTS.transit, toCents(c.sell_amount), 0, fx, c.sell_currency), line(inv, "payment", date, bankAccountFor(c.sell_currency), 0, toCents(c.sell_amount), fx, c.sell_currency),
+    );
+  }
+  out.push(line(inv, "payment", date, AP_ACCOUNTS.payable, amount, 0, memo), line(inv, "payment", date, bank, 0, amount, memo));
+  const m = t.fee_actual ? /^([A-Z]{3}) (\d+\.\d{2})$/.exec(t.fee_actual) : null;
+  const fee = m ? toCents(m[2]!) : 0;
+  if (m && fee) out.push(line(inv, "payment", date, AP_ACCOUNTS.fees, fee, 0, `${memo}: transfer fee`, m[1]!), line(inv, "payment", date, bankAccountFor(m[1]!), 0, fee, `${memo}: transfer fee`, m[1]!));
   return out;
 }
 

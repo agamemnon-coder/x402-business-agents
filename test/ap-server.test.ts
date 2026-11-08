@@ -125,9 +125,10 @@ describe("the payables page", () => {
     await upload(await pdfOf(NL), "nl.pdf");
     expect((await post("/api/payables/invoices/AP-0001/supplier-request", "bad")).status).toBe(403);
     const res = await post("/api/payables/invoices/AP-0001/supplier-request");
-    // A Dutch account cannot be added at Airwallex in this build: refused with the reason, nothing requested.
-    expect(res.status).toBe(409);
-    expect(JSON.parse(res.text).error).toMatch(/German \(DE\)/);
+    // A Dutch account is paid on SEPA (LOCAL EUR): the request is made, and nothing is added until a person verifies it.
+    expect(res.status).toBe(200);
+    expect(JSON.parse(res.text)).toMatchObject({ vendor: "Zeeland Verpakkingen B.V.", status: "REQUESTED" });
+    expect(awx.payoutBeneficiaries).toHaveLength(0);
   });
 
   it("limits how often it can be asked: past the limit it answers 429 and reads nothing", async () => {

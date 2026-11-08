@@ -67,6 +67,9 @@ function migrate(db: DB): void {
   if (!has("upstream_purchases", "supplier")) db.exec("ALTER TABLE upstream_purchases ADD COLUMN supplier TEXT");
   if (!has("transfers", "fee_actual")) db.exec("ALTER TABLE transfers ADD COLUMN fee_actual TEXT");
   if (!has("beneficiaries", "status")) db.exec("ALTER TABLE beneficiaries ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE'");
+  // Payables FX payouts: the route a supplier added through payee_add is paid on (masked account, method, clearing).
+  if (!has("beneficiaries", "details_json")) db.exec("ALTER TABLE beneficiaries ADD COLUMN details_json TEXT");
+  if (!has("payee_adds", "details_json")) db.exec("ALTER TABLE payee_adds ADD COLUMN details_json TEXT");
   // D24: who decided each money action, recorded when it starts (src/provenance/origin.ts); readers look events up by name.
   db.exec("CREATE INDEX IF NOT EXISTS audit_event ON audit_log (event, seq)");
   for (const t of ["holds", "refunds", "sweeps", "upstream_purchases", "transfers", "money_steps"]) if (!has(t, "origin_json")) db.exec(`ALTER TABLE ${t} ADD COLUMN origin_json TEXT`);
@@ -103,10 +106,13 @@ function migrate(db: DB): void {
   // Payables: a new-supplier request whose proposal died is CLOSED (review, 8 November), for a ledger made before.
   const pa = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'payee_adds'").get() as { sql: string } | undefined;
   if (pa && !pa.sql.includes("'CLOSED'")) {
+    // Copied by column name, details_json (FX payouts) included: the old table may or may not have it yet.
+    const cols = ["add_id", "vendor", "iban", "bic", "source", "requested_by", "verification_json", "details_json", "proposal_id", "status", "created_at"]
+      .filter((c) => has("payee_adds", c)).join(", ");
     db.exec(`ALTER TABLE payee_adds RENAME TO payee_adds_old;
       CREATE TABLE payee_adds (add_id TEXT PRIMARY KEY, vendor TEXT NOT NULL, iban TEXT NOT NULL, bic TEXT NOT NULL, source TEXT, requested_by TEXT NOT NULL,
-        verification_json TEXT, proposal_id TEXT, status TEXT NOT NULL CHECK (status IN ('REQUESTED', 'VERIFIED', 'PROPOSED', 'APPLIED', 'CLOSED')), created_at TEXT NOT NULL);
-      INSERT INTO payee_adds SELECT * FROM payee_adds_old; DROP TABLE payee_adds_old;`);
+        verification_json TEXT, details_json TEXT, proposal_id TEXT, status TEXT NOT NULL CHECK (status IN ('REQUESTED', 'VERIFIED', 'PROPOSED', 'APPLIED', 'CLOSED')), created_at TEXT NOT NULL);
+      INSERT INTO payee_adds (${cols}) SELECT ${cols} FROM payee_adds_old; DROP TABLE payee_adds_old;`);
   }
   // Finality evidence (enterprise item 3): CERTIFIED became REPORTED (the BLS signature is not verified), and NOT_FOUND.
   const fe = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'finality_evidence'").get() as { sql: string } | undefined;

@@ -47,7 +47,14 @@ describe("posting", () => {
       expect(CHART[a], a).toBeUndefined();
       expect(LEDGER_ACCOUNTS[a], a).toBeTruthy();
     }
-    expect(AP_CHART).toEqual({ "1510": "Input VAT receivable (supplier invoices)", "2100": "Accounts payable (supplier invoices)" });
+    expect(AP_CHART).toEqual({
+      "1510": "Input VAT receivable (supplier invoices)",
+      "2100": "Accounts payable (supplier invoices)",
+      // Multi-currency payouts (PR #112): the Airwallex balances in other currencies, one per currency.
+      "1203": "Bank: Airwallex, other currencies (one balance per currency)",
+    });
+    expect(CHART["1203"]).toBeUndefined();
+    expect(LEDGER_ACCOUNTS["1203"]).toBeTruthy();
   });
 
   it("posts each source key once", () => {
