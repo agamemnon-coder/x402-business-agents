@@ -125,7 +125,8 @@ async function executeApproved(db: DB, proposalId: string): Promise<void> {
       // Payables: a new supplier, after a person's verification and the CFO's Face ID (src/ap/vendors.ts).
       if (!awx) throw new Error("Airwallex sandbox keys are not set; the new supplier cannot be added");
       const { executePayeeAdd } = await import("../ap/vendors.js");
-      await executePayeeAdd(db, awx.rail, proposalId);
+      const { payablesSink } = await import("../ap/books.js");
+      await executePayeeAdd(db, awx.rail, proposalId, { sink: payablesSink() });
       return;
     }
     case "invoice_payment":

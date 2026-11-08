@@ -9,7 +9,7 @@ import type { PayoutRail, SandboxSim, Transfer } from "../airwallex/port.js";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
-import { invoiceKey } from "../lib/invoiceKey.js";
+import { sameInvoiceNo } from "../lib/invoiceKey.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
 import { counterpartyAllowed, frozen, paused } from "../policy/rules.js";
 import { step } from "../policy/saga.js";
@@ -27,7 +27,7 @@ export async function executeSupplierPayment(db: DB, rail: PayoutRail, sim: Sand
     const held = holdReason(db, t);
     if (held) throw new Error(held);
     const other = (db.prepare("SELECT invoice_no, status FROM transfers WHERE request_id <> ? AND status <> 'CANCELLED'").all(t.transfer_request_id) as { invoice_no: string; status: string }[])
-      .find((r) => invoiceKey(r.invoice_no) === invoiceKey(t.invoice_no));
+      .find((r) => sameInvoiceNo(r.invoice_no, t.invoice_no));
     if (other) throw new Error(`invoice ${t.invoice_no} ${other.status === "PAID" ? "is already paid" : `already has a payout (${other.status})`} by another proposal; nothing is converted or paid`);
     if (begun("transfer")) return;
     if (t.conversion && !begun("conversion")) {

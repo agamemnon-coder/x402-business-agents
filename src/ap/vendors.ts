@@ -13,7 +13,7 @@ import type { PayoutRail } from "../airwallex/port.js";
 import type { DB } from "../db/open.js";
 import { TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { ibanSha } from "../agents/invoice.js";
-import { beginExecution, createProposal, finishExecution, nextProposalId, type ProposalRow } from "../policy/approvals.js";
+import { beginExecution, createProposal, expireDue, finishExecution, nextProposalId, type ProposalRow } from "../policy/approvals.js";
 import { assessAgainst, type Beneficiary } from "../policy/fraudCore.js";
 import { recheck, type InboxDeps } from "./inbox.js";
 import { accountKey, chooseRoute, maskAccount, validateDetails, type BankDetails, type Method } from "../payouts/routes.js";
@@ -79,6 +79,20 @@ function bankOf(a: { vendor: string; iban?: string; bic?: string; currency?: str
   };
 }
 
+/**
+ * The route for a request or approved terms from before the payout routes (an IBAN and BIC only): the IBAN's own
+ * route, as a new request would get it (a DE IBAN is paid LOCAL in EUR), never a SWIFT default the route table no
+ * longer gives. Throws when the details have no route or fail its checks, like a new request would.
+ */
+function legacyPayeeBank(vendor: string, iban: string, bic: string): PayeeBank {
+  const bank = bankOf({ vendor, iban, bic });
+  const route = chooseRoute(bank);
+  if (!route.ok) throw new Error(route.reason);
+  const wrong = validateDetails(bank, route.route);
+  if (wrong.length) throw new Error(wrong.join("; "));
+  return { ...bank, method: route.route.method, clearing: route.route.clearing ?? null };
+}
+
 export function requestPayeeAdd(db: DB, a: { vendor: string; iban?: string; bic?: string; currency?: string; bank?: Partial<BankDetails>; source: string | null }, by: Actor, now = new Date()): PayeeAddRow {
   const vendor = a.vendor.trim();
   if (!vendor) throw new Error("a supplier needs a name");
@@ -97,7 +111,8 @@ export function requestPayeeAdd(db: DB, a: { vendor: string; iban?: string; bic?
   const finding = assessAgainst(all, { vendor, iban: key, bic: "" }, "", ibanSha(key));
   const odd = finding.signals.filter((s) => s.blocks && s.code !== "unknown_vendor");
   if (odd.length) throw new Error(`${odd.map((s) => s.detail).join("; ")}: a name that looks like a supplier on file is not added as a new one`);
-  const open = db.prepare("SELECT add_id FROM payee_adds WHERE vendor = ? AND status <> 'APPLIED'").get(vendor) as { add_id: string } | undefined;
+  closeDeadAdds(db, now);
+  const open = db.prepare("SELECT add_id FROM payee_adds WHERE vendor = ? AND status NOT IN ('APPLIED', 'CLOSED')").get(vendor) as { add_id: string } | undefined;
   if (open) throw new Error(`${vendor} is already requested as ${open.add_id}`);
   const n = (db.prepare("SELECT COUNT(*) AS n FROM payee_adds").get() as { n: number }).n;
   const id = `N-${String(n + 1).padStart(4, "0")}`;
@@ -140,12 +155,27 @@ export function recordPayeeAddVerification(db: DB, id: string, v: { by: string; 
   return row(db, id);
 }
 
+/**
+ * A request whose proposal expired, was rejected, was superseded or can no longer run is CLOSED (review, 8 November):
+ * the supplier is not locked out, a new request may follow. A FAILED one stays: its approved terms may still run.
+ */
+export function closeDeadAdds(db: DB, now = new Date()): void {
+  expireDue(db, now);
+  const dead = db.prepare(`SELECT a.add_id, a.vendor, p.status FROM payee_adds a JOIN proposals p ON p.proposal_id = a.proposal_id
+    WHERE a.status = 'PROPOSED' AND p.status IN ('EXPIRED', 'REJECTED', 'SUPERSEDED', 'NEEDS_REAPPROVAL')`).all() as { add_id: string; vendor: string; status: string }[];
+  for (const d of dead) {
+    db.prepare("UPDATE payee_adds SET status = 'CLOSED' WHERE add_id = ? AND status = 'PROPOSED'").run(d.add_id);
+    audit(db, "system", "payee.add_closed", d.add_id, { vendor: d.vendor, proposal: d.status.toLowerCase() }, now);
+  }
+}
+
 export function proposePayeeAdd(db: DB, id: string, by: Actor, now = new Date()): ProposalRow {
+  closeDeadAdds(db, now);
   const r = row(db, id);
   if (r.status !== "VERIFIED" || !r.verification_json) throw new Error(`${id} is not verified by a person yet; nothing to propose`);
   if (onFile(db).some((b) => b.name.trim() === r.vendor)) throw new Error(`${r.vendor} is on file already`);
   const v = JSON.parse(r.verification_json) as { by: string; how: string; at: string; address: Address };
-  const bank: PayeeBank = r.details_json ? JSON.parse(r.details_json) as PayeeBank : { ...bankOf({ vendor: r.vendor, iban: r.iban, bic: r.bic }), method: "SWIFT", clearing: null };
+  const bank: PayeeBank = r.details_json ? JSON.parse(r.details_json) as PayeeBank : legacyPayeeBank(r.vendor, r.iban, r.bic);
   const terms: PayeeAddTerms = {
     schema: TERMS_SCHEMA, kind: "payee_add", proposal_id: nextProposalId(db),
     expires_at: new Date(now.getTime() + PAYEE_ADD_TTL_MS).toISOString().replace(/\.\d{3}Z$/, "Z"),
@@ -165,7 +195,14 @@ export async function executePayeeAdd(db: DB, rail: PayoutRail, proposalId: stri
     if (terms.kind !== "payee_add") throw new Error(`${proposalId} is not a new supplier`);
     if (onFile(db).some((b) => b.name.trim() === terms.vendor)) throw new Error(`${terms.vendor} is on file already; nothing was added`);
   }, now);
-  const bank = t.bank;
+  // Terms approved before the payout routes carry only the IBAN and BIC the CFO saw: their route is the IBAN's own.
+  let bank: PayeeBank;
+  try {
+    bank = t.bank ?? legacyPayeeBank(t.vendor, t.iban, t.bic);
+  } catch (e) {
+    finishExecution(db, proposalId, "FAILED", { error: (e as Error).message }, now);
+    throw new Error(`${(e as Error).message}; nothing was added`, { cause: e });
+  }
   // The approved details are checked again against the route before anything is sent (the table may have changed).
   const route = chooseRoute(bank);
   const wrong = route.ok ? validateDetails(bank, route.route) : [route.reason];
