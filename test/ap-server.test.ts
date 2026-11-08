@@ -191,6 +191,13 @@ describe("the payables page", () => {
     expect((await reject(JSON.stringify({ reason: "again" }))).status).toBe(409);
   });
 
+  it("does not echo the asked-for id on an unknown invoice page", async () => {
+    await start(false);
+    const res = await fetch(base + "/invoices/" + encodeURIComponent("<script>alert(1)</script>"));
+    expect(res.status).toBe(404);
+    expect(await res.text()).not.toContain("<script>");
+  });
+
   it("limits how often it can be asked: past the limit it answers 429 and reads nothing", async () => {
     await start(false, { windowMs: 60_000, limit: 3 });
     for (let i = 0; i < 3; i++) expect((await fetch(base + "/api/payables/invoices")).status).toBe(200);

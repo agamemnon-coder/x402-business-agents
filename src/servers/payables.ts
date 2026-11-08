@@ -111,10 +111,11 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
 
   app.get("/", (_req, res) => { const nonce = pageCsp(res); res.type("html").send(overviewPage(issue(), nonce)); });
   app.get("/invoices/:id", (req, res) => {
-    const id = String(req.params.id);
-    if (!apInvoice(db, id)) { res.status(404).type("text/plain").send(`no payables invoice ${id}`); return; }
+    // The page carries the stored invoice's own id, never the request's text (CodeQL: reflected input).
+    const inv = apInvoice(db, String(req.params.id));
+    if (!inv) { res.status(404).type("text/plain").send("no such payables invoice"); return; }
     const nonce = pageCsp(res);
-    res.type("html").send(detailPage(issue(), nonce, id));
+    res.type("html").send(detailPage(issue(), nonce, inv.id));
   });
   // The pages' own files: the font, and pdf.js for the document viewer (it draws the supplier's PDF on a canvas, without eval).
   app.get("/assets/inter.woff2", (_req, res) => { res.setHeader("Cache-Control", "private, max-age=86400"); res.type("font/woff2").send(FONT); });
