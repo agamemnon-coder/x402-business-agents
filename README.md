@@ -116,6 +116,17 @@ Not validated with customers yet: no interviews, no pilots, no revenue. Every li
 - **Why now:** Airwallex wrote on 5 October 2026 that agents moving money need limits enforced "through underlying infrastructure rather than prompts" ("Agentic banking starts with governance", source S1). ([problem.md](docs/business/problem.md#why-now-sourced))
 - **Why Purser:** it builds on Airwallex's own card controls and Metal's mandates, and adds what sits on top: one CFO policy for card and chain, approvals signed over the exact terms, a hash-chained audit log. ([model.md](docs/business/model.md#risks-and-what-we-do-not-know))
 
+## Built after the kit (test environment, not live)
+
+After submitting, we started turning Purser into a payables product for small companies: the same rule, that nothing is paid unless the CFO signed the exact terms, applied to supplier invoices. All of it runs on the Airwallex sandbox with test money, on a branch, not on this site. Details: [docs/after-the-kit.md](docs/after-the-kit.md).
+
+- **Payables inbox:** supplier invoices arrive as PDF or e-mail, are read, checked (duplicates, changed bank details, totals) and booked.
+- **Scanned invoices:** two independent readings must agree on IBAN, total, currency and invoice number; otherwise a person decides.
+- **One Face ID for a batch:** the CFO signs a list of exact terms once; each payment still runs and is checked on its own.
+- **Cloud console** with passkey sign-in, a register of every money movement, Dutch screens.
+- **Five red-team rounds**, every confirmed finding fixed with a test.
+- **Planned:** onboarding each customer as an Airwallex connected account (not enabled for our sandbox yet).
+
 ## Who does what
 
 - **Built by Max Geurtsen:** Purser itself: the CFO's policy and limits, the approval flow (Face ID on the exact terms,
