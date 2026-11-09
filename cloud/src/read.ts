@@ -2,6 +2,7 @@
 // computed by the same functions the runner uses (src/ledger/reports.ts), over the cloud's copy of the ledger.
 
 import { ageingFrom, balanceSheetFrom, isClosingKey, profitAndLossFrom, quarterRange, trialFrom, vatOverviewFrom, type PostedLine } from "../../src/ledger/reports.js";
+import { totalsOf, type TxRow } from "../../src/money/registerShape.js";
 import type { Cond, TenantDb, Where } from "./tenant.js";
 
 export class BadRequest extends Error {}
@@ -16,7 +17,7 @@ const day = (v: string | null, what: string): string | null => {
 export interface Page<T> { items: T[]; next_cursor: string | null }
 
 /** Cursor pagination over a sortable key: the cursor is the last key of the page before. */
-async function paged<T extends Record<string, unknown>>(db: TenantDb, table: Parameters<TenantDb["select"]>[0], key: string, where: Where, q: URLSearchParams, shape: (r: T) => unknown): Promise<Page<unknown>> {
+export async function paged<T extends Record<string, unknown>>(db: TenantDb, table: Parameters<TenantDb["select"]>[0], key: string, where: Where, q: URLSearchParams, shape: (r: T) => unknown): Promise<Page<unknown>> {
   const limit = Math.max(1, Math.min(200, Number(q.get("limit") ?? 50) || 50));
   const cursor = q.get("cursor");
   const w: Where = { ...where, ...(cursor ? { [key]: { op: ">", v: cursor } as Cond } : {}) };
@@ -135,5 +136,77 @@ export async function insights(db: TenantDb, now: Date): Promise<unknown> {
     waiting: { for_cfo: rows.filter((r) => r.status === "waiting_cfo").length, for_supplier_check: rows.filter((r) => r.status === "needs_vendor").length, for_a_person: rows.filter((r) => r.status === "needs_review").length },
     blocked_by_reason: blocked,
     spend_90_days_cents: spend,
+  };
+}
+
+// The transactions register (src/money/register.ts), as the runner last pushed it: newest first, filtered, paged.
+const RAIL = /^[a-z_]{2,40}$/;
+const REC = new Set(["matched", "missing_booking", "missing_rail_record", "amount_mismatch", "not_applicable"]);
+
+function txWhere(q: URLSearchParams): { where: Where; to: string | null } {
+  const where: Where = {};
+  const rail = q.get("rail");
+  if (rail) { if (!RAIL.test(rail)) throw new BadRequest("rail is a word like airwallex_transfer or metal"); where.rail = rail; }
+  const cur = q.get("currency");
+  if (cur) { if (!/^[A-Z]{3,4}$/.test(cur)) throw new BadRequest("currency is a code like EUR"); where.currency = cur; }
+  const rec = q.get("reconciliation");
+  if (rec) { if (!REC.has(rec)) throw new BadRequest("reconciliation is matched, missing_booking, missing_rail_record, amount_mismatch or not_applicable"); where.reconciliation = rec; }
+  const moved = q.get("moved");
+  if (moved) { if (!["true", "false"].includes(moved)) throw new BadRequest("moved is true or false"); where.moved = moved === "true" ? 1 : 0; }
+  const from = day(q.get("from"), "from");
+  if (from) where.at = { op: ">=", v: from };
+  return { where, to: day(q.get("to"), "to") };
+}
+
+/** One page, newest first: the cursor is the last row's sort key; a "to" bound is applied while the page fills. */
+export async function listTransactions(db: TenantDb, q: URLSearchParams): Promise<Page<unknown>> {
+  const limit = Math.max(1, Math.min(200, Number(q.get("limit") ?? 50) || 50));
+  const { where, to } = txWhere(q);
+  const items: { sort_key: string; body: unknown }[] = [];
+  let cursor = q.get("cursor");
+  for (;;) {
+    const rows = await db.select<{ sort_key: string; at: string; version: number; body_json: string }>("transactions", { ...where, ...(cursor ? { sort_key: { op: "<", v: cursor } as Cond } : {}) }, { order: ["sort_key"], desc: true, limit: 500 });
+    for (const r of rows) {
+      if (to && r.at.slice(0, 10) > to) continue;
+      items.push({ sort_key: r.sort_key, body: { ...parse(r), version: r.version } });
+      if (items.length > limit) break;
+    }
+    if (items.length > limit || rows.length < 500) break;
+    cursor = rows[rows.length - 1]!.sort_key;
+  }
+  const more = items.length > limit;
+  const page = items.slice(0, limit);
+  return { items: page.map((x) => x.body), next_cursor: more ? page[page.length - 1]!.sort_key : null };
+}
+
+export async function oneTransaction(db: TenantDb, id: string): Promise<unknown | null> {
+  const r = await db.one<{ id: string; version: number; body_json: string }>("transactions", { id });
+  if (!r) return null;
+  const history = await db.select<{ version: number; replaced_at: string }>("object_history", { kind: "transaction", id }, { order: ["version"] });
+  return { ...parse(r), version: r.version, earlier_versions: history.map((h) => ({ version: h.version, replaced_at: h.replaced_at })) };
+}
+
+/** Every row the filters let through, newest first (for the export and the summary). */
+export async function allTransactions(db: TenantDb, q: URLSearchParams): Promise<TxRow[]> {
+  const out: TxRow[] = [];
+  const p = new URLSearchParams(q);
+  p.set("limit", "200");
+  p.delete("cursor");
+  for (;;) {
+    const page = await listTransactions(db, p);
+    out.push(...(page.items as TxRow[]));
+    if (!page.next_cursor) return out;
+    p.set("cursor", page.next_cursor);
+  }
+}
+
+/** Totals per currency (money that moved only) and the checks, over the filtered rows. */
+export async function transactionSummary(db: TenantDb, q: URLSearchParams): Promise<unknown> {
+  const rows = await allTransactions(db, q);
+  const ids = (f: string) => rows.filter((r) => r.flags.includes(f)).map((r) => r.id);
+  return {
+    totals: totalsOf(rows),
+    check: { rows: rows.length, moved: rows.filter((r) => r.moved).length, unreconciled: rows.filter((r) => r.moved && r.reconciliation !== "matched").length,
+      without_approval: ids("no_approval"), without_booking: ids("no_booking"), without_proof: ids("no_proof"), amount_mismatch: [...ids("amount_mismatch"), ...ids("booked_not_moved")] },
   };
 }

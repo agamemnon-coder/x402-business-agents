@@ -121,7 +121,26 @@ CREATE TABLE IF NOT EXISTS payments (
   PRIMARY KEY (tenant_id, id)
 );
 
--- Every earlier version of a vendor, invoice or payment, kept when a newer one replaces it.
+-- The transactions register (src/money/register.ts): every money movement the runner knows, on every rail, versioned
+-- like a payment. sort_key is the moment and the id, so a list can page newest first.
+CREATE TABLE IF NOT EXISTS transactions (
+  tenant_id TEXT NOT NULL,
+  id TEXT NOT NULL,
+  sort_key TEXT NOT NULL,
+  at TEXT NOT NULL,
+  rail TEXT NOT NULL,
+  direction TEXT NOT NULL,
+  currency TEXT NOT NULL,
+  moved INTEGER NOT NULL,
+  reconciliation TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  body_json TEXT NOT NULL,
+  body_sha256 TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, id)
+);
+CREATE INDEX IF NOT EXISTS transactions_by_time ON transactions (tenant_id, sort_key);
+
+-- Every earlier version of a vendor, invoice, payment or transaction, kept when a newer one replaces it.
 CREATE TABLE IF NOT EXISTS object_history (
   tenant_id TEXT NOT NULL,
   kind TEXT NOT NULL,

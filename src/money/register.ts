@@ -22,73 +22,9 @@ import type { DB } from "../db/open.js";
 import { FEED_ACTOR } from "../ledger/feed.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
 
-export type Rail = "airwallex_transfer" | "airwallex_fx" | "airwallex_card" | "airwallex_airi" | "airwallex_receipt" | "metal" | "metal_clearing";
-export type Direction = "in" | "out" | "internal";
-export type Reconciliation = "matched" | "missing_booking" | "missing_rail_record" | "amount_mismatch" | "not_applicable";
+import { RAIL_LABELS, RECONCILIATION_WORDS, totalsOf, type Reconciliation, type Register, type TxRow } from "./registerShape.js";
 
-export const RAIL_LABELS: Record<Rail, string> = {
-  airwallex_transfer: "Airwallex transfer",
-  airwallex_fx: "Airwallex FX",
-  airwallex_card: "Airwallex card",
-  airwallex_airi: "Airwallex Airi card",
-  airwallex_receipt: "Airwallex Global Account",
-  metal: "Metal",
-  metal_clearing: "Metal clearing",
-};
-
-export const RECONCILIATION_WORDS: Record<Reconciliation, string> = {
-  matched: "Booked and matched",
-  missing_booking: "Not booked",
-  missing_rail_record: "No proof from the rail",
-  amount_mismatch: "Booking differs",
-  not_applicable: "Nothing moved",
-};
-
-export interface TxRow {
-  id: string;
-  at: string;
-  direction: Direction;
-  rail: Rail;
-  rail_label: string;
-  description: string;
-  counterparty: string;
-  /** The payee's account, masked: the last four only. */
-  counterparty_account: string | null;
-  amount: string;
-  currency: string;
-  /** Only when a real amount in euro is recorded: the movement is in EUR, or it is a conversion's leg against EUR. */
-  eur_equivalent: string | null;
-  fee: { amount: string; currency: string } | null;
-  moved: boolean;
-  status: string;
-  status_words: string;
-  invoice: { ap_id: string | null; supplier_no: string; vendor: string; document: string | null } | null;
-  approval: { required: boolean; authority: string; proposal_id: string | null; decision: string | null; method: string | null; approved_at: string | null; terms_sha256: string | null };
-  booking: { entry_ids: number[]; accounts: string[]; booked: string | null };
-  proof: string | null;
-  reconciliation: Reconciliation;
-  reconciliation_words: string;
-  /** What a person should look at: no_approval, no_booking, no_proof, amount_mismatch, booked_not_moved. */
-  flags: string[];
-}
-
-export interface CurrencyTotals { currency: string; in: string; out: string; internal_in: string; internal_out: string; fees: string; moved: number; not_moved: number }
-
-export interface Register {
-  rows: TxRow[];
-  totals: CurrencyTotals[];
-  check: {
-    rows: number;
-    moved: number;
-    unreconciled: number;
-    without_approval: string[];
-    without_booking: string[];
-    without_proof: string[];
-    amount_mismatch: string[];
-    /** Ledger postings by the feed for a movement this register cannot find on any rail. */
-    bookings_without_movement: number[];
-  };
-}
+export * from "./registerShape.js";
 
 const has = (db: DB, table: string) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table);
 const cols = (db: DB, table: string) => new Set((db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name));
@@ -97,7 +33,9 @@ const words = (s: string) => s.toLowerCase().replace(/_/g, " ");
 
 const TRANSFER_WORDS: Record<string, string> = { SUBMITTING: "being sent", SENT: "sent", PAID: "paid", FAILED: "failed", CANCELLED: "cancelled", REFUSED: "refused" };
 
-interface Draft extends Omit<TxRow, "rail_label" | "booking" | "reconciliation" | "reconciliation_words" | "flags" | "approval"> {
+interface Draft extends Omit<TxRow, "rail_label" | "booking" | "reconciliation" | "reconciliation_words" | "flags" | "approval" | "flow"> {
+  /** For a movement between own accounts: out of the account it left. */
+  leaves?: boolean;
   approval: Omit<TxRow["approval"], "decision" | "method" | "approved_at"> & { sha: string | null };
   /** The ledger feed's key prefix for this movement's postings, and what its bank lines should sum to in its currency. */
   book: { prefix: string; expectCents: number } | null;
@@ -156,7 +94,7 @@ export function transactionRegister(db: DB): Register {
       const cur = side === "sell" ? sell : buy;
       const amt = side === "sell" ? f.sell_amount ?? "0.00" : f.buy_amount;
       return {
-        id: `fx:${f.conversion_id}:${side}`, at: f.valid_from, direction: "internal", rail: "airwallex_fx",
+        id: `fx:${f.conversion_id}:${side}`, at: f.valid_from, direction: "internal", leaves: side === "sell", rail: "airwallex_fx",
         description: `Convert ${sell} to ${buy} (${side === "sell" ? "sold" : "bought"})`, counterparty: "Airwallex", counterparty_account: null,
         amount: amt, currency: cur, eur_equivalent: eurSide, fee: null, moved, status: f.status, status_words: moved ? "converted" : words(f.status),
         invoice: null, approval: { required: true, authority: "the CFO's approval of the exact terms", proposal_id: null, terms_sha256: f.approval_sha256, sha: f.approval_sha256 },
@@ -261,7 +199,7 @@ export function transactionRegister(db: DB): Register {
     { payment_id: string; amount_cents: number; tx_hash: string | null; outcome: string; created_at: string }[]) {
     const moved = s.outcome === "PAID";
     drafts.push({
-      id: `sweep:${s.payment_id}`, at: s.created_at, direction: "internal", rail: "metal", description: "Sweep earnings from Metal to Airwallex", counterparty: "own account",
+      id: `sweep:${s.payment_id}`, at: s.created_at, direction: "internal", leaves: true, rail: "metal", description: "Sweep earnings from Metal to Airwallex", counterparty: "own account",
       counterparty_account: null, amount: usdz(s.amount_cents), currency: "USDZ", eur_equivalent: null, fee: null, moved, status: s.outcome, status_words: moved ? "sent to Airwallex" : words(s.outcome),
       invoice: null, approval: { required: false, authority: "own accounts: the treasury agent's sweep rule", proposal_id: null, terms_sha256: null, sha: null },
       proof: s.tx_hash, book: { prefix: `sweep|${s.payment_id}|`, expectCents: moved ? -s.amount_cents : 0 },
@@ -284,7 +222,7 @@ export function transactionRegister(db: DB): Register {
     const cents = baseUnitsToCents(BigInt(w.units));
     const moved = w.detail === null && w.tx !== null;
     const leg = (from: "1220" | "1210"): Draft => ({
-      id: `clearing:${w.id}:${from === "1220" ? "out" : "in"}`, at: w.created_at, direction: "internal", rail: "metal_clearing",
+      id: `clearing:${w.id}:${from === "1220" ? "out" : "in"}`, at: w.created_at, direction: "internal", leaves: from === "1220", rail: "metal_clearing",
       description: from === "1220" ? "Clearing earnings withdrawn (out of clearing)" : "Clearing earnings withdrawn (into the wallet)", counterparty: "own account", counterparty_account: null,
       amount: fromCents(cents), currency: "USDZ", eur_equivalent: null, fee: null, moved, status: moved ? "WITHDRAWN" : "FAILED", status_words: moved ? "withdrawn" : `failed${w.detail ? `: ${w.detail}` : ""}`,
       invoice: null, approval: { required: false, authority: "own accounts: the treasury agent's clearing rule", proposal_id: null, terms_sha256: null, sha: null },
@@ -296,8 +234,6 @@ export function transactionRegister(db: DB): Register {
   // Bookings: the feed's postings for each movement, and its bank lines in the movement's currency.
   const feed = feedEntries(db);
   const used = new Set<number>();
-  /** Internal movements that leave one of our own accounts (a conversion's sold leg, a sweep, money out of clearing). */
-  const outOfOwn = new Set<string>();
   const rows: TxRow[] = drafts.map((d) => {
     const a = d.approval.proposal_id
       ? (approvalById.get(d.approval.proposal_id) as { proposal_id: string; terms_sha256: string; decision: string | null; method: string | null; created_at: string | null } | undefined)
@@ -327,28 +263,16 @@ export function transactionRegister(db: DB): Register {
       if (d.approval.required && approval.decision !== "APPROVED") flags.push("no_approval");
       rec = flags.includes("amount_mismatch") ? "amount_mismatch" : flags.includes("no_booking") ? "missing_booking" : flags.includes("no_proof") ? "missing_rail_record" : "matched";
     }
-    if (d.direction === "internal" && (d.book?.expectCents ?? 0) < 0) outOfOwn.add(d.id);
-    const { book: _book, approval: _a, ...rest } = d;
-    return { ...rest, rail_label: RAIL_LABELS[d.rail], approval, booking, reconciliation: rec, reconciliation_words: RECONCILIATION_WORDS[rec], flags };
-  }).sort((x, y) => y.at.localeCompare(x.at) || x.id.localeCompare(y.id));
+    const { book: _book, approval: _a, leaves, ...rest } = d;
+    const flow: TxRow["flow"] = d.direction === "internal" ? (leaves ? "out" : "in") : d.direction;
+    return { ...rest, flow, rail_label: RAIL_LABELS[d.rail], approval, booking, reconciliation: rec, reconciliation_words: RECONCILIATION_WORDS[rec], flags };
+  }).sort((x, y) => {
+    // Newest first, by the same key the cloud pages by, compared as the database does (code units, not locale).
+    const a = `${x.at}|${x.id}`, b = `${y.at}|${y.id}`;
+    return a < b ? 1 : a > b ? -1 : 0;
+  });
 
-  // Totals per currency, of money that moved only.
-  const tot = new Map<string, { in: number; out: number; iin: number; iout: number; fees: number; moved: number; not: number }>();
-  const t = (c: string) => { let x = tot.get(c); if (!x) { x = { in: 0, out: 0, iin: 0, iout: 0, fees: 0, moved: 0, not: 0 }; tot.set(c, x); } return x; };
-  for (const r of rows) {
-    const x = t(r.currency);
-    if (!r.moved) { x.not += 1; continue; }
-    x.moved += 1;
-    const c = toCents(r.amount);
-    if (r.direction === "in") x.in += c;
-    else if (r.direction === "out") x.out += c;
-    else if (outOfOwn.has(r.id)) x.iout += c;
-    else x.iin += c;
-    if (r.fee) t(r.fee.currency).fees += toCents(r.fee.amount);
-  }
-  const totals = [...tot.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([currency, x]) => ({
-    currency, in: fromCents(x.in), out: fromCents(x.out), internal_in: fromCents(x.iin), internal_out: fromCents(x.iout), fees: fromCents(x.fees), moved: x.moved, not_moved: x.not,
-  }));
+  const totals = totalsOf(rows);
 
   const ids = (f: string) => rows.filter((r) => r.flags.includes(f)).map((r) => r.id);
   // The feed's postings for rails this register lists, that no movement claims: opening balances and the inbox's
@@ -362,32 +286,4 @@ export function transactionRegister(db: DB): Register {
       bookings_without_movement: feed.filter((e) => listed.test(e.base) && !used.has(e.entry_id)).map((e) => e.entry_id),
     },
   };
-}
-
-export interface RegisterFilter { rail?: string; currency?: string; from?: string; to?: string; reconciliation?: string; moved?: boolean; q?: string }
-
-export function filterRows(rows: TxRow[], f: RegisterFilter): TxRow[] {
-  const q = f.q?.trim().toLowerCase();
-  return rows.filter((r) => (!f.rail || r.rail === f.rail) && (!f.currency || r.currency === f.currency) && (!f.from || r.at.slice(0, 10) >= f.from) && (!f.to || r.at.slice(0, 10) <= f.to)
-    && (!f.reconciliation || r.reconciliation === f.reconciliation) && (f.moved === undefined || r.moved === f.moved)
-    && (!q || [r.id, r.counterparty, r.description, r.proof ?? "", r.invoice?.supplier_no ?? ""].some((s) => s.toLowerCase().includes(q))));
-}
-
-const CSV_COLUMNS = ["id", "at", "direction", "rail", "description", "counterparty", "counterparty_account", "amount", "currency", "eur_equivalent", "fee", "fee_currency", "moved", "status",
-  "invoice", "supplier_invoice_no", "proposal_id", "approval", "approval_method", "terms_sha256", "ledger_entries", "booked", "proof", "reconciliation", "flags"] as const;
-
-/** A text cell a spreadsheet would read as a formula gets a leading apostrophe; amounts stay numbers. */
-function cell(v: string, numeric = false): string {
-  const safe = !numeric && /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;
-  return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
-}
-
-export function registerCsv(rows: TxRow[]): string {
-  const line = (r: TxRow) => [
-    cell(r.id), cell(r.at), r.direction, r.rail, cell(r.description), cell(r.counterparty), cell(r.counterparty_account ?? ""), cell(r.amount, true), r.currency, cell(r.eur_equivalent ?? "", true),
-    cell(r.fee?.amount ?? "", true), r.fee?.currency ?? "", r.moved ? "yes" : "no", cell(r.status_words), cell(r.invoice?.ap_id ?? ""), cell(r.invoice?.supplier_no ?? ""),
-    cell(r.approval.proposal_id ?? ""), cell(r.approval.decision ?? r.approval.authority), r.approval.method ?? "", r.approval.terms_sha256 ?? "", r.booking.entry_ids.join(" "),
-    cell(r.booking.booked ?? "", true), cell(r.proof ?? ""), r.reconciliation, r.flags.join(" "),
-  ].join(",");
-  return [CSV_COLUMNS.join(","), ...rows.map(line)].join("\r\n") + "\r\n";
 }

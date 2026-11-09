@@ -24,7 +24,7 @@ ${COMMON}
 let all=[],totals=[],check=null,railF='all';
 const RAILS=[['all','All'],['airwallex_transfer','Transfers'],['airwallex_fx','FX'],['airwallex_card','Cards'],['airwallex_airi','Airi'],['airwallex_receipt','Money in'],['metal','Metal'],['metal_clearing','Metal clearing']];
 const FLAG={no_approval:'Money moved without the CFO\\'s approval on file.',no_booking:'Money moved and the ledger does not book it yet (sync the ledger, or this rail is not booked).',no_proof:'Recorded as moved, but there is no proof from the rail (no Airwallex id or transaction hash).',amount_mismatch:'The booking\\'s bank lines differ from the amount moved.',booked_not_moved:'Something is booked although no money moved.'};
-const isIn=(r)=>r.direction==='in'||/\\((bought|into the wallet)\\)$/.test(r.description)||r.id.startsWith('credit:');
+const isIn=(r)=>r.flow==='in';
 function periodOk(r){const v=$('#period').value;if(v==='all')return true;if(v==='month')return r.at.slice(0,7)===today.slice(0,7);const d=new Date(Date.now()-30*86400000).toISOString().slice(0,10);return r.at.slice(0,10)>=d}
 function shown(){const cur=$('#currency').value,rec=$('#rec').value,q=$('#q').value.trim().toLowerCase();
   return all.filter(r=>(railF==='all'||r.rail===railF)&&(!cur||r.currency===cur)&&periodOk(r)&&(!rec||(rec==='attention'?(r.moved&&r.reconciliation!=='matched')||r.flags.length:r.reconciliation===rec))

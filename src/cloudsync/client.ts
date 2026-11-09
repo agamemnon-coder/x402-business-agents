@@ -1,5 +1,5 @@
 // The runner's side of Purser Cloud (cloud/): it pushes what this ledger records (suppliers, payables invoices with
-// their documents, payments, ledger entries, the audit log) and pulls the e-mail the cloud received for this company,
+// their documents, payments, the transactions register, ledger entries, the audit log) and pulls the e-mail the cloud received for this company,
 // filing it through the inbox. The cloud never moves money and holds no payment keys. Passkeys are never pushed: people
 // enrol their passkey in the cloud itself, with an enrolment an owner starts (docs/cloud.md).
 // The API key comes from the environment (PURSER_CLOUD_KEY), never from code, git or a log.
@@ -11,6 +11,7 @@ import { apInvoices } from "../ap/store.js";
 import { ingestEmail, type InboxDeps } from "../ap/inbox.js";
 import { ledgerRows } from "../ledger/core.js";
 import { syncLedger } from "../ledger/feed.js";
+import { transactionRegister } from "../money/register.js";
 
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -69,13 +70,16 @@ export function batchesFor(db: DB, state: CloudState, opts: { now?: Date; maxDoc
   const payments = (db.prepare("SELECT request_id, transfer_id, invoice_no, amount, currency, method, fee_actual, status, updated_at FROM transfers ORDER BY updated_at").all() as Record<string, string | null>[])
     .map((p) => ({ id: p.request_id!, invoice_id: invoices.find((i) => p.invoice_no === `${i.invoice_no} · ${i.vendor}`)?.id ?? null, status: p.status!.toLowerCase(), updated_at: p.updated_at!, body: p }));
   const entries = has(db, "ledger_entries") ? ledgerRows(db).filter((e) => e.entry_id > state.ledger.entry_id) : [];
+  // The transactions register, derived here from the rail tables; the cloud keeps each row versioned.
+  const transactions = transactionRegister(db).rows.map((r) => ({ id: r.id, at: r.at, rail: r.rail, direction: r.direction, currency: r.currency, moved: r.moved, reconciliation: r.reconciliation, body: r as unknown as Record<string, unknown> }));
   const audit = (db.prepare("SELECT seq, ts, actor, event, subject, payload_json, prev_hash, row_hash FROM audit_log WHERE seq > ? ORDER BY seq").all(state.audit.seq) as Record<string, unknown>[]);
 
   // The chains in order, in slices the cloud accepts; everything else rides with the first slice.
-  const slices = Math.max(1, Math.ceil(entries.length / 2000), Math.ceil(audit.length / 5000));
+  const slices = Math.max(1, Math.ceil(entries.length / 2000), Math.ceil(audit.length / 5000), Math.ceil(transactions.length / 2000));
   for (let i = 0; i < slices; i++) {
     out.push({
       ...(i === 0 ? { vendors, invoices: inv, payments } : {}),
+      transactions: transactions.slice(i * 2000, (i + 1) * 2000),
       ledger_entries: entries.slice(i * 2000, (i + 1) * 2000),
       audit_rows: audit.slice(i * 5000, (i + 1) * 5000),
     });
@@ -97,7 +101,14 @@ export async function pushToCloud(db: DB, t: CloudTarget, now = new Date()): Pro
 
 /** Files the e-mail the cloud received for this company through the inbox, and marks each one done or refused. */
 export async function pullMail(db: DB, deps: InboxDeps, t: CloudTarget): Promise<{ id: string; status: "done" | "refused"; note?: string }[]> {
-  const { items } = (await ok(await call(t, "GET", "/v1/mail"), "the mail list")) as { items: { id: string }[] };
+  // Every page of the queue (the list is paginated): mail filed here leaves the queue, so the next run starts afresh.
+  const items: { id: string }[] = [];
+  for (let cursor: string | null = null, pages = 0; pages < 50; pages++) {
+    const page = (await ok(await call(t, "GET", `/v1/mail?limit=200${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`), "the mail list")) as { items: { id: string }[]; next_cursor?: string | null };
+    items.push(...page.items);
+    cursor = page.next_cursor ?? null;
+    if (!cursor) break;
+  }
   const out: { id: string; status: "done" | "refused"; note?: string }[] = [];
   for (const m of items) {
     const raw = await call(t, "GET", `/v1/mail/${encodeURIComponent(m.id)}/raw`);

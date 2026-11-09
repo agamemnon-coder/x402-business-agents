@@ -1,7 +1,7 @@
 // The runner's push: everything Purser records, into the cloud, so the company's data lives in one place. Idempotent:
 // the same object again changes nothing. Ledger entries and audit rows are append-only and must continue the cloud's
 // chain; a posted one that comes back changed is refused. Vendors, invoices and payments are versioned: a new version
-// replaces the current one and the earlier one is kept. A document is stored under the SHA-256 of its own bytes.
+// replaces the current one and the earlier one is kept; so are the rows of the transactions register. A document is stored under the SHA-256 of its own bytes.
 // All rows of a push are written in one transaction.
 
 import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
@@ -44,6 +44,11 @@ export const SyncBatch = z.object({
     status: z.string().max(40), doc_sha256: SHA, received_at: STAMP, updated_at: STAMP, body: Body,
   }).strict()).max(5000).default([]),
   payments: z.array(z.object({ id: ID, invoice_id: ID.nullable(), status: z.string().max(40), updated_at: STAMP, body: Body }).strict()).max(5000).default([]),
+  // The transactions register (src/money/register.ts): derived on the runner, kept here as versioned rows.
+  transactions: z.array(z.object({
+    id: ID, at: STAMP, rail: z.string().regex(/^[a-z_]{2,40}$/), direction: z.enum(["in", "out", "internal"]), currency: z.string().regex(/^[A-Z]{3,4}$/),
+    moved: z.boolean(), reconciliation: z.enum(["matched", "missing_booking", "missing_rail_record", "amount_mismatch", "not_applicable"]), body: Body,
+  }).strict()).max(5000).default([]),
   documents: z.array(z.object({ sha256: SHA, filename: z.string().min(1).max(200), mime: z.string().max(100), base64: z.string() }).strict()).max(200).default([]),
   ledger_entries: z.array(z.object({
     entry_id: z.number().int().positive(), posting_date: DAY, doc_date: DAY, description: z.string().max(500), source_key: z.string().nullable(), doc_ref: z.string().nullable(),
@@ -62,7 +67,7 @@ const tally = () => ({ added: 0, changed: 0, unchanged: 0 });
 export function docBlobKey(tenantId: string, sha: string): string { return `t/${tenantId}/docs/${sha}`; }
 
 /** Versioned objects: same body, nothing; a new body, the old one to history and the new one in place. */
-async function versioned(db: TenantDb, table: Extract<Table, "vendors" | "invoices" | "payments">, kind: string, rows: { id: string; body: Record<string, unknown> }[], cols: (r: never) => Record<string, string | number | null>, now: string, out: Stmt[], t: { added: number; changed: number; unchanged: number }): Promise<void> {
+async function versioned(db: TenantDb, table: Extract<Table, "vendors" | "invoices" | "payments" | "transactions">, kind: string, rows: { id: string; body: Record<string, unknown> }[], cols: (r: never) => Record<string, string | number | null>, now: string, out: Stmt[], t: { added: number; changed: number; unchanged: number }): Promise<void> {
   for (const r of rows) {
     const bodyJson = jcs(r.body as Json);
     const sha = await sha256Hex(bodyJson);
@@ -111,6 +116,7 @@ function noDuplicates(batch: SyncBatch): void {
   twice("vendor", batch.vendors.map((v) => v.id));
   twice("invoice", batch.invoices.map((i) => i.id));
   twice("payment", batch.payments.map((p) => p.id));
+  twice("transaction", batch.transactions.map((t) => t.id));
   twice("document", batch.documents.map((d) => d.sha256));
   twice("ledger entry", batch.ledger_entries.map((e) => e.entry_id));
   twice("audit row", batch.audit_rows.map((r) => r.seq));
@@ -133,7 +139,7 @@ function balances(e: LedgerEntryIn): boolean {
 export async function applySync(db: TenantDb, blobs: Blobs, batch: SyncBatch, now: Date): Promise<SyncResult> {
   const iso = now.toISOString();
   const out: Stmt[] = [];
-  const res: SyncResult = { documents: tally(), vendors: tally(), invoices: tally(), payments: tally(), ledger_entries: tally(), audit_rows: tally() };
+  const res: SyncResult = { documents: tally(), vendors: tally(), invoices: tally(), payments: tally(), transactions: tally(), ledger_entries: tally(), audit_rows: tally() };
   noDuplicates(batch);
 
   // Documents: the bytes must hash to the name they are sent under. They are stored only once the whole push has
@@ -160,6 +166,9 @@ export async function applySync(db: TenantDb, blobs: Blobs, batch: SyncBatch, no
     vendor: r.vendor, invoice_no: r.invoice_no, due_date: r.due_date, currency: r.currency, total: r.total, status: r.status, doc_sha256: r.doc_sha256, received_at: r.received_at, updated_at: r.updated_at,
   }), iso, out, res.invoices!);
   await versioned(db, "payments", "payment", batch.payments, (r: SyncBatch["payments"][number]) => ({ invoice_id: r.invoice_id, status: r.status, updated_at: r.updated_at }), iso, out, res.payments!);
+  await versioned(db, "transactions", "transaction", batch.transactions, (r: SyncBatch["transactions"][number]) => ({
+    sort_key: `${r.at}|${r.id}`, at: r.at, rail: r.rail, direction: r.direction, currency: r.currency, moved: r.moved ? 1 : 0, reconciliation: r.reconciliation,
+  }), iso, out, res.transactions!);
 
   // The audit log: append-only, continuing the cloud's chain.
   const lastAudit = (await db.select<{ seq: number; row_hash: string }>("audit_rows", {}, { order: ["seq"], desc: true, limit: 1 }))[0];

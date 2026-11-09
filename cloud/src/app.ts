@@ -5,7 +5,8 @@
 import { z } from "zod";
 import { AuthError, callerOf, endSessions, enrolPasskey, failedAuthBlocked, isPlatformAdmin, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope } from "./auth.js";
 import { randomToken } from "./crypto.js";
-import { BadRequest, insights, invoiceDocument, ledgerEntries, listInvoices, listPayments, listVendors, oneInvoice, report } from "./read.js";
+import { allTransactions, BadRequest, insights, invoiceDocument, ledgerEntries, listInvoices, listPayments, listTransactions, listVendors, oneInvoice, oneTransaction, paged, report, transactionSummary } from "./read.js";
+import { registerCsv } from "../../src/money/registerShape.js";
 import { SCHEMA } from "./schema.js";
 import type { Blobs, Sql } from "./store.js";
 import { applySync, SyncBatch, SyncRefused } from "./sync.js";
@@ -33,7 +34,10 @@ interface Route { method: "GET" | "POST" | "DELETE"; path: string; summary: stri
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" };
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
-const notFound = (what: string) => json(404, { error: `no ${what}` });
+/** Every error has one shape: a sentence for a person and a stable code for a program. */
+const CODES: Record<number, string> = { 400: "bad_request", 401: "unauthorized", 403: "forbidden", 404: "not_found", 405: "method_not_allowed", 409: "conflict", 413: "too_large", 422: "unprocessable", 429: "rate_limited", 500: "internal" };
+export const err = (status: number, error: string) => json(status, { error, code: CODES[status] ?? "error" });
+const notFound = (what: string) => err(404, `no ${what}`);
 
 async function body<T>(c: Ctx, schema: z.ZodType<T>, maxBytes = 1_000_000): Promise<T> {
   const len = Number(c.req.headers.get("content-length") ?? 0);
@@ -62,7 +66,7 @@ export const ROUTES: Route[] = [
 
   { method: "POST", path: "/v1/admin/tenants", summary: "Create a company and its first owner; returns the owner's API key once.", need: "platform", run: async (c) => {
     const b = await body(c, z.object({ slug: SLUG, name: z.string().min(1).max(200), owner: z.object({ display_name: z.string().min(1).max(120), email: z.string().email().max(200).optional() }).strict() }).strict());
-    if (await c.env.sql.first("SELECT 1 FROM tenants WHERE slug = ?", [b.slug])) return json(409, { error: `the address ${b.slug} is taken` });
+    if (await c.env.sql.first("SELECT 1 FROM tenants WHERE slug = ?", [b.slug])) return err(409, `the address ${b.slug} is taken`);
     const id = `t_${randomToken(12).replace(/[^A-Za-z0-9]/g, "x")}`;
     const iso = c.now.toISOString();
     await c.env.sql.run("INSERT INTO tenants (id, slug, name, created_at) VALUES (?, ?, ?, ?)", [id, b.slug, b.name, iso]);
@@ -97,7 +101,7 @@ export const ROUTES: Route[] = [
     return json(201, r);
   } },
   { method: "POST", path: "/v1/auth/logout", summary: "Sign out: every session of the signed-in person ends.", need: "read", run: async (c) => {
-    if (c.caller!.kind !== "session") return json(400, { error: "only a signed-in person signs out; revoke a key with DELETE /v1/keys/{id}" });
+    if (c.caller!.kind !== "session") return err(400, "only a signed-in person signs out; revoke a key with DELETE /v1/keys/{id}");
     await endSessions(c.env.sql, c.caller!.tenantId, c.caller!.principal);
     return json(200, { signed_out: true });
   } },
@@ -117,6 +121,10 @@ export const ROUTES: Route[] = [
   } },
   { method: "GET", path: "/v1/vendors", summary: "Suppliers; paginated.", need: "read", run: async (c) => json(200, await listVendors(db(c), c.url.searchParams)) },
   { method: "GET", path: "/v1/payments", summary: "Payments; paginated.", need: "read", run: async (c) => json(200, await listPayments(db(c), c.url.searchParams)) },
+  { method: "GET", path: "/v1/transactions", summary: "The transactions register: every money movement on every rail, newest first; filter by rail, currency, from, to, reconciliation, moved; paginated (limit, cursor).", need: "read", run: async (c) => json(200, await listTransactions(db(c), c.url.searchParams)) },
+  { method: "GET", path: "/v1/transactions/summary", summary: "Totals per currency (money that moved only) and the checks: unreconciled, without approval, without booking or proof; the same filters.", need: "read", run: async (c) => json(200, await transactionSummary(db(c), c.url.searchParams)) },
+  { method: "GET", path: "/v1/transactions/export.csv", summary: "The register as CSV, the same filters; one line per movement.", need: "read", run: async (c) => new Response(registerCsv(await allTransactions(db(c), c.url.searchParams)), { status: 200, headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="transactions.csv"', "cache-control": "no-store", "x-content-type-options": "nosniff" } }) },
+  { method: "GET", path: "/v1/transactions/{id}", summary: "One movement, with its earlier versions.", need: "read", run: async (c) => { const r = await oneTransaction(db(c), c.params[0]!); return r ? json(200, r) : notFound("transaction"); } },
   { method: "GET", path: "/v1/ledger/entries", summary: "Ledger entries with their lines; filter by from, to; paginated.", need: "read", run: async (c) => json(200, await ledgerEntries(db(c), c.url.searchParams)) },
   { method: "GET", path: "/v1/reports/{name}", summary: "trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger.", need: "read", run: async (c) => json(200, await report(db(c), c.params[0]!, c.url.searchParams)) },
   { method: "GET", path: "/v1/insights", summary: "Payables at a glance: open, due, overdue, waiting, blocked, spend per supplier.", need: "read", run: async (c) => json(200, await insights(db(c), c.now)) },
@@ -128,7 +136,7 @@ export const ROUTES: Route[] = [
     return new Response(new Uint8Array(bytes), { status: 200, headers: { "content-type": d.mime === "application/pdf" ? "application/pdf" : "application/octet-stream", "content-disposition": `attachment; filename="${d.filename.replace(/[^\w.-]+/g, "_")}"`, "cache-control": "no-store", "x-content-type-options": "nosniff" } });
   } },
 
-  { method: "POST", path: "/v1/sync", summary: "The runner's push: vendors, invoices, documents, payments, ledger entries, audit rows. Idempotent. Never passkeys.", need: "sync", run: async (c) => {
+  { method: "POST", path: "/v1/sync", summary: "The runner's push: vendors, invoices, documents, payments, the transactions register, ledger entries, audit rows. Idempotent. Never passkeys.", need: "sync", run: async (c) => {
     const b = await body(c, SyncBatch, 50_000_000);
     return json(200, { applied: await applySync(db(c), c.env.blobs, b, c.now) });
   } },
@@ -139,7 +147,7 @@ export const ROUTES: Route[] = [
     const docs = await t.select<{ sha256: string }>("documents", {}, { order: ["sha256"] });
     return json(200, { audit: { seq: a?.seq ?? 0, hash: a?.row_hash ?? null }, ledger: { entry_id: l?.entry_id ?? 0, hash: l?.entry_hash ?? null }, documents: docs.map((d) => d.sha256) });
   } },
-  { method: "GET", path: "/v1/mail", summary: "Inbound e-mail waiting for the runner.", need: "sync", run: async (c) => json(200, { items: await db(c).select("inbound_mail", { status: "queued" }, { order: ["received_at"], limit: 100 }) }) },
+  { method: "GET", path: "/v1/mail", summary: "Inbound e-mail waiting for the runner; paginated (limit, cursor).", need: "sync", run: async (c) => json(200, await paged<Record<string, unknown>>(db(c), "inbound_mail", "id", { status: "queued" }, c.url.searchParams, (r) => r)) },
   { method: "GET", path: "/v1/mail/{id}/raw", summary: "One inbound e-mail, raw (RFC 822).", need: "sync", run: async (c) => {
     const m = await db(c).one<{ blob_key: string }>("inbound_mail", { id: c.params[0]! });
     const bytes = m && (await c.env.blobs.get(m.blob_key));
@@ -153,7 +161,7 @@ export const ROUTES: Route[] = [
     return json(200, { id: c.params[0], status: b.status });
   } },
 
-  { method: "GET", path: "/v1/keys", summary: "The company's API keys (never their secrets).", need: "admin", run: async (c) => json(200, { items: (await db(c).select<Record<string, unknown>>("api_keys", {}, { order: ["created_at"] })).map(withoutSecret) }) },
+  { method: "GET", path: "/v1/keys", summary: "The company's API keys (never their secrets); paginated (limit, cursor).", need: "admin", run: async (c) => json(200, await paged<Record<string, unknown>>(db(c), "api_keys", "id", {}, c.url.searchParams, withoutSecret)) },
   { method: "POST", path: "/v1/keys", summary: "A new API key; returned once.", need: "admin", run: async (c) => {
     const b = await body(c, z.object({ name: z.string().min(1).max(80), scopes: z.array(z.enum(SCOPES as [Scope, ...Scope[]])).min(1), expires_in_days: z.number().int().min(1).max(KEY_MAX_DAYS).optional() }).strict());
     // The person behind the new key is the person behind the caller (a key made by a key inherits it), so erasing that
@@ -168,7 +176,7 @@ export const ROUTES: Route[] = [
     if (!k.revoked_at) await t.apply([t.update("api_keys", { id: c.params[0]! }, { revoked_at: c.now.toISOString() })]);
     return json(200, { id: c.params[0], revoked: true });
   } },
-  { method: "GET", path: "/v1/users", summary: "The company's people and their roles.", need: "admin", run: async (c) => json(200, { items: await db(c).select("users", {}, { order: ["created_at"] }) }) },
+  { method: "GET", path: "/v1/users", summary: "The company's people and their roles; paginated (limit, cursor).", need: "admin", run: async (c) => json(200, await paged<Record<string, unknown>>(db(c), "users", "id", {}, c.url.searchParams, (r) => r)) },
   { method: "POST", path: "/v1/users/{id}/enrolment", summary: "Start a person's passkey enrolment: a single-use secret for 30 minutes (an owner's passkey: a signed-in owner only, once any owner has one).", need: "admin", run: async (c) => json(201, await startEnrolment(db(c), c.caller!, c.params[0]!, c.now)) },
   { method: "POST", path: "/v1/users", summary: "Add a person (owner, cfo, accountant, viewer); they then enrol a passkey with an enrolment an owner starts.", need: "admin", run: async (c) => {
     const b = await body(c, z.object({ display_name: z.string().min(1).max(120), email: z.string().email().max(200).optional(), role: z.enum(ROLES as [Role, ...Role[]]) }).strict());
@@ -217,21 +225,21 @@ export async function handle(req: Request, env: CloudEnv): Promise<Response> {
   try {
     await ensureSchema(env.sql);
     const candidates = ROUTES.map((r) => ({ r, p: match(url.pathname, r.path) })).filter((x) => x.p);
-    if (!candidates.length) return json(404, { error: "no such route" });
+    if (!candidates.length) return err(404, "no such route");
     const hit = candidates.find((x) => x.r.method === req.method);
-    if (!hit) return json(405, { error: `use ${candidates.map((x) => x.r.method).join(" or ")}` });
+    if (!hit) return err(405, `use ${candidates.map((x) => x.r.method).join(" or ")}`);
     const ctx: Ctx = { env, req, url, now, params: hit.p!, caller: null, db: null };
     const rate = env.rate ?? { perMinute: 600, signInPerMinute: 30 };
     // The caller's address: Cloudflare's edge sets cf-connecting-ip and overwrites any value a client sends; behind any
     // other proxy this header must not be trusted (docs/cloud.md).
     const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
     if (hit.r.need === "public") {
-      if (hit.r.path.startsWith("/v1/auth/") && !(await withinRate(env.sql, `ip:${ip}`, now, { windowSec: 60, max: rate.signInPerMinute }))) return json(429, { error: "too many sign-in attempts; wait a minute" });
+      if (hit.r.path.startsWith("/v1/auth/") && !(await withinRate(env.sql, `ip:${ip}`, now, { windowSec: 60, max: rate.signInPerMinute }))) return err(429, "too many sign-in attempts; wait a minute");
     } else if (hit.r.need === "platform") {
-      if (!(await isPlatformAdmin(env.adminTokenSha256, req.headers.get("authorization")))) return json(401, { error: "platform admin only" });
+      if (!(await isPlatformAdmin(env.adminTokenSha256, req.headers.get("authorization")))) return err(401, "platform admin only");
     } else {
       // Failed keys and sessions are counted per address; past the limit the request is turned away before any lookup.
-      if (await failedAuthBlocked(env.sql, ip, now, rate.failedAuthPerMinute ?? 20)) return json(429, { error: "too many failed sign-ins from this address; wait a minute" });
+      if (await failedAuthBlocked(env.sql, ip, now, rate.failedAuthPerMinute ?? 20)) return err(429, "too many failed sign-ins from this address; wait a minute");
       let caller: Caller;
       try {
         caller = await callerOf(env.sql, env.sessionSecret, req.headers.get("authorization"), now);
@@ -240,22 +248,24 @@ export async function handle(req: Request, env: CloudEnv): Promise<Response> {
         throw e;
       }
       need(caller, hit.r.need);
-      if (!(await withinRate(env.sql, `${caller.kind}:${caller.principal}`, now, { windowSec: 60, max: rate.perMinute }))) return json(429, { error: "too many requests; wait a minute" });
+      if (!(await withinRate(env.sql, `${caller.kind}:${caller.principal}`, now, { windowSec: 60, max: rate.perMinute }))) return err(429, "too many requests; wait a minute");
       ctx.caller = caller;
       ctx.db = new TenantDb(env.sql, caller.tenantId);
     }
     return await hit.r.run(ctx);
   } catch (e) {
-    if (e instanceof AuthError) return json(e.status, { error: e.message });
-    if (e instanceof SyncRefused) return json(e.status, { error: e.message });
-    if (e instanceof BadRequest) return json(400, { error: e.message });
-    if (e instanceof PrivacyRefused) return json(409, { error: e.message });
+    if (e instanceof AuthError) return err(e.status, e.message);
+    if (e instanceof SyncRefused) return err(e.status, e.message);
+    if (e instanceof BadRequest) return err(400, e.message);
+    if (e instanceof PrivacyRefused) return err(409, e.message);
     // Nothing internal leaks: the caller gets a reference, the log gets the error.
     const ref = randomToken(6);
     console.error(`cloud error ${ref}`, e);
-    return json(500, { error: `internal error (reference ${ref})` });
+    return err(500, `internal error (reference ${ref})`);
   }
 }
+
+const ERROR = (description: string) => ({ description, content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } });
 
 /** OpenAPI 3.1, generated from the route table. */
 export function openApi(origin: string): Record<string, unknown> {
@@ -267,14 +277,14 @@ export function openApi(origin: string): Record<string, unknown> {
       ...(params.length ? { parameters: params } : {}),
       security: r.need === "public" ? [] : r.need === "platform" ? [{ platformAdmin: [] }] : [{ bearer: [r.need] }],
       "x-purser-needs": r.need,
-      responses: { 200: { description: "OK" }, 401: { description: "Not signed in" }, 403: { description: "Not allowed" }, 404: { description: "Not found (also: another company's object)" }, 429: { description: "Rate limited" } },
+      responses: { 200: { description: "OK" }, 400: ERROR("A request that does not fit"), 401: ERROR("Not signed in"), 403: ERROR("Not allowed"), 404: ERROR("Not found (also: another company's object)"), 429: ERROR("Rate limited") },
     };
   }
   return {
     openapi: "3.1.0",
     info: { title: "Purser Cloud API", version: "1.0.0", description: "Everything a company's finance runs on, in one place: invoices, documents, suppliers, payments, the ledger and its reports. Test money only until a company goes live." },
     servers: [{ url: origin }],
-    components: { securitySchemes: { bearer: { type: "http", scheme: "bearer", description: "An API key (pck_...) or a passkey session (pcs....)" }, platformAdmin: { type: "http", scheme: "bearer" } } },
+    components: { schemas: { Error: { type: "object", required: ["error", "code"], properties: { error: { type: "string", description: "What went wrong, for a person" }, code: { type: "string", enum: Object.values(CODES), description: "Stable, for a program" } } } }, securitySchemes: { bearer: { type: "http", scheme: "bearer", description: "An API key (pck_...) or a passkey session (pcs....)" }, platformAdmin: { type: "http", scheme: "bearer" } } },
     paths,
   };
 }

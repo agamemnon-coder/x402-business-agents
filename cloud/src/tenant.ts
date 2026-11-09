@@ -12,6 +12,7 @@ const COLUMNS = {
   vendors: ["id", "name", "status", "updated_at", "version", "body_json", "body_sha256"],
   invoices: ["id", "vendor", "invoice_no", "due_date", "currency", "total", "status", "doc_sha256", "received_at", "updated_at", "version", "body_json", "body_sha256"],
   payments: ["id", "invoice_id", "status", "updated_at", "version", "body_json", "body_sha256"],
+  transactions: ["id", "sort_key", "at", "rail", "direction", "currency", "moved", "reconciliation", "version", "body_json", "body_sha256"],
   object_history: ["kind", "id", "version", "body_json", "body_sha256", "replaced_at"],
   documents: ["sha256", "filename", "mime", "size", "blob_key", "received_at"],
   ledger_entries: ["entry_id", "posting_date", "doc_date", "description", "entry_json", "prev_hash", "entry_hash"],
