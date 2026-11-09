@@ -304,6 +304,9 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       rows: [
         ["Amount", `${cur} ${money(t.amount)}`],
         ["Fee reserve", `at most ${cur} ${money(t.fee_reserve)} held back (the real fee is recorded)`],
+        // Purser as an Airwallex platform (docs/airwallex-platform.md): which account pays, and Purser's own fee, never hidden.
+        ...(isObj(t.paying_account) ? [["Paid from", `${str(t.paying_account.name)}, ${str(t.paying_account.id)}`] as [string, string]] : []),
+        ...(isObj(t.platform_fee) ? [["Purser fee", `${str(t.platform_fee.currency)} ${money(t.platform_fee.amount)} (${(Number(str(t.platform_fee.bps)) / 100).toFixed(2)}%), taken from this account after the payment is paid`] as [string, string]] : []),
         ["Pays", recipient],
         ["Invoice", `${str(t.invoice_no)} from ${str(t.vendor)}, reference ${str(t.reference)}`],
         ["Method", how],

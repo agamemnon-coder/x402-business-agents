@@ -341,6 +341,21 @@ CREATE TABLE IF NOT EXISTS obligations (
   label TEXT NOT NULL
 );
 
+-- Purser as an Airwallex platform (docs/airwallex-platform.md): Purser's fee per paid payout, taken from the company's
+-- connected account once, under its own request id from the signed terms.
+CREATE TABLE IF NOT EXISTS platform_fees (
+  request_id TEXT PRIMARY KEY,
+  proposal_id TEXT NOT NULL,
+  payout_request_id TEXT NOT NULL,
+  amount TEXT NOT NULL,
+  currency TEXT NOT NULL,
+  destination TEXT NOT NULL,
+  fee_transfer_id TEXT,
+  status TEXT NOT NULL,
+  approval_sha256 TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS transfers (
   transfer_id TEXT,
   request_id TEXT PRIMARY KEY,

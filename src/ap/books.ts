@@ -95,6 +95,13 @@ export function paymentEntries(db: DB, inv: ApInvoiceRow): ApEntry[] {
   const m = t.fee_actual ? /^([A-Z]{3}) (\d+\.\d{2})$/.exec(t.fee_actual) : null;
   const fee = m ? toCents(m[2]!) : 0;
   if (m && fee) out.push(line(inv, "payment", date, AP_ACCOUNTS.fees, fee, 0, `${memo}: transfer fee`, m[1]!), line(inv, "payment", date, bankAccountFor(m[1]!), 0, fee, `${memo}: transfer fee`, m[1]!));
+  // Purser as an Airwallex platform: Purser's own fee for this payout, once it was taken (docs/airwallex-platform.md).
+  if (inv.proposal_id && db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'platform_fees'").get()) {
+    for (const f of db.prepare("SELECT amount, currency, fee_transfer_id FROM platform_fees WHERE proposal_id = ? AND status = 'SETTLED'").all(inv.proposal_id) as { amount: string; currency: string; fee_transfer_id: string | null }[]) {
+      const pf = `${memo}: Purser platform fee (${f.fee_transfer_id ?? "no id"})`;
+      out.push(line(inv, "payment", date, AP_ACCOUNTS.fees, toCents(f.amount), 0, pf, f.currency), line(inv, "payment", date, bankAccountFor(f.currency), 0, toCents(f.amount), pf, f.currency));
+    }
+  }
   return out;
 }
 

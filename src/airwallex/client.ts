@@ -4,6 +4,7 @@
 
 import { redactSecrets } from "../lib/redact.js";
 import { AirwallexBudgetSpent, budgetFromEnv } from "./callBudget.js";
+import { ACCOUNT_ID } from "./platform.js";
 
 export const SANDBOX_BASE = "https://api.sandbox.airwallex.com/api/v1";
 
@@ -25,7 +26,16 @@ export interface AirwallexConfig {
   now?: () => number;
   /** How long one HTTP call may take before it is abandoned (a POST then counts as ambiguous). Default 30 s. */
   timeoutMs?: number;
+  /**
+   * Purser as an Airwallex platform (docs/airwallex-platform.md): every call (never the login) is made on behalf of this
+   * connected account, with the `x-on-behalf-of` header Airwallex documents for platforms, so it happens in that
+   * company's own wallet.
+   */
+  onBehalfOf?: string;
 }
+
+/** An Airwallex account id (acct_…), defined with the platform rail, which the cloud imports without this Node-only client. */
+export { ACCOUNT_ID };
 
 /** What Airwallex needs to find one request in its own logs: the response's trace and request ids. */
 export interface AirwallexTrace {
@@ -88,7 +98,9 @@ export function fromEnv(env = process.env): AirwallexConfig | null {
   if (!clientId || !apiKey) return null;
   // A live run with an approved call budget (src/airwallex/callBudget.ts): every request is counted, none goes over it.
   const budgeted = budgetFromEnv(env, (...a) => fetch(...a));
-  return { clientId, apiKey, ...(budgeted ? { fetchImpl: budgeted } : {}) };
+  // Purser as a platform (AIRWALLEX_PLATFORM=on): the company's connected account, when it has one.
+  const onBehalfOf = env.AIRWALLEX_PLATFORM === "on" && env.AIRWALLEX_ON_BEHALF_OF ? env.AIRWALLEX_ON_BEHALF_OF : undefined;
+  return { clientId, apiKey, ...(budgeted ? { fetchImpl: budgeted } : {}), ...(onBehalfOf ? { onBehalfOf } : {}) };
 }
 
 export class Airwallex {
@@ -102,7 +114,11 @@ export class Airwallex {
   private readonly now: () => number;
   private readonly timeoutMs: number;
 
+  /** The connected account every call is made for, or null for the company's own account. */
+  get onBehalfOf(): string | null { return this.cfg.onBehalfOf ?? null; }
+
   constructor(private readonly cfg: AirwallexConfig) {
+    if (cfg.onBehalfOf !== undefined && !ACCOUNT_ID.test(cfg.onBehalfOf)) throw new Error("onBehalfOf is not an Airwallex account id (acct_…)");
     this.base = cfg.baseUrl ?? SANDBOX_BASE;
     if (!this.base.startsWith("https://api.sandbox.airwallex.com/")) throw new Error("this build only talks to the Airwallex sandbox");
     this.fetch = cfg.fetchImpl ?? fetch;
@@ -155,7 +171,7 @@ export class Airwallex {
         try {
           res = await this.fetch(url, {
             method,
-            headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+            headers: { authorization: `Bearer ${token}`, "content-type": "application/json", ...(this.cfg.onBehalfOf ? { "x-on-behalf-of": this.cfg.onBehalfOf } : {}) },
             body: body === undefined ? undefined : JSON.stringify(body),
             signal: AbortSignal.timeout(this.timeoutMs),
           });

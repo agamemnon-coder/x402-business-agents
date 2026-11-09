@@ -86,6 +86,20 @@ export function transactionRegister(db: DB): Register {
     });
   }
 
+  // Purser as an Airwallex platform: Purser's fee per paid payout, taken from the company's account (docs/airwallex-platform.md).
+  if (has(db, "platform_fees")) for (const f of db.prepare("SELECT request_id, proposal_id, amount, currency, fee_transfer_id, status, approval_sha256, updated_at FROM platform_fees ORDER BY updated_at").all() as
+    { request_id: string; proposal_id: string; amount: string; currency: string; fee_transfer_id: string | null; status: string; approval_sha256: string; updated_at: string }[]) {
+    const moved = f.status === "SETTLED";
+    drafts.push({
+      id: `platform_fee:${f.request_id}`, at: f.updated_at, direction: "out", rail: "airwallex_transfer", description: "Purser platform fee", counterparty: "Purser", counterparty_account: null,
+      amount: f.amount, currency: f.currency, eur_equivalent: f.currency === "EUR" ? f.amount : null, fee: null, moved, status: f.status,
+      status_words: moved ? "taken" : f.status === "NOT_TAKEN" ? "not taken (fee switched off)" : words(f.status),
+      invoice: null,
+      approval: { required: true, authority: "the CFO's approval of the exact terms (the fee is in them)", proposal_id: f.proposal_id, terms_sha256: f.approval_sha256, sha: f.approval_sha256 },
+      proof: f.fee_transfer_id, book: { prefix: `platform_fee|${f.request_id}|`, expectCents: -toCents(f.amount) },
+    });
+  }
+
   // Airwallex FX: each conversion's two legs.
   for (const f of db.prepare("SELECT c.conversion_id, c.buy_amount, c.sell_amount, c.status, c.approval_sha256, q.pair, q.valid_from FROM fx_conversions c JOIN fx_quotes q ON q.quote_id = c.quote_id ORDER BY q.valid_from").all() as
     { conversion_id: string; buy_amount: string; sell_amount: string | null; status: string; approval_sha256: string; pair: string; valid_from: string }[]) {
@@ -283,7 +297,7 @@ export function transactionRegister(db: DB): Register {
   const ids = (f: string) => rows.filter((r) => r.flags.includes(f)).map((r) => r.id);
   // The feed's postings for rails this register lists, that no movement claims: opening balances and the inbox's
   // accruals are bookings of their own, not movements.
-  const listed = /^(transfer|fx|card|airi|receipt|sale|upstream|refund|sweep|credit|clearing)\|/;
+  const listed = /^(transfer|platform_fee|fx|card|airi|receipt|sale|upstream|refund|sweep|credit|clearing)\|/;
   return {
     rows, totals,
     check: {

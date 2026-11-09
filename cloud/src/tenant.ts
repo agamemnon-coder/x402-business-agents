@@ -23,6 +23,7 @@ const COLUMNS = {
   push_log: ["id", "by_key", "at"],
   runner_health: ["id", "at", "status", "alerts_json"],
   webhooks: ["id", "url", "secret", "created_at", "created_by", "consecutive_failures", "last_attempt_at", "last_status", "disabled_at"],
+  awx_accounts: ["id", "account_id", "status", "business_name", "country_code", "created_at", "created_by", "updated_at", "event_at"],
 } as const;
 
 export type Table = keyof typeof COLUMNS;

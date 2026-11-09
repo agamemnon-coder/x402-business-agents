@@ -28,6 +28,8 @@ ul.plain li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .who-am-i button:hover { color: var(--text); background: var(--sunken); }
 .signed-out .tabs, .signed-out .who-am-i { display: none; }
 header.top .test { margin-left: 12px; }
+label.check { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0; font-size: 14px; line-height: 1.45; }
+label.check input { margin-top: 3px; }
 header.top .spacer { margin-left: auto; }
 .auth { max-width: 460px; margin: 7vh auto 40px; padding: 28px; }
 .auth h1 { font-size: 26px; letter-spacing: -.02em; margin: 0 0 6px; }
@@ -469,8 +471,40 @@ async function settingsView(){
   if(m.kind==='session'&&m.user){const p=langSel([['',t('cs.language_follow')],...langNames],m.user.language||'');p.onchange=async()=>{try{const r=await api('/v1/me/language',{method:'POST',body:{language:p.value||null}});ME=null;langMsg.replaceChildren(note(t('cs.language_saved'),'ok'));useLanguage(r.language||m.tenant.language||'nl')}catch(e){if(!(e instanceof Expired))langMsg.replaceChildren(note(e.message,'bad'))}};langBox.append(el('div','',[el('label','',t('cs.language_mine')),p]))}
   const company=el('div','card panel',[el('h2','',t('cs.company')),dl([[t('cs.name'),m.tenant.name],[t('cs.address'),m.tenant.slug],[t('cs.inbox'),m.inbox||t('cs.not_routed'),'mono']]),langBox.children.length?el('h2','',t('cs.language')):null,langBox.children.length?langBox:null,langMsg]);
   if(!owner){view().replaceChildren(head(t('cs.nav.settings')),company,note(t('cs.only_owner',{name:m.tenant.name})));return}
-  const people=el('div','card panel');const keys=el('div','card panel');const data=el('div','card panel');
-  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,el('div','split2',[people,keys]),data);
+  const people=el('div','card panel');const keys=el('div','card panel');const data=el('div','card panel');const awx=el('div','card panel');awx.id='awx';awx.hidden=true;
+  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,awx,el('div','split2',[people,keys]),data);
+  // The company's own Airwallex account, opened through Purser as a platform (docs/airwallex-platform.md): only when the
+  // cloud offers it. The owner agrees to Airwallex's terms before anything is sent; Airwallex checks the company in its
+  // own hosted pages; the status follows Airwallex's messages. Payments are still approved on the CFO's phone.
+  async function drawAwx(){
+    const r=await api('/v1/airwallex/account');
+    if(!r.switched_on){awx.hidden=true;return}
+    awx.hidden=false;
+    const msg=el('div','');
+    const a=r.account;
+    if(a){
+      const tone={active:'ok',refused:'bad',closed:'bad',action_required:'warn',dormant:'warn'}[a.status]||'';
+      const kids=[el('h2','',t('cs.awx.title')),dl([[t('cs.awx.business'),a.business_name],[t('cs.awx.account'),a.account_id||'…','mono'],[t('cs.awx.status'),el('span','pill'+(tone?' '+tone:''),tk('cs.awx.status.'+a.status,a.status))],[t('cs.awx.since'),stamp(a.updated_at)]])];
+      if(a.account_id&&!['active','refused','closed'].includes(a.status)){
+        const go=btn(t('cs.awx.verify'),'primary','shield-check');
+        go.onclick=async()=>{go.disabled=true;try{const l=await api('/v1/airwallex/onboarding-link',{method:'POST'});location.assign(l.url)}catch(e){if(!(e instanceof Expired))msg.replaceChildren(note(e.message,'bad'))}finally{go.disabled=false}};
+        kids.push(el('div','row2',[go]));
+      }
+      kids.push(note(t(a.status==='active'?'cs.awx.active_note':'cs.awx.status_note')),msg);
+      awx.replaceChildren(...kids);return;
+    }
+    const name=el('input','field');name.value=m.tenant.name||'';name.maxLength=200;
+    const country=el('select','field');for(const c of ['NL','DE','BE','FR','GB','US']){const o=el('option','',tk('cs.awx.country.'+c,c));o.value=c;country.append(o)}
+    const email=el('input','field');email.type='email';email.maxLength=200;email.placeholder='finance@…';
+    const agree=el('input','');agree.type='checkbox';agree.id='awx-agree';
+    const lab=el('label','check',[agree,' ',t('cs.awx.agree')]);lab.htmlFor='awx-agree';
+    const open=btn(t('cs.awx.open'),'primary','wallet');open.disabled=true;agree.onchange=()=>{open.disabled=!agree.checked};
+    open.onclick=async()=>{if(!agree.checked||!name.value.trim()||!email.value.trim())return;open.disabled=true;
+      try{await api('/v1/airwallex/account',{method:'POST',body:{business_name:name.value.trim(),country_code:country.value,email:email.value.trim(),agreed:true}});await drawAwx()}catch(e){if(!(e instanceof Expired)){msg.replaceChildren(note(e.message,'bad'));open.disabled=false}}};
+    awx.replaceChildren(el('h2','',t('cs.awx.title')),el('p','',t('cs.awx.lede')),
+      el('div','form-row',[el('div','',[el('label','',t('cs.awx.business')),name]),el('div','',[el('label','',t('cs.awx.country')),country]),el('div','',[el('label','',t('cs.awx.email')),email])]),
+      lab,el('div','row2',[open]),note(t('cs.awx.keeps')),msg);
+  }
   // An invite: a one-time link to this console (the secret after the #, so opening it sends it to no server) and its
   // QR code, for 30 minutes and one passkey. The owner passes it on; nothing is mailed.
   const invites=el('div','');
@@ -528,7 +562,7 @@ async function settingsView(){
   }
   const exp=btn(t('cs.download_all'),'','download');exp.onclick=()=>download('/v1/export','purser-cloud-export.json').catch(e=>{if(!(e instanceof Expired))data.append(note(e.message,'bad'))});
   data.replaceChildren(el('h2','',t('cs.your_data')),el('p','',t('cs.data_lede',{name:m.tenant.name})),exp);
-  await Promise.all([drawPeople(),drawKeys()]);
+  await Promise.all([drawPeople(),drawKeys(),drawAwx().catch(e=>{if(!(e instanceof Expired)){awx.hidden=false;awx.replaceChildren(note(e.message,'bad'))}})]);
 }
 
 // --- The router ----------------------------------------------------------------------------------------------------
