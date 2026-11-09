@@ -30,6 +30,20 @@ npm run payables -- watch ./inbox
 `KIT11_ANTHROPIC_API_KEY` the keyword rules and the parser read instead of Claude; without Airwallex sandbox keys,
 paying is off.
 
+## Every money movement in one register
+
+The Transactions page (`/transactions` on `npm run payables`) lists every money movement Purser knows, on every rail:
+supplier and invoice payouts with their fee, both legs of each FX conversion, card charges and Airwallex's declines, Airi
+purchases, payments into the Global Accounts, and on Metal the data sales, purchases, refunds, sweeps and clearing
+withdrawals. Refused, declined, failed and aborted attempts are listed too, never counted as money moved. Each row shows
+the approval behind it, its ledger postings, its proof from the rail, and whether booking and rail agree (`matched`,
+`missing_booking`, `missing_rail_record`, `amount_mismatch`). The tiles count money in, out and fees this month, what is
+not reconciled, and anything that moved without an approval on file. It is derived from the rails' own tables
+(`src/money/register.ts`); nothing is stored twice. JSON at `/api/payables/transactions`, exports as CSV and JSON, and
+the same rows in the cloud at `GET /v1/transactions` ([cloud.md](cloud.md#the-transactions-register)).
+
+Known gap: Airi purchases are not booked by the ledger feed yet, so a paid one shows as `missing_booking`.
+
 ## What happens to an invoice
 
 1. **In.** Upload, a watched folder or an e-mail: all call one entry point, `ingestDocument`. The PDF is written once to

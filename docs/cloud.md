@@ -24,25 +24,94 @@ money only.**
 
 ## The API
 
-`GET /v1/openapi.json` describes every route; the table in `cloud/src/app.ts` is its source. The main ones:
+`GET /v1/openapi.json` is the machine-readable form; the route table in `cloud/src/app.ts` is the source of both it and
+the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing here).
 
-| Route | Who | What |
+### Conventions
+
+- **Authentication:** `Authorization: Bearer <key or session>`. An API key (`pck_…`) carries scopes `read`, `sync`,
+  `admin`; a passkey session (`pcs.…`, 15 minutes) carries the person's role. "Needs" below is the scope a route asks for.
+- **Lists** answer `{ "items": [...], "next_cursor": "…" | null }`. Ask for the next page with `?cursor=<next_cursor>`;
+  `limit` is 1 to 200 (default 50). Every list pages this way.
+- **Errors** always have one shape, `{ "error": "<a sentence for a person>", "code": "<stable, for a program>" }`:
+
+| Status | `code` | When |
 |---|---|---|
-| `POST /v1/admin/tenants` | platform admin | create a company and its first owner key (shown once) |
-| `POST /v1/auth/challenge`, `POST /v1/auth/login` | anyone | passkey sign-in → a 15-minute session |
-| `POST /v1/auth/enrol` | anyone with an enrolment | a person's new passkey signs the enrolment's secret; single use |
-| `POST /v1/auth/logout` | a signed-in person | every session of that person ends |
-| `POST /v1/users/{id}/enrolment` | admin | starts a person's passkey enrolment (30 minutes, single use); an owner's: a signed-in owner only, once any owner has a passkey |
-| `GET /v1/invoices`, `/v1/invoices/{id}`, `/v1/invoices/{id}/document` | read | invoices, versions, the PDF |
-| `GET /v1/vendors`, `/v1/payments`, `/v1/ledger/entries` | read | paginated (`limit`, `cursor`) |
-| `GET /v1/reports/{trial,pnl,balance,vat,payables,receivables}` | read | computed from the ledger with the runner's own report code |
-| `GET /v1/insights` | read | open, due, overdue, waiting, blocked, spend per supplier |
-| `POST /v1/sync`, `GET /v1/sync/state` | sync | the runner's push |
-| `GET /v1/mail`, `/v1/mail/{id}/raw`, `POST /v1/mail/{id}/done` | sync | inbound e-mail for the runner |
-| `GET/POST /v1/keys`, `DELETE /v1/keys/{id}` | admin | API keys (scopes `read`, `sync`, `admin`); each expires (90 days unless `expires_in_days` says fewer, at most 365) |
-| `GET/POST /v1/users`, `POST /v1/users/{id}/erase` | admin | people and roles (owner, cfo, accountant, viewer) |
-| `GET /v1/export` | admin **and** read | every table; documents listed in `documents_to_fetch`, each fetched from `GET /v1/documents/{sha256}` |
-| `POST /v1/close` | admin | close the account |
+| 400 | `bad_request` | a body or filter that does not fit (the sentence says which) |
+| 401 | `unauthorized` | no key or session, or one that is unknown, expired or revoked |
+| 403 | `forbidden` | a key or role without the scope the route needs |
+| 404 | `not_found` | no such object, also another company's object (never "exists but not yours") |
+| 405 | `method_not_allowed` | the route exists with another method |
+| 409 | `conflict` | a pushed record that changed after it was posted, a taken address, an erasure that is refused |
+| 422 | `unprocessable` | a push that names a document the cloud does not hold, or does not balance |
+| 429 | `rate_limited` | too many requests or failed sign-ins; wait a minute |
+| 500 | `internal` | the sentence carries a reference to find the error in the log; nothing internal leaks |
+
+### Endpoints
+
+| Endpoint | Needs | What it does |
+|---|---|---|
+| `GET /v1/health` | anyone | Liveness. |
+| `GET /v1/openapi.json` | anyone | This API, as OpenAPI 3.1. |
+| `POST /v1/admin/tenants` | platform admin | Create a company and its first owner; returns the owner's API key once. |
+| `POST /v1/auth/challenge` | anyone | Start a passkey sign-in: a one-time challenge for the company. |
+| `POST /v1/auth/login` | anyone | Finish a passkey sign-in; returns a 15-minute session token. |
+| `POST /v1/auth/enrol` | anyone | Enrol a person's passkey with the single-use enrolment an owner started: the new passkey signs the enrolment's secret. |
+| `POST /v1/auth/logout` | read | Sign out: every session of the signed-in person ends. |
+| `GET /v1/me` | read | Who is calling: the company, and the key's scopes or the person's role. |
+| `GET /v1/invoices` | read | Supplier invoices; filter by status, due_from, due_to; paginated (limit, cursor). |
+| `GET /v1/invoices/{id}` | read | One invoice, with its earlier versions. |
+| `GET /v1/invoices/{id}/document` | read | The invoice's document, as received. |
+| `GET /v1/vendors` | read | Suppliers; paginated. |
+| `GET /v1/payments` | read | Payments; paginated. |
+| `GET /v1/transactions` | read | The transactions register: every money movement on every rail, newest first; filter by rail, currency, from, to, reconciliation, moved; paginated (limit, cursor). |
+| `GET /v1/transactions/summary` | read | Totals per currency (money that moved only) and the checks: unreconciled, without approval, without booking or proof; the same filters. |
+| `GET /v1/transactions/export.csv` | read | The register as CSV, the same filters; one line per movement. |
+| `GET /v1/transactions/{id}` | read | One movement, with its earlier versions. |
+| `GET /v1/ledger/entries` | read | Ledger entries with their lines; filter by from, to; paginated. |
+| `GET /v1/reports/{name}` | read | trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger. |
+| `GET /v1/insights` | read | Payables at a glance: open, due, overdue, waiting, blocked, spend per supplier. |
+| `GET /v1/documents/{sha256}` | read | A document the company holds, by its SHA-256 (the export lists them). |
+| `POST /v1/sync` | sync | The runner's push: vendors, invoices, documents, payments, the transactions register, ledger entries, audit rows. Idempotent. Never passkeys. |
+| `GET /v1/sync/state` | sync | Where the cloud's copy stands: the heads of the audit and ledger chains, and the documents it holds. |
+| `GET /v1/mail` | sync | Inbound e-mail waiting for the runner; paginated (limit, cursor). |
+| `GET /v1/mail/{id}/raw` | sync | One inbound e-mail, raw (RFC 822). |
+| `POST /v1/mail/{id}/done` | sync | The runner filed (done) or refused an inbound e-mail. |
+| `GET /v1/keys` | admin | The company's API keys (never their secrets); paginated (limit, cursor). |
+| `POST /v1/keys` | admin | A new API key; returned once. |
+| `DELETE /v1/keys/{id}` | admin | Revoke an API key. |
+| `GET /v1/users` | admin | The company's people and their roles; paginated (limit, cursor). |
+| `POST /v1/users/{id}/enrolment` | admin | Start a person's passkey enrolment: a single-use secret for 30 minutes (an owner's passkey: a signed-in owner only, once any owner has one). |
+| `POST /v1/users` | admin | Add a person (owner, cfo, accountant, viewer); they then enrol a passkey with an enrolment an owner starts. |
+| `POST /v1/users/{id}/erase` | admin | Erase a person's personal data (bookkeeping records are kept for 7 years). |
+| `GET /v1/export` | admin | Everything the cloud holds for the company; documents listed, each fetched from /v1/documents/{sha256}. Needs admin and read. |
+| `POST /v1/close` | admin | Close the company's account: access ends; records are kept until the retention day, then purged. |
+
+### The transactions register
+
+`GET /v1/transactions` lists every money movement the runner knows, on every rail, newest first. The runner derives the
+register from the rails' own records (`src/money/register.ts`) and pushes it with `npm run cloud -- push`, after
+bringing its ledger up to date, so each row arrives reconciled against the books.
+
+| Filter | Values |
+|---|---|
+| `rail` | `airwallex_transfer`, `airwallex_fx`, `airwallex_card`, `airwallex_airi`, `airwallex_receipt`, `metal`, `metal_clearing` |
+| `currency` | `EUR`, `USD`, `GBP`, `USDZ` (Metal testnet) … |
+| `from`, `to` | days, `2026-11-01` |
+| `reconciliation` | `matched`, `missing_booking`, `missing_rail_record`, `amount_mismatch`, `not_applicable` |
+| `moved` | `true` (money moved) or `false` (refused, declined, failed, aborted: never counted) |
+
+A row: `id`, `at`, `direction` (`in`, `out`, `internal`) and `flow` (`in` or `out` of the account it touched), `rail`,
+`description`, `counterparty`, `counterparty_account` (last four only), `amount`, `currency`, `eur_equivalent` (only
+when a euro amount is recorded), `fee`, `moved`, `status_words`, `invoice` (the inbox id and the supplier's own number),
+`approval` (the authority, the proposal, decision, method, when, the signed terms hash), `booking` (the ledger entries,
+their accounts and what their bank lines add up to), `proof` (the Airwallex id or the transaction hash),
+`reconciliation` and `flags` (`no_approval`, `no_booking`, `no_proof`, `amount_mismatch`, `booked_not_moved`).
+
+`GET /v1/transactions/summary` gives totals per currency of money that moved only (in, out, between own accounts, fees)
+and the checks: movements not reconciled, without approval, without booking or proof. `GET /v1/transactions/export.csv`
+is the same rows as CSV (cells a spreadsheet would read as a formula start with an apostrophe). On the runner the same
+register is the Transactions page of `npm run payables` (`/transactions`) and `/api/payables/transactions`.
 
 From the runner: `npm run cloud -- push` and `npm run cloud -- mail`, with `PURSER_CLOUD_URL` and `PURSER_CLOUD_KEY`
 (a key with the `sync` scope) in the environment.
