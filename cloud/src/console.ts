@@ -5,6 +5,7 @@
 // page as text (textContent), never as HTML; account numbers come masked from the runner. The console reads and
 // manages; it never pays: a payment is approved on the CFO's phone with Face ID, through the runner's approval flow.
 
+import { consoleKeys, DATA_NL, I18N_JS, MESSAGES, t as tr } from "../../src/ui/i18n.js";
 import { escAttr, ICON_SET, PAYABLES_CSS, svg } from "../../src/ui/payablesKit.js";
 import { fromB64 } from "./crypto.js";
 import { INTER_WOFF2_B64 } from "./font.gen.js";
@@ -96,33 +97,37 @@ img.qr { width: 180px; height: 180px; background: #fff; border-radius: 8px; padd
 }
 `;
 
+// The page's frame in Dutch (the default); the script re-words it in the person's language when it starts.
 const BODY = `
 <header class="top"><div class="wrap"><a class="brand" href="#/"><span class="mk">P</span><span>Purser</span><span class="sec">Cloud</span></a>
-<nav class="tabs" id="tabs" aria-label="Pages"><a href="#/overview" data-tab="overview">Overview</a><a href="#/invoices" data-tab="invoices">Invoices</a><a href="#/transactions" data-tab="transactions">Transactions</a><a href="#/books" data-tab="books">Books</a><a href="#/settings" data-tab="settings">Settings</a></nav>
+<nav class="tabs" id="tabs" aria-label="${tr("nl", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("nl", "cs.nav.overview")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("nl", "nav.invoices")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("nl", "nav.transactions")}</a><a href="#/books" data-tab="books" data-t="cs.nav.books">${tr("nl", "cs.nav.books")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("nl", "cs.nav.settings")}</a></nav>
 <span class="spacer"></span>
-<span class="who-am-i"><span id="who"></span><button type="button" id="out" title="Sign out" aria-label="Sign out">${svg("log-out", 16)}</button></span>
-<span class="test" title="This build pays only in the Airwallex sandbox">${svg("flask", 14)}<span class="tl"> Test money</span></span></div></header>
+<span class="who-am-i"><span id="who"></span><button type="button" id="out" title="${tr("nl", "cs.sign_out")}" aria-label="${tr("nl", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
+<span class="test" title="${escAttr(tr("nl", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("nl", "test.label")}</span></span></div></header>
 <main><div class="wrap" id="view" aria-live="polite"></div></main>
-<p class="foot wrap">Purser Cloud · test money only: payments go through the Airwallex sandbox, approved on the CFO's phone with Face ID. The console never pays.</p>`;
+<p class="foot wrap" id="foot">${tr("nl", "cs.foot")}</p>`;
 
 // The client: plain JS (no template literals in it, so it can sit in this file as a raw string).
 const SCRIPT = String.raw`
+const LS=__CATALOGUES__;
+const PREF=(()=>{try{return localStorage.getItem('purser.cloud.lang')}catch(e){return null}})();
+const L=LS[PREF==='en'?'en':'nl'];
+__I18N__
+document.documentElement.lang=L.lang;
+for(const a of document.querySelectorAll('[data-t]'))a.textContent=(a.classList.contains('tl')?' ':'')+t(a.dataset.t);
+document.querySelector('#foot').textContent=t('cs.foot');
+for(const b of [document.querySelector('#out')]){b.title=t('cs.sign_out');b.setAttribute('aria-label',t('cs.sign_out'))}
+document.querySelector('header .test').title=t('test.title');
 const IC=__ICONS__;
 const CFG=JSON.parse(document.querySelector('meta[name=purser-cloud]').content);
 const $=(s)=>document.querySelector(s);
 const el=(tag,cls,kids)=>{const e=document.createElement(tag);if(cls)e.className=cls;for(const k of [].concat(kids??[])){if(k===null||k===undefined||k===false)continue;e.append(typeof k==='string'?document.createTextNode(k):k)}return e};
 const ic=(name)=>{const s=document.createElement('span');s.className='ic';s.innerHTML=IC[name]||'';return s};
 const btn=(label,cls,icon)=>{const b=el('button','btn'+(cls?' '+cls:''),[icon?ic(icon):null,label]);b.type='button';return b};
-const group=(int)=>int.replace(/\B(?=(\d{3})+(?!\d))/g,',');
-const cents=(c)=>{const n=Math.round(Number(c)||0);const neg=n<0;const a=Math.abs(n);return (neg?'-':'')+group(String(Math.floor(a/100)))+'.'+String(a%100).padStart(2,'0')};
-const amount=(v)=>{const m=/^(-?)(\d+)\.(\d{2})$/.exec(String(v||''));return m?m[1]+group(m[2])+'.'+m[3]:String(v||'')};
-const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const day=(iso)=>{const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(iso||'');return m?(+m[3])+' '+MONTHS[+m[2]-1]+' '+m[1]:''};
-const stamp=(iso)=>{const d=new Date(iso);if(isNaN(d))return '';return day(iso)+', '+String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0')+' UTC'};
 const today=new Date().toISOString().slice(0,10);
 const view=()=>$('#view');
 const note=(text,tone)=>el('p','note-'+(tone||'info'),text);
-const chip=(status,words)=>el('span','st '+String(status||'').replace(/[^a-z_]/g,''),words||String(status||'').replace(/_/g,' '));
+const chip=(status,words)=>el('span','st '+String(status||'').replace(/[^a-z_]/g,''),statusWords(status,words));
 const dl=(pairs)=>{const d=el('dl','read');for(const [k,v,cls] of pairs){if(v===null||v===undefined||v==='')continue;d.append(el('dt','',k));const dd=el('dd',cls||'');if(v instanceof Node)dd.append(v);else dd.textContent=String(v);d.append(dd)}return d};
 
 // Base64url and the passkey: WebAuthn hands out ArrayBuffers; the API takes base64url.
@@ -143,7 +148,7 @@ async function api(path,o){
   o=o||{};const token=o.token||(S&&S.token);
   const headers={};if(token)headers.authorization='Bearer '+token;if(o.body!==undefined)headers['content-type']='application/json';
   const r=await fetch(path,{method:o.method||'GET',headers,body:o.body===undefined?undefined:JSON.stringify(o.body)});
-  if(r.status===401&&!o.token&&S){forget();S=null;ME=null;notice='Your sign-in ended (sessions last 15 minutes). Sign in again with your passkey.';go('#/sign-in');throw new Expired('signed out')}
+  if(r.status===401&&!o.token&&S){forget();S=null;ME=null;notice=t('cs.session_ended');go('#/sign-in');throw new Expired('signed out')}
   if(o.raw){if(!r.ok){const j=await r.json().catch(()=>({error:r.statusText}));throw new Error(j.error||r.statusText)}return r}
   const j=await r.json().catch(()=>({error:r.statusText}));
   if(!r.ok)throw new Error(j.error||r.statusText);
@@ -153,35 +158,37 @@ const go=(h)=>{if(location.hash===h)route();else location.hash=h};
 
 function shell(){
   document.body.className=S?'signed-in':'signed-out';
-  if(S){const left=Math.max(0,Math.round((S.exp-Date.now())/60000));$('#who').textContent=(ME&&ME.user&&ME.user.display_name?ME.user.display_name+' · ':'')+(ME&&ME.tenant?ME.tenant.name+' · ':'')+'ends in '+left+' min'}
+  if(S){const left=Math.max(0,Math.round((S.exp-Date.now())/60000));$('#who').textContent=(ME&&ME.user&&ME.user.display_name?ME.user.display_name+' · ':'')+(ME&&ME.tenant?ME.tenant.name+' · ':'')+t('cs.ends_in',{n:left})}
   const tab=(location.hash.split('/')[1]||'').split('?')[0];
   for(const a of document.querySelectorAll('#tabs a'))if(a.dataset.tab===tab)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
 }
-async function me(){if(!ME)ME=await api('/v1/me');return ME}
+// The person's language (their own, else the company's): when it is not the page's, remember it and load the page again.
+function useLanguage(lang){if(lang!=='nl'&&lang!=='en')return;try{localStorage.setItem('purser.cloud.lang',lang)}catch(e){}if(lang!==L.lang)location.reload()}
+async function me(){if(!ME){ME=await api('/v1/me');if(ME.language&&ME.language!==L.lang)useLanguage(ME.language)}return ME}
 const title=(t)=>{document.title=t?'Purser Cloud · '+t:'Purser Cloud'};
 const head=(h,sub,tools)=>el('div','head',[el('div','',[el('h1','',h),sub?el('p','lede',sub):null]),tools?el('div','tools',tools):null]);
 
 // --- Signing in -------------------------------------------------------------------------------------------------
 async function signIn(slug,status){
-  status.replaceChildren(note('Waiting for your passkey …'));
+  status.replaceChildren(note(t('cs.waiting_passkey')));
   const ch=await api('/v1/auth/challenge',{method:'POST',body:{tenant:slug},token:'-'});
   const cred=await navigator.credentials.get({publicKey:{challenge:fromB64u(ch.challenge),rpId:CFG.rpId,userVerification:'required',timeout:60000}});
   const r=await api('/v1/auth/login',{method:'POST',token:'-',body:{tenant:slug,challenge_id:ch.challenge_id,credential_id:b64u(cred.rawId),assertion:assertionOf(cred)}});
   S={token:r.session,exp:Date.now()+r.expires_in*1000-5000,slug:slug};save(S);ME=null;
 }
 function signInView(){
-  title('Sign in');
+  title(t('cs.sign_in'));
   const slug=el('input','field');slug.id='slug';slug.autocomplete='organization';slug.placeholder='your-company';slug.spellcheck=false;
   try{slug.value=localStorage.getItem('purser.cloud.slug')||''}catch(e){}
   const status=el('div','');status.setAttribute('role','status');
-  const b=btn('Sign in with your passkey','primary big','scan-face');
-  const card=el('div','card auth',[el('h1','','Sign in'),el('p','','Purser Cloud keeps your company\'s supplier invoices, payments and books in one place. Sign in with the passkey on your phone or computer: no password.'),
-    el('label','','Company address'),el('div','addr',[slug,el('span','',CFG.mailDomain?'@'+CFG.mailDomain:'.purser')]),b,status,
-    el('p','alt',['New company? ',(()=>{const a=el('a','','Set it up');a.href='#/start';return a})()])]);
+  const b=btn(t('cs.sign_in_passkey'),'primary big','scan-face');
+  const card=el('div','card auth',[el('h1','',t('cs.sign_in')),el('p','',t('cs.sign_in_lede')),
+    el('label','',t('cs.company_address')),el('div','addr',[slug,el('span','',CFG.mailDomain?'@'+CFG.mailDomain:'.purser')]),b,status,
+    el('p','alt',[t('cs.new_company'),(()=>{const a=el('a','',t('cs.set_it_up'));a.href='#/start';return a})()])]);
   if(notice){status.append(note(notice,'bad'));notice=null}
-  if(!hasPasskeys()){b.disabled=true;status.append(note('This browser has no passkeys. Use a current Safari, Chrome, Edge or Firefox.','bad'))}
-  b.onclick=async()=>{const s=slug.value.trim().toLowerCase();if(!/^[a-z0-9][a-z0-9-]{1,40}$/.test(s)){status.replaceChildren(note('A company address is lowercase letters, digits and dashes.','bad'));return}
-    b.disabled=true;try{await signIn(s,status);try{localStorage.setItem('purser.cloud.slug',s)}catch(e){}go('#/overview')}catch(e){if(!(e instanceof Expired))status.replaceChildren(note(e.name==='NotAllowedError'?'The passkey was cancelled or timed out.':e.message,'bad'))}finally{b.disabled=false}};
+  if(!hasPasskeys()){b.disabled=true;status.append(note(t('cs.no_passkeys'),'bad'))}
+  b.onclick=async()=>{const s=slug.value.trim().toLowerCase();if(!/^[a-z0-9][a-z0-9-]{1,40}$/.test(s)){status.replaceChildren(note(t('cs.slug_rule'),'bad'));return}
+    b.disabled=true;try{await signIn(s,status);try{localStorage.setItem('purser.cloud.slug',s)}catch(e){}go('#/overview')}catch(e){if(!(e instanceof Expired))status.replaceChildren(note(e.name==='NotAllowedError'?t('cs.passkey_cancelled'):e.message,'bad'))}finally{b.disabled=false}};
   slug.onkeydown=(e)=>{if(e.key==='Enter')b.click()};
   view().replaceChildren(card);slug.focus();
 }
@@ -193,168 +200,168 @@ async function enrolPasskey(o){
     pubKeyCredParams:[{type:'public-key',alg:-7}],authenticatorSelection:{userVerification:'required',residentKey:'required'},attestation:'none',timeout:120000}});
   const spki=new Uint8Array(made.response.getPublicKey());
   // A P-256 key in SPKI ends with 0x04, x (32 bytes), y (32 bytes).
-  const pt=spki.slice(spki.length-65);if(pt[0]!==4)throw new Error('this passkey does not use a P-256 key');
+  const pt=spki.slice(spki.length-65);if(pt[0]!==4)throw new Error(t('cs.not_p256'));
   const signed=await navigator.credentials.get({publicKey:{challenge:fromB64u(o.token),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:made.rawId}],userVerification:'required',timeout:120000}});
   await api('/v1/auth/enrol',{method:'POST',token:'-',body:{tenant:o.slug,enrolment_id:o.enrolment_id,token:o.token,credential_id:b64u(made.rawId),x:b64u(pt.slice(1,33)),y:b64u(pt.slice(33,65)),assertion:assertionOf(signed)}});
 }
 
 // --- First run: a new company, with the owner key Purser handed over ------------------------------------------------
 function startView(){
-  title('Set up your company');
+  title(t('cs.setup'));
   let key='',slug='',info=null,sync=null;
   const box=el('div','card auth');
   const steps=el('ol','steps');const status=el('div','');status.setAttribute('role','status');
   function stepItem(n,t,s,state){return el('li',state||'',[el('span','n',state==='done'?ic('circle-check'):String(n)),el('div','',[el('b','',t),el('span','s',s)])])}
   function draw(stage){
     steps.replaceChildren(
-      stepItem(1,'Your company','The address Purser gave you and the starter key that came with it.',stage>1?'done':'now'),
-      stepItem(2,'Your passkey','Face ID, Touch ID or your device\'s lock: it signs you in and nothing else can.',stage>2?'done':stage===2?'now':''),
-      stepItem(3,'Your inbox and your computer','Where suppliers mail invoices, and the one command that connects Purser on your computer.',stage===3?'now':''));
+      stepItem(1,t('cs.step1'),t('cs.step1_sub'),stage>1?'done':'now'),
+      stepItem(2,t('cs.step2'),t('cs.step2_sub'),stage>2?'done':stage===2?'now':''),
+      stepItem(3,t('cs.step3'),t('cs.step3_sub'),stage===3?'now':''));
   }
   const body=el('div','');
   function stage1(){
     draw(1);
     const s=el('input','field');s.placeholder='your-company';s.spellcheck=false;s.id='start-slug';
     const k=el('input','field');k.type='password';k.placeholder='pck_…';k.autocomplete='off';k.id='start-key';
-    const b=btn('Continue','primary big');
-    body.replaceChildren(el('label','','Company address'),el('div','addr',[s,el('span','',CFG.mailDomain?'@'+CFG.mailDomain:'.purser')]),el('label','','Starter key'),k,
-      note('The starter key is used once, here, to make your passkey; afterwards you can revoke it. It is never stored by this page.'),b);
+    const b=btn(t('cs.continue'),'primary big');
+    body.replaceChildren(el('label','',t('cs.company_address')),el('div','addr',[s,el('span','',CFG.mailDomain?'@'+CFG.mailDomain:'.purser')]),el('label','',t('cs.starter_key')),k,
+      note(t('cs.starter_note')),b);
     b.onclick=async()=>{slug=s.value.trim().toLowerCase();key=k.value.trim();
-      try{info=await api('/v1/me',{token:key});if(info.tenant.slug!==slug)throw new Error('this key belongs to another company');if(!info.user)throw new Error('this key is not an owner\'s key');stage2()}catch(e){status.replaceChildren(note(e.message,'bad'))}};
+      try{info=await api('/v1/me',{token:key});if(info.tenant.slug!==slug)throw new Error(t('cs.other_company_key'));if(!info.user)throw new Error(t('cs.not_owner_key'));stage2()}catch(e){status.replaceChildren(note(e.message,'bad'))}};
   }
   function stage2(){
     draw(2);status.replaceChildren();
     const name=el('input','field');name.value=info.tenant.name||'';name.id='start-name';
-    const b=btn('Make my passkey','primary big','scan-face');
-    body.replaceChildren(el('label','','Company name'),name,info.owner_has_passkey?note('An owner of this company already has a passkey: sign in instead, and add people under Settings.','bad'):null,b);
+    const b=btn(t('cs.make_passkey'),'primary big','scan-face');
+    body.replaceChildren(el('label','',t('cs.company_name')),name,info.owner_has_passkey?note(t('cs.owner_has_passkey'),'bad'):null,b);
     if(info.owner_has_passkey)b.disabled=true;
-    if(!hasPasskeys()){b.disabled=true;status.append(note('This browser has no passkeys.','bad'))}
+    if(!hasPasskeys()){b.disabled=true;status.append(note(t('cs.no_passkeys_short'),'bad'))}
     b.onclick=async()=>{b.disabled=true;try{
       if(name.value.trim()&&name.value.trim()!==info.tenant.name)await api('/v1/company',{method:'POST',token:key,body:{name:name.value.trim()}});
-      status.replaceChildren(note('Follow your device: first to make the passkey, then to sign with it …'));
+      status.replaceChildren(note(t('cs.follow_device')));
       const e=await api('/v1/users/'+encodeURIComponent(info.user.id)+'/enrolment',{method:'POST',token:key});
-      await enrolPasskey({slug,name:(info.user.display_name||'Owner')+' · '+slug,enrolment_id:e.enrolment_id,token:e.token});
-      status.replaceChildren(note('Passkey saved. Now sign in with it once …','ok'));
+      await enrolPasskey({slug,name:(info.user.display_name||t('cs.owner'))+' · '+slug,enrolment_id:e.enrolment_id,token:e.token});
+      status.replaceChildren(note(t('cs.passkey_saved'),'ok'));
       await signIn(slug,status);
-      stage3()}catch(e){if(!(e instanceof Expired))status.replaceChildren(note(e.name==='NotAllowedError'?'The passkey was cancelled or timed out.':e.message,'bad'));b.disabled=false}};
+      stage3()}catch(e){if(!(e instanceof Expired))status.replaceChildren(note(e.name==='NotAllowedError'?t('cs.passkey_cancelled'):e.message,'bad'));b.disabled=false}};
   }
   async function stage3(){
     draw(3);status.replaceChildren();
     ME=null;const m=await me();
-    const inbox=m.inbox?el('p','inbox',[ic('mail'),' Suppliers mail invoices to ',el('b','mono',m.inbox)]):note('Your inbox address appears here once mail is routed to Purser Cloud.');
-    const make=btn('Make the key for my computer','primary','key-round');
+    const inbox=m.inbox?el('p','inbox',[ic('mail'),t('cs.mail_to'),el('b','mono',m.inbox)]):note(t('cs.inbox_later'));
+    const make=btn(t('cs.make_runner_key'),'primary','key-round');
     const out=el('div','');
-    const revoke=btn('Revoke the starter key','danger','x');
-    body.replaceChildren(inbox,el('p','',['Connect Purser on your computer (the runner, which holds the bank keys and pays only after the CFO\'s Face ID) with a key that may only push data here:']),make,out,
-      el('p','',['The starter key can go now: you sign in with your passkey from here on.']),revoke,
-      (()=>{const a=el('a','btn big','Open the console');a.href='#/overview';return a})());
-    make.onclick=async()=>{make.disabled=true;try{sync=await api('/v1/keys',{method:'POST',body:{name:'runner (sync)',scopes:['sync'],expires_in_days:90}});
-      out.replaceChildren(el('div','once',[el('b','','Shown once. '),'Run this on the computer that runs Purser (keep the key in its environment, never in a file in git):',
+    const revoke=btn(t('cs.revoke_starter'),'danger','x');
+    body.replaceChildren(inbox,el('p','',[t('cs.connect_runner')]),make,out,
+      el('p','',[t('cs.starter_can_go')]),revoke,
+      (()=>{const a=el('a','btn big',t('cs.open_console'));a.href='#/overview';return a})());
+    make.onclick=async()=>{make.disabled=true;try{sync=await api('/v1/keys',{method:'POST',body:{name:t('cs.runner_key_name'),scopes:['sync'],expires_in_days:90}});
+      out.replaceChildren(el('div','once',[el('b','',t('cs.shown_once')),t('cs.run_this'),
         el('code','cmd','PURSER_CLOUD_URL='+CFG.origin+' PURSER_CLOUD_KEY='+sync.api_key+' npm run cloud -- push')]))}catch(e){out.replaceChildren(note(e.message,'bad'));make.disabled=false}};
-    revoke.onclick=async()=>{revoke.disabled=true;try{await api('/v1/keys/'+encodeURIComponent(info.principal),{method:'DELETE'});revoke.replaceWith(note('The starter key is revoked.','ok'));key=''}catch(e){revoke.disabled=false;out.append(note(e.message,'bad'))}};
+    revoke.onclick=async()=>{revoke.disabled=true;try{await api('/v1/keys/'+encodeURIComponent(info.principal),{method:'DELETE'});revoke.replaceWith(note(t('cs.starter_revoked'),'ok'));key=''}catch(e){revoke.disabled=false;out.append(note(e.message,'bad'))}};
   }
-  box.append(el('h1','','Set up your company'),el('p','','Three steps, about two minutes. Test money only: Purser Cloud pays nothing; payments are approved on the CFO\'s phone.'),steps,body,status);
+  box.append(el('h1','',t('cs.setup')),el('p','',t('cs.setup_lede')),steps,body,status);
   view().replaceChildren(box);stage1();
 }
 
 // --- An invited person makes their passkey (the owner shares the link; its secret is in the fragment, never sent) ---
 function enrolView(q){
-  title('Make your passkey');
+  title(t('cs.enrol_title'));
   const status=el('div','');status.setAttribute('role','status');
-  const b=btn('Make my passkey','primary big','scan-face');
-  const card=el('div','card auth',[el('h1','','Make your passkey'),el('p','',['You were added to ',el('b','',q.get('t')||''),' on Purser Cloud. Your passkey signs you in; there is no password.']),b,status]);
-  if(!q.get('t')||!q.get('e')||!q.get('k')){b.disabled=true;status.append(note('This link is incomplete. Ask an owner for a new one.','bad'))}
-  if(!hasPasskeys()){b.disabled=true;status.append(note('This browser has no passkeys.','bad'))}
-  b.onclick=async()=>{b.disabled=true;try{status.replaceChildren(note('Follow your device: first to make the passkey, then to sign with it …'));
+  const b=btn(t('cs.make_passkey'),'primary big','scan-face');
+  const card=el('div','card auth',[el('h1','',t('cs.enrol_title')),el('p','',[t('cs.enrol_added'),el('b','',q.get('t')||''),t('cs.enrol_added2')]),b,status]);
+  if(!q.get('t')||!q.get('e')||!q.get('k')){b.disabled=true;status.append(note(t('cs.link_incomplete'),'bad'))}
+  if(!hasPasskeys()){b.disabled=true;status.append(note(t('cs.no_passkeys_short'),'bad'))}
+  b.onclick=async()=>{b.disabled=true;try{status.replaceChildren(note(t('cs.follow_device')));
     await enrolPasskey({slug:q.get('t'),name:q.get('n')||q.get('t'),enrolment_id:q.get('e'),token:q.get('k')});
     history.replaceState(null,'','#/sign-in');try{localStorage.setItem('purser.cloud.slug',q.get('t'))}catch(e){}
-    status.replaceChildren(note('Done. Sign in with your new passkey.','ok'));setTimeout(()=>go('#/sign-in'),900)}catch(e){status.replaceChildren(note(e.name==='NotAllowedError'?'The passkey was cancelled or timed out.':e.message,'bad'));b.disabled=false}};
+    status.replaceChildren(note(t('cs.enrol_done'),'ok'));setTimeout(()=>go('#/sign-in'),900)}catch(e){status.replaceChildren(note(e.name==='NotAllowedError'?t('cs.passkey_cancelled'):e.message,'bad'));b.disabled=false}};
   view().replaceChildren(card);
 }
 
 // --- Overview ------------------------------------------------------------------------------------------------------
 const byCur=(m)=>Object.entries(m||{}).filter(([,v])=>v!==0).sort(([a],[b])=>a.localeCompare(b));
-function money(m,emptyWord){const e=byCur(m);if(!e.length)return emptyWord||'None';const s=el('span','');s.append(el('small','',e[0][0]),cents(e[0][1]));return s}
-function others(m){const e=byCur(m).slice(1);return e.length?e.map(([c,v])=>c+' '+cents(v)).join(' · '):''}
+function money(m,emptyWord){const e=byCur(m);if(!e.length)return emptyWord||t('none');const s=el('span','');s.append(el('small','',cur(e[0][0])),cents(e[0][1]));return s}
+function others(m){const e=byCur(m).slice(1);return e.length?e.map(([c,v])=>cur(c)+' '+cents(v)).join(' · '):''}
 function tile(label,icon,value,extra,tone){const t=el('div','card tile'+(tone?' '+tone:''));const v=el('div','v num');if(value instanceof Node)v.append(value);else v.textContent=value;t.append(el('div','l',[ic(icon),label]),v);if(extra)t.append(el('div','x',extra));return t}
-const REASON={possible_fraud:'possible fraud',duplicate:'a copy of an invoice on file',iban_invalid:'an invalid IBAN',sum_mismatch:'amounts that do not add up',bank_details_invalid:'invalid bank details',payee_blocked:'a blocked supplier'};
 async function overviewView(){
-  title('Overview');
+  title(t('cs.nav.overview'));
   const [m,x,w]=await Promise.all([me(),api('/v1/insights'),api('/v1/invoices?status=waiting_cfo&limit=50')]);shell();
   const blocked=Object.entries(x.blocked_by_reason||{}).sort((a,b)=>b[1]-a[1]);const nb=blocked.reduce((n,[,c])=>n+c,0);
   const waits=x.waiting.for_cfo+x.waiting.for_supplier_check+x.waiting.for_a_person;
   const tiles=el('div','tiles',[
-    tile('Open','wallet',money(x.open_net_cents,'Nothing open'),[others(x.open_net_cents),byCur(x.credits_cents).length?'after credit notes':''].filter(Boolean).join(' · ')||null),
-    tile('Due in 7 days','calendar-range',money(x.due_7_days_cents),byCur(x.due_30_days_cents).length?'30 days: '+byCur(x.due_30_days_cents).map(([c,v])=>c+' '+cents(v)).join(' · '):'Nothing due in 30 days'),
-    tile('Overdue','clock',money(x.overdue_cents),byCur(x.overdue_cents).length?others(x.overdue_cents)||'Pay or check these first':'Every open invoice is in time',byCur(x.overdue_cents).length?'alert':'calm'),
-    tile('Waits for someone','inbox',String(waits),x.waiting.for_cfo+' Face ID · '+x.waiting.for_a_person+' check · '+x.waiting.for_supplier_check+' supplier'),
-    tile('Blocked','octagon-x',String(nb),blocked.length?'Most: '+(REASON[blocked[0][0]]||blocked[0][0].replace(/_/g,' ')):'Nothing blocked',nb?'alert':'calm')]);
-  const inbox=m.inbox?el('p','inbox',[ic('mail'),' Suppliers mail invoices to ',el('b','mono',m.inbox)]):null;
+    tile(t('ov.tile.open'),'wallet',money(x.open_net_cents,t('cs.nothing_open')),[others(x.open_net_cents),byCur(x.credits_cents).length?t('cs.after_credit_notes'):''].filter(Boolean).join(' · ')||null),
+    tile(t('ov.tile.due7'),'calendar-range',money(x.due_7_days_cents),byCur(x.due_30_days_cents).length?t('ov.due30',{amounts:byCur(x.due_30_days_cents).map(([c,v])=>cur(c)+' '+cents(v)).join(' · ')}):t('ov.nothing_due30')),
+    tile(t('ov.tile.overdue'),'clock',money(x.overdue_cents),byCur(x.overdue_cents).length?others(x.overdue_cents)||t('cs.pay_first'):t('ov.all_in_time'),byCur(x.overdue_cents).length?'alert':'calm'),
+    tile(t('cs.tile.waits'),'inbox',String(waits),t('ov.waits_detail',{faceid:x.waiting.for_cfo,check:x.waiting.for_a_person,supplier:x.waiting.for_supplier_check})),
+    tile(t('ov.tile.blocked'),'octagon-x',String(nb),blocked.length?t('ov.most',{reason:tk('top.'+blocked[0][0],tk('finding.'+blocked[0][0],blocked[0][0].replace(/_/g,' ')))}):t('ov.nothing_blocked'),nb?'alert':'calm')]);
+  const inbox=m.inbox?el('p','inbox',[ic('mail'),t('cs.mail_to'),el('b','mono',m.inbox)]):null;
   const wl=el('div','card list');
-  if(!w.items.length)wl.append(el('div','empty',[el('b','','Nothing waits for the CFO'),'When an invoice is filed for payment, it waits here until the CFO approves or rejects it on the phone.']));
+  if(!w.items.length)wl.append(el('div','empty',[el('b','',t('cs.nothing_waits')),t('cs.nothing_waits_sub')]));
   else{wl.append(rowHead());for(const i of w.items)wl.append(invoiceRow(i))}
-  view().replaceChildren(head('Overview',(m.tenant.name||'')+': what is open, what is due, what waits.'),inbox,tiles,
-    el('section','section waits',[el('div','bar',[el('h2','','Waits for the CFO\'s Face ID')]),wl,note('Purser Cloud shows these; it does not pay them. The CFO approves each one on the phone, against its exact terms.')]));
+  view().replaceChildren(head(t('cs.nav.overview'),t('cs.overview_lede',{name:m.tenant.name||''})),inbox,tiles,
+    el('section','section waits',[el('div','bar',[el('h2','',t('cs.waits_head'))]),wl,note(t('cs.shows_not_pays'))]));
 }
 
 // --- Invoices ------------------------------------------------------------------------------------------------------
-function why(i){if(i.status==='paid')return 'Paid'+(i.paid_at?' '+day(i.paid_at):'');if(i.status==='ready')return 'All checks passed';if(i.status==='waiting_cfo')return 'Waits for the CFO\'s Face ID';const fs=i.findings||[];const f=fs.filter(x=>x.level!=='warn')[0]||fs[0];return f?String(f.detail||'').charAt(0).toUpperCase()+String(f.detail||'').slice(1):''}
-const rowHead=()=>el('div','row th',[el('span','','Supplier'),el('span','','Invoice'),el('span','','Due'),el('span','amt','Amount'),el('span','','Status'),el('span','','Why'),el('span','')]);
+function why(i){if(i.status==='paid')return i.paid_at?t('paid_on',{date:day(i.paid_at)}):t('paid');if(i.status==='ready')return t('all_checks_passed');if(i.status==='waiting_cfo')return statusWords('waiting_cfo');const fs=i.findings||[];const f=fs.filter(x=>x.level!=='warn')[0]||fs[0];return f?cap(finding(f)):''}
+const rowHead=()=>el('div','row th',[el('span','',t('supplier')),el('span','',t('invoice')),el('span','',t('due')),el('span','amt',t('amount')),el('span','',t('status')),el('span','',t('why')),el('span','')]);
 function invoiceRow(i){
   const a=el('a','row');a.href='#/invoices/'+encodeURIComponent(i.id);
-  const sup=el('span','sup',i.vendor||'Unknown supplier');sup.title=i.vendor||'';
-  const no=el('span','no',[i.invoice_no||'(no number)',el('span','sub',i.id)]);no.title=i.invoice_no||'';
+  const sup=el('span','sup',i.vendor||t('unknown_supplier'));sup.title=i.vendor||'';
+  const no=el('span','no',[i.invoice_no||t('no_number'),el('span','sub',i.id)]);no.title=i.invoice_no||'';
   const late=i.due_date&&i.due_date<today&&!['paid','rejected'].includes(i.status);
   const w=why(i);const wy=el('span','why',w);wy.title=w;
-  a.append(sup,no,el('span','due num'+(late?' late':''),i.due_date?day(i.due_date):'–'),el('span','amt',[el('span','c',i.currency||''),amount(i.total)||'–']),el('span','stc',[chip(i.status,i.status_words)]),wy);
+  a.append(sup,no,el('span','due num'+(late?' late':''),i.due_date?day(i.due_date):'–'),el('span','amt',[el('span','c',cur(i.currency)),amount(i.total)||'–']),el('span','stc',[chip(i.status,i.status_words)]),wy);
   const g=ic('chevron-right');g.className='go';a.append(g);return a}
-const FILTERS=[['all','All',()=>true],['act','To act on',(i)=>['ready','needs_review','needs_vendor'].includes(i.status)],['waiting_cfo','Waits for Face ID',(i)=>i.status==='waiting_cfo'],['paid','Paid',(i)=>i.status==='paid'],['blocked','Blocked',(i)=>i.status==='blocked'],['rejected','Rejected',(i)=>i.status==='rejected']];
+const FILTERS=[['all',t('filter.all'),()=>true],['act',t('filter.act'),(i)=>['ready','needs_review','needs_vendor'].includes(i.status)],['waiting_cfo',t('filter.waiting_cfo'),(i)=>i.status==='waiting_cfo'],['paid',t('filter.paid'),(i)=>i.status==='paid'],['blocked',t('filter.blocked'),(i)=>i.status==='blocked'],['rejected',t('filter.rejected'),(i)=>i.status==='rejected']];
 async function invoicesView(){
-  title('Invoices');
+  title(t('nav.invoices'));
   let all=[];let cursor=null;let filter='all';
-  const list=el('div','card list');const bar=el('div','bar',[el('h2','','Invoices')]);const more=btn('Load more');more.hidden=true;
+  const list=el('div','card list');const bar=el('div','bar',[el('h2','',t('nav.invoices'))]);const more=btn(t('cs.load_more'));more.hidden=true;
   function draw(){
     bar.querySelectorAll('.chip').forEach(c=>c.remove());
     for(const [k,label,fn] of FILTERS){const n=all.filter(fn).length;if(k!=='all'&&!n&&k!=='act')continue;const b=el('button','chip',[label,' ',el('b','',String(n))]);b.type='button';b.setAttribute('aria-pressed',String(filter===k));b.onclick=()=>{filter=k;draw()};bar.append(b)}
     list.replaceChildren();
-    if(!all.length){list.append(el('div','empty',[el('b','','No invoices yet'),'Invoices arrive here when suppliers mail them to your inbox, or when Purser on your computer pushes them.']));return}
+    if(!all.length){list.append(el('div','empty',[el('b','',t('no_invoices_yet')),t('cs.invoices_empty_sub')]));return}
     const shown=all.filter(FILTERS.find(f=>f[0]===filter)[2]).slice().reverse();
-    list.append(rowHead());if(!shown.length)list.append(el('div','empty',[el('b','','Nothing here'),'No invoice is in this state right now.']));
+    list.append(rowHead());if(!shown.length)list.append(el('div','empty',[el('b','',t('nothing_here')),t('no_invoice_in_state')]));
     for(const i of shown)list.append(invoiceRow(i));
   }
   async function page(){const p=await api('/v1/invoices?limit=200'+(cursor?'&cursor='+encodeURIComponent(cursor):''));all=all.concat(p.items);cursor=p.next_cursor;more.hidden=!cursor;draw()}
   more.onclick=()=>page();
-  view().replaceChildren(head('Invoices','Every supplier invoice Purser read and checked, as your computer last pushed it. Read only here.'),el('section','section',[bar,list,more]));
+  view().replaceChildren(head(t('nav.invoices'),t('cs.invoices_lede')),el('section','section',[bar,list,more]));
   await page();
 }
-const RES={block:['octagon-x','Blocks payment'],review:['triangle-alert','Needs a person'],wait:['clock','Waits'],warn:['triangle-alert','Note']};
+const RES={block:['octagon-x',t('res.block')],review:['triangle-alert',t('res.review')],wait:['clock',t('res.wait')],warn:['triangle-alert',t('res.warn')]};
 async function invoiceView(id){
-  title('Invoice');
+  title(t('cs.invoice'));
   const i=await api('/v1/invoices/'+encodeURIComponent(id));const r=i.reading||{};
-  title((i.vendor||'Invoice')+' '+(i.invoice_no||i.id));
+  title((i.vendor||t('cs.invoice'))+' '+(i.invoice_no||i.id));
   const late=i.due_date&&i.due_date<today&&!['paid','rejected'].includes(i.status);
-  const back=el('a','back',[ic('arrow-left'),' All invoices']);back.href='#/invoices';
-  const top=el('div','dhead',[el('div','who',[el('h1','',i.vendor||'Unknown supplier'),el('div','meta',[chip(i.status,i.status_words),el('span','','Invoice '+(i.invoice_no||'(no number)')),el('span','','·'),el('span','',i.id),el('span','','·'),el('span','','Received '+day(i.received_at))])]),
-    el('div','money',[el('div','big',[el('small','',i.currency||''),amount(i.total)||'–']),el('div','when',i.status==='paid'&&i.paid_at?'Paid '+day(i.paid_at):i.due_date?(late?'Was due ':'Due ')+day(i.due_date):'No due date')])]);
-  const acct=r.iban?'IBAN …'+String(r.iban).slice(-4):r.account_number?'Account …'+String(r.account_number).slice(-4):(i.iban_last4?'…'+i.iban_last4:'');
-  const read=el('div','card panel',[el('h2','','What Purser read'),dl([['Supplier',r.vendor||i.vendor],['VAT number',r.vat_id],['Invoice number',r.invoice_no||i.invoice_no],['Invoice date',day(r.issue_date||i.issue_date)],['Due date',day(r.due_date||i.due_date)],
-    ['Subtotal',r.subtotal?(r.currency||i.currency)+' '+amount(r.subtotal):''],['VAT',r.tax?(r.currency||i.currency)+' '+amount(r.tax):''],['Total',(r.currency||i.currency||'')+' '+amount(r.total||i.total)],
-    ['Pay to',[acct,r.bic?'BIC '+r.bic:''].filter(Boolean).join(' · '),'mono'],['Bank country',r.bank_country],['Reference',r.reference],['Booked to',i.gl_account?(i.gl_account+(i.cost_centre?' · '+i.cost_centre:'')):'']])]);
+  const back=el('a','back',[ic('arrow-left'),' '+t('dt.all')]);back.href='#/invoices';
+  const top=el('div','dhead',[el('div','who',[el('h1','',i.vendor||t('unknown_supplier')),el('div','meta',[chip(i.status,i.status_words),el('span','',t('dt.invoice',{no:i.invoice_no||t('no_number')})),el('span','','·'),el('span','',i.id),el('span','','·'),el('span','',t('cs.received_on',{date:day(i.received_at)}))])]),
+    el('div','money',[el('div','big',[el('small','',cur(i.currency)),amount(i.total)||'–']),el('div','when',i.status==='paid'&&i.paid_at?t('paid_on',{date:day(i.paid_at)}):i.due_date?t(late?'dt.was_due':'dt.due',{date:day(i.due_date)}):t('dt.no_due'))])]);
+  const acct=r.iban?'IBAN …'+String(r.iban).slice(-4):r.account_number?t('dt.account')+' …'+String(r.account_number).slice(-4):(i.iban_last4?'…'+i.iban_last4:'');
+  const rc=r.currency||i.currency||'';
+  const read=el('div','card panel',[el('h2','',t('dt.read')),dl([[t('supplier'),r.vendor||i.vendor],[t('cs.vat_number'),r.vat_id],[t('dt.invoice_number'),r.invoice_no||i.invoice_no],[t('dt.invoice_date'),day(r.issue_date||i.issue_date)],[t('dt.due_date'),day(r.due_date||i.due_date)],
+    [t('dt.subtotal'),r.subtotal?ma(rc,r.subtotal):''],[t('dt.vat'),r.tax?ma(rc,r.tax):''],[t('dt.total'),ma(rc,r.total||i.total)],
+    [t('dt.pay_to'),[acct,r.bic?'BIC '+r.bic:''].filter(Boolean).join(' · '),'mono'],[t('dt.bank_country'),r.bank_country],[t('dt.reference'),r.reference],[t('dt.booked_to'),i.gl_account?(i.gl_account+(i.cost_centre?' · '+i.cost_centre:'')):'']])]);
   const fs=i.findings||[];const fl=el('ul','findings');
-  if(!fs.length)fl.append(el('li','ok',[ic('circle-check'),el('span','','Every check passed.')]));
-  for(const f of fs){const m=RES[f.level]||['circle-minus',f.level];fl.append(el('li',f.level,[ic(m[0]),el('span','',[el('b','',m[1]+': '),String(f.detail||f.code||'')])]))}
-  const checks=el('div','card panel',[el('h2','','Checks'),fl]);
+  if(!fs.length)fl.append(el('li','ok',[ic('circle-check'),el('span','',t('cs.all_passed'))]));
+  for(const f of fs){const m=RES[f.level]||['circle-minus',f.level];fl.append(el('li',f.level,[ic(m[0]),el('span','',[el('b','',m[1]+': '),finding(f)])]))}
+  const checks=el('div','card panel',[el('h2','',t('dt.checks')),fl]);
   const tl=el('ul','timeline');
-  tl.append(el('li','',[el('b','','Received'),el('span','',stamp(i.received_at))]));
-  for(const v of i.earlier_versions||[])tl.append(el('li','',[el('b','','Changed (version '+v.version+' replaced)'),el('span','',stamp(v.replaced_at))]));
-  if(i.status==='waiting_cfo')tl.append(el('li','',[el('b','','Filed for the CFO\'s Face ID'),el('span','',i.proposal_id?'Payment '+i.proposal_id:'')]));
-  if(i.paid_at)tl.append(el('li','',[el('b','','Paid'),el('span','',stamp(i.paid_at))]));
-  tl.append(el('li','',[el('b','','Last update from your computer'),el('span','',stamp(i.updated_at))]));
-  const getDoc=btn('Download','','download');
+  tl.append(el('li','',[el('b','',t('tl.received')),el('span','',stamp(i.received_at))]));
+  for(const v of i.earlier_versions||[])tl.append(el('li','',[el('b','',t('cs.changed_version',{n:v.version})),el('span','',stamp(v.replaced_at))]));
+  if(i.status==='waiting_cfo')tl.append(el('li','',[el('b','',t('filed_for_face_id')),el('span','',i.proposal_id?t('cs.payment',{id:i.proposal_id}):'')]));
+  if(i.paid_at)tl.append(el('li','',[el('b','',t('paid')),el('span','',stamp(i.paid_at))]));
+  tl.append(el('li','',[el('b','',t('cs.last_update')),el('span','',stamp(i.updated_at))]));
+  const getDoc=btn(t('cs.download'),'','download');
   getDoc.onclick=async()=>{getDoc.disabled=true;try{await download('/v1/invoices/'+encodeURIComponent(id)+'/document',(i.invoice_no||i.id).replace(/[^\w.-]+/g,'_')+'.pdf')}catch(e){if(!(e instanceof Expired))getDoc.after(note(e.message,'bad'))}finally{getDoc.disabled=false}};
-  const pages=el('div','pages',[el('p','wait','Drawing the document …')]);
-  const doc=el('div','card docv',[el('div','bar2',[ic('file-text'),el('span','fn','The invoice as received'+(i.doc_sha256?' · SHA-256 '+String(i.doc_sha256).slice(0,12)+'…':'')),getDoc]),pages]);
-  view().replaceChildren(back,top,el('div','split',[doc,el('div','stack',[read,checks,el('div','card panel',[el('h2','','Timeline'),tl]),note('Payments are approved on the CFO\'s phone with Face ID, against these exact terms; nothing here pays.')])]));
+  const pages=el('div','pages',[el('p','wait',t('drawing_document'))]);
+  const doc=el('div','card docv',[el('div','bar2',[ic('file-text'),el('span','fn',t('cs.as_received')+(i.doc_sha256?' · SHA-256 '+String(i.doc_sha256).slice(0,12)+'…':'')),getDoc]),pages]);
+  view().replaceChildren(back,top,el('div','split',[doc,el('div','stack',[read,checks,el('div','card panel',[el('h2','',t('dt.timeline')),tl]),note(t('cs.approved_on_phone'))])]));
   drawPdf(id,pages);
 }
 // The supplier's PDF drawn on canvases by pdf.js (this origin's own copy, eval off, no XFA): the file is data here, never
@@ -365,123 +372,130 @@ async function drawPdf(id,box){
     const data=new Uint8Array(await r.arrayBuffer());
     const doc=await getDocument({data,isEvalSupported:false,enableXfa:false,disableFontFace:false,useSystemFonts:false,stopAtErrors:false,verbosity:0}).promise;
     box.replaceChildren();
-    for(let n=1;n<=Math.min(doc.numPages,6);n++){const page=await doc.getPage(n);const vp=page.getViewport({scale:2});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;c.setAttribute('aria-label','Page '+n+' of the invoice');box.append(c);await page.render({canvasContext:c.getContext('2d'),viewport:vp,canvas:c}).promise}
-    if(doc.numPages>6)box.append(el('p','wait',(doc.numPages-6)+' more page(s): download the PDF to see them'));
-  }catch(e){if(e instanceof Expired)return;box.replaceChildren(el('p','wait','The document could not be drawn here. Download it instead.'))}
+    for(let n=1;n<=Math.min(doc.numPages,6);n++){const page=await doc.getPage(n);const vp=page.getViewport({scale:2});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;c.setAttribute('aria-label',t('page_of_invoice',{n}));box.append(c);await page.render({canvasContext:c.getContext('2d'),viewport:vp,canvas:c}).promise}
+    if(doc.numPages>6)box.append(el('p','wait',t('cs.more_pages',{n:doc.numPages-6})));
+  }catch(e){if(e instanceof Expired)return;box.replaceChildren(el('p','wait',t('cs.not_drawn')))}
 }
 
 // --- Transactions --------------------------------------------------------------------------------------------------
-const RAILS=[['','Every rail'],['airwallex_transfer','Transfers'],['airwallex_fx','FX'],['airwallex_card','Cards'],['airi','Airi'],['airwallex_deposit','Money in'],['metal','Metal'],['metal_clearing','Metal clearing']];
-const RECS=[['','Every state'],['matched','Booked and matched'],['missing_booking','Not booked'],['missing_rail_record','No rail record'],['amount_mismatch','Amounts differ']];
+const RAILS=[['',t('cs.every_rail')],...['airwallex_transfer','airwallex_fx','airwallex_card','airwallex_airi','airwallex_receipt','metal','metal_clearing'].map(k=>[k,t('tx.rail.'+k)])];
+const RECS=[['',t('tx.every_state')],['matched',t('rec.matched')],['missing_booking',t('rec.missing_booking')],['missing_rail_record',t('cs.no_rail_record')],['amount_mismatch',t('cs.amounts_differ')]];
 async function transactionsView(){
-  title('Transactions');
+  title(t('nav.transactions'));
   const q=new URLSearchParams();
   const sel=(opts,key)=>{const s=el('select','field');for(const [v,l] of opts){const o=el('option','',l);o.value=v;s.append(o)}s.onchange=()=>{if(s.value)q.set(key,s.value);else q.delete(key);load()};return s};
-  const cur=el('input','field');cur.placeholder='EUR';cur.maxLength=4;cur.onchange=()=>{const v=cur.value.trim().toUpperCase();if(/^[A-Z]{3,4}$/.test(v))q.set('currency',v);else q.delete('currency');load()};
+  const curIn=el('input','field');curIn.placeholder='EUR';curIn.maxLength=4;curIn.onchange=()=>{const v=curIn.value.trim().toUpperCase();if(/^[A-Z]{3,4}$/.test(v))q.set('currency',v);else q.delete('currency');load()};
   const from=el('input','field');from.type='date';from.onchange=()=>{if(from.value)q.set('from',from.value);else q.delete('from');load()};
   const to=el('input','field');to.type='date';to.onchange=()=>{if(to.value)q.set('to',to.value);else q.delete('to');load()};
   const csv=btn('CSV','','download');csv.onclick=()=>download('/v1/transactions/export.csv?'+q.toString(),'transactions.csv').catch(e=>{if(!(e instanceof Expired))list.before(note(e.message,'bad'))});
   const tiles=el('div','tiles');const list=el('div','card list');
-  const filters=el('div','form-row',[el('div','',[el('label','','Rail'),sel(RAILS,'rail')]),el('div','',[el('label','','State'),sel(RECS,'reconciliation')]),el('div','',[el('label','','Currency'),cur]),el('div','',[el('label','','From'),from]),el('div','',[el('label','','To'),to])]);
-  view().replaceChildren(head('Transactions','Every money movement on every rail: what moved, under whose approval, how it is booked and how it proves itself.',[csv]),tiles,filters,el('section','section',[list]));
+  const filters=el('div','form-row',[el('div','',[el('label','',t('rail')),sel(RAILS,'rail')]),el('div','',[el('label','',t('tx.state')),sel(RECS,'reconciliation')]),el('div','',[el('label','',t('tx.currency')),curIn]),el('div','',[el('label','',t('cs.from')),from]),el('div','',[el('label','',t('cs.to')),to])]);
+  view().replaceChildren(head(t('nav.transactions'),t('cs.tx_lede'),[csv]),tiles,filters,el('section','section',[list]));
   async function load(){
     const [s,p]=await Promise.all([api('/v1/transactions/summary?'+q.toString()),api('/v1/transactions?limit=200&'+q.toString())]);
     const tot=s.totals||[];const inn={},out={},fee={};for(const t of tot){inn[t.currency]=Math.round(Number(t.in||0)*100);out[t.currency]=Math.round(Number(t.out||0)*100);if(t.fees)fee[t.currency]=Math.round(Number(t.fees)*100)}
-    tiles.replaceChildren(tile('In','arrow-down-left',money(inn),others(inn)||null),tile('Out','arrow-up-right',money(out),others(out)||null),tile('Fees','wallet',money(fee),'What the rails charged'),
-      tile('Not reconciled','shield-check',String(s.check.unreconciled),s.check.unreconciled?'Look at these':'Every movement matches its booking',s.check.unreconciled?'alert':'calm'),
-      tile('Without approval','octagon-x',String(s.check.without_approval.length),s.check.without_approval.length?'Money moved with no approval on file':'Every one was approved',s.check.without_approval.length?'alert':'calm'));
-    list.replaceChildren(el('div','trow th',[el('span','','Date'),el('span','','What'),el('span','','Rail'),el('span','amt','Amount'),el('span','','Status'),el('span','','Books'),el('span','')]));
-    if(!p.items.length)list.append(el('div','empty',[el('b','','No movements'),'Nothing matches these filters.']));
+    tiles.replaceChildren(tile(t('cs.tile.in'),'arrow-down-left',money(inn),others(inn)||null),tile(t('cs.tile.out'),'arrow-up-right',money(out),others(out)||null),tile(t('cs.tile.fees'),'wallet',money(fee),t('tx.rails_charged')),
+      tile(t('tx.tile.unreconciled'),'shield-check',String(s.check.unreconciled),s.check.unreconciled?t('cs.look_at_these'):t('cs.all_match'),s.check.unreconciled?'alert':'calm'),
+      tile(t('tx.tile.no_approval'),'octagon-x',String(s.check.without_approval.length),s.check.without_approval.length?t('tx.moved_no_approval'):t('cs.every_approved'),s.check.without_approval.length?'alert':'calm'));
+    list.replaceChildren(el('div','trow th',[el('span','',t('date')),el('span','',t('what')),el('span','',t('rail')),el('span','amt',t('amount')),el('span','',t('status')),el('span','',t('books')),el('span','')]));
+    if(!p.items.length)list.append(el('div','empty',[el('b','',t('cs.no_movements')),t('cs.nothing_matches')]));
     for(const r of p.items){const b=el('div','trow');
-      const amt=el('span','amt'+(r.flow==='in'?' in':''),[el('span','c',r.currency),(r.flow==='in'?'+':'−')+amount(r.amount)]);if(!r.moved)amt.classList.add('not');
-      b.append(el('span','when',day(r.at)),el('span','what',[el('b','',r.counterparty||''),el('span','sub',r.description||'')]),el('span','rail',[r.rail_label||r.rail,el('span','sub',r.proof?String(r.proof).slice(0,18):'no proof')]),amt,
-        el('span','',[el('span','pill '+(r.moved?'ok':'bad'),r.status_words||r.status)]),el('span','',[el('span','pill '+(r.reconciliation==='matched'?'ok':r.reconciliation==='not_applicable'?'':'warn'),r.reconciliation_words||r.reconciliation)]),el('span',''));
+      const amt=el('span','amt'+(r.flow==='in'?' in':''),[el('span','c',cur(r.currency)),(r.flow==='in'?'+':'−')+amount(r.amount)]);if(!r.moved)amt.classList.add('not');
+      b.append(el('span','when',day(r.at)),el('span','what',[el('b','',data('counterparty',r.counterparty||'')),el('span','sub',data('description',r.description||''))]),el('span','rail',[tk('rail.'+r.rail,r.rail_label||r.rail),el('span','sub',r.proof?String(r.proof).slice(0,18):t('tx.no_proof_short'))]),amt,
+        el('span','',[el('span','pill '+(r.moved?'ok':'bad'),data('status',r.status_words||r.status))]),el('span','',[el('span','pill '+(r.reconciliation==='matched'?'ok':r.reconciliation==='not_applicable'?'':'warn'),tk('rec.'+r.reconciliation,r.reconciliation_words||r.reconciliation))]),el('span',''));
       list.append(b)}
-    if(p.next_cursor)list.append(note('Showing the newest 200; narrow the filters or download the CSV for all of them.'));
+    if(p.next_cursor)list.append(note(t('cs.newest_200')));
   }
   await load();
 }
 
 // --- Books ---------------------------------------------------------------------------------------------------------
-const RUBRIC={'1a':'1a Sales, high rate','1b':'1b Sales, low rate','1e':'1e Sales at 0% or not taxed here','2a':'2a Reverse charge in NL','3a':'3a Supplies to non-EU countries','3b':'3b Supplies within the EU','4a':'4a Services from outside the EU','4b':'4b Supplies and services from EU countries'};
+const RUBRIC=(k)=>tk('cs.rubric.'+k,k);
 async function booksView(){
-  title('Books');
+  title(t('cs.nav.books'));
   const now=new Date();const qs=[];for(let k=0;k<6;k++){const d=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-3*k,1));qs.push(d.getUTCFullYear()+'Q'+(Math.floor(d.getUTCMonth()/3)+1))}
   const pick=el('select','field');for(const v of qs){const o=el('option','',v);o.value=v;pick.append(o)}
   const vat=el('div','card panel');const journal=el('div','card panel');
-  view().replaceChildren(head('Books','Purser\'s own bookkeeping, as your computer last pushed it: the VAT overview per quarter and the journal.'),el('div','split2',[vat,journal]));
+  view().replaceChildren(head(t('cs.nav.books'),t('cs.books_lede')),el('div','split2',[vat,journal]));
   async function drawVat(){
     const v=await api('/v1/reports/vat?quarter='+encodeURIComponent(pick.value));
-    const t=el('table','table',[el('thead','',[el('tr','',[el('th','','Rubric'),el('th','r','Base'),el('th','r','VAT')])])]);const tb=el('tbody','');
-    for(const [k,r] of Object.entries(v.rubrics||{})){if(!r.base_cents&&!r.vat_cents)continue;tb.append(el('tr','',[el('td','',RUBRIC[k]||k),el('td','r','EUR '+cents(r.base_cents)),el('td','r','EUR '+cents(r.vat_cents))]))}
-    if(!tb.children.length)tb.append(el('tr','',[el('td','','Nothing in this quarter'),el('td',''),el('td','')]));
-    tb.append(el('tr','',[el('td','',el('b','','5a Owed')),el('td',''),el('td','r','EUR '+cents(v.owed_5a_cents))]),el('tr','',[el('td','',el('b','','5b Input VAT')),el('td',''),el('td','r','EUR '+cents(v.input_5b_cents))]),el('tr','',[el('td','',el('b','','5c To pay (or back)')),el('td',''),el('td','r',el('b','','EUR '+cents(v.balance_5c_cents)))]));
-    t.append(tb);
-    vat.replaceChildren(el('h2','','VAT overview'),el('div','form-row',[el('div','',[el('label','','Quarter'),pick])]),el('div','scroll',t),
-      v.uncoded_lines?note(v.uncoded_lines+' line(s) carry VAT without a code: a person looks at them before filing.','bad'):null,note(v.notice||'An overview, not a filing.'));
+    const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('cs.rubric')),el('th','r',t('cs.base')),el('th','r',t('dt.vat'))])])]);const tb=el('tbody','');
+    const eur=(c)=>cur('EUR')+' '+cents(c);
+    for(const [k,r] of Object.entries(v.rubrics||{})){if(!r.base_cents&&!r.vat_cents)continue;tb.append(el('tr','',[el('td','',RUBRIC(k)),el('td','r',eur(r.base_cents)),el('td','r',eur(r.vat_cents))]))}
+    if(!tb.children.length)tb.append(el('tr','',[el('td','',t('cs.nothing_quarter')),el('td',''),el('td','')]));
+    tb.append(el('tr','',[el('td','',el('b','',t('cs.owed_5a'))),el('td',''),el('td','r',eur(v.owed_5a_cents))]),el('tr','',[el('td','',el('b','',t('cs.input_5b'))),el('td',''),el('td','r',eur(v.input_5b_cents))]),el('tr','',[el('td','',el('b','',t('cs.balance_5c'))),el('td',''),el('td','r',el('b','',eur(v.balance_5c_cents)))]));
+    tbl.append(tb);
+    vat.replaceChildren(el('h2','',t('cs.vat_overview')),el('div','form-row',[el('div','',[el('label','',t('cs.quarter')),pick])]),el('div','scroll',tbl),
+      v.uncoded_lines?note(t('cs.uncoded',{n:v.uncoded_lines}),'bad'):null,note(NL?t('cs.vat_notice'):(v.notice||t('cs.vat_notice'))));
   }
   pick.onchange=()=>drawVat().catch(e=>{if(!(e instanceof Expired))vat.append(note(e.message,'bad'))});
   const j=await api('/v1/ledger/entries?limit=30');
-  const t=el('table','table',[el('thead','',[el('tr','',[el('th','','Date'),el('th','','Entry'),el('th','r','Debit'),el('th','r','Credit')])])]);const tb=el('tbody','');
+  const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('date')),el('th','',t('cs.entry')),el('th','r',t('cs.debit')),el('th','r',t('cs.credit'))])])]);const tb=el('tbody','');
   for(const e of j.items.slice().reverse()){tb.append(el('tr','',[el('td','',day(e.posting_date)),el('td','',[el('b','','#'+e.entry_id+' '),e.description||'']),el('td',''),el('td','')]));
-    for(const l of e.lines||[])tb.append(el('tr','',[el('td',''),el('td','',l.account+(l.vat_code?' · VAT '+l.vat_code:'')),el('td','r',l.debit_cents?l.currency+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?l.currency+' '+cents(l.credit_cents):'')]))}
-  if(!j.items.length)tb.append(el('tr','',[el('td','','No entries yet'),el('td',''),el('td',''),el('td','')]));
-  t.append(tb);journal.replaceChildren(el('h2','','Journal'),el('div','scroll',t),note('Each entry is hash-chained to the one before it; the cloud refuses a push that would change one.'));
+    for(const l of e.lines||[])tb.append(el('tr','',[el('td',''),el('td','',l.account+(l.vat_code?' · '+t('cs.vat_code',{code:l.vat_code}):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
+  if(!j.items.length)tb.append(el('tr','',[el('td','',t('cs.no_entries')),el('td',''),el('td',''),el('td','')]));
+  tbl.append(tb);journal.replaceChildren(el('h2','',t('cs.journal')),el('div','scroll',tbl),note(t('cs.journal_note')));
   await drawVat();
 }
 
 // --- Settings ------------------------------------------------------------------------------------------------------
 async function settingsView(){
-  title('Settings');
+  title(t('cs.nav.settings'));
   const m=await me();
   const owner=m.scopes.includes('admin');
-  const company=el('div','card panel',[el('h2','','Company'),dl([['Name',m.tenant.name],['Address',m.tenant.slug],['Inbox',m.inbox||'Not routed yet','mono']])]);
-  if(!owner){view().replaceChildren(head('Settings'),company,note('Only an owner manages people, keys and the company\'s data. Ask an owner of '+m.tenant.name+'.'));return}
+  // The pages' language: an owner sets the company's; a signed-in person may choose their own (or follow the company).
+  const langSel=(opts,value)=>{const s=el('select','field');for(const [v,l] of opts){const o=el('option','',l);o.value=v;if(v===value)o.selected=true;s.append(o)}return s};
+  const langNames=[['nl','Nederlands'],['en','English']];
+  const langBox=el('div','form-row');const langMsg=el('div','');
+  if(owner){const c=langSel(langNames,m.tenant.language||'nl');c.onchange=async()=>{try{await api('/v1/company',{method:'POST',body:{language:c.value}});ME=null;langMsg.replaceChildren(note(t('cs.language_saved'),'ok'));if(!m.user||!m.user.language)useLanguage(c.value)}catch(e){if(!(e instanceof Expired))langMsg.replaceChildren(note(e.message,'bad'))}};langBox.append(el('div','',[el('label','',t('cs.language_company')),c]))}
+  if(m.kind==='session'&&m.user){const p=langSel([['',t('cs.language_follow')],...langNames],m.user.language||'');p.onchange=async()=>{try{const r=await api('/v1/me/language',{method:'POST',body:{language:p.value||null}});ME=null;langMsg.replaceChildren(note(t('cs.language_saved'),'ok'));useLanguage(r.language||m.tenant.language||'nl')}catch(e){if(!(e instanceof Expired))langMsg.replaceChildren(note(e.message,'bad'))}};langBox.append(el('div','',[el('label','',t('cs.language_mine')),p]))}
+  const company=el('div','card panel',[el('h2','',t('cs.company')),dl([[t('cs.name'),m.tenant.name],[t('cs.address'),m.tenant.slug],[t('cs.inbox'),m.inbox||t('cs.not_routed'),'mono']]),langBox.children.length?el('h2','',t('cs.language')):null,langBox.children.length?langBox:null,langMsg]);
+  if(!owner){view().replaceChildren(head(t('cs.nav.settings')),company,note(t('cs.only_owner',{name:m.tenant.name})));return}
   const people=el('div','card panel');const keys=el('div','card panel');const data=el('div','card panel');
-  view().replaceChildren(head('Settings','People, keys and your data. Only owners see this.'),company,el('div','split2',[people,keys]),data);
+  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,el('div','split2',[people,keys]),data);
   // An invite: a one-time link to this console (the secret after the #, so opening it sends it to no server) and its
   // QR code, for 30 minutes and one passkey. The owner passes it on; nothing is mailed.
   const invites=el('div','');
   async function invite(p){
     const e=await api('/v1/users/'+encodeURIComponent(p.id)+'/enrolment',{method:'POST'});
-    const qr=el('img','qr');qr.alt='QR code of the invite link for '+p.display_name;qr.width=180;qr.height=180;qr.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(e.qr_svg);
+    const qr=el('img','qr');qr.alt=t('cs.qr_alt',{name:p.display_name});qr.width=180;qr.height=180;qr.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(e.qr_svg);
     const link=el('code','cmd',e.link);link.id='invite-link';
-    const copy=btn('Copy link','primary','copy');copy.onclick=async()=>{try{await navigator.clipboard.writeText(e.link);copy.replaceChildren(ic('circle-check'),'Copied')}catch(x){const r=document.createRange();r.selectNodeContents(link);const sel=getSelection();sel.removeAllRanges();sel.addRange(r)}};
-    invites.replaceChildren(el('div','once invite',[qr,el('div','',[el('b','','Invite for '+p.display_name),el('p','','One passkey, once, until '+stamp(e.expires_at)+'. Send it to them yourself, or let them scan the code with their phone.'),link,el('div','row2',[copy])])]));
+    const copy=btn(t('cs.copy_link'),'primary','copy');copy.onclick=async()=>{try{await navigator.clipboard.writeText(e.link);copy.replaceChildren(ic('circle-check'),t('cs.copied'))}catch(x){const r=document.createRange();r.selectNodeContents(link);const sel=getSelection();sel.removeAllRanges();sel.addRange(r)}};
+    invites.replaceChildren(el('div','once invite',[qr,el('div','',[el('b','',t('cs.invite_for',{name:p.display_name})),el('p','',t('cs.invite_until',{when:stamp(e.expires_at)})),link,el('div','row2',[copy])])]));
     invites.scrollIntoView({block:'nearest'});
   }
   async function drawPeople(){
     const u=await api('/v1/users?limit=200');
-    const t=el('table','table',[el('thead','',[el('tr','',[el('th','','Person'),el('th','','Role'),el('th','')])])]);const tb=el('tbody','');
+    const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('cs.person')),el('th','',t('cs.role')),el('th','')])])]);const tb=el('tbody','');
     for(const p of u.items){const acts=el('td','r');
-      if(!p.erased_at){const inv=btn('Invite','','key-round');inv.onclick=async()=>{inv.disabled=true;try{await invite(p)}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{inv.disabled=false}};
-        const er=btn('Erase','danger','x');er.onclick=async()=>{const typed=prompt('Erase '+p.display_name+'? Their personal data goes; the bookkeeping stays for 7 years. Type their name to confirm.');if(typed===null)return;if(typed.trim()!==p.display_name){people.append(note('The name did not match; nothing was erased.','bad'));return}
+      if(!p.erased_at){const inv=btn(t('cs.invite'),'','key-round');inv.onclick=async()=>{inv.disabled=true;try{await invite(p)}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{inv.disabled=false}};
+        const er=btn(t('cs.erase'),'danger','x');er.onclick=async()=>{const typed=prompt(t('cs.erase_prompt',{name:p.display_name}));if(typed===null)return;if(typed.trim()!==p.display_name){people.append(note(t('cs.name_mismatch'),'bad'));return}
           try{await api('/v1/users/'+encodeURIComponent(p.id)+'/erase',{method:'POST'});await drawPeople()}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}};
         acts.append(inv,' ',er)}
-      tb.append(el('tr','',[el('td','',[el('b','',p.erased_at?'(erased)':p.display_name),p.email?el('span','sub',' '+p.email):null]),el('td','',[el('span','pill'+(p.role==='owner'?' warn':''),p.role)]),acts]))}
-    t.append(tb);
-    const name=el('input','field');name.placeholder='Name';const role=el('select','field');for(const r of ['cfo','accountant','viewer','owner']){const o=el('option','',r);o.value=r;role.append(o)}
-    const add=btn('Add and invite','primary');add.onclick=async()=>{const n=name.value.trim();if(!n)return;add.disabled=true;try{const u=await api('/v1/users',{method:'POST',body:{display_name:n,role:role.value}});await drawPeople();await invite({id:u.id,display_name:n})}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{add.disabled=false}};
-    people.replaceChildren(el('h2','','People'),el('div','scroll',t),el('div','form-row',[el('div','',[el('label','','Name'),name]),el('div','',[el('label','','Role'),role]),el('div','',[add])]),
-      note('A person signs in with their own passkey, made from a one-time invite you start here. A CFO, accountant or viewer reads; only owners manage.'),invites);
+      tb.append(el('tr','',[el('td','',[el('b','',p.erased_at?t('cs.erased'):p.display_name),p.email?el('span','sub',' '+p.email):null]),el('td','',[el('span','pill'+(p.role==='owner'?' warn':''),tk('cs.role.'+p.role,p.role))]),acts]))}
+    tbl.append(tb);
+    const name=el('input','field');name.placeholder=t('cs.name');const role=el('select','field');for(const r of ['cfo','accountant','viewer','owner']){const o=el('option','',tk('cs.role.'+r,r));o.value=r;role.append(o)}
+    const add=btn(t('cs.add_invite'),'primary');add.onclick=async()=>{const n=name.value.trim();if(!n)return;add.disabled=true;try{const u=await api('/v1/users',{method:'POST',body:{display_name:n,role:role.value}});await drawPeople();await invite({id:u.id,display_name:n})}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{add.disabled=false}};
+    people.replaceChildren(el('h2','',t('cs.people')),el('div','scroll',tbl),el('div','form-row',[el('div','',[el('label','',t('cs.name')),name]),el('div','',[el('label','',t('cs.role')),role]),el('div','',[add])]),
+      note(t('cs.people_note')),invites);
   }
   async function drawKeys(){
     const k=await api('/v1/keys?limit=200');
-    const t=el('table','table',[el('thead','',[el('tr','',[el('th','','Key'),el('th','','May'),el('th','','Expires'),el('th','')])])]);const tb=el('tbody','');
+    const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('cs.key')),el('th','',t('cs.may')),el('th','',t('cs.expires')),el('th','')])])]);const tb=el('tbody','');
     for(const x of k.items){const live=!x.revoked_at&&x.expires_at>new Date().toISOString();const acts=el('td','r');
-      if(live){const rv=btn('Revoke','danger','x');rv.onclick=async()=>{if(!confirm('Revoke '+x.name+'? Every key it made stops working too.'))return;try{await api('/v1/keys/'+encodeURIComponent(x.id),{method:'DELETE'});await drawKeys()}catch(e){if(!(e instanceof Expired))keys.append(note(e.message,'bad'))}};acts.append(rv)}
-      tb.append(el('tr','',[el('td','',[el('b','',x.name),el('span','sub',' '+x.id)]),el('td','',x.scopes),el('td','',live?day(x.expires_at):[el('span','pill bad',x.revoked_at?'revoked':'expired')]),acts]))}
-    t.append(tb);
-    const name=el('input','field');name.placeholder='e.g. accountant export';const scope=el('select','field');for(const [v,l] of [['read','read'],['sync','sync (the runner)'],['read sync','read and sync']]){const o=el('option','',l);o.value=v;scope.append(o)}
+      if(live){const rv=btn(t('cs.revoke'),'danger','x');rv.onclick=async()=>{if(!confirm(t('cs.revoke_confirm',{name:x.name})))return;try{await api('/v1/keys/'+encodeURIComponent(x.id),{method:'DELETE'});await drawKeys()}catch(e){if(!(e instanceof Expired))keys.append(note(e.message,'bad'))}};acts.append(rv)}
+      tb.append(el('tr','',[el('td','',[el('b','',x.name),el('span','sub',' '+x.id)]),el('td','',String(x.scopes||'').split(/[ ,]+/).filter(Boolean).map(sc=>tk('cs.scope.'+sc,sc)).join(', ')),el('td','',live?day(x.expires_at):[el('span','pill bad',x.revoked_at?t('cs.revoked'):t('cs.expired'))]),acts]))}
+    tbl.append(tb);
+    const name=el('input','field');name.placeholder=t('cs.key_placeholder');const scope=el('select','field');for(const [v,l] of [['read',t('cs.scope.read')],['sync',t('cs.scope.sync')],['read sync',t('cs.scope.read_sync')]]){const o=el('option','',l);o.value=v;scope.append(o)}
     const days=el('input','field');days.type='number';days.min='1';days.max='365';days.value='90';
     const out=el('div','');
-    const mk=btn('Make key','primary','key-round');mk.onclick=async()=>{if(!name.value.trim())return;mk.disabled=true;try{const r=await api('/v1/keys',{method:'POST',body:{name:name.value.trim(),scopes:scope.value.split(' '),expires_in_days:Math.max(1,Math.min(365,Number(days.value)||90))}});
-        await drawKeys();keys.append(el('div','once',[el('b','','Shown once. '),'Copy it now into the place that uses it: ',el('code','cmd',r.api_key)]))}catch(e){if(!(e instanceof Expired))keys.append(note(e.message,'bad'))}finally{mk.disabled=false}};
-    keys.replaceChildren(el('h2','','API keys'),el('div','scroll',t),el('div','form-row',[el('div','',[el('label','','Name'),name]),el('div','',[el('label','','May'),scope]),el('div','',[el('label','','Days'),days]),el('div','',[mk])]),out,
-      note('For programs: your runner, an accountant\'s tool, an ERP. A key never has more than it needs, and expires.'));
+    const mk=btn(t('cs.make_key'),'primary','key-round');mk.onclick=async()=>{if(!name.value.trim())return;mk.disabled=true;try{const r=await api('/v1/keys',{method:'POST',body:{name:name.value.trim(),scopes:scope.value.split(' '),expires_in_days:Math.max(1,Math.min(365,Number(days.value)||90))}});
+        await drawKeys();keys.append(el('div','once',[el('b','',t('cs.shown_once')),t('cs.copy_now'),el('code','cmd',r.api_key)]))}catch(e){if(!(e instanceof Expired))keys.append(note(e.message,'bad'))}finally{mk.disabled=false}};
+    keys.replaceChildren(el('h2','',t('cs.api_keys')),el('div','scroll',tbl),el('div','form-row',[el('div','',[el('label','',t('cs.name')),name]),el('div','',[el('label','',t('cs.may')),scope]),el('div','',[el('label','',t('cs.days')),days]),el('div','',[mk])]),out,
+      note(t('cs.keys_note')));
   }
-  const exp=btn('Download everything (JSON)','','download');exp.onclick=()=>download('/v1/export','purser-cloud-export.json').catch(e=>{if(!(e instanceof Expired))data.append(note(e.message,'bad'))});
-  data.replaceChildren(el('h2','','Your data'),el('p','','Everything Purser Cloud holds for '+m.tenant.name+', as one file: invoices, payments, the register, the books and the audit trail. Documents are listed by their SHA-256.'),exp);
+  const exp=btn(t('cs.download_all'),'','download');exp.onclick=()=>download('/v1/export','purser-cloud-export.json').catch(e=>{if(!(e instanceof Expired))data.append(note(e.message,'bad'))});
+  data.replaceChildren(el('h2','',t('cs.your_data')),el('p','',t('cs.data_lede',{name:m.tenant.name})),exp);
   await Promise.all([drawPeople(),drawKeys()]);
 }
 
@@ -495,17 +509,17 @@ async function route(){
     if(open[path])return open[path]();
     if(!S)return go('#/sign-in');
     if(path==='/'||path==='')return go('#/overview');
-    view().replaceChildren(el('p','lede','Loading …'));
+    view().replaceChildren(el('p','lede',t('loading')));
     const m=/^\/invoices\/([^/]+)$/.exec(path);
     if(m)return await invoiceView(decodeURIComponent(m[1]));
     const pages={'/overview':overviewView,'/invoices':invoicesView,'/transactions':transactionsView,'/books':booksView,'/settings':settingsView};
-    if(!pages[path])return view().replaceChildren(el('div','expired',[el('h1','','Not here'),(()=>{const a=el('a','btn','Back to the overview');a.href='#/overview';return a})()]));
+    if(!pages[path])return view().replaceChildren(el('div','expired',[el('h1','',t('cs.not_here')),(()=>{const a=el('a','btn',t('cs.back_overview'));a.href='#/overview';return a})()]));
     await pages[path]();shell();
-  }catch(e){if(e instanceof Expired)return;view().replaceChildren(note('Could not load this page: '+e.message,'bad'))}
+  }catch(e){if(e instanceof Expired)return;view().replaceChildren(note(t('cs.load_failed',{error:e.message}),'bad'))}
 }
 $('#out').onclick=async()=>{try{await api('/v1/auth/logout',{method:'POST'})}catch(e){}forget();S=null;ME=null;go('#/sign-in')};
 window.addEventListener('hashchange',route);
-setInterval(()=>{if(S&&S.exp<=Date.now()){forget();S=null;ME=null;notice='Your sign-in ended (sessions last 15 minutes). Sign in again with your passkey.';go('#/sign-in')}else shell()},30000);
+setInterval(()=>{if(S&&S.exp<=Date.now()){forget();S=null;ME=null;notice=t('cs.session_ended');go('#/sign-in')}else shell()},30000);
 route();
 `;
 
@@ -518,9 +532,13 @@ const nonce = () => {
 
 /** The console's page: one document, its config in a meta tag (the origin, the passkey RP id, the mail domain). */
 export function consolePage(n: string, cfg: { origin: string; rpId: string; mailDomain: string }): string {
-  const script = SCRIPT.replace("__ICONS__", ICON_SET(ICONS));
+  // Both languages' words (the console's only) as JSON: the script picks the person's, Dutch until it knows.
+  const keep = (k: string) => consoleKeys(k as keyof typeof MESSAGES.en);
+  const cat = (lang: "nl" | "en") => ({ lang, m: Object.fromEntries(Object.entries(MESSAGES[lang]).filter(([k]) => keep(k))), data: lang === "nl" ? DATA_NL : {} });
+  const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
+  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__I18N__", () => I18N_JS).replace("__ICONS__", ICON_SET(ICONS));
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="purser-cloud" content="${escAttr(JSON.stringify(cfg))}">
 <title>Purser Cloud</title>

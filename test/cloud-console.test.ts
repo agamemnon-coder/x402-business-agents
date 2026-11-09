@@ -102,7 +102,7 @@ describe("the API behind the console", () => {
 
   it("renames the company for an owner only, and only that company", async () => {
     const other = await c.tenant("other");
-    expect((await c.req("POST", "/v1/company", { key: t.key, body: { name: "Acme B.V." } })).json).toEqual({ name: "Acme B.V." });
+    expect((await c.req("POST", "/v1/company", { key: t.key, body: { name: "Acme B.V." } })).json).toEqual({ name: "Acme B.V.", language: "nl" });
     expect((await c.req("GET", "/v1/me", { key: t.key })).json.tenant).toMatchObject({ name: "Acme B.V.", slug: "acme" });
     expect((await c.req("GET", "/v1/me", { key: other.key })).json.tenant).toMatchObject({ name: "other test company" });
     const reader = (await c.req("POST", "/v1/keys", { key: t.key, body: { name: "r", scopes: ["read"] } })).json.api_key as string;

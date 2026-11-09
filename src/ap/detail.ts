@@ -26,9 +26,12 @@ export const CHECKS: readonly { key: string; title: string; codes: readonly stri
 ];
 
 export type CheckResult = "passed" | "warn" | "wait" | "review" | "block" | "not_checked";
-export interface CheckRow { key: string; title: string; result: CheckResult; reasons: string[] }
-export interface TimelineRow { at: string; what: string; detail: string; by: string }
-export interface Action { allowed: boolean; why: string }
+/** reasons: the code's English words; codes: each reason's finding code, in the same order (a page words it in its own language). */
+export interface CheckRow { key: string; title: string; result: CheckResult; reasons: string[]; codes: string[] }
+/** what/detail: English words; kind and vars: the same, as a code and its values, for a page in another language. */
+export interface TimelineRow { at: string; what: string; detail: string; by: string; kind: string; vars: Record<string, string> }
+/** why: English words; code and vars: the same, as a code and its values (src/ui/i18n.ts action.*). */
+export interface Action { allowed: boolean; why: string; code: string; vars: Record<string, string> }
 export interface InvoiceDetail {
   invoice: ReturnType<typeof publicInvoice>;
   checks: CheckRow[];
@@ -52,11 +55,11 @@ export function checkRows(findings: Finding[], docKind: string): CheckRow[] {
       ...findings.flatMap((f) => (f.code === "possible_fraud" ? (f.signals ?? []) : []).filter((s) => c.codes.includes(s.code)).map((s) => ({ code: s.code, level: f.level, detail: s.detail }))),
     ];
     const result = hits.length ? SEVERITY.find((s) => hits.some((h) => h.level === s))! : c.key !== "document" && !READ_FULLY.has(docKind) ? "not_checked" : "passed";
-    return { key: c.key, title: c.title, result, reasons: hits.map((h) => h.detail) };
+    return { key: c.key, title: c.title, result, reasons: hits.map((h) => h.detail), codes: hits.map((h) => h.code) };
   });
   // A finding this list does not name yet is never hidden.
   const other = findings.filter((f) => !known.has(f.code));
-  if (other.length) rows.push({ key: "other", title: "Other checks", result: SEVERITY.find((s) => other.some((h) => h.level === s))!, reasons: other.map((h) => h.detail) });
+  if (other.length) rows.push({ key: "other", title: "Other checks", result: SEVERITY.find((s) => other.some((h) => h.level === s))!, reasons: other.map((h) => h.detail), codes: other.map((h) => h.code) });
   return rows;
 }
 
@@ -72,17 +75,17 @@ export function timeline(db: DB, id: string): TimelineRow[] {
     const p = JSON.parse(r.payload_json) as Record<string, unknown>;
     const s = (k: string) => (typeof p[k] === "string" ? (p[k] as string) : "");
     if (r.event === "ap.received") {
-      out.push({ at: r.ts, what: "Received", detail: `${s("filename")}, ${SOURCE_WORDS[s("source")] ?? s("source")}`, by: "Purser" });
-      out.push({ at: r.ts, what: `Checked: ${word(s("status"))}`, detail: s("read_by") === "parser" ? "read by Purser's code" : `read by ${s("read_by")}, checked by Purser's code`, by: "Purser" });
+      out.push({ at: r.ts, what: "Received", detail: `${s("filename")}, ${SOURCE_WORDS[s("source")] ?? s("source")}`, by: "Purser", kind: "received", vars: { filename: s("filename"), source: s("source") } });
+      out.push({ at: r.ts, what: `Checked: ${word(s("status"))}`, detail: s("read_by") === "parser" ? "read by Purser's code" : `read by ${s("read_by")}, checked by Purser's code`, by: "Purser", kind: "checked", vars: { status: s("status"), read_by: s("read_by") } });
     } else if (r.event === "ap.status") {
       const to = s("to") as ApStatus;
       const what = to === "ready" && s("from") === "waiting_cfo" ? "Ready to pay again" : word(to);
-      out.push({ at: r.ts, what, detail: s("reason"), by: r.actor === "human" ? "a person" : r.actor === "awx-executor" ? "Airwallex" : "Purser" });
+      out.push({ at: r.ts, what, detail: s("reason"), by: r.actor === "human" ? "a person" : r.actor === "awx-executor" ? "Airwallex" : "Purser", kind: to === "ready" && s("from") === "waiting_cfo" ? "ready_again" : "status", vars: { status: to, reason: s("reason") } });
     } else if (r.event === "ap.review_note") {
       const by = s("by");
-      out.push({ at: r.ts, what: "Note written", detail: by.startsWith("claude:") ? `by ${by.slice("claude:".length)} (advisory)` : "by Purser's code", by: by.startsWith("claude:") ? "Claude" : "Purser" });
+      out.push({ at: r.ts, what: "Note written", detail: by.startsWith("claude:") ? `by ${by.slice("claude:".length)} (advisory)` : "by Purser's code", by: by.startsWith("claude:") ? "Claude" : "Purser", kind: "note", vars: { model: by.startsWith("claude:") ? by.slice("claude:".length) : "" } });
     } else {
-      out.push({ at: r.ts, what: "Cleared as not a duplicate", detail: `by ${s("by")}${s("note") ? `: ${s("note")}` : ""}`, by: "a person" });
+      out.push({ at: r.ts, what: "Cleared as not a duplicate", detail: `by ${s("by")}${s("note") ? `: ${s("note")}` : ""}`, by: "a person", kind: "cleared", vars: { by: s("by"), note: s("note") } });
     }
   }
   return out;
@@ -90,20 +93,21 @@ export function timeline(db: DB, id: string): TimelineRow[] {
 
 /** Which actions the page offers for an invoice in this state, and why one is closed. */
 export function actionsFor(inv: { status: ApStatus; currency: string; findings: Finding[] }): InvoiceDetail["actions"] {
-  const no = (why: string): Action => ({ allowed: false, why });
-  const yes: Action = { allowed: true, why: "" };
-  const reasons = inv.findings.filter((f) => f.level !== "warn").map((f) => f.detail).join("; ");
+  const no = (why: string, code: string, vars: Record<string, string> = {}): Action => ({ allowed: false, why, code, vars });
+  const yes: Action = { allowed: true, why: "", code: "", vars: {} };
+  const blocking = inv.findings.filter((f) => f.level !== "warn");
+  const reasons = blocking.map((f) => f.detail).join("; ");
   const pay = inv.status === "ready"
-    ? payableCurrency(inv.currency) ? yes : no(`Purser does not pay ${inv.currency || "this currency"}; a person pays it by hand`)
-    : inv.status === "needs_vendor" ? no("a new supplier is verified and approved first")
-    : inv.status === "waiting_cfo" ? no("filed already: it waits for the CFO's Face ID on the phone")
-    : inv.status === "paid" ? no("paid")
-    : inv.status === "rejected" ? no("rejected")
-    : no(reasons || word(inv.status));
-  const supplier_request = inv.status === "needs_vendor" ? yes : no("only for an invoice that waits for a new supplier");
+    ? payableCurrency(inv.currency) ? yes : no(`Purser does not pay ${inv.currency || "this currency"}; a person pays it by hand`, "currency_not_paid", { currency: inv.currency })
+    : inv.status === "needs_vendor" ? no("a new supplier is verified and approved first", "needs_vendor")
+    : inv.status === "waiting_cfo" ? no("filed already: it waits for the CFO's Face ID on the phone", "filed")
+    : inv.status === "paid" ? no("paid", "paid")
+    : inv.status === "rejected" ? no("rejected", "rejected")
+    : reasons ? no(reasons, "findings", { codes: blocking.map((f) => f.code).join(",") }) : no(word(inv.status), "status", { status: inv.status });
+  const supplier_request = inv.status === "needs_vendor" ? yes : no("only for an invoice that waits for a new supplier", "only_needs_vendor");
   const reject = ["blocked", "needs_review", "needs_vendor", "ready"].includes(inv.status) ? yes
-    : inv.status === "waiting_cfo" ? no("it waits for the CFO: approve or reject it on the phone")
-    : no(inv.status === "paid" ? "paid" : "rejected already");
+    : inv.status === "waiting_cfo" ? no("it waits for the CFO: approve or reject it on the phone", "waits_cfo")
+    : inv.status === "paid" ? no("paid", "paid") : no("rejected already", "rejected_already");
   return { pay, supplier_request, reject };
 }
 

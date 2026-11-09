@@ -35,8 +35,8 @@ describe("the transactions page", () => {
     expect(csp).toMatch(/script-src 'nonce-[^']+' 'self'/);
     expect(csp).not.toContain("unsafe-inline' 'self'; connect");
     const html = await res.text();
-    expect(html).toContain("<h1>Transactions</h1>");
-    expect(html).toMatch(/<a href="\/transactions" aria-current="page">Transactions<\/a>/);
+    expect(html).toContain("<h1>Transacties</h1>");
+    expect(html).toMatch(/<a href="\/transactions" aria-current="page">Transacties<\/a>/);
     const nonce = /script-src 'nonce-([^']+)'/.exec(csp)![1]!;
     expect(html).toContain(`<script type="module" nonce="${nonce}">`);
   });

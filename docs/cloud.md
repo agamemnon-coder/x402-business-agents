@@ -59,7 +59,8 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `POST /v1/auth/enrol` | anyone | Enrol a person's passkey with the single-use enrolment an owner started: the new passkey signs the enrolment's secret. |
 | `POST /v1/auth/logout` | read | Sign out: every session of the signed-in person ends. |
 | `GET /v1/me` | read | Who is calling: the company, and the key's scopes or the person's role; the person behind the call, whether an owner has a passkey yet, and the company's inbox address once mail is routed (the console's first run uses these). |
-| `POST /v1/company` | admin | Change the company's display name (its address, the slug, stays). |
+| `POST /v1/company` | admin | Change the company's display name (its address, the slug, stays) or the pages' language for everyone: `{ "name"?, "language"?: "nl" \| "en" }`. |
+| `POST /v1/me/language` | read | The signed-in person's own language for the pages: `{ "language": "nl" \| "en" \| null }` (null follows the company's). Sessions only. |
 | `GET /v1/invoices` | read | Supplier invoices; filter by status, due_from, due_to; paginated (limit, cursor). |
 | `GET /v1/invoices/{id}` | read | One invoice, with its earlier versions. |
 | `GET /v1/invoices/{id}/document` | read | The invoice's document, as received. |

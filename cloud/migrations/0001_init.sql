@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS tenants (
   id TEXT PRIMARY KEY,
   slug TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
+  -- The language of the company's pages, for everyone ('nl', the default, or 'en'); a person may choose their own.
+  language TEXT NOT NULL DEFAULT 'nl' CHECK (language IN ('nl', 'en')),
   created_at TEXT NOT NULL,
   closed_at TEXT,
   -- After this day a closed tenant's records may be purged (the end of the seventh year after its last records).
@@ -17,6 +19,8 @@ CREATE TABLE IF NOT EXISTS users (
   display_name TEXT NOT NULL,
   email TEXT,
   role TEXT NOT NULL CHECK (role IN ('owner', 'cfo', 'accountant', 'viewer')),
+  -- The person's own language for the pages; NULL follows the company's.
+  language TEXT CHECK (language IN ('nl', 'en')),
   created_at TEXT NOT NULL,
   erased_at TEXT,
   -- Bumped on sign-out, erasure, a role change or a closed account: every session issued before stops working.

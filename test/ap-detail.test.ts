@@ -57,7 +57,7 @@ describe("an invoice's detail", () => {
     expect(d!.checks.every((c) => c.result === "passed")).toBe(true);
     expect(d!.total_line).toMatch(/Total due EUR 1,850\.00/);
     expect(d!.document).toMatchObject({ filename: "Bergtex BTX-2026-21.pdf", source: "upload" });
-    expect(d!.actions.pay).toEqual({ allowed: true, why: "" });
+    expect(d!.actions.pay).toEqual({ allowed: true, why: "", code: "", vars: {} });
     expect(d!.actions.supplier_request.allowed).toBe(false);
     expect(d!.actions.reject.allowed).toBe(true);
     // The account stays masked on the page as on the list.

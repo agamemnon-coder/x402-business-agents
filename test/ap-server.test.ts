@@ -69,7 +69,7 @@ describe("the payables page", () => {
     expect(res.headers.get("content-security-policy")).toMatch(/default-src 'none'.*connect-src 'self'/);
     const html = await res.text();
     expect(html).toMatch(/<meta name="csrf" content="[0-9a-f]{64}">/);
-    expect(html).toContain("Payables");
+    expect(html).toContain("Crediteuren");
   });
 
   it("takes an upload only from this page: its Origin and its token", async () => {
@@ -202,15 +202,15 @@ describe("the payables page", () => {
     await start(false, undefined, "northwind@in.purser.test");
     const html = await (await fetch(base + "/")).text();
     expect(html).toContain("northwind@in.purser.test");
-    expect(html).toMatch(/Mail invoices to/);
+    expect(html).toMatch(/Mail facturen naar/);
     close();
     await start(false, undefined, "");
-    expect(await (await fetch(base + "/")).text()).not.toMatch(/Mail invoices to/);
+    expect(await (await fetch(base + "/")).text()).not.toMatch(/Mail facturen naar/);
     close();
     // Something that is not an address is never shown (it would come from a setting someone typed).
     await start(false, undefined, "<script>x</script>");
     const bad = await (await fetch(base + "/")).text();
-    expect(bad).not.toMatch(/Mail invoices to/);
+    expect(bad).not.toMatch(/Mail facturen naar/);
     expect(bad).not.toContain("<script>x");
   });
 

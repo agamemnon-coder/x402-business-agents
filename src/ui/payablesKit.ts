@@ -51,6 +51,11 @@ header.top .wrap { display: flex; align-items: center; gap: 12px; height: 60px; 
 .brand { display: inline-flex; align-items: center; gap: 9px; font-weight: 750; font-size: 17px; letter-spacing: -.02em; text-decoration: none; }
 .brand .mk { width: 28px; height: 28px; border-radius: 8px; background: var(--text); color: var(--bg); display: grid; place-items: center; font-size: 15px; }
 .brand .sec { color: var(--muted); font-weight: 600; }
+.lang { margin-left: auto; color: var(--muted); font: 600 13px/1 Inter, system-ui, sans-serif; text-decoration: none; padding: 7px 9px; border-radius: 9px; white-space: nowrap; }
+.lang:hover { color: var(--text); background: var(--sunken); }
+.lang + .test { margin-left: 0; }
+.lang .ls { display: none; }
+@media (max-width: 640px) { .lang .ll { display: none; } .lang .ls { display: inline; } .lang { padding: 7px 6px; } .test .tl { display: none; } }
 .test { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font: 650 13px/1 Inter, system-ui, sans-serif; color: var(--warn); background: var(--warn-soft); padding: 7px 11px; border-radius: 999px; white-space: nowrap; }
 main { padding: 24px 0 64px; }
 h1, h2, h3 { margin: 0; letter-spacing: -.02em; line-height: 1.15; }

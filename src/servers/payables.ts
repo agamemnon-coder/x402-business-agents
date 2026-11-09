@@ -24,6 +24,7 @@ import type { DB } from "../db/open.js";
 import { filterRows, registerCsv, transactionRegister, type RegisterFilter } from "../money/register.js";
 import { FONT, PDFJS, detailPage, overviewPage } from "./payablesPage.js";
 import { transactionsPage } from "./transactionsPage.js";
+import { isLang, pickLang, type Lang } from "../ui/i18n.js";
 
 export interface PayablesOptions {
   inbox: InboxDeps;
@@ -41,6 +42,21 @@ export interface PayablesOptions {
    * invoices. Defaults to PURSER_INBOX_ADDRESS; nothing is shown when it is unset or not an e-mail address.
    */
   inboxAddress?: string;
+  /**
+   * The company's language for these pages ("nl", the default, or "en"); else the settings row ui.language, else
+   * PURSER_LANGUAGE. A person's own choice (the page's language link, kept in a cookie) comes first.
+   */
+  language?: Lang;
+}
+
+const LANG_COOKIE = "purser_lang";
+/** The person's own language from the cookie, if any. */
+function cookieLang(header: string | undefined): Lang | null {
+  for (const part of (header ?? "").split(";")) {
+    const [k, v] = part.trim().split("=");
+    if (k === LANG_COOKIE && isLang(v)) return v;
+  }
+  return null;
 }
 
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
@@ -135,15 +151,28 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
   };
 
   const inbox = inboxAddressOf(opts.inboxAddress ?? process.env.PURSER_INBOX_ADDRESS);
-  app.get("/", (_req, res) => { const nonce = pageCsp(res); res.type("html").send(overviewPage(issue(), nonce, inbox)); });
+  // The page's language: ?lang= (kept as the person's choice in a cookie), else that cookie, else the company's.
+  const companyLang = (): Lang => {
+    const row = db.prepare("SELECT value FROM settings WHERE key = 'ui.language'").get() as { value: string } | undefined;
+    return pickLang(opts.language, row?.value, process.env.PURSER_LANGUAGE);
+  };
+  const langOf = (req: Request, res: Response): Lang => {
+    const asked = req.query.lang;
+    if (isLang(asked)) {
+      res.setHeader("Set-Cookie", `${LANG_COOKIE}=${asked}; Path=/; Max-Age=31536000; SameSite=Strict; HttpOnly`);
+      return asked;
+    }
+    return cookieLang(req.headers.cookie) ?? companyLang();
+  };
+  app.get("/", (req, res) => { const lang = langOf(req, res); const nonce = pageCsp(res); res.type("html").send(overviewPage(issue(), nonce, inbox, lang)); });
   app.get("/invoices/:id", (req, res) => {
     // The page carries the stored invoice's own id, never the request's text (CodeQL: reflected input).
     const inv = apInvoice(db, String(req.params.id));
     if (!inv) { res.status(404).type("text/plain").send("no such payables invoice"); return; }
     const nonce = pageCsp(res);
-    res.type("html").send(detailPage(issue(), nonce, inv.id));
+    res.type("html").send(detailPage(issue(), nonce, inv.id, langOf(req, res)));
   });
-  app.get("/transactions", (_req, res) => { const nonce = pageCsp(res); res.type("html").send(transactionsPage(issue(), nonce)); });
+  app.get("/transactions", (req, res) => { const lang = langOf(req, res); const nonce = pageCsp(res); res.type("html").send(transactionsPage(issue(), nonce, lang)); });
   // The pages' own files: the font, and pdf.js for the document viewer (it draws the supplier's PDF on a canvas, without eval).
   app.get("/assets/inter.woff2", (_req, res) => { res.setHeader("Cache-Control", "private, max-age=86400"); res.type("font/woff2").send(FONT); });
   app.get("/assets/pdfjs.mjs", (_req, res) => { res.setHeader("Cache-Control", "private, max-age=86400"); res.type("text/javascript").send(PDFJS); });

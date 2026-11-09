@@ -3,6 +3,7 @@
 // then every page at laptop and phone width. It checks: the passkey first run and sign-in, a supplier name that is
 // HTML shows as text, no console or CSP errors, nothing wider than the phone, and an ended session goes back to sign-in.
 // npx tsx test/browser/console.check.ts [screenshot dir]
+import { t as tr } from "../../src/ui/i18n.js";
 import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -22,6 +23,8 @@ if (shots) mkdirSync(shots, { recursive: true });
 const PORT = 8790 + Math.floor(Math.random() * 100);
 const ORIGIN = `http://localhost:${PORT}`;
 const ADMIN = "console-check-admin-token-not-a-secret";
+// The console in Dutch, the default; its words come from the one catalogue (src/ui/i18n.ts).
+const w8 = (k: Parameters<typeof tr>[1]) => tr("nl", k);
 let failed = 0;
 const ok = (cond: unknown, what: string) => { if (cond) console.log(`ok    ${what}`); else { failed++; console.log(`FAIL  ${what}`); } };
 
@@ -61,7 +64,7 @@ await pushToCloud(w.db, { url: ORIGIN, key: starter }, now);
 // A supplier whose name is HTML, as any runner could push it: the console must show it as text.
 const one = (batchesFor(w.db, { audit: { seq: 0, hash: null }, ledger: { entry_id: 0, hash: null }, documents: [] }, { now }).find((b) => Array.isArray(b.invoices) && (b.invoices as unknown[]).length)!.invoices as { id: string; vendor: string; body: Record<string, unknown> }[])[0]!;
 const evil = '<img src=x onerror="document.title=\'pwned\'">Evil Supplies';
-const push = await call("POST", "/v1/sync", starter, { invoices: [{ ...one, id: "AP-9001", vendor: evil, status: "needs_review", body: { ...one.body, id: "AP-9001", vendor: evil, status: "needs_review", status_words: "Needs a person", invoice_no: "<b>X-1</b>", findings: [{ code: "duplicate", level: "review", detail: "<script>alert(1)</script> looks like an invoice on file" }] } }] });
+const push = await call("POST", "/v1/sync", starter, { invoices: [{ ...one, id: "AP-9001", vendor: evil, status: "needs_review", body: { ...one.body, id: "AP-9001", vendor: evil, status: "needs_review", status_words: "Needs a person", invoice_no: "<b>X-1</b>", findings: [{ code: "made_up_code", level: "review", detail: "<script>alert(1)</script> looks like an invoice on file" }] } }] });
 ok(push.status === 200, "a supplier name with HTML in it is pushed like any other");
 
 // Chromium with a virtual passkey authenticator (the platform kind: user verification, discoverable credentials).
@@ -85,13 +88,13 @@ await page.goto(`${ORIGIN}/#/start`);
 await page.fill("#start-slug", "northwind");
 await page.fill("#start-key", starter);
 await shot("01-eerste-keer-1-bedrijf");
-await page.click("text=Continue");
+await page.click(`text=${w8("cs.continue")}`);
 await page.waitForSelector("#start-name");
 await shot("02-eerste-keer-2-passkey");
-await page.click("text=Make my passkey");
-await page.waitForSelector("text=Make the key for my computer", { timeout: 20_000 });
+await page.click(`text=${w8("cs.make_passkey")}`);
+await page.waitForSelector(`text=${w8("cs.make_runner_key")}`, { timeout: 20_000 });
 ok((await text()).includes("northwind@in.purser.test"), "the first run shows the inbox address");
-await page.click("text=Make the key for my computer");
+await page.click(`text=${w8("cs.make_runner_key")}`);
 await page.waitForSelector(".once code");
 const cmd = (await page.textContent(".once code")) ?? "";
 ok(/^PURSER_CLOUD_URL=http:\/\/localhost:\d+ PURSER_CLOUD_KEY=pck_k\w+_[\w-]+ npm run cloud -- push$/.test(cmd), "the first run gives the one command, with a sync key, once");
@@ -99,20 +102,23 @@ ok(/^PURSER_CLOUD_URL=http:\/\/localhost:\d+ PURSER_CLOUD_KEY=pck_k\w+_[\w-]+ np
 await page.evaluate(() => { const c = document.querySelector(".once code"); if (c) c.textContent = (c.textContent ?? "").replace(/(pck_k\w{4})\w*_[\w-]+/, "$1…"); });
 await settle();
 await shot("03-eerste-keer-3-inbox-en-computer");
-await page.click("text=Revoke the starter key");
-await page.waitForSelector("text=The starter key is revoked.");
+await page.click(`text=${w8("cs.revoke_starter")}`);
+await page.waitForSelector(`text=${w8("cs.starter_revoked")}`);
 ok((await call("GET", "/v1/me", starter)).status === 401, "the starter key is revoked from the first run");
 
 // Sign out, sign in with the passkey.
 await page.click("#out");
-await page.waitForSelector("text=Sign in with your passkey");
+await page.waitForSelector(`text=${w8("cs.sign_in_passkey")}`);
 await page.fill("#slug", "northwind");
 await settle();
 await shot("04-inloggen");
-await page.click("text=Sign in with your passkey");
-await page.waitForSelector("text=Waits for the CFO's Face ID", { timeout: 20_000 });
+await page.click(`text=${w8("cs.sign_in_passkey")}`);
+await page.waitForSelector(`text=${w8("cs.waits_head")}`, { timeout: 20_000 });
 await settle();
 ok((await text()).includes("BTX-2026-24"), "the overview lists the invoice that waits for the CFO");
+const nlText = await page.innerText("main");
+ok(nlText.includes(w8("cs.nav.overview")) && nlText.includes(w8("status.waiting_cfo")) && !/\b(Overview|Invoices|Waits for|Supplier|Amount|Overdue|Blocked|Sign out)\b/.test(nlText), "the console is in Dutch by default: its words, no English ones");
+ok(/€\s?\d{1,3}(\.\d{3})*,\d{2}/.test(nlText), "amounts are written the Dutch way (€ 1.309,00)");
 await shot("05-overzicht");
 
 await page.goto(`${ORIGIN}/#/invoices`);
@@ -123,7 +129,7 @@ ok((await page.$$("img")).length === 0 && (await text()).includes('<img src=x on
 ok(!(await page.title()).includes("pwned"), "no script from a supplier's text ran");
 
 await page.goto(`${ORIGIN}/#/invoices/${encodeURIComponent(paidId)}`);
-await page.waitForSelector("text=What Purser read");
+await page.waitForSelector(`text=${w8("dt.read")}`);
 await settle();
 await shot("07-factuur-detail");
 const detail = await text();
@@ -133,7 +139,7 @@ await settle();
 ok((await page.$$(".pages canvas")).length >= 1, "the invoice's PDF is drawn in the page, on a canvas");
 await shot("16-factuur-met-pdf");
 await page.goto(`${ORIGIN}/#/invoices/AP-9001`);
-await page.waitForSelector("text=What Purser read");
+await page.waitForSelector(`text=${w8("dt.read")}`);
 ok((await page.$$("script")).length === 1 && (await text()).includes("<script>alert(1)</script> looks like"), "a finding's text with a script tag shows as text");
 
 await page.goto(`${ORIGIN}/#/transactions`);
@@ -141,16 +147,23 @@ await page.waitForSelector(".trow:not(.th)");
 await settle();
 await shot("08-transacties");
 await page.goto(`${ORIGIN}/#/books`);
-await page.waitForSelector("text=VAT overview");
+await page.waitForSelector(`text=${w8("cs.vat_overview")}`);
 await settle();
 await shot("09-boekhouding");
 await page.goto(`${ORIGIN}/#/settings`);
-await page.waitForSelector("text=API keys");
+await page.waitForSelector(`text=${w8("cs.api_keys")}`);
 await settle();
 await shot("10-instellingen");
+// A person's own language: English for them, the company stays Dutch; then back to following the company.
+await page.locator(`label:has-text("${w8("cs.language_mine")}") + select`).selectOption("en");
+await page.waitForSelector("text=API keys", { timeout: 20_000 });
+ok((await text()).includes("Overview") && (await page.evaluate(() => document.documentElement.lang)) === "en", "a person who chooses English gets the console in English");
+await page.locator('label:has-text("My language") + select').selectOption("");
+await page.waitForSelector(`text=${w8("cs.api_keys")}`, { timeout: 20_000 });
+ok((await page.evaluate(() => document.documentElement.lang)) === "nl", "following the company again brings Dutch back");
 // An invite: one-time link and its QR code, which a phone's camera reads as exactly that link.
-await page.fill('input[placeholder="Name"]', "Fleur (test person)");
-await page.click("text=Add and invite");
+await page.fill(`input[placeholder="${w8("cs.name")}"]`, "Fleur (test person)");
+await page.click(`text=${w8("cs.add_invite")}`);
 await page.waitForSelector("img.qr");
 await settle();
 const link = (await page.textContent("#invite-link")) ?? "";
@@ -169,7 +182,7 @@ await shot("17-uitnodigen");
 
 // The phone.
 await page.setViewportSize({ width: 390, height: 844 });
-for (const [hash, name, wait] of [["#/overview", "11-telefoon-overzicht", "text=Waits for the CFO's Face ID"], ["#/invoices", "12-telefoon-facturen", ".row:not(.th)"], [`#/invoices/${encodeURIComponent(paidId)}`, "18-telefoon-factuur-met-pdf", ".pages canvas"], ["#/transactions", "14-telefoon-transacties", ".trow:not(.th)"], ["#/settings", "15-telefoon-instellingen", "text=API keys"]] as const) {
+for (const [hash, name, wait] of [["#/overview", "11-telefoon-overzicht", `text=${w8("cs.waits_head")}`], ["#/invoices", "12-telefoon-facturen", ".row:not(.th)"], [`#/invoices/${encodeURIComponent(paidId)}`, "18-telefoon-factuur-met-pdf", ".pages canvas"], ["#/transactions", "14-telefoon-transacties", ".trow:not(.th)"], ["#/settings", "15-telefoon-instellingen", `text=${w8("cs.api_keys")}`]] as const) {
   await page.goto(`${ORIGIN}/${hash}`);
   await page.waitForSelector(wait);
   await settle();
@@ -179,9 +192,9 @@ for (const [hash, name, wait] of [["#/overview", "11-telefoon-overzicht", "text=
 }
 // The invite on the phone.
 await page.goto(`${ORIGIN}/#/settings`);
-await page.waitForSelector("text=API keys");
-await page.fill('input[placeholder="Name"]', "Sam (test person)");
-await page.click("text=Add and invite");
+await page.waitForSelector(`text=${w8("cs.api_keys")}`);
+await page.fill(`input[placeholder="${w8("cs.name")}"]`, "Sam (test person)");
+await page.click(`text=${w8("cs.add_invite")}`);
 await page.waitForSelector("img.qr");
 await settle();
 ok(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth) <= 0, "the invite at 390 px: nothing wider than the phone");
@@ -191,7 +204,7 @@ if (shots) await page.screenshot({ path: join(shots, "19-telefoon-uitnodigen.png
 // An ended session goes back to sign-in, with a word about why.
 await page.evaluate(() => { const k = "purser.cloud.session"; const s = JSON.parse(sessionStorage.getItem(k) ?? "{}"); s.exp = Date.now() + 60_000; s.token = "pcs.expired.token"; sessionStorage.setItem(k, JSON.stringify(s)); });
 await page.goto(`${ORIGIN}/#/invoices`);
-await page.waitForSelector("text=Your sign-in ended");
+await page.waitForSelector(`text=${w8("cs.session_ended").split(" (")[0]}`);
 ok(true, "a session the cloud no longer takes goes back to sign-in, saying why");
 await page.setViewportSize({ width: 1440, height: 1000 });
 
