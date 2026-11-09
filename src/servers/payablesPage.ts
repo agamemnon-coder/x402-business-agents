@@ -159,10 +159,26 @@ async function drawPdf(box){
   try{const {getDocument}=await import('/assets/pdfjs.mjs');
     const data=new Uint8Array(await (await fetch('/api/payables/invoices/'+encodeURIComponent(id)+'/document')).arrayBuffer());
     const doc=await getDocument({data,isEvalSupported:false,enableXfa:false,disableFontFace:false,useSystemFonts:false,stopAtErrors:false,verbosity:0}).promise;
-    box.replaceChildren();
-    for(let n=1;n<=Math.min(doc.numPages,6);n++){const page=await doc.getPage(n);const vp=page.getViewport({scale:2});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;c.setAttribute('aria-label',t('page_of_invoice',{n}));box.append(c);await page.render({canvasContext:c.getContext('2d'),viewport:vp,canvas:c}).promise}
+    box.replaceChildren();const drawn=[];
+    for(let n=1;n<=Math.min(doc.numPages,6);n++){const page=await doc.getPage(n);const vp=page.getViewport({scale:2});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;c.setAttribute('aria-label',t('page_of_invoice',{n}));box.append(c);await page.render({canvasContext:c.getContext('2d'),viewport:vp,canvas:c}).promise;drawn.push(c)}
     if(doc.numPages>6)box.append(el('p','wait',t('dt.more_pages',{n:doc.numPages-6})));
-  }catch(e){box.replaceChildren(el('p','wait',t('dt.not_drawn',{error:e.message})))}
+    return drawn;
+  }catch(e){box.replaceChildren(el('p','wait',t('dt.not_drawn',{error:e.message})));return []}
+}
+// A scan: each field the model read, beside the piece of the page it says it read it from, so a person checks one against the other.
+const FIELD={vendor:'Supplier',invoice_no:'Invoice number',issue_date:'Invoice date',due_date:'Due date',currency:'Currency',subtotal:'Subtotal',tax:'VAT',total:'Total',iban:'IBAN',bic:'BIC',account_number:'Account',reference:'Reference'};
+function scanCard(d){
+  const s=d.scan;if(!s)return null;const i=d.invoice,r=i.reading;
+  const val=(f)=>f==='total'||f==='subtotal'||f==='tax'?(i[f]?i.currency+' '+amount(i[f]):''):(i[f]??r[f]??'');
+  const list=el('div','');list.style.cssText='display:grid;gap:10px';
+  const summary=s.agreed?'Two independent readings agree on the IBAN, total, currency and invoice number. Check them against the page before paying.':s.readings<2?'Only one reading came back: a person checks every field against the page.':'The two readings differ on '+s.differ.map(x=>(FIELD[x]||x).toLowerCase()).join(', ')+': a person checks every field against the page.';
+  const card=el('div','card panel',[el('h2','',['Read from a scan',el('span','cnt',s.agreed?'2 readings agree':'Needs a person')]),el('p','',summary),list]);
+  card.fill=(pages)=>{for(const b of s.boxes){const pg=pages[b.page-1];const row=el('div','');row.style.cssText='display:grid;grid-template-columns:minmax(110px,30%) 1fr;gap:10px;align-items:center';
+    const label=el('div','',[el('div','',FIELD[b.field]||b.field),el('b','',String(val(b.field)||'(empty)'))]);label.lastChild.style.cssText='word-break:break-all';
+    if(pg){const c=document.createElement('canvas');const sx=Math.max(0,Math.floor(b.x*pg.width)),sy=Math.max(0,Math.floor(b.y*pg.height)),sw=Math.max(1,Math.floor(b.w*pg.width)),sh=Math.max(1,Math.floor(b.h*pg.height));c.width=sw;c.height=sh;c.getContext('2d').drawImage(pg,sx,sy,sw,sh,0,0,sw,sh);c.style.cssText='max-width:100%;border:1px solid var(--border);border-radius:6px;background:#fff';c.setAttribute('aria-label',(FIELD[b.field]||b.field)+' as on page '+b.page);row.append(label,c)}
+    else row.append(label,el('span','wait','page '+b.page+' not drawn'));list.append(row)}
+    if(!s.boxes.length)list.append(el('p','wait','The reading gave no places on the page: compare each field with the document on the left.'))};
+  return card;
 }
 function render(d){
   const i=d.invoice,r=i.reading;
@@ -216,8 +232,9 @@ function render(d){
   // Timeline
   const ol=el('ol','tl');for(const row of d.timeline){const [w,dt]=timelineWords(row);ol.append(el('li','',[el('div','',[el('span','w',w),el('span','at',stamp(row.at))]),dt?el('div','d',cap(dt)):null]))}
   const tl=el('div','card panel',[el('h2','',t('dt.timeline')),ol]);
-  root.append(head,el('div','banner',[ic('info'),t('dt.banner')]),bar,box,el('div','split',[docv,el('div','stack',[read,checks,noteCard,tl])]));
-  drawPdf(pages);
+  const scan=scanCard(d);
+  root.append(head,el('div','banner',[ic('info'),t('dt.banner')]),bar,box,el('div','split',[docv,el('div','stack',[read,scan,checks,noteCard,tl])]));
+  drawPdf(pages).then(p=>{if(scan)scan.fill(p)});
 }
 async function load(){const r=await fetch('/api/payables/invoices/'+encodeURIComponent(id)+'/detail');if(!r.ok){$('#d').replaceChildren(el('p','lede',t('dt.no_invoice',{id})));return}render(await r.json())}
 load().catch(e=>$('#d').replaceChildren(el('p','lede',t('dt.load_failed',{id,error:e.message}))));
