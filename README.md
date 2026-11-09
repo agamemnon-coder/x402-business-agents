@@ -118,14 +118,14 @@ Not validated with customers yet: no interviews, no pilots, no revenue. Every li
 
 ## Built after the kit (test environment, not live)
 
-After submitting, we started turning Purser into a payables product for small companies: the same rule, that nothing is paid unless the CFO signed the exact terms, applied to supplier invoices. All of it runs on the Airwallex sandbox with test money, on a branch, not on this site. Details: [docs/after-the-kit.md](docs/after-the-kit.md).
+The same control, the CFO's Face ID over the exact terms, now pays supplier invoices for SMEs. All of it runs on the Airwallex sandbox with test money, on a branch, not on this site. Details and screenshots: [docs/after-the-kit.md](docs/after-the-kit.md).
 
 - **Payables inbox:** supplier invoices arrive as PDF or e-mail, are read, checked (duplicates, changed bank details, totals) and booked.
 - **Scanned invoices:** two independent readings must agree on IBAN, total, currency and invoice number; otherwise a person decides.
 - **One Face ID for a batch:** the CFO signs a list of exact terms once; each payment still runs and is checked on its own.
 - **Cloud console** with passkey sign-in, a register of every money movement, Dutch screens.
 - **Five red-team rounds**, every confirmed finding fixed with a test.
-- **Planned:** onboarding each customer as an Airwallex connected account (not enabled for our sandbox yet).
+- **Airwallex connected accounts:** each customer opens its own Airwallex account through Purser; every payout and card call is checked against that company's signed account binding. Built, waiting for sandbox access.
 
 ## Who does what
 
