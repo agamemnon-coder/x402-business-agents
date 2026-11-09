@@ -1,7 +1,7 @@
 // Red team round 4 (cloud, 9 November): API keys. A key a key made is bounded by it and dies with it; a key minted
 // while its person is erased never outlives them; an owner enrolment racing an owner's erasure is checked at commit.
 import { describe, expect, it } from "vitest";
-import type { Sql } from "../cloud/src/store.js";
+import type { Sql, SqlValue } from "../cloud/src/store.js";
 import { softPasskey } from "../src/metal/softPasskey.js";
 import { ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
 
@@ -93,7 +93,7 @@ describe("red team 4, cloud keys", () => {
       const reached = new Promise<void>((r) => { counted = r; });
       // The enrolment counts owner passkeys (none yet), then waits; meanwhile the first owner enrols one.
       c.env.sql = { ...sql, all: (s, p) => sql.all(s, p), run: (s, p) => sql.run(s, p), exec: (s) => sql.exec(s), batch: (s) => sql.batch(s),
-        first: async (s, p) => { const r = await sql.first(s, p); if (s.includes("FROM credentials") && s.includes(" IN (")) { counted(); await held; } return r; } };
+        first: (async (s: string, p?: SqlValue[]) => { const r = await sql.first(s, p); if (s.includes("FROM credentials") && s.includes(" IN (")) { counted(); await held; } return r; }) as Sql["first"] };
       const pEnr = c.req("POST", `/v1/users/${o2.json.id}/enrolment`, { key: t.key });
       await reached;
       await sql.run("INSERT INTO credentials (tenant_id, credential_id, user_id, x, y, counter, created_at) VALUES ((SELECT id FROM tenants WHERE slug = 'acme'), 'cred-o1', ?, 'x', 'y', 0, ?)", [t.owner, c.clock.now.toISOString()]);
