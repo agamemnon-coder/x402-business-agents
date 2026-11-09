@@ -148,7 +148,7 @@ describe("the page's frame: an opening, six steps, a closing card, one line of d
   });
 
   it("from 1024 px the diagram beside the story, the part of each screen lit; below it, one row of the three locks above the screens", () => {
-    expect(page).toMatch(/@media \(max-width: 1023\.98px\) \{\n  \.diagram \{ display: flex;[^}]*order: -1;/);
+    expect(page).toMatch(/@media \(max-width: 1023\.98px\) \{\n {2}\.diagram \{ display: flex;[^}]*order: -1;/);
     expect(page).toContain(".diagram .d-policy, .diagram .d-sign, .diagram .d-alone, .diagram .dnote, .diagram svg, .diagram small { display: none; }");
     const d = block(main, '<aside class="card diagram" id="diagram"', "aside").whole;
     expect((d.match(/<li class="dn d-/g) ?? []).length).toBe(3);

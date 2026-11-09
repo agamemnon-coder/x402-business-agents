@@ -399,7 +399,7 @@ function scenes(r: RunRecord, ev: Ev[]): Scene[] {
     const face = bill ? ev.find((e): e is Extract<Ev, { k: "face" }> => e.k === "face" && bill.what.includes(e.id))
       ?? ev.filter((e): e is Extract<Ev, { k: "face" }> => e.k === "face" && /invoice/i.test(e.title) && e.status === "APPROVED" && e.at <= bill.at).pop() : undefined;
     const steps: Step[] = [];
-    const fx = fxOf(r), t = timings(r);
+    const fx = fxOf(r);
     if (sweep) steps.push({ icon: "wallet", text: `${money(sweep.amount, sweep.unit)} swept after finality`, tone: "ok", proof: sweep.proof });
     if (booked) steps.push({ icon: "landmark", text: `${money(booked.amount, booked.unit)} booked at Airwallex`, tone: "ok" });
     if (fx && bill && !bill.refused) steps.push({ icon: "arrow-left-right", text: `${fx.buy} bought by FX for the shortfall`, tone: "ok" });
