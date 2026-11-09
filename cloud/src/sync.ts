@@ -9,7 +9,8 @@ import { z } from "zod";
 import { auditRowHash, continues, GENESIS, ledgerEntryHash, type AuditRowIn, type LedgerEntryIn } from "./chains.js";
 import { fromB64, sha256Hex } from "./crypto.js";
 import type { Blobs } from "./store.js";
-import type { Stmt, Table, TenantDb } from "./tenant.js";
+import { WriteConflict, type Stmt, type Table, type TenantDb } from "./tenant.js";
+import { randomToken } from "./crypto.js";
 
 export class SyncRefused extends Error {
   constructor(readonly status: 409 | 422, message: string) { super(message); }
@@ -136,9 +137,17 @@ function balances(e: LedgerEntryIn): boolean {
   return [...net.values()].every((v) => v === 0n);
 }
 
-export async function applySync(db: TenantDb, blobs: Blobs, batch: SyncBatch, now: Date): Promise<SyncResult> {
+/**
+ * Applies one push. Concurrent pushes for one company (two Worker isolates, a runner retrying while its first request
+ * still runs) are safe without a lock: every row a push writes either continues a chain or replaces a version under a
+ * primary key the other push would write too, and the push's guard row is filled only while its key is still live.
+ * So of two racing pushes the second to commit fails as a whole (nothing of it is written), its caller gets a 409 and
+ * sends it again; a push whose key was revoked while it ran writes nothing either.
+ */
+export async function applySync(db: TenantDb, blobs: Blobs, batch: SyncBatch, now: Date, who: { kind: "key" | "session"; principal: string } = { kind: "key", principal: "" }): Promise<SyncResult> {
   const iso = now.toISOString();
-  const out: Stmt[] = [];
+  // The guard goes first: if the key is gone by commit time, nothing after it is written.
+  const out: Stmt[] = who.principal ? [db.pushGuard(`p_${iso}_${randomToken(6)}`, who, iso)] : [];
   const res: SyncResult = { documents: tally(), vendors: tally(), invoices: tally(), payments: tally(), transactions: tally(), ledger_entries: tally(), audit_rows: tally() };
   noDuplicates(batch);
 
@@ -204,7 +213,14 @@ export async function applySync(db: TenantDb, blobs: Blobs, batch: SyncBatch, no
   } catch (e) {
     // Bytes a concurrent push has meanwhile committed a row for (same content, same key) are kept.
     for (const s of stored) if (!(await db.one("documents", { sha256: s.sha }).catch(() => null))) await blobs.delete(s.key).catch(() => undefined);
+    if (e instanceof WriteConflict) {
+      if (/push_log\.by_key/.test(e.detail)) throw new SyncRefused(409, "the key this push came with was revoked or expired while this push ran; nothing of it was written");
+      throw new SyncRefused(409, "another push for this company landed at the same time; nothing of this one was written: send it again (what already arrived counts as unchanged)");
+    }
     throw e;
   }
+  // A losing push for the same document may have removed the bytes between our put and our commit (it saw no row yet):
+  // put them back, so a row never points at bytes that are not there.
+  for (const b of toStore) if (blobs.has && !(await blobs.has(b.key))) await blobs.put(b.key, b.bytes, b.meta);
   return res;
 }

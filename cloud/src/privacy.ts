@@ -4,7 +4,7 @@
 // seven years (Dutch law, Article 52 AWR); a closed company's records are purged only after that, by the scheduled job.
 
 import type { Blobs, Sql } from "./store.js";
-import { TENANT_TABLES, TenantDb } from "./tenant.js";
+import { TENANT_TABLES, TenantDb, WriteConflict } from "./tenant.js";
 
 export class PrivacyRefused extends Error {}
 
@@ -42,13 +42,22 @@ export async function eraseUser(sql: Sql, tenantId: string, userId: string, by: 
   const keys = (await db.count("api_keys", { created_by_user: userId, revoked_at: null })) + (await db.count("api_keys", { created_by: userId, created_by_user: { op: "<>", v: userId }, revoked_at: null }));
   const iso = now.toISOString();
   const gen = (await db.one<{ session_gen: number }>("users", { id: userId }))?.session_gen ?? 0;
-  await db.apply([
-    db.update("users", { id: userId }, { display_name: "[erased]", email: null, erased_at: iso, session_gen: gen + 1 }),
-    db.delete("credentials", { user_id: userId }),
-    db.update("api_keys", { created_by_user: userId, revoked_at: null }, { revoked_at: iso }),
-    db.update("api_keys", { created_by: userId, revoked_at: null }, { revoked_at: iso }),
-    db.insert("erasures", { id: `e_${iso}_${userId}`, subject: userId, done_at: iso, done_by: by, detail: `name and e-mail erased; ${creds} passkey(s) removed; ${keys} key(s) revoked; bookkeeping records kept (7-year retention)` }),
-  ]);
+  // The erasures row goes first and is the guard: written only if, at commit time, the person is not erased yet and is
+  // not the last owner. Two owners erasing each other at once: the second to commit fails as a whole.
+  try {
+    await db.apply([
+      db.erasureGuard({ id: `e_${iso}_${userId}`, subject: userId, done_at: iso, done_by: by, detail: `name and e-mail erased; ${creds} passkey(s) removed; ${keys} key(s) revoked; bookkeeping records kept (7-year retention)` }),
+      db.update("users", { id: userId }, { display_name: "[erased]", email: null, erased_at: iso, session_gen: gen + 1 }),
+      db.delete("credentials", { user_id: userId }),
+      db.update("api_keys", { created_by_user: userId, revoked_at: null }, { revoked_at: iso }),
+      db.update("api_keys", { created_by: userId, revoked_at: null }, { revoked_at: iso }),
+    ]);
+  } catch (e) {
+    if (!(e instanceof WriteConflict)) throw e;
+    const now = await db.one<{ erased_at: string | null }>("users", { id: userId });
+    if (now?.erased_at) throw new PrivacyRefused(`${userId} was already erased`);
+    throw new PrivacyRefused("the last owner cannot be erased: add another owner first, or close the company's account (another owner was erased at the same time)");
+  }
   return { erased: userId, credentials_removed: creds, keys_revoked: keys };
 }
 

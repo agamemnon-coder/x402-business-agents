@@ -136,7 +136,8 @@ export async function passkeyLogin(sql: Sql, a: { tenantId: string; challengeId:
   if (!v.ok) throw new AuthError(401, `the passkey sign-in failed (${v.why})`);
   const user = await db.one<{ role: Role; erased_at: string | null; session_gen: number }>("users", { id: cred.user_id });
   if (!user || user.erased_at) throw new AuthError(401, "this person has no access");
-  await db.apply([db.update("credentials", { credential_id: a.credentialId }, { counter: v.counter })]);
+  // The counter only moves forward: of two sign-ins at once, the one with the lower counter cannot set it back.
+  await db.apply([db.update("credentials", { credential_id: a.credentialId, counter: { op: "<=", v: v.counter } }, { counter: v.counter })]);
   return { token: await sessionToken(a.secret, { tenantId: a.tenantId, userId: cred.user_id, role: user.role, gen: user.session_gen }, a.now), role: user.role, user_id: cred.user_id };
 }
 

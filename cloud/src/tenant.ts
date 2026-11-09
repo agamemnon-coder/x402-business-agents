@@ -20,6 +20,7 @@ const COLUMNS = {
   audit_rows: ["seq", "ts", "actor", "event", "subject", "payload_json", "prev_hash", "row_hash"],
   inbound_mail: ["id", "blob_key", "sha256", "size", "received_at", "status", "note"],
   erasures: ["id", "subject", "done_at", "done_by", "detail"],
+  push_log: ["id", "by_key", "at"],
 } as const;
 
 export type Table = keyof typeof COLUMNS;
@@ -58,6 +59,17 @@ function whereSql(table: Table, tenantId: string, where: Where): Stmt {
   }
   return { sql: parts.join(" AND "), params };
 }
+
+/**
+ * A write that lost a race: another request for the same company committed first (a primary key or a guard row the
+ * loser would have written already exists, or a guard's condition no longer holds). The whole batch was rolled back.
+ */
+export class WriteConflict extends Error {
+  constructor(readonly detail: string) { super(`write conflict: ${detail}`); }
+}
+
+/** SQLite's and D1's text for a failed constraint (PRIMARY KEY, UNIQUE, NOT NULL, CHECK). */
+const CONSTRAINT = /constraint failed/i;
 
 export class TenantDb {
   constructor(private readonly sql: Sql, readonly tenantId: string) {
@@ -98,7 +110,48 @@ export class TenantDb {
     return { sql: `DELETE FROM ${table} WHERE ${w.sql}`, params: w.params };
   }
 
+  /** Runs the statements as one transaction; a lost race (a failed constraint) comes back as WriteConflict. */
   async apply(stmts: Stmt[]): Promise<void> {
-    if (stmts.length) await this.sql.batch(stmts);
+    if (!stmts.length) return;
+    try {
+      await this.sql.batch(stmts);
+    } catch (e) {
+      const m = e instanceof Error ? e.message : String(e);
+      if (CONSTRAINT.test(m)) throw new WriteConflict(m);
+      throw e;
+    }
+  }
+
+  /** One statement on its own; returns how many rows it changed (a conditional update that lost a race changes none). */
+  async change(stmt: Stmt): Promise<number> {
+    return (await this.sql.run(stmt.sql, stmt.params)).changes;
+  }
+
+  // Guard rows: a statement put first in a batch whose NOT NULL column is filled by a condition read at commit time.
+  // When the condition no longer holds (another request changed it after this one read), the value is NULL, the
+  // insert fails, and so does the whole batch (D1 runs a batch as one transaction). That is the compare-and-swap D1
+  // lacks across requests.
+
+  /** A push's guard: the key it came with is still live (not revoked, not expired) when the push commits. */
+  pushGuard(id: string, caller: { kind: "key" | "session"; principal: string }, at: string): Stmt {
+    const live = caller.kind === "key"
+      ? { sql: "(SELECT id FROM api_keys WHERE tenant_id = ? AND id = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?))", params: [this.tenantId, caller.principal, at] }
+      : { sql: "(SELECT 'session:' || id FROM users WHERE tenant_id = ? AND id = ? AND erased_at IS NULL)", params: [this.tenantId, caller.principal] };
+    return { sql: `INSERT INTO push_log (tenant_id, id, by_key, at) VALUES (?, ?, ${live.sql}, ?)`, params: [this.tenantId, id, ...live.params, at] };
+  }
+
+  /**
+   * An erasure's guard (the erasures row itself): the person is not erased yet, and is not the company's last owner,
+   * when the erasure commits. Two owners erasing each other at once leave one owner, never none.
+   */
+  erasureGuard(row: { id: string; subject: string; done_at: string; done_by: string; detail: string }): Stmt {
+    const t = this.tenantId;
+    return {
+      sql: `INSERT INTO erasures (tenant_id, id, subject, done_at, done_by, detail) VALUES (?, ?, ?, ?, ?, (SELECT ? WHERE
+          EXISTS (SELECT 1 FROM users WHERE tenant_id = ? AND id = ? AND erased_at IS NULL)
+          AND ((SELECT role FROM users WHERE tenant_id = ? AND id = ?) <> 'owner'
+            OR (SELECT COUNT(*) FROM users WHERE tenant_id = ? AND role = 'owner' AND erased_at IS NULL) > 1)))`,
+      params: [t, row.id, row.subject, row.done_at, row.done_by, row.detail, t, row.subject, t, row.subject, t],
+    };
   }
 }

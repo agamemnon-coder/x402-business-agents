@@ -18,6 +18,8 @@ export interface Blobs {
   get(key: string): Promise<Uint8Array | null>;
   delete(key: string): Promise<void>;
   list(prefix: string): Promise<string[]>;
+  /** Whether bytes are stored under the key (without reading them). */
+  has?(key: string): Promise<boolean>;
 }
 
 // The parts of Cloudflare's D1 and R2 bindings used here, typed locally so the repo needs no Workers type package.
@@ -26,6 +28,7 @@ export interface D1Like { prepare(sql: string): D1Stmt; batch(s: D1Stmt[]): Prom
 export interface R2Like {
   put(key: string, value: Uint8Array, opts?: { customMetadata?: Record<string, string> }): Promise<unknown>;
   get(key: string): Promise<{ arrayBuffer(): Promise<ArrayBuffer> } | null>;
+  head(key: string): Promise<unknown>;
   delete(key: string): Promise<void>;
   list(opts: { prefix: string; cursor?: string }): Promise<{ objects: { key: string }[]; truncated: boolean; cursor?: string }>;
 }
@@ -46,6 +49,7 @@ export function r2Blobs(bucket: R2Like): Blobs {
     put: async (key, bytes, meta) => { await bucket.put(key, bytes, meta ? { customMetadata: meta } : undefined); },
     get: async (key) => { const o = await bucket.get(key); return o ? new Uint8Array(await o.arrayBuffer()) : null; },
     delete: (key) => bucket.delete(key),
+    has: async (key) => (await bucket.head(key)) !== null,
     list: async (prefix) => {
       const out: string[] = [];
       let cursor: string | undefined;

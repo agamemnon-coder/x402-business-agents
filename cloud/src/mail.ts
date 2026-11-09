@@ -5,7 +5,7 @@
 import { bump } from "./auth.js";
 import { sha256Hex } from "./crypto.js";
 import type { Blobs, Sql } from "./store.js";
-import { TenantDb } from "./tenant.js";
+import { TenantDb, WriteConflict } from "./tenant.js";
 
 /** The parts of Cloudflare's ForwardableEmailMessage used here. */
 export interface InboundEmail {
@@ -56,10 +56,18 @@ export async function receiveEmail(sql: Sql, blobs: Blobs, msg: InboundEmail, op
   if ((await used(`mail:${tenant.id}`)) + 1 > quota.messagesPerDay || (await used(`mailbytes:${tenant.id}`)) + bytes.length > quota.bytesPerDay) {
     return refuse("this address's daily quota is used up; try again tomorrow");
   }
+  const key = mailBlobKey(tenant.id, sha);
+  // The bytes first (same message, same key: a second delivery writes the same bytes), then the row. Two deliveries
+  // of one message at once both pass the check above; the row's primary key lets one of them in, and the other is
+  // "already received", not an error the sender would retry. The quota counts the one that was queued.
+  await blobs.put(key, bytes, { kind: "email" });
+  try {
+    await db.apply([db.insert("inbound_mail", { id, blob_key: key, sha256: sha, size: bytes.length, received_at: opts.now.toISOString(), status: "queued", note: null })]);
+  } catch (e) {
+    if (e instanceof WriteConflict) return { queued: false, reason: "already received", id };
+    throw e;
+  }
   await bump(sql, `mail:${tenant.id}`, day, 1);
   await bump(sql, `mailbytes:${tenant.id}`, day, bytes.length);
-  const key = mailBlobKey(tenant.id, sha);
-  await blobs.put(key, bytes, { kind: "email" });
-  await db.apply([db.insert("inbound_mail", { id, blob_key: key, sha256: sha, size: bytes.length, received_at: opts.now.toISOString(), status: "queued", note: null })]);
   return { queued: true, id };
 }

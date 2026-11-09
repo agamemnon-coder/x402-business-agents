@@ -227,3 +227,13 @@ CREATE TABLE IF NOT EXISTS erasures (
   detail TEXT NOT NULL,
   PRIMARY KEY (tenant_id, id)
 );
+
+-- One row per push the cloud accepted, written in the push's own transaction. by_key is filled at commit time from the
+-- key that sent it, and only while that key is live: a push racing its key's revoke fails as a whole (cloud/src/tenant.ts).
+CREATE TABLE IF NOT EXISTS push_log (
+  tenant_id TEXT NOT NULL,
+  id TEXT NOT NULL,
+  by_key TEXT NOT NULL,
+  at TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, id)
+);

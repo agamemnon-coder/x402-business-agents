@@ -10,6 +10,7 @@ import { registerCsv } from "../../src/money/registerShape.js";
 import { SCHEMA } from "./schema.js";
 import type { Blobs, Sql } from "./store.js";
 import { applySync, SyncBatch, SyncRefused } from "./sync.js";
+import { WriteConflict } from "./tenant.js";
 import { TenantDb } from "./tenant.js";
 import { closeTenant, eraseUser, exportTenant, PrivacyRefused } from "./privacy.js";
 
@@ -138,7 +139,7 @@ export const ROUTES: Route[] = [
 
   { method: "POST", path: "/v1/sync", summary: "The runner's push: vendors, invoices, documents, payments, the transactions register, ledger entries, audit rows. Idempotent. Never passkeys.", need: "sync", run: async (c) => {
     const b = await body(c, SyncBatch, 50_000_000);
-    return json(200, { applied: await applySync(db(c), c.env.blobs, b, c.now) });
+    return json(200, { applied: await applySync(db(c), c.env.blobs, b, c.now, { kind: c.caller!.kind, principal: c.caller!.principal }) });
   } },
   { method: "GET", path: "/v1/sync/state", summary: "Where the cloud's copy stands: the heads of the audit and ledger chains, and the documents it holds.", need: "sync", run: async (c) => {
     const t = db(c);
@@ -156,8 +157,15 @@ export const ROUTES: Route[] = [
   { method: "POST", path: "/v1/mail/{id}/done", summary: "The runner filed (done) or refused an inbound e-mail.", need: "sync", run: async (c) => {
     const b = await body(c, z.object({ status: z.enum(["done", "refused"]), note: z.string().max(500).optional() }).strict());
     const t = db(c);
-    if (!(await t.one("inbound_mail", { id: c.params[0]! }))) return notFound("mail");
-    await t.apply([t.update("inbound_mail", { id: c.params[0]! }, { status: b.status, note: b.note ?? null })]);
+    const m = await t.one<{ status: string }>("inbound_mail", { id: c.params[0]! });
+    if (!m) return notFound("mail");
+    // Only a queued message is marked, and only once (two runs filing it at once): the update takes it from queued,
+    // so of two at once one changes it. The same answer again is fine; a different one is a conflict.
+    const changed = await t.change(t.update("inbound_mail", { id: c.params[0]!, status: "queued" }, { status: b.status, note: b.note ?? null }));
+    if (!changed) {
+      const now = await t.one<{ status: string }>("inbound_mail", { id: c.params[0]! });
+      if (now?.status !== b.status) return err(409, `this e-mail is already ${now?.status ?? "gone"}`);
+    }
     return json(200, { id: c.params[0], status: b.status });
   } },
 
@@ -258,6 +266,8 @@ export async function handle(req: Request, env: CloudEnv): Promise<Response> {
     if (e instanceof SyncRefused) return err(e.status, e.message);
     if (e instanceof BadRequest) return err(400, e.message);
     if (e instanceof PrivacyRefused) return err(409, e.message);
+    // A write that lost a race with another request for the same company: nothing of it was written.
+    if (e instanceof WriteConflict) return err(409, "another change for this company landed at the same time; nothing of this request was written: send it again");
     // Nothing internal leaks: the caller gets a reference, the log gets the error.
     const ref = randomToken(6);
     console.error(`cloud error ${ref}`, e);

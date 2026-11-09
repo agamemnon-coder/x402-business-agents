@@ -33,6 +33,7 @@ export function dirBlobs(root: string): Blobs {
     put: async (key, bytes) => { const p = at(key); mkdirSync(dirname(p), { recursive: true }); writeFileSync(p, bytes); },
     get: async (key) => { const p = at(key); return existsSync(p) ? new Uint8Array(readFileSync(p)) : null; },
     delete: async (key) => { rmSync(at(key), { force: true }); },
+    has: async (key) => existsSync(at(key)),
     list: async (prefix) => walk(root).filter((k) => k.startsWith(prefix)).sort(),
   };
 }
