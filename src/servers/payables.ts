@@ -53,7 +53,7 @@ const sha = (s: string) => createHash("sha256").update(s).digest();
 function statusFor(message: string): number {
   if (/^no (payables invoice|supplier request) /.test(message)) return 404;
   if (/not a PDF|larger than|not an IBAN|not a BIC|checksum|needs a name|say how|say who|say why|address/.test(message)) return 400;
-  if (/not ready|not waiting|already|German \(DE\)|looks like|on file|not verified|pays EUR only|never cleared|waits for the CFO/.test(message)) return 409;
+  if (/not ready|not waiting|too long|already|German \(DE\)|looks like|on file|not verified|pays EUR only|never cleared|waits for the CFO/.test(message)) return 409;
   if (/only a person|verification code|last four/.test(message)) return 403;
   return 500;
 }
