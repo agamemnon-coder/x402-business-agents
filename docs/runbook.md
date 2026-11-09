@@ -303,3 +303,142 @@ How to tell: `npm run health` fails on the RPC or the facilitator; the facilitat
      stopped.
    - Not automated in this build. Production would run Postgres with point-in-time recovery
      ([architecture.md](architecture.md)).
+
+## Purser Cloud (added 9 November)
+
+Purser Cloud (`cloud/`, [cloud.md](cloud.md)) is a Cloudflare Worker with one D1 database for every company and one R2
+bucket for documents, raw mail and staged exports. It moves no money and holds no payment keys: the runner's ledger
+stays the source, and the cloud holds a copy the runner pushes. **The cloud is not deployed**, so nothing below has
+been exercised against Cloudflare. Each step says whether it is **tested** (an automated test against the Worker's own
+handler, on SQLite and, with `npm run test:d1`, on local D1 under workerd) or **not yet exercised**.
+
+Who acts:
+
+- **Platform admin** (Max): holds the platform admin token (only its SHA-256 is a Worker secret) and the Cloudflare
+  account.
+- **A company's owners:** sign in with a passkey and manage their own keys, people, webhook and exports.
+
+What the cloud records for an owner to see afterwards: `GET /v1/security/events` (owner recoveries, staged exports and
+their downloads), `GET /v1/status` (last runner push, mail queue, quota use, alerts, webhook state).
+
+### D1 or R2 down
+
+- **What you see:** `GET /v1/health` answers 503 when the database does not (tested: `test/cloud-golive.test.ts`), or
+  the Worker answers 500 with a reference (the log line with the same
+  reference has the error; no secret or account number is logged). The runner's sync fails with "Purser Cloud
+  refused …".
+- **Money and books:** nothing stops. The runner keeps paying, booking and approving on its own ledger; only the cloud
+  copy and the inbound mail wait.
+- **Do:**
+  1. Check Cloudflare's status page and the Worker's logs for the reference. Do not redeploy to "fix" an outage on
+     Cloudflare's side.
+  2. When it is back, run the runner's sync again (`npm run cloud`). It starts from `GET /v1/sync/state` (the heads of
+     the audit and ledger chains the cloud holds) and is idempotent, so a push that failed half-way is safe to send
+     again (tested: `test/cloud-sync.test.ts`).
+  3. Mail that arrived while R2 or D1 was down: the Worker's e-mail handler failed for it, and nothing half-stored is
+     counted (the quota gives the count back when storing fails; the same message delivered again is queued once).
+     Whether Cloudflare Email Routing then bounces the message or the sender's server retries it is **to verify**
+     against Cloudflare's documentation before go-live. Ask the company to check `GET /v1/status` for the mail queue
+     and ask senders to resend what is missing.
+- **If data is lost or wrong:** see "Restore" below.
+
+### A leaked key, session or admin token
+
+- **A company's API key:** an owner revokes it (`DELETE /v1/keys/{id}`); the keys it made and the invites it started
+  go with it (tested: `test/cloud-core.test.ts`, `test/cloud-concurrency.test.ts`). Check `GET /v1/keys` for keys you
+  do not know.
+- **A person's passkey or phone:** a signed-in owner removes the passkey (`DELETE /v1/users/{id}/passkeys/{credential}`);
+  that person's sessions end at once. The last owner passkey cannot be removed: enrol another owner first, or use an
+  owner recovery (below).
+- **The platform admin token** (it creates companies and issues owner recoveries):
+  1. Make a new random token and set its SHA-256: `npx wrangler secret put ADMIN_TOKEN_SHA256 -c cloud/wrangler.jsonc`.
+     The old token stops working when the new secret is live.
+  2. Look for what the old one did: every owner recovery is a `recovery.issued` security event of the company and was
+     sent to its webhook. List them across companies with
+     `npx wrangler d1 execute purser-cloud --remote -c cloud/wrangler.jsonc --command "SELECT tenant_id, at, detail_json FROM security_events WHERE kind = 'recovery.issued' ORDER BY at"`.
+     Revoke any recovery you did not issue: `UPDATE api_keys SET revoked_at = <now> WHERE purpose = 'recovery' AND revoked_at IS NULL AND tenant_id = '<id>'`
+     (an unredeemed recovery changes nothing until it is redeemed; a redeemed one has replaced the owner's passkeys:
+     treat that company as compromised, below). Not yet exercised.
+- **The session secret** (`SESSION_SECRET`, it signs every session and every staged-export link): set a new one with
+  `npx wrangler secret put SESSION_SECRET`. Every session of every company ends and every export link stops working;
+  owners sign in again with their passkeys and ask for fresh export links. API keys are not affected. Not yet
+  exercised.
+
+### A company compromised
+
+Someone else got into a company's account (a stolen phone with an unlocked passkey, a leaked full key).
+
+1. **An owner who can still sign in:** remove the passkeys they do not know, revoke every key they do not know (each
+   revoke takes its children), remove the webhook if it is not theirs (`DELETE /v1/webhook`) and set it again, and read
+   `GET /v1/security/events` for a staged export they did not make. A staged export's links last 15 minutes and the
+   export a day; a manifest download is recorded as `export.downloaded`.
+2. **No owner can sign in:** owner recovery (next section).
+3. **Stop everything for the company** (last resort, the owners' own decision): `POST /v1/close` ends all access at
+   once and keeps the records for the retention period. It cannot be undone from the API. Not yet exercised outside
+   the tests (`test/cloud-retention.test.ts`).
+
+The cloud cannot move money, so a compromised cloud account cannot pay anyone; payments still need the CFO's passkey on
+the runner.
+
+### Owner recovery: the only owner lost their passkey
+
+Tested: `test/cloud-recovery.test.ts` (the full flow, reuse, expiry, another company, a non-owner, a racing sign-in).
+
+1. **Check who is asking, out of band**, before anything else: a video call with the owner, their ID against the
+   contract or the Chamber of Commerce extract, a call back on the number on file. Never on the strength of an e-mail.
+2. **Issue the recovery key** (platform admin):
+   `POST /v1/admin/tenants/{tenant id}/recovery` with `{"owner_id": "...", "checked_by": "how you checked"}` and the
+   admin token as bearer. It returns a one-time key that holds for 24 hours and can do one thing: start that owner's
+   passkey enrolment. A second recovery for the company is refused while one is open. The company's webhook gets
+   `security.recovery_issued`, and the security events record who checked and how.
+3. **Give the key to the owner** over a different channel than the one they asked on. They start the enrolment with it
+   (`POST /v1/users/{their id}/enrolment`) and enrol a new passkey from the link.
+4. **When the new passkey lands**, in the same write: the owner's old passkeys are removed, their sessions end, and the
+   recovery key is spent (`security.recovery_completed` goes to the webhook). Until then the old passkey still works,
+   so an unfinished recovery changes nothing.
+5. **If the owner finds the old passkey after all:** they revoke the recovery key from a signed-in session
+   (`DELETE /v1/keys/{key_id}`); the enrolment it started dies with it.
+
+### Runaway mail
+
+A company's address is flooded (a mail loop, a spam run).
+
+- The quota already caps it: per company per day in messages and bytes, 25 MB a message, counted before storing; past
+  it mail is refused until the next UTC day (tested: `test/cloud-golive.test.ts`, `test/cloud-security.test.ts`). The owners see it in `GET /v1/status`.
+- **To stop it entirely** (platform admin): in the Cloudflare dashboard, turn off the Email Routing rule for that
+  address. Mail is then refused at Cloudflare's edge and never reaches the Worker. Not yet exercised (no domain yet).
+- Queued junk: the runner refuses mail it cannot read as an invoice and marks it `refused`; nothing is paid from mail
+  without the inbox checks and the CFO's approval.
+
+### Webhook abuse
+
+A company's webhook is used against someone else, or its receiver is down.
+
+- **Built-in limits:** https only, a public host name, port 443, no credentials in the URL; signed events; at most 30
+  events an hour per company; turned off after 20 failed events in a row (tested: `test/cloud-golive.test.ts`).
+- **An owner:** `DELETE /v1/webhook`, then set the right one (`POST /v1/webhook` returns a new signing secret once).
+- **The platform admin, when the owners do not act:**
+  `npx wrangler d1 execute purser-cloud --remote -c cloud/wrangler.jsonc --command "UPDATE webhooks SET disabled_at = '<now>' WHERE tenant_id = '<id>'"`.
+  Tell the owners why. Not yet exercised.
+
+### Restore
+
+Two layers, different purposes.
+
+- **A whole-database mistake** (a bad migration, a wrong bulk update): D1 Time Travel, Cloudflare's point-in-time
+  restore of the whole database. **To verify before go-live:** this was not checked against Cloudflare's documentation
+  (no external calls in this session). Before relying on it, read Cloudflare's current D1 Time Travel page for the
+  retention window on the plan used and the exact `wrangler d1 time-travel` commands, and rehearse one restore into a
+  scratch database. A restore of the whole database moves every company back in time: tell every company, and have
+  each runner sync again afterwards (its ledger is ahead; the sync is idempotent).
+- **One company** (its rows are wrong or gone): its export.
+  1. Make or keep a backup: `POST /v1/export/staged` (admin and read) builds it into R2 in parts behind 15-minute
+     signed links; download the manifest and each part, and each document from `/v1/documents/{sha256}`. Check each
+     part against the SHA-256 in the manifest. (Small companies: `GET /v1/export` in one response.)
+  2. Join a staged export back with `joinStagedExport` (`cloud/src/restore.ts`) into the one-object form.
+  3. Restore with `importTenant` into a new, empty company: it checks both hash chains and every document before
+     writing anything. Owners then make new API keys and set the webhook again (secrets are never in an export).
+  Tested: `test/cloud-restore.test.ts`, `test/cloud-export-staging.test.ts`, on SQLite and on local D1. **No route or
+  command runs a restore in production yet**: it needs a one-off Worker or a script with the D1 binding.
+- **Documents in R2** are written once under their SHA-256 and never changed; the export lists them, so a lost
+  document is found by its hash in any earlier download.
