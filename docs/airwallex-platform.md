@@ -133,6 +133,12 @@ Purser Cloud signs a **binding** with Purser's platform Ed25519 key (a Worker se
   account, the binding's account and the account the rail acts for (`x-on-behalf-of`) must be the same, or, with the
   platform off, none. A fee in the terms must be within the cap, go to the binding's `fee_account`, and be its share of
   the amount.
+- Card calls (Airwallex Issuing: cardholders, cards, limits, controls, status, card transactions and the sandbox's
+  simulated charge) run the same binding check before **each** call (`checkCardAccount`, through `issuingFor` /
+  `issuingFromEnv(db)`): the account the card rail acts for must be the binding's account, or, with the platform off,
+  the company's own. A missing, expired or non-active binding, another account, or a card rail made without the
+  company's database: nothing reaches Airwallex. A card call carries no signed terms, so only the acting account is
+  checked (`test/card-binding.test.ts`).
 
 ### Purser's fee: the cap and its life
 

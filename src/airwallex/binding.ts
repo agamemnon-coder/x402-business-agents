@@ -104,6 +104,29 @@ export function platformPlan(db: DB, now: Date, env: Env = process.env): Platfor
 /** Purser's fee on an amount, in cents. */
 export const platformFeeCents = (amountCents: number, bps: number) => Math.round((amountCents * bps) / 10_000);
 
+const own = "the company's own Airwallex account";
+
+/** With the platform on, the company's account in a valid, active binding (throws with `then` otherwise); off, null. */
+function boundAccount(db: DB, now: Date, env: Env, then: string): AccountBinding | null {
+  if (!platformOn(env)) return null;
+  const b = currentBinding(db, now, env);
+  if (!b.ok) throw new Error(`${b.reason}; ${then}`);
+  return b.binding;
+}
+
+/**
+ * The same binding check for card calls (Airwallex Issuing: cardholders, cards, limits, controls, status, card
+ * transactions, the sandbox's simulated charge), run before each call: the account the runner's card rail acts for is
+ * the company's own account in a valid, active binding, or, with the platform off, the company's own account. A card
+ * call carries no signed terms, so only the acting account is checked. Throws with the reason; nothing reaches Airwallex.
+ */
+export function checkCardAccount(db: DB, rail: { payingAccount?: string | null }, now: Date, env: Env = process.env): void {
+  const then = "nothing is done at Airwallex";
+  const expected = boundAccount(db, now, env, then)?.account_id ?? null;
+  const acting = rail.payingAccount ?? null;
+  if (acting !== expected) throw new Error(`card calls must act for ${expected ?? own}, but this runner's card rail acts for ${acting ?? own}; ${then}`);
+}
+
 interface PlatformTerms {
   amount?: unknown;
   currency?: unknown;
@@ -120,13 +143,7 @@ interface PlatformTerms {
 export function checkPayingAccount(db: DB, t: PlatformTerms, rail: { payingAccount?: string | null }, now: Date, env: Env = process.env): void {
   const signed = typeof t.paying_account?.id === "string" ? t.paying_account.id : null;
   const acting = rail.payingAccount ?? null;
-  let bound: AccountBinding | null = null;
-  if (platformOn(env)) {
-    const b = currentBinding(db, now, env);
-    if (!b.ok) throw new Error(`${b.reason}; nothing is paid`);
-    bound = b.binding;
-  }
-  const own = "the company's own Airwallex account";
+  const bound = boundAccount(db, now, env, "nothing is paid");
   const expected = bound?.account_id ?? null;
   if (signed !== expected) throw new Error(`the terms were signed for payment from ${signed ?? own}, but the company's bound account is ${expected ?? own}; nothing is paid`);
   if (acting !== expected) throw new Error(`the terms were signed for payment from ${signed ?? own}, but this runner pays from ${acting ?? own}; nothing is paid`);

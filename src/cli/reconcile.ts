@@ -59,7 +59,8 @@ if (at >= 0) {
   process.exit(1);
 }
 
-const r = await reconcile(openDb(), reconcileSourcesFromEnv());
+const rdb = openDb();
+const r = await reconcile(rdb, reconcileSourcesFromEnv(rdb));
 console.log(`RECONCILED       ${r.checked} flows checked against Airwallex and Metal at ${r.at}`);
 for (const s of r.skipped) console.log(`NOT CHECKED      ${s}`);
 for (const x of r.settlements ?? []) console.log(`SETTLEMENT       ${x.key.slice(0, 10)}… ${x.outcome}${x.sale_id ? ` (sale ${x.sale_id})` : ""}${x.tx ? ` tx ${x.tx.slice(0, 10)}…` : ""}`);
