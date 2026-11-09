@@ -14,6 +14,8 @@ export interface Bindings {
   RP_ID: string;
   ORIGIN: string;
   MAIL_DOMAIN?: string;
+  /** The deployed version, shown by /v1/health (a var set at deploy, e.g. the commit). */
+  VERSION?: string;
   /** Workers static assets (cloud/public, filled by npm run cloud:pdfjs): pdf.js for the console's invoice view. */
   ASSETS?: { fetch(req: Request): Promise<Response> };
 }
@@ -22,6 +24,7 @@ function envOf(b: Bindings): CloudEnv {
   if (!b.SESSION_SECRET || b.SESSION_SECRET.length < 32) throw new Error("SESSION_SECRET is not set (wrangler secret put SESSION_SECRET)");
   const assets = b.ASSETS;
   return { sql: d1Sql(b.DB), blobs: r2Blobs(b.DOCS), sessionSecret: b.SESSION_SECRET, adminTokenSha256: b.ADMIN_TOKEN_SHA256 ?? "", rpId: b.RP_ID, origin: b.ORIGIN, mailDomain: b.MAIL_DOMAIN ?? "",
+    version: b.VERSION ?? "dev", outbound: (url: string, init: RequestInit) => fetch(url, init),
     ...(assets ? { asset: async (path: string) => assets.fetch(new Request(new URL(path, b.ORIGIN))) } : {}) };
 }
 
