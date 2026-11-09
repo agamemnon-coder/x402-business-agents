@@ -337,6 +337,15 @@ Source for every row: `docs/runs/2026-11-02-night-batch.md` and the files it nam
 | Red team, Opus as the attacker | Opus wrote 119 tests in rounds (it declined to attack through tools), and code ran all 119 (63 against the agents, 8 TAP, 16 passkey, 8 relay, 24 Try; one TAP test never reached the verifier): code judged 111 blocked, 5 not blocked, 3 inconclusive. All 5 re-checked by hand: none is a breach (two small Try reading bugs filed) | `docs/redteam/night-2026-11-02.json`, `-b.json`, `-c.json`; night-batch report, section 5 | New |
 | A second finding (live) | In 1 of 14 live runs the Support agent settled a dispute that never came in (3 orders refunded within the rules, 0.15); fixed (support-dispute-gate, merged); a keyed follow-up is on dispute-gate-keyed | `docs/runs/variation/2026-11-02/live-14.json`, `live-logs/dry-147.txt`; branch `support-dispute-gate` | New |
 
+## Built after the kit (`docs/after-the-kit.md`, README section; added 9 November)
+
+| Claim | Value | Proof | Changed |
+|---|---|---|---|
+| The payables inbox, scanned invoices, batch Face ID, payouts and the cloud console are built and tested | stand-ins only | tests on the `platform` branch (draft PR #113): a stand-in Airwallex and a stand-in Claude; Cloudflare's local D1 | Was "runs on the Airwallex sandbox" and "now pays supplier invoices" (jury review, 9 November): no sandbox payout from this product yet, not deployed. |
+| Connected accounts: built, waiting for sandbox access | not run live | `docs/airwallex-platform.md` on `platform`; a test call on 9 November was refused ("This account cannot onboard business accounts") | — |
+| Platform fee | 0.50% in the test world, capped in the CFO's policy | the seeded test world's policy; the fee mechanism at Airwallex is not confirmed | Pricing is a hypothesis; no customer has seen a price. |
+| Five red-team rounds on the payables and cloud code | 5 | red-team commits on `platform` | — |
+
 ## Removed or softened after the audits (summary)
 
 **Landing and dashboard**
