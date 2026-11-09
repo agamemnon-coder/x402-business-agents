@@ -56,7 +56,7 @@ export const TRY_SIGN_SCREENS = {
     sign: "Sign with Face ID",
     terms: "Show the exact terms",
     /** The payment a rule stopped in this test world (jury review, 7 Nov, #6: said as the test it is), and a real example. */
-    other: "Also in your test world: an invoice over the limit, stopped by Purser's rule",
+    other: "Purser's rule also stopped an over-limit invoice in your world",
     real: "see a real example ↗",
     opening: "Opening your test world…",
     /** The fold with the agents' steps, calls and plan (Max, 7 Nov). */
@@ -92,7 +92,7 @@ export const TRY_SIGN_SCREENS = {
     head: "Try to trick the agent.",
     lead: "Send your agent a fake invoice",
     /** Review 9 Nov, #1: the step had no visible instruction, only the chips. */
-    pick: "Pick a fake invoice below and send it to your agent. Purser's code checks what the agent read.",
+    pick: "Pick a fake invoice to send to your agent.",
     /** Max, 7 Nov: true whether the agent was fooled or not. */
     decides: "Purser's code checks it.",
     did: "What the agent did",
@@ -483,17 +483,9 @@ nav.end .btn { justify-content: center; min-height: 56px; font-size: 17px; }
 .lk dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 10px; margin: 0; font-size: 14.5px; }
 .lk dt { color: var(--muted); } .lk dd { margin: 0; font-weight: 650; overflow-wrap: anywhere; } .lk dd.chg { color: var(--accent); }
 .others { display: grid; gap: 12px; }
-/* The diagram: one policy, three locks; the part of it each screen is about lights up. Below 1024 px it is one row
-   above the screens: the three locks by name (review 9 Nov, #5: it was hidden on phones). */
+/* The diagram: one policy, three locks; the part of it each screen is about lights up. Below 1024 px it is hidden
+   (a one-row phone version pushed screen 1 past its word budget at 360 px; the screens name the locks themselves). */
 .diagram { display: none; }
-@media (max-width: 1023.98px) {
-  .diagram { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; order: -1; padding: 10px 12px; }
-  .diagram .eyebrow { margin: 0; flex: 1 0 100%; font-size: 12.5px; }
-  .diagram .d-policy, .diagram .d-sign, .diagram .d-alone, .diagram .dnote, .diagram svg, .diagram small { display: none; }
-  .diagram ol.dlocks { display: flex; gap: 6px; flex-wrap: wrap; list-style: none; margin: 0; padding: 0; }
-  .diagram ol.dlocks .dn { padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 14px; }
-  .diagram ol.dlocks .dn b { font-weight: 650; }
-}
 @media (min-width: 1024px) {
   .story { grid-template-columns: minmax(0, 1fr) minmax(0, 420px); gap: 28px; max-width: 1140px; }
   .scr { max-width: none; }
@@ -1523,6 +1515,8 @@ const JS = `
   // ── Screen 4: try to trick the agent. A fixed fake invoice goes to the server, which runs Purser's own fraud and
   // injection code on it (worker/src/trick.ts); the page shows the invoice, the fooled agent's words and the verdict. ──
   function trick(attack) {
+    // The instruction has done its job once an invoice is picked; the result says the rest (and keeps the screen short).
+    var kp = $("k-pick"); if (kp) kp.hidden = true;
     document.querySelectorAll("#trick-chips .chip").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.attack === attack)); b.disabled = true; });
     status("k2-status", "Purser is checking the invoice…");
     return post("trick", { token: S.token, attack: attack }).then(function (q) {

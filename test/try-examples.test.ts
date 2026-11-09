@@ -147,9 +147,8 @@ describe("the page's frame: an opening, six steps, a closing card, one line of d
     expect(page).toContain('document.addEventListener("visibilitychange"');
   });
 
-  it("from 1024 px the diagram beside the story, the part of each screen lit; below it, one row of the three locks above the screens", () => {
-    expect(page).toMatch(/@media \(max-width: 1023\.98px\) \{\n {2}\.diagram \{ display: flex;[^}]*order: -1;/);
-    expect(page).toContain(".diagram .d-policy, .diagram .d-sign, .diagram .d-alone, .diagram .dnote, .diagram svg, .diagram small { display: none; }");
+  it("from 1024 px the diagram beside the story, the part of each screen lit; below it, hidden", () => {
+    expect(page).toMatch(/\.diagram \{ display: none; \}/);
     const d = block(main, '<aside class="card diagram" id="diagram"', "aside").whole;
     expect((d.match(/<li class="dn d-/g) ?? []).length).toBe(3);
     for (const n of ["d-purser", "d-airwallex", "d-metal", "d-sign", "d-alone"]) expect(d).toContain(n);
@@ -158,8 +157,8 @@ describe("the page's frame: an opening, six steps, a closing card, one line of d
 
   it("step 4 says what to do before the chips, and the stopped payment on screen 1 says which one", () => {
     const k = main.slice(main.indexOf('id="k-head"'), main.indexOf('id="trick-chips"'));
-    expect(k).toContain('<p class="q" id="k-pick">Pick a fake invoice below and send it to your agent.');
-    expect(main).toContain("Also in your test world: an invoice over the limit, stopped by Purser's rule");
+    expect(k).toContain('<p class="q" id="k-pick">Pick a fake invoice to send to your agent.');
+    expect(main).toContain("Purser's rule also stopped an over-limit invoice in your world");
     expect(main).not.toContain("Purser stopped a test payment in your world just now");
   });
 
