@@ -5,6 +5,7 @@
 // src/executors/supplierPayment.ts carries them out. The Kit 11 invoice_payment path (src/agents/euroBill.ts) is not
 // changed by this file.
 
+import { batchReservedCents } from "./planContext.js";
 import { randomUUID } from "node:crypto";
 import type { AnyQuote, Balance, MarketRate, PayoutRail } from "../airwallex/port.js";
 import { AirwallexAmbiguous, AirwallexError } from "../airwallex/client.js";
@@ -109,7 +110,8 @@ export function inFlightCents(db: DB, currency: string, exceptRequestId?: string
 
 /** What this currency can still pay: available, less its floor, commitments and money under way. */
 export function freeCents(db: DB, balances: Record<string, Balance>, currency: string, exceptRequestId?: string, exceptProposalId?: string): number {
-  return (balances[currency]?.availableCents ?? 0) - floorCents(db, currency) - commitmentsCents(db, currency) - inFlightCents(db, currency, exceptRequestId, exceptProposalId);
+  // batchReservedCents: what earlier payments planned for the same batch will draw (0 outside a batch's planning).
+  return (balances[currency]?.availableCents ?? 0) - floorCents(db, currency) - commitmentsCents(db, currency) - inFlightCents(db, currency, exceptRequestId, exceptProposalId) - batchReservedCents(currency);
 }
 
 /**

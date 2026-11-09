@@ -5,6 +5,7 @@
 // approves with Face ID on the phone; a new supplier is requested here and verified and approved as in src/ap/vendors.ts.
 // The same handlers can later sit behind the authenticated agent API.
 
+import { payApInvoices } from "../ap/batchPay.js";
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { readFileSync } from "node:fs";
 import express from "express";
@@ -213,6 +214,21 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
       const id = String(req.params.id);
       const out = await payApInvoice(db, opts.rail, id, new Date(), opts.inbox.reader);
       res.json(out.kind === "proposed" ? { kind: "proposed", proposal_id: out.proposal.proposal_id, invoice: publicInvoice(apInvoice(db, id)!) } : { kind: "escalated", reason: out.reason, invoice: publicInvoice(apInvoice(db, id)!) });
+    } catch (e) { fail(res, e); }
+  });
+  // Several ready invoices, one Face ID (src/ap/batchPay.ts): each is planned as on its own, then one batch goes to the phone.
+  app.post("/api/payables/batch", express.json({ limit: "10kb" }), async (req, res) => {
+    if (!opts.rail) { res.status(503).json({ error: "Airwallex sandbox keys are not set; the payments cannot be planned" }); return; }
+    try {
+      const raw = (req.body ?? {}) as { ids?: unknown };
+      const ids = Array.isArray(raw.ids) ? raw.ids.filter((x): x is string => typeof x === "string" && /^AP-\d{4,}$/.test(x)) : [];
+      if (!Array.isArray(raw.ids) || ids.length !== raw.ids.length) { res.status(400).json({ error: "send the invoices to pay as ids like AP-0001" }); return; }
+      const out = await payApInvoices(db, opts.rail, ids, new Date(), opts.inbox.reader);
+      res.json({
+        batch: out.batch && { proposal_id: out.batch.proposal_id, terms_sha256: out.batch.terms_sha256, count: out.planned.length },
+        planned: out.planned, not_planned: out.notPlanned,
+        invoices: ids.map((id) => apInvoice(db, id)).filter((x): x is NonNullable<typeof x> => !!x).map(publicInvoice),
+      });
     } catch (e) { fail(res, e); }
   });
   // A person rejects the invoice: it is never paid. Never one filed for the CFO (that is decided on the phone) or paid.

@@ -53,10 +53,21 @@ Paid Airi purchases are booked by the ledger feed like a card charge (default ex
 3. **Read.** Claude Sonnet reads the fields and suggests an expense account. Its reading is used only when the invoice
    number, the total and the IBAN are written in the document and agree with the parser; else the parser's reading is
    used and the audit log says why. The account is accepted only from the chart.
+   **A scan or a photo** (a PDF with no text layer, or a JPEG/PNG kept as a one-page PDF; HEIC is refused with how to
+   export a JPEG) is read by Claude Sonnet from the pages (`src/ap/scan.ts`), twice, with the fields asked in a different
+   order. The model never decides: its fields go through the same checks. There is no text layer to hold them against,
+   so one reading is never enough: only when both agree on the IBAN (or account), the total, the currency and the
+   invoice number, and the IBAN passes its checksum, may it become ready, with the note "read from a scan" (and the
+   phone shows "read from a scan" beside the amount instead of a total line). Anything else goes to a person, with the
+   reading prefilled and each field shown next to the piece of the page it was read from. Limits: scans of up to 3 pages
+   and 10 MB, 200 scanned documents a day, two calls each; photos up to 8000 pixels a side and 25 megapixels (checked
+   from the header, before decoding); in an e-mail only photos attached as files of at least 8 KB (not logos). Without a
+   model key, past a limit or when no reading comes back, the scan waits for a person as before. Text on the page is
+   data: whatever it says, the payee is the supplier on file (the fraud check blocks another account).
 4. **Checked.** Blocks: a duplicate (also a reminder for an invoice already filed or paid), possible fraud (the existing
    check: changed bank details, a lookalike name, another account holder), an IBAN that fails its checksum, an account
    number or routing code that fails its country's format (an ABA checksum, an 8-digit UK account, a 6-digit sort
-   code), a total that is not subtotal plus tax. A person: a scan without text, a missing field, a currency Purser cannot
+   code), a total that is not subtotal plus tax. A person: a scan no model read (or whose two readings differ), a missing field, a currency Purser cannot
    pay or a bank country it has no payout guide for, a credit note, a receipt. Waits: a supplier not on file. Warns: an amount over twice the supplier's usual, a passed due date.
 5. **A note.** On every irregular invoice Claude Opus writes a short note for the person who decides (the code's own
    reasons without a key). Advisory only: it is shown on the page and with the payment proposal and never changes a
@@ -243,7 +254,7 @@ person; nothing is guessed.
 ## What is real, what is not in v1
 
 - Real: the reading and checks, the documents and the ledger, the payments in the Airwallex sandbox, Face ID.
-- Not yet: paying without Face ID under a limit; reading scans (OCR); a live mailbox; direct links to bookkeeping
+- Not yet: paying without Face ID under a limit; a live mailbox; direct links to bookkeeping
   packages; several approvers per supplier; FX booking for the Kit 11 EUR invoice payment's conversions (they are in
   the treasury ledger, not in the payables books).
 
@@ -257,3 +268,27 @@ person; nothing is guessed.
   handlers can sit behind the authenticated agent API, with `source: "api"` on `ingestDocument`.
 - **Accounts:** the payables accounts (1510 input VAT, 2100 accounts payable, 1203 other-currency balances) are in
   `AP_CHART`, outside the chart the T:0 sink mirrors, until T:0 has them.
+
+## One Face ID for many invoices (batch)
+
+On the payables page, tick the ready invoices and press **Pay selected with one Face ID** (at most 50). Each invoice
+is planned exactly as on its own (`payApInvoice`: floors, FX for the shortfall, fee reserve, duplicate guards), against
+what the earlier invoices of the same batch will already draw (`src/payouts/planContext.ts`), so the batch fits as a
+whole. Each becomes its own payment proposal with its own exact terms and hash; then one proposal of kind
+`payment_batch` (`src/policy/batch.ts`) lists them: each line's proposal id, its terms and their hash, the count and
+the total per currency. The phone shows the batch, in Dutch, with every line (supplier, amount, account, the invoice's
+own total line); the CFO signs the batch hash once.
+
+- **Approval** (`decide()`): the batch approves only if its stored terms still hash to the signed hash, its lines are
+  the ones filed with it, and every line's proposal still has exactly the signed terms, waits and has not run out. One
+  changed line refuses the whole batch. Each line then gets its own approval record against its own hash, with the
+  batch's id and hash in the note. Four eyes: a batch needs two people when any line would on its own.
+- **A line alone**: while it waits in a batch, a line is approved or rejected only with its batch, and never filed in a
+  second waiting batch. The phone lists the batch, not its lines.
+- **Taking a line out**: the passkey signs `batchRemovalSha256(batch hash, line)`; the batch and that line are
+  superseded (its invoice is ready again) and a new batch of the rest is filed, with a new hash.
+- **Execution** (`src/executors/paymentBatch.ts`): each line runs through its own executor with every check of a
+  single payment and its own request id. A line that fails leaves the others as they are; the batch is then FAILED and
+  running it again runs only the lines not paid yet.
+- **Proof**: `batchInclusion` / `verifyBatchInclusion` show offline, from the two canonical texts, that a payment was in
+  the signed batch.

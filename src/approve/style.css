@@ -203,3 +203,14 @@ main > button.confirm { width: 100%; margin-top: 4px; }
 .policy-words textarea.words { resize: vertical; min-height: 6.5em; line-height: 1.4; }
 .policy-words .muted { margin: 0; font-size: 14px; }
 .policy-words a.confirm { display: block; text-align: center; text-decoration: none; margin-top: 8px; }
+
+/* A payment batch (one Face ID for many payments): every line listed, each with its own "Haal eruit". */
+.batch h2 { font-size: 15px; margin: 18px 0 8px; }
+.batch-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; max-height: 52vh; overflow-y: auto; }
+.batch-line { border: 1px solid var(--border, #e3e5ea); border-radius: 12px; padding: 12px 14px; display: grid; gap: 4px; }
+.bl-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.bl-who { font-weight: 650; overflow-wrap: anywhere; }
+.bl-amount { font-weight: 700; white-space: nowrap; }
+.bl-meta { margin: 0; color: var(--muted, #5b6170); font-size: 14px; }
+.bl-line { margin: 2px 0 0; font-size: 14px; }
+.batch-line button.small { justify-self: start; min-height: 36px; padding: 0 12px; font-size: 14px; margin-top: 4px; }

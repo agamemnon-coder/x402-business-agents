@@ -148,6 +148,17 @@ CREATE TABLE IF NOT EXISTS proposals (
   created_at TEXT NOT NULL
 );
 
+-- A payment batch (src/policy/batch.ts): one proposal of kind payment_batch whose signed terms list each line's own
+-- payment proposal and terms hash. A line is in at most one waiting batch (checked when filed and when approved).
+CREATE TABLE IF NOT EXISTS batch_lines (
+  batch_id TEXT NOT NULL,
+  proposal_id TEXT NOT NULL,
+  position INTEGER NOT NULL,
+  terms_sha256 TEXT NOT NULL,
+  PRIMARY KEY (batch_id, proposal_id)
+);
+CREATE INDEX IF NOT EXISTS batch_lines_by_line ON batch_lines (proposal_id);
+
 CREATE TABLE IF NOT EXISTS approvals (
   approval_id INTEGER PRIMARY KEY,
   proposal_id TEXT NOT NULL UNIQUE REFERENCES proposals(proposal_id),
@@ -759,6 +770,19 @@ CREATE TABLE IF NOT EXISTS ap_documents (
   meta_json TEXT NOT NULL DEFAULT '{}',
   text_chars INTEGER NOT NULL,
   received_at TEXT NOT NULL
+);
+
+-- A scanned invoice's two model readings (src/ap/scan.ts): whether they agree, on what they differ, and where on the
+-- page each field was read (boxes, 0..1 of the page) so a person checks each field against the image.
+CREATE TABLE IF NOT EXISTS ap_scan_readings (
+  invoice_id TEXT PRIMARY KEY,
+  doc_sha256 TEXT NOT NULL,
+  agreed INTEGER NOT NULL CHECK (agreed IN (0, 1)),
+  differ_json TEXT NOT NULL,
+  boxes_json TEXT NOT NULL,
+  readings INTEGER NOT NULL,
+  model TEXT NOT NULL,
+  read_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS ap_invoices (

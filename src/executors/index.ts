@@ -140,6 +140,14 @@ async function executeApproved(db: DB, proposalId: string): Promise<void> {
       await executeSupplierPayment(db, awx.rail, awx.sim, proposalId);
       return;
     }
+    case "payment_batch": {
+      // One Face ID for many payments: each line runs as its own payment, with its own checks and idempotency.
+      const { executePaymentBatch } = await import("./paymentBatch.js");
+      const r = await executePaymentBatch(db, proposalId, (id) => executeApproved(db, id));
+      const unpaid = r.lines.filter((l) => l.outcome !== "paid");
+      if (unpaid.length) throw new Error(`${unpaid.length} of ${r.lines.length} lines not paid: ${unpaid.map((l) => `${l.proposal_id} ${l.detail ?? l.status}`).join("; ").slice(0, 280)}`);
+      return;
+    }
     default:
       throw new Error(`no executor for ${row.kind} yet`);
   }

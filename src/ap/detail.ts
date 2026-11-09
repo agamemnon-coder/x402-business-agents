@@ -3,18 +3,20 @@
 // audit log; the supplier's own total line from the stored document; and which actions the page may offer, with the
 // reason when one is closed. The reading's account is masked as on the list (publicInvoice).
 
+import { batchesOf } from "../policy/batchLines.js";
 import { readFileSync } from "node:fs";
 import type { DB } from "../db/open.js";
 import { payableCurrency } from "../payouts/routes.js";
 import { pdfText } from "./pdfText.js";
 import { publicInvoice } from "./public.js";
 import { totalLine } from "./reading.js";
+import type { Box } from "./scan.js";
 import { STATUS_WORDS } from "./review.js";
 import { apInvoice, type ApStatus, type Finding } from "./store.js";
 
 /** The checks, in the order the page lists them, and the finding codes that mean each one did not pass. */
 export const CHECKS: readonly { key: string; title: string; codes: readonly string[] }[] = [
-  { key: "document", title: "A supplier invoice, readable", codes: ["not_an_invoice", "receipt", "credit_note", "reminder", "no_text"] },
+  { key: "document", title: "A supplier invoice, readable", codes: ["not_an_invoice", "receipt", "credit_note", "reminder", "no_text", "read_from_scan"] },
   { key: "fields", title: "Every field read, and the amounts add up", codes: ["missing_fields", "sum_mismatch", "ambiguous_total"] },
   { key: "duplicate", title: "Not paid or filed before", codes: ["duplicate", "possible_duplicate", "rejected_before"] },
   { key: "supplier", title: "A supplier on file", codes: ["new_supplier", "unknown_vendor", "lookalike_vendor", "mixed_scripts", "payee_blocked"] },
@@ -37,6 +39,23 @@ export interface InvoiceDetail {
   total_line: string;
   document: { filename: string; source: string; from: string; subject: string };
   actions: { pay: Action; supplier_request: Action; reject: Action };
+  /** The batch this invoice's payment is in (one Face ID for many, src/policy/batch.ts), or null. */
+  batch: { id: string; status: string; count: string; waiting: boolean } | null;
+  /** A scanned invoice: whether its two readings agree, what they differ on, and where on which page each field was read. */
+  scan: ScanView | null;
+}
+export interface ScanView { agreed: boolean; differ: string[]; readings: number; model: string; boxes: Box[] }
+
+/** A scan's stored readings, for the detail page and the payment terms. */
+export function scanView(db: DB, id: string): ScanView | null {
+  const r = db.prepare("SELECT agreed, differ_json, boxes_json, readings, model FROM ap_scan_readings WHERE invoice_id = ?").get(id) as
+    { agreed: number; differ_json: string; boxes_json: string; readings: number; model: string } | undefined;
+  return r ? { agreed: r.agreed === 1, differ: JSON.parse(r.differ_json) as string[], readings: r.readings, model: r.model, boxes: JSON.parse(r.boxes_json) as Box[] } : null;
+}
+
+/** The line the CFO sees beside the amount for a scan: there is no text line on it, so it says what was read and how. */
+export function scanTotalLine(inv: { currency: string; total: string }, scan: ScanView): string {
+  return `read from a scan: ${inv.currency} ${inv.total}${scan.agreed ? " (two readings agree)" : " (a person checks it against the page)"}`;
 }
 
 const SEVERITY: CheckResult[] = ["block", "review", "wait", "warn"];
@@ -113,7 +132,9 @@ export async function invoiceDetail(db: DB, id: string): Promise<InvoiceDetail |
   const doc = db.prepare("SELECT path, filename, source, meta_json FROM ap_documents WHERE sha256 = ?").get(inv.doc_sha256) as
     { path: string; filename: string; source: string; meta_json: string } | undefined;
   let line = "";
-  if (doc) {
+  const scan = scanView(db, id);
+  if (scan) line = scanTotalLine(inv, scan);
+  else if (doc) {
     try { line = totalLine((await pdfText(readFileSync(doc.path))).text); } catch { line = ""; }
   }
   const meta = doc ? (JSON.parse(doc.meta_json) as Record<string, unknown>) : {};
@@ -125,5 +146,16 @@ export async function invoiceDetail(db: DB, id: string): Promise<InvoiceDetail |
     total_line: line.slice(0, 160),
     document: { filename: doc?.filename ?? "", source: doc?.source ?? "", from: m("from"), subject: m("subject") },
     actions: actionsFor(inv),
+    batch: batchOfInvoice(db, inv.proposal_id),
+    scan,
   };
+}
+
+/** The newest batch this invoice's payment proposal is in, with its count and whether it still waits for the CFO. */
+function batchOfInvoice(db: DB, proposalId: string | null): InvoiceDetail["batch"] {
+  if (!proposalId) return null;
+  const b = batchesOf(db, proposalId)[0];
+  if (!b) return null;
+  const count = (db.prepare("SELECT COUNT(*) AS n FROM batch_lines WHERE batch_id = ?").get(b.batch_id) as { n: number }).n;
+  return { id: b.batch_id, status: b.status, count: String(count), waiting: b.status === "PENDING_APPROVAL" };
 }

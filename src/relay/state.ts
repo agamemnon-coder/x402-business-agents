@@ -89,8 +89,10 @@ function plantedByDocument(db: DB): Map<string, string> {
 export const MAX_RELAY_PROPOSALS = 50;
 
 export function buildRelayState(db: DB, cfg: { rpId: string; label?: string; relayToken: string; mfa?: boolean }, now = new Date()): RelayState {
-  const rows = db.prepare(`SELECT * FROM proposals WHERE status = 'PENDING_APPROVAL' AND expires_at > ?
-    ORDER BY kind != 'policy_change', created_at, proposal_id LIMIT ${MAX_RELAY_PROPOSALS}`).all(now.toISOString()) as PRow[];
+  // A payment in a waiting batch is signed with its batch (src/policy/batch.ts), never on its own: only the batch is listed.
+  const rows = db.prepare(`SELECT * FROM proposals p WHERE p.status = 'PENDING_APPROVAL' AND p.expires_at > ?
+    AND NOT EXISTS (SELECT 1 FROM batch_lines b JOIN proposals bp ON bp.proposal_id = b.batch_id WHERE b.proposal_id = p.proposal_id AND bp.status = 'PENDING_APPROVAL')
+    ORDER BY p.kind != 'policy_change', p.created_at, p.proposal_id LIMIT ${MAX_RELAY_PROPOSALS}`).all(now.toISOString()) as PRow[];
   const planted = plantedByDocument(db);
   // The Treasury agent's last plan (with the agents on): which option it recommends, and its advice in its own words.
   const plans = (db.prepare("SELECT ts, payload_json FROM audit_log WHERE event = 'price_rise.plan' ORDER BY seq").all() as { ts: string; payload_json: string }[])

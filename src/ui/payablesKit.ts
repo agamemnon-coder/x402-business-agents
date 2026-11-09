@@ -95,6 +95,11 @@ h2 { font-size: 17px; font-weight: 700; }
 .chip[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
 .chip[aria-pressed="true"] b { color: var(--bg); }
 .list { overflow: hidden; }
+.pick { width: 18px; height: 18px; margin: 0 10px 0 0; vertical-align: -3px; accent-color: var(--accent); cursor: pointer; }
+.batchbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 16px; margin: 0 0 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.batchbar[hidden] { display: none; }
+.batchbar .what { flex: 1 1 220px; color: var(--muted); }
+.batchbar .what b { color: var(--text); }
 .row { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.3fr) 104px 138px 196px minmax(0, 2.4fr) 18px; align-items: center; gap: 14px; padding: 13px 18px; border-top: 1px solid var(--border); text-decoration: none; color: inherit; min-height: 58px; }
 .row:first-child { border-top: 0; }
 .row.th { min-height: 0; padding-top: 11px; padding-bottom: 11px; color: var(--muted); font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; background: var(--sunken); }
