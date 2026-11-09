@@ -17,10 +17,10 @@ describe("/metal, one by one", () => {
     const doc = readFileSync(new URL(`../${METAL_TX_LIST}`, import.meta.url), "utf8");
     expect(doc).toBe(metalTxList());
     for (const t of txs) expect(doc).toContain(`(https://testnet.metalntwx.com/tx/${t.tx})`);
-    expect(page).toContain(`All ${txs.length} Metal transactions, one by one`);
+    expect(page).toContain(`All ${txs.length} transactions`);
     expect(page).toContain(`blob/main/${METAL_TX_LIST}`);
   });
   it("says who signed the replace on chain and names the second approver plainly", () => {
-    expect(page).toContain("+ a test passkey pressed by the build tool (labelled); the runner's owner key signed on chain");
+    expect(page).toContain("Face ID in Purser + a build-tool test passkey; the owner key signed on chain");
   });
 });

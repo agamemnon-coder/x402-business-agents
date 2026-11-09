@@ -113,7 +113,7 @@ export function metalStoryHtml(st: MetalStory): string {
     block("receipt", "", `${p.total} Metal payments, each its own transaction`, esc(`${p.sales} sales · ${p.purchases} supplier purchases · ${p.refunds} refunds · ${p.sweeps} sweep`), [ext(p.account), ext(p.checked)]),
     ...(r ? [block("ban", "bad", `#${r.seq} refused on chain`, `${esc(`${r.amount} over the ${r.cap} cap`)}: <code>${esc(r.code)}</code>; nothing moved`, [ext(r.proof)], refusalNote(r))] : []),
     // Review 9 Nov: who signs on chain, and who the second approver was, said where the card is.
-    ...(x ? [block("scan-face", "ok", `Mandates replaced after Face ID`, esc(`${x.proposal}: the CFO's Face ID in Purser + a test passkey pressed by the build tool (labelled); the runner's owner key signed on chain${x.revoked ? `. #${x.revoked.seq} on the old mandate: ${x.revoked.code}` : ""}`),
+    ...(x ? [block("scan-face", "ok", `Mandates replaced after Face ID`, esc(`${x.proposal}: Face ID in Purser + a build-tool test passkey; the owner key signed on chain${x.revoked ? `. #${x.revoked.seq} on the old mandate: ${x.revoked.code}` : ""}`),
       x.steps.map((s) => ext(s.proof, `${AGENT_NAME(s.agent)} ${s.cap}`)))] : []),
   ].join("");
 }
@@ -152,7 +152,7 @@ export function metalPage(run: AgentRun = agentRun()): string {
     line: "Figures from the main run's record; links to Metal's testnet explorer.",
     // The one canonical set (jury review, 6 Nov, #5), first in the proof: the top counts the Metal ones.
     folds: fold("The live proof, with every tx", [...(pay.sums && pay.onChain === st.payments.total ? [plainLi(`${pay.line}.`)] : []), ...p.metal])
-      + fold(`All ${metalTxs().length} Metal transactions, one by one`, [`<li>${ext({ label: "Each with its link to the explorer", href: `${REPO_BLOB}${METAL_TX_LIST}` })}</li>`])
+      + fold(`All ${metalTxs().length} transactions`, [`<li>${ext({ label: "Each with its link to the explorer", href: `${REPO_BLOB}${METAL_TX_LIST}` })}</li>`])
       + fold("Beyond the kit: separate runs, each dated (not the main run)", [...beyond,
         plainLi("In the main run, Face ID approves the change in Purser and the account's owner key, held by Purser's runner, signs the replace on chain; passkeys signing on chain themselves ran separately (1 November, above).")])
       + fold("The Metal features we use, and their docs", used.map((f) => docsLi(f.title, f.docs)))
