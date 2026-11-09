@@ -246,6 +246,24 @@ const EN = {
   "dt.read": "What Purser read",
   "dt.read_by_code": "Read by Purser's code",
   "dt.read_by": "Read by {by}",
+  "dt.scan.title": "Read from a scan",
+  "dt.scan.agree": "2 readings agree",
+  "dt.scan.person": "Needs a person",
+  "dt.scan.agreed": "Two independent readings agree on the IBAN, total, currency and invoice number. Check them against the page before paying.",
+  "dt.scan.one": "Only one reading came back: a person checks every field against the page.",
+  "dt.scan.differ": "The two readings differ on {fields}: a person checks every field against the page.",
+  "dt.scan.field.vendor": "Supplier",
+  "dt.scan.field.invoice_no": "Invoice number",
+  "dt.scan.field.issue_date": "Invoice date",
+  "dt.scan.field.due_date": "Due date",
+  "dt.scan.field.currency": "Currency",
+  "dt.scan.field.subtotal": "Subtotal",
+  "dt.scan.field.tax": "VAT",
+  "dt.scan.field.total": "Total",
+  "dt.scan.field.iban": "IBAN",
+  "dt.scan.field.bic": "BIC",
+  "dt.scan.field.account_number": "Account",
+  "dt.scan.field.reference": "Reference",
   "dt.vat_id": "VAT ID",
   "dt.invoice_number": "Invoice number",
   "dt.invoice_date": "Invoice date",
@@ -629,7 +647,7 @@ const NL: { readonly [K in Key]: string } = {
 
   "status.blocked": "Geblokkeerd",
   "status.needs_review": "Een mens kijkt ernaar",
-  "status.needs_vendor": "Wacht op een nieuwe leverancier",
+  "status.needs_vendor": "Wacht op leverancier",
   "status.waiting_cfo": "Wacht op Face ID van de CFO",
   "status.ready": "Klaar om te betalen",
   "status.paid": "Betaald",
@@ -803,6 +821,24 @@ const NL: { readonly [K in Key]: string } = {
   "dt.read": "Wat Purser las",
   "dt.read_by_code": "Gelezen door de code van Purser",
   "dt.read_by": "Gelezen door {by}",
+  "dt.scan.title": "Gelezen van een scan",
+  "dt.scan.agree": "2 lezingen gelijk",
+  "dt.scan.person": "Een mens kijkt",
+  "dt.scan.agreed": "Twee onafhankelijke lezingen zijn het eens over de IBAN, het totaal, de valuta en het factuurnummer. Controleer ze tegen de pagina voordat je betaalt.",
+  "dt.scan.one": "Er kwam maar één lezing terug: een mens controleert elk veld tegen de pagina.",
+  "dt.scan.differ": "De twee lezingen verschillen in {fields}: een mens controleert elk veld tegen de pagina.",
+  "dt.scan.field.vendor": "Leverancier",
+  "dt.scan.field.invoice_no": "Factuurnummer",
+  "dt.scan.field.issue_date": "Factuurdatum",
+  "dt.scan.field.due_date": "Vervaldatum",
+  "dt.scan.field.currency": "Valuta",
+  "dt.scan.field.subtotal": "Subtotaal",
+  "dt.scan.field.tax": "Btw",
+  "dt.scan.field.total": "Totaal",
+  "dt.scan.field.iban": "IBAN",
+  "dt.scan.field.bic": "BIC",
+  "dt.scan.field.account_number": "Rekening",
+  "dt.scan.field.reference": "Kenmerk",
   "dt.vat_id": "Btw-nummer",
   "dt.invoice_number": "Factuurnummer",
   "dt.invoice_date": "Factuurdatum",
@@ -1199,6 +1235,13 @@ export const DATA_NL: { readonly [field: string]: readonly (readonly [string, st
   counterparty: [["^own account$", "eigen rekening"]],
   // Why an invoice changed state (src/ap/pay.ts, the invoice's timeline); a person's own words after the colon stay.
   reason: [
+    // Why an invoice could not go into a batch (src/ap/pay.ts).
+    ["^(\\S+) is a credit note: it is never paid; it lowers what is open to (.+)$", "$1 is een creditnota: die wordt nooit betaald; die verlaagt wat er openstaat bij $2"],
+    ["^(\\S+) is (.+), not ready to pay: (.+)$", "$1 is nog niet klaar om te betalen ($2): $3"],
+    ["^(\\S+) is (.+), not ready to pay$", "$1 is nog niet klaar om te betalen ($2)"],
+    ["^(\\S+) is in (\\S+); Purser does not pay that currency.*$", "$1 is in $2; die valuta betaalt Purser niet, dus een mens betaalt hem"],
+    ["^no payables invoice (.+)$", "geen factuur $1"],
+    ["^the payment could not be planned: (.+)$", "de betaling kon niet worden ingepland: $1"],
     ["^checked again$", "opnieuw gecontroleerd"],
     ["^payment filed for the CFO's Face ID$", "betaling klaargezet voor de Face ID van de CFO"],
     ["^paid under (.+)$", "betaald onder $1"],
@@ -1257,6 +1300,20 @@ const SERVER_ONLY = /^(app\.|nav\.|test\.|lang\.|ov\.(title|h1|lede|check_paymen
 export const localKeys = (k: Key): boolean => !k.startsWith("cs.") && !SERVER_ONLY.test(k);
 /** What the console's script needs: everything but the local pages' own. */
 export const consoleKeys = (k: Key): boolean => !k.startsWith("ov.") && !SERVER_ONLY.test(k);
+
+/**
+ * The literal keys a page's source refers to: t('k'), tk('k', …), tn('k') (its _one and _other forms) and data-t="k".
+ * A page's catalogue filter keeps these on top of its prefix rules, so a key the script asks for always travels with it
+ * (the console showed raw keys such as nav.invoices and ov.tile.open when a filter left them out).
+ */
+export function keysUsedIn(source: string): Set<string> {
+  const key = "[a-z][a-z0-9_]*(?:\\.[a-z0-9_]+)+";
+  const out = new Set<string>();
+  for (const m of source.matchAll(new RegExp(`\\b(?:t|tk)\\('(${key})'`, "g"))) out.add(m[1]!);
+  for (const m of source.matchAll(new RegExp(`\\btn\\('(${key})'`, "g"))) { out.add(`${m[1]}_one`); out.add(`${m[1]}_other`); }
+  for (const m of source.matchAll(new RegExp(`data-t="(${key})"`, "g"))) out.add(m[1]!);
+  return out;
+}
 
 /** Amounts and dates on the server (the shell's HTML), the same as the client writes them. */
 export function fmtAmount(lang: Lang, v: string): string {
