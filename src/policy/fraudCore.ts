@@ -73,7 +73,16 @@ export function editDistance(a: string, b: string): number {
 const hasOtherScript = (s: string) => [...s].some((ch) => /\p{L}/u.test(ch) && !/\p{Script=Latin}/u.test(ch));
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-const BANK_CHANGE = /bank (details|account)[^.\n]{0,40}(changed|new)|\bnew (bank|account)\b|update your records|changed (our )?bank/i;
+// A change of bank announced in the text, in the languages Purser's suppliers write in (English, German, Dutch). A
+// signal for the person who verifies, never a block on its own: the bank details themselves are what is checked.
+const BANK_CHANGE = new RegExp([
+  // English
+  "bank (details|account)[^.\\n]{0,40}(changed|new)", "\\bnew (bank|account)\\b", "update your records", "changed (our )?banks?",
+  // German: "Unsere Bankverbindung hat sich geändert", "neue Bankverbindung", "geänderte Kontodaten", "unserem neuen Konto"
+  "(bank|konto)(verbindung|daten|angaben|nummer)[^.\\n]{0,40}(ge(ä|ae)ndert|neu\\b)", "\\bneue[mnrs]? (bank|konto)", "\\bge(ä|ae)nderte[mnrs]? (bank|konto)",
+  // Dutch: "ons rekeningnummer is gewijzigd", "een nieuw rekeningnummer", "bankgegevens zijn gewijzigd"
+  "(rekening(nummer)?|bankrekening(nummer)?|bankgegevens)[^.\\n]{0,40}(gewijzigd|veranderd)", "\\bnieuwe? (bank)?(rekening|gegevens)",
+].join("|"), "i");
 const PRESSURE = /\burgent(ly)?\b|\bimmediately\b|\btoday\b|avoid (an? )?(interruption|suspension|penalt)|final notice|\bconfidential\b/i;
 
 /** How close a name must be to count as a lookalike: two edits for names of eight letters or more, one below. */
