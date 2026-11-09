@@ -399,12 +399,12 @@ function scenes(r: RunRecord, ev: Ev[]): Scene[] {
     const face = bill ? ev.find((e): e is Extract<Ev, { k: "face" }> => e.k === "face" && bill.what.includes(e.id))
       ?? ev.filter((e): e is Extract<Ev, { k: "face" }> => e.k === "face" && /invoice/i.test(e.title) && e.status === "APPROVED" && e.at <= bill.at).pop() : undefined;
     const steps: Step[] = [];
-    const fx = fxOf(r), t = timings(r);
+    const fx = fxOf(r);
     if (sweep) steps.push({ icon: "wallet", text: `${money(sweep.amount, sweep.unit)} swept after finality`, tone: "ok", proof: sweep.proof });
     if (booked) steps.push({ icon: "landmark", text: `${money(booked.amount, booked.unit)} booked at Airwallex`, tone: "ok" });
     if (fx && bill && !bill.refused) steps.push({ icon: "arrow-left-right", text: `${fx.buy} bought by FX for the shortfall`, tone: "ok" });
     // PAID in the sandbox: Purser moves the transfer to SENT, then PAID, itself (settleInSandbox); the seconds are measured.
-    if (bill && !bill.refused && face) steps.push({ icon: "circle-check", text: `${bill.unit === "EUR" ? SHORT_EUR(bill.amount) : money(bill.amount, bill.unit)} licence PAID by SWIFT · ${t.faceToPaid !== null ? `${t.faceToPaid} s after Face ID` : "Face ID"} · ${SANDBOX_SETTLED}`, tone: "ok" });
+    if (bill && !bill.refused && face) steps.push({ icon: "circle-check", text: `${bill.unit === "EUR" ? SHORT_EUR(bill.amount) : money(bill.amount, bill.unit)} licence by SWIFT, accepted by Airwallex with the signed hash · ${SANDBOX_SETTLED}`, tone: "ok" });
     else {
       if (bill && face) steps.push({ icon: "scan-face", text: `${money(bill.amount, bill.unit)} licence: Face ID approved`, tone: "face" });
       if (bill) steps.push({ icon: bill.refused ? "ban" : "circle-check", text: bill.refused ? (bill.refused.by === "airwallex-sandbox" ? `Airwallex: ${bill.refused.reason}` : `Airwallex refused: ${bill.refused.reason}`) : "Paid by SWIFT", tone: bill.refused ? "bad" : "ok" });

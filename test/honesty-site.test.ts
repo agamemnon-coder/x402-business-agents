@@ -212,8 +212,10 @@ describe("5. PAID in the sandbox, where the settlement is simulated", () => {
     expect(timings(record).faceToPaid).toBe(6);
     const pages = buildPages();
     // The moment's own step (src/redesign/run.ts) keeps the qualifier; Home shows no scene text since 7 Nov (Max).
-    expect(agentRun().scenes[2]!.steps.map((s) => s.text)).toContain(`€240 licence PAID by SWIFT · 6 s after Face ID · ${SANDBOX_SETTLED}`);
-    expect(words(pages.airwallex!)).toContain(`6 s after Face ID, ${SANDBOX_SETTLED}`);
+    // Review 9 Nov: the headline is that Airwallex accepted the signed payment, not "PAID" (the settlement is simulated).
+    expect(agentRun().scenes[2]!.steps.map((s) => s.text)).toContain(`€240 licence by SWIFT, accepted by Airwallex with the signed hash · ${SANDBOX_SETTLED}`);
+    expect(words(pages.airwallex!)).toContain(`Airwallex accepted it with the signed hash; ${SANDBOX_SETTLED}`);
+    expect(words(pages.airwallex!)).not.toMatch(/PAID by SWIFT/);
     for (const [name, html] of Object.entries({ home: homePage(), proof: proofPage(), watch: pages.watch!, airwallex: pages.airwallex!, dashboard: PAGE })) {
       const t = words(html);
       for (const m of t.matchAll(/\d+ s after Face ID/g)) expect({ name, said: t.slice(m.index, m.index + 90).includes(SANDBOX_SETTLED) }).toEqual({ name, said: true });

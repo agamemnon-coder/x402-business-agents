@@ -4,7 +4,7 @@
 // see the proof. One button. The numbers, the partners' proof and the business live on /proof. Everything from the
 // recorded run (src/redesign/run.ts).
 
-import { BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CAVEAT_LINK, CORE_SENTENCE, DIFFERENTIATORS, HERO, JUDGE_LINE, KIT_LINE, VISA_AWARD_ON, VISA_EXTRA_LINK, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
+import { designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CAVEAT_LINK, CORE_SENTENCE, DIFFERENTIATORS, HERO, JUDGE_LINE, KIT_LINE, VISA_AWARD_ON, VISA_EXTRA_LINK, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
 import { agentRun, type AgentRun } from "./run.js";
 import { esc, icon, page, stageHtml } from "./ui.js";
 
@@ -15,6 +15,7 @@ const CSS = `.hero { padding: 24px 0 44px; }
 @media (min-width: 980px) { .hero { padding: 56px 0 72px; } .hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 600px); grid-template-areas: "copy stage"; gap: 0 52px; align-items: center; } }
 .badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; }
 /* The three steps (Max, 7 Nov): one way through the site. */
+p.partner { margin: 14px 0 0; font-weight: 650; } p.partner a { color: var(--accent); }
 ol.flow { list-style: none; margin: 22px 0 0; padding: 0; display: grid; gap: 10px; max-width: 30em; }
 ol.flow a { display: grid; grid-template-columns: 30px 22px minmax(0, 1fr); align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--border); background: var(--surface); color: var(--text); text-decoration: none; }
 ol.flow a:hover { border-color: var(--accent); }
@@ -164,7 +165,7 @@ export const FLOW = [
 export const START = "Start: watch the agents";
 
 /** opts.trySign: the bundle also carries /try/sign (TRY_SIGN_ENABLED), so step 2 leads there; otherwise to /try. */
-export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean } = {}): string {
+export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; partnerUrl?: string } = {}): string {
   const moments = heroMoments(run);
   const s1 = run.scenes.find((s) => s.n === 1);
   const flow = FLOW.map((f) => ({ ...f, href: f.href === "try/sign" && !opts.trySign ? "try" : f.href }));
@@ -179,6 +180,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean }
     <a class="btn primary big start" href="watch">${icon("play", 18)}${esc(START)}</a>
     ${opts.trySign ? `<p class="judgeline"><a href="judge">${esc(JUDGE_LINE)} →</a></p>` : ""}
     <ol class="flow" aria-label="Three steps">${flow.map((f) => `<li><a href="${esc(f.href)}"><span class="fn">${f.n}</span>${icon(f.icon, 20)}<span class="ft"><b>${esc(f.title)}</b><small>${esc(f.sub)}</small></span></a></li>`).join("")}</ol>
+    ${designPartnerHtml(opts.partnerUrl ?? DESIGN_PARTNER_URL)}
     <p class="caveat">${esc(CAVEAT_LINE)} <a href="#real" data-real>${esc(CAVEAT_LINK)}</a></p>
   </div>
   <div class="show">${stageHtml(run.agents, s1?.steps[0]?.text ?? "Northwind Outdoor sells live stock data per query")}<div class="runlabel">${icon("database", 14)}<span>${esc(run.label)}</span></div>

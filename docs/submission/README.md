@@ -20,12 +20,12 @@ Purser · AI agents spend. You sign off.
 ## Synopsis
 
 <!-- synopsis -->
-AI agents are starting to spend company money; Purser lets them, through Airwallex and Metal, only within limits the CFO signs with Face ID. An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control. Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude. Try it in a minute.
+For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice over its limit, you sign the exact terms with Face ID. An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control. Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude. Try it in a minute.
 <!-- /synopsis -->
 
 ## Description
 
-Characters: **3,997** (the text between the markers, as pasted). Max's target is 3,000–4,000; the form's own limit is
+Characters: **3,992** (the text between the markers, as pasted). Max's target is 3,000–4,000; the form's own limit is
 not known yet. `test/submission.test.ts` checks this count and keeps the text under 4,000. The long text, as it stood on
 5 November, with Airwallex, Metal, Claude, the controls and the other live tests in full: [long-description.md](long-description.md).
 The Airi run of 7 November (Visa Intelligent Commerce via Airwallex's Airi; Airwallex sandbox, test card, test money)
@@ -48,12 +48,12 @@ hash in 2 SWIFT payouts." (no fact dropped).
 - One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control.
 - Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude.
 
-**Demo: Home, Watch, Try, Proof.** Try: Purser's code stops a fake invoice Claude Sonnet reads live; change the rule; the agent pays alone.
+**Demo.** Try: Purser's code stops a fake invoice Claude Sonnet reads live; change the rule; the agent pays alone.
 
 **The proof.** The Kit 11 scenario, run live on 3 November. Starter Kit 11 (x402 Business Agents), entered for the Metal Award and the Visa Award. Three Claude agents run Northwind Outdoor, an outdoor wholesaler that sells live stock data to retailers per query, on 20 test USD; Max plays the CFO and signs with a personal passkey (Face ID on a phone). The CFO signed 5 decisions with Face ID (+1 co-signature).
 1. **The price rise.** Stockline's price doubled. We switched off our own check once to prove the chain holds the line: Purser refuses an over-cap purchase before signing; with that check off for one purchase, Metal refused it anyway. That was purchase #24; the refusal is recorded on chain (tx `0x2e92f9cb…1871`). The CFO signed option A (P-0002).
 2. **The dispute.** A simulated customer disputes 12 orders, saying its agent never placed them. Every order carries its agent's signature, so that claim fails. Three orders had wrong data; the Support agent refunds those 3 (0.15 test USD) itself. "Refund the other 9" goes to the CFO, who rejects it with Face ID. Refunds #7, #10 and #13, each on chain.
-3. **The euro bill.** The EUR 240.00 licence: EUR 110.00 bought by FX for USD 124.29, SWIFT transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, PAID 6 s after Face ID.
+3. **The euro bill.** The EUR 240.00 licence: EUR 110.00 bought by FX for USD 124.29, SWIFT transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, accepted by Airwallex with the signed hash.
 
 86 Metal payments + 1 card charge, all inside the limits. 16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.
 

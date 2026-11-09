@@ -12,10 +12,10 @@ import { SANDBOX_SETTLED, SPLIT_LINE, VISA_CLAIM, VISA_TAP_STATUS } from "../con
 import { airwallexData } from "../partners/data.js";
 import { agentRun, callBadge, cardRaiseOf, decisionsOf, faceIdDecisions, family, fxOf, ownTap, payments, split, stops, tapRun, timings, type AgentRun, type Ev } from "./run.js";
 import { LOGO, earlierLine, fold, partnerProof } from "./proof.js";
-import { metalStory, refusalNote, separateRuns, type MetalStory } from "./metalStory.js";
+import { EXPLORER, REPO_BLOB, metalStory, refusalNote, separateRuns, type MetalStory } from "./metalStory.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { AIRI_CSS, airiRunBlock } from "./airiRun.js";
-import { awxRunBlock } from "./awxRun.js";
+import { awxRun, awxRunBlock } from "./awxRun.js";
 import { vic2RunBlock } from "./vic2Run.js";
 import { VIC_FLOW_CSS, vicFlowBlock } from "./vicFlow.js";
 import { OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
@@ -112,9 +112,30 @@ export function metalStoryHtml(st: MetalStory): string {
       st.mandates.map((m) => ext(m.proof, `${AGENT_NAME(m.agent)} ${m.cap}${m.how === "bound" ? ", after Face ID" : ", a payment under it"}`))),
     block("receipt", "", `${p.total} Metal payments, each its own transaction`, esc(`${p.sales} sales · ${p.purchases} supplier purchases · ${p.refunds} refunds · ${p.sweeps} sweep`), [ext(p.account), ext(p.checked)]),
     ...(r ? [block("ban", "bad", `#${r.seq} refused on chain`, `${esc(`${r.amount} over the ${r.cap} cap`)}: <code>${esc(r.code)}</code>; nothing moved`, [ext(r.proof)], refusalNote(r))] : []),
-    ...(x ? [block("scan-face", "ok", `Mandates replaced after Face ID`, esc(`${x.proposal}: the CFO's Face ID + a labelled test passkey${x.revoked ? `; #${x.revoked.seq} on the old mandate: ${x.revoked.code}` : ""}`),
+    // Review 9 Nov: who signs on chain, and who the second approver was, said where the card is.
+    ...(x ? [block("scan-face", "ok", `Mandates replaced after Face ID`, esc(`${x.proposal}: Face ID in Purser + a build-tool test passkey; the owner key signed on chain${x.revoked ? `. #${x.revoked.seq} on the old mandate: ${x.revoked.code}` : ""}`),
       x.steps.map((s) => ext(s.proof, `${AGENT_NAME(s.agent)} ${s.cap}`)))] : []),
   ].join("");
+}
+
+/**
+ * Every Metal transaction of the main run, one line each (review 9 Nov: "86 payments, each its own transaction" could not
+ * be clicked one by one). From the trace derived from the main run's ledger (docs/demo/main-run-trace.json), which the
+ * tests hold to the record; no chain call.
+ */
+/** The main run's Metal transactions as a list on GitHub (made by metalTxList(), held to the trace by its test). */
+export const METAL_TX_LIST = "docs/runs/2026-11-03-main-run-metal-transactions.md";
+/** That list as Markdown. */
+export function metalTxList(): string {
+  const txs = metalTxs();
+  return `# The main run's ${txs.length} Metal transactions (3 November 2026)\n\nEvery Metal payment of the main run, one line each, with its link to Metal's testnet explorer. Derived from\n[the trace](../demo/main-run-trace.json) of the main run's ledger; each one is also checked against the chain in\n[the data check](2026-11-03-main-run-data-qa.md). Test money only. Made by \`metalTxList()\` in \`src/redesign/partners.ts\`.\n\n${txs.map((t, i) => `${i + 1}. ${t.what}: [\`${t.tx}\`](${EXPLORER}/tx/${t.tx})`).join("\n")}\n`;
+}
+
+export function metalTxs(): { what: string; tx: string }[] {
+  const trace = JSON.parse(readFileSync(new URL("../../docs/demo/main-run-trace.json", import.meta.url), "utf8")) as { payments: { kind: string; ref: string; amount: string; currency: string; rail: string; rail_id: string | null; at: string }[] };
+  const word: Record<string, string> = { sale: "Sale", purchase: "Supplier purchase", refund: "Refund", sweep: "Sweep" };
+  return trace.payments.filter((p) => p.rail === "metal" && typeof p.rail_id === "string" && /^0x[0-9a-f]{64}$/.test(p.rail_id))
+    .map((p) => ({ what: `${word[p.kind] ?? p.kind} ${/^\d+$/.test(p.ref) ? `#${p.ref}` : p.ref}, ${p.amount} test ${p.currency === "USDZ" ? "USD" : p.currency}, ${p.at.slice(11, 19)} UTC`, tx: p.rail_id! }));
 }
 
 export function metalPage(run: AgentRun = agentRun()): string {
@@ -131,6 +152,7 @@ export function metalPage(run: AgentRun = agentRun()): string {
     line: "Figures from the main run's record; links to Metal's testnet explorer.",
     // The one canonical set (jury review, 6 Nov, #5), first in the proof: the top counts the Metal ones.
     folds: fold("The live proof, with every tx", [...(pay.sums && pay.onChain === st.payments.total ? [plainLi(`${pay.line}.`)] : []), ...p.metal])
+      + fold(`All ${metalTxs().length} transactions`, [`<li>${ext({ label: "Each with its link to the explorer", href: `${REPO_BLOB}${METAL_TX_LIST}` })}</li>`])
       + fold("Beyond the kit: separate runs, each dated (not the main run)", [...beyond,
         plainLi("In the main run, Face ID approves the change in Purser and the account's owner key, held by Purser's runner, signs the replace on chain; passkeys signing on chain themselves ran separately (1 November, above).")])
       + fold("The Metal features we use, and their docs", used.map((f) => docsLi(f.title, f.docs)))
@@ -150,7 +172,8 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
   // Airwallex, read back (section B): the CFO's hash with the payment, and each card's controls beside the CFO policy.
   const hash = hashTravel(run.record), cards = cardsReadback(), rows = cards ? cardControlRows(run.record, cards) : [];
   // awx-1 (7 Nov): the Airwallex-only run, a separate world, dated and labelled, below the main run's read-backs.
-  const awx1 = awxRunBlock();
+  const awx1Rec = awxRun();
+  const awx1 = awxRunBlock(awx1Rec);
   // The Airi run (7 Nov): Visa Intelligent Commerce via Airwallex's Airi, a separate world, dated and labelled.
   // vic-2 (7 Nov): what Purser adds around Airi, under the first Airi run.
   const airi = airiRunBlock() + vic2RunBlock(undefined, { short: true });
@@ -160,8 +183,8 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
     logo: LOGO.airwallex, h1: "The bank side of the agents", proofHash: "airwallex",
     picture: [node("zap", "Metal earnings", "final on chain", "metal"), arrow, node("landmark", booked ? `${booked.amount} USD booked` : "Booked at Airwallex", "after finality", "awx"), arrow,
       node("scan-face", "CFO · Face ID", "approves the invoice"), arrow, ...(fx ? [node("arrow-left-right", `${fx.buy} by FX`, "only the shortfall", "awx"), arrow] : []),
-      node("circle-check", licence ? `${eur} PAID by SWIFT` : "Paid by SWIFT", licence ? `${t.faceToPaid !== null ? `${t.faceToPaid} s after Face ID, ${SANDBOX_SETTLED} · ` : ""}Airwallex ${licence.proof.label.replace(/^Airwallex /, "")}` : "", "ok")].join(""),
-    nums: nums([[booked?.amount ?? "0", "USD booked after finality"], [eur || "0", "licence paid by SWIFT"], ...(fx ? [[fx.buy.replace(/^EUR /, "€").replace(/\.00$/, ""), "bought by FX for the shortfall"] as [string, string]] : []), [String(st.tapDeclines), "card decline at the limit (TAP run)"], ...(earlier ? [[String(earlier), "earlier attempt, nothing paid"] as [string, string]] : [])]),
+      node("circle-check", licence ? `${eur} by SWIFT, accepted` : "SWIFT, accepted", licence ? `Airwallex accepted it with the signed hash; ${SANDBOX_SETTLED} · Airwallex ${licence.proof.label.replace(/^Airwallex /, "")}` : "", "ok")].join(""),
+    nums: nums([[booked?.amount ?? "0", "USD booked after finality"], [eur || "0", "licence paid by SWIFT"], ...(fx ? [[fx.buy.replace(/^EUR /, "€").replace(/\.00$/, ""), "bought by FX for the shortfall"] as [string, string]] : []), [String(st.tapDeclines + (awx1Rec?.declines_met.length ?? 0)), "card declines by Airwallex (TAP run and awx-1)"], ...(earlier ? [[String(earlier), "earlier attempt, nothing paid"] as [string, string]] : [])]),
     line: "Airwallex enforces each card's limit itself, and pays an invoice only after the CFO's Face ID.",
     extra: readBack,
     // Proof's "Policy and card side by side" opens the cards' fold here (#controls, or one card's #card-<agent>).

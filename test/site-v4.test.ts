@@ -59,7 +59,9 @@ describe("the site after v4", () => {
     // step it is, its title, one short line and purchase B's id or value, and C's branch off step 2 (100 words; 372 as built).
     // Home: 195 since Visa's word on the VIC run (7 Nov): the award pill reads "entered for the Metal Award and the Visa
     // Award", four words more (192 as built).
-    const budget: Record<string, number> = { home: 195, watch: 125, try: 180, proof: 560, metal: 180, airwallex: 365, visa: 465, claude: 150, notFound: 40 };
+    // Metal: 200 since the review of 9 Nov, for who signs the replace on chain on its card and the fold that links all 86
+    // transactions one by one (199 as built).
+    const budget: Record<string, number> = { home: 195, watch: 125, try: 180, proof: 560, metal: 200, airwallex: 365, visa: 465, claude: 150, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 

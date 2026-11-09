@@ -2,6 +2,19 @@
 // internal ids (sourcing, support, treasury); people see the names below.
 
 export const PRODUCT = "Purser";
+
+/**
+ * Where a company that wants to use Purser goes (review 9 Nov: no call to action anywhere). Empty until Max gives the
+ * address; while empty, nothing shows. Once set (an https: or mailto: URL), the link shows on Home, on /try/sign's
+ * closing card and, by hand, in the README under the badges (test/design-partner.test.ts keeps the README in step).
+ */
+export const DESIGN_PARTNER_URL = "";
+export const DESIGN_PARTNER_LABEL = "Become a design partner";
+/** The design-partner link as HTML, or "" while there is no valid address. */
+export function designPartnerHtml(url: string = DESIGN_PARTNER_URL): string {
+  if (!/^(https:\/\/|mailto:)[^\s"'<>]+$/.test(url)) return "";
+  return `<p class="partner"><a href="${url.replace(/&/g, "&amp;")}">${DESIGN_PARTNER_LABEL} →</a></p>`;
+}
 export const TAGLINE = "Give every AI agent its own company card, with limits the CFO sets.";
 
 /**
@@ -82,11 +95,12 @@ export const TRY_IT = "Try it in a minute.";
 /** Where TRY_IT goes: a test world of the visitor's own, signed with their own passkey; nothing real moves. */
 export const TRY_SIGN_URL = "https://kit11.max-31b.workers.dev/try/sign";
 /**
- * What Purser is, in one sentence (section D, 6 Nov): the problem, then Purser's answer. First under the title on the
- * README, under Home's heading and at the start of the form's synopsis. "Only within limits the CFO signs": the CFO's
- * policy is signed with Face ID (docs/cfo-policy.md), and anything beyond it is a proposal the CFO signs with Face ID.
+ * What Purser is, in one sentence: since the review of 9 Nov customer-first, who it is for and the moment of the
+ * /try/sign demo (Treasury asks to pay Alpine Packaging's €1,850 invoice, over the limit it may pay alone). First under the
+ * title on the README, under Home's heading and at the start of the form's synopsis. Anything beyond the CFO's signed
+ * policy is a proposal the CFO signs with Face ID (docs/cfo-policy.md).
  */
-export const WHAT_IT_IS = "AI agents are starting to spend company money; Purser lets them, through Airwallex and Metal, only within limits the CFO signs with Face ID.";
+export const WHAT_IT_IS = "For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice over its limit, you sign the exact terms with Face ID.";
 /**
  * The first screen, in this order, on the README and in the form's synopsis: what Purser is, the three sentences, then
  * "Try it in a minute." Only then the badges and the details. Home says what Purser is and the three sentences under its

@@ -25,7 +25,7 @@ const OTHERS = /\b(Pleo|Ramp|Brex|Spendesk|Payhawk|Expensify|Mercury|Revolut|Wis
 describe("the first screen (section D, 6 Nov)", () => {
   it("is what Purser is, the three sentences, then Try it in a minute", () => {
     expect(FIRST_SCREEN).toEqual([WHAT_IT_IS, ...DIFFERENTIATORS, TRY_IT]);
-    expect(WHAT_IT_IS).toBe("AI agents are starting to spend company money; Purser lets them, through Airwallex and Metal, only within limits the CFO signs with Face ID.");
+    expect(WHAT_IT_IS).toBe("For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice over its limit, you sign the exact terms with Face ID.");
     expect(TRY_IT).toBe("Try it in a minute.");
     expect(TRY_SIGN_URL).toBe("https://kit11.max-31b.workers.dev/try/sign");
     // No absolute claim in what Purser is (the stale lines of the jury review).

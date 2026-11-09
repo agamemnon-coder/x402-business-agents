@@ -173,7 +173,8 @@ describe("one set of figures, the main run's record (3 November)", () => {
       expect({ name, wrong: got.filter((n) => n !== t.faceToPaid) }).toEqual({ name, wrong: [] });
       if (got.length) expect({ name, simulated: /simulat/i.test(TEXT[name]!) }).toEqual({ name, simulated: true });
     }
-    for (const name of ["pitch", "deck", "spiekkaart", "demo-day"]) expect({ name, said: all(/(\d+) (?:s|seconds) (?:from Face ID to PAID|after (?:my |the CFO's )?Face ID)/g, name).length > 0 }).toEqual({ name, said: true });
+    // Review 9 Nov: the spoken and shown texts lead with Airwallex accepting the signed payment, not with "PAID".
+    for (const name of ["pitch", "deck", "demo-day"]) expect({ name, said: /accept(?:s|ed) (?:it )?(?:by Airwallex )?with (?:my signed hash|the signed hash|the hash I signed)/i.test(TEXT[name]!) }).toEqual({ name, said: true });
   });
 
   it("says the Face ID decisions as the record counts them", () => {

@@ -212,7 +212,7 @@ function moreCards(run: AgentRun): string {
     ...(story.claude ? [li(`By a buy rule Claude set: the Sourcing agent (Claude) set a buy rule; code applied it to ${story.claude} overpriced stock check${story.claude === 1 ? "" : "s"}${range ? ` (${range})` : ""}; nothing signed, the customer not charged`, "no")] : []),
     ...money.filter((e) => e.refused?.by === "recorded").map((e) => li(`By Metal: ${e.amount} test USD over the mandate's cap; Purser refused it before signing and Metal recorded the same refusal on chain`, "no", e.proof)),
     ...money.filter((e) => e.refused?.by === "metal" && e.refused.code !== "mandate_revoked").map((e) => (e.letThrough ? letThroughLi(r, e, "By Metal: ") : li(`By Metal: ${e.what}, ${e.refused!.reason} (${e.refused!.code ?? ""})`, "no", e.proof.href ? e.proof : null))),
-    ...money.filter((e) => e.refused?.code === "mandate_revoked").map((e) => li(`By Metal: ${e.what}, refused on chain because its mandate had just been replaced`, "no", e.proof.href ? e.proof : null)),
+    ...money.filter((e) => e.refused?.code === "mandate_revoked").map((e) => li(`By Metal: ${e.what}, refused by Metal's facilitator because its mandate had just been replaced (mandate_revoked; no transaction)`, "no", e.proof.href ? e.proof : null)),
     ...faces.filter((f) => f.status === "REJECTED").map((f) => li(`By the CFO with Face ID: ${f.id} · ${f.title} rejected`, "no")),
     ...s.refusals.filter((x) => /planted instruction/i.test(x.what)).map((x) => li(plantedLine(x.reason), "no")),
   ];

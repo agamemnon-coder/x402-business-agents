@@ -86,7 +86,7 @@ describe("the top of /metal tells the main run's Metal story from its record", (
     expect(story.replace?.steps.map((s) => s.proof.href)).toEqual(replaced.map((e) => `${EXPLORER}/tx/${String(e.payload.tx)}`));
     expect(story.replace?.signers).toEqual(["max", "test-controller"]);
     expect(rec.snapshot.refusals.some((r) => /#37 .*revoked by a replacement/.test(r.reason))).toBe(true);
-    expect(text).toMatch(/P-0002: the CFO's Face ID \+ a labelled test passkey; #37 on the old mandate: mandate_revoked/);
+    expect(text).toMatch(/P-0002: Face ID in Purser \+ a build-tool test passkey; the owner key signed on chain\. #37 on the old mandate: mandate_revoked/);
   });
 
   it("puts no number on it that the record does not hold", () => {

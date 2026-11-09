@@ -72,7 +72,7 @@ function expected(): Record<string, string | string[]> {
     "mandates replaced": String(ev.filter((e) => e.event === "mandate.replaced").length),
     // The FX conversion (fx.converted in the ledger) is a movement at Airwallex too.
     "movements at Airwallex": String(s.flows.filter((f) => f.rail.startsWith("airwallex") && !f.refused).length + (fx ? 1 : 0)),
-    "card decline at the limit (TAP run)": String(tapDeclines),
+    "card declines by Airwallex (TAP run and awx-1)": String(tapDeclines + (JSON.parse(read("docs/demo/airwallex-run.json")) as { declines_met: unknown[] }).declines_met.length),
     "signed checkouts (TAP run)": String(TAP.steps.length),
     "reference commit": TAP.reference.commit.slice(0, 7),
     "decisions by Claude": `${byClaude}/${decisions}`,
