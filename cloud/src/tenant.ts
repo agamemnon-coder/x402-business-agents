@@ -21,13 +21,15 @@ const COLUMNS = {
   inbound_mail: ["id", "blob_key", "sha256", "size", "received_at", "status", "note"],
   erasures: ["id", "subject", "done_at", "done_by", "detail"],
   push_log: ["id", "by_key", "at"],
+  runner_health: ["id", "at", "status", "alerts_json"],
+  webhooks: ["id", "url", "secret", "created_at", "created_by", "consecutive_failures", "last_attempt_at", "last_status", "disabled_at"],
 } as const;
 
 export type Table = keyof typeof COLUMNS;
 export const TENANT_TABLES = Object.keys(COLUMNS) as Table[];
 
-/** Tables whose rows may be deleted at all (a person's credentials and a person's data on erasure; nothing else). */
-const DELETABLE = new Set<Table>(["credentials"]);
+/** Tables whose rows may be deleted at all (a person's credentials on erasure, a removed webhook; nothing else). */
+const DELETABLE = new Set<Table>(["credentials", "webhooks"]);
 
 export type Cond = SqlValue | { op: ">=" | "<=" | ">" | "<" | "<>"; v: SqlValue } | { in: SqlValue[] };
 export type Where = Record<string, Cond>;
