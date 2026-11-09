@@ -120,7 +120,7 @@ export async function readScan(db: DB, reader: Asker, pdf: Uint8Array, docSha: s
   const differ = b
     ? AGREE.filter((k) => (k === "iban" ? bankOf(a) !== bankOf(b) : a[k] !== b[k])).map((k) => k as string).concat(a.doc_kind !== b.doc_kind ? ["doc_kind"] : [])
     : [...AGREE];
-  const complete = !!bankOf(a).replace("|", "") && !!a.total && !!a.currency && !!a.invoice_no && (!a.iban || ibanValid(a.iban));
+  const complete = !!bankOf(a).replace(/\|/g, "") && !!a.total && !!a.currency && !!a.invoice_no && (!a.iban || ibanValid(a.iban));
   const { doc_kind, boxes, ...reading } = a;
   return { reading, docKind: doc_kind, agreed: !!b && differ.length === 0 && complete, differ, boxes, model: first.model ?? "", readings: b ? 2 : 1 };
 }
