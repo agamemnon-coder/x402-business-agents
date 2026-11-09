@@ -790,6 +790,10 @@ CREATE TABLE IF NOT EXISTS ap_invoices (
   -- reasons without a key. Advisory only: it never changes a status.
   review_note TEXT,
   review_by TEXT,
+  -- A credit note a person accepted (red team round 4: an unverified credit note from anyone who can mail the inbox
+  -- zeroed a supplier's open payables): only an accepted one is set against the supplier's invoices.
+  credit_accepted_at TEXT,
+  credit_accepted_by TEXT,
   received_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   paid_at TEXT

@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { seedTreasury } from "../src/agents/euroBill.js";
 import { ingestDocument, type InboxDeps } from "../src/ap/inbox.js";
+import { acceptCreditNote } from "../src/ap/credits.js";
 import { insights } from "../src/ap/insights.js";
 import { payApInvoice } from "../src/ap/pay.js";
 import { publicInvoice } from "../src/ap/public.js";
@@ -47,11 +48,17 @@ const add = async (text: string, name: string) => {
   if (out.kind !== "invoice") throw new Error(out.kind);
   return out.invoice.id;
 };
+/** A credit note a person checked with the supplier and accepted (only those are set against anything: red team round 4). */
+const addCredit = async (text: string, name: string) => {
+  const id = await add(text, name);
+  acceptCreditNote(db, id, "the controller", "called the supplier; they confirmed the credit", now);
+  return id;
+};
 
 describe("credit notes set against the supplier's open invoices", () => {
   it("lower what is open to that supplier, as a line of their own", async () => {
     await add(DE, "ln.pdf");
-    const cn = await add(credit("Lagerhaus Nord GmbH", "GS-2026-0007", "119,00"), "gs.pdf");
+    const cn = await addCredit(credit("Lagerhaus Nord GmbH", "GS-2026-0007", "119,00"), "gs.pdf");
     expect(apInvoice(db, cn)!.doc_kind).toBe("credit_note");
     const i = insights(db, now);
     expect(i.open).toEqual([{ currency: "EUR", total: "1190.00", count: 1 }]);
@@ -62,7 +69,7 @@ describe("credit notes set against the supplier's open invoices", () => {
 
   it("never take a supplier below zero: the rest is owed back, listed per supplier", async () => {
     await add(DE, "ln.pdf");
-    await add(credit("Lagerhaus Nord GmbH", "GS-2026-0008", "2.000,00"), "gs.pdf");
+    await addCredit(credit("Lagerhaus Nord GmbH", "GS-2026-0008", "2.000,00"), "gs.pdf");
     const i = insights(db, now);
     expect(i.credits).toEqual([{ currency: "EUR", total: "1190.00", count: 1 }]);
     expect(i.open_net).toEqual([{ currency: "EUR", total: "0.00", count: 1 }]);
@@ -71,7 +78,7 @@ describe("credit notes set against the supplier's open invoices", () => {
 
   it("do not touch another supplier's invoices", async () => {
     await add(EN, "bergtex.pdf");
-    await add(credit("Lagerhaus Nord GmbH", "GS-2026-0009", "119,00"), "gs.pdf");
+    await addCredit(credit("Lagerhaus Nord GmbH", "GS-2026-0009", "119,00"), "gs.pdf");
     const i = insights(db, now);
     expect(i.open_net).toEqual([{ currency: "EUR", total: "1850.00", count: 1 }]);
     expect(i.credits).toEqual([]);
@@ -80,15 +87,29 @@ describe("credit notes set against the supplier's open invoices", () => {
 
   it("show in the month report as their own lines, with the open total after them", async () => {
     await add(DE, "ln.pdf");
-    await add(credit("Lagerhaus Nord GmbH", "GS-2026-0007", "119,00"), "gs.pdf");
+    await addCredit(credit("Lagerhaus Nord GmbH", "GS-2026-0007", "119,00"), "gs.pdf");
     const m = monthData(db, "2026-11");
     expect(m.received).toEqual([{ currency: "EUR", total: "1190.00", count: 1 }]);
     expect(m.credits).toEqual([{ vendor: "Lagerhaus Nord GmbH", invoice_no: "GS-2026-0007", amount: "EUR 119.00" }]);
     expect(m.open_net).toEqual([{ currency: "EUR", total: "1071.00", count: 1 }]);
   });
 
-  it("are never paid out, even when someone marks one ready", async () => {
+  it("count only once a person accepted them: before that they are listed apart as unverified", async () => {
+    await add(DE, "ln.pdf");
     const cn = await add(credit("Lagerhaus Nord GmbH", "GS-2026-0007", "119,00"), "gs.pdf");
+    let i = insights(db, now);
+    expect(i.credits).toEqual([]);
+    expect(i.open_net).toEqual([{ currency: "EUR", total: "1190.00", count: 1 }]);
+    expect(i.credits_unverified).toEqual([{ currency: "EUR", total: "119.00", count: 1 }]);
+    expect(() => acceptCreditNote(db, cn, "", "", now)).toThrow(/who accepts/);
+    acceptCreditNote(db, cn, "the controller", "called the supplier", now);
+    i = insights(db, now);
+    expect(i.credits_unverified).toEqual([]);
+    expect(i.open_net).toEqual([{ currency: "EUR", total: "1071.00", count: 1 }]);
+  });
+
+  it("are never paid out, even when someone marks one ready", async () => {
+    const cn = await addCredit(credit("Lagerhaus Nord GmbH", "GS-2026-0007", "119,00"), "gs.pdf");
     setStatus(db, cn, "ready", "human", { reason: "test: a person cleared it by mistake" }, now);
     expect(publicInvoice(apInvoice(db, cn)!)).toMatchObject({ payable: false });
     await expect(payApInvoice(db, awx, cn, now)).rejects.toThrow(/credit note.*never paid/);
@@ -98,7 +119,7 @@ describe("credit notes set against the supplier's open invoices", () => {
 describe("in the cloud", () => {
   it("the insight there sets credit notes against open invoices too, and never counts one as open", async () => {
     await add(DE, "ln.pdf");
-    await add(credit("Lagerhaus Nord GmbH", "GS-2026-0007", "119,00"), "gs.pdf");
+    await addCredit(credit("Lagerhaus Nord GmbH", "GS-2026-0007", "119,00"), "gs.pdf");
     const c = testCloud();
     try {
       const t = await c.tenant("northwind");

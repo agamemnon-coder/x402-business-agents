@@ -117,6 +117,19 @@ export function evaluate(db: DB, r: ApReading, text: string, ctx: CheckContext):
       const handled = handledInLedger(db, r.invoice_no, r.vendor, ctx.now, account);
       if (handled) f.push({ code: "duplicate", level: "block", detail: `${handled}; a second copy is never paid` });
     }
+    // A copy of an invoice a person rejected goes back to a person, citing that rejection (red team round 4: resent with
+    // one line more, it came back ready to pay as if never rejected).
+    if (!same && !f.some((x) => x.code === "duplicate")) {
+      const rejected = (db.prepare("SELECT id, vendor, invoice_no, reading_json, received_at FROM ap_invoices WHERE status = 'rejected' ORDER BY received_at, id").all() as
+        { id: string; vendor: string; invoice_no: string; reading_json: string; received_at: string }[])
+        .filter((x) => x.id !== ctx.selfId && (!self || x.received_at <= self.received_at))
+        .filter((x) => skeleton(x.vendor) === skeleton(r.vendor) || (!!account && accountHash(JSON.parse(x.reading_json) as ApReading) === account))
+        .find((x) => sameInvoiceNo(x.invoice_no, r.invoice_no));
+      if (rejected) {
+        const why = (db.prepare("SELECT json_extract(payload_json, '$.reason') AS reason FROM audit_log WHERE subject = ? AND event = 'ap.status' ORDER BY seq DESC LIMIT 1").get(rejected.id) as { reason: string | null } | undefined)?.reason;
+        f.push({ code: "rejected_before", level: "review", detail: `${rejected.id}, invoice ${rejected.invoice_no} from ${rejected.vendor}, was rejected by a person${why ? ` (${why})` : ""}; a person decides whether this copy is any different` });
+      }
+    }
     // The same supplier, the same total, dated within TWIN_DAYS: possibly the same invoice under another number (red team
     // C; round 2 widened a week to 45 days, past a month). A monthly invoice for the same amount (rent, a subscription)
     // therefore waits for a person once: their clearance is kept per pair (clearPossibleDuplicate in src/ap/inbox.ts).

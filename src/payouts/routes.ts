@@ -192,11 +192,25 @@ export function validateDetails(d: BankDetails, r: Route): string[] {
 
 const digits = (s: string | undefined) => (s ?? "").replace(/[\s-]/g, "").toUpperCase();
 
-/** One identity per account, for duplicate and fraud checks: the IBAN where there is one, else country, routing and number. */
+/**
+ * One identity per account, for duplicate and fraud checks, whatever form the details came in (red team round 4: the
+ * same UK account as sort code + account number and as its GB IBAN, or a US account with its ABA routing number and
+ * with its bank's BIC, gave two identities, so one supplier was added twice and an invoice paid twice):
+ * - a GB IBAN is its sort code and account number with a bank code and check digits in front, so both forms key to
+ *   GB:<sort code>:<account number>;
+ * - any other IBAN is the IBAN;
+ * - an account without an IBAN keys to its country and account number (leading zeros dropped): the same account comes
+ *   with its local routing number or with its bank's BIC. Two banks in one country giving the same number is rare, and
+ *   then a person sees a possible duplicate, never a second payment.
+ */
 export function accountKey(d: BankDetails): string {
-  if (has(d.iban)) return digits(d.iban);
-  if (has(d.routingValue)) return `${d.country}:${d.routingType || "routing"}:${digits(d.routingValue)}:${digits(d.accountNumber)}`;
-  return `${d.country}:swift:${digits(d.swiftCode).slice(0, 8)}:${digits(d.accountNumber)}`;
+  if (has(d.iban)) {
+    const i = digits(d.iban);
+    if (i.startsWith("GB") && i.length === 22) return `GB:${i.slice(8, 14)}:${i.slice(14)}`;
+    return i;
+  }
+  if (d.routingType === "sort_code") return `${d.country}:${digits(d.routingValue)}:${digits(d.accountNumber).padStart(8, "0")}`;
+  return `${d.country}:${digits(d.accountNumber).replace(/^0+(?=.)/, "")}`;
 }
 
 /** The account as the CFO sees it in the terms: enough to recognise it, not enough to reuse it. */

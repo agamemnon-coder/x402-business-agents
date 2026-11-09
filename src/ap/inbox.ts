@@ -139,12 +139,15 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
   }
   const status = statusOf(findings);
   const gl = glFor(db, reading, readBy);
+  // A credit note by any sign (the model's label, its own words, or a total written negative, in brackets or with CR)
+  // is stored as one (red team round 4: a negative total kept the "invoice" kind and counted as money owed).
+  const kind = findings.some((x) => x.code === "credit_note") && (cls.kind === "invoice" || cls.kind === "credit_note") ? "credit_note" : cls.kind;
   db.prepare(`INSERT INTO ap_invoices (id, doc_sha256, doc_kind, classified_by, vendor, invoice_no, issue_date, due_date, currency, subtotal, tax, total, iban_last4, bic, reading_json, read_by,
     gl_account, gl_rule, cost_centre, status, findings_json, received_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .run(id, sha, cls.kind, cls.by, reading.vendor, reading.invoice_no, reading.issue_date, reading.due_date, reading.currency, reading.subtotal, reading.tax, reading.total,
+    .run(id, sha, kind, cls.by, reading.vendor, reading.invoice_no, reading.issue_date, reading.due_date, reading.currency, reading.subtotal, reading.tax, reading.total,
       reading.iban.slice(-4), reading.bic, JSON.stringify(reading), readBy, gl.account, gl.rule, AP_COST_CENTRE, status, JSON.stringify(findings), now.toISOString(), now.toISOString());
   audit(db, "system", "ap.received", id, {
-    doc_sha256: sha, filename: doc.filename.slice(0, 200), source: doc.source, doc_kind: cls.kind, classified_by: cls.by, read_by: readBy, vendor: reading.vendor, invoice_no: reading.invoice_no,
+    doc_sha256: sha, filename: doc.filename.slice(0, 200), source: doc.source, doc_kind: kind, classified_by: cls.by, read_by: readBy, vendor: reading.vendor, invoice_no: reading.invoice_no,
     total: reading.total, currency: reading.currency, status, findings: findings.map((x) => ({ code: x.code, level: x.level })) as unknown as Json,
   }, now);
   if (needsNote({ status, findings })) await writeReviewNote(db, deps.reader, id, now);
@@ -199,7 +202,9 @@ export async function recheck(db: DB, deps: Pick<InboxDeps, "now" | "sink"> & { 
     if (!text) { out.push(inv); continue; }
     const wasBookable = bookable(inv);
     const { status, findings } = evaluate(db, inv.reading, text, { docSha: inv.doc_sha256, now, selfId: inv.id });
-    const next = setStatus(db, inv.id, status, "system", { findings: [...findings, ...inv.findings.filter((x) => x.code === "credit_note" || x.code === "reminder")], reason: "checked again" }, now);
+    const kept = [...findings, ...inv.findings.filter((x) => (x.code === "credit_note" || x.code === "reminder") && !findings.some((y) => y.code === x.code))];
+    if (inv.doc_kind === "invoice" && kept.some((x) => x.code === "credit_note")) db.prepare("UPDATE ap_invoices SET doc_kind = 'credit_note' WHERE id = ?").run(inv.id);
+    const next = setStatus(db, inv.id, status, "system", { findings: kept, reason: "checked again" }, now);
     if (!wasBookable) await book(db, deps, next);
     out.push(needsNote(next) ? await writeReviewNote(db, deps.reader, next.id, now) : next);
   }

@@ -23,6 +23,7 @@ interface Row {
   subtotal: string; tax: string; total: string; iban_last4: string; bic: string; reading_json: string; read_by: string;
   gl_account: string; gl_rule: string; cost_centre: string; status: ApStatus; findings_json: string; proposal_id: string | null;
   review_note: string | null; review_by: string | null;
+  credit_accepted_at: string | null; credit_accepted_by: string | null;
   received_at: string; updated_at: string; paid_at: string | null;
 }
 

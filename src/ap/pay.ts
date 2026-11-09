@@ -75,6 +75,10 @@ export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id:
     return out;
   }
   // Not planned (the reserve is short, a quote refused, a duplicate found late): the invoice stays as it is, with the reason.
+  // Only over the status this call read (red team round 4: of two "pay" calls at once, the loser wrote its stale "ready"
+  // over the winner's "waiting_cfo", and the paid invoice stayed open for good).
+  const now_ = apInvoice(db, id);
+  if (!now_ || now_.status !== inv.status || now_.proposal_id !== inv.proposal_id) return out;
   const findings: Finding[] = [...inv.findings.filter((f) => f.code !== "payment_not_planned"), { code: "payment_not_planned", level: "warn", detail: `the payment could not be planned: ${out.reason}` }];
   setStatus(db, id, "fraud" in out && out.fraud?.suspicious ? "blocked" : inv.status, "treasury", { findings, reason: out.reason }, now);
   return out;

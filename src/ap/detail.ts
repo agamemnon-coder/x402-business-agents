@@ -16,7 +16,7 @@ import { apInvoice, type ApStatus, type Finding } from "./store.js";
 export const CHECKS: readonly { key: string; title: string; codes: readonly string[] }[] = [
   { key: "document", title: "A supplier invoice, readable", codes: ["not_an_invoice", "receipt", "credit_note", "reminder", "no_text"] },
   { key: "fields", title: "Every field read, and the amounts add up", codes: ["missing_fields", "sum_mismatch", "ambiguous_total"] },
-  { key: "duplicate", title: "Not paid or filed before", codes: ["duplicate", "possible_duplicate"] },
+  { key: "duplicate", title: "Not paid or filed before", codes: ["duplicate", "possible_duplicate", "rejected_before"] },
   { key: "supplier", title: "A supplier on file", codes: ["new_supplier", "unknown_vendor", "lookalike_vendor", "mixed_scripts", "payee_blocked"] },
   { key: "bank", title: "Bank details valid and as on file", codes: ["no_bank_details", "iban_invalid", "bank_details_invalid", "bank_details_changed", "account_name_mismatch", "account_currency"] },
   { key: "fraud", title: "No signs of invoice fraud", codes: ["possible_fraud", "pressure_language", "bank_change_language"] },

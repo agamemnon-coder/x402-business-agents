@@ -6,7 +6,7 @@ import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { skeleton } from "../policy/fraudCore.js";
 import { bookable } from "./books.js";
-import { asAmounts, net } from "./credits.js";
+import { asAmounts, creditUnverified, net } from "./credits.js";
 import { ledgerInvoiceNo } from "./ledgerKey.js";
 import { apInvoices, type ApInvoiceRow } from "./store.js";
 
@@ -20,6 +20,8 @@ export interface Insights {
   open_net: Amounts[];
   /** Credit with no open invoice to set it against: owed back by the supplier. */
   credits_left: { vendor: string; currency: string; total: string }[];
+  /** Credit notes no person has accepted yet: shown apart, never set against anything (red team round 4). */
+  credits_unverified: Amounts[];
   due_7: Amounts[];
   due_30: Amounts[];
   overdue: Amounts[];
@@ -118,6 +120,7 @@ export function insights(db: DB, asOf = new Date()): Insights {
     credits: asAmounts(netting.applied),
     open_net: asAmounts(netting.net),
     credits_left: netting.left.map((x) => ({ vendor: x.vendor, currency: x.currency, total: fromCents(x.cents) })),
+    credits_unverified: byCurrency(every.filter(creditUnverified)),
     due_7: byCurrency(due(addDays(asOf, 7))),
     due_30: byCurrency(due(addDays(asOf, 30))),
     overdue: byCurrency(open.filter((i) => i.due_date && i.due_date < today)),

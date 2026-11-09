@@ -151,6 +151,18 @@ export function requestPayeeAddForInvoice(db: DB, apId: string, by: Actor, now =
 }
 
 /** Only a person records that the supplier confirmed the account and its address, and how (a contact we already had). */
+/**
+ * What the person reads back to prove they checked the account with the supplier: the IBAN's last four, or, for an
+ * account without an IBAN (US, CN, a UK sort code), the account number's last four (red team round 4: the read-back was
+ * the empty IBAN's last four, so an empty answer passed). Empty only when the request holds no account at all.
+ */
+export function readBackOf(add: { iban: string; details_json: string | null }): string {
+  const iban = add.iban.replace(/\s+/g, "").toUpperCase();
+  if (iban) return iban.slice(-4);
+  const d = add.details_json ? (JSON.parse(add.details_json) as Partial<BankDetails>) : {};
+  return (d.accountNumber ?? "").replace(/[\s-]/g, "").toUpperCase().slice(-4);
+}
+
 export function recordPayeeAddVerification(db: DB, id: string, v: { by: string; how: string; actor: Actor; address: Address }, now = new Date()): PayeeAddRow {
   if (v.actor !== "human") throw new Error("only a person can record that a new supplier confirmed its bank details");
   if (v.how.trim().length < 20) throw new Error("say how it was verified: who you called, on which number from your own records");

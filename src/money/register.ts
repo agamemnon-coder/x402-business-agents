@@ -36,6 +36,8 @@ const TRANSFER_WORDS: Record<string, string> = { SUBMITTING: "being sent", SENT:
 interface Draft extends Omit<TxRow, "rail_label" | "booking" | "reconciliation" | "reconciliation_words" | "flags" | "approval" | "flow"> {
   /** For a movement between own accounts: out of the account it left. */
   leaves?: boolean;
+  /** Committed at the rail but not settled yet (an FX conversion still SCHEDULED): flagged not_settled. */
+  pending?: boolean;
   approval: Omit<TxRow["approval"], "decision" | "method" | "approved_at"> & { sha: string | null };
   /** The ledger feed's key prefix for this movement's postings, and what its bank lines should sum to in its currency. */
   book: { prefix: string; expectCents: number } | null;
@@ -88,7 +90,10 @@ export function transactionRegister(db: DB): Register {
   for (const f of db.prepare("SELECT c.conversion_id, c.buy_amount, c.sell_amount, c.status, c.approval_sha256, q.pair, q.valid_from FROM fx_conversions c JOIN fx_quotes q ON q.quote_id = c.quote_id ORDER BY q.valid_from").all() as
     { conversion_id: string; buy_amount: string; sell_amount: string | null; status: string; approval_sha256: string; pair: string; valid_from: string }[]) {
     const [sell, buy] = f.pair.split("/") as [string, string];
-    const moved = f.status === "SETTLED";
+    // Committed once Airwallex has it: SETTLED, or SCHEDULED and settling (red team round 4: a SCHEDULED one showed as not
+    // moved while the payout it funded had gone); flagged until its settled event comes in. Cancelled or failed: nothing moved.
+    const moved = f.status !== "CANCELLED" && f.status !== "FAILED";
+    const pending = moved && f.status !== "SETTLED";
     const eurSide = sell === "EUR" ? f.sell_amount : buy === "EUR" ? f.buy_amount : null;
     const leg = (side: "sell" | "buy"): Draft => {
       const cur = side === "sell" ? sell : buy;
@@ -96,7 +101,7 @@ export function transactionRegister(db: DB): Register {
       return {
         id: `fx:${f.conversion_id}:${side}`, at: f.valid_from, direction: "internal", leaves: side === "sell", rail: "airwallex_fx",
         description: `Convert ${sell} to ${buy} (${side === "sell" ? "sold" : "bought"})`, counterparty: "Airwallex", counterparty_account: null,
-        amount: amt, currency: cur, eur_equivalent: eurSide, fee: null, moved, status: f.status, status_words: moved ? "converted" : words(f.status),
+        amount: amt, currency: cur, eur_equivalent: eurSide, fee: null, moved, pending, status: f.status, status_words: pending ? "converting, not settled yet" : moved ? "converted" : words(f.status),
         invoice: null, approval: { required: true, authority: "the CFO's approval of the exact terms", proposal_id: null, terms_sha256: f.approval_sha256, sha: f.approval_sha256 },
         proof: f.conversion_id, book: { prefix: `fx|${f.conversion_id}|1590|${bankAccountFor(cur)}|${cur}`, expectCents: (side === "sell" ? -1 : 1) * toCents(amt) },
       };
@@ -261,9 +266,10 @@ export function transactionRegister(db: DB): Register {
       if (!entries.length) flags.push("no_booking");
       else if (bookedCents !== (d.book?.expectCents ?? 0)) flags.push("amount_mismatch");
       if (d.approval.required && approval.decision !== "APPROVED") flags.push("no_approval");
+      if (d.pending) flags.push("not_settled");
       rec = flags.includes("amount_mismatch") ? "amount_mismatch" : flags.includes("no_booking") ? "missing_booking" : flags.includes("no_proof") ? "missing_rail_record" : "matched";
     }
-    const { book: _book, approval: _a, leaves, ...rest } = d;
+    const { book: _book, approval: _a, leaves, pending: _p, ...rest } = d;
     const flow: TxRow["flow"] = d.direction === "internal" ? (leaves ? "out" : "in") : d.direction;
     return { ...rest, flow, rail_label: RAIL_LABELS[d.rail], approval, booking, reconciliation: rec, reconciliation_words: RECONCILIATION_WORDS[rec], flags };
   }).sort((x, y) => {

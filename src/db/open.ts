@@ -70,6 +70,8 @@ function migrate(db: DB): void {
   // Payables FX payouts: the route a supplier added through payee_add is paid on (masked account, method, clearing).
   if (!has("beneficiaries", "details_json")) db.exec("ALTER TABLE beneficiaries ADD COLUMN details_json TEXT");
   if (!has("payee_adds", "details_json")) db.exec("ALTER TABLE payee_adds ADD COLUMN details_json TEXT");
+  // Red team round 4: a credit note counts against the supplier's invoices only once a person accepted it.
+  for (const c of ["credit_accepted_at", "credit_accepted_by"]) if (!has("ap_invoices", c)) db.exec(`ALTER TABLE ap_invoices ADD COLUMN ${c} TEXT`);
   // D24: who decided each money action, recorded when it starts (src/provenance/origin.ts); readers look events up by name.
   db.exec("CREATE INDEX IF NOT EXISTS audit_event ON audit_log (event, seq)");
   for (const t of ["holds", "refunds", "sweeps", "upstream_purchases", "transfers", "money_steps"]) if (!has(t, "origin_json")) db.exec(`ALTER TABLE ${t} ADD COLUMN origin_json TEXT`);

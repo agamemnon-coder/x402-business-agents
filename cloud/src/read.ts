@@ -117,12 +117,14 @@ export async function insights(db: TenantDb, now: Date): Promise<unknown> {
   // A credit note is never open to pay: it is set against the same supplier's open invoices in its currency (down to
   // zero), shown as its own line (src/ap/credits.ts does the same on the runner).
   const isCredit = (r: (typeof rows)[number]) => (JSON.parse(r.body_json) as { doc_kind?: string }).doc_kind === "credit_note";
+  // Only a credit note a person accepted on the runner counts (red team round 4: an unverified one zeroed what was open).
+  const accepted = (r: (typeof rows)[number]) => !!(JSON.parse(r.body_json) as { credit_accepted_at?: unknown }).credit_accepted_at;
   const open = rows.filter((r) => !isCredit(r) && !["paid", "rejected", "blocked"].includes(r.status));
   const sum = (rs: typeof rows) => rs.reduce<Record<string, number>>((m, r) => ({ ...m, [r.currency]: (m[r.currency] ?? 0) + cents(r.total) }), {});
   const owed = new Map<string, number>();
   for (const r of open) owed.set(`${r.vendor.toLowerCase()}|${r.currency}`, (owed.get(`${r.vendor.toLowerCase()}|${r.currency}`) ?? 0) + cents(r.total));
   const credit = new Map<string, number>();
-  for (const r of rows.filter((x) => isCredit(x) && !["rejected", "blocked"].includes(x.status))) credit.set(`${r.vendor.toLowerCase()}|${r.currency}`, (credit.get(`${r.vendor.toLowerCase()}|${r.currency}`) ?? 0) + cents(r.total));
+  for (const r of rows.filter((x) => isCredit(x) && accepted(x) && !["rejected", "blocked"].includes(x.status))) credit.set(`${r.vendor.toLowerCase()}|${r.currency}`, (credit.get(`${r.vendor.toLowerCase()}|${r.currency}`) ?? 0) + cents(r.total));
   const credits: Record<string, number> = {};
   for (const [k, c] of credit) { const used = Math.min(c, owed.get(k) ?? 0); const cur = k.slice(k.lastIndexOf("|") + 1); if (used > 0) credits[cur] = (credits[cur] ?? 0) + used; }
   const openNet = Object.fromEntries(Object.entries(sum(open)).map(([cur, v]) => [cur, v - (credits[cur] ?? 0)]));

@@ -100,7 +100,15 @@ export function checkEvent(db: DB, name: string, o: Record<string, unknown>, now
     const currency = str(o.buy_currency);
     const c = id ? (db.prepare("SELECT status FROM fx_conversions WHERE conversion_id = ?").get(id) as { status: string } | undefined) : undefined;
     if (!c) return { object, object_id: id, status, amount_cents: amount, currency, agrees: false, outcome: `conversion ${id ?? "?"} ${status}: a conversion Purser did not make` };
-    const conflict = status === "CANCELLED" && c.status === "SETTLED";
+    // Airwallex's word on a conversion it had not settled yet moves it on (red team round 4: one answered SCHEDULED at
+    // create stayed so, and was never booked); a settled or cancelled one is final and never changed here.
+    const final = (s: string) => s === "SETTLED" || s === "CANCELLED" || s === "FAILED";
+    if (status && final(status) && !final(c.status)) {
+      db.prepare("UPDATE fx_conversions SET status = ? WHERE conversion_id = ? AND status = ?").run(status, id, c.status);
+      audit(db, "system", "fx.conversion_status", id, { from: c.status, to: status, by: "airwallex_webhook" }, now);
+      return { object, object_id: id, status, amount_cents: amount, currency, agrees: status !== "CANCELLED" && status !== "FAILED", outcome: `conversion is ${status} at Airwallex; the ledger had it ${c.status} and now follows` };
+    }
+    const conflict = (status === "CANCELLED" || status === "FAILED") && c.status === "SETTLED";
     return { object, object_id: id, status, amount_cents: amount, currency, agrees: !conflict, outcome: `conversion is ${status} at Airwallex, which ${conflict ? "differs from" : "matches"} the ledger (${c.status})` };
   }
   if (object === "deposit") {

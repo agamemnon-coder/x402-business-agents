@@ -117,7 +117,9 @@ export function journal(db: DB): JournalLine[] {
       });
     }
   }
-  for (const f of db.prepare("SELECT c.conversion_id, c.buy_amount, c.sell_amount, c.approval_sha256, q.pair, q.valid_from FROM fx_conversions c JOIN fx_quotes q ON q.quote_id = c.quote_id WHERE c.status = 'SETTLED' ORDER BY q.valid_from").all() as
+  // Booked once Airwallex has it, SETTLED or still SCHEDULED (red team round 4: one answered SCHEDULED at create was
+  // never booked, while the payout it funded was, so the bought currency's bank went negative); a cancelled one never.
+  for (const f of db.prepare("SELECT c.conversion_id, c.buy_amount, c.sell_amount, c.approval_sha256, q.pair, q.valid_from FROM fx_conversions c JOIN fx_quotes q ON q.quote_id = c.quote_id WHERE c.status NOT IN ('CANCELLED', 'FAILED') ORDER BY q.valid_from").all() as
     { conversion_id: string; buy_amount: string; sell_amount: string | null; approval_sha256: string; pair: string; valid_from: string }[]) {
     const [sell, buy] = f.pair.split("/") as [string, string];
     const approval = proposalOf(f.approval_sha256);

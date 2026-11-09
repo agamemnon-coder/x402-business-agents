@@ -361,7 +361,10 @@ export function parseApFallback(text: string): ApReading {
     firstMatch(text, /\b(?:invoice|factuur|rechnung)\s+#?\s*([A-Z0-9][A-Z0-9\-/.]*\d[A-Z0-9\-/.]*)(?=[\s,;)]|$)/im);
   const due = firstMatch(text, /^\s*(?:due\s+date|payment\s+due|due|vervaldatum|uiterste\s+betaaldatum|fällig\s+am|fällig|zahlbar\s+bis|zahlungsziel)\s*:?\s*(.+)$/im);
   const issued = firstMatch(text, /^\s*(?:invoice\s+date|date\s+of\s+issue|issue\s+date|factuurdatum|rechnungsdatum|datum|date)\s*:?\s*(.+)$/im);
-  const reference = firstMatch(text, /^\s*(?:payment\s+reference|reference|ref\.?|betalingskenmerk|kenmerk|verwendungszweck)\s*:?\s*(\S+)/im);
+  // A label as a whole word, then a colon (red team round 4: "Reflective safety vests" gave the reference "lective",
+  // which the CFO signed and the payout carried); the payment-reference label wins over a bare "Ref:".
+  const reference = firstMatch(text, /^\s*(?:payment\s+reference|zahlungsreferenz|betalingskenmerk|verwendungszweck)\b\s*:\s*(\S+)/im) ||
+    firstMatch(text, /^\s*(?:reference|ref|kenmerk)\b\.?\s*:\s*(\S+)/im);
   const iban = ibanIn(text);
   const bic = firstMatch(text, /\b(?:BIC|SWIFT(?:\/BIC)?(?:\s+code)?)\s*:?\s*([A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)\b/).toUpperCase();
   return {

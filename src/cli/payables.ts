@@ -24,7 +24,7 @@ import { clearPossibleDuplicate, ingestDocument, recheck, type InboxDeps, type I
 import { insights } from "../ap/insights.js";
 import { payApInvoice, syncPayments } from "../ap/pay.js";
 import { apInvoice, apInvoices } from "../ap/store.js";
-import { proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../ap/vendors.js";
+import { proposePayeeAdd, readBackOf, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../ap/vendors.js";
 import { scanFolder } from "../ap/watch.js";
 import { ClaudeReader } from "../claude/reader.js";
 import { openDb } from "../db/open.js";
@@ -105,9 +105,11 @@ async function main(): Promise<void> {
     const r = requestPayeeAddForInvoice(db, args[1] ?? "", "human");
     console.log(`${r.add_id}: ${r.vendor}, account ending ${r.iban.slice(-4)}. Now call the supplier on a number from your own records, then: npm run payables -- supplier-verify ${r.add_id} --by ... --how ... --street ... --city ... --postcode ...`);
   } else if (cmd === "supplier-verify") {
-    const add = db.prepare("SELECT vendor, iban FROM payee_adds WHERE add_id = ?").get(args[1] ?? "") as { vendor: string; iban: string } | undefined;
+    const add = db.prepare("SELECT vendor, iban, details_json FROM payee_adds WHERE add_id = ?").get(args[1] ?? "") as { vendor: string; iban: string; details_json: string | null } | undefined;
     if (!add) throw new Error(`no supplier request ${args[1]}`);
-    await typedBack(`Type the last four characters of the IBAN you checked with ${add.vendor}: `, add.iban.slice(-4));
+    const want = readBackOf(add);
+    if (want.length !== 4) throw new Error(`${args[1]} holds no account number to read back; a person checks it`);
+    await typedBack(`Type the last four characters of the ${add.iban ? "IBAN" : "account number"} you checked with ${add.vendor}: `, want);
     const r = recordPayeeAddVerification(db, args[1] ?? "", {
       by: flag("--by") ?? "", how: flag("--how") ?? "", actor: "human",
       address: { street: flag("--street") ?? "", city: flag("--city") ?? "", postcode: flag("--postcode") ?? "" },

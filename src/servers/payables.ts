@@ -15,10 +15,11 @@ import { apJournal, invoicesCsv, journalCsv } from "../ap/books.js";
 import { clearPossibleDuplicate, ingestDocument, recheck, type InboxDeps } from "../ap/inbox.js";
 import { invoiceDetail } from "../ap/detail.js";
 import { insights } from "../ap/insights.js";
+import { acceptCreditNote } from "../ap/credits.js";
 import { payApInvoice, rejectApInvoice, syncPayments } from "../ap/pay.js";
 import { publicInvoice } from "../ap/public.js";
 import { apInvoice, apInvoices } from "../ap/store.js";
-import { proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../ap/vendors.js";
+import { proposePayeeAdd, readBackOf, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../ap/vendors.js";
 import type { DB } from "../db/open.js";
 import { filterRows, registerCsv, transactionRegister, type RegisterFilter } from "../money/register.js";
 import { FONT, PDFJS, detailPage, overviewPage } from "./payablesPage.js";
@@ -47,6 +48,8 @@ const TOKEN_TTL_MS = 30 * 60 * 1000;
 /** A supplier verification code: six digits, ten minutes, three wrong tries, used once. */
 const CODE_TTL_MS = 10 * 60 * 1000;
 const CODE_TRIES = 3;
+/** Wrong answers a request may get across all its codes before it is locked until the page restarts. */
+const CODE_MISSES_MAX = 9;
 const sha = (s: string) => createHash("sha256").update(s).digest();
 
 
@@ -80,7 +83,9 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
   const valid = (t: unknown) => typeof t === "string" && (tokens.get(t) ?? 0) > Date.now();
 
   // A runaway script or a page left polling cannot hammer the ledger or the document store (CodeQL: missing rate limit).
-  app.use(rateLimit({ windowMs: opts.rateLimit?.windowMs ?? 60_000, limit: opts.rateLimit?.limit ?? 300, standardHeaders: "draft-8", legacyHeaders: false,
+  // Counted as one client: this page answers on loopback only, where a process can use any 127.x.y.z as its source
+  // (red team round 4: keyed by address, a local process got a fresh limit per address).
+  app.use(rateLimit({ windowMs: opts.rateLimit?.windowMs ?? 60_000, limit: opts.rateLimit?.limit ?? 300, standardHeaders: "draft-8", legacyHeaders: false, keyGenerator: () => "loopback",
     message: { error: "too many requests; wait a minute" } }));
 
   app.use((req, res, next) => {
@@ -107,7 +112,14 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
   // One verification code per supplier request, shown only in this terminal (red team round 2: the page token alone
   // let any local process record "a person verified these bank details").
   const codes = new Map<string, { hash: Buffer; exp: number; tries: number }>();
+  // Wrong answers per request, across every code it was given (red team round 4: asking for a new code reset the three
+  // tries, so a local process could run through the million codes in minutes). Past the limit no new code is given
+  // until this page is restarted at the terminal.
+  const misses = new Map<string, number>();
   const issueCode = (key: string): string => {
+    if ((misses.get(key) ?? 0) >= CODE_MISSES_MAX) throw new Error(`too many wrong verification codes for this request (${CODE_MISSES_MAX}); restart this page at its terminal to try again`);
+    const live = codes.get(key);
+    if (live && live.exp > Date.now()) throw new Error("a verification code for this is already shown in the terminal; it works once, for 10 minutes");
     const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
     codes.set(key, { hash: sha(`${key}:${code}`), exp: Date.now() + CODE_TTL_MS, tries: 0 });
     return code;
@@ -116,7 +128,7 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
   const takeCode = (key: string, given: unknown, also: () => boolean, alsoWhy: string): void => {
     const held = codes.get(key);
     if (!held || held.exp <= Date.now()) { codes.delete(key); throw new Error("ask for a verification code first (it is shown in the terminal that runs this page); a code works once, for 10 minutes"); }
-    const miss = (why: string) => { if (++held.tries >= CODE_TRIES) codes.delete(key); return new Error(why); };
+    const miss = (why: string) => { misses.set(key, (misses.get(key) ?? 0) + 1); if (++held.tries >= CODE_TRIES) codes.delete(key); return new Error(why); };
     if (!timingSafeEqual(held.hash, sha(`${key}:${typeof given === "string" ? given.trim() : ""}`))) throw miss("the verification code is not the one shown in the terminal");
     if (!also()) throw miss(alsoWhy);
     codes.delete(key);
@@ -212,6 +224,15 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
       res.json(publicInvoice(apInvoice(db, id)!));
     } catch (e) { fail(res, e); }
   });
+  // A person accepts a credit note they checked with the supplier: only then is it set against that supplier's invoices.
+  app.post("/api/payables/invoices/:id/accept-credit", express.json({ limit: "10kb" }), (req, res) => {
+    try {
+      const b = (req.body ?? {}) as { by?: unknown; note?: unknown };
+      const id = String(req.params.id);
+      acceptCreditNote(db, id, typeof b.by === "string" ? b.by : "", typeof b.note === "string" ? b.note : "", opts.inbox.now?.() ?? new Date());
+      res.json(publicInvoice(apInvoice(db, id)!));
+    } catch (e) { fail(res, e); }
+  });
   app.post("/api/payables/invoices/:id/supplier-request", (req, res) => {
     try { res.json(requestPayeeAddForInvoice(db, String(req.params.id), "human")); } catch (e) { fail(res, e); }
   });
@@ -220,9 +241,11 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
     const add = db.prepare("SELECT vendor, status FROM payee_adds WHERE add_id = ?").get(addId) as { vendor: string; status: string } | undefined;
     if (!add) { res.status(404).json({ error: `no supplier request ${addId}` }); return; }
     if (add.status !== "REQUESTED") { res.status(409).json({ error: `${addId} is ${add.status.toLowerCase()}, not waiting for a verification` }); return; }
-    const code = issueCode(`verify:${addId}`);
-    notify(`Payables: the verification code for ${addId} (${add.vendor}) is ${code}. Type it on the page with the last four characters of the IBAN you checked with the supplier. It works once, for 10 minutes.`);
-    res.json({ ok: true, shown: "in the terminal that runs this page" });
+    try {
+      const code = issueCode(`verify:${addId}`);
+      notify(`Payables: the verification code for ${addId} (${add.vendor}) is ${code}. Type it on the page with the last four characters of the IBAN or account number you checked with the supplier. It works once, for 10 minutes.`);
+      res.json({ ok: true, shown: "in the terminal that runs this page" });
+    } catch (e) { res.status(429).json({ error: (e as Error).message, code: "code_refused" }); }
   });
   app.post("/api/payables/suppliers/:addId/verify", express.json({ limit: "10kb" }), (req, res) => {
     try {
@@ -230,9 +253,10 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
       const s = (v: unknown) => (typeof v === "string" ? v : "");
       const addId = String(req.params.addId);
       // The person proves they are at this terminal (the code) and read the bank details back (the IBAN's last four).
-      const add = db.prepare("SELECT iban FROM payee_adds WHERE add_id = ?").get(addId) as { iban: string } | undefined;
-      takeCode(`verify:${addId}`, b.code, () => !!add && s(b.iban_last4).replace(/\s+/g, "").toUpperCase() === add.iban.replace(/\s+/g, "").toUpperCase().slice(-4),
-        "the last four characters of the IBAN are not those of this request: check the bank details with the supplier again");
+      const add = db.prepare("SELECT iban, details_json FROM payee_adds WHERE add_id = ?").get(addId) as { iban: string; details_json: string | null } | undefined;
+      const want = add ? readBackOf(add) : "";
+      takeCode(`verify:${addId}`, b.code, () => want.length === 4 && s(b.iban_last4).replace(/[\s-]/g, "").toUpperCase() === want,
+        "the last four characters of the IBAN or account number are not those of this request: check the bank details with the supplier again");
       res.json(recordPayeeAddVerification(db, addId, { by: s(b.by), how: s(b.how), actor: "human", address: { street: s(b.street), city: s(b.city), postcode: s(b.postcode) } }));
     } catch (e) { fail(res, e); }
   });
@@ -242,9 +266,11 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
     const id = String(req.params.id);
     const inv = apInvoice(db, id);
     if (!inv) { res.status(404).json({ error: `no payables invoice ${id}` }); return; }
-    const code = issueCode(`dup:${id}`);
-    notify(`Payables: the code to clear ${id} (${inv.vendor} ${inv.invoice_no}, ${inv.currency} ${inv.total}) as not a duplicate is ${code}. It works once, for 10 minutes.`);
-    res.json({ ok: true, shown: "in the terminal that runs this page" });
+    try {
+      const code = issueCode(`dup:${id}`);
+      notify(`Payables: the code to clear ${id} (${inv.vendor} ${inv.invoice_no}, ${inv.currency} ${inv.total}) as not a duplicate is ${code}. It works once, for 10 minutes.`);
+      res.json({ ok: true, shown: "in the terminal that runs this page" });
+    } catch (e) { res.status(429).json({ error: (e as Error).message, code: "code_refused" }); }
   });
   app.post("/api/payables/invoices/:id/not-duplicate", express.json({ limit: "10kb" }), async (req, res) => {
     try {

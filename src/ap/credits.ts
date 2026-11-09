@@ -3,13 +3,41 @@
 // cannot be set against (no open invoice, or more credit than invoices) is listed as owed back by that supplier. A
 // credit note is never paid out by itself (src/ap/pay.ts refuses it).
 
+import { audit } from "../audit/log.js";
+import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { skeleton } from "../policy/fraudCore.js";
-import type { ApInvoiceRow } from "./store.js";
+import { cleanText } from "./reading.js";
+import { apInvoice, type ApInvoiceRow } from "./store.js";
 
 const MONEY = /^\d+\.\d{2}$/;
-/** A credit note that still counts: not blocked (a possible fraud) and not rejected by a person. */
-export const creditCounts = (i: ApInvoiceRow) => i.doc_kind === "credit_note" && i.status !== "blocked" && i.status !== "rejected" && MONEY.test(i.total) && !!i.currency;
+/** A credit note that may count once a person accepts it: not blocked (a possible fraud), not rejected, with an amount. */
+const creditNote = (i: ApInvoiceRow) => i.doc_kind === "credit_note" && i.status !== "blocked" && i.status !== "rejected" && MONEY.test(i.total) && !!i.currency;
+/**
+ * A credit note that counts: one a person accepted (red team round 4: anyone who can mail the inbox could write a
+ * "credit note" in a supplier's name, and it set that supplier's open invoices to zero). Until then it is listed as an
+ * unverified credit, apart, and lowers nothing.
+ */
+export const creditCounts = (i: ApInvoiceRow) => creditNote(i) && !!i.credit_accepted_at;
+/** A credit note no person has accepted yet: shown apart, never set against anything. */
+export const creditUnverified = (i: ApInvoiceRow) => creditNote(i) && !i.credit_accepted_at;
+
+/** A person accepts a credit note (checked with the supplier): from now on it is set against that supplier's invoices. */
+export function acceptCreditNote(db: DB, id: string, who: string, note: string, now = new Date()): ApInvoiceRow {
+  const inv = apInvoice(db, id);
+  if (!inv) throw new Error(`no payables invoice ${id}`);
+  if (inv.doc_kind !== "credit_note") throw new Error(`${id} is not a credit note`);
+  if (!creditNote(inv)) throw new Error(`${id} is ${inv.status.replace(/_/g, " ")}${MONEY.test(inv.total) ? "" : " and has no plain amount"}: it cannot be accepted`);
+  const by = cleanText(who, 80);
+  const why = cleanText(note, 300);
+  if (!by || !why) throw new Error("say who accepts the credit note and how it was checked with the supplier");
+  if (inv.credit_accepted_at) return inv;
+  db.transaction(() => {
+    db.prepare("UPDATE ap_invoices SET credit_accepted_at = ?, credit_accepted_by = ?, updated_at = ? WHERE id = ? AND credit_accepted_at IS NULL").run(now.toISOString(), by, now.toISOString(), id);
+    audit(db, "human", "ap.credit_accepted", id, { by, note: why, vendor: inv.vendor, amount: `${inv.currency} ${inv.total}` }, now);
+  }).immediate();
+  return apInvoice(db, id)!;
+}
 
 export interface Netting {
   /** Per currency: the credit set against open invoices (count: credit notes that took part). */

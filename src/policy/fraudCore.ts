@@ -77,11 +77,16 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 // signal for the person who verifies, never a block on its own: the bank details themselves are what is checked.
 const BANK_CHANGE = new RegExp([
   // English
-  "bank (details|account)[^.\\n]{0,40}(changed|new)", "\\bnew (bank|account)\\b", "update your records", "changed (our )?banks?",
+  "bank (details|account)[^.\\n]{0,40}(changed|new)", "\\bnew (bank|account|iban)\\b", "update your records", "changed (our )?banks?",
+  // English, red team round 4: "Our payment details have changed", "banking details have been updated", "we have moved
+  // our account", "our IBAN has changed"
+  "(bank|banking|payment|account) (details|information)[^.\\n]{0,40}(changed|updated)", "\\b(iban|account number)[^.\\n]{0,20}(has|have) (been )?(changed|updated)",
+  "\\bmoved our (bank )?account", "(updated|changed|new) (bank|banking|payment) details",
   // German: "Unsere Bankverbindung hat sich geändert", "neue Bankverbindung", "geänderte Kontodaten", "unserem neuen Konto"
-  "(bank|konto)(verbindung|daten|angaben|nummer)[^.\\n]{0,40}(ge(ä|ae)ndert|neu\\b)", "\\bneue[mnrs]? (bank|konto)", "\\bge(ä|ae)nderte[mnrs]? (bank|konto)",
+  "(bank|konto)(verbindung|daten|angaben|nummer)[^.\\n]{0,40}(ge(ä|ae)ndert|neu\\b)", "\\bneue[mnrs]? (bank|konto|iban)", "\\bge(ä|ae)nderte[mnrs]? (bank|konto|iban)",
+  "\\b(iban|bankverbindung)[^.\\n]{0,30}(ge(ä|ae)ndert|gewechselt)", "\\bbankwechsel",
   // Dutch: "ons rekeningnummer is gewijzigd", "een nieuw rekeningnummer", "bankgegevens zijn gewijzigd"
-  "(rekening(nummer)?|bankrekening(nummer)?|bankgegevens)[^.\\n]{0,40}(gewijzigd|veranderd)", "\\bnieuwe? (bank)?(rekening|gegevens)",
+  "(rekening(nummer)?|bankrekening(nummer)?|bankgegevens)[^.\\n]{0,40}(gewijzigd|veranderd)", "\\bnieuwe? (bank)?(rekening|gegevens)", "\\bnieuwe? iban", "\\biban[^.\\n]{0,30}(gewijzigd|veranderd)",
 ].join("|"), "i");
 const PRESSURE = /\burgent(ly)?\b|\bimmediately\b|\btoday\b|avoid (an? )?(interruption|suspension|penalt)|final notice|\bconfidential\b/i;
 
