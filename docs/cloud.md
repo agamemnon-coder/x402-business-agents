@@ -97,6 +97,9 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `POST /v1/users` | admin | Add a person (owner, cfo, accountant, viewer); they then enrol a passkey with an enrolment an owner starts. |
 | `POST /v1/users/{id}/erase` | admin | Erase a person's personal data (bookkeeping records are kept for 7 years). |
 | `GET /v1/export` | admin | Everything the cloud holds for the company; documents listed, each fetched from /v1/documents/{sha256}. Needs admin and read. |
+| `POST /v1/export/staged` | admin | Build the company's export into the store in parts (one at a time, kept a day); returns a 15-minute signed link to its manifest, which needs no key. Needs admin and read. |
+| `GET /v1/export/staged/{id}` | admin | A staged export's state, with a fresh 15-minute link to its manifest while it is ready. Needs admin and read. |
+| `GET /v1/export/download/{id}/{part}` | anyone | With its signed link only: one part (or the manifest) of a staged export, by its signed link (no key); the manifest carries a signed link per part. |
 | `POST /v1/close` | admin | Close the company's account: access ends; records are kept until the retention day, then purged. |
 
 ### The transactions register
@@ -198,6 +201,16 @@ at once all read the final total and every one was refused; it now counts and re
 
 - **Export:** `GET /v1/export` returns every table and the list of documents to fetch; no secret leaves, not even a
   key's or an enrolment's hash. Documents come one by one, so no response has to hold a large company's files at once.
+- **Staged export** (for a large company, and for a browser download): `POST /v1/export/staged` builds the same export
+  into R2 under `exports/<company>/<id>/`, one table's rows per part (2,000 rows a part), each part with its SHA-256 in
+  a manifest. The answer is a link to the manifest, signed (HMAC with the session secret) for that part of that export
+  of that company, valid 15 minutes and needing no key; the manifest carries a signed link per part.
+  `GET /v1/export/staged/{id}` gives fresh links. One export at a time per company (a second is refused with 409 while
+  one is open, checked at commit), at most 512 MB (over it: 413, and nothing is kept), kept a day; then its parts are
+  removed by the next request or the scheduled job and its status reads `expired`. Every staged export and every
+  manifest download is in `GET /v1/security/events`. The build still runs inside the request that asks for it (one
+  table in memory at a time); moving it to a queue is a later step. `joinStagedExport` (`cloud/src/restore.ts`) turns a
+  staged export back into the one-object form a restore reads. Tests: `test/cloud-export-staging.test.ts`.
 - **Erasure:** `POST /v1/users/{id}/erase` replaces the person's name and e-mail, removes their passkeys and revokes the
   keys they made. The bookkeeping records stay: Dutch law keeps them for seven years (Article 52 AWR).
 - **Closing:** `POST /v1/close` ends access at once and sets the purge day to seven full years after the year of the

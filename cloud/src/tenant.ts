@@ -24,6 +24,7 @@ const COLUMNS = {
   runner_health: ["id", "at", "status", "alerts_json"],
   webhooks: ["id", "url", "secret", "created_at", "created_by", "consecutive_failures", "last_attempt_at", "last_status", "disabled_at"],
   security_events: ["id", "at", "kind", "actor", "detail_json"],
+  exports: ["id", "status", "created_at", "expires_at", "created_by", "parts_json", "bytes", "downloaded_at"],
 } as const;
 
 export type Table = keyof typeof COLUMNS;

@@ -299,3 +299,18 @@ CREATE TABLE IF NOT EXISTS security_events (
   PRIMARY KEY (tenant_id, id)
 );
 CREATE INDEX IF NOT EXISTS security_events_by_time ON security_events (tenant_id, at);
+
+-- A staged export (GET /v1/export in parts, built into R2 under exports/<tenant>/<id>/): one open at a time per company,
+-- kept a day, then its parts are removed and its status says so. Its parts are fetched with short-lived signed links.
+CREATE TABLE IF NOT EXISTS exports (
+  tenant_id TEXT NOT NULL,
+  id TEXT NOT NULL,
+  status TEXT NOT NULL,            -- building | ready | failed | expired
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  parts_json TEXT NOT NULL,        -- [{table, n, rows, bytes, sha256}]
+  bytes INTEGER NOT NULL,
+  downloaded_at TEXT,
+  PRIMARY KEY (tenant_id, id)
+);

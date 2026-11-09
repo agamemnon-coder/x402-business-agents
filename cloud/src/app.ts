@@ -13,6 +13,7 @@ import { applySync, SyncBatch, SyncRefused } from "./sync.js";
 import { WriteConflict } from "./tenant.js";
 import { TenantDb } from "./tenant.js";
 import { closeTenant, eraseUser, exportTenant, PrivacyRefused } from "./privacy.js";
+import { download, ExportRefused, exportStatus, signedLink, stageExport } from "./exports.js";
 import { consoleResponse } from "./console.js";
 import { qrSvg } from "./qr.js";
 import { logEvent } from "./log.js";
@@ -44,6 +45,9 @@ export interface CloudEnv {
   retryDelayMs?: number;
   /** Requests per minute per key or session; per address on the sign-in routes; failed authentications per address. */
   rate?: { perMinute: number; signInPerMinute: number; failedAuthPerMinute?: number };
+  /** A staged export's rows per part (default 2000) and its size limit in bytes (default 512 MB). */
+  exportPartRows?: number;
+  exportMaxBytes?: number;
 }
 
 interface Ctx { env: CloudEnv; req: Request; url: URL; now: Date; params: string[]; caller: Caller | null; db: TenantDb | null }
@@ -356,6 +360,20 @@ export const ROUTES: Route[] = [
     need(c.caller!, "read");
     return json(200, await exportTenant(c.env.sql, c.caller!.tenantId));
   } },
+  { method: "POST", path: "/v1/export/staged", summary: "Build the company's export into the store in parts (one at a time, kept a day); returns a 15-minute signed link to its manifest, which needs no key. Needs admin and read.", need: "admin", run: async (c) => {
+    need(c.caller!, "read");
+    const x = await stageExport(c.env.sql, c.env.blobs, c.caller!.tenantId, c.caller!.principal, c.now, { ...(c.env.exportPartRows ? { partRows: c.env.exportPartRows } : {}), ...(c.env.exportMaxBytes !== undefined ? { maxBytes: c.env.exportMaxBytes } : {}) });
+    const l = await signedLink(c.env.origin, c.env.sessionSecret, c.caller!.tenantId, x.id, "manifest", c.now);
+    return json(201, { id: x.id, status: "ready", parts: x.parts.length, bytes: x.bytes, expires_at: x.expires_at, manifest_url: l.url, link_expires_at: l.expires_at });
+  } },
+  { method: "GET", path: "/v1/export/staged/{id}", summary: "A staged export's state, with a fresh 15-minute link to its manifest while it is ready. Needs admin and read.", need: "admin", run: async (c) => {
+    need(c.caller!, "read");
+    return json(200, await exportStatus(c.env.sql, c.env.blobs, c.env.origin, c.env.sessionSecret, c.caller!.tenantId, c.params[0]!, c.now));
+  } },
+  { method: "GET", path: "/v1/export/download/{id}/{part}", summary: "One part (or the manifest) of a staged export, by its signed link (no key); the manifest carries a signed link per part.", need: "public", run: async (c) => {
+    const r = await download(c.env.sql, c.env.blobs, c.env.origin, c.env.sessionSecret, c.params[0]!, c.params[1]!, c.url.searchParams, c.now);
+    return new Response(typeof r.body === "string" ? r.body : new Uint8Array(r.body), { status: r.status, headers: { ...JSON_HEADERS, ...(r.status === 200 ? { "content-disposition": `attachment; filename="${c.params[0]!}-${c.params[1]!}.json"` } : {}) } });
+  } },
   { method: "POST", path: "/v1/close", summary: "Close the company's account: access ends; records are kept until the retention day, then purged.", need: "admin", run: async (c) => json(200, await closeTenant(c.env.sql, c.caller!.tenantId, c.now)) },
 ];
 
@@ -456,6 +474,7 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
     if (e instanceof SyncRefused) return err(e.status, e.message);
     if (e instanceof BadRequest) return err(400, e.message);
     if (e instanceof PrivacyRefused) return err(409, e.message);
+    if (e instanceof ExportRefused) return err(e.status, e.message);
     if (e instanceof MonitorRefused) return err(400, e.message);
     // A write that lost a race with another request for the same company: nothing of it was written.
     if (e instanceof WriteConflict) return err(409, "another change for this company landed at the same time; nothing of this request was written: send it again");

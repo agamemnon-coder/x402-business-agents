@@ -9,7 +9,7 @@ import { TENANT_TABLES, TenantDb, WriteConflict } from "./tenant.js";
 export class PrivacyRefused extends Error {}
 
 /** Columns that hold a secret's hash: they never leave, not even in an export. */
-const SECRET_COLUMNS: Record<string, string> = { api_keys: "secret_sha256", enrolments: "token_sha256", webhooks: "secret" };
+export const SECRET_COLUMNS: Record<string, string> = { api_keys: "secret_sha256", enrolments: "token_sha256", webhooks: "secret" };
 
 /**
  * Everything the cloud holds for the company, as rows. The documents themselves are not inlined (a large company's would
@@ -105,6 +105,7 @@ export async function purgeExpired(sql: Sql, blobs: Blobs, now: Date): Promise<s
   const due = await sql.all<{ id: string }>("SELECT id FROM tenants WHERE closed_at IS NOT NULL AND purge_after IS NOT NULL AND purge_after < ? AND name <> '[purged]'", [today]);
   for (const t of due) {
     for (const key of await blobs.list(`t/${t.id}/`)) await blobs.delete(key);
+    for (const key of await blobs.list(`exports/${t.id}/`)) await blobs.delete(key);
     await sql.batch([
       ...TENANT_TABLES.map((table) => ({ sql: `DELETE FROM ${table} WHERE tenant_id = ?`, params: [t.id] })),
       { sql: "DELETE FROM api_keys WHERE tenant_id = ?", params: [t.id] },

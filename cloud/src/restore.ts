@@ -11,8 +11,8 @@ import { TENANT_TABLES, TenantDb, type Table } from "./tenant.js";
 
 export class RestoreRefused extends Error {}
 
-/** Tables a restore does not write: their rows carry secrets the export leaves out, or the target already has its own. */
-const NOT_RESTORED = new Set<Table>(["api_keys", "enrolments", "webhooks"]);
+/** Tables a restore does not write: their rows carry secrets the export leaves out, the target already has its own, or (exports) they point at parts that were not restored. */
+const NOT_RESTORED = new Set<Table>(["api_keys", "enrolments", "webhooks", "exports"]);
 /** The bookkeeping tables: the target must hold none of these yet. */
 const BOOKS: Table[] = ["vendors", "invoices", "payments", "transactions", "documents", "ledger_entries", "audit_rows"];
 
@@ -30,6 +30,18 @@ export async function verifyChains(data: Record<string, unknown>): Promise<strin
   }
   const l = await continues(entries, { n: 0, hash: GENESIS }, (e) => e.entry_id, (e) => e.entry_hash, ledgerEntryHash);
   return l ? `ledger chain: ${l}` : null;
+}
+
+/**
+ * A staged export (POST /v1/export/staged: a manifest and its parts) joined back into the one-object form importTenant
+ * reads: each table's parts in order. `partOf` gives a part's rows by its name (`<table>-<n>`).
+ */
+export function joinStagedExport(manifest: { format: string; tenant: unknown; parts: { table: string; n: number }[]; documents_to_fetch: unknown[] }, partOf: (name: string) => unknown[]): Record<string, unknown> {
+  if (manifest.format !== "purser-cloud-export/v3-staged") throw new RestoreRefused(`not a staged Purser Cloud export (format ${JSON.stringify(manifest.format)})`);
+  const out: Record<string, unknown> = { format: "purser-cloud-export/v2", tenant: manifest.tenant };
+  for (const p of [...manifest.parts].sort((a, b) => a.n - b.n)) out[p.table] = [...((out[p.table] as unknown[] | undefined) ?? []), ...partOf(`${p.table}-${p.n}`)];
+  out.documents_to_fetch = manifest.documents_to_fetch;
+  return out;
 }
 
 export async function importTenant(sql: Sql, blobs: Blobs, data: Record<string, unknown>, docs: Record<string, Uint8Array>, target: { tenantId: string; now: Date }): Promise<{ rows: number; documents: number }> {

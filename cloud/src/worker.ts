@@ -1,9 +1,10 @@
 // The Worker's entry point: HTTP (the API), e-mail (Cloudflare Email Routing) and the scheduled job (retention purge,
-// housekeeping). Bindings and secrets come from cloud/wrangler.jsonc and `wrangler secret put`; nothing secret is in git.
+// housekeeping, expired staged exports). Bindings and secrets come from cloud/wrangler.jsonc and `wrangler secret put`; nothing secret is in git.
 
 import { ensureSchema, handle, type CloudEnv } from "./app.js";
 import { receiveEmail, type InboundEmail } from "./mail.js";
 import { purgeExpired } from "./privacy.js";
+import { sweepExports } from "./exports.js";
 import { d1Sql, r2Blobs, type D1Like, type R2Like } from "./store.js";
 
 export interface Bindings {
@@ -41,5 +42,7 @@ export default {
     const env = envOf(b);
     await ensureSchema(env.sql);
     await purgeExpired(env.sql, env.blobs, new Date());
+    // Staged exports past their day lose their parts (a request for the company does the same on its way).
+    await sweepExports(env.sql, env.blobs, new Date());
   },
 };
