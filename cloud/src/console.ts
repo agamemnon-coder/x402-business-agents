@@ -15,6 +15,9 @@ const ICONS = ["wallet", "calendar-range", "clock", "inbox", "octagon-x", "chevr
   "download", "mail", "scan-face", "users", "key-round", "log-out", "arrow-left", "flask", "x", "arrow-down-left", "arrow-up-right", "shield-check", "copy"];
 
 const EXTRA_CSS = `
+.pdfframe { display: block; width: 100%; max-width: 820px; height: 600px; border: 0; background: #fff; border-radius: 6px; box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 8px 24px -8px rgba(16,24,40,.18); }
+ul.plain { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+ul.plain li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .tabs { display: flex; gap: 4px; margin-left: 18px; overflow-x: auto; scrollbar-width: none; }
 .tabs::-webkit-scrollbar { display: none; }
 .tabs a { padding: 7px 11px; border-radius: 10px; text-decoration: none; color: var(--muted); font-weight: 600; font-size: 14px; white-space: nowrap; }
@@ -251,14 +254,13 @@ function startView(){
     const inbox=m.inbox?el('p','inbox',[ic('mail'),t('cs.mail_to'),el('b','mono',m.inbox)]):note(t('cs.inbox_later'));
     const make=btn(t('cs.make_runner_key'),'primary','key-round');
     const out=el('div','');
-    const revoke=btn(t('cs.revoke_starter'),'danger','x');
     body.replaceChildren(inbox,el('p','',[t('cs.connect_runner')]),make,out,
-      el('p','',[t('cs.starter_can_go')]),revoke,
+      note(t('cs.starter_gone'),'ok'),
       (()=>{const a=el('a','btn big',t('cs.open_console'));a.href='#/overview';return a})());
     make.onclick=async()=>{make.disabled=true;try{sync=await api('/v1/keys',{method:'POST',body:{name:t('cs.runner_key_name'),scopes:['sync'],expires_in_days:90}});
       out.replaceChildren(el('div','once',[el('b','',t('cs.shown_once')),t('cs.run_this'),
         el('code','cmd','PURSER_CLOUD_URL='+CFG.origin+' PURSER_CLOUD_KEY='+sync.api_key+' npm run cloud -- push')]))}catch(e){out.replaceChildren(note(e.message,'bad'));make.disabled=false}};
-    revoke.onclick=async()=>{revoke.disabled=true;try{await api('/v1/keys/'+encodeURIComponent(info.principal),{method:'DELETE'});revoke.replaceWith(note(t('cs.starter_revoked'),'ok'));key=''}catch(e){revoke.disabled=false;out.append(note(e.message,'bad'))}};
+    key='';
   }
   box.append(el('h1','',t('cs.setup')),el('p','',t('cs.setup_lede')),steps,body,status);
   view().replaceChildren(box);stage1();
@@ -266,17 +268,26 @@ function startView(){
 
 // --- An invited person makes their passkey (the owner shares the link; its secret is in the fragment, never sent) ---
 function enrolView(q){
+  // The secret leaves the address bar and the history at once (red team round 5); the page keeps it in memory only.
+  const e=q.get('e')||'',k=q.get('k')||'';
+  history.replaceState(null,'','#/enrol');
   title(t('cs.enrol_title'));
   const status=el('div','');status.setAttribute('role','status');
-  const b=btn(t('cs.make_passkey'),'primary big','scan-face');
-  const card=el('div','card auth',[el('h1','',t('cs.enrol_title')),el('p','',[t('cs.enrol_added'),el('b','',q.get('t')||''),t('cs.enrol_added2')]),b,status]);
-  if(!q.get('t')||!q.get('e')||!q.get('k')){b.disabled=true;status.append(note(t('cs.link_incomplete'),'bad'))}
-  if(!hasPasskeys()){b.disabled=true;status.append(note(t('cs.no_passkeys_short'),'bad'))}
-  b.onclick=async()=>{b.disabled=true;try{status.replaceChildren(note(t('cs.follow_device')));
-    await enrolPasskey({slug:q.get('t'),name:q.get('n')||q.get('t'),enrolment_id:q.get('e'),token:q.get('k')});
-    history.replaceState(null,'','#/sign-in');try{localStorage.setItem('purser.cloud.slug',q.get('t'))}catch(e){}
-    status.replaceChildren(note(t('cs.enrol_done'),'ok'));setTimeout(()=>go('#/sign-in'),900)}catch(e){status.replaceChildren(note(e.name==='NotAllowedError'?t('cs.passkey_cancelled'):e.message,'bad'));b.disabled=false}};
+  const b=btn(t('cs.make_passkey'),'primary big','scan-face');b.disabled=true;
+  const who=el('p','',t('cs.checking_invite'));
+  const card=el('div','card auth',[el('h1','',t('cs.enrol_title')),who,b,status]);
   view().replaceChildren(card);
+  if(!e||!k){who.replaceChildren(note(t('cs.link_used'),'bad'));return}
+  if(!hasPasskeys()){status.append(note(t('cs.no_passkeys_short'),'bad'))}
+  // Which company and person the secret is for comes from the server, never from the link (red team round 5).
+  api('/v1/auth/invite',{method:'POST',token:'-',body:{enrolment_id:e,token:k}}).then((inv)=>{
+    who.replaceChildren(t('cs.enrol_added'),el('b','',inv.company),' (',el('span','mono',inv.tenant),')',t('cs.enrol_as'),el('b','',inv.person),t('cs.enrol_no_password'));
+    if(hasPasskeys())b.disabled=false;
+    b.onclick=async()=>{b.disabled=true;try{status.replaceChildren(note(t('cs.follow_device')));
+      await enrolPasskey({slug:inv.tenant,name:inv.person+' · '+inv.tenant,enrolment_id:e,token:k});
+      history.replaceState(null,'','#/sign-in');try{localStorage.setItem('purser.cloud.slug',inv.tenant)}catch(x){}
+      status.replaceChildren(note(t('cs.enrol_done'),'ok'));setTimeout(()=>go('#/sign-in'),900)}catch(x){status.replaceChildren(note(x.name==='NotAllowedError'?t('cs.passkey_cancelled'):x.message,'bad'));b.disabled=false}};
+  },(x)=>{who.replaceChildren(note(x.message,'bad'))});
 }
 
 // --- Overview ------------------------------------------------------------------------------------------------------
@@ -364,16 +375,23 @@ async function invoiceView(id){
   view().replaceChildren(back,top,el('div','split',[doc,el('div','stack',[read,checks,el('div','card panel',[el('h2','',t('dt.timeline')),tl]),note(t('cs.approved_on_phone'))])]));
   drawPdf(id,pages);
 }
-// The supplier's PDF drawn on canvases by pdf.js (this origin's own copy, eval off, no XFA): the file is data here, never
-// a page; if it cannot be drawn, the download stays.
+// The supplier's PDF is drawn in a sandboxed frame with an opaque origin (red team round 5): pdf.js parses it there, in
+// a worker, under its own policy and time limit; the frame cannot reach this page, its session or the API. This page
+// fetches the bytes (it holds the session) and hands them over; if the frame cannot draw them, the download stays.
+const PDF_MAX_BYTES=16*1024*1024;
 async function drawPdf(id,box){
-  try{const {getDocument}=await import('/assets/pdfjs.mjs');
+  try{
     const r=await api('/v1/invoices/'+encodeURIComponent(id)+'/document',{raw:true});
-    const data=new Uint8Array(await r.arrayBuffer());
-    const doc=await getDocument({data,isEvalSupported:false,enableXfa:false,disableFontFace:false,useSystemFonts:false,stopAtErrors:false,verbosity:0}).promise;
-    box.replaceChildren();
-    for(let n=1;n<=Math.min(doc.numPages,6);n++){const page=await doc.getPage(n);const vp=page.getViewport({scale:2});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;c.setAttribute('aria-label',t('page_of_invoice',{n}));box.append(c);await page.render({canvasContext:c.getContext('2d'),viewport:vp,canvas:c}).promise}
-    if(doc.numPages>6)box.append(el('p','wait',t('cs.more_pages',{n:doc.numPages-6})));
+    const buf=await r.arrayBuffer();
+    if(buf.byteLength>PDF_MAX_BYTES){box.replaceChildren(el('p','wait',t('cs.too_large')));return}
+    const f=document.createElement('iframe');f.setAttribute('sandbox','allow-scripts');f.src='/pdfview';f.className='pdfframe';f.title=t('cs.invoice_drawn');f.setAttribute('referrerpolicy','no-referrer');
+    let sent=false;
+    const onMsg=(ev)=>{if(ev.source!==f.contentWindow||ev.origin!=='null')return;const d=ev.data||{};
+      if(d.type==='ready'&&!sent){sent=true;f.contentWindow.postMessage({type:'pdf',data:buf},'*',[buf])}
+      else if(d.type==='size'&&typeof d.h==='number')f.style.height=Math.max(120,Math.min(20000,Math.round(d.h)))+'px';
+      else if(d.type==='failed'){window.removeEventListener('message',onMsg);box.replaceChildren(el('p','wait',t('cs.not_drawn')))}};
+    window.addEventListener('message',onMsg);
+    box.replaceChildren(f);
   }catch(e){if(e instanceof Expired)return;box.replaceChildren(el('p','wait',t('cs.not_drawn')))}
 }
 
@@ -464,6 +482,19 @@ async function settingsView(){
     invites.replaceChildren(el('div','once invite',[qr,el('div','',[el('b','',t('cs.invite_for',{name:p.display_name})),el('p','',t('cs.invite_until',{when:stamp(e.expires_at)})),link,el('div','row2',[copy])])]));
     invites.scrollIntoView({block:'nearest'});
   }
+  // A person's passkeys, each removable by an owner (red team round 5: a passkey planted with a leaked starter key was
+  // invisible). Removing one ends that person's sessions; the company's last owner passkey cannot go.
+  const keysOf=el('div','');keysOf.id='passkeys';
+  async function passkeys(p){
+    const r=await api('/v1/users/'+encodeURIComponent(p.id)+'/passkeys');
+    const list=el('ul','plain');
+    for(const k of r.items){const rm=btn(t('cs.remove'),'danger','x');
+      rm.onclick=async()=>{if(!confirm(t('cs.remove_passkey_q',{name:p.display_name})))return;rm.disabled=true;
+        try{await api('/v1/users/'+encodeURIComponent(p.id)+'/passkeys/'+encodeURIComponent(k.credential_id),{method:'DELETE'});await passkeys(p)}catch(e){if(!(e instanceof Expired)){rm.disabled=false;keysOf.append(note(e.message,'bad'))}}};
+      list.append(el('li','',[el('span','mono',k.credential_id.slice(0,10)+'…'),' '+t('cs.enrolled',{when:stamp(k.created_at)})+' ',rm]))}
+    keysOf.replaceChildren(el('div','once',[el('b','',t('cs.passkeys_of',{name:p.display_name})),r.items.length?list:el('p','',t('cs.no_passkey_yet'))]));
+    keysOf.scrollIntoView({block:'nearest'});
+  }
   async function drawPeople(){
     const u=await api('/v1/users?limit=200');
     const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('cs.person')),el('th','',t('cs.role')),el('th','')])])]);const tb=el('tbody','');
@@ -471,13 +502,14 @@ async function settingsView(){
       if(!p.erased_at){const inv=btn(t('cs.invite'),'','key-round');inv.onclick=async()=>{inv.disabled=true;try{await invite(p)}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{inv.disabled=false}};
         const er=btn(t('cs.erase'),'danger','x');er.onclick=async()=>{const typed=prompt(t('cs.erase_prompt',{name:p.display_name}));if(typed===null)return;if(typed.trim()!==p.display_name){people.append(note(t('cs.name_mismatch'),'bad'));return}
           try{await api('/v1/users/'+encodeURIComponent(p.id)+'/erase',{method:'POST'});await drawPeople()}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}};
-        acts.append(inv,' ',er)}
+        const pks=btn(t('cs.passkeys'),'','scan-face');pks.onclick=async()=>{pks.disabled=true;try{await passkeys(p)}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{pks.disabled=false}};
+        acts.append(inv,' ',pks,' ',er)}
       tb.append(el('tr','',[el('td','',[el('b','',p.erased_at?t('cs.erased'):p.display_name),p.email?el('span','sub',' '+p.email):null]),el('td','',[el('span','pill'+(p.role==='owner'?' warn':''),tk('cs.role.'+p.role,p.role))]),acts]))}
     tbl.append(tb);
     const name=el('input','field');name.placeholder=t('cs.name');const role=el('select','field');for(const r of ['cfo','accountant','viewer','owner']){const o=el('option','',tk('cs.role.'+r,r));o.value=r;role.append(o)}
     const add=btn(t('cs.add_invite'),'primary');add.onclick=async()=>{const n=name.value.trim();if(!n)return;add.disabled=true;try{const u=await api('/v1/users',{method:'POST',body:{display_name:n,role:role.value}});await drawPeople();await invite({id:u.id,display_name:n})}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{add.disabled=false}};
     people.replaceChildren(el('h2','',t('cs.people')),el('div','scroll',tbl),el('div','form-row',[el('div','',[el('label','',t('cs.name')),name]),el('div','',[el('label','',t('cs.role')),role]),el('div','',[add])]),
-      note(t('cs.people_note')),invites);
+      note(t('cs.people_note')),invites,keysOf);
   }
   async function drawKeys(){
     const k=await api('/v1/keys?limit=200');
@@ -548,8 +580,48 @@ ${BODY}
 </body></html>`;
 }
 
+/**
+ * The frame an invoice's PDF is drawn in (red team round 5): served sandboxed (opaque origin, by its own policy too, so
+ * even opened on its own it reaches nothing of this origin), it takes the bytes from the console by postMessage, parses
+ * them with pdf.js in a worker (a blob worker that imports this origin's pdf.js; a module worker does not start in an
+ * opaque origin), draws up to six pages, and stops
+ * after 15 seconds. It has no session and no network but pdf.js itself.
+ */
+export function pdfViewPage(n: string, origin: string): string {
+  const lib = JSON.stringify(`${origin}/assets/pdfjs.mjs`);
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<style nonce="${n}">html,body{margin:0;background:#fff}canvas{display:block;width:100%;height:auto;margin:0 0 8px}p{font:14px system-ui,sans-serif;color:#555;margin:8px}</style></head><body>
+<script type="module" nonce="${n}">
+import {getDocument,GlobalWorkerOptions} from ${lib};
+const LIMIT_MS=15000,MAX_PAGES=6;
+let worker=null,task=null,timer=null,done=false;
+const size=()=>parent.postMessage({type:'size',h:document.documentElement.scrollHeight},'*');
+function fail(){if(done)return;done=true;try{task&&task.destroy()}catch(e){}try{worker&&worker.terminate()}catch(e){}document.body.textContent='';parent.postMessage({type:'failed'},'*')}
+addEventListener('message',async(ev)=>{
+  if(ev.source!==parent||done)return;const d=ev.data||{};if(d.type!=='pdf'||!(d.data instanceof ArrayBuffer))return;
+  timer=setTimeout(fail,LIMIT_MS);
+  worker=new Worker(URL.createObjectURL(new Blob(['import('+JSON.stringify(${lib})+');'],{type:'text/javascript'})));
+  try{
+    // pdf.js in the worker says it is ready once its import has run; anything sent before that would be lost.
+    await new Promise((ok,no)=>{worker.addEventListener('message',ok,{once:true});worker.addEventListener('error',no,{once:true})});
+    GlobalWorkerOptions.workerPort=worker;
+    task=getDocument({data:new Uint8Array(d.data),isEvalSupported:false,enableXfa:false,useSystemFonts:false,stopAtErrors:false,verbosity:0});
+    const doc=await task.promise;
+    for(let i=1;i<=Math.min(doc.numPages,MAX_PAGES)&&!done;i++){const page=await doc.getPage(i);const vp=page.getViewport({scale:2});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;c.setAttribute('aria-label','Page '+i+' of the invoice');document.body.append(c);await page.render({canvasContext:c.getContext('2d'),viewport:vp,canvas:c}).promise;size()}
+    if(doc.numPages>MAX_PAGES){const p=document.createElement('p');p.textContent=(doc.numPages-MAX_PAGES)+' more page(s): download the PDF to see them';document.body.append(p)}
+    clearTimeout(timer);done=true;size();
+  }catch(e){clearTimeout(timer);fail()}
+});
+parent.postMessage({type:'ready'},'*');
+</script></body></html>`;
+}
+
+export const pdfViewCsp = (n: string, origin: string) =>
+  `sandbox allow-scripts; default-src 'none'; script-src 'nonce-${n}' ${origin}/assets/pdfjs.mjs; worker-src blob:; style-src 'nonce-${n}'; img-src blob: data:; font-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'self'`;
+
 export const consoleCsp = (n: string) =>
-  `default-src 'none'; script-src 'nonce-${n}' 'self'; style-src 'nonce-${n}'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'`;
+  `default-src 'none'; script-src 'nonce-${n}' 'self'; style-src 'nonce-${n}'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'`;
 
 const PAGE_HEADERS = {
   "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer",
@@ -566,6 +638,10 @@ export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Pr
     const n = nonce();
     return new Response(consolePage(n, { origin: env.origin, rpId: env.rpId, mailDomain: env.mailDomain ?? "" }), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": consoleCsp(n) } });
   }
+  if (url.pathname === "/pdfview") {
+    const n = nonce();
+    return new Response(pdfViewPage(n, env.origin), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": pdfViewCsp(n, env.origin) } });
+  }
   if (url.pathname === "/assets/inter.woff2") {
     font ??= fromB64(INTER_WOFF2_B64);
     return new Response(new Uint8Array(font), { status: 200, headers: { "content-type": "font/woff2", "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff" } });
@@ -574,7 +650,9 @@ export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Pr
   // one path is asked of the assets, whatever the bundle holds.
   if (url.pathname === "/assets/pdfjs.mjs" && env.asset) {
     const r = await env.asset("/assets/pdfjs.mjs");
-    if (r && r.ok) return new Response(r.body, { status: 200, headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff", "cross-origin-resource-policy": "same-origin" } });
+    if (r && r.ok) return new Response(r.body, { status: 200, headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff",
+      // Loaded by the sandboxed PDF frame (an opaque origin) and its worker, so it is a CORS fetch: the library is public.
+      "access-control-allow-origin": "*", "cross-origin-resource-policy": "cross-origin" } });
   }
   return new Response("not found", { status: 404, headers: { "content-type": "text/plain; charset=utf-8", "x-content-type-options": "nosniff" } });
 }

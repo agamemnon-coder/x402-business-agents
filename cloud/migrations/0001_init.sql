@@ -59,6 +59,9 @@ CREATE TABLE IF NOT EXISTS api_keys (
   -- The key that made this one, if a key did: revoking it revokes this one too, and this one never has more scope or
   -- a later expiry than it (red team round 4).
   parent_key TEXT,
+  -- 'first-owner': a new company's starter key, good only for the first owner's passkey and revoked when that passkey
+  -- exists (red team round 5). NULL: an ordinary key.
+  purpose TEXT,
   created_at TEXT NOT NULL,
   expires_at TEXT,
   revoked_at TEXT,
@@ -72,11 +75,19 @@ CREATE TABLE IF NOT EXISTS enrolments (
   user_id TEXT NOT NULL,
   token_sha256 TEXT NOT NULL,
   created_by TEXT NOT NULL,
+  -- Who started it (red team round 5): 'session' or 'key', the person behind it, and whether a signed-in owner did.
+  -- At redeem the starter must still be live, and an owner's passkey started by anyone but a signed-in owner still
+  -- needs no owner to have one. A newer enrolment for the person, or the starter's revoke or erasure, cancels it.
+  created_by_kind TEXT NOT NULL DEFAULT 'key',
+  created_by_user TEXT,
+  by_owner INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   expires_at TEXT NOT NULL,
   used_at TEXT,
+  cancelled_at TEXT,
   PRIMARY KEY (tenant_id, id)
 );
+CREATE INDEX IF NOT EXISTS enrolments_by_id ON enrolments (id);
 
 CREATE TABLE IF NOT EXISTS rate_hits (
   bucket TEXT NOT NULL,

@@ -21,6 +21,8 @@ export interface Caller {
   role?: Role;
   /** The person behind the call: the signed-in user, or the person a key was made for (inherited down a chain of keys). */
   user: string | null;
+  /** 'first-owner': a new company's starter key, good only for the first owner's passkey (red team round 5). */
+  purpose?: string | null;
 }
 
 export class AuthError extends Error {
@@ -34,6 +36,8 @@ export const MAX_OPEN_CHALLENGES = 200;
 export const ENROLMENT_TTL_MS = 30 * 60 * 1000;
 /** Every key expires: 90 days unless it is made with fewer, at most a year. */
 export const KEY_DEFAULT_DAYS = 90;
+/** A new company's starter key: a week, and only until the first owner's passkey exists (red team round 5). */
+export const STARTER_KEY_DAYS = 7;
 export const KEY_MAX_DAYS = 365;
 
 /**
@@ -70,14 +74,14 @@ export async function newApiKey(db: TenantDb, a: { name: string; scopes: Scope[]
 }
 
 /** A key made outside a request (a new company's first owner key): no caller to guard, no parent. */
-export async function firstApiKey(db: TenantDb, a: { name: string; scopes: Scope[]; createdBy: string; createdByUser: string | null; expiresInDays?: number; now: Date }): Promise<{ id: string; key: string; expires_at: string }> {
+export async function firstApiKey(db: TenantDb, a: { name: string; scopes: Scope[]; createdBy: string; createdByUser: string | null; expiresInDays?: number; purpose?: "first-owner"; now: Date }): Promise<{ id: string; key: string; expires_at: string }> {
   if (!a.scopes.length || a.scopes.some((s) => !SCOPES.includes(s))) throw new AuthError(403, `scopes must be some of ${SCOPES.join(", ")}`);
   const id = `k${randomToken(9)}`.replace(/[^A-Za-z0-9]/g, "x");
   const secret = randomToken(32);
   const expires_at = new Date(a.now.getTime() + (a.expiresInDays ?? KEY_DEFAULT_DAYS) * 86_400_000).toISOString();
   await db.apply([db.insert("api_keys", {
     id, name: a.name.slice(0, 80), scopes: a.scopes.join(" "), secret_sha256: await sha256Hex(secret), created_by: a.createdBy, created_by_user: a.createdByUser,
-    created_at: a.now.toISOString(), expires_at,
+    purpose: a.purpose ?? null, created_at: a.now.toISOString(), expires_at,
   })]);
   return { id, key: `pck_${id}_${secret}`, expires_at };
 }
@@ -102,8 +106,8 @@ export function keyIdOf(token: string | undefined): string | null {
 async function fromApiKey(sql: Sql, token: string, now: Date): Promise<Caller> {
   const m = /^pck_(k[A-Za-z0-9]{12})_([A-Za-z0-9_-]{43})$/.exec(token);
   if (!m) throw new AuthError(401, "not a Purser API key");
-  const row = await sql.first<{ tenant_id: string; scopes: string; secret_sha256: string; revoked_at: string | null; expires_at: string | null; created_by_user: string | null; parent_key: string | null }>(
-    "SELECT tenant_id, scopes, secret_sha256, revoked_at, expires_at, created_by_user, parent_key FROM api_keys WHERE id = ?", [m[1]!]);
+  const row = await sql.first<{ tenant_id: string; scopes: string; secret_sha256: string; revoked_at: string | null; expires_at: string | null; created_by_user: string | null; parent_key: string | null; purpose: string | null }>(
+    "SELECT tenant_id, scopes, secret_sha256, revoked_at, expires_at, created_by_user, parent_key, purpose FROM api_keys WHERE id = ?", [m[1]!]);
   const digest = await sha256Hex(m[2]!);
   if (!row || !sameString(row.secret_sha256, digest)) throw new AuthError(401, "unknown API key");
   if (row.revoked_at) throw new AuthError(401, "this API key was revoked");
@@ -122,7 +126,7 @@ async function fromApiKey(sql: Sql, token: string, now: Date): Promise<Caller> {
   const tenant = await sql.first<{ closed_at: string | null }>("SELECT closed_at FROM tenants WHERE id = ?", [row.tenant_id]);
   if (!tenant || tenant.closed_at) throw new AuthError(401, "this company's account is closed");
   await sql.run("UPDATE api_keys SET last_used_at = ? WHERE id = ?", [now.toISOString(), m[1]!]);
-  return { tenantId: row.tenant_id, kind: "key", principal: m[1]!, scopes: new Set(row.scopes.split(" ") as Scope[]), user: row.created_by_user };
+  return { tenantId: row.tenant_id, kind: "key", principal: m[1]!, scopes: new Set(row.scopes.split(" ") as Scope[]), user: row.created_by_user, purpose: row.purpose };
 }
 
 const scopesOf = (role: Role): Set<Scope> => new Set<Scope>(role === "owner" ? ["read", "admin"] : ["read"]);
@@ -225,10 +229,14 @@ export async function startEnrolment(db: TenantDb, caller: Caller, userId: strin
   // Checked again when it commits (red team round 4: counted before an owner's erasure committed, a key got an owner
   // enrolment): the caller is still live, and for an owner's passkey asked by anyone but a signed-in owner, still no
   // owner has one.
-  const ownerByOther = person.role === "owner" && !(caller.kind === "session" && caller.role === "owner");
+  const byOwner = caller.kind === "session" && caller.role === "owner";
+  const ownerByOther = person.role === "owner" && !byOwner;
   try {
+    // A new enrolment for a person cancels their unused ones (red team round 5: a re-invite left the first link working).
     await db.apply([db.callerGuard(caller, iso), ...(ownerByOther ? [db.noOwnerPasskeyGuard(iso)] : []),
-      db.insert("enrolments", { id, user_id: userId, token_sha256: await sha256Hex(token), created_by: caller.principal, created_at: iso, expires_at })]);
+      db.update("enrolments", { user_id: userId, used_at: null, cancelled_at: null }, { cancelled_at: iso }),
+      db.insert("enrolments", { id, user_id: userId, token_sha256: await sha256Hex(token), created_by: caller.principal, created_by_kind: caller.kind,
+        created_by_user: caller.user, by_owner: byOwner ? 1 : 0, created_at: iso, expires_at })]);
   } catch (e) {
     if (e instanceof WriteConflict) throw new AuthError(403, "the caller was revoked meanwhile, or an owner now has a passkey: only a signed-in owner may enrol an owner's passkey");
     throw e;
@@ -239,18 +247,31 @@ export async function startEnrolment(db: TenantDb, caller: Caller, userId: strin
 /** Finishes an enrolment: the secret matches, it is unused and unexpired, and the new passkey signed the secret. */
 export async function enrolPasskey(sql: Sql, a: { tenantId: string; enrolmentId: string; token: string; credentialId: string; x: string; y: string; assertion: AssertionB64; rpId: string; origin: string; now: Date }): Promise<{ user_id: string; credential_id: string }> {
   const db = new TenantDb(sql, a.tenantId);
-  const e = await db.one<{ user_id: string; token_sha256: string }>("enrolments", { id: a.enrolmentId });
+  const e = await db.one<{ user_id: string; token_sha256: string; created_by: string; created_by_kind: "key" | "session"; by_owner: number }>("enrolments", { id: a.enrolmentId });
   if (!e || !sameString(e.token_sha256, await sha256Hex(a.token))) throw new AuthError(401, "the enrolment is unknown, used or expired");
   const iso = a.now.toISOString();
-  // Taken once, atomically, whatever happens next.
-  const taken = await sql.run("UPDATE enrolments SET used_at = ? WHERE tenant_id = ? AND id = ? AND used_at IS NULL AND expires_at > ?", [iso, a.tenantId, a.enrolmentId, iso]);
+  // Taken once, atomically, whatever happens next; a cancelled one (a newer invite, its starter revoked or erased) never.
+  const taken = await sql.run("UPDATE enrolments SET used_at = ? WHERE tenant_id = ? AND id = ? AND used_at IS NULL AND cancelled_at IS NULL AND expires_at > ?", [iso, a.tenantId, a.enrolmentId, iso]);
   if (taken.changes !== 1) throw new AuthError(401, "the enrolment is unknown, used or expired");
   const v = await verifyAssertion(a.assertion, { x: a.x, y: a.y }, { challenge: a.token, origin: a.origin, rpId: a.rpId, lastCounter: 0 });
   if (!v.ok) throw new AuthError(401, `the new passkey's signature does not check (${v.why})`);
-  const person = await db.one<{ erased_at: string | null }>("users", { id: e.user_id });
+  const person = await db.one<{ erased_at: string | null; role: Role }>("users", { id: e.user_id });
   if (!person || person.erased_at) throw new AuthError(401, "this person has no access");
   if (await db.one("credentials", { credential_id: a.credentialId })) throw new AuthError(401, "this passkey is already enrolled");
-  await db.apply([db.insert("credentials", { credential_id: a.credentialId, user_id: e.user_id, x: a.x, y: a.y, counter: v.counter, created_at: iso })]);
+  // Checked again when the passkey is written (red team round 5: an owner enrolment the starter key started was still
+  // good after the first owner's passkey existed and the starter key was revoked): whoever started it is still live
+  // (the key not revoked or expired, the signed-in person not erased); and an owner's passkey that no signed-in owner
+  // started still needs no owner to have one. The first owner's passkey revokes the starter key in the same write.
+  const owner = person.role === "owner";
+  try {
+    await db.apply([db.callerGuard({ kind: e.created_by_kind, principal: e.created_by }, iso),
+      ...(owner && !e.by_owner ? [db.noOwnerPasskeyGuard(iso)] : []),
+      db.insert("credentials", { credential_id: a.credentialId, user_id: e.user_id, x: a.x, y: a.y, counter: v.counter, created_at: iso }),
+      ...(owner ? [db.update("api_keys", { purpose: "first-owner", revoked_at: null }, { revoked_at: iso })] : [])]);
+  } catch (err) {
+    if (err instanceof WriteConflict) throw new AuthError(401, "this enrolment no longer holds: whoever started it lost access, or an owner already has a passkey; ask an owner for a new invite");
+    throw err;
+  }
   return { user_id: e.user_id, credential_id: a.credentialId };
 }
 
@@ -277,4 +298,16 @@ export async function bump(sql: Sql, bucket: string, windowStart: number, amount
 export async function withinRate(sql: Sql, bucket: string, now: Date, limit: { windowSec: number; max: number }): Promise<boolean> {
   const win = Math.floor(now.getTime() / 1000 / limit.windowSec) * limit.windowSec;
   return (await bump(sql, bucket, win, 1)) <= limit.max;
+}
+
+/** What an invite's secret is for, without signing in: the company and the person (red team round 5: the link named its
+ * company in plain text, so a link could claim any company). Unknown, used, cancelled or expired: 401. */
+export async function inviteInfo(sql: Sql, a: { enrolmentId: string; token: string; now: Date }): Promise<{ tenant: string; company: string; person: string; expires_at: string }> {
+  const e = await sql.first<{ tenant_id: string; user_id: string; token_sha256: string; used_at: string | null; cancelled_at: string | null; expires_at: string }>(
+    "SELECT tenant_id, user_id, token_sha256, used_at, cancelled_at, expires_at FROM enrolments WHERE id = ?", [a.enrolmentId]);
+  if (!e || !sameString(e.token_sha256, await sha256Hex(a.token)) || e.used_at || e.cancelled_at || e.expires_at <= a.now.toISOString()) throw new AuthError(401, "this invite is unknown, used, replaced or expired; ask an owner for a new one");
+  const t = await sql.first<{ slug: string; name: string; closed_at: string | null }>("SELECT slug, name, closed_at FROM tenants WHERE id = ?", [e.tenant_id]);
+  const u = await sql.first<{ display_name: string; erased_at: string | null }>("SELECT display_name, erased_at FROM users WHERE tenant_id = ? AND id = ?", [e.tenant_id, e.user_id]);
+  if (!t || t.closed_at || !u || u.erased_at) throw new AuthError(401, "this invite is unknown, used, replaced or expired; ask an owner for a new one");
+  return { tenant: t.slug, company: t.name, person: u.display_name, expires_at: e.expires_at };
 }

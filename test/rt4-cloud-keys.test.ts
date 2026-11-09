@@ -2,25 +2,7 @@
 // while its person is erased never outlives them; an owner enrolment racing an owner's erasure is checked at commit.
 import { describe, expect, it } from "vitest";
 import type { Sql, SqlValue } from "../cloud/src/store.js";
-import { softPasskey } from "../src/metal/softPasskey.js";
-import { ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
-
-const b64u = (u: Uint8Array) => Buffer.from(u).toString("base64url");
-
-async function finishEnrol(c: TestCloud, slug: string, e: { enrolment_id: string; token: string }) {
-  const pk = softPasskey();
-  const credential_id = b64u(crypto.getRandomValues(new Uint8Array(16)));
-  const x = Buffer.from(pk.key.qx.slice(2), "hex").toString("base64url");
-  const y = Buffer.from(pk.key.qy.slice(2), "hex").toString("base64url");
-  const ea = pk.assert("0x00", { challenge: e.token, origin: ORIGIN, rpId: RP });
-  return c.req("POST", "/v1/auth/enrol", { body: { tenant: slug, enrolment_id: e.enrolment_id, token: e.token, credential_id, x, y,
-    assertion: { authenticatorData: b64u(ea.authenticatorData), clientDataJSON: b64u(ea.clientDataJSON), signature: b64u(ea.signature) } } });
-}
-async function enrol(c: TestCloud, slug: string, key: string, userId: string) {
-  const e = await c.req("POST", `/v1/users/${userId}/enrolment`, { key });
-  if (e.status !== 201) return e;
-  return finishEnrol(c, slug, e.json as { enrolment_id: string; token: string });
-}
+import { testCloud } from "./support/cloud.js";
 
 describe("red team 4, cloud keys", () => {
   it("2: a key a key made has no more scope and no later expiry than its maker, and is revoked with it", async () => {
@@ -58,8 +40,8 @@ describe("red team 4, cloud keys", () => {
     it(`1 (${mode}): a key minted while its person is erased never works, and no owner passkey can be had with it`, async () => {
       const c = testCloud();
       try {
+        // The owner has a passkey (the test company's first run made it); t.key is a key the owner made.
         const t = await c.tenant("acme");
-        expect((await enrol(c, "acme", t.key, t.owner)).status).toBe(201);
         const o2 = await c.req("POST", "/v1/users", { key: t.key, body: { display_name: "made by the key", role: "owner" } });
         let release: () => void = () => {};
         if (mode === "gated") {
@@ -84,8 +66,9 @@ describe("red team 4, cloud keys", () => {
   it("3: an owner enrolment counted while no owner had a passkey is refused if one has by commit time", async () => {
     const c = testCloud();
     try {
-      const t = await c.tenant("acme");
-      const o2 = await c.req("POST", "/v1/users", { key: t.key, body: { display_name: "second owner", role: "owner" } });
+      // A new company: the starter key starts the first owner's enrolment while no owner has a passkey (red team round 5:
+      // the starter key enrols its own owner only).
+      const t = await c.tenant("acme", { bare: true });
       const sql = c.env.sql;
       let release: () => void = () => {};
       let counted: () => void = () => {};
@@ -94,7 +77,7 @@ describe("red team 4, cloud keys", () => {
       // The enrolment counts owner passkeys (none yet), then waits; meanwhile the first owner enrols one.
       c.env.sql = { ...sql, all: (s, p) => sql.all(s, p), run: (s, p) => sql.run(s, p), exec: (s) => sql.exec(s), batch: (s) => sql.batch(s),
         first: (async (s: string, p?: SqlValue[]) => { const r = await sql.first(s, p); if (s.includes("FROM credentials") && s.includes(" IN (")) { counted(); await held; } return r; }) as Sql["first"] };
-      const pEnr = c.req("POST", `/v1/users/${o2.json.id}/enrolment`, { key: t.key });
+      const pEnr = c.req("POST", `/v1/users/${t.owner}/enrolment`, { key: t.key });
       await reached;
       await sql.run("INSERT INTO credentials (tenant_id, credential_id, user_id, x, y, counter, created_at) VALUES ((SELECT id FROM tenants WHERE slug = 'acme'), 'cred-o1', ?, 'x', 'y', 0, ?)", [t.owner, c.clock.now.toISOString()]);
       release();

@@ -51,6 +51,9 @@ export async function eraseUser(sql: Sql, tenantId: string, userId: string, by: 
       db.delete("credentials", { user_id: userId }),
       db.update("api_keys", { created_by_user: userId, revoked_at: null }, { revoked_at: iso }),
       db.update("api_keys", { created_by: userId, revoked_at: null }, { revoked_at: iso }),
+      // Their unused invites, and the ones they started for others, go too (red team round 5).
+      db.update("enrolments", { user_id: userId, used_at: null, cancelled_at: null }, { cancelled_at: iso }),
+      db.update("enrolments", { created_by_user: userId, used_at: null, cancelled_at: null }, { cancelled_at: iso }),
     ]);
   } catch (e) {
     if (!(e instanceof WriteConflict)) throw e;
@@ -106,7 +109,8 @@ export async function purgeExpired(sql: Sql, blobs: Blobs, now: Date): Promise<s
       ...TENANT_TABLES.map((table) => ({ sql: `DELETE FROM ${table} WHERE tenant_id = ?`, params: [t.id] })),
       { sql: "DELETE FROM api_keys WHERE tenant_id = ?", params: [t.id] },
       { sql: "DELETE FROM challenges WHERE tenant_id = ?", params: [t.id] },
-      { sql: "UPDATE tenants SET name = '[purged]', slug = id WHERE id = ?", params: [t.id] },
+      // The address stays taken (red team round 5): a purged company's inbox address is never given to someone else.
+      { sql: "UPDATE tenants SET name = '[purged]' WHERE id = ?", params: [t.id] },
     ]);
   }
   // Housekeeping: spent challenges and old rate windows.

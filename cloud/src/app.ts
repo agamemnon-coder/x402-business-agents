@@ -3,7 +3,7 @@
 // TenantDb; a route never names a tenant itself.
 
 import { z } from "zod";
-import { AuthError, callerOf, endSessions, enrolPasskey, failedAuthBlocked, isPlatformAdmin, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope, firstApiKey, descendantKeys } from "./auth.js";
+import { AuthError, callerOf, endSessions, enrolPasskey, failedAuthBlocked, isPlatformAdmin, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope, firstApiKey, descendantKeys, inviteInfo, STARTER_KEY_DAYS } from "./auth.js";
 import { randomToken } from "./crypto.js";
 import { allTransactions, BadRequest, insights, invoiceDocument, ledgerEntries, listInvoices, listPayments, listTransactions, listVendors, oneInvoice, oneTransaction, paged, report, transactionSummary } from "./read.js";
 import { registerCsv } from "../../src/money/registerShape.js";
@@ -98,6 +98,13 @@ export function withoutSecret(r: Record<string, unknown>): Record<string, unknow
   return copy;
 }
 const SLUG = z.string().regex(/^[a-z0-9][a-z0-9-]{1,40}$/, "a slug is lowercase letters, digits and dashes");
+/**
+ * Addresses no company may have (red team round 5): a company's address is also its inbox (slug@domain), and these are
+ * the mailboxes certificate authorities and mail systems write to (RFC 2142, CA/Browser Forum domain validation).
+ */
+export const RESERVED_SLUGS = new Set(["postmaster", "hostmaster", "webmaster", "admin", "administrator", "abuse", "root", "noreply", "no-reply",
+  "mailer-daemon", "security", "ssl-admin", "info", "support", "www", "mail", "dmarc", "dmarc-reports", "bounce", "bounces", "purser", "api", "console"]);
+const NEW_SLUG = SLUG.refine((v) => !RESERVED_SLUGS.has(v), "this address is reserved");
 
 export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/health", summary: "For an uptime monitor: whether the database and the document store answer, the version, the mail waiting in all (no company's data); 503 when something is down.", need: "public", run: async (c) => {
@@ -118,7 +125,7 @@ export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/openapi.json", summary: "This API, as OpenAPI 3.1.", need: "public", run: async (c) => json(200, openApi(c.env.origin)) },
 
   { method: "POST", path: "/v1/admin/tenants", summary: "Create a company and its first owner; returns the owner's API key once.", need: "platform", run: async (c) => {
-    const b = await body(c, z.object({ slug: SLUG, name: z.string().min(1).max(200), owner: z.object({ display_name: z.string().min(1).max(120), email: z.string().email().max(200).optional() }).strict() }).strict());
+    const b = await body(c, z.object({ slug: NEW_SLUG, name: z.string().min(1).max(200), owner: z.object({ display_name: z.string().min(1).max(120), email: z.string().email().max(200).optional() }).strict() }).strict());
     if (await c.env.sql.first("SELECT 1 FROM tenants WHERE slug = ?", [b.slug])) return err(409, `the address ${b.slug} is taken`);
     const id = `t_${randomToken(12).replace(/[^A-Za-z0-9]/g, "x")}`;
     const iso = c.now.toISOString();
@@ -132,8 +139,9 @@ export const ROUTES: Route[] = [
     const t = new TenantDb(c.env.sql, id);
     const ownerId = `u_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}`;
     await t.apply([t.insert("users", { id: ownerId, display_name: b.owner.display_name, email: b.owner.email ?? null, role: "owner", created_at: iso })]);
-    const key = await firstApiKey(t, { name: "owner (first key)", scopes: ["read", "sync", "admin"], createdBy: ownerId, createdByUser: ownerId, now: c.now });
-    return json(201, { tenant: { id, slug: b.slug, name: b.name }, owner: { id: ownerId }, api_key: key.key, expires_at: key.expires_at, note: "the key is shown once; store it in a secret store" });
+    // The starter key (red team round 5): good only to make the first owner's passkey, for a week; that passkey revokes it.
+    const key = await firstApiKey(t, { name: "starter (first owner's passkey only)", scopes: ["read", "admin"], createdBy: ownerId, createdByUser: ownerId, expiresInDays: STARTER_KEY_DAYS, purpose: "first-owner", now: c.now });
+    return json(201, { tenant: { id, slug: b.slug, name: b.name }, owner: { id: ownerId }, api_key: key.key, expires_at: key.expires_at, note: "the starter key is shown once and makes the first owner's passkey only; it stops working once that passkey exists" });
   } },
 
   { method: "POST", path: "/v1/auth/challenge", summary: "Start a passkey sign-in: a one-time challenge for the company.", need: "public", run: async (c) => {
@@ -158,6 +166,10 @@ export const ROUTES: Route[] = [
     if (!t || t.closed_at) return notFound("company");
     const r = await enrolPasskey(c.env.sql, { tenantId: t.id, enrolmentId: b.enrolment_id, token: b.token, credentialId: b.credential_id, x: b.x, y: b.y, assertion: b.assertion, rpId: c.env.rpId, origin: c.env.origin, now: c.now });
     return json(201, r);
+  } },
+  { method: "POST", path: "/v1/auth/invite", summary: "What an invite is for, from its secret: the company's address and name and the person; nothing is used up.", need: "public", run: async (c) => {
+    const b = await body(c, z.object({ enrolment_id: z.string().max(80), token: z.string().min(40).max(80) }).strict());
+    return json(200, await inviteInfo(c.env.sql, { enrolmentId: b.enrolment_id, token: b.token, now: c.now }));
   } },
   { method: "POST", path: "/v1/auth/logout", summary: "Sign out: every session of the signed-in person ends.", need: "read", run: async (c) => {
     if (c.caller!.kind !== "session") return err(400, "only a signed-in person signs out; revoke a key with DELETE /v1/keys/{id}");
@@ -265,17 +277,42 @@ export const ROUTES: Route[] = [
     // The keys it made go with it (red team round 4: they kept working after their maker's revoke).
     const children = await descendantKeys(t, c.params[0]!);
     const iso = c.now.toISOString();
+    // So do the invites they started (red team round 5: an invite outlived the key that made it).
     await t.apply([...(k.revoked_at ? [] : [t.update("api_keys", { id: c.params[0]! }, { revoked_at: iso })]),
-      ...(children.length ? [t.update("api_keys", { id: { in: children }, revoked_at: null }, { revoked_at: iso })] : [])]);
+      ...(children.length ? [t.update("api_keys", { id: { in: children }, revoked_at: null }, { revoked_at: iso })] : []),
+      t.update("enrolments", { created_by: { in: [c.params[0]!, ...children] }, used_at: null, cancelled_at: null }, { cancelled_at: iso })]);
     return json(200, { id: c.params[0], revoked: true, also_revoked: children });
   } },
   { method: "GET", path: "/v1/users", summary: "The company's people and their roles; paginated (limit, cursor).", need: "admin", run: async (c) => json(200, await paged<Record<string, unknown>>(db(c), "users", "id", {}, c.url.searchParams, (r) => r)) },
   { method: "POST", path: "/v1/users/{id}/enrolment", summary: "Start a person's passkey enrolment: a single-use secret for 30 minutes (an owner's passkey: a signed-in owner only, once any owner has one). Also returns the invite link (the secret after the #, so opening it sends the secret to no server) and its QR code as SVG.", need: "admin", run: async (c) => {
     const e = await startEnrolment(db(c), c.caller!, c.params[0]!, c.now);
-    const t = await c.env.sql.first<{ slug: string }>("SELECT slug FROM tenants WHERE id = ?", [c.caller!.tenantId]);
-    const u = await db(c).one<{ display_name: string }>("users", { id: c.params[0]! });
-    const link = `${c.env.origin}/#/enrol?${new URLSearchParams({ t: t!.slug, e: e.enrolment_id, k: e.token, n: u?.display_name ?? "" }).toString()}`;
+    // The link names no company or person (red team round 5): the page asks the server what the secret is for.
+    const link = `${c.env.origin}/#/enrol?${new URLSearchParams({ e: e.enrolment_id, k: e.token }).toString()}`;
     return json(201, { ...e, link, qr_svg: qrSvg(link) });
+  } },
+  { method: "GET", path: "/v1/users/{id}/passkeys", summary: "A person's passkeys (their ids and when each was enrolled).", need: "admin", run: async (c) => {
+    if (!(await db(c).one("users", { id: c.params[0]! }))) return notFound("person");
+    const items = await db(c).select<{ credential_id: string; created_at: string }>("credentials", { user_id: c.params[0]! }, { order: ["created_at"] });
+    return json(200, { items: items.map((r) => ({ credential_id: r.credential_id, created_at: r.created_at })) });
+  } },
+  { method: "DELETE", path: "/v1/users/{id}/passkeys/{credential}", summary: "Remove a passkey (a signed-in owner only): it signs in no more, and the person's sessions end. Never the last owner passkey.", need: "admin", run: async (c) => {
+    if (!(c.caller!.kind === "session" && c.caller!.role === "owner")) return err(403, "only a signed-in owner removes a passkey");
+    const t = db(c);
+    const cred = await t.one<{ user_id: string }>("credentials", { credential_id: c.params[1]!, user_id: c.params[0]! });
+    if (!cred) return notFound("passkey");
+    const person = await t.one<{ role: Role; session_gen: number }>("users", { id: c.params[0]! });
+    const iso = c.now.toISOString();
+    try {
+      // Removed, the person's sessions ended (one made with that passkey ends with it), and checked at commit that some
+      // owner still has a passkey: the company is never left without one.
+      await t.apply([t.callerGuard(c.caller!, iso), t.delete("credentials", { credential_id: c.params[1]!, user_id: c.params[0]! }),
+        t.update("users", { id: c.params[0]! }, { session_gen: (person?.session_gen ?? 0) + 1 }),
+        ...(person?.role === "owner" ? [t.ownerPasskeyRemainsGuard(iso)] : [])]);
+    } catch (e) {
+      if (e instanceof WriteConflict) return err(409, "this is the last owner passkey of the company: enrol another owner passkey first");
+      throw e;
+    }
+    return json(200, { removed: c.params[1], sessions_ended: c.params[0] });
   } },
   { method: "POST", path: "/v1/users", summary: "Add a person (owner, cfo, accountant, viewer); they then enrol a passkey with an enrolment an owner starts.", need: "admin", run: async (c) => {
     const b = await body(c, z.object({ display_name: z.string().min(1).max(120), email: z.string().email().max(200).optional(), role: z.enum(ROLES as [Role, ...Role[]]) }).strict());
@@ -366,6 +403,13 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
         throw e;
       }
       need(caller, hit.r.need);
+      // The starter key makes the first owner's passkey and nothing else (red team round 5): who it is, the company's
+      // name, and an enrolment for its own owner.
+      if (caller.purpose === "first-owner") {
+        const ok = (req.method === "GET" && hit.r.path === "/v1/me") || (req.method === "POST" && hit.r.path === "/v1/company")
+          || (req.method === "POST" && hit.r.path === "/v1/users/{id}/enrolment" && hit.p![0] === caller.user);
+        if (!ok) return err(403, "the starter key only makes the first owner's passkey; sign in with that passkey to do the rest");
+      }
       if (!(await withinRate(env.sql, `${caller.kind}:${caller.principal}`, now, { windowSec: 60, max: rate.perMinute }))) return err(429, "too many requests; wait a minute");
       ctx.caller = caller;
       ctx.db = new TenantDb(env.sql, caller.tenantId);
