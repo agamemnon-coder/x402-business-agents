@@ -204,8 +204,11 @@ describe("round 2, 7: reading a PDF cannot stop or crash the process", () => {
     await expect(pdfText(deflateBomb(8 * 1024 * 1024), { maxDecodedBytes: 1024 * 1024 })).rejects.toThrow(/decoded/);
   });
   it("a PDF that takes too long is stopped, and the next one is read", async () => {
+    // A PDF that is slow to read for real (about 150 pages of text, under the page limit), so the 1 ms limit always
+    // trips: a one-page invoice was sometimes read inside 1 ms by a warm worker, which made this test flaky.
+    const slow = await pdfOf(Array.from({ length: 6000 }, (_, i) => `Line ${i} of a long annex that takes time to read.`).join("\n"));
+    await expect(pdfText(slow, { timeoutMs: 1 })).rejects.toThrow(/longer than/);
     const ok = await pdfOf(EN);
-    await expect(pdfText(ok, { timeoutMs: 1 })).rejects.toThrow(/longer than/);
     expect((await pdfText(ok)).text).toMatch(/BTX-2026-21/);
   });
   it("a bomb in the inbox is filed for a person, and the inbox goes on", async () => {
