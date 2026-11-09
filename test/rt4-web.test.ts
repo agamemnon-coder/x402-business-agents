@@ -2,7 +2,9 @@
 // its validated columns; supplier verification codes cannot be run through by a local process.
 import http, { request } from "node:http";
 import type { AddressInfo } from "node:net";
+import { deflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
+import { checkDecodedSize } from "../src/ap/pdfText.js";
 import { invoicesCsv, journalCsv, apJournal } from "../src/ap/books.js";
 import { apInvoices } from "../src/ap/store.js";
 import { csvCell } from "../src/lib/csv.js";
@@ -99,5 +101,33 @@ describe("red team 4, web", () => {
       for (let i = 0; i < 40; i++) if ((await call("GET", "/api/payables/invoices", { from: i % 2 ? "127.0.0.2" : "127.0.0.3" })).status === 429) limited++;
       expect(limited).toBeGreaterThan(0);
     } finally { server.close(); for (const a of agents.values()) a.destroy(); }
+  });
+});
+
+describe("red team 4, PDF bomb behind a text filter", () => {
+  const bomb = (filter: string, encode: (z: Buffer) => string) => {
+    const raw = Buffer.alloc(80 * 1024 * 1024, 0x20);
+    Buffer.from("BT /F1 12 Tf 72 712 Td (Invoice) Tj ET\n").copy(raw);
+    const body = encode(deflateSync(raw, { level: 9 }));
+    const objs = ["<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+      "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>", `<< /Length ${body.length} /Filter ${filter} >>\nstream\n${body}\nendstream`];
+    let pdf = "%PDF-1.4\n";
+    objs.forEach((o, i) => { pdf += `${i + 1} 0 obj\n${o}\nendobj\n`; });
+    return new Uint8Array(Buffer.from(pdf + "trailer\n<< /Root 1 0 R >>\n%%EOF\n", "latin1"));
+  };
+  const a85 = (b: Buffer) => {
+    let out = "<~";
+    for (let i = 0; i < b.length; i += 4) {
+      const chunk = b.subarray(i, i + 4); const n = chunk.length; const pad = Buffer.concat([chunk, Buffer.alloc(4 - n)]);
+      let v = pad.readUInt32BE(0); const cs: string[] = [];
+      for (let k = 0; k < 5; k++) { cs.unshift(String.fromCharCode(33 + (v % 85))); v = Math.floor(v / 85); }
+      out += cs.join("").slice(0, n + 1);
+    }
+    return out + "~>";
+  };
+  it("4: Flate behind ASCIIHex or ASCII85 is counted, so the bomb is refused before the reader; LZW is refused", () => {
+    expect(() => checkDecodedSize(bomb("[/ASCIIHexDecode /FlateDecode]", (z) => z.toString("hex") + ">"))).toThrow(/compression bomb/);
+    expect(() => checkDecodedSize(bomb("[/A85 /Fl]", a85))).toThrow(/compression bomb/);
+    expect(() => checkDecodedSize(bomb("/LZWDecode", (z) => z.toString("latin1")))).toThrow(/LZWDecode/);
   });
 });

@@ -25,9 +25,9 @@ export interface PdfTextOptions { timeoutMs?: number; maxDecodedBytes?: number }
 
 const mb = (n: number) => `${Math.round((n / 1024 / 1024) * 10) / 10} MB`;
 
-/** Every stream's raw bytes ("stream" EOL ... "endstream"). */
-function streams(buf: Buffer): Buffer[] {
-  const out: Buffer[] = [];
+/** Every stream's raw bytes ("stream" EOL ... "endstream"), with the filters its dictionary names (in order). */
+function streams(buf: Buffer): { data: Buffer; filters: string[] }[] {
+  const out: { data: Buffer; filters: string[] }[] = [];
   let i = 0;
   while ((i = buf.indexOf("stream", i, "latin1")) !== -1) {
     if (i >= 3 && buf.toString("latin1", i - 3, i) === "end") { i += 6; continue; }
@@ -37,7 +37,11 @@ function streams(buf: Buffer): Buffer[] {
     else if (buf[s - 1] !== 0x0d) { i = s; continue; }
     const e = buf.indexOf("endstream", s, "latin1");
     if (e === -1) break;
-    out.push(buf.subarray(s, e));
+    // The stream's dictionary: from its object's start ("obj") to the stream keyword.
+    const from = Math.max(0, buf.lastIndexOf("obj", i, "latin1"));
+    const dict = buf.toString("latin1", from, i);
+    const f = /\/Filter\s*(\[[^\]]*\]|\/[A-Za-z0-9]+)/.exec(dict)?.[1] ?? "";
+    out.push({ data: buf.subarray(s, e), filters: [...f.matchAll(/\/([A-Za-z0-9]+)/g)].map((m) => m[1]!) });
     i = e + 9;
   }
   return out;
@@ -46,15 +50,53 @@ function streams(buf: Buffer): Buffer[] {
 /** A zlib header (what pdf.js's FlateDecode reads). */
 const looksZlib = (b: Buffer) => b.length >= 2 && (b[0]! & 0x0f) === 8 && ((b[0]! << 8) | b[1]!) % 31 === 0;
 
+const FLATE = new Set(["FlateDecode", "Fl"]);
+const HEX = new Set(["ASCIIHexDecode", "AHx"]);
+const A85 = new Set(["ASCII85Decode", "A85"]);
+/** Filters that expand data a lot and that an invoice never needs: refused, so their output cannot be counted wrong. */
+const EXPANDING = new Set(["LZWDecode", "LZW", "RunLengthDecode", "RL"]);
+
+const fromHex = (b: Buffer): Buffer => {
+  const t = b.toString("latin1").replace(/>.*$/s, "").replace(/[^0-9A-Fa-f]/g, "");
+  return Buffer.from(t.length % 2 ? `${t}0` : t, "hex");
+};
+const fromA85 = (b: Buffer): Buffer => {
+  const t = b.toString("latin1").replace(/^\s*<~/, "").replace(/~>.*$/s, "").replace(/\s+/g, "");
+  const out: number[] = [];
+  let group: number[] = [];
+  const flush = (n: number) => { let v = 0; for (const c of group) v = v * 85 + c; for (let k = group.length; k < 5; k++) v = v * 85 + 84; for (let k = 3; k >= 4 - n; k--) out.push((v >>> (8 * k)) & 0xff); };
+  for (const ch of t) {
+    if (ch === "z" && group.length === 0) { out.push(0, 0, 0, 0); continue; }
+    const c = ch.charCodeAt(0) - 33;
+    if (c < 0 || c > 84) continue;
+    group.push(c);
+    if (group.length === 5) { flush(4); group = []; }
+  }
+  if (group.length) flush(group.length - 1);
+  return Buffer.from(out);
+};
+
 /**
- * Throws when the PDF's deflated streams (and deflate inside deflate) decode to more than `max` bytes together. A stream
- * that is not deflate, or is damaged, is left for the reader; a stream cut short counts what it gives.
+ * Throws when the PDF's compressed streams (and deflate inside deflate) decode to more than `max` bytes together. A
+ * stream's whole filter chain is followed (red team round 4: Flate behind ASCIIHex counted as nothing, and decoded to
+ * gigabytes in the reader): ASCIIHex and ASCII85 are decoded here, LZW and RunLength are refused. A stream that is
+ * not deflate, or is damaged, is left for the reader; a stream cut short counts what it gives.
  */
 export function checkDecodedSize(bytes: Uint8Array, max: number = PDF_MAX_DECODED_BYTES): void {
   let left = max;
   const tooBig = () => new Error(`the PDF's compressed streams decoded would be more than ${mb(max)} (a compression bomb?); it was not read`);
-  for (const raw of streams(Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength))) {
-    let data = raw;
+  for (const st of streams(Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength))) {
+    if (st.filters.some((f) => EXPANDING.has(f))) throw new Error(`the PDF uses the ${st.filters.find((f) => EXPANDING.has(f))} filter, which an invoice never needs; it was not read`);
+    let data = st.data;
+    // The text encodings before the deflate: decoded here, counted, and their output checked like any stream.
+    for (const f of st.filters) {
+      if (FLATE.has(f)) break;
+      if (HEX.has(f)) data = fromHex(data);
+      else if (A85.has(f)) data = fromA85(data);
+      else break;
+      left -= data.length;
+      if (left < 0) throw tooBig();
+    }
     for (let depth = 0; depth < 4 && looksZlib(data); depth++) {
       let out: Buffer;
       try {
