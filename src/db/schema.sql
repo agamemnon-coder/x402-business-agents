@@ -194,6 +194,15 @@ CREATE TABLE IF NOT EXISTS passkey_enrolments (
 );
 
 -- Every verified passkey signature over a proposal's terms, kept so `npm run verify` can check it again offline.
+-- Refused passkey submissions, counted per hour and fixed reason code (src/passkey/failures.ts). Never the sender's
+-- text: anyone can post to the relay, so unverified submissions stay out of the audit log but still show as a number.
+CREATE TABLE IF NOT EXISTS passkey_failures (
+  hour TEXT NOT NULL,
+  code TEXT NOT NULL,
+  n INTEGER NOT NULL,
+  PRIMARY KEY (hour, code)
+);
+
 CREATE TABLE IF NOT EXISTS passkey_assertions (
   assertion_sha256 TEXT PRIMARY KEY,
   proposal_id TEXT NOT NULL REFERENCES proposals(proposal_id),
