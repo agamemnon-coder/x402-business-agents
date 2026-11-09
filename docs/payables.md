@@ -55,9 +55,11 @@ Paid Airi purchases are booked by the ledger feed like a card charge (default ex
    used and the audit log says why. The account is accepted only from the chart.
    **A scan or a photo** (a PDF with no text layer, or a JPEG/PNG kept as a one-page PDF; HEIC is refused with how to
    export a JPEG) is read by Claude Sonnet from the pages (`src/ap/scan.ts`), twice, with the fields asked in a different
-   order. The model never decides: its fields go through the same checks. There is no text layer to hold them against,
-   so one reading is never enough: only when both agree on the IBAN (or account), the total, the currency and the
-   invoice number, and the IBAN passes its checksum, may it become ready, with the note "read from a scan" (and the
+   order. The model never decides: its fields go through the same checks. There is no text layer, so each reading also
+   transcribes the pages, and the code's own text checks (credit-note words, a negative, bracketed or ambiguous total,
+   a reminder) run on that transcription as on a PDF's text (red team 6). One reading is never enough: only when both
+   agree on the IBAN (or account), the total, the currency, the invoice number, the supplier and the reference, the
+   IBAN passes its checksum and the checks on the transcription find nothing, may it become ready, with the note "read from a scan" (and the
    phone shows "read from a scan" beside the amount instead of a total line). Anything else goes to a person, with the
    reading prefilled and each field shown next to the piece of the page it was read from. Limits: scans of up to 3 pages
    and 10 MB, 200 scanned documents a day, two calls each; photos up to 8000 pixels a side and 25 megapixels (checked

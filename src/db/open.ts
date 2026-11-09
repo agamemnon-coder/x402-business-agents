@@ -66,6 +66,8 @@ function migrate(db: DB): void {
   if (!has("sales", "requirements_json")) db.exec("ALTER TABLE sales ADD COLUMN requirements_json TEXT");
   if (!has("upstream_purchases", "supplier")) db.exec("ALTER TABLE upstream_purchases ADD COLUMN supplier TEXT");
   if (!has("transfers", "fee_actual")) db.exec("ALTER TABLE transfers ADD COLUMN fee_actual TEXT");
+  // Red team 6: a scan's transcription, so its text checks run again on a recheck.
+  if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ap_scan_readings'").get() && !has("ap_scan_readings", "transcription")) db.exec("ALTER TABLE ap_scan_readings ADD COLUMN transcription TEXT");
   if (!has("beneficiaries", "status")) db.exec("ALTER TABLE beneficiaries ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE'");
   // Payables FX payouts: the route a supplier added through payee_add is paid on (masked account, method, clearing).
   if (!has("beneficiaries", "details_json")) db.exec("ALTER TABLE beneficiaries ADD COLUMN details_json TEXT");

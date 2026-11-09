@@ -27,6 +27,7 @@ const READING: ScanReading = {
   currency: "EUR", subtotal: "1000.00", tax: "190.00", total: "1190.00", iban: BERGTEX_IBAN, bic: "COBADEFFXXX", account_number: "", routing_type: "",
   routing_value: "", bank_country: "DE", reference: "BTX-2026-31", gl_account: "6200",
   boxes: [{ field: "total", page: 1, x: 0.6, y: 0.7, w: 0.3, h: 0.05 }, { field: "iban", page: 1, x: 0.1, y: 0.85, w: 0.5, h: 0.04 }],
+  transcription: "Bergtex Textil GmbH\nUSt-IdNr. DE123456789\nInvoice BTX-2026-31\nInvoice date: 2 November 2026\nDue date: 30 November 2026\nSubtotal EUR 1,000.00\nVAT 19% EUR 190.00\nTotal due EUR 1,190.00\nIBAN: DE89 3704 0044 0532 0130 00\nBIC: COBADEFFXXX\nReference: BTX-2026-31",
 };
 
 /** A fake model: each call to askPdf returns the next reading in `answers` (or falls back when none is left). */

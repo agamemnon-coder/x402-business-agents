@@ -797,7 +797,9 @@ CREATE TABLE IF NOT EXISTS ap_scan_readings (
   boxes_json TEXT NOT NULL,
   readings INTEGER NOT NULL,
   model TEXT NOT NULL,
-  read_at TEXT NOT NULL
+  read_at TEXT NOT NULL,
+  -- The model's transcription of the pages (red team 6): the text checks run on it again when the scan is rechecked.
+  transcription TEXT
 );
 
 CREATE TABLE IF NOT EXISTS ap_invoices (

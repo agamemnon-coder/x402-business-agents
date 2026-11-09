@@ -134,12 +134,15 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
   const readFully = cls.kind === "invoice" || cls.kind === "credit_note" || cls.kind === "reminder";
   const { reading, readBy } = scan ? { reading: scan.reading, readBy: `claude-scan:${scan.model}` } : readFully ? await readDocument(db, deps.reader, text, sha) : { reading: parseApFallback(text), readBy: "parser" };
   const id = nextApId(db);
-  const checked = readFully || noText ? evaluate(db, reading, text, { docSha: sha, now, ...(noText ? { noText } : {}) }) : notAnInvoice(cls.kind);
+  // A scan has no text layer: its checks run on the model's transcription of the pages (red team 6: credit-note words,
+  // a bracketed total or a bank-change line on a scan were never seen by any check).
+  const checkText = scan ? scan.transcription : text;
+  const checked = readFully || noText ? evaluate(db, reading, checkText, { docSha: sha, now, ...(noText ? { noText } : {}) }) : notAnInvoice(cls.kind);
   const findings = [...checked.findings];
   if (scan && readFully) findings.push(scanFinding(scan));
   // The model's label or the keyword rules: either one saying credit note or reminder is enough (red team round 2: a
   // model that calls a "Gutschrift" or a reminder an invoice does not make it payable).
-  const rules = readFully ? ruleSignals(text) : { credit_note: false, reminder: false };
+  const rules = readFully ? ruleSignals(checkText) : { credit_note: false, reminder: false };
   if ((cls.kind === "credit_note" || rules.credit_note) && !findings.some((x) => x.code === "credit_note")) {
     findings.push({ code: "credit_note", level: "review", detail: `a credit note${cls.kind === "credit_note" ? "" : " by its own words (whatever the model's label)"}: nothing is paid; a person sets it against this supplier's next invoice` });
   }
@@ -165,8 +168,8 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
     total: reading.total, currency: reading.currency, status, findings: findings.map((x) => ({ code: x.code, level: x.level })) as unknown as Json,
   }, now);
   if (scan) {
-    db.prepare("INSERT INTO ap_scan_readings (invoice_id, doc_sha256, agreed, differ_json, boxes_json, readings, model, read_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-      .run(id, sha, scan.agreed ? 1 : 0, JSON.stringify(scan.differ), JSON.stringify(scan.boxes), scan.readings, scan.model, now.toISOString());
+    db.prepare("INSERT INTO ap_scan_readings (invoice_id, doc_sha256, agreed, differ_json, boxes_json, readings, model, read_at, transcription) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .run(id, sha, scan.agreed ? 1 : 0, JSON.stringify(scan.differ), JSON.stringify(scan.boxes), scan.readings, scan.model, now.toISOString(), scan.transcription);
   }
   if (needsNote({ status, findings })) await writeReviewNote(db, deps.reader, id, now);
   const inv = apInvoice(db, id)!;
@@ -218,11 +221,17 @@ export async function recheck(db: DB, deps: Pick<InboxDeps, "now" | "sink"> & { 
     let text: string;
     try { text = doc.text_chars ? (await pdfText(readFileSync(doc.path))).text : ""; } catch { text = ""; }
     // A scan has no text: it is checked again on its stored reading, with its scan finding as read.
-    const scanned = text ? undefined : (db.prepare("SELECT agreed, differ_json, readings FROM ap_scan_readings WHERE invoice_id = ?").get(inv.id) as { agreed: number; differ_json: string; readings: number } | undefined);
+    const scanned = text ? undefined : (db.prepare("SELECT agreed, differ_json, readings, transcription FROM ap_scan_readings WHERE invoice_id = ?").get(inv.id) as { agreed: number; differ_json: string; readings: number; transcription: string | null } | undefined);
     if (!text && !scanned) { out.push(inv); continue; }
     const wasBookable = bookable(inv);
-    const { findings } = evaluate(db, inv.reading, text, { docSha: inv.doc_sha256, now, selfId: inv.id });
-    if (scanned) findings.push(scanFinding({ agreed: scanned.agreed === 1, differ: JSON.parse(scanned.differ_json) as string[], readings: scanned.readings }));
+    // A scan is checked on its transcription (red team 6); one read before transcriptions has none and needs a person.
+    const { findings } = evaluate(db, inv.reading, scanned ? scanned.transcription ?? "" : text, { docSha: inv.doc_sha256, now, selfId: inv.id });
+    if (scanned) findings.push(scanFinding({ agreed: scanned.agreed === 1 && !!scanned.transcription, differ: JSON.parse(scanned.differ_json) as string[], readings: scanned.readings }));
+    if (scanned?.transcription) {
+      const signals = ruleSignals(scanned.transcription);
+      if (signals.credit_note && !findings.some((x) => x.code === "credit_note")) findings.push({ code: "credit_note", level: "review", detail: "a credit note by its own words on the page: nothing is paid; a person sets it against this supplier's next invoice" });
+      if (signals.reminder && !findings.some((x) => x.code === "reminder")) findings.push({ code: "reminder", level: "review", detail: "a payment reminder by its own words on the page: a reminder is never paid on its own" });
+    }
     const status = statusOf(findings);
     const kept = [...findings, ...inv.findings.filter((x) => (x.code === "credit_note" || x.code === "reminder") && !findings.some((y) => y.code === x.code))];
     if (inv.doc_kind === "invoice" && kept.some((x) => x.code === "credit_note")) db.prepare("UPDATE ap_invoices SET doc_kind = 'credit_note' WHERE id = ?").run(inv.id);
