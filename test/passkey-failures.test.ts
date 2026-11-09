@@ -121,8 +121,52 @@ describe("passkey failure thresholds per type", () => {
     expect(codes(db)).toEqual([]);
     expect(health(db, t0).metrics.passkey_failures_1h).toBe(20 * BENIGN_FAILURES.length);
     for (let i = 0; i < PASSKEY_FAILURE_SPIKE - 1; i++) countFailure(db, "bad_signature", t0);
-    expect(codes(db)).toEqual([]);
+    expect(codes(db).map(([c]) => c)).not.toContain("passkey_failures_spike");
     countFailure(db, "bad_signature", t0);
-    expect(codes(db)).toEqual([["passkey_failures_spike", "warning"]]);
+    expect(codes(db)).toContainEqual(["passkey_failures_spike", "warning"]);
+  });
+});
+
+describe("passkey failure windows longer than an hour (slow, low-volume attacks)", () => {
+  const db0 = () => openDb(":memory:");
+  const H = 3_600_000;
+  const at = (h: number) => new Date(t0.getTime() + h * H);
+  const codes = (db: DB, when: Date) => health(db, when).alerts.filter((a) => a.code.startsWith("passkey_")).map((a) => a.code).sort();
+
+  it("one enrolment failure an hour stays under the hourly rule but trips the daily one", () => {
+    const db = db0();
+    for (let h = 0; h < 6; h++) countFailure(db, "wrong_enrol_code", at(h * 2));
+    expect(codes(db, at(10))).toEqual(["passkey_enrol_attempts_day"]);
+  });
+
+  it("two bad signatures an hour for ten hours trip the weekly rule, never the hourly spike", () => {
+    const db = db0();
+    for (let h = 0; h < 10; h++) { countFailure(db, "bad_signature", at(h)); countFailure(db, "bad_signature", at(h)); }
+    expect(codes(db, at(9))).toContain("passkey_failures_week");
+    expect(codes(db, at(9))).not.toContain("passkey_failures_spike");
+  });
+
+  it("a submission while no enrolment window is open is never normal: one is enough", () => {
+    const db = db0();
+    countFailure(db, "no_enrol_window", t0);
+    expect(codes(db, t0)).toEqual(["passkey_enrol_closed"]);
+    expect(codes(db, at(25))).toEqual([]);
+  });
+
+  it("a type well above its own 30-day baseline alerts; the same level that has always been normal does not", () => {
+    const quiet = db0();
+    for (let i = 0; i < 6; i++) countFailure(quiet, "unknown_passkey", at(i * 3));
+    expect(codes(quiet, at(18))).toContain("passkey_failures_above_baseline");
+    const usual = db0();
+    // Six a day, every day for four weeks: that is this company's normal.
+    for (let d = 1; d <= 28; d++) for (let i = 0; i < 6; i++) countFailure(usual, "unknown_passkey", at(-24 * d + i * 3));
+    for (let i = 0; i < 6; i++) countFailure(usual, "unknown_passkey", at(i * 3));
+    expect(codes(usual, at(18))).not.toContain("passkey_failures_above_baseline");
+  });
+
+  it("benign refusals never feed the longer windows or the baseline", () => {
+    const db = db0();
+    for (let h = 0; h < 24; h++) for (const c of BENIGN_FAILURES) countFailure(db, c, at(h));
+    expect(codes(db, at(23))).toEqual([]);
   });
 });

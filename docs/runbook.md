@@ -39,6 +39,10 @@ at the runner's last sync (`src/ops/publicHealth.ts`). Codes (`src/ops/health.ts
 | `passkey_terms_tampered` (critical) | A passkey approval was refused because the proposal's stored terms no longer match their hash, in the last day: the ledger changed outside Purser | Pull the emergency stop, run `npm run verify`, find who wrote to the ledger | A day passes with no new one |
 | `passkey_enrol_attempts` | 3 or more failed enrolments in the last hour (wrong code, a passkey that did not verify) | If no one is enrolling, close the window and issue a new code to the person in person | The last hour has fewer than 3 |
 | `passkey_errors` | 3 or more passkey signatures that could not be verified or stored in the last hour | Check the runner's log and the passkeys table; a broken store is a bug, not an attack | The last hour has fewer than 3 |
+| `passkey_enrol_closed` | An enrolment submission in the last day while no enrolment window was open | No one should be enrolling: someone is trying codes. Check who has the enrolment page; issue codes only in person | A day passes with none |
+| `passkey_enrol_attempts_day` | 5 or more failed enrolments in a day, spread out under the hourly rule | As `passkey_enrol_attempts` | The last day has fewer than 5 |
+| `passkey_failures_week` | 20 or more bad signatures, unknown or revoked passkeys (and similar) in 7 days: a slow, steady stream | Check the per-code lines in `/metrics`; revoke and re-enrol a passkey that keeps failing | The last 7 days have fewer than 20 |
+| `passkey_failures_above_baseline` | One of those types in the last day is at least 5 and at least 3 times its own average day over the 29 days before (counts are kept 30 days) | The alert names the type and its usual level; a jump is new behaviour, look at it | The last day is back under 3 times the usual |
 
 Tested in the red team against stand-ins: `velocity_stop`; not yet triggered live. Tested: all codes (`test/health.test.ts`, `test/airwallex-events.test.ts`, `test/passkey-failures.test.ts`).
 
