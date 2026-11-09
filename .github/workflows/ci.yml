@@ -82,6 +82,8 @@ jobs:
         run: npx tsx test/browser/trace.check.ts test-results/trace
       - name: /try/sign in Chromium (360, 390 and 1440 px, light and dark; layout after signing and after the tamper)
         run: npx tsx test/browser/trysign.check.ts test-results/trysign
+      - name: Purser Cloud's console in Chromium (first run and sign-in with a virtual passkey, every page at 1440 and 390 px)
+        run: npx tsx test/browser/console.check.ts test-results/console
   # Safari's engine, in Playwright's own image (browsers and system libraries preinstalled, version = our lockfile's
   # playwright 1.63.0, pinned by digest, read 6 November 2026): no apt step, so no slow mirror. Playwright's Linux WebKit
   # has no WebAuthn at all (no PublicKeyCredential, no virtual authenticator), so nothing is faked: the check sees the

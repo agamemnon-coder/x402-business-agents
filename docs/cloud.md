@@ -58,7 +58,8 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `POST /v1/auth/login` | anyone | Finish a passkey sign-in; returns a 15-minute session token. |
 | `POST /v1/auth/enrol` | anyone | Enrol a person's passkey with the single-use enrolment an owner started: the new passkey signs the enrolment's secret. |
 | `POST /v1/auth/logout` | read | Sign out: every session of the signed-in person ends. |
-| `GET /v1/me` | read | Who is calling: the company, and the key's scopes or the person's role. |
+| `GET /v1/me` | read | Who is calling: the company, and the key's scopes or the person's role; the person behind the call, whether an owner has a passkey yet, and the company's inbox address once mail is routed (the console's first run uses these). |
+| `POST /v1/company` | admin | Change the company's display name (its address, the slug, stays). |
 | `GET /v1/invoices` | read | Supplier invoices; filter by status, due_from, due_to; paginated (limit, cursor). |
 | `GET /v1/invoices/{id}` | read | One invoice, with its earlier versions. |
 | `GET /v1/invoices/{id}/document` | read | The invoice's document, as received. |
@@ -131,6 +132,25 @@ key behind them, including keys made by their keys (each key records the person 
 **Throttling.** Sign-in routes are limited per address; failed keys and sessions are counted per address and, past 20
 a minute, the address is turned away before any lookup. The address is Cloudflare's `cf-connecting-ip`, which the edge
 sets and overwrites: behind any other proxy this header must not be trusted, and the limits would need the proxy's own.
+
+## The console
+
+The same Worker serves the company's console at `/` (`cloud/src/console.ts`): sign in with a passkey (no passwords),
+the overview (inbox address, what is open, due, overdue, waiting and blocked, and what waits for the CFO), invoices and
+each invoice (what Purser read, the checks, the timeline, the document), the transactions register with its filters and
+CSV, the books (VAT overview per quarter, the journal) and, for owners, settings: people and their single-use passkey
+links, API keys, and the export of everything. A new company's first run takes the starter key Purser hands over, makes
+the owner's passkey, shows the inbox address and makes the runner's sync key with the one command to run; the starter
+key can then be revoked from the same screen. The console reads and manages; it never pays: payments are approved on
+the CFO's phone with Face ID, through the runner.
+
+How it is kept safe: one page under a per-response nonce policy (no inline scripts, styles or handlers; `connect-src
+'self'`); every value from the API is set as text, never as HTML (only the page's own icons go through `innerHTML`, and
+a test holds it to that); the session is a bearer token in the tab's `sessionStorage`, gone with the tab and after 15
+minutes, so there is no cookie for another site to ride on, and the Worker refuses any state change whose `Origin` is
+not its own. An invited person's passkey link carries its single-use secret in the URL fragment, which the browser never
+sends. `test/cloud-console.test.ts` checks the page and the routes; `test/browser/console.check.ts` runs the whole thing
+in Chromium with a virtual passkey (CI, judge job).
 
 ## Tested on D1 itself
 

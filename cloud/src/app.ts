@@ -13,6 +13,7 @@ import { applySync, SyncBatch, SyncRefused } from "./sync.js";
 import { WriteConflict } from "./tenant.js";
 import { TenantDb } from "./tenant.js";
 import { closeTenant, eraseUser, exportTenant, PrivacyRefused } from "./privacy.js";
+import { consoleResponse } from "./console.js";
 
 export interface CloudEnv {
   sql: Sql;
@@ -25,6 +26,8 @@ export interface CloudEnv {
   rpId: string;
   origin: string;
   now?: () => Date;
+  /** The domain the company's inbox lives at (<slug>@<mailDomain>), once Email Routing sends it here; empty: none yet. */
+  mailDomain?: string;
   /** Requests per minute per key or session; per address on the sign-in routes; failed authentications per address. */
   rate?: { perMinute: number; signInPerMinute: number; failedAuthPerMinute?: number };
 }
@@ -130,7 +133,19 @@ export const ROUTES: Route[] = [
 
   { method: "GET", path: "/v1/me", summary: "Who is calling: the company, and the key's scopes or the person's role.", need: "read", run: async (c) => {
     const t = await c.env.sql.first<{ slug: string; name: string }>("SELECT slug, name FROM tenants WHERE id = ?", [c.caller!.tenantId]);
-    return json(200, { tenant: { id: c.caller!.tenantId, ...t }, kind: c.caller!.kind, principal: c.caller!.principal, scopes: [...c.caller!.scopes], role: c.caller!.role ?? null });
+    // For the console: the person behind the call, whether an owner has a passkey yet (a new company's first run), and
+    // the company's inbox address once mail is routed here.
+    const owners = (await db(c).select<{ id: string }>("users", { role: "owner", erased_at: null })).map((u) => u.id);
+    const ownerPasskey = owners.length > 0 && (await db(c).count("credentials", { user_id: { in: owners } })) > 0;
+    const person = c.caller!.user ? await db(c).one<{ display_name: string; role: Role }>("users", { id: c.caller!.user }) : null;
+    return json(200, { tenant: { id: c.caller!.tenantId, ...t }, kind: c.caller!.kind, principal: c.caller!.principal, scopes: [...c.caller!.scopes], role: c.caller!.role ?? null,
+      user: c.caller!.user ? { id: c.caller!.user, display_name: person?.display_name ?? null, role: person?.role ?? null } : null,
+      owner_has_passkey: ownerPasskey, inbox: c.env.mailDomain && t ? `${t.slug}@${c.env.mailDomain}` : null });
+  } },
+  { method: "POST", path: "/v1/company", summary: "Change the company's display name (its address, the slug, stays).", need: "admin", run: async (c) => {
+    const b = await body(c, z.object({ name: z.string().trim().min(1).max(200) }).strict());
+    await c.env.sql.run("UPDATE tenants SET name = ? WHERE id = ?", [b.name, c.caller!.tenantId]);
+    return json(200, { name: b.name });
   } },
 
   { method: "GET", path: "/v1/invoices", summary: "Supplier invoices; filter by status, due_from, due_to; paginated (limit, cursor).", need: "read", run: async (c) => json(200, await listInvoices(db(c), c.url.searchParams)) },
@@ -256,6 +271,15 @@ export async function handle(req: Request, env: CloudEnv): Promise<Response> {
   const now = (env.now ?? (() => new Date()))();
   const url = new URL(req.url);
   try {
+    // The console (cloud/src/console.ts): the browser pages, everything outside /v1.
+    if (!url.pathname.startsWith("/v1/")) return consoleResponse(req, url, env);
+    // A browser request that changes something must come from the console's own origin: a page elsewhere cannot make a
+    // signed-in browser post here (the console keeps its session in the tab and sends it as a bearer token, so there is
+    // no cookie to ride on either). The runner and other programs send no Origin.
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      const from = req.headers.get("origin");
+      if (from !== null && from !== env.origin) return err(403, "this request came from another site");
+    }
     await ensureSchema(env.sql);
     const candidates = ROUTES.map((r) => ({ r, p: match(url.pathname, r.path) })).filter((x) => x.p);
     if (!candidates.length) return err(404, "no such route");
