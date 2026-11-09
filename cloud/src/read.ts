@@ -172,6 +172,10 @@ function txWhere(q: URLSearchParams): { where: Where; to: string | null } {
   return { where, to: day(q.get("to"), "to") };
 }
 
+/** The columns the cloud validated and indexes; they win over anything in the stored body (red team round 4). */
+interface TxColumns { id: string; at: string; rail: string; direction: string; currency: string; moved: number; reconciliation: string }
+const columns = (r: TxColumns) => ({ id: r.id, at: r.at, rail: r.rail, direction: r.direction, currency: r.currency, moved: !!r.moved, reconciliation: r.reconciliation });
+
 /** One page, newest first: the cursor is the last row's sort key; a "to" bound is applied while the page fills. */
 export async function listTransactions(db: TenantDb, q: URLSearchParams): Promise<Page<unknown>> {
   const limit = Math.max(1, Math.min(200, Number(q.get("limit") ?? 50) || 50));
@@ -179,10 +183,10 @@ export async function listTransactions(db: TenantDb, q: URLSearchParams): Promis
   const items: { sort_key: string; body: unknown }[] = [];
   let cursor = q.get("cursor");
   for (;;) {
-    const rows = await db.select<{ sort_key: string; at: string; version: number; body_json: string }>("transactions", { ...where, ...(cursor ? { sort_key: { op: "<", v: cursor } as Cond } : {}) }, { order: ["sort_key"], desc: true, limit: 500 });
+    const rows = await db.select<TxColumns & { sort_key: string; version: number; body_json: string }>("transactions", { ...where, ...(cursor ? { sort_key: { op: "<", v: cursor } as Cond } : {}) }, { order: ["sort_key"], desc: true, limit: 500 });
     for (const r of rows) {
       if (to && r.at.slice(0, 10) > to) continue;
-      items.push({ sort_key: r.sort_key, body: { ...parse(r), version: r.version } });
+      items.push({ sort_key: r.sort_key, body: { ...parse(r), ...columns(r), version: r.version } });
       if (items.length > limit) break;
     }
     if (items.length > limit || rows.length < 500) break;
@@ -194,10 +198,10 @@ export async function listTransactions(db: TenantDb, q: URLSearchParams): Promis
 }
 
 export async function oneTransaction(db: TenantDb, id: string): Promise<unknown | null> {
-  const r = await db.one<{ id: string; version: number; body_json: string }>("transactions", { id });
+  const r = await db.one<TxColumns & { version: number; body_json: string }>("transactions", { id });
   if (!r) return null;
   const history = await db.select<{ version: number; replaced_at: string }>("object_history", { kind: "transaction", id }, { order: ["version"] });
-  return { ...parse(r), version: r.version, earlier_versions: history.map((h) => ({ version: h.version, replaced_at: h.replaced_at })) };
+  return { ...parse(r), ...columns(r), version: r.version, earlier_versions: history.map((h) => ({ version: h.version, replaced_at: h.replaced_at })) };
 }
 
 /** Every row the filters let through, newest first (for the export and the summary). */

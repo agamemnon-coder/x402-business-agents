@@ -36,6 +36,29 @@ const Line = z.object({
 }).strict();
 const JSON_TEXT = z.string().refine((s) => { try { JSON.parse(s); return true; } catch { return false; } }, "not JSON");
 
+/**
+ * A transactions-register row as the runner builds it (src/money/registerShape.ts TxRow): every field typed, amounts as
+ * plain numbers, labels and flags from short words (red team round 4: a sync-only key pushed a body with formulas in
+ * the accountant's export and fields that contradicted the indexed columns, and one without flags broke the summary).
+ */
+const MONEY = z.string().regex(/^-?\d{1,13}\.\d{2}$/);
+const WORD = z.string().regex(/^[a-z][a-z_]{0,39}$/);
+const TEXT = z.string().max(500);
+const TxBody = z.object({
+  id: ID, at: STAMP, direction: z.enum(["in", "out", "internal"]), flow: z.enum(["in", "out"]), rail: z.string().regex(/^[a-z_]{2,40}$/), rail_label: TEXT,
+  description: TEXT, counterparty: TEXT, counterparty_account: TEXT.nullable(), amount: MONEY, currency: z.string().regex(/^[A-Z]{3,4}$/),
+  eur_equivalent: MONEY.nullable(), fee: z.object({ amount: MONEY, currency: z.string().regex(/^[A-Z]{3,4}$/) }).strict().nullable(),
+  moved: z.boolean(), status: z.string().max(60), status_words: TEXT,
+  invoice: z.object({ ap_id: ID.nullable(), supplier_no: TEXT, vendor: TEXT, document: TEXT.nullable() }).strict().nullable(),
+  approval: z.object({
+    required: z.boolean(), authority: TEXT, proposal_id: ID.nullable(), decision: z.string().max(40).nullable(), method: z.string().max(40).nullable(),
+    approved_at: z.string().max(40).nullable(), terms_sha256: z.string().regex(/^[0-9a-f]{64}$/).nullable(),
+  }).strict(),
+  booking: z.object({ entry_ids: z.array(z.number().int().positive()).max(1000), accounts: z.array(z.string().regex(/^\d{4}$/)).max(100), booked: MONEY.nullable() }).strict(),
+  proof: TEXT.nullable(), reconciliation: z.enum(["matched", "missing_booking", "missing_rail_record", "amount_mismatch", "not_applicable"]), reconciliation_words: TEXT,
+  flags: z.array(WORD).max(20),
+}).strict();
+
 // Passkeys are never part of a push (security review of 8 November): a sync key that could bring a credential could
 // sign in as anyone, the owner included. People enrol in the cloud itself (POST /v1/auth/enrol).
 export const SyncBatch = z.object({
@@ -48,8 +71,9 @@ export const SyncBatch = z.object({
   // The transactions register (src/money/register.ts): derived on the runner, kept here as versioned rows.
   transactions: z.array(z.object({
     id: ID, at: STAMP, rail: z.string().regex(/^[a-z_]{2,40}$/), direction: z.enum(["in", "out", "internal"]), currency: z.string().regex(/^[A-Z]{3,4}$/),
-    moved: z.boolean(), reconciliation: z.enum(["matched", "missing_booking", "missing_rail_record", "amount_mismatch", "not_applicable"]), body: Body,
-  }).strict()).max(5000).default([]),
+    moved: z.boolean(), reconciliation: z.enum(["matched", "missing_booking", "missing_rail_record", "amount_mismatch", "not_applicable"]), body: TxBody,
+  }).strict().refine((t) => t.body.id === t.id && t.body.at === t.at && t.body.rail === t.rail && t.body.direction === t.direction && t.body.currency === t.currency
+    && t.body.moved === t.moved && t.body.reconciliation === t.reconciliation, "a transaction's body must agree with its columns")).max(5000).default([]),
   documents: z.array(z.object({ sha256: SHA, filename: z.string().min(1).max(200), mime: z.string().max(100), base64: z.string() }).strict()).max(200).default([]),
   ledger_entries: z.array(z.object({
     entry_id: z.number().int().positive(), posting_date: DAY, doc_date: DAY, description: z.string().max(500), source_key: z.string().nullable(), doc_ref: z.string().nullable(),

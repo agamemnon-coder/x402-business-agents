@@ -9,6 +9,7 @@ import { dirname, join } from "node:path";
 import { audit } from "../audit/log.js";
 import { AP_CHART, bankAccountFor, CHART } from "../config/gl.js";
 import type { DB } from "../db/open.js";
+import { csvCell } from "../lib/csv.js";
 import { fromCents, toCents } from "../lib/money.js";
 import type { ApInvoiceRow } from "./store.js";
 import { apInvoices } from "./store.js";
@@ -102,7 +103,6 @@ export function apJournal(db: DB): ApEntry[] {
   return apInvoices(db).flatMap((inv) => (bookable(inv) ? [...accrualEntries(inv), ...(inv.status === "paid" ? paymentEntries(db, inv) : [])] : []));
 }
 
-const csvCell = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
 const csv = (header: string[], rows: string[][]) => [header, ...rows].map((r) => r.map(csvCell).join(",")).join("\n") + "\n";
 
 export const JOURNAL_COLUMNS = ["date", "invoice_id", "event", "account", "account_name", "debit", "credit", "currency", "memo", "doc_sha256"] as const;
