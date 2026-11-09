@@ -23,7 +23,7 @@
 
 import { esc, icon, iconSet, page } from "../redesign/ui.js";
 import { REPO_URL } from "../submission/deck.js";
-import { FILM_URL } from "../config/brand.js";
+import { designPartnerHtml, DESIGN_PARTNER_URL, FILM_URL } from "../config/brand.js";
 import { cfoApproval, recordedQuote, tryLocks } from "./examples.js";
 import { RECEIPT_FORMAT } from "./receipt.js";
 import { AGENTS, MCC_WORDS } from "../config/policy.js";
@@ -56,7 +56,7 @@ export const TRY_SIGN_SCREENS = {
     sign: "Sign with Face ID",
     terms: "Show the exact terms",
     /** The payment a rule stopped in this test world (jury review, 7 Nov, #6: said as the test it is), and a real example. */
-    other: "Purser stopped a test payment in your world just now",
+    other: "Also in your test world: an invoice over the limit, stopped by Purser's rule",
     real: "see a real example ↗",
     opening: "Opening your test world…",
     /** The fold with the agents' steps, calls and plan (Max, 7 Nov). */
@@ -91,6 +91,8 @@ export const TRY_SIGN_SCREENS = {
   trick: {
     head: "Try to trick the agent.",
     lead: "Send your agent a fake invoice",
+    /** Review 9 Nov, #1: the step had no visible instruction, only the chips. */
+    pick: "Pick a fake invoice below and send it to your agent. Purser's code checks what the agent read.",
     /** Max, 7 Nov: true whether the agent was fooled or not. */
     decides: "Purser's code checks it.",
     did: "What the agent did",
@@ -436,6 +438,7 @@ ul.locks1 li.chg { font-weight: 700; } ul.locks1 li.chg .i { color: var(--accent
 .next .nv { font-weight: 700; } .next.alone .nv { color: var(--ok); }
 .worst.big { font-size: clamp(19px, 2.2vw, 22px); }
 nav.end { display: grid; gap: 4px; }
+nav.end p.partner { margin: 12px 0 0; text-align: center; font-weight: 650; } nav.end p.partner a { color: var(--accent); }
 nav.end .btn { justify-content: center; min-height: 56px; font-size: 17px; }
 .pill.alone { white-space: normal; background: var(--ok-soft, var(--accent-soft)); color: var(--ok); justify-self: start; }
 .pill.said-before { white-space: normal; justify-self: start; }
@@ -480,8 +483,17 @@ nav.end .btn { justify-content: center; min-height: 56px; font-size: 17px; }
 .lk dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 10px; margin: 0; font-size: 14.5px; }
 .lk dt { color: var(--muted); } .lk dd { margin: 0; font-weight: 650; overflow-wrap: anywhere; } .lk dd.chg { color: var(--accent); }
 .others { display: grid; gap: 12px; }
-/* The diagram: one policy, three locks; the part of it each screen is about lights up. Below 1024 px it is hidden. */
+/* The diagram: one policy, three locks; the part of it each screen is about lights up. Below 1024 px it is one row
+   above the screens: the three locks by name (review 9 Nov, #5: it was hidden on phones). */
 .diagram { display: none; }
+@media (max-width: 1023.98px) {
+  .diagram { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; order: -1; padding: 10px 12px; }
+  .diagram .eyebrow { margin: 0; flex: 1 0 100%; font-size: 12.5px; }
+  .diagram .d-policy, .diagram .d-sign, .diagram .d-alone, .diagram .dnote, .diagram svg, .diagram small { display: none; }
+  .diagram ol.dlocks { display: flex; gap: 6px; flex-wrap: wrap; list-style: none; margin: 0; padding: 0; }
+  .diagram ol.dlocks .dn { padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 14px; }
+  .diagram ol.dlocks .dn b { font-weight: 650; }
+}
 @media (min-width: 1024px) {
   .story { grid-template-columns: minmax(0, 1fr) minmax(0, 420px); gap: 28px; max-width: 1140px; }
   .scr { max-width: none; }
@@ -1625,7 +1637,7 @@ const euro = (s: string) => { const [i, c] = s.split("."); return `€${i!.repla
 export const trySignCss = () => CSS + DIAGRAM_STEPS + MOTION;
 
 /** The page, its links and assets absolute (it answers at /try/sign, one level down). */
-export function trySignPage(): string {
+export function trySignPage(partnerUrl: string = DESIGN_PARTNER_URL): string {
   const locks = tryLocks().map((l) => ({ ...l, href: /^https?:\/\//.test(l.href) ? l.href : `/${l.href}` }));
   const W = TRY_SIGN_SCREENS;
   const scr = (n: number, inner: string, extra = "") => `<section class="card scr" id="scr-${n}" data-screen="${n}"${n === 0 ? "" : " hidden"}${extra}>\n${inner}\n</section>`;
@@ -1678,6 +1690,7 @@ ${scr(3, `  <h2 tabindex="-1" id="s3-head">${esc(W.cheat.head)}</h2>
   </div></details>
   <div class="bar"><button class="btn primary big" type="button" id="go-trick" data-world="1">${esc(W.cheat.next)}${icon("arrow-right", 20)}</button></div>`)}
 ${scr(4, `  <h2 tabindex="-1" id="k-head">${esc(W.trick.head)}</h2>
+  <p class="q" id="k-pick">${esc(W.trick.pick)}</p>
   <div class="chips" id="trick-chips" role="group" aria-label="${esc(W.trick.lead)}">${ATTACKS.map((a) => `<button class="chip" type="button" data-attack="${a}" data-world="1" aria-pressed="false">${esc(TRICKS[a].label)}</button>`).join("")}</div>
   <p class="status" id="k2-status" aria-live="polite"></p>
   <div class="tricked" id="k-result" hidden aria-live="polite">
@@ -1735,7 +1748,7 @@ ${scr(6, `  <h2 tabindex="-1" id="s5-head">${esc(W.alone.head)}</h2>
 ${scr(7, `  <h2 tabindex="-1" id="d-head">${esc(W.done.head)}</h2>
   <p class="lead1">${esc(W.done.lead)} <span id="d-list"></span></p>
   <div class="chainbox" id="c-box" hidden><p class="cline"><span>${esc(W.done.chain.label)}</span> <b id="c-len"></b> · head <code id="c-head"></code></p><button class="btn" type="button" id="c-verify" data-world="1">${icon("link-2", 18)}${esc(W.done.chain.verify)}</button><p class="status" id="c-status" aria-live="polite"></p></div>
-  <nav class="end" id="t-end" aria-label="What next">${TRY_SIGN_END.slice(0, 1).map((e) => `<a class="btn primary big" data-end="0">${icon(e.icon, 18)}${esc(e.label)}</a>`).join("")}<p class="ends">${TRY_SIGN_END.slice(1).map((e, i) => `<a class="btn" data-end="${i + 1}">${icon(e.icon, 18)}${esc(e.label)}</a>`).join("")}</p></nav>
+  <nav class="end" id="t-end" aria-label="What next">${TRY_SIGN_END.slice(0, 1).map((e) => `<a class="btn primary big" data-end="0">${icon(e.icon, 18)}${esc(e.label)}</a>`).join("")}<p class="ends">${TRY_SIGN_END.slice(1).map((e, i) => `<a class="btn" data-end="${i + 1}">${icon(e.icon, 18)}${esc(e.label)}</a>`).join("")}</p>${designPartnerHtml(partnerUrl)}</nav>
   <a id="t-film" hidden></a>`)}
 </div>
 <aside class="card diagram" id="diagram" data-step="1" aria-label="One policy, three locks">

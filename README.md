@@ -1,6 +1,6 @@
 # Purser · AI agents spend. You sign off.
 
-AI agents are starting to spend company money; Purser lets them, through Airwallex and Metal, only within limits the CFO signs with Face ID.
+For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice over its limit, you sign the exact terms with Face ID.
 
 - An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless.
 - One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control.
@@ -13,9 +13,6 @@ AI agents are starting to spend company money; Purser lets them, through Airwall
 **[Judge it in 3 minutes →](https://kit11.max-31b.workers.dev/judge)**
 
 The Kit 11 scenario, run live on 3 November, and a demo you sign yourself: **[kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/)**.
-
-Starter Kit 11 · x402 Business Agents · entered for the Metal Award and the Visa Award (Visa: [the Airi run](#visa-intelligent-commerce-via-airwallexs-airi-a-live-run-7-nov), Visa Intelligent Commerce; TAP is an extra: [note](docs/submission/long-description.md#visa)). Northwind Outdoor,
-the example company, is an outdoor wholesaler that sells live stock data to retailers per query: the kit's data business.
 
 ## Look here first
 
@@ -30,6 +27,9 @@ the example company, is an outdoor wholesaler that sells live stock data to reta
 4. **[The Airi run](#visa-intelligent-commerce-via-airwallexs-airi-a-live-run-7-nov): Visa Intelligent Commerce via
    Airwallex's Airi (7 November).** Agents paid with a single-use Visa credential from Airi: within the limit on their
    own, above it only after the CFO's Face ID; passed 5 of 5 checks, in the second attempt in its world. Log: [docs/runs/2026-11-07-vic-1.md](docs/runs/2026-11-07-vic-1.md).
+
+Starter Kit 11 · x402 Business Agents · entered for the Metal Award and the Visa Award (Visa: [the Airi run](#visa-intelligent-commerce-via-airwallexs-airi-a-live-run-7-nov), Visa Intelligent Commerce; TAP is an extra: [note](docs/submission/long-description.md#visa)). Northwind Outdoor,
+the example company, is an outdoor wholesaler that sells live stock data to retailers per query: the kit's data business.
 
 ## How to run
 
