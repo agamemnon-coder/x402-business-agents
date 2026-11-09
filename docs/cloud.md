@@ -78,8 +78,8 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/mail/{id}/raw` | sync | One inbound e-mail, raw (RFC 822). |
 | `POST /v1/mail/{id}/done` | sync | The runner filed (done) or refused an inbound e-mail. |
 | `GET /v1/keys` | admin | The company's API keys (never their secrets); paginated (limit, cursor). |
-| `POST /v1/keys` | admin | A new API key; returned once. |
-| `DELETE /v1/keys/{id}` | admin | Revoke an API key. |
+| `POST /v1/keys` | admin | A new API key; returned once. A key made by a key never has more scope or a later expiry than it. |
+| `DELETE /v1/keys/{id}` | admin | Revoke an API key, and every key it made down the chain (`also_revoked`). |
 | `GET /v1/users` | admin | The company's people and their roles; paginated (limit, cursor). |
 | `POST /v1/users/{id}/enrolment` | admin | Start a person's passkey enrolment: a single-use secret for 30 minutes (an owner's passkey: a signed-in owner only, once any owner has one). |
 | `POST /v1/users` | admin | Add a person (owner, cfo, accountant, viewer); they then enrol a passkey with an enrolment an owner starts. |

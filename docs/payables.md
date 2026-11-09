@@ -178,6 +178,9 @@ Points the documentation leaves open; each is a setting or a single line, not a 
   panel shows the credit as its own line and what is open after it, the month report lists the month's credit notes
   and the open total after them, and the cloud's `/v1/insights` does the same. It never takes a supplier below zero:
   credit with no open invoice left is listed as owed back. Paying one is refused whatever its status.
+  Only a credit note a person accepted counts (`POST /api/payables/invoices/:id/accept-credit`, with who and how it
+  was checked with the supplier): until then it is listed apart as an unverified credit and lowers nothing (red team round
+  4: anyone who could mail the inbox could otherwise zero a supplier's open invoices).
 - **E-mail:** at most 20 PDFs per e-mail (the rest refused with the reason), one bad attachment does not stop the others,
   an e-mail inside an e-mail is not opened. A PDF over 200 pages or taking over 10 s is refused; models get at most
   50,000 characters (the checks still read the whole text).
