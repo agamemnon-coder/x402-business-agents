@@ -7,7 +7,7 @@ import type { Sql, SqlValue } from "./store.js";
 const COLUMNS = {
   users: ["id", "display_name", "email", "role", "created_at", "erased_at", "session_gen"],
   credentials: ["credential_id", "user_id", "x", "y", "counter", "created_at"],
-  api_keys: ["id", "name", "scopes", "secret_sha256", "created_by", "created_by_user", "created_at", "expires_at", "revoked_at", "last_used_at"],
+  api_keys: ["id", "name", "scopes", "secret_sha256", "created_by", "created_by_user", "parent_key", "created_at", "expires_at", "revoked_at", "last_used_at"],
   enrolments: ["id", "user_id", "token_sha256", "created_by", "created_at", "expires_at", "used_at"],
   vendors: ["id", "name", "status", "updated_at", "version", "body_json", "body_sha256"],
   invoices: ["id", "vendor", "invoice_no", "due_date", "currency", "total", "status", "doc_sha256", "received_at", "updated_at", "version", "body_json", "body_sha256"],
@@ -138,6 +138,24 @@ export class TenantDb {
       ? { sql: "(SELECT id FROM api_keys WHERE tenant_id = ? AND id = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?))", params: [this.tenantId, caller.principal, at] }
       : { sql: "(SELECT 'session:' || id FROM users WHERE tenant_id = ? AND id = ? AND erased_at IS NULL)", params: [this.tenantId, caller.principal] };
     return { sql: `INSERT INTO push_log (tenant_id, id, by_key, at) VALUES (?, ?, ${live.sql}, ?)`, params: [this.tenantId, id, ...live.params, at] };
+  }
+
+  /**
+   * A write's guard for who asks: the key is still live, or the signed-in person not erased, when the write commits
+   * (red team round 4: a key minted while its person was being erased outlived the erasure). Same row as a push's.
+   */
+  callerGuard(caller: { kind: "key" | "session"; principal: string }, at: string): Stmt {
+    return this.pushGuard(`g_${at}_${crypto.randomUUID()}`, caller, at);
+  }
+
+  /** An owner enrolment's guard for a caller that is not a signed-in owner: no owner has a passkey when it commits. */
+  noOwnerPasskeyGuard(at: string): Stmt {
+    const t = this.tenantId;
+    return {
+      sql: `INSERT INTO push_log (tenant_id, id, by_key, at) VALUES (?, ?, (SELECT 'no-owner-passkey' WHERE (SELECT COUNT(*) FROM credentials c
+          JOIN users u ON u.tenant_id = c.tenant_id AND u.id = c.user_id WHERE c.tenant_id = ? AND u.role = 'owner' AND u.erased_at IS NULL) = 0), ?)`,
+      params: [t, `o_${at}_${crypto.randomUUID()}`, t, at],
+    };
   }
 
   /**

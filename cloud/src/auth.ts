@@ -5,7 +5,7 @@
 import { verifyAssertion, type AssertionB64 } from "../../worker/src/webauthn.js";
 import { fromB64, hmacB64u, hmacValid, randomToken, sameString, sha256Hex, toB64u } from "./crypto.js";
 import type { Sql } from "./store.js";
-import { TenantDb } from "./tenant.js";
+import { TenantDb, WriteConflict } from "./tenant.js";
 
 export type Scope = "read" | "sync" | "admin";
 export type Role = "owner" | "cfo" | "accountant" | "viewer";
@@ -34,18 +34,62 @@ export const ENROLMENT_TTL_MS = 30 * 60 * 1000;
 export const KEY_DEFAULT_DAYS = 90;
 export const KEY_MAX_DAYS = 365;
 
-/** A new API key: its full text is returned once; only the hash of its secret is stored. */
-export async function newApiKey(db: TenantDb, a: { name: string; scopes: Scope[]; createdBy: string; createdByUser: string | null; expiresInDays?: number; now: Date }): Promise<{ id: string; key: string; expires_at: string }> {
+/**
+ * A new API key: its full text is returned once; only the hash of its secret is stored. A key made by a key never has
+ * more scope or a later expiry than the key that made it, and is revoked with it (red team round 4: a one-day admin-only
+ * key made a year-long read+sync+admin key that outlived its revoke). The insert commits only while the caller is still
+ * live (a key minted while its person was being erased outlived the erasure).
+ */
+export async function newApiKey(db: TenantDb, a: { name: string; scopes: Scope[]; caller: Caller; expiresInDays?: number; now: Date }): Promise<{ id: string; key: string; expires_at: string }> {
   if (!a.scopes.length || a.scopes.some((s) => !SCOPES.includes(s))) throw new AuthError(403, `scopes must be some of ${SCOPES.join(", ")}`);
   const days = a.expiresInDays ?? KEY_DEFAULT_DAYS;
+  let expires_at = new Date(a.now.getTime() + days * 86_400_000).toISOString();
+  let parent: string | null = null;
+  if (a.caller.kind === "key") {
+    const more = a.scopes.filter((s) => !a.caller.scopes.has(s));
+    if (more.length) throw new AuthError(403, `a key cannot make a key with more scope than its own (${more.join(", ")})`);
+    const p = await db.one<{ expires_at: string | null }>("api_keys", { id: a.caller.principal });
+    if (p?.expires_at && p.expires_at < expires_at) expires_at = p.expires_at;
+    parent = a.caller.principal;
+  }
   const id = `k${randomToken(9)}`.replace(/[^A-Za-z0-9]/g, "x");
   const secret = randomToken(32);
-  const expires_at = new Date(a.now.getTime() + days * 86_400_000).toISOString();
+  const iso = a.now.toISOString();
+  try {
+    await db.apply([db.callerGuard(a.caller, iso), db.insert("api_keys", {
+      id, name: a.name.slice(0, 80), scopes: a.scopes.join(" "), secret_sha256: await sha256Hex(secret), created_by: a.caller.principal, created_by_user: a.caller.user,
+      parent_key: parent, created_at: iso, expires_at,
+    })]);
+  } catch (e) {
+    if (e instanceof WriteConflict) throw new AuthError(401, "the key or person asking was revoked or erased meanwhile; no key was made");
+    throw e;
+  }
+  return { id, key: `pck_${id}_${secret}`, expires_at };
+}
+
+/** A key made outside a request (a new company's first owner key): no caller to guard, no parent. */
+export async function firstApiKey(db: TenantDb, a: { name: string; scopes: Scope[]; createdBy: string; createdByUser: string | null; expiresInDays?: number; now: Date }): Promise<{ id: string; key: string; expires_at: string }> {
+  if (!a.scopes.length || a.scopes.some((s) => !SCOPES.includes(s))) throw new AuthError(403, `scopes must be some of ${SCOPES.join(", ")}`);
+  const id = `k${randomToken(9)}`.replace(/[^A-Za-z0-9]/g, "x");
+  const secret = randomToken(32);
+  const expires_at = new Date(a.now.getTime() + (a.expiresInDays ?? KEY_DEFAULT_DAYS) * 86_400_000).toISOString();
   await db.apply([db.insert("api_keys", {
     id, name: a.name.slice(0, 80), scopes: a.scopes.join(" "), secret_sha256: await sha256Hex(secret), created_by: a.createdBy, created_by_user: a.createdByUser,
     created_at: a.now.toISOString(), expires_at,
   })]);
   return { id, key: `pck_${id}_${secret}`, expires_at };
+}
+
+/** The keys a key made, and the keys those made, down the chain (for a revoke). */
+export async function descendantKeys(db: TenantDb, id: string): Promise<string[]> {
+  const out: string[] = [];
+  let level = [id];
+  for (let depth = 0; depth < 32 && level.length; depth++) {
+    const next = (await db.select<{ id: string }>("api_keys", { parent_key: { in: level } })).map((r) => r.id).filter((x) => !out.includes(x) && x !== id);
+    out.push(...next);
+    level = next;
+  }
+  return out;
 }
 
 /** The key id a token names, when it has the shape of a Purser API key (to count failures per key). */
@@ -56,12 +100,23 @@ export function keyIdOf(token: string | undefined): string | null {
 async function fromApiKey(sql: Sql, token: string, now: Date): Promise<Caller> {
   const m = /^pck_(k[A-Za-z0-9]{12})_([A-Za-z0-9_-]{43})$/.exec(token);
   if (!m) throw new AuthError(401, "not a Purser API key");
-  const row = await sql.first<{ tenant_id: string; scopes: string; secret_sha256: string; revoked_at: string | null; expires_at: string | null; created_by_user: string | null }>(
-    "SELECT tenant_id, scopes, secret_sha256, revoked_at, expires_at, created_by_user FROM api_keys WHERE id = ?", [m[1]!]);
+  const row = await sql.first<{ tenant_id: string; scopes: string; secret_sha256: string; revoked_at: string | null; expires_at: string | null; created_by_user: string | null; parent_key: string | null }>(
+    "SELECT tenant_id, scopes, secret_sha256, revoked_at, expires_at, created_by_user, parent_key FROM api_keys WHERE id = ?", [m[1]!]);
   const digest = await sha256Hex(m[2]!);
   if (!row || !sameString(row.secret_sha256, digest)) throw new AuthError(401, "unknown API key");
   if (row.revoked_at) throw new AuthError(401, "this API key was revoked");
   if (!row.expires_at || row.expires_at <= now.toISOString()) throw new AuthError(401, "this API key expired; make a new one");
+  // The person behind it erased, or a key up its chain revoked or expired: it is dead too (red team round 4).
+  if (row.created_by_user) {
+    const u = await sql.first<{ erased_at: string | null }>("SELECT erased_at FROM users WHERE tenant_id = ? AND id = ?", [row.tenant_id, row.created_by_user]);
+    if (!u || u.erased_at) throw new AuthError(401, "the person behind this API key was erased; it no longer works");
+  }
+  let parent = row.parent_key;
+  for (let depth = 0; parent && depth < 32; depth++) {
+    const p = await sql.first<{ revoked_at: string | null; expires_at: string | null; parent_key: string | null }>("SELECT revoked_at, expires_at, parent_key FROM api_keys WHERE tenant_id = ? AND id = ?", [row.tenant_id, parent]);
+    if (!p || p.revoked_at || !p.expires_at || p.expires_at <= now.toISOString()) throw new AuthError(401, "the key that made this API key was revoked or expired; it no longer works");
+    parent = p.parent_key;
+  }
   const tenant = await sql.first<{ closed_at: string | null }>("SELECT closed_at FROM tenants WHERE id = ?", [row.tenant_id]);
   if (!tenant || tenant.closed_at) throw new AuthError(401, "this company's account is closed");
   await sql.run("UPDATE api_keys SET last_used_at = ? WHERE id = ?", [now.toISOString(), m[1]!]);
@@ -158,8 +213,19 @@ export async function startEnrolment(db: TenantDb, caller: Caller, userId: strin
   }
   const id = `n${randomToken(9)}`.replace(/[^A-Za-z0-9]/g, "x");
   const token = randomToken(32);
+  const iso = now.toISOString();
   const expires_at = new Date(now.getTime() + ENROLMENT_TTL_MS).toISOString();
-  await db.apply([db.insert("enrolments", { id, user_id: userId, token_sha256: await sha256Hex(token), created_by: caller.principal, created_at: now.toISOString(), expires_at })]);
+  // Checked again when it commits (red team round 4: counted before an owner's erasure committed, a key got an owner
+  // enrolment): the caller is still live, and for an owner's passkey asked by anyone but a signed-in owner, still no
+  // owner has one.
+  const ownerByOther = person.role === "owner" && !(caller.kind === "session" && caller.role === "owner");
+  try {
+    await db.apply([db.callerGuard(caller, iso), ...(ownerByOther ? [db.noOwnerPasskeyGuard(iso)] : []),
+      db.insert("enrolments", { id, user_id: userId, token_sha256: await sha256Hex(token), created_by: caller.principal, created_at: iso, expires_at })]);
+  } catch (e) {
+    if (e instanceof WriteConflict) throw new AuthError(403, "the caller was revoked meanwhile, or an owner now has a passkey: only a signed-in owner may enrol an owner's passkey");
+    throw e;
+  }
   return { enrolment_id: id, token, expires_at };
 }
 

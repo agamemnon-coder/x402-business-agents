@@ -3,7 +3,7 @@
 // TenantDb; a route never names a tenant itself.
 
 import { z } from "zod";
-import { AuthError, callerOf, endSessions, enrolPasskey, failedAuthBlocked, isPlatformAdmin, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope } from "./auth.js";
+import { AuthError, callerOf, endSessions, enrolPasskey, failedAuthBlocked, isPlatformAdmin, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope, firstApiKey, descendantKeys } from "./auth.js";
 import { randomToken } from "./crypto.js";
 import { allTransactions, BadRequest, insights, invoiceDocument, ledgerEntries, listInvoices, listPayments, listTransactions, listVendors, oneInvoice, oneTransaction, paged, report, transactionSummary } from "./read.js";
 import { registerCsv } from "../../src/money/registerShape.js";
@@ -74,7 +74,7 @@ export const ROUTES: Route[] = [
     const t = new TenantDb(c.env.sql, id);
     const ownerId = `u_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}`;
     await t.apply([t.insert("users", { id: ownerId, display_name: b.owner.display_name, email: b.owner.email ?? null, role: "owner", created_at: iso })]);
-    const key = await newApiKey(t, { name: "owner (first key)", scopes: ["read", "sync", "admin"], createdBy: ownerId, createdByUser: ownerId, now: c.now });
+    const key = await firstApiKey(t, { name: "owner (first key)", scopes: ["read", "sync", "admin"], createdBy: ownerId, createdByUser: ownerId, now: c.now });
     return json(201, { tenant: { id, slug: b.slug, name: b.name }, owner: { id: ownerId }, api_key: key.key, expires_at: key.expires_at, note: "the key is shown once; store it in a secret store" });
   } },
 
@@ -174,15 +174,19 @@ export const ROUTES: Route[] = [
     const b = await body(c, z.object({ name: z.string().min(1).max(80), scopes: z.array(z.enum(SCOPES as [Scope, ...Scope[]])).min(1), expires_in_days: z.number().int().min(1).max(KEY_MAX_DAYS).optional() }).strict());
     // The person behind the new key is the person behind the caller (a key made by a key inherits it), so erasing that
     // person revokes the whole chain.
-    const k = await newApiKey(db(c), { name: b.name, scopes: b.scopes, createdBy: c.caller!.principal, createdByUser: c.caller!.user, ...(b.expires_in_days ? { expiresInDays: b.expires_in_days } : {}), now: c.now });
+    const k = await newApiKey(db(c), { name: b.name, scopes: b.scopes, caller: c.caller!, ...(b.expires_in_days ? { expiresInDays: b.expires_in_days } : {}), now: c.now });
     return json(201, { id: k.id, api_key: k.key, expires_at: k.expires_at, note: "shown once" });
   } },
   { method: "DELETE", path: "/v1/keys/{id}", summary: "Revoke an API key.", need: "admin", run: async (c) => {
     const t = db(c);
     const k = await t.one<{ revoked_at: string | null }>("api_keys", { id: c.params[0]! });
     if (!k) return notFound("key");
-    if (!k.revoked_at) await t.apply([t.update("api_keys", { id: c.params[0]! }, { revoked_at: c.now.toISOString() })]);
-    return json(200, { id: c.params[0], revoked: true });
+    // The keys it made go with it (red team round 4: they kept working after their maker's revoke).
+    const children = await descendantKeys(t, c.params[0]!);
+    const iso = c.now.toISOString();
+    await t.apply([...(k.revoked_at ? [] : [t.update("api_keys", { id: c.params[0]! }, { revoked_at: iso })]),
+      ...(children.length ? [t.update("api_keys", { id: { in: children }, revoked_at: null }, { revoked_at: iso })] : [])]);
+    return json(200, { id: c.params[0], revoked: true, also_revoked: children });
   } },
   { method: "GET", path: "/v1/users", summary: "The company's people and their roles; paginated (limit, cursor).", need: "admin", run: async (c) => json(200, await paged<Record<string, unknown>>(db(c), "users", "id", {}, c.url.searchParams, (r) => r)) },
   { method: "POST", path: "/v1/users/{id}/enrolment", summary: "Start a person's passkey enrolment: a single-use secret for 30 minutes (an owner's passkey: a signed-in owner only, once any owner has one).", need: "admin", run: async (c) => json(201, await startEnrolment(db(c), c.caller!, c.params[0]!, c.now)) },

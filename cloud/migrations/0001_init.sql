@@ -52,6 +52,9 @@ CREATE TABLE IF NOT EXISTS api_keys (
   created_by TEXT NOT NULL,
   -- The person behind the key (a key made by a key inherits it): erasing that person revokes it.
   created_by_user TEXT,
+  -- The key that made this one, if a key did: revoking it revokes this one too, and this one never has more scope or
+  -- a later expiry than it (red team round 4).
+  parent_key TEXT,
   created_at TEXT NOT NULL,
   expires_at TEXT,
   revoked_at TEXT,
