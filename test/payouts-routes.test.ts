@@ -71,10 +71,14 @@ describe("bank details are checked in code before anything is sent", () => {
     expect(validateDetails({ ...CN_SWIFT, accountName: "X" }, cn.route).join(" ")).toMatch(/name/);
   });
 
-  it("gives one account identity per account (the IBAN where there is one) and masks it for the CFO", () => {
+  it("gives one account identity per account, whichever form it came in, and masks it for the CFO", () => {
     expect(accountKey(NL_IBAN)).toBe("NL91ABNA0417164300");
-    expect(accountKey(US_LOCAL)).toBe("US:aba:021000021:50001121");
-    expect(accountKey(CN_SWIFT)).toBe("CN:swift:ICBKCNBJ:6222021001115222");
+    // Red team round 4: an account without an IBAN is its country and number, with its ABA or with its bank's BIC alike;
+    // a GB IBAN and its sort code + account number are one account.
+    expect(accountKey(US_LOCAL)).toBe("US:50001121");
+    expect(accountKey({ ...US_LOCAL, routingType: "", routingValue: "", swiftCode: "CHASUS33" })).toBe("US:50001121");
+    expect(accountKey(CN_SWIFT)).toBe("CN:6222021001115222");
+    expect(accountKey(UK_LOCAL)).toBe(accountKey({ ...UK_LOCAL, iban: "GB29NWBK60161331926819", accountNumber: "", routingType: "", routingValue: "" }));
     expect(maskAccount(US_LOCAL)).toBe("account …1121, ABA 021000021 (US)");
     expect(maskAccount(TR_IBAN)).toBe("IBAN TR33…1326");
     expect(maskAccount(UK_LOCAL)).toBe("account …6819, sort code 60-16-13 (GB)");
