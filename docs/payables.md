@@ -42,7 +42,7 @@ not reconciled, and anything that moved without an approval on file. It is deriv
 (`src/money/register.ts`); nothing is stored twice. JSON at `/api/payables/transactions`, exports as CSV and JSON, and
 the same rows in the cloud at `GET /v1/transactions` ([cloud.md](cloud.md#the-transactions-register)).
 
-Known gap: Airi purchases are not booked by the ledger feed yet, so a paid one shows as `missing_booking`.
+Paid Airi purchases are booked by the ledger feed like a card charge (default expense 6100 against the Airwallex account of their currency, `src/accounting/gl.ts`), so they show as booked and matched.
 
 ## What happens to an invoice
 
