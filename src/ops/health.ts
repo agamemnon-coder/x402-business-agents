@@ -9,7 +9,7 @@ import { frozen } from "../policy/rules.js";
 import { pausesNotRevoked } from "../policy/pause.js";
 import { HANDOVER_AFTER, legacyUnfinished, openDecisions } from "../agents/disputeDecision.js";
 import { codeMayCarryOut, escalatedUndecided } from "../agents/disputeSource.js";
-import { failureCounts, PASSKEY_FAILURE_SPIKE } from "../passkey/failures.js";
+import { failureAlerts, failureCounts } from "../passkey/failures.js";
 
 import type { Alert, Health } from "./publicHealth.js";
 export type { Alert, Health, Severity } from "./publicHealth.js";
@@ -90,10 +90,7 @@ export function health(db: DB, now = new Date()): Health {
   // Refused passkey submissions (src/passkey/failures.ts): counted, never logged; a burst in the last hour is someone
   // trying signatures or codes, so a person looks.
   const pkFail = has(db, "passkey_failures") ? failureCounts(db, now) : { lastHour: 0, last24h: 0, byCode: {} };
-  if (pkFail.lastHour >= PASSKEY_FAILURE_SPIKE) {
-    const top = Object.entries(pkFail.byCode).sort(([, a], [, b]) => b - a).slice(0, 3).map(([c, k]) => `${c} ${k}`).join(", ");
-    alerts.push({ code: "passkey_failures_spike", severity: "warning", since: null, words: `${pkFail.lastHour} passkey submissions were refused in the last hour (most: ${top}); someone may be trying signatures or enrolment codes. Nothing was approved by them.` });
-  }
+  if (has(db, "passkey_failures")) alerts.push(...failureAlerts(db, now));
 
   const metrics: Record<string, number> = {
     approvals_waiting: n(db, "SELECT COUNT(*) AS n FROM proposals WHERE status = 'PENDING_APPROVAL' AND expires_at > ?", now.toISOString()),

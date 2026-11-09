@@ -7,7 +7,7 @@ import { openDb, type DB } from "../src/db/open.js";
 import { TERMS_SCHEMA, termsHash, type Terms } from "../src/lib/terms.js";
 import { health, prometheus } from "../src/ops/health.js";
 import { confirmPasskey, fingerprintOf, openEnrolment } from "../src/passkey/ledger.js";
-import { failureCounts, PASSKEY_FAILURE_SPIKE } from "../src/passkey/failures.js";
+import { BENIGN_FAILURES, countFailure, failureCounts, PASSKEY_FAILURE_SPIKE } from "../src/passkey/failures.js";
 import { processAssertion, processRegistration, type InboxItem } from "../src/passkey/process.js";
 import { challengeFor } from "../src/passkey/webauthn.js";
 import { createProposal } from "../src/policy/approvals.js";
@@ -85,5 +85,44 @@ describe("passkey failure counter", () => {
     const month = new Date(t0.getTime() + 31 * 86_400_000);
     await processAssertion(db, approval("P-0001", hash, stranger.sign({ challenge: challengeFor(hash), origin: ORIGIN, rpId: RP, counter: 2 })), month);
     expect((db.prepare("SELECT COUNT(*) AS n FROM passkey_failures").get() as { n: number }).n).toBe(1);
+  });
+});
+
+describe("passkey failure thresholds per type", () => {
+  const db0 = () => openDb(":memory:");
+  const codes = (db: DB, at = t0) => health(db, at).alerts.filter((a) => a.code.startsWith("passkey_")).map((a) => [a.code, a.severity]);
+
+  it("stored terms that no longer match their hash are critical on the first one, for a day", () => {
+    const db = db0();
+    countFailure(db, "terms_tampered", t0);
+    expect(codes(db)).toEqual([["passkey_terms_tampered", "critical"]]);
+    expect(codes(db, new Date(t0.getTime() + 20 * 3_600_000))).toEqual([["passkey_terms_tampered", "critical"]]);
+    expect(codes(db, new Date(t0.getTime() + 25 * 3_600_000))).toEqual([]);
+  });
+
+  it("three enrolment failures in an hour raise their own alert", () => {
+    const db = db0();
+    countFailure(db, "wrong_enrol_code", t0);
+    countFailure(db, "wrong_enrol_code", t0);
+    expect(codes(db)).toEqual([]);
+    countFailure(db, "enrol_verify_failed", t0);
+    expect(codes(db)).toEqual([["passkey_enrol_attempts", "warning"]]);
+  });
+
+  it("three errors storing or verifying an enrolled passkey's signature raise their own alert", () => {
+    const db = db0();
+    for (const c of ["verify_error", "store_error", "enrol_store_error"] as const) countFailure(db, c, t0);
+    expect(codes(db)).toEqual([["passkey_errors", "warning"]]);
+  });
+
+  it("benign refusals (a double tap, an already-decided option, a looser phone change) never count toward the spike", () => {
+    const db = db0();
+    for (let i = 0; i < 20; i++) for (const c of BENIGN_FAILURES) countFailure(db, c, t0);
+    expect(codes(db)).toEqual([]);
+    expect(health(db, t0).metrics.passkey_failures_1h).toBe(20 * BENIGN_FAILURES.length);
+    for (let i = 0; i < PASSKEY_FAILURE_SPIKE - 1; i++) countFailure(db, "bad_signature", t0);
+    expect(codes(db)).toEqual([]);
+    countFailure(db, "bad_signature", t0);
+    expect(codes(db)).toEqual([["passkey_failures_spike", "warning"]]);
   });
 });
