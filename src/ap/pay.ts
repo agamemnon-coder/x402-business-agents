@@ -17,6 +17,7 @@ import type { Asker } from "./read.js";
 import { writeReviewNote } from "./review.js";
 import { ledgerInvoiceNo } from "./ledgerKey.js";
 import { cleanText, totalLine, totalLineCurrency } from "./reading.js";
+import { scanTotalLine, scanView } from "./detail.js";
 import { apInvoice, apInvoices, setStatus, type ApInvoiceRow, type Finding } from "./store.js";
 import { payoutBeneficiary, proposeSupplierPayment, type SupplierPaymentOutcome } from "../payouts/plan.js";
 import { MAX_REFERENCE, payableCurrency, referenceProblem } from "../payouts/routes.js";
@@ -56,7 +57,11 @@ export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id:
   const refWrong = referenceProblem(reference);
   if (refWrong) throw new Error(`${id}: ${refWrong}`);
   // The supplier's own total line and its currency go with the terms, so the CFO sees them beside the amount.
-  const document = { total_line: totalLine(text), currency: totalLineCurrency(text), reason: transferReason(inv.gl_account) };
+  // A scan has no text line: the terms carry what was read from it, and say so (the phone shows it beside the amount).
+  const scan = text ? null : scanView(db, id);
+  const document = scan
+    ? { total_line: scanTotalLine(inv, scan), currency: inv.currency, reason: transferReason(inv.gl_account) }
+    : { total_line: totalLine(text), currency: totalLineCurrency(text), reason: transferReason(inv.gl_account) };
   // A supplier added through the inbox carries its route; a Kit 11 payee on file is paid in EUR as before.
   const out: PayOutcome = payoutBeneficiary(db, r.vendor) || r.currency !== "EUR"
     ? await proposeSupplierPayment(db, rail, { invoice_no: invoiceNo, vendor: r.vendor, amount: r.total, currency: r.currency, due_date: due, reference, reason: document.reason }, text, now, document)

@@ -54,10 +54,22 @@ function walk(part: Part, out: EmlAttachment[], depth = 0): void {
   const filename = param(part.headers.get("content-disposition"), "filename") || param(type, "name");
   if (mime === "application/pdf" || /\.pdf$/i.test(filename) || (mime === "application/octet-stream" && /\.pdf$/i.test(filename))) {
     out.push({ filename: filename || "attachment.pdf", mime: "application/pdf", bytes: decode(part.body, part.headers.get("content-transfer-encoding") ?? "7bit") });
+    return;
+  }
+  // A photo of an invoice attached as a file. Not an inline picture (a logo in the signature: shown in the body, or it
+  // has a Content-ID) and not a tiny one: those would each cost a model's reading for nothing.
+  const image = mime === "image/png" || mime === "image/jpeg" || /\.(png|jpe?g)$/i.test(filename);
+  const disposition = (part.headers.get("content-disposition") ?? "").trim().toLowerCase();
+  if (image && disposition.startsWith("attachment") && !part.headers.get("content-id")) {
+    const bytes = decode(part.body, part.headers.get("content-transfer-encoding") ?? "7bit");
+    if (bytes.length >= EML_MIN_IMAGE_BYTES) out.push({ filename: filename || "attachment.jpg", mime: /\.png$/i.test(filename) || mime === "image/png" ? "image/png" : "image/jpeg", bytes });
   }
 }
 
-/** Sender, subject and the PDFs attached to a raw e-mail. Never throws on a malformed mail: it finds what it can. */
+/** A picture smaller than this in an e-mail is a logo or an icon, not a photo of an invoice. */
+export const EML_MIN_IMAGE_BYTES = 8 * 1024;
+
+/** Sender, subject and the PDFs (and photos attached as files) of a raw e-mail. Never throws on a malformed mail: it finds what it can. */
 export function parseEml(raw: Buffer): ParsedEml {
   const top = splitPart(raw);
   const attachments: EmlAttachment[] = [];

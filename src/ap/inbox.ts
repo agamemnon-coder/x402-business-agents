@@ -19,6 +19,7 @@ import { parseApFallback } from "./reading.js";
 import { parseEml } from "./eml.js";
 import { isPdf, pdfText } from "./pdfText.js";
 import { EXPENSE_ACCOUNTS, readDocument, type Asker } from "./read.js";
+import { imageInfo, imageToPdf, readScan, scanFinding, scanRefusal, type ScanResult } from "./scan.js";
 import type { ApReading } from "./reading.js";
 import type { Finding } from "./store.js";
 import { apInvoice, apInvoices, nextApId, setStatus, type ApInvoiceRow } from "./store.js";
@@ -85,9 +86,13 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
     if (depth > 0) throw new Error(`${doc.filename} is an e-mail inside an e-mail; it is not opened (forward its PDF instead); nothing was filed`);
     return { kind: "email", results: await ingestEmail(db, deps, doc.bytes, { ...doc.meta, file: doc.filename }, doc.source === "email" ? "email" : doc.source) };
   }
-  if (!isPdf(doc.bytes)) throw new Error(`${doc.filename} is not a PDF: only PDF invoices, or e-mails (.eml) with a PDF attached, are taken in; nothing was filed`);
+  // A photo (JPEG or PNG) is kept as a one-page PDF and read like a scan; its size is checked from its header first.
+  const photo = isPdf(doc.bytes) ? null : imageInfo(doc.bytes);
+  if (!isPdf(doc.bytes) && !photo) throw new Error(`${doc.filename} is not a PDF: only PDF invoices, photos of invoices (JPEG or PNG), or e-mails (.eml) with one attached, are taken in; nothing was filed`);
+  const bytes = photo ? await imageToPdf(doc.bytes, photo) : doc.bytes;
+  const meta = photo ? { ...doc.meta, original_type: photo.type, original_bytes: String(doc.bytes.length) } : doc.meta;
   const now = (deps.now ?? (() => new Date()))();
-  const sha = createHash("sha256").update(doc.bytes).digest("hex");
+  const sha = createHash("sha256").update(bytes).digest("hex");
 
   const known = db.prepare("SELECT sha256 FROM ap_documents WHERE sha256 = ?").get(sha);
   if (known) {
@@ -100,29 +105,38 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
   mkdirSync(docs, { recursive: true });
   const path = join(docs, `${sha}.pdf`);
   if (!existsSync(path)) {
-    writeFileSync(path, doc.bytes, { flag: "wx" });
+    writeFileSync(path, bytes, { flag: "wx" });
     chmodSync(path, 0o444);
   }
 
   let text = "";
   let noText: string | undefined;
+  let scan: ScanResult | null = null;
   try {
-    text = (await pdfText(doc.bytes)).text;
-    if (!text) noText = "needs a person: there is no text in this PDF (a scan); reading scans (OCR) is not built yet";
+    const read = await pdfText(bytes);
+    text = read.text;
+    if (!text) {
+      // A scan (or a photo): read by a model as pages, twice, within the limits; otherwise it waits for a person.
+      const why = scanRefusal(db, deps.reader, bytes, read.pages, now);
+      scan = why ? null : await readScan(db, deps.reader, bytes, sha, read.pages, EXPENSE_ACCOUNTS, now);
+      if (!scan) noText = `needs a person: there is no text in this PDF (a scan)${why ? `; ${why}` : ", and no model reading of it came back"}`;
+    }
   } catch (e) {
     noText = `needs a person: the PDF could not be opened (${(e as Error).message.slice(0, 120)})`;
   }
 
   db.prepare("INSERT INTO ap_documents (sha256, filename, mime, bytes, path, source, meta_json, text_chars, received_at) VALUES (?, ?, 'application/pdf', ?, ?, ?, ?, ?, ?)")
-    .run(sha, doc.filename.slice(0, 200), doc.bytes.length, path, doc.source, JSON.stringify(doc.meta ?? {}), text.length, now.toISOString());
+    .run(sha, doc.filename.slice(0, 200), bytes.length, path, doc.source, JSON.stringify(meta ?? {}), text.length, now.toISOString());
 
-  // Haiku labels the document first; only an invoice, a credit note or a reminder is read in full (Sonnet).
-  const cls = noText ? { kind: "unread" as const, by: "none" } : await classifyDocument(db, deps.reader, text, sha);
+  // Haiku labels the document first; only an invoice, a credit note or a reminder is read in full (Sonnet). A scan
+  // carries the label its two readings gave.
+  const cls = scan ? { kind: scan.docKind as DocKind, by: `claude-scan:${scan.model}` } : noText ? { kind: "unread" as const, by: "none" } : await classifyDocument(db, deps.reader, text, sha);
   const readFully = cls.kind === "invoice" || cls.kind === "credit_note" || cls.kind === "reminder";
-  const { reading, readBy } = readFully ? await readDocument(db, deps.reader, text, sha) : { reading: parseApFallback(text), readBy: "parser" };
+  const { reading, readBy } = scan ? { reading: scan.reading, readBy: `claude-scan:${scan.model}` } : readFully ? await readDocument(db, deps.reader, text, sha) : { reading: parseApFallback(text), readBy: "parser" };
   const id = nextApId(db);
   const checked = readFully || noText ? evaluate(db, reading, text, { docSha: sha, now, ...(noText ? { noText } : {}) }) : notAnInvoice(cls.kind);
   const findings = [...checked.findings];
+  if (scan && readFully) findings.push(scanFinding(scan));
   // The model's label or the keyword rules: either one saying credit note or reminder is enough (red team round 2: a
   // model that calls a "Gutschrift" or a reminder an invoice does not make it payable).
   const rules = readFully ? ruleSignals(text) : { credit_note: false, reminder: false };
@@ -150,6 +164,10 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
     doc_sha256: sha, filename: doc.filename.slice(0, 200), source: doc.source, doc_kind: kind, classified_by: cls.by, read_by: readBy, vendor: reading.vendor, invoice_no: reading.invoice_no,
     total: reading.total, currency: reading.currency, status, findings: findings.map((x) => ({ code: x.code, level: x.level })) as unknown as Json,
   }, now);
+  if (scan) {
+    db.prepare("INSERT INTO ap_scan_readings (invoice_id, doc_sha256, agreed, differ_json, boxes_json, readings, model, read_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+      .run(id, sha, scan.agreed ? 1 : 0, JSON.stringify(scan.differ), JSON.stringify(scan.boxes), scan.readings, scan.model, now.toISOString());
+  }
   if (needsNote({ status, findings })) await writeReviewNote(db, deps.reader, id, now);
   const inv = apInvoice(db, id)!;
   await book(db, deps, inv);
@@ -199,9 +217,13 @@ export async function recheck(db: DB, deps: Pick<InboxDeps, "now" | "sink"> & { 
     const doc = db.prepare("SELECT path, text_chars FROM ap_documents WHERE sha256 = ?").get(inv.doc_sha256) as { path: string; text_chars: number };
     let text: string;
     try { text = doc.text_chars ? (await pdfText(readFileSync(doc.path))).text : ""; } catch { text = ""; }
-    if (!text) { out.push(inv); continue; }
+    // A scan has no text: it is checked again on its stored reading, with its scan finding as read.
+    const scanned = text ? undefined : (db.prepare("SELECT agreed, differ_json, readings FROM ap_scan_readings WHERE invoice_id = ?").get(inv.id) as { agreed: number; differ_json: string; readings: number } | undefined);
+    if (!text && !scanned) { out.push(inv); continue; }
     const wasBookable = bookable(inv);
-    const { status, findings } = evaluate(db, inv.reading, text, { docSha: inv.doc_sha256, now, selfId: inv.id });
+    const { findings } = evaluate(db, inv.reading, text, { docSha: inv.doc_sha256, now, selfId: inv.id });
+    if (scanned) findings.push(scanFinding({ agreed: scanned.agreed === 1, differ: JSON.parse(scanned.differ_json) as string[], readings: scanned.readings }));
+    const status = statusOf(findings);
     const kept = [...findings, ...inv.findings.filter((x) => (x.code === "credit_note" || x.code === "reminder") && !findings.some((y) => y.code === x.code))];
     if (inv.doc_kind === "invoice" && kept.some((x) => x.code === "credit_note")) db.prepare("UPDATE ap_invoices SET doc_kind = 'credit_note' WHERE id = ?").run(inv.id);
     const next = setStatus(db, inv.id, status, "system", { findings: kept, reason: "checked again" }, now);
