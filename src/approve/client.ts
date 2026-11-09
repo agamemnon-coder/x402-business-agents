@@ -66,6 +66,20 @@ export async function rejectionHash(termsSha256: string): Promise<string> {
   return sha256Hex(`kit11 reject v1 ${termsSha256}`);
 }
 
+/** What the passkey signs to take one line out of a batch (the runner's batchRemovalSha256). */
+export async function batchRemovalHash(batchSha256: string, line: string): Promise<string> {
+  return sha256Hex(`kit11 batch-remove v1 ${batchSha256} ${line}`);
+}
+
+/** The lines of a batch whose embedded terms do not hash to the hash the batch lists for them (none on a sound batch). */
+export async function badBatchLines(t: Obj): Promise<string[]> {
+  const bad: string[] = [];
+  for (const l of arr(t.lines).filter(isObj)) {
+    if (!isObj(l.terms) || (await sha256Hex(canonicalize(l.terms))) !== str(l.terms_sha256)) bad.push(str(l.proposal_id));
+  }
+  return bad;
+}
+
 export interface OptionCheck {
   ok: boolean;
   terms: Obj | null;
@@ -476,6 +490,25 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
         ["Signed on chain", "the account's Execute digest (what your passkey signs)"], ["Digest", digest], ["Valid until", utcMinute(new Date(Number(str(t.valid_until)) * 1000).toISOString())]],
       short: "the on-chain mandate change", warnings: problems.map((w) => `${w}; this cannot be signed`),
       label: "On chain", big: str(a.budget), unit: "USDZ budget",
+    };
+  }
+
+  if (kind === "payment_batch") {
+    // One Face ID for many payments (src/policy/batch.ts): every line is shown, with each line's own warnings.
+    const lines = arr(t.lines).filter(isObj).map((l) => ({ id: str(l.proposal_id), terms: isObj(l.terms) ? l.terms : {} as Obj }));
+    const totals = isObj(t.totals) ? Object.entries(t.totals).map(([c, v]) => `${c} ${money(v)}`) : [];
+    const each = lines.map((l) => ({ ...l, f: describeTerms(l.terms, names) }));
+    const n = lines.length;
+    return {
+      approvable: n > 0 && each.every((e) => e.f.approvable),
+      title: `Betaal ${n} factu${n === 1 ? "ur" : "ren"} in één keer`,
+      sentence: `Eén Face ID keurt deze ${n} betaling${n === 1 ? "" : "en"} goed, elk precies zoals hieronder; elke betaling wordt los uitgevoerd en los gecontroleerd.`,
+      amount: totals.join(" · "), margin: null,
+      recipient: [...new Set(each.map((e) => str(e.terms.beneficiary_name) || str(e.terms.vendor)))].join("; "),
+      rows: each.map((e) => [e.id, `${e.f.amount} aan ${str(e.terms.vendor) || str(e.terms.beneficiary_name)} (factuur ${ownInvoiceNo(e.terms)})`] as [string, string]),
+      short: `${n} betalingen`,
+      warnings: each.flatMap((e) => e.f.warnings.map((w) => `${ownInvoiceNo(e.terms) || e.id}: ${w}`)),
+      amountLabel: "Totaal", label: `Batch van ${n}`, big: totals[0] ?? "", unit: "",
     };
   }
 
@@ -1259,6 +1292,8 @@ async function approvePage(attempt = 0): Promise<void> {
     const check = chosen.check;
     const f = check.terms ? describeTerms(check.terms, a.names) : null;
     const terms = check.terms ?? parsedOrEmpty(o.canonical);
+    // One Face ID for many payments: its own view, every line listed, each line can be taken out first.
+    if (str(terms.kind) === "payment_batch") { void batchView(app, view, o, terms, f, check, enrolled, a.passkey.credentials); return; }
     const approvable = check.ok && !!f && f.approvable;
     // When Opus advises against it, saying no comes first, and approving is the slow, second choice (twice in live
     // runs a CFO who meant to reject approved by tapping the proposal).
@@ -1358,6 +1393,126 @@ async function approvePage(attempt = 0): Promise<void> {
     reject.addEventListener("click", () => void go("REJECTED"));
   }
   render();
+}
+
+/** A line's account, as the signed terms show it: the masked account, or the IBAN's last four. */
+function lineAccount(t: Obj): string {
+  return str(t.account) || (str(t.iban_last4) ? `IBAN …${str(t.iban_last4)}` : "");
+}
+
+/** The supplier's own invoice number: the payment ledger files it as "number · supplier" (src/ap/ledgerKey.ts). */
+export function ownInvoiceNo(t: Obj): string {
+  const no = str(t.invoice_no);
+  const suffix = ` · ${str(t.vendor)}`;
+  return str(t.vendor) && no.endsWith(suffix) ? no.slice(0, -suffix.length) : no;
+}
+
+/**
+ * A payment batch on the phone (src/policy/batch.ts), in Dutch: the count, the total per currency, and every line (who,
+ * how much, which account, the invoice's own total line). Goedkeuren signs the batch hash once; Afwijzen rejects the
+ * whole batch; Haal eruit signs the removal of that one line (a new batch of the rest then comes to this page). The page
+ * recomputes each line's hash from its terms; a line that does not match makes the batch unsignable here.
+ */
+async function batchView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, terms: Obj, f: Facts | null, check: OptionCheck, enrolled: boolean, credentials: { id: string }[]): Promise<void> {
+  const lines = arr(terms.lines).filter(isObj);
+  const bad = await badBatchLines(terms);
+  const approvable = check.ok && !!f && f.approvable && bad.length === 0;
+  const cd = el("span", "countdown");
+  cd.dataset.expires = o.expires_at;
+  const status = el("p", "sheet-status");
+  status.setAttribute("role", "status");
+  const list = el("ol", "batch-lines");
+  const removers: HTMLButtonElement[] = [];
+  for (const l of lines) {
+    const t = isObj(l.terms) ? l.terms : {} as Obj;
+    const lf = describeTerms(t, {});
+    const out = el("button", "secondary small", ["Haal eruit"]) as HTMLButtonElement;
+    out.type = "button";
+    out.disabled = true;
+    out.setAttribute("aria-label", `Haal factuur ${ownInvoiceNo(t)} uit deze batch (met Face ID)`);
+    out.addEventListener("click", () => void removeLine(str(l.proposal_id), ownInvoiceNo(t)));
+    removers.push(out);
+    list.append(el("li", "batch-line", [
+      el("div", "bl-head", [txt("span", "bl-who", str(t.vendor) || str(t.beneficiary_name)), txt("span", "bl-amount num", lf.amount)]),
+      txt("p", "bl-meta", [`Factuur ${ownInvoiceNo(t)}`, lineAccount(t)].filter(Boolean).join(" · ")),
+      t.document_total_line !== undefined ? txt("p", "bl-line invoice-line", `Op de factuur: \u201c${str(t.document_total_line).slice(0, 120)}\u201d`) : null,
+      ...lf.warnings.map((w) => txt("p", "alarm", w)),
+      out,
+    ]));
+  }
+  const approve = el("button", "confirm", [`Goedkeuren met Face ID (${lines.length} betaling${lines.length === 1 ? "" : "en"})`]) as HTMLButtonElement;
+  const reject = el("button", "reject-btn", ["Hele batch afwijzen"]) as HTMLButtonElement;
+  for (const b of [approve, reject]) { b.type = "button"; b.disabled = true; }
+  approve.id = "approve";
+  reject.id = "reject";
+  setTimeout(() => {
+    approve.disabled = !enrolled || !approvable || countdown(o.expires_at).over;
+    reject.disabled = !enrolled;
+    for (const r of removers) r.disabled = !enrolled || lines.length < 1;
+  }, 800);
+  view.replaceChildren(...[
+    el("section", "essentials", [
+      el("p", "eyebrow need", [o.four_eyes ? "Wacht op jouw goedkeuring en die van een tweede persoon" : "Wacht op jouw goedkeuring", " · ", cd]),
+      isTestMoney(terms) ? txt("p", "testmoney", "Testgeld · Airwallex sandbox") : null,
+      txt("h1", "what-title", f ? f.title : o.proposal_id),
+      f ? el("p", "hero", [txt("span", "hero-label", "Totaal"), txt("span", "hero-amount num", f.amount)]) : null,
+      el("dl", "key-facts", [
+        txt("dt", "", "Betalingen"), txt("dd", "", String(lines.length)),
+        txt("dt", "", "Agent"), txt("dd", "", "Payables inbox"),
+        txt("dt", "", "Waarom jij"), txt("dd", "why", "Een leverancier wordt alleen met jouw Face ID van de Airwallex-rekening betaald. Eén Face ID tekent deze hele lijst; elke betaling wordt daarna los gecontroleerd en uitgevoerd."),
+      ]),
+    ]),
+    check.ok ? null : txt("p", "alarm big", `Niet goedkeuren: ${check.problem}.`),
+    bad.length ? txt("p", "alarm big", `Niet goedkeuren: de voorwaarden van ${bad.join(", ")} passen niet bij hun hash.`) : null,
+    el("section", "batch", [txt("h2", "", "Wat je goedkeurt"), list]),
+    el("div", "actions", [approve, reject, status]),
+    el("details", "more", [
+      txt("summary", "", "Details"),
+      el("dl", "facts", [txt("dt", "", "Hash"), hashCell(o.terms_sha256), txt("dt", "", "Batch"), txt("dd", "mono", o.proposal_id)]),
+      termsTable(terms),
+      txt("p", "fineprint", "Je passkey tekent de SHA-256 van deze lijst, met per betaling de hash van haar exacte voorwaarden. Deze pagina rekent elke hash zelf na; één gewijzigde betaling maakt de handtekening waardeloos."),
+    ]),
+  ].filter((n): n is HTMLElement => n !== null));
+  tickCountdowns();
+  const lock = () => { approve.disabled = true; reject.disabled = true; for (const r of removers) r.disabled = true; };
+  const unlock = () => { approve.disabled = !enrolled || !approvable; reject.disabled = !enrolled; for (const r of removers) r.disabled = !enrolled; };
+  const send = async (body: Obj, what: string) => {
+    status.textContent = "Handtekening versturen…";
+    const sent = await api("/api/assertions", body).catch(() => ({ status: 0, data: { error: "the relay cannot be reached" } as Obj }));
+    if (sent.status !== 202) {
+      status.textContent = `Niet aangenomen: ${str(sent.data.error) || `fout ${sent.status}`}. Er is niets veranderd.`;
+      unlock();
+      return;
+    }
+    const home = el("a", "back", ["← Dashboard"]) as HTMLAnchorElement;
+    home.href = "/";
+    await follow(str(sent.data.ticket), app, home, what);
+  };
+  const go = async (decision: "APPROVED" | "REJECTED") => {
+    lock();
+    const got = await askPasskey(o, terms, decision, credentials, status);
+    if (!got.assertion) { unlock(); return; }
+    await send({ proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, decision, credential: got.assertion }, f ? f.title : o.proposal_id);
+  };
+  async function removeLine(line: string, invoiceNo: string): Promise<void> {
+    lock();
+    status.textContent = `Face ID om factuur ${invoiceNo} eruit te halen…`;
+    let cred: PublicKeyCredential | null;
+    try {
+      cred = (await navigator.credentials.get({ publicKey: {
+        challenge: hexToBytes(await batchRemovalHash(o.terms_sha256, line)), rpId: location.hostname,
+        allowCredentials: credentials.map((c) => ({ type: "public-key" as const, id: b64urlToBytes(c.id) })), userVerification: "required", timeout: 60_000,
+      } })) as PublicKeyCredential | null;
+    } catch (e) {
+      status.textContent = passkeyError(e);
+      unlock();
+      return;
+    }
+    if (!cred) { status.textContent = "Geannuleerd. Er is niets getekend."; unlock(); return; }
+    await send({ proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, decision: "REMOVE_LINE", line, credential: serializeAssertion(cred) }, `Factuur ${invoiceNo} eruit`);
+  }
+  approve.addEventListener("click", () => void go("APPROVED"));
+  reject.addEventListener("click", () => void go("REJECTED"));
 }
 
 function enrolPage(): void {

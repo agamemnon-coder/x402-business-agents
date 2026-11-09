@@ -3,6 +3,7 @@
 // audit log; the supplier's own total line from the stored document; and which actions the page may offer, with the
 // reason when one is closed. The reading's account is masked as on the list (publicInvoice).
 
+import { batchesOf } from "../policy/batchLines.js";
 import { readFileSync } from "node:fs";
 import type { DB } from "../db/open.js";
 import { payableCurrency } from "../payouts/routes.js";
@@ -37,6 +38,8 @@ export interface InvoiceDetail {
   total_line: string;
   document: { filename: string; source: string; from: string; subject: string };
   actions: { pay: Action; supplier_request: Action; reject: Action };
+  /** The batch this invoice's payment is in (one Face ID for many, src/policy/batch.ts), or null. */
+  batch: { id: string; status: string; count: string; waiting: boolean } | null;
 }
 
 const SEVERITY: CheckResult[] = ["block", "review", "wait", "warn"];
@@ -125,5 +128,15 @@ export async function invoiceDetail(db: DB, id: string): Promise<InvoiceDetail |
     total_line: line.slice(0, 160),
     document: { filename: doc?.filename ?? "", source: doc?.source ?? "", from: m("from"), subject: m("subject") },
     actions: actionsFor(inv),
+    batch: batchOfInvoice(db, inv.proposal_id),
   };
+}
+
+/** The newest batch this invoice's payment proposal is in, with its count and whether it still waits for the CFO. */
+function batchOfInvoice(db: DB, proposalId: string | null): InvoiceDetail["batch"] {
+  if (!proposalId) return null;
+  const b = batchesOf(db, proposalId)[0];
+  if (!b) return null;
+  const count = (db.prepare("SELECT COUNT(*) AS n FROM batch_lines WHERE batch_id = ?").get(b.batch_id) as { n: number }).n;
+  return { id: b.batch_id, status: b.status, count: String(count), waiting: b.status === "PENDING_APPROVAL" };
 }

@@ -2,6 +2,7 @@
 // a body is hostile input until parsed, every signature is verified against the pinned public key, and only then
 // does decide() run, in one transaction with the counter update and the stored signature.
 
+import { BATCH_KIND, batchRemovalSha256, removeBatchLine } from "../policy/batch.js";
 import { passkeyOwnersOn } from "../config/agents.js";
 import { approvalHashOf, OWNERS_EXECUTE, ownerSignerOf, type OwnersExecuteTerms } from "../metal/ownersExecute.js";
 import { loosens } from "../policy/rules.js";
@@ -37,7 +38,9 @@ const AssertionBody = z.object({
   proposal_id: z.string().regex(/^(P-\d{4,}|C-[0-9a-f]{8})$/),
   terms_sha256: z.string().regex(/^[0-9a-f]{64}$/),
   /** Absent means approve (the phone pages before rejections never sent it). */
-  decision: z.enum(["APPROVED", "REJECTED"]).default("APPROVED"),
+  decision: z.enum(["APPROVED", "REJECTED", "REMOVE_LINE"]).default("APPROVED"),
+  /** REMOVE_LINE only: the line taken out of the batch (the passkey signs batchRemovalSha256(batch hash, line)). */
+  line: z.string().regex(/^P-\d{4,}$/).optional(),
   credential: z.object({
     ...CREDENTIAL,
     response: z.object({
@@ -66,7 +69,7 @@ function parse<T>(schema: z.ZodType<T>, body: string): T | null {
 
 export interface AssertionOutcome {
   /** cosigned: the first of two people's approvals (E1, four eyes); the proposal waits for a second person. */
-  status: "approved" | "cosigned" | "rejected" | "too_late" | "already" | "refused";
+  status: "approved" | "cosigned" | "rejected" | "too_late" | "already" | "refused" | "removed";
   proposalId: string | null;
   message: string;
   /** For "already": the verdict the phone should see, the first outcome of this very signature if it was handled. */
@@ -103,6 +106,7 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
   const p = getProposal(body.proposal_id);
   if (!p) return refuse("unknown_proposal", null, `no proposal ${body.proposal_id}`);
   if (body.decision === "REJECTED") return processRejection(db, item, p, response, sha, now);
+  if (body.decision === "REMOVE_LINE") return processLineRemoval(db, item, p, body.line, response, sha, now);
   if (DECIDED.has(p.status)) return { status: "already", proposalId: p.proposal_id, message: `${p.proposal_id} is already ${p.status}` };
   // An EXPIRED proposal still gets its signature checked, so a late approval is recorded as too late (F1).
   if (p.status !== "PENDING_APPROVAL" && p.status !== "EXPIRED") return refuse("not_pending", p.proposal_id, `${p.proposal_id} is ${p.status}, not waiting for approval`);
@@ -201,6 +205,39 @@ async function processRejection(db: DB, item: InboxItem, p: ProposalRow, respons
       ).run(sha, p.proposal_id, pk.credential_id, p.terms_sha256, JSON.stringify(response), v.newCounter, now.toISOString());
       return { status: "rejected", proposalId: p.proposal_id, message: `${p.proposal_id} rejected with ${approver}; nothing will be paid` };
     }).immediate();
+  } catch (e) {
+    audit(db, "system", "passkey.refused", p.proposal_id, { reason: (e as Error).message.slice(0, 240), ticket: item.ticket, credential: pk.credential_id.slice(0, 8) }, now);
+    return refuse("store_error", (e as Error).message.slice(0, 240));
+  }
+}
+
+/**
+ * The CFO takes one line out of a waiting batch before signing it (src/policy/batch.ts): the passkey signs
+ * batchRemovalSha256(batch hash, line), which no approval or rejection signature can match. The batch is superseded and
+ * a new batch of the other lines goes to the phone, with a new hash. A replay finds the batch no longer waiting.
+ */
+async function processLineRemoval(db: DB, item: InboxItem, p: ProposalRow, line: string | undefined, response: AuthenticationResponseJSON, sha: string, now: Date): Promise<AssertionOutcome> {
+  const refuse = (code: FailureCode, reason: string): AssertionOutcome => { countFailure(db, code, now); return { status: "refused", proposalId: p.proposal_id, message: reason }; };
+  if (p.kind !== BATCH_KIND) return refuse("malformed", `${p.proposal_id} is not a batch; only a line of a batch can be taken out`);
+  if (!line) return refuse("malformed", "say which line to take out");
+  if (p.status !== "PENDING_APPROVAL") return refuse("not_pending", `${p.proposal_id} is ${p.status}, not waiting for approval`);
+  const pk = passkeyById(db, response.id);
+  if (!pk) return refuse("unknown_passkey", "this passkey is not enrolled");
+  if (pk.status !== "ACTIVE") return refuse("revoked_passkey", "this passkey was revoked");
+  let signed: string;
+  try {
+    signed = batchRemovalSha256(p.terms_sha256, line);
+  } catch (e) {
+    return refuse("malformed", (e as Error).message);
+  }
+  const v = await verifyApprovalSignature(response, signed, pk);
+  if (!v.ok) return refuse("bad_signature", v.reason);
+  const by = `${pk.label} (passkey ${pk.credential_id.slice(0, 8)})`;
+  try {
+    db.prepare("UPDATE passkeys SET counter = ? WHERE credential_id = ? AND counter <= ?").run(v.newCounter, pk.credential_id, v.newCounter);
+    const next = removeBatchLine(db, p.proposal_id, line, by, now);
+    audit(db, "human", "batch.line_removed", p.proposal_id, { line, by, signed_sha256: signed, assertion_sha256: sha, credential: pk.credential_id.slice(0, 8), next_batch: next?.proposal_id ?? null }, now);
+    return { status: "removed", proposalId: p.proposal_id, message: next ? `${line} taken out; batch ${next.proposal_id} with the other ${next.terms_json ? (JSON.parse(next.terms_json) as { count: string }).count : "0"} payments waits for your Face ID` : `${line} taken out; nothing is left in the batch` };
   } catch (e) {
     audit(db, "system", "passkey.refused", p.proposal_id, { reason: (e as Error).message.slice(0, 240), ticket: item.ticket, credential: pk.credential_id.slice(0, 8) }, now);
     return refuse("store_error", (e as Error).message.slice(0, 240));

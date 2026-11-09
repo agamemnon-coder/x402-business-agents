@@ -1,5 +1,6 @@
 // The relay Worker's logic, run in Node over an in-memory SQLite (the Durable Object's SQL API has the same shape).
 // The relay stores what the runner pushes and queues what the phone submits; it can refuse early, never approve.
+import { batchRemovalSha256 } from "../src/policy/batch.js";
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import { openDb } from "../src/db/open.js";
@@ -223,6 +224,23 @@ describe("passkey approvals from the phone", () => {
     const { ticket } = (await json(sent)) as { ticket: string };
     await push(r, state, [{ ticket, status: "rejected", message: "P-0001 rejected" }]);
     expect(await json(await get(r, `/api/tickets/${ticket}`))).toMatchObject({ status: "rejected", message: "P-0001 rejected" });
+  });
+
+  it("queues taking a line out of a batch only when the passkey signed that removal, and shows 'removed'", async () => {
+    const { r } = relay();
+    const { state } = runnerState({ enrolled: true });
+    await push(r, state);
+    const removeCd = clientData({ challenge: Buffer.from(batchRemovalSha256(HASH, "P-0002"), "hex").toString("base64url") });
+    // No line, a malformed line, an approval signature labelled as a removal, a removal of another line: refused.
+    expect((await post(r, "/api/assertions", assertion({ decision: "REMOVE_LINE" }, removeCd), { "cf-connecting-ip": "10.3.0.1" })).status).toBe(400);
+    expect((await post(r, "/api/assertions", assertion({ decision: "REMOVE_LINE", line: "x" }, removeCd), { "cf-connecting-ip": "10.3.0.2" })).status).toBe(400);
+    expect((await post(r, "/api/assertions", assertion({ decision: "REMOVE_LINE", line: "P-0002" }), { "cf-connecting-ip": "10.3.0.3" })).status).toBe(400);
+    expect((await post(r, "/api/assertions", assertion({ decision: "REMOVE_LINE", line: "P-0003" }, removeCd), { "cf-connecting-ip": "10.3.0.4" })).status).toBe(400);
+    const sent = await post(r, "/api/assertions", assertion({ decision: "REMOVE_LINE", line: "P-0002" }, removeCd), { "cf-connecting-ip": "10.3.0.5" });
+    expect(sent.status).toBe(202);
+    const { ticket } = (await json(sent)) as { ticket: string };
+    await push(r, state, [{ ticket, status: "removed", message: "P-0002 taken out" }]);
+    expect(await json(await get(r, `/api/tickets/${ticket}`))).toMatchObject({ status: "removed" });
   });
 
   it("hands the queue to the runner and shows the runner's verdict on the ticket", async () => {

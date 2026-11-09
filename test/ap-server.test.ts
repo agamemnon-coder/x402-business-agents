@@ -124,6 +124,23 @@ describe("the payables page", () => {
     expect(awx.transfers).toHaveLength(0);
   });
 
+  it("pays picked invoices with one Face ID: one batch for the phone, only from this page, ids only", async () => {
+    await start(true);
+    await upload(await pdfOf(EN), "a.pdf");
+    const body = JSON.stringify({ ids: ["AP-0001"] });
+    const json = (t?: string, origin: string | undefined = base) => raw("/api/payables/batch", body, { "content-type": "application/json", "x-csrf": t, origin });
+    expect((await json("not-a-token")).status).toBe(403);
+    expect((await raw("/api/payables/batch", JSON.stringify({ ids: ["AP-0001", "<script>"] }), { "content-type": "application/json", "x-csrf": await token(), origin: base })).status).toBe(400);
+    const ok = await json(await token());
+    expect(ok.status).toBe(200);
+    const j = JSON.parse(ok.text) as { batch: { proposal_id: string; count: number }; planned: unknown[]; invoices: { status: string }[] };
+    expect(j.batch).toMatchObject({ count: 1 });
+    expect(j.invoices[0]!.status).toBe("waiting_cfo");
+    const detail = await (await fetch(base + "/api/payables/invoices/AP-0001/detail")).json() as { batch: { id: string; waiting: boolean } };
+    expect(detail.batch).toMatchObject({ id: j.batch.proposal_id, waiting: true });
+    expect(awx.transfers).toHaveLength(0);
+  });
+
   it("asks for a new supplier from an invoice waiting for one; a post without the token does nothing", async () => {
     await start(false);
     await upload(await pdfOf(NL), "nl.pdf");

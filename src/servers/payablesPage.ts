@@ -56,6 +56,7 @@ const OVERVIEW_BODY = `
 <p id="msg" role="status"></p>
 <div class="tiles" id="tiles"></div>
 <section class="section"><div class="bar" id="filters"><h2>Invoices</h2></div>
+<div class="batchbar" id="batchbar" hidden><span class="what" id="batchwhat"></span><button class="btn" id="batchall" type="button">Pick every ready invoice</button><button class="btn primary" id="batchpay" type="button">${svg("scan-face", 16)} Pay selected with one Face ID</button></div>
 <div class="card list" id="list"></div></section>
 <section class="section"><div class="grid2" id="more"></div></section>
 <p class="foot">Test money only: this build pays through the Airwallex sandbox. Every figure comes from the ledger on this computer.</p>`;
@@ -65,7 +66,7 @@ const IC=${ICON_SET(["triangle-alert", "clock", "circle-check", "octagon-x", "in
 ${COMMON}
 const msg=(t,tone)=>{const m=$('#msg');m.textContent=t;m.className=tone||''};
 const FILTERS=[['all','All',()=>true],['act','To act on',(i)=>['ready','needs_review','needs_vendor'].includes(i.status)],['waiting_cfo','Waits for Face ID',(i)=>i.status==='waiting_cfo'],['paid','Paid',(i)=>i.status==='paid'],['blocked','Blocked',(i)=>i.status==='blocked'],['rejected','Rejected',(i)=>i.status==='rejected']];
-let filter='all';let all=[];
+let filter='all';let all=[];const picked=new Set();
 const REASON={possible_fraud:'possible fraud',duplicate:'a copy of an invoice on file',iban_invalid:'an invalid IBAN',sum_mismatch:'amounts that do not add up',bank_details_invalid:'invalid bank details',payee_blocked:'a blocked supplier'};
 const sum=(a)=>a&&a.length?a:null;
 function tile(label,icon,value,extra,tone){const t=el('div','card tile'+(tone?' '+tone:''));const l=el('div','l',[ic(icon),label]);const v=el('div','v num');if(value instanceof Node)v.append(value);else v.textContent=value;t.append(l,v);if(extra)t.append(el('div','x',extra));return t}
@@ -81,6 +82,7 @@ function rows(){
   for(const i of shown){
     const a=el('a','row');a.href='/invoices/'+encodeURIComponent(i.id);
     const sup=el('span','sup',[i.vendor||'Unknown supplier']);sup.title=i.vendor;
+    if(i.status==='ready'&&i.payable!==false){const cb=el('input','pick');cb.type='checkbox';cb.checked=picked.has(i.id);cb.setAttribute('aria-label','Pick '+(i.invoice_no||i.id)+' to pay with one Face ID');cb.onclick=(e)=>{e.preventDefault();e.stopPropagation();const on=!picked.has(i.id);if(on)picked.add(i.id);else picked.delete(i.id);setTimeout(()=>{cb.checked=on},0);bar()};sup.prepend(cb)}
     const no=el('span','no',[i.invoice_no||'(no number)',el('span','sub',i.id)]);no.title=i.invoice_no;
     const late=i.due_date&&i.due_date<today&&!['paid','rejected'].includes(i.status);
     const due=el('span','due num'+(late?' late':''),i.due_date?day(i.due_date):'–');
@@ -90,6 +92,18 @@ function rows(){
     a.append(sup,no,due,amt,el('span','stc',[st]),wy,ic('chevron-right'));a.lastChild.className='go';
     list.append(a)}
 }
+// One Face ID for many: the picked ready invoices become one batch the CFO signs on the phone (each line its own payment).
+function bar(){const ready=all.filter(i=>i.status==='ready'&&i.payable!==false);for(const id of [...picked])if(!ready.some(i=>i.id===id))picked.delete(id);
+  const b=$('#batchbar');b.hidden=!ready.length;const sel=ready.filter(i=>picked.has(i.id));const tot={};for(const i of sel)tot[i.currency]=(tot[i.currency]||0)+Math.round(parseFloat(i.total)*100);
+  const sums=Object.keys(tot).sort().map(c=>c+' '+amount((tot[c]/100).toFixed(2))).join(' · ');
+  $('#batchwhat').replaceChildren(...(sel.length?[el('b','',sel.length+' picked'),' · '+sums]:['Pick ready invoices to pay them with one Face ID']));
+  $('#batchpay').disabled=!sel.length;$('#batchall').style.display=sel.length===ready.length?'none':''}
+$('#batchall').onclick=()=>{for(const i of all)if(i.status==='ready'&&i.payable!==false)picked.add(i.id);rows();bar()};
+$('#batchpay').onclick=async()=>{const ids=[...picked];const btn=$('#batchpay');btn.disabled=true;
+  try{const j=await post('/api/payables/batch',JSON.stringify({ids}),{'content-type':'application/json'});picked.clear();
+    const left=j.not_planned.length?' Not filed: '+j.not_planned.map(x=>x.id+' ('+x.reason+')').join('; ')+'.':'';
+    msg(j.batch?'Batch '+j.batch.proposal_id+': '+j.batch.count+' payment'+(j.batch.count===1?'':'s')+' wait for the CFO\\'s one Face ID on the phone.'+left:'Nothing was filed.'+left,j.batch&&!left?'ok':'bad');await load()}
+  catch(e){msg(e.message,'bad');btn.disabled=false}};
 function filters(){const bar=$('#filters');bar.querySelectorAll('.chip').forEach(c=>c.remove());for(const [k,label,fn] of FILTERS){const n=all.filter(fn).length;if(k!=='all'&&!n&&k!=='act')continue;const b=el('button','chip',[label,' ',el('b','',String(n))]);b.type='button';b.setAttribute('aria-pressed',String(filter===k));b.onclick=()=>{filter=k;filters();rows()};bar.append(b)}}
 function more(x){
   const box=$('#more');box.replaceChildren();
@@ -117,7 +131,7 @@ async function load(){
     tile('Overdue','clock',amounts(sum(x.overdue))||'None',sum(x.overdue)?rest(sum(x.overdue),'invoice'):'Every open invoice is in time',sum(x.overdue)?'alert':'calm'),
     tile('Waits for you','inbox',String(wait),x.waiting.waiting_cfo+' Face ID · '+x.waiting.needs_review+' check · '+x.waiting.needs_vendor+' supplier'),
     tile('Blocked','octagon-x',String(x.blocked.count),top?'Most: '+(REASON[top.code]||top.code.replace(/_/g,' ')):'Nothing blocked',x.blocked.count?'alert':'calm'));
-  filters();rows();more(x);
+  filters();rows();bar();more(x);
 }
 async function send(files){let n=0;for(const f of files){msg('Filing '+f.name+' …');try{const j=await post('/api/payables/documents',f,{'content-type':'application/octet-stream','x-filename':encodeURIComponent(f.name)});n++;msg(f.name+': '+(j.kind==='email'?j.results.length+' PDF(s) from the e-mail':j.kind==='duplicate_document'?'filed before, not again':j.invoice.id+', '+(j.invoice.status_words||j.invoice.status)),'ok')}catch(e){msg(f.name+': '+e.message,'bad')}}await load()}
 $('#file').onchange=(e)=>send(e.target.files);
@@ -168,11 +182,13 @@ function render(d){
   const rej=el('button','btn danger big',[ic('ban'),'Reject']);rej.type='button';rej.disabled=!d.actions.reject.allowed;
   const note=el('div','note');
   const closed=d.actions.pay.allowed?null:d.actions.pay.why;
+  const bnote=d.batch?el('span','batchnote',[ic('scan-face'),' In batch '+d.batch.id+' of '+d.batch.count+' payment'+(d.batch.count==='1'?'':'s')+(d.batch.waiting?': it waits for the CFO\\'s one Face ID for the whole batch. ':' ('+d.batch.status.toLowerCase().replace(/_/g,' ')+'). ')]):null;if(bnote)note.append(bnote);
   note.append(d.actions.pay.allowed?el('span','',['Files the payment; ',el('b','','nothing moves until the CFO approves it with Face ID'),' on the phone.']):el('span','',['Pay: ',closed.charAt(0).toUpperCase()+closed.slice(1)+'.']));
   const status=el('p','');status.setAttribute('role','status');status.style.cssText='margin:0;flex-basis:100%;font-size:14px';
   // A paid, rejected or filed invoice has nothing left to do here: the bar says where it stands instead of showing dead buttons.
   const done=['paid','rejected','waiting_cfo'].includes(i.status);
   if(done){note.replaceChildren(el('span','',[el('b','',i.status==='paid'?'Paid'+(i.paid_at?' on '+day(i.paid_at):''):i.status==='rejected'?'Rejected':'Waits for the CFO\\'s Face ID'),i.proposal_id?' · payment '+i.proposal_id:'',i.status==='paid'?' · paid through the Airwallex sandbox.':i.status==='waiting_cfo'?' · the CFO approves or rejects it on the phone.':' · it is never paid.']))}
+  if(done&&bnote)note.prepend(bnote);
   bar.append(...(done?[]:d.actions.supplier_request.allowed?[sup,pay,rej]:[pay,rej]),note,status);
   const box=el('div','card rejectbox');const ta=document.createElement('textarea');ta.placeholder='Why is this invoice rejected? (kept with the invoice and in the audit log)';ta.maxLength=300;
   const go=el('button','btn danger',['Reject this invoice']);go.type='button';const cancel=el('button','btn',['Cancel']);cancel.type='button';
