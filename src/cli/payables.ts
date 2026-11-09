@@ -97,7 +97,9 @@ async function main(): Promise<void> {
     const out = await payApInvoice(db, awx.rail, args[1] ?? "", new Date(), deps.reader);
     console.log(out.kind === "proposed" ? `${out.proposal.proposal_id}: waits for the CFO's Face ID on the phone` : `not planned: ${out.reason}`);
   } else if (cmd === "sync") {
-    const paid = await syncPayments(db, deps);
+    // With Airwallex keys: payouts are followed up there and a paid one's Purser fee taken (src/payouts/follow.ts).
+    const awx = await airwallexFromEnv();
+    const paid = await syncPayments(db, { ...deps, ...(awx ? { rail: awx.rail } : {}) });
     const checked = await recheck(db, deps);
     for (const x of [...paid, ...checked]) console.log(`${x.id}  ${x.status.replace(/_/g, " ")}`);
     console.log(await fileIntoLocalVault(db));

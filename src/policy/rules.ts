@@ -11,9 +11,10 @@ import { agentsOn } from "../config/agents.js";
 import { cardLimitsFrom } from "./cardRules.js";
 import { airiRailOn, airiRuleDefs } from "../airi/policy.js";
 import { payableCurrency, SWIFT_CURRENCIES } from "../payouts/routes.js";
+import { FEE_BPS_CAP, platformFeeOn } from "../airwallex/platform.js";
 
 export type PolicyKey = "approval.airi_alone" | "approval.airi_alone_per_day" | `airi.merchant.${string}` | "freeze" | `stop.${string}` | `pause.${string}` | "approval.four_eyes_eur" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | "approval.task_card_eur" | `counterparty:${string}`
-  | "payout.funding_currency" | `floor.${string}` | `fee_reserve.${"LOCAL" | "SWIFT"}.${string}`;
+  | "payout.funding_currency" | `floor.${string}` | `fee_reserve.${"LOCAL" | "SWIFT"}.${string}` | "platform.fee_bps";
 
 export interface Rule {
   key: PolicyKey;
@@ -106,8 +107,18 @@ function payoutRules(db: DB): Rule[] {
   return [...keys].sort().map(payoutRule).filter((r): r is Rule => r !== null);
 }
 
+/**
+ * Purser as an Airwallex platform (docs/airwallex-platform.md): Purser's fee per payout in basis points, CFO policy
+ * like the rest (changed only through an approved policy_change, with Face ID) and never above FEE_BPS_CAP (red team 6).
+ */
+export const PLATFORM_FEE_RULE: Rule = {
+  key: "platform.fee_bps", label: "Purser's fee per supplier payout (basis points; 100 = 1.00%)", unit: "", kind: "choice",
+  choices: ["0", "5", "10", "15", "20", "25", "30", "40", "50", "60", "75", "90", String(FEE_BPS_CAP)], fallback: "0", agent: "treasury",
+};
+
 /** The rule for a key: a payout rule for any payable currency (shown or not yet), else one from the policy. */
 export function ruleFor(db: DB, key: string): Rule | undefined {
+  if (key === "platform.fee_bps") return PLATFORM_FEE_RULE;
   return payoutRule(key) ?? rules(db).find((r) => r.key === key);
 }
 
@@ -132,7 +143,9 @@ export function rules(db: DB): Rule[] {
   }));
   // The Airi rail's keys (src/airi/policy.ts): only with KIT11_AIRI_RAIL=on, or once the CFO has set one of them.
   const airi = airiRailOn() || db.prepare("SELECT 1 FROM settings WHERE key LIKE 'approval.airi_%' OR key LIKE 'airi.merchant.%'").get() ? airiRuleDefs() as Rule[] : [];
-  return [...STATIC, ...payoutRules(db), ...pauseRules(db), ...outside, ...tasks, ...payees, ...airi];
+  // Purser's fee (platform.fee_bps): only with AIRWALLEX_PLATFORM_FEE=on, or once the CFO has set it.
+  const platform = platformFeeOn() || db.prepare("SELECT 1 FROM settings WHERE key = 'platform.fee_bps'").get() ? [PLATFORM_FEE_RULE] : [];
+  return [...STATIC, ...payoutRules(db), ...pauseRules(db), ...outside, ...tasks, ...payees, ...airi, ...platform];
 }
 
 /**

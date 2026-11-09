@@ -107,17 +107,72 @@ platform-level webhook uses the same signature scheme is **unconfirmed**.
 |---|---|---|
 | Platform rail: create account, hosted flow create + authorize, get account, fee transfer | `src/airwallex/platform.ts` | `test/airwallex-platform.test.ts` (fake fetch: exact paths, bodies, headers) |
 | `x-on-behalf-of` on every payout-rail call when a connected account is set | `src/airwallex/client.ts` (`onBehalfOf`), `airwallexFromEnv` | same |
-| Signed terms name the paying account and the Purser fee; the fee counts toward the funds checked | `src/payouts/plan.ts` | `test/airwallex-platform.test.ts` |
-| Phone shows "Paid from" and "Purser fee" before Face ID | `src/approve/client.ts` | same |
-| Fee collected only after the payout is PAID, once per request id, booked and in the register | `src/executors/supplierPayment.ts` (`takePlatformFee`), `src/ap/books.ts`, `src/accounting/gl.ts`, `src/money/register.ts` | same |
-| Cloud: owner opens the account, gets the onboarding link, status from webhooks | `cloud/src/awxPlatform.ts`, `cloud/src/app.ts` (`/v1/airwallex/*`), console Settings, table `awx_accounts` | `test/cloud-awx-platform.test.ts` (fake rail; owner-only, one per company, tenant isolation, signature, replay order) |
+| Signed terms name the paying account and the Purser fee; the fee counts toward the funds checked, a batch's totals and four eyes | `src/payouts/plan.ts`, `src/agents/euroBill.ts`, `src/policy/batch.ts`, `src/policy/fourEyes.ts` | `test/airwallex-platform.test.ts`, `test/rt6-platform.test.ts` |
+| The paying account from a binding Purser Cloud signs (never a local setting) | `src/airwallex/binding.ts`, `cloud/src/awxPlatform.ts` (`bindingOf`), `GET /v1/airwallex/binding`, `src/cloudsync/client.ts` (`refreshBinding`) | `test/rt6-platform.test.ts`, `test/cloud-rt6.test.ts` |
+| Phone shows "Paid from", "Purser fee → Purser's account" and "Total out" before Face ID, per line in a batch too | `src/approve/client.ts` | same |
+| Fee taken only after the payout is PAID, once per request id; booked only when settled; never fails a paid payment | `src/executors/supplierPayment.ts` (`takePlatformFee`), `src/payouts/follow.ts`, `src/ap/books.ts`, `src/accounting/gl.ts`, `src/money/register.ts` | same |
+| Cloud: owner opens the account (idempotent, consent kept), gets the onboarding link, status from webhooks | `cloud/src/awxPlatform.ts`, `cloud/src/app.ts` (`/v1/airwallex/*`), console Settings, table `awx_accounts` | `test/cloud-awx-platform.test.ts`, `test/cloud-rt6.test.ts` |
 
-The cloud keeps only the account's id and status, never the onboarding link (short-lived, made when asked for) and
-never a key. It is off unless the cloud is given a platform rail (`CloudEnv.awxPlatform`); the Worker does not wire one
-yet, because the Airwallex client is Node-only (`src/airwallex/callBudget.ts` writes a local file). Which field of an
-`account.*` event carries the connected account's id is **unconfirmed**: the cloud accepts `data.object.id`,
-`data.object.account_id`, `data.id`, `data.account_id`, `account_id` or `accountId`, and changes a company only when the
-id is one Purser opened.
+### The account binding (red team 6)
+
+The account a company's payouts run from is never a setting on the runner, and never only `AIRWALLEX_ON_BEHALF_OF`.
+Purser Cloud signs a **binding** with Purser's platform Ed25519 key (a Worker secret, `awxPlatform.bindingKey`):
+
+`{ v: 1, tenant, account_id, status, name, fee_account, issued_at, expires_at }`, as `<base64url JSON>.<base64url signature>`
+
+- `tenant` is the company in Purser Cloud; `account_id` and `status` come from the company's `awx_accounts` row (the
+  status as Airwallex's `account.*` webhooks set it); `name` is the business name the cloud holds; `fee_account` is
+  Purser's own platform account (`awxPlatform.feeAccount`), the only place a Purser fee can go.
+- It holds for **one hour** (`BINDING_TTL_MS`). The runner fetches a fresh one on every cloud sync
+  (`GET /v1/airwallex/binding`, sync scope) and keeps it in the setting `platform.binding` only if it checks.
+- The runner checks it with Purser's public key (`PURSER_PLATFORM_PUBLIC_KEY`, base64 SPKI) and its own company id
+  (`PURSER_TENANT_ID`). A binding for another company, signed by another key, expired, or for an account that is not
+  `active`: nothing is planned, and an approved payment is not paid (the check runs again before anything moves).
+- Every kind that moves Airwallex money (`invoice_payment`, `supplier_payment`, each line of a batch) carries
+  `paying_account` in its signed terms, and one shared check (`checkPayingAccount`) runs in both executors: the terms'
+  account, the binding's account and the account the rail acts for (`x-on-behalf-of`) must be the same, or, with the
+  platform off, none. A fee in the terms must be within the cap, go to the binding's `fee_account`, and be its share of
+  the amount.
+
+### Purser's fee: the cap and its life
+
+- **Cap: at most 100 basis points (1.00%) per payout** (`FEE_BPS_CAP`). The fee is CFO policy (`platform.fee_bps`, a
+  choice from 0 to 100), changed only through a policy change the CFO approves with Face ID. A higher value is never
+  planned, and terms above the cap are shown with a warning and cannot be signed on the phone.
+- The fee counts toward the funds checked when the payment is planned (and in a batch's running reserve), toward the
+  batch's totals and toward four eyes (a supplier payment's euro value is its amount plus the fee at the quote's rate,
+  never less than the EUR the quote sells; a batch needs two people when its lines together are above the threshold).
+- From the moment the payout is written until the fee is settled, the fee is held (`platform_fees` row `DUE`, counted in
+  `inFlightCents`). It is taken only once the payout is `PAID`: at execution in the sandbox, or live when
+  `followPayouts` (on `npm run payables -- sync`) reads the payout as PAID at Airwallex. A fee that cannot be taken stays
+  `OPEN` for a person and the next follow-up; the payment stays `EXECUTED`. A fee answered `NEW`/`PENDING` stays so
+  until it is read `SETTLED`; only a settled fee is booked and counted as moved. A payout that fails voids its fee.
+
+### Production: on-behalf-of calls go through a Purser-held service (design note, not built)
+
+In this build the runner holds the Airwallex platform key and sets `x-on-behalf-of` itself; the binding stops a runner
+from paying from another company's account by mistake or by a changed setting, but whoever holds the platform key can
+still call Airwallex for any connected account. **Before production, every on-behalf-of call goes through a service
+Purser holds** (the platform key never leaves it): the runner sends the signed terms, the CFO's approval and the
+binding; the service checks the binding and the approval hash, then makes the call for that one account. The runner
+keeps no platform key. This is a go-live item (`docs/go-live.md`).
+
+### What is unconfirmed (all behind the flag, none called yet)
+
+- `request_id` on `POST /accounts/create` as an idempotency id, and looking an account up by it
+  (`GET /accounts?request_id=`, `findConnectedAccount`): the cloud sends the same id on every attempt of one opening,
+  looks a stale opening up before it retries, and adopts what it finds; if Airwallex cannot answer, nothing is opened
+  again.
+- The id field of `account.*` events: the cloud applies an event **only** by `data.object.id` (the account object's own
+  id, as Airwallex documents the account object), and an event that also names another account in `account_id` or
+  elsewhere changes nothing.
+- `GET /connected_account_transfers/{id}` to read a fee transfer's status, like the create.
+
+The cloud keeps the account's id, status, the opening's idempotency id and the owner's **consent record** (who agreed
+to Airwallex's terms, when, and which version, `awxPlatform.termsVersion`), never the onboarding link (short-lived, made
+when asked for) and never a key. It is off unless the cloud is given a platform rail (`CloudEnv.awxPlatform`); the
+Worker does not wire one yet, because the Airwallex client is Node-only (`src/airwallex/callBudget.ts` writes a local
+file).
 
 ## What Max must ask Airwallex
 

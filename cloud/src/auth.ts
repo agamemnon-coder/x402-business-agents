@@ -272,6 +272,9 @@ export async function enrolPasskey(sql: Sql, a: { tenantId: string; enrolmentId:
   // An owner recovery: in the same write as the new passkey, the owner's other passkeys go, their sessions end and the
   // recovery key is spent. Until this commits nothing of the old access changes (a recovery never finished does nothing).
   const recovery = owner && e.recovery === 1 && e.created_by_kind === "key";
+  // What changed in the company's access lately, for the owners to check after a recovery (red team 6: a thief of the
+  // passkey could add an owner, a key or a webhook before the recovery; the recovery event names them all).
+  const recent = recovery ? await recentAccessChanges(db, a.now) : null;
   try {
     await db.apply([db.callerGuard({ kind: e.created_by_kind, principal: e.created_by }, iso),
       ...(owner && !e.by_owner && !recovery ? [db.noOwnerPasskeyGuard(iso)] : []),
@@ -279,16 +282,48 @@ export async function enrolPasskey(sql: Sql, a: { tenantId: string; enrolmentId:
       ...(owner ? [db.update("api_keys", { purpose: "first-owner", revoked_at: null }, { revoked_at: iso })] : []),
       ...(recovery ? [
         db.delete("credentials", { user_id: e.user_id, credential_id: { op: "<>", v: a.credentialId } }),
-        db.update("users", { id: e.user_id }, { session_gen: person.session_gen + 1 }),
+        // Incremented in SQL at commit (red team 6: a session signed in between the read and this write survived a set).
+        { sql: "UPDATE users SET session_gen = session_gen + 1 WHERE tenant_id = ? AND id = ?", params: [a.tenantId, e.user_id] },
         db.update("api_keys", { id: e.created_by }, { revoked_at: iso }),
+        // Whoever held the lost passkey could make keys as this owner: every key behind the owner goes, with the keys
+        // those keys made (they carry the same person), and every invite the owner or those keys started.
+        db.update("api_keys", { created_by_user: e.user_id, revoked_at: null }, { revoked_at: iso }),
+        db.update("api_keys", { created_by: e.user_id, revoked_at: null }, { revoked_at: iso }),
+        db.update("enrolments", { created_by_user: e.user_id, used_at: null, cancelled_at: null }, { cancelled_at: iso }),
         db.insert("security_events", { id: `se_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}`, at: iso, kind: "recovery.completed", actor: e.user_id,
-          detail_json: JSON.stringify({ owner: e.user_id, recovery_key: e.created_by, new_passkey: a.credentialId.slice(0, 12) }) }),
+          detail_json: JSON.stringify({ owner: e.user_id, recovery_key: e.created_by, new_passkey: a.credentialId.slice(0, 12),
+            ended: "the owner's other passkeys and sessions, every key behind the owner (and the keys those made), and every open invite the owner or those keys started",
+            check_these: recent }) }),
       ] : [])]);
   } catch (err) {
     if (err instanceof WriteConflict) throw new AuthError(401, "this enrolment no longer holds: whoever started it lost access, or an owner already has a passkey; ask an owner for a new invite");
     throw err;
   }
   return { user_id: e.user_id, credential_id: a.credentialId, ...(recovery ? { recovery: true as const } : {}) };
+}
+
+/** How far back a recovery lists the company's access changes. */
+const RECENT_CHANGES_DAYS = 30;
+
+/**
+ * The company's access changes of the last 30 days, for the recovery event: owners added, owner passkeys enrolled,
+ * keys made (live or not) and webhooks set. Names and ids only; never a secret, never a whole webhook address.
+ */
+async function recentAccessChanges(db: TenantDb, now: Date): Promise<Record<string, unknown>> {
+  const since = new Date(now.getTime() - RECENT_CHANGES_DAYS * 86_400_000).toISOString();
+  const owners = await db.select<{ id: string; display_name: string; created_at: string; erased_at: string | null }>("users", { role: "owner", created_at: { op: ">=", v: since } });
+  const ownerIds = (await db.select<{ id: string }>("users", { role: "owner" })).map((u) => u.id);
+  const passkeys = await db.select<{ user_id: string; created_at: string }>("credentials", { user_id: { in: ownerIds }, created_at: { op: ">=", v: since } });
+  const keys = await db.select<{ id: string; name: string; scopes: string; created_by: string; created_by_user: string | null; created_at: string; revoked_at: string | null; purpose: string | null }>("api_keys", { created_at: { op: ">=", v: since } });
+  const hooks = await db.select<{ url: string; created_at: string; created_by: string; disabled_at: string | null }>("webhooks", { created_at: { op: ">=", v: since } });
+  const host = (u: string) => { try { return new URL(u).host; } catch { return "?"; } };
+  return {
+    since,
+    owners_added: owners.map((o) => ({ id: o.id, name: o.erased_at ? "[erased]" : o.display_name.slice(0, 80), at: o.created_at })),
+    owner_passkeys_added: passkeys.map((p) => ({ owner: p.user_id, at: p.created_at })),
+    keys_made: keys.filter((k) => k.purpose !== "recovery").map((k) => ({ id: k.id, name: k.name.slice(0, 80), scopes: k.scopes, by: k.created_by, at: k.created_at, revoked: !!k.revoked_at })),
+    webhooks_set: hooks.map((h) => ({ host: host(h.url), by: h.created_by, at: h.created_at, off: !!h.disabled_at })),
+  };
 }
 
 /** Failed authentications from one address in the current minute: at the limit, requests are turned away before any lookup. */

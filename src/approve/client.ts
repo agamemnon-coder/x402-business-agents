@@ -118,6 +118,44 @@ export function money(s: unknown): string {
   return `${m[1] ? "−" : ""}${m[2]!.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}${m[3] ?? ""}`;
 }
 
+/** A decimal amount in cents, or null; never through a float. */
+function centsOf(s: unknown): number | null {
+  const m = /^(\d+)\.(\d{2})$/.exec(str(s));
+  return m ? Number(m[1]) * 100 + Number(m[2]) : null;
+}
+const fromCentsStr = (c: number) => `${Math.floor(c / 100)}.${String(c % 100).padStart(2, "0")}`;
+/** Purser's cap on its own fee (src/airwallex/platform.ts FEE_BPS_CAP): above it the phone warns and nothing is signable. */
+const FEE_CAP_BPS = 100;
+
+/** What one payment takes from its currency's balance as signed: the amount and Purser's fee (red team 6). */
+export function outflowOf(t: Obj): { currency: string; cents: number } | null {
+  const amount = centsOf(t.amount);
+  if (amount === null || !str(t.currency)) return null;
+  const fee = isObj(t.platform_fee) ? centsOf(t.platform_fee.amount) : 0;
+  if (fee === null) return null;
+  return { currency: str(t.currency), cents: amount + fee };
+}
+
+/** Purser as a platform, in words: which account pays and where Purser's fee goes (never hidden, red team 6). */
+function platformRows(t: Obj, cur: string): [string, string][] {
+  const rows: [string, string][] = [];
+  if (isObj(t.paying_account)) rows.push(["Paid from", `${str(t.paying_account.name)}, ${str(t.paying_account.id)}`]);
+  if (isObj(t.platform_fee)) {
+    const f = t.platform_fee;
+    rows.push(["Purser fee", `${str(f.currency)} ${money(f.amount)} (${(Number(str(f.bps)) / 100).toFixed(2)}%) to Purser's account ${str(f.to_account)}, taken from the paying account after the payment is paid`]);
+    const out = outflowOf(t);
+    const reserve = centsOf(t.fee_reserve);
+    if (out) rows.push(["Total out", `${cur} ${money(fromCentsStr(out.cents))} (the amount and Purser's fee; ${reserve ? `Airwallex's own fee comes on top, at most ${cur} ${money(t.fee_reserve)}` : "no Airwallex fee is expected on this route"})`]);
+  }
+  return rows;
+}
+
+function platformWarnings(t: Obj): string[] {
+  if (!isObj(t.platform_fee)) return [];
+  const bps = Number(str(t.platform_fee.bps));
+  return !Number.isInteger(bps) || bps > FEE_CAP_BPS ? [`Purser's fee here is ${str(t.platform_fee.bps)} basis points, above its cap of ${FEE_CAP_BPS} (1.00%); do not approve`] : [];
+}
+
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const shortAddr = (a: string) => (ADDRESS.test(a) ? `${a.slice(0, 6)}…${a.slice(-4)}` : a);
 
@@ -259,6 +297,8 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
     const rows: [string, string][] = [
       ["Amount", `${cur} ${money(t.amount)}`],
       ["Bank fee", fee],
+      // Purser as a platform: the account it pays from (red team 6), in the signed terms like a supplier payment's.
+      ...platformRows(t, cur),
       ["Pays", recipient],
       ["Invoice", `${str(t.invoice_no)} from ${str(t.vendor)}, reference ${str(t.reference)}`],
       ["Method", str(t.method)],
@@ -290,12 +330,13 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
   if (kind === "supplier_payment") {
     // A supplier paid in the invoice's own currency on its route (src/payouts/plan.ts).
     const cur = str(t.currency);
+    const overCap = platformWarnings(t).length > 0;
     const c = isObj(t.conversion) ? t.conversion : null;
     const fx = c ? `${str(c.sell_currency)} ${money(c.sell_amount)} into ${str(c.buy_currency)} ${money(c.buy_amount)}` : null;
     const recipient = `${str(t.beneficiary_name)}, ${str(t.account)}`;
     const how = `${str(t.method)}${str(t.clearing) ? ` (${str(t.clearing)})` : ""}`;
     return {
-      approvable: true,
+      approvable: !overCap,
       title: `Pay invoice ${str(t.invoice_no)}`,
       sentence: `Pay ${str(t.vendor)} ${cur} ${money(t.amount)} for invoice ${str(t.invoice_no)} by ${how}${fx ? `, after converting ${fx}` : `, from the ${cur} balance`}.`,
       amount: `${cur} ${money(t.amount)}`,
@@ -303,10 +344,11 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       recipient,
       rows: [
         ["Amount", `${cur} ${money(t.amount)}`],
-        ["Fee reserve", `at most ${cur} ${money(t.fee_reserve)} held back (the real fee is recorded)`],
-        // Purser as an Airwallex platform (docs/airwallex-platform.md): which account pays, and Purser's own fee, never hidden.
-        ...(isObj(t.paying_account) ? [["Paid from", `${str(t.paying_account.name)}, ${str(t.paying_account.id)}`] as [string, string]] : []),
-        ...(isObj(t.platform_fee) ? [["Purser fee", `${str(t.platform_fee.currency)} ${money(t.platform_fee.amount)} (${(Number(str(t.platform_fee.bps)) / 100).toFixed(2)}%), taken from this account after the payment is paid`] as [string, string]] : []),
+        // A route with no fee to hold back says so, rather than "at most USD 0.00 held back" (red team 6).
+        ["Fee reserve", centsOf(t.fee_reserve) ? `at most ${cur} ${money(t.fee_reserve)} held back for Airwallex's fee (the real fee is recorded)` : "none: no Airwallex fee is expected on this route (the real fee is recorded)"],
+        // Purser as an Airwallex platform (docs/airwallex-platform.md): which account pays, Purser's own fee and where it
+        // goes, and the total, never hidden.
+        ...platformRows(t, cur),
         ["Pays", recipient],
         ["Invoice", `${str(t.invoice_no)} from ${str(t.vendor)}, reference ${str(t.reference)}`],
         ["Method", how],
@@ -319,6 +361,7 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
         ...(str(t.vendor) && str(t.vendor) !== str(t.beneficiary_name) ? [`The account holder (${str(t.beneficiary_name)}) is not the vendor on the invoice (${str(t.vendor)})`] : []),
         ...(t.document_total_line !== undefined && str(t.document_currency) !== cur ? [`The invoice's own total line reads ${str(t.document_currency) || "no currency code knows"}, not ${cur}`] : []),
         ...amountNotInLine(t, cur),
+        ...platformWarnings(t),
       ],
       label: `Invoice ${str(t.invoice_no)}`,
       big: money(t.amount),
@@ -497,20 +540,40 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
   }
 
   if (kind === "payment_batch") {
-    // One Face ID for many payments (src/policy/batch.ts): every line is shown, with each line's own warnings.
+    // One Face ID for many payments (src/policy/batch.ts): every line is shown, with each line's own warnings, which
+    // account pays it and Purser's fee and where it goes (red team 6: the batch view hid both).
     const lines = arr(t.lines).filter(isObj).map((l) => ({ id: str(l.proposal_id), terms: isObj(l.terms) ? l.terms : {} as Obj }));
-    const totals = isObj(t.totals) ? Object.entries(t.totals).map(([c, v]) => `${c} ${money(v)}`) : [];
+    const signedTotals = isObj(t.totals) ? Object.fromEntries(Object.entries(t.totals).map(([c, v]) => [c, str(v)])) : {};
+    // The totals the lines add up to, Purser's fees included; any other total in the batch makes it unsignable here.
+    const sums: Record<string, number> = {};
+    let unreadable = false;
+    for (const l of lines) {
+      const o = outflowOf(l.terms);
+      if (!o) { unreadable = true; continue; }
+      sums[o.currency] = (sums[o.currency] ?? 0) + o.cents;
+    }
+    const computed = Object.fromEntries(Object.keys(sums).sort().map((c) => [c, fromCentsStr(sums[c]!)]));
+    const totalsAgree = !unreadable && JSON.stringify(computed) === JSON.stringify(Object.fromEntries(Object.keys(signedTotals).sort().map((c) => [c, signedTotals[c]])));
+    const totals = Object.entries(computed).map(([c, v]) => `${c} ${money(v)}`);
     const each = lines.map((l) => ({ ...l, f: describeTerms(l.terms, names) }));
     const n = lines.length;
+    const lineWords = (lt: Obj, f: Facts) => {
+      const fee = isObj(lt.platform_fee) ? ` + Purser-vergoeding ${str(lt.platform_fee.currency)} ${money(lt.platform_fee.amount)} (${(Number(str(lt.platform_fee.bps)) / 100).toFixed(2)}%) naar ${str(lt.platform_fee.to_account)}` : "";
+      const from = isObj(lt.paying_account) ? `; betaald van ${str(lt.paying_account.name)}, ${str(lt.paying_account.id)}` : "";
+      return `${f.amount}${fee} aan ${str(lt.vendor) || str(lt.beneficiary_name)} (factuur ${ownInvoiceNo(lt)})${from}`;
+    };
     return {
-      approvable: n > 0 && each.every((e) => e.f.approvable),
+      approvable: n > 0 && totalsAgree && each.every((e) => e.f.approvable),
       title: `Betaal ${n} factu${n === 1 ? "ur" : "ren"} in één keer`,
       sentence: `Eén Face ID keurt deze ${n} betaling${n === 1 ? "" : "en"} goed, elk precies zoals hieronder; elke betaling wordt los uitgevoerd en los gecontroleerd.`,
       amount: totals.join(" · "), margin: null,
       recipient: [...new Set(each.map((e) => str(e.terms.beneficiary_name) || str(e.terms.vendor)))].join("; "),
-      rows: each.map((e) => [e.id, `${e.f.amount} aan ${str(e.terms.vendor) || str(e.terms.beneficiary_name)} (factuur ${ownInvoiceNo(e.terms)})`] as [string, string]),
+      rows: each.map((e) => [e.id, lineWords(e.terms, e.f)] as [string, string]),
       short: `${n} betalingen`,
-      warnings: each.flatMap((e) => e.f.warnings.map((w) => `${ownInvoiceNo(e.terms) || e.id}: ${w}`)),
+      warnings: [
+        ...(totalsAgree ? [] : [`Het totaal in deze batch (${Object.entries(signedTotals).map(([c, v]) => `${c} ${money(v)}`).join(" · ")}) is niet de som van de regels met Purser-vergoedingen (${totals.join(" · ")}); niet goedkeuren`]),
+        ...each.flatMap((e) => e.f.warnings.map((w) => `${ownInvoiceNo(e.terms) || e.id}: ${w}`)),
+      ],
       amountLabel: "Totaal", label: `Batch van ${n}`, big: totals[0] ?? "", unit: "",
     };
   }
@@ -1452,6 +1515,9 @@ async function batchView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, 
     list.append(el("li", "batch-line", [
       el("div", "bl-head", [txt("span", "bl-who", str(t.vendor) || str(t.beneficiary_name)), txt("span", "bl-amount num", nlMoney(lf.amount))]),
       txt("p", "bl-meta", [`Factuur ${ownInvoiceNo(t)}`, lineAccount(t)].filter(Boolean).join(" · ")),
+      // Purser as a platform (red team 6): which account pays this line, and Purser's fee and where it goes.
+      isObj(t.paying_account) ? txt("p", "bl-meta bl-from", `Betaald van ${str(t.paying_account.name)}, ${str(t.paying_account.id)}`) : null,
+      isObj(t.platform_fee) ? txt("p", "bl-meta bl-fee", nlMoney(`Purser-vergoeding ${str(t.platform_fee.currency)} ${money(t.platform_fee.amount)} (${(Number(str(t.platform_fee.bps)) / 100).toFixed(2).replace(".", ",")}%) naar ${str(t.platform_fee.to_account)}, na de betaling`)) : null,
       t.document_total_line !== undefined ? txt("p", "bl-line invoice-line", `Op de factuur: \u201c${str(t.document_total_line).slice(0, 120)}\u201d`) : null,
       ...lf.warnings.map((w) => txt("p", "alarm", w)),
       out,

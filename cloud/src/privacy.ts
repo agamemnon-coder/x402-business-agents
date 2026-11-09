@@ -42,6 +42,7 @@ export async function eraseUser(sql: Sql, tenantId: string, userId: string, by: 
   const keys = (await db.count("api_keys", { created_by_user: userId, revoked_at: null })) + (await db.count("api_keys", { created_by: userId, created_by_user: { op: "<>", v: userId }, revoked_at: null }));
   const iso = now.toISOString();
   const gen = (await db.one<{ session_gen: number }>("users", { id: userId }))?.session_gen ?? 0;
+  const openExports = await db.count("exports", { status: { in: ["ready", "building"] } });
   // The erasures row goes first and is the guard: written only if, at commit time, the person is not erased yet and is
   // not the last owner. Two owners erasing each other at once: the second to commit fails as a whole.
   try {
@@ -54,6 +55,11 @@ export async function eraseUser(sql: Sql, tenantId: string, userId: string, by: 
       // Their unused invites, and the ones they started for others, go too (red team round 5).
       db.update("enrolments", { user_id: userId, used_at: null, cancelled_at: null }, { cancelled_at: iso }),
       db.update("enrolments", { created_by_user: userId, used_at: null, cancelled_at: null }, { cancelled_at: iso }),
+      // A staged export made before this holds the person's data as it was (red team 6): it ends now, and one still
+      // being built is never kept (its parts leave the store right after, purgeEndedExportParts).
+      db.update("exports", { status: "ready" }, { status: "expired", expires_at: iso }),
+      db.update("exports", { status: "building" }, { status: "failed" }),
+      ...(openExports ? [db.insert("security_events", { id: `se_${iso}_erase_${userId}`.replace(/[^A-Za-z0-9_]/g, "x").slice(0, 80), at: iso, kind: "export.ended_by_erasure", actor: by, detail_json: JSON.stringify({ subject: userId, exports: openExports }) })] : []),
     ]);
   } catch (e) {
     if (!(e instanceof WriteConflict)) throw e;

@@ -102,8 +102,13 @@ export async function stageExport(sql: Sql, blobs: Blobs, tenantId: string, by: 
   if (total + mbytes.byteLength > maxBytes) return fail();
   await blobs.put(partKey(tenantId, id, "manifest"), mbytes, { kind: "export" });
   total += mbytes.byteLength;
-  await t.apply([t.update("exports", { id, status: "building" }, { status: "ready", parts_json: JSON.stringify(parts), bytes: total }),
-    event(t, iso, "export.staged", by, { export_id: id, parts: parts.length, bytes: total, expires_at })]);
+  const made = await t.change(t.update("exports", { id, status: "building" }, { status: "ready", parts_json: JSON.stringify(parts), bytes: total }));
+  if (made !== 1) {
+    // A person was erased while this was built (red team 6): its rows may hold what was erased; nothing is kept.
+    await removeParts(blobs, tenantId, id);
+    throw new ExportRefused(409, "a person's data was erased while the export was being built; nothing was kept, ask for a new export");
+  }
+  await t.apply([event(t, iso, "export.staged", by, { export_id: id, parts: parts.length, bytes: total, expires_at })]);
   return { id, expires_at, parts, bytes: total };
 }
 
@@ -150,10 +155,24 @@ export async function download(sql: Sql, blobs: Blobs, origin: string, secret: s
   if (!row || row.status !== "ready" || row.expires_at <= now.toISOString()) return { status: 404, body: JSON.stringify({ error: "no such export (it may have expired)", code: "not_found" }), json: true };
   const bytes = await blobs.get(partKey(tenantId, id, part));
   if (!bytes) return { status: 404, body: JSON.stringify({ error: "no such part", code: "not_found" }), json: true };
-  if (part !== "manifest") return { status: 200, body: bytes, json: true };
+  // Every part fetched is on record for the owners (red team 6: only the manifest was), with the part it was.
+  if (part !== "manifest") {
+    await t.apply([event(t, now.toISOString(), "export.part_downloaded", "signed link", { export_id: id, part })]);
+    return { status: 200, body: bytes, json: true };
+  }
   const manifest = JSON.parse(new TextDecoder().decode(bytes)) as { parts: (Part & { url?: string })[] };
   for (const p of manifest.parts) p.url = (await signedLink(origin, secret, tenantId, id, `${p.table}-${p.n}`, now)).url;
   const iso = now.toISOString();
   await t.apply([t.update("exports", { id }, { downloaded_at: iso }), event(t, iso, "export.downloaded", "signed link", { export_id: id })]);
   return { status: 200, body: JSON.stringify(manifest), json: true };
+}
+
+/**
+ * After an erasure (red team 6): the company's open exports hold the erased person's data as it was, so they end now.
+ * Their status is set in the erasure's own write (src/privacy.ts); here their parts leave the store.
+ */
+export async function purgeEndedExportParts(sql: Sql, blobs: Blobs, tenantId: string): Promise<number> {
+  const rows = await new TenantDb(sql, tenantId).select<{ id: string }>("exports", { status: { in: ["expired", "failed"] } });
+  for (const r of rows) await removeParts(blobs, tenantId, r.id);
+  return rows.length;
 }

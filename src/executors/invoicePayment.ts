@@ -19,6 +19,7 @@ import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
+import { checkPayingAccount } from "../airwallex/binding.js";
 import { partyOf, snapshot, treasuryState, type InvoicePaymentTerms } from "../agents/euroBill.js";
 import { sameLedgerInvoice } from "../lib/invoiceKey.js";
 import { eurInFlightCents } from "../policy/available.js";
@@ -57,6 +58,8 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
   const terms = await exclusive(async () => {
     const pre = treasuryState(db, await snapshot(db, rail, `pre-exec:${proposalId}`));
     return beginExecution<InvoicePaymentTerms>(db, proposalId, (t) => {
+      // Purser as a platform (red team 6): only from the account the CFO signed for, the company's own in its binding.
+      checkPayingAccount(db, t, rail as { payingAccount?: string | null }, now());
       // The CFO may block a payee after the approval: checked again here, before Airwallex is called (review L2).
       const held = holdReason(db, t, now());
       if (held) throw new Error(held);

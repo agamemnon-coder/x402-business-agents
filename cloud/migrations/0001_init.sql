@@ -330,5 +330,14 @@ CREATE TABLE IF NOT EXISTS awx_accounts (
   created_by TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   event_at INTEGER NOT NULL DEFAULT 0,
+  -- The idempotency id sent with the account's create (every retry of the same opening sends the same one, so Airwallex
+  -- opens one account), and the nonce of the attempt that may finish the row (red team 6: a slow first request and its
+  -- replacement opened two accounts and crossed their ids).
+  request_id TEXT,
+  attempt TEXT,
+  -- The company's agreement to Airwallex's terms before the account was opened: who, when, which version.
+  consent_by TEXT,
+  consent_at TEXT,
+  consent_terms TEXT,
   PRIMARY KEY (tenant_id, id)
 );

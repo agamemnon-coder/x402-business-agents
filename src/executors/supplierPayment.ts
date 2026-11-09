@@ -26,6 +26,7 @@ import { stopped } from "../policy/velocity.js";
 import { originJson } from "../provenance/origin.js";
 import { freeCents, type PlatformFields, type SupplierPaymentTerms } from "../payouts/plan.js";
 import { platformFeeOn } from "../airwallex/platform.js";
+import { checkPayingAccount } from "../airwallex/binding.js";
 import { REFUSED_AT_CREATE } from "./invoicePayment.js";
 
 const hold = holdPayout;
@@ -48,9 +49,9 @@ export async function executeSupplierPayment(db: DB, rail: PayoutRail, sim: Sand
     const pre = await rail.balancesAll();
     return beginExecution<SupplierPaymentTerms>(db, proposalId, (t) => {
       if (t.kind !== "supplier_payment") throw new Error(`${proposalId} is not a supplier payment`);
-      // Purser as a platform: the payout leaves only the account the CFO signed for (docs/airwallex-platform.md).
-      const paying = (t as PlatformFields).paying_account?.id ?? null;
-      if ((rail.payingAccount ?? null) !== paying) throw new Error(`the terms were signed for payment from ${paying ?? "the company's own Airwallex account"}, but this runner pays from ${rail.payingAccount ?? "the company's own Airwallex account"}; nothing is paid`);
+      // Purser as a platform: the payout leaves only the account the CFO signed for, the company's own in its binding,
+      // and a fee only within the cap to Purser's account (docs/airwallex-platform.md, red team 6).
+      checkPayingAccount(db, t as SupplierPaymentTerms & PlatformFields, rail, now());
       const held = holdReason(db, t, now());
       if (held) throw new Error(held);
       const other = (db.prepare("SELECT invoice_no, status FROM transfers WHERE request_id <> ? AND status <> 'CANCELLED'").all(t.transfer_request_id) as { invoice_no: string; status: string }[])
@@ -125,7 +126,9 @@ export async function executeSupplierPayment(db: DB, rail: PayoutRail, sim: Sand
     const transfer = await step(db, proposalId, 2, "transfer", terms.transfer_request_id, () => submit(db, rail, terms, sha, proposalId), now);
     const final = sim ? await step(db, proposalId, 3, "settle", transfer.id, () => settleInSandbox(db, rail, sim, transfer), now) : transfer;
     recordFee(db, final, terms, sha);
-    if (final.status === "PAID") await step(db, proposalId, 4, "platform_fee", (terms as PlatformFields).platform_fee?.request_id ?? `${terms.transfer_request_id}:fee`, () => takePlatformFee(db, rail, terms, sha, proposalId), now);
+    // Purser's fee once the payout is PAID, never before; a fee that cannot be taken stays open for a person and never
+    // turns a paid payment into a failed one (red team 6). A payout not yet PAID gets its fee when it is (followPayouts).
+    if (final.status === "PAID") await takePlatformFee(db, rail, terms, sha, proposalId);
     const failed = final.status === "FAILED" || final.status === "CANCELLED";
     finishExecution(db, proposalId, failed ? "FAILED" : "EXECUTED", { conversion_id: conversionId, transfer_id: final.id, status: final.status });
     return { conversionId, transfer: final };
@@ -190,6 +193,12 @@ async function submit(db: DB, rail: PayoutRail, t: SupplierPaymentTerms, sha: st
       if (!existing) {
         db.prepare("INSERT INTO transfers (request_id, invoice_no, amount, currency, method, fee_estimate, status, approval_sha256, updated_at, origin_json) VALUES (?, ?, ?, ?, ?, ?, 'SUBMITTING', ?, ?, ?)")
           .run(t.transfer_request_id, t.invoice_no, t.amount, t.currency, t.method, t.fee_reserve, sha, at(), originJson());
+        // Purser's fee stays spoken for from here until it is settled (red team 6), in the write that ends the hold.
+        const fee = (t as PlatformFields).platform_fee;
+        if (fee) {
+          db.prepare(`INSERT OR IGNORE INTO platform_fees (request_id, proposal_id, payout_request_id, amount, currency, destination, fee_transfer_id, status, approval_sha256, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, NULL, 'DUE', ?, ?)`).run(fee.request_id, proposalId, t.transfer_request_id, fee.amount, fee.currency, fee.to_account, sha, at());
+        }
       }
       release(db, t.transfer_request_id);
     }).immediate();
@@ -258,18 +267,34 @@ function recordFee(db: DB, tr: Transfer, t: SupplierPaymentTerms, sha: string): 
 
 /**
  * Purser's fee for a paid payout (docs/airwallex-platform.md), taken once under the request id in the signed terms and
- * only with AIRWALLEX_PLATFORM_FEE=on; recorded whatever happens, so a fee that could not be taken shows for a person.
+ * only with AIRWALLEX_PLATFORM_FEE=on. Recorded whatever happens: SETTLED only when Airwallex says the fee transfer
+ * settled (only then is it booked); NEW or PENDING as answered, until a later follow-up reads it settled; OPEN when it
+ * could not be taken, for a person and the next follow-up. It never throws: the payment it belongs to is paid.
  */
-async function takePlatformFee(db: DB, rail: PayoutRail, t: SupplierPaymentTerms, sha: string, proposalId: string): Promise<void> {
+export async function takePlatformFee(db: DB, rail: PayoutRail, t: SupplierPaymentTerms, sha: string, proposalId: string): Promise<string | null> {
   const fee = (t as PlatformFields).platform_fee;
-  if (!fee) return;
-  const done = db.prepare("SELECT status FROM platform_fees WHERE request_id = ?").get(fee.request_id) as { status: string } | undefined;
-  if (done?.status === "SETTLED") return;
+  if (!fee) return null;
+  const done = db.prepare("SELECT status, fee_transfer_id FROM platform_fees WHERE request_id = ?").get(fee.request_id) as { status: string; fee_transfer_id: string | null } | undefined;
+  if (done && ["SETTLED", "NOT_TAKEN", "VOID"].includes(done.status)) return done.status;
   const write = (status: string, id: string | null) => db.prepare(`INSERT INTO platform_fees (request_id, proposal_id, payout_request_id, amount, currency, destination, fee_transfer_id, status, approval_sha256, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(request_id) DO UPDATE SET fee_transfer_id = excluded.fee_transfer_id, status = excluded.status, updated_at = excluded.updated_at`)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(request_id) DO UPDATE SET fee_transfer_id = COALESCE(excluded.fee_transfer_id, platform_fees.fee_transfer_id), status = excluded.status, updated_at = excluded.updated_at`)
     .run(fee.request_id, proposalId, t.transfer_request_id, fee.amount, fee.currency, fee.to_account, id, status, sha, new Date().toISOString());
-  if (!platformFeeOn() || !rail.collectPlatformFee) { write("NOT_TAKEN", null); audit(db, "awx-executor", "platform_fee.not_taken", fee.request_id, { why: "AIRWALLEX_PLATFORM_FEE is off or the rail cannot take it", amount: `${fee.currency} ${fee.amount}` }); return; }
-  const r = await rail.collectPlatformFee({ requestId: fee.request_id, amountCents: toCents(fee.amount), currency: fee.currency, destination: fee.to_account, reference: `Purser fee, invoice ${t.invoice_no}` });
-  write(r.status === "SETTLED" || r.status === "NEW" || r.status === "PENDING" ? "SETTLED" : r.status, r.id);
-  audit(db, "awx-executor", "platform_fee.taken", fee.request_id, { amount: `${fee.currency} ${fee.amount}`, to: fee.to_account, fee_transfer: r.id, status: r.status, approval_sha256: sha });
+  if (!platformFeeOn() || !rail.collectPlatformFee) {
+    write("NOT_TAKEN", null);
+    audit(db, "awx-executor", "platform_fee.not_taken", fee.request_id, { why: "AIRWALLEX_PLATFORM_FEE is off or the rail cannot take it", amount: `${fee.currency} ${fee.amount}` });
+    return "NOT_TAKEN";
+  }
+  let r: { id: string; status: string };
+  try {
+    // Taken already (an answer was NEW or PENDING): read where it stands, never sent twice.
+    r = done?.fee_transfer_id && rail.platformFeeStatus ? await rail.platformFeeStatus(done.fee_transfer_id) : await rail.collectPlatformFee({ requestId: fee.request_id, amountCents: toCents(fee.amount), currency: fee.currency, destination: fee.to_account, reference: `Purser fee, invoice ${t.invoice_no}` });
+  } catch (e) {
+    write("OPEN", null);
+    audit(db, "awx-executor", "platform_fee.open", fee.request_id, { amount: `${fee.currency} ${fee.amount}`, to: fee.to_account, error: (e as Error).message.slice(0, 300), note: "the payment is paid; the fee is taken on the next follow-up or by a person", approval_sha256: sha });
+    return "OPEN";
+  }
+  const status = r.status === "SETTLED" ? "SETTLED" : r.status === "FAILED" || r.status === "CANCELLED" ? "OPEN" : /^[A-Z_]{2,20}$/.test(r.status) ? r.status : "PENDING";
+  write(status, r.id);
+  audit(db, "awx-executor", status === "SETTLED" ? "platform_fee.taken" : "platform_fee.pending", fee.request_id, { amount: `${fee.currency} ${fee.amount}`, to: fee.to_account, fee_transfer: r.id, status: r.status, approval_sha256: sha });
+  return status;
 }

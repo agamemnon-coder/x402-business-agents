@@ -5,6 +5,7 @@
 // with Face ID before an executor pays. Nothing here moves money or approves anything. syncPayments follows each
 // proposal: paid once the ledger's transfer is PAID.
 
+import { followPayouts } from "../payouts/follow.js";
 import { readFileSync } from "node:fs";
 import type { AirwallexRail, PayoutRail } from "../airwallex/port.js";
 import { proposeInvoicePayment, type InvoiceOutcome } from "../agents/euroBill.js";
@@ -95,8 +96,10 @@ function clearStaleNote(db: DB, id: string): void {
 }
 
 /** Follows each invoice waiting for the CFO: paid when its transfer is PAID; rejected; or ready again when its terms ran out. */
-export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: BookkeepingSink } = {}): Promise<ApInvoiceRow[]> {
+export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: BookkeepingSink; rail?: PayoutRail } = {}): Promise<ApInvoiceRow[]> {
   const now = (opts.now ?? (() => new Date()))();
+  // With Airwallex at hand: each sent supplier payout is read again, and a PAID one's Purser fee taken (red team 6).
+  if (opts.rail) await followPayouts(db, opts.rail, now);
   // A proposal past its time that nothing has marked yet is expired first, so its invoice is not left waiting forever.
   expireDue(db, now);
   const changed: ApInvoiceRow[] = [];

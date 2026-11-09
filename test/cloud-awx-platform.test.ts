@@ -5,6 +5,7 @@ import { createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { NewConnectedAccount, PlatformRail } from "../src/airwallex/platform.js";
 import { testCloud, type TestCloud, type TestTenant } from "./support/cloud.js";
+import { PLATFORM_PRIVATE_KEY, PURSER_FEE_ACCOUNT } from "./support/platformBinding.js";
 
 const SECRET = "whsec-test-not-a-secret-0123456789";
 
@@ -13,11 +14,16 @@ class FakeRail implements PlatformRail {
   links: { accountId: string; template: string; returnUrl: string; identity: string }[] = [];
   next = 1;
   failNext: Error | null = null;
+  byRequest = new Map<string, string>();
   async createConnectedAccount(a: NewConnectedAccount) {
     if (this.failNext) { const e = this.failNext; this.failNext = null; throw e; }
     this.opened.push(a);
-    return { accountId: `acct_fake${this.next++}`, status: "CREATED" };
+    // Airwallex's idempotency as the fake keeps it: one account per request id.
+    const id = this.byRequest.get(a.requestId) ?? `acct_fake${this.next++}`;
+    this.byRequest.set(a.requestId, id);
+    return { accountId: id, status: "CREATED" };
   }
+  async findConnectedAccount(requestId: string) { const id = this.byRequest.get(requestId); return id ? { accountId: id, status: "CREATED" } : null; }
   async onboardingLink(a: { accountId: string; template: string; returnUrl: string; identity: string }) {
     this.links.push(a);
     return `https://www.airwallex.com/app/hosted/onboarding?code=fake-${this.links.length}`;
@@ -31,7 +37,7 @@ let rail: FakeRail;
 beforeEach(async () => {
   c = testCloud();
   rail = new FakeRail();
-  c.env.awxPlatform = { rail, template: "tmpl_fake_kyc", webhookSecret: SECRET };
+  c.env.awxPlatform = { rail, template: "tmpl_fake_kyc", webhookSecret: SECRET, bindingKey: PLATFORM_PRIVATE_KEY, feeAccount: PURSER_FEE_ACCOUNT, termsVersion: "airwallex-platform-terms-2026-11" };
   t = await c.tenant("northwind");
 });
 afterEach(() => c.close());
@@ -58,7 +64,7 @@ describe("opening the company's Airwallex account through Purser", () => {
     const r = await c.req("POST", "/v1/airwallex/account", { key: t.session, body: OPEN });
     expect(r.status).toBe(201);
     expect(r.json.account).toMatchObject({ account_id: "acct_fake1", status: "created", business_name: OPEN.business_name, country_code: "NL" });
-    expect(rail.opened).toEqual([{ businessName: OPEN.business_name, countryCode: "NL", email: OPEN.email }]);
+    expect(rail.opened).toEqual([{ businessName: OPEN.business_name, countryCode: "NL", email: OPEN.email, requestId: expect.stringMatching(/^[0-9a-f-]{36}$/) }]);
     expect((await c.req("GET", "/v1/airwallex/account", { key: t.session })).json).toMatchObject({ switched_on: true, account: { account_id: "acct_fake1", status: "created" } });
     // A second request opens no second account.
     expect((await c.req("POST", "/v1/airwallex/account", { key: t.session, body: OPEN })).status).toBe(409);

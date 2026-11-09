@@ -9,7 +9,7 @@ import type { DB } from "../db/open.js";
 import { toCents } from "../lib/money.js";
 import { cardLimits } from "./rules.js";
 import { heldCents, spendLimits } from "./holds.js";
-import { heldPayoutCents } from "./payoutLock.js";
+import { heldPayoutCents, owedPlatformFeeCents } from "./payoutLock.js";
 
 export interface MandateAvailability {
   budgetCents: number | null;
@@ -170,5 +170,5 @@ export function cardAvailability(db: DB, agent: string, now = new Date()): CardA
 export function eurInFlightCents(db: DB, exceptRequestId?: string, exceptProposalId?: string): number {
   if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'transfers'").get()) return 0;
   const rows = db.prepare("SELECT amount, fee_estimate FROM transfers WHERE status = 'SUBMITTING' AND currency = 'EUR' AND request_id <> ?").all(exceptRequestId ?? "") as { amount: string; fee_estimate: string }[];
-  return rows.reduce((s, r) => s + toCents(r.amount) + toCents(r.fee_estimate), 0) + heldPayoutCents(db, "EUR", exceptProposalId);
+  return rows.reduce((s, r) => s + toCents(r.amount) + toCents(r.fee_estimate), 0) + heldPayoutCents(db, "EUR", exceptProposalId) + owedPlatformFeeCents(db, "EUR", exceptProposalId);
 }

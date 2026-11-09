@@ -25,7 +25,7 @@ const COLUMNS = {
   webhooks: ["id", "url", "secret", "created_at", "created_by", "consecutive_failures", "last_attempt_at", "last_status", "disabled_at"],
   security_events: ["id", "at", "kind", "actor", "detail_json"],
   exports: ["id", "status", "created_at", "expires_at", "created_by", "parts_json", "bytes", "downloaded_at"],
-  awx_accounts: ["id", "account_id", "status", "business_name", "country_code", "created_at", "created_by", "updated_at", "event_at"],
+  awx_accounts: ["id", "account_id", "status", "business_name", "country_code", "created_at", "created_by", "updated_at", "event_at", "request_id", "attempt", "consent_by", "consent_at", "consent_terms"],
 } as const;
 
 export type Table = keyof typeof COLUMNS;

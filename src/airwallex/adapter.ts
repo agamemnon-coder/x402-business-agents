@@ -82,6 +82,12 @@ export class AirwallexRest implements AirwallexRail, SandboxSim, PayoutRail {
     return { id: r.id, status: r.status };
   }
 
+  async platformFeeStatus(id: string): Promise<{ id: string; status: string }> {
+    if (!/^[A-Za-z0-9_-]{1,80}$/.test(id)) throw new Error("not a fee transfer id");
+    const r = await this.api.call<{ id: string; status: string }>("GET", `/connected_account_transfers/${id}`);
+    return { id: r.id, status: r.status };
+  }
+
   async balances(): Promise<Partial<Record<Currency, Balance>>> {
     const rows = await this.api.call<{ currency: string; available_amount?: number; pending_amount?: number; reserved_amount?: number; account_type?: string }[]>(
       "GET", "/balances/current", undefined, { account_type: "cash" },

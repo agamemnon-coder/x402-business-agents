@@ -20,13 +20,14 @@ export function batchReservedCents(currency: string): number {
 const money = (s: unknown) => (typeof s === "string" && /^\d+\.\d{2}$/.test(s) ? toCents(s) : 0);
 
 /**
- * Adds what a planned payment will draw: its amount and fee reserve from its own currency, less what FX buys for it;
+ * Adds what a planned payment will draw: its amount, fee reserve and Purser's fee from its own currency, less what FX buys for it;
  * the FX sell amount from the currency sold.
  */
-export function reserveForBatch(terms: { amount?: unknown; currency?: unknown; fee_reserve?: unknown; fee_max?: unknown; conversion?: { buy_amount?: unknown; sell_currency?: unknown; sell_amount?: unknown } | null }): void {
+export function reserveForBatch(terms: { amount?: unknown; currency?: unknown; fee_reserve?: unknown; fee_max?: unknown; platform_fee?: { amount?: unknown } | null; conversion?: { buy_amount?: unknown; sell_currency?: unknown; sell_amount?: unknown } | null }): void {
   const m = store.getStore();
   if (!m || typeof terms.currency !== "string") return;
-  const own = money(terms.amount) + money(terms.fee_reserve ?? terms.fee_max) - money(terms.conversion?.buy_amount);
+  // Purser's fee too (red team 6): a later line of the batch is planned against what is left after it.
+  const own = money(terms.amount) + money(terms.fee_reserve ?? terms.fee_max) + money(terms.platform_fee?.amount) - money(terms.conversion?.buy_amount);
   m.set(terms.currency, (m.get(terms.currency) ?? 0) + Math.max(0, own));
   const c = terms.conversion;
   if (c && typeof c.sell_currency === "string") m.set(c.sell_currency, (m.get(c.sell_currency) ?? 0) + money(c.sell_amount));

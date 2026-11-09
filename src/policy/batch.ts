@@ -1,5 +1,5 @@
 // One Face ID for many payments (Max, 9 November): a batch is a proposal whose terms are the canonical list of each
-// payment's own exact terms, each with its own hash, plus the count and the total per currency. The CFO signs the
+// payment's own exact terms, each with its own hash, plus the count and the total per currency (Purser's fees included). The CFO signs the
 // batch's hash once. Every line stays its own proposal: its own hash, approval record, checks at execution and
 // idempotent payout (src/executors/paymentBatch.ts runs them one by one). Taking a line out supersedes the batch and
 // files a new one of the rest, with a new hash, so nothing is ever approved that the CFO did not see in the list.
@@ -38,9 +38,12 @@ function batchTermsOf(db: DB, ids: string[]): BatchTerms {
   });
   const totals: Record<string, number> = {};
   for (const l of lines) {
-    const t = l.terms as { amount?: unknown; currency?: unknown };
+    const t = l.terms as { amount?: unknown; currency?: unknown; platform_fee?: { amount?: unknown; currency?: unknown } };
     if (typeof t.amount !== "string" || typeof t.currency !== "string") throw new Error(`${l.proposal_id} has no amount and currency`);
-    totals[t.currency] = (totals[t.currency] ?? 0) + toCents(t.amount);
+    // What the line takes from that balance as signed: its amount and Purser's fee (red team 6: the total hid the fee).
+    const fee = t.platform_fee ? t.platform_fee.amount : "0.00";
+    if (typeof fee !== "string" || (t.platform_fee && t.platform_fee.currency !== t.currency)) throw new Error(`${l.proposal_id} has a Purser fee in another currency or without an amount`);
+    totals[t.currency] = (totals[t.currency] ?? 0) + toCents(t.amount) + toCents(fee);
   }
   const expires = lines.map((l) => l.terms.expires_at).sort()[0]!;
   return {

@@ -2,6 +2,7 @@
 // Seeding calibrates floors so the demo shows a shortfall whatever the sandbox starts with; planning
 // converts only the shortfall, fee included, on a locked quote, and never below either floor.
 
+import { platformPlan } from "../airwallex/binding.js";
 import { batchReservedCents } from "../payouts/planContext.js";
 import { randomUUID } from "node:crypto";
 import type { AirwallexRail, Currency, MarketRate, Quote, SandboxSim } from "../airwallex/port.js";
@@ -151,6 +152,7 @@ export interface InvoicePaymentTerms extends Terms {
   floors: { eur_floor: string; eur_obligations: string; usd_floor: string };
   after: { eur_free: string; usd_available: string };
   evidence: { type: string; ref: string; sha256: string }[];
+  // Purser as a platform adds paying_account (PlatformFields in src/payouts/plan.ts; absent otherwise, hash unchanged).
   // The payables inbox adds document_total_line and document_currency (see proposeInvoicePayment's `document`).
 }
 
@@ -257,6 +259,14 @@ export async function proposeInvoicePayment(
   db.prepare("INSERT OR IGNORE INTO invoices (invoice_no, vendor, amount, currency, due_date, iban_sha256, bic, beneficiary_id, doc_sha256, extracted_json, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RECEIVED')")
     .run(inv.invoice_no, inv.vendor, inv.amount, inv.currency, inv.due_date, ibanSha(inv.iban), inv.bic, check.beneficiaryId, sha256Hex(invoiceText), JSON.stringify(inv));
 
+  // Purser as a platform (red team 6): the account it pays from is the company's own in the binding Purser Cloud signed,
+  // named in the signed terms like a supplier payment's; the executor checks it again before anything moves.
+  const pp = platformPlan(db, now);
+  if (!pp.ok) {
+    const reason = `${pp.reason}; nothing is planned`;
+    audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);
+    return { kind: "escalated", reason };
+  }
   const b = await snapshot(db, rail, `plan:${inv.invoice_no}`);
   const s = treasuryState(db, b);
   // Max, 2 November: the fee reserve follows what Airwallex really charged, plus a buffer, never under the ceiling.
@@ -329,6 +339,7 @@ export async function proposeInvoicePayment(
     floors: { eur_floor: fromCents(s.eurFloorCents), eur_obligations: fromCents(s.eurObligationsCents), usd_floor: fromCents(s.usdFloorCents) },
     after: { eur_free: fromCents(Math.max(0, plan.freeEurCents + (quote?.buyAmountCents ?? 0) - plan.needEurCents)), usd_available: fromCents(usdAfter) },
     evidence: [{ type: "invoice", ref: inv.invoice_no, sha256: sha256Hex(invoiceText) }],
+    ...(pp.paying ? { paying_account: pp.paying } : {}),
     // The payables inbox only: the document's own total line, verbatim (sanitised, at most 120 characters), and the
     // currency as read from that line ("" when it names none, or one code does not know), so the CFO sees what the
     // supplier wrote beside the amount signed for (red team round 2). Kit 11's invoices pass none: their terms are unchanged.

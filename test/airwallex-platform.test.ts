@@ -26,6 +26,7 @@ import { setSetting } from "../src/world/settings.js";
 import { FakeAirwallex } from "./fakes/airwallex.js";
 import { US } from "./fakes/fxInvoices.js";
 import { pdfOf } from "./fakes/pdf.js";
+import { bind, BINDING_ENV } from "./support/platformBinding.js";
 
 type Reply = { status: number; body?: unknown };
 function fakeFetch(replies: Reply[]) {
@@ -78,10 +79,11 @@ describe("acting on behalf of a connected account (x-on-behalf-of)", () => {
 describe("the platform rail (docs: native-api, hosted-onboarding, connected_account_transfers)", () => {
   it("creates the connected account with the minimal body and the company's name and country", async () => {
     const { api, calls } = client([login, { status: 201, body: { id: "acct_newco1", status: "CREATED" } }]);
-    const out = await new AirwallexPlatformRest(api).createConnectedAccount({ businessName: "Northwind Outdoor B.V.", countryCode: "NL", email: "cfo@northwind.example" });
+    const out = await new AirwallexPlatformRest(api).createConnectedAccount({ businessName: "Northwind Outdoor B.V.", countryCode: "NL", email: "cfo@northwind.example", requestId: "req_open_0001" });
     expect(out).toEqual({ accountId: "acct_newco1", status: "CREATED" });
     expect(calls[1]!.url).toMatch(/\/api\/v1\/accounts\/create$/);
     expect(body(calls[1]!)).toEqual({
+      request_id: "req_open_0001",
       account_details: { business_details: { business_name: "Northwind Outdoor B.V.", registration_address: { country_code: "NL" } } },
       customer_agreements: { agreed_to_data_usage: true, agreed_to_terms_and_conditions: true },
       primary_contact: { email: "cfo@northwind.example" },
@@ -123,7 +125,7 @@ let dir: string;
 let db: DB;
 let awx: FakeAirwallex;
 let deps: InboxDeps;
-const ENV = { AIRWALLEX_PLATFORM: "on", AIRWALLEX_PLATFORM_FEE: "on" };
+const ENV = { AIRWALLEX_PLATFORM: "on", AIRWALLEX_PLATFORM_FEE: "on", ...BINDING_ENV };
 beforeEach(async () => {
   dir = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "awx-platform-"));
   db = openDb(":memory:");
@@ -151,11 +153,10 @@ const usInvoice = async () => {
   await executePayeeAdd(db, awx, p.proposal_id, { now: () => now, reader: parserOnly }, now);
   return out.invoice.id;
 };
-const platform = (feeBps = "50") => {
-  setSetting(db, "human", "platform.paying_account", "acct_northwind");
-  setSetting(db, "human", "platform.paying_account_name", "Northwind Outdoor B.V. (Airwallex, through Purser)");
+const platform = async (feeBps = "50") => {
+  // The company's binding to its own account, as Purser Cloud signs it (red team 6: never a local setting).
+  await bind(db);
   setSetting(db, "human", "platform.fee_bps", feeBps);
-  setSetting(db, "human", "platform.fee_account", "acct_purser_platform");
   awx.payingAccount = "acct_northwind";
 };
 const propose = async (id: string) => {
@@ -166,7 +167,7 @@ const propose = async (id: string) => {
 
 describe("a payout on behalf of the company's connected account", () => {
   it("names the paying account and Purser's fee in the terms the CFO signs; the phone shows both before Face ID", async () => {
-    platform();
+    await platform();
     const id = await usInvoice();
     const { terms } = await propose(id);
     // USD 2,400.00 at 50 basis points: USD 12.00, in the payout's own currency, to Purser's platform account.
@@ -175,10 +176,12 @@ describe("a payout on behalf of the company's connected account", () => {
     expect(terms.platform_fee!.request_id).toMatch(/^[0-9a-f-]{36}$/);
     const d = describeTerms(terms as never, {});
     expect(d.rows).toContainEqual(["Paid from", "Northwind Outdoor B.V. (Airwallex, through Purser), acct_northwind"]);
-    expect(d.rows).toContainEqual(["Purser fee", "USD 12.00 (0.50%), taken from this account after the payment is paid"]);
+    expect(d.rows).toContainEqual(["Purser fee", "USD 12.00 (0.50%) to Purser's account acct_purser_platform, taken from the paying account after the payment is paid"]);
+    expect(d.rows).toContainEqual(["Total out", "USD 2,412.00 (the amount and Purser's fee; no Airwallex fee is expected on this route)"]);
   });
 
-  it("without the platform settings nothing changes: no paying account, no fee", async () => {
+  it("with the platform off nothing changes: no paying account, no fee", async () => {
+    delete process.env.AIRWALLEX_PLATFORM;
     const id = await usInvoice();
     const { terms } = await propose(id);
     expect(terms.paying_account).toBeUndefined();
@@ -187,22 +190,22 @@ describe("a payout on behalf of the company's connected account", () => {
 
   it("with the platform on but the fee flag off, the account is named and no fee is planned", async () => {
     delete process.env.AIRWALLEX_PLATFORM_FEE;
-    platform();
+    await platform();
     const { terms } = await propose(await usInvoice());
     expect(terms.paying_account?.id).toBe("acct_northwind");
     expect(terms.platform_fee).toBeUndefined();
   });
 
   it("counts the fee toward the funds checked: what is free (or bought) covers the payout, the reserve and the fee", async () => {
-    platform("5000"); // 50%, so the fee matters
+    await platform("100"); // the cap: 1.00%
     const { terms } = await propose(await usInvoice());
     const free = Number(terms.balances_before.USD ?? 0) - Number(terms.floors.USD ?? 0) + Number(terms.conversion?.buy_amount ?? 0);
     expect(free).toBeGreaterThanOrEqual(Number(terms.amount) + Number(terms.fee_reserve) + Number(terms.platform_fee!.amount));
-    expect(terms.platform_fee!.amount).toBe("1200.00");
+    expect(terms.platform_fee!.amount).toBe("24.00");
   });
 
   it("refuses to pay from another account than the one the CFO signed for", async () => {
-    platform();
+    await platform();
     const { proposal } = await propose(await usInvoice());
     approve(proposal.proposal_id);
     awx.payingAccount = "acct_someone_else";
@@ -211,7 +214,7 @@ describe("a payout on behalf of the company's connected account", () => {
   });
 
   it("takes the fee once, only after the payout is paid; books it and lists it in the register", async () => {
-    platform();
+    await platform();
     const id = await usInvoice();
     const { proposal, terms } = await propose(id);
     approve(proposal.proposal_id);
@@ -231,7 +234,7 @@ describe("a payout on behalf of the company's connected account", () => {
   });
 
   it("takes no fee for a payout that failed", async () => {
-    platform();
+    await platform();
     const id = await usInvoice();
     const { proposal } = await propose(id);
     approve(proposal.proposal_id);

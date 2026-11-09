@@ -13,6 +13,8 @@ import { ledgerRows } from "../ledger/core.js";
 import { syncLedger } from "../ledger/feed.js";
 import { transactionRegister } from "../money/register.js";
 import { health } from "../ops/health.js";
+import { platformOn } from "../airwallex/platform.js";
+import { storeBinding } from "../airwallex/binding.js";
 
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -101,7 +103,22 @@ export async function pushToCloud(db: DB, t: CloudTarget, now = new Date()): Pro
   // or a proposal). The cloud shows them to the owners and sends what was raised or cleared to the company's webhook.
   const h = health(db, now);
   await ok(await call(t, "POST", "/v1/health/report", { at: now.toISOString(), status: h.status, alerts: h.alerts.map((a) => ({ code: a.code, severity: a.severity, ...(a.since ? { since: a.since } : {}) })) }), "the health report");
+  await refreshBinding(db, t, now);
   return results;
+}
+
+/**
+ * Purser as an Airwallex platform (red team 6): the company's binding to its own connected account, signed by Purser
+ * Cloud, fetched on every sync and kept only when its signature and company check (src/airwallex/binding.ts). The
+ * cloud having none (404) clears the one held. Nothing happens with the platform off.
+ */
+export async function refreshBinding(db: DB, t: CloudTarget, now = new Date()): Promise<"off" | "none" | "kept" | "refused"> {
+  if (!platformOn()) return "off";
+  const res = await call(t, "GET", "/v1/airwallex/binding");
+  if (res.status === 404) { storeBinding(db, null, now); return "none"; }
+  const b = (await ok(res, "the account binding")) as { binding?: unknown };
+  const c = storeBinding(db, typeof b.binding === "string" ? b.binding : null, now);
+  return c && (c.ok || / not active/.test(c.reason)) ? "kept" : "refused";
 }
 
 /** Files the e-mail the cloud received for this company through the inbox, and marks each one done or refused. */

@@ -193,6 +193,8 @@ export interface PayoutRail {
    * runs with AIRWALLEX_PLATFORM_FEE=on). Safe to ask again under the same request id.
    */
   collectPlatformFee?(f: PlatformFee): Promise<{ id: string; status: string }>;
+  /** Where a fee transfer stands (GET /connected_account_transfers/{id}, UNCONFIRMED like the create): SETTLED or not yet. */
+  platformFeeStatus?(id: string): Promise<{ id: string; status: string }>;
 }
 
 export interface PlatformFee { requestId: string; amountCents: number; currency: string; destination: string; reference: string }

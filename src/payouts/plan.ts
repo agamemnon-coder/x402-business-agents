@@ -17,12 +17,11 @@ import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { invoiceAlreadyHandled, PROPOSAL_ID_PENDING } from "../agents/euroBill.js";
 import { createProposal, ProposalRefused, type ProposalRow } from "../policy/approvals.js";
 import { counterpartyAllowed, feeReserveDefaultCents, frozen, policyValue } from "../policy/rules.js";
-import { heldPayoutCents } from "../policy/payoutLock.js";
+import { heldPayoutCents, owedPlatformFeeCents } from "../policy/payoutLock.js";
 import { proposalExpiry } from "../policy/treasury.js";
 import { getSetting } from "../world/settings.js";
 import { referenceProblem, routeLimitReason, type Method } from "./routes.js";
-import { ACCOUNT_ID } from "../airwallex/client.js";
-import { platformFeeOn, platformOn } from "../airwallex/platform.js";
+import { platformFeeCents, platformPlan } from "../airwallex/binding.js";
 
 export interface SupplierPaymentTerms extends Terms {
   kind: "supplier_payment";
@@ -115,7 +114,7 @@ export function feeReserveFor(db: DB, method: Method, currency: string): number 
  */
 export function inFlightCents(db: DB, currency: string, exceptRequestId?: string, exceptProposalId?: string): number {
   const rows = db.prepare("SELECT amount, fee_estimate FROM transfers WHERE status = 'SUBMITTING' AND currency = ? AND request_id <> ?").all(currency, exceptRequestId ?? "") as { amount: string; fee_estimate: string }[];
-  return rows.reduce((s, r) => s + toCents(r.amount) + toCents(r.fee_estimate), 0) + heldPayoutCents(db, currency, exceptProposalId);
+  return rows.reduce((s, r) => s + toCents(r.amount) + toCents(r.fee_estimate), 0) + heldPayoutCents(db, currency, exceptProposalId) + owedPlatformFeeCents(db, currency, exceptProposalId);
 }
 
 /** What this currency can still pay: available, less its floor, commitments and money under way. */
@@ -184,14 +183,15 @@ export async function proposeSupplierPayment(
     return escalate(`together with ${inv.currency} ${fromCents(today)} already paid or on its way to ${inv.vendor} today, ${daily}: a person decides whether it goes another day or another way; nothing is converted or paid`);
   }
   const reserve = feeReserveFor(db, method, inv.currency);
-  // Purser as a platform: the paying account (the company's connected account) and Purser's fee, both from the CFO's
-  // settings, both in the signed terms. The fee counts toward what must be free, like Airwallex's fee reserve.
-  const paying = platformOn() ? getSetting(db, "platform.paying_account", "") || null : null;
-  if (paying !== null && !ACCOUNT_ID.test(paying)) return escalate("the paying account in the settings is not an Airwallex account id; nothing is planned");
-  const feeBps = paying && platformFeeOn() ? Number(getSetting(db, "platform.fee_bps", "0")) : 0;
-  const feeTo = feeBps > 0 ? getSetting(db, "platform.fee_account", "") || null : null;
-  if (feeBps > 0 && (!Number.isInteger(feeBps) || feeBps > 10_000 || !feeTo || !ACCOUNT_ID.test(feeTo))) return escalate("Purser's fee settings are incomplete (platform.fee_bps, platform.fee_account); nothing is planned");
-  const platformFee = feeBps > 0 ? Math.round((amount * feeBps) / 10_000) : 0;
+  // Purser as a platform: the paying account is the company's own connected account in the binding Purser Cloud signed
+  // (never a local setting, red team 6), and Purser's fee is CFO policy within the cap, to Purser's account in that
+  // binding. Both go in the signed terms; the fee counts toward what must be free, like Airwallex's fee reserve.
+  const pp = platformPlan(db, now);
+  if (!pp.ok) return escalate(`${pp.reason}; nothing is planned`);
+  const paying = pp.paying;
+  const feeBps = pp.feeBps;
+  const feeTo = pp.feeTo;
+  const platformFee = feeBps > 0 ? platformFeeCents(amount, feeBps) : 0;
   db.prepare("INSERT OR IGNORE INTO invoices (invoice_no, vendor, amount, currency, due_date, iban_sha256, bic, beneficiary_id, doc_sha256, extracted_json, status) VALUES (?, ?, ?, ?, ?, ?, '', ?, ?, ?, 'RECEIVED')")
     .run(inv.invoice_no, inv.vendor, inv.amount, inv.currency, inv.due_date, ben.details.account_key_sha256, ben.beneficiary_id, sha256Hex(documentText), JSON.stringify(inv));
 
@@ -251,7 +251,7 @@ export async function proposeSupplierPayment(
     balances_before: Object.fromEntries(touched.map((c) => [c, fromCents(balances[c]?.availableCents ?? 0)])),
     floors: Object.fromEntries(touched.map((c) => [c, fromCents(floorCents(db, c))])),
     evidence: [{ type: "invoice", ref: inv.invoice_no, sha256: sha256Hex(documentText) }],
-    ...(paying ? { paying_account: { id: paying, name: (getSetting(db, "platform.paying_account_name", "") || "the company's Airwallex account").slice(0, 120) } } : {}),
+    ...(paying ? { paying_account: paying } : {}),
     ...(platformFee > 0 ? { platform_fee: { amount: fromCents(platformFee), currency: cur, bps: String(feeBps), to_account: feeTo!, request_id: randomUUID() } } : {}),
     // The payables inbox: the supplier's own total line, and that this is test money (this build only talks to the
     // Airwallex sandbox, src/airwallex/client.ts), both in the signed terms so the phone shows them first (S6).

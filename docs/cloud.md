@@ -60,6 +60,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/airwallex/account` | admin | The company's Airwallex account opened through Purser as a platform: its id and onboarding status; `switched_on: false` when the cloud does not offer it ([airwallex-platform.md](airwallex-platform.md)). |
 | `POST /v1/airwallex/account` | admin | Open that account (a signed-in owner only, after agreeing to Airwallex's terms): `business_name`, `country_code`, `email`, `agreed: true`. One per company; 404 when not switched on. |
 | `POST /v1/airwallex/onboarding-link` | admin | Airwallex's hosted onboarding link for the company's checks (a signed-in owner only); short-lived and never stored. |
+| `GET /v1/airwallex/binding` | sync | The company's binding to its own Airwallex account (tenant, account id, status, name, Purser's fee account), signed with Purser's platform Ed25519 key for an hour. The runner fetches it on every sync and pays only from the account in it while it is active (docs/airwallex-platform.md). 404 while there is none. |
 | `POST /v1/airwallex/webhook` | anyone | Airwallex's `account.*` webhooks, signed (`x-timestamp`, `x-signature`): the account's status follows them. |
 | `GET /v1/openapi.json` | anyone | This API, as OpenAPI 3.1. |
 | `POST /v1/admin/tenants` | platform admin | Create a company and its first owner; returns the starter key once (a week, the first owner's passkey only). |
@@ -216,7 +217,9 @@ at once all read the final total and every one was refused; it now counts and re
   table in memory at a time); moving it to a queue is a later step. `joinStagedExport` (`cloud/src/restore.ts`) turns a
   staged export back into the one-object form a restore reads. Tests: `test/cloud-export-staging.test.ts`.
 - **Erasure:** `POST /v1/users/{id}/erase` replaces the person's name and e-mail, removes their passkeys and revokes the
-  keys they made. The bookkeeping records stay: Dutch law keeps them for seven years (Article 52 AWR).
+  keys they made. A staged export still open holds the person's data as it was, so the erasure ends it in the same
+  write (its links stop working, its parts leave the store, and the owners see `export.ended_by_erasure`); an export
+  being built at that moment is not kept. Every part fetched through a signed link is recorded (`export.part_downloaded`). The bookkeeping records stay: Dutch law keeps them for seven years (Article 52 AWR).
 - **Closing:** `POST /v1/close` ends access at once and sets the purge day to seven full years after the year of the
   last record. The daily job (`scheduled`) removes a closed company's rows and documents after that day, leaving a
   tombstone.

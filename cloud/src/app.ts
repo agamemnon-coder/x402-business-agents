@@ -13,11 +13,11 @@ import { applySync, SyncBatch, SyncRefused } from "./sync.js";
 import { WriteConflict } from "./tenant.js";
 import { TenantDb } from "./tenant.js";
 import { closeTenant, eraseUser, exportTenant, PrivacyRefused } from "./privacy.js";
-import { download, ExportRefused, exportStatus, signedLink, stageExport } from "./exports.js";
+import { download, ExportRefused, exportStatus, purgeEndedExportParts, signedLink, stageExport } from "./exports.js";
 import { consoleResponse } from "./console.js";
 import { qrSvg } from "./qr.js";
 import { logEvent } from "./log.js";
-import { accountOf, onboardingLink, openAccount, PlatformRefused, receiveAccountEvent, type AwxPlatformEnv } from "./awxPlatform.js";
+import { accountOf, bindingOf, onboardingLink, openAccount, PlatformRefused, receiveAccountEvent, type AwxPlatformEnv } from "./awxPlatform.js";
 import { cloudHealth, companyStatus, HealthReport, MonitorRefused, notify, receiveReport, removeWebhook, setWebhook, webhookOf, type Outbound } from "./monitor.js";
 
 export interface CloudEnv {
@@ -150,6 +150,10 @@ export const ROUTES: Route[] = [
     const b = await body(c, z.object({ business_name: z.string().trim().min(1).max(200), country_code: z.string().regex(/^[A-Z]{2}$/, "a two-letter country code (NL, DE, ...)"),
       email: z.string().trim().email().max(200), agreed: z.literal(true, { message: "agree to Airwallex's terms first" }) }).strict(), 8_000);
     return json(201, { account: await openAccount(c.env.sql, c.caller!.tenantId, p, b, c.caller!.principal, c.now) });
+  } },
+  { method: "GET", path: "/v1/airwallex/binding", summary: "The company's binding to its own Airwallex account, signed by Purser's platform key for an hour: the runner pays only from the account in it, only while it is active. 404 while there is none.", need: "sync", run: async (c) => {
+    const b = await bindingOf(c.env.sql, c.caller!.tenantId, platformOf(c), c.now);
+    return b ? json(200, b) : notFound("Airwallex account through Purser for this company yet");
   } },
   { method: "POST", path: "/v1/airwallex/onboarding-link", summary: "Airwallex's hosted onboarding link for the company's checks, made for the signed-in owner and short-lived; never stored.", need: "admin", run: async (c) => {
     const p = platformOf(c);
@@ -397,7 +401,11 @@ export const ROUTES: Route[] = [
     await t.apply([t.insert("users", { id, display_name: b.display_name, email: b.email ?? null, role: b.role, created_at: c.now.toISOString() })]);
     return json(201, { id, role: b.role });
   } },
-  { method: "POST", path: "/v1/users/{id}/erase", summary: "Erase a person's personal data (bookkeeping records are kept for 7 years).", need: "admin", run: async (c) => json(200, await eraseUser(c.env.sql, c.caller!.tenantId, c.params[0]!, c.caller!.principal, c.now)) },
+  { method: "POST", path: "/v1/users/{id}/erase", summary: "Erase a person's personal data (bookkeeping records are kept for 7 years).", need: "admin", run: async (c) => {
+    const out = await eraseUser(c.env.sql, c.caller!.tenantId, c.params[0]!, c.caller!.principal, c.now);
+    await purgeEndedExportParts(c.env.sql, c.env.blobs, c.caller!.tenantId);
+    return json(200, out);
+  } },
   { method: "GET", path: "/v1/export", summary: "Everything the cloud holds for the company; documents listed, each fetched from /v1/documents/{sha256}. Needs admin and read.", need: "admin", run: async (c) => {
     need(c.caller!, "read");
     return json(200, await exportTenant(c.env.sql, c.caller!.tenantId));

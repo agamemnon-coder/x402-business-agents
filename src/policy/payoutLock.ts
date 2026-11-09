@@ -31,3 +31,18 @@ export function heldPayoutCents(db: DB, currency: string, exceptProposalId?: str
   if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'payout_reservations'").get()) return 0;
   return (db.prepare("SELECT COALESCE(SUM(cents), 0) AS c FROM payout_reservations WHERE status = 'HELD' AND currency = ? AND proposal_id <> ?").get(currency, exceptProposalId ?? "") as { c: number }).c;
 }
+
+/** A Purser fee still to leave the balance: its payout is written and not failed, the fee not yet settled or void. */
+export const OWED_FEE_STATUSES = ["DUE", "OPEN", "NEW", "PENDING"] as const;
+
+/**
+ * Purser's fees this currency still owes (red team 6): from the moment a payout is written until its fee is settled,
+ * the fee stays spoken for, so another payment never plans or pays with it. One payment's own fee can be left out.
+ */
+export function owedPlatformFeeCents(db: DB, currency: string, exceptProposalId?: string): number {
+  if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'platform_fees'").get()) return 0;
+  const rows = db.prepare(`SELECT f.amount FROM platform_fees f JOIN transfers t ON t.request_id = f.payout_request_id
+    WHERE f.currency = ? AND f.proposal_id <> ? AND f.status IN (${OWED_FEE_STATUSES.map(() => "?").join(", ")}) AND t.status NOT IN ('FAILED', 'CANCELLED')`)
+    .all(currency, exceptProposalId ?? "", ...OWED_FEE_STATUSES) as { amount: string }[];
+  return rows.reduce((s, r) => s + Math.round(Number(r.amount) * 100), 0);
+}

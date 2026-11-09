@@ -48,6 +48,10 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
     }
     return { id: `cat_${f.requestId.slice(0, 8)}`, status: "SETTLED" };
   }
+  async platformFeeStatus(id: string): Promise<{ id: string; status: string }> {
+    this.calls.push("platformFeeStatus");
+    return { id, status: "SETTLED" };
+  }
   clock = () => Date.now();
   rate = "1.0850";
   n = 0;
