@@ -148,8 +148,12 @@ How it is kept safe: one page under a per-response nonce policy (no inline scrip
 'self'`); every value from the API is set as text, never as HTML (only the page's own icons go through `innerHTML`, and
 a test holds it to that); the session is a bearer token in the tab's `sessionStorage`, gone with the tab and after 15
 minutes, so there is no cookie for another site to ride on, and the Worker refuses any state change whose `Origin` is
-not its own. An invited person's passkey link carries its single-use secret in the URL fragment, which the browser never
-sends. `test/cloud-console.test.ts` checks the page and the routes; `test/browser/console.check.ts` runs the whole thing
+not its own. An owner invites a person from Settings ("Add and invite", or "Invite" on a person): the Worker returns a
+one-time link (its single-use secret in the URL fragment, which the browser never sends) and a QR code of it as SVG, drawn
+where the link is made so the secret never goes back to a server; the page shows the code as an image, with a copy button.
+It works once, for 30 minutes, in that company only (`test/cloud-console-invites.test.ts`). An invoice's PDF is drawn on
+canvases by pdf.js, this origin's own copy from the Worker's static assets (eval off, no XFA; the supplier's file is
+data, never a page); the download stays. `test/cloud-console.test.ts` checks the page and the routes; `test/browser/console.check.ts` runs the whole thing
 in Chromium with a virtual passkey (CI, judge job).
 
 ## Tested on D1 itself
@@ -203,7 +207,7 @@ Nothing here needs to be in git; every secret goes through `wrangler secret put`
 4. **E-mail:** in the Cloudflare dashboard, Email Routing for a mail domain (for example `in.<domain>`), a catch-all
    rule "Send to a Worker: purser-cloud", and `MAIL_DOMAIN` set to that domain. Each company is then reached at
    `<its-slug>@in.<domain>`.
-5. **Deploy** (after 15 November, on Max's word): `npx wrangler deploy -c cloud/wrangler.jsonc`.
+5. **Deploy** (after 15 November, on Max's word): `npm run cloud:pdfjs` (copies pdf.js into `cloud/public`, the Worker's static assets, so the console can draw an invoice; without it the console offers the download only), then `npx wrangler deploy -c cloud/wrangler.jsonc`.
 
 ## Limits on what comes in
 

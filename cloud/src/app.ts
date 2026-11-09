@@ -14,6 +14,7 @@ import { WriteConflict } from "./tenant.js";
 import { TenantDb } from "./tenant.js";
 import { closeTenant, eraseUser, exportTenant, PrivacyRefused } from "./privacy.js";
 import { consoleResponse } from "./console.js";
+import { qrSvg } from "./qr.js";
 
 export interface CloudEnv {
   sql: Sql;
@@ -28,6 +29,11 @@ export interface CloudEnv {
   now?: () => Date;
   /** The domain the company's inbox lives at (<slug>@<mailDomain>), once Email Routing sends it here; empty: none yet. */
   mailDomain?: string;
+  /**
+   * The bundle's static files (Workers static assets, cloud/public): today only pdf.js, which draws an invoice in the
+   * console. Absent (no assets bound): the console offers the download only.
+   */
+  asset?: (path: string) => Promise<Response | null>;
   /** Requests per minute per key or session; per address on the sign-in routes; failed authentications per address. */
   rate?: { perMinute: number; signInPerMinute: number; failedAuthPerMinute?: number };
 }
@@ -94,7 +100,13 @@ export const ROUTES: Route[] = [
     if (await c.env.sql.first("SELECT 1 FROM tenants WHERE slug = ?", [b.slug])) return err(409, `the address ${b.slug} is taken`);
     const id = `t_${randomToken(12).replace(/[^A-Za-z0-9]/g, "x")}`;
     const iso = c.now.toISOString();
-    await c.env.sql.run("INSERT INTO tenants (id, slug, name, created_at) VALUES (?, ?, ?, ?)", [id, b.slug, b.name, iso]);
+    // Two requests for one address can both pass the check above; the unique slug lets one in, the other gets a 409.
+    try {
+      await c.env.sql.run("INSERT INTO tenants (id, slug, name, created_at) VALUES (?, ?, ?, ?)", [id, b.slug, b.name, iso]);
+    } catch (e) {
+      if (/UNIQUE constraint failed/i.test(String((e as Error).message ?? e))) return err(409, `the address ${b.slug} is taken`);
+      throw e;
+    }
     const t = new TenantDb(c.env.sql, id);
     const ownerId = `u_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}`;
     await t.apply([t.insert("users", { id: ownerId, display_name: b.owner.display_name, email: b.owner.email ?? null, role: "owner", created_at: iso })]);
@@ -225,7 +237,13 @@ export const ROUTES: Route[] = [
     return json(200, { id: c.params[0], revoked: true, also_revoked: children });
   } },
   { method: "GET", path: "/v1/users", summary: "The company's people and their roles; paginated (limit, cursor).", need: "admin", run: async (c) => json(200, await paged<Record<string, unknown>>(db(c), "users", "id", {}, c.url.searchParams, (r) => r)) },
-  { method: "POST", path: "/v1/users/{id}/enrolment", summary: "Start a person's passkey enrolment: a single-use secret for 30 minutes (an owner's passkey: a signed-in owner only, once any owner has one).", need: "admin", run: async (c) => json(201, await startEnrolment(db(c), c.caller!, c.params[0]!, c.now)) },
+  { method: "POST", path: "/v1/users/{id}/enrolment", summary: "Start a person's passkey enrolment: a single-use secret for 30 minutes (an owner's passkey: a signed-in owner only, once any owner has one). Also returns the invite link (the secret after the #, so opening it sends the secret to no server) and its QR code as SVG.", need: "admin", run: async (c) => {
+    const e = await startEnrolment(db(c), c.caller!, c.params[0]!, c.now);
+    const t = await c.env.sql.first<{ slug: string }>("SELECT slug FROM tenants WHERE id = ?", [c.caller!.tenantId]);
+    const u = await db(c).one<{ display_name: string }>("users", { id: c.params[0]! });
+    const link = `${c.env.origin}/#/enrol?${new URLSearchParams({ t: t!.slug, e: e.enrolment_id, k: e.token, n: u?.display_name ?? "" }).toString()}`;
+    return json(201, { ...e, link, qr_svg: qrSvg(link) });
+  } },
   { method: "POST", path: "/v1/users", summary: "Add a person (owner, cfo, accountant, viewer); they then enrol a passkey with an enrolment an owner starts.", need: "admin", run: async (c) => {
     const b = await body(c, z.object({ display_name: z.string().min(1).max(120), email: z.string().email().max(200).optional(), role: z.enum(ROLES as [Role, ...Role[]]) }).strict());
     const id = `u_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}`;

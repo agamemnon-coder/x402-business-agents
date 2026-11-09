@@ -4,7 +4,8 @@
 // HTML shows as text, no console or CSP errors, nothing wider than the phone, and an ended session goes back to sign-in.
 // npx tsx test/browser/console.check.ts [screenshot dir]
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
@@ -39,7 +40,9 @@ await w.add(NL, "zeeland.pdf");
 // The cloud, served by its own request handler over SQLite and a folder.
 const dir = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "console-check-"));
 const env: CloudEnv = { sql: sqliteSql(":memory:"), blobs: dirBlobs(join(dir, "blobs")), sessionSecret: "c".repeat(48), adminTokenSha256: createHash("sha256").update(ADMIN).digest("hex"),
-  rpId: "localhost", origin: ORIGIN, mailDomain: "in.purser.test", rate: { perMinute: 100_000, signInPerMinute: 100_000, failedAuthPerMinute: 100_000 } };
+  rpId: "localhost", origin: ORIGIN, mailDomain: "in.purser.test", rate: { perMinute: 100_000, signInPerMinute: 100_000, failedAuthPerMinute: 100_000 },
+  // The Worker's static assets: pdf.js, as npm run cloud:pdfjs copies it.
+  asset: async (path) => (path === "/assets/pdfjs.mjs" ? new Response(readFileSync(fileURLToPath(import.meta.resolve("unpdf/pdfjs")))) : null) };
 const server = createServer(async (req, res) => {
   const chunks: Buffer[] = [];
   for await (const c of req) chunks.push(c as Buffer);
@@ -125,6 +128,10 @@ await settle();
 await shot("07-factuur-detail");
 const detail = await text();
 ok(detail.includes("IBAN …3000") && !detail.includes("DE89370400440532013000"), "the invoice shows the account masked, never whole");
+await page.waitForSelector(".pages canvas", { timeout: 20_000 });
+await settle();
+ok((await page.$$(".pages canvas")).length >= 1, "the invoice's PDF is drawn in the page, on a canvas");
+await shot("16-factuur-met-pdf");
 await page.goto(`${ORIGIN}/#/invoices/AP-9001`);
 await page.waitForSelector("text=What Purser read");
 ok((await page.$$("script")).length === 1 && (await text()).includes("<script>alert(1)</script> looks like"), "a finding's text with a script tag shows as text");
@@ -141,10 +148,28 @@ await page.goto(`${ORIGIN}/#/settings`);
 await page.waitForSelector("text=API keys");
 await settle();
 await shot("10-instellingen");
+// An invite: one-time link and its QR code, which a phone's camera reads as exactly that link.
+await page.fill('input[placeholder="Name"]', "Fleur (test person)");
+await page.click("text=Add and invite");
+await page.waitForSelector("img.qr");
+await settle();
+const link = (await page.textContent("#invite-link")) ?? "";
+const inviteLink = new URL(link);
+const q = new URLSearchParams(inviteLink.hash.slice("#/enrol?".length));
+ok(inviteLink.origin === ORIGIN && inviteLink.hash.startsWith("#/enrol?") && q.get("t") === "northwind" && !!q.get("e") && !!q.get("k") && (q.get("n") ?? "").startsWith("Fleur"), "an invite is a one-time link to this console, its secret after the #");
+const { PNG } = require("pngjs") as typeof import("pngjs");
+const jsQR = require("jsqr") as typeof import("jsqr").default;
+const png = PNG.sync.read(await (await page.$("img.qr"))!.screenshot());
+const read = jsQR(new Uint8ClampedArray(png.data), png.width, png.height);
+ok(read?.data === link, "the invite's QR code reads as exactly the link");
+// The screenshot shows the link with its secret cut short (a throwaway test enrolment, but a secret all the same).
+await page.evaluate(() => { const c = document.querySelector("#invite-link"); if (c) c.textContent = (c.textContent ?? "").replace(/(&k=)[^&]+/, "$1…"); });
+await page.evaluate(() => window.scrollTo(0, 0));
+await shot("17-uitnodigen");
 
 // The phone.
 await page.setViewportSize({ width: 390, height: 844 });
-for (const [hash, name, wait] of [["#/overview", "11-telefoon-overzicht", "text=Waits for the CFO's Face ID"], ["#/invoices", "12-telefoon-facturen", ".row:not(.th)"], [`#/invoices/${encodeURIComponent(paidId)}`, "13-telefoon-factuur", "text=What Purser read"], ["#/transactions", "14-telefoon-transacties", ".trow:not(.th)"], ["#/settings", "15-telefoon-instellingen", "text=API keys"]] as const) {
+for (const [hash, name, wait] of [["#/overview", "11-telefoon-overzicht", "text=Waits for the CFO's Face ID"], ["#/invoices", "12-telefoon-facturen", ".row:not(.th)"], [`#/invoices/${encodeURIComponent(paidId)}`, "18-telefoon-factuur-met-pdf", ".pages canvas"], ["#/transactions", "14-telefoon-transacties", ".trow:not(.th)"], ["#/settings", "15-telefoon-instellingen", "text=API keys"]] as const) {
   await page.goto(`${ORIGIN}/${hash}`);
   await page.waitForSelector(wait);
   await settle();
@@ -152,6 +177,16 @@ for (const [hash, name, wait] of [["#/overview", "11-telefoon-overzicht", "text=
   ok(wide <= 0, `${hash} at 390 px: nothing wider than the phone (${wide} px over)`);
   await shot(name);
 }
+// The invite on the phone.
+await page.goto(`${ORIGIN}/#/settings`);
+await page.waitForSelector("text=API keys");
+await page.fill('input[placeholder="Name"]', "Sam (test person)");
+await page.click("text=Add and invite");
+await page.waitForSelector("img.qr");
+await settle();
+ok(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth) <= 0, "the invite at 390 px: nothing wider than the phone");
+await page.evaluate(() => { const c = document.querySelector("#invite-link"); if (c) c.textContent = (c.textContent ?? "").replace(/(&k=)[^&]+/, "$1…"); document.querySelector("img.qr")?.scrollIntoView({ block: "center" }); });
+if (shots) await page.screenshot({ path: join(shots, "19-telefoon-uitnodigen.png") });
 
 // An ended session goes back to sign-in, with a word about why.
 await page.evaluate(() => { const k = "purser.cloud.session"; const s = JSON.parse(sessionStorage.getItem(k) ?? "{}"); s.exp = Date.now() + 60_000; s.token = "pcs.expired.token"; sessionStorage.setItem(k, JSON.stringify(s)); });

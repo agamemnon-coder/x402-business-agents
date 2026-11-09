@@ -22,6 +22,9 @@
     "ORIGIN": "https://cloud.example.invalid"
     // MAIL_DOMAIN: set once a domain's Email Routing sends <slug>@<domain> to this Worker.
   },
+  // pdf.js for the console's invoice view, served through the Worker (run_worker_first: every request meets the Worker's
+  // own headers and only /assets/pdfjs.mjs is ever read from here). npm run cloud:pdfjs fills cloud/public before a deploy.
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
   // Daily: purge closed companies past their 7-year retention; clear spent challenges and old rate windows.
   "triggers": { "crons": ["17 3 * * *"] }
 }

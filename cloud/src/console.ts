@@ -11,7 +11,7 @@ import { INTER_WOFF2_B64 } from "./font.gen.js";
 import type { CloudEnv } from "./app.js";
 
 const ICONS = ["wallet", "calendar-range", "clock", "inbox", "octagon-x", "chevron-right", "circle-check", "triangle-alert", "circle-minus", "file-text",
-  "download", "mail", "scan-face", "users", "key-round", "log-out", "arrow-left", "flask", "x", "arrow-down-left", "arrow-up-right", "shield-check"];
+  "download", "mail", "scan-face", "users", "key-round", "log-out", "arrow-left", "flask", "x", "arrow-down-left", "arrow-up-right", "shield-check", "copy"];
 
 const EXTRA_CSS = `
 .tabs { display: flex; gap: 4px; margin-left: 18px; overflow-x: auto; scrollbar-width: none; }
@@ -76,6 +76,12 @@ header.top .spacer { margin-left: auto; }
 .timeline li span { color: var(--muted); }
 .once { border: 1px dashed var(--warn); background: var(--warn-soft); color: var(--text); padding: 12px 14px; border-radius: 12px; margin-top: 12px; font-size: 14px; }
 .once code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+.once.invite { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.once.invite > div { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.once.invite p { margin: 0; }
+.once.invite .row2 { display: flex; gap: 8px; }
+img.qr { width: 180px; height: 180px; background: #fff; border-radius: 8px; padding: 6px; flex: none; }
+.docv .bar2 .btn { margin-left: auto; }
 .expired { max-width: 460px; margin: 10vh auto; text-align: center; }
 @media (max-width: 900px) {
   /* Two rows on a phone or a narrow window: the brand, who is signed in and the test-money label; then the pages. */
@@ -344,11 +350,24 @@ async function invoiceView(id){
   if(i.status==='waiting_cfo')tl.append(el('li','',[el('b','','Filed for the CFO\'s Face ID'),el('span','',i.proposal_id?'Payment '+i.proposal_id:'')]));
   if(i.paid_at)tl.append(el('li','',[el('b','','Paid'),el('span','',stamp(i.paid_at))]));
   tl.append(el('li','',[el('b','','Last update from your computer'),el('span','',stamp(i.updated_at))]));
-  const getDoc=btn('Download the document','','download');
+  const getDoc=btn('Download','','download');
   getDoc.onclick=async()=>{getDoc.disabled=true;try{await download('/v1/invoices/'+encodeURIComponent(id)+'/document',(i.invoice_no||i.id).replace(/[^\w.-]+/g,'_')+'.pdf')}catch(e){if(!(e instanceof Expired))getDoc.after(note(e.message,'bad'))}finally{getDoc.disabled=false}};
-  const doc=el('div','card panel',[el('h2','','Document'),el('p','',['The invoice as received (',i.doc_sha256?'SHA-256 '+String(i.doc_sha256).slice(0,12)+'…':'',').']),getDoc,
-    note('Payments are approved on the CFO\'s phone with Face ID, against these exact terms; nothing here pays.')]);
-  view().replaceChildren(back,top,el('div','split2',[read,el('div','',[checks,el('div','card panel',[el('h2','','Timeline'),tl]),doc])]));
+  const pages=el('div','pages',[el('p','wait','Drawing the document …')]);
+  const doc=el('div','card docv',[el('div','bar2',[ic('file-text'),el('span','fn','The invoice as received'+(i.doc_sha256?' · SHA-256 '+String(i.doc_sha256).slice(0,12)+'…':'')),getDoc]),pages]);
+  view().replaceChildren(back,top,el('div','split',[doc,el('div','stack',[read,checks,el('div','card panel',[el('h2','','Timeline'),tl]),note('Payments are approved on the CFO\'s phone with Face ID, against these exact terms; nothing here pays.')])]));
+  drawPdf(id,pages);
+}
+// The supplier's PDF drawn on canvases by pdf.js (this origin's own copy, eval off, no XFA): the file is data here, never
+// a page; if it cannot be drawn, the download stays.
+async function drawPdf(id,box){
+  try{const {getDocument}=await import('/assets/pdfjs.mjs');
+    const r=await api('/v1/invoices/'+encodeURIComponent(id)+'/document',{raw:true});
+    const data=new Uint8Array(await r.arrayBuffer());
+    const doc=await getDocument({data,isEvalSupported:false,enableXfa:false,disableFontFace:false,useSystemFonts:false,stopAtErrors:false,verbosity:0}).promise;
+    box.replaceChildren();
+    for(let n=1;n<=Math.min(doc.numPages,6);n++){const page=await doc.getPage(n);const vp=page.getViewport({scale:2});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;c.setAttribute('aria-label','Page '+n+' of the invoice');box.append(c);await page.render({canvasContext:c.getContext('2d'),viewport:vp,canvas:c}).promise}
+    if(doc.numPages>6)box.append(el('p','wait',(doc.numPages-6)+' more page(s): download the PDF to see them'));
+  }catch(e){if(e instanceof Expired)return;box.replaceChildren(el('p','wait','The document could not be drawn here. Download it instead.'))}
 }
 
 // --- Transactions --------------------------------------------------------------------------------------------------
@@ -420,22 +439,31 @@ async function settingsView(){
   if(!owner){view().replaceChildren(head('Settings'),company,note('Only an owner manages people, keys and the company\'s data. Ask an owner of '+m.tenant.name+'.'));return}
   const people=el('div','card panel');const keys=el('div','card panel');const data=el('div','card panel');
   view().replaceChildren(head('Settings','People, keys and your data. Only owners see this.'),company,el('div','split2',[people,keys]),data);
+  // An invite: a one-time link to this console (the secret after the #, so opening it sends it to no server) and its
+  // QR code, for 30 minutes and one passkey. The owner passes it on; nothing is mailed.
+  const invites=el('div','');
+  async function invite(p){
+    const e=await api('/v1/users/'+encodeURIComponent(p.id)+'/enrolment',{method:'POST'});
+    const qr=el('img','qr');qr.alt='QR code of the invite link for '+p.display_name;qr.width=180;qr.height=180;qr.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(e.qr_svg);
+    const link=el('code','cmd',e.link);link.id='invite-link';
+    const copy=btn('Copy link','primary','copy');copy.onclick=async()=>{try{await navigator.clipboard.writeText(e.link);copy.replaceChildren(ic('circle-check'),'Copied')}catch(x){const r=document.createRange();r.selectNodeContents(link);const sel=getSelection();sel.removeAllRanges();sel.addRange(r)}};
+    invites.replaceChildren(el('div','once invite',[qr,el('div','',[el('b','','Invite for '+p.display_name),el('p','','One passkey, once, until '+stamp(e.expires_at)+'. Send it to them yourself, or let them scan the code with their phone.'),link,el('div','row2',[copy])])]));
+    invites.scrollIntoView({block:'nearest'});
+  }
   async function drawPeople(){
     const u=await api('/v1/users?limit=200');
     const t=el('table','table',[el('thead','',[el('tr','',[el('th','','Person'),el('th','','Role'),el('th','')])])]);const tb=el('tbody','');
     for(const p of u.items){const acts=el('td','r');
-      if(!p.erased_at){const inv=btn('Passkey link','','key-round');inv.onclick=async()=>{inv.disabled=true;try{const e=await api('/v1/users/'+encodeURIComponent(p.id)+'/enrolment',{method:'POST'});
-          const link=CFG.origin+'/#/enrol?t='+encodeURIComponent(m.tenant.slug)+'&e='+encodeURIComponent(e.enrolment_id)+'&k='+encodeURIComponent(e.token)+'&n='+encodeURIComponent(p.display_name);
-          people.append(el('div','once',[el('b','','Single use, for 30 minutes, for '+p.display_name+' only. '),'Send it to them yourself (not by e-mail to many): ',el('code','cmd',link)]))}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{inv.disabled=false}};
+      if(!p.erased_at){const inv=btn('Invite','','key-round');inv.onclick=async()=>{inv.disabled=true;try{await invite(p)}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{inv.disabled=false}};
         const er=btn('Erase','danger','x');er.onclick=async()=>{const typed=prompt('Erase '+p.display_name+'? Their personal data goes; the bookkeeping stays for 7 years. Type their name to confirm.');if(typed===null)return;if(typed.trim()!==p.display_name){people.append(note('The name did not match; nothing was erased.','bad'));return}
           try{await api('/v1/users/'+encodeURIComponent(p.id)+'/erase',{method:'POST'});await drawPeople()}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}};
         acts.append(inv,' ',er)}
       tb.append(el('tr','',[el('td','',[el('b','',p.erased_at?'(erased)':p.display_name),p.email?el('span','sub',' '+p.email):null]),el('td','',[el('span','pill'+(p.role==='owner'?' warn':''),p.role)]),acts]))}
     t.append(tb);
     const name=el('input','field');name.placeholder='Name';const role=el('select','field');for(const r of ['cfo','accountant','viewer','owner']){const o=el('option','',r);o.value=r;role.append(o)}
-    const add=btn('Add person','primary');add.onclick=async()=>{if(!name.value.trim())return;add.disabled=true;try{await api('/v1/users',{method:'POST',body:{display_name:name.value.trim(),role:role.value}});await drawPeople()}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{add.disabled=false}};
+    const add=btn('Add and invite','primary');add.onclick=async()=>{const n=name.value.trim();if(!n)return;add.disabled=true;try{const u=await api('/v1/users',{method:'POST',body:{display_name:n,role:role.value}});await drawPeople();await invite({id:u.id,display_name:n})}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{add.disabled=false}};
     people.replaceChildren(el('h2','','People'),el('div','scroll',t),el('div','form-row',[el('div','',[el('label','','Name'),name]),el('div','',[el('label','','Role'),role]),el('div','',[add])]),
-      note('A person signs in with their own passkey, made from a single-use link you start here. A CFO, accountant or viewer reads; only owners manage.'));
+      note('A person signs in with their own passkey, made from a one-time invite you start here. A CFO, accountant or viewer reads; only owners manage.'),invites);
   }
   async function drawKeys(){
     const k=await api('/v1/keys?limit=200');
@@ -503,7 +531,7 @@ ${BODY}
 }
 
 export const consoleCsp = (n: string) =>
-  `default-src 'none'; script-src 'nonce-${n}'; style-src 'nonce-${n}'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'`;
+  `default-src 'none'; script-src 'nonce-${n}' 'self'; style-src 'nonce-${n}'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'`;
 
 const PAGE_HEADERS = {
   "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer",
@@ -513,8 +541,8 @@ const PAGE_HEADERS = {
 
 let font: Uint8Array | null = null;
 
-/** Everything outside /v1: the console page at /, its font, and a plain 404. Only GET and HEAD. */
-export function consoleResponse(req: Request, url: URL, env: CloudEnv): Response {
+/** Everything outside /v1: the console page at /, its font, pdf.js from the bundle's assets, and a plain 404. Only GET and HEAD. */
+export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Promise<Response> {
   if (req.method !== "GET" && req.method !== "HEAD") return new Response("method not allowed", { status: 405, headers: { "content-type": "text/plain; charset=utf-8", allow: "GET, HEAD" } });
   if (url.pathname === "/") {
     const n = nonce();
@@ -523,6 +551,12 @@ export function consoleResponse(req: Request, url: URL, env: CloudEnv): Response
   if (url.pathname === "/assets/inter.woff2") {
     font ??= fromB64(INTER_WOFF2_B64);
     return new Response(new Uint8Array(font), { status: 200, headers: { "content-type": "font/woff2", "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff" } });
+  }
+  // pdf.js, to draw a supplier's PDF on a canvas in the invoice's page (eval off; the PDF is data, never a page). Only this
+  // one path is asked of the assets, whatever the bundle holds.
+  if (url.pathname === "/assets/pdfjs.mjs" && env.asset) {
+    const r = await env.asset("/assets/pdfjs.mjs");
+    if (r && r.ok) return new Response(r.body, { status: 200, headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff", "cross-origin-resource-policy": "same-origin" } });
   }
   return new Response("not found", { status: 404, headers: { "content-type": "text/plain; charset=utf-8", "x-content-type-options": "nosniff" } });
 }

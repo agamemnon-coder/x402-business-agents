@@ -14,11 +14,15 @@ export interface Bindings {
   RP_ID: string;
   ORIGIN: string;
   MAIL_DOMAIN?: string;
+  /** Workers static assets (cloud/public, filled by npm run cloud:pdfjs): pdf.js for the console's invoice view. */
+  ASSETS?: { fetch(req: Request): Promise<Response> };
 }
 
 function envOf(b: Bindings): CloudEnv {
   if (!b.SESSION_SECRET || b.SESSION_SECRET.length < 32) throw new Error("SESSION_SECRET is not set (wrangler secret put SESSION_SECRET)");
-  return { sql: d1Sql(b.DB), blobs: r2Blobs(b.DOCS), sessionSecret: b.SESSION_SECRET, adminTokenSha256: b.ADMIN_TOKEN_SHA256 ?? "", rpId: b.RP_ID, origin: b.ORIGIN, mailDomain: b.MAIL_DOMAIN ?? "" };
+  const assets = b.ASSETS;
+  return { sql: d1Sql(b.DB), blobs: r2Blobs(b.DOCS), sessionSecret: b.SESSION_SECRET, adminTokenSha256: b.ADMIN_TOKEN_SHA256 ?? "", rpId: b.RP_ID, origin: b.ORIGIN, mailDomain: b.MAIL_DOMAIN ?? "",
+    ...(assets ? { asset: async (path: string) => assets.fetch(new Request(new URL(path, b.ORIGIN))) } : {}) };
 }
 
 export default {
