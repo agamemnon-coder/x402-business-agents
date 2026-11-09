@@ -10,6 +10,7 @@ import { publicInvoice } from "../ap/public.js";
 import { apInvoices } from "../ap/store.js";
 import { ingestEmail, type InboxDeps } from "../ap/inbox.js";
 import { ledgerRows } from "../ledger/core.js";
+import { syncLedger } from "../ledger/feed.js";
 
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -84,6 +85,10 @@ export function batchesFor(db: DB, state: CloudState, opts: { now?: Date; maxDoc
 
 /** Pushes everything new; returns what the cloud applied, batch by batch. */
 export async function pushToCloud(db: DB, t: CloudTarget, now = new Date()): Promise<unknown[]> {
+  // The ledger first brings in what Purser recorded since the last sync (the inbox invoices' accruals, payouts, card
+  // charges): only posted entries travel, and the feed posts each source once, so this is safe to repeat (backend demo
+  // of 9 November: a push right after ingest carried no accrual).
+  if (has(db, "ledger_entries")) syncLedger(db, now);
   const state = (await ok(await call(t, "GET", "/v1/sync/state"), "the state request")) as CloudState;
   const results: unknown[] = [];
   for (const b of batchesFor(db, state, { now })) results.push(await ok(await call(t, "POST", "/v1/sync", b), "a push"));

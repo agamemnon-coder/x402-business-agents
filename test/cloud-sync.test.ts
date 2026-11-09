@@ -115,6 +115,19 @@ describe("pushing a ledger", () => {
     expect(entries.items.every((e) => e.posting_date >= "2026-11-01")).toBe(true);
   });
 
+  it("carries the inbox invoices' accrual: a push after ingest brings their booking, and the cloud's VAT report counts it (backend demo, 9 November)", async () => {
+    const ready = db.prepare("SELECT id, total, vendor, invoice_no FROM ap_invoices WHERE status = 'ready'").all() as { id: string; total: string; vendor: string; invoice_no: string }[];
+    expect(ready.length).toBeGreaterThan(0);
+    await pushToCloud(db, target(), NOW);
+    const owed = await c.env.sql.all<{ credit_cents: number; doc_ref: string }>("SELECT credit_cents, doc_ref FROM ledger_lines WHERE tenant_id = ? AND account = '2100' AND credit_cents > 0", [tenant.id]);
+    for (const r of ready) expect(owed.some((l) => l.doc_ref === `${r.invoice_no} · ${r.vendor}` && l.credit_cents === Math.round(Number(r.total) * 100))).toBe(true);
+    const get = async (p: string) => (await c.req("GET", p, { key: tenant.key })).json;
+    expect(await get("/v1/reports/vat?quarter=2026Q4")).toEqual(vatOverview(db, "2026Q4"));
+    // A second push posts nothing new and changes nothing.
+    const again = await pushToCloud(db, target(), NOW) as { applied: Record<string, { added: number; changed: number }> }[];
+    for (const r of again) for (const k of Object.values(r.applied)) expect(k.added + k.changed).toBe(0);
+  });
+
   it("keeps an invoice's earlier version when its status changes", async () => {
     await pushToCloud(db, target(), NOW);
     const id = (db.prepare("SELECT id FROM ap_invoices ORDER BY id LIMIT 1").get() as { id: string }).id;
