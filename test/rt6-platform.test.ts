@@ -110,7 +110,7 @@ describe("RT6-A/B the CFO sees Purser's fee, where it goes and which account pay
     expect(d.amount).toBe("USD 4,321.50");
     const shown = JSON.stringify(d.rows);
     expect(shown).toMatch(/Purser-vergoeding USD 12\.00 \(0\.50%\) naar acct_purser_platform/);
-    expect(shown).toMatch(/betaald van Northwind Outdoor B\.V\. \(Airwallex, through Purser\), acct_northwind/);
+    expect(shown).toMatch(/betaald van Northwind Outdoor B\.V\. \(Airwallex, via Purser\), acct_northwind/);
     const single = describeTerms(t.lines[0]!.terms as never, {});
     expect(JSON.stringify(single.rows)).toMatch(/to Purser's account acct_purser_platform/);
     expect(single.rows.find((r) => r[0] === "Total out")?.[1]).toMatch(/^USD 2,412\.00/);
@@ -290,12 +290,75 @@ describe("RT6-C/D the paying account is the company's own, from a binding Purser
     const p = await payApInvoice(db, awx, out.invoice.id, now);
     if (p.kind !== "proposed") throw new Error(p.reason);
     expect(p.proposal.kind).toBe("invoice_payment");
-    expect((JSON.parse(p.proposal.terms_json) as PlatformFields).paying_account).toEqual({ id: "acct_northwind", name: "Northwind Outdoor B.V. (Airwallex, through Purser)" });
+    expect((JSON.parse(p.proposal.terms_json) as PlatformFields).paying_account).toEqual({ id: "acct_northwind", name: "Northwind Outdoor B.V." });
     expect(describeTerms(JSON.parse(p.proposal.terms_json), {}).rows).toContainEqual(["Paid from", "Northwind Outdoor B.V. (Airwallex, through Purser), acct_northwind"]);
     approve(p.proposal.proposal_id);
     awx.payingAccount = "acct_someone_else";
     await expect(executeInvoicePayment(db, awx, awx, p.proposal.proposal_id)).rejects.toThrow(/this runner pays from acct_someone_else/);
     expect(row(p.proposal.proposal_id).status).not.toBe("EXECUTED");
     expect(db.prepare("SELECT COUNT(*) AS n FROM transfers").get()).toEqual({ n: 0 });
+  });
+});
+
+describe("Purser's fee on the invoice-payment route too (screenshot pass, 9 November: one batch line had no fee)", () => {
+  const enInvoice = async () => {
+    const out = await ingestDocument(db, deps, { bytes: await pdfOf(EN), filename: "en.pdf", source: "upload" });
+    if (out.kind !== "invoice") throw new Error(out.kind);
+    return out.invoice.id;
+  };
+
+  it("a supplier on file paid in EUR carries the fee in its terms, the phone shows it, and the total out adds it", async () => {
+    await platform();
+    const p = await payApInvoice(db, awx, await enInvoice(), now);
+    if (p.kind !== "proposed") throw new Error(p.reason);
+    expect(p.proposal.kind).toBe("invoice_payment");
+    const terms = JSON.parse(p.proposal.terms_json) as PlatformFields & { amount: string };
+    // EUR 1,850.00 at 50 basis points: EUR 9.25, to Purser's account in the binding.
+    expect(terms.platform_fee).toMatchObject({ amount: "9.25", currency: "EUR", bps: "50", to_account: "acct_purser_platform" });
+    const d = describeTerms(terms as never, {});
+    expect(d.approvable).toBe(true);
+    expect(d.rows.find((r) => r[0] === "Total out")?.[1]).toMatch(/^EUR 1,859\.25/);
+    // Four eyes counts what leaves the account, the fee included.
+    expect(supplierPaymentEur(p.proposal.terms_json)).toBe("1859.25");
+  });
+
+  it("is held while owed, taken once the payment is PAID, and booked once settled", async () => {
+    await platform();
+    const id = await enInvoice();
+    const p = await payApInvoice(db, awx, id, now);
+    if (p.kind !== "proposed") throw new Error(p.reason);
+    approve(p.proposal.proposal_id);
+    await executeInvoicePayment(db, awx, awx, p.proposal.proposal_id);
+    expect(row(p.proposal.proposal_id).status).toBe("EXECUTED");
+    expect(awx.platformFees).toHaveLength(1);
+    expect(awx.platformFees[0]).toMatchObject({ amountCents: 925, currency: "EUR", destination: "acct_purser_platform" });
+    expect(db.prepare("SELECT status FROM platform_fees").get()).toEqual({ status: "SETTLED" });
+    await syncPayments(db, { now: () => now });
+    expect(apJournal(db).filter((e) => /Purser platform fee/.test(e.memo)).map((e) => e.debit || e.credit)).toEqual(["9.25", "9.25"]);
+  });
+
+  it("a batch of a supplier on file and a new supplier: every line carries the fee, and the total adds them all", async () => {
+    await platform();
+    awx.bal.USD.availableCents = 100_000_00;
+    const a = await enInvoice();
+    const b = await usInvoice("PC-7781", "2,400.00");
+    const out = await payApInvoices(db, awx, [a, b], now);
+    expect(out.notPlanned).toEqual([]);
+    const t = JSON.parse(out.batch!.terms_json) as { totals: Record<string, string>; lines: { terms: PlatformFields & { kind: string } }[] };
+    expect(t.lines.map((l) => [l.terms.kind, l.terms.platform_fee?.amount])).toEqual(expect.arrayContaining([["invoice_payment", "9.25"], ["supplier_payment", "12.00"]]));
+    expect(t.totals).toEqual({ EUR: "1859.25", USD: "2412.00" });
+    expect(describeTerms(t as never, {}).approvable).toBe(true);
+  });
+
+  it("a payment not (yet) paid is charged no fee: the fee stays due and spoken for", async () => {
+    await platform();
+    const p = await payApInvoice(db, awx, await enInvoice(), now);
+    if (p.kind !== "proposed") throw new Error(p.reason);
+    approve(p.proposal.proposal_id);
+    const r = await executeInvoicePayment(db, awx, null, p.proposal.proposal_id);
+    expect(r.transfer.status).not.toBe("PAID");
+    expect(awx.platformFees).toHaveLength(0);
+    expect(db.prepare("SELECT status FROM platform_fees").get()).toEqual({ status: "DUE" });
+    expect(inFlightCents(db, "EUR")).toBeGreaterThanOrEqual(925);
   });
 });

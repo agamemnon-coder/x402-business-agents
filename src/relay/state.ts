@@ -9,6 +9,7 @@ import type { DB } from "../db/open.js";
 import { canonicalTerms, type Terms } from "../lib/terms.js";
 import { openWindow } from "../passkey/ledger.js";
 import { currentPolicy, type PolicyEntry } from "../policy/rules.js";
+import { pickLang, type Lang } from "../ui/i18n.js";
 import { isoCBOR } from "@simplewebauthn/server/helpers";
 
 export interface RelayProposal {
@@ -61,8 +62,19 @@ export interface RelayState {
     policy: PolicyEntry[];
     /** The ledger's last audit row: signed with the rest, so the phone refuses an older set replayed (review N4). */
     ledger_seq: number;
+    /**
+     * The company's language for the phone's payables pages (screenshot pass, 9 November). Outside the signed part
+     * (src/relay/sign.ts signedPart): it only picks the words a page is written in, never what is signed.
+     */
+    language?: Lang;
   };
   enrolment: RelayEnrolment | null;
+}
+
+/** The company's language: the settings row ui.language (as the payables pages read it), else PURSER_LANGUAGE, else Dutch. */
+function companyLanguage(db: DB): Lang {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'ui.language'").get() as { value: string } | undefined;
+  return pickLang(row?.value, process.env.PURSER_LANGUAGE);
 }
 
 const sha256 = (s: string) => createHash("sha256").update(s, "utf8").digest("hex");
@@ -162,6 +174,7 @@ export function buildRelayState(db: DB, cfg: { rpId: string; label?: string; rel
     approvals: {
       proposals, names, passkey: { rp_id: cfg.rpId, credentials }, policy: currentPolicy(db),
       ledger_seq: (db.prepare("SELECT MAX(seq) AS n FROM audit_log").get() as { n: number | null }).n ?? 0,
+      language: companyLanguage(db),
     },
     enrolment: w && w.rp_id === cfg.rpId
       ? { window_id: w.window_id, challenge: w.challenge, user_id: w.user_id, user_name: cfg.label ?? "max", code_mac: createHmac("sha256", cfg.relayToken).update(w.code_sha256).digest("hex"), rp_id: w.rp_id, expires_at: w.expires_at }

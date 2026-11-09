@@ -242,6 +242,31 @@ ok(/€\s?\d{1,3}(\.\d{3})*,\d{2}/.test(nlText), "amounts are written the Dutch 
 const rawKeys = await page.evaluate(() => (document.body.textContent ?? "").split(/\s+/).filter((w) => /^[a-z]+(\.[a-z0-9_]+)+$/.test(w) && !/\.(js|pdf|csv|json|eml|com|nl|io|test)$/.test(w)));
 ok(rawKeys.length === 0, `no raw message keys on the Dutch console${rawKeys.length ? ` (found ${rawKeys.slice(0, 5).join(", ")})` : ""}`);
 await shot("19-overzicht-nederlands");
+// The Dutch books and settings (screenshot pass, 9 November): no English left in the journal, the VAT overview or the
+// key names, a role or status pill on one line, no "nothing this quarter" above input VAT, the nav on a phone in view.
+await page.goto(`${ORIGIN}/#/books`);
+await page.waitForSelector(`text=${tr("nl", "cs.vat_overview")}`, { timeout: 20_000 });
+await page.waitForSelector("text=#1", { timeout: 20_000 });
+await settle();
+const booksText = await page.innerText("main");
+ok(!/\(received\)|Transfer fee|balance before the run|sandbox test money|\binvoice\b/.test(booksText), "the Dutch journal has no English entries");
+ok(!(booksText.includes(tr("nl", "cs.nothing_quarter")) && !/5b[^\n]*€\s?0,00/.test(booksText)), "the VAT overview never says 'nothing this quarter' above input VAT");
+await page.goto(`${ORIGIN}/#/settings`);
+await page.waitForSelector(`text=${tr("nl", "cs.api_keys")}`, { timeout: 20_000 });
+await page.waitForSelector("text=runner", { timeout: 20_000 });
+await settle();
+const setText = await page.innerText("main");
+ok(!/first owner's passkey only|runner \(sync\)/.test(setText), "the Dutch settings name Purser's own keys in Dutch");
+const tallPills = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>(".pill")].filter((p) => p.getBoundingClientRect().height > 32).map((p) => p.textContent));
+ok(tallPills.length === 0, `every role and status pill stays on one line${tallPills.length ? ` (${tallPills.join(", ")})` : ""}`);
+{
+  const was = page.viewportSize();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await settle();
+  const off = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>("nav.tabs a")].filter((a) => a.getBoundingClientRect().right > window.innerWidth + 0.5).map((a) => a.textContent));
+  ok(off.length === 0, `at 390 px every page in the nav is in view${off.length ? ` (cut: ${off.join(", ")})` : ""}`);
+  if (was) await page.setViewportSize(was);
+}
 if (shots) {
   const was = page.viewportSize();
   await page.setViewportSize({ width: 390, height: 844 });

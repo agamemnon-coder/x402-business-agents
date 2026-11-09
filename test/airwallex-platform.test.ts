@@ -171,7 +171,7 @@ describe("a payout on behalf of the company's connected account", () => {
     const id = await usInvoice();
     const { terms } = await propose(id);
     // USD 2,400.00 at 50 basis points: USD 12.00, in the payout's own currency, to Purser's platform account.
-    expect(terms.paying_account).toEqual({ id: "acct_northwind", name: "Northwind Outdoor B.V. (Airwallex, through Purser)" });
+    expect(terms.paying_account).toEqual({ id: "acct_northwind", name: "Northwind Outdoor B.V." });
     expect(terms.platform_fee).toMatchObject({ amount: "12.00", currency: "USD", to_account: "acct_purser_platform", bps: "50" });
     expect(terms.platform_fee!.request_id).toMatch(/^[0-9a-f-]{36}$/);
     const d = describeTerms(terms as never, {});

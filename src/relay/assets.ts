@@ -9,6 +9,7 @@ import ts from "typescript";
 import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, JUDGE_CSP, JUDGE_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, TRACE_CSP, TRACE_PAGE, WATCH_CSP, WATCH_PAGE, CSP as DASHBOARD_CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE as DASHBOARD_PAGE, TRY_CSP, TRY_PAGE, TRY_SIGN_CSP, TRY_SIGN_PAGE, TRY_VERIFY_CSP, TRY_VERIFY_PAGE, demoPage, homeWithTrySign, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
 import type { Pages } from "../../worker/src/core.js";
 import { trySignOn } from "../try/sign.js";
+import { phonePhrases } from "../ui/i18n.js";
 import { RECORDED_PATH, readRecorded } from "../try/recorded.js";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
@@ -48,10 +49,12 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
   const trySign = trySignOn(env);
   const flow = (html: string) => flowLinks(html, trySign);
   const home = trySign ? homeWithTrySign() : { page: HOME_PAGE, csp: HOME_CSP };
-  const client = ts.transpileModule(read("../approve/client.ts"), {
+  const clientCode = ts.transpileModule(read("../approve/client.ts"), {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, removeComments: false },
     reportDiagnostics: false,
   }).outputText;
+  // The phone's payables words (src/ui/i18n.ts, ph.*) ride in front of the script: it has no imports (see client.ts).
+  const client = `globalThis.PURSER_PHRASES = ${JSON.stringify(phonePhrases()).replace(/</g, "\\u003c")};\n${clientCode}`;
   return {
     // Every public page carries the same link-preview tags and favicon (jury QA, 6 Nov, Q5): the pages built in
     // src/servers/dashboard.ts carry them already (src/ui/meta.ts withMeta), the redesign's write their own.

@@ -94,7 +94,8 @@ export function platformPlan(db: DB, now: Date, env: Env = process.env): Platfor
   if (!platformOn(env)) return { ok: true, paying: null, feeBps: 0, feeTo: null };
   const b = currentBinding(db, now, env);
   if (!b.ok) return { ok: false, reason: b.reason };
-  const paying = { id: b.binding.account_id, name: `${b.binding.name.slice(0, 100)} (Airwallex, through Purser)` };
+  // The company's own name: each page adds "(Airwallex, through Purser)" in its own language (screenshot pass, 9 Nov).
+  const paying = { id: b.binding.account_id, name: b.binding.name.slice(0, 100) };
   if (!platformFeeOn(env)) return { ok: true, paying, feeBps: 0, feeTo: null };
   const feeBps = feeBpsOf(db);
   if (feeBps === null) return { ok: false, reason: `Purser's fee in the policy (platform.fee_bps) is not a whole number from 0 to ${FEE_BPS_CAP} basis points; nothing is planned` };

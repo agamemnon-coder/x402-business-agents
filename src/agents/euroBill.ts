@@ -2,7 +2,7 @@
 // Seeding calibrates floors so the demo shows a shortfall whatever the sandbox starts with; planning
 // converts only the shortfall, fee included, on a locked quote, and never below either floor.
 
-import { platformPlan } from "../airwallex/binding.js";
+import { platformFeeCents, platformPlan } from "../airwallex/binding.js";
 import { batchReservedCents } from "../payouts/planContext.js";
 import { randomUUID } from "node:crypto";
 import type { AirwallexRail, Currency, MarketRate, Quote, SandboxSim } from "../airwallex/port.js";
@@ -152,7 +152,8 @@ export interface InvoicePaymentTerms extends Terms {
   floors: { eur_floor: string; eur_obligations: string; usd_floor: string };
   after: { eur_free: string; usd_available: string };
   evidence: { type: string; ref: string; sha256: string }[];
-  // Purser as a platform adds paying_account (PlatformFields in src/payouts/plan.ts; absent otherwise, hash unchanged).
+  // Purser as a platform adds paying_account and, with its fee on, platform_fee (PlatformFields in src/payouts/plan.ts;
+  // absent otherwise, hash unchanged).
   // The payables inbox adds document_total_line and document_currency (see proposeInvoicePayment's `document`).
 }
 
@@ -277,7 +278,11 @@ export async function proposeInvoicePayment(
     return { kind: "escalated", reason };
   }
   const feeReserve = feeReserveCents(fees);
-  const plan = planInvoice(check.amountCents, s, feeReserve);
+  // Purser's fee on this route as on a supplier payment's (screenshot pass, 9 November: a batch line of a supplier on
+  // file had none): CFO policy within the cap, in EUR, to Purser's account in the binding. It counts toward what must
+  // be free, or be bought, like the fee reserve.
+  const platformFee = pp.feeBps > 0 ? platformFeeCents(check.amountCents, pp.feeBps) : 0;
+  const plan = planInvoice(check.amountCents + platformFee, s, feeReserve);
   if (plan.kind === "underfunded") {
     const reason = `EUR is already ${fromCents(-plan.freeEurCents)} below its floor plus commitments (available ${fromCents(s.eurAvailableCents)}, floor ${fromCents(s.eurFloorCents)}, committed ${fromCents(s.eurObligationsCents)}); options: restore the EUR reserve first, review the commitments, or pay later`;
     audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);
@@ -340,6 +345,7 @@ export async function proposeInvoicePayment(
     after: { eur_free: fromCents(Math.max(0, plan.freeEurCents + (quote?.buyAmountCents ?? 0) - plan.needEurCents)), usd_available: fromCents(usdAfter) },
     evidence: [{ type: "invoice", ref: inv.invoice_no, sha256: sha256Hex(invoiceText) }],
     ...(pp.paying ? { paying_account: pp.paying } : {}),
+    ...(platformFee > 0 ? { platform_fee: { amount: fromCents(platformFee), currency: "EUR", bps: String(pp.feeBps), to_account: pp.feeTo!, request_id: randomUUID() } } : {}),
     // The payables inbox only: the document's own total line, verbatim (sanitised, at most 120 characters), and the
     // currency as read from that line ("" when it names none, or one code does not know), so the CFO sees what the
     // supplier wrote beside the amount signed for (red team round 2). Kit 11's invoices pass none: their terms are unchanged.

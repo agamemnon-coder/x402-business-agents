@@ -163,7 +163,7 @@ const dl=(pairs)=>{const d=el('dl','read');for(const [k,v,cls] of pairs){if(v===
 function actionWhy(a){if(!NL)return a.why;if(a.code==='findings'){const cs=String(a.vars.codes||'').split(',').filter(Boolean);return cs.map(c=>finding({code:c,detail:a.why})).join('; ')}if(a.code==='status')return statusWords(a.vars.status);return t('action.'+a.code,a.vars)}
 function timelineWords(r){if(!NL||!r.kind)return [r.what,r.detail];const v=r.vars||{};
   if(r.kind==='received')return [t('tl.received'),t('tl.received.detail',{filename:v.filename,source:tk('source.'+v.source,v.source)})];
-  if(r.kind==='checked')return [t('tl.checked',{status:statusWords(v.status)}),v.read_by==='parser'?t('tl.read_by_code'):t('tl.read_by_model',{model:v.read_by})];
+  if(r.kind==='checked')return [t('tl.checked',{status:statusWords(v.status)}),v.read_by==='parser'?t('tl.read_by_code'):t('tl.read_by_model',{model:reader(v.read_by)})];
   if(r.kind==='ready_again')return [t('tl.ready_again'),data('reason',v.reason||'')];
   if(r.kind==='status')return [statusWords(v.status),data('reason',v.reason||'')];
   if(r.kind==='note')return [t('tl.note'),v.model?t('tl.note.by_model',{model:v.model}):t('tl.note.by_code')];
@@ -230,12 +230,12 @@ function render(d){
   const open=el('a','',[ic('external-link'),t('dt.open_pdf')]);open.href='/api/payables/invoices/'+encodeURIComponent(id)+'/document';open.target='_blank';open.rel='noopener';
   const docv=el('div','card docv',[el('div','bar2',[ic('file-text'),el('span','fn',d.document.filename||'document.pdf'),open]),pages]);
   // What Purser read
-  const line=d.total_line?el('span','',d.total_line):null;
+  const line=d.total_line?el('span','',data('total_line',d.total_line)):null;
   const payTo=r.iban?'IBAN '+r.iban+(r.bic?' · BIC '+r.bic:''):r.account_number?t('dt.account')+' '+r.account_number+(r.routing_value?' · '+r.routing_type.toUpperCase().replace('_',' ')+' '+r.routing_value:''):'';
-  const read=el('div','card panel',[el('h2','',[t('dt.read'),el('span','cnt',i.read_by==='parser'?t('dt.read_by_code'):t('dt.read_by',{by:i.read_by}))]),dl([
+  const read=el('div','card panel',[el('h2','',[t('dt.read'),el('span','cnt',i.read_by==='parser'?t('dt.read_by_code'):t('dt.read_by',{by:reader(i.read_by)}))]),dl([
     [t('supplier'),i.vendor],[t('dt.vat_id'),r.vat_id],[t('dt.invoice_number'),i.invoice_no],[t('dt.invoice_date'),day(i.issue_date)],[t('dt.due_date'),day(i.due_date)],
     [t('dt.subtotal'),i.subtotal?ma(i.currency,i.subtotal):''],[t('dt.vat'),i.tax?ma(i.currency,i.tax):''],[t('dt.total'),i.total?ma(i.currency,i.total):''],
-    [t('dt.on_invoice'),line,'line'],[t('dt.pay_to'),payTo,'mono'],[t('dt.bank_country'),r.bank_country],[t('dt.reference'),r.reference],[t('dt.booked_to'),i.gl_account?(i.gl_account+(i.gl_rule?' · '+i.gl_rule:'')):'']])]);
+    [t('dt.on_invoice'),line,'line'],[t('dt.pay_to'),payTo,'mono'],[t('dt.bank_country'),r.bank_country],[t('dt.reference'),r.reference],[t('dt.booked_to'),i.gl_account?(i.gl_account+(i.gl_rule?' · '+data('gl_rule',i.gl_rule):'')):'']])]);
   // Checks
   const ul=el('ul','checks');let passed=0;
   for(const c of d.checks){const [icon,word]=RES[c.result];if(c.result==='passed')passed++;const li=el('li','',[el('span','ic res-'+c.result),el('span','t',tk('check.'+c.key,c.title)),el('span','r res-'+c.result,word)]);li.firstChild.innerHTML=IC[icon];c.reasons.forEach((w,k)=>li.append(el('span','why',cap(finding({code:(c.codes||[])[k],detail:w})))));ul.append(li)}

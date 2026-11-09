@@ -111,6 +111,7 @@ platform-level webhook uses the same signature scheme is **unconfirmed**.
 | The paying account from a binding Purser Cloud signs (never a local setting) | `src/airwallex/binding.ts`, `cloud/src/awxPlatform.ts` (`bindingOf`), `GET /v1/airwallex/binding`, `src/cloudsync/client.ts` (`refreshBinding`) | `test/rt6-platform.test.ts`, `test/cloud-rt6.test.ts` |
 | Phone shows "Paid from", "Purser fee → Purser's account" and "Total out" before Face ID, per line in a batch too | `src/approve/client.ts` | same |
 | Fee taken only after the payout is PAID, once per request id; booked only when settled; never fails a paid payment | `src/executors/supplierPayment.ts` (`takePlatformFee`), `src/payouts/follow.ts`, `src/ap/books.ts`, `src/accounting/gl.ts`, `src/money/register.ts` | same |
+| The same fee on the invoice-payment route (a supplier on file paid in EUR over SWIFT), so every line of a batch carries it; on the phone in the company's language (`ph.*` in `src/ui/i18n.ts`) | `src/agents/euroBill.ts`, `src/executors/invoicePayment.ts`, `src/approve/client.ts` (`payablesFacts`) | `test/rt6-platform.test.ts`, `test/phone-payables-language.test.ts` |
 | Cloud: owner opens the account (idempotent, consent kept), gets the onboarding link, status from webhooks | `cloud/src/awxPlatform.ts`, `cloud/src/app.ts` (`/v1/airwallex/*`), console Settings, table `awx_accounts` | `test/cloud-awx-platform.test.ts`, `test/cloud-rt6.test.ts` |
 
 ### The account binding (red team 6)

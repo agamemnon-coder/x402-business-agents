@@ -27,6 +27,9 @@ ul.plain li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 header.top nav.tabs { flex: none; }
 .who-am-i { min-width: 0; flex: 1 1 auto; justify-content: flex-end; }
 .who-am-i #who { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.who-am-i #who .wn { color: var(--text); font-weight: 600; }
+.who-am-i #who .we { display: none; }
+@media (min-width: 1500px) { .who-am-i #who .we { display: inline; } }
 .signed-in .who-am-i { display: inline-flex; }
 .who-am-i button { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 6px; border-radius: 8px; display: inline-flex; }
 .who-am-i button:hover { color: var(--text); background: var(--sunken); }
@@ -71,7 +74,12 @@ header.top .spacer { margin-left: auto; }
 .table td { padding: 11px 14px; border-top: 1px solid var(--border); vertical-align: top; overflow-wrap: anywhere; }
 .table td.r, .table th.r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .scroll { overflow-x: auto; }
-.pill { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 650; background: var(--sunken); color: var(--muted); }
+.pill { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 650; background: var(--sunken); color: var(--muted); white-space: nowrap; }
+/* A row's buttons wrap under each other rather than squeeze the role or status beside them (screenshot pass, 9 Nov). */
+.table td.r.acts { white-space: normal; text-align: right; }
+.table td.r.acts .btn { margin: 2px 0; }
+.panel h2.sub-h { margin-top: 22px; }
+.panel > .row2 { margin-top: 14px; }
 .pill.ok { background: var(--ok-soft); color: var(--ok); } .pill.bad { background: var(--bad-soft); color: var(--bad); } .pill.warn { background: var(--warn-soft); color: var(--warn); }
 .split2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-top: 16px; }
 @media (max-width: 900px) { .split2 { grid-template-columns: minmax(0, 1fr); } }
@@ -102,6 +110,10 @@ img.qr { width: 180px; height: 180px; background: #fff; border-radius: 8px; padd
 @media (max-width: 640px) {
   header.top .test .tl { display: none; }
   .who-am-i #who { max-width: 52vw; }
+  .who-am-i #who .wc { display: none; }
+  /* Five pages do not fit one row on a phone: they wrap, never run off the edge. */
+  header.top nav.tabs { display: flex; flex-wrap: wrap; gap: 2px; }
+  header.top nav.tabs a { padding: 6px 9px; font-size: 13.5px; }
   .auth { margin-top: 3vh; padding: 20px; }
 }
 `;
@@ -167,7 +179,9 @@ const go=(h)=>{if(location.hash===h)route();else location.hash=h};
 
 function shell(){
   document.body.className=S?'signed-in':'signed-out';
-  if(S){const left=Math.max(0,Math.round((S.exp-Date.now())/60000));$('#who').textContent=(ME&&ME.user&&ME.user.display_name?ME.user.display_name+' · ':'')+(ME&&ME.tenant?ME.tenant.name+' · ':'')+t('cs.ends_in',{n:left})}
+  if(S){const left=Math.max(0,Math.round((S.exp-Date.now())/60000));const n=ME&&ME.user&&ME.user.display_name?ME.user.display_name:'',c=ME&&ME.tenant?ME.tenant.name:'',e=t('cs.ends_in',{n:left});const w=$('#who');
+    // Who, the company and the session's time left; a narrow header drops the company, then the time (both stay in the title).
+    w.replaceChildren(el('span','wn',n),c?el('span','wc',(n?' · ':'')+c):'',el('span','we',(n||c?' · ':'')+e));w.title=[n,c,e].filter(Boolean).join(' · ')}
   const tab=(location.hash.split('/')[1]||'').split('?')[0];
   for(const a of document.querySelectorAll('#tabs a'))if(a.dataset.tab===tab)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
 }
@@ -446,7 +460,8 @@ async function booksView(){
     const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('cs.rubric')),el('th','r',t('cs.base')),el('th','r',t('dt.vat'))])])]);const tb=el('tbody','');
     const eur=(c)=>cur('EUR')+' '+cents(c);
     for(const [k,r] of Object.entries(v.rubrics||{})){if(!r.base_cents&&!r.vat_cents)continue;tb.append(el('tr','',[el('td','',RUBRIC(k)),el('td','r',eur(r.base_cents)),el('td','r',eur(r.vat_cents))]))}
-    if(!tb.children.length)tb.append(el('tr','',[el('td','',t('cs.nothing_quarter')),el('td',''),el('td','')]));
+    // No rubric row: the quarter may still hold input VAT (5b), so "nothing" is said only when 5a and 5b are nil too.
+    if(!tb.children.length)tb.append(el('tr','',[el('td','',t(v.owed_5a_cents||v.input_5b_cents?'cs.no_rubrics':'cs.nothing_quarter')),el('td',''),el('td','')]));
     tb.append(el('tr','',[el('td','',el('b','',t('cs.owed_5a'))),el('td',''),el('td','r',eur(v.owed_5a_cents))]),el('tr','',[el('td','',el('b','',t('cs.input_5b'))),el('td',''),el('td','r',eur(v.input_5b_cents))]),el('tr','',[el('td','',el('b','',t('cs.balance_5c'))),el('td',''),el('td','r',el('b','',eur(v.balance_5c_cents)))]));
     tbl.append(tb);
     vat.replaceChildren(el('h2','',t('cs.vat_overview')),el('div','form-row',[el('div','',[el('label','',t('cs.quarter')),pick])]),el('div','scroll',tbl),
@@ -455,7 +470,7 @@ async function booksView(){
   pick.onchange=()=>drawVat().catch(e=>{if(!(e instanceof Expired))vat.append(note(e.message,'bad'))});
   const j=await api('/v1/ledger/entries?limit=30');
   const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('date')),el('th','',t('cs.entry')),el('th','r',t('cs.debit')),el('th','r',t('cs.credit'))])])]);const tb=el('tbody','');
-  for(const e of j.items.slice().reverse()){tb.append(el('tr','',[el('td','',day(e.posting_date)),el('td','',[el('b','','#'+e.entry_id+' '),e.description||'']),el('td',''),el('td','')]));
+  for(const e of j.items.slice().reverse()){tb.append(el('tr','',[el('td','',day(e.posting_date)),el('td','',[el('b','','#'+e.entry_id+' '),data('journal',e.description||'')]),el('td',''),el('td','')]));
     for(const l of e.lines||[])tb.append(el('tr','',[el('td',''),el('td','',l.account+(l.vat_code?' · '+t('cs.vat_code',{code:l.vat_code}):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
   if(!j.items.length)tb.append(el('tr','',[el('td','',t('cs.no_entries')),el('td',''),el('td',''),el('td','')]));
   tbl.append(tb);journal.replaceChildren(el('h2','',t('cs.journal')),el('div','scroll',tbl),note(t('cs.journal_note')));
@@ -473,10 +488,10 @@ async function settingsView(){
   const langBox=el('div','form-row');const langMsg=el('div','');
   if(owner){const c=langSel(langNames,m.tenant.language||'nl');c.onchange=async()=>{try{await api('/v1/company',{method:'POST',body:{language:c.value}});ME=null;langMsg.replaceChildren(note(t('cs.language_saved'),'ok'));if(!m.user||!m.user.language)useLanguage(c.value)}catch(e){if(!(e instanceof Expired))langMsg.replaceChildren(note(e.message,'bad'))}};langBox.append(el('div','',[el('label','',t('cs.language_company')),c]))}
   if(m.kind==='session'&&m.user){const p=langSel([['',t('cs.language_follow')],...langNames],m.user.language||'');p.onchange=async()=>{try{const r=await api('/v1/me/language',{method:'POST',body:{language:p.value||null}});ME=null;langMsg.replaceChildren(note(t('cs.language_saved'),'ok'));useLanguage(r.language||m.tenant.language||'nl')}catch(e){if(!(e instanceof Expired))langMsg.replaceChildren(note(e.message,'bad'))}};langBox.append(el('div','',[el('label','',t('cs.language_mine')),p]))}
-  const company=el('div','card panel',[el('h2','',t('cs.company')),dl([[t('cs.name'),m.tenant.name],[t('cs.address'),m.tenant.slug],[t('cs.inbox'),m.inbox||t('cs.not_routed'),'mono']]),langBox.children.length?el('h2','',t('cs.language')):null,langBox.children.length?langBox:null,langMsg]);
+  const company=el('div','card panel',[el('h2','',t('cs.company')),dl([[t('cs.name'),m.tenant.name],[t('cs.address'),m.tenant.slug],[t('cs.inbox'),m.inbox||t('cs.not_routed'),'mono']]),langBox.children.length?el('h2','sub-h',t('cs.language')):null,langBox.children.length?langBox:null,langMsg]);
   if(!owner){view().replaceChildren(head(t('cs.nav.settings')),company,note(t('cs.only_owner',{name:m.tenant.name})));return}
-  const people=el('div','card panel');const keys=el('div','card panel');const data=el('div','card panel');const awx=el('div','card panel');awx.id='awx';awx.hidden=true;
-  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,awx,el('div','split2',[people,keys]),data);
+  const people=el('div','card panel');const keys=el('div','card panel');const dataCard=el('div','card panel');const awx=el('div','card panel');awx.id='awx';awx.hidden=true;
+  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,awx,el('div','split2',[people,keys]),dataCard);
   // The company's own Airwallex account, opened through Purser as a platform (docs/airwallex-platform.md): only when the
   // cloud offers it. The owner agrees to Airwallex's terms before anything is sent; Airwallex checks the company in its
   // own hosted pages; the status follows Airwallex's messages. Payments are still approved on the CFO's phone.
@@ -536,7 +551,7 @@ async function settingsView(){
   async function drawPeople(){
     const u=await api('/v1/users?limit=200');
     const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('cs.person')),el('th','',t('cs.role')),el('th','')])])]);const tb=el('tbody','');
-    for(const p of u.items){const acts=el('td','r');
+    for(const p of u.items){const acts=el('td','r acts');
       if(!p.erased_at){const inv=btn(t('cs.invite'),'','key-round');inv.onclick=async()=>{inv.disabled=true;try{await invite(p)}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{inv.disabled=false}};
         const er=btn(t('cs.erase'),'danger','x');er.onclick=async()=>{const typed=prompt(t('cs.erase_prompt',{name:p.display_name}));if(typed===null)return;if(typed.trim()!==p.display_name){people.append(note(t('cs.name_mismatch'),'bad'));return}
           try{await api('/v1/users/'+encodeURIComponent(p.id)+'/erase',{method:'POST'});await drawPeople()}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}};
@@ -552,9 +567,9 @@ async function settingsView(){
   async function drawKeys(){
     const k=await api('/v1/keys?limit=200');
     const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('cs.key')),el('th','',t('cs.may')),el('th','',t('cs.expires')),el('th','')])])]);const tb=el('tbody','');
-    for(const x of k.items){const live=!x.revoked_at&&x.expires_at>new Date().toISOString();const acts=el('td','r');
-      if(live){const rv=btn(t('cs.revoke'),'danger','x');rv.onclick=async()=>{if(!confirm(t('cs.revoke_confirm',{name:x.name})))return;try{await api('/v1/keys/'+encodeURIComponent(x.id),{method:'DELETE'});await drawKeys()}catch(e){if(!(e instanceof Expired))keys.append(note(e.message,'bad'))}};acts.append(rv)}
-      tb.append(el('tr','',[el('td','',[el('b','',x.name),el('span','sub',' '+x.id)]),el('td','',String(x.scopes||'').split(/[ ,]+/).filter(Boolean).map(sc=>tk('cs.scope.'+sc,sc)).join(', ')),el('td','',live?day(x.expires_at):[el('span','pill bad',x.revoked_at?t('cs.revoked'):t('cs.expired'))]),acts]))}
+    for(const x of k.items){const live=!x.revoked_at&&x.expires_at>new Date().toISOString();const acts=el('td','r acts');
+      if(live){const rv=btn(t('cs.revoke'),'danger','x');rv.onclick=async()=>{if(!confirm(t('cs.revoke_confirm',{name:data('key',x.name)})))return;try{await api('/v1/keys/'+encodeURIComponent(x.id),{method:'DELETE'});await drawKeys()}catch(e){if(!(e instanceof Expired))keys.append(note(e.message,'bad'))}};acts.append(rv)}
+      tb.append(el('tr','',[el('td','',[el('b','',data('key',x.name)),el('span','sub',' '+x.id)]),el('td','',String(x.scopes||'').split(/[ ,]+/).filter(Boolean).map(sc=>tk('cs.scope.'+sc,sc)).join(', ')),el('td','',live?day(x.expires_at):[el('span','pill bad',x.revoked_at?t('cs.revoked'):t('cs.expired'))]),acts]))}
     tbl.append(tb);
     const name=el('input','field');name.placeholder=t('cs.key_placeholder');const scope=el('select','field');for(const [v,l] of [['read',t('cs.scope.read')],['sync',t('cs.scope.sync')],['read sync',t('cs.scope.read_sync')]]){const o=el('option','',l);o.value=v;scope.append(o)}
     const days=el('input','field');days.type='number';days.min='1';days.max='365';days.value='90';
@@ -564,8 +579,8 @@ async function settingsView(){
     keys.replaceChildren(el('h2','',t('cs.api_keys')),el('div','scroll',tbl),el('div','form-row',[el('div','',[el('label','',t('cs.name')),name]),el('div','',[el('label','',t('cs.may')),scope]),el('div','',[el('label','',t('cs.days')),days]),el('div','',[mk])]),out,
       note(t('cs.keys_note')));
   }
-  const exp=btn(t('cs.download_all'),'','download');exp.onclick=()=>download('/v1/export','purser-cloud-export.json').catch(e=>{if(!(e instanceof Expired))data.append(note(e.message,'bad'))});
-  data.replaceChildren(el('h2','',t('cs.your_data')),el('p','',t('cs.data_lede',{name:m.tenant.name})),exp);
+  const exp=btn(t('cs.download_all'),'','download');exp.onclick=()=>download('/v1/export','purser-cloud-export.json').catch(e=>{if(!(e instanceof Expired))dataCard.append(note(e.message,'bad'))});
+  dataCard.replaceChildren(el('h2','',t('cs.your_data')),el('p','',t('cs.data_lede',{name:m.tenant.name})),exp);
   await Promise.all([drawPeople(),drawKeys(),drawAwx().catch(e=>{if(!(e instanceof Expired)){awx.hidden=false;awx.replaceChildren(note(e.message,'bad'))}})]);
 }
 

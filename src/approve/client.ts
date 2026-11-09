@@ -32,12 +32,28 @@ interface Approvals {
   passkey: { rp_id: string; credentials: { id: string; label: string; enrolled_at: string }[] };
   relay: { synced_at: string; age_ms: number };
   enrolment_open: boolean;
+  /** The company's language for the payables pages ("nl" or "en"): it only picks words, so the runner does not sign it. */
+  language?: string;
 }
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
 const str = (v: unknown): string => (v === null || v === undefined ? "" : String(v));
 const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+
+// ── The phone's words for payables payments (src/ui/i18n.ts, ph.*), shipped by the relay as PURSER_PHRASES ──
+
+export type PhoneLang = "nl" | "en";
+/** The company's language as the runner sends it beside the approvals: it only picks words, so it is not signed. */
+export function phoneLang(a: { language?: unknown }): PhoneLang {
+  return a.language === "en" ? "en" : "nl";
+}
+function ph(lang: PhoneLang, key: string, vars: Record<string, string | number> = {}): string {
+  const all = (globalThis as { PURSER_PHRASES?: Record<string, Record<string, string>> }).PURSER_PHRASES;
+  let s = all?.[lang]?.[key] ?? all?.en?.[key] ?? key;
+  for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(String(v));
+  return s;
+}
 
 // ── Canonical JSON and hashing (RFC 8785 for JSON without numbers, which the terms never contain) ──
 
@@ -136,16 +152,21 @@ export function outflowOf(t: Obj): { currency: string; cents: number } | null {
   return { currency: str(t.currency), cents: amount + fee };
 }
 
+/** The paying account's company name: terms signed before 9 November carried the "(Airwallex, through Purser)" too. */
+const payingName = (a: Obj) => str(a.name).replace(/ \(Airwallex, through Purser\)$/, "");
+
 /** Purser as a platform, in words: which account pays and where Purser's fee goes (never hidden, red team 6). */
 function platformRows(t: Obj, cur: string): [string, string][] {
   const rows: [string, string][] = [];
-  if (isObj(t.paying_account)) rows.push(["Paid from", `${str(t.paying_account.name)}, ${str(t.paying_account.id)}`]);
+  if (isObj(t.paying_account)) rows.push(["Paid from", `${payingName(t.paying_account)} (Airwallex, through Purser), ${str(t.paying_account.id)}`]);
   if (isObj(t.platform_fee)) {
     const f = t.platform_fee;
     rows.push(["Purser fee", `${str(f.currency)} ${money(f.amount)} (${(Number(str(f.bps)) / 100).toFixed(2)}%) to Purser's account ${str(f.to_account)}, taken from the paying account after the payment is paid`]);
     const out = outflowOf(t);
-    const reserve = centsOf(t.fee_reserve);
-    if (out) rows.push(["Total out", `${cur} ${money(fromCentsStr(out.cents))} (the amount and Purser's fee; ${reserve ? `Airwallex's own fee comes on top, at most ${cur} ${money(t.fee_reserve)}` : "no Airwallex fee is expected on this route"})`]);
+    // A supplier payment holds back fee_reserve; an invoice payment (SWIFT) fee_max.
+    const held = t.fee_reserve !== undefined ? t.fee_reserve : t.fee_max;
+    const reserve = centsOf(held);
+    if (out) rows.push(["Total out", `${cur} ${money(fromCentsStr(out.cents))} (the amount and Purser's fee; ${reserve ? `Airwallex's own fee comes on top, at most ${cur} ${money(held)}` : "no Airwallex fee is expected on this route"})`]);
   }
   return rows;
 }
@@ -312,7 +333,8 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       ...amountNotInLine(t, cur),
     ];
     return {
-      approvable: true,
+      // Purser's fee rides on this route too (screenshot pass, 9 November): above its cap nothing is signable here.
+      approvable: platformWarnings(t).length === 0,
       title: `Pay invoice ${str(t.invoice_no)}`,
       sentence: `Pay ${str(t.vendor)} ${cur} ${money(t.amount)} for invoice ${str(t.invoice_no)} by ${str(t.method) || "SWIFT"}${fx ? `, after converting ${fx}` : ", from free EUR"}.`,
       amount: `${cur} ${money(t.amount)}`,
@@ -320,7 +342,7 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       recipient,
       rows,
       short: `pay ${cur} ${money(t.amount)} to ${str(t.beneficiary_name)}`,
-      warnings: [...(str(t.vendor) && str(t.vendor) !== str(t.beneficiary_name) ? [`The account holder (${str(t.beneficiary_name)}) is not the vendor on the invoice (${str(t.vendor)})`] : []), ...docWarn],
+      warnings: [...(str(t.vendor) && str(t.vendor) !== str(t.beneficiary_name) ? [`The account holder (${str(t.beneficiary_name)}) is not the vendor on the invoice (${str(t.vendor)})`] : []), ...docWarn, ...platformWarnings(t)],
       label: `Invoice ${str(t.invoice_no)}`,
       big: money(t.amount),
       unit: cur,
@@ -559,7 +581,7 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
     const n = lines.length;
     const lineWords = (lt: Obj, f: Facts) => {
       const fee = isObj(lt.platform_fee) ? ` + Purser-vergoeding ${str(lt.platform_fee.currency)} ${money(lt.platform_fee.amount)} (${(Number(str(lt.platform_fee.bps)) / 100).toFixed(2)}%) naar ${str(lt.platform_fee.to_account)}` : "";
-      const from = isObj(lt.paying_account) ? `; betaald van ${str(lt.paying_account.name)}, ${str(lt.paying_account.id)}` : "";
+      const from = isObj(lt.paying_account) ? `; betaald van ${payingName(lt.paying_account)} (Airwallex, via Purser), ${str(lt.paying_account.id)}` : "";
       return `${f.amount}${fee} aan ${str(lt.vendor) || str(lt.beneficiary_name)} (factuur ${ownInvoiceNo(lt)})${from}`;
     };
     return {
@@ -667,6 +689,57 @@ export function firstScreenFacts(t: Obj): [string, string][] {
     ...(t.document_total_line !== undefined ? [["On the invoice", `\u201c${str(t.document_total_line).slice(0, 120)}\u201d`] as [string, string]] : []),
     ...(str(t.reason) ? [["Reason", reasonWords(str(t.reason))] as [string, string]] : []),
   ];
+}
+
+/** A payment the payables inbox filed (its signed terms say so, or carry the invoice's own total line). */
+export function isPayablesPayment(t: Obj): boolean {
+  const kind = str(t.kind);
+  return (kind === "invoice_payment" || kind === "supplier_payment") && (str(t.source) === "payables_inbox" || t.document_total_line !== undefined);
+}
+
+export interface PayablesFacts {
+  title: string;
+  amount: string;
+  /** What the first screen shows, before Face ID: who is paid, from which account, Purser's fee, the total out. */
+  first: [string, string][];
+  details: [string, string][];
+  warnings: string[];
+}
+
+/**
+ * A payables payment in the company's language, from its signed terms only (screenshot pass, 9 November: a single
+ * payment was all English on a Dutch phone, and the paying account and Purser's fee were only under Details).
+ */
+export function payablesFacts(t: Obj, lang: PhoneLang): PayablesFacts {
+  const cur = str(t.currency) || "EUR";
+  const mon = (c: string, v: unknown) => (lang === "nl" ? nlMoney(`${c} ${money(v)}`) : `${c} ${money(v)}`);
+  const pct = (bps: unknown) => { const p = (Number(str(bps)) / 100).toFixed(2); return lang === "nl" ? p.replace(".", ",") : p; };
+  const supplier = str(t.kind) === "supplier_payment";
+  const payee = supplier ? `${str(t.beneficiary_name)}, ${str(t.account)}` : `${str(t.beneficiary_name)}, IBAN …${str(t.iban_last4)}`;
+  const first: [string, string][] = [[ph(lang, "ph.payee"), payee]];
+  if (t.document_total_line !== undefined) first.push([ph(lang, "ph.on_invoice"), `\u201c${str(t.document_total_line).slice(0, 120)}\u201d`]);
+  if (isObj(t.paying_account)) first.push([ph(lang, "ph.paid_from"), ph(lang, "ph.paid_from_value", { name: payingName(t.paying_account), id: str(t.paying_account.id) })]);
+  if (isObj(t.platform_fee)) {
+    const f = t.platform_fee;
+    first.push([ph(lang, "ph.fee"), ph(lang, "ph.fee_value", { amount: mon(str(f.currency), f.amount), pct: pct(f.bps), to: str(f.to_account) })]);
+    const out = outflowOf(t);
+    if (out) first.push([ph(lang, "ph.total_out"), ph(lang, "ph.total_out_value", { amount: mon(cur, fromCentsStr(out.cents)) })]);
+  }
+  if (str(t.reason)) first.push([ph(lang, "ph.reason"), ph(lang, `ph.reason.${str(t.reason)}`) === `ph.reason.${str(t.reason)}` ? reasonWords(str(t.reason)) : ph(lang, `ph.reason.${str(t.reason)}`)]);
+  const c = isObj(t.conversion) ? t.conversion : null;
+  const reserve = supplier ? t.fee_reserve : t.fee_max;
+  const details: [string, string][] = [
+    [ph(lang, "ph.invoice"), ph(lang, "ph.invoice_value", { no: str(t.invoice_no), ref: str(t.reference) })],
+    [ph(lang, "ph.method"), `${str(t.method)}${str(t.clearing) ? ` (${str(t.clearing)})` : ""}${!supplier && str(t.bic) ? `, BIC ${str(t.bic)}` : ""}`],
+    [ph(lang, "ph.bank_fee"), centsOf(reserve) ? ph(lang, "ph.bank_fee_value", { amount: mon(cur, reserve) }) : ph(lang, "ph.bank_fee_none")],
+    [ph(lang, "ph.conversion"), c ? ph(lang, "ph.conversion_value", { sell: mon(str(c.sell_currency), c.sell_amount), buy: mon(str(c.buy_currency), c.buy_amount), rate: str(c.client_rate) }) : ph(lang, "ph.conversion_none", { cur })],
+  ];
+  const warnings: string[] = [];
+  if (str(t.vendor) && str(t.vendor) !== str(t.beneficiary_name)) warnings.push(ph(lang, "ph.w_holder", { holder: str(t.beneficiary_name), vendor: str(t.vendor) }));
+  if (t.document_total_line !== undefined && str(t.document_currency) !== cur) warnings.push(ph(lang, "ph.w_line_currency", { found: str(t.document_currency) || ph(lang, "ph.w_no_currency"), cur }));
+  if (amountNotInLine(t, cur).length) warnings.push(ph(lang, "ph.w_amount_not_in_line", { amount: mon(cur, t.amount) }));
+  if (platformWarnings(t).length) warnings.push(ph(lang, "ph.w_fee_cap", { bps: str(isObj(t.platform_fee) ? t.platform_fee.bps : "") }));
+  return { title: ph(lang, "ph.pay_invoice", { no: str(t.invoice_no) }), amount: mon(cur, t.amount), first, details, warnings };
 }
 
 /** "0,03" (a decimal comma, as many phones type it) reads as 0.03; nothing else is guessed. */
@@ -1064,9 +1137,9 @@ function serializeRegistration(c: PublicKeyCredential): Obj {
   };
 }
 
-function passkeyError(e: unknown): string {
+function passkeyError(e: unknown, lang?: PhoneLang): string {
   const name = e instanceof Error ? e.name : "";
-  if (name === "NotAllowedError" || name === "AbortError") return "Cancelled. Nothing was signed.";
+  if (name === "NotAllowedError" || name === "AbortError") return lang ? ph(lang, "ph.cancelled") : "Cancelled. Nothing was signed.";
   if (name === "InvalidStateError") return "This phone already has a passkey for this site.";
   if (name === "SecurityError") return "The passkey cannot be used on this address.";
   return `The passkey did not answer: ${e instanceof Error ? e.message : String(e)}`;
@@ -1153,18 +1226,20 @@ export function againstAdvice(decision: "APPROVED" | "REJECTED", review: { recom
  * owners_execute signs the account's Execute digest from the hashed terms), a rejection the rejection hash. Says on
  * `status` why not, with `retry` true when the same button may be pressed again.
  */
-async function askPasskey(o: PhoneProposal, terms: Obj, decision: "APPROVED" | "REJECTED", credentials: { id: string }[], status: HTMLElement):
+async function askPasskey(o: PhoneProposal, terms: Obj, decision: "APPROVED" | "REJECTED", credentials: { id: string }[], status: HTMLElement, lang?: PhoneLang):
   Promise<{ assertion: Obj; retry?: undefined } | { assertion: null; retry: boolean }> {
   const rejecting = decision === "REJECTED";
-  status.textContent = rejecting ? "Waiting for Face ID to reject…" : "Waiting for Face ID…";
+  // The payables pages pass their language; the Kit 11 pages stay English.
+  const say = (key: string, english: string, vars: Record<string, string> = {}) => (lang ? ph(lang, key, vars) : english);
+  status.textContent = rejecting ? say("ph.waiting_reject", "Waiting for Face ID to reject…") : say("ph.waiting_face_id", "Waiting for Face ID…");
   // Rejecting is always safe, so it does not need the terms to check out; approving does.
   const again = rejecting ? { ok: true, problem: "" } : await checkOption(o);
   if (!again.ok) {
-    status.textContent = `Not signed: ${again.problem}.`;
+    status.textContent = say("ph.not_signed", `Not signed: ${again.problem}.`, { problem: str(again.problem) });
     return { assertion: null, retry: false };
   }
   if (Date.parse(o.expires_at) - Date.now() < 3000) {
-    status.textContent = "This proposal has expired. Nothing was signed.";
+    status.textContent = say("ph.expired", "This proposal has expired. Nothing was signed.");
     return { assertion: null, retry: false };
   }
   let cred: PublicKeyCredential | null;
@@ -1179,11 +1254,11 @@ async function askPasskey(o: PhoneProposal, terms: Obj, decision: "APPROVED" | "
       },
     })) as PublicKeyCredential | null;
   } catch (e) {
-    status.textContent = passkeyError(e);
+    status.textContent = passkeyError(e, lang);
     return { assertion: null, retry: true };
   }
   if (!cred) {
-    status.textContent = "Cancelled. Nothing was signed.";
+    status.textContent = say("ph.cancelled", "Cancelled. Nothing was signed.");
     return { assertion: null, retry: true };
   }
   return { assertion: serializeAssertion(cred) };
@@ -1367,7 +1442,9 @@ async function approvePage(attempt = 0): Promise<void> {
     const f = check.terms ? describeTerms(check.terms, a.names) : null;
     const terms = check.terms ?? parsedOrEmpty(o.canonical);
     // One Face ID for many payments: its own view, every line listed, each line can be taken out first.
-    if (str(terms.kind) === "payment_batch") { void batchView(app, view, o, terms, f, check, enrolled, a.passkey.credentials); return; }
+    if (str(terms.kind) === "payment_batch") { void batchView(app, view, o, terms, f, check, enrolled, a.passkey.credentials, phoneLang(a)); return; }
+    // A payment the payables inbox filed: in the company's language, with the paying account and Purser's fee first.
+    if (isPayablesPayment(terms)) { payablesView(app, view, o, terms, f, check, enrolled, a.passkey.credentials, phoneLang(a)); return; }
     const approvable = check.ok && !!f && f.approvable;
     // When Opus advises against it, saying no comes first, and approving is the slow, second choice (twice in live
     // runs a CFO who meant to reject approved by tapping the proposal).
@@ -1481,24 +1558,116 @@ export function ownInvoiceNo(t: Obj): string {
   return str(t.vendor) && no.endsWith(suffix) ? no.slice(0, -suffix.length) : no;
 }
 
+/** A payables page's frame in its language: the header, the page's language and the way back (Kit 11 pages stay English). */
+function payablesFrame(app: HTMLElement, lang: PhoneLang): void {
+  const sub = document.querySelector<HTMLElement>("header .sub");
+  if (sub) sub.textContent = sub.textContent!.replace(/^Approvals\b/, ph(lang, "ph.header"));
+  document.documentElement.lang = lang;
+  for (const a of app.querySelectorAll<HTMLAnchorElement>("a.back")) a.textContent = ph(lang, "ph.back_payables");
+}
+
 /**
- * A payment batch on the phone (src/policy/batch.ts), in Dutch: the count, the total per currency, and every line (who,
+ * One payment the payables inbox filed, in the company's language (screenshot pass, 9 November): who is paid, the
+ * invoice's own total line, the account it is paid from, Purser's fee and the total out are all on the first screen,
+ * before Face ID; the method, conversion and every hashed field are under Details. Approve signs the terms hash.
+ */
+function payablesView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, terms: Obj, f: Facts | null, check: OptionCheck, enrolled: boolean, credentials: { id: string }[], lang: PhoneLang): void {
+  const p = payablesFacts(terms, lang);
+  const approvable = check.ok && !!f && f.approvable;
+  const against = o.review?.recommendation === "reject";
+  payablesFrame(app, lang);
+  const cd = el("span", "countdown");
+  cd.dataset.expires = o.expires_at;
+  cd.dataset.lang = lang;
+  const why = `${ph(lang, "ph.why_single")}${o.four_eyes ? ` ${ph(lang, "ph.four_eyes")}${o.four_eyes.approved_by.length ? ` (${o.four_eyes.approved_by.join(", ")})` : ""}` : ""}`;
+  const essentials = el("section", "essentials", [
+    el("p", "eyebrow need", [ph(lang, o.four_eyes ? "ph.need_four" : "ph.need"), " · ", cd]),
+    isTestMoney(terms) ? txt("p", "testmoney", ph(lang, "ph.test_money")) : null,
+    txt("h1", "what-title", p.title),
+    el("p", "hero", [txt("span", "hero-label", ph(lang, "ph.amount")), txt("span", "hero-amount num", p.amount)]),
+    el("dl", "key-facts", [
+      ...p.first.flatMap(([k, v]) => [txt("dt", "", k), txt("dd", k === ph(lang, "ph.on_invoice") ? "invoice-line" : "", v)]),
+      txt("dt", "", ph(lang, "ph.agent")), txt("dd", "", ph(lang, "ph.agent_inbox")),
+      txt("dt", "", ph(lang, "ph.why")), txt("dd", "why", why),
+    ]),
+  ]);
+  const warnings = [...p.warnings, ...(o.warnings ?? [])];
+  const alarms = [
+    check.ok ? null : txt("p", "alarm big", ph(lang, "ph.do_not", { problem: str(check.problem) })),
+    ...againstAdvice("APPROVED", o.review).map((w) => txt("p", "alarm big", w)),
+    warnings.length ? el("div", "alarm list", [el("ul", "", warnings.map((w) => txt("li", "", w)))]) : null,
+  ];
+  const approve = el("button", against ? "confirm against" : "confirm", [ph(lang, "ph.approve")]) as HTMLButtonElement;
+  approve.id = "approve";
+  const reject = el("button", against ? "confirm reject" : "reject-btn", [ph(lang, "ph.reject")]) as HTMLButtonElement;
+  reject.id = "reject";
+  for (const b of [approve, reject]) { b.type = "button"; b.disabled = true; }
+  approve.setAttribute("aria-label", `${ph(lang, "ph.approve")}: ${p.title}`);
+  reject.setAttribute("aria-label", `${ph(lang, "ph.reject")}: ${p.title}`);
+  // A double tap must not land on a button: they arm after a moment (later still when the advice is to reject).
+  const armApprove = () => { approve.disabled = !enrolled || !approvable || countdown(o.expires_at).over; };
+  const armReject = () => { reject.disabled = !enrolled; };
+  setTimeout(armApprove, against ? 3000 : 800);
+  setTimeout(armReject, 800);
+  const status = el("p", "sheet-status");
+  status.id = "sign-status";
+  status.setAttribute("role", "status");
+  const cd2 = el("span", "countdown big");
+  cd2.dataset.expires = o.expires_at;
+  cd2.dataset.lang = lang;
+  const review = o.review ? el("div", "review", [txt("p", "eyebrow", o.review.model ? ph(lang, "ph.review_model", { model: modelWord(o.review.model) }) : ph(lang, "ph.review_code")), txt("p", "", o.review.text)]) : null;
+  view.replaceChildren(...[essentials, ...alarms, el("div", against ? "actions against" : "actions", against ? [reject, approve, status] : [approve, reject, status]),
+    el("details", "more", [
+      txt("summary", "", ph(lang, "ph.details")),
+      el("dl", "facts", [
+        ...p.details.flatMap(([k, v]) => [txt("dt", "", k), txt("dd", "", v)]),
+        txt("dt", "", ph(lang, "ph.expires")), el("dd", "", [cd2]),
+        txt("dt", "", ph(lang, "ph.hash")), hashCell(o.terms_sha256),
+        txt("dt", "", ph(lang, "ph.proposal")), txt("dd", "mono", o.proposal_id),
+      ]),
+      review,
+      el("details", "all", [txt("summary", "", ph(lang, "ph.all_terms")), termsTable(terms)]),
+      txt("p", "fineprint", ph(lang, "ph.fineprint")),
+    ]),
+  ].filter((n): n is HTMLElement => n !== null));
+  tickCountdowns();
+  const go = async (decision: "APPROVED" | "REJECTED") => {
+    approve.disabled = true;
+    reject.disabled = true;
+    const got = await askPasskey(o, terms, decision, credentials, status, lang);
+    if (!got.assertion) { armReject(); if (got.retry) armApprove(); return; }
+    status.textContent = ph(lang, "ph.sending");
+    const sent = await api("/api/assertions", { proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, decision, credential: got.assertion })
+      .catch(() => ({ status: 0, data: { error: "the relay cannot be reached" } as Obj }));
+    if (sent.status !== 202) {
+      status.textContent = ph(lang, "ph.not_accepted", { error: str(sent.data.error) || `${sent.status}` });
+      armReject(); armApprove();
+      return;
+    }
+    const home = el("a", "back", [ph(lang, "ph.back_payables")]) as HTMLAnchorElement;
+    home.href = "/";
+    await follow(str(sent.data.ticket), app, home, p.title);
+  };
+  approve.addEventListener("click", () => void go("APPROVED"));
+  reject.addEventListener("click", () => void go("REJECTED"));
+}
+
+/**
+ * A payment batch on the phone (src/policy/batch.ts), in the company's language: the count, the total per currency, and every line (who,
  * how much, which account, the invoice's own total line). Goedkeuren signs the batch hash once; Afwijzen rejects the
  * whole batch; Haal eruit signs the removal of that one line (a new batch of the rest then comes to this page). The page
  * recomputes each line's hash from its terms; a line that does not match makes the batch unsignable here.
  */
-async function batchView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, terms: Obj, f: Facts | null, check: OptionCheck, enrolled: boolean, credentials: { id: string }[]): Promise<void> {
+async function batchView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, terms: Obj, f: Facts | null, check: OptionCheck, enrolled: boolean, credentials: { id: string }[], lang: PhoneLang): Promise<void> {
   const lines = arr(terms.lines).filter(isObj);
   const bad = await badBatchLines(terms);
   const approvable = check.ok && !!f && f.approvable && bad.length === 0;
   const cd = el("span", "countdown");
   cd.dataset.expires = o.expires_at;
-  cd.dataset.lang = "nl";
-  // The payables batch is a Dutch page: the header and the way back say so too (the Kit 11 pages stay English).
-  const sub = document.querySelector<HTMLElement>("header .sub");
-  if (sub) sub.textContent = sub.textContent!.replace(/^Approvals\b/, "Goedkeuringen");
-  document.documentElement.lang = "nl";
-  for (const a of app.querySelectorAll<HTMLAnchorElement>("a.back")) a.textContent = "← Overzicht";
+  cd.dataset.lang = lang;
+  payablesFrame(app, lang);
+  const mon = (text: string) => (lang === "nl" ? nlMoney(text) : text);
+  const pct = (bps: unknown) => { const p = (Number(str(bps)) / 100).toFixed(2); return lang === "nl" ? p.replace(".", ",") : p; };
   const status = el("p", "sheet-status");
   status.setAttribute("role", "status");
   const list = el("ol", "batch-lines");
@@ -1506,25 +1675,25 @@ async function batchView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, 
   for (const l of lines) {
     const t = isObj(l.terms) ? l.terms : {} as Obj;
     const lf = describeTerms(t, {});
-    const out = el("button", "secondary small", ["Haal eruit"]) as HTMLButtonElement;
+    const out = el("button", "secondary small", [ph(lang, "ph.take_out")]) as HTMLButtonElement;
     out.type = "button";
     out.disabled = true;
-    out.setAttribute("aria-label", `Haal factuur ${ownInvoiceNo(t)} uit deze batch (met Face ID)`);
+    out.setAttribute("aria-label", ph(lang, "ph.take_out_label", { no: ownInvoiceNo(t) }));
     out.addEventListener("click", () => void removeLine(str(l.proposal_id), ownInvoiceNo(t)));
     removers.push(out);
     list.append(el("li", "batch-line", [
-      el("div", "bl-head", [txt("span", "bl-who", str(t.vendor) || str(t.beneficiary_name)), txt("span", "bl-amount num", nlMoney(lf.amount))]),
-      txt("p", "bl-meta", [`Factuur ${ownInvoiceNo(t)}`, lineAccount(t)].filter(Boolean).join(" · ")),
+      el("div", "bl-head", [txt("span", "bl-who", str(t.vendor) || str(t.beneficiary_name)), txt("span", "bl-amount num", mon(lf.amount))]),
+      txt("p", "bl-meta", [ph(lang, "ph.line_invoice", { no: ownInvoiceNo(t) }), lineAccount(t)].filter(Boolean).join(" · ")),
       // Purser as a platform (red team 6): which account pays this line, and Purser's fee and where it goes.
-      isObj(t.paying_account) ? txt("p", "bl-meta bl-from", `Betaald van ${str(t.paying_account.name)}, ${str(t.paying_account.id)}`) : null,
-      isObj(t.platform_fee) ? txt("p", "bl-meta bl-fee", nlMoney(`Purser-vergoeding ${str(t.platform_fee.currency)} ${money(t.platform_fee.amount)} (${(Number(str(t.platform_fee.bps)) / 100).toFixed(2).replace(".", ",")}%) naar ${str(t.platform_fee.to_account)}, na de betaling`)) : null,
-      t.document_total_line !== undefined ? txt("p", "bl-line invoice-line", `Op de factuur: \u201c${str(t.document_total_line).slice(0, 120)}\u201d`) : null,
-      ...lf.warnings.map((w) => txt("p", "alarm", w)),
+      isObj(t.paying_account) ? txt("p", "bl-meta bl-from", `${ph(lang, "ph.paid_from")} ${ph(lang, "ph.paid_from_value", { name: payingName(t.paying_account), id: str(t.paying_account.id) })}`) : null,
+      isObj(t.platform_fee) ? txt("p", "bl-meta bl-fee", `${ph(lang, "ph.fee")} ${ph(lang, "ph.fee_value", { amount: mon(`${str(t.platform_fee.currency)} ${money(t.platform_fee.amount)}`), pct: pct(t.platform_fee.bps), to: str(t.platform_fee.to_account) })}`) : null,
+      t.document_total_line !== undefined ? txt("p", "bl-line invoice-line", `${ph(lang, "ph.on_invoice")}: \u201c${str(t.document_total_line).slice(0, 120)}\u201d`) : null,
+      ...(isPayablesPayment(t) ? payablesFacts(t, lang).warnings : lf.warnings).map((w) => txt("p", "alarm", w)),
       out,
     ]));
   }
-  const approve = el("button", "confirm", [`Goedkeuren met Face ID (${lines.length} betaling${lines.length === 1 ? "" : "en"})`]) as HTMLButtonElement;
-  const reject = el("button", "reject-btn", ["Hele batch afwijzen"]) as HTMLButtonElement;
+  const approve = el("button", "confirm", [ph(lang, lines.length === 1 ? "ph.approve_n_one" : "ph.approve_n_other", { n: lines.length })]) as HTMLButtonElement;
+  const reject = el("button", "reject-btn", [ph(lang, "ph.reject_batch")]) as HTMLButtonElement;
   for (const b of [approve, reject]) { b.type = "button"; b.disabled = true; }
   approve.id = "approve";
   reject.id = "reject";
@@ -1535,51 +1704,51 @@ async function batchView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, 
   }, 800);
   view.replaceChildren(...[
     el("section", "essentials", [
-      el("p", "eyebrow need", [o.four_eyes ? "Wacht op jouw goedkeuring en die van een tweede persoon" : "Wacht op jouw goedkeuring", " · ", cd]),
-      isTestMoney(terms) ? txt("p", "testmoney", "Testgeld · Airwallex sandbox") : null,
-      txt("h1", "what-title", f ? f.title : o.proposal_id),
-      f ? el("p", "hero", [txt("span", "hero-label", "Totaal"), txt("span", "hero-amount num", nlMoney(f.amount))]) : null,
+      el("p", "eyebrow need", [ph(lang, o.four_eyes ? "ph.need_four" : "ph.need"), " · ", cd]),
+      isTestMoney(terms) ? txt("p", "testmoney", ph(lang, "ph.test_money")) : null,
+      txt("h1", "what-title", ph(lang, lines.length === 1 ? "ph.batch_title_one" : "ph.batch_title_other", { n: lines.length })),
+      f ? el("p", "hero", [txt("span", "hero-label", ph(lang, "ph.total")), txt("span", "hero-amount num", mon(f.amount))]) : null,
       el("dl", "key-facts", [
-        txt("dt", "", "Betalingen"), txt("dd", "", String(lines.length)),
-        txt("dt", "", "Agent"), txt("dd", "", "Payables inbox"),
-        txt("dt", "", "Waarom jij"), txt("dd", "why", "Een leverancier wordt alleen met jouw Face ID van de Airwallex-rekening betaald. Eén Face ID tekent deze hele lijst; elke betaling wordt daarna los gecontroleerd en uitgevoerd."),
+        txt("dt", "", ph(lang, "ph.payments")), txt("dd", "", String(lines.length)),
+        txt("dt", "", ph(lang, "ph.agent")), txt("dd", "", ph(lang, "ph.agent_inbox")),
+        txt("dt", "", ph(lang, "ph.why")), txt("dd", "why", `${ph(lang, "ph.why_batch")}${o.four_eyes ? ` ${ph(lang, "ph.four_eyes")}` : ""}`),
       ]),
     ]),
-    check.ok ? null : txt("p", "alarm big", `Niet goedkeuren: ${check.problem}.`),
-    bad.length ? txt("p", "alarm big", `Niet goedkeuren: de voorwaarden van ${bad.join(", ")} passen niet bij hun hash.`) : null,
-    el("section", "batch", [txt("h2", "", "Wat je goedkeurt"), list]),
+    check.ok ? null : txt("p", "alarm big", ph(lang, "ph.do_not", { problem: str(check.problem) })),
+    bad.length ? txt("p", "alarm big", ph(lang, "ph.do_not_lines", { list: bad.join(", ") })) : null,
+    el("section", "batch", [txt("h2", "", ph(lang, "ph.what_you_approve")), list]),
     el("div", "actions", [approve, reject, status]),
     el("details", "more", [
-      txt("summary", "", "Details"),
-      el("dl", "facts", [txt("dt", "", "Hash"), hashCell(o.terms_sha256), txt("dt", "", "Batch"), txt("dd", "mono", o.proposal_id)]),
+      txt("summary", "", ph(lang, "ph.details")),
+      el("dl", "facts", [txt("dt", "", ph(lang, "ph.hash")), hashCell(o.terms_sha256), txt("dt", "", ph(lang, "ph.batch")), txt("dd", "mono", o.proposal_id)]),
       termsTable(terms),
-      txt("p", "fineprint", "Je passkey tekent de SHA-256 van deze lijst, met per betaling de hash van haar exacte voorwaarden. Deze pagina rekent elke hash zelf na; één gewijzigde betaling maakt de handtekening waardeloos."),
+      txt("p", "fineprint", ph(lang, "ph.fineprint_batch")),
     ]),
   ].filter((n): n is HTMLElement => n !== null));
   tickCountdowns();
   const lock = () => { approve.disabled = true; reject.disabled = true; for (const r of removers) r.disabled = true; };
   const unlock = () => { approve.disabled = !enrolled || !approvable; reject.disabled = !enrolled; for (const r of removers) r.disabled = !enrolled; };
   const send = async (body: Obj, what: string) => {
-    status.textContent = "Handtekening versturen…";
+    status.textContent = ph(lang, "ph.sending");
     const sent = await api("/api/assertions", body).catch(() => ({ status: 0, data: { error: "the relay cannot be reached" } as Obj }));
     if (sent.status !== 202) {
-      status.textContent = `Niet aangenomen: ${str(sent.data.error) || `fout ${sent.status}`}. Er is niets veranderd.`;
+      status.textContent = ph(lang, "ph.not_accepted", { error: str(sent.data.error) || `${sent.status}` });
       unlock();
       return;
     }
-    const home = el("a", "back", ["← Overzicht"]) as HTMLAnchorElement;
+    const home = el("a", "back", [ph(lang, "ph.back_payables")]) as HTMLAnchorElement;
     home.href = "/";
     await follow(str(sent.data.ticket), app, home, what);
   };
   const go = async (decision: "APPROVED" | "REJECTED") => {
     lock();
-    const got = await askPasskey(o, terms, decision, credentials, status);
+    const got = await askPasskey(o, terms, decision, credentials, status, lang);
     if (!got.assertion) { unlock(); return; }
-    await send({ proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, decision, credential: got.assertion }, f ? f.title : o.proposal_id);
+    await send({ proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, decision, credential: got.assertion }, ph(lang, lines.length === 1 ? "ph.batch_title_one" : "ph.batch_title_other", { n: lines.length }));
   };
   async function removeLine(line: string, invoiceNo: string): Promise<void> {
     lock();
-    status.textContent = `Face ID om factuur ${invoiceNo} eruit te halen…`;
+    status.textContent = ph(lang, "ph.taking_out", { no: invoiceNo });
     let cred: PublicKeyCredential | null;
     try {
       cred = (await navigator.credentials.get({ publicKey: {
@@ -1587,12 +1756,12 @@ async function batchView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, 
         allowCredentials: credentials.map((c) => ({ type: "public-key" as const, id: b64urlToBytes(c.id) })), userVerification: "required", timeout: 60_000,
       } })) as PublicKeyCredential | null;
     } catch (e) {
-      status.textContent = passkeyError(e);
+      status.textContent = passkeyError(e, lang);
       unlock();
       return;
     }
-    if (!cred) { status.textContent = "Geannuleerd. Er is niets getekend."; unlock(); return; }
-    await send({ proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, decision: "REMOVE_LINE", line, credential: serializeAssertion(cred) }, `Factuur ${invoiceNo} eruit`);
+    if (!cred) { status.textContent = ph(lang, "ph.cancelled"); unlock(); return; }
+    await send({ proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, decision: "REMOVE_LINE", line, credential: serializeAssertion(cred) }, ph(lang, "ph.taken_out", { no: invoiceNo }));
   }
   approve.addEventListener("click", () => void go("APPROVED"));
   reject.addEventListener("click", () => void go("REJECTED"));

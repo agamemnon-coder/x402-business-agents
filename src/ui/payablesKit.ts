@@ -90,7 +90,7 @@ h2 { font-size: 17px; font-weight: 700; }
 .tile .l { color: var(--muted); font-size: 13px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; display: flex; align-items: center; gap: 6px; }
 .tile .v { margin-top: 6px; font-size: clamp(22px, 2.3vw, 28px); font-weight: 760; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tile .v small { font-size: .62em; font-weight: 650; color: var(--muted); margin-right: 4px; }
-.tile .x { color: var(--muted); font-size: 13px; margin-top: 6px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .x { color: var(--muted); font-size: 13px; margin-top: 6px; line-height: 1.35; overflow-wrap: anywhere; }
 .tile.alert .v { color: var(--bad); } .tile.calm .v { color: var(--ok); }
 .section { margin-top: 28px; }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
@@ -111,6 +111,8 @@ h2 { font-size: 17px; font-weight: 700; }
 a.row:hover { background: color-mix(in srgb, var(--accent-soft) 45%, var(--surface)); }
 .row > * { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row .sup { font-weight: 650; }
+/* A supplier's name and the reason wrap onto a second line rather than end in an ellipsis (screenshot pass, 9 Nov). */
+.row > .sup, .row > .why { white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
 .row .sub { display: block; color: var(--muted); font-size: 12.5px; font-weight: 500; }
 .row .amt { text-align: right; font-weight: 650; font-variant-numeric: tabular-nums; }
 .row .amt .c { color: var(--muted); font-weight: 600; font-size: 12.5px; margin-right: 4px; }

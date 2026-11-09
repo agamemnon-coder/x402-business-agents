@@ -40,7 +40,8 @@ function paymentEurCents(t: PaymentTerms): number | null {
 
 /** A payment line in euro cents for the threshold: an invoice payment's or a supplier payment's outflow; null: unknown. */
 function lineEurCents(kind: string, terms: PaymentTerms): number | null {
-  if (kind === "invoice_payment") return money(terms.amount) ? toCents(terms.amount!) : null;
+  // Purser's fee counts on this route too (9 November): what leaves the EUR balance.
+  if (kind === "invoice_payment") return paymentEurCents(terms);
   if (kind === "supplier_payment") return paymentEurCents(terms);
   return null;
 }
@@ -67,7 +68,10 @@ export function fourEyes(db: DB, p: Pick<ProposalRow, "kind" | "terms_json">): b
   const threshold = toCents(v);
   const t = JSON.parse(p.terms_json) as { amount?: string; card?: { monthly?: string } };
   const over = (s: string | undefined) => (s !== undefined && /^\d+\.\d{2}$/.test(s) ? toCents(s) > threshold : false);
-  if (p.kind === "invoice_payment") return over(t.amount);
+  if (p.kind === "invoice_payment") {
+    const eur = supplierPaymentEur(p.terms_json);
+    return eur === null ? over(t.amount) : over(eur);
+  }
   if (p.kind === "supplier_payment") {
     const eur = supplierPaymentEur(p.terms_json);
     return eur === null || over(eur);

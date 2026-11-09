@@ -20,6 +20,8 @@ import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
 import { checkPayingAccount } from "../airwallex/binding.js";
+import { takePlatformFee } from "./supplierPayment.js";
+import type { PlatformFields, SupplierPaymentTerms } from "../payouts/plan.js";
 import { partyOf, snapshot, treasuryState, type InvoicePaymentTerms } from "../agents/euroBill.js";
 import { sameLedgerInvoice } from "../lib/invoiceKey.js";
 import { eurInFlightCents } from "../policy/available.js";
@@ -31,6 +33,12 @@ export interface InvoicePaymentResult {
   conversionId: string | null;
   transfer: Transfer;
 }
+
+/**
+ * What this payment takes from the EUR balance as signed: the amount, the fee reserve and Purser's fee (on this route
+ * too since 9 November). Purser's fee is held from here until it is settled (src/policy/payoutLock.ts).
+ */
+const outCents = (t: InvoicePaymentTerms) => toCents(t.amount) + toCents(t.fee_max) + toCents((t as PlatformFields).platform_fee?.amount ?? "0.00");
 
 /** The retry of a transfer create that Airwallex refused for its own fee configuration (see FEE_RETRY_CODES). */
 export interface FeeRetry {
@@ -80,13 +88,13 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
       if (begun("conversion")) return;
       const eurAfter = pre.eurAvailableCents + (t.conversion ? toCents(t.conversion.buy_amount) : 0);
       // Other payouts written but not yet at Airwallex are spoken for too (this one's own row, on a retry, is not).
-      if (eurAfter - toCents(t.amount) - toCents(t.fee_max) < pre.eurFloorCents + pre.eurObligationsCents + eurInFlightCents(db, t.transfer_request_id, proposalId)) {
+      if (eurAfter - outCents(t) < pre.eurFloorCents + pre.eurObligationsCents + eurInFlightCents(db, t.transfer_request_id, proposalId)) {
         throw new Error("EUR would now drop under its floor, commitments and payouts under way; a new proposal is needed");
       }
       // Spoken for in the same transaction as the check: the USD a conversion sells, and the euros the payout needs beyond
       // what the conversion brings in, until the conversion is recorded and the payout row is written.
       if (t.conversion) holdPayout(db, proposalId, t.conversion.request_id, "USD", toCents(t.conversion.sell_amount));
-      holdPayout(db, proposalId, t.transfer_request_id, "EUR", toCents(t.amount) + toCents(t.fee_max) - (t.conversion ? toCents(t.conversion.buy_amount) : 0));
+      holdPayout(db, proposalId, t.transfer_request_id, "EUR", outCents(t) - (t.conversion ? toCents(t.conversion.buy_amount) : 0));
     }, now());
   });
 
@@ -117,7 +125,7 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
           audit(db, "awx-executor", conv.adopted ? "fx.adopted" : "fx.converted", conv.conversionId, { quote_id: c.quote_id, request_id: c.request_id, buy: `EUR ${fromCents(conv.buyAmountCents)}`, sell: `USD ${fromCents(conv.sellAmountCents)}`, approval_sha256: sha });
         }
         releasePayout(db, c.request_id);
-        if (!db.prepare("SELECT 1 FROM transfers WHERE request_id = ?").get(terms.transfer_request_id)) holdPayout(db, proposalId, terms.transfer_request_id, "EUR", toCents(terms.amount) + toCents(terms.fee_max));
+        if (!db.prepare("SELECT 1 FROM transfers WHERE request_id = ?").get(terms.transfer_request_id)) holdPayout(db, proposalId, terms.transfer_request_id, "EUR", outCents(terms));
       }).immediate());
       conversionId = conv.conversionId;
     }
@@ -126,16 +134,18 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
       // Resumed between the conversion and the payout: the euro check on a fresh balance, now the conversion is in it.
       await exclusive(async () => {
         const fresh = treasuryState(db, await snapshot(db, rail, `resume:${proposalId}`));
-        if (fresh.eurAvailableCents - toCents(terms.amount) - toCents(terms.fee_max) < fresh.eurFloorCents + fresh.eurObligationsCents + eurInFlightCents(db, terms.transfer_request_id, proposalId)) {
+        if (fresh.eurAvailableCents - outCents(terms) < fresh.eurFloorCents + fresh.eurObligationsCents + eurInFlightCents(db, terms.transfer_request_id, proposalId)) {
           throw new Error("EUR would now drop under its floor, commitments and payouts under way; a new proposal is needed");
         }
-        if (!db.prepare("SELECT 1 FROM transfers WHERE request_id = ?").get(terms.transfer_request_id)) holdPayout(db, proposalId, terms.transfer_request_id, "EUR", toCents(terms.amount) + toCents(terms.fee_max));
+        if (!db.prepare("SELECT 1 FROM transfers WHERE request_id = ?").get(terms.transfer_request_id)) holdPayout(db, proposalId, terms.transfer_request_id, "EUR", outCents(terms));
       });
     }
     // Step 2: the payout, under its own request_id (the transfers row is its outbox entry). Step 3: its settlement.
     const transfer = await step(db, proposalId, 2, "transfer", terms.transfer_request_id, () => submitTransfer(db, rail, terms, sha, now, feeRetry), now);
     const final = sim ? await step(db, proposalId, 3, "settle", transfer.id, () => settleInSandbox(db, rail, sim, transfer), now) : transfer;
     recordFee(db, final, terms, sha);
+    // Purser's fee, once the payment is PAID (never failing it); a live payment's is taken when the follow-up reads it PAID.
+    if (final.status === "PAID") await takePlatformFee(db, rail as never, terms as unknown as SupplierPaymentTerms, sha, proposalId);
     await snapshot(db, rail, `post-exec:${proposalId}`);
     finishExecution(db, proposalId, final.status === "PAID" ? "EXECUTED" : "FAILED", { conversion_id: conversionId, transfer_id: final.id, status: final.status });
     return { conversionId, transfer: final };
@@ -179,7 +189,7 @@ async function floorReasonNow(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
   } catch (e) {
     return `the EUR balance could not be read (${(e as Error).message}); no attempt without the floor check`;
   }
-  return s.eurAvailableCents - toCents(t.amount) - toCents(t.fee_max) < s.eurFloorCents + s.eurObligationsCents + eurInFlightCents(db, t.transfer_request_id, t.proposal_id)
+  return s.eurAvailableCents - outCents(t) < s.eurFloorCents + s.eurObligationsCents + eurInFlightCents(db, t.transfer_request_id, t.proposal_id)
     ? "EUR would now drop under its floor, commitments and payouts under way; a new proposal is needed" : null;
 }
 
@@ -205,6 +215,12 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
     await exclusive(() => db.transaction(() => {
       db.prepare("INSERT INTO transfers (request_id, invoice_no, amount, currency, method, fee_estimate, status, approval_sha256, updated_at, origin_json) VALUES (?, ?, ?, 'EUR', 'SWIFT', ?, 'SUBMITTING', ?, ?, ?)")
         .run(t.transfer_request_id, t.invoice_no, t.amount, t.fee_max, sha, new Date().toISOString(), originJson());
+      // Purser's fee stays spoken for from here until it is settled, in the write that ends the hold (as a supplier payment's).
+      const fee = (t as PlatformFields).platform_fee;
+      if (fee) {
+        db.prepare(`INSERT OR IGNORE INTO platform_fees (request_id, proposal_id, payout_request_id, amount, currency, destination, fee_transfer_id, status, approval_sha256, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, NULL, 'DUE', ?, ?)`).run(fee.request_id, t.proposal_id, t.transfer_request_id, fee.amount, fee.currency, fee.to_account, sha, new Date().toISOString());
+      }
       releasePayout(db, t.transfer_request_id);
     }).immediate());
   }
