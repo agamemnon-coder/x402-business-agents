@@ -4,6 +4,7 @@
 // changed since it was filed.
 
 import { createHash } from "node:crypto";
+import { creditCounts, net } from "../ap/credits.js";
 import { ledgerInvoiceNo } from "../ap/ledgerKey.js";
 import { apInvoice, apInvoices, type ApInvoiceRow } from "../ap/store.js";
 import type { DB } from "../db/open.js";
@@ -139,6 +140,9 @@ export interface Amounts { currency: string; total: string; count: number }
 export interface MonthData {
   key: string; month: string; from: string; to: string;
   received: Amounts[];
+  /** Credit notes the month brought, each its own line; and what was open at the month's end after them. */
+  credits: { vendor: string; invoice_no: string; amount: string }[];
+  open_net: Amounts[];
   paid: { vendor: string; invoice_no: string; amount: string; paid_on: string }[];
   open: { vendor: string; invoice_no: string; amount: string; due_date: string; status: string }[];
   blocked: { vendor: string; invoice_no: string; amount: string; reasons: string[]; why?: { code: string; detail: string; signals: string[] }[] }[];
@@ -189,6 +193,10 @@ export function monthData(db: DB, month: string): MonthData {
   const atEnd = new Map(all.filter((i) => day(i.received_at) <= to).map((i) => [i.id, statusAt(db, i, end)]));
   const open = all.filter((i) => OPEN.has(atEnd.get(i.id) ?? "") && !((paidOn.get(i.id) ?? "9999") <= to));
   const blocked = received.filter((i) => atEnd.get(i.id) === "blocked");
+  // Credit notes: those the month brought, listed; those held at the month's end set against the open invoices.
+  const creditNotes = apInvoices(db).filter((i) => i.doc_kind === "credit_note" && MONEY.test(i.total) && i.currency);
+  const creditsAtEnd = creditNotes.filter((i) => day(i.received_at) <= to).map((i) => ({ ...i, status: statusAt(db, i, end) as ApInvoiceRow["status"] }));
+  const netting = net(open, creditsAtEnd);
   const spend = sumBy(paid, (i) => `${i.vendor}\u0000${i.currency}`, (i) => toCents(i.total));
   // What Airwallex charged for the month's payments, and the FX bought for them (from the approved terms).
   const fees: { currency: string; total: string }[] = [];
@@ -206,6 +214,8 @@ export function monthData(db: DB, month: string): MonthData {
   return {
     key: `month:${month}`, month, from, to,
     received: byCur(received),
+    credits: creditsAtEnd.filter((i) => inMonth(i.received_at) && creditCounts(i)).map((i) => ({ vendor: i.vendor, invoice_no: i.invoice_no, amount: `${i.currency} ${i.total}` })),
+    open_net: netting.net.map((x) => ({ currency: x.currency, total: fromCents(x.cents), count: x.count })),
     paid: paid.map((i) => ({ vendor: i.vendor, invoice_no: i.invoice_no, amount: `${i.currency} ${i.total}`, paid_on: paidOn.get(i.id)! })),
     open: open.map((i) => ({ vendor: i.vendor, invoice_no: i.invoice_no, amount: `${i.currency} ${i.total}`, due_date: i.due_date, status: atEnd.get(i.id)! })),
     blocked: blocked.map((i) => ({ vendor: i.vendor, invoice_no: i.invoice_no, amount: `${i.currency} ${i.total}`, reasons: i.findings.filter((f) => f.level === "block").map((f) => f.detail),

@@ -31,5 +31,5 @@ export function maskedReading(r: ApReading): ApReading & { account_sha256: strin
  * whether Purser can pay it now (ready, in any currency it pays: supplier payments pay more than EUR; S4).
  */
 export function publicInvoice(inv: ApInvoiceRow): Omit<ApInvoiceRow, "reading"> & { reading: ApReading & { account_sha256: string }; status_words: string; payable: boolean } {
-  return { ...inv, reading: maskedReading(inv.reading), status_words: STATUS_WORDS[inv.status] ?? inv.status.replace(/_/g, " "), payable: inv.status === "ready" && payableCurrency(inv.currency) };
+  return { ...inv, reading: maskedReading(inv.reading), status_words: STATUS_WORDS[inv.status] ?? inv.status.replace(/_/g, " "), payable: inv.status === "ready" && inv.doc_kind !== "credit_note" && payableCurrency(inv.currency) };
 }

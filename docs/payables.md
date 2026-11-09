@@ -174,6 +174,10 @@ Points the documentation leaves open; each is a setting or a single line, not a 
   resent copy never blocks its original. A reminder is never paid on its own: it is blocked as the copy of an invoice on
   file, or goes to a person.
 - **Credit notes** written as a negative or bracketed total are never paid; storno and correction keywords mark one.
+  A credit note is set against the same supplier's open invoices in its currency (`src/ap/credits.ts`): the insight
+  panel shows the credit as its own line and what is open after it, the month report lists the month's credit notes
+  and the open total after them, and the cloud's `/v1/insights` does the same. It never takes a supplier below zero:
+  credit with no open invoice left is listed as owed back. Paying one is refused whatever its status.
 - **E-mail:** at most 20 PDFs per e-mail (the rest refused with the reason), one bad attachment does not stop the others,
   an e-mail inside an e-mail is not opened. A PDF over 200 pages or taking over 10 s is refused; models get at most
   50,000 characters (the checks still read the whole text).

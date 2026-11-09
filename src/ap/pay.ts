@@ -37,6 +37,8 @@ export function transferReason(glAccount: string): string {
 export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id: string, now = new Date(), reader?: Asker): Promise<PayOutcome> {
   const inv = apInvoice(db, id);
   if (!inv) throw new Error(`no payables invoice ${id}`);
+  // A credit note is money the supplier owes back: it is set against its invoices, never paid out (whatever its status).
+  if (inv.doc_kind === "credit_note") throw new Error(`${id} is a credit note: it is never paid; it lowers what is open to ${inv.vendor || "the supplier"}`);
   if (inv.status !== "ready") {
     const why = inv.findings.filter((f) => f.level !== "warn").map((f) => f.detail).join("; ");
     throw new Error(`${id} is ${inv.status.replace(/_/g, " ")}, not ready to pay${why ? `: ${why}` : ""}`);

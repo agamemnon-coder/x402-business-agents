@@ -346,7 +346,7 @@ async function load(){
   const wait=x.waiting.waiting_cfo+x.waiting.needs_review+x.waiting.needs_vendor;
   const top=x.blocked.reasons.slice().sort((a,b)=>b.count-a.count)[0];
   tiles.append(
-    tile('Open','wallet',amounts(sum(x.open))||'None',rest(sum(x.open),'invoice')||'Nothing to pay'),
+    sum(x.credits)?tile('Open','wallet',amounts(sum(x.open_net))||'None',rest(sum(x.open),'invoice')+' · after credit '+x.credits.map(a=>a.currency+' '+amount(a.total)).join(' · ')):tile('Open','wallet',amounts(sum(x.open))||'None',rest(sum(x.open),'invoice')||'Nothing to pay'),
     tile('Due in 7 days','calendar-range',amounts(sum(x.due_7))||'None',sum(x.due_30)?'30 days: '+x.due_30.map(a=>a.currency+' '+amount(a.total)).join(' · '):'Nothing due in 30 days'),
     tile('Overdue','clock',amounts(sum(x.overdue))||'None',sum(x.overdue)?rest(sum(x.overdue),'invoice'):'Every open invoice is in time',sum(x.overdue)?'alert':'calm'),
     tile('Waits for you','inbox',String(wait),x.waiting.waiting_cfo+' Face ID · '+x.waiting.needs_review+' check · '+x.waiting.needs_vendor+' supplier'),

@@ -20,6 +20,7 @@ export const PDF_STRINGS = {
     cosigner: "Tweede handtekening", passkey: "Face ID (passkey) op de exacte voorwaarden", typed: "getypte hashprefix (geen passkey)", proposal: "Voorstel",
     termsHash: "Hash van de voorwaarden", signed: "Ondertekende hash", verify: "Controleren: npm run verify controleert elke goedkeuring met Face ID opnieuw tegen de opgeslagen handtekening en de vastgelegde publieke sleutel, zonder netwerk.",
     noApproval: "Geen goedkeuring gevonden in de administratie.", none: "geen",
+    credits: "Creditnota's (verrekend met de openstaande facturen van die leverancier)", openNet: "Nog open na creditnota's",
     month: "Maandrapport", received: "Ontvangen facturen", paid: "Betaald", open: "Nog open (stand aan het einde van de maand)", blocked: "Geblokkeerd", reasons: "Reden",
     spend: "Uitgaven per leverancier", fees: "Kosten overboekingen", fxTitle: "Valuta", conversions: "omwisselingen", pnl: "Winst en verlies (grootboek)", revenue: "Opbrengsten",
     expense: "Kosten", result: "Resultaat", count: "Aantal", status: "Status", nothing: "Niets in deze periode.",
@@ -44,6 +45,7 @@ export const PDF_STRINGS = {
     cosigner: "Second signature", passkey: "Face ID (passkey) on the exact terms", typed: "typed hash prefix (no passkey)", proposal: "Proposal",
     termsHash: "Terms hash", signed: "Signed hash", verify: "To check: npm run verify re-checks every Face ID approval against the stored signature and the pinned public key, offline.",
     noApproval: "No approval found in the books.", none: "none",
+    credits: "Credit notes (set against that supplier's open invoices)", openNet: "Still open after credit notes",
     month: "Month report", received: "Invoices received", paid: "Paid", open: "Still open (as at the end of the month)", blocked: "Blocked", reasons: "Reason",
     spend: "Spend per supplier", fees: "Transfer fees", fxTitle: "Currency", conversions: "conversions", pnl: "Profit and loss (ledger)", revenue: "Revenue",
     expense: "Expenses", result: "Result", count: "Count", status: "Status", nothing: "Nothing in this period.",
@@ -248,6 +250,12 @@ export function monthReportPdf(company: string, m: MonthData, lang: Lang = "nl")
     table(doc, [t.supplier, t.invoice, t.paidOn, t.amount], m.paid.map((p) => [p.vendor, p.invoice_no, pdfDate(p.paid_on, lang), money(p.amount, lang)]), [175, 110, 90, 120], [3], lang);
     section(doc, t.open);
     table(doc, [t.supplier, t.invoice, t.dueDate, t.status, t.amount], m.open.map((o) => [o.vendor, o.invoice_no, o.due_date ? pdfDate(o.due_date, lang) : t.none, t.apStatus[o.status] ?? o.status.replace(/_/g, " "), money(o.amount, lang)]), [150, 95, 75, 75, 100], [4], lang);
+    // Credit notes as their own lines, then the open total after them; a report with none shows neither.
+    if (m.credits?.length) {
+      section(doc, t.credits);
+      table(doc, [t.supplier, t.invoice, t.amount], m.credits.map((c) => [c.vendor, c.invoice_no, money(c.amount, lang)]), [220, 135, 140], [2], lang);
+      kv(doc, [[t.openNet, (m.open_net ?? []).map((a) => formatMoney(a.currency, a.total, lang)).join(", ") || t.none]]);
+    }
     section(doc, t.blocked);
     table(doc, [t.supplier, t.invoice, t.amount, t.reasons], m.blocked.map((b) => [b.vendor, b.invoice_no, money(b.amount, lang), (b.why ?? b.reasons.map((detail) => ({ code: "", detail, signals: [] }))).map((f) => blockedReason(f, lang)).join("; ")]), [110, 85, 90, 210], [2], lang);
     section(doc, t.spend);

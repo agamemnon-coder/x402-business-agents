@@ -6,6 +6,7 @@ import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { skeleton } from "../policy/fraudCore.js";
 import { bookable } from "./books.js";
+import { asAmounts, net } from "./credits.js";
 import { ledgerInvoiceNo } from "./ledgerKey.js";
 import { apInvoices, type ApInvoiceRow } from "./store.js";
 
@@ -13,6 +14,12 @@ export interface Amounts { currency: string; total: string; count: number }
 export interface Insights {
   as_of: string;
   open: Amounts[];
+  /** Credit notes set against open invoices of the same supplier and currency (its own line, never folded in). */
+  credits: Amounts[];
+  /** What is open after those credits. */
+  open_net: Amounts[];
+  /** Credit with no open invoice to set it against: owed back by the supplier. */
+  credits_left: { vendor: string; currency: string; total: string }[];
   due_7: Amounts[];
   due_30: Amounts[];
   overdue: Amounts[];
@@ -51,9 +58,11 @@ const addDays = (d: Date, n: number) => new Date(d.getTime() + n * 86_400_000).t
 export function insights(db: DB, asOf = new Date()): Insights {
   // A credit note is money the supplier owes back, never an amount open to pay (screenshot pass S2): left out here; a
   // person sets it against the supplier's invoices.
-  const all = apInvoices(db).filter((i) => i.doc_kind !== "credit_note");
+  const every = apInvoices(db);
+  const all = every.filter((i) => i.doc_kind !== "credit_note");
   const today = asOf.toISOString().slice(0, 10);
   const open = all.filter((i) => OPEN.has(i.status));
+  const netting = net(open, every);
   const due = (to: string) => open.filter((i) => i.due_date && i.due_date >= today && i.due_date <= to);
 
   const reasons = new Map<string, number>();
@@ -106,6 +115,9 @@ export function insights(db: DB, asOf = new Date()): Insights {
   return {
     as_of: asOf.toISOString(),
     open: byCurrency(open),
+    credits: asAmounts(netting.applied),
+    open_net: asAmounts(netting.net),
+    credits_left: netting.left.map((x) => ({ vendor: x.vendor, currency: x.currency, total: fromCents(x.cents) })),
     due_7: byCurrency(due(addDays(asOf, 7))),
     due_30: byCurrency(due(addDays(asOf, 30))),
     overdue: byCurrency(open.filter((i) => i.due_date && i.due_date < today)),

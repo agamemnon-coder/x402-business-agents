@@ -114,8 +114,18 @@ export async function insights(db: TenantDb, now: Date): Promise<unknown> {
   const today = now.toISOString().slice(0, 10);
   const plus = (d: number) => new Date(now.getTime() + d * 86_400_000).toISOString().slice(0, 10);
   const cents = (t: string) => (/^\d+\.\d{2}$/.test(t) ? Math.round(Number(t) * 100) : 0);
-  const open = rows.filter((r) => !["paid", "rejected"].includes(r.status));
+  // A credit note is never open to pay: it is set against the same supplier's open invoices in its currency (down to
+  // zero), shown as its own line (src/ap/credits.ts does the same on the runner).
+  const isCredit = (r: (typeof rows)[number]) => (JSON.parse(r.body_json) as { doc_kind?: string }).doc_kind === "credit_note";
+  const open = rows.filter((r) => !isCredit(r) && !["paid", "rejected", "blocked"].includes(r.status));
   const sum = (rs: typeof rows) => rs.reduce<Record<string, number>>((m, r) => ({ ...m, [r.currency]: (m[r.currency] ?? 0) + cents(r.total) }), {});
+  const owed = new Map<string, number>();
+  for (const r of open) owed.set(`${r.vendor.toLowerCase()}|${r.currency}`, (owed.get(`${r.vendor.toLowerCase()}|${r.currency}`) ?? 0) + cents(r.total));
+  const credit = new Map<string, number>();
+  for (const r of rows.filter((x) => isCredit(x) && !["rejected", "blocked"].includes(x.status))) credit.set(`${r.vendor.toLowerCase()}|${r.currency}`, (credit.get(`${r.vendor.toLowerCase()}|${r.currency}`) ?? 0) + cents(r.total));
+  const credits: Record<string, number> = {};
+  for (const [k, c] of credit) { const used = Math.min(c, owed.get(k) ?? 0); const cur = k.slice(k.lastIndexOf("|") + 1); if (used > 0) credits[cur] = (credits[cur] ?? 0) + used; }
+  const openNet = Object.fromEntries(Object.entries(sum(open)).map(([cur, v]) => [cur, v - (credits[cur] ?? 0)]));
   const blocked: Record<string, number> = {};
   for (const r of rows.filter((x) => x.status === "blocked")) {
     const findings = (JSON.parse(r.body_json) as { findings?: { code: string; level: string }[] }).findings ?? [];
@@ -130,6 +140,8 @@ export async function insights(db: TenantDb, now: Date): Promise<unknown> {
   return {
     as_of: today,
     open_cents: sum(open),
+    credits_cents: credits,
+    open_net_cents: openNet,
     due_7_days_cents: sum(open.filter((r) => r.due_date >= today && r.due_date <= plus(7))),
     due_30_days_cents: sum(open.filter((r) => r.due_date >= today && r.due_date <= plus(30))),
     overdue_cents: sum(open.filter((r) => r.due_date && r.due_date < today)),
