@@ -5,7 +5,7 @@
 // page as text (textContent), never as HTML; account numbers come masked from the runner. The console reads and
 // manages; it never pays: a payment is approved on the CFO's phone with Face ID, through the runner's approval flow.
 
-import { consoleKeys, DATA_NL, I18N_JS, MESSAGES, t as tr } from "../../src/ui/i18n.js";
+import { consoleKeys, DATA_NL, I18N_JS, keysUsedIn, MESSAGES, t as tr } from "../../src/ui/i18n.js";
 import { escAttr, ICON_SET, PAYABLES_CSS, svg } from "../../src/ui/payablesKit.js";
 import { fromB64 } from "./crypto.js";
 import { INTER_WOFF2_B64 } from "./font.gen.js";
@@ -23,6 +23,10 @@ ul.plain li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .tabs a { padding: 7px 11px; border-radius: 10px; text-decoration: none; color: var(--muted); font-weight: 600; font-size: 14px; white-space: nowrap; }
 .tabs a[aria-current="page"] { color: var(--text); background: var(--sunken); }
 .who-am-i { display: none; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; white-space: nowrap; }
+/* The tabs never give way: the person and company line shrinks with an ellipsis instead (desktop cut "Instellingen" short). */
+header.top nav.tabs { flex: none; }
+.who-am-i { min-width: 0; flex: 1 1 auto; justify-content: flex-end; }
+.who-am-i #who { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .signed-in .who-am-i { display: inline-flex; }
 .who-am-i button { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 6px; border-radius: 8px; display: inline-flex; }
 .who-am-i button:hover { color: var(--text); background: var(--sunken); }
@@ -562,10 +566,13 @@ const nonce = () => {
   return btoa(s);
 };
 
+/** The keys the console's script and HTML ask for by name: always in its catalogue, whatever the prefix rules say. */
+const USED = keysUsedIn(SCRIPT + BODY);
+
 /** The console's page: one document, its config in a meta tag (the origin, the passkey RP id, the mail domain). */
 export function consolePage(n: string, cfg: { origin: string; rpId: string; mailDomain: string }): string {
   // Both languages' words (the console's only) as JSON: the script picks the person's, Dutch until it knows.
-  const keep = (k: string) => consoleKeys(k as keyof typeof MESSAGES.en);
+  const keep = (k: string) => consoleKeys(k as keyof typeof MESSAGES.en) || USED.has(k);
   const cat = (lang: "nl" | "en") => ({ lang, m: Object.fromEntries(Object.entries(MESSAGES[lang]).filter(([k]) => keep(k))), data: lang === "nl" ? DATA_NL : {} });
   const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
   const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__I18N__", () => I18N_JS).replace("__ICONS__", ICON_SET(ICONS));
