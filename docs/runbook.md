@@ -35,8 +35,9 @@ at the runner's last sync (`src/ops/publicHealth.ts`). Codes (`src/ops/health.ts
 | `action_stuck` | An action has been executing for over 10 minutes | Restart the runner: it resumes each action from its last finished step (B2) | The action finishes or fails |
 | `hold_stale` | A spend hold older than an hour | Usually a crashed payment: restart the runner; it settles or releases the hold | The hold is settled or released |
 | `airwallex_disagrees` | An Airwallex webhook the ledger cannot explain (a payout or conversion Purser did not make, a card live while frozen), in the last day | Treat as a possible compromise of the Airwallex account: check it in the Airwallex web app; pull the emergency stop if a payout is unknown | A day passes with no new disagreement |
+| `passkey_failures_spike` | 10 or more refused passkey submissions in the last hour (bad signatures, unknown or revoked passkeys, wrong enrolment codes). Refusals are counted per hour and reason code in `passkey_failures`, never logged with the sender's text; `/metrics` shows `passkey_failures_1h`, `passkey_failures_24h` and one line per code | Nothing was approved by them. Check the codes: `wrong_enrol_code` while no one is enrolling, or `bad_signature` / `unknown_passkey` in bulk, means someone is trying; if an enrolment window is open, close it and issue a new code | The last hour has fewer than 10 |
 
-Tested in the red team against stand-ins: `velocity_stop`; not yet triggered live. Tested: all codes (`test/health.test.ts`, `test/airwallex-events.test.ts`).
+Tested in the red team against stand-ins: `velocity_stop`; not yet triggered live. Tested: all codes (`test/health.test.ts`, `test/airwallex-events.test.ts`, `test/passkey-failures.test.ts`).
 
 ## The emergency stop
 

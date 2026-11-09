@@ -9,6 +9,7 @@ import { z } from "zod";
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simplewebauthn/server";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
+import { countFailure, type FailureCode } from "./failures.js";
 import { canonicalTerms, rejectionSha256, termsHash, type Terms } from "../lib/terms.js";
 import { checkChanges, type PolicyChangeTerms } from "../executors/policyChange.js";
 import { approvedAlternative, createProposal, decide, expireDue, type ProposalRow } from "../policy/approvals.js";
@@ -78,14 +79,14 @@ const DECIDED = new Set(["APPROVED", "EXECUTING", "EXECUTED", "FAILED"]);
 export async function processAssertion(db: DB, item: InboxItem, now = new Date()): Promise<AssertionOutcome> {
   // Anyone can post to the relay, so a submission whose signature was not verified never reaches the hash-chained
   // audit log (it would let strangers fill it, with their own text). The phone still gets the reason.
-  const refuse = (proposalId: string | null, reason: string): AssertionOutcome => ({ status: "refused", proposalId, message: reason });
+  const refuse = (code: FailureCode, proposalId: string | null, reason: string): AssertionOutcome => { countFailure(db, code, now); return { status: "refused", proposalId, message: reason }; };
   // Refusals that say something about the ledger or about a verified signature are audited, in our own words.
-  const refuseAudited = (proposalId: string, reason: string, credentialId?: string): AssertionOutcome => {
+  const refuseAudited = (code: FailureCode, proposalId: string, reason: string, credentialId?: string): AssertionOutcome => {
     audit(db, "system", "passkey.refused", proposalId, { reason, ticket: item.ticket, credential: credentialId ? credentialId.slice(0, 8) : null }, now);
-    return refuse(proposalId, reason);
+    return refuse(code, proposalId, reason);
   };
   const body = parse(AssertionBody, item.body);
-  if (!body) return refuse(null, "malformed submission");
+  if (!body) return refuse("malformed", null, "malformed submission");
   const response = body.credential as AuthenticationResponseJSON;
   const sha = assertionSha256(response);
   const getProposal = (id: string) => db.prepare("SELECT * FROM proposals WHERE proposal_id = ?").get(id) as ProposalRow | undefined;
@@ -100,44 +101,44 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
   }
 
   const p = getProposal(body.proposal_id);
-  if (!p) return refuse(null, `no proposal ${body.proposal_id}`);
+  if (!p) return refuse("unknown_proposal", null, `no proposal ${body.proposal_id}`);
   if (body.decision === "REJECTED") return processRejection(db, item, p, response, sha, now);
   if (DECIDED.has(p.status)) return { status: "already", proposalId: p.proposal_id, message: `${p.proposal_id} is already ${p.status}` };
   // An EXPIRED proposal still gets its signature checked, so a late approval is recorded as too late (F1).
-  if (p.status !== "PENDING_APPROVAL" && p.status !== "EXPIRED") return refuse(p.proposal_id, `${p.proposal_id} is ${p.status}, not waiting for approval`);
+  if (p.status !== "PENDING_APPROVAL" && p.status !== "EXPIRED") return refuse("not_pending", p.proposal_id, `${p.proposal_id} is ${p.status}, not waiting for approval`);
   let intact: boolean;
   try {
     intact = termsHash(JSON.parse(p.terms_json) as Terms) === p.terms_sha256;
   } catch {
     intact = false;
   }
-  if (!intact) return refuseAudited(p.proposal_id, `the stored terms of ${p.proposal_id} no longer match their hash`);
+  if (!intact) return refuseAudited("terms_tampered", p.proposal_id, `the stored terms of ${p.proposal_id} no longer match their hash`);
   const alternative = approvedAlternative(db, p);
-  if (alternative) return refuse(p.proposal_id, `another option, ${alternative}, was already approved`);
+  if (alternative) return refuse("other_option_approved", p.proposal_id, `another option, ${alternative}, was already approved`);
 
   const pk = passkeyById(db, response.id);
-  if (!pk) return refuse(p.proposal_id, "this passkey is not enrolled");
-  if (pk.status !== "ACTIVE") return refuse(p.proposal_id, "this passkey was revoked");
+  if (!pk) return refuse("unknown_passkey", p.proposal_id, "this passkey is not enrolled");
+  if (pk.status !== "ACTIVE") return refuse("revoked_passkey", p.proposal_id, "this passkey was revoked");
   // Block 1: an owners_execute approval signs the account's Execute digest (checked against the terms), and only an
   // owner of that account counts; every other proposal signs its terms hash.
   let signedHash: string;
   try {
     signedHash = approvalHashOf(p);
   } catch (e) {
-    return refuseAudited(p.proposal_id, (e as Error).message.slice(0, 240));
+    return refuseAudited("verify_error", p.proposal_id, (e as Error).message.slice(0, 240));
   }
   if (p.kind === OWNERS_EXECUTE) {
-    if (!passkeyOwnersOn()) return refuse(p.proposal_id, "on-chain owner signing is off (KIT11_PASSKEY_OWNERS)");
+    if (!passkeyOwnersOn()) return refuse("owner_signing_off", p.proposal_id, "on-chain owner signing is off (KIT11_PASSKEY_OWNERS)");
     // The account in the terms must be the one this world created with the two passkeys, not one a proposer named.
     const made = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'owners.account_created' ORDER BY seq DESC LIMIT 1").get() as { payload_json: string } | undefined;
     const account = made ? String((JSON.parse(made.payload_json) as { account?: unknown }).account ?? "") : "";
-    if (account.toLowerCase() !== String((JSON.parse(p.terms_json) as { account?: unknown }).account ?? "").toLowerCase()) return refuse(p.proposal_id, "the account in these terms is not the passkey account this world created");
+    if (account.toLowerCase() !== String((JSON.parse(p.terms_json) as { account?: unknown }).account ?? "").toLowerCase()) return refuse("wrong_account", p.proposal_id, "the account in these terms is not the passkey account this world created");
     let owner: string | null;
     try { owner = ownerSignerOf(JSON.parse(p.terms_json) as OwnersExecuteTerms, pk.public_key); } catch { owner = null; }
-    if (!owner) return refuse(p.proposal_id, "this passkey is not an owner of the account, so it cannot sign this on chain");
+    if (!owner) return refuse("not_owner", p.proposal_id, "this passkey is not an owner of the account, so it cannot sign this on chain");
   }
   const v = await verifyApprovalSignature(response, signedHash, pk);
-  if (!v.ok) return refuse(p.proposal_id, v.reason);
+  if (!v.ok) return refuse("bad_signature", p.proposal_id, v.reason);
 
   const approver = `${pk.label} (passkey ${pk.credential_id.slice(0, 8)})`;
   const passkey = { credentialId: pk.credential_id, assertionSha256: sha };
@@ -165,7 +166,7 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
         : { status: "too_late", proposalId: p.proposal_id, message: `${p.proposal_id} expired at ${p.expires_at}; nothing was approved` };
     }).immediate();
   } catch (e) {
-    return refuseAudited(p.proposal_id, (e as Error).message.slice(0, 240), response.id);
+    return refuseAudited("store_error", p.proposal_id, (e as Error).message.slice(0, 240), response.id);
   }
 }
 
@@ -175,18 +176,18 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
  * signature can ever match. A late or repeated rejection changes nothing.
  */
 async function processRejection(db: DB, item: InboxItem, p: ProposalRow, response: AuthenticationResponseJSON, sha: string, now: Date): Promise<AssertionOutcome> {
-  const refuse = (reason: string): AssertionOutcome => ({ status: "refused", proposalId: p.proposal_id, message: reason });
+  const refuse = (code: FailureCode, reason: string): AssertionOutcome => { countFailure(db, code, now); return { status: "refused", proposalId: p.proposal_id, message: reason }; };
   expireDue(db, now);
   const current = (db.prepare("SELECT status, expires_at FROM proposals WHERE proposal_id = ?").get(p.proposal_id) as { status: string; expires_at: string });
   if (current.status === "EXPIRED") return { status: "already", proposalId: p.proposal_id, message: `${p.proposal_id} expired at ${current.expires_at}; nothing to reject` };
   if (current.status !== "PENDING_APPROVAL") return { status: "already", proposalId: p.proposal_id, message: `${p.proposal_id} is already ${current.status}; nothing to reject` };
 
   const pk = passkeyById(db, response.id);
-  if (!pk) return refuse("this passkey is not enrolled");
-  if (pk.status !== "ACTIVE") return refuse("this passkey was revoked");
+  if (!pk) return refuse("unknown_passkey", "this passkey is not enrolled");
+  if (pk.status !== "ACTIVE") return refuse("revoked_passkey", "this passkey was revoked");
   const signed = rejectionSha256(p.terms_sha256);
   const v = await verifyApprovalSignature(response, signed, pk);
-  if (!v.ok) return refuse(v.reason);
+  if (!v.ok) return refuse("bad_signature", v.reason);
 
   const approver = `${pk.label} (passkey ${pk.credential_id.slice(0, 8)})`;
   try {
@@ -202,7 +203,7 @@ async function processRejection(db: DB, item: InboxItem, p: ProposalRow, respons
     }).immediate();
   } catch (e) {
     audit(db, "system", "passkey.refused", p.proposal_id, { reason: (e as Error).message.slice(0, 240), ticket: item.ticket, credential: pk.credential_id.slice(0, 8) }, now);
-    return refuse((e as Error).message.slice(0, 240));
+    return refuse("store_error", (e as Error).message.slice(0, 240));
   }
 }
 
@@ -216,40 +217,40 @@ const POLICY_MAX_TTL_MS = 15 * 60 * 1000;
  * proposal, approved by that same signature (method passkey). Nothing unsigned ever becomes a proposal.
  */
 export async function processPolicyRequest(db: DB, item: InboxItem, now = new Date()): Promise<AssertionOutcome> {
-  const refuse = (reason: string): AssertionOutcome => ({ status: "refused", proposalId: null, message: reason });
+  const refuse = (code: FailureCode, reason: string): AssertionOutcome => { countFailure(db, code, now); return { status: "refused", proposalId: null, message: reason }; };
   const body = parse(PolicyBody, item.body);
-  if (!body) return refuse("malformed submission");
+  if (!body) return refuse("malformed", "malformed submission");
   let terms: PolicyChangeTerms;
   try {
     terms = JSON.parse(body.canonical) as PolicyChangeTerms;
-    if (canonicalTerms(terms) !== body.canonical || termsHash(terms) !== body.terms_sha256) return refuse("the terms do not hash to the signed hash");
+    if (canonicalTerms(terms) !== body.canonical || termsHash(terms) !== body.terms_sha256) return refuse("terms_hash_mismatch", "the terms do not hash to the signed hash");
   } catch {
-    return refuse("malformed submission");
+    return refuse("malformed", "malformed submission");
   }
-  if (terms.kind !== "policy_change" || !Array.isArray(terms.changes) || typeof terms.reason !== "string" || terms.reason.length > 500) return refuse("malformed submission");
-  if (!POLICY_ID.test(terms.proposal_id)) return refuse("a policy change made on the phone has an id like C-0a1b2c3d");
+  if (terms.kind !== "policy_change" || !Array.isArray(terms.changes) || typeof terms.reason !== "string" || terms.reason.length > 500) return refuse("malformed", "malformed submission");
+  if (!POLICY_ID.test(terms.proposal_id)) return refuse("policy_invalid", "a policy change made on the phone has an id like C-0a1b2c3d");
   const left = Date.parse(terms.expires_at) - now.getTime();
-  if (!(left > 0) || left > POLICY_MAX_TTL_MS) return refuse("a policy change must expire within 15 minutes");
+  if (!(left > 0) || left > POLICY_MAX_TTL_MS) return refuse("policy_invalid", "a policy change must expire within 15 minutes");
   const response = body.credential as AuthenticationResponseJSON;
   const asAssertion: InboxItem = { ...item, kind: "assertion", proposal_id: terms.proposal_id, body: JSON.stringify({ proposal_id: terms.proposal_id, terms_sha256: body.terms_sha256, credential: response }) };
   const existing = db.prepare("SELECT terms_sha256 FROM proposals WHERE proposal_id = ?").get(terms.proposal_id) as { terms_sha256: string } | undefined;
   // A resend of the same signed change is answered like any repeated approval; another change may not reuse the id.
-  if (existing) return existing.terms_sha256 === body.terms_sha256 ? processAssertion(db, asAssertion, now) : refuse(`${terms.proposal_id} already exists`);
+  if (existing) return existing.terms_sha256 === body.terms_sha256 ? processAssertion(db, asAssertion, now) : refuse("policy_exists", `${terms.proposal_id} already exists`);
   try {
     checkChanges(db, terms.changes);
   } catch (e) {
-    return refuse((e as Error).message);
+    return refuse("policy_invalid", (e as Error).message);
   }
   // The phone's page comes from the relay; a compromised one could slip a loosening into any Face ID prompt. So the
   // phone may only tighten; loosening is proposed on the runner and approved like any proposal (review N2).
   const looser = (terms.changes as { key: string; label?: string; from: string; to: string }[]).filter(loosens);
   if (looser.length) {
-    return refuse(`the phone can only tighten the CFO policy; ${looser.map((c) => c.label ?? c.key).join(", ")} would loosen it. Propose that on the runner (npm run policy -- set …) and approve it with Face ID`);
+    return refuse("policy_loosens", `the phone can only tighten the CFO policy; ${looser.map((c) => c.label ?? c.key).join(", ")} would loosen it. Propose that on the runner (npm run policy -- set …) and approve it with Face ID`);
   }
   const pk = passkeyById(db, response.id);
-  if (!pk || pk.status !== "ACTIVE") return refuse("this passkey is not the enrolled one");
+  if (!pk || pk.status !== "ACTIVE") return refuse("unknown_passkey", "this passkey is not the enrolled one");
   const v = await verifyApprovalSignature(response, body.terms_sha256, pk);
-  if (!v.ok) return refuse(v.reason);
+  if (!v.ok) return refuse("bad_signature", v.reason);
   createProposal(db, { terms, createdBy: "human" }, now);
   return processAssertion(db, asAssertion, now);
 }
@@ -263,25 +264,25 @@ export interface RegistrationOutcome {
 /** A new passkey: the window must be open, the code right, and the passkey created against the window. */
 export async function processRegistration(db: DB, item: InboxItem, opts: { label: string }, now = new Date()): Promise<RegistrationOutcome> {
   // Only a submission with the right code is audited (it came from whoever holds the code), in our own words.
-  const refuse = (reason: string): RegistrationOutcome => ({ status: "refused", message: reason, credentialId: null });
-  const refuseAudited = (reason: string, detail = reason): RegistrationOutcome => {
+  const refuse = (code: FailureCode, reason: string): RegistrationOutcome => { countFailure(db, code, now); return { status: "refused", message: reason, credentialId: null }; };
+  const refuseAudited = (code: FailureCode, reason: string, detail = reason): RegistrationOutcome => {
     audit(db, "system", "passkey.enrol_refused", null, { reason, ticket: item.ticket }, now);
-    return refuse(detail);
+    return refuse(code, detail);
   };
   const body = parse(RegistrationBody, item.body);
-  if (!body) return refuse("malformed submission");
+  if (!body) return refuse("malformed", "malformed submission");
   const response = body.credential as RegistrationResponseJSON;
   const pinned = passkeyById(db, response.id);
   if (pinned?.status === "ACTIVE") return { status: "enrolled", message: `passkey ${response.id.slice(0, 8)} is enrolled for ${pinned.label}`, credentialId: pinned.credential_id };
   const waiting = db.prepare("SELECT fingerprint FROM passkey_pending WHERE credential_id = ?").get(response.id) as { fingerprint: string } | undefined;
   if (waiting) return { status: "pending", message: `passkey created, fingerprint ${waiting.fingerprint}; it counts once the runner confirms that fingerprint`, credentialId: response.id };
   const w = openWindow(db, now);
-  if (!w) return refuse("no enrolment window is open; ask for a new code");
+  if (!w) return refuse("no_enrol_window", "no enrolment window is open; ask for a new code");
   // The relay checked the code too; the runner does not rely on that.
-  if (codeSha256(body.code) !== w.code_sha256) return refuse("wrong enrolment code");
+  if (codeSha256(body.code) !== w.code_sha256) return refuse("wrong_enrol_code", "wrong enrolment code");
   const v = await verifyEnrolmentResponse(response, w);
-  if (!v.ok) return refuseAudited("the new passkey did not verify against the enrolment window", v.reason);
-  if (v.credentialId !== response.id) return refuseAudited("the credential id does not match the new passkey");
+  if (!v.ok) return refuseAudited("enrol_verify_failed", "the new passkey did not verify against the enrolment window", v.reason);
+  if (v.credentialId !== response.id) return refuseAudited("enrol_credential_mismatch", "the credential id does not match the new passkey");
   let fingerprint: string;
   try {
     fingerprint = pendPasskey(db, {
@@ -289,7 +290,7 @@ export async function processRegistration(db: DB, item: InboxItem, opts: { label
       aaguid: v.aaguid, registrationJson: JSON.stringify(response), label: w.label ?? opts.label,
     }, now);
   } catch (e) {
-    return refuseAudited((e as Error).message.slice(0, 240));
+    return refuseAudited("enrol_store_error", (e as Error).message.slice(0, 240));
   }
   // Not pinned yet: the person on the runner confirms the fingerprint the phone shows (security review M3).
   return { status: "pending", message: `passkey created, fingerprint ${fingerprint}; it counts once the runner confirms that fingerprint`, credentialId: v.credentialId };
