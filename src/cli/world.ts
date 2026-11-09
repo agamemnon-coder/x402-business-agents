@@ -184,7 +184,7 @@ if (cmd === "serve") {
 } else if (cmd === "packwise-renewal") {
   // D22: the merchant charges the renewal at the Pro price to the Sourcing agent's card; Airwallex decides. Nothing is
   // recorded here: the webhook (hosted relay) or the runner's poll records it, and only then does the agent hear it.
-  const iss = issuingFromEnv();
+  const iss = issuingFromEnv(db);
   const card = cardOf(db, "sourcing");
   if (!iss || !card) { console.error("no Airwallex sandbox keys or no Sourcing card in this world (npm run cards -- setup)"); process.exit(1); }
   const pro = PLANS["packwise-pro"]!;

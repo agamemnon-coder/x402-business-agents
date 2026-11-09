@@ -64,13 +64,13 @@ async function executeApproved(db: DB, proposalId: string): Promise<void> {
       } catch (e) {
         failed = e;
       }
-      await syncCardsAfterPolicy(db, proposalId, issuingFromEnv()?.rail ?? null);
+      await syncCardsAfterPolicy(db, proposalId, issuingFromEnv(db)?.rail ?? null);
       if (failed) throw failed;
       return;
     }
     executePolicyChange(db, proposalId);
     // A card limit in the policy only counts once the card at Airwallex has it too.
-    await syncCardsAfterPolicy(db, proposalId, issuingFromEnv()?.rail ?? null);
+    await syncCardsAfterPolicy(db, proposalId, issuingFromEnv(db)?.rail ?? null);
     return;
   }
   if (row.kind === "quarantine_release") {
@@ -78,7 +78,7 @@ async function executeApproved(db: DB, proposalId: string): Promise<void> {
     return;
   }
   if (row.kind === "task_card") {
-    const issuing = issuingFromEnv();
+    const issuing = issuingFromEnv(db);
     if (!issuing) throw new Error("Airwallex sandbox keys are not set; the task card cannot be issued");
     await executeTaskCard(db, issuing.rail, proposalId);
     return;
@@ -106,7 +106,7 @@ async function executeApproved(db: DB, proposalId: string): Promise<void> {
     return;
   }
   if (row.kind === "agent_onboard") {
-    const issuing = issuingFromEnv();
+    const issuing = issuingFromEnv(db);
     if (!issuing) throw new Error("Airwallex sandbox keys are not set; the card cannot be issued");
     await executeAgentOnboard(db, issuing.rail, proposalId);
     return;
