@@ -772,6 +772,19 @@ CREATE TABLE IF NOT EXISTS ap_documents (
   received_at TEXT NOT NULL
 );
 
+-- A scanned invoice's two model readings (src/ap/scan.ts): whether they agree, on what they differ, and where on the
+-- page each field was read (boxes, 0..1 of the page) so a person checks each field against the image.
+CREATE TABLE IF NOT EXISTS ap_scan_readings (
+  invoice_id TEXT PRIMARY KEY,
+  doc_sha256 TEXT NOT NULL,
+  agreed INTEGER NOT NULL CHECK (agreed IN (0, 1)),
+  differ_json TEXT NOT NULL,
+  boxes_json TEXT NOT NULL,
+  readings INTEGER NOT NULL,
+  model TEXT NOT NULL,
+  read_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS ap_invoices (
   id TEXT PRIMARY KEY,
   doc_sha256 TEXT NOT NULL UNIQUE REFERENCES ap_documents(sha256),

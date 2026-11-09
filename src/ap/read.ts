@@ -9,7 +9,11 @@ import type { DB } from "../db/open.js";
 import { apInstruction, ApReadingSchema, cleanText, parseApFallback, readingCheck, type ApReading } from "./reading.js";
 
 /** What the inbox needs of a reader: ClaudeReader, or a stand-in in tests. */
-export interface Asker { ask: ClaudeReader["ask"] }
+export interface Asker {
+  ask: ClaudeReader["ask"];
+  /** Reading a scan (a PDF with no text layer) as pages; a reader without it leaves scans to a person. */
+  askPdf?: ClaudeReader["askPdf"];
+}
 
 /** The expense accounts a supplier invoice may be booked to (a model may only suggest one of these). */
 export const EXPENSE_ACCOUNTS: Record<string, string> = Object.fromEntries(Object.entries(CHART).filter(([n]) => /^[56]\d{3}$/.test(n)));

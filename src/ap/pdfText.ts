@@ -1,4 +1,4 @@
-// Payables: the text layer of a PDF (library unpdf, pinned). A scan has none; OCR is a later step.
+// Payables: the text layer of a PDF (library unpdf, pinned). A scan has none: it is read from its pages (src/ap/scan.ts).
 //
 // A PDF is untrusted input, so it is never read on the main thread (red team round 2: a 612 KB PDF kept pdf.js busy and
 // stopped the whole process, and a timer cannot interrupt a busy thread). First its compressed streams are inflated
