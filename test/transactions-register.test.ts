@@ -59,11 +59,10 @@ describe("the transactions register", () => {
     expect(before.check.without_booking.length).toBe(before.check.moved);
     syncLedger(db, NOW);
     const after = transactionRegister(db);
-    // Every rail the ledger feed books is matched; Airi purchases are not booked by the feed yet, and the register says so.
-    for (const r of after.rows.filter((x) => x.moved && x.rail !== "airwallex_airi")) expect([r.id, r.reconciliation]).toEqual([r.id, "matched"]);
-    expect(by(after.rows, "airi:act-1").reconciliation).toBe("missing_booking");
+    // Every rail is matched once the feed has run, Airi purchases included (booked like a card charge).
+    for (const r of after.rows.filter((x) => x.moved)) expect([r.id, r.reconciliation]).toEqual([r.id, "matched"]);
     expect(by(after.rows, "transfer:req-1").booking.booked).toBe("-112.50");
-    expect(after.check).toMatchObject({ unreconciled: 1, without_booking: ["airi:act-1"], bookings_without_movement: [] });
+    expect(after.check).toMatchObject({ unreconciled: 0, without_booking: [], bookings_without_movement: [] });
     for (const r of after.rows.filter((x) => !x.moved)) expect(r.reconciliation).toBe("not_applicable");
   });
 
