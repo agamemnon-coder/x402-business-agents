@@ -18,6 +18,7 @@ import type { FraudFinding } from "../policy/fraud.js";
 import { checkInvoice, ibanSha, type Invoice } from "./invoice.js";
 import { eurInFlightCents } from "../policy/available.js";
 import { checkpoint } from "../policy/saga.js";
+import { referenceProblem } from "../payouts/routes.js";
 
 export const SEED_REFERENCE = "kit11-seed-funding";
 /** The proposal number of invoice terms before createProposal assigns the real one (assignId); never stored. */
@@ -204,6 +205,11 @@ export async function proposeInvoicePayment(
   quoteValidity: "MIN_1" | "MIN_15" = "MIN_15",
   document?: { total_line: string; currency: string; reason?: string },
 ): Promise<InvoiceOutcome> {
+  const refWrong = referenceProblem(inv.reference);
+  if (refWrong) {
+    audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason: refWrong }, now);
+    return { kind: "escalated", reason: refWrong };
+  }
   const check = checkInvoice(db, inv, invoiceText);
   if (!check.ok) {
     // Blocked before any Airwallex call: no balance read, no quote, no proposal.

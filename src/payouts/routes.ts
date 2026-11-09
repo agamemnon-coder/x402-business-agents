@@ -221,3 +221,18 @@ export function maskAccount(d: BankDetails): string {
   if (d.routingType === "sort_code") { const s = digits(d.routingValue); return `${acct}, sort code ${s.slice(0, 2)}-${s.slice(2, 4)}-${s.slice(4)} (${d.country})`; }
   return `${acct}, BIC ${digits(d.swiftCode)} (${d.country})`;
 }
+
+/**
+ * The longest payment reference Purser sends, on every route it pays: SWIFT carries four lines of 35 characters of
+ * remittance information (MT103 field 70), and the Airwallex sandbox's transfer validation accepted 140 on 9 November
+ * 2026. No shorter limit is documented for a route Purser pays, so none is assumed (red team round 4: the cap could
+ * never fire, because readings were cut to 120 first).
+ */
+export const MAX_REFERENCE = 140;
+/** Why a payment reference cannot be sent as it is, or null. */
+export function referenceProblem(reference: string): string | null {
+  const n = [...reference].length;
+  if (!reference.trim()) return "the payment has no reference";
+  if (n > MAX_REFERENCE) return `the payment reference is ${n} characters, too long: SWIFT carries ${MAX_REFERENCE} at most (4 lines of 35); a person shortens it before it is paid`;
+  return null;
+}

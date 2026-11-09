@@ -19,7 +19,7 @@ import { counterpartyAllowed, feeReserveDefaultCents, frozen, policyValue } from
 import { heldPayoutCents } from "../policy/payoutLock.js";
 import { proposalExpiry } from "../policy/treasury.js";
 import { getSetting } from "../world/settings.js";
-import { routeLimitReason, type Method } from "./routes.js";
+import { referenceProblem, routeLimitReason, type Method } from "./routes.js";
 
 export interface SupplierPaymentTerms extends Terms {
   kind: "supplier_payment";
@@ -148,6 +148,8 @@ export async function proposeSupplierPayment(
     audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason, ...extra }, now);
     return { kind: "escalated", reason };
   };
+  const refWrong = referenceProblem(inv.reference);
+  if (refWrong) return escalate(refWrong);
   const ben = payoutBeneficiary(db, inv.vendor);
   if (!ben) return escalate(`${inv.vendor} has no account on file to pay in ${inv.currency}; it is added through a verified new-supplier request first`);
   if (ben.currency !== inv.currency) return escalate(`${inv.vendor}'s account on file receives ${ben.currency}, but the invoice is in ${inv.currency}: a person checks which account to pay`);

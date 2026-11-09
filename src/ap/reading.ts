@@ -381,7 +381,8 @@ export function parseApFallback(text: string): ApReading {
     iban,
     bic,
     ...accountOf(text, iban, bic),
-    reference: cleanText(reference || invoiceNo),
+    // Kept up to 200 characters, so a reference too long for SWIFT is refused at payment, never cut silently.
+    reference: cleanText(reference || invoiceNo, 200),
     gl_account: "",
   };
 }

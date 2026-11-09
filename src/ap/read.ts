@@ -17,7 +17,7 @@ export const EXPENSE_ACCOUNTS: Record<string, string> = Object.fromEntries(Objec
 const tidy = (r: ApReading): ApReading => ({
   ...r,
   // Every text field is cleaned of control and invisible format characters and capped (red team round 3).
-  vendor: cleanText(r.vendor), invoice_no: cleanText(r.invoice_no, 60), currency: r.currency.trim().toUpperCase(), reference: cleanText(r.reference),
+  vendor: cleanText(r.vendor), invoice_no: cleanText(r.invoice_no, 60), currency: r.currency.trim().toUpperCase(), reference: cleanText(r.reference, 200),
   iban: r.iban.replace(/\s+/g, "").toUpperCase(), bic: r.bic.replace(/\s+/g, "").toUpperCase(), account_number: r.account_number.replace(/[\s-]/g, "").toUpperCase(), routing_type: r.routing_type.trim().toLowerCase(), routing_value: r.routing_value.replace(/[\s-]/g, ""), bank_country: r.bank_country.trim().toUpperCase(), vat_id: r.vat_id.replace(/\s+/g, "").toUpperCase(),
   gl_account: r.gl_account.trim(),
 });

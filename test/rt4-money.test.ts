@@ -2,7 +2,8 @@
 import { request } from "node:http";
 import type { AddressInfo } from "node:net";
 import { describe, expect, it } from "vitest";
-import { LICENSOR, MANUFACTURER } from "../src/agents/euroBill.js";
+import { LICENSOR, MANUFACTURER, proposeInvoicePayment } from "../src/agents/euroBill.js";
+import { referenceProblem } from "../src/payouts/routes.js";
 import { insights } from "../src/ap/insights.js";
 import { payApInvoice, rejectApInvoice, syncPayments } from "../src/ap/pay.js";
 import { parseApFallback } from "../src/ap/reading.js";
@@ -171,4 +172,19 @@ describe("red team 4, money", () => {
     expect(w.inv(b).status).toBe("needs_review");
     expect(w.inv(b).findings.some((f) => f.code === "rejected_before" && f.detail.includes(a))).toBe(true);
   });
+
+  it("11: a reference too long for SWIFT is refused at payment: it reaches the cap uncut, and every planner applies it", async () => {
+    const long = "R".repeat(150);
+    const text = EN.replace("Payment reference: BTX-2026-21", `Payment reference: ${long}`);
+    expect(parseApFallback(text).reference).toBe(long);
+    const w = await world();
+    // A PDF line wraps a 150-character token, so the long reading is set as a model's reading would be stored.
+    const id = await w.add(EN, "long.pdf");
+    w.db.prepare("UPDATE ap_invoices SET reading_json = json_set(reading_json, '$.reference', ?) WHERE id = ?").run(long, id);
+    await expect(payApInvoice(w.db, w.awx, id, new Date())).rejects.toThrow(/140 at most/);
+    const out = await proposeInvoicePayment(w.db, w.awx, { invoice_no: "X-1 · Bergtex Textil GmbH", vendor: MANUFACTURER.name, amount: "10.00", currency: "EUR", due_date: "2026-11-30", iban: MANUFACTURER.iban, bic: MANUFACTURER.bic, reference: "R".repeat(141) }, "text", new Date());
+    expect(out).toMatchObject({ kind: "escalated", reason: expect.stringMatching(/140 at most/) });
+    expect(referenceProblem("R".repeat(140))).toBeNull();
+  });
 });
+

@@ -19,7 +19,7 @@ import { ledgerInvoiceNo } from "./ledgerKey.js";
 import { cleanText, totalLine, totalLineCurrency } from "./reading.js";
 import { apInvoice, apInvoices, setStatus, type ApInvoiceRow, type Finding } from "./store.js";
 import { payoutBeneficiary, proposeSupplierPayment, type SupplierPaymentOutcome } from "../payouts/plan.js";
-import { payableCurrency } from "../payouts/routes.js";
+import { MAX_REFERENCE, payableCurrency, referenceProblem } from "../payouts/routes.js";
 
 export type PayOutcome = InvoiceOutcome | SupplierPaymentOutcome;
 
@@ -34,12 +34,8 @@ export function transferReason(glAccount: string): string {
   return glAccount === "6200" ? "goods_purchased" : "professional_business_services";
 }
 
-/**
- * The longest payment reference Purser sends: SWIFT carries four lines of 35 characters (remittance information),
- * and the Airwallex sandbox's validation accepted 140 on 9 November 2026. A longer one would be cut along the way, so
- * the CFO would sign a reference the supplier never sees whole: it is refused, and a person shortens it.
- */
-export const MAX_REFERENCE = 140;
+/** The longest payment reference Purser sends (src/payouts/routes.ts). */
+export { MAX_REFERENCE };
 
 export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id: string, now = new Date(), reader?: Asker): Promise<PayOutcome> {
   const inv = apInvoice(db, id);
@@ -57,7 +53,8 @@ export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id:
   const invoiceNo = ledgerInvoiceNo(r.invoice_no, r.vendor);
   const due = r.due_date || now.toISOString().slice(0, 10);
   const reference = r.reference || r.invoice_no;
-  if ([...reference].length > MAX_REFERENCE) throw new Error(`${id}'s payment reference is ${[...reference].length} characters, too long: SWIFT carries ${MAX_REFERENCE} at most (4 lines of 35); a person shortens it before it is paid`);
+  const refWrong = referenceProblem(reference);
+  if (refWrong) throw new Error(`${id}: ${refWrong}`);
   // The supplier's own total line and its currency go with the terms, so the CFO sees them beside the amount.
   const document = { total_line: totalLine(text), currency: totalLineCurrency(text), reason: transferReason(inv.gl_account) };
   // A supplier added through the inbox carries its route; a Kit 11 payee on file is paid in EUR as before.
