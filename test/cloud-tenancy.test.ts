@@ -77,8 +77,9 @@ describe("two companies", () => {
   });
 
   it("cannot read, change or revoke the other company's objects on any route that names one", async () => {
-    // Every route that names an object ({id}); /v1/reports/{name} names a report, not an object.
-    const withId = ROUTES.filter((r) => r.path.includes("{id}"));
+    // Every route that names an object ({id}); /v1/reports/{name} names a report, not an object. Platform admin routes
+    // name a company and need the platform token, never a company's key (test/cloud-recovery.test.ts).
+    const withId = ROUTES.filter((r) => r.path.includes("{id}") && r.need !== "platform");
     expect(withId.length).toBeGreaterThanOrEqual(6);
     for (const r of withId) {
       const id = r.path.includes("/keys/") ? bIds.key : r.path.includes("/users/") ? bIds.user : r.path.includes("/mail/") ? bIds.mail : bIds.invoice;

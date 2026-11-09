@@ -59,6 +59,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `DELETE /v1/webhook` | admin | Remove the alert webhook. |
 | `GET /v1/openapi.json` | anyone | This API, as OpenAPI 3.1. |
 | `POST /v1/admin/tenants` | platform admin | Create a company and its first owner; returns the starter key once (a week, the first owner's passkey only). |
+| `POST /v1/admin/tenants/{id}/recovery` | platform admin | An owner lost their passkey: after checking out of band who asks (`checked_by` says how), issue a one-time recovery key for that owner: a day long, good only for that owner's passkey enrolment. Redeemed, it removes the owner's old passkeys, ends their sessions and is spent, in the same write as the new passkey. One open recovery per company; recorded in security events and sent to the webhook. |
 | `POST /v1/auth/challenge` | anyone | Start a passkey sign-in: a one-time challenge for the company. |
 | `POST /v1/auth/login` | anyone | Finish a passkey sign-in; returns a 15-minute session token. |
 | `POST /v1/auth/enrol` | anyone | Enrol a person's passkey with the single-use enrolment an owner started: the new passkey signs the enrolment's secret. |
@@ -85,6 +86,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/mail` | sync | Inbound e-mail waiting for the runner; paginated (limit, cursor). |
 | `GET /v1/mail/{id}/raw` | sync | One inbound e-mail, raw (RFC 822). |
 | `POST /v1/mail/{id}/done` | sync | The runner filed (done) or refused an inbound e-mail. |
+| `GET /v1/security/events` | admin | What happened to the company's access: owner recoveries issued and completed, staged exports made and downloaded (newest last). |
 | `GET /v1/keys` | admin | The company's API keys (never their secrets); paginated (limit, cursor). |
 | `POST /v1/keys` | admin | A new API key; returned once. A key made by a key never has more scope or a later expiry than it. |
 | `DELETE /v1/keys/{id}` | admin | Revoke an API key, and every key it made down the chain (`also_revoked`). |

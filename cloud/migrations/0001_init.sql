@@ -60,7 +60,8 @@ CREATE TABLE IF NOT EXISTS api_keys (
   -- a later expiry than it (red team round 4).
   parent_key TEXT,
   -- 'first-owner': a new company's starter key, good only for the first owner's passkey and revoked when that passkey
-  -- exists (red team round 5). NULL: an ordinary key.
+  -- exists (red team round 5). 'recovery': issued by the platform for one owner who lost their passkey, a day long,
+  -- good only for that owner's passkey enrolment and spent when it is redeemed. NULL: an ordinary key.
   purpose TEXT,
   created_at TEXT NOT NULL,
   expires_at TEXT,
@@ -81,6 +82,9 @@ CREATE TABLE IF NOT EXISTS enrolments (
   created_by_kind TEXT NOT NULL DEFAULT 'key',
   created_by_user TEXT,
   by_owner INTEGER NOT NULL DEFAULT 0,
+  -- 1: started with a recovery key the platform issued for this owner (lost passkey). Redeemed, it removes the owner's
+  -- other passkeys, ends their sessions and spends the recovery key, all in the write that adds the new passkey.
+  recovery INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   expires_at TEXT NOT NULL,
   used_at TEXT,
@@ -282,3 +286,16 @@ CREATE TABLE IF NOT EXISTS webhooks (
   disabled_at TEXT,
   PRIMARY KEY (tenant_id, id)
 );
+
+-- What happened to a company's access that its owners must be able to see afterwards (an owner recovery, a staged
+-- export and its download): who, when, what; never a secret. Append-only.
+CREATE TABLE IF NOT EXISTS security_events (
+  tenant_id TEXT NOT NULL,
+  id TEXT NOT NULL,
+  at TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  actor TEXT NOT NULL,
+  detail_json TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, id)
+);
+CREATE INDEX IF NOT EXISTS security_events_by_time ON security_events (tenant_id, at);

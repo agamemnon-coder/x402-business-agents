@@ -123,7 +123,7 @@ async function hmacHex(secret: string, message: string): Promise<string> {
  * One event to the company's webhook, if it has a live one and the hourly cap allows: up to three attempts, a 2xx ends
  * it. The receiver checks x-purser-signature "t=<unix seconds>,v1=<HMAC-SHA256 hex of `${t}.${body}`>" under its secret.
  */
-async function deliver(sql: Sql, tenantId: string, event: { type: string; alert: Alert }, now: Date, out: Outbound | undefined, retryDelayMs: number): Promise<boolean> {
+async function deliver(sql: Sql, tenantId: string, event: { type: string; alert?: Alert; data?: Record<string, string> }, now: Date, out: Outbound | undefined, retryDelayMs: number): Promise<boolean> {
   const db = new TenantDb(sql, tenantId);
   const h = await db.one<{ url: string; secret: string; consecutive_failures: number; disabled_at: string | null }>("webhooks", { id: "main" });
   if (!h || h.disabled_at || !out) return false;
@@ -131,7 +131,7 @@ async function deliver(sql: Sql, tenantId: string, event: { type: string; alert:
     logEvent("warn", "webhook.capped", { tenant: tenantId, type: event.type });
     return false;
   }
-  const body = JSON.stringify({ id: `evt_${randomToken(12).replace(/[^A-Za-z0-9]/g, "x")}`, type: event.type, created_at: now.toISOString(), alert: event.alert });
+  const body = JSON.stringify({ id: `evt_${randomToken(12).replace(/[^A-Za-z0-9]/g, "x")}`, type: event.type, created_at: now.toISOString(), ...(event.alert ? { alert: event.alert } : {}), ...(event.data ? { data: event.data } : {}) });
   const t = Math.floor(now.getTime() / 1000);
   const headers = { "content-type": "application/json", "user-agent": "PurserCloud-Webhook/1", "x-purser-signature": `t=${t},v1=${await hmacHex(h.secret, `${t}.${body}`)}` };
   let status = 0;
@@ -146,6 +146,14 @@ async function deliver(sql: Sql, tenantId: string, event: { type: string; alert:
   const ok = status >= 200 && status < 300;
   const failures = ok ? 0 : h.consecutive_failures + 1;
   await db.apply([db.update("webhooks", { id: "main" }, { consecutive_failures: failures, last_attempt_at: now.toISOString(), last_status: status, ...(failures >= HOOK_OFF_AFTER ? { disabled_at: now.toISOString() } : {}) })]);
-  logEvent(ok ? "info" : "warn", "webhook.delivery", { tenant: tenantId, type: event.type, code: event.alert.code, status, failures, ...(failures >= HOOK_OFF_AFTER ? { disabled: true } : {}) });
+  logEvent(ok ? "info" : "warn", "webhook.delivery", { tenant: tenantId, type: event.type, code: event.alert?.code ?? null, status, failures, ...(failures >= HOOK_OFF_AFTER ? { disabled: true } : {}) });
   return ok;
+}
+
+/**
+ * A security event the company's owners must know about (an owner recovery issued or completed, a staged export made or
+ * fetched), sent to their webhook like an alert. Its data are ids and times only; never a secret or a person's name.
+ */
+export async function notify(sql: Sql, tenantId: string, type: string, data: Record<string, string>, now: Date, out: Outbound | undefined, retryDelayMs = 500): Promise<boolean> {
+  return deliver(sql, tenantId, { type, data }, now, out, retryDelayMs);
 }

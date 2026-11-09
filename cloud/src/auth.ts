@@ -5,7 +5,7 @@
 import { verifyAssertion, type AssertionB64 } from "../../worker/src/webauthn.js";
 import { fromB64, hmacB64u, hmacValid, randomToken, sameString, sha256Hex, toB64u } from "./crypto.js";
 import type { Sql } from "./store.js";
-import { TenantDb, WriteConflict } from "./tenant.js";
+import { TenantDb, WriteConflict, type Stmt } from "./tenant.js";
 
 export type Scope = "read" | "sync" | "admin";
 export type Role = "owner" | "cfo" | "accountant" | "viewer";
@@ -38,6 +38,8 @@ export const ENROLMENT_TTL_MS = 30 * 60 * 1000;
 export const KEY_DEFAULT_DAYS = 90;
 /** A new company's starter key: a week, and only until the first owner's passkey exists (red team round 5). */
 export const STARTER_KEY_DAYS = 7;
+/** An owner recovery key: one day, one enrolment of the owner it names. */
+export const RECOVERY_KEY_DAYS = 1;
 export const KEY_MAX_DAYS = 365;
 
 /**
@@ -74,15 +76,15 @@ export async function newApiKey(db: TenantDb, a: { name: string; scopes: Scope[]
 }
 
 /** A key made outside a request (a new company's first owner key): no caller to guard, no parent. */
-export async function firstApiKey(db: TenantDb, a: { name: string; scopes: Scope[]; createdBy: string; createdByUser: string | null; expiresInDays?: number; purpose?: "first-owner"; now: Date }): Promise<{ id: string; key: string; expires_at: string }> {
+export async function firstApiKey(db: TenantDb, a: { name: string; scopes: Scope[]; createdBy: string; createdByUser: string | null; expiresInDays?: number; purpose?: "first-owner" | "recovery"; before?: Stmt[]; after?: Stmt[]; now: Date }): Promise<{ id: string; key: string; expires_at: string }> {
   if (!a.scopes.length || a.scopes.some((s) => !SCOPES.includes(s))) throw new AuthError(403, `scopes must be some of ${SCOPES.join(", ")}`);
   const id = `k${randomToken(9)}`.replace(/[^A-Za-z0-9]/g, "x");
   const secret = randomToken(32);
   const expires_at = new Date(a.now.getTime() + (a.expiresInDays ?? KEY_DEFAULT_DAYS) * 86_400_000).toISOString();
-  await db.apply([db.insert("api_keys", {
+  await db.apply([...(a.before ?? []), db.insert("api_keys", {
     id, name: a.name.slice(0, 80), scopes: a.scopes.join(" "), secret_sha256: await sha256Hex(secret), created_by: a.createdBy, created_by_user: a.createdByUser,
     purpose: a.purpose ?? null, created_at: a.now.toISOString(), expires_at,
-  })]);
+  }), ...(a.after ?? [])]);
   return { id, key: `pck_${id}_${secret}`, expires_at };
 }
 
@@ -215,7 +217,11 @@ export async function passkeyLogin(sql: Sql, a: { tenantId: string; challengeId:
 export async function startEnrolment(db: TenantDb, caller: Caller, userId: string, now: Date): Promise<{ enrolment_id: string; token: string; expires_at: string }> {
   const person = await db.one<{ role: Role; erased_at: string | null }>("users", { id: userId });
   if (!person || person.erased_at) throw new AuthError(403, `no person ${userId} in this company`);
-  if (person.role === "owner") {
+  // A recovery key (an owner who lost their passkey; the platform issued it after checking who asks) enrols that owner
+  // and nobody else, even though the company's owners already have passkeys.
+  const recovery = caller.kind === "key" && caller.purpose === "recovery";
+  if (recovery && (person.role !== "owner" || caller.user !== userId)) throw new AuthError(403, "a recovery key enrols only the owner it was issued for");
+  if (person.role === "owner" && !recovery) {
     // An owner's passkey can do everything: once any owner has one, only a signed-in owner may start another. Before
     // that (a new company) the first owner's key may, or the company could never get its first passkey.
     const owners = (await db.select<{ id: string }>("users", { role: "owner", erased_at: null })).map((u) => u.id);
@@ -230,13 +236,13 @@ export async function startEnrolment(db: TenantDb, caller: Caller, userId: strin
   // enrolment): the caller is still live, and for an owner's passkey asked by anyone but a signed-in owner, still no
   // owner has one.
   const byOwner = caller.kind === "session" && caller.role === "owner";
-  const ownerByOther = person.role === "owner" && !byOwner;
+  const ownerByOther = person.role === "owner" && !byOwner && !recovery;
   try {
     // A new enrolment for a person cancels their unused ones (red team round 5: a re-invite left the first link working).
     await db.apply([db.callerGuard(caller, iso), ...(ownerByOther ? [db.noOwnerPasskeyGuard(iso)] : []),
       db.update("enrolments", { user_id: userId, used_at: null, cancelled_at: null }, { cancelled_at: iso }),
       db.insert("enrolments", { id, user_id: userId, token_sha256: await sha256Hex(token), created_by: caller.principal, created_by_kind: caller.kind,
-        created_by_user: caller.user, by_owner: byOwner ? 1 : 0, created_at: iso, expires_at })]);
+        created_by_user: caller.user, by_owner: byOwner ? 1 : 0, recovery: recovery ? 1 : 0, created_at: iso, expires_at })]);
   } catch (e) {
     if (e instanceof WriteConflict) throw new AuthError(403, "the caller was revoked meanwhile, or an owner now has a passkey: only a signed-in owner may enrol an owner's passkey");
     throw e;
@@ -245,9 +251,9 @@ export async function startEnrolment(db: TenantDb, caller: Caller, userId: strin
 }
 
 /** Finishes an enrolment: the secret matches, it is unused and unexpired, and the new passkey signed the secret. */
-export async function enrolPasskey(sql: Sql, a: { tenantId: string; enrolmentId: string; token: string; credentialId: string; x: string; y: string; assertion: AssertionB64; rpId: string; origin: string; now: Date }): Promise<{ user_id: string; credential_id: string }> {
+export async function enrolPasskey(sql: Sql, a: { tenantId: string; enrolmentId: string; token: string; credentialId: string; x: string; y: string; assertion: AssertionB64; rpId: string; origin: string; now: Date }): Promise<{ user_id: string; credential_id: string; recovery?: true }> {
   const db = new TenantDb(sql, a.tenantId);
-  const e = await db.one<{ user_id: string; token_sha256: string; created_by: string; created_by_kind: "key" | "session"; by_owner: number }>("enrolments", { id: a.enrolmentId });
+  const e = await db.one<{ user_id: string; token_sha256: string; created_by: string; created_by_kind: "key" | "session"; by_owner: number; recovery: number }>("enrolments", { id: a.enrolmentId });
   if (!e || !sameString(e.token_sha256, await sha256Hex(a.token))) throw new AuthError(401, "the enrolment is unknown, used or expired");
   const iso = a.now.toISOString();
   // Taken once, atomically, whatever happens next; a cancelled one (a newer invite, its starter revoked or erased) never.
@@ -255,7 +261,7 @@ export async function enrolPasskey(sql: Sql, a: { tenantId: string; enrolmentId:
   if (taken.changes !== 1) throw new AuthError(401, "the enrolment is unknown, used or expired");
   const v = await verifyAssertion(a.assertion, { x: a.x, y: a.y }, { challenge: a.token, origin: a.origin, rpId: a.rpId, lastCounter: 0 });
   if (!v.ok) throw new AuthError(401, `the new passkey's signature does not check (${v.why})`);
-  const person = await db.one<{ erased_at: string | null; role: Role }>("users", { id: e.user_id });
+  const person = await db.one<{ erased_at: string | null; role: Role; session_gen: number }>("users", { id: e.user_id });
   if (!person || person.erased_at) throw new AuthError(401, "this person has no access");
   if (await db.one("credentials", { credential_id: a.credentialId })) throw new AuthError(401, "this passkey is already enrolled");
   // Checked again when the passkey is written (red team round 5: an owner enrolment the starter key started was still
@@ -263,16 +269,26 @@ export async function enrolPasskey(sql: Sql, a: { tenantId: string; enrolmentId:
   // (the key not revoked or expired, the signed-in person not erased); and an owner's passkey that no signed-in owner
   // started still needs no owner to have one. The first owner's passkey revokes the starter key in the same write.
   const owner = person.role === "owner";
+  // An owner recovery: in the same write as the new passkey, the owner's other passkeys go, their sessions end and the
+  // recovery key is spent. Until this commits nothing of the old access changes (a recovery never finished does nothing).
+  const recovery = owner && e.recovery === 1 && e.created_by_kind === "key";
   try {
     await db.apply([db.callerGuard({ kind: e.created_by_kind, principal: e.created_by }, iso),
-      ...(owner && !e.by_owner ? [db.noOwnerPasskeyGuard(iso)] : []),
+      ...(owner && !e.by_owner && !recovery ? [db.noOwnerPasskeyGuard(iso)] : []),
       db.insert("credentials", { credential_id: a.credentialId, user_id: e.user_id, x: a.x, y: a.y, counter: v.counter, created_at: iso }),
-      ...(owner ? [db.update("api_keys", { purpose: "first-owner", revoked_at: null }, { revoked_at: iso })] : [])]);
+      ...(owner ? [db.update("api_keys", { purpose: "first-owner", revoked_at: null }, { revoked_at: iso })] : []),
+      ...(recovery ? [
+        db.delete("credentials", { user_id: e.user_id, credential_id: { op: "<>", v: a.credentialId } }),
+        db.update("users", { id: e.user_id }, { session_gen: person.session_gen + 1 }),
+        db.update("api_keys", { id: e.created_by }, { revoked_at: iso }),
+        db.insert("security_events", { id: `se_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}`, at: iso, kind: "recovery.completed", actor: e.user_id,
+          detail_json: JSON.stringify({ owner: e.user_id, recovery_key: e.created_by, new_passkey: a.credentialId.slice(0, 12) }) }),
+      ] : [])]);
   } catch (err) {
     if (err instanceof WriteConflict) throw new AuthError(401, "this enrolment no longer holds: whoever started it lost access, or an owner already has a passkey; ask an owner for a new invite");
     throw err;
   }
-  return { user_id: e.user_id, credential_id: a.credentialId };
+  return { user_id: e.user_id, credential_id: a.credentialId, ...(recovery ? { recovery: true as const } : {}) };
 }
 
 /** Failed authentications from one address in the current minute: at the limit, requests are turned away before any lookup. */

@@ -8,7 +8,7 @@ const COLUMNS = {
   users: ["id", "display_name", "email", "role", "created_at", "erased_at", "session_gen", "language"],
   credentials: ["credential_id", "user_id", "x", "y", "counter", "created_at"],
   api_keys: ["id", "name", "scopes", "secret_sha256", "created_by", "created_by_user", "parent_key", "purpose", "created_at", "expires_at", "revoked_at", "last_used_at"],
-  enrolments: ["id", "user_id", "token_sha256", "created_by", "created_by_kind", "created_by_user", "by_owner", "created_at", "expires_at", "used_at", "cancelled_at"],
+  enrolments: ["id", "user_id", "token_sha256", "created_by", "created_by_kind", "created_by_user", "by_owner", "recovery", "created_at", "expires_at", "used_at", "cancelled_at"],
   vendors: ["id", "name", "status", "updated_at", "version", "body_json", "body_sha256"],
   invoices: ["id", "vendor", "invoice_no", "due_date", "currency", "total", "status", "doc_sha256", "received_at", "updated_at", "version", "body_json", "body_sha256"],
   payments: ["id", "invoice_id", "status", "updated_at", "version", "body_json", "body_sha256"],
@@ -23,6 +23,7 @@ const COLUMNS = {
   push_log: ["id", "by_key", "at"],
   runner_health: ["id", "at", "status", "alerts_json"],
   webhooks: ["id", "url", "secret", "created_at", "created_by", "consecutive_failures", "last_attempt_at", "last_status", "disabled_at"],
+  security_events: ["id", "at", "kind", "actor", "detail_json"],
 } as const;
 
 export type Table = keyof typeof COLUMNS;
@@ -157,6 +158,16 @@ export class TenantDb {
       sql: `INSERT INTO push_log (tenant_id, id, by_key, at) VALUES (?, ?, (SELECT 'no-owner-passkey' WHERE (SELECT COUNT(*) FROM credentials c
           JOIN users u ON u.tenant_id = c.tenant_id AND u.id = c.user_id WHERE c.tenant_id = ? AND u.role = 'owner' AND u.erased_at IS NULL) = 0), ?)`,
       params: [t, `o_${at}_${crypto.randomUUID()}`, t, at],
+    };
+  }
+
+  /** An owner recovery's guard: no other recovery key of the company is open (unrevoked, unexpired) when it commits. */
+  noOpenRecoveryGuard(at: string): Stmt {
+    const t = this.tenantId;
+    return {
+      sql: `INSERT INTO push_log (tenant_id, id, by_key, at) VALUES (?, ?, (SELECT 'no-open-recovery' WHERE (SELECT COUNT(*) FROM api_keys
+          WHERE tenant_id = ? AND purpose = 'recovery' AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?)) = 0), ?)`,
+      params: [t, `v_${at}_${crypto.randomUUID()}`, t, at, at],
     };
   }
 

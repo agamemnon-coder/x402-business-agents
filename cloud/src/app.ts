@@ -3,7 +3,7 @@
 // TenantDb; a route never names a tenant itself.
 
 import { z } from "zod";
-import { AuthError, callerOf, endSessions, enrolPasskey, failedAuthBlocked, isPlatformAdmin, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope, firstApiKey, descendantKeys, inviteInfo, STARTER_KEY_DAYS } from "./auth.js";
+import { AuthError, callerOf, endSessions, enrolPasskey, failedAuthBlocked, isPlatformAdmin, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope, firstApiKey, descendantKeys, inviteInfo, STARTER_KEY_DAYS, RECOVERY_KEY_DAYS } from "./auth.js";
 import { randomToken } from "./crypto.js";
 import { allTransactions, BadRequest, insights, invoiceDocument, ledgerEntries, listInvoices, listPayments, listTransactions, listVendors, oneInvoice, oneTransaction, paged, report, transactionSummary } from "./read.js";
 import { registerCsv } from "../../src/money/registerShape.js";
@@ -16,7 +16,7 @@ import { closeTenant, eraseUser, exportTenant, PrivacyRefused } from "./privacy.
 import { consoleResponse } from "./console.js";
 import { qrSvg } from "./qr.js";
 import { logEvent } from "./log.js";
-import { cloudHealth, companyStatus, HealthReport, MonitorRefused, receiveReport, removeWebhook, setWebhook, webhookOf, type Outbound } from "./monitor.js";
+import { cloudHealth, companyStatus, HealthReport, MonitorRefused, notify, receiveReport, removeWebhook, setWebhook, webhookOf, type Outbound } from "./monitor.js";
 
 export interface CloudEnv {
   sql: Sql;
@@ -144,6 +144,31 @@ export const ROUTES: Route[] = [
     return json(201, { tenant: { id, slug: b.slug, name: b.name }, owner: { id: ownerId }, api_key: key.key, expires_at: key.expires_at, note: "the starter key is shown once and makes the first owner's passkey only; it stops working once that passkey exists" });
   } },
 
+  { method: "POST", path: "/v1/admin/tenants/{id}/recovery", summary: "An owner lost their passkey: after checking out of band who asks (checked_by says how), issue a one-time recovery key for that owner, good for one day and one passkey enrolment of that owner; redeemed, the owner's old passkeys and sessions end. One open recovery per company; the company's webhook and security events record it.", need: "platform", run: async (c) => {
+    const b = await body(c, z.object({ owner_id: z.string().min(1).max(80), checked_by: z.string().min(3).max(200) }).strict());
+    const tenantId = c.params[0]!;
+    if (!/^t_[A-Za-z0-9_-]{6,64}$/.test(tenantId)) return notFound("company");
+    const tenant = await c.env.sql.first<{ closed_at: string | null }>("SELECT closed_at FROM tenants WHERE id = ?", [tenantId]);
+    if (!tenant || tenant.closed_at) return notFound("company");
+    const t = new TenantDb(c.env.sql, tenantId);
+    const owner = await t.one<{ role: Role; erased_at: string | null }>("users", { id: b.owner_id });
+    if (!owner || owner.erased_at || owner.role !== "owner") return err(409, "a recovery is for an existing owner of this company");
+    const iso = c.now.toISOString();
+    const eventId = `se_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}`;
+    let key: { id: string; key: string; expires_at: string };
+    try {
+      // Checked when it commits: no other recovery key of the company is open (two at once could not be told apart).
+      key = await firstApiKey(t, { name: "owner recovery (one passkey enrolment)", scopes: ["read", "admin"], createdBy: "platform", createdByUser: b.owner_id,
+        expiresInDays: RECOVERY_KEY_DAYS, purpose: "recovery", before: [t.noOpenRecoveryGuard(iso)], now: c.now });
+    } catch (e) {
+      if (e instanceof WriteConflict) return err(409, "a recovery is already open for this company; let it expire or revoke it first");
+      throw e;
+    }
+    await t.apply([t.insert("security_events", { id: eventId, at: iso, kind: "recovery.issued", actor: "platform", detail_json: JSON.stringify({ owner: b.owner_id, recovery_key: key.id, checked_by: b.checked_by, expires_at: key.expires_at }) })]);
+    await notify(c.env.sql, tenantId, "security.recovery_issued", { owner: b.owner_id, recovery_key: key.id, expires_at: key.expires_at }, c.now, c.env.outbound, c.env.retryDelayMs);
+    return json(201, { recovery_key: key.key, key_id: key.id, owner_id: b.owner_id, expires_at: key.expires_at, note: "shown once; good for one day and one passkey enrolment of this owner; give it to the owner over the channel you checked" });
+  } },
+
   { method: "POST", path: "/v1/auth/challenge", summary: "Start a passkey sign-in: a one-time challenge for the company.", need: "public", run: async (c) => {
     const b = await body(c, z.object({ tenant: SLUG }).strict());
     const t = await c.env.sql.first<{ id: string; closed_at: string | null }>("SELECT id, closed_at FROM tenants WHERE slug = ?", [b.tenant]);
@@ -165,6 +190,7 @@ export const ROUTES: Route[] = [
     const t = await c.env.sql.first<{ id: string; closed_at: string | null }>("SELECT id, closed_at FROM tenants WHERE slug = ?", [b.tenant]);
     if (!t || t.closed_at) return notFound("company");
     const r = await enrolPasskey(c.env.sql, { tenantId: t.id, enrolmentId: b.enrolment_id, token: b.token, credentialId: b.credential_id, x: b.x, y: b.y, assertion: b.assertion, rpId: c.env.rpId, origin: c.env.origin, now: c.now });
+    if (r.recovery) await notify(c.env.sql, t.id, "security.recovery_completed", { owner: r.user_id }, c.now, c.env.outbound, c.env.retryDelayMs);
     return json(201, r);
   } },
   { method: "POST", path: "/v1/auth/invite", summary: "What an invite is for, from its secret: the company's address and name and the person; nothing is used up.", need: "public", run: async (c) => {
@@ -262,6 +288,10 @@ export const ROUTES: Route[] = [
     return json(200, { id: c.params[0], status: b.status });
   } },
 
+  { method: "GET", path: "/v1/security/events", summary: "What happened to the company's access: owner recoveries, staged exports and their downloads (newest last).", need: "admin", run: async (c) => {
+    const rows = await db(c).select<{ id: string; at: string; kind: string; actor: string; detail_json: string }>("security_events", {}, { order: ["at", "id"] });
+    return json(200, { items: rows.map((r) => ({ id: r.id, at: r.at, kind: r.kind, actor: r.actor, detail: JSON.parse(r.detail_json) as unknown })) });
+  } },
   { method: "GET", path: "/v1/keys", summary: "The company's API keys (never their secrets); paginated (limit, cursor).", need: "admin", run: async (c) => json(200, await paged<Record<string, unknown>>(db(c), "api_keys", "id", {}, c.url.searchParams, withoutSecret)) },
   { method: "POST", path: "/v1/keys", summary: "A new API key; returned once.", need: "admin", run: async (c) => {
     const b = await body(c, z.object({ name: z.string().min(1).max(80), scopes: z.array(z.enum(SCOPES as [Scope, ...Scope[]])).min(1), expires_in_days: z.number().int().min(1).max(KEY_MAX_DAYS).optional() }).strict());
@@ -405,6 +435,12 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
       need(caller, hit.r.need);
       // The starter key makes the first owner's passkey and nothing else (red team round 5): who it is, the company's
       // name, and an enrolment for its own owner.
+      // A recovery key (the platform issued it for one owner who lost their passkey): who it is for, and that owner's
+      // passkey enrolment; nothing else.
+      if (caller.purpose === "recovery") {
+        const ok = (req.method === "GET" && hit.r.path === "/v1/me") || (req.method === "POST" && hit.r.path === "/v1/users/{id}/enrolment" && hit.p![0] === caller.user);
+        if (!ok) return err(403, "a recovery key only enrols the owner it was issued for; sign in with the new passkey to do the rest");
+      }
       if (caller.purpose === "first-owner") {
         const ok = (req.method === "GET" && hit.r.path === "/v1/me") || (req.method === "POST" && hit.r.path === "/v1/company")
           || (req.method === "POST" && hit.r.path === "/v1/users/{id}/enrolment" && hit.p![0] === caller.user);
