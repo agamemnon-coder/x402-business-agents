@@ -171,9 +171,12 @@ minutes, so there is no cookie for another site to ride on, and the Worker refus
 not its own. An owner invites a person from Settings ("Add and invite", or "Invite" on a person): the Worker returns a
 one-time link (its single-use secret in the URL fragment, which the browser never sends) and a QR code of it as SVG, drawn
 where the link is made so the secret never goes back to a server; the page shows the code as an image, with a copy button.
-It works once, for 30 minutes, in that company only (`test/cloud-console-invites.test.ts`). An invoice's PDF is drawn on
-canvases by pdf.js, this origin's own copy from the Worker's static assets (eval off, no XFA; the supplier's file is
-data, never a page); the download stays. `test/cloud-console.test.ts` checks the page and the routes; `test/browser/console.check.ts` runs the whole thing
+It works once, for 30 minutes, in that company only (`test/cloud-console-invites.test.ts`). An invoice's PDF is drawn in a
+sandboxed frame with an opaque origin (`/pdfview`, `sandbox allow-scripts` in its own policy too): the console fetches
+the bytes and hands them over by `postMessage`; pdf.js, this origin's own copy from the Worker's static assets, parses
+them in a worker (eval off, no XFA), draws up to six pages and stops after 15 seconds. The frame has no session, no
+network but pdf.js, and cannot reach the console page; the console page parses no supplier PDF at all (red team round
+5: a PDF bomb froze the tab that held the session). The download stays. `test/cloud-console.test.ts` checks the page and the routes; `test/browser/console.check.ts` runs the whole thing
 in Chromium with a virtual passkey (CI, judge job).
 
 ## Tested on D1 itself

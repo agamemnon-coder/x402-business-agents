@@ -96,13 +96,26 @@ describe("the invoice drawn in the page", () => {
     expect((await c.fetch(`${ORIGIN}/assets/../wrangler.jsonc`)).status).toBe(404);
   });
 
-  it("loads pdf.js only from this origin, with eval off, and draws the pages on a canvas", () => {
-    expect(consoleCsp("n")).toContain("script-src 'nonce-n' 'self'");
+  it("never parses a supplier's PDF in the console page: a sandboxed frame does, with pdf.js from this origin in a worker, eval off (red team round 5)", async () => {
+    expect(consoleCsp("n")).toContain("frame-src 'self'");
     const html = consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "" });
-    expect(html).toContain("import('/assets/pdfjs.mjs')");
-    expect(html).toContain("isEvalSupported:false");
-    expect(html).toContain("enableXfa:false");
-    expect(html).toMatch(/createElement\('canvas'\)/);
+    expect(html).not.toMatch(/pdfjs\.mjs|getDocument/);
+    expect(html).toContain("f.setAttribute('sandbox','allow-scripts')");
+    expect(html).toContain("ev.origin!=='null'");
+    const r = await c.fetch(`${ORIGIN}/pdfview`);
+    const csp = r.headers.get("content-security-policy") ?? "";
+    expect(csp).toMatch(/^sandbox allow-scripts;/);
+    expect(csp).toContain(`script-src 'nonce-`);
+    expect(csp).toContain(`${ORIGIN}/assets/pdfjs.mjs`);
+    expect(csp).toContain("worker-src blob:");
+    expect(csp).toContain("connect-src 'none'");
+    expect(csp).not.toMatch(/allow-same-origin|unsafe/);
+    const frame = await r.text();
+    expect(frame).toContain("isEvalSupported:false");
+    expect(frame).toContain("enableXfa:false");
+    expect(frame).toContain("GlobalWorkerOptions.workerPort=worker");
+    expect(frame).toContain("LIMIT_MS=15000");
+    expect(frame).not.toMatch(/sessionStorage|localStorage|\/v1\//);
   });
 });
 

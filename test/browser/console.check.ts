@@ -57,12 +57,7 @@ const call = async (method: string, path: string, key: string, body?: unknown) =
 };
 const made = await call("POST", "/v1/admin/tenants", ADMIN, { slug: "northwind", name: "Northwind Outdoor (test company)", owner: { display_name: "The CFO" } });
 const starter = made.json.api_key as string;
-await pushToCloud(w.db, { url: ORIGIN, key: starter }, now);
-// A supplier whose name is HTML, as any runner could push it: the console must show it as text.
-const one = (batchesFor(w.db, { audit: { seq: 0, hash: null }, ledger: { entry_id: 0, hash: null }, documents: [] }, { now }).find((b) => Array.isArray(b.invoices) && (b.invoices as unknown[]).length)!.invoices as { id: string; vendor: string; body: Record<string, unknown> }[])[0]!;
-const evil = '<img src=x onerror="document.title=\'pwned\'">Evil Supplies';
-const push = await call("POST", "/v1/sync", starter, { invoices: [{ ...one, id: "AP-9001", vendor: evil, status: "needs_review", body: { ...one.body, id: "AP-9001", vendor: evil, status: "needs_review", status_words: "Needs a person", invoice_no: "<b>X-1</b>", findings: [{ code: "duplicate", level: "review", detail: "<script>alert(1)</script> looks like an invoice on file" }] } }] });
-ok(push.status === 200, "a supplier name with HTML in it is pushed like any other");
+
 
 // Chromium with a virtual passkey authenticator (the platform kind: user verification, discoverable credentials).
 const require = createRequire(import.meta.url);
@@ -77,7 +72,8 @@ const cdp = await ctx.newCDPSession(page);
 await cdp.send("WebAuthn.enable");
 await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
 const shot = async (name: string) => { if (shots) await page.screenshot({ path: join(shots, `${name}.png`), fullPage: true }); };
-const settle = async () => { await page.waitForLoadState("networkidle"); await page.waitForTimeout(250); };
+// The PDF frame's worker keeps a request open in Playwright's count, so "network idle" is waited for briefly, not forever.
+const settle = async () => { await page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => {}); await page.waitForTimeout(250); };
 const text = async () => (await page.textContent("body")) ?? "";
 
 // First run.
@@ -95,13 +91,20 @@ await page.click("text=Make the key for my computer");
 await page.waitForSelector(".once code");
 const cmd = (await page.textContent(".once code")) ?? "";
 ok(/^PURSER_CLOUD_URL=http:\/\/localhost:\d+ PURSER_CLOUD_KEY=pck_k\w+_[\w-]+ npm run cloud -- push$/.test(cmd), "the first run gives the one command, with a sync key, once");
+const syncKey = /PURSER_CLOUD_KEY=(\S+)/.exec(cmd)![1]!;
+// The runner pushes with the sync key the first run made (the starter key only makes the first passkey).
+await pushToCloud(w.db, { url: ORIGIN, key: syncKey }, now);
+// A supplier whose name is HTML, as any runner could push it: the console must show it as text.
+const one = (batchesFor(w.db, { audit: { seq: 0, hash: null }, ledger: { entry_id: 0, hash: null }, documents: [] }, { now }).find((b) => Array.isArray(b.invoices) && (b.invoices as unknown[]).length)!.invoices as { id: string; vendor: string; body: Record<string, unknown> }[])[0]!;
+const evil = '<img src=x onerror="document.title=\'pwned\'">Evil Supplies';
+const push = await call("POST", "/v1/sync", syncKey, { invoices: [{ ...one, id: "AP-9001", vendor: evil, status: "needs_review", body: { ...one.body, id: "AP-9001", vendor: evil, status: "needs_review", status_words: "Needs a person", invoice_no: "<b>X-1</b>", findings: [{ code: "duplicate", level: "review", detail: "<script>alert(1)</script> looks like an invoice on file" }] } }] });
+ok(push.status === 200, "a supplier name with HTML in it is pushed like any other");
 // The screenshot shows the command with its key cut short (it is a throwaway key, but a key all the same).
 await page.evaluate(() => { const c = document.querySelector(".once code"); if (c) c.textContent = (c.textContent ?? "").replace(/(pck_k\w{4})\w*_[\w-]+/, "$1…"); });
 await settle();
 await shot("03-eerste-keer-3-inbox-en-computer");
-await page.click("text=Revoke the starter key");
-await page.waitForSelector("text=The starter key is revoked.");
-ok((await call("GET", "/v1/me", starter)).status === 401, "the starter key is revoked from the first run");
+ok((await text()).includes("The starter key stopped working when your passkey was made"), "the first run says the starter key is gone");
+ok((await call("GET", "/v1/me", starter)).status === 401, "the starter key stopped working once the owner's passkey existed (red team round 5)");
 
 // Sign out, sign in with the passkey.
 await page.click("#out");
@@ -128,9 +131,22 @@ await settle();
 await shot("07-factuur-detail");
 const detail = await text();
 ok(detail.includes("IBAN …3000") && !detail.includes("DE89370400440532013000"), "the invoice shows the account masked, never whole");
-await page.waitForSelector(".pages canvas", { timeout: 20_000 });
+await page.waitForSelector("iframe.pdfframe");
+const pdfFrame = page.frameLocator("iframe.pdfframe");
+await pdfFrame.locator("canvas").first().waitFor({ timeout: 20_000 });
 await settle();
-ok((await page.$$(".pages canvas")).length >= 1, "the invoice's PDF is drawn in the page, on a canvas");
+ok(await pdfFrame.locator("canvas").count() >= 1, "the invoice's PDF is drawn on a canvas, in its sandboxed frame");
+ok((await page.$$(".pages canvas")).length === 0, "the console page itself parses no supplier PDF (red team round 5)");
+const frame = page.frames().find((f) => f.url().endsWith("/pdfview"))!;
+const reach = await frame.evaluate(() => {
+  const out: string[] = [];
+  try { void window.parent.sessionStorage; out.push("parent-storage"); } catch { /* blocked */ }
+  try { void window.sessionStorage; out.push("own-storage"); } catch { /* blocked */ }
+  try { void window.parent.document; out.push("parent-document"); } catch { /* blocked */ }
+  return out;
+});
+ok(reach.length === 0, `the PDF frame reaches neither the console's session nor its page (${reach.join(", ") || "nothing"})`);
+ok(await page.evaluate(() => { try { return (document.querySelector("iframe.pdfframe") as HTMLIFrameElement).contentDocument === null; } catch { return true; } }), "the console cannot reach into the PDF frame either (an opaque origin)");
 await shot("16-factuur-met-pdf");
 await page.goto(`${ORIGIN}/#/invoices/AP-9001`);
 await page.waitForSelector("text=What Purser read");
@@ -156,7 +172,7 @@ await settle();
 const link = (await page.textContent("#invite-link")) ?? "";
 const inviteLink = new URL(link);
 const q = new URLSearchParams(inviteLink.hash.slice("#/enrol?".length));
-ok(inviteLink.origin === ORIGIN && inviteLink.hash.startsWith("#/enrol?") && q.get("t") === "northwind" && !!q.get("e") && !!q.get("k") && (q.get("n") ?? "").startsWith("Fleur"), "an invite is a one-time link to this console, its secret after the #");
+ok(inviteLink.origin === ORIGIN && inviteLink.hash.startsWith("#/enrol?") && [...q.keys()].sort().join(",") === "e,k", "an invite is a one-time link to this console, its secret after the #, naming no company (red team round 5)");
 const { PNG } = require("pngjs") as typeof import("pngjs");
 const jsQR = require("jsqr") as typeof import("jsqr").default;
 const png = PNG.sync.read(await (await page.$("img.qr"))!.screenshot());
@@ -166,12 +182,29 @@ ok(read?.data === link, "the invite's QR code reads as exactly the link");
 await page.evaluate(() => { const c = document.querySelector("#invite-link"); if (c) c.textContent = (c.textContent ?? "").replace(/(&k=)[^&]+/, "$1…"); });
 await page.evaluate(() => window.scrollTo(0, 0));
 await shot("17-uitnodigen");
+// The invited person opens the link: the secret leaves the address bar at once, and the server names the company.
+const guest = await ctx.newPage();
+await guest.goto(link);
+await guest.waitForSelector("text=You were added to");
+ok(new URL(guest.url()).hash === "#/enrol", "the invite's secret is cleared from the address bar on opening (red team round 5)");
+const guestText = (await guest.textContent("body")) ?? "";
+ok(guestText.includes("Northwind Outdoor (test company)") && guestText.includes("Fleur (test person)"), "the invite page shows the company and person the server says the secret is for");
+await guest.close();
+// A person's passkeys, and the company's last owner passkey cannot be removed.
+page.on("dialog", (d) => { void d.accept(); });
+await page.click("tr:has-text(\"The CFO\") >> text=Passkeys");
+await page.waitForSelector("#passkeys li");
+ok((await page.$$("#passkeys li")).length === 1, "Settings lists the owner's one passkey");
+await page.click("#passkeys >> text=Remove");
+await page.waitForSelector("text=last owner passkey");
+ok(true, "the company's last owner passkey cannot be removed");
 
 // The phone.
 await page.setViewportSize({ width: 390, height: 844 });
-for (const [hash, name, wait] of [["#/overview", "11-telefoon-overzicht", "text=Waits for the CFO's Face ID"], ["#/invoices", "12-telefoon-facturen", ".row:not(.th)"], [`#/invoices/${encodeURIComponent(paidId)}`, "18-telefoon-factuur-met-pdf", ".pages canvas"], ["#/transactions", "14-telefoon-transacties", ".trow:not(.th)"], ["#/settings", "15-telefoon-instellingen", "text=API keys"]] as const) {
+for (const [hash, name, wait] of [["#/overview", "11-telefoon-overzicht", "text=Waits for the CFO's Face ID"], ["#/invoices", "12-telefoon-facturen", ".row:not(.th)"], [`#/invoices/${encodeURIComponent(paidId)}`, "18-telefoon-factuur-met-pdf", "iframe.pdfframe"], ["#/transactions", "14-telefoon-transacties", ".trow:not(.th)"], ["#/settings", "15-telefoon-instellingen", "text=API keys"]] as const) {
   await page.goto(`${ORIGIN}/${hash}`);
   await page.waitForSelector(wait);
+  if (wait === "iframe.pdfframe") await page.frameLocator("iframe.pdfframe").locator("canvas").first().waitFor({ timeout: 20_000 });
   await settle();
   const wide = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   ok(wide <= 0, `${hash} at 390 px: nothing wider than the phone (${wide} px over)`);
@@ -195,7 +228,8 @@ await page.waitForSelector("text=Your sign-in ended");
 ok(true, "a session the cloud no longer takes goes back to sign-in, saying why");
 await page.setViewportSize({ width: 1440, height: 1000 });
 
-ok(errors.filter((e) => !/401 \(Unauthorized\)/.test(e)).length === 0, `no console or CSP errors${errors.length ? ` (${errors.join(" | ")})` : ""}`);
+// 401 (an ended session) and 409 (the last owner passkey refused) are answers the check asks for, not errors.
+ok(errors.filter((e) => !/(401 \(Unauthorized\)|409 \(Conflict\))/.test(e)).length === 0, `no console or CSP errors${errors.length ? ` (${errors.join(" | ")})` : ""}`);
 await browser.close();
 server.close();
 rmSync(dir, { recursive: true, force: true });
