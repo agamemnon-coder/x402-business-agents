@@ -12,7 +12,7 @@ import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
 
 export interface JournalLine {
   date: string;
-  source: "sale" | "upstream" | "refund" | "card" | "airi" | "transfer" | "fx" | "sweep" | "credit" | "clearing" | "opening" | "receipt";
+  source: "sale" | "upstream" | "refund" | "card" | "airi" | "transfer" | "fx" | "sweep" | "credit" | "clearing" | "opening" | "receipt" | "platform_fee";
   ref: string;
   description: string;
   counterparty: string;
@@ -114,6 +114,17 @@ export function journal(db: DB): JournalLine[] {
       add({
         date: t.updated_at, source: "transfer", ref: t.request_id, description: `Transfer fee, invoice ${t.invoice_no}`, counterparty: "Airwallex", agent: "treasury",
         gl_account: "6800", bank_account: bankAccountFor(fee[1]!), cents: -toCents(fee[2]!), currency: fee[1]!, proof: t.transfer_id ?? "", approval, rule: "transfer fee",
+      });
+    }
+  }
+  // Purser as an Airwallex platform: Purser's fee per paid payout, from the company's account (docs/airwallex-platform.md).
+  if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'platform_fees'").get()) {
+    for (const f of db.prepare("SELECT request_id, amount, currency, fee_transfer_id, approval_sha256, updated_at FROM platform_fees WHERE status = 'SETTLED' ORDER BY updated_at").all() as
+      { request_id: string; amount: string; currency: string; fee_transfer_id: string | null; approval_sha256: string; updated_at: string }[]) {
+      add({
+        date: f.updated_at, source: "platform_fee", ref: f.request_id, description: "Purser platform fee", counterparty: "Purser", agent: "treasury",
+        gl_account: "6800", bank_account: bankAccountFor(f.currency), cents: -toCents(f.amount), currency: f.currency, proof: f.fee_transfer_id ?? "", approval: proposalOf(f.approval_sha256),
+        rule: "Purser's platform fee, in the terms the CFO signed",
       });
     }
   }

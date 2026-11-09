@@ -117,7 +117,7 @@ a.row:hover { background: color-mix(in srgb, var(--accent-soft) 45%, var(--surfa
 .row .why { color: var(--muted); font-size: 13.5px; }
 .row .go { color: var(--faint); }
 .row .due.late { color: var(--bad); font-weight: 600; }
-.st { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 4px 10px 4px 8px; border-radius: 999px; font: 650 12.5px/1.2 Inter, system-ui, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--sunken); color: var(--muted); }
+.st { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 4px 10px 4px 8px; border-radius: 14px; font: 650 12.5px/1.25 Inter, system-ui, sans-serif; white-space: normal; overflow-wrap: anywhere; background: var(--sunken); color: var(--muted); }
 .st::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
 .st.ready { background: var(--accent-soft); color: var(--accent); }
 .st.paid { background: var(--ok-soft); color: var(--ok); }

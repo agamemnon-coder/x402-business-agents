@@ -24,7 +24,8 @@ import { exclusive, holdPayout, releasePayout } from "../policy/payoutLock.js";
 import { step } from "../policy/saga.js";
 import { stopped } from "../policy/velocity.js";
 import { originJson } from "../provenance/origin.js";
-import { freeCents, type SupplierPaymentTerms } from "../payouts/plan.js";
+import { freeCents, type PlatformFields, type SupplierPaymentTerms } from "../payouts/plan.js";
+import { platformFeeOn } from "../airwallex/platform.js";
 import { REFUSED_AT_CREATE } from "./invoicePayment.js";
 
 const hold = holdPayout;
@@ -34,7 +35,7 @@ type Row = { transfer_id: string | null; status: string };
 const transferRow = (db: DB, t: SupplierPaymentTerms) => db.prepare("SELECT transfer_id, status FROM transfers WHERE request_id = ?").get(t.transfer_request_id) as Row | undefined;
 const converted = (db: DB, requestId: string) => db.prepare("SELECT conversion_id, buy_amount, sell_amount, status FROM fx_conversions WHERE request_id = ?").get(requestId) as
   { conversion_id: string; buy_amount: string; sell_amount: string; status: string } | undefined;
-const payoutCents = (t: SupplierPaymentTerms) => toCents(t.amount) + toCents(t.fee_reserve);
+const payoutCents = (t: SupplierPaymentTerms) => toCents(t.amount) + toCents(t.fee_reserve) + toCents((t as PlatformFields).platform_fee?.amount ?? "0.00");
 const closedError = (t: SupplierPaymentTerms) => new Error(`the payout ${t.transfer_request_id} was refused by Airwallex and closed; nothing is sent again under it, a new proposal is needed`);
 const floorError = (t: SupplierPaymentTerms) => new Error(`${t.currency} would now drop under its floor, commitments and payouts under way; a new proposal is needed`);
 
@@ -47,6 +48,9 @@ export async function executeSupplierPayment(db: DB, rail: PayoutRail, sim: Sand
     const pre = await rail.balancesAll();
     return beginExecution<SupplierPaymentTerms>(db, proposalId, (t) => {
       if (t.kind !== "supplier_payment") throw new Error(`${proposalId} is not a supplier payment`);
+      // Purser as a platform: the payout leaves only the account the CFO signed for (docs/airwallex-platform.md).
+      const paying = (t as PlatformFields).paying_account?.id ?? null;
+      if ((rail.payingAccount ?? null) !== paying) throw new Error(`the terms were signed for payment from ${paying ?? "the company's own Airwallex account"}, but this runner pays from ${rail.payingAccount ?? "the company's own Airwallex account"}; nothing is paid`);
       const held = holdReason(db, t, now());
       if (held) throw new Error(held);
       const other = (db.prepare("SELECT invoice_no, status FROM transfers WHERE request_id <> ? AND status <> 'CANCELLED'").all(t.transfer_request_id) as { invoice_no: string; status: string }[])
@@ -121,6 +125,7 @@ export async function executeSupplierPayment(db: DB, rail: PayoutRail, sim: Sand
     const transfer = await step(db, proposalId, 2, "transfer", terms.transfer_request_id, () => submit(db, rail, terms, sha, proposalId), now);
     const final = sim ? await step(db, proposalId, 3, "settle", transfer.id, () => settleInSandbox(db, rail, sim, transfer), now) : transfer;
     recordFee(db, final, terms, sha);
+    if (final.status === "PAID") await step(db, proposalId, 4, "platform_fee", (terms as PlatformFields).platform_fee?.request_id ?? `${terms.transfer_request_id}:fee`, () => takePlatformFee(db, rail, terms, sha, proposalId), now);
     const failed = final.status === "FAILED" || final.status === "CANCELLED";
     finishExecution(db, proposalId, failed ? "FAILED" : "EXECUTED", { conversion_id: conversionId, transfer_id: final.id, status: final.status });
     return { conversionId, transfer: final };
@@ -249,4 +254,22 @@ function recordFee(db: DB, tr: Transfer, t: SupplierPaymentTerms, sha: string): 
   db.prepare("UPDATE transfers SET fee_actual = ? WHERE transfer_id = ?").run(actual, tr.id);
   const within = tr.fee.currency === t.currency && tr.fee.cents <= toCents(t.fee_reserve);
   audit(db, "awx-executor", within ? "transfer.fee" : "transfer.fee_over_reserve", tr.id, { fee: actual, fee_reserve: `${t.currency} ${t.fee_reserve}`, approval_sha256: sha });
+}
+
+/**
+ * Purser's fee for a paid payout (docs/airwallex-platform.md), taken once under the request id in the signed terms and
+ * only with AIRWALLEX_PLATFORM_FEE=on; recorded whatever happens, so a fee that could not be taken shows for a person.
+ */
+async function takePlatformFee(db: DB, rail: PayoutRail, t: SupplierPaymentTerms, sha: string, proposalId: string): Promise<void> {
+  const fee = (t as PlatformFields).platform_fee;
+  if (!fee) return;
+  const done = db.prepare("SELECT status FROM platform_fees WHERE request_id = ?").get(fee.request_id) as { status: string } | undefined;
+  if (done?.status === "SETTLED") return;
+  const write = (status: string, id: string | null) => db.prepare(`INSERT INTO platform_fees (request_id, proposal_id, payout_request_id, amount, currency, destination, fee_transfer_id, status, approval_sha256, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(request_id) DO UPDATE SET fee_transfer_id = excluded.fee_transfer_id, status = excluded.status, updated_at = excluded.updated_at`)
+    .run(fee.request_id, proposalId, t.transfer_request_id, fee.amount, fee.currency, fee.to_account, id, status, sha, new Date().toISOString());
+  if (!platformFeeOn() || !rail.collectPlatformFee) { write("NOT_TAKEN", null); audit(db, "awx-executor", "platform_fee.not_taken", fee.request_id, { why: "AIRWALLEX_PLATFORM_FEE is off or the rail cannot take it", amount: `${fee.currency} ${fee.amount}` }); return; }
+  const r = await rail.collectPlatformFee({ requestId: fee.request_id, amountCents: toCents(fee.amount), currency: fee.currency, destination: fee.to_account, reference: `Purser fee, invoice ${t.invoice_no}` });
+  write(r.status === "SETTLED" || r.status === "NEW" || r.status === "PENDING" ? "SETTLED" : r.status, r.id);
+  audit(db, "awx-executor", "platform_fee.taken", fee.request_id, { amount: `${fee.currency} ${fee.amount}`, to: fee.to_account, fee_transfer: r.id, status: r.status, approval_sha256: sha });
 }

@@ -1,7 +1,7 @@
 // In-memory stand-in for the Airwallex sandbox, for tests, the red team and the evals. It never reaches a live run.
 
 import { AirwallexAmbiguous } from "../airwallex/client.js";
-import type { AirwallexRail, AnyQuote, Balance, Beneficiary, Conversion, Currency, Deposit, NewBeneficiary, NewPayoutBeneficiary, NewPayoutTransfer, NewTransfer, PayoutRail, Quote, SandboxSim, Transfer, MarketRate } from "../airwallex/port.js";
+import type { AirwallexRail, AnyQuote, Balance, Beneficiary, Conversion, Currency, Deposit, NewBeneficiary, NewPayoutBeneficiary, NewPayoutTransfer, NewTransfer, PayoutRail, PlatformFee, Quote, SandboxSim, Transfer, MarketRate } from "../airwallex/port.js";
 
 /**
  * The stand-in's SWIFT fee for a EUR payout: the one constant every simulated rail charges (FakeAirwallex here, the
@@ -34,6 +34,20 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
   transferLookupMisses = 0;
   /** The next transfer create is refused outright with this documented code (nothing is made). */
   refuseNextTransfer: string | null = null;
+  /** Purser as a platform: the connected account this stand-in acts for, and the Purser fees taken from it. */
+  payingAccount: string | null = null;
+  platformFees: PlatformFee[] = [];
+  async collectPlatformFee(f: PlatformFee): Promise<{ id: string; status: string }> {
+    this.calls.push("collectPlatformFee");
+    const i = this.platformFees.findIndex((x) => x.requestId === f.requestId);
+    if (i < 0) {
+      const b = this.balOf(f.currency);
+      if (b.availableCents < f.amountCents) throw Object.assign(new Error("balance_insufficient"), { code: "balance_insufficient" });
+      b.availableCents -= f.amountCents;
+      this.platformFees.push({ ...f });
+    }
+    return { id: `cat_${f.requestId.slice(0, 8)}`, status: "SETTLED" };
+  }
   clock = () => Date.now();
   rate = "1.0850";
   n = 0;

@@ -5,7 +5,7 @@
 
 import { randomUUID } from "node:crypto";
 import { Airwallex, fromEnv } from "./client.js";
-import type { AirwallexRail, AnyQuote, Balance, Beneficiary, Conversion, Currency, Deposit, NewBeneficiary, NewPayoutBeneficiary, NewPayoutTransfer, NewTransfer, PayoutRail, Quote, SandboxSim, Transfer, MarketRate } from "./port.js";
+import type { AirwallexRail, AnyQuote, Balance, Beneficiary, Conversion, Currency, Deposit, NewBeneficiary, NewPayoutBeneficiary, NewPayoutTransfer, NewTransfer, PayoutRail, PlatformFee, Quote, SandboxSim, Transfer, MarketRate } from "./port.js";
 import { fromCents } from "../lib/money.js";
 
 /** Major units (number or numeric string) -> integer cents. Refuses negatives and anything finer than a cent. */
@@ -64,6 +64,23 @@ export class AirwallexRest implements AirwallexRail, SandboxSim, PayoutRail {
   private usdAccount: string | undefined;
 
   constructor(private readonly api: Airwallex) {}
+
+  /** The connected account this rail acts for (x-on-behalf-of), or null for the company's own account. */
+  get payingAccount(): string | null { return this.api.onBehalfOf; }
+
+  /**
+   * POST /connected_account_transfers/create (docs/api/scale/connected_account_transfers/create: amount, currency,
+   * destination, reason, reference 1-140, request_id 1-50), sent on behalf of the connected account to Purser's platform
+   * account. UNCONFIRMED that Airwallex allows this direction; only called with AIRWALLEX_PLATFORM_FEE=on.
+   */
+  async collectPlatformFee(f: PlatformFee): Promise<{ id: string; status: string }> {
+    if (!this.api.onBehalfOf) throw new Error("a Purser fee is only taken from a connected account");
+    const r = await this.api.call<{ id: string; status: string }>("POST", "/connected_account_transfers/create", {
+      request_id: f.requestId, amount: fromCents(f.amountCents), currency: f.currency, destination: f.destination,
+      reason: "professional_business_services", reference: f.reference.slice(0, 140),
+    });
+    return { id: r.id, status: r.status };
+  }
 
   async balances(): Promise<Partial<Record<Currency, Balance>>> {
     const rows = await this.api.call<{ currency: string; available_amount?: number; pending_amount?: number; reserved_amount?: number; account_type?: string }[]>(

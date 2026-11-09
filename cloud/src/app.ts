@@ -17,6 +17,7 @@ import { download, ExportRefused, exportStatus, signedLink, stageExport } from "
 import { consoleResponse } from "./console.js";
 import { qrSvg } from "./qr.js";
 import { logEvent } from "./log.js";
+import { accountOf, onboardingLink, openAccount, PlatformRefused, receiveAccountEvent, type AwxPlatformEnv } from "./awxPlatform.js";
 import { cloudHealth, companyStatus, HealthReport, MonitorRefused, notify, receiveReport, removeWebhook, setWebhook, webhookOf, type Outbound } from "./monitor.js";
 
 export interface CloudEnv {
@@ -48,6 +49,11 @@ export interface CloudEnv {
   /** A staged export's rows per part (default 2000) and its size limit in bytes (default 512 MB). */
   exportPartRows?: number;
   exportMaxBytes?: number;
+  /**
+   * Purser as an Airwallex platform (cloud/src/awxPlatform.ts, docs/airwallex-platform.md): the platform rail, the
+   * hosted onboarding template and the webhook secret. Absent (the default): the /v1/airwallex routes answer 404.
+   */
+  awxPlatform?: AwxPlatformEnv;
 }
 
 interface Ctx { env: CloudEnv; req: Request; url: URL; now: Date; params: string[]; caller: Caller | null; db: TenantDb | null }
@@ -57,7 +63,7 @@ interface Route { method: "GET" | "POST" | "DELETE"; path: string; summary: stri
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" };
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 /** Every error has one shape: a sentence for a person and a stable code for a program. */
-const CODES: Record<number, string> = { 400: "bad_request", 401: "unauthorized", 403: "forbidden", 404: "not_found", 405: "method_not_allowed", 409: "conflict", 413: "too_large", 422: "unprocessable", 429: "rate_limited", 500: "internal" };
+const CODES: Record<number, string> = { 400: "bad_request", 401: "unauthorized", 403: "forbidden", 404: "not_found", 405: "method_not_allowed", 409: "conflict", 413: "too_large", 422: "unprocessable", 429: "rate_limited", 500: "internal", 502: "upstream" };
 export const err = (status: number, error: string) => json(status, { error, code: CODES[status] ?? "error" });
 const notFound = (what: string) => err(404, `no ${what}`);
 
@@ -101,6 +107,16 @@ export function withoutSecret(r: Record<string, unknown>): Record<string, unknow
   delete copy.secret_sha256;
   return copy;
 }
+/** The platform's configuration, or 404: the cloud does not offer Airwallex accounts through Purser. */
+function platformOf(c: Ctx): AwxPlatformEnv {
+  if (!c.env.awxPlatform) throw new PlatformRefused(404, "opening an Airwallex account through Purser is not switched on");
+  return c.env.awxPlatform;
+}
+/** A signed-in owner only: not a key, not another role. */
+function ownerOnly(c: Ctx): void {
+  if (c.caller!.kind !== "session" || c.caller!.role !== "owner") throw new AuthError(403, "only a signed-in owner opens or verifies the company's Airwallex account");
+}
+
 const SLUG = z.string().regex(/^[a-z0-9][a-z0-9-]{1,40}$/, "a slug is lowercase letters, digits and dashes");
 /**
  * Addresses no company may have (red team round 5): a company's address is also its inbox (slug@domain), and these are
@@ -126,6 +142,32 @@ export const ROUTES: Route[] = [
     return json(200, { ...(await setWebhook(c.env.sql, c.caller!.tenantId, b.url, c.caller!.principal, c.now)), note: "the secret is shown once" });
   } },
   { method: "DELETE", path: "/v1/webhook", summary: "Remove the alert webhook.", need: "admin", run: async (c) => json(200, { removed: await removeWebhook(c.env.sql, c.caller!.tenantId) }) },
+  { method: "GET", path: "/v1/airwallex/account", summary: "The company's Airwallex account opened through Purser as a platform: its id and onboarding status (created, pending, action_required, active, refused, dormant, closed); whether the cloud offers it at all.", need: "admin", run: async (c) =>
+    json(200, { switched_on: Boolean(c.env.awxPlatform), account: c.env.awxPlatform ? await accountOf(c.env.sql, c.caller!.tenantId) : null }) },
+  { method: "POST", path: "/v1/airwallex/account", summary: "Open the company's Airwallex account through Purser (a signed-in owner, who agreed to Airwallex's terms first). One per company.", need: "admin", run: async (c) => {
+    const p = platformOf(c);
+    ownerOnly(c);
+    const b = await body(c, z.object({ business_name: z.string().trim().min(1).max(200), country_code: z.string().regex(/^[A-Z]{2}$/, "a two-letter country code (NL, DE, ...)"),
+      email: z.string().trim().email().max(200), agreed: z.literal(true, { message: "agree to Airwallex's terms first" }) }).strict(), 8_000);
+    return json(201, { account: await openAccount(c.env.sql, c.caller!.tenantId, p, b, c.caller!.principal, c.now) });
+  } },
+  { method: "POST", path: "/v1/airwallex/onboarding-link", summary: "Airwallex's hosted onboarding link for the company's checks, made for the signed-in owner and short-lived; never stored.", need: "admin", run: async (c) => {
+    const p = platformOf(c);
+    ownerOnly(c);
+    return json(200, { url: await onboardingLink(c.env.sql, c.caller!.tenantId, p, c.caller!.principal, `${c.env.origin}/#/settings`) });
+  } },
+  { method: "POST", path: "/v1/airwallex/webhook", summary: "Airwallex's account.* webhooks (signed: x-timestamp, x-signature): the onboarding status of an account opened through Purser.", need: "public", run: async (c) => {
+    const p = platformOf(c);
+    const ip = c.req.headers.get("cf-connecting-ip") ?? "unknown";
+    if (await failedAuthBlocked(c.env.sql, ip, c.now, c.env.rate?.failedAuthPerMinute ?? 20)) return err(429, "too many failed signatures from this address; wait a minute");
+    const text = await readCapped(c.req, 64_000);
+    try {
+      return json(200, await receiveAccountEvent(c.env.sql, p, c.req.headers, text, c.now));
+    } catch (e) {
+      if (e instanceof PlatformRefused && e.status === 401) await noteFailedAuth(c.env.sql, ip, null, c.now);
+      throw e;
+    }
+  } },
   { method: "GET", path: "/v1/openapi.json", summary: "This API, as OpenAPI 3.1.", need: "public", run: async (c) => json(200, openApi(c.env.origin)) },
 
   { method: "POST", path: "/v1/admin/tenants", summary: "Create a company and its first owner; returns the owner's API key once.", need: "platform", run: async (c) => {
@@ -476,6 +518,7 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
     if (e instanceof PrivacyRefused) return err(409, e.message);
     if (e instanceof ExportRefused) return err(e.status, e.message);
     if (e instanceof MonitorRefused) return err(400, e.message);
+    if (e instanceof PlatformRefused) return err(e.status, e.message);
     // A write that lost a race with another request for the same company: nothing of it was written.
     if (e instanceof WriteConflict) return err(409, "another change for this company landed at the same time; nothing of this request was written: send it again");
     // Nothing internal leaks: the caller gets a reference, the log gets the error.

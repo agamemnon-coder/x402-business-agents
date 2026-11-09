@@ -314,3 +314,21 @@ CREATE TABLE IF NOT EXISTS exports (
   downloaded_at TEXT,
   PRIMARY KEY (tenant_id, id)
 );
+
+-- The company's Airwallex account opened through Purser as a platform (docs/airwallex-platform.md; off unless the cloud
+-- is configured for it). One row per company, id 'main': the account's id and its onboarding status as Airwallex's
+-- account.* webhooks report it (event_at: the newest event's x-timestamp). Never a key, never the onboarding link.
+CREATE TABLE IF NOT EXISTS awx_accounts (
+  tenant_id TEXT NOT NULL,
+  id TEXT NOT NULL,
+  -- Unique: one Airwallex account belongs to one company (NULL while the request to Airwallex is under way).
+  account_id TEXT UNIQUE,
+  status TEXT NOT NULL CHECK (status IN ('opening', 'created', 'pending', 'action_required', 'active', 'refused', 'dormant', 'closed')),
+  business_name TEXT NOT NULL,
+  country_code TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  event_at INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (tenant_id, id)
+);

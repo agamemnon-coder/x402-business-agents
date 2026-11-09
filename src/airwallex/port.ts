@@ -182,7 +182,20 @@ export interface PayoutRail {
   createPayoutTransfer(t: NewPayoutTransfer): Promise<Transfer>;
   findTransferByRequestIdStrict(requestId: string): Promise<Transfer | undefined>;
   getTransfer(id: string): Promise<Transfer>;
+  /**
+   * Purser as a platform (docs/airwallex-platform.md): the connected account every call is made for, or null/undefined
+   * for the company's own account. The executor refuses terms that name another paying account.
+   */
+  readonly payingAccount?: string | null;
+  /**
+   * The Purser fee for a paid payout, from this (connected) account to Purser's platform account
+   * (POST /connected_account_transfers/create with x-on-behalf-of: the mechanism is UNCONFIRMED by Airwallex, so it only
+   * runs with AIRWALLEX_PLATFORM_FEE=on). Safe to ask again under the same request id.
+   */
+  collectPlatformFee?(f: PlatformFee): Promise<{ id: string; status: string }>;
 }
+
+export interface PlatformFee { requestId: string; amountCents: number; currency: string; destination: string; reference: string }
 
 /** Sandbox-only simulations. Kept apart so no production path can reach them. */
 export interface SandboxSim {

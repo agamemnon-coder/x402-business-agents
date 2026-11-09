@@ -101,7 +101,7 @@ function bar(){const ready=all.filter(i=>i.status==='ready'&&i.payable!==false);
 $('#batchall').onclick=()=>{for(const i of all)if(i.status==='ready'&&i.payable!==false)picked.add(i.id);rows();bar()};
 $('#batchpay').onclick=async()=>{const ids=[...picked];const btn=$('#batchpay');btn.disabled=true;
   try{const j=await post('/api/payables/batch',JSON.stringify({ids}),{'content-type':'application/json'});picked.clear();
-    const left=j.not_planned.length?' '+t('ov.batch_left',{list:j.not_planned.map(x=>x.id+' ('+x.reason+')').join('; ')}):'';
+    const left=j.not_planned.length?' '+t('ov.batch_left',{list:j.not_planned.map(x=>x.id+' ('+data('reason',x.reason)+')').join('; ')}):'';
     msg(j.batch?tn('ov.batch_filed',j.batch.count,{id:j.batch.proposal_id})+left:t('ov.batch_nothing')+left,j.batch&&!left?'ok':'bad');await load()}
   catch(e){msg(e.message,'bad');btn.disabled=false}};
 function filters(){const bar=$('#filters');bar.querySelectorAll('.chip').forEach(c=>c.remove());for(const [k,label,fn] of FILTERS){const n=all.filter(fn).length;if(k!=='all'&&!n&&k!=='act')continue;const b=el('button','chip',[label,' ',el('b','',String(n))]);b.type='button';b.setAttribute('aria-pressed',String(filter===k));b.onclick=()=>{filter=k;filters();rows()};bar.append(b)}}
@@ -180,16 +180,16 @@ async function drawPdf(box){
   }catch(e){box.replaceChildren(el('p','wait',t('dt.not_drawn',{error:e.message})));return []}
 }
 // A scan: each field the model read, beside the piece of the page it says it read it from, so a person checks one against the other.
-const FIELD={vendor:'Supplier',invoice_no:'Invoice number',issue_date:'Invoice date',due_date:'Due date',currency:'Currency',subtotal:'Subtotal',tax:'VAT',total:'Total',iban:'IBAN',bic:'BIC',account_number:'Account',reference:'Reference'};
+const FIELD_LABEL=(f)=>tk('dt.scan.field.'+f,f);
 function scanCard(d){
   const s=d.scan;if(!s)return null;const i=d.invoice,r=i.reading;
   const val=(f)=>f==='total'||f==='subtotal'||f==='tax'?(i[f]?i.currency+' '+amount(i[f]):''):(i[f]??r[f]??'');
   const list=el('div','');list.style.cssText='display:grid;gap:10px';
-  const summary=s.agreed?'Two independent readings agree on the IBAN, total, currency and invoice number. Check them against the page before paying.':s.readings<2?'Only one reading came back: a person checks every field against the page.':'The two readings differ on '+s.differ.map(x=>(FIELD[x]||x).toLowerCase()).join(', ')+': a person checks every field against the page.';
-  const card=el('div','card panel',[el('h2','',['Read from a scan',el('span','cnt',s.agreed?'2 readings agree':'Needs a person')]),el('p','',summary),list]);
+  const summary=s.agreed?t('dt.scan.agreed'):s.readings<2?t('dt.scan.one'):t('dt.scan.differ',{fields:s.differ.map(x=>FIELD_LABEL(x).toLowerCase()).join(', ')});
+  const card=el('div','card panel',[el('h2','',[t('dt.scan.title'),el('span','cnt',s.agreed?t('dt.scan.agree'):t('dt.scan.person'))]),el('p','',summary),list]);
   card.fill=(pages)=>{for(const b of s.boxes){const pg=pages[b.page-1];const row=el('div','');row.style.cssText='display:grid;grid-template-columns:minmax(110px,30%) 1fr;gap:10px;align-items:center';
-    const label=el('div','',[el('div','',FIELD[b.field]||b.field),el('b','',String(val(b.field)||'(empty)'))]);label.lastChild.style.cssText='word-break:break-all';
-    if(pg){const c=document.createElement('canvas');const sx=Math.max(0,Math.floor(b.x*pg.width)),sy=Math.max(0,Math.floor(b.y*pg.height)),sw=Math.max(1,Math.floor(b.w*pg.width)),sh=Math.max(1,Math.floor(b.h*pg.height));c.width=sw;c.height=sh;c.getContext('2d').drawImage(pg,sx,sy,sw,sh,0,0,sw,sh);c.style.cssText='max-width:100%;border:1px solid var(--border);border-radius:6px;background:#fff';c.setAttribute('aria-label',(FIELD[b.field]||b.field)+' as on page '+b.page);row.append(label,c)}
+    const label=el('div','',[el('div','',FIELD_LABEL(b.field)||b.field),el('b','',String(val(b.field)||'(empty)'))]);label.lastChild.style.cssText='word-break:break-all';
+    if(pg){const c=document.createElement('canvas');const sx=Math.max(0,Math.floor(b.x*pg.width)),sy=Math.max(0,Math.floor(b.y*pg.height)),sw=Math.max(1,Math.floor(b.w*pg.width)),sh=Math.max(1,Math.floor(b.h*pg.height));c.width=sw;c.height=sh;c.getContext('2d').drawImage(pg,sx,sy,sw,sh,0,0,sw,sh);c.style.cssText='max-width:100%;border:1px solid var(--border);border-radius:6px;background:#fff';c.setAttribute('aria-label',(FIELD_LABEL(b.field)||b.field)+' as on page '+b.page);row.append(label,c)}
     else row.append(label,el('span','wait','page '+b.page+' not drawn'));list.append(row)}
     if(!s.boxes.length)list.append(el('p','wait','The reading gave no places on the page: compare each field with the document on the left.'))};
   return card;

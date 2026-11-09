@@ -57,6 +57,10 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/webhook` | admin | The alert webhook: URL, failures in a row, last attempt and status, when it was turned off. Never its secret. |
 | `POST /v1/webhook` | admin | Set the alert webhook (https, a public host name, port 443, no credentials); returns the signing secret once. |
 | `DELETE /v1/webhook` | admin | Remove the alert webhook. |
+| `GET /v1/airwallex/account` | admin | The company's Airwallex account opened through Purser as a platform: its id and onboarding status; `switched_on: false` when the cloud does not offer it ([airwallex-platform.md](airwallex-platform.md)). |
+| `POST /v1/airwallex/account` | admin | Open that account (a signed-in owner only, after agreeing to Airwallex's terms): `business_name`, `country_code`, `email`, `agreed: true`. One per company; 404 when not switched on. |
+| `POST /v1/airwallex/onboarding-link` | admin | Airwallex's hosted onboarding link for the company's checks (a signed-in owner only); short-lived and never stored. |
+| `POST /v1/airwallex/webhook` | anyone | Airwallex's `account.*` webhooks, signed (`x-timestamp`, `x-signature`): the account's status follows them. |
 | `GET /v1/openapi.json` | anyone | This API, as OpenAPI 3.1. |
 | `POST /v1/admin/tenants` | platform admin | Create a company and its first owner; returns the starter key once (a week, the first owner's passkey only). |
 | `POST /v1/admin/tenants/{id}/recovery` | platform admin | An owner lost their passkey: after checking out of band who asks (`checked_by` says how), issue a one-time recovery key for that owner: a day long, good only for that owner's passkey enrolment. Redeemed, it removes the owner's old passkeys, ends their sessions and is spent, in the same write as the new passkey. One open recovery per company; recorded in security events and sent to the webhook. |

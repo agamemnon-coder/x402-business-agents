@@ -304,6 +304,9 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       rows: [
         ["Amount", `${cur} ${money(t.amount)}`],
         ["Fee reserve", `at most ${cur} ${money(t.fee_reserve)} held back (the real fee is recorded)`],
+        // Purser as an Airwallex platform (docs/airwallex-platform.md): which account pays, and Purser's own fee, never hidden.
+        ...(isObj(t.paying_account) ? [["Paid from", `${str(t.paying_account.name)}, ${str(t.paying_account.id)}`] as [string, string]] : []),
+        ...(isObj(t.platform_fee) ? [["Purser fee", `${str(t.platform_fee.currency)} ${money(t.platform_fee.amount)} (${(Number(str(t.platform_fee.bps)) / 100).toFixed(2)}%), taken from this account after the payment is paid`] as [string, string]] : []),
         ["Pays", recipient],
         ["Invoice", `${str(t.invoice_no)} from ${str(t.vendor)}, reference ${str(t.reference)}`],
         ["Method", how],
@@ -669,20 +672,28 @@ function el(tag: string, cls?: string, kids: (Node | string | null | false | und
 }
 const txt = (tag: string, cls: string, s: unknown) => el(tag, cls, [str(s)]);
 
-function countdown(iso: string): { text: string; soon: boolean; over: boolean } {
+export function countdown(iso: string, lang = "en"): { text: string; soon: boolean; over: boolean } {
   const ms = Date.parse(iso) - Date.now();
+  const nl = lang === "nl";
   if (Number.isNaN(ms)) return { text: "", soon: false, over: false };
-  if (ms <= 0) return { text: "expired", soon: true, over: true };
+  if (ms <= 0) return { text: nl ? "verlopen" : "expired", soon: true, over: true };
   const s = Math.floor(ms / 1000);
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
-  return { text: `expires in ${h ? `${h}h ` : ""}${m}m ${String(s % 60).padStart(2, "0")}s`, soon: ms < 120_000, over: false };
+  const left = `${h ? `${h}h ` : ""}${m}m ${String(s % 60).padStart(2, "0")}s`;
+  return { text: nl ? `verloopt over ${left}` : `expires in ${left}`, soon: ms < 120_000, over: false };
+}
+
+/** Amounts as the Dutch pages write them: "EUR 4,617.20" becomes "€ 4.617,20" (other currencies keep their code). */
+export function nlMoney(text: string): string {
+  return text.replace(/\b([A-Z]{3}) (-?)(\d{1,3}(?:,\d{3})*)\.(\d{2})\b/g, (_m, cur: string, sign: string, int: string, dec: string) =>
+    `${cur === "EUR" ? "€" : cur} ${sign}${int.replace(/,/g, ".")},${dec}`);
 }
 
 /** Keeps every [data-expires] countdown on the page current. */
 function tickCountdowns(): void {
   document.querySelectorAll<HTMLElement>("[data-expires]").forEach((n) => {
-    const c = countdown(n.dataset.expires!);
+    const c = countdown(n.dataset.expires!, n.dataset.lang);
     n.textContent = c.text;
     n.classList.toggle("soon", c.soon);
   });
@@ -1419,6 +1430,12 @@ async function batchView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, 
   const approvable = check.ok && !!f && f.approvable && bad.length === 0;
   const cd = el("span", "countdown");
   cd.dataset.expires = o.expires_at;
+  cd.dataset.lang = "nl";
+  // The payables batch is a Dutch page: the header and the way back say so too (the Kit 11 pages stay English).
+  const sub = document.querySelector<HTMLElement>("header .sub");
+  if (sub) sub.textContent = sub.textContent!.replace(/^Approvals\b/, "Goedkeuringen");
+  document.documentElement.lang = "nl";
+  for (const a of app.querySelectorAll<HTMLAnchorElement>("a.back")) a.textContent = "← Overzicht";
   const status = el("p", "sheet-status");
   status.setAttribute("role", "status");
   const list = el("ol", "batch-lines");
@@ -1433,7 +1450,7 @@ async function batchView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, 
     out.addEventListener("click", () => void removeLine(str(l.proposal_id), ownInvoiceNo(t)));
     removers.push(out);
     list.append(el("li", "batch-line", [
-      el("div", "bl-head", [txt("span", "bl-who", str(t.vendor) || str(t.beneficiary_name)), txt("span", "bl-amount num", lf.amount)]),
+      el("div", "bl-head", [txt("span", "bl-who", str(t.vendor) || str(t.beneficiary_name)), txt("span", "bl-amount num", nlMoney(lf.amount))]),
       txt("p", "bl-meta", [`Factuur ${ownInvoiceNo(t)}`, lineAccount(t)].filter(Boolean).join(" · ")),
       t.document_total_line !== undefined ? txt("p", "bl-line invoice-line", `Op de factuur: \u201c${str(t.document_total_line).slice(0, 120)}\u201d`) : null,
       ...lf.warnings.map((w) => txt("p", "alarm", w)),
@@ -1455,7 +1472,7 @@ async function batchView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, 
       el("p", "eyebrow need", [o.four_eyes ? "Wacht op jouw goedkeuring en die van een tweede persoon" : "Wacht op jouw goedkeuring", " · ", cd]),
       isTestMoney(terms) ? txt("p", "testmoney", "Testgeld · Airwallex sandbox") : null,
       txt("h1", "what-title", f ? f.title : o.proposal_id),
-      f ? el("p", "hero", [txt("span", "hero-label", "Totaal"), txt("span", "hero-amount num", f.amount)]) : null,
+      f ? el("p", "hero", [txt("span", "hero-label", "Totaal"), txt("span", "hero-amount num", nlMoney(f.amount))]) : null,
       el("dl", "key-facts", [
         txt("dt", "", "Betalingen"), txt("dd", "", String(lines.length)),
         txt("dt", "", "Agent"), txt("dd", "", "Payables inbox"),
@@ -1484,7 +1501,7 @@ async function batchView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, 
       unlock();
       return;
     }
-    const home = el("a", "back", ["← Dashboard"]) as HTMLAnchorElement;
+    const home = el("a", "back", ["← Overzicht"]) as HTMLAnchorElement;
     home.href = "/";
     await follow(str(sent.data.ticket), app, home, what);
   };

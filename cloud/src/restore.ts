@@ -11,8 +11,12 @@ import { TENANT_TABLES, TenantDb, type Table } from "./tenant.js";
 
 export class RestoreRefused extends Error {}
 
-/** Tables a restore does not write: their rows carry secrets the export leaves out, the target already has its own, or (exports) they point at parts that were not restored. */
-const NOT_RESTORED = new Set<Table>(["api_keys", "enrolments", "webhooks", "exports"]);
+/**
+ * Tables a restore does not write: their rows carry secrets the export leaves out, or the target already has its own,
+ * or (awx_accounts) only the platform links an Airwallex account to a company, never an uploaded file, or (exports)
+ * they point at parts that were not restored.
+ */
+const NOT_RESTORED = new Set<Table>(["api_keys", "enrolments", "webhooks", "awx_accounts", "exports"]);
 /** The bookkeeping tables: the target must hold none of these yet. */
 const BOOKS: Table[] = ["vendors", "invoices", "payments", "transactions", "documents", "ledger_entries", "audit_rows"];
 
