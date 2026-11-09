@@ -53,10 +53,11 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 |---|---|---|
 | `GET /v1/health` | anyone | Liveness. |
 | `GET /v1/openapi.json` | anyone | This API, as OpenAPI 3.1. |
-| `POST /v1/admin/tenants` | platform admin | Create a company and its first owner; returns the owner's API key once. |
+| `POST /v1/admin/tenants` | platform admin | Create a company and its first owner; returns the starter key once (a week, the first owner's passkey only). |
 | `POST /v1/auth/challenge` | anyone | Start a passkey sign-in: a one-time challenge for the company. |
 | `POST /v1/auth/login` | anyone | Finish a passkey sign-in; returns a 15-minute session token. |
 | `POST /v1/auth/enrol` | anyone | Enrol a person's passkey with the single-use enrolment an owner started: the new passkey signs the enrolment's secret. |
+| `POST /v1/auth/invite` | anyone | What an invite is for, from its secret: the company's address and name and the person; nothing is used up. |
 | `POST /v1/auth/logout` | read | Sign out: every session of the signed-in person ends. |
 | `GET /v1/me` | read | Who is calling: the company, and the key's scopes or the person's role; the person behind the call, whether an owner has a passkey yet, and the company's inbox address once mail is routed (the console's first run uses these). |
 | `POST /v1/company` | admin | Change the company's display name (its address, the slug, stays). |
@@ -82,6 +83,8 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `POST /v1/keys` | admin | A new API key; returned once. A key made by a key never has more scope or a later expiry than it. |
 | `DELETE /v1/keys/{id}` | admin | Revoke an API key, and every key it made down the chain (`also_revoked`). |
 | `GET /v1/users` | admin | The company's people and their roles; paginated (limit, cursor). |
+| `GET /v1/users/{id}/passkeys` | admin | A person's passkeys (their ids and when each was enrolled). |
+| `DELETE /v1/users/{id}/passkeys/{credential}` | admin | Remove a passkey (a signed-in owner only): it signs in no more, and the person's sessions end. Never the last owner passkey. |
 | `POST /v1/users/{id}/enrolment` | admin | Start a person's passkey enrolment: a single-use secret for 30 minutes (an owner's passkey: a signed-in owner only, once any owner has one). |
 | `POST /v1/users` | admin | Add a person (owner, cfo, accountant, viewer); they then enrol a passkey with an enrolment an owner starts. |
 | `POST /v1/users/{id}/erase` | admin | Erase a person's personal data (bookkeeping records are kept for 7 years). |
@@ -122,8 +125,20 @@ nothing.
 **Passkeys are never pushed.** A push carries bookkeeping only; a sync key cannot add a sign-in credential (security
 review of 8 November: before, a sync key could push a passkey for the owner and sign in as the owner). A person enrols
 in the cloud: an owner starts an enrolment (`POST /v1/users/{id}/enrolment`), hands its secret to that person, and the
-person's new passkey signs that secret (`POST /v1/auth/enrol`). For a new company the first owner key may start the
+person's new passkey signs that secret (`POST /v1/auth/enrol`). For a new company the starter key may start the
 first owner's enrolment; once any owner has a passkey, only a signed-in owner may start another owner's.
+
+**The starter key and invites (red team round 5).** The key the platform hands a new company is a starter key: it lasts
+a week, can only say who it is, name the company and start its own owner's enrolment (anything else is 403), and the
+first owner passkey revokes it in the same write. Each enrolment records who started it (a key or a signed-in person,
+and whether that was a signed-in owner); when it is redeemed, the starter must still be live, and an owner's passkey
+that no signed-in owner started still needs no owner to have one, both checked at commit. A new invite for a person
+cancels their unused ones; revoking a key cancels the invites it (and the keys it made) started; erasing a person
+cancels their own pending invites and the ones they started. Settings lists each person's passkeys; a signed-in owner
+removes one, which ends that person's sessions, and the company's last owner passkey cannot be removed (checked at
+commit, so two owners removing each other's at once leave one). Addresses mail systems and certificate authorities
+write to (postmaster, admin, abuse, …: `RESERVED_SLUGS`) are refused, and a purged company keeps its address, never
+reissued. `test/rt5-cloud.test.ts`.
 
 **Sessions and keys end on time and on events.** A session lasts 15 minutes, and ends at once when the person signs
 out, is erased or gets another role, or when the company is closed. Every key expires; erasing a person revokes every

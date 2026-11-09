@@ -9,13 +9,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { auditRowHash, ledgerEntryHash, GENESIS } from "../cloud/src/chains.js";
 import { receiveEmail, type InboundEmail } from "../cloud/src/mail.js";
 import { softPasskey } from "../src/metal/softPasskey.js";
-import { ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
+import { ORIGIN, RP, testCloud, type TestCloud, type TestTenant } from "./support/cloud.js";
 
 const b64u = (u: Uint8Array) => Buffer.from(u).toString("base64url");
 const NOW = "2026-11-08T12:00:00.000Z";
 
 let c: TestCloud;
-let t: { id: string; key: string; owner: string };
+let t: TestTenant;
 beforeEach(async () => { c = testCloud({ rate: { perMinute: 100_000, signInPerMinute: 100_000, failedAuthPerMinute: 100_000 } }); t = await c.tenant("acme"); });
 afterEach(() => c.close());
 
@@ -30,6 +30,15 @@ function passkey() {
       return { authenticatorData: b64u(a.authenticatorData), clientDataJSON: b64u(a.clientDataJSON), signature: b64u(a.signature) };
     },
   };
+}
+
+/** The first owner's passkey, as the test company's first run enrolled it. */
+function ownerKey(): ReturnType<typeof passkey> {
+  const { pk, credential_id } = t.ownerPasskey;
+  return { pk, credential_id, x: "", y: "", assertion(challenge: string, origin = ORIGIN) {
+    const a = pk.assert("0x00", { challenge, origin, rpId: RP });
+    return { authenticatorData: b64u(a.authenticatorData), clientDataJSON: b64u(a.clientDataJSON), signature: b64u(a.signature) };
+  } };
 }
 
 /** The owner-issued enrolment, then the person's own passkey enrolled with it. */
@@ -64,7 +73,7 @@ describe("passkeys: a sync key cannot become owner", () => {
     const k = passkey();
     const r = await c.req("POST", "/v1/sync", { key: sync, body: { credentials: [{ credential_id: k.credential_id, user_id: t.owner, x: k.x, y: k.y, counter: 0 }] } });
     expect(r.status).toBe(400);
-    expect(await c.env.sql.first("SELECT 1 FROM credentials")).toBeNull();
+    expect(await c.env.sql.first("SELECT 1 FROM credentials WHERE credential_id = ?", [k.credential_id])).toBeNull();
     expect((await login(k)).res.status).toBe(401);
   });
 
@@ -105,9 +114,8 @@ describe("passkeys: a sync key cannot become owner", () => {
     expect(token).not.toBe(t2);
   });
 
-  it("an owner's passkey: an admin key may start it only while no owner has a passkey; after that only a signed-in owner", async () => {
-    const first = await enrol(t.owner);
-    expect(first.status).toBe(201);
+  it("an owner's passkey: once an owner has one (the first run), only a signed-in owner may start another, not an admin key", async () => {
+    const first = { key: ownerKey() };
     const second = await user("owner");
     expect((await c.req("POST", `/v1/users/${second}/enrolment`, { key: t.key })).status).toBe(403);
     const ownerSession = (await login(first.key!)).res.json.session as string;
@@ -126,7 +134,7 @@ describe("sessions", () => {
   });
 
   it("a closed company's sessions end at once; a person's sign-out ends their session", async () => {
-    const own = (await enrol(t.owner)).key!;
+    const own = ownerKey();
     const s = (await login(own)).res.json.session as string;
     expect((await c.req("GET", "/v1/me", { key: s })).status).toBe(200);
     expect((await c.req("POST", "/v1/auth/logout", { key: s })).status).toBe(200);
@@ -141,7 +149,7 @@ describe("sessions", () => {
 describe("API keys", () => {
   it("erasing a person revokes every key behind them, also keys made by their keys", async () => {
     const owner2 = await user("owner");
-    const own1 = (await enrol(t.owner)).key!;
+    const own1 = ownerKey();
     const ownerSession = (await login(own1)).res.json.session as string;
     const k2 = (await enrol(owner2, ownerSession)).key!;
     const s2 = (await login(k2)).res.json.session as string;

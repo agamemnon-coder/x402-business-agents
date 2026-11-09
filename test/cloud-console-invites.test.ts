@@ -7,13 +7,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { consoleCsp, consolePage } from "../cloud/src/console.js";
 import type { Sql } from "../cloud/src/store.js";
 import { softPasskey } from "../src/metal/softPasskey.js";
-import { ADMIN_TOKEN, ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
+import { ADMIN_TOKEN, ORIGIN, RP, testCloud, type TestCloud, type TestTenant } from "./support/cloud.js";
 
 const b64u = (u: Uint8Array) => Buffer.from(u).toString("base64url");
 const PDFJS = readFileSync(fileURLToPath(import.meta.resolve("unpdf/pdfjs")));
 
 let c: TestCloud;
-let t: { id: string; key: string; owner: string };
+let t: TestTenant;
 beforeEach(async () => { c = testCloud(); t = await c.tenant("acme"); });
 afterEach(() => c.close());
 
@@ -23,15 +23,20 @@ async function invite(name = "Fleur") {
   expect(e.status).toBe(201);
   return e.json as { enrolment_id: string; token: string; expires_at: string; link: string; qr_svg: string };
 }
-/** Opens the invite link as the console does: everything after #/enrol? is the enrolment. */
-function fromLink(link: string) {
+/**
+ * Opens the invite link as the console does: everything after #/enrol? is the enrolment, and the server says which
+ * company and person its secret is for (red team round 5: the link no longer names them).
+ */
+async function fromLink(link: string) {
   const u = new URL(link);
   expect(u.origin).toBe(ORIGIN);
   expect(u.pathname).toBe("/");
   expect(u.search).toBe("");
   expect(u.hash.startsWith("#/enrol?")).toBe(true);
   const q = new URLSearchParams(u.hash.slice("#/enrol?".length));
-  return { tenant: q.get("t")!, enrolment_id: q.get("e")!, token: q.get("k")!, name: q.get("n")! };
+  expect([...q.keys()].sort()).toEqual(["e", "k"]);
+  const info = await c.req("POST", "/v1/auth/invite", { body: { enrolment_id: q.get("e"), token: q.get("k") } });
+  return { tenant: info.json.tenant as string, enrolment_id: q.get("e")!, token: q.get("k")!, name: info.json.person as string };
 }
 async function enrolWith(o: { tenant: string; enrolment_id: string; token: string }) {
   const pk = softPasskey();
@@ -45,7 +50,7 @@ async function enrolWith(o: { tenant: string; enrolment_id: string; token: strin
 describe("inviting a person", () => {
   it("gives the owner a one-time link to this company's console, with the secret after the # (never sent to a server), and a QR code of it", async () => {
     const e = await invite();
-    const l = fromLink(e.link);
+    const l = await fromLink(e.link);
     expect(l).toEqual({ tenant: "acme", enrolment_id: e.enrolment_id, token: e.token, name: "Fleur" });
     expect(e.qr_svg.startsWith("<svg")).toBe(true);
     expect(e.qr_svg).toMatch(/<path[^>]+d="M/);
@@ -54,20 +59,20 @@ describe("inviting a person", () => {
   });
 
   it("works once: the link enrols the person's passkey, and the same link again is refused", async () => {
-    const l = fromLink((await invite()).link);
+    const l = await fromLink((await invite()).link);
     expect((await enrolWith(l)).status).toBe(201);
     expect((await enrolWith(l)).status).toBe(401);
   });
 
   it("is refused after 30 minutes", async () => {
-    const l = fromLink((await invite()).link);
+    const l = await fromLink((await invite()).link);
     c.clock.now = new Date(c.clock.now.getTime() + 30 * 60_000 + 1000);
     expect((await enrolWith(l)).status).toBe(401);
   });
 
   it("enrols nobody in another company, even with the right secret", async () => {
     await c.tenant("beta");
-    const l = fromLink((await invite()).link);
+    const l = await fromLink((await invite()).link);
     const r = await enrolWith({ ...l, tenant: "beta" });
     expect([401, 404]).toContain(r.status);
     expect((await enrolWith(l)).status).toBe(201);

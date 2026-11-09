@@ -7,8 +7,8 @@ import type { Sql, SqlValue } from "./store.js";
 const COLUMNS = {
   users: ["id", "display_name", "email", "role", "created_at", "erased_at", "session_gen"],
   credentials: ["credential_id", "user_id", "x", "y", "counter", "created_at"],
-  api_keys: ["id", "name", "scopes", "secret_sha256", "created_by", "created_by_user", "parent_key", "created_at", "expires_at", "revoked_at", "last_used_at"],
-  enrolments: ["id", "user_id", "token_sha256", "created_by", "created_at", "expires_at", "used_at"],
+  api_keys: ["id", "name", "scopes", "secret_sha256", "created_by", "created_by_user", "parent_key", "purpose", "created_at", "expires_at", "revoked_at", "last_used_at"],
+  enrolments: ["id", "user_id", "token_sha256", "created_by", "created_by_kind", "created_by_user", "by_owner", "created_at", "expires_at", "used_at", "cancelled_at"],
   vendors: ["id", "name", "status", "updated_at", "version", "body_json", "body_sha256"],
   invoices: ["id", "vendor", "invoice_no", "due_date", "currency", "total", "status", "doc_sha256", "received_at", "updated_at", "version", "body_json", "body_sha256"],
   payments: ["id", "invoice_id", "status", "updated_at", "version", "body_json", "body_sha256"],
@@ -155,6 +155,19 @@ export class TenantDb {
       sql: `INSERT INTO push_log (tenant_id, id, by_key, at) VALUES (?, ?, (SELECT 'no-owner-passkey' WHERE (SELECT COUNT(*) FROM credentials c
           JOIN users u ON u.tenant_id = c.tenant_id AND u.id = c.user_id WHERE c.tenant_id = ? AND u.role = 'owner' AND u.erased_at IS NULL) = 0), ?)`,
       params: [t, `o_${at}_${crypto.randomUUID()}`, t, at],
+    };
+  }
+
+  /**
+   * A passkey removal's guard, put after the delete in the same batch: some owner still has a passkey when it commits
+   * (two owners removing each other's last passkeys at once leave one, never none).
+   */
+  ownerPasskeyRemainsGuard(at: string): Stmt {
+    const t = this.tenantId;
+    return {
+      sql: `INSERT INTO push_log (tenant_id, id, by_key, at) VALUES (?, ?, (SELECT 'owner-passkey-left' WHERE (SELECT COUNT(*) FROM credentials c
+          JOIN users u ON u.tenant_id = c.tenant_id AND u.id = c.user_id WHERE c.tenant_id = ? AND u.role = 'owner' AND u.erased_at IS NULL) > 0), ?)`,
+      params: [t, `r_${at}_${crypto.randomUUID()}`, t, at],
     };
   }
 

@@ -94,8 +94,11 @@ describe("the API behind the console", () => {
   });
 
   it("/v1/me tells the console who is calling, whether an owner has a passkey, and the inbox once mail is routed", async () => {
+    // A new company: only the starter key, no passkey yet.
+    const fresh = await c.tenant("fresh", { bare: true });
+    expect((await c.req("GET", "/v1/me", { key: fresh.key })).json).toMatchObject({ user: { id: fresh.owner, display_name: "Owner", role: "owner" }, owner_has_passkey: false, inbox: null });
     const me = await c.req("GET", "/v1/me", { key: t.key });
-    expect(me.json).toMatchObject({ user: { id: t.owner, display_name: "Owner", role: "owner" }, owner_has_passkey: false, inbox: null });
+    expect(me.json).toMatchObject({ user: { id: t.owner, display_name: "Owner", role: "owner" }, owner_has_passkey: true, inbox: null });
     c.env.mailDomain = "in.purser.test";
     expect((await c.req("GET", "/v1/me", { key: t.key })).json.inbox).toBe("acme@in.purser.test");
   });

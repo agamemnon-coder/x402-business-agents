@@ -73,7 +73,7 @@ describe("red team 4, cloud data", () => {
   it("sign-in challenges: a company has a bounded number open", async () => {
     const c = testCloud({ rate: { windowSec: 60, max: 100_000 } as never });
     try {
-      await c.tenant("acme");
+      await c.tenant("acme", { bare: true });
       let last = 0;
       for (let i = 0; i <= MAX_OPEN_CHALLENGES; i++) last = (await c.req("POST", "/v1/auth/challenge", { body: { tenant: "acme" }, headers: { "cf-connecting-ip": `198.51.100.${i % 250}` } })).status;
       expect(last).toBe(429);

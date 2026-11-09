@@ -3,12 +3,12 @@
 // unknown passkey, an expired session, a person erased or demoted since: all refused. Only the owner manages the company.
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { softPasskey } from "../src/metal/softPasskey.js";
-import { ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
+import { ORIGIN, RP, testCloud, type TestCloud, type TestTenant } from "./support/cloud.js";
 
 const b64u = (u: Uint8Array) => Buffer.from(u).toString("base64url");
 
 let c: TestCloud;
-let t: { id: string; key: string; owner: string };
+let t: TestTenant;
 beforeEach(async () => { c = testCloud(); t = await c.tenant("acme"); });
 afterEach(() => c.close());
 
@@ -19,8 +19,9 @@ async function person(role: "owner" | "cfo" | "accountant" | "viewer") {
   const credential_id = b64u(crypto.getRandomValues(new Uint8Array(16)));
   const x = Buffer.from(pk.key.qx.slice(2), "hex").toString("base64url");
   const y = Buffer.from(pk.key.qy.slice(2), "hex").toString("base64url");
-  // An owner starts the enrolment; the person's new passkey signs its secret.
-  const e = await c.req("POST", `/v1/users/${userId}/enrolment`, { key: t.key });
+  // An owner starts the enrolment (an owner's passkey: a signed-in owner, since the first owner has one); the person's
+  // new passkey signs its secret.
+  const e = await c.req("POST", `/v1/users/${userId}/enrolment`, { key: role === "owner" ? t.session : t.key });
   expect(e.status).toBe(201);
   const token = e.json.token as string;
   const ea = pk.assert("0x00", { challenge: token, origin: ORIGIN, rpId: RP });

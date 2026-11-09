@@ -57,9 +57,11 @@ describe("API keys", () => {
   });
 
   it("are rate limited per key", async () => {
-    const limited = testCloud({ rate: { perMinute: 3, signInPerMinute: 2 } });
+    const limited = testCloud();
     try {
       const t = await limited.tenant("acme");
+      // The limits from here on (making the company signs its owner in, which would count against them).
+      limited.env.rate = { perMinute: 3, signInPerMinute: 2 };
       for (let i = 0; i < 3; i++) expect((await limited.req("GET", "/v1/invoices", { key: t.key })).status).toBe(200);
       expect((await limited.req("GET", "/v1/invoices", { key: t.key })).status).toBe(429);
       limited.clock.now = new Date(limited.clock.now.getTime() + 61_000);
