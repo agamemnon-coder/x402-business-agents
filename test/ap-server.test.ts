@@ -162,7 +162,7 @@ describe("the payables page", () => {
   it("ships page scripts that parse (a broken quote in a template would blank the page)", async () => {
     await start(false);
     await upload(await pdfOf(EN), "a.pdf");
-    for (const path of ["/", "/invoices/AP-0001"]) {
+    for (const path of ["/", "/invoices/AP-0001", "/transactions"]) {
       const code = /<script type="module" nonce="[^"]+">([\s\S]*?)<\/script>/.exec(await (await fetch(base + path)).text())?.[1] ?? "";
       expect(code.length).toBeGreaterThan(500);
       expect(() => new Script(code)).not.toThrow();

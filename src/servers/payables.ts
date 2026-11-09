@@ -20,7 +20,9 @@ import { publicInvoice } from "../ap/public.js";
 import { apInvoice, apInvoices } from "../ap/store.js";
 import { proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../ap/vendors.js";
 import type { DB } from "../db/open.js";
+import { filterRows, registerCsv, transactionRegister, type RegisterFilter } from "../money/register.js";
 import { FONT, PDFJS, detailPage, overviewPage } from "./payablesPage.js";
+import { transactionsPage } from "./transactionsPage.js";
 
 export interface PayablesOptions {
   inbox: InboxDeps;
@@ -117,6 +119,7 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
     const nonce = pageCsp(res);
     res.type("html").send(detailPage(issue(), nonce, inv.id));
   });
+  app.get("/transactions", (_req, res) => { const nonce = pageCsp(res); res.type("html").send(transactionsPage(issue(), nonce)); });
   // The pages' own files: the font, and pdf.js for the document viewer (it draws the supplier's PDF on a canvas, without eval).
   app.get("/assets/inter.woff2", (_req, res) => { res.setHeader("Cache-Control", "private, max-age=86400"); res.type("font/woff2").send(FONT); });
   app.get("/assets/pdfjs.mjs", (_req, res) => { res.setHeader("Cache-Control", "private, max-age=86400"); res.type("text/javascript").send(PDFJS); });
@@ -144,6 +147,28 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
     res.type("application/pdf").send(readFileSync(doc.path));
   });
   app.get("/api/payables/insights", (_req, res) => { res.json(insights(db)); });
+  // The transactions register (src/money/register.ts): read only. Filters: rail, currency, from, to, reconciliation, moved, q.
+  const registerFilter = (q: Request["query"]): RegisterFilter => {
+    const s = (k: string) => (typeof q[k] === "string" && q[k] !== "" ? String(q[k]).slice(0, 80) : undefined);
+    const day = (k: string) => { const v = s(k); if (v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) throw new Error(`${k} must be a day like 2026-11-30`); return v; };
+    const moved = s("moved");
+    return { rail: s("rail"), currency: s("currency"), from: day("from"), to: day("to"), reconciliation: s("reconciliation"), q: s("q"), ...(moved ? { moved: moved === "true" || moved === "yes" } : {}) };
+  };
+  const filtered = (req: Request) => { const r = transactionRegister(db); return { ...r, rows: filterRows(r.rows, registerFilter(req.query)) }; };
+  app.get("/api/payables/transactions", (req, res) => {
+    try { res.json(filtered(req)); } catch (e) { res.status(400).json({ error: (e as Error).message }); }
+  });
+  app.get("/api/payables/transactions/:id", (req, res) => {
+    const row = transactionRegister(db).rows.find((r) => r.id === String(req.params.id));
+    if (!row) { res.status(404).json({ error: "no such transaction" }); return; }
+    res.json(row);
+  });
+  app.get("/api/payables/export/transactions.csv", (req, res) => {
+    try { const r = filtered(req); res.type("text/csv").setHeader("Content-Disposition", 'attachment; filename="transactions.csv"'); res.send(registerCsv(r.rows)); } catch (e) { res.status(400).json({ error: (e as Error).message }); }
+  });
+  app.get("/api/payables/export/transactions.json", (req, res) => {
+    try { const r = filtered(req); res.setHeader("Content-Disposition", 'attachment; filename="transactions.json"'); res.json(r); } catch (e) { res.status(400).json({ error: (e as Error).message }); }
+  });
   app.get("/api/payables/export/journal.csv", (_req, res) => { res.type("text/csv").setHeader("Content-Disposition", 'attachment; filename="payables-journal.csv"'); res.send(journalCsv(apJournal(db))); });
   app.get("/api/payables/export/invoices.csv", (_req, res) => { res.type("text/csv").setHeader("Content-Disposition", 'attachment; filename="payables-invoices.csv"'); res.send(invoicesCsv(apInvoices(db))); });
 

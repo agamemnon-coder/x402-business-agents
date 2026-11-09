@@ -25,6 +25,9 @@ const MORE: Record<string, Icon> = {
   "circle-x": [["circle", { cx: "12", cy: "12", r: "10" }], ["path", { d: "m15 9-6 6" }], ["path", { d: "m9 9 6 6" }]],
   "circle-pause": [["circle", { cx: "12", cy: "12", r: "10" }], ["line", { x1: "10", y1: "15", x2: "10", y2: "9" }], ["line", { x1: "14", y1: "15", x2: "14", y2: "9" }]],
   "chevron-right": [["path", { d: "m9 18 6-6-6-6" }]],
+  "arrow-down-left": [["path", { d: "M17 7 7 17" }], ["path", { d: "M17 17H7V7" }]],
+  "arrow-up-right": [["path", { d: "M7 7h10v10" }], ["path", { d: "M7 17 17 7" }]],
+  x: [["path", { d: "M18 6 6 18" }], ["path", { d: "m6 6 12 12" }]],
   "flask": [["path", { d: "M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" }], ["path", { d: "M8.5 2h7" }], ["path", { d: "M7 16h10" }]],
 };
 const attr = (a: Record<string, string>) => Object.entries(a).map(([k, v]) => `${k}="${v}"`).join(" ");
@@ -34,7 +37,7 @@ export function svg(name: string, size = 18): string {
   if (!shapes) throw new Error(`no icon ${name}`);
   return `<svg class="i" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${shapes.map(([s, a]) => `<${s} ${attr(a)}/>`).join("")}</svg>`;
 }
-const ICON_SET = (names: string[]) => JSON.stringify(Object.fromEntries(names.map((n) => [n, svg(n, 16)])));
+export const ICON_SET = (names: string[]) => JSON.stringify(Object.fromEntries(names.map((n) => [n, svg(n, 16)])));
 const escAttr = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 const CSS = `${TOKENS.replace("url(assets/inter.woff2)", "url(/assets/inter.woff2)")}
@@ -191,22 +194,77 @@ ol.tl li:last-child::after { display: none; } ol.tl li:last-child { padding-bott
 ol.tl .w { font-weight: 650; } ol.tl .at { color: var(--faint); font-size: 12.5px; margin-left: 6px; font-variant-numeric: tabular-nums; }
 ol.tl .d { color: var(--muted); font-size: 13.5px; overflow-wrap: anywhere; }
 .banner { margin-top: 14px; display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-radius: 12px; background: var(--warn-soft); color: var(--warn); font-size: 13.5px; font-weight: 600; }
+/* Navigation between the pages */
+nav.tabs { display: flex; gap: 4px; margin-left: 14px; }
+nav.tabs a { text-decoration: none; color: var(--muted); font-weight: 650; font-size: 14px; padding: 7px 12px; border-radius: 999px; white-space: nowrap; }
+nav.tabs a:hover { color: var(--text); }
+nav.tabs a[aria-current="page"] { background: var(--sunken); color: var(--text); }
+@media (max-width: 640px) { .brand .sec { display: none; } nav.tabs { margin-left: 6px; } nav.tabs a { padding: 7px 9px; font-size: 13.5px; } .test .tl { display: none; } }
+/* Transactions */
+.sel { display: inline-flex; align-items: center; height: 32px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: 600 13px/1 Inter, system-ui, sans-serif; padding: 0 10px; }
+.bar .grow { flex: 1 1 auto; }
+.search { height: 32px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: 500 13px/1 Inter, system-ui, sans-serif; padding: 0 12px; min-width: 0; width: 200px; }
+.trow { display: grid; grid-template-columns: 112px minmax(0, 2.6fr) minmax(0, 1.2fr) 150px 170px 178px 18px; align-items: center; gap: 14px; padding: 12px 18px; border-top: 1px solid var(--border); color: inherit; min-height: 56px; cursor: pointer; text-align: left; width: 100%; background: none; border-left: 0; border-right: 0; border-bottom: 0; font: inherit; }
+.trow:first-child { border-top: 0; }
+.trow.th { cursor: default; min-height: 0; padding-top: 11px; padding-bottom: 11px; color: var(--muted); font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; background: var(--sunken); }
+button.trow:hover { background: color-mix(in srgb, var(--accent-soft) 45%, var(--surface)); }
+.trow > * { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trow .when { color: var(--muted); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.trow .what { font-weight: 650; }
+.trow .what .sub, .trow .rail .sub { display: block; color: var(--muted); font-size: 12.5px; font-weight: 500; }
+.trow .rail { font-size: 13.5px; }
+.trow .amt { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.trow .amt .c { color: var(--muted); font-weight: 600; font-size: 12.5px; margin-right: 4px; }
+.trow .amt.in { color: var(--ok); } .trow .amt.void { color: var(--faint); text-decoration: line-through; font-weight: 600; }
+.trow .go { color: var(--faint); }
+.dir { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 7px; margin-right: 8px; vertical-align: -6px; background: var(--sunken); color: var(--muted); }
+.dir.in { background: var(--ok-soft); color: var(--ok); } .dir.out { background: var(--sunken); color: var(--text); }
+.st.moved { background: var(--ok-soft); color: var(--ok); }
+.st.void { background: var(--bad-soft); color: var(--bad); }
+.st.idle { background: var(--sunken); color: var(--muted); }
+.st.matched { background: var(--ok-soft); color: var(--ok); }
+.st.not_applicable { background: var(--sunken); color: var(--faint); }
+.st.missing_booking, .st.missing_rail_record { background: var(--warn-soft); color: var(--warn); }
+.st.amount_mismatch { background: var(--bad-soft); color: var(--bad); }
+@media (max-width: 960px) {
+  .trow.th { display: none; }
+  .trow { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "what amt" "when rail" "st rec"; gap: 6px 12px; padding: 14px 16px; }
+  .trow .what { grid-area: what; } .trow .amt { grid-area: amt; } .trow .when { grid-area: when; } .trow .rail { grid-area: rail; text-align: right; color: var(--muted); }
+  .trow .rail .sub { display: none; } .trow > .stc { grid-area: st; } .trow > .recc { grid-area: rec; text-align: right; } .trow .go { display: none; }
+  .search { width: 100%; order: 10; }
+}
+.scrim { position: fixed; inset: 0; background: rgba(10, 14, 22, .38); z-index: 40; display: none; }
+.scrim.open { display: block; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100vw); z-index: 41; background: var(--surface); border-left: 1px solid var(--border); box-shadow: -24px 0 48px -24px rgba(16,24,40,.3); transform: translateX(105%); transition: transform .18s ease; overflow-y: auto; padding: 20px 22px 40px; }
+.drawer.open { transform: none; }
+.drawer .x { position: absolute; top: 14px; right: 14px; }
+.drawer .kicker { color: var(--muted); font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.drawer h2 { font-size: 20px; margin: 6px 40px 0 0; }
+.drawer .big { margin-top: 10px; font-size: 32px; font-weight: 780; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.drawer .big small { font-size: .5em; color: var(--muted); font-weight: 650; margin-right: 6px; }
+.drawer .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.drawer section { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+.drawer section h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; margin-bottom: 10px; }
+.drawer dl.read { grid-template-columns: 130px minmax(0, 1fr); }
+.drawer .flag { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: var(--warn-soft); color: var(--warn); font-size: 13.5px; font-weight: 600; margin-top: 8px; }
+.drawer .flag.ok { background: var(--ok-soft); color: var(--ok); }
 `;
 
-const shell = (o: { title: string; csrf: string; nonce: string; body: string; script: string }) => `<!doctype html>
+export const shell = (o: { title: string; csrf: string; nonce: string; body: string; script: string; page?: "invoices" | "transactions" }) => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="csrf" content="${o.csrf}">
 <meta name="color-scheme" content="light dark">
 <title>${escAttr(o.title)}</title>
 <style>${CSS}</style></head><body>
 <header class="top"><div class="wrap"><a class="brand" href="/"><span class="mk">P</span><span>Purser</span><span class="sec">Payables</span></a>
-<span class="test" title="This build pays only in the Airwallex sandbox">${svg("flask", 14)} Test money</span></div></header>
+<nav class="tabs" aria-label="Pages"><a href="/"${o.page === "transactions" ? "" : ' aria-current="page"'}>Invoices</a><a href="/transactions"${o.page === "transactions" ? ' aria-current="page"' : ""}>Transactions</a></nav>
+<span class="test" title="This build pays only in the Airwallex sandbox">${svg("flask", 14)}<span class="tl"> Test money</span></span></div></header>
 <main><div class="wrap">${o.body}</div></main>
 <script type="module" nonce="${o.nonce}">${o.script}</script>
 </body></html>`;
 
 /** What the overview and the detail page share: helpers, formatting, posting with this page's token. */
-const COMMON = `
+export const COMMON = `
 const csrf=document.querySelector('meta[name=csrf]').content;
 const $=(s)=>document.querySelector(s);
 const el=(tag,cls,kids)=>{const e=document.createElement(tag);if(cls)e.className=cls;for(const k of [].concat(kids??[])){if(k===null||k===undefined||k===false)continue;e.append(typeof k==='string'?document.createTextNode(k):k)}return e};
