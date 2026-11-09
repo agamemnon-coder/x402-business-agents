@@ -137,7 +137,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       extra: `<div class="beats">
         <div><em>1 · The price rise</em><b>${esc(film?.supplier ?? "The supplier")} ${esc(film?.old ?? "")} → ${esc(film?.price ?? "")}, over the ${esc(film?.cap ?? "")} cap</b><p>${esc(REFUSAL_LINE)}</p></div>
         <div><em>2 · The dispute</em><b>Only the ${m.refunded.length} bad ones refunded</b><p>${m.disputed} orders disputed; "refund the other ${rest}" rejected by the CFO with Face ID.</p></div>
-        <div><em>3 · The euro bill</em><b>PAID ${m.face_to_paid_s} s after Face ID</b><p>${esc(m.fx_buy)} bought by FX for only the shortfall; settlement simulated in the sandbox.</p></div>
+        <div><em>3 · The euro bill</em><b>Accepted by Airwallex with the signed hash</b><p>${esc(m.fx_buy)} bought by FX for only the shortfall; settlement simulated in the sandbox.</p></div>
       </div>
       <p class="options"><b>Treasury's options, within the same ${esc(optA?.total_budget ?? "")}:</b> A: Sourcing's cap ${esc(capOf(optA))}, our price stays ${esc(optA?.query_price ?? "")} · B: the same cap, our price ${esc(optB?.query_price ?? "")}. The CFO signed A.</p>`,
     },

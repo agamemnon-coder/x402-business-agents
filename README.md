@@ -101,7 +101,7 @@ npm run judge -- --check
 
 - `npm ci` (under a minute): installs the exact versions in the lockfile; every dependency is pinned.
 - `npm test` (3 to 4 min): **3081 tests in 299 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included.
-- `npm run judge -- --check` (about 3 s): builds the site's 17 pages from the main run's committed record, offline, and fetches each once.
+- `npm run judge -- --check` (about 3 s): builds the site's 18 pages from the main run's committed record, offline, and fetches each once.
 - `npm run verify-receipt -- receipt.json` (under 1 s): after you sign on [/try/sign](https://kit11.max-31b.workers.dev/try/sign), checks its receipt offline with Node's own crypto: your passkey signed exactly those terms; change one cent and it says NOT VALID. Getting the receipt needs the live site and your own passkey.
 
 CI runs the same on every push.
@@ -160,8 +160,9 @@ with Face ID at 11:29:37.
 `0x86936a5b29f9550857676fa710231af9e20882ebe6eee16f75a90af29767ccb4`, booked at Airwallex as deposit
 `b3812e05-2afa-4698-8f64-429f9608e0a0`. The Treasury agent planned the EUR 240.00 licence itself; after the CFO's
 Face ID, EUR 110.00 bought by FX for USD 124.29 (conversion `3ca88196-05da-4d88-9caa-796f03704636`), then SWIFT:
-transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, fee EUR 13.42, PAID 11:31:24, 6 s after Face ID (settlement simulated
-in the sandbox: Purser itself moves the transfer to SENT and PAID through Airwallex's simulation API). The Sourcing agent
+transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, fee EUR 13.42, accepted by Airwallex with the signed hash in its
+metadata. Its settlement is simulated: in the sandbox Purser itself moves the transfer to SENT and PAID through
+Airwallex's simulation API (marked PAID 11:31:24, 6 s after Face ID). The Sourcing agent
 asked for a card raise first (P-0006, EUR 30.00 → 46.00), the CFO approved it with Face ID, and Airwallex approved the
 TAP-signed EUR 45.00 purchase (authorization `01a1a12f-4113-7000-b76d-014677710007`).
 

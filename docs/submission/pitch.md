@@ -157,7 +157,7 @@ screen at each step: [demo-day.md](demo-day.md), "The runbook".
 | | The rest I reject, with Face ID. | Record: P-0004 (`refund_batch`, the other 9) rejected by Max, 11:29:37 |
 | | Last, a 240 euro licence is due. | Record: P-0005, EUR 240.00 |
 | | Treasury converts only the shortfall, 110 euros, and pays by SWIFT. | Record: `fxOf` (EUR 110.00 for USD 124.29); transfer `03360bfa…3985` |
-| | PAID, 6 seconds after my Face ID. | Record: `timings` (faceToPaid 6) |
+| | Airwallex accepts it with my signed hash. | Record: transfer `03360bfa…3985`, metadata `approval_sha256` |
 | **1:50 Said plainly** | Said plainly: the second approver was a test passkey, and the sandbox simulates settlement. | `SECOND_APPROVER`; Log, "Approvals"; `SANDBOX_SETTLED`; README (Purser moves SENT and PAID through the sandbox's simulation API) |
 | | Every id is published on /proof; check it with npm run verify. | `/proof`; Record: `snapshot.audit` (412 rows, intact); README |
 | **2:05 The jury signs** | Now you sign off: scan this, now or during the questions. | Deck, slides 4 and 12; `docs/media/try-sign-qr.png` |

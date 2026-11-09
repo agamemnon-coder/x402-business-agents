@@ -110,7 +110,8 @@ describe("the submission pack", () => {
     for (const t of [pack, long]) expect(t).toContain(CHAIN_TEST);
     expect(pack).toContain(`${CHAIN_TEST} That was purchase #24; the refusal is recorded on chain`);
     for (const t of [pack, long]) {
-      expect(t).toContain(`PAID ${m.face_to_paid_s} s after Face ID`);
+      // Review 9 Nov: the euro bill is told as Airwallex accepting the signed payment; its settlement is simulated.
+      expect(t).toContain("accepted by Airwallex with the signed hash");
       expect(t).toContain(`tx \`${m.let_through_tx.slice(0, 10)}…${m.let_through_tx.slice(-4)}\``);
     }
     // The long text.

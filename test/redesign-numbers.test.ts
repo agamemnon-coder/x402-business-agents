@@ -113,11 +113,11 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
     expect(money.some((e) => e.refused?.code === "fee_unknown")).toBe(false);
   });
 
-  it("scene 3 ends with the licence PAID by SWIFT after the CFO's Face ID (P-0005), the FX before it", () => {
+  it("scene 3 ends with the licence by SWIFT, accepted by Airwallex after the CFO's Face ID (P-0005), the FX before it", () => {
     const steps = run.scenes[2]!.steps.map((s) => s.text);
     expect(steps).toContain("EUR 110.00 bought by FX for the shortfall");
     // PAID in the sandbox, where Purser itself moves the transfer to SENT, then PAID (final review, 4 Nov).
-    expect(steps).toContain("€240 licence PAID by SWIFT · 6 s after Face ID · in the sandbox, where the settlement is simulated");
+    expect(steps).toContain("€240 licence by SWIFT, accepted by Airwallex with the signed hash · in the sandbox, where the settlement is simulated");
     expect(steps.filter((t) => /licence/.test(t))).toHaveLength(1);
     expect(run.scenes[2]!.sentence).toMatch(/licence paid by SWIFT after Face ID/);
     expect(run.scenes[0]!.steps.map((s) => s.text).join(" ")).toMatch(/options in 40 s/);
@@ -232,7 +232,7 @@ describe("the redesigned public pages", () => {
     expect(JSON.stringify(run.scenes).includes("Metal refused it · on chain")).toBe(chain);
     expect(homePage().includes("Metal refused the purchase on chain")).toBe(false);
     expect(run.scenes.map((s) => s.n)).toEqual([1, 2, 3]);
-    expect(run.scenes[2]!.steps.map((s) => s.text)).toContain("€240 licence PAID by SWIFT · 6 s after Face ID · in the sandbox, where the settlement is simulated");
+    expect(run.scenes[2]!.steps.map((s) => s.text)).toContain("€240 licence by SWIFT, accepted by Airwallex with the signed hash · in the sandbox, where the settlement is simulated");
     expect(run.scenes[0]!.steps.map((s) => s.text)).toEqual(expect.arrayContaining(["2 of 2 signatures"]));
   });
 

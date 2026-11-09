@@ -15,7 +15,7 @@ import { LOGO, earlierLine, fold, partnerProof } from "./proof.js";
 import { metalStory, refusalNote, separateRuns, type MetalStory } from "./metalStory.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { AIRI_CSS, airiRunBlock } from "./airiRun.js";
-import { awxRunBlock } from "./awxRun.js";
+import { awxRun, awxRunBlock } from "./awxRun.js";
 import { vic2RunBlock } from "./vic2Run.js";
 import { VIC_FLOW_CSS, vicFlowBlock } from "./vicFlow.js";
 import { OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
@@ -150,7 +150,8 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
   // Airwallex, read back (section B): the CFO's hash with the payment, and each card's controls beside the CFO policy.
   const hash = hashTravel(run.record), cards = cardsReadback(), rows = cards ? cardControlRows(run.record, cards) : [];
   // awx-1 (7 Nov): the Airwallex-only run, a separate world, dated and labelled, below the main run's read-backs.
-  const awx1 = awxRunBlock();
+  const awx1Rec = awxRun();
+  const awx1 = awxRunBlock(awx1Rec);
   // The Airi run (7 Nov): Visa Intelligent Commerce via Airwallex's Airi, a separate world, dated and labelled.
   // vic-2 (7 Nov): what Purser adds around Airi, under the first Airi run.
   const airi = airiRunBlock() + vic2RunBlock(undefined, { short: true });
@@ -160,8 +161,8 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
     logo: LOGO.airwallex, h1: "The bank side of the agents", proofHash: "airwallex",
     picture: [node("zap", "Metal earnings", "final on chain", "metal"), arrow, node("landmark", booked ? `${booked.amount} USD booked` : "Booked at Airwallex", "after finality", "awx"), arrow,
       node("scan-face", "CFO · Face ID", "approves the invoice"), arrow, ...(fx ? [node("arrow-left-right", `${fx.buy} by FX`, "only the shortfall", "awx"), arrow] : []),
-      node("circle-check", licence ? `${eur} PAID by SWIFT` : "Paid by SWIFT", licence ? `${t.faceToPaid !== null ? `${t.faceToPaid} s after Face ID, ${SANDBOX_SETTLED} · ` : ""}Airwallex ${licence.proof.label.replace(/^Airwallex /, "")}` : "", "ok")].join(""),
-    nums: nums([[booked?.amount ?? "0", "USD booked after finality"], [eur || "0", "licence paid by SWIFT"], ...(fx ? [[fx.buy.replace(/^EUR /, "€").replace(/\.00$/, ""), "bought by FX for the shortfall"] as [string, string]] : []), [String(st.tapDeclines), "card decline at the limit (TAP run)"], ...(earlier ? [[String(earlier), "earlier attempt, nothing paid"] as [string, string]] : [])]),
+      node("circle-check", licence ? `${eur} by SWIFT, accepted` : "SWIFT, accepted", licence ? `Airwallex accepted it with the signed hash; ${SANDBOX_SETTLED} · Airwallex ${licence.proof.label.replace(/^Airwallex /, "")}` : "", "ok")].join(""),
+    nums: nums([[booked?.amount ?? "0", "USD booked after finality"], [eur || "0", "licence paid by SWIFT"], ...(fx ? [[fx.buy.replace(/^EUR /, "€").replace(/\.00$/, ""), "bought by FX for the shortfall"] as [string, string]] : []), [String(st.tapDeclines + (awx1Rec?.declines_met.length ?? 0)), "card declines by Airwallex (TAP run and awx-1)"], ...(earlier ? [[String(earlier), "earlier attempt, nothing paid"] as [string, string]] : [])]),
     line: "Airwallex enforces each card's limit itself, and pays an invoice only after the CFO's Face ID.",
     extra: readBack,
     // Proof's "Policy and card side by side" opens the cards' fold here (#controls, or one card's #card-<agent>).

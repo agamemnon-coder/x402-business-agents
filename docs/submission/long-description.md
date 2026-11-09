@@ -45,8 +45,8 @@ three runtime agents hold no owner key and no passkey. Log: `docs/runs/2026-11-0
 - **The dispute.** A simulated customer disputes 12 orders, saying its agent never placed them. Every order carries its agent's signature, so that claim fails. Three orders had wrong data; the Support agent refunds those 3 (0.15 test USD) itself. "Refund the other 9" goes to the CFO, who rejects it with Face ID.
 - **The euro bill.** The Treasury agent planned the EUR 240.00 licence itself (P-0005). After the CFO's Face ID,
   EUR 110.00 bought by FX for the shortfall (USD 124.29, conversion `3ca88196-05da-4d88-9caa-796f03704636`), then
-  SWIFT: transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, PAID 6 s after Face ID (settlement simulated in the
-  sandbox), fee EUR 13.42 (ceiling EUR 20.00).
+  SWIFT: transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, accepted by Airwallex with the signed hash in its metadata
+  (settlement simulated in the sandbox), fee EUR 13.42 (ceiling EUR 20.00).
 
 Each agent's budget, when bound → after the CFO's Face ID (test USD): Sourcing 10.00 → 14.00 (cap 0.03 → 0.04 a
 purchase); Support 4.00 (cap 0.10); Treasury 6.00 → 2.00. 20.00 between them before and after, held in code.
@@ -72,8 +72,8 @@ company card whose limits Airwallex enforces.
   the TAP-signed EUR 45.00 purchase (authorization `01a1a12f-4113-7000-b76d-014677710007`).
 - **FX and SWIFT for the €240 licence.** EUR 110.00 bought by FX for USD 124.29 on a locked quote (conversion
   `3ca88196-05da-4d88-9caa-796f03704636`), only the shortfall above the EUR reserve; then SWIFT, transfer
-  `03360bfa-afce-457b-89d1-e1097fbe3985`, fee EUR 13.42, PAID 6 s after Face ID: in the sandbox Purser itself moves the
-  transfer to SENT and then PAID through Airwallex's simulation API, so that settlement is simulated. One Face ID covers
+  `03360bfa-afce-457b-89d1-e1097fbe3985`, fee EUR 13.42, accepted by Airwallex with the signed hash. Its settlement is
+  simulated: in the sandbox Purser itself moves the transfer to SENT and then PAID through Airwallex's simulation API. One Face ID covers
   the rate, the payee and the most the fee may be (EUR 20.00). The transfer carries the approval's hash in its metadata.
 - **Earnings booked once final.** The 0.69 test USD swept on Metal after finality is booked at Airwallex exactly once,
   as a simulated sandbox deposit (`b3812e05-2afa-4698-8f64-429f9608e0a0`) whose reference is the testnet transaction.

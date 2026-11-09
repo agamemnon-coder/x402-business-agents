@@ -1,5 +1,12 @@
 # Data QA: the recorded ledger against Airwallex, Metal and the Books
 
+> **Note, 9 November (review):** two lines below read wrong without context. "Metal upstream purchase: 55" counts the
+> ledger's upstream rows: 41 paid and 14 refused (#24 by Metal, mandate_cap_exceeded; #25–#36 by the Sourcing agent's policy; #37
+> mandate_revoked during the mandate replace), each refused one checked to have no transaction and no posting. And "does not hold the
+> recorded run's head at row 194" compares with `docs/demo/snapshot.json`, the snapshot of the 30 October rehearsal;
+> this ledger is the 3 November main run, read up to its own row 412.
+
+
 Made by `npm run data-qa` (`src/cli/dataQa.ts`) on 2026-11-03T11:36:10.397Z. Every payment in the ledger `data/main-1.sqlite` up to audit row 412
 (412 rows read; this ledger does not hold the recorded run's head at row 194) is compared with Airwallex (read-only GET by id: status, amount, currency), with
 Metal testnet (the transaction exists and succeeded and carries the *USDZ transfer with the ledger's amount, payer and
