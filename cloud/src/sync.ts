@@ -96,9 +96,15 @@ async function versioned(db: TenantDb, table: Extract<Table, "vendors" | "invoic
   for (const r of rows) {
     const bodyJson = jcs(r.body as Json);
     const sha = await sha256Hex(bodyJson);
-    const cur = await db.one<{ version: number; body_json: string; body_sha256: string }>(table, { id: r.id });
+    const cur = await db.one<{ version: number; body_json: string; body_sha256: string; updated_at?: string; at?: string }>(table, { id: r.id });
     if (cur && cur.body_sha256 === sha) { t.unchanged += 1; continue; }
     const extra = cols(r as never);
+    // An older version arriving after a newer one (a retried or slow push) never replaces it (red team round 4: a replay
+    // set a paid invoice back to ready).
+    const stamp = (x: Record<string, unknown> | null | undefined) => (typeof x?.updated_at === "string" ? x.updated_at : typeof x?.at === "string" ? x.at : null);
+    const incoming = stamp(extra);
+    const stored = cur ? stamp(cur as Record<string, unknown>) : null;
+    if (cur && incoming && stored && incoming < stored) { t.unchanged += 1; continue; }
     if (!cur) {
       out.push(db.insert(table, { id: r.id, ...extra, version: 1, body_json: bodyJson, body_sha256: sha }));
       t.added += 1;

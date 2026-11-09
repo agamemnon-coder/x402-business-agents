@@ -52,22 +52,26 @@ export async function receiveEmail(sql: Sql, blobs: Blobs, msg: InboundEmail, op
   // The company's daily quota, in messages and bytes: past it, mail is refused until the next day.
   const quota = opts.quota ?? MAIL_QUOTA;
   const day = Math.floor(opts.now.getTime() / 86_400_000) * 86_400;
-  const used = async (b: string) => (await sql.first<{ count: number }>("SELECT count FROM rate_hits WHERE bucket = ? AND window_start = ?", [b, day]))?.count ?? 0;
-  if ((await used(`mail:${tenant.id}`)) + 1 > quota.messagesPerDay || (await used(`mailbytes:${tenant.id}`)) + bytes.length > quota.bytesPerDay) {
+  // Counted first, then checked (red team round 4: checked first and counted after, sixty deliveries at once all saw
+  // the same "used" and got in); a delivery that is refused or turns out to be a duplicate gives its count back.
+  const giveBack = async () => { await bump(sql, `mail:${tenant.id}`, day, -1); await bump(sql, `mailbytes:${tenant.id}`, day, -bytes.length); };
+  const n = await bump(sql, `mail:${tenant.id}`, day, 1);
+  const b = await bump(sql, `mailbytes:${tenant.id}`, day, bytes.length);
+  if (n > quota.messagesPerDay || b > quota.bytesPerDay) {
+    await giveBack();
     return refuse("this address's daily quota is used up; try again tomorrow");
   }
   const key = mailBlobKey(tenant.id, sha);
   // The bytes first (same message, same key: a second delivery writes the same bytes), then the row. Two deliveries
   // of one message at once both pass the check above; the row's primary key lets one of them in, and the other is
   // "already received", not an error the sender would retry. The quota counts the one that was queued.
-  await blobs.put(key, bytes, { kind: "email" });
   try {
+    await blobs.put(key, bytes, { kind: "email" });
     await db.apply([db.insert("inbound_mail", { id, blob_key: key, sha256: sha, size: bytes.length, received_at: opts.now.toISOString(), status: "queued", note: null })]);
   } catch (e) {
+    await giveBack();
     if (e instanceof WriteConflict) return { queued: false, reason: "already received", id };
     throw e;
   }
-  await bump(sql, `mail:${tenant.id}`, day, 1);
-  await bump(sql, `mailbytes:${tenant.id}`, day, bytes.length);
   return { queued: true, id };
 }

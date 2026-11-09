@@ -70,11 +70,20 @@ export async function ledgerEntries(db: TenantDb, q: URLSearchParams): Promise<P
   const from = day(q.get("from"), "from");
   const to = day(q.get("to"), "to");
   const limit = Math.max(1, Math.min(200, Number(q.get("limit") ?? 50) || 50));
+  // The date bounds are in the query (red team round 4: filtered after a 1,000-entry window, a window with nothing in
+  // range ended the list early with no cursor, and later entries were never returned).
   const cursor = Number(q.get("cursor") ?? 0) || 0;
-  const rows = await db.select<{ entry_id: number; posting_date: string; entry_json: string }>("ledger_entries", { entry_id: { op: ">", v: cursor } }, { order: ["entry_id"], limit: 1000 });
-  const fit = rows.filter((r) => (!from || r.posting_date >= from) && (!to || r.posting_date <= to));
+  const where: Where = { entry_id: { op: ">", v: cursor } };
+  const rows = await db.select<{ entry_id: number; posting_date: string; entry_json: string }>("ledger_entries", where, { order: ["entry_id"], limit: 1000 });
+  const fit: typeof rows = [];
+  let last = cursor;
+  for (let page = rows; ;) {
+    for (const r of page) { last = r.entry_id; if ((!from || r.posting_date >= from) && (!to || r.posting_date <= to)) { fit.push(r); if (fit.length > limit) break; } }
+    if (fit.length > limit || page.length < 1000) break;
+    page = await db.select<{ entry_id: number; posting_date: string; entry_json: string }>("ledger_entries", { entry_id: { op: ">", v: last } }, { order: ["entry_id"], limit: 1000 });
+  }
   const items = fit.slice(0, limit);
-  const more = fit.length > limit || (rows.length === 1000 && items.length === limit);
+  const more = fit.length > limit;
   return { items: items.map((r) => JSON.parse(r.entry_json) as unknown), next_cursor: more ? String(items[items.length - 1]!.entry_id) : null };
 }
 

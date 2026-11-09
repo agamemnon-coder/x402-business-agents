@@ -40,11 +40,32 @@ const CODES: Record<number, string> = { 400: "bad_request", 401: "unauthorized",
 export const err = (status: number, error: string) => json(status, { error, code: CODES[status] ?? "error" });
 const notFound = (what: string) => err(404, `no ${what}`);
 
+/**
+ * The request's body as text, read with a running byte count and stopped past `maxBytes` (red team round 4: without a
+ * content-length the whole body was read before its size was checked; 200 MB on a public route).
+ */
+async function readCapped(req: Request, maxBytes: number): Promise<string> {
+  if (!req.body) return "";
+  const reader = req.body.getReader();
+  const parts: Uint8Array[] = [];
+  let n = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    n += value.byteLength;
+    if (n > maxBytes) { await reader.cancel().catch(() => {}); throw new BadRequest(`the body is larger than ${maxBytes} bytes`); }
+    parts.push(value);
+  }
+  const all = new Uint8Array(n);
+  let o = 0;
+  for (const p of parts) { all.set(p, o); o += p.byteLength; }
+  return new TextDecoder().decode(all);
+}
+
 async function body<T>(c: Ctx, schema: z.ZodType<T>, maxBytes = 1_000_000): Promise<T> {
   const len = Number(c.req.headers.get("content-length") ?? 0);
   if (len > maxBytes) throw new BadRequest(`the body is larger than ${maxBytes} bytes`);
-  const text = await c.req.text();
-  if (text.length > maxBytes) throw new BadRequest(`the body is larger than ${maxBytes} bytes`);
+  const text = await readCapped(c.req, maxBytes);
   let parsed: unknown;
   try { parsed = JSON.parse(text); } catch { throw new BadRequest("the body is not JSON"); }
   const r = schema.safeParse(parsed);
@@ -152,7 +173,7 @@ export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/mail/{id}/raw", summary: "One inbound e-mail, raw (RFC 822).", need: "sync", run: async (c) => {
     const m = await db(c).one<{ blob_key: string }>("inbound_mail", { id: c.params[0]! });
     const bytes = m && (await c.env.blobs.get(m.blob_key));
-    return m && bytes ? new Response(new Uint8Array(bytes), { status: 200, headers: { "content-type": "message/rfc822", "cache-control": "no-store" } }) : notFound("mail");
+    return m && bytes ? new Response(new Uint8Array(bytes), { status: 200, headers: { "content-type": "message/rfc822", "cache-control": "no-store", "x-content-type-options": "nosniff", "content-disposition": `attachment; filename="${c.params[0]!.replace(/[^A-Za-z0-9_-]/g, "")}.eml"` } }) : notFound("mail");
   } },
   { method: "POST", path: "/v1/mail/{id}/done", summary: "The runner filed (done) or refused an inbound e-mail.", need: "sync", run: async (c) => {
     const b = await body(c, z.object({ status: z.enum(["done", "refused"]), note: z.string().max(500).optional() }).strict());

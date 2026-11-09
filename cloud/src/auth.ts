@@ -24,11 +24,13 @@ export interface Caller {
 }
 
 export class AuthError extends Error {
-  constructor(readonly status: 401 | 403, message: string) { super(message); }
+  constructor(readonly status: 401 | 403 | 429, message: string) { super(message); }
 }
 
 export const SESSION_TTL_MS = 15 * 60 * 1000;
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
+/** Sign-in challenges a company may have open (unused, unexpired) at once. */
+export const MAX_OPEN_CHALLENGES = 200;
 export const ENROLMENT_TTL_MS = 30 * 60 * 1000;
 /** Every key expires: 90 days unless it is made with fewer, at most a year. */
 export const KEY_DEFAULT_DAYS = 90;
@@ -173,6 +175,11 @@ export async function isPlatformAdmin(adminTokenSha256: string, authorization: s
 export async function newChallenge(sql: Sql, tenantId: string, now: Date): Promise<{ challenge_id: string; challenge: string }> {
   const id = `c${randomToken(12)}`;
   const challenge = randomToken(32);
+  // Expired challenges go at once, and a company has a bounded number open (red team round 4: every unauthenticated
+  // call added a row until the daily housekeeping; from many addresses that was unbounded).
+  await sql.run("DELETE FROM challenges WHERE tenant_id = ? AND expires_at <= ?", [tenantId, now.toISOString()]);
+  const open = (await sql.first<{ n: number }>("SELECT COUNT(*) AS n FROM challenges WHERE tenant_id = ? AND used_at IS NULL", [tenantId]))?.n ?? 0;
+  if (open >= MAX_OPEN_CHALLENGES) throw new AuthError(429, "too many sign-ins are open for this company; try again in a few minutes");
   await sql.run("INSERT INTO challenges (id, tenant_id, challenge, expires_at) VALUES (?, ?, ?, ?)", [id, tenantId, challenge, new Date(now.getTime() + CHALLENGE_TTL_MS).toISOString()]);
   return { challenge_id: id, challenge };
 }
