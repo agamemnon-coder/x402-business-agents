@@ -268,3 +268,27 @@ person; nothing is guessed.
   handlers can sit behind the authenticated agent API, with `source: "api"` on `ingestDocument`.
 - **Accounts:** the payables accounts (1510 input VAT, 2100 accounts payable, 1203 other-currency balances) are in
   `AP_CHART`, outside the chart the T:0 sink mirrors, until T:0 has them.
+
+## One Face ID for many invoices (batch)
+
+On the payables page, tick the ready invoices and press **Pay selected with one Face ID** (at most 50). Each invoice
+is planned exactly as on its own (`payApInvoice`: floors, FX for the shortfall, fee reserve, duplicate guards), against
+what the earlier invoices of the same batch will already draw (`src/payouts/planContext.ts`), so the batch fits as a
+whole. Each becomes its own payment proposal with its own exact terms and hash; then one proposal of kind
+`payment_batch` (`src/policy/batch.ts`) lists them: each line's proposal id, its terms and their hash, the count and
+the total per currency. The phone shows the batch, in Dutch, with every line (supplier, amount, account, the invoice's
+own total line); the CFO signs the batch hash once.
+
+- **Approval** (`decide()`): the batch approves only if its stored terms still hash to the signed hash, its lines are
+  the ones filed with it, and every line's proposal still has exactly the signed terms, waits and has not run out. One
+  changed line refuses the whole batch. Each line then gets its own approval record against its own hash, with the
+  batch's id and hash in the note. Four eyes: a batch needs two people when any line would on its own.
+- **A line alone**: while it waits in a batch, a line is approved or rejected only with its batch, and never filed in a
+  second waiting batch. The phone lists the batch, not its lines.
+- **Taking a line out**: the passkey signs `batchRemovalSha256(batch hash, line)`; the batch and that line are
+  superseded (its invoice is ready again) and a new batch of the rest is filed, with a new hash.
+- **Execution** (`src/executors/paymentBatch.ts`): each line runs through its own executor with every check of a
+  single payment and its own request id. A line that fails leaves the others as they are; the batch is then FAILED and
+  running it again runs only the lines not paid yet.
+- **Proof**: `batchInclusion` / `verifyBatchInclusion` show offline, from the two canonical texts, that a payment was in
+  the signed batch.

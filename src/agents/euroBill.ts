@@ -2,6 +2,7 @@
 // Seeding calibrates floors so the demo shows a shortfall whatever the sandbox starts with; planning
 // converts only the shortfall, fee included, on a locked quote, and never below either floor.
 
+import { batchReservedCents } from "../payouts/planContext.js";
 import { randomUUID } from "node:crypto";
 import type { AirwallexRail, Currency, MarketRate, Quote, SandboxSim } from "../airwallex/port.js";
 import { AirwallexAmbiguous, AirwallexError } from "../airwallex/client.js";
@@ -110,10 +111,11 @@ export async function seedTreasury(db: DB, rail: AirwallexRail, sim: SandboxSim)
 
 export function treasuryState(db: DB, b: Awaited<ReturnType<AirwallexRail["balances"]>>): TreasuryState {
   return {
-    eurAvailableCents: b.EUR?.availableCents ?? 0,
+    // Less what earlier payments planned for the same batch will draw (0 outside a batch's planning, src/payouts/planContext.ts).
+    eurAvailableCents: (b.EUR?.availableCents ?? 0) - batchReservedCents("EUR"),
     eurFloorCents: toCents(getSetting(db, "eur_floor", fromCents(EUR_FLOOR_CENTS))),
     eurObligationsCents: toCents(getSetting(db, "eur_obligations", "0.00")),
-    usdAvailableCents: b.USD?.availableCents ?? 0,
+    usdAvailableCents: (b.USD?.availableCents ?? 0) - batchReservedCents("USD"),
     usdFloorCents: toCents(getSetting(db, "usd_floor", "0.00")),
     eurInFlightCents: eurInFlightCents(db),
   };

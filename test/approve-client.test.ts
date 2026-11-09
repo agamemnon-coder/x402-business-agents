@@ -7,8 +7,9 @@ import { fingerprintOf, spkiSha256OfCose } from "../src/passkey/ledger.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
-import { agentOf, firstScreenFacts, isTestMoney, reasonWords, whyYou, amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, freshEnough, passkeyFingerprint, policyLoosens, rejectionHash, takeRunnerKey, takeViewKey, type PhoneProposal } from "../src/approve/client.js";
+import { agentOf, badBatchLines, batchRemovalHash, firstScreenFacts, isTestMoney, reasonWords, whyYou, amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, freshEnough, passkeyFingerprint, policyLoosens, rejectionHash, takeRunnerKey, takeViewKey, type PhoneProposal } from "../src/approve/client.js";
 import { rejectionSha256, sha256Hex } from "../src/lib/terms.js";
+import { batchRemovalSha256 } from "../src/policy/batch.js";
 import { challengeFor } from "../src/passkey/webauthn.js";
 
 type Fixture = { proposal_id: string; kind: string; terms: Record<string, Json>; terms_sha256: string };
@@ -293,5 +294,33 @@ describe("the first screen of an inbox payment (S6)", () => {
   it("adds nothing for a payment without the inbox's fields", () => {
     expect(firstScreenFacts({ kind: "invoice_payment", vendor: "Stockline" })).toEqual([]);
     expect(firstScreenFacts({ kind: "policy_change" })).toEqual([]);
+  });
+});
+
+describe("a payment batch on the phone", () => {
+  const line = (id: string, amount: string, vendor: string, extra: Record<string, Json> = {}) => {
+    const terms = { schema: "kit11.approval-terms/v1", kind: "invoice_payment", proposal_id: id, expires_at: "2026-11-09T12:00:00Z", invoice_no: `BTX-${id}`, vendor, amount, currency: "EUR", fee_max: "15.00", beneficiary_id: "b", beneficiary_name: vendor, iban_last4: "3000", bic: "COBADEFFXXX", method: "SWIFT", reference: id, document_total_line: `Total due EUR ${amount}`, test_money: true, ...extra };
+    return { proposal_id: id, kind: "invoice_payment", terms_sha256: sha256Hex(jcs(terms as Json)), terms };
+  };
+  const batch = (lines: ReturnType<typeof line>[]) => ({ schema: "kit11.approval-terms/v1", kind: "payment_batch", proposal_id: "P-0009", expires_at: "2026-11-09T12:00:00Z", count: String(lines.length), totals: { EUR: "3070.20" }, test_money: true, lines });
+
+  it("names the count, the total and every line, in Dutch, and is approvable when every line is", () => {
+    const f = describeTerms(batch([line("P-0001", "1309.00", "Bergtex Textil GmbH"), line("P-0002", "1761.20", "Bergtex Textil GmbH")]) as unknown as Record<string, unknown>, {});
+    expect(f).toMatchObject({ approvable: true, title: "Betaal 2 facturen in één keer", amount: "EUR 3,070.20", amountLabel: "Totaal" });
+    expect(f.rows.map((r) => r[0])).toEqual(["P-0001", "P-0002"]);
+  });
+
+  it("finds a line whose terms do not hash to the hash the batch lists for it", async () => {
+    const ok = line("P-0001", "1309.00", "Bergtex Textil GmbH");
+    const forged = { ...line("P-0002", "1761.20", "Bergtex Textil GmbH"), terms_sha256: ok.terms_sha256 };
+    expect(await badBatchLines(batch([ok]) as unknown as Record<string, unknown>)).toEqual([]);
+    expect(await badBatchLines(batch([ok, forged]) as unknown as Record<string, unknown>)).toEqual(["P-0002"]);
+  });
+
+  it("signs a line's removal over the same hash the runner checks, never the batch hash or its rejection", async () => {
+    const h = "a".repeat(64);
+    expect(await batchRemovalHash(h, "P-0002")).toBe(batchRemovalSha256(h, "P-0002"));
+    expect(await batchRemovalHash(h, "P-0002")).not.toBe(h);
+    expect(await batchRemovalHash(h, "P-0002")).not.toBe(await rejectionHash(h));
   });
 });

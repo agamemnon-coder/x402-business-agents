@@ -11,6 +11,7 @@ import { policyVersion } from "./versions.js";
 import { currentOrigin } from "../provenance/origin.js";
 import { hubGateRefusal } from "../hub/gate.js";
 import { hubDecisionsEnabled } from "../hub/config.js";
+import { BATCH_KIND, BATCHABLE, openBatchOf, verifyBatch } from "./batchLines.js";
 
 export type ProposalStatus =
   | "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "EXPIRED" | "SUPERSEDED"
@@ -158,6 +159,9 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
   return db.transaction((): ProposalStatus => {
     const p = get(db, args.proposalId);
     if (p.status !== "PENDING_APPROVAL") throw new Error(`${p.proposal_id} is ${p.status}, not waiting for approval`);
+    // A payment in a waiting batch is decided with its batch only: the CFO signs the list, not the line on its own.
+    const inBatch = BATCHABLE.has(p.kind) ? openBatchOf(db, p.proposal_id) : null;
+    if (inBatch) throw new Error(`${p.proposal_id} is in batch ${inBatch}: approve or reject the batch (or take it out of the batch first)`);
     if (args.method === "passkey") {
       // An approval signs the terms hash; a rejection signs the hash derived from it, so neither passes as the other.
       if (args.decision === "REJECTED" && args.signedSha256 === p.terms_sha256) throw new Error("a passkey rejection signs the rejection hash, not the terms hash");
@@ -171,6 +175,8 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
       return "EXPIRED";
     }
     if (!prefixMatches(p.terms_sha256, args.typedPrefix)) throw new Error("typed prefix does not match the terms hash");
+    // A batch approves only if every line is exactly what was signed and still waits; one changed line refuses it all.
+    if (p.kind === BATCH_KIND && args.decision === "APPROVED") verifyBatch(db, p, now);
     const alternative = args.decision === "APPROVED" ? approvedAlternative(db, p) : null;
     if (alternative) throw new Error(`another option, ${alternative}, was already approved`);
     let approver = args.approver;
@@ -199,8 +205,34 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
     transition(db, p.proposal_id, "PENDING_APPROVAL", args.decision);
     audit(db, "human", args.decision === "APPROVED" ? "proposal.approved" : "proposal.rejected", p.proposal_id,
       { terms_sha256: p.terms_sha256, approver, method: args.method, note: args.note ?? null, ...(passkey ? { passkey } : {}), policy_version: policy.version }, now);
+    if (p.kind === BATCH_KIND) decideBatchLines(db, p, args.decision, approver, args.method, passkey, policy.version, now);
     return args.decision;
   }).immediate();
+}
+
+/**
+ * The lines of a batch the CFO just decided: each line's own proposal gets the same decision, recorded against its own
+ * terms hash with the batch's id and hash beside it (so a line's approval proves which signed list it was in). Runs in
+ * decide()'s transaction: the batch and its lines are decided together or not at all.
+ */
+function decideBatchLines(db: DB, batch: ProposalRow, decision: Decision, approver: string, method: ApprovalMethod,
+  passkey: { credential_id: string; assertion_sha256: string } | undefined, policyVersionNo: number, now: Date): void {
+  const lines = db.prepare("SELECT proposal_id FROM batch_lines WHERE batch_id = ? ORDER BY position").all(batch.proposal_id) as { proposal_id: string }[];
+  for (const { proposal_id } of lines) {
+    const line = get(db, proposal_id);
+    if (line.status !== "PENDING_APPROVAL") {
+      if (decision === "APPROVED") throw new Error(`${batch.proposal_id}: line ${proposal_id} is ${line.status}, not waiting for approval`);
+      continue;
+    }
+    const note = `in batch ${batch.proposal_id} (batch hash ${batch.terms_sha256})`;
+    db.prepare(
+      `INSERT INTO approvals (proposal_id, decision, approved_sha256, approver, method, typed_prefix, note, created_at, policy_version)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(proposal_id, decision, line.terms_sha256, approver, method, line.terms_sha256.slice(0, 8), note, now.toISOString(), policyVersionNo);
+    transition(db, proposal_id, "PENDING_APPROVAL", decision);
+    audit(db, "human", decision === "APPROVED" ? "proposal.approved" : "proposal.rejected", proposal_id,
+      { terms_sha256: line.terms_sha256, approver, method, note, batch: { id: batch.proposal_id, terms_sha256: batch.terms_sha256 }, ...(passkey ? { passkey } : {}), policy_version: policyVersionNo }, now);
+  }
 }
 
 /**

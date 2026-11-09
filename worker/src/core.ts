@@ -91,7 +91,7 @@ const HOOKS_PER_SYNC = 50;
 const HOOK_KEEP_MS = 24 * 60 * 60 * 1000;
 /** How far Airwallex's x-timestamp may be from our clock (a replay of an old event is refused). */
 const HOOK_TOLERANCE_MS = 5 * 60 * 1000;
-const ACK_STATUSES = new Set(["approved", "rejected", "pending", "executed", "failed", "refused", "too_late", "already", "enrolled", "drafted", "cosigned", "answered"]);
+const ACK_STATUSES = new Set(["approved", "rejected", "pending", "executed", "failed", "refused", "too_late", "already", "enrolled", "drafted", "cosigned", "answered", "removed"]);
 /** The CFO's policy in plain words (P2): Opus drafts rules from it on the runner. */
 const MAX_POLICY_TEXT = 2000;
 /** A chat message to Purser (Ask Purser): the runner reads it and proposes a task card for Face ID. */
@@ -623,8 +623,11 @@ export class Relay {
     const v = body?.value;
     if (!isObject(v) || typeof v.proposal_id !== "string" || !PROPOSAL_ID.test(v.proposal_id) || typeof v.terms_sha256 !== "string" || !HEX64.test(v.terms_sha256)
       || !isObject(v.credential) || typeof v.credential.id !== "string" || !isObject(v.credential.response)
-      || (v.decision !== undefined && v.decision !== "APPROVED" && v.decision !== "REJECTED")) return error(400, "malformed submission");
+      || (v.decision !== undefined && v.decision !== "APPROVED" && v.decision !== "REJECTED" && v.decision !== "REMOVE_LINE")
+      || (v.decision === "REMOVE_LINE" && (typeof v.line !== "string" || !/^P-\d{4,}$/.test(v.line)))) return error(400, "malformed submission");
     const rejecting = v.decision === "REJECTED";
+    // Taking one line out of a waiting batch (src/policy/batch.ts batchRemovalSha256): its own signed hash.
+    const removing = v.decision === "REMOVE_LINE" ? (v.line as string) : null;
     const s = this.state();
     if (!s) return error(503, "the runner has not connected yet");
     const p = s.approvals.proposals.find((x) => x.proposal_id === v.proposal_id);
@@ -635,10 +638,11 @@ export class Relay {
     if (!s.approvals.passkey.credentials.some((c) => c.id === credentialId)) return error(403, "this passkey is not the enrolled one");
     // To reject, the passkey signs the hash derived from the terms hash (src/lib/terms.ts rejectionSha256).
     // Block 1: an owners_execute approval signs the account's Execute digest carried in the hashed terms.
-    const challenge = rejecting ? await sha256Hex(`kit11 reject v1 ${p.terms_sha256}`) : approvalChallenge(p);
+    const challenge = removing ? await sha256Hex(`kit11 batch-remove v1 ${p.terms_sha256} ${removing}`)
+      : rejecting ? await sha256Hex(`kit11 reject v1 ${p.terms_sha256}`) : approvalChallenge(p);
     if (challenge === null) return error(400, "these terms carry no valid on-chain digest");
     if (!signedFor((v.credential.response as Record<string, unknown>).clientDataJSON, challenge, new URL(req.url).origin)) {
-      return error(400, `this signature is not ${rejecting ? "a rejection of" : "for"} these terms on this site`);
+      return error(400, `this signature is not ${removing ? "a removal from" : rejecting ? "a rejection of" : "for"} these terms on this site`);
     }
     if (this.queued("proposal_id = ?", p.proposal_id) >= MAX_QUEUED_PER_PROPOSAL || this.queued("1 = 1") >= MAX_QUEUED) {
       return error(429, "too many approvals are waiting for the runner; wait a moment");

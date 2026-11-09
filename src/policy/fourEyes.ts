@@ -30,6 +30,11 @@ export function supplierPaymentEur(termsJson: string): string | null {
 export function fourEyes(db: DB, p: Pick<ProposalRow, "kind" | "terms_json">): boolean {
   // Block 1: the account's owners are two passkeys with a threshold of two; Purser asks for both as the chain will.
   if (p.kind === "owners_execute") return true;
+  // A batch needs two people when any of its lines would on its own (one Face ID never approves what needs two).
+  if (p.kind === "payment_batch") {
+    const lines = (JSON.parse(p.terms_json) as { lines?: { kind: string; terms: unknown }[] }).lines ?? [];
+    return lines.some((l) => fourEyes(db, { kind: l.kind, terms_json: JSON.stringify(l.terms) }));
+  }
   const v = policyValue(db, FOUR_EYES_KEY);
   if (v === "") return false;
   const threshold = toCents(v);

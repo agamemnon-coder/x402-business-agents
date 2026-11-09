@@ -148,6 +148,17 @@ CREATE TABLE IF NOT EXISTS proposals (
   created_at TEXT NOT NULL
 );
 
+-- A payment batch (src/policy/batch.ts): one proposal of kind payment_batch whose signed terms list each line's own
+-- payment proposal and terms hash. A line is in at most one waiting batch (checked when filed and when approved).
+CREATE TABLE IF NOT EXISTS batch_lines (
+  batch_id TEXT NOT NULL,
+  proposal_id TEXT NOT NULL,
+  position INTEGER NOT NULL,
+  terms_sha256 TEXT NOT NULL,
+  PRIMARY KEY (batch_id, proposal_id)
+);
+CREATE INDEX IF NOT EXISTS batch_lines_by_line ON batch_lines (proposal_id);
+
 CREATE TABLE IF NOT EXISTS approvals (
   approval_id INTEGER PRIMARY KEY,
   proposal_id TEXT NOT NULL UNIQUE REFERENCES proposals(proposal_id),

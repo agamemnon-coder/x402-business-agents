@@ -57,6 +57,7 @@ const OVERVIEW_BODY = (lang: Lang) => `
 <p id="msg" role="status"></p>
 <div class="tiles" id="tiles"></div>
 <section class="section"><div class="bar" id="filters"><h2>${t(lang, "ov.invoices")}</h2></div>
+<div class="batchbar" id="batchbar" hidden><span class="what" id="batchwhat"></span><button class="btn" id="batchall" type="button">${t(lang, "ov.batch_all")}</button><button class="btn primary" id="batchpay" type="button">${svg("scan-face", 16)} ${t(lang, "ov.batch_pay")}</button></div>
 <div class="card list" id="list"></div></section>
 <section class="section"><div class="grid2" id="more"></div></section>
 <p class="foot">${t(lang, "ov.foot")}</p>`;
@@ -66,7 +67,7 @@ const IC=${ICON_SET(["triangle-alert", "clock", "circle-check", "octagon-x", "in
 ${COMMON}
 const msg=(t,tone)=>{const m=$('#msg');m.textContent=t;m.className=tone||''};
 const FILTERS=[['all',t('filter.all'),()=>true],['act',t('filter.act'),(i)=>['ready','needs_review','needs_vendor'].includes(i.status)],['waiting_cfo',t('filter.waiting_cfo'),(i)=>i.status==='waiting_cfo'],['paid',t('filter.paid'),(i)=>i.status==='paid'],['blocked',t('filter.blocked'),(i)=>i.status==='blocked'],['rejected',t('filter.rejected'),(i)=>i.status==='rejected']];
-let filter='all';let all=[];
+let filter='all';let all=[];const picked=new Set();
 const sum=(a)=>a&&a.length?a:null;
 function tile(label,icon,value,extra,tone){const t=el('div','card tile'+(tone?' '+tone:''));const l=el('div','l',[ic(icon),label]);const v=el('div','v num');if(value instanceof Node)v.append(value);else v.textContent=value;t.append(l,v);if(extra)t.append(el('div','x',extra));return t}
 function amounts(a){if(!a)return null;const f=a[0];const s=el('span');s.append(el('small','',cur(f.currency)),amount(f.total));return s}
@@ -81,6 +82,7 @@ function rows(){
   for(const i of shown){
     const a=el('a','row');a.href='/invoices/'+encodeURIComponent(i.id);
     const sup=el('span','sup',[i.vendor||t('unknown_supplier')]);sup.title=i.vendor;
+    if(i.status==='ready'&&i.payable!==false){const cb=el('input','pick');cb.type='checkbox';cb.checked=picked.has(i.id);cb.setAttribute('aria-label',t('ov.batch_pick',{no:i.invoice_no||i.id}));cb.onclick=(e)=>{e.preventDefault();e.stopPropagation();const on=!picked.has(i.id);if(on)picked.add(i.id);else picked.delete(i.id);setTimeout(()=>{cb.checked=on},0);bar()};sup.prepend(cb)}
     const no=el('span','no',[i.invoice_no||t('no_number'),el('span','sub',i.id)]);no.title=i.invoice_no;
     const late=i.due_date&&i.due_date<today&&!['paid','rejected'].includes(i.status);
     const due=el('span','due num'+(late?' late':''),i.due_date?day(i.due_date):'–');
@@ -90,6 +92,18 @@ function rows(){
     a.append(sup,no,due,amt,el('span','stc',[st]),wy,ic('chevron-right'));a.lastChild.className='go';
     list.append(a)}
 }
+// One Face ID for many: the picked ready invoices become one batch the CFO signs on the phone (each line its own payment).
+function bar(){const ready=all.filter(i=>i.status==='ready'&&i.payable!==false);for(const id of [...picked])if(!ready.some(i=>i.id===id))picked.delete(id);
+  const b=$('#batchbar');b.hidden=!ready.length;const sel=ready.filter(i=>picked.has(i.id));const tot={};for(const i of sel)tot[i.currency]=(tot[i.currency]||0)+Math.round(parseFloat(i.total)*100);
+  const sums=Object.keys(tot).sort().map(c=>ma(c,(tot[c]/100).toFixed(2))).join(' · ');
+  $('#batchwhat').replaceChildren(...(sel.length?[el('b','',t('ov.batch_picked',{n:sel.length})),' · '+sums]:[t('ov.batch_hint')]));
+  $('#batchpay').disabled=!sel.length;$('#batchall').style.display=sel.length===ready.length?'none':''}
+$('#batchall').onclick=()=>{for(const i of all)if(i.status==='ready'&&i.payable!==false)picked.add(i.id);rows();bar()};
+$('#batchpay').onclick=async()=>{const ids=[...picked];const btn=$('#batchpay');btn.disabled=true;
+  try{const j=await post('/api/payables/batch',JSON.stringify({ids}),{'content-type':'application/json'});picked.clear();
+    const left=j.not_planned.length?' '+t('ov.batch_left',{list:j.not_planned.map(x=>x.id+' ('+x.reason+')').join('; ')}):'';
+    msg(j.batch?tn('ov.batch_filed',j.batch.count,{id:j.batch.proposal_id})+left:t('ov.batch_nothing')+left,j.batch&&!left?'ok':'bad');await load()}
+  catch(e){msg(e.message,'bad');btn.disabled=false}};
 function filters(){const bar=$('#filters');bar.querySelectorAll('.chip').forEach(c=>c.remove());for(const [k,label,fn] of FILTERS){const n=all.filter(fn).length;if(k!=='all'&&!n&&k!=='act')continue;const b=el('button','chip',[label,' ',el('b','',String(n))]);b.type='button';b.setAttribute('aria-pressed',String(filter===k));b.onclick=()=>{filter=k;filters();rows()};bar.append(b)}}
 function more(x){
   const box=$('#more');box.replaceChildren();
@@ -118,7 +132,7 @@ async function load(){
     tile(t('ov.tile.overdue'),'clock',amounts(sum(x.overdue))||t('none'),sum(x.overdue)?rest(sum(x.overdue)):t('ov.all_in_time'),sum(x.overdue)?'alert':'calm'),
     tile(t('ov.tile.waits'),'inbox',String(wait),t('ov.waits_detail',{faceid:x.waiting.waiting_cfo,check:x.waiting.needs_review,supplier:x.waiting.needs_vendor})),
     tile(t('ov.tile.blocked'),'octagon-x',String(x.blocked.count),top?t('ov.most',{reason:tk('top.'+top.code,tk('finding.'+top.code,top.code.replace(/_/g,' ')))}):t('ov.nothing_blocked'),x.blocked.count?'alert':'calm'));
-  filters();rows();more(x);
+  filters();rows();bar();more(x);
 }
 async function send(files){let n=0;for(const f of files){msg(t('ov.filing',{name:f.name}));try{const j=await post('/api/payables/documents',f,{'content-type':'application/octet-stream','x-filename':encodeURIComponent(f.name)});n++;msg(f.name+': '+(j.kind==='email'?t('ov.from_email',{n:j.results.length}):j.kind==='duplicate_document'?t('ov.filed_before'):j.invoice.id+', '+statusWords(j.invoice.status,j.invoice.status_words)),'ok')}catch(e){msg(f.name+': '+e.message,'bad')}}await load()}
 $('#file').onchange=(e)=>send(e.target.files);
@@ -195,11 +209,13 @@ function render(d){
   const rej=el('button','btn danger big',[ic('ban'),t('dt.reject')]);rej.type='button';rej.disabled=!d.actions.reject.allowed;
   const note=el('div','note');
   const closed=d.actions.pay.allowed?null:actionWhy(d.actions.pay);
+  const bnote=d.batch?el('span','batchnote',[ic('scan-face'),' '+(d.batch.waiting?tn('dt.in_batch_waiting',Number(d.batch.count),{id:d.batch.id}):tn('dt.in_batch',Number(d.batch.count),{id:d.batch.id,status:d.batch.status.toLowerCase().replace(/_/g,' ')}))+' ']):null;if(bnote)note.append(bnote);
   note.append(d.actions.pay.allowed?el('span','',[t('dt.files_payment'),el('b','',t('dt.nothing_moves')),t('dt.on_phone')]):el('span','',t('dt.pay_closed',{why:cap(closed)})));
   const status=el('p','');status.setAttribute('role','status');status.style.cssText='margin:0;flex-basis:100%;font-size:14px';
   // A paid, rejected or filed invoice has nothing left to do here: the bar says where it stands instead of showing dead buttons.
   const done=['paid','rejected','waiting_cfo'].includes(i.status);
   if(done){note.replaceChildren(el('span','',[el('b','',i.status==='paid'?(i.paid_at?t('dt.paid_on',{date:day(i.paid_at)}):t('paid')):statusWords(i.status)),i.proposal_id?t('dt.payment',{id:i.proposal_id}):'',i.status==='paid'?t('dt.paid_sandbox'):i.status==='waiting_cfo'?t('dt.cfo_on_phone'):t('dt.never_paid')]))}
+  if(done&&bnote)note.prepend(bnote);
   bar.append(...(done?[]:d.actions.supplier_request.allowed?[sup,pay,rej]:[pay,rej]),note,status);
   const box=el('div','card rejectbox');const ta=document.createElement('textarea');ta.placeholder=t('dt.reject_why');ta.maxLength=300;
   const go=el('button','btn danger',[t('dt.reject_this')]);go.type='button';const cancel=el('button','btn',[t('cancel')]);cancel.type='button';
