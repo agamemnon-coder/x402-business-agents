@@ -199,7 +199,7 @@ nav.tabs { display: flex; gap: 4px; margin-left: 14px; }
 nav.tabs a { text-decoration: none; color: var(--muted); font-weight: 650; font-size: 14px; padding: 7px 12px; border-radius: 999px; white-space: nowrap; }
 nav.tabs a:hover { color: var(--text); }
 nav.tabs a[aria-current="page"] { background: var(--sunken); color: var(--text); }
-@media (max-width: 640px) { .brand .sec { display: none; } nav.tabs { margin-left: 6px; } nav.tabs a { padding: 7px 9px; font-size: 13.5px; } .test .tl { display: none; } }
+@media (max-width: 640px) { .brand > span:not(.mk) { display: none; } nav.tabs { margin-left: 2px; } nav.tabs a { padding: 7px 9px; font-size: 13.5px; } .test { padding: 7px 9px; font-size: 12.5px; } }
 /* Transactions */
 .sel { display: inline-flex; align-items: center; height: 32px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: 600 13px/1 Inter, system-ui, sans-serif; padding: 0 10px; }
 .bar .grow { flex: 1 1 auto; }
@@ -237,8 +237,9 @@ button.trow:hover { background: color-mix(in srgb, var(--accent-soft) 45%, var(-
 .scrim.open { display: block; }
 .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100vw); z-index: 41; background: var(--surface); border-left: 1px solid var(--border); box-shadow: -24px 0 48px -24px rgba(16,24,40,.3); transform: translateX(105%); transition: transform .18s ease; overflow-y: auto; padding: 20px 22px 40px; }
 .drawer.open { transform: none; }
-.drawer .x { position: absolute; top: 14px; right: 14px; }
-.drawer .kicker { color: var(--muted); font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.drawer .x { position: absolute; top: 14px; right: 14px; width: 40px; padding: 0; }
+.drawer .x:focus-visible { outline-offset: -3px; }
+.drawer .kicker { margin-right: 52px; color: var(--muted); font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
 .drawer h2 { font-size: 20px; margin: 6px 40px 0 0; }
 .drawer .big { margin-top: 10px; font-size: 32px; font-weight: 780; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
 .drawer .big small { font-size: .5em; color: var(--muted); font-weight: 650; margin-right: 6px; }

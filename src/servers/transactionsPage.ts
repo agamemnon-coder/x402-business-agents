@@ -43,7 +43,7 @@ function tiles(){const t=$('#tiles');t.replaceChildren();const month=all.filter(
     tile('Not reconciled','shield-alert',String(open.length),why||'Every movement booked and matched',open.length?'alert':'calm'),
     tile('Without approval','landmark',String(noAppr),noAppr?'Money moved with no approval on file':'Every payment carries its approval',noAppr?'alert':'calm'))}
 function filters(){const bar=$('#filters');bar.querySelectorAll('.chip').forEach(c=>c.remove());for(const [k,label] of RAILS){const n=k==='all'?all.length:all.filter(r=>r.rail===k).length;if(k!=='all'&&!n)continue;const b=el('button','chip',[label,' ',el('b','',String(n))]);b.type='button';b.setAttribute('aria-pressed',String(railF===k));b.onclick=()=>{railF=k;filters();rows()};bar.append(b)}}
-function statusChip(r){const cls=r.moved?'moved':/^(failed|declined|refused|aborted|settlement failed)/.test(r.status_words)?'void':'idle';const s=chip(cls,r.status_words);s.title=r.status_words;return s}
+function statusChip(r,full){const cls=r.moved?'moved':/^(failed|declined|refused|aborted|settlement failed)/.test(r.status_words)?'void':'idle';const s=chip(cls,full?r.status_words:r.status_words.split(':')[0]);s.title=r.status_words;return s}
 function recChip(r){const s=chip(r.reconciliation,r.reconciliation_words);s.title=r.reconciliation_words;return s}
 function rows(){const list=$('#list');list.replaceChildren();
   if(!all.length){list.append(el('div','empty',[el('b','','No money has moved yet'),'Payouts, card charges, conversions and Metal payments appear here as they happen.']));return}
@@ -59,7 +59,7 @@ const dl=(pairs)=>{const d=el('dl','read');for(const [k,v,cls] of pairs){if(v===
 function open(id){const r=all.find(x=>x.id===id);if(!r)return;history.replaceState(null,'','#'+encodeURIComponent(id));
   const d=$('#drawer');d.replaceChildren();const x=el('button','btn x');x.type='button';x.setAttribute('aria-label','Close');x.append(ic('x'));x.onclick=close;
   const big=el('div','big num',[el('small','',r.currency),(r.moved?(isIn(r)?'+':'−'):'')+amount(r.amount)]);
-  d.append(x,el('div','kicker',r.rail_label+' · '+(r.direction==='internal'?'between own accounts':r.direction==='in'?'money in':'money out')),el('h2','',r.counterparty||r.description),big,el('div','chips',[statusChip(r),recChip(r)]));
+  d.append(x,el('div','kicker',r.rail_label+' · '+(r.direction==='internal'?'between own accounts':r.direction==='in'?'money in':'money out')),el('h2','',r.counterparty||r.description),big,el('div','chips',[statusChip(r,true),recChip(r)]));
   for(const f of r.flags)d.append(el('div','flag',[ic('triangle-alert'),FLAG[f]||f]));
   if(r.moved&&!r.flags.length)d.append(el('div','flag ok',[ic('circle-check'),'Moved, approved as required, booked and proven by the rail.']));
   const inv=r.invoice?(r.invoice.ap_id?(()=>{const a=el('a','',r.invoice.supplier_no+' · '+r.invoice.ap_id);a.href='/invoices/'+encodeURIComponent(r.invoice.ap_id);return a})():r.invoice.supplier_no):null;
@@ -70,7 +70,7 @@ function open(id){const r=all.find(x=>x.id===id);if(!r)return;history.replaceSta
   sec('Proof',dl([['From the rail',r.proof||'none','mono'],['Register id',r.id,'mono']]));
   d.classList.add('open');d.setAttribute('aria-hidden','false');$('#scrim').classList.add('open');x.focus()}
 function close(){$('#drawer').classList.remove('open');$('#drawer').setAttribute('aria-hidden','true');$('#scrim').classList.remove('open');history.replaceState(null,'',location.pathname)}
-$('#scrim').onclick=close;document.addEventListener('keydown',(e)=>{if(e.key==='Escape')close()});
+$('#scrim').onclick=close;window.addEventListener('hashchange',()=>{const h=decodeURIComponent(location.hash.slice(1));if(h)open(h);else close()});document.addEventListener('keydown',(e)=>{if(e.key==='Escape')close()});
 for(const s of ['#period','#currency','#rec'])$(s).onchange=rows;$('#q').oninput=rows;
 async function load(){const j=await fetch('/api/payables/transactions').then(r=>{if(!r.ok)throw new Error(r.statusText);return r.json()});
   all=j.rows;totals=j.totals;check=j.check;
