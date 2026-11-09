@@ -15,6 +15,7 @@ export const FONT = readFileSync(new URL("../ui/inter.woff2", import.meta.url));
 export const PDFJS = readFileSync(fileURLToPath(import.meta.resolve("unpdf/pdfjs")));
 
 const MORE: Record<string, Icon> = {
+  mail: [["rect", { width: "20", height: "16", x: "2", y: "4", rx: "2" }], ["path", { d: "m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" }]],
   upload: [["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }], ["polyline", { points: "17 8 12 3 7 8" }], ["line", { x1: "12", y1: "3", x2: "12", y2: "15" }]],
   "arrow-left": [["path", { d: "m12 19-7-7 7-7" }], ["path", { d: "M19 12H5" }]],
   "file-text": [["path", { d: "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" }], ["path", { d: "M14 2v4a2 2 0 0 0 2 2h4" }], ["path", { d: "M16 13H8" }], ["path", { d: "M16 17H8" }], ["path", { d: "M10 9H8" }]],
@@ -72,6 +73,8 @@ h2 { font-size: 17px; font-weight: 700; }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 .btn:focus-visible, a:focus-visible, button:focus-visible, textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow); }
+.inbox { margin: 14px 0 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--muted); font-size: 14px; }
+.inbox b { color: var(--text); overflow-wrap: anywhere; }
 .drop { margin-top: 20px; display: flex; align-items: center; gap: 16px; padding: 18px 20px; border: 1.5px dashed color-mix(in srgb, var(--accent) 45%, var(--border)); border-radius: var(--r); background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface)); }
 .drop.over { border-color: var(--accent); background: var(--accent-soft); }
 .drop .ic { width: 44px; height: 44px; border-radius: 12px; background: var(--surface); color: var(--accent); display: grid; place-items: center; border: 1px solid var(--border); flex: none; }
@@ -285,6 +288,7 @@ const OVERVIEW_BODY = `
 <div class="head"><div><h1>Payables</h1><p class="lede">Supplier invoices in, read and checked by Purser, paid only with the CFO's Face ID, and booked.</p></div>
 <div class="tools"><button class="btn" id="sync" type="button">${svg("refresh-cw", 16)} Check payments</button>
 <a class="btn" href="/api/payables/export/journal.csv">${svg("download", 16)} Journal</a><a class="btn" href="/api/payables/export/invoices.csv">${svg("download", 16)} Invoices</a></div></div>
+<!--inbox-->
 <label class="drop" id="drop"><span class="ic">${svg("upload", 22)}</span><span><b>Drop PDF invoices or saved e-mails here</b><span class="sub">PDF or .eml, up to 16 MB <span class="sub2">· each file is read, checked and filed; nothing is paid without the CFO</span></span></span>
 <span class="btn">Choose files</span><input type="file" id="file" multiple accept=".pdf,.eml,application/pdf,message/rfc822"></label>
 <p id="msg" role="status"></p>
@@ -361,8 +365,10 @@ load().catch(e=>msg('Could not load the invoices: '+e.message,'bad'));
 `;
 
 /** The overview: upload, the figures, the invoices. */
-export function overviewPage(csrf: string, nonce: string): string {
-  return shell({ title: "Purser · Payables", csrf, nonce, body: OVERVIEW_BODY, script: OVERVIEW_SCRIPT });
+export function overviewPage(csrf: string, nonce: string, inboxAddress: string | null = null): string {
+  // The company's own inbox address, when configured: invoices mailed there arrive here (Purser Cloud).
+  const inbox = inboxAddress ? `<p class="inbox">${svg("mail", 16)} Mail invoices to <b class="mono">${escAttr(inboxAddress)}</b> <span class="sub2">· they arrive here, read and checked</span></p>` : "";
+  return shell({ title: "Purser · Payables", csrf, nonce, body: OVERVIEW_BODY.replace("<!--inbox-->", inbox), script: OVERVIEW_SCRIPT });
 }
 
 const DETAIL_BODY = (id: string) => `

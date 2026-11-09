@@ -35,6 +35,11 @@ export interface PayablesOptions {
    * local process that can fetch the page token cannot read it, so it cannot record a verification on its own.
    */
   notify?: (line: string) => void;
+  /**
+   * The company's inbox address in Purser Cloud (<slug>@<domain>), shown on the page so people know where to mail
+   * invoices. Defaults to PURSER_INBOX_ADDRESS; nothing is shown when it is unset or not an e-mail address.
+   */
+  inboxAddress?: string;
 }
 
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
@@ -51,6 +56,12 @@ function statusFor(message: string): number {
   if (/not ready|not waiting|already|German \(DE\)|looks like|on file|not verified|pays EUR only|never cleared|waits for the CFO/.test(message)) return 409;
   if (/only a person|verification code|last four/.test(message)) return 403;
   return 500;
+}
+
+/** An inbox address worth showing: one plain e-mail address, nothing else. */
+export function inboxAddressOf(v: string | undefined): string | null {
+  const a = (v ?? "").trim();
+  return /^[a-z0-9][a-z0-9.+-]{0,63}@[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(a) && a.length <= 200 ? a : null;
 }
 
 export function payablesApp(db: DB, opts: PayablesOptions) {
@@ -111,7 +122,8 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
     codes.delete(key);
   };
 
-  app.get("/", (_req, res) => { const nonce = pageCsp(res); res.type("html").send(overviewPage(issue(), nonce)); });
+  const inbox = inboxAddressOf(opts.inboxAddress ?? process.env.PURSER_INBOX_ADDRESS);
+  app.get("/", (_req, res) => { const nonce = pageCsp(res); res.type("html").send(overviewPage(issue(), nonce, inbox)); });
   app.get("/invoices/:id", (req, res) => {
     // The page carries the stored invoice's own id, never the request's text (CodeQL: reflected input).
     const inv = apInvoice(db, String(req.params.id));

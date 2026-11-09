@@ -22,8 +22,8 @@ let db: DB;
 let awx: FakeAirwallex;
 let base: string;
 let close: () => void;
-async function start(withRail: boolean, rateLimit?: { windowMs: number; limit: number }) {
-  const server = payablesApp(db, { inbox: { dir, reader: parserOnly }, rail: withRail ? awx : null, ...(rateLimit ? { rateLimit } : {}) }).listen(0, "127.0.0.1");
+async function start(withRail: boolean, rateLimit?: { windowMs: number; limit: number }, inboxAddress?: string) {
+  const server = payablesApp(db, { inbox: { dir, reader: parserOnly }, rail: withRail ? awx : null, ...(rateLimit ? { rateLimit } : {}), ...(inboxAddress !== undefined ? { inboxAddress } : {}) }).listen(0, "127.0.0.1");
   await new Promise<void>((r) => server.once("listening", () => r()));
   close = () => server.close();
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -196,6 +196,22 @@ describe("the payables page", () => {
     const res = await fetch(base + "/invoices/" + encodeURIComponent("<script>alert(1)</script>"));
     expect(res.status).toBe(404);
     expect(await res.text()).not.toContain("<script>");
+  });
+
+  it("shows the company's inbox address when one is configured, and none when it is not", async () => {
+    await start(false, undefined, "northwind@in.purser.test");
+    const html = await (await fetch(base + "/")).text();
+    expect(html).toContain("northwind@in.purser.test");
+    expect(html).toMatch(/Mail invoices to/);
+    close();
+    await start(false, undefined, "");
+    expect(await (await fetch(base + "/")).text()).not.toMatch(/Mail invoices to/);
+    close();
+    // Something that is not an address is never shown (it would come from a setting someone typed).
+    await start(false, undefined, "<script>x</script>");
+    const bad = await (await fetch(base + "/")).text();
+    expect(bad).not.toMatch(/Mail invoices to/);
+    expect(bad).not.toContain("<script>x");
   });
 
   it("limits how often it can be asked: past the limit it answers 429 and reads nothing", async () => {

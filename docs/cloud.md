@@ -114,7 +114,9 @@ is the same rows as CSV (cells a spreadsheet would read as a formula start with 
 register is the Transactions page of `npm run payables` (`/transactions`) and `/api/payables/transactions`.
 
 From the runner: `npm run cloud -- push` and `npm run cloud -- mail`, with `PURSER_CLOUD_URL` and `PURSER_CLOUD_KEY`
-(a key with the `sync` scope) in the environment.
+(a key with the `sync` scope) in the environment. Set `PURSER_INBOX_ADDRESS` to the company's address
+(`<slug>@<domain>`) and the payables page shows it ("Mail invoices to …"); unset, or not an e-mail address, it shows
+nothing.
 
 **Passkeys are never pushed.** A push carries bookkeeping only; a sync key cannot add a sign-in credential (security
 review of 8 November: before, a sync key could push a passkey for the owner and sign in as the owner). A person enrols
