@@ -15,6 +15,7 @@
   },
   "scripts": {
     "test": "vitest run",
+    "test:d1": "CLOUD_DB=d1 vitest run --config vitest.d1.config.ts",
     "test:coverage": "vitest run --coverage && tsx test/coverage-areas.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test examples cloud/src",

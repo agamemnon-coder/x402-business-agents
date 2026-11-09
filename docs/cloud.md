@@ -132,6 +132,18 @@ key behind them, including keys made by their keys (each key records the person 
 a minute, the address is turned away before any lookup. The address is Cloudflare's `cf-connecting-ip`, which the edge
 sets and overwrites: behind any other proxy this header must not be trusted, and the limits would need the proxy's own.
 
+## Tested on D1 itself
+
+`npm run test:d1` runs the cloud's tests (`test/cloud-*.test.ts`, `test/rt4-cloud-*.test.ts`, the credit-netting test) on
+local D1: each test gets a fresh database in workerd's own D1, through the wrangler pinned in `worker/`
+(`test/support/d1.ts`; `npm ci --prefix worker` first). No network and no Cloudflare account. CI runs it in the test job.
+The concurrency guards (the push guard row, the chain heads, key creation and enrolment re-checked at commit, the mail
+quota, two owners erasing each other) depend on D1's batch semantics: a batch is one transaction, and a failed
+statement rolls the whole batch back. Both hold there. The first run on 9 November found one difference from
+better-sqlite3: the rate and quota counter counted in one statement and read its total in a second, so sixty deliveries
+at once all read the final total and every one was refused; it now counts and reads back in one statement
+(`RETURNING`).
+
 ## Privacy and retention
 
 - **Export:** `GET /v1/export` returns every table and the list of documents to fetch; no secret leaves, not even a

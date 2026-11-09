@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { handle, type CloudEnv } from "../../cloud/src/app.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
+import { d1Sql, type Sql } from "../../cloud/src/store.js";
 
 export const ADMIN_TOKEN = "test-platform-admin-token-not-a-secret";
 export const RP = "cloud.test";
@@ -23,7 +24,9 @@ export interface TestCloud {
 
 export function testCloud(opts: { rate?: CloudEnv["rate"] } = {}): TestCloud {
   const dir = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "cloud-"));
-  const sql = sqliteSql(":memory:");
+  // npm run test:d1 (CLOUD_DB=d1, test/support/d1.ts): a fresh local D1 database instead of better-sqlite3.
+  const d1 = globalThis.__cloudD1?.next();
+  const sql: Sql & { close(): void } = d1 ? { ...d1Sql(d1), close: () => {} } : sqliteSql(":memory:");
   const clock = { now: new Date("2026-11-08T12:00:00Z") };
   const env: CloudEnv = {
     sql, blobs: dirBlobs(join(dir, "blobs")), sessionSecret: "s".repeat(48),

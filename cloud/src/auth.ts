@@ -268,8 +268,9 @@ export async function noteFailedAuth(sql: Sql, ip: string, keyId: string | null,
 
 /** A counter in a fixed window that grows by `amount` (the mail quota counts bytes); returns the new count. */
 export async function bump(sql: Sql, bucket: string, windowStart: number, amount: number): Promise<number> {
-  await sql.run("INSERT INTO rate_hits (bucket, window_start, count) VALUES (?, ?, ?) ON CONFLICT(bucket, window_start) DO UPDATE SET count = count + ?", [bucket, windowStart, amount, amount]);
-  return (await sql.first<{ count: number }>("SELECT count FROM rate_hits WHERE bucket = ? AND window_start = ?", [bucket, windowStart]))?.count ?? 0;
+  // One statement that counts and reads back its own count (D1 conformance run, 9 Nov: an upsert and then a separate
+  // SELECT let sixty concurrent deliveries all read the final total, so every one of them was refused).
+  return (await sql.first<{ count: number }>("INSERT INTO rate_hits (bucket, window_start, count) VALUES (?, ?, ?) ON CONFLICT(bucket, window_start) DO UPDATE SET count = count + ? RETURNING count", [bucket, windowStart, amount, amount]))?.count ?? 0;
 }
 
 /** A fixed window per key or session: true when the call is within the limit. */

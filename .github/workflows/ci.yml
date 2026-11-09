@@ -42,6 +42,10 @@ jobs:
       - name: Relay Worker type check
         working-directory: worker
         run: npm ci && npx tsc --noEmit && npm audit --audit-level=low
+      # The cloud's tests again, on local D1 (workerd's D1, through the wrangler pinned in worker/) instead of
+      # better-sqlite3: the concurrency guards rely on D1's batch semantics (test/support/d1.ts).
+      - name: Cloud tests on local D1
+        run: npm run test:d1
       - run: npm audit --audit-level=low
   # A juror's first run: a fresh clone, no keys, no network beyond npm. `npm run judge` must serve the recorded demo
   # and the month, and the guest pages must render cleanly in Chromium at phone and laptop width, light and dark.
