@@ -102,7 +102,6 @@ let queue: Promise<unknown> = Promise.resolve();
 
 function spawn(): Worker {
   const w = new Worker(WORKER, { eval: true, workerData: { unpdf: UNPDF }, resourceLimits: { maxOldGenerationSizeMb: PDF_WORKER_HEAP_MB, maxYoungGenerationSizeMb: 32 } });
-  w.unref();
   w.on("message", (r: Reply) => {
     if (pending?.owner === w && pending.id === r.id) { const p = pending; pending = null; p.resolve(r); }
   });
@@ -112,6 +111,9 @@ function spawn(): Worker {
   };
   w.on("error", (e) => gone(/memory/i.test(String((e as Error).message) + String((e as NodeJS.ErrnoException).code)) ? `reading the PDF needed more than ${PDF_WORKER_HEAP_MB} MB of memory` : `the PDF reader stopped: ${String((e as Error).message).slice(0, 120)}`));
   w.on("exit", () => gone("the PDF reader stopped"));
+  // Unref'd last: adding a "message" listener refs the worker's port again, so an earlier unref kept a one-shot
+  // command (npm run cloud -- mail) alive forever after its work was done (backend demo, 9 November).
+  w.unref();
   return w;
 }
 
