@@ -51,7 +51,12 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 
 | Endpoint | Needs | What it does |
 |---|---|---|
-| `GET /v1/health` | anyone | Liveness. |
+| `GET /v1/health` | anyone | For an uptime monitor: `{ ok, version, d1, r2, mail_queued }`; 503 when the database or the document store does not answer. No company's data. |
+| `GET /v1/status` | admin | The company's status for its owners: last runner push, mail queue (queued, refused, done), today's mail quota use, the runner's alert codes, the webhook's delivery state. |
+| `POST /v1/health/report` | sync | The runner reports its health: alert codes and severities only (any words are dropped). Alerts raised or cleared since the last report are sent to the webhook. |
+| `GET /v1/webhook` | admin | The alert webhook: URL, failures in a row, last attempt and status, when it was turned off. Never its secret. |
+| `POST /v1/webhook` | admin | Set the alert webhook (https, a public host name, port 443, no credentials); returns the signing secret once. |
+| `DELETE /v1/webhook` | admin | Remove the alert webhook. |
 | `GET /v1/openapi.json` | anyone | This API, as OpenAPI 3.1. |
 | `POST /v1/admin/tenants` | platform admin | Create a company and its first owner; returns the starter key once (a week, the first owner's passkey only). |
 | `POST /v1/auth/challenge` | anyone | Start a passkey sign-in: a one-time challenge for the company. |
@@ -249,3 +254,37 @@ What the code does not do yet, and must be in place before a company's real data
   enrolment's secret with it).
 - ERP connectors live on their own branch; billing, SSO and per-row encryption beyond D1's and R2's are not built.
 - Reports per company are read in one piece; very large companies would need streaming.
+
+## Monitoring, logs and alert webhooks
+
+- **Uptime:** point a monitor at `GET /v1/health`. It answers 503 when D1 or R2 does not answer.
+- **Logs:** one JSON object per line (`ts`, `level`, `event`, fields), a `request` line per request with the route's
+  pattern, status and time. `cloud/src/log.ts` cleans every field: anything named like a secret becomes
+  `[redacted]`, account numbers keep their last four characters, Purser keys, session tokens, `whsec_` secrets and
+  Bearer values in text are cut, e-mail addresses keep their domain only. `test/cloud-golive.test.ts` runs a whole API
+  session and scans the log for keys, tokens, invite secrets, account numbers and e-mail addresses.
+- **Alert webhook:** an owner sets one URL (`POST /v1/webhook`). Each alert the runner raises or clears (via
+  `POST /v1/health/report`) is POSTed as `{ id, type: "alert.raised" | "alert.cleared", created_at, alert: { code,
+  severity } }` with the header `x-purser-signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of "<t>.<body>">` under the
+  secret shown once. Check the signature and that `t` is recent. Three attempts per event (a 2xx ends it), at most 30
+  events an hour per company, and after 20 failed events in a row the webhook is turned off (`disabled_at`); set it
+  again to turn it back on. The secret is stored to sign with; it is never shown again or exported.
+
+## Backups and restore
+
+- **A company's backup** is its export: `GET /v1/export` (admin and read) plus each document from
+  `/v1/documents/{sha256}`. It holds every row of every table except secrets (API key hashes, enrolment hashes, the
+  webhook secret) and the raw bytes of inbound mail.
+- **Restore** with `importTenant` (`cloud/src/restore.ts`) into a new, empty company in the same or a fresh database.
+  It checks both hash chains from their genesis and every document against its SHA-256 before it writes anything,
+  refuses a company that already holds bookkeeping data, and rewrites the document keys to the new company. Owners then
+  make new API keys and set the webhook again; mail that was still queued must be sent again.
+  `test/cloud-restore.test.ts` proves the round trip: every table, every document, both chains and the reports equal,
+  on better-sqlite3 and, with `npm run test:d1`, on D1.
+- **No command or route runs a restore yet.** It is a library function; running it against production D1 needs a
+  one-off Worker or a script with the D1 binding. That is on the go-live list (`docs/go-live.md`).
+- **D1 Time Travel** (Cloudflare's point-in-time restore of a whole database) is the backup for the database as a
+  whole. Not checked against Cloudflare's documentation in this session (no external calls): before go-live, read
+  Cloudflare's current D1 Time Travel page for the retention window on the plan used, and rehearse one restore of a
+  copy with `wrangler d1 time-travel` into a scratch database. R2 has no point-in-time restore of its own here: the
+  documents are written once under their hash and never changed, and the export lists them.

@@ -251,3 +251,30 @@ CREATE TABLE IF NOT EXISTS push_log (
   at TEXT NOT NULL,
   PRIMARY KEY (tenant_id, id)
 );
+
+-- The runner's own health as it last reported it (POST /v1/health/report): alert codes and severities only, never the
+-- words (they can name suppliers or proposals). One row per company, id 'latest'.
+CREATE TABLE IF NOT EXISTS runner_health (
+  tenant_id TEXT NOT NULL,
+  id TEXT NOT NULL,
+  at TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('ok', 'alert')),
+  alerts_json TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, id)
+);
+
+-- The company's alert webhook, set by an owner: alert events are POSTed to it, signed with HMAC-SHA256 under its
+-- secret (kept here to sign with; never exported or shown again). Turned off after 20 failed deliveries in a row.
+CREATE TABLE IF NOT EXISTS webhooks (
+  tenant_id TEXT NOT NULL,
+  id TEXT NOT NULL,
+  url TEXT NOT NULL,
+  secret TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  consecutive_failures INTEGER NOT NULL DEFAULT 0,
+  last_attempt_at TEXT,
+  last_status INTEGER,
+  disabled_at TEXT,
+  PRIMARY KEY (tenant_id, id)
+);

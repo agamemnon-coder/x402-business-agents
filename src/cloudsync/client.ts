@@ -12,6 +12,7 @@ import { ingestEmail, type InboxDeps } from "../ap/inbox.js";
 import { ledgerRows } from "../ledger/core.js";
 import { syncLedger } from "../ledger/feed.js";
 import { transactionRegister } from "../money/register.js";
+import { health } from "../ops/health.js";
 
 export type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -96,6 +97,10 @@ export async function pushToCloud(db: DB, t: CloudTarget, now = new Date()): Pro
   const state = (await ok(await call(t, "GET", "/v1/sync/state"), "the state request")) as CloudState;
   const results: unknown[] = [];
   for (const b of batchesFor(db, state, { now })) results.push(await ok(await call(t, "POST", "/v1/sync", b), "a push"));
+  // The runner's health with every push: alert codes and severities only, never their words (they can name a supplier
+  // or a proposal). The cloud shows them to the owners and sends what was raised or cleared to the company's webhook.
+  const h = health(db, now);
+  await ok(await call(t, "POST", "/v1/health/report", { at: now.toISOString(), status: h.status, alerts: h.alerts.map((a) => ({ code: a.code, severity: a.severity, ...(a.since ? { since: a.since } : {}) })) }), "the health report");
   return results;
 }
 

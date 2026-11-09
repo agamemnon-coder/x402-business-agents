@@ -15,6 +15,8 @@ import { TenantDb } from "./tenant.js";
 import { closeTenant, eraseUser, exportTenant, PrivacyRefused } from "./privacy.js";
 import { consoleResponse } from "./console.js";
 import { qrSvg } from "./qr.js";
+import { logEvent } from "./log.js";
+import { cloudHealth, companyStatus, HealthReport, MonitorRefused, receiveReport, removeWebhook, setWebhook, webhookOf, type Outbound } from "./monitor.js";
 
 export interface CloudEnv {
   sql: Sql;
@@ -34,6 +36,12 @@ export interface CloudEnv {
    * console. Absent (no assets bound): the console offers the download only.
    */
   asset?: (path: string) => Promise<Response | null>;
+  /** The deployed version (a Worker var), shown by /v1/health; "dev" when unset. */
+  version?: string;
+  /** How alert webhooks are sent (the Worker's fetch); absent: none are sent. Tests pass a fake. */
+  outbound?: Outbound;
+  /** The pause before a webhook's second and third attempt, times the attempt (default 500 ms). */
+  retryDelayMs?: number;
   /** Requests per minute per key or session; per address on the sign-in routes; failed authentications per address. */
   rate?: { perMinute: number; signInPerMinute: number; failedAuthPerMinute?: number };
 }
@@ -99,7 +107,21 @@ export const RESERVED_SLUGS = new Set(["postmaster", "hostmaster", "webmaster", 
 const NEW_SLUG = SLUG.refine((v) => !RESERVED_SLUGS.has(v), "this address is reserved");
 
 export const ROUTES: Route[] = [
-  { method: "GET", path: "/v1/health", summary: "Liveness.", need: "public", run: async () => json(200, { ok: true }) },
+  { method: "GET", path: "/v1/health", summary: "For an uptime monitor: whether the database and the document store answer, the version, the mail waiting in all (no company's data); 503 when something is down.", need: "public", run: async (c) => {
+    const h = await cloudHealth(c.env.sql, c.env.blobs, c.env.version ?? "dev");
+    return json(h.status, h.body);
+  } },
+  { method: "GET", path: "/v1/status", summary: "Where the company stands, for its owners: the last push from the runner, the mail queue, today's mail quota, the runner's alert codes and the webhook (never its secret).", need: "admin", run: async (c) => json(200, await companyStatus(c.env.sql, c.caller!.tenantId, c.now)) },
+  { method: "POST", path: "/v1/health/report", summary: "The runner reports its health: alert codes and severities (their words are dropped). Alerts raised or cleared since the last report go to the company's webhook.", need: "sync", run: async (c) => {
+    const r = await body(c, HealthReport, 64_000);
+    return json(200, await receiveReport(c.env.sql, c.caller!.tenantId, r, c.now, c.env.outbound, c.env.retryDelayMs));
+  } },
+  { method: "GET", path: "/v1/webhook", summary: "The company's alert webhook (its URL and delivery state; never its secret).", need: "admin", run: async (c) => json(200, (await webhookOf(c.env.sql, c.caller!.tenantId)) ?? { url: null }) },
+  { method: "POST", path: "/v1/webhook", summary: "Set the alert webhook (https, a public host name); returns the signing secret once. Events are signed: x-purser-signature t=<seconds>,v1=<HMAC-SHA256 hex of t.body>.", need: "admin", run: async (c) => {
+    const b = await body(c, z.object({ url: z.string().min(8).max(500) }).strict());
+    return json(200, { ...(await setWebhook(c.env.sql, c.caller!.tenantId, b.url, c.caller!.principal, c.now)), note: "the secret is shown once" });
+  } },
+  { method: "DELETE", path: "/v1/webhook", summary: "Remove the alert webhook.", need: "admin", run: async (c) => json(200, { removed: await removeWebhook(c.env.sql, c.caller!.tenantId) }) },
   { method: "GET", path: "/v1/openapi.json", summary: "This API, as OpenAPI 3.1.", need: "public", run: async (c) => json(200, openApi(c.env.origin)) },
 
   { method: "POST", path: "/v1/admin/tenants", summary: "Create a company and its first owner; returns the owner's API key once.", need: "platform", run: async (c) => {
@@ -322,7 +344,17 @@ export function ensureSchema(sql: Sql): Promise<void> {
   return p;
 }
 
+/** The API and the console, with one structured log line per request (the route's pattern, never a token or a body). */
 export async function handle(req: Request, env: CloudEnv): Promise<Response> {
+  const started = Date.now();
+  const res = await route(req, env);
+  const path = new URL(req.url).pathname;
+  const pattern = path.startsWith("/v1/") ? (ROUTES.find((r) => { try { return match(path, r.path) !== null; } catch { return false; } })?.path ?? "unknown") : "console";
+  logEvent(res.status >= 500 ? "error" : res.status === 401 || res.status === 403 || res.status === 429 ? "warn" : "info", "request", { method: req.method, route: pattern, status: res.status, ms: Date.now() - started });
+  return res;
+}
+
+async function route(req: Request, env: CloudEnv): Promise<Response> {
   const now = (env.now ?? (() => new Date()))();
   const url = new URL(req.url);
   try {
@@ -377,11 +409,12 @@ export async function handle(req: Request, env: CloudEnv): Promise<Response> {
     if (e instanceof SyncRefused) return err(e.status, e.message);
     if (e instanceof BadRequest) return err(400, e.message);
     if (e instanceof PrivacyRefused) return err(409, e.message);
+    if (e instanceof MonitorRefused) return err(400, e.message);
     // A write that lost a race with another request for the same company: nothing of it was written.
     if (e instanceof WriteConflict) return err(409, "another change for this company landed at the same time; nothing of this request was written: send it again");
     // Nothing internal leaks: the caller gets a reference, the log gets the error.
     const ref = randomToken(6);
-    console.error(`cloud error ${ref}`, e);
+    logEvent("error", "internal_error", { ref, error: e instanceof Error ? e.message : String(e) }, now);
     return err(500, `internal error (reference ${ref})`);
   }
 }
