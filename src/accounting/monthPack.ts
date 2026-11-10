@@ -27,13 +27,13 @@ export const PACK_LINK = "Download the month-end pack";
 export const PACK_LINE = "From the main run of 3 November, test money.";
 
 /**
- * T:0, worded from the record (src/submission/deck.ts T0_STATUS, docs/t0.md): posting is built; both keys were refused
- * (403 CAPI71 on 3 Nov, 401 CAPI11 on 5 Nov), so nothing is posted.
+ * T:0, worded from the record (src/submission/deck.ts T0_STATUS, docs/t0.md): the main run's books, 95 journal entries,
+ * posted to T:0's shared sandbox entity on 10 Nov, matching our books.
  */
 export function t0Line(status = T0_STATUS): string {
-  const codes = [...status.matchAll(/(\d{3}) (CAPI\d+) on (\d{1,2} \w{3})/g)].map((m) => `${m[1]} ${m[2]} on ${m[3]}`);
-  if (!/nothing is posted/.test(status) || codes.length === 0) throw new Error("the T:0 status no longer says nothing is posted");
-  return `Posting to T:0 is built; nothing posted (keys refused: ${codes.join(", ")}).`;
+  const first = /first (je_[A-Za-z0-9_]+)/.exec(status)?.[1];
+  if (!/95 journal entries posted/.test(status) || !first) throw new Error("the T:0 status no longer says what was posted");
+  return `Posted to T:0's shared sandbox on 10 Nov: 95 journal entries, debits equal credits (first ${first}).`;
 }
 
 const csvCell = (v: string) => (/^[=+\-@\t\r]/.test(v) ? `'${v}` : v).replace(/^(.*[",\r\n].*)$/s, (s) => `"${s.replace(/"/g, '""')}"`);

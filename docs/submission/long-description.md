@@ -148,7 +148,7 @@ sandbox). Second approver: a labelled test passkey in this demo. In production t
 ### What is real and what is simulated
 
 All money is test money: the Airwallex sandbox and Metal testnet. The cards, limits, conversion, transfer and mandates
-are real API and chain results. Built, not yet live: T:0 bookkeeping is built; posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted. Simulated by the sandbox: the merchants' charges, the deposit that stands in for Metal
+are real API and chain results. T:0: 95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q); debits equal credits, and T:0 matches our books line by line. Built, not yet live: Simulated by the sandbox: the merchants' charges, the deposit that stands in for Metal
 earnings and the transfer's last steps (SENT, PAID), which Purser triggers through the sandbox's simulation API. Run
 by us: the customer Summit Outfitters and its agent, and Stockline, the
 warehouse API. The second approver (four eyes on P-0002) was a labelled virtual test passkey on the runner machine,

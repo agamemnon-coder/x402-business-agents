@@ -18,7 +18,7 @@ describe("/runs", () => {
   const rows = liveRuns();
 
   it("lists the live runs newest first, the last one on top", () => {
-    expect(rows.map((r) => r.key)).toEqual(["connected-1", "vic-2", "vic-1", "awx-1", "main-1", "agent-1", "tap-1", "friday-1"]);
+    expect(rows.map((r) => r.key)).toEqual(["t0-1", "connected-1", "vic-2", "vic-1", "awx-1", "main-1", "agent-1", "tap-1", "friday-1"]);
     for (let i = 1; i < rows.length; i++) expect(rows[i - 1]!.iso >= rows[i]!.iso).toBe(true);
     expect(text(pages.runs!)).toContain(`Last live run: ${rows[0]!.date}`);
   });

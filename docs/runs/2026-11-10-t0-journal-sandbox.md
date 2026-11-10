@@ -1,6 +1,6 @@
 # T:0 journal posting, 2026-11-10
 
-**Result: all 95 of Purser's journal entries are posted to the shared T:0 sandbox.** These are the books of the main run of 3 November.
+**Result:** T:0: 95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q); debits equal credits, and T:0 matches our books line by line. These are the books of the main run of 3 November.
 
 | | |
 |---|---|
@@ -10,7 +10,7 @@
 | Rate | EUR/USD 1.1179, the ECB reference rate for 2026-11-03. |
 | Account map | `src/config/t0Map.ts` v2. T:0 replaced this entity's chart before 10 Nov (now 261 accounts), so the v1 targets no longer existed. |
 | Posted | 95 of 95. First entry posted 06:07:03 UTC, last 06:08:08 UTC. Each entry is recorded in the ledger copy's `t0_postings` table. |
-| T:0 calls | About 130, within the 130 agreed. This includes the failed attempts while the key was set up. |
+| T:0 calls | About 130 for the posting, within the 130 agreed, including the failed attempts while the key was set up. Then 2 for the read-back and the second push. |
 
 ## Steps
 
@@ -54,10 +54,27 @@ Sample ids:
 
 The balances are sandbox test money: the Airwallex sandbox balances and Metal testnet *USDZ, posted as USD.
 
-## Not done
+## Read-back and second push (10 Nov, 2 more T:0 calls)
 
-- **The full read-back.** We did not compare all 95 entries in T:0 with this table (`npm run t0 -- compare --map sandbox --rate EUR=1.1179`). The first try found a bug: T:0 returns imported entries with `je_number: null`, and our comparison crashed on them. That is fixed and tested (`test/t0.test.ts`, "ignores T:0 entries without a je_number"). The rerun was left out to stay within the agreed number of calls. It needs about 6 more calls.
-- **The second push.** It should post 0 entries and skip 95. Not run, for the same reason.
+- **Full read-back:** `GET /v1/journal-entries` for 2026-11-03, manual entries, compared with our books by `compareOwnEntries`. **T:0 matches our books line by line.**
+  - 95 `PUR-` entries are in T:0 and we built 95; there are 0 differences.
+  - 1 other manual entry on that date is someone else's, and it is ignored.
+  - Every entry has debits equal to credits: 21,141,221.86 USD each, the same as our books. Status `editable`.
+  - Per T:0 account, ours and T:0's:
+
+| T:0 account | Ours (net debit) | T:0 |
+|---|---|---|
+| 11120 (1200) | 11,144,700.05 | 11,144,700.05 |
+| 11210 (1201) | 9,995,581.94 | 9,995,581.94 |
+| 11410 (1210) | 20.03 | 20.03 |
+| 11999 (1590) | 1.32 | 1.32 |
+| 32000 (3000) | -21,140,636.23 | -21,140,636.23 |
+| 42000 (4000+4100) | -1.90 | -1.90 |
+| 51200 (5000+6350) | 269.48 | 269.48 |
+| 63410 (6100) | 50.31 | 50.31 |
+| 63700 (6800) | 15.00 | 15.00 |
+
+- **Second push:** posted 0 and skipped 95, every one because it is already in T:0. Re-running is safe.
 
 ## Code changes from this run
 

@@ -35,12 +35,12 @@ export { stopsLine };
 /** Metal's refusal of #24, said one way everywhere (review round, 5 Nov). */
 export const REFUSAL_LINE = "Metal refused it; the refusal is recorded on chain.";
 /**
- * T:0, one sentence everywhere (README, form, claims, docs/t0.md, the run log; review round, 5 Nov): 403 CAPI71 on
- * 3 Nov (docs/runs/2026-11-03-t0-sandbox.md), 401 CAPI11 on 5 Nov (docs/runs/2026-11-05-t0-live.md).
+ * T:0, one sentence everywhere (README, form, claims, docs/t0.md, the run log): posted on 10 Nov
+ * (docs/runs/2026-11-10-t0-journal-sandbox.md). Earlier keys were refused: 403 CAPI71 on 3 Nov, 401 CAPI11 on 5 Nov.
  */
-export const T0_STATUS = "T:0 bookkeeping is built; posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted.";
+export const T0_STATUS = "T:0: 95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q); debits equal credits, and T:0 matches our books line by line.";
 /** The T:0 sentence without its error codes, for a slide (the codes are in docs/submission/qa.md). */
-export const T0_SHORT = "T:0 bookkeeping is built; posting failed, so nothing is posted.";
+export const T0_SHORT = "T:0: 95 journal entries posted to its shared sandbox, matching our books.";
 /** What of the main run is on Metal testnet (README, checked against the chain on 5 Nov), in one sentence for a slide. */
 export const METAL_LINE = "Metal testnet: 86 payments and 6 mandate transactions, on chain, checkable; no clearing in this run.";
 
@@ -117,7 +117,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
           <div class="box"><b>Rules</b><small>Purser's code checks each proposal</small></div><span class="arrow">→</span>
           <div class="box accent"><b>Person</b><small>Face ID on the exact terms, beyond the limits</small></div><span class="arrow">→</span>
           <div class="box"><b>Airwallex · Metal</b><small>card controls · mandates on chain</small></div><span class="arrow">→</span>
-          <div class="box"><b>Books</b><small>hash-chained audit log; <!-- T0-STATUS -->T:0: built, nothing posted<!-- /T0-STATUS --></small></div>
+          <div class="box"><b>Books</b><small>hash-chained audit log; <!-- T0-STATUS -->T:0: 95 entries posted (sandbox)<!-- /T0-STATUS --></small></div>
         </div>
         <p class="kit">Northwind Outdoor, ${esc(NORTHWIND_LINE)}. Three agents (${m.kit11.map((k) => esc(k.agent.replace(/ agent$/, ""))).join(", ")}), 20.00 test USD between them.</p>`,
     },
