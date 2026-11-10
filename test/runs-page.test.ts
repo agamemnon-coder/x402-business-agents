@@ -19,6 +19,13 @@ describe("/runs", () => {
 
   it("lists the live runs newest first, the last one on top", () => {
     expect(rows.map((r) => r.key)).toEqual(["t0-1", "connected-1", "vic-2", "vic-1", "awx-1", "main-1", "agent-1", "tap-1", "friday-1"]);
+    // The connected-accounts row, held to its run log: every id and amount on it is in the log.
+    const cx = rows.find((r) => r.key === "connected-1")!;
+    const cxLog = readFileSync("docs/runs/2026-11-10-connected-accounts-sandbox.md", "utf8");
+    for (const id of cx.ids) expect(cxLog).toContain(id.value);
+    for (const amount of `${cx.what} ${cx.checks}`.match(/EUR \d+\.\d{2}/g) ?? []) expect(cxLog).toContain(amount);
+    expect(cxLog).toMatch(/17 calls in all/);
+    expect(cx.checks).toMatch(/simulat/);
     for (let i = 1; i < rows.length; i++) expect(rows[i - 1]!.iso >= rows[i]!.iso).toBe(true);
     expect(text(pages.runs!)).toContain(`Last live run: ${rows[0]!.date}`);
   });

@@ -342,8 +342,8 @@ Source for every row: `docs/runs/2026-11-02-night-batch.md` and the files it nam
 | Claim | Value | Proof | Changed |
 |---|---|---|---|
 | The payables inbox, scanned invoices, batch Face ID, payouts and the cloud console are built and tested | stand-ins only | tests on the `platform` branch (draft PR #113): a stand-in Airwallex and a stand-in Claude; Cloudflare's local D1 | Was "runs on the Airwallex sandbox" and "now pays supplier invoices" (jury review, 9 November): no sandbox payout from this product yet, not deployed. |
-| Connected accounts: built, waiting for sandbox access | not run live | `docs/airwallex-platform.md` on `platform`; a test call on 9 November was refused ("This account cannot onboard business accounts") | — |
-| Platform fee | 0.50% in the test world, capped in the CFO's policy | the seeded test world's policy; the fee mechanism at Airwallex is not confirmed | Pricing is a hypothesis; no customer has seen a price. |
+| Connected accounts: run in the sandbox | account `acct_SC-QD89fOneAeqaRFgOymw` ACTIVE (verification simulated); payout `a9460dba-f31b-4111-be58-6d9a9e71adb1` EUR 5.00 PAID (settlement simulated) | `docs/runs/2026-11-10-connected-accounts-sandbox.md` (17 calls, test money) | Was "built, waiting for sandbox access" (9 November); Airwallex enabled connected accounts on 10 November. The run called Purser's payout code directly, without the CFO's Face ID on that payout. |
+| Platform fee | 0.50% in the test world, capped in the CFO's policy; sent as `application_fee_options`, accepted by Airwallex at exactly EUR 0.05 on the sandbox payout above | the seeded test world's policy; the run record above | Pricing is a hypothesis; no customer has seen a price. |
 | Five red-team rounds on the payables and cloud code | 5 | red-team commits on `platform` | — |
 
 ## Removed or softened after the audits (summary)
