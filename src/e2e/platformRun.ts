@@ -250,6 +250,10 @@ async function runCompany(d: PlatformE2EDeps, c: WorldCompany, privPkcs8: string
   // person approves it there; this run never moves it on.
   const held = db.prepare("SELECT transfer_id FROM transfers WHERE status = 'IN_APPROVAL'").all() as { transfer_id: string }[];
   if (held.length) throw new WaitingForAirwallexApproval(c.key, held.map((h) => h.transfer_id));
+  // Any payout not PAID (a batch line refused at create, a failed transfer) stops the run here: the next company is
+  // not started, so no further calls are spent on a path that already failed.
+  const unpaid = db.prepare("SELECT invoice_no, status, failure_reason FROM transfers WHERE status <> 'PAID'").all() as { invoice_no: string; status: string; failure_reason: string | null }[];
+  if (unpaid.length) throw new Error(`${c.key}: ${unpaid.map((u) => `${u.invoice_no} ${u.status}${u.failure_reason ? ` (${u.failure_reason})` : ""}`).join("; ")}: the run stops here`);
 
   // 8. The company's books, as postings tagged with the company and its PUR id (pushed to T:0 with the others').
   const entries = apJournal(db);

@@ -143,4 +143,12 @@ describe("the live run's budget", () => {
     expect(dry.platform.funded.map((f) => f.accountId)).toEqual(["acct_fake_bakkerij", "acct_fake_fietslab"]);
     expect(s.companies[0]!.funding).toMatch(/^none skipped: EUR 60\.00 already held$/);
   });
+
+  it("a batch line Airwallex refuses at create stops the run before the next company (10 November: payer registration number)", async () => {
+    const dry = dryRunDeps();
+    const railFor = dry.deps.railFor;
+    const run = runPlatformE2E({ ...dry.deps, railFor: (a) => { const r = railFor(a); if (a === "acct_fake_bakkerij") (r.rail as unknown as { refuseNextTransfer: string | null }).refuseNextTransfer = "validation_failed"; return r; }, dir, now, log: () => undefined });
+    await expect(run).rejects.toThrow(/^BAKKERIJ: .*: the run stops here$/);
+    expect([...dry.rails.keys()]).not.toContain("acct_fake_fietslab");
+  });
 });
