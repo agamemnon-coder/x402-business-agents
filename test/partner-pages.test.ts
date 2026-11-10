@@ -6,7 +6,8 @@ import { AGENT_MODELS, airwallexData, claudeData } from "../src/partners/data.js
 import { AIRWALLEX_PAGE, CLAUDE_PAGE } from "../src/servers/dashboard.js";
 import { NAV_MAIN } from "../src/ui/nav.js";
 import { loadRecord } from "../src/redesign/run.js";
-import { OPEN_TARGET_JS } from "../src/redesign/ui.js";
+import { esc, OPEN_TARGET_JS } from "../src/redesign/ui.js";
+import { CONNECTED_LINE, TWO_LOCKS_LINE } from "../src/redesign/partners.js";
 import { scriptBlocks } from "./support/scriptBlocks.js";
 import { buildPages } from "../src/relay/assets.js";
 
@@ -16,7 +17,29 @@ const AGENT_RUN = loadRecord().file;
 const RECORDED = read("docs/demo/snapshot.json") + read(AGENT_RUN) + read("docs/demo/airwallex-run.json");
 const auto = JSON.parse(read(AGENT_RUN)) as { snapshot: { agent_stats: { agent: string; decisions: number; by_claude: number; fallback: number; claude_calls: number; models: string[] }[] } };
 
+const CONNECTED_RUN = read("docs/runs/2026-11-10-connected-accounts-sandbox.md");
+const TWO_LOCKS_RUN = read("docs/runs/2026-11-10-airwallex-two-locks.md");
+
 describe("the partner pages", () => {
+  it("carry the connected-accounts run (10 Nov) only as its run record has it: every id and amount", () => {
+    expect(buildPages().airwallex).toContain(esc(CONNECTED_LINE));
+    for (const id of CONNECTED_LINE.match(/acct_[A-Za-z0-9_-]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) ?? []) expect(CONNECTED_RUN).toContain(id);
+    for (const amount of CONNECTED_LINE.match(/EUR \d+\.\d{2}/g) ?? []) expect(CONNECTED_RUN).toContain(amount);
+    expect(CONNECTED_RUN).toMatch(/\*\*`PAID`\*\*/);
+    expect(CONNECTED_LINE).toMatch(/simulat/);
+  });
+
+  it("carry the two-locks run (10 Nov) only as its run record has it, and say the web-app approval was not completed", () => {
+    expect(buildPages().airwallex).toContain(esc(TWO_LOCKS_LINE));
+    const ids = TWO_LOCKS_LINE.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) ?? [];
+    expect(ids.length).toBe(1);
+    for (const id of ids) expect(TWO_LOCKS_RUN).toContain(id);
+    for (const amount of TWO_LOCKS_LINE.match(/EUR \d+\.\d{2}/g) ?? []) expect(TWO_LOCKS_RUN).toContain(amount);
+    expect(TWO_LOCKS_RUN).toMatch(/\*\*`IN_APPROVAL`\*\*/);
+    expect(TWO_LOCKS_LINE).toMatch(/IN_APPROVAL; the web-app approval was not completed, so it is not paid/);
+    expect(TWO_LOCKS_RUN).toMatch(/\*\*Not completed\.\*\*/);
+  });
+
   it("take each agent's model from code, and it is the model the dry run recorded", () => {
     expect(read("src/autonomy/sourcingProfile.ts")).toMatch(/name: "sourcing".*model: MODELS\.classify/);
     expect(read("src/autonomy/teamProfiles.ts")).toMatch(/name: "support".*model: MODELS\.act/);
@@ -39,7 +62,7 @@ describe("the partner pages", () => {
   it("invent no id: every Airwallex id, tx and request id on them is in the recorded files", () => {
     for (const page of [AIRWALLEX_PAGE, CLAUDE_PAGE]) {
       for (const tx of page.match(/0x[0-9a-f]{64}/g) ?? []) expect(RECORDED).toContain(tx);
-      for (const id of page.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) ?? []) expect(RECORDED).toContain(id);
+      for (const id of page.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) ?? []) expect(RECORDED + CONNECTED_RUN + TWO_LOCKS_RUN).toContain(id);
       for (const req of page.match(/req_[A-Za-z0-9]{10,}/g) ?? []) expect(RECORDED + read("docs/runs/2026-11-01-try-world-dev.md")).toContain(req);
     }
     expect(AIRWALLEX_PAGE).toMatch(/LIMIT_EXCEEDED|over the card's limit/);

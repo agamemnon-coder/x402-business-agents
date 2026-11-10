@@ -143,7 +143,8 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
   async transitionTransfer(id: string, to: "SENT" | "PAID" | "FAILED", failureType?: string): Promise<Transfer> {
     this.calls.push(`transition:${to}`);
     const t = this.transfers.find((x) => x.id === id)!;
-    if (t.status === "IN_APPROVAL") throw Object.assign(new Error("the transfer is waiting for approval in Airwallex"), { code: "invalid_status" });
+    // As at Airwallex: a transfer in its approval workflow cannot be moved on by the simulation API.
+    if (t.status.startsWith("APPROVAL_") || t.status === "IN_APPROVAL") throw Object.assign(new Error(`transfer ${id} is ${t.status}`), { code: "invalid_status" });
     t.status = to;
     if (to === "PAID") this.balOf(t.currency).reservedCents -= t.amountCents + (t.fee?.cents ?? SANDBOX_SWIFT_FEE_CENTS);
     if (to === "PAID" && t.applicationFee && !this.platformFees.some((f) => f.requestId === t.requestId)) {
@@ -244,5 +245,11 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
     this.transfers.push(tr);
     if (this.loseNextTransferAnswer) { this.loseNextTransferAnswer = false; throw new AirwallexAmbiguous("/transfers/create", new Error("socket hang up")); }
     return { ...tr };
+  }
+  /** A person in the Airwallex web app approves (SCHEDULED) or rejects (APPROVAL_REJECTED) a waiting transfer. */
+  decideInWebApp(id: string, decision: "approve" | "reject"): void {
+    const t = this.transfers.find((x) => x.id === id)!;
+    if (t.status !== "IN_APPROVAL") throw new Error(`transfer ${id} is ${t.status}, not IN_APPROVAL`);
+    t.status = decision === "approve" ? "SCHEDULED" : "APPROVAL_REJECTED";
   }
 }

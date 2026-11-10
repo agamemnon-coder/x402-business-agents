@@ -136,10 +136,10 @@ describe("one set of figures, the main run's record (3 November)", () => {
 
   it("says the stops in one sentence, with the record's counts, and never the old \"1 + 1\" (Max, 5 Nov)", () => {
     const line = stopsLine(st);
-    expect(line).toBe("16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.");
+    expect(line).toBe("16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.");
     for (const name of Object.keys(TEXT)) {
       expect({ name, figure: /\d+ stopped at a limit|over its cap; the CFO rejected|\b1 \+ 1\b/i.test(TEXT[name]!) }).toEqual({ name, figure: false });
-      for (const m of all(/(\d+) stops, nothing paid over a limit: a buy rule Claude set stopped (\d+) overpriced checks?, Metal refused (\d+) purchases? on chain, the CFO rejected (\d+) proposals?, and (\d+) planted/g, name)) expect({ name, parts: m.slice(1).map(Number) }).toEqual({ name, parts: [st.total, st.claude, st.metal, st.cfo, st.planted] });
+      for (const m of all(/(\d+) stops, nothing paid over a limit: one buy rule Claude set stopped (\d+) overpriced checks?, Metal refused (\d+) purchases? on chain, the CFO rejected (\d+) proposals?, and (\d+) planted/g, name)) expect({ name, parts: m.slice(1).map(Number) }).toEqual({ name, parts: [st.total, st.claude, st.metal, st.cfo, st.planted] });
       if (["pitch", "deck", "spiekkaart", "form", "form (long)", "README"].includes(name)) expect({ name, said: TEXT[name]!.includes(line.slice(0, -1)) }).toEqual({ name, said: true });
     }
   });
@@ -173,7 +173,8 @@ describe("one set of figures, the main run's record (3 November)", () => {
       expect({ name, wrong: got.filter((n) => n !== t.faceToPaid) }).toEqual({ name, wrong: [] });
       if (got.length) expect({ name, simulated: /simulat/i.test(TEXT[name]!) }).toEqual({ name, simulated: true });
     }
-    for (const name of ["pitch", "deck", "spiekkaart", "demo-day"]) expect({ name, said: all(/(\d+) (?:s|seconds) (?:from Face ID to PAID|after (?:my |the CFO's )?Face ID)/g, name).length > 0 }).toEqual({ name, said: true });
+    // Review 9 Nov: the spoken and shown texts lead with Airwallex accepting the signed payment, not with "PAID".
+    for (const name of ["pitch", "deck", "demo-day"]) expect({ name, said: /accept(?:s|ed) (?:it )?(?:by Airwallex )?with (?:my signed hash|the signed hash|the hash I signed)/i.test(TEXT[name]!) }).toEqual({ name, said: true });
   });
 
   it("says the Face ID decisions as the record counts them", () => {
@@ -199,25 +200,25 @@ describe("T:0 in one sentence, Metal counted (Max, 5 Nov)", () => {
   const flat = (p: string) => words(read(p)).replace(/, \[record\]\([^)]*\)/g, "");
 
   it("says the T:0 sentence word for word in the form, the claims, docs/t0.md, the run logs and the Q&A", () => {
-    expect(T0_STATUS).toBe("T:0 bookkeeping is built; posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted.");
+    expect(T0_STATUS).toBe("T:0: 95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q); debits equal credits, and T:0 matches our books line by line.");
     // Not in the form's short Description since 6 Nov (jury review, #7: no error codes there); the long text keeps it.
     expect(words(read("docs/submission/README.md").split("<!-- description -->")[1]!.split("<!-- /description -->")[0]!)).not.toContain("CAPI");
     // The README says it in its own words since the jury review of 7 Nov (#16), with the same codes and days.
-    expect(flat("README.md")).toContain("T:0 books: built, but posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted");
-    for (const p of ["docs/submission/long-description.md", "docs/claims.md", "docs/t0.md", "docs/runs/2026-11-05-t0-live.md", "docs/runs/2026-11-03-t0-sandbox.md", "docs/submission/qa.md", "docs/internal/spiekkaart-demo.html"]) expect({ p, has: flat(p).includes(T0_STATUS) }).toEqual({ p, has: true });
+    expect(flat("README.md")).toContain(words("T:0 books: 95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q); debits equal credits, and T:0 matches our books line by line"));
+    for (const p of ["docs/submission/long-description.md", "docs/claims.md", "docs/t0.md", "docs/runs/2026-11-10-t0-journal-sandbox.md", "docs/submission/qa.md", "docs/internal/spiekkaart-demo.html"]) expect({ p, has: flat(p).includes(words(T0_STATUS)) }).toEqual({ p, has: true });
     // The codes as the run logs have them.
     expect(read("docs/runs/2026-11-03-t0-sandbox.md")).toMatch(/refused the first POST with `403 CAPI71`/);
     expect(read("docs/runs/2026-11-05-t0-live.md")).toMatch(/on 5 November[\s\S]*?`401 CAPI11`/i);
     for (const name of Object.keys(TEXT)) expect({ name, old: /95 entries are ready/.test(TEXT[name]!) }).toEqual({ name, old: false });
   });
 
-  it("every marked T:0 block says nothing is posted; none says it is live", () => {
+  it("every marked T:0 block says what was posted, to the sandbox; none says it is live", () => {
     for (const name of ["pitch", "qa", "deck", "spiekkaart"]) {
       const blocks = [...SOURCES[name]!.matchAll(/<!-- T0-STATUS -->([\s\S]*?)<!-- \/T0-STATUS -->/g)].map((b) => words(b[1]!));
       expect({ name, blocks: blocks.length > 0 }).toEqual({ name, blocks: true });
       for (const b of blocks) {
-        expect({ name, b, honest: /nothing (?:is )?posted/i.test(b) }).toEqual({ name, b, honest: true });
-        expect({ name, b, claim: /T:0 is live|posted to T:0|live on T:0/i.test(b) }).toEqual({ name, b, claim: false });
+        expect({ name, b, honest: /95 (?:journal )?entries posted/i.test(b) && /sandbox/i.test(b) }).toEqual({ name, b, honest: true });
+        expect({ name, b, claim: /T:0 is live|live on T:0|production/i.test(b) }).toEqual({ name, b, claim: false });
       }
     }
     expect(TEXT.deck).toContain(T0_SHORT);

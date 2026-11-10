@@ -86,7 +86,7 @@ Demo Day script".
 | Point at the two hashes, side by side. | It carries the hash I signed with Face ID. | Same record, `metadata.approval_sha256` `797d4483…abcd` = P-0005's `terms_sha256`, approved by Max with his passkey (record seq 360); matched in code (`hashTravel`, `src/redesign/airwallexProof.ts`) |
 | | All 3 agent cards carry my policy as Airwallex's own controls. | [airwallex-cards-2026-11-06.json](../runs/airwallex-cards-2026-11-06.json); `cardControlRows`: 3 of 3 cards match the CFO policy |
 | Point at awx-1 below, "a separate run · Airwallex sandbox, test money". | On 7 November, an Airwallex-only run passed every check. | [docs/runs/2026-11-07-awx-1.md](../runs/2026-11-07-awx-1.md): ACCEPTED, checks a–g all passed; on `/proof` through `awxRunBlock` (`src/redesign/awxRun.ts`) |
-| Scroll up to the Airi run under the partners: ✓ Paid alone · ✓ Paid after Face ID · ✕ Refused by Purser. | Agents also paid with Visa Intelligent Commerce, through Airwallex's Airi. | [docs/runs/2026-11-07-vic-1.md](../runs/2026-11-07-vic-1.md): PASSED, 5 of 5 checks (Airwallex sandbox, test card, test money); on `/proof` through `airiRunBlock` (`src/redesign/airiRun.ts`) |
+| Scroll up to the Airi run under the partners: ✓ Within the limit · ✓ Paid after Face ID · ✕ Refused by Purser. | Agents also paid with Visa Intelligent Commerce, through Airwallex's Airi. | [docs/runs/2026-11-07-vic-1.md](../runs/2026-11-07-vic-1.md): PASSED, 5 of 5 checks (Airwallex sandbox, test card, test money); on `/proof` through `airiRunBlock` (`src/redesign/airiRun.ts`) |
 | Tab [/metal](https://kit11.max-31b.workers.dev/metal); point at #24's refusal and its tx. | Proof two: each agent has its own mandate on Metal. | `/metal` (`src/redesign/metalStory.ts`): one mandate per agent, on chain |
 | | We switched off our own check once; Metal refused purchase 24 anyway. | `CHAIN_TEST`; Record: `mandate_cap_exceeded`, tx `0x2e92f9cb…1871` |
 | | That refusal is on chain, next to 86 payments, each its own transaction. | README, "On Metal testnet"; Record: `payments` (onChain 86) |
@@ -121,7 +121,7 @@ shows the badges), then "Here is my worst case, in one line." (the screen shows 
 | 4 | Inside its limits an agent pays alone; beyond them, the CFO signs. | `RULE_LINE`, `src/submission/deck.ts` (Max, 5 Nov); form text, Controls |
 | 5 | We proved it in one live run, on test money. | Log: the main run, 3 November, Airwallex sandbox and Metal testnet |
 | 6 | 24 of 24 decisions were made by Claude. | Record: `split` (24/24, 0 fallbacks) |
-| 7 | 16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing. | Record: `stopStory` (`counts.blocked` 16: the buy rule Claude set, applied by code, 12, #25–#36; Metal 2, #24 over the cap and #37 on a replaced mandate; CFO 1, P-0004; 1 planted instruction; `over_limit_eur` 0.00) |
+| 7 | 16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing. | Record: `stopStory` (`counts.blocked` 16: the buy rule Claude set, applied by code, 12, #25–#36; Metal 2, #24 over the cap and #37 on a replaced mandate; CFO 1, P-0004; 1 planted instruction; `over_limit_eur` 0.00) |
 | 8 | Every id is published. | `/proof`; README, "The main run" |
 | 9 | Sign one yourself, at kit11.max-31b.workers.dev/try/sign. | Try: live since 4 November |
 
@@ -157,7 +157,7 @@ screen at each step: [demo-day.md](demo-day.md), "The runbook".
 | | The rest I reject, with Face ID. | Record: P-0004 (`refund_batch`, the other 9) rejected by Max, 11:29:37 |
 | | Last, a 240 euro licence is due. | Record: P-0005, EUR 240.00 |
 | | Treasury converts only the shortfall, 110 euros, and pays by SWIFT. | Record: `fxOf` (EUR 110.00 for USD 124.29); transfer `03360bfa…3985` |
-| | PAID, 6 seconds after my Face ID. | Record: `timings` (faceToPaid 6) |
+| | Airwallex accepts it with my signed hash. | Record: transfer `03360bfa…3985`, metadata `approval_sha256` |
 | **1:50 Said plainly** | Said plainly: the second approver was a test passkey, and the sandbox simulates settlement. | `SECOND_APPROVER`; Log, "Approvals"; `SANDBOX_SETTLED`; README (Purser moves SENT and PAID through the sandbox's simulation API) |
 | | Every id is published on /proof; check it with npm run verify. | `/proof`; Record: `snapshot.audit` (412 rows, intact); README |
 | **2:05 The jury signs** | Now you sign off: scan this, now or during the questions. | Deck, slides 4 and 12; `docs/media/try-sign-qr.png` |
@@ -186,7 +186,7 @@ own signature and "One cent. Worthless." stay last.
 | Rules in code check every limit before anything moves. | `docs/controls.md` (executor pre-checks) |
 | Beyond a limit, a person signs the exact terms with Face ID. | `docs/phone-approval.md` |
 | Then Airwallex or Metal moves the money, and the books record it. | README; `npm run books` |
-| <!-- T0-STATUS -->T:0 bookkeeping is built; posting failed, so nothing is posted.<!-- /T0-STATUS --> | `T0_STATUS` (README, form, claims, `docs/t0.md`): "posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov)"; [docs/runs/2026-11-05-t0-live.md](../runs/2026-11-05-t0-live.md) |
+| <!-- T0-STATUS -->T:0: 95 journal entries posted to its shared sandbox, matching our books.<!-- /T0-STATUS --> | `T0_STATUS` (README, form, claims, `docs/t0.md`): "95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q)"; [docs/runs/2026-11-10-t0-journal-sandbox.md](../runs/2026-11-10-t0-journal-sandbox.md) |
 
 ### 3b. Why three models (after the run; 30 s; deck slide 8)
 

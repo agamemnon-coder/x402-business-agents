@@ -20,12 +20,12 @@ Purser · AI agents spend. You sign off.
 ## Synopsis
 
 <!-- synopsis -->
-AI agents are starting to spend company money; Purser lets them, through Airwallex and Metal, only within limits the CFO signs with Face ID. An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control. Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude. Try it in a minute.
+For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice over its limit, you sign the exact terms with Face ID. An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. One CFO policy, a lock per rail: Airwallex card controls, Metal's mandate, the CFO's signature on invoices. A prompt is not a control. Real agents: Claude made all 24 decisions (routine payments are code); no key reaches Claude. Try it in a minute.
 <!-- /synopsis -->
 
 ## Description
 
-Characters: **3,997** (the text between the markers, as pasted). Max's target is 3,000–4,000; the form's own limit is
+Characters: **3,970** (the text between the markers, as pasted; 3,996 if the form counts each line break as two). Max's target is 3,000–4,000; the form's own limit is
 not known yet. `test/submission.test.ts` checks this count and keeps the text under 4,000. The long text, as it stood on
 5 November, with Airwallex, Metal, Claude, the controls and the other live tests in full: [long-description.md](long-description.md).
 The Airi run of 7 November (Visa Intelligent Commerce via Airwallex's Airi; Airwallex sandbox, test card, test money)
@@ -39,32 +39,39 @@ note ("What's real" says the settlement is simulated); awx-1's line is shorter. 
 "sits", "once the money left", "AI" before "agent" in the solution (the problem says it), the supplier by its name (Stockline), the demo's order with commas, figures for "two". Since 7 November (Visa, in the hackathon Slack: the VIC run counts) the award wording is: entered for
 the Metal Award and the Visa Award; to fit it, awx-1's line became "7 of 7 checks; 2 Airwallex card declines; the CFO's
 hash in 2 SWIFT payouts." (no fact dropped).
+After the jury review of 9 November: a paragraph "After the kit (not live)" (the payables inbox, stand-ins only, not
+deployed; its page is [after-the-kit.md](../after-the-kit.md), linked from the README); the buyer back in the
+business line; option A says what it was (the test passkey as second approver is in Metal's sentence and "What's
+real"). To fit them: the demo line went (the first bullet links /try/sign) and awx-1's line went (it stays in the
+README, on /airwallex and in the long text). The text stays under 4,000 characters even with CRLF line breaks.
+On 10 November that paragraph became one line: the two-locks run (Airwallex's approval workflow held a
+passkey-signed payout `IN_APPROVAL`; nobody approved it there, so it is unpaid; [record](../runs/2026-11-10-airwallex-two-locks.md))
+and the inbox's status (its sandbox run is in [after-the-kit.md](../after-the-kit.md); the console is not public).
 
 <!-- description -->
-**The problem.** AI agents are starting to spend company money. An agent's limit sits in a prompt it can be talked out of, or in a review once the money left.
+**The problem.** AI agents are starting to spend company money.
 
-**The solution.** Purser gives each agent its own Airwallex card and Metal mandate.
+**The solution.** Per agent, an Airwallex card and a Metal mandate.
 - An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. Try it in a minute. https://kit11.max-31b.workers.dev/try/sign
-- One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control.
-- Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude.
-
-**Demo: Home, Watch, Try, Proof.** Try: Purser's code stops a fake invoice Claude Sonnet reads live; change the rule; the agent pays alone.
+- One CFO policy, a lock per rail: Airwallex card controls, Metal's mandate, the CFO's signature on invoices. A prompt is not a control.
+- Real agents: Claude made all 24 decisions (routine payments are code); no key reaches Claude.
 
 **The proof.** The Kit 11 scenario, run live on 3 November. Starter Kit 11 (x402 Business Agents), entered for the Metal Award and the Visa Award. Three Claude agents run Northwind Outdoor, an outdoor wholesaler that sells live stock data to retailers per query, on 20 test USD; Max plays the CFO and signs with a personal passkey (Face ID on a phone). The CFO signed 5 decisions with Face ID (+1 co-signature).
-1. **The price rise.** Stockline's price doubled. We switched off our own check once to prove the chain holds the line: Purser refuses an over-cap purchase before signing; with that check off for one purchase, Metal refused it anyway. That was purchase #24; the refusal is recorded on chain (tx `0x2e92f9cb…1871`). The CFO signed option A (P-0002).
+1. **The price rise.** Stockline's price doubled. We switched off our own check once to prove the chain holds the line: Purser refuses an over-cap purchase before signing; with that check off for one purchase, Metal refused it anyway. That was purchase #24; the refusal is recorded on chain (tx `0x2e92f9cb…1871`). The CFO signed option A, a higher cap for Sourcing (P-0002).
 2. **The dispute.** A simulated customer disputes 12 orders, saying its agent never placed them. Every order carries its agent's signature, so that claim fails. Three orders had wrong data; the Support agent refunds those 3 (0.15 test USD) itself. "Refund the other 9" goes to the CFO, who rejects it with Face ID. Refunds #7, #10 and #13, each on chain.
-3. **The euro bill.** The EUR 240.00 licence: EUR 110.00 bought by FX for USD 124.29, SWIFT transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, PAID 6 s after Face ID.
+3. **The euro bill.** The EUR 240.00 licence: EUR 110.00 bought by FX for USD 124.29, SWIFT transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, accepted by Airwallex with the signed hash.
 
-86 Metal payments + 1 card charge, all inside the limits. 16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.
+86 Metal payments + 1 card charge, all inside the limits. 16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.
 
 **Airwallex, Metal and Claude.**
 - Airwallex (sandbox): the hash of the exact terms the CFO signed with Face ID is in Airwallex's own record of the EUR 240.00 SWIFT payment, and 3 of 3 agent cards carry the CFO's policy as Airwallex's own controls, read back from Airwallex.
-- Metal (testnet): a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded); the mandates replaced on chain after the CFO's Face ID (four eyes; second approver a labelled test passkey).
+- Metal (testnet): a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded); the mandates replaced on chain by the owner key after the CFO's Face ID in Purser (four eyes; second approver a labelled test passkey).
 - Claude: 24 of 24 decisions in the main run, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment went from 6/10 to 10/10 and the next run (rel-1b) passed every step.
-- awx-1 (7 Nov, Airwallex only): 7 of 7 checks; 2 Airwallex card declines; the CFO's hash in 2 SWIFT payouts.
-- Visa Intelligent Commerce via Airwallex's Airi (7 Nov; Airwallex sandbox, test card, test money): 5 of 5 checks; paid alone within the limit, after Face ID above it; Purser refused a disallowed merchant before Airi.
+- Visa Intelligent Commerce via Airwallex's Airi: 5 of 5 checks; each confirmed in Airi, above Purser's limit only after Face ID; a disallowed merchant refused first.
 
-**The business (not validated with customers yet).** €49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions. A hypothesis.
+**After the kit.** Airwallex's own approval held a passkey-signed payout IN_APPROVAL, unpaid. Payables inbox: not public.
+
+**The business (not validated with customers yet).** Buyer: a CFO on Airwallex. €49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions. A hypothesis. "At our company invoices go through a full approval process in our ERP. I think Purser is something for SMEs." — CFO at a US company (anonymous)
 
 **What's real.** Test money. Simulated: customer, supplier, settlement, second approver. Details → https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/submission/long-description.md#what-is-real-and-what-is-simulated
 

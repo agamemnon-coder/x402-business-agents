@@ -11,6 +11,7 @@ import { watchPage } from "../src/redesign/watch.js";
 import { proofPage } from "../src/redesign/proof.js";
 import { CHAIN_TEST, DEFENSE_IN_DEPTH, HOME_BADGE, KIT_LINE, PRICE_LINE, SECOND_APPROVER, VISA_AWARD_ON, VISA_CLAIM, VISA_EXTRA_LINK, VISA_TAP_STATUS } from "../src/config/brand.js";
 import { buildPages } from "../src/relay/assets.js";
+import { CONNECTED_LINE, TWO_LOCKS_LINE } from "../src/redesign/partners.js";
 import { esc } from "../src/redesign/ui.js";
 
 const { file, record } = loadRecord();
@@ -72,7 +73,18 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   .replace(/What Purser adds around Airi: a second live run[\s\S]{0,4000}?run log/g, " ")
   // The intended price (a hypothesis, not a figure of the run): one sentence, its numbers checked against
   // src/business/unitEconomics.ts's inputs in test/unit-economics-hypothesis.test.ts.
-  .replace(PRICE_LINE, " ");
+  .replace(PRICE_LINE, " ")
+  // The connected-accounts run (10 Nov) on /airwallex, dated with its own record; its ids and figures are checked against
+  // docs/runs/2026-11-10-connected-accounts-sandbox.md in test/partner-pages.test.ts.
+  .replace(esc(CONNECTED_LINE), " ")
+  // The two-locks run (10 Nov) on /airwallex, dated with its own record; its id and amount are checked against
+  // docs/runs/2026-11-10-airwallex-two-locks.md in test/partner-pages.test.ts.
+  .replace(esc(TWO_LOCKS_LINE), " ")
+  // Watch's playback speeds (Max, 10 Nov) are a control, not a figure of the run.
+  .replace(/\b(?:0\.5|1|2)×/g, " ")
+  // Home's hero demo (10 Nov): the Airwallex-only run's invoice, dated with its own record; its figures are checked
+  // against docs/demo/airwallex-run.json in test/hero-demo.test.ts.
+  .replace(/\b1\s+Ask\s+2\s+Face ID[\s\S]*?Step 4 is the check every payment runs\./g, " ");
 
 /** Numbers on the page that are not in the record. */
 export const unknownNumbers = (html: string) => (visibleText(html).match(NUM) ?? []).map(norm).filter((n) => !ALLOWED.has(n));
@@ -113,11 +125,11 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
     expect(money.some((e) => e.refused?.code === "fee_unknown")).toBe(false);
   });
 
-  it("scene 3 ends with the licence PAID by SWIFT after the CFO's Face ID (P-0005), the FX before it", () => {
+  it("scene 3 ends with the licence by SWIFT, accepted by Airwallex after the CFO's Face ID (P-0005), the FX before it", () => {
     const steps = run.scenes[2]!.steps.map((s) => s.text);
     expect(steps).toContain("EUR 110.00 bought by FX for the shortfall");
     // PAID in the sandbox, where Purser itself moves the transfer to SENT, then PAID (final review, 4 Nov).
-    expect(steps).toContain("€240 licence PAID by SWIFT · 6 s after Face ID · in the sandbox, where the settlement is simulated");
+    expect(steps).toContain("€240 licence by SWIFT, accepted by Airwallex with the signed hash · in the sandbox, where the settlement is simulated");
     expect(steps.filter((t) => /licence/.test(t))).toHaveLength(1);
     expect(run.scenes[2]!.sentence).toMatch(/licence paid by SWIFT after Face ID/);
     expect(run.scenes[0]!.steps.map((s) => s.text).join(" ")).toMatch(/options in 40 s/);
@@ -232,7 +244,7 @@ describe("the redesigned public pages", () => {
     expect(JSON.stringify(run.scenes).includes("Metal refused it · on chain")).toBe(chain);
     expect(homePage().includes("Metal refused the purchase on chain")).toBe(false);
     expect(run.scenes.map((s) => s.n)).toEqual([1, 2, 3]);
-    expect(run.scenes[2]!.steps.map((s) => s.text)).toContain("€240 licence PAID by SWIFT · 6 s after Face ID · in the sandbox, where the settlement is simulated");
+    expect(run.scenes[2]!.steps.map((s) => s.text)).toContain("€240 licence by SWIFT, accepted by Airwallex with the signed hash · in the sandbox, where the settlement is simulated");
     expect(run.scenes[0]!.steps.map((s) => s.text)).toEqual(expect.arrayContaining(["2 of 2 signatures"]));
   });
 
@@ -289,9 +301,9 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
     expect(packFacts().main.stop_line).toBe(stopsLine(stopStory(record)));
   });
 
-  const LINE = "16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.";
+  const LINE = "16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.";
   /** Every "N stops, …: Claude skipped A …, Metal refused B …, the CFO rejected C …, and D planted …" in a text, as [N, A, B, C, D]. */
-  const said = (t: string) => [...t.matchAll(/(\d+) stops, nothing paid over a limit: a buy rule Claude set stopped (\d+) overpriced checks?, Metal refused (\d+) purchases?, the CFO rejected (\d+) proposals?, and (\d+) planted instructions? changed nothing/g)].map((m) => m.slice(1).map(Number));
+  const said = (t: string) => [...t.matchAll(/(\d+) stops, nothing paid over a limit: one buy rule Claude set stopped (\d+) overpriced checks?, Metal refused (\d+) purchases?, the CFO rejected (\d+) proposals?, and (\d+) planted instructions? changed nothing/g)].map((m) => m.slice(1).map(Number));
 
   it("is one sentence on the site, the claims, the forms, the deck and the video script, with the record's counts (5 Nov)", () => {
     const st = stopStory(record);

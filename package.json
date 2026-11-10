@@ -65,6 +65,7 @@
     "vault": "tsx src/cli/vault.ts",
     "sbom": "npm sbom --sbom-format cyclonedx --omit dev > docs/security/sbom.cdx.json",
     "receivables": "tsx src/cli/receivables.ts",
+    "card-payment": "tsx src/cli/cardPayment.ts",
     "receive-policy": "tsx src/cli/receivePolicy.ts",
     "clearing": "tsx src/cli/clearing.ts",
     "payee": "tsx src/cli/payee.ts",
@@ -117,7 +118,8 @@
     "blind-holdouts": "tsx src/cli/blindHoldouts.ts",
     "reliability": "tsx src/cli/reliability.ts",
     "record-try-agents": "tsx src/cli/recordTryAgents.ts",
-    "cloud": "tsx src/cli/cloud.ts"
+    "cloud": "tsx src/cli/cloud.ts",
+    "two-locks": "tsx src/cli/twoLocks.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",

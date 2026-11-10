@@ -7,8 +7,8 @@ main run of 3 November (`docs/demo/main-run.json`, log `docs/runs/2026-11-03-mai
 (`src/submission/facts.ts`); `test/submission.test.ts` checks this page against them, as it checks the short one.
 
 - An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless.
-- One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control.
-- Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude.
+- One CFO policy, a lock per rail: Airwallex card controls, Metal's mandate, the CFO's signature on invoices. A prompt is not a control.
+- Real agents: Claude made all 24 decisions (routine payments are code); no key reaches Claude.
 
 The Kit 11 scenario, run live on 3 November.
 
@@ -45,8 +45,8 @@ three runtime agents hold no owner key and no passkey. Log: `docs/runs/2026-11-0
 - **The dispute.** A simulated customer disputes 12 orders, saying its agent never placed them. Every order carries its agent's signature, so that claim fails. Three orders had wrong data; the Support agent refunds those 3 (0.15 test USD) itself. "Refund the other 9" goes to the CFO, who rejects it with Face ID.
 - **The euro bill.** The Treasury agent planned the EUR 240.00 licence itself (P-0005). After the CFO's Face ID,
   EUR 110.00 bought by FX for the shortfall (USD 124.29, conversion `3ca88196-05da-4d88-9caa-796f03704636`), then
-  SWIFT: transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, PAID 6 s after Face ID (settlement simulated in the
-  sandbox), fee EUR 13.42 (ceiling EUR 20.00).
+  SWIFT: transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, accepted by Airwallex with the signed hash in its metadata
+  (settlement simulated in the sandbox), fee EUR 13.42 (ceiling EUR 20.00).
 
 Each agent's budget, when bound → after the CFO's Face ID (test USD): Sourcing 10.00 → 14.00 (cap 0.03 → 0.04 a
 purchase); Support 4.00 (cap 0.10); Treasury 6.00 → 2.00. 20.00 between them before and after, held in code.
@@ -72,8 +72,8 @@ company card whose limits Airwallex enforces.
   the TAP-signed EUR 45.00 purchase (authorization `01a1a12f-4113-7000-b76d-014677710007`).
 - **FX and SWIFT for the €240 licence.** EUR 110.00 bought by FX for USD 124.29 on a locked quote (conversion
   `3ca88196-05da-4d88-9caa-796f03704636`), only the shortfall above the EUR reserve; then SWIFT, transfer
-  `03360bfa-afce-457b-89d1-e1097fbe3985`, fee EUR 13.42, PAID 6 s after Face ID: in the sandbox Purser itself moves the
-  transfer to SENT and then PAID through Airwallex's simulation API, so that settlement is simulated. One Face ID covers
+  `03360bfa-afce-457b-89d1-e1097fbe3985`, fee EUR 13.42, accepted by Airwallex with the signed hash. Its settlement is
+  simulated: in the sandbox Purser itself moves the transfer to SENT and then PAID through Airwallex's simulation API. One Face ID covers
   the rate, the payee and the most the fee may be (EUR 20.00). The transfer carries the approval's hash in its metadata.
 - **Earnings booked once final.** The 0.69 test USD swept on Metal after finality is booked at Airwallex exactly once,
   as a simulated sandbox deposit (`b3812e05-2afa-4698-8f64-429f9608e0a0`) whose reference is the testnet transaction.
@@ -138,7 +138,7 @@ sandbox). Second approver: a labelled test passkey in this demo. In production t
   P-0005, P-0006), +1 co-signature (the second approver's, on P-0002);
 - the books match the chain and Airwallex: `verify` passes; `reconcile` checked 88 (the 86 Metal payments, the SWIFT
   transfer and the card buy), 0 differences; `data-qa` 217 of 217 checks; 110 money movements, 0 without an origin;
-- 16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.
+- 16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.
   the buy rule's 12: stock checks #25–#36 (the Sourcing agent, Claude, set its buy rule; code applied it to each check
   over the cap); Metal's 2: 1 over the
   mandate's cap (#24), 1 on a mandate that had just been replaced (#37, `mandate_revoked`); the CFO's 1: P-0004, with
@@ -148,7 +148,7 @@ sandbox). Second approver: a labelled test passkey in this demo. In production t
 ### What is real and what is simulated
 
 All money is test money: the Airwallex sandbox and Metal testnet. The cards, limits, conversion, transfer and mandates
-are real API and chain results. Built, not yet live: T:0 bookkeeping is built; posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted. Simulated by the sandbox: the merchants' charges, the deposit that stands in for Metal
+are real API and chain results. T:0: 95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q); debits equal credits, and T:0 matches our books line by line. Built, not yet live: Simulated by the sandbox: the merchants' charges, the deposit that stands in for Metal
 earnings and the transfer's last steps (SENT, PAID), which Purser triggers through the sandbox's simulation API. Run
 by us: the customer Summit Outfitters and its agent, and Stockline, the
 warehouse API. The second approver (four eyes on P-0002) was a labelled virtual test passkey on the runner machine,

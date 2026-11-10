@@ -41,7 +41,10 @@ describe("/ for a guest", () => {
     // stay in the README, the form and the deck).
     // Max, 7 Nov (second round): the one button right under the heading, with only that sentence between; since the
     // jury review of 7 Nov (#2) the three sentences under it too, then the button.
-    expect(pages.home).toContain(`<h1 class="h-hero">${HERO}</h1>\n    <p class="what">${esc(WHAT_IT_IS)}</p>\n    <ul class="three">${DIFFERENTIATORS.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>\n    <a class="btn primary big start" href="watch">`);
+    // Competitive review, 10 Nov: the one button, to /try/sign, right under what Purser is; the three sentences stay in the
+    // README, the form and the deck.
+    expect(pages.home).toContain(`<h1 class="h-hero">${HERO}</h1>\n    <p class="what">${esc(WHAT_IT_IS)}</p>\n    <a class="btn primary big start" href="try/sign">`);
+    expect(DIFFERENTIATORS.length).toBe(3);
     // The core sentence stays the page's description.
     expect(pages.home).toContain(`<meta name="description" content="${HERO} ${CORE_SENTENCE}">`);
   });

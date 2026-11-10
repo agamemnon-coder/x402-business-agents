@@ -106,7 +106,7 @@ validated demand, and no customer has seen a price.
 ### 10. What if Airwallex builds this itself?
 
 It could, and the risk is real: Airwallex already ships agent features of its own (AgentOS, Spend Management agents,
-an agentic wallet in development). Purser builds on them: Airwallex's card controls are one of its three locks, and it
+an agentic wallet in development). Purser builds on them: Airwallex's card controls are one of its locks (a lock per rail), and it
 adds one CFO policy across card and chain, approvals signed over the exact terms, and a hash-chained audit log. The more
 agent features Airwallex ships, the more there is to govern, and we would rather be the app or partner on the
 platform that does it.
@@ -169,7 +169,7 @@ promise: no dates we cannot keep.
 
 ### 16. Is T:0 live?
 
-<!-- T0-STATUS -->T:0 bookkeeping is built; posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted. We claim nothing in T:0.<!-- /T0-STATUS -->
+<!-- T0-STATUS -->T:0: 95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q); debits equal credits, and T:0 matches our books line by line. Earlier keys were refused (403 CAPI71 on 3 Nov, 401 CAPI11 on 5 Nov).<!-- /T0-STATUS -->
 
 **Evidence:** [docs/runs/2026-11-03-t0-sandbox.md](../runs/2026-11-03-t0-sandbox.md) (`403 CAPI71`);
 [docs/runs/2026-11-05-t0-live.md](../runs/2026-11-05-t0-live.md) (`401 CAPI11`).

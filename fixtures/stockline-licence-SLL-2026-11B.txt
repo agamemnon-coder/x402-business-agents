@@ -1,0 +1,20 @@
+Stockline Data GmbH
+Datenallee 12, 10115 Berlin, Germany
+
+INVOICE SLL-2026-11B
+Date: 1 November 2026
+Due date: 15 November 2026
+
+Bill to: Northwind Outdoor
+
+Description                                   Amount
+Data licence, November 2026 (second payout, two-locks test):
+right to resell Stockline stock checks        EUR 240.00
+
+Total due                                     EUR 240.00
+
+Pay by SWIFT to:
+Account name: Stockline Data GmbH
+IBAN: DE02 1203 0000 0000 2020 51
+BIC: BYLADEM1001
+Payment reference: SLL-2026-11B

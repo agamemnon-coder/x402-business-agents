@@ -1,27 +1,39 @@
 # Metal Award checklist
 
-What this build uses from Metal, where it runs, and the proof on Metal testnet. The transactions below come from
-rehearsal 3 (29 October 2026, [run log](runs/2026-10-29-rehearsal-3.md)): a fresh world from zero, with every approval
-given by Max with Face ID. The same story ran live twice more on 30 October, on the frozen code, each in its own
-world with a fresh passkey: [Friday run 1](runs/2026-10-30-friday-1.md) (the recorded demo) and
-[Friday run 2](runs/2026-10-30-friday-2.md); `npm run verify` passes on both. Explorer: https://testnet.metalntwx.com. Packages: `@metalntwx/metal-pay` 0.3.4,
-`@metalntwx/metal-agent` 0.3.3, `@metalntwx/metal-ts` 0.3.2.
+What this build uses from Metal, where it runs, and the proof on Metal testnet, told from **the main run of
+3 November 2026** ([run log](runs/2026-11-03-main-run.md), [record](demo/main-run.json), every payment checked
+against the chain one by one in [the data check](runs/2026-11-03-main-run-data-qa.md)). Explorer:
+https://testnet.metalntwx.com. Packages: `@metalntwx/metal-pay` 0.3.4, `@metalntwx/metal-agent` 0.3.3,
+`@metalntwx/metal-ts` 0.3.2.
 
-The same evidence as a page: **`/metal`** (served by `npm run judge` and the relay) tells the main run of 3 November
-on one screen, each claim linked to the explorer: a mandate on chain per agent, 86 payments each its own transaction,
-#24 refused on chain, the mandates replaced after Face ID. Below it, folded and dated, the separate runs of sections
-4, 5 and 8, each with its run record, and the Dispute desk's evidence report at `/metal/report`. Every figure is read
-from `docs/demo/main-run.json` (`src/redesign/metalStory.ts`). A review of how Purser uses `metal-agent` and
-`metal-pay` against their own docs: [metal-review.md](metal-review.md).
+## The main run on Metal, transaction by transaction
+
+| What | Proof on Metal testnet |
+|---|---|
+| A mandate bound on chain per agent at the start (Sourcing 0.03 a payment, Support 0.10, Treasury 6.00, the customer's agent 0.10) | Sourcing [`0xb7ef08bb…44ad`](https://testnet.metalntwx.com/tx/0xb7ef08bb4531c3cbd4b56f4307255b4d88f68d279c8073d9bc96d352fb3d44ad), Support [`0x9cb93362…1808`](https://testnet.metalntwx.com/tx/0x9cb933624be5946c890f77a33aceb2adde3d75d138890a6e1abb91fdad721808), Treasury [`0x809e7a30…3a9f`](https://testnet.metalntwx.com/tx/0x809e7a30aff19c19e0eb9f147267a60a97fee6872e3ad52195473db7b0f93a9f), customer [`0x9c7d37f2…a2f7`](https://testnet.metalntwx.com/tx/0x9c7d37f248cd0037881c6becf0ef2e865769b411313ee267cf763f28b9e8a2f7) |
+| 86 payments, each its own transaction: 41 sales over x402, 41 supplier purchases, 3 refunds as mandate pulls, 1 sweep | All 86 listed one by one on `/metal` ("All 86 Metal transactions of the main run"); refunds #7 [`0xe4bf7962…c89d`](https://testnet.metalntwx.com/tx/0xe4bf79623f9cb9212a49ea7c0ced60d241041051f322d199e319989d6548c89d), #10 [`0xe44a3460…75e5`](https://testnet.metalntwx.com/tx/0xe44a3460faf6cb2050067bf22791df61803f8646adeb5fcc2a205d1f1afa75e5), #13 [`0x5099fe44…4510`](https://testnet.metalntwx.com/tx/0x5099fe44b03d83f4dd3963fc59a40e2a506bee533e5a41e8f1b00a12bee14510); sweep 0.69 after finality [`0x86936a5b…ccb4`](https://testnet.metalntwx.com/tx/0x86936a5b29f9550857676fa710231af9e20882ebe6eee16f75a90af29767ccb4) |
+| Purchase #24: 0.04 over the 0.03 cap. We switched off Purser's own check for this one purchase; Metal refused it, and the refusal (`mandate_cap_exceeded`) is recorded on chain | [`0x2e92f9cb…1871`](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871) (a `MandateRefused` event; the explorer shows the transaction, not the decoded reason) |
+| The mandates replaced after the CFO's Face ID (P-0002): Treasury to 2.00, Sourcing to 0.04 a payment | Treasury [`0x789abb24…ebbc`](https://testnet.metalntwx.com/tx/0x789abb249896e01cee8e3641d7794676b6f2ce5d05f45093f6cc64101c9aebbc), Sourcing [`0x2a91ac97…e790`](https://testnet.metalntwx.com/tx/0x2a91ac97fc2a459da2b0c73f2b8020edec1901d051c7ef03bb088d36067fe790) |
+| Query #37 on the old Sourcing mandate during the replace | Refused by Metal's facilitator, `mandate_revoked`: a 402, so no transaction |
+
+**Who signs what on chain.** In the main run the CFO approves with Face ID inside Purser, over the exact terms; the
+second approver on the mandate change was a test passkey pressed by the build tool, labelled as such; then the
+account's owner key, held by Purser's runner, signs the replace on chain. Passkeys signing on chain themselves ran in a
+separate world on 1 November (section 8).
+
+The same evidence as a page: **`/metal`** (served by `npm run judge` and the relay), every figure read from
+`docs/demo/main-run.json` (`src/redesign/metalStory.ts`). A review of how Purser uses `metal-agent` and `metal-pay`
+against their own docs: [metal-review.md](metal-review.md).
 
 ## Why this wins
 
 - **Metal is the agents' spending rail, not a demo add-on.** Every agent that pays per request does it under its
   own on-chain mandate: a cap per payment, a total budget, one payee and an end date. When the supplier raised its
-  price, the next payment was refused against the on-chain mandate (`mandate_cap_exceeded`) and the customer was not charged: in the recorded run by Metal's facilitator (a 402; it moves nothing, so there is no transaction), and since 1 November Purser refuses it before signing and Metal's own refusal of the same payment is recorded on chain, a `MandateRefused` event from the business account (autonomous dry runs: dry-103 [`0xd24cb5a7…6acc`](https://testnet.metalntwx.com/tx/0xd24cb5a7a8219c69783420d9d14bdbdab188d9e2a46b6aab9aa8798adf496acc), dry-101 [`0x3ea88238…be03`](https://testnet.metalntwx.com/tx/0x3ea88238d02726a8eeb129214b4b57e233fdfec76418e2995d9062a91654be03), dry-100 [`0x88bacab0…ec25`](https://testnet.metalntwx.com/tx/0x88bacab033145185b3d1f671695d569d24035a23de4193c1d08b5a8879d7ec25)).
+  price, Purser refuses the over-cap payment before signing, and in the main run, with that check switched off for
+  purchase #24, Metal's own refusal is recorded on chain (above).
 - **The CFO changes on-chain limits with Face ID, safely.** A price rise becomes options; the CFO signs the exact
-  terms on the phone; mandates are replaced in an order that never exceeds the 20.00 the business allows, and the old
-  credential is refused (`mandate_revoked`).
+  terms on the phone; the runner's owner key then replaces the mandates on chain in an order that never exceeds the
+  20.00 the business allows, and the old credential is refused (`mandate_revoked`).
 - **Three ways to pay on Metal, each where it fits:** `exact` x402 with signed orders for per-request sales,
   mandate pulls for refunds and the earnings sweep, and Offer Pay-per-Call Clearing (new in October 2026) for a
   customer that prepays and pays each query with a receipt.
@@ -296,3 +308,10 @@ With no keys:
 With the ledger and a Metal RPC endpoint, `npm run verify` goes further. It re-checks every credential, pull,
 disputed payment and clearing receipt against the chain and Metal's services, and every Face ID approval against its
 stored passkey signature.
+
+---
+
+*Earlier, dated: the same story ran in rehearsal 3 (29 October, [run log](runs/2026-10-29-rehearsal-3.md)) and in two
+Friday runs on 30 October ([Friday run 1](runs/2026-10-30-friday-1.md), the earlier recorded demo, and
+[Friday run 2](runs/2026-10-30-friday-2.md)); `npm run verify` passes on both. In those runs #24's refusal came from
+Metal's facilitator as a 402, with no transaction. Section 10's audit chain is Friday run 1's.*

@@ -110,7 +110,8 @@ describe("the submission pack", () => {
     for (const t of [pack, long]) expect(t).toContain(CHAIN_TEST);
     expect(pack).toContain(`${CHAIN_TEST} That was purchase #24; the refusal is recorded on chain`);
     for (const t of [pack, long]) {
-      expect(t).toContain(`PAID ${m.face_to_paid_s} s after Face ID`);
+      // Review 9 Nov: the euro bill is told as Airwallex accepting the signed payment; its settlement is simulated.
+      expect(t).toContain("accepted by Airwallex with the signed hash");
       expect(t).toContain(`tx \`${m.let_through_tx.slice(0, 10)}…${m.let_through_tx.slice(-4)}\``);
     }
     // The long text.
@@ -154,6 +155,15 @@ describe("the short Description (Max, 5 Nov)", () => {
     expect(description.length).toBeGreaterThanOrEqual(3000);
     const stated = /Characters: \*\*([\d,]+)\*\*/.exec(raw);
     expect(Number(stated?.[1]?.replace(/,/g, ""))).toBe(description.length);
+    // Jury review, 9 Nov: room for a form that counts a line break as two characters.
+    expect(description.length + (description.match(/\n/g) ?? []).length).toBeLessThan(4000);
+  });
+
+  it("says what was built after the kit without claiming it ran live (jury review, 9 Nov)", () => {
+    expect(flat).toContain("After the kit. Airwallex's own approval held a passkey-signed payout IN_APPROVAL, unpaid. Payables inbox: not public.");
+    expect(flat).not.toMatch(/now pays supplier|runs on the Airwallex sandbox/);
+    expect(flat).toContain("The CFO signed option A, a higher cap for Sourcing (P-0002).");
+    expect(flat).toContain("The business (not validated with customers yet). Buyer: a CFO on Airwallex.");
   });
 
   it("goes problem, solution (the three sentences), proof, Airwallex and Metal, business, what's real, links, with Max's lines word for word (section D, 6 Nov)", () => {
@@ -175,7 +185,7 @@ describe("the short Description (Max, 5 Nov)", () => {
     expect(flat.match(/Visa Award/g)).toHaveLength(1);
     expect(flat).toContain("Starter Kit 11 (x402 Business Agents), entered for the Metal Award and the Visa Award.");
     expect(flat.match(/Visa/g)).toHaveLength(2);
-    expect(flat).toContain("Visa Intelligent Commerce via Airwallex's Airi (7 Nov; Airwallex sandbox, test card, test money): 5 of 5 checks; paid alone within the limit, after Face ID above it; Purser refused a disallowed merchant before Airi.");
+    expect(flat).toContain("Visa Intelligent Commerce via Airwallex's Airi: 5 of 5 checks; each confirmed in Airi, above Purser's limit only after Face ID; a disallowed merchant refused first.");
     expect(flat).toContain("Details → https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/submission/long-description.md#what-is-real-and-what-is-simulated");
     expect(long).toContain(T0_STATUS);
     expect(longRaw).toMatch(/^### What is real and what is simulated$/m);

@@ -32,6 +32,8 @@ import { watchPage } from "../redesign/watch.js";
 import { proofPage } from "../redesign/proof.js";
 import { judgePage } from "../redesign/judge.js";
 import { loadTrace, TRACE_LINK, tracePage } from "../redesign/trace.js";
+import { runsPage } from "../redesign/runs.js";
+import { agentPages } from "../redesign/agents.js";
 import { monthEndPack, PACK_LINK, PACK_NAME } from "../accounting/monthPack.js";
 import { restyle } from "../redesign/ui.js";
 import { withNav } from "../ui/nav.js";
@@ -242,6 +244,12 @@ export const CLAUDE_CSP = styleOnlyCsp(CLAUDE_PAGE);
 /** /trace: any payment of the main run, step by step (src/redesign/trace.ts); no script, so a style-only policy. */
 export const TRACE_PAGE = tracePage();
 export const TRACE_CSP = styleOnlyCsp(TRACE_PAGE);
+/** /runs: every live run, newest first (src/redesign/runs.ts); one inline script (copy an id), its own hash only, no connect. */
+export const RUNS_PAGE = runsPage();
+export const RUNS_CSP = styleAndScriptCsp(RUNS_PAGE);
+/** /agents/<id>: one page per Kit 11 agent from the main run (src/redesign/agents.ts); no script. */
+export const AGENT_PAGES: Record<string, string> = agentPages();
+export const AGENT_CSPS: Record<string, string> = Object.fromEntries(Object.entries(AGENT_PAGES).map(([id, html]) => [id, styleOnlyCsp(html)]));
 /** The clean 404, for any address that is not a page; its links and assets absolute, since it answers at any depth. */
 export const NOT_FOUND_PAGE = notFoundPage().replace(/(href|src)="(?!https?:|#|\/)/g, '$1="/').replace(/url\(assets\//g, "url(/assets/");
 export const NOT_FOUND_CSP = styleOnlyCsp(NOT_FOUND_PAGE);
@@ -367,6 +375,16 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   app.get("/trace", (_req, res) => {
     res.setHeader("Content-Security-Policy", TRACE_CSP);
     res.type("html").send(TRACE_PAGE);
+  });
+  app.get("/runs", (_req, res) => {
+    res.setHeader("Content-Security-Policy", RUNS_CSP);
+    res.type("html").send(RUNS_PAGE);
+  });
+  app.get("/agents/:id", (req, res, next) => {
+    const id = req.params.id;
+    if (!Object.hasOwn(AGENT_PAGES, id)) return next();
+    res.setHeader("Content-Security-Policy", AGENT_CSPS[id]!);
+    res.type("html").send(AGENT_PAGES[id]);
   });
   app.get("/claude", (_req, res) => {
     res.setHeader("Content-Security-Policy", CLAUDE_CSP);

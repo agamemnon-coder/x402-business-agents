@@ -108,7 +108,7 @@ The times are the scenes' (`scenes-v6.json`); the music is cut to them afterward
 | 2:15 | `12-tamper.mp4` | +0.01, refused; a second of silence; “One cent. Worthless.” at 2:20.1 | |
 | 2:23 | `13-proof.mp4` | The main run named; 24/24 decisions by Claude; the run's stops (2:25.6): the figure with “nothing paid over a limit”, then who stopped what in four rows, each as the voice names it | |
 | 2:38 | `13b-awx.mp4` | awx-1 (7 Nov): `LIMIT_EXCEEDED` and `MERCHANT_CATEGORY_NOT_ALLOWED`, each declined by Airwallex; the raise asked of the CFO (P-0001), approved with Face ID; the signed hash in the SWIFT payouts' metadata, both PAID; the run's own label | |
-| 2:53 | `13c-airi.mp4` | “Visa Intelligent Commerce via Airwallex's Airi: a live run (7 Nov)”, Max's line; ✓ Paid alone (EUR 12.00) · ✓ Paid after Face ID (EUR 45.00, P-0002) · ✕ Changed after Face ID (EUR 30 → 190, the second run); “5 of 5 and 7 of 7 checks”; “Airwallex sandbox · test card · test money” | |
+| 2:53 | `13c-airi.mp4` | “Visa Intelligent Commerce via Airwallex's Airi: a live run (7 Nov)”, Max's line; ✓ Within the limit (EUR 12.00) · ✓ Paid after Face ID (EUR 45.00, P-0002) · ✕ Changed after Face ID (EUR 30 → 190, the second run); “5 of 5 and 7 of 7 checks”; “Airwallex sandbox · test card · test money” | |
 | 3:10 | `13d-value.mp4` | “The agents do the work. The CFO signs only the exceptions.” | |
 | 3:16 | `14-real.mp4` | What's real, what's ours; the voice reads both columns | |
 | 3:29 | `15-close.mp4` | The ending mirrors the intro: “A price shock.” / “A dispute.” / “A euro bill.”, the closing line in two lines, then the intro's wordmark with “Starter Kit 11” (3:40); Max's name lower left; under the narrator's closing line | |

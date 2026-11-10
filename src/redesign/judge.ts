@@ -50,9 +50,9 @@ export function judgeSteps(record = loadRecord().record): JudgeStep[] {
     },
     {
       id: "proof", title: "See the proof", seconds: 40,
-      see: "Every id of the main run; awx-1, the Airwallex-only run of 7 November, every check passed; Airwallex's own decline; Metal's refusal on chain.",
+      see: "What Purser guarantees, with the code and the test for each; every id of the main run; the Airwallex-only run of 7 November, every check passed, and Airwallex's own decline; Metal's refusal on chain.",
       links: [
-        { label: "Open /proof", href: "/proof" }, { label: "awx-1 on /airwallex", href: "/airwallex#awx-1" }, { label: "Open /metal", href: "/metal" },
+        { label: "Open /proof", href: "/proof" }, { label: "The Airwallex-only run", href: "/airwallex#awx-1" }, { label: "Open /metal", href: "/metal" },
         ...(refusal ? [{ label: "The refusal on the explorer", href: refusal }] : []),
       ],
       // What the explorer shows for the refusal (jury review, 7 Nov, #3): its log is not decoded there.
@@ -125,7 +125,7 @@ export function judgePage(steps: JudgeStep[] = JUDGE_STEPS): string {
 <section class="intro">
   <p class="eyebrow">For the jury</p>
   <h1 class="h-hero">Judge it in ${Math.round(total / 60)} minutes</h1>
-  <p class="lead">${steps.length} steps in the demo's order: watch the agents, try it yourself, see the proof. Each has its time and what you will see. Tick them off as you go: the ticks stay in this browser.</p>
+  <p class="lead">${steps.length} steps: watch, try, see the proof. Tick them off as you go.</p>
   <p class="prog" id="prog" aria-live="polite">${steps.length} steps</p>
 </section>
 <ol class="steps">

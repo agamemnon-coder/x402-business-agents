@@ -33,11 +33,11 @@ export const AIRI_CHECKS_URL = `${REPO_BLOB}${AIRI_RUN_LOG}#checks-the-records-c
 /** The heading (owner's copy, 7 Nov), with the run's date from the record ("7 Nov"). */
 export const airiHeading = (day: string) => `Visa Intelligent Commerce via Airwallex's Airi: a live run (${day})`;
 /** The one summary sentence at the top (owner's copy, 7 Nov), word for word. */
-export const AIRI_SUMMARY = "Agents paid with a single-use Visa (VIC) credential from Airi: within the limit on their own, above it only after the CFO's Face ID, and a disallowed merchant was refused by Purser before Airi was asked.";
+export const AIRI_SUMMARY = "Agents paid with a single-use Visa (VIC) credential from Airi, each purchase confirmed by the cardholder's passkey: within Purser's limit without the CFO, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.";
 /** Purchase A's two sentences (owner's copy, 7 Nov): within Purser's limit no Purser approval, Airi's own passkey step. */
 export const AIRI_A_SENTENCE = "Within Purser's limit, no Purser approval is needed. Airi itself asks the cardholder to confirm each purchase with a passkey.";
 /** The outcome badge of each purchase (owner's copy, 7 Nov), shown only when the record says so. */
-export const AIRI_BADGES = { A: "✓ Paid alone", B: "✓ Paid after Face ID", C: "✕ Refused by Purser" } as const;
+export const AIRI_BADGES = { A: "✓ Within the limit", B: "✓ Paid after Face ID", C: "✕ Refused by Purser" } as const;
 
 export interface AiriPurchase {
   step: "A" | "B" | "C";
@@ -162,7 +162,7 @@ export function airiRunHtml(s: AiriRunSummary | null, o: { h?: "h2" | "h3" } = {
 ${outcomes(s)}
 ${checksLink(s)}
 <details class="fold" id="${AIRI_RUN_STEPS_ID}"><summary>${esc("Details")}</summary>
-<p><b>${esc("The five checks")}</b></p><ul class="awc">${s.checks.map((c) => `<li class="${c.ok ? "" : "no"}"><code>${esc(c.name)}</code> ${esc(c.ok ? "✓" : "✕")} ${esc(c.detail)}</li>`).join("")}</ul>
+<p><b>${esc("The five checks")}</b></p><ul class="awc">${s.checks.map((c) => `<li class="${c.ok ? "" : "no"}" title="${esc(c.name)}">${esc(c.ok ? "✓" : "✕")} ${esc(c.detail)}</li>`).join("")}</ul>
 <p><b>${esc("Every step and id")}</b></p><ul class="awc">${s.lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>
 <p class="src">${esc(s.source)} · <a class="pf" href="${esc(`${REPO_BLOB}${AIRI_RUN_LOG}`)}" target="_blank" rel="noopener">${esc("run log")} ↗</a></p></details></div>`;
 }
@@ -184,6 +184,7 @@ export const AIRI_CSS = `.airi .airi-label { color: var(--muted); font-size: 14.
 ul.airi-out { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 ul.airi-out li { font-size: 15.5px; line-height: 1.45; overflow-wrap: anywhere; }
 ul.airi-out .awm { font-size: 14px; padding: 2px 10px; margin-right: 4px; white-space: nowrap; }
+@media (max-width: 640px) { ul.airi-out .awm { display: table; margin: 0 0 4px; white-space: normal; } }
 .airi a.awm { text-decoration: none; }
 .airi details.fold > ul.awc { margin-bottom: 12px; }
 .airi h2.airi-h { font-size: 20px; margin: 0; display: flex; align-items: center; gap: 8px; }`;

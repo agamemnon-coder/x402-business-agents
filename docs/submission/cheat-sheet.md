@@ -6,8 +6,8 @@
 ## The three sentences
 
 1. An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. Try it in a minute.
-2. One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control.
-3. Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude.
+2. One CFO policy, a lock per rail: Airwallex card controls, Metal's mandate, the CFO's signature on invoices. A prompt is not a control.
+3. Real agents: Claude made all 24 decisions (routine payments are code); no key reaches Claude.
 
 ## The five numbers
 
@@ -45,4 +45,6 @@ and the ask: "we're looking for design partners on Airwallex."
 
 Test money: Airwallex sandbox, Metal testnet. The second approver was a labelled test passkey. The sandbox simulates
 the SWIFT settlement. The server checks no attestation (it is "none"). The business case is a hypothesis: no
-customer has seen a price. T:0: nothing is posted.
+customer has seen a price. T:0: 95 journal entries posted to its shared sandbox on 10 Nov, 0 differences with our books;
+a second push posted none; T:0's own balance sheet balances. Two locks (10 Nov): a test passkey signed, then Airwallex
+held the payout `IN_APPROVAL`; nobody approved it in the web app, so it is not paid.

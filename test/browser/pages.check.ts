@@ -4,6 +4,7 @@
 // language, not exactly one h1, a link or button with no name, an image with no alt text), and on a menu that wraps.
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
+import { VISA_ENTRY_LINE } from "../../src/redesign/partners.js";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { chromium, type Page } from "playwright";
@@ -97,15 +98,32 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     await page.waitForTimeout(1500);
     if (new URL(page.url()).pathname !== "/" || !(await page.isVisible("h1.h-hero"))) fail(`/ ${tag}: a guest does not get Home at / (${page.url()})`);
     await look(page, `/ (Home) ${tag}`, w);
-    // One flow (Max, 7 Nov): three steps, watch, try, proof; one primary button, to watch, in the first screen. The CFO's
-    // view is linked from Proof's head (checked below), not from Home.
+    // Competitive review, 10 Nov: one primary button, to Try, in the first screen; Watch and Proof as text links. The
+    // CFO's view is linked from Proof's head (checked below), not from Home.
     {
-      const steps = await page.locator("ol.flow > li a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
-      // Step 2 is "try", or "try/sign" where the relay serves /try/sign (the live site: TRY_SIGN_ENABLED=on).
-      if (!["watch,try,proof", "watch,try/sign,proof"].includes(steps.join(","))) fail(`/ ${tag}: the flow is not watch, try, proof (${JSON.stringify(steps)})`);
+      const links = await page.locator("p.more a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+      if (!links.includes("watch") || !links.includes("proof")) fail(`/ ${tag}: Watch and Proof are not linked beside the button (${JSON.stringify(links)})`);
       const primaries = page.locator("main a.btn.primary");
       const box = await primaries.first().boundingBox();
-      if ((await primaries.count()) !== 1 || (await primaries.first().getAttribute("href")) !== "watch" || !box || box.y + box.height > h) fail(`/ ${tag}: not one primary button, to watch, in the first screen`);
+      if ((await primaries.count()) !== 1 || !/^try(\/sign)?$/.test((await primaries.first().getAttribute("href")) ?? "") || !box || box.y + box.height > h) fail(`/ ${tag}: not one primary button, to Try, in the first screen`);
+      // The hero demo (Max, 10 Nov): it plays (the phase moves on), it keeps its size while it plays (no layout shift),
+      // and with reduced motion it shows one still frame, the last.
+      const demo = page.locator("#hero-demo");
+      if (!(await demo.count())) fail(`/ ${tag}: no hero demo`);
+      else {
+        const size = async () => JSON.stringify(await demo.evaluate((e) => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
+        const p0 = await demo.getAttribute("data-phase"), s0 = await size();
+        await page.waitForTimeout(3800);
+        if ((await demo.getAttribute("data-phase")) === p0) fail(`/ ${tag}: the hero demo does not play`);
+        if ((await size()) !== s0) fail(`/ ${tag}: the hero demo changes size while it plays (${s0} → ${await size()})`);
+        if (!/Recorded run · Airwallex sandbox · test money/.test(await demo.innerText()) || !(await demo.locator('a[href$="try/sign"], a[href="try"]').count())) fail(`/ ${tag}: the hero demo lacks its label or its link to Try`);
+        await demo.screenshot({ path: join(shots, `home-demo-${tag}.png`) });
+        const still = await page.context().browser()!.newPage({ viewport: { width: w, height: h }, reducedMotion: "reduce" });
+        await still.goto(`${base}/home`, { waitUntil: "load" });
+        await still.waitForTimeout(2600);
+        if ((await still.locator("#hero-demo").getAttribute("data-phase")) !== "4" || await still.locator("#hero-demo").evaluate((e) => e.classList.contains("run"))) fail(`/ ${tag}: with reduced motion the hero demo is not one still frame`);
+        await still.close();
+      }
     }
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
 
@@ -237,7 +255,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // The main run's figures as Home, Watch and Proof count them (final review, 4 Nov; Max, 5 Nov): Metal's 2 (not 3:
     // #24 once, and #37), the stops in one sentence, "16 stops" in the pill, all Claude calls said as such, #24 refused
     // by Metal itself.
-    const STOPS = /16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing\./;
+    const STOPS = /16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing\./;
     for (const want of [/Metal's mandate check\s+2\b/, new RegExp(`In this run: ${STOPS.source}`), /Refused and blocked\s+16 stops/, /58 Claude calls in all, \$0\.38: the agents' own 50/, /let through on purpose, was refused by Metal/, /PAID in the sandbox, where the settlement is simulated/]) {
       if (!want.test(au)) fail(`/?autonomy ${tag}: missing ${want}`);
     }
@@ -288,6 +306,20 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (!(await page.isVisible('#purchase-55 a[href^="https://testnet.metalntwx.com/tx/0x"]'))) fail(`/trace ${tag}: the picked purchase has no explorer link`);
       await look(page, `/trace#purchase-55 ${tag}`, w);
       await page.screenshot({ path: join(shots, `trace-picked-${tag}.png`) });
+    }
+
+    // /runs and /agents/<id> (10 Nov): every live run, newest first, and one page per Kit 11 agent; one level down, the
+    // agent pages' fonts, styles and links still load (no console error, nothing wider than the screen).
+    for (const path of ["/runs", "/agents/sourcing", "/agents/support", "/agents/treasury"]) {
+      const res = await page.goto(`${base}${path}`, { waitUntil: "load" });
+      if (!res || res.status() !== 200) { fail(`${path} ${tag}: status ${res?.status()}`); continue; }
+      await look(page, `${path} ${tag}`, w);
+      const t = await page.evaluate(() => document.body.innerText);
+      if (path === "/runs" && !/Last live run: \d{1,2} \w{3} \d{4}/.test(t)) fail(`/runs ${tag}: no "Last live run" date`);
+      if (path !== "/runs" && !/What Claude decided · \d+/.test(t)) fail(`${path} ${tag}: no decisions section`);
+      const font = await page.evaluate(() => document.fonts.check("16px Inter"));
+      if (!font) fail(`${path} ${tag}: Inter did not load`);
+      await page.screenshot({ path: join(shots, `${path.slice(1).replace(/\//g, "-")}-${tag}.png`) });
     }
 
     for (const q of ["", "?at=end"]) {
@@ -344,7 +376,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // 7 Nov). /metal: 175 since the jury review of 7 Nov (#3), for what the explorer shows beside the refusal's link.
       // The second Airi run (vic-2, 7 Nov): /visa 465 with its three outcomes under the VIC flow, /airwallex 365 with its
       // heading and checks (the same budgets as test/site-v4.test.ts).
-      const budget = path === "/airwallex" ? 365 : path === "/visa" ? 465 : path === "/metal" ? 180 : 150;
+      // /visa 495 since 10 Nov (Max: we compete for the Visa Award, keep it visible): one plain sentence on top; 600 the
+      // same day with the overview of the three Visa runs above the Airi run (Max, 10 Nov: more Visa).
+      const budget = path === "/airwallex" ? 365 : path === "/visa" ? 600 : path === "/metal" ? 180 : 150;
       if (words > budget + 25) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(pt)) fail(`${path} ${tag}: its run is not labelled`);
       if ((await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
@@ -353,7 +387,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.evaluate(() => document.querySelectorAll("details").forEach((d) => { d.open = true; }));
       await look(page, `${path} folds open ${tag}`, w);
       const open = await page.evaluate(() => document.body.innerText);
-      if (path === "/visa" && (!/Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours\./.test(open) || !/commit 16d59bd/.test(open) || !/simulated authorisations/.test(open) || !/Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon \(Visa, 5 Nov\)\./.test(open) || /entered for[^.]{0,40}Visa Award/i.test(open) || /Dev test/.test(open))) fail(`/visa ${tag}: the claim, the award status or the honest label is wrong`);
+      if (path === "/visa" && (!/Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours\./.test(open) || !/commit 16d59bd/.test(open) || !/simulated authorisations/.test(open) || !/Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon \(Visa, 5 Nov\)\./.test(open) || !open.includes(VISA_ENTRY_LINE) || /entered for[^.]{0,40}Visa Award/i.test(open.split(VISA_ENTRY_LINE).join(" ")) || /Dev test/.test(open))) fail(`/visa ${tag}: the claim, the award status or the honest label is wrong`);
       if (path === "/airwallex" && !/LIMIT_EXCEEDED|over the card's limit/.test(open)) fail(`/airwallex ${tag}: no decline by Airwallex`);
       // Section B: the hash the CFO signed beside the one Airwallex returns, matched in code; each card's controls beside the policy.
       if (path === "/airwallex" && (!/The hash the CFO signed travels with the payment\./.test(pt) || (pt.match(/\b[0-9a-f]{64}\b/g) ?? []).length !== 2 || !/Match: the same hash/.test(pt))) fail(`/airwallex ${tag}: the CFO's hash and Airwallex's are not shown side by side, or do not match`);
@@ -364,7 +398,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // 5 of 5 checks (a link to the run log's checks) in sight, every step and id in its "Details" fold; never an Airi
       // link or a card number.
       if ((path === "/airwallex" || path === "/visa") && (!/Visa Intelligent Commerce via Airwallex's Airi: a live run \(7 Nov\)\s*A separate run · Airwallex sandbox, test card, test money/.test(pt)
-        || !/✓ Paid alone[\s\S]*✓ Paid after Face ID[\s\S]*✕ Refused by Purser/.test(pt) || !/5 of 5 checks pass/.test(pt)
+        || !/✓ Within the limit[\s\S]*✓ Paid after Face ID[\s\S]*✕ Refused by Purser/.test(pt) || !/5 of 5 checks pass/.test(pt)
         || (await page.locator('#airi-run a[href$="2026-11-07-vic-1.md#checks-the-records-checks"]').count()) !== 1 || /int_sgpvzc9hjhnxvpblt2r/.test(pt)
         || !/single-use card credential from Airwallex's Airi wallet[\s\S]*int_sgpvzc9hjhnxvpblt2r[\s\S]*P-0002[\s\S]*int_sgpvzc9hjhnxvxc26ie[\s\S]*PURSER_MERCHANT_NOT_ALLOWED/.test(open)
         || /airi\.com\/|\b\d{13,19}\b/.test(open))) fail(`${path} ${tag}: the Airi run is not shown, dated and labelled, with its badges, checks and steps`);
@@ -384,7 +418,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (!/awx-1: a separate run · Airwallex sandbox, test money/.test(await page.locator("#awx-1").innerText().catch(() => ""))) fail(`/proof ${tag}: awx-1 missing under Airwallex read back`);
       // The Airi run (7 Nov), in sight under the partners: the owner's copy, the badges, the checks, a link to its ids.
       const airi = await page.locator("#airi-run").innerText().catch(() => "");
-      if (!/Visa Intelligent Commerce via Airwallex's Airi: a live run \(7 Nov\)\s*A separate run · Airwallex sandbox, test card, test money/.test(airi) || !/✓ Paid alone[\s\S]*✓ Paid after Face ID[\s\S]*✕ Refused by Purser[\s\S]*5 of 5 checks pass/.test(airi)
+      if (!/Visa Intelligent Commerce via Airwallex's Airi: a live run \(7 Nov\)\s*A separate run · Airwallex sandbox, test card, test money/.test(airi) || !/✓ Within the limit[\s\S]*✓ Paid after Face ID[\s\S]*✕ Refused by Purser[\s\S]*5 of 5 checks pass/.test(airi)
         || !(await page.locator("#airi-run").isVisible()) || (await page.locator('#airi-run a[href="airwallex#airi-run-steps"]').count()) !== 1) fail(`/proof ${tag}: the Airi run not in sight under the partners, or no link to its steps`);
       if (!/The hash the CFO signed travels with the payment\./.test(rb) || (rb.match(/\b[0-9a-f]{64}\b/g) ?? []).length !== 2 || !/Match: the same hash/.test(rb) || !/3 of 3 cards match the CFO policy/.test(rb)) fail(`/proof ${tag}: Airwallex read back missing or not matching`);
     }
@@ -490,11 +524,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const asked: string[] = [];
       const onRequest = (r: { url(): string }) => { const u = new URL(r.url()); if (u.origin !== new URL(judgeBase).origin || !["/judge", "/assets/inter.woff2", "/assets/favicon.svg", "/favicon.ico"].includes(u.pathname)) asked.push(r.url()); };
       await page.goto(`${judgeBase}/`, { waitUntil: "load" });
-      const flow = await page.locator("ol.flow > li a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
-      if (JSON.stringify(flow) !== JSON.stringify(["watch", "try/sign", "proof"])) fail(`/ (Home, with /try/sign) ${tag}: the flow is not watch, try/sign, proof (${JSON.stringify(flow)})`);
-      const top = page.locator("p.judgeline a");
+      if ((await page.locator("main a.btn.primary").getAttribute("href")) !== "try/sign") fail(`/ (Home, with /try/sign) ${tag}: the button does not lead to /try/sign`);
+      const top = page.locator('p.more a[href="judge"]');
       const box = await top.boundingBox();
-      if ((await page.locator('a[href="judge"]').count()) !== 1 || (await top.innerText()).trim() !== "Judging? Take the 3-minute tour →" || !box || box.y + box.height > h || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: no one "Judging? Take the 3-minute tour →" link under the button, in the first screen, inside the page's gutter`);
+      if ((await page.locator('a[href="judge"]').count()) !== 1 || (await top.innerText()).trim() !== "Judging? Take the 3-minute tour" || !box || box.y + box.height > h || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: no one "Judging? Take the 3-minute tour" link beside the button, in the first screen, inside the page's gutter`);
       if ((await page.locator("main a.btn").count()) !== 1) fail(`/ (Home, with /try/sign) ${tag}: more than one button`);
       await look(page, `/ (Home, with /try/sign) ${tag}`, w);
       await page.screenshot({ path: join(shots, `home-trysign-${tag}.png`) });

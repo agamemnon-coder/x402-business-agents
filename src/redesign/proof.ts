@@ -12,6 +12,7 @@ import { AIRI_CSS, airiRunBlock } from "./airiRun.js";
 import { vic2RunBlock } from "./vic2Run.js";
 import { awxRunBlock } from "./awxRun.js";
 import { esc, icon, page } from "./ui.js";
+import { GUARANTEES_CSS, guaranteesHtml } from "./guarantees.js";
 import { LEAD_CSS, leadHtml, proofLeads } from "./proofLead.js";
 import { TRACE_LINK, TRACE_URL } from "./trace.js";
 import { PACK_LINK, PACK_NAME } from "../accounting/monthPack.js";
@@ -194,7 +195,7 @@ function partnerCards(run: AgentRun): string {
   const hashChip = h?.match ? `<a class="fact hash" href="airwallex#${AWX_HASH_ID}">${esc(`Signed hash in Airwallex's ${h.transferMethod} record ✓`)}</a>` : "";
   // In the README's order (jury review, 7 Nov, #12): Airwallex, Metal, Claude.
   return `<div class="partners">
-${card("airwallex", "Airwallex", "Earnings booked once final, the euro licence by SWIFT, cards with limits the bank enforces.", hashChip + fact(String(awx), "movements at Airwallex") + (cardsMatch ? fact(cardsMatch[1]!, "cards carry the CFO's limits") : "") + (st.airwallex ? fact(String(st.airwallex), "declined by Airwallex") : ""), p.airwallex)}
+${card("airwallex", "Airwallex", "Earnings booked once final, the euro licence by SWIFT (sandbox, settlement simulated), cards with limits the bank enforces.", hashChip + fact(String(awx), "movements at Airwallex") + (cardsMatch ? fact(cardsMatch[1]!, "cards carry the CFO's limits") : "") + (st.airwallex ? fact(String(st.airwallex), "declined by Airwallex") : ""), p.airwallex)}
 ${card("metal", "Metal", "Each agent's limit is a mandate on chain; payments per query over x402.", fact(String(onChain), "payments on chain") + fact(String(st.metal), "refused by Metal at the limit") + fact(String(mandates), "limits replaced on chain"), p.metal, (st.revoked ? `<p class="note">${esc(`${st.revoked} refused by Metal because its mandate had just been replaced.`)}</p>` : "") + (pay.sums && pay.onChain === onChain ? `<p class="note">${esc(`${pay.onChainLine}.`)}</p>` : ""))}
 ${card("claude", "Claude", `The agents decide with Claude: ${run.agents.map((a) => `${a.short} on ${a.family}`).join(", ")}.`, fact(`${sp.byClaude}/${sp.decisions}`, "decisions by Claude") + fact(String(s.agent_stats.reduce((n, a) => n + a.claude_calls, 0)), "calls to Claude, each logged"), p.claude)}
 </div>`;
@@ -212,7 +213,7 @@ function moreCards(run: AgentRun): string {
     ...(story.claude ? [li(`By a buy rule Claude set: the Sourcing agent (Claude) set a buy rule; code applied it to ${story.claude} overpriced stock check${story.claude === 1 ? "" : "s"}${range ? ` (${range})` : ""}; nothing signed, the customer not charged`, "no")] : []),
     ...money.filter((e) => e.refused?.by === "recorded").map((e) => li(`By Metal: ${e.amount} test USD over the mandate's cap; Purser refused it before signing and Metal recorded the same refusal on chain`, "no", e.proof)),
     ...money.filter((e) => e.refused?.by === "metal" && e.refused.code !== "mandate_revoked").map((e) => (e.letThrough ? letThroughLi(r, e, "By Metal: ") : li(`By Metal: ${e.what}, ${e.refused!.reason} (${e.refused!.code ?? ""})`, "no", e.proof.href ? e.proof : null))),
-    ...money.filter((e) => e.refused?.code === "mandate_revoked").map((e) => li(`By Metal: ${e.what}, refused on chain because its mandate had just been replaced`, "no", e.proof.href ? e.proof : null)),
+    ...money.filter((e) => e.refused?.code === "mandate_revoked").map((e) => li(`By Metal: ${e.what}, refused by Metal's facilitator because its mandate had just been replaced (mandate_revoked; no transaction)`, "no", e.proof.href ? e.proof : null)),
     ...faces.filter((f) => f.status === "REJECTED").map((f) => li(`By the CFO with Face ID: ${f.id} · ${f.title} rejected`, "no")),
     ...s.refusals.filter((x) => /planted instruction/i.test(x.what)).map((x) => li(plantedLine(x.reason), "no")),
   ];
@@ -250,6 +251,23 @@ ${box("archive", "clock", "Archive", "", "Earlier runs and tools, kept as they w
 </div>`;
 }
 
+/** The finish (Max, 10 Nov: "same level as the homepage"): the run's label as a clear honest tag, each figure with its
+ * colour as a top line, the partner cards lifting on hover, the folds as clear rows. Style only; no words change. */
+const POLISH = `
+.phead .pill.run { background: color-mix(in srgb, var(--awx) 12%, var(--surface)); color: var(--text); border: 1px solid color-mix(in srgb, var(--awx) 40%, var(--border)); font-weight: 650; }
+.phead .pill.run .i { color: var(--awx); }
+.nums .num { position: relative; overflow: hidden; border-radius: 18px; background: linear-gradient(180deg, color-mix(in srgb, var(--sunken) 60%, var(--surface)), var(--surface) 70%); transition: border-color .2s ease-out, transform .2s ease-out; }
+.nums .num::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--text); opacity: .7; }
+.nums .num.claude::before { background: var(--claude); } .nums .num.code::before { background: var(--metal); } .nums .num.face::before { background: var(--accent); } .nums .num.stop::before { background: var(--bad); }
+.nums .num:hover { transform: translateY(-2px); }
+.partners .pcard { transition: border-color .2s ease-out, transform .2s ease-out; }
+.partners .pcard:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); transform: translateY(-2px); }
+.facts .fact { border: 1px solid var(--border); }
+details.deep > summary { padding: 0 4px; border-radius: 12px; }
+details.deep > summary:hover { background: var(--sunken); }
+details.deep > summary::after { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--accent-soft); }
+@media (prefers-reduced-motion: reduce) { .nums .num, .partners .pcard { transition: none; } .nums .num:hover, .partners .pcard:hover { transform: none; } }`;
+
 /**
  * Airwallex, read back (section B): the hash the CFO signed beside the one Airwallex returns with the transfer, and each
  * agent's card controls as Airwallex returns them beside the CFO policy, from the dated GET-only records in docs/runs.
@@ -283,6 +301,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   <div class="phead"><h1>Proof</h1><span class="pill run">${icon("database", 14)}${esc(run.label)}</span><a class="open" href="${FILM_URL}" target="_blank" rel="noopener">${icon("play", 14)}${esc(FILM_LINK)} ↗</a><a class="open" href="${CFO_VIEW_URL}">${icon("layout-dashboard", 14)}${esc(CFO_VIEW_LINK)}</a><a class="open" href="${TRACE_URL}">${icon("receipt", 14)}${esc(TRACE_LINK)}</a><a class="open" href="assets/${PACK_NAME}" download>${icon("file-check", 14)}${esc(PACK_LINK)}</a></div>
   <p class="split">${esc(SPLIT_LINE)}</p>
   <div class="nums">${nums.map((n) => `<a class="num card ${n.cls}" href="${n.href}"><span class="v">${esc(n.value)}</span><span class="l">${esc(n.label)}</span>${noteHtml(n.note, "span")}</a>`).join("")}</div>
+  ${guaranteesHtml()}
   <h2 class="sec">The partners</h2>
   ${partnerCards(run)}
   ${airi ? `<div class="awrb">${airi}</div>` : ""}
@@ -291,7 +310,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   <details class="deep"><summary>Why this is a company</summary>${whyCompanyHtml()}</details>
 </div></main>`;
   return page({
-    title: "Proof", description: "Every proof of the main run in one place: who decided, who paid, who stopped what, each partner's live proof.", tab: "proof", css: CSS, body, js: JS, stage: false,
+    title: "Proof", description: "Every proof of the main run in one place: who decided, who paid, who stopped what, each partner's live proof.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH, body, js: JS, stage: false,
     // Visa TAP as a footer link (jury review, 6 Nov, #7): an extra, not an award entry.
     links: [["visa", VISA_EXTRA_LINK]],
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,

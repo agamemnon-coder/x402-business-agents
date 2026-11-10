@@ -30,7 +30,7 @@ export function visibleWords(html: string): number {
 const allText = (html: string) => decode(html.replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " "));
 
 describe("the site after v4", () => {
-  it("keeps every page within its text budget (Home 195 with the three sentences and both awards; partner pages at most 150, /metal 180 with the explorer note and the mandates replaced after Face ID, /airwallex 365 with its read-back, awx-1, the Airi run and the second Airi run's heading, /visa 465 with the Airi run on top, the VIC flow under it and the second Airi run under that)", () => {
+  it("keeps every page within its text budget (Home 195 with the three sentences and both awards; partner pages at most 150, /metal 180 with the explorer note and the mandates replaced after Face ID, /airwallex 365 with its read-back, awx-1, the Airi run and the second Airi run's heading, /visa 610 with the overview of the three Visa runs on top, the Airi run under it, the VIC flow under it and the second Airi run under that)", () => {
     // Proof: 480 since 4 Nov, for the TAP run's decline on its own line below the stop figure (Max).
     // Home: 600 since 6 Nov, for the three sentences under the heading, the Kit 11 line and the one caveat line (jury review, #1, #7).
     // Proof 520 and Airwallex 190 since 6 Nov, for Airwallex read back (section B): the hash the CFO signed beside the one
@@ -59,7 +59,16 @@ describe("the site after v4", () => {
     // step it is, its title, one short line and purchase B's id or value, and C's branch off step 2 (100 words; 372 as built).
     // Home: 195 since Visa's word on the VIC run (7 Nov): the award pill reads "entered for the Metal Award and the Visa
     // Award", four words more (192 as built).
-    const budget: Record<string, number> = { home: 195, watch: 125, try: 180, proof: 560, metal: 180, airwallex: 365, visa: 465, claude: 150, notFound: 40 };
+    // Metal: 200 since the review of 9 Nov, for who signs the replace on chain on its card and the fold that links all 86
+    // transactions one by one (199 as built).
+    // Home: 250 since the competitive review of 10 Nov (249 as built): one button to /try/sign, the other ways in as text
+    // links, the hero demo in place of the three sentences, Airwallex's own decline with the main run's counts and one
+    // id, the awards line under the first screen and one line on what comes next (README and form keep the sentences).
+    // Proof: 715 since then, for "What Purser guarantees" under the run's figures: seven promises, each with who enforces
+    // it and its evidence in sight, how, the code and the test folded (705 as built).
+    // Visa: 495 since then (Max, 10 Nov: we compete for the Visa Award, keep it visible): one plain sentence on top naming
+    // the entry and the run (490 as built).
+    const budget: Record<string, number> = { home: 250, watch: 125, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, metal: 200, airwallex: 370 /* +5, panel review 10 Nov */, visa: 610 /* +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa) */, claude: 150, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 

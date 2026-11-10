@@ -2,6 +2,19 @@
 // internal ids (sourcing, support, treasury); people see the names below.
 
 export const PRODUCT = "Purser";
+
+/**
+ * Where a company that wants to use Purser goes (review 9 Nov: no call to action anywhere). Empty until Max gives the
+ * address; while empty, nothing shows. Once set (an https: or mailto: URL), the link shows on Home, on /try/sign's
+ * closing card and, by hand, in the README under the badges (test/design-partner.test.ts keeps the README in step).
+ */
+export const DESIGN_PARTNER_URL = "";
+export const DESIGN_PARTNER_LABEL = "Become a design partner";
+/** The design-partner link as HTML, or "" while there is no valid address. */
+export function designPartnerHtml(url: string = DESIGN_PARTNER_URL): string {
+  if (!/^(https:\/\/|mailto:)[^\s"'<>]+$/.test(url)) return "";
+  return `<p class="partner"><a href="${url.replace(/&/g, "&amp;")}">${DESIGN_PARTNER_LABEL} →</a></p>`;
+}
 export const TAGLINE = "Give every AI agent its own company card, with limits the CFO sets.";
 
 /**
@@ -74,19 +87,20 @@ export const FOUR_EYES_LINE = "Four eyes on chain: two signatures required (seco
  */
 export const DIFFERENTIATORS = [
   "An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless.",
-  "One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control.",
-  "Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude.",
+  "One CFO policy, a lock per rail: Airwallex card controls, Metal's mandate, the CFO's signature on invoices. A prompt is not a control.",
+  "Real agents: Claude made all 24 decisions (routine payments are code); no key reaches Claude.",
 ] as const;
 /** The one line after the three sentences, linked to /try/sign wherever a surface can link (section D, 6 Nov). */
 export const TRY_IT = "Try it in a minute.";
 /** Where TRY_IT goes: a test world of the visitor's own, signed with their own passkey; nothing real moves. */
 export const TRY_SIGN_URL = "https://kit11.max-31b.workers.dev/try/sign";
 /**
- * What Purser is, in one sentence (section D, 6 Nov): the problem, then Purser's answer. First under the title on the
- * README, under Home's heading and at the start of the form's synopsis. "Only within limits the CFO signs": the CFO's
- * policy is signed with Face ID (docs/cfo-policy.md), and anything beyond it is a proposal the CFO signs with Face ID.
+ * What Purser is, in one sentence: since the review of 9 Nov customer-first, who it is for and the moment of the
+ * /try/sign demo (Treasury asks to pay Alpine Packaging's €1,850 invoice, over the limit it may pay alone). First under the
+ * title on the README, under Home's heading and at the start of the form's synopsis. Anything beyond the CFO's signed
+ * policy is a proposal the CFO signs with Face ID (docs/cfo-policy.md).
  */
-export const WHAT_IT_IS = "AI agents are starting to spend company money; Purser lets them, through Airwallex and Metal, only within limits the CFO signs with Face ID.";
+export const WHAT_IT_IS = "For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice over its limit, you sign the exact terms with Face ID.";
 /**
  * The first screen, in this order, on the README and in the form's synopsis: what Purser is, the three sentences, then
  * "Try it in a minute." Only then the badges and the details. Home says what Purser is and the three sentences under its
@@ -111,9 +125,9 @@ export const BUSINESS_CASE_LINK = "Read the business case ↗";
  * wherever a price is given (test/unit-economics-hypothesis.test.ts); src/business/unitEconomics.ts computes from it.
  */
 export const PRICE_LINE = "€49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions.";
-export const WHY_COMPANY_NOTE = "Not validated with customers yet: no interviews, no pilots, no revenue. Every line below is a hypothesis except the cited source.";
+export const WHY_COMPANY_NOTE = "Not validated with customers yet: 2 finance conversations (a CFO and a bank finance professional, quoted, anonymous); more in progress; no pilots, no revenue. Every line below is a hypothesis except the cited source.";
 /** The same, as one small line under the lines (Proof, Max 7 Nov: the content first, the disclaimer last). */
-export const WHY_COMPANY_NOTE_LAST = "Not validated with customers yet: no interviews, no pilots, no revenue; every line above is a hypothesis except the cited source.";
+export const WHY_COMPANY_NOTE_LAST = "Not validated with customers yet: 2 finance conversations (a CFO and a bank finance professional, quoted, anonymous); more in progress; no pilots, no revenue; every line above is a hypothesis except the cited source.";
 export const WHY_COMPANY: readonly { label: string; text: string; page: string }[] = [
   { label: "The problem", text: "when an AI agent pays today, its limit lives in a prompt it can be talked out of, or in a month-end review that finds the money after it has left.", page: "problem.md#what-goes-wrong" },
   { label: "Who buys", text: "the finance team of a small company or scale-up that already banks with Airwallex and lets AI agents pay; the CFO uses it and decides.", page: "model.md#who-buys-and-who-uses-it-hypothesis" },
@@ -181,7 +195,7 @@ export function agentName(id: string): string {
  */
 export const PROOF_SENTENCES: readonly { partner: "Airwallex" | "Metal" | "Claude"; anchor: string; text: string }[] = [
   { partner: "Airwallex", anchor: "airwallex", text: "Airwallex (sandbox): the hash of the exact terms the CFO signed with Face ID is in Airwallex's own record of the EUR 240.00 SWIFT payment, and 3 of 3 agent cards carry the CFO's policy as Airwallex's own controls, read back from Airwallex." },
-  { partner: "Metal", anchor: "metal", text: "Metal (testnet): a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded); the mandates replaced on chain after the CFO's Face ID (four eyes; second approver a labelled test passkey)." },
+  { partner: "Metal", anchor: "metal", text: "Metal (testnet): a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded); the mandates replaced on chain by the owner key after the CFO's Face ID in Purser (four eyes; second approver a labelled test passkey)." },
   { partner: "Claude", anchor: "claude", text: "Claude: 24 of 24 decisions in the main run, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment went from 6/10 to 10/10 and the next run (rel-1b) passed every step." },
 ];
 /**

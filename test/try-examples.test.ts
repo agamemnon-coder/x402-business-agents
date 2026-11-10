@@ -155,6 +155,13 @@ describe("the page's frame: an opening, six steps, a closing card, one line of d
     for (const step of ["1", "2", "3", "4", "5"]) expect(page).toContain(`.diagram[data-step="${step}"]`);
   });
 
+  it("step 4 says what to do before the chips, and the stopped payment on screen 1 says which one", () => {
+    const k = main.slice(main.indexOf('id="k-head"'), main.indexOf('id="trick-chips"'));
+    expect(k).toContain('<p class="q" id="k-pick">Pick a fake invoice to send to your agent.');
+    expect(main).toContain("Purser's rule also stopped an over-limit invoice in your world");
+    expect(main).not.toContain("Purser stopped a test payment in your world just now");
+  });
+
   it("on a phone: the terms' labels stay on one line, and the main button sticks to the bottom", () => {
     expect(page).toContain("dl.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr);");
     expect(page).toContain("dl.facts dt { color: var(--muted); white-space: nowrap; }");

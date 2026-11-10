@@ -12,12 +12,13 @@ import { SANDBOX_SETTLED, SPLIT_LINE, VISA_CLAIM, VISA_TAP_STATUS } from "../con
 import { airwallexData } from "../partners/data.js";
 import { agentRun, callBadge, cardRaiseOf, decisionsOf, faceIdDecisions, family, fxOf, ownTap, payments, split, stops, tapRun, timings, type AgentRun, type Ev } from "./run.js";
 import { LOGO, earlierLine, fold, partnerProof } from "./proof.js";
-import { metalStory, refusalNote, separateRuns, type MetalStory } from "./metalStory.js";
+import { EXPLORER, REPO_BLOB, metalStory, refusalNote, separateRuns, type MetalStory } from "./metalStory.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { AIRI_CSS, airiRunBlock } from "./airiRun.js";
-import { awxRunBlock } from "./awxRun.js";
+import { awxRun, awxRunBlock } from "./awxRun.js";
 import { vic2RunBlock } from "./vic2Run.js";
 import { VIC_FLOW_CSS, vicFlowBlock } from "./vicFlow.js";
+import { VISA_OVERVIEW_CSS, VISA_TAP_ID, visaOverviewBlock } from "./visaOverview.js";
 import { OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
 
 const CSS = `.pp { padding: 26px 0 24px; }
@@ -43,6 +44,7 @@ const CSS = `.pp { padding: 26px 0 24px; }
 .line { margin: 0; font-size: clamp(18px, 1.8vw, 21px); font-weight: 600; max-width: 44em; }
 .claim { margin: 0; font-size: 16px; line-height: 1.5; border-left: 4px solid var(--accent); padding: 4px 0 4px 12px; max-width: 52em; }
 .folds { padding: 6px 20px 12px; }
+.vintro { margin: 4px 0 14px; font-size: clamp(17px, 1.7vw, 19px); font-weight: 620; line-height: 1.45; max-width: 46em; }
 details.fold { border-top: 1px solid var(--border); padding-top: 6px; } details.fold:first-child { border-top: 0; }
 details.fold > summary { cursor: pointer; font-weight: 650; font-size: 16px; color: var(--accent); list-style: none; display: flex; align-items: center; gap: 6px; min-height: 44px; }
 details.fold > summary::-webkit-details-marker { display: none; }
@@ -71,7 +73,8 @@ a.pf { color: var(--accent); font-weight: 600; text-decoration: none; font-size:
 .nf .tabs2 { display: flex; flex-wrap: wrap; gap: 10px; }
 ${READBACK_CSS}
 ${AIRI_CSS}
-${VIC_FLOW_CSS}`;
+${VIC_FLOW_CSS}
+${VISA_OVERVIEW_CSS}`;
 
 const SOURCE = (run: AgentRun) => `Source: ${run.file} (${run.name}); the card run from ${tapRun()?.file ?? "docs/runs"}.`;
 const node = (ic: string, title: string, sub: string, tone = "") => `<div class="node ${tone}"><span class="ic">${icon(ic, 22)}</span><b>${esc(title)}</b><span>${esc(sub)}</span></div>`;
@@ -80,9 +83,9 @@ const nums = (items: [string, string][]) => `<div class="nums">${items.map(([v, 
 const docsLi = (title: string, docs: { label: string; href: string }[]) => `<li>${esc(title)}: ${docs.map((d) => `<a class="pf" href="${esc(d.href)}" target="_blank" rel="noopener">${esc(d.label)} ↗</a>`).join(" · ")}</li>`;
 const plainLi = (t: string) => `<li>${esc(t)}</li>`;
 
-function shell(run: AgentRun, o: { top?: string; underTop?: string; label?: string; title: string; description: string; logo: string; h1: string; picture: string; flowClass?: string; nums: string; line: string; extra?: string; folds: string; proofHash: string; js?: string }): string {
+function shell(run: AgentRun, o: { intro?: string; lead?: string; top?: string; underTop?: string; label?: string; title: string; description: string; logo: string; h1: string; picture: string; flowClass?: string; nums: string; line: string; extra?: string; folds: string; proofHash: string; js?: string }): string {
   const body = `<main class="pp"><div class="wrap">
-  ${o.top ? `<div class="awrb">${o.top}</div>` : ""}${o.underTop ?? ""}
+  ${o.intro ? `<p class="vintro">${esc(o.intro)}</p>` : ""}${o.lead ?? ""}${o.top ? `<div class="awrb">${o.top}</div>` : ""}${o.underTop ?? ""}
   <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(o.label ?? run.label)}</span><h1>${esc(o.h1)}</h1></div>
   ${o.flowClass ? `<div class="flow card ${o.flowClass}">${o.picture}</div>` : `<div class="flow card" role="img" aria-label="${esc(`How ${o.title} fits in, step by step`)}">${o.picture}</div>`}
   ${o.nums}
@@ -112,9 +115,30 @@ export function metalStoryHtml(st: MetalStory): string {
       st.mandates.map((m) => ext(m.proof, `${AGENT_NAME(m.agent)} ${m.cap}${m.how === "bound" ? ", after Face ID" : ", a payment under it"}`))),
     block("receipt", "", `${p.total} Metal payments, each its own transaction`, esc(`${p.sales} sales · ${p.purchases} supplier purchases · ${p.refunds} refunds · ${p.sweeps} sweep`), [ext(p.account), ext(p.checked)]),
     ...(r ? [block("ban", "bad", `#${r.seq} refused on chain`, `${esc(`${r.amount} over the ${r.cap} cap`)}: <code>${esc(r.code)}</code>; nothing moved`, [ext(r.proof)], refusalNote(r))] : []),
-    ...(x ? [block("scan-face", "ok", `Mandates replaced after Face ID`, esc(`${x.proposal}: the CFO's Face ID + a labelled test passkey${x.revoked ? `; #${x.revoked.seq} on the old mandate: ${x.revoked.code}` : ""}`),
+    // Review 9 Nov: who signs on chain, and who the second approver was, said where the card is.
+    ...(x ? [block("scan-face", "ok", `Mandates replaced after Face ID`, esc(`${x.proposal}: Face ID in Purser + a build-tool test passkey; the owner key signed on chain${x.revoked ? `. #${x.revoked.seq} on the old mandate: ${x.revoked.code}` : ""}`),
       x.steps.map((s) => ext(s.proof, `${AGENT_NAME(s.agent)} ${s.cap}`)))] : []),
   ].join("");
+}
+
+/**
+ * Every Metal transaction of the main run, one line each (review 9 Nov: "86 payments, each its own transaction" could not
+ * be clicked one by one). From the trace derived from the main run's ledger (docs/demo/main-run-trace.json), which the
+ * tests hold to the record; no chain call.
+ */
+/** The main run's Metal transactions as a list on GitHub (made by metalTxList(), held to the trace by its test). */
+export const METAL_TX_LIST = "docs/runs/2026-11-03-main-run-metal-transactions.md";
+/** That list as Markdown. */
+export function metalTxList(): string {
+  const txs = metalTxs();
+  return `# The main run's ${txs.length} Metal transactions (3 November 2026)\n\nEvery Metal payment of the main run, one line each, with its link to Metal's testnet explorer. Derived from\n[the trace](../demo/main-run-trace.json) of the main run's ledger; each one is also checked against the chain in\n[the data check](2026-11-03-main-run-data-qa.md). Test money only. Made by \`metalTxList()\` in \`src/redesign/partners.ts\`.\n\n${txs.map((t, i) => `${i + 1}. ${t.what}: [\`${t.tx}\`](${EXPLORER}/tx/${t.tx})`).join("\n")}\n`;
+}
+
+export function metalTxs(): { what: string; tx: string }[] {
+  const trace = JSON.parse(readFileSync(new URL("../../docs/demo/main-run-trace.json", import.meta.url), "utf8")) as { payments: { kind: string; ref: string; amount: string; currency: string; rail: string; rail_id: string | null; at: string }[] };
+  const word: Record<string, string> = { sale: "Sale", purchase: "Supplier purchase", refund: "Refund", sweep: "Sweep" };
+  return trace.payments.filter((p) => p.rail === "metal" && typeof p.rail_id === "string" && /^0x[0-9a-f]{64}$/.test(p.rail_id))
+    .map((p) => ({ what: `${word[p.kind] ?? p.kind} ${/^\d+$/.test(p.ref) ? `#${p.ref}` : p.ref}, ${p.amount} test ${p.currency === "USDZ" ? "USD" : p.currency}, ${p.at.slice(11, 19)} UTC`, tx: p.rail_id! }));
 }
 
 export function metalPage(run: AgentRun = agentRun()): string {
@@ -131,6 +155,7 @@ export function metalPage(run: AgentRun = agentRun()): string {
     line: "Figures from the main run's record; links to Metal's testnet explorer.",
     // The one canonical set (jury review, 6 Nov, #5), first in the proof: the top counts the Metal ones.
     folds: fold("The live proof, with every tx", [...(pay.sums && pay.onChain === st.payments.total ? [plainLi(`${pay.line}.`)] : []), ...p.metal])
+      + fold(`All ${metalTxs().length} transactions`, [`<li>${ext({ label: "Each with its link to the explorer", href: `${REPO_BLOB}${METAL_TX_LIST}` })}</li>`])
       + fold("Beyond the kit: separate runs, each dated (not the main run)", [...beyond,
         plainLi("In the main run, Face ID approves the change in Purser and the account's owner key, held by Purser's runner, signs the replace on chain; passkeys signing on chain themselves ran separately (1 November, above).")])
       + fold("The Metal features we use, and their docs", used.map((f) => docsLi(f.title, f.docs)))
@@ -138,6 +163,13 @@ export function metalPage(run: AgentRun = agentRun()): string {
       + fold("Archive", [`<li><a class="pf" href="metal/report">The Dispute desk's evidence report (30 October)</a></li>`]),
   });
 }
+
+/** The payment-acceptance run of 10 November, as it ran (docs/runs/2026-11-10-payment-acceptance-sandbox.md). */
+export const CARD_IN_LINE = "Money in by card, a separate sandbox run: a test customer paid a Northwind invoice with Airwallex's sandbox test card, and Purser booked it only after Airwallex reported PaymentIntent int_sgpv9bnppho0sezgl4a SUCCEEDED. Test money.";
+
+/** The connected-accounts runs of 10 November, as they ran (docs/runs/2026-11-10-connected-accounts-sandbox.md). */
+export const TWO_LOCKS_LINE = "Two locks on one payout, a separate sandbox run: after the CFO's passkey (a labelled test passkey) signed the exact terms, Airwallex's own approval workflow held transfer 4074d684-4704-406c-a527-2832753baf4f (EUR 240.00, the signed hash in its metadata) IN_APPROVAL; the web-app approval was not completed, so it is not paid. Test money.";
+export const CONNECTED_LINE = "Purser as an Airwallex platform, a separate sandbox run: a test company's own connected account acct_SC-QD89fOneAeqaRFgOymw opened through Purser and made ACTIVE (verification simulated), then a EUR 5.00 payout on its behalf (a9460dba-f31b-4111-be58-6d9a9e71adb1) carried Purser's fee as an application fee, accepted by Airwallex at exactly EUR 0.05; PAID by the sandbox's simulation. Test money.";
 
 export function airwallexPage(run: AgentRun = agentRun()): string {
   const p = partnerProof(run), st = stops(run.record), money = moneyOf(run);
@@ -150,7 +182,8 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
   // Airwallex, read back (section B): the CFO's hash with the payment, and each card's controls beside the CFO policy.
   const hash = hashTravel(run.record), cards = cardsReadback(), rows = cards ? cardControlRows(run.record, cards) : [];
   // awx-1 (7 Nov): the Airwallex-only run, a separate world, dated and labelled, below the main run's read-backs.
-  const awx1 = awxRunBlock();
+  const awx1Rec = awxRun();
+  const awx1 = awxRunBlock(awx1Rec);
   // The Airi run (7 Nov): Visa Intelligent Commerce via Airwallex's Airi, a separate world, dated and labelled.
   // vic-2 (7 Nov): what Purser adds around Airi, under the first Airi run.
   const airi = airiRunBlock() + vic2RunBlock(undefined, { short: true });
@@ -158,15 +191,17 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
   return shell(run, {
     title: "Airwallex", description: "How Purser uses Airwallex: earnings booked once final, the euro licence paid by SWIFT after the CFO's Face ID, card limits the bank enforces.",
     logo: LOGO.airwallex, h1: "The bank side of the agents", proofHash: "airwallex",
-    picture: [node("zap", "Metal earnings", "final on chain", "metal"), arrow, node("landmark", booked ? `${booked.amount} USD booked` : "Booked at Airwallex", "after finality", "awx"), arrow,
+    picture: [node("zap", "Metal earnings", "final on chain", "metal"), arrow, node("landmark", booked ? `${booked.amount} USD booked` : "Booked at Airwallex", "simulated deposit", "awx"), arrow,
       node("scan-face", "CFO · Face ID", "approves the invoice"), arrow, ...(fx ? [node("arrow-left-right", `${fx.buy} by FX`, "only the shortfall", "awx"), arrow] : []),
-      node("circle-check", licence ? `${eur} PAID by SWIFT` : "Paid by SWIFT", licence ? `${t.faceToPaid !== null ? `${t.faceToPaid} s after Face ID, ${SANDBOX_SETTLED} · ` : ""}Airwallex ${licence.proof.label.replace(/^Airwallex /, "")}` : "", "ok")].join(""),
-    nums: nums([[booked?.amount ?? "0", "USD booked after finality"], [eur || "0", "licence paid by SWIFT"], ...(fx ? [[fx.buy.replace(/^EUR /, "€").replace(/\.00$/, ""), "bought by FX for the shortfall"] as [string, string]] : []), [String(st.tapDeclines), "card decline at the limit (TAP run)"], ...(earlier ? [[String(earlier), "earlier attempt, nothing paid"] as [string, string]] : [])]),
-    line: "Airwallex enforces each card's limit itself, and pays an invoice only after the CFO's Face ID.",
+      node("circle-check", licence ? `${eur} by SWIFT, accepted` : "SWIFT, accepted", licence ? `Airwallex accepted it with the signed hash; ${SANDBOX_SETTLED}` : "", "ok")].join(""),
+    nums: nums([[booked?.amount ?? "0", "USD booked after finality"], [eur || "0", "licence paid by SWIFT"], ...(fx ? [[fx.buy.replace(/^EUR /, "€").replace(/\.00$/, ""), "bought by FX for the shortfall"] as [string, string]] : []), [String(st.tapDeclines + (awx1Rec?.declines_met.length ?? 0)), "card declines by Airwallex (TAP run and awx-1)"], ...(earlier ? [[String(earlier), "earlier attempt, nothing paid"] as [string, string]] : [])]),
+    line: "Purser pays an invoice only after the CFO's Face ID; Airwallex enforces each card's limit itself.",
     extra: readBack,
     // Proof's "Policy and card side by side" opens the cards' fold here (#controls, or one card's #card-<agent>).
     ...(rows.length || airi ? { js: OPEN_TARGET_JS } : {}),
-    folds: fold("The live proof, with every Airwallex id", p.airwallex) + fold("The Airwallex features we use, and their docs", used.map((f) => docsLi(f.title, f.docs)))
+    // Payment acceptance, enabled on our sandbox 10 Nov (docs/runs/2026-11-10-payment-acceptance-sandbox.md): a separate run.
+    folds: fold("The live proof, with every Airwallex id", [...p.airwallex, plainLi(CARD_IN_LINE), plainLi(CONNECTED_LINE), plainLi(TWO_LOCKS_LINE)])
+      + fold("The Airwallex features we use, and their docs", used.map((f) => docsLi(f.title, f.docs)))
       + fold("What is simulated", [plainLi("The Airwallex sandbox, with test money only."),
         ...(licence ? [plainLi(`The SWIFT payout's settlement: Purser moves the sandbox transfer to SENT, then PAID, through Airwallex's simulation API${t.faceToPaid !== null ? `; the ${t.faceToPaid} s are measured from the CFO's Face ID to PAID` : ""}.`)] : []),
         ...money.filter((e) => e.earlier).map((e) => plainLi(earlierLine(e)))]),
@@ -188,6 +223,9 @@ export function visaLabels(run: AgentRun, tap: NonNullable<ReturnType<typeof tap
   });
 }
 
+/** /visa's first line: the Visa Award entry in plain words, only what ran live (the Airi run, 7 Nov). */
+export const VISA_ENTRY_LINE = "Purser is entered for the Metal Award and the Visa Award. The Visa entry is this live run of Visa Intelligent Commerce through Airwallex's Airi, with a test card in Airwallex's sandbox.";
+
 export function visaPage(run: AgentRun = agentRun()): string {
   const tap = tapRun(), p = partnerProof(run), own = ownTap(run.record);
   const buy = own ?? tap?.steps.find((x) => x.approved && x.model), decline = tap?.steps.find((x) => !x.approved);
@@ -195,10 +233,16 @@ export function visaPage(run: AgentRun = agentRun()): string {
   // the same block as /airwallex, its heading an h2 here, since it comes before the page's h1.
   const airi = airiRunBlock(undefined, { h: "h2" });
   return shell(run, {
+    // One plain sentence first (Max, 10 Nov): what the Visa Award entry is, in words a juror reads at a glance.
+    ...(airi ? { intro: VISA_ENTRY_LINE } : {}),
+    // First the overview (Max, 10 Nov: more Visa, fewer words): the flow in four nodes and the three Visa runs as cards.
+    lead: visaOverviewBlock(),
     top: airi,
-    // Under it, how a VIC purchase runs (7 Nov): seven steps, purchase B's ids, C's branch (src/redesign/vicFlow.ts).
-    underTop: airi ? vicFlowBlock() + vic2RunBlock(undefined, { fold: false }) : "",
-    title: "Visa TAP", description: "The Sourcing agent signs its card checkout with Visa's Trusted Agent Protocol before its Airwallex card pays.",
+    // Under it, how a VIC purchase runs (7 Nov): seven steps, purchase B's ids, C's branch (src/redesign/vicFlow.ts);
+    // the second Airi run in the same padded column as the first (its card touched the page edge outside it), then the
+    // TAP run's anchor, which the overview's TAP card links to.
+    underTop: airi ? `${vicFlowBlock()}<div class="awrb">${vic2RunBlock(undefined, { fold: false })}</div><span id="${VISA_TAP_ID}"></span>` : "",
+    title: "Visa", description: "Visa Intelligent Commerce through Airwallex's Airi, run live in the Airwallex sandbox: above the limit, the agent gets a single-use Visa credential only after the CFO's Face ID. Visa TAP below, as an extra.",
     logo: LOGO.visa, h1: "The agent signs before it pays", proofHash: "airi-run",
     picture: [node("package", "Agent signs", buy?.model ? `Sourcing · Claude ${family(buy.model)}` : "TAP signature"), arrow,
       node("shield-check", own ? "Both signatures verified" : "Reference verifier", own ? "by our layer, in this run" : `Visa's, commit ${tap?.commit ?? "16d59bd"}`), arrow,

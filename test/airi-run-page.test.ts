@@ -8,6 +8,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
+import { VISA_ENTRY_LINE } from "../src/redesign/partners.js";
 import { AIRI_A_SENTENCE, AIRI_BADGES, AIRI_CHECKS_URL, AIRI_CREDENTIAL, AIRI_RUN_FILE, AIRI_RUN_LABEL, AIRI_RUN_LOG, AIRI_SUMMARY, airiHeading, airiRun, airiRunBlock, airiRunHtml, airiRunSummary, type AiriRunRecord } from "../src/redesign/airiRun.js";
 
 const RAW = readFileSync(AIRI_RUN_FILE, "utf8");
@@ -22,9 +23,9 @@ const inSight = (html: string) => text(block(html).replace(/<details[\s\S]*?<\/d
 const PAGES = ["airwallex", "visa", "proof"] as const;
 /** The owner's copy (7 Nov), word for word. */
 const HEADING = "Visa Intelligent Commerce via Airwallex's Airi: a live run (7 Nov)";
-const SUMMARY = "Agents paid with a single-use Visa (VIC) credential from Airi: within the limit on their own, above it only after the CFO's Face ID, and a disallowed merchant was refused by Purser before Airi was asked.";
+const SUMMARY = "Agents paid with a single-use Visa (VIC) credential from Airi, each purchase confirmed by the cardholder's passkey: within Purser's limit without the CFO, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.";
 const A_SENTENCE = "Within Purser's limit, no Purser approval is needed. Airi itself asks the cardholder to confirm each purchase with a passkey.";
-const BADGES = ["✓ Paid alone", "✓ Paid after Face ID", "✕ Refused by Purser"];
+const BADGES = ["✓ Within the limit", "✓ Paid after Face ID", "✕ Refused by Purser"];
 const CHECKS_URL = "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-07-vic-1.md#checks-the-records-checks";
 const buy = (s: string) => rec.purchases.find((p) => p.step === s)!;
 /** No one-time Airi link, viewer or runner key, card-like number, passkey label or credential id. */
@@ -66,7 +67,8 @@ describe("the Airi run on the site", () => {
     for (const name of ["airwallex", "visa"] as const) {
       expect(block(pages[name]!)).toContain('<details class="fold" id="airi-run-steps"><summary>Details</summary>');
       // The five checks named in the fold, each with its result, from the record.
-      for (const [k, c] of Object.entries(rec.checks)) expect(text(block(pages[name]!))).toContain(`${k} ✓ ${c.detail.charAt(0).toUpperCase()}${c.detail.slice(1)}`);
+      // Each check in words (its key only as the item's title, jargon out: 10 Nov).
+      for (const [k, c] of Object.entries(rec.checks)) { expect(text(block(pages[name]!))).toContain(`✓ ${c.detail.charAt(0).toUpperCase()}${c.detail.slice(1)}`); expect(block(pages[name]!)).toContain(`title="${k}"`); }
     }
     expect(block(pages.proof!)).toContain('href="airwallex#airi-run-steps"');
     expect(text(block(pages.proof!))).toContain("Details: every step and id");
@@ -128,7 +130,10 @@ describe("the Airi run on the site", () => {
     // and the Visa Award"; nowhere else on these pages, and never with TAP.
     expect(text(pages.home!).match(/Visa Award/g)).toHaveLength(1);
     expect(text(pages.home!)).toContain("entered for the Metal Award and the Visa Award");
-    for (const name of PAGES) expect({ name, award: /Visa Award/.test(text(pages[name]!)) }).toEqual({ name, award: false });
+    // Since 10 Nov (Max: we compete for the Visa Award, keep it visible) /visa opens with one plain sentence naming the
+    // entry, the Kit line's words, then the run; nowhere else on these pages.
+    expect(text(pages.visa!)).toContain(VISA_ENTRY_LINE);
+    for (const name of PAGES) expect({ name, award: /Visa Award/.test(text(pages[name]!).split(VISA_ENTRY_LINE).join(" ")) }).toEqual({ name, award: false });
     // The record and the run log too: ids, hashes and codes only.
     for (const [name, body] of [["record", RAW], ["run log", LOG]] as const) {
       for (const re of PRIVATE) expect({ name, re: String(re), found: re.exec(body)?.[0] ?? null }).toEqual({ name, re: String(re), found: null });

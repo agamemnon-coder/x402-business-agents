@@ -657,7 +657,7 @@ CREATE TABLE IF NOT EXISTS receipts (
 CREATE TABLE IF NOT EXISTS airwallex_events (
   event_id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  object TEXT NOT NULL CHECK (object IN ('card_transaction', 'card', 'transfer', 'conversion', 'deposit', 'other')),
+  object TEXT NOT NULL CHECK (object IN ('card_transaction', 'card', 'transfer', 'conversion', 'deposit', 'payment_intent', 'other')),
   object_id TEXT,
   status TEXT,
   amount_cents INTEGER,

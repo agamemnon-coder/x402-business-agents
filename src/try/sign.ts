@@ -23,7 +23,7 @@
 
 import { esc, icon, iconSet, page } from "../redesign/ui.js";
 import { REPO_URL } from "../submission/deck.js";
-import { FILM_URL } from "../config/brand.js";
+import { designPartnerHtml, DESIGN_PARTNER_URL, FILM_URL } from "../config/brand.js";
 import { cfoApproval, recordedQuote, tryLocks } from "./examples.js";
 import { RECEIPT_FORMAT } from "./receipt.js";
 import { AGENTS, MCC_WORDS } from "../config/policy.js";
@@ -56,7 +56,7 @@ export const TRY_SIGN_SCREENS = {
     sign: "Sign with Face ID",
     terms: "Show the exact terms",
     /** The payment a rule stopped in this test world (jury review, 7 Nov, #6: said as the test it is), and a real example. */
-    other: "Purser stopped a test payment in your world just now",
+    other: "Purser's rule also stopped an over-limit invoice in your world",
     real: "see a real example ↗",
     opening: "Opening your test world…",
     /** The fold with the agents' steps, calls and plan (Max, 7 Nov). */
@@ -91,6 +91,8 @@ export const TRY_SIGN_SCREENS = {
   trick: {
     head: "Try to trick the agent.",
     lead: "Send your agent a fake invoice",
+    /** Review 9 Nov, #1: the step had no visible instruction, only the chips. */
+    pick: "Pick a fake invoice to send to your agent.",
     /** Max, 7 Nov: true whether the agent was fooled or not. */
     decides: "Purser's code checks it.",
     did: "What the agent did",
@@ -436,6 +438,7 @@ ul.locks1 li.chg { font-weight: 700; } ul.locks1 li.chg .i { color: var(--accent
 .next .nv { font-weight: 700; } .next.alone .nv { color: var(--ok); }
 .worst.big { font-size: clamp(19px, 2.2vw, 22px); }
 nav.end { display: grid; gap: 4px; }
+nav.end p.partner { margin: 12px 0 0; text-align: center; font-weight: 650; } nav.end p.partner a { color: var(--accent); }
 nav.end .btn { justify-content: center; min-height: 56px; font-size: 17px; }
 .pill.alone { white-space: normal; background: var(--ok-soft, var(--accent-soft)); color: var(--ok); justify-self: start; }
 .pill.said-before { white-space: normal; justify-self: start; }
@@ -480,7 +483,8 @@ nav.end .btn { justify-content: center; min-height: 56px; font-size: 17px; }
 .lk dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 10px; margin: 0; font-size: 14.5px; }
 .lk dt { color: var(--muted); } .lk dd { margin: 0; font-weight: 650; overflow-wrap: anywhere; } .lk dd.chg { color: var(--accent); }
 .others { display: grid; gap: 12px; }
-/* The diagram: one policy, three locks; the part of it each screen is about lights up. Below 1024 px it is hidden. */
+/* The diagram: one policy, three locks; the part of it each screen is about lights up. Below 1024 px it is hidden
+   (a one-row phone version pushed screen 1 past its word budget at 360 px; the screens name the locks themselves). */
 .diagram { display: none; }
 @media (min-width: 1024px) {
   .story { grid-template-columns: minmax(0, 1fr) minmax(0, 420px); gap: 28px; max-width: 1140px; }
@@ -1511,6 +1515,8 @@ const JS = `
   // ── Screen 4: try to trick the agent. A fixed fake invoice goes to the server, which runs Purser's own fraud and
   // injection code on it (worker/src/trick.ts); the page shows the invoice, the fooled agent's words and the verdict. ──
   function trick(attack) {
+    // The instruction has done its job once an invoice is picked; the result says the rest (and keeps the screen short).
+    var kp = $("k-pick"); if (kp) kp.hidden = true;
     document.querySelectorAll("#trick-chips .chip").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.attack === attack)); b.disabled = true; });
     status("k2-status", "Purser is checking the invoice…");
     return post("trick", { token: S.token, attack: attack }).then(function (q) {
@@ -1621,11 +1627,12 @@ const li = (lines: readonly string[]) => lines.map((l) => `<li>${esc(l)}</li>`).
 /** €2,000 for 2000.00, as the rule's chips and lines write it. */
 const euro = (s: string) => { const [i, c] = s.split("."); return `€${i!.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}${c && c !== "00" ? `.${c}` : ""}`; };
 
-/** The page's own style: its layout, the diagram's steps and the motion pass (a test reads every duration in it). */
-export const trySignCss = () => CSS + DIAGRAM_STEPS + MOTION;
+/** The page's own style: its layout, the diagram's steps, the motion pass (a test reads every duration in it) and the
+ * dark stage that matches Home's demo card. */
+export const trySignCss = () => CSS + DIAGRAM_STEPS + MOTION + STAGE;
 
 /** The page, its links and assets absolute (it answers at /try/sign, one level down). */
-export function trySignPage(): string {
+export function trySignPage(partnerUrl: string = DESIGN_PARTNER_URL): string {
   const locks = tryLocks().map((l) => ({ ...l, href: /^https?:\/\//.test(l.href) ? l.href : `/${l.href}` }));
   const W = TRY_SIGN_SCREENS;
   const scr = (n: number, inner: string, extra = "") => `<section class="card scr" id="scr-${n}" data-screen="${n}"${n === 0 ? "" : " hidden"}${extra}>\n${inner}\n</section>`;
@@ -1678,6 +1685,7 @@ ${scr(3, `  <h2 tabindex="-1" id="s3-head">${esc(W.cheat.head)}</h2>
   </div></details>
   <div class="bar"><button class="btn primary big" type="button" id="go-trick" data-world="1">${esc(W.cheat.next)}${icon("arrow-right", 20)}</button></div>`)}
 ${scr(4, `  <h2 tabindex="-1" id="k-head">${esc(W.trick.head)}</h2>
+  <p class="q" id="k-pick">${esc(W.trick.pick)}</p>
   <div class="chips" id="trick-chips" role="group" aria-label="${esc(W.trick.lead)}">${ATTACKS.map((a) => `<button class="chip" type="button" data-attack="${a}" data-world="1" aria-pressed="false">${esc(TRICKS[a].label)}</button>`).join("")}</div>
   <p class="status" id="k2-status" aria-live="polite"></p>
   <div class="tricked" id="k-result" hidden aria-live="polite">
@@ -1735,7 +1743,7 @@ ${scr(6, `  <h2 tabindex="-1" id="s5-head">${esc(W.alone.head)}</h2>
 ${scr(7, `  <h2 tabindex="-1" id="d-head">${esc(W.done.head)}</h2>
   <p class="lead1">${esc(W.done.lead)} <span id="d-list"></span></p>
   <div class="chainbox" id="c-box" hidden><p class="cline"><span>${esc(W.done.chain.label)}</span> <b id="c-len"></b> · head <code id="c-head"></code></p><button class="btn" type="button" id="c-verify" data-world="1">${icon("link-2", 18)}${esc(W.done.chain.verify)}</button><p class="status" id="c-status" aria-live="polite"></p></div>
-  <nav class="end" id="t-end" aria-label="What next">${TRY_SIGN_END.slice(0, 1).map((e) => `<a class="btn primary big" data-end="0">${icon(e.icon, 18)}${esc(e.label)}</a>`).join("")}<p class="ends">${TRY_SIGN_END.slice(1).map((e, i) => `<a class="btn" data-end="${i + 1}">${icon(e.icon, 18)}${esc(e.label)}</a>`).join("")}</p></nav>
+  <nav class="end" id="t-end" aria-label="What next">${TRY_SIGN_END.slice(0, 1).map((e) => `<a class="btn primary big" data-end="0">${icon(e.icon, 18)}${esc(e.label)}</a>`).join("")}<p class="ends">${TRY_SIGN_END.slice(1).map((e, i) => `<a class="btn" data-end="${i + 1}">${icon(e.icon, 18)}${esc(e.label)}</a>`).join("")}</p>${designPartnerHtml(partnerUrl)}</nav>
   <a id="t-film" hidden></a>`)}
 </div>
 <aside class="card diagram" id="diagram" data-step="1" aria-label="One policy, three locks">
@@ -1855,3 +1863,54 @@ ol.flow[data-state="blocked"] .f-purser .fd { border-color: var(--bad); color: v
 @media (prefers-reduced-motion: reduce) {
   .story *, .story *::before, .story *::after { animation: none !important; transition: none !important; }
 }`;
+
+/** The stage (Max, 10 Nov: "same level as the homepage"): each screen and the diagram sit on the dark stage of Home's demo
+ * card (src/redesign/heroDemo.ts), in both themes: its palette (the site's own dark tokens, so every contrast the dark theme
+ * passes holds here), the violet and orange glow, the faint grid. On it: the progress as Home's step chips; the Face ID
+ * moment as a phone screen whose ring scans once and whose tick draws in; the hash typing in; the refusal shaken and
+ * stamped; the money line Agent → Purser → Airwallex lit with a pulse; the end as a receipt card. Words and behaviour are
+ * unchanged; every motion stays 150 to 400 ms and the reduced-motion pass above turns it all off. */
+export const STAGE = `
+.story .scr, .story .diagram { --bg: #0b0d18; --surface: #12151f; --sunken: #191d2a; --border: #2a2f45; --text: #eef0ff; --muted: #a7adc8; --faint: #8d93b3;
+  --accent: #8b85ff; --accent-soft: #24224d; --ok: #3ccf82; --ok-soft: #12291e; --bad: #ff6b70; --bad-soft: #341a1c; --on-bad: #1a0607;
+  --metal: #2dd4bf; --metal-soft: #0f2a28; --awx: #ff8a4c; --awx-soft: #33200f; --claude: #ef9a76; --claude-soft: #33221b; color-scheme: dark;
+  isolation: isolate; color: var(--text); border-color: rgba(255,255,255,.07);
+  background: radial-gradient(120% 70% at 90% 0%, rgba(139,133,255,.24), transparent 55%), radial-gradient(90% 60% at 0% 100%, rgba(255,138,76,.12), transparent 60%), var(--bg);
+  box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 30px 60px -30px rgba(20,16,80,.55); }
+.story .scr { position: relative; }
+.story .scr::before, .story .diagram::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  background-image: linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px); background-size: 28px 28px;
+  mask-image: radial-gradient(80% 60% at 60% 30%, #000, transparent); -webkit-mask-image: radial-gradient(80% 60% at 60% 30%, #000, transparent); }
+.story .scr .bar { background: var(--bg); border-top-color: rgba(255,255,255,.07); }
+.story .btn.primary { background: linear-gradient(180deg, #a49fff, #8b85ff); color: #0b0d18; border-color: transparent; box-shadow: 0 10px 30px -12px rgba(139,133,255,.7); }
+.story .btn.primary[disabled] { box-shadow: none; }
+.story .chip[aria-pressed="true"] { box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 4px rgba(139,133,255,.14); }
+/* Progress as Home's step chips: the dots grow into pills, the one in hand lit violet, the done ones green. */
+ol.dots { gap: 6px; }
+ol.dots li { position: relative; width: 26px; height: 8px; border-radius: 999px; background: color-mix(in srgb, var(--border) 85%, var(--text)); }
+ol.dots li.on { width: 44px; background: linear-gradient(90deg, #8b85ff, #a49fff); box-shadow: 0 0 0 3px var(--accent-soft), 0 0 14px rgba(139,133,255,.55); }
+ol.dots li.done { background: var(--ok); }
+/* The Face ID moment: the signed tick on a phone screen, its ring scanning once. */
+.story .bigok { position: relative; justify-self: start; padding: 16px 20px 16px 16px; border-radius: 22px; border: 1px solid rgba(255,255,255,.08);
+  background: linear-gradient(180deg, #171a2a, #0f1220); box-shadow: 0 0 0 6px #070810, 0 18px 40px -18px rgba(0,0,0,.8); }
+.story .bigok::before { content: ""; position: absolute; top: 6px; left: 50%; width: 40px; height: 5px; margin-left: -20px; border-radius: 4px; background: #070810; }
+.story .bigok .i { border-radius: 50%; box-shadow: 0 0 0 2px rgba(60,207,130,.35); animation: glow .4s ease-out both, scanring .4s cubic-bezier(.22,1,.36,1) both; }
+@keyframes scanring { from { box-shadow: 0 0 0 12px rgba(139,133,255,0); } 40% { box-shadow: 0 0 0 6px rgba(139,133,255,.45); } to { box-shadow: 0 0 0 2px rgba(60,207,130,.35); } }
+/* The hash you signed: mono on the stage, typed in from the left. */
+.story .hash { background: #0a0c16; border-color: rgba(139,133,255,.35); }
+.story .hash code { color: #d9dbff; animation: typein .4s steps(16, end) both; }
+@keyframes typein { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+/* Refused: the card shakes (above) and the tag is stamped on, rotated, red. */
+.story .refused { background: linear-gradient(180deg, rgba(255,107,112,.14), rgba(255,107,112,.06)); border: 1px solid rgba(255,107,112,.35); }
+.story .refused .tagr { padding: 6px 14px; border-radius: 10px; border: 2px solid var(--bad); background: rgba(255,107,112,.12); color: var(--bad);
+  font: 800 14.5px/1.2 Inter, system-ui, sans-serif; letter-spacing: .02em; transform: rotate(-4deg); animation: stamp .3s cubic-bezier(.2,1.4,.4,1) both; }
+@keyframes stamp { from { opacity: 0; transform: rotate(-4deg) scale(1.6); } to { opacity: 1; transform: rotate(-4deg) scale(1); } }
+/* The money line: Agent → Purser → Airwallex lit, a pulse running along it as the payment goes through. */
+.story ol.flow::before { background: rgba(255,255,255,.08); }
+.story ol.flow::after { background: linear-gradient(90deg, #8b85ff, #3ccf82 55%, #ff8a4c); box-shadow: 0 0 12px rgba(139,133,255,.6); }
+.story ol.flow[data-state="alone"] .fd, .story ol.flow[data-state="signed"] .fd { box-shadow: 0 0 0 4px rgba(60,207,130,.18); }
+.story ol.steps .st.done .sic, .story ol.steps .st[data-state="done"] .sic { box-shadow: 0 0 0 3px rgba(60,207,130,.16); }
+/* The end: a receipt card, mono ids as chips. */
+.story .chainbox { width: 100%; box-sizing: border-box; padding: 16px 18px; border-radius: 18px; border: 1px dashed rgba(139,133,255,.45); background: linear-gradient(180deg, #151832, #0f1220); }
+.story .chainbox code { display: inline-block; padding: 2px 8px; border-radius: 8px; background: rgba(139,133,255,.14); color: #d9dbff; }
+`;

@@ -127,6 +127,16 @@ function migrate(db: DB): void {
       INSERT INTO finality_evidence SELECT tx, block_hash, CASE status WHEN 'CERTIFIED' THEN 'REPORTED' ELSE status END, recorded_at FROM finality_evidence_old;
       DROP TABLE finality_evidence_old;`);
   }
+  // Money in by card (src/airwallex/acceptance.ts): webhook events about a PaymentIntent get their own object.
+  const ae = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'airwallex_events'").get() as { sql: string } | undefined;
+  if (ae && !ae.sql.includes("'payment_intent'")) {
+    db.exec(`ALTER TABLE airwallex_events RENAME TO airwallex_events_old;
+      CREATE TABLE airwallex_events (event_id TEXT PRIMARY KEY, name TEXT NOT NULL,
+        object TEXT NOT NULL CHECK (object IN ('card_transaction', 'card', 'transfer', 'conversion', 'deposit', 'payment_intent', 'other')),
+        object_id TEXT, status TEXT, amount_cents INTEGER, currency TEXT, agrees INTEGER CHECK (agrees IN (0, 1)), outcome TEXT NOT NULL, received_at TEXT NOT NULL);
+      INSERT INTO airwallex_events SELECT event_id, name, object, object_id, status, amount_cents, currency, agrees, outcome, received_at FROM airwallex_events_old;
+      DROP TABLE airwallex_events_old;`);
+  }
   settlementsTable(db);
 }
 

@@ -291,10 +291,9 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   const v = await visitor({ width, scheme, ip: `198.51.${100 + run++}.7` });
   const { page, errors, mobile, height } = v;
 
-  // One flow (Max, 7 Nov): Home's second step leads here, and so does Watch's "Now try it yourself", the way a visitor
-  // comes: they watch the agents first, then try it.
+  // Home's one button leads here (competitive review, 10 Nov), and so does Watch's "Now try it yourself".
   await page.goto(`${local.url}/home`);
-  check(await page.locator('ol.flow a[href="try/sign"]').count() === 1, `${tag}: Home's flow leads to /try/sign`);
+  check(await page.locator('main a.btn.primary[href="try/sign"]').count() === 1, `${tag}: Home's button leads to /try/sign`);
   await page.goto(`${local.url}/watch`);
   const button = page.locator('a.nextstep[href="try/sign"]');
   check(await button.count() === 1, `${tag}: Watch ends in "Now try it yourself", to /try/sign`);
@@ -1068,7 +1067,7 @@ if (!args.live && !ONLY) {
     await page.waitForSelector("#scr-6:not([hidden])");
     await none("screen 6");
     const paid = await page.locator("#s5-next ol.flow .f-paid .fd").evaluate((n: Element) => [getComputedStyle(n).backgroundColor, getComputedStyle(n.closest("ol")!, "::after").transform]) as [string, string];
-    const ok = await page.evaluate(`(() => { const d = document.createElement("i"); d.style.color = "var(--ok)"; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; })()`) as string;
+    const ok = await page.evaluate(`(() => { const d = document.createElement("i"); d.style.color = "var(--ok)"; (document.querySelector("#s5-next ol.flow") || document.body).append(d); const c = getComputedStyle(d).color; d.remove(); return c; })()`) as string;
     check(paid[0] === ok && paid[1] === "none", `${tag}: paid alone: the payment is through the locks and green at once (${paid.join(", ")})`);
     if (width >= 1024) await none("the diagram");
     check(errors.length === 0, `${tag}: 0 console errors (${errors.length}${errors.length ? `: ${errors.join(" | ")}` : ""})`);
