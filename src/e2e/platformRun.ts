@@ -42,7 +42,7 @@ import { FakeAuthenticator } from "../redteam/authenticator.js";
 import { RECEIPT_FORMAT, type TryReceipt } from "../try/receipt.js";
 import { setSetting } from "../world/settings.js";
 import { emlWith, pdfOf } from "./documents.js";
-import type { PlatformOps } from "./platformOps.js";
+import type { FxRate, PlatformOps } from "./platformOps.js";
 import { chainSteps, type E2eStep, type StepData } from "./receiptChain.js";
 import type { WorldCompany } from "./world.js";
 
@@ -73,6 +73,8 @@ export interface PlatformE2EDeps {
   t0Rate: T0Rate;
   /** T:0's functional currency when already read (the live run's pre-check), so the run does not read it again. */
   t0Currency?: { currency: string; atomsPerUnit: number };
+  /** When T:0 books in another currency: the Airwallex rate every EUR entry is converted at, named in its memo. */
+  fx?: FxRate;
   /** Purser's fee in basis points (CFO policy, capped at 100). */
   feeBps: string;
   /** Test money moved into each connected account before its invoices are paid, in cents. */
@@ -158,9 +160,15 @@ async function runCompany(d: PlatformE2EDeps, c: WorldCompany, privPkcs8: string
   // 1. The company's connected account, opened if new, and test money moved into it.
   const acct = await d.platform.ensureAccount(c);
   d.log(`${c.key.padEnd(12)} account ${acct.accountId} ${acct.opened ? "opened" : "existing"}, ${acct.status}`);
-  const funding = await d.platform.fund(acct.accountId, d.fundCents, `e2e-fund-${c.key.toLowerCase()}-${now().toISOString().slice(0, 10).replace(/-/g, "")}`);
-  d.log(`${c.key.padEnd(12)} funded EUR ${(d.fundCents / 100).toFixed(2)} test money: ${funding.id} ${funding.status}`);
+  // Test money: only when the account holds less than the run needs (a re-run never funds twice), under a request id
+  // of this run's own (recorded), so a funding from an earlier run is never mistaken for this one.
   const { rail, sim } = d.railFor(acct.accountId);
+  const heldCents = (await rail.balances()).EUR?.availableCents ?? 0;
+  const fundRequest = `e2e-fund-${c.key.toLowerCase()}-${now().toISOString().slice(0, 16).replace(/[-:T]/g, "")}`;
+  const funding = heldCents >= d.fundCents
+    ? { id: "none", status: `skipped: EUR ${(heldCents / 100).toFixed(2)} already held` }
+    : await d.platform.fund(acct.accountId, d.fundCents, fundRequest);
+  d.log(`${c.key.padEnd(12)} ${funding.id === "none" ? funding.status : `funded EUR ${(d.fundCents / 100).toFixed(2)} test money: ${funding.id} ${funding.status} (request ${fundRequest})`}`);
 
   // 2. Its account binding (signed with the run's key, standing in for Purser Cloud) and Purser's fee in its policy.
   const issued = now().getTime();
@@ -245,7 +253,7 @@ async function runCompany(d: PlatformE2EDeps, c: WorldCompany, privPkcs8: string
 
   // 8. The company's books, as postings tagged with the company and its PUR id (pushed to T:0 with the others').
   const entries = apJournal(db);
-  const postings = toPostings(c, entries);
+  const postings = toPostings(c, entries, d.fx);
 
   // 9. The receipt per payment, and the company's own audit chain checked.
   const audit = verifyAuditChain(db);
@@ -258,7 +266,7 @@ async function runCompany(d: PlatformE2EDeps, c: WorldCompany, privPkcs8: string
   const invs = ids.map((id) => apInvoice(db, id)!);
   const invSteps: E2eStep[] = invs.flatMap((i) => steps.get(i.id) ?? []);
   const allSteps: E2eStep[] = [
-    { kind: "account", at: at(), data: { company: c.name, connected_account: acct.accountId, opened_in_run: acct.opened ? "yes" : "no", status: acct.status, funding: `${funding.id} ${funding.status}`, binding: "signed with the run's own key (a test world's stand-in for Purser Cloud's)" } },
+    { kind: "account", at: at(), data: { company: c.name, connected_account: acct.accountId, opened_in_run: acct.opened ? "yes" : "no", status: acct.status, funding: funding.id === "none" ? funding.status : `${funding.id} ${funding.status} (request ${fundRequest})`, binding: "signed with the run's own key (a test world's stand-in for Purser Cloud's)" } },
     ...invSteps,
     { kind: "signature", at: at(), data: { proposal_id: proposal.proposal_id, kind: proposal.kind, terms_sha256: proposal.terms_sha256, signed_with: TEST_PASSKEY, credential_id: cfo.credentialId } },
     ...transfers.map((t) => ({ kind: "payout", at: at(), data: { transfer_id: str(t.transfer_id), status: t.status, amount: `EUR ${t.amount}`, invoice_no: t.invoice_no, on_behalf_of: acct.accountId, purser_fee: t.fee ? `${t.fee_cur} ${t.fee} (${str(t.fee_status)}) via application_fee_options` : "none" } as StepData })),
@@ -310,11 +318,15 @@ export function apFallback(accounts: Awaited<ReturnType<T0Client["listGlAccounts
 }
 
 /** A company's AP entries as postings, each entry named PUR-<company>-<invoice>-<event> and its memo tagged [<company>]. */
-export function toPostings(c: Pick<WorldCompany, "key">, entries: ApEntry[]): Posting[] {
+export function toPostings(c: Pick<WorldCompany, "key">, entries: ApEntry[], fx?: FxRate): Posting[] {
+  // Each entry's EUR amount (its debits), and the rate it is converted at, go into its memo.
+  const eur = new Map<string, number>();
+  for (const e of entries) { const k = `${e.invoice_id}|${e.event}`; eur.set(k, (eur.get(k) ?? 0) + (e.debit ? toCents(e.debit) : 0)); }
+  const conv = (e: ApEntry) => (fx ? ` · ${e.currency} ${((eur.get(`${e.invoice_id}|${e.event}`) ?? 0) / 100).toFixed(2)} · converted at Airwallex sandbox rate ${fx.rate} ${fx.to} per EUR at ${fx.at}` : "");
   return entries.map((e) => ({
     entry: `PUR-${c.key}-${e.invoice_id}-${e.event}`, date: e.date, account: e.account, account_name: e.account_name,
     debit_cents: e.debit ? toCents(e.debit) : 0, credit_cents: e.credit ? toCents(e.credit) : 0, currency: e.currency, cost_centre: "",
-    ref: `PUR-${c.key}-${e.invoice_id}`, description: `[${c.key}] PUR-${c.key}-${e.invoice_id}: ${e.memo}`, proof: `doc ${e.doc_sha256.slice(0, 16)}`,
+    ref: `PUR-${c.key}-${e.invoice_id}`, description: `[${c.key}] PUR-${c.key}-${e.invoice_id}: ${e.memo}${conv(e)}`, proof: `doc ${e.doc_sha256.slice(0, 16)}`,
   }));
 }
 

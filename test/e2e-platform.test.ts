@@ -9,6 +9,10 @@ import { BudgetSpent, CallBudget } from "../src/e2e/budget.js";
 import { estimateLive } from "../src/e2e/estimate.js";
 import { runPlatformE2E, toPostings, WaitingForAirwallexApproval } from "../src/e2e/platformRun.js";
 import { budgetedReader, dryRunDeps, parserOnly } from "../src/e2e/setup.js";
+import { rateFromAmounts } from "../src/e2e/platformOps.js";
+import { missingFromSchema, payoutBeneficiaryBody } from "../src/airwallex/adapter.js";
+import { RECORDED_BENEFICIARY_SCHEMAS } from "../src/redteam/beneficiarySchemas.js";
+import { FUND_CENTS } from "../src/e2e/setup.js";
 import { verifyReceipt } from "../src/try/receipt.js";
 
 let dir: string;
@@ -21,22 +25,22 @@ describe("the platform end-to-end, dry run", () => {
     const dry = dryRunDeps();
     const s = await runPlatformE2E({ ...dry.deps, dir, now, log: () => undefined });
     expect(s.companies.map((c) => [c.key, c.opened, c.audit.ok])).toEqual([["SANDBOXTEST", false, true], ["BAKKERIJ", true, true], ["FIETSLAB", true, true]]);
-    expect(s.payments.map((p) => p.kind)).toEqual(["supplier_payment", "payment_batch", "payment_batch"]);
+    expect(s.payments.map((p) => p.kind)).toEqual(["supplier_payment", "payment_batch", "supplier_payment"]);
     const transfers = s.payments.flatMap((p) => p.transfers);
-    expect(transfers).toHaveLength(5);
+    expect(transfers).toHaveLength(4);
     for (const t of transfers) { expect(t.status).toBe("PAID"); expect(t.purser_fee).toMatch(/^EUR 0\.0\d SETTLED$/); }
     // Each payout went out on behalf of its own company's connected account, and only there.
     expect([...dry.rails.keys()]).toEqual(["acct_SC-QD89fOneAeqaRFgOymw", "acct_fake_bakkerij", "acct_fake_fietslab"]);
-    expect([...dry.rails.values()].map((r) => r.platformFees.length)).toEqual([1, 2, 2]);
+    expect([...dry.rails.values()].map((r) => r.platformFees.length)).toEqual([1, 2, 1]);
     // T:0: one shared entity, every entry's memo names its company and its PUR id; debits equal credits.
-    expect(s.t0.posted).toBe(10);
+    expect(s.t0.posted).toBe(8);
     const posted = dry.t0.entries;
     for (const e of posted) {
       expect(e.memo).toMatch(/\[(SANDBOXTEST|BAKKERIJ|FIETSLAB)\] PUR-(SANDBOXTEST|BAKKERIJ|FIETSLAB)-AP-\d{4}/);
       const dr = e.lines.filter((l) => l.line_type === "debit").reduce((n, l) => n + l.amount_atoms, 0);
       expect(dr).toBe(e.lines.filter((l) => l.line_type === "credit").reduce((n, l) => n + l.amount_atoms, 0));
     }
-    expect(s.payments.map((p) => p.t0_entries.length)).toEqual([2, 4, 4]);
+    expect(s.payments.map((p) => p.t0_entries.length)).toEqual([2, 4, 2]);
   });
 
   it("every receipt verifies offline: the passkey over the exact terms, then each step from invoice to T:0", async () => {
@@ -105,5 +109,38 @@ describe("the live run's budget", () => {
   it("T:0 postings carry the company and PUR id in their name and memo", () => {
     const p = toPostings({ key: "BAKKERIJ" }, [{ date: "2026-11-10", invoice_id: "AP-0001", event: "payment", account: "2100", account_name: "AP", debit: "3.63", credit: "", currency: "EUR", memo: "x", doc_sha256: "a".repeat(64) }]);
     expect(p[0]).toMatchObject({ entry: "PUR-BAKKERIJ-AP-0001-payment", ref: "PUR-BAKKERIJ-AP-0001", description: "[BAKKERIJ] PUR-BAKKERIJ-AP-0001: x", debit_cents: 363 });
+  });
+
+  it("a T:0 in USD: the rate comes from Airwallex's amounts, and every entry's memo keeps its EUR amount and names the rate and time", () => {
+    expect(rateFromAmounts(10_000, 9_200)).toBe("1.086957");
+    expect(() => rateFromAmounts(10_000, 0)).toThrow();
+    const fx = { rate: "1.086957", to: "USD", at: "2026-11-10T07:00:00.000Z", source: "Airwallex sandbox GET /fx/rates/current" };
+    const p = toPostings({ key: "FIETSLAB" }, [
+      { date: "2026-11-10", invoice_id: "AP-0001", event: "payment", account: "2100", account_name: "AP", debit: "6.05", credit: "", currency: "EUR", memo: "x", doc_sha256: "a".repeat(64) },
+      { date: "2026-11-10", invoice_id: "AP-0001", event: "payment", account: "1200", account_name: "Bank", debit: "", credit: "6.05", currency: "EUR", memo: "x", doc_sha256: "a".repeat(64) },
+    ], fx);
+    for (const x of p) expect(x.description).toBe("[FIETSLAB] PUR-FIETSLAB-AP-0001: x · EUR 6.05 · converted at Airwallex sandbox rate 1.086957 USD per EUR at 2026-11-10T07:00:00.000Z");
+  });
+
+  it("an NL supplier on the LOCAL route: the body carries payment_methods and the bank's name from its BIC (the 10 November refusal)", () => {
+    const b = { name: "Onderdelen Direct B.V.", address: { street: "x", city: "y", postcode: "z", countryCode: "NL" }, method: "LOCAL" as const,
+      bank: { country: "NL", currency: "EUR", accountName: "Onderdelen Direct B.V.", iban: "NL44RABO0123456789", swiftCode: "RABONL2U" } };
+    const body = payoutBeneficiaryBody(b) as { payment_methods: string[]; transfer_methods: string[]; beneficiary: { bank_details: Record<string, string> } };
+    expect(body.payment_methods).toEqual(["LOCAL"]);
+    expect(body.transfer_methods).toEqual(["LOCAL"]);
+    expect(body.beneficiary.bank_details.bank_name).toBe("Coöperatieve Rabobank U.A.");
+    expect(missingFromSchema(RECORDED_BENEFICIARY_SCHEMAS["NL EUR LOCAL"]!, body)).toEqual([]);
+    // A BIC not listed gives no name: the schema check says so instead of a guess.
+    const unknown = payoutBeneficiaryBody({ ...b, bank: { ...b.bank, swiftCode: "ZZZZNL2A" } });
+    expect(missingFromSchema(RECORDED_BENEFICIARY_SCHEMAS["NL EUR LOCAL"]!, unknown)).toEqual(["beneficiary.bank_details.bank_name"]);
+  });
+
+  it("a re-run never funds an account twice: one already holding what the run needs is skipped", async () => {
+    const dry = dryRunDeps();
+    void dry.deps.railFor("acct_SC-QD89fOneAeqaRFgOymw"); // the existing account, funded by an earlier run
+    (dry.rails.get("acct_SC-QD89fOneAeqaRFgOymw")!).bal.EUR.availableCents = FUND_CENTS;
+    const s = await runPlatformE2E({ ...dry.deps, dir, now, log: () => undefined });
+    expect(dry.platform.funded.map((f) => f.accountId)).toEqual(["acct_fake_bakkerij", "acct_fake_fietslab"]);
+    expect(s.companies[0]!.funding).toMatch(/^none skipped: EUR 60\.00 already held$/);
   });
 });
