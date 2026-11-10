@@ -183,6 +183,17 @@ export interface NewPayoutTransfer {
   approvalSha256: string;
   /** Purser as a platform: its fee, taken by Airwallex with this payout (application_fee_options). */
   applicationFee?: ApplicationFee;
+  /**
+   * The paying company, when Airwallex asks for it on the transfer (`payer`): a connected account opened as a sole
+   * trader without a business identifier is refused without the payer's business registration number.
+   */
+  payer?: PayoutPayer;
+}
+
+export interface PayoutPayer {
+  companyName: string;
+  address: { countryCode: string; city: string; postcode: string; street: string };
+  registrationNumber: string;
 }
 
 export interface PayoutRail {
