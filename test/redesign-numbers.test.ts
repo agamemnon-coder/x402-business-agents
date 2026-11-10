@@ -72,7 +72,10 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   .replace(/What Purser adds around Airi: a second live run[\s\S]{0,4000}?run log/g, " ")
   // The intended price (a hypothesis, not a figure of the run): one sentence, its numbers checked against
   // src/business/unitEconomics.ts's inputs in test/unit-economics-hypothesis.test.ts.
-  .replace(PRICE_LINE, " ");
+  .replace(PRICE_LINE, " ")
+  // Home's hero demo (10 Nov): the Airwallex-only run's invoice, dated with its own record; its figures are checked
+  // against docs/demo/airwallex-run.json in test/hero-demo.test.ts.
+  .replace(/\b1\s+Ask\s+2\s+Face ID[\s\S]*?Step 4 is the check every payment runs\./g, " ");
 
 /** Numbers on the page that are not in the record. */
 export const unknownNumbers = (html: string) => (visibleText(html).match(NUM) ?? []).map(norm).filter((n) => !ALLOWED.has(n));

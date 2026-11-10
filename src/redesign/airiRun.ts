@@ -162,7 +162,7 @@ export function airiRunHtml(s: AiriRunSummary | null, o: { h?: "h2" | "h3" } = {
 ${outcomes(s)}
 ${checksLink(s)}
 <details class="fold" id="${AIRI_RUN_STEPS_ID}"><summary>${esc("Details")}</summary>
-<p><b>${esc("The five checks")}</b></p><ul class="awc">${s.checks.map((c) => `<li class="${c.ok ? "" : "no"}"><code>${esc(c.name)}</code> ${esc(c.ok ? "✓" : "✕")} ${esc(c.detail)}</li>`).join("")}</ul>
+<p><b>${esc("The five checks")}</b></p><ul class="awc">${s.checks.map((c) => `<li class="${c.ok ? "" : "no"}" title="${esc(c.name)}">${esc(c.ok ? "✓" : "✕")} ${esc(c.detail)}</li>`).join("")}</ul>
 <p><b>${esc("Every step and id")}</b></p><ul class="awc">${s.lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>
 <p class="src">${esc(s.source)} · <a class="pf" href="${esc(`${REPO_BLOB}${AIRI_RUN_LOG}`)}" target="_blank" rel="noopener">${esc("run log")} ↗</a></p></details></div>`;
 }

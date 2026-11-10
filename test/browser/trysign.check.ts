@@ -291,10 +291,9 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   const v = await visitor({ width, scheme, ip: `198.51.${100 + run++}.7` });
   const { page, errors, mobile, height } = v;
 
-  // One flow (Max, 7 Nov): Home's second step leads here, and so does Watch's "Now try it yourself", the way a visitor
-  // comes: they watch the agents first, then try it.
+  // Home's one button leads here (competitive review, 10 Nov), and so does Watch's "Now try it yourself".
   await page.goto(`${local.url}/home`);
-  check(await page.locator('ol.flow a[href="try/sign"]').count() === 1, `${tag}: Home's flow leads to /try/sign`);
+  check(await page.locator('main a.btn.primary[href="try/sign"]').count() === 1, `${tag}: Home's button leads to /try/sign`);
   await page.goto(`${local.url}/watch`);
   const button = page.locator('a.nextstep[href="try/sign"]');
   check(await button.count() === 1, `${tag}: Watch ends in "Now try it yourself", to /try/sign`);

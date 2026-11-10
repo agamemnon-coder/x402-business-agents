@@ -40,22 +40,20 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines.slice(1, badges).join("\n")).toContain(`[${TRY_IT}](${TRY_SIGN_URL})`);
   });
 
-  it("opens Home under its heading with what Purser is and the three sentences, then the way through in three steps and one button (Max and the jury review, 7 Nov)", () => {
+  it("opens Home under its heading with what Purser is, then one button to /try/sign, the other ways in as text links, and the Airwallex proof (competitive review, 10 Nov)", () => {
     const t = words(hero(HOME));
-    expect(t.startsWith(`${HERO} ${WHAT_IT_IS} ${DIFFERENTIATORS.join(" ")} ${START} ${JUDGE_LINE} → 1 Watch the agents A real run, replayed · about 40 s 2 Try it yourself Sign with your Face ID · about a minute 3 See the proof Every id, checkable`)).toBe(true);
+    expect(t.startsWith(`${HERO} ${WHAT_IT_IS} ${START} Watch the agents · See the proof · ${JUDGE_LINE} Airwallex declined an agent's card over the CFO's limit`)).toBe(true);
     expect(FLOW.map((f) => f.href)).toEqual(["watch", "try/sign", "proof"]);
-    expect(hero(HOME)).toContain('<a href="try/sign">');
-    // One button, the first step's.
+    // One button, to /try/sign: the thing a juror can do in a minute.
     expect(hero(HOME).match(/class="btn[^"]*"/g)).toEqual(['class="btn primary big start"']);
-    expect(hero(HOME)).toContain(`<a class="btn primary big start" href="watch">`);
-    // The three sentences, back under the subtitle (jury review, 7 Nov, #2), each once, as their own list.
-    for (const d of DIFFERENTIATORS) expect(t.split(d).length - 1).toBe(1);
-    expect(hero(HOME)).toContain(`<ul class="three">${DIFFERENTIATORS.map((d) => `<li>${d}</li>`).join("")}</ul>`);
-    // Without /try/sign in the bundle step 2 leads to /try, never to a dead link.
+    expect(hero(HOME)).toContain(`<a class="btn primary big start" href="try/sign">`);
+    // The three sentences stay in the README, the form and the deck; Home leads with the Airwallex proof instead.
+    for (const d of DIFFERENTIATORS) expect(t).not.toContain(d);
+    // Without /try/sign in the bundle the button leads to /try, never to a dead link.
     expect(homePage()).not.toContain('href="try/sign"');
-    expect(hero(homePage())).toContain('<a href="try">');
-    // The judge's tour: a text link under the one button, only where /judge exists (Max, 7 Nov).
-    expect(hero(HOME)).toContain(`<p class="judgeline"><a href="judge">${JUDGE_LINE} →</a></p>`);
+    expect(hero(homePage())).toContain('<a class="btn primary big start" href="try">');
+    // The judge's tour: a text link beside the others, only where /judge exists (Max, 7 Nov).
+    expect(hero(HOME)).toContain(`<a href="judge">${JUDGE_LINE}</a>`);
     expect(homePage()).not.toContain('href="judge"');
   });
 

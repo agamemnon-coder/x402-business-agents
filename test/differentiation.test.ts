@@ -70,23 +70,23 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     expect(readme.indexOf(KIT11_RUN_LINE.replace(/\.$/, ""))).toBeGreaterThan(readme.indexOf("[![CI]"));
   });
 
-  it("open Home under its heading: what Purser is and the three sentences, then the way through (Max and the jury review, 7 Nov)", () => {
+  it("open Home under its heading: what Purser is, the one button, the Airwallex proof (competitive review, 10 Nov)", () => {
     const html = PAGES.home!;
     const hero = /<section class="hero">[\s\S]*?<\/section>/.exec(html)![0];
     const t = words(hero);
-    // Max, 7 Nov: the one button right under the heading and its sentences, then the three steps; the three sentences
-    // back under the subtitle since the jury review of 7 Nov (#2).
-    expect(t.startsWith(`AI agents spend. You sign off. ${WHAT_IT_IS} ${DIFFERENTIATORS.join(" ")} Start: watch the agents`)).toBe(true);
-    expect(t).toContain("1 Watch the agents");
+    // The one button, to /try/sign, right under what Purser is; the three sentences stay in the README and the form.
+    expect(t.startsWith(`AI agents spend. You sign off. ${WHAT_IT_IS} Try it: sign with your Face ID`)).toBe(true);
+    expect(t).toContain("Watch the agents");
     expect(t).toContain(`${CAVEAT_LINE} Details →`);
     // The caveat's link opens the footer's "What's real?", which lists what the line names.
     expect(hero).toContain('<a href="#real" data-real>Details →</a>');
     expect(html).toContain('<details class="real" id="real">');
     const real = words(/<details class="real"[\s\S]*?<\/details>/.exec(html)![0]);
     for (const x of ["customer", "supplier", "settlement", "second approver", "Test money"]) expect({ x, has: real.includes(x) }).toEqual({ x, has: true });
-    // The Kit 11 badges stay, beside the picture.
-    expect(hero).toContain(KIT_LINE.split(" · entered")[0]!);
-    // Without /try/sign in the bundle step 2 leads to /try, never to a dead link.
+    // The Kit 11 line and the awards: under the first screen, never in the hero (Max, 10 Nov).
+    expect(hero).not.toContain(KIT_LINE.split(" · entered")[0]!);
+    expect(html).toContain(KIT_LINE.split(" · entered")[0]!);
+    // Without /try/sign in the bundle the button leads to /try, never to a dead link.
     expect(homePage()).not.toContain('href="try/sign"');
   });
 
