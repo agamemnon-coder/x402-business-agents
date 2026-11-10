@@ -9,7 +9,7 @@ import { EXPLORER_TX } from "../metal/network.js";
 import { decisionsOf, loadRecord, type AgentId, type RunRecord } from "./run.js";
 import { loadTrace } from "./trace.js";
 import type { RunTrace } from "../demo/runTrace.js";
-import { esc, page } from "./ui.js";
+import { avatarHtml, esc, icon, page } from "./ui.js";
 
 export const AGENT_IDS = Object.keys(AGENT_DISPLAY) as AgentId[];
 export const agentHref = (id: AgentId) => `agents/${id}`;
@@ -56,41 +56,85 @@ const time = (iso: string) => iso.slice(11, 19);
 const KIND: Record<string, string> = { purchase: "Supplier purchase", refund: "Refund", sweep: "Sweep", card: "Card charge", sale: "Sale", transfer: "SWIFT transfer" };
 const SHOWN = 8;
 
-const CSS = `.agentp h1 { margin: 24px 0 4px; }
-.agentp .job { color: var(--muted, #5b6474); margin: 0 0 16px; }
-.agentp .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px; margin-bottom: 14px; }
+const CSS = `.agentp h1 { margin: 0; }
+.agentp .hd { display: flex; align-items: center; gap: 14px; margin: 24px 0 6px; }
+.agentp .hd .av { width: 52px; height: 52px; } .agentp .hd .av .i { width: 26px; height: 26px; }
+.agentp .job { color: var(--muted); margin: 0 0 6px; }
+.agentp .models { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 6px; }
+.agentp .label { font-size: 13px; color: var(--muted); margin: 0 0 16px; }
+.agentp .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 12px; margin-bottom: 14px; }
+.agentp .tiles .tile { padding: 16px 18px; } .agentp .tiles .tile:hover { transform: none; border-color: var(--border); }
+.agentp .tiles .v { font-size: clamp(26px, 2.8vw, 34px); }
+.agentp .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; margin-bottom: 14px; }
 .agentp .card { padding: 16px 18px; }
-.agentp h2 { font-size: 16px; margin: 0 0 8px; }
-.agentp dl { display: grid; grid-template-columns: minmax(0, 9em) minmax(0, 1fr); gap: 4px 12px; margin: 0; font-size: 14px; }
-.agentp dt { color: var(--muted, #5b6474); }
-.agentp dd { margin: 0; overflow-wrap: anywhere; }
-.agentp ol, .agentp ul { margin: 0; padding-left: 18px; }
-.agentp li { margin: 0 0 10px; overflow-wrap: anywhere; }
-.agentp .src { font-size: 12px; color: var(--muted, #5b6474); }
-.agentp .label { font-size: 13px; color: var(--muted, #5b6474); }
-.agentp .others a { margin-right: 14px; }
-.agentp details summary { cursor: pointer; margin: 6px 0; }`;
+.agentp h2 { font-size: 16px; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+.agentp h2 .i { color: var(--muted); }
+.agentp .kv { display: flex; flex-wrap: wrap; gap: 10px 22px; margin: 0 0 10px; }
+.agentp .kv div { display: flex; flex-direction: column; } .agentp .kv b { font-size: 20px; font-weight: 750; font-variant-numeric: tabular-nums; } .agentp .kv span { font-size: 13px; color: var(--muted); font-weight: 600; }
+.agentp .gauge { margin: 4px 0 8px; }
+.agentp .gauge .bar { display: block; width: 100%; height: 10px; }
+.agentp .gauge .bar .bg { fill: var(--sunken); } .agentp .gauge .bar .fg { fill: var(--awx); }
+.agentp .gauge .gl { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.agentp .chip { display: inline-flex; font: 600 13px/1.3 Inter, system-ui, sans-serif; padding: 3px 9px; border-radius: 999px; background: var(--sunken); color: var(--muted); }
+.agentp .src { font-size: 13px; color: var(--muted); margin: 6px 0 0; }
+.agentp ol.tl { list-style: none; margin: 0; padding: 0 0 0 18px; position: relative; }
+.agentp ol.tl::before { content: ""; position: absolute; left: 4px; top: 6px; bottom: 6px; width: 2px; background: var(--border); }
+.agentp ol.tl li { position: relative; margin: 0 0 8px; }
+.agentp ol.tl li::before { content: ""; position: absolute; left: -18px; top: 9px; width: 10px; height: 10px; border-radius: 50%; background: var(--claude); }
+.agentp ol.tl details summary { cursor: pointer; list-style: none; } .agentp ol.tl details summary::-webkit-details-marker { display: none; }
+.agentp ol.tl .t { font-size: 13px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 6px; }
+.agentp ol.tl .s { overflow-wrap: anywhere; }
+.agentp ol.tl .m { color: var(--accent); font-size: 13px; font-weight: 600; margin-left: 4px; white-space: nowrap; }
+.agentp ol.tl details[open] .m { display: none; }
+.agentp ol.tl .rest { margin: 4px 0 0; color: var(--muted); font-size: 15px; overflow-wrap: anywhere; }
+.agentp ol.tl code { font-size: 12px; }
+.agentp ul.pays { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.agentp ul.pays li { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 15px; overflow-wrap: anywhere; }
+.agentp ul.pays .amt { font-weight: 700; font-variant-numeric: tabular-nums; }
+.agentp ul.pays .t { font-size: 13px; color: var(--muted); }
+.agentp details.morel summary { cursor: pointer; margin: 8px 0 4px; color: var(--muted); font-weight: 600; font-size: 14px; }
+.agentp .paid { margin-top: 14px; }
+.agentp .others a { margin-right: 14px; }`;
+
+/** The first sentence of a decision (shown), and the rest (one tap away). */
+const split = (t: string): [string, string] => { const m = /^(.+?[.!?])\s+(.+)$/s.exec(t); return m ? [m[1]!, m[2]!] : [t, ""]; };
+const pct = (part: string, whole: string) => Math.max(0, Math.min(100, Math.round((Number(part) / Number(whole)) * 100)));
 
 export function agentPage(id: AgentId, r?: RunRecord, t?: RunTrace): string {
   const v = agentView(id, r, t);
-  const decision = (d: AgentView["decisions"][number]) => `<li><b>${esc(time(d.at))} UTC</b> · ${esc(d.model)}<br>${esc(d.text)}${d.requestId ? `<br><span class="src">Anthropic request id <code>${esc(d.requestId)}</code></span>` : ""}</li>`;
-  const pay = (p: AgentView["payments"][number]) => `<li><a href="/trace#${esc(p.id)}">${esc(KIND[p.kind] ?? p.kind)} · ${esc(p.amount)} ${esc(unit(p.currency))}</a> · ${esc(time(p.at))} UTC${p.railId ? ` · ${p.railId.startsWith("0x") ? `<a href="${esc(EXPLORER_TX + p.railId)}" target="_blank" rel="noopener">tx ${esc(p.railId.slice(0, 10))}… ↗</a>` : `<code>${esc(p.railId)}</code>`}` : ""}</li>`;
-  const first = v.decisions.slice(0, 3), rest = v.decisions.slice(3);
+  const decision = (d: AgentView["decisions"][number]) => {
+    const [head, rest] = split(d.text);
+    return `<li><details><summary><span class="t">${esc(time(d.at))}</span><span class="s">${esc(head)}</span><span class="m">more</span></summary><p class="rest">${rest ? `${esc(rest)}<br>` : ""}${esc(d.model)}${d.requestId ? ` · request <code>${esc(d.requestId)}</code>` : ""}</p></details></li>`;
+  };
+  const pay = (p: AgentView["payments"][number]) => `<li><a class="amt" href="/trace#${esc(p.id)}">${esc(p.amount)} ${esc(unit(p.currency))}</a><span>${esc(KIND[p.kind] ?? p.kind)}</span><span class="t">${esc(time(p.at))} UTC</span>${p.railId ? (p.railId.startsWith("0x") ? `<a class="t" href="${esc(EXPLORER_TX + p.railId)}" target="_blank" rel="noopener">tx ${esc(p.railId.slice(0, 10))}… ↗</a>` : `<code class="t">${esc(p.railId)}</code>`) : ""}</li>`;
+  const first = v.decisions.slice(0, 4), rest = v.decisions.slice(4);
   const shownPays = v.payments.slice(0, SHOWN), morePays = v.payments.slice(SHOWN);
+  const st = v.stats;
+  const tiles = st ? `<div class="tiles">
+<div class="card tile"><span class="v">${st.decisions}</span><span class="l">decisions</span><span class="note">${st.fallback ? `${st.by_claude} by Claude, ${st.fallback} by fallback code` : "all by Claude"}</span></div>
+<div class="card tile"><span class="v">${st.claude_calls}</span><span class="l">Claude calls</span><span class="note">USD ${(st.cost_usd_micros / 1e6).toFixed(4)} in all</span></div>
+<div class="card tile"><span class="v">${v.payments.length}</span><span class="l">payment${v.payments.length === 1 ? "" : "s"}</span>${v.totals.length ? `<span class="note">${esc(v.totals.join(" + "))}</span>` : ""}</div>
+</div>` : "";
+  const card = v.card ? `<div class="kv"><div><b>····${esc(v.card.last4)}</b><span>card</span></div><div><b>EUR ${esc(v.card.per_tx)}</b><span>per purchase</span></div></div>
+<div class="gauge" role="img" aria-label="EUR ${esc(v.card.spent_month)} spent of the EUR ${esc(v.card.monthly)} monthly limit"><svg class="bar" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><rect width="100" height="10" rx="5" class="bg"/><rect width="${pct(v.card.spent_month, v.card.monthly)}" height="10" rx="5" class="fg"/></svg><div class="gl"><span>Spent EUR ${esc(v.card.spent_month)}</span><span>Limit per month EUR ${esc(v.card.monthly)}</span></div></div>
+<span class="chip">Only ${esc(v.card.only)}</span><p class="src">Airwallex declines anything over these limits itself.</p>` : "<p>No card in this run.</p>";
+  const mandate = v.mandate ? `<div class="kv"><div><b>${esc(v.mandate.cap)}</b><span>test USD per payment</span></div><div><b>${esc(v.mandate.budget)}</b><span>test USD budget</span></div></div>
+<span class="chip">${v.mandate.changes === 1 ? "Bound once on chain" : `${v.mandate.changes} mandate events on chain (bound, then replaced)`}</span>${v.mandate.tx ? `<p class="src"><a href="${esc(EXPLORER_TX + v.mandate.tx)}" target="_blank" rel="noopener">tx ${esc(v.mandate.tx.slice(0, 10))}… ↗</a></p>` : ""}` : "<p>No mandate in this run.</p>";
   const body = `<main class="wrap agentp">
-<h1>${esc(v.name)}</h1>
-<p class="job">It ${esc(v.job)}. ${v.models.length ? `Models: ${esc(v.models.map((m) => m.model).join(", "))}.` : ""}</p>
-<p class="label">From the main run of 3 November · test money · every figure from the run's record.</p>
+<div class="hd">${avatarHtml(id, 26)}<h1>${esc(v.name)}</h1></div>
+<p class="job">It ${esc(v.job)}.</p>
+${v.models.length ? `<p class="models">${v.models.map((m) => `<span class="model">${esc(m.model)}</span>`).join("")}</p>` : ""}
+<p class="label">Main run of 3 November · test money · every figure from the run's record.</p>
+${tiles}
 <div class="grid">
-<section class="card" aria-label="Its company card"><h2>Its company card at Airwallex</h2>${v.card ? `<dl><dt>Card</dt><dd>····${esc(v.card.last4)}</dd><dt>Per purchase</dt><dd>EUR ${esc(v.card.per_tx)}</dd><dt>Per month</dt><dd>EUR ${esc(v.card.monthly)} (spent ${esc(v.card.spent_month)})</dd><dt>Only</dt><dd>${esc(v.card.only)}</dd></dl><p class="src">The limits sit on the card at Airwallex; Airwallex declines anything over them itself.</p>` : "<p>No card in this run.</p>"}</section>
-<section class="card" aria-label="Its mandate on Metal"><h2>Its mandate on Metal</h2>${v.mandate ? `<dl><dt>Per payment</dt><dd>${esc(v.mandate.cap)} test USD</dd><dt>Budget</dt><dd>${esc(v.mandate.budget)} test USD</dd><dt>On chain</dt><dd>${v.mandate.tx ? `<a href="${esc(EXPLORER_TX + v.mandate.tx)}" target="_blank" rel="noopener">tx ${esc(v.mandate.tx.slice(0, 10))}… ↗</a>` : "not recorded"}</dd><dt>On chain in the run</dt><dd>${v.mandate.changes === 1 ? "bound once" : `${v.mandate.changes} mandate events (bound, then replaced)`}</dd></dl>` : "<p>No mandate in this run.</p>"}</section>
-<section class="card" aria-label="Its numbers"><h2>Its numbers</h2>${v.stats ? `<dl><dt>Decisions</dt><dd>${v.stats.decisions}, ${v.stats.by_claude} by Claude, ${v.stats.fallback} by fallback code</dd><dt>Claude calls</dt><dd>${v.stats.claude_calls}</dd><dt>Claude cost</dt><dd>USD ${(v.stats.cost_usd_micros / 1e6).toFixed(4)}</dd><dt>Paid</dt><dd>${v.payments.length} payment${v.payments.length === 1 ? "" : "s"}${v.totals.length ? `: ${esc(v.totals.join(" + "))}` : ""}</dd></dl>` : "<p>No numbers recorded.</p>"}</section>
+<section class="card" aria-label="Its company card"><h2>${icon("credit-card", 18)}Its card at Airwallex</h2>${card}</section>
+<section class="card" aria-label="Its mandate on Metal"><h2>${icon("database", 18)}Its mandate on Metal</h2>${mandate}</section>
 </div>
-<section class="card" aria-label="What Claude decided"><h2>What Claude decided · ${v.decisions.length}</h2>
-${v.decisions.length ? `<ol>${first.map(decision).join("")}</ol>${rest.length ? `<details><summary>${rest.length} more decision${rest.length === 1 ? "" : "s"}</summary><ol start="${first.length + 1}">${rest.map(decision).join("")}</ol></details>` : ""}` : "<p>No decisions by Claude in this run.</p>"}
+<section class="card" aria-label="What Claude decided"><h2>${icon("sparkles", 18)}What Claude decided · ${v.decisions.length}</h2>
+${v.decisions.length ? `<ol class="tl">${first.map(decision).join("")}</ol>${rest.length ? `<details class="morel"><summary>${rest.length} more decision${rest.length === 1 ? "" : "s"}</summary><ol class="tl">${rest.map(decision).join("")}</ol></details>` : ""}` : "<p>No decisions by Claude in this run.</p>"}
 </section>
-<section class="card" aria-label="What it paid"><h2>What it paid · ${v.payments.length}</h2>
-${v.payments.length ? `<ul>${shownPays.map(pay).join("")}</ul>${morePays.length ? `<details><summary>${morePays.length} more</summary><ul>${morePays.map(pay).join("")}</ul></details>` : ""}<p class="src">Each links to its chain, step by step, on Trace any payment.</p>` : "<p>It paid nothing itself in this run.</p>"}
+<section class="card paid" aria-label="What it paid"><h2>${icon("receipt", 18)}What it paid · ${v.payments.length}</h2>
+${v.payments.length ? `<ul class="pays">${shownPays.map(pay).join("")}</ul>${morePays.length ? `<details class="morel"><summary>${morePays.length} more</summary><ul class="pays">${morePays.map(pay).join("")}</ul></details>` : ""}<p class="src">Each opens its chain on Trace any payment.</p>` : "<p>It paid nothing itself in this run.</p>"}
 </section>
 <p class="others">Other agents: ${AGENT_IDS.filter((x) => x !== id).map((x) => `<a href="/agents/${x}">${esc(AGENT_DISPLAY[x].name)}</a>`).join("")}<a href="/runs">Every live run</a><a href="/trace">Trace any payment</a></p>
 </main>`;

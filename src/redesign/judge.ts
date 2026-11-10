@@ -125,7 +125,7 @@ export function judgePage(steps: JudgeStep[] = JUDGE_STEPS): string {
 <section class="intro">
   <p class="eyebrow">For the jury</p>
   <h1 class="h-hero">Judge it in ${Math.round(total / 60)} minutes</h1>
-  <p class="lead">${steps.length} steps in the demo's order: watch the agents, try it yourself, see the proof. Each has its time and what you will see. Tick them off as you go: the ticks stay in this browser.</p>
+  <p class="lead">${steps.length} steps: watch, try, see the proof. Tick them off as you go.</p>
   <p class="prog" id="prog" aria-live="polite">${steps.length} steps</p>
 </section>
 <ol class="steps">
