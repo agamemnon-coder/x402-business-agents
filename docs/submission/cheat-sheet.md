@@ -6,8 +6,8 @@
 ## The three sentences
 
 1. An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. Try it in a minute.
-2. One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control.
-3. Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude.
+2. One CFO policy, a lock per rail: Airwallex card controls, Metal's mandate, the CFO's signature on invoices. A prompt is not a control.
+3. Real agents: Claude made all 24 decisions (routine payments are code); no key reaches Claude.
 
 ## The five numbers
 

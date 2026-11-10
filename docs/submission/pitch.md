@@ -86,7 +86,7 @@ Demo Day script".
 | Point at the two hashes, side by side. | It carries the hash I signed with Face ID. | Same record, `metadata.approval_sha256` `797d4483…abcd` = P-0005's `terms_sha256`, approved by Max with his passkey (record seq 360); matched in code (`hashTravel`, `src/redesign/airwallexProof.ts`) |
 | | All 3 agent cards carry my policy as Airwallex's own controls. | [airwallex-cards-2026-11-06.json](../runs/airwallex-cards-2026-11-06.json); `cardControlRows`: 3 of 3 cards match the CFO policy |
 | Point at awx-1 below, "a separate run · Airwallex sandbox, test money". | On 7 November, an Airwallex-only run passed every check. | [docs/runs/2026-11-07-awx-1.md](../runs/2026-11-07-awx-1.md): ACCEPTED, checks a–g all passed; on `/proof` through `awxRunBlock` (`src/redesign/awxRun.ts`) |
-| Scroll up to the Airi run under the partners: ✓ Paid alone · ✓ Paid after Face ID · ✕ Refused by Purser. | Agents also paid with Visa Intelligent Commerce, through Airwallex's Airi. | [docs/runs/2026-11-07-vic-1.md](../runs/2026-11-07-vic-1.md): PASSED, 5 of 5 checks (Airwallex sandbox, test card, test money); on `/proof` through `airiRunBlock` (`src/redesign/airiRun.ts`) |
+| Scroll up to the Airi run under the partners: ✓ Within the limit · ✓ Paid after Face ID · ✕ Refused by Purser. | Agents also paid with Visa Intelligent Commerce, through Airwallex's Airi. | [docs/runs/2026-11-07-vic-1.md](../runs/2026-11-07-vic-1.md): PASSED, 5 of 5 checks (Airwallex sandbox, test card, test money); on `/proof` through `airiRunBlock` (`src/redesign/airiRun.ts`) |
 | Tab [/metal](https://kit11.max-31b.workers.dev/metal); point at #24's refusal and its tx. | Proof two: each agent has its own mandate on Metal. | `/metal` (`src/redesign/metalStory.ts`): one mandate per agent, on chain |
 | | We switched off our own check once; Metal refused purchase 24 anyway. | `CHAIN_TEST`; Record: `mandate_cap_exceeded`, tx `0x2e92f9cb…1871` |
 | | That refusal is on chain, next to 86 payments, each its own transaction. | README, "On Metal testnet"; Record: `payments` (onChain 86) |
@@ -121,7 +121,7 @@ shows the badges), then "Here is my worst case, in one line." (the screen shows 
 | 4 | Inside its limits an agent pays alone; beyond them, the CFO signs. | `RULE_LINE`, `src/submission/deck.ts` (Max, 5 Nov); form text, Controls |
 | 5 | We proved it in one live run, on test money. | Log: the main run, 3 November, Airwallex sandbox and Metal testnet |
 | 6 | 24 of 24 decisions were made by Claude. | Record: `split` (24/24, 0 fallbacks) |
-| 7 | 16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing. | Record: `stopStory` (`counts.blocked` 16: the buy rule Claude set, applied by code, 12, #25–#36; Metal 2, #24 over the cap and #37 on a replaced mandate; CFO 1, P-0004; 1 planted instruction; `over_limit_eur` 0.00) |
+| 7 | 16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing. | Record: `stopStory` (`counts.blocked` 16: the buy rule Claude set, applied by code, 12, #25–#36; Metal 2, #24 over the cap and #37 on a replaced mandate; CFO 1, P-0004; 1 planted instruction; `over_limit_eur` 0.00) |
 | 8 | Every id is published. | `/proof`; README, "The main run" |
 | 9 | Sign one yourself, at kit11.max-31b.workers.dev/try/sign. | Try: live since 4 November |
 

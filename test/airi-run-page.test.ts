@@ -23,9 +23,9 @@ const inSight = (html: string) => text(block(html).replace(/<details[\s\S]*?<\/d
 const PAGES = ["airwallex", "visa", "proof"] as const;
 /** The owner's copy (7 Nov), word for word. */
 const HEADING = "Visa Intelligent Commerce via Airwallex's Airi: a live run (7 Nov)";
-const SUMMARY = "Agents paid with a single-use Visa (VIC) credential from Airi: within the limit on their own, above it only after the CFO's Face ID, and a disallowed merchant was refused by Purser before Airi was asked.";
+const SUMMARY = "Agents paid with a single-use Visa (VIC) credential from Airi, each purchase confirmed by the cardholder's passkey: within Purser's limit without the CFO, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.";
 const A_SENTENCE = "Within Purser's limit, no Purser approval is needed. Airi itself asks the cardholder to confirm each purchase with a passkey.";
-const BADGES = ["✓ Paid alone", "✓ Paid after Face ID", "✕ Refused by Purser"];
+const BADGES = ["✓ Within the limit", "✓ Paid after Face ID", "✕ Refused by Purser"];
 const CHECKS_URL = "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-07-vic-1.md#checks-the-records-checks";
 const buy = (s: string) => rec.purchases.find((p) => p.step === s)!;
 /** No one-time Airi link, viewer or runner key, card-like number, passkey label or credential id. */

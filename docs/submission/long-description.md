@@ -7,8 +7,8 @@ main run of 3 November (`docs/demo/main-run.json`, log `docs/runs/2026-11-03-mai
 (`src/submission/facts.ts`); `test/submission.test.ts` checks this page against them, as it checks the short one.
 
 - An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless.
-- One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control.
-- Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude.
+- One CFO policy, a lock per rail: Airwallex card controls, Metal's mandate, the CFO's signature on invoices. A prompt is not a control.
+- Real agents: Claude made all 24 decisions (routine payments are code); no key reaches Claude.
 
 The Kit 11 scenario, run live on 3 November.
 
@@ -138,7 +138,7 @@ sandbox). Second approver: a labelled test passkey in this demo. In production t
   P-0005, P-0006), +1 co-signature (the second approver's, on P-0002);
 - the books match the chain and Airwallex: `verify` passes; `reconcile` checked 88 (the 86 Metal payments, the SWIFT
   transfer and the card buy), 0 differences; `data-qa` 217 of 217 checks; 110 money movements, 0 without an origin;
-- 16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.
+- 16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.
   the buy rule's 12: stock checks #25–#36 (the Sourcing agent, Claude, set its buy rule; code applied it to each check
   over the cap); Metal's 2: 1 over the
   mandate's cap (#24), 1 on a mandate that had just been replaced (#37, `mandate_revoked`); the CFO's 1: P-0004, with

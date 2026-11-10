@@ -68,7 +68,7 @@ describe("the site after v4", () => {
     // it and its evidence in sight, how, the code and the test folded (705 as built).
     // Visa: 495 since then (Max, 10 Nov: we compete for the Visa Award, keep it visible): one plain sentence on top naming
     // the entry and the run (490 as built).
-    const budget: Record<string, number> = { home: 250, watch: 125, try: 180, proof: 715, metal: 200, airwallex: 365, visa: 495, claude: 150, notFound: 40 };
+    const budget: Record<string, number> = { home: 250, watch: 125, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, metal: 200, airwallex: 370 /* +5, panel review 10 Nov */, visa: 500 /* +5, panel review 10 Nov */, claude: 150, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 

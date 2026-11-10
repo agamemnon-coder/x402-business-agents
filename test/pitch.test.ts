@@ -136,10 +136,10 @@ describe("one set of figures, the main run's record (3 November)", () => {
 
   it("says the stops in one sentence, with the record's counts, and never the old \"1 + 1\" (Max, 5 Nov)", () => {
     const line = stopsLine(st);
-    expect(line).toBe("16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.");
+    expect(line).toBe("16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.");
     for (const name of Object.keys(TEXT)) {
       expect({ name, figure: /\d+ stopped at a limit|over its cap; the CFO rejected|\b1 \+ 1\b/i.test(TEXT[name]!) }).toEqual({ name, figure: false });
-      for (const m of all(/(\d+) stops, nothing paid over a limit: a buy rule Claude set stopped (\d+) overpriced checks?, Metal refused (\d+) purchases? on chain, the CFO rejected (\d+) proposals?, and (\d+) planted/g, name)) expect({ name, parts: m.slice(1).map(Number) }).toEqual({ name, parts: [st.total, st.claude, st.metal, st.cfo, st.planted] });
+      for (const m of all(/(\d+) stops, nothing paid over a limit: one buy rule Claude set stopped (\d+) overpriced checks?, Metal refused (\d+) purchases? on chain, the CFO rejected (\d+) proposals?, and (\d+) planted/g, name)) expect({ name, parts: m.slice(1).map(Number) }).toEqual({ name, parts: [st.total, st.claude, st.metal, st.cfo, st.planted] });
       if (["pitch", "deck", "spiekkaart", "form", "form (long)", "README"].includes(name)) expect({ name, said: TEXT[name]!.includes(line.slice(0, -1)) }).toEqual({ name, said: true });
     }
   });

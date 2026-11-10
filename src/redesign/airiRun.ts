@@ -33,11 +33,11 @@ export const AIRI_CHECKS_URL = `${REPO_BLOB}${AIRI_RUN_LOG}#checks-the-records-c
 /** The heading (owner's copy, 7 Nov), with the run's date from the record ("7 Nov"). */
 export const airiHeading = (day: string) => `Visa Intelligent Commerce via Airwallex's Airi: a live run (${day})`;
 /** The one summary sentence at the top (owner's copy, 7 Nov), word for word. */
-export const AIRI_SUMMARY = "Agents paid with a single-use Visa (VIC) credential from Airi: within the limit on their own, above it only after the CFO's Face ID, and a disallowed merchant was refused by Purser before Airi was asked.";
+export const AIRI_SUMMARY = "Agents paid with a single-use Visa (VIC) credential from Airi, each purchase confirmed by the cardholder's passkey: within Purser's limit without the CFO, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.";
 /** Purchase A's two sentences (owner's copy, 7 Nov): within Purser's limit no Purser approval, Airi's own passkey step. */
 export const AIRI_A_SENTENCE = "Within Purser's limit, no Purser approval is needed. Airi itself asks the cardholder to confirm each purchase with a passkey.";
 /** The outcome badge of each purchase (owner's copy, 7 Nov), shown only when the record says so. */
-export const AIRI_BADGES = { A: "✓ Paid alone", B: "✓ Paid after Face ID", C: "✕ Refused by Purser" } as const;
+export const AIRI_BADGES = { A: "✓ Within the limit", B: "✓ Paid after Face ID", C: "✕ Refused by Purser" } as const;
 
 export interface AiriPurchase {
   step: "A" | "B" | "C";

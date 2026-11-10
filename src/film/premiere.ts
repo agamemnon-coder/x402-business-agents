@@ -716,9 +716,9 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
     // The Airi run (7 November): Visa Intelligent Commerce through Airwallex's Airi (Max's words, 7 November).
     "13c-airi": {
       head: `Visa Intelligent Commerce via Airwallex's Airi: a live run (${v("airi.day")})`,
-      line: "Agents paid with a single-use Visa (VIC) credential from Airi: within the limit on their own, above it only after the CFO's Face ID, and a disallowed merchant was refused by Purser before Airi was asked.",
+      line: "Agents paid with a single-use Visa (VIC) credential from Airi, each purchase confirmed by the cardholder's passkey: within Purser's limit without the CFO, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.",
       rows: [
-        { ok: true, label: "✓ Paid alone", amount: v("airi.alone"), detail: `within the ${v("airi.limit")} limit · one passkey tap in Airi` },
+        { ok: true, label: "✓ Within the limit", amount: v("airi.alone"), detail: `within the ${v("airi.limit")} limit · one passkey tap in Airi` },
         { ok: true, label: "✓ Paid after Face ID", amount: `${v("airi.cfo")} · ${v("airi.proposal")}`, detail: "the CFO's Face ID in Purser, then one tap in Airi" },
         // v7: the third row is the second live run's refusal after the Face ID (vic-2, our own labelled test changed the
         // signed terms); the disallowed merchant (C) stays in the line above, Max's words, since four rows do not fit.

@@ -200,7 +200,7 @@ export function awxProofHtml(run: AgentRun): string {
   const decline = awx?.card_transactions.find((t) => !t.approved && t.decline_code);
   const day = awx?.attempts[0]?.at ? shortDay(awx.attempts[0].at) : "";
   const items = [
-    ...(decline ? [`<li><a href="airwallex#${AWX_RUN_STEPS_ID}">${esc("Airwallex declined an agent's card over the CFO's limit, by its own card controls.")}</a><small>${esc(`Airwallex-only run${day ? `, ${day}` : ""}`)}</small></li>`] : []),
+    ...(decline ? [`<li><a href="airwallex#${AWX_RUN_STEPS_ID}">${esc("Airwallex declined an agent's card over the CFO's limit, with its own controls (simulated charge).")}</a><small>${esc(`Airwallex-only run${day ? `, ${day}` : ""}`)}</small></li>`] : []),
   ];
   if (!items.length) return "";
   const sp = split(r), m = metalStory(r);
