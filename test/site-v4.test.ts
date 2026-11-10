@@ -61,7 +61,14 @@ describe("the site after v4", () => {
     // Award", four words more (192 as built).
     // Metal: 200 since the review of 9 Nov, for who signs the replace on chain on its card and the fold that links all 86
     // transactions one by one (199 as built).
-    const budget: Record<string, number> = { home: 195, watch: 125, try: 180, proof: 560, metal: 200, airwallex: 365, visa: 465, claude: 150, notFound: 40 };
+    // Home: 250 since the competitive review of 10 Nov (249 as built): one button to /try/sign, the other ways in as text
+    // links, the hero demo in place of the three sentences, Airwallex's own decline with the main run's counts and one
+    // id, the awards line under the first screen and one line on what comes next (README and form keep the sentences).
+    // Proof: 715 since then, for "What Purser guarantees" under the run's figures: seven promises, each with who enforces
+    // it and its evidence in sight, how, the code and the test folded (705 as built).
+    // Visa: 495 since then (Max, 10 Nov: we compete for the Visa Award, keep it visible): one plain sentence on top naming
+    // the entry and the run (490 as built).
+    const budget: Record<string, number> = { home: 250, watch: 125, try: 180, proof: 715, metal: 200, airwallex: 365, visa: 495, claude: 150, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 

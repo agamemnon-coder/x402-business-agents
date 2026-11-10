@@ -78,11 +78,13 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await page.screenshot({ path: join(shots, `home-first-${tag}.png`) });
     await page.waitForTimeout(9000);
     await look(page, `/home ${tag}`, w);
-    // One flow (Max, 7 Nov): three steps and one primary button; the proof numbers live on /proof.
-    if ((await page.locator("ol.flow > li").count()) !== 3) fail(`/home ${tag}: not three steps`);
+    // One primary button, to /try/sign (competitive review, 10 Nov); the other ways in are text links.
     if ((await page.locator("main a.btn.primary").count()) !== 1) fail(`/home ${tag}: not one primary button`);
-    // The stylesheet parsed to the end (a stray brace once dropped a block's style).
-    if (await page.locator("ol.flow").evaluate((e) => getComputedStyle(e).display) !== "grid") fail(`/home ${tag}: the flow lost its style`);
+    if (!/try(\/sign)?$/.test((await page.locator("main a.btn.primary").getAttribute("href")) ?? "")) fail(`/home ${tag}: the button does not lead to Try`);
+    // The hero demo (Max, 10 Nov): four steps, the stylesheet parsed to the end (its stage is a grid), within the page.
+    if ((await page.locator("#hero-demo .hd-steps > li").count()) !== 4) fail(`/home ${tag}: the hero demo has not four steps`);
+    if (await page.locator("#hero-demo .hd-stage").evaluate((e) => getComputedStyle(e).display) !== "grid") fail(`/home ${tag}: the hero demo lost its style`);
+    if (await page.locator("#hero-demo").evaluate((e) => e.getBoundingClientRect().right > window.innerWidth + 1)) fail(`/home ${tag}: the hero demo runs off the page`);
     if ((await page.locator("nav.tabs a").count()) !== 4) fail(`/home ${tag}: not four tabs`);
     if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(await page.evaluate(() => document.body.innerText))) fail(`/home ${tag}: no run label`);
     // The rail's line is said in full (Max, 2 Nov: it was cut off).

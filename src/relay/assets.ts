@@ -32,6 +32,8 @@ const PHONE_CSP = [
  * cannot read the repository itself). Missing or not in its shape: none, and the page falls back to code, labelled.
  */
 const TRY_AGENTS_RECORDED = (() => { try { return readRecorded(JSON.parse(read(`../../${RECORDED_PATH}`)) as unknown); } catch { return null; } })();
+/** The repository's llms.txt, served at /llms.txt; missing: not served. */
+const LLMS = (() => { try { return read("../../llms.txt"); } catch { return undefined; } })();
 const EXPOSURE_RATE = (() => { try { return recordedRate(loadRecord().record as unknown as RecordForExposure); } catch { return null; } })();
 
 /**
@@ -57,6 +59,7 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     // src/servers/dashboard.ts carry them already (src/ui/meta.ts withMeta), the redesign's write their own.
     dashboard: DASHBOARD_PAGE,
     exposureRate: EXPOSURE_RATE,
+    ...(LLMS ? { llms: LLMS } : {}),
     tryAgentsRecorded: TRY_AGENTS_RECORDED,
     month: monthPage(),
     demo: demoPage(),

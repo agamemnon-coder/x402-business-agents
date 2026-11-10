@@ -4,15 +4,19 @@
 // see the proof. One button. The numbers, the partners' proof and the business live on /proof. Everything from the
 // recorded run (src/redesign/run.ts).
 
-import { designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CAVEAT_LINK, CORE_SENTENCE, DIFFERENTIATORS, HERO, JUDGE_LINE, KIT_LINE, VISA_AWARD_ON, VISA_EXTRA_LINK, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
-import { agentRun, type AgentRun } from "./run.js";
+import { designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CAVEAT_LINK, CORE_SENTENCE, HERO, JUDGE_LINE, KIT_LINE, VISA_AWARD_ON, VISA_EXTRA_LINK, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
+import { agentRun, faceIdDecisions, split, type AgentRun } from "./run.js";
+import { AWX_HASH_ID, hashTravel } from "./airwallexProof.js";
+import { AWX_RUN_STEPS_ID, awxRun } from "./awxRun.js";
+import { metalStory, REPO_BLOB } from "./metalStory.js";
+import { HERO_DEMO_CSS, HERO_DEMO_JS, heroDemoHtml } from "./heroDemo.js";
 import { esc, icon, page, stageHtml } from "./ui.js";
 
 const CSS = `.hero { padding: 24px 0 44px; }
-.hero .wrap { display: grid; gap: 22px; grid-template-areas: "copy" "stage"; }
-.hero .copy { grid-area: copy; } .hero .show { grid-area: stage; min-width: 0; } .hero .act { grid-area: act; }
+.hero .wrap { display: grid; gap: 22px; grid-template-areas: "copy" "stage" "proof"; }
+.hero .copy { grid-area: copy; } .hero .show { grid-area: stage; min-width: 0; } .hero .act { grid-area: act; } .hero .pf { grid-area: proof; min-width: 0; }
 .hero .h-hero { text-wrap: balance; }
-@media (min-width: 980px) { .hero { padding: 56px 0 72px; } .hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 600px); grid-template-areas: "copy stage"; gap: 0 52px; align-items: center; } }
+@media (min-width: 980px) { .hero { padding: 56px 0 72px; } .hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 600px); grid-template-areas: "copy stage" "proof stage"; gap: 0 52px; align-items: center; } .hero .copy { align-self: end; } .hero .pf { align-self: start; margin-top: 18px; } }
 .badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; }
 /* The three steps (Max, 7 Nov): one way through the site. */
 p.partner { margin: 14px 0 0; font-weight: 650; } p.partner a { color: var(--accent); }
@@ -39,6 +43,25 @@ ul.three li { font-size: 16px; line-height: 1.45; color: var(--muted); border-le
 .logo img { display: block; height: 15px; width: auto; }
 .logo.txt { background: var(--surface); color: var(--text); font-weight: 750; font-size: 14px; white-space: nowrap; flex: none; }
 .runlabel { margin-top: 10px; font-size: 14px; color: var(--faint); display: flex; align-items: center; gap: 6px; }
+/* The button's neighbours, the Airwallex proof, the awards and what's next (competitive review, 10 Nov). */
+p.more { margin: 12px 0 0; font-size: 15px; display: flex; flex-wrap: wrap; gap: 4px 6px; }
+p.more a { color: var(--accent); font-weight: 650; text-decoration: none; }
+.awxp { margin: 18px 0 0; padding: 14px 16px; max-width: 36em; }
+.awxp .awh { margin: 0 0 8px; font-size: 14px; font-weight: 700; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.awxp ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.awxp li { border-left: 3px solid var(--ok); padding-left: 11px; }
+.awxp li a { color: var(--text); font-weight: 680; font-size: 16px; line-height: 1.4; text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 4px; }
+.awxp li small { display: block; color: var(--muted); font-size: 14px; }
+.awxp .strip { margin: 10px 0 0; font-size: 14px; color: var(--muted); }
+.awxp .strip b { color: var(--text); font-weight: 700; } .awxp .strip a.id { color: var(--accent); font-family: var(--mono, ui-monospace, monospace); text-decoration: none; }
+section.awards { padding: 18px 0; border-top: 1px solid var(--border); }
+section.awards p { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 14.5px; }
+section.awards a { color: var(--accent); font-weight: 650; text-decoration: none; }
+section.agents { padding: 28px 0; border-top: 1px solid var(--border); } .agstage { max-width: 640px; margin-top: 14px; }
+section.next { padding: 28px 0 40px; border-top: 1px solid var(--border); }
+section.next ul { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; max-width: 52em; }
+section.next li { font-size: 16px; line-height: 1.45; color: var(--muted); } section.next li b { color: var(--text); }
+section.next a { color: var(--accent); font-weight: 650; text-decoration: none; }
 section.band { padding: 60px 0; border-top: 1px solid var(--border); }
 .sechead { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 26px; }
 .sechead .pill { white-space: normal; }
@@ -152,45 +175,96 @@ export function whyCompanyHtml(): string {
 }
 
 /**
- * The way through the site, Max's three steps (7 Nov): watch the agents, try it yourself, see the proof. One time per
- * step everywhere (jury review, 7 Nov, #25): the Highlights replay on /watch plays 14 steps in 42 s by the stage's own
- * timings (src/redesign/ui.ts show()), so "about 40 s"; /try/sign says "about a minute" itself.
+ * The way through the site (competitive review, 10 Nov): one button, to the thing a juror can do in a minute (sign, then
+ * try to change one cent); watching the agents, the proof and the judge's tour are text links beside it. One time per
+ * step everywhere (jury review, 7 Nov, #25): the Highlights replay on /watch plays in about 40 s.
  */
 export const FLOW = [
-  { n: 1, icon: "play", title: "Watch the agents", sub: "A real run, replayed · about 40 s", href: "watch" },
-  { n: 2, icon: "scan-face", title: "Try it yourself", sub: "Sign with your Face ID · about a minute", href: "try/sign" },
-  { n: 3, icon: "shield-check", title: "See the proof", sub: "Every id, checkable", href: "proof" },
+  { n: 1, icon: "play", title: "Watch the agents", sub: "about 40 s", href: "watch" },
+  { n: 2, icon: "scan-face", title: "Try it yourself", sub: "about a minute", href: "try/sign" },
+  { n: 3, icon: "shield-check", title: "See the proof", sub: "every id, checkable", href: "proof" },
 ] as const;
 /** Home's one button, word for word. */
-export const START = "Start: watch the agents";
+export const START = "Try it: sign with your Face ID";
+/** The awards line, under the first screen, never in the hero (Max, 10 Nov). */
+export const AWARDS_HEAD = "Competing for";
 
-/** opts.trySign: the bundle also carries /try/sign (TRY_SIGN_ENABLED), so step 2 leads there; otherwise to /try. */
+const shortDay = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
+
+/**
+ * The two Airwallex proofs and the main run's counts, each from its record: Airwallex's own decline (awx-1, 7 Nov) and
+ * the CFO's signed hash in Airwallex's record of the SWIFT payment (the main run). Empty pieces drop out.
+ */
+export function awxProofHtml(run: AgentRun): string {
+  const r = run.record, h = hashTravel(r), awx = awxRun();
+  const decline = awx?.card_transactions.find((t) => !t.approved && t.decline_code);
+  const day = awx?.attempts[0]?.at ? shortDay(awx.attempts[0].at) : "";
+  const items = [
+    ...(decline ? [`<li><a href="airwallex#${AWX_RUN_STEPS_ID}">${esc("Airwallex declined an agent's card over the CFO's limit, by its own card controls.")}</a><small>${esc(`Airwallex-only run${day ? `, ${day}` : ""}`)}</small></li>`] : []),
+  ];
+  if (!items.length) return "";
+  const sp = split(r), m = metalStory(r);
+  const runDay = run.events.find((e) => e.k === "money")?.at ?? r.snapshot.flows[0]?.at ?? "";
+  const counts = [`${sp.byClaude} Claude decisions`, `${faceIdDecisions(r)} Face ID signatures`, ...(m.payments.total ? [`${m.payments.total} payments on chain`] : [])];
+  const idLink = h ? ` · ${h.transferMethod} transfer <a class="id" href="airwallex#${AWX_HASH_ID}">${esc(`${h.transferId.slice(0, 8)}…`)}</a>` : "";
+  return `<div class="awxp card"><ul>${items.join("")}</ul>
+<p class="strip">${esc(`Main run${runDay ? `, ${shortDay(runDay)}` : ""}:`)} ${counts.map((c) => `<b>${esc(c)}</b>`).join(" · ")}${idLink}</p></div>`;
+}
+
+/** The awards and the kit, one short line under the first screen (Max, 10 Nov), with a link to each award's page. */
+export function awardsHtml(): string {
+  const [kit, entered] = KIT_LINE.split(/ · (?=entered for)/);
+  return `<section class="awards"><div class="wrap"><p><span class="pill kit">${esc(kit!)}</span><span class="pill kit award">${esc(entered!)}</span>
+<a href="metal">${esc("The Metal proof")} →</a><a href="visa">${esc("The Visa proof")} →</a></p></div></section>`;
+}
+
+/** Built vs next (competitive review, 10 Nov), as docs/after-the-kit.md says it: on a branch, not live. */
+export const NEXT_HEAD = "What comes next";
+/** The agents' run, under the first screen since the hero demo (10 Nov). */
+export const AGENTS_HEAD = "The agents' live run";
+export const NEXT_NEXT = "Next, not live yet: an invoice inbox for small companies, with the same Face ID control.";
+export const AFTER_KIT_URL = `${REPO_BLOB}docs/after-the-kit.md`;
+
+export function nextHtml(): string {
+  return `<section class="next"><div class="wrap"><h2 class="h-sec">${esc(NEXT_HEAD)}</h2>
+<ul><li>${esc(NEXT_NEXT)} <a href="${esc(AFTER_KIT_URL)}" target="_blank" rel="noopener">${esc("What is built so far")}\u00a0↗</a></li></ul></div></section>`;
+}
+
+/** opts.trySign: the bundle also carries /try/sign (TRY_SIGN_ENABLED), so the button leads there; otherwise to /try. */
 export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; partnerUrl?: string } = {}): string {
   const moments = heroMoments(run);
   const s1 = run.scenes.find((s) => s.n === 1);
-  const flow = FLOW.map((f) => ({ ...f, href: f.href === "try/sign" && !opts.trySign ? "try" : f.href }));
-  // Picture first, few words (Max, 7 Nov): the heading, one sentence and the three sentences under it (jury review,
-  // 7 Nov, #2), the one button right under them, then the three steps.
+  const tryHref = opts.trySign ? "try/sign" : "try";
+  const more = [
+    `<a href="watch">${esc("Watch the agents")}</a>`,
+    `<a href="proof">${esc("See the proof")}</a>`,
+    ...(opts.trySign ? [`<a href="judge">${esc(JUDGE_LINE)}</a>`] : []),
+  ];
+  // A plain promise, one button, the Airwallex proof; the picture beside it. The awards under the first screen.
   const body = `<main>
 <section class="hero"><div class="wrap">
   <div class="copy">
     <h1 class="h-hero">${esc(HERO)}</h1>
     <p class="what">${esc(WHAT_IT_IS)}</p>
-    <ul class="three">${DIFFERENTIATORS.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>
-    <a class="btn primary big start" href="watch">${icon("play", 18)}${esc(START)}</a>
-    ${opts.trySign ? `<p class="judgeline"><a href="judge">${esc(JUDGE_LINE)} →</a></p>` : ""}
-    <ol class="flow" aria-label="Three steps">${flow.map((f) => `<li><a href="${esc(f.href)}"><span class="fn">${f.n}</span>${icon(f.icon, 20)}<span class="ft"><b>${esc(f.title)}</b><small>${esc(f.sub)}</small></span></a></li>`).join("")}</ol>
+    <a class="btn primary big start" href="${tryHref}">${icon("scan-face", 18)}${esc(START)}</a>
+    <p class="more">${more.join('<span aria-hidden="true"> · </span>')}</p>
+  </div>
+  <div class="pf">
+    ${awxProofHtml(run)}
     ${designPartnerHtml(opts.partnerUrl ?? DESIGN_PARTNER_URL)}
     <p class="caveat">${esc(CAVEAT_LINE)} <a href="#real" data-real>${esc(CAVEAT_LINK)}</a></p>
   </div>
-  <div class="show">${stageHtml(run.agents, s1?.steps[0]?.text ?? "Northwind Outdoor sells live stock data per query")}<div class="runlabel">${icon("database", 14)}<span>${esc(run.label)}</span></div>
-    <div class="built">Built on ${LOGOS.Airwallex}${LOGOS.Metal}${LOGOS.Claude}${VISA_AWARD_ON ? '<span class="logo txt">Visa TAP</span>' : ""}</div>
-    <div class="badges">${KIT_LINE.split(/ · (?=entered for)/).map((x, i) => `<span class="pill kit${i ? " award" : ""}">${esc(x)}</span>`).join("")}</div>
-  </div>
+  <div class="show">${heroDemoHtml(undefined, tryHref)}</div>
 </div></section>
+${awardsHtml()}
+<section class="agents"><div class="wrap"><h2 class="h-sec">${esc(AGENTS_HEAD)}</h2>
+  <div class="agstage">${stageHtml(run.agents, s1?.steps[0]?.text ?? "Northwind Outdoor sells live stock data per query")}<div class="runlabel">${icon("database", 14)}<span>${esc(run.label)}</span></div>
+    <div class="built">Built on ${LOGOS.Airwallex}${LOGOS.Metal}${LOGOS.Claude}${VISA_AWARD_ON ? '<span class="logo txt">Visa TAP</span>' : ""}</div></div>
+</div></section>
+${nextHtml()}
 </main>`;
   return page({
-    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, tab: "home", css: CSS, body, js: JS,
+    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, tab: "home", css: CSS + HERO_DEMO_CSS, body, js: JS + HERO_DEMO_JS,
     // Visa TAP as a footer link (jury review, 6 Nov, #7): an extra, not an award entry.
     links: [["visa", VISA_EXTRA_LINK]],
     data: { agents: run.agents, events: run.events, moments },

@@ -37,6 +37,8 @@ export interface Pages {
   /** The recorded case's evidence report (no script); empty when no case was recorded. */
   metalReport: string;
   visa: string;
+  /** /llms.txt: the submission in plain text for tools that read it (the repository's llms.txt); absent in older bundles. */
+  llms?: string;
   /** The partner pages (src/partners/), no script; absent in a bundle built before them. */
   airwallex?: string;
   claude?: string;
@@ -163,6 +165,7 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path.startsWith("/approve/") && PROPOSAL_ID.test(path.slice("/approve/".length))) return page(pages.approve, pages.csp.approve);
   if (path === "/enrol") return page(pages.enrol, pages.csp.enrol);
   if (path === "/policy") return page(pages.policy, pages.csp.policy);
+  if (path === "/llms.txt" && pages.llms) return new Response(pages.llms, { headers: { ...COMMON_HEADERS, "content-type": "text/plain; charset=utf-8" } });
   if (path === "/assets/approve.js") return new Response(pages.client, { headers: { ...COMMON_HEADERS, "content-type": "text/javascript; charset=utf-8" } });
   if (path === "/assets/inter.woff2") {
     return new Response(Uint8Array.from(atob(pages.font), (c) => c.charCodeAt(0)), {

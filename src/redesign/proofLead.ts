@@ -74,7 +74,7 @@ export function proofLeads(record: RunRecord, o: { transfer?: { file: string; re
       // Max's line; the note says what 6/10 → 10/10 is: the eval rebuilt from the run's moment, not the run itself.
       ...(rf ? [{
         text: `a reliability run found a hand-off fault; fixed: ${pct(rf.before)} → ${pct(rf.after)}`, href: `${REPO_BLOB}${RELIABILITY_LOG}`,
-        note: `${pct(rf.before)} → ${pct(rf.after)}: the ${RELIABILITY_CASE} eval rebuilt from ${rf.run}'s moment, before and after the fix (commit ${rf.commit}); the next run, ${rf.next}, passed every step.`,
+        note: `${pct(rf.before)} → ${pct(rf.after)}: the eval rebuilt from the reliability run's moment, before and after the fix (commit ${rf.commit}); the next reliability run passed every step.`,
       }] : []),
     ],
   };

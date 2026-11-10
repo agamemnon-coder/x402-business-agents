@@ -154,10 +154,10 @@ describe("the way in: Home, the README and the form", () => {
   it("Home shows the way through itself (Max, 7 Nov: watch, try, proof), with the tour as one quiet text link under the one button", () => {
     expect(JUDGE_LINK).toBe("Judge it in 3 minutes →");
     expect(ON.home!.match(/href="judge"/g)).toHaveLength(1);
-    expect(ON.home).toContain('<p class="judgeline"><a href="judge">Judging? Take the 3-minute tour →</a></p>');
+    expect(ON.home).toContain('<a href="judge">Judging? Take the 3-minute tour</a>');
     expect(OFF.home).not.toContain('href="judge"');
     // Home's three steps are /judge's first ones: the agents, then /try/sign, then the proof.
-    expect(ON.home).toContain('<a href="watch">'); expect(ON.home).toContain('<a href="try/sign">'); expect(ON.home).toContain('<a href="proof">');
+    expect(ON.home).toContain('<a href="watch">'); expect(ON.home).toContain('<a class="btn primary big start" href="try/sign">'); expect(ON.home).toContain('<a href="proof">');
   });
 
   it("the README has one line to /judge near the top", () => {
