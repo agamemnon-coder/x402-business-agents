@@ -124,6 +124,7 @@ export async function executeSupplierPayment(db: DB, rail: PayoutRail, sim: Sand
     }
 
     const transfer = await step(db, proposalId, 2, "transfer", terms.transfer_request_id, () => submit(db, rail, terms, sha, proposalId), now);
+    noteApplicationFee(db, terms as PlatformFields, transfer);
     const final = sim ? await step(db, proposalId, 3, "settle", transfer.id, () => settleInSandbox(db, rail, sim, transfer), now) : transfer;
     recordFee(db, final, terms, sha);
     // Purser's fee once the payout is PAID, never before; a fee that cannot be taken stays open for a person and never
@@ -279,6 +280,21 @@ export function applicationFeeOf(t: PlatformFields): { applicationFee?: { amount
 }
 
 /**
+ * The fee Airwallex accepted with the payout, as its create answered it (application_fees): when it is exactly the signed
+ * fee, the payout's id is kept on the fee row, so the fee counts as taken once the payout is PAID even when the PAID
+ * answer leaves application_fees out (the sandbox did, 10 Nov). Any other fee is noted for a person, never accepted.
+ */
+export function noteApplicationFee(db: DB, t: PlatformFields, tr: Transfer): void {
+  const fee = t.platform_fee;
+  if (!fee || !tr.applicationFee) return;
+  if (tr.applicationFee.currency === fee.currency && tr.applicationFee.cents === toCents(fee.amount)) {
+    db.prepare("UPDATE platform_fees SET fee_transfer_id = ?, updated_at = ? WHERE request_id = ? AND status = 'DUE' AND fee_transfer_id IS NULL").run(tr.id, new Date().toISOString(), fee.request_id);
+  } else {
+    audit(db, "awx-executor", "platform_fee.mismatch", fee.request_id, { signed: `${fee.currency} ${fee.amount}`, accepted: `${tr.applicationFee.currency} ${fromCents(tr.applicationFee.cents)}`, payout: tr.id });
+  }
+}
+
+/**
  * Purser's fee for a payout that is PAID, as Airwallex reports it on that payout (application_fees): counted as taken and
  * booked only then, once per request id. A payout PAID without the signed fee on it leaves the fee OPEN for a person and
  * never fails the payment. With the fee flag off nothing was asked for: NOT_TAKEN.
@@ -286,7 +302,7 @@ export function applicationFeeOf(t: PlatformFields): { applicationFee?: { amount
 export function takePlatformFee(db: DB, t: SupplierPaymentTerms, sha: string, proposalId: string, paid: Transfer): string | null {
   const fee = (t as PlatformFields).platform_fee;
   if (!fee) return null;
-  const done = db.prepare("SELECT status FROM platform_fees WHERE request_id = ?").get(fee.request_id) as { status: string } | undefined;
+  const done = db.prepare("SELECT status, fee_transfer_id FROM platform_fees WHERE request_id = ?").get(fee.request_id) as { status: string; fee_transfer_id: string | null } | undefined;
   if (done && ["SETTLED", "NOT_TAKEN", "VOID"].includes(done.status)) return done.status;
   if (paid.status !== "PAID") return done?.status ?? "DUE";
   const write = (status: string, id: string | null) => db.prepare(`INSERT INTO platform_fees (request_id, proposal_id, payout_request_id, amount, currency, destination, fee_transfer_id, status, approval_sha256, updated_at)
@@ -297,7 +313,8 @@ export function takePlatformFee(db: DB, t: SupplierPaymentTerms, sha: string, pr
     audit(db, "awx-executor", "platform_fee.not_taken", fee.request_id, { why: "AIRWALLEX_PLATFORM_FEE is off: the payout carried no Purser fee", amount: `${fee.currency} ${fee.amount}` });
     return "NOT_TAKEN";
   }
-  const got = paid.applicationFee;
+  // Reported on the PAID payout, or (left out there) accepted exactly at create for this same payout.
+  const got = paid.applicationFee ?? (done?.fee_transfer_id === paid.id ? { cents: toCents(fee.amount), currency: fee.currency } : null);
   if (!got || got.currency !== fee.currency || got.cents !== toCents(fee.amount)) {
     write("OPEN", null);
     audit(db, "awx-executor", "platform_fee.open", fee.request_id, { amount: `${fee.currency} ${fee.amount}`, reported: got ? `${got.currency} ${fromCents(got.cents)}` : "none", payout: paid.id, note: "the payment is paid; Airwallex did not report the signed fee on it, so a person checks it", approval_sha256: sha });

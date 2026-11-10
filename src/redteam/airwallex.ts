@@ -45,6 +45,10 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
   platformFees: PlatformFee[] = [];
   /** Airwallex answers transfers without the application fee asked for (it was not taken). */
   dropApplicationFee = false;
+  /** As the sandbox answered on 10 Nov: application_fees only on the create's answer, not on later reads or simulations. */
+  applicationFeeOnlyAtCreate = false;
+  /** Airwallex accepts the payout with this fee (cents) instead of the one asked for. */
+  applicationFeeOverrideCents: number | null = null;
   clock = () => Date.now();
   rate = "1.0850";
   n = 0;
@@ -115,14 +119,16 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
     return t && { ...t };
   }
   async findTransferByRequestIdStrict(requestId: string) { return this.findTransferByRequestId(requestId); }
-  async getTransfer(id: string) { return { ...this.transfers.find((x) => x.id === id)! }; }
+  async getTransfer(id: string) { return this.read(this.transfers.find((x) => x.id === id)!); }
+  /** A transfer as a later read answers it (without application_fees when the sandbox leaves them out). */
+  private read<T extends Transfer>(t: T): T { return this.applicationFeeOnlyAtCreate ? { ...t, applicationFee: null } : { ...t }; }
   /** The application fee Airwallex takes with a payout, and reports back (unless told to drop it). */
   private appFee(t: { requestId: string; applicationFee?: { amountCents: number; currency: string } }): { applicationFee: { cents: number; currency: string } | null; feeRequest?: string } {
     if (!t.applicationFee || this.dropApplicationFee) return { applicationFee: null };
     const b = this.balOf(t.applicationFee.currency);
     if (b.availableCents < t.applicationFee.amountCents) throw Object.assign(new Error("balance_insufficient"), { code: "balance_insufficient" });
     b.availableCents -= t.applicationFee.amountCents;
-    return { applicationFee: { cents: t.applicationFee.amountCents, currency: t.applicationFee.currency }, feeRequest: t.requestId };
+    return { applicationFee: { cents: this.applicationFeeOverrideCents ?? t.applicationFee.amountCents, currency: t.applicationFee.currency }, feeRequest: t.requestId };
   }
   /** An approver in Airwallex's web app approves (SCHEDULED) or rejects (CANCELLED) a transfer waiting IN_APPROVAL. */
   approveInWebApp(id: string, ok = true): void {
@@ -141,7 +147,7 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
     }
     if (to === "FAILED" && t.applicationFee) this.balOf(t.applicationFee.currency).availableCents += t.applicationFee.cents;
     if (to === "FAILED") { t.failureType = failureType ?? "BENEFICIARY_BANK_RETURNED"; t.status = "CANCELLED"; }
-    return { ...t };
+    return this.read(t);
   }
 
   // ---- Payables in any currency (PayoutRail). Rates are sell units per buy unit, by "BUY/SELL"; a test may change them.

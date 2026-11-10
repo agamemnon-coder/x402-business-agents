@@ -62,7 +62,7 @@ registration number and no uploaded documents, so it can be filled in in one upd
 documented API, with one update holding the verification details of a non-registered sole trader. The submit is taken in
 asynchronously: right after it, the simulation still reads the account as not submitted; a minute later it works.
 
-**Not done (1 approved call left, a payout needs 4):** funding the account from the platform
+**Not done in this run (1 approved call left, a payout needs 4; done in the third run below):** funding the account from the platform
 (`connected_account_transfers/create`), a beneficiary and a EUR 5 payout with `x-on-behalf-of`, with Purser's fee as
 `application_fee_options` (EUR 0.05, FIXED) through Purser's `createPayoutTransfer`. Nothing was paid, no beneficiary was
 created and no fee was taken. No transfer exists, so nothing is `IN_APPROVAL`, and nothing was approved in Airwallex's web
@@ -73,13 +73,37 @@ Purser's code before this run (commit `baad3b3`): Purser's fee now goes with the
 signed fee reported in `application_fees`; the invoice-payment route follows a payout that is not yet PAID (for example
 `IN_APPROVAL`) instead of marking it FAILED.
 
-## Proposed next run (needs Max's go)
+## Third run: the payout with Purser's fee, PAID (6 of 6 calls)
 
-The account is ACTIVE now. **4 calls** for the payout: login (1); fund the account from the platform with
-`connected_account_transfers/create`, EUR 20 (1); with `x-on-behalf-of`: `beneficiaries/create` (1); a EUR 5 payout through
-Purser's `createPayoutTransfer` with Purser's fee as `application_fee_options` EUR 0.05 (1). If it comes back
-`IN_APPROVAL` (Airwallex's own approval workflow), the run stops there and Max approves it in the web app. **+2** to
-follow it: login (1) and `GET /transfers/{id}` (1) once approved, or the simulation to `PAID` (1) if no approval is set.
+Max: "do everything", at most 6 calls. All through Purser's client; the payout through Purser's `createPayoutTransfer`.
+
+| # | Time (UTC) | Call | Answer |
+|---|---|---|---|
+| 12 | 05:39:21.774 | `POST /authentication/login` | 200 |
+| 13 | 05:39:22.402 | `POST /connected_account_transfers/create`, platform → `acct_SC-QD89fOneAeqaRFgOymw`, EUR 20.00 (test money) | `tr_oZIJlT2oNQ2OX33f83UCag`, `NEW` |
+| 14 | 05:39:23.011 | `POST /beneficiaries/create` with `x-on-behalf-of`: "Zeeland Verpakkingen BV (test)", NL IBAN, SWIFT | `f8678483-2718-4393-a328-d78261b5d5a4` |
+| 15 | 05:39:23.780 | `POST /transfers/create` with `x-on-behalf-of`: EUR 5.00, SWIFT, request id `cacc-pay-mwa9ftwt`, `metadata.approval_sha256`, **`application_fee_options: [{ source_type: TRANSFER, type: FIXED, amount: "0.05", currency: EUR }]`** | `a9460dba-f31b-4111-be58-6d9a9e71adb1`, **`SCHEDULED`**, **`application_fees`: EUR 0.05 (TRANSFER)**, Airwallex's own SWIFT fee `fee_amount` EUR 13.41 |
+| 16 | 05:39:24.995 | `POST /simulation/transfers/{id}/transition` `SENT` (with `x-on-behalf-of`) | `SENT`, no `application_fees` in the answer |
+| 17 | 05:39:25.951 | `POST /simulation/transfers/{id}/transition` `PAID` (with `x-on-behalf-of`) | **`PAID`**, no `application_fees` in the answer, `fee_amount` EUR 13.41 |
+
+**Confirmed live in the sandbox:** a payout from a connected account (`x-on-behalf-of` on beneficiaries, transfers and
+the transfer simulation), funded from the platform with `connected_account_transfers/create`, and **Purser's fee taken
+with the payout as `application_fee_options`: Airwallex accepted exactly EUR 0.05** and reported it in
+`application_fees`. The payout went `SCHEDULED` → `SENT` → `PAID` through the sandbox's simulation (the settlement is
+simulated; test money). It did not come back `IN_APPROVAL`: no approval workflow was active for it. Airwallex's SWIFT
+fee in the sandbox was EUR 13.41 on a EUR 5.00 payout.
+
+**What the live answers changed in Purser** (commit after `7febdea`): the simulation's answers leave `application_fees`
+out, so Purser now keeps the fee Airwallex accepted at create (exactly the signed amount, for that payout) and counts it
+taken when that payout is PAID; any other amount is noted for a person and the fee stays `OPEN`.
+
+Still unconfirmed: whether `GET /transfers/{id}` and the live (non-simulated) PAID answer carry `application_fees`, where
+the fee shows in the platform account's balance, and the platform webhooks.
+
+## Next
+
+Nothing more is planned against the sandbox for this. Max may switch on Airwallex's transfer approval workflow in the web
+app; a later payout then waits `IN_APPROVAL` until Max approves it there (Purser follows it, see `docs/airwallex-platform.md`).
 
 Call log (method, path with ids, time; no bodies, no headers) as Purser's budget wrote it: 4 lines in the first run,
-7 in the second (11 of the 12 approved calls used).
+7 in the second, 6 in the third (17 calls in all, each within the budget Max approved for it).

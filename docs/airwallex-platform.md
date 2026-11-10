@@ -1,11 +1,11 @@
 # Purser as an Airwallex platform (connected accounts)
 
-Status: built behind `AIRWALLEX_PLATFORM=on` (off by default), tested against a fake Airwallex. **Connected accounts are
-enabled on our sandbox since 10 November 2026** (Airwallex's Turner Vickery, hackathon Slack). Live so far
-(`docs/runs/2026-11-10-connected-accounts-sandbox.md`, 11 calls): a Netherlands connected account opened through Purser's
-rail (`acct_SC-QD89fOneAeqaRFgOymw`), its verification details filled in as a non-registered sole trader (fake test
-data), submitted, and moved to `ACTIVE` with the sandbox simulation. No payout, beneficiary or fee has been made from a
-connected account yet.
+Status: built behind `AIRWALLEX_PLATFORM=on` (off by default), tested against a fake Airwallex and, since 10 November
+2026, in Airwallex's sandbox (`docs/runs/2026-11-10-connected-accounts-sandbox.md`, 17 calls, test money): a Netherlands
+connected account opened through Purser's rail (`acct_SC-QD89fOneAeqaRFgOymw`), verified with fake test details,
+`ACTIVE` through the sandbox simulation, funded from the platform, and a EUR 5.00 payout on its behalf
+(`a9460dba-f31b-4111-be58-6d9a9e71adb1`) through Purser's `createPayoutTransfer` with **Purser's fee as
+`application_fee_options`, accepted by Airwallex at exactly EUR 0.05**, then `PAID` through the settlement simulation.
 
 ## Why
 
@@ -86,7 +86,9 @@ platform-level webhook uses the same signature scheme is **unconfirmed**.
   type: "FIXED", amount: "0.05", currency: "EUR" }]`, and answers `application_fees` per fee. Purser sends one FIXED fee,
   the exact amount the CFO signed (capped by policy, `FEE_BPS_CAP`), only with `AIRWALLEX_PLATFORM_FEE=on`. The fee is
   counted taken and booked only when the payout is `PAID` and Airwallex reports exactly that fee in `application_fees`;
-  otherwise it stays `OPEN` for a person; a failed payout voids it. No separate fee call is made. **Not yet tested live.**
+  otherwise it stays `OPEN` for a person; a failed payout voids it. No separate fee call is made. **Sandbox, 10 Nov:
+  accepted at EUR 0.05 on payout `a9460dba-…`; the simulation's SENT/PAID answers leave `application_fees` out, so the
+  fee Airwallex accepted at create for that payout counts (`noteApplicationFee`).**
 - (Before 10 Nov) **Unconfirmed:** how a payout platform collects a fee *from* a connected
   account (a connected-account transfer sent with `x-on-behalf-of` to the platform's account id, a fee configured by
   Airwallex on the platform, or an FX/payout markup). Purser's fee collection therefore sits behind a second flag,

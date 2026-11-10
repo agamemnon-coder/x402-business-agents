@@ -182,6 +182,26 @@ describe("RT6-B the fee step never fails a paid payment; booked only when settle
     expect(awx.calls.some((c) => /PlatformFee/.test(c))).toBe(false);
   });
 
+  it("as in the sandbox (10 Nov): Airwallex reports the fee when it accepts the payout, not on the PAID answer; the fee is taken", async () => {
+    await platform();
+    awx.applicationFeeOnlyAtCreate = true;
+    const { proposal } = await propose(await usInvoice());
+    approve(proposal.proposal_id);
+    await executeSupplierPayment(db, awx, awx, proposal.proposal_id);
+    expect(db.prepare("SELECT status FROM transfers").get()).toEqual({ status: "PAID" });
+    expect(db.prepare("SELECT status FROM platform_fees").get()).toEqual({ status: "SETTLED" });
+  });
+
+  it("a payout Airwallex accepts with another fee than the one signed: the fee stays OPEN for a person once paid", async () => {
+    await platform();
+    awx.applicationFeeOnlyAtCreate = true;
+    awx.applicationFeeOverrideCents = 1;
+    const { proposal } = await propose(await usInvoice());
+    approve(proposal.proposal_id);
+    await executeSupplierPayment(db, awx, awx, proposal.proposal_id);
+    expect(db.prepare("SELECT status FROM platform_fees").get()).toEqual({ status: "OPEN" });
+  });
+
   it("a payout PAID without the signed fee on it: the fee stays OPEN for a person; the payment is EXECUTED, its invoice paid, and not paid again", async () => {
     await platform();
     const id = await usInvoice();

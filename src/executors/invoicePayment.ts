@@ -20,7 +20,7 @@ import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
 import { checkPayingAccount } from "../airwallex/binding.js";
-import { applicationFeeOf, takePlatformFee } from "./supplierPayment.js";
+import { applicationFeeOf, noteApplicationFee, takePlatformFee } from "./supplierPayment.js";
 import type { PlatformFields, SupplierPaymentTerms } from "../payouts/plan.js";
 import { partyOf, snapshot, treasuryState, type InvoicePaymentTerms } from "../agents/euroBill.js";
 import { sameLedgerInvoice } from "../lib/invoiceKey.js";
@@ -142,6 +142,7 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
     }
     // Step 2: the payout, under its own request_id (the transfers row is its outbox entry). Step 3: its settlement.
     const transfer = await step(db, proposalId, 2, "transfer", terms.transfer_request_id, () => submitTransfer(db, rail, terms, sha, now, feeRetry), now);
+    noteApplicationFee(db, terms as unknown as PlatformFields, transfer);
     const final = sim ? await step(db, proposalId, 3, "settle", transfer.id, () => settleInSandbox(db, rail, sim, transfer), now) : transfer;
     recordFee(db, final, terms, sha);
     // Purser's fee, once the payment is PAID (never failing it); a live payment's is taken when the follow-up reads it PAID.
