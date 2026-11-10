@@ -119,11 +119,18 @@ Airwallex wanted this time. It may still be the registration number (format or p
 then (platform), a refused transfer's audit row names the fields Airwallex gives (`fields`: paths and codes only, never
 values), so the next attempt says which.
 
-Totals for 10 November: Airwallex **70** of 81 approved, Claude **20** of 22, T:0 **12** of 13.
+A last attempt (09:3x UTC) used one invoice only and recorded the refusal's fields. Bakkerij's MM-2026-114 was
+approved again as P-0009 (`b88d51f404391d7c…`) and refused again: **`400 validation_failed`, field `payer`, code 048**,
+trace `90e611ca9a3e4ffc83205343218aec3c` (5 calls). Airwallex rejects the `payer` object on a transfer from this
+connected account, so a TEST value in it cannot help. The registration number has to come from the account itself: open
+it as a registered sole trader with `business_identifiers`. That is for a later run; the live runs stopped here
+(Max, 10 November).
+
+Totals for 10 November: Airwallex **75** of 81 approved, Claude **20** of 22, T:0 **12** of 13.
 
 ## Not done
 
-- The two new companies' payouts: refused again with a TEST number on the transfer's `payer` (above). The next options
-  are the account's own `business_identifiers` (a registered sole trader), or the field Airwallex names once the
-  refusal's fields are recorded.
+- The two new companies' payouts: refused three times. Airwallex wants the paying company's registration number and
+  refuses a `payer` object on the transfer (code 048). Next: open such companies as registered sole traders
+  (`business_identifiers` on the account).
 - Metal: not part of this flow.
