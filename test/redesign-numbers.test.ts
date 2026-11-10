@@ -11,7 +11,7 @@ import { watchPage } from "../src/redesign/watch.js";
 import { proofPage } from "../src/redesign/proof.js";
 import { CHAIN_TEST, DEFENSE_IN_DEPTH, HOME_BADGE, KIT_LINE, PRICE_LINE, SECOND_APPROVER, VISA_AWARD_ON, VISA_CLAIM, VISA_EXTRA_LINK, VISA_TAP_STATUS } from "../src/config/brand.js";
 import { buildPages } from "../src/relay/assets.js";
-import { CONNECTED_LINE } from "../src/redesign/partners.js";
+import { CONNECTED_LINE, TWO_LOCKS_LINE } from "../src/redesign/partners.js";
 import { esc } from "../src/redesign/ui.js";
 
 const { file, record } = loadRecord();
@@ -77,6 +77,9 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   // The connected-accounts run (10 Nov) on /airwallex, dated with its own record; its ids and figures are checked against
   // docs/runs/2026-11-10-connected-accounts-sandbox.md in test/partner-pages.test.ts.
   .replace(esc(CONNECTED_LINE), " ")
+  // The two-locks run (10 Nov) on /airwallex, dated with its own record; its id and amount are checked against
+  // docs/runs/2026-11-10-airwallex-two-locks.md in test/partner-pages.test.ts.
+  .replace(esc(TWO_LOCKS_LINE), " ")
   // Home's hero demo (10 Nov): the Airwallex-only run's invoice, dated with its own record; its figures are checked
   // against docs/demo/airwallex-run.json in test/hero-demo.test.ts.
   .replace(/\b1\s+Ask\s+2\s+Face ID[\s\S]*?Step 4 is the check every payment runs\./g, " ");

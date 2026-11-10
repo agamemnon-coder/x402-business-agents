@@ -18,7 +18,7 @@ describe("/runs", () => {
   const rows = liveRuns();
 
   it("lists the live runs newest first, the last one on top", () => {
-    expect(rows.map((r) => r.key)).toEqual(["t0-1", "connected-1", "vic-2", "vic-1", "awx-1", "main-1", "agent-1", "tap-1", "friday-1"]);
+    expect(rows.map((r) => r.key)).toEqual(["two-locks-1", "t0-1", "connected-1", "vic-2", "vic-1", "awx-1", "main-1", "agent-1", "tap-1", "friday-1"]);
     // The connected-accounts row, held to its run log: every id and amount on it is in the log.
     const cx = rows.find((r) => r.key === "connected-1")!;
     const cxLog = readFileSync("docs/runs/2026-11-10-connected-accounts-sandbox.md", "utf8");

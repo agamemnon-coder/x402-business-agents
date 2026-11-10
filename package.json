@@ -109,7 +109,8 @@
     "holdouts": "tsx src/cli/holdouts.ts",
     "blind-holdouts": "tsx src/cli/blindHoldouts.ts",
     "reliability": "tsx src/cli/reliability.ts",
-    "record-try-agents": "tsx src/cli/recordTryAgents.ts"
+    "record-try-agents": "tsx src/cli/recordTryAgents.ts",
+    "two-locks": "tsx src/cli/twoLocks.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",
