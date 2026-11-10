@@ -61,6 +61,7 @@ export async function retryCompany(d: RetryDeps, runDir: string, c: WorldCompany
     const { rail, sim } = withPayer(d.railFor(c.accountId), c);
     const noRead: Asker = { ask: async (_a, fallback) => ({ value: fallback(), source: "fallback", model: null, note: "retry: no invoice is read again" }) } as Asker;
     await syncPayments(db, { now });
+    const lastBefore = (db.prepare("SELECT COALESCE(MAX(rowid), 0) AS n FROM transfers").get() as { n: number }).n;
     const ids = apInvoices(db, { status: "ready" }).map((i) => i.id);
     if (!ids.length) throw new Error(`${c.key}: no invoice is ready to pay again (${apInvoices(db).map((i) => `${i.id} ${i.status}`).join(", ")})`);
     let proposal: { proposal_id: string; terms_sha256: string; kind: string };
@@ -84,7 +85,7 @@ export async function retryCompany(d: RetryDeps, runDir: string, c: WorldCompany
     else await run(proposal.proposal_id);
     await followPayouts(db, rail, now());
     await syncPayments(db, { now });
-    const mine = db.prepare("SELECT t.transfer_id, t.status, t.invoice_no, t.failure_reason FROM transfers t WHERE t.rowid > (SELECT COALESCE(MAX(rowid), 0) FROM transfers WHERE status = 'CANCELLED')").all() as { transfer_id: string | null; status: string; invoice_no: string; failure_reason: string | null }[];
+    const mine = db.prepare("SELECT t.transfer_id, t.status, t.invoice_no, t.failure_reason FROM transfers t WHERE t.rowid > ?").all(lastBefore) as { transfer_id: string | null; status: string; invoice_no: string; failure_reason: string | null }[];
     d.log(`${c.key.padEnd(12)} retry paid: ${mine.map((t) => `${t.transfer_id ?? "(none)"} ${t.status}`).join(", ")}`);
     const held = mine.filter((t) => t.status === "IN_APPROVAL").map((t) => t.transfer_id ?? "(no id)");
     if (held.length) throw new WaitingForAirwallexApproval(c.key, held);

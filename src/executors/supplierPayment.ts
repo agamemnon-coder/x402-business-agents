@@ -217,7 +217,7 @@ async function submit(db: DB, rail: PayoutRail, t: SupplierPaymentTerms, sha: st
       // Refused outright at the first send: no transfer exists, so the row is closed, not left counting as under way.
       const closed = db.prepare("UPDATE transfers SET status = 'CANCELLED', failure_type = ?, failure_reason = ?, updated_at = ? WHERE request_id = ? AND transfer_id IS NULL AND status = 'SUBMITTING'")
         .run(codeOf(e), `refused by Airwallex at create: ${codeOf(e)}`, at(), t.transfer_request_id);
-      if (closed.changes === 1) audit(db, "awx-executor", "transfer.refused", t.transfer_request_id, { request_id: t.transfer_request_id, code: codeOf(e), amount: `${t.currency} ${t.amount}`, approval_sha256: sha, error: (e as Error).message });
+      if (closed.changes === 1) audit(db, "awx-executor", "transfer.refused", t.transfer_request_id, { request_id: t.transfer_request_id, code: codeOf(e), amount: `${t.currency} ${t.amount}`, approval_sha256: sha, error: (e as Error).message, fields: refusedFields(e) });
       throw e;
     }
     if (!(e instanceof AirwallexAmbiguous) && !DUPLICATE.has(codeOf(e))) throw e; // the row stays SUBMITTING: a re-run looks it up first
@@ -273,6 +273,12 @@ function recordFee(db: DB, tr: Transfer, t: SupplierPaymentTerms, sha: string): 
  * Purser's fee goes with the payout itself: Airwallex's application_fee_options on the transfer (one FIXED fee, the amount
  * the CFO signed), sent only with AIRWALLEX_PLATFORM_FEE=on. Nothing else is called for it.
  */
+/** The request fields Airwallex named in a validation refusal (body.details.errors[].source): field paths, never values. */
+export function refusedFields(e: unknown): string[] {
+  const errs = (e as { body?: { details?: { errors?: { source?: unknown; code?: unknown }[] } } }).body?.details?.errors;
+  return Array.isArray(errs) ? errs.map((x) => `${typeof x.source === "string" ? x.source.slice(0, 120) : "?"}${typeof x.code === "string" ? ` (${x.code.slice(0, 20)})` : ""}`).slice(0, 10) : [];
+}
+
 export function applicationFeeOf(t: PlatformFields): { applicationFee?: { amountCents: number; currency: string } } {
   const fee = t.platform_fee;
   if (!fee || !platformFeeOn()) return {};

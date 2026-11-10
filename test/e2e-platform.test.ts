@@ -16,6 +16,7 @@ import { FUND_CENTS } from "../src/e2e/setup.js";
 import { verifyReceipt } from "../src/try/receipt.js";
 import { appendFileSync, existsSync } from "node:fs";
 import { finishRun } from "../src/e2e/finish.js";
+import { refusedFields } from "../src/executors/supplierPayment.js";
 import { retryCompany } from "../src/e2e/retry.js";
 import { WORLD } from "../src/e2e/world.js";
 
@@ -198,5 +199,10 @@ describe("the live run's budget", () => {
     expect(verifyReceipt(JSON.parse(readFileSync(b.receipt!, "utf8"))).checks.filter((c) => !c.ok)).toEqual([]);
     expect(b.transfers.map((t) => t.status)).toEqual(["CANCELLED", "CANCELLED", "PAID", "PAID"]);
     rmSync(logFile, { force: true });
+  });
+
+  it("a refused transfer's audit names the fields Airwallex named (paths only, never values)", () => {
+    expect(refusedFields({ body: { details: { errors: [{ code: "001", source: "payer.additional_info.business_registration_number" }] } } })).toEqual(["payer.additional_info.business_registration_number (001)"]);
+    expect(refusedFields(new Error("x"))).toEqual([]);
   });
 });

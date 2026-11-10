@@ -97,9 +97,33 @@ onboarding), and a payout from them needs the payer's registration number. The e
 - **Open:** Purser's fee for a payout refused at create stays DUE in the fee table; it is never taken, because the
   payout does not exist. It should be marked void.
 
+## Retry with a TEST registration number (09:00 UTC, Max's go)
+
+Bakkerij's two invoices were approved again as batch P-0008 (`04d9fdef46171b79…`). The approval used a new test passkey;
+the first one's private key lived only in the run's memory, and the ledger revoked it on re-enrolment. No invoice was
+read again (no Claude call). Each payout carried a `payer` with entity type COMPANY, the company's name, a test address
+and **`business_registration_number: TEST-00000001`**, a clearly fake test number.
+
+Airwallex refused both again at create with **`400 validation_failed`**:
+
+| Payout | Trace |
+|---|---|
+| MM-2026-114, P-0006 | `bf84a6f5109d4504a1bf5c84a9263a0a` |
+| VE-889, P-0007 | `27c42b632c1c43c4a7539d492db5c23a` |
+
+The retry stopped there, as the stop rule says. Fietslab was not tried. Calls: 9 Airwallex (1 login, 6 balance reads,
+2 transfer creates), 0 T:0, 0 Claude (`calls-retry.jsonl`).
+
+The refusal named its fields only in the error body, which the audit did not keep. So this run cannot say which field
+Airwallex wanted this time. It may still be the registration number (format or place), or another `payer` field. Since
+then (platform), a refused transfer's audit row names the fields Airwallex gives (`fields`: paths and codes only, never
+values), so the next attempt says which.
+
+Totals for 10 November: Airwallex **70** of 81 approved, Claude **20** of 22, T:0 **12** of 13.
+
 ## Not done
 
-- The two new companies' payouts: retrying them needs the paying company's registration number. That means a clearly
-  fake TEST number on the transfer's `payer.additional_info` (with payer entity type, name and address) or on the
-  account's `business_identifiers`, and a new approval.
+- The two new companies' payouts: refused again with a TEST number on the transfer's `payer` (above). The next options
+  are the account's own `business_identifiers` (a registered sole trader), or the field Airwallex names once the
+  refusal's fields are recorded.
 - Metal: not part of this flow.
