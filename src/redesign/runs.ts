@@ -61,6 +61,16 @@ function ledgerRow(key: string, file: string, log: string, title: string, rehear
 export function liveRuns(): RunRow[] {
   const rows: RunRow[] = [];
 
+  // 10 Nov: Purser's books of the 3 Nov main run posted to T:0 (docs/runs/2026-11-10-t0-journal-sandbox.md).
+  rows.push({
+    key: "t0-1", iso: "2026-11-10T06:08:08.750Z", date: day("2026-11-10T06:08:08.750Z"),
+    title: "The main run's books posted to T:0", rails: "T:0 shared sandbox entity (general ledger)",
+    what: "95 journal entries from the 3 Nov books posted to T:0's shared sandbox entity, one at a time, each with an idempotency key.",
+    checks: "Debits equal credits (21,141,221.86 USD each); T:0 matches our books line by line, 0 differences; a second push posted 0.", money: "Sandbox · test money",
+    ids: [{ label: "First journal entry", value: "je_prod_z7kTCuZ1iiwad01q" }],
+    files: [{ label: "run log", href: "../../docs/runs/2026-11-10-t0-journal-sandbox.md" }],
+  });
+
   // 10 Nov: the platform build's first connected-accounts run. Its record is on the platform branch, not in this code.
   rows.push({
     key: "connected-1", iso: "2026-11-10T05:02:45.871Z", date: day("2026-11-10T05:02:45.871Z"),

@@ -75,3 +75,6 @@ f0c548f8f380f9bccc58521b710870523621be3b:src/cli/reliability.ts:generic-api-key:
 8164bd2b88958cf3c34c90a9e0336480c78caa9a:docs/demo/reliability.json:generic-api-key:23
 8164bd2b88958cf3c34c90a9e0336480c78caa9a:docs/demo/reliability.json:generic-api-key:491
 8164bd2b88958cf3c34c90a9e0336480c78caa9a:src/cli/reliability.ts:generic-api-key:498
+# 9d38415 (10 Nov): the e2e T:0 client's placeholder bearer string, no secret (the key is a proxy-injected
+# network secret); fixed in a2c0092 by a named constant. History is not rewritten.
+9d38415b1445143e066cab0b35292c967e2dadf8:src/e2e/setup.ts:generic-api-key:74

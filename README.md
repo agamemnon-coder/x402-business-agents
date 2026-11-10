@@ -322,7 +322,7 @@ gives an agent a task of yours: Claude reads it, code applies the CFO's limits, 
   payment reaches Airwallex or Metal. Real: your passkey's signature and the server's check of it, the Airwallex sandbox
   FX quote (read-only), and the Claude agents' calls, each labelled live, or labelled as a fallback when none answered.
 - **Built, not yet live:** the Cardputer hub push and gate (a fake hub in the tests);
-  T:0 books: built, but posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted ([record](docs/runs/2026-11-05-t0-live.md)). Also built, on stand-ins only: the emergency stop and `npm run smoke:sandbox`.
+  T:0 books: 95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q); debits equal credits, and T:0 matches our books line by line ([record](docs/runs/2026-11-10-t0-journal-sandbox.md)). Also built, on stand-ins only: the emergency stop and `npm run smoke:sandbox`.
 
 **Other live tests (separate worlds, dated):** awx-1, the Airwallex-only run (7 November, above), the Airi run (Visa Intelligent Commerce via Airwallex's Airi, 7 November, above;
 Airwallex sandbox, test card, test money), the TAP run (2 November), four eyes on chain, the compliance contract and

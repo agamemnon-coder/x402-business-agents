@@ -200,25 +200,25 @@ describe("T:0 in one sentence, Metal counted (Max, 5 Nov)", () => {
   const flat = (p: string) => words(read(p)).replace(/, \[record\]\([^)]*\)/g, "");
 
   it("says the T:0 sentence word for word in the form, the claims, docs/t0.md, the run logs and the Q&A", () => {
-    expect(T0_STATUS).toBe("T:0 bookkeeping is built; posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted.");
+    expect(T0_STATUS).toBe("T:0: 95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q); debits equal credits, and T:0 matches our books line by line.");
     // Not in the form's short Description since 6 Nov (jury review, #7: no error codes there); the long text keeps it.
     expect(words(read("docs/submission/README.md").split("<!-- description -->")[1]!.split("<!-- /description -->")[0]!)).not.toContain("CAPI");
     // The README says it in its own words since the jury review of 7 Nov (#16), with the same codes and days.
-    expect(flat("README.md")).toContain("T:0 books: built, but posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted");
-    for (const p of ["docs/submission/long-description.md", "docs/claims.md", "docs/t0.md", "docs/runs/2026-11-05-t0-live.md", "docs/runs/2026-11-03-t0-sandbox.md", "docs/submission/qa.md", "docs/internal/spiekkaart-demo.html"]) expect({ p, has: flat(p).includes(T0_STATUS) }).toEqual({ p, has: true });
+    expect(flat("README.md")).toContain(words("T:0 books: 95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q); debits equal credits, and T:0 matches our books line by line"));
+    for (const p of ["docs/submission/long-description.md", "docs/claims.md", "docs/t0.md", "docs/runs/2026-11-10-t0-journal-sandbox.md", "docs/submission/qa.md", "docs/internal/spiekkaart-demo.html"]) expect({ p, has: flat(p).includes(words(T0_STATUS)) }).toEqual({ p, has: true });
     // The codes as the run logs have them.
     expect(read("docs/runs/2026-11-03-t0-sandbox.md")).toMatch(/refused the first POST with `403 CAPI71`/);
     expect(read("docs/runs/2026-11-05-t0-live.md")).toMatch(/on 5 November[\s\S]*?`401 CAPI11`/i);
     for (const name of Object.keys(TEXT)) expect({ name, old: /95 entries are ready/.test(TEXT[name]!) }).toEqual({ name, old: false });
   });
 
-  it("every marked T:0 block says nothing is posted; none says it is live", () => {
+  it("every marked T:0 block says what was posted, to the sandbox; none says it is live", () => {
     for (const name of ["pitch", "qa", "deck", "spiekkaart"]) {
       const blocks = [...SOURCES[name]!.matchAll(/<!-- T0-STATUS -->([\s\S]*?)<!-- \/T0-STATUS -->/g)].map((b) => words(b[1]!));
       expect({ name, blocks: blocks.length > 0 }).toEqual({ name, blocks: true });
       for (const b of blocks) {
-        expect({ name, b, honest: /nothing (?:is )?posted/i.test(b) }).toEqual({ name, b, honest: true });
-        expect({ name, b, claim: /T:0 is live|posted to T:0|live on T:0/i.test(b) }).toEqual({ name, b, claim: false });
+        expect({ name, b, honest: /95 (?:journal )?entries posted/i.test(b) && /sandbox/i.test(b) }).toEqual({ name, b, honest: true });
+        expect({ name, b, claim: /T:0 is live|live on T:0|production/i.test(b) }).toEqual({ name, b, claim: false });
       }
     }
     expect(TEXT.deck).toContain(T0_SHORT);
