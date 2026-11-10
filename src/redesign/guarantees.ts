@@ -65,26 +65,45 @@ export const GUARANTEES: readonly Guarantee[] = [
 export const GUARANTEES_ID = "guarantees";
 export const GUARANTEES_HEADING = "What Purser guarantees";
 
-export const GUARANTEES_CSS = `.gtee { margin: 22px 0 6px; }
-.gtee h2 { font-size: 22px; font-weight: 760; margin: 0 0 4px; }
-.gtee > p { margin: 0 0 12px; color: var(--muted); font-size: 15px; }
-.gtee ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+export const GUARANTEES_CSS = `/* The guarantees on the dark stage of Home's demo card (Max, 10 Nov: "same level as the homepage"): numbered cards, who
+ * enforces each as a coloured pill, the evidence as the card's one link, how, the file and the test folded as mono chips. */
+.gtee { --g-bg: #0b0d18; --g-ink: #eef0ff; --g-dim: #a7adc8; --g-line: rgba(255,255,255,.08); --g-acc: #a49fff;
+  position: relative; isolation: isolate; margin: 22px 0 10px; padding: 22px 20px 20px; border-radius: 24px; color: var(--g-ink); overflow: hidden; counter-reset: g;
+  background: radial-gradient(110% 80% at 90% 0%, rgba(139,133,255,.26), transparent 55%), radial-gradient(80% 60% at 0% 100%, rgba(255,138,76,.13), transparent 60%), var(--g-bg);
+  border: 1px solid rgba(255,255,255,.07); box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 30px 60px -30px rgba(20,16,80,.55); }
+.gtee::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background-image: linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px); background-size: 28px 28px; mask-image: radial-gradient(80% 70% at 60% 30%, #000, transparent); -webkit-mask-image: radial-gradient(80% 70% at 60% 30%, #000, transparent); }
+.gtee h2 { display: flex; align-items: center; gap: 10px; font-size: clamp(22px, 2.2vw, 28px); font-weight: 760; letter-spacing: -.01em; margin: 0 0 16px; color: var(--g-ink); }
+.gtee h2 .i { color: var(--g-acc); }
+.gtee ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 @media (min-width: 900px) { .gtee ul { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.gtee li { padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); min-width: 0; }
-.gtee li b { display: block; font-size: 16.5px; line-height: 1.35; }
-.gtee .by { display: inline-block; margin: 4px 0 2px; font-size: 13px; font-weight: 650; color: var(--accent); }
-.gtee details { margin-top: 2px; font-size: 14.5px; color: var(--muted); }
-.gtee summary { cursor: pointer; color: var(--muted); }
-.gtee details p { margin: 6px 0 0; }
-.gtee a { color: var(--accent); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
-.gtee .ev { display: block; margin-top: 4px; font-size: 14.5px; }`;
+.gtee li { counter-increment: g; position: relative; display: flex; flex-direction: column; gap: 8px; padding: 16px 16px 14px 56px; border: 1px solid var(--g-line); border-radius: 16px; background: rgba(255,255,255,.035); min-width: 0; transition: border-color .2s ease-out, background .2s ease-out; }
+.gtee li:hover { border-color: rgba(164,159,255,.45); background: rgba(139,133,255,.07); }
+.gtee li::before { content: counter(g); position: absolute; left: 16px; top: 15px; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; font: 750 13px/1 Inter, system-ui, sans-serif; color: #0b0d18; background: linear-gradient(180deg, #b6b2ff, #8b85ff); }
+.gtee li b { display: block; font-size: 16.5px; line-height: 1.38; font-weight: 700; color: var(--g-ink); }
+.gtee .by { align-self: start; display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font: 650 12.5px/1.3 Inter, system-ui, sans-serif; color: #d9dbff; background: rgba(139,133,255,.16); border: 1px solid rgba(139,133,255,.3); }
+.gtee .by::before { content: "Enforced by"; color: var(--g-dim); font-weight: 600; }
+.gtee li[data-by="airwallex"] .by { color: #ffc3a3; background: rgba(255,138,76,.14); border-color: rgba(255,138,76,.35); }
+.gtee li[data-by="metal"] .by { color: #8ff0e2; background: rgba(45,212,191,.12); border-color: rgba(45,212,191,.35); }
+.gtee a { color: var(--g-acc); font-weight: 650; text-decoration: none; overflow-wrap: anywhere; }
+.gtee a:hover { text-decoration: underline; }
+.gtee .ev { display: block; font-size: 14.5px; line-height: 1.4; }
+.gtee details { font-size: 14.5px; color: var(--g-dim); border-top: 1px solid var(--g-line); padding-top: 6px; }
+.gtee summary { cursor: pointer; color: var(--g-dim); font-weight: 600; }
+.gtee details p { margin: 6px 0 0; line-height: 1.45; }
+.gtee .src { display: flex; flex-wrap: wrap; gap: 6px; }
+.gtee .src a { display: inline-block; padding: 3px 9px; border-radius: 8px; background: rgba(255,255,255,.06); border: 1px solid var(--g-line); color: #d9dbff; font: 600 12.5px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+@media (max-width: 640px) { .gtee { padding: 18px 14px 14px; border-radius: 20px; } .gtee li { padding: 14px 12px 12px 48px; } .gtee li::before { left: 12px; top: 13px; } }
+@media (prefers-reduced-motion: reduce) { .gtee li { transition: none; } }`;
 
 const ext = (href: string) => /^https:\/\//.test(href);
 const link = (href: string, label: string) => `<a href="${esc(href)}"${ext(href) ? ' target="_blank" rel="noopener"' : ""}>${esc(label)}${ext(href) ? " ↗" : ""}</a>`;
 
+/** Who enforces it, as the pill's colour: Airwallex, the chain, or Purser (its code, the CFO). */
+const byKind = (by: string) => (/^Airwallex/.test(by) ? "airwallex" : /^Metal/.test(by) ? "metal" : "purser");
+
 /** The block: each promise in sight with who enforces it and its evidence; how, the file and the test folded. */
 export function guaranteesHtml(rows: readonly Guarantee[] = GUARANTEES): string {
   return `<section class="gtee" id="${GUARANTEES_ID}" aria-labelledby="h-gtee"><h2 id="h-gtee">${icon("shield-check", 20)} ${esc(GUARANTEES_HEADING)}</h2>
-<ul>${rows.map((g) => `<li id="${g.id}"><b>${esc(g.promise)}</b><span class="by">${esc(g.by)}</span><span class="ev">${link(g.evidence.href, g.evidence.label)}</span>
-<details><summary>${esc("How")}</summary><p>${esc(g.how)}</p><p>${link(`${REPO_BLOB}${g.source}`, g.source)} · ${link(`${REPO_BLOB}${g.test}`, g.test)}</p></details></li>`).join("")}</ul></section>`;
+<ul>${rows.map((g) => `<li id="${g.id}" data-by="${byKind(g.by)}"><b>${esc(g.promise)}</b><span class="by">${esc(g.by)}</span><span class="ev">${link(g.evidence.href, g.evidence.label)}</span>
+<details><summary>${esc("How")}</summary><p>${esc(g.how)}</p><p class="src">${link(`${REPO_BLOB}${g.source}`, g.source)} ${link(`${REPO_BLOB}${g.test}`, g.test)}</p></details></li>`).join("")}</ul></section>`;
 }

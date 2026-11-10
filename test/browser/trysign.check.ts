@@ -1067,7 +1067,7 @@ if (!args.live && !ONLY) {
     await page.waitForSelector("#scr-6:not([hidden])");
     await none("screen 6");
     const paid = await page.locator("#s5-next ol.flow .f-paid .fd").evaluate((n: Element) => [getComputedStyle(n).backgroundColor, getComputedStyle(n.closest("ol")!, "::after").transform]) as [string, string];
-    const ok = await page.evaluate(`(() => { const d = document.createElement("i"); d.style.color = "var(--ok)"; document.body.append(d); const c = getComputedStyle(d).color; d.remove(); return c; })()`) as string;
+    const ok = await page.evaluate(`(() => { const d = document.createElement("i"); d.style.color = "var(--ok)"; (document.querySelector("#s5-next ol.flow") || document.body).append(d); const c = getComputedStyle(d).color; d.remove(); return c; })()`) as string;
     check(paid[0] === ok && paid[1] === "none", `${tag}: paid alone: the payment is through the locks and green at once (${paid.join(", ")})`);
     if (width >= 1024) await none("the diagram");
     check(errors.length === 0, `${tag}: 0 console errors (${errors.length}${errors.length ? `: ${errors.join(" | ")}` : ""})`);
