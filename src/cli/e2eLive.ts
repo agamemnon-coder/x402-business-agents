@@ -13,6 +13,7 @@ import { functionalCurrency } from "../accounting/t0.js";
 import { runPlatformE2E, type RunSummary } from "../e2e/platformRun.js";
 import { budgetedReader, dryRunDeps, liveDeps, parserOnly, PROXY_INJECTED, PURSER_PLATFORM_ACCOUNT } from "../e2e/setup.js";
 import { finishRun } from "../e2e/finish.js";
+import { openDb } from "../db/open.js";
 import { retryCompany } from "../e2e/retry.js";
 import { WaitingForAirwallexApproval } from "../e2e/platformRun.js";
 import { Airwallex, fromEnv as airwallexEnv } from "../airwallex/client.js";
@@ -83,9 +84,17 @@ if (retryAt >= 0) {
     for (const key of keys) {
       const c = WORLD.find((w) => w.key === key), account = facts.find((f) => f.key === key)?.account;
       if (!c || !account) throw new Error(`${key}: not a company of this run`);
-      await retryCompany({ platform: { feeAccount: PURSER_PLATFORM_ACCOUNT }, railFor, feeBps: "50", now: () => new Date(), log: retryLog }, runDir, { ...c, accountId: account });
+      await retryCompany({ platform: { feeAccount: PURSER_PLATFORM_ACCOUNT }, railFor, feeBps: "50", now: () => new Date(), log: retryLog }, runDir, { ...c, accountId: account }, { onlyFirst: args.includes("--one") });
     }
   } catch (e) {
+    for (const key of keys) {
+      const f = join(runDir, key.toLowerCase(), "ledger.db");
+      if (!existsSync(f)) continue;
+      const db = openDb(f);
+      const last = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'transfer.refused' ORDER BY seq DESC LIMIT 1").get() as { payload_json?: string } | undefined;
+      if (last?.payload_json) console.error(`${key}: Airwallex named: ${JSON.stringify((JSON.parse(last.payload_json) as { fields?: string[] }).fields ?? [])}`);
+      db.close();
+    }
     console.error(e instanceof WaitingForAirwallexApproval ? `IN_APPROVAL at Airwallex: ${e.transfers.join(", ")} (${e.company}): a person approves it in Airwallex's web app; then: --follow` : (e as Error).message);
     console.log(`Calls made: ${JSON.stringify({ airwallex: budget.used("airwallex"), t0: budget.used("t0"), claude: budget.used("claude") })}`);
     process.exit(e instanceof WaitingForAirwallexApproval ? 5 : 1);

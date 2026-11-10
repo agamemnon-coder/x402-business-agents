@@ -36,7 +36,7 @@ export interface RetryDeps {
 }
 
 /** Retries one company's unpaid invoices; returns the new approval's id. Throws on any payout not PAID. */
-export async function retryCompany(d: RetryDeps, runDir: string, c: WorldCompany & { accountId: string }): Promise<string> {
+export async function retryCompany(d: RetryDeps, runDir: string, c: WorldCompany & { accountId: string }, o: { onlyFirst?: boolean } = {}): Promise<string> {
   const now = d.now;
   const db = openDb(join(runDir, c.key.toLowerCase(), "ledger.db"));
   const saved = { a: process.env.AIRWALLEX_PLATFORM, f: process.env.AIRWALLEX_PLATFORM_FEE, k: process.env.PURSER_PLATFORM_PUBLIC_KEY, t: process.env.PURSER_TENANT_ID };
@@ -62,7 +62,7 @@ export async function retryCompany(d: RetryDeps, runDir: string, c: WorldCompany
     const noRead: Asker = { ask: async (_a, fallback) => ({ value: fallback(), source: "fallback", model: null, note: "retry: no invoice is read again" }) } as Asker;
     await syncPayments(db, { now });
     const lastBefore = (db.prepare("SELECT COALESCE(MAX(rowid), 0) AS n FROM transfers").get() as { n: number }).n;
-    const ids = apInvoices(db, { status: "ready" }).map((i) => i.id);
+    const ids = apInvoices(db, { status: "ready" }).map((i) => i.id).slice(0, o.onlyFirst ? 1 : undefined);
     if (!ids.length) throw new Error(`${c.key}: no invoice is ready to pay again (${apInvoices(db).map((i) => `${i.id} ${i.status}`).join(", ")})`);
     let proposal: { proposal_id: string; terms_sha256: string; kind: string };
     if (ids.length > 1) {
