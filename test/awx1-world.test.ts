@@ -47,6 +47,10 @@ describe("the Airwallex call budget", () => {
     expect(endpointOf("https://api.sandbox.airwallex.com/api/v1/transfers/1b0c2f7e-0b3c-4f3e-9a3e-2b0e1c4d5e6f?x=1")).toBe("/transfers/{id}");
     expect(endpointOf("https://api.sandbox.airwallex.com/api/v1/simulation/transfers/1b0c2f7e-0b3c-4f3e-9a3e-2b0e1c4d5e6f/transition")).toBe("/simulation/transfers/{id}/transition");
     expect(endpointOf("https://api.sandbox.airwallex.com/api/v1/issuing/cards/create")).toBe("/issuing/cards/create");
+    // Connected accounts (live run 10 Nov): account ids carry - and _, and update_status is a word, not an id.
+    expect(endpointOf("https://api.sandbox.airwallex.com/api/v1/accounts/acct_SC-QD89fOneAeqaRFgOymw/submit")).toBe("/accounts/{id}/submit");
+    expect(endpointOf("https://api.sandbox.airwallex.com/api/v1/simulation/accounts/acct_SC-QD89fOneAeqaRFgOymw/update_status")).toBe("/simulation/accounts/{id}/update_status");
+    expect(endpointOf("https://api.sandbox.airwallex.com/api/v1/hosted_flows/ahfi_IriUYRv-TuWIHnst2Dj4pw/authorize")).toBe("/hosted_flows/{id}/authorize");
   });
 
   it("counts every request, the login too, and refuses the one over budget before it is sent; a refused POST is not ambiguous", async () => {

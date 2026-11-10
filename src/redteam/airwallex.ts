@@ -36,6 +36,11 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
   refuseNextTransfer: string | null = null;
   /** Purser as a platform: the connected account this stand-in acts for, and the Purser fees taken from it. */
   payingAccount: string | null = null;
+  /**
+   * Airwallex's own transfer approval workflow (web app: "Require API-initiated transfers to go through the same approval
+   * workflow?" Yes): a new transfer waits IN_APPROVAL until an approver in Airwallex's web app approves it (approveInWebApp).
+   */
+  approvalWorkflow = false;
   platformFees: PlatformFee[] = [];
   async collectPlatformFee(f: PlatformFee): Promise<{ id: string; status: string }> {
     this.calls.push("collectPlatformFee");
@@ -111,7 +116,7 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
     if (this.bal.EUR.availableCents < t.amountCents + fee) throw Object.assign(new Error("balance_insufficient"), { code: "balance_insufficient" });
     this.bal.EUR.availableCents -= t.amountCents + fee;
     this.bal.EUR.reservedCents += t.amountCents + fee;
-    const tr = { id: `tr_${++this.n}`, requestId: t.requestId, status: "PROCESSING", amountCents: t.amountCents, currency: "EUR" as const, metadata: t.approvalSha256, reference: t.reference, fee: { cents: fee, currency: "EUR" }, beneficiaryId: t.beneficiaryId };
+    const tr = { id: `tr_${++this.n}`, requestId: t.requestId, status: this.approvalWorkflow ? "IN_APPROVAL" : "PROCESSING", amountCents: t.amountCents, currency: "EUR" as const, metadata: t.approvalSha256, reference: t.reference, fee: { cents: fee, currency: "EUR" }, beneficiaryId: t.beneficiaryId };
     this.transfers.push(tr);
     if (this.loseNextTransferAnswer) { this.loseNextTransferAnswer = false; throw new AirwallexAmbiguous("/transfers/create", new Error("socket hang up")); }
     return { ...tr };
@@ -123,9 +128,16 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
   }
   async findTransferByRequestIdStrict(requestId: string) { return this.findTransferByRequestId(requestId); }
   async getTransfer(id: string) { return { ...this.transfers.find((x) => x.id === id)! }; }
+  /** An approver in Airwallex's web app approves (SCHEDULED) or rejects (CANCELLED) a transfer waiting IN_APPROVAL. */
+  approveInWebApp(id: string, ok = true): void {
+    const t = this.transfers.find((x) => x.id === id)!;
+    if (t.status !== "IN_APPROVAL") throw new Error(`transfer ${id} is ${t.status}, not IN_APPROVAL`);
+    t.status = ok ? "SCHEDULED" : "CANCELLED";
+  }
   async transitionTransfer(id: string, to: "SENT" | "PAID" | "FAILED", failureType?: string): Promise<Transfer> {
     this.calls.push(`transition:${to}`);
     const t = this.transfers.find((x) => x.id === id)!;
+    if (t.status === "IN_APPROVAL") throw Object.assign(new Error("the transfer is waiting for approval in Airwallex"), { code: "invalid_status" });
     t.status = to;
     if (to === "PAID") this.balOf(t.currency).reservedCents -= t.amountCents + (t.fee?.cents ?? SANDBOX_SWIFT_FEE_CENTS);
     if (to === "FAILED") { t.failureType = failureType ?? "BENEFICIARY_BANK_RETURNED"; t.status = "CANCELLED"; }
@@ -212,7 +224,7 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
     if (b.availableCents < t.amountCents + fee) throw Object.assign(new Error("balance_insufficient"), { code: "balance_insufficient" });
     b.availableCents -= t.amountCents + fee;
     b.reservedCents += t.amountCents + fee;
-    const tr = { id: `tr_${++this.n}`, requestId: t.requestId, status: "PROCESSING", amountCents: t.amountCents, currency: t.currency as Currency, metadata: t.approvalSha256, reference: t.reference, fee: { cents: fee, currency: t.currency }, beneficiaryId: t.beneficiaryId };
+    const tr = { id: `tr_${++this.n}`, requestId: t.requestId, status: this.approvalWorkflow ? "IN_APPROVAL" : "PROCESSING", amountCents: t.amountCents, currency: t.currency as Currency, metadata: t.approvalSha256, reference: t.reference, fee: { cents: fee, currency: t.currency }, beneficiaryId: t.beneficiaryId };
     this.transfers.push(tr);
     if (this.loseNextTransferAnswer) { this.loseNextTransferAnswer = false; throw new AirwallexAmbiguous("/transfers/create", new Error("socket hang up")); }
     return { ...tr };

@@ -3,7 +3,8 @@
 // that account. Behind AIRWALLEX_PLATFORM=on; the Purser fee behind AIRWALLEX_PLATFORM_FEE=on as well, because how a
 // payout platform takes a fee from a connected account is not confirmed by Airwallex yet (see the doc).
 //
-// Every endpoint and field here is from Airwallex's documentation, read 9 November 2026; none has been called yet.
+// Every endpoint and field here is from Airwallex's documentation, read 9 November 2026. Called live so far (10 Nov,
+// docs/runs/2026-11-10-connected-accounts-sandbox.md): accounts/create only, answered CREATED.
 
 import type { Airwallex } from "./client.js";
 

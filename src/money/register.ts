@@ -31,7 +31,8 @@ const cols = (db: DB, table: string) => new Set((db.prepare(`PRAGMA table_info($
 const short = (s: string | null | undefined, n = 12) => (s ? (s.length > n + 2 ? `${s.slice(0, n)}…` : s) : "");
 const words = (s: string) => s.toLowerCase().replace(/_/g, " ");
 
-const TRANSFER_WORDS: Record<string, string> = { SUBMITTING: "being sent", SENT: "sent", PAID: "paid", FAILED: "failed", CANCELLED: "cancelled", REFUSED: "refused" };
+// IN_APPROVAL: Airwallex's own approval workflow holds the payout until an approver in Airwallex's web app approves it.
+const TRANSFER_WORDS: Record<string, string> = { IN_APPROVAL: "waiting for Airwallex approval", SCHEDULED: "approved at Airwallex, scheduled", SUBMITTING: "being sent", SENT: "sent", PAID: "paid", FAILED: "failed", CANCELLED: "cancelled", REFUSED: "refused" };
 
 interface Draft extends Omit<TxRow, "rail_label" | "booking" | "reconciliation" | "reconciliation_words" | "flags" | "approval" | "flow"> {
   /** For a movement between own accounts: out of the account it left. */

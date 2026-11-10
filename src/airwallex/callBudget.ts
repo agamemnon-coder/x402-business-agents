@@ -16,7 +16,8 @@ export class AirwallexBudgetSpent extends Error {
   }
 }
 
-const ID = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{20,}|[a-z]+_[A-Za-z0-9]{6,})$/i;
+// A prefixed id (acct_SC-QD89f…, ahfi_IriU…, tr_…) has a digit or a capital in it; a word such as update_status has not.
+const ID = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{20,}|[a-z]+_(?=[A-Za-z0-9_-]*[A-Z0-9])[A-Za-z0-9_-]{6,})$/;
 
 /** A sandbox path with its ids replaced by {id}: `/api/v1/transfers/1b…/x` → `/transfers/{id}/x`. */
 export function endpointOf(url: string): string {

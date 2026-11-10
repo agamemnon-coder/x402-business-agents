@@ -244,6 +244,9 @@ function record(db: DB, t: SupplierPaymentTerms, tr: Transfer): Promise<void> {
 /** Sandbox only: Purser moves the transfer to SENT, then PAID, through Airwallex's simulation API (the settlement is simulated). */
 async function settleInSandbox(db: DB, rail: PayoutRail, sim: SandboxSim, tr: Transfer): Promise<Transfer> {
   let cur = await rail.getTransfer(tr.id);
+  // Airwallex's own approval workflow holds the transfer IN_APPROVAL until a person approves it in Airwallex's web app:
+  // a second lock next to the CFO's Face ID. Purser never simulates past it; the payout is followed up once approved.
+  if (cur.status === "IN_APPROVAL") return cur;
   for (const to of ["SENT", "PAID"] as const) {
     if (cur.status === "PAID") break;
     if (to === "SENT" && cur.status === "SENT") continue;

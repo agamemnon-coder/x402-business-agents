@@ -23,6 +23,7 @@ import { executePaymentBatch } from "../src/executors/paymentBatch.js";
 import { proposePolicyChange } from "../src/executors/policyChange.js";
 import { executeSupplierPayment } from "../src/executors/supplierPayment.js";
 import { followPayouts } from "../src/payouts/follow.js";
+import { transactionRegister } from "../src/money/register.js";
 import { inFlightCents, type PlatformFields, type SupplierPaymentTerms } from "../src/payouts/plan.js";
 import { decide } from "../src/policy/approvals.js";
 import { fourEyes, supplierPaymentEur } from "../src/policy/fourEyes.js";
@@ -223,6 +224,45 @@ describe("RT6-B the fee step never fails a paid payment; booked only when settle
     expect(awx.platformFees).toHaveLength(1);
     expect(db.prepare("SELECT status FROM platform_fees").get()).toEqual({ status: "SETTLED" });
     expect(inFlightCents(db, "USD")).toBe(0);
+  });
+
+  it("Airwallex's own approval workflow: the payout waits IN_APPROVAL, nothing is simulated past it, the fee waits; once approved and PAID the fee is taken", async () => {
+    await platform();
+    awx.approvalWorkflow = true;
+    const { proposal } = await propose(await usInvoice());
+    approve(proposal.proposal_id);
+    const r = await executeSupplierPayment(db, awx, awx, proposal.proposal_id);
+    expect(r.transfer.status).toBe("IN_APPROVAL");
+    expect(awx.calls.filter((c) => c.startsWith("transition:"))).toEqual([]);
+    expect(row(proposal.proposal_id).status).toBe("EXECUTED");
+    expect(db.prepare("SELECT status FROM platform_fees").get()).toEqual({ status: "DUE" });
+    await followPayouts(db, awx, now);
+    expect(db.prepare("SELECT status FROM transfers").get()).toEqual({ status: "IN_APPROVAL" });
+    expect(awx.platformFees).toHaveLength(0);
+    const waiting = transactionRegister(db).rows.find((x) => x.id.startsWith("transfer:"))!;
+    expect(waiting.status_words).toBe("waiting for Airwallex approval");
+    expect(waiting.moved).toBe(false);
+    awx.approveInWebApp(r.transfer.id);
+    await followPayouts(db, awx, now);
+    expect(transactionRegister(db).rows.find((x) => x.id.startsWith("transfer:"))!.status_words).toBe("approved at Airwallex, scheduled");
+    await awx.transitionTransfer(r.transfer.id, "SENT");
+    await awx.transitionTransfer(r.transfer.id, "PAID");
+    await followPayouts(db, awx, now);
+    expect(db.prepare("SELECT status FROM transfers").get()).toEqual({ status: "PAID" });
+    expect(db.prepare("SELECT status FROM platform_fees").get()).toEqual({ status: "SETTLED" });
+  });
+
+  it("a payout the approver rejects in Airwallex's web app is cancelled and its fee voided", async () => {
+    await platform();
+    awx.approvalWorkflow = true;
+    const { proposal } = await propose(await usInvoice());
+    approve(proposal.proposal_id);
+    const r = await executeSupplierPayment(db, awx, awx, proposal.proposal_id);
+    awx.approveInWebApp(r.transfer.id, false);
+    await followPayouts(db, awx, now);
+    expect(db.prepare("SELECT status FROM transfers").get()).toEqual({ status: "CANCELLED" });
+    expect(db.prepare("SELECT status FROM platform_fees").get()).toEqual({ status: "VOID" });
+    expect(awx.platformFees).toHaveLength(0);
   });
 
   it("a live payout that fails voids its fee", async () => {

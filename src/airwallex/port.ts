@@ -50,7 +50,8 @@ export interface Beneficiary {
   currency: Currency;
 }
 
-export type TransferStatus = "SCHEDULED" | "OVERDUE" | "PROCESSING" | "SENT" | "PAID" | "FAILED" | "CANCELLED";
+/** IN_APPROVAL: waiting for an approver in Airwallex's own transfer approval workflow (web app), before SCHEDULED. */
+export type TransferStatus = "IN_APPROVAL" | "SCHEDULED" | "OVERDUE" | "PROCESSING" | "SENT" | "PAID" | "FAILED" | "CANCELLED";
 
 export interface Transfer {
   id: string;

@@ -1,9 +1,10 @@
 # Purser as an Airwallex platform (connected accounts)
 
-Status: built behind `AIRWALLEX_PLATFORM=on` (off by default), tested only against a fake Airwallex. Apart from the two
-read-only/refused calls in "Live check" below, **no call has been made to Airwallex for any of this.** Our sandbox is not
-enabled for connected accounts yet (`accounts/create` answers 400 "This account cannot onboard business accounts");
-Airwallex enables that per account (see "What Max must ask Airwallex" below).
+Status: built behind `AIRWALLEX_PLATFORM=on` (off by default), tested against a fake Airwallex. **Connected accounts are
+enabled on our sandbox since 10 November 2026** (Airwallex's Turner Vickery, hackathon Slack). The first sandbox run
+(`docs/runs/2026-11-10-connected-accounts-sandbox.md`, 4 calls) opened a connected account through Purser's rail
+(`acct_SC-QD89fOneAeqaRFgOymw`, `CREATED`) and stopped there: activating it needs the company's verification details
+first. No payout, beneficiary or fee has been made from a connected account yet.
 
 ## Why
 
@@ -78,6 +79,13 @@ platform-level webhook uses the same signature scheme is **unconfirmed**.
 - `POST /api/v1/connected_account_transfers/create` (body: `amount`, `currency`, `destination` = account id, `reason`,
   `reference` 1–140 chars, `request_id` 1–50 chars; statuses `NEW`, `SETTLED`, `PENDING`, `SUSPENDED`, `FAILED`) sends
   funds **from the platform's account to a connected account**. — `docs/api/scale/connected_account_transfers/create`
+- **Found 10 Nov in Airwallex's sample integration for payout platforms**
+  (`global-treasury/use-cases/payroll/cross-border-payroll-payouts/sample-integration`): `POST /transfers/create` sent with
+  `x-on-behalf-of` takes **`application_fee_options`**, e.g. `[{ source_type: "TRANSFER", type: "PERCENTAGE",
+  percentage: "0.5" }]` (also `FIXED` with `amount` and `currency`, and `source_type: "CONVERSION"` for FX), and answers
+  `application_fees` per fee. That takes the platform fee from the payout itself, in one call. The same page says FX and
+  payout fee mark-ups can instead be configured with the Account Manager. Not tested yet; if the sandbox confirms it,
+  Purser's fee moves onto the transfer (one call, no separate fee transfer, nothing left owing after a paid payout).
 - **Unconfirmed, and the most important open question:** how a payout platform collects a fee *from* a connected
   account (a connected-account transfer sent with `x-on-behalf-of` to the platform's account id, a fee configured by
   Airwallex on the platform, or an FX/payout markup). Purser's fee collection therefore sits behind a second flag,
@@ -92,6 +100,12 @@ platform-level webhook uses the same signature scheme is **unconfirmed**.
   `docs/connected-accounts/about/regional-availability`
 - The same page (re-read 9 Nov): Belgium, France, the United Kingdom and the United States are listed with "Full account,
   Ledger account" as well; for full accounts Airwallex says to confirm with the Airwallex Account Manager.
+- **Live run, 10 Nov (4 calls, `docs/runs/2026-11-10-connected-accounts-sandbox.md`):** `POST /accounts/create` with
+  Purser's body → 201 `CREATED` (enabled now; `request_id` accepted, its use unconfirmed). `POST /accounts/{id}/submit`
+  → 400 `field_required` (`account_details.business_details.business_structure`, the first of the verification details).
+  `POST /simulation/accounts/{id}/update_status` → 400 "Account needs to be submitted for review before using this
+  endpoint", also with `force: true`. To reach `ACTIVE` in the sandbox: complete test verification details and submit,
+  or Airwallex's hosted onboarding (template id from Airwallex) once in the browser.
 - **Live check, 9 Nov (two calls, reported to this session):** our sandbox account is registered in the Netherlands.
   `GET /api/v1/accounts` → 200 with 0 items; `POST /api/v1/accounts/create` → 400 `invalid_argument` "This account cannot
   onboard business accounts". So the platform API is reachable but connected accounts are **not enabled** on our
@@ -155,6 +169,28 @@ Purser Cloud signs a **binding** with Purser's platform Ed25519 key (a Worker se
   `OPEN` for a person and the next follow-up; the payment stays `EXECUTED`. A fee answered `NEW`/`PENDING` stays so
   until it is read `SETTLED`; only a settled fee is booked and counted as moved. A payout that fails voids its fee.
 
+### Airwallex's own transfer approval: a second, independent lock
+
+Airwallex (Turner Vickery, 10 Nov) pointed to its web-app setting **Transfers > Transfer approvals**: with "Require
+API-initiated transfers to go through the same approval workflow?" set to Yes, a transfer Purser creates through the API
+goes to **`IN_APPROVAL`** and moves to `SCHEDULED` only after an approver in Airwallex's web app approves it
+(`docs/payouts/transfers/manage-transfers/manage-approvals-for-transfers`). Airwallex's notes: approvals are done by a
+person in the web app; the person who submits must not be an approver; the docs cover transfers and batch transfers
+only (not charges or `connected_account_transfers`); sandbox behaviour is not documented. **Max sets this up himself;
+Purser never changes it and never approves in the web app.**
+
+With it on, every payout has two locks that do not depend on each other: the CFO's Face ID over the exact terms in
+Purser, and an approver in Airwallex's own web app. What Purser does with `IN_APPROVAL` (`test/rt6-platform.test.ts`):
+
+- the payout is recorded as `IN_APPROVAL` and the payment is `EXECUTED` (written at Airwallex, not yet paid); the
+  transaction register shows it as "waiting for Airwallex approval" and not moved;
+- the sandbox's settle step never simulates past it (`settleInSandbox` stops), so the approval is a person's;
+- `followPayouts` reads it again on every sync: `SCHEDULED` ("approved at Airwallex, scheduled"), then `PAID`, and only
+  then Purser's fee is taken; an approver who rejects it leaves it `CANCELLED` and the fee is voided;
+- known gap: the Kit 11 `invoice_payment` route still marks a payout that is not `PAID` at once as `FAILED` (it was so
+  before this change); its duplicate check still stops a second payout for the same invoice. Before the web-app
+  approval is switched on for that route, it must wait the same way.
+
 ### Production: on-behalf-of calls go through a Purser-held service (design note, not built)
 
 In this build the runner holds the Airwallex platform key and sets `x-on-behalf-of` itself; the binding stops a runner
@@ -164,7 +200,7 @@ Purser holds** (the platform key never leaves it): the runner sends the signed t
 binding; the service checks the binding and the approval hash, then makes the call for that one account. The runner
 keeps no platform key. This is a go-live item (`docs/go-live.md`).
 
-### What is unconfirmed (all behind the flag, none called yet)
+### What is unconfirmed (all behind the flag)
 
 - `request_id` on `POST /accounts/create` as an idempotency id, and looking an account up by it
   (`GET /accounts?request_id=`, `findConnectedAccount`): the cloud sends the same id on every attempt of one opening,
@@ -183,7 +219,7 @@ file).
 
 ## What Max must ask Airwallex
 
-1. Enable **connected accounts / Payments for Platforms** on our sandbox (account id and client id as in the Slack
+1. ~~Enable **connected accounts / Payments for Platforms** on our sandbox~~ (done 10 Nov) (account id and client id as in the Slack
    thread example; never post the API key).
 2. The **hosted onboarding flow template id** for KYC (`template` in `hosted_flows/create`).
 3. Confirm the **platform fee mechanism for payouts** (see "Platform fee"): which call, from which account, and whether a
@@ -194,6 +230,8 @@ file).
    webhook signature scheme for platform-level `account.*` events.
 
 ## The sandbox test that would confirm it (needs Max's go and a call budget)
+
+The first 4 calls of it ran on 10 Nov (see above); the next run's plan is in the run record.
 
 About 12 calls, in this order: login (1); `POST /accounts/create` (1); `POST /hosted_flows/create` (1);
 `POST /hosted_flows/{id}/authorize` (1); after the KYC is done in the browser and `account.active` arrives:
