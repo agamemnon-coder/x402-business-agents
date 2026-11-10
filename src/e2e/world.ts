@@ -19,6 +19,11 @@ export interface WorldCompany {
   tenant: string;
   /** The ACTIVE connected account it already has, or null: opened in the run. */
   accountId: string | null;
+  /**
+   * A clearly fake TEST registration number, sent as the payer's on every payout (transfers/create payer.additional_info):
+   * Airwallex refused payouts from accounts opened as non-registered sole traders without one (10 November).
+   */
+  testRegistrationNumber?: string;
   invoices: WorldInvoice[];
 }
 
@@ -44,14 +49,14 @@ export const WORLD: WorldCompany[] = [
     ],
   },
   {
-    key: "BAKKERIJ", name: "Bakkerij De Test (fake)", tenant: "t_e2e_bakkerij", accountId: null,
+    key: "BAKKERIJ", name: "Bakkerij De Test (fake)", tenant: "t_e2e_bakkerij", accountId: null, testRegistrationNumber: "TEST-00000001",
     invoices: [
       { via: "email", filename: "MM-2026-114.pdf", text: nlInvoice({ vendor: "Meelhandel Molenaar B.V. (test)", vat: "NL987654321B01", no: "MM-2026-114", date: "04-11-2026", due: "18-11-2026", net: "3,00", vatAmt: "0,63", total: "3,63", iban: "NL02 ABNA 0123 4567 89", bic: "ABNANL2A" }) },
       { via: "upload", filename: "VE-889.pdf", text: nlInvoice({ vendor: "Verpakking Express B.V. (test)", vat: "NL112233445B01", no: "VE-889", date: "06-11-2026", due: "20-11-2026", net: "2,00", vatAmt: "0,42", total: "2,42", iban: "NL20 INGB 0001 2345 67", bic: "INGBNL2A" }) },
     ],
   },
   {
-    key: "FIETSLAB", name: "Fietslab Test (fake)", tenant: "t_e2e_fietslab", accountId: null,
+    key: "FIETSLAB", name: "Fietslab Test (fake)", tenant: "t_e2e_fietslab", accountId: null, testRegistrationNumber: "TEST-00000002",
     invoices: [
       { via: "email", filename: "OD-77.pdf", text: nlInvoice({ vendor: "Onderdelen Direct B.V. (test)", vat: "NL556677889B01", no: "OD-77", date: "07-11-2026", due: "21-11-2026", net: "5,00", vatAmt: "1,05", total: "6,05", iban: "NL44 RABO 0123 4567 89", bic: "RABONL2U" }) },
     ],

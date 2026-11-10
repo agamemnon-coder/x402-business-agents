@@ -17,6 +17,8 @@ import { E2E_ORIGIN, E2E_RP_ID, pushToT0, TEST_PASSKEY, toPostings, type Platfor
 import { chainSteps, type E2eStep, type StepData } from "./receiptChain.js";
 import type { WorldCompany } from "./world.js";
 
+const PAYMENT_KINDS = new Set(["supplier_payment", "payment_batch", "invoice_payment"]);
+
 export interface CompanyFacts {
   key: string;
   account: string;
@@ -68,8 +70,9 @@ export function jwkOfCose(coseB64url: string): { kty: "EC"; crv: "P-256"; x: str
 
 /** For a company whose payments were all PAID: its entries to T:0 (tagged, converted at the run's rate) and its receipt. */
 export async function finishPaid(d: Pick<PlatformE2EDeps, "t0" | "t0Rate" | "t0Currency" | "fx" | "now"> & { fx: FxRate }, db: DB, c: Pick<WorldCompany, "key" | "name">, facts: CompanyFacts, file: string): Promise<CompanyFacts> {
-  const paid = facts.approvals.find((a) => a.status === "EXECUTED" && (a.kind === "supplier_payment" || a.kind === "payment_batch" || a.kind === "invoice_payment"));
-  if (!paid || facts.transfers.some((t) => t.status !== "PAID")) throw new Error(`${c.key}: not every payout is PAID; nothing to finish`);
+  // The last executed payment approval (a retry's, after an earlier one was refused): its payouts must all be PAID.
+  const paid = [...facts.approvals].reverse().find((a) => a.status === "EXECUTED" && PAYMENT_KINDS.has(a.kind));
+  if (!paid) throw new Error(`${c.key}: no executed payment; nothing to finish`);
   const entries = apJournal(db);
   const posted = await pushToT0(d as PlatformE2EDeps, toPostings(c, entries, d.fx));
   const p = db.prepare("SELECT terms_json FROM proposals WHERE proposal_id = ?").get(paid.proposal_id) as { terms_json: string };
@@ -110,7 +113,9 @@ export async function finishRun(d: Pick<PlatformE2EDeps, "t0" | "t0Rate" | "t0Cu
     const db = openDb(f);
     try {
       let facts = companyFacts(db, c.key, log);
-      if (facts.transfers.length && facts.transfers.every((t) => t.status === "PAID")) facts = await finishPaid(d, db, c, facts, join(dir, c.key.toLowerCase(), `receipt-${facts.approvals.find((a) => a.status === "EXECUTED" && a.kind !== "payee_add")!.proposal_id}.json`));
+      const paid = [...facts.approvals].reverse().find((a) => a.status === "EXECUTED" && PAYMENT_KINDS.has(a.kind));
+      const open = rows<{ n: number }>(db, "SELECT COUNT(*) AS n FROM ap_invoices WHERE status <> 'paid'")[0]!.n;
+      if (paid && open === 0) facts = await finishPaid(d, db, c, facts, join(dir, c.key.toLowerCase(), `receipt-${paid.proposal_id}.json`));
       out.push(facts);
     } finally { db.close(); }
   }

@@ -16,6 +16,7 @@ import { FUND_CENTS } from "../src/e2e/setup.js";
 import { verifyReceipt } from "../src/try/receipt.js";
 import { appendFileSync, existsSync } from "node:fs";
 import { finishRun } from "../src/e2e/finish.js";
+import { retryCompany } from "../src/e2e/retry.js";
 import { WORLD } from "../src/e2e/world.js";
 
 let dir: string;
@@ -175,6 +176,27 @@ describe("the live run's budget", () => {
     expect(verifyReceipt(JSON.parse(readFileSync(sb.receipt!, "utf8"))).checks.filter((c) => !c.ok)).toEqual([]);
     expect(facts[1]!.receipt).toBeNull();
     expect(facts[1]!.refusals.length).toBeGreaterThan(0);
+    rmSync(logFile, { force: true });
+  });
+
+  it("registration number: refused without it (as live), then retried from the ledger with the TEST number, PAID, receipts verify", async () => {
+    const dry = dryRunDeps();
+    const railFor = dry.deps.railFor;
+    const strict = (a: string) => { const r = railFor(a); if (a !== "acct_SC-QD89fOneAeqaRFgOymw") (r.rail as unknown as { requirePayerRegistration: boolean }).requirePayerRegistration = true; return r; };
+    const logFile = `${dir}.log`;
+    const noNumbers = WORLD.map((c) => ({ ...c, testRegistrationNumber: undefined }));
+    // As on 10 November: without the payer's registration number the new account's payout is refused, and the run stops.
+    await expect(runPlatformE2E({ ...dry.deps, world: noNumbers, railFor: strict, dir, now, log: (l) => appendFileSync(logFile, `${l}\n`) })).rejects.toThrow(/^BAKKERIJ: .*: the run stops here$/);
+    // The retry: same ledger, no new reading, a new test passkey, the TEST number as the payer's.
+    const bak = { ...WORLD[1]!, accountId: "acct_fake_bakkerij" };
+    const pid = await retryCompany({ platform: dry.platform, railFor: strict, feeBps: "50", now, log: () => undefined }, dir, bak);
+    expect(dry.rails.get("acct_fake_bakkerij")!.platformFees).toHaveLength(2);
+    appendFileSync(logFile, "EUR entries converted at Airwallex sandbox rate 1.111482 USD per EUR at 2026-11-10T07:06:03.000Z (test)\n");
+    const facts = await finishRun({ t0: dry.deps.t0, t0Rate: () => undefined, t0Currency: { currency: "EUR", atomsPerUnit: 100 }, fx: { rate: "1.111482", to: "USD", at: "2026-11-10T07:06:03.000Z", source: "test" }, now }, dir, logFile, WORLD);
+    const b = facts.find((f) => f.key === "BAKKERIJ")!;
+    expect(b.receipt).toMatch(new RegExp(`receipt-${pid}\\.json$`));
+    expect(verifyReceipt(JSON.parse(readFileSync(b.receipt!, "utf8"))).checks.filter((c) => !c.ok)).toEqual([]);
+    expect(b.transfers.map((t) => t.status)).toEqual(["CANCELLED", "CANCELLED", "PAID", "PAID"]);
     rmSync(logFile, { force: true });
   });
 });

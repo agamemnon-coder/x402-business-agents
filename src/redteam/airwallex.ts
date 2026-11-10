@@ -38,6 +38,8 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
   refuseNextTransfer: string | null = null;
   /** Purser as a platform: the connected account this stand-in acts for, and the Purser fees taken from it. */
   payingAccount: string | null = null;
+  /** A paying account that Airwallex refuses to pay from without the payer's business registration number. */
+  requirePayerRegistration = false;
   /**
    * Airwallex's own transfer approval workflow (web app: "Require API-initiated transfers to go through the same approval
    * workflow?" Yes): a new transfer waits IN_APPROVAL until an approver in Airwallex's web app approves it (approveInWebApp).
@@ -224,6 +226,8 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
   }
   async createPayoutTransfer(t: NewPayoutTransfer): Promise<Transfer> {
     this.calls.push("createPayoutTransfer");
+    // As the sandbox answered on 10 November for a connected account opened as a non-registered sole trader.
+    if (this.requirePayerRegistration && !t.payer?.registrationNumber) throw Object.assign(new Error("validation_failed: payer.additional_info.business_registration_number"), { code: "validation_failed" });
     if (this.dropNextTransfer) { this.dropNextTransfer = false; throw new AirwallexAmbiguous("/transfers/create", new Error("socket hang up")); }
     if (this.refuseNextTransfer) { const code = this.refuseNextTransfer; this.refuseNextTransfer = null; throw Object.assign(new Error(code), { code }); }
     if (this.transfers.some((x) => x.requestId === t.requestId)) throw Object.assign(new Error("duplicate request_id"), { code: "duplicate_request" });

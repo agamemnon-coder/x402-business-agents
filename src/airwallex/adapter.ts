@@ -342,10 +342,20 @@ export class AirwallexRest implements AirwallexRail, SandboxSim, PayoutRail {
     const r = await this.api.call<AwxTransfer>("POST", "/transfers/create", {
       request_id: t.requestId, beneficiary_id: t.beneficiaryId, transfer_amount: fromCents(t.amountCents), transfer_currency: t.currency,
       source_currency: t.sourceCurrency, transfer_method: t.method, reference: t.reference, reason: t.reason,
-      metadata: { approval_sha256: t.approvalSha256 }, ...feeOptions(t.applicationFee),
+      metadata: { approval_sha256: t.approvalSha256 }, ...feeOptions(t.applicationFee), ...payerOf(t.payer),
     });
     return toTransfer(r);
   }
+}
+
+/** The transfer's `payer` (transfers/create: entity_type and address required; additional_info.business_registration_number). */
+export function payerOf(p: NewPayoutTransfer["payer"]): { payer?: Record<string, unknown> } {
+  if (!p) return {};
+  return { payer: {
+    entity_type: "COMPANY", company_name: p.companyName,
+    address: { country_code: p.address.countryCode, city: p.address.city, postcode: p.address.postcode, street_address: p.address.street },
+    additional_info: { business_registration_number: p.registrationNumber },
+  } };
 }
 
 /** The adapter when the sandbox keys are set; null otherwise, so callers stop instead of pretending. */

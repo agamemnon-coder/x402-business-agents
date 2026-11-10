@@ -162,7 +162,7 @@ async function runCompany(d: PlatformE2EDeps, c: WorldCompany, privPkcs8: string
   d.log(`${c.key.padEnd(12)} account ${acct.accountId} ${acct.opened ? "opened" : "existing"}, ${acct.status}`);
   // Test money: only when the account holds less than the run needs (a re-run never funds twice), under a request id
   // of this run's own (recorded), so a funding from an earlier run is never mistaken for this one.
-  const { rail, sim } = d.railFor(acct.accountId);
+  const { rail, sim } = withPayer(d.railFor(acct.accountId), c);
   const heldCents = (await rail.balances()).EUR?.availableCents ?? 0;
   const fundRequest = `e2e-fund-${c.key.toLowerCase()}-${now().toISOString().slice(0, 16).replace(/[-:T]/g, "")}`;
   const funding = heldCents >= d.fundCents
@@ -296,6 +296,16 @@ async function runCompany(d: PlatformE2EDeps, c: WorldCompany, privPkcs8: string
   d.log(`${c.key.padEnd(12)} paid: ${transfers.map((t) => `${str(t.transfer_id)} ${t.status}${t.fee ? ` fee ${t.fee_cur} ${t.fee}` : ""}`).join(", ")}`);
   db.close();
   return { key: c.key, postings, steps: allSteps, receipt, file: receiptFile };
+}
+
+/** The company's rails, every payout carrying its TEST registration number as the payer's, when it has one. */
+export function withPayer(r: CompanyRails, c: Pick<WorldCompany, "name" | "testRegistrationNumber">): CompanyRails {
+  const reg = c.testRegistrationNumber;
+  if (!reg) return r;
+  const payer = { companyName: c.name, address: { countryCode: "NL", city: "Amsterdam", postcode: "1011 AA", street: "Teststraat 1" }, registrationNumber: reg };
+  const rail = Object.create(r.rail) as CompanyRails["rail"];
+  rail.createPayoutTransfer = (t) => r.rail.createPayoutTransfer({ ...t, payer });
+  return { rail, sim: r.sim };
 }
 
 /** Who read the invoice: Claude (with its request id, from the audit log) or the parser. */
