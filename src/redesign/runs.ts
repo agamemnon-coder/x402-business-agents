@@ -67,6 +67,7 @@ function ledgerRow(key: string, file: string, log: string, title: string, rehear
 
 /** The big numbers of the two runs typed in above (from their run logs), kept apart from their rows' text. */
 const TYPED_STATS: Record<string, RunStat[]> = {
+  "two-locks-1": [{ v: "2", l: "locks on one payout" }, { v: "IN_APPROVAL", l: "held by Airwallex" }, { v: "1", l: "transfer created" }],
   "t0-1": [{ v: "95", l: "journal entries" }, { v: "0", l: "differences" }, { v: "0", l: "posted again" }],
   "platform-e2e-1": [{ v: "3", l: "connected accounts, ACTIVE" }, { v: "1", l: "payout PAID, Purser fee taken" }, { v: "3", l: "invoices refused by Airwallex" }],
   "connected-1": [{ v: "1", l: "connected account, ACTIVE" }, { v: "€5.00", l: "payout, PAID (simulated)" }, { v: "€0.05", l: "Purser fee" }],
@@ -75,6 +76,16 @@ const TYPED_STATS: Record<string, RunStat[]> = {
 /** Every live run, newest first. */
 export function liveRuns(): RunRow[] {
   const rows: RunRow[] = [];
+
+  // 10 Nov: two locks on one payout (docs/runs/2026-11-10-airwallex-two-locks.md).
+  rows.push({
+    key: "two-locks-1", iso: "2026-11-10T09:02:16.000Z", date: day("2026-11-10T09:02:16.000Z"),
+    title: "Two locks on one payout: the CFO's passkey, then Airwallex's approval workflow", rails: "Airwallex sandbox (transfer approval workflow), CFO passkey",
+    what: "The CFO's passkey (a labelled virtual test passkey) signed the exact terms; only then did Purser create the EUR 240.00 transfer, and Airwallex's own approval workflow held it IN_APPROVAL with the signed hash in its metadata.",
+    checks: "Airwallex answered IN_APPROVAL on create and on a read-back; Purser did not simulate past it or send it again. The approval in the Airwallex web app was not completed (the transfer did not show in the sandbox web app), so it is not paid. 7 calls of the 10 approved.", money: "Sandbox · test money",
+    ids: [{ label: "Transfer", value: "4074d684-4704-406c-a527-2832753baf4f" }, { label: "Short reference", value: "P261110-48HWOJN" }],
+    files: [{ label: "run log", href: "../../docs/runs/2026-11-10-airwallex-two-locks.md" }],
+  });
 
   // 10 Nov: the platform build end to end, three test companies (docs/runs/2026-11-10-platform-e2e.md).
   rows.push({
