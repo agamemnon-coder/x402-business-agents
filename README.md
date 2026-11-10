@@ -48,7 +48,7 @@ The Kit 11 scenario, run live on 3 November, and a demo you sign yourself: **[ki
 | Airwallex use | [/airwallex](https://kit11.max-31b.workers.dev/airwallex): cards per agent with the CFO policy as Airwallex's own controls, read back; Airwallex's own declines; SWIFT payouts carrying the signed hash; FX for the shortfall only. [Run log](docs/runs/2026-11-07-awx-1.md) |
 | Agentic | [/watch](https://kit11.max-31b.workers.dev/watch), [/claude](https://kit11.max-31b.workers.dev/claude): three Claude agents, 24 of 24 decisions by Claude; an agent read Airwallex's decline and asked the CFO for a raise instead of retrying |
 | Technical | [What Purser guarantees](https://kit11.max-31b.workers.dev/proof#guarantees), each promise with its code, its test and where it ran; [controls matrix](docs/controls-matrix.md); [verify it yourself](#verify-it-yourself-in-3-commands) |
-| Finance value | [/try/sign](https://kit11.max-31b.workers.dev/try/sign); [the business case](docs/business/) (a hypothesis; 1 CFO conversation, quoted, anonymous; more in progress; no customers yet) |
+| Finance value | [/try/sign](https://kit11.max-31b.workers.dev/try/sign); [the business case](docs/business/) (a hypothesis; 2 finance conversations, quoted, anonymous; more in progress; no customers yet) |
 | Metal Award | [/metal](https://kit11.max-31b.workers.dev/metal), [docs/metal-award.md](docs/metal-award.md) |
 | Visa Award | [/visa](https://kit11.max-31b.workers.dev/visa), [the Airi run's log](docs/runs/2026-11-07-vic-1.md) |
 | Founder's and Judges' Choice | [/try/sign](https://kit11.max-31b.workers.dev/try/sign) in a minute; what comes next, not live: [docs/after-the-kit.md](docs/after-the-kit.md) |
@@ -176,9 +176,11 @@ CI runs the same on every push.
 
 ## Why this is a company
 
-Not validated with customers yet: 1 CFO conversation (quoted, anonymous); more in progress; no pilots, no revenue. Every line below is a hypothesis except the cited source.
+Not validated with customers yet: 2 finance conversations (a CFO and a bank finance professional, quoted, anonymous); more in progress; no pilots, no revenue. Every line below is a hypothesis except the cited source.
 
 > "At our company invoices go through a full approval process in our ERP. I think Purser is something for SMEs." — CFO at a US company (anonymous)
+>
+> "At the front it's automated, at the back it's a human check." (on the invoice process at their bank) — finance professional at a large Dutch bank (anonymous)
 
 - **The problem:** when an AI agent pays today, its limit lives in a prompt it can be talked out of, or in a month-end review that finds the money after it has left. ([problem.md](docs/business/problem.md#what-goes-wrong))
 - **Who buys:** the finance team of a small company or scale-up that already banks with Airwallex and lets AI agents pay; the CFO uses it and decides. ([model.md](docs/business/model.md#who-buys-and-who-uses-it-hypothesis))

@@ -125,9 +125,9 @@ export const BUSINESS_CASE_LINK = "Read the business case ↗";
  * wherever a price is given (test/unit-economics-hypothesis.test.ts); src/business/unitEconomics.ts computes from it.
  */
 export const PRICE_LINE = "€49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions.";
-export const WHY_COMPANY_NOTE = "Not validated with customers yet: 1 CFO conversation (quoted, anonymous); more in progress; no pilots, no revenue. Every line below is a hypothesis except the cited source.";
+export const WHY_COMPANY_NOTE = "Not validated with customers yet: 2 finance conversations (a CFO and a bank finance professional, quoted, anonymous); more in progress; no pilots, no revenue. Every line below is a hypothesis except the cited source.";
 /** The same, as one small line under the lines (Proof, Max 7 Nov: the content first, the disclaimer last). */
-export const WHY_COMPANY_NOTE_LAST = "Not validated with customers yet: 1 CFO conversation (quoted, anonymous); more in progress; no pilots, no revenue; every line above is a hypothesis except the cited source.";
+export const WHY_COMPANY_NOTE_LAST = "Not validated with customers yet: 2 finance conversations (a CFO and a bank finance professional, quoted, anonymous); more in progress; no pilots, no revenue; every line above is a hypothesis except the cited source.";
 export const WHY_COMPANY: readonly { label: string; text: string; page: string }[] = [
   { label: "The problem", text: "when an AI agent pays today, its limit lives in a prompt it can be talked out of, or in a month-end review that finds the money after it has left.", page: "problem.md#what-goes-wrong" },
   { label: "Who buys", text: "the finance team of a small company or scale-up that already banks with Airwallex and lets AI agents pay; the CFO uses it and decides.", page: "model.md#who-buys-and-who-uses-it-hypothesis" },
