@@ -376,8 +376,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // 7 Nov). /metal: 175 since the jury review of 7 Nov (#3), for what the explorer shows beside the refusal's link.
       // The second Airi run (vic-2, 7 Nov): /visa 465 with its three outcomes under the VIC flow, /airwallex 365 with its
       // heading and checks (the same budgets as test/site-v4.test.ts).
-      // /visa 495 since 10 Nov (Max: we compete for the Visa Award, keep it visible): one plain sentence on top.
-      const budget = path === "/airwallex" ? 365 : path === "/visa" ? 495 : path === "/metal" ? 180 : 150;
+      // /visa 495 since 10 Nov (Max: we compete for the Visa Award, keep it visible): one plain sentence on top; 600 the
+      // same day with the overview of the three Visa runs above the Airi run (Max, 10 Nov: more Visa).
+      const budget = path === "/airwallex" ? 365 : path === "/visa" ? 600 : path === "/metal" ? 180 : 150;
       if (words > budget + 25) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(pt)) fail(`${path} ${tag}: its run is not labelled`);
       if ((await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
