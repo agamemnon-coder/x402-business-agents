@@ -10,6 +10,9 @@ import { estimateLive } from "../src/e2e/estimate.js";
 import { runPlatformE2E, toPostings, WaitingForAirwallexApproval } from "../src/e2e/platformRun.js";
 import { budgetedReader, dryRunDeps, parserOnly } from "../src/e2e/setup.js";
 import { rateFromAmounts } from "../src/e2e/platformOps.js";
+import { missingFromSchema, payoutBeneficiaryBody } from "../src/airwallex/adapter.js";
+import { RECORDED_BENEFICIARY_SCHEMAS } from "../src/redteam/beneficiarySchemas.js";
+import { FUND_CENTS } from "../src/e2e/setup.js";
 import { verifyReceipt } from "../src/try/receipt.js";
 
 let dir: string;
@@ -117,5 +120,27 @@ describe("the live run's budget", () => {
       { date: "2026-11-10", invoice_id: "AP-0001", event: "payment", account: "1200", account_name: "Bank", debit: "", credit: "6.05", currency: "EUR", memo: "x", doc_sha256: "a".repeat(64) },
     ], fx);
     for (const x of p) expect(x.description).toBe("[FIETSLAB] PUR-FIETSLAB-AP-0001: x · EUR 6.05 · converted at Airwallex sandbox rate 1.086957 USD per EUR at 2026-11-10T07:00:00.000Z");
+  });
+
+  it("an NL supplier on the LOCAL route: the body carries payment_methods and the bank's name from its BIC (the 10 November refusal)", () => {
+    const b = { name: "Onderdelen Direct B.V.", address: { street: "x", city: "y", postcode: "z", countryCode: "NL" }, method: "LOCAL" as const,
+      bank: { country: "NL", currency: "EUR", accountName: "Onderdelen Direct B.V.", iban: "NL44RABO0123456789", swiftCode: "RABONL2U" } };
+    const body = payoutBeneficiaryBody(b) as { payment_methods: string[]; transfer_methods: string[]; beneficiary: { bank_details: Record<string, string> } };
+    expect(body.payment_methods).toEqual(["LOCAL"]);
+    expect(body.transfer_methods).toEqual(["LOCAL"]);
+    expect(body.beneficiary.bank_details.bank_name).toBe("Coöperatieve Rabobank U.A.");
+    expect(missingFromSchema(RECORDED_BENEFICIARY_SCHEMAS["NL EUR LOCAL"]!, body)).toEqual([]);
+    // A BIC not listed gives no name: the schema check says so instead of a guess.
+    const unknown = payoutBeneficiaryBody({ ...b, bank: { ...b.bank, swiftCode: "ZZZZNL2A" } });
+    expect(missingFromSchema(RECORDED_BENEFICIARY_SCHEMAS["NL EUR LOCAL"]!, unknown)).toEqual(["beneficiary.bank_details.bank_name"]);
+  });
+
+  it("a re-run never funds an account twice: one already holding what the run needs is skipped", async () => {
+    const dry = dryRunDeps();
+    void dry.deps.railFor("acct_SC-QD89fOneAeqaRFgOymw"); // the existing account, funded by an earlier run
+    (dry.rails.get("acct_SC-QD89fOneAeqaRFgOymw")!).bal.EUR.availableCents = FUND_CENTS;
+    const s = await runPlatformE2E({ ...dry.deps, dir, now, log: () => undefined });
+    expect(dry.platform.funded.map((f) => f.accountId)).toEqual(["acct_fake_bakkerij", "acct_fake_fietslab"]);
+    expect(s.companies[0]!.funding).toMatch(/^none skipped: EUR 60\.00 already held$/);
   });
 });

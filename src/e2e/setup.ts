@@ -49,6 +49,7 @@ export interface DryRun { deps: Omit<PlatformE2EDeps, "dir" | "log" | "now">; ra
 export function dryRunDeps(): DryRun {
   const rails = new Map<string, FakeAirwallex>();
   const platform = new FakePlatformOps();
+  platform.onFund = (accountId, cents) => { const r = rails.get(accountId); if (r) r.bal.EUR.availableCents += cents; };
   const t0 = new FakeT0(chartAccounts(Object.keys({ ...CHART, ...AP_CHART }), (c) => (c === "2100" ? "accounts_payable" : t0AccountType(c) ?? "other_expenses")));
   const client = new T0Client({ apiKey: t0.key, fetch: t0.fetch, retryDelayMs: 0 });
   return {
@@ -60,7 +61,7 @@ export function dryRunDeps(): DryRun {
         if (!r) {
           r = new FakeAirwallex();
           r.payingAccount = accountId;
-          r.bal.EUR.availableCents = FUND_CENTS;
+          r.bal.EUR.availableCents = 0;
           rails.set(accountId, r);
         }
         return { rail: r, sim: r };

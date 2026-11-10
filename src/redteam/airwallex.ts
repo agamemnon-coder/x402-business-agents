@@ -1,5 +1,7 @@
 // In-memory stand-in for the Airwallex sandbox, for tests, the red team and the evals. It never reaches a live run.
 
+import { missingFromSchema, payoutBeneficiaryBody } from "../airwallex/adapter.js";
+import { RECORDED_BENEFICIARY_SCHEMAS } from "./beneficiarySchemas.js";
 import { AirwallexAmbiguous } from "../airwallex/client.js";
 import type { AirwallexRail, AnyQuote, Balance, Beneficiary, Conversion, Currency, Deposit, NewBeneficiary, NewPayoutBeneficiary, NewPayoutTransfer, NewTransfer, PayoutRail, PlatformFee, Quote, SandboxSim, Transfer, MarketRate } from "../airwallex/port.js";
 
@@ -202,6 +204,10 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
   }
   async createPayoutBeneficiary(b: NewPayoutBeneficiary): Promise<{ id: string }> {
     this.calls.push("createPayoutBeneficiary");
+    // The body the adapter would send, checked against what the sandbox's schema was seen to require.
+    const schema = RECORDED_BENEFICIARY_SCHEMAS[`${b.bank.country} ${b.bank.currency} ${b.method}`];
+    const missing = schema ? missingFromSchema(schema, payoutBeneficiaryBody(b)) : [];
+    if (missing.length) throw new Error(`Airwallex's beneficiary schema for ${b.bank.country}, ${b.bank.currency}, ${b.method} needs ${missing.join(", ")}`);
     if (this.refuseNextBeneficiary) { const code = this.refuseNextBeneficiary; this.refuseNextBeneficiary = null; throw Object.assign(new Error(`validation_failed: ${code}`), { code: "validation_failed" }); }
     const ben = { ...structuredClone(b), id: `ben_${++this.n}` };
     this.payoutBeneficiaries.push(ben);

@@ -164,6 +164,8 @@ export interface NewPayoutBeneficiary {
     routingType?: string;
     routingValue?: string;
     swiftCode?: string;
+    /** The bank's registered name, when known; otherwise taken from the BIC where listed (src/airwallex/bankNames.ts). */
+    bankName?: string;
   };
 }
 

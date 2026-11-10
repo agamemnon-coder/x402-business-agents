@@ -160,9 +160,15 @@ async function runCompany(d: PlatformE2EDeps, c: WorldCompany, privPkcs8: string
   // 1. The company's connected account, opened if new, and test money moved into it.
   const acct = await d.platform.ensureAccount(c);
   d.log(`${c.key.padEnd(12)} account ${acct.accountId} ${acct.opened ? "opened" : "existing"}, ${acct.status}`);
-  const funding = await d.platform.fund(acct.accountId, d.fundCents, `e2e-fund-${c.key.toLowerCase()}-${now().toISOString().slice(0, 10).replace(/-/g, "")}`);
-  d.log(`${c.key.padEnd(12)} funded EUR ${(d.fundCents / 100).toFixed(2)} test money: ${funding.id} ${funding.status}`);
+  // Test money: only when the account holds less than the run needs (a re-run never funds twice), under a request id
+  // of this run's own (recorded), so a funding from an earlier run is never mistaken for this one.
   const { rail, sim } = d.railFor(acct.accountId);
+  const heldCents = (await rail.balances()).EUR?.availableCents ?? 0;
+  const fundRequest = `e2e-fund-${c.key.toLowerCase()}-${now().toISOString().slice(0, 16).replace(/[-:T]/g, "")}`;
+  const funding = heldCents >= d.fundCents
+    ? { id: "none", status: `skipped: EUR ${(heldCents / 100).toFixed(2)} already held` }
+    : await d.platform.fund(acct.accountId, d.fundCents, fundRequest);
+  d.log(`${c.key.padEnd(12)} ${funding.id === "none" ? funding.status : `funded EUR ${(d.fundCents / 100).toFixed(2)} test money: ${funding.id} ${funding.status} (request ${fundRequest})`}`);
 
   // 2. Its account binding (signed with the run's key, standing in for Purser Cloud) and Purser's fee in its policy.
   const issued = now().getTime();
@@ -260,7 +266,7 @@ async function runCompany(d: PlatformE2EDeps, c: WorldCompany, privPkcs8: string
   const invs = ids.map((id) => apInvoice(db, id)!);
   const invSteps: E2eStep[] = invs.flatMap((i) => steps.get(i.id) ?? []);
   const allSteps: E2eStep[] = [
-    { kind: "account", at: at(), data: { company: c.name, connected_account: acct.accountId, opened_in_run: acct.opened ? "yes" : "no", status: acct.status, funding: `${funding.id} ${funding.status}`, binding: "signed with the run's own key (a test world's stand-in for Purser Cloud's)" } },
+    { kind: "account", at: at(), data: { company: c.name, connected_account: acct.accountId, opened_in_run: acct.opened ? "yes" : "no", status: acct.status, funding: funding.id === "none" ? funding.status : `${funding.id} ${funding.status} (request ${fundRequest})`, binding: "signed with the run's own key (a test world's stand-in for Purser Cloud's)" } },
     ...invSteps,
     { kind: "signature", at: at(), data: { proposal_id: proposal.proposal_id, kind: proposal.kind, terms_sha256: proposal.terms_sha256, signed_with: TEST_PASSKEY, credential_id: cfo.credentialId } },
     ...transfers.map((t) => ({ kind: "payout", at: at(), data: { transfer_id: str(t.transfer_id), status: t.status, amount: `EUR ${t.amount}`, invoice_no: t.invoice_no, on_behalf_of: acct.accountId, purser_fee: t.fee ? `${t.fee_cur} ${t.fee} (${str(t.fee_status)}) via application_fee_options` : "none" } as StepData })),

@@ -100,6 +100,8 @@ export class LivePlatformOps implements PlatformOps {
 export class FakePlatformOps implements PlatformOps {
   readonly feeAccount = "acct_purser_platform";
   readonly funded: { accountId: string; cents: number }[] = [];
+  /** Where the dry run's test money lands (its stand-in rails). */
+  onFund: (accountId: string, cents: number) => void = () => undefined;
   private n = 0;
   async ensureAccount(c: WorldCompany): Promise<OpenedAccount> {
     if (c.accountId) return { accountId: c.accountId, status: "ACTIVE", opened: false, ids: {} };
@@ -108,6 +110,7 @@ export class FakePlatformOps implements PlatformOps {
   async eurRate(): Promise<FxRate> { throw new Error("the dry run has no rate: its T:0 books in EUR"); }
   async fund(accountId: string, cents: number): Promise<Funding> {
     this.funded.push({ accountId, cents });
+    this.onFund(accountId, cents);
     return { id: `cat_fake_${++this.n}`, status: "SETTLED" };
   }
 }

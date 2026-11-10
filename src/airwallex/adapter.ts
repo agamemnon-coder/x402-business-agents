@@ -3,6 +3,7 @@
 // strings (conversions, transfers); responses are numbers in major units. We convert to integer cents
 // at this boundary and nowhere else.
 
+import { bankNameFromBic } from "./bankNames.js";
 import { randomUUID } from "node:crypto";
 import { Airwallex, fromEnv } from "./client.js";
 import type { AirwallexRail, AnyQuote, Balance, Beneficiary, Conversion, Currency, Deposit, NewBeneficiary, NewPayoutBeneficiary, NewPayoutTransfer, NewTransfer, PayoutRail, ApplicationFee, Quote, SandboxSim, Transfer, MarketRate } from "./port.js";
@@ -74,6 +75,42 @@ export function onlyRequestId<T extends { request_id?: unknown }>(r: { items?: T
   if (r.has_more === true || r.items.some((x) => x.request_id !== requestId)) throw new Error("Airwallex's transfer list was not filtered by the request_id");
   if (r.items.length > 1) throw new Error(`Airwallex lists more than one transfer under request_id ${requestId}`);
   return r.items[0];
+}
+
+/** Airwallex's beneficiary form schema (POST /beneficiaries/schema): request paths with required and relevant flags. */
+export type BeneficiarySchema = Record<string, { required?: boolean; relevant?: boolean; type?: string }>;
+
+/** The request paths the schema requires (required and relevant, not objects) that the body does not carry. */
+export function missingFromSchema(schema: BeneficiarySchema, body: unknown): string[] {
+  return Object.entries(schema)
+    .filter(([key, v]) => v.required && v.relevant && v.type !== "object" && key.startsWith("create_beneficiary_request."))
+    .map(([key]) => key.slice("create_beneficiary_request.".length))
+    .filter((path) => path.split(".").reduce<unknown>((o, key) => (o && typeof o === "object" ? (o as Record<string, unknown>)[key] : undefined), body) === undefined);
+}
+
+/** POST /beneficiaries/create's body for a supplier's account (create-beneficiaries.md: beneficiary.bank_details, transfer_methods). */
+export function payoutBeneficiaryBody(b: NewPayoutBeneficiary): Record<string, unknown> {
+  const k = b.bank;
+  const bank_details: Record<string, string> = { account_currency: k.currency, account_name: k.accountName, bank_country_code: k.country };
+  if (k.iban) bank_details.iban = k.iban;
+  if (k.accountNumber) bank_details.account_number = k.accountNumber;
+  if (k.routingType && k.routingValue) { bank_details.account_routing_type1 = k.routingType; bank_details.account_routing_value1 = k.routingValue; }
+  if (k.swiftCode) bank_details.swift_code = k.swiftCode;
+  if (b.clearing) bank_details.local_clearing_system = b.clearing;
+  const bankName = k.bankName ?? bankNameFromBic(k.swiftCode);
+  if (bankName) bank_details.bank_name = bankName;
+  return {
+    beneficiary: {
+      entity_type: "COMPANY", company_name: b.name, type: "BANK_ACCOUNT",
+      address: { country_code: b.address.countryCode, street_address: b.address.street, city: b.address.city, postcode: b.address.postcode },
+      bank_details,
+    },
+    nickname: `${b.name} ${k.currency} ${b.method}`,
+    // Both names: the API reference documents transfer_methods; the schema the sandbox answers asks for payment_methods
+    // (NL EUR LOCAL, 10 November; DE EUR SWIFT, 29 October). Kit 11's payees were created live with both.
+    transfer_methods: [b.method],
+    payment_methods: [b.method],
+  };
 }
 
 export class AirwallexRest implements AirwallexRail, SandboxSim, PayoutRail {
@@ -267,28 +304,11 @@ export class AirwallexRest implements AirwallexRail, SandboxSim, PayoutRail {
    * the create (validate-a-beneficiary.md), as for the Kit 11 payees.
    */
   async createPayoutBeneficiary(b: NewPayoutBeneficiary): Promise<{ id: string }> {
+    const body = payoutBeneficiaryBody(b);
     const k = b.bank;
-    const bank_details: Record<string, string> = { account_currency: k.currency, account_name: k.accountName, bank_country_code: k.country };
-    if (k.iban) bank_details.iban = k.iban;
-    if (k.accountNumber) bank_details.account_number = k.accountNumber;
-    if (k.routingType && k.routingValue) { bank_details.account_routing_type1 = k.routingType; bank_details.account_routing_value1 = k.routingValue; }
-    if (k.swiftCode) bank_details.swift_code = k.swiftCode;
-    if (b.clearing) bank_details.local_clearing_system = b.clearing;
-    const body = {
-      beneficiary: {
-        entity_type: "COMPANY", company_name: b.name, type: "BANK_ACCOUNT",
-        address: { country_code: b.address.countryCode, street_address: b.address.street, city: b.address.city, postcode: b.address.postcode },
-        bank_details,
-      },
-      nickname: `${b.name} ${k.currency} ${b.method}`,
-      transfer_methods: [b.method],
-    };
-    const schema = await this.api.call<{ schema: Record<string, { required?: boolean; relevant?: boolean; type?: string }> }>("POST", "/beneficiaries/schema",
+    const schema = await this.api.call<{ schema: BeneficiarySchema }>("POST", "/beneficiaries/schema",
       { bank_country_code: k.country, account_currency: k.currency, payment_method: b.method, entity_type: "COMPANY", ...(b.clearing ? { local_clearing_system: b.clearing } : {}) });
-    const missing = Object.entries(schema.schema)
-      .filter(([key, v]) => v.required && v.relevant && v.type !== "object" && key.startsWith("create_beneficiary_request."))
-      .map(([key]) => key.slice("create_beneficiary_request.".length))
-      .filter((path) => path.split(".").reduce<unknown>((o, key) => (o && typeof o === "object" ? (o as Record<string, unknown>)[key] : undefined), body) === undefined);
+    const missing = missingFromSchema(schema.schema, body);
     if (missing.length) throw new Error(`Airwallex's beneficiary schema for ${k.country}, ${k.currency}, ${b.method} needs ${missing.join(", ")}`);
     await this.api.call("POST", "/beneficiaries/validate", body);
     const r = await this.api.call<{ id: string }>("POST", "/beneficiaries/create", body);
