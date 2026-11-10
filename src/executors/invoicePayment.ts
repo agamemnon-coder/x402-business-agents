@@ -9,6 +9,7 @@
 // A lost answer is resolved by looking the request_id up, never by a blind resend with a new id; a transfer found that
 // way, or named by duplicate_request_id, is adopted only if it is exactly this payout (amount, currency, payee).
 
+import { describeTransferStatus, inAirwallexApproval } from "../airwallex/approvals.js";
 import { SWIFT_FEE_MAX_EUR_CENTS } from "../config/policy.js";
 import { originJson } from "../provenance/origin.js";
 import { counterpartyAllowed, frozen, paused } from "../policy/rules.js";
@@ -113,6 +114,15 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
     }
     // Step 2: the payout, under its own request_id (the transfers row is its outbox entry). Step 3: its settlement.
     const transfer = await step(db, proposalId, 2, "transfer", terms.transfer_request_id, () => submitTransfer(db, rail, terms, sha, now, feeRetry), now);
+    // Airwallex's own approval workflow (docs/airwallex-approvals.md): the payout waits for a person at Airwallex. Purser's
+    // part is done; it never simulates past that wait, and src/airwallex/approvals.ts follows the transfer from here.
+    if (inAirwallexApproval(transfer.status)) {
+      db.prepare("UPDATE transfers SET status = ?, updated_at = ? WHERE transfer_id = ?").run(transfer.status, new Date().toISOString(), transfer.id);
+      audit(db, "awx-executor", "transfer.awaiting_airwallex_approval", transfer.id, { status: transfer.status, in_words: describeTransferStatus(transfer.status), approval_sha256: sha });
+      await snapshot(db, rail, `post-exec:${proposalId}`);
+      finishExecution(db, proposalId, "EXECUTED", { conversion_id: conversionId, transfer_id: transfer.id, status: transfer.status, waiting_for: "Airwallex approval" });
+      return { conversionId, transfer };
+    }
     const final = sim ? await step(db, proposalId, 3, "settle", transfer.id, () => settleInSandbox(db, rail, sim, transfer), now) : transfer;
     recordFee(db, final, terms, sha);
     await snapshot(db, rail, `post-exec:${proposalId}`);

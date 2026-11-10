@@ -9,19 +9,24 @@
 import type { DB } from "../db/open.js";
 import { audit } from "../audit/log.js";
 import { matchReceipt } from "../agents/receivables.js";
+import { acceptanceOn, bookCardPayment, intentFromEvent } from "../airwallex/acceptance.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { CARD_EVENTS } from "../airwallex/webhooks.js";
 import { wantCardStatus } from "./cards.js";
 
-export type EventObject = "card_transaction" | "card" | "transfer" | "conversion" | "deposit" | "other";
+export type EventObject = "card_transaction" | "card" | "transfer" | "conversion" | "deposit" | "payment_intent" | "other";
 
 /** Every event Purser subscribes to: card transactions, cards, payouts, conversions and deposits. */
 export const ALL_EVENTS = [
   ...CARD_EVENTS,
   "issuing.card.active", "issuing.card.inactive", "issuing.card.closed", "issuing.card.blocked", "issuing.card.lost", "issuing.card.stolen",
+  // Airwallex's own approval workflow (docs/airwallex-approvals.md).
+  "payout.transfer.in_approval", "payout.transfer.approval_rejected", "payout.transfer.approval_recalled", "payout.transfer.approval_blocked",
   "payout.transfer.scheduled", "payout.transfer.processing", "payout.transfer.sent", "payout.transfer.paid", "payout.transfer.failed", "payout.transfer.cancelled",
   "conversion.scheduled", "conversion.overdue", "conversion.settled", "conversion.cancelled",
   "deposit.pending", "deposit.settled", "deposit.rejected", "deposit.reversed",
+  // Money in by card (src/airwallex/acceptance.ts), booked only with AIRWALLEX_PAYMENT_ACCEPTANCE=on.
+  "payment_intent.succeeded",
 ];
 
 /** Where the receivables agent keeps Northwind's Global Account ids, so a deposit webhook can be matched. */
@@ -42,6 +47,7 @@ export function objectOf(name: string): EventObject {
   if (name.startsWith("payout.transfer.")) return "transfer";
   if (name.startsWith("conversion.")) return "conversion";
   if (name.startsWith("deposit.")) return "deposit";
+  if (name.startsWith("payment_intent.")) return "payment_intent";
   return "other";
 }
 
@@ -66,10 +72,10 @@ const statusOf = (name: string, o: Record<string, unknown>) => (str(o.card_statu
 
 // A payout that went one way at Airwallex and the other way in the ledger. Earlier statuses arriving late are fine.
 const PAID_LIKE = new Set(["SENT", "PAID"]);
-const FAILED_LIKE = new Set(["FAILED", "CANCELLED"]);
+const FAILED_LIKE = new Set(["FAILED", "CANCELLED", "APPROVAL_REJECTED", "APPROVAL_RECALLED"]);
 
 /** Checks one event (not a card transaction) against the ledger. Never throws; never changes money. */
-export function checkEvent(db: DB, name: string, o: Record<string, unknown>, now = new Date()): Checked {
+export function checkEvent(db: DB, name: string, o: Record<string, unknown>, now = new Date(), env: NodeJS.ProcessEnv = process.env): Checked {
   const object = objectOf(name);
   const status = statusOf(name, o);
   if (object === "card") {
@@ -116,6 +122,14 @@ export function checkEvent(db: DB, name: string, o: Record<string, unknown>, now
     const m = matchReceipt(db, { deposit_id: id, global_account_id: ga, currency, amount_cents: amount, reference: str(o.reference), payer, received_at: str(o.created_at) ?? now.toISOString() }, now, "webhook");
     return { object, object_id: id, status, amount_cents: amount, currency, agrees: null, outcome: `deposit ${fromCents(amount)} ${currency}: ${m.outcome}, ${m.detail}` };
   }
+  if (object === "payment_intent") {
+    const pi = intentFromEvent(o);
+    if (!pi || !acceptanceOn(env) || pi.status !== "SUCCEEDED") {
+      return { object, object_id: str(o.id), status, amount_cents: pi?.amountCents ?? null, currency: pi?.currency ?? null, agrees: null, outcome: `card payment ${status}: recorded; booked only when SUCCEEDED and payment acceptance is on` };
+    }
+    const b = bookCardPayment(db, pi, now);
+    return { object, object_id: pi.id, status, amount_cents: pi.amountCents, currency: pi.currency, agrees: null, outcome: `card payment ${fromCents(pi.amountCents)} ${pi.currency}: ${b.outcome ?? "not booked"}, ${b.detail}` };
+  }
   return { object, object_id: str(o.id), status, amount_cents: null, currency: null, agrees: null, outcome: "not an object Purser acts on; recorded" };
 }
 
@@ -130,7 +144,7 @@ export function recordEvent(db: DB, eventId: string, name: string, c: Checked, n
 
 export const seenEvent = (db: DB, eventId: string) => !!db.prepare("SELECT 1 FROM airwallex_events WHERE event_id = ?").get(eventId);
 
-const LABEL: Record<EventObject, string> = { card_transaction: "Card transactions", card: "Cards", transfer: "Payouts", conversion: "Conversions", deposit: "Deposits", other: "Other" };
+const LABEL: Record<EventObject, string> = { card_transaction: "Card transactions", card: "Cards", transfer: "Payouts", conversion: "Conversions", deposit: "Deposits", payment_intent: "Card payments in", other: "Other" };
 
 export interface AirwallexEventsView {
   total: number;
