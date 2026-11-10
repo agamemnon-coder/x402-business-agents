@@ -11,6 +11,7 @@ import { watchPage } from "../src/redesign/watch.js";
 import { proofPage } from "../src/redesign/proof.js";
 import { CHAIN_TEST, DEFENSE_IN_DEPTH, HOME_BADGE, KIT_LINE, PRICE_LINE, SECOND_APPROVER, VISA_AWARD_ON, VISA_CLAIM, VISA_EXTRA_LINK, VISA_TAP_STATUS } from "../src/config/brand.js";
 import { buildPages } from "../src/relay/assets.js";
+import { CONNECTED_LINE } from "../src/redesign/partners.js";
 import { esc } from "../src/redesign/ui.js";
 
 const { file, record } = loadRecord();
@@ -72,7 +73,10 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   .replace(/What Purser adds around Airi: a second live run[\s\S]{0,4000}?run log/g, " ")
   // The intended price (a hypothesis, not a figure of the run): one sentence, its numbers checked against
   // src/business/unitEconomics.ts's inputs in test/unit-economics-hypothesis.test.ts.
-  .replace(PRICE_LINE, " ");
+  .replace(PRICE_LINE, " ")
+  // The connected-accounts run (10 Nov) on /airwallex, dated with its own record; its ids and figures are checked against
+  // docs/runs/2026-11-10-connected-accounts-sandbox.md in test/partner-pages.test.ts.
+  .replace(esc(CONNECTED_LINE), " ");
 
 /** Numbers on the page that are not in the record. */
 export const unknownNumbers = (html: string) => (visibleText(html).match(NUM) ?? []).map(norm).filter((n) => !ALLOWED.has(n));
