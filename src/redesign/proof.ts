@@ -251,6 +251,23 @@ ${box("archive", "clock", "Archive", "", "Earlier runs and tools, kept as they w
 </div>`;
 }
 
+/** The finish (Max, 10 Nov: "same level as the homepage"): the run's label as a clear honest tag, each figure with its
+ * colour as a top line, the partner cards lifting on hover, the folds as clear rows. Style only; no words change. */
+const POLISH = `
+.phead .pill.run { background: color-mix(in srgb, var(--awx) 12%, var(--surface)); color: var(--text); border: 1px solid color-mix(in srgb, var(--awx) 40%, var(--border)); font-weight: 650; }
+.phead .pill.run .i { color: var(--awx); }
+.nums .num { position: relative; overflow: hidden; border-radius: 18px; background: linear-gradient(180deg, color-mix(in srgb, var(--sunken) 60%, var(--surface)), var(--surface) 70%); transition: border-color .2s ease-out, transform .2s ease-out; }
+.nums .num::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--text); opacity: .7; }
+.nums .num.claude::before { background: var(--claude); } .nums .num.code::before { background: var(--metal); } .nums .num.face::before { background: var(--accent); } .nums .num.stop::before { background: var(--bad); }
+.nums .num:hover { transform: translateY(-2px); }
+.partners .pcard { transition: border-color .2s ease-out, transform .2s ease-out; }
+.partners .pcard:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); transform: translateY(-2px); }
+.facts .fact { border: 1px solid var(--border); }
+details.deep > summary { padding: 0 4px; border-radius: 12px; }
+details.deep > summary:hover { background: var(--sunken); }
+details.deep > summary::after { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--accent-soft); }
+@media (prefers-reduced-motion: reduce) { .nums .num, .partners .pcard { transition: none; } .nums .num:hover, .partners .pcard:hover { transform: none; } }`;
+
 /**
  * Airwallex, read back (section B): the hash the CFO signed beside the one Airwallex returns with the transfer, and each
  * agent's card controls as Airwallex returns them beside the CFO policy, from the dated GET-only records in docs/runs.
@@ -293,7 +310,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   <details class="deep"><summary>Why this is a company</summary>${whyCompanyHtml()}</details>
 </div></main>`;
   return page({
-    title: "Proof", description: "Every proof of the main run in one place: who decided, who paid, who stopped what, each partner's live proof.", tab: "proof", css: CSS + GUARANTEES_CSS, body, js: JS, stage: false,
+    title: "Proof", description: "Every proof of the main run in one place: who decided, who paid, who stopped what, each partner's live proof.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH, body, js: JS, stage: false,
     // Visa TAP as a footer link (jury review, 6 Nov, #7): an extra, not an award entry.
     links: [["visa", VISA_EXTRA_LINK]],
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,
