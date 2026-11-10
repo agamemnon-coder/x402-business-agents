@@ -69,6 +69,7 @@ function ledgerRow(key: string, file: string, log: string, title: string, rehear
 const TYPED_STATS: Record<string, RunStat[]> = {
   "two-locks-1": [{ v: "2", l: "locks on one payout" }, { v: "IN_APPROVAL", l: "held by Airwallex" }, { v: "1", l: "transfer created" }],
   "t0-1": [{ v: "95", l: "journal entries" }, { v: "0", l: "differences" }, { v: "0", l: "posted again" }],
+  "platform-e2e-1": [{ v: "3", l: "connected accounts, ACTIVE" }, { v: "1", l: "payout PAID, Purser fee taken" }, { v: "3", l: "invoices refused by Airwallex" }],
   "connected-1": [{ v: "1", l: "connected account, ACTIVE" }, { v: "€5.00", l: "payout, PAID (simulated)" }, { v: "€0.05", l: "Purser fee" }],
 };
 
@@ -84,6 +85,16 @@ export function liveRuns(): RunRow[] {
     checks: "Airwallex answered IN_APPROVAL on create and on a read-back; Purser did not simulate past it or send it again. The approval in the Airwallex web app was not completed (the transfer did not show in the sandbox web app), so it is not paid. 7 calls of the 10 approved.", money: "Sandbox · test money",
     ids: [{ label: "Transfer", value: "4074d684-4704-406c-a527-2832753baf4f" }, { label: "Short reference", value: "P261110-48HWOJN" }],
     files: [{ label: "run log", href: "../../docs/runs/2026-11-10-airwallex-two-locks.md" }],
+  });
+
+  // 10 Nov: the platform build end to end, three test companies (docs/runs/2026-11-10-platform-e2e.md).
+  rows.push({
+    key: "platform-e2e-1", iso: "2026-11-10T07:06:03.000Z", date: day("2026-11-10T07:06:03.000Z"),
+    title: "Three test companies on their own Airwallex accounts (built after the kit)", rails: "Airwallex sandbox (connected accounts, SEPA payouts), Claude, T:0",
+    what: "Purser opened two more connected accounts (3 ACTIVE). Invoices came in by upload and e-mail and were read by Claude. New suppliers and payments were approved with a test passkey (not Face ID). One EUR 4.84 payout went PAID on the company's behalf, with Purser's EUR 0.02 fee taken; it was booked and posted to T:0. The new accounts' payouts were refused by Airwallex.",
+    checks: "The receipt verifies offline (signature over the exact terms, 8 hash-chained steps to T:0). Airwallex refused the new accounts' payouts: the paying company's registration number is required (they were opened as non-registered sole traders), and a payer object on the transfer is refused (code 048). 75 Airwallex, 20 Claude and 12 T:0 calls, within the budgets Max approved.", money: "Sandbox · test money",
+    ids: [{ label: "Payout PAID", value: "593c340b-1752-4537-9ef2-0eb3558897cc" }, { label: "New accounts", value: "acct_O07lI0VvMLagXlj5aeOgyg, acct_XFhJLpkwNp6lzl8rpySE_Q" }, { label: "T:0 entries", value: "je_prod_wop0vx1B8xOmHQl0, je_prod_WN96JsvKXGCY7mYs" }],
+    files: [{ label: "run log", href: "../../docs/runs/2026-11-10-platform-e2e.md" }],
   });
 
   // 10 Nov: Purser's books of the 3 Nov main run posted to T:0 (docs/runs/2026-11-10-t0-journal-sandbox.md).

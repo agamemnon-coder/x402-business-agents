@@ -195,7 +195,7 @@ On [/try/sign](https://kit11.max-31b.workers.dev/try/sign) the Treasury agent as
 - **One Face ID for a batch:** the CFO signs a list of exact terms once; each payment still runs and is checked on its own.
 - **Cloud console** with passkey sign-in, a register of every money movement, Dutch screens.
 - **Five red-team rounds**, every confirmed finding fixed with a test.
-- **Airwallex connected accounts:** each customer would open its own Airwallex account through Purser; every payout and card call is checked against that company's signed account binding. Live in the sandbox since 10 November: account `acct_SC-QD89fOneAeqaRFgOymw` ACTIVE and one payout with Purser's fee (above).
+- **Airwallex connected accounts:** each customer would open its own Airwallex account through Purser; every payout and card call is checked against that company's signed account binding. Live in the sandbox since 10 November: 3 connected accounts ACTIVE; payouts with Purser's fee from the first (above, and an end-to-end run from invoice to T:0); the two newer accounts' payouts refused by Airwallex, which wants the paying company's registration number ([run record](docs/runs/2026-11-10-platform-e2e.md)).
 
 ## Who does what
 
