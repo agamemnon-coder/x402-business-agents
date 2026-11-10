@@ -1,5 +1,5 @@
 // npm run erp -- list                                   the connectors and which settings each still needs (names only)
-// npm run erp -- status [--connector exact|bc|odoo]     what was sent, what failed, what needs a correction
+// npm run erp -- status [--connector exact|bc|odoo|moneybird]     what was sent, what failed, what needs a correction
 // npm run erp -- sync --connector exact --dry-run       the requests a sync would send, redacted; nothing is sent
 // npm run erp -- sync --connector exact --live          send what changed (needs the connector's settings)
 // npm run erp -- pull --connector exact --live          read the ERP's chart of accounts and suppliers
@@ -105,8 +105,12 @@ export async function runErpCli(args: string[], d: CliDeps): Promise<number> {
       const accounts = await c.pullChartOfAccounts();
       const vendors = await c.pullVendors();
       d.out(`${accounts.length} accounts, ${vendors.length} suppliers in ${SETTINGS[name].label}`);
-      for (const a of accounts) d.out(`  account ${a.code}  ${a.name}`);
+      // Moneybird maps by ledger account id (ERP_MONEYBIRD_GL_MAP) and tax rate id (ERP_MONEYBIRD_TAX_RATES): show them.
+      const ids = name === "moneybird";
+      for (const a of accounts) d.out(`  account ${a.code || "-"}  ${a.name}${ids ? `  [id ${a.externalId}]` : ""}`);
       for (const v of vendors) d.out(`  supplier ${v.name}${v.vatId ? ` (${v.vatId})` : ""}`);
+      const taxes = (c as { pullTaxRates?: () => Promise<{ id: string; name: string; percentage: string; type: string }[]> }).pullTaxRates;
+      if (taxes) for (const t of await taxes.call(c)) d.out(`  tax rate ${t.name} (${t.percentage}%, ${t.type})  [id ${t.id}]`);
       return 0;
     }
     if (cmd === "correct") {
@@ -123,6 +127,6 @@ export async function runErpCli(args: string[], d: CliDeps): Promise<number> {
     for (const r of res) d.out(`${r.kind.padEnd(8)} ${r.id.padEnd(28)} ${r.outcome}${r.externalId ? ` ${r.externalId}` : ""}${r.detail ? `: ${r.detail}` : ""}`);
     return res.some((r) => r.outcome === "failed" || r.outcome === "invalid") ? 1 : 0;
   }
-  d.out("npm run erp -- list | status | sync --connector exact|bc|odoo --dry-run|--live | pull --connector … --live | correct --connector … --object invoice:<id> --live | resolve --connector … --object invoice:<id> --as synced|retry --by <who>");
+  d.out("npm run erp -- list | status | sync --connector exact|bc|odoo|moneybird --dry-run|--live | pull --connector … --live | correct --connector … --object invoice:<id> --live | resolve --connector … --object invoice:<id> --as synced|retry --by <who>");
   return cmd ? 2 : 0;
 }

@@ -7,6 +7,7 @@ import { entraTokens, exactTokens, fileTokenStore, staticToken } from "./auth.js
 import { BusinessCentralConnector, type BcConfig } from "./businessCentral.js";
 import { fetchTransport, RecordingTransport, type ConnectorName, type ErpConnector, type HttpRequest, type HttpResponse, type Transport } from "./connector.js";
 import { exactConfigFromEnv, ExactConnector, type ExactConfig } from "./exact.js";
+import { moneybirdConfigFromEnv, MoneybirdConnector, type MoneybirdConfig } from "./moneybird.js";
 import type { VatCode } from "./model.js";
 import { OdooConnector, type OdooConfig } from "./odoo.js";
 import { jsonMap } from "./rest.js";
@@ -33,6 +34,12 @@ export const SETTINGS: Record<ConnectorName, { label: string; secrets: string[];
     secrets: ["ERP_ODOO_API_KEY"],
     settings: ["ERP_ODOO_URL", "ERP_ODOO_DB", "ERP_ODOO_LOGIN", "ERP_ODOO_PURCHASE_JOURNAL_ID", "ERP_ODOO_GENERAL_JOURNAL_ID", "ERP_ODOO_BANK_JOURNALS", "ERP_ODOO_TAX_IDS"],
     optional: ["ERP_ODOO_COMPANY_CURRENCY", "ERP_ODOO_GL_MAP", "ERP_ODOO_POST"],
+  },
+  moneybird: {
+    label: "Moneybird",
+    secrets: ["ERP_MONEYBIRD_TOKEN"],
+    settings: ["ERP_MONEYBIRD_ADMINISTRATION_ID", "ERP_MONEYBIRD_TAX_RATES"],
+    optional: ["ERP_MONEYBIRD_GL_MAP", "ERP_MONEYBIRD_PROJECTS", "ERP_MONEYBIRD_IGNORE_COST_CENTRES", "ERP_MONEYBIRD_BASE_CURRENCY", "ERP_MONEYBIRD_BASE_URL"],
   },
 };
 
@@ -79,6 +86,10 @@ export function liveConnector(name: ConnectorName, env: Env, transport: Transpor
     }
     case "odoo":
       return new OdooConnector(odooConfigFromEnv(env), transport);
+    case "moneybird":
+      // A personal API token or an OAuth access token; Moneybird's access tokens do not expire for now (its
+      // Authentication page), so a fixed Bearer token from the environment is all it takes.
+      return new MoneybirdConnector(moneybirdConfigFromEnv(env), transport, staticToken(env.ERP_MONEYBIRD_TOKEN ?? ""));
   }
 }
 
@@ -88,6 +99,11 @@ const VAT_EXAMPLE: Record<VatCode, string> = { NL21: "VAT21", NL9: "VAT9", NL0: 
 export const EXAMPLE = {
   exact: { baseUrl: "https://start.exactonline.nl", division: 1000000, purchaseJournal: "60", bankJournals: { "1200": "20", "1201": "21", "1202": "22", "1203": "23" }, generalJournal: "90", vatCodes: VAT_EXAMPLE, glMap: {}, apAccount: "1600", documentType: 20, paymentSign: -1 } satisfies ExactConfig,
   bc: { tenant: "example.onmicrosoft.com", environment: "sandbox", companyId: "00000000-0000-0000-0000-000000000001", localCurrency: "EUR", generalJournalId: "00000000-0000-0000-0000-00000000000a", paymentJournalId: "00000000-0000-0000-0000-00000000000b", vatCodes: VAT_EXAMPLE, glMap: {}, postInvoices: false, verifyTotals: false } satisfies BcConfig,
+  moneybird: {
+    baseUrl: "https://moneybird.com/api/v2", administrationId: "100000000000000000", baseCurrency: "EUR",
+    taxRates: { NL21: "100000000000000021", NL9: "100000000000000009", NL0: "100000000000000010", EU_RC: "100000000000000031", NONEU_RC: "100000000000000032", EXEMPT: "100000000000000040", NONE: "100000000000000041" },
+    glMap: {}, projects: {}, ignoreCostCentres: true, verifyTotals: false,
+  } satisfies MoneybirdConfig,
   odoo: { url: "https://example.odoo.com", db: "example", login: "purser@example.com", apiKey: "dry-run", companyCurrency: "EUR", purchaseJournalId: 2, bankJournalIds: { "1200": 6, "1201": 7, "1202": 8, "1203": 9 }, generalJournalId: 3, taxIds: { NL21: 21, NL9: 9, NL0: 10, EU_RC: 31, NONEU_RC: 32, EXEMPT: 0, NONE: 0 }, glMap: {}, post: false, verifyTotals: false } satisfies OdooConfig,
 };
 
@@ -100,6 +116,17 @@ function dryAnswer(name: ConnectorName): (req: HttpRequest, n: number) => HttpRe
     if (req.method === "GET" && req.url.includes("/financial/GLAccounts")) return json({ d: { results: chartCodes.map((c) => ({ ID: `dry-gl-${c}`, Code: c, Description: CHART[c] ?? "Accounts payable" })) } });
     if (req.method === "GET") return json({ d: { results: [] } });
     return json({ d: { ID: `dry-run-${n}`, EntryID: `dry-run-${n}` } }, 201);
+  };
+  if (name === "moneybird") return (req, n) => {
+    const path = new URL(req.url).pathname;
+    // Example ledger accounts carry Purser's own codes; example tax rates are purchase-invoice rates; anything created
+    // gets an example id.
+    if (req.method === "GET" && path.endsWith("/ledger_accounts.json")) return json(chartCodes.map((c, i) => ({ id: String(200000000000000000 + i), account_id: c, name: CHART[c] ?? "Accounts payable", allowed_document_types: ["purchase_invoice", "general_journal_document"], active: true })));
+    if (req.method === "GET" && path.endsWith("/tax_rates.json")) return json(Object.entries(EXAMPLE.moneybird.taxRates).map(([code, id]) => ({ id, name: code, percentage: null, tax_rate_type: "purchase_invoice", active: true })));
+    if (req.method === "GET" && path.includes("/contacts/customer_id/")) return json({ error: "record not found", symbolic: {} }, 404);
+    if (req.method === "GET") return json([]);
+    if (path.endsWith("/attachments.json")) return { status: 200, headers: {}, body: "200" };
+    return json({ id: String(300000000000000000 + n), total_price_excl_tax: null, total_price_incl_tax: null }, 201);
   };
   if (name === "bc") return (req, n) => (req.method === "GET" ? json({ value: [] }) : req.method === "PATCH" ? json({}) : req.url.endsWith("Microsoft.NAV.post") ? { status: 204, headers: {}, body: "" } : json({ id: `dry-run-${n}`, "@odata.etag": "W/\"dry\"" }, 201));
   return (req, n) => {
@@ -121,6 +148,7 @@ export function dryRunConnector(name: ConnectorName, env: Env): { connector: Erp
   // nothing computed them), else the example settings.
   const own = missingSettings(name, env).length === 0;
   const connector = name === "exact" ? new ExactConnector(own ? exactFromEnv(env) : EXAMPLE.exact, transport, staticToken())
+    : name === "moneybird" ? new MoneybirdConnector({ ...(own ? moneybirdConfigFromEnv(env) : EXAMPLE.moneybird), verifyTotals: false }, transport, staticToken())
     : name === "bc" ? new BusinessCentralConnector({ ...(own ? bcConfigFromEnv(env) : EXAMPLE.bc), verifyTotals: false }, transport, staticToken())
       : new OdooConnector({ ...(own ? odooConfigFromEnv(env) : EXAMPLE.odoo), verifyTotals: false }, transport);
   return { connector, transport, usesExampleSettings: !own };

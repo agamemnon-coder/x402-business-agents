@@ -4,7 +4,7 @@
 
 import type { JournalEntry, ObjectKind, Payment, PurchaseInvoice, Vendor } from "./model.js";
 
-export const CONNECTOR_NAMES = ["exact", "bc", "odoo"] as const;
+export const CONNECTOR_NAMES = ["exact", "bc", "odoo", "moneybird"] as const;
 export type ConnectorName = (typeof CONNECTOR_NAMES)[number];
 
 export interface HttpRequest {

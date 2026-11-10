@@ -632,7 +632,24 @@ async function settingsView(){
   const company=el('div','card panel',[el('h2','',t('cs.company')),dl([[t('cs.name'),m.tenant.name],[t('cs.address'),m.tenant.slug],[t('cs.inbox'),m.inbox||t('cs.not_routed'),'mono']]),langBox.children.length?el('h2','sub-h',t('cs.language')):null,langBox.children.length?langBox:null,langMsg]);
   if(!owner){view().replaceChildren(head(t('cs.nav.settings')),company,note(t('cs.only_owner',{name:m.tenant.name})));return}
   const people=el('div','card panel');const keys=el('div','card panel');const dataCard=el('div','card panel');const awx=el('div','card panel');awx.id='awx';awx.hidden=true;
-  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,awx,el('div','split2',[people,keys]),dataCard);
+  const ints=el('div','card panel');ints.id='integrations';
+  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,awx,ints,el('div','split2',[people,keys]),dataCard);
+  // Koppelingen: where the accounting link stands (GET /v1/integrations), from the results the runner's ERP sync wrote
+  // in the audit log. The cloud holds no Moneybird token and calls no ERP; a person connects it on the runner.
+  async function drawInts(){
+    const r=await api('/v1/integrations');
+    const kids=[el('h2','',t('cs.int.title')),el('p','',t('cs.int.lede'))];
+    for(const x of r.connectors){
+      const tone={connected:'ok',attention:'warn'}[x.status]||'';
+      const rows=[[tk('cs.int.'+x.connector,x.connector),el('span','pill'+(tone?' '+tone:''),tk('cs.int.status.'+x.status,x.status))]];
+      if(x.last_sync_at)rows.push([t('cs.int.last_sync'),stamp(x.last_sync_at)]);
+      if(x.status!=='not_connected')rows.push([t('cs.int.sent'),String(x.sent)],[t('cs.int.failed'),String(x.failed)],[t('cs.int.to_check'),String(x.to_check)]);
+      if(x.last_error)rows.push([t('cs.int.last_error'),x.last_error,'mono']);
+      kids.push(dl(rows));
+      if(x.status==='not_connected')kids.push(note(t('cs.int.how')));
+    }
+    ints.replaceChildren(...kids);
+  }
   // The company's own Airwallex account, opened through Purser as a platform (docs/airwallex-platform.md): only when the
   // cloud offers it. The owner agrees to Airwallex's terms before anything is sent; Airwallex checks the company in its
   // own hosted pages; the status follows Airwallex's messages. Payments are still approved on the CFO's phone.
@@ -722,7 +739,7 @@ async function settingsView(){
   }
   const exp=btn(t('cs.download_all'),'','download');exp.onclick=()=>download('/v1/export','purser-cloud-export.json').catch(e=>{if(!(e instanceof Expired))dataCard.append(note(e.message,'bad'))});
   dataCard.replaceChildren(el('h2','',t('cs.your_data')),el('p','',t('cs.data_lede',{name:m.tenant.name})),exp);
-  await Promise.all([drawPeople(),drawKeys(),drawAwx().catch(e=>{if(!(e instanceof Expired)){awx.hidden=false;awx.replaceChildren(note(e.message,'bad'))}})]);
+  await Promise.all([drawPeople(),drawKeys(),drawAwx().catch(e=>{if(!(e instanceof Expired)){awx.hidden=false;awx.replaceChildren(note(e.message,'bad'))}}),drawInts().catch(e=>{if(!(e instanceof Expired))ints.replaceChildren(el('h2','',t('cs.int.title')),note(e.message,'bad'))})]);
 }
 
 // --- The router ----------------------------------------------------------------------------------------------------

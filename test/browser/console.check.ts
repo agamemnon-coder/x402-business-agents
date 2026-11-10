@@ -254,9 +254,14 @@ ok(!(booksText.includes(tr("nl", "cs.nothing_quarter")) && !/5b[^\n]*€\s?0,00/
 await page.goto(`${ORIGIN}/#/settings`);
 await page.waitForSelector(`text=${tr("nl", "cs.api_keys")}`, { timeout: 20_000 });
 await page.waitForSelector("text=runner", { timeout: 20_000 });
+await page.waitForSelector("#integrations dl", { timeout: 20_000 });
 await settle();
 const setText = await page.innerText("main");
 ok(!/first owner's passkey only|runner \(sync\)/.test(setText), "the Dutch settings name Purser's own keys in Dutch");
+// Koppelingen (docs/moneybird.md): this test world never synced to an ERP, so Moneybird reads "niet gekoppeld".
+const ints = await page.innerText("#integrations");
+ok(ints.includes(tr("nl", "cs.int.title")) && ints.includes("Moneybird") && ints.includes(tr("nl", "cs.int.status.not_connected")) && ints.includes("documents"), "the Dutch settings show the Koppelingen card: Moneybird, niet gekoppeld, and how to connect it");
+if (shots) await page.locator("#integrations").screenshot({ path: join(shots, "16-koppelingen.png") });
 const tallPills = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>(".pill")].filter((p) => p.getBoundingClientRect().height > 32).map((p) => p.textContent));
 ok(tallPills.length === 0, `every role and status pill stays on one line${tallPills.length ? ` (${tallPills.join(", ")})` : ""}`);
 {

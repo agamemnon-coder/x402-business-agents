@@ -54,6 +54,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/health` | anyone | For an uptime monitor: `{ ok, version, d1, r2, mail_queued }`; 503 when the database or the document store does not answer. No company's data. |
 | `GET /v1/status` | admin | The company's status for its owners: last runner push, mail queue (queued, refused, done), today's mail quota use, the runner's alert codes, the webhook's delivery state. |
 | `POST /v1/health/report` | sync | The runner reports its health: alert codes and severities only (any words are dropped). Alerts raised or cleared since the last report are sent to the webhook. |
+| `GET /v1/integrations` | admin | Where the accounting link (Moneybird) stands: not_connected, connected or attention; last sync, sent, failed, waiting for a person, the newest failure. From the runner's ERP sync results in the audit log; never a token (docs/moneybird.md). |
 | `GET /v1/webhook` | admin | The alert webhook: URL, failures in a row, last attempt and status, when it was turned off. Never its secret. |
 | `POST /v1/webhook` | admin | Set the alert webhook (https, a public host name, port 443, no credentials); returns the signing secret once. |
 | `DELETE /v1/webhook` | admin | Remove the alert webhook. |

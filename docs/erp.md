@@ -7,6 +7,8 @@ No CSV is needed. Design: [docs/superpowers/specs/2026-11-08-erp-connectors-desi
 **Status: built and tested against the vendors' documented request and answer shapes only. Nothing has been sent to a
 live ERP yet.** Each connector needs a test administration and its credentials first (below).
 
+Moneybird, for small companies, has its own page: [docs/moneybird.md](moneybird.md).
+
 ## What it does
 
 | | Exact Online | Business Central | Odoo |
@@ -110,4 +112,4 @@ core will send richer records through the same model.
 
 ## Next
 
-AFAS Profit and Twinfield connectors; webhooks from the ERP; customer (sales) invoices.
+AFAS Profit and Twinfield connectors (Moneybird is in: docs/moneybird.md); webhooks from the ERP; customer (sales) invoices.

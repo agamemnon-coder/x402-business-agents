@@ -17,6 +17,7 @@ import { download, ExportRefused, exportStatus, purgeEndedExportParts, signedLin
 import { consoleResponse } from "./console.js";
 import { qrSvg } from "./qr.js";
 import { logEvent } from "./log.js";
+import { integrations } from "./integrations.js";
 import { platformCompanies } from "./platformView.js";
 import { accountOf, bindingOf, onboardingLink, openAccount, PlatformRefused, receiveAccountEvent, type AwxPlatformEnv } from "./awxPlatform.js";
 import { cloudHealth, companyStatus, HealthReport, MonitorRefused, notify, receiveReport, removeWebhook, setWebhook, webhookOf, type Outbound } from "./monitor.js";
@@ -137,6 +138,7 @@ export const ROUTES: Route[] = [
     const r = await body(c, HealthReport, 64_000);
     return json(200, await receiveReport(c.env.sql, c.caller!.tenantId, r, c.now, c.env.outbound, c.env.retryDelayMs));
   } },
+  { method: "GET", path: "/v1/integrations", summary: "Where the company's accounting links stand (Moneybird): not_connected, connected or attention, the last sync, what was sent, what failed and what waits for a person; from the runner's ERP sync results in the audit log, never a credential.", need: "admin", run: async (c) => json(200, await integrations(c.env.sql, c.caller!.tenantId)) },
   { method: "GET", path: "/v1/webhook", summary: "The company's alert webhook (its URL and delivery state; never its secret).", need: "admin", run: async (c) => json(200, (await webhookOf(c.env.sql, c.caller!.tenantId)) ?? { url: null }) },
   { method: "POST", path: "/v1/webhook", summary: "Set the alert webhook (https, a public host name); returns the signing secret once. Events are signed: x-purser-signature t=<seconds>,v1=<HMAC-SHA256 hex of t.body>.", need: "admin", run: async (c) => {
     const b = await body(c, z.object({ url: z.string().min(8).max(500) }).strict());
