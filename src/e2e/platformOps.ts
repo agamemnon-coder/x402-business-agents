@@ -1,0 +1,88 @@
+// What the platform end-to-end needs of Airwallex as Purser the platform (never on behalf of anyone): a connected
+// account per test company (the existing ACTIVE one, or one opened, filled in with a fictional sole trader's details,
+// submitted and activated with the sandbox's simulation), and test money moved into it from the platform.
+//
+// The live implementation uses Purser's client (src/airwallex/client.ts) and platform rail (src/airwallex/platform.ts)
+// on the sandbox only; the fake one stands in for the dry run and the tests.
+
+import { Airwallex } from "../airwallex/client.js";
+import { AirwallexPlatformRest, ACCOUNT_ID } from "../airwallex/platform.js";
+import { fromCents } from "../lib/money.js";
+import type { WorldCompany } from "./world.js";
+
+export interface OpenedAccount { accountId: string; status: string; opened: boolean; ids: Record<string, string> }
+export interface Funding { id: string; status: string }
+
+export interface PlatformOps {
+  /** Purser's own Airwallex account: where its fee goes, as the account binding names it. */
+  readonly feeAccount: string;
+  ensureAccount(c: WorldCompany): Promise<OpenedAccount>;
+  /** Test money from the platform into the company's connected account (connected_account_transfers/create). */
+  fund(accountId: string, cents: number, requestId: string): Promise<Funding>;
+}
+
+/** The fictional sole trader's details a sandbox account needs before it can be submitted (run 2, 10 November). */
+export function soleTraderDetails(c: WorldCompany): Record<string, unknown> {
+  const address = { address_line1: "Teststraat 1", suburb: "Amsterdam", postcode: "1011 AA", country_code: "NL" };
+  return {
+    account_details: {
+      business_details: {
+        business_name: c.name,
+        business_structure: "SOLE_PROPRIETOR",
+        description_of_goods_or_services: "Fictional test company for Purser's sandbox end-to-end run; not a real business.",
+        industry_category_code: "ICCV3_0808XX",
+        operating_country: ["NL"],
+        registration_address: address,
+        account_usage: { product_reference: ["MAKE_TRANSFERS"], estimated_monthly_revenue: { amount: "5000", currency: "EUR" } },
+      },
+      business_person_details: [{
+        first_name: "Test", last_name: "Persoon (fake)", date_of_birth: "1985-01-01", nationality: "NL",
+        roles: ["AUTHORISED_PERSON", "BENEFICIAL_OWNER"], residential_address: address,
+        identifications: { primary: { identification_type: "PASSPORT", passport: { number: "TEST00000", issuing_country_code: "NL" } } },
+      }],
+    },
+  };
+}
+
+export class LivePlatformOps implements PlatformOps {
+  private readonly rest: AirwallexPlatformRest;
+  constructor(private readonly api: Airwallex, readonly feeAccount: string, private readonly o: { sleep?: (ms: number) => Promise<void>; activationWaitMs?: number } = {}) {
+    if (api.onBehalfOf) throw new Error("the platform's own calls are never made on behalf of a connected account");
+    this.rest = new AirwallexPlatformRest(api);
+  }
+
+  async ensureAccount(c: WorldCompany): Promise<OpenedAccount> {
+    if (c.accountId) return { accountId: c.accountId, status: "ACTIVE (opened 10 November, not read again)", opened: false, ids: {} };
+    const requestId = `e2e-open-${c.key.toLowerCase()}`;
+    const opened = await this.rest.createConnectedAccount({ businessName: c.name, countryCode: "NL", email: `${c.key.toLowerCase()}@test.purser.invalid`, requestId });
+    await this.api.call("POST", `/accounts/${opened.accountId}/update`, soleTraderDetails(c));
+    const submitted = await this.api.call<{ status?: string }>("POST", `/accounts/${opened.accountId}/submit`, {});
+    // The sandbox processes a submission in the background: activating 0.7 s after it was refused, 60 s after it worked.
+    await (this.o.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms))))(this.o.activationWaitMs ?? 60_000);
+    const active = await this.api.call<{ status?: string }>("POST", `/simulation/accounts/${opened.accountId}/update_status`, { next_status: "ACTIVE" });
+    return { accountId: opened.accountId, status: active.status ?? "?", opened: true, ids: { created: opened.status, submitted: submitted.status ?? "?" } };
+  }
+
+  async fund(accountId: string, cents: number, requestId: string): Promise<Funding> {
+    if (!ACCOUNT_ID.test(accountId)) throw new Error("not an Airwallex account id");
+    const r = await this.api.call<{ id: string; status: string }>("POST", "/connected_account_transfers/create", {
+      request_id: requestId, destination: accountId, amount: fromCents(cents), currency: "EUR", reason: "business_expenses", reference: "Purser e2e test money",
+    });
+    return { id: r.id, status: r.status };
+  }
+}
+
+/** The dry run's platform: account ids made up in the run, funding that only counts. */
+export class FakePlatformOps implements PlatformOps {
+  readonly feeAccount = "acct_purser_platform";
+  readonly funded: { accountId: string; cents: number }[] = [];
+  private n = 0;
+  async ensureAccount(c: WorldCompany): Promise<OpenedAccount> {
+    if (c.accountId) return { accountId: c.accountId, status: "ACTIVE", opened: false, ids: {} };
+    return { accountId: `acct_fake_${c.key.toLowerCase()}`, status: "ACTIVE", opened: true, ids: { created: "CREATED", submitted: "SUBMITTED" } };
+  }
+  async fund(accountId: string, cents: number): Promise<Funding> {
+    this.funded.push({ accountId, cents });
+    return { id: `cat_fake_${++this.n}`, status: "SETTLED" };
+  }
+}
