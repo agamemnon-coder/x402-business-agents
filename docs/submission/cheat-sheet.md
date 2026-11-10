@@ -45,4 +45,4 @@ and the ask: "we're looking for design partners on Airwallex."
 
 Test money: Airwallex sandbox, Metal testnet. The second approver was a labelled test passkey. The sandbox simulates
 the SWIFT settlement. The server checks no attestation (it is "none"). The business case is a hypothesis: no
-customer has seen a price. T:0: nothing is posted.
+customer has seen a price. T:0: 95 journal entries posted to its shared sandbox on 10 Nov, matching our books.
