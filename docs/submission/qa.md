@@ -169,7 +169,7 @@ promise: no dates we cannot keep.
 
 ### 16. Is T:0 live?
 
-<!-- T0-STATUS -->T:0 bookkeeping is built; posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov), so nothing is posted. We claim nothing in T:0.<!-- /T0-STATUS -->
+<!-- T0-STATUS -->T:0: 95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q); debits equal credits, and T:0 matches our books line by line. Earlier keys were refused (403 CAPI71 on 3 Nov, 401 CAPI11 on 5 Nov).<!-- /T0-STATUS -->
 
 **Evidence:** [docs/runs/2026-11-03-t0-sandbox.md](../runs/2026-11-03-t0-sandbox.md) (`403 CAPI71`);
 [docs/runs/2026-11-05-t0-live.md](../runs/2026-11-05-t0-live.md) (`401 CAPI11`).

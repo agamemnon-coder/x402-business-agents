@@ -10,5 +10,5 @@ A list only. Nothing here is done or started; each item waits for Max's go after
 - [ ] **The Playwright Docker image for CI:** the apt mirror was slow three times on 6 November; a pinned image
   needs no apt step.
 - [ ] **A branch cleanup proposal:** a list of branches that could go. Only a proposal; nothing is deleted.
-- [ ] **T:0:** if Justin answers, retry posting with the key he gives; until then nothing is posted
   ([the run log](../runs/2026-11-05-t0-live.md)).
+- [ ] **T:0:** ask Justin whether our 95 entries should stay in the shared sandbox after the hackathon; posted on 10 Nov ([record](../runs/2026-11-10-t0-journal-sandbox.md))

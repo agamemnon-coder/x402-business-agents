@@ -186,7 +186,7 @@ own signature and "One cent. Worthless." stay last.
 | Rules in code check every limit before anything moves. | `docs/controls.md` (executor pre-checks) |
 | Beyond a limit, a person signs the exact terms with Face ID. | `docs/phone-approval.md` |
 | Then Airwallex or Metal moves the money, and the books record it. | README; `npm run books` |
-| <!-- T0-STATUS -->T:0 bookkeeping is built; posting failed, so nothing is posted.<!-- /T0-STATUS --> | `T0_STATUS` (README, form, claims, `docs/t0.md`): "posting failed (shared key 403 CAPI71 on 3 Nov, new key 401 CAPI11 on 5 Nov)"; [docs/runs/2026-11-05-t0-live.md](../runs/2026-11-05-t0-live.md) |
+| <!-- T0-STATUS -->T:0: 95 journal entries posted to its shared sandbox, matching our books.<!-- /T0-STATUS --> | `T0_STATUS` (README, form, claims, `docs/t0.md`): "95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q)"; [docs/runs/2026-11-10-t0-journal-sandbox.md](../runs/2026-11-10-t0-journal-sandbox.md) |
 
 ### 3b. Why three models (after the run; 30 s; deck slide 8)
 

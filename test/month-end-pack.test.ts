@@ -121,8 +121,8 @@ describe("the month-end pack: its labels", () => {
     expect(JSON.parse(files["summary.json"]!)).toMatchObject({ label: trace.label, line: PACK_LINE });
   });
 
-  it("says T:0 as the record words it: built, nothing posted, both keys refused", () => {
-    expect(t0Line()).toBe("Posting to T:0 is built; nothing posted (keys refused: 403 CAPI71 on 3 Nov, 401 CAPI11 on 5 Nov).");
+  it("says T:0 as the record words it: 95 entries posted to the sandbox on 10 Nov, with the first id", () => {
+    expect(t0Line()).toBe("Posted to T:0's shared sandbox on 10 Nov: 95 journal entries, debits equal credits (first je_prod_z7kTCuZ1iiwad01q).");
     expect(readFileSync("docs/t0.md", "utf8")).toContain(T0_STATUS);
     expect(() => t0Line("T:0 posted everything.")).toThrow();
   });
