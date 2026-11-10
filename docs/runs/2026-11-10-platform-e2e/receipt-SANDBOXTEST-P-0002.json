@@ -1,0 +1,239 @@
+{
+  "receipt": "purser.try-sign-receipt/v1",
+  "note": "Purser platform end-to-end (live, Airwallex sandbox, test money), Purser Sandbox Test (fake sole trader): test company; approved with a test passkey (a software authenticator standing in for the CFO's phone; not Face ID).",
+  "terms": {
+    "schema": "kit11.approval-terms/v1",
+    "kind": "supplier_payment",
+    "proposal_id": "P-0002",
+    "expires_at": "2026-11-10T07:26:14Z",
+    "invoice_no": "ZV-5001 · Zeeland Verpakkingen B.V.",
+    "vendor": "Zeeland Verpakkingen B.V.",
+    "amount": "4.84",
+    "currency": "EUR",
+    "method": "LOCAL",
+    "clearing": null,
+    "beneficiary_id": "e8599d32-5f16-42e6-842c-f7356d5de239",
+    "beneficiary_name": "Zeeland Verpakkingen B.V.",
+    "account": "IBAN NL91…4300",
+    "fee_reserve": "0.00",
+    "reference": "ZV-5001",
+    "reason": "professional_business_services",
+    "transfer_request_id": "d5d93d81-1b24-4b98-9bad-191dac1114c8",
+    "conversion": null,
+    "balances_before": {
+      "EUR": "61.59"
+    },
+    "floors": {
+      "EUR": "0.00"
+    },
+    "evidence": [
+      {
+        "type": "invoice",
+        "ref": "ZV-5001 · Zeeland Verpakkingen B.V.",
+        "sha256": "ab9d1ec98fbd0c7cec54d4714cd54d107e5fe9e49790b0b71c1567b6e603428d"
+      }
+    ],
+    "paying_account": {
+      "id": "acct_SC-QD89fOneAeqaRFgOymw",
+      "name": "Purser Sandbox Test (fake sole trader)"
+    },
+    "platform_fee": {
+      "amount": "0.02",
+      "currency": "EUR",
+      "bps": "50",
+      "to_account": "acct_op0_QItiOyWKsYb5pwQihA",
+      "request_id": "6a54f868-493b-4d91-b500-8002c4b94972"
+    },
+    "document_total_line": "Totaal te betalen € 4,84",
+    "document_currency": "EUR",
+    "test_money": true,
+    "source": "payables_inbox"
+  },
+  "terms_sha256": "e3057c735d9b8381baa9c59315f204fe8c686d8c92214777cab6765d5e82a236",
+  "algorithm": "ES256",
+  "public_key": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "ItgRW63C4kpXE8vybTjCVMWfjvnZPQAJOsoEPYPWaNk",
+    "y": "rxuhXBjsXE5RkJxk29Ifc__k2s7gN57WoPP5w3yDjoo"
+  },
+  "credential_id": "D4VqbzBpXplK64ssrOAElg",
+  "rp_id": "e2e.purser.test",
+  "origin": "https://e2e.purser.test",
+  "assertion": {
+    "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNHdWOGMxMmJnNEc2cWNXVEZmSUVfb3hvYll5U0lVZDN5cloyWFY2Q29qWSIsIm9yaWdpbiI6Imh0dHBzOi8vZTJlLnB1cnNlci50ZXN0IiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+    "authenticatorData": "TljU6UV7g3UvDgz_6wC4e3TRQF0OdZgxlC9b148Q4lgdAAAAAg",
+    "signature": "MEYCIQCPDJcUKaGJnDHhyQrBwxPGxOUVnTXsssdxAv2ONdMhxQIhAPynVxXHxRWUYNPlBUU9BeTDtPJ9gZniMWeZlMdqpWHR"
+  },
+  "verify": "npm run verify-receipt -- <this file>",
+  "e2e": {
+    "format": "purser.e2e-steps/v1",
+    "company": "SANDBOXTEST (acct_SC-QD89fOneAeqaRFgOymw)",
+    "steps": [
+      {
+        "kind": "account",
+        "at": "2026-11-10T07:21:19.425Z",
+        "data": {
+          "company": "Purser Sandbox Test (fake sole trader)",
+          "connected_account": "acct_SC-QD89fOneAeqaRFgOymw",
+          "account": "account acct_SC-QD89fOneAeqaRFgOymw existing, ACTIVE (opened 10 November, not read again)",
+          "funding": "skipped: EUR 61.59 already held",
+          "binding": "signed with the run's own key (a test world's stand-in for Purser Cloud's)"
+        }
+      },
+      {
+        "kind": "invoice_received",
+        "at": "2026-11-10T07:06:04.809Z",
+        "data": {
+          "invoice": "AP-0001",
+          "doc_sha256": "d9443f2f2732c1c3c4365025f6f1871533b08823bd4b0b9feba664d9fc2220ed"
+        }
+      },
+      {
+        "kind": "invoice_read",
+        "at": "2026-11-10T07:21:19.425Z",
+        "data": {
+          "invoice": "AP-0001",
+          "read_by": "claude:claude-sonnet-5-5",
+          "vendor": "Zeeland Verpakkingen B.V.",
+          "invoice_no": "ZV-5001",
+          "total": "EUR 4.84",
+          "claude_reads": [
+            "2026-11-10T07:06:06.176Z ap.classify:d9443f2f2732c1c3 claude-haiku-5-5 request id not returned",
+            "2026-11-10T07:06:08.783Z ap.read:d9443f2f2732c1c3 claude-sonnet-5-5 request id not returned",
+            "2026-11-10T07:06:11.463Z ap.review:AP-0001 claude-opus-5-5 request id not returned",
+            "2026-11-10T07:06:18.153Z ap.review:AP-0001 claude-opus-5-5 request id not returned"
+          ]
+        }
+      },
+      {
+        "kind": "supplier_approved",
+        "at": "2026-11-10T07:21:19.425Z",
+        "data": {
+          "beneficiary": "e8599d32-5f16-42e6-842c-f7356d5de239",
+          "name": "Zeeland Verpakkingen B.V.",
+          "method": "LOCAL",
+          "bic": "ABNANL2A",
+          "account": "IBAN NL91…4300",
+          "approved_with": "test passkey (a software authenticator standing in for the CFO's phone; not Face ID)"
+        }
+      },
+      {
+        "kind": "signature",
+        "at": "2026-11-10T07:06:18.157Z",
+        "data": {
+          "proposal_id": "P-0002",
+          "kind": "supplier_payment",
+          "terms_sha256": "e3057c735d9b8381baa9c59315f204fe8c686d8c92214777cab6765d5e82a236",
+          "signed_with": "test passkey (a software authenticator standing in for the CFO's phone; not Face ID)",
+          "credential_id": "D4VqbzBpXplK64ssrOAElg"
+        }
+      },
+      {
+        "kind": "payout",
+        "at": "2026-11-10T07:21:19.425Z",
+        "data": {
+          "transfer_id": "593c340b-1752-4537-9ef2-0eb3558897cc",
+          "status": "PAID",
+          "amount": "EUR 4.84",
+          "invoice_no": "ZV-5001 · Zeeland Verpakkingen B.V.",
+          "on_behalf_of": "acct_SC-QD89fOneAeqaRFgOymw",
+          "airwallex_fee": "EUR 2.69",
+          "purser_fee": "EUR 0.02 SETTLED to acct_op0_QItiOyWKsYb5pwQihA via application_fee_options"
+        }
+      },
+      {
+        "kind": "booked",
+        "at": "2026-11-10T07:21:19.425Z",
+        "data": {
+          "entries": "9",
+          "balanced": "yes",
+          "audit_chain": "ok, 34 rows, head 2ede0e7dac1311c9f72feccd1971685b68e38ea64d26272a928921f54194d9ad"
+        }
+      },
+      {
+        "kind": "t0_posted",
+        "at": "2026-11-10T07:21:19.425Z",
+        "data": {
+          "entity": "T:0 sandbox (shared by the three test companies)",
+          "journal_entries": [
+            "je_prod_wop0vx1B8xOmHQl0",
+            "je_prod_WN96JsvKXGCY7mYs"
+          ],
+          "tag": "[SANDBOXTEST] PUR-SANDBOXTEST-…",
+          "conversion": "converted at Airwallex sandbox rate 1.111482 USD per EUR at 2026-11-10T07:06:03.000Z"
+        }
+      }
+    ],
+    "chain": {
+      "length": 8,
+      "head": "157b95ad672de17f51aac2a13f9748697bef8be0cc76a51ef5fa39c24ba887f9",
+      "rows": [
+        {
+          "seq": 1,
+          "at": "2026-11-10T07:21:19.425Z",
+          "kind": "account",
+          "data_sha256": "c91eba6ee04f38e7840331e84ca5e9942637fa039ac4ee3f8ae8dbb9e2dbbc7d",
+          "prev": "0000000000000000000000000000000000000000000000000000000000000000",
+          "hash": "1b0cbc3a7e02aa9d640c392ce23bf39a39846adc75e7f4c582fb1796eea1ece3"
+        },
+        {
+          "seq": 2,
+          "at": "2026-11-10T07:06:04.809Z",
+          "kind": "invoice_received",
+          "data_sha256": "900608fc2b09eefc0143f1968f02ff8b6ddc6665400d6fc8ae1176360cfb3c5a",
+          "prev": "1b0cbc3a7e02aa9d640c392ce23bf39a39846adc75e7f4c582fb1796eea1ece3",
+          "hash": "65dcb3568e97400483c2ddd0aa90c00802e49a6bac51b2afb8d28e93a2c61762"
+        },
+        {
+          "seq": 3,
+          "at": "2026-11-10T07:21:19.425Z",
+          "kind": "invoice_read",
+          "data_sha256": "a1194b0dbb143fc520204611a373e420014fcc48c4171b401fd01c4dc40b23f8",
+          "prev": "65dcb3568e97400483c2ddd0aa90c00802e49a6bac51b2afb8d28e93a2c61762",
+          "hash": "09ea2c171a9d39e2c6231c141457271abbc2c6c3a9ac2f96549cb577006f2fb9"
+        },
+        {
+          "seq": 4,
+          "at": "2026-11-10T07:21:19.425Z",
+          "kind": "supplier_approved",
+          "data_sha256": "b1190260f8eee8c02ca7f272fcb606367040e131afbcf31c0ef80d4e0593657e",
+          "prev": "09ea2c171a9d39e2c6231c141457271abbc2c6c3a9ac2f96549cb577006f2fb9",
+          "hash": "86b7041c48556c211feccd3b9f33a86e4a72d7eef686a9747d9b495162f23633"
+        },
+        {
+          "seq": 5,
+          "at": "2026-11-10T07:06:18.157Z",
+          "kind": "signature",
+          "data_sha256": "7a173d32f1c09f2d4e0f5ea9dbbc8e84a2140a7aa98d350cc50dfa74cbf7602b",
+          "prev": "86b7041c48556c211feccd3b9f33a86e4a72d7eef686a9747d9b495162f23633",
+          "hash": "b8e499d60821f5351da1240feb5fc74c12f9d235464f014451ad83242285cd92"
+        },
+        {
+          "seq": 6,
+          "at": "2026-11-10T07:21:19.425Z",
+          "kind": "payout",
+          "data_sha256": "b4c9834b80cd9a66c07c092ddebad7ce4953951dee3856fb6144ca45ce3c2257",
+          "prev": "b8e499d60821f5351da1240feb5fc74c12f9d235464f014451ad83242285cd92",
+          "hash": "6920816d7703d996fa674eb08d2330d8674c66128dbf6a564281653bc100d687"
+        },
+        {
+          "seq": 7,
+          "at": "2026-11-10T07:21:19.425Z",
+          "kind": "booked",
+          "data_sha256": "07531ed348d25f7b5c8ef7423a6a640179ccd5939c80368251f0f0ce28ab1461",
+          "prev": "6920816d7703d996fa674eb08d2330d8674c66128dbf6a564281653bc100d687",
+          "hash": "d58ba0402cb4a34db3c1481017e42ec4ece6de1e2ab00e264c19f46abbe8d09c"
+        },
+        {
+          "seq": 8,
+          "at": "2026-11-10T07:21:19.425Z",
+          "kind": "t0_posted",
+          "data_sha256": "7dec489b13f7018e64e7a1fb960d1fc0dced21402a9bbf6a03bf7c465de3acc9",
+          "prev": "d58ba0402cb4a34db3c1481017e42ec4ece6de1e2ab00e264c19f46abbe8d09c",
+          "hash": "157b95ad672de17f51aac2a13f9748697bef8be0cc76a51ef5fa39c24ba887f9"
+        }
+      ]
+    }
+  }
+}

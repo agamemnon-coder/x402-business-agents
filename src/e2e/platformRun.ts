@@ -307,15 +307,23 @@ function claudeRead(db: DB, inv: ApInvoiceRow): { by: string; requestId: string 
 }
 
 /**
- * The two payables accounts the sandbox map has no line for (1510 input VAT, 2100 accounts payable), mapped onto the
- * sandbox chart by type: the one active, postable accounts_payable account, and the first active, postable other
- * current asset. Only when T:0 has no account numbered as ours; never over a mapping in T0_SANDBOX_MAP.
+ * The payables accounts on the T:0 sandbox chart (read 10 November: a US chart, no VAT receivable account). Used only
+ * where T:0 has no account numbered as ours; resolveAccounts requires each to be exactly one active, postable account.
+ */
+export const T0_SANDBOX_AP_MAP: Record<string, { number: string; name: string; note: string }> = {
+  // T:0 refuses a line on an A/P account without a counterparty (400 CAPI33, 10 November), and a counterparty is a T:0
+  // vendor of its own: the sandbox run books what is owed to suppliers to Other Current Liabilities instead.
+  "2100": { number: "24000", name: "Other Current Liabilities", note: "owed to suppliers; T:0's A/P accounts need a T:0 vendor as counterparty" },
+  "1510": { number: "15100", name: "Other Current Assets - General", note: "input VAT on supplier invoices: the US sandbox chart has no VAT receivable account (our call)" },
+};
+
+/**
+ * Input VAT (1510) mapped onto the first active, postable other current asset when nothing else maps it. Only when T:0
+ * has no account numbered as ours; never over a mapping in T0_SANDBOX_MAP or T0_SANDBOX_AP_MAP.
  */
 export function apFallback(accounts: Awaited<ReturnType<T0Client["listGlAccounts"]>>): Record<string, { number: string; name: string; note: string }> {
   const out: Record<string, { number: string; name: string; note: string }> = {};
   const usable = accounts.filter((a) => a.is_active && a.is_postable && a.account_number);
-  const ap = usable.filter((a) => a.account_type === "accounts_payable");
-  if (ap.length === 1) out["2100"] = { number: ap[0]!.account_number!, name: ap[0]!.name, note: "accounts payable: T:0's one accounts_payable account (by type)" };
   const oca = usable.filter((a) => a.account_type === "other_current_assets").sort((a, b) => a.account_number!.localeCompare(b.account_number!));
   if (oca[0]) out["1510"] = { number: oca[0].account_number!, name: oca[0].name, note: "input VAT: T:0's first other current asset (by type)" };
   return out;
@@ -335,11 +343,11 @@ export function toPostings(c: Pick<WorldCompany, "key">, entries: ApEntry[], fx?
 }
 
 /** The postings built into T:0 entries and pushed once each (idempotent keys; what T:0 already has is skipped). */
-async function pushToT0(d: PlatformE2EDeps, postings: Posting[]): Promise<{ posted: { id: string; memo: string; stable: string }[]; skipped: number }> {
+export async function pushToT0(d: PlatformE2EDeps, postings: Posting[]): Promise<{ posted: { id: string; memo: string; stable: string }[]; skipped: number }> {
   if (!postings.length) return { posted: [], skipped: 0 };
   const { currency, atomsPerUnit } = d.t0Currency ?? await functionalCurrency(d.t0);
   const accounts = await d.t0.listGlAccounts();
-  const { map, labels } = resolveAccounts(accounts, postings.map((p) => p.account), { fallback: { ...apFallback(accounts), ...T0_SANDBOX_MAP } });
+  const { map, labels } = resolveAccounts(accounts, postings.map((p) => p.account), { fallback: { ...apFallback(accounts), ...T0_SANDBOX_MAP, ...T0_SANDBOX_AP_MAP } });
   const built: T0Entry[] = buildEntries(postings, map, currency, d.t0Rate, { atomsPerUnit, labels });
   const out: { id: string; memo: string; stable: string }[] = [];
   const r = await pushBooks(d.t0 as T0Client, built, new Set<string>(), (p, e) => out.push({ id: p.id, memo: e.request.memo ?? "", stable: e.stableId }));
