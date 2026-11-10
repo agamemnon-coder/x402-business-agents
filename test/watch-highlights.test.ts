@@ -63,9 +63,15 @@ describe("Watch highlights", () => {
     const html = watchPage();
     expect(html).toContain(`Full run (${run.events.length} steps)`);
     expect(html).toMatch(/aria-pressed="true"[^>]*>Highlights|>Highlights<\/button>/);
-    // The minimum (Max, 7 Nov): play/pause and this one switch; no speed buttons, no jump chips.
-    expect(html).not.toContain('id="speed"');
+    // Readable pace (Max, 10 Nov: "too fast to read"): a caption per step, back / play / next, a speed switch that
+    // starts at 0.5×, and the chapters drawn by the script; still no old scene chips.
+    expect(html).toContain('id="cap"');
+    expect(html).toMatch(/data-speed="0\.5" class="on" aria-pressed="true">0\.5×/);
+    expect(html).toContain('id="back"');
+    expect(html).toContain('id="fwd"');
+    expect(html).toContain('id="chapters"');
+    expect(html).toMatch(/speed = 0\.5/);
     expect(html).not.toContain('id="scenes"');
-    expect(html.match(/<button /g)?.length).toBe(3);
+    expect(html.match(/<button /g)?.length).toBe(8);
   });
 });

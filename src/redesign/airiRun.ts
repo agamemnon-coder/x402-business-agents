@@ -184,6 +184,7 @@ export const AIRI_CSS = `.airi .airi-label { color: var(--muted); font-size: 14.
 ul.airi-out { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 ul.airi-out li { font-size: 15.5px; line-height: 1.45; overflow-wrap: anywhere; }
 ul.airi-out .awm { font-size: 14px; padding: 2px 10px; margin-right: 4px; white-space: nowrap; }
+@media (max-width: 640px) { ul.airi-out .awm { display: table; margin: 0 0 4px; white-space: normal; } }
 .airi a.awm { text-decoration: none; }
 .airi details.fold > ul.awc { margin-bottom: 12px; }
 .airi h2.airi-h { font-size: 20px; margin: 0; display: flex; align-items: center; gap: 8px; }`;

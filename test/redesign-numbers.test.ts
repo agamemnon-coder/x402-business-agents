@@ -77,6 +77,8 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   // The connected-accounts run (10 Nov) on /airwallex, dated with its own record; its ids and figures are checked against
   // docs/runs/2026-11-10-connected-accounts-sandbox.md in test/partner-pages.test.ts.
   .replace(esc(CONNECTED_LINE), " ")
+  // Watch's playback speeds (Max, 10 Nov) are a control, not a figure of the run.
+  .replace(/\b(?:0\.5|1|2)×/g, " ")
   // Home's hero demo (10 Nov): the Airwallex-only run's invoice, dated with its own record; its figures are checked
   // against docs/demo/airwallex-run.json in test/hero-demo.test.ts.
   .replace(/\b1\s+Ask\s+2\s+Face ID[\s\S]*?Step 4 is the check every payment runs\./g, " ");
