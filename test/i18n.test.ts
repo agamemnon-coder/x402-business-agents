@@ -17,7 +17,7 @@ import { payablesApp } from "../src/servers/payables.js";
 import { transactionsPage } from "../src/servers/transactionsPage.js";
 import { softPasskey } from "../src/metal/softPasskey.js";
 import { ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
-import { scriptBlocks } from "./support/scriptBlocks.js";
+import { scriptBlocks, textOutsideTags, withoutBlocks } from "./support/scriptBlocks.js";
 
 const keys = (o: object) => Object.keys(o).sort();
 const placeholders = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
@@ -122,10 +122,7 @@ const ENGLISH = /\b(Invoices?|Supplier|Due|Amount|Paid|Blocked|Rejected|Ready to
 
 /** The words a page shows: its HTML text and every catalogue string its script carries, without code and values. */
 function shownText(html: string): string {
-  // Repeated until nothing changes, so a tag split around another (<scr<script>ipt>) cannot survive (CodeQL).
-  let out = html, prev;
-  do { prev = out; out = out.replace(/<script\b[\s\S]*?<\/script\s*>/gi, " ").replace(/<style\b[\s\S]*?<\/style\s*>/gi, " ").replace(/<svg\b[\s\S]*?<\/svg\s*>/gi, " ").replace(/<[^>]+>/g, " "); } while (out !== prev);
-  return out;
+  return textOutsideTags(withoutBlocks(html, ["script", "style", "svg"], " "));
 }
 
 describe("a Dutch page", () => {

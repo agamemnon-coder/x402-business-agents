@@ -7,7 +7,7 @@ import { Script } from "node:vm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { consolePage } from "../cloud/src/console.js";
 import { INTER_WOFF2_B64 } from "../cloud/src/font.gen.js";
-import { scriptBlocks } from "./support/scriptBlocks.js";
+import { scriptBlocks, scriptBody, withoutBlocks } from "./support/scriptBlocks.js";
 import { ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
 
 let c: TestCloud;
@@ -18,7 +18,7 @@ afterEach(() => c.close());
 const script = (html: string) => {
   const blocks = scriptBlocks(html);
   expect(blocks).toHaveLength(1);
-  return blocks[0]!.replace(/^<script\b[^>]*>/i, "").replace(/<\/script\s*>$/i, "");
+  return scriptBody(blocks[0]!);
 };
 
 describe("the console page", () => {
@@ -46,8 +46,7 @@ describe("the console page", () => {
 
   it("has no inline handlers, no javascript: links and no style attributes, and its script parses", () => {
     const html = consolePage("n0nce", { origin: ORIGIN, rpId: RP, mailDomain: "in.purser.test" });
-    let markup = html, prev;
-    do { prev = markup; markup = markup.replace(/<script\b[\s\S]*?<\/script\s*>/gi, "").replace(/<style\b[\s\S]*?<\/style\s*>/gi, ""); } while (markup !== prev);
+    const markup = withoutBlocks(html, ["script", "style"]);
     expect(markup).not.toMatch(/\son[a-z]+\s*=/i);
     expect(markup).not.toMatch(/javascript:/i);
     expect(markup).not.toMatch(/\sstyle\s*=/i);
