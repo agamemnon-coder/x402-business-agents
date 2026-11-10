@@ -71,6 +71,8 @@ export interface PlatformE2EDeps {
   t0: Pick<T0Client, "listGlAccounts" | "profitLoss" | "postJournalEntry" | "listJournalEntries">;
   /** Units of T:0's functional currency per unit of a currency, on a date (T0_RATES); none for the functional one. */
   t0Rate: T0Rate;
+  /** T:0's functional currency when already read (the live run's pre-check), so the run does not read it again. */
+  t0Currency?: { currency: string; atomsPerUnit: number };
   /** Purser's fee in basis points (CFO policy, capped at 100). */
   feeBps: string;
   /** Test money moved into each connected account before its invoices are paid, in cents. */
@@ -319,7 +321,7 @@ export function toPostings(c: Pick<WorldCompany, "key">, entries: ApEntry[]): Po
 /** The postings built into T:0 entries and pushed once each (idempotent keys; what T:0 already has is skipped). */
 async function pushToT0(d: PlatformE2EDeps, postings: Posting[]): Promise<{ posted: { id: string; memo: string; stable: string }[]; skipped: number }> {
   if (!postings.length) return { posted: [], skipped: 0 };
-  const { currency, atomsPerUnit } = await functionalCurrency(d.t0);
+  const { currency, atomsPerUnit } = d.t0Currency ?? await functionalCurrency(d.t0);
   const accounts = await d.t0.listGlAccounts();
   const { map, labels } = resolveAccounts(accounts, postings.map((p) => p.account), { fallback: { ...apFallback(accounts), ...T0_SANDBOX_MAP } });
   const built: T0Entry[] = buildEntries(postings, map, currency, d.t0Rate, { atomsPerUnit, labels });

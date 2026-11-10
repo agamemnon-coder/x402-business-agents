@@ -9,6 +9,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { CallBudget, PHASE2_BUDGET, type Service } from "../e2e/budget.js";
 import { estimateLive } from "../e2e/estimate.js";
+import { functionalCurrency } from "../accounting/t0.js";
 import { runPlatformE2E, type RunSummary } from "../e2e/platformRun.js";
 import { budgetedReader, dryRunDeps, liveDeps, parserOnly } from "../e2e/setup.js";
 
@@ -58,6 +59,12 @@ const budget = new CallBudget(caps, { file: join(dir, "calls.jsonl") });
 mkdirSync(dir, { recursive: true });
 const deps = liveDeps(budget, process.env);
 if (typeof deps === "string") { console.error(deps); process.exit(2); }
+// T:0's currency, read once before any money moves (one call): a currency other than EUR needs T0_RATES from a
+// documented source; without it the run stops here, before Airwallex is called.
+const cur = await functionalCurrency(deps.t0);
+console.log(`T:0's functional currency: ${cur.currency} (${cur.atomsPerUnit} atoms a unit)`);
+if (cur.currency !== "EUR" && !process.env.T0_RATES) { console.error(`T:0 books in ${cur.currency}: the EUR entries need T0_RATES from a documented source. Stopped before any Airwallex call.`); process.exit(4); }
+deps.t0Currency = cur;
 try {
   print(await runPlatformE2E({ ...deps, dir, now: () => new Date(), log }));
 } finally {
