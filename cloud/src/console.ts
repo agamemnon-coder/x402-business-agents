@@ -123,10 +123,6 @@ code.idc { font: 500 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; ba
 @media (min-width: 861px) { .row { grid-template-columns: minmax(0, 2fr) minmax(0, 1.3fr) 104px 138px 248px minmax(0, 2fr) 18px; } .row .st { white-space: nowrap; } }
 .tile { transition: border-color .15s; }
 .card.list { border-radius: var(--r); }
-.pfin { max-width: 640px; margin-top: 18px; }
-.pfin .form-row > div:last-child { flex: 0 0 auto; }
-.tiles.pf { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-@media (max-width: 900px) { .tiles.pf { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .pft td .sub { display: block; color: var(--muted); font-size: 12.5px; margin-top: 3px; }
 .pft td .pill + .sub { margin-top: 5px; }
 @media (max-width: 900px) { .co .aw .aww { display: none; } .co .aw { padding-left: 6px; } }
@@ -144,10 +140,75 @@ code.idc { font: 500 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; ba
   .pft td[data-l] { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
   .pft td[data-l]::before { content: attr(data-l); color: var(--muted); font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; min-width: 9em; }
   .pft td[data-l] .sub { display: inline; margin: 0; }
+  .pft td.pay[data-l] .pv { display: inline-flex; gap: 8px; align-items: baseline; }
+  .pft td.pay[data-l] .meter { flex-basis: 100%; max-width: none; margin-top: 2px; }
   .trow > .what { white-space: normal; overflow-wrap: anywhere; }
 }
 /* A tile's label that wraps keeps its icon on its first line. */
 .tile .l { align-items: flex-start; } .tile .l .ic { margin-top: 1px; }
+
+/* Round 2 (10 Nov): denser pages, initials, one-hue bars from the store's own numbers. */
+header.top .wrap { height: 56px; }
+header.top .test { padding: 5px 9px; font-size: 12px; }
+.av2 { flex: none; width: 28px; height: 28px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--accent-soft); color: var(--accent); font: 700 11px/1 Inter, system-ui, sans-serif; letter-spacing: .02em; }
+.row > .sup { display: flex; align-items: center; gap: 10px; }
+.row .sup .sn { min-width: 0; }
+.row > .why { display: flex; align-items: center; gap: 6px; }
+.row > .why .ic { flex: none; display: inline-flex; color: var(--faint); }
+.trow > .what { display: flex; align-items: center; gap: 10px; }
+.trow > .what .wt { min-width: 0; }
+.seg { display: flex; gap: 2px; height: 10px; border-radius: 999px; overflow: hidden; background: var(--sunken); }
+.seg span { height: 100%; }
+.seg.empty { opacity: .6; }
+.s0 { background: var(--accent); } .s1 { background: color-mix(in srgb, var(--accent) 64%, var(--surface)); } .s2 { background: color-mix(in srgb, var(--accent) 38%, var(--surface)); } .s3 { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); }
+ul.legend { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; }
+ul.legend li { display: inline-flex; align-items: center; gap: 6px; }
+ul.legend li i { width: 10px; height: 10px; border-radius: 3px; }
+ul.legend li span { color: var(--muted); }
+ul.legend li.zero { opacity: .55; }
+.meter { display: block; width: 100%; max-width: 220px; height: 6px; border-radius: 999px; background: var(--sunken); overflow: hidden; margin-top: 6px; }
+.meter > span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.ovtop { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 12px; margin-top: 18px; }
+@media (max-width: 900px) { .ovtop { grid-template-columns: minmax(0, 1fr); } }
+a.next { display: flex; align-items: center; gap: 14px; padding: 18px 20px; text-decoration: none; color: var(--text); }
+a.next.act { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+a.next .nic { flex: none; width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+a.next:not(.act) .nic { background: var(--ok-soft); color: var(--ok); }
+a.next > div { min-width: 0; flex: 1; }
+a.next .nl { display: block; color: var(--muted); font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; }
+a.next b { display: block; font-size: 17px; letter-spacing: -.01em; margin-top: 2px; }
+a.next .ns { display: block; color: var(--muted); font-size: 14px; margin-top: 2px; }
+a.next > .ic { color: var(--faint); }
+.panel.due h2 { margin: 0 0 12px; }
+p.fine { color: var(--muted); font-size: 12.5px; margin: 8px 0 0; }
+.waits { margin-top: 18px; }
+.inbox { margin: 14px 0 0; }
+.tile.quiet .v { color: var(--muted); font-size: clamp(18px, 1.8vw, 22px); }
+.tiles.pf { grid-template-columns: minmax(0, 1fr) minmax(0, 1.9fr) minmax(0, 1.1fr) minmax(0, 1fr); }
+@media (max-width: 900px) { .tiles.pf { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tiles.pf .tile.wide { grid-column: 1 / -1; } }
+.pfgate { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.pfin { display: flex; gap: 8px; align-items: center; }
+.pfin .field { width: 260px; padding: 9px 12px; }
+.pfin .btn { white-space: nowrap; }
+.pfgate p.fine { margin: 0; }
+.pfchip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 13px; font-weight: 600; color: var(--ok); }
+.pfchip .dot { color: var(--faint); }
+button.linkish { border: 0; background: none; padding: 0; font: inherit; color: var(--accent); cursor: pointer; }
+.pft td.pco { display: flex; align-items: center; gap: 10px; }
+.pft td.pay .pv { display: block; }
+.table.vat th.sh, .table.vat td.sh { width: 34%; }
+.table.vat td.sh .meter { margin-top: 7px; max-width: none; }
+.table.vat tr.tot td { background: color-mix(in srgb, var(--sunken) 55%, var(--surface)); }
+.table tr.ln td { padding-top: 3px; padding-bottom: 3px; border-top: 0; font-size: 13.5px; color: var(--muted); }
+.table tr.ln:last-child td, .table tr.ln + tr.en td { }
+.table tr.en td { padding-top: 12px; padding-bottom: 4px; }
+.table tr.ln td.r { color: var(--text); font-variant-numeric: tabular-nums; }
+.table td.pn { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 640px) {
+  .pfgate { align-items: stretch; width: 100%; } .pfin { flex-wrap: wrap; } .pfin .field { width: 100%; flex: 1 1 100%; }
+  a.next { padding: 16px; } a.next b { font-size: 16px; }
+  .table.vat th.sh, .table.vat td.sh { display: none; }
+}
 @media (max-width: 900px) {
   /* Two rows on a phone or a narrow window: the brand, who is signed in and the test-money label; then the pages. */
   header.top .wrap { height: auto; flex-wrap: wrap; row-gap: 0; padding-top: 10px; }
@@ -366,40 +427,68 @@ const byCur=(m)=>Object.entries(m||{}).filter(([,v])=>v!==0).sort(([a],[b])=>a.l
 function money(m,emptyWord){const e=byCur(m);if(!e.length)return emptyWord||t('none');const s=el('span','');s.append(el('small','',cur(e[0][0])),cents(e[0][1]));return s}
 function others(m){const e=byCur(m).slice(1);return e.length?e.map(([c,v])=>cur(c)+' '+cents(v)).join(' · '):''}
 function tile(label,icon,value,extra,tone){const t=el('div','card tile'+(tone?' '+tone:''));const v=el('div','v num');if(value instanceof Node)v.append(value);else v.textContent=value;t.append(el('div','l',[ic(icon),label]),v);if(extra)t.append(el('div','x',extra));return t}
+const initials=(n)=>{const w=String(n||'?').replace(/\([^)]*\)/g,' ').replace(/[^\p{L}\p{N} ]/gu,' ').trim().split(/\s+/).filter(Boolean);return (((w[0]||'?')[0]||'?')+((w[1]||'')[0]||'')).toUpperCase()};
+const av=(n)=>{const a=el('span','av2',initials(n));a.setAttribute('aria-hidden','true');return a};
+// A labelled bar in one hue (dataviz rule: one hue, light to dark, every part named with its value, never colour alone).
+function segbar(parts,label){const tot=parts.reduce((n,p)=>n+Math.max(0,p.v),0);const bar=el('div','seg');bar.setAttribute('role','img');bar.setAttribute('aria-label',label+': '+parts.map(p=>p.l+' '+p.t).join(', '));
+  parts.forEach((p,i)=>{if(p.v<=0||!tot)return;const s=el('span','s'+i);s.style.width=(p.v/tot*100).toFixed(2)+'%';s.title=p.l+': '+p.t;bar.append(s)});
+  if(!tot)bar.classList.add('empty');
+  return el('div','segwrap',[bar,el('ul','legend',parts.map((p,i)=>el('li',p.v>0?'':'zero',[el('i','s'+i),el('span','',p.l),el('b','num',p.t)])))])}
+const meter=(v,max)=>{const m=el('span','meter');const f=el('span','');f.style.width=(max>0&&v>0?Math.max(2,v/max*100):0).toFixed(1)+'%';m.append(f);m.setAttribute('aria-hidden','true');return m};
+const toCents=(v)=>{const m=/^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(String(v||''));if(!m)return 0;const c=Number(m[2])*100+Number((m[3]||'').padEnd(2,'0'));return m[1]?-c:c};
 async function overviewView(){
   title(t('cs.nav.overview'));
-  const [m,x,w]=await Promise.all([me(),api('/v1/insights'),api('/v1/invoices?status=waiting_cfo&limit=50')]);shell();
+  const [m,x,all]=await Promise.all([me(),api('/v1/insights'),api('/v1/invoices?limit=200')]);shell();
+  const items=all.items||[];
   const blocked=Object.entries(x.blocked_by_reason||{}).sort((a,b)=>b[1]-a[1]);const nb=blocked.reduce((n,[,c])=>n+c,0);
   const waits=x.waiting.for_cfo+x.waiting.for_supplier_check+x.waiting.for_a_person;
   const tiles=el('div','tiles',[
-    tile(t('ov.tile.open'),'wallet',money(x.open_net_cents,t('cs.nothing_open')),[others(x.open_net_cents),byCur(x.credits_cents).length?t('cs.after_credit_notes'):''].filter(Boolean).join(' · ')||null),
-    tile(t('ov.tile.due7'),'calendar-range',money(x.due_7_days_cents),byCur(x.due_30_days_cents).length?t('ov.due30',{amounts:byCur(x.due_30_days_cents).map(([c,v])=>cur(c)+' '+cents(v)).join(' · ')}):t('ov.nothing_due30')),
-    tile(t('ov.tile.overdue'),'clock',money(x.overdue_cents),byCur(x.overdue_cents).length?others(x.overdue_cents)||t('cs.pay_first'):t('ov.all_in_time'),byCur(x.overdue_cents).length?'alert':'calm'),
-    tile(t('cs.tile.waits'),'inbox',String(waits),t('ov.waits_detail',{faceid:x.waiting.for_cfo,check:x.waiting.for_a_person,supplier:x.waiting.for_supplier_check})),
-    tile(t('ov.tile.blocked'),'octagon-x',String(nb),blocked.length?t('ov.most',{reason:tk('top.'+blocked[0][0],tk('finding.'+blocked[0][0],blocked[0][0].replace(/_/g,' ')))}):t('ov.nothing_blocked'),nb?'alert':'calm')]);
+    tile(t('cs.t.open'),'wallet',money(x.open_net_cents,t('cs.nothing_open')),others(x.open_net_cents)||null),
+    tile(t('cs.t.due7'),'calendar-range',money(x.due_7_days_cents),byCur(x.due_30_days_cents).length?t('cs.x.due30',{amount:byCur(x.due_30_days_cents).map(([c,v])=>cur(c)+' '+cents(v)).join(' · ')}):null),
+    tile(t('cs.t.overdue'),'clock',money(x.overdue_cents),byCur(x.overdue_cents).length?t('cs.x.pay_first'):t('cs.x.in_time'),byCur(x.overdue_cents).length?'alert':'calm'),
+    tile(t('cs.t.waits'),'inbox',String(waits),t('cs.x.waits',{faceid:x.waiting.for_cfo,other:x.waiting.for_a_person+x.waiting.for_supplier_check})),
+    tile(t('cs.t.blocked'),'octagon-x',String(nb),blocked.length?tk('cs.w.f.'+blocked[0][0],t('cs.w.blocked')):t('cs.x.none_blocked'),nb?'alert':'calm')]);
+  // The next thing to do, from the same invoices: the CFO's Face ID first, then what needs a person.
+  const faceid=items.filter(i=>i.status==='waiting_cfo').length,todo=items.filter(i=>['ready','needs_review','needs_vendor'].includes(i.status)).length;
+  const nx=el('a','card next'+(faceid||todo?' act':''));nx.href=faceid?'#/invoices?f=waiting_cfo':'#/invoices?f=act';
+  nx.append(el('span','nic',ic(faceid?'scan-face':todo?'triangle-alert':'circle-check')),el('div','',[el('span','nl',t('cs.next.label')),el('b','',faceid?t(faceid===1?'cs.next.faceid_1':'cs.next.faceid_n',{n:faceid}):todo?t(todo===1?'cs.next.todo_1':'cs.next.todo_n',{n:todo}):t('cs.next.done')),
+    el('span','ns',faceid?t('cs.next.faceid_go'):todo?t('cs.next.todo_go'):t('cs.next.done_sub'))]),faceid||todo?ic('chevron-right'):null);
+  // When the open invoices fall due, in their main currency (other currencies are said, not mixed in).
+  const open=items.filter(i=>!['paid','rejected'].includes(i.status));const per={};for(const i of open)per[i.currency]=(per[i.currency]||0)+toCents(i.total);
+  const main=Object.entries(per).sort((a,b)=>b[1]-a[1])[0];const days=(d)=>Math.round((Date.parse(d)-Date.parse(today))/86400000);
+  const b=[0,0,0,0];for(const i of open){if(!main||i.currency!==main[0])continue;const n=i.due_date?days(i.due_date):99999;b[n<=0?0:n<=7?1:n<=30?2:3]+=toCents(i.total)}
+  const lab=['cs.due.late','cs.due.d7','cs.due.d30','cs.due.later'];
+  const due=el('div','card panel due',[el('h2','',t('cs.due.title')),main?segbar(b.map((v,k)=>({l:t(lab[k]),v,t:cur(main[0])+' '+cents(v)})),t('cs.due.title')):el('p','lede',t('cs.due.none')),
+    Object.keys(per).length>1?el('p','fine',t('cs.due.other_cur')):null]);
   const inbox=m.inbox?el('p','inbox',[ic('mail'),t('cs.mail_to'),el('b','mono',m.inbox)]):null;
+  const w=items.filter(i=>i.status==='waiting_cfo');
   const wl=el('div','card list');
-  if(!w.items.length)wl.append(el('div','empty',[el('b','',t('cs.nothing_waits')),t('cs.nothing_waits_sub')]));
-  else{wl.append(rowHead());for(const i of w.items)wl.append(invoiceRow(i))}
-  view().replaceChildren(head(t('cs.nav.overview'),t('cs.overview_lede',{name:m.tenant.name||''})),inbox,tiles,
-    el('section','section waits',[el('div','bar',[el('h2','',t('cs.waits_head'))]),wl,note(t('cs.shows_not_pays'))]));
+  if(!w.length)wl.append(el('div','empty',[el('b','',t('cs.nothing_waits')),t('cs.nothing_waits_sub')]));
+  else{wl.append(rowHead());for(const i of w)wl.append(invoiceRow(i))}
+  view().replaceChildren(head(t('cs.nav.overview'),t('cs.overview_lede',{name:m.tenant.name||''})),el('div','ovtop',[nx,due]),tiles,inbox,
+    el('section','section waits',[el('div','bar',[el('h2','',t('cs.waits_head'))]),wl]));
 }
 
 // --- Invoices ------------------------------------------------------------------------------------------------------
-function why(i){if(i.status==='paid')return i.paid_at?t('paid_on',{date:day(i.paid_at)}):t('paid');if(i.status==='ready')return t('all_checks_passed');if(i.status==='waiting_cfo')return t('cs.why_on_phone');const fs=i.findings||[];const f=fs.filter(x=>x.level!=='warn')[0]||fs[0];return f?cap(finding(f)):''}
+// Why, in two or three words with an icon; the whole finding stays in the row's title and on the invoice's page.
+function why(i){const fs=i.findings||[];const f=fs.filter(x=>x.level!=='warn')[0]||fs[0];const full=f?cap(finding(f)):'';
+  if(i.status==='paid')return ['circle-check',i.paid_at?t('cs.w.paid',{date:day(i.paid_at)}):t('paid'),''];if(i.status==='ready')return ['circle-check',t('cs.w.ready'),t('all_checks_passed')];
+  if(i.status==='waiting_cfo')return ['scan-face',t('cs.w.phone'),t('cs.why_on_phone')];if(i.status==='rejected')return ['circle-minus',t('cs.w.rejected'),full];
+  if(i.status==='needs_vendor')return ['clock',t('cs.w.vendor'),full];if(i.status==='blocked')return ['octagon-x',f?tk('cs.w.f.'+f.code,t('cs.w.blocked')):t('cs.w.blocked'),full];
+  return ['triangle-alert',f?tk('cs.w.f.'+f.code,t('cs.w.review')):t('cs.w.review'),full]}
 const rowHead=()=>el('div','row th',[el('span','',t('supplier')),el('span','',t('invoice')),el('span','',t('due')),el('span','amt',t('amount')),el('span','',t('status')),el('span','',t('why')),el('span','')]);
 function invoiceRow(i){
   const a=el('a','row');a.href='#/invoices/'+encodeURIComponent(i.id);
-  const sup=el('span','sup',i.vendor||t('unknown_supplier'));sup.title=i.vendor||'';
+  const sup=el('span','sup',[av(i.vendor),el('span','sn',i.vendor||t('unknown_supplier'))]);sup.title=i.vendor||'';
   const no=el('span','no',[i.invoice_no||t('no_number'),el('span','sub',[el('code','idc',i.id)])]);no.title=i.invoice_no||'';
   const late=i.due_date&&i.due_date<today&&!['paid','rejected'].includes(i.status);
-  const w=why(i);const wy=el('span','why',w);wy.title=w;
+  const w=why(i);const wy=el('span','why',[ic(w[0]),el('span','',w[1])]);wy.title=w[2]||w[1];
   a.append(sup,no,el('span','due num'+(late?' late':''),i.due_date?day(i.due_date):'–'),el('span','amt',[el('span','c',cur(i.currency)),amount(i.total)||'–']),el('span','stc',[chip(i.status,i.status_words)]),wy);
   const g=ic('chevron-right');g.className='go';a.append(g);return a}
 const FILTERS=[['all',t('filter.all'),()=>true],['act',t('filter.act'),(i)=>['ready','needs_review','needs_vendor'].includes(i.status)],['waiting_cfo',t('filter.waiting_cfo'),(i)=>i.status==='waiting_cfo'],['paid',t('filter.paid'),(i)=>i.status==='paid'],['blocked',t('filter.blocked'),(i)=>i.status==='blocked'],['rejected',t('filter.rejected'),(i)=>i.status==='rejected']];
-async function invoicesView(){
+async function invoicesView(q){
   title(t('nav.invoices'));
-  let all=[];let cursor=null;let filter='all';
+  let all=[];let cursor=null;let filter=q&&FILTERS.some(f=>f[0]===q.get('f'))?q.get('f'):'all';
   const list=el('div','card list');const bar=el('div','bar',[el('h2','',t('nav.invoices'))]);const more=btn(t('cs.load_more'));more.hidden=true;
   function draw(){
     bar.querySelectorAll('.chip').forEach(c=>c.remove());
@@ -483,14 +572,14 @@ async function transactionsView(){
   async function load(){
     const [s,p]=await Promise.all([api('/v1/transactions/summary?'+q.toString()),api('/v1/transactions?limit=200&'+q.toString())]);
     const tot=s.totals||[];const inn={},out={},fee={};for(const t of tot){inn[t.currency]=Math.round(Number(t.in||0)*100);out[t.currency]=Math.round(Number(t.out||0)*100);if(t.fees)fee[t.currency]=Math.round(Number(t.fees)*100)}
-    tiles.replaceChildren(tile(t('cs.tile.in'),'arrow-down-left',money(inn),others(inn)||null),tile(t('cs.tile.out'),'arrow-up-right',money(out),others(out)||null),tile(t('cs.tile.fees'),'wallet',money(fee),t('tx.rails_charged')),
-      tile(t('tx.tile.unreconciled'),'shield-check',String(s.check.unreconciled),s.check.unreconciled?t('cs.look_at_these'):t('cs.all_match'),s.check.unreconciled?'alert':'calm'),
-      tile(t('tx.tile.no_approval'),'octagon-x',String(s.check.without_approval.length),s.check.without_approval.length?t('tx.moved_no_approval'):t('cs.every_approved'),s.check.without_approval.length?'alert':'calm'));
+    tiles.replaceChildren(tile(t('cs.tile.in'),'arrow-down-left',money(inn),others(inn)||null),tile(t('cs.tile.out'),'arrow-up-right',money(out),others(out)||null),tile(t('cs.tile.fees'),'wallet',money(fee),t('cs.x.rails')),
+      tile(t('tx.tile.unreconciled'),'shield-check',String(s.check.unreconciled),s.check.unreconciled?t('cs.x.look'):t('cs.x.all_match'),s.check.unreconciled?'alert':'calm'),
+      tile(t('tx.tile.no_approval'),'octagon-x',String(s.check.without_approval.length),s.check.without_approval.length?t('cs.x.look'):t('cs.x.all_approved'),s.check.without_approval.length?'alert':'calm'));
     list.replaceChildren(el('div','trow th',[el('span','',t('date')),el('span','',t('what')),el('span','',t('rail')),el('span','amt',t('amount')),el('span','',t('status')),el('span','',t('books')),el('span','')]));
     if(!p.items.length)list.append(el('div','empty',[el('b','',t('cs.no_movements')),t('cs.nothing_matches')]));
     for(const r of p.items){const b=el('div','trow');
       const amt=el('span','amt'+(r.flow==='in'?' in':''),[el('span','c',cur(r.currency)),(r.flow==='in'?'+':'−')+amount(r.amount)]);if(!r.moved)amt.classList.add('not');
-      b.append(el('span','when',day(r.at)),el('span','what',[el('b','',data('counterparty',r.counterparty||'')),el('span','sub',data('description',r.description||''))]),el('span','rail',[tk('rail.'+r.rail,r.rail_label||r.rail),el('span','sub',r.proof?el('code','idc',String(r.proof).slice(0,18)):t('tx.no_proof_short'))]),amt,
+      b.append(el('span','when',day(r.at)),el('span','what',[av(r.counterparty||'?'),el('span','wt',[el('b','',data('counterparty',r.counterparty||'')),el('span','sub',data('description',r.description||''))])]),el('span','rail',[tk('rail.'+r.rail,r.rail_label||r.rail),el('span','sub',r.proof?el('code','idc',String(r.proof).slice(0,18)):t('tx.no_proof_short'))]),amt,
         el('span','',[el('span','pill '+(r.moved?'ok':'bad'),data('status',r.status_words||r.status))]),el('span','',[el('span','pill '+(r.reconciliation==='matched'?'ok':r.reconciliation==='not_applicable'?'':'warn'),tk('rec.'+r.reconciliation,r.reconciliation_words||r.reconciliation))]),el('span',''));
       list.append(b)}
     if(p.next_cursor)list.append(note(t('cs.newest_200')));
@@ -508,12 +597,13 @@ async function booksView(){
   view().replaceChildren(head(t('cs.nav.books'),t('cs.books_lede')),el('div','split2',[vat,journal]));
   async function drawVat(){
     const v=await api('/v1/reports/vat?quarter='+encodeURIComponent(pick.value));
-    const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('cs.rubric')),el('th','r',t('cs.base')),el('th','r',t('dt.vat'))])])]);const tb=el('tbody','');
+    const tbl=el('table','table vat',[el('thead','',[el('tr','',[el('th','',t('cs.rubric')),el('th','sh',t('cs.vat.share')),el('th','r',t('cs.base')),el('th','r',t('dt.vat'))])])]);const tb=el('tbody','');
+    const maxBase=Math.max(0,...Object.values(v.rubrics||{}).map(r=>Math.abs(r.base_cents||0)));
     const eur=(c)=>cur('EUR')+' '+cents(c);
-    for(const [k,r] of Object.entries(v.rubrics||{})){if(!r.base_cents&&!r.vat_cents)continue;tb.append(el('tr','',[el('td','',RUBRIC(k)),el('td','r',eur(r.base_cents)),el('td','r',eur(r.vat_cents))]))}
+    for(const [k,r] of Object.entries(v.rubrics||{})){if(!r.base_cents&&!r.vat_cents)continue;tb.append(el('tr','',[el('td','',RUBRIC(k)),el('td','sh',meter(Math.abs(r.base_cents||0),maxBase)),el('td','r',eur(r.base_cents)),el('td','r',eur(r.vat_cents))]))}
     // No rubric row: the quarter may still hold input VAT (5b), so "nothing" is said only when 5a and 5b are nil too.
-    if(!tb.children.length)tb.append(el('tr','',[el('td','',t(v.owed_5a_cents||v.input_5b_cents?'cs.no_rubrics':'cs.nothing_quarter')),el('td',''),el('td','')]));
-    tb.append(el('tr','',[el('td','',el('b','',t('cs.owed_5a'))),el('td',''),el('td','r',eur(v.owed_5a_cents))]),el('tr','',[el('td','',el('b','',t('cs.input_5b'))),el('td',''),el('td','r',eur(v.input_5b_cents))]),el('tr','',[el('td','',el('b','',t('cs.balance_5c'))),el('td',''),el('td','r',el('b','',eur(v.balance_5c_cents)))]));
+    if(!tb.children.length)tb.append(el('tr','',[el('td','',t(v.owed_5a_cents||v.input_5b_cents?'cs.no_rubrics':'cs.nothing_quarter')),el('td',''),el('td',''),el('td','')]));
+    tb.append(el('tr','tot',[el('td','',el('b','',t('cs.owed_5a'))),el('td',''),el('td',''),el('td','r',eur(v.owed_5a_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.input_5b'))),el('td',''),el('td',''),el('td','r',eur(v.input_5b_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.balance_5c'))),el('td',''),el('td',''),el('td','r',el('b','',eur(v.balance_5c_cents)))]));
     tbl.append(tb);
     vat.replaceChildren(el('h2','',t('cs.vat_overview')),el('div','form-row',[el('div','',[el('label','',t('cs.quarter')),pick])]),el('div','scroll',tbl),
       v.uncoded_lines?note(t('cs.uncoded',{n:v.uncoded_lines}),'bad'):null,note(NL?t('cs.vat_notice'):(v.notice||t('cs.vat_notice'))));
@@ -521,8 +611,8 @@ async function booksView(){
   pick.onchange=()=>drawVat().catch(e=>{if(!(e instanceof Expired))vat.append(note(e.message,'bad'))});
   const j=await api('/v1/ledger/entries?limit=30');
   const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('date')),el('th','',t('cs.entry')),el('th','r',t('cs.debit')),el('th','r',t('cs.credit'))])])]);const tb=el('tbody','');
-  for(const e of j.items.slice().reverse()){tb.append(el('tr','',[el('td','',day(e.posting_date)),el('td','',[el('b','','#'+e.entry_id+' '),data('journal',e.description||'')]),el('td',''),el('td','')]));
-    for(const l of e.lines||[])tb.append(el('tr','',[el('td',''),el('td','',l.account+(l.vat_code?' · '+t('cs.vat_code',{code:l.vat_code}):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
+  for(const e of j.items.slice().reverse()){tb.append(el('tr','en',[el('td','',day(e.posting_date)),el('td','',[el('b','','#'+e.entry_id+' '),data('journal',e.description||'')]),el('td',''),el('td','')]));
+    for(const l of e.lines||[])tb.append(el('tr','ln',[el('td',''),el('td','',l.account+(l.vat_code?' · '+t('cs.vat_code',{code:l.vat_code}):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
   if(!j.items.length)tb.append(el('tr','',[el('td','',t('cs.no_entries')),el('td',''),el('td',''),el('td','')]));
   tbl.append(tb);journal.replaceChildren(el('h2','',t('cs.journal')),el('div','scroll',tbl),note(t('cs.journal_note')));
   await drawVat();
@@ -608,7 +698,7 @@ async function settingsView(){
           try{await api('/v1/users/'+encodeURIComponent(p.id)+'/erase',{method:'POST'});await drawPeople()}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}};
         const pks=btn(t('cs.passkeys'),'','scan-face');pks.onclick=async()=>{pks.disabled=true;try{await passkeys(p)}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{pks.disabled=false}};
         acts.append(inv,' ',pks,' ',er)}
-      tb.append(el('tr','',[el('td','',[el('b','',p.erased_at?t('cs.erased'):p.display_name),p.email?el('span','sub',' '+p.email):null]),el('td','',[el('span','pill'+(p.role==='owner'?' warn':''),tk('cs.role.'+p.role,p.role))]),acts]))}
+      tb.append(el('tr','',[el('td','pn',[p.erased_at?null:av(p.display_name),el('b','',p.erased_at?t('cs.erased'):p.display_name),p.email?el('span','sub',' '+p.email):null]),el('td','',[el('span','pill'+(p.role==='owner'?' warn':''),tk('cs.role.'+p.role,p.role))]),acts]))}
     tbl.append(tb);
     const name=el('input','field');name.placeholder=t('cs.name');const role=el('select','field');for(const r of ['cfo','accountant','viewer','owner']){const o=el('option','',tk('cs.role.'+r,r));o.value=r;role.append(o)}
     const add=btn(t('cs.add_invite'),'primary');add.onclick=async()=>{const n=name.value.trim();if(!n)return;add.disabled=true;try{const u=await api('/v1/users',{method:'POST',body:{display_name:n,role:role.value}});await drawPeople();await invite({id:u.id,display_name:n})}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{add.disabled=false}};
@@ -639,24 +729,35 @@ async function settingsView(){
 // --- The platform's companies: for Purser's operator, with the platform admin token (kept in this page only) ---------
 function platformView(){
   title(t('cs.pf.title'));
-  const tok=el('input','field');tok.type='password';tok.autocomplete='off';tok.id='pf-token';tok.placeholder='••••••••';
+  const tok=el('input','field');tok.type='password';tok.autocomplete='off';tok.id='pf-token';tok.placeholder=t('cs.pf.token');tok.setAttribute('aria-label',t('cs.pf.token'));
   const b=btn(t('cs.pf.show'),'primary','users');const out=el('div','');const status=el('div','');status.setAttribute('role','status');
+  const sum=(m)=>{const e=Object.entries(m||{});return e.length?e.map(([c,v])=>cur(c)+' '+amount(v)).join(' · '):''};
   const lab=(td,l)=>{td.dataset.l=l;return td};
-  const sum=(m)=>{const e=Object.entries(m||{});return e.length?e.map(([c,v])=>cur(c)+' '+amount(v)).join(' · '):'–'};
-  b.onclick=async()=>{b.disabled=true;status.replaceChildren();
-    try{const r=await fetch('/v1/admin/companies',{headers:{authorization:'Bearer '+tok.value.trim()}});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||r.statusText);
-      const tt=j.totals;const tiles=el('div','tiles pf',[tile(t('cs.pf.companies'),'users',String(tt.companies),null),tile(t('cs.pf.active'),'shield-check',String(tt.active_accounts),t('cs.pf.of',{n:tt.companies}),tt.active_accounts?'calm':null),
-        tile(t('cs.pf.payouts'),'arrow-up-right',sum(tt.payouts),null),tile(t('cs.pf.fees'),'wallet',sum(tt.fees),null)]);
-      const tbl=el('table','table pft',[el('thead','',[el('tr','',[el('th','',t('cs.pf.company')),el('th','',t('cs.pf.account')),el('th','r',t('cs.pf.payouts')),el('th','r',t('cs.pf.fees')),el('th','',t('cs.pf.last_push'))])])]);const tb=el('tbody','');
-      for(const c of j.companies){const aw=c.airwallex;
-        tb.append(el('tr','',[el('td','',[el('b','',c.name),el('span','sub',[el('code','idc',c.slug),c.closed?' · '+t('cs.pf.closed'):''])]),
+  // The token lives in this closure only: never in storage, gone when the page is left or the person signs out here.
+  let token='';
+  const gate=el('div','pfgate',[el('div','pfin',[tok,b]),el('p','fine',t('cs.pf.token_note')),status]);
+  function signOut(){token='';tok.value='';out.replaceChildren();gate.replaceChildren(el('div','pfin',[tok,b]),el('p','fine',t('cs.pf.token_note')),status);tok.focus()}
+  b.onclick=async()=>{b.disabled=true;status.replaceChildren();token=tok.value.trim();
+    try{const r=await fetch('/v1/admin/companies',{headers:{authorization:'Bearer '+token}});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||r.statusText);
+      tok.value='';const so=el('button','linkish',t('cs.pf.sign_out'));so.type='button';so.onclick=signOut;
+      gate.replaceChildren(el('span','pfchip',[ic('shield-check'),el('span','',t('cs.pf.admin')),el('span','dot','·'),so]));
+      const tt=j.totals,cs=j.companies;const act=cs.filter(c=>c.airwallex&&c.airwallex.status==='active').length,none=cs.filter(c=>!c.airwallex).length,chk=cs.length-act-none;
+      const fees=sum(tt.fees);
+      const split=el('div','card tile wide',[el('div','l',[ic('shield-check'),t('cs.pf.split')]),segbar([{l:t('cs.pf.s.active'),v:act,t:String(act)},{l:t('cs.pf.s.checking'),v:chk,t:String(chk)},{l:t('cs.pf.s.none'),v:none,t:String(none)}],t('cs.pf.split'))]);
+      const tiles=el('div','tiles pf',[tile(t('cs.pf.companies'),'users',String(tt.companies),null),split,tile(t('cs.pf.payouts'),'arrow-up-right',sum(tt.payouts)||t('none'),null),tile(t('cs.pf.fees'),'wallet',fees||t('cs.pf.no_fees'),null,fees?null:'quiet')]);
+      // Each company's bar is its payouts in the cloud's main currency, against the largest: one hue, the amount beside it.
+      const mainCur=Object.entries(tt.payouts||{}).sort((x,y)=>toCents(y[1])-toCents(x[1]))[0];const maxP=mainCur?Math.max(...cs.map(c=>toCents((c.payouts.totals||{})[mainCur[0]]))):0;
+      const tbl=el('table','table pft',[el('thead','',[el('tr','',[el('th','',t('cs.pf.company')),el('th','',t('cs.pf.account')),el('th','',t('cs.pf.payouts')),el('th','r',t('cs.pf.fees')),el('th','',t('cs.pf.last_push'))])])]);const tb=el('tbody','');
+      for(const c of cs){const aw=c.airwallex;const pc=mainCur?toCents((c.payouts.totals||{})[mainCur[0]]):0;
+        tb.append(el('tr','',[el('td','pco',[av(c.name),el('span','',[el('b','',c.name),el('span','sub',[el('code','idc',c.slug),c.closed?' · '+t('cs.pf.closed'):''])])]),
           el('td','',aw?[el('span','pill '+(aw.status==='active'?'ok':['refused','closed'].includes(aw.status)?'bad':'warn'),tk('cs.awx.status.'+aw.status,aw.status)),aw.account_id?el('span','sub',[el('code','idc',aw.account_id)]):null]:el('span','pill',t('cs.awx.none'))),
-          lab(el('td','r',[sum(c.payouts.totals),el('span','sub',[t('cs.pf.paid',{n:c.payouts.count}),c.waiting?' · '+t('cs.pf.waiting',{n:c.waiting}):''])]),t('cs.pf.payouts')),lab(el('td','r',sum(c.fees)),t('cs.pf.fees')),lab(el('td','',c.last_push?stamp(c.last_push):t('cs.pf.never')),t('cs.pf.last_push'))]))}
-      if(!j.companies.length)tb.append(el('tr','',[el('td','',t('cs.pf.none')),el('td',''),el('td',''),el('td',''),el('td','')]));
-      tbl.append(tb);out.replaceChildren(tiles,el('section','section',[el('div','card list pfl',[el('div','scroll',tbl)])]),note(t('cs.shows_not_pays')))}
-    catch(e){status.replaceChildren(note(e.message,'bad'))}finally{b.disabled=false}};
+          lab(el('td','pay',[el('span','pv',[el('b','num',sum(c.payouts.totals)||'–'),el('span','sub',[t('cs.pf.paid',{n:c.payouts.count}),c.waiting?' · '+t('cs.pf.waiting',{n:c.waiting}):''])]),mainCur?meter(pc,maxP):null]),t('cs.pf.payouts')),
+          lab(el('td','r',sum(c.fees)||t('cs.pf.no_fees')),t('cs.pf.fees')),lab(el('td','',c.last_push?stamp(c.last_push):t('cs.pf.never')),t('cs.pf.last_push'))]))}
+      if(!cs.length)tb.append(el('tr','',[el('td','',t('cs.pf.none')),el('td',''),el('td',''),el('td',''),el('td','')]));
+      tbl.append(tb);out.replaceChildren(tiles,el('section','section',[el('div','card list pfl',[el('div','scroll',tbl)])]))}
+    catch(e){token='';status.replaceChildren(note(e.message,'bad'))}finally{b.disabled=false}};
   tok.onkeydown=(e)=>{if(e.key==='Enter')b.click()};
-  view().replaceChildren(head(t('cs.pf.title'),t('cs.pf.lede')),el('div','card panel pfin',[el('div','form-row',[el('div','',[el('label','',t('cs.pf.token')),tok]),el('div','',[b])]),note(t('cs.pf.token_note')),status]),out);
+  view().replaceChildren(el('div','head',[el('div','',[el('h1','',t('cs.pf.title')),el('p','lede',t('cs.pf.lede'))]),el('div','tools',[gate])]),out);
 }
 
 async function route(){
@@ -673,7 +774,7 @@ async function route(){
     if(m)return await invoiceView(decodeURIComponent(m[1]));
     const pages={'/overview':overviewView,'/invoices':invoicesView,'/transactions':transactionsView,'/books':booksView,'/settings':settingsView};
     if(!pages[path])return view().replaceChildren(el('div','expired',[el('h1','',t('cs.not_here')),(()=>{const a=el('a','btn',t('cs.back_overview'));a.href='#/overview';return a})()]));
-    await pages[path]();shell();
+    await pages[path](q);shell();
   }catch(e){if(e instanceof Expired)return;view().replaceChildren(note(t('cs.load_failed',{error:e.message}),'bad'))}
 }
 $('#out').onclick=async()=>{try{await api('/v1/auth/logout',{method:'POST'})}catch(e){}forget();S=null;ME=null;go('#/sign-in')};
