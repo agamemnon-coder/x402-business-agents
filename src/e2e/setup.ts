@@ -19,6 +19,12 @@ import { WORLD } from "./world.js";
 
 /** Purser's own sandbox account (the platform): where its fee goes. */
 export const PURSER_PLATFORM_ACCOUNT = "acct_op0_QItiOyWKsYb5pwQihA";
+/**
+ * What the T:0 client sends as its bearer: a fixed word, not a key. The live run's T:0 key is a network secret the
+ * environment's proxy puts on every request to api.t0.ai; this process never holds it.
+ */
+export const PROXY_INJECTED = "proxy";
+
 /** Test money moved into each connected account: covers its invoices, Purser's fee and Airwallex's SWIFT fee (EUR 13.41 a payout on 10 November). */
 export const FUND_CENTS = 6000;
 
@@ -71,7 +77,7 @@ export function liveDeps(budget: CallBudget, env: NodeJS.ProcessEnv): Omit<Platf
   if (typeof rate === "string") return rate;
   const fetchAwx = budget.fetchFor("airwallex");
   const platform = new LivePlatformOps(new Airwallex({ clientId: cfg.clientId, apiKey: cfg.apiKey, fetchImpl: fetchAwx }), PURSER_PLATFORM_ACCOUNT);
-  const t0 = new T0Client({ apiKey: env.T0_API_KEY_PLACEHOLDER ?? "proxy-injects-the-key", fetch: budget.fetchFor("t0"), retryDelayMs: 0 });
+  const t0 = new T0Client({ apiKey: PROXY_INJECTED, fetch: budget.fetchFor("t0"), retryDelayMs: 0 });
   const rails = new Map<string, AirwallexRest>();
   return {
     world: WORLD, platform, readerFor: (db: DB) => budgetedReader(new ClaudeReader(db), budget), t0, t0Rate: rate as T0Rate, feeBps: "50", fundCents: FUND_CENTS, mode: "live",
