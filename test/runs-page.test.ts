@@ -98,6 +98,10 @@ describe("/agents/<id>", () => {
     }
   });
 
+  it("say none of the site's forbidden words (test/site-v4.test.ts)", () => {
+    for (const html of [pages.runs!, ...AGENT_IDS.map((id) => pages.agents![id]!.page)]) expect(text(html)).not.toMatch(/warehouse software|stand-in|\bdry-1\d*|every limit|can['’]t break/i);
+  });
+
   it("are linked from /runs", () => {
     for (const id of AGENT_IDS) expect(pages.runs).toContain(`href="agents/${id}"`);
   });

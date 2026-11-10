@@ -30,4 +30,4 @@ said per run. The other files in this folder are build notes, dry runs and rehea
 | `snapshot.reconciliation` | Every money flow checked against Airwallex and Metal, and the differences found. |
 | `snapshot.audit` | The hash-chained audit log: row count, head hash, whether the chain is intact. |
 | `ledger` | The ledger's rows the pages are built from (sanitised). |
-| `kind` | Whether this is a live record or a stand-in. |
+| `kind` | What kind of record it is: from a live run, or an example. |

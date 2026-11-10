@@ -4,7 +4,7 @@
 // (docs/demo/main-run.json) and its trace companion (docs/demo/main-run-trace.json); nothing is typed in.
 // test/runs-page.test.ts holds the figures to the records.
 
-import { AGENT_DISPLAY } from "../config/brand.js";
+import { AGENT_DISPLAY, KIT11_JOBS } from "../config/brand.js";
 import { EXPLORER_TX } from "../metal/network.js";
 import { decisionsOf, loadRecord, type AgentId, type RunRecord } from "./run.js";
 import { loadTrace } from "./trace.js";
@@ -41,7 +41,7 @@ export function agentView(id: AgentId, r: RunRecord = loadRecord().record, t: Ru
   const sums = new Map<string, number>();
   for (const p of pays) sums.set(p.currency, (sums.get(p.currency) ?? 0) + cents(p.amount));
   return {
-    id, name: AGENT_DISPLAY[id].name, job: AGENT_DISPLAY[id].job,
+    id, name: AGENT_DISPLAY[id].name, job: KIT11_JOBS[id],
     models: snap.agents.find((a) => a.id === id)?.models ?? [],
     card: snap.cards.find((c) => c.agent === id) ?? null,
     mandate: last ? { cap: last.cap, budget: last.budget, tx: last.tx, changes: mandates.length } : null,

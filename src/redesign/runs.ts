@@ -142,7 +142,7 @@ export const MAIN_RUN_GLOSSARY: [string, string][] = [
   ["snapshot.reconciliation", "Every money flow checked against Airwallex and Metal, and the differences found."],
   ["snapshot.audit", "The hash-chained audit log: row count, head hash, whether the chain is intact."],
   ["ledger", "The ledger's rows the pages are built from (sanitised)."],
-  ["kind", "Whether this is a live record or a stand-in."],
+  ["kind", "What kind of record it is: from a live run, or an example."],
 ];
 
 const idHtml = (i: RunId) => `<dt>${esc(i.label)}</dt><dd>${i.href ? `<a href="${esc(i.href)}"${i.href.startsWith("http") ? ' target="_blank" rel="noopener"' : ""}>${esc(i.value)}</a>` : `<code>${esc(i.value)}</code>`}</dd>`;
