@@ -39,8 +39,8 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
   it("are Max's words, with the main run's 24 decisions, all by Claude", () => {
     expect(DIFFERENTIATORS).toEqual([
       "An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless.",
-      "One CFO policy becomes three locks: Purser's code, Airwallex's card controls, Metal's mandate on chain. A prompt is not a control.",
-      "Real agents, not scripts: Claude made all 24 decisions, and no key reaches Claude.",
+      "One CFO policy, a lock per rail: Airwallex card controls, Metal's mandate, the CFO's signature on invoices. A prompt is not a control.",
+      "Real agents: Claude made all 24 decisions (routine payments are code); no key reaches Claude.",
     ]);
     const sp = split(record);
     expect([sp.byClaude, sp.decisions, sp.fallbacks]).toEqual([24, 24, 0]);
@@ -114,7 +114,7 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
 describe("the 12 overpriced checks: a buy rule Claude set, applied by code (jury review, 6 Nov, #6)", () => {
   it("says who did what, as the record does", () => {
     const st = stopStory(record);
-    expect(stopsLine(st)).toBe("16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.");
+    expect(stopsLine(st)).toBe("16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.");
     const rows = record.snapshot.refusals.filter((x) => x.agent === "sourcing" && /own buy policy/.test(x.reason));
     expect(rows).toHaveLength(st.claude);
     // Each row: the policy refused it, in code (src/agents/sourcing.ts refuses every purchase while the policy the

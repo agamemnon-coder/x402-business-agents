@@ -185,7 +185,7 @@ describe("the short Description (Max, 5 Nov)", () => {
     expect(flat.match(/Visa Award/g)).toHaveLength(1);
     expect(flat).toContain("Starter Kit 11 (x402 Business Agents), entered for the Metal Award and the Visa Award.");
     expect(flat.match(/Visa/g)).toHaveLength(2);
-    expect(flat).toContain("Visa Intelligent Commerce via Airwallex's Airi (7 Nov; Airwallex sandbox, test card, test money): 5 of 5 checks; paid alone within the limit, after Face ID above it; Purser refused a disallowed merchant before Airi.");
+    expect(flat).toContain("Visa Intelligent Commerce via Airwallex's Airi: 5 of 5 checks; each confirmed in Airi, above Purser's limit only after Face ID; a disallowed merchant refused first.");
     expect(flat).toContain("Details → https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/submission/long-description.md#what-is-real-and-what-is-simulated");
     expect(long).toContain(T0_STATUS);
     expect(longRaw).toMatch(/^### What is real and what is simulated$/m);

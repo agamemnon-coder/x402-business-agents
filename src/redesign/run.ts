@@ -480,7 +480,7 @@ export const stopFigure = (st: StopStory) => plural(st.total, "stop");
 export const stopSub = (st: StopStory) => st.overLimitEur === null ? "" : Number(st.overLimitEur) === 0 ? "nothing paid over a limit" : `EUR ${st.overLimitEur} paid over a limit`;
 /** Who stopped what, in the sentence's order; a part only when its count is not 0. */
 export const stopParts = (st: StopStory) => [
-  st.claude ? `a buy rule Claude set stopped ${plural(st.claude, "overpriced check")}` : "",
+  st.claude ? `one buy rule Claude set stopped ${plural(st.claude, "overpriced check")}` : "",
   st.metal ? `Metal refused ${plural(st.metal, "purchase")}` : "",
   st.cfo ? `the CFO rejected ${plural(st.cfo, "proposal")}` : "",
   st.planted ? `${plural(st.planted, "planted instruction")} changed nothing` : "",
@@ -488,7 +488,7 @@ export const stopParts = (st: StopStory) => [
 ].filter(Boolean);
 /**
  * The stops in one sentence, the same on every surface (Max, 5 Nov; jury review, 6 Nov, #6): "16 stops, nothing paid
- * over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1
+ * over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1
  * proposal, and 1 planted instruction changed nothing." Every count is stopStory()'s.
  */
 export function stopsLine(st: StopStory): string {

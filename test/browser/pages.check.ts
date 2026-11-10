@@ -255,7 +255,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // The main run's figures as Home, Watch and Proof count them (final review, 4 Nov; Max, 5 Nov): Metal's 2 (not 3:
     // #24 once, and #37), the stops in one sentence, "16 stops" in the pill, all Claude calls said as such, #24 refused
     // by Metal itself.
-    const STOPS = /16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing\./;
+    const STOPS = /16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing\./;
     for (const want of [/Metal's mandate check\s+2\b/, new RegExp(`In this run: ${STOPS.source}`), /Refused and blocked\s+16 stops/, /58 Claude calls in all, \$0\.38: the agents' own 50/, /let through on purpose, was refused by Metal/, /PAID in the sandbox, where the settlement is simulated/]) {
       if (!want.test(au)) fail(`/?autonomy ${tag}: missing ${want}`);
     }
@@ -397,7 +397,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // 5 of 5 checks (a link to the run log's checks) in sight, every step and id in its "Details" fold; never an Airi
       // link or a card number.
       if ((path === "/airwallex" || path === "/visa") && (!/Visa Intelligent Commerce via Airwallex's Airi: a live run \(7 Nov\)\s*A separate run · Airwallex sandbox, test card, test money/.test(pt)
-        || !/✓ Paid alone[\s\S]*✓ Paid after Face ID[\s\S]*✕ Refused by Purser/.test(pt) || !/5 of 5 checks pass/.test(pt)
+        || !/✓ Within the limit[\s\S]*✓ Paid after Face ID[\s\S]*✕ Refused by Purser/.test(pt) || !/5 of 5 checks pass/.test(pt)
         || (await page.locator('#airi-run a[href$="2026-11-07-vic-1.md#checks-the-records-checks"]').count()) !== 1 || /int_sgpvzc9hjhnxvpblt2r/.test(pt)
         || !/single-use card credential from Airwallex's Airi wallet[\s\S]*int_sgpvzc9hjhnxvpblt2r[\s\S]*P-0002[\s\S]*int_sgpvzc9hjhnxvxc26ie[\s\S]*PURSER_MERCHANT_NOT_ALLOWED/.test(open)
         || /airi\.com\/|\b\d{13,19}\b/.test(open))) fail(`${path} ${tag}: the Airi run is not shown, dated and labelled, with its badges, checks and steps`);
@@ -417,7 +417,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (!/awx-1: a separate run · Airwallex sandbox, test money/.test(await page.locator("#awx-1").innerText().catch(() => ""))) fail(`/proof ${tag}: awx-1 missing under Airwallex read back`);
       // The Airi run (7 Nov), in sight under the partners: the owner's copy, the badges, the checks, a link to its ids.
       const airi = await page.locator("#airi-run").innerText().catch(() => "");
-      if (!/Visa Intelligent Commerce via Airwallex's Airi: a live run \(7 Nov\)\s*A separate run · Airwallex sandbox, test card, test money/.test(airi) || !/✓ Paid alone[\s\S]*✓ Paid after Face ID[\s\S]*✕ Refused by Purser[\s\S]*5 of 5 checks pass/.test(airi)
+      if (!/Visa Intelligent Commerce via Airwallex's Airi: a live run \(7 Nov\)\s*A separate run · Airwallex sandbox, test card, test money/.test(airi) || !/✓ Within the limit[\s\S]*✓ Paid after Face ID[\s\S]*✕ Refused by Purser[\s\S]*5 of 5 checks pass/.test(airi)
         || !(await page.locator("#airi-run").isVisible()) || (await page.locator('#airi-run a[href="airwallex#airi-run-steps"]').count()) !== 1) fail(`/proof ${tag}: the Airi run not in sight under the partners, or no link to its steps`);
       if (!/The hash the CFO signed travels with the payment\./.test(rb) || (rb.match(/\b[0-9a-f]{64}\b/g) ?? []).length !== 2 || !/Match: the same hash/.test(rb) || !/3 of 3 cards match the CFO policy/.test(rb)) fail(`/proof ${tag}: Airwallex read back missing or not matching`);
     }

@@ -54,7 +54,7 @@ describe("1. the main run's CFO dashboard (/?autonomy) counts as Home, Watch and
     expect(metal.last!.words).toMatch(/let through on purpose/);
     expect(replay.snapshot.tower.enforced.find((e) => e.who === "airwallex")!.count).toBe(st.airwallex);
     const detail = " Metal's 2: 1 over the mandate's cap, 1 on a mandate that had just been replaced.";
-    expect(line).toBe("16 stops, nothing paid over a limit: a buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.");
+    expect(line).toBe("16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.");
     expect(f.keptOut).toBe(`${line}${detail} The amount is what stayed out for good.`);
     expect(f.refusedPill).toBe("16 stops");
     expect(f.refusedNote).toBe(`As on Home and Proof: ${line}${detail}`);

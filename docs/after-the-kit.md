@@ -4,6 +4,10 @@ On [/try/sign](https://kit11.max-31b.workers.dev/try/sign) the Treasury agent as
 and the CFO signs the exact terms with Face ID. The payables inbox is built to do the same for every supplier invoice of
 a small company: the same control, the CFO's Face ID over the exact terms, applied to accounts payable.
 
+Why small companies: a CFO we spoke to (1 conversation so far; more in progress) put it this way:
+
+> "At our company invoices go through a full approval process in our ERP. I think Purser is something for SMEs." — CFO at a US company (anonymous)
+
 Where it stands: work in progress on a separate branch, built and tested against **stand-ins** for Airwallex and Claude
 and on Cloudflare's local database. It is **not deployed** and no customer uses it. Its connected-account payout path ran once in Airwallex's
 sandbox on 10 November (below); the inbox itself has not yet paid an invoice in the sandbox. None of it is part of the Kit 11 runs described in the README. The Kit 11 build keeps Metal and x402 for
