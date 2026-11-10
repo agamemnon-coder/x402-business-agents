@@ -120,7 +120,8 @@ describe("/proof's Claude card opens with 24/24 and the reliability fix", () => 
     // Max's line, word for word, with the numbers from the records; the exact reading in a note under it.
     expect(leads.claude[1]!.text).toBe(`a reliability run found a hand-off fault; fixed: ${rf.before.passed}/${rf.before.runs} → ${rf.after.passed}/${rf.after.runs}`);
     expect(leads.claude[1]!.text).toBe("a reliability run found a hand-off fault; fixed: 6/10 → 10/10");
-    expect(leads.claude[1]!.note).toBe("6/10 → 10/10: the treasury-card-raise eval rebuilt from rel-1's moment, before and after the fix (commit 856cb64); the next run, rel-1b, passed every step.");
+    // Jargon out (10 Nov): the runs by what they are, not their working names.
+    expect(leads.claude[1]!.note).toBe("6/10 → 10/10: the eval rebuilt from the reliability run's moment, before and after the fix (commit 856cb64); the next reliability run passed every step.");
     expect(leads.claude[1]!.href).toBe("https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/reliability-2026-11.md");
   });
 });

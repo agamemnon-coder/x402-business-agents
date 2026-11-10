@@ -4,6 +4,7 @@
 // language, not exactly one h1, a link or button with no name, an image with no alt text), and on a menu that wraps.
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
+import { VISA_ENTRY_LINE } from "../../src/redesign/partners.js";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { chromium, type Page } from "playwright";
@@ -97,15 +98,32 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     await page.waitForTimeout(1500);
     if (new URL(page.url()).pathname !== "/" || !(await page.isVisible("h1.h-hero"))) fail(`/ ${tag}: a guest does not get Home at / (${page.url()})`);
     await look(page, `/ (Home) ${tag}`, w);
-    // One flow (Max, 7 Nov): three steps, watch, try, proof; one primary button, to watch, in the first screen. The CFO's
-    // view is linked from Proof's head (checked below), not from Home.
+    // Competitive review, 10 Nov: one primary button, to Try, in the first screen; Watch and Proof as text links. The
+    // CFO's view is linked from Proof's head (checked below), not from Home.
     {
-      const steps = await page.locator("ol.flow > li a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
-      // Step 2 is "try", or "try/sign" where the relay serves /try/sign (the live site: TRY_SIGN_ENABLED=on).
-      if (!["watch,try,proof", "watch,try/sign,proof"].includes(steps.join(","))) fail(`/ ${tag}: the flow is not watch, try, proof (${JSON.stringify(steps)})`);
+      const links = await page.locator("p.more a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+      if (!links.includes("watch") || !links.includes("proof")) fail(`/ ${tag}: Watch and Proof are not linked beside the button (${JSON.stringify(links)})`);
       const primaries = page.locator("main a.btn.primary");
       const box = await primaries.first().boundingBox();
-      if ((await primaries.count()) !== 1 || (await primaries.first().getAttribute("href")) !== "watch" || !box || box.y + box.height > h) fail(`/ ${tag}: not one primary button, to watch, in the first screen`);
+      if ((await primaries.count()) !== 1 || !/^try(\/sign)?$/.test((await primaries.first().getAttribute("href")) ?? "") || !box || box.y + box.height > h) fail(`/ ${tag}: not one primary button, to Try, in the first screen`);
+      // The hero demo (Max, 10 Nov): it plays (the phase moves on), it keeps its size while it plays (no layout shift),
+      // and with reduced motion it shows one still frame, the last.
+      const demo = page.locator("#hero-demo");
+      if (!(await demo.count())) fail(`/ ${tag}: no hero demo`);
+      else {
+        const size = async () => JSON.stringify(await demo.evaluate((e) => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
+        const p0 = await demo.getAttribute("data-phase"), s0 = await size();
+        await page.waitForTimeout(3800);
+        if ((await demo.getAttribute("data-phase")) === p0) fail(`/ ${tag}: the hero demo does not play`);
+        if ((await size()) !== s0) fail(`/ ${tag}: the hero demo changes size while it plays (${s0} → ${await size()})`);
+        if (!/Recorded run · Airwallex sandbox · test money/.test(await demo.innerText()) || !(await demo.locator('a[href$="try/sign"], a[href="try"]').count())) fail(`/ ${tag}: the hero demo lacks its label or its link to Try`);
+        await demo.screenshot({ path: join(shots, `home-demo-${tag}.png`) });
+        const still = await page.context().browser()!.newPage({ viewport: { width: w, height: h }, reducedMotion: "reduce" });
+        await still.goto(`${base}/home`, { waitUntil: "load" });
+        await still.waitForTimeout(2600);
+        if ((await still.locator("#hero-demo").getAttribute("data-phase")) !== "4" || await still.locator("#hero-demo").evaluate((e) => e.classList.contains("run"))) fail(`/ ${tag}: with reduced motion the hero demo is not one still frame`);
+        await still.close();
+      }
     }
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
 
@@ -358,7 +376,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // 7 Nov). /metal: 175 since the jury review of 7 Nov (#3), for what the explorer shows beside the refusal's link.
       // The second Airi run (vic-2, 7 Nov): /visa 465 with its three outcomes under the VIC flow, /airwallex 365 with its
       // heading and checks (the same budgets as test/site-v4.test.ts).
-      const budget = path === "/airwallex" ? 365 : path === "/visa" ? 465 : path === "/metal" ? 180 : 150;
+      // /visa 495 since 10 Nov (Max: we compete for the Visa Award, keep it visible): one plain sentence on top.
+      const budget = path === "/airwallex" ? 365 : path === "/visa" ? 495 : path === "/metal" ? 180 : 150;
       if (words > budget + 25) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(pt)) fail(`${path} ${tag}: its run is not labelled`);
       if ((await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
@@ -367,7 +386,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.evaluate(() => document.querySelectorAll("details").forEach((d) => { d.open = true; }));
       await look(page, `${path} folds open ${tag}`, w);
       const open = await page.evaluate(() => document.body.innerText);
-      if (path === "/visa" && (!/Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours\./.test(open) || !/commit 16d59bd/.test(open) || !/simulated authorisations/.test(open) || !/Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon \(Visa, 5 Nov\)\./.test(open) || /entered for[^.]{0,40}Visa Award/i.test(open) || /Dev test/.test(open))) fail(`/visa ${tag}: the claim, the award status or the honest label is wrong`);
+      if (path === "/visa" && (!/Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours\./.test(open) || !/commit 16d59bd/.test(open) || !/simulated authorisations/.test(open) || !/Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon \(Visa, 5 Nov\)\./.test(open) || !open.includes(VISA_ENTRY_LINE) || /entered for[^.]{0,40}Visa Award/i.test(open.split(VISA_ENTRY_LINE).join(" ")) || /Dev test/.test(open))) fail(`/visa ${tag}: the claim, the award status or the honest label is wrong`);
       if (path === "/airwallex" && !/LIMIT_EXCEEDED|over the card's limit/.test(open)) fail(`/airwallex ${tag}: no decline by Airwallex`);
       // Section B: the hash the CFO signed beside the one Airwallex returns, matched in code; each card's controls beside the policy.
       if (path === "/airwallex" && (!/The hash the CFO signed travels with the payment\./.test(pt) || (pt.match(/\b[0-9a-f]{64}\b/g) ?? []).length !== 2 || !/Match: the same hash/.test(pt))) fail(`/airwallex ${tag}: the CFO's hash and Airwallex's are not shown side by side, or do not match`);
@@ -504,11 +523,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const asked: string[] = [];
       const onRequest = (r: { url(): string }) => { const u = new URL(r.url()); if (u.origin !== new URL(judgeBase).origin || !["/judge", "/assets/inter.woff2", "/assets/favicon.svg", "/favicon.ico"].includes(u.pathname)) asked.push(r.url()); };
       await page.goto(`${judgeBase}/`, { waitUntil: "load" });
-      const flow = await page.locator("ol.flow > li a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
-      if (JSON.stringify(flow) !== JSON.stringify(["watch", "try/sign", "proof"])) fail(`/ (Home, with /try/sign) ${tag}: the flow is not watch, try/sign, proof (${JSON.stringify(flow)})`);
-      const top = page.locator("p.judgeline a");
+      if ((await page.locator("main a.btn.primary").getAttribute("href")) !== "try/sign") fail(`/ (Home, with /try/sign) ${tag}: the button does not lead to /try/sign`);
+      const top = page.locator('p.more a[href="judge"]');
       const box = await top.boundingBox();
-      if ((await page.locator('a[href="judge"]').count()) !== 1 || (await top.innerText()).trim() !== "Judging? Take the 3-minute tour →" || !box || box.y + box.height > h || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: no one "Judging? Take the 3-minute tour →" link under the button, in the first screen, inside the page's gutter`);
+      if ((await page.locator('a[href="judge"]').count()) !== 1 || (await top.innerText()).trim() !== "Judging? Take the 3-minute tour" || !box || box.y + box.height > h || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: no one "Judging? Take the 3-minute tour" link beside the button, in the first screen, inside the page's gutter`);
       if ((await page.locator("main a.btn").count()) !== 1) fail(`/ (Home, with /try/sign) ${tag}: more than one button`);
       await look(page, `/ (Home, with /try/sign) ${tag}`, w);
       await page.screenshot({ path: join(shots, `home-trysign-${tag}.png`) });

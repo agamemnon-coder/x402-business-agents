@@ -50,9 +50,9 @@ export function judgeSteps(record = loadRecord().record): JudgeStep[] {
     },
     {
       id: "proof", title: "See the proof", seconds: 40,
-      see: "Every id of the main run; awx-1, the Airwallex-only run of 7 November, every check passed; Airwallex's own decline; Metal's refusal on chain.",
+      see: "What Purser guarantees, with the code and the test for each; every id of the main run; the Airwallex-only run of 7 November, every check passed, and Airwallex's own decline; Metal's refusal on chain.",
       links: [
-        { label: "Open /proof", href: "/proof" }, { label: "awx-1 on /airwallex", href: "/airwallex#awx-1" }, { label: "Open /metal", href: "/metal" },
+        { label: "Open /proof", href: "/proof" }, { label: "The Airwallex-only run", href: "/airwallex#awx-1" }, { label: "Open /metal", href: "/metal" },
         ...(refusal ? [{ label: "The refusal on the explorer", href: refusal }] : []),
       ],
       // What the explorer shows for the refusal (jury review, 7 Nov, #3): its log is not decoded there.

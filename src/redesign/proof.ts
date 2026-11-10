@@ -12,6 +12,7 @@ import { AIRI_CSS, airiRunBlock } from "./airiRun.js";
 import { vic2RunBlock } from "./vic2Run.js";
 import { awxRunBlock } from "./awxRun.js";
 import { esc, icon, page } from "./ui.js";
+import { GUARANTEES_CSS, guaranteesHtml } from "./guarantees.js";
 import { LEAD_CSS, leadHtml, proofLeads } from "./proofLead.js";
 import { TRACE_LINK, TRACE_URL } from "./trace.js";
 import { PACK_LINK, PACK_NAME } from "../accounting/monthPack.js";
@@ -283,6 +284,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   <div class="phead"><h1>Proof</h1><span class="pill run">${icon("database", 14)}${esc(run.label)}</span><a class="open" href="${FILM_URL}" target="_blank" rel="noopener">${icon("play", 14)}${esc(FILM_LINK)} ↗</a><a class="open" href="${CFO_VIEW_URL}">${icon("layout-dashboard", 14)}${esc(CFO_VIEW_LINK)}</a><a class="open" href="${TRACE_URL}">${icon("receipt", 14)}${esc(TRACE_LINK)}</a><a class="open" href="assets/${PACK_NAME}" download>${icon("file-check", 14)}${esc(PACK_LINK)}</a></div>
   <p class="split">${esc(SPLIT_LINE)}</p>
   <div class="nums">${nums.map((n) => `<a class="num card ${n.cls}" href="${n.href}"><span class="v">${esc(n.value)}</span><span class="l">${esc(n.label)}</span>${noteHtml(n.note, "span")}</a>`).join("")}</div>
+  ${guaranteesHtml()}
   <h2 class="sec">The partners</h2>
   ${partnerCards(run)}
   ${airi ? `<div class="awrb">${airi}</div>` : ""}
@@ -291,7 +293,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   <details class="deep"><summary>Why this is a company</summary>${whyCompanyHtml()}</details>
 </div></main>`;
   return page({
-    title: "Proof", description: "Every proof of the main run in one place: who decided, who paid, who stopped what, each partner's live proof.", tab: "proof", css: CSS, body, js: JS, stage: false,
+    title: "Proof", description: "Every proof of the main run in one place: who decided, who paid, who stopped what, each partner's live proof.", tab: "proof", css: CSS + GUARANTEES_CSS, body, js: JS, stage: false,
     // Visa TAP as a footer link (jury review, 6 Nov, #7): an extra, not an award entry.
     links: [["visa", VISA_EXTRA_LINK]],
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,

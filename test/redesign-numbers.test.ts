@@ -76,7 +76,10 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   .replace(PRICE_LINE, " ")
   // The connected-accounts run (10 Nov) on /airwallex, dated with its own record; its ids and figures are checked against
   // docs/runs/2026-11-10-connected-accounts-sandbox.md in test/partner-pages.test.ts.
-  .replace(esc(CONNECTED_LINE), " ");
+  .replace(esc(CONNECTED_LINE), " ")
+  // Home's hero demo (10 Nov): the Airwallex-only run's invoice, dated with its own record; its figures are checked
+  // against docs/demo/airwallex-run.json in test/hero-demo.test.ts.
+  .replace(/\b1\s+Ask\s+2\s+Face ID[\s\S]*?Step 4 is the check every payment runs\./g, " ");
 
 /** Numbers on the page that are not in the record. */
 export const unknownNumbers = (html: string) => (visibleText(html).match(NUM) ?? []).map(norm).filter((n) => !ALLOWED.has(n));

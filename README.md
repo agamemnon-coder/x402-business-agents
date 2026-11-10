@@ -8,21 +8,43 @@ For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice ov
 
 **[Try it in a minute.](https://kit11.max-31b.workers.dev/try/sign)**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 3081 passing](https://img.shields.io/badge/tests-3081%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 3097 passing](https://img.shields.io/badge/tests-3097%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
 
 **[Judge it in 3 minutes →](https://kit11.max-31b.workers.dev/judge)**
 
 The Kit 11 scenario, run live on 3 November, and a demo you sign yourself: **[kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/)**.
 
+## For reviewers
+
+- **What:** a control layer for AI agents that spend a company's money. Within limits set by the CFO an agent pays on its own; beyond them nothing runs until the CFO signs the exact terms with Face ID.
+- **For:** the CFO of a small company whose AI agents pay suppliers and buy services.
+- **Proofs you can check, each with its id:**
+  1. Airwallex: the hash the CFO signed is in Airwallex's own record of the EUR 240.00 SWIFT payment, transfer `03360bfa-afce-457b-89d1-e1097fbe3985` (main run, 3 November; settlement simulated in the sandbox). [On the site](https://kit11.max-31b.workers.dev/airwallex#awx-hash).
+  2. Airwallex's own card controls declined an agent's EUR 45.00 purchase over its EUR 30.00 limit, `LIMIT_EXCEEDED`, card transaction `01a1b5e8-6dc2-7000-95bf-c8fc5e6e2f38` (the Airwallex-only run, 7 November). [Run log](docs/runs/2026-11-07-awx-1.md).
+  3. Metal: purchase #24 over the agent's mandate refused on chain, after we switched off our own check once to test the chain: [the transaction](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871).
+  4. Visa Intelligent Commerce through Airwallex's Airi (7 November; sandbox, test card): above the limit, PaymentIntent `int_sgpvzc9hjhnxvxc26ie` succeeded only after the CFO's Face ID. [Run log](docs/runs/2026-11-07-vic-1.md).
+- **Live or simulated:** live are Claude's decisions, the Airwallex sandbox calls and the Metal testnet transactions. Simulated are the customer, the supplier, the merchants' charges, the settlement and the second approver (a labelled test passkey). Test money only.
+- **Verify in two minutes:** [sign with your own Face ID](https://kit11.max-31b.workers.dev/try/sign), then try to change one cent; or offline, `npm ci && npm run judge`. A plain-text summary for tools: [llms.txt](llms.txt).
+
+| Criterion | Where it is proven |
+|---|---|
+| Airwallex use | [/airwallex](https://kit11.max-31b.workers.dev/airwallex): cards per agent with the CFO policy as Airwallex's own controls, read back; Airwallex's own declines; SWIFT payouts carrying the signed hash; FX for the shortfall only. [Run log](docs/runs/2026-11-07-awx-1.md) |
+| Agentic | [/watch](https://kit11.max-31b.workers.dev/watch), [/claude](https://kit11.max-31b.workers.dev/claude): three Claude agents, 24 of 24 decisions by Claude; an agent read Airwallex's decline and asked the CFO for a raise instead of retrying |
+| Technical | [What Purser guarantees](https://kit11.max-31b.workers.dev/proof#guarantees), each promise with its code, its test and where it ran; [controls matrix](docs/controls-matrix.md); [verify it yourself](#verify-it-yourself-in-3-commands) |
+| Finance value | [/try/sign](https://kit11.max-31b.workers.dev/try/sign); [the business case](docs/business/) (a hypothesis, not validated; no customers yet) |
+| Metal Award | [/metal](https://kit11.max-31b.workers.dev/metal), [docs/metal-award.md](docs/metal-award.md) |
+| Visa Award | [/visa](https://kit11.max-31b.workers.dev/visa), [the Airi run's log](docs/runs/2026-11-07-vic-1.md) |
+| Founder's and Judges' Choice | [/try/sign](https://kit11.max-31b.workers.dev/try/sign) in a minute; what comes next, not live: [docs/after-the-kit.md](docs/after-the-kit.md) |
+
 ## Look here first
 
-1. **[Watch](https://kit11.max-31b.workers.dev/watch): the agents, replayed.** A supplier doubles its price. A customer
+1. **[Try](https://kit11.max-31b.workers.dev/try/sign): sign with your own Face ID.** About a minute, in a test world of
+   your own; nothing real moves. Live since 4 November 2026. Six steps and a closing card: [Try it, step by step](#try-it-step-by-step).
+2. **[Watch](https://kit11.max-31b.workers.dev/watch): the agents, replayed.** A supplier doubles its price. A customer
    disputes 12 orders. A €240 bill is due in euros. Three Claude agents run a small data business on 20 test dollars
    through Metal and Airwallex; the CFO signed 5 times with Face ID. One live run, every id in
    [the main run](#the-main-run-3-november). [Film, 3:58](https://youtu.be/kCUsFHrxE-o).
-2. **[Try](https://kit11.max-31b.workers.dev/try/sign): sign with your own Face ID.** About a minute, in a test world of
-   your own; nothing real moves. Live since 4 November 2026. Six steps and a closing card: [Try it, step by step](#try-it-step-by-step).
-3. **[Proof](https://kit11.max-31b.workers.dev/proof): every id.** The main run's, each checkable, and awx-1, the
+3. **[Proof](https://kit11.max-31b.workers.dev/proof): every id.** The main run's, each checkable, and the
    Airwallex-only run of 7 November: accepted, every check passed ([below](#the-airwallex-only-run-awx-1-7-november-sandbox-test-money)).
 4. **[The Airi run](#visa-intelligent-commerce-via-airwallexs-airi-a-live-run-7-nov): Visa Intelligent Commerce via
    Airwallex's Airi (7 November).** Agents paid with a single-use Visa credential from Airi: within the limit on their
@@ -100,7 +122,7 @@ npm run judge -- --check
 ```
 
 - `npm ci` (under a minute): installs the exact versions in the lockfile; every dependency is pinned.
-- `npm test` (3 to 4 min): **3081 tests in 299 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included.
+- `npm test` (3 to 4 min): **3097 tests in 303 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included.
 - `npm run judge -- --check` (about 3 s): builds the site's 18 pages from the main run's committed record, offline, and fetches each once.
 - `npm run verify-receipt -- receipt.json` (under 1 s): after you sign on [/try/sign](https://kit11.max-31b.workers.dev/try/sign), checks its receipt offline with Node's own crypto: your passkey signed exactly those terms; change one cent and it says NOT VALID. Getting the receipt needs the live site and your own passkey.
 
