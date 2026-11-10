@@ -80,3 +80,5 @@ f0c548f8f380f9bccc58521b710870523621be3b:src/cli/reliability.ts:generic-api-key:
 9d38415b1445143e066cab0b35292c967e2dadf8:src/e2e/setup.ts:generic-api-key:74
 # Public WebAuthn authenticatorData in a test-passkey receipt (platform branch, e2e run 10 Nov): not a secret.
 07da41fd7e7fbdf531a25d9a0a5775ac0016978c:docs/runs/2026-11-10-platform-e2e/receipt-SANDBOXTEST-P-0002.json:generic-api-key:65
+# A list of env-variable names (twoLocks stand-in clears them), not a secret.
+a78858859d27df0fdfdc11020a34ded76175d8f7:src/cli/twoLocks.ts:generic-api-key:85
