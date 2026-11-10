@@ -21,11 +21,17 @@ export interface PlatformOps {
   fund(accountId: string, cents: number, requestId: string): Promise<Funding>;
 }
 
-/** The fictional sole trader's details a sandbox account needs before it can be submitted (run 2, 10 November). */
+/**
+ * The fictional, non-registered sole trader's details a sandbox account needs before it can be submitted. Field names
+ * as Airwallex's minimum requirements for NL list them (docs: connected-accounts/onboarding/kyc-and-onboarding/
+ * native-api/business-kyc-requirements/netherlands-(nl), read 10 November): no business identifier or documents for a
+ * non-registered sole trader; addresses with state and suburb; the UBO as AUTHORISED_PERSON and BENEFICIAL_OWNER.
+ */
 export function soleTraderDetails(c: WorldCompany): Record<string, unknown> {
-  const address = { address_line1: "Teststraat 1", suburb: "Amsterdam", postcode: "1011 AA", country_code: "NL" };
+  const address = { address_line1: "Teststraat 1", suburb: "Amsterdam", state: "Noord-Holland", postcode: "1011 AA", country_code: "NL" };
   return {
     account_details: {
+      legal_entity_type: "BUSINESS",
       business_details: {
         business_name: c.name,
         business_structure: "SOLE_PROPRIETOR",
@@ -38,7 +44,7 @@ export function soleTraderDetails(c: WorldCompany): Record<string, unknown> {
       business_person_details: [{
         first_name: "Test", last_name: "Persoon (fake)", date_of_birth: "1985-01-01", nationality: "NL",
         roles: ["AUTHORISED_PERSON", "BENEFICIAL_OWNER"], residential_address: address,
-        identifications: { primary: { identification_type: "PASSPORT", passport: { number: "TEST00000", issuing_country_code: "NL" } } },
+        identifications: { primary: { identification_type: "PASSPORT", issuing_country_code: "NL" } },
       }],
     },
   };
