@@ -6,6 +6,7 @@
 // on the sandbox only; the fake one stands in for the dry run and the tests.
 
 import { Airwallex } from "../airwallex/client.js";
+import { AirwallexRest } from "../airwallex/adapter.js";
 import { AirwallexPlatformRest, ACCOUNT_ID } from "../airwallex/platform.js";
 import { fromCents } from "../lib/money.js";
 import type { WorldCompany } from "./world.js";
@@ -19,6 +20,17 @@ export interface PlatformOps {
   ensureAccount(c: WorldCompany): Promise<OpenedAccount>;
   /** Test money from the platform into the company's connected account (connected_account_transfers/create). */
   fund(accountId: string, cents: number, requestId: string): Promise<Funding>;
+  /** Airwallex's current rate for EUR into another currency (GET /fx/rates/current), on the platform's own login. */
+  eurRate(to: "USD"): Promise<FxRate>;
+}
+
+/** A rate as Airwallex gave it: units of `to` per EUR, worked out from the amounts it quoted, and when. */
+export interface FxRate { rate: string; to: string; at: string; source: string }
+
+/** Units of the buy currency per unit sold, from the amounts (cents), to 6 decimals: no direction to guess. */
+export function rateFromAmounts(buyCents: number, sellCents: number): string {
+  if (!(buyCents > 0 && sellCents > 0)) throw new Error("a rate needs two positive amounts");
+  return (buyCents / sellCents).toFixed(6);
 }
 
 /**
@@ -69,6 +81,12 @@ export class LivePlatformOps implements PlatformOps {
     return { accountId: opened.accountId, status: active.status ?? "?", opened: true, ids: { created: opened.status, submitted: submitted.status ?? "?" } };
   }
 
+  async eurRate(to: "USD"): Promise<FxRate> {
+    const buyCents = 10_000;
+    const r = await new AirwallexRest(this.api).currentRate({ buyCurrency: to, sellCurrency: "EUR", buyAmountCents: buyCents });
+    return { rate: rateFromAmounts(buyCents, r.sellAmountCents), to, at: r.at, source: `Airwallex sandbox GET /fx/rates/current (client rate ${r.rate}; ${to} 100.00 for EUR ${(r.sellAmountCents / 100).toFixed(2)})` };
+  }
+
   async fund(accountId: string, cents: number, requestId: string): Promise<Funding> {
     if (!ACCOUNT_ID.test(accountId)) throw new Error("not an Airwallex account id");
     const r = await this.api.call<{ id: string; status: string }>("POST", "/connected_account_transfers/create", {
@@ -87,6 +105,7 @@ export class FakePlatformOps implements PlatformOps {
     if (c.accountId) return { accountId: c.accountId, status: "ACTIVE", opened: false, ids: {} };
     return { accountId: `acct_fake_${c.key.toLowerCase()}`, status: "ACTIVE", opened: true, ids: { created: "CREATED", submitted: "SUBMITTED" } };
   }
+  async eurRate(): Promise<FxRate> { throw new Error("the dry run has no rate: its T:0 books in EUR"); }
   async fund(accountId: string, cents: number): Promise<Funding> {
     this.funded.push({ accountId, cents });
     return { id: `cat_fake_${++this.n}`, status: "SETTLED" };

@@ -9,6 +9,7 @@ import { BudgetSpent, CallBudget } from "../src/e2e/budget.js";
 import { estimateLive } from "../src/e2e/estimate.js";
 import { runPlatformE2E, toPostings, WaitingForAirwallexApproval } from "../src/e2e/platformRun.js";
 import { budgetedReader, dryRunDeps, parserOnly } from "../src/e2e/setup.js";
+import { rateFromAmounts } from "../src/e2e/platformOps.js";
 import { verifyReceipt } from "../src/try/receipt.js";
 
 let dir: string;
@@ -105,5 +106,16 @@ describe("the live run's budget", () => {
   it("T:0 postings carry the company and PUR id in their name and memo", () => {
     const p = toPostings({ key: "BAKKERIJ" }, [{ date: "2026-11-10", invoice_id: "AP-0001", event: "payment", account: "2100", account_name: "AP", debit: "3.63", credit: "", currency: "EUR", memo: "x", doc_sha256: "a".repeat(64) }]);
     expect(p[0]).toMatchObject({ entry: "PUR-BAKKERIJ-AP-0001-payment", ref: "PUR-BAKKERIJ-AP-0001", description: "[BAKKERIJ] PUR-BAKKERIJ-AP-0001: x", debit_cents: 363 });
+  });
+
+  it("a T:0 in USD: the rate comes from Airwallex's amounts, and every entry's memo keeps its EUR amount and names the rate and time", () => {
+    expect(rateFromAmounts(10_000, 9_200)).toBe("1.086957");
+    expect(() => rateFromAmounts(10_000, 0)).toThrow();
+    const fx = { rate: "1.086957", to: "USD", at: "2026-11-10T07:00:00.000Z", source: "Airwallex sandbox GET /fx/rates/current" };
+    const p = toPostings({ key: "FIETSLAB" }, [
+      { date: "2026-11-10", invoice_id: "AP-0001", event: "payment", account: "2100", account_name: "AP", debit: "6.05", credit: "", currency: "EUR", memo: "x", doc_sha256: "a".repeat(64) },
+      { date: "2026-11-10", invoice_id: "AP-0001", event: "payment", account: "1200", account_name: "Bank", debit: "", credit: "6.05", currency: "EUR", memo: "x", doc_sha256: "a".repeat(64) },
+    ], fx);
+    for (const x of p) expect(x.description).toBe("[FIETSLAB] PUR-FIETSLAB-AP-0001: x · EUR 6.05 · converted at Airwallex sandbox rate 1.086957 USD per EUR at 2026-11-10T07:00:00.000Z");
   });
 });

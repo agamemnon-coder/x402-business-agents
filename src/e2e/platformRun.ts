@@ -42,7 +42,7 @@ import { FakeAuthenticator } from "../redteam/authenticator.js";
 import { RECEIPT_FORMAT, type TryReceipt } from "../try/receipt.js";
 import { setSetting } from "../world/settings.js";
 import { emlWith, pdfOf } from "./documents.js";
-import type { PlatformOps } from "./platformOps.js";
+import type { FxRate, PlatformOps } from "./platformOps.js";
 import { chainSteps, type E2eStep, type StepData } from "./receiptChain.js";
 import type { WorldCompany } from "./world.js";
 
@@ -73,6 +73,8 @@ export interface PlatformE2EDeps {
   t0Rate: T0Rate;
   /** T:0's functional currency when already read (the live run's pre-check), so the run does not read it again. */
   t0Currency?: { currency: string; atomsPerUnit: number };
+  /** When T:0 books in another currency: the Airwallex rate every EUR entry is converted at, named in its memo. */
+  fx?: FxRate;
   /** Purser's fee in basis points (CFO policy, capped at 100). */
   feeBps: string;
   /** Test money moved into each connected account before its invoices are paid, in cents. */
@@ -245,7 +247,7 @@ async function runCompany(d: PlatformE2EDeps, c: WorldCompany, privPkcs8: string
 
   // 8. The company's books, as postings tagged with the company and its PUR id (pushed to T:0 with the others').
   const entries = apJournal(db);
-  const postings = toPostings(c, entries);
+  const postings = toPostings(c, entries, d.fx);
 
   // 9. The receipt per payment, and the company's own audit chain checked.
   const audit = verifyAuditChain(db);
@@ -310,11 +312,15 @@ export function apFallback(accounts: Awaited<ReturnType<T0Client["listGlAccounts
 }
 
 /** A company's AP entries as postings, each entry named PUR-<company>-<invoice>-<event> and its memo tagged [<company>]. */
-export function toPostings(c: Pick<WorldCompany, "key">, entries: ApEntry[]): Posting[] {
+export function toPostings(c: Pick<WorldCompany, "key">, entries: ApEntry[], fx?: FxRate): Posting[] {
+  // Each entry's EUR amount (its debits), and the rate it is converted at, go into its memo.
+  const eur = new Map<string, number>();
+  for (const e of entries) { const k = `${e.invoice_id}|${e.event}`; eur.set(k, (eur.get(k) ?? 0) + (e.debit ? toCents(e.debit) : 0)); }
+  const conv = (e: ApEntry) => (fx ? ` · ${e.currency} ${((eur.get(`${e.invoice_id}|${e.event}`) ?? 0) / 100).toFixed(2)} · converted at Airwallex sandbox rate ${fx.rate} ${fx.to} per EUR at ${fx.at}` : "");
   return entries.map((e) => ({
     entry: `PUR-${c.key}-${e.invoice_id}-${e.event}`, date: e.date, account: e.account, account_name: e.account_name,
     debit_cents: e.debit ? toCents(e.debit) : 0, credit_cents: e.credit ? toCents(e.credit) : 0, currency: e.currency, cost_centre: "",
-    ref: `PUR-${c.key}-${e.invoice_id}`, description: `[${c.key}] PUR-${c.key}-${e.invoice_id}: ${e.memo}`, proof: `doc ${e.doc_sha256.slice(0, 16)}`,
+    ref: `PUR-${c.key}-${e.invoice_id}`, description: `[${c.key}] PUR-${c.key}-${e.invoice_id}: ${e.memo}${conv(e)}`, proof: `doc ${e.doc_sha256.slice(0, 16)}`,
   }));
 }
 

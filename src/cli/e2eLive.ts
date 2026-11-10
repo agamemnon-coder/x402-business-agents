@@ -50,6 +50,9 @@ if (!live) {
 
 if (process.env.E2E_LIVE !== "yes") { console.error("--live needs E2E_LIVE=yes in the environment as well: nothing was called"); process.exit(2); }
 const caps = budgetFromEnv(process.env.E2E_BUDGET);
+// A known currency saves the P&L read; a T:0 not in EUR costs one Airwallex rate call.
+if (/^[A-Z]{3}:\d+$/.test(process.env.E2E_T0_CURRENCY ?? "")) est.calls.t0 -= 1;
+if (process.env.E2E_T0_CURRENCY && !process.env.E2E_T0_CURRENCY.startsWith("EUR:")) est.calls.airwallex += 1;
 const over = (Object.keys(caps) as Service[]).filter((s) => est.calls[s] > caps[s]);
 console.log(`Budget: ${JSON.stringify(caps)}\nPlanned (from the dry run): ${JSON.stringify(est.calls)}\n  ${est.detail.join("\n  ")}`);
 if (over.length) { console.error(`\nThe run would need more than approved for ${over.join(", ")}: nothing was called. Ask for a larger budget first.`); process.exit(3); }
@@ -59,12 +62,20 @@ const budget = new CallBudget(caps, { file: join(dir, "calls.jsonl") });
 mkdirSync(dir, { recursive: true });
 const deps = liveDeps(budget, process.env);
 if (typeof deps === "string") { console.error(deps); process.exit(2); }
-// T:0's currency, read once before any money moves (one call): a currency other than EUR needs T0_RATES from a
-// documented source; without it the run stops here, before Airwallex is called.
-const cur = await functionalCurrency(deps.t0);
-console.log(`T:0's functional currency: ${cur.currency} (${cur.atomsPerUnit} atoms a unit)`);
-if (cur.currency !== "EUR" && !process.env.T0_RATES) { console.error(`T:0 books in ${cur.currency}: the EUR entries need T0_RATES from a documented source. Stopped before any Airwallex call.`); process.exit(4); }
+// T:0's currency, read once before any money moves (one call), or as an earlier run read it (E2E_T0_CURRENCY, e.g.
+// "USD:100"). Another currency than EUR: every EUR entry is converted at Airwallex's current sandbox rate (one call,
+// on the platform's own login), named with its time in every entry's memo.
+const known = /^([A-Z]{3}):(\d+)$/.exec(process.env.E2E_T0_CURRENCY ?? "");
+const cur = known ? { currency: known[1]!, atomsPerUnit: Number(known[2]) } : await functionalCurrency(deps.t0);
+console.log(`T:0's functional currency: ${cur.currency} (${cur.atomsPerUnit} atoms a unit)${known ? ", as read before (E2E_T0_CURRENCY)" : ""}`);
 deps.t0Currency = cur;
+if (cur.currency !== "EUR") {
+  if (cur.currency !== "USD") { console.error(`T:0 books in ${cur.currency}: no rate source for it here. Stopped before any Airwallex call.`); process.exit(4); }
+  const fx = await deps.platform.eurRate("USD");
+  deps.fx = fx;
+  deps.t0Rate = (_date, c) => (c === "EUR" ? Number(fx.rate) : undefined);
+  console.log(`EUR entries converted at Airwallex sandbox rate ${fx.rate} USD per EUR at ${fx.at} (${fx.source})`);
+}
 try {
   print(await runPlatformE2E({ ...deps, dir, now: () => new Date(), log }));
 } finally {
