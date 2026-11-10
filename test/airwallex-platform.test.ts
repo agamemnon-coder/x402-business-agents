@@ -66,6 +66,18 @@ describe("acting on behalf of a connected account (x-on-behalf-of)", () => {
     expect(header(calls[0]!, "x-on-behalf-of")).toBeUndefined();
     expect(calls.slice(1).map((c) => header(c, "x-on-behalf-of"))).toEqual(["acct_northwind", "acct_northwind"]);
   });
+  it("takes Purser's fee on the payout itself: application_fee_options (FIXED, the signed amount), read back from application_fees", async () => {
+    const { api, calls } = client([login, { status: 201, body: { id: "tr_1", request_id: "r1", status: "NEW", transfer_amount: 10, transfer_currency: "EUR", application_fees: [{ amount: "0.05", currency: "EUR", source_type: "TRANSFER" }] } }], "acct_northwind");
+    const tr = await new AirwallexRest(api).createPayoutTransfer({ requestId: "r1", beneficiaryId: "b1", amountCents: 1000, currency: "EUR", sourceCurrency: "EUR", method: "SWIFT", reference: "INV-1", reason: "goods_purchased", approvalSha256: "a".repeat(64), applicationFee: { amountCents: 5, currency: "EUR" } });
+    expect(body(calls[1]!).application_fee_options).toEqual([{ source_type: "TRANSFER", type: "FIXED", amount: "0.05", currency: "EUR" }]);
+    expect(tr.applicationFee).toEqual({ cents: 5, currency: "EUR" });
+  });
+  it("sends no application fee unless one is asked for, and reads none back", async () => {
+    const { api, calls } = client([login, { status: 201, body: { id: "tr_1", request_id: "r1", status: "NEW", transfer_amount: 10, transfer_currency: "EUR" } }]);
+    const tr = await new AirwallexRest(api).createPayoutTransfer({ requestId: "r1", beneficiaryId: "b1", amountCents: 1000, currency: "EUR", sourceCurrency: "EUR", method: "SWIFT", reference: "INV-1", reason: "goods_purchased", approvalSha256: "a".repeat(64) });
+    expect(body(calls[1]!)).not.toHaveProperty("application_fee_options");
+    expect(tr.applicationFee).toBeNull();
+  });
   it("sends no header for a company on its own Airwallex account", async () => {
     const { api, calls } = client([login, { status: 200, body: [] }]);
     await new AirwallexRest(api).balancesAll();
@@ -221,7 +233,8 @@ describe("a payout on behalf of the company's connected account", () => {
     await executeSupplierPayment(db, awx, awx, proposal.proposal_id);
     await syncPayments(db, { now: () => now });
     expect(apInvoice(db, id)!.status).toBe("paid");
-    expect(awx.platformFees).toEqual([{ requestId: terms.platform_fee!.request_id, amountCents: 1200, currency: "USD", destination: "acct_purser_platform", reference: expect.stringContaining(terms.invoice_no) }]);
+    // Taken by Airwallex with the payout itself (application_fee_options), under the payout's request id.
+    expect(awx.platformFees).toEqual([{ requestId: terms.transfer_request_id, amountCents: 1200, currency: "USD", destination: "acct_purser_platform", reference: expect.any(String) }]);
     // Run again: nothing is taken twice.
     await executeSupplierPayment(db, awx, awx, proposal.proposal_id).catch(() => undefined);
     expect(awx.platformFees).toHaveLength(1);

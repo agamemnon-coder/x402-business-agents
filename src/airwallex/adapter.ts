@@ -5,7 +5,7 @@
 
 import { randomUUID } from "node:crypto";
 import { Airwallex, fromEnv } from "./client.js";
-import type { AirwallexRail, AnyQuote, Balance, Beneficiary, Conversion, Currency, Deposit, NewBeneficiary, NewPayoutBeneficiary, NewPayoutTransfer, NewTransfer, PayoutRail, PlatformFee, Quote, SandboxSim, Transfer, MarketRate } from "./port.js";
+import type { AirwallexRail, AnyQuote, Balance, Beneficiary, Conversion, Currency, Deposit, NewBeneficiary, NewPayoutBeneficiary, NewPayoutTransfer, NewTransfer, PayoutRail, ApplicationFee, Quote, SandboxSim, Transfer, MarketRate } from "./port.js";
 import { fromCents } from "../lib/money.js";
 
 /** Major units (number or numeric string) -> integer cents. Refuses negatives and anything finer than a cent. */
@@ -32,6 +32,21 @@ interface AwxTransfer {
   fee_amount?: number | string | null;
   fee_currency?: string | null;
   beneficiary_id?: string | null;
+  application_fees?: { amount?: number | string; currency?: string; source_type?: string }[] | null;
+}
+
+/** The TRANSFER application fees Airwallex reports on a payout, in one currency; null when there are none. */
+function applicationFeeOf(t: AwxTransfer): { cents: number; currency: string } | null {
+  const fees = (t.application_fees ?? []).filter((f) => f.source_type === "TRANSFER" && f.amount != null && typeof f.currency === "string");
+  if (!fees.length || new Set(fees.map((f) => f.currency)).size !== 1) return null;
+  return { cents: fees.reduce((s, f) => s + cents(f.amount!), 0), currency: fees[0]!.currency! };
+}
+
+/** Purser's fee as Airwallex's application_fee_options: one FIXED fee on the transfer, in its currency. */
+function feeOptions(f: ApplicationFee | undefined): { application_fee_options?: { source_type: "TRANSFER"; type: "FIXED"; amount: string; currency: string }[] } {
+  if (!f) return {};
+  if (!Number.isSafeInteger(f.amountCents) || f.amountCents <= 0) throw new Error("an application fee is a whole number of cents above zero");
+  return { application_fee_options: [{ source_type: "TRANSFER", type: "FIXED", amount: fromCents(f.amountCents), currency: f.currency }] };
 }
 
 function toTransfer(t: AwxTransfer): Transfer {
@@ -46,6 +61,7 @@ function toTransfer(t: AwxTransfer): Transfer {
     failureReason: t.failure_reason ?? t.failure?.message ?? null,
     fee: t.fee_amount != null && t.fee_currency ? { cents: cents(t.fee_amount), currency: t.fee_currency } : null,
     beneficiaryId: t.beneficiary_id ?? null,
+    applicationFee: applicationFeeOf(t),
   };
 }
 
@@ -67,26 +83,6 @@ export class AirwallexRest implements AirwallexRail, SandboxSim, PayoutRail {
 
   /** The connected account this rail acts for (x-on-behalf-of), or null for the company's own account. */
   get payingAccount(): string | null { return this.api.onBehalfOf; }
-
-  /**
-   * POST /connected_account_transfers/create (docs/api/scale/connected_account_transfers/create: amount, currency,
-   * destination, reason, reference 1-140, request_id 1-50), sent on behalf of the connected account to Purser's platform
-   * account. UNCONFIRMED that Airwallex allows this direction; only called with AIRWALLEX_PLATFORM_FEE=on.
-   */
-  async collectPlatformFee(f: PlatformFee): Promise<{ id: string; status: string }> {
-    if (!this.api.onBehalfOf) throw new Error("a Purser fee is only taken from a connected account");
-    const r = await this.api.call<{ id: string; status: string }>("POST", "/connected_account_transfers/create", {
-      request_id: f.requestId, amount: fromCents(f.amountCents), currency: f.currency, destination: f.destination,
-      reason: "professional_business_services", reference: f.reference.slice(0, 140),
-    });
-    return { id: r.id, status: r.status };
-  }
-
-  async platformFeeStatus(id: string): Promise<{ id: string; status: string }> {
-    if (!/^[A-Za-z0-9_-]{1,80}$/.test(id)) throw new Error("not a fee transfer id");
-    const r = await this.api.call<{ id: string; status: string }>("GET", `/connected_account_transfers/${id}`);
-    return { id: r.id, status: r.status };
-  }
 
   async balances(): Promise<Partial<Record<Currency, Balance>>> {
     const rows = await this.api.call<{ currency: string; available_amount?: number; pending_amount?: number; reserved_amount?: number; account_type?: string }[]>(
@@ -216,7 +212,7 @@ export class AirwallexRest implements AirwallexRail, SandboxSim, PayoutRail {
     const r = await this.api.call<AwxTransfer>("POST", "/transfers/create", {
       request_id: t.requestId, beneficiary_id: t.beneficiaryId, transfer_amount: fromCents(t.amountCents), transfer_currency: t.currency,
       source_currency: t.sourceCurrency, transfer_method: "SWIFT", reference: t.reference, reason: t.reason,
-      metadata: { approval_sha256: t.approvalSha256 },
+      metadata: { approval_sha256: t.approvalSha256 }, ...feeOptions(t.applicationFee),
     });
     return toTransfer(r);
   }
@@ -326,7 +322,7 @@ export class AirwallexRest implements AirwallexRail, SandboxSim, PayoutRail {
     const r = await this.api.call<AwxTransfer>("POST", "/transfers/create", {
       request_id: t.requestId, beneficiary_id: t.beneficiaryId, transfer_amount: fromCents(t.amountCents), transfer_currency: t.currency,
       source_currency: t.sourceCurrency, transfer_method: t.method, reference: t.reference, reason: t.reason,
-      metadata: { approval_sha256: t.approvalSha256 },
+      metadata: { approval_sha256: t.approvalSha256 }, ...feeOptions(t.applicationFee),
     });
     return toTransfer(r);
   }

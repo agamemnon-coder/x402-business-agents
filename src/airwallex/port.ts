@@ -63,6 +63,8 @@ export interface Transfer {
   failureReason?: string | null;
   /** What Airwallex charged, once it says; null before. */
   fee?: { cents: number; currency: string } | null;
+  /** Purser's platform fee Airwallex took with this payout (application_fees, source TRANSFER), or null when none. */
+  applicationFee?: { cents: number; currency: string } | null;
   /** The payee, as Airwallex holds it (checked before a transfer found by request_id is adopted). */
   beneficiaryId?: string | null;
 }
@@ -96,7 +98,16 @@ export interface NewTransfer {
   reference: string;
   reason: string;
   approvalSha256: string;
+  /** Purser as a platform: its fee, taken by Airwallex with this payout (application_fee_options). */
+  applicationFee?: ApplicationFee;
 }
+
+/**
+ * Purser's platform fee on one payout, as Airwallex documents it for payout platforms: `application_fee_options` on
+ * POST /transfers/create sent with x-on-behalf-of (docs: global-treasury/…/cross-border-payroll-payouts/sample-integration),
+ * a FIXED amount in the payout's currency, the amount the CFO signed. Airwallex answers it in `application_fees`.
+ */
+export interface ApplicationFee { amountCents: number; currency: string }
 
 export interface AirwallexRail {
   balances(): Promise<Partial<Record<Currency, Balance>>>;
@@ -168,6 +179,8 @@ export interface NewPayoutTransfer {
   reference: string;
   reason: string;
   approvalSha256: string;
+  /** Purser as a platform: its fee, taken by Airwallex with this payout (application_fee_options). */
+  applicationFee?: ApplicationFee;
 }
 
 export interface PayoutRail {
@@ -188,14 +201,6 @@ export interface PayoutRail {
    * for the company's own account. The executor refuses terms that name another paying account.
    */
   readonly payingAccount?: string | null;
-  /**
-   * The Purser fee for a paid payout, from this (connected) account to Purser's platform account
-   * (POST /connected_account_transfers/create with x-on-behalf-of: the mechanism is UNCONFIRMED by Airwallex, so it only
-   * runs with AIRWALLEX_PLATFORM_FEE=on). Safe to ask again under the same request id.
-   */
-  collectPlatformFee?(f: PlatformFee): Promise<{ id: string; status: string }>;
-  /** Where a fee transfer stands (GET /connected_account_transfers/{id}, UNCONFIRMED like the create): SETTLED or not yet. */
-  platformFeeStatus?(id: string): Promise<{ id: string; status: string }>;
 }
 
 export interface PlatformFee { requestId: string; amountCents: number; currency: string; destination: string; reference: string }

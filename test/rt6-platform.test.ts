@@ -172,12 +172,22 @@ describe("RT6-A2/F four eyes counts what leaves: the fee, the EUR sold, and a ba
 });
 
 describe("RT6-B the fee step never fails a paid payment; booked only when settled; taken when a live payout turns PAID", () => {
-  it("a fee that cannot be taken stays open; the payment is EXECUTED, its invoice paid, and it is not paid again", async () => {
+  it("Purser's fee goes with the payout: application_fee_options carry exactly the signed amount; nothing else is called", async () => {
+    await platform();
+    const { proposal, terms } = await propose(await usInvoice());
+    approve(proposal.proposal_id);
+    await executeSupplierPayment(db, awx, awx, proposal.proposal_id);
+    const tr = awx.transfers.find((x) => x.requestId === terms.transfer_request_id)!;
+    expect(tr.applicationFee).toEqual({ cents: 1200, currency: "USD" });
+    expect(awx.calls.some((c) => /PlatformFee/.test(c))).toBe(false);
+  });
+
+  it("a payout PAID without the signed fee on it: the fee stays OPEN for a person; the payment is EXECUTED, its invoice paid, and not paid again", async () => {
     await platform();
     const id = await usInvoice();
     const { proposal } = await propose(id);
     approve(proposal.proposal_id);
-    awx.collectPlatformFee = async () => { throw Object.assign(new Error("invalid_argument: platform fee direction not allowed"), { code: "invalid_argument" }); };
+    awx.dropApplicationFee = true;
     await executeSupplierPayment(db, awx, awx, proposal.proposal_id);
     expect(row(proposal.proposal_id).status).toBe("EXECUTED");
     expect(db.prepare("SELECT status FROM transfers").all()).toEqual([{ status: "PAID" }]);
@@ -186,28 +196,25 @@ describe("RT6-B the fee step never fails a paid payment; booked only when settle
     expect(apInvoice(db, id)!.status).toBe("paid");
     const again = await payApInvoice(db, awx, id, now).catch((e: Error) => ({ kind: "threw", reason: e.message }));
     expect(again.kind).not.toBe("proposed");
-    // Still owed: held from what is free until a person or the next follow-up settles it.
-    expect(inFlightCents(db, "USD")).toBe(1200);
+    expect(apJournal(db).filter((e) => /Purser platform fee/.test(e.memo))).toEqual([]);
   });
 
-  it("a fee answered PENDING is not booked until it is read SETTLED", async () => {
+  it("the fee is booked only once the payout is PAID", async () => {
     await platform();
-    const id = await usInvoice();
-    const { proposal } = await propose(id);
+    const { proposal } = await propose(await usInvoice());
     approve(proposal.proposal_id);
-    const orig = awx.collectPlatformFee.bind(awx);
-    awx.collectPlatformFee = async (f) => { await orig(f); return { id: `cat_${f.requestId.slice(0, 6)}`, status: "PENDING" }; };
-    await executeSupplierPayment(db, awx, awx, proposal.proposal_id);
-    expect(db.prepare("SELECT status FROM platform_fees").get()).toEqual({ status: "PENDING" });
+    const r = await executeSupplierPayment(db, awx, null, proposal.proposal_id);
     await syncPayments(db, { now: () => now });
     expect(apJournal(db).filter((e) => /Purser platform fee/.test(e.memo))).toEqual([]);
+    await awx.transitionTransfer(r.transfer.id, "SENT");
+    await awx.transitionTransfer(r.transfer.id, "PAID");
     await followPayouts(db, awx, now);
+    await syncPayments(db, { now: () => now });
     expect(db.prepare("SELECT status FROM platform_fees").get()).toEqual({ status: "SETTLED" });
     expect(apJournal(db).filter((e) => /Purser platform fee/.test(e.memo)).length).toBeGreaterThan(0);
-    expect(awx.platformFees).toHaveLength(1);
   });
 
-  it("live (no sandbox settle step): the fee is held while the payout is under way and taken once it is PAID, once", async () => {
+  it("live (no sandbox settle step): the fee leaves with the payout, is counted taken once it is PAID, once", async () => {
     await platform();
     const { proposal } = await propose(await usInvoice());
     approve(proposal.proposal_id);
@@ -215,7 +222,8 @@ describe("RT6-B the fee step never fails a paid payment; booked only when settle
     expect(r.transfer.status).not.toBe("PAID");
     expect(awx.platformFees).toHaveLength(0);
     expect(db.prepare("SELECT status FROM platform_fees").get()).toEqual({ status: "DUE" });
-    expect(inFlightCents(db, "USD")).toBe(1200);
+    // Airwallex has the payout: the payout and its fee have left the available balance it reports; nothing more is held.
+    expect(inFlightCents(db, "USD")).toBe(0);
     await awx.transitionTransfer(r.transfer.id, "SENT");
     await awx.transitionTransfer(r.transfer.id, "PAID");
     await followPayouts(db, awx, now);
@@ -390,7 +398,25 @@ describe("Purser's fee on the invoice-payment route too (screenshot pass, 9 Nove
     expect(describeTerms(t as never, {}).approvable).toBe(true);
   });
 
-  it("a payment not (yet) paid is charged no fee: the fee stays due and spoken for", async () => {
+  it("an invoice payment waiting in Airwallex's approval workflow is EXECUTED and followed, never FAILED; nothing is simulated past it", async () => {
+    await platform();
+    awx.approvalWorkflow = true;
+    const p = await payApInvoice(db, awx, await enInvoice(), now);
+    if (p.kind !== "proposed") throw new Error(p.reason);
+    approve(p.proposal.proposal_id);
+    const r = await executeInvoicePayment(db, awx, awx, p.proposal.proposal_id);
+    expect(r.transfer.status).toBe("IN_APPROVAL");
+    expect(row(p.proposal.proposal_id).status).toBe("EXECUTED");
+    expect(awx.calls.filter((c) => c.startsWith("transition:"))).toEqual([]);
+    awx.approveInWebApp(r.transfer.id);
+    await awx.transitionTransfer(r.transfer.id, "SENT");
+    await awx.transitionTransfer(r.transfer.id, "PAID");
+    await followPayouts(db, awx, now);
+    expect(db.prepare("SELECT status FROM transfers").get()).toEqual({ status: "PAID" });
+    expect(db.prepare("SELECT status FROM platform_fees").get()).toEqual({ status: "SETTLED" });
+  });
+
+  it("a payment not (yet) paid: the fee stays due, not counted taken, and the invoice payment is followed, not failed", async () => {
     await platform();
     const p = await payApInvoice(db, awx, await enInvoice(), now);
     if (p.kind !== "proposed") throw new Error(p.reason);
@@ -399,6 +425,11 @@ describe("Purser's fee on the invoice-payment route too (screenshot pass, 9 Nove
     expect(r.transfer.status).not.toBe("PAID");
     expect(awx.platformFees).toHaveLength(0);
     expect(db.prepare("SELECT status FROM platform_fees").get()).toEqual({ status: "DUE" });
-    expect(inFlightCents(db, "EUR")).toBeGreaterThanOrEqual(925);
+    expect(row(p.proposal.proposal_id).status).toBe("EXECUTED");
+    await awx.transitionTransfer(r.transfer.id, "SENT");
+    await awx.transitionTransfer(r.transfer.id, "PAID");
+    await followPayouts(db, awx, now);
+    expect(db.prepare("SELECT status FROM platform_fees").get()).toEqual({ status: "SETTLED" });
+    expect(awx.platformFees).toHaveLength(1);
   });
 });

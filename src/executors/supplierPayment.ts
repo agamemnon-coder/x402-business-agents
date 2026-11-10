@@ -128,7 +128,7 @@ export async function executeSupplierPayment(db: DB, rail: PayoutRail, sim: Sand
     recordFee(db, final, terms, sha);
     // Purser's fee once the payout is PAID, never before; a fee that cannot be taken stays open for a person and never
     // turns a paid payment into a failed one (red team 6). A payout not yet PAID gets its fee when it is (followPayouts).
-    if (final.status === "PAID") await takePlatformFee(db, rail, terms, sha, proposalId);
+    if (final.status === "PAID") takePlatformFee(db, terms, sha, proposalId, final);
     const failed = final.status === "FAILED" || final.status === "CANCELLED";
     finishExecution(db, proposalId, failed ? "FAILED" : "EXECUTED", { conversion_id: conversionId, transfer_id: final.id, status: final.status });
     return { conversionId, transfer: final };
@@ -209,7 +209,7 @@ async function submit(db: DB, rail: PayoutRail, t: SupplierPaymentTerms, sha: st
   try {
     tr = await rail.createPayoutTransfer({
       requestId: t.transfer_request_id, beneficiaryId: t.beneficiary_id, amountCents: toCents(t.amount), currency: t.currency, sourceCurrency: t.currency,
-      method: t.method, reference: t.reference, reason: t.reason, approvalSha256: sha,
+      method: t.method, reference: t.reference, reason: t.reason, approvalSha256: sha, ...applicationFeeOf(t as PlatformFields),
     });
   } catch (e) {
     if (firstSend && refusedAtCreate(e)) {
@@ -269,35 +269,41 @@ function recordFee(db: DB, tr: Transfer, t: SupplierPaymentTerms, sha: string): 
 }
 
 /**
- * Purser's fee for a paid payout (docs/airwallex-platform.md), taken once under the request id in the signed terms and
- * only with AIRWALLEX_PLATFORM_FEE=on. Recorded whatever happens: SETTLED only when Airwallex says the fee transfer
- * settled (only then is it booked); NEW or PENDING as answered, until a later follow-up reads it settled; OPEN when it
- * could not be taken, for a person and the next follow-up. It never throws: the payment it belongs to is paid.
+ * Purser's fee goes with the payout itself: Airwallex's application_fee_options on the transfer (one FIXED fee, the amount
+ * the CFO signed), sent only with AIRWALLEX_PLATFORM_FEE=on. Nothing else is called for it.
  */
-export async function takePlatformFee(db: DB, rail: PayoutRail, t: SupplierPaymentTerms, sha: string, proposalId: string): Promise<string | null> {
+export function applicationFeeOf(t: PlatformFields): { applicationFee?: { amountCents: number; currency: string } } {
+  const fee = t.platform_fee;
+  if (!fee || !platformFeeOn()) return {};
+  return { applicationFee: { amountCents: toCents(fee.amount), currency: fee.currency } };
+}
+
+/**
+ * Purser's fee for a payout that is PAID, as Airwallex reports it on that payout (application_fees): counted as taken and
+ * booked only then, once per request id. A payout PAID without the signed fee on it leaves the fee OPEN for a person and
+ * never fails the payment. With the fee flag off nothing was asked for: NOT_TAKEN.
+ */
+export function takePlatformFee(db: DB, t: SupplierPaymentTerms, sha: string, proposalId: string, paid: Transfer): string | null {
   const fee = (t as PlatformFields).platform_fee;
   if (!fee) return null;
-  const done = db.prepare("SELECT status, fee_transfer_id FROM platform_fees WHERE request_id = ?").get(fee.request_id) as { status: string; fee_transfer_id: string | null } | undefined;
+  const done = db.prepare("SELECT status FROM platform_fees WHERE request_id = ?").get(fee.request_id) as { status: string } | undefined;
   if (done && ["SETTLED", "NOT_TAKEN", "VOID"].includes(done.status)) return done.status;
+  if (paid.status !== "PAID") return done?.status ?? "DUE";
   const write = (status: string, id: string | null) => db.prepare(`INSERT INTO platform_fees (request_id, proposal_id, payout_request_id, amount, currency, destination, fee_transfer_id, status, approval_sha256, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(request_id) DO UPDATE SET fee_transfer_id = COALESCE(excluded.fee_transfer_id, platform_fees.fee_transfer_id), status = excluded.status, updated_at = excluded.updated_at`)
     .run(fee.request_id, proposalId, t.transfer_request_id, fee.amount, fee.currency, fee.to_account, id, status, sha, new Date().toISOString());
-  if (!platformFeeOn() || !rail.collectPlatformFee) {
+  if (!platformFeeOn()) {
     write("NOT_TAKEN", null);
-    audit(db, "awx-executor", "platform_fee.not_taken", fee.request_id, { why: "AIRWALLEX_PLATFORM_FEE is off or the rail cannot take it", amount: `${fee.currency} ${fee.amount}` });
+    audit(db, "awx-executor", "platform_fee.not_taken", fee.request_id, { why: "AIRWALLEX_PLATFORM_FEE is off: the payout carried no Purser fee", amount: `${fee.currency} ${fee.amount}` });
     return "NOT_TAKEN";
   }
-  let r: { id: string; status: string };
-  try {
-    // Taken already (an answer was NEW or PENDING): read where it stands, never sent twice.
-    r = done?.fee_transfer_id && rail.platformFeeStatus ? await rail.platformFeeStatus(done.fee_transfer_id) : await rail.collectPlatformFee({ requestId: fee.request_id, amountCents: toCents(fee.amount), currency: fee.currency, destination: fee.to_account, reference: `Purser fee, invoice ${t.invoice_no}` });
-  } catch (e) {
+  const got = paid.applicationFee;
+  if (!got || got.currency !== fee.currency || got.cents !== toCents(fee.amount)) {
     write("OPEN", null);
-    audit(db, "awx-executor", "platform_fee.open", fee.request_id, { amount: `${fee.currency} ${fee.amount}`, to: fee.to_account, error: (e as Error).message.slice(0, 300), note: "the payment is paid; the fee is taken on the next follow-up or by a person", approval_sha256: sha });
+    audit(db, "awx-executor", "platform_fee.open", fee.request_id, { amount: `${fee.currency} ${fee.amount}`, reported: got ? `${got.currency} ${fromCents(got.cents)}` : "none", payout: paid.id, note: "the payment is paid; Airwallex did not report the signed fee on it, so a person checks it", approval_sha256: sha });
     return "OPEN";
   }
-  const status = r.status === "SETTLED" ? "SETTLED" : r.status === "FAILED" || r.status === "CANCELLED" ? "OPEN" : /^[A-Z_]{2,20}$/.test(r.status) ? r.status : "PENDING";
-  write(status, r.id);
-  audit(db, "awx-executor", status === "SETTLED" ? "platform_fee.taken" : "platform_fee.pending", fee.request_id, { amount: `${fee.currency} ${fee.amount}`, to: fee.to_account, fee_transfer: r.id, status: r.status, approval_sha256: sha });
-  return status;
+  write("SETTLED", paid.id);
+  audit(db, "awx-executor", "platform_fee.taken", fee.request_id, { amount: `${fee.currency} ${fee.amount}`, to: fee.to_account, with_payout: paid.id, how: "application_fee_options on the payout", approval_sha256: sha });
+  return "SETTLED";
 }

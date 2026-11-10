@@ -20,7 +20,7 @@ import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
 import { checkPayingAccount } from "../airwallex/binding.js";
-import { takePlatformFee } from "./supplierPayment.js";
+import { applicationFeeOf, takePlatformFee } from "./supplierPayment.js";
 import type { PlatformFields, SupplierPaymentTerms } from "../payouts/plan.js";
 import { partyOf, snapshot, treasuryState, type InvoicePaymentTerms } from "../agents/euroBill.js";
 import { sameLedgerInvoice } from "../lib/invoiceKey.js";
@@ -145,9 +145,12 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
     const final = sim ? await step(db, proposalId, 3, "settle", transfer.id, () => settleInSandbox(db, rail, sim, transfer), now) : transfer;
     recordFee(db, final, terms, sha);
     // Purser's fee, once the payment is PAID (never failing it); a live payment's is taken when the follow-up reads it PAID.
-    if (final.status === "PAID") await takePlatformFee(db, rail as never, terms as unknown as SupplierPaymentTerms, sha, proposalId);
+    if (final.status === "PAID") takePlatformFee(db, terms as unknown as SupplierPaymentTerms, sha, proposalId, final);
     await snapshot(db, rail, `post-exec:${proposalId}`);
-    finishExecution(db, proposalId, final.status === "PAID" ? "EXECUTED" : "FAILED", { conversion_id: conversionId, transfer_id: final.id, status: final.status });
+    // Written at Airwallex and not failed (IN_APPROVAL, SCHEDULED, PROCESSING, SENT, PAID): EXECUTED, and a payout not
+    // yet PAID is followed up (followPayouts) like a supplier payment's. Only a payout that failed fails the payment.
+    const failed = final.status === "FAILED" || final.status === "CANCELLED";
+    finishExecution(db, proposalId, failed ? "FAILED" : "EXECUTED", { conversion_id: conversionId, transfer_id: final.id, status: final.status });
     return { conversionId, transfer: final };
   } catch (err) {
     // The payout's hold goes (a payout written is counted by its own row); a conversion refused outright moved nothing,
@@ -339,7 +342,7 @@ function recordTransfer(db: DB, t: InvoicePaymentTerms, tr: Transfer, sha: strin
 
 const req = (t: InvoicePaymentTerms, sha: string): NewTransfer => ({
   requestId: t.transfer_request_id, beneficiaryId: t.beneficiary_id, amountCents: toCents(t.amount), currency: "EUR", sourceCurrency: "EUR",
-  reference: t.reference, reason: t.reason, approvalSha256: sha,
+  reference: t.reference, reason: t.reason, approvalSha256: sha, ...applicationFeeOf(t as unknown as PlatformFields),
 });
 
 /**
