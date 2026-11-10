@@ -50,7 +50,7 @@ describe("the proof, one sentence per partner (section D, 6 Nov)", () => {
     expect(m.replace!.signers[0]).toBe("max");
     expect(m.replace!.steps.map((x) => x.agent).sort()).toEqual(["sourcing", "treasury"]);
     expect(m.replace!.signers[1]).toBe("test-controller");
-    expect(text("Metal")).toContain("the mandates replaced on chain after the CFO's Face ID (four eyes; second approver a labelled test passkey)");
+    expect(text("Metal")).toContain("the mandates replaced on chain by the owner key after the CFO's Face ID in Purser (four eyes; second approver a labelled test passkey)");
   });
 
   it("Claude: 24 of 24, 0 fallbacks; the reliability run's fault and its fix, 6/10 before and 10/10 after", () => {

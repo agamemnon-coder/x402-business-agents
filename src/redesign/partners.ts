@@ -181,11 +181,11 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
   return shell(run, {
     title: "Airwallex", description: "How Purser uses Airwallex: earnings booked once final, the euro licence paid by SWIFT after the CFO's Face ID, card limits the bank enforces.",
     logo: LOGO.airwallex, h1: "The bank side of the agents", proofHash: "airwallex",
-    picture: [node("zap", "Metal earnings", "final on chain", "metal"), arrow, node("landmark", booked ? `${booked.amount} USD booked` : "Booked at Airwallex", "after finality", "awx"), arrow,
+    picture: [node("zap", "Metal earnings", "final on chain", "metal"), arrow, node("landmark", booked ? `${booked.amount} USD booked` : "Booked at Airwallex", "simulated deposit", "awx"), arrow,
       node("scan-face", "CFO · Face ID", "approves the invoice"), arrow, ...(fx ? [node("arrow-left-right", `${fx.buy} by FX`, "only the shortfall", "awx"), arrow] : []),
       node("circle-check", licence ? `${eur} by SWIFT, accepted` : "SWIFT, accepted", licence ? `Airwallex accepted it with the signed hash; ${SANDBOX_SETTLED} · Airwallex ${licence.proof.label.replace(/^Airwallex /, "")}` : "", "ok")].join(""),
     nums: nums([[booked?.amount ?? "0", "USD booked after finality"], [eur || "0", "licence paid by SWIFT"], ...(fx ? [[fx.buy.replace(/^EUR /, "€").replace(/\.00$/, ""), "bought by FX for the shortfall"] as [string, string]] : []), [String(st.tapDeclines + (awx1Rec?.declines_met.length ?? 0)), "card declines by Airwallex (TAP run and awx-1)"], ...(earlier ? [[String(earlier), "earlier attempt, nothing paid"] as [string, string]] : [])]),
-    line: "Airwallex enforces each card's limit itself, and pays an invoice only after the CFO's Face ID.",
+    line: "Purser pays an invoice only after the CFO's Face ID; Airwallex enforces each card's limit itself.",
     extra: readBack,
     // Proof's "Policy and card side by side" opens the cards' fold here (#controls, or one card's #card-<agent>).
     ...(rows.length || airi ? { js: OPEN_TARGET_JS } : {}),

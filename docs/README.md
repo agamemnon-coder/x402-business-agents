@@ -13,6 +13,7 @@ Back to the [README](../README.md). Test money only throughout: the Airwallex sa
 - [metal-award.md](metal-award.md): what Purser uses from Metal, and the proof on Metal testnet.
 - [submission/long-description.md#visa](submission/long-description.md#visa): the Visa TAP note; the Airi run (Visa Intelligent Commerce) is in [runs/2026-11-07-vic-1.md](runs/2026-11-07-vic-1.md).
 - [business/README.md](business/README.md): the business case, a hypothesis not yet validated with customers.
+- [after-the-kit.md](after-the-kit.md): what was built after the kit (the payables inbox, connected accounts); stand-ins only, not deployed, not part of the Kit 11 runs.
 
 ## Builder
 
