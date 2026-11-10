@@ -1,6 +1,7 @@
 // /runs and docs/runs/README.md: every live run in one list, newest first. Each row is read from its record (the ids,
-// dates, counts and checks): nothing is typed in but the one run whose record lives on another branch (the platform
-// build's first connected-accounts run, 10 Nov), which says so and links to its record there. A run that ran with
+// dates, counts and checks): nothing is typed in but the connected-accounts runs of the platform build (10 Nov), whose
+// record is a markdown run log (docs/runs/2026-11-10-connected-accounts-sandbox.md); test/runs-page.test.ts holds its ids
+// and figures to that log. A run that ran with
 // test money says so; a rehearsal says so. test/runs-page.test.ts holds every figure to its record and the README to
 // runsReadme().
 
@@ -71,14 +72,14 @@ export function liveRuns(): RunRow[] {
     files: [{ label: "run log", href: "../../docs/runs/2026-11-10-t0-journal-sandbox.md" }],
   });
 
-  // 10 Nov: the platform build's first connected-accounts run. Its record is on the platform branch, not in this code.
+  // 10 Nov: the platform build's connected-accounts runs (docs/runs/2026-11-10-connected-accounts-sandbox.md).
   rows.push({
     key: "connected-1", iso: "2026-11-10T05:02:45.871Z", date: day("2026-11-10T05:02:45.871Z"),
-    title: "Connected accounts, first sandbox run (built after the kit)", rails: "Airwallex sandbox (connected accounts)",
-    what: "Purser's platform rail opened a connected account for a fake test company. Activation needs the company's verification details: not done yet, nothing paid.",
-    checks: "4 of 12 budgeted calls; stopped at the first blocker, as agreed.", money: "Sandbox · no money moved",
-    ids: [{ label: "Connected account", value: "acct_SC-QD89fOneAeqaRFgOymw" }],
-    files: [{ label: "run log (platform branch)", href: "https://github.com/agamemnon-coder/x402-business-agents/blob/platform/docs/runs/2026-11-10-connected-accounts-sandbox.md" }],
+    title: "Connected accounts in the sandbox (built after the kit)", rails: "Airwallex sandbox (connected accounts, payouts)",
+    what: "Purser's platform rail opened a connected account for a fake test company; fake verification details, submitted, made ACTIVE by the sandbox's simulation. Then a EUR 5.00 payout on its behalf, with Purser's fee sent as an application fee.",
+    checks: "Airwallex accepted the fee at exactly EUR 0.05; the payout went PAID through the sandbox's simulation (settlement simulated, no Face ID on this payout). 17 calls, each within the budget Max approved.", money: "Sandbox · test money",
+    ids: [{ label: "Connected account", value: "acct_SC-QD89fOneAeqaRFgOymw" }, { label: "Payout", value: "a9460dba-f31b-4111-be58-6d9a9e71adb1" }],
+    files: [{ label: "run log", href: "../../docs/runs/2026-11-10-connected-accounts-sandbox.md" }],
   });
 
   const v2 = vic2Run() as unknown as { started_at: string; checks: Record<string, { ok: boolean }>; outside_calls: { airi: number; airwallex: number } } | null;
