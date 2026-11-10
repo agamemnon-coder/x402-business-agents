@@ -19,4 +19,4 @@ What this means: 0.25 *USDZ of test money is still held for the business owner k
 - The receipt wait reads only the receipt (one request per poll), so a full run needs about 12 requests.
 - A failed over-capture simulation counts as a refusal only when the chain reverted; a budget stop or network error stops the run instead.
 
-**To finish (needs Max's ok for about 8 more testnet requests):** read the two accounts' nonces to recover the two hashes deterministically, then either capture the 0.25 to the supplier (completing the demo) or release the hold.
+**Not finished, by decision (Max, 10 Nov):** no further testnet requests. The 0.25 *USDZ hold stays in place on testnet and the capture is not sent. Finishing later would take about 8 testnet requests: read the two accounts' nonces to recover the two hashes deterministically, then capture the 0.25 to the supplier or release the hold.
