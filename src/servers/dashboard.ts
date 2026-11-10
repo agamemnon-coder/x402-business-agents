@@ -244,9 +244,9 @@ export const CLAUDE_CSP = styleOnlyCsp(CLAUDE_PAGE);
 /** /trace: any payment of the main run, step by step (src/redesign/trace.ts); no script, so a style-only policy. */
 export const TRACE_PAGE = tracePage();
 export const TRACE_CSP = styleOnlyCsp(TRACE_PAGE);
-/** /runs: every live run, newest first (src/redesign/runs.ts); no script, so a style-only policy. */
+/** /runs: every live run, newest first (src/redesign/runs.ts); one inline script (copy an id), its own hash only, no connect. */
 export const RUNS_PAGE = runsPage();
-export const RUNS_CSP = styleOnlyCsp(RUNS_PAGE);
+export const RUNS_CSP = styleAndScriptCsp(RUNS_PAGE);
 /** /agents/<id>: one page per Kit 11 agent from the main run (src/redesign/agents.ts); no script. */
 export const AGENT_PAGES: Record<string, string> = agentPages();
 export const AGENT_CSPS: Record<string, string> = Object.fromEntries(Object.entries(AGENT_PAGES).map(([id, html]) => [id, styleOnlyCsp(html)]));
