@@ -9,8 +9,9 @@ Why small companies: a CFO we spoke to (1 conversation so far; more in progress)
 > "At our company invoices go through a full approval process in our ERP. I think Purser is something for SMEs." — CFO at a US company (anonymous)
 
 Where it stands: work in progress on a separate branch, built and tested against **stand-ins** for Airwallex and Claude
-and on Cloudflare's local database. It is **not deployed** and no customer uses it. Its connected-account payout path ran once in Airwallex's
-sandbox on 10 November (below); the inbox itself has not yet paid an invoice in the sandbox. None of it is part of the Kit 11 runs described in the README. The Kit 11 build keeps Metal and x402 for
+and on Cloudflare's local database. It is **not public** (a private preview only, behind an access key) and no customer uses it. Its connected-account payout path ran once in Airwallex's
+sandbox on 10 November, and later that day the inbox ran end to end for three test companies: 1 payout PAID, 3 refused
+by Airwallex (below). None of it is part of the Kit 11 runs described in the README. The Kit 11 build keeps Metal and x402 for
 the agents' own payments; the inbox pays suppliers through Airwallex payouts.
 
 ## What exists
@@ -22,7 +23,7 @@ the agents' own payments; the inbox pays suppliers through Airwallex payouts.
 | One Face ID for a batch | The CFO signs one list of exact payment terms. One changed line refuses the whole batch; each payment then runs and is checked on its own, so a failed line never pays another twice. | Built, tested against a stand-in Airwallex |
 | Payments in any currency | Through Airwallex payouts, with FX only for the shortfall and fees booked. | Built, tested against a stand-in Airwallex |
 | Bookkeeping | Hash-chained ledger, period closing, Dutch VAT overview, a register of every money movement with its approval, booking and proof. | Built, tested |
-| Cloud console | Passkey sign-in (no passwords), onboarding, invoices, transactions, books, people and API keys, GDPR export. It never pays: payments are approved on the phone. Dutch and English. | Built, tested locally on Cloudflare's local D1; not deployed |
+| Cloud console | Passkey sign-in (no passwords), onboarding, invoices, transactions, books, people and API keys, GDPR export. It never pays: payments are approved on the phone. Dutch and English. | Built, tested locally on Cloudflare's local D1; a private preview, not public |
 | Security | Five red-team rounds on the payables and cloud code; every confirmed finding fixed and covered by a test. | Ongoing |
 
 ## Airwallex connected accounts: run in the sandbox on 10 November

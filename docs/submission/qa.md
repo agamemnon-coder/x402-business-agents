@@ -106,7 +106,7 @@ validated demand, and no customer has seen a price.
 ### 10. What if Airwallex builds this itself?
 
 It could, and the risk is real: Airwallex already ships agent features of its own (AgentOS, Spend Management agents,
-an agentic wallet in development). Purser builds on them: Airwallex's card controls are one of its three locks, and it
+an agentic wallet in development). Purser builds on them: Airwallex's card controls are one of its locks (a lock per rail), and it
 adds one CFO policy across card and chain, approvals signed over the exact terms, and a hash-chained audit log. The more
 agent features Airwallex ships, the more there is to govern, and we would rather be the app or partner on the
 platform that does it.

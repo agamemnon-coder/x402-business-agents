@@ -160,7 +160,7 @@ describe("the short Description (Max, 5 Nov)", () => {
   });
 
   it("says what was built after the kit without claiming it ran live (jury review, 9 Nov)", () => {
-    expect(flat).toContain("After the kit (not live). A payables inbox: the /try/sign flow for supplier invoices; stand-ins only, not deployed.");
+    expect(flat).toContain("After the kit. Airwallex's own approval held a passkey-signed payout IN_APPROVAL, unpaid. Payables inbox: not public.");
     expect(flat).not.toMatch(/now pays supplier|runs on the Airwallex sandbox/);
     expect(flat).toContain("The CFO signed option A, a higher cap for Sourcing (P-0002).");
     expect(flat).toContain("The business (not validated with customers yet). Buyer: a CFO on Airwallex.");
