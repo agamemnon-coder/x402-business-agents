@@ -68,7 +68,7 @@ function ledgerRow(key: string, file: string, log: string, title: string, rehear
 /** The big numbers of the two runs typed in above (from their run logs), kept apart from their rows' text. */
 const TYPED_STATS: Record<string, RunStat[]> = {
   "t0-1": [{ v: "95", l: "journal entries" }, { v: "0", l: "differences" }, { v: "0", l: "posted again" }],
-  "connected-1": [{ v: "1", l: "connected account" }],
+  "connected-1": [{ v: "1", l: "connected account, ACTIVE" }, { v: "€5.00", l: "payout, PAID (simulated)" }, { v: "€0.05", l: "Purser fee" }],
 };
 
 /** Every live run, newest first. */
