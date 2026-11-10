@@ -28,6 +28,8 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim {
   calls: string[] = [];
   /** Lose the answer to the next transfer create (the transfer is still made). */
   loseNextTransferAnswer = false;
+  /** Airwallex's web-app approval workflow for API transfers: each new transfer waits as IN_APPROVAL. */
+  approvalWorkflow = false;
   clock = () => Date.now();
   rate = "1.0850";
   n = 0;
@@ -87,7 +89,7 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim {
     if (this.bal.EUR.availableCents < t.amountCents + fee) throw Object.assign(new Error("balance_insufficient"), { code: "balance_insufficient" });
     this.bal.EUR.availableCents -= t.amountCents + fee;
     this.bal.EUR.reservedCents += t.amountCents + fee;
-    const tr = { id: `tr_${++this.n}`, requestId: t.requestId, status: "PROCESSING", amountCents: t.amountCents, currency: "EUR" as const, metadata: t.approvalSha256, reference: t.reference, fee: { cents: fee, currency: "EUR" }, beneficiaryId: t.beneficiaryId };
+    const tr = { id: `tr_${++this.n}`, requestId: t.requestId, status: this.approvalWorkflow ? "IN_APPROVAL" : "PROCESSING", amountCents: t.amountCents, currency: "EUR" as const, metadata: t.approvalSha256, reference: t.reference, fee: { cents: fee, currency: "EUR" }, beneficiaryId: t.beneficiaryId };
     this.transfers.push(tr);
     if (this.loseNextTransferAnswer) { this.loseNextTransferAnswer = false; throw new AirwallexAmbiguous("/transfers/create", new Error("socket hang up")); }
     return { ...tr };
@@ -98,9 +100,17 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim {
   async transitionTransfer(id: string, to: "SENT" | "PAID" | "FAILED", failureType?: string): Promise<Transfer> {
     this.calls.push(`transition:${to}`);
     const t = this.transfers.find((x) => x.id === id)!;
+    // As at Airwallex: a transfer in its approval workflow cannot be moved on by the simulation API.
+    if (t.status.startsWith("APPROVAL_") || t.status === "IN_APPROVAL") throw Object.assign(new Error(`transfer ${id} is ${t.status}`), { code: "invalid_status" });
     t.status = to;
     if (to === "PAID") this.bal.EUR.reservedCents -= t.amountCents + SANDBOX_SWIFT_FEE_CENTS;
     if (to === "FAILED") { t.failureType = failureType ?? "BENEFICIARY_BANK_RETURNED"; t.status = "CANCELLED"; }
     return { ...t };
+  }
+  /** A person in the Airwallex web app approves (SCHEDULED) or rejects (APPROVAL_REJECTED) a waiting transfer. */
+  decideInWebApp(id: string, decision: "approve" | "reject"): void {
+    const t = this.transfers.find((x) => x.id === id)!;
+    if (t.status !== "IN_APPROVAL") throw new Error(`transfer ${id} is ${t.status}, not IN_APPROVAL`);
+    t.status = decision === "approve" ? "SCHEDULED" : "APPROVAL_REJECTED";
   }
 }
