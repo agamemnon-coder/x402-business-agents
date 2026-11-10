@@ -46,6 +46,10 @@ export interface Pages {
   proof?: string;
   /** /trace: any payment of the main run, step by step (no script); absent in a bundle built before it. */
   trace?: string;
+  /** /runs: every live run, newest first (no script); absent in a bundle built before it. */
+  runs?: string;
+  /** /agents/<id>: one page per Kit 11 agent, each with its own CSP (no script); absent in a bundle built before them. */
+  agents?: Record<string, { page: string; csp: string }>;
   /** The clean 404 page (no script); absent in a bundle built before it. */
   notFound?: string;
   /** /try/sign: a visitor signs with their own passkey in a test world (worker/src/trySign.ts). Present only in a bundle
@@ -68,7 +72,7 @@ export interface Pages {
   font: string;
   /** The sponsors' logos (base64), served as /assets/<name>. */
   images: Record<string, { type: string; data: string }>;
-  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; home?: string; watch?: string; proof?: string; trace?: string; notFound?: string; trySign?: string; tryVerify?: string; judge?: string; approve: string; enrol: string; policy: string };
+  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; home?: string; watch?: string; proof?: string; trace?: string; runs?: string; notFound?: string; trySign?: string; tryVerify?: string; judge?: string; approve: string; enrol: string; policy: string };
 }
 
 const MAX_STATE_BYTES = 1_500_000;
@@ -144,6 +148,9 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/watch" && pages.watch && pages.csp.watch) return page(pages.watch, pages.csp.watch);
   if (path === "/proof" && pages.proof && pages.csp.proof) return page(pages.proof, pages.csp.proof);
   if (path === "/trace" && pages.trace && pages.csp.trace) return page(pages.trace, pages.csp.trace);
+  if (path === "/runs" && pages.runs && pages.csp.runs) return page(pages.runs, pages.csp.runs);
+  const agent = /^\/agents\/([a-z]{1,20})$/.exec(path)?.[1];
+  if (agent && pages.agents && Object.hasOwn(pages.agents, agent)) return page(pages.agents[agent]!.page, pages.agents[agent]!.csp);
   const moved = pages.redirects && Object.hasOwn(pages.redirects, path) ? pages.redirects[path] : undefined;
   if (moved) return new Response(null, { status: 302, headers: { ...COMMON_HEADERS, location: moved } });
   if (path === "/month") return page(pages.month, pages.csp.month);

@@ -290,6 +290,20 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.screenshot({ path: join(shots, `trace-picked-${tag}.png`) });
     }
 
+    // /runs and /agents/<id> (10 Nov): every live run, newest first, and one page per Kit 11 agent; one level down, the
+    // agent pages' fonts, styles and links still load (no console error, nothing wider than the screen).
+    for (const path of ["/runs", "/agents/sourcing", "/agents/support", "/agents/treasury"]) {
+      const res = await page.goto(`${base}${path}`, { waitUntil: "load" });
+      if (!res || res.status() !== 200) { fail(`${path} ${tag}: status ${res?.status()}`); continue; }
+      await look(page, `${path} ${tag}`, w);
+      const t = await page.evaluate(() => document.body.innerText);
+      if (path === "/runs" && !/Last live run: \d{1,2} \w{3} \d{4}/.test(t)) fail(`/runs ${tag}: no "Last live run" date`);
+      if (path !== "/runs" && !/What Claude decided · \d+/.test(t)) fail(`${path} ${tag}: no decisions section`);
+      const font = await page.evaluate(() => document.fonts.check("16px Inter"));
+      if (!font) fail(`${path} ${tag}: Inter did not load`);
+      await page.screenshot({ path: join(shots, `${path.slice(1).replace(/\//g, "-")}-${tag}.png`) });
+    }
+
     for (const q of ["", "?at=end"]) {
       await page.goto(`${base}/month${q}`, { waitUntil: "load" });
       await page.waitForTimeout(300);

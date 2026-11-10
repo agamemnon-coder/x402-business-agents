@@ -241,7 +241,8 @@ ${picker}
 ${all.map(section).join("\n")}
 </div>
 <div class="card chainnote"><p>${esc(chain.proves)}</p><p>${esc(chain.doesNot)}</p></div>
-<p class="backl"><a href="${esc(CFO_VIEW_URL)}">${esc(CFO_VIEW_LINK)}</a><a href="proof">Proof</a></p>
+<p class="backl"><a href="${esc(CFO_VIEW_URL)}">${esc(CFO_VIEW_LINK)}</a><a href="proof">Proof</a><a href="runs">Every live run</a></p>
+<p class="backl">Per agent: ${(Object.keys(AGENT_DISPLAY) as (keyof typeof AGENT_DISPLAY)[]).map((id) => `<a href="agents/${id}">${esc(AGENT_DISPLAY[id].name)}</a>`).join("")}</p>
 </main>`;
   return page({
     title: "Trace any payment · Purser", description: `${headerLine(c)} Each step of the main run's payments, from the record.`, tab: null, css: CSS, body,
