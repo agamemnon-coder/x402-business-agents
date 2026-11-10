@@ -81,3 +81,17 @@ The balances are sandbox test money: the Airwallex sandbox balances and Metal te
 - **The account map.** `src/config/t0Map.ts` is now v2, for the new chart. The tests use the new revenue account.
 - **Entries without a `je_number`.** `T0JournalEntry.je_number` can now be null, so imported entries in T:0 no longer crash the comparison or the dedup.
 - **No Node fetch change.** The Node fetch the CLI uses only went through the session's network proxy with `NODE_USE_ENV_PROXY=1`, which is a local setting, not a code change.
+
+## T:0's own statements (10 Nov, 09:00 UTC)
+
+Two read-only calls to T:0's report endpoints after our entries were in: `GET /v1/reports/balance-sheet` and `GET /v1/reports/cash-flow` (the cash flow statement had not been used before), for November 2026, monthly. A third T:0 request fetched the public OpenAPI document. No writes.
+
+| Check | Result |
+|---|---|
+| Balance sheet balances (assets = liabilities + equity) | Yes: 26,447,805.98 = 3,807,739.87 + 22,640,066.11 USD, difference 0.00 (`balanceSheetCheck`) |
+| Cash flow, financing activities | 21,140,636.23 USD: exactly the owner funding in our books (account 3000 → T:0 32000, row above) |
+| Cash flow, net increase for the period | 21,118,854.03 USD (`cashFlowNetChange`) |
+
+Caveat: the sandbox entity is shared with other hackathon teams, so the statements' totals include their entries too; the line-by-line match with our books is the journal-entry comparison above. The financing line matches because no other team booked financing in November.
+
+Code: `T0Client.cashFlow`, `balanceSheetCheck` and `cashFlowNetChange` in `src/accounting/t0.ts`, tested in `test/t0-statements.test.ts`.
