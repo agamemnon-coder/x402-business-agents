@@ -101,6 +101,53 @@ header.top .spacer { margin-left: auto; }
 img.qr { width: 180px; height: 180px; background: #fff; border-radius: 8px; padding: 6px; flex: none; }
 .docv .bar2 .btn { margin-left: auto; }
 .expired { max-width: 460px; margin: 10vh auto; text-align: center; }
+
+/* The company this session is in and its Airwallex account (10 Nov: a platform runs several companies). */
+.co { display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 460px; flex: 0 1 auto; padding: 3px 11px 3px 3px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); text-decoration: none; color: var(--text); font: 600 13px/1.2 Inter, system-ui, sans-serif; }
+.co:empty { display: none; }
+.co:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+.co .av { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; font-weight: 700; font-size: 12px; }
+.co .cn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.co .aw { flex: none; display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-weight: 600; font-size: 12px; white-space: nowrap; padding-left: 8px; border-left: 1px solid var(--border); }
+.co .aw i { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+.co .aw.active i { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
+.co .aw.created i, .co .aw.pending i, .co .aw.action_required i, .co .aw.opening i { background: var(--warn); }
+.co .aw.refused i, .co .aw.closed i, .co .aw.dormant i { background: var(--bad); }
+.who-am-i { gap: 10px; }
+.btn[hidden] { display: none; }
+@media (max-width: 1499px) { .co .awl { display: none; } }
+/* The person's name sits in the chip's title below 1500 px, so the company's name is never cut short. */
+@media (max-width: 1499px) { .who-am-i #who { display: none; } }
+code.idc { font: 500 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--sunken); color: var(--muted); padding: 1px 6px; border-radius: 6px; white-space: nowrap; }
+/* A status chip stays on one line on a laptop: its column is wide enough for the longest words. */
+@media (min-width: 861px) { .row { grid-template-columns: minmax(0, 2fr) minmax(0, 1.3fr) 104px 138px 248px minmax(0, 2fr) 18px; } .row .st { white-space: nowrap; } }
+.tile { transition: border-color .15s; }
+.card.list { border-radius: var(--r); }
+.pfin { max-width: 640px; margin-top: 18px; }
+.pfin .form-row > div:last-child { flex: 0 0 auto; }
+.tiles.pf { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 900px) { .tiles.pf { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.pft td .sub { display: block; color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+.pft td .pill + .sub { margin-top: 5px; }
+@media (max-width: 900px) { .co .aw .aww { display: none; } .co .aw { padding-left: 6px; } }
+@media (max-width: 640px) { .co { max-width: 50vw; padding-left: 10px; } .co .av { display: none; } .tiles.pf .tile:last-child { grid-column: auto; } }
+/* A rail's name wraps rather than end in an ellipsis. */
+.trow > .rail { white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
+/* The platform's companies as cards on a phone: name and payouts, account and fees, last sync. */
+@media (max-width: 640px) {
+  .pfl .scroll { overflow: visible; }
+  .pft thead { display: none; }
+  .pft, .pft tbody { display: block; }
+  .pft tr { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 16px; border-top: 1px solid var(--border); }
+  .pft tr:first-child { border-top: 0; }
+  .pft td, .pft td.r { border: 0; padding: 0; text-align: left; white-space: normal; overflow-wrap: normal; }
+  .pft td[data-l] { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .pft td[data-l]::before { content: attr(data-l); color: var(--muted); font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; min-width: 9em; }
+  .pft td[data-l] .sub { display: inline; margin: 0; }
+  .trow > .what { white-space: normal; overflow-wrap: anywhere; }
+}
+/* A tile's label that wraps keeps its icon on its first line. */
+.tile .l { align-items: flex-start; } .tile .l .ic { margin-top: 1px; }
 @media (max-width: 900px) {
   /* Two rows on a phone or a narrow window: the brand, who is signed in and the test-money label; then the pages. */
   header.top .wrap { height: auto; flex-wrap: wrap; row-gap: 0; padding-top: 10px; }
@@ -123,7 +170,7 @@ const BODY = `
 <header class="top"><div class="wrap"><a class="brand" href="#/"><span class="mk">P</span><span>Purser</span><span class="sec">Cloud</span></a>
 <nav class="tabs" id="tabs" aria-label="${tr("nl", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("nl", "cs.nav.overview")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("nl", "nav.invoices")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("nl", "nav.transactions")}</a><a href="#/books" data-tab="books" data-t="cs.nav.books">${tr("nl", "cs.nav.books")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("nl", "cs.nav.settings")}</a></nav>
 <span class="spacer"></span>
-<span class="who-am-i"><span id="who"></span><button type="button" id="out" title="${tr("nl", "cs.sign_out")}" aria-label="${tr("nl", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
+<span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("nl", "cs.sign_out")}" aria-label="${tr("nl", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
 <span class="test" title="${escAttr(tr("nl", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("nl", "test.label")}</span></span></div></header>
 <main><div class="wrap" id="view" aria-live="polite"></div></main>
 <p class="foot wrap" id="foot">${tr("nl", "cs.foot")}</p>`;
@@ -181,7 +228,11 @@ function shell(){
   document.body.className=S?'signed-in':'signed-out';
   if(S){const left=Math.max(0,Math.round((S.exp-Date.now())/60000));const n=ME&&ME.user&&ME.user.display_name?ME.user.display_name:'',c=ME&&ME.tenant?ME.tenant.name:'',e=t('cs.ends_in',{n:left});const w=$('#who');
     // Who, the company and the session's time left; a narrow header drops the company, then the time (both stay in the title).
-    w.replaceChildren(el('span','wn',n),c?el('span','wc',(n?' · ':'')+c):'',el('span','we',(n||c?' · ':'')+e));w.title=[n,c,e].filter(Boolean).join(' · ')}
+    w.replaceChildren(el('span','wn',n),el('span','we',(n?' · ':'')+e));w.title=[n,c,e].filter(Boolean).join(' · ');
+    // The company this session is in, and its Airwallex account as Airwallex last reported it (a platform runs several).
+    const co=$('#co'),aw=ME&&ME.airwallex;co.replaceChildren();if(c){co.append(el('span','av',c.trim().charAt(0).toUpperCase()),el('span','cn',c));
+      co.append(aw?el('span','aw '+String(aw.status).replace(/[^a-z_]/g,''),[el('i',''),el('span','aww',[el('span','awl','Airwallex · '),tk('cs.awx.status.'+aw.status,aw.status)])]):el('span','aw none',[el('i',''),el('span','aww',t('cs.awx.none'))]));
+      co.title=[n,c,aw?'Airwallex '+(aw.account_id||'')+' · '+tk('cs.awx.status.'+aw.status,aw.status):''].filter(Boolean).join(' · ')}}
   const tab=(location.hash.split('/')[1]||'').split('?')[0];
   for(const a of document.querySelectorAll('#tabs a'))if(a.dataset.tab===tab)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
 }
@@ -335,12 +386,12 @@ async function overviewView(){
 }
 
 // --- Invoices ------------------------------------------------------------------------------------------------------
-function why(i){if(i.status==='paid')return i.paid_at?t('paid_on',{date:day(i.paid_at)}):t('paid');if(i.status==='ready')return t('all_checks_passed');if(i.status==='waiting_cfo')return statusWords('waiting_cfo');const fs=i.findings||[];const f=fs.filter(x=>x.level!=='warn')[0]||fs[0];return f?cap(finding(f)):''}
+function why(i){if(i.status==='paid')return i.paid_at?t('paid_on',{date:day(i.paid_at)}):t('paid');if(i.status==='ready')return t('all_checks_passed');if(i.status==='waiting_cfo')return t('cs.why_on_phone');const fs=i.findings||[];const f=fs.filter(x=>x.level!=='warn')[0]||fs[0];return f?cap(finding(f)):''}
 const rowHead=()=>el('div','row th',[el('span','',t('supplier')),el('span','',t('invoice')),el('span','',t('due')),el('span','amt',t('amount')),el('span','',t('status')),el('span','',t('why')),el('span','')]);
 function invoiceRow(i){
   const a=el('a','row');a.href='#/invoices/'+encodeURIComponent(i.id);
   const sup=el('span','sup',i.vendor||t('unknown_supplier'));sup.title=i.vendor||'';
-  const no=el('span','no',[i.invoice_no||t('no_number'),el('span','sub',i.id)]);no.title=i.invoice_no||'';
+  const no=el('span','no',[i.invoice_no||t('no_number'),el('span','sub',[el('code','idc',i.id)])]);no.title=i.invoice_no||'';
   const late=i.due_date&&i.due_date<today&&!['paid','rejected'].includes(i.status);
   const w=why(i);const wy=el('span','why',w);wy.title=w;
   a.append(sup,no,el('span','due num'+(late?' late':''),i.due_date?day(i.due_date):'–'),el('span','amt',[el('span','c',cur(i.currency)),amount(i.total)||'–']),el('span','stc',[chip(i.status,i.status_words)]),wy);
@@ -439,7 +490,7 @@ async function transactionsView(){
     if(!p.items.length)list.append(el('div','empty',[el('b','',t('cs.no_movements')),t('cs.nothing_matches')]));
     for(const r of p.items){const b=el('div','trow');
       const amt=el('span','amt'+(r.flow==='in'?' in':''),[el('span','c',cur(r.currency)),(r.flow==='in'?'+':'−')+amount(r.amount)]);if(!r.moved)amt.classList.add('not');
-      b.append(el('span','when',day(r.at)),el('span','what',[el('b','',data('counterparty',r.counterparty||'')),el('span','sub',data('description',r.description||''))]),el('span','rail',[tk('rail.'+r.rail,r.rail_label||r.rail),el('span','sub',r.proof?String(r.proof).slice(0,18):t('tx.no_proof_short'))]),amt,
+      b.append(el('span','when',day(r.at)),el('span','what',[el('b','',data('counterparty',r.counterparty||'')),el('span','sub',data('description',r.description||''))]),el('span','rail',[tk('rail.'+r.rail,r.rail_label||r.rail),el('span','sub',r.proof?el('code','idc',String(r.proof).slice(0,18)):t('tx.no_proof_short'))]),amt,
         el('span','',[el('span','pill '+(r.moved?'ok':'bad'),data('status',r.status_words||r.status))]),el('span','',[el('span','pill '+(r.reconciliation==='matched'?'ok':r.reconciliation==='not_applicable'?'':'warn'),tk('rec.'+r.reconciliation,r.reconciliation_words||r.reconciliation))]),el('span',''));
       list.append(b)}
     if(p.next_cursor)list.append(note(t('cs.newest_200')));
@@ -585,10 +636,33 @@ async function settingsView(){
 }
 
 // --- The router ----------------------------------------------------------------------------------------------------
+// --- The platform's companies: for Purser's operator, with the platform admin token (kept in this page only) ---------
+function platformView(){
+  title(t('cs.pf.title'));
+  const tok=el('input','field');tok.type='password';tok.autocomplete='off';tok.id='pf-token';tok.placeholder='••••••••';
+  const b=btn(t('cs.pf.show'),'primary','users');const out=el('div','');const status=el('div','');status.setAttribute('role','status');
+  const lab=(td,l)=>{td.dataset.l=l;return td};
+  const sum=(m)=>{const e=Object.entries(m||{});return e.length?e.map(([c,v])=>cur(c)+' '+amount(v)).join(' · '):'–'};
+  b.onclick=async()=>{b.disabled=true;status.replaceChildren();
+    try{const r=await fetch('/v1/admin/companies',{headers:{authorization:'Bearer '+tok.value.trim()}});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||r.statusText);
+      const tt=j.totals;const tiles=el('div','tiles pf',[tile(t('cs.pf.companies'),'users',String(tt.companies),null),tile(t('cs.pf.active'),'shield-check',String(tt.active_accounts),t('cs.pf.of',{n:tt.companies}),tt.active_accounts?'calm':null),
+        tile(t('cs.pf.payouts'),'arrow-up-right',sum(tt.payouts),null),tile(t('cs.pf.fees'),'wallet',sum(tt.fees),null)]);
+      const tbl=el('table','table pft',[el('thead','',[el('tr','',[el('th','',t('cs.pf.company')),el('th','',t('cs.pf.account')),el('th','r',t('cs.pf.payouts')),el('th','r',t('cs.pf.fees')),el('th','',t('cs.pf.last_push'))])])]);const tb=el('tbody','');
+      for(const c of j.companies){const aw=c.airwallex;
+        tb.append(el('tr','',[el('td','',[el('b','',c.name),el('span','sub',[el('code','idc',c.slug),c.closed?' · '+t('cs.pf.closed'):''])]),
+          el('td','',aw?[el('span','pill '+(aw.status==='active'?'ok':['refused','closed'].includes(aw.status)?'bad':'warn'),tk('cs.awx.status.'+aw.status,aw.status)),aw.account_id?el('span','sub',[el('code','idc',aw.account_id)]):null]:el('span','pill',t('cs.awx.none'))),
+          lab(el('td','r',[sum(c.payouts.totals),el('span','sub',[t('cs.pf.paid',{n:c.payouts.count}),c.waiting?' · '+t('cs.pf.waiting',{n:c.waiting}):''])]),t('cs.pf.payouts')),lab(el('td','r',sum(c.fees)),t('cs.pf.fees')),lab(el('td','',c.last_push?stamp(c.last_push):t('cs.pf.never')),t('cs.pf.last_push'))]))}
+      if(!j.companies.length)tb.append(el('tr','',[el('td','',t('cs.pf.none')),el('td',''),el('td',''),el('td',''),el('td','')]));
+      tbl.append(tb);out.replaceChildren(tiles,el('section','section',[el('div','card list pfl',[el('div','scroll',tbl)])]),note(t('cs.shows_not_pays')))}
+    catch(e){status.replaceChildren(note(e.message,'bad'))}finally{b.disabled=false}};
+  tok.onkeydown=(e)=>{if(e.key==='Enter')b.click()};
+  view().replaceChildren(head(t('cs.pf.title'),t('cs.pf.lede')),el('div','card panel pfin',[el('div','form-row',[el('div','',[el('label','',t('cs.pf.token')),tok]),el('div','',[b])]),note(t('cs.pf.token_note')),status]),out);
+}
+
 async function route(){
   const h=location.hash||'#/';const [path,qs]=h.slice(1).split('?');const q=new URLSearchParams(qs||'');
   S=load();shell();
-  const open={'/sign-in':signInView,'/start':startView};
+  const open={'/sign-in':signInView,'/start':startView,'/platform':platformView};
   try{
     if(path==='/enrol')return enrolView(q);
     if(open[path])return open[path]();

@@ -17,6 +17,7 @@ import { download, ExportRefused, exportStatus, purgeEndedExportParts, signedLin
 import { consoleResponse } from "./console.js";
 import { qrSvg } from "./qr.js";
 import { logEvent } from "./log.js";
+import { platformCompanies } from "./platformView.js";
 import { accountOf, bindingOf, onboardingLink, openAccount, PlatformRefused, receiveAccountEvent, type AwxPlatformEnv } from "./awxPlatform.js";
 import { cloudHealth, companyStatus, HealthReport, MonitorRefused, notify, receiveReport, removeWebhook, setWebhook, webhookOf, type Outbound } from "./monitor.js";
 
@@ -174,6 +175,7 @@ export const ROUTES: Route[] = [
   } },
   { method: "GET", path: "/v1/openapi.json", summary: "This API, as OpenAPI 3.1.", need: "public", run: async (c) => json(200, openApi(c.env.origin)) },
 
+  { method: "GET", path: "/v1/admin/companies", summary: "The companies on this cloud for the platform operator: each one's Airwallex account and status, the supplier payouts that moved and those waiting, and Purser's fees taken, from what the runners pushed (never a key or an account number).", need: "platform", run: async (c) => json(200, await platformCompanies(c.env.sql)) },
   { method: "POST", path: "/v1/admin/tenants", summary: "Create a company and its first owner; returns the owner's API key once.", need: "platform", run: async (c) => {
     const b = await body(c, z.object({ slug: NEW_SLUG, name: z.string().min(1).max(200), owner: z.object({ display_name: z.string().min(1).max(120), email: z.string().email().max(200).optional() }).strict() }).strict());
     if (await c.env.sql.first("SELECT 1 FROM tenants WHERE slug = ?", [b.slug])) return err(409, `the address ${b.slug} is taken`);
@@ -262,10 +264,12 @@ export const ROUTES: Route[] = [
     const person = c.caller!.user ? await db(c).one<{ display_name: string; role: Role; language: string | null }>("users", { id: c.caller!.user }) : null;
     // The pages' language: the person's own choice, else the company's (codes and the API stay English).
     const companyLanguage = t?.language === "en" ? "en" : "nl";
+    // The company's Airwallex account opened through Purser, for the pages' header (its id is no secret; never a key).
+    const awx = await c.env.sql.first<{ account_id: string | null; status: string }>("SELECT account_id, status FROM awx_accounts WHERE tenant_id = ? AND id = 'main'", [c.caller!.tenantId]);
     return json(200, { tenant: { id: c.caller!.tenantId, ...t, language: companyLanguage }, kind: c.caller!.kind, principal: c.caller!.principal, scopes: [...c.caller!.scopes], role: c.caller!.role ?? null,
       user: c.caller!.user ? { id: c.caller!.user, display_name: person?.display_name ?? null, role: person?.role ?? null, language: person?.language ?? null } : null,
       language: person?.language === "en" || person?.language === "nl" ? person.language : companyLanguage,
-      owner_has_passkey: ownerPasskey, inbox: c.env.mailDomain && t ? `${t.slug}@${c.env.mailDomain}` : null });
+      owner_has_passkey: ownerPasskey, airwallex: awx ? { account_id: awx.account_id, status: awx.status } : null, inbox: c.env.mailDomain && t ? `${t.slug}@${c.env.mailDomain}` : null });
   } },
   { method: "POST", path: "/v1/company", summary: "Change the company's display name (its address, the slug, stays) or the pages' language for everyone (nl or en).", need: "admin", run: async (c) => {
     const b = await body(c, z.object({ name: z.string().trim().min(1).max(200).optional(), language: z.enum(["nl", "en"]).optional() }).strict().refine((x) => x.name !== undefined || x.language !== undefined, "send a name or a language"));
