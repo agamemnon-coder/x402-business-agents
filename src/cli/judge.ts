@@ -11,7 +11,7 @@ import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import type { Server } from "node:http";
 import express from "express";
-import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, TRACE_CSP, TRACE_PAGE, WATCH_CSP, WATCH_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE_OFFLINE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
+import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE_OFFLINE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
 import { readFileSync } from "node:fs";
 import { loadRecord } from "../redesign/run.js";
 import { localTryAnswer } from "../try/local.js";
@@ -36,6 +36,8 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   app.get("/watch", page(WATCH_CSP, () => WATCH_PAGE));
   app.get("/proof", page(PROOF_CSP, () => PROOF_PAGE));
   app.get("/trace", page(TRACE_CSP, () => TRACE_PAGE));
+  app.get("/runs", page(RUNS_CSP, () => RUNS_PAGE));
+  for (const id of Object.keys(AGENT_PAGES)) app.get(`/agents/${id}`, page(AGENT_CSPS[id]!, () => AGENT_PAGES[id]!));
   for (const [from, to] of Object.entries(REDIRECTS)) app.get(from, (_req, res) => { res.redirect(302, to); });
   app.get("/demo", page(DEMO_CSP, () => demo));
   app.get("/month", page(MONTH_CSP, () => month));
@@ -98,7 +100,7 @@ a{display:inline-block;margin-top:4px;padding:10px 16px;border-radius:8px;backgr
 const LIVE_ONLY_CSP = `default-src 'none'; style-src 'sha256-${createHash("sha256").update(/<style>([\s\S]*?)<\/style>/.exec(LIVE_ONLY_PAGE)![1]!, "utf8").digest("base64")}'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
 
 /** The pages `--check` fetches once each: every page a juror reaches, both CFO dashboards included. */
-export const CHECK_PATHS = ["/", "/home", "/watch", "/proof", "/trace", "/metal", "/metal/report", "/visa", "/airwallex", "/claude", "/?autonomy", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab"];
+export const CHECK_PATHS = ["/", "/home", "/watch", "/proof", "/trace", "/runs", "/agents/sourcing", "/agents/support", "/agents/treasury", "/metal", "/metal/report", "/visa", "/airwallex", "/claude", "/?autonomy", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab"];
 
 /**
  * The menu printed at start. The main run's CFO dashboard comes first, and each dashboard is named by its own run, its
@@ -113,6 +115,7 @@ export function judgeMenu(url: string): string[] {
     `Purser, the recorded runs, offline (no keys, nothing live). Start here: ${url}/`,
     `  ${url}/?autonomy     the main run's CFO dashboard (${main})`,
     `  ${url}/trace         any payment of the main run, step by step`,
+    `  ${url}/runs          every live run, newest first, with its ids and records`,
     `  ${url}/metal         how Purser uses Metal, every proof linked to the explorer`,
     `  ${url}/live          the working day on two rails, Airwallex and Metal`,
     `  ${url}/try           type a task for an agent (offline, code reads it)`,
