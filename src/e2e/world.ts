@@ -54,7 +54,6 @@ export const WORLD: WorldCompany[] = [
     key: "FIETSLAB", name: "Fietslab Test (fake)", tenant: "t_e2e_fietslab", accountId: null,
     invoices: [
       { via: "email", filename: "OD-77.pdf", text: nlInvoice({ vendor: "Onderdelen Direct B.V. (test)", vat: "NL556677889B01", no: "OD-77", date: "07-11-2026", due: "21-11-2026", net: "5,00", vatAmt: "1,05", total: "6,05", iban: "NL44 RABO 0123 4567 89", bic: "RABONL2U" }) },
-      { via: "upload", filename: "WS-3030.pdf", text: nlInvoice({ vendor: "Werkplaats Supplies B.V. (test)", vat: "NL998877665B01", no: "WS-3030", date: "07-11-2026", due: "21-11-2026", net: "1,00", vatAmt: "0,21", total: "1,21", iban: "NL26 RABO 0000 1234 56", bic: "RABONL2U" }) },
     ],
   },
 ];

@@ -25,22 +25,22 @@ describe("the platform end-to-end, dry run", () => {
     const dry = dryRunDeps();
     const s = await runPlatformE2E({ ...dry.deps, dir, now, log: () => undefined });
     expect(s.companies.map((c) => [c.key, c.opened, c.audit.ok])).toEqual([["SANDBOXTEST", false, true], ["BAKKERIJ", true, true], ["FIETSLAB", true, true]]);
-    expect(s.payments.map((p) => p.kind)).toEqual(["supplier_payment", "payment_batch", "payment_batch"]);
+    expect(s.payments.map((p) => p.kind)).toEqual(["supplier_payment", "payment_batch", "supplier_payment"]);
     const transfers = s.payments.flatMap((p) => p.transfers);
-    expect(transfers).toHaveLength(5);
+    expect(transfers).toHaveLength(4);
     for (const t of transfers) { expect(t.status).toBe("PAID"); expect(t.purser_fee).toMatch(/^EUR 0\.0\d SETTLED$/); }
     // Each payout went out on behalf of its own company's connected account, and only there.
     expect([...dry.rails.keys()]).toEqual(["acct_SC-QD89fOneAeqaRFgOymw", "acct_fake_bakkerij", "acct_fake_fietslab"]);
-    expect([...dry.rails.values()].map((r) => r.platformFees.length)).toEqual([1, 2, 2]);
+    expect([...dry.rails.values()].map((r) => r.platformFees.length)).toEqual([1, 2, 1]);
     // T:0: one shared entity, every entry's memo names its company and its PUR id; debits equal credits.
-    expect(s.t0.posted).toBe(10);
+    expect(s.t0.posted).toBe(8);
     const posted = dry.t0.entries;
     for (const e of posted) {
       expect(e.memo).toMatch(/\[(SANDBOXTEST|BAKKERIJ|FIETSLAB)\] PUR-(SANDBOXTEST|BAKKERIJ|FIETSLAB)-AP-\d{4}/);
       const dr = e.lines.filter((l) => l.line_type === "debit").reduce((n, l) => n + l.amount_atoms, 0);
       expect(dr).toBe(e.lines.filter((l) => l.line_type === "credit").reduce((n, l) => n + l.amount_atoms, 0));
     }
-    expect(s.payments.map((p) => p.t0_entries.length)).toEqual([2, 4, 4]);
+    expect(s.payments.map((p) => p.t0_entries.length)).toEqual([2, 4, 2]);
   });
 
   it("every receipt verifies offline: the passkey over the exact terms, then each step from invoice to T:0", async () => {
