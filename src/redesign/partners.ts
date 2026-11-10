@@ -161,6 +161,9 @@ export function metalPage(run: AgentRun = agentRun()): string {
   });
 }
 
+/** The payment-acceptance run of 10 November, as it ran (docs/runs/2026-11-10-payment-acceptance-sandbox.md). */
+export const CARD_IN_LINE = "Money in by card, a separate sandbox run: a test customer paid a Northwind invoice with Airwallex's sandbox test card, and Purser booked it only after Airwallex reported PaymentIntent int_sgpv9bnppho0sezgl4a SUCCEEDED. Test money.";
+
 export function airwallexPage(run: AgentRun = agentRun()): string {
   const p = partnerProof(run), st = stops(run.record), money = moneyOf(run);
   const booked = money.find((e) => e.via === "deposit" && e.dir === "in");
@@ -189,7 +192,9 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
     extra: readBack,
     // Proof's "Policy and card side by side" opens the cards' fold here (#controls, or one card's #card-<agent>).
     ...(rows.length || airi ? { js: OPEN_TARGET_JS } : {}),
-    folds: fold("The live proof, with every Airwallex id", p.airwallex) + fold("The Airwallex features we use, and their docs", used.map((f) => docsLi(f.title, f.docs)))
+    // Payment acceptance, enabled on our sandbox 10 Nov (docs/runs/2026-11-10-payment-acceptance-sandbox.md): a separate run.
+    folds: fold("The live proof, with every Airwallex id", [...p.airwallex, plainLi(CARD_IN_LINE)])
+      + fold("The Airwallex features we use, and their docs", used.map((f) => docsLi(f.title, f.docs)))
       + fold("What is simulated", [plainLi("The Airwallex sandbox, with test money only."),
         ...(licence ? [plainLi(`The SWIFT payout's settlement: Purser moves the sandbox transfer to SENT, then PAID, through Airwallex's simulation API${t.faceToPaid !== null ? `; the ${t.faceToPaid} s are measured from the CFO's Face ID to PAID` : ""}.`)] : []),
         ...money.filter((e) => e.earlier).map((e) => plainLi(earlierLine(e)))]),
