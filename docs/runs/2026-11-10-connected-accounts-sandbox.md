@@ -1,4 +1,4 @@
-# Connected accounts, first sandbox run (10 November 2026)
+# Connected accounts, sandbox runs (10 November 2026)
 
 Airwallex (Turner Vickery, hackathon Slack #help, 10 Nov) enabled connected accounts and payment acceptance on our
 sandbox platform account `acct_op0_QItiOyWKsYb5pwQihA` (registered in the Netherlands). Max gave the go for a run of at
@@ -40,13 +40,46 @@ Nothing was paid, no beneficiary was created and no fee was taken. The test acco
   The same page says FX and payout fee mark-ups are configured with the Account Manager. Neither is tested.
 - The webhook fields of `account.*` events.
 
-## Proposed next run (needs Max's go; about 12 calls)
 
-Login (1); `POST /accounts/{id}/update` with complete test verification details from Airwallex's documented example
-(1–3, each answer names the next missing field); `submit` (1); simulation to `ACTIVE` (1); fund the account from the
-platform with `connected_account_transfers/create` (1); with `x-on-behalf-of`: `beneficiaries/create` (1), a €5 transfer
-through Purser's `createPayoutTransfer` (1), the simulation to `PAID` (1), Purser's fee call (1), a €2 transfer with
-`application_fee_options` (1). Or ask Airwallex for the hosted onboarding template id and do the verification once in
-the browser.
+## Second run: verification details, submit, ACTIVE (7 of 8 further calls)
 
-Call log (method, path with ids, time; no bodies, no headers) as Purser's budget wrote it: 4 lines.
+Max approved 8 more calls. Before any call, the required fields for a Netherlands business were read from Airwallex's
+docs (`connected-accounts/onboarding/kyc-and-onboarding/native-api/business-kyc-requirements/netherlands-(nl)`): a
+**non-registered sole trader** (`business_structure: SOLE_PROPRIETOR`, no `business_identifiers`) needs no business
+registration number and no uploaded documents, so it can be filled in in one update with clearly fake test data.
+
+| # | Time (UTC) | Call | Answer |
+|---|---|---|---|
+| 5 | 05:30:48.925 | `POST /authentication/login` | 200 |
+| 6 | 05:30:49.750 | `GET /reference/industry_categories` | 200, 13 groups, 169 codes; picked "Professional services > Management consulting" `ICCV3_0808XX` |
+| 7 | 05:30:50.564 | `POST /accounts/acct_SC-QD89fOneAeqaRFgOymw/update`: business name "Purser Sandbox Test (fake sole trader)", `SOLE_PROPRIETOR`, description (states it is fictional), industry code, operating country NL, a test registration address, account usage `MAKE_TRANSFERS` / EUR 5,000 a month; one person "Test Persoon (fake)", born 1985-01-01, NL, roles `AUTHORISED_PERSON` + `BENEFICIAL_OWNER`, test address, a test passport number (no file) | 200, still `CREATED` |
+| 8 | 05:30:51.159 | `POST /accounts/acct_SC-QD89fOneAeqaRFgOymw/submit` | 200, **`SUBMITTED`** |
+| 9 | 05:30:51.849 | `POST /simulation/accounts/acct_SC-QD89fOneAeqaRFgOymw/update_status` `ACTIVE` | 400 "Account needs to be submitted for review before using this endpoint" (trace `fa51062be6de4c7a9aecfa1099e1f6f1`), 0.7 s after the submit answered |
+| 10 | 05:32:03.379 | `POST /authentication/login` (a new process, after waiting 60 s) | 200 |
+| 11 | 05:32:04.238 | `POST /simulation/accounts/acct_SC-QD89fOneAeqaRFgOymw/update_status` `ACTIVE` | 200, **`ACTIVE`** |
+
+**Confirmed live:** a Netherlands connected account goes `CREATED` → `SUBMITTED` → `ACTIVE` in our sandbox through the
+documented API, with one update holding the verification details of a non-registered sole trader. The submit is taken in
+asynchronously: right after it, the simulation still reads the account as not submitted; a minute later it works.
+
+**Not done (1 approved call left, a payout needs 4):** funding the account from the platform
+(`connected_account_transfers/create`), a beneficiary and a EUR 5 payout with `x-on-behalf-of`, with Purser's fee as
+`application_fee_options` (EUR 0.05, FIXED) through Purser's `createPayoutTransfer`. Nothing was paid, no beneficiary was
+created and no fee was taken. No transfer exists, so nothing is `IN_APPROVAL`, and nothing was approved in Airwallex's web
+app. The script for those 4 calls is ready and was run against a stand-in.
+
+Purser's code before this run (commit `baad3b3`): Purser's fee now goes with the payout as `application_fee_options`
+(the documented way for payout platforms) and is counted taken and booked only when the payout is PAID with exactly the
+signed fee reported in `application_fees`; the invoice-payment route follows a payout that is not yet PAID (for example
+`IN_APPROVAL`) instead of marking it FAILED.
+
+## Proposed next run (needs Max's go)
+
+The account is ACTIVE now. **4 calls** for the payout: login (1); fund the account from the platform with
+`connected_account_transfers/create`, EUR 20 (1); with `x-on-behalf-of`: `beneficiaries/create` (1); a EUR 5 payout through
+Purser's `createPayoutTransfer` with Purser's fee as `application_fee_options` EUR 0.05 (1). If it comes back
+`IN_APPROVAL` (Airwallex's own approval workflow), the run stops there and Max approves it in the web app. **+2** to
+follow it: login (1) and `GET /transfers/{id}` (1) once approved, or the simulation to `PAID` (1) if no approval is set.
+
+Call log (method, path with ids, time; no bodies, no headers) as Purser's budget wrote it: 4 lines in the first run,
+7 in the second (11 of the 12 approved calls used).

@@ -1,10 +1,11 @@
 # Purser as an Airwallex platform (connected accounts)
 
 Status: built behind `AIRWALLEX_PLATFORM=on` (off by default), tested against a fake Airwallex. **Connected accounts are
-enabled on our sandbox since 10 November 2026** (Airwallex's Turner Vickery, hackathon Slack). The first sandbox run
-(`docs/runs/2026-11-10-connected-accounts-sandbox.md`, 4 calls) opened a connected account through Purser's rail
-(`acct_SC-QD89fOneAeqaRFgOymw`, `CREATED`) and stopped there: activating it needs the company's verification details
-first. No payout, beneficiary or fee has been made from a connected account yet.
+enabled on our sandbox since 10 November 2026** (Airwallex's Turner Vickery, hackathon Slack). Live so far
+(`docs/runs/2026-11-10-connected-accounts-sandbox.md`, 11 calls): a Netherlands connected account opened through Purser's
+rail (`acct_SC-QD89fOneAeqaRFgOymw`), its verification details filled in as a non-registered sole trader (fake test
+data), submitted, and moved to `ACTIVE` with the sandbox simulation. No payout, beneficiary or fee has been made from a
+connected account yet.
 
 ## Why
 
@@ -79,18 +80,18 @@ platform-level webhook uses the same signature scheme is **unconfirmed**.
 - `POST /api/v1/connected_account_transfers/create` (body: `amount`, `currency`, `destination` = account id, `reason`,
   `reference` 1–140 chars, `request_id` 1–50 chars; statuses `NEW`, `SETTLED`, `PENDING`, `SUSPENDED`, `FAILED`) sends
   funds **from the platform's account to a connected account**. — `docs/api/scale/connected_account_transfers/create`
-- **Found 10 Nov in Airwallex's sample integration for payout platforms**
-  (`global-treasury/use-cases/payroll/cross-border-payroll-payouts/sample-integration`): `POST /transfers/create` sent with
-  `x-on-behalf-of` takes **`application_fee_options`**, e.g. `[{ source_type: "TRANSFER", type: "PERCENTAGE",
-  percentage: "0.5" }]` (also `FIXED` with `amount` and `currency`, and `source_type: "CONVERSION"` for FX), and answers
-  `application_fees` per fee. That takes the platform fee from the payout itself, in one call. The same page says FX and
-  payout fee mark-ups can instead be configured with the Account Manager. Not tested yet; if the sandbox confirms it,
-  Purser's fee moves onto the transfer (one call, no separate fee transfer, nothing left owing after a paid payout).
-- **Unconfirmed, and the most important open question:** how a payout platform collects a fee *from* a connected
+- **Purser's fee (since 10 Nov, commit `baad3b3`): `application_fee_options` on the payout itself.** Airwallex's sample
+  integration for payout platforms (`global-treasury/use-cases/payroll/cross-border-payroll-payouts/sample-integration`)
+  sends `POST /transfers/create` with `x-on-behalf-of` and `application_fee_options`, e.g. `[{ source_type: "TRANSFER",
+  type: "FIXED", amount: "0.05", currency: "EUR" }]`, and answers `application_fees` per fee. Purser sends one FIXED fee,
+  the exact amount the CFO signed (capped by policy, `FEE_BPS_CAP`), only with `AIRWALLEX_PLATFORM_FEE=on`. The fee is
+  counted taken and booked only when the payout is `PAID` and Airwallex reports exactly that fee in `application_fees`;
+  otherwise it stays `OPEN` for a person; a failed payout voids it. No separate fee call is made. **Not yet tested live.**
+- (Before 10 Nov) **Unconfirmed:** how a payout platform collects a fee *from* a connected
   account (a connected-account transfer sent with `x-on-behalf-of` to the platform's account id, a fee configured by
   Airwallex on the platform, or an FX/payout markup). Purser's fee collection therefore sits behind a second flag,
-  `AIRWALLEX_PLATFORM_FEE=on` (off by default), uses `connected_account_transfers/create` with `x-on-behalf-of` as its
-  *assumed* call, and must not be switched on before Airwallex confirms the mechanism.
+  `AIRWALLEX_PLATFORM_FEE=on` (off by default). Until 10 Nov it assumed `connected_account_transfers/create` with
+  `x-on-behalf-of`; that call is no longer used for the fee (see above).
 
 ### Where companies can be onboarded
 
@@ -124,7 +125,7 @@ platform-level webhook uses the same signature scheme is **unconfirmed**.
 | Signed terms name the paying account and the Purser fee; the fee counts toward the funds checked, a batch's totals and four eyes | `src/payouts/plan.ts`, `src/agents/euroBill.ts`, `src/policy/batch.ts`, `src/policy/fourEyes.ts` | `test/airwallex-platform.test.ts`, `test/rt6-platform.test.ts` |
 | The paying account from a binding Purser Cloud signs (never a local setting) | `src/airwallex/binding.ts`, `cloud/src/awxPlatform.ts` (`bindingOf`), `GET /v1/airwallex/binding`, `src/cloudsync/client.ts` (`refreshBinding`) | `test/rt6-platform.test.ts`, `test/cloud-rt6.test.ts` |
 | Phone shows "Paid from", "Purser fee → Purser's account" and "Total out" before Face ID, per line in a batch too | `src/approve/client.ts` | same |
-| Fee taken only after the payout is PAID, once per request id; booked only when settled; never fails a paid payment | `src/executors/supplierPayment.ts` (`takePlatformFee`), `src/payouts/follow.ts`, `src/ap/books.ts`, `src/accounting/gl.ts`, `src/money/register.ts` | same |
+| Fee sent with the payout (`application_fee_options`, `applicationFeeOf`), counted taken only when the payout is PAID with that fee reported, once per request id; never fails a paid payment | `src/executors/supplierPayment.ts` (`takePlatformFee`), `src/payouts/follow.ts`, `src/ap/books.ts`, `src/accounting/gl.ts`, `src/money/register.ts` | same |
 | The same fee on the invoice-payment route (a supplier on file paid in EUR over SWIFT), so every line of a batch carries it; on the phone in the company's language (`ph.*` in `src/ui/i18n.ts`) | `src/agents/euroBill.ts`, `src/executors/invoicePayment.ts`, `src/approve/client.ts` (`payablesFacts`) | `test/rt6-platform.test.ts`, `test/phone-payables-language.test.ts` |
 | Cloud: owner opens the account (idempotent, consent kept), gets the onboarding link, status from webhooks | `cloud/src/awxPlatform.ts`, `cloud/src/app.ts` (`/v1/airwallex/*`), console Settings, table `awx_accounts` | `test/cloud-awx-platform.test.ts`, `test/cloud-rt6.test.ts` |
 
@@ -163,11 +164,11 @@ Purser Cloud signs a **binding** with Purser's platform Ed25519 key (a Worker se
 - The fee counts toward the funds checked when the payment is planned (and in a batch's running reserve), toward the
   batch's totals and toward four eyes (a supplier payment's euro value is its amount plus the fee at the quote's rate,
   never less than the EUR the quote sells; a batch needs two people when its lines together are above the threshold).
-- From the moment the payout is written until the fee is settled, the fee is held (`platform_fees` row `DUE`, counted in
-  `inFlightCents`). It is taken only once the payout is `PAID`: at execution in the sandbox, or live when
-  `followPayouts` (on `npm run payables -- sync`) reads the payout as PAID at Airwallex. A fee that cannot be taken stays
-  `OPEN` for a person and the next follow-up; the payment stays `EXECUTED`. A fee answered `NEW`/`PENDING` stays so
-  until it is read `SETTLED`; only a settled fee is booked and counted as moved. A payout that fails voids its fee.
+- The fee goes with the payout (`application_fee_options`). Until Airwallex has the payout (the row `SUBMITTING`) the
+  fee is held with it (`platform_fees` row `DUE`, counted in `inFlightCents`); after that both have left the available
+  balance Airwallex reports. It is counted taken and booked only once the payout is `PAID` with the signed fee reported
+  in `application_fees`: at execution in the sandbox, or live when `followPayouts` (on `npm run payables -- sync`) reads
+  the payout as PAID. A paid payout without that fee leaves it `OPEN` for a person; a payout that fails voids its fee.
 
 ### Airwallex's own transfer approval: a second, independent lock
 
@@ -187,9 +188,8 @@ Purser, and an approver in Airwallex's own web app. What Purser does with `IN_AP
 - the sandbox's settle step never simulates past it (`settleInSandbox` stops), so the approval is a person's;
 - `followPayouts` reads it again on every sync: `SCHEDULED` ("approved at Airwallex, scheduled"), then `PAID`, and only
   then Purser's fee is taken; an approver who rejects it leaves it `CANCELLED` and the fee is voided;
-- known gap: the Kit 11 `invoice_payment` route still marks a payout that is not `PAID` at once as `FAILED` (it was so
-  before this change); its duplicate check still stops a second payout for the same invoice. Before the web-app
-  approval is switched on for that route, it must wait the same way.
+- the Kit 11 `invoice_payment` route does the same since `baad3b3`: a payout not yet `PAID` leaves the payment
+  `EXECUTED` and is followed, never marked `FAILED`.
 
 ### Production: on-behalf-of calls go through a Purser-held service (design note, not built)
 
@@ -209,7 +209,8 @@ keeps no platform key. This is a go-live item (`docs/go-live.md`).
 - The id field of `account.*` events: the cloud applies an event **only** by `data.object.id` (the account object's own
   id, as Airwallex documents the account object), and an event that also names another account in `account_id` or
   elsewhere changes nothing.
-- `GET /connected_account_transfers/{id}` to read a fee transfer's status, like the create.
+- `application_fee_options` / `application_fees` on a live payout from a connected account (the fee's field names are
+  from Airwallex's docs; not yet called).
 
 The cloud keeps the account's id, status, the opening's idempotency id and the owner's **consent record** (who agreed
 to Airwallex's terms, when, and which version, `awxPlatform.termsVersion`), never the onboarding link (short-lived, made
