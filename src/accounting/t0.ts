@@ -53,7 +53,7 @@ export interface T0JournalEntryRequest {
 
 export interface T0JournalEntry {
   id: string;
-  je_number: string;
+  je_number: string | null;
   entry_date: string;
   memo: string | null;
   source: string;
@@ -421,7 +421,7 @@ export async function pushBooks(
   if (!entries.length) return result;
   const dates = entries.map((e) => e.request.entry_date).sort();
   const inT0 = new Set<string>();
-  for await (const je of client.listJournalEntries({ dateFrom: dates[0], dateTo: dates.at(-1), source: ["manual"] })) inT0.add(je.je_number);
+  for await (const je of client.listJournalEntries({ dateFrom: dates[0], dateTo: dates.at(-1), source: ["manual"] })) { if (je.je_number) inT0.add(je.je_number); }
   for (const e of entries) {
     if (inT0.has(e.jeNumber)) { result.skipped.push({ je_number: e.jeNumber, reason: "in T:0" }); continue; }
     if (alreadyPosted.has(e.jeNumber)) { result.skipped.push({ je_number: e.jeNumber, reason: "posted before" }); continue; }
@@ -538,7 +538,7 @@ export interface T0OwnComparison { matches: boolean; currency: string; entries_i
  * and the same je_numbers are on both sides.
  */
 export function compareOwnEntries(ours: T0Entry[], numbers: ReadonlyMap<string, string>, inT0: T0JournalEntry[]): T0OwnComparison {
-  const mine = inT0.filter((e) => e.je_number.startsWith("PUR-"));
+  const mine = inT0.filter((e) => e.je_number?.startsWith("PUR-"));
   const o = new Map<string, { atoms: number; codes: Set<string> }>(), t = new Map<string, number>();
   for (const e of ours) {
     e.request.lines.forEach((l, i) => {

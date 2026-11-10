@@ -5,13 +5,16 @@
 //                             refuses before any call when the dry run says the run would need more.
 // Options: --dir <folder> (default data/e2e/<time>). T0_RATES (e.g. "EUR=1.08") when T:0's currency is not EUR.
 
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { CallBudget, PHASE2_BUDGET, type Service } from "../e2e/budget.js";
 import { estimateLive } from "../e2e/estimate.js";
 import { functionalCurrency } from "../accounting/t0.js";
 import { runPlatformE2E, type RunSummary } from "../e2e/platformRun.js";
-import { budgetedReader, dryRunDeps, liveDeps, parserOnly } from "../e2e/setup.js";
+import { budgetedReader, dryRunDeps, liveDeps, parserOnly, PROXY_INJECTED } from "../e2e/setup.js";
+import { finishRun } from "../e2e/finish.js";
+import { WORLD } from "../e2e/world.js";
+import { T0Client } from "../accounting/t0.js";
 
 const args = process.argv.slice(2);
 const live = args.includes("--live");
@@ -33,6 +36,30 @@ const print = (s: RunSummary) => {
   console.log(`\n${s.mode}: ${s.companies.length} companies, ${s.payments.length} approvals, ${s.payments.reduce((n, p) => n + p.transfers.length, 0)} payouts, ${s.t0.posted} T:0 entries`);
   for (const p of s.payments) console.log(`  ${p.company.padEnd(12)} ${p.kind} ${p.proposal_id}: ${p.transfers.map((t) => `${t.transfer_id} ${t.status} ${t.amount}${t.purser_fee ? ` (fee ${t.purser_fee})` : ""}`).join("; ")}\n  ${"".padEnd(12)} receipt: npm run verify-receipt -- ${p.receipt}`);
 };
+
+// --finish <run dir>: a live run that stopped part-way, finished from its ledgers without any Airwallex call: the facts
+// of every company, and for each company whose payouts are all PAID its receipt and its entries in T:0, converted at the
+// rate the run recorded in its log. Needs E2E_LIVE=yes (T:0 is live) and E2E_T0_CURRENCY as the run read it.
+const finishAt = args.indexOf("--finish");
+if (finishAt >= 0) {
+  const runDir = args[finishAt + 1];
+  if (!runDir || process.env.E2E_LIVE !== "yes") { console.error("--finish <run dir> needs E2E_LIVE=yes: nothing was called"); process.exit(2); }
+  const log = readFileSync(`${runDir}.log`, "utf8");
+  const m = /converted at Airwallex sandbox rate (\d+\.\d+) USD per EUR at (\S+) \((.+)\)$/m.exec(log);
+  const cur = /^([A-Z]{3}):(\d+)$/.exec(process.env.E2E_T0_CURRENCY ?? "");
+  if (!m || !cur) { console.error("the run's log has no recorded rate, or E2E_T0_CURRENCY is not set: nothing was called"); process.exit(2); }
+  const fx = { rate: m[1]!, to: "USD", at: m[2]!, source: m[3]! };
+  const budget = new CallBudget(budgetFromEnv(process.env.E2E_BUDGET), { file: join(runDir, "calls-finish.jsonl") });
+  const client = new T0Client({ apiKey: PROXY_INJECTED, fetch: budget.fetchFor("t0"), retryDelayMs: 0 });
+  // The chart as read once into the run's folder (t0-chart.json), so finishing does not read it again.
+  const chartFile = join(runDir, "t0-chart.json");
+  const chart = existsSync(chartFile) ? JSON.parse(readFileSync(chartFile, "utf8")) as Awaited<ReturnType<T0Client["listGlAccounts"]>> : null;
+  const t0 = { listGlAccounts: async () => chart ?? client.listGlAccounts(), profitLoss: client.profitLoss.bind(client), postJournalEntry: client.postJournalEntry.bind(client), listJournalEntries: client.listJournalEntries.bind(client) };
+  const facts = await finishRun({ t0, t0Rate: (_d, c) => (c === "EUR" ? Number(fx.rate) : undefined), t0Currency: { currency: cur[1]!, atomsPerUnit: Number(cur[2]) }, fx, now: () => new Date() }, runDir, `${runDir}.log`, WORLD);
+  for (const f of facts) console.log(`${f.key.padEnd(12)} ${f.account}: ${f.transfers.map((t) => `${t.transfer_id ?? "(no transfer)"} ${t.status}`).join(", ")}${f.receipt ? `; receipt ${f.receipt}; T:0 ${f.t0_entries.join(", ")}` : ""}`);
+  console.log(`Calls made: ${JSON.stringify({ airwallex: budget.used("airwallex"), t0: budget.used("t0"), claude: budget.used("claude") })}; facts in ${join(runDir, "facts.json")}`);
+  process.exit(0);
+}
 
 // The dry run always runs first: it is the plan the live run is held to.
 const dryDir = join(dirArg ?? join("data", "e2e", stamp), live ? "dry-run" : "");

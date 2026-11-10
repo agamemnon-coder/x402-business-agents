@@ -14,6 +14,9 @@ import { missingFromSchema, payoutBeneficiaryBody } from "../src/airwallex/adapt
 import { RECORDED_BENEFICIARY_SCHEMAS } from "../src/redteam/beneficiarySchemas.js";
 import { FUND_CENTS } from "../src/e2e/setup.js";
 import { verifyReceipt } from "../src/try/receipt.js";
+import { appendFileSync, existsSync } from "node:fs";
+import { finishRun } from "../src/e2e/finish.js";
+import { WORLD } from "../src/e2e/world.js";
 
 let dir: string;
 beforeEach(() => { dir = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "e2e-platform-")); });
@@ -142,5 +145,36 @@ describe("the live run's budget", () => {
     const s = await runPlatformE2E({ ...dry.deps, dir, now, log: () => undefined });
     expect(dry.platform.funded.map((f) => f.accountId)).toEqual(["acct_fake_bakkerij", "acct_fake_fietslab"]);
     expect(s.companies[0]!.funding).toMatch(/^none skipped: EUR 60\.00 already held$/);
+  });
+
+  it("a batch line Airwallex refuses at create stops the run before the next company (10 November: payer registration number)", async () => {
+    const dry = dryRunDeps();
+    const railFor = dry.deps.railFor;
+    const run = runPlatformE2E({ ...dry.deps, railFor: (a) => { const r = railFor(a); if (a === "acct_fake_bakkerij") (r.rail as unknown as { refuseNextTransfer: string | null }).refuseNextTransfer = "validation_failed"; return r; }, dir, now, log: () => undefined });
+    await expect(run).rejects.toThrow(/^BAKKERIJ: .*: the run stops here$/);
+    expect([...dry.rails.keys()]).not.toContain("acct_fake_fietslab");
+  });
+
+  it("a run stopped part-way is finished from the ledgers: facts of every company, receipt and T:0 for the one PAID", async () => {
+    const dry = dryRunDeps();
+    const railFor = dry.deps.railFor;
+    const logFile = `${dir}.log`;
+    await expect(runPlatformE2E({ ...dry.deps, railFor: (a) => { const r = railFor(a); if (a === "acct_fake_bakkerij") (r.rail as unknown as { refuseNextTransfer: string | null }).refuseNextTransfer = "validation_failed"; return r; }, dir, now, log: (l) => appendFileSync(logFile, `${l}\n`) })).rejects.toThrow(/the run stops here/);
+    appendFileSync(logFile, "EUR entries converted at Airwallex sandbox rate 1.111482 USD per EUR at 2026-11-10T07:06:03.000Z (test)\n");
+    const fx = { rate: "1.111482", to: "USD", at: "2026-11-10T07:06:03.000Z", source: "test" };
+    const before = dry.t0.entries.length;
+    const facts = await finishRun({ t0: dry.deps.t0, t0Rate: () => undefined, t0Currency: { currency: "EUR", atomsPerUnit: 100 }, fx, now }, dir, logFile, WORLD);
+    expect(facts.map((f) => f.key)).toEqual(["SANDBOXTEST", "BAKKERIJ"]);
+    expect(facts[0]!.transfers.map((t) => t.status)).toEqual(["PAID"]);
+    expect(facts[1]!.transfers.some((t) => t.status !== "PAID")).toBe(true);
+    const sb = facts[0]!;
+    expect(sb.account).toBe("acct_SC-QD89fOneAeqaRFgOymw");
+    expect(sb.t0_entries).toHaveLength(2);
+    expect(dry.t0.entries.length - before).toBe(2);
+    expect(existsSync(sb.receipt!)).toBe(true);
+    expect(verifyReceipt(JSON.parse(readFileSync(sb.receipt!, "utf8"))).checks.filter((c) => !c.ok)).toEqual([]);
+    expect(facts[1]!.receipt).toBeNull();
+    expect(facts[1]!.refusals.length).toBeGreaterThan(0);
+    rmSync(logFile, { force: true });
   });
 });
