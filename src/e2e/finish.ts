@@ -69,12 +69,12 @@ export function jwkOfCose(coseB64url: string): { kty: "EC"; crv: "P-256"; x: str
 }
 
 /** For a company whose payments were all PAID: its entries to T:0 (tagged, converted at the run's rate) and its receipt. */
-export async function finishPaid(d: Pick<PlatformE2EDeps, "t0" | "t0Rate" | "t0Currency" | "fx" | "now"> & { fx: FxRate }, db: DB, c: Pick<WorldCompany, "key" | "name">, facts: CompanyFacts, file: string): Promise<CompanyFacts> {
+export async function finishPaid(d: Pick<PlatformE2EDeps, "t0" | "t0Rate" | "t0Currency" | "fx" | "now"> & { fx: FxRate; postT0?: boolean }, db: DB, c: Pick<WorldCompany, "key" | "name">, facts: CompanyFacts, file: string): Promise<CompanyFacts> {
   // The last executed payment approval (a retry's, after an earlier one was refused): its payouts must all be PAID.
   const paid = [...facts.approvals].reverse().find((a) => a.status === "EXECUTED" && PAYMENT_KINDS.has(a.kind));
   if (!paid) throw new Error(`${c.key}: no executed payment; nothing to finish`);
   const entries = apJournal(db);
-  const posted = await pushToT0(d as PlatformE2EDeps, toPostings(c, entries, d.fx));
+  const posted = d.postT0 === false ? { posted: [] as { id: string }[], skipped: 0 } : await pushToT0(d as PlatformE2EDeps, toPostings(c, entries, d.fx));
   const p = db.prepare("SELECT terms_json FROM proposals WHERE proposal_id = ?").get(paid.proposal_id) as { terms_json: string };
   const a = db.prepare("SELECT credential_id, assertion_json, verified_at AS created_at FROM passkey_assertions WHERE proposal_id = ? AND terms_sha256 = ?").get(paid.proposal_id, paid.terms_sha256) as { credential_id: string; assertion_json: string; created_at?: string };
   const key = db.prepare("SELECT public_key FROM passkeys WHERE credential_id = ?").get(a.credential_id) as { public_key: string };
@@ -90,7 +90,9 @@ export async function finishPaid(d: Pick<PlatformE2EDeps, "t0" | "t0Rate" | "t0C
     { kind: "signature", at: a.created_at ?? at, data: { proposal_id: paid.proposal_id, kind: paid.kind, terms_sha256: paid.terms_sha256, signed_with: TEST_PASSKEY, credential_id: a.credential_id } },
     ...facts.transfers.map((t): E2eStep => ({ kind: "payout", at, data: { transfer_id: t.transfer_id ?? "", status: t.status, amount: `EUR ${t.amount}`, invoice_no: t.invoice_no, on_behalf_of: facts.account, airwallex_fee: t.airwallex_fee ?? "none", purser_fee: facts.purser_fees.filter((f) => f.with_payout === t.transfer_id).map((f) => `EUR ${f.amount} ${f.status} to ${f.to} via application_fee_options`).join("; ") || "none" } as StepData })),
     { kind: "booked", at, data: { entries: String(entries.length), balanced: entries.reduce((s, e) => s + (e.debit ? toCents(e.debit) : 0) - (e.credit ? toCents(e.credit) : 0), 0) === 0 ? "yes" : "no", audit_chain: facts.audit.ok ? `ok, ${facts.audit.rows} rows, head ${facts.audit.head ?? ""}` : "BROKEN" } },
-    { kind: "t0_posted", at, data: { entity: "T:0 sandbox (shared by the three test companies)", journal_entries: posted.posted.map((x) => x.id), tag: `[${c.key}] PUR-${c.key}-…`, conversion: `converted at Airwallex sandbox rate ${d.fx.rate} ${d.fx.to} per EUR at ${d.fx.at}` } },
+    d.postT0 === false
+      ? { kind: "t0_posted", at, data: { entity: "T:0 sandbox (shared by the three test companies)", journal_entries: [], note: "not posted yet: the approved T:0 call budget is spent; the entries are in the company's books" } }
+      : { kind: "t0_posted", at, data: { entity: "T:0 sandbox (shared by the three test companies)", journal_entries: posted.posted.map((x) => x.id), tag: `[${c.key}] PUR-${c.key}-…`, conversion: `converted at Airwallex sandbox rate ${d.fx.rate} ${d.fx.to} per EUR at ${d.fx.at}` } },
   ];
   const receipt: TryReceipt & { e2e: ReturnType<typeof chainSteps> } = {
     receipt: RECEIPT_FORMAT,
@@ -104,10 +106,11 @@ export async function finishPaid(d: Pick<PlatformE2EDeps, "t0" | "t0Rate" | "t0C
 }
 
 /** Every company folder of a run, its facts, and the PAID ones finished. */
-export async function finishRun(d: Pick<PlatformE2EDeps, "t0" | "t0Rate" | "t0Currency" | "now"> & { fx: FxRate }, dir: string, logFile: string, world: Pick<WorldCompany, "key" | "name">[]): Promise<CompanyFacts[]> {
+export async function finishRun(d: Pick<PlatformE2EDeps, "t0" | "t0Rate" | "t0Currency" | "now"> & { fx: FxRate; postT0?: boolean; only?: string[]; factsFile?: string }, dir: string, logFile: string, world: Pick<WorldCompany, "key" | "name">[]): Promise<CompanyFacts[]> {
   const log = readFileSync(logFile, "utf8");
   const out: CompanyFacts[] = [];
   for (const c of world) {
+    if (d.only && !d.only.includes(c.key)) continue;
     const f = join(dir, c.key.toLowerCase(), "ledger.db");
     if (!existsSync(f)) continue;
     const db = openDb(f);
@@ -119,6 +122,6 @@ export async function finishRun(d: Pick<PlatformE2EDeps, "t0" | "t0Rate" | "t0Cu
       out.push(facts);
     } finally { db.close(); }
   }
-  writeFileSync(join(dir, "facts.json"), `${JSON.stringify(out, null, 2)}\n`);
+  writeFileSync(join(dir, d.factsFile ?? "facts.json"), `${JSON.stringify(out, null, 2)}\n`);
   return out;
 }

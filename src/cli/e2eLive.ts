@@ -5,14 +5,18 @@
 //                             refuses before any call when the dry run says the run would need more.
 // Options: --dir <folder> (default data/e2e/<time>). T0_RATES (e.g. "EUR=1.08") when T:0's currency is not EUR.
 
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { CallBudget, PHASE2_BUDGET, type Service } from "../e2e/budget.js";
 import { estimateLive } from "../e2e/estimate.js";
 import { functionalCurrency } from "../accounting/t0.js";
 import { runPlatformE2E, type RunSummary } from "../e2e/platformRun.js";
-import { budgetedReader, dryRunDeps, liveDeps, parserOnly, PROXY_INJECTED } from "../e2e/setup.js";
+import { budgetedReader, dryRunDeps, liveDeps, parserOnly, PROXY_INJECTED, PURSER_PLATFORM_ACCOUNT } from "../e2e/setup.js";
 import { finishRun } from "../e2e/finish.js";
+import { retryCompany } from "../e2e/retry.js";
+import { WaitingForAirwallexApproval } from "../e2e/platformRun.js";
+import { Airwallex, fromEnv as airwallexEnv } from "../airwallex/client.js";
+import { AirwallexRest } from "../airwallex/adapter.js";
 import { WORLD } from "../e2e/world.js";
 import { T0Client } from "../accounting/t0.js";
 
@@ -58,6 +62,40 @@ if (finishAt >= 0) {
   const facts = await finishRun({ t0, t0Rate: (_d, c) => (c === "EUR" ? Number(fx.rate) : undefined), t0Currency: { currency: cur[1]!, atomsPerUnit: Number(cur[2]) }, fx, now: () => new Date() }, runDir, `${runDir}.log`, WORLD);
   for (const f of facts) console.log(`${f.key.padEnd(12)} ${f.account}: ${f.transfers.map((t) => `${t.transfer_id ?? "(no transfer)"} ${t.status}`).join(", ")}${f.receipt ? `; receipt ${f.receipt}; T:0 ${f.t0_entries.join(", ")}` : ""}`);
   console.log(`Calls made: ${JSON.stringify({ airwallex: budget.used("airwallex"), t0: budget.used("t0"), claude: budget.used("claude") })}; facts in ${join(runDir, "facts.json")}`);
+  process.exit(0);
+}
+
+// --retry <run dir> KEY[,KEY]: the companies' refused payouts paid again from their own ledgers (src/e2e/retry.ts), with
+// their TEST registration numbers as the payer's; then their receipts (T:0 not posted: --t0 posts too). Needs E2E_LIVE=yes.
+const retryAt = args.indexOf("--retry");
+if (retryAt >= 0) {
+  const runDir = args[retryAt + 1], keys = (args[retryAt + 2] ?? "").split(",").filter(Boolean);
+  if (!runDir || !keys.length || process.env.E2E_LIVE !== "yes") { console.error("--retry <run dir> KEY[,KEY] needs E2E_LIVE=yes: nothing was called"); process.exit(2); }
+  const cfg = airwallexEnv({ ...process.env, AIRWALLEX_CALL_BUDGET: undefined, AIRWALLEX_CALL_LOG: undefined, AIRWALLEX_PLATFORM: undefined });
+  if (!cfg) { console.error("no Airwallex keys: nothing was called"); process.exit(2); }
+  const facts = JSON.parse(readFileSync(join(runDir, "facts.json"), "utf8")) as { key: string; account: string }[];
+  const budget = new CallBudget(budgetFromEnv(process.env.E2E_BUDGET), { file: join(runDir, "calls-retry.jsonl") });
+  const fetchAwx = budget.fetchFor("airwallex");
+  const rails = new Map<string, AirwallexRest>();
+  const railFor = (accountId: string) => { let r = rails.get(accountId); if (!r) rails.set(accountId, (r = new AirwallexRest(new Airwallex({ clientId: cfg.clientId, apiKey: cfg.apiKey, fetchImpl: fetchAwx, onBehalfOf: accountId })))); return { rail: r, sim: r }; };
+  const retryLog = (l: string) => { console.log(l); appendFileSync(`${runDir}.log`, `${l}\n`); };
+  try {
+    for (const key of keys) {
+      const c = WORLD.find((w) => w.key === key), account = facts.find((f) => f.key === key)?.account;
+      if (!c || !account) throw new Error(`${key}: not a company of this run`);
+      await retryCompany({ platform: { feeAccount: PURSER_PLATFORM_ACCOUNT }, railFor, feeBps: "50", now: () => new Date(), log: retryLog }, runDir, { ...c, accountId: account });
+    }
+  } catch (e) {
+    console.error(e instanceof WaitingForAirwallexApproval ? `IN_APPROVAL at Airwallex: ${e.transfers.join(", ")} (${e.company}): a person approves it in Airwallex's web app; then: --follow` : (e as Error).message);
+    console.log(`Calls made: ${JSON.stringify({ airwallex: budget.used("airwallex"), t0: budget.used("t0"), claude: budget.used("claude") })}`);
+    process.exit(e instanceof WaitingForAirwallexApproval ? 5 : 1);
+  }
+  const log = readFileSync(`${runDir}.log`, "utf8");
+  const m = /converted at Airwallex sandbox rate (\d+\.\d+) USD per EUR at (\S+) \((.+)\)$/m.exec(log)!;
+  const fx = { rate: m[1]!, to: "USD", at: m[2]!, source: m[3]! };
+  const done = await finishRun({ t0: null as never, t0Rate: () => undefined, fx, now: () => new Date(), postT0: false, only: keys, factsFile: "facts-retry.json" }, runDir, `${runDir}.log`, WORLD);
+  for (const f of done) console.log(`${f.key.padEnd(12)} ${f.account}: ${f.transfers.map((t) => `${t.transfer_id ?? "(none)"} ${t.status}`).join(", ")}; receipt ${f.receipt ?? "none"}`);
+  console.log(`Calls made: ${JSON.stringify({ airwallex: budget.used("airwallex"), t0: budget.used("t0"), claude: budget.used("claude") })}`);
   process.exit(0);
 }
 

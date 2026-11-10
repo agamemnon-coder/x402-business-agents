@@ -24,7 +24,7 @@ import { followPayouts } from "../payouts/follow.js";
 import { FakeAuthenticator } from "../redteam/authenticator.js";
 import type { Asker } from "../ap/read.js";
 import type { PlatformOps } from "./platformOps.js";
-import { E2E_ORIGIN, E2E_RP_ID, withPayer, type CompanyRails } from "./platformRun.js";
+import { E2E_ORIGIN, E2E_RP_ID, WaitingForAirwallexApproval, withPayer, type CompanyRails } from "./platformRun.js";
 import type { WorldCompany } from "./world.js";
 
 export interface RetryDeps {
@@ -86,6 +86,8 @@ export async function retryCompany(d: RetryDeps, runDir: string, c: WorldCompany
     await syncPayments(db, { now });
     const mine = db.prepare("SELECT t.transfer_id, t.status, t.invoice_no, t.failure_reason FROM transfers t WHERE t.rowid > (SELECT COALESCE(MAX(rowid), 0) FROM transfers WHERE status = 'CANCELLED')").all() as { transfer_id: string | null; status: string; invoice_no: string; failure_reason: string | null }[];
     d.log(`${c.key.padEnd(12)} retry paid: ${mine.map((t) => `${t.transfer_id ?? "(none)"} ${t.status}`).join(", ")}`);
+    const held = mine.filter((t) => t.status === "IN_APPROVAL").map((t) => t.transfer_id ?? "(no id)");
+    if (held.length) throw new WaitingForAirwallexApproval(c.key, held);
     if (!mine.length || mine.some((t) => t.status !== "PAID")) throw new Error(`${c.key}: ${mine.map((t) => `${t.invoice_no} ${t.status}${t.failure_reason ? ` (${t.failure_reason})` : ""}`).join("; ") || "no payout"}: the retry stops here`);
     return proposal.proposal_id;
   } finally {
