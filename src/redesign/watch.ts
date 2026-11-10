@@ -50,7 +50,19 @@ ol.log .pf { font-size: 14px; font-weight: 600; color: var(--accent); text-decor
 ol.log span.pf { color: var(--muted); }
 ol.log p.by { font-size: 14px; color: var(--faint); margin-top: 2px; }
 ol.log .call { margin-top: 6px; }
-@media (max-width: 999px) { .logp { max-height: 560px; } }`;
+@media (max-width: 999px) { .logp { max-height: 560px; } }
+/* Readable pace (Max, 10 Nov: "too fast to read"): a caption per step, a speed switch, step buttons, named chapters. */
+.cap { margin: 0 0 12px; padding: 14px 16px; border-radius: 16px; background: var(--accent-soft); border-left: 4px solid var(--accent); font-size: clamp(17px, 1.6vw, 21px); font-weight: 650; line-height: 1.4; min-height: 3.2em; overflow-wrap: anywhere; }
+.cap small { display: block; font-size: 13.5px; font-weight: 600; color: var(--muted); margin-bottom: 2px; letter-spacing: .02em; }
+.sbtn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text); display: grid; place-items: center; cursor: pointer; flex: none; }
+.sbtn:disabled { opacity: .4; cursor: default; }
+#back .i { transform: rotate(180deg); }
+.seg.speed button { padding: 11px 10px; }
+.chapters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chapters button { border: 1px solid var(--border); background: var(--surface); color: var(--muted); font: 650 13.5px/1 Inter, system-ui, sans-serif; padding: 8px 12px; border-radius: 999px; cursor: pointer; }
+.chapters button.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+ol.log li:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+ol.log p { font-size: 16.5px; }`;
 
 const JS = `
 (function () {
@@ -62,7 +74,19 @@ const JS = `
   var st = Stage(document.querySelector("[data-stage]"), run);
   var log = document.getElementById("log"), bar = document.querySelector(".progress i"), count = document.getElementById("count"), playBtn = document.getElementById("play");
   var names = {}; run.agents.forEach(function (a) { names[a.id] = a; });
-  var i = 0, playing = false, timer = null;
+  var i = 0, playing = false, timer = null, speed = 0.5;
+  var cap = document.getElementById("cap"), backBtn = document.getElementById("back"), fwdBtn = document.getElementById("fwd");
+  function first(t) { var m = /^(.{20,}?[.!?])(\\s|$)/.exec(t || ""); var x = m ? m[1] : (t || ""); return x.length > 150 ? x.slice(0, 147).replace(/\\s+\\S*$/, "") + "…" : x; }
+  function caption(e) {
+    var who = "", what = "";
+    if (e.k === "say" || e.k === "msg") { var a = names[e.agent] || { short: e.agent }; who = a.short + " agent" + (e.k === "say" ? (e.by === "claude" ? " · decided by Claude" : " · fallback code") : " · message"); what = first(e.text); }
+    else if (e.k === "money") { var rail = e.rail === "metal" ? "Metal" : "Airwallex", amt = e.amount ? (e.unit === "EUR" ? "EUR " + e.amount : e.unit === "USD" ? "USD " + e.amount : e.amount + " test USD") + " · " : ""; who = rail; what = e.refused ? amt + e.what + " → refused" : (e.dir === "in" ? amt + e.what + " → received" : amt + e.what + " → paid"); }
+    else if (e.k === "face") { who = "CFO · Face ID"; what = e.status === "STOPPED" ? e.title + " was approved, but not run" : e.status === "REJECTED" ? "Rejects " + e.title.toLowerCase() : "Signs " + e.title.toLowerCase() + " (the exact terms)"; }
+    else if (e.k === "mandate") { who = "Metal"; what = "New mandate for " + (names[e.agent] ? names[e.agent].short : e.agent) + ": cap " + e.cap; }
+    else if (e.k === "routine") { who = "Routine checks"; what = e.text; }
+    else { who = e.k === "shield" ? "Blocked" : "The world changes"; what = first(e.text); }
+    cap.textContent = ""; cap.appendChild(el("small", "", who)); cap.appendChild(document.createTextNode(what));
+  }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   function svg(name) { var t = document.createElement("template"); t.innerHTML = IC[name]; return t.content.firstChild; }
   function time(at) { return at.slice(11, 19) + " UTC"; }
@@ -154,6 +178,9 @@ const JS = `
     bar.style.width = (i / ev.length * 100) + "%";
     count.textContent = "step " + i + " of " + ev.length;
     var s = sceneOf(Math.max(0, i - 1));
+    document.querySelectorAll("#chapters button").forEach(function (b) { b.classList.toggle("on", +b.getAttribute("data-n") === s); });
+    backBtn.disabled = i <= 1; fwdBtn.disabled = i >= ev.length;
+    if (i > 0) caption(ev[i - 1]);
   }
   function setPlay(on) {
     playing = on; playBtn.textContent = ""; playBtn.appendChild(svg(on ? "pause" : i >= ev.length ? "rotate-ccw" : "play"));
@@ -163,7 +190,7 @@ const JS = `
   function tick() {
     if (i >= ev.length) { setPlay(false); return; }
     var e = ev[i++]; log.insertBefore(entry(e), log.firstChild); var ms = st.show(e, { sentences: 2 }); mark();
-    timer = setTimeout(function () { if (playing) tick(); }, ms);
+    timer = setTimeout(function () { if (playing) tick(); }, Math.round(ms / speed));
   }
   function jump(k) {
     clearTimeout(timer); st.reset(); log.textContent = "";
@@ -172,13 +199,21 @@ const JS = `
     st.clear(); mark();
   }
   playBtn.addEventListener("click", function () { if (!playing && i >= ev.length) jump(0); setPlay(!playing); });
+  function stepTo(k) { setPlay(false); k = Math.max(1, Math.min(ev.length, k)); jump(k - 1); var e = ev[i++]; log.insertBefore(entry(e), log.firstChild); st.show(e, { sentences: 2, instant: st.reduce }); mark(); }
+  backBtn.addEventListener("click", function () { stepTo(i - 1); });
+  fwdBtn.addEventListener("click", function () { stepTo(i + 1); });
+  document.querySelectorAll("#speed button").forEach(function (b) {
+    b.addEventListener("click", function () { speed = +b.getAttribute("data-speed"); document.querySelectorAll("#speed button").forEach(function (x) { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b)); }); });
+  });
+  function chapters() { var c = document.getElementById("chapters"); c.textContent = ""; SC.forEach(function (x) { var b = el("button", "", x.n + " · " + x.title); b.type = "button"; b.setAttribute("data-n", String(x.n)); b.addEventListener("click", function () { stepTo(x.start + 1); }); c.appendChild(b); }); }
+  chapters();
   function marks() { var pr = document.querySelector(".progress"); pr.querySelectorAll("em").forEach(function (m) { m.remove(); }); SC.forEach(function (s) { var m = el("em"); m.style.left = (s.start / ev.length * 100) + "%"; pr.appendChild(m); }); }
   marks();
   document.querySelectorAll("#mode button").forEach(function (b) {
     b.addEventListener("click", function () {
       mode = b.getAttribute("data-mode"); ev = MODES[mode].events; SC = MODES[mode].scenes;
       document.querySelectorAll("#mode button").forEach(function (x) { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b)); });
-      marks(); jump(0); setPlay(true);
+      marks(); chapters(); jump(0); setPlay(true);
     });
     var on = b.getAttribute("data-mode") === mode; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on));
   });
@@ -205,13 +240,18 @@ export function watchPage(run: AgentRun = agentRun()): string {
   <p class="setup">${esc(WORLD_SETUP)}</p>
   <div class="wgrid">
     <div>
+      <p class="cap" id="cap" aria-live="off"><small>Press play</small>One step at a time, with the agent's own words on the right.</p>
       ${stageHtml(run.agents, s1?.steps[0]?.text ?? "Northwind Outdoor sells live stock data per query")}
       <div class="controls">
+        <button class="sbtn" id="back" type="button" aria-label="Previous step">${icon("arrow-right", 18)}</button>
         <button class="ibtn" id="play" type="button" aria-label="Play">${icon("play", 20)}</button>
+        <button class="sbtn" id="fwd" type="button" aria-label="Next step">${icon("arrow-right", 18)}</button>
+        <div class="seg speed" id="speed" role="group" aria-label="Speed"><button type="button" data-speed="0.5" class="on" aria-pressed="true">0.5×</button><button type="button" data-speed="1" aria-pressed="false">1×</button><button type="button" data-speed="2" aria-pressed="false">2×</button></div>
         <div class="seg" id="mode" role="group" aria-label="What to watch"><button type="button" data-mode="hl" class="on" aria-pressed="true">Highlights</button><button type="button" data-mode="full" aria-pressed="false">Full run (${run.events.length} steps)</button></div>
         <span class="count" id="count"></span>
       </div>
       <div class="progress" aria-hidden="true"><i></i></div>
+      <div class="chapters" id="chapters" role="group" aria-label="Chapters"></div>
     </div>
     <div class="wside">
       <a class="nextstep card" href="try" data-next="try"><span class="fn">2</span><span class="ft"><b>Now try it yourself</b><small>Sign with your Face ID · about a minute</small></span>${icon("arrow-right", 20)}</a>

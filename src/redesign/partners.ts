@@ -18,6 +18,7 @@ import { AIRI_CSS, airiRunBlock } from "./airiRun.js";
 import { awxRun, awxRunBlock } from "./awxRun.js";
 import { vic2RunBlock } from "./vic2Run.js";
 import { VIC_FLOW_CSS, vicFlowBlock } from "./vicFlow.js";
+import { VISA_OVERVIEW_CSS, VISA_TAP_ID, visaOverviewBlock } from "./visaOverview.js";
 import { OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
 
 const CSS = `.pp { padding: 26px 0 24px; }
@@ -72,7 +73,8 @@ a.pf { color: var(--accent); font-weight: 600; text-decoration: none; font-size:
 .nf .tabs2 { display: flex; flex-wrap: wrap; gap: 10px; }
 ${READBACK_CSS}
 ${AIRI_CSS}
-${VIC_FLOW_CSS}`;
+${VIC_FLOW_CSS}
+${VISA_OVERVIEW_CSS}`;
 
 const SOURCE = (run: AgentRun) => `Source: ${run.file} (${run.name}); the card run from ${tapRun()?.file ?? "docs/runs"}.`;
 const node = (ic: string, title: string, sub: string, tone = "") => `<div class="node ${tone}"><span class="ic">${icon(ic, 22)}</span><b>${esc(title)}</b><span>${esc(sub)}</span></div>`;
@@ -81,9 +83,9 @@ const nums = (items: [string, string][]) => `<div class="nums">${items.map(([v, 
 const docsLi = (title: string, docs: { label: string; href: string }[]) => `<li>${esc(title)}: ${docs.map((d) => `<a class="pf" href="${esc(d.href)}" target="_blank" rel="noopener">${esc(d.label)} ↗</a>`).join(" · ")}</li>`;
 const plainLi = (t: string) => `<li>${esc(t)}</li>`;
 
-function shell(run: AgentRun, o: { intro?: string; top?: string; underTop?: string; label?: string; title: string; description: string; logo: string; h1: string; picture: string; flowClass?: string; nums: string; line: string; extra?: string; folds: string; proofHash: string; js?: string }): string {
+function shell(run: AgentRun, o: { intro?: string; lead?: string; top?: string; underTop?: string; label?: string; title: string; description: string; logo: string; h1: string; picture: string; flowClass?: string; nums: string; line: string; extra?: string; folds: string; proofHash: string; js?: string }): string {
   const body = `<main class="pp"><div class="wrap">
-  ${o.intro ? `<p class="vintro">${esc(o.intro)}</p>` : ""}${o.top ? `<div class="awrb">${o.top}</div>` : ""}${o.underTop ?? ""}
+  ${o.intro ? `<p class="vintro">${esc(o.intro)}</p>` : ""}${o.lead ?? ""}${o.top ? `<div class="awrb">${o.top}</div>` : ""}${o.underTop ?? ""}
   <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(o.label ?? run.label)}</span><h1>${esc(o.h1)}</h1></div>
   ${o.flowClass ? `<div class="flow card ${o.flowClass}">${o.picture}</div>` : `<div class="flow card" role="img" aria-label="${esc(`How ${o.title} fits in, step by step`)}">${o.picture}</div>`}
   ${o.nums}
@@ -233,9 +235,13 @@ export function visaPage(run: AgentRun = agentRun()): string {
   return shell(run, {
     // One plain sentence first (Max, 10 Nov): what the Visa Award entry is, in words a juror reads at a glance.
     ...(airi ? { intro: VISA_ENTRY_LINE } : {}),
+    // First the overview (Max, 10 Nov: more Visa, fewer words): the flow in four nodes and the three Visa runs as cards.
+    lead: visaOverviewBlock(),
     top: airi,
-    // Under it, how a VIC purchase runs (7 Nov): seven steps, purchase B's ids, C's branch (src/redesign/vicFlow.ts).
-    underTop: airi ? vicFlowBlock() + vic2RunBlock(undefined, { fold: false }) : "",
+    // Under it, how a VIC purchase runs (7 Nov): seven steps, purchase B's ids, C's branch (src/redesign/vicFlow.ts);
+    // the second Airi run in the same padded column as the first (its card touched the page edge outside it), then the
+    // TAP run's anchor, which the overview's TAP card links to.
+    underTop: airi ? `${vicFlowBlock()}<div class="awrb">${vic2RunBlock(undefined, { fold: false })}</div><span id="${VISA_TAP_ID}"></span>` : "",
     title: "Visa", description: "Visa Intelligent Commerce through Airwallex's Airi, run live in the Airwallex sandbox: above the limit, the agent gets a single-use Visa credential only after the CFO's Face ID. Visa TAP below, as an extra.",
     logo: LOGO.visa, h1: "The agent signs before it pays", proofHash: "airi-run",
     picture: [node("package", "Agent signs", buy?.model ? `Sourcing · Claude ${family(buy.model)}` : "TAP signature"), arrow,

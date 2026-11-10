@@ -100,6 +100,38 @@ export interface T0BalanceSheet extends T0ReportHead {
   sections: { account_type: string; label: string; balances: T0Balances; children?: T0ReportAccount[] }[];
 }
 
+export interface T0CashFlow extends T0ReportHead {
+  sections: { key: string; label: string; is_subtotal?: boolean; balances: T0Balances; accounts?: unknown[] }[];
+}
+
+export interface BalanceSheetPeriodCheck { period: string; assets: number; liabilities: number; equity: number; difference: number; balances: boolean; noData: boolean }
+
+/** T:0's own balance sheet must balance: assets = liabilities + equity in every period. A period with no data is reported
+ *  as not checkable, never as balanced. Amounts are in reporting-currency units. */
+export function balanceSheetCheck(bs: T0BalanceSheet): BalanceSheetPeriodCheck[] {
+  const section = (type: string) => {
+    const s = bs.sections.find((x) => x.account_type.toLowerCase().startsWith(type));
+    if (!s) throw new Error(`T:0 balance sheet has no ${type} section`);
+    return s;
+  };
+  const assets = section("asset"), liabilities = section("liabilit"), equity = section("equity");
+  const unit = bs.atoms_per_unit || 1;
+  return bs.periods.map((p) => {
+    const a = assets.balances[p.id], l = liabilities.balances[p.id], e = equity.balances[p.id];
+    const noData = a == null && l == null && e == null;
+    const diffAtoms = (a ?? 0) - (l ?? 0) - (e ?? 0);
+    return { period: p.label, assets: (a ?? 0) / unit, liabilities: (l ?? 0) / unit, equity: (e ?? 0) / unit, difference: diffAtoms / unit, balances: !noData && diffAtoms === 0, noData };
+  });
+}
+
+/** The cash flow statement's computed net change in cash per period (the last subtotal section), in units. */
+export function cashFlowNetChange(cf: T0CashFlow): { period: string; netChange: number | null }[] {
+  const subtotals = cf.sections.filter((s) => s.is_subtotal);
+  const net = subtotals.find((s) => /net/i.test(s.key) || /net/i.test(s.label)) ?? subtotals[subtotals.length - 1];
+  const unit = cf.atoms_per_unit || 1;
+  return cf.periods.map((p) => ({ period: p.label, netChange: net?.balances[p.id] == null ? null : (net.balances[p.id] as number) / unit }));
+}
+
 // ---- Client ----
 
 export class T0Error extends Error {
@@ -197,6 +229,10 @@ export class T0Client {
 
   async balanceSheet(q: T0ReportQuery): Promise<T0BalanceSheet> {
     return this.#request<T0BalanceSheet>("GET", "/v1/reports/balance-sheet", { ...q });
+  }
+
+  async cashFlow(q: T0ReportQuery): Promise<T0CashFlow> {
+    return this.#request<T0CashFlow>("GET", "/v1/reports/cash-flow", { ...q });
   }
 
   async #request<T>(method: "GET" | "POST", path: string, query: Query = {}, body?: unknown, headers: Record<string, string> = {}): Promise<T> {
