@@ -122,7 +122,10 @@ const ENGLISH = /\b(Invoices?|Supplier|Due|Amount|Paid|Blocked|Rejected|Ready to
 
 /** The words a page shows: its HTML text and every catalogue string its script carries, without code and values. */
 function shownText(html: string): string {
-  return html.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ");
+  // Repeated until nothing changes, so a tag split around another (<scr<script>ipt>) cannot survive (CodeQL).
+  let out = html, prev;
+  do { prev = out; out = out.replace(/<script\b[\s\S]*?<\/script\s*>/gi, " ").replace(/<style\b[\s\S]*?<\/style\s*>/gi, " ").replace(/<svg\b[\s\S]*?<\/svg\s*>/gi, " ").replace(/<[^>]+>/g, " "); } while (out !== prev);
+  return out;
 }
 
 describe("a Dutch page", () => {

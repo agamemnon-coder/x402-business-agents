@@ -18,7 +18,7 @@ afterEach(() => c.close());
 const script = (html: string) => {
   const blocks = scriptBlocks(html);
   expect(blocks).toHaveLength(1);
-  return blocks[0]!.replace(/^<script[^>]*>/, "").replace(/<\/script>$/, "");
+  return blocks[0]!.replace(/^<script\b[^>]*>/i, "").replace(/<\/script\s*>$/i, "");
 };
 
 describe("the console page", () => {
@@ -46,7 +46,8 @@ describe("the console page", () => {
 
   it("has no inline handlers, no javascript: links and no style attributes, and its script parses", () => {
     const html = consolePage("n0nce", { origin: ORIGIN, rpId: RP, mailDomain: "in.purser.test" });
-    const markup = html.replace(/<script[\s\S]*?<\/script>/g, "").replace(/<style[\s\S]*?<\/style>/g, "");
+    let markup = html, prev;
+    do { prev = markup; markup = markup.replace(/<script\b[\s\S]*?<\/script\s*>/gi, "").replace(/<style\b[\s\S]*?<\/style\s*>/gi, ""); } while (markup !== prev);
     expect(markup).not.toMatch(/\son[a-z]+\s*=/i);
     expect(markup).not.toMatch(/javascript:/i);
     expect(markup).not.toMatch(/\sstyle\s*=/i);

@@ -239,3 +239,21 @@ describe("the payables page", () => {
     expect(await over.text()).not.toMatch(/AP-/);
   });
 });
+
+describe("the pages' language from the request (CodeQL: reflected input)", () => {
+  const evil = ['<script>alert(1)</script>', '"><img src=x onerror=alert(1)>', "en<script>"];
+  it("never puts ?lang= or the language cookie into the page: only 'nl' or 'en' come out", async () => {
+    await start(false);
+    for (const v of evil) {
+      for (const path of ["/", "/transactions"]) {
+        const byQuery = await (await fetch(`${base}${path}?lang=${encodeURIComponent(v)}`)).text();
+        const byCookie = await (await fetch(base + path, { headers: { cookie: `purser_lang=${encodeURIComponent(v)}` } })).text();
+        for (const html of [byQuery, byCookie]) {
+          expect(html.toLowerCase()).not.toContain("<script>alert");
+          expect(html.toLowerCase()).not.toContain("onerror=alert");
+          expect(html).toMatch(/<html lang="(nl|en)"/);
+        }
+      }
+    }
+  });
+});

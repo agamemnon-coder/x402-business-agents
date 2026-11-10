@@ -55,7 +55,8 @@ const LANG_COOKIE = "purser_lang";
 function cookieLang(header: string | undefined): Lang | null {
   for (const part of (header ?? "").split(";")) {
     const [k, v] = part.trim().split("=");
-    if (k === LANG_COOKIE && isLang(v)) return v;
+    // A literal, never the cookie's own text: the page can only ever carry 'nl' or 'en' (CodeQL: reflected input).
+    if (k === LANG_COOKIE && isLang(v)) return v === "en" ? "en" : "nl";
   }
   return null;
 }
@@ -160,8 +161,10 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
   const langOf = (req: Request, res: Response): Lang => {
     const asked = req.query.lang;
     if (isLang(asked)) {
-      res.setHeader("Set-Cookie", `${LANG_COOKIE}=${asked}; Path=/; Max-Age=31536000; SameSite=Strict; HttpOnly`);
-      return asked;
+      // A literal from here on, never the request's own text (CodeQL: reflected input).
+      const lang: Lang = asked === "en" ? "en" : "nl";
+      res.setHeader("Set-Cookie", `${LANG_COOKIE}=${lang}; Path=/; Max-Age=31536000; SameSite=Strict; HttpOnly`);
+      return lang;
     }
     return cookieLang(req.headers.cookie) ?? companyLang();
   };
