@@ -6,7 +6,7 @@ import { buildPages } from "../src/relay/assets.js";
 import { AGENT_IDS, agentView } from "../src/redesign/agents.js";
 import { REPO_BLOB } from "../src/redesign/metalStory.js";
 import { loadRecord, decisionsOf } from "../src/redesign/run.js";
-import { MAIN_RUN_GLOSSARY, liveRuns, runsReadme } from "../src/redesign/runs.js";
+import { MAIN_RUN_GLOSSARY, liveRuns, mdCell, runsReadme } from "../src/redesign/runs.js";
 import { loadTrace } from "../src/redesign/trace.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
 
@@ -50,6 +50,12 @@ describe("/runs", () => {
       const [a, b] = k.split(".");
       expect(b ? Object.hasOwn(rec[a!]!, b) : Object.hasOwn(rec, a!)).toBe(true);
     }
+  });
+
+  it("escapes a table cell's backslashes before its pipes", () => {
+    expect(mdCell("a|b")).toBe("a\\|b");
+    expect(mdCell("a\\|b")).toBe("a\\\\\\|b");
+    expect(mdCell("C:\\path")).toBe("C:\\\\path");
   });
 
   it("docs/runs/README.md is the same list (npx tsx src/cli/runs-readme.ts)", () => {

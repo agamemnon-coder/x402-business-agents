@@ -185,9 +185,12 @@ ${MAIN_RUN_GLOSSARY.map(([k, v]) => `<dt><code>${esc(k)}</code></dt><dd>${esc(v)
   });
 }
 
+/** Text for one Markdown table cell: backslashes escaped first, then the pipes that would end the cell. */
+export const mdCell = (s: string) => s.replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
+
 /** docs/runs/README.md, generated from the same rows (npx tsx src/cli/runs-readme.ts). */
 export function runsReadme(rows: RunRow[] = liveRuns()): string {
-  const cell = (s: string) => s.replace(/\|/g, "\\|");
+  const cell = mdCell;
   const idCell = (i: RunId) => `${i.label}: ${i.href?.startsWith("http") ? `[\`${i.value}\`](${i.href})` : `\`${i.value}\``}`;
   return `# Live runs
 
