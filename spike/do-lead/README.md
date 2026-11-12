@@ -19,4 +19,13 @@ What ran (local workerd through wrangler 4.155.0, nodejs_compat, a SQLite-backed
   (not `possible_fraud`: the demo's scenarios should pick their catch invoices by what the checks answer).
 - The two runtime probes not covered by the joined one, re-run: `node spike/do-runtime/run.mjs p5-claude p6-airwallex`, both HTTP 200.
 
+- The engine loaded on first use (`spike/do-lead/lazyWorker.ts`, `startup.mjs`): before the object's first engine call the engine is
+  not loaded; after it the chain pays as before. First-answer times of a fresh local workerd were the same with and without
+  (1.5 to 2.4 s on a machine with load 30), so local timing does not answer the start-up question.
+- The engine's own Node tests through the shim (`spike/do-lead/shim/`): 48 files, 513 tests, all pass:
+  `npx vitest run --config spike/do-lead/shim/vitest.shim.config.ts --maxWorkers=2 test/ap-*.test.ts test/approvals*.test.ts
+  test/books.test.ts test/close-unsent.test.ts test/executors-*.test.ts test/gl-export.test.ts test/ledger-*.test.ts
+  test/month*.test.ts test/passkey*.test.ts test/payment-batch.test.ts test/payouts-*.test.ts test/stock.test.ts
+  test/supplier-facts.test.ts test/vault-*.test.ts test/cloud-sync.test.ts`
+
 One engine change beyond the explorers': `src/vault/build.ts` reads a filed document through the document store seam.
