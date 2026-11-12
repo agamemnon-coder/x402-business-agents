@@ -70,6 +70,33 @@ describe("AiriCliClient: the answers, parsed strictly", () => {
     expect(m).toEqual({ mandateId: "mdt_live", passkeyUrl: "https://app.airi.com/pay/xyz" });
   });
 
+  it("reads every answer in camelCase or snake_case: the docs show one, the CLI gave the other live (7 Nov, AIRI_OUTPUT_UNRECOGNISED)", async () => {
+    const snake = client({
+      "auth whoami": ok({ authenticated: true, session_expires: "2026-11-07T12:00:00Z" }),
+      "payment-methods list": ok([{ as_default: true, card: { brand: "VISA", last4: "1111" }, payment_method_id: "pm_123", type: "CARD" }]),
+      "mandate get-credential": ok({ status: "READY", token_type: "DPAN", token_expiration: "2026-11-07T12:00:00Z" }),
+      "mandate list": ok({ mandates: [{ mandate_id: "mdt_1", status: "CREATED", description: "order [airi-1]", created_at: "2026-11-07T10:00:00Z" }], has_more: false }),
+    });
+    const camel = client({
+      "auth whoami": ok({ authenticated: true, sessionExpires: "2026-11-07T12:00:00Z" }),
+      "payment-methods list": ok([{ asDefault: true, card: { brand: "VISA", last4: "1111" }, paymentMethodId: "pm_123", type: "CARD" }]),
+      "mandate get-credential": ok({ status: "READY", tokenType: "DPAN", tokenExpiration: "2026-11-07T12:00:00Z" }),
+      "mandate list": ok({ mandates: [{ mandateId: "mdt_1", status: "CREATED", description: "order [airi-1]", createdAt: "2026-11-07T10:00:00Z" }], hasMore: false }),
+    });
+    for (const { c } of [snake, camel]) {
+      expect(await c.whoami()).toEqual({ authenticated: true, sessionExpires: "2026-11-07T12:00:00Z" });
+      expect(await c.listPaymentMethods()).toEqual([{ paymentMethodId: "pm_123", type: "CARD", display: "VISA •••• 1111" }]);
+      expect(await c.getCredential("mdt_1", "/tmp/x/credential.json")).toEqual({ status: "READY", tokenType: "DPAN", tokenExpiration: "2026-11-07T12:00:00Z" });
+      expect(await c.readMandate("mdt_1", "2026-11-07T09:59:00Z")).toEqual({ mandateId: "mdt_1", status: "CREATED", description: "order [airi-1]" });
+      expect(await c.findMandate("order [airi-1]", "2026-11-07T09:59:00Z")).toEqual({ mandateId: "mdt_1", status: "CREATED" });
+    }
+  });
+
+  it("an answer that gives one field in both spellings with different values is refused: nothing is guessed", async () => {
+    const { c } = client({ "mandate create": ok({ mandateId: "mdt_a", mandate_id: "mdt_b", passkeyUrl: "https://app.airi.com/pay/xyz" }) });
+    await expect(c.createMandate({ source: "s", paymentMethodId: "p", merchantName: "m", merchantUrl: "https://m.example/", merchantCountry: "NL", totalAmount: "1.00", currency: "EUR", items: [{ name: "i", unitPrice: "1.00", quantity: "1" }], description: "d" })).rejects.toMatchObject({ code: "AIRI_OUTPUT_UNRECOGNISED" });
+  });
+
   it("mandate create: the documented flags, the id and the one-time link", async () => {
     const { c, seen } = client({ "mandate create": ok({ mandate_id: "mdt_1", passkey_url: "https://app.airi.com/pay/abc" }) });
     const m = await c.createMandate({ source: "Purser sourcing agent", paymentMethodId: "pm_123", merchantName: "Shop", merchantUrl: "https://shop.example/", merchantCountry: "NL", totalAmount: "12.00", currency: "EUR", items: [{ name: "Map", unitPrice: "12.00", quantity: "1" }], description: "order [airi-1]" });

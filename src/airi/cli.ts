@@ -66,17 +66,15 @@ export function childEnv(env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEn
 // ---- the answers, as airi-cli 0.1.0-beta.4 gives them (README, skill, and the shapes seen on 7 November) ----------
 
 const Version = z.object({ version: z.string() });
-const Session = z.object({ authenticated: z.boolean(), session_expires: z.string().optional() });
+// airi-cli 0.1.0-beta.4 answered in camelCase live on 7 Nov (vic-1: { expiresAt, mandateId, passkeyUrl, status }), where
+// its docs show snake_case; the first attempt that day stopped on it (AIRI_OUTPUT_UNRECOGNISED). Since 12 Nov every
+// answer is read in either spelling: its keys are brought to camelCase first (camelKeys), then held to these shapes.
+const Session = z.object({ authenticated: z.boolean(), sessionExpires: z.string().optional() });
 /** `payment-methods list`: an array of { asDefault, card, createdAt, nickName, paymentMethodId, type }. `card` is
  *  sensitive: only a brand and last four are ever read from it, and only when they are plain. */
 const PaymentMethods = z.array(z.object({ paymentMethodId: z.string().min(1).max(200), type: z.string().max(40), card: z.unknown().optional() }));
-// airi-cli 0.1.0-beta.4 answers in camelCase, as seen live on 7 Nov (vic-1): { expiresAt, mandateId, passkeyUrl, status }.
-// The docs show snake_case; both are read, and only the id and the https link are kept.
-const MandateCreated = z.union([
-  z.object({ mandateId: z.string().min(1).max(200), passkeyUrl: z.string().url() }),
-  z.object({ mandate_id: z.string().min(1).max(200), passkey_url: z.string().url() }),
-  z.object({ mandateId: z.string().min(1).max(200), passkey_url: z.string().url() }),
-]);
+/** Only the id and the https link are kept. */
+const MandateCreated = z.object({ mandateId: z.string().min(1).max(200), passkeyUrl: z.string().url() });
 const Receipt = z.object({ status: z.string().max(100), tokenType: z.string().max(100), tokenExpiration: z.string().max(100) });
 const Cancelled = z.object({ status: z.literal("ok") });
 const MandateRow = z.object({ mandateId: z.string().min(1).max(200), status: z.string().max(40), description: z.string().max(500).optional() });
@@ -87,6 +85,25 @@ const MandateList = z.union([
   z.object({ data: z.array(MandateRow) }),
   z.object({ content: z.array(MandateRow) }),
 ]);
+
+/** Thrown by camelKeys when an answer gives one field in both spellings with different values: nothing is guessed. */
+class KeyClash extends Error {}
+const camel = (k: string) => k.replace(/_+([a-z0-9])/g, (_, c: string) => c.toUpperCase());
+/**
+ * An answer with every key in camelCase (mandate_id → mandateId), at any depth; values are untouched. A field given in
+ * both spellings must say the same thing, or the answer is refused (KeyClash).
+ */
+export function camelKeys(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(camelKeys);
+  if (!v || typeof v !== "object") return v;
+  const out: Record<string, unknown> = {};
+  for (const [k, x] of Object.entries(v)) {
+    const key = camel(k), val = camelKeys(x);
+    if (key in out && JSON.stringify(out[key]) !== JSON.stringify(val)) throw new KeyClash(key);
+    out[key] = val;
+  }
+  return out;
+}
 const CliError = z.object({
   error: z.union([z.string(), z.object({ code: z.string().optional(), message: z.string().optional() })]).optional(),
   code: z.string().optional(),
@@ -164,7 +181,12 @@ export class AiriCliClient implements AiriClient {
   }
 
   private parse<T>(name: string, schema: z.ZodType<T>, value: unknown): T {
-    const p = schema.safeParse(value);
+    let read: unknown;
+    try { read = camelKeys(value); } catch (e) {
+      if (e instanceof KeyClash) throw new AiriRefusal("airi", "AIRI_OUTPUT_UNRECOGNISED", `airi-cli ${name}: the answer gives ${e.message} twice, with different values`);
+      throw e;
+    }
+    const p = schema.safeParse(read);
     // The answer itself is never repeated (it may hold card or account data): only where it differed.
     if (!p.success) throw new AiriRefusal("airi", "AIRI_OUTPUT_UNRECOGNISED", `airi-cli ${name}: answer not in the expected shape (${p.error.issues.slice(0, 3).map((i) => i.path.join(".") || "(root)").join(", ")})`);
     return p.data;
@@ -177,7 +199,7 @@ export class AiriCliClient implements AiriClient {
 
   async whoami(): Promise<AiriSession> {
     const s = this.parse("auth whoami", Session, await this.run("auth whoami", ["auth", "whoami"]));
-    return { authenticated: s.authenticated, sessionExpires: s.session_expires ?? null };
+    return { authenticated: s.authenticated, sessionExpires: s.sessionExpires ?? null };
   }
 
   async listPaymentMethods(): Promise<AiriPaymentMethod[]> {
@@ -187,9 +209,8 @@ export class AiriCliClient implements AiriClient {
 
   async createMandate(req: AiriMandateRequest): Promise<AiriMandate> {
     const m = this.parse("mandate create", MandateCreated, await this.run("mandate create", mandateCreateArgs(req)));
-    const link = "passkeyUrl" in m ? m.passkeyUrl : m.passkey_url;
-    if (new URL(link).protocol !== "https:") throw new AiriRefusal("airi", "AIRI_OUTPUT_UNRECOGNISED", "airi-cli mandate create: the approval link is not https");
-    return { mandateId: "mandate_id" in m ? m.mandate_id : m.mandateId, passkeyUrl: link };
+    if (new URL(m.passkeyUrl).protocol !== "https:") throw new AiriRefusal("airi", "AIRI_OUTPUT_UNRECOGNISED", "airi-cli mandate create: the approval link is not https");
+    return { mandateId: m.mandateId, passkeyUrl: m.passkeyUrl };
   }
 
   /** `mandate list` since `createdFrom`, most recent first, up to the 100 a page holds. */
