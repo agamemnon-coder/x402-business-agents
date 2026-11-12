@@ -191,7 +191,7 @@ describe("/security: security and trust", () => {
     expect(text).not.toMatch(/no funds of its own|no funds held/i);
     expect(flat("docs/compliance.md")).toContain("The money sits in the business's own Airwallex account and Metal account. Purser asks those rails to move it");
     expect(flat("docs/airwallex-platform.md")).toContain("The money stays in the company's own Airwallex wallet");
-    expect(flat("README.md")).toContain("Purser is a control layer for AI agents that spend company money");
+    expect(flat("README.md")).toContain("the control layer between a company's AI agents and its money");
     // The softened wording of the claims register, and the note it asks for with it.
     expect(flat("docs/claims.md")).toContain("\"Purser holds no money\" → \"holds no funds of its own\", noting that the runner keeps the testnet owner key.");
     expect(text).not.toMatch(/holds no money/i);

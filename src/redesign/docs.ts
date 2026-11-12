@@ -82,7 +82,7 @@ function demoOpenApi(url: string): string {
 
 const X402_DOC = "docs/metal-award.md", X402_ANCHOR = "#3-x402-on-metal-agents-pay-per-request";
 const WEBHOOKS_DOC = "docs/airwallex.md", WEBHOOKS_ANCHOR = "#webhooks";
-const README = "README.md", README_ANCHOR = "#how-to-run";
+const README = "README.md", README_ANCHOR = "#verify-it-yourself-in-3-commands";
 
 const code = (s: string) => `<code>${esc(s)}</code>`;
 const head = (ic: string, title: string, pill = "") => `<h2><span class="ic">${icon(ic, 19)}</span>${esc(title)}${pill ? `<span class="pill">${esc(pill)}</span>` : ""}</h2>`;
