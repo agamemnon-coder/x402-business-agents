@@ -5,13 +5,17 @@
 // day and per run, and warns at 80%.
 //
 // The split sums to exactly $140 and no block is below what it had already spent on 12 November (evals 24.77, redteam
-// 2.46, reviews 2.09, coder 0.41, ap-agents 1.72). `try` is the jury demo: at most $15 of it per UTC day. The /try site
-// keeps its own day cap in D1 (`try_switches`); the two must agree.
+// 2.46, reviews 2.09, coder 0.41, ap-agents 1.72, ledger-agents 0.55). `try` is the jury demo: at most $15 of it per UTC
+// day. The /try site keeps its own day cap in D1 (`try_switches`); the two must agree.
 
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 
-/** Dollars per block. Sums to BUDGET_STOP_USD. */
-export const BUDGET_BLOCKS = { evals: 25, redteam: 10, soak: 25, reviews: 5, coder: 4, "ap-agents": 8, chain: 25, try: 38 } as const;
+/**
+ * Dollars per block. Sums to BUDGET_STOP_USD. 12 November: "ledger-agents", $10 for the ledger agents' evals and the
+ * agent-driven live run (npm run ledger-evals), taken from `try`, the largest block with nothing spent ($38 to $28; its
+ * $15 day cap is unchanged).
+ */
+export const BUDGET_BLOCKS = { evals: 25, redteam: 10, soak: 25, reviews: 5, coder: 4, "ap-agents": 8, "ledger-agents": 10, chain: 25, try: 28 } as const;
 export type BudgetBlock = keyof typeof BUDGET_BLOCKS;
 /** The ceiling of all Claude spend, and the hard stop below it. */
 export const BUDGET_CEILING_USD = 150;

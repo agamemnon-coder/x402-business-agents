@@ -64,6 +64,8 @@
     "ap-agent-evals": "tsx src/cli/apAgentEvals.ts",
     "ap-hostile-eval": "tsx src/cli/apHostile.ts",
     "coder-evals": "tsx src/cli/coderEvals.ts",
+    "ledger-evals": "tsx src/cli/ledgerEvals.ts",
+    "controller": "tsx src/cli/controller.ts",
     "budget": "tsx src/cli/budget.ts",
     "payables": "tsx src/cli/payables.ts",
     "vault": "tsx src/cli/vault.ts",

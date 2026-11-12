@@ -21,8 +21,9 @@ describe("the Claude budget: $150 ceiling, hard stop at $140", () => {
     expect(BUDGET_RESERVE_USD).toBe(10);
     expect(Object.values(BUDGET_BLOCKS).reduce((a, b) => a + b, 0)).toBe(BUDGET_STOP_USD);
     expect(BUDGET_BLOCKS).toHaveProperty("chain");
-    // 12 November: the Coder evals keep their $4 block and the payables agents' live eval its $8.
-    expect(BUDGET_BLOCKS).toMatchObject({ coder: 4, "ap-agents": 8 });
+    // 12 November: the Coder evals keep their $4 block, the payables agents' live eval its $8, and the ledger agents
+    // their $10 (taken from the jury demo's `try` block).
+    expect(BUDGET_BLOCKS).toMatchObject({ coder: 4, "ap-agents": 8, "ledger-agents": 10, try: 28 });
     expect(DAILY_CAPS_USD.try).toBe(15);
   });
 
@@ -33,7 +34,8 @@ describe("the Claude budget: $150 ceiling, hard stop at $140", () => {
 
   it("refuses any new spend once the recorded total reaches $140, in every block", () => {
     const f = file();
-    recordSpend(f, { block: "try", usd_micros: 38_000_000, what: "demo" });
+    recordSpend(f, { block: "try", usd_micros: 28_000_000, what: "demo" });
+    recordSpend(f, { block: "ledger-agents", usd_micros: 10_000_000, what: "ledger" });
     recordSpend(f, { block: "chain", usd_micros: 25_000_000, what: "chain" });
     recordSpend(f, { block: "soak", usd_micros: 25_000_000, what: "soak" });
     recordSpend(f, { block: "evals", usd_micros: 25_000_000, what: "evals" });

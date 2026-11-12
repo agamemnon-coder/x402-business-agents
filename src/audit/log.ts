@@ -11,7 +11,7 @@ export type Actor =
   | "system" | "claude" | "sourcing" | "support" | "treasury" | "customer"
   | "human" | "owner-signer" | "awx-executor" | "checker" | "payer" // the last two: the payables agents (src/ap/*Agent.ts)
   // An outside agent connected through the agent API (P1).
-  | `ext:${string}`;
+  | `ext:${string}` | "controller" | "books";
 
 export const GENESIS = "0".repeat(64);
 
