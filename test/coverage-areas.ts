@@ -10,6 +10,9 @@ const AREAS: Record<string, { prefixes: string[]; floor: number }> = {
   executors: { prefixes: ["executors/"], floor: 90 },
   relay: { prefixes: ["relay/"], floor: 90 },
   clearing: { prefixes: ["metal/clearing"], floor: 90 },
+  // Invoice tokens on Metal (docs/tokenize.md), added 12 November with test/property-tokenize.test.ts: 92.5% from the
+  // tokenize tests alone that day.
+  tokenize: { prefixes: ["tokenize/"], floor: 90 },
 };
 
 const root = resolve(import.meta.dirname, "..");
