@@ -1,7 +1,7 @@
 // npm run cut -- <submission-3 | walkthrough-5> [--draft] [--demo-day] [--vo <dir>] [--own <shot>=<file>[@<a>-<b>]]...
 // npm run cut -- --check
 // Assembles a film from its cut list (src/film/cuts.ts): each shot's clip from npm run capture (out/video/v9/shots/),
-// the stills panned slowly, the owner's footage where it is given and a placeholder card where it is not ("Max on
+// the stills shown whole, the owner's footage where it is given and a placeholder card where it is not ("Max on
 // camera", "phone recording"; portrait footage sits in the phone frame), the captions and badges burned in (ASS,
 // src/film/captions.ts), the voice-over lines and Max's camera sound mixed and loudness-normalised (src/film/mix.ts).
 // Writes to out/video/v9/: <file>.mp4 (1920x1080, 60 fps, H.264 + AAC), <file>.srt, cut-<n>.json, script-<n>.md and
@@ -68,8 +68,9 @@ function segment(file: string, g: Placed["segs"][number], own: ReturnType<typeof
   const s = shotOf(g.shot![0]!);
   const still = g.shot!.map(shotOf).find((x) => x.still);
   if (still?.still) {
-    const D = g.seconds;
-    ff(["-loop", "1", "-framerate", String(FPS), "-t", d, "-i", resolve(root, still.still), "-vf", `scale=2074:1166:force_original_aspect_ratio=decrease:flags=lanczos,pad=2074:1166:(ow-iw)/2:(oh-ih)/2:color=${BG},crop=1920:1080:x='(iw-1920)*t/${D}':y='(ih-1080)*t/${D}',setsar=1,format=yuv420p`, ...SEG, file]);
+    // A still is shown whole, under the badge and above the caption, on the dark background: no pan (a pan crops a
+    // screenshot's edges, and its words with them).
+    ff(["-loop", "1", "-framerate", String(FPS), "-t", d, "-i", resolve(root, still.still), "-vf", `scale=1600:880:force_original_aspect_ratio=decrease:flags=lanczos,pad=1920:1080:(ow-iw)/2:(oh-ih)/2-20:color=${BG},setsar=1,format=yuv420p`, ...SEG, file]);
     return null;
   }
   const id = g.shot!.find((x) => existsSync(clipOf(x)));

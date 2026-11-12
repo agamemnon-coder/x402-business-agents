@@ -8,7 +8,7 @@ import { narration, onScreen, type Placed } from "./cuts.js";
 
 export const W = 1920, H = 1080;
 /** The phone frame on a 1920x1080 picture: a portrait recording sits in it, its corners rounded (src/film/slots.ts). */
-export const PHONE_BOX = { x: 1240, y: 96, w: 408, h: 884, r: 56 } as const;
+export const PHONE_BOX = { x: 1240, y: 150, w: 380, h: 822, r: 52 } as const;
 
 const t = (sec: number) => {
   const cs = Math.max(0, Math.round(sec * 100));
@@ -33,7 +33,7 @@ ScaledBorderAndShadow: yes
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Caption,Inter SemiBold,46,&H00F6F1EE,&H00F6F1EE,&H38110C0A,&H00000000,0,0,0,0,100,100,0,0,3,18,0,1,96,96,92,1
-Style: Badge,Inter Medium,28,&H00F6F1EE,&H00F6F1EE,&H40271D19,&H00000000,0,0,0,0,100,100,0,0,3,12,0,9,48,48,40,1
+Style: Badge,Inter Medium,28,&H00F6F1EE,&H00F6F1EE,&H40271D19,&H00000000,0,0,0,0,100,100,0,0,3,12,0,9,48,48,100,1
 Style: Card,Inter SemiBold,64,&H00F6F1EE,&H00F6F1EE,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,5,96,96,0,1
 Style: Small,Inter Medium,32,&H00BDADA4,&H00BDADA4,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,5,96,96,0,1
 Style: Draft,Inter Medium,30,&H00D0D0D0,&H00D0D0D0,&H90000000,&H00000000,0,1,0,0,100,100,0,0,3,10,0,2,240,240,20,1

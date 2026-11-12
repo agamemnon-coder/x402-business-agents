@@ -4,6 +4,7 @@
 // language, not exactly one h1, a link or button with no name, an image with no alt text), and on a menu that wraps.
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
+import { WATCH_IN_MENU } from "../../src/config/film.js";
 import { VISA_ENTRY_LINE } from "../../src/redesign/partners.js";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -113,7 +114,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // CFO's view is linked from Proof's head (checked below), not from Home.
     {
       const links = await page.locator("p.more a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
-      if (!links.includes("watch") || !links.includes("proof")) fail(`/ ${tag}: Watch and Proof are not linked beside the button (${JSON.stringify(links)})`);
+      // "Watch the agents" leads to the replay (/replay; /watch is the film since 12 Nov).
+      if (!links.includes("replay") || !links.includes("proof")) fail(`/ ${tag}: the replay and Proof are not linked beside the button (${JSON.stringify(links)})`);
       const primaries = page.locator("main a.btn.primary");
       const box = await primaries.first().boundingBox();
       if ((await primaries.count()) !== 1 || !/^try(\/sign)?$/.test((await primaries.first().getAttribute("href")) ?? "") || !box || box.y + box.height > h) fail(`/ ${tag}: not one primary button, to Try, in the first screen`);
@@ -210,10 +212,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     if (/USDZ|\$\s?\d/.test(bk)) fail(`/?recorded&books ${tag}: shows USDZ or dollars`);
     await page.screenshot({ path: join(shots, `books-${tag}.png`), fullPage: true });
 
-    // The old run replays redirect to Watch.
+    // The old run replays redirect to the replay (/replay; /watch is the film since 12 Nov).
     for (const path of ["/live", "/demo"]) {
       await page.goto(`${base}${path}`, { waitUntil: "load" });
-      if (!/\/watch$/.test(page.url())) fail(`${path} ${tag}: does not redirect to /watch`);
+      if (!/\/replay$/.test(page.url())) fail(`${path} ${tag}: does not redirect to /replay`);
     }
 
     // The Dispute desk of the recording: a case with its evidence, or a plain note.
@@ -546,7 +548,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const res = await page.goto(`${base}/no/such/page`, { waitUntil: "load" });
       if (res?.status() !== 404) fail(`/no/such/page ${tag}: answered ${res?.status()}, not 404`);
       await look(page, `404 ${tag}`, w);
-      if ((await page.locator("main a.btn").count()) !== 4) fail(`404 ${tag}: not the four tabs`);
+      if ((await page.locator("main a.btn").count()) !== (WATCH_IN_MENU ? 4 : 3)) fail(`404 ${tag}: not the menu's tabs`);
     }
 
     // /judge, "Judge it in 3 minutes" (item 5.1): five steps, each with a checkbox and a time, three minutes in all; the

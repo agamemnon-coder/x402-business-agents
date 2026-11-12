@@ -3,7 +3,8 @@
 // until then the poster says "Film coming"), the chapters with their times (each jumps in the film once it is there),
 // a short key of what is real and what is simulated (src/film/key.ts), and the full transcript in a fold. Everything
 // comes from the walkthrough's cut list (src/film/cuts.ts), so the chapters and the words are the film's own. No
-// script while there is no film; with one, a few lines that put the player in place of the poster.
+// script while there is no film; with one, a few lines that put the player in place of the poster. It ends in the
+// next step: try it yourself (/try/sign in a bundle that has it).
 
 import { FILM_YOUTUBE_ID, filmId } from "../config/film.js";
 import { WALKTHROUGH, chapters, clock, narration, resolveCut, total } from "../film/cuts.js";
@@ -46,6 +47,7 @@ ol.lines { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 1
 ol.lines li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; font-size: 15.5px; line-height: 1.5; }
 ol.lines time { font-variant-numeric: tabular-nums; color: var(--faint); font-size: 14.5px; padding-top: 1px; }
 ol.lines small { display: block; font-size: 13.5px; font-weight: 650; color: var(--faint); letter-spacing: .02em; }
+.fnext { margin: 22px 0 0; }
 .fnote { font-size: 14.5px; color: var(--faint); margin: 12px 0 0; }`;
 
 const JS = `(function () {
@@ -96,6 +98,7 @@ export function filmWatchPage(o: { id?: string | null } = {}): string {
     </section>
   </div>
   <details class="card tr"><summary>${icon("receipt", 18)}The full transcript</summary><ol class="lines">${f.rows.map((r) => `<li><time>${clock(r.at)}</time><span><small>${esc(r.who)}</small>${esc(r.text)}</span></li>`).join("")}</ol></details>
+  <p class="fnext"><a class="btn primary nextstep" href="try" data-next="try">${icon("scan-face", 18)}Now try it yourself</a></p>
 </div></main>`;
   return page({
     title: "The film", description: `Purser in ${len}: AI agents pay company bills only within limits the CFO signs with Face ID. Chapters, what is real and what is simulated, and the transcript.`,

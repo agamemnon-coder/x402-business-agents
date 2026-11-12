@@ -35,7 +35,7 @@ export interface Shot {
   what: string;
   /** Page shots: the addresses to try, in order; the first whose page passes `must` and `gate` is filmed. */
   urls?: string[];
-  /** Still shots: a repository image, panned slowly in the cut. */
+  /** Still shots: a repository image, shown whole in the cut. */
   still?: string;
   viewport: Viewport;
   actions: Action[];
@@ -55,7 +55,7 @@ const desktop = (s: Omit<Shot, "viewport">): Shot => ({ viewport: "desktop", ...
 
 export const SHOTS: readonly Shot[] = [
   desktop({ id: "T14", what: "Today's Home: the H1 and the four steps", urls: [`${LIVE}/`], actions: [{ hold: 3 }, { scroll: "Tamper refused", s: 2.5, at: 0.45 }, { hold: 6 }], must: ["AI agents spend. You sign off.", "Tamper refused"] }),
-  desktop({ id: "D1a", what: "Home (home-story): the H1, then the four steps", urls: [`${LIVE}/`, `${NEXT}/`], actions: [{ hold: 3 }, { scroll: "An approval is usually a button", s: 2.5, at: 0.18 }, { hold: 6 }], must: ["AI agents spend. You sign off.", "+1 cent"], gate: { stream: "home-story", menuWithout: "Watch" } }),
+  desktop({ id: "D1a", what: "Home (home-story): the H1, then the four steps", urls: [`${LIVE}/`, `${NEXT}/`], actions: [{ hold: 3 }, { scroll: "An approval is usually a button", s: 2.5, at: 0.55 }, { hold: 6 }], must: ["AI agents spend. You sign off.", "+1 cent"], gate: { stream: "home-story", menuWithout: "Watch" } }),
   desktop({ id: "T2a", what: "/metal: the H1, three mandates, 86 payments", urls: [`${LIVE}/metal`], actions: [{ hold: 2.5 }, { scroll: "3 mandates on chain", s: 2, at: 0.3 }, { hold: 5.5 }], must: ["A limit the agent cannot talk past", "3 mandates on chain, one per agent", "86 Metal payments"] }),
   desktop({ id: "T2b", what: "/metal: #24 refused on chain", urls: [`${LIVE}/metal`], actions: [{ hold: 0.5 }, { scroll: "#24 refused on chain", s: 2, at: 0.3 }, { highlight: ["#24 refused on chain"] }, { hold: 9.5 }], must: ["#24 refused on chain", "mandate_cap_exceeded", "0x2e92"] }),
   desktop({ id: "T3", what: "/claude: the H1, the three agents, 24/24", urls: [`${LIVE}/claude`], actions: [{ hold: 3 }, { scroll: "24/24", s: 2.5, at: 0.3 }, { hold: 18.5 }], must: ["Claude decides the exceptions", "24/24", "Haiku", "routine payments by code"] }),

@@ -2,7 +2,7 @@
 // (src/film/shots.ts) from the live site and the preview into out/video/v9/shots/<id>.mp4, with <id>.json beside it
 // (the address filmed, when, the frame count). Frames go straight from the browser into ffmpeg (src/film/capture.ts):
 // no frame is written to disk. GETs of public pages only; a shot whose page lacks a line it must show, or whose stream
-// is not live there yet, is refused and listed. Stills (T7) need no capture: the cut pans them.
+// is not live there yet, is refused and listed. Stills (T7) need no capture: the cut shows them whole.
 //   --list   every shot, its addresses, gate and length, and whether a clip exists; nothing is filmed
 //   --phone  the phone versions too (390x844, DPR 3), as <id>-phone.mp4
 //   --draft  x264 veryfast CRF 20 (a quick look), not the master quality
