@@ -8,9 +8,10 @@ import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import { liveRuns, type RunRow } from "../src/redesign/runs.js";
 import { agentRun } from "../src/redesign/run.js";
+import { APPROVAL_STATES } from "../src/airwallex/approvals.js";
 import {
   ACCEPTANCE_RUN_FILE, KIT_FILE, PLATFORM_FACTS_FILE, PLATFORM_RUN_FILE, PRODUCT_ORDER, TWO_LOCKS_FILE, TWO_LOCKS_KEY,
-  acceptanceRun, kitSwift, platformRun, productDocs, productTiles, shortId, tileWords, twoLocksState, approvalsTile, tilesHtml, type PlatformFact,
+  STATUS_RE, acceptanceRun, kitSwift, transferStatuses, platformRun, productDocs, productTiles, shortId, tileWords, twoLocksState, approvalsTile, tilesHtml, type PlatformFact,
 } from "../src/redesign/airwallexProducts.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
@@ -126,6 +127,11 @@ describe("/airwallex: one tile per Airwallex product, each from its run's record
     expect(t.what).toMatch(/id and expiry are in the signed terms/);
     // The fold names the quote in full with its expiry, from the same terms.
     expect(text(awx)).toContain(`quote ${terms.conversion!.quote_id}, valid to ${terms.conversion!.valid_to.slice(11, 16)} UTC`);
+    // The tile's id leads to that FX line itself, inside the main run's fold (review, 12 Nov: not to the fold's title).
+    expect(t.href).toBe("#main-run-fx");
+    const li = /<li id="main-run-fx"[^>]*>[\s\S]*?<\/li>/.exec(awx)?.[0] ?? "";
+    expect(text(li)).toContain(`quote ${terms.conversion!.quote_id}`);
+    expect(/<details class="fold" id="main-run"[\s\S]*?<\/details>/.exec(awx)![0]).toContain(li);
   });
 });
 
@@ -159,7 +165,7 @@ describe("/airwallex: transfer approvals, three states read from the record and 
   it("today: what the record says, which is what the runs list says", () => {
     const s = twoLocksState(md, row)!;
     const section = md.split(/^## What happened[^\n]*$/m)[1]!.split(/^## /m)[0]!;
-    const named = [...section.matchAll(/\b(IN_APPROVAL|SCHEDULED|PROCESSING|SENT|PAID|FAILED|CANCELLED|REJECTED)\b/g)].map((m) => m[1]);
+    const named = [...section.matchAll(STATUS_RE)].map((m) => m[1]);
     expect(row).toBeTruthy();
     expect(s.source).toBe("record");
     expect(s.disagree).toBe(false);
@@ -176,7 +182,7 @@ describe("/airwallex: transfer approvals, three states read from the record and 
     const t = tiles.find((x) => x.key === "approvals")!;
     expect(t.states!.map((x) => x.text)).toEqual(approvalsTile(s)!.states!.map((x) => x.text));
     expect(t.states).toHaveLength(3);
-    expect(t.states![0]!.text).toBe("Signed in Purser");
+    expect(t.states![0]!.text).toBe(s.testPasskey ? "Signed in Purser (test passkey)" : "Signed in Purser");
     expect(t.states![1]!.text).toBe(`${s.held} at Airwallex`);
     expect(t.states![2]!.text).toBe(`Now: ${s.now}${s.finished ? "" : ", not paid"}`);
     for (const x of t.states!) expect(text(tileHtml("approvals"))).toContain(x.text);
@@ -197,7 +203,7 @@ describe("/airwallex: transfer approvals, three states read from the record and 
     const s = twoLocksState(FINISHED, ROW({ status: "PAID" }))!;
     expect(s).toMatchObject({ held: "IN_APPROVAL", now: "PAID", finished: true, disagree: false, source: "record", transferId: "4074d684-4704-406c-a527-2832753baf4f", amount: "240.00" });
     const t = approvalsTile(s)!;
-    expect(t.states!.map((x) => x.text)).toEqual(["Signed in Purser", "IN_APPROVAL at Airwallex", "Now: PAID"]);
+    expect(t.states!.map((x) => x.text)).toEqual(["Signed in Purser (test passkey)", "IN_APPROVAL at Airwallex", "Now: PAID"]);
     const html = text(tilesHtml([t]));
     expect(html).toContain("Now: PAID");
     expect(html).not.toMatch(/not paid|not completed|waiting/i);
@@ -214,6 +220,26 @@ describe("/airwallex: transfer approvals, three states read from the record and 
     expect(approvalsTile(behind)!.states![2]!.text).not.toBe("Now: PAID");
     // Another transfer id in the list: the record's id stays.
     expect(twoLocksState(md, ROW({ id: "00000000-0000-4000-8000-000000000000" }))!).toMatchObject({ transferId: twoLocksState(md, row)!.transferId, disagree: true });
+  });
+
+  it("an approval that ends unpaid in Airwallex's workflow (rejected, recalled, blocked) reads as itself, from the record and from the row", () => {
+    // Every status the tile knows is read as itself, the approval workflow's included (src/airwallex/approvals.ts).
+    for (const st of [...transferStatuses(), ...APPROVAL_STATES]) expect([...`\`${st}\``.matchAll(STATUS_RE)].map((m) => m[1])).toEqual([st]);
+    for (const st of ["APPROVAL_REJECTED", "APPROVAL_RECALLED", "APPROVAL_BLOCKED"]) {
+      const ended = FINISHED.replace(/\*\*Completed\*\*[^|]*\|/, `Max ${st.slice(9).toLowerCase()} it in the web app; a read-back gave \`${st}\`. |`);
+      const s = twoLocksState(ended, ROW({ status: st }))!;
+      expect(s).toMatchObject({ held: "IN_APPROVAL", now: st, finished: false, disagree: false, source: "record" });
+      const last = approvalsTile(s)!.states![2]!;
+      expect(last).toEqual({ text: `Now: ${st}, not paid`, tone: "bad" });
+      // The row alone gives the same, and a row that says so while the record still holds it is a disagreement.
+      expect(twoLocksState("# nothing", ROW({ status: st }))!).toMatchObject({ now: st, source: "runs" });
+      expect(twoLocksState(md, ROW({ status: st }))!.disagree).toBe(true);
+    }
+  });
+
+  it("a status the record says the transfer did not reach is not its state", () => {
+    const held = FINISHED.replace(/\*\*Completed\*\*[^|]*\|/, "**Not completed.** It stays `IN_APPROVAL`; it was never `PAID`, and Purser does not expect `SCHEDULED` until a person approves. |");
+    expect(twoLocksState(held, ROW({ status: "IN_APPROVAL" }))!).toMatchObject({ now: "IN_APPROVAL", finished: false, disagree: false });
   });
 
   it("without a readable record the runs list's state is shown; with neither, no tile", () => {
@@ -257,12 +283,19 @@ describe("/airwallex: connected accounts, the PAID payout first and the refusals
     expect(t.value).toBe(`€${p.paid.amount}`);
     expect(t.what).toContain("PAID");
     expect(t.what).toContain(`€${p.paid.purserFee} fee`);
+    // The fee's status is Purser's own row: SETTLED means Airwallex accepted exactly the signed fee with the payout.
+    // Where the fee lands at Airwallex is unconfirmed in the run logs, so the tile does not say Airwallex settled it.
+    expect(t.why).toBe(p.paid.purserFeeStatus === "SETTLED" ? "Airwallex accepted the fee with the payout." : "Airwallex carries the application fee.");
+    expect(text(awx)).not.toMatch(/Airwallex settles/);
     expect(t.href).toBe("#platform-run");
     const open = text(withoutFolds(main(awx)));
     expect(open).not.toMatch(/refused|refusal/i);
     const fold = /<details class="fold" id="platform-run"[\s\S]*?<\/details>/.exec(awx)![0];
     const ft = text(fold);
     expect(ft).toContain(p.paid.transferId);
+    // The PAID came through the sandbox's simulation, as the run log says, and reads like the first run's line.
+    expect(md).toMatch(/\*\*PAID\*\* \(sandbox simulation SENT, PAID\)/);
+    expect(ft).toContain(`PAID (simulated): EUR ${p.paid.amount}`);
     expect(ft).toContain(`Airwallex fee ${p.paid.airwallexFee}`);
     expect(ft).toContain(`${p.refused} payouts from the ${p.refusedAccounts} new test accounts were refused by Airwallex at create`);
     expect(ft).toContain("opened as non-registered sole traders");
@@ -290,6 +323,10 @@ describe("/airwallex: payment acceptance, the SWIFT line, the docs and the folds
     const t = tiles.find((x) => x.key === "acceptance")!;
     expect(t).toMatchObject({ id: a.intentId, value: `€${a.amount}` });
     expect(t.what).toContain("SUCCEEDED");
+    // The card and the customer are the sandbox's: labelled on the tile and in the fold of what is simulated.
+    expect(md).toMatch(/success test card/);
+    expect(md).toMatch(/\(a test customer\)/);
+    expect(t.what).toBe(`A test card paid the invoice; booked only after ${a.status}.`);
     expect(acceptanceRun("# nothing")).toBeNull();
     // Booked only after SUCCEEDED: a run log that read another status gives no tile.
     expect(acceptanceRun(md.replace(/200, `SUCCEEDED`, card ending/, "200, `REQUIRES_PAYMENT_METHOD`, card ending"))).toBeNull();
@@ -302,7 +339,11 @@ describe("/airwallex: payment acceptance, the SWIFT line, the docs and the folds
     expect(kitSwift("| K1 | \"nothing\" |")).toBeNull();
     const line = /<p class="awswift"[^>]*>[\s\S]*?<\/p>/.exec(withoutFolds(main(awx)))?.[0] ?? "";
     const p = platformRun(JSON.parse(read(PLATFORM_FACTS_FILE)) as PlatformFact[], read(PLATFORM_RUN_FILE))!;
-    expect(text(line)).toMatch(/^Why SWIFT: the hackathon kit asks for a SWIFT payout\./);
+    // The kit gives a fee rule for each SWIFT payout; the line says that much and no more, with the kit's own figure.
+    const fee = /EUR (\d+\.\d{2})/.exec(k)![1]!;
+    expect(text(line)).toMatch(new RegExp(`^Why SWIFT: the hackathon kit's fee rule is for a SWIFT payout, EUR ${fee.replace(".", "\\.")} each\\.`));
+    expect(text(line)).not.toMatch(/asks for/);
+    expect(line).toContain(KIT_FILE);
     expect(text(line)).toContain(`Airwallex fee ${p.paid.airwallexFee}`);
     expect(line).toMatch(/<a [^>]*href="#platform-run"[^>]*>[^<]*SEPA/);
     expect(read(PLATFORM_RUN_FILE)).toMatch(/SEPA, LOCAL/);
@@ -340,7 +381,7 @@ describe("/airwallex: payment acceptance, the SWIFT line, the docs and the folds
   it("keeps every label of what is simulated", () => {
     const fold = text(/<details class="fold"><summary>What is simulated<\/summary>[\s\S]*?<\/details>/.exec(awx)![0]);
     for (const want of ["The Airwallex sandbox, with test money only.", "Purser moves the sandbox transfer to SENT, then PAID, through Airwallex's simulation API", "simulated sandbox deposit", "Card charges at merchants are simulated by the sandbox",
-      "verification simulated", "labelled test passkey", "not Face ID"]) expect({ want, has: fold.includes(want) }).toEqual({ want, has: true });
+      "verification simulated", "labelled test passkey", "not Face ID", "Payment acceptance: Airwallex's sandbox test card and a test customer."]) expect({ want, has: fold.includes(want) }).toEqual({ want, has: true });
   });
 
   it("has a target on /airwallex for every link into it, from every page the site serves", () => {

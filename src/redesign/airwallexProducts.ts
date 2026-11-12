@@ -15,6 +15,7 @@
 // test/airwallex-products.test.ts holds every tile to its record file.
 
 import { existsSync, readFileSync } from "node:fs";
+import { APPROVAL_STATES } from "../airwallex/approvals.js";
 import { toCents } from "../lib/money.js";
 import { AIRI_RUN_FILE, AIRI_RUN_STEPS_ID, airiRun, type AiriRunRecord } from "./airiRun.js";
 import { AWX_HASH_ID, hashTravel, type HashTravel } from "./airwallexProof.js";
@@ -42,6 +43,8 @@ export const KIT_FILE = "docs/requirements-matrix.md";
 /** The fold with the platform run on /airwallex, and the one with the main run's flow. */
 export const PLATFORM_FOLD_ID = "platform-run";
 export const MAIN_RUN_FOLD_ID = "main-run";
+/** The main run's FX line inside that fold: the FX tile's id leads there. */
+export const MAIN_RUN_FX_ID = "main-run-fx";
 /** The page's label: true for every run on it (each block that shows one run carries that run's own date). */
 export const AWX_PAGE_LABEL = "Airwallex sandbox · test money · each run dated";
 
@@ -153,14 +156,22 @@ export function fxTile(q: FxQuote | null, runFile: string): ProductTile | null {
   return {
     key: "fx", name: PRODUCTS.fx.name, value: money(q.buyCurrency, q.buy),
     what: "Only the shortfall. The quote's id and expiry are in the signed terms.", why: "Airwallex locks the rate.",
-    id: q.quoteId, idLabel: "FX quote", href: `#${MAIN_RUN_FOLD_ID}`, iso: q.at, files: [runFile],
+    id: q.quoteId, idLabel: "FX quote", href: `#${MAIN_RUN_FX_ID}`, iso: q.at, files: [runFile],
   };
 }
 
-/** A transfer's statuses at Airwallex, in the order a transfer moves through them; the last three end it unpaid. */
-const TRANSFER_STATUS = ["IN_APPROVAL", "SCHEDULED", "PROCESSING", "SENT", "PAID", "FAILED", "CANCELLED", "REJECTED"];
-const STATUS_RE = /\b(IN_APPROVAL|SCHEDULED|PROCESSING|SENT|PAID|FAILED|CANCELLED|REJECTED)\b/g;
-const UNPAID_END = new Set(["FAILED", "CANCELLED", "REJECTED"]);
+/**
+ * The statuses that end a transfer unpaid: Airwallex's own failures, and the ends of its approval workflow (rejected,
+ * recalled, or no next approver), as src/airwallex/approvals.ts names them.
+ */
+const UNPAID_END = new Set(["FAILED", "CANCELLED", "REJECTED", ...APPROVAL_STATES.filter((s) => s !== "IN_APPROVAL")]);
+/** A transfer's statuses at Airwallex, in the order a transfer moves through them, then those that end it unpaid. */
+const TRANSFER_STATUS = ["IN_APPROVAL", "SCHEDULED", "PROCESSING", "SENT", "PAID", ...UNPAID_END];
+/** Every status above, as a whole word (APPROVAL_REJECTED is never read as REJECTED); a test holds it to the list. */
+export const STATUS_RE = /\b(APPROVAL_REJECTED|APPROVAL_RECALLED|APPROVAL_BLOCKED|IN_APPROVAL|SCHEDULED|PROCESSING|SENT|PAID|FAILED|CANCELLED|REJECTED)\b/g;
+export const transferStatuses = (): readonly string[] => TRANSFER_STATUS;
+/** A clause that says the transfer did not (or not yet) reach the status that follows it in the same clause. */
+const NEGATED = /\b(?:not|never|no longer|expects?|expected|until|cannot)\b[^.;:|\n]*$/i;
 /** How far along a status is: PAID is the end; a failure outranks anything but PAID; otherwise the order above. */
 const rank = (s: string) => s === "PAID" ? 100 : UNPAID_END.has(s) ? 50 : TRANSFER_STATUS.indexOf(s);
 
@@ -188,7 +199,8 @@ export function twoLocksState(md: string | null, row: RunRow | null | undefined)
   const rowStatus = row?.stats?.map((s) => s.v).find((v) => TRANSFER_STATUS.includes(v));
   const rowId = row?.ids.find((i) => /transfer/i.test(i.label))?.value;
   const sec = md?.split(/^## What happened[^\n]*$/m)[1]?.split(/^## /m)[0] ?? "";
-  const statuses = [...sec.matchAll(STATUS_RE)].map((m) => m[1]!);
+  // A status the run log says the transfer did not reach ("it was never PAID") is not one it is in.
+  const statuses = [...sec.matchAll(STATUS_RE)].filter((m) => !NEGATED.test(sec.slice(0, m.index))).map((m) => m[1]!);
   const transferId = /Transfer\s+`([0-9a-f]{8}-[0-9a-f-]{27})`/.exec(sec)?.[1];
   if (transferId && statuses.length) {
     const now = statuses.reduce((a, b) => (rank(b) > rank(a) ? b : a));
@@ -212,9 +224,9 @@ export function approvalsTile(s: TwoLocks | null): ProductTile | null {
   if (!s?.amount) return null;
   return {
     key: "approvals", name: PRODUCTS.approvals.name, value: euro(s.amount),
-    what: "", why: "Airwallex holds it until a person approves.",
+    what: "", why: "Airwallex needs a person's approval.",
     states: [
-      { text: "Signed in Purser", tone: "ok" },
+      { text: s.testPasskey ? "Signed in Purser (test passkey)" : "Signed in Purser", tone: "ok" },
       { text: s.held ? `${s.held} at Airwallex` : "Held by Airwallex's approval workflow", tone: "hold" },
       { text: `Now: ${s.now}${s.finished ? "" : ", not paid"}`, tone: s.finished ? "ok" : UNPAID_END.has(s.now) ? "bad" : "hold" },
     ],
@@ -235,6 +247,8 @@ export interface PlatformRun {
   paid: { transferId: string; amount: string; status: string; airwallexFee: string; purserFee: string; purserFeeStatus: string };
   /** The payout went by local transfer (the supplier's method at Airwallex), which the run log calls SEPA. */
   local: boolean; sepa: boolean;
+  /** The run log says the PAID came through the sandbox's simulation. */
+  simulatedPaid: boolean;
   refused: number; refusedAccounts: number;
   /** The refusals' cause as the run log gives it: the field Airwallex named, how the accounts were opened, what is left for a later run. */
   cause: { field: string; nonRegistered: boolean; laterRun: boolean } | null;
@@ -253,7 +267,7 @@ export function platformRun(facts: PlatformFact[], md: string): PlatformRun | nu
     return {
       accounts: facts.length, active: facts.filter((x) => /\bACTIVE\b/.test(x.account_line)).length, iso,
       paid: { transferId: t.transfer_id!, amount: t.amount, status: t.status, airwallexFee: t.airwallex_fee, purserFee: fee.amount, purserFeeStatus: fee.status },
-      local: c.beneficiaries.every((b) => b.method === "LOCAL"), sepa: /SEPA, LOCAL|LOCAL\*{0,2} \(SEPA\)/.test(md),
+      local: c.beneficiaries.every((b) => b.method === "LOCAL"), sepa: /SEPA, LOCAL|LOCAL\*{0,2} \(SEPA\)/.test(md), simulatedPaid: /\*\*PAID\*\* \(sandbox simulation\b/.test(md),
       refused: refusedIn.reduce((n, x) => n + x.transfers.filter((y) => !y.transfer_id && y.failure).length, 0), refusedAccounts: refusedIn.length,
       cause: field ? { field, nonRegistered: /opened as \*\*non-registered sole traders\*\*/.test(md), laterRun: /registered sole trader[^.]*\.\s+That is for a later run/.test(md) } : null,
       testPasskey: facts.every((x) => x.approvals.every((a) => /test passkey/.test(a.approved_with))),
@@ -266,14 +280,20 @@ export function connectedTile(p: PlatformRun | null): ProductTile | null {
   if (!p) return null;
   return {
     key: "connected", name: PRODUCTS.connected.name, value: euro(p.paid.amount),
-    what: `${p.paid.status} on a company's own account, with Purser's ${euro(p.paid.purserFee)} fee${p.paid.purserFeeStatus === "SETTLED" ? "" : ` ${p.paid.purserFeeStatus}`}.`,
-    why: p.paid.purserFeeStatus === "SETTLED" ? "Airwallex settles the application fee." : "Airwallex carries the application fee.",
+    what: `${p.paid.status} on a company's account, with Purser's ${euro(p.paid.purserFee)} fee${p.paid.purserFeeStatus === "SETTLED" ? "" : ` ${p.paid.purserFeeStatus}`}.`,
+    // SETTLED is Purser's own fee row: Airwallex accepted exactly the signed fee with this payout. Where the fee then shows
+    // in the platform's balance is unconfirmed in the run logs, so the tile says no more than that (review, 12 Nov).
+    why: p.paid.purserFeeStatus === "SETTLED" ? "Airwallex accepted the fee with the payout." : "Airwallex carries the application fee.",
     id: p.paid.transferId, idLabel: "Payout", href: `#${PLATFORM_FOLD_ID}`, iso: p.iso, files: [PLATFORM_FACTS_FILE],
   };
 }
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-export interface AcceptanceRun { intentId: string; status: string; amount: string; iso: string }
+export interface AcceptanceRun {
+  intentId: string; status: string; amount: string; iso: string;
+  /** The run log says the card was Airwallex's sandbox test card and the payer a test customer. */
+  testCard: boolean; testCustomer: boolean;
+}
 /**
  * The payment-acceptance run from its run log: the PaymentIntent and the status Purser read back with GET, the invoice's
  * amount and the run's date. Only a run that read SUCCEEDED and booked from that read-back counts.
@@ -285,14 +305,17 @@ export function acceptanceRun(md: string): AcceptanceRun | null {
   const time = /\|\s*1\s*\|\s*(\d{2}:\d{2}:\d{2}\.\d{3})\s*\|/.exec(md)?.[1] ?? "00:00:00.000";
   const month = d ? MONTHS.indexOf(d[2]!) : -1;
   if (!got || got[2] !== "SUCCEEDED" || !amount || !d || month < 0 || !/Booked the receipt only from the status it read back/.test(md)) return null;
-  return { intentId: got[1]!, status: got[2], amount, iso: `${d[3]}-${String(month + 1).padStart(2, "0")}-${d[1]!.padStart(2, "0")}T${time}Z` };
+  return {
+    intentId: got[1]!, status: got[2], amount, iso: `${d[3]}-${String(month + 1).padStart(2, "0")}-${d[1]!.padStart(2, "0")}T${time}Z`,
+    testCard: /success test card/.test(md), testCustomer: /\(a test customer\)/.test(md),
+  };
 }
 
 export function acceptanceTile(a: AcceptanceRun | null): ProductTile | null {
   if (!a) return null;
   return {
     key: "acceptance", name: PRODUCTS.acceptance.name, value: euro(a.amount),
-    what: `A card paid the invoice; booked only after ${a.status}.`, why: "Airwallex reports the PaymentIntent's status.",
+    what: `A ${a.testCard ? "test " : ""}card paid the invoice; booked only after ${a.status}.`, why: "Airwallex reports the PaymentIntent's status.",
     id: a.intentId, idLabel: "PaymentIntent", href: `${REPO_BLOB}${ACCEPTANCE_RUN_FILE}`, iso: a.iso, files: [ACCEPTANCE_RUN_FILE],
   };
 }
@@ -319,14 +342,17 @@ export function platformRunOfRecord(): PlatformRun | null {
   const facts = read(PLATFORM_FACTS_FILE), md = read(PLATFORM_RUN_FILE);
   return facts && md ? platformRun(JSON.parse(facts) as PlatformFact[], md) : null;
 }
+export function acceptanceRunOfRecord(): AcceptanceRun | null {
+  const md = read(ACCEPTANCE_RUN_FILE);
+  return md ? acceptanceRun(md) : null;
+}
 export const twoLocksOfRecord = (): TwoLocks | null => twoLocksState(read(TWO_LOCKS_FILE), liveRuns().find((r) => r.key === TWO_LOCKS_KEY));
 
 /** The tiles that have their facts, in the fixed order. */
 export function productTiles(run: AgentRun): ProductTile[] {
-  const accept = read(ACCEPTANCE_RUN_FILE);
   return [
     issuingTile(awxRun()), payoutTile(hashTravel(run.record), run.file), fxTile(fxQuote(run.record), run.file), approvalsTile(twoLocksOfRecord()),
-    connectedTile(platformRunOfRecord()), acceptanceTile(accept ? acceptanceRun(accept) : null), airiTile(airiRun()),
+    connectedTile(platformRunOfRecord()), acceptanceTile(acceptanceRunOfRecord()), airiTile(airiRun()),
   ].filter((t): t is ProductTile => t !== null);
 }
 
@@ -352,14 +378,19 @@ export function tilesHtml(tiles: ProductTile[]): string {
 }
 
 const liPlain = (t: string, tone = "") => `<li${tone ? ` class="${tone}"` : ""}>${esc(t)}</li>`;
-const docsLi = (title: string, docs: Doc[]) => `<li>${esc(title)}: ${docs.map((d) => `<a class="pf" href="${esc(d.href)}" target="_blank" rel="noopener">${esc(d.label)} ↗</a>`).join(" · ")}</li>`;
+// On a phone each docs link is a row of its own (PRODUCTS_CSS): the separators are hidden there.
+const docsLi = (title: string, docs: Doc[]) => `<li>${esc(title)}: ${docs.map((d) => `<a class="pf" href="${esc(d.href)}" target="_blank" rel="noopener">${esc(d.label)} ↗</a>`).join('<span class="sep"> · </span>')}</li>`;
 const foldHtml = (summary: string, inner: string, attrs = "") => `<details class="fold"${attrs}><summary>${esc(summary)}</summary>${inner}</details>`;
 const runLog = (file: string) => `<a class="pf" href="${esc(`${REPO_BLOB}${file}`)}" target="_blank" rel="noopener">${esc("run log")} ↗</a>`;
 
-/** One line: why the main run's payout went by SWIFT (the kit), and the local SEPA payout of the platform run with its fee. */
+/**
+ * One line: why the main run's payout went by SWIFT, and the local SEPA payout of the platform run with its fee. The kit
+ * gives a fee rule for each SWIFT payout (it does not demand one), so the line says that, with the kit's own figure.
+ */
 export function swiftLineHtml(kit: string | null, p: PlatformRun | null): string {
-  if (!kit || !p?.local || !p.sepa) return "";
-  return `<p class="awswift" data-rec="${esc(`${PLATFORM_FACTS_FILE} ${PLATFORM_RUN_FILE}`)}">${esc("Why SWIFT:")} <span title="${esc(`The kit: "${kit}"`)}">${esc("the hackathon kit asks for a SWIFT payout.")}</span> ${esc("The platform run paid by")} ${link(`#${PLATFORM_FOLD_ID}`, esc("local SEPA transfer"))}${esc(`, Airwallex fee ${p.paid.airwallexFee}.`)}</p>`;
+  const fee = /EUR (\d+\.\d{2})/.exec(kit ?? "")?.[1];
+  if (!kit || !fee || !p?.local || !p.sepa) return "";
+  return `<p class="awswift" data-rec="${esc(`${KIT_FILE} ${PLATFORM_FACTS_FILE} ${PLATFORM_RUN_FILE}`)}">${esc("Why SWIFT:")} <span title="${esc(`The kit: "${kit}"`)}">${esc(`the hackathon kit's fee rule is for a SWIFT payout, EUR ${fee} each.`)}</span> ${esc("The platform run paid by")} ${link(`#${PLATFORM_FOLD_ID}`, esc("local SEPA transfer"))}${esc(`, Airwallex fee ${p.paid.airwallexFee}.`)}</p>`;
 }
 
 /** The platform run's fold: the PAID payout with both fees, then the refusals with their cause as the run log gives it. */
@@ -368,7 +399,7 @@ export function platformFoldHtml(p: PlatformRun | null, first: RunRow | null | u
   const cause = p.cause?.nonRegistered ? `: the accounts were opened as non-registered sole traders, and Airwallex requires the payer's registration number (${p.cause.field})` : "";
   const items = [
     liPlain(`${p.accounts} test companies, each on its own Airwallex connected account${p.active === p.accounts ? ", all ACTIVE" : ` (${p.active} ACTIVE)`}.`),
-    liPlain(`${p.paid.status}: EUR ${p.paid.amount} by local${p.sepa ? " SEPA" : ""} transfer, ${p.paid.transferId}. Airwallex fee ${p.paid.airwallexFee}; Purser's fee EUR ${p.paid.purserFee}, ${p.paid.purserFeeStatus}.`, "ok"),
+    liPlain(`${p.paid.status}${p.simulatedPaid ? " (simulated)" : ""}: EUR ${p.paid.amount} by local${p.sepa ? " SEPA" : ""} transfer, ${p.paid.transferId}. Airwallex fee ${p.paid.airwallexFee}; Purser's fee EUR ${p.paid.purserFee}, ${p.paid.purserFeeStatus}.`, "ok"),
     ...(p.refused ? [liPlain(`${p.refused} payouts from the ${p.refusedAccounts} new test accounts were refused by Airwallex at create${cause}.${p.cause?.laterRun ? " A test company opened with a registration number has not run yet." : ""}`)] : []),
     ...(p.testPasskey ? [liPlain("Approvals in this run were signed with a test passkey, not Face ID.")] : []),
     ...(first ? [liPlain(`The first connected-account run, ${first.date}: ${(first.stats ?? []).map((s) => `${s.v} ${s.l}`).join("; ")}. ${first.ids.map((i) => `${i.label} ${i.value}`).join("; ")}.`)] : []),
@@ -401,21 +432,22 @@ export function airwallexDescription(run: AgentRun): string {
 
 /** /airwallex's body: the tiles first, the hash block under them, everything else folded. */
 export function airwallexBody(run: AgentRun, o: AirwallexBody): string {
-  const tiles = productTiles(run), platform = platformRunOfRecord(), locks = twoLocksOfRecord(), q = fxQuote(run.record);
+  const tiles = productTiles(run), platform = platformRunOfRecord(), locks = twoLocksOfRecord(), q = fxQuote(run.record), accept = acceptanceRunOfRecord();
   const first = liveRuns().find((r) => r.key === CONNECTED_KEY);
   const testPasskeys = [...(platform?.testPasskey ? ["the platform run"] : []), ...(locks?.testPasskey ? ["the two-locks run"] : [])];
-  const fxLine = q ? [`<li data-rec="${esc(run.file)}">${esc(`FX: only ${q.buyCurrency} ${q.buy} bought for ${q.sellCurrency} ${q.sell}, on quote ${q.quoteId}, valid to ${q.validTo.slice(11, 16)} UTC. Both are in the terms of ${q.proposal}, which the CFO signed with ${q.approvedWith}.`)}</li>`] : [];
+  const fxLine = q ? [`<li id="${MAIN_RUN_FX_ID}" data-rec="${esc(run.file)}">${esc(`FX: only ${q.buyCurrency} ${q.buy} bought for ${q.sellCurrency} ${q.sell}, on quote ${q.quoteId}, valid to ${q.validTo.slice(11, 16)} UTC. Both are in the terms of ${q.proposal}, which the CFO signed with ${q.approvedWith}.`)}</li>`] : [];
   const folds = [
     o.awx1 ? foldHtml("Airwallex-only run: every step and id", `<div class="awrb">${o.awx1}</div>`) : "",
     o.airi ? foldHtml("Airi runs: every step and id", `<div class="awrb">${o.airi}</div>`) : "",
     platformFoldHtml(platform, first),
     foldHtml("Metal earnings booked at Airwallex", `<div class="flow" role="img" aria-label="${esc("The main run at Airwallex, step by step")}">${o.picture}</div><ul class="pl">${[...o.mainProof, ...fxLine].join("")}</ul>`, ` id="${MAIN_RUN_FOLD_ID}"`),
-    foldHtml("The Airwallex products and their docs", `<ul class="pl">${[...productDocs().filter((d) => tiles.some((t) => t.key === d.key)).map((d) => docsLi(d.name, d.docs)), ...(o.depositDocs.length ? [docsLi("Metal earnings booked", o.depositDocs)] : [])].join("")}</ul>`),
+    foldHtml("The Airwallex products and their docs", `<ul class="pl awd">${[...productDocs().filter((d) => tiles.some((t) => t.key === d.key)).map((d) => docsLi(d.name, d.docs)), ...(o.depositDocs.length ? [docsLi("Metal earnings booked", o.depositDocs)] : [])].join("")}</ul>`),
     foldHtml("What is simulated", `<ul class="pl">${[
       liPlain("The Airwallex sandbox, with test money only."),
       ...o.simulated.map((t) => liPlain(t)),
       ...(o.deposit ? [liPlain(`Metal earnings: USD ${o.deposit} booked as a simulated sandbox deposit; no test USD reached Airwallex.`)] : []),
       liPlain("Card charges at merchants are simulated by the sandbox; the approve or decline is Airwallex's own."),
+      ...(accept?.testCard && accept.testCustomer ? [liPlain("Payment acceptance: Airwallex's sandbox test card and a test customer.")] : []),
       ...(platform ? [liPlain("Connected accounts: verification simulated (the sandbox made them ACTIVE), and PAID through the sandbox's simulation API.")] : []),
       // A sandbox transfer reaches PAID only through the simulation API: said for the two-locks transfer too, once its run is finished.
       ...(locks?.finished ? [liPlain("The two-locks transfer's PAID came through the sandbox's simulation API too.")] : []),
@@ -451,11 +483,15 @@ ol.aws li.ok b { background: var(--ok-soft); color: var(--ok); } ol.aws li.bad b
 @media (min-width: 560px) { .awp { grid-template-columns: repeat(2, minmax(0, 1fr)); } .awt.wide, .awp > :last-child { grid-column: span 2; }
   .awt { grid-template-columns: minmax(0, 1fr); padding: 16px 18px 4px; grid-template-rows: auto auto auto 1fr; } .awt .v { font-size: clamp(28px, 3vw, 38px); } .awt .i { align-self: end; } }
 @media (min-width: 900px) { .awp { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; } .awp > :last-child:not(.wide) { grid-column: auto; } }
-.awrb p.awswift { font-size: 15px; color: var(--muted); padding: 0 20px; } .awswift a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.awrb p.awswift { font-size: 15px; color: var(--muted); padding: 0 20px; } .awswift a { color: var(--accent); font-weight: 600; text-decoration: none; white-space: nowrap; }
 .folds .awrb .card { border: 0; border-radius: 0; box-shadow: none; background: none; padding: 0 0 10px; }
 .folds .flow { padding: 6px 0 10px; } .folds > details > p.src { margin: 0 0 10px; color: var(--faint); font-size: 14px; overflow-wrap: anywhere; }
-details#${PLATFORM_FOLD_ID}, details#${MAIN_RUN_FOLD_ID}, details#${AWX_RUN_STEPS_ID}, details#${AIRI_RUN_STEPS_ID} { scroll-margin-top: 80px; }
+details#${PLATFORM_FOLD_ID}, details#${MAIN_RUN_FOLD_ID}, li#${MAIN_RUN_FX_ID}, details#${AWX_RUN_STEPS_ID}, details#${AIRI_RUN_STEPS_ID} { scroll-margin-top: 80px; }
+/* The flow's arrows turn upright on a phone and reach over the fold's header: they never take a tap. */
+.awxp .folds .flow .arrow { pointer-events: none; }
 /* Tap targets (jury panel, 12 Nov): on a phone every link and fold header in the page is at least 44 px high. A link
-   inside a sentence keeps its place in the line and grows by its padding; a pill grows by a clear border. */
+   inside a sentence keeps its place in the line and grows by its padding; a pill grows by a clear border. The docs
+   links stand in a list, one row of 44 px each, so no link's padding covers the one above it (review, 12 Nov). */
 @media (max-width: 700px) { .awxp a.pf, .awxp .awswift a { padding: 14px 0; } .awxp a.open { min-height: 44px; }
+  .awxp ul.awd a.pf { display: flex; align-items: center; min-height: 44px; padding: 0; } .awxp ul.awd .sep { display: none; }
   .awxp a.awm { border: 9px solid transparent; background-clip: padding-box; margin: -9px; } }`;
