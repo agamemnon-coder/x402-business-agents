@@ -170,6 +170,11 @@ export function decideProposal(db: DB, id: string, decision: "approve" | "reject
   if (!p) throw new Error(`no proposal ${id}`);
   if (p.status !== "pending") throw new Error(`${id} is already ${p.status}`);
   let posted: number | null = null;
+  // Review of 12 Nov: the ledger may have changed since the proposal (another proposal on the same entry approved, an
+  // entry reversed by hand). A correction is posted only while the entry is still one of the month's open invoices.
+  if (decision === "approve" && p.correction.action !== "query_supplier" && !ledgerInvoices(db).some((i) => i.entry_id === p.entry_id)) {
+    throw new Error(`${id}: entry ${p.entry_id} has been reversed or changed since the proposal; reject it and review the month again`);
+  }
   if (decision === "approve") {
     const k = p.correction;
     if (k.action === "reverse_entry") posted = reverseEntry(db, k.entry_id, `duplicate of entry ${k.duplicate_of} (controller proposal ${id}, approved by ${by})`, by, now).entry_id;

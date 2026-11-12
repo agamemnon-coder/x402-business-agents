@@ -7,13 +7,14 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { askBooks } from "../agents/booksAgent.js";
 import { reviewMonth } from "../agents/controllerAgent.js";
 import { openDb } from "../db/open.js";
-import { BOOKS_TODAY, postInvoice, seedBooks, type BooksEvalCase, type ControllerEvalCase } from "./ledgerAgentCases.js";
+import { BOOKS_TODAY, postInvoice, SCHEDULE_TODAY, seedBooks, seedSchedule, type BooksEvalCase, type ControllerEvalCase, type ScheduleEvalCase } from "./ledgerAgentCases.js";
+import { proposeSchedule } from "../agents/scheduleAgent.js";
 import { amountsIn } from "../agents/booksCore.js";
 
-const ON = { KIT11_CONTROLLER_AGENT: "on", KIT11_BOOKS_AGENT: "on" };
+const ON = { KIT11_CONTROLLER_AGENT: "on", KIT11_BOOKS_AGENT: "on", KIT11_SCHEDULE_AGENT: "on" };
 
 export interface EvalRow {
-  agent: "controller" | "books";
+  agent: "controller" | "books" | "treasury";
   case: string;
   model: string;
   /** Who decided: the agent, or code's fallback (counted as not passed for a model row). */
@@ -29,6 +30,9 @@ export interface EvalRow {
   ms: number;
   run_status: string;
   note?: string;
+  /** When and on which commit this row ran (a record may keep rows of an earlier run for agents not run again). */
+  ran_at?: string;
+  commit?: string;
 }
 
 const requestIds = (db: ReturnType<typeof openDb>) => (db.prepare("SELECT payload_json FROM audit_log WHERE event = 'agent.run' ORDER BY seq").all() as { payload_json: string }[])
@@ -77,6 +81,27 @@ export async function runBooksCase(c: BooksEvalCase, client: Anthropic | null, m
   };
 }
 
+export async function runScheduleCase(c: ScheduleEvalCase, client: Anthropic | null, model: string, retryDelayMs = 2000): Promise<EvalRow> {
+  const db = openDb(":memory:");
+  seedSchedule(db, c);
+  const started = Date.now();
+  const r = (await proposeSchedule(db, { client, model, env: ON, today: SCHEDULE_TODAY, retryDelayMs }))!;
+  const mistakes: string[] = [];
+  if (client && r.source !== "claude") mistakes.push(`no schedule from the agent: ${r.note ?? "no note"}`);
+  const paid = new Map(r.schedule.payments.map((p) => [p.doc_ref, p.pay_on]));
+  for (const [ref, want] of Object.entries(c.expect)) {
+    const on = paid.get(ref);
+    if (want === "defer") { if (on) mistakes.push(`scheduled ${ref} on ${on}; a treasurer would defer it`); continue; }
+    if (!on) mistakes.push(`deferred ${ref}; expected payment between ${want.pay[0]} and ${want.pay[1]}`);
+    else if (on < want.pay[0] || on > want.pay[1]) mistakes.push(`scheduled ${ref} on ${on}; expected between ${want.pay[0]} and ${want.pay[1]}`);
+  }
+  return {
+    agent: "treasury", case: c.id, model: client ? model : "code (fallback)", source: r.source, passed: mistakes.length === 0, mistakes,
+    detail: `${r.schedule.payments.map((p) => `${p.doc_ref} on ${p.pay_on}${p.four_eyes ? " (four eyes)" : ""}`).join(", ") || "no payments"}; deferred ${r.schedule.deferred.map((d) => d.doc_ref).join(", ") || "none"}; "${r.summary.slice(0, 200)}"`,
+    cost_usd_micros: r.run?.costMicros ?? 0, turns: r.run?.turns ?? 0, request_ids: requestIds(db), ms: Date.now() - started, run_status: r.run?.status ?? "not_run", ...(r.note ? { note: r.note } : {}),
+  };
+}
+
 export interface LedgerEvalRecord {
   ran_at: string;
   commit: string;
@@ -97,19 +122,19 @@ export function ledgerEvalsDoc(r: LedgerEvalRecord): string {
   for (const row of r.rows) groups.set(`${row.agent}|${row.model}`, [...(groups.get(`${row.agent}|${row.model}`) ?? []), row]);
   const live = r.rows.filter((x) => x.source === "claude" || x.model !== "code (fallback)");
   const out = [
-    "# Evals of the ledger agents: the Controller and Ask the books",
+    "# Evals of the ledger agents: the Controller, Ask the books and the Treasury schedule",
     "",
     "<!-- written by src/cli/ledgerEvals.ts from docs/evals/ledger-agents.json; not edited by hand -->",
     "",
-    `Run ${r.ran_at.slice(0, 16).replace("T", " ")} UTC on commit ${r.commit}${r.dirty ? " (with uncommitted changes)" : ""}, with \`npm run ledger-evals\`, one run per case and model, at most ${r.max_usd} USD. Spent ${usd(r.spent_usd_micros)} USD at list prices, recorded in the \`ledger-agents\` block of docs/runs/api-budget.jsonl.${r.stopped ? ` Stopped early: ${r.stopped}.` : ""}`,
+    `Last run ${r.ran_at.slice(0, 16).replace("T", " ")} UTC on commit ${r.commit}${r.dirty ? " (with uncommitted changes)" : ""}, with \`npm run ledger-evals\`, one run per case and model, at most ${r.max_usd} USD a run; each agent's own run time and commit are in the first table. Spent ${usd(r.spent_usd_micros)} USD in all at list prices, recorded in the \`ledger-agents\` block of docs/runs/api-budget.jsonl.${r.stopped ? ` Stopped early: ${r.stopped}.` : ""}`,
     "",
-    "Each case seeds a fresh in-memory ledger with made-up suppliers and amounts (`src/evals/ledgerAgentCases.ts`) and runs the agent's own runner on it (`reviewMonth`, `askBooks`) with a real model. Code grades the result (`src/evals/ledgerAgentEvals.ts`): the Controller passes when it proposes exactly the findings a bookkeeper expects, nothing more; the books agent passes when code accepted its answer and its figures include the amount computed from the seeded ledger, or when it says it cannot answer a question the ledger cannot answer. The rows labelled \"code (fallback)\" grade code's own rules on the same cases, with no model.",
+    "Each case seeds a fresh in-memory ledger with made-up suppliers and amounts (`src/evals/ledgerAgentCases.ts`) and runs the agent's own runner on it (`reviewMonth`, `askBooks`, `proposeSchedule`) with a real model. Code grades the result (`src/evals/ledgerAgentEvals.ts`): the Controller passes when it proposes exactly the findings a bookkeeper expects, nothing more; the books agent passes when code accepted its answer and its figures include the amount computed from the seeded ledger, or when it says it cannot answer a question the ledger cannot answer; the Treasury schedule passes when every invoice is paid inside the window a treasurer expects (an overdue one today, others on or up to three days before their due date, an early-payment discount by its date) or deferred where it should be (short of cash above the CFO's floor, disputed, due after the horizon). The rows labelled \"code (fallback)\" grade code's own rules on the same cases, with no model.",
     "",
-    "| Agent | Model | Passed | Decided by Claude | Cost (USD) | Median time |",
-    "|---|---|---|---|---|---|",
+    "| Agent | Model | Passed | Decided by Claude | Cost (USD) | Median time | Ran (UTC), commit |",
+    "|---|---|---|---|---|---|---|",
     ...[...groups].map(([k, rows]) => {
       const [agent, model] = k.split("|");
-      return `| ${agent} | ${model} | ${rows.filter((x) => x.passed).length}/${rows.length} | ${rows.filter((x) => x.source === "claude").length}/${rows.length} | ${usd(rows.reduce((s, x) => s + x.cost_usd_micros, 0))} | ${(median(rows.map((x) => x.ms)) / 1000).toFixed(1)} s |`;
+      return `| ${agent} | ${model} | ${rows.filter((x) => x.passed).length}/${rows.length} | ${rows.filter((x) => x.source === "claude").length}/${rows.length} | ${usd(rows.reduce((s, x) => s + x.cost_usd_micros, 0))} | ${(median(rows.map((x) => x.ms)) / 1000).toFixed(1)} s | ${(rows[0]!.ran_at ?? r.ran_at).slice(0, 16).replace("T", " ")}, ${rows[0]!.commit ?? r.commit} |`;
     }),
     "",
     "## Every case",

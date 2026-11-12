@@ -8,11 +8,14 @@ import { amountsIn } from "../src/agents/booksCore.js";
 import { controllerProposals, decideProposal, ledgerInvoices, reviewMonth } from "../src/agents/controllerAgent.js";
 import { fallbackReview } from "../src/agents/controllerCore.js";
 import { openDb } from "../src/db/open.js";
-import { verifyLedger } from "../src/ledger/core.js";
-import { BOOKS_CASES, BOOKS_TODAY, CONTROLLER_CASES, postInvoice, seedBooks } from "../src/evals/ledgerAgentCases.js";
-import { runBooksCase, runControllerCase } from "../src/evals/ledgerAgentEvals.js";
+import { reverseEntry, verifyLedger } from "../src/ledger/core.js";
+import { proposeSchedule, scheduleCaseFor } from "../src/agents/scheduleAgent.js";
+import { checkSchedule } from "../src/agents/scheduleCore.js";
+import { BOOKS_CASES, BOOKS_TODAY, CONTROLLER_CASES, postInvoice, SCHEDULE_CASES, SCHEDULE_TODAY, seedBooks, seedSchedule } from "../src/evals/ledgerAgentCases.js";
+import { runBooksCase, runControllerCase, runScheduleCase } from "../src/evals/ledgerAgentEvals.js";
 
 const ON = { KIT11_CONTROLLER_AGENT: "on", KIT11_BOOKS_AGENT: "on" };
+const ON_ALL = { ...ON, KIT11_SCHEDULE_AGENT: "on" };
 type Call = { name: string; input: unknown };
 
 /** A fake Claude: each turn is a list of tool calls (or a final text); `inputTokens` sets what each turn reports. */
@@ -106,8 +109,8 @@ describe("the Controller agent", () => {
 
   it("stops before a turn could cross the run's hard dollar cap", async () => {
     const { db } = world("clean-month");
-    // Each turn reports 120k input tokens (USD 0.24 at Sonnet's list price): the second turn could cross USD 0.40.
-    const f = fake([[{ name: "list_invoices", input: {} }], [{ name: "list_invoices", input: {} }], [{ name: "finish", input: { summary: "x" } }]], 120_000);
+    // Each turn reports 180k input tokens (USD 0.36 at Sonnet's list price): the second turn could cross USD 0.40.
+    const f = fake([[{ name: "list_invoices", input: {} }], [{ name: "list_invoices", input: {} }], [{ name: "finish", input: { summary: "x" } }]], 180_000);
     const r = (await reviewMonth(db, "2026-10", { client: f.client, env: ON, retryDelayMs: 0 }))!;
     expect(f.calls()).toBe(1);
     expect(r.source).toBe("fallback");
@@ -179,5 +182,53 @@ describe("Ask the books", () => {
     const refusals = BOOKS_CASES.filter((c) => c.expect === null).map((c) => c.id);
     expect(rows.filter((r) => refusals.includes(r.case)).every((r) => r.passed)).toBe(true);
     expect(rows.filter((r) => !refusals.includes(r.case)).every((r) => !r.passed && r.source === "fallback")).toBe(true);
+  });
+});
+
+describe("the Treasury agent's payment schedule", () => {
+  const seeded = (id: string) => { const c = SCHEDULE_CASES.find((x) => x.id === id)!; const db = openDb(":memory:"); seedSchedule(db, c); return { db, c }; };
+
+  it("is off by default", async () => {
+    const f = fake([]);
+    expect(await proposeSchedule(seeded("cash-short").db, { client: f.client, env: {} })).toBeNull();
+    expect(f.calls()).toBe(0);
+  });
+
+  it("refuses a schedule that takes cash below the CFO's floor, then accepts the fixed one; amounts are code's", async () => {
+    const { db } = seeded("cash-short");
+    const f = fake([
+      [{ name: "propose_schedule", input: { payments: [{ doc_ref: "E-1", pay_on: "2026-11-04", reason: "due" }, { doc_ref: "E-2", pay_on: "2026-11-07", reason: "due" }, { doc_ref: "E-3", pay_on: "2026-11-13", reason: "due" }], deferred: [], summary: "all" } }],
+      [{ name: "propose_schedule", input: { payments: [{ doc_ref: "E-1", pay_on: "2026-11-04", reason: "due" }, { doc_ref: "E-2", pay_on: "2026-11-07", reason: "due" }], deferred: [{ doc_ref: "E-3", reason: "no room" }], summary: "two" } }],
+    ]);
+    const r = (await proposeSchedule(db, { client: f.client, env: ON_ALL, today: SCHEDULE_TODAY, retryDelayMs: 0 }))!;
+    expect(r.source).toBe("claude");
+    expect(r.schedule.payments.map((p) => [p.doc_ref, p.amount_cents])).toEqual([["E-1", 72_600], ["E-2", 60_500]]);
+    const row = JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'treasury.schedule_proposed'").get() as { payload_json: string }).payload_json);
+    expect(row).toMatchObject({ source: "claude", limits: { floors: { EUR: "10000.00" } }, run: { tries: 2 } });
+    expect(row.run.request_ids).toEqual(["req_1", "req_2"]);
+    expect(checkSchedule(scheduleCaseFor(db, SCHEDULE_TODAY), { payments: [{ doc_ref: "E-1", pay_on: "2026-10-30" }], deferred: [] })).toEqual(expect.arrayContaining([expect.stringMatching(/before today/), expect.stringMatching(/every open invoice needs/)]));
+  });
+
+  it("marks a payment above the four-eyes threshold, and code's fallback is labelled", async () => {
+    const r = (await proposeSchedule(seeded("four-eyes").db, { client: null, env: ON_ALL, today: SCHEDULE_TODAY }))!;
+    expect(r.source).toBe("fallback");
+    expect(r.schedule.payments.find((p) => p.doc_ref === "G-1")!.four_eyes).toBe(true);
+    expect(r.schedule.payments.find((p) => p.doc_ref === "G-2")!.four_eyes).toBe(false);
+  });
+
+  it("has at least 15 cases; code's fallback misses the judgment ones", async () => {
+    expect(SCHEDULE_CASES.length).toBeGreaterThanOrEqual(15);
+    const rows = await Promise.all(SCHEDULE_CASES.map((c) => runScheduleCase(c, null, "none")));
+    expect(rows.filter((r) => !r.passed).map((r) => r.case)).toEqual(expect.arrayContaining(["disputed", "short-supplier-stop", "early-discount"]));
+  });
+});
+
+describe("approving a Controller proposal on an entry that changed", () => {
+  it("is refused when the entry was reversed since the proposal", async () => {
+    const { db, ids } = world("dup-same-number");
+    const r = (await reviewMonth(db, "2026-10", { client: null, env: ON }))!;
+    const dup = r.proposals.find((p) => p.kind === "duplicate" && p.entry_id === ids.get("bt-oct-again"))!;
+    reverseEntry(db, dup.entry_id, "reversed by hand", "test-cfo");
+    expect(() => decideProposal(db, dup.id, "approve", "test-cfo")).toThrow(/reversed or changed/);
   });
 });

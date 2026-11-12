@@ -9,7 +9,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { audit, type Actor } from "../audit/log.js";
 import { claudeClient } from "../claude/reader.js";
-import { callCostMicros, type Usage } from "../claude/pricing.js";
+import { callCostMicros, PRICES, type Usage } from "../claude/pricing.js";
 import type { DB } from "../db/open.js";
 import { redactJson, redactSecrets } from "../lib/redact.js";
 import { randomBytes } from "node:crypto";
@@ -140,8 +140,6 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
   const maxTurns = spec.maxTurns ?? 8;
   const maxTokens = spec.maxTokens ?? 16000;
   let nudged = false;
-  // Before the first answer, the prompt's size is estimated from its characters (about three to a token, rounded up).
-  let lastPrompt = Math.ceil((spec.system.length + spec.prompt.length + JSON.stringify(tools).length) / 3);
 
   while (turns < maxTurns) {
     turns++;
@@ -149,17 +147,24 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
     const cap = overCap(db, String(spec.agent), clock());
     if (cap) return finish("unavailable", cap);
     if (spec.runCapMicros !== undefined) {
-      // The most the next turn can cost: the prompt so far and half again (the tool results it adds), plus a full answer.
-      const ceiling = callCostMicros(spec.model, { input: Math.ceil(lastPrompt * 1.5) + 4000, output: maxTokens, cache_read: 0, cache_write: 0 }) ?? Number.POSITIVE_INFINITY;
+      // The most the next turn can cost (review of 12 Nov): every byte of what is sent as a token (a token is never less
+      // than one byte) plus the API's own tool instructions, at the dearest input rate (a cache write), and a full answer;
+      // when a server-side fallback may answer, at the dearest model's price.
+      const bytes = Buffer.byteLength(JSON.stringify([spec.system, tools, messages]), "utf8") + 2000;
+      const models = spec.model.startsWith("claude-haiku") ? [spec.model] : [spec.model, ...Object.keys(PRICES)];
+      const ceiling = Math.max(...models.map((m) => callCostMicros(m, { input: 0, output: maxTokens, cache_read: 0, cache_write: bytes }) ?? Number.POSITIVE_INFINITY));
       if (costMicros + ceiling > spec.runCapMicros) return finish("unavailable", `run cap: ${(costMicros / 1e6).toFixed(4)} USD spent, the next turn could cost up to ${(ceiling / 1e6).toFixed(4)}, over this run's cap of ${(spec.runCapMicros / 1e6).toFixed(4)}`);
     }
-    const left = spec.timeoutMs === undefined ? undefined : spec.timeoutMs - (clock() - started);
-    if (left !== undefined && left <= 0) return finish("unavailable", `timeout: the run's ${spec.timeoutMs} ms are used up`);
+    const timeLeft = () => (spec.timeoutMs === undefined ? undefined : spec.timeoutMs - (clock() - started));
+    if ((timeLeft() ?? 1) <= 0) return finish("unavailable", `timeout: the run's ${spec.timeoutMs} ms are used up`);
     let res!: Anthropic.Beta.BetaMessage;
     const asked = clock();
     let retried = false;
     // One retry with backoff on a transient failure (429, 5xx, timeout, connection); then the labelled fallback.
     for (let attempt = 0; ; attempt++) {
+      // The time left is read again for the retry, so a retried request never runs past the run's limit.
+      const left = timeLeft();
+      if (left !== undefined && left <= 0) return finish("unavailable", `timeout: the run's ${spec.timeoutMs} ms are used up`);
       try {
         res = await (client.withOptions ? client.withOptions({ maxRetries: 0, ...(left !== undefined ? { timeout: left } : {}) }) : client).beta.messages.create({
         model: spec.model,
@@ -186,7 +191,6 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
     model = res.model;
     const u = res.usage;
     const usage: Usage = { input: u.input_tokens, output: u.output_tokens, cache_read: u.cache_read_input_tokens ?? 0, cache_write: u.cache_creation_input_tokens ?? 0 };
-    lastPrompt = usage.input + usage.cache_read + usage.cache_write;
     tokens.input += usage.input; tokens.output += usage.output; tokens.cache_read += usage.cache_read; tokens.cache_write += usage.cache_write;
     const callCost = callCostMicros(res.model, usage) ?? 0;
     costMicros += callCost;

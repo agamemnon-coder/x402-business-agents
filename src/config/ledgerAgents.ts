@@ -11,3 +11,8 @@ export function controllerAgentOn(env: Record<string, string | undefined> = proc
 export function booksAgentOn(env: Record<string, string | undefined> = process.env): boolean {
   return env.KIT11_BOOKS_AGENT === "on";
 }
+
+/** The Treasury agent's payment schedule (src/agents/scheduleAgent.ts): only when KIT11_SCHEDULE_AGENT is exactly "on". */
+export function scheduleAgentOn(env: Record<string, string | undefined> = process.env): boolean {
+  return env.KIT11_SCHEDULE_AGENT === "on";
+}

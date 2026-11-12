@@ -6,12 +6,12 @@
 // Without a key it says so and writes nothing. Never part of npm test.
 
 import { execFileSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { BUDGET_BLOCKS, budgetStatus, recordSpend } from "../claude/budget.js";
 import { claudeClient } from "../claude/reader.js";
-import { BOOKS_CASES, CONTROLLER_CASES } from "../evals/ledgerAgentCases.js";
-import { ledgerEvalsDoc, runBooksCase, runControllerCase, type EvalRow, type LedgerEvalRecord } from "../evals/ledgerAgentEvals.js";
+import { BOOKS_CASES, CONTROLLER_CASES, SCHEDULE_CASES } from "../evals/ledgerAgentCases.js";
+import { ledgerEvalsDoc, runBooksCase, runControllerCase, runScheduleCase, type EvalRow, type LedgerEvalRecord } from "../evals/ledgerAgentEvals.js";
 import { spendGuard } from "../evals/coderSpend.js";
 import { MODELS } from "../claude/reader.js";
 
@@ -24,8 +24,8 @@ const maxUsd = Number(arg("--max-usd") ?? 3);
 if (!Number.isFinite(maxUsd) || maxUsd <= 0) fail("--max-usd takes an amount in dollars above 0");
 const names = (arg("--models") ?? "sonnet").split(",").map((s) => s.trim());
 if (names.some((n) => !(n in ALL))) fail(`--models takes ${Object.keys(ALL).join(", ")}`);
-const agents = (arg("--agents") ?? "controller,books").split(",").map((s) => s.trim());
-if (agents.some((a) => a !== "controller" && a !== "books")) fail("--agents takes controller, books");
+const agents = (arg("--agents") ?? "controller,books,treasury").split(",").map((s) => s.trim());
+if (agents.some((a) => !["controller", "books", "treasury"].includes(a))) fail("--agents takes controller, books, treasury");
 const only = arg("--cases")?.split(",").map((s) => s.trim()) ?? null;
 
 const inner = claudeClient() ?? fail("KIT11_ANTHROPIC_API_KEY is not set: no live run, and nothing written");
@@ -45,9 +45,10 @@ let spent = 0;
 let stopped: string | null = null;
 const guard = spendGuard(inner, () => Math.min(MAX_MICROS - spent, CAP_MICROS - blockMicros()));
 
-type Job = { agent: "controller" | "books"; id: string; run: (model: string | null) => Promise<EvalRow> };
+type Job = { agent: "controller" | "books" | "treasury"; id: string; run: (model: string | null) => Promise<EvalRow> };
 const jobs: Job[] = [
   ...(agents.includes("controller") ? CONTROLLER_CASES.map((c): Job => ({ agent: "controller", id: c.id, run: (m) => runControllerCase(c, m ? guard.client : null, m ?? "none") })) : []),
+  ...(agents.includes("treasury") ? SCHEDULE_CASES.map((c): Job => ({ agent: "treasury", id: c.id, run: (m) => runScheduleCase(c, m ? guard.client : null, m ?? "none") })) : []),
   ...(agents.includes("books") ? BOOKS_CASES.map((c): Job => ({ agent: "books", id: c.id, run: (m) => runBooksCase(c, m ? guard.client : null, m ?? "none") })) : []),
 ].filter((j) => !only || only.includes(j.id));
 
@@ -68,7 +69,12 @@ outer: for (const name of names) {
 for (const j of jobs) rows.push(await j.run(null));
 
 if (!rows.some((r) => r.source === "claude")) fail("no case was decided by Claude (every call failed): nothing written");
-const record: LedgerEvalRecord = { ran_at: new Date().toISOString(), commit: COMMIT, dirty: DIRTY, max_usd: maxUsd, spent_usd_micros: spent, stopped, rows };
+// Rows of agents not run this time are kept from the previous record, each with its own run time in the record's history.
+const previous = existsSync(join(ROOT, "docs/evals/ledger-agents.json")) ? (JSON.parse(readFileSync(join(ROOT, "docs/evals/ledger-agents.json"), "utf8")) as LedgerEvalRecord) : null;
+const kept = previous ? previous.rows.filter((r) => !agents.includes(r.agent)).map((r) => ({ ...r, ran_at: r.ran_at ?? previous.ran_at, commit: r.commit ?? previous.commit })) : [];
+for (const r of rows) Object.assign(r, { ran_at: new Date().toISOString(), commit: COMMIT });
+rows.unshift(...kept);
+const record: LedgerEvalRecord = { ran_at: new Date().toISOString(), commit: COMMIT, dirty: DIRTY, max_usd: maxUsd, spent_usd_micros: spent + (previous && kept.length ? previous.spent_usd_micros : 0), stopped, rows };
 mkdirSync(join(ROOT, "docs/evals"), { recursive: true });
 writeFileSync(join(ROOT, "docs/evals/ledger-agents.json"), `${JSON.stringify(record, null, 2)}\n`);
 writeFileSync(join(ROOT, "docs/agent-evals-ledger.md"), ledgerEvalsDoc(record));
