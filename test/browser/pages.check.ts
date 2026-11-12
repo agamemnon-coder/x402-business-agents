@@ -765,7 +765,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         // Nine controls and "Not yet" since the owner's request (12 Nov 15:55): ten cards, each with its detail folded, and "If the approver is unavailable" (#unavailable) under the signature.
         if (cards !== 10 || (await page.locator("main article.pc.card details.fold").count()) !== 11 || (await page.locator("#s-sign details#unavailable").count()) !== 1 || (await page.locator("main details[open]").count())) fail(`/security ${tag}: not ten cards, each with its detail folded`);
         if (!/Our red team ran \d+ attacks: \d+ stopped before anything moved, \d+ found afterwards\./.test(body) || !/npm run verify-log/.test(body) || !/No SOC 2 report, no ISO 27001 audit and no third-party penetration test yet/.test(body)) fail(`/security ${tag}: the red team's counts, the audit command or the "Not yet" line is missing`);
-        if (!/^try(\/sign)?$/.test((await page.locator("#s-sign .links a").getAttribute("href")) ?? "")) fail(`/security ${tag}: the signature card does not link to Try`);
+        if (!/^\/?try(\/sign)?$/.test((await page.locator("#s-sign .links a").getAttribute("href")) ?? "")) fail(`/security ${tag}: the signature card does not link to Try`);
       }
       await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
       await page.evaluate(() => document.querySelectorAll("main details").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
@@ -1104,7 +1104,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const asked: string[] = [];
       const onRequest = (r: { url(): string }) => { const u = new URL(r.url()); if (u.origin !== new URL(judgeBase).origin || !["/judge", "/assets/inter.woff2", "/assets/favicon.svg", "/favicon.ico"].includes(u.pathname)) asked.push(r.url()); };
       await page.goto(`${judgeBase}/`, { waitUntil: "load" });
-      if ((await page.locator("main a.btn.primary").getAttribute("href")) !== "try/sign") fail(`/ (Home, with /try/sign) ${tag}: the button does not lead to /try/sign`);
+      if ((await page.locator("main a.btn.primary").getAttribute("href")) !== "/try") fail(`/ (Home, with /try/sign) ${tag}: the button does not lead to /try (the hands-on demo)`);
       const top = page.locator('footer a.flink[href="judge"]');
       const box = await top.boundingBox();
       if ((await page.locator('a[href="judge"]').count()) !== 1 || (await top.innerText()).trim() !== "Judging? Take the 3-minute tour" || !box || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: no one "Judging? Take the 3-minute tour" link in the footer, inside the page's gutter`);
