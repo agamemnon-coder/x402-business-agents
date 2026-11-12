@@ -397,3 +397,40 @@ CREATE TABLE IF NOT EXISTS try_resv (
   state TEXT NOT NULL CHECK (state IN ('open', 'settled', 'expired'))
 );
 CREATE INDEX IF NOT EXISTS try_resv_open ON try_resv (state, started_at);
+-- Accounts a company connects to Purser itself by OAuth (docs/real-customers.md; off unless the cloud is configured for
+-- it): its existing Airwallex account and its Moneybird administration. The tokens are sealed (AES-256-GCM; the key is
+-- a Worker secret, and each value is bound to its company, provider and field: cloud/src/sealed.ts). No token is ever
+-- logged or shown; only the company's own runner gets a short-lived access token (GET /v1/connect/{provider}/token).
+CREATE TABLE IF NOT EXISTS oauth_connections (
+  tenant_id TEXT NOT NULL,
+  provider TEXT NOT NULL CHECK (provider IN ('airwallex', 'moneybird')),
+  status TEXT NOT NULL CHECK (status IN ('connected', 'disconnected')),
+  -- Airwallex: the account the tokens act for (acct_…, from the token answer); one account belongs to one company.
+  account_ref TEXT,
+  scope TEXT NOT NULL DEFAULT '',
+  access_sealed TEXT,
+  access_expires_at INTEGER,
+  refresh_sealed TEXT,
+  refresh_expires_at INTEGER,
+  -- A refresh is under way until this time (ms): one at a time, since Airwallex revokes a refresh token used twice.
+  refreshing_until INTEGER NOT NULL DEFAULT 0,
+  connected_by TEXT NOT NULL,
+  connected_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  -- Why a connection ended: owner (disconnected in Purser), refused (the provider refused the refresh token),
+  -- provider (the provider said it was disconnected).
+  ended_reason TEXT,
+  PRIMARY KEY (tenant_id, provider)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS oauth_connections_account ON oauth_connections (provider, account_ref) WHERE account_ref IS NOT NULL AND status = 'connected';
+
+-- One OAuth start, kept until its callback (ten minutes at most) and then removed: the state's hash, who started it for
+-- which company, and the PKCE verifier (sealed). A state is good once, for that person and company only.
+CREATE TABLE IF NOT EXISTS oauth_states (
+  state_sha256 TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  verifier_sealed TEXT,
+  expires_at INTEGER NOT NULL
+);

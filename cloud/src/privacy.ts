@@ -103,6 +103,9 @@ export async function closeTenant(sql: Sql, tenantId: string, now: Date): Promis
     { sql: "UPDATE api_keys SET revoked_at = ? WHERE tenant_id = ? AND revoked_at IS NULL", params: [iso, tenantId] },
     // Every session ends at once (fromSession also refuses a closed company).
     { sql: "UPDATE users SET session_gen = session_gen + 1 WHERE tenant_id = ?", params: [tenantId] },
+    // The company's OAuth tokens go at once (docs/real-customers.md): a closed company calls no provider again.
+    { sql: "DELETE FROM oauth_connections WHERE tenant_id = ?", params: [tenantId] },
+    { sql: "DELETE FROM oauth_states WHERE tenant_id = ?", params: [tenantId] },
   ]);
   return { closed_at: iso, purge_after };
 }
@@ -129,6 +132,8 @@ export async function purgeExpired(sql: Sql, blobs: Blobs, now: Date, engine?: (
       ...TENANT_TABLES.map((table) => ({ sql: `DELETE FROM ${table} WHERE tenant_id = ?`, params: [t.id] })),
       { sql: "DELETE FROM api_keys WHERE tenant_id = ?", params: [t.id] },
       { sql: "DELETE FROM challenges WHERE tenant_id = ?", params: [t.id] },
+      { sql: "DELETE FROM oauth_connections WHERE tenant_id = ?", params: [t.id] },
+      { sql: "DELETE FROM oauth_states WHERE tenant_id = ?", params: [t.id] },
       // The address stays taken (red team round 5): a purged company's inbox address is never given to someone else.
       { sql: "UPDATE tenants SET name = '[purged]' WHERE id = ?", params: [t.id] },
     ]);
