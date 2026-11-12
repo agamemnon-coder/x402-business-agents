@@ -170,6 +170,8 @@ main > h1 { animation: slide .34s cubic-bezier(.2,.7,.2,1) both; }
 @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 @keyframes pulse { 50% { opacity: .35; } }
 /* A calm word under a field or the form: the danger tone, muted, never a red box. */
+/* The supplier and the IBAN while the suppliers load: a shimmering field, nothing in it. */
+.f.loading input, .f.loading select { color: transparent; background: linear-gradient(90deg, var(--sunken) 0%, var(--border) 50%, var(--sunken) 100%) 0 0 / 200% 100%; animation: shimmer 1.3s linear infinite; }
 .hint.calm { margin: 6px 0 0; color: color-mix(in srgb, var(--bad) 70%, var(--muted)); font-size: 13.5px; }
 .inv .ih { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 6px; font-weight: 650; font-size: 15px; }
 .inv .ih .i { color: var(--accent); }
@@ -572,7 +574,11 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
   const tA=el('button','',C.invoice.tabSample),tB=el('button','',C.invoice.tabWrite);
   for(const [t,p,id] of [[tA,pick,'tab-pick'],[tB,write,'tab-write']]){t.type='button';t.id=id;t.setAttribute('role','tab');p.setAttribute('aria-labelledby',id)}
   let writing=false;
-  const choose=(w)=>{writing=w;tA.setAttribute('aria-selected',String(!w));tB.setAttribute('aria-selected',String(w));pick.hidden=w;write.hidden=!w};
+  // Write your own needs the suppliers on file (the supplier and its IBAN): until they are in, the button is off and
+  // both fields are a skeleton, so a quick click cannot meet empty required fields.
+  let ready=false;let gateFields=[];
+  const gate=()=>{send.disabled=writing&&!ready;for(const f of gateFields)f.classList.toggle('loading',!ready)};
+  const choose=(w)=>{writing=w;tA.setAttribute('aria-selected',String(!w));tB.setAttribute('aria-selected',String(w));pick.hidden=w;write.hidden=!w;gate()};
   tA.addEventListener('click',()=>choose(false));tB.addEventListener('click',()=>choose(true));
   const send=btn(C.invoice.send,true);
   tabs.append(tA,tB);box.append(tabs,pick,write,send);choose(false);
@@ -606,9 +612,10 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
   const msg=el('div','');
   const amtField=field(C.invoice.amount,amt,'f-amt');amtField.append(amtHint);
   const said=el('p','hint calm');said.setAttribute('role','status');said.hidden=true;
-  const form=el('form','',[field(C.invoice.supplier,sup,'f-sup'),el('div','two',[field(C.invoice.invoiceNo,no,'f-no'),amtField]),
-    el('div','two',[field(C.invoice.issued,iss,'f-iss'),field(C.invoice.due,dueOn,'f-due')]),field(C.invoice.iban,iban,'f-iban'),el('p','hint',C.invoice.ibanHint),said,msg]);
-  write.append(form);
+  const supField=field(C.invoice.supplier,sup,'f-sup'),ibanField=field(C.invoice.iban,iban,'f-iban');gateFields=[supField,ibanField];
+  const form=el('form','',[supField,el('div','two',[field(C.invoice.invoiceNo,no,'f-no'),amtField]),
+    el('div','two',[field(C.invoice.issued,iss,'f-iss'),field(C.invoice.due,dueOn,'f-due')]),ibanField,el('p','hint',C.invoice.ibanHint),said,msg]);
+  write.append(form);gate();
   if(draft){
     // Back from a refused compose: the form as it was sent, and the server's words, calmly, under it.
     for(const [i,k] of [[no,'invoice_no'],[amt,'amount'],[iss,'issue_date'],[dueOn,'due_date'],[iban,'iban']])if(typeof draft[k]==='string')i.value=draft[k];
@@ -619,13 +626,20 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
   sup.addEventListener('change',()=>{const s=suppliers.find((x)=>x.key===sup.value);if(s)iban.value=String(s.iban??'')});
   amt.addEventListener('input',()=>{amtHint.hidden=true;amt.removeAttribute('aria-invalid')});
   amt.addEventListener('blur',()=>{if(amt.value.trim())amtRead()});
-  api('GET','/v1/engine/suppliers').then((r)=>{
-    if(r.status!==200||!Array.isArray(r.json.items)){msg.replaceChildren(el('p','note',typeof r.json.message==='string'?r.json.message:C.invoice.failed));return}
+  const loadSuppliers=()=>api('GET','/v1/engine/suppliers').then((r)=>{
+    if(S.screen!=='invoice')return;
+    if(r.status!==200||!Array.isArray(r.json.items)){
+      // Calmly, with a retry that reads them again; the button stays off.
+      const again=el('button','link',C.invoice.retry);again.type='button';
+      again.addEventListener('click',()=>{msg.replaceChildren();loadSuppliers()});
+      msg.replaceChildren(el('p','hint calm',[C.invoice.suppliersFailed,' ',again]));return}
     suppliers=r.json.items.filter((s)=>s&&typeof s.key==='string');
+    ready=suppliers.length>0;gate();
     sup.replaceChildren(...suppliers.map((s)=>{const o=el('option','',String(s.name??s.key));o.value=s.key;return o}));
     if(draft&&suppliers.some((s)=>s.key===draft.supplier_key))sup.value=draft.supplier_key;
     else if(suppliers[0])iban.value=String(suppliers[0].iban??'');
   });
+  loadSuppliers();
   function file(){
     if(!writing){if(picked)show('work',{kind:'sample',key:picked.key,title:String(picked.title??'')});return}
     const v=amtRead();

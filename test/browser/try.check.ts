@@ -121,7 +121,7 @@ async function ledgerOf(session: string, id: string) {
 // the stand-in bank. The pay answer is held payDelay ms (the 800 ms test).
 const kept = new Map<string, unknown>();
 const paid = new Set<string>();
-const stand = { payDelay: 0, payAnswers: 0, fileDelay: 0, refuseCompose: false };
+const stand = { payDelay: 0, payAnswers: 0, fileDelay: 0, refuseCompose: false, suppliersDelay: 0 };
 async function laneC(method: string, path: string, session: string, body: Record<string, unknown>, res: ServerResponse): Promise<boolean> {
   const m = /^\/v1\/engine\/proposals\/([A-Za-z0-9_-]+)\/(approve|terms|pay)$/.exec(path);
   if (!m) return false;
@@ -180,7 +180,10 @@ const server = createServer(async (req, res) => {
     return t ? send(res, 200, { session: t.session, expires_at: new Date(Date.now() + 15 * 60_000).toISOString() }) : send(res, 410, { code: "gone", message: "gone" });
   }
   if (req.method === "GET" && url.pathname === "/v1/engine/samples") return send(res, 200, { items: SAMPLES });
-  if (req.method === "GET" && url.pathname === "/v1/engine/suppliers") return send(res, 200, { items: [SUPPLIER] });
+  if (req.method === "GET" && url.pathname === "/v1/engine/suppliers") {
+    if (stand.suppliersDelay) await new Promise((r) => setTimeout(r, stand.suppliersDelay));
+    return send(res, 200, { items: [SUPPLIER] });
+  }
   const sample = /^\/v1\/engine\/samples\/([a-z]+)$/.exec(url.pathname);
   // Filing a sample or a written invoice is held fileDelay ms (the skeleton's check); refuseCompose answers one 400.
   if (req.method === "POST" && (sample || url.pathname === "/v1/engine/compose") && stand.fileDelay) await new Promise((r) => setTimeout(r, stand.fileDelay));
@@ -307,10 +310,23 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await page.hover(`text=${START.button}`);
   await page.waitForTimeout(300);
   ok(asked.length === 0, `${tag}: no request on load or hover (${asked.join(", ") || "none"})`);
+  // At 1440 the suppliers' answer is held 800 ms: write your own's button stays off until it is in.
+  stand.suppliersDelay = width === 1440 ? 800 : 0;
   const startReq = page.waitForRequest((r) => r.url().endsWith("/v1/try/start"));
   await page.click(`text=${START.button}`);
   ok(JSON.parse((await startReq).postData() ?? "{}").token === "jury-token-123", `${tag}: the token goes in the start request's body`);
   await page.waitForSelector(`h1:text-is("${INVOICE.heading}")`);
+  if (width === 1440) {
+    await page.click(`text=${INVOICE.tabWrite}`);
+    const held = await page.isDisabled(`.btn.primary:has-text("${INVOICE.send}")`) && await page.locator(".f.loading #f-sup").count() === 1 && await page.locator(".f.loading #f-iban").count() === 1;
+    ok(held, `${tag}: while the suppliers are held: the button is off, the supplier and the IBAN a skeleton`);
+    await page.waitForFunction(() => (document.querySelector("#f-iban") as HTMLInputElement | null)?.value !== "");
+    ok(!(await page.isDisabled(`.btn.primary:has-text("${INVOICE.send}")`)) && await page.locator(".f.loading").count() === 0, `${tag}: once the suppliers are in: the button is on, the fields filled`);
+    stand.suppliersDelay = 0;
+    await page.click(`text=${INVOICE.tabSample}`);
+    // These clicks moved focus; the page had put it on the heading (checked next), as show() does.
+    await page.focus("h1");
+  }
   await page.waitForSelector(".samples .btn");
   const warm = asked.slice(asked.indexOf("POST /v1/try/start") + 1, asked.indexOf("POST /v1/try/start") + 3).sort().join(", ");
   ok(warm === "GET /v1/engine, GET /v1/engine/samples" && asked.filter((x) => x === "GET /v1/engine/samples").length === 1, `${tag}: right after the start: the engine's status and the samples, once (${asked.join(", ")})`);

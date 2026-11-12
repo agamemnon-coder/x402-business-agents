@@ -131,6 +131,18 @@ describe("the page", () => {
     expect(inv).toContain("C.invoice.amountCap");
   });
 
+  it("keeps the main button off on write your own until the suppliers are in, the supplier and IBAN as a skeleton meanwhile", () => {
+    const inv = script.slice(script.indexOf("screen('invoice'"), script.indexOf("// 2 At work"));
+    // The one place that sets the button: off while writing and the suppliers are not in.
+    expect(inv).toMatch(/const gate=\(\)=>\{send\.disabled=writing&&!ready;/);
+    expect(inv).toMatch(/const choose=\(w\)=>\{[^}]*gate\(\)\}/);
+    expect(inv).toContain("classList.toggle('loading',!ready)");
+    // A failed read: calm words with a retry, never the red box.
+    expect(inv).toContain("C.invoice.suppliersFailed");
+    expect(inv).toContain("C.invoice.retry");
+    expect(inv).not.toMatch(/msg\.replaceChildren\(el\('p','note'/);
+  });
+
   it("reads the token from the fragment, takes it out of the address bar, and sends it only in the start request's body", () => {
     const read = script.indexOf("location.hash");
     const drop = script.indexOf("history.replaceState(");
@@ -186,6 +198,8 @@ describe("the copy", () => {
     expect(COPY.WORK.readingCode).toBe("Purser's code is reading…");
     expect(COPY.INVOICE.amountBad).toBe("Write an amount such as 1,850.00 or 10k.");
     expect(COPY.INVOICE.amountCap).toBe("Demo invoices go up to EUR 5,000.");
+    expect(COPY.INVOICE.suppliersFailed).toBe("Suppliers not loaded.");
+    expect(COPY.INVOICE.retry).toBe("Retry");
   });
 
 
@@ -212,7 +226,7 @@ describe("the copy", () => {
     // "recorded {date}" labels the runs inside the "Recorded real runs" fold; "What you just did" names the three icons for screen readers only.
       for (const [k, v] of Object.entries(group)) if (!["sandbox", "executorNote", "vAmount", "vPayee", "vAccount", "vOther", "recorded", "did"].includes(k)) expect(seen.has(v) || [...seen].some((x) => v.includes("{method}") && x === v.replace("{method}", COPY.METHOD.other)), `${screen}.${k}`).toBe(true);
     }
-    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["pay 7", "invoice 3", "invoice 4"]);
+    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["pay 7", "invoice 4", "invoice 5"]);
   });
 
   it("holds screens 3 and 4 to the words of lanes/page.md B2", () => {

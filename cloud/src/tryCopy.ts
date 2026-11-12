@@ -50,6 +50,9 @@ export const INVOICE = {
   ibanHint: "Change the IBAN and see what Purser does",
   /** A calm hint under the amount when it cannot be read as an amount (nothing is sent). */
   amountBad: "Write an amount such as 1,850.00 or 10k.",
+  /** Under the form, calmly, when the suppliers could not be read; the link reads them again. */
+  suppliersFailed: "Suppliers not loaded.",
+  retry: "Retry",
   /** The same hint for an amount past the demo's cap (the simulated bank's USD floor), as the engine says it. */
   amountCap: "Demo invoices go up to EUR 5,000.",
   send: "File this invoice",
@@ -262,6 +265,8 @@ export const VISIBLE = {
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.loading, INVOICE.send],
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.failed, INVOICE.send],
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.supplier, INVOICE.invoiceNo, INVOICE.amount, INVOICE.issued, INVOICE.due, INVOICE.iban, INVOICE.ibanHint, INVOICE.send],
+    // The suppliers did not load: the calm line and its retry, the button off.
+    [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.supplier, INVOICE.invoiceNo, INVOICE.amount, INVOICE.issued, INVOICE.due, INVOICE.iban, INVOICE.ibanHint, INVOICE.suppliersFailed, INVOICE.retry, INVOICE.send],
     // An amount that cannot be read: the calm hint under the field (the owner's words, 8), over budget at its own count.
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.supplier, INVOICE.invoiceNo, INVOICE.amount, INVOICE.issued, INVOICE.due, INVOICE.iban, INVOICE.ibanHint, INVOICE.amountBad, INVOICE.send],
     // An amount past the demo's cap: the same hint in the cap's words (the lead's, 7), over budget at its own count.
@@ -329,7 +334,7 @@ export const VISIBLE = {
  * the IBAN hint are held verbatim, so that state is raised to its count, for the lead to decide; with the cap's words
  * ("Demo invoices go up to EUR 5,000.") in its place it is 48.
  */
-export const OVER_BUDGET: Record<string, number> = { "pay 7": 80, "invoice 3": 49, "invoice 4": 48 };
+export const OVER_BUDGET: Record<string, number> = { "pay 7": 80, "invoice 4": 49, "invoice 5": 48 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
