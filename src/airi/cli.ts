@@ -77,7 +77,19 @@ const PaymentMethods = z.array(z.object({ paymentMethodId: z.string().min(1).max
 const MandateCreated = z.object({ mandateId: z.string().min(1).max(200), passkeyUrl: z.string().url() });
 const Receipt = z.object({ status: z.string().max(100), tokenType: z.string().max(100), tokenExpiration: z.string().max(100) });
 const Cancelled = z.object({ status: z.literal("ok") });
-const MandateRow = z.object({ mandateId: z.string().min(1).max(200), status: z.string().max(40), description: z.string().max(500).optional() });
+/**
+ * A `mandate list` row. 12 Nov live (vic-3, airi-cli 0.1.0-beta.4): rows sit under `items` and carry the description
+ * under orderInfo, not at the top as the README says; read at the top only, the read-back found none and refused. Both
+ * places are read; a row that gives two different descriptions is refused, nothing is picked by guess.
+ */
+const MandateRow = z.object({
+  mandateId: z.string().min(1).max(200), status: z.string().max(40), description: z.string().max(500).optional(),
+  orderInfo: z.object({ description: z.string().max(500).optional() }).optional(),
+}).transform((r, ctx) => {
+  const top = r.description, inOrder = r.orderInfo?.description;
+  if (top !== undefined && inOrder !== undefined && top !== inOrder) { ctx.addIssue({ code: "custom", path: ["description"], message: "two different descriptions" }); return z.NEVER; }
+  return { mandateId: r.mandateId, status: r.status, description: top ?? inOrder };
+});
 /**
  * `mandate list`: the rows as a bare array, or under the one array-valued property of the answer. airi-cli
  * 0.1.0-beta.4's README says a page has `hasMore` and rows with mandateId, status and description, and does not name
