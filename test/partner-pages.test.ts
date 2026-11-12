@@ -123,7 +123,7 @@ describe("the partner pages", () => {
     // The fifth item, "More" (12 Nov): the product pages, then the four partner pages, the same list in both navigations.
     expect(MORE_LABEL).toBe("More");
     // Purser Cloud first (the owner, 12 Nov): the hosted product, on its own address.
-    expect(MORE_LINKS.map((l) => l.key)).toEqual(["cloud", "pricing", "security", "docs", "status", "airwallex", "metal", "visa", "claude"]);
+    expect(MORE_LINKS.map((l) => l.key)).toEqual(["cloud", "pricing", "security", "docs", "airwallex", "metal", "visa", "claude"]);
     expect(MORE_LINKS.filter((l) => l.group === "partner").map((l) => l.label)).toEqual(["Airwallex", "Metal", "Visa", "Claude"]);
     // The template pages' navigation (src/ui/nav.ts): the four tabs as links with their keys, then More, a <details>
     // with the same links as the redesign's header (src/redesign/ui.ts), in the same order.
