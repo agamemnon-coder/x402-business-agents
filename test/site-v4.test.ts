@@ -116,15 +116,16 @@ describe("the site after v4", () => {
     for (const [name, html] of all) for (const re of bad) expect({ name, found: re.exec(allText(html).replace(hostile || "\u0000", " "))?.[0] ?? null }).toEqual({ name, found: null });
   });
 
-  it("has four tabs and More in the menu, on every public page; under More the pages the site serves, in one order: Pricing, Security, Docs, Status, then Airwallex, Metal, Visa, Claude", () => {
+  it("has four tabs and More in the menu, on every public page; under More the pages the site serves, in one order: Pricing, Security, Docs, then Airwallex, Metal, Visa, Claude", () => {
     // The whole list, in the menu's order (src/ui/more.ts): the product pages, then the partner pages.
-    expect(MORE_LINKS.map((l) => [l.label, l.href])).toEqual([["Purser Cloud", "https://purser-try.max-31b.workers.dev/"], ["Pricing", "pricing"], ["Security", "security"], ["Docs", "docs"], ["Status", "status"], ["Airwallex", "airwallex"], ["Metal", "metal"], ["Visa", "visa"], ["Claude", "claude"]]);
+    expect(MORE_LINKS.map((l) => [l.label, l.href])).toEqual([["Purser Cloud", "https://purser-try.max-31b.workers.dev/"], ["Pricing", "pricing"], ["Security", "security"], ["Docs", "docs"], ["Airwallex", "airwallex"], ["Metal", "metal"], ["Visa", "visa"], ["Claude", "claude"]]);
     // The menu lists a page exactly when the site serves it, so "More" never opens onto a 404 (a page not built yet is
     // left out until it is registered; then the menu must list it).
     // 12 Nov: Purser Cloud is its own deployment (an absolute link), served there, not by this Worker.
     const served = MORE_LINKS.filter((l) => /^https:\/\//.test(l.href) || pageResponse(new Request(`https://x.test/${l.href}`), pages as Pages)?.status === 200).map((l) => l.label);
     expect(served).toEqual(expect.arrayContaining(["Pricing", "Security", "Airwallex", "Metal", "Visa", "Claude"]));
-    expect(served).toEqual(expect.arrayContaining(["Docs", "Status"]));
+    expect(served).toEqual(expect.arrayContaining(["Docs"]));
+    expect(served).not.toContain("Status"); // 12 Nov (owner): Status left the menu
     for (const [name, html] of Object.entries(PUBLIC)) {
       const nav = /<nav[^>]*aria-label="Main"[^>]*>([\s\S]*?)<\/nav>/.exec(html)?.[1] ?? "";
       // Five items, in this order: the four tabs as links, then "More", a <details> that needs no script.
@@ -160,7 +161,7 @@ describe("the site after v4", () => {
     }
     // "/try" is no longer linked: since 12 Nov the Try tab and every Try button open the hands-on demo (TRY_URL).
     for (const want of ["/home", "/watch", "/proof", "/pricing", "/security", "/metal", "/airwallex", "/visa", "/claude", "/lab", "/film", "/month", "/metal/report"]) expect(seen).toContain(want);
-    for (const want of ["/docs", "/status"]) expect(seen).toContain(want);
+    for (const want of ["/docs"]) expect(seen).toContain(want);
     for (const [from, to] of [["/live", "/replay"], ["/demo", "/replay"], ["/overview", "/home"]]) expect(pageResponse(new Request(`https://x.test${from}`), p)?.headers.get("location")).toBe(to);
     expect(pageResponse(new Request("https://x.test/no/such/page"), p)).toBeNull();
     const nf = notFoundResponse(p);
