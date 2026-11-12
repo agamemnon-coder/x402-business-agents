@@ -6,7 +6,9 @@
 //
 // Nothing here moves money: these are the costs of Claude calls, in micro-USD at list price (src/claude/pricing.ts).
 import Anthropic from "@anthropic-ai/sdk";
+import type { Asker } from "../ap/read.js";
 import { PRICES } from "../claude/pricing.js";
+import type { DB } from "../db/open.js";
 
 /** What an action may still spend on Claude, in micro-USD. */
 export interface Budget {
@@ -22,6 +24,20 @@ export function actionBudget(micros: number): Budget {
 
 /** Why Claude was not asked: the words claude.capped carries (src/engine/events.ts holds the same list). */
 export type CappedReason = "switch_off" | "no_key" | "action_budget" | "company_cap" | "pool_day_cap" | "address_cap" | "all_time_cap" | "busy";
+
+/** An action's reservation: its ceiling, and how it is settled to what the action really cost. */
+export interface Reservation { micros: number; settle(actualMicros: number): Promise<void> }
+
+/**
+ * Claude for one company's engine, as its host gives it (cloud/src/engine/hostWorker.ts): reserve an action's ceiling
+ * against the caps, or hear why not; a reader for that action, spending from its budget; and, for the status, whether
+ * Claude may read at all and the company's cap.
+ */
+export interface ClaudeAccess {
+  reserve(): Promise<{ ok: true; reservation: Reservation } | { ok: false; reason: CappedReason }>;
+  reader(db: DB, budget: Budget): Asker;
+  status(): Promise<{ on: boolean; cap_micros: number | null }>;
+}
 
 /**
  * The most one call can cost, in micro-USD, rounded up: every token of max_tokens at the output price, and the prompt

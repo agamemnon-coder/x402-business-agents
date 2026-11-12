@@ -6,7 +6,16 @@ import { z } from "zod";
 import { ClaudeReader, MODELS } from "../src/claude/reader.js";
 import { callCostMicros } from "../src/claude/pricing.js";
 import { openDb, type DB } from "../src/db/open.js";
-import { actionBudget, tryClaudeClient, worstCaseMicros } from "../src/engine/budget.js";
+import { useDocStore } from "../src/ap/docStore.js";
+import { actionBudget, tryClaudeClient, worstCaseMicros, type ClaudeAccess, type CappedReason } from "../src/engine/budget.js";
+import { EngineHost, parserOnly } from "../src/engine/host.js";
+import { bankToText, standInBank } from "../src/engine/standInBank.js";
+import { EN } from "./fakes/apInvoices.js";
+import { pdfOf } from "./fakes/pdf.js";
+import { parseApFallback } from "../src/ap/reading.js";
+
+/** Answers each of the inbox's calls in the shape it asks for: a classification, or the invoice's reading. */
+const inboxAnswer = (keys: string[]) => (keys.includes("kind") ? { kind: "invoice" } : keys.includes("iban") ? parseApFallback(EN) : { note: "" });
 
 const Reading = z.object({ vendor: z.string(), total: z.string() });
 const fallback = () => ({ vendor: "from the parser", total: "0.00" });
@@ -14,18 +23,18 @@ const ask = { task: "ap.read:test", role: "act" as const, actor: "treasury" as c
 
 interface Seen { model: string; max_tokens: number; chars: number }
 /** A fetch that answers every call with a reading and the usage `usage(body)` says, and records what it was asked. */
-function standIn(usage: (b: { max_tokens: number; chars: number }) => { input: number; output: number } = () => ({ input: 1200, output: 80 })) {
+function standIn(usage: (b: { max_tokens: number; chars: number }) => { input: number; output: number } = () => ({ input: 1200, output: 80 }), answer: (schemaKeys: string[]) => unknown = () => ({ vendor: "Bergtex Textil GmbH", total: "1850.00" })) {
   const seen: Seen[] = [];
   let n = 0;
   const f = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const req = new Request(input as RequestInfo, init);
-    const body = (await req.json()) as { model: string; max_tokens: number };
+    const body = (await req.json()) as { model: string; max_tokens: number; output_config?: { format?: { schema?: { properties?: Record<string, unknown> } } } };
     const chars = JSON.stringify(body).length;
     seen.push({ model: body.model, max_tokens: body.max_tokens, chars });
     const u = usage({ max_tokens: body.max_tokens, chars });
     return new Response(JSON.stringify({
       id: `msg_${++n}`, type: "message", role: "assistant", model: body.model, stop_reason: "end_turn", stop_sequence: null,
-      content: [{ type: "text", text: JSON.stringify({ vendor: "Bergtex Textil GmbH", total: "1850.00" }) }],
+      content: [{ type: "text", text: JSON.stringify(answer(Object.keys(body.output_config?.format?.schema?.properties ?? {}))) }],
       usage: { input_tokens: u.input, output_tokens: u.output, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
     }), { status: 200, headers: { "content-type": "application/json", "request-id": `req_stand_in_${n}` } });
   }) as typeof fetch;
@@ -110,5 +119,95 @@ describe("the reader's options for the engine (budget, maxTokens, announce)", ()
     const c = tryClaudeClient("stand-in-not-a-key");
     expect(c.timeout).toBe(30_000);
     expect(c.maxRetries).toBe(0);
+  });
+});
+
+/** A company's engine in memory (as in test/engine-host.test.ts) with the Claude access given. */
+function host(claude?: ClaudeAccess) {
+  const db = openDb(":memory:");
+  const docs = new Map<string, Buffer>();
+  useDocStore(db, { put: (sha, b) => { docs.set(`mem:${sha}`, Buffer.from(b)); return `mem:${sha}`; }, get: (p) => docs.get(p)! });
+  const store = { text: null as string | null, load() { return this.text; }, save(t: string) { this.text = t; } };
+  const bank = standInBank(store);
+  const h = new EngineHost({
+    db, reader: parserOnly, rails: { rail: bank, sim: bank }, afterMoney: () => store.save(bankToText(bank)),
+    rp: { rpId: "engine.example.invalid", origin: "https://engine.example.invalid" }, company: { name: "Budget Test Co", lang: "en" }, vault: null, feed: null,
+    ...(claude ? { claude } : {}),
+  });
+  return { db, host: h };
+}
+/** Claude access as the cloud gives it, over a stand-in client: what was reserved and what was settled. */
+function access(o: { refuse?: CappedReason; micros?: number; client?: Anthropic } = {}) {
+  const log = { reserved: 0, settled: [] as number[] };
+  const client = o.client ?? standIn().client;
+  const a: ClaudeAccess = {
+    reserve: async () => {
+      if (o.refuse) return { ok: false, reason: o.refuse };
+      log.reserved++;
+      return { ok: true, reservation: { micros: o.micros ?? 250_000, settle: async (m: number) => { log.settled.push(m); } } };
+    },
+    reader: (db, budget) => new ClaudeReader(db, client, Date.now, {}, { budget, maxTokens: 4_000, announce: true }),
+    status: async () => ({ on: !o.refuse, cap_micros: 400_000 }),
+  };
+  return { access: a, log };
+}
+
+describe("the engine's actions with Claude under caps (src/engine/host.ts)", () => {
+  it("reserves before an upload, reads with Claude within the reservation, and settles to what the calls cost", async () => {
+    const s = standIn(undefined, inboxAnswer);
+    const { access: a, log } = access({ client: s.client });
+    const { db, host: h } = host(a);
+    const up = await h.upload({ bytes: await pdfOf(EN), filename: "bergtex.pdf" });
+    expect(up.kind).toBe("invoice");
+    expect(s.seen.length).toBeGreaterThan(0);
+    expect(log.reserved).toBe(1);
+    expect(up.invoice!.read_by).toMatch(/claude/);
+    const cost = rows(db).filter((r) => r.event === "claude.read").reduce((n, r) => n + (JSON.parse(r.payload_json) as { cost_usd_micros: number }).cost_usd_micros, 0);
+    expect(log.settled).toEqual([cost]);
+    // Each call announced before its reading.
+    const events = rows(db).map((r) => r.event).filter((e) => e.startsWith("claude."));
+    expect(events[0]).toBe("claude.asking");
+    expect(events.indexOf("claude.read")).toBeGreaterThan(events.indexOf("claude.asking"));
+  });
+
+  it("when the caps say no: no call, the parser reads, and the row says why; nothing to settle", async () => {
+    const s = standIn();
+    const { access: a, log } = access({ refuse: "company_cap", client: s.client });
+    const { db, host: h } = host(a);
+    const up = await h.upload({ bytes: await pdfOf(EN), filename: "bergtex.pdf" });
+    expect(up.invoice).toMatchObject({ read_by: "parser" });
+    expect(s.seen).toHaveLength(0);
+    expect(log).toEqual({ reserved: 0, settled: [] });
+    const capped = rows(db).filter((r) => r.event === "claude.capped").map((r) => JSON.parse(r.payload_json));
+    expect(capped).toEqual([{ reason: "company_cap" }]);
+  });
+
+  it("settles a failed action too: what the budget spent, never more than the reservation", async () => {
+    const f = (async () => new Response("{}", { status: 500 })) as typeof fetch;
+    const { access: a, log } = access({ micros: 300_000, client: new Anthropic({ apiKey: "stand-in-not-a-key", fetch: f, maxRetries: 0 }) });
+    const { host: h } = host(a);
+    await h.upload({ bytes: await pdfOf(EN), filename: "bergtex.pdf" });
+    expect(log.settled).toHaveLength(1);
+    expect(log.settled[0]).toBeGreaterThan(0);
+    expect(log.settled[0]).toBeLessThanOrEqual(300_000);
+    // An upload the inbox refuses is settled as well.
+    await expect(h.upload({ bytes: new Uint8Array([1, 2, 3]), filename: "notes.txt" })).rejects.toThrow(/nothing was filed/);
+    expect(log.settled).toHaveLength(2);
+  });
+
+  it("says in its status whether Claude or the parser reads, and what this company spent against its cap", async () => {
+    const { access: a } = access({ client: standIn(undefined, inboxAnswer).client });
+    const { host: h } = host(a);
+    await h.upload({ bytes: await pdfOf(EN), filename: "bergtex.pdf" });
+    const st = await h.status();
+    expect(st).toMatchObject({ reader: "claude", agents: "code", cap_micros: 400_000 });
+    expect(st.spent_micros).toBeGreaterThan(0);
+    expect(await host().host.status()).toMatchObject({ reader: "parser", agents: "code", spent_micros: 0, cap_micros: null });
+  });
+
+  it("without Claude access the engine reads as before: no reservation, no new rows", async () => {
+    const { db, host: h } = host();
+    await h.upload({ bytes: await pdfOf(EN), filename: "bergtex.pdf" });
+    expect(rows(db).some((r) => r.event.startsWith("claude.capped") || r.event === "claude.asking")).toBe(false);
   });
 });
