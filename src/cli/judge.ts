@@ -11,7 +11,7 @@ import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import type { Server } from "node:http";
 import express from "express";
-import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE_OFFLINE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
+import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, FILM_WATCH_CSP, FILM_WATCH_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE_OFFLINE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
 import { readFileSync } from "node:fs";
 import { loadRecord } from "../redesign/run.js";
 import { localTryAnswer } from "../try/local.js";
@@ -33,7 +33,8 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   const home = page(HOME_CSP, () => HOME_PAGE);
   app.get("/", (req, res) => (new URL(req.originalUrl, "http://judge.local").search ? dashboard : home)(req, res));
   app.get("/home", home);
-  app.get("/watch", page(WATCH_CSP, () => WATCH_PAGE));
+  app.get("/watch", page(FILM_WATCH_CSP, () => FILM_WATCH_PAGE));
+  app.get("/replay", page(WATCH_CSP, () => WATCH_PAGE));
   app.get("/proof", page(PROOF_CSP, () => PROOF_PAGE));
   app.get("/trace", page(TRACE_CSP, () => TRACE_PAGE));
   app.get("/runs", page(RUNS_CSP, () => RUNS_PAGE));
@@ -100,7 +101,7 @@ a{display:inline-block;margin-top:4px;padding:10px 16px;border-radius:8px;backgr
 const LIVE_ONLY_CSP = `default-src 'none'; style-src 'sha256-${createHash("sha256").update(/<style>([\s\S]*?)<\/style>/.exec(LIVE_ONLY_PAGE)![1]!, "utf8").digest("base64")}'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
 
 /** The pages `--check` fetches once each: every page a juror reaches, both CFO dashboards included. */
-export const CHECK_PATHS = ["/", "/home", "/watch", "/proof", "/trace", "/runs", "/agents/sourcing", "/agents/support", "/agents/treasury", "/metal", "/metal/report", "/visa", "/airwallex", "/claude", "/?autonomy", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab"];
+export const CHECK_PATHS = ["/", "/home", "/watch", "/replay", "/proof", "/trace", "/runs", "/agents/sourcing", "/agents/support", "/agents/treasury", "/metal", "/metal/report", "/visa", "/airwallex", "/claude", "/?autonomy", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab"];
 
 /**
  * The menu printed at start. The main run's CFO dashboard comes first, and each dashboard is named by its own run, its

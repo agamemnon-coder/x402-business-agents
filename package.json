@@ -59,6 +59,8 @@
     "t0": "tsx src/cli/t0.ts",
     "dispute": "tsx src/cli/dispute.ts",
     "video": "tsx src/cli/video.ts",
+    "capture": "tsx src/cli/capture.ts",
+    "cut": "tsx src/cli/cut.ts",
     "agent-evals": "tsx src/cli/agentEvals.ts",
     "budget": "tsx src/cli/budget.ts",
     "payables": "tsx src/cli/payables.ts",

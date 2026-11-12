@@ -31,7 +31,7 @@ export function judgeSteps(record = loadRecord().record): JudgeStep[] {
     {
       id: "watch", title: "Watch the agents", seconds: 40,
       see: "The main run of 3 November, replayed: each Claude agent's decision in its own words, the money on its rail, the CFO's Face ID.",
-      links: [{ label: "Open /watch", href: "/watch" }],
+      links: [{ label: "Open /replay", href: "/replay" }],
     },
     {
       id: "sign", title: "Sign, then try to cheat", seconds: 40,

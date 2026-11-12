@@ -84,3 +84,35 @@ describe("the page: in the browser only, under a CSP that allows no connection",
     expect(pageResponse(new Request("https://x.example/try/verify"), { csp: {} } as never)?.status ?? 404).toBe(404);
   });
 });
+
+describe("the page shows a live run's receipt as it is (the film's shot T8: awx-1's P-0002)", () => {
+  it("names its payee and the IBAN's last four, never \"undefined\"; one cent more and the terms-hash check fails", async () => {
+    const { chromium } = await import("playwright");
+    const { createServer } = await import("node:http");
+    const { readFileSync } = await import("node:fs");
+    const receipt = readFileSync("docs/runs/2026-11-07-awx-1/receipt-P-0002.json", "utf8");
+    const srv = createServer((_q, r) => { r.setHeader("content-type", "text/html"); r.end(tryVerifyPage()); });
+    await new Promise<void>((ok) => srv.listen(0, "127.0.0.1", () => ok()));
+    const browser = await chromium.launch();
+    try {
+      // WebCrypto needs a secure context: 127.0.0.1 is one.
+      const page = await browser.newPage();
+      await page.goto(`http://127.0.0.1:${(srv.address() as { port: number }).port}/try/verify`);
+      await page.locator("#v-file").setInputFiles({ name: "receipt-P-0002.json", mimeType: "application/json", buffer: Buffer.from(receipt) });
+      await page.locator("#v-verdict[data-ok]").waitFor();
+      expect(await page.locator("#v-verdict").getAttribute("data-ok")).toBe("true");
+      const terms = await page.locator("#v-terms").innerText();
+      expect(terms).not.toContain("undefined");
+      expect(terms).toContain("Stockline Data GmbH");
+      expect(terms).toContain("···· 2051");
+      expect(terms).toContain("EUR 240.00");
+      await page.locator("#v-flip").click();
+      await page.waitForFunction(() => document.querySelector("#v-verdict")?.getAttribute("data-ok") === "false");
+      expect(await page.locator("#v-verdict").getAttribute("data-failed")).toBe("terms hash");
+      expect(await page.locator("#v-terms").innerText()).toContain("EUR 240.01");
+    } finally {
+      await browser.close();
+      srv.close();
+    }
+  }, 30_000);
+});
