@@ -26,7 +26,7 @@ import { engineRoutes } from "./engine/routes.js";
 import { signedTrySession, tryGate } from "./try/gate.js";
 import { tryEngineRoutes } from "./try/engineRoutes.js";
 import { tryError, tryRoutes } from "./try/routes.js";
-import { isTryTenant, noteTryFail, TryRefused, type TryConfig } from "./try/start.js";
+import { DEAD_SESSIONS_PER_MINUTE, isTryTenant, noteTryFail, TryRefused, type TryConfig } from "./try/start.js";
 import { SwitchRefused } from "./try/switches.js";
 
 export interface CloudEnv {
@@ -539,8 +539,9 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
           // A try company's own session that no longer works (expired, or the company was swept) counts against that
           // company, never against the address (cloud/src/try/gate.ts); anything else counts per address, as ever.
           const tryTenant = await signedTrySession(env.sessionSecret, req.headers.get("authorization"));
-          if (tryTenant) await noteTryFail(env.sql, tryTenant, now);
-          else await noteFailedAuth(env.sql, ip, keyIdOf(/^Bearer (\S+)$/.exec(req.headers.get("authorization") ?? "")?.[1]), now);
+          if (tryTenant) {
+            if ((await noteTryFail(env.sql, tryTenant, now)) > DEAD_SESSIONS_PER_MINUTE) return tryError(json, 429, "limit", "This test company's old session was sent too often; renew the session, or wait a minute.");
+          } else await noteFailedAuth(env.sql, ip, keyIdOf(/^Bearer (\S+)$/.exec(req.headers.get("authorization") ?? "")?.[1]), now);
         }
         throw e;
       }

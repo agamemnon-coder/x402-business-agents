@@ -6,7 +6,7 @@
 import { z } from "zod";
 import { randomToken, sha256Hex } from "../crypto.js";
 import type { Sql } from "../store.js";
-import { MAX_TOKENS, readSwitches, setSwitch, SwitchRefused, tokensOf, type Switches } from "./switches.js";
+import { MAX_TOKENS, readSwitches, setSwitch, setSwitchIf, SwitchRefused, tokensOf, type Switches } from "./switches.js";
 
 export const AdminOp = z.discriminatedUnion("op", [
   z.object({ op: z.literal("get") }).strict(),
@@ -34,13 +34,19 @@ export async function adminOp(sql: Sql, op: AdminOp, now: Date): Promise<Record<
   if (op.op === "token") {
     const until = Date.parse(op.until);
     if (Number.isNaN(until) || until <= now.getTime()) throw new SwitchRefused("until is a moment in the future (ISO 8601)");
-    const s = await readSwitches(sql);
-    // Tokens past their end make room; at most eight live ones at once.
-    const live = tokensOf(s).filter((t) => Date.parse(t.until) > now.getTime());
-    if (live.length >= MAX_TOKENS) throw new SwitchRefused(`there are already ${MAX_TOKENS} live tokens; let one end or set tokens to fewer`);
     const token = randomToken(32);
-    await setSwitch(sql, "tokens", JSON.stringify([...live, { sha256: await sha256Hex(token), pool: op.pool, until: new Date(until).toISOString() }]), now);
-    return { token, pool: op.pool, until: new Date(until).toISOString(), note: "shown once; only its hash is kept" };
+    const mine = { sha256: await sha256Hex(token), pool: op.pool, until: new Date(until).toISOString() };
+    // Written only over the list it read: a token made at the same moment is never lost (read again and retried).
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const s = await readSwitches(sql);
+      // Tokens past their end make room; at most eight live ones at once.
+      const live = tokensOf(s).filter((t) => Date.parse(t.until) > now.getTime());
+      if (live.length >= MAX_TOKENS) throw new SwitchRefused(`there are already ${MAX_TOKENS} live tokens; let one end or set tokens to fewer`);
+      if (await setSwitchIf(sql, "tokens", JSON.stringify([...live, mine]), s.tokens ?? null, now)) {
+        return { token, pool: op.pool, until: mine.until, note: "shown once; only its hash is kept" };
+      }
+    }
+    throw new SwitchRefused("the tokens changed too often at the same moment; try again");
   }
   const s = await readSwitches(sql);
   const d = now.toISOString().slice(0, 10);

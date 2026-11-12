@@ -228,6 +228,7 @@ export class EngineHost {
   private async ingest(doc: { bytes: Uint8Array; filename: string; mime?: string }): Promise<UploadResult> {
     const { db, reader } = this.deps;
     const bytes = Buffer.isBuffer(doc.bytes) ? doc.bytes : Buffer.from(doc.bytes.buffer, doc.bytes.byteOffset, doc.bytes.byteLength);
+    this.pdfOnly(bytes, doc.filename);
     this.roomFor(sha256(bytes));
     const out = await ingestDocument(db, { dir: NO_FOLDER, reader, now: () => this.now() }, { bytes, filename: doc.filename, ...(doc.mime ? { mime: doc.mime } : {}), source: "upload" });
     if (out.kind === "duplicate_document") return { kind: out.kind, sha256: out.sha256, invoice: out.invoice_id ? this.invoice(out.invoice_id) : null };
@@ -477,6 +478,13 @@ export class EngineHost {
     if (n >= max) throw new Error(`this test company holds ${n} documents, its limit of ${max}; nothing was filed`);
   }
 
+  /** A capped company takes PDF files only: an e-mail may carry twenty documents, and a photo is filed as another file. */
+  private pdfOnly(bytes: Uint8Array, filename: string): void {
+    if (this.deps.maxDocuments !== undefined && !(bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46)) {
+      throw new Error(`${filename.slice(0, 100)}: a test company takes PDF files only; nothing was filed`);
+    }
+  }
+
   /** The sample invoices, in the tray's order: what the visitor does, never what the engine will answer. */
   samples(): { key: string; title: string; filename: string }[] {
     return (this.deps.samples ?? []).map((s) => ({ key: s.key, title: s.title, filename: s.filename }));
@@ -523,7 +531,8 @@ export class EngineHost {
     if (!p) return null;
     const terms = JSON.parse(p.terms_json) as Terms;
     const approved = !!db.prepare("SELECT 1 FROM approvals WHERE proposal_id = ? AND decision = 'APPROVED'").get(proposalId);
-    return { proposal_id: p.proposal_id, status: p.status, terms, canonical: canonicalTerms(terms), terms_sha256: termsHash(terms), approved, expires_at: p.expires_at };
+    // The hash as stored with the proposal (what the passkey signs), never one recomputed from the instruction's text.
+    return { proposal_id: p.proposal_id, status: p.status, terms, canonical: canonicalTerms(terms), terms_sha256: p.terms_sha256, approved, expires_at: p.expires_at };
   }
 
   /**
@@ -549,7 +558,9 @@ export class EngineHost {
       const transfers = () => (db.prepare("SELECT COUNT(*) AS n FROM transfers WHERE transfer_id IS NOT NULL").get() as { n: number }).n;
       const sentSha = termsHash(sent as Terms);
       const changed = Object.keys(stored.terms).filter((k) => JSON.stringify((stored.terms as Record<string, unknown>)[k]) !== JSON.stringify(sent[k]));
-      const base = { signed_sha256: stored.terms_sha256, sent_sha256: sentSha, changed, transfers_before: transfers() };
+      // What was signed: the approval's own hash once there is one, else the proposal's stored hash.
+      const approvedSha = (db.prepare("SELECT approved_sha256 FROM approvals WHERE proposal_id = ? AND decision = 'APPROVED'").get(proposalId) as { approved_sha256: string } | undefined)?.approved_sha256;
+      const base = { signed_sha256: approvedSha ?? stored.terms_sha256, sent_sha256: sentSha, changed, transfers_before: transfers() };
       const finish = (outcome: PaySignedResult["outcome"], layers: PaySignedResult["layers"], settled: Settled | null): PaySignedResult => {
         audit(db, "human", "try.pay", proposalId, { outcome, changed, signature_verified: layers.signature.verified, executor_accepted: layers.executor.accepted }, now);
         return { outcome, layers, ...base, transfers_after: transfers(), settled };
@@ -597,7 +608,8 @@ export class EngineHost {
         return finish(after === "EXECUTED" ? "paid" : "failed", layers, settled);
       }
       if (signature.verified && executor.accepted && status === "FAILED") return finish("failed", layers, null);
-      if (status === "EXECUTED") return finish(signature.verified ? "paid_once" : "refused", layers, null);
+      // Paid once: only for the very terms that were signed and paid, with a signature over them.
+      if (status === "EXECUTED") return finish(signature.verified && sentSha === base.signed_sha256 ? "paid_once" : "refused", layers, null);
       if (/expired/i.test(executor.said ?? "")) return finish("expired", layers, null);
       return finish("refused", layers, null);
     });

@@ -354,7 +354,9 @@ CREATE TABLE IF NOT EXISTS try_companies (
   pool TEXT NOT NULL CHECK (pool IN ('public', 'event', 'jury')),
   addr TEXT,
   visitor_sha256 TEXT NOT NULL,
-  wiped_at TEXT
+  wiped_at TEXT,
+  -- Sweeps whose engine would not wipe: such a company is tried again after the others, so it never holds them up.
+  sweep_tries INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS try_companies_by_expiry ON try_companies (wiped_at, expires_at);
 CREATE INDEX IF NOT EXISTS try_companies_by_created ON try_companies (created_at);

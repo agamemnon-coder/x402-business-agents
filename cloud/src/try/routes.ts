@@ -11,7 +11,7 @@ import { adminOp, AdminOp } from "./admin.js";
 import { renewSession, startCompany, type TryConfig } from "./start.js";
 
 export interface TryCtx {
-  env: { sql: Sql; sessionSecret: string; engine?: (tenantId: string) => EngineApi; tryIt?: TryConfig };
+  env: { sql: Sql; sessionSecret: string; engine?: (tenantId: string) => EngineApi; tryIt?: TryConfig; rate?: { failedAuthPerMinute?: number } };
   req: Request;
   now: Date;
 }
@@ -42,7 +42,8 @@ export function tryRoutes<C extends TryCtx>(kit: TryKit<C>): TryRoute<C>[] {
     }) },
     { method: "POST", path: "/v1/try/session", summary: "A fresh 15-minute session for your test company: { tenant_id, visitor_token }. Answers { session, expires_at (the session's end), company_expires_at }; 410 { code: gone } once the company was deleted. Limited per company, never per address.", need: "public", run: live(async (c) => {
       const b = await kit.body(c, Session, 2_000);
-      return json(200, await renewSession({ sql: c.env.sql, secret: c.env.sessionSecret, tenantId: b.tenant_id, visitorToken: b.visitor_token, now: c.now }));
+      const ip = c.req.headers.get("cf-connecting-ip") ?? "unknown";
+      return json(200, await renewSession({ sql: c.env.sql, secret: c.env.sessionSecret, tenantId: b.tenant_id, visitorToken: b.visitor_token, ip, now: c.now, ...(c.env.rate?.failedAuthPerMinute ? { failedPerMinute: c.env.rate.failedAuthPerMinute } : {}) }));
     }) },
     { method: "POST", path: "/v1/try/admin", summary: "The hands-on deployment's controls (the platform admin's token): { op: get } the switches and today's counters; { op: set, key, value } one switch within its ceiling; { op: token, pool, until } a new event or jury token, shown once.", need: "platform", run: live(async (c) => {
       const op = await kit.body(c, AdminOp, 8_000);

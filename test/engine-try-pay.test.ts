@@ -147,6 +147,10 @@ describe("one visitor: approve (held), change and be refused by both layers, the
     expect(again.json).toMatchObject({ outcome: "paid_once", transfers_before: 1, transfers_after: 1, settled: null });
     const changed = await pay(v.s, v.proposal.id, { ...signedTerms, amount: "1.00" }, approval);
     expect(changed.json).toMatchObject({ outcome: "refused", transfers_after: 1 });
+    // Even with a fresh signature over the changed terms: they were never paid, so not "paid once".
+    const sent = { ...signedTerms, amount: "9999.00" };
+    const fresh = v.phone.sign({ challenge: challengeFor(termsHash(sent as unknown as Terms)), origin: ORIGIN, rpId: RP, counter: 5 });
+    expect((await pay(v.s, v.proposal.id, sent, fresh)).json).toMatchObject({ outcome: "refused", layers: { signature: { verified: true } }, transfers_after: 1 });
   });
 
   it("writes every attempt to the company's own record, with no values", async () => {
@@ -264,6 +268,19 @@ describe("on the engine host, whose clock and bank a test moves", () => {
     expect(a).toMatchObject({ status: "approved", held: true, settled: null });
     return { db, bank, host, proposal: p.proposal, credential, signed: host.terms(p.proposal.id)!.terms as Record<string, unknown> };
   }
+
+  it("reports the signed hash as stored, never one recomputed from terms that may have changed", async () => {
+    const clock = { now: new Date() };
+    const w = await held(clock);
+    // Were the payment instruction ever changed outside the route, the signed hash still says what was signed.
+    w.db.prepare("UPDATE proposals SET terms_json = ? WHERE proposal_id = ?").run(JSON.stringify({ ...w.signed, amount: "1.00" }), w.proposal.id);
+    expect(w.host.terms(w.proposal.id)!.terms_sha256).toBe(w.proposal.terms_sha256);
+    const out = await w.host.paySigned(w.proposal.id, w.signed, w.credential) as PaySignedResult;
+    expect(out.signed_sha256).toBe(w.proposal.terms_sha256);
+    // The executor's own gate, run for real, refuses the changed instruction: nothing moves.
+    expect(out.outcome).toBe("failed");
+    expect(w.bank.transfers).toHaveLength(0);
+  });
 
   it("an expired proposal answers expired, and its stored state is as it was", async () => {
     const clock = { now: new Date() };

@@ -18,12 +18,13 @@ export async function sweepTry(a: {
   settle?: (sql: Sql, now: Date) => Promise<unknown>;
 }): Promise<{ swept: string[]; salts_dropped: number }> {
   const { sql, blobs, now } = a;
-  const due = await sql.all<{ tenant_id: string }>("SELECT tenant_id FROM try_companies WHERE wiped_at IS NULL AND expires_at <= ? ORDER BY expires_at LIMIT ?", [now.toISOString(), a.batch ?? SWEEP_BATCH]);
+  const due = await sql.all<{ tenant_id: string }>("SELECT tenant_id FROM try_companies WHERE wiped_at IS NULL AND expires_at <= ? ORDER BY sweep_tries, expires_at LIMIT ?", [now.toISOString(), a.batch ?? SWEEP_BATCH]);
   const swept: string[] = [];
   for (const { tenant_id: id } of due) {
     if (a.engine) {
       try { await a.engine(id).wipe(); } catch (e) {
         logEvent("error", "try_sweep_wipe_failed", { tenant: id, error: e instanceof Error ? e.message : String(e) }, now);
+        await sql.run("UPDATE try_companies SET sweep_tries = sweep_tries + 1 WHERE tenant_id = ?", [id]);
         continue;
       }
     }

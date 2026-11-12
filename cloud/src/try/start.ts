@@ -11,7 +11,7 @@
 // and per day for the pool; event and jury starts (a token the admin made) skip the address limit and count against
 // their own pool's day. A session is renewed per company (30 a minute), never per address, so a room on one Wi-Fi is
 // never turned away because of one device in it.
-import { sessionToken } from "../auth.js";
+import { failedAuthBlocked, noteFailedAuth, sessionToken } from "../auth.js";
 import { randomToken, sameString, sha256Hex } from "../crypto.js";
 import type { EngineApi } from "../engine/api.js";
 import { bump } from "../auth.js";
@@ -36,8 +36,6 @@ export const VISITOR_NAME = "You (visitor)";
 const NAMES = ["Harbour Linen (test)", "Polder Print (test)", "Dune Coffee Roasters (test)", "Canal Bikes (test)", "Tulip Tiles (test)", "North Sea Ropes (test)"];
 /** A session renewal per company and minute. */
 export const SESSIONS_PER_MINUTE = 30;
-/** Above this many wrong visitor tokens or old sessions of one company in a minute, its session renewals wait a minute. */
-const FAILS_PER_MINUTE = 60;
 
 /** A refusal of the try routes: a status, a stable code and a sentence a person can read. */
 export class TryRefused extends Error {
@@ -85,7 +83,8 @@ export async function addressKey(sql: Sql, ip: string, now: Date): Promise<strin
 
 /** Salts older than 48 hours are deleted (the sweep calls this). */
 export async function dropOldSalts(sql: Sql, now: Date): Promise<number> {
-  return (await sql.run("DELETE FROM try_salts WHERE day < ?", [day(new Date(now.getTime() - 48 * 3_600_000))])).changes;
+  // A day's salt is made at the earliest when the day begins: it goes once 48 hours have passed since then.
+  return (await sql.run("DELETE FROM try_salts WHERE day <= ?", [day(new Date(now.getTime() - 48 * 3_600_000))])).changes;
 }
 
 /** The pool a start token puts a company in: a stored token's hash, not past its `until`; anything else is public. */
@@ -157,26 +156,39 @@ export async function startCompany(a: { sql: Sql; engine: (tenantId: string) => 
 
 const sessionEnd = (now: Date) => new Date(now.getTime() + 15 * 60_000).toISOString();
 
-/** Counts a wrong visitor token or a dead session of one company, against that company only (never its address). */
-export async function noteTryFail(sql: Sql, tenantId: string, now: Date): Promise<void> {
-  await bump(sql, `authfail-tenant:${tenantId}`, Math.floor(now.getTime() / 60_000) * 60, 1);
+/**
+ * A dead session of one test company (signed by this cloud, but expired, signed out or swept), counted against that
+ * company only, never its address: one sleepy phone must not turn a room away. Past DEAD_SESSIONS_PER_MINUTE in a
+ * minute, the router answers that company's dead sessions with 429 (a fresh session of the company is not affected).
+ * Returns the minute's count.
+ */
+export async function noteTryFail(sql: Sql, tenantId: string, now: Date): Promise<number> {
+  return bump(sql, `authfail-tenant:${tenantId}`, Math.floor(now.getTime() / 60_000) * 60, 1);
 }
+export const DEAD_SESSIONS_PER_MINUTE = 120;
 
-/** A fresh 15-minute session for the visitor's company, with the visitor's token; 410 once the company is gone. */
-export async function renewSession(a: { sql: Sql; secret: string; tenantId: string; visitorToken: string; now: Date }): Promise<{ session: string; expires_at: string; company_expires_at: string }> {
+/**
+ * A fresh 15-minute session for the visitor's company, with the visitor's token; 410 once the company is gone.
+ * The right token is never held up by anyone else's requests: renewals are counted per company only when the token is
+ * right (30 a minute). A wrong token (2^256 to guess) is counted against the company, never its address; an
+ * unknown company against the address, and past the address's limit it waits a minute.
+ */
+export async function renewSession(a: { sql: Sql; secret: string; tenantId: string; visitorToken: string; ip: string; now: Date; failedPerMinute?: number }): Promise<{ session: string; expires_at: string; company_expires_at: string }> {
   const { sql, now } = a;
-  if (!TRY_ID.test(a.tenantId)) throw new TryRefused(401, "unauthorized", "This test company or its visitor token is not known here.");
-  const row = await sql.first<{ expires_at: string; wiped_at: string | null; visitor_sha256: string }>("SELECT expires_at, wiped_at, visitor_sha256 FROM try_companies WHERE tenant_id = ?", [a.tenantId]);
-  if (!row) throw new TryRefused(401, "unauthorized", "This test company or its visitor token is not known here.");
   const minute = Math.floor(now.getTime() / 60_000) * 60;
-  if ((await bump(sql, `trysession:${a.tenantId}`, minute, 1)) > SESSIONS_PER_MINUTE) throw new TryRefused(429, "limit", "Too many renewals for this test company; wait a minute.");
+  const unknown = async (): Promise<never> => {
+    if (await failedAuthBlocked(sql, a.ip, now, a.failedPerMinute ?? 20)) throw new TryRefused(429, "limit", "Too many unknown test companies asked for from this address; wait a minute.");
+    await noteFailedAuth(sql, a.ip, null, now);
+    throw new TryRefused(401, "unauthorized", "This test company or its visitor token is not known here.");
+  };
+  const row = TRY_ID.test(a.tenantId) ? await sql.first<{ expires_at: string; wiped_at: string | null; visitor_sha256: string }>("SELECT expires_at, wiped_at, visitor_sha256 FROM try_companies WHERE tenant_id = ?", [a.tenantId]) : null;
+  if (!row) return unknown();
   if (row.wiped_at || row.expires_at <= now.toISOString()) throw new TryRefused(410, "gone", "Your test company was deleted after 24 hours.");
-  const fails = await sql.first<{ count: number }>("SELECT count FROM rate_hits WHERE bucket = ? AND window_start = ?", [`authfail-tenant:${a.tenantId}`, minute]);
-  if ((fails?.count ?? 0) >= FAILS_PER_MINUTE) throw new TryRefused(429, "limit", "Too many failed renewals for this test company; wait a minute.");
   if (!sameString(await sha256Hex(a.visitorToken), row.visitor_sha256)) {
-    await noteTryFail(sql, a.tenantId, now);
+    await bump(sql, `trytoken-fail:${a.tenantId}`, minute, 1);
     throw new TryRefused(401, "unauthorized", "This test company or its visitor token is not known here.");
   }
+  if ((await bump(sql, `trysession:${a.tenantId}`, minute, 1)) > SESSIONS_PER_MINUTE) throw new TryRefused(429, "limit", "Too many renewals for this test company; wait a minute.");
   const u = await sql.first<{ id: string; session_gen: number }>("SELECT id, session_gen FROM users WHERE tenant_id = ? AND role = 'owner' AND erased_at IS NULL ORDER BY created_at LIMIT 1", [a.tenantId]);
   if (!u) throw new TryRefused(410, "gone", "Your test company was deleted after 24 hours.");
   return { session: await sessionToken(a.secret, { tenantId: a.tenantId, userId: u.id, role: "owner", gen: u.session_gen }, now), expires_at: sessionEnd(now), company_expires_at: row.expires_at };
