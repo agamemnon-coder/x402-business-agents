@@ -365,7 +365,10 @@ async function run(db: DB, deps: AiriDeps, row: Row, recheck: () => boolean, now
   // The order ref is Airwallex's request_id: unique per Airwallex account, and every world numbers its proposals from
   // P-0001, so the row's own start (to the millisecond) goes with it. Stable for this row, so a retry reuses it.
   const orderRef = `${row.action_id}-${Date.parse(row.created_at).toString(36)}`;
-  const prepared = await deps.checkout.prepare({ ref: orderRef, amount: terms.amount, currency: terms.currency, description: terms.description });
+  // Above the limit the CFO signed these terms: their hash and the proposal id go on the order (Airwallex: the
+  // PaymentIntent's metadata), to be read back. Within the limit nothing was signed, so nothing is sent.
+  const signed = row.route === "cfo" && row.proposal_id ? { termsSha256: row.order_sha256, proposalId: row.proposal_id } : undefined;
+  const prepared = await deps.checkout.prepare({ ref: orderRef, amount: terms.amount, currency: terms.currency, description: terms.description, ...(signed ? { signed } : {}) });
   if ("outcome" in prepared) return refuse(db, row, "checkout", prepared.code, prepared.reason, now);
   finishStep(db, row.action_id, "airi.checkout_prepare", { reference: prepared.reference }, now);
   setRow(db, row.action_id, { checkout_ref: prepared.reference }, now);

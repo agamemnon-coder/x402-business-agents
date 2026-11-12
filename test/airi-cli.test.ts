@@ -92,6 +92,27 @@ describe("AiriCliClient: the answers, parsed strictly", () => {
     }
   });
 
+  // 12 Nov live (airi-cli 0.1.0-beta.4, vic-3 step A): `mandate list` answers { hasMore, items, page, size } and a row
+  // carries the description under orderInfo, not at the top. Read at the top only, the read-back found none and
+  // refused (PURSER_MANDATE_NOT_READ_BACK); the mandate was cancelled before any credential.
+  it("reads the description a live list carries under orderInfo", async () => {
+    const live = { hasMore: false, page: 0, size: 5, items: [{
+      mandateId: "mdt_1", status: "CREATED", createdAt: "2026-11-12T14:35:00Z", source: "Purser sourcing agent",
+      orderInfo: { currency: "EUR", description: "order [airi-1]", lineItems: [], totalAmount: "12.00" },
+      merchantInfo: { country: "NL", name: "Shop", url: "https://shop.example/" },
+    }] };
+    for (const answer of [live, { has_more: false, items: [{ mandate_id: "mdt_1", status: "CREATED", order_info: { description: "order [airi-1]" } }] }]) {
+      const { c } = client({ "mandate list": ok(answer) });
+      expect(await c.readMandate("mdt_1", "2026-11-12T14:34:00Z")).toEqual({ mandateId: "mdt_1", status: "CREATED", description: "order [airi-1]" });
+      expect(await c.findMandate("order [airi-1]", "2026-11-12T14:34:00Z")).toEqual({ mandateId: "mdt_1", status: "CREATED" });
+    }
+  });
+
+  it("refuses a row whose top description and orderInfo description differ: nothing is picked by guess", async () => {
+    const { c } = client({ "mandate list": ok({ items: [{ mandateId: "mdt_1", status: "CREATED", description: "order [airi-1]", orderInfo: { description: "order [airi-2]" } }] }) });
+    await expect(c.readMandate("mdt_1", "2026-11-12T14:34:00Z")).rejects.toMatchObject({ code: "AIRI_OUTPUT_UNRECOGNISED" });
+  });
+
   it("an answer that gives one field in both spellings with different values is refused: nothing is guessed", async () => {
     const { c } = client({ "mandate create": ok({ mandateId: "mdt_a", mandate_id: "mdt_b", passkeyUrl: "https://app.airi.com/pay/xyz" }) });
     await expect(c.createMandate({ source: "s", paymentMethodId: "p", merchantName: "m", merchantUrl: "https://m.example/", merchantCountry: "NL", totalAmount: "1.00", currency: "EUR", items: [{ name: "i", unitPrice: "1.00", quantity: "1" }], description: "d" })).rejects.toMatchObject({ code: "AIRI_OUTPUT_UNRECOGNISED" });
