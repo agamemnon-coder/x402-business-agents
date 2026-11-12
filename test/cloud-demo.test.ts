@@ -392,6 +392,24 @@ describe("demo mode, what a visitor gets", () => {
   });
 });
 
+describe("demo mode, every other method", () => {
+  it("answers no method but GET: PUT, PATCH, HEAD and OPTIONS are refused like POST and DELETE, on a read, for no company and for no route", async () => {
+    demoOn();
+    const watch = watchSql(c.env.sql);
+    try {
+      for (const method of ["POST", "DELETE", "PUT", "PATCH", "OPTIONS", "HEAD"]) {
+        for (const p of ["/v1/demo/alder/invoices", "/v1/demo/companies", "/v1/health", "/v1/demo/nobody/invoices", "/v1/nothing"]) {
+          const r = await c.req(method, p, method === "HEAD" || method === "OPTIONS" ? {} : { body: {} });
+          expect(r.status, `${method} ${p}`).toBe(403);
+          // A HEAD answer has no body on the wire; every other one says why.
+          if (method !== "HEAD") expect(r.json.code, `${method} ${p}`).toBe("demo_read_only");
+        }
+      }
+      expect(watch.seen).toEqual([]);
+    } finally { watch.stop(); }
+  });
+});
+
 describe("demo mode, in docs/cloud.md", () => {
   it("is described as the code has it: the reads, the limits and the times are the code's own", () => {
     const doc = readFileSync("docs/cloud.md", "utf8");

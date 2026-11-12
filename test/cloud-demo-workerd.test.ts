@@ -93,6 +93,7 @@ if (onD1) describe("the cloud Worker in workerd, in demo mode", () => {
       const r = await get(demo, path, { method, ...(method === "POST" ? { body: "{}", headers: { "content-type": "application/json" } } : {}) });
       expect([r.status, r.json.code], `${method} ${path}`).toEqual([403, "demo_read_only"]);
     }
+    expect((await get(demo, "/v1/health", { method: "HEAD" })).status).toBe(403);
     const page = await get(demo, "/");
     expect([page.status, page.headers.get("content-type")]).toEqual([200, "text/html; charset=utf-8"]);
     expect(await counts()).toBe(before);
