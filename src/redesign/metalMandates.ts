@@ -127,10 +127,9 @@ pre.mcmd { margin: 4px 0 8px; padding: 10px 12px; background: var(--sunken); bor
 dl.mev { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 12px; margin: 4px 0 10px; font-size: 14px; }
 dl.mev dt { color: var(--muted); } dl.mev dd { margin: 0; font: 600 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
 .mnote, .mc p, .mtab td, .mcov th, .mcov td { overflow-wrap: anywhere; }
-/* Tap targets (jury panel, 12 Nov), as on /airwallex: on a phone every link and fold header in the page is at least
-   44 px high; a link inside a sentence keeps its place in the line and grows by its padding. */
-@media (max-width: 700px) { .mtp a.pf { padding: 14px 0; } .mtp a.open { min-height: 44px; }
-  .mtp .mtab td a.pf, .mtp .mcov td a.pf, .mtp .mc .tx2 a.pf { padding: 0; } }
+/* Tap targets (jury panel, 12 Nov): on a phone every link and fold header in the page is at least 44 px high. A link
+   is a 44 px box in its line, so the line grows with it and no link's area covers the one above or below. */
+@media (max-width: 700px) { .mtp a.pf { display: inline-flex; align-items: center; min-height: 44px; max-width: 100%; vertical-align: middle; } .mtp a.open { min-height: 44px; } }
 @media (max-width: 700px) {
   .mtab thead { display: none; }
   .mtab tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 10px; border-top: 1px solid var(--border); padding: 8px 0; }

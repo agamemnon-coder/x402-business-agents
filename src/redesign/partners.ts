@@ -22,6 +22,7 @@ import { VIC_FLOW_CSS, vicFlowBlock } from "./vicFlow.js";
 import { VISA_OVERVIEW_CSS, VISA_TAP_ID, visaOverviewBlock } from "./visaOverview.js";
 import { tokenizeRun, tokenizeRunBlock, type TokenizeRun } from "./tokenizeRun.js";
 import { HOLD_NOT_FINISHED, METAL_CSS, METAL_INSPECT_JS, metalBody } from "./metalMandates.js";
+import { EVIDENCE_CSS, claudeEvidence, failureFold, mcpFold, measuredBlock, sweepFold } from "./claudeEvidence.js";
 import { T0_CSS, T0_FIRST_RECORD, T0_JOURNAL_RECORD, T0_LABEL, T0_SECOND_RECORD, t0Body, t0Data } from "./t0Page.js";
 import { OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
 
@@ -76,10 +77,10 @@ const nums = (items: [string, string][]) => `<div class="nums">${items.map(([v, 
 const docsLi = (title: string, docs: { label: string; href: string }[]) => `<li>${esc(title)}: ${docs.map((d) => `<a class="pf" href="${esc(d.href)}" target="_blank" rel="noopener">${esc(d.label)} ↗</a>`).join(" · ")}</li>`;
 const plainLi = (t: string) => `<li>${esc(t)}</li>`;
 
-function shell(run: AgentRun, o: { builtOn?: string; intro?: string; lead?: string; top?: string; underTop?: string; label?: string; title: string; description: string; logo: string; h1: string; picture: string; nums: string; line: string; extra?: string; folds: string; after?: string; proofHash: string; js?: string }): string {
+function shell(run: AgentRun, o: { builtOn?: string; /** Under the h1, before the picture (/claude's measured block, 12 Nov). */ head?: string; css?: string; intro?: string; lead?: string; top?: string; underTop?: string; label?: string; title: string; description: string; logo: string; h1: string; picture: string; nums: string; line: string; extra?: string; folds: string; after?: string; proofHash: string; js?: string }): string {
   const body = `<main class="pp"><div class="wrap">
   ${o.intro ? `<p class="vintro">${esc(o.intro)}</p>` : ""}${o.lead ?? ""}${o.top ? `<div class="awrb">${o.top}</div>` : ""}${o.underTop ?? ""}
-  <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(o.label ?? run.label)}</span><h1>${esc(o.h1)}</h1></div>
+  <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(o.label ?? run.label)}</span><h1>${esc(o.h1)}</h1></div>${o.head ?? ""}
   <div class="flow card" role="img" aria-label="${esc(`How ${o.title} fits in, step by step`)}">${o.picture}</div>
   ${o.nums}
   <p class="line">${esc(o.line)}</p>
@@ -87,7 +88,7 @@ function shell(run: AgentRun, o: { builtOn?: string; intro?: string; lead?: stri
   <div class="folds card">${o.folds}</div>${o.after ?? ""}
   <a class="open" href="proof#${o.proofHash}">All the proof ${icon("arrow-right", 15)}</a>
 </div></main>`;
-  return page({ title: o.title, description: o.description, tab: "proof", css: CSS, body, source: SOURCE(run), ...(o.js ? { js: o.js, stage: false } : {}), ...(o.builtOn ? { builtOn: o.builtOn } : {}) });
+  return page({ title: o.title, description: o.description, tab: "proof", css: o.css ? `${CSS}\n${o.css}` : CSS, body, source: SOURCE(run), ...(o.js ? { js: o.js, stage: false } : {}), ...(o.builtOn ? { builtOn: o.builtOn } : {}) });
 }
 
 const moneyOf = (run: AgentRun) => run.events.filter((e): e is Extract<Ev, { k: "money" }> => e.k === "money");
@@ -209,32 +210,28 @@ export function visaPage(run: AgentRun = agentRun()): string {
 }
 
 export function claudePage(run: AgentRun = agentRun()): string {
-  const p = partnerProof(run), sp = split(run.record), s = run.record.snapshot;
+  const sp = split(run.record), s = run.record.snapshot;
   const calls = s.agent_stats.reduce((n, a) => n + a.claude_calls, 0);
   const requests = s.flows.filter((f) => f.request && f.model);
-  const docs = [
-    { title: "Tools the agents call", docs: [{ label: "Define tools", href: "https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools" }] },
-    { title: "One model per job", docs: [{ label: "Models overview", href: "https://platform.claude.com/docs/en/models/overview" }, { label: "Pricing", href: "https://platform.claude.com/docs/en/about-claude/pricing" }] },
-    { title: "Checked fields", docs: [{ label: "Structured outputs", href: "https://platform.claude.com/docs/en/build-with-claude/structured-outputs" }] },
-    { title: "Cost", docs: [{ label: "Prompt caching", href: "https://platform.claude.com/docs/en/build-with-claude/prompt-caching" }] },
-  ];
+  // Measured, not asserted (jury panel, 12 Nov; src/redesign/claudeEvidence.ts): four figures on top, each with its
+  // record; each agent on each model as measured in place of the per-agent fold; the failure story; the MCP interface.
+  const ev = claudeEvidence(), used = Object.fromEntries(run.agents.map((a) => [a.id, a.family]));
   return shell(run, {
-    builtOn: builtOnHtml(run),
+    builtOn: builtOnHtml(run), css: EVIDENCE_CSS, head: measuredBlock(ev),
     title: "Claude", description: "How Purser uses Claude: three agents decide the exceptions, each decision a recorded Claude call; routine payments per query are code.",
     logo: LOGO.claude, h1: "Claude decides the exceptions", proofHash: "claude",
     picture: run.agents.map((a) => node(a.id === "sourcing" ? "package" : a.id === "support" ? "headphones" : "landmark", `${a.short} · ${a.family}`, `${s.agent_stats.find((x) => x.agent === a.id)?.decisions ?? 0} decisions`, "claude")).join(arrow),
     nums: nums([[`${sp.byClaude}/${sp.decisions}`, `decisions by Claude (${sp.fallbacks} fallbacks)`], [String(sp.routine), "routine payments by code"], [String(calls), "Claude calls, each with a request id"], [String(faceIdDecisions(run.record)), "Face ID decisions by the CFO"]]),
     // What a decision is here (jury review, 7 Nov, #19): holding and doing nothing count, as the record's own rows show.
     line: `${SPLIT_LINE} ${sp.decisions} decisions, including the ones to hold or do nothing.`,
-    folds: fold("Each agent: decisions, calls, cost", p.claude)
+    folds: sweepFold(ev, used) + failureFold(ev)
       // All the decisions the headline counts (final review, 4 Nov: the chat's 21 of 24), cut at a word, never inside a number.
       + fold("Every decision, with its Claude call", decisionsOf(run.record).map((d) => `<li class="ok">${esc(`${d.agent[0]!.toUpperCase()}${d.agent.slice(1)}, ${d.at.slice(11, 16)} UTC: ${d.text.length > 140 ? `${d.text.slice(0, 140).replace(/\s+\S*$/, "")}…` : d.text}`)}${d.call ? `<br><span class="call" title="${esc(d.call.requestIds.join(", "))}">${esc(callBadge(d.call))}</span>` : ""}</li>`))
       + fold("Payments decided by Claude, with their request ids", requests.map((f) => `<li>${esc(`${f.what}: ${f.amount} ${f.unit === "EUR" ? "EUR" : "test USD"} · ${f.decided} · ${f.request}`)}</li>`))
-      + fold("The Claude docs we built on", docs.map((d) => docsLi(d.title, d.docs))),
+      + mcpFold(ev),
   });
 }
 
-/** The clean 404: what happened, and the four tabs. No script. */
 /**
  * The "Built on" strip (owner, 12 Nov): one line in the footer of the partner pages (/metal, /airwallex, /claude, /t0;
  * not Home, not /visa), each partner a text link with one proof number read from a record. Text only, no logos; ICC
@@ -272,6 +269,7 @@ export function t0Page(run: AgentRun = agentRun()): string {
     source: `Source: ${T0_JOURNAL_RECORD}, ${PLATFORM_RUN_FILE}, ${T0_FIRST_RECORD} and ${T0_SECOND_RECORD}.`, real: T0_REAL, builtOn: builtOnHtml(run) });
 }
 
+/** The clean 404: what happened, and the four tabs. No script. */
 export function notFoundPage(run: AgentRun = agentRun()): string {
   const body = `<main class="nf"><div class="wrap"><p class="pill">404</p><h1>This page does not exist.</h1><p class="line">Every page of the demo is one of these four.</p>
 <div class="tabs2"><a class="btn primary" href="home">${icon("feather", 18)}Home</a><a class="btn" href="watch">${icon("play", 18)}Watch</a><a class="btn" href="try">${icon("sparkles", 18)}Try</a><a class="btn" href="proof">${icon("shield-check", 18)}Proof</a></div></div></main>`;

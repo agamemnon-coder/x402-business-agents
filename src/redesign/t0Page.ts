@@ -73,9 +73,11 @@ export const T0_CSS = `.t0r { padding: 16px 18px; display: grid; gap: 4px; }
 .t0r li:first-child { border-top: 0; }
 .t0r li b { font-weight: 700; }
 .t0r a.pf, .t0p a.pf { display: inline-flex; align-items: center; min-height: 44px; }
-table.t0a { width: 100%; border-collapse: collapse; font-size: 14.5px; font-variant-numeric: tabular-nums; }
-table.t0a th, table.t0a td { text-align: left; padding: 6px 8px 6px 0; border-top: 1px solid var(--border); }
-@media (max-width: 700px) { .t0p a.pf { padding: 0; } .t0p a.open { min-height: 44px; } }`;
+table.t0a { width: 100%; border-collapse: collapse; font-size: 14.5px; font-variant-numeric: tabular-nums; table-layout: fixed; }
+table.t0a th, table.t0a td { text-align: left; padding: 6px 8px 6px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
+table.t0a th:first-child { width: 36%; }
+.t0p .folds { min-width: 0; }
+@media (max-width: 700px) { .t0p a.pf { padding: 0; vertical-align: middle; max-width: 100%; } .t0p a.open { min-height: 44px; } table.t0a { font-size: 12.5px; } }`;
 
 const link = (file: string, label: string) => `<a class="pf" href="${esc(`${REPO_BLOB}${file}`)}" target="_blank" rel="noopener">${esc(label)} ↗</a>`;
 const li = (t: string) => `<li>${esc(t)}</li>`;
