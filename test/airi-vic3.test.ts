@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { AIRI_RAIL, airiTerms } from "../src/airi/purchase.js";
 import { StandInAiriClient, StandInCheckout } from "../src/airi/standIn.js";
 import type { CheckoutAnswer } from "../src/airi/client.js";
-import { BUDGETS, DRY_LABEL, NOT_REFUSED_FINDING, STAND_IN_MODEL, plantChange, runVic3, standInClaude, vic3RunnerProblems, type Vic3Deps, type Vic3Record } from "../src/airi/vic3.js";
+import { BUDGETS, DRY_LABEL, NOT_REFUSED_FINDING, STAND_IN_MODEL, plantChange, runVic3, standInClaude, vic3LiveRefusals, vic3Markdown, vic3RunnerProblems, type Vic3Deps, type Vic3Record } from "../src/airi/vic3.js";
 import { assertNoSecrets } from "../src/airi/vic1.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { decide, resuming } from "../src/policy/approvals.js";
@@ -117,16 +117,16 @@ describe("vic-3 on the stand-ins (the dry run)", () => {
   it("F1 and F2: the answers are kept as they came; an accepted F is a PASS with the finding that only Purser enforces the binding", async () => {
     const r = await runVic3(world().deps);
     const f1 = step(r, "F1"), f2 = step(r, "F2");
-    expect(f1.negative_test).toMatchObject({ result: "PASS", finding: NOT_REFUSED_FINDING, airwallex: { outcome: "SUCCEEDED", amount: "40.00" } });
+    expect(f1.negative_test).toMatchObject({ result: "PASS", finding: `STAND-IN (the stand-in checkout's answer, not the Airwallex sandbox's): ${NOT_REFUSED_FINDING}`, airwallex: { outcome: "SUCCEEDED", amount: "40.00" } });
     expect(f1.request).toMatchObject({ amount: "10.00" });
-    expect(f2.negative_test).toMatchObject({ result: "PASS", finding: NOT_REFUSED_FINDING, airwallex: { outcome: "SUCCEEDED" } });
+    expect(f2.negative_test).toMatchObject({ result: "PASS", finding: expect.stringContaining(NOT_REFUSED_FINDING), airwallex: { outcome: "SUCCEEDED" } });
     expect(f2.payment_intent_id).not.toBe(step(r, "B").payment_intent_id);
     expect(f2.calls.airi).toBe(0);
   });
 
   it("a refused F is recorded with the checkout's code, as the Airwallex sandbox's answer (not Visa's)", async () => {
     const checkout = new Hooked({ pay: (ref) => (ref.startsWith("vic3-F") ? { outcome: "DECLINED", reference: "x", code: "card_not_valid_for_amount" } : null) });
-    const r = await runVic3(world({ checkout }).deps);
+    const r = await runVic3(world({ checkout, mode: "live", claude: claude().client }).deps);
     expect(step(r, "F1").negative_test!.finding).toBe("the Airwallex sandbox declined it: card_not_valid_for_amount");
     expect(step(r, "F2").negative_test!.finding).toBe("the Airwallex sandbox declined it: card_not_valid_for_amount");
     expect(JSON.stringify(r)).not.toMatch(/Visa (refused|declined|approved)/i);
@@ -189,11 +189,12 @@ describe("vic-3 read-back cannot be bypassed", () => {
 });
 
 describe("vic-3 with Claude (scripted, no network)", () => {
-  it("records by claude, the model and each request id; 3 Anthropic calls in all", async () => {
+  it("records by claude, the model and each request id; 3 Anthropic calls in all; an accepted F is a PASS with the finding as it is", async () => {
     const c = claude();
     const w = world({ mode: "live", claude: c.client });
     const r = await runVic3(w.deps);
     expect(c.calls()).toBe(3);
+    expect(step(r, "F1").negative_test).toMatchObject({ result: "PASS", finding: NOT_REFUSED_FINDING });
     expect(["A", "B", "F1"].map((s) => step(r, s).rail_choice)).toEqual([
       expect.objectContaining({ by: "claude", model: "claude-haiku-5-5", request_id: "req_test_1", chosen: AIRI_RAIL }),
       expect.objectContaining({ by: "claude", request_id: "req_test_2" }),
@@ -258,5 +259,29 @@ describe("vic-3 pieces", () => {
     expect(vic3RunnerProblems(null, () => null, "h")).toEqual([expect.stringContaining("no runner")]);
     expect(vic3RunnerProblems(lock, () => ({ rail: "on", airwallexKeys: true, metal: false }), "h")).toHaveLength(2);
     expect(vic3RunnerProblems(lock, () => ({ rail: null, airwallexKeys: false, metal: false }), "h")).toEqual([]);
+  });
+});
+
+describe("vic-3 live guards and the page", () => {
+  const ok = { KIT11_AIRI_RAIL: "on", VIC3_GO: "yes", KIT11_DB: "data/vic-3.sqlite", KIT11_KEYS_DIR: "/home/x/.purser/vic-3", AIRWALLEX_CLIENT_ID: "set", AIRWALLEX_API_KEY: "set", AIRWALLEX_CALL_BUDGET: "20", AIRWALLEX_CALL_LOG: "/tmp/calls.log", KIT11_ANTHROPIC_API_KEY: "set" };
+  it("refuses without KIT11_AIRI_RAIL=on or without VIC3_GO=yes; starts with both", () => {
+    expect(vic3LiveRefusals("live", ok)).toEqual([]);
+    expect(vic3LiveRefusals("live", { ...ok, KIT11_AIRI_RAIL: undefined })).toEqual([expect.stringContaining("KIT11_AIRI_RAIL=on")]);
+    expect(vic3LiveRefusals("live", { ...ok, VIC3_GO: "no" })).toEqual([expect.stringContaining("VIC3_GO=yes")]);
+    expect(vic3LiveRefusals("preflight", { ...ok, VIC3_GO: undefined })).toEqual([expect.stringContaining("VIC3_GO=yes")]);
+  });
+  it("refuses an Airwallex budget above 20, a Metal URL, another world's ledger, no Claude key", () => {
+    expect(vic3LiveRefusals("live", { ...ok, AIRWALLEX_CALL_BUDGET: "21" })).toEqual([expect.stringContaining("from 1 to 20")]);
+    expect(vic3LiveRefusals("live", { ...ok, METAL_RPC_URL: "x" })).toHaveLength(1);
+    expect(vic3LiveRefusals("live", { ...ok, KIT11_DB: "data/vic-1.sqlite" })).toHaveLength(1);
+    expect(vic3LiveRefusals("live", { ...ok, KIT11_ANTHROPIC_API_KEY: undefined })).toHaveLength(1);
+  });
+  it("the dry page says STAND-IN on every purchase and check row, and names no Visa decision", async () => {
+    const md = vic3Markdown(await runVic3(world().deps));
+    expect(md.split("\n")[0]).toBe("# vic-3: STAND-IN dry run, not live");
+    const rows = md.split("\n").filter((l) => /^\| (STAND-IN )?(A|B|C|D|E|F1|F2|[a-z0-9_]+) \|/.test(l) && !l.startsWith("| Check"));
+    expect(rows.length).toBe(7 + 14);
+    for (const l of rows) expect(l).toMatch(/^\| STAND-IN /);
+    expect(md).not.toMatch(/Visa (refused|declined|approved)/i);
   });
 });

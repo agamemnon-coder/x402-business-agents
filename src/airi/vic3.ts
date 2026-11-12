@@ -503,7 +503,7 @@ export async function runVic3(d: Vic3Deps): Promise<Vic3Record> {
         p.failed_attempts.push(p.outcome);
       }
       p.calls = diff(from);
-      say(p, `Airwallex answered ${JSON.stringify(p.negative_test?.airwallex ?? null)}; ${p.negative_test?.finding ?? "not run"}`);
+      say(p, `the checkout answered ${JSON.stringify(p.negative_test?.airwallex ?? null)}; ${p.negative_test?.finding ?? "not run"}`);
       stopIfSpent();
     }
 
@@ -539,7 +539,7 @@ export async function runVic3(d: Vic3Deps): Promise<Vic3Record> {
       // B's credential is deleted now, whatever happened.
       rmSync(keep.dir, { recursive: true, force: true });
       p.calls = diff(from);
-      say(p, `Airwallex answered ${JSON.stringify(p.negative_test?.airwallex ?? p.outcome)}; ${p.negative_test?.finding ?? "not run"}; B's credential deleted`);
+      say(p, `the checkout answered ${JSON.stringify(p.negative_test?.airwallex ?? p.outcome)}; ${p.negative_test?.finding ?? "not run"}; B's credential deleted`);
       stopIfSpent();
     }
   } catch (e) {
@@ -550,6 +550,8 @@ export async function runVic3(d: Vic3Deps): Promise<Vic3Record> {
     rmSync(keep.dir, { recursive: true, force: true });
   }
 
+  // A dry run's F answers came from the stand-in checkout: said so on each finding.
+  if (d.mode === "dry") for (const p of purchases) if (p.negative_test) p.negative_test.finding = `${STAND_IN} (the stand-in checkout's answer, not the Airwallex sandbox's): ${p.negative_test.finding}`;
   const record = buildRecord(d, { started, ended: clock(), b, stopped, pf, purchases, credentialDeleted: !existsSync(keep.dir) });
   assertNoSecrets(JSON.stringify(record));
   return record;
@@ -684,4 +686,66 @@ function buildRecord(d: Vic3Deps, r: { started: Date; ended: Date; b: Record<Bud
     budgets: { anthropic: { max: r.b.anthropic.max, used: r.b.anthropic.n }, airwallex: { max: r.b.airwallex.max, used: r.b.airwallex.n }, airi: { max: r.b.airi.max, used: r.b.airi.n } },
     stopped: r.stopped, preflight: r.pf, purchases: r.purchases, checks, credential_deleted: r.credentialDeleted, audit: auditRows,
   };
+}
+
+/** Why a live vic-3 command may not start (empty: it may). Nothing is called before this is empty. Values are never read
+ *  out, only whether they are set (and the call budget's number). */
+export function vic3LiveRefusals(cmd: string, env: NodeJS.ProcessEnv | Record<string, string | undefined>): string[] {
+  const why: string[] = [];
+  if (!["preflight", "live", "recover"].includes(cmd)) why.push(`unknown command ${JSON.stringify(cmd.slice(0, 20))}`);
+  if (env.KIT11_AIRI_RAIL !== "on") why.push("KIT11_AIRI_RAIL=on (the conductor's rail; the runner runs without it)");
+  if (env.VIC3_GO !== "yes") why.push("VIC3_GO=yes (the owner's go)");
+  if (!/vic-3[^/]*\.sqlite$/.test(env.KIT11_DB ?? "")) why.push("KIT11_DB must be this world's own ledger (data/vic-3*.sqlite)");
+  if (!/\/vic-3[^/]*$/.test(env.KIT11_KEYS_DIR ?? "")) why.push("KIT11_KEYS_DIR must be this world's own keys folder (…/vic-3*)");
+  if (env.METAL_RPC_URL) why.push("METAL_RPC_URL must be unset: vic-3 makes no Metal call");
+  if (!env.AIRWALLEX_CLIENT_ID || !env.AIRWALLEX_API_KEY) why.push("AIRWALLEX_CLIENT_ID and AIRWALLEX_API_KEY must be set (the Airwallex sandbox keys)");
+  const budget = env.AIRWALLEX_CALL_BUDGET;
+  if (!budget || !/^\d+$/.test(budget) || Number(budget) < 1 || Number(budget) > BUDGETS.airwallex || !env.AIRWALLEX_CALL_LOG) why.push(`AIRWALLEX_CALL_BUDGET (a whole number from 1 to ${BUDGETS.airwallex}, the number the owner approved) and AIRWALLEX_CALL_LOG must be set`);
+  if (cmd === "live" && !env.KIT11_ANTHROPIC_API_KEY) why.push("KIT11_ANTHROPIC_API_KEY must be set: in vic-3 the Sourcing agent (Claude Haiku) chooses the rail");
+  return why;
+}
+
+const cell = (v: unknown): string => (v === null || v === undefined || v === "" ? "—" : String(v).replace(/\|/g, "\\|"));
+const shortSha = (s: string | null | undefined) => (s ? `${s.slice(0, 16)}…` : "—");
+
+/** The record as a page (docs/runs): every value read from the record. A dry record says STAND-IN on every row. */
+export function vic3Markdown(r: Vic3Record): string {
+  const dry = r.mode === "dry";
+  const tag = dry ? `${STAND_IN} ` : "";
+  const outcome = (p: Vic3Purchase) => {
+    const o = (p.outcome ?? {}) as Record<string, Json>;
+    return [o.status ?? o.outcome, o.code, o.by ? `by ${String(o.by)}` : null].filter((x) => x !== undefined && x !== null).join(", ");
+  };
+  const lines: string[] = [
+    `# vic-3${dry ? `: ${STAND_IN} dry run, not live` : ""}`,
+    "",
+    `**${r.label}.**`,
+    ...(dry ? ["", `${STAND_IN}: every row below comes from the stand-ins (src/airi/standIn.ts) and a stand-in model that is not Claude. No Airi, Airwallex or Anthropic call was made, no card was used, and no approval is the CFO's Face ID. It is not the run's evidence: the live run is the owner's.`] : []),
+    "",
+    `Run ${r.started_at} to ${r.ended_at}. Mode: ${r.mode}.${r.stopped ? ` Stopped: ${r.stopped}.` : ""}`,
+    "",
+    "## Purchases",
+    "",
+    "| | Step | Amount | Rail chosen (by, request id) | Mandate | PaymentIntent | Terms hash | Mandate read-back | PaymentIntent read-back | Outcome | Calls (Anthropic / Airwallex / airi-cli) |",
+    "|---|---|---|---|---|---|---|---|---|---|---|",
+    ...r.purchases.map((p) => `| ${tag}${p.step} | ${cell(p.what)} | ${p.request ? `${p.request.amount} ${p.request.currency}` : "—"} | ${p.rail_choice ? `${cell(p.rail_choice.chosen)} (${p.rail_choice.by}, ${cell(p.rail_choice.request_id)}; ${p.rail_choice.menu.length} rails offered)` : "—"} | ${cell(p.mandate_id)} | ${cell(p.payment_intent_id)} | ${shortSha(p.terms_sha256)} | ${p.read_back.mandate ? (p.read_back.mandate.equal ? "equal" : "not equal") + (p.read_back.mandate.before_credential ? ", before the credential" : ", AFTER the credential") : "—"} | ${p.read_back.payment_intent ? (p.read_back.payment_intent.equal ? "equal" : "not equal") : "—"} | ${cell(outcome(p))} | ${p.calls.anthropic} / ${p.calls.airwallex} / ${p.calls.airi} |`),
+    "",
+    "## Negative test (F1, F2)",
+    "",
+    ...r.purchases.filter((p) => p.negative_test).flatMap((p) => [`- ${tag}**${p.step}**: ${p.negative_test!.label}. ${dry ? "The stand-in checkout answered" : "The Airwallex sandbox answered"} \`${JSON.stringify(p.negative_test!.airwallex)}\`; ${dry ? "the stand-in for Airi" : "Airi"}: \`${JSON.stringify(p.negative_test!.airi)}\`. Result: ${p.negative_test!.result}, finding: ${p.negative_test!.finding}.`]),
+    "",
+    "## Checks",
+    "",
+    "| Check | | Detail |",
+    "|---|---|---|",
+    ...Object.entries(r.checks).map(([k, c]) => `| ${tag}${k} | ${c.ok ? "ok" : "FAIL"} | ${cell(c.detail)} |`),
+    "",
+    "## Calls",
+    "",
+    `${tag}Anthropic ${r.budgets.anthropic.used} of ${r.budgets.anthropic.max}; Airwallex ${r.budgets.airwallex.used} of ${r.budgets.airwallex.max}; airi-cli ${r.budgets.airi.used} of ${r.budgets.airi.max}. ${dry ? "Each of these was a call to a stand-in, not to the service." : ""}`,
+    "",
+    `Failed attempts kept: ${r.purchases.reduce((n, p) => n + p.failed_attempts.length, 0)}. B's credential deleted: ${r.credential_deleted ? "yes" : "NO"}.`,
+    "",
+  ];
+  return lines.join("\n");
 }
