@@ -22,6 +22,9 @@ run used the owner's personal API token), other currencies than EUR, and VAT oth
 | Credit note (a correction) | the same lines with negative prices, reference `<number> (credit note)` |
 | Paid or not | `GET documents/purchase_invoices/{id}`: its `state` and payments |
 
+In the sandbox run of 12 November a supplier went as its name and `customer_id` only: Purser's feed to the ERP link
+holds no VAT number, and of the IBAN only the last four digits and a hash.
+
 ## How it behaves
 
 - **Sent once.** The ERP sync (`docs/erp.md`) records Moneybird's id per object, so a second run sends nothing.
