@@ -14,7 +14,7 @@
 // built, so a finished run shows as finished without a change here. When the two disagree, the run log's state is shown.
 // test/airwallex-products.test.ts holds every tile to its record file.
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { APPROVAL_STATES } from "../airwallex/approvals.js";
 import { toCents } from "../lib/money.js";
 import { AIRI_RUN_FILE, AIRI_RUN_STEPS_ID, airiRun, type AiriRunRecord } from "./airiRun.js";
@@ -29,7 +29,13 @@ import { esc, icon } from "./ui.js";
 export const PRODUCT_ORDER = ["issuing", "payouts", "fx", "approvals", "connected", "acceptance", "airi"] as const;
 export type ProductKey = (typeof PRODUCT_ORDER)[number];
 
+/** The two-locks run's first log (10 Nov), the record the tile falls back to. */
 export const TWO_LOCKS_FILE = "docs/runs/2026-11-10-airwallex-two-locks.md";
+/**
+ * The two-locks run's logs, one per day it moved on (docs/runs/<date>-airwallex-two-locks*.md: 10 Nov created and held,
+ * 12 Nov approved at Airwallex and PAID, published by another team). The newest one that names a status is the record.
+ */
+export const TWO_LOCKS_LOG = /^(\d{4}-\d{2}-\d{2})-airwallex-two-locks[\w-]*\.md$/;
 /** The two-locks run's row in the runs list (src/redesign/runs.ts) and its anchor on /runs. */
 export const TWO_LOCKS_KEY = "two-locks-1";
 export const PLATFORM_FACTS_FILE = "docs/runs/2026-11-10-platform-e2e/facts.json";
@@ -187,36 +193,53 @@ export interface TwoLocks {
   /** The run log and the runs list do not say the same; the run log's state is the one kept. */
   disagree: boolean;
   source: "record" | "runs";
+  /** The run log the state was read from (null when only the runs list was readable). */
+  file: string | null;
 }
 
 /**
- * The two-locks run as its sources have it today. The run log's "What happened" section gives the transfer, the amount,
- * the status on create (the first status it names) and the furthest status it names; the runs list's row gives its
- * status figure and its transfer id. They should agree; when they do not, the run log's are shown. Without a readable
- * run log the row's are shown; with neither, nothing.
+ * The two-locks run as one of its logs has it. The log's "What happened" section gives the status on create (the first
+ * status it names) and the furthest status it names; the transfer and the amount are the section's, or else the log's
+ * own (a later log names them under "The payout"); the date is the transfer's creation or, in a log with a timed table,
+ * the time of the row that reached the furthest status on the log's own day. The runs list's row gives its status figure
+ * (in its older shape) and its transfer id. They should agree; when they do not, the run log's are shown. Without a
+ * readable run log the row's are shown; with neither, nothing.
  */
-export function twoLocksState(md: string | null, row: RunRow | null | undefined): TwoLocks | null {
+export function twoLocksState(md: string | null, row: RunRow | null | undefined, day?: string): TwoLocks | null {
   const rowStatus = row?.stats?.map((s) => s.v).find((v) => TRANSFER_STATUS.includes(v));
   const rowId = row?.ids.find((i) => /transfer/i.test(i.label))?.value;
   const sec = md?.split(/^## What happened[^\n]*$/m)[1]?.split(/^## /m)[0] ?? "";
   // A status the run log says the transfer did not reach ("it was never PAID") is not one it is in.
   const statuses = [...sec.matchAll(STATUS_RE)].filter((m) => !NEGATED.test(sec.slice(0, m.index))).map((m) => m[1]!);
-  const transferId = /Transfer\s+`([0-9a-f]{8}-[0-9a-f-]{27})`/.exec(sec)?.[1];
+  const ID = /Transfer\s+`([0-9a-f]{8}-[0-9a-f-]{27})`/;
+  const transferId = ID.exec(sec)?.[1] ?? ID.exec(md ?? "")?.[1];
   if (transferId && statuses.length) {
     const now = statuses.reduce((a, b) => (rank(b) > rank(a) ? b : a));
     const created = /created (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})Z/.exec(sec)?.[1];
-    const iso = created ? `${created}.000Z` : row?.iso;
+    const at = sec.split("\n").find((l) => l.includes(`\`${now}\``))?.match(/^\|\s*(\d{2}:\d{2}:\d{2})\s*\|/)?.[1];
+    const iso = created ? `${created}.000Z` : day && at ? `${day}T${at}.000Z` : row?.iso;
     if (!iso) return null;
+    const AMOUNT = /EUR (\d[\d,]*\.\d{2})/;
     return {
-      transferId, amount: /EUR (\d[\d,]*\.\d{2})/.exec(sec)?.[1] ?? null, iso, held: statuses[0]!, now, finished: now === "PAID", testPasskey: /test passkey/i.test(sec),
-      disagree: (rowStatus !== undefined && rowStatus !== now) || (rowId !== undefined && rowId !== transferId), source: "record",
+      transferId, amount: AMOUNT.exec(sec)?.[1] ?? AMOUNT.exec(md ?? "")?.[1] ?? null, iso, held: statuses[0]!, now, finished: now === "PAID", testPasskey: /test passkey/i.test(md ?? ""),
+      disagree: (rowStatus !== undefined && rowStatus !== now) || (rowId !== undefined && rowId !== transferId), source: "record", file: null,
     };
   }
   if (!row || !rowStatus || !rowId) return null;
   return {
     transferId: rowId, amount: /EUR (\d[\d,]*\.\d{2})/.exec(row.what)?.[1] ?? null, iso: row.iso, held: null, now: rowStatus, finished: rowStatus === "PAID",
-    testPasskey: /test passkey/i.test(row.what), disagree: false, source: "runs",
+    testPasskey: /test passkey/i.test(row.what), disagree: false, source: "runs", file: null,
   };
+}
+
+/** The run's state from its logs: the newest log (by the date in its name) that names a status; else the runs list. */
+export function twoLocksFromLogs(logs: { name: string; md: string | null }[], row: RunRow | null | undefined): TwoLocks | null {
+  const dated = logs.flatMap((l) => { const day = TWO_LOCKS_LOG.exec(l.name)?.[1]; return day ? [{ ...l, day }] : []; }).sort((a, b) => (a.name < b.name ? 1 : -1));
+  for (const l of dated) {
+    const s = twoLocksState(l.md, row, l.day);
+    if (s?.source === "record") return { ...s, file: `docs/runs/${l.name}` };
+  }
+  return twoLocksState(null, row);
 }
 
 /** Transfer approvals as three states in a row: signed in Purser, held at Airwallex, and what the run says now. */
@@ -230,7 +253,7 @@ export function approvalsTile(s: TwoLocks | null): ProductTile | null {
       { text: s.held ? `${s.held} at Airwallex` : "Held by Airwallex's approval workflow", tone: "hold" },
       { text: `Now: ${s.now}${s.finished ? "" : ", not paid"}`, tone: s.finished ? "ok" : UNPAID_END.has(s.now) ? "bad" : "hold" },
     ],
-    id: s.transferId, idLabel: "Transfer", href: `runs#${TWO_LOCKS_KEY}`, iso: s.iso, files: [s.source === "record" ? TWO_LOCKS_FILE : "src/redesign/runs.ts"],
+    id: s.transferId, idLabel: "Transfer", href: `runs#${TWO_LOCKS_KEY}`, iso: s.iso, files: [s.file ?? (s.source === "record" ? TWO_LOCKS_FILE : "src/redesign/runs.ts")],
   };
 }
 
@@ -276,16 +299,38 @@ export function platformRun(facts: PlatformFact[], md: string): PlatformRun | nu
   return null;
 }
 
+/** The words beside a sandbox payout's amounts, so two runs' different test amounts never read as one price (orchestrator, 12 Nov). */
+export const TEST_VALUES = "Sandbox test values, not a rate.";
+
 export function connectedTile(p: PlatformRun | null): ProductTile | null {
   if (!p) return null;
   return {
     key: "connected", name: PRODUCTS.connected.name, value: euro(p.paid.amount),
-    what: `${p.paid.status} on a company's account, with Purser's ${euro(p.paid.purserFee)} fee${p.paid.purserFeeStatus === "SETTLED" ? "" : ` ${p.paid.purserFeeStatus}`}.`,
+    what: `${p.paid.status} with Purser's ${euro(p.paid.purserFee)} fee${p.paid.purserFeeStatus === "SETTLED" ? "" : ` ${p.paid.purserFeeStatus}`}. ${TEST_VALUES}`,
     // SETTLED is Purser's own fee row: Airwallex accepted exactly the signed fee with this payout. Where the fee then shows
     // in the platform's balance is unconfirmed in the run logs, so the tile says no more than that (review, 12 Nov).
-    why: p.paid.purserFeeStatus === "SETTLED" ? "Airwallex accepted the fee with the payout." : "Airwallex carries the application fee.",
-    id: p.paid.transferId, idLabel: "Payout", href: `#${PLATFORM_FOLD_ID}`, iso: p.iso, files: [PLATFORM_FACTS_FILE],
+    why: p.paid.purserFeeStatus === "SETTLED" ? "Airwallex accepted the fee." : "Airwallex carries the application fee.",
+    // The id leads to the run's own record, and the tile carries the run's date: another sandbox run (EUR 5.00, fee
+    // EUR 0.05) is told on /runs, and the two are different runs, not one figure.
+    id: p.paid.transferId, idLabel: "Payout", href: `${REPO_BLOB}${PLATFORM_RUN_FILE}`, iso: p.iso, files: [PLATFORM_FACTS_FILE, PLATFORM_RUN_FILE],
   };
+}
+
+export interface FirstConnectedRun { account: string; transferId: string; amount: string; fee: string; status: string; simulated: boolean }
+/**
+ * The first connected-accounts run (10 Nov) from its own run log: the third run's payout on behalf of the connected
+ * account, its amount, the application fee Airwallex accepted, and its status, which the sandbox's simulation set.
+ */
+export function firstConnectedRun(md: string): FirstConnectedRun | null {
+  const sec = md.split(/^## Third run[^\n]*$/m)[1]?.split(/^## /m)[0] ?? "";
+  const create = sec.split("\n").find((l) => l.includes("`POST /transfers/create`")) ?? "";
+  const account = /`(acct_[A-Za-z0-9_-]+)`/.exec(sec)?.[1];
+  const transferId = /\|\s*`([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})`/.exec(create)?.[1];
+  const amount = /EUR (\d+\.\d{2}), SWIFT/.exec(create)?.[1];
+  const fee = /Airwallex accepted exactly EUR (\d+\.\d{2})/.exec(sec)?.[1];
+  const paid = sec.split("\n").find((l) => /\*\*`PAID`\*\*/.test(l));
+  if (!account || !transferId || !amount || !fee || !paid) return null;
+  return { account, transferId, amount, fee, status: "PAID", simulated: /\/simulation\//.test(paid) };
 }
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -346,7 +391,16 @@ export function acceptanceRunOfRecord(): AcceptanceRun | null {
   const md = read(ACCEPTANCE_RUN_FILE);
   return md ? acceptanceRun(md) : null;
 }
-export const twoLocksOfRecord = (): TwoLocks | null => twoLocksState(read(TWO_LOCKS_FILE), liveRuns().find((r) => r.key === TWO_LOCKS_KEY));
+/** The two-locks run's logs in docs/runs, newest first (by the date in the name). */
+export function twoLocksLogs(): { name: string; md: string }[] {
+  return readdirSync(new URL("../../docs/runs/", import.meta.url)).filter((n) => TWO_LOCKS_LOG.test(n)).sort().reverse()
+    .map((name) => ({ name, md: read(`docs/runs/${name}`) ?? "" }));
+}
+export const twoLocksOfRecord = (): TwoLocks | null => twoLocksFromLogs(twoLocksLogs(), liveRuns().find((r) => r.key === TWO_LOCKS_KEY));
+export function firstConnectedRunOfRecord(): FirstConnectedRun | null {
+  const md = read(CONNECTED_RUN_FILE);
+  return md ? firstConnectedRun(md) : null;
+}
 
 /** The tiles that have their facts, in the fixed order. */
 export function productTiles(run: AgentRun): ProductTile[] {
@@ -394,7 +448,7 @@ export function swiftLineHtml(kit: string | null, p: PlatformRun | null): string
 }
 
 /** The platform run's fold: the PAID payout with both fees, then the refusals with their cause as the run log gives it. */
-export function platformFoldHtml(p: PlatformRun | null, first: RunRow | null | undefined): string {
+export function platformFoldHtml(p: PlatformRun | null, first: FirstConnectedRun | null, firstDay: string | null): string {
   if (!p) return "";
   const cause = p.cause?.nonRegistered ? `: the accounts were opened as non-registered sole traders, and Airwallex requires the payer's registration number (${p.cause.field})` : "";
   const items = [
@@ -402,7 +456,7 @@ export function platformFoldHtml(p: PlatformRun | null, first: RunRow | null | u
     liPlain(`${p.paid.status}${p.simulatedPaid ? " (simulated)" : ""}: EUR ${p.paid.amount} by local${p.sepa ? " SEPA" : ""} transfer, ${p.paid.transferId}. Airwallex fee ${p.paid.airwallexFee}; Purser's fee EUR ${p.paid.purserFee}, ${p.paid.purserFeeStatus}.`, "ok"),
     ...(p.refused ? [liPlain(`${p.refused} payouts from the ${p.refusedAccounts} new test accounts were refused by Airwallex at create${cause}.${p.cause?.laterRun ? " A test company opened with a registration number has not run yet." : ""}`)] : []),
     ...(p.testPasskey ? [liPlain("Approvals in this run were signed with a test passkey, not Face ID.")] : []),
-    ...(first ? [liPlain(`The first connected-account run, ${first.date}: ${(first.stats ?? []).map((s) => `${s.v} ${s.l}`).join("; ")}. ${first.ids.map((i) => `${i.label} ${i.value}`).join("; ")}.`)] : []),
+    ...(first ? [liPlain(`The first connected-account run${firstDay ? `, ${firstDay}` : ""}: €${first.amount} payout ${first.status}${first.simulated ? " (simulated)" : ""} with Purser's €${first.fee} fee. Account ${first.account}; payout ${first.transferId}. ${TEST_VALUES}`)] : []),
   ];
   const src = `<p class="src"><time datetime="${esc(p.iso)}">${esc(dayShort(p.iso))}</time>${esc(` · sandbox, test money · ${PLATFORM_FACTS_FILE}`)} · ${runLog(PLATFORM_RUN_FILE)}</p>`;
   return foldHtml("Platform run, with its refusals", `<ul class="pl">${items.join("")}</ul>${src}`, ` id="${PLATFORM_FOLD_ID}" data-rec="${esc([PLATFORM_FACTS_FILE, PLATFORM_RUN_FILE, ...(first ? [CONNECTED_RUN_FILE] : [])].join(" "))}"`);
@@ -433,13 +487,13 @@ export function airwallexDescription(run: AgentRun): string {
 /** /airwallex's body: the tiles first, the hash block under them, everything else folded. */
 export function airwallexBody(run: AgentRun, o: AirwallexBody): string {
   const tiles = productTiles(run), platform = platformRunOfRecord(), locks = twoLocksOfRecord(), q = fxQuote(run.record), accept = acceptanceRunOfRecord();
-  const first = liveRuns().find((r) => r.key === CONNECTED_KEY);
+  const firstRow = liveRuns().find((r) => r.key === CONNECTED_KEY), first = firstConnectedRunOfRecord();
   const testPasskeys = [...(platform?.testPasskey ? ["the platform run"] : []), ...(locks?.testPasskey ? ["the two-locks run"] : [])];
   const fxLine = q ? [`<li id="${MAIN_RUN_FX_ID}" data-rec="${esc(run.file)}">${esc(`FX: only ${q.buyCurrency} ${q.buy} bought for ${q.sellCurrency} ${q.sell}, on quote ${q.quoteId}, valid to ${q.validTo.slice(11, 16)} UTC. Both are in the terms of ${q.proposal}, which the CFO signed with ${q.approvedWith}.`)}</li>`] : [];
   const folds = [
     o.awx1 ? foldHtml("Airwallex-only run: every step and id", `<div class="awrb">${o.awx1}</div>`) : "",
     o.airi ? foldHtml("Airi runs: every step and id", `<div class="awrb">${o.airi}</div>`) : "",
-    platformFoldHtml(platform, first),
+    platformFoldHtml(platform, first, firstRow ? dayShort(firstRow.iso) : null),
     foldHtml("Metal earnings booked at Airwallex", `<div class="flow" role="img" aria-label="${esc("The main run at Airwallex, step by step")}">${o.picture}</div><ul class="pl">${[...o.mainProof, ...fxLine].join("")}</ul>`, ` id="${MAIN_RUN_FOLD_ID}"`),
     foldHtml("The Airwallex products and their docs", `<ul class="pl awd">${[...productDocs().filter((d) => tiles.some((t) => t.key === d.key)).map((d) => docsLi(d.name, d.docs)), ...(o.depositDocs.length ? [docsLi("Metal earnings booked", o.depositDocs)] : [])].join("")}</ul>`),
     foldHtml("What is simulated", `<ul class="pl">${[

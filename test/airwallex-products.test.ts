@@ -10,8 +10,8 @@ import { liveRuns, type RunRow } from "../src/redesign/runs.js";
 import { agentRun } from "../src/redesign/run.js";
 import { APPROVAL_STATES } from "../src/airwallex/approvals.js";
 import {
-  ACCEPTANCE_RUN_FILE, KIT_FILE, PLATFORM_FACTS_FILE, PLATFORM_RUN_FILE, PRODUCT_ORDER, TWO_LOCKS_FILE, TWO_LOCKS_KEY,
-  STATUS_RE, acceptanceRun, kitSwift, transferStatuses, platformRun, productDocs, productTiles, shortId, tileWords, twoLocksState, approvalsTile, tilesHtml, type PlatformFact,
+  ACCEPTANCE_RUN_FILE, CONNECTED_RUN_FILE, KIT_FILE, PLATFORM_FACTS_FILE, PLATFORM_RUN_FILE, PRODUCT_ORDER, TWO_LOCKS_FILE, TWO_LOCKS_KEY, TWO_LOCKS_LOG,
+  STATUS_RE, acceptanceRun, firstConnectedRun, kitSwift, transferStatuses, platformRun, productDocs, productTiles, shortId, tileWords, twoLocksState, twoLocksFromLogs, twoLocksLogs, twoLocksOfRecord, approvalsTile, tilesHtml, type PlatformFact,
 } from "../src/redesign/airwallexProducts.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
@@ -157,22 +157,77 @@ const FINISHED = `# Two locks on one payout (10 November 2026)
 IN_APPROVAL → SCHEDULED → FAILED never happened here.
 `;
 
+/**
+ * The second log of the two-locks run as its run log of 12 Nov has it (docs/runs/2026-11-12-airwallex-two-locks-paid.md,
+ * published by another team; shortened here): approved at Airwallex, then PAID through the sandbox's simulation.
+ */
+const PAID_LOG = `# Two locks on one payout: approved at Airwallex, then PAID (12 November 2026)
+
+This is the second half of one run. The first half is the log of 10 November: a labelled virtual test passkey signed the
+exact terms in Purser, Purser created the transfer one time, and Airwallex's own approval workflow held it \`IN_APPROVAL\`.
+
+## What happened on 12 November
+
+| Time (UTC) | Step | Status |
+|---|---|---|
+| 09:35:59 | Purser read the transfer. | \`IN_APPROVAL\`, still held by Airwallex |
+| between the two reads | **The owner approved the transfer in the Airwallex sandbox web app**. | |
+| 09:43:45 | Purser read the transfer again. | \`PROCESSING\` |
+| 09:43:57 | Airwallex's sandbox simulation endpoint moved it on. | \`SENT\`, simulated settlement |
+| 09:43:58 | The same simulation endpoint, a second time. | \`PAID\`, simulated settlement |
+
+## The payout
+
+- Transfer \`4074d684-4704-406c-a527-2832753baf4f\`: EUR 240.00 to Stockline Data GmbH, invoice \`SLL-2026-11B\`.
+`;
+const PAID_LOG_NAME = "2026-11-12-airwallex-two-locks-paid.md";
+
 describe("/airwallex: transfer approvals, three states read from the record and the runs list", () => {
-  const md = read(TWO_LOCKS_FILE);
+  // The newest log of the run is the record (orchestrator, 12 Nov: the run went PAID on 12 Nov; its log lands from
+  // another branch). Today's tree may hold one log or both; these tests hold the page to whichever is newest.
+  const logs = twoLocksLogs();
+  const md = logs[0]!.md;
   const row = liveRuns().find((r) => r.key === TWO_LOCKS_KEY);
 
+  it("reads the run's logs newest first, by the date in the file name; the log of 10 November is always there", () => {
+    expect(logs.map((l) => l.name)).toContain(TWO_LOCKS_FILE.split("/").pop());
+    expect(logs.map((l) => l.name)).toEqual([...logs.map((l) => l.name)].sort().reverse());
+    for (const l of logs) expect(l.name).toMatch(TWO_LOCKS_LOG);
+  });
+
+  it("with the log of 12 November beside the one of 10 November the tile shows PAID on 12 November; with the first alone, the first", () => {
+    const first = { name: TWO_LOCKS_FILE.split("/").pop()!, md: read(TWO_LOCKS_FILE) };
+    const both = twoLocksFromLogs([first, { name: PAID_LOG_NAME, md: PAID_LOG }], row)!;
+    expect(both).toMatchObject({ now: "PAID", finished: true, held: "IN_APPROVAL", transferId: "4074d684-4704-406c-a527-2832753baf4f", amount: "240.00", iso: "2026-11-12T09:43:58.000Z", testPasskey: true, file: `docs/runs/${PAID_LOG_NAME}`, source: "record" });
+    // The order the logs are listed in does not matter: the date in the name does.
+    expect(twoLocksFromLogs([{ name: PAID_LOG_NAME, md: PAID_LOG }, first], row)!.file).toBe(`docs/runs/${PAID_LOG_NAME}`);
+    expect(approvalsTile(both)!.states!.map((x) => x.text)).toEqual(["Signed in Purser (test passkey)", "IN_APPROVAL at Airwallex", "Now: PAID"]);
+    expect(approvalsTile(both)!.files).toEqual([`docs/runs/${PAID_LOG_NAME}`]);
+    const alone = twoLocksFromLogs([first], row)!;
+    expect(alone).toMatchObject({ file: TWO_LOCKS_FILE, source: "record" });
+    expect(alone.now).toBe(twoLocksState(first.md, row)!.now);
+    // A newer log that names no status falls back to the older one; no log at all falls back to the runs list.
+    expect(twoLocksFromLogs([first, { name: "2026-11-13-airwallex-two-locks.md", md: "# nothing here" }], row)!.file).toBe(TWO_LOCKS_FILE);
+    expect(twoLocksFromLogs([], ROW({ status: "IN_APPROVAL" }))).toMatchObject({ source: "runs", file: null });
+    // Files that are not the run's logs are not read.
+    expect(twoLocksFromLogs([{ name: "2026-11-14-airwallex-two-locks-plan.txt", md: PAID_LOG }], undefined)).toBeNull();
+  });
+
   // Written to hold on any record: today's (held IN_APPROVAL, not approved in the web app) and a finished one alike.
-  it("today: what the record says, which is what the runs list says", () => {
-    const s = twoLocksState(md, row)!;
+  it("today: what the newest record says, and the runs list does not contradict it", () => {
+    const s = twoLocksOfRecord()!;
     const section = md.split(/^## What happened[^\n]*$/m)[1]!.split(/^## /m)[0]!;
     const named = [...section.matchAll(STATUS_RE)].map((m) => m[1]);
     expect(row).toBeTruthy();
     expect(s.source).toBe("record");
+    expect(s.file).toBe(`docs/runs/${logs[0]!.name}`);
     expect(s.disagree).toBe(false);
-    expect(section).toContain(s.transferId);
-    expect(section).toContain(`EUR ${s.amount}`);
+    expect(md).toContain(s.transferId);
+    expect(md).toContain(`EUR ${s.amount}`);
     expect(row!.ids.find((i) => i.label === "Transfer")!.value).toBe(s.transferId);
-    expect(row!.stats!.map((x) => x.v)).toContain(s.now);
+    // The runs list may carry the run's status as a figure (in its older shape); when it does, it is the record's.
+    const rowStatus = (row!.stats ?? []).map((x) => x.v).find((v) => transferStatuses().includes(v));
+    if (rowStatus) expect(rowStatus).toBe(s.now);
     // The state on create is the first status the run log names; the state now is one it names, and none it names is further along.
     expect(s.held).toBe(named[0]);
     expect(named).toContain(s.now);
@@ -192,7 +247,7 @@ describe("/airwallex: transfer approvals, three states read from the record and 
     expect(pages.runs).toContain(`id="${TWO_LOCKS_KEY}"`);
     // Who signed is the record's too: while it says a labelled test passkey, the tile says "signed", never Face ID,
     // and the fold of what is simulated names the run.
-    expect(s.testPasskey).toBe(/test passkey/i.test(section));
+    expect(s.testPasskey).toBe(/test passkey/i.test(md));
     if (s.testPasskey) {
       expect(text(tileHtml("approvals"))).not.toMatch(/Face ID/);
       expect(text(awx)).toMatch(/two-locks run[^.]*labelled test passkey/);
@@ -285,9 +340,18 @@ describe("/airwallex: connected accounts, the PAID payout first and the refusals
     expect(t.what).toContain(`€${p.paid.purserFee} fee`);
     // The fee's status is Purser's own row: SETTLED means Airwallex accepted exactly the signed fee with the payout.
     // Where the fee lands at Airwallex is unconfirmed in the run logs, so the tile does not say Airwallex settled it.
-    expect(t.why).toBe(p.paid.purserFeeStatus === "SETTLED" ? "Airwallex accepted the fee with the payout." : "Airwallex carries the application fee.");
+    expect(t.why).toBe(p.paid.purserFeeStatus === "SETTLED" ? "Airwallex accepted the fee." : "Airwallex carries the application fee.");
     expect(text(awx)).not.toMatch(/Airwallex settles/);
-    expect(t.href).toBe("#platform-run");
+    // Two sandbox runs paid out with Purser's fee (EUR 4.84 with EUR 0.02 here, EUR 5.00 with EUR 0.05 on /runs): the tile
+    // names its run by its date and links that run's record, and says the figures are test values, so the two never read
+    // as one contradicting number (orchestrator, 12 Nov).
+    expect(t.what).toMatch(/Sandbox test values, not a rate\.$/);
+    expect(t.href).toBe(`https://github.com/agamemnon-coder/x402-business-agents/blob/main/${PLATFORM_RUN_FILE}`);
+    expect(t.iso).toBe(p.iso);
+    const tile = tileHtml("connected");
+    expect(tile).toContain(`href="${t.href}"`);
+    expect(text(tile)).toContain(day(p.iso));
+    expect(text(tile)).toContain("Sandbox test values, not a rate.");
     const open = text(withoutFolds(main(awx)));
     expect(open).not.toMatch(/refused|refusal/i);
     const fold = /<details class="fold" id="platform-run"[\s\S]*?<\/details>/.exec(awx)![0];
@@ -309,6 +373,24 @@ describe("/airwallex: connected accounts, the PAID payout first and the refusals
   it("gives no tile when no payout is PAID with Purser's fee", () => {
     expect(platformRun(facts.map((c) => ({ ...c, transfers: c.transfers.map((t) => ({ ...t, status: "CANCELLED" })) })), md)).toBeNull();
     expect(platformRun([], md)).toBeNull();
+  });
+
+  it("tells the first connected-accounts run in the fold from its own run log: account, payout, amount, fee, status", () => {
+    const log = read(CONNECTED_RUN_FILE);
+    const f = firstConnectedRun(log)!;
+    expect(f).toMatchObject({ status: "PAID", simulated: true });
+    for (const v of [f.account, f.transferId]) expect(log).toContain(`\`${v}\``);
+    expect(log).toContain(`EUR ${f.amount}, SWIFT`);
+    expect(log).toContain(`Airwallex accepted exactly EUR ${f.fee}`);
+    const fold = /<details class="fold" id="platform-run"[\s\S]*?<\/details>/.exec(awx)![0];
+    const line = text(/<li>The first connected-account run[\s\S]*?<\/li>/.exec(fold)![0]);
+    expect(line).toContain(f.account);
+    expect(line).toContain(f.transferId);
+    expect(line).toContain(`€${f.amount}`);
+    expect(line).toContain(`€${f.fee}`);
+    expect(line).toMatch(/PAID \(simulated\)/);
+    expect(line).toContain("Sandbox test values, not a rate.");
+    expect(firstConnectedRun("# nothing")).toBeNull();
   });
 });
 

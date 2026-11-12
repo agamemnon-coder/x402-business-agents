@@ -7,7 +7,7 @@ import { AIRWALLEX_PAGE, CLAUDE_PAGE } from "../src/servers/dashboard.js";
 import { NAV_MAIN } from "../src/ui/nav.js";
 import { loadRecord } from "../src/redesign/run.js";
 import { OPEN_TARGET_JS } from "../src/redesign/ui.js";
-import { AWX_PAGE_LABEL, CONNECTED_KEY, PLATFORM_FACTS_FILE, PLATFORM_FOLD_ID, TWO_LOCKS_KEY, approvalsTile, twoLocksState } from "../src/redesign/airwallexProducts.js";
+import { AWX_PAGE_LABEL, CONNECTED_KEY, PLATFORM_FACTS_FILE, PLATFORM_FOLD_ID, TWO_LOCKS_KEY, approvalsTile, twoLocksLogs, twoLocksOfRecord, twoLocksState } from "../src/redesign/airwallexProducts.js";
 import { liveRuns } from "../src/redesign/runs.js";
 import { scriptBlocks } from "./support/scriptBlocks.js";
 import { buildPages } from "../src/relay/assets.js";
@@ -28,7 +28,8 @@ describe("the partner pages", () => {
     const row = liveRuns().find((r) => r.key === CONNECTED_KEY)!;
     const fold = new RegExp(`<details class="fold" id="${PLATFORM_FOLD_ID}"[\\s\\S]*?</details>`).exec(buildPages().airwallex!)![0];
     const line = /<li>The first connected-account run[^<]*<\/li>/.exec(fold)![0];
-    for (const i of row.ids) { expect(line).toContain(i.value); expect(CONNECTED_RUN).toContain(i.value); }
+    // The account and the payout, as the runs list names them too.
+    for (const i of row.ids.filter((x) => /^acct_|^[0-9a-f]{8}-/.test(x.value) && /account|payout/i.test(x.label))) { expect(line).toContain(i.value); expect(CONNECTED_RUN).toContain(i.value); }
     expect((line.match(/acct_[A-Za-z0-9_-]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) ?? []).length).toBe(2);
     const amounts = line.match(/€\d+\.\d{2}/g) ?? [];
     expect(amounts.length).toBe(2);
@@ -37,11 +38,15 @@ describe("the partner pages", () => {
     expect(line).toMatch(/simulat/);
   });
 
-  it("carry the two-locks run (10 Nov) as its run record has it today: the page shows what the record says", () => {
+  it("carry the two-locks run as its newest run log has it today: the page shows what the record says", () => {
     const page = buildPages().airwallex!;
     const tile = /<article class="awt card[^"]*" id="p-approvals"[\s\S]*?<\/article>/.exec(page)![0].replace(/<[^>]+>/g, " ");
-    const s = twoLocksState(TWO_LOCKS_RUN, liveRuns().find((r) => r.key === TWO_LOCKS_KEY))!;
+    const s = twoLocksOfRecord()!;
     expect(s.source).toBe("record");
+    // The newest log of the run (by the date in its name); the log of 10 Nov until a later one is published.
+    const TWO_LOCKS_RUN = read(s.file!);
+    expect(s.file).toBe(`docs/runs/${twoLocksLogs()[0]!.name}`);
+    expect(twoLocksState(TWO_LOCKS_RUN, liveRuns().find((r) => r.key === TWO_LOCKS_KEY))!.now).toBe(s.now);
     const ids = page.match(new RegExp(s.transferId.slice(0, 8), "g")) ?? [];
     expect(ids.length).toBeGreaterThan(0);
     expect(TWO_LOCKS_RUN).toContain(s.transferId);
