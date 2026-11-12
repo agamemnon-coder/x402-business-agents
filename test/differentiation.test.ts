@@ -5,7 +5,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CAVEAT_LINE, CHAIN_TEST, DIFFERENTIATORS, KIT11_RUN_LINE, KIT_LINE, TRY_IT, WHAT_IT_IS } from "../src/config/brand.js";
-import { homePage } from "../src/redesign/home.js";
+import { HOME_SUB, homePage } from "../src/redesign/home.js";
 import { proofPage } from "../src/redesign/proof.js";
 import { agentRun, loadRecord, split, stopStory, stopsLine } from "../src/redesign/run.js";
 import { buildPages } from "../src/relay/assets.js";
@@ -75,18 +75,21 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
 
   it("open Home under its heading: what Purser is, the one button with its reassurance line, then the first sentence, word for word, leading into the hero (home-story, 12 Nov)", () => {
     const html = PAGES.home!;
-    const hero = /<section class="hero">[\s\S]*?<\/section>/.exec(html)![0];
+    const hero = /<section class="e-hero">[\s\S]*?<\/section>/.exec(html)![0];
     const t = words(hero);
     // The one button right under what Purser is; then the sentence every juror repeated. The other two sentences stay
     // in the README and the form.
-    expect(t.startsWith(`AI agents spend. You sign off. ${WHAT_IT_IS} Try it yourself Your own test company, deleted after 24 hours. ${DIFFERENTIATORS[0]} 1 Ask`)).toBe(true);
+    // The enterprise pass (owner, 12 Nov): the headline, one sentence, two buttons, the reassurance line; the first
+    // sentence is told by the product card and the features ("Change one cent and it fails"), not word for word.
+    expect(t.startsWith(`AI agents spend. You sign off. ${HOME_SUB} Try it live See the proof Your own test company, deleted after 24 hours.`)).toBe(true);
+    expect(WHAT_IT_IS.length).toBeGreaterThan(0);
     expect(t).not.toContain(DIFFERENTIATORS[1]);
     expect(t).not.toContain(DIFFERENTIATORS[2]);
     expect(t).not.toContain("Watch the agents");
     // The caveat, word for word, once, in the one provenance line; its link opens the footer's "What's real?", which
     // lists what the line names.
-    expect(t).toContain(`${CAVEAT_LINE} Step 4 checks the owner's real passkey signature in your browser`);
-    expect(t.split(CAVEAT_LINE)).toHaveLength(2);
+    // The caveat, word for word, in the footer's "What's real?"; the hero's one note line links to it.
+    expect(words(/<details class="real"[\s\S]*?<\/details>/.exec(html)![0])).toContain(CAVEAT_LINE);
     expect(hero).toContain('<a href="#real" data-real>What\'s real?</a>');
     expect(html).toContain('<details class="real" id="real">');
     const real = words(/<details class="real"[\s\S]*?<\/details>/.exec(html)![0]);

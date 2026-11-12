@@ -10,28 +10,31 @@
 //
 // CSS only. The final state is the default: with reduced motion (or no animation support) the whole flow stands.
 
+import { readFileSync } from "node:fs";
 import { esc, icon } from "./ui.js";
 
+/** The record of that run: every value the card shows is read from it. */
+export const TRY_SAMPLE_RECORD = "docs/runs/2026-11-12-try-sample.json";
+interface TrySample { invoice: { supplier: string; number: string; currency: string; total: string; due: string; account_ending: string }; signed: { terms_hash_prefix: string }; booked: { account: string; name: string; debit: string | null; credit: string | null }[] }
+const rec = JSON.parse(readFileSync(new URL(`../../${TRY_SAMPLE_RECORD}`, import.meta.url), "utf8")) as TrySample;
+const money = (a: string) => Number(a).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const cur = rec.invoice.currency;
 export const FLOW = {
-  supplier: "Bergtex Textil GmbH", number: "BTX-2026-21", amount: "EUR 1,850.00", due: "2026-11-16", account: "…3000",
-  hash: "44d05a016d11…",
-  ledger: [
-    { code: "6200", name: "Expense", debit: "1,554.62", credit: "" },
-    { code: "1510", name: "Input VAT", debit: "295.38", credit: "" },
-    { code: "2100", name: "Creditors", debit: "", credit: "1,850.00" },
-  ],
-} as const;
+  supplier: rec.invoice.supplier, number: rec.invoice.number, amount: `${cur} ${money(rec.invoice.total)}`, due: rec.invoice.due, account: `…${rec.invoice.account_ending}`,
+  hash: `${rec.signed.terms_hash_prefix}…`,
+  ledger: rec.booked.map((l) => ({ code: l.account, name: l.name, debit: l.debit ? `${cur} ${money(l.debit)}` : "", credit: l.credit ? `${cur} ${money(l.credit)}` : "" })),
+};
 
 /** The step labels above the card, a few words each. */
 export const FLOW_STEPS = ["Invoice", "Read", "Check", "Sign", "Paid"] as const;
-export const FLOW_NOTE = "A /try run of its sample invoice. Test money, simulated bank.";
+export const FLOW_NOTE = "A /try run of its sample invoice, test money.";
 
 const LOOP = 12;
 
 export function heroFlowHtml(): string {
   const f = FLOW;
   const field = (k: string, v: string, i: number) => `<div class="hf-row hf-t${i}"><dt>${esc(k)}</dt><dd>${esc(v)}<span class="hf-tick">${icon("check", 14)}</span></dd></div>`;
-  return `<figure class="hf" aria-label="${esc(`One payment in Purser: an invoice from ${f.supplier}, ${f.amount}, comes in; the reader reads it; the check says ready to pay; the CFO signs the exact terms with Face ID; it is paid and booked. Values from a /try run, test money.`)}">
+  return `<figure class="hf" data-rec="${TRY_SAMPLE_RECORD}" aria-label="${esc(`One payment in Purser: an invoice from ${f.supplier}, ${f.amount}, comes in; the reader reads it; the check says ready to pay; the CFO signs the exact terms with Face ID; it is paid and booked. Values from a /try run.`)}">
   <ol class="hf-steps" aria-hidden="true">${FLOW_STEPS.map((s, i) => `<li class="hf-s${i}">${esc(s)}</li>`).join("")}</ol>
   <div class="hf-card" aria-hidden="true">
     <div class="hf-inv">

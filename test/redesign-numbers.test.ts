@@ -57,7 +57,7 @@ const ALLOWED = new Set([...RECORD_NUMBERS, ...recount(JSON.parse(RAW) as RunRec
 const visibleText = (html: string) => html
   // /airwallex (jury panel, 12 Nov): a block that names its own record (data-rec: a product tile, the platform run's fold,
   // the line on SWIFT) is dated with that record; its figures are checked against it in test/airwallex-products.test.ts.
-  .replace(/<(article|details|p|li)\b[^>]*\sdata-rec="[^"]+"[\s\S]*?<\/\1>/g, " ")
+  .replace(/<(article|details|p|li|figure)\b[^>]*\sdata-rec="[^"]+"[\s\S]*?<\/\1>/g, " ")
   // The partner pages' "Built on" strip (owner, 12 Nov): one proof number per partner, each from its own record (the
   // Airwallex tiles, the Airi run, the T:0 posting); test/t0-page.test.ts holds each to its record.
   .replace(/<p class="builton">[\s\S]*?<\/p>/g, " ")
@@ -263,7 +263,7 @@ describe("the redesigned public pages", () => {
     expect(watchPage()).toContain(`<h1>${start}, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(ts[0]!))}</h1><span class="pill run">`);
     expect(watchPage()).toMatch(new RegExp(`<span class="pill run"><svg[^>]*>.*?</svg>${rest.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}</span>`));
     expect(homePage()).not.toContain(run.label);
-    expect(homePage()).toMatch(/The Metal row: the main run of 3 November\./);
+    expect(homePage()).toMatch(/The Metal figure: the main run of 3 November\./);
     for (const html of [homePage(), watchPage(), proofPage()]) expect(html).not.toMatch(/Stand-in|standing in|Replay of Autonomous dry run/);
   });
 
@@ -275,14 +275,17 @@ describe("the redesigned public pages", () => {
     expect(HOME_BADGE).toBe("Kit 11 · Metal Award and Visa Award · built on Airwallex, Metal, Claude");
     // Home said both "entered for the Visa Award" and "not an award entry" (jury panel, 12 Nov): it now says nothing
     // about awards or Visa, and carries no chip, strip or "Built on" row. /visa and /proof say what is true there.
-    expect(homePage()).not.toMatch(/Kit 11|x402 Business Agents|Metal Award|Visa Award|Built on|class="built"/);
+    // The footer's "Built on" list is on every page since the review of 12 Nov; Home's main still carries no such row.
+    expect(homePage()).not.toMatch(/Kit 11|x402 Business Agents|Metal Award|Visa Award|class="built"/);
+    expect(/<main[\s\S]*<\/main>/.exec(homePage())![0]).not.toMatch(/Built on/);
     // Since the jury check of 12 Nov Home has a Visa Intelligent Commerce proof card (vic-3, to /visa) and the logos; still no TAP and no award wording.
     expect(homePage().replace(/<header class="top">[\s\S]*?<\/header>/, "")).not.toMatch(/Visa TAP|Visa Award|\bTAP\b/);
     // Proof has no footer link to /visa since 12 Nov either: Visa TAP is on /visa only, in its closed fold.
     expect(proofPage()).not.toMatch(/<a class="flink" href="visa">|Extra, not an award entry/);
     expect(JSON.stringify(agentRun().scenes)).not.toMatch(/Visa|TAP/);
-    // The partners' logo row (docs/assets/logos/built-with.png, the owner's stated permission in docs/evidence/logo-permissions.md, 12 Nov) is the one image that names Visa.
-    for (const [name, body] of Object.entries(PAGES)) if (typeof body === "string") expect({ name, img: /<img[^>]*visa/i.test(body.replace(/<img src="assets\/built-with\.png"[^>]*>/g, "").replace(VISA_MARK, "")), words: body.split(/[.!?"]\s/).filter((s) => /Visa|TAP/.test(s)).map((s) => /\b(certified|endorsed|Visa-approved|open-source)\b/i.exec(s)?.[0]).find(Boolean) ?? null }).toEqual({ name, img: false, words: null });
+    // The partners' logos (docs/assets/logos/built-with.png, and Home's greyed row of src/ui/logos/visa.png since the
+    // enterprise pass), on the owner's stated permission in docs/evidence/logo-permissions.md (12 Nov), are the images that name Visa.
+    for (const [name, body] of Object.entries(PAGES)) if (typeof body === "string") expect({ name, img: /<img[^>]*visa/i.test(body.replace(/<img src="assets\/built-with\.png"[^>]*>/g, "").replace(/<img src="assets\/logo-visa\.png" alt="Visa"[^>]*>/g, "").replace(VISA_MARK, "")), words: body.split(/[.!?"]\s/).filter((s) => /Visa|TAP/.test(s)).map((s) => /\b(certified|endorsed|Visa-approved|open-source)\b/i.exec(s)?.[0]).find(Boolean) ?? null }).toEqual({ name, img: false, words: null });
     expect(PAGES.visa).toContain(VISA_CLAIM.replace(/'/g, "&#39;").replace(/&#39;/g, "'"));
     expect(PAGES.visa).not.toMatch(/Dev test|reference code is not used/);
   });

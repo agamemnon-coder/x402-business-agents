@@ -8,7 +8,7 @@ import type { Server } from "node:http";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { startJudge } from "../src/cli/judge.js";
 import { CORE_SENTENCE, DIFFERENTIATORS, HERO, WHAT_IT_IS } from "../src/config/brand.js";
-import { CFO_FORWARD_JS, homeHeadingHtml } from "../src/redesign/home.js";
+import { HOME_SUB, CFO_FORWARD_JS, homeHeadingHtml } from "../src/redesign/home.js";
 import { esc } from "../src/redesign/ui.js";
 import { buildPages } from "../src/relay/assets.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
@@ -47,7 +47,9 @@ describe("/ for a guest", () => {
     // Home as one story (12 Nov): the heading's two sentences on two lines, what Purser is, then the one button.
     expect(homeHeadingHtml()).toBe('<h1 class="h-hero"><span>AI agents spend.</span> <span>You sign off.</span></h1>');
     expect(textOutsideTags(homeHeadingHtml()).replace(/\s+/g, " ").trim()).toBe(HERO);
-    expect(pages.home).toContain(`${homeHeadingHtml()}\n    <p class="what">${esc(WHAT_IT_IS)}</p>\n    <a class="btn primary big start" href="/try">`);
+    // The enterprise pass (owner, 12 Nov): the heading, Home's one sentence, then the two buttons, the first to the hands-on demo.
+    expect(pages.home).toContain(`${homeHeadingHtml()}\n    <p class="what">${esc(HOME_SUB)}</p>\n    <div class="ctas"><a class="btn primary big start" href="/try">`);
+    expect(WHAT_IT_IS.length).toBeGreaterThan(0);
     expect(DIFFERENTIATORS.length).toBe(3);
     // The core sentence stays the page's description.
     expect(pages.home).toContain(`<meta name="description" content="${HERO} ${CORE_SENTENCE}">`);

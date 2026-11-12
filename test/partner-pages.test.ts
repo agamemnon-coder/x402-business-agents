@@ -1,6 +1,7 @@
 // The partner pages (/airwallex, /claude): every id, tx and figure on them comes from the recorded files, every
 // agent's model from code; each is short with its details folded; the nav keeps its tabs (Home, Try, Proof; Watch once
 // the film is set) and lists the partner pages under "More" (12 Nov).
+import { COUNT_JS } from "../src/redesign/stats.js";
 import { readFileSync } from "node:fs";
 import { TRY_URL } from "../src/redesign/ui.js";
 import { WATCH_IN_MENU } from "../src/config/film.js";
@@ -116,7 +117,8 @@ describe("the partner pages", () => {
       expect([...page.matchAll(/<img[^>]*visa[^>]*>/gi)].map((m) => m[0])).toEqual(page.includes("logo-visa.png") ? ['<img src="assets/logo-visa.png" alt="Visa" width="46" height="15">'] : []);
       expect(page).not.toMatch(/\b(null|undefined|NaN)\b/);
       // No script on /claude; /airwallex has one, the shared OPEN_TARGET_JS (a link into its cards' fold opens it).
-      expect(scriptBlocks(page)).toEqual(page === AIRWALLEX_PAGE ? [`<script>\n${OPEN_TARGET_JS}</script>`] : []);
+      // Since 12 Nov /airwallex's figures count up too (src/redesign/stats.ts COUNT_JS), in that same one script.
+      expect(scriptBlocks(page)).toEqual(page === AIRWALLEX_PAGE ? [`<script>\n${OPEN_TARGET_JS + COUNT_JS}</script>`] : []);
     }
     expect(scriptBlocks(CLAUDE_PAGE)).toEqual([]);
     for (const f of airwallexData().features) for (const d of f.docs) expect(d.href.startsWith("https://www.airwallex.com/docs/")).toBe(true);
@@ -128,7 +130,8 @@ describe("the partner pages", () => {
     // The fifth item, "More" (12 Nov): the product pages, then the four partner pages, the same list in both navigations.
     expect(MORE_LABEL).toBe("More");
     // Purser Cloud first (the owner, 12 Nov): the hosted product, on its own address.
-    expect(MORE_LINKS.map((l) => l.key)).toEqual(["cloud", "pricing", "security", "docs", "airwallex", "metal", "visa", "claude"]);
+    // /books (owner, 12 Nov) sits with the product pages.
+    expect(MORE_LINKS.map((l) => l.key)).toEqual(["cloud", "pricing", "security", "docs", "books", "airwallex", "metal", "visa", "claude"]);
     expect(MORE_LINKS.filter((l) => l.group === "partner").map((l) => l.label)).toEqual(["Airwallex", "Metal", "Visa", "Claude"]);
     // The template pages' navigation (src/ui/nav.ts): the four tabs as links with their keys, then More, a <details>
     // with the same links as the redesign's header (src/redesign/ui.ts), in the same order.

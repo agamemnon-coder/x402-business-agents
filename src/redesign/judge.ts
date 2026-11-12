@@ -8,7 +8,7 @@
 
 import { FILM_LINK, FILM_URL } from "../config/brand.js";
 import { REPO_URL } from "../submission/deck.js";
-import { DEMO_STEPS, HERO_VERDICT } from "./heroDemo.js";
+import { FLOW_STEPS } from "./heroFlow.js";
 import { metalStory, refusalNote } from "./metalStory.js";
 import { loadRecord } from "./run.js";
 import { esc, icon, page, TRY_URL } from "./ui.js";
@@ -23,7 +23,7 @@ export interface JudgeLink { label: string; href: string }
 export interface JudgeStep { id: string; title: string; seconds: number; see: string; links: JudgeLink[]; note?: string }
 
 /**
- * The five steps, in the menu's order: Home's own moment (one tap on the hero's last step, in the hero's own words),
+ * The five steps, in the menu's order: Home's own moment (its card plays one payment from a /try run, step by step),
  * then the hands-on demo (TRY_URL, since 12 Nov: one Try everywhere): a test company of your own, sign the exact terms,
  * try to cheat, try to trick the reader, paid and booked; the old /try/sign story stays one link, "the 60-second story".
  * Then the proof. The tour no longer starts with the replay (12 Nov): /watch is reached from Proof.
@@ -32,8 +32,8 @@ export function judgeSteps(record = loadRecord().record): JudgeStep[] {
   const st = metalStory(record), refusal = st.refusal?.proof.href, note = refusalNote(st.refusal);
   return [
     {
-      id: "home", title: `Tap “${DEMO_STEPS[3]}” on Home`, seconds: 40,
-      see: `Home's four steps: ${DEMO_STEPS.join(", ")}. Tap “${DEMO_STEPS[3]}”: the amount changes by one cent, and the check in your browser says Refused, “${HERO_VERDICT.refused}”.`,
+      id: "home", title: "One payment on Home", seconds: 40,
+      see: `Home's card plays one payment from a /try run: ${FLOW_STEPS.join(", ")}. The reader, the check, the Face ID signature over the exact terms, then the books.`,
       links: [{ label: "Open /home", href: "/home" }],
     },
     {

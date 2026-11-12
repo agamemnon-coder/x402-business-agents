@@ -15,7 +15,7 @@ import { buildPages, flowLinks } from "../src/relay/assets.js";
 import { JUDGE_CSP, JUDGE_PAGE } from "../src/servers/dashboard.js";
 import { JUDGE_CODE_HREF, JUDGE_LINK, JUDGE_STEPS, JUDGE_URL, judgePage } from "../src/redesign/judge.js";
 import { FILM_URL } from "../src/config/brand.js";
-import { DEMO_STEPS, HERO_VERDICT } from "../src/redesign/heroDemo.js";
+import { FLOW_STEPS } from "../src/redesign/heroFlow.js";
 import { metalStory } from "../src/redesign/metalStory.js";
 import { loadRecord } from "../src/redesign/run.js";
 import { scriptBlocks } from "./support/scriptBlocks.js";
@@ -49,8 +49,8 @@ const ownLinks = (s: (typeof JUDGE_STEPS)[number]) => s.links.map((l) => l.href)
  * both of the trick screen's lines).
  */
 const SEES: Record<string, { path: string; marks: (string | RegExp)[] }[]> = {
-  // Home's own moment: the hero's four tabs by name, the "+1 cent" button, and the verdict the browser's check writes.
-  home: [{ path: "/home", marks: [...DEMO_STEPS.map((s, i) => `<li data-p="${i + 1}"><span>${i + 1}</span>${s}</li>`), `<button type="button" class="hd-btn go" data-act="cent">${DEMO_STEPS[3]}</button>`, '<p class="hd-stamp" aria-hidden="true">Refused</p>', `"refused":${JSON.stringify(HERO_VERDICT.refused)}`, "crypto.subtle"] }],
+  // Home's own moment (enterprise pass, 12 Nov): the product card, its steps by name, the reader, the check, the signature.
+  home: [{ path: "/home", marks: ['<figure class="hf"', ...FLOW_STEPS.map((s, i) => `<li class="hf-s${i}">${s}</li>`), "Claude reader", "Checker: ready to pay", "<b>Signed</b>", "<b>Paid</b>"] }],
   sign: [{ path: "/try/sign", marks: ["Your Treasury agent wants to pay an invoice above its limit.", "Now try to cheat: change one cent", 'id="go-cheat"', "Sign with Face ID"] }],
   trick: [{ path: "/try/sign", marks: ["Try to trick the agent.", "Send your agent a fake invoice", "Sonnet", "Purser's code checks it"] }],
   policy: [{ path: "/try/sign", marks: ["Change the rule.", 'id="rule-chips"', /worst.case/i, "The agent pays it alone.", "That's Purser."] }],
@@ -64,7 +64,7 @@ const SEES: Record<string, { path: string; marks: (string | RegExp)[] }[]> = {
 describe("/judge: the five steps", () => {
   it("go in the menu's order (Home, Try, Proof; no replay since 12 Nov), with their times, three minutes in all", () => {
     expect(JUDGE_STEPS.map((s) => [s.title, s.seconds])).toEqual([
-      ["Tap “+1 cent” on Home", 40],
+      ["One payment on Home", 40],
       ["Sign, then try to cheat", 40],
       ["Try to trick the agent", 30],
       ["Paid, booked, filed", 30],
@@ -80,10 +80,8 @@ describe("/judge: the five steps", () => {
     expect(JUDGE_STEPS[0]!.links[0]!.href).toBe("/home");
     expect(JUDGE_STEPS.at(-1)!.links[0]!.href).toBe("/proof");
     expect(JSON.stringify(JUDGE_STEPS)).not.toMatch(/watch|replay/i);
-    // The first step's line is the hero's own words: its four tabs by name and the verdict its check writes.
-    expect(JUDGE_STEPS[0]!.see).toBe("Home's four steps: Ask, Face ID, Paid, +1 cent. Tap “+1 cent”: the amount changes by one cent, and the check in your browser says Refused, “Hash no longer matches”.");
-    expect(JUDGE_STEPS[0]!.see).toContain(DEMO_STEPS.join(", "));
-    expect(JUDGE_STEPS[0]!.see).toContain(HERO_VERDICT.refused);
+    // The first step's line names the card's own steps.
+    expect(JUDGE_STEPS[0]!.see).toContain(FLOW_STEPS.join(", "));
     // Each says in one line what the juror will see.
     for (const s of JUDGE_STEPS) expect({ step: s.id, oneLine: s.see.length > 0 && !s.see.includes("\n") && s.see.length <= 200 }).toEqual({ step: s.id, oneLine: true });
   });
@@ -169,7 +167,7 @@ describe("the way in: Home, the README and the form", () => {
     expect(/<main[\s\S]*<\/main>/.exec(ON.home!)![0]).not.toContain('href="judge"');
     expect(OFF.home).not.toContain('href="judge"');
     // Home's two buttons are two of /judge's steps: /try/sign, then the proof. Home sends no one to the replay (/replay, at /watch until 12 Nov).
-    expect(ON.home).toContain('<a class="btn primary big start" href="/try">'); expect(ON.home).toContain('<a class="btn big more" href="proof">');
+    expect(ON.home).toContain('<a class="btn primary big start" href="/try">'); expect(ON.home).toContain('<a class="btn big ghost" href="proof">');
     expect(/<main[\s\S]*<\/main>/.exec(ON.home!)![0]).not.toMatch(/href="(?:watch|replay)"/);
   });
 

@@ -4,6 +4,7 @@
 // Claude's decisions and code's routine payments, both counted from the record; the Claude call badge from each trace;
 // every internal link answers (old addresses redirect, anything else gets the clean 404).
 import { WATCH_IN_MENU } from "../src/config/film.js";
+import { COUNT_JS } from "../src/redesign/stats.js";
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import { notFoundResponse, pageResponse, type Pages } from "../worker/src/core.js";
@@ -96,7 +97,8 @@ describe("the site after v4", () => {
     // short cards, each one sentence with its proof link, the detail folded.
     // Watch: 260 since the film page (12 Nov): the poster, 13 chapters with their times and the key of what is real
     // and what is simulated; the transcript is folded (the replay that was here moved to /replay).
-    const budget: Record<string, number> = { home: 254, watch: 260, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, pricing: 150, security: 280 /* 220 until 12 Nov 15:55: nine controls, each with its proof (the owner); +5, 12 Nov merge: the hostile-model eval and the zero-trust report linked; +15, jury check 12 Nov: "Face ID signs on chain" and "How the 2 were detected" linked */, metal: tokenizeRun() ? 380 : 330 /* +75, jury panel 12 Nov: the four mandates in one table (seven columns, each figure a word); +50, 12 Nov wire-in: "Face ID signs on chain", six steps from docs/runs/2026-11-12-faceid-onchain.json (49 words as built); +5, jury check 12 Nov: "Since 12 Nov it does", linking it from the replace card */, airwallex: 415 /* +5, panel review 10 Nov; +4, jury panel 12 Nov; +41, jury check 12 Nov: three tiles behind flags (payee check, batch transfer, ledger reconciliation) and their line, 411 as built */, visa: 710 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) /* + ICC_RUN_EXTRA_WORDS only while an ICC run record exists (12 Nov; test/icc-block.test.ts holds the block to it); +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa); +5 on 12 Nov for two folded lines under the Airi runs, "As reported by the Airwallex sandbox" and "The CFO's policy next to Visa's VIC rules" (14 words; 9 of them paid for by the TAP section's line that went; 614 as built); +10 on 12 Nov for a third folded line, "Card data: not a network-tokenised checkout, no PCI attestation" (9 words: what this checkout is not, readable without opening the fold; 623 as built) */, claude: 240 /* +45, jury panel 12 Nov: measured, not asserted (four figures, each with its record, and the injection screen); +30, 12 Nov merge: the hostile-model eval's line with its record link (29 words), kept beside the measured block; +15, 12 Nov merge: the measured block's line on the zero-trust report, shown once docs/zero-trust/report.json is in the tree */, notFound: 40 };
+    // Home: 300 since the enterprise pass (owner, 12 Nov): four features and the stat row (288 as built).
+    const budget: Record<string, number> = { home: 300, watch: 260, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, pricing: 150, security: 280 /* 220 until 12 Nov 15:55: nine controls, each with its proof (the owner); +5, 12 Nov merge: the hostile-model eval and the zero-trust report linked; +15, jury check 12 Nov: "Face ID signs on chain" and "How the 2 were detected" linked */, metal: tokenizeRun() ? 380 : 330 /* +75, jury panel 12 Nov: the four mandates in one table (seven columns, each figure a word); +50, 12 Nov wire-in: "Face ID signs on chain", six steps from docs/runs/2026-11-12-faceid-onchain.json (49 words as built); +5, jury check 12 Nov: "Since 12 Nov it does", linking it from the replace card */, airwallex: 415 /* +5, panel review 10 Nov; +4, jury panel 12 Nov; +41, jury check 12 Nov: three tiles behind flags (payee check, batch transfer, ledger reconciliation) and their line, 411 as built */, visa: 710 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) /* + ICC_RUN_EXTRA_WORDS only while an ICC run record exists (12 Nov; test/icc-block.test.ts holds the block to it); +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa); +5 on 12 Nov for two folded lines under the Airi runs, "As reported by the Airwallex sandbox" and "The CFO's policy next to Visa's VIC rules" (14 words; 9 of them paid for by the TAP section's line that went; 614 as built); +10 on 12 Nov for a third folded line, "Card data: not a network-tokenised checkout, no PCI attestation" (9 words: what this checkout is not, readable without opening the fold; 623 as built) */, claude: 240 /* +45, jury panel 12 Nov: measured, not asserted (four figures, each with its record, and the injection screen); +30, 12 Nov merge: the hostile-model eval's line with its record link (29 words), kept beside the measured block; +15, 12 Nov merge: the measured block's line on the zero-trust report, shown once docs/zero-trust/report.json is in the tree */, notFound: 40 };
     // Docs 200 since 12 Nov: four cards, the agent API's tools by name with one short line each, every description folded.
     // Status 90 since 12 Nov: the status lines (empty until /health is read) and the five latest live runs.
     Object.assign(budget, { docs: 200, status: 90 });
@@ -228,10 +230,10 @@ describe("the site after v4", () => {
     expect(sp.byClaude).toBe(sp.decisions);
     const proof = pages.proof!;
     expect(proof).toContain(SPLIT_LINE);
-    expect(proof).toContain(`<span class="v">${sp.byClaude}</span><span class="l">decisions by Claude (${sp.fallbacks} fallbacks)</span>`);
+    expect(proof).toContain(`<span class="v"><span data-count="${sp.byClaude}" data-dec="0">${sp.byClaude}</span></span><span class="l">decisions by Claude (${sp.fallbacks} fallbacks)</span>`);
     // One canonical set (jury review, 6 Nov, #5): the Metal payments and the card charge, not "82 routine by code".
     const pay = payments(record);
-    expect(proof).toContain(`<span class="v">${pay.onChain}</span><span class="l">Metal payments + 1 card charge</span>`);
+    expect(proof).toContain(`<span class="v"><span data-count="${pay.onChain}" data-dec="0">${pay.onChain}</span></span><span class="l">Metal payments + 1 card charge</span>`);
     expect(proof).not.toContain("routine payments by code");
     // Every "N Face ID" on the public pages is the same N.
     for (const [name, html] of Object.entries(PUBLIC)) for (const m of allText(html).matchAll(/(\d+)\s+Face ID decisions/g)) expect({ name, n: Number(m[1]) }).toEqual({ name, n });
@@ -276,7 +278,9 @@ describe("the site after v4", () => {
       expect(html.replace(/<img src="assets\/logo-visa\.png" alt="Visa" width="46" height="15">/g, "")).not.toMatch(/<img[^>]*visa/i);
       // No script, but /airwallex's one (src/redesign/ui.ts OPEN_TARGET_JS: a link into its cards' fold opens it) and
       // /metal's (src/redesign/metalMandates.ts METAL_INSPECT_JS: the spend read live from its own origin, 12 Nov).
-      expect(scriptBlocks(html)).toEqual(name === "airwallex" ? [`<script>\n${OPEN_TARGET_JS}</script>`] : name === "metal" ? [`<script>\n${METAL_INSPECT_JS}</script>`] : []);
+      // Since 12 Nov the partner pages' figures count up once in view (src/redesign/stats.ts COUNT_JS; nothing moves with
+      // reduced motion), so /airwallex, /metal and /visa add that script.
+      expect(scriptBlocks(html)).toEqual(name === "airwallex" ? [`<script>\n${OPEN_TARGET_JS}${COUNT_JS}</script>`] : name === "metal" ? [`<script>\n${METAL_INSPECT_JS}${COUNT_JS}</script>`] : name === "visa" ? [`<script>\n${COUNT_JS}</script>`] : []);
       // Each page is labelled with the run it shows: the main run; on /visa that label sits inside the TAP fold, with
       // the main run's own TAP-signed card buy (the separate TAP run of 2 Nov is named there too, under its own label).
       // (/airwallex shows several runs, each dated on its own block: its label is true for all of them.)

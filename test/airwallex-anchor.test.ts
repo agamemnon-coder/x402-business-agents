@@ -3,6 +3,7 @@
 // the page's one script (OPEN_TARGET_JS) opens the fold around whatever the #hash points at, under a hashed CSP.
 // test/browser/pages.check.ts opens /airwallex#controls at 390 and 1440 px and sees the cards open.
 
+import { COUNT_JS } from "../src/redesign/stats.js";
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
@@ -39,11 +40,12 @@ describe("/proof → /airwallex#controls: the link and the ids match", () => {
 
   it("the page's one script opens the fold around the target and scrolls to it, hashed into a CSP that connects nowhere", () => {
     const scripts = scriptBlocks(awx);
-    expect(scripts).toEqual([`<script>\n${OPEN_TARGET_JS}</script>`]);
+    // Since 12 Nov the page's figures count up (src/redesign/stats.ts COUNT_JS), in the same one script.
+    expect(scripts).toEqual([`<script>\n${OPEN_TARGET_JS + COUNT_JS}</script>`]);
     expect(OPEN_TARGET_JS).toContain('t.closest("details")');
     expect(OPEN_TARGET_JS).toContain('window.addEventListener("hashchange", openTarget)');
     expect(OPEN_TARGET_JS).toContain('t.scrollIntoView({ block: "start" })');
-    const hash = createHash("sha256").update(`\n${OPEN_TARGET_JS}`, "utf8").digest("base64");
+    const hash = createHash("sha256").update(`\n${OPEN_TARGET_JS + COUNT_JS}`, "utf8").digest("base64");
     expect(pages.csp.airwallex).toContain(`script-src 'sha256-${hash}'`);
     expect(pages.csp.airwallex).not.toMatch(/unsafe-inline|connect-src/);
   });

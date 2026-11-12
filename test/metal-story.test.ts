@@ -5,6 +5,7 @@
 // refusal as it ran; who signed the replaces on chain (one owner key, held by the runner: the chain did not check Face
 // ID); what else ran on Metal, each dated with its own record and none of it the main run's, the hold said as not
 // finished; both refusals decoded, with the raw log beside them.
+import { COUNT_JS } from "../src/redesign/stats.js";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { EXPLORER, MAIN_RUN_CHECK, REPO_BLOB, SEPARATE_RUNS, explorerLink, metalStory, refusalNote, separateRuns } from "../src/redesign/metalStory.js";
@@ -40,7 +41,10 @@ describe("/metal plays the main run's record", () => {
   it("is labelled with the main run, and opens on its four mandates", () => {
     expect(loadRecord().file).toBe(MAIN);
     expect(METAL_PAGE).toMatch(/Replay of the main run, 3 Nov/);
-    expect(text(table)).toContain("4 mandates on chain, one per agent");
+    // Since 12 Nov the four mandates lead as a count-up stat above the table (src/redesign/stats.ts).
+    const stats = /<ul class="stats">[\s\S]*?<\/ul>/.exec(main)![0];
+    expect(text(stats)).toContain("4 mandates on chain, one per agent");
+    expect(main.indexOf(stats)).toBeLessThan(main.indexOf(table));
   });
 });
 
@@ -96,7 +100,8 @@ describe("the four mandates, one table", () => {
   });
 
   it("says live only what the chain answered: the page's script asks its own origin and writes text, never markup", () => {
-    expect(METAL_PAGE).toContain(`<script>\n${METAL_INSPECT_JS}</script>`);
+    // The page's one script: the live read, then the count-up of its figures (src/redesign/stats.ts, 12 Nov).
+    expect(METAL_PAGE).toContain(`<script>\n${METAL_INSPECT_JS + COUNT_JS}</script>`);
     expect(METAL_INSPECT_JS).toContain('fetch("api/metal/mandates"');
     expect(METAL_INSPECT_JS).toContain('a.source === "chain"');
     expect(METAL_INSPECT_JS).toContain("Spent: read live from Metal testnet at ");
@@ -135,7 +140,9 @@ describe("the payments, the refusal and the replace", () => {
       agent: "sourcing", mandate: String(onChain.payload.mandate) });
     const t = text(grid);
     expect(t).toContain("#24 refused on chain");
-    expect(t).toContain("Our own check was off for this one test. Metal's facilitator answered 402; a second call had Metal record the refusal on chain: 0.04 *USDZ over the 0.03 cap. Nothing moved.");
+    // The card says it in one line (12 Nov); the 402 and the record call, word for word, are in the decoded fold.
+    expect(t).toContain("Our own check was off for this test. Metal refused it on chain; nothing moved.");
+    expect(text(decoded)).toContain("Our own check was off for this one test. Metal's facilitator answered 402; a second call had Metal record the refusal on chain: 0.04 *USDZ over the 0.03 cap. Nothing moved.");
     expect(grid).toContain(`href="${story.refusal!.proof.href}"`);
     const d = insp.refusals.find((x) => x.purchase === "24")!;
     expect({ tx: d.tx, mandate: d.event.mandate, amount: d.event.amount, reason: d.event.reason_name }).toEqual({ tx: String(onChain.payload.tx), mandate: String(onChain.payload.mandate), amount: "0.04", reason: "OverPerPaymentCap" });

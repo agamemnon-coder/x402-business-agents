@@ -6,7 +6,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, FILM_URL, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, JUDGE_LINE, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
-import { PROOF_BUTTON, REASSURE, START, homePage } from "../src/redesign/home.js";
+import { HOME_SUB, PROOF_BUTTON, REASSURE, START, homePage } from "../src/redesign/home.js";
 import { buildPages } from "../src/relay/assets.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
@@ -17,7 +17,7 @@ const README = read("README.md");
 const HOME = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).home!;
 const PROOF = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).proof!;
 const FORM = read("docs/submission/README.md");
-const hero = (html: string) => /<section class="hero">[\s\S]*?<\/section>/.exec(html)![0];
+const hero = (html: string) => /<section class="e-hero">[\s\S]*?<\/section>/.exec(html)![0];
 /** Every Markdown heading's GitHub anchor in a file. */
 const anchors = (md: string) => [...md.matchAll(/^#+ (.+)$/gm)].map((m) => m[1]!.toLowerCase().replace(/[^\w\- ]/g, "").replace(/ /g, "-"));
 /** Names of other spend and payment companies that must never appear in these lines (the partners are not competitors). */
@@ -47,20 +47,19 @@ describe("the first screen (section D, 6 Nov)", () => {
 
   it("opens Home under its heading with what Purser is, one button to /try/sign with one reassurance line, then the sentence every juror repeated (home-story, 12 Nov)", () => {
     const t = words(hero(HOME));
-    expect([START, PROOF_BUTTON]).toEqual(["Try it yourself", "See the proof"]);
-    expect(t.startsWith(`${HERO} ${WHAT_IT_IS} ${START} ${REASSURE.sign} ${DIFFERENTIATORS[0]} 1 Ask 2 Face ID 3 Paid 4 +1 cent`)).toBe(true);
-    // One button in the first screen, to /try/sign: the thing a juror can do in a minute. No "Watch the agents".
-    expect(hero(HOME).match(/class="btn[^"]*"/g)).toEqual(['class="btn primary big start"']);
+    expect([START, PROOF_BUTTON]).toEqual(["Try it live", "See the proof"]);
+    // The enterprise pass (owner, 12 Nov): the headline, one sentence, two buttons (try it, see the proof), one reassurance line.
+    expect(t.startsWith(`${HERO} ${HOME_SUB} ${START} ${PROOF_BUTTON} ${REASSURE.sign}`)).toBe(true);
+    expect(hero(HOME).match(/class="btn[^"]*"/g)).toEqual(['class="btn primary big start"', 'class="btn big ghost"']);
     // Since 12 Nov (the owner) every Try call to action opens the hands-on demo (TRY_URL); /try/sign keeps its own page.
     expect(hero(HOME)).toContain(`<a class="btn primary big start" href="/try">`);
     expect(HOME).not.toContain("Watch the agents");
-    // The first of the three sentences is on Home, word for word; the other two stay in the README, the form and the deck.
-    expect(t).toContain(DIFFERENTIATORS[0]);
+    // The three sentences stay in the README, the form and the deck; Home tells the first with its product card.
     for (const d of DIFFERENTIATORS.slice(1)) expect(words(HOME)).not.toContain(d);
     // Without /try/sign in the bundle the button leads to /try, never to a dead link, and the line under it says what /try is.
     expect(homePage()).not.toContain('href="try/sign"');
     expect(hero(homePage())).toContain('<a class="btn primary big start" href="/try">');
-    expect(words(hero(homePage()))).toContain(`${START} ${REASSURE.world} ${DIFFERENTIATORS[0]}`);
+    expect(words(hero(homePage()))).toContain(`${START} ${PROOF_BUTTON} ${REASSURE.world}`);
     // The judge's tour: one footer link, only where /judge exists; never a third call to action in the page.
     expect(HOME).toContain(`<a class="flink" href="judge">${JUDGE_LINE}</a>`);
     expect(hero(HOME)).not.toContain('href="judge"');

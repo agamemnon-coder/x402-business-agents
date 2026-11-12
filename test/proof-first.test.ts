@@ -279,7 +279,13 @@ describe("/proof starts with the guarantees (jury, 12 Nov): guarantees, partners
 });
 
 describe("/proof's numbers: four tiles, one of them Airwallex's, the stops with their breakdown", () => {
-  const tiles = [...main.matchAll(/<a class="num card ([a-z]*)" href="([^"]+)">([\s\S]*?)<\/a>/g)].map((m) => ({ cls: m[1]!, href: m[2]!, inner: decode(m[3]!) }));
+  // Since 12 Nov each tile's leading number counts up (a data-count span holding the same figure, src/redesign/stats.ts);
+  // unwrapped here so the figure is read as before, and checked to hold the same number it shows.
+  const countUp = /<span data-count="(\d+)" data-dec="0">(\d+)<\/span>/g;
+  const tiles = [...main.matchAll(/<a class="num card ([a-z]*)" href="([^"]+)">([\s\S]*?)<\/a>/g)].map((m) => {
+    for (const c of m[3]!.matchAll(countUp)) expect(c[1]).toBe(c[2]);
+    return { cls: m[1]!, href: m[2]!, inner: decode(m[3]!.replace(countUp, "$2")) };
+  });
 
   it("shows exactly four: Claude's decisions, Airwallex's figure, the Metal payments and the card charge, the stops", () => {
     // In this order: on a phone the two short tiles share a row and the two with lines under them share the next.
@@ -406,12 +412,15 @@ describe("/proof's words in sight", () => {
   it("are fewer than before the page started with the guarantees", () => {
     // 12 Nov: 709 by the shared count before (budget 720 in test/site-v4.test.ts); 512 as built now, plus a margin of 8.
     // +25, 12 Nov wire-in (owner: "T:0 and Visa are missing"): the Visa and T:0 cards, a name and one line each (540 as built).
-    expect(visibleWords(html)).toBeLessThanOrEqual(545);
+    // +12, 12 Nov: the rail cards went to one line each and their full account into a fold, whose header ("What each
+    // rail did, in full") counts once per drawing (wide and tall).
+    expect(visibleWords(html)).toBeLessThanOrEqual(560);
     // The same count is what it says: a fold with nothing folded inside it adds only its header.
     expect(wordsOutsideFolds("<main><p>one two</p><details><summary>three</summary><p>four</p></details></main>")).toBe(3);
     expect(wordsOutsideFolds("<main><details><summary>one</summary><details><summary>two</summary>three</details>four five</details>six</main>")).toBe(2);
     // Outside every fold (a fold inside a closed line counted as closed too): 315 as built on 12 Nov, plus a margin of 8.
     // +28, 12 Nov wire-in: the Visa and T:0 cards (343 as built).
-    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(345);
+    // +10, 12 Nov: the rail cards' fold header, once per drawing (wide and tall); the cards themselves got shorter.
+    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(357);
   });
 });
