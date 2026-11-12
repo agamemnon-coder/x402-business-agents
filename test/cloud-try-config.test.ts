@@ -36,6 +36,8 @@ describe("the engine's deployment of its own on test money (cloud/wrangler.try.j
       "r2_buckets.0.jurisdiction": ["eu", undefined],
       "vars.RP_ID": [expect.any(String), "purser-try.max-31b.workers.dev"],
       "vars.ORIGIN": [expect.any(String), "https://purser-try.max-31b.workers.dev"],
+      // Its own database, created on 12 November: wrangler d1 create purser-try.
+      "d1_databases.0.database_id": [base.get("d1_databases.0.database_id"), expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)],
       "vars.ENGINE_MODE": [undefined, "test_money"],
       // Capabilities only: lane C's switches decide at run time, and a missing switch is off.
       "vars.HANDS_ON": [undefined, "on"],
@@ -43,13 +45,14 @@ describe("the engine's deployment of its own on test money (cloud/wrangler.try.j
       // Hourly, for the sweep of the visitors' companies; the cloud's own daily job is safe to run every hour.
       "triggers.crons.0": [base.get("triggers.crons.0"), "17 * * * *"],
     });
-    // Its own database (the id is filled in after wrangler d1 create), and no bucket at all.
-    expect(mine.get("d1_databases.0.database_id")).toBe("SET-AFTER-wrangler-d1-create");
+    // Its own database, never the product's, and no bucket at all.
+    expect(mine.get("d1_databases.0.database_id")).not.toBe(base.get("d1_databases.0.database_id"));
     expect(tryConfig()).not.toHaveProperty("r2_buckets");
     // Never the product's own stores or name, in any value.
     for (const [path, v] of mine) expect([path, v]).not.toEqual([path, expect.stringMatching(/^purser-cloud(-docs)?$/)]);
     // No value that looks like a secret: a whole value of 32 or more key-like characters (base64, hex or a token).
-    for (const [path, v] of mine) if (typeof v === "string") expect([path, v]).not.toEqual([path, expect.stringMatching(/^[A-Za-z0-9+/_=-]{32,}$/)]);
+    // (The D1 database id is an identifier wrangler prints, not a secret.)
+    for (const [path, v] of mine) if (typeof v === "string" && path !== "d1_databases.0.database_id") expect([path, v]).not.toEqual([path, expect.stringMatching(/^[A-Za-z0-9+/_=-]{32,}$/)]);
   });
 
   it("says what it is, and holds no secret", () => {
