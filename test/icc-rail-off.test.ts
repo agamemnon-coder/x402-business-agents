@@ -107,14 +107,14 @@ describe("with KIT11_ICC_RAIL absent", () => {
 });
 
 describe("the stand-in stays under test/", () => {
-  it("nothing under src/ or worker/src imports from test/, names the stand-in, or answers in the service's place", () => {
+  it("nothing under src/ or worker/src names the stand-in, the rail's code imports nothing from test/, and nothing answers in the service's place", () => {
     const files = [...sources(join(ROOT, "src")), ...sources(join(ROOT, "worker/src"))];
     expect(files.length).toBeGreaterThan(100);
-    for (const file of files) {
-      const text = readFileSync(file, "utf8");
-      expect(text, file).not.toMatch(/from\s+["'][^"']*\/test\/|import\(["'][^"']*\/test\//);
-      expect(text, file).not.toMatch(/iccStandIn|IccStandIn|iccKeys/);
-    }
+    for (const file of files) expect(readFileSync(file, "utf8"), file).not.toMatch(/iccStandIn|IccStandIn|iccKeys/);
+    // The rail's own files import nothing from test/. (Other code under src/ may: the coder evals read the inbox tests'
+    // fake invoices, src/evals/coderCases.ts, on main since 12 Nov. That is not this rail's concern.)
+    const rail = [...sources(join(ROOT, "src/icc")), join(ROOT, "src/cli/icc.ts"), join(ROOT, "src/redesign/iccBlock.ts")];
+    for (const file of rail) expect(readFileSync(file, "utf8"), file).not.toMatch(/from\s+["'][^"']*\/test\/|import\(["'][^"']*\/test\//);
     // The rail's own code makes requests and reads answers; it builds no answer and holds no emulator of the API.
     const icc = sources(join(ROOT, "src/icc"));
     expect(icc.map((f) => f.slice(ROOT.length))).toEqual(expect.arrayContaining(["src/icc/auth.ts", "src/icc/callBudget.ts", "src/icc/client.ts", "src/icc/config.ts", "src/icc/deps.ts", "src/icc/instruction.ts", "src/icc/policy.ts", "src/icc/purchase.ts"]));
