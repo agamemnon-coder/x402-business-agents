@@ -23,6 +23,10 @@ import { accountOf, bindingOf, onboardingLink, openAccount, PlatformRefused, rec
 import { cloudHealth, companyStatus, HealthReport, MonitorRefused, notify, receiveReport, removeWebhook, setWebhook, webhookOf, type Outbound } from "./monitor.js";
 import type { EngineApi } from "./engine/api.js";
 import { engineRoutes } from "./engine/routes.js";
+import { signedTrySession, tryGate } from "./try/gate.js";
+import { tryError, tryRoutes } from "./try/routes.js";
+import { isTryTenant, noteTryFail, TryRefused, type TryConfig } from "./try/start.js";
+import { SwitchRefused } from "./try/switches.js";
 
 export interface CloudEnv {
   sql: Sql;
@@ -63,6 +67,11 @@ export interface CloudEnv {
    * local runs an engine in this process. Test money only. Absent (the default): the /v1/engine routes answer 404.
    */
   engine?: (tenantId: string) => EngineApi;
+  /**
+   * The hands-on deployment (purser-try, HANDS_ON=on; cloud/src/try/): a visitor's test company of their own, for a day,
+   * on the engine. Absent (the default): the /v1/try routes answer 404. Needs `engine`.
+   */
+  tryIt?: TryConfig;
 }
 
 interface Ctx { env: CloudEnv; req: Request; url: URL; now: Date; params: string[]; caller: Caller | null; db: TenantDb | null }
@@ -447,6 +456,9 @@ export const ROUTES: Route[] = [
 
   // The company's engine (cloud/src/engine/routes.ts): one block, the caller's own company only, 404 while no engine is wired.
   ...engineRoutes<Ctx>({ json, err, body }),
+
+  // The hands-on deployment (cloud/src/try/routes.ts): one block, 404 unless the deployment runs the hands-on demo.
+  ...tryRoutes<Ctx>({ json, err, body }),
 ];
 
 function match(path: string, pattern: string): string[] | null {
@@ -519,9 +531,18 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
       try {
         caller = await callerOf(env.sql, env.sessionSecret, req.headers.get("authorization"), now);
       } catch (e) {
-        if (e instanceof AuthError) await noteFailedAuth(env.sql, ip, keyIdOf(/^Bearer (\S+)$/.exec(req.headers.get("authorization") ?? "")?.[1]), now);
+        if (e instanceof AuthError) {
+          // A try company's own session that no longer works (expired, or the company was swept) counts against that
+          // company, never against the address (cloud/src/try/gate.ts); anything else counts per address, as ever.
+          const tryTenant = await signedTrySession(env.sessionSecret, req.headers.get("authorization"));
+          if (tryTenant) await noteTryFail(env.sql, tryTenant, now);
+          else await noteFailedAuth(env.sql, ip, keyIdOf(/^Bearer (\S+)$/.exec(req.headers.get("authorization") ?? "")?.[1]), now);
+        }
         throw e;
       }
+      // A visitor's test company calls only the hands-on demo's routes, while it lives (cloud/src/try/gate.ts).
+      const tryCaller = isTryTenant(caller.tenantId);
+      if (tryCaller) await tryGate(env.sql, caller.tenantId, req.method, hit.r.path, now);
       need(caller, hit.r.need);
       // The starter key makes the first owner's passkey and nothing else (red team round 5): who it is, the company's
       // name, and an enrolment for its own owner.
@@ -536,7 +557,9 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
           || (req.method === "POST" && hit.r.path === "/v1/users/{id}/enrolment" && hit.p![0] === caller.user);
         if (!ok) return err(403, "the starter key only makes the first owner's passkey; sign in with that passkey to do the rest");
       }
-      if (!(await withinRate(env.sql, `${caller.kind}:${caller.principal}`, now, { windowSec: 60, max: rate.perMinute }))) return err(429, "too many requests; wait a minute");
+      // A try session's event polls write no rate bucket: the company's engine limits those reads itself.
+      const tryPoll = tryCaller && req.method === "GET" && hit.r.path === "/v1/engine/events";
+      if (!tryPoll && !(await withinRate(env.sql, `${caller.kind}:${caller.principal}`, now, { windowSec: 60, max: rate.perMinute }))) return err(429, "too many requests; wait a minute");
       ctx.caller = caller;
       ctx.db = new TenantDb(env.sql, caller.tenantId);
     }
@@ -549,6 +572,8 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
     if (e instanceof ExportRefused) return err(e.status, e.message);
     if (e instanceof MonitorRefused) return err(400, e.message);
     if (e instanceof PlatformRefused) return err(e.status, e.message);
+    if (e instanceof TryRefused) return tryError(json, e.status, e.code, e.message);
+    if (e instanceof SwitchRefused) return tryError(json, 400, "bad_request", e.message);
     // A write that lost a race with another request for the same company: nothing of it was written.
     if (e instanceof WriteConflict) return err(409, "another change for this company landed at the same time; nothing of this request was written: send it again");
     // Nothing internal leaks: the caller gets a reference, the log gets the error.

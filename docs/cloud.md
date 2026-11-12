@@ -123,6 +123,9 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/engine/events` | read | What the engine did, oldest first: `?after=<seq>&limit=<1 to 200>`; `{ items, next }`. |
 | `GET /v1/engine/vault` | read | The archive's files as its indexes list them: `{ files }`. |
 | `GET /v1/engine/vault/file` | read | One file of the archive, `?path=` as the list gives it; 404 for a path the index does not list. |
+| `POST /v1/try/start` | anyone | The hands-on deployment only (`HANDS_ON=on`; 404 elsewhere). A test company of your own on the engine, test money on a simulated bank, deleted after 24 hours: `{ token? }` (an event or jury token). Answers 201 `{ tenant, session, visitor_token, expires_at, session_expires_at, company, pool, mode }`; 429 `{ code: "limit" }` past a limit (per keyed address and per pool and day); 503 `{ code: "paused" }` while the switch `starts` is off. |
+| `POST /v1/try/session` | anyone | The hands-on deployment only. `{ tenant_id, visitor_token }`: a fresh 15-minute session for that test company; `{ session, expires_at, company_expires_at }`, or 410 `{ code: "gone" }` once it was deleted. Limited per company (30 a minute), never per address. |
+| `POST /v1/try/admin` | platform admin | The hands-on deployment's controls: `{ op: "get" }` (the switches, today's counters), `{ op: "set", key, value }` (one switch, refused past its ceiling; logged without the token), `{ op: "token", pool, until }` (an event or jury token, shown once; only its hash is kept). |
 
 The `/v1/engine` routes are the company's engine behind the API (`cloud/src/engine/routes.ts`): the same inbox, checks,
 approval and executor a runner has, on **test money only** (a stand-in bank; no payment reaches a real bank). The
