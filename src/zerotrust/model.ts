@@ -61,7 +61,7 @@ export const LAYERS: readonly Layer[] = [
 /** What an attacker may be assumed to control. */
 export type ComponentId =
   | "agent_output" | "document" | "agent_key" | "relay" | "phone_page" | "approval_in_transit"
-  | "decision_code" | "database" | "webhook_sender" | "other_tenant";
+  | "decision_code" | "stored_terms" | "database" | "webhook_sender" | "other_tenant";
 
 export interface Component {
   id: ComponentId;
@@ -80,7 +80,8 @@ export const COMPONENTS: readonly Component[] = [
   { id: "phone_page", name: "the phone page", voids: ["L3"], means: "The attacker controls the page the CFO signs on, so the CFO's own passkey may sign what the page sends." },
   { id: "approval_in_transit", name: "a signed approval in transit", voids: [], means: "The attacker holds a genuine signed approval and sends it again, later, or for something else." },
   { id: "decision_code", name: "Purser's own decision code", voids: ["L2", "L3", "L4"], means: "Every check in Purser's own code is forced to answer pay, the signature checks included. It does not reach further: a runner host taken over with its keys is out of scope (docs/security.md)." },
-  { id: "database", name: "the database file", voids: ["L2"], means: "The attacker edits rows in the ledger file: terms, amounts, the log itself. That gets past the checks Purser made when it planned a payment. Writing an approval row with terms and hashes that agree gets past the signature checks too: that is the attack database-approval-forged, which only the rail and verify answer." },
+  { id: "stored_terms", name: "a payment's stored terms", voids: ["L1", "L2"], means: "The attacker rewrites the terms of one payment in the ledger file (the payee, the amount, the currency), so neither the agent nor the checks made when it was planned protect it any more. The approval is out of reach: forging that too is the breach \"the database file\"." },
+  { id: "database", name: "the database file", voids: ["L1", "L2", "L3", "L4"], means: "The attacker writes any row in the ledger file: a payment nobody asked for, an approval with terms and hashes that agree, the log itself. Purser's executor trusts its own database, so this gets past the agent, the checks and both signatures; only the rail and verify answer it." },
   { id: "webhook_sender", name: "a webhook sender", voids: [], means: "The attacker posts events that claim to come from Airwallex, or sends a real one again." },
   { id: "other_tenant", name: "another company's session", voids: [], means: "The attacker is signed in to Purser Cloud as another company, with that company's full rights." },
 ];
@@ -265,25 +266,25 @@ export const ATTACKS: readonly Attack[] = [
   {
     id: "changed-after-signing-at-payment",
     description: "The amount, the payee or the currency is changed after the CFO signed, and the payment is started.",
-    breach: ["database"], target: "bank_payout",
+    breach: ["stored_terms"], target: "bank_payout",
     action: "Pay other terms under the CFO's signature.",
-    bypasses: ["L2"], stoppedBy: "L3",
+    bypasses: ["L1", "L2"], stoppedBy: "L3",
     note: "The edit is to the stored terms; the signature still exists, but it is over another hash, so it approves nothing.",
   },
   {
     id: "changed-after-signing-at-booking",
     description: "The amount, the payee or the currency is changed after the payment, before it is booked.",
-    breach: ["database"], target: "record",
+    breach: ["stored_terms"], target: "record",
     action: "Book a payment under terms the CFO never signed.",
-    bypasses: ["L2"], stoppedBy: "L3",
+    bypasses: ["L1", "L2"], stoppedBy: "L3",
     note: "The books take a payment only when its stored terms still hash to what the CFO signed and the payout matches them.",
   },
   {
     id: "changed-after-signing-at-archive",
     description: "The amount, the payee or the currency is changed after the payment, before its receipt is filed.",
-    breach: ["database"], target: "record",
+    breach: ["stored_terms"], target: "record",
     action: "File a payment receipt that shows terms the CFO never signed.",
-    bypasses: ["L2"], stoppedBy: "L3",
+    bypasses: ["L1", "L2"], stoppedBy: "L3",
     note: "The archive files a receipt only when its terms still hash to what the CFO signed.",
   },
   // The approval itself is attacked.
@@ -432,7 +433,7 @@ export const ATTACKS: readonly Attack[] = [
     description: "Rows are edited after the fact: a failed transfer becomes paid in the log, an amount changes in the ledger.",
     breach: ["database"], target: "record",
     action: "Hide or change a payment in the records.",
-    bypasses: ["L2", "L3", "L4"], stoppedBy: "L6",
+    bypasses: ["L1", "L2", "L3", "L4"], stoppedBy: "L6",
     note: "Found afterwards, not prevented: the hash chains and verify show which row changed.",
   },
   {
@@ -440,7 +441,7 @@ export const ATTACKS: readonly Attack[] = [
     description: "An approval is written straight into the database, with terms and hashes that agree, and the payout is run.",
     breach: ["database"], target: "bank_payout",
     action: "Pay EUR 9,850.00 to a new account on an approval nobody signed.",
-    bypasses: ["L2", "L3", "L4"], stoppedBy: "L5",
+    bypasses: ["L1", "L2", "L3", "L4"], stoppedBy: "L5",
     note: "Purser's executor trusts its own database, so this passes Purser. Verify finds the approval afterwards: no stored signature stands behind it.",
     needs: "Airwallex's approval workflow is switched on for transfers made over the API",
     evidence: EVIDENCE.transferApproval,
@@ -582,3 +583,19 @@ export function guardsOf(path: MoneyPath, optionalOn: boolean): LayerId[] {
 }
 
 export const isMoneyPath = (t: Target): t is MoneyPath => MONEY_PATHS.some((p) => p.id === t);
+
+/** The layers that refuse before money moves. A depth counts these only. */
+export const PREVENTING_LAYERS: readonly LayerId[] = LAYERS.filter((l) => l.kind !== "detects").map((l) => l.id);
+
+/**
+ * The depth of a way money leaves, as the model has it: how many independent layers must all fail before money moves.
+ * The depth test (test/zero-trust.test.ts) measures the same number on the real code and holds the two together.
+ */
+export function modelDepth(path: MoneyPath, optionalOn: boolean): number {
+  return guardsOf(path, optionalOn).length;
+}
+
+/** Why the record (L6) is in no depth, said once for every reader of the numbers. */
+export const RECORD_NOT_COUNTED =
+  "The record and the stop (L6) are not counted in a depth. The record finds a change afterwards; it does not refuse the first payment. "
+  + "A pause or the emergency stop refuses what comes next only once the CFO has pulled it, and it acts through Purser's code and the rail (a frozen card, a revoked mandate), which the depth already counts.";
