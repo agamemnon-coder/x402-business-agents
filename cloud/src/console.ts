@@ -5,6 +5,7 @@
 // page as text (textContent), never as HTML; account numbers come masked from the runner. The console reads and
 // manages; it never pays: a payment is approved on the CFO's phone with Face ID, through the runner's approval flow.
 
+import { EVENT_LINE_JS } from "../../src/ui/engineEvents.js";
 import { consoleKeys, DATA_NL, I18N_JS, keysUsedIn, MESSAGES, t as tr } from "../../src/ui/i18n.js";
 import { escAttr, ICON_SET, PAYABLES_CSS, svg } from "../../src/ui/payablesKit.js";
 import { fromB64 } from "./crypto.js";
@@ -12,7 +13,7 @@ import { INTER_WOFF2_B64 } from "./font.gen.js";
 import type { CloudEnv } from "./app.js";
 
 const ICONS = ["wallet", "calendar-range", "clock", "inbox", "octagon-x", "chevron-right", "circle-check", "triangle-alert", "circle-minus", "file-text",
-  "download", "mail", "scan-face", "users", "key-round", "log-out", "arrow-left", "flask", "x", "arrow-down-left", "arrow-up-right", "shield-check", "copy"];
+  "download", "mail", "scan-face", "users", "key-round", "log-out", "arrow-left", "flask", "x", "arrow-down-left", "arrow-up-right", "shield-check", "copy", "upload"];
 
 const EXTRA_CSS = `
 .pdfframe { display: block; width: 100%; max-width: 820px; height: 600px; border: 0; background: #fff; border-radius: 6px; box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 8px 24px -8px rgba(16,24,40,.18); }
@@ -224,6 +225,21 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
   header.top nav.tabs a { padding: 6px 9px; font-size: 13.5px; }
   .auth { margin-top: 3vh; padding: 20px; }
 }
+/* The engine (test money): the upload as one quiet row (the payables pages' drop zone), and the panel "At work". */
+.drop.eng { position: relative; margin-top: 18px; padding: 12px 14px; }
+.drop.eng .ic { width: 36px; height: 36px; border-radius: 10px; }
+.work { margin-top: 14px; }
+.work h2 { margin-bottom: 10px; }
+.work ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.work li { display: grid; grid-template-columns: 4.6em minmax(0, 11em) minmax(0, 1fr); gap: 2px 12px; align-items: baseline; font-size: 14px; }
+.work li time { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.work li b { font-weight: 650; overflow-wrap: anywhere; }
+.work li b.claude { color: var(--accent); }
+.work .we { color: var(--muted); font-size: 14px; margin: 0; }
+.work details { margin-top: 10px; }
+.work summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 600; }
+.work details ol { margin-top: 8px; }
+@media (max-width: 640px) { .work li { grid-template-columns: auto minmax(0, 1fr); } .work li > span { grid-column: 1 / -1; } }
 `;
 
 // The page's frame in Dutch (the default); the script re-words it in the person's language when it starts.
@@ -242,6 +258,7 @@ const LS=__CATALOGUES__;
 const PREF=(()=>{try{return localStorage.getItem('purser.cloud.lang')}catch(e){return null}})();
 const L=LS[PREF==='en'?'en':'nl'];
 __I18N__
+__EVENT_LINE__
 document.documentElement.lang=L.lang;
 for(const a of document.querySelectorAll('[data-t]'))a.textContent=(a.classList.contains('tl')?' ':'')+t(a.dataset.t);
 document.querySelector('#foot').textContent=t('cs.foot');
@@ -469,6 +486,104 @@ async function overviewView(){
     el('section','section waits',[el('div','bar',[el('h2','',t('cs.waits_head'))]),wl]));
 }
 
+// --- The engine (test money, on its stand-in bank) -----------------------------------------------------------------
+// Only a page whose config says engine true asks /v1/engine: a cloud with no engine answers 404 there, so its page never
+// asks and looks as it always did. The answer is kept for the signed-in session; engineStale() has it asked again.
+const ENG={token:null,p:null};
+function engineStatus(){
+  if(!CFG.engine||!S)return Promise.resolve(null);
+  if(ENG.token!==S.token){ENG.token=S.token;ENG.p=null}
+  if(!ENG.p)ENG.p=api('/v1/engine').catch((e)=>{if(e instanceof Expired)throw e;return null});
+  return ENG.p}
+const engineStale=()=>{ENG.p=null};
+// The header's one test-money chip says the engine is there, and in its title what that means.
+function engineChip(on){const c=$('header .test');c.querySelector('.tl').textContent=' '+(on?t('cs.eng.chip'):t('test.label'));c.title=on?t('cs.eng.chip_title'):t('test.title')}
+
+// The panel "At work": the engine's events as lines (src/ui/engineEvents.ts), newest first, six in view and the rest
+// folded. Its state belongs to the page, not to a view, so any view can mount it (workPanel()): the seq read up to, the
+// lines so far, and one timer. It asks GET /v1/engine/events once when mounted, then every 800 ms while one of this
+// page's engine requests is under way (engineCall) and for 10 s after the last one ended; never while the page is hidden,
+// after the session ended, or once its view is gone.
+const lineOf=eventLineOf(L.m,ma);
+const WORK={token:null,seq:0,lines:[],busy:0,until:0,timer:null,polling:null,box:null,ui:null,caught:false,onEvents:null};
+const WORK_SHOWN=6,WORK_KEPT=200,WORK_EVERY=800,WORK_AFTER=10000;
+function workStop(){clearTimeout(WORK.timer);WORK.timer=null;WORK.box=null;WORK.ui=null;WORK.onEvents=null}
+const workOn=()=>!!(S&&WORK.box&&WORK.box.isConnected&&document.visibilityState!=='hidden');
+function workNext(ms){clearTimeout(WORK.timer);WORK.timer=null;if(workOn()&&(WORK.busy>0||Date.now()<WORK.until))WORK.timer=setTimeout(workTick,ms)}
+async function workTick(){WORK.timer=null;await workPoll();workNext(WORK_EVERY)}
+function workPoll(){
+  if(WORK.polling||!S||!WORK.box)return WORK.polling||Promise.resolve();
+  const token=S.token;
+  WORK.polling=(async()=>{const fresh=[];
+    try{for(;;){const r=await api('/v1/engine/events?after='+WORK.seq+'&limit=200');if(WORK.token!==token)return;const items=r.items||[];const next=Number(r.next)||0;
+      fresh.push(...items);const moved=next>WORK.seq;if(moved)WORK.seq=next;if(items.length<200||!moved)break}}
+    catch(e){/* an ended session has gone to sign-in; anything else is asked again on the next tick */}
+    finally{WORK.polling=null}
+    if(WORK.token!==token)return;
+    if(fresh.length){const add=fresh.map((e)=>({ts:e.ts,l:lineOf(e)}));WORK.lines=WORK.lines.concat(add).slice(-WORK_KEPT);workAdd(add);if(WORK.caught&&WORK.onEvents)WORK.onEvents(fresh)}
+    WORK.caught=true})();
+  return WORK.polling}
+const workItem=(x)=>{const d=new Date(x.ts);const tm=el('time','',isNaN(d)?'':d.toLocaleTimeString(NL?'nl-NL':'en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));tm.dateTime=String(x.ts||'');tm.title=stamp(x.ts);
+  return el('li','',[tm,el('b',x.l.tag||'',cap(x.l.who)),el('span','',x.l.text)])};
+// New lines go on top of the live list; a line pushed out of the newest six moves into the fold, which keeps its place.
+function workAdd(add){const u=WORK.ui;if(!u)return;
+  for(const x of add){u.live.prepend(workItem(x));if(u.live.children.length>WORK_SHOWN)u.older.prepend(u.live.lastElementChild)}
+  const n=u.older.children.length;u.empty.hidden=!!u.live.children.length;u.live.hidden=!u.live.children.length;u.fold.hidden=!n;u.sum.textContent=t('cs.eng.work_earlier',{n})}
+function workPanel(){
+  const box=el('section','card panel work');box.id='work';
+  if(!S)return box;
+  if(WORK.token!==S.token){clearTimeout(WORK.timer);WORK.timer=null;WORK.token=S.token;WORK.seq=0;WORK.lines=[];WORK.busy=0;WORK.until=0}
+  const live=el('ol','');live.setAttribute('aria-live','polite');const older=el('ol','');const sum=el('summary','');const fold=el('details','',[sum,older]);const empty=el('p','we',t('cs.eng.work_empty'));
+  box.append(el('h2','',t('cs.eng.work')),empty,live,fold);
+  WORK.box=box;WORK.ui={live,older,sum,fold,empty};WORK.caught=false;WORK.onEvents=null;
+  workAdd(WORK.lines);
+  // Catch up once; the view is in the page by then.
+  setTimeout(()=>{workPoll().then(()=>workNext(WORK_EVERY))},0);
+  return box}
+// A request of this page to the engine: polling runs while it is under way and for a while after.
+async function engineCall(path,o){WORK.busy++;workNext(0);
+  try{return await api(path,o)}finally{WORK.busy=Math.max(0,WORK.busy-1);WORK.until=Date.now()+WORK_AFTER;workNext(WORK_EVERY)}}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'){clearTimeout(WORK.timer);WORK.timer=null}else workNext(0)});
+
+// An upload: PDF, JPEG or PNG, one file, at most 15 MB, refused here in words before anything is sent.
+const ENG_MAX=15*1024*1024;
+const ENG_TYPES={'application/pdf':/\.pdf$/i,'image/jpeg':/\.jpe?g$/i,'image/png':/\.png$/i};
+const fileType=(f)=>{if(f.type)return ENG_TYPES[f.type]?f.type:'';for(const k in ENG_TYPES)if(ENG_TYPES[k].test(f.name||''))return k;return ''};
+const readBase64=(f)=>new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>{const s=String(r.result||'');ok(s.slice(s.indexOf(',')+1))};r.onerror=()=>no(r.error);r.readAsDataURL(f)});
+function uploadRow(o){
+  const said=el('div','');said.setAttribute('role','status');
+  const file=el('input','');file.type='file';file.id='eng-file';file.accept='application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png';file.tabIndex=-1;file.setAttribute('aria-hidden','true');
+  const up=btn(t('cs.eng.upload'),'primary','upload');
+  const drop=el('div','drop eng',[ic('file-text'),el('span','sub',t('cs.eng.upload_sub')),up,file]);
+  const busy=(on)=>{up.disabled=on;up.replaceChildren(ic('upload'),on?t('cs.eng.uploading'):t('cs.eng.upload'))};
+  async function send(fs){
+    if(!fs.length||up.disabled)return;
+    const f=fs[0],mime=fs.length===1?fileType(f):'';
+    const no=fs.length>1?t('cs.eng.one_file'):!mime?t('cs.eng.wrong_type'):f.size>ENG_MAX?t('cs.eng.too_big'):!f.size?t('cs.eng.unreadable'):'';
+    if(no){said.replaceChildren(note(no,'bad'));return}
+    busy(true);said.replaceChildren();
+    try{
+      let base64;try{base64=await readBase64(f)}catch(e){said.replaceChildren(note(t('cs.eng.unreadable'),'bad'));return}
+      const name=String(f.name||'').replace(/[\u0000-\u001f\u007f]/g,'').slice(0,200)||'upload';
+      const r=await engineCall('/v1/engine/documents',{method:'POST',body:{filename:name,mime,base64}});
+      const inv=r.invoice&&r.invoice.id?r.invoice:null;
+      const open=()=>{const a=el('a','',t('cs.eng.open_invoice'));a.href='#/invoices/'+encodeURIComponent(inv.id);return a};
+      if(r.kind==='duplicate_document'){said.replaceChildren(el('p','note-info',[t('cs.eng.duplicate'),inv?' ':null,inv?open():null]));return}
+      // The upload filed it in the engine; the list reads the cloud's copy, which the engine feeds on a sync.
+      const s=await engineCall('/v1/engine/sync',{method:'POST'});engineStale();
+      await o.filed();
+      said.replaceChildren(note(inv?t('cs.eng.filed',{id:inv.id}):t('cs.eng.filed_other'),'ok'));
+      if(s&&s.error)said.append(note(s.error,'bad'));
+    }catch(e){if(!(e instanceof Expired))said.replaceChildren(note(e.message,'bad'))}
+    finally{busy(false)}
+  }
+  up.onclick=()=>{if(!up.disabled)file.click()};
+  file.onchange=()=>{const fs=[...(file.files||[])];file.value='';send(fs)};
+  drop.ondragover=(e)=>{e.preventDefault();if(!up.disabled)drop.classList.add('over')};
+  drop.ondragleave=()=>drop.classList.remove('over');
+  drop.ondrop=(e)=>{e.preventDefault();drop.classList.remove('over');send([...((e.dataTransfer&&e.dataTransfer.files)||[])])};
+  return el('div','',[drop,said])}
+
 // --- Invoices ------------------------------------------------------------------------------------------------------
 // Why, in two or three words with an icon; the whole finding stays in the row's title and on the invoice's page.
 function why(i){const fs=i.findings||[];const f=fs.filter(x=>x.level!=='warn')[0]||fs[0];const full=f?cap(finding(f)):'';
@@ -488,20 +603,31 @@ function invoiceRow(i){
 const FILTERS=[['all',t('filter.all'),()=>true],['act',t('filter.act'),(i)=>['ready','needs_review','needs_vendor'].includes(i.status)],['waiting_cfo',t('filter.waiting_cfo'),(i)=>i.status==='waiting_cfo'],['paid',t('filter.paid'),(i)=>i.status==='paid'],['blocked',t('filter.blocked'),(i)=>i.status==='blocked'],['rejected',t('filter.rejected'),(i)=>i.status==='rejected']];
 async function invoicesView(q){
   title(t('nav.invoices'));
+  // With an engine: the panel "At work" for everyone, the upload for who may manage the company (an owner).
+  const eng=await engineStatus();const write=!!eng&&(await me()).scopes.includes('admin');
   let all=[];let cursor=null;let filter=q&&FILTERS.some(f=>f[0]===q.get('f'))?q.get('f'):'all';
   const list=el('div','card list');const bar=el('div','bar',[el('h2','',t('nav.invoices'))]);const more=btn(t('cs.load_more'));more.hidden=true;
   function draw(){
     bar.querySelectorAll('.chip').forEach(c=>c.remove());
     for(const [k,label,fn] of FILTERS){const n=all.filter(fn).length;if(k!=='all'&&!n&&k!=='act')continue;const b=el('button','chip',[label,' ',el('b','',String(n))]);b.type='button';b.setAttribute('aria-pressed',String(filter===k));b.onclick=()=>{filter=k;draw()};bar.append(b)}
     list.replaceChildren();
-    if(!all.length){list.append(el('div','empty',[el('b','',t('no_invoices_yet')),t('cs.invoices_empty_sub')]));return}
+    if(!all.length){list.append(el('div','empty',[el('b','',t('no_invoices_yet')),write?t('cs.eng.empty_sub'):t('cs.invoices_empty_sub')]));return}
     const shown=all.filter(FILTERS.find(f=>f[0]===filter)[2]).slice().reverse();
     list.append(rowHead());if(!shown.length)list.append(el('div','empty',[el('b','',t('nothing_here')),t('no_invoice_in_state')]));
     for(const i of shown)list.append(invoiceRow(i));
   }
-  async function page(){const p=await api('/v1/invoices?limit=200'+(cursor?'&cursor='+encodeURIComponent(cursor):''));all=all.concat(p.items);cursor=p.next_cursor;more.hidden=!cursor;draw()}
+  let gen=0;
+  async function page(){const g=gen;const p=await api('/v1/invoices?limit=200'+(cursor?'&cursor='+encodeURIComponent(cursor):''));if(g!==gen)return;all=all.concat(p.items);cursor=p.next_cursor;more.hidden=!cursor;draw()}
   more.onclick=()=>page();
-  view().replaceChildren(head(t('nav.invoices'),t('cs.invoices_lede')),el('section','section',[bar,list,more]));
+  // The first page again, drawn once it has come (no empty list in between); one reload at a time, and one more if asked meanwhile.
+  let reloading=null,again=false;
+  function reload(){if(reloading){again=true;return reloading}
+    reloading=(async()=>{try{do{again=false;gen++;const p=await api('/v1/invoices?limit=200');all=p.items;cursor=p.next_cursor;more.hidden=!cursor;draw()}while(again)}
+      catch(e){if(!(e instanceof Expired))list.before(note(e.message,'bad'))}finally{reloading=null}})();
+    return reloading}
+  view().replaceChildren(head(t('nav.invoices'),write?t('cs.eng.invoices_lede'):t('cs.invoices_lede')),write?uploadRow({filed:reload}):null,eng?workPanel():null,el('section','section',[bar,list,more]));
+  // An invoice that arrived, was paid or was filed in the archive: the list is read again.
+  if(eng)WORK.onEvents=(evs)=>{if(evs.some((e)=>e.event==='ap.received'||e.event==='vault.filed'||(e.event==='ap.status'&&e.fields&&e.fields.status==='paid')))reload()};
   await page();
 }
 const RES={block:['octagon-x',t('res.block')],review:['triangle-alert',t('res.review')],wait:['clock',t('res.wait')],warn:['triangle-alert',t('res.warn')]};
@@ -780,6 +906,9 @@ function platformView(){
 async function route(){
   const h=location.hash||'#/';const [path,qs]=h.slice(1).split('?');const q=new URLSearchParams(qs||'');
   S=load();shell();
+  // No timer of the panel "At work" outlives the view it was mounted in.
+  workStop();
+  if(CFG.engine){if(S)engineStatus().then((st)=>engineChip(!!st),()=>{});else engineChip(false)}
   const open={'/sign-in':signInView,'/start':startView,'/platform':platformView};
   try{
     if(path==='/enrol')return enrolView(q);
@@ -794,7 +923,7 @@ async function route(){
     await pages[path](q);shell();
   }catch(e){if(e instanceof Expired)return;view().replaceChildren(note(t('cs.load_failed',{error:e.message}),'bad'))}
 }
-$('#out').onclick=async()=>{try{await api('/v1/auth/logout',{method:'POST'})}catch(e){}forget();S=null;ME=null;go('#/sign-in')};
+$('#out').onclick=async()=>{workStop();try{await api('/v1/auth/logout',{method:'POST'})}catch(e){}forget();S=null;ME=null;go('#/sign-in')};
 window.addEventListener('hashchange',route);
 setInterval(()=>{if(S&&S.exp<=Date.now()){forget();S=null;ME=null;notice=t('cs.session_ended');go('#/sign-in')}else shell()},30000);
 route();
@@ -810,13 +939,13 @@ const nonce = () => {
 /** The keys the console's script and HTML ask for by name: always in its catalogue, whatever the prefix rules say. */
 const USED = keysUsedIn(SCRIPT + BODY);
 
-/** The console's page: one document, its config in a meta tag (the origin, the passkey RP id, the mail domain). */
-export function consolePage(n: string, cfg: { origin: string; rpId: string; mailDomain: string }): string {
+/** The console's page: one document, its config in a meta tag (the origin, the passkey RP id, the mail domain, whether the cloud runs an engine). */
+export function consolePage(n: string, cfg: { origin: string; rpId: string; mailDomain: string; engine?: boolean }): string {
   // Both languages' words (the console's only) as JSON: the script picks the person's, Dutch until it knows.
   const keep = (k: string) => consoleKeys(k as keyof typeof MESSAGES.en) || USED.has(k);
   const cat = (lang: "nl" | "en") => ({ lang, m: Object.fromEntries(Object.entries(MESSAGES[lang]).filter(([k]) => keep(k))), data: lang === "nl" ? DATA_NL : {} });
   const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
-  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__I18N__", () => I18N_JS).replace("__ICONS__", ICON_SET(ICONS));
+  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS));
   return `<!doctype html>
 <html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
@@ -884,7 +1013,7 @@ export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Pr
   if (req.method !== "GET" && req.method !== "HEAD") return new Response("method not allowed", { status: 405, headers: { "content-type": "text/plain; charset=utf-8", allow: "GET, HEAD" } });
   if (url.pathname === "/") {
     const n = nonce();
-    return new Response(consolePage(n, { origin: env.origin, rpId: env.rpId, mailDomain: env.mailDomain ?? "" }), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": consoleCsp(n) } });
+    return new Response(consolePage(n, { origin: env.origin, rpId: env.rpId, mailDomain: env.mailDomain ?? "", engine: !!env.engine }), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": consoleCsp(n) } });
   }
   if (url.pathname === "/pdfview") {
     const n = nonce();

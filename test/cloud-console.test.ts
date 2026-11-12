@@ -5,8 +5,10 @@
 import { readFileSync } from "node:fs";
 import { Script } from "node:vm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { consolePage } from "../cloud/src/console.js";
+import { consoleCsp, consolePage } from "../cloud/src/console.js";
 import { INTER_WOFF2_B64 } from "../cloud/src/font.gen.js";
+import { EVENT_LINE_JS } from "../src/ui/engineEvents.js";
+import { MESSAGES } from "../src/ui/i18n.js";
 import { scriptBlocks, scriptBody, withoutBlocks } from "./support/scriptBlocks.js";
 import { ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
 
@@ -76,6 +78,57 @@ describe("the console page", () => {
     expect((await c.fetch(`${ORIGIN}/admin`)).status).toBe(404);
     expect((await c.fetch(`${ORIGIN}/.env`)).status).toBe(404);
     expect((await c.fetch(`${ORIGIN}/`, { method: "POST" })).status).toBe(405);
+  });
+});
+
+/** The page's config, as its script reads it from the meta tag. */
+const config = (html: string) => {
+  const raw = /<meta name="purser-cloud" content="([^"]*)">/.exec(html)![1]!;
+  return JSON.parse(raw.replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")) as Record<string, unknown>;
+};
+
+describe("the console of a cloud with an engine", () => {
+  it("is told so by the page's config, and a cloud with no engine is told it has none", async () => {
+    // The script asks /v1/engine only when its config says engine true (test/browser/console.check.ts holds that no
+    // such request leaves a page whose config says false).
+    expect(config(await (await c.fetch(`${ORIGIN}/`)).text())).toEqual({ origin: ORIGIN, rpId: RP, mailDomain: "", engine: false });
+    const withEngine = testCloud({ engine: true });
+    try {
+      const page = await withEngine.fetch(`${ORIGIN}/`);
+      expect(config(await page.text())).toEqual({ origin: ORIGIN, rpId: RP, mailDomain: "", engine: true });
+      const csp = page.headers.get("content-security-policy")!;
+      expect(csp).toBe(consoleCsp(/'nonce-([^']+)'/.exec(csp)![1]!));
+    } finally { withEngine.close(); }
+    // A caller that says nothing of an engine gets a page that has none.
+    expect(config(consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "" })).engine).toBeUndefined();
+  });
+
+  it("keeps the policy it had: the engine's pages need nothing more", () => {
+    expect(consoleCsp("N")).toBe("default-src 'none'; script-src 'nonce-N' 'self'; style-src 'nonce-N'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'");
+  });
+
+  it("carries the engine's words in both languages, and the one script that writes an event's line", () => {
+    const html = consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "", engine: true });
+    const js = script(html);
+    const words = Object.keys(MESSAGES.en).filter((k) => k.startsWith("cs.eng."));
+    for (const k of ["cs.eng.chip", "cs.eng.chip_title", "cs.eng.upload", "cs.eng.upload_sub", "cs.eng.uploading", "cs.eng.too_big", "cs.eng.wrong_type", "cs.eng.duplicate", "cs.eng.work", "cs.eng.work_empty", "cs.eng.work_earlier",
+      "cs.eng.who.parser", "cs.eng.who.code", "cs.eng.who.person", "cs.eng.step", "cs.eng.ev.ap.received", "cs.eng.ev.ap.status", "cs.eng.ev.vault.filed"]) expect(words).toContain(k);
+    for (const k of words) {
+      expect(MESSAGES.nl[k as keyof typeof MESSAGES.nl], k).toBeTruthy();
+      expect({ k, carried: html.split(`"${k}":`).length - 1 }).toEqual({ k, carried: 2 });
+    }
+    // The page's own words (not an event's line, which the shared script looks up by the event's name) are all asked for by name.
+    const own = words.filter((k) => !/^cs\.eng\.(ev|who|method)\.|^cs\.eng\.step$/.test(k));
+    expect(own.filter((k) => !js.includes(`t('${k}'`))).toEqual([]);
+    expect(js).toContain(EVENT_LINE_JS.trim());
+    expect(js).toContain("eventLineOf(L.m,ma)");
+  });
+
+  it("says test money and the stand-in bank in the header's words, and never that the engine pays through Airwallex", () => {
+    for (const lang of ["en", "nl"] as const) {
+      expect(MESSAGES[lang]["cs.eng.chip"]).toMatch(lang === "en" ? /^Engine: test money$/ : /^Engine: testgeld$/);
+      expect(MESSAGES[lang]["cs.eng.chip_title"]).toMatch(lang === "en" ? /stand-in bank.*no real money.*nothing is sent to Airwallex/ : /nagebootste bank.*geen echt geld.*niets naar Airwallex/);
+    }
   });
 });
 
