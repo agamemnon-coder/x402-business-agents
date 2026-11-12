@@ -14,6 +14,7 @@
     "node": "^22.13.0 || >=23.4.0"
   },
   "scripts": {
+    "books:statement": "tsx scripts/books-statement.ts",
     "test": "vitest run",
     "cloud:font": "tsx cloud/scripts/font.ts",
     "cloud:pdfjs": "tsx cloud/scripts/pdfjs.ts",
