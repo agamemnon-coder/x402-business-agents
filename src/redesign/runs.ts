@@ -360,7 +360,7 @@ ${FILTER_CSS}
 .runsp .idc { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; min-height: 44px; font-size: 13px; }
 .runsp .idc .k { color: var(--muted); font-weight: 600; white-space: nowrap; }
 .runsp .idc .v { font: 500 13px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); overflow-wrap: anywhere; min-width: 0; }
-.runsp .idc a.v { color: var(--accent); text-decoration: none; padding: 13.5px 0; } .runsp .idc a.v:hover { text-decoration: underline; }
+.runsp .idc a.v { color: var(--accent); text-decoration: none; padding: 14px 0; } .runsp .idc a.v:hover { text-decoration: underline; }
 .runsp .ch .idc { flex: 0 1 auto; } .runsp .ch .idc .k { flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 3em; }
 .runsp .ch .idc .v { flex: 0 1000 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 9ch; }
 .runsp .cp { flex: none; width: 44px; height: 44px; margin: 0 -12px; border: 0; background: transparent; color: var(--muted); cursor: pointer; border-radius: 10px; display: inline-grid; place-items: center; }
