@@ -101,7 +101,7 @@ Running it live (sandbox keys, a Metal RPC): [run-it.md](run-it.md).
 | `worker/` | The hosted site and relay (Cloudflare Worker): /try/sign, the phone-to-runner relay | 13 |
 | `contracts/` | Solidity contracts used on Metal testnet, with their ABIs | 7 |
 | `test/` | Unit, integration and browser checks | 474 |
-| `docs/` | Run logs, records, security, plans (the generated visuals in `docs/assets/` not counted) | 396 |
+| `docs/` | Run logs, records, security, plans (the generated visuals in `docs/assets/` not counted) | 398 |
 | `fixtures/` | Test invoices, including the hostile ones (bank change, look-alike, injection) | 19 |
 
 ## Tests and CI
@@ -109,7 +109,7 @@ Running it live (sandbox keys, a Metal RPC): [run-it.md](run-it.md).
 - **4523 of 4525 tests passed** in 421 files, 1 failed, 1 skipped, on commit `596114a` ([summary](assets/test-summary.json)); CI runs them on every push.
 - 417 test files under `test/`, 11 browser checks (Playwright, 390 and 1440 px), 2 workflows.
 - CI steps (from `.github/workflows/ci.yml`): Tests with coverage, per area; Relay Worker type check; Cloud tests on local D1; npm run judge (no keys, no ledger); Guest pages in Chromium (/, /demo, /month at 390 and 1440 px); Agent trace in Chromium (390 and 1440 px, light and dark); /try/sign in Chromium (360, 390 and 1440 px, light and dark; layout after signing and after the tamper); Purser Cloud's console in Chromium (first run and sign-in with a virtual passkey, every page at 1440 and 390 px); /try/sign in WebKit (390 px light, 1440 px dark; up to the passkey step where WebKit has WebAuthn); gitleaks, whole history of this commit; SBOM (CycloneDX, runtime dependencies); Semgrep (blocking; public sets plus .semgrep/purser.yml).
-- 64 dated run logs in [runs/](runs/).
+- 65 dated run logs in [runs/](runs/).
 
 ## Limits, and what is simulated
 
