@@ -284,9 +284,9 @@ async function ownersView(t: OwnersExecuteTerms, o: { tag: string; title: string
   const hero = [await page.textContent(".hero-label"), await page.textContent(".hero-amount")];
   check(hero.join("|") === o.hero.join("|"), say(`the amount in the first screen (${hero.join(": ")})`));
   check((await page.textContent(".key-facts dd:nth-of-type(1)")) === PAYEE && (await page.textContent(".key-facts dd:nth-of-type(2)")) === "Sourcing agent", say(`the payee (${PAYEE}) and the agent`));
-  check((await page.textContent(".key-facts dd.why")) === "The business account on chain runs this only with your passkey and the controller's. It needs two people (four eyes).", say("why it needs the owner, and that it needs two people"));
+  check((await page.textContent(".key-facts dd.why")) === "The business account on chain runs this only with both owners' passkeys.", say("why it needs the owner: both owners' passkeys, with no word of two people"));
   const need = (await page.textContent(".eyebrow.need")) ?? "";
-  check(/a second person's/.test(need) && /expires in 1[34]m \d\ds/.test(need), say(`the expiry counts down in the first screen (${need})`));
+  check(/^Needs your approval, and the second owner's · /i.test(need) && /expires in 1[34]m \d\ds/.test(need), say(`the expiry counts down in the first screen (${need})`));
   check((await page.textContent("#approve")) === "Approve with Face ID" && (await page.textContent("#reject")) === "Reject" && (await page.isDisabled("#approve")), say("\"Approve with Face ID\" and Reject; Approve is not armed at once"));
   const fs = await firstScreen();
   check(allIn(fs) && fs.closed && fs.wide === 0, say(`what, amount, payee, agent, why and both buttons in the first screen, Details closed, nothing wider than the phone (${shortView(fs)}; ${fs.wide} wide)`));
@@ -298,7 +298,7 @@ async function ownersView(t: OwnersExecuteTerms, o: { tag: string; title: string
   // Behind Details: one sentence with the account, the cap, the budget and the payee; under "All terms" the rest.
   await page.click("details.more > summary");
   const sentence = (await page.textContent("details.more .sentence")) ?? "";
-  check(sentence === `Your Face ID signs this on chain: the business account ${ACCOUNT_SHORT} is owned by two passkeys, the CFO's and the controller's, and runs this only with both. ${o.ends}`, say(`Details: the account, the cap, the budget and the payee in one sentence ("… ${sentence.slice(sentence.indexOf("both.") + 6)}")`));
+  check(sentence === `Your Face ID signs this on chain: the business account ${ACCOUNT_SHORT} is owned by two passkeys, yours and the second owner's, and runs this only with both. ${o.ends}`, say(`Details: the account, the cap, the budget and the payee in one sentence ("… ${sentence.slice(sentence.indexOf("both.") + 6)}")`));
   await page.click("details.more details.all > summary");
   const rows = await page.$$eval("details.more details.all dl.rows > *", (n: Element[]) => n.map((x) => x.textContent ?? ""));
   const shown: [string, string][] = [];
@@ -307,7 +307,11 @@ async function ownersView(t: OwnersExecuteTerms, o: { tag: string; title: string
   check(JSON.stringify(shown.slice(0, -1)) === JSON.stringify(want), say(`All terms: ${shown.slice(0, -1).map((r) => r[0]).join(", ")}; the digest is the one the passkey signs`));
   const until = shown.at(-1) ?? ["", ""];
   check(until[0] === "Valid until" && /^\d+ [A-Z][a-z]{2} \d{4}, \d\d:\d\d UTC$/.test(until[1]), say(`All terms: the signed deadline (${until.join(" ")})`));
-  check(/signs the account's Execute digest in these exact terms, not their SHA-256/.test((await page.textContent("details.more .fineprint")) ?? ""), say("the fine print says the passkey signs the on-chain digest, not the terms hash"));
+  const fine = (await page.textContent("details.more .fineprint")) ?? "";
+  check(/signs the account's Execute digest written in these terms, not their SHA-256/.test(fine) && /it does not compute the digest itself/.test(fine) && !/computes that hash itself/.test(fine),
+    say("the fine print says the passkey signs the on-chain digest, not the terms hash, and that this page does not compute that digest"));
+  const words = `${need} ${(await page.textContent("#app")) ?? ""}`;
+  check(!/two people|second person|controller|four eyes/i.test(words), say("no word of two people, a second person or a controller: the second owner's passkey may be a labelled virtual one"));
   // Everything open: long addresses, the mandate and the digest wrap, and the two buttons neither overlap nor leave the screen.
   const open = await page.evaluate(() => {
     const w = document.documentElement.clientWidth;
@@ -325,7 +329,7 @@ async function ownersView(t: OwnersExecuteTerms, o: { tag: string; title: string
 const LIMITS = "up to 0.05 per payment, 0.50 in total, to Stockline only.";
 await ownersView(ownBind, { tag: "bind", title: "Bind the sourcing mandate, signed on chain", hero: ["Amount", "0.50 USDZ in total"], ends: `U${LIMITS.slice(1)}`,
   rows: [["Account", OW.account], ["Mandate", OW.action.mandate], ["Per payment", "0.05 USDZ"], ["Budget", "0.50 USDZ"]] });
-await ownersView(ownRevoke, { tag: "revoke", title: "Revoke the sourcing mandate, signed on chain", hero: ["Amount", "0.50 USDZ in total"], ends: `It ends the mandate that allowed ${LIMITS}`,
+await ownersView(ownRevoke, { tag: "revoke", title: "Revoke the sourcing mandate, signed on chain", hero: ["Ends a budget of", "0.50 USDZ"], ends: `It ends the mandate that allowed ${LIMITS}`,
   rows: [["Account", OW.account], ["Mandate", OW.action.mandate], ["Per payment", "0.05 USDZ"], ["Budget", "0.50 USDZ"]] });
 await ownersView(ownReplace, { tag: "replace", title: "Replace the sourcing mandate, signed on chain", hero: ["Per payment", "0.10 USDZ (0.05 before)"], ends: "It replaces the mandate in one step: up to 0.10 per payment (0.05 before), 0.50 in total (0.50 before), to Stockline only.",
   rows: [["Account", OW.account], ["Mandate", ownReplace.action.mandate], ["Replaces", EARLIER], ["Per payment", "0.10 USDZ (0.05 before)"], ["Budget", "0.50 USDZ (0.50 before)"]] });
@@ -333,9 +337,15 @@ await ownersView(ownReplace, { tag: "replace", title: "Replace the sourcing mand
 await page.goto(`${url}/approve/${ownUnknown.proposal_id}`);
 await page.waitForSelector("#approve");
 await page.waitForTimeout(1200);
-check((await page.textContent(".what-title")) === "An on-chain change this page does not know" && (await page.isDisabled("#approve")) && /a change this page does not know; this cannot be signed/.test((await page.textContent(".approval .alarm.list")) ?? ""),
-  "on chain, an unknown change: not shown as a bind, Approve stays disarmed, and the page says why");
+const unknownAlarms = await page.$$eval(".approval .alarm", (n: Element[]) => n.map((x) => x.textContent ?? ""));
+check((await page.textContent(".what-title")) === "An on-chain change this page does not know" && (await page.isDisabled("#approve")) && (await page.locator(".approval .hero").count()) === 0
+  && unknownAlarms.length === 1 && unknownAlarms[0] === "This is not a bind, a replace or a revoke of a mandate. It cannot be signed on this page.",
+  `on chain, an unknown change: not shown as a bind, no amount in the first screen, Approve stays disarmed, and one alarm says why (${unknownAlarms.length} alarm(s))`);
 await page.screenshot({ path: join(shots, "approve-owners-unknown-390-light.png") });
+await page.emulateMedia({ colorScheme: "dark" });
+await page.waitForTimeout(200);
+await page.screenshot({ path: join(shots, "approve-owners-unknown-390-dark.png") });
+await page.emulateMedia({ colorScheme: "light" });
 // The bind, signed: the passkey's challenge is the on-chain digest, and it is the first of two approvals.
 await page.goto(`${url}/approve/${ownBind.proposal_id}`);
 await page.waitForSelector("#approve");
@@ -345,6 +355,10 @@ await page.waitForFunction(() => document.querySelector(".verdict-head")?.textCo
 const signedOn = db.prepare("SELECT assertion_json FROM passkey_assertions WHERE proposal_id = ?").get(ownBind.proposal_id) as { assertion_json: string } | undefined;
 const challenge = signedOn ? (JSON.parse(Buffer.from((JSON.parse(signedOn.assertion_json) as { response: { clientDataJSON: string } }).response.clientDataJSON, "base64url").toString("utf8")) as { challenge: string }).challenge : "";
 check(Buffer.from(challenge, "base64url").toString("hex") === ownBind.onchain_digest.slice(2), "on chain, the bind signed: Face ID signed the account's Execute digest, and the page says \"1 of 2 approvals\"");
+const waits = (await page.textContent(".verdict-lead")) ?? "";
+const verdictWords = (await page.textContent(".verdict")) ?? "";
+check(waits === "Your Face ID counts. The account runs this only once the second owner's passkey has signed it too." && !/person|someone else|four eyes/i.test(verdictWords),
+  `on chain, the bind signed: it waits for the second owner's passkey, with no word of "a second person" ("${waits}")`);
 await page.screenshot({ path: join(shots, "approve-owners-bind-signed-390-light.png") });
 
 // The CFO policy editor: lower the sourcing agent's limit, sign it with the passkey, see it applied.

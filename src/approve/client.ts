@@ -373,8 +373,8 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
     // A replace names the mandate it ends and that mandate's limits, so the new ones can be read beside the old.
     const replaces = what === "replace" && /^0x[0-9a-fA-F]{64}$/.test(str(a.replaces)) && amount(a.was_cap) && amount(a.was_budget);
     // What the page itself can check without decoding the call (the runner decodes it and compares cap, budget, payee).
+    // A change the page does not know has no list of its own: the one sentence below says it cannot be signed.
     const problems = [
-      ...(verb ? [] : ["The terms name a change this page does not know"]),
       ...(/^0x[0-9a-f]{64}$/.test(digest) ? [] : ["The terms carry no valid on-chain digest"]),
       ...(calls.length === 1 && str(c.target).toLowerCase() === str(t.account).toLowerCase() && str(c.value) === "0" ? [] : ["The call does not go to the account itself with no value"]),
       ...(!selector || str(c.call_data).slice(0, 10) === selector ? [] : ["The call is not the mandate change the words name"]),
@@ -382,9 +382,10 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       ...(Number.isSafeInteger(until) && until >= exp && until <= exp + 300 ? [] : ["The signed deadline does not end with this proposal"]),
       ...(laneOk ? [] : ["The nonce is not a two-owner lane"]),
     ];
-    const okDigest = problems.length === 0;
+    const okDigest = verb !== null && problems.length === 0;
     const payee = str(a.payee);
-    const lead = `Your Face ID signs this on chain: the business account ${shortAddr(str(t.account))} is owned by two passkeys, the CFO's and the controller's, and runs this only with both.`;
+    // "The second owner", never a second person: the other passkey may be a labelled virtual test passkey.
+    const lead = `Your Face ID signs this on chain: the business account ${shortAddr(str(t.account))} is owned by two passkeys, yours and the second owner's, and runs this only with both.`;
     const cap = replaces ? `${str(a.cap)} USDZ (${str(a.was_cap)} before)` : `${str(a.cap)} USDZ`;
     const budget = replaces ? `${str(a.budget)} USDZ (${str(a.was_budget)} before)` : `${str(a.budget)} USDZ`;
     return {
@@ -395,12 +396,13 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
         : replaces ? `${lead} It replaces the mandate in one step: up to ${str(a.cap)} per payment (${str(a.was_cap)} before), ${str(a.budget)} in total (${str(a.was_budget)} before), to ${str(a.payee_name)} only.`
         : `${lead} Up to ${str(a.cap)} per payment, ${str(a.budget)} in total, to ${str(a.payee_name)} only.`,
       // A replace changes the limit per payment first of all: that is the amount the first screen shows, old beside new.
-      amount: replaces ? cap : `${str(a.budget)} USDZ in total`, margin: null, recipient: `${str(a.payee_name)} ${shortAddr(payee)}`,
+      // A revoke approves no money: the first screen says which budget ends. An unknown change shows no amount at all.
+      amount: !verb ? "" : replaces ? cap : what === "revoke" ? `${str(a.budget)} USDZ` : `${str(a.budget)} USDZ in total`, margin: null, recipient: `${str(a.payee_name)} ${shortAddr(payee)}`,
       rows: [["Account", str(t.account)], ["Mandate", str(a.mandate)], ...(replaces ? [["Replaces", str(a.replaces)] as [string, string]] : []), ["Per payment", cap], ["Budget", budget], ["May pay", whoFull(payee)],
         ["Signed on chain", "the account's Execute digest (what your passkey signs)"], ["Digest", digest], ["Valid until", utcMinute(new Date(Number(str(t.valid_until)) * 1000).toISOString())]],
       short: "the on-chain mandate change", warnings: problems.map((w) => `${w}; this cannot be signed`),
-      ...(replaces ? { amountLabel: "Per payment" } : {}),
-      label: "On chain", big: replaces ? str(a.cap) : str(a.budget), unit: replaces ? "USDZ per payment" : "USDZ budget",
+      ...(replaces ? { amountLabel: "Per payment" } : what === "revoke" ? { amountLabel: "Ends a budget of" } : {}),
+      label: "On chain", big: !verb ? "" : replaces ? str(a.cap) : str(a.budget), unit: !verb ? "" : replaces ? "USDZ per payment" : what === "revoke" ? "USDZ budget, ended" : "USDZ budget",
     };
   }
 
@@ -459,12 +461,24 @@ export function whyYou(t: Obj, policy: { key: string; value: string }[] = [], fo
     : kind === "task_card" ? (cardEur ? `Without your Face ID, a task card is issued only when you ask at the runner, up to ${cardEur} EUR.` : "A task card is issued only with your Face ID.")
     : kind === "airi_purchase" ? "An agent's purchase through Airi starts only with your Face ID."
     : kind === "agent_onboard" ? "An outside agent gets a company card only with your Face ID."
-    : kind === "owners_execute" ? "The business account on chain runs this only with your passkey and the controller's."
+    : kind === "owners_execute" ? "The business account on chain runs this only with both owners' passkeys."
     : kind === "dev_test" ? "It checks Face ID on this phone; nothing moves."
     : "This kind of proposal cannot be approved on the phone.";
   if (!fourEyes) return why;
   const so = fourEyes.approved_by.length ? ` Approved so far: ${fourEyes.approved_by.join(", ")}.` : "";
-  return `${why} It needs two people (four eyes).${so}`;
+  // An owners_execute needs the account's two owners, which its own line says; the second may be a labelled virtual test passkey.
+  return kind === "owners_execute" ? `${why}${so}` : `${why} It needs two people (four eyes).${so}`;
+}
+
+/** The first line of the approval view: whose approval it needs. An owners_execute names the second owner, not a person. */
+export function needsWords(t: Obj, fourEyes?: { approved_by: string[] }): string {
+  if (!fourEyes) return "Needs your approval";
+  return str(t.kind) === "owners_execute" ? "Needs your approval, and the second owner's" : "Needs your approval, and a second person's";
+}
+
+/** After the first of an owners_execute's two signatures: what it waits for, in the account's words (other kinds keep VERDICT's). */
+export function cosignedLead(t: Obj): string | undefined {
+  return str(t.kind) === "owners_execute" ? "Your Face ID counts. The account runs this only once the second owner's passkey has signed it too." : undefined;
 }
 
 /** "0,03" (a decimal comma, as many phones type it) reads as 0.03; nothing else is guessed. */
@@ -890,7 +904,7 @@ export async function passkeyFingerprint(spki: ArrayBuffer): Promise<string> {
 }
 
 /** Polls a ticket and shows the runner's verdict until it is final; returns the last answer. */
-async function follow(ticket: string, into: HTMLElement, done: Node, what = "", queuedLead?: string): Promise<{ status: string; message: string }> {
+async function follow(ticket: string, into: HTMLElement, done: Node, what = "", queuedLead?: string, cosigned?: string): Promise<{ status: string; message: string }> {
   const icon = el("div", "verdict-icon");
   const head = el("h2", "verdict-head");
   const subject = txt("p", "verdict-what", what);
@@ -905,10 +919,12 @@ async function follow(ticket: string, into: HTMLElement, done: Node, what = "", 
     const v = VERDICT[s] ?? VERDICT.queued!;
     box.className = `verdict ${v.tone}`;
     head.textContent = v.head;
-    lead.textContent = s === "queued" && queuedLead ? queuedLead : v.lead;
+    lead.textContent = s === "queued" && queuedLead ? queuedLead : s === "cosigned" && cosigned ? cosigned : v.lead;
     detail.textContent = s === "queued" && Date.now() - started > 20_000
       ? "The runner has not picked it up yet. If it is offline, your signature waits for it (up to 30 minutes)."
-      : str(data.message);
+      // The runner's own line for a first approval speaks of "a second person"; where the page has its own words for
+      // what it waits for (an owners_execute: the second owner's passkey), those stand alone.
+      : s === "cosigned" && cosigned ? "" : str(data.message);
     if (FINAL.has(s) || Date.now() - started > 5 * 60_000) return { status: s, message: str(data.message) };
     await new Promise((r) => setTimeout(r, 1000));
   }
@@ -1011,7 +1027,7 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
     ...f.warnings.map((w) => txt("p", "alarm", w)),
     ...(o.warnings ?? []).map((w) => txt("p", "alarm", w)),
     el("dl", "facts", [
-      txt("dt", "", f.amountLabel ?? "Amount"), txt("dd", "num", f.amount),
+      ...(f.amount ? [txt("dt", "", f.amountLabel ?? "Amount"), txt("dd", "num", f.amount)] : []),
       ...(f.margin ? [txt("dt", "", "Margin"), txt("dd", "num", f.margin)] : []),
       txt("dt", "", "Recipient"), el("dd", "lines", f.recipient.split("; ").map((r) => txt("span", "", r))),
       txt("dt", "", "Expires"), el("dd", "", [cd]),
@@ -1062,7 +1078,7 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
     const home = el("a", "back", ["← Dashboard"]) as HTMLAnchorElement;
     home.href = "/";
     actions.remove();
-    await follow(str(sent.data.ticket), body, home, f.title);
+    await follow(str(sent.data.ticket), body, home, f.title, undefined, cosignedLead(terms));
     status.textContent = "";
   });
 }
@@ -1163,9 +1179,10 @@ async function approvePage(attempt = 0): Promise<void> {
     const cd = el("span", "countdown");
     cd.dataset.expires = o.expires_at;
     const essentials = el("section", "essentials", [
-      el("p", "eyebrow need", [o.four_eyes ? "Needs your approval, and a second person's" : "Needs your approval", " · ", cd]),
+      el("p", "eyebrow need", [needsWords(terms, o.four_eyes), " · ", cd]),
       txt("h1", "what-title", f ? f.title : o.proposal_id),
-      f ? el("p", "hero", [txt("span", "hero-label", f.amountLabel ?? "Amount"), txt("span", "hero-amount num", f.amount)]) : null,
+      // No amount (a change this page does not know): no hero, so nothing reads as an amount being approved.
+      f && f.amount ? el("p", "hero", [txt("span", "hero-label", f.amountLabel ?? "Amount"), txt("span", "hero-amount num", f.amount)]) : null,
       f ? el("dl", "key-facts", [
         txt("dt", "", "Payee"), el("dd", "lines", f.recipient.split("; ").map((r) => txt("span", "", r))),
         txt("dt", "", "Agent"), txt("dd", "", agentOf(o.created_by, terms)),
@@ -1206,7 +1223,7 @@ async function approvePage(attempt = 0): Promise<void> {
       txt("summary", "", "Details"),
       f ? txt("p", "sentence", f.sentence) : null,
       el("dl", "facts", [
-        ...(f ? [txt("dt", "", f.amountLabel ?? "Amount"), txt("dd", "num", f.amount)] : []),
+        ...(f && f.amount ? [txt("dt", "", f.amountLabel ?? "Amount"), txt("dd", "num", f.amount)] : []),
         ...(f?.margin ? [txt("dt", "", "Margin"), txt("dd", "num", f.margin)] : []),
         ...(f ? [txt("dt", "", "Recipient"), el("dd", "lines", f.recipient.split("; ").map((r) => txt("span", "", r)))] : []),
         txt("dt", "", "Expires"), el("dd", "", [cd2]),
@@ -1219,7 +1236,7 @@ async function approvePage(attempt = 0): Promise<void> {
       f ? el("details", "all", [txt("summary", "", "All terms (exactly what is hashed)"), el("dl", "rows", f.rows.flatMap(([k, v]) => [txt("dt", "", k), txt("dd", "", v)])), termsTable(terms)]) : null,
       // Block 1: an owners_execute is signed by its on-chain digest, not by the terms hash; the fine print says which.
       txt("p", "fineprint", str(terms.kind) === "owners_execute"
-        ? "Your passkey signs the account's Execute digest in these exact terms, not their SHA-256. This page computes that hash itself, and the runner signed what the relay sent; the runner relays only if the digest follows from these terms."
+        ? "Your passkey signs the account's Execute digest written in these terms, not their SHA-256. This page checks the terms' SHA-256 against what the runner signed; it does not compute the digest itself: the runner relays only if the digest follows from these terms."
         : "Your passkey signs the SHA-256 of these exact terms. This page computes that hash itself, and the runner signed what the relay sent; any change to the terms makes the signature worthless."),
     ]);
     view.replaceChildren(...[essentials, ...alarms, actions, details].filter((n): n is HTMLElement => n !== null));
@@ -1250,7 +1267,7 @@ async function approvePage(attempt = 0): Promise<void> {
       }
       const home = el("a", "back", ["← Dashboard"]) as HTMLAnchorElement;
       home.href = "/";
-      await follow(str(sent.data.ticket), app, home, f ? f.title : o.proposal_id);
+      await follow(str(sent.data.ticket), app, home, f ? f.title : o.proposal_id, undefined, cosignedLead(terms));
     };
     approve.addEventListener("click", () => void go("APPROVED"));
     reject.addEventListener("click", () => void go("REJECTED"));

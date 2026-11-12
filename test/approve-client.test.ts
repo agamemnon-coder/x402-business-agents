@@ -7,7 +7,7 @@ import { fingerprintOf, spkiSha256OfCose } from "../src/passkey/ledger.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
-import { agentOf, whyYou, amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, freshEnough, passkeyFingerprint, policyLoosens, rejectionHash, takeRunnerKey, takeViewKey, type PhoneProposal } from "../src/approve/client.js";
+import { agentOf, whyYou, needsWords, cosignedLead, amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, freshEnough, passkeyFingerprint, policyLoosens, rejectionHash, takeRunnerKey, takeViewKey, type PhoneProposal } from "../src/approve/client.js";
 import { rejectionSha256, sha256Hex } from "../src/lib/terms.js";
 import { challengeFor } from "../src/passkey/webauthn.js";
 
@@ -280,7 +280,7 @@ describe("an owners_execute on the phone: bind, revoke and replace", () => {
   const withCall = (selector: string, action: Record<string, string>) => ({ ...B, calls: [{ ...B.calls[0]!, call_data: `${selector}${B.calls[0]!.call_data!.slice(10)}` }], action }) as unknown as Record<string, Json>;
   const revoke = withCall("0xb75c7dc6", { ...B.action, what: "revoke" });
   const replace = withCall("0x2f2c2052", { ...B.action, what: "replace", cap: "0.10", mandate: `0x${"7a".repeat(32)}`, replaces: OLD, was_cap: "0.05", was_budget: "0.50" });
-  const LEAD = "Your Face ID signs this on chain: the business account 0x1062…04ea is owned by two passkeys, the CFO's and the controller's, and runs this only with both.";
+  const LEAD = "Your Face ID signs this on chain: the business account 0x1062…04ea is owned by two passkeys, yours and the second owner's, and runs this only with both.";
   const keys = (t: Record<string, Json>) => describeTerms(t, {}).rows.map((r) => r[0]);
   const row = (t: Record<string, Json>, k: string) => describeTerms(t, {}).rows.find((r) => r[0] === k)?.[1];
 
@@ -306,6 +306,27 @@ describe("an owners_execute on the phone: bind, revoke and replace", () => {
     expect(f).toMatchObject({ approvable: true, title: "Revoke the sourcing mandate, signed on chain", warnings: [] });
     expect(f.sentence).toBe(`${LEAD} It ends the mandate that allowed up to 0.05 per payment, 0.50 in total, to Stockline only.`);
     expect(keys(revoke)).toEqual(keys(B));
+    // The first screen's big number is not money being approved: it is the budget that ends.
+    expect([f.amountLabel, f.amount]).toEqual(["Ends a budget of", "0.50 USDZ"]);
+    expect(describeTerms(B, {}).amountLabel).toBeUndefined();
+  });
+
+  it("says the second owner, never a second person: the second owner's passkey may be a labelled virtual one", () => {
+    const why = "The business account on chain runs this only with both owners' passkeys.";
+    expect(whyYou(B)).toBe(why);
+    expect(whyYou(B, [], { approved_by: [] })).toBe(why);
+    expect(whyYou(B, [], { approved_by: ["max"] })).toBe(`${why} Approved so far: max.`);
+    expect(needsWords(B, { approved_by: [] })).toBe("Needs your approval, and the second owner's");
+    expect(cosignedLead(B)).toBe("Your Face ID counts. The account runs this only once the second owner's passkey has signed it too.");
+    for (const t of [B, revoke, replace]) {
+      expect([describeTerms(t, {}).sentence, whyYou(t, [], { approved_by: ["max"] }), needsWords(t, { approved_by: [] }), cosignedLead(t)].join(" ")).not.toMatch(/two people|person|controller|four eyes|someone else/i);
+    }
+    // Every other kind keeps its words.
+    const other = { kind: "invoice_payment" };
+    expect(needsWords(other, { approved_by: [] })).toBe("Needs your approval, and a second person's");
+    expect(needsWords(other)).toBe("Needs your approval");
+    expect(needsWords(B)).toBe("Needs your approval");
+    expect(cosignedLead(other)).toBeUndefined();
   });
 
   it("a replace shows each new limit with the earlier one beside it, and the mandate it replaces", () => {
@@ -337,7 +358,9 @@ describe("an owners_execute on the phone: bind, revoke and replace", () => {
       expect(f.approvable).toBe(false);
       expect(f.title).not.toMatch(/Bind|Replace|Revoke/);
       expect(f.sentence).not.toMatch(/Up to|per payment/);
-      expect(f.warnings.join(" ")).toMatch(/a change this page does not know; this cannot be signed/);
+      // One alarm says it (the page shows the sentence of what cannot be approved), and no amount is shown as if it were approved.
+      expect(f.sentence).toBe("This is not a bind, a replace or a revoke of a mandate. It cannot be signed on this page.");
+      expect([f.warnings, f.amount, f.big]).toEqual([[], "", ""]);
     }
   });
 });
