@@ -82,6 +82,8 @@ jobs:
         run: npx tsx test/browser/trace.check.ts test-results/trace
       - name: /try/sign in Chromium (360, 390 and 1440 px, light and dark; layout after signing and after the tamper)
         run: npx tsx test/browser/trysign.check.ts test-results/trysign
+      - name: The CFO's phone pages in Chromium (enrol, approve in every state, policy; 390 and 1440 px, light and dark)
+        run: npx tsx test/browser/approve-design.check.ts test-results/approve-design
       - name: Purser Cloud's console in Chromium (first run and sign-in with a virtual passkey, every page at 1440 and 390 px)
         run: npx tsx test/browser/console.check.ts test-results/console
   # Safari's engine, in Playwright's own image (browsers and system libraries preinstalled, version = our lockfile's
