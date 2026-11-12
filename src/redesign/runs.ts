@@ -341,23 +341,24 @@ const idChip = (i: RunId) => {
 /**
  * One run, one compact entry. In sight: its date and badge, its name, one line with the links to its record, its
  * partners, its rate and its first id. Behind its one fold (or, in the rehearsals group, which is itself the fold, under
- * it): the other ids, what ran, the checks, the rails and the money words.
+ * it, where the first id is not repeated above): every id in full, what ran, the checks, the rails and the money words.
  */
 function entry(r: RunRow, o: { newest?: boolean; folded: boolean }): string {
   const kind = kindOf(r), [first, ...rest] = r.ids;
+  // The fold lists every id in full, the first one included: the chip in sight may be cut on a phone (review 12 Nov).
   const more = rest.filter(isId).length;
   const cls = ["run", `k-${kind}`, ...FILTERS.filter((f) => f.has(r)).map((f) => `f-${f.id}`), ...(r.product ? ["prod"] : []), ...(o.newest ? ["newest"] : [])].join(" ");
   // A rate that fell short is not a success: no tick, no green.
   const full = r.rate && r.rate.done === r.rate.of;
   const rate = r.rate ? `<span class="rt${full ? " ok" : ""}">${full ? icon("check", 14) : ""}${esc(rateWords(r.rate))}</span>` : "";
   const files = r.files.map((f) => `<a class="f" href="${esc(siteHref(f.href))}" target="_blank" rel="noopener"${linkWords(f.label) === f.label ? "" : ` aria-label="${esc(f.label)}"`}>${esc(linkWords(f.label))} ↗</a>`).join(" ");
-  const fold = `<div class="fold">${rest.length ? `<div class="ids">${rest.map(idChip).join("")}</div>` : ""}<p>${esc(r.what)}</p><p><b>Checks:</b> ${esc(r.checks)}</p>${r.stats?.length ? `<p class="q">${r.stats.map((x) => `${esc(x.v)} ${esc(x.l)}`).join(" · ")}</p>` : ""}<p class="q">Rails: ${esc(r.rails)}. Money: ${esc(r.money)}.</p></div>`;
+  const fold = `<div class="fold">${r.ids.length ? `<div class="ids">${r.ids.map(idChip).join("")}</div>` : ""}<p>${esc(r.what)}</p><p><b>Checks:</b> ${esc(r.checks)}</p>${r.stats?.length ? `<p class="q">${r.stats.map((x) => `${esc(x.v)} ${esc(x.l)}`).join(" · ")}</p>` : ""}<p class="q">Rails: ${esc(r.rails)}. Money: ${esc(r.money)}.</p></div>`;
   const label = `Ids, what ran and the checks${more ? `: ${pl(more, "more id")}` : ""}`;
   return `<li class="${cls}" id="${esc(r.key)}"><article${o.folded ? ' class="fd"' : ""} aria-label="${esc(nameOf(r))}">
 <p class="meta"><time datetime="${esc(r.iso)}" title="${esc(r.date)}">${esc(r.date.replace(/ \d{4}$/, ""))}</time><span class="kd ${kind}">${esc(KIND_LABEL[kind])}</span>${o.newest ? '<span class="mk new">Newest</span>' : ""}${r.product ? `<span class="mk prod">${esc(PRODUCT_MARK)}</span>` : ""}</p>
 <h2>${esc(nameOf(r))}</h2>
 <p class="ln">${esc(lineOf(r))} ${files}</p>
-<div class="ch">${partnersOf(r).map(railChip).join("")}${rate}${first ? idChip(first) : ""}</div>
+<div class="ch">${partnersOf(r).map(railChip).join("")}${rate}${first && o.folded ? idChip(first) : ""}</div>
 ${o.folded ? `<details class="more"><summary aria-label="${esc(label)}">${more ? esc(pl(more, "more id")) : "Checks"}${icon("chevron-down", 16)}</summary>${fold}</details>` : fold}
 </article></li>`;
 }
@@ -401,7 +402,8 @@ ${FILTER_CSS}
 .runsp .idc .k { color: var(--muted); font-weight: 600; white-space: nowrap; }
 .runsp .idc .v { font: 500 13px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); overflow-wrap: anywhere; min-width: 0; }
 .runsp .idc a.v { color: var(--accent); text-decoration: none; padding: 14px 0; } .runsp .idc a.v:hover { text-decoration: underline; }
-.runsp .ch .idc { flex: 0 1 auto; } .runsp .ch .idc .k { flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 3em; }
+.runsp .ch .idc { flex: 0 1 auto; } .runsp .ch .idc .k { flex: 0 1 auto; white-space: normal; }
+.runsp .fold .idc { flex-wrap: wrap; } .runsp .fold .idc .k { white-space: normal; }
 .runsp .ch .idc .v { flex: 0 1000 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 9ch; }
 .runsp .cp { flex: none; width: 44px; height: 44px; margin: 0 -12px; border: 0; background: transparent; color: var(--muted); cursor: pointer; border-radius: 10px; display: inline-grid; place-items: center; }
 .runsp .cp:hover { color: var(--text); } .runsp .cp.ok { color: var(--ok); }

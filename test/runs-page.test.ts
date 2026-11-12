@@ -523,7 +523,7 @@ describe("/runs as a timeline", () => {
     expect(runsReadme([...rows, oldShape])).toContain("Payouts to five suppliers");
   });
 
-  it("shows the first id in sight and folds the rest, with the longer text, the checks, the rails and the money words", () => {
+  it("shows the first id in sight and lists every id in full in the fold, with the longer text, the checks, the rails and the money words", () => {
     for (const r of rows.filter((x) => kindOf(x) !== "rehearsal")) {
       const e = entriesOf(liveList(html)).find((x) => x.key === r.key)!;
       const seen = inSight(e.html), fold = e.html.slice(seen.length);
@@ -532,10 +532,11 @@ describe("/runs as a timeline", () => {
       const more = r.ids.slice(1).filter((i) => i.value !== "Trace any payment").length;
       expect(fold, r.key).toContain(`<summary aria-label="Ids, what ran and the checks${more ? `: ${more} more id${more === 1 ? "" : "s"}` : ""}">`);
       if (r.ids[0]) expect(seen, r.key).toContain(escAttr(r.ids[0].value));
-      for (const i of r.ids.slice(1)) {
-        expect(seen, r.key).not.toContain(escAttr(i.value));
-        expect(fold, r.key).toContain(escAttr(i.value));
-      }
+      for (const i of r.ids.slice(1)) expect(seen, r.key).not.toContain(escAttr(i.value));
+      // Review 12 Nov (DC-2): the chip in sight may be cut on a phone; the fold lists every id, the first one included,
+      // under its full label, so each can be read in full without JavaScript.
+      const foldIds = [...fold.matchAll(/<span class="idc"><span class="k">([^<]+)<\/span><(?:a|code) class="v"[^>]*>([^<]+?)(?: ↗)?<\/(?:a|code)>/g)].map((m) => [m[1], m[2]]);
+      expect(foldIds, r.key).toEqual(r.ids.map((i) => [escAttr(i.label), escAttr(i.value)]));
       // A link relative to docs/runs/README.md opens the file on GitHub from the page.
       for (const f of r.files) expect(seen, r.key).toContain(`href="${f.href.replace(/^\.\.\/\.\.\//, REPO_BLOB)}"`);
       for (const part of [r.what, r.checks, r.rails, r.money]) expect(fold, r.key).toContain(escAttr(part));
@@ -545,6 +546,9 @@ describe("/runs as a timeline", () => {
     for (const e of entriesOf(rehGroup(html))) {
       expect(e.html).not.toContain("<details");
       for (const part of [row(e.key).what, row(e.key).checks, row(e.key).money]) expect(e.html).toContain(escAttr(part));
+      // Every id once, in full, in the list under it (no cut chip above it).
+      expect(/<div class="ch">([^\n]*)<\/div>/.exec(e.html)![1], e.key).not.toContain('class="idc"');
+      for (const i of row(e.key).ids) expect(e.text.split(i.value).length - 1, `${e.key} ${i.value}`).toBe(1);
     }
     // No id chip names a run by its code name: the second Airi run shows the hash the CFO signed, from its record.
     const v2 = JSON.parse(raw("docs/demo/vic-2-run.json")) as { audit: { event: string; payload: { terms_sha256?: string } }[] };

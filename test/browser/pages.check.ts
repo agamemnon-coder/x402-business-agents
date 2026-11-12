@@ -316,6 +316,23 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await look(page, `${path} ${tag}`, w);
       const t = await page.evaluate(() => document.body.innerText);
       if (path === "/runs" && !/Last live run: \d{1,2} \w{3} \d{4}/.test(t)) fail(`/runs ${tag}: no "Last live run" date`);
+      // On a phone every id and its label can be read in full in its entry (review 12 Nov, DC-2): with every fold open, no
+      // label is cut anywhere, no id in a fold is cut, and the id in sight (which may be cut) is listed in full in the fold.
+      if (path === "/runs" && w <= 390) {
+        await page.evaluate(`document.querySelectorAll("main details").forEach((d) => { d.open = true; })`);
+        const cut = await page.evaluate(`[...document.querySelectorAll("main li.run")].flatMap((li) => {
+          const short = (e) => { const rg = document.createRange(); rg.selectNodeContents(e); return rg.getBoundingClientRect().width - e.getBoundingClientRect().width > 0.05; };
+          const val = (e) => (e.textContent || "").replace(/ ↗$/, "");
+          const folded = [...li.querySelectorAll(".fold .idc")];
+          const out = [...li.querySelectorAll(".idc .k")].filter(short).map((e) => li.id + ": label cut: " + e.textContent);
+          for (const c of folded) if (short(c.querySelector(".v"))) out.push(li.id + ": id cut in the fold: " + val(c.querySelector(".v")));
+          const full = folded.map((c) => c.querySelector(".k").textContent + " " + val(c.querySelector(".v")));
+          for (const c of li.querySelectorAll(".ch .idc")) { const id = c.querySelector(".k").textContent + " " + val(c.querySelector(".v")); if (!full.includes(id)) out.push(li.id + ": the id in sight is not in its fold: " + id); }
+          return out;
+        })`) as string[];
+        for (const c of cut) fail(`/runs ${tag}: ${c}`);
+        await page.evaluate(`document.querySelectorAll("main details").forEach((d) => { d.open = false; })`);
+      }
       // /runs as a timeline (jury, 12 Nov): filters that keep the newest run, by Tab and Enter too; the rehearsals closed
       // and opened by their summary or a link to one of them; 44 px tap targets and a short page on a phone.
       if (path === "/runs" && (w === 390 || w === 1440)) {
