@@ -173,7 +173,7 @@ const { canonicalTerms, rejectionSha256, sha256Hex } = await import("../src/lib/
 const { payUnderMandate } = await import("../src/metal/pay.js");
 const { processPolicyRequest } = await import("../src/passkey/process.js");
 const { decide } = await import("../src/policy/approvals.js");
-const { syncCards } = await import("../src/policy/cards.js");
+const { syncCards, syncCardsAfterPolicy, syncCardsIfChanged } = await import("../src/policy/cards.js");
 const { executePauseChange } = await import("../src/policy/pause.js");
 const { policyValue, rules } = await import("../src/policy/rules.js");
 const { displayKey, signApprovals } = await import("../src/relay/sign.js");
@@ -532,20 +532,32 @@ SCENARIOS["hostile-agent-card"] = async () => {
   return { moved: cardMoved(w), control: "Airwallex card controls", record: `card.charge_declined: ${String(declined[0]!.reason)}` };
 };
 
-// Purser's own decision code is forced to say pay: the charges go straight to the cards, with no plan list, no hold and
-// no stop check. Airwallex declines both, and its own webhook brings each decline into the books.
+/** Purser's own decision code forced to say pay: an unsigned raise of a card's limits applied, and pushed to the card at Airwallex. */
+async function forcedCardRaise(w: { db: DB; now: Date; issuing: FakeIssuingT }, agent: string): Promise<void> {
+  const p = proposePolicyChange(w.db, { changes: [{ key: `card.${agent}.per_tx`, to: "1000.00" }, { key: `card.${agent}.monthly`, to: "5000.00" }], reason: "forced" }, `agent:${agent}` as never, w.now);
+  forced.pay = true;
+  try { executePolicyChange(w.db, p.proposal_id, w.now); await syncCardsAfterPolicy(w.db, p.proposal_id, w.issuing, w.now); } finally { forced.pay = false; }
+}
+
+// Purser's own decision code is forced to say pay: it raises the Sourcing card's limit at Airwallex with nobody's
+// signature, then the charges go straight to the cards, with no plan list, no hold and no stop check, at merchants the
+// cards may not pay. Airwallex declines both for the merchant category, and its own webhook brings each decline into
+// the books. Inside a card's categories the raised limit would let a charge through: that is in LIMITS, and shown below.
 SCENARIOS["decision-code-over-card-limit"] = async () => {
   const w = await cardWorld();
   const [sourcing, support] = [cardOf(w.db, "sourcing")!, cardOf(w.db, "support")!];
-  const over = await w.issuing.simulateCardCharge({ cardId: sourcing.card_id, amountCents: 4500, currency: "EUR", merchant: "Packwise", mcc: "5734" });
+  await forcedCardRaise(w, "sourcing");
+  expect(w.issuing.cards.find((c) => c.cardId === sourcing.card_id)!.limits).toMatchObject({ perTxCents: 100_000 });
+  expect(count(w.db, "SELECT COUNT(*) AS n FROM approvals")).toBe(0);
+  const raised = await w.issuing.simulateCardCharge({ cardId: sourcing.card_id, amountCents: 4500, currency: "EUR", merchant: "Offshore Gift Cards", mcc: "5947" });
   const offCategory = await w.issuing.simulateCardCharge({ cardId: support.card_id, amountCents: 1999, currency: "EUR", merchant: "Packwise", mcc: "5734" });
-  expect(over).toMatchObject({ approved: false, failureReason: "LIMIT_EXCEEDED" });
+  expect(raised).toMatchObject({ approved: false, failureReason: "MERCHANT_CATEGORY_NOT_ALLOWED" });
   expect(offCategory).toMatchObject({ approved: false, failureReason: "MERCHANT_CATEGORY_NOT_ALLOWED" });
   // The record does not rest on the code that was forced: Airwallex reports each decline itself.
-  for (const [i, t] of [over, offCategory].entries()) handleAirwallexHook(w.db, signedHook(`evt-zt-${i}`, cardEvent(t, `evt-zt-${i}`), w.now), SECRET, w.now);
+  for (const [i, t] of [raised, offCategory].entries()) handleAirwallexHook(w.db, signedHook(`evt-zt-${i}`, cardEvent(t, `evt-zt-${i}`), w.now), SECRET, w.now);
   const declined = events(w.db, "card.charge_declined");
-  expect(declined.map((d) => d.reason)).toEqual(["LIMIT_EXCEEDED", "MERCHANT_CATEGORY_NOT_ALLOWED"]);
-  return { moved: cardMoved(w), control: "Airwallex card controls", record: `card.charge_declined: ${declined.map((d) => String(d.reason)).join(", ")}` };
+  expect(declined.map((d) => d.reason)).toEqual(["MERCHANT_CATEGORY_NOT_ALLOWED", "MERCHANT_CATEGORY_NOT_ALLOWED"]);
+  return { moved: cardMoved(w), control: "Airwallex card controls", record: `the Sourcing card's limit raised at Airwallex unsigned, to 1000.00; card.charge_declined: ${declined.map((d) => String(d.reason)).join(", ")}` };
 };
 
 // A card event that Airwallex never sent: at the relay and at the runner, each of which checks Airwallex's signature itself.
@@ -2454,7 +2466,7 @@ const PUSH: Record<MoneyPath, (failed: Failed, o: PushOptions) => Promise<Pushed
     }
     if (o.stop) { await pullStop(w.db, cfo!, w.now); await syncCards(w.db, w.issuing, w.now); }
     // Purser's checks forced to pass: the charge goes straight to the card, with no plan list and no hold.
-    const t = await w.issuing.simulateCardCharge({ cardId: cardOf(w.db, "sourcing")!.card_id, amountCents: 50_000, currency: "EUR", merchant: "Offshore Gift Cards", mcc: "5947" });
+    const t = await w.issuing.simulateCardCharge({ cardId: cardOf(w.db, "sourcing")!.card_id, amountCents: 50_000, currency: "EUR", merchant: "Packwise", mcc: "5734" });
     return { moved: cardMoved(w), ended: t.approved ? "charged: the card approved EUR 500.00" : `the card at Airwallex (stand-in) declined: ${t.failureReason}` };
   },
 
@@ -2539,8 +2551,8 @@ describe("the depth test: every combination of failed layers on every way money 
     for (const optionalOn of [false, true]) {
       const named = singleBreaches(optionalOn);
       for (const c of COMPONENTS) {
-        const failed = inOrder(voidedBy([c.id]).filter((l) => PREVENTING_LAYERS.includes(l)));
         for (const p of MONEY_PATHS) {
+          const failed = inOrder(voidedBy([c.id], p.id).filter((l) => PREVENTING_LAYERS.includes(l)));
           const run = MEASURED.find((m) => m.path === p.id && m.optional_on === optionalOn && m.failed.join() === failed.join())!;
           expect(run, `${c.id} on ${p.id}: pushed`).toBeDefined();
           expect(named.some((b) => b.component === c.id && b.paths.includes(p.id)), `${c.id} on ${p.id}, optional ${optionalOn ? "on" : "off"}: ${run.ended}`).toBe(run.moved);
@@ -2549,6 +2561,32 @@ describe("the depth test: every combination of failed layers on every way money 
     }
     // Not vacuous: with the optional controls off, some single break-in does fail every guard of a way out.
     expect(singleBreaches(false).length).toBeGreaterThan(0);
+  });
+
+  // Where the model says one break-in voids a layer on one way out only (Component.voidsOn), the real code shows how.
+  // The card's limit: Purser's own decision code alone, or the database file alone, raises it at Airwallex, and a charge
+  // at a merchant inside the card's categories, which the card declined a moment before, goes through. An open risk.
+  it("the card's limit is Purser's to set: decision code alone, or the database file alone, raises it at Airwallex", async () => {
+    expect(COMPONENTS.flatMap((c) => (c.voidsOn ?? []).map((v) => `${c.id} ${v.path} ${v.layer}`))).toEqual(["decision_code card_purchase L5", "database card_purchase L5"]);
+    expect(LIMITS.map((l) => l.id)).toContain("card-limit-set-by-purser");
+    const inCategory = (w: { db: DB; issuing: FakeIssuingT }) => w.issuing.simulateCardCharge({ cardId: cardOf(w.db, "sourcing")!.card_id, amountCents: 50_000, currency: "EUR", merchant: "Packwise", mcc: "5734" });
+    const outside = (w: { db: DB; issuing: FakeIssuingT }) => w.issuing.simulateCardCharge({ cardId: cardOf(w.db, "sourcing")!.card_id, amountCents: 50_000, currency: "EUR", merchant: "Offshore Gift Cards", mcc: "5947" });
+    // Decision code forced: an unsigned raise is applied and pushed to the card.
+    const a = await cardWorld();
+    expect(await inCategory(a)).toMatchObject({ approved: false, failureReason: "LIMIT_EXCEEDED" });
+    await forcedCardRaise(a, "sourcing");
+    expect(count(a.db, "SELECT COUNT(*) AS n FROM approvals")).toBe(0);
+    expect(await inCategory(a)).toMatchObject({ approved: true });
+    expect(await outside(a)).toMatchObject({ approved: false, failureReason: "MERCHANT_CATEGORY_NOT_ALLOWED" });
+    // The database file alone: a settings row, which the runner's routine card sync pushes to the card.
+    const b = await cardWorld();
+    expect(await inCategory(b)).toMatchObject({ approved: false, failureReason: "LIMIT_EXCEEDED" });
+    for (const [key, value] of [["card.sourcing.per_tx", "1000.00"], ["card.sourcing.monthly", "5000.00"]]) {
+      b.db.prepare("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, value, b.now.toISOString());
+    }
+    expect(await syncCardsIfChanged(b.db, b.issuing, b.now)).toEqual(["sourcing"]);
+    expect(await inCategory(b)).toMatchObject({ approved: true });
+    expect(await outside(b)).toMatchObject({ approved: false, failureReason: "MERCHANT_CATEGORY_NOT_ALLOWED" });
   });
 
   // L6, honestly. With every guard of a path failed (optional controls off) and the emergency stop pulled before the
@@ -2579,7 +2617,7 @@ describe("the depth test: every combination of failed layers on every way money 
       fc.constantFrom(...attacks), fc.subarray(COMPONENTS.map((c) => c.id)), fc.subarray([...PREVENTING_LAYERS]), fc.boolean(),
       async (attack, alsoBreached, alsoFailed, optionalOn) => {
         const path = attack.target as MoneyPath;
-        const failed = new Set<LayerId>([...voidedBy([...attack.breach, ...alsoBreached]), ...alsoFailed]);
+        const failed = new Set<LayerId>([...voidedBy([...attack.breach, ...alsoBreached], path), ...alsoFailed]);
         const o = await PUSH[path](failed, { optionalOn });
         const covered = guardsOf(path, optionalOn).every((g) => failed.has(g));
         ran++;
@@ -3011,7 +3049,11 @@ describe("the report: docs/zero-trust.md and docs/zero-trust/report.json", () =>
     const standIns = page.slice(page.indexOf("<summary>The stand-ins"));
     for (const x of seen) expect(standIns, x.id).toContain(`| ${x.rail} | \`${x.answer}\` |`);
     // The smallest depth is named with the way out it belongs to.
-    at(`Fewest: ${MONEY_PATHS.filter((p) => modelDepth(p.id, false) === r.min_depth).map((p) => p.name).join(", ")}.`);
+    // Per mode, and never the one mode's list beside the other mode's number.
+    const fewest = (optionalOn: boolean, min: number) => { const ps = MONEY_PATHS.filter((p) => modelDepth(p.id, optionalOn) === min); return ps.length === MONEY_PATHS.length ? "every way out" : ps.map((p) => p.name).join(", "); };
+    at(`Fewest with them off: ${fewest(false, r.min_depth)}; with them on: ${fewest(true, r.min_depth_with_optional_controls)}.`);
+    // The depth is never called independent layers: one break-in can fail several.
+    expect(page).not.toMatch(/independent layers/);
     // Two minutes for a CFO: the part that is not folded stays short.
     expect(words(first), "the first screen, in words").toBeLessThanOrEqual(520);
     // Below it everything is folded: outside the folds only the line that says when the matrix was run.

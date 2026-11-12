@@ -26,7 +26,7 @@ run record also shows on the live sandbox and testnet. It is written by `npm run
 
 | Risk | Control | Enforced by | Test | Evidence (live run, or red team on stand-ins) |
 |---|---|---|---|---|
-| An agent overspends on its card | Per-purchase and monthly limits from the CFO policy, written to the card and read back | Airwallex | `test/cards.test.ts`, `test/issuing-adapter.test.ts` | Recorded run: €45.00 declined `LIMIT_EXCEEDED` |
+| An agent overspends on its card | Per-purchase and monthly limits from the CFO policy, written to the card and read back; Purser writes them with its own key, so its own code or database can raise them (an open risk in [zero-trust.md](zero-trust.md)) | Airwallex | `test/cards.test.ts`, `test/issuing-adapter.test.ts` | Recorded run: €45.00 declined `LIMIT_EXCEEDED` |
 | An agent buys the wrong kind of thing | Merchant categories, currency and end date per card | Airwallex | `test/cards.test.ts` | Recorded run: €19.99 declined `MERCHANT_CATEGORY_NOT_ALLOWED` |
 | An agent overspends on chain | A mandate per agent: cap per payment, total budget, one payee, end date | Chain (the mandate contract; Metal's facilitator checks against it and refuses before anything is sent) | `test/executors-mandate.test.ts`, `test/metal-pay.test.ts` | Recorded run: price rise refused `mandate_cap_exceeded`; four-eyes run step 6 |
 | Agents together exceed the business's budget | Atomic holds against the shared 20.00 and each limit before signing | Code | `test/holds.test.ts`, `test/holds-concurrency.test.ts` (128 holds from 8 processes) | Recorded run (no limit crossed) |

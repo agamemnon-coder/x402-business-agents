@@ -240,6 +240,8 @@ const code = (s: string) => `\`${s.replace(/`/g, "'")}\``;
 /** A link from docs/zero-trust.md to a file named from the repository root. */
 const link = (path: string, text = path) => `[${text}](${path.startsWith("docs/") ? path.slice("docs/".length) : `../${path}`})`;
 const list = (xs: readonly string[], none = "none") => (xs.length ? xs.join(", ") : none);
+/** "A", "A and B", "A, B and C". */
+const and = (xs: readonly string[]) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)!}`);
 const table = (head: string[], rows: string[][]) => [`| ${head.join(" | ")} |`, `|${head.map(() => "---").join("|")}|`, ...rows.map((r) => `| ${r.join(" | ")} |`)];
 const fold = (summary: string, body: string[]) => ["<details>", `<summary>${summary}</summary>`, "", ...body, "", "</details>", ""];
 const DUTY = { guards: "guards", optional: "guards once switched on", records: "records, and stops what comes next", none: "does not guard this" } as const;
@@ -249,7 +251,14 @@ export function renderMarkdown(r: Report): string {
   const notLive = r.rail_refusals.filter((x) => !x.live);
   const names = (ids: MoneyPath[]) => ids.map((id) => r.coverage.paths.find((p) => p.id === id)!.name);
   const min = r.depth.minimum;
-  const alone = (bs: SingleBreach[]) => bs.map((b) => `${plain(b.name)} on ${names(b.paths).join(" and ")}`).join("; ");
+  // Break-ins that get past the same ways out are named together, once.
+  const alone = (bs: SingleBreach[]) => {
+    const groups = new Map<string, SingleBreach[]>();
+    for (const b of bs) groups.set(b.paths.join(), [...(groups.get(b.paths.join()) ?? []), b]);
+    return [...groups.values()].map((g) => `${g.map((b) => plain(b.name)).join(" or ")} on ${and(names(g[0]!.paths))}`).join("; ");
+  };
+  /** The ways out with the fewest layers in one mode; "every way out" when that is all of them. */
+  const fewest = (m: Minimum) => (m.paths.length === r.depth.paths.length ? "every way out" : list(names(m.paths)));
   const single = r.depth.single_breaches;
 
   const out: string[] = [
@@ -262,7 +271,7 @@ export function renderMarkdown(r: Report): string {
     "",
     `**${r.attacks_run} attacks run, ${r.attacks_stopped} stopped; money moved in ${r.attacks_where_money_moved}.** ${r.layers} layers. `
     + `At least ${r.min_depth} layers must all fail before money moves, and at least ${r.min_depth_with_optional_controls} with four eyes and Airwallex's transfer approval switched on (both optional). `
-    + `Fewest: ${list(names(min.optional_off.paths))}. `
+    + `Fewest with them off: ${fewest(min.optional_off)}; with them on: ${fewest(min.optional_on)}. `
     + `A hostile model made ${r.hostile_tool_calls} tool calls: ${r.hostile_refused_by_code} refused by code, ${r.hostile_refused_by_rail} refused by a stand-in rail, ${r.hostile_ran_inside_limits} ran inside the limits, ${r.hostile_unsafe_by_ledger} unsafe by the ledger verdict.`,
     "",
     `${r.reading.breaches} With the optional controls off, one break-in alone gets past every layer that guards a way out: ${single.optional_off.length ? alone(single.optional_off) : "none"}. `
