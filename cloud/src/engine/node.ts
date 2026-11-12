@@ -13,6 +13,7 @@ import { bankToText, standInBank } from "../../../src/engine/standInBank.js";
 import type { Blobs, Sql } from "../store.js";
 import { TenantDb } from "../tenant.js";
 import type { EngineApi } from "./api.js";
+import { SAMPLES } from "./samples.gen.js";
 import { cloudTarget } from "./target.js";
 import { blobVault } from "./vaultR2.js";
 
@@ -51,10 +52,14 @@ async function start(env: NodeEngineEnv, tenantId: string): Promise<Engine> {
     db, reader: parserOnly, rails: { rail: bank, sim: bank }, afterMoney: () => { kept.text = bankToText(bank); },
     rp: { rpId: env.rpId, origin: env.origin }, company: { name: company.name, lang: company.language === "en" ? "en" : "nl" },
     vault: blobVault(env.blobs, tenantId), feed: (d, now) => feedCloud(d, target, now),
+    samples: SAMPLES, ...(tenantId.startsWith("t_try_") ? { maxDocuments: TRY_MAX_DOCUMENTS } : {}),
   });
   await host.seed();
   return { db, host };
 }
+
+/** A visitor's test company (t_try_...) holds at most this many documents, whatever route brings them. */
+export const TRY_MAX_DOCUMENTS = 8;
 
 export function nodeEngines(env: NodeEngineEnv): (tenantId: string) => EngineApi {
   const engines = new Map<string, Promise<Engine>>();
@@ -86,6 +91,10 @@ export function nodeEngines(env: NodeEngineEnv): (tenantId: string) => EngineApi
       vaultFiles: async () => (await host()).vaultFiles(),
       vaultFile: async (path) => (await host()).vaultFile(path),
       forgetPasskey: async (person) => (await host()).forgetPasskey(person),
+      samples: async () => (await host()).samples(),
+      uploadSample: async (key) => (await host()).uploadSample(key),
+      suppliers: async () => (await host()).suppliers(),
+      compose: async (input) => (await host()).compose(input),
       wipe: async () => {
         const e = engines.get(tenantId);
         engines.delete(tenantId);

@@ -6,9 +6,10 @@
 //
 // Only types are imported here: nothing of the engine reaches the Worker's bundle through this file.
 import type { EngineEvent } from "../../../src/engine/events.js";
-import type { InvoiceView, ProposalView, Settled, VaultFile } from "../../../src/engine/host.js";
+import type { InvoiceView, ProposalView, Settled, UploadResult, VaultFile } from "../../../src/engine/host.js";
+import type { ComposeInput, ComposeRefusal, SupplierOnFile } from "../../../src/engine/tryWorld.js";
 
-export type { EngineEvent, InvoiceView, ProposalView, Settled, VaultFile };
+export type { ComposeInput, ComposeRefusal, EngineEvent, InvoiceView, ProposalView, Settled, SupplierOnFile, UploadResult, VaultFile };
 
 /** Where the engine stands: always test money (the stand-in bank), the approval passkey, the bank's balances, both chains. */
 export interface EngineStatus {
@@ -49,10 +50,20 @@ export interface EngineApi {
   forgetPasskey(person: string): Promise<{ revoked: number }>;
   /** Forgets everything this company's engine holds (its ledger, its documents, its stand-in bank). */
   wipe(): Promise<void>;
+
+  // The hands-on demo (purser-try, cloud/src/try/): its sample invoices, the suppliers on file, "write your own".
+  /** The sample invoices in the tray's order (none unless the deployment hands them in). */
+  samples(): Promise<{ key: string; title: string; filename: string }[]>;
+  /** A sample through the inbox; null for a key that is not a sample. The document cap applies, in the engine's words. */
+  uploadSample(key: string): Promise<UploadResult | null>;
+  /** The suppliers the seed put on file (test IBANs). */
+  suppliers(): Promise<SupplierOnFile[]>;
+  /** The visitor's typed invoice, checked, rendered to a PDF and filed; a refused field comes back naming it. */
+  compose(input: ComposeInput): Promise<UploadResult | ComposeRefusal>;
 }
 
 /** Every action of the interface by name, held to the interface by the compiler. */
 const everyMethod = <T extends readonly (keyof EngineApi)[]>(names: keyof EngineApi extends T[number] ? T : never): T => names;
 
 /** What a caller across a boundary may ask a company's engine for (the Worker's stub of its Durable Object passes the name on). */
-export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "approve", "retry", "sync", "events", "vaultFiles", "vaultFile", "forgetPasskey", "wipe"] as const);
+export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "approve", "retry", "sync", "events", "vaultFiles", "vaultFile", "forgetPasskey", "wipe", "samples", "uploadSample", "suppliers", "compose"] as const);

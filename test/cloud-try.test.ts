@@ -120,7 +120,7 @@ describe("a visitor's company", () => {
     const table = new Set(ROUTES.map((r) => `${r.method} ${r.path}`));
     for (const r of TRY_ROUTES) {
       expect(r).not.toMatch(/\*/);
-      if (["GET /v1/engine/samples", "POST /v1/engine/samples/{key}", "GET /v1/engine/suppliers", "POST /v1/engine/compose", "GET /v1/engine/proposals/{id}/terms", "POST /v1/engine/proposals/{id}/pay", "GET /v1/engine/export"].includes(r)) continue;
+      if (["GET /v1/engine/proposals/{id}/terms", "POST /v1/engine/proposals/{id}/pay", "GET /v1/engine/export"].includes(r)) continue;
       expect(table.has(r), r).toBe(true);
     }
     expect(TRY_ROUTES).not.toContain("POST /v1/engine/sync");

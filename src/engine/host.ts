@@ -33,6 +33,9 @@ import { closedPeriods, invoiceDocs, receipts } from "../vault/data.js";
 import { yearIndexPath } from "../vault/layout.js";
 import { sha256, type VaultSink } from "../vault/sink.js";
 import { publicEvent, type EngineEvent, type EventRow } from "./events.js";
+import { checkCompose, invoiceText, SEEDED_SUPPLIERS, type ComposeInput, type ComposeRefusal, type Sample, type SupplierOnFile } from "./tryWorld.js";
+import { pdfOf } from "../e2e/documents.js";
+import { ibanSha } from "../agents/invoice.js";
 
 /** The reader that always takes the parser: no model is asked, and the invoice says it was read by the parser. */
 export const parserOnly: Asker = { ask: async (_a, fallback) => ({ value: fallback(), source: "fallback", model: null, note: "no model is asked: the parser reads" }) } as Asker;
@@ -53,7 +56,14 @@ export interface EngineDeps {
   /** Brings the cloud's read model up to the ledger (src/engine/feed.ts); null: nothing is fed. */
   feed: ((db: DB, now: Date) => Promise<unknown>) | null;
   now?: () => Date;
+  /** The hands-on demo's sample invoices (cloud/src/engine/samples.gen.ts); absent: none. */
+  samples?: readonly Sample[];
+  /** At most this many documents in the company's ledger, whatever route brings them (8 for a try company); absent: no limit. */
+  maxDocuments?: number;
 }
+
+/** What an upload, a sample or a composed invoice answers. */
+export interface UploadResult { kind: string; sha256: string; invoice: InvoiceView | null }
 
 export interface ProposalView {
   id: string;
@@ -177,16 +187,20 @@ export class EngineHost {
   }
 
   /** A document through the inbox: filed, read and checked. What the inbox refuses (not a PDF, too large) is thrown. */
-  upload(doc: { bytes: Uint8Array; filename: string; mime?: string }): Promise<{ kind: string; sha256: string; invoice: InvoiceView | null }> {
-    return this.act(async () => {
-      const { db, reader } = this.deps;
-      const bytes = Buffer.isBuffer(doc.bytes) ? doc.bytes : Buffer.from(doc.bytes.buffer, doc.bytes.byteOffset, doc.bytes.byteLength);
-      const out = await ingestDocument(db, { dir: NO_FOLDER, reader, now: () => this.now() }, { bytes, filename: doc.filename, ...(doc.mime ? { mime: doc.mime } : {}), source: "upload" });
-      if (out.kind === "duplicate_document") return { kind: out.kind, sha256: out.sha256, invoice: out.invoice_id ? this.invoice(out.invoice_id) : null };
-      const inv = firstInvoice(out);
-      // Read again: a note written after the checks is on the row, not on what the inbox returned.
-      return { kind: out.kind, sha256: out.kind === "invoice" ? out.invoice.doc_sha256 : sha256(bytes), invoice: inv ? this.invoice(inv.id) : null };
-    });
+  upload(doc: { bytes: Uint8Array; filename: string; mime?: string }): Promise<UploadResult> {
+    return this.act(() => this.ingest(doc));
+  }
+
+  /** The inbox, inside the queue: filed, read and checked, within the company's document cap. */
+  private async ingest(doc: { bytes: Uint8Array; filename: string; mime?: string }): Promise<UploadResult> {
+    const { db, reader } = this.deps;
+    const bytes = Buffer.isBuffer(doc.bytes) ? doc.bytes : Buffer.from(doc.bytes.buffer, doc.bytes.byteOffset, doc.bytes.byteLength);
+    this.roomFor(sha256(bytes));
+    const out = await ingestDocument(db, { dir: NO_FOLDER, reader, now: () => this.now() }, { bytes, filename: doc.filename, ...(doc.mime ? { mime: doc.mime } : {}), source: "upload" });
+    if (out.kind === "duplicate_document") return { kind: out.kind, sha256: out.sha256, invoice: out.invoice_id ? this.invoice(out.invoice_id) : null };
+    const inv = firstInvoice(out);
+    // Read again: a note written after the checks is on the row, not on what the inbox returned.
+    return { kind: out.kind, sha256: out.kind === "invoice" ? out.invoice.doc_sha256 : sha256(bytes), invoice: inv ? this.invoice(inv.id) : null };
   }
 
   invoices(): InvoiceView[] {
@@ -410,5 +424,53 @@ export class EngineHost {
     if (!vault?.read) return null;
     if (!(await this.vaultFiles()).some((f) => f.path === path)) return null;
     return (await vault.read(path)) ?? null;
+  }
+
+  // ---- The hands-on demo (purser-try): samples, suppliers on file, "write your own", the document cap ----
+
+  /** One document cap per company, whatever route brings the document: a file already held passes (the inbox calls it a duplicate). */
+  private roomFor(docSha256: string): void {
+    const max = this.deps.maxDocuments;
+    if (max === undefined) return;
+    const { db } = this.deps;
+    if (db.prepare("SELECT 1 FROM ap_documents WHERE sha256 = ?").get(docSha256)) return;
+    const n = (db.prepare("SELECT COUNT(*) AS n FROM ap_documents").get() as { n: number }).n;
+    if (n >= max) throw new Error(`this test company holds ${n} documents, its limit of ${max}; nothing was filed`);
+  }
+
+  /** The sample invoices, in the tray's order: what the visitor does, never what the engine will answer. */
+  samples(): { key: string; title: string; filename: string }[] {
+    return (this.deps.samples ?? []).map((s) => ({ key: s.key, title: s.title, filename: s.filename }));
+  }
+
+  /** A sample through the inbox, as an upload of its PDF; null for a key that is not a sample. */
+  uploadSample(key: string): Promise<UploadResult | null> {
+    return this.act(async () => {
+      const s = (this.deps.samples ?? []).find((x) => x.key === key);
+      return s ? this.ingest({ bytes: Buffer.from(s.base64, "base64"), filename: s.filename, mime: "application/pdf" }) : null;
+    });
+  }
+
+  /**
+   * The suppliers this company has on file: the payees the seed recorded in the ledger (active, with the same IBAN),
+   * never one made up here. Their IBANs are published test IBANs.
+   */
+  suppliers(): SupplierOnFile[] {
+    const rows = this.deps.db.prepare("SELECT name, iban_sha256 FROM beneficiaries WHERE status = 'ACTIVE'").all() as { name: string; iban_sha256: string }[];
+    return SEEDED_SUPPLIERS.filter((p) => rows.some((r) => r.name.trim() === p.name && r.iban_sha256 === ibanSha(p.iban))).map((p) => ({ key: p.key, name: p.name, iban: p.iban, bic: p.bic }));
+  }
+
+  /**
+   * "Write your own": the visitor's fields, checked, written in the clean sample's layout, rendered to a PDF with the
+   * product's PDF writer and filed through the inbox like any upload. A refused field comes back naming it. The text
+   * stays in this company's ledger: it goes to no model outside the engine's own reader and is never logged.
+   */
+  compose(input: ComposeInput): Promise<UploadResult | ComposeRefusal> {
+    return this.act(async () => {
+      const fields = checkCompose(input, this.suppliers(), this.now());
+      if ("refused" in fields) return fields;
+      const bytes = await pdfOf(invoiceText(fields));
+      return this.ingest({ bytes, filename: `${fields.invoiceNo.replace(/[^A-Za-z0-9-]/g, "-")}.pdf`, mime: "application/pdf" });
+    });
   }
 }

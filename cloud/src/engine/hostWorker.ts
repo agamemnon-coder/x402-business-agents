@@ -28,6 +28,7 @@ import { d1Sql, r2Blobs, type D1Like, type R2Like } from "../store.js";
 import { TenantDb } from "../tenant.js";
 import type { EngineApi } from "./api.js";
 import { docChunks } from "./docChunks.js";
+import { SAMPLES } from "./samples.gen.js";
 import { cloudTarget } from "./target.js";
 import { blobVault } from "./vaultR2.js";
 
@@ -68,6 +69,8 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     db, reader: parserOnly, rails: { rail: bank, sim: bank }, afterMoney: keepBank,
     rp: { rpId: env.RP_ID, origin: env.ORIGIN }, company: { name: company.name, lang: company.language === "en" ? "en" : "nl" },
     vault: blobVault(r2Blobs(env.DOCS), tenantId), feed: (d, now) => feedCloud(d, target, now),
+    // The hands-on demo: the sample invoices, and a visitor's test company holds at most 8 documents.
+    samples: SAMPLES, ...(tenantId.startsWith("t_try_") ? { maxDocuments: 8 } : {}),
   });
   // The treasury's test money, once in the object's life (the Node engine seeds at its start, which is once in its life too).
   if (state.get("seeded") === null) {
@@ -93,6 +96,10 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     vaultFiles: async () => host.vaultFiles(),
     vaultFile: async (path) => host.vaultFile(path),
     forgetPasskey: async (person) => host.forgetPasskey(person),
+    samples: async () => host.samples(),
+    uploadSample: async (key) => host.uploadSample(key),
+    suppliers: async () => host.suppliers(),
+    compose: async (input) => host.compose(input),
     // The object does this itself (it must also forget this host); here for the interface's sake.
     wipe: async () => { await storage.deleteAll(); },
   };
