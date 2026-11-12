@@ -73,7 +73,6 @@ a.pf { color: var(--accent); font-weight: 600; text-decoration: none; font-size:
 .nf { padding: 64px 0; } .nf .wrap { display: grid; gap: 16px; justify-items: start; } .nf h1 { font-size: clamp(34px, 5vw, 56px); font-weight: 800; }
 .nf .tabs2 { display: flex; flex-wrap: wrap; gap: 10px; }
 ${READBACK_CSS}
-${PRODUCTS_CSS}
 ${AIRI_CSS}
 ${VIC_FLOW_CSS}
 ${VISA_OVERVIEW_CSS}`;
@@ -188,7 +187,7 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
     simulated: [...(licence ? [`The SWIFT payout's settlement: Purser moves the sandbox transfer to SENT, then PAID, through Airwallex's simulation API${t.faceToPaid !== null ? `; the ${t.faceToPaid} s are measured from the CFO's Face ID to PAID` : ""}.`] : []),
       ...money.filter((e) => e.earlier).map((e) => earlierLine(e))],
   });
-  return page({ title: "Airwallex", description: airwallexDescription(run), tab: "proof", css: CSS, body, source: SOURCE(run), js: OPEN_TARGET_JS, stage: false });
+  return page({ title: "Airwallex", description: airwallexDescription(run), tab: "proof", css: `${CSS}\n${PRODUCTS_CSS}`, body, source: SOURCE(run), js: OPEN_TARGET_JS, stage: false });
 }
 
 /**

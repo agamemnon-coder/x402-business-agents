@@ -159,7 +159,7 @@ export function fxTile(q: FxQuote | null, runFile: string): ProductTile | null {
 
 /** A transfer's statuses at Airwallex, in the order a transfer moves through them; the last three end it unpaid. */
 const TRANSFER_STATUS = ["IN_APPROVAL", "SCHEDULED", "PROCESSING", "SENT", "PAID", "FAILED", "CANCELLED", "REJECTED"];
-const STATUS_RE = new RegExp(`\\b(${TRANSFER_STATUS.join("|")})\\b`, "g");
+const STATUS_RE = /\b(IN_APPROVAL|SCHEDULED|PROCESSING|SENT|PAID|FAILED|CANCELLED|REJECTED)\b/g;
 const UNPAID_END = new Set(["FAILED", "CANCELLED", "REJECTED"]);
 /** How far along a status is: PAID is the end; a failure outranks anything but PAID; otherwise the order above. */
 const rank = (s: string) => s === "PAID" ? 100 : UNPAID_END.has(s) ? 50 : TRANSFER_STATUS.indexOf(s);
@@ -267,7 +267,7 @@ export function connectedTile(p: PlatformRun | null): ProductTile | null {
   return {
     key: "connected", name: PRODUCTS.connected.name, value: euro(p.paid.amount),
     what: `${p.paid.status} on a company's own account, with Purser's ${euro(p.paid.purserFee)} fee${p.paid.purserFeeStatus === "SETTLED" ? "" : ` ${p.paid.purserFeeStatus}`}.`,
-    why: "Airwallex settles the application fee.",
+    why: p.paid.purserFeeStatus === "SETTLED" ? "Airwallex settles the application fee." : "Airwallex carries the application fee.",
     id: p.paid.transferId, idLabel: "Payout", href: `#${PLATFORM_FOLD_ID}`, iso: p.iso, files: [PLATFORM_FACTS_FILE],
   };
 }
@@ -300,7 +300,9 @@ export function acceptanceTile(a: AcceptanceRun | null): ProductTile | null {
 /** Airi, from its run: the purchase above Purser's limit, paid with Airi's credential only after the CFO's Face ID. */
 export function airiTile(rec: AiriRunRecord | null): ProductTile | null {
   const b = rec?.purchases.find((p) => p.route === "cfo" && p.outcome === "SUCCEEDED" && p.proposal_end === "EXECUTED" && p.method === "passkey" && p.payment_intent_id);
-  if (!rec || !b || toCents(b.amount) <= toCents(rec.policy.alone_max_eur)) return null;
+  // The record's own checks on that purchase (it waited for the CFO, it ran after the Face ID) must have passed.
+  const checked = Object.entries(rec?.checks ?? {}).filter(([k]) => k.startsWith("b_"));
+  if (!rec || !b || toCents(b.amount) <= toCents(rec.policy.alone_max_eur) || !checked.length || checked.some(([, c]) => !c.ok)) return null;
   return {
     key: "airi", name: PRODUCTS.airi.name, value: money(b.currency, b.amount),
     what: `Over Purser's ${euro(rec.policy.alone_max_eur)} limit: paid only after the CFO's Face ID.`, why: "Airi issues a single-use Visa credential.",
@@ -420,7 +422,7 @@ export function airwallexBody(run: AgentRun, o: AirwallexBody): string {
   ].join("");
   const count = WORDS[tiles.length] ?? String(tiles.length);
   return `<main class="pp awxp"><div class="wrap">
-  <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(AWX_PAGE_LABEL)}</span><h1>${esc(`Purser uses ${count} Airwallex products`)}</h1></div>
+  <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(AWX_PAGE_LABEL)}</span><h1>${esc(tiles.length > 1 ? `Purser uses ${count} Airwallex products` : "Purser on Airwallex")}</h1></div>
   ${tilesHtml(tiles)}
   ${o.hash || o.controls ? `<h2 class="vh">Airwallex, read back</h2><div class="awrb">${o.hash}${swiftLineHtml(kitSwift(read(KIT_FILE)), platform)}${o.controls}</div>` : ""}
   <div class="folds card">${folds}</div>
@@ -454,4 +456,4 @@ details#${PLATFORM_FOLD_ID}, details#${MAIN_RUN_FOLD_ID} { scroll-margin-top: 80
 /* Tap targets (jury panel, 12 Nov): on a phone every link and fold header in the page is at least 44 px high. A link
    inside a sentence keeps its place in the line and grows by its padding; a pill grows by a clear border. */
 @media (max-width: 700px) { .awxp a.pf, .awxp .awswift a { padding: 14px 0; } .awxp a.open { min-height: 44px; }
-  .awxp a.awm { border: 8px solid transparent; background-clip: padding-box; margin: -8px; } }`;
+  .awxp a.awm { border: 9px solid transparent; background-clip: padding-box; margin: -9px; } }`;

@@ -5,6 +5,7 @@
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
 import { VISA_ENTRY_LINE } from "../../src/redesign/partners.js";
+import { AWX_PAGE_LABEL } from "../../src/redesign/airwallexProducts.js";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { chromium, type Page } from "playwright";
@@ -77,6 +78,28 @@ async function look(page: Page, name: string, width: number): Promise<void> {
     return tops.length ? Math.round(Math.max(...tops) - Math.min(...tops)) : 0;
   })()`) as number;
   if (navRows > 12) fail(`${name}: the menu wraps onto a second line (${navRows}px between its links)`);
+}
+
+/** The words on the first screen, before any scroll: every text whose element is drawn inside the viewport. */
+const firstScreen = (page: Page) => page.evaluate(`(() => {
+  const out = [], walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    const e = n.parentElement, t = (n.textContent || "").trim();
+    if (!e || !t) continue;
+    const r = e.getBoundingClientRect();
+    if (e.checkVisibility() && r.width > 0 && r.height > 0 && r.top < innerHeight && r.bottom > 0 && getComputedStyle(e).visibility !== "hidden") out.push(t);
+  }
+  return out.join(" ");
+})()`) as Promise<string>;
+/**
+ * Tap targets (jury panel, 12 Nov): on a phone every link, button and fold header inside <main> is at least 44 px high,
+ * with the folds closed and with them open. The pages held to it; add /metal and /claude here once their links are sized.
+ */
+const TAP_PAGES = ["/airwallex"];
+async function tapTargets(page: Page, name: string): Promise<void> {
+  const small = (await page.evaluate(`[...document.querySelectorAll("main a, main button, main summary")].filter((e) => e.checkVisibility())
+    .map((e) => ({ h: Math.round(e.getBoundingClientRect().height * 10) / 10, what: (e.textContent || "").trim().replace(/\\s+/g, " ").slice(0, 40) })).filter((x) => x.h < 44)`)) as { h: number; what: string }[];
+  for (const x of small) fail(`${name}: a tap target ${x.h} px high, under 44 ("${x.what}")`);
 }
 
 const browser = await chromium.launch();
@@ -380,25 +403,47 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // same day with the overview of the three Visa runs above the Airi run (Max, 10 Nov: more Visa).
       const budget = path === "/airwallex" ? 365 : path === "/visa" ? 600 : path === "/metal" ? 180 : 150;
       if (words > budget + 25) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
-      if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(pt)) fail(`${path} ${tag}: its run is not labelled`);
-      if ((await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
+      // /airwallex (jury panel, 12 Nov) shows several runs, each dated on its own tile: its label is true for all of them,
+      // and it opens on a tile per Airwallex product in place of the flow of one run.
+      if (path === "/airwallex" ? !pt.includes(AWX_PAGE_LABEL) || /Replay of the main run/.test(await page.locator("main").innerText()) : !/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(pt)) fail(`${path} ${tag}: its run is not labelled`);
+      if (path !== "/airwallex" && (await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
+      if (path === "/airwallex") {
+        // Seven tiles, each with the product's name, one number, an id in monospace and its run's date.
+        const tiles = (await page.evaluate(`[...document.querySelectorAll(".awp .awt")].map((t) => ({ name: (t.querySelector("h2") || {}).textContent || "", v: t.querySelectorAll(".v").length, id: (t.querySelector(".i code") || {}).textContent || "", date: (t.querySelector("time") || {}).textContent || "", top: t.getBoundingClientRect().top }))`)) as { name: string; v: number; id: string; date: string; top: number }[];
+        if (tiles.map((t) => t.name).join("|") !== "Issuing|Payouts|FX|Transfer approvals|Connected accounts|Payment acceptance|Airi" || tiles.some((t) => t.v !== 1 || !t.id || !/^\d{1,2} [A-Z][a-z]{2}$/.test(t.date))) fail(`/airwallex ${tag}: not seven product tiles, each with one number, an id and a date (${JSON.stringify(tiles.map((t) => [t.name, t.v, t.id, t.date]))})`);
+        if (!(await page.evaluate(`(() => { const t = document.querySelector(".awp"), f = document.querySelector("#awx-hash"); return !!t && !!f && !!(t.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING); })()`))) fail(`/airwallex ${tag}: the tiles are not above the hash block`);
+        // The first screen is about Airwallex's products: no Metal earnings and no simulated deposit before any scroll.
+        const first = await firstScreen(page);
+        if (/Metal earnings|0\.69/.test(first) || !/Issuing/.test(first)) fail(`/airwallex ${tag}: the first screen shows Metal earnings or the simulated deposit, or no product tile`);
+        // Transfer approvals: three states in a row, the third as the record has it today.
+        const states = (await page.evaluate(`[...document.querySelectorAll("#p-approvals ol.aws li")].map((l) => l.textContent.trim())`)) as string[];
+        if (states.length !== 3 || states[0] !== "Signed in Purser" || !/ at Airwallex$|^Held by Airwallex/.test(states[1] ?? "") || !/^Now: [A-Z_]+/.test(states[2] ?? "")) fail(`/airwallex ${tag}: transfer approvals does not show its three states (${JSON.stringify(states)})`);
+        // The platform run's refused payouts are told in its fold, with their cause: never among the tiles.
+        if (/refus/i.test(await page.locator("main .awp").innerText())) fail(`/airwallex ${tag}: a refusal on a tile (they belong in the platform run's fold)`);
+      }
+      if (TAP_PAGES.includes(path) && w < 500) await tapTargets(page, `${path} ${tag}`);
       if ((await page.locator("details.fold").count()) < 2) fail(`${path} ${tag}: the details are not folded`);
       if ((await page.locator("img[src*='visa' i], img[alt*='visa' i]").count()) > 0) fail(`${path} ${tag}: shows a Visa logo`);
       await page.evaluate(() => document.querySelectorAll("details").forEach((d) => { d.open = true; }));
       await look(page, `${path} folds open ${tag}`, w);
       const open = await page.evaluate(() => document.body.innerText);
+      if (TAP_PAGES.includes(path) && w < 500) await tapTargets(page, `${path} folds open ${tag}`);
       if (path === "/visa" && (!/Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours\./.test(open) || !/commit 16d59bd/.test(open) || !/simulated authorisations/.test(open) || !/Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon \(Visa, 5 Nov\)\./.test(open) || !open.includes(VISA_ENTRY_LINE) || /entered for[^.]{0,40}Visa Award/i.test(open.split(VISA_ENTRY_LINE).join(" ")) || /Dev test/.test(open))) fail(`/visa ${tag}: the claim, the award status or the honest label is wrong`);
       if (path === "/airwallex" && !/LIMIT_EXCEEDED|over the card's limit/.test(open)) fail(`/airwallex ${tag}: no decline by Airwallex`);
       // Section B: the hash the CFO signed beside the one Airwallex returns, matched in code; each card's controls beside the policy.
       if (path === "/airwallex" && (!/The hash the CFO signed travels with the payment\./.test(pt) || (pt.match(/\b[0-9a-f]{64}\b/g) ?? []).length !== 2 || !/Match: the same hash/.test(pt))) fail(`/airwallex ${tag}: the CFO's hash and Airwallex's are not shown side by side, or do not match`);
-      // awx-1 (7 Nov): the separate Airwallex-only run, dated and labelled, its checks in sight, every step and id in its fold.
-      if (path === "/airwallex" && (!/\d{1,2} November, awx-1: a separate run · Airwallex sandbox, test money/.test(pt) || !/7 of 7 checks pass/.test(pt) || !/LIMIT_EXCEEDED[\s\S]*MERCHANT_CATEGORY_NOT_ALLOWED[\s\S]*738a4263-6d6c-4de8-94a3-93da1c175fb4[\s\S]*4140dee2-6373-4eb4-a71f-bf69130f96a7/.test(open))) fail(`/airwallex ${tag}: awx-1 is not shown, dated and labelled, with its steps`);
+      // awx-1 (7 Nov): the separate Airwallex-only run in its fold since 12 Nov (the Issuing tile leads to it), dated and
+      // labelled, with its checks and every step and id.
+      if (path === "/airwallex" && (/awx-1: a separate run/.test(pt) || !/\d{1,2} November, awx-1: a separate run · Airwallex sandbox, test money/.test(open) || !/7 of 7 checks pass/.test(open) || !/LIMIT_EXCEEDED[\s\S]*MERCHANT_CATEGORY_NOT_ALLOWED[\s\S]*738a4263-6d6c-4de8-94a3-93da1c175fb4[\s\S]*4140dee2-6373-4eb4-a71f-bf69130f96a7/.test(open))) fail(`/airwallex ${tag}: awx-1 is not shown, dated and labelled, with its steps`);
       // The Airi run (7 Nov), in the owner's copy on /airwallex and at the top of /visa: Visa Intelligent Commerce via
       // Airwallex's Airi, dated and labelled "Airwallex sandbox, test card, test money", the three outcome badges and the
       // 5 of 5 checks (a link to the run log's checks) in sight, every step and id in its "Details" fold; never an Airi
       // link or a card number.
-      if ((path === "/airwallex" || path === "/visa") && (!/Visa Intelligent Commerce via Airwallex's Airi: a live run \(7 Nov\)\s*A separate run · Airwallex sandbox, test card, test money/.test(pt)
-        || !/✓ Within the limit[\s\S]*✓ Paid after Face ID[\s\S]*✕ Refused by Purser/.test(pt) || !/5 of 5 checks pass/.test(pt)
+      // On /airwallex the whole block sits in a fold since 12 Nov (the Airi tile leads to it): there it is read with the folds open.
+      const airiText = path === "/airwallex" ? open : pt;
+      if (path === "/airwallex" && /Visa Intelligent Commerce via Airwallex's Airi: a live run/.test(pt)) fail(`/airwallex ${tag}: the Airi run's block is in sight, not in its fold`);
+      if ((path === "/airwallex" || path === "/visa") && (!/Visa Intelligent Commerce via Airwallex's Airi: a live run \(7 Nov\)\s*A separate run · Airwallex sandbox, test card, test money/.test(airiText)
+        || !/✓ Within the limit[\s\S]*✓ Paid after Face ID[\s\S]*✕ Refused by Purser/.test(airiText) || !/5 of 5 checks pass/.test(airiText)
         || (await page.locator('#airi-run a[href$="2026-11-07-vic-1.md#checks-the-records-checks"]').count()) !== 1 || /int_sgpvzc9hjhnxvpblt2r/.test(pt)
         || !/single-use card credential from Airwallex's Airi wallet[\s\S]*int_sgpvzc9hjhnxvpblt2r[\s\S]*P-0002[\s\S]*int_sgpvzc9hjhnxvxc26ie[\s\S]*PURSER_MERCHANT_NOT_ALLOWED/.test(open)
         || /airi\.com\/|\b\d{13,19}\b/.test(open))) fail(`${path} ${tag}: the Airi run is not shown, dated and labelled, with its badges, checks and steps`);
