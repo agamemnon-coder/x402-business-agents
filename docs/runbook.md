@@ -307,7 +307,7 @@ How to tell: `npm run health` fails on the RPC or the facilitator; the facilitat
 ## Purser Cloud (added 9 November)
 
 Purser Cloud (`cloud/`, [cloud.md](cloud.md)) is a Cloudflare Worker with one D1 database for every company and one R2
-bucket for documents, raw mail and staged exports. It moves no money and holds no payment keys: the runner's ledger
+bucket for documents, raw mail and staged exports. Purser Cloud moves no real money. Its hands-on deployment runs the engine on test money and a simulated bank. The runner's ledger
 stays the source, and the cloud holds a copy the runner pushes. **The cloud is not in production:** a hosted preview
 exists but is private (behind an access key), and no customer uses it. No step below is recorded as exercised against
 Cloudflare. Each step says whether it is **tested** (an automated test against the Worker's own handler, on SQLite
@@ -378,8 +378,8 @@ Someone else got into a company's account (a stolen phone with an unlocked passk
    once and keeps the records for the retention period. It cannot be undone from the API. Not yet exercised outside
    the tests (`test/cloud-retention.test.ts`).
 
-The cloud cannot move money, so a compromised cloud account cannot pay anyone; payments still need the CFO's passkey on
-the runner.
+Purser Cloud moves no real money. Its hands-on deployment runs the engine on test money and a simulated bank. A compromised cloud account cannot pay anyone real; real payments still need the CFO's
+passkey on the runner.
 
 ### Owner recovery: the only owner lost their passkey
 

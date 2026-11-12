@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="505" height="438" viewBox="0 0 505 438" role="img" aria-labelledby="vt-title">
+<title id="vt-title">The vault's folders: company, year, quarter, then Inkoopfacturen, Betalingen and Rapporten (computed from src/vault/layout.ts)</title>
+<style>
+.bg { fill: #ffffff; stroke: #e3e6ec; }
+.g line, .g path { stroke: #e3e6ec; stroke-width: 1.2; fill: none; }
+.f { fill: #eef0ff; stroke: #4f46e5; stroke-width: 1.2; }
+.d { fill: #ffffff; stroke: #586174; stroke-width: 1.2; }
+.t { font: 13px Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+.fo { fill: #0b1220; font-weight: 600; } .k { fill: #4f46e5; font-weight: 650; } .fi { fill: #586174; }
+</style>
+<rect class="bg" x=".5" y=".5" width="504" height="437" rx="12"/>
+<g class="g"></g><path class="f" d="M24 31h5l2 2h7v9h-14z"/><text class="t fo" x="46" y="41.5">Northwind Outdoor</text>
+<g class="g"><path d="M31 50V63M31 63H44"/></g><path class="f" d="M46 57h5l2 2h7v9h-14z"/><text class="t fo" x="68" y="67.5">2026</text>
+<g class="g"><path d="M53 76V102M53 89H66"/></g><path class="f" d="M68 83h5l2 2h7v9h-14z"/><text class="t fo" x="90" y="93.5">2026-Q4</text>
+<g class="g"><line x1="75" y1="102" x2="75" y2="128"/><path d="M75 102V128M75 115H88"/></g><path class="f" d="M90 109h5l2 2h7v9h-14z"/><text class="t k" x="112" y="119.5">Betalingen</text>
+<g class="g"><line x1="75" y1="128" x2="75" y2="154"/><line x1="97" y1="128" x2="97" y2="154"/><path d="M97 128V154M97 141H110"/></g><path class="d" d="M114 134h7l3 3v11h-10z"/><text class="t fi" x="134" y="145.5">2026-11-07 Bergtex Textil GmbH BTX-2026-11.pdf</text>
+<g class="g"><line x1="75" y1="154" x2="75" y2="180"/><line x1="97" y1="154" x2="97" y2="180"/><path d="M97 154V167M97 167H110"/></g><path class="d" d="M114 160h7l3 3v11h-10z"/><text class="t fi" x="134" y="171.5">2026-11-07 Stockline Data GmbH SLL-2026-11.pdf</text>
+<g class="g"><line x1="75" y1="180" x2="75" y2="206"/><path d="M75 180V206M75 193H88"/></g><path class="f" d="M90 187h5l2 2h7v9h-14z"/><text class="t k" x="112" y="197.5">Inkoopfacturen</text>
+<g class="g"><line x1="75" y1="206" x2="75" y2="232"/><line x1="97" y1="206" x2="97" y2="232"/><path d="M97 206V232M97 219H110"/></g><path class="f" d="M112 213h5l2 2h7v9h-14z"/><text class="t fo" x="134" y="223.5">Bergtex Textil GmbH</text>
+<g class="g"><line x1="75" y1="232" x2="75" y2="258"/><line x1="97" y1="232" x2="97" y2="258"/><line x1="119" y1="232" x2="119" y2="258"/><path d="M119 232V245M119 245H132"/></g><path class="d" d="M136 238h7l3 3v11h-10z"/><text class="t fi" x="156" y="249.5">2026-11-07 BTX-2026-11 EUR 1850.00.pdf</text>
+<g class="g"><line x1="75" y1="258" x2="75" y2="284"/><line x1="97" y1="258" x2="97" y2="284"/><path d="M97 258V271M97 271H110"/></g><path class="f" d="M112 265h5l2 2h7v9h-14z"/><text class="t fo" x="134" y="275.5">Stockline Data GmbH</text>
+<g class="g"><line x1="75" y1="284" x2="75" y2="310"/><line x1="97" y1="284" x2="97" y2="310"/><path d="M119 284V297M119 297H132"/></g><path class="d" d="M136 290h7l3 3v11h-10z"/><text class="t fi" x="156" y="301.5">2026-11-07 SLL-2026-11 EUR 240.00.pdf</text>
+<g class="g"><line x1="75" y1="310" x2="75" y2="336"/><path d="M75 310V323M75 323H88"/></g><path class="f" d="M90 317h5l2 2h7v9h-14z"/><text class="t k" x="112" y="327.5">Rapporten</text>
+<g class="g"><line x1="75" y1="336" x2="75" y2="362"/><path d="M97 336V362M97 349H110"/></g><path class="d" d="M114 342h7l3 3v11h-10z"/><text class="t fi" x="134" y="353.5">2026-11 Maandrapport.pdf</text>
+<g class="g"><line x1="75" y1="362" x2="75" y2="388"/><path d="M97 362V375M97 375H110"/></g><path class="d" d="M114 368h7l3 3v11h-10z"/><text class="t fi" x="134" y="379.5">2026-Q4 Btw-overzicht.pdf</text>
+<g class="g"><path d="M53 388V401M53 401H66"/></g><path class="d" d="M70 394h7l3 3v11h-10z"/><text class="t fi" x="90" y="405.5">2026 Jaarrapport.pdf</text>
+</svg>

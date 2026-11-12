@@ -100,8 +100,10 @@ export function plainReason(s: string): string | null {
   return n >= 1 && n <= 2 ? t : null;
 }
 
+/** The days code allows a SWIFT payout to arrive. */
+export const SWIFT_DAYS = 2;
 /** The earliest and latest day a wait may end: not today, and two days before the due date (SWIFT time). */
-export const adviceBounds = (f: Pick<TimingFacts, "today" | "dueDate">) => ({ earliest: addDays(f.today, 1), latest: addDays(f.dueDate, -2) });
+export const adviceBounds = (f: Pick<TimingFacts, "today" | "dueDate">) => ({ earliest: addDays(f.today, 1), latest: addDays(f.dueDate, -SWIFT_DAYS) });
 
 /**
  * Whether an advice fits code's bounds (a reason of a sentence; a wait between the earliest and latest day; pay_now

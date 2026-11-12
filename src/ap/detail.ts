@@ -4,9 +4,9 @@
 // reason when one is closed. The reading's account is masked as on the list (publicInvoice).
 
 import { batchesOf } from "../policy/batchLines.js";
-import { readFileSync } from "node:fs";
 import type { DB } from "../db/open.js";
 import { payableCurrency } from "../payouts/routes.js";
+import { readDoc } from "./docStore.js";
 import { pdfText } from "./pdfText.js";
 import { publicInvoice } from "./public.js";
 import { totalLine } from "./reading.js";
@@ -139,7 +139,7 @@ export async function invoiceDetail(db: DB, id: string): Promise<InvoiceDetail |
   const scan = scanView(db, id);
   if (scan) line = scanTotalLine(inv, scan);
   else if (doc) {
-    try { line = totalLine((await pdfText(readFileSync(doc.path))).text); } catch { line = ""; }
+    try { line = totalLine((await pdfText(readDoc(db, doc.path))).text); } catch { line = ""; }
   }
   const meta = doc ? (JSON.parse(doc.meta_json) as Record<string, unknown>) : {};
   const m = (k: string) => (typeof meta[k] === "string" ? (meta[k] as string).slice(0, 200) : "");

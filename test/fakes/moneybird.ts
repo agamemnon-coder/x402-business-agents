@@ -11,6 +11,10 @@ import { resolve } from "node:path";
 import { ErpError, RecordingTransport, type HttpRequest, type HttpResponse } from "../../src/erp/connector.js";
 
 type Schema = Record<string, unknown>;
+/** Moneybird's documented answers for GET sales_invoices (test/fixtures/moneybird/extract-sales.py). */
+export const SALES = JSON.parse(readFileSync(resolve(import.meta.dirname, "../fixtures/moneybird/sales-invoices.json"), "utf8")) as {
+  endpoint: string; scopes: string[]; states: string[]; examples: Record<string, Record<string, unknown>[]>;
+};
 const SUBSET = JSON.parse(readFileSync(resolve(import.meta.dirname, "../fixtures/moneybird/openapi-subset.json"), "utf8")) as {
   _source: { version: string };
   requests: Record<string, { contentType: string; schema: Schema }>;
@@ -118,6 +122,8 @@ export class FakeMoneybird {
   readonly contacts = new Map<string, Contact>();
   readonly invoices = new Map<string, Invoice>();
   readonly journals = new Map<string, Journal>();
+  /** The company's sales invoices: by default the four of Moneybird's documented example sorted by date. */
+  salesInvoices: Record<string, unknown>[] = structuredClone(SALES.examples.ReturnsTheOldestInvoicesFirstWhenSortedByDateAscending ?? []);
   readonly attachments: { invoiceId: string; filename: string; contentType: string; bytes: Uint8Array }[] = [];
   readonly refused: { path: string; errors: string[] }[] = [];
   private planned: Planned[] = [];
@@ -203,6 +209,14 @@ export class FakeMoneybird {
       const contact: Contact = { id: nextId(), company_name: c!.company_name ?? "", customer_id: c!.customer_id ?? nextId(), tax_number: c!.tax_number ?? null, bank_account: c!.bank_account ?? null, country: c!.country ?? null };
       this.contacts.set(contact.id, contact);
       return this.json(201, contact);
+    }
+    if (req.method === "GET" && p === "/sales_invoices") {
+      const f = Object.fromEntries((q.get("filter") ?? "").split(",").filter(Boolean).map((t) => [t.slice(0, t.indexOf(":")), t.slice(t.indexOf(":") + 1)]));
+      // A state filter takes several values with a pipe; without a filter Moneybird lists this year's only.
+      const states = f.state && f.state !== "all" ? f.state.split("|") : null;
+      if (states?.some((x) => !SALES.states.includes(x))) return this.error(400, `unknown state in ${f.state}`);
+      const all = this.salesInvoices.filter((x) => (!states || states.includes(String(x.state))) && (q.get("filter") ? true : String(x.invoice_date ?? "").startsWith("2026")));
+      return paged(all);
     }
     if (req.method === "GET" && p === "/documents/purchase_invoices") {
       const f = Object.fromEntries((q.get("filter") ?? "").split(",").filter(Boolean).map((t) => [t.slice(0, t.indexOf(":")), t.slice(t.indexOf(":") + 1)]));

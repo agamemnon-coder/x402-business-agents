@@ -97,7 +97,7 @@ company card whose limits Airwallex enforces.
 
 ### Visa
 
-Visa: each agent signs its card checkout with Visa's Trusted Agent Protocol (TAP), so a merchant can check which agent is buying. Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours.
+Visa: the Sourcing agent signs its card checkout with Visa's Trusted Agent Protocol (TAP), so a merchant can check which agent is buying. Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours.
 
 *Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov).*
 
@@ -167,10 +167,10 @@ with its own date.
   updated at Airwallex and the same 45.00 approved. Two invoices paid by SWIFT after Max's Face ID, one from free
   euros, one with FX for the shortfall only, each payout carrying the hash of the signed terms in Airwallex's metadata;
   21 webhooks, all recorded. The merchant charges and each payout's SENT and PAID are the sandbox's simulation. Log: [docs/runs/2026-11-07-awx-1.md](../runs/2026-11-07-awx-1.md).
-- **Visa Intelligent Commerce via Airwallex's Airi (7 November; Airwallex sandbox, test card, test money).** The
-  Sourcing agent pays with a single-use Visa (VIC) credential from Airwallex's Airi wallet, on Airwallex's hosted
-  checkout page for our own sandbox merchant. EUR 12.00 within Purser's limit ran with the agent alone: within Purser's
-  limit, no Purser approval is needed, and Airi itself asks the cardholder to confirm each purchase with a passkey;
+- **Visa Intelligent Commerce via Airwallex's Airi (7 November; Airwallex sandbox, test card, test money; a scripted
+  run, no Claude call).** Purser's script, as the Sourcing agent, paid with a single-use Visa (VIC) credential from
+  Airwallex's Airi wallet, on Airwallex's hosted checkout page for our own sandbox merchant. EUR 12.00 within Purser's
+  limit ran with no Purser approval, and Airi itself asks the cardholder to confirm each purchase with a passkey;
   EUR 45.00 above it ran only after the CFO's Face ID on its exact terms (P-0002); a merchant the CFO does not allow was
   refused by Purser before any call to Airi. Both payments SUCCEEDED in the sandbox; all five checks passed, in the
   second attempt in its world. The earlier attempts that day (a changed answer format, a confirm the sandbox refuses, a
@@ -186,9 +186,9 @@ with its own date.
   one matched and one sent to the CFO as short, by the webhook alone, and a card transaction. Payout and conversion
   events are subscribed but were not caused live that day (awx-1 caused them on 7 November).
 - **For a bigger company, more control on chain (separate test worlds, Metal testnet, 30 October):**
-  - **Four eyes on chain.** A 2-of-2 Metal account: the CFO and a controller. A payment signed by the CFO alone, the
-    same payment co-signed by a stranger's key, and a mandate revoke by the CFO alone each reverted on chain; with both
-    owners signing, they went through.
+  - **Four eyes on chain.** A 2-of-2 Metal account: the CFO and a controller (two test keys on one machine, not two
+    people). A payment signed by the CFO alone, the same payment co-signed by a stranger's key, and a mandate revoke by
+    the CFO alone each reverted on chain; with both owners signing, they went through.
   - **Compliance before a payout.** Our send-policy contract pays only with Purser's signed screening decision for
     that payee, amount and moment. Eleven attacks reverted on chain, among them a replay, a redirect to the attacker
     and a self-made decision for a sanctioned stand-in. Agents' mandate payments do not pass through it (Metal's

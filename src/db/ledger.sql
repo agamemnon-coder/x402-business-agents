@@ -13,7 +13,11 @@ CREATE TABLE IF NOT EXISTS ledger_entries (
   reverses INTEGER REFERENCES ledger_entries(entry_id),
   created_at TEXT NOT NULL,
   prev_hash TEXT NOT NULL,
-  entry_hash TEXT NOT NULL UNIQUE
+  entry_hash TEXT NOT NULL UNIQUE,
+  -- Added 12 November, nullable: the CFO's Face ID hash and the rail's id (transfer id or tx hash) an entry was made
+  -- under. In the entry's hash only when set, so the entries before them hash as they did.
+  approval_sha256 TEXT,
+  rail_ref TEXT
 );
 CREATE INDEX IF NOT EXISTS ledger_entries_posting ON ledger_entries (posting_date);
 CREATE TABLE IF NOT EXISTS ledger_lines (

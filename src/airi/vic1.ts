@@ -10,7 +10,7 @@
 import type { Json } from "@metalntwx/metal-pay/mandates";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
-import type { AiriClient, AiriPaymentMethod } from "./client.js";
+import { AiriRefusal, scrubText, type AiriClient, type AiriPaymentMethod } from "./client.js";
 import { AIRI_CURRENCY, ALONE_KEY, MERCHANT_KEY_PREFIX, PER_DAY_KEY, airiPolicy, merchantById } from "./policy.js";
 import { airiPurchases, requestAiriPurchase, type AiriDeps, type AiriOutcome, type AiriPurchaseRequest } from "./purchase.js";
 
@@ -52,8 +52,18 @@ export interface Vic1Record {
 }
 
 export class Vic1Stop extends Error {}
+/** The description the preflight looks for in Airi's mandate list: no mandate carries it. */
+export const PREFLIGHT_NO_MANDATE = "purser preflight: no mandate has this description";
 
-/** Preflight: the CLI pinned, Max's Airi session alive for the run, an agent-enabled card. 2 Airi calls. */
+/** How far back the preflight's one `mandate list` looks, so that it reads real rows where there are any. */
+export const PREFLIGHT_LIST_DAYS = 30;
+
+/**
+ * Preflight: the CLI pinned, Max's Airi session alive for the run, an agent-enabled card, and `mandate list` readable.
+ * 3 Airi calls, all read-only (auth whoami, payment-methods list, mandate list). The list is read here (12 Nov) because
+ * every purchase is refused when its mandate cannot be read back from that list: an answer in a shape the client does
+ * not know stops the run now, before purchase A and before any Face ID, instead of costing the first attempt.
+ */
 export async function preflight(d: Vic1Deps): Promise<{ cli: string; sessionExpires: string | null; method: AiriPaymentMethod }> {
   const now = (d.now ?? (() => new Date()))();
   const cli = d.airi.version ? await d.airi.version() : d.airi.kind;
@@ -67,7 +77,15 @@ export async function preflight(d: Vic1Deps): Promise<{ cli: string; sessionExpi
   if (cards.length === 0) throw new Vic1Stop("no agent-enabled card in Airi: Max turns on agent use for the test card in app.airi.com");
   const chosen = process.env.AIRI_PAYMENT_METHOD_ID ? cards.find((m) => m.paymentMethodId === process.env.AIRI_PAYMENT_METHOD_ID) : cards[0];
   if (!chosen) throw new Vic1Stop("AIRI_PAYMENT_METHOD_ID names no agent-enabled card");
-  d.log(`preflight  ${cli}; Airi session until ${s.sessionExpires}; ${cards.length} agent-enabled card(s), using ${chosen.display}`);
+  // Read-only: it looks for a description no mandate has, so it reads the page and changes nothing.
+  const since = new Date(now.getTime() - PREFLIGHT_LIST_DAYS * 86_400_000).toISOString().replace(/\.\d{3}Z$/, "Z");
+  try {
+    await d.airi.findMandate(PREFLIGHT_NO_MANDATE, since);
+  } catch (e) {
+    const why = e instanceof AiriRefusal ? `${e.code}: ${e.message}` : e instanceof Error ? e.message : String(e);
+    throw new Vic1Stop(`Airi's mandate list cannot be read (${scrubText(why)}); every purchase would be refused at the read-back of its mandate, so nothing was started`);
+  }
+  d.log(`preflight  ${cli}; Airi session until ${s.sessionExpires}; ${cards.length} agent-enabled card(s), using ${chosen.display}; mandate list readable`);
   return { cli, sessionExpires: s.sessionExpires, method: chosen };
 }
 

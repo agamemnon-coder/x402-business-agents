@@ -160,7 +160,7 @@ describe("the CFO's view, the README and step 0 show identical numbers", () => {
     const eur = (h: string) => Number(/EUR ([\d,]+) (?:on cards|incl\.)/.exec(h)![1]!.replace(/,/g, ""));
     expect(eur(w.exposure.headline)).toBe(eur(start.headline) + 500 * ALONE_PER_DAY * MONTH_DAYS);
     expect(w.exposure.above).toBe(start.above);
-    expect(w.exposure.tasks).toBe(`Plus the Treasury agent's task cards: up to ${moneyShort("EUR", startPolicy().taskCardEurCents * startPolicy().taskCardsPerDay)} a day.`);
+    expect(w.exposure.tasks).toBe(`Task cards without Face ID: up to ${moneyShort("EUR", startPolicy().taskCardEurCents * startPolicy().taskCardsPerDay)} a day.`);
   });
   it("the CFO's view: the same figure as the README and step 0", () => {
     const p = exposurePolicyFromRecord(record);
@@ -170,8 +170,11 @@ describe("the CFO's view, the README and step 0 show identical numbers", () => {
   it("in sight, at most 40 words: the figure, the task cards' line, \"Everything above waits for the CFO.\" and the fold's summary", () => {
     const words = [start.headline, start.tasks, start.above, EXPOSURE_HOW].join(" ").split(/\s+/).length;
     expect(words).toBeLessThanOrEqual(40);
-    expect(start.headline).toBe(`Worst case, set by policy: ${moneyShort("EUR", exposureOf(startPolicy()).agents.reduce((n, e) => n + e.card.monthEurCents, 0))} on cards + ${moneyShort("USD", exposureOf(startPolicy()).total.month.usdCents)} on chain a month.`);
-    expect(start.tasks).toBe(`Task cards the Treasury agent may issue alone: up to ${moneyShort("EUR", startPolicy().taskCardEurCents * startPolicy().taskCardsPerDay)} a day.`);
+    // The bold figure counts the cards' monthly limits and the task cards (12 Nov): per day times MONTH_DAYS.
+    const p = startPolicy();
+    const cardsAndTasks = AGENTS.reduce((n, a) => n + p.cardMonthlyCents[a], 0) + p.taskCardEurCents * p.taskCardsPerDay * MONTH_DAYS;
+    expect(start.headline).toBe(`Worst case, set by policy: ${moneyShort("EUR", cardsAndTasks)} on cards and task cards + ${moneyShort("USD", exposureOf(p).total.month.usdCents)} on chain a month.`);
+    expect(start.tasks).toBe(`Task cards without Face ID: up to ${moneyShort("EUR", p.taskCardEurCents * p.taskCardsPerDay)} a day.`);
     expect(start.above).toBe("Everything above waits for the CFO.");
   });
   it("whole euros where the cents are .00, cents otherwise", () => {
@@ -186,17 +189,20 @@ describe("the CFO's view, the README and step 0 show identical numbers", () => {
     expect(exposurePolicyOfWorld(world, "test_world").mandateBudgetCents).toEqual(p.cardMonthlyCents);
     expect(STEP0_CHAIN).toBe("purser");
   });
-  it("one switch for decision A: task cards apart (Max's choice, the default), or counted in the figure", () => {
+  it("one switch for decision A: task cards counted in the figure (12 Nov, after the jury panel's review; the default), or apart (6 Nov)", () => {
     const p = startPolicy(), x = exposureOf(p);
-    expect(EXPOSURE_TASK_CARDS).toBe("apart");
+    expect(EXPOSURE_TASK_CARDS).toBe("counted");
     const apart = exposureWords(x, p, null, "apart"), counted = exposureWords(x, p, null, "counted");
     const tasks = x.agents.find((e) => e.agent === "treasury")!.alone.monthEurCents;
-    expect(counted.headline).toContain(`${moneyShort("EUR", x.total.month.eurCents)} on cards`);
-    expect(apart.headline).toContain(`${moneyShort("EUR", x.total.month.eurCents - tasks)} on cards`);
-    expect(apart.tasks.startsWith("Task cards")).toBe(true);
-    expect(counted.tasks.startsWith("Including task cards")).toBe(true);
-    expect(apart.form).toBe(worstCaseWords(record).form);
-    expect(worstCaseLine()).toBe(apart.form);
+    expect(tasks).toBeGreaterThan(0);
+    expect(counted.headline).toBe(`Worst case, set by policy: ${moneyShort("EUR", x.total.month.eurCents)} on cards and task cards + ${moneyShort("USD", x.total.month.usdCents)} on chain a month.`);
+    expect(apart.headline).toContain(`${moneyShort("EUR", x.total.month.eurCents - tasks)} on cards +`);
+    expect(apart.tasks.startsWith("Task cards the Treasury agent may issue alone")).toBe(true);
+    expect(counted.tasks.startsWith("Task cards without Face ID")).toBe(true);
+    // The form's sentence, with the task cards in its figure.
+    expect(counted.form).toBe(`Worst case, set by policy: the agents together can spend at most ${moneyShort("EUR", x.total.month.eurCents)} (cards and task cards) and ${moneyShort("USD", x.total.month.usdCents)} (test USD) a month; everything above waits for the CFO.`);
+    expect(counted.form).toBe(worstCaseWords(record).form);
+    expect(worstCaseLine()).toBe(counted.form);
   });
 });
 
@@ -264,9 +270,54 @@ describe("payments an agent may make alone count in the worst case (Max, 7 Nov)"
   it("says so where it counts them, and Purser's own policy (no invoices paid alone) keeps its words", () => {
     const p = exposurePolicyOfWorld(world("2000.00"));
     const w = exposureWords(exposureOf(p), p, null);
-    expect(w.figure).toMatch(/^EUR [\d,]+ incl\. payments alone \+ USD [\d,]+ on chain a month$/);
+    expect(w.figure).toMatch(/^EUR [\d,]+ incl\. task cards, payments alone \+ USD [\d,]+ on chain a month$/);
     expect(w.how.join(" ")).toContain(`Payments alone: up to each agent's limit, at most ${ALONE_PER_DAY} a day`);
     const s = startPolicy();
-    expect(exposureWords(exposureOf(s), s, null).figure).toMatch(/^EUR [\d,]+ on cards \+ USD [\d,]+ on chain a month$/);
+    expect(exposureWords(exposureOf(s), s, null).figure).toMatch(/^EUR [\d,]+ on cards and task cards \+ USD [\d,]+ on chain a month$/);
+  });
+});
+
+describe("the bold figure is never smaller than what its fold reveals (jury panel, 12 Nov)", () => {
+  const now = new Date("2026-11-07T08:00:00Z");
+  const tryWorld = (alone: string) => {
+    const p = defaultPolicy(now, { reserve_floor: "25000.00", alone_limit: "500.00" });
+    return exposurePolicyOfWorld({ ...p, agents: { ...p.agents, treasury: { ...p.agents.treasury, alone } } });
+  };
+  const policies: [string, ExposurePolicy][] = [
+    ["the starting policy", startPolicy()],
+    ["the main run's policy", exposurePolicyFromRecord(record)],
+    ["a /try/sign world's policy (EUR 500 alone)", tryWorld("500.00")],
+    ["a /try/sign world's policy (EUR 2,000 alone)", tryWorld("2000.00")],
+  ];
+  const amounts = (t: string, cur: "EUR" | "USD") => [...t.matchAll(new RegExp(`${cur} ([\\d,]+(?:\\.\\d{2})?)`, "g"))].map((m) => Math.round(Number(m[1]!.replace(/,/g, "")) * 100));
+  for (const [name, p] of policies) {
+    it(`${name}: the parts in the fold add up to the bold figure, and no amount in sight or in the fold is larger`, () => {
+      const x = exposureOf(p);
+      const w = exposureWords(x, p, recordedRate(record));
+      const [boldEur, boldUsd] = [amounts(w.headline, "EUR"), amounts(w.headline, "USD")];
+      expect(boldEur).toEqual([x.total.month.eurCents]);
+      expect(boldUsd).toEqual([x.total.month.usdCents]);
+      // One line per agent: its card, its task cards, its payments alone (EUR) and its mandate (USD), a month.
+      const agentLines = w.how.filter((l) => / agent: /.test(l));
+      expect(agentLines).toHaveLength(AGENTS.length);
+      const sum = (cur: "EUR" | "USD") => agentLines.flatMap((l) => amounts(l, cur)).reduce((a, b) => a + b, 0);
+      expect(sum("EUR")).toBe(boldEur[0]);
+      expect(sum("USD")).toBe(boldUsd[0]);
+      // Every EUR amount shown, but the "≈" line (which adds the USD at the recorded rate), is at most the bold one.
+      const shown = [w.tasks, ...w.how.filter((l) => !l.startsWith("≈"))].flatMap((l) => amounts(l, "EUR"));
+      expect(shown.length).toBeGreaterThan(0);
+      for (const c of shown) expect(c).toBeLessThanOrEqual(boldEur[0]!);
+      // The task cards a month (per day times MONTH_DAYS) are in it.
+      expect(boldEur[0]).toBeGreaterThanOrEqual(p.taskCardEurCents * p.taskCardsPerDay * MONTH_DAYS);
+    });
+  }
+});
+
+describe("llms.txt says the worst case in the README's words", () => {
+  it("carries the bold figure and the line under it, word for word", () => {
+    const llms = readFileSync(new URL("../llms.txt", import.meta.url), "utf8");
+    const w = worstCaseWords(record);
+    expect(llms).toContain(`${w.headline} ${w.tasks} ${w.above}`);
+    expect(llms).not.toMatch(/EUR 300 on cards/);
   });
 });

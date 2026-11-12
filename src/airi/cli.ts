@@ -14,7 +14,7 @@ import { createHash } from "node:crypto";
 import { readFileSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
 import { z } from "zod";
-import { AIRI_CLI_DOCUMENTED_VERSION, AiriRefusal, AiriWaitTimeout, mandateCreateArgs, scrubText, type AiriClient, type AiriCredentialReceipt, type AiriMandate, type AiriMandateRequest, type AiriMandateResult, type AiriPaymentMethod, type AiriSession } from "./client.js";
+import { AIRI_CLI_DOCUMENTED_VERSION, AiriRefusal, AiriWaitTimeout, mandateCreateArgs, scrubText, type AiriClient, type AiriCredentialReceipt, type AiriMandate, type AiriMandateRecord, type AiriMandateRequest, type AiriMandateResult, type AiriPaymentMethod, type AiriSession } from "./client.js";
 
 /** Where the container's install put it (npm -g, 7 November). */
 export const DEFAULT_AIRI_CLI = "/opt/node22/bin/airi-cli";
@@ -66,27 +66,70 @@ export function childEnv(env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEn
 // ---- the answers, as airi-cli 0.1.0-beta.4 gives them (README, skill, and the shapes seen on 7 November) ----------
 
 const Version = z.object({ version: z.string() });
-const Session = z.object({ authenticated: z.boolean(), session_expires: z.string().optional() });
+// airi-cli 0.1.0-beta.4 answered in camelCase live on 7 Nov (vic-1: { expiresAt, mandateId, passkeyUrl, status }), where
+// its docs show snake_case; the first attempt that day stopped on it (AIRI_OUTPUT_UNRECOGNISED). Since 12 Nov every
+// answer is read in either spelling: its keys are brought to camelCase first (camelKeys), then held to these shapes.
+const Session = z.object({ authenticated: z.boolean(), sessionExpires: z.string().optional() });
 /** `payment-methods list`: an array of { asDefault, card, createdAt, nickName, paymentMethodId, type }. `card` is
  *  sensitive: only a brand and last four are ever read from it, and only when they are plain. */
 const PaymentMethods = z.array(z.object({ paymentMethodId: z.string().min(1).max(200), type: z.string().max(40), card: z.unknown().optional() }));
-// airi-cli 0.1.0-beta.4 answers in camelCase, as seen live on 7 Nov (vic-1): { expiresAt, mandateId, passkeyUrl, status }.
-// The docs show snake_case; both are read, and only the id and the https link are kept.
-const MandateCreated = z.union([
-  z.object({ mandateId: z.string().min(1).max(200), passkeyUrl: z.string().url() }),
-  z.object({ mandate_id: z.string().min(1).max(200), passkey_url: z.string().url() }),
-  z.object({ mandateId: z.string().min(1).max(200), passkey_url: z.string().url() }),
-]);
+/** Only the id and the https link are kept. */
+const MandateCreated = z.object({ mandateId: z.string().min(1).max(200), passkeyUrl: z.string().url() });
 const Receipt = z.object({ status: z.string().max(100), tokenType: z.string().max(100), tokenExpiration: z.string().max(100) });
 const Cancelled = z.object({ status: z.literal("ok") });
-const MandateRow = z.object({ mandateId: z.string().min(1).max(200), status: z.string().max(40), description: z.string().max(500).optional() });
+/**
+ * A `mandate list` row. 12 Nov live (vic-3, airi-cli 0.1.0-beta.4): rows sit under `items` and carry the description
+ * under orderInfo, not at the top as the README says; read at the top only, the read-back found none and refused. Both
+ * places are read; a row that gives two different descriptions is refused, nothing is picked by guess.
+ */
+const MandateRow = z.object({
+  mandateId: z.string().min(1).max(200), status: z.string().max(40), description: z.string().max(500).optional(),
+  orderInfo: z.object({ description: z.string().max(500).optional() }).optional(),
+}).transform((r, ctx) => {
+  const top = r.description, inOrder = r.orderInfo?.description;
+  if (top !== undefined && inOrder !== undefined && top !== inOrder) { ctx.addIssue({ code: "custom", path: ["description"], message: "two different descriptions" }); return z.NEVER; }
+  return { mandateId: r.mandateId, status: r.status, description: top ?? inOrder };
+});
+/**
+ * `mandate list`: the rows as a bare array, or under the one array-valued property of the answer. airi-cli
+ * 0.1.0-beta.4's README says a page has `hasMore` and rows with mandateId, status and description, and does not name
+ * the rows' key, so none is assumed (12 Nov; five names were guessed before). An answer with no array, or with two,
+ * is refused: nothing is picked by guess.
+ */
 const MandateList = z.union([
   z.array(MandateRow),
-  z.object({ mandates: z.array(MandateRow) }),
-  z.object({ items: z.array(MandateRow) }),
-  z.object({ data: z.array(MandateRow) }),
-  z.object({ content: z.array(MandateRow) }),
+  z.record(z.string(), z.unknown()).transform((o, ctx) => {
+    const arrays = Object.values(o).filter((x): x is unknown[] => Array.isArray(x));
+    const rows = arrays.length === 1 ? z.array(MandateRow).safeParse(arrays[0]) : null;
+    if (!rows?.success) { ctx.addIssue({ code: "custom", message: arrays.length === 1 ? "the rows are not mandates" : `${arrays.length} lists in the answer` }); return z.NEVER; }
+    return rows.data;
+  }),
 ]);
+
+/** Thrown by camelKeys when an answer gives one field in both spellings with different values: nothing is guessed. */
+class KeyClash extends Error {}
+/**
+ * mandate_id → mandateId, and mandate_Id too (a capital after the underscore stays a capital). Only an underscore
+ * between two letters or digits joins them: a leading or trailing one (__proto__, _links) is part of the name.
+ */
+const camel = (k: string) => k.replace(/(?<=[A-Za-z0-9])_+([A-Za-z0-9])/g, (_, c: string) => c.toUpperCase());
+/**
+ * An answer with every key in camelCase (mandate_id → mandateId), at any depth; values are untouched. A field given in
+ * both spellings must say the same thing, or the answer is refused (KeyClash). The keys are held in a Map and only an
+ * answer's own keys count, so a key named like something every object inherits (constructor, to_string, value_of,
+ * __proto__) is a key like any other and never clashes with itself.
+ */
+export function camelKeys(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(camelKeys);
+  if (!v || typeof v !== "object") return v;
+  const out = new Map<string, unknown>();
+  for (const [k, x] of Object.entries(v)) {
+    const key = camel(k), val = camelKeys(x);
+    if (out.has(key) && JSON.stringify(out.get(key)) !== JSON.stringify(val)) throw new KeyClash(key);
+    out.set(key, val);
+  }
+  return Object.fromEntries(out);
+}
 const CliError = z.object({
   error: z.union([z.string(), z.object({ code: z.string().optional(), message: z.string().optional() })]).optional(),
   code: z.string().optional(),
@@ -164,7 +207,12 @@ export class AiriCliClient implements AiriClient {
   }
 
   private parse<T>(name: string, schema: z.ZodType<T>, value: unknown): T {
-    const p = schema.safeParse(value);
+    let read: unknown;
+    try { read = camelKeys(value); } catch (e) {
+      if (e instanceof KeyClash) throw new AiriRefusal("airi", "AIRI_OUTPUT_UNRECOGNISED", `airi-cli ${name}: the answer gives ${e.message} twice, with different values`);
+      throw e;
+    }
+    const p = schema.safeParse(read);
     // The answer itself is never repeated (it may hold card or account data): only where it differed.
     if (!p.success) throw new AiriRefusal("airi", "AIRI_OUTPUT_UNRECOGNISED", `airi-cli ${name}: answer not in the expected shape (${p.error.issues.slice(0, 3).map((i) => i.path.join(".") || "(root)").join(", ")})`);
     return p.data;
@@ -177,7 +225,7 @@ export class AiriCliClient implements AiriClient {
 
   async whoami(): Promise<AiriSession> {
     const s = this.parse("auth whoami", Session, await this.run("auth whoami", ["auth", "whoami"]));
-    return { authenticated: s.authenticated, sessionExpires: s.session_expires ?? null };
+    return { authenticated: s.authenticated, sessionExpires: s.sessionExpires ?? null };
   }
 
   async listPaymentMethods(): Promise<AiriPaymentMethod[]> {
@@ -187,16 +235,23 @@ export class AiriCliClient implements AiriClient {
 
   async createMandate(req: AiriMandateRequest): Promise<AiriMandate> {
     const m = this.parse("mandate create", MandateCreated, await this.run("mandate create", mandateCreateArgs(req)));
-    const link = "passkeyUrl" in m ? m.passkeyUrl : m.passkey_url;
-    if (new URL(link).protocol !== "https:") throw new AiriRefusal("airi", "AIRI_OUTPUT_UNRECOGNISED", "airi-cli mandate create: the approval link is not https");
-    return { mandateId: "mandate_id" in m ? m.mandate_id : m.mandateId, passkeyUrl: link };
+    if (new URL(m.passkeyUrl).protocol !== "https:") throw new AiriRefusal("airi", "AIRI_OUTPUT_UNRECOGNISED", "airi-cli mandate create: the approval link is not https");
+    return { mandateId: m.mandateId, passkeyUrl: m.passkeyUrl };
+  }
+
+  /** `mandate list` since `createdFrom`, most recent first, up to the 100 a page holds. */
+  private async listMandates(createdFrom: string): Promise<z.infer<typeof MandateRow>[]> {
+    return this.parse("mandate list", MandateList, await this.run("mandate list", ["mandate", "list", "--created-from", createdFrom, "--size", "100"]));
   }
 
   async findMandate(description: string, createdFrom: string): Promise<{ mandateId: string; status: string } | null> {
-    const raw = this.parse("mandate list", MandateList, await this.run("mandate list", ["mandate", "list", "--created-from", createdFrom, "--size", "100"]));
-    const rows = Array.isArray(raw) ? raw : "mandates" in raw ? raw.mandates : "items" in raw ? raw.items : "data" in raw ? raw.data : raw.content;
-    const hit = rows.find((r) => r.description === description);
+    const hit = (await this.listMandates(createdFrom)).find((r) => r.description === description);
     return hit ? { mandateId: hit.mandateId, status: hit.status } : null;
+  }
+
+  async readMandate(mandateId: string, createdFrom: string): Promise<AiriMandateRecord | null> {
+    const hit = (await this.listMandates(createdFrom)).find((r) => r.mandateId === mandateId);
+    return hit ? { mandateId: hit.mandateId, status: hit.status, description: hit.description ?? null } : null;
   }
 
   async getCredential(mandateId: string, file: string): Promise<AiriCredentialReceipt> {

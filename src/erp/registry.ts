@@ -6,13 +6,14 @@ import { CHART } from "../config/gl.js";
 import { entraTokens, exactTokens, fileTokenStore, staticToken } from "./auth.js";
 import { BusinessCentralConnector, type BcConfig } from "./businessCentral.js";
 import { liveTransport } from "./callBudget.js";
-import { fetchTransport, RecordingTransport, type ConnectorName, type ErpConnector, type HttpRequest, type HttpResponse, type Transport } from "./connector.js";
+import { ErpError, fetchTransport, RecordingTransport, type ConnectorName, type ErpConnector, type HttpRequest, type HttpResponse, type Transport } from "./connector.js";
 import { exactConfigFromEnv, ExactConnector, type ExactConfig } from "./exact.js";
 import { moneybirdCallName, moneybirdConfigFromEnv, MoneybirdConnector, type MoneybirdConfig } from "./moneybird.js";
 import type { VatCode } from "./model.js";
 import { OdooConnector, type OdooConfig } from "./odoo.js";
 import { jsonMap } from "./rest.js";
 import { encodeValue, type XmlValue } from "./xmlrpc.js";
+import { cloudTargetFromEnv, cloudTokens, moneybirdOAuthOn } from "../cloudsync/connections.js";
 
 type Env = Record<string, string | undefined>;
 
@@ -84,6 +85,12 @@ export function odooConfigFromEnv(env: Env): OdooConfig {
 
 const exactFromEnv = (env: Env) => exactConfigFromEnv(env, { vat: jsonMap(env, "ERP_EXACT_VAT_CODES"), gl: jsonMap(env, "ERP_EXACT_GL_MAP", true), banks: jsonMap(env, "ERP_EXACT_BANK_JOURNALS") });
 
+function moneybirdCloudTokens(env: Env) {
+  const t = cloudTargetFromEnv(env);
+  if (!t) throw new ErpError("config", "ERP_MONEYBIRD_OAUTH=on needs PURSER_CLOUD_URL and PURSER_CLOUD_KEY (the company's sync key)");
+  return cloudTokens(t, "moneybird");
+}
+
 /**
  * A connector that really calls the ERP. Every request goes through the run's call budget (src/erp/callBudget.ts):
  * without the owner's go, the approved number and the call log, none is built. `inner` is what sends (fetch; a test's
@@ -95,7 +102,11 @@ export function liveConnector(name: ConnectorName, env: Env, inner: Transport = 
     // Authentication page), so a fixed Bearer token from the environment is all it takes. The call log names each
     // request under its administration.
     const cfg = moneybirdConfigFromEnv(env);
-    return new MoneybirdConnector(cfg, liveTransport(env, inner, (req) => moneybirdCallName(req, cfg)), staticToken(env.ERP_MONEYBIRD_TOKEN ?? ""));
+    // ERP_MONEYBIRD_OAUTH=on (docs/real-customers.md): the company's own OAuth token, which Purser Cloud holds sealed for
+    // this company and hands only to this company's runner (src/cloudsync/connections.ts). Off: the token from the
+    // environment, as before.
+    const tokens = moneybirdOAuthOn(env) ? moneybirdCloudTokens(env) : staticToken(env.ERP_MONEYBIRD_TOKEN ?? "");
+    return new MoneybirdConnector(cfg, liveTransport(env, inner, (req) => moneybirdCallName(req, cfg)), tokens);
   }
   const transport = liveTransport(env, inner);
   switch (name) {

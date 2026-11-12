@@ -23,7 +23,6 @@
 
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 
 const LIVE_BASE = "https://kit11.max-31b.workers.dev";
@@ -96,11 +95,14 @@ if (args.base) {
   // The agent's sentence from a labelled stand-in too (no model call in CI): the page says "Stand-in sentence".
   local = await startLocalRelay({ port: 0, token: "browser-check", trySignFx: fxStandIn, trySignAdvisor: advisor.ask, trySignReader: readerStandIn, trySignRecorded: null });
 }
-const require = createRequire(import.meta.url);
-// Playwright is not a dependency of this repo; it comes with the environment (Chromium pre-installed).
+// Playwright is not a dependency of this repo; it comes with the environment (Chromium pre-installed). BROWSER=firefox
+// runs the same visit in Firefox (CI job firefox), with the software passkey in place of Chromium's virtual authenticator.
+const { browserName, hasVirtualAuthenticator, launchBrowser } = await import("./support/browser.js");
+const { SOFT_PASSKEY } = await import("./support/softPasskey.js");
+const BROWSER = browserName();
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const { chromium } = require("playwright") as { chromium: any };
-const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
+const browser: any = await launchBrowser(BROWSER);
+console.log(`info  browser: ${BROWSER}`);
 
 let failures = 0;
 const check = (ok: boolean, what: string) => { console.log(`${ok ? "ok  " : "FAIL"}  ${what}`); if (!ok) failures++; };
@@ -229,12 +231,24 @@ async function motionOk(page: Page, tag: string, where: string, want: string[]):
 async function visitor(o: { width: number; scheme?: "light" | "dark"; ip: string; reducedMotion?: "reduce" }) {
   const mobile = o.width < 600;
   const context = await browser.newContext({ viewport: { width: o.width, height: mobile ? 844 : 900 }, deviceScaleFactor: mobile ? 2 : 1, isMobile: mobile, hasTouch: mobile, colorScheme: o.scheme ?? "light", ...(o.reducedMotion ? { reducedMotion: o.reducedMotion } : {}), ...(args.live ? {} : { extraHTTPHeaders: { "cf-connecting-ip": o.ip } }) });
+  const errors: string[] = [];
+  if (!hasVirtualAuthenticator(BROWSER)) {
+    // Firefox and WebKit: the software passkey (test/browser/support/softPasskey.ts; the server verifies its signatures for
+    // real), and the clipboard read back from what the page wrote (Firefox grants no clipboard-read to a test).
+    const page = await context.newPage();
+    await page.addInitScript(SOFT_PASSKEY);
+    await page.addInitScript(`(() => { const c = navigator.clipboard; if (!c) return; const w = c.writeText.bind(c); c.writeText = async (t) => { window.__copied = String(t); try { await w(t); } catch {} }; c.readText = async () => window.__copied ?? ""; })();`);
+    page.on("pageerror", (e: Error) => errors.push(e.message));
+    page.on("console", (m: { type(): string; text(): string }) => { if (m.type() === "error") errors.push(m.text()); });
+    // The software passkey counts every signature it makes (registration included); the checks compare before and after.
+    const signCount = async () => [Number(await page.evaluate("window.__softPasskeyCount ? window.__softPasskeyCount() : 0"))];
+    return { context, page, cdp: null, authenticatorId: null, errors, mobile, height: mobile ? 844 : 900, signCount };
+  }
   await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: local.url });
   const page = await context.newPage();
   const cdp = await context.newCDPSession(page);
   await cdp.send("WebAuthn.enable");
   const { authenticatorId } = await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } }) as { authenticatorId: string };
-  const errors: string[] = [];
   page.on("pageerror", (e: Error) => errors.push(e.message));
   page.on("console", (m: { type(): string; text(): string }) => { if (m.type() === "error") errors.push(m.text()); });
   const signCount = async () => ((await cdp.send("WebAuthn.getCredentials", { authenticatorId })) as { credentials: { signCount: number }[] }).credentials.map((c) => c.signCount);

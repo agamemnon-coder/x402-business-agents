@@ -21,6 +21,8 @@ import { checkInvoice, ibanSha, type Invoice } from "./invoice.js";
 import { eurInFlightCents } from "../policy/available.js";
 import { checkpoint } from "../policy/saga.js";
 import { referenceProblem } from "../payouts/routes.js";
+import type { PlanGate } from "../payouts/planGate.js";
+import { withOrigin, type Origin } from "../provenance/origin.js";
 
 export const SEED_REFERENCE = "kit11-seed-funding";
 /** The proposal number of invoice terms before createProposal assigns the real one (assignId); never stored. */
@@ -209,6 +211,8 @@ export async function proposeInvoicePayment(
   db: DB, rail: AirwallexRail, inv: Invoice, invoiceText: string, now = new Date(),
   quoteValidity: "MIN_1" | "MIN_15" = "MIN_15",
   document?: { total_line: string; currency: string; reason?: string },
+  /** Shown the plan just before it is filed (src/payouts/planGate.ts); absent: the plan is filed as always. */
+  gate?: PlanGate,
 ): Promise<InvoiceOutcome> {
   const refWrong = referenceProblem(inv.reference);
   if (refWrong) {
@@ -326,6 +330,26 @@ export async function proposeInvoicePayment(
       .run(quote.quoteId, "USD/EUR", fromCents(quote.buyAmountCents), fromCents(quote.sellAmountCents), quote.clientRate, quote.validFrom, quote.validTo);
   }
 
+  // The gate (the Payer agent, src/ap/pay.ts with KIT11_AP_AGENTS=on) sees the plan on the very numbers that would be
+  // signed. What is spoken for in EUR is what the plan already takes out (commitments, payouts under way), with
+  // Purser's own fee on this payment.
+  let origin: Origin | null | undefined;
+  if (gate) {
+    const answer = await gate({
+      invoice_no: inv.invoice_no, vendor: inv.vendor, payee: check.name, account: `IBAN ending ${check.ibanLast4}`, amount: fromCents(check.amountCents), currency: "EUR", due_date: inv.due_date,
+      method: "SWIFT", clearing: null, fee_reserve: fromCents(feeReserve),
+      balances: { ...(quote ? { USD: fromCents(s.usdAvailableCents) } : {}), EUR: fromCents(s.eurAvailableCents) },
+      spoken_for: { EUR: fromCents(s.eurObligationsCents + (s.eurInFlightCents ?? 0) + platformFee) },
+      floors: { ...(quote ? { USD: fromCents(s.usdFloorCents) } : {}), EUR: fromCents(s.eurFloorCents) },
+      quote: quote && { quote_id: quote.quoteId, sell_currency: "USD", sell_amount: fromCents(quote.sellAmountCents), buy_currency: "EUR", buy_amount: fromCents(quote.buyAmountCents), client_rate: quote.clientRate, valid_to: quote.validTo },
+    });
+    if (!answer.go) {
+      audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason: answer.reason, ...(quote ? { quote_id: quote.quoteId } : {}) }, now);
+      return { kind: "escalated", reason: answer.reason };
+    }
+    origin = answer.origin;
+  }
+
   // No number yet: createProposal takes the real one inside its write lock (assignId), and the terms stored, hashed
   // and returned carry it (re-review: a count taken here could be stale; a placeholder can never be filed).
   const id = PROPOSAL_ID_PENDING;
@@ -357,7 +381,9 @@ export async function proposeInvoicePayment(
   // another run (the CFO's `npm run licence`, the agent's plan_invoice) while this one waited for Airwallex is seen here.
   let proposal: ProposalRow;
   try {
-    proposal = createProposal(db, { terms, createdBy: "treasury", evidence: terms.evidence, guard: (tx) => invoiceAlreadyHandled(tx, inv.invoice_no, now, undefined, { vendor: inv.vendor, accountSha256: ibanSha(inv.iban) }), assignId: true }, now);
+    const file = () => createProposal(db, { terms, createdBy: "treasury", evidence: terms.evidence, guard: (tx) => invoiceAlreadyHandled(tx, inv.invoice_no, now, undefined, { vendor: inv.vendor, accountSha256: ibanSha(inv.iban) }), assignId: true }, now);
+    // The proposal records who started it (proposal.created): the gate's origin when it gave one.
+    proposal = origin ? withOrigin(origin, file) : file();
   } catch (e) {
     if (!(e instanceof ProposalRefused)) throw e;
     const reason = `${e.reason}; a second copy is not paid again (another plan was filed while this one was being prepared)`;

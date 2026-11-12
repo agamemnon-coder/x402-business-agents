@@ -1,14 +1,24 @@
 // The guest pages as a juror opens them, with no key: / (Home itself), /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirects), /month (start and end), at phone
 // (360 and 390 px), tablet (768 px; jury QA, 6 Nov: /try at 360 and /?autonomy at 768 scrolled sideways) and laptop (1440 px) width, light and dark. Fails on any console error or page error, on "null",
 // "undefined" or "NaN" anywhere on screen, on a page wider than the screen, and on basic accessibility faults (no page
-// language, not exactly one h1, a link or button with no name, an image with no alt text), and on a menu that wraps.
+// language, not exactly one h1, a link or button with no name, an image with no alt text), and on a menu that wraps, is
+// not the four tabs and "More" with the pages under it, or opens "More" off the screen (12 Nov; the dropdown needs no
+// script and works from the keyboard). Also /pricing and /security, the product pages under "More".
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
-import { VISA_ENTRY_LINE } from "../../src/redesign/partners.js";
+import { WATCH_IN_MENU } from "../../src/config/film.js";
+import { VISA_ICC_LINE } from "../../src/config/brand.js";
+import { VISA_ENTRY_LINE, VISA_H1, VISA_TAP_HEADING, VISA_TITLE } from "../../src/redesign/partners.js";
+import { AWX_PAGE_LABEL } from "../../src/redesign/airwallexProducts.js";
+import { MORE_LABEL, moreLinks } from "../../src/ui/more.js";
+import { agentTools } from "../../src/redesign/docs.js";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { chromium, type Page } from "playwright";
+import type { Page } from "playwright";
+import { browserName, launchBrowser } from "./support/browser.js";
 import { startJudge } from "../../src/cli/judge.js";
+import { checkHome } from "./homeStory.js";
+import { CHROME, checkTaps } from "./tapTargets.js";
 import { tokenizeRun } from "../../src/redesign/tokenizeRun.js";
 import { METAL_CSP } from "../../src/servers/dashboard.js";
 
@@ -32,6 +42,8 @@ if (!judgeBase) console.log(`SKIP  ${base}/judge is not served there yet: /judge
 /** The tour's ticks in localStorage (src/redesign/judge.ts). */
 const JUDGE_KEY = "purser.judge.v1";
 
+/** The agent API's tools, as the code defines them (/docs lists exactly these). */
+const DOCS_TOOLS = agentTools().map((t) => t.name);
 // /metal's second state (see below): the page with an invoice-token run record, built from a record made here.
 const metalWithRecord = liveAt >= 0 ? null : await (async () => {
   const { sampleRunRecord } = await import("../support/tokenizeWorld.js");
@@ -43,6 +55,8 @@ const metalWithRecord = liveAt >= 0 ? null : await (async () => {
 })();
 const failures: string[] = [];
 const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}`); };
+/** The menu on every page: the four tabs, then "More" with the pages under it, in this order (src/ui/more.ts). */
+const MENU = JSON.stringify({ items: ["Home", "Watch", "Try", "Proof", MORE_LABEL], more: moreLinks().map((l) => l.label) });
 // 1.1: the worst case as the README and step 0 say it, read from the policy code (src/policy/exposureSources.ts).
 const { worstCaseWords } = await import("../../src/policy/exposureSources.js");
 const WORST = worstCaseWords();
@@ -70,27 +84,122 @@ async function look(page: Page, name: string, width: number): Promise<void> {
   for (const u of a11y.noAlt) fail(`${name}: an image with no alt text: ${u}`);
   const over = await page.evaluate(() => document.documentElement.scrollWidth) - width;
   if (over > 1) fail(`${name}: ${over}px wider than the screen`);
-  // The "More" menu opens on the screen, wherever "More" wraps to (the site check found it off the left edge).
-  const menu = await page.evaluate(`(() => {
-    const d = document.querySelector(".pmore");
-    if (!d || !d.offsetParent) return null;
-    const was = d.open; d.open = true;
-    const r = d.querySelector(".pmenu").getBoundingClientRect();
-    d.open = was;
-    return { left: Math.round(r.left), right: Math.round(r.right) };
-  })()`) as { left: number; right: number } | null;
-  if (menu && (menu.left < 0 || menu.right > width)) fail(`${name}: the More menu opens off the screen (${menu.left} to ${menu.right} of ${width})`);
-  // The menu is one line at every width: "More" never wraps onto a line of its own (Max, 1 Nov: it did at 390 px).
-  const navRows = await page.evaluate(`(() => {
-    const n = document.querySelector(".pnav");
-    if (!n || !n.offsetParent) return 0;
-    const tops = [...n.querySelectorAll(":scope > a, :scope > details > summary")].filter((e) => e.offsetParent).map((e) => e.getBoundingClientRect().top);
-    return tops.length ? Math.round(Math.max(...tops) - Math.min(...tops)) : 0;
-  })()`) as number;
-  if (navRows > 12) fail(`${name}: the menu wraps onto a second line (${navRows}px between its links)`);
+  // The menu, on every page that carries it (both navigations: the redesign's header and the older pages'): exactly the
+  // four tabs and "More"; "More" closed until it is opened, and under it exactly the pages the site serves, in order.
+  const nav = await page.evaluate(`(() => {
+    const n = document.querySelector('nav[aria-label="Main"]');
+    if (!n || !n.offsetParent) return null;
+    const d = n.querySelector(":scope > details.pmore");
+    const items = [...n.querySelectorAll(":scope > a, :scope > details > summary")];
+    const tops = items.map((e) => e.getBoundingClientRect().top);
+    const out = { items: items.map((e) => e.textContent.trim()), more: d ? [...d.querySelectorAll(".pmenu a")].map((a) => a.textContent.trim()) : null,
+      rows: Math.round(Math.max(...tops) - Math.min(...tops)), right: Math.round(n.getBoundingClientRect().right), left: Math.round(n.getBoundingClientRect().left),
+      open: d ? d.open : null, menu: null, shown: null };
+    if (d) {
+      // Opened as a reader opens it; the dropdown hangs under the menu, on the screen, wherever the menu sits.
+      const was = d.open; d.open = true;
+      const r = d.querySelector(".pmenu").getBoundingClientRect();
+      out.menu = { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom) };
+      out.shown = [...d.querySelectorAll(".pmenu a")].every((a) => { const b = a.getBoundingClientRect(); return b.width > 0 && b.height >= 24 && b.left >= 0; });
+      d.open = was;
+    }
+    return out;
+  })()`) as { items: string[]; more: string[] | null; rows: number; left: number; right: number; open: boolean | null; menu: { left: number; right: number; top: number; bottom: number } | null; shown: boolean | null } | null;
+  if (nav) {
+    if (JSON.stringify({ items: nav.items, more: nav.more }) !== MENU) fail(`${name}: the menu is not the four tabs and More with its pages (${JSON.stringify({ items: nav.items, more: nav.more })})`);
+    // The menu is one line at every width: "More" never wraps onto a line of its own (Max, 1 Nov: it did at 390 px).
+    if (nav.rows > 12) fail(`${name}: the menu wraps onto a second line (${nav.rows}px between its items)`);
+    if (nav.left < 0 || nav.right > width) fail(`${name}: the menu runs off the screen (${nav.left} to ${nav.right} of ${width})`);
+    if (nav.open) fail(`${name}: "More" is open before the reader opens it`);
+    // The "More" menu opens on the screen, wherever "More" wraps to (the site check found it off the left edge).
+    if (!nav.menu || nav.menu.left < 0 || nav.menu.right > width || !nav.shown) fail(`${name}: the More menu opens off the screen, or its links are not all in sight (${JSON.stringify(nav.menu)} of ${width})`);
+  }
 }
 
-const browser = await chromium.launch();
+/**
+ * "More" from the keyboard, with no script on the page's side: Tab reaches it after the four tabs, Enter opens it, the
+ * next Tab lands on its first link, and Enter on "More" again closes it.
+ */
+async function moreByKeyboard(page: Page, name: string): Promise<void> {
+  const summary = page.locator('nav[aria-label="Main"] > details.pmore > summary');
+  const state = async () => (await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = document.activeElement; return { open: d.open, focus: a ? (a.textContent || "").trim() : "", inMenu: !!(a && a.closest(".pmenu")) }; })()`)) as { open: boolean; focus: string; inMenu: boolean };
+  // From the tab before it (Proof), one Tab reaches "More".
+  await page.locator('nav[aria-label="Main"] > a').last().focus();
+  await page.keyboard.press("Tab");
+  const reached = await state();
+  if (reached.focus !== MORE_LABEL || reached.open) fail(`${name}: Tab after the four tabs does not reach "More" (focus on "${reached.focus}")`);
+  const ring = await summary.evaluate((e) => { const s = getComputedStyle(e); return s.outlineStyle !== "none" && parseFloat(s.outlineWidth) >= 2; });
+  if (!ring) fail(`${name}: "More" shows no focus ring from the keyboard`);
+  await page.keyboard.press("Enter");
+  const opened = await state();
+  if (!opened.open) fail(`${name}: Enter on "More" does not open it`);
+  await page.keyboard.press("Tab");
+  const first = await state();
+  if (!first.inMenu || first.focus !== moreLinks()[0]!.label) fail(`${name}: Tab from the open "More" does not land on its first link (focus on "${first.focus}")`);
+  await summary.focus();
+  await page.keyboard.press("Enter");
+  if ((await state()).open) fail(`${name}: Enter on the open "More" does not close it`);
+}
+
+/** The words on the first screen, before any scroll: every text whose element is drawn inside the viewport. */
+const firstScreen = (page: Page) => page.evaluate(`(() => {
+  const out = [], walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    const e = n.parentElement, t = (n.textContent || "").trim();
+    if (!e || !t) continue;
+    const r = e.getBoundingClientRect();
+    if (e.checkVisibility() && r.width > 0 && r.height > 0 && r.top < innerHeight && r.bottom > 0 && getComputedStyle(e).visibility !== "hidden") out.push(t);
+  }
+  return out.join(" ");
+})()`) as Promise<string>;
+/**
+ * Tap targets (jury panel, 12 Nov): on a phone every link, button and fold header inside <main> is at least 44 px high,
+ * with the folds closed and with them open. The pages held to it; add /metal and /claude here once their links are sized.
+ */
+const TAP_PAGES = ["/airwallex", "/metal"];
+async function tapTargets(page: Page, name: string): Promise<void> {
+  const small = (await page.evaluate(`[...document.querySelectorAll("main a, main button, main summary")].filter((e) => e.checkVisibility())
+    .map((e) => ({ h: Math.round(e.getBoundingClientRect().height * 10) / 10, what: (e.textContent || "").trim().replace(/\\s+/g, " ").slice(0, 40) })).filter((x) => x.h < 44)`)) as { h: number; what: string }[];
+  for (const x of small) fail(`${name}: a tap target ${x.h} px high, under 44 ("${x.what}")`);
+  // Each target also owns the middle of every line it is drawn on: no neighbour's padding and no drawing takes its tap
+  // (review, 12 Nov: padded links covered the link above, and a flow arrow covered a fold's header).
+  const covered = (await page.evaluate(`(() => {
+    const out = [];
+    for (const e of document.querySelectorAll("main a, main button, main summary")) {
+      if (!e.checkVisibility()) continue;
+      for (const r0 of [...e.getClientRects()].filter((r) => r.width > 2 && r.height > 2)) {
+        window.scrollTo({ top: window.scrollY + r0.top - innerHeight / 2, behavior: "instant" });
+        const r = [...e.getClientRects()].find((q) => Math.abs(q.width - r0.width) < 0.5 && Math.abs(q.left - r0.left) < 0.5) || r0;
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        if (!hit || !(hit === e || e.contains(hit))) out.push({ what: (e.textContent || "").trim().replace(/\\s+/g, " ").slice(0, 40), by: hit ? hit.tagName.toLowerCase() + (hit.className ? "." + hit.className : "") + " " + (hit.textContent || "").trim().slice(0, 30) : "nothing" });
+      }
+    }
+    window.scrollTo(0, 0);
+    return out;
+  })()`)) as { what: string; by: string }[];
+  for (const x of covered) fail(`${name}: a tap on "${x.what}" lands on ${x.by}`);
+}
+
+/** Every fold header opens and closes with a tap at its middle (on a phone, with the folds open and closed). */
+async function foldTaps(page: Page, name: string): Promise<void> {
+  const n = await page.locator("main summary").count();
+  for (let i = 0; i < n; i++) {
+    const s = page.locator("main summary").nth(i);
+    if (!(await s.isVisible())) continue;
+    for (let k = 0; k < 2; k++) {
+      await s.scrollIntoViewIfNeeded();
+      const was = await s.evaluate((e) => (e.parentElement as HTMLDetailsElement).open);
+      const box = (await s.boundingBox())!;
+      await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+      await page.waitForTimeout(50);
+      if ((await s.evaluate((e) => (e.parentElement as HTMLDetailsElement).open)) === was) { fail(`${name}: a tap on the fold header "${((await s.textContent()) ?? "").trim().slice(0, 40)}" does not ${was ? "close" : "open"} it`); break; }
+    }
+  }
+}
+
+const BROWSER = browserName();
+const browser = await launchBrowser(BROWSER);
+console.log(`info  browser: ${BROWSER}`);
 for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const) {
   for (const scheme of ["light", "dark"] as const) {
     const context = await browser.newContext({ viewport: { width: w, height: h }, colorScheme: scheme, isMobile: w < 500, hasTouch: w < 500 });
@@ -99,7 +208,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // The 404 page's own status is the one console error expected (Chromium logs every 404 document).
     page.on("console", (m) => { if (m.type() === "error" && !(/\/no\/such\/page$/.test(page.url()) && /status of 404/.test(m.text()))) fail(`${tag} ${page.url()}: console error: ${m.text()}`); });
     page.on("pageerror", (e) => fail(`${tag} ${page.url()}: page error: ${e.message}`));
-    page.on("requestfailed", (r) => fail(`${tag} ${page.url()}: request failed: ${r.url()}`));
+    // Firefox reports a request it cancelled itself when the page navigated on (NS_BINDING_ABORTED, e.g. the favicon) as
+    // failed; that is the browser's own cancel, not a failed answer, so it is not counted there.
+    page.on("requestfailed", (r) => { if (!(BROWSER === "firefox" && /NS_BINDING_ABORTED/.test(r.failure()?.errorText ?? ""))) fail(`${tag} ${page.url()}: request failed: ${r.url()} (${r.failure()?.errorText ?? "?"})`); });
 
     // A guest who opens "/" gets Home itself, with no redirect, so a reader without script sees Home too (the four tabs
     // are checked in test/browser/redesign.check.ts; the CFO's link on "/" in test/browser/root.check.ts).
@@ -109,34 +220,33 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     await page.waitForTimeout(1500);
     if (new URL(page.url()).pathname !== "/" || !(await page.isVisible("h1.h-hero"))) fail(`/ ${tag}: a guest does not get Home at / (${page.url()})`);
     await look(page, `/ (Home) ${tag}`, w);
-    // Competitive review, 10 Nov: one primary button, to Try, in the first screen; Watch and Proof as text links. The
-    // CFO's view is linked from Proof's head (checked below), not from Home.
-    {
-      const links = await page.locator("p.more a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
-      if (!links.includes("watch") || !links.includes("proof")) fail(`/ ${tag}: Watch and Proof are not linked beside the button (${JSON.stringify(links)})`);
-      const primaries = page.locator("main a.btn.primary");
-      const box = await primaries.first().boundingBox();
-      if ((await primaries.count()) !== 1 || !/^try(\/sign)?$/.test((await primaries.first().getAttribute("href")) ?? "") || !box || box.y + box.height > h) fail(`/ ${tag}: not one primary button, to Try, in the first screen`);
-      // The hero demo (Max, 10 Nov): it plays (the phase moves on), it keeps its size while it plays (no layout shift),
-      // and with reduced motion it shows one still frame, the last.
-      const demo = page.locator("#hero-demo");
-      if (!(await demo.count())) fail(`/ ${tag}: no hero demo`);
-      else {
-        const size = async () => JSON.stringify(await demo.evaluate((e) => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
-        const p0 = await demo.getAttribute("data-phase"), s0 = await size();
-        await page.waitForTimeout(3800);
-        if ((await demo.getAttribute("data-phase")) === p0) fail(`/ ${tag}: the hero demo does not play`);
-        if ((await size()) !== s0) fail(`/ ${tag}: the hero demo changes size while it plays (${s0} → ${await size()})`);
-        if (!/Recorded run · Airwallex sandbox · test money/.test(await demo.innerText()) || !(await demo.locator('a[href$="try/sign"], a[href="try"]').count())) fail(`/ ${tag}: the hero demo lacks its label or its link to Try`);
-        await demo.screenshot({ path: join(shots, `home-demo-${tag}.png`) });
-        const still = await page.context().browser()!.newPage({ viewport: { width: w, height: h }, reducedMotion: "reduce" });
-        await still.goto(`${base}/home`, { waitUntil: "load" });
-        await still.waitForTimeout(2600);
-        if ((await still.locator("#hero-demo").getAttribute("data-phase")) !== "4" || await still.locator("#hero-demo").evaluate((e) => e.classList.contains("run"))) fail(`/ ${tag}: with reduced motion the hero demo is not one still frame`);
-        await still.close();
+    // Home as one story (home-story, 12 Nov): two buttons, the hero that plays once and rests on step 4, the visitor's
+    // own check with no request, the sizes, the screens (test/browser/homeStory.ts). The CFO's view is linked from
+    // Proof's head (checked below), not from Home.
+    await checkHome(page, { url: `${base}/`, name: `/ (Home) ${tag}`, width: w, height: h, touch: w < 500, tryHref: liveAt >= 0 ? "try/sign" : "try", fail, shot: async (n) => { await page.locator("#hero-demo").screenshot({ path: join(shots, `home-demo-${n}-${tag}.png`) }); } });
+    await page.goto(`${base}/home?demo=4`, { waitUntil: "load" });
+    await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
+
+    // Tap targets on a phone (jury review, 12 Nov: menu links 37 px): every link, button and fold header of the shared
+    // header and footer is at least 44 px high, on the three tabs and on the replay at /replay, and the redesign's
+    // header is no taller for it (test/browser/tapTargets.ts; the whole of /judge below).
+    if (w <= 430) {
+      for (const path of ["/home", "/try", "/proof", "/replay?autoplay=0"]) {
+        await page.goto(`${base}${path}`, { waitUntil: "load" });
+        await checkTaps(page, { name: `${path} ${tag}, header and footer`, scopes: CHROME, fail });
+        const head = await page.locator("header").first().evaluate((e) => e.getBoundingClientRect().height);
+        if (head > 65.5) fail(`${path} ${tag}: the header is ${head} px high, taller than before (65)`);
+        if (!WATCH_IN_MENU && await page.locator('header nav a[href*="watch"]').count()) fail(`${path} ${tag}: Watch is in the menu`);
       }
     }
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
+    // "More" from the keyboard, in the redesign's header (the older pages' navigation is checked on /month below), and
+    // open, as a reader sees it over the page.
+    await moreByKeyboard(page, `/ (Home) ${tag}`);
+    await page.locator('nav[aria-label="Main"] > details.pmore > summary').click();
+    if (!(await page.locator('nav[aria-label="Main"] .pmenu').isVisible())) fail(`/ (Home) ${tag}: a click on "More" does not open it`);
+    await page.screenshot({ path: join(shots, `home-more-${tag}.png`) });
+    await page.locator('nav[aria-label="Main"] > details.pmore > summary').click();
 
     // Every button works without a key: "CFO sign-in" explains how the CFO gets in, and the way back to the recording.
     await page.goto(`${base}/?signin`, { waitUntil: "load" });
@@ -210,10 +320,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     if (/USDZ|\$\s?\d/.test(bk)) fail(`/?recorded&books ${tag}: shows USDZ or dollars`);
     await page.screenshot({ path: join(shots, `books-${tag}.png`), fullPage: true });
 
-    // The old run replays redirect to Watch.
+    // The old run replays redirect to the replay (/replay; /watch is the film since 12 Nov).
     for (const path of ["/live", "/demo"]) {
       await page.goto(`${base}${path}`, { waitUntil: "load" });
-      if (!/\/watch$/.test(page.url())) fail(`${path} ${tag}: does not redirect to /watch`);
+      if (!/\/replay$/.test(page.url())) fail(`${path} ${tag}: does not redirect to /replay`);
     }
 
     // The Dispute desk of the recording: a case with its evidence, or a plain note.
@@ -449,6 +559,13 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.waitForTimeout(300);
       await look(page, `/month${q} ${tag}`, w);
       await page.screenshot({ path: join(shots, `month${q ? "-end" : ""}-${tag}.png`), fullPage: true });
+      // "More" from the keyboard in the older pages' navigation (src/ui/nav.ts), and open over the page.
+      if (!q) {
+        await moreByKeyboard(page, `/month ${tag}`);
+        await page.locator('nav[aria-label="Main"] > details.pmore > summary').click();
+        await page.screenshot({ path: join(shots, `month-more-${tag}.png`) });
+        await page.locator('nav[aria-label="Main"] > details.pmore > summary').click();
+      }
     }
 
     // Try Purser: each example ends in its outcome, step by step, labelled as the demo world. Against the relay a try
@@ -485,13 +602,22 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     }
 
     // The partner pages (v4, C1): short (at most 150 words before anything is opened), the flow first, the run
-    // labelled, the details folded and every fold readable once open, no Visa logo; /visa carries the claim and the
-    // TAP status word for word (Visa, 5 Nov: not eligible Visa tooling), and its honest labels in a fold.
+    // labelled, the details folded and every fold readable once open, no Visa logo; /visa is one Visa Intelligent
+    // Commerce story (12 Nov, jury panel): the TAP claim, its status word for word (Visa, 5 Nov: not eligible Visa
+    // tooling) and its honest labels sit in one closed fold at the very end, labelled as outside the entry.
     for (const path of ["/metal", "/airwallex", "/visa", "/claude"]) {
       await page.goto(`${base}${path}`, { waitUntil: "load" });
       await look(page, `${path} ${tag}`, w);
+      // /visa opens with VIC (12 Nov): at most one screen of text before the first proof, so the drawing (purchase B's
+      // steps, with its ids) starts on the first screen at every width.
+      if (path === "/visa") {
+        const top = await page.evaluate(() => Math.round((document.getElementById("vic-flow")?.getBoundingClientRect().top ?? Infinity) + window.scrollY));
+        if (!(top < h)) fail(`/visa ${tag}: the drawing starts at ${top} px, below the first screen (${h} px)`);
+      }
       const pt = await page.evaluate(() => document.body.innerText);
-      const words = pt.split(/\s+/).filter((x) => /\w/.test(x)).length;
+      // The footer's "Built on" strip (owner, 12 Nov) is the frame's, not the page's: its words are not counted.
+      const strip = await page.locator("footer .builton").innerText().catch(() => "");
+      const words = pt.split(/\s+/).filter((x) => /\w/.test(x)).length - strip.split(/\s+/).filter((x) => /\w/.test(x)).length;
       // /airwallex carries Airwallex read back (section B, 6 Nov; cards folded) and awx-1 (7 Nov, its steps folded):
       // budget 210 there (test/site-v4.test.ts), plus the frame; 235 since the Airi run (7 Nov) joined it; 345 since the
       // Airi run's block in the owner's copy (7 Nov), which also tops /visa (275 there; 375 with the VIC flow under it,
@@ -499,38 +625,246 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // The second Airi run (vic-2, 7 Nov): /visa 465 with its three outcomes under the VIC flow, /airwallex 365 with its
       // heading and checks (the same budgets as test/site-v4.test.ts).
       // /visa 495 since 10 Nov (Max: we compete for the Visa Award, keep it visible): one plain sentence on top; 600 the
-      // same day with the overview of the three Visa runs above the Airi run (Max, 10 Nov: more Visa).
+      // same day with the overview of the Visa runs above the Airi run (Max, 10 Nov: more Visa); 625 since 12 Nov, the
+      // budget of test/site-v4.test.ts, for the three folded lines under the Airi runs.
+      // /airwallex 374 since 12 Nov (jury panel): the Airi run's summary says "A scripted run, no Claude call".
       // /metal: 230 only while a run record of the invoice token exists (12 Nov), for its one block (50 words in sight).
-      const budget = path === "/airwallex" ? 365 : path === "/visa" ? 600 : path === "/metal" ? (tokenizeRun() ? 230 : 180) : 150;
-      if (words > budget + 25) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
-      if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(pt)) fail(`${path} ${tag}: its run is not labelled`);
-      if ((await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
+      // The frame (header and footer): 25 words, 26 since 12 Nov: More and the footer's four product links added five
+      // words (18 at 360 and 390 px, 19 at 768 and 1440). The pages' own budgets are main's.
+      // /metal: 275 since the jury panel of 12 Nov, for its four mandates in one table (each figure a word; its column
+      // heads show from 700 px); 325 with the invoice token's block.
+      // /claude: 195 since the jury panel of 12 Nov (measured, not asserted: four figures with their records).
+      // /claude: 225 since the merge of 12 Nov, the budget of test/site-v4.test.ts, for the hostile-model eval's line beside
+      // the measured block; 240 with the measured block's line on the zero-trust report (the budget of test/site-v4.test.ts).
+      const budget = path === "/airwallex" ? 374 : path === "/visa" ? 625 : path === "/metal" ? (tokenizeRun() ? 325 : 275) : path === "/claude" ? 240 : 150;
+      if (words > budget + 26) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
+      // Each page is labelled with the run it shows: the main run; /visa with the Airi run's own label (the main run's
+      // label is inside its closed TAP fold, with the main run's TAP-signed buy).
+      // /airwallex (jury panel, 12 Nov) shows several runs, each dated on its own tile: its label is true for all of them,
+      // and it opens on a tile per Airwallex product in place of the flow of one run.
+      if (path === "/airwallex" ? !pt.includes(AWX_PAGE_LABEL) || /Replay of the main run/.test(await page.locator("main").innerText()) : !(path === "/visa" ? /7 Nov · Airwallex sandbox · test card · test money/ : /Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/).test(pt)) fail(`${path} ${tag}: its run is not labelled`);
+      // /visa before anything is opened (12 Nov, jury panel): "TAP" is on the page once, in the line of the one closed
+      // fold at the very end, below the first screen; the basis for "VIC" and the Intelligent Commerce Connect line are
+      // in sight; five facts under the drawing; purchase B's three amounts are equal; the footer cites the run's record.
+      if (path === "/visa") {
+        const c = await page.evaluate(`(() => {
+          const tap = document.getElementById("visa-tap"), sum = tap ? tap.querySelector("summary") : null;
+          const main = document.querySelector("main"), last = [...main.querySelectorAll("details")].pop();
+          const amounts = [...document.querySelectorAll("#vic-compare .awrow")][0];
+          return { open: !tap || tap.open, tapTop: sum ? Math.round(sum.getBoundingClientRect().top + window.scrollY) : -1, last: !!tap && last === tap, after: tap ? main.innerText.split(sum.innerText).pop().trim() : "?",
+            title: document.title, facts: [...document.querySelectorAll("#vic-facts li")].filter((li) => li.offsetParent !== null && !li.closest("details")).length,
+            amounts: amounts ? [...amounts.querySelectorAll("code")].map((x) => x.textContent) : [], foot: document.querySelector("footer").textContent };
+        })()`) as { open: boolean; tapTop: number; last: boolean; after: string; title: string; facts: number; amounts: string[]; foot: string };
+        if (c.title !== VISA_TITLE) fail(`/visa ${tag}: the title is "${c.title}"`);
+        if (c.open || !c.last || c.after !== "") fail(`/visa ${tag}: the TAP fold is open, or not the last thing on the page ("${c.after.slice(0, 60)}")`);
+        if ((pt.match(/\bTAP\b|Trusted Agent Protocol/g) ?? []).length !== 1 || !pt.includes(VISA_TAP_HEADING)) fail(`/visa ${tag}: TAP is named outside the closed fold's own line`);
+        if (!(c.tapTop > h)) fail(`/visa ${tag}: the TAP fold's line is on the first screen (${c.tapTop} px)`);
+        if (!pt.includes(VISA_ENTRY_LINE) || !pt.includes(VISA_ICC_LINE) || pt.split("Intelligent Commerce Connect").length !== 2) fail(`/visa ${tag}: the basis for VIC or the Intelligent Commerce Connect line is not in sight, once`);
+        if (c.facts !== 5) fail(`/visa ${tag}: ${c.facts} facts in sight under the drawing, not five`);
+        if (c.amounts.length !== 3 || new Set(c.amounts).size !== 1) fail(`/visa ${tag}: purchase B's three amounts are not equal (${c.amounts.join(" / ")})`);
+        if (!/A scripted run, no Claude call/.test(pt) || /Agents paid with a single-use Visa|three live runs/.test(pt)) fail(`/visa ${tag}: the run is not called scripted`);
+        if (!c.foot.includes("docs/demo/airi-run.json") || /main run|TAP/.test(c.foot)) fail(`/visa ${tag}: the footer does not cite the Airi run's record, or carries the main run's lines`);
+      }
+      // /metal (jury panel, 12 Nov) opens on its four mandates in one table, in place of a picture of the flow.
+      if (path !== "/airwallex" && path !== "/metal" && (await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
+      if (path === "/metal" && (await page.locator("table.mtab tbody tr").count()) !== 4) fail(`/metal ${tag}: not four mandates in its table`);
+      if (path === "/airwallex") {
+        // Seven tiles, each with the product's name, one number, an id in monospace and its run's date.
+        const tiles = (await page.evaluate(`[...document.querySelectorAll(".awp .awt")].map((t) => ({ name: (t.querySelector("h2") || {}).textContent || "", v: t.querySelectorAll(".v").length, id: (t.querySelector(".i code") || {}).textContent || "", date: (t.querySelector("time") || {}).textContent || "", top: t.getBoundingClientRect().top }))`)) as { name: string; v: number; id: string; date: string; top: number }[];
+        if (tiles.map((t) => t.name).join("|") !== "Issuing|Payouts|FX|Transfer approvals|Connected accounts|Payment acceptance|Airi" || tiles.some((t) => t.v !== 1 || !t.id || !/^\d{1,2} [A-Z][a-z]{2}$/.test(t.date))) fail(`/airwallex ${tag}: not seven product tiles, each with one number, an id and a date (${JSON.stringify(tiles.map((t) => [t.name, t.v, t.id, t.date]))})`);
+        if (!(await page.evaluate(`(() => { const t = document.querySelector(".awp"), f = document.querySelector("#awx-hash"); return !!t && !!f && !!(t.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING); })()`))) fail(`/airwallex ${tag}: the tiles are not above the hash block`);
+        // The first screen is about Airwallex's products: no Metal earnings and no simulated deposit before any scroll.
+        const first = await firstScreen(page);
+        if (/Metal earnings|0\.69/.test(first) || !/Issuing/.test(first)) fail(`/airwallex ${tag}: the first screen shows Metal earnings or the simulated deposit, or no product tile`);
+        // Transfer approvals: three states in a row, the third as the record has it today.
+        const states = (await page.evaluate(`[...document.querySelectorAll("#p-approvals ol.aws li")].map((l) => l.textContent.trim())`)) as string[];
+        if (states.length !== 3 || !/^Signed in Purser( \(test passkey\))?$/.test(states[0] ?? "") || !/ at Airwallex$|^Held by Airwallex/.test(states[1] ?? "") || !/^Now: [A-Z_]+/.test(states[2] ?? "")) fail(`/airwallex ${tag}: transfer approvals does not show its three states (${JSON.stringify(states)})`);
+        // The platform run's refused payouts are told in its fold, with their cause: never among the tiles.
+        if (/refus/i.test(await page.locator("main .awp").innerText())) fail(`/airwallex ${tag}: a refusal on a tile (they belong in the platform run's fold)`);
+      }
+      if (TAP_PAGES.includes(path) && w < 500) await tapTargets(page, `${path} ${tag}`);
       if ((await page.locator("details.fold").count()) < 2) fail(`${path} ${tag}: the details are not folded`);
       if ((await page.locator("img[src*='visa' i], img[alt*='visa' i]").count()) > 0) fail(`${path} ${tag}: shows a Visa logo`);
-      await page.evaluate(() => document.querySelectorAll("details").forEach((d) => { d.open = true; }));
+      // Every fold of the page; "More" in the menu stays closed, as a reader leaves it.
+      await page.evaluate(() => document.querySelectorAll("details:not(.pmore)").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
       await look(page, `${path} folds open ${tag}`, w);
       const open = await page.evaluate(() => document.body.innerText);
+      if (TAP_PAGES.includes(path) && w < 500) { await tapTargets(page, `${path} folds open ${tag}`); await foldTaps(page, `${path} folds open ${tag}`); }
       if (path === "/visa" && (!/Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours\./.test(open) || !/commit 16d59bd/.test(open) || !/simulated authorisations/.test(open) || !/Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon \(Visa, 5 Nov\)\./.test(open) || !open.includes(VISA_ENTRY_LINE) || /entered for[^.]{0,40}Visa Award/i.test(open.split(VISA_ENTRY_LINE).join(" ")) || /Dev test/.test(open))) fail(`/visa ${tag}: the claim, the award status or the honest label is wrong`);
       if (path === "/airwallex" && !/LIMIT_EXCEEDED|over the card's limit/.test(open)) fail(`/airwallex ${tag}: no decline by Airwallex`);
       // Section B: the hash the CFO signed beside the one Airwallex returns, matched in code; each card's controls beside the policy.
       if (path === "/airwallex" && (!/The hash the CFO signed travels with the payment\./.test(pt) || (pt.match(/\b[0-9a-f]{64}\b/g) ?? []).length !== 2 || !/Match: the same hash/.test(pt))) fail(`/airwallex ${tag}: the CFO's hash and Airwallex's are not shown side by side, or do not match`);
-      // awx-1 (7 Nov): the separate Airwallex-only run, dated and labelled, its checks in sight, every step and id in its fold.
-      if (path === "/airwallex" && (!/\d{1,2} November, awx-1: a separate run · Airwallex sandbox, test money/.test(pt) || !/7 of 7 checks pass/.test(pt) || !/LIMIT_EXCEEDED[\s\S]*MERCHANT_CATEGORY_NOT_ALLOWED[\s\S]*738a4263-6d6c-4de8-94a3-93da1c175fb4[\s\S]*4140dee2-6373-4eb4-a71f-bf69130f96a7/.test(open))) fail(`/airwallex ${tag}: awx-1 is not shown, dated and labelled, with its steps`);
-      // The Airi run (7 Nov), in the owner's copy on /airwallex and at the top of /visa: Visa Intelligent Commerce via
+      // awx-1 (7 Nov): the separate Airwallex-only run in its fold since 12 Nov (the Issuing tile leads to it), dated and
+      // labelled, with its checks and every step and id.
+      if (path === "/airwallex" && (/awx-1: a separate run/.test(pt) || !/\d{1,2} November, awx-1: a separate run · Airwallex sandbox, test money/.test(open) || !/7 of 7 checks pass/.test(open) || !/LIMIT_EXCEEDED[\s\S]*MERCHANT_CATEGORY_NOT_ALLOWED[\s\S]*738a4263-6d6c-4de8-94a3-93da1c175fb4[\s\S]*4140dee2-6373-4eb4-a71f-bf69130f96a7/.test(open))) fail(`/airwallex ${tag}: awx-1 is not shown, dated and labelled, with its steps`);
+      // The Airi run (7 Nov), in the owner's copy on /airwallex and on /visa: Visa Intelligent Commerce via
       // Airwallex's Airi, dated and labelled "Airwallex sandbox, test card, test money", the three outcome badges and the
       // 5 of 5 checks (a link to the run log's checks) in sight, every step and id in its "Details" fold; never an Airi
       // link or a card number.
-      if ((path === "/airwallex" || path === "/visa") && (!/Visa Intelligent Commerce via Airwallex's Airi: a live run \(7 Nov\)\s*A separate run · Airwallex sandbox, test card, test money/.test(pt)
-        || !/✓ Within the limit[\s\S]*✓ Paid after Face ID[\s\S]*✕ Refused by Purser/.test(pt) || !/5 of 5 checks pass/.test(pt)
+      // On /airwallex the whole block sits in a fold since 12 Nov (the Airi tile leads to it): there it is read with the folds open.
+      const airiText = path === "/airwallex" ? open : pt;
+      if (path === "/airwallex" && /Visa Intelligent Commerce via Airwallex's Airi: a live run/.test(pt)) fail(`/airwallex ${tag}: the Airi run's block is in sight, not in its fold`);
+      if ((path === "/airwallex" || path === "/visa") && (!/Visa Intelligent Commerce via Airwallex's Airi: a live run \(7 Nov\)\s*A separate run · Airwallex sandbox, test card, test money/.test(airiText)
+        || !/✓ Within the limit[\s\S]*✓ Paid after Face ID[\s\S]*✕ Refused by Purser/.test(airiText) || !/5 of 5 checks pass/.test(airiText)
         || (await page.locator('#airi-run a[href$="2026-11-07-vic-1.md#checks-the-records-checks"]').count()) !== 1 || /int_sgpvzc9hjhnxvpblt2r/.test(pt)
         || !/single-use card credential from Airwallex's Airi wallet[\s\S]*int_sgpvzc9hjhnxvpblt2r[\s\S]*P-0002[\s\S]*int_sgpvzc9hjhnxvxc26ie[\s\S]*PURSER_MERCHANT_NOT_ALLOWED/.test(open)
         || /airi\.com\/|\b\d{13,19}\b/.test(open))) fail(`${path} ${tag}: the Airi run is not shown, dated and labelled, with its badges, checks and steps`);
-      // On /visa above the TAP run: the block before the page's flow.
+      // On /visa above the TAP fold: the block before the fold's own flow.
       if (path === "/visa" && !(await page.evaluate(() => { const a = document.querySelector("#airi-run"), f = document.querySelector(".flow.card"); return !!a && !!f && !!(a.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING); }))) fail(`/visa ${tag}: the Airi run is not above the TAP run`);
+      // /visa opens with VIC (12 Nov; Visa, 5 Nov: TAP is not Visa tooling for this hackathon): the page's first heading
+      // is the h1 with the VIC heading; the drawing, the facts, the table, the summary, the Airi run and the control
+      // test are above the TAP fold; nothing above that fold names TAP; and the fold opens with its line and, at once,
+      // its status.
+      if (path === "/visa") {
+        const v = await page.evaluate(`(() => {
+          const main = document.querySelector("main"), tap = document.getElementById("visa-tap");
+          const first = main.querySelector("h1, h2, h3");
+          const above = (id) => { const e = document.getElementById(id); return !!e && !!tap && !!(e.compareDocumentPosition(tap) & Node.DOCUMENT_POSITION_FOLLOWING); };
+          const range = document.createRange(); range.setStart(main, 0); if (tap) range.setEndBefore(tap); else range.setEnd(main, main.childNodes.length);
+          return { first: first ? first.tagName + ": " + first.textContent : "", below: ["vic-flow", "vic-facts", "vic-compare", "visa-runs", "airi-run", "airi-run-2", "vic-more"].filter((id) => !above(id)), top: range.toString(),
+            tap: tap ? tap.textContent.replace(/\\s+/g, " ").trim() : "" };
+        })()`) as { first: string; below: string[]; top: string; tap: string };
+        if (v.first !== `H1: ${VISA_H1}`) fail(`/visa ${tag}: the page's first heading is "${v.first}", not the VIC heading`);
+        if (v.below.length) fail(`/visa ${tag}: not above the TAP fold: ${v.below.join(", ")}`);
+        if (/\bTAP\b|Trusted Agent Protocol/.test(v.top)) fail(`/visa ${tag}: TAP is named above the TAP fold`);
+        if (!v.tap.startsWith(`${VISA_TAP_HEADING} Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov).`)) fail(`/visa ${tag}: the TAP fold does not open with its line and its status ("${v.tap.slice(0, 120)}")`);
+      }
       if (path === "/airwallex" && ((await page.locator("#controls .awcard").count()) !== 3 || (await page.locator("#controls .awrow .k.ok").count()) !== 15)) fail(`/airwallex ${tag}: not three cards with five controls each, all matching the CFO policy`);
       if (path === "/claude" && (!/Claude call ✓ · (Haiku|Sonnet|Opus) · [\d,]+ tokens · [\d.]+ s · req_/.test(open) || !/routine payments by code/.test(open))) fail(`/claude ${tag}: no Claude call badges or no split`);
       if (path === "/metal" && (await page.locator("a.pf[href*='testnet.metalntwx.com/tx/0x']").count()) < 3) fail(`/metal ${tag}: fewer than three transactions`);
       await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
+    }
+    // /pricing and /security (12 Nov), the product pages under "More": short, the prices and the cards in sight, every
+    // detail folded and readable once open, "More" marked as where the reader is, and no text under 14 px in a card.
+    for (const path of ["/pricing", "/security"]) {
+      const res = await page.goto(`${base}${path}`, { waitUntil: "load" });
+      if (!res || res.status() !== 200) { fail(`${path} ${tag}: status ${res?.status()}`); continue; }
+      await look(page, `${path} ${tag}`, w);
+      const body = await page.locator("main").innerText();
+      const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
+      // The budgets of test/site-v4.test.ts, counted here as the browser shows the page's body (folds closed).
+      const budget = path === "/pricing" ? 150 : 265; // /security 265 since 12 Nov: nine controls (the owner), then the eval and zero-trust links
+      if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
+      const here = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null, tabs: document.querySelectorAll('nav[aria-label="Main"] > a.on').length }; })()`) as { more: boolean; link: string | null; tabs: number };
+      if (!here.more || here.link !== path.slice(1) || here.tabs) fail(`${path} ${tag}: "More" and the page's own link are not marked as where the reader is (${JSON.stringify(here)})`);
+      const small = await page.evaluate(`[...document.querySelectorAll("main .card *, main .lead, main .notyet")].filter((e) => (e.offsetParent || getComputedStyle(e).position === "fixed") && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) && parseFloat(getComputedStyle(e).fontSize) < 14).map((e) => (e.textContent || "").trim().slice(0, 30))`) as string[];
+      for (const t of small.slice(0, 5)) fail(`${path} ${tag}: text under 14 px: ${t}`);
+      if (!(await page.evaluate(() => document.fonts.check("16px Inter")))) fail(`${path} ${tag}: Inter did not load`);
+      const cards = await page.locator("main article.pc.card").count();
+      if (path === "/pricing") {
+        if (cards !== 3 || !/Pilot pricing\s+Pilot prices\. Nothing is on sale yet\./.test(body) || !/€49\s+a month/.test(body) || !/from\s+€249\s+a month/.test(body)) fail(`/pricing ${tag}: not the heading, the lead line and three cards with their prices`);
+        if (!/a EUR \d+\.\d{2} test fee on a EUR \d+\.\d{2} test payout\.\s+Test values, not prices/.test(body) || !(await page.locator('#platform-fee a[href$="docs/runs/2026-11-10-connected-accounts-sandbox.md"]').count())) fail(`/pricing ${tag}: the platform fee's test values are not labelled, or its run record is not linked`);
+        // One fold since the panel's review (12 Nov): "How the fee is set", closed, in the fee's card.
+        if (!/Not yet: no real-money go-live\./.test(body) || (await page.locator("main details").count()) !== 1 || (await page.locator("#platform-fee details.fold:not([open])").count()) !== 1) fail(`/pricing ${tag}: no "Not yet" line, or a fold that should not be there`);
+      } else {
+        // Nine controls and "Not yet" since the owner's request (12 Nov 15:55): ten cards, each with its detail folded, and "If the approver is unavailable" (#unavailable) under the signature.
+        if (cards !== 10 || (await page.locator("main article.pc.card details.fold").count()) !== 11 || (await page.locator("#s-sign details#unavailable").count()) !== 1 || (await page.locator("main details[open]").count())) fail(`/security ${tag}: not ten cards, each with its detail folded`);
+        if (!/Our red team ran \d+ attacks: \d+ stopped before anything moved, \d+ found afterwards\./.test(body) || !/npm run verify-log/.test(body) || !/No SOC 2 report, no ISO 27001 audit and no third-party penetration test yet/.test(body)) fail(`/security ${tag}: the red team's counts, the audit command or the "Not yet" line is missing`);
+        if (!/^try(\/sign)?$/.test((await page.locator("#s-sign .links a").getAttribute("href")) ?? "")) fail(`/security ${tag}: the signature card does not link to Try`);
+      }
+      await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
+      await page.evaluate(() => document.querySelectorAll("main details").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
+      await look(page, `${path} folds open ${tag}`, w);
+      await page.screenshot({ path: join(shots, `${path.slice(1)}-open-${tag}.png`), fullPage: true });
+    }
+    // Proof's guarantee 1 links "If the approver is unavailable" (12 Nov): it lands on /security#unavailable with the
+    // fold's heading in view, below the sticky header. At 390 and 1440 px.
+    if (w === 390 || w === 1440) {
+      await page.goto(`${base}/proof`, { waitUntil: "load" });
+      await page.locator("#g-terms details > summary").click();
+      await page.locator("#g-terms a", { hasText: "If the approver is unavailable" }).click();
+      await page.waitForURL(/\/security#unavailable$/);
+      await page.waitForTimeout(300);
+      const r = (await page.evaluate(`(() => {
+        const t = document.getElementById("unavailable"), head = document.querySelector("header.top").getBoundingClientRect().bottom, b = t.getBoundingClientRect();
+        return { top: Math.round(b.top), head: Math.round(head), inView: b.top >= head - 2 && b.top < innerHeight / 2 };
+      })()`)) as { top: number; head: number; inView: boolean };
+      if (!r.inView) fail(`/proof ${tag}: "If the approver is unavailable" does not land on /security#unavailable in view (${JSON.stringify(r)})`);
+    }
+    // /docs and /status (12 Nov), the other two product pages under "More": short, "More" marked as where the reader is,
+    // no text under 14 px in a card. /docs lists the agent API's tools as the code defines them, every description
+    // folded. /status: the judge's copy says it has no live status and asks for nothing (it has no /health); a hosted
+    // relay's page reads its own /health and ends in a state it read, never in "could not be read".
+    for (const path of ["/docs", "/status"]) {
+      const healthAsked: string[] = [];
+      const onHealth = (r: { url(): string }) => { if (new URL(r.url()).pathname === "/health") healthAsked.push(r.url()); };
+      page.on("request", onHealth);
+      const res = await page.goto(`${base}${path}`, { waitUntil: "load" });
+      if (!res || res.status() !== 200) { fail(`${path} ${tag}: status ${res?.status()}`); page.off("request", onHealth); continue; }
+      if (path === "/status" && liveAt >= 0) await page.waitForFunction(() => document.getElementById("now")?.hasAttribute("data-tone"), undefined, { timeout: 10_000 }).catch(() => fail(`/status ${tag}: the page's script never finished reading /health`));
+      await look(page, `${path} ${tag}`, w);
+      const body = await page.locator("main").innerText();
+      const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
+      // The budgets of test/site-v4.test.ts, counted here as the browser shows the page's body (folds closed).
+      const budget = path === "/docs" ? 200 : 90;
+      if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
+      const here = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null, tabs: document.querySelectorAll('nav[aria-label="Main"] > a.on').length }; })()`) as { more: boolean; link: string | null; tabs: number };
+      if (!here.more || here.link !== path.slice(1) || here.tabs) fail(`${path} ${tag}: "More" and the page's own link are not marked as where the reader is (${JSON.stringify(here)})`);
+      const small = await page.evaluate(`[...document.querySelectorAll("main .card *, main .lead")].filter((e) => (e.offsetParent || getComputedStyle(e).position === "fixed") && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) && parseFloat(getComputedStyle(e).fontSize) < 14).map((e) => (e.textContent || "").trim().slice(0, 30))`) as string[];
+      for (const t of small.slice(0, 5)) fail(`${path} ${tag}: text under 14 px: ${t}`);
+      if (!(await page.evaluate(() => document.fonts.check("16px Inter")))) fail(`${path} ${tag}: Inter did not load`);
+      const cards = await page.locator("main article.pc.card").count();
+      if (path === "/docs") {
+        if (cards !== 4 || !/Docs and API\s+For developers and integrators\./.test(body) || (await page.locator("main details[open]").count())) fail(`/docs ${tag}: not the heading, the lead line and four cards with every fold closed`);
+        const listed = await page.locator("#agent-api li[data-tool] > code").allInnerTexts();
+        if (JSON.stringify(listed) !== JSON.stringify(DOCS_TOOLS)) fail(`/docs ${tag}: the tools listed are not the code's (${listed.join(", ")})`);
+        if (!/npm run -s mcp/.test(body) || !/npm run judge/.test(body) || !/\/v1\/openapi\.json/.test(body) || !(await page.locator('#offline a[href$="README.md#how-to-run"]').count())) fail(`/docs ${tag}: a command, the OpenAPI document's path or the README's link is missing`);
+      } else {
+        if (cards !== 2 || (await page.locator("#runs ul.pl > li > a.pf").count()) !== 5 || (await page.locator('#runs a.pf[href="runs"]').count()) !== 1) fail(`/status ${tag}: not two cards with the five latest live runs and the link to every run`);
+        if (liveAt < 0) {
+          // The judge's copy: no script, no request for /health (it would be a 404 here), and it says so.
+          if (healthAsked.length || (await page.locator("script").count()) || !/No live status in this copy/.test(body) || (await page.locator('main a[href$="health"]').count())) fail(`/status ${tag}: the offline copy asks for /health, carries a script or does not say it has no live status`);
+        } else {
+          const tone = await page.locator("#now").getAttribute("data-tone");
+          if (!["quiet", "ok", "alarm"].includes(tone ?? "") || (await page.locator("#st-site").innerText()) !== "Up" || healthAsked.length !== 1) fail(`/status ${tag}: the hosted page did not read its own /health (${tone}, ${healthAsked.length} request(s))`);
+        }
+      }
+      page.off("request", onHealth);
+      await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
+      await page.evaluate(() => document.querySelectorAll("main details").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
+      await look(page, `${path} folds open ${tag}`, w);
+      await page.screenshot({ path: join(shots, `${path.slice(1)}-open-${tag}.png`), fullPage: true });
+    }
+    // /status as the relay serves it (the local relay, src/relay/local.ts; no runner has synced yet): the page reads the
+    // relay's own /health under its policy, with no console or policy error, and shows the quiet state, which is no
+    // error. Then /health failing: the page says plainly that the status could not be read, and nothing reads as good.
+    if (relay) {
+      await page.goto(`${relay.url}/status`, { waitUntil: "load" });
+      await page.waitForFunction(() => document.getElementById("now")?.hasAttribute("data-tone"), undefined, { timeout: 10_000 }).catch(() => fail(`/status on the relay ${tag}: the script never finished reading /health`));
+      await look(page, `/status on the relay ${tag}`, w);
+      const now = (await page.locator("#now").innerText()).replace(/\s+/g, " ").trim();
+      if ((await page.locator("#now").getAttribute("data-tone")) !== "quiet" || now !== "No live run in progress Site Up Runner Off between runs Last sync None on record Alarms No report on record The raw answer: /health") fail(`/status on the relay ${tag}: not the quiet state in plain words (${now})`);
+      const quietWords = (await page.locator("main").innerText()).split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
+      if (quietWords > 90) fail(`/status on the relay ${tag}: ${quietWords} words in sight in the quiet state, budget 90`);
+      await page.screenshot({ path: join(shots, `status-quiet-${tag}.png`), fullPage: true });
+      // A page of its own for the failing /health: the browser logs the failed answer as a console error, which is the point.
+      const broken = await context.newPage();
+      broken.on("pageerror", (e) => fail(`/status with /health failing ${tag}: page error: ${e.message}`));
+      for (const [what, answer] of [["a 500 that is no JSON", { status: 500, contentType: "text/plain", body: "error" }], ["a 200 in another shape", { status: 200, contentType: "application/json", body: JSON.stringify({ status: "ok" }) }], ["no answer", null]] as const) {
+        await broken.unroute("**/health");
+        await broken.route("**/health", (r) => (answer ? r.fulfill(answer) : r.abort()));
+        await broken.goto(`${relay.url}/status`, { waitUntil: "load" });
+        await broken.waitForFunction(() => document.getElementById("now")?.hasAttribute("data-tone"), undefined, { timeout: 10_000 }).catch(() => fail(`/status with /health failing (${what}) ${tag}: the page never said so`));
+        const text = (await broken.locator("#now").innerText()).replace(/\s+/g, " ").trim();
+        if ((await broken.locator("#now").getAttribute("data-tone")) !== "unread" || text !== "The status could not be read just now Site Not read Runner Not read Last sync Not read Alarms Not read The raw answer: /health") fail(`/status with /health failing (${what}) ${tag}: does not say plainly that the status could not be read (${text})`);
+        if (await broken.locator("#now .good").count()) fail(`/status with /health failing (${what}) ${tag}: a line reads as good`);
+      }
+      await broken.screenshot({ path: join(shots, `status-unread-${tag}.png`), fullPage: true });
+      await broken.close();
+    }
+    // /t0 (owner, 12 Nov): Purser's books in T:0's ledger. At most 150 words in sight (the strip aside), labelled as the
+    // T:0 sandbox with test data, nothing wider than the screen, every tap target 44 px on a phone, the strip in its footer.
+    {
+      await page.goto(`${base}/t0`, { waitUntil: "load" });
+      await look(page, `/t0 ${tag}`, w);
+      const pt = await page.evaluate(() => document.body.innerText);
+      const strip = await page.locator("footer .builton").innerText().catch(() => "");
+      const words = pt.split(/\s+/).filter((x) => /\w/.test(x)).length - strip.split(/\s+/).filter((x) => /\w/.test(x)).length;
+      if (words > 150 + 25) fail(`/t0 ${tag}: ${words} words on screen, budget 150 plus the frame`);
+      if (!pt.includes("T:0 sandbox, test data")) fail(`/t0 ${tag}: not labelled as the T:0 sandbox with test data`);
+      if (!/^Built on\s/.test(strip.trim()) || !/T:0: \d+ journal entries/.test(strip)) fail(`/t0 ${tag}: no Built on strip in the footer`);
+      if (w < 500) await tapTargets(page, `/t0 ${tag}`);
+      await page.screenshot({ path: join(shots, `t0-${tag}.png`), fullPage: true });
     }
     // /metal in its other state: with a run record of the invoice token (12 Nov). The page the judge serves has the
     // block only once a live run is recorded; here the same page is built with a record made on the in-memory chain
@@ -540,14 +874,16 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.route(`${base}/metal`, (r) => r.fulfill({ status: 200, contentType: "text/html; charset=utf-8", headers: { "content-security-policy": METAL_CSP }, body: metalWithRecord }));
       await page.goto(`${base}/metal`, { waitUntil: "load" });
       await look(page, `/metal with an invoice-token record ${tag}`, w);
-      const words = (await page.evaluate(() => document.body.innerText)).split(/\s+/).filter((x) => /\w/.test(x)).length;
-      if (words > 230 + 25) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 230 plus the frame`);
+      const stripWords = (await page.locator("footer .builton").innerText().catch(() => "")).split(/\s+/).filter((x) => /\w/.test(x)).length;
+      const words = (await page.evaluate(() => document.body.innerText)).split(/\s+/).filter((x) => /\w/.test(x)).length - stripWords;
+      if (words > 325 + 26) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 325 plus the frame`);
       const block = page.locator("#invoice-token");
       const sight = await block.innerText().catch(() => "");
       if (!/^Invoice token \(prototype\)\s+\d{1,2} \w+, a separate Metal testnet run\. An invoice approved with a labelled test passkey(?: on \d{1,2} \w+)? became a token\. A simulated financier bought it for 2\.35 test USD; the debtor paid its holder 2\.40\. Face value divided by 100\.\s+Chain record verified\s+7 transactions$/.test(sight.trim())) fail(`/metal with an invoice-token record ${tag}: the block is not the title, one sentence, the badge and a closed fold (${JSON.stringify(sight)})`);
       if ((await page.locator("#invoice-token").count()) !== 1 || !(await page.evaluate(() => { const f = document.querySelector(".folds.card"), b = document.querySelector("#invoice-token"), a = document.querySelector("a.open"); return !!f && !!b && !!a && !!(f.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) && !!(b.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING); }))) fail(`/metal with an invoice-token record ${tag}: the block is not between the main run's proof and the link to all the proof`);
       await page.screenshot({ path: join(shots, `metal-token-${tag}.png`), fullPage: true });
-      await page.evaluate(() => document.querySelectorAll("details").forEach((d) => { d.open = true; }));
+      // The page's folds only: "More" in the menu is a <details> too (12 Nov) and stays closed, as a reader leaves it.
+      await page.evaluate(() => document.querySelectorAll("main details").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
       await look(page, `/metal with an invoice-token record, folds open ${tag}`, w);
       if ((await block.locator("a.pf[href^='https://testnet.metalntwx.com/tx/0x']").count()) !== 7 || (await block.locator("a.pf[href$='-tokenize.md']").count()) !== 1) fail(`/metal with an invoice-token record ${tag}: not seven transactions and the run record in its fold`);
       await block.screenshot({ path: join(shots, `metal-token-open-${tag}.png`) });
@@ -601,7 +937,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (!/The hash the CFO signed travels with the payment\./.test(rb) || (rb.match(/\b[0-9a-f]{64}\b/g) ?? []).length !== 2 || !/Match: the same hash/.test(rb) || !/3 of 3 cards match the CFO policy/.test(rb)) fail(`/proof ${tag}: Airwallex read back missing or not matching`);
     }
     // The strongest proof first (Max's last round, item 2; the jury, 12 Nov): each partner card shows its strongest
-    // claim as its one link, right under its name; no TAP remark under the figures (TAP is the footer link to /visa).
+    // claim as its one link, right under its name; no TAP remark under the figures (TAP is on /visa only, since 12 Nov).
     {
       // Each card: its name, then its first claim, a link in sight; in its closed fold 2–3 facts with a bold number,
       // then its other claims, each a link.
@@ -623,7 +959,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       }
       if (await page.locator(".septest").count()) fail(`/proof ${tag}: a TAP remark under the figures`);
       if (/\bTAP\b/.test((await page.locator("main").innerText()))) fail(`/proof ${tag}: TAP outside the footer link`);
-      if ((await page.locator('footer a.flink[href="visa"]').count()) !== 1) fail(`/proof ${tag}: no footer link to /visa ("Extra, not an award entry")`);
+      // 12 Nov (merge of #148 into #157): the footer link to /visa went from Proof too; Visa is a section of its own.
+      if (await page.locator('footer a.flink[href="visa"]').count()) fail(`/proof ${tag}: a footer link to /visa ("Extra, not an award entry")`);
       // The four tiles under the run's label, Airwallex's among them; the stops' parts sum to their figure.
       const tiles = (await page.evaluate(`[...document.querySelectorAll(".nums a.num")].map((a) => ({ cls: a.className, v: a.querySelector(".v").textContent, parts: [...a.querySelectorAll(".parts b")].map((b) => Number(b.textContent)) }))`)) as { cls: string; v: string; parts: number[] }[];
       const stop = tiles.find((t) => / stop$/.test(t.cls));
@@ -692,7 +1029,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // The archive is the last closed line: opened by its link, even where the page cannot scroll it to the top.
       await page.goto(`${base}/proof#archive`, { waitUntil: "load" });
       await page.waitForTimeout(250);
-      if ((await landed("archive")).closed || !(await page.locator('#archive a[href="watch"]', { hasText: "Replay of the main run, 3 Nov" }).isVisible())) fail(`/proof#archive ${tag}: the archive does not open with the replay of the main run first`);
+      if ((await landed("archive")).closed || !(await page.locator('#archive a[href="replay"]', { hasText: "Replay of the main run, 3 Nov" }).isVisible())) fail(`/proof#archive ${tag}: the archive does not open with the replay of the main run first`);
       await page.goto(`${base}/proof`, { waitUntil: "load" });
       await page.locator(".nums a.num.stop").click();
       await page.waitForTimeout(250);
@@ -724,6 +1061,22 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.waitForTimeout(300);
       const k = await fold("card-sourcing");
       if (!k.open || k.cards !== 3 || !k.inView) fail(`/airwallex#card-sourcing ${tag}: the fold around the card is not open, or the card not in view (open ${k.open}, top ${k.top} px)`);
+      // Every other target that sits in a fold opens it too (12 Nov): the Airwallex-only run and its steps (a fold inside
+      // a fold), the Airi run's steps, the platform run and the main run's flow, where the tiles and the other pages link.
+      for (const id of ["awx-1", "awx-1-steps", "airi-run-steps", "platform-run", "main-run"]) {
+        await page.goto(`${base}/proof`, { waitUntil: "load" });
+        await page.goto(`${base}/airwallex#${id}`, { waitUntil: "load" });
+        await page.waitForTimeout(300);
+        const t = (await page.evaluate(`(() => {
+          const t = document.getElementById(${JSON.stringify(id)});
+          if (!t) return null;
+          let closed = 0;
+          for (let d = t.closest("details"); d; d = d.parentElement && d.parentElement.closest("details")) if (!d.open) closed++;
+          const head = document.querySelector("header.top").getBoundingClientRect().bottom, r = t.getBoundingClientRect();
+          return { closed, shown: t.checkVisibility(), inView: r.top >= head - 2 && r.top < innerHeight / 2 };
+        })()`)) as { closed: number; shown: boolean; inView: boolean } | null;
+        if (!t || t.closed || !t.shown || !t.inView) fail(`/airwallex#${id} ${tag}: the target is missing, in a closed fold or not in view (${JSON.stringify(t)})`);
+      }
       // Without a hash the fold stays closed, as designed.
       await page.goto(`${base}/airwallex`, { waitUntil: "load" });
       if (await page.evaluate(`document.getElementById("controls").open`)) fail(`/airwallex ${tag}: the cards' fold is open without a link into it`);
@@ -735,23 +1088,26 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const res = await page.goto(`${base}/no/such/page`, { waitUntil: "load" });
       if (res?.status() !== 404) fail(`/no/such/page ${tag}: answered ${res?.status()}, not 404`);
       await look(page, `404 ${tag}`, w);
-      if ((await page.locator("main a.btn").count()) !== 4) fail(`404 ${tag}: not the four tabs`);
+      if ((await page.locator("main a.btn").count()) !== (WATCH_IN_MENU ? 4 : 3)) fail(`404 ${tag}: not the menu's tabs`);
     }
 
     // /judge, "Judge it in 3 minutes" (item 5.1): five steps, each with a checkbox and a time, three minutes in all; the
     // ticks survive a reload; the page asks nothing of any server (no request but the page, its font and its icon);
-    // and with /try/sign on, Home's flow leads to it (watch, then try/sign, then proof) and one quiet text link under the
-    // one button opens the tour, in the first screen (Max, 7 Nov).
+    // and with /try/sign on, Home's first button leads to it and one quiet footer link opens the tour (home-story, 12 Nov:
+    // Home has two buttons and no third call to action).
     if (judgeBase) {
       const asked: string[] = [];
       const onRequest = (r: { url(): string }) => { const u = new URL(r.url()); if (u.origin !== new URL(judgeBase).origin || !["/judge", "/assets/inter.woff2", "/assets/favicon.svg", "/favicon.ico"].includes(u.pathname)) asked.push(r.url()); };
       await page.goto(`${judgeBase}/`, { waitUntil: "load" });
       if ((await page.locator("main a.btn.primary").getAttribute("href")) !== "try/sign") fail(`/ (Home, with /try/sign) ${tag}: the button does not lead to /try/sign`);
-      const top = page.locator('p.more a[href="judge"]');
+      const top = page.locator('footer a.flink[href="judge"]');
       const box = await top.boundingBox();
-      if ((await page.locator('a[href="judge"]').count()) !== 1 || (await top.innerText()).trim() !== "Judging? Take the 3-minute tour" || !box || box.y + box.height > h || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: no one "Judging? Take the 3-minute tour" link beside the button, in the first screen, inside the page's gutter`);
-      if ((await page.locator("main a.btn").count()) !== 1) fail(`/ (Home, with /try/sign) ${tag}: more than one button`);
+      if ((await page.locator('a[href="judge"]').count()) !== 1 || (await top.innerText()).trim() !== "Judging? Take the 3-minute tour" || !box || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: no one "Judging? Take the 3-minute tour" link in the footer, inside the page's gutter`);
+      if ((await page.locator("main p.reassure").innerText()).trim() !== "A test passkey, no account, no money. About a minute.") fail(`/ (Home, with /try/sign) ${tag}: the line under the button is not /try/sign's`);
+      await checkHome(page, { url: `${judgeBase}/`, name: `/ (Home, with /try/sign) ${tag}`, width: w, height: h, touch: w < 500, tryHref: "try/sign", fail, quick: true });
+      await page.goto(`${judgeBase}/home?demo=4`, { waitUntil: "load" });
       await look(page, `/ (Home, with /try/sign) ${tag}`, w);
+      if (w <= 430) await checkTaps(page, { name: `/ (Home, with /try/sign) ${tag}, header and footer`, scopes: CHROME, fail });
       await page.screenshot({ path: join(shots, `home-trysign-${tag}.png`) });
       await top.click();
       await page.waitForURL(/\/judge$/);
@@ -765,6 +1121,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (steps.length !== 5 || steps.some((s) => !s.box || !s.secs || !s.links)) fail(`/judge ${tag}: not five steps, each with a checkbox, a time and a link (${JSON.stringify(steps)})`);
       if (steps.reduce((t, s) => t + s.secs, 0) !== 180) fail(`/judge ${tag}: the times do not add up to 3 minutes`);
       if (!(await page.isVisible("text=Want the code?")) || !(await page.isVisible("section.more >> text=How it works in 5 files"))) fail(`/judge ${tag}: no "Want the code? How it works in 5 files" at the bottom`);
+      // The tour starts on Home, not on the replay, and on a phone the whole page is 44 px targets: every box, title,
+      // button and link, the menu and the footer.
+      if ((await page.locator("ol.steps > li").first().locator(".go a").getAttribute("href")) !== "/home" || (await page.locator('a[href*="watch"]').count())) fail(`/judge ${tag}: the tour does not start on Home, or links to the replay`);
+      if (w <= 430) await checkTaps(page, { name: `/judge ${tag}`, scopes: ["body"], fail });
       // Tick steps 2 and 3 (one by its box, one by its title), reload: both still ticked, the count says so.
       await page.locator("#step-sign").check();
       await page.locator('label[for="step-trick"]').click();
@@ -778,6 +1138,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (asked.length) fail(`/judge ${tag}: asked a server for ${asked.join(", ")}`);
       await page.evaluate((key) => { try { localStorage.removeItem(key); } catch { /* blocked */ } }, JUDGE_KEY);
       // With localStorage throwing (blocked site data): no error, and the boxes still tick for as long as the page is open.
+      // Emulated by replacing window.localStorage with a throwing getter, which Firefox's page load does not survive (the
+      // load never ends), so this one emulation runs in Chromium and WebKit only, and says so.
+      if (BROWSER === "firefox") console.log(`info  /judge (storage blocked) ${tag}: not emulated in Firefox`);
+      else {
       const blocked = await browser.newContext({ viewport: { width: w, height: h }, colorScheme: scheme, isMobile: w < 500, hasTouch: w < 500 });
       await blocked.addInitScript(() => { Object.defineProperty(window, "localStorage", { get() { throw new DOMException("The operation is insecure.", "SecurityError"); } }); });
       const bp = await blocked.newPage();
@@ -789,6 +1153,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if ((await bp.locator("#prog").innerText()) !== "1 of 5 done" || !(await bp.locator("#s-proof").evaluate((li) => li.classList.contains("done")))) fail(`/judge (storage blocked) ${tag}: the box does not tick`);
       await look(bp, `/judge (storage blocked) ${tag}`, w);
       await blocked.close();
+      }
     }
 
     // The film: a moment from each scene draws without an error and without spilling over (it scales to fit).
@@ -807,6 +1172,34 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     await context.close();
   }
 }
+// /status in the live state, last (a sync makes the relay expect a live run for the next half hour): a runner syncs,
+// as the runner sends it (src/relay/runner.ts), and the page says a live run is in progress and no alarm stands.
+if (relay) {
+  const { openDb } = await import("../../src/db/open.js");
+  const { buildRelayState, stateHash } = await import("../../src/relay/state.js");
+  const state = buildRelayState(openDb(":memory:"), { rpId: "localhost", relayToken: "pages-check" }, new Date());
+  const synced = await fetch(`${relay.url}/api/runner/sync`, { method: "POST", headers: { authorization: "Bearer pages-check", "content-type": "application/json" }, body: JSON.stringify({ state_hash: stateHash(state), state, acks: [] }) });
+  if (synced.status !== 200) fail(`/status live: the runner's sync answered ${synced.status}`);
+  for (const [w, h] of [[390, 844], [1440, 900]] as const) {
+    for (const scheme of ["light", "dark"] as const) {
+      const context = await browser.newContext({ viewport: { width: w, height: h }, colorScheme: scheme, isMobile: w < 500, hasTouch: w < 500 });
+      const page = await context.newPage();
+      const tag = `${w}-${scheme}`;
+      page.on("console", (m) => { if (m.type() === "error") fail(`/status live ${tag}: console error: ${m.text()}`); });
+      page.on("pageerror", (e) => fail(`/status live ${tag}: page error: ${e.message}`));
+      await page.goto(`${relay.url}/status`, { waitUntil: "load" });
+      await page.waitForFunction(() => document.getElementById("now")?.hasAttribute("data-tone"), undefined, { timeout: 10_000 }).catch(() => fail(`/status live ${tag}: the script never finished reading /health`));
+      await look(page, `/status live ${tag}`, w);
+      const now = (await page.locator("#now").innerText()).replace(/\s+/g, " ").trim();
+      if ((await page.locator("#now").getAttribute("data-tone")) !== "ok" || !/^A live run is in progress Site Up Runner Syncing Last sync In the last \d+ minutes? Alarms None The raw answer: \/health$/.test(now)) fail(`/status live ${tag}: not the live state in plain words (${now})`);
+      const words = (await page.locator("main").innerText()).split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
+      if (words > 90) fail(`/status live ${tag}: ${words} words in sight, budget 90`);
+      await page.screenshot({ path: join(shots, `status-live-${tag}.png`), fullPage: true });
+      await context.close();
+    }
+  }
+  console.log("/docs and /status checked: the judge's copies, /status on the local relay quiet, with /health failing, and live");
+}
 await browser.close();
 judge?.server.close();
 relay?.server.close();
@@ -814,4 +1207,4 @@ if (failures.length) {
   console.log(`\npages check: ${failures.length} problem(s)`);
   process.exit(1);
 }
-console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /visa, /claude (folds open), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? ", /judge (ticks kept across a reload, and with storage blocked) and Home's link to it" : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);
+console.log(`pages check passes in ${BROWSER}: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /visa, /claude (folds open), /pricing, /security (folds open), the menu (four tabs and More, by keyboard too), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? `, /judge (ticks kept across a reload${BROWSER === "firefox" ? "; storage blocked not emulated in Firefox" : ", and with storage blocked"}) and Home's link to it` : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);

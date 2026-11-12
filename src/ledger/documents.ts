@@ -6,6 +6,7 @@
 import type { DB } from "../db/open.js";
 import { INPUT_VAT, isBank, OUTPUT_VAT, PAYABLES, RECEIVABLES } from "./accounts.js";
 import { LedgerRefused, postEntry, type LineInput, type Posted } from "./core.js";
+import { assertSignedTerms } from "./termsLock.js";
 import { VAT_CODES, vatOn } from "./vat.js";
 
 export interface DocumentLine {
@@ -25,6 +26,8 @@ interface DocumentBase {
   currency: string;
   created_by: string;
   source_key?: string;
+  /** The signed proposal this document was approved under: booked only while its stored terms hash to what was signed. */
+  proposal_id?: string;
   lines: DocumentLine[];
 }
 
@@ -64,6 +67,7 @@ export function purchaseInvoice(db: DB, inv: DocumentBase & { supplier: string }
     lines.push({ account: OUTPUT_VAT, ...side(reverseVat, "credit"), currency: inv.currency, doc_ref: inv.doc_ref, memo: "VAT owed, reverse charge" });
   }
   lines.push({ account: PAYABLES, ...side(payable, "credit"), currency: inv.currency, party: inv.supplier, doc_ref: inv.doc_ref, due_date: inv.due_date });
+  if (inv.proposal_id) assertSignedTerms(db, inv.proposal_id, { amount_cents: payable, currency: inv.currency });
   return postEntry(db, {
     date: inv.date, description: `Purchase invoice ${inv.doc_ref} from ${inv.supplier}`, created_by: inv.created_by, source_key: inv.source_key ?? `purchase:${inv.supplier}:${inv.doc_ref}`,
     doc_ref: inv.doc_ref, doc_sha256: inv.doc_sha256, lines,
@@ -113,12 +117,15 @@ export interface Settlement {
   /** The payment's own id (an Airwallex transfer, a deposit): posts once. */
   source_key?: string;
   proof?: string;
+  /** The signed proposal the payment was made under: booked only while its stored terms hash to what was signed. */
+  proposal_id?: string;
 }
 
 /** Paying a supplier's open item, or receiving a customer's: never more than is open. */
 export function settleOpenItem(db: DB, s: Settlement, now = new Date()): Posted {
   if (!isBank(s.bank)) throw new LedgerRefused(`${s.bank} is not a bank account`);
   if (!Number.isInteger(s.amount_cents) || s.amount_cents <= 0) throw new LedgerRefused("an amount in whole cents above zero");
+  if (s.proposal_id) assertSignedTerms(db, s.proposal_id, { amount_cents: s.amount_cents, currency: s.currency });
   const kind = s.kind === "pay" ? "payables" : "receivables";
   // Review of PR #108, finding 5: a retried payment (a webhook delivered again) is the payment already posted, and the
   // open amount is read inside the same write transaction, so two processes cannot both pay what is open once.

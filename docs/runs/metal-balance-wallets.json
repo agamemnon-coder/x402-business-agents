@@ -1,0 +1,8 @@
+[
+ {"label":"Northwind business account (sourcing, support, treasury mandates)","address":"0x828c7DE12cab8149AA516958433F6EEe23aEC875","source":"docs/demo/metal.json"},
+ {"label":"Summit Outfitters, simulated customer account","address":"0xB6C24EC17Ab3fa37d80eC7739AaF387e49a1eB25","source":"docs/demo/metal.json"},
+ {"label":"Northwind sweep wallet (treasury payee)","address":"0x1fB9a22f89D6Df92abF20efDe0E7d4cC5f0455A5","source":"docs/demo/metal.json"},
+ {"label":"Sweep wallet W, holder of the 0.25 hold of 10 November","address":"0xb598Ae440Ff61d234999f2E9923fECB94E85962a","source":"docs/runs/2026-10-29-bootstrap.md, docs/runs/2026-11-10-metal-extra.md"},
+ {"label":"Business account B (Tidemark Data)","address":"0x4F95173f1EA61579dD03f81E73D74E6BDBbA1462","source":"docs/runs/2026-10-29-bootstrap.md"},
+ {"label":"Customer account C (Kestrel Quant)","address":"0xeB27B08240f4FE24e629c41D3db82bc5228Ca9E5","source":"docs/runs/2026-10-29-bootstrap.md"}
+]

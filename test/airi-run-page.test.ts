@@ -1,5 +1,6 @@
 // The Airi run on the site (7 Nov): Visa Intelligent Commerce via Airwallex's Airi, a separate world, shows on /airwallex
-// (in full), at the top of /visa (in full, above the TAP run) and on /proof under the partners (short), dated and
+// (in full), on /visa (in full, under the page's VIC heading, drawing and overview, above the TAP section; 12 Nov) and on
+// /proof under the partners (short), dated and
 // labelled "Airwallex sandbox, test card, test money", in the owner's copy of 7 Nov word for word (the heading, the
 // summary sentence, purchase A's two sentences, the three outcome badges, the 5 of 5 checks linked to the run log's
 // checks section), every figure and id from its record (docs/demo/airi-run.json), the ids in a "Details" fold, nothing
@@ -9,7 +10,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import { VISA_ENTRY_LINE } from "../src/redesign/partners.js";
-import { AIRI_A_SENTENCE, AIRI_BADGES, AIRI_CHECKS_URL, AIRI_CREDENTIAL, AIRI_RUN_FILE, AIRI_RUN_LABEL, AIRI_RUN_LOG, AIRI_SUMMARY, airiHeading, airiRun, airiRunBlock, airiRunHtml, airiRunSummary, type AiriRunRecord } from "../src/redesign/airiRun.js";
+import { AIRI_A_SENTENCE, AIRI_BADGES, AIRI_CHECKS_URL, AIRI_CREDENTIAL, AIRI_RUN_FILE, AIRI_RUN_LABEL, AIRI_RUN_LOG, AIRI_SUMMARY, airiHeading, airiSummaryLine, airiRun, airiRunBlock, airiRunHtml, airiRunSummary, type AiriRunRecord } from "../src/redesign/airiRun.js";
 
 const RAW = readFileSync(AIRI_RUN_FILE, "utf8");
 const rec = JSON.parse(RAW) as AiriRunRecord;
@@ -21,9 +22,9 @@ const block = (html: string) => (html === pages.proof ? /<div class="card airi" 
 /** The block without its fold: what a visitor reads before opening anything. */
 const inSight = (html: string) => text(block(html).replace(/<details[\s\S]*?<\/details>/, " "));
 const PAGES = ["airwallex", "visa", "proof"] as const;
-/** The owner's copy (7 Nov), word for word. */
+/** The owner's copy (7 Nov), word for word; the summary since 12 Nov (jury panel): the run was scripted, and within the limit it is "with no Purser approval". */
 const HEADING = "Visa Intelligent Commerce via Airwallex's Airi: a live run (7 Nov)";
-const SUMMARY = "Agents paid with a single-use Visa (VIC) credential from Airi, each purchase confirmed by the cardholder's passkey: within Purser's limit without the CFO, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.";
+const SUMMARY = "A scripted run, no Claude call: paid with a single-use Visa (VIC) credential from Airi, each purchase confirmed by the cardholder's passkey: within Purser's limit with no Purser approval, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.";
 const A_SENTENCE = "Within Purser's limit, no Purser approval is needed. Airi itself asks the cardholder to confirm each purchase with a passkey.";
 const BADGES = ["✓ Within the limit", "✓ Paid after Face ID", "✕ Refused by Purser"];
 const CHECKS_URL = "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-07-vic-1.md#checks-the-records-checks";
@@ -40,7 +41,8 @@ describe("the Airi run on the site", () => {
   });
 
   it("says the owner's copy word for word on /airwallex, /visa and /proof: heading, summary, A's sentences, the three badges, the 5 of 5 checks linked", () => {
-    expect([airiHeading("7 Nov"), AIRI_SUMMARY, AIRI_A_SENTENCE, Object.values(AIRI_BADGES), AIRI_CHECKS_URL]).toEqual([HEADING, SUMMARY, A_SENTENCE, BADGES, CHECKS_URL]);
+    expect([airiHeading("7 Nov"), airiSummaryLine(rec), AIRI_A_SENTENCE, Object.values(AIRI_BADGES), AIRI_CHECKS_URL]).toEqual([HEADING, SUMMARY, A_SENTENCE, BADGES, CHECKS_URL]);
+    expect(SUMMARY.endsWith(AIRI_SUMMARY)).toBe(true);
     for (const name of PAGES) {
       const html = block(pages[name]!), t = inSight(pages[name]!);
       expect({ name, found: html.length > 0 }).toEqual({ name, found: true });
@@ -68,19 +70,21 @@ describe("the Airi run on the site", () => {
       expect(block(pages[name]!)).toContain('<details class="fold" id="airi-run-steps"><summary>Details</summary>');
       // The five checks named in the fold, each with its result, from the record.
       // Each check in words (its key only as the item's title, jargon out: 10 Nov).
-      for (const [k, c] of Object.entries(rec.checks)) { expect(text(block(pages[name]!))).toContain(`✓ ${c.detail.charAt(0).toUpperCase()}${c.detail.slice(1)}`); expect(block(pages[name]!)).toContain(`title="${k}"`); }
+      // (The record's "A ran without the CFO" reads "with no Purser approval" on the page: the same person confirmed A in Airi, as the cardholder.)
+      for (const [k, c] of Object.entries(rec.checks)) { expect(text(block(pages[name]!))).toContain(`✓ ${c.detail.charAt(0).toUpperCase()}${c.detail.slice(1)}`.replace("without the CFO", "with no Purser approval")); expect(block(pages[name]!)).toContain(`title="${k}"`); }
     }
     expect(block(pages.proof!)).toContain('href="airwallex#airi-run-steps"');
     expect(text(block(pages.proof!))).toContain("Details: every step and id");
   });
 
-  it("sits below awx-1 on /airwallex, at the top of /visa above the TAP run, and in sight under the partners on /proof", () => {
+  it("sits below awx-1 on /airwallex, on /visa under the VIC heading and above the TAP section, and in sight under the partners on /proof", () => {
     expect(pages.airwallex!.indexOf('id="airi-run"')).toBeGreaterThan(pages.airwallex!.indexOf('id="awx-1"'));
     expect(pages.airwallex!).toContain('<details class="fold" id="airi-run-steps">');
-    // /visa: first in <main>, before the page's h1 and the TAP flow; its heading an h2 there, an h3 on /airwallex.
-    const visa = pages.visa!, main = visa.indexOf("<main");
-    expect(visa.indexOf('id="airi-run"')).toBeGreaterThan(main);
-    expect(visa.indexOf('id="airi-run"')).toBeLessThan(visa.indexOf("<h1"));
+    // /visa (12 Nov): under the page's h1, which is the VIC heading, and above the TAP section and its flow; its
+    // heading an h2 there, an h3 on /airwallex.
+    const visa = pages.visa!;
+    expect(visa.indexOf('id="airi-run"')).toBeGreaterThan(visa.indexOf("<h1"));
+    expect(visa.indexOf('id="airi-run"')).toBeLessThan(visa.indexOf('id="visa-tap"'));
     expect(visa.indexOf('id="airi-run"')).toBeLessThan(visa.indexOf('class="flow card'));
     expect(block(visa)).toMatch(/<h2 class="airi-h">/);
     expect(block(pages.airwallex!)).toMatch(/<h3 class="airi-h">/);
@@ -99,7 +103,9 @@ describe("the Airi run on the site", () => {
     for (const x of [a.mandate_id!, a.payment_intent_id!, b.proposal_id!, b.mandate_id!, b.payment_intent_id!, c.code!, b.terms_sha256!.slice(0, 8)]) expect({ x, shown: t.includes(x) }).toEqual({ x, shown: true });
     expect(t).toContain(`PaymentIntent ${a.payment_intent_id} SUCCEEDED, reported to Airi`);
     expect(t).toContain(`PaymentIntent ${b.payment_intent_id} SUCCEEDED: P-0002 EXECUTED`);
-    expect(t).toContain(`within Purser's limit of EUR ${rec.policy.alone_max_eur} for this rail: the Sourcing agent alone, with no Purser approval. The cardholder confirmed it once in Airi with a passkey`);
+    // Purchase A (12 Nov): no "agent alone"; no CFO approval, and the cardholder's own step right after it.
+    expect(t).toContain(`within Purser's limit of EUR ${rec.policy.alone_max_eur} for this rail: no CFO approval. The cardholder still confirmed it once in Airi with a passkey, and the Sourcing agent received`);
+    expect(t).not.toMatch(/agent alone/);
     expect(t).toContain(`(terms hash ${b.terms_sha256!.slice(0, 8)}…)`);
     expect(t).toContain(AIRI_CREDENTIAL);
     expect(t).toContain(`refused by Purser, PURSER_MERCHANT_NOT_ALLOWED, with 0 Airi calls`);
@@ -126,10 +132,9 @@ describe("the Airi run on the site", () => {
       expect(b).not.toMatch(/\b[0-9a-f]{64}\b/);
       expect(text(b)).not.toMatch(/vic-1|emulat|\bMax\b|\b(he|him|his|she|her|hers)\b|Visa Award|code decides/i);
     }
-    // Since 7 Nov (Visa: the VIC run counts) the Visa Award is named once, in Home's Kit line, "entered for the Metal Award
-    // and the Visa Award"; nowhere else on these pages, and never with TAP.
-    expect(text(pages.home!).match(/Visa Award/g)).toHaveLength(1);
-    expect(text(pages.home!)).toContain("entered for the Metal Award and the Visa Award");
+    // Home names no award since it became one story (home-story, 12 Nov: no Kit line, no awards strip; it had said both
+    // "entered for the Visa Award" and "not an award entry"). /visa names the entry, below.
+    expect(text(pages.home!)).not.toMatch(/Visa Award|Metal Award/);
     // Since 10 Nov (Max: we compete for the Visa Award, keep it visible) /visa opens with one plain sentence naming the
     // entry, the Kit line's words, then the run; nowhere else on these pages.
     expect(text(pages.visa!)).toContain(VISA_ENTRY_LINE);

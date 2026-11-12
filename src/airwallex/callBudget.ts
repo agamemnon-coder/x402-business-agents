@@ -16,8 +16,13 @@ export class AirwallexBudgetSpent extends Error {
   }
 }
 
-// A prefixed id (acct_SC-QD89f…, ahfi_IriU…, tr_…) has a digit or a capital in it; a word such as update_status has not.
-const ID = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{20,}|[a-z]+_(?=[A-Za-z0-9_-]*[A-Z0-9])[A-Za-z0-9_-]{6,})$/;
+/**
+ * A path segment that is an id: a UUID, a long hex string, or a prefixed id such as int_sgpv…9h, acct_SC-QD89f…, ahfi_IriU…
+ * A prefixed id has a digit or a capital in it, or is 16 characters or more; a word such as update_status or
+ * payment_intents is not one (12 Nov: `payment_intents` was folded as if it were an id, so the read-back's calls were
+ * logged as GET /pa/{id}/{id}).
+ */
+const ID = /^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[0-9a-fA-F]{20,}|[a-z]+_(?:(?=[A-Za-z0-9_-]*[A-Z0-9])[A-Za-z0-9_-]{6,}|[A-Za-z0-9]{16,}))$/;
 
 /** A sandbox path with its ids replaced by {id}: `/api/v1/transfers/1b…/x` → `/transfers/{id}/x`. */
 export function endpointOf(url: string): string {

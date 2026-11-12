@@ -4,10 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { openDb, type DB } from "../src/db/open.js";
-import { mandateCreateArgs, type AiriMandate, type AiriMandateRequest } from "../src/airi/client.js";
+import { AIRI_TEXT_MAX, mandateCreateArgs, type AiriMandate, type AiriMandateRequest } from "../src/airi/client.js";
 import { AIRI_HARD_CAP_CENTS, type AiriPolicy } from "../src/airi/policy.js";
-import { AIRI_PURCHASE_KIND, TMP_PREFIX, decideAiriPurchase, executeAiriPurchase, recoverAiriPurchases, requestAiriPurchase, type AiriDeps, type AiriPurchaseRequest } from "../src/airi/purchase.js";
-import { STAND_IN_LABEL, StandInAiriClient, StandInCheckout } from "../src/airi/standIn.js";
+import { AIRI_PURCHASE_KIND, READ_BACK_TRIES, TMP_PREFIX, decideAiriPurchase, executeAiriPurchase, mandateDescription, mandateTag, recoverAiriPurchases, requestAiriPurchase, type AiriDeps, type AiriPurchaseRequest, type AiriTerms } from "../src/airi/purchase.js";
+import { STAND_IN_LABEL, StandInAiriClient, StandInCheckout, type StandInScript } from "../src/airi/standIn.js";
 import { decide, resuming } from "../src/policy/approvals.js";
 import { startStep } from "../src/policy/saga.js";
 
@@ -37,11 +37,14 @@ afterEach(() => { resuming.clear(); });
 function deps(o: { airi?: StandInAiriClient; checkout?: StandInCheckout } = {}) {
   const shown: string[] = [];
   const cleared: string[] = [];
+  const waits: number[] = [];
   const d: AiriDeps & { airi: StandInAiriClient; checkout: StandInCheckout } = {
     airi: o.airi ?? new StandInAiriClient(), checkout: o.checkout ?? new StandInCheckout(), tmpRoot,
     showPasskeyUrl: (url) => shown.push(url), clearPasskeyUrl: (id) => cleared.push(id),
+    // The wait between two tries of the mandate read-back: none in tests, its length recorded.
+    sleep: async (ms) => { waits.push(ms); },
   };
-  return Object.assign(d, { shown, cleared });
+  return Object.assign(d, { shown, cleared, waits });
 }
 
 const ops = (d: { airi: StandInAiriClient }) => d.airi.calls.map((c) => c.op);
@@ -98,8 +101,8 @@ describe("a purchase within the CFO's limit", () => {
     const d = deps();
     const out = await requestAiriPurchase(db, d, req(), T0);
     expect(out).toMatchObject({ status: "succeeded", mandateId: "standin-mdt-1", reference: "standin-order-1", label: STAND_IN_LABEL });
-    expect(ops(d)).toEqual(["mandate create", "mandate get-credential", "mandate result"]);
-    expect(d.airi.calls[2]!.args).toEqual(["--mandate-id", "standin-mdt-1", "--result", "SUCCEEDED"]);
+    expect(ops(d)).toEqual(["mandate create", "mandate list", "mandate get-credential", "mandate result"]);
+    expect(d.airi.calls[3]!.args).toEqual(["--mandate-id", "standin-mdt-1", "--result", "SUCCEEDED"]);
     expect(d.shown).toEqual(["https://stand-in.invalid/approve/1"]);
     if (out.status !== "succeeded") throw new Error("unreachable");
     expect(d.cleared).toEqual([out.actionId]);
@@ -108,7 +111,7 @@ describe("a purchase within the CFO's limit", () => {
     expect(readdirSync(tmpRoot).filter((n) => n.startsWith(TMP_PREFIX))).toEqual([]);
     expect(row(db, out.actionId)).toMatchObject({ route: "alone", status: "SETTLED", outcome: "SUCCEEDED", mandate_id: "standin-mdt-1" });
     expect(db.prepare("SELECT COUNT(*) AS n FROM proposals").get()).toEqual({ n: 0 });
-    expect(events(db)).toEqual(["airi.purchase_requested", "airi.checkout_prepared", "airi.mandate_created", "airi.waiting_for_tap", "airi.credential_received", "airi.checkout_result", "airi.result_reported"]);
+    expect(events(db)).toEqual(["airi.purchase_requested", "airi.rail_choice", "airi.checkout_prepared", "airi.mandate_created", "airi.mandate_read_back", "airi.waiting_for_tap", "airi.credential_received", "airi.checkout_result", "airi.result_reported"]);
     expect((db.prepare("SELECT step, status FROM money_steps ORDER BY n").all() as { step: string; status: string }[]).map((s) => `${s.step}:${s.status}`))
       .toEqual(["airi.checkout_prepare:DONE", "airi.mandate:DONE", "airi.checkout_pay:DONE", "airi.result:DONE"]);
   });
@@ -172,7 +175,7 @@ describe("above the limit: the CFO's Face ID over the terms", () => {
     approve(db, p.proposal_id);
     const done = await executeAiriPurchase(db, d, p.proposal_id, T0);
     expect(done).toMatchObject({ status: "succeeded", proposalId: p.proposal_id, orderSha256: p.terms_sha256 });
-    expect(ops(d)).toEqual(["mandate create", "mandate get-credential", "mandate result"]);
+    expect(ops(d)).toEqual(["mandate create", "mandate list", "mandate get-credential", "mandate result"]);
     expect(d.airi.calls[0]!.args).toContain("45.00");
     expect(proposal(db, p.proposal_id).status).toBe("EXECUTED");
     expect(row(db, p.proposal_id)).toMatchObject({ route: "cfo", status: "SETTLED" });
@@ -260,13 +263,140 @@ describe("above the limit: the CFO's Face ID over the terms", () => {
   });
 });
 
+describe("the CFO's terms hash in the Airi mandate, read back before the credential", () => {
+  const descriptionSent = (d: { airi: StandInAiriClient }) => { const a = d.airi.calls.find((c) => c.op === "mandate create")!.args; return a[a.indexOf("--description") + 1]!; };
+  /** A purchase above the limit, approved by the CFO, run against an Airi stand-in that follows `script`. */
+  async function approvedPurchase(script: StandInScript = {}, over: Partial<AiriPurchaseRequest> = {}) {
+    const db = fresh();
+    const d = deps({ airi: new StandInAiriClient(script) });
+    const out = await requestAiriPurchase(db, d, big(over), T0);
+    if (out.status !== "pending_approval") throw new Error(`expected a proposal, got ${out.status}`);
+    approve(db, out.proposalId);
+    const p = proposal(db, out.proposalId);
+    const res = await executeAiriPurchase(db, d, out.proposalId, T0);
+    return { db, d, p, res };
+  }
+
+  it("the description carries the approved action id and the full terms SHA-256; a long text is cut, never the tag", async () => {
+    const { d, p, res } = await approvedPurchase();
+    expect(res).toMatchObject({ status: "succeeded" });
+    expect(descriptionSent(d)).toBe(`order 1 [${p.proposal_id} terms:${p.terms_sha256}]`);
+    expect(p.terms_sha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(mandateTag(descriptionSent(d))).toEqual({ actionId: p.proposal_id, termsSha256: p.terms_sha256 });
+    // Within the limit, with no proposal: the purchase's own id and its order hash, the same way.
+    const db = fresh(), alone = deps();
+    const a = await requestAiriPurchase(db, alone, req(), T0);
+    if (a.status !== "succeeded") throw new Error(`expected a purchase, got ${a.status}`);
+    expect(descriptionSent(alone)).toBe(`order 1 [${a.actionId} terms:${a.orderSha256}]`);
+    // 400 characters of text: the whole stays within Purser's bound for airi-cli's text flags, the tag whole at its end.
+    const long = await approvedPurchase({}, { description: `${"long text ".repeat(40)}end` });
+    expect(long.res).toMatchObject({ status: "succeeded" });
+    const sent = descriptionSent(long.d);
+    expect(sent.length).toBeLessThanOrEqual(AIRI_TEXT_MAX);
+    expect(sent.endsWith(` [${long.p.proposal_id} terms:${long.p.terms_sha256}]`)).toBe(true);
+    expect(sent.startsWith("long text long text")).toBe(true);
+    // The hash in it is the hash of the very terms the mandate is made from.
+    const terms = JSON.parse(long.p.terms_json) as AiriTerms;
+    expect(mandateDescription(terms, long.p.proposal_id)).toBe(sent);
+    expect(mandateDescription({ ...terms, amount: "44.00" }, long.p.proposal_id)).not.toBe(sent);
+    // No tag, or half a hash, is no tag.
+    expect(mandateTag("order 1 [P-0001]")).toBeNull();
+    expect(mandateTag(`order 1 [P-0001 terms:${"a".repeat(63)}]`)).toBeNull();
+  });
+
+  it("reads the mandate back from Airi after creating it: only then is the link shown and the credential asked for", async () => {
+    const seen: { op: string; linksShown: number }[] = [];
+    const db = fresh();
+    let d: ReturnType<typeof deps> | null = null;
+    class Watching extends StandInAiriClient {
+      override async readMandate(id: string, from: string) { seen.push({ op: "read", linksShown: d!.shown.length }); return super.readMandate(id, from); }
+      override async getCredential(id: string, file: string) { seen.push({ op: "credential", linksShown: d!.shown.length }); return super.getCredential(id, file); }
+    }
+    d = deps({ airi: new Watching() });
+    const out = await requestAiriPurchase(db, d, big(), T0);
+    if (out.status !== "pending_approval") throw new Error("expected a proposal");
+    approve(db, out.proposalId);
+    const p = proposal(db, out.proposalId);
+    expect(await executeAiriPurchase(db, d, out.proposalId, T0)).toMatchObject({ status: "succeeded" });
+    expect(seen).toEqual([{ op: "read", linksShown: 0 }, { op: "credential", linksShown: 1 }]);
+    // The read-back names the mandate by its id, from a minute before the purchase began.
+    expect(d.airi.calls.find((c) => c.op === "mandate list")!.args).toEqual(["--mandate-id", "standin-mdt-1", "--created-from", "2026-11-07T09:59:00Z"]);
+    const row = db.prepare("SELECT subject, payload_json FROM audit_log WHERE event = 'airi.mandate_read_back'").get() as { subject: string; payload_json: string };
+    expect(row.subject).toBe(p.proposal_id);
+    expect(JSON.parse(row.payload_json)).toMatchObject({ action_id: p.proposal_id, mandate_id: "standin-mdt-1", order_sha256: p.terms_sha256, terms_sha256_in_mandate: p.terms_sha256, match: true });
+    expect(d.waits).toEqual([]);
+  });
+
+  it("Airi's stored mandate carries another hash: refused, the mandate cancelled, no link shown, no credential asked for", async () => {
+    const other = "0".repeat(64);
+    const { db, d, p, res } = await approvedPurchase({ stored: (text) => text.replace(/terms:[0-9a-f]{64}/, `terms:${other}`) });
+    expect(res).toMatchObject({ status: "refused", by: "purser", code: "PURSER_MANDATE_HASH_MISMATCH", mandateId: "standin-mdt-1" });
+    expect((res as { reason: string }).reason).toContain(`carries terms 00000000…, not the approved ${p.terms_sha256.slice(0, 8)}…`);
+    expect(ops(d)).toEqual(["mandate create", "mandate list", "mandate cancel"]);
+    expect(d.shown).toEqual([]);
+    expect(d.checkout.seen.map((x) => x.op)).toEqual(["prepare"]);
+    expect(proposal(db, p.proposal_id).status).toBe("FAILED");
+    expect(row(db, p.proposal_id)).toMatchObject({ status: "RELEASED", code: "PURSER_MANDATE_HASH_MISMATCH" });
+    expect(events(db)).not.toContain("airi.mandate_read_back");
+    expect(events(db)).not.toContain("airi.waiting_for_tap");
+    // The audit row names both hashes in full: they are not secrets.
+    expect(auditText(db)).toContain(other);
+  });
+
+  it("another action's tag, or a description that lost its tag: the same refusal", async () => {
+    const elsewhere = await approvedPurchase({ stored: (text) => text.replace("[P-0001 ", "[P-0009 ") });
+    expect(elsewhere.res).toMatchObject({ status: "refused", code: "PURSER_MANDATE_HASH_MISMATCH" });
+    expect((elsewhere.res as { reason: string }).reason).toMatch(/P-0009/);
+    const cut = await approvedPurchase({ stored: (text) => text.slice(0, 20) });
+    expect(cut.res).toMatchObject({ status: "refused", code: "PURSER_MANDATE_HASH_MISMATCH" });
+    expect((cut.res as { reason: string }).reason).toMatch(/does not carry this purchase's id and terms hash/);
+    for (const x of [elsewhere, cut]) { expect(ops(x.d)).toEqual(["mandate create", "mandate list", "mandate cancel"]); expect(x.d.shown).toEqual([]); }
+  });
+
+  it("the mandate cannot be read back (not listed, no description, the list fails): refused, cancelled, no credential asked for", async () => {
+    const unlisted = await approvedPurchase({ unlistedReads: READ_BACK_TRIES });
+    expect(unlisted.res).toMatchObject({ status: "refused", by: "purser", code: "PURSER_MANDATE_NOT_READ_BACK", mandateId: "standin-mdt-1" });
+    expect(ops(unlisted.d)).toEqual(["mandate create", ...Array.from({ length: READ_BACK_TRIES }, () => "mandate list"), "mandate cancel"]);
+    expect(unlisted.d.waits).toHaveLength(READ_BACK_TRIES - 1);
+    const bare = await approvedPurchase({ stored: () => null });
+    expect(bare.res).toMatchObject({ status: "refused", code: "PURSER_MANDATE_NOT_READ_BACK" });
+    expect((bare.res as { reason: string }).reason).toMatch(/no description/);
+    const failing = await approvedPurchase({ failRead: "list_unavailable" });
+    expect(failing.res).toMatchObject({ status: "refused", code: "PURSER_MANDATE_NOT_READ_BACK" });
+    expect((failing.res as { reason: string }).reason).toMatch(/list_unavailable/);
+    for (const x of [unlisted, bare, failing]) {
+      expect(x.d.shown).toEqual([]);
+      expect(ops(x.d).at(-1)).toBe("mandate cancel");
+      expect(ops(x.d)).not.toContain("mandate get-credential");
+      expect(row(x.db, x.p.proposal_id)).toMatchObject({ status: "RELEASED", code: "PURSER_MANDATE_NOT_READ_BACK" });
+    }
+  });
+
+  it("a read that failed is tried again (it is read-only): one failed list does not end the purchase; three do", async () => {
+    const once = await approvedPurchase({ failRead: "timeout", failReads: 1 });
+    expect(once.res).toMatchObject({ status: "succeeded" });
+    expect(ops(once.d)).toEqual(["mandate create", "mandate list", "mandate list", "mandate get-credential", "mandate result"]);
+    const always = await approvedPurchase({ failRead: "timeout" });
+    expect(always.res).toMatchObject({ status: "refused", code: "PURSER_MANDATE_NOT_READ_BACK" });
+    expect((always.res as { reason: string }).reason).toMatch(new RegExp(`in ${READ_BACK_TRIES} tries \\(.*timeout`));
+    expect(ops(always.d)).toEqual(["mandate create", ...Array.from({ length: READ_BACK_TRIES }, () => "mandate list"), "mandate cancel"]);
+  });
+
+  it("a mandate listed a moment later is read on the next try", async () => {
+    const { d, res } = await approvedPurchase({ unlistedReads: 1 });
+    expect(res).toMatchObject({ status: "succeeded" });
+    expect(ops(d)).toEqual(["mandate create", "mandate list", "mandate list", "mandate get-credential", "mandate result"]);
+    expect(d.waits).toHaveLength(1);
+  });
+});
+
 describe("Airi and the checkout answer", () => {
   it("Airi refuses the credential: its code as given; the mandate cancelled; no checkout payment", async () => {
     const db = fresh();
     const d = deps({ airi: new StandInAiriClient({ refuseCredential: "STANDIN_DENIED" }) });
     expect(await requestAiriPurchase(db, d, req(), T0)).toMatchObject({ status: "refused", by: "airi", code: "STANDIN_DENIED", mandateId: "standin-mdt-1" });
     expect(d.checkout.seen.map((s) => s.op)).toEqual(["prepare"]);
-    expect(ops(d)).toEqual(["mandate create", "mandate get-credential", "mandate cancel"]);
+    expect(ops(d)).toEqual(["mandate create", "mandate list", "mandate get-credential", "mandate cancel"]);
   });
 
   it("no tap within the wait: Purser stops, cancels the mandate, releases the hold", async () => {
@@ -274,7 +404,7 @@ describe("Airi and the checkout answer", () => {
     const d = deps({ airi: new StandInAiriClient({ noTap: true }) });
     const out = await requestAiriPurchase(db, d, req(), T0);
     expect(out).toMatchObject({ status: "refused", by: "purser", code: "PURSER_NO_TAP" });
-    expect(ops(d)).toEqual(["mandate create", "mandate get-credential", "mandate cancel"]);
+    expect(ops(d)).toEqual(["mandate create", "mandate list", "mandate get-credential", "mandate cancel"]);
     if (out.status !== "refused") throw new Error("unreachable");
     expect(row(db, out.actionId!)).toMatchObject({ status: "RELEASED" });
   });
@@ -301,7 +431,7 @@ describe("Airi and the checkout answer", () => {
     const d = deps({ checkout: new StandInCheckout({ noAnswer: true }) });
     const out = await requestAiriPurchase(db, d, req(), T0);
     expect(out).toMatchObject({ status: "unconfirmed" });
-    expect(ops(d)).toEqual(["mandate create", "mandate get-credential"]);
+    expect(ops(d)).toEqual(["mandate create", "mandate list", "mandate get-credential"]);
     expect(events(db)).toContain("airi.checkout_unconfirmed");
     if (out.status !== "unconfirmed") throw new Error("unreachable");
     expect(row(db, out.actionId)).toMatchObject({ status: "UNCONFIRMED" });

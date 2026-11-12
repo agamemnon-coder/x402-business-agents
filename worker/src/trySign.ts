@@ -24,6 +24,7 @@
 
 import { COMMON_HEADERS, rateKey, type Sql } from "./core.js";
 import { ATTACKS, TRICKS, TEST_ALLOWLIST, ibanSha256, runTrick, type AgentCall, type Attack } from "./trick.js";
+import { cleanAttempt, runTalk, talkCopy, talkTally, TALK_MAX, TALK_RESERVE_USD, type TalkSource } from "./talkRound.js";
 import type { InvoiceReadSource, InvoiceReadingLive } from "../../src/try/claude.js";
 import type { AgentAsk } from "../../src/try/world.js";
 import { verifyAssertion, type PublicKeyXY } from "./webauthn.js";
@@ -46,6 +47,8 @@ export { PAID_ALONE };
 
 /** Live agent calls (section 6): kept aside per call before it, settled after; per address an hour; everyone a minute. */
 export const TRICK_RESERVE_USD = 0.03;
+/** "Talk the agent round": attempts per address and hour. */
+export const TALK_PER_HOUR = 5;
 /** Kept aside before the Treasury agent's advice (Opus, up to five calls), settled after (src/claude/pricing.ts). */
 export const ADVICE_RESERVE_USD = 0.15;
 export const LIVE_PER_HOUR = 20;
@@ -427,6 +430,7 @@ const BODY: Record<string, Record<string, (v: unknown) => boolean>> = {
   "/agents": { token: optional((v) => typeof v === "string"), step: optional((v) => typeof v === "string" && (AGENT_STEPS as readonly string[]).includes(v)) },
   // 6c: the world's hash chain, every row of it.
   "/chain": { token: optional((v) => typeof v === "string") },
+  "/talk": { token: optional((v) => typeof v === "string"), attempt: (v) => typeof v === "string" && v.length <= TALK_MAX * 4 },
   "/trick": { token: optional((v) => typeof v === "string"), attack: (v) => typeof v === "string" && (ATTACKS as readonly string[]).includes(v) },
   "/sign": { token: optional((v) => typeof v === "string"), proposal_id: (v) => typeof v === "string" && PROPOSAL_ID.test(v), canonical: (v) => typeof v === "string" && v.length <= MAX_TERMS, credential: () => true },
   // Step 0: the agent's whole policy (read field by field in src/try/policy.ts); a looser one with its terms and signature.
@@ -441,7 +445,7 @@ const fits = (o: Record<string, unknown>, shape: Record<string, (v: unknown) => 
 export function wellFormed(sub: string, body: Record<string, unknown>): boolean {
   const shape = BODY[sub];
   if (!shape || !fits(body, shape)) return false;
-  if (sub === "/world" || sub === "/quote" || sub === "/trick" || sub === "/agents" || sub === "/chain") return true;
+  if (sub === "/world" || sub === "/quote" || sub === "/trick" || sub === "/talk" || sub === "/agents" || sub === "/chain") return true;
   if (sub === "/policy" && body.credential === undefined) return body.canonical === undefined;
   if (sub === "/policy" && body.canonical === undefined) return false;
   const c = body.credential;
@@ -460,6 +464,8 @@ export interface TrySignOptions {
   recorded?: RecordedAgents | null;
   /** 1.1: the main run's recorded EUR/USD rate, for step 0's worst case and the checks when there is no live quote. */
   rate?: RecordedRate | null;
+  /** "Talk the agent round" (worker/src/talkRound.ts): its live source, "off", or none; absent, the step is not there (the switch is off). */
+  talk?: TalkSource | "off" | null;
   /** Tests only: the amount on T-0002's invoice (EUR 1,850.00), to prove the terms come from the agent's reading. */
   invoiceAmount?: string;
   /** Tests only: the Treasury agent's deadline (15 s). */
@@ -475,6 +481,7 @@ export class TrySignDesk {
   private readonly recorded: RecordedAgents | null;
   private readonly invoiceAmount: string;
   private readonly adviceDeadlineMs: number | undefined;
+  private readonly talk: TalkSource | "off" | null | undefined;
   /** The last live quote, shared only after a limit or a failure while it has time left (FX_REUSE_MIN_MS). */
   private lastQuote: FxQuote | null = null;
 
@@ -488,6 +495,10 @@ export class TrySignDesk {
     this.fx = opts.fx ?? null;
     this.invoiceAmount = opts.invoiceAmount ?? "1850.00";
     this.adviceDeadlineMs = opts.adviceDeadlineMs;
+    this.talk = opts.talk;
+    // "Talk the agent round": its counter per UTC day, computed from each result (no attempt text, no address); made
+    // only while the step is switched on, so a desk without it keeps exactly its tables.
+    if (this.talk !== undefined) this.sql.exec("CREATE TABLE IF NOT EXISTS ts_talk (day TEXT PRIMARY KEY, attempts INTEGER NOT NULL, went_along INTEGER NOT NULL, rail_refused INTEGER NOT NULL, moved INTEGER NOT NULL)");
     // Each world's trick readings, kept: a second click on the same attack asks no model again.
     this.sql.exec("CREATE TABLE IF NOT EXISTS ts_tricks (world TEXT NOT NULL, attack TEXT NOT NULL, json TEXT NOT NULL, PRIMARY KEY (world, attack))");
     // Spec 6b: what the agents did on each world's T-0002, step by step (step = how many are done; busy = a step's lease).
@@ -528,7 +539,9 @@ export class TrySignDesk {
     const path = url.pathname;
     if (!isTrySignPath(path)) return trySignNotFound();
     const sub = path.slice("/api/try-sign".length);
-    if (!["/world", "/passkey", "/sign", "/quote", "/policy", "/trick", "/agents", "/chain"].includes(sub)) return trySignNotFound();
+    if (!["/world", "/passkey", "/sign", "/quote", "/policy", "/trick", "/agents", "/chain", "/talk"].includes(sub)) return trySignNotFound();
+    // "Talk the agent round" exists only while its switch is on (TRY_TALK=on gives the desk a talk source).
+    if (sub === "/talk" && this.talk === undefined) return trySignNotFound();
     if (req.method !== "POST") return answer(405, { error: "use POST" });
     // Only this site's own page may ask: a browser on another site sends its own origin, or none on a form post.
     if (req.headers.get("origin") !== url.origin || req.headers.get("sec-fetch-site") === "cross-site") return answer(403, { error: "ask from the /try/sign page on this site" });
@@ -557,7 +570,8 @@ export class TrySignDesk {
       return answer(400, { error: sub === "/sign" ? "malformed signature" : sub === "/passkey" ? "malformed passkey" : sub === "/quote" || sub === "/chain" ? "send the world's token only"
         : sub === "/policy" ? "send the world's token, an agent (sourcing, support or treasury) and its policy; a signature only with its terms"
         : sub === "/agents" ? `send the world's token, and a step if you like: ${AGENT_STEPS.join(", ")}`
-        : sub === "/trick" ? `send the world's token and an attack: ${ATTACKS.join(" or ")}` : "send an empty JSON object" });
+        : sub === "/trick" ? `send the world's token and an attack: ${ATTACKS.join(" or ")}`
+        : sub === "/talk" ? `send the world's token and your attempt, at most ${TALK_MAX} characters` : "send an empty JSON object" });
     }
 
     if (sub === "/world") return this.newWorld(url, req.headers.get("cf-connecting-ip") ?? "unknown", nowMs);
@@ -569,6 +583,7 @@ export class TrySignDesk {
     // 1.3: a fixed attack through Purser's own fraud and injection code; no proposal, no quote.
     if (sub === "/trick") return this.trick(ip, world, body.attack as Attack);
     if (sub === "/agents") return this.agents(ip, world, body.step as AgentStep | undefined);
+    if (sub === "/talk") return this.talkRound(ip, body.attempt);
     if (sub === "/chain") return answer(200, { chain: this.chainOf(world.id) });
     return this.sign(url, ip, world, body);
   }
@@ -674,6 +689,26 @@ export class TrySignDesk {
     this.sql.exec("INSERT OR REPLACE INTO ts_tricks (world, attack, json) VALUES (?, ?, ?)", world.id, attack, JSON.stringify(result));
     this.chain(world.id, "refusal", { what: "trick", attack, blocked: result.blocked, outcome: result.outcome });
     return answer(200, { trick: result });
+  }
+
+  /**
+   * "Talk the agent round" (worker/src/talkRound.ts): one attempt, at most TALK_PER_HOUR per address, the model's reply
+   * under the shared budget and limits (or the labelled fallback), then Purser's payment check, which never reads the
+   * attempt. The counter is computed from each result; the attempt itself is not kept.
+   */
+  private async talkRound(ip: string, attempt: unknown): Promise<Response> {
+    const text = cleanAttempt(attempt);
+    if (text === null) return answer(400, { error: `your attempt is 1 to ${TALK_MAX} characters of plain text` });
+    const nowMs = this.now().getTime();
+    if (this.hits(ip, "talk", nowMs - 3_600_000) >= TALK_PER_HOUR) return answer(429, { error: `${TALK_PER_HOUR} attempts an hour from one address; wait a while` });
+    this.hit(ip, "talk", nowMs);
+    const live = await this.liveCall(ip, TALK_RESERVE_USD, (s: TalkSource) => s(text), this.talk ?? null);
+    const result = await runTalk(text, live);
+    const t = talkTally(result);
+    this.sql.exec("INSERT INTO ts_talk (day, attempts, went_along, rail_refused, moved) VALUES (?, ?, ?, ?, ?) ON CONFLICT(day) DO UPDATE SET attempts = attempts + excluded.attempts, went_along = went_along + excluded.went_along, rail_refused = rail_refused + excluded.rail_refused, moved = moved + excluded.moved",
+      this.now().toISOString().slice(0, 10), t.attempts, t.went_along, t.rail_refused, t.moved_without_signature);
+    const [c] = this.sql.exec("SELECT COALESCE(SUM(attempts), 0) AS attempts, COALESCE(SUM(went_along), 0) AS went_along, COALESCE(SUM(rail_refused), 0) AS rail_refused, COALESCE(SUM(moved), 0) AS moved FROM ts_talk").toArray() as [{ attempts: number; went_along: number; rail_refused: number; moved: number }];
+    return answer(200, { talk: result, counter: { attempts: c.attempts, went_along: c.went_along, rail_refused: c.rail_refused, moved_without_signature: c.moved }, copy: talkCopy(true) });
   }
 
   /**

@@ -1,0 +1,96 @@
+{
+  "title": "Purser's agent API over MCP: one outside agent's session, in-process",
+  "made_on": "2026-11-12",
+  "made_by": "docs/runs/2026-11-12-mcp-transcript/make.mts",
+  "server": {
+    "name": "purser-agent-api",
+    "version": "1.0.0"
+  },
+  "stand_ins": [
+    "an in-memory ledger",
+    "FakeIssuing, a simulated card issuer (not Airwallex; the server's answers name Airwallex all the same)",
+    "the CFO's approval given in code (not Face ID)",
+    "no model: the agent is the script"
+  ],
+  "network": "none",
+  "tools": [
+    {
+      "name": "request_company_card",
+      "read_only": false
+    },
+    {
+      "name": "company_card",
+      "read_only": true
+    },
+    {
+      "name": "pay_with_card",
+      "read_only": false
+    },
+    {
+      "name": "request_limit_raise",
+      "read_only": false
+    },
+    {
+      "name": "ask_for_task_card",
+      "read_only": false
+    }
+  ],
+  "steps": [
+    {
+      "call": "pay_with_card",
+      "arguments": {
+        "merchant": "TrailData Reports",
+        "amount_eur": "19.00",
+        "description": "Q4 report"
+      },
+      "is_error": true,
+      "answer": "ext:acme-research has no company card yet; ask for one and wait for the CFO's approval"
+    },
+    {
+      "call": "request_company_card",
+      "arguments": {
+        "display_name": "Acme Research agent",
+        "purpose": "market reports",
+        "per_purchase_eur": "25.00",
+        "monthly_eur": "100.00"
+      },
+      "is_error": false,
+      "answer": "Asked. P-0001 waits for the CFO's Face ID until 2026-11-12T15:31:33Z. No card exists until then; call company_card to see when it is issued."
+    },
+    {
+      "call": "pay_with_card",
+      "arguments": {
+        "merchant": "TrailData Reports",
+        "amount_eur": "19.00",
+        "description": "Q4 report"
+      },
+      "is_error": false,
+      "answer": "Airwallex approved 19.00 EUR at TrailData Reports (transaction tx_3).\n{\"approved\":true,\"amount_eur\":\"19.00\",\"merchant\":\"TrailData Reports\",\"transaction_id\":\"tx_3\"}"
+    },
+    {
+      "call": "pay_with_card",
+      "arguments": {
+        "merchant": "TrailData Reports",
+        "amount_eur": "40.00",
+        "description": "bundle"
+      },
+      "is_error": true,
+      "answer": "Airwallex declined 40.00 EUR at TrailData Reports: LIMIT_EXCEEDED. If you need a higher limit, ask with request_limit_raise.\n{\"approved\":false,\"refused_by\":\"airwallex\",\"reason\":\"LIMIT_EXCEEDED\",\"amount_eur\":\"40.00\",\"merchant\":\"TrailData Reports\",\"next_tool\":\"request_limit_raise\"}"
+    },
+    {
+      "call": "request_limit_raise",
+      "arguments": {
+        "per_purchase_eur": "40.00",
+        "reason": "the bundle"
+      },
+      "is_error": false,
+      "answer": "Asked. P-0002 waits for the CFO's Face ID until 2026-11-12T15:31:33Z."
+    }
+  ],
+  "approval_between": {
+    "after_step": 2,
+    "proposal": "P-0001",
+    "by": "the CFO's approval given in code for this transcript (method cli), not Face ID",
+    "then": "the runner issued the card on the simulated issuer"
+  }
+}

@@ -21,13 +21,13 @@ import { RAIL_WORDS, SUPPLIER_RAILS, type Rail, type Supplier } from "../config/
 import type { DB } from "../db/open.js";
 import { runAgent, type AgentRun } from "./loop.js";
 import { airiPolicy, airiRailOn, merchantById } from "../airi/policy.js";
-import { decideAiriPurchase, requestAiriPurchase, type AiriDeps, type AiriOutcome, type AiriPurchaseRequest } from "../airi/purchase.js";
+import { AIRI_RAIL, decideAiriPurchase, requestAiriPurchase, type AiriDeps, type AiriOutcome, type AiriPurchaseRequest } from "../airi/purchase.js";
 import { fromCents } from "../lib/money.js";
 import { frozen, paused } from "../policy/rules.js";
 import { stopped } from "../policy/velocity.js";
 
-/** The Airi rail's name in the agent's tools. */
-export const AIRI_RAIL = "airi_vic";
+/** The Airi rail's name in the agent's tools (src/airi/purchase.ts keeps it with each purchase's rail choice). */
+export { AIRI_RAIL };
 export const AIRI_RAIL_WORDS = "a single-use Visa credential from Airwallex's Airi (VIC)";
 /** A rail the agent can pick: the two of the registry, and Airi when it is offered. */
 export type ChosenRail = Rail | typeof AIRI_RAIL;

@@ -5,6 +5,7 @@
 // separate runs, each with its run record: never presented as the main run.
 
 import { readFileSync } from "node:fs";
+import { FOUR_EYES_ON_CHAIN_NOTE } from "../config/brand.js";
 import { payments, type AgentId, type Proof, type RunRecord } from "./run.js";
 
 export const EXPLORER_HOST = "testnet.metalntwx.com";
@@ -136,6 +137,9 @@ export function separateRuns(): SeparateRun[] {
     }
     const f = feature(run.id);
     if (!f) return [];
-    return [{ id: run.id, date: run.date, title: f.title, what: `${day}: ${f.figure}`, proofs: f.proofs.filter((p) => explorerLink(p.href)?.kind === "tx"), record }];
+    // Four eyes on chain (30 October): said with who signed, wherever its short form appears (the panel's review, 12 Nov).
+    // Its record says it: "The two keys sat on one machine here."
+    const who = run.id === "four-eyes" ? ` (${FOUR_EYES_ON_CHAIN_NOTE})` : "";
+    return [{ id: run.id, date: run.date, title: f.title, what: `${day}: ${f.figure}${who}`, proofs: f.proofs.filter((p) => explorerLink(p.href)?.kind === "tx"), record }];
   });
 }

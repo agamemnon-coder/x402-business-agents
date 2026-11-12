@@ -21,6 +21,7 @@ describe("/metal, one by one", () => {
     expect(page).toContain(`blob/main/${METAL_TX_LIST}`);
   });
   it("says who signed the replace on chain and names the second approver plainly", () => {
-    expect(page).toContain("Face ID in Purser + a build-tool test passkey; the owner key signed on chain");
+    // Jury panel, 12 Nov: the sentence matches the transactions: one owner key held by the runner signed them.
+    expect(page.replace(/&#39;/g, "'")).toContain("P-0002: the CFO's Face ID and a test passkey approved it in Purser; one owner key, held by Purser's runner, signed on chain. The chain did not check Face ID.");
   });
 });

@@ -17,7 +17,8 @@ before real money: [go-live.md](go-live.md).
                      (agents, inbox, ledger; the only part that touches Airwallex and Metal)
 ```
 
-- The cloud never moves money and holds no payment keys. The runner keeps doing that, with the CFO's Face ID.
+- Purser Cloud moves no real money. Its hands-on deployment runs the engine on test money and a simulated bank. A company's real payments stay with its runner and the
+  CFO's Face ID.
 - Every row carries the company (`tenant_id`); routes only reach data through a tenant-scoped layer
   (`cloud/src/tenant.ts`), and a test tries every route against another company's objects.
 - Pushes are idempotent. Ledger entries and audit rows are append-only and their hash chains are recomputed on
@@ -33,7 +34,8 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 - **Authentication:** `Authorization: Bearer <key or session>`. An API key (`pck_…`) carries scopes `read`, `sync`,
   `admin`; a passkey session (`pcs.…`, 15 minutes) carries the person's role. "Needs" below is the scope a route asks for.
 - **Lists** answer `{ "items": [...], "next_cursor": "…" | null }`. Ask for the next page with `?cursor=<next_cursor>`;
-  `limit` is 1 to 200 (default 50). Every list pages this way.
+  `limit` is 1 to 200 (default 50). Every list pages this way, except the engine's (`/v1/engine`): its invoices and
+  archive files come whole, and its events page with `?after=<seq>` and `next`.
 - **Errors** always have one shape, `{ "error": "<a sentence for a person>", "code": "<stable, for a program>" }`:
 
 | Status | `code` | When |
@@ -64,6 +66,14 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `POST /v1/airwallex/onboarding-link` | admin | Airwallex's hosted onboarding link for the company's checks (a signed-in owner only); short-lived and never stored. |
 | `GET /v1/airwallex/binding` | sync | The company's binding to its own Airwallex account (tenant, account id, status, name, Purser's fee account), signed with Purser's platform Ed25519 key for an hour. The runner fetches it on every sync and pays only from the account in it while it is active (docs/airwallex-platform.md). 404 while there is none. |
 | `POST /v1/airwallex/webhook` | anyone | Airwallex's `account.*` webhooks, signed (`x-timestamp`, `x-signature`): the account's status follows them. |
+| `POST /v1/airwallex/account/refresh` | admin | Read the account's onboarding status from Airwallex now (a signed-in owner only), for a late or missed webhook; only the id and status are kept ([real-customers.md](real-customers.md)). |
+| `GET /v1/connect` | admin | The accounts the company connected by OAuth (Airwallex, Moneybird): status, the Airwallex account id, scopes, when; `switched_on: false` when the cloud does not offer it. Never a token ([real-customers.md](real-customers.md)). |
+| `POST /v1/connect/{provider}/start` | admin | Start connecting the company's own `airwallex` or `moneybird` account (a signed-in owner only): the provider's sign-in and consent URL, with `state` and, for Airwallex, PKCE. |
+| `GET /v1/connect/{provider}/callback` | anyone | Where the provider sends the browser back: forwards `code` and `state` to the console in the address's fragment; stores nothing. |
+| `POST /v1/connect/{provider}/finish` | admin | The owner who started it sends `code` and `state`; Purser exchanges the code server side and keeps the tokens sealed (AES-256-GCM) for this company only. |
+| `GET /v1/connect/{provider}/token` | sync | For the company's own runner: a short-lived access token for its connected account, refreshed one at a time when needed. A key gets only its own company's token. |
+| `DELETE /v1/connect/{provider}` | admin | Disconnect (a signed-in owner only): the tokens are removed at once; Moneybird's are revoked at Moneybird. Airwallex documents no revocation for apps: the owner also removes Purser in Airwallex's settings. |
+| `POST /v1/connect/airwallex/webhook` | anyone | Airwallex's `partner_connection.disconnected`, signed (`x-timestamp`, `x-signature`; the scheme is unconfirmed for partner webhooks): the connections of the accounts it names end. |
 | `GET /v1/openapi.json` | anyone | This API, as OpenAPI 3.1. |
 | `GET /v1/admin/companies` | platform admin | The companies on this cloud for the operator: each one's Airwallex account and status, the supplier payouts that moved and those waiting, and Purser's fees taken, from what the runners pushed (no key, no account number). The console shows it at `#/platform`. |
 | `POST /v1/admin/tenants` | platform admin | Create a company and its first owner; returns the starter key once (a week, the first owner's passkey only). |
@@ -109,6 +119,56 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/export/staged/{id}` | admin | A staged export's state, with a fresh 15-minute link to its manifest while it is ready. Needs admin and read. |
 | `GET /v1/export/download/{id}/{part}` | anyone | With its signed link only: one part (or the manifest) of a staged export, by its signed link (no key); the manifest carries a signed link per part. |
 | `POST /v1/close` | admin | Close the company's account: access ends; records are kept until the retention day, then purged. |
+| `GET /v1/engine` | read | Where the company's engine stands: `mode` (`test_money`), the approval passkey, the stand-in bank's balances, whether both chains verify, who reads (`reader`: `claude` under the caps or `parser`), who decides (`agents`: `code` until the agents join), and what this company's Claude calls cost so far against its cap (`spent_micros`, `cap_micros`, micro-USD at list price). |
+| `POST /v1/engine/documents` | admin | Upload a supplier invoice: `{ filename, mime?, base64 }`, at most 15 MB once decoded (22,000,000 bytes of body). Filed, read and checked; answers `{ kind, sha256, invoice }`, or 400 with the inbox's reason when it refuses the file (not a PDF, too large). |
+| `GET /v1/engine/invoices` | read | The engine's invoices: status, whether it can be paid, what the checks found, its proposal; `{ items }`. |
+| `POST /v1/engine/invoices/{id}/pay` | admin | File the invoice's payment for approval: `{ proposal }`, or 409 with the engine's reason; 404 for an invoice the company's engine does not hold. Nothing is paid before the approval. |
+| `GET /v1/engine/proposals/{id}` | read | One proposal: the hash of its exact terms, the challenge a passkey signs, the facts a person reads; `{ proposal }`. |
+| `POST /v1/engine/passkey/start` | admin | A session only, never a key. Start the signed-in person's approval passkey: `{ challenge, code, rp, user, exclude }`. |
+| `POST /v1/engine/passkey/finish` | admin | A session only. `{ code, credential }`: the new passkey, labelled with the signed-in person's name; answers `{ credential_id }`, or 409 with the engine's reason when refused. |
+| `POST /v1/engine/proposals/{id}/approve` | admin | A session only. `{ terms_sha256, credential }`: the passkey's signature over the proposal's challenge. Answers `{ status, message, settled }`; only `approved` pays, on the stand-in bank. For a test company of the hands-on demo the approval is stored and the payment held (`{ status: "approved", message, settled: null, held: true }`): it is paid through `POST /v1/engine/proposals/{id}/pay`. A `terms_sha256` other than the proposal's is refused before the signature is read. 404 for a proposal the company's engine does not hold. |
+| `POST /v1/engine/proposals/{id}/retry` | admin | Try again: a payment that was approved but whose execution failed (the stand-in bank was away, say) is run once more by the executor's own resume path, which looks a payout written before the failure up by its request id and never pays twice. Answers `{ status: "retried", message, settled }`; 409 with the engine's reason when there is nothing to retry (paid, never approved, refused); 404 for a proposal the company's engine does not hold. |
+| `POST /v1/engine/sync` | admin | Follow the payments, book, archive and feed the read model again; safe to repeat. |
+| `GET /v1/engine/events` | read | What the engine did, oldest first: `?after=<seq>&limit=<1 to 200>`; `{ items, next }`. At most 2 reads a second per company, counted in its object: past that 429 `{ error, code: "slow_down", retry_ms }`. |
+| `GET /v1/engine/vault` | read | The archive's files as its indexes list them: `{ files }`. |
+| `GET /v1/engine/vault/file` | read | One file of the archive, `?path=` as the list gives it; 404 for a path the index does not list. |
+| `GET /v1/autopilot` | read | The company's nightly autopilot runs, newest first (`?limit=` 1 to 90, default 14): each night the engine is synced and a digest written (invoices by status, the overdue ones, payments waiting for an approval, both hash chains). It never pays. 404 when the cloud runs no engine. See [Cloudflare's platform](#cloudflares-platform-cloudsrcedge). |
+| `GET /v1/stats` | anyone | The cloud's own counters per day, UTC, across every company, with no company's id or amount (`?days=` 1 to 90, default 14): requests, refused, rate_limited, errors, uploads, payments_filed, approvals, engine_refusals. 404 when the counters are off. |
+| `GET /v1/engine/samples` | read | The hands-on demo's sample invoices (test invoices, fake), in the tray's order: `{ items: [{ key, title, filename }] }`. Each title says what the visitor does, never what the engine will answer. |
+| `POST /v1/engine/samples/{key}` | admin | A sample through the engine's inbox, as an upload of its PDF; answers as `POST /v1/engine/documents`. 404 for a key that is not a sample; 400 in the engine's words when refused (a test company holds at most 8 documents, whatever route brings them). |
+| `GET /v1/engine/suppliers` | read | The suppliers the company has on file, as the engine's seed recorded them: `{ items: [{ key, name, iban, bic }] }`. Their IBANs are published test IBANs, not anyone's account. |
+| `POST /v1/engine/compose` | admin | "Write your own" (a test company of the hands-on demo only): `{ supplier_key, invoice_no, amount, issue_date, due_date, iban }`, checked (EUR 1.00 to 5,000.00 with two decimals; dates within 60 days of today; an IBAN with a valid mod-97 check), written in the sample's layout, rendered to a PDF inside the engine and filed through its inbox. Answers as `POST /v1/engine/documents`; a refused field is 400 `{ code, message, field }`. The typed text stays in the company's own ledger and is never logged. |
+| `GET /v1/engine/proposals/{id}/terms` | read | A proposal's exact terms as the passkey signs them: `{ proposal_id, status, terms, canonical, terms_sha256, approved, expires_at }` (the canonical JSON and its SHA-256, the signature's challenge). |
+| `POST /v1/engine/proposals/{id}/pay` | admin | The hands-on demo's one pay route (a test company only; at most 8 KB, 30 a company): `{ terms, credential }`, the terms to pay (only `amount`, `beneficiary_name` and `iban_last4` may differ from the signed ones, else 400) with the signature the browser made at the approval. Two layers answer, always both: the product's verifier on that signature over the sent terms, and the executor's own gate asked with the sent terms written into the payment instruction, inside a transaction that is always rolled back. Only when both say yes is the held payment run, from the stored terms, on the simulated bank (test money). Answers `{ outcome, layers, signed_sha256, sent_sha256, changed, transfers_before, transfers_after, sandbox_calls, settled, request_id }`; `outcome` is `paid`, `refused`, `paid_once`, `not_signed`, `expired` or `failed` (the retry route runs a failed one again). |
+| `GET /v1/engine/export` | read | The company in the product's sync format, as a file (`purser-test-company.json`): `{ format: "purser.cloud-sync/v1", company, made_at, batches }`, the batches a runner's push sends (the invoices with their documents, payments, transactions, the ledger and the audit log). No archive files. At most 5 MB; a test company may download it 5 times. |
+| `POST /v1/try/start` | anyone | The hands-on deployment only (`HANDS_ON=on`; 404 elsewhere). A test company of your own on the engine, test money on a simulated bank, deleted after 24 hours: `{ token? }` (an event or jury token). Answers 201 `{ tenant, session, visitor_token, expires_at, session_expires_at, company, pool, mode }`; 429 `{ code: "limit" }` past a limit (per keyed address and per pool and day); 503 `{ code: "paused" }` while the switch `starts` is off. Like the renewal and every write of a test company, it must carry this site's `Origin` (the demo's own page); a program without one gets 403. |
+| `POST /v1/try/session` | anyone | The hands-on deployment only. `{ tenant_id, visitor_token }`: a fresh 15-minute session for that test company; `{ session, expires_at, company_expires_at }`, or 410 `{ code: "gone" }` once it was deleted. Limited per company (30 a minute), never per address. |
+| `POST /v1/try/admin` | platform admin | The hands-on deployment's controls: `{ op: "get" }` (the switches, today's counters), `{ op: "set", key, value }` (one switch, refused past its ceiling; logged without the token), `{ op: "token", pool, until }` (an event or jury token, shown once; only its hash is kept). |
+| `POST /v1/try/challenge` | anyone | The hands-on deployment only. The bot check before a start: `{ required: false }` while the switch `bot_check` is off; else `{ required: true, challenge, difficulty, expires_at }`, an HMAC-signed challenge (secret `TRY_BOTCHECK_SECRET`) of 12 to 20 leading zero bits of SHA-256, harder as more companies start. The browser sends `{ proof: { challenge, nonce } }` with `POST /v1/try/start`; a missing, wrong, expired or reused answer is 403 `{ code: "bot_check" }` before any company exists. Switched on with no secret: 503 `paused`. |
+| `GET /v1/try/counter` | anyone | The hands-on deployment only, switch `counter`. `{ played, caught, signed, without_signature, since, counted_at, line }`, counted from hourly totals with no ids; `without_signature` is counted, never typed. Up to 60 seconds old. |
+| `POST /v1/try/feedback` | anyone | The hands-on deployment only, switch `feedback`. `{ choice: useful, unclear or broken, note? }` (at most 200 characters kept). One row with the hour, the choice and the note: no id, no address, no browser. 3 an hour per network, 300 a day. Read only on the owner's page. |
+| `GET /v1/try/ops` | anyone | The hands-on deployment only. The owner's read-only page; it holds no figure and asks for the admin token, kept in the tab only. |
+| `POST /v1/try/ops` | platform admin | The owner's aggregates: starts and finishes in the last hour and day, errors by kind, p50 and p95 latency (bucket bounds), Claude spend today against its caps, who read the invoices, the switches (tokens as a count) and the feedback box. No addresses, no ids. Read only. |
+| `GET /v1/try/books/effect` | read | The hands-on deployment's books screen, switch `books_effect`: `?invoice_no=&vendor=`. P&L and the VAT overview before and after that invoice's entries, computed by the ledger's report code over the company's posted lines (`effect`, null until booked), and `t0`, the T0 row labelled as a recorded run (nothing is sent to T0 from a test company). |
+| `GET /v1/try/scenarios/{seed}` | read | The hands-on deployment, switch `scenarios`: the scenario a seed picks (`{ seed, id, title, company, files }`), without its right answer. |
+| `POST /v1/try/scenarios/{seed}` | admin | Plays that scenario in your test company: its invoices (test invoices, fake) through the engine's inbox in order. `{ seed, id, title, company, setup, answer, decided, expect }`: the engine's answer to the last invoice, what it means (refuse, ask a person first, or pay after your signature) and the right answer. |
+
+The `/v1/engine` routes are the company's engine behind the API (`cloud/src/engine/routes.ts`): the same inbox, checks,
+approval and executor a runner has, on **test money only** (a stand-in bank; no payment reaches a real bank). The
+company is always the caller's own. The deploy's entry point is `cloud/src/entry.ts` (the Worker and the engine's
+Durable Object, `CompanyEngine`). The routes answer 404 unless the Worker has the `ENGINE` binding and the var
+`ENGINE_MODE=test_money`. With both, each company's engine runs in its own Durable Object on its own SQLite
+(`cloud/src/engine/object.ts`), which keeps its ledger, its documents and its stand-in bank. The engine in
+`cloud/src/engine/node.ts` keeps each ledger in memory and is used by the tests only. With the var `ENGINE_CLAUDE=on`,
+the key and the owner's switches, the engine reads with Claude under hard caps (`cloud/src/engine/claudeAccess.ts`,
+`cloud/src/engine/spend.ts`); otherwise the parser reads. A reading's row carries the model and its cost; its request id
+is present in live records, and null when the SDK runs over a stand-in fetch (the tests).
+
+A deployment without R2 leaves the `DOCS` binding out (`cloud/wrangler.try.jsonc`, the engine's deployment of its own,
+`purser-try`). The Worker then keeps every document it would put in R2 (the read model's documents, the archive under
+`t/<company>/vault/`, e-mails, staged exports) in D1 instead, in the tables `cloud_blobs` and `cloud_blob_parts`
+(`cloud/src/blobsSql.ts`): base64 in parts of 600,000 bytes, a document's header row written after its last part, so a
+write that fails half way leaves nothing to read. `GET /v1/health` then reports the D1 store under `r2`.
 
 ### The transactions register
 
@@ -193,6 +253,45 @@ network but pdf.js, and cannot reach the console page; the console page parses n
 5: a PDF bomb froze the tab that held the session). The download stays. `test/cloud-console.test.ts` checks the page and the routes; `test/browser/console.check.ts` runs the whole thing
 in Chromium with a virtual passkey (CI, judge job).
 
+## The hands-on deployment
+
+`purser-try` (`cloud/wrangler.try.jsonc`, `HANDS_ON=on`) lets a visitor start a test company of their own on Purser's
+real engine, from `POST /v1/try/start` (code in `cloud/src/try/`). Purser Cloud moves no real money. Its hands-on deployment runs the engine on test money and a simulated bank.
+
+- **One object per company.** Each test company is a tenant of its own (`t_try_<16 hex>`) with one Durable Object running
+  the product's engine on its own SQLite ledger: the same inbox, checks, approval and executor a runner has. The seed
+  puts an opening balance of test money and two suppliers on file (their IBANs are published test IBANs); nothing else
+  in a company is made up.
+- **Test money on a simulated bank.** Every payment is made on a bank simulated inside the company's object. No payment
+  reaches a real bank.
+- **The invoice.** Five sample invoices, each chosen by what the engine answers when it reads it (`npm run cloud:samples`,
+  held by `test/engine-try-world.test.ts`), or "write your own": the visitor's fields, checked, rendered to a PDF inside
+  the object and filed through the inbox. At most 8 documents a company, PDF files only.
+- **The held approval and the one pay route.** A test company's approval (its passkey over the SHA-256 of the exact
+  terms) is stored and the payment held. `POST /v1/engine/proposals/{id}/pay` then tries the terms the visitor sends
+  with the signature their browser made, through two layers that always both answer: the product's verifier on that
+  signature over the sent terms, and the executor's own gate asked with the sent terms inside a transaction that is
+  always rolled back. Only when both say yes is the held payment run, from the stored terms, on the simulated bank.
+  A changed cent is refused by both and moves nothing (`test/engine-try-pay.test.ts`, `test/try-redteam.test.ts`).
+- **Switches, pools and caps** (`POST /v1/try/admin`, table `try_switches`). Every switch fails closed: a missing row is
+  off (`starts`, `claude`, `agents`, `rail_awx`, `rail_metal`, `own_upload`) or 0 (every Claude cap). Three pools:
+  public, event and jury; event and jury tokens are made by the admin and kept as hashes only. Public starts are
+  limited per address (an IPv6 address by its /64, kept only as a SHA-256 with a salt that changes each UTC day and is
+  deleted after 48 hours) and per day; event and jury starts count against their own pool's day. Claude's spend is
+  capped per action, company, address, pool and day, and in all (`cloud/src/engine/spend.ts`). A test company may call
+  only the routes listed in `cloud/src/try/gate.ts`; its expired session counts against itself, never against the
+  address, so one phone cannot turn away a room on the same Wi-Fi.
+- **Measured limits:** in [the run record](runs/2026-11-13-engine-in-cloud.md); its numbers are not copied here.
+- **The sweep.** Hourly, every company past its 24 hours is wiped: its object, its rows and its documents.
+- **The export.** `GET /v1/engine/export` gives the company in the product's sync format (`purser.cloud-sync/v1`): the
+  invoices with their documents, payments, transactions, the ledger and the audit log; no archive files.
+- **What is not there:** real money; e-mail into a test company; the console's engine actions for a test company; a
+  visitor's own file upload (switch `own_upload`, off); a live Airwallex payment (the sandbox leg is built only if its
+  gate passes, and is then switched on separately).
+
+What a public launch would still need: a bot check, WAF rate rules at Cloudflare, a budget alert on the Claude key, the
+sweep watched, and a limit tested against a hostile PDF on the deployment itself.
+
 ## Tested on D1 itself
 
 `npm run test:d1` runs the cloud's tests (`test/cloud-*.test.ts`, `test/rt4-cloud-*.test.ts`, the credit-netting test) on
@@ -257,6 +356,49 @@ Nothing here needs to be in git; every secret goes through `wrangler secret put`
    rule "Send to a Worker: purser-cloud", and `MAIL_DOMAIN` set to that domain. Each company is then reached at
    `<its-slug>@in.<domain>`.
 5. **Deploy** (on Max's word): `npm run cloud:pdfjs` (copies pdf.js into `cloud/public`, the Worker's static assets, so the console can draw an invoice; without it the console offers the download only), then `npx wrangler deploy -c cloud/wrangler.jsonc`.
+   Since the engine was merged, `cloud/wrangler.jsonc` adds the `CompanyEngine` class and its migration `v1`, which cannot
+   be rolled back once deployed: it goes out only after 15 November 2026, or earlier on Max's own word.
+
+### Deploying purser-try
+
+`purser-try` is the engine's deployment of its own, on test money (`cloud/wrangler.try.jsonc`): never the product's
+`purser-cloud` and never its stores. It has no R2 bucket, so documents and the archive are kept in its D1 database.
+From the repository root, after `npm ci` and `npm ci --prefix worker`, with wrangler logged in to the account:
+
+1. **The database** (EU), then paste its `database_id` into `cloud/wrangler.try.jsonc`:
+   ```bash
+   worker/node_modules/.bin/wrangler d1 create purser-try --location weur
+   ```
+   ```bash
+   worker/node_modules/.bin/wrangler d1 migrations apply purser-try --remote -c cloud/wrangler.try.jsonc
+   ```
+2. **Secrets** (each typed at the prompt, never on the command line or in chat):
+   ```bash
+   worker/node_modules/.bin/wrangler secret put SESSION_SECRET -c cloud/wrangler.try.jsonc
+   ```
+   ```bash
+   worker/node_modules/.bin/wrangler secret put ADMIN_TOKEN_SHA256 -c cloud/wrangler.try.jsonc
+   ```
+   Later, for Claude in the engine: `KIT11_ANTHROPIC_API_KEY`, the demo's own capped key, set by Max by hand the same way.
+3. **Deploy:** `npm run cloud:pdfjs`, a dry run, then the deploy:
+   ```bash
+   worker/node_modules/.bin/wrangler deploy --dry-run --outdir /tmp/purser-try -c cloud/wrangler.try.jsonc
+   ```
+   ```bash
+   worker/node_modules/.bin/wrangler deploy -c cloud/wrangler.try.jsonc
+   ```
+4. **Smoke** (the admin token in `PURSER_ADMIN_TOKEN`, read and never printed): the cloud alone, then the engine's chain,
+   then a burst with polling:
+   ```bash
+   npm run cloud:smoke -- https://purser-try.max-31b.workers.dev --plain
+   ```
+   ```bash
+   npm run cloud:smoke -- https://purser-try.max-31b.workers.dev
+   ```
+   ```bash
+   npm run cloud:smoke -- https://purser-try.max-31b.workers.dev --parallel 10 --poll 1000
+   ```
+   What they printed goes into [the run record](runs/2026-11-13-engine-in-cloud.md).
 
 ## Limits on what comes in
 
@@ -300,6 +442,43 @@ What the code does not do yet, and must be in place before a company's real data
   secret shown once. Check the signature and that `t` is recent. Three attempts per event (a 2xx ends it), at most 30
   events an hour per company, and after 20 failed events in a row the webhook is turned off (`disabled_at`); set it
   again to turn it back on. The secret is stored to sign with; it is never shown again or exported.
+
+## Cloudflare's platform (`cloud/src/edge`)
+
+Three parts of Cloudflare's platform beyond D1 and the engine's Durable Objects, each in its own file and each off by
+configuration. Tested with fakes (`test/cloud-edge.test.ts`) and in local workerd with `cloud/wrangler.jsonc`
+(`test/cloud-edge-workerd.test.ts`, in `npm run test:d1`); none has run on a deployed Worker yet. Limits on who may
+start or call what (the hands-on companies' pools, per-address and per-company limits) are not here: they are the
+hands-on lane's.
+
+| What | Cloudflare feature | Binding or setting | Off |
+|---|---|---|---|
+| The nightly autopilot: on the Cron Trigger's first firing each UTC day (today `17 3 * * *`; an hourly trigger changes nothing), every open company that wrote to its engine has its engine synced (payments followed, booked, archived, read model fed) and a digest written: invoices by status, the overdue ones, those due within a week, payments waiting for an approval, whether both hash chains verify. `GET /v1/autopilot`. It never makes or uses an approval. A hands-on company (`t_try_`) is never in it. | [Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/) | the existing `triggers.crons`, tables `engine_companies` and `autopilot_runs` (`cloud/migrations/0002_edge.sql`) | var `AUTOPILOT=off` |
+| Inbound invoices by e-mail into the engine: the Worker's email handler stores the message as before and puts `{ tenant_id, mail_id }` on a queue; the queue's consumer files the stored e-mail through the engine's own inbox (each PDF attached is filed, read and checked) and marks the `inbound_mail` row done or refused, with a note. The sender's delivery never waits on the engine. Retried later each time (30 s, 60 s, ...), 5 attempts, then marked refused with the reason (the dead-letter state a person sees); what the inbox itself refuses is marked at once. The daily job puts e-mail still waiting after an hour on the queue again. | [Queues](https://developers.cloudflare.com/queues/) | `INBOX_QUEUE` (producer and consumer), dead-letter queue `<name>-inbox-dlq`: in `cloud/wrangler.jsonc` as a comment, to put in once the queues exist | leave the block out (mail then waits for the company's runner, as before) |
+| The cloud's daily counters, counted after each answer is sent (`ctx.waitUntil`), read by the public `GET /v1/stats`: requests, refused, rate_limited, errors, uploads (a duplicate is not one), payments_filed, approvals, engine_refusals. No D1 write per request: an isolate keeps its counts in memory and writes them in one batch at most every 10 seconds, at once for an upload, a payment, an approval or an engine refusal. | Workers `waitUntil` and D1 | table `daily_counts` | var `STATS=off` |
+
+- **The autopilot runs once per company per day.** The day's row is claimed before the run, so a Cron Trigger that
+  fires twice runs it once. A run that failed, or never finished (30 minutes), is taken again by a later firing that
+  day: with an hourly trigger the next hour, with a daily one not before the next day (that day then has no digest,
+  and its row says why). One company's engine gets 60 seconds; a firing starts no company after 10 minutes
+  (Cloudflare stops a Cron run at 15) and takes at most 100, those whose last finished run is oldest first. A run's
+  error is stored in the engine's words with account numbers cut (`cloud/src/log.ts` redact). Runs are kept 90 days;
+  a purged company's runs go with it, whether the autopilot is on or not.
+- **Never twice, by e-mail:** only a row still `queued` is filed and it is marked once; a message that comes again
+  after the engine took the e-mail finds each PDF already held (by its SHA-256) and files nothing more.
+- **The counters are close, not exact:** what an isolate counted in its last seconds before Cloudflare ends it is
+  lost, and a write D1 kept but answered with an error is written again. They hold no company's id, route parameter or
+  amount, but on a deployment with one or two companies the day's uploads and approvals are in effect that company's
+  activity.
+- **Deploy steps**, after the steps under "Going live":
+  ```bash
+  npx wrangler d1 migrations apply purser-try --remote -c cloud/wrangler.try.jsonc
+  ```
+  applies `0002_edge.sql` (the Worker also creates the three tables on first use if the migration was not run). Then
+  deploy as before. To check: `GET /v1/stats` answers today's counters, and a company's first digest is at
+  `GET /v1/autopilot` after the Cron Trigger's next firing. The inbox queue only once a mail domain routes to the
+  Worker: `npx wrangler queues create <name>-inbox`, `npx wrangler queues create <name>-inbox-dlq`, put the commented
+  `queues` block of the config in, deploy.
 
 ## Backups and restore
 
