@@ -9,7 +9,7 @@ import { MONEY_EVENTS, currentOrigin, parseOrigin } from "../provenance/origin.j
 
 export type Actor =
   | "system" | "claude" | "sourcing" | "support" | "treasury" | "customer"
-  | "human" | "owner-signer" | "awx-executor"
+  | "human" | "owner-signer" | "awx-executor" | "checker" | "payer" // the last two: the payables agents (src/ap/*Agent.ts)
   // An outside agent connected through the agent API (P1).
   | `ext:${string}`;
 
