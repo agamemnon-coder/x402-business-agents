@@ -114,8 +114,10 @@ const STAND_IN_FEE = { en: "Bank fee (stand-in bank, test money)", nl: "Bankkost
  * refuses (src/passkey/webauthn.ts): a person at the screen reads what was wrong instead, and that nothing was paid.
  * The engine's own refusals (written in our words: "this passkey is not enrolled", "P-0001 expired at ...") stay.
  */
+/** The answer to a signature over other terms than the proposal's: the screens show it as it is. */
+export const REFUSED_OTHER_TERMS = "This signature is over other terms than the ones on screen. Nothing was paid.";
 const LIBRARY_REFUSALS: [RegExp, string][] = [
-  [/^Unexpected authentication response challenge\b/, "This signature is over other terms than the ones on screen. Nothing was paid."],
+  [/^Unexpected authentication response challenge\b/, REFUSED_OTHER_TERMS],
   [/^Unexpected (authentication response origin|cross-origin|top origin)\b|^Detected cross-origin\b/, "This signature was made on another website than this one. Nothing was paid."],
   [/\bRP ID\b/, "This signature belongs to a passkey of another website. Nothing was paid."],
   [/^User (verification required|not present)\b/, "The passkey did not confirm it was you (Face ID, fingerprint or PIN). Nothing was paid."],
@@ -287,7 +289,7 @@ export class EngineHost {
    */
   approve(a: { proposal_id: string; terms_sha256: string; credential: unknown }): Promise<{ status: string; message: string; settled: Settled | null }> {
     return this.act(async () => {
-      const { db, rails } = this.deps;
+      const { db } = this.deps;
       const now = this.now();
       // Only these three fields travel: the decision is always an approval (rejecting is not one of the host's actions).
       const item: InboxItem = { ticket: "engine", kind: "assertion", proposal_id: null, body: JSON.stringify({ proposal_id: a.proposal_id, terms_sha256: a.terms_sha256, credential: a.credential }), received_at: now.toISOString() };
