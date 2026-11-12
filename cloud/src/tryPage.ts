@@ -112,7 +112,7 @@ pre.terms { margin: 8px 0 0; padding: 12px; border-radius: 12px; background: var
 .layer { margin: 0 0 6px; font-size: 15px; }
 .hash { margin: 0; font-size: 12px; line-height: 1.6; color: var(--faint); overflow-wrap: anywhere; }
 .hash .hl { display: inline-block; min-width: 52px; color: var(--muted); font-family: Inter, system-ui, sans-serif; font-weight: 600; }
-.hash mark { background: none; color: var(--text); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+.hash mark { background: none; color: var(--text); font-weight: 600; }
 .verdict { margin: 12px 0 8px; font-weight: 650; }
 .proof { margin: 0; font-size: 14px; color: var(--muted); }
 pre.raw { margin: 8px 0 0; padding: 12px; border-radius: 12px; background: var(--sunken); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -478,7 +478,7 @@ const cancelled=(e)=>e&&typeof e.name==='string'&&/^(NotAllowedError|AbortError|
 function mainButton(){
   const b=btn('',true);let act=null;
   b.addEventListener('click',async()=>{if(b.disabled||!act)return;b.disabled=true;try{await act()}finally{if(b.isConnected)b.disabled=false}});
-  return {node:b,set(label,fn){b.textContent=label;act=fn;b.hidden=false},off(label){b.textContent=label;act=null;b.disabled=true}};
+  return {node:b,set(label,fn){b.textContent=label;act=fn;b.hidden=false;b.disabled=false},off(label){b.textContent=label;act=null;b.disabled=true}};
 }
 
 // 3 Approve: the proposal's facts, its short hash and the exact terms in a fold; one button in two labelled stages.

@@ -1,33 +1,78 @@
-// The hands-on page (/try) in Chromium, on this machine. Lane C's try routes (/v1/try/start and /session, the samples,
-// the suppliers and compose) are not merged yet: this check's server stands in for them, in this file only, on top of
-// a real cloud with an engine in this process (test/support/cloud.ts). Two parts:
-// 1. A visit at 390 px light and one at 1440 px dark: start, an invoice, the engine at work, the result; one main
-//    button per screen, focus on the heading, nothing wider than the phone, no console or CSP error; a reload returns
-//    to the result. Screenshots of screens 0, 1 and 2 when a directory is given.
+// The hands-on page (/try) in Chromium, on this machine. Lane C's try routes are not merged yet: this check's server
+// stands in for them, in this file only, on top of a real cloud with an engine in this process (cloud/src/engine/node.ts),
+// served on localhost so that Chromium's virtual passkey authenticator makes passkeys the engine verifies. Two parts:
+// 1. A visit at 390 px light and one at 1440 px dark: start, an invoice, the engine at work, the result; then the
+//    approval passkey made (virtual authenticator), the exact terms approved (held), the amount changed by one cent and
+//    refused with both layers, the signed terms put back and paid. One main button per screen, focus on the heading,
+//    nothing wider than the screen, no console or CSP error; a reload returns to the result; the pay step's answer is
+//    held 800 ms and nothing of the outcome is on the page before it. Screenshots when a directory is given.
 // 2. The poller with Chromium's stand-in clock and stubbed answers: the cadence (every second in flight, once more a
 //    second after), a 401 stops it and renews once, a hidden page makes no request at all, and on coming back the
 //    session is renewed before the next poll.
 // npx tsx test/browser/try.check.ts [screenshot dir]
-import { mkdirSync } from "node:fs";
-import { createServer } from "node:http";
+import { createHash, randomUUID } from "node:crypto";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { createServer, type ServerResponse } from "node:http";
 import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Page, Route } from "playwright";
-import { BAND, ENDED, GONE, INVOICE, START, WORK } from "../../cloud/src/tryCopy.js";
+import type { BrowserContext, Page, Route } from "playwright";
+import { handle, type CloudEnv } from "../../cloud/src/app.js";
+import { nodeEngines } from "../../cloud/src/engine/node.js";
+import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
+import { APPROVE, BAND, BOOKS, ENDED, GONE, INVOICE, PAY, START, STEPS, WORK } from "../../cloud/src/tryCopy.js";
+import type { DB } from "../../src/db/open.js";
+import { EngineHost } from "../../src/engine/host.js";
+import { termsHash, type Terms } from "../../src/lib/terms.js";
+import { softPasskey } from "../../src/metal/softPasskey.js";
 import { EN } from "../fakes/apInvoices.js";
 import { pdfOf } from "../fakes/pdf.js";
-import { ORIGIN as CLOUD, testCloud, type TestTenant } from "../support/cloud.js";
 
 const shots = process.argv[2] ?? "";
 if (shots) mkdirSync(shots, { recursive: true });
 const PORT = 8890 + Math.floor(Math.random() * 100);
 const ORIGIN = `http://localhost:${PORT}`;
+const ADMIN = "try-check-admin-token-not-a-secret";
 let failed = 0;
 const ok = (cond: unknown, what: string) => { if (cond) console.log(`ok    ${what}`); else { failed++; console.log(`FAIL  ${what}`); } };
 
-// The cloud with an engine per company; a visitor's company is a test tenant made by the test helpers.
-const c = testCloud({ engine: true });
-const visitors = new Map<string, TestTenant>();
+// The cloud with an engine per company, on this machine's origin; the passkey's relying party is "localhost".
+const dir = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "try-check-"));
+const env: CloudEnv = {
+  sql: sqliteSql(":memory:"), blobs: dirBlobs(join(dir, "blobs")), sessionSecret: "t".repeat(48), adminTokenSha256: createHash("sha256").update(ADMIN).digest("hex"),
+  rpId: "localhost", origin: ORIGIN, rate: { perMinute: 100_000, signInPerMinute: 100_000, failedAuthPerMinute: 100_000 },
+};
+env.engine = nodeEngines({ sql: env.sql, blobs: env.blobs, rpId: "localhost", origin: ORIGIN });
+const cloud = async (method: string, path: string, key: string | null, body?: unknown) => {
+  const r = await handle(new Request(`${ORIGIN}${path}`, { method, headers: { ...(key ? { authorization: `Bearer ${key}` } : {}), "content-type": "application/json" }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }), env);
+  const text = await r.text();
+  let json: Record<string, unknown> = {};
+  try { json = JSON.parse(text) as Record<string, unknown>; } catch { /* not JSON */ }
+  return { status: r.status, json };
+};
+const b64u = (u: Uint8Array) => Buffer.from(u).toString("base64url");
+/** A visitor's company: made by the platform, its owner's passkey enrolled (a soft passkey) and signed in, in English. */
+interface Visitor { id: string; session: string }
+async function company(slug: string): Promise<Visitor> {
+  const made = await cloud("POST", "/v1/admin/tenants", ADMIN, { slug, name: `${slug} test company`, owner: { display_name: "Owner" } });
+  const id = (made.json.tenant as { id: string }).id, starter = made.json.api_key as string, owner = (made.json.owner as { id: string }).id;
+  const pk = softPasskey();
+  const credential_id = b64u(crypto.getRandomValues(new Uint8Array(16)));
+  const e = await cloud("POST", `/v1/users/${owner}/enrolment`, starter);
+  const ea = pk.assert("0x00", { challenge: e.json.token as string, origin: ORIGIN, rpId: "localhost" });
+  await cloud("POST", "/v1/auth/enrol", null, { tenant: slug, enrolment_id: e.json.enrolment_id, token: e.json.token, credential_id,
+    x: Buffer.from(pk.key.qx.slice(2), "hex").toString("base64url"), y: Buffer.from(pk.key.qy.slice(2), "hex").toString("base64url"),
+    assertion: { authenticatorData: b64u(ea.authenticatorData), clientDataJSON: b64u(ea.clientDataJSON), signature: b64u(ea.signature) } });
+  const ch = await cloud("POST", "/v1/auth/challenge", null, { tenant: slug });
+  const la = pk.assert("0x00", { challenge: ch.json.challenge as string, origin: ORIGIN, rpId: "localhost" });
+  const s = await cloud("POST", "/v1/auth/login", null, { tenant: slug, challenge_id: ch.json.challenge_id, credential_id,
+    assertion: { authenticatorData: b64u(la.authenticatorData), clientDataJSON: b64u(la.clientDataJSON), signature: b64u(la.signature) } });
+  const session = s.json.session as string;
+  await cloud("POST", "/v1/company", session, { language: "en" });
+  return { id, session };
+}
+
+const visitors = new Map<string, Visitor>();
 let made = 0;
 const SUPPLIER = { key: "bergtex", name: "Bergtex Textil GmbH", iban: "DE89370400440532013000", bic: "COBADEFFXXX" };
 const SAMPLES = [{ key: "clean", title: "A clean invoice from a supplier on file" }, { key: "again", title: "The same file again" }];
@@ -40,8 +85,75 @@ const composed = (b: Record<string, string>) => {
   return pdfOf([SUPPLIER.name, "Textilweg 4, 72760 Reutlingen", "VAT ID: DE123456789", `INVOICE ${b.invoice_no}`, `Invoice date: ${long(b.issue_date!)}`, `Due date: ${long(b.due_date!)}`,
     `Subtotal EUR ${eur(net)}`, `VAT 19% EUR ${eur(vat)}`, `Total due EUR ${eur(total)}`, `IBAN: ${b.iban!.replace(/(.{4})/g, "$1 ").trim()}`, `BIC: ${SUPPLIER.bic}`, `Payment reference: ${b.invoice_no}`].join("\n"));
 };
-const send = (res: import("node:http").ServerResponse, status: number, body: unknown) => { res.writeHead(status, { "content-type": "application/json" }); res.end(JSON.stringify(body)); };
-const upload = async (session: string, bytes: Buffer, filename: string) => c.req("POST", "/v1/engine/documents", { key: session, body: { filename, mime: "application/pdf", base64: bytes.toString("base64") } });
+const send = (res: ServerResponse, status: number, body: unknown) => { res.writeHead(status, { "content-type": "application/json" }); res.end(JSON.stringify(body)); };
+const upload = async (session: string, bytes: Buffer, filename: string) => cloud("POST", "/v1/engine/documents", session, { filename, mime: "application/pdf", base64: bytes.toString("base64") });
+
+// The engine's own ledger, reached through the engine handle in this process: each company's database, found when the
+// engine reads one of its proposals (GET /v1/engine/proposals/{id} runs EngineHost.proposal; ledgerOf reads it right
+// after, so the database is that company's although proposal ids repeat across companies).
+const ledgers = new Map<string, DB>();
+const proposalOf = EngineHost.prototype.proposal;
+EngineHost.prototype.proposal = function (this: EngineHost, id: string) {
+  ledgers.set(id, (this as unknown as { deps: { db: DB } }).deps.db);
+  return proposalOf.call(this, id);
+};
+/** The proposal's exact terms as the engine holds them, and the count of the stand-in bank's transfers, read from its ledger. */
+async function ledgerOf(session: string, id: string) {
+  const p = await cloud("GET", `/v1/engine/proposals/${encodeURIComponent(id)}`, session);
+  if (p.status !== 200) return null;
+  const db = ledgers.get(id)!;
+  const row = db.prepare("SELECT terms_json, terms_sha256, status FROM proposals WHERE proposal_id = ?").get(id) as { terms_json: string; terms_sha256: string; status: string };
+  const transfers = () => (db.prepare("SELECT COUNT(*) AS n FROM transfers").get() as { n: number }).n;
+  return { terms: JSON.parse(row.terms_json) as Terms, terms_sha256: row.terms_sha256, status: row.status, transfers };
+}
+
+// Lane C's approve-held, terms and pay routes, stood in for here until try-core-1112 merges. Approve keeps the
+// signature and answers held (it verifies nothing itself, and the engine pays nothing). Terms answers the engine's own
+// terms and hash. Pay: terms whose canonical hash is not the signed one are refused by both layers and nothing moves;
+// the signed terms go to the engine's real approve with the signature the browser sent, which verifies it and pays on
+// the stand-in bank. The pay answer is held payDelay ms (the 800 ms test).
+const kept = new Map<string, unknown>();
+const paid = new Set<string>();
+const stand = { payDelay: 0, payAnswers: 0 };
+async function laneC(method: string, path: string, session: string, body: Record<string, unknown>, res: ServerResponse): Promise<boolean> {
+  const m = /^\/v1\/engine\/proposals\/([A-Za-z0-9_-]+)\/(approve|terms|pay)$/.exec(path);
+  if (!m) return false;
+  const [, id, what] = m as unknown as [string, string, string];
+  if (method === "POST" && what === "approve") {
+    if (!body.credential || typeof body.terms_sha256 !== "string") { send(res, 400, { error: "terms_sha256 and credential are required" }); return true; }
+    kept.set(`${session} ${id}`, body.credential);
+    send(res, 200, { status: "approved", message: `${id} is approved and held: nothing is paid until it is paid with this signature.`, settled: null, held: true });
+    return true;
+  }
+  const L = await ledgerOf(session, id);
+  if (!L) { send(res, 404, { error: "no proposal" }); return true; }
+  if (method === "GET" && what === "terms") {
+    const { canonicalTerms } = await import("../../src/lib/terms.js");
+    send(res, 200, { proposal_id: id, status: L.status, terms: L.terms, canonical: canonicalTerms(L.terms), terms_sha256: L.terms_sha256, approved: kept.has(`${session} ${id}`), expires_at: L.terms.expires_at });
+    return true;
+  }
+  if (method !== "POST" || what !== "pay") return false;
+  if (stand.payDelay) await new Promise((r) => setTimeout(r, stand.payDelay));
+  stand.payAnswers++;
+  const sent = body.terms as Terms;
+  const sentSha = (() => { try { return termsHash(sent); } catch { return createHash("sha256").update(JSON.stringify(sent ?? null)).digest("hex"); } })();
+  const before = L.transfers();
+  const base = { signed_sha256: L.terms_sha256, sent_sha256: sentSha, transfers_before: before, sandbox_calls: 0, request_id: `req_${randomUUID()}` };
+  if (!body.credential) { send(res, 200, { ...base, outcome: "not_signed", layers: { signature: { verified: false, reason: "No signature was sent." }, executor: { accepted: null, said: "" } }, changed: [], transfers_after: before, settled: null }); return true; }
+  if (sentSha !== L.terms_sha256) {
+    const changed = Object.keys({ ...L.terms, ...(sent ?? {}) }).filter((k) => JSON.stringify((L.terms as Record<string, unknown>)[k]) !== JSON.stringify((sent as Record<string, unknown> | null)?.[k]))
+      .map((field) => ({ field, from: (L.terms as Record<string, unknown>)[field], to: (sent as Record<string, unknown> | null)?.[field] }));
+    send(res, 200, { ...base, outcome: "refused", layers: { signature: { verified: false, reason: "The signature is over other terms than the ones sent." },
+      executor: { accepted: false, said: "the terms in this payment do not hash to the approved terms; nothing was paid" } }, changed, transfers_after: L.transfers(), settled: null });
+    return true;
+  }
+  if (paid.has(`${session} ${id}`)) { send(res, 200, { ...base, outcome: "paid_once", layers: { signature: { verified: true, reason: "" }, executor: { accepted: true, said: "" } }, changed: [], transfers_after: L.transfers(), settled: null }); return true; }
+  const a = await cloud("POST", `/v1/engine/proposals/${encodeURIComponent(id)}/approve`, session, { terms_sha256: L.terms_sha256, credential: body.credential });
+  if (a.json.status === "approved") paid.add(`${session} ${id}`);
+  send(res, 200, { ...base, outcome: a.json.status === "approved" ? "paid" : "refused", changed: [], transfers_after: L.transfers(), settled: a.json.settled ?? null,
+    layers: a.json.status === "approved" ? { signature: { verified: true, reason: "" }, executor: { accepted: true, said: "" } } : { signature: { verified: false, reason: String(a.json.message ?? "") }, executor: { accepted: false, said: "" } } });
+  return true;
+}
 
 const server = createServer(async (req, res) => {
   const chunks: Buffer[] = [];
@@ -52,8 +164,7 @@ const server = createServer(async (req, res) => {
   const json = () => JSON.parse(body?.toString() ?? "{}") as Record<string, string>;
   // Lane C's routes, stood in for here only.
   if (req.method === "POST" && url.pathname === "/v1/try/start") {
-    const t = await c.tenant(`visitor-${++made}`);
-    await c.req("POST", "/v1/company", { key: t.session, body: { language: "en" } });
+    const t = await company(`visitor-${++made}`);
     visitors.set(t.session, t);
     return send(res, 201, { tenant: t.id, session: t.session, visitor_token: `vt-${made}`, expires_at: new Date(Date.now() + 15 * 60_000).toISOString(), company: { name: "Test company" }, pool: "public", mode: { claude: "code", agents: "code", rail_awx: "off" } });
   }
@@ -66,9 +177,9 @@ const server = createServer(async (req, res) => {
   const sample = /^\/v1\/engine\/samples\/([a-z]+)$/.exec(url.pathname);
   if (req.method === "POST" && sample) { const r = await upload(session, clean, `${sample[1]}.pdf`); return send(res, r.status, r.json); }
   if (req.method === "POST" && url.pathname === "/v1/engine/compose") { const b = json(); const r = await upload(session, await composed(b), `${b.invoice_no}.pdf`); return send(res, r.status, r.json); }
-  // Everything else is the cloud's own answer (a browser's Origin is this server's; the cloud is configured with its own).
-  const headers = Object.fromEntries(Object.entries(req.headers).filter(([k]) => k !== "host").map(([k, v]) => [k, k === "origin" ? CLOUD : String(v)]));
-  const r = await c.fetch(`${CLOUD}${req.url}`, { method: req.method, headers, ...(body ? { body } : {}) });
+  if (await laneC(req.method ?? "GET", url.pathname, session, body ? JSON.parse(body.toString()) as Record<string, unknown> : {}, res)) return;
+  // Everything else is the cloud's own answer.
+  const r = await handle(new Request(`${ORIGIN}${req.url}`, { method: req.method, headers: req.headers as Record<string, string>, ...(body ? { body } : {}) }), env);
   res.writeHead(r.status, Object.fromEntries(r.headers));
   res.end(Buffer.from(await r.arrayBuffer()));
 });
@@ -78,22 +189,33 @@ const require = createRequire(import.meta.url);
 const { chromium } = require("playwright") as typeof import("playwright");
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 
-/** The things every screen must hold: one main button (when it has one yet), no overflow, focus on the heading. */
-async function screenChecks(page: Page, name: string, width: number) {
-  ok(await page.locator(".btn.primary:visible").count() === 1, `${name}: exactly one main button`);
+/** The things every screen must hold: one main button (main: how many; screen 5 has none until B3), no overflow, focus on the heading. */
+async function screenChecks(page: Page, name: string, width: number, main = 1, focus = true) {
+  ok(await page.locator(".btn.primary:visible").count() === main, `${name}: ${main === 1 ? "exactly one main button" : `${main} main buttons`}`);
   ok(await page.evaluate(() => document.documentElement.scrollWidth) <= width, `${name}: nothing wider than ${width} px`);
+  if (focus) ok(await page.evaluate(() => document.activeElement?.tagName === "H1" || document.activeElement?.classList.contains("primary")), `${name}: focus on the heading (or on the main button an answer just drew)`);
+}
+/** The page's kept state in this tab. */
+const keptState = (page: Page) => page.evaluate(() => JSON.parse(sessionStorage.getItem("purser.try") ?? "{}") as Record<string, unknown>);
+/** A context with Chromium's virtual passkey authenticator (the platform kind, with user verification). */
+async function passkeyContext(width: number, scheme: "light" | "dark"): Promise<BrowserContext> {
+  const ctx = await browser.newContext({ viewport: { width, height: width === 390 ? 844 : 1000 }, colorScheme: scheme, deviceScaleFactor: shots ? 2 : 1 });
+  return ctx;
 }
 
 // Part 1: a visit at each size.
 for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
-  const ctx = await browser.newContext({ viewport: { width, height: width === 390 ? 844 : 1000 }, colorScheme: scheme, deviceScaleFactor: shots ? 2 : 1 });
+  const ctx = await passkeyContext(width, scheme);
   const page = await ctx.newPage();
+  const cdp = await ctx.newCDPSession(page);
+  await cdp.send("WebAuthn.enable");
+  await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
   const errors: string[] = [];
   page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
   page.on("pageerror", (e) => errors.push(String(e)));
   const tag = `${width} ${scheme}`;
   const shot = async (n: string) => { if (shots) await page.screenshot({ path: join(shots, `b1-${n}-${width}-${scheme}.png`), fullPage: true }); };
-
+  const shot2 = async (n: string) => { if (shots) await page.screenshot({ path: join(shots, `b2-${n}-${width}-${scheme}.png`), fullPage: true }); };
   await page.goto(`${ORIGIN}/try#j=jury-token-123`);
   await page.waitForSelector(`h1:text-is("${START.heading}")`);
   ok(new URL(page.url()).hash === "", `${tag}: the token is gone from the address bar`);
@@ -122,7 +244,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
     await page.click(`text=${INVOICE.send}`);
     ok(await page.evaluate(() => (document.querySelector("#f-amt") as HTMLInputElement).validationMessage) !== "", `${tag}: an amount that is not an amount is refused before anything is sent`);
     await page.fill("#f-amt", "1850,00");
-    await screenChecks(page, `${tag} screen 1 (write your own)`, width);
+    await screenChecks(page, `${tag} screen 1 (write your own)`, width, 1, false);
     await shot("1-write");
     const composeReq = page.waitForRequest((r) => r.url().endsWith("/v1/engine/compose"));
     await page.click(`text=${INVOICE.send}`);
@@ -143,6 +265,114 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await page.reload();
   await page.waitForSelector(".result .btn.primary", { timeout: 20_000 });
   ok((await page.textContent("h1")) === WORK.heading && (await page.textContent(".result"))!.includes(WORK.ready), `${tag}: a reload returns to the result, from the server`);
+
+  // Screen 3: the proposal, the approval passkey (made by the virtual authenticator), the approval (held).
+  const visitor = [...visitors.values()].at(-1)!;
+  await page.click(`.result .btn.primary:has-text("${WORK.pay}")`);
+  await page.waitForSelector(`h1:text-is("${APPROVE.heading}")`);
+  await page.waitForSelector(`.btn.primary:has-text("${APPROVE.create}")`, { timeout: 20_000 });
+  ok((await page.textContent(".stepname")) === STEPS.names.approve, `${tag}: the steps say Approve`);
+  ok(await page.evaluate(() => document.activeElement?.tagName) === "H1", `${tag} screen 3: focus on the heading`);
+  ok((await page.textContent(".amount")) === "EUR 1,850.00", `${tag}: the amount, large, once (${await page.textContent(".amount")})`);
+  const st = await keptState(page);
+  const pid = (st.proposal as { id: string }).id;
+  const L0 = (await ledgerOf(visitor.session, pid))!;
+  const transfers0 = L0.transfers();
+  ok((await page.textContent(".short"))!.startsWith(L0.terms_sha256.slice(0, 12)), `${tag}: the first 12 characters of the terms' hash`);
+  ok((await page.textContent("#main"))!.includes(APPROVE.saves.replace("{host}", "localhost")), `${tag}: before the passkey exists, it says a test passkey is saved for this host`);
+  ok(await page.locator("pre.terms").textContent() === "", `${tag}: the exact terms are not fetched before the fold opens`);
+  await page.click(`summary:has-text("${APPROVE.terms}")`);
+  await page.waitForFunction(() => (document.querySelector("pre.terms")?.textContent ?? "") !== "");
+  ok(createHash("sha256").update((await page.textContent("pre.terms"))!).digest("hex") === L0.terms_sha256, `${tag}: the fold holds the canonical terms, whose SHA-256 is the proposal's hash`);
+  await page.click(`summary:has-text("${APPROVE.terms}")`);
+  await screenChecks(page, `${tag} screen 3 (create)`, width, 1, false);
+  await page.click(`.btn.primary:has-text("${APPROVE.create}")`);
+  await page.waitForSelector(`.btn.primary:has-text("Approve EUR 1,850.00 with your passkey")`, { timeout: 20_000 });
+  ok(((await cloud("GET", "/v1/engine", visitor.session)).json.passkey as { credential_id?: string } | null)?.credential_id !== undefined, `${tag}: the engine holds the approval passkey the browser made`);
+  ok(!(await page.innerText("#main")).includes(APPROVE.saves.replace("{host}", "localhost")), `${tag}: once it exists, the saving sentence goes`);
+  await screenChecks(page, `${tag} screen 3 (approve)`, width, 1, false);
+  await shot2("3-approve");
+  const approveReq = page.waitForRequest((r) => r.url().endsWith(`/proposals/${pid}/approve`));
+  await page.click(`.btn.primary:has-text("Approve EUR 1,850.00")`);
+  const ab = JSON.parse((await approveReq).postData() ?? "{}") as { terms_sha256?: string; credential?: { response?: { signature?: string } } };
+  ok(ab.terms_sha256 === L0.terms_sha256 && typeof ab.credential?.response?.signature === "string" && Object.keys(ab).sort().join() === "credential,terms_sha256", `${tag}: approve carries the terms' hash and the passkey's signature, nothing else`);
+  await page.waitForSelector(`text=${APPROVE.approved}`);
+  ok((await ledgerOf(visitor.session, pid))!.transfers() === transfers0, `${tag}: approved and held: no transfer`);
+  const cred1 = (await keptState(page)).cred as { response: { signature: string } } | null;
+  ok(cred1?.response.signature === ab.credential?.response?.signature, `${tag}: the approval's signature is kept in this tab for screen 4`);
+  await screenChecks(page, `${tag} screen 3 (approved)`, width);
+
+  // Screen 4: the signed terms in three fields; one cent more is refused, with nothing drawn before the answer.
+  await page.click(`.btn.primary:has-text("${APPROVE.next}")`);
+  await page.waitForSelector(`h1:text-is("${PAY.heading}")`);
+  await page.waitForFunction(() => (document.querySelector("#p-amt") as HTMLInputElement | null)?.value === "1850.00");
+  await screenChecks(page, `${tag} screen 4`, width);
+  ok(await page.inputValue("#p-payee") === L0.terms.beneficiary_name && await page.inputValue("#p-acct") === L0.terms.iban_last4, `${tag}: the fields hold the signed payee and account ending`);
+  ok(await page.getAttribute("#p-amt", "inputmode") === "decimal", `${tag}: the amount field asks for a decimal keyboard`);
+  await page.fill("#p-amt", "1850,01");
+  stand.payDelay = 800;
+  const answered = stand.payAnswers;
+  const payReq = page.waitForRequest((r) => r.url().endsWith(`/proposals/${pid}/pay`));
+  const payRes = page.waitForResponse((r) => r.url().endsWith(`/proposals/${pid}/pay`));
+  const t0 = Date.now();
+  await page.click(`.btn.primary:has-text("${PAY.button}")`);
+  const pb = JSON.parse((await payReq).postData() ?? "{}") as { terms: Record<string, unknown>; credential: { response: { signature: string } } };
+  ok(Object.keys(pb).join() === "terms,credential" && JSON.stringify(pb.terms) === JSON.stringify({ ...L0.terms, amount: "1850.01" }) && pb.credential.response.signature === cred1?.response.signature,
+    `${tag}: pay carries exactly the stored terms with the amount written in (1850.01) and the kept signature`);
+  const outcomeShown = () => page.evaluate(() => document.querySelectorAll(".stamp, .layer, .hash, .verdict, .proof, .outcome .card").length);
+  await page.waitForTimeout(150);
+  const early = await outcomeShown();
+  await page.waitForTimeout(450);
+  ok(early === 0 && await outcomeShown() === 0 && stand.payAnswers === answered, `${tag}: 800 ms: nothing of the outcome is on the page while the answer is held`);
+  const res = await payRes;
+  const rawText = await res.text();
+  await page.waitForSelector(".stamp");
+  stand.payDelay = 0;
+  ok(Date.now() - t0 >= 800, `${tag}: 800 ms: the outcome came after the answer`);
+  ok((await page.textContent(".stamp")) === PAY.stamp, `${tag}: refused: the stamp`);
+  const layers = await page.locator(".layer").allTextContents();
+  ok(layers.length === 2 && layers[0] === "Your signature: The signature is over other terms than the ones sent." && layers[1] === PAY.executor, `${tag}: refused: one row per layer (${layers.join(" | ")})`);
+  const hashes = await page.locator(".hash").allTextContents();
+  const raw = JSON.parse(rawText) as { signed_sha256: string; sent_sha256: string };
+  ok(hashes.length === 2 && hashes[0] === `${PAY.signed}${raw.signed_sha256}` && hashes[1] === `${PAY.sent}${raw.sent_sha256}` && raw.signed_sha256 === L0.terms_sha256 && raw.sent_sha256 !== raw.signed_sha256, `${tag}: refused: the signed and the sent hash`);
+  const marks = await page.locator(".hash").nth(1).locator("mark").allTextContents();
+  const diffs = [...raw.sent_sha256].filter((c, i) => c !== raw.signed_sha256[i]).length;
+  ok(marks.join("").length === diffs && diffs > 0, `${tag}: refused: every differing character marked (${diffs})`);
+  ok((await page.textContent(".verdict")) === `${PAY.vAmountCent} ${PAY.vCover}`, `${tag}: refused: the verdict, from the two values`);
+  const proofs = await page.locator(".proof").allTextContents();
+  const ms = Number(/^Round trip (\d+) ms, measured in your browser$/.exec(proofs[0] ?? "")?.[1]);
+  ok(ms >= 800 && proofs[1] === PAY.transfers.replace("{n}", "0") && proofs.length === 2, `${tag}: refused: the round trip measured in the browser (${proofs[0]}), Transfers made: 0, no sandbox line with the rail off`);
+  ok((await ledgerOf(visitor.session, pid))!.transfers() === transfers0, `${tag}: refused: the stand-in bank made no transfer`);
+  ok(await page.locator("pre.raw").evaluate((e) => e.textContent) === rawText, `${tag}: refused: the raw answer exactly as received`);
+  ok(!(await page.isVisible(`text=${PAY.line}`)), `${tag}: refused: the line gives way to the answer`);
+  await screenChecks(page, `${tag} screen 4 (refused)`, width, 1, false);
+  await shot2("4-refused");
+  await page.click(`button.link:has-text("${PAY.putBack}")`);
+  ok(await page.inputValue("#p-amt") === "1850.00", `${tag}: put back what you signed`);
+
+  if (width === 390) {
+    // A reload that lost the kept signature: the passkey is asked again for the same terms before anything is sent.
+    await page.evaluate(() => { const o = JSON.parse(sessionStorage.getItem("purser.try") ?? "{}") as Record<string, unknown>; o.cred = null; sessionStorage.setItem("purser.try", JSON.stringify(o)); });
+    await page.reload();
+    await page.waitForSelector(`h1:text-is("${PAY.heading}")`);
+    await page.waitForFunction(() => (document.querySelector("#p-amt") as HTMLInputElement | null)?.value === "1850.00");
+    ok((await keptState(page)).cred === null, `${tag}: after the reload no signature is kept`);
+  }
+  const paidReq = page.waitForRequest((r) => r.url().endsWith(`/proposals/${pid}/pay`));
+  await page.click(`.btn.primary:has-text("${PAY.button}")`);
+  const pp = JSON.parse((await paidReq).postData() ?? "{}") as { terms: Record<string, unknown>; credential: { response: { signature: string; clientDataJSON: string } } | null };
+  ok(JSON.stringify(pp.terms) === JSON.stringify(L0.terms) && !!pp.credential, `${tag}: pay as signed: the signed terms and a signature`);
+  if (width === 390) {
+    const cd = JSON.parse(Buffer.from(pp.credential!.response.clientDataJSON, "base64url").toString()) as { challenge: string };
+    ok(pp.credential!.response.signature !== cred1?.response.signature && cd.challenge === (st.proposal as { challenge: string }).challenge, `${tag}: after the reload the passkey signed again, over the same challenge`);
+  }
+  await page.waitForSelector(`h1:text-is("${BOOKS.heading}")`, { timeout: 20_000 });
+  const L1 = (await ledgerOf(visitor.session, pid))!;
+  ok(L1.transfers() === transfers0 + 1 && L1.status === "EXECUTED", `${tag}: paid: one transfer on the stand-in bank, by the engine's own approve (${L1.status})`);
+  ok((await page.textContent("#main"))!.includes(BOOKS.sub) && await page.locator(".art.ok svg").count() === 1, `${tag}: paid: the placeholder screen 5 says paid on the simulated bank, with its check`);
+  await screenChecks(page, `${tag} screen 5 (placeholder)`, width, 0);
+  // The screenshot waits out the paid check's half-second entry animation (CSS only; the page drew everything already).
+  if (width === 390) { await page.waitForTimeout(600); await shot2("4-paid"); }
   ok(errors.length === 0, `${tag}: no console or CSP errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
   await ctx.close();
 }
@@ -285,6 +515,6 @@ const setHidden = (page: Page, hidden: boolean) => page.evaluate((h) => { (windo
 
 await browser.close();
 server.close();
-c.close();
+rmSync(dir, { recursive: true, force: true });
 console.log(failed ? `\n${failed} check(s) failed` : "\nall checks passed");
 process.exit(failed ? 1 : 0);
