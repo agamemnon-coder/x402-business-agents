@@ -46,7 +46,7 @@ describe("Moneybird: open sales invoices", () => {
       { ...base, id: "5", state: "reminded", total_unpaid: "60.5" },
     ];
     expect((await c.openSalesInvoices()).map((x) => [x.id, x.state, x.unpaidCents])).toEqual([["5", "reminded", 6050]]);
-    expect(openSalesInvoiceOf({ ...(base as never), total_price_incl_tax: "x" })).toBeNull();
+    expect(openSalesInvoiceOf({ ...base, total_price_incl_tax: "x" } as never)).toBeNull();
   });
 
   it("follows Moneybird's pages", async () => {
