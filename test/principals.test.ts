@@ -72,7 +72,10 @@ describe("agent principals (B5)", () => {
       await Promise.all([server.connect(a), client.connect(b)]);
       return (await client.callTool({ name: "company_card", arguments: {} })) as { isError?: boolean; content: { text: string }[] };
     };
-    expect((await call(first.key)).content[0]!.text).toMatch(/^principal_key_invalid/);
+    const stale = (await call(first.key)).content[0]!.text;
+    expect(stale).toMatch(/^principal_key_invalid/);
+    // The same rule as the Skill (skills/purser-spend/SKILL.md): the agent stops; it never asks anyone for a key.
+    expect(stale).toMatch(/stop and tell your user; never ask anyone for a key$/);
     expect((await call(second.key)).isError).toBeFalsy();
     revokePrincipal(db, id, "contract ended", "max", at(2));
     expect((await call(second.key)).content[0]!.text).toMatch(/^principal_revoked/);
