@@ -16,6 +16,7 @@ import { EXPLORER, REPO_BLOB, metalStory, refusalNote, separateRuns, type MetalS
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { AIRI_CSS, airiRunBlock } from "./airiRun.js";
 import { awxRun, awxRunBlock } from "./awxRun.js";
+import { iccBlock } from "./iccBlock.js";
 import { vic2RunBlock } from "./vic2Run.js";
 import { VIC_FLOW_CSS, vicFlowBlock } from "./vicFlow.js";
 import { VISA_OVERVIEW_CSS, VISA_TAP_ID, visaOverviewBlock } from "./visaOverview.js";
@@ -249,7 +250,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
       node("credit-card", buy ? `€${buy.amount} paid` : "Card pays", own ? `Airwallex card ····${own.last4}` : "Airwallex card", "ok"), arrow,
       node("ban", decline ? `€${decline.amount} declined` : "Over the limit", tap && own ? `by Airwallex · ${tap.label.replace(/ · test money$/, "")}` : "by Airwallex, at the limit", "bad")].join(""),
     label: own ? undefined : tap?.label, nums: "", line: "The card's limit still holds: over it, Airwallex declines.",
-    extra: `<p class="claim">${esc(VISA_CLAIM)}</p><p class="claim">${esc(VISA_TAP_STATUS)}</p>`,
+    extra: `<p class="claim">${esc(VISA_CLAIM)}</p><p class="claim">${esc(VISA_TAP_STATUS)}</p>${iccBlock()}`,
     folds: fold(own ? "The live proof" : "The live TAP run", p.visa) + fold("What this is, and is not", (tap ? visaLabels(run, tap) : []).map(plainLi)),
   });
 }
