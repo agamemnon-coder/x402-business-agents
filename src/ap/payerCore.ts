@@ -429,8 +429,11 @@ export function enforceProposal<P extends PaymentProposal>(c: PaymentCase, propo
 
 // ── The agent ──
 
-/** The model the runner gives this agent (src/claude/reader.ts MODELS.act), its effort and its turns. */
-export const PAYER_MODEL = "claude-sonnet-5-5";
+/**
+ * The model the runner and the Worker give this agent, its effort and its turns. Haiku (src/claude/reader.ts
+ * MODELS.classify), chosen by the live eval as for the Checker (docs/evals/ap-agents.json, 12 November).
+ */
+export const PAYER_MODEL = "claude-haiku-5-5";
 export const PAYER_EFFORT = "medium" as const;
 export const PAYER_MAX_TURNS = 8;
 

@@ -13,21 +13,21 @@ import type { Json } from "@metalntwx/metal-pay/mandates";
 import type { z } from "zod";
 import { runAgent, type AgentRun, type AgentTool } from "../agents/loop.js";
 import { audit } from "../audit/log.js";
-import { claudeClient, MODELS } from "../claude/reader.js";
+import { claudeClient } from "../claude/reader.js";
 import { COMPANY } from "../config/brand.js";
 import type { DB } from "../db/open.js";
 import type { GateAnswer, PlanGate, PlannedPayment } from "../payouts/planGate.js";
 import { runProvenance, type RunProvenance } from "./agentRun.js";
 import {
-  answerPayerTool, enforceProposal, fallbackProposal, PAYER_EFFORT, PAYER_MAX_TURNS, PAYER_SYSTEM, PAYER_UNFINISHED, payerInputs, payerPrompt, payerTools, railFromRoute,
+  answerPayerTool, enforceProposal, fallbackProposal, PAYER_EFFORT, PAYER_MODEL, PAYER_MAX_TURNS, PAYER_SYSTEM, PAYER_UNFINISHED, payerInputs, payerPrompt, payerTools, railFromRoute,
   type EnforcedProposal, type PaymentCase, type PaymentProposal, type PayerToolName,
 } from "./payerCore.js";
 
 /** The agent's name in the audit chain, and the row its proposal is recorded in. */
 export const PAYER_AGENT = "payer" as const;
 export const PAYER_DECISION = "ap.payer_proposed";
-/** The model the runner gives the Payer: Haiku (src/claude/reader.ts MODELS.classify). */
-export const PAYER_RUNNER_MODEL: string = MODELS.classify;
+/** The model the runner gives the Payer: the core's, chosen by the live eval (src/ap/payerCore.ts PAYER_MODEL). */
+export const PAYER_RUNNER_MODEL: string = PAYER_MODEL;
 /** The finding an invoice carries while the Payer's day for it is still to come. */
 export const PAY_LATER = "payment_planned_later";
 

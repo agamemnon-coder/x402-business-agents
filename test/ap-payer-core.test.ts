@@ -464,8 +464,9 @@ describe("the fallback: what code alone proposes when Claude is unavailable", ()
 });
 
 describe("the agent's definition", () => {
-  it("runs on the acting model, with the effort and turns the loops use", () => {
-    expect(PAYER_MODEL).toBe(MODELS.act);
+  // 12 Nov: the live eval chose Haiku (docs/evals/ap-agents.json; test/ap-agent-evals.test.ts holds the two together).
+  it("runs on the classify model, with the effort and turns the loops use", () => {
+    expect(PAYER_MODEL).toBe(MODELS.classify);
     expect(PAYER_EFFORT).toBe("medium");
     expect(PAYER_MAX_TURNS).toBe(8);
     expect(PAYER_UNFINISHED).toMatch(/call propose_payment/);

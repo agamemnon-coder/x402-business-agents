@@ -7,11 +7,13 @@
 // disagrees with what code requires, or if the committed hostile record (shown on /claude) no longer matches a fresh run.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { codeFindings, codeRequires, enforce, fallbackDecision, type CheckerDecision } from "../src/ap/checkerCore.js";
-import { enforceProposal, fallbackProposal, PAY_RAILS } from "../src/ap/payerCore.js";
+import { CHECKER_MODEL, codeFindings, codeRequires, enforce, fallbackDecision, type CheckerDecision } from "../src/ap/checkerCore.js";
+import { enforceProposal, fallbackProposal, PAY_RAILS, PAYER_MODEL } from "../src/ap/payerCore.js";
 import { AP_AGENT_CASES, AP_CASE_KINDS, AP_PAYER_CASES, looser, payerUnsafe, unsafe } from "../src/evals/apAgentCases.js";
-import { chooseDefault, hostileLine, latencyPercentile, summarise, withinBudget, type EvalRow } from "../src/evals/apAgentEvals.js";
-import { agentEvalsMarkdown, apSectionOf, withApSection, type AgentEvalsRecord } from "../src/evals/agentEvalsDoc.js";
+import { apSection, buildRecord, chooseDefault, hostileLine, latencyPercentile, summarise, withinBudget, type ApEvalRecord, type EvalRow } from "../src/evals/apAgentEvals.js";
+import { CHECKER_RUNNER_MODEL } from "../src/ap/checkerAgent.js";
+import { PAYER_RUNNER_MODEL } from "../src/ap/payerAgent.js";
+import { AP_SECTION_END, AP_SECTION_START, agentEvalsMarkdown, apSectionOf, withApSection, type AgentEvalsRecord } from "../src/evals/agentEvalsDoc.js";
 import { hostileEval, HOSTILE_RECORD } from "../src/evals/apHostile.js";
 import { claudePage } from "../src/redesign/partners.js";
 import { esc } from "../src/redesign/ui.js";
@@ -152,5 +154,19 @@ describe("docs/agent-evals.md is written from the eval records alone", () => {
     const md = read("docs/agent-evals.md");
     expect(md).not.toContain("not recorded");
     expect(md).toBe(withApSection(agentEvalsMarkdown(record), apSectionOf(md)));
+  });
+});
+
+describe("each payables agent's model is the one the live eval chose", () => {
+  it("matches the defaults in docs/evals/ap-agents.json: the cheapest model at 95% or more on the cases that are not red team", () => {
+    const rec = JSON.parse(readFileSync(new URL("../docs/evals/ap-agents.json", import.meta.url), "utf8")) as ApEvalRecord;
+    expect(buildRecord(rec.rows, { checker: AP_AGENT_CASES.map((k) => k.id), payer: AP_PAYER_CASES.map((k) => k.id) }, rec.ran_at, rec.hostile).defaults).toEqual(rec.defaults);
+    expect({ checker: CHECKER_MODEL, payer: PAYER_MODEL }).toEqual(rec.defaults);
+    expect({ checker: CHECKER_RUNNER_MODEL, payer: PAYER_RUNNER_MODEL }).toEqual(rec.defaults);
+    // Every row carries the commit it ran on, and none was unsafe after enforce.
+    expect(rec.rows.every((r) => /^[0-9a-f]{12}$/.test(r.commit))).toBe(true);
+    expect(rec.rows.filter((r) => r.unsafe_after)).toEqual([]);
+    // The section in docs/agent-evals.md is the record's.
+    expect(apSectionOf(readFileSync(new URL("../docs/agent-evals.md", import.meta.url), "utf8"))).toBe(apSection(buildRecord(rec.rows, { checker: AP_AGENT_CASES.map((k) => k.id), payer: AP_PAYER_CASES.map((k) => k.id) }, rec.ran_at, rec.hostile), { start: AP_SECTION_START, end: AP_SECTION_END }));
   });
 });

@@ -513,8 +513,9 @@ describe("the fallback: what code alone decides when Claude is unavailable", () 
 });
 
 describe("the agent's definition", () => {
-  it("runs on the review model, with the effort and turns the loops use", () => {
-    expect(CHECKER_MODEL).toBe(MODELS.review);
+  // 12 Nov: the live eval chose Haiku (docs/evals/ap-agents.json; test/ap-agent-evals.test.ts holds the two together).
+  it("runs on the classify model, with the effort and turns the loops use", () => {
+    expect(CHECKER_MODEL).toBe(MODELS.classify);
     expect(CHECKER_EFFORT).toBe("medium");
     expect(CHECKER_MAX_TURNS).toBe(8);
     expect(CHECKER_UNFINISHED).toMatch(/call decide/);

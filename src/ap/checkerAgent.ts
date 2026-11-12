@@ -11,19 +11,19 @@ import type { Json } from "@metalntwx/metal-pay/mandates";
 import type { z } from "zod";
 import { runAgent, type AgentRun, type AgentTool } from "../agents/loop.js";
 import { audit } from "../audit/log.js";
-import { claudeClient, MODELS } from "../claude/reader.js";
+import { claudeClient } from "../claude/reader.js";
 import type { DB } from "../db/open.js";
 import { runProvenance, type RunProvenance } from "./agentRun.js";
 import {
-  answerTool, CHECKER_EFFORT, CHECKER_MAX_TURNS, CHECKER_SYSTEM, CHECKER_UNFINISHED, checkerInputs, checkerPrompt, checkerTools, codeRequires, enforce, fallbackDecision, statusOf,
+  answerTool, CHECKER_EFFORT, CHECKER_MODEL, CHECKER_MAX_TURNS, CHECKER_SYSTEM, CHECKER_UNFINISHED, checkerInputs, checkerPrompt, checkerTools, codeRequires, enforce, fallbackDecision, statusOf,
   type ApStatus, type CheckerDecision, type CheckerToolName, type Enforced, type Finding, type InvoiceCase,
 } from "./checkerCore.js";
 
 /** The agent's name in the audit chain, and the row its decision is recorded in. */
 export const CHECKER_AGENT = "checker" as const;
 export const CHECKER_DECISION = "ap.checker_decided";
-/** The model the runner gives the Checker: Sonnet (src/claude/reader.ts MODELS.act). */
-export const CHECKER_RUNNER_MODEL: string = MODELS.act;
+/** The model the runner gives the Checker: the core's, chosen by the live eval (src/ap/checkerCore.ts CHECKER_MODEL). */
+export const CHECKER_RUNNER_MODEL: string = CHECKER_MODEL;
 /** The findings the agent's own stricter word adds to an invoice (a hold or a reject of one code's checks would let through). */
 export const CHECKER_HOLD = "checker_hold";
 export const CHECKER_REJECT = "checker_reject";

@@ -471,8 +471,12 @@ export function fallbackDecision(c: InvoiceCase, findings: Finding[]): CheckerDe
 
 // ── The agent ──
 
-/** The model the runner gives this agent (src/claude/reader.ts MODELS.review), its effort and its turns. */
-export const CHECKER_MODEL = "claude-opus-5-5";
+/**
+ * The model the runner and the Worker give this agent, its effort and its turns. Haiku (src/claude/reader.ts
+ * MODELS.classify): the cheapest model that got at least 95% of the cases that are not red team right in the live eval
+ * (docs/evals/ap-agents.json, docs/agent-evals.md; 12 November); test/ap-agent-evals.test.ts holds it to that record.
+ */
+export const CHECKER_MODEL = "claude-haiku-5-5";
 export const CHECKER_EFFORT = "medium" as const;
 export const CHECKER_MAX_TURNS = 8;
 /** The most of a document's text the agent is shown (code's checks run on all of it). */
