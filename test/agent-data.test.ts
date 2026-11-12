@@ -1,6 +1,6 @@
 // Proof an agent can fetch and check (agent-surface, 12 Nov): /proof.json carries the runs, the guarantees and the
 // agents' limits as data, every value read from the same functions the pages use; /receipt-sample.json serves one real
-// signed receipt byte for byte, which anyone can verify offline.
+// signed receipt byte for byte, which anyone can verify offline; llms.txt points to both under "## For agents".
 import { createHash, createPublicKey, verify } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -136,6 +136,32 @@ describe("/receipt-sample.json", () => {
     const key = createPublicKey({ key: { ...receipt.public_key }, format: "jwk" });
     const signed = Buffer.concat([Buffer.from(receipt.assertion.authenticatorData!, "base64url"), createHash("sha256").update(Buffer.from(receipt.assertion.clientDataJSON!, "base64url")).digest()]);
     expect(verify("sha256", signed, { key, dsaEncoding: "der" }, Buffer.from(receipt.assertion.signature!, "base64url"))).toBe(true);
+  });
+});
+
+describe("llms.txt, for agents", () => {
+  const t = readFileSync(root("llms.txt"), "utf8");
+  const block = t.slice(t.indexOf("## For agents"));
+
+  it("ends with a short \"## For agents\" block naming both URLs", () => {
+    expect(t).toContain("## For agents");
+    expect(block.slice("## For agents".length)).not.toMatch(/\n## /);
+    expect(block.trim().split("\n").filter((l) => l.trim()).length).toBeLessThanOrEqual(6);
+    expect(block).toContain(`${SITE_URL}/proof.json`);
+    expect(block).toContain(`${SITE_URL}/receipt-sample.json`);
+    expect(block).toContain("npm run mcp, docs/agent-api.md");
+    expect(block).not.toMatch(/agent-ready|WebMCP|MCP endpoint|certified|endorsed|approved by/i);
+  });
+
+  it("says what the receipt is from its own note, and what it does not prove from the verifier", () => {
+    const line = block.split("\n").find((l) => /receipt/i.test(l) && /does not prove/i.test(l))!;
+    expect(line).toBeDefined();
+    for (const words of ["sandbox", "test money", "the owner's own passkey", "Face ID, as stated by the owner", "7 November"]) {
+      expect({ words, note: receipt.note.includes(words), line: line.includes(words) }).toEqual({ words, note: true, line: true });
+    }
+    const notProven = /who holds the key, or that it was Face ID \(no attestation is checked\)/;
+    expect(RECEIPT_MEANS[1]).toMatch(notProven);
+    expect(line).toMatch(notProven);
   });
 });
 
