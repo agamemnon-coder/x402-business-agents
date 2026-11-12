@@ -49,7 +49,7 @@ describe("Home is one story, in this order", () => {
       expect(at.map((x) => x.i)).toEqual([...at.map((x) => x.i)].sort((a, b) => a - b));
       expect(text(/<h1[\s\S]*?<\/h1>/.exec(main)![0])).toBe(HERO);
       // No other section: the hero, the three locks and, last and closed, "About Purser" (the owner, 12 Nov; test/home-about.test.ts).
-      expect(main.match(/<section\b[^>]*>/g)).toEqual(['<section class="hero">', '<section class="locks" aria-labelledby="h-locks">', '<section class="about" aria-label="About Purser">']);
+      expect(main.match(/<section\b[^>]*>/g)).toEqual(['<section class="hero">', '<section class="locks" aria-labelledby="h-locks">', '<section class="about" aria-labelledby="about">']);
     }
     expect(DIFFERENTIATORS[0]).toBe("An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless.");
     expect(text(mainOf(ON))).toContain(DIFFERENTIATORS[0]);
@@ -58,8 +58,9 @@ describe("Home is one story, in this order", () => {
   it("has exactly two buttons that lead somewhere: Try it yourself (to /try/sign, or /try without it) and See the proof", () => {
     const buttons = (html: string) => [...mainOf(html).matchAll(/<a class="btn[^"]*" href="([^"]+)">([\s\S]*?)<\/a>/g)].map((m) => [m[1], text(m[2]!)]);
     expect([START, PROOF_BUTTON]).toEqual(["Try it yourself", "See the proof"]);
-    expect(buttons(ON)).toEqual([["try/sign", START], ["proof", PROOF_BUTTON]]);
-    expect(buttons(OFF)).toEqual([["try", START], ["proof", PROOF_BUTTON]]);
+    // Since 12 Nov (the owner) the first button opens the hands-on demo (TRY_URL) in both bundles.
+    expect(buttons(ON)).toEqual([["https://purser-try.max-31b.workers.dev/try", START], ["proof", PROOF_BUTTON]]);
+    expect(buttons(OFF)).toEqual([["https://purser-try.max-31b.workers.dev/try", START], ["proof", PROOF_BUTTON]]);
     expect(OFF).not.toContain('href="try/sign"');
     expect(ON.match(/class="btn\b/g)).toHaveLength(2);
     // The bundles agree (TRY_SIGN_ENABLED on and off).
@@ -72,7 +73,8 @@ describe("Home is one story, in this order", () => {
   });
 
   it("A6: one reassurance line under the button, saying only what the page behind it does", () => {
-    expect(REASSURE).toEqual({ sign: "A test passkey, no account, no money. About a minute.", world: "A test world: no account, no money." });
+    // Since 12 Nov (the owner) every Try call to action opens the hands-on demo (TRY_URL); /try/sign keeps its own page.
+    expect(REASSURE).toEqual({ sign: "Your own test company, deleted after 24 hours.", world: "Your own test company, deleted after 24 hours." });
     expect(ON).toMatch(new RegExp(`${START}</a>\\s*<p class="reassure">${REASSURE.sign}</p>`));
     expect(OFF).toMatch(new RegExp(`${START}</a>\\s*<p class="reassure">${REASSURE.world}</p>`));
     // /try/sign as it is on this branch: the passkey is a test passkey made on the page, with no name or e-mail, in a test world; about a minute.
@@ -127,26 +129,34 @@ describe("Home is one story, in this order", () => {
     const tx = String(refused.payload.tx);
     expect([decline.amount, decline.currency, limit]).toEqual(["45.00", "EUR", "30.00"]);
     const rows = proofRows();
+    // Since the jury check of 12 Nov: four cards, no partner twice. The third is Visa Intelligent Commerce (vic-3,
+    // purchase B: the signed hash read back equal at Airi and at Airwallex), the fourth the CFO's own signature.
+    const vic3 = JSON.parse(read("docs/runs/2026-11-12-vic-3.json")) as { purchases: { step: string; payment_intent_id: string | null; read_back: { mandate: { equal: boolean } | null; payment_intent: { equal: boolean } | null } }[] };
+    const b = vic3.purchases.find((p) => p.step === "B")!;
+    expect([b.read_back.mandate?.equal, b.read_back.payment_intent?.equal]).toEqual([true, true]);
     expect(rows.map((r) => [r.partner, r.href, r.external])).toEqual([
       ["Airwallex", "airwallex#awx-1-steps", false],
       ["Metal", `https://testnet.metalntwx.com/tx/${tx}`, true],
-      ["Airwallex", "airwallex#awx-1-steps", false],
+      ["Visa", "visa#vic3-run", false],
+      ["The CFO", "airwallex#awx-1-steps", false],
     ]);
-    expect(rows.map((r) => r.text)).toEqual([
-      "Declined: an agent's card charge of EUR 45.00, over its EUR 30.00 limit.",
-      "Refused on chain: a purchase over the agent's cap.",
-      "In its record: the hash the CFO signed for this payment.",
+    // Since the homepage polish (12 Nov): one card each, a short title and one short line (the owner: less text).
+    expect(rows.map((r) => [r.title, r.text])).toEqual([
+      ["Airwallex declined the card", "EUR 45.00 over a EUR 30.00 limit."],
+      ["Metal refused it on chain", "Over the agent's cap."],
+      ["Visa: hash read back", "Equal at Airi and Airwallex."],
+      ["Your signature (Face ID)", "Hash in Airwallex's record."],
     ]);
-    expect(rows.map((r) => [r.id, r.full])).toEqual([[`${decline.id.slice(0, 8)}…`, decline.id], [`tx ${tx.slice(0, 6)}…${tx.slice(-4)}`, tx], [`${f.hash.slice(0, 8)}…`, f.hash]]);
+    expect(rows.map((r) => [r.id, r.full])).toEqual([[`${decline.id.slice(0, 8)}…`, decline.id], [`tx ${tx.slice(0, 6)}…${tx.slice(-4)}`, tx], [`${b.payment_intent_id!.slice(0, 10)}…`, b.payment_intent_id], [`${f.hash.slice(0, 8)}…`, f.hash]]);
     // Row 3 is the hero's payment: the same invoice's hash, and the run's own check says it is in the transfer's metadata.
     expect(AWX.invoices.find((i) => i.approval_sha256 === f.hash)!.transfer_id).toBe(f.transfer);
     expect(AWX.verify.find((v) => v.what.includes(f.transfer))!.detail).toContain("approval hash in metadata");
     for (const html of [ON, OFF]) {
       const list = /<ol class="rows">[\s\S]*?<\/ol>/.exec(mainOf(html))![0];
-      const as = [...list.matchAll(/<li><a class="row" href="([^"]+)"( target="_blank" rel="noopener")?>([\s\S]*?)<\/a><\/li>/g)];
+      const as = [...list.matchAll(/<li><a class="row reveal" href="([^"]+)"( target="_blank" rel="noopener")?>([\s\S]*?)<\/a><\/li>/g)];
       expect(as.map((m) => [m[1], !!m[2]])).toEqual(rows.map((r) => [r.href, r.external]));
       as.forEach((m, i) => {
-        expect(text(m[3]!)).toBe(`${rows[i]!.partner} ${rows[i]!.text} ${rows[i]!.id}`);
+        expect(text(m[3]!)).toBe(`${rows[i]!.title} ${rows[i]!.text} ${rows[i]!.id}`);
         expect(m[3]).toContain(`<code title="${rows[i]!.full}">${rows[i]!.id}</code>`);
       });
       // No date, run label or caveat on the rows; the old card and its counts are gone.
@@ -155,7 +165,7 @@ describe("Home is one story, in this order", () => {
       expect(text(/<h2[^>]*id="h-locks"[^>]*>[\s\S]*?<\/h2>/.exec(html)![0])).toBe(LOCKS_HEAD);
     }
     // A row whose record lacks a piece drops out.
-    expect(proofRows(undefined, null).map((r) => r.partner)).toEqual(["Metal"]);
+    expect(proofRows(undefined, null, null).map((r) => r.partner)).toEqual(["Metal"]);
   });
 
   it("A7, A8: the hero is the one animation, its fourth tab reads +1 cent, and one tap needs no network", () => {
@@ -189,7 +199,10 @@ describe("Home is one story, in this order", () => {
     for (const html of [ON, OFF]) {
       const rest = html.replace(/<header class="top">[\s\S]*?<\/header>/, " ");
       expect(rest).not.toMatch(/\bWatch\b|href="watch"/);
-      expect(rest).not.toMatch(/Visa|TAP\b/);
+      // The partners' logo row (homepage polish, 12 Nov) names Visa in its image's alt text; no other Visa wording and
+      // never TAP on Home.
+      // Visa on Home: the Visa Intelligent Commerce card (vic-3) and the logos' alt text; never TAP.
+      expect(rest).not.toMatch(/TAP\b|Visa TAP|single-use Visa/);
       expect(html).not.toMatch(/Extra, not an award entry/);
       expect(html).not.toMatch(/What comes next|class="(?:awards|agents|next|built|runlabel)"/);
     }

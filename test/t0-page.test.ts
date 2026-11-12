@@ -3,6 +3,7 @@
 // and 5 November), within 150 words, labelled as the T:0 sandbox with test data, served everywhere a page is. And the
 // "Built on" strip in the footer of the partner pages (not Home, not /visa): one proof number per partner, each from its
 // record, text only, ICC only as access requested.
+import { vic3Run } from "../src/redesign/vic3Run.js";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CHECK_PATHS } from "../src/cli/judge.js";
@@ -88,12 +89,14 @@ describe("the Built on strip", () => {
   it("names each partner once, with one proof number from its record", () => {
     expect(items.map((i) => i.name)).toEqual(["Airwallex", "Metal", "Visa (VIC through Airwallex's Airi)", "Claude", "T:0", "x402"]);
     const st = metalStory(run.record);
-    const settled = airiRun()!.purchases.filter((p) => (p as { status?: string }).status === "SETTLED").length;
+    // Paid across both live Airi runs, as /visa counts them (the jury check, 12 Nov): 7 Nov SETTLED plus vic-3's paid.
+    const v3 = vic3Run()!;
+    const settled = airiRun()!.purchases.filter((p) => (p as { status?: string }).status === "SETTLED").length + v3.purchases.filter((p) => !/^F/.test(p.step) && p.outcome?.status === "succeeded").length;
     expect(items.map((i) => i.proof)).toEqual([
-      `${productTiles(run).length} products, each run dated`, `${st.payments.total} payments on testnet`, `${settled} purchases settled`,
+      `${productTiles(run).length} products, each run dated`, `${st.payments.total} payments on testnet`, `${settled} purchases paid in 2 live runs`,
       `${run.record.snapshot.agent_stats.reduce((n, a) => n + a.decisions, 0)} decisions`, `${t0Data().journal!.posted} journal entries`, `${st.payments.sales} paid requests`,
     ]);
-    expect(items.map((i) => i.proof)).toEqual(["7 products, each run dated", "86 payments on testnet", "2 purchases settled", "24 decisions", "95 journal entries", "41 paid requests"]);
+    expect(items.map((i) => i.proof)).toEqual(["7 products, each run dated", "86 payments on testnet", "3 purchases paid in 2 live runs", "24 decisions", "95 journal entries", "41 paid requests"]);
     expect(ICC_LINE).toBe("ICC: access requested, not used in this entry");
   });
 

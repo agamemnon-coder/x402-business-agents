@@ -67,12 +67,13 @@ describe("/judge: the five steps", () => {
       ["Tap “+1 cent” on Home", 40],
       ["Sign, then try to cheat", 40],
       ["Try to trick the agent", 30],
-      ["Change the rule, see the worst case", 30],
+      ["Paid, booked, filed", 30],
       ["See the proof", 40],
     ]);
     expect(JUDGE_STEPS.reduce((t, s) => t + s.seconds, 0)).toBe(180);
     expect(JUDGE_STEPS.map((s) => s.links.map((l) => l.href))).toEqual([
-      ["/home"], ["/try/sign"], ["/try/sign"], ["/try/sign"], // The Visa run among the proof's links since 12 Nov (jury panel): the Airi run, Visa Intelligent Commerce via Airi.
+      // Since 12 Nov (one Try everywhere): steps 2 to 4 in the hands-on demo (TRY_URL); /try/sign once, as "the 60-second story".
+      ["/home"], ["https://purser-try.max-31b.workers.dev/try", "/try/sign"], ["https://purser-try.max-31b.workers.dev/try"], ["https://purser-try.max-31b.workers.dev/try"], // The Visa run among the proof's links since 12 Nov (jury panel): the Airi run, Visa Intelligent Commerce via Airi.
       ["/proof", "/airwallex#awx-1", "/metal", "/visa", metalStory(loadRecord().record).refusal!.proof.href],
     ]);
     // The tour starts on Home and ends on the proof; no step is the replay, by its link, its title or its line.
@@ -148,8 +149,8 @@ describe("/judge: in the browser only", () => {
     for (const line of script.split("\n").filter((l) => l.includes("localStorage"))) expect(line).toMatch(/try \{.*localStorage.*\} catch \(e\) \{/);
   });
 
-  it("the Worker serves it at /judge, with its CSP, only in a bundle that has /try/sign (three of its steps go there)", () => {
-    expect(JUDGE_STEPS.filter((s) => s.links.some((l) => l.href === "/try/sign"))).toHaveLength(3);
+  it("the Worker serves it at /judge, with its CSP, only in a bundle that has /try/sign (step 2 links its story)", () => {
+    expect(JUDGE_STEPS.filter((s) => s.links.some((l) => l.href === "/try/sign"))).toHaveLength(1);
     const r = pageResponse(new Request(`${SITE}/judge`), ON);
     expect(r?.status).toBe(200);
     expect(r?.headers.get("content-security-policy")).toBe(JUDGE_CSP);
@@ -168,7 +169,7 @@ describe("the way in: Home, the README and the form", () => {
     expect(/<main[\s\S]*<\/main>/.exec(ON.home!)![0]).not.toContain('href="judge"');
     expect(OFF.home).not.toContain('href="judge"');
     // Home's two buttons are two of /judge's steps: /try/sign, then the proof. Home sends no one to the replay (/replay, at /watch until 12 Nov).
-    expect(ON.home).toContain('<a class="btn primary big start" href="try/sign">'); expect(ON.home).toContain('<a class="btn big more" href="proof">');
+    expect(ON.home).toContain('<a class="btn primary big start" href="https://purser-try.max-31b.workers.dev/try">'); expect(ON.home).toContain('<a class="btn big more" href="proof">');
     expect(/<main[\s\S]*<\/main>/.exec(ON.home!)![0]).not.toMatch(/href="(?:watch|replay)"/);
   });
 

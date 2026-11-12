@@ -79,13 +79,13 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     const t = words(hero);
     // The one button right under what Purser is; then the sentence every juror repeated. The other two sentences stay
     // in the README and the form.
-    expect(t.startsWith(`AI agents spend. You sign off. ${WHAT_IT_IS} Try it yourself A test passkey, no account, no money. About a minute. ${DIFFERENTIATORS[0]} 1 Ask`)).toBe(true);
+    expect(t.startsWith(`AI agents spend. You sign off. ${WHAT_IT_IS} Try it yourself Your own test company, deleted after 24 hours. ${DIFFERENTIATORS[0]} 1 Ask`)).toBe(true);
     expect(t).not.toContain(DIFFERENTIATORS[1]);
     expect(t).not.toContain(DIFFERENTIATORS[2]);
     expect(t).not.toContain("Watch the agents");
     // The caveat, word for word, once, in the one provenance line; its link opens the footer's "What's real?", which
     // lists what the line names.
-    expect(t).toContain(`${CAVEAT_LINE} Step 4 checks that payment's real signature in your browser`);
+    expect(t).toContain(`${CAVEAT_LINE} Step 4 checks the owner's real passkey signature in your browser`);
     expect(t.split(CAVEAT_LINE)).toHaveLength(2);
     expect(hero).toContain('<a href="#real" data-real>What\'s real?</a>');
     expect(html).toContain('<details class="real" id="real">');
@@ -169,7 +169,8 @@ describe("Visa TAP is on /visa only, in its one closed fold (jury panel, 12 Nov;
       expect({ name, tap: /Visa TAP|Trusted Agent|\bTAP\b(?! run)/.test(words(main)) }).toEqual({ name, tap: false });
       // Home said both "entered for the Visa Award" and "not an award entry" (jury panel, 12 Nov): now it says neither.
       expect({ name, link: /<a class="flink" href="visa">|Extra, not an award entry/.test(html) }).toEqual({ name, link: false });
-      if (name === "home") expect(html.replace(/<header class="top">[\s\S]*?<\/header>/, "")).not.toMatch(/Visa|href="visa"/);
+      // Since the jury check of 12 Nov Home has a Visa Intelligent Commerce proof card (vic-3, to /visa) and the logos; still no TAP and no award wording.
+      if (name === "home") expect(html.replace(/<header class="top">[\s\S]*?<\/header>/, "")).not.toMatch(/Visa TAP|Visa Award|\bTAP\b/);
     }
   });
 

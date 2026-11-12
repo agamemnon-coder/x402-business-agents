@@ -3,6 +3,7 @@
 // world, even if the desk were handed the relay's own store. The bundle carries the page, its API and the landing's
 // button only with TRY_SIGN_ENABLED on; off, every path is a 404 and the pages are the ones without it. The page's CSP is
 // as strict as the other public pages': one hashed inline script, one hashed inline style, nothing else.
+import { TRY_URL } from "../src/redesign/ui.js";
 import { createHash } from "node:crypto";
 import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
@@ -158,7 +159,13 @@ describe("/try/sign in the bundle (TRY_SIGN_ENABLED)", () => {
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).not.toMatch(/unsafe|https?:|\*/);
     expect(html).not.toMatch(/\son[a-z]+=/i);
-    expect(html).not.toMatch(/(?:src|href)="https?:/);
+    // Nothing is loaded from another origin. The only absolute links go to the project's own Purser Cloud deployment
+    // (the owner, 12 Nov, 6c58c5b): the Try tab's hands-on demo (TRY_URL) and Purser Cloud under More. Navigations,
+    // not resources.
+    expect(html).not.toMatch(/src="https?:/);
+    const abs = [...html.matchAll(/href="(https?:[^"]*)"/g)].map((m) => m[1]!);
+    expect(abs).toContain(TRY_URL);
+    expect(abs.filter((u) => new URL(u).origin !== new URL(TRY_URL).origin)).toEqual([]);
     expect(res.headers.get("permissions-policy")).toContain("publickey-credentials-create=(self)");
     // The label, first thing in the body.
     expect(html).toMatch(new RegExp(`<body>\\n<div class="testband" role="note"><div class="row"><span class="tl">.*${TRY_SIGN_LABEL}</span>`));
@@ -167,8 +174,9 @@ describe("/try/sign in the bundle (TRY_SIGN_ENABLED)", () => {
     expect(html).not.toMatch(/(?:src|href)="(?!\/|#|https?:)/);
     expect(html).toContain("url(/assets/inter.woff2)");
     // The landing's button, only in this bundle.
-    expect(on.home).toContain('href="try/sign"');
-    expect(on.home).toMatch(/<a class="btn primary big start" href="try\/sign">[\s\S]*?Try it yourself<\/a>/);
+    // Since 12 Nov (the owner) every Try call to action opens the hands-on demo (TRY_URL); /try/sign keeps its own page.
+    expect(on.home).toContain('href="https://purser-try.max-31b.workers.dev/try"');
+    expect(on.home).toMatch(/<a class="btn primary big start" href="https:\/\/purser-try\.max-31b\.workers\.dev\/try">[\s\S]*?Try it yourself<\/a>/);
   });
 
   it("the local relay: off, /try/sign and its API are 404; on, the whole visit works", async () => {

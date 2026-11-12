@@ -103,7 +103,7 @@ function svg(o: { w: number; h: number; title: string; desc: string; body: strin
   const ns = o.standalone ? ' xmlns="http://www.w3.org/2000/svg"' : "";
   return `<svg${ns} class="pv pv-${o.id}" viewBox="0 0 ${o.w} ${o.h}" width="${o.w}" height="${o.h}" role="img" aria-labelledby="pv-${o.id}-t pv-${o.id}-d">
 <title id="pv-${o.id}-t">${esc(o.title)}</title><desc id="pv-${o.id}-d">${esc(o.desc)}</desc>
-${style}${defs}${bg}
+${style}${o.body.includes("url(#pv-arrow)") ? defs : ""}${bg}
 ${o.body}
 </svg>
 `;
@@ -242,7 +242,7 @@ export const LIFE_STEPS = [
   { h: "Booked", who: "Ledger", s: "Ledger and audit log", cls: "t-rail" },
 ] as const;
 
-function lifeWide(): { w: number; h: number; body: string } {
+function lifeWide(standalone: boolean): { w: number; h: number; body: string } {
   const { w: W, x0, gap } = LIFE_WIDE, H = 250, cy = 104, len = LIFE_LEN.wide, x1 = x0 + len, out: string[] = [];
   out.push(`<path class="pv-line" d="M${x0} ${cy} H${x1}"/>`, `<path class="pv-prog" d="M${x0} ${cy} H${x1}" stroke-dasharray="${len}" stroke-dashoffset="0"/>`);
   LIFE_STEPS.forEach((s, i) => {
@@ -253,11 +253,11 @@ function lifeWide(): { w: number; h: number; body: string } {
       text(x, cy + 5, [String(i + 1)], "pv-num", 16, "middle"),
       text(x, cy + 50, [s.h], "t-h2", 18, "middle"), text(x, cy + 72, wrap(s.s, 16), "t-s", 17, "middle"));
   });
-  out.push(text(W / 2, H - 14, [`${LIFE_FOOT} ${FOOT}`], "t-f", 16, "middle"));
+  out.push(text(W / 2, H - 14, [standalone ? `${LIFE_FOOT} ${FOOT}` : LIFE_FOOT], "t-f", 16, "middle"));
   return { w: W, h: H, body: out.join("\n") };
 }
 
-function lifeTall(): { w: number; h: number; body: string } {
+function lifeTall(standalone: boolean): { w: number; h: number; body: string } {
   const { w: W, y0, row } = LIFE_TALL, cx = 42, len = LIFE_LEN.tall, y1 = y0 + len, out: string[] = [];
   out.push(`<path class="pv-line" d="M${cx} ${y0} V${y1}"/>`, `<path class="pv-prog" d="M${cx} ${y0} V${y1}" stroke-dasharray="${len}" stroke-dashoffset="0"/>`);
   LIFE_STEPS.forEach((s, i) => {
@@ -269,12 +269,12 @@ function lifeTall(): { w: number; h: number; body: string } {
       text(W - 22, y - 4, [s.who.toUpperCase()], `t-eye ${s.cls}`, 16).replace('<text class', '<text text-anchor="end" class'));
   });
   const h = y1 + 46;
-  out.push(text(W / 2, h - 2, [LIFE_FOOT, FOOT], "t-f", 17, "middle"));
+  out.push(text(W / 2, h - 2, standalone ? [LIFE_FOOT, FOOT] : [LIFE_FOOT], "t-f", 17, "middle"));
   return { w: W, h: h + 32, body: out.join("\n") };
 }
 
 export function lifecycleSvg(layout: Layout = "wide", standalone?: Theme): string {
-  const b = layout === "wide" ? lifeWide() : lifeTall();
+  const b = layout === "wide" ? lifeWide(!!standalone) : lifeTall(!!standalone);
   return svg({ ...b, id: `life-${layout}`, title: LIFE_TITLE, desc: LIFE_DESC, standalone });
 }
 

@@ -14,8 +14,10 @@ import { AWX_RUN_FILE, AWX_RUN_STEPS_ID, awxRun } from "./awxRun.js";
 import { metalStory, REPO_BLOB } from "./metalStory.js";
 import { HERO_DEMO_CSS, HERO_DEMO_JS, heroDemoFacts, heroDemoHtml, heroProvenance } from "./heroDemo.js";
 import { HERO_RECEIPT_FILE, heroReceipt } from "./heroReceipt.js";
-import { liveRuns, RUNS_URL } from "./runs.js";
-import { esc, icon, MAIN_RUN_REAL, page } from "./ui.js";
+import { VIC3_RUN_ID, vic3Run, type Vic3Record } from "./vic3Run.js";
+import { esc, icon, MAIN_RUN_REAL, page, TRY_URL } from "./ui.js";
+import { lifecycleSvg, VISUAL_CSS } from "../visuals/svg.js";
+import { BUILT_WITH } from "../visuals/logos.js";
 
 const CSS = `.hero { padding: 24px 0 36px; }
 .hero .wrap { display: grid; gap: 20px; }
@@ -34,26 +36,49 @@ p.partner { margin: 14px 0 0; font-weight: 650; } p.partner a { color: var(--acc
 /* The one provenance line, under the hero. */
 .prov { margin: 12px 2px 0; font-size: 14.5px; line-height: 1.5; color: var(--muted); }
 .prov a { display: flex; width: fit-content; align-items: center; min-height: 44px; color: var(--accent); font-weight: 650; }
-/* Three locks: one row each, one tap to the partner's own record. */
-section.locks { padding: 32px 0 48px; border-top: 1px solid var(--border); }
-section.locks .h-sec { font-size: clamp(24px, 2.6vw, 32px); }
-ol.rows { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 10px; }
-@media (min-width: 900px) { ol.rows { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; } }
-a.row { display: grid; grid-template-columns: minmax(0, 1fr) 18px; column-gap: 12px; row-gap: 2px; align-items: center; height: 100%; min-height: 44px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow); color: var(--text); text-decoration: none; }
-a.row:hover { border-color: var(--accent); }
-a.row b { grid-column: 1; font-size: 14px; font-weight: 700; letter-spacing: .02em; color: var(--muted); }
-a.row span { grid-column: 1; font-size: 16.5px; font-weight: 620; line-height: 1.4; }
-a.row code { grid-column: 1; font: 500 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
-a.row .i { grid-column: 2; grid-row: 1 / span 3; color: var(--accent); }
-.btn.big.more { margin-top: 22px; }
-/* About Purser: one closed fold at the end, styled as Proof's closed lines (details.deep). */
-section.about { padding: 0 0 48px; }
-details.about { border-top: 1px solid var(--border); }
-details.about > summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; min-height: 56px; font-size: 20px; font-weight: 750; letter-spacing: -.01em; }
-details.about > summary::-webkit-details-marker { display: none; }
-details.about > summary::after { content: "▾"; font-size: 16px; color: var(--accent); } details.about[open] > summary::after { content: "▴"; }
-details.about .body { max-width: 680px; padding: 0 0 8px; display: grid; gap: 10px; } details.about .body p { margin: 0; }
-details.about a.go { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; min-height: 44px; }
+/* The locks: one card each (an icon, a short title, one line, the id), one tap to the partner's own record. */
+section.locks { padding: 56px 0 64px; border-top: 1px solid var(--border); }
+section.locks .h-sec { font-size: clamp(26px, 2.8vw, 36px); }
+ol.rows { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 14px; }
+@media (min-width: 700px) { ol.rows { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; } }
+@media (min-width: 1100px) { ol.rows { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; } }
+a.row { position: relative; display: grid; gap: 6px; align-content: start; height: 100%; min-height: 44px; padding: 22px 22px 18px; border-radius: var(--r); border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow); color: var(--text); text-decoration: none; transition: border-color .2s, transform .2s; }
+a.row:hover { border-color: var(--accent); transform: translateY(-2px); }
+a.row .ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); margin-bottom: 8px; }
+a.row .ic .i { width: 22px; height: 22px; }
+a.row strong { font-size: 19px; font-weight: 720; letter-spacing: -.01em; line-height: 1.25; }
+a.row span { font-size: 15.5px; color: var(--muted); line-height: 1.45; }
+a.row code { font: 500 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--faint); margin-top: 4px; }
+a.row > .i { position: absolute; top: 22px; right: 20px; color: var(--accent); }
+.btn.big.more { margin-top: 28px; }
+/* On a phone the three cards and their button fit one screen: the icon beside the text, less padding. */
+@media (max-width: 899px) {
+  section.locks { padding: 40px 0 48px; }
+  ol.rows { margin-top: 18px; gap: 10px; }
+  a.row { grid-template-columns: 40px minmax(0, 1fr); column-gap: 14px; row-gap: 2px; padding: 14px 40px 14px 14px; }
+  a.row .ic { grid-column: 1; grid-row: 1 / span 3; align-self: start; width: 40px; height: 40px; margin: 0; }
+  a.row strong, a.row span, a.row code { grid-column: 2; }
+  a.row strong { font-size: 17px; } a.row code { margin-top: 0; }
+  a.row > .i { top: 16px; right: 14px; }
+  .btn.big.more { margin-top: 18px; }
+}
+/* About Purser: two sentences and the payment's life, then the partners' logos. */
+section.about { padding: 56px 0 72px; border-top: 1px solid var(--border); }
+section.about .h-sec { font-size: clamp(26px, 2.8vw, 36px); }
+section.about p.lede { margin: 14px 0 0; font-size: 18px; line-height: 1.5; color: var(--muted); max-width: 40em; }
+section.about .life { margin: 28px 0 0; }
+section.about .life .pv-life-tall { display: none; }
+@media (max-width: 640px) { section.about .life .pv-life-wide { display: none; } section.about .life .pv-life-tall { display: block; max-width: 420px; } }
+.works { margin: 32px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
+.works span { font-size: 14px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); }
+.works img { height: 40px; width: auto; max-width: 100%; display: block; }
+@media (max-width: 640px) { .works img { height: auto; width: 100%; } }
+/* Scroll-in: sections rise in once as they come into view; nothing moves for a reader who prefers less motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .js-reveal .reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease; }
+  .js-reveal .reveal.in { opacity: 1; transform: none; }
+  .js-reveal ol.rows li:nth-child(2) .reveal { transition-delay: .08s; } .js-reveal ol.rows li:nth-child(3) .reveal { transition-delay: .16s; } .js-reveal ol.rows li:nth-child(4) .reveal { transition-delay: .24s; }
+}
 p.next { margin: 18px 0 0; font-size: 15.5px; color: var(--muted); max-width: 44em; } p.next a { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; white-space: nowrap; }
 section.band { padding: 60px 0; border-top: 1px solid var(--border); }
 .sechead { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 26px; }
@@ -87,6 +112,14 @@ const JS = `${CFO_FORWARD_JS}
   var open = function () { if (real) real.open = true; };
   if (location.hash === "#real") open();
   document.querySelectorAll("[data-real]").forEach(function (a) { a.addEventListener("click", open); });
+})();
+(function () {
+  // Scroll-in: only with IntersectionObserver and no wish for less motion; otherwise everything is simply shown.
+  if (!("IntersectionObserver" in window) || !window.matchMedia || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  var els = document.querySelectorAll(".reveal");
+  var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }); }, { rootMargin: "0px 0px -8% 0px" });
+  document.documentElement.classList.add("js-reveal");
+  els.forEach(function (el) { io.observe(el); });
 })();`;
 
 /**
@@ -110,46 +143,35 @@ export function homeHeadingHtml(): string {
 /** Home's first button, word for word: where the Try tab goes. */
 export const START = "Try it yourself";
 /**
- * The one line under it, saying only what the page behind the button does. /try/sign (src/try/sign.ts): the page makes a
- * test passkey (a random id, no name or e-mail) in a test world where nothing real moves, in about a minute. /try
- * (a bundle without /try/sign): a test world on the page, no passkey.
+ * The one line under it, saying only what the page behind the button does. Since 12 Nov the button opens the hands-on
+ * demo on Purser Cloud (TRY_URL): a test company of your own on test money, deleted after 24 hours (its start page says
+ * "Test money · deleted after 24 h"). The same line with /try/sign in the bundle or not; both keys kept for the callers.
  */
-export const REASSURE = { sign: "A test passkey, no account, no money. About a minute.", world: "A test world: no account, no money." } as const;
+export const REASSURE = { sign: "Your own test company, deleted after 24 hours.", world: "Your own test company, deleted after 24 hours." } as const;
 /** The link in the provenance line: it opens the footer's fold of the same name. */
 export const WHATS_REAL = "What's real?";
-export const LOCKS_HEAD = "Three locks";
+export const LOCKS_HEAD = "Each lock, on record";
 /** Home's second and last button. */
 export const PROOF_BUTTON = "See the proof";
 /** The fold at the end of Home (the owner, 12 Nov, for the Founder's award): no new page, no menu item, no person. */
 export const ABOUT_HEAD = "About Purser";
 
-/** The fold's numbers, from the run records as /runs holds them: the live runs, and the payout with Purser's fee. */
-export function aboutFacts(): { runs: number; payout: string; fee: string } {
-  const rows = liveRuns();
-  const paid = /one EUR (\d+\.\d{2}) payout PAID, Purser's fee EUR (\d+\.\d{2})/.exec(rows.find((r) => r.key === "platform-e2e-1")?.line ?? "");
-  return { runs: rows.length, payout: paid?.[1] ?? "", fee: paid?.[2] ?? "" };
-}
-
-/**
- * About Purser: the problem, what Purser does, what ran and the business, closed by default. No date, no "test money",
- * no "live" and no run label here: the hero's provenance line says those once (test/home-story.test.ts A1, A3, A4); no
- * Visa either, as on the rest of Home (its runs are on /runs). The pricing is the plan on /pricing (src/config/pricing.ts); no customer, pilot or
- * revenue is claimed (test/home-about.test.ts).
- */
+/** About Purser (home-polish, 12 Nov): two sentences and the payment's life (src/visuals/svg.ts); the business, the
+ * runs and the pricing are on their own pages (/pricing, /runs, /docs). No customer, pilot or revenue is claimed. */
+export const ABOUT_LINES = [
+  "Purser keeps AI agents inside limits a CFO signs.",
+] as const;
+export const WORKS_WITH = "Works with";
 function aboutHtml(): string {
-  const f = aboutFacts();
-  const paid = f.payout && f.fee ? `; in Airwallex's sandbox a EUR ${f.payout} payout was paid with Purser's EUR ${f.fee} fee` : "";
-  const line = (head: string, text: string, tail = "") => `<p><b>${esc(head)}</b> ${esc(text)}${tail}</p>`;
-  return `<details class="about" id="about"><summary>${esc(ABOUT_HEAD)}</summary><div class="body">
-    ${line("The problem:", "AI agents can pay with company money, but nobody signs the exact terms they pay.")}
-    ${line("What Purser does:", "the CFO signs the exact terms with Face ID. Airwallex and Metal enforce each agent's limits on their rails. Claude agents decide within those limits, and each payment keeps its proof.")}
-    ${line("What ran:", `${f.runs} runs in sandboxes and on testnet, each with its ids and log.`, ` <a class="go" href="${RUNS_URL}">See every run${icon("arrow-right", 16)}</a>`)}
-    ${line("The business:", `pilot pricing is a monthly plan by number of invoices, plus a small fee per payout through Airwallex connected accounts${paid}. Companies open their own Airwallex account through Purser, with Airwallex's KYC: built, switched off.`, ` <a class="go" href="pricing">Pricing${icon("arrow-right", 16)}</a>`)}
-    <p>No customers, pilots or revenue yet.</p>
-  </div></details>`;
+  const names = BUILT_WITH.map((l) => l.name);
+  const alt = `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+  return `<h2 class="h-sec reveal" id="about">${esc(ABOUT_HEAD)}</h2>
+  <p class="lede reveal">${ABOUT_LINES.map(esc).join(" ")}</p>
+  <div class="life reveal">${lifecycleSvg("wide")}${lifecycleSvg("tall")}</div>
+  <div class="works reveal"><span>${esc(WORKS_WITH)}</span><img src="assets/built-with.png" alt="${esc(alt)}" width="1010" height="80"></div>`;
 }
 
-export interface ProofRow { partner: "Airwallex" | "Metal"; text: string; id: string; full: string; href: string; external: boolean }
+export interface ProofRow { partner: "Airwallex" | "Metal" | "Visa" | "The CFO"; title: string; text: string; icon: string; id: string; full: string; href: string; external: boolean }
 
 /**
  * The three proof rows, every value from a run record; a row whose record lacks a piece drops out.
@@ -159,18 +181,22 @@ export interface ProofRow { partner: "Airwallex" | "Metal"; text: string; id: st
  * 3. The hash the CFO signed is in Airwallex's record of the payment the hero shows (the run's own verify line says
  *    so for that transfer), to the same section.
  */
-export function proofRows(run: AgentRun = agentRun(), awx: Awx1Record | null = awxRun()): ProofRow[] {
+export function proofRows(run: AgentRun = agentRun(), awx: Awx1Record | null = awxRun(), vic3: Vic3Record | null = vic3Run()): ProofRow[] {
   const rows: ProofRow[] = [];
   const steps = `airwallex#${AWX_RUN_STEPS_ID}`;
   const cents = (a: string) => Math.round(Number(a) * 100);
   const limitOf = (agent: string) => String(awx?.cards.find((c) => c.agent === agent)?.read_back.per_tx ?? "");
   const decline = awx?.card_transactions.find((t) => !t.approved && !!t.decline_code && !!limitOf(t.agent) && cents(t.amount) > cents(limitOf(t.agent)));
-  if (decline) rows.push({ partner: "Airwallex", text: `Declined: an agent's card charge of ${decline.currency} ${decline.amount}, over its ${decline.currency} ${limitOf(decline.agent)} limit.`, id: `${decline.id.slice(0, 8)}…`, full: decline.id, href: steps, external: false });
+  if (decline) rows.push({ partner: "Airwallex", title: "Airwallex declined the card", text: `${decline.currency} ${decline.amount} over a ${decline.currency} ${limitOf(decline.agent)} limit.`, icon: "ban", id: `${decline.id.slice(0, 8)}…`, full: decline.id, href: steps, external: false });
   const refusal = metalStory(run.record).refusal;
   const tx = /\/tx\/(0x[0-9a-f]{64})$/.exec(refusal?.proof.href ?? "")?.[1];
-  if (refusal && tx && refusal.code === "mandate_cap_exceeded") rows.push({ partner: "Metal", text: "Refused on chain: a purchase over the agent's cap.", id: refusal.proof.label, full: tx, href: refusal.proof.href!, external: true });
+  if (refusal && tx && refusal.code === "mandate_cap_exceeded") rows.push({ partner: "Metal", title: "Metal refused it on chain", text: "Over the agent's cap.", icon: "link-2", id: refusal.proof.label, full: tx, href: refusal.proof.href!, external: true });
+  // Visa Intelligent Commerce (vic-3, 12 Nov): purchase B, above the CFO's limit, paid after Face ID; the signed hash read
+  // back equal in Airi's mandate and in Airwallex's PaymentIntent (docs/runs/2026-11-12-vic-3.json), to /visa's block.
+  const b = vic3?.purchases.find((p) => p.step === "B" && p.outcome?.status === "succeeded" && p.read_back.mandate?.equal && p.read_back.payment_intent?.equal && p.payment_intent_id);
+  if (b?.payment_intent_id) rows.push({ partner: "Visa", title: "Visa: hash read back", text: "Equal at Airi and Airwallex.", icon: "credit-card", id: `${b.payment_intent_id.slice(0, 10)}…`, full: b.payment_intent_id, href: `visa#${VIC3_RUN_ID}`, external: false });
   const f = heroDemoFacts(awx);
-  if (f?.inRecord) rows.push({ partner: "Airwallex", text: "In its record: the hash the CFO signed for this payment.", id: `${f.hash.slice(0, 8)}…`, full: f.hash, href: steps, external: false });
+  if (f?.inRecord) rows.push({ partner: "The CFO", title: "Your signature (Face ID)", text: "Hash in Airwallex's record.", icon: "file-check", id: `${f.hash.slice(0, 8)}…`, full: f.hash, href: steps, external: false });
   return rows;
 }
 
@@ -190,7 +216,8 @@ const dayMonth = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numer
  * opts.receipt: another receipt for the hero (a file of the repository, or a parsed one); the committed one by default.
  */
 export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; partnerUrl?: string; smallCompanyUrl?: string; receipt?: string | object } = {}): string {
-  const tryHref = opts.trySign ? "try/sign" : "try";
+  // The owner, 12 Nov: the button opens the hands-on demo on Purser Cloud (TRY_URL), with /try/sign in the bundle or not.
+  const tryHref = TRY_URL;
   const awx = awxRun(), facts = heroDemoFacts(awx), receipt = heroReceipt(facts, opts.receipt ?? HERO_RECEIPT_FILE);
   const hero = heroDemoHtml(facts, receipt);
   const rows = proofRows(run, awx);
@@ -207,15 +234,15 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
     <p class="prov">${esc(heroProvenance(facts, receipt).join(" "))} <a href="#real" data-real>${esc(WHATS_REAL)}</a></p>` : ""}</div>
 </div></section>
 <section class="locks" aria-labelledby="h-locks"><div class="wrap">
-  <h2 class="h-sec" id="h-locks">${esc(LOCKS_HEAD)}</h2>
+  <h2 class="h-sec reveal" id="h-locks">${esc(LOCKS_HEAD)}</h2>
   <ol class="rows">${rows.map((r) => `
-    <li><a class="row" href="${esc(r.href)}"${r.external ? ' target="_blank" rel="noopener"' : ""}><b>${esc(r.partner)}</b><span>${esc(r.text)}</span><code title="${esc(r.full)}">${esc(r.id)}</code>${icon(r.external ? "external-link" : "arrow-right", 18)}</a></li>`).join("")}
+    <li><a class="row reveal" href="${esc(r.href)}"${r.external ? ' target="_blank" rel="noopener"' : ""}><span class="ic">${icon(r.icon, 22)}</span><strong>${esc(r.title)}</strong><span>${esc(r.text)}</span><code title="${esc(r.full)}">${esc(r.id)}</code>${icon(r.external ? "external-link" : "arrow-right", 18)}</a></li>`).join("")}
   </ol>
   <a class="btn big more" href="proof">${esc(PROOF_BUTTON)}${icon("arrow-right", 18)}</a>
   ${nextHtml(opts.smallCompanyUrl ?? SMALL_COMPANY_DEMO_URL)}
   ${designPartnerHtml(opts.partnerUrl ?? DESIGN_PARTNER_URL)}
 </div></section>
-<section class="about" aria-label="${esc(ABOUT_HEAD)}"><div class="wrap">
+<section class="about" aria-labelledby="about"><div class="wrap">
   ${aboutHtml()}
 </div></section>
 </main>`;
@@ -230,7 +257,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
     ...MAIN_RUN_REAL,
   ];
   return page({
-    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, tab: "home", css: CSS + (hero ? HERO_DEMO_CSS : ""), body, js: JS + (hero ? HERO_DEMO_JS : ""), stage: false,
+    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, tab: "home", css: CSS + VISUAL_CSS + (hero ? HERO_DEMO_CSS : ""), body, js: JS + (hero ? HERO_DEMO_JS : ""), stage: false,
     // The judge's tour: one quiet footer link, only where /judge exists.
     links: opts.trySign ? [["judge", JUDGE_LINE]] : [],
     ...(hero && receipt ? { data: receipt.data } : {}),

@@ -688,7 +688,7 @@ async function engineProof(E: EnginePass) {
   // Archived.
   const files = (await apiAs(E, "/v1/engine/vault")).files as VaultFile[];
   const original = files.find((f) => f.kind === "invoice" && f.sha256 === inv.doc_sha256);
-  const receipt = files.find((f) => f.kind === "receipt" && /\/Betalingen\//.test(f.path) && nameOf(f.path).includes(inv.invoice_no));
+  const receipt = files.find((f) => f.kind === "receipt" && /\/Payments\//.test(f.path) && nameOf(f.path).includes(inv.invoice_no));
   const listed = await p.$$eval("#proof .pb.archived ul.files li", (ls) => ls.map((l) => [l.querySelector("button")?.textContent ?? "", l.querySelector(".fd")?.textContent ?? ""]));
   ok(!!original && !!receipt && JSON.stringify(listed) === JSON.stringify([original, receipt].map((f) => [nameOf(f!.path), f!.path.split("/").slice(1, -1).join(" / ")])), `proof: the archive block lists the original and the receipt, name and folder (${listed.map((l) => l[0]).join(" | ")})`);
   await p.click("#proof .pb.archived summary");
@@ -732,13 +732,13 @@ async function engineArchive(E: EnginePass) {
   const files = (await apiAs(E, "/v1/engine/vault")).files as VaultFile[];
   ok(files.length >= 2 && await p.locator(".archive ul.files li").count() === files.length, `archive: every file of GET /v1/engine/vault is in the tree (${files.length})`);
   const tree = await p.$$eval(".archive details", (ds) => ds.map((d) => { let depth = 0; for (let x = d.parentElement; x; x = x.parentElement) if (x.tagName === "DETAILS") depth++; return { name: d.querySelector("summary")?.textContent ?? "", depth, open: (d as HTMLDetailsElement).open }; }));
-  ok(tree.some((d) => d.name.startsWith("Inkoopfacturen")) && tree.some((d) => d.name.startsWith("Betalingen")), `archive: the folders keep their Dutch names (${tree.map((d) => d.name).join(" | ")})`);
+  ok(tree.some((d) => d.name.startsWith("Purchase invoices")) && tree.some((d) => d.name.startsWith("Payments")), `archive: an English company's folders are in English (${tree.map((d) => d.name).join(" | ")})`);
   ok(tree.every((d) => d.open === d.depth < 2), "archive: the company and its years are open, everything below the year folded");
   await p.locator(".archive summary", { hasText: /^\d{4}-Q\d/ }).first().click();
-  await p.locator(".archive summary", { hasText: /^Betalingen/ }).first().click();
-  const receipt = files.find((f) => /\/Betalingen\//.test(f.path))!;
+  await p.locator(".archive summary", { hasText: /^Payments/ }).first().click();
+  const receipt = files.find((f) => /\/Payments\//.test(f.path))!;
   const b = p.locator(".archive ul.files button", { hasText: nameOf(receipt.path) });
-  ok(await b.isVisible(), "archive: opening the quarter and Betalingen shows the receipt");
+  ok(await b.isVisible(), "archive: opening the quarter and Payments shows the receipt");
   await b.click();
   await p.frameLocator(".docv iframe.pdfframe").locator("canvas").first().waitFor({ timeout: 20_000 });
   ok((await p.textContent(".docv .bar2 .fn"))?.trim() === nameOf(receipt.path) && await p.getAttribute(".docv iframe.pdfframe", "sandbox") === "allow-scripts", "archive: the file opens in the same sandboxed frame, its name above it");

@@ -803,7 +803,7 @@ const fileName=(p)=>String(p).slice(String(p).lastIndexOf('/')+1);
 const folderWords=(p)=>String(p).split('/').slice(1,-1).join(' / ');
 const kb=(n)=>t('cs.eng.kb',{n:(Math.max(0,Number(n)||0)/1024).toFixed(1)});
 // This invoice's files: the original by its own hash (the invoice's doc_sha256), the receipt by the name the archive gives it
-// (Betalingen/<date> <supplier> <invoice no>.pdf, or that name with a correction or id beside it).
+// (Betalingen/ or, for an English company, Payments/<date> <supplier> <invoice no>.pdf, or that name with a correction or id beside it).
 // The archive cleans the receipt's whole name as one piece (src/vault/layout.ts paymentPath and safeSegment), so it is
 // cleaned here the same way, from the file's own date; a correction or an id stands in brackets before .pdf.
 function filesOf(i,files){

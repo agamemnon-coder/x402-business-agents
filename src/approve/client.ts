@@ -517,6 +517,23 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
     };
   }
 
+  if (kind === "icc_purchase") {
+    // The ICC rail (src/icc/purchase.ts): the CFO signs agent, amount, currency, merchant, items and the expiry. A
+    // payment credential is requested within those terms and the flow stops before checkout: nothing is paid.
+    const m = isObj(t.merchant) ? t.merchant : {};
+    const items = arr(t.items).filter(isObj).map((i) => `${str(i.quantity)} × ${str(i.name)} at ${money(i.unit_price)}`).join("; ");
+    const agent = str(t.agent);
+    return {
+      approvable: true, title: "Payment credential request",
+      sentence: `Let the ${agent} agent request a payment credential (Purser uses it once) through Intelligent Commerce Connect (sandbox) for at most ${str(t.currency)} ${money(t.amount)} at ${str(m.name)} (${str(m.url)}), for: ${str(t.description)}. Nothing is paid: Purser stops before checkout.`,
+      amount: `${str(t.currency)} ${money(t.amount)} at most`, margin: null, recipient: `${str(m.name)}, ${str(m.country)}`,
+      rows: [["Agent", agent], ["At most", `${str(t.currency)} ${money(t.amount)}`], ["Merchant", `${str(m.name)} (${str(m.url)})`], ["Items", items], ["For", str(t.description)], ["Ends", str(t.expires_at)]],
+      short: "this credential request",
+      warnings: ["Purser builds the instruction from these exact terms and compares its own record of it with them before it asks for the credential."],
+      amountLabel: "At most", label: "Credential request", big: money(t.amount), unit: str(t.currency),
+    };
+  }
+
   if (kind === "agent_onboard") {
     const c = isObj(t.card) ? t.card : {};
     return {
@@ -649,7 +666,7 @@ export function agentOf(createdBy: string, t: Obj): string {
     return "None: a chat message with the dashboard link";
   }
   if (kind === "agent_onboard") return `${str(t.display_name)} (outside agent ${str(t.agent_id)})`;
-  if (kind === "airi_purchase" && str(t.agent)) return `${cap1(str(t.agent))} agent`;
+  if ((kind === "airi_purchase" || kind === "icc_purchase") && str(t.agent)) return `${cap1(str(t.agent))} agent`;
   if (kind === "owners_execute" && isObj(t.action) && str(t.action.agent)) return `${cap1(str(t.action.agent))} agent`;
   // A payment the payables inbox filed (its terms carry the invoice's own total line): named as the inbox (S6).
   if ((kind === "invoice_payment" || kind === "supplier_payment") && (str(t.source) === "payables_inbox" || t.document_total_line !== undefined)) return "Payables inbox";
@@ -676,6 +693,7 @@ export function whyYou(t: Obj, policy: { key: string; value: string }[] = [], fo
     : kind === "quarantine_release" ? "Money Metal held in quarantine moves only with your Face ID."
     : kind === "task_card" ? (cardEur ? `Without your Face ID, a task card is issued only when you ask at the runner, up to ${cardEur} EUR.` : "A task card is issued only with your Face ID.")
     : kind === "airi_purchase" ? "An agent's purchase through Airi starts only with your Face ID."
+    : kind === "icc_purchase" ? "A payment credential is requested for an agent only with your Face ID."
     : kind === "agent_onboard" ? "An outside agent gets a company card only with your Face ID."
     : kind === "owners_execute" ? "The business account on chain runs this only with both owners' passkeys."
     : kind === "dev_test" ? "It checks Face ID on this phone; nothing moves."
