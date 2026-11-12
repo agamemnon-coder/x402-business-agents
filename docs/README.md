@@ -14,6 +14,7 @@ Back to the [README](../README.md). Test money only throughout: the Airwallex sa
 
 - [submission/README.md](submission/README.md): the submission text, with the short Description and the jury's instructions.
 - [submission/long-description.md](submission/long-description.md): the long form text, with the separate live tests.
+- [in-depth.md](in-depth.md): the README's sections in full: where each judging criterion is proven, the three live runs with every id, Try step by step, what is real and what is mock.
 - [runs/](runs/): every run log, dated, including awx-1 and the Airi run of 7 November.
 - [requirements-matrix.md](requirements-matrix.md): what the hackathon asks for, where Purser does it, and the proof.
 - [idea-vs-build.md](idea-vs-build.md): the idea as submitted on 24 October, promise by promise, against what is built.

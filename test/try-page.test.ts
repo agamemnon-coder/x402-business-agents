@@ -6,8 +6,10 @@ import { Script } from "node:vm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { consoleCsp } from "../cloud/src/console.js";
 import * as COPY from "../cloud/src/tryCopy.js";
-import { BOOKS_JS, RUNS_URL, SIGN_JS, tryPage } from "../cloud/src/tryPage.js";
+import { BOOKS_JS, PROOF_URL, RUNS_URL, SIGN_JS, tryPage } from "../cloud/src/tryPage.js";
 import { liveRuns } from "../src/redesign/runs.js";
+import { ICONS } from "../src/ui/icons.js";
+import { SCENE_CSS, sceneSvg } from "../cloud/src/scene.js";
 import { scriptBlocks, scriptBody, textOutsideTags, withoutBlocks } from "./support/scriptBlocks.js";
 import { ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
 
@@ -101,9 +103,41 @@ describe("the page", () => {
     expect(script.replace("const TOKEN=", "").replace("TOKEN?{token:TOKEN}:{}", "")).not.toContain("TOKEN");
   });
 
-  it("has no words outside the copy: the markup's own text is the brand", () => {
-    expect(textOutsideTags(withoutBlocks(html, ["script", "style", "title"])).trim().split(/\s+/)).toEqual(["P", "Purser"]);
+  it("has no words outside the copy: the markup's own text is the brand and the start's trust line (the illustration aside)", () => {
+    expect(textOutsideTags(withoutBlocks(html, ["script", "style", "title", "svg"])).trim().split(/\s+/)).toEqual(`${COPY.CHROME.brand} ${COPY.START.trust}`.split(" "));
     expect(readFileSync(new URL("../cloud/src/tryPage.ts", import.meta.url), "utf8")).not.toMatch(/ui\/i18n/);
+  });
+});
+
+describe("the frame and the start", () => {
+  it("brands the page with the console's feather lockup, not a letter mark", () => {
+    expect(html).toContain('<header class="top"><span class="brand"><span class="mk"></span><span class="nm">Purser</span></span></header>');
+    expect(html).not.toMatch(/class="mk">P</);
+    expect(script).toContain("$('.brand .mk').append(icon('feather',17));");
+    const ic = JSON.parse(/const IC=(\{.*?\});\n/.exec(script)![1]!) as Record<string, unknown>;
+    expect(ic.feather).toEqual(ICONS.feather);
+  });
+
+  it("shows the illustration in the page as it is built, with its CSS and its reduced-motion rule in the page's one nonce style", () => {
+    expect(html).toContain(`<div class="hero">${sceneSvg()}</div>`);
+    expect(html).toContain(SCENE_CSS);
+    expect(html).toContain("@media (prefers-reduced-motion: reduce) { .scene, .scene * { animation: none !important; } }");
+    expect(html.match(/<style/g)).toHaveLength(1);
+  });
+
+  it("keeps the start's words: the product line, the button, test money deleted after 24 h, and the trust line", () => {
+    expect(COPY.START.fine).toBe("Test money · deleted after 24 h");
+    expect(COPY.START.text).toContain("Purser's real engine");
+    expect(COPY.START.trust).toBe("Works with Airwallex · Metal · Visa Intelligent Commerce · Claude (sandbox and testnet runs)");
+    expect(COPY.VISIBLE.start.every((state) => state.includes(COPY.START.fine) && state.includes(COPY.START.trust))).toBe(true);
+  });
+});
+
+describe("screen 6's proof link", () => {
+  it("goes to the site's /proof (src/redesign/proof.ts) on the homepage's origin", () => {
+    const home = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { homepage: string }).homepage;
+    expect(PROOF_URL).toBe(`${home}/proof`);
+    expect(script).toContain(`const PROOF=${JSON.stringify(PROOF_URL)};`);
   });
 });
 
@@ -128,8 +162,8 @@ describe("the copy", () => {
       const seen = new Set(COPY.VISIBLE[screen as keyof typeof COPY.VISIBLE].flat());
       // A {method} line is counted with a method filled in; PAY's sandbox line shows only when the rail is on (one more line,
       // 4 words), the executor's note sits in its fold, and the verdict is counted with its one-cent sentence. Screen 6's
-    // "recorded {date}" labels the runs inside the "Recorded real runs" fold.
-      for (const [k, v] of Object.entries(group)) if (!["sandbox", "executorNote", "vAmount", "vPayee", "vAccount", "vOther", "recorded"].includes(k)) expect(seen.has(v) || [...seen].some((x) => v.includes("{method}") && x === v.replace("{method}", COPY.METHOD.other)), `${screen}.${k}`).toBe(true);
+    // "recorded {date}" labels the runs inside the "Recorded real runs" fold; "What you just did" names the three icons for screen readers only.
+      for (const [k, v] of Object.entries(group)) if (!["sandbox", "executorNote", "vAmount", "vPayee", "vAccount", "vOther", "recorded", "did"].includes(k)) expect(seen.has(v) || [...seen].some((x) => v.includes("{method}") && x === v.replace("{method}", COPY.METHOD.other)), `${screen}.${k}`).toBe(true);
     }
     expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["pay 7"]);
   });

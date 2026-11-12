@@ -1,6 +1,6 @@
 // The partner pages (/airwallex, /claude): every id, tx and figure on them comes from the recorded files, every
-// agent's model from code; each is short with its details folded; the nav keeps the four tabs and lists the partner
-// pages under "More" (12 Nov).
+// agent's model from code; each is short with its details folded; the nav keeps its tabs (Home, Try, Proof; Watch once
+// the film is set) and lists the partner pages under "More" (12 Nov).
 import { readFileSync } from "node:fs";
 import { WATCH_IN_MENU } from "../src/config/film.js";
 import { describe, expect, it } from "vitest";

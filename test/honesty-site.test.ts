@@ -246,11 +246,12 @@ describe("5. PAID in the sandbox, where the settlement is simulated", () => {
 });
 
 describe("6. TAP's status (Visa, 5 Nov: not eligible Visa tooling), said once, on /visa", () => {
-  it("is on /visa only, inside its one closed fold; Home and Proof no longer link to it as an extra (12 Nov); the Visa Award only in the Kit line and /visa's entry line (on the VIC run), never on TAP", () => {
+  it("is on /visa only, inside its one closed fold; Home and Proof no longer link to it as an extra (12 Nov), and Home says nothing about Visa (home-story, 12 Nov); the Visa Award only in the Kit line and /visa's entry line (on the VIC run), never on TAP", () => {
     const pages = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv) as unknown as Record<string, unknown>;
     expect(String(pages.visa)).toContain(VISA_TAP_STATUS);
     for (const [name, body] of Object.entries(pages)) if (typeof body === "string" && name !== "visa") expect({ name, has: body.includes(VISA_TAP_STATUS) }).toEqual({ name, has: false });
     for (const [name, html] of Object.entries({ home: homePage(), proof: proofPage() })) expect({ name, link: /Extra, not an award entry/.test(html) }).toEqual({ name, link: false });
+    expect(homePage().replace(/<header class="top">[\s\S]*?<\/header>/, "")).not.toMatch(/Visa|\bTAP\b|\bawards?\b/);
     const fold = /<details class="fold" id="visa-tap">[\s\S]*?<\/details>/.exec(String(pages.visa))![0];
     expect(fold).toContain(VISA_TAP_STATUS);
     expect(String(pages.visa).replace(fold, "")).not.toMatch(/\bTAP\b/);

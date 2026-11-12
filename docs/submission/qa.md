@@ -127,14 +127,17 @@ companies are built and ran in the sandbox on 10 November for three test compani
 
 ### 12. Worst-case loss per day inside the limits, and how fast does the CFO know?
 
-At most 20.00 test USD on Metal (the three mandates' budgets, 10.00 + 4.00 + 6.00, held to that total in code) plus
-EUR 300.00 on the cards (monthly limits 100.00 + 150.00 + 50.00), and those are totals, not daily figures: there is no
-daily ceiling. The CFO sees each payment in the dashboard's feed as it happens, and a velocity breach (Sourcing: 30
+Worst case, set by policy: the agents together can spend at most EUR 28,200 (cards and task cards) and USD 20 (test
+USD) a month; everything above waits for the CFO. The parts: at most 20.00 test USD on Metal (the three mandates'
+budgets, 10.00 + 4.00 + 6.00, held to that total in code); EUR 300.00 on the cards (monthly limits 100.00 + 150.00 +
+50.00); and the Treasury agent's task cards without Face ID, up to EUR 300.00 each and 3 in 24 hours, so EUR 900.00 a
+day and EUR 27,900.00 over 31 days; a card or a mandate has no daily ceiling, so it can all go in one day: the worst day
+is EUR 1,200.00 and 20.00 test USD. The CFO sees each payment in the dashboard's feed as it happens, and a velocity breach (Sourcing: 30
 payments a minute, 4.00 test USD or EUR 100.00 an hour) stops that agent and raises an alarm on `/health`; no pager is
 connected yet.
 
-**Evidence:** `src/config/policy.ts` (`TOTAL_BUDGET_CENTS`, `INITIAL_MANDATES`, `CARDS`, `VELOCITY`);
-[docs/controls.md](../controls.md) (L4, I3).
+**Evidence:** `src/config/policy.ts` (`TOTAL_BUDGET_CENTS`, `INITIAL_MANDATES`, `CARDS`, `TASK_CARD_EUR_FALLBACK`,
+`TASK_WITHIN_PER_DAY`, `VELOCITY`); `exposureOf` in `src/policy/exposure.ts`; [docs/controls.md](../controls.md) (L4, I3).
 
 ### 13. Why not Airwallex's own spend controls and approvals?
 

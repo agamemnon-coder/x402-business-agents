@@ -32,9 +32,12 @@ export const iconSet = (names: string[]) => Object.fromEntries(names.map((n) => 
 
 export const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
+/** 12 Nov (owner): the Try tab opens the hands-on demo on Purser Cloud (the old /try/sign story stays at its address). */
+export const TRY_URL = "https://purser-try.max-31b.workers.dev/try";
+
 export type Tab = "home" | "watch" | "try" | "proof";
 /** The four tabs; the menu's fifth item, "More", and the pages under it are in src/ui/more.ts (shared with src/ui/nav.ts). */
-const TABS: [Tab, string, string][] = ([["home", "Home", "home"], ["watch", "Watch", "watch"], ["try", "Try", "try"], ["proof", "Proof", "proof"]] as [Tab, string, string][]).filter(([t]) => t !== "watch" || WATCH_IN_MENU);
+const TABS: [Tab, string, string][] = ([["home", "Home", "home"], ["watch", "Watch", "watch"], ["try", "Try", TRY_URL], ["proof", "Proof", "proof"]] as [Tab, string, string][]).filter(([t]) => t !== "watch" || WATCH_IN_MENU);
 
 /** The design tokens, light and dark: the same on every page. */
 export const TOKENS = `@font-face { font-family: Inter; src: url(assets/inter.woff2) format("woff2"); font-weight: 100 900; font-display: swap; }
@@ -87,6 +90,7 @@ nav.tabs .pmore > summary { padding: 7px 12px 7px 14px; }
 @media (max-width: 420px) { .brand span.nm { display: none; } }
 @media (max-width: 380px) { nav.tabs > a { padding: 7px 7px; } nav.tabs .pmore > summary { padding: 7px 5px 7px 7px; } }
 @media (max-width: 340px) { nav.tabs > a { padding: 7px 5px; font-size: 14px; } nav.tabs .pmore > summary { padding: 7px 4px 7px 5px; font-size: 14px; gap: 2px; } }
+@media (max-width: 430px) { .brand, nav.tabs > a, nav.tabs summary { display: inline-flex; align-items: center; min-height: 44px; } }
 /* Type. */
 h1, h2, h3 { margin: 0; letter-spacing: -.025em; line-height: 1.08; }
 .h-hero { font-size: clamp(38px, 5.4vw, 64px); font-weight: 780; }
@@ -195,15 +199,16 @@ a.verdict:hover { text-decoration: underline; }
 .septest b { color: var(--text); font-weight: 650; }
 .tile .note { display: block; font-size: 14px; font-weight: 500; color: var(--muted); margin-top: 4px; line-height: 1.35; }
 .tile .go { margin-top: auto; padding-top: 10px; font-size: 15px; font-weight: 650; color: var(--accent); display: inline-flex; align-items: center; gap: 4px; }
-footer.foot { padding: 40px 0 56px; color: var(--faint); font-size: 14.5px; }
-footer.foot .wrap { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
+footer.foot { padding: 4px 0 20px; color: var(--faint); font-size: 14.5px; }
+footer.foot .wrap { display: flex; flex-wrap: wrap; gap: 0 20px; align-items: center; }
 details.real { position: relative; }
-details.real > summary { list-style: none; cursor: pointer; } details.real > summary::-webkit-details-marker { display: none; }
+/* The fold's header is a 44 px target that looks as small as before: the pill is its padding box, inside a clear border. */
+details.real > summary { list-style: none; cursor: pointer; border: solid transparent; border-width: 10px 0; background-clip: padding-box; } details.real > summary::-webkit-details-marker { display: none; }
 details.real { flex-basis: 100%; }
-footer.foot a.flink { color: var(--muted); }
+footer.foot a.flink { color: var(--muted); display: inline-flex; align-items: center; min-height: 44px; }
 footer.foot .builton { flex-basis: 100%; margin: 0; color: var(--muted); line-height: 1.9; }
 footer.foot .builton b { color: var(--text); font-weight: 650; }
-details.real .pop { margin-top: 10px; max-width: 640px; padding: 16px 18px; font-size: 15px; color: var(--text); }
+details.real .pop { margin: 0 0 10px; max-width: 640px; padding: 16px 18px; font-size: 15px; color: var(--text); }
 details.real .pop ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }`;
 
@@ -256,9 +261,10 @@ export function stageHtml(agents: { id: string; short: string; family: string }[
 }
 
 /**
- * The stage player, shared by Home (the key moments on a loop) and Watch (the whole run with controls). Every part of
- * the stage shows the same step: the message, the lane of the money and the phone. It reads the run from the page's
- * data block and sets only textContent and attributes, so nothing from the record becomes markup.
+ * The stage player of the replay at /watch (the whole run with controls). Every part of the stage shows the same step:
+ * the message, the lane of the money and the phone. It reads the run from the page's data block and sets only
+ * textContent and attributes, so nothing from the record becomes markup. It shows no tool names and no proposal
+ * numbers: those are in the page's fold, with every step.
  */
 export const STAGE_JS = `
 function Stage(root, run) {
@@ -314,7 +320,6 @@ function Stage(root, run) {
     who.textContent = "";
     var n = names[ev.agent] || { short: ev.agent };
     var b = document.createElement("span"); b.textContent = n.short + (ev.k === "msg" ? " · message" : ev.by === "claude" ? " · decided by Claude" : " · fallback (code)"); who.appendChild(b);
-    (ev.tools || []).slice(0, 3).forEach(function (t) { var c = document.createElement("span"); c.className = "tool"; c.textContent = t; who.appendChild(c); });
     if (ev.badge) { var k = document.createElement("span"); k.className = "call"; k.textContent = ev.badge; k.title = ev.tip || ""; who.appendChild(k); }
     bubble.classList.remove("idle"); bubble.classList.add("quote");
     var text = first(ev.text, sentences);
@@ -370,7 +375,7 @@ function Stage(root, run) {
   }
   function phoneIdle() { phone.classList.remove("lit", "no"); setPhone("CFO", "Face ID", "", ""); }
   function face(ev) {
-    var n = ev.signers.length, rej = ev.status === "REJECTED", sub = ev.id + " · " + ev.title;
+    var n = ev.signers.length, rej = ev.status === "REJECTED", sub = ev.title;
     phone.classList.add("lit"); phone.classList.toggle("no", rej);
     if (ev.status === "COSIGNED") {
       setPhone("Signed", sub, "1 of 2 signatures", "waiting for the second approver");

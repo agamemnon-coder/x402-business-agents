@@ -8,10 +8,11 @@ import type { Server } from "node:http";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { startJudge } from "../src/cli/judge.js";
 import { CORE_SENTENCE, DIFFERENTIATORS, HERO, WHAT_IT_IS } from "../src/config/brand.js";
-import { CFO_FORWARD_JS } from "../src/redesign/home.js";
+import { CFO_FORWARD_JS, homeHeadingHtml } from "../src/redesign/home.js";
 import { esc } from "../src/redesign/ui.js";
 import { buildPages } from "../src/relay/assets.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
+import { textOutsideTags } from "./support/scriptBlocks.js";
 
 // The bundle as deployed (TRY_SIGN_ENABLED on since 4 November).
 const pages = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv);
@@ -43,7 +44,10 @@ describe("/ for a guest", () => {
     // jury review of 7 Nov (#2) the three sentences under it too, then the button.
     // Competitive review, 10 Nov: the one button, to /try/sign, right under what Purser is; the three sentences stay in the
     // README, the form and the deck.
-    expect(pages.home).toContain(`<h1 class="h-hero">${HERO}</h1>\n    <p class="what">${esc(WHAT_IT_IS)}</p>\n    <a class="btn primary big start" href="try/sign">`);
+    // Home as one story (12 Nov): the heading's two sentences on two lines, what Purser is, then the one button.
+    expect(homeHeadingHtml()).toBe('<h1 class="h-hero"><span>AI agents spend.</span> <span>You sign off.</span></h1>');
+    expect(textOutsideTags(homeHeadingHtml()).replace(/\s+/g, " ").trim()).toBe(HERO);
+    expect(pages.home).toContain(`${homeHeadingHtml()}\n    <p class="what">${esc(WHAT_IT_IS)}</p>\n    <a class="btn primary big start" href="try/sign">`);
     expect(DIFFERENTIATORS.length).toBe(3);
     // The core sentence stays the page's description.
     expect(pages.home).toContain(`<meta name="description" content="${HERO} ${CORE_SENTENCE}">`);
@@ -55,7 +59,7 @@ describe("/ for a guest", () => {
       expect(r.headers.get("content-security-policy")).toBe(pages.csp.home);
       const html = await r.text();
       expect(html).toBe(pages.home);
-      expect(html).toContain(`<h1 class="h-hero">${HERO}</h1>`);
+      expect(html).toContain(homeHeadingHtml());
       expect(html).toContain('href="try/sign"');
       expect(html).not.toMatch(/The runner is offline|How the CFO signs in|recorded-data/);
     }
@@ -123,7 +127,7 @@ describe("npm run judge answers / as the relay does", () => {
 
   it("Home at /, the dashboard's page with a query", async () => {
     const home = await (await fetch(`${base}/`)).text();
-    expect(home).toContain(`<h1 class="h-hero">${HERO}</h1>`);
+    expect(home).toContain(homeHeadingHtml());
     for (const q of ["?recorded", "?autonomy", "?signin"]) expect(await (await fetch(`${base}/${q}`)).text()).toContain('id="recorded-data"');
   });
 });

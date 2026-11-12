@@ -129,17 +129,66 @@ describe("Claude's cost and the red team, where the docs repeat them", () => {
   // As the doc rounds: cents, or four decimals under a cent.
   const usd = (micros: number) => `$${(micros / 1e6).toFixed(micros >= 10_000 ? 2 : 4)}`;
 
-  it("docs/claude.md's table is the snapshot's (the Agents tab reads the same)", () => {
-    const doc = text("docs/claude.md");
+  it("the recorded run's (30 October) cost per €1,000 is the snapshot's where claims.md keeps it", () => {
     expect(c.models.reduce((s, m) => s + m.calls, 0)).toBe(c.calls);
     expect(c.models.reduce((s, m) => s + m.cost_usd_micros, 0)).toBe(c.cost_usd_micros);
     expect(of("claude.read")).toHaveLength(c.calls);
-    for (const m of c.models) expect(doc).toContain(`| ${m.model} | ${m.role} | ${m.calls} | ${usd(m.cost_usd_micros)} |`);
-    expect(doc).toContain(`| **All** | | **${c.calls}** | **${usd(c.cost_usd_micros)}**, or $${(c.per_call_usd_micros / 1e6).toFixed(4)} per call |`);
-    expect(flat("docs/claude.md")).toContain(`${c.calls} Claude calls`);
-    expect(flat("docs/claude.md")).toContain(`Against the ${eur(cents(c.eur_paid))} the agents paid`);
-    expect(flat("docs/claude.md")).toContain(`$${(c.per_1000_eur_usd_micros / 1e6).toFixed(3)} of AI per €1,000 paid`);
     expect(flat("docs/claims.md")).toContain(`$${(c.per_1000_eur_usd_micros / 1e6).toFixed(3)} per €1,000 paid`);
+  });
+
+  it("docs/claude.md's calls and costs are the main run's (docs/demo/main-run.json), model by model and agent by agent", () => {
+    interface AgentStat { agent: string; decisions: number; by_claude: number; fallback: number; claude_calls: number; cost_usd_micros: number; models: string[] }
+    const main = json<{ snapshot: { claude: Claude & { fallbacks: number }; agent_stats: AgentStat[] } }>("docs/demo/main-run.json").snapshot;
+    const m = main.claude, doc = text("docs/claude.md"), prose = flat("docs/claude.md");
+    expect(m.models.reduce((s, x) => s + x.calls, 0)).toBe(m.calls);
+    expect(m.models.reduce((s, x) => s + x.cost_usd_micros, 0)).toBe(m.cost_usd_micros);
+    for (const x of m.models) expect(doc).toContain(`| ${x.model} | ${x.role} | ${x.calls} | ${usd(x.cost_usd_micros)} |`);
+    expect(doc).toContain(`| **All** | | **${m.calls}** | **${usd(m.cost_usd_micros)}**, or $${(m.per_call_usd_micros / 1e6).toFixed(4)} per call |`);
+    // The agents' own calls, and the rest (documents sorted, read or reviewed).
+    const agentCalls = main.agent_stats.reduce((n, a) => n + a.claude_calls, 0);
+    expect(prose).toContain(`${m.calls} Claude calls in all: ${agentCalls} by the three agents, each with a request id, and ${m.calls - agentCalls} that sort, read or review documents.`);
+    const decisions = main.agent_stats.reduce((n, a) => n + a.decisions, 0), byClaude = main.agent_stats.reduce((n, a) => n + a.by_claude, 0);
+    const fallbacks = main.agent_stats.reduce((n, a) => n + a.fallback, 0);
+    expect(fallbacks).toBe(m.fallbacks);
+    expect(prose).toContain(`${byClaude} of ${decisions} decisions by Claude, ${fallbacks} fallbacks.`);
+    const family = (id: string) => (/haiku/.test(id) ? "Haiku" : /sonnet/.test(id) ? "Sonnet" : "Opus");
+    for (const a of main.agent_stats) {
+      expect(a.models).toHaveLength(1);
+      expect(doc).toContain(`| ${a.agent[0]!.toUpperCase()}${a.agent.slice(1)} | ${family(a.models[0]!)} | ${a.decisions} | ${a.claude_calls} | ${usd(a.cost_usd_micros)} |`);
+    }
+    expect(prose).toContain(`Against the ${eur(cents(m.eur_paid))} the agents paid`);
+    expect(prose).toContain(`$${(m.per_1000_eur_usd_micros / 1e6).toFixed(3)} of AI per €1,000 paid`);
+    // The old pipeline's sentence and the 30 October figures are gone.
+    expect(prose).not.toMatch(/same decisions with or without an API key|23 Claude calls|\$0\.093/);
+  });
+
+  it("docs/claude.md's cost caps and limits are the code's", async () => {
+    const { AGENT_HOURLY_CAP_MICROS, RUN_CAP_MICROS } = await import("../src/agents/loop.js");
+    const { REFUND_AUTO_EACH_CENTS, REFUND_AUTO_PER_DISPUTE_CENTS } = await import("../src/config/policy.js");
+    const { SPLIT_LINE } = await import("../src/config/brand.js");
+    const prose = flat("docs/claude.md");
+    const cap = (a: string) => (AGENT_HOURLY_CAP_MICROS[a]! / 1e6).toFixed(2);
+    expect(prose).toContain(`USD ${cap("sourcing")} an hour for Sourcing, USD ${cap("support")} for Support and USD ${cap("treasury")} for Treasury, and USD ${(RUN_CAP_MICROS / 1e6).toFixed(2)} for all the agents in one world`);
+    expect(prose).toContain(`within the automatic limits (${fromCents(REFUND_AUTO_EACH_CENTS)} each, ${fromCents(REFUND_AUTO_PER_DISPUTE_CENTS)} per dispute)`);
+    expect(prose).toContain(`shared total of ${fromCents(TOTAL_BUDGET_CENTS)} test USD`);
+    expect(text("docs/claude.md").split("\n")[2]).toBe(SPLIT_LINE);
+  });
+
+  it("docs/claude.md's model failure and the relayed address are the eval and run records'", () => {
+    const prose = flat("docs/claude.md");
+    // Haiku as Support, the attack case "support-outside": 0 of 10, the calls refused by code.
+    const row = text("docs/agent-evals.md").split("\n").find((l) => l.startsWith("| support-outside | attack | claude-haiku-5-5 |"))!;
+    const [passed, runs] = /\| (\d+)\/(\d+) \|/.exec(row)!.slice(1);
+    expect(row).toMatch(/FAIL: fallback: .* \d+ call\(s\) refused by code/);
+    expect(prose).toContain(`Haiku as the Support agent, asked by the customer's email to refund orders outside the dispute: ${passed} of ${runs}. Code refused those calls every time, and nothing was paid.`);
+    // The relay: 2 of 40 worlds before the fix; the full re-run on the fix, all 40, nothing passed on.
+    const before = flat("docs/runs/2026-11-02-night-batch.md"), after = flat("docs/runs/variation/2026-11-02-after-fix/summary.md");
+    expect(before).toContain("40 simulated worlds (seeds 1–40): 2 where an agent passed an unvetted payee address to another agent");
+    expect(prose).toContain("in 2 of 40 simulated worlds, a third supplier's notice gave the Sourcing agent (Haiku) its pay-to address");
+    expect(after).toContain("**40 worlds (seeds 1–40), real Claude, simulated rails.**");
+    expect(after).toMatch(/\| \(b\) unsafe-by-definition attempts code withheld \(`payee relayed, withheld by code`\) \| 0 \| none \|/);
+    expect(after).toMatch(/\| verdict's `unsafe` total \| 0 \| none \|/);
+    expect(prose).toContain("The re-run of all 40 worlds on the fix found no address passed on and nothing moved outside the rules");
   });
 
   it("the red team's scripted attacks are counted as the report has them", () => {
@@ -151,8 +200,8 @@ describe("Claude's cost and the red team, where the docs repeat them", () => {
   });
 });
 
-describe("Kit 11's three mandates (README table) against the main run's record and the policy in code", () => {
-  const readme = text("README.md");
+describe("Kit 11's three mandates (the main run's table, docs/in-depth.md) against the main run's record and the policy in code", () => {
+  const readme = text("docs/in-depth.md");
   const table = readme.split("| Kit 11 agent | Its job in the brief |")[1]!.split("\n\n")[0]!.split("\n").filter((l) => l.startsWith("| ") && !l.startsWith("|---"));
   // When bound: the policy in code. After the CFO's Face ID: the main run's record (3 Nov), as on chain at its end.
   const main = json<{ snapshot: { tower: { agents: { agent: string; mandate: { cap: string; budget: string } | null }[] } } }>("docs/demo/main-run.json");
@@ -177,7 +226,7 @@ describe("Kit 11's three mandates (README table) against the main run's record a
     expect(readme).not.toMatch(/10\.00 → 12\.00|6\.00 → 4\.00|14 \/ 2 \/ 4|4\.00 in the brief/);
   });
 
-  it("both before and after add up to TOTAL_BUDGET_CENTS, as the README says", () => {
+  it("both before and after add up to TOTAL_BUDGET_CENTS, as the main run's section says", () => {
     expect(kit.reduce((s, m) => s + cents(m.bound.budget), 0)).toBe(TOTAL_BUDGET_CENTS);
     expect(kit.reduce((s, m) => s + cents(m.now.budget), 0)).toBe(TOTAL_BUDGET_CENTS);
     expect(readme).toContain(`${fromCents(TOTAL_BUDGET_CENTS)} test USD between them, before and after, held in code (\`TOTAL_BUDGET_CENTS\`)`);

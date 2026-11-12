@@ -105,9 +105,17 @@ const visibleText = (html: string) => html
   .replace(PRICE_LINE, " ")
   // Watch's playback speeds (Max, 10 Nov) are a control, not a figure of the run.
   .replace(/\b(?:0\.5|1|2)×/g, " ")
-  // Home's hero demo (10 Nov): the Airwallex-only run's invoice, dated with its own record; its figures are checked
-  // against docs/demo/airwallex-run.json in test/hero-demo.test.ts.
-  .replace(/\b1\s+Ask\s+2\s+Face ID[\s\S]*?Step 4 is the check every payment runs\./g, " ")
+  // Home's hero, its one provenance line and its three proof rows (home-story, 12 Nov): the Airwallex-only run's
+  // invoice, dated with its own record, the hero's receipt and the rows' ids; every figure is checked against
+  // docs/demo/airwallex-run.json, the published receipt (docs/runs/2026-11-07-awx-1/receipt-P-0002.json) and
+  // docs/demo/main-run.json in test/hero-demo.test.ts and test/home-story.test.ts. The same run's and the receipt's own
+  // notes in Home's "What's real?" fold likewise.
+  .replace(/\b1\s+Ask\s+2\s+Face ID[\s\S]*?See the proof/g, " ")
+  .replace(/The hero's steps 1 to 3 and the two Airwallex rows:[\s\S]*?The terms are exactly as signed\./g, " ")
+  // Home's "About Purser" fold (the owner, 12 Nov): how many runs /runs lists, and the payout and fee of the run of 10
+  // November, dated in that run's own record; each figure is read from liveRuns() and checked against
+  // docs/runs/2026-11-10-platform-e2e.md in test/home-about.test.ts.
+  .replace(/About Purser\s+The problem:[\s\S]*?No customers, pilots or revenue yet\./g, " ")
   // 12 Nov (jury panel): /claude's hostile-model eval line, from its own record (docs/evals/ap-hostile.json), which
   // test/ap-agent-evals.test.ts holds to a fresh run of the eval.
   .replace(HOSTILE_CLAIM || "\u0000", " ");
@@ -238,27 +246,32 @@ describe("the redesigned public pages", () => {
     const ts = record.snapshot.agent_chat.map((c) => c.ts).concat(record.snapshot.flows.map((f) => f.at)).sort();
     expect(run.label).toContain(`${ts[0]!.slice(11, 16)}–`);
     expect(run.label).toContain(`–${ts[ts.length - 1]!.slice(11, 16)} UTC`);
-    for (const html of [homePage(), watchPage(), proofPage()]) {
-      expect(html).toContain(run.label);
-      expect(html).not.toMatch(/Stand-in|standing in|Replay of Autonomous dry run/);
-    }
+    // Home no longer replays the main run (home-story, 12 Nov): Proof carries its label, Home only names the run
+    // behind its Metal row, in its "What's real?" fold. The replay at /watch says the label in two parts: its heading
+    // is the label's start with the day in full, the pill beside it the rest (the hours, test money, who decided).
+    expect(proofPage()).toContain(run.label);
+    const [start, rest] = [run.label.slice(0, run.label.indexOf(",")), run.label.replace(/^[^,]+, \d+ \S+ /, "")];
+    expect(start).toBe("Replay of the main run");
+    expect(rest).toBe(`${ts[0]!.slice(11, 16)}–${ts[ts.length - 1]!.slice(11, 16)} UTC · test money · real Claude decisions`);
+    expect(watchPage()).toContain(`<h1>${start}, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(ts[0]!))}</h1><span class="pill run">`);
+    expect(watchPage()).toMatch(new RegExp(`<span class="pill run"><svg[^>]*>.*?</svg>${rest.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}</span>`));
+    expect(homePage()).not.toContain(run.label);
+    expect(homePage()).toMatch(/The Metal row: the main run of 3 November\./);
+    for (const html of [homePage(), watchPage(), proofPage()]) expect(html).not.toMatch(/Stand-in|standing in|Replay of Autonomous dry run/);
   });
 
-  it("carry Home's badge with the Metal Award and the Visa Award (Visa, 7 Nov: the VIC run counts; TAP still not eligible, 5 Nov), no Visa TAP in \"Built on\", and Visa only as text, never certified or endorsed", () => {
+  it("keep the Kit line and the badge as the form and the deck say them, off Home (home-story, 12 Nov: no Kit 11 chip, no awards strip, no \"Built on\" row), and Visa only as text, never certified or endorsed", () => {
     // "Visa (VIC via Airi)" in "Built on" since 12 Nov (jury panel): the Visa entry is the Airi run. Never "Visa TAP":
     // TAP is not the eligible tooling. (The switch was VISA_AWARD_ON, off.)
     expect(VISA_VIC_BUILT_ON).toBe(true);
     expect(KIT_LINE).toBe("Kit 11 · x402 Business Agents · entered for the Metal Award and the Visa Award");
     expect(HOME_BADGE).toBe("Kit 11 · Metal Award and Visa Award · built on Airwallex, Metal, Claude");
-    // Two pills, each on one line: the kit, and the awards entered (never read as already won).
-    expect(homePage()).toContain(">Kit 11 · x402 Business Agents<");
-    expect(homePage()).toContain(">entered for the Metal Award and the Visa Award<");
-    expect(/<div class="built">([\s\S]*?)<\/div>/.exec(homePage())?.[1]).toContain('<span class="logo txt">Visa (VIC via Airi)</span>');
-    expect(/<div class="built">([\s\S]*?)<\/div>/.exec(homePage())?.[1]).not.toMatch(/TAP/);
-    // The TAP work is on /visa only, in one closed fold (12 Nov): Home has no footer link to it, no partner card,
-    // nothing in the three moments.
-    expect(homePage()).not.toMatch(/<a class="flink" href="visa">|Extra, not an award entry/);
-    expect(homePage()).not.toContain('<a class="partner card" href="visa">');
+    // Home said both "entered for the Visa Award" and "not an award entry" (jury panel, 12 Nov): it now says nothing
+    // about awards or Visa, and carries no chip, strip or "Built on" row. /visa and /proof say what is true there.
+    expect(homePage()).not.toMatch(/Kit 11|x402 Business Agents|Metal Award|Visa Award|Built on|class="built"/);
+    expect(homePage().replace(/<header class="top">[\s\S]*?<\/header>/, "")).not.toMatch(/Visa|href="visa"/);
+    // Proof has no footer link to /visa since 12 Nov either: Visa TAP is on /visa only, in its closed fold.
+    expect(proofPage()).not.toMatch(/<a class="flink" href="visa">|Extra, not an award entry/);
     expect(JSON.stringify(agentRun().scenes)).not.toMatch(/Visa|TAP/);
     for (const [name, body] of Object.entries(PAGES)) if (typeof body === "string") expect({ name, img: /<img[^>]*visa/i.test(body), words: body.split(/[.!?"]\s/).filter((s) => /Visa|TAP/.test(s)).map((s) => /\b(certified|endorsed|Visa-approved|open-source)\b/i.exec(s)?.[0]).find(Boolean) ?? null }).toEqual({ name, img: false, words: null });
     expect(PAGES.visa).toContain(VISA_CLAIM.replace(/'/g, "&#39;").replace(/&#39;/g, "'"));
@@ -276,7 +289,7 @@ describe("the redesigned public pages", () => {
     expect(run.scenes[0]!.steps.map((s) => s.text)).toEqual(expect.arrayContaining(["2 of 2 signatures"]));
   });
 
-  it("TAP's status is Max's wording (5 Nov), said once, on /visa; the Visa Award only in the Kit line and /visa's entry line, never on TAP", () => {
+  it("TAP's status is Max's wording (5 Nov), said once, on /visa; Home says nothing about Visa (12 Nov); the Visa Award only in the Kit line and /visa's entry line, never on TAP", () => {
     const pages = buildPages() as unknown as Record<string, unknown>;
     expect(VISA_TAP_STATUS).toBe("Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov).");
     // Said once: on /visa, inside its closed TAP fold; Home and Proof say nothing of it (their footer link went on 12 Nov).
@@ -317,7 +330,7 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
   const shots = new Proxy({}, { get: () => "" }) as DeckShots;
   const SOURCES: [string, string][] = [
     ["proof", proofPage()],
-    ["README.md", doc("README.md")], ["docs/claims.md", doc("docs/claims.md")], ["docs/submission/README.md", doc("docs/submission/README.md")],
+    ["docs/in-depth.md", doc("docs/in-depth.md")], ["docs/claims.md", doc("docs/claims.md")], ["docs/submission/README.md", doc("docs/submission/README.md")],
     ["docs/submission/long-description.md", doc("docs/submission/long-description.md")],
     ["deck", deckHtml(packFacts(), shots, "")], ["docs/video-script.md", doc("docs/video-script.md")],
   ];
@@ -350,8 +363,9 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
       // The form's Description leaves it out too since 6 Nov (jury review, #7: no TAP there; the long text keeps it).
       // Proof leaves it out too since Max's last round (item 2): TAP only on /visa and in Proof's footer link.
       if (name === "deck" || name === "docs/submission/README.md" || name === "proof") expect({ name, tap: t.includes(TAP_LINE) }).toEqual({ name, tap: false });
-      // The README says it in its own words since the jury review of 7 Nov (#15): what is not counted first.
-      else if (name === "README.md") expect({ name, after: t.lastIndexOf("Not counted (a separate TAP run, 2 November): Airwallex declined EUR 45.00 over the card limit (`LIMIT_EXCEEDED`).") > t.indexOf(LINE) }).toEqual({ name, after: true });
+      // The main run's section (docs/in-depth.md since the README went under 150 lines, 12 Nov) says it in its own
+      // words since the jury review of 7 Nov (#15): what is not counted first.
+      else if (name === "docs/in-depth.md") expect({ name, after: t.lastIndexOf("Not counted (a separate TAP run, 2 November): Airwallex declined EUR 45.00 over the card limit (`LIMIT_EXCEEDED`).") > t.indexOf(LINE) }).toEqual({ name, after: true });
       else expect({ name, after: t.lastIndexOf(TAP_LINE) > t.indexOf(LINE) }).toEqual({ name, after: true });
     }
     // On the site's tiles, a big "16 stops" with "nothing paid over a limit" under it, then the sentence.
@@ -359,21 +373,21 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
   });
 
   it("no longer says \"stopped at a limit\" anywhere it is shown (Max, 5 Nov)", () => {
-    for (const [name, raw] of SOURCES) expect({ name, old: /stopped at a limit/i.test(text(raw)) }).toEqual({ name, old: false });
+    for (const [name, raw] of [...SOURCES, ["README.md", doc("README.md")] as [string, string]]) expect({ name, old: /stopped at a limit/i.test(text(raw)) }).toEqual({ name, old: false });
     for (const [name, body] of Object.entries(buildPages() as unknown as Record<string, unknown>)) if (typeof body === "string") expect({ name, old: /stopped at a limit/i.test(text(body)) }).toEqual({ name, old: false });
   });
 
-  it("says Metal's two in detail where they are told: the README, the claims, the Proof page", () => {
+  it("says Metal's two in detail where they are told: the main run's section (docs/in-depth.md), the claims, the Proof page", () => {
     const d = metalDetail(stopStory(record));
     for (const [name, raw] of SOURCES.filter(([n]) => ["proof", "docs/claims.md"].includes(n))) expect({ name, detail: text(raw).includes(d) }).toEqual({ name, detail: true });
-    expect(text(doc("README.md"))).toMatch(/Metal's 2: 1 over the mandate's cap \(#24[^)]*\), 1 on a mandate that had just been replaced \(#37/);
+    expect(text(doc("docs/in-depth.md"))).toMatch(/Metal's 2: 1 over the mandate's cap \(#24[^)]*\), 1 on a mandate that had just been replaced \(#37/);
   });
 
-  it("tells the main run's card story in the README, the long form text and the deck; the decline only as the TAP run's line", () => {
+  it("tells the main run's card story in its section (docs/in-depth.md), the long form text and the deck; the decline only as the TAP run's line", () => {
     const c = packFacts().main.card_raise;
     // The short Description (Max, 5 Nov) leaves the card story to the long text it links; it names no other decline either.
     expect(/30 October[^.]*declin|declin[^.]*30 October|in the recorded run it declined/i.test(text(doc("docs/submission/README.md")))).toBe(false);
-    for (const [name, raw] of SOURCES.filter(([n]) => ["README.md", "docs/submission/long-description.md", "deck"].includes(n))) {
+    for (const [name, raw] of SOURCES.filter(([n]) => ["docs/in-depth.md", "docs/submission/long-description.md", "deck"].includes(n))) {
       const t = text(raw);
       expect({ name, raise: t.includes(`${c.proposal}, EUR ${c.from} → ${c.to}`), auth: t.includes(c.auth.slice(0, 8)) }).toEqual({ name, raise: true, auth: true });
       // No Airwallex decline from another run outside the labelled TAP line.
@@ -381,13 +395,13 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
     }
   });
 
-  it("tells the main run's dispute in the README and the deck: the refunds with their tx, the refund-all rejected; no 30 October figure (Max's rule)", () => {
+  it("tells the main run's dispute in its section (docs/in-depth.md) and the deck: the refunds with their tx, the refund-all rejected; no 30 October figure (Max's rule)", () => {
     const m = packFacts().main;
     const events = record.ledger?.events ?? [];
     const txs = events.filter((e) => e.event === "refund.paid").map((e) => String((e.payload as { tx?: unknown }).tx ?? ""));
     const rejected = (record.ledger?.proposals ?? []).find((p) => p.kind === "refund_batch" && p.status === "REJECTED")?.proposal_id ?? "";
     expect({ refunds: m.refunded.length, txs: txs.length, rejected: !!rejected }).toEqual({ refunds: 3, txs: 3, rejected: true });
-    const readme = text(doc("README.md"));
+    const readme = text(doc("docs/in-depth.md"));
     expect(readme).toContain(`${m.disputed} orders`);
     expect(readme).toContain(`#${m.refunded.slice(0, -1).join(", #")} and #${m.refunded.at(-1)}`);
     for (const tx of txs) expect(readme).toContain(tx);
@@ -461,12 +475,12 @@ describe("the dispute, one text everywhere (jury review, 4 Nov)", () => {
   it("is told from the run's own dispute case", () => {
     expect(disputeStory(record)).toBe(STORY);
     expect(agentRun().scenes.find((x) => x.n === 2)!.sentence).toBe(STORY);
-    // Home tells no scene since Max's round of 7 Nov; the form and the README tell it (next test).
+    // Home tells no scene since Max's round of 7 Nov; the form and the main run's section tell it (next test).
     expect(homePage().replace(/&quot;/g, '"').replace(/&#39;/g, "'")).not.toContain(STORY);
   });
-  it("is the same text in the submission form and the README, and the same figures in the deck's one-line beat", () => {
+  it("is the same text in the submission form and the main run's section (docs/in-depth.md), and the same figures in the deck's one-line beat", () => {
     expect(doc("docs/submission/README.md")).toContain(STORY);
-    expect(doc("README.md")).toContain(STORY);
+    expect(doc("docs/in-depth.md")).toContain(STORY);
     const deck = deckHtml(packFacts(), new Proxy({}, { get: () => "" }) as DeckShots, "").replace(/&quot;/g, '"');
     // Pitch round, 5 Nov: the deck's beat says the story in two short lines (the juror's review: one message per
     // slide, readable on a shared screen), with the story's own figures, counted from the record.

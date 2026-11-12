@@ -3,7 +3,7 @@
 Copy each block into the form. Max submits; nothing here is sent by itself. Every run figure comes from the main run
 of 3 November (`docs/demo/main-run.json`, log `docs/runs/2026-11-03-main-run.md`) and the reports in this repo
 (`src/submission/facts.ts`); `test/submission.test.ts` checks this page against them. The Description tells the demo in
-the site's order (Home, Watch, Try, Proof), then the main run, plus one labelled sentence on the reliability run of
+the site's order (Home, Try, Proof), then the main run, plus one labelled sentence on the reliability run of
 6 November (in Claude's proof sentence), one on awx-1, the Airwallex-only run of 7 November (its record:
 `docs/demo/airwallex-run.json`, log `docs/runs/2026-11-07-awx-1.md`), and one on the Airi run of 7 November, Visa
 Intelligent Commerce via Airwallex's Airi (its record: `docs/demo/airi-run.json`, log
@@ -88,11 +88,11 @@ repository, the hosted preview stays private, and nothing is said to be live.
 ## Instructions
 
 <!-- instructions -->
-1. Judge it in 3 minutes: <https://kit11.max-31b.workers.dev/judge> (five steps in the demo's order, each with its time
+1. Judge it in 3 minutes: <https://kit11.max-31b.workers.dev/judge> (five steps in the menu's order, each with its time
    and a link).
-2. Or the same way on your own: Home (<https://kit11.max-31b.workers.dev/>), then Watch, then Try, then Proof.
-   - Watch (about 40 s): <https://kit11.max-31b.workers.dev/watch> replays the main run of 3 November: three Claude
-     agents, a price rise, a dispute and a euro bill, and the CFO's Face ID where a limit is crossed.
+2. Or the same way on your own: Home (<https://kit11.max-31b.workers.dev/>), then Try, then Proof.
+   - Home (about 40 s): four steps of one payment (ask, Face ID, paid), then tap "+1 cent": the check in your
+     browser says Refused, "Hash no longer matches".
    - Try (about a minute): <https://kit11.max-31b.workers.dev/try/sign> opens a test world of your own; nothing real moves.
      The agent asks: Claude Sonnet reads the invoice, Purser's code checks the reading and the terms come from it,
      Claude Opus advises live as the Treasury agent. You sign with your own passkey (Face ID, Touch ID or a PIN). Try to
@@ -102,7 +102,8 @@ repository, the hosted preview stays private, and nothing is said to be live.
    - Proof: <https://kit11.max-31b.workers.dev/proof> has every id from the main run, the Metal ones checkable on
      Metal's testnet explorer, awx-1, the Airwallex-only run of 7 November (all seven checks passed), and Visa Intelligent
      Commerce via Airwallex's Airi (7 November; Airwallex sandbox, test card, test money; 5 of 5 checks). The film
-     (3:58): <https://youtu.be/kCUsFHrxE-o>
+     (3:58): <https://youtu.be/kCUsFHrxE-o>. The replay of the main run of 3 November (three Claude agents, a price
+     rise, a dispute and a euro bill): <https://kit11.max-31b.workers.dev/watch>
 3. Then the repository, offline, no keys and no network after `npm ci` (Node.js 22.13 or later):
    `npm ci`, then `npm test` (the full suite, on stand-ins), then `npm run judge -- --check` (serves Home, Watch, Proof,
    the partner pages, the CFO dashboard and the Scenario Lab from the main run's record, fetches each page once and

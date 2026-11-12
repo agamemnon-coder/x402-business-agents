@@ -46,9 +46,9 @@ const EXPOSURE_RATE = (() => { try { return recordedRate(loadRecord().record as 
 export const METAL_RECORDED = (() => { try { return metalRecordedOf(JSON.parse(read(`../../${METAL_INSPECTOR_RECORD}`)) as unknown); } catch { return null; } })();
 
 /**
- * The site's one way through (Max, 7 Nov: watch the agents, try it yourself, see the proof). With /try/sign in the
- * bundle the header's "Try" tab leads there; without it, a link to /try/sign (the next step under /watch) leads to /try,
- * so no page links to a 404.
+ * The site's one way through (Home, try it yourself, see the proof; the replay at /watch left the menu on 12 Nov). With
+ * /try/sign in the bundle the header's "Try" tab leads there; without it, a link to /try/sign (Home's button, the way on
+ * under the replay at /watch) leads to /try, so no page links to a 404.
  */
 export function flowLinks(html: string, trySign: boolean): string {
   if (!trySign) return html.replace(/href="(\/?)try\/sign"/g, 'href="$1try"');

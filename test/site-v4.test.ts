@@ -1,5 +1,5 @@
-// The public site after Max's mega-prompt v4 (C1-C8, D2, D3): four tabs and, since 12 Nov, "More" (pricing, security and
-// the partner pages in a script-free dropdown); short partner pages with the details folded;
+// The public site after Max's mega-prompt v4 (C1-C8, D2, D3): the tabs (Home, Try, Proof; Watch once the film is set) and,
+// since 12 Nov, "More" (pricing, security and the partner pages in a script-free dropdown); short partner pages with the details folded;
 // a text budget per page; no forbidden words on any public page; one Face ID number from one source; the split between
 // Claude's decisions and code's routine payments, both counted from the record; the Claude call badge from each trace;
 // every internal link answers (old addresses redirect, anything else gets the clean 404).
@@ -39,7 +39,7 @@ export function visibleWords(html: string): number {
 const allText = (html: string) => decode(html.replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " "));
 
 describe("the site after v4", () => {
-  it("keeps every page within its text budget (Home 195 with the three sentences and both awards; partner pages at most 150, /metal 275 with its table of the four mandates, /claude 195 with its measured block, /airwallex 365 with its read-back, awx-1, the Airi run and the second Airi run's heading, /visa 625 with the VIC heading and drawing on top, what ran, the two Airi runs, their folded lines and the TAP section last)", () => {
+  it("keeps every page within its text budget (Home 250, as one story since 12 Nov; partner pages at most 150, /metal 275 with its table of the four mandates, /claude 195 with its measured block, /airwallex 365 with its read-back, awx-1, the Airi run and the second Airi run's heading, /visa 625 with the VIC heading and drawing on top, what ran, the two Airi runs, their folded lines and the TAP section last)", () => {
     // Proof: 480 since 4 Nov, for the TAP run's decline on its own line below the stop figure (Max).
     // Home: 600 since 6 Nov, for the three sentences under the heading, the Kit 11 line and the one caveat line (jury review, #1, #7).
     // Proof 520 and Airwallex 190 since 6 Nov, for Airwallex read back (section B): the hash the CFO signed beside the one
@@ -73,6 +73,9 @@ describe("the site after v4", () => {
     // Home: 250 since the competitive review of 10 Nov (249 as built): one button to /try/sign, the other ways in as text
     // links, the hero demo in place of the three sentences, Airwallex's own decline with the main run's counts and one
     // id, the awards line under the first screen and one line on what comes next (README and form keep the sentences).
+    // Home: still 250 since it became one story (home-story, 12 Nov; 240 as built, 243 with /try/sign): the heading, one
+    // sentence, one button and its line, the first of the three sentences, the hero's four steps with one short line
+    // each, one provenance line, three proof rows, the last button. test/home-story.test.ts holds both builds to it.
     // Proof: 715 since then, for "What Purser guarantees" under the run's figures: seven promises, each with who enforces
     // it and its evidence in sight, how, the code and the test folded (705 as built).
     // Visa: 495 since then (Max, 10 Nov: we compete for the Visa Award, keep it visible): one plain sentence on top naming
@@ -113,10 +116,11 @@ describe("the site after v4", () => {
 
   it("has four tabs and More in the menu, on every public page; under More the pages the site serves, in one order: Pricing, Security, Docs, Status, then Airwallex, Metal, Visa, Claude", () => {
     // The whole list, in the menu's order (src/ui/more.ts): the product pages, then the partner pages.
-    expect(MORE_LINKS.map((l) => [l.label, l.href])).toEqual([["Pricing", "pricing"], ["Security", "security"], ["Docs", "docs"], ["Status", "status"], ["Airwallex", "airwallex"], ["Metal", "metal"], ["Visa", "visa"], ["Claude", "claude"]]);
+    expect(MORE_LINKS.map((l) => [l.label, l.href])).toEqual([["Purser Cloud", "https://purser-try.max-31b.workers.dev/"], ["Pricing", "pricing"], ["Security", "security"], ["Docs", "docs"], ["Status", "status"], ["Airwallex", "airwallex"], ["Metal", "metal"], ["Visa", "visa"], ["Claude", "claude"]]);
     // The menu lists a page exactly when the site serves it, so "More" never opens onto a 404 (a page not built yet is
     // left out until it is registered; then the menu must list it).
-    const served = MORE_LINKS.filter((l) => pageResponse(new Request(`https://x.test/${l.href}`), pages as Pages)?.status === 200).map((l) => l.label);
+    // 12 Nov: Purser Cloud is its own deployment (an absolute link), served there, not by this Worker.
+    const served = MORE_LINKS.filter((l) => /^https:\/\//.test(l.href) || pageResponse(new Request(`https://x.test/${l.href}`), pages as Pages)?.status === 200).map((l) => l.label);
     expect(served).toEqual(expect.arrayContaining(["Pricing", "Security", "Airwallex", "Metal", "Visa", "Claude"]));
     expect(served).toEqual(expect.arrayContaining(["Docs", "Status"]));
     for (const [name, html] of Object.entries(PUBLIC)) {
@@ -132,7 +136,7 @@ describe("the site after v4", () => {
       expect({ name, rest: (more?.[2] ?? "").replace(/<a [^>]*>[^<]+<\/a>/g, "") }).toEqual({ name, rest: product.length ? "<hr>" : "" });
       // The footer repeats the product pages' links (not the partner pages), in the same order; Try, an older page, has no footer.
       const foot = /<footer class="foot">[\s\S]*?<\/footer>/.exec(html)?.[0] ?? "";
-      if (name !== "try") expect({ name, footer: [...foot.matchAll(/<a class="flink" href="\/?([a-z]+)">([^<]+)<\/a>/g)].map((m) => [m[1], m[2]]).filter(([href]) => MORE_LINKS.some((l) => l.href === href && l.group === "product")) }).toEqual({ name, footer: product.map((l) => [l.href, l.label]) });
+      if (name !== "try") expect({ name, footer: [...foot.matchAll(/<a class="flink" href="\/?([a-z]+)">([^<]+)<\/a>/g)].map((m) => [m[1], m[2]]).filter(([href]) => MORE_LINKS.some((l) => l.href === href && l.group === "product")) }).toEqual({ name, footer: product.filter((l) => !/^https:/.test(l.href)).map((l) => [l.href, l.label]) });
     }
   });
 
