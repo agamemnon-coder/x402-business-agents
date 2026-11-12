@@ -1,0 +1,13 @@
+{
+  // SPIKE, variant: the same worker with only what wrangler needs to bundle and load it (the browser stub and the two
+  // import.meta values): the engine's real PDF text reader and the real node:crypto. Shows what the real reader does
+  // in workerd, and what the bundle weighs without the golden comparison's harness.
+  "name": "purser-do-spike-plain",
+  "main": "./engineWorker.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": { "bindings": [{ "name": "COMPANY", "class_name": "CompanyEngine" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CompanyEngine"] }],
+  "define": { "import.meta.dirname": "\"/bundle\"", "import.meta.url": "\"file:///bundle/engineWorker.js\"" },
+  "alias": { "playwright": "./stubPlaywright.ts" }
+}

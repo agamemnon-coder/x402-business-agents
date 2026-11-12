@@ -21,13 +21,33 @@ const modules = readdirSync(dist).filter((f) => f.endsWith(".js") || f.endsWith(
   .map((f) => ({ type: f.endsWith(".js") ? "ESModule" : "Text", path: join(dist, f) }));
 const mf = workerd({ modules, modulesRoot: dist, binding: "COMPANY", className: "CompanyEngine" });
 
-interface Answer { result?: unknown; stats?: Record<string, number>; error?: string; stack?: string[]; ms: number }
+/** The workerd process Miniflare started (a child of this one), once it is up. */
+function workerdPid(): number | null {
+  for (const d of readdirSync("/proc")) {
+    if (!/^\d+$/.test(d)) continue;
+    try { const m = /^\d+ \((.*)\) \S (\d+)/.exec(readFileSync(`/proc/${d}/stat`, "utf8")); if (m && Number(m[2]) === process.pid && m[1]!.includes("workerd")) return Number(d); } catch { /* gone */ }
+  }
+  return null;
+}
+/** CPU time the process has used, over all its threads, in ms (the kernel's own count, in ns). */
+function cpuMs(pid: number | null): number {
+  if (!pid) return NaN;
+  let ns = 0;
+  for (const tid of readdirSync(`/proc/${pid}/task`)) { try { ns += Number(readFileSync(`/proc/${pid}/task/${tid}/schedstat`, "utf8").split(" ")[0]); } catch { /* thread ended */ } }
+  return ns / 1e6;
+}
+let pid: number | null = null;
+
+interface Answer { result?: unknown; stats?: Record<string, number>; error?: string; stack?: string[]; ms: number; cpu: number }
 async function call(company: string, step: string, body: Record<string, unknown>): Promise<Answer> {
+  pid ??= workerdPid();
+  const c0 = cpuMs(pid);
   const t0 = performance.now();
   const res = await mf.dispatchFetch(`http://engine/${step}?company=${company}`, { method: "POST", body: JSON.stringify(body) });
   const text = await res.text();
   const ms = performance.now() - t0;
-  try { return { ...(JSON.parse(text) as object), ms }; } catch { return { error: `HTTP ${res.status}: ${text.slice(0, 300)}`, ms }; }
+  const cpu = cpuMs(pid) - c0;
+  try { return { ...(JSON.parse(text) as object), ms, cpu }; } catch { return { error: `HTTP ${res.status}: ${text.slice(0, 300)}`, ms, cpu }; }
 }
 
 const BASE = golden.inputs.clockBase;
@@ -99,25 +119,28 @@ try {
       for (const k of dm.keys()) console.log(`   only in the Durable Object: ${k}`);
     }
   }
-  // Timing: the whole chain on fresh objects (a new company each time), wall time per request as the caller sees it.
+  // Timing: the whole chain on fresh objects (a new company each time). Wall time per request as the caller sees it,
+  // and the CPU time the workerd process used meanwhile (all threads, so the request's own plumbing is in it too).
   if (runs > 0 && g.dump) {
-    const times: Record<string, number[]> = { open: [] };
+    await mf.dispatchFetch("http://engine/open?company=warm", { method: "POST", body: "{}" });
+    const wall: Record<string, number[]> = { open: [] }, cpu: Record<string, number[]> = { open: [] };
     for (let r = 0; r < runs; r++) {
       const c = await chain(`timing-${r}`);
-      times.open!.push(c.open.ms);
-      for (const name of STEPS) (times[name] ??= []).push(c.answers[name]?.ms ?? NaN);
+      wall.open!.push(c.open.ms); cpu.open!.push(c.open.cpu);
+      for (const name of STEPS) { (wall[name] ??= []).push(c.answers[name]?.ms ?? NaN); (cpu[name] ??= []).push(c.answers[name]?.cpu ?? NaN); }
     }
     const med = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]!;
-    console.log(`\nTIMING over ${runs} fresh Durable Objects (wall ms per request, median [min..max]); Node in-process for comparison:`);
-    let total = 0;
+    console.log(`\nTIMING over ${runs} fresh Durable Objects in a warm isolate: wall ms per request, median [min..max] | workerd CPU ms, median | Node in-process wall ms`);
+    let totalWall = 0, totalCpu = 0;
     const timing: Record<string, unknown> = {};
-    for (const [name, xs] of Object.entries(times)) {
-      total += name === "open" ? 0 : med(xs);
-      console.log(`   ${name.padEnd(14)} ${med(xs).toFixed(1).padStart(7)} [${Math.min(...xs).toFixed(1)}..${Math.max(...xs).toFixed(1)}]${golden.stats[name] ? `   node ${golden.stats[name]!.ms.toFixed(1)}` : ""}`);
-      timing[name] = { medianMs: Number(med(xs).toFixed(2)), minMs: Number(Math.min(...xs).toFixed(2)), maxMs: Number(Math.max(...xs).toFixed(2)), nodeMs: golden.stats[name]?.ms };
+    for (const [name, xs] of Object.entries(wall)) {
+      const c = cpu[name]!;
+      if (name !== "open") { totalWall += med(xs); totalCpu += med(c); }
+      console.log(`   ${name.padEnd(14)} ${med(xs).toFixed(1).padStart(7)} [${Math.min(...xs).toFixed(1)}..${Math.max(...xs).toFixed(1)}]`.padEnd(42) + `| ${med(c).toFixed(1).padStart(6)} | ${golden.stats[name] ? golden.stats[name]!.ms.toFixed(1) : "-"}`);
+      timing[name] = { wallMedianMs: Number(med(xs).toFixed(2)), wallMinMs: Number(Math.min(...xs).toFixed(2)), wallMaxMs: Number(Math.max(...xs).toFixed(2)), cpuMedianMs: Number(med(c).toFixed(2)), nodeWallMs: golden.stats[name]?.ms };
     }
-    console.log(`   chain total (10 steps, medians): ${total.toFixed(1)} ms in workerd; ${Object.values(golden.stats).reduce((a, x) => a + x.ms, 0).toFixed(1)} ms in Node`);
-    report.timing = timing;
+    console.log(`   chain total (10 steps, sum of medians): ${totalWall.toFixed(1)} ms wall, ${totalCpu.toFixed(1)} ms CPU in workerd; ${Object.values(golden.stats).reduce((a, x) => a + x.ms, 0).toFixed(1)} ms wall in Node (first run, cold code)`);
+    report.timing = { ...timing, totalWallMs: Number(totalWall.toFixed(1)), totalCpuMs: Number(totalCpu.toFixed(1)), runs };
   }
   if (opt("--report")) writeFileSync(opt("--report")!, JSON.stringify(report, null, 1));
 } finally { await mf.dispose(); }
