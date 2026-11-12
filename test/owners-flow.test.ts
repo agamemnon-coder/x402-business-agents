@@ -28,7 +28,7 @@ async function world(o: Parameters<typeof ownersWorld>[0] = {}): Promise<TestWor
   w.node.code.set(PASSKEY_VERIFIER.toLowerCase(), "0x60");
   return w;
 }
-const events = (name: string) => (w.db.prepare("SELECT subject, payload_json FROM audit_log WHERE event = ? ORDER BY seq").all(name) as { subject: string; payload_json: string }[]).map((r) => ({ subject: r.subject, ...(JSON.parse(r.payload_json) as Record<string, unknown>) }));
+const events = (name: string): ({ subject: string } & Record<string, unknown>)[] => (w.db.prepare("SELECT subject, payload_json FROM audit_log WHERE event = ? ORDER BY seq").all(name) as { subject: string; payload_json: string }[]).map((r) => ({ ...(JSON.parse(r.payload_json) as Record<string, unknown>), subject: r.subject }));
 const keyAddress = (file: string) => (JSON.parse(readFileSync(join(w.keys, file), "utf8")) as { address: Address }).address;
 const balance = (a: string) => w.node.balances.get(a.toLowerCase()) ?? 0n;
 /** Setup, a bind proposed, signed by both passkeys and relayed: the mandate is bound. */
