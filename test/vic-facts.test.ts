@@ -20,14 +20,17 @@ const unfolded = main.replace(/<details\b[\s\S]*?<\/details>/g, " ");
 describe("the five facts under the drawing", () => {
   const facts = vicFacts(rec);
 
-  it("are five short lines, each backed by the record: test credential, one person in both roles, the fourth attempt, the headless browser, our own merchant", () => {
+  // The jury check of 12 Nov: the attempt history is folded ("The N attempts that failed first"); in sight, the headless
+  // browser said to be sandbox only, and the production path (a network token, no card number in the agent's process).
+  it("are five short lines, each backed by the record: test credential, one person in both roles, the headless browser (sandbox only), the production path, our own merchant", () => {
     expect(facts).toEqual([
       "The credential is a test credential, from Airi's test card.",
       "One person played both the CFO and the cardholder.",
-      "It passed on the fourth attempt that day.",
-      "The agent's process typed the single-use number into Airwallex's hosted page with a headless browser: the sandbox refuses a direct confirm.",
+      "Sandbox only: a headless browser in the agent's process typed the number into Airwallex's hosted page; the sandbox refuses a direct confirm.",
+      "In production no card number would enter the agent's process: the merchant would get a network token via the Connect access above.",
       "The merchant is Purser's own sandbox account.",
     ]);
+    expect(facts.join(" ")).not.toMatch(/attempt/);
     for (const f of facts) expect({ f, words: f.split(" ").length <= 22 }).toEqual({ f, words: true });
     // 1. The record: a test card, and the record's own words on what the sandbox cannot show.
     expect(airi.test_card).toBe(true);
@@ -71,7 +74,7 @@ describe("the five facts under the drawing", () => {
     // A run that passed first time says "first".
     const first = structuredClone(rec);
     first.attempts = [first.attempts[1]!, first.attempts[3]!].map((a, i) => ({ ...a, outcome: i === 1 ? "passed" : "failed" }));
-    expect(vicFacts(first)[2]).toBe("It passed on the second attempt that day.");
+    expect(vicAttemptCount(first).passedAt).toBe(2);
   });
 
   it("count the series, wherever a failure falls: 2 of 5 paid, with a failure after a pass, builds the page's lines", () => {
@@ -86,7 +89,6 @@ describe("the five facts under the drawing", () => {
     const n = vicAttemptCount(series);
     expect(n).toMatchObject({ all: 5, paid: 2, passedAt: 3, failedFirst: false });
     expect(n.failed.map((a) => a.world)).toEqual(["vic-1", "vic-1b", "vic-1d"]);
-    expect(vicFacts(series)[2]).toBe("It passed on the third attempt that day.");
     expect(vicAttemptLines(series).at(-1)).toBe("15:30 UTC, failed: the cardholder did not confirm in time (PURSER_NO_TAP). Nothing charged.");
     expect(/<summary>([^<]*)<\/summary>/.exec(vicAttemptsHtml(series))![1]).toBe("The 3 attempts that failed");
     // An attempt of another day is not part of the series; the record's own attempt must be among the day's.

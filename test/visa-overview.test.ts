@@ -167,8 +167,11 @@ describe("/visa is one Visa Intelligent Commerce story; TAP folded away", () => 
     expect(VIC_FLOW_CSS).not.toMatch(/--vf-airi|#be185d|#f472b6/);
   });
 
-  it("gives the basis for calling it VIC in a visible line, with its date, its channel and who reports it", () => {
-    expect(VISA_ENTRY_LINE).toBe("This Airi run is Purser's entry for the Visa Award. Basis for calling it Visa Intelligent Commerce: Visa said in the hackathon Slack on 7 November that the VIC run counts, as reported by the builder.");
+  // The jury check of 12 Nov: the second-hand basis sentence ("as reported by the builder") went; the record names no
+  // poster's role to put in its place. The line says which runs are the entry, and nothing more.
+  it("says in a visible line which runs are the Visa entry, and repeats no second-hand basis", () => {
+    expect(VISA_ENTRY_LINE).toBe("The Airi runs are Purser's entry for the Visa Award.");
+    expect(text(html)).not.toMatch(/as reported by the builder/);
     expect(text(unfolded(main))).toContain(VISA_ENTRY_LINE);
     // What is on record for it: the evidence list's row of 7 November, reported by the owner, with no quote from Visa.
     const row = readFileSync(new URL("../docs/evidence/README.md", import.meta.url), "utf8").split("\n").find((l) => l.startsWith("| 7 November 2026"))!;
@@ -245,7 +248,7 @@ describe("/visa is one Visa Intelligent Commerce story; TAP folded away", () => 
     expect(() => assertVicFirst(html.replace(`<h1>${esc(VISA_H1)}</h1>`, "<h1>The agent signs before it pays</h1>"))).toThrow(/heading/);
     expect(() => assertVicFirst(html.replace(`<title>${esc(VISA_TITLE)}</title>`, "<title>Visa</title>"))).toThrow(/title/);
     // The basis or the Connect line gone, or Connect claimed a second time.
-    expect(() => assertVicFirst(html.replace(esc(VISA_ENTRY_LINE), ""))).toThrow(/basis/);
+    expect(() => assertVicFirst(html.replace(esc(VISA_ENTRY_LINE), ""))).toThrow(/entry line/);
     expect(() => assertVicFirst(html.replace(esc(VISA_ICC_LINE), ""))).toThrow(/Intelligent Commerce Connect/);
     expect(() => assertVicFirst(html.replace(esc(VISA_LEAD), `${esc(VISA_LEAD)} Built with Intelligent Commerce Connect.`))).toThrow(/more than once/);
     // The old overview, which counted the TAP run and the run that bought nothing as "three live runs".
@@ -271,7 +274,8 @@ describe("the Visa entry on the rest of the site", () => {
     expect(VISA_BUILT_ON).toBe("Visa (VIC via Airi)");
     expect(home).not.toMatch(/<div class="built">|<p class="builton">/);
     const built = /<p class="builton">[\s\S]*?<\/p>/.exec(airwallex)![0];
-    expect(built).toMatch(/<a class="flink" href="visa">Visa \(VIC through Airwallex's Airi\): \d+ purchases settled<\/a>/);
+    // The same count /visa shows: the purchases paid across the live Airi runs (the jury check, 12 Nov).
+    expect(built).toMatch(/<a class="flink" href="visa">Visa \(VIC through Airwallex's Airi\): \d+ purchases paid in \d+ live runs?<\/a>/);
     expect(built).not.toMatch(/TAP|<img[^>]*visa/i);
   });
 

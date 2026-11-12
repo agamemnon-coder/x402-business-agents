@@ -301,7 +301,7 @@ describe("the redesigned public pages", () => {
       expect({ name, has: html.split(esc(VISA_TAP_STATUS)).length - 1 }).toEqual({ name, has: name === "visa" ? 1 : 0 });
       if (name !== "visa") expect({ name, link: /Extra, not an award entry/.test(html) }).toEqual({ name, link: false });
     }
-    for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, bad: /confirmed (that )?TAP|TAP counts as Visa tooling|counts as Visa tooling|still being confirmed with Visa|\+ Visa Award|Visa Award entry/i.test(body) || /Visa Award/i.test(body.split("entered for the Metal Award and the Visa Award").join(" ").split("This Airi run is Purser's entry for the Visa Award.").join(" ")) }).toEqual({ name, bad: false });
+    for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, bad: /confirmed (that )?TAP|TAP counts as Visa tooling|counts as Visa tooling|still being confirmed with Visa|\+ Visa Award|Visa Award entry/i.test(body) || /Visa Award/i.test(body.split("entered for the Metal Award and the Visa Award").join(" ").split("The Airi runs are Purser's entry for the Visa Award.").join(" ")) }).toEqual({ name, bad: false });
   });
 
   it("labels the licence payment by who planned it: the Treasury agent itself in the main run; agent run 1's honest note is kept", () => {

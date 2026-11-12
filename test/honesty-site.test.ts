@@ -255,7 +255,7 @@ describe("6. TAP's status (Visa, 5 Nov: not eligible Visa tooling), said once, o
     const fold = /<details class="fold" id="visa-tap">[\s\S]*?<\/details>/.exec(String(pages.visa))![0];
     expect(fold).toContain(VISA_TAP_STATUS);
     expect(String(pages.visa).replace(fold, "")).not.toMatch(/\bTAP\b/);
-    for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, entered: /\+ Visa Award|TAP counts as Visa tooling/i.test(body) || /Visa Award/i.test(body.split("entered for the Metal Award and the Visa Award").join(" ").split("This Airi run is Purser's entry for the Visa Award.").join(" ")) }).toEqual({ name, entered: false });
+    for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, entered: /\+ Visa Award|TAP counts as Visa tooling/i.test(body) || /Visa Award/i.test(body.split("entered for the Metal Award and the Visa Award").join(" ").split("The Airi runs are Purser's entry for the Visa Award.").join(" ")) }).toEqual({ name, entered: false });
   });
 });
 
