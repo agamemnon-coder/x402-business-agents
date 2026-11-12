@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="pv pv-arch-wide" viewBox="0 0 1200 540" width="1200" height="540" role="img" aria-labelledby="pv-arch-wide-t pv-arch-wide-d">
+<title id="pv-arch-wide-t">Purser: how a payment is allowed</title><desc id="pv-arch-wide-d">AI agents propose payments. Three layers that do not trust each other must each say yes: Purser's checks in code, the CFO's Face ID over the exact terms, and the rail's own controls (Airwallex, Metal, Visa Intelligent Commerce via Airi). Then the payment is written to the ledger and the books, and archived.</desc>
+<style>.pv{--bg:#f7f8fa;--surface:#ffffff;--sunken:#f1f3f7;--border:#e3e6ec;--text:#0b1220;--muted:#586174;--faint:#646d7e;--accent:#4f46e5;--accent-soft:#eef0ff;--ok:#0b7d43;--ok-soft:#e6f6ee;--bad:#c5363c;--bad-soft:#fdecec;--metal:#0b7a70;--metal-soft:#e3f5f2;--awx:#ad4a0c;--awx-soft:#fdf0e7;--claude:#a84d2b;--claude-soft:#fbefe9}
+.pv { display: block; width: 100%; height: auto; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
+.pv .pv-bg { fill: var(--bg); }
+.pv .pv-box { fill: var(--surface); stroke: var(--border); stroke-width: 1.5; }
+.pv .pv-sunk { fill: var(--sunken); stroke: none; }
+.pv .pv-layer { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 6 5; }
+.pv .pv-trust { fill: var(--accent-soft); stroke: none; }
+.pv .pv-awx { fill: var(--awx-soft); stroke: none; } .pv .pv-metal { fill: var(--metal-soft); stroke: none; } .pv .pv-airi { fill: var(--accent-soft); stroke: none; }
+.pv .pv-claude { fill: var(--claude-soft); stroke: none; } .pv .pv-ok { fill: var(--ok-soft); stroke: none; } .pv .pv-badbg { fill: var(--bad-soft); stroke: none; }
+.pv text { fill: var(--text); font-family: Inter, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
+.pv .t-eye { font-size: 12.5px; font-weight: 700; letter-spacing: .08em; fill: var(--faint); }
+.pv .t-h { font-size: 19px; font-weight: 750; letter-spacing: -.01em; }
+.pv .t-h2 { font-size: 16px; font-weight: 700; }
+.pv .t-b { font-size: 14.5px; fill: var(--muted); }
+.pv .t-s { font-size: 13px; fill: var(--muted); }
+.pv .t-f { font-size: 12.5px; fill: var(--faint); }
+.pv .t-cap { font-size: 15px; font-weight: 650; fill: var(--accent); }
+.pv .t-bad { font-size: 13px; font-weight: 650; fill: var(--bad); }
+.pv .t-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 15px; font-weight: 700; fill: var(--bad); }
+.pv .t-awx { fill: var(--awx); } .pv .t-metal { fill: var(--metal); } .pv .t-airi { fill: var(--accent); } .pv .t-claude { fill: var(--claude); } .pv .t-ok { fill: var(--ok); }
+.pv .t-link { font-size: 13.5px; font-weight: 650; fill: var(--accent); }
+.pv a:hover .t-link, .pv a:focus .t-link { text-decoration: underline; }
+.pv a:focus-visible .pv-box { stroke: var(--accent); stroke-width: 3; }
+.pv .pv-flow, .pv .pv-still { fill: none; stroke: var(--faint); stroke-width: 2; stroke-dasharray: 5 5; }
+.pv .pv-tip { fill: var(--faint); }
+.pv .pv-line { fill: none; stroke: var(--border); stroke-width: 3; stroke-linecap: round; }
+.pv .pv-prog { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; }
+.pv .pv-dot { fill: var(--surface); stroke: var(--border); stroke-width: 2; }
+.pv .pv-num { font-size: 15px; font-weight: 750; fill: var(--text); }
+.pv .pv-ring { fill: none; stroke: var(--accent); stroke-width: 3; opacity: 0; }
+.pv .pv-step-hl { fill: var(--accent-soft); opacity: 0; }
+.pv-life-wide { --pv-len: 1080; } .pv-life-tall { --pv-len: 462; }
+@media (prefers-reduced-motion: no-preference) {
+  .pv .pv-flow { animation: pv-dash 1.6s linear infinite; }
+  .pv .pv-prog { animation: pv-prog 15.91s linear infinite; }
+  .pv .pv-ring, .pv .pv-step-hl { animation: pv-step 15.91s linear infinite; }
+  .pv .pv-d0 { animation-delay: 0.00s; }
+  .pv .pv-d1 { animation-delay: 1.75s; }
+  .pv .pv-d2 { animation-delay: 3.50s; }
+  .pv .pv-d3 { animation-delay: 5.25s; }
+  .pv .pv-d4 { animation-delay: 7.00s; }
+  .pv .pv-d5 { animation-delay: 8.75s; }
+  .pv .pv-d6 { animation-delay: 10.50s; }
+  .pv .pv-d7 { animation-delay: 12.25s; }
+}
+@keyframes pv-dash { to { stroke-dashoffset: -20; } }
+@keyframes pv-prog { 0% { stroke-dashoffset: var(--pv-len); } 88% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 0; } }
+@keyframes pv-step { 0% { opacity: 0; } 1.5% { opacity: 1; } 11% { opacity: 1; } 13% { opacity: 0; } 100% { opacity: 0; } }
+</style><defs><marker id="pv-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="pv-tip" d="M0 0 L10 5 L0 10 z"/></marker></defs><rect class="pv-bg" width="1200" height="540"/>
+<path class="pv-still" d="M244 52 L244 40 L960 40 L960 52"/>
+<text class="t-cap" x="602" y="30" text-anchor="middle"><tspan x="602" dy="0">Three layers that do not trust each other: each one checks again, on its own.</tspan></text>
+<rect class="pv-box" x="16" y="78" width="188" height="400" rx="18"/>
+<rect class="pv-claude" x="16" y="78" width="188" height="400" rx="18"/>
+<text class="t-eye" x="36" y="112"><tspan x="36" dy="0">AGENTS</tspan></text>
+<text class="t-h" x="36" y="140"><tspan x="36" dy="0">AI agents</tspan></text>
+<text class="t-b" x="36" y="170"><tspan x="36" dy="0">Claude reads invoices</tspan><tspan x="36" dy="21">and proposes payments</tspan></text>
+<rect class="pv-box" x="36" y="246" width="148" height="38" rx="19"/>
+<text class="t-h2" x="110" y="270" text-anchor="middle"><tspan x="110" dy="0">Sourcing</tspan></text>
+<rect class="pv-box" x="36" y="296" width="148" height="38" rx="19"/>
+<text class="t-h2" x="110" y="320" text-anchor="middle"><tspan x="110" dy="0">Support</tspan></text>
+<rect class="pv-box" x="36" y="346" width="148" height="38" rx="19"/>
+<text class="t-h2" x="110" y="370" text-anchor="middle"><tspan x="110" dy="0">Treasury</tspan></text>
+<text class="t-bad" x="36" y="428"><tspan x="36" dy="0">Cannot change its</tspan><tspan x="36" dy="18">own limits</tspan></text>
+<rect class="pv-box" x="244" y="78" width="220" height="400" rx="18"/>
+<rect class="pv-layer" x="238" y="72" width="232" height="412" rx="22"/>
+<text class="t-eye" x="264" y="112"><tspan x="264" dy="0">LAYER 1 · CODE</tspan></text>
+<text class="t-h" x="264" y="140"><tspan x="264" dy="0">Purser's checks</tspan></text>
+<text class="t-b" x="264" y="182"><tspan x="264" dy="0">Limits and budgets per</tspan><tspan x="264" dy="20">agent</tspan></text>
+<text class="t-b" x="264" y="234"><tspan x="264" dy="0">Allowed payees and</tspan><tspan x="264" dy="20">merchants</tspan></text>
+<text class="t-b" x="264" y="286"><tspan x="264" dy="0">The invoice adds up</tspan></text>
+<text class="t-b" x="264" y="318"><tspan x="264" dy="0">Hashes the exact terms</tspan></text>
+<rect class="pv-badbg" x="258" y="404" width="192" height="58" rx="12"/>
+<text class="t-bad" x="270" y="428"><tspan x="270" dy="0">Refuses over a limit or</tspan><tspan x="270" dy="18">an unknown payee</tspan></text>
+<rect class="pv-box" x="488" y="78" width="220" height="400" rx="18"/>
+<rect class="pv-layer" x="482" y="72" width="232" height="412" rx="22"/>
+<text class="t-eye" x="508" y="112"><tspan x="508" dy="0">LAYER 2 · SIGNATURE</tspan></text>
+<text class="t-h" x="508" y="140"><tspan x="508" dy="0">The CFO's Face ID</tspan></text>
+<text class="t-b" x="508" y="182"><tspan x="508" dy="0">A passkey signs the hash</tspan><tspan x="508" dy="20">of the exact terms</tspan></text>
+<text class="t-b" x="508" y="234"><tspan x="508" dy="0">Before paying, Purser</tspan><tspan x="508" dy="20">hashes the terms again</tspan></text>
+<rect class="pv-badbg" x="502" y="404" width="192" height="58" rx="12"/>
+<text class="t-bad" x="514" y="428"><tspan x="514" dy="0">Refuses terms changed</tspan><tspan x="514" dy="18">after signing</tspan></text>
+<rect class="pv-box" x="732" y="78" width="228" height="400" rx="18"/>
+<rect class="pv-layer" x="726" y="72" width="240" height="412" rx="22"/>
+<text class="t-eye" x="752" y="112"><tspan x="752" dy="0">LAYER 3 · THE RAIL</tspan></text>
+<text class="t-h" x="752" y="140"><tspan x="752" dy="0">The rail's own controls</tspan></text>
+<rect class="pv-awx" x="746" y="164" width="200" height="66" rx="12"/>
+<text class="t-h2 t-awx" x="760" y="190"><tspan x="760" dy="0">Airwallex</tspan></text>
+<text class="t-s" x="760" y="212"><tspan x="760" dy="0">Transfer approvals, card limits</tspan></text>
+<rect class="pv-metal" x="746" y="242" width="200" height="66" rx="12"/>
+<text class="t-h2 t-metal" x="760" y="268"><tspan x="760" dy="0">Metal</tspan></text>
+<text class="t-s" x="760" y="290"><tspan x="760" dy="0">Mandate cap, on chain</tspan></text>
+<rect class="pv-airi" x="746" y="320" width="200" height="66" rx="12"/>
+<text class="t-h2 t-airi" x="760" y="346"><tspan x="760" dy="0">Visa via Airi</tspan></text>
+<text class="t-s" x="760" y="368"><tspan x="760" dy="0">Cardholder's passkey</tspan></text>
+<rect class="pv-badbg" x="746" y="404" width="200" height="58" rx="12"/>
+<text class="t-bad" x="758" y="428"><tspan x="758" dy="0">Refuses on its own limits,</tspan><tspan x="758" dy="18">even after Purser's yes</tspan></text>
+<rect class="pv-box" x="996" y="78" width="188" height="220" rx="18"/>
+<text class="t-eye" x="1014" y="112"><tspan x="1014" dy="0">RECORD</tspan></text>
+<text class="t-h" x="1014" y="140"><tspan x="1014" dy="0">Ledger and books</tspan></text>
+<text class="t-b" x="1014" y="196"><tspan x="1014" dy="0">Hash-chained audit</tspan><tspan x="1014" dy="20">log</tspan></text>
+<text class="t-b" x="1014" y="246"><tspan x="1014" dy="0">Books posted to the</tspan><tspan x="1014" dy="20">accounting</tspan></text>
+<rect class="pv-box" x="996" y="338" width="188" height="140" rx="18"/>
+<text class="t-h" x="1014" y="372"><tspan x="1014" dy="0">Archive</tspan></text>
+<text class="t-b" x="1014" y="400"><tspan x="1014" dy="0">Invoice, terms,</tspan><tspan x="1014" dy="20">signature and</tspan><tspan x="1014" dy="20">receipt, every</tspan><tspan x="1014" dy="20">version kept</tspan></text>
+<path class="pv-flow" d="M1090 300 L1090 334" marker-end="url(#pv-arrow)"/>
+<path class="pv-flow" d="M206 278 L236 278" marker-end="url(#pv-arrow)"/>
+<path class="pv-flow" d="M466 278 L482 278" marker-end="url(#pv-arrow)"/>
+<path class="pv-flow" d="M710 278 L724 278" marker-end="url(#pv-arrow)"/>
+<path class="pv-flow" d="M968 188 L992 188" marker-end="url(#pv-arrow)"/>
+<text class="t-f" x="600" y="518" text-anchor="middle"><tspan x="600" dy="0">A payment moves only when all three layers say yes. Sandbox and testnet runs, test money.</tspan></text>
+</svg>

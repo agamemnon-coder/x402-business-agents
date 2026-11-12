@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="pv pv-life-wide" viewBox="0 0 1200 250" width="1200" height="250" role="img" aria-labelledby="pv-life-wide-t pv-life-wide-d">
+<title id="pv-life-wide-t">One payment's life</title><desc id="pv-life-wide-d">Eight steps: an invoice arrives; Claude reads it; Purser's code checks it; the exact terms are hashed; the CFO signs that hash with Face ID; the rail checks with its own controls; the payment is made; it is booked and archived.</desc>
+<style>.pv{--bg:#0a0c11;--surface:#12151d;--sunken:#191d27;--border:#262b37;--text:#eef1f6;--muted:#a4adbd;--faint:#858fa1;--accent:#8b85ff;--accent-soft:#23224a;--ok:#3ccf82;--ok-soft:#12291e;--bad:#ff6b70;--bad-soft:#341a1c;--metal:#2dd4bf;--metal-soft:#0f2a28;--awx:#ff8a4c;--awx-soft:#33200f;--claude:#ef9a76;--claude-soft:#33221b}
+.pv { display: block; width: 100%; height: auto; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
+.pv .pv-bg { fill: var(--bg); }
+.pv .pv-box { fill: var(--surface); stroke: var(--border); stroke-width: 1.5; }
+.pv .pv-sunk { fill: var(--sunken); stroke: none; }
+.pv .pv-layer { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 6 5; }
+.pv .pv-trust { fill: var(--accent-soft); stroke: none; }
+.pv .pv-awx { fill: var(--awx-soft); stroke: none; } .pv .pv-metal { fill: var(--metal-soft); stroke: none; } .pv .pv-airi { fill: var(--accent-soft); stroke: none; }
+.pv .pv-claude { fill: var(--claude-soft); stroke: none; } .pv .pv-ok { fill: var(--ok-soft); stroke: none; } .pv .pv-badbg { fill: var(--bad-soft); stroke: none; }
+.pv text { fill: var(--text); font-family: Inter, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
+.pv .t-eye { font-size: 12.5px; font-weight: 700; letter-spacing: .08em; fill: var(--faint); }
+.pv .t-h { font-size: 19px; font-weight: 750; letter-spacing: -.01em; }
+.pv .t-h2 { font-size: 16px; font-weight: 700; }
+.pv .t-b { font-size: 14.5px; fill: var(--muted); }
+.pv .t-s { font-size: 13px; fill: var(--muted); }
+.pv .t-f { font-size: 12.5px; fill: var(--faint); }
+.pv .t-cap { font-size: 15px; font-weight: 650; fill: var(--accent); }
+.pv .t-bad { font-size: 13px; font-weight: 650; fill: var(--bad); }
+.pv .t-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 15px; font-weight: 700; fill: var(--bad); }
+.pv .t-awx { fill: var(--awx); } .pv .t-metal { fill: var(--metal); } .pv .t-airi { fill: var(--accent); } .pv .t-claude { fill: var(--claude); } .pv .t-ok { fill: var(--ok); }
+.pv .t-link { font-size: 13.5px; font-weight: 650; fill: var(--accent); }
+.pv a:hover .t-link, .pv a:focus .t-link { text-decoration: underline; }
+.pv a:focus-visible .pv-box { stroke: var(--accent); stroke-width: 3; }
+.pv .pv-flow, .pv .pv-still { fill: none; stroke: var(--faint); stroke-width: 2; stroke-dasharray: 5 5; }
+.pv .pv-tip { fill: var(--faint); }
+.pv .pv-line { fill: none; stroke: var(--border); stroke-width: 3; stroke-linecap: round; }
+.pv .pv-prog { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; }
+.pv .pv-dot { fill: var(--surface); stroke: var(--border); stroke-width: 2; }
+.pv .pv-num { font-size: 15px; font-weight: 750; fill: var(--text); }
+.pv .pv-ring { fill: none; stroke: var(--accent); stroke-width: 3; opacity: 0; }
+.pv .pv-step-hl { fill: var(--accent-soft); opacity: 0; }
+.pv-life-wide { --pv-len: 1080; } .pv-life-tall { --pv-len: 462; }
+@media (prefers-reduced-motion: no-preference) {
+  .pv .pv-flow { animation: pv-dash 1.6s linear infinite; }
+  .pv .pv-prog { animation: pv-prog 15.91s linear infinite; }
+  .pv .pv-ring, .pv .pv-step-hl { animation: pv-step 15.91s linear infinite; }
+  .pv .pv-d0 { animation-delay: 0.00s; }
+  .pv .pv-d1 { animation-delay: 1.75s; }
+  .pv .pv-d2 { animation-delay: 3.50s; }
+  .pv .pv-d3 { animation-delay: 5.25s; }
+  .pv .pv-d4 { animation-delay: 7.00s; }
+  .pv .pv-d5 { animation-delay: 8.75s; }
+  .pv .pv-d6 { animation-delay: 10.50s; }
+  .pv .pv-d7 { animation-delay: 12.25s; }
+}
+@keyframes pv-dash { to { stroke-dashoffset: -20; } }
+@keyframes pv-prog { 0% { stroke-dashoffset: var(--pv-len); } 88% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 0; } }
+@keyframes pv-step { 0% { opacity: 0; } 1.5% { opacity: 1; } 11% { opacity: 1; } 13% { opacity: 0; } 100% { opacity: 0; } }
+</style><defs><marker id="pv-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="pv-tip" d="M0 0 L10 5 L0 10 z"/></marker></defs><rect class="pv-bg" width="1200" height="250"/>
+<path class="pv-line" d="M60 104 H1140"/>
+<path class="pv-prog" d="M60 104 H1140" stroke-dasharray="1080" stroke-dashoffset="0"/>
+<rect class="pv-step-hl pv-d0" x="-10" y="30" width="140" height="196" rx="16"/>
+<text class="t-eye " x="60" y="60" text-anchor="middle"><tspan x="60" dy="0">SUPPLIER</tspan></text>
+<circle class="pv-dot" cx="60" cy="104" r="20"/>
+<circle class="pv-ring pv-d0" cx="60" cy="104" r="27"/>
+<text class="pv-num" x="60" y="109" text-anchor="middle"><tspan x="60" dy="0">1</tspan></text>
+<text class="t-h2" x="60" y="154" text-anchor="middle"><tspan x="60" dy="0">Invoice</tspan></text>
+<text class="t-s" x="60" y="176" text-anchor="middle"><tspan x="60" dy="0">Arrives by e-mail</tspan><tspan x="60" dy="17">or upload</tspan></text>
+<rect class="pv-step-hl pv-d1" x="144" y="30" width="140" height="196" rx="16"/>
+<text class="t-eye t-claude" x="214" y="60" text-anchor="middle"><tspan x="214" dy="0">CLAUDE</tspan></text>
+<circle class="pv-dot" cx="214" cy="104" r="20"/>
+<circle class="pv-ring pv-d1" cx="214" cy="104" r="27"/>
+<text class="pv-num" x="214" y="109" text-anchor="middle"><tspan x="214" dy="0">2</tspan></text>
+<text class="t-h2" x="214" y="154" text-anchor="middle"><tspan x="214" dy="0">Read</tspan></text>
+<text class="t-s" x="214" y="176" text-anchor="middle"><tspan x="214" dy="0">Payee, amount,</tspan><tspan x="214" dy="17">account</tspan></text>
+<rect class="pv-step-hl pv-d2" x="299" y="30" width="140" height="196" rx="16"/>
+<text class="t-eye t-airi" x="369" y="60" text-anchor="middle"><tspan x="369" dy="0">PURSER'S CODE</tspan></text>
+<circle class="pv-dot" cx="369" cy="104" r="20"/>
+<circle class="pv-ring pv-d2" cx="369" cy="104" r="27"/>
+<text class="pv-num" x="369" y="109" text-anchor="middle"><tspan x="369" dy="0">3</tspan></text>
+<text class="t-h2" x="369" y="154" text-anchor="middle"><tspan x="369" dy="0">Checked</tspan></text>
+<text class="t-s" x="369" y="176" text-anchor="middle"><tspan x="369" dy="0">Limits, payee,</tspan><tspan x="369" dy="17">totals</tspan></text>
+<rect class="pv-step-hl pv-d3" x="453" y="30" width="140" height="196" rx="16"/>
+<text class="t-eye t-airi" x="523" y="60" text-anchor="middle"><tspan x="523" dy="0">PURSER'S CODE</tspan></text>
+<circle class="pv-dot" cx="523" cy="104" r="20"/>
+<circle class="pv-ring pv-d3" cx="523" cy="104" r="27"/>
+<text class="pv-num" x="523" y="109" text-anchor="middle"><tspan x="523" dy="0">4</tspan></text>
+<text class="t-h2" x="523" y="154" text-anchor="middle"><tspan x="523" dy="0">Terms</tspan></text>
+<text class="t-s" x="523" y="176" text-anchor="middle"><tspan x="523" dy="0">The exact terms,</tspan><tspan x="523" dy="17">hashed</tspan></text>
+<rect class="pv-step-hl pv-d4" x="607" y="30" width="140" height="196" rx="16"/>
+<text class="t-eye t-ok" x="677" y="60" text-anchor="middle"><tspan x="677" dy="0">THE CFO</tspan></text>
+<circle class="pv-dot" cx="677" cy="104" r="20"/>
+<circle class="pv-ring pv-d4" cx="677" cy="104" r="27"/>
+<text class="pv-num" x="677" y="109" text-anchor="middle"><tspan x="677" dy="0">5</tspan></text>
+<text class="t-h2" x="677" y="154" text-anchor="middle"><tspan x="677" dy="0">Face ID</tspan></text>
+<text class="t-s" x="677" y="176" text-anchor="middle"><tspan x="677" dy="0">A passkey signs</tspan><tspan x="677" dy="17">that hash</tspan></text>
+<rect class="pv-step-hl pv-d5" x="761" y="30" width="140" height="196" rx="16"/>
+<text class="t-eye t-awx" x="831" y="60" text-anchor="middle"><tspan x="831" dy="0">THE RAIL</tspan></text>
+<circle class="pv-dot" cx="831" cy="104" r="20"/>
+<circle class="pv-ring pv-d5" cx="831" cy="104" r="27"/>
+<text class="pv-num" x="831" y="109" text-anchor="middle"><tspan x="831" dy="0">6</tspan></text>
+<text class="t-h2" x="831" y="154" text-anchor="middle"><tspan x="831" dy="0">Rail's control</tspan></text>
+<text class="t-s" x="831" y="176" text-anchor="middle"><tspan x="831" dy="0">Its own limits</tspan><tspan x="831" dy="17">and approvals</tspan></text>
+<rect class="pv-step-hl pv-d6" x="916" y="30" width="140" height="196" rx="16"/>
+<text class="t-eye t-awx" x="986" y="60" text-anchor="middle"><tspan x="986" dy="0">THE RAIL</tspan></text>
+<circle class="pv-dot" cx="986" cy="104" r="20"/>
+<circle class="pv-ring pv-d6" cx="986" cy="104" r="27"/>
+<text class="pv-num" x="986" y="109" text-anchor="middle"><tspan x="986" dy="0">7</tspan></text>
+<text class="t-h2" x="986" y="154" text-anchor="middle"><tspan x="986" dy="0">Paid</tspan></text>
+<text class="t-s" x="986" y="176" text-anchor="middle"><tspan x="986" dy="0">Only after every</tspan><tspan x="986" dy="17">yes</tspan></text>
+<rect class="pv-step-hl pv-d7" x="1070" y="30" width="140" height="196" rx="16"/>
+<text class="t-eye t-metal" x="1140" y="60" text-anchor="middle"><tspan x="1140" dy="0">LEDGER</tspan></text>
+<circle class="pv-dot" cx="1140" cy="104" r="20"/>
+<circle class="pv-ring pv-d7" cx="1140" cy="104" r="27"/>
+<text class="pv-num" x="1140" y="109" text-anchor="middle"><tspan x="1140" dy="0">8</tspan></text>
+<text class="t-h2" x="1140" y="154" text-anchor="middle"><tspan x="1140" dy="0">Booked</tspan></text>
+<text class="t-s" x="1140" y="176" text-anchor="middle"><tspan x="1140" dy="0">Books, audit log,</tspan><tspan x="1140" dy="17">archive</tspan></text>
+<text class="t-f" x="600" y="236" text-anchor="middle"><tspan x="600" dy="0">Any layer can stop it; none can be skipped. Sandbox and testnet runs, test money.</tspan></text>
+</svg>
