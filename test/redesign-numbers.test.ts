@@ -71,6 +71,9 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   // The second Airi run (vic-2, 7 Nov), dated with its own record; its figures are checked against docs/demo/vic-2-run.json
   // in test/vic2-run-page.test.ts.
   .replace(/What Purser adds around Airi: a second live run[\s\S]{0,4000}?run log/g, " ")
+  // What the Airwallex sandbox reports for the Airi run's two payments (12 Nov, folded on /visa), dated with its own
+  // record; its values are checked against docs/runs/airwallex-vic-payment-intents-<date>.json in test/vic-network.test.ts.
+  .replace(/As reported by the Airwallex sandbox[\s\S]*?airwallex-vic-payment-intents-[\d-]+\.json/g, " ")
   // The intended price (a hypothesis, not a figure of the run): one sentence, its numbers checked against
   // src/business/unitEconomics.ts's inputs in test/unit-economics-hypothesis.test.ts.
   .replace(PRICE_LINE, " ")

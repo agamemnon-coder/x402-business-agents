@@ -22,6 +22,7 @@ import { AIRI_CSS, AIRI_RUN_FILE, AIRI_RUN_ID, airiRun, airiRunBlock, type AiriR
 import { awxRun, awxRunBlock } from "./awxRun.js";
 import { VIC2_RUN_FILE, VIC2_RUN_ID, vic2RunBlock } from "./vic2Run.js";
 import { VIC_FLOW_CSS, VIC_FLOW_ID, vicFlowBlock } from "./vicFlow.js";
+import { VIC_NETWORK_CSS, vicNetworkBlock } from "./vicNetwork.js";
 import { VISA_OVERVIEW_CSS, VISA_OVERVIEW_ID, VISA_TAP_ID, tapCardHtml, visaOverviewBlock } from "./visaOverview.js";
 import { MAIN_RUN_REAL, OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
 
@@ -80,7 +81,8 @@ h2.vsec { font-size: clamp(22px, 2.2vw, 28px); font-weight: 750; margin: 18px 0 
 ${READBACK_CSS}
 ${AIRI_CSS}
 ${VIC_FLOW_CSS}
-${VISA_OVERVIEW_CSS}`;
+${VISA_OVERVIEW_CSS}
+${VIC_NETWORK_CSS}`;
 
 const SOURCE = (run: AgentRun) => `Source: ${run.file} (${run.name}); the card run from ${tapRun()?.file ?? "docs/runs"}.`;
 const node = (ic: string, title: string, sub: string, tone = "") => `<div class="node ${tone}"><span class="ic">${icon(ic, 22)}</span><b>${esc(title)}</b><span>${esc(sub)}</span></div>`;
@@ -238,6 +240,8 @@ export const VISA_ENTRY_LINE = "Purser is entered for the Metal Award and the Vi
 export const VISA_H1 = "First the CFO's limit, then a single-use Visa credential";
 /** The TAP section's heading on /visa, in the words Home and Proof link to it with (VISA_EXTRA_LINK). */
 export const VISA_TAP_HEADING = "Extra, not an award entry: Visa TAP";
+/** The card of folded lines under the two Airi runs on /visa: more on the VIC run, each one line until opened. */
+export const VISA_MORE_ID = "vic-more";
 
 const dayShort = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
 /** The label beside /visa's heading, from the Airi run's record: its date and its own label, "7 Nov · Airwallex sandbox · test card · test money". */
@@ -266,7 +270,12 @@ export function assertVicFirst(html: string): void {
   if (tapAt >= 0 && !plainWords(main.slice(tapAt)).startsWith(`${VISA_TAP_HEADING} ${VISA_TAP_STATUS}`)) fail("the TAP section does not open with its status");
 }
 
-/** The TAP work, the last section of /visa, under its heading: at once its status (Visa, 5 Nov), the TAP run's card, then the picture, the claim and the folds. */
+/**
+ * The TAP work, the last section of /visa, under its heading: at once its status (Visa, 5 Nov), the TAP run's card, then
+ * the picture, the claim and the folds. The old page's line under the picture ("The card's limit still holds: over it,
+ * Airwallex declines") is gone since 12 Nov: the picture's last node and the card both say it, and the page's words go
+ * to the VIC run.
+ */
 function visaTapSection(run: AgentRun): string {
   const tap = tapRun(), p = partnerProof(run), own = ownTap(run.record);
   const buy = own ?? tap?.steps.find((x) => x.approved && x.model), decline = tap?.steps.find((x) => !x.approved);
@@ -278,7 +287,6 @@ function visaTapSection(run: AgentRun): string {
   ${tapCardHtml(tap)}
   <div class="phd"><span class="pill run">${icon("database", 14)}${esc(own ? run.label : tap?.label ?? run.label)}</span></div>
   <div class="flow card" role="img" aria-label="${esc("How Visa TAP fits in, step by step")}">${picture}</div>
-  <p class="line">${esc("The card's limit still holds: over it, Airwallex declines.")}</p>
   <p class="claim">${esc(VISA_CLAIM)}</p>
   <div class="folds card">${fold(own ? "The live proof" : "The live TAP run", p.visa)}${fold("What this is, and is not", (tap ? visaLabels(run, tap) : []).map(plainLi))}</div>`;
 }
@@ -299,7 +307,9 @@ export function visaPage(run: AgentRun = agentRun()): string {
   // The top (12 Nov): the heading, beside it the Airi run's own label, one plain sentence naming the Visa Award entry
   // (Max, 10 Nov), then the drawing: purchase B's seven steps from the record (the CFO's limit, the Airi mandate, the
   // cardholder's passkey, the single-use credential, the Airwallex PaymentIntent). Then what ran, as two cards; the
-  // Airi run in full (its ids folded) and the second Airi run in the same padded column. The TAP work last.
+  // Airi run in full (its ids folded) and the second Airi run in the same padded column. Under them, folded, one line
+  // each: what Airwallex's own record reports for the two payments. The TAP work last.
+  const more = [vicNetworkBlock(rec)].join("");
   const body = `<main class="pp"><div class="wrap">
   <div class="phd">${LOGO.visa}<span class="pill run">${icon("database", 14)}${esc(visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
   <p class="vintro">${esc(VISA_ENTRY_LINE)}</p>
@@ -307,6 +317,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
   ${visaOverviewBlock()}
   <div class="awrb">${airiRunBlock(rec, { h: "h2" })}</div>
   <div class="awrb">${vic2RunBlock(undefined, { fold: false })}</div>
+  ${more ? `<div class="awrb"><div class="card" id="${VISA_MORE_ID}">${more}</div></div>` : ""}
   <h2 class="vsec" id="${VISA_TAP_ID}">${esc(VISA_TAP_HEADING)}</h2>
   ${visaTapSection(run)}
   <a class="open" href="proof#${AIRI_RUN_ID}">All the proof ${icon("arrow-right", 15)}</a>
