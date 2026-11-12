@@ -1,0 +1,99 @@
+{
+ "probe": "p1-pdftext",
+ "http": 200,
+ "start_ms": 142,
+ "total_ms": 2302,
+ "A_engine_module_loads": {
+  "ok": true,
+  "value": [
+   "PDF_MAX_DECODED_BYTES",
+   "PDF_MAX_MS",
+   "PDF_MAX_PAGES",
+   "PDF_WORKER_HEAP_MB",
+   "checkDecodedSize",
+   "isPdf",
+   "pdfText",
+   "usePdfReader"
+  ],
+  "ms": 0
+ },
+ "A_checkDecodedSize_zlib_budget": {
+  "ok": true,
+  "value": "within budget",
+  "ms": 1
+ },
+ "A_checkDecodedSize_refuses_bomb": {
+  "ok": true,
+  "value": "refused: the PDF's compressed streams decoded would be more than 0 MB (a compression bomb?); it was",
+  "ms": 0
+ },
+ "A_pdfText_worker_thread": {
+  "ok": false,
+  "error": "TypeError: The argument 'path' The argument must be a file URL object, a file URL string, or an absolute path string.. Received 'undefined' |     at createRequire (node:module:34:15) |     at UNPDF (file:///dev/shm/spike-do-runtime-TMucDE/.wrangler/tmp/dev-vKPUE6/p1-pdftext.js:210:69) |     at spawn (file:///dev/shm/spike-do-runtime-TMucDE/.wrangler/tmp/dev-vKPUE6/p1-pdftext.js:90:69)",
+  "ms": 6
+ },
+ "C_usePdfReader_inline": {
+  "ok": true,
+  "value": "set",
+  "ms": 2
+ },
+ "C_engine_pdfText_invoice": {
+  "ok": true,
+  "value": {
+   "equalToNode": true,
+   "pages": 1
+  },
+  "ms": 75
+ },
+ "C_engine_pdfText_receipt": {
+  "ok": true,
+  "value": {
+   "equalToNode": true,
+   "pages": 1
+  },
+  "ms": 18
+ },
+ "C_engine_pdfText_still_refuses_bomb": {
+  "ok": true,
+  "value": "refused: the PDF's compressed streams decoded would be more than 0 MB (a compression bomb",
+  "ms": 0
+ },
+ "C_engine_pdfText_not_a_pdf": {
+  "ok": true,
+  "value": "refused: Invalid PDF structure.",
+  "ms": 3
+ },
+ "C_isPdf": {
+  "ok": true,
+  "value": true,
+  "ms": 0
+ },
+ "B_unpdf_inline_invoice": {
+  "ok": true,
+  "value": {
+   "equalToNode": true,
+   "pages": 1,
+   "chars": 265
+  },
+  "ms": 48
+ },
+ "B_unpdf_inline_receipt": {
+  "ok": true,
+  "value": {
+   "equalToNode": true,
+   "pages": 1,
+   "chars": 1208
+  },
+  "ms": 34
+ },
+ "B_unpdf_inline_again": {
+  "ok": true,
+  "value": {
+   "equalToNode": true
+  },
+  "ms": 3
+ },
+ "node_ms": {
+  "invoice_pdfText": 183
+ }
+}

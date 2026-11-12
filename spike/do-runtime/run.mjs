@@ -33,6 +33,9 @@ export const configFor = (name) => ({
     SESSION_SECRET: "spike-session-secret-0123456789abcdef-not-a-real-secret", ADMIN_TOKEN_SHA256: "f0a4c2a5ce0a3bb7ad4f4ac7a2a1b6b0d6c3c9f0d5d9d0d2b9f0c0c1d1e2f3a4",
     AIRWALLEX_CLIENT_ID: "spike-client-id", AIRWALLEX_API_KEY: "spike-api-key", KIT11_ANTHROPIC_API_KEY: "spike-not-a-key",
   },
+  // A wrangler bundle has no import.meta.url (measured: undefined in workerd), and pdfkit's browser build reads it when
+  // it loads ("Invalid URL string" at start, the whole Worker fails). NO_DEFINE=1 leaves it out, to see that failure.
+  ...(process.env.NO_DEFINE ? {} : { define: { "import.meta.url": JSON.stringify("file:///purser-cloud/worker.js") } }),
   // Packages no Worker can carry, swapped for a stub that throws when used (wrangler's own alias setting).
   alias: { playwright: resolve(here, "probes/_stub.ts"), "better-sqlite3": resolve(here, "probes/_stub.ts") },
 });
@@ -49,7 +52,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     try {
       worker = await unstable_startWorker({ config: join(dir, "wrangler.json"), dev: { persist: false, watch: false, remote: false, inspector: false, logLevel: "warn", server: { hostname: "127.0.0.1", port: 0 } } });
       const builtMs = Date.now() - started;
-      const res = await worker.fetch("http://probe.local/");
+      // PROBE_PATH picks one step of a probe (?only=…); a probe that does not answer in time is reported, not waited for.
+      const res = await Promise.race([
+        worker.fetch(`http://probe.local/${process.env.PROBE_PATH ?? ""}`),
+        new Promise((_r, reject) => setTimeout(() => reject(new Error(`no answer from the probe within ${Number(process.env.PROBE_TIMEOUT_MS ?? 60000)} ms`)), Number(process.env.PROBE_TIMEOUT_MS ?? 60000))),
+      ]);
       const text = await res.text();
       let body; try { body = JSON.parse(text); } catch { body = { raw: text.slice(0, 4000) }; }
       const out = { probe: name, http: res.status, start_ms: builtMs, total_ms: Date.now() - started, ...body };
@@ -63,7 +70,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       writeFileSync(join(here, "results", `${name}.json`), `${JSON.stringify({ probe: name, harness_error: msg }, null, 1)}\n`);
       console.log(`\n=== ${name}: DID NOT RUN\n${msg}`);
     } finally {
-      await worker?.dispose().catch(() => undefined);
+      await Promise.race([worker?.dispose().catch(() => undefined), new Promise((r) => setTimeout(r, 5000))]);
       rmSync(dir, { recursive: true, force: true });
     }
   }
