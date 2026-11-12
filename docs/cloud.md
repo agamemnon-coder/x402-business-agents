@@ -33,7 +33,8 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 - **Authentication:** `Authorization: Bearer <key or session>`. An API key (`pck_…`) carries scopes `read`, `sync`,
   `admin`; a passkey session (`pcs.…`, 15 minutes) carries the person's role. "Needs" below is the scope a route asks for.
 - **Lists** answer `{ "items": [...], "next_cursor": "…" | null }`. Ask for the next page with `?cursor=<next_cursor>`;
-  `limit` is 1 to 200 (default 50). Every list pages this way.
+  `limit` is 1 to 200 (default 50). Every list pages this way, except the engine's (`/v1/engine`): its invoices and
+  archive files come whole, and its events page with `?after=<seq>` and `next`.
 - **Errors** always have one shape, `{ "error": "<a sentence for a person>", "code": "<stable, for a program>" }`:
 
 | Status | `code` | When |
@@ -110,13 +111,13 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/export/download/{id}/{part}` | anyone | With its signed link only: one part (or the manifest) of a staged export, by its signed link (no key); the manifest carries a signed link per part. |
 | `POST /v1/close` | admin | Close the company's account: access ends; records are kept until the retention day, then purged. |
 | `GET /v1/engine` | read | Where the company's engine stands: `mode` (`test_money`), the approval passkey, the stand-in bank's balances, whether both chains verify. |
-| `POST /v1/engine/documents` | admin | Upload a supplier invoice: `{ filename, mime?, base64 }`, at most 15 MB once decoded (22,000,000 bytes of body). Filed, read and checked; answers `{ kind, sha256, invoice }`. |
+| `POST /v1/engine/documents` | admin | Upload a supplier invoice: `{ filename, mime?, base64 }`, at most 15 MB once decoded (22,000,000 bytes of body). Filed, read and checked; answers `{ kind, sha256, invoice }`, or 400 with the inbox's reason when it refuses the file (not a PDF, too large). |
 | `GET /v1/engine/invoices` | read | The engine's invoices: status, whether it can be paid, what the checks found, its proposal; `{ items }`. |
-| `POST /v1/engine/invoices/{id}/pay` | admin | File the invoice's payment for approval: `{ proposal }`, or 409 with the engine's reason. Nothing is paid before the approval. |
+| `POST /v1/engine/invoices/{id}/pay` | admin | File the invoice's payment for approval: `{ proposal }`, or 409 with the engine's reason; 404 for an invoice the company's engine does not hold. Nothing is paid before the approval. |
 | `GET /v1/engine/proposals/{id}` | read | One proposal: the hash of its exact terms, the challenge a passkey signs, the facts a person reads; `{ proposal }`. |
 | `POST /v1/engine/passkey/start` | admin | A session only, never a key. Start the signed-in person's approval passkey: `{ challenge, code, rp, user, exclude }`. |
-| `POST /v1/engine/passkey/finish` | admin | A session only. `{ code, credential }`: the new passkey, labelled with the signed-in person's name; 409 with the engine's reason when refused. |
-| `POST /v1/engine/proposals/{id}/approve` | admin | A session only. `{ terms_sha256, credential }`: the passkey's signature over the proposal's challenge. Answers `{ status, message, settled }`; only `approved` pays, on the stand-in bank. |
+| `POST /v1/engine/passkey/finish` | admin | A session only. `{ code, credential }`: the new passkey, labelled with the signed-in person's name; answers `{ credential_id }`, or 409 with the engine's reason when refused. |
+| `POST /v1/engine/proposals/{id}/approve` | admin | A session only. `{ terms_sha256, credential }`: the passkey's signature over the proposal's challenge. Answers `{ status, message, settled }`; only `approved` pays, on the stand-in bank. 404 for a proposal the company's engine does not hold. |
 | `POST /v1/engine/sync` | admin | Follow the payments, book, archive and feed the read model again; safe to repeat. |
 | `GET /v1/engine/events` | read | What the engine did, oldest first: `?after=<seq>&limit=<1 to 200>`; `{ items, next }`. |
 | `GET /v1/engine/vault` | read | The archive's files as its indexes list them: `{ files }`. |
@@ -124,9 +125,11 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 
 The `/v1/engine` routes are the company's engine behind the API (`cloud/src/engine/routes.ts`): the same inbox, checks,
 approval and executor a runner has, on **test money only** (a stand-in bank; no payment reaches a real bank). The
-company is always the caller's own. They answer 404 unless the cloud is started with an engine, and the Worker's entry
-point (`cloud/src/worker.ts`) starts it with none: today the engine behind them is the one of the tests and local runs
-(`cloud/src/engine/node.ts`), which keeps each company's ledger in memory.
+company is always the caller's own. The deploy's entry point is `cloud/src/entry.ts` (the Worker and the engine's
+Durable Object, `CompanyEngine`). The routes answer 404 unless the Worker has the `ENGINE` binding and the var
+`ENGINE_MODE=test_money`. With both, each company's engine runs in its own Durable Object on its own SQLite
+(`cloud/src/engine/object.ts`), which keeps its ledger, its documents and its stand-in bank. The engine in
+`cloud/src/engine/node.ts` keeps each ledger in memory and is used by the tests only.
 
 ### The transactions register
 
