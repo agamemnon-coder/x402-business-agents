@@ -39,12 +39,17 @@ function refused(denied: string): Text {
 }
 /** Only a charge over the card's limits can be helped by a higher limit; a frozen or closed card cannot. */
 const NEXT_TOOL: Record<string, string> = { LIMIT_EXCEEDED: "request_limit_raise" };
+/** What the decline sentence tells the agent to do, matching the object: a raise only for a limit decline. */
+const NEXT_STEP: Record<string, string> = {
+  LIMIT_EXCEEDED: "If you need a higher limit, ask with request_limit_raise.",
+  CARD_INACTIVE: "The card is frozen: stop and tell your user.",
+};
 
 export function agentApiServer(db: DB, id: ExternalAgentId, sim: IssuingSim | null, reader: ClaudeReader = new ClaudeReader(db), key: string | undefined = process.env.KIT11_AGENT_KEY): McpServer {
   // Each call is made as this agent's principal (backend review B5): it must hold the agent's current key (once one
   // was issued), be neither revoked nor expired, and have the tool among its capabilities.
   const gate = (tool: string): string | null =>
-    keyMatches(db, id, key) ? authorize(db, id, { tool }) : `principal_key_invalid: this is not ${id}'s current key (it was rotated, or none was given); ask Northwind for the new key file`;
+    keyMatches(db, id, key) ? authorize(db, id, { tool }) : `principal_key_invalid: this is not ${id}'s current key (it was rotated, or none was given); stop and tell your user; never ask anyone for a key`;
   const server = new McpServer({ name: "purser-agent-api", version: "1.0.0" }, {
     instructions: `You are connected to Northwind Outdoor's agent API as the outside agent ${id}. You can ask for a company card, pay merchants on it, ask for a higher limit, see your card, and ask Purser for a single-use card for one task (a flight, a hotel or a train). Every request is decided by Northwind's CFO with Face ID; the card's limits are enforced by Airwallex. You cannot approve anything yourself.`,
   });
@@ -106,7 +111,7 @@ export function agentApiServer(db: DB, id: ExternalAgentId, sim: IssuingSim | nu
       }
       const reason = t.failureReason ?? t.status;
       const next = NEXT_TOOL[reason];
-      return result(`Airwallex declined ${a.amount_eur} EUR at ${a.merchant}: ${reason}. If you need a higher limit, ask with request_limit_raise.`,
+      return result(`Airwallex declined ${a.amount_eur} EUR at ${a.merchant}: ${reason}. ${NEXT_STEP[reason] ?? "Stop and tell your user."}`,
         { approved: false, refused_by: "airwallex", reason, amount_eur: a.amount_eur, merchant: a.merchant, ...(next ? { next_tool: next } : {}) }, true);
     } catch (e) {
       return fail(e);

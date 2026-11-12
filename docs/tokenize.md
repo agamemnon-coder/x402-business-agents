@@ -1,8 +1,6 @@
 # Invoice tokens on Metal (prototype)
 
-**Status: built and tested on an in-memory EVM only. Nothing has run on Metal testnet yet.** The live run is planned
-with Max's go and a call budget: [the runbook](runs/driver/tokenize-runbook.md), and the form of
-[its run record](tokenize-run-template.md). Test money only. The financier is simulated. This is not legal advice and
+**Status: run live once on Metal testnet on 12 November 2026:** [the run record](runs/2026-11-12-tokenize.md) (fund, deploy, mint, finance, settle, verify; 11 transactions, 46 calls). The order of the run: [the runbook](runs/driver/tokenize-runbook.md). Test money only. The financier is simulated. This is not legal advice and
 not a claim about how tokenized receivables are treated by any regulator.
 
 ## What it is
