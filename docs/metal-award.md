@@ -111,7 +111,7 @@ testnet, through Metal's facilitator.
 |---|---|---|
 | `exact` on `eip155:63825` | the `exact` scheme, on a CAIP-2 network id | x402's standard scheme; the network is Metal testnet |
 | 503, and nothing settles | the default `authorization` flow: verify, resource, settle, respond | x402's flow: when the handler answers with an error, `@x402/express` does not settle, so a refused upstream purchase costs the customer nothing |
-| Prepaid clearing (`bajillion`) | a scheme registered through x402's scheme interface (not a standard one), in x402's `upfront` flow: settle, resource, respond | Metal's scheme, not an x402 standard scheme. The money is committed before the work, so Purser offers it only after a free price check |
+| Prepaid clearing (`bajillion`) | no standard x402 scheme; Metal plugs it into x402's scheme interface, in x402's `upfront` flow: settle, resource, respond | Metal's scheme, not an x402 standard scheme. The money is committed before the work, so Purser offers it only after a free price check |
 | The buyer's signed order | an entry in the payment's `extensions` (Metal's own); not x402's offer-and-receipt extension, where the seller signs | Metal's `requireSignedOffer`: the offer asks for it (`extra.signedOffer: "required"`), the payment carries it under the `metal-mandate` extension key |
 | Never paid twice | the EIP-3009 nonce in the `exact` payment | the nonce, plus Metal's `/settlements` lookup by that nonce; x402's payment-identifier extension is not used |
 | The CFO's limit | client-side budgets, out of scope for x402 | Purser's: checked in the x402 client hook `onBeforePaymentCreation`, before anything is signed |
