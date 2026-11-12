@@ -16,7 +16,7 @@ import { MODELS } from "../src/claude/reader.js";
 import type { AgentRequest } from "../src/try/world.js";
 import { strayIn } from "../worker/src/agentLine.js";
 import { DE, EN, NL } from "./fakes/apInvoices.js";
-import { UK, US } from "./fakes/fxInvoices.js";
+import { CN, UK, US } from "./fakes/fxInvoices.js";
 import { importGraph } from "./support/importGraph.js";
 
 const BERGTEX_IBAN = "DE89370400440532013000";
@@ -251,7 +251,7 @@ describe("the agent's tools", () => {
 
   it("check_bank_details: the checksum, the route, and whether it is the account on file", () => {
     const ok = ask(caseOf(EN), "check_bank_details").text;
-    expect(ok).toMatch(/valid for a SWIFT payout in EUR to DE|valid for a local payout in EUR to DE/);
+    expect(ok).toMatch(/^The invoice asks to be paid to an IBAN ending 3000 \(DE\): the details are valid for a local payout in EUR to DE\./);
     expect(ok).toContain("It is the account on file for Bergtex Textil GmbH.");
     const changed = ask(caseOf(`${EN.replace("DE89 3704 0044 0532 0130 00", OTHER_IBAN)}\nOur bank details have changed.`), "check_bank_details").text;
     expect(changed).toContain("It is NOT the account on file for Bergtex Textil GmbH");
@@ -259,7 +259,9 @@ describe("the agent's tools", () => {
     expect(ask(caseOf(EN.replace("0130 00", "0130 01")), "check_bank_details").text).toMatch(/fails its checksum/);
     expect(ask(caseOf(EN.replace(/IBAN:.*\n/, "")), "check_bank_details").text).toMatch(/no IBAN or account number/);
     expect(ask(caseOf(NL), "check_bank_details").text).toContain("No supplier of this name is on file to compare it with.");
-    expect(ask(caseOf(UK, { suppliers: [] }), "check_bank_details").text).toMatch(/valid for a local payout in GBP to GB/);
+    expect(ask(caseOf(UK, { suppliers: [] }), "check_bank_details").text).toMatch(/^The invoice asks to be paid to an account ending 6819 \(GB\): the details are valid for a local payout in GBP to GB\./);
+    expect(ask(caseOf(CN, { suppliers: [] }), "check_bank_details").text).toMatch(/valid for a SWIFT payout in CNY to CN/);
+    expect(ask(caseOf(EN, { reading: { currency: "" } }), "check_bank_details").text).toBe("The reading gives no currency, so no payout route was checked for these bank details.");
   });
 
   it("invoice_history: this supplier's earlier invoices and what the duplicate checks say", () => {
