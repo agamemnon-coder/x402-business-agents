@@ -68,6 +68,10 @@ audit(db, "system", "document.injection_flagged", "dispute", { document_sha256: 
 createProposal(db, { terms: { ...refund, proposal_id: rejectId, expires_at: iso(now.getTime() + 30 * 60_000) }, createdBy: "support",
   evidence: [{ sha256: sha256Hex(plantedDoc) }],
   explanation: "[claude-opus-5-5] REJECT: The customer asks to refund everything without evidence." }, now);
+// A Kit 11 invoice payment, waiting: the rehearsal's own terms (a payout reason, none of the payables inbox's fields).
+const invoiceTerms = JSON.parse((db.prepare("SELECT terms_json FROM proposals WHERE kind = 'invoice_payment' ORDER BY proposal_id LIMIT 1").get() as { terms_json: string }).terms_json) as Terms;
+const invoiceId = nextProposalId(db);
+createProposal(db, { terms: { ...invoiceTerms, proposal_id: invoiceId, expires_at: iso(now.getTime() + 30 * 60_000) }, createdBy: "treasury" }, now);
 const [optA, optB] = ids as [string, string];
 
 const local = live ? null : await startLocalRelay({ port: 0, token: "browser-check" });
@@ -172,6 +176,9 @@ check(recommended.join() === "false,true", `approval view: only option B carries
 check((await page.textContent(".what-title")) === "Option B: sell at 0.07" && (await page.textContent(".hero-amount")) === "0.07 USDZ per query", "approval view: what (option B, 0.07 USDZ per query)");
 const facts = await page.$$eval(".key-facts dt", (n: Element[]) => n.map((x) => x.textContent));
 check(facts.join() === "Payee,Agent,Why you", `approval view: payee, agent and why, nothing else above the fold (${facts.join(", ")})`);
+/** The label column of the first screen's facts, as the browser lays it out. */
+const labelColumn = () => page.$eval(".key-facts", (n: Element) => getComputedStyle(n).gridTemplateColumns.split(" ")[0]);
+check((await labelColumn()) === "64px", `approval view: the labels sit in the 64px column (${await labelColumn()}); the wider one is the payables views' own`);
 check((await page.textContent(".key-facts dd:nth-of-type(2)")) === "Treasury agent", "approval view: the agent is the Treasury agent");
 check(/mandate changes only with your Face ID/.test((await page.textContent(".key-facts dd.why")) ?? ""), "approval view: why it needs the CFO, in one line");
 check((await page.textContent("#approve")) === "Approve option B with Face ID" && (await page.textContent("#reject")) === "Reject", "approval view: the primary button names the option chosen; Reject beside it");
@@ -235,6 +242,19 @@ check((await page.textContent(".key-facts dd:nth-of-type(2)")) === "Support agen
 const fsR = await firstScreen();
 check(allIn(fsR) && fsR.closed && fsR.wide === 0, `a single proposal at 390 x ${fsR.h}: all essentials and both buttons in the first screen (${shortView(fsR)})`);
 await page.screenshot({ path: join(shots, "approve-single-390-light.png") });
+
+// A Kit 11 invoice payment: its terms carry a payout reason, but its first screen is the same payee, agent and why
+// in the same column (review of 12 November: with the product's views in the same script, a "Reason" row and a wider
+// column had appeared here and pushed the buttons down).
+await page.goto(`${url}/approve/${invoiceId}`);
+await page.waitForSelector("#approve");
+const invoiceFacts = await page.$$eval(".key-facts dt", (n: Element[]) => n.map((x) => x.textContent));
+check(String(invoiceTerms.reason) !== "" && invoiceTerms.document_total_line === undefined && invoiceFacts.join() === "Payee,Agent,Why you" && (await labelColumn()) === "64px",
+  `a Kit 11 invoice payment (reason ${String(invoiceTerms.reason)}): payee, agent and why, nothing else, in the 64px column (${invoiceFacts.join(", ")}; ${await labelColumn()})`);
+check((await page.$(".testmoney")) === null && (await page.textContent(".key-facts dd:nth-of-type(2)")) === "Treasury agent", "a Kit 11 invoice payment: the Treasury agent, and no label the terms do not carry");
+const fsI = await firstScreen();
+check(allIn(fsI) && fsI.closed && fsI.wide === 0, `a Kit 11 invoice payment at 390 x ${fsI.h}: all essentials and both buttons in the first screen (${shortView(fsI)})`);
+await page.screenshot({ path: join(shots, "approve-invoice-390-light.png") });
 
 // The CFO policy editor: lower the sourcing agent's limit, sign it with the passkey, see it applied.
 await page.goto(`${url}/policy`);

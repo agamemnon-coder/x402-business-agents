@@ -1,6 +1,6 @@
 # Requirements matrix
 
-This page lists what the Airwallex Agentic Banking Hackathon asks for, where Purser does it, and the proof. It is dated 30 October 2026 and was updated on 3 November (the main run). The product is Purser ("Give every AI agent its own company card, with limits the CFO sets"). The example company is Northwind Outdoor.
+This page lists what the Airwallex Agentic Banking Hackathon asks for, where Purser does it, and the proof. It is dated 30 October 2026 and was updated on 3 November (the main run) and on 12 November (the repository is public: rows H1c and H14). The product is Purser ("Give every AI agent its own company card, with limits the CFO sets"). The example company is Northwind Outdoor.
 
 Legend:
 
@@ -23,8 +23,8 @@ Sources: the [hackathon site](https://airwallex.hackerearth.com/) (H rows), the 
 |---|---|---|---|---|
 | H1a | "A working demo," | Live: `npm run demo:all` (Metal testnet and the Airwallex sandbox). Without keys: `npm run judge` replays the recorded run and a simulated month. Hosted: `/`, `/demo` and `/month` on the relay. | `docs/runs/2026-10-29-rehearsal-3.md` † (fresh world, every approval by Face ID, `npm run verify` passes); `docs/runs/2026-10-29-qa-fixes.md` (page check passes on the hosted relay); `test/demo.test.ts`. The month page is a simulation and is labelled so. | ✅ |
 | H1b | "a short video walkthrough under five minutes," | Made: the premiere, a film of 3:58 (v8, `npm run video`) from the main run of 3 November, every number from its record. Voice-over by an AI-generated voice (ElevenLabs), a narrator in the third person; music AI-generated (ElevenLabs); the end card credits both. Not hosted or linked yet. | `docs/video/README.md`, `docs/video/narrator-script.md`, `docs/video/script.md`, `docs/video/subtitles-v5.srt`; `test/premiere.test.ts`. | 🟠 |
-| H1c | "and a link to your repository with setup instructions." | Setup is in the README ("Run it", `.env.example`, `npm run judge`). CI runs `npm run judge -- --check` on a fresh clone. The repository is private until Max decides. | `README.md`; `.github/workflows/ci.yml`; `docs/runs/2026-10-29-qa-fixes.md`. No public link yet. | 🟠 |
-| H14 | "However, all code needs to be in public domain (open source) so that it can be evaluated by the judges." | MIT licence in `LICENSE`. The repository is private, so the code is not public today. This line is from HackerEarth's generic FAQ. | `LICENSE`. `docs/rules.md` plans a public repo by 12 November, after gitleaks on the full history. | 🟠 |
+| H1c | "and a link to your repository with setup instructions." | Setup is in the README ("How to run", "Verify it yourself in 3 commands", `.env.example`, `npm run judge`). CI runs `npm run judge -- --check` on a fresh clone. The repository is public: <https://github.com/agamemnon-coder/x402-business-agents> (GitHub's API answers `private: false`, read 12 November 2026). | `README.md`; `.github/workflows/ci.yml`; `docs/runs/2026-10-29-qa-fixes.md`; the link is in the form text (`docs/submission/README.md`, "Links"). Was "private until Max decides. No public link yet." until 12 November. | ✅ |
+| H14 | "However, all code needs to be in public domain (open source) so that it can be evaluated by the judges." | MIT licence in `LICENSE`. The repository is public (GitHub's API answers `private: false`, read 12 November 2026), so the judges can read all of the code, the product built after the kit included (`docs/decisions.md`, D29). This line is from HackerEarth's generic FAQ. | `LICENSE`; gitleaks runs over the whole history on every push (`.github/workflows/ci.yml`). Was "The repository is private, so the code is not public today" until 12 November; it was still private on 1 November (`docs/requirements-qa-2026-11-01.md`), and the day it was switched is not on record in this repository. | ✅ |
 | H13 | "You have to develop the application on your local system and submit it on HackerEarth in tar/zip file format along with instructions to run the application and source code." | Nothing submitted yet. Run instructions and source exist. This line is from the generic FAQ and may conflict with the repository link in H1c. | `README.md`. Submission is planned for Thursday 12 November (`docs/rules.md`). | 🟠 |
 | H2 | "Project submissions due." (13 November) | Not submitted yet. The sources disagree (QA 1 November): the microsite says 13 November with no time; HackerEarth's event data ends the build phase 15 November 18:29 UTC. Plan: submit Thursday 12 November, safe under every reading; ask the organisers. | `docs/rules.md`; `docs/requirements-qa-2026-11-01.md`. | 🟠 |
 | J5.1 | "1. A working end-to-end workflow for a clear user." | The user is the CFO of a small company that lets AI agents spend. The flow: cards and mandates set by the CFO policy, a price rise, a dispute, a euro invoice, each with Face ID where a person must decide. | `docs/runs/2026-10-29-rehearsal-3.md` † (zero to `npm run verify`); `docs/runs/2026-10-29-s1.md`, `-s2.md`, `-s3.md` †; `test/demo.test.ts`. | ✅ |
@@ -162,14 +162,14 @@ Metal's docs and a live test on testnet. Risks, controls and tests: [docs/contro
 
 ## Count
 
-✅ 75 · 🟠 12 · ❌ 0 (87 rows, counted 3 November: K1b to ✅ after the main run)
+✅ 78 · 🟠 9 · ❌ 0 (87 rows, counted from the rows above on 12 November; `test/data-consistency.test.ts` recounts it. Since the count of 3 November, ✅ 75 · 🟠 12 with K1b to ✅ after the main run: V1 to ✅ on 7 November with the VIC run, H1c and H14 to ✅ now that the repository is public)
 
 ## Open items
 
 | Item | Status rows | What closes it |
 |---|---|---|
 | Video under five minutes | H1b, K10 | The film (3:58, v8) is made, with an AI-generated voice-over and AI-generated music (both ElevenLabs), and on YouTube (https://youtu.be/kCUsFHrxE-o, unlisted), linked from the README, Home and Proof. |
-| Public repository | H1c, H14 | Max decides. Then: gitleaks on the full history, switch the repository to public, put the link in the README and on the submission. |
+| Public repository | H1c, H14 | Done: the repository is public (GitHub's API answers `private: false`, read 12 November 2026), gitleaks runs over the whole history on every push, and the link is in the form text. |
 | Submission on HackerEarth | H13, H2 | Upload the archive or link with run instructions by Thursday 12 November. The deadline is 13 November. |
 | Evidence from Northwind runs | rows marked † | The Friday runs ran on 30 October from 07:05 UTC, and the recording comes from run 1. The † rows still cite the rehearsal ids; swapping in the Friday ids is open. |
 | One customer, landscape, pitch | J6.1 | Name the customer in the README and deck, write `docs/landscape.md`, finish the deck. |
