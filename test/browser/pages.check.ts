@@ -559,8 +559,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // /visa opens with VIC (12 Nov): at most one screen of text before the first proof, so the drawing (purchase B's
       // steps, with its ids) starts on the first screen at every width.
       if (path === "/visa") {
-        const top = await page.evaluate(() => Math.round((document.getElementById("vic-flow")?.getBoundingClientRect().top ?? Infinity) + window.scrollY));
-        if (!(top < h)) fail(`/visa ${tag}: the drawing starts at ${top} px, below the first screen (${h} px)`);
+        // Since 12 Nov the first proof is the latest live run's card (vic-3, with its ids), above the 7 Nov drawing.
+        const top = await page.evaluate(() => Math.round(((document.getElementById("vic3-run") ?? document.getElementById("vic-flow"))?.getBoundingClientRect().top ?? Infinity) + window.scrollY));
+        if (!(top < h)) fail(`/visa ${tag}: the first proof starts at ${top} px, below the first screen (${h} px)`);
       }
       const pt = await page.evaluate(() => document.body.innerText);
       // The footer's "Built on" strip (owner, 12 Nov) is the frame's, not the page's: its words are not counted.
