@@ -31,7 +31,8 @@ describe("/runs", () => {
   const rows = liveRuns();
 
   it("lists the live runs newest first, the last one on top", () => {
-    expect(rows.map((r) => r.key)).toEqual(["vic-3", "two-locks-1", "platform-e2e-1", "t0-1", "connected-1", "vic-2", "vic-1", "awx-1", "main-1", "agent-1", "tap-1", "friday-1"]);
+    // 12 Nov (jury check): the eight live runs whose records were missing here, each in date order.
+    expect(rows.map((r) => r.key)).toEqual(["vic-3", "real-customers-1", "tokenize-1", "batch-1", "payee-check-1", "faceid-onchain-1", "moneybird-1", "two-locks-1", "metal-hold-1", "platform-e2e-1", "t0-1", "acceptance-1", "connected-1", "vic-2", "vic-1", "awx-1", "main-1", "agent-1", "tap-1", "metal-passkey-owners", "friday-1", "metal-four-eyes", "metal-clearing-load", "metal-receive", "metal-compliance", "metal-clearing"]);
     // The connected-accounts row, held to its run log: every id and amount on it is in the log.
     const cx = rows.find((r) => r.key === "connected-1")!;
     const cxLog = readFileSync("docs/runs/2026-11-10-connected-accounts-sandbox.md", "utf8");
@@ -146,7 +147,8 @@ describe("/runs", () => {
   it("labels every run's money and links files that exist", () => {
     for (const r of rows) {
       expect(r.money).toMatch(/test money|no money moved|Nothing bought/i);
-      for (const f of r.files) if (f.href.startsWith(REPO_BLOB)) expect(existsSync(f.href.slice(REPO_BLOB.length))).toBe(true);
+      // A link to a heading in a file (metal-award.md#…, /metal's receive run) is held to the file.
+      for (const f of r.files) if (f.href.startsWith(REPO_BLOB)) expect(existsSync(f.href.slice(REPO_BLOB.length).split("#")[0]!), f.href).toBe(true);
     }
   });
 
@@ -222,9 +224,13 @@ describe("/runs as a timeline", () => {
   const KINDS: Record<string, RunKind> = {
     "vic-3": "sandbox", "two-locks-1": "sandbox", "platform-e2e-1": "sandbox", "t0-1": "sandbox", "connected-1": "sandbox", "vic-2": "nothing", "vic-1": "sandbox",
     "awx-1": "sandbox", "main-1": "both", "agent-1": "rehearsal", "tap-1": "sandbox", "friday-1": "rehearsal",
+    "real-customers-1": "sandbox", "tokenize-1": "testnet", "batch-1": "sandbox", "payee-check-1": "sandbox", "faceid-onchain-1": "testnet", "moneybird-1": "sandbox",
+    "metal-hold-1": "testnet", "acceptance-1": "sandbox",
+    // /metal's separate runs ("Also on Metal"), the same set on both pages (jury check, 12 Nov).
+    "metal-passkey-owners": "testnet", "metal-four-eyes": "testnet", "metal-clearing-load": "testnet", "metal-receive": "testnet", "metal-compliance": "testnet", "metal-clearing": "testnet",
   };
   const known = (keys: string[]) => keys.filter((k) => k in KINDS);
-  const CODE_NAMES = /\b(awx-1|vic-1|vic-2|vic-3|main-1|agent-1|friday-1|tap-1|rel-1b?|two-locks-1|platform-e2e-1|connected-1|t0-1)\b|\brun 1\b|\bsecond run\b/i;
+  const CODE_NAMES = /\b(awx-1|vic-1|vic-2|vic-3|main-1|agent-1|friday-1|tap-1|rel-1b?|two-locks-1|platform-e2e-1|connected-1|t0-1|real-customers-1|tokenize-1|batch-1|payee-check-1|faceid-onchain-1|moneybird-1|metal-hold-1|acceptance-1|metal-[a-z-]+)\b|\brun 1\b|\bsecond run\b/i;
   // Two rows a later session could add: a series of payouts reported as one entry, and a row in the old shape.
   const series: RunRow = {
     key: "series-x", iso: "2026-11-13T10:00:00.000Z", date: "13 Nov 2026", title: "A series of payouts", name: "Twenty supplier payouts in a row",
@@ -394,7 +400,7 @@ describe("/runs as a timeline", () => {
     expect(existsSync("docs/runs")).toBe(true);
     // Rehearsals do not count as live runs.
     expect(text(html)).toContain(`${live.length} live runs, newest first`);
-    expect(known(live.map((e) => e.key))).toHaveLength(10);
+    expect(known(live.map((e) => e.key))).toHaveLength(24);
   });
 
   it("marks exactly one run as the product: the main run", () => {
@@ -419,13 +425,13 @@ describe("/runs as a timeline", () => {
     }
     // Which runs carry which filter: from their rails and kind.
     const carrying = (id: string) => known(live.filter((e) => e.cls.includes(`f-${id}`)).map((e) => e.key));
-    expect(carrying("metal")).toEqual(["main-1"]);
-    expect(carrying("testnet")).toEqual(["main-1"]);
+    expect(carrying("metal")).toEqual(["tokenize-1", "faceid-onchain-1", "metal-hold-1", "main-1", "metal-passkey-owners", "metal-four-eyes", "metal-clearing-load", "metal-receive", "metal-compliance", "metal-clearing"]);
+    expect(carrying("testnet")).toEqual(["tokenize-1", "faceid-onchain-1", "metal-hold-1", "main-1", "metal-passkey-owners", "metal-four-eyes", "metal-clearing-load", "metal-receive", "metal-compliance", "metal-clearing"]);
     expect(carrying("claude")).toEqual(["vic-3", "platform-e2e-1", "main-1"]);
     // Review 12 Nov (DC-3): a partner's chip, class and count are for the runs it took part in, by the records. The second
     // Airi run made 0 Airi and 0 Airwallex calls: no Airwallex, no Visa. Visa: the runs that used a Visa credential.
     expect(carrying("visa")).toEqual(["vic-3", "vic-1", "tap-1"]);
-    expect(carrying("airwallex")).toEqual(["vic-3", "two-locks-1", "platform-e2e-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
+    expect(carrying("airwallex")).toEqual(["vic-3", "real-customers-1", "batch-1", "payee-check-1", "two-locks-1", "platform-e2e-1", "acceptance-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
     const v2 = JSON.parse(raw("docs/demo/vic-2-run.json")) as { outside_calls: { airi: number; airwallex: number } };
     expect([v2.outside_calls.airi, v2.outside_calls.airwallex]).toEqual([0, 0]);
     const v2e = live.find((e) => e.key === "vic-2")!;
@@ -433,8 +439,8 @@ describe("/runs as a timeline", () => {
     expect(v2e.html).not.toMatch(/class="rl (awx|visa)"/);
     expect(row("vic-2").partners).toEqual([]);
     expect(links.find((l) => l.id === "visa")!.n).toBe(3);
-    expect(links.find((l) => l.id === "airwallex")!.n).toBe(8);
-    expect(carrying("sandbox")).toEqual(["vic-3", "two-locks-1", "platform-e2e-1", "t0-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
+    expect(links.find((l) => l.id === "airwallex")!.n).toBe(12);
+    expect(carrying("sandbox")).toEqual(["vic-3", "real-customers-1", "batch-1", "payee-check-1", "moneybird-1", "two-locks-1", "platform-e2e-1", "t0-1", "acceptance-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
     // Each filter is an empty anchor before the list (a sibling the CSS can select from), and so is "All".
     const listAt = html.indexOf('<ol class="tl">');
     for (const l of links) {
@@ -526,7 +532,8 @@ describe("/runs as a timeline", () => {
     expect(seen).not.toContain('class="rt');
     // The partners come from its rails; it sits in date order; its big numbers are listed quietly in its fold.
     expect(e.cls).toEqual(expect.arrayContaining(["k-sandbox", "f-airwallex", "f-claude", "f-sandbox"]));
-    expect(entriesOf(liveList(page)).map((x) => x.key).slice(0, 3)).toEqual(["vic-3", "two-locks-1", "old-x"]);
+    const order = entriesOf(liveList(page)).map((x) => x.key);
+    expect(order.indexOf("old-x")).toBe(order.indexOf("platform-e2e-1") - 1);
     const fold = e.html.slice(seen.length);
     expect(fold).toContain("pay-bbbb-2222");
     expect(fold).toContain("Five payouts of EUR 1.50 were created. Each went PAID.");
