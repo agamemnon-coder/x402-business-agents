@@ -118,6 +118,12 @@ describe("the chain: one supplier invoice from upload to paid, booked and archiv
     expect(w.host.proposal("P-0001")!.status).toBe("PENDING_APPROVAL");
     expect(count(w.db, "SELECT COUNT(*) AS n FROM transfers")).toBe(0);
 
+    // The right signature sent with other terms than the proposal's: refused before anything is verified or runs.
+    const sent = await w.host.approve({ ...signed(w, proposal, proposal.challenge, 2), terms_sha256: sha256Hex("other terms") });
+    expect(sent).toEqual({ status: "refused", message: "The terms sent with this approval are not the ones on screen. Nothing was paid.", settled: null });
+    expect(w.host.proposal("P-0001")!.status).toBe("PENDING_APPROVAL");
+    expect(count(w.db, "SELECT COUNT(*) AS n FROM transfers")).toBe(0);
+
     // The right one: approved, run on the stand-in bank, followed, booked and archived.
     const right = await w.host.approve(signed(w, proposal, proposal.challenge, 2));
     expect(right.status).toBe("approved");

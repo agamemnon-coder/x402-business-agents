@@ -128,6 +128,8 @@ const STAND_IN_FEE = { en: "Bank fee (stand-in bank, test money)", nl: "Bankkost
  */
 /** The answer to a signature over other terms than the proposal's: the screens show it as it is. */
 export const REFUSED_OTHER_TERMS = "This signature is over other terms than the ones on screen. Nothing was paid.";
+/** An approval whose request names other terms than the proposal holds: refused before the signature is read. */
+export const REFUSED_TERMS_NOT_ON_SCREEN = "The terms sent with this approval are not the ones on screen. Nothing was paid.";
 const LIBRARY_REFUSALS: [RegExp, string][] = [
   [/^Unexpected authentication response challenge\b/, REFUSED_OTHER_TERMS],
   [/^Unexpected (authentication response origin|cross-origin|top origin)\b|^Detected cross-origin\b/, "This signature was made on another website than this one. Nothing was paid."],
@@ -314,6 +316,10 @@ export class EngineHost {
     return this.act(async () => {
       const { db } = this.deps;
       const now = this.now();
+      // The terms the request names must be the proposal's own. The signature binds the stored terms either way, so no
+      // money is at risk; but an approval sent with other terms is not the one the person saw, and is refused as such.
+      const held = db.prepare("SELECT terms_sha256 FROM proposals WHERE proposal_id = ?").get(a.proposal_id) as { terms_sha256: string } | undefined;
+      if (held && held.terms_sha256 !== a.terms_sha256) return { status: "refused", message: REFUSED_TERMS_NOT_ON_SCREEN, settled: null };
       // Only these three fields travel: the decision is always an approval (rejecting is not one of the host's actions).
       const item: InboxItem = { ticket: "engine", kind: "assertion", proposal_id: null, body: JSON.stringify({ proposal_id: a.proposal_id, terms_sha256: a.terms_sha256, credential: a.credential }), received_at: now.toISOString() };
       const out = await processAssertion(db, item, now);

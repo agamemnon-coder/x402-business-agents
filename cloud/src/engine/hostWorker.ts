@@ -5,7 +5,7 @@
 //   PDF text       the engine's reader on this thread (a Durable Object has no worker threads)
 //   the bank       the stand-in bank, TEST MONEY ONLY, kept as text in the object's SQLite so it outlives the object's memory
 //   the reader     the parser (no model is asked)
-//   the archive    the cloud's document store under t/<tenant>/vault/ (./vaultR2.ts)
+//   the archive    the cloud's document store under t/<tenant>/vault/ (./vaultR2.ts): R2, or D1 without R2 (../blobsSql.ts)
 //   the read model the cloud's own applySync on D1 and R2 (./target.ts), fed with what changed
 //
 // This file loads the whole engine. Nothing imports it statically: the object (./object.ts) loads it with import() on
@@ -24,6 +24,7 @@ import SCHEMA from "../../../src/db/schema.sql";
 import { feedCloud } from "../../../src/engine/feed.js";
 import { EngineHost, parserOnly } from "../../../src/engine/host.js";
 import { bankToText, standInBank } from "../../../src/engine/standInBank.js";
+import { sqlBlobs } from "../blobsSql.js";
 import { d1Sql, r2Blobs, type D1Like, type R2Like } from "../store.js";
 import { TenantDb } from "../tenant.js";
 import type { EngineApi } from "./api.js";
@@ -35,7 +36,8 @@ import { blobVault } from "./vaultR2.js";
 /** What the host needs of the object: its storage. */
 export interface HostCtx { storage: DoStorage & { deleteAll(): Promise<void> } }
 /** What the host needs of the Worker's bindings: the cloud's database and document store, and the passkeys' relying party. */
-export interface HostEnv { DB: D1Like; DOCS: R2Like; RP_ID: string; ORIGIN: string }
+/** DOCS absent (a deployment without R2): the read model's documents and the archive are kept in D1, as the Worker keeps them (../blobsSql.ts). */
+export interface HostEnv { DB: D1Like; DOCS?: R2Like; RP_ID: string; ORIGIN: string }
 
 let runtimeReady = false;
 /** Once per isolate: the PDF reader without a worker thread, and the three fonts the archive's PDFs use (pdfkit's browser build carries none). */
@@ -64,11 +66,12 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
   // The stand-in bank: the one this object kept, when it has been here before.
   const bank = standInBank({ load: () => state.get("bank"), save: (text) => state.set("bank", text) });
   const keepBank = () => state.set("bank", bankToText(bank));
-  const target = cloudTarget(new TenantDb(sql, tenantId), r2Blobs(env.DOCS), () => new Date());
+  const blobs = env.DOCS ? r2Blobs(env.DOCS) : sqlBlobs(sql);
+  const target = cloudTarget(new TenantDb(sql, tenantId), blobs, () => new Date());
   const host = new EngineHost({
     db, reader: parserOnly, rails: { rail: bank, sim: bank }, afterMoney: keepBank,
     rp: { rpId: env.RP_ID, origin: env.ORIGIN }, company: { name: company.name, lang: company.language === "en" ? "en" : "nl" },
-    vault: blobVault(r2Blobs(env.DOCS), tenantId), feed: (d, now) => feedCloud(d, target, now),
+    vault: blobVault(blobs, tenantId), feed: (d, now) => feedCloud(d, target, now),
     // The hands-on demo: the sample invoices, and a visitor's test company holds at most 8 documents.
     samples: SAMPLES, ...(tenantId.startsWith("t_try_") ? { maxDocuments: 8 } : {}),
   });

@@ -6,12 +6,14 @@ import { receiveEmail, type InboundEmail } from "./mail.js";
 import { purgeExpired } from "./privacy.js";
 import { sweepExports } from "./exports.js";
 import { d1Sql, r2Blobs, type D1Like, type R2Like } from "./store.js";
+import { sqlBlobs } from "./blobsSql.js";
 import { ENGINE_MODE, engineStubs, type EngineNamespace } from "./engine/client.js";
 import { sweepTry } from "./try/sweep.js";
 
 export interface Bindings {
   DB: D1Like;
-  DOCS: R2Like;
+  /** The documents' R2 bucket. Absent (a deployment without R2, cloud/wrangler.try.jsonc): they are kept in D1 (./blobsSql.ts). */
+  DOCS?: R2Like;
   SESSION_SECRET: string;
   ADMIN_TOKEN_SHA256: string;
   RP_ID: string;
@@ -28,15 +30,18 @@ export interface Bindings {
   HANDS_ON?: string;
   /** "on": the engine may call Claude (with its key, under the demo's caps). */
   ENGINE_CLAUDE?: string;
+  /** The demo's own capped Claude key (a secret, set by hand on purser-try); only whether it is set is read here. */
+  KIT11_ANTHROPIC_API_KEY?: string;
 }
 
 function envOf(b: Bindings): CloudEnv {
   if (!b.SESSION_SECRET || b.SESSION_SECRET.length < 32) throw new Error("SESSION_SECRET is not set (wrangler secret put SESSION_SECRET)");
   const assets = b.ASSETS;
-  return { sql: d1Sql(b.DB), blobs: r2Blobs(b.DOCS), sessionSecret: b.SESSION_SECRET, adminTokenSha256: b.ADMIN_TOKEN_SHA256 ?? "", rpId: b.RP_ID, origin: b.ORIGIN, mailDomain: b.MAIL_DOMAIN ?? "",
+  const sql = d1Sql(b.DB);
+  return { sql, blobs: b.DOCS ? r2Blobs(b.DOCS) : sqlBlobs(sql), sessionSecret: b.SESSION_SECRET, adminTokenSha256: b.ADMIN_TOKEN_SHA256 ?? "", rpId: b.RP_ID, origin: b.ORIGIN, mailDomain: b.MAIL_DOMAIN ?? "",
     version: b.VERSION ?? "dev", outbound: (url: string, init: RequestInit) => fetch(url, init),
     ...(assets ? { asset: async (path: string) => assets.fetch(new Request(new URL(path, b.ORIGIN))) } : {}),
-    ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE ? { engine: engineStubs(b.ENGINE), ...(b.HANDS_ON === "on" ? { tryIt: { claude: b.ENGINE_CLAUDE === "on" } } : {}) } : {}) };
+    ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE ? { engine: engineStubs(b.ENGINE), ...(b.HANDS_ON === "on" ? { tryIt: { claude: b.ENGINE_CLAUDE === "on" && !!b.KIT11_ANTHROPIC_API_KEY } } : {}) } : {}) };
 }
 
 export default {
