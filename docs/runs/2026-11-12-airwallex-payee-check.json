@@ -1,0 +1,160 @@
+{
+  "stream": "airwallex-depth-1112",
+  "sandbox": "api.sandbox.airwallex.com",
+  "test_money": true,
+  "source": "built by `npm run awx-depth -- record` from the run ledger's audit rows and AIRWALLEX_CALL_LOG only",
+  "budget": {
+    "approved_for_stream": 40,
+    "used_by_stream": 22
+  },
+  "capability": "payee-check",
+  "calls": {
+    "total": 7,
+    "by_endpoint": [
+      {
+        "endpoint": "POST /authentication/login",
+        "calls": 3
+      },
+      {
+        "endpoint": "POST /beneficiaries/verify_account",
+        "calls": 4
+      }
+    ],
+    "lines": [
+      {
+        "at": "2026-11-12T13:49:44.782Z",
+        "method": "POST",
+        "endpoint": "/authentication/login",
+        "pid": 1787
+      },
+      {
+        "at": "2026-11-12T13:49:45.470Z",
+        "method": "POST",
+        "endpoint": "/beneficiaries/verify_account",
+        "pid": 1787
+      },
+      {
+        "at": "2026-11-12T13:49:50.502Z",
+        "method": "POST",
+        "endpoint": "/beneficiaries/verify_account",
+        "pid": 1787
+      },
+      {
+        "at": "2026-11-12T13:50:54.508Z",
+        "method": "POST",
+        "endpoint": "/authentication/login",
+        "pid": 3184
+      },
+      {
+        "at": "2026-11-12T13:50:55.861Z",
+        "method": "POST",
+        "endpoint": "/beneficiaries/verify_account",
+        "pid": 3184
+      },
+      {
+        "at": "2026-11-12T13:51:43.724Z",
+        "method": "POST",
+        "endpoint": "/authentication/login",
+        "pid": 4405
+      },
+      {
+        "at": "2026-11-12T13:51:44.374Z",
+        "method": "POST",
+        "endpoint": "/beneficiaries/verify_account",
+        "pid": 4405
+      }
+    ]
+  },
+  "checks": [
+    {
+      "vendor": "Stockline Data GmbH",
+      "code": "VERIFIED",
+      "match": "NOT_MATCHED",
+      "resolved_name": null,
+      "proceed": 0,
+      "label": "the payee's bank holds this account, not as \"Stockline Data GmbH\" (NOT_MATCHED); confirm with the supplier on a known contact before it is proposed",
+      "checked_at": "2026-11-12T13:49:44.781Z"
+    },
+    {
+      "vendor": "Northbridge Trading Ltd",
+      "code": "VERIFIED",
+      "match": "NOT_MATCHED",
+      "resolved_name": null,
+      "proceed": 0,
+      "label": "the payee's bank holds this account, not as \"Northbridge Trading Ltd\" (NOT_MATCHED); confirm with the supplier on a known contact before it is proposed",
+      "checked_at": "2026-11-12T13:49:50.502Z"
+    },
+    {
+      "vendor": "Betty Morras",
+      "code": "VERIFIED",
+      "match": "PARTIAL_MATCH",
+      "resolved_name": "Betty Morris",
+      "proceed": 0,
+      "label": "the payee's bank holds this account as \"Betty Morris\", not as \"Betty Morras\" (PARTIAL_MATCH); confirm with the supplier on a known contact before it is proposed",
+      "checked_at": "2026-11-12T13:50:54.507Z"
+    },
+    {
+      "vendor": "Betty Morris",
+      "code": "VERIFIED",
+      "match": "FULL_MATCH",
+      "resolved_name": "Betty Morris",
+      "proceed": 1,
+      "label": "the payee's bank confirmed the account and the name",
+      "checked_at": "2026-11-12T13:51:43.723Z"
+    }
+  ],
+  "audit": [
+    {
+      "seq": 1,
+      "ts": "2026-11-12T13:49:44.781Z",
+      "actor": "human",
+      "event": "payee.name_check_refused",
+      "subject": "Stockline Data GmbH",
+      "payload": {
+        "code": "VERIFIED",
+        "label": "the payee's bank holds this account, not as \"Stockline Data GmbH\" (NOT_MATCHED); confirm with the supplier on a known contact before it is proposed",
+        "match": "NOT_MATCHED",
+        "proceed": false
+      }
+    },
+    {
+      "seq": 2,
+      "ts": "2026-11-12T13:49:50.502Z",
+      "actor": "human",
+      "event": "payee.name_check_refused",
+      "subject": "Northbridge Trading Ltd",
+      "payload": {
+        "code": "VERIFIED",
+        "label": "the payee's bank holds this account, not as \"Northbridge Trading Ltd\" (NOT_MATCHED); confirm with the supplier on a known contact before it is proposed",
+        "match": "NOT_MATCHED",
+        "proceed": false
+      }
+    },
+    {
+      "seq": 3,
+      "ts": "2026-11-12T13:50:54.507Z",
+      "actor": "human",
+      "event": "payee.name_check_refused",
+      "subject": "Betty Morras",
+      "payload": {
+        "code": "VERIFIED",
+        "label": "the payee's bank holds this account as \"Betty Morris\", not as \"Betty Morras\" (PARTIAL_MATCH); confirm with the supplier on a known contact before it is proposed",
+        "match": "PARTIAL_MATCH",
+        "proceed": false
+      }
+    },
+    {
+      "seq": 4,
+      "ts": "2026-11-12T13:51:43.723Z",
+      "actor": "human",
+      "event": "payee.name_checked",
+      "subject": "Betty Morris",
+      "payload": {
+        "code": "VERIFIED",
+        "label": "the payee's bank confirmed the account and the name",
+        "match": "FULL_MATCH",
+        "proceed": true
+      }
+    }
+  ]
+}

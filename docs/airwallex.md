@@ -11,6 +11,17 @@ Two marks are used in the tables:
 
 Run logs are in `docs/runs/`. Tests are in `test/`.
 
+## Three more Airwallex capabilities (12 November; sandbox, test money; each behind its own flag, off by default)
+
+22 Airwallex calls in all, of the 40 approved for this work, counted by the call log. Signed by a labelled virtual test
+passkey, not a person's Face ID. Nothing was approved in Airwallex's web app.
+
+| Capability | Endpoints | What ran live | Run record |
+|---|---|---|---|
+| One signed batch as ONE Airwallex batch transfer (`AIRWALLEX_BATCH_TRANSFER=on`; `src/executors/airwallexBatch.ts`) | `POST /batch_transfers/create`, `/{id}/add_items`, `/{id}/quote`, `/{id}/submit`, `/{id}/delete` (only a DRAFTING batch, on a read-back difference); `GET /batch_transfers` (by request_id, after a lost answer), `/{id}`, `/{id}/items` | two EUR 240.00 test invoices, signed once as batch P-0003, became one Airwallex batch `3960a081-b058-422b-95b1-6298e45fe257` with the batch hash in its metadata; read back item by item with 0 differences; submitted; Airwallex's approval workflow holds it `IN_APPROVAL`. Not approved, booked or paid. | [batch transfer](runs/2026-11-12-airwallex-batch-transfer.md) |
+| The payee's bank checks the account and name before the CFO is asked (`AIRWALLEX_PAYEE_CHECK=on`; `src/airwallex/payeeName.ts`) | `POST /beneficiaries/verify_account` | four checks: `NOT_MATCHED` twice on our German test IBAN, `PARTIAL_MATCH` on Airwallex's documented example (held as "Betty Morris"), `FULL_MATCH` on the name the bank gave back | [payee check](runs/2026-11-12-airwallex-payee-check.md) |
+| Reconciliation with Airwallex's own ledger, to the cent (`AIRWALLEX_FINANCIAL_TX=on`: `npm run reconcile -- --financial-transactions <from> <to>`; `src/finance/awxFinancialTx.ts`) | `GET /financial_transactions` | the awx-1 window: both payouts (a PAYOUT row and a FEE row each), and the conversion's two legs, agree with the awx-1 record exactly; 0 differences, 0 movements Purser did not make | [financial transactions](runs/2026-11-12-airwallex-financial-transactions.md) |
+
 ## awx-1: the whole Airwallex path in one run (7 November; sandbox, test money)
 
 One fresh world on the Airwallex sandbox only (0 Metal calls), accepted with all seven checks passed. Log:
@@ -254,9 +265,10 @@ The permissions below come from the endpoints on this page. Max creates the key 
 | Balances | `GET /balances/current` | Read |
 | Global accounts | `GET /global_accounts`; `POST /global_accounts/create` (once, at setup) | Read; Write only until the account exists |
 | Deposits | `GET /deposits` | Read |
-| Beneficiaries | `GET /beneficiaries`; `POST /beneficiaries/schema`; `POST /beneficiaries/validate`; `POST /beneficiaries/create` | Write (needed at setup and for every approved bank-detail change) |
+| Beneficiaries | `GET /beneficiaries`; `POST /beneficiaries/schema`; `POST /beneficiaries/validate`; `POST /beneficiaries/create`; `POST /beneficiaries/verify_account` (with `AIRWALLEX_PAYEE_CHECK=on`) | Write (needed at setup and for every approved bank-detail change) |
 | FX rates, quotes and conversions | `GET /fx/rates/current`; `POST /fx/quotes/create`; `POST /fx/conversions/create`; `GET /fx/conversions` | Write |
-| Transfers | `POST /transfers/create`; `GET /transfers`; `GET /transfers/{id}` | Write |
+| Transfers | `POST /transfers/create`; `GET /transfers`; `GET /transfers/{id}`; batch transfers (`/batch_transfers…`, with `AIRWALLEX_BATCH_TRANSFER=on`) | Write |
+| Financial transactions | `GET /financial_transactions` (with `AIRWALLEX_FINANCIAL_TX=on`) | Read |
 | Issuing: cardholders, cards, transactions | `GET`/`POST /issuing/cardholders`; `GET`/`POST /issuing/cards` and `/issuing/cards/{id}/update`; `GET /issuing/transactions` | Write |
 | Webhooks | `GET /webhooks`; `POST /webhooks/create`; `POST /webhooks/{id}/delete` (setup and `--replace` only) | Write at setup, then none |
 | Sandbox simulation | `POST /simulation/deposit/create`; `POST /simulation/transfers/{id}/transition`; `POST /simulation/issuing/create` | Write (sandbox only; these do not exist in production) |

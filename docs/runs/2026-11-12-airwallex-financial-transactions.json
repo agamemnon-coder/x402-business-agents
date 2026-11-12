@@ -1,0 +1,250 @@
+{
+  "stream": "airwallex-depth-1112",
+  "sandbox": "api.sandbox.airwallex.com",
+  "test_money": true,
+  "source": "built by `npm run awx-depth -- record` from the run ledger's audit rows and AIRWALLEX_CALL_LOG only",
+  "budget": {
+    "approved_for_stream": 40,
+    "used_by_stream": 22
+  },
+  "capability": "financial-transactions",
+  "calls": {
+    "total": 2,
+    "by_endpoint": [
+      {
+        "endpoint": "POST /authentication/login",
+        "calls": 1
+      },
+      {
+        "endpoint": "GET /financial_transactions",
+        "calls": 1
+      }
+    ],
+    "lines": [
+      {
+        "at": "2026-11-12T13:51:52.892Z",
+        "method": "POST",
+        "endpoint": "/authentication/login",
+        "pid": 4601
+      },
+      {
+        "at": "2026-11-12T13:51:53.443Z",
+        "method": "GET",
+        "endpoint": "/financial_transactions",
+        "pid": 4601
+      }
+    ]
+  },
+  "audit": [
+    {
+      "seq": 5,
+      "ts": "2026-11-12T13:51:53.816Z",
+      "actor": "system",
+      "event": "awx_ft.read",
+      "subject": null,
+      "payload": {
+        "count": 8,
+        "from": "2026-11-07T12:00:00+0000",
+        "items": [
+          {
+            "amount_cents": -185000,
+            "created_at": "2026-11-07T12:13:19.497+00:00",
+            "currency": "EUR",
+            "fee_cents": 0,
+            "id": "ftx_Ipa-l7_8OgKIrgIPwqPA2A",
+            "net_cents": -185000,
+            "source_id": "4140dee2-6373-4eb4-a71f-bf69130f96a7",
+            "source_type": "PAYOUT",
+            "status": "SETTLED",
+            "transaction_type": "PAYOUT"
+          },
+          {
+            "amount_cents": -1350,
+            "created_at": "2026-11-07T12:13:19.497+00:00",
+            "currency": "EUR",
+            "fee_cents": 0,
+            "id": "ftx_l2KLBOeGPyCemDbUuOVQBQ",
+            "net_cents": -1350,
+            "source_id": "4140dee2-6373-4eb4-a71f-bf69130f96a7",
+            "source_type": "FEE",
+            "status": "SETTLED",
+            "transaction_type": "FEE"
+          },
+          {
+            "amount_cents": -70445,
+            "created_at": "2026-11-07T12:13:18.437+00:00",
+            "currency": "USD",
+            "fee_cents": 0,
+            "id": "ftx_MEyPPF3dNLel2Wqd4S7slg",
+            "net_cents": -70445,
+            "source_id": "fafcc208-bd1e-43d9-bd09-69191a8aa81f",
+            "source_type": "CONVERSION",
+            "status": "SETTLED",
+            "transaction_type": "CONVERSION_SELL"
+          },
+          {
+            "amount_cents": 62350,
+            "created_at": "2026-11-07T12:13:18.437+00:00",
+            "currency": "EUR",
+            "fee_cents": 0,
+            "id": "ftx_peUbOmUBMxC1RBeAL6VjDw",
+            "net_cents": 62350,
+            "source_id": "fafcc208-bd1e-43d9-bd09-69191a8aa81f",
+            "source_type": "CONVERSION",
+            "status": "SETTLED",
+            "transaction_type": "CONVERSION_BUY"
+          },
+          {
+            "amount_cents": -24000,
+            "created_at": "2026-11-07T12:12:22.639+00:00",
+            "currency": "EUR",
+            "fee_cents": 0,
+            "id": "ftx_iVC_c_vhP3Od5kXmxcHK6A",
+            "net_cents": -24000,
+            "source_id": "738a4263-6d6c-4de8-94a3-93da1c175fb4",
+            "source_type": "PAYOUT",
+            "status": "SETTLED",
+            "transaction_type": "PAYOUT"
+          },
+          {
+            "amount_cents": -1350,
+            "created_at": "2026-11-07T12:12:22.639+00:00",
+            "currency": "EUR",
+            "fee_cents": 0,
+            "id": "ftx_ohLit-0ENOGGifaWiy8CgA",
+            "net_cents": -1350,
+            "source_id": "738a4263-6d6c-4de8-94a3-93da1c175fb4",
+            "source_type": "FEE",
+            "status": "SETTLED",
+            "transaction_type": "FEE"
+          },
+          {
+            "amount_cents": -4500,
+            "created_at": "2026-11-07T12:11:03.124+00:00",
+            "currency": "EUR",
+            "fee_cents": 0,
+            "id": "fce60cb0-d8a6-4200-b201-6c8fa3772866",
+            "net_cents": -4500,
+            "source_id": "fce60cb0-d8a6-4200-b201-6c8fa3772866",
+            "source_type": "CARD_PURCHASE",
+            "status": "PENDING",
+            "transaction_type": "ISSUING_AUTHORISATION_HOLD"
+          },
+          {
+            "amount_cents": -1999,
+            "created_at": "2026-11-07T12:07:45.715+00:00",
+            "currency": "EUR",
+            "fee_cents": 0,
+            "id": "ab5edde5-6a68-4b81-bd7b-924497f8eb60",
+            "net_cents": -1999,
+            "source_id": "ab5edde5-6a68-4b81-bd7b-924497f8eb60",
+            "source_type": "CARD_PURCHASE",
+            "status": "PENDING",
+            "transaction_type": "ISSUING_AUTHORISATION_HOLD"
+          }
+        ],
+        "to": "2026-11-07T12:30:00+0000"
+      }
+    },
+    {
+      "seq": 6,
+      "ts": "2026-11-12T13:51:53.823Z",
+      "actor": "system",
+      "event": "awx_ft.reconciled",
+      "subject": null,
+      "payload": {
+        "agree": 3,
+        "checked": 3,
+        "differences": 0,
+        "from": "2026-11-07T12:00:00+0000",
+        "movements": [
+          {
+            "agrees": true,
+            "airwallex": "2 row(s): amount EUR 253.50, fee EUR 0.00 (PAYOUT, FEE)",
+            "how": "fee included in the gross amount",
+            "kind": "payout",
+            "label": "SLL-2026-11",
+            "ledger": "EUR 240.00 + fee EUR 13.50",
+            "rows": 2,
+            "source_id": "738a4263-6d6c-4de8-94a3-93da1c175fb4"
+          },
+          {
+            "agrees": true,
+            "airwallex": "2 row(s): amount EUR 1863.50, fee EUR 0.00 (PAYOUT, FEE)",
+            "how": "fee included in the gross amount",
+            "kind": "payout",
+            "label": "BTX-2026-11",
+            "ledger": "EUR 1850.00 + fee EUR 13.50",
+            "rows": 2,
+            "source_id": "4140dee2-6373-4eb4-a71f-bf69130f96a7"
+          },
+          {
+            "agrees": true,
+            "airwallex": "2 row(s): EUR 623.50, USD 704.45",
+            "how": "buy and sell legs",
+            "kind": "conversion",
+            "label": "BTX-2026-11 conversion",
+            "ledger": "buy EUR 623.50, sell USD 704.45",
+            "rows": 2,
+            "source_id": "fafcc208-bd1e-43d9-bd09-69191a8aa81f"
+          }
+        ],
+        "out_of_scope": {
+          "CARD_PURCHASE": 2
+        },
+        "to": "2026-11-07T12:30:00+0000",
+        "unknown_at_airwallex": []
+      }
+    },
+    {
+      "seq": 7,
+      "ts": "2026-11-12T13:53:17.897Z",
+      "actor": "system",
+      "event": "awx_ft.reconciled",
+      "subject": null,
+      "payload": {
+        "agree": 3,
+        "checked": 3,
+        "differences": 0,
+        "from": "2026-11-07T12:00:00+0000",
+        "movements": [
+          {
+            "agrees": true,
+            "airwallex": "2 row(s): 1 payout EUR 240.00, 1 fee row(s) EUR 13.50, fee field EUR 0.00",
+            "how": "a PAYOUT row for the amount and a FEE row for the fee, both under the transfer id",
+            "kind": "payout",
+            "label": "SLL-2026-11",
+            "ledger": "EUR 240.00 + fee EUR 13.50",
+            "rows": 2,
+            "source_id": "738a4263-6d6c-4de8-94a3-93da1c175fb4"
+          },
+          {
+            "agrees": true,
+            "airwallex": "2 row(s): 1 payout EUR 1850.00, 1 fee row(s) EUR 13.50, fee field EUR 0.00",
+            "how": "a PAYOUT row for the amount and a FEE row for the fee, both under the transfer id",
+            "kind": "payout",
+            "label": "BTX-2026-11",
+            "ledger": "EUR 1850.00 + fee EUR 13.50",
+            "rows": 2,
+            "source_id": "4140dee2-6373-4eb4-a71f-bf69130f96a7"
+          },
+          {
+            "agrees": true,
+            "airwallex": "2 row(s): EUR 623.50, USD 704.45",
+            "how": "buy and sell legs",
+            "kind": "conversion",
+            "label": "BTX-2026-11 conversion",
+            "ledger": "buy EUR 623.50, sell USD 704.45",
+            "rows": 2,
+            "source_id": "fafcc208-bd1e-43d9-bd09-69191a8aa81f"
+          }
+        ],
+        "out_of_scope": {
+          "CARD_PURCHASE": 2
+        },
+        "to": "2026-11-07T12:30:00+0000",
+        "unknown_at_airwallex": []
+      }
+    }
+  ]
+}

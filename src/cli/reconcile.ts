@@ -59,6 +59,27 @@ if (at >= 0) {
   process.exit(1);
 }
 
+// npm run reconcile -- --financial-transactions <from> <to>: the ledger's payouts and conversions against Airwallex's own
+// ledger (GET /financial_transactions, read only), to the cent (src/finance/awxFinancialTx.ts). Only with
+// AIRWALLEX_FINANCIAL_TX=on.
+const ftAt = process.argv.indexOf("--financial-transactions");
+if (ftAt >= 0) {
+  const { financialTxOn, ledgerMovementsFromDb, listFinancialTransactions, reconcileFinancialTransactions, recordReconciliation } = await import("../finance/awxFinancialTx.js");
+  if (!financialTxOn()) { console.log("STOP             AIRWALLEX_FINANCIAL_TX is not on; nothing was asked"); process.exit(2); }
+  const cfg = fromEnv();
+  if (!cfg) { console.log("STOP             no Airwallex sandbox keys: Airwallex cannot be asked"); process.exit(2); }
+  const window = { from: process.argv[ftAt + 1] ?? "", to: process.argv[ftAt + 2] ?? "" };
+  if (!window.from || !window.to) { console.log("usage: npm run reconcile -- --financial-transactions <from ISO 8601> <to ISO 8601>"); process.exit(2); }
+  const db = openDb();
+  const res = reconcileFinancialTransactions(ledgerMovementsFromDb(db), await listFinancialTransactions(new Airwallex(cfg), window));
+  recordReconciliation(db, res, window);
+  for (const m of res.movements) console.log(redactSecrets(`${m.agrees ? "AGREES          " : "DIFFERENCE       "}${m.label}: ledger ${m.ledger}; Airwallex ${m.airwallex} (${m.how})`));
+  for (const u of res.unknownAtAirwallex) console.log(`NOT IN LEDGER    ${u.sourceType} ${u.sourceId ?? u.id} ${u.amount}`);
+  const bad = res.differences.length + res.unknownAtAirwallex.length;
+  console.log(bad ? `${bad} difference(s): a person looks; nothing was changed` : `no differences (${res.checked} checked)`);
+  process.exit(bad ? 1 : 0);
+}
+
 const rdb = openDb();
 const r = await reconcile(rdb, reconcileSourcesFromEnv(rdb));
 console.log(`RECONCILED       ${r.checked} flows checked against Airwallex and Metal at ${r.at}`);

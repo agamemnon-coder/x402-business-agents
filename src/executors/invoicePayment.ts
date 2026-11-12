@@ -174,7 +174,7 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
 }
 
 /** Why nothing may be paid now (the holds and the agent's identity, checked before every create), or null. */
-function holdReason(db: DB, t: InvoicePaymentTerms, at: Date): string | null {
+export function holdReason(db: DB, t: InvoicePaymentTerms, at: Date): string | null {
   if (!counterpartyAllowed(db, t.beneficiary_name)) return `${t.beneficiary_name} is blocked by the CFO policy; nothing is paid`;
   if (frozen(db)) return "the CFO pulled the emergency stop; nothing is paid until it is lifted";
   if (stopped(db, "treasury")) return "the treasury agent was stopped automatically (velocity limit); nothing is paid until the CFO lifts the stop";
@@ -185,7 +185,7 @@ function holdReason(db: DB, t: InvoicePaymentTerms, at: Date): string | null {
 }
 
 /** The approved payee must still be the supplier's active account (a bank-detail change applied meanwhile replaces it). */
-function payeeReason(db: DB, t: InvoicePaymentTerms): string | null {
+export function payeeReason(db: DB, t: InvoicePaymentTerms): string | null {
   const b = db.prepare("SELECT status FROM beneficiaries WHERE beneficiary_id = ?").get(t.beneficiary_id) as { status: string } | undefined;
   return b?.status === "ACTIVE" ? null : `the approved payee ${t.beneficiary_id} is no longer the active account of ${t.beneficiary_name} (${b?.status ?? "missing"}); nothing is paid, a new proposal is needed`;
 }
