@@ -147,8 +147,10 @@ export function securityCards(): SecurityCard[] {
       },
     },
     {
-      id: "s-funds", icon: "wallet", title: "No funds held", pill: "Sandbox only",
-      line: esc("Purser holds no funds of its own: the money stays in the company's own Airwallex account, and Purser is the control layer."),
+      id: "s-funds", icon: "wallet", title: "No customer money held", pill: "Sandbox only",
+      // "No customer money" (docs/compliance.md), not "no funds of its own": in the sandbox run Purser's own platform
+      // account funded the test company and took the test fee (docs/airwallex-platform.md). Review, 12 Nov.
+      line: esc("Purser holds no customer money: each company's money stays in its own Airwallex account, and Purser is the control layer."),
       links: [outLink(repoHref(SANDBOX_RUN), "The sandbox run")],
       fold: { summary: "How", lines: [
         quoted(FUNDS_LINE),
@@ -202,7 +204,7 @@ export function securityPage(): string {
   return productPage({
     key: "security", title: "Security and trust", h1: "Security and trust", label: "Sandbox and testnet only",
     lead: "What protects the money, each point with its proof.",
-    description: "How Purser protects company money: signatures over the exact terms, no funds held, limits outside the prompt, a hash-chained audit log, the red team's results, and what is not in place yet. Sandbox and testnet only.",
+    description: "How Purser protects company money: signatures over the exact terms, no customer money held, limits outside the prompt, a hash-chained audit log, the red team's results, and what is not in place yet. Sandbox and testnet only.",
     body: `<div class="cols c2">\n  ${cards.map(cardHtml).join("\n  ")}\n</div>`,
     source: `Source: ${REDTEAM_REPORT} and the later red-team records, ${AUDIT_LOG}, and the docs each fold names.`,
     real: [

@@ -134,7 +134,7 @@ describe("/security: security and trust", () => {
   const folded = (id: string) => mainText(`<main>${/<details class="fold">[\s\S]*?<\/details>/.exec(card(html, id))?.[0] ?? ""}</main>`);
 
   it("has seven short cards in this order, each one sentence, a link to its proof and a folded detail", () => {
-    expect(cards.map((c) => [c.id, c.title])).toEqual([["s-sign", "Signed terms"], ["s-funds", "No funds held"], ["s-limits", "Limits"], ["s-audit", "Audit trail"], ["s-chain", "On chain"], ["s-redteam", "Tested by attack"], ["s-notyet", "Not yet"]]);
+    expect(cards.map((c) => [c.id, c.title])).toEqual([["s-sign", "Signed terms"], ["s-funds", "No customer money held"], ["s-limits", "Limits"], ["s-audit", "Audit trail"], ["s-chain", "On chain"], ["s-redteam", "Tested by attack"], ["s-notyet", "Not yet"]]);
     expect([...html.matchAll(/<article class="pc card[^"]*" id="(s-[a-z]+)">/g)].map((m) => m[1])).toEqual(cards.map((c) => c.id));
     for (const c of cards) {
       const el = card(html, c.id), line = mainText(`<main>${/<p>([\s\S]*?)<\/p>/.exec(el)![0]}</main>`);
@@ -165,10 +165,14 @@ describe("/security: security and trust", () => {
     expect(folded("s-sign")).toContain("signs the hash of the exact terms");
   });
 
-  it("funds: only wording the docs support (no funds of its own; the company's own Airwallex account; the control layer), sandbox only, with the claims register's note", () => {
-    expect(inSight("s-funds")).toBe("No funds held Sandbox only Purser holds no funds of its own: the money stays in the company's own Airwallex account, and Purser is the control layer. The sandbox run ↗ How");
+  // 12 Nov (review): "no customer money", not "no funds of its own": in the linked sandbox run Purser's own platform
+  // account funded the test company and took the test fee (docs/airwallex-platform.md: "the only place a Purser fee can go").
+  it("funds: only wording the docs support (no customer money; the company's own Airwallex account; the control layer), sandbox only, with the claims register's note", () => {
+    expect(inSight("s-funds")).toBe("No customer money held Sandbox only Purser holds no customer money: each company's money stays in its own Airwallex account, and Purser is the control layer. The sandbox run ↗ How");
     const flat = (p: string) => read(p).replace(/\*\*|`/g, "").replace(/\s+/g, " ");
-    expect(flat("docs/business/model.md")).toContain("Purser holds no funds of its own");
+    expect(flat("docs/compliance.md")).toContain("Purser is software the business runs. It holds no customer money");
+    expect(flat("docs/airwallex-platform.md")).toContain("Purser's own platform account (awxPlatform.feeAccount), the only place a Purser fee can go");
+    expect(text).not.toMatch(/no funds of its own|no funds held/i);
     expect(flat("docs/compliance.md")).toContain("The money sits in the business's own Airwallex account and Metal account. Purser asks those rails to move it");
     expect(flat("docs/airwallex-platform.md")).toContain("The money stays in the company's own Airwallex wallet");
     expect(flat("README.md")).toContain("Purser is a control layer for AI agents that spend company money");
