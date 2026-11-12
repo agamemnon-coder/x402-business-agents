@@ -14,7 +14,8 @@
 //   more 1 s after it returned; never while the page is hidden; it stops at its first 401 and renews once; a 429
 //   slow_down waits retry_ms.
 // - Timers exist for three things only (a test holds this): pollTimer, renewTimer (two minutes before the session
-//   ends) and askTimer (the running time of an open Claude call).
+//   ends) and askTimer (the running time of an open Claude call). A request still out after 30 s is seen by the poller's
+//   own tick (pollStart's onSlow), which adds one calm line; no other timer.
 // - Screens 3 (approve) and 4 (pay) sign and pay: the pure helpers are SIGN_JS (below, tested in Node). S also keeps
 //   the proposal ({id, challenge, terms_sha256, invoice}) and the approval's credential (cred) for screen 4, and the
 //   pay route's settled answer for screen 5.
@@ -179,8 +180,8 @@ main > h1 { animation: slide .34s cubic-bezier(.2,.7,.2,1) both; }
 .inv .rows > div:nth-child(2) { animation-delay: .18s; } .inv .rows > div:nth-child(3) { animation-delay: .36s; } .inv .rows > div:nth-child(4) { animation-delay: .54s; } .inv .rows > div:nth-child(5) { animation-delay: .72s; }
 .chip { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 650; background: var(--claude-soft); color: var(--claude); animation: rise .3s ease-out both; }
 .chip .mono { font-weight: 500; opacity: .85; }
-/* Screen 3: the terms as a receipt, the hash in a mono pill; a ring round the button while the passkey prompt is open,
-   a tick once the approval is back. */
+/* Screen 3: the terms as a receipt, the hash in a mono pill; a ring round the button while a step runs (the passkey
+   prompt, saving it, the approval; screen 4's pay too), a tick as soon as the approval is back. */
 .receipt { margin: 4px 0 12px; padding: 16px; border-radius: 14px; background: var(--bg); border: 1px solid var(--border); }
 .receipt .amount { margin: 0 0 8px; }
 .receipt dl.read { gap: 0; margin: 0; }
@@ -459,9 +460,11 @@ function ended(name){pollStop();clearTimeout(renewTimer);renewTimer=null;forget(
 
 // The live panel's polling: every second while a request is in flight, once more a second after it returned.
 let pollTimer=null;
-const P={on:false,inflight:false,final:false,busy:false,waiting:false,renewed:false,onEvents:null};
+const P={on:false,inflight:false,final:false,busy:false,waiting:false,renewed:false,onEvents:null,onSlow:null,t0:0};
+const SLOW_MS=30000;
 function pollLater(ms){clearTimeout(pollTimer);pollTimer=setTimeout(pollTick,ms)}
-function pollStart(onEvents){P.on=true;P.inflight=true;P.final=false;P.renewed=false;P.waiting=false;P.onEvents=onEvents;pollLater(1000)}
+// onSlow (optional): called once, from a poll's tick, when the request is still out after SLOW_MS.
+function pollStart(onEvents,onSlow){P.on=true;P.inflight=true;P.final=false;P.renewed=false;P.waiting=false;P.onEvents=onEvents;P.onSlow=onSlow||null;P.t0=performance.now();pollLater(1000)}
 function pollDone(){P.inflight=false;P.final=true;if(P.on&&!P.busy&&!P.waiting)pollLater(1000)}
 function pollStop(){P.on=false;P.waiting=false;clearTimeout(pollTimer);pollTimer=null}
 async function pollTick(){
@@ -469,6 +472,7 @@ async function pollTick(){
   if(!P.on)return;
   if(document.hidden){P.waiting=true;return}
   P.waiting=false;
+  if(P.inflight&&P.onSlow&&performance.now()-P.t0>=SLOW_MS){const f=P.onSlow;P.onSlow=null;f()}
   const last=!P.inflight;if(last)P.final=false;
   P.busy=true;
   const r=await call('GET','/v1/engine/events?after='+encodeURIComponent(S.after||0)+'&limit=200');
@@ -809,14 +813,21 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
   box.append(top,said,main.node,live.node);
   let p=null,eng=null;
   const saves=el('span','',' '+fill(A.saves,{host:CFG.rpId}));
-  const track=(req)=>{const t0=performance.now();pollStart((items)=>live.add(items,t0));return req.then((r)=>{pollDone();return r})};
+  // A request still out after 30 s: one calm line under the button (from the poller's tick), gone when it returns.
+  const slow=el('p','hint',A.slow);
+  const track=(req)=>{const t0=performance.now();pollStart((items)=>live.add(items,t0),()=>{if(!slow.isConnected)said.append(slow)});return req.then((r)=>{pollDone();slow.remove();return r})};
+  // The button while a step runs: its own label, and the ring.
+  const busy=(label)=>{main.node.textContent=label;main.node.classList.add('asking')};
+  const idle=()=>main.node.classList.remove('asking');
   async function file(){
     said.replaceChildren();main.off(A.filing);
     const ready=inv&&inv.proposal&&inv.proposal.status==='PENDING_APPROVAL'&&!arg.again?inv.proposal:null;
+    // The engine's status (is there a passkey?) is read beside the proposal, not after it.
+    const stq=api('GET','/v1/engine');
     const r=ready?{status:200,json:{proposal:ready}}
       :inv&&inv.id?await track(api('POST','/v1/engine/invoices/'+encodeURIComponent(inv.id)+'/pay'))
       :S.proposal?await api('GET','/v1/engine/proposals/'+encodeURIComponent(S.proposal.id)):{status:0,json:{}};
-    const st=await api('GET','/v1/engine');
+    const st=await stq;
     if(S.screen!=='approve')return;
     if(r.status!==200||!r.json.proposal||typeof r.json.proposal.id!=='string'){said.replaceChildren(note(words(r.json,A.failed)));main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});return}
     p=r.json.proposal;eng=st.status===200?st.json:{passkey:null};
@@ -832,28 +843,43 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     if(!eng||!eng.passkey){main.set(A.create,createPasskey);return}
     main.set(fill(A.approve,{amount:factRows(p,inv).amount,method:method()}),approve);
   }
+  // Two taps, each opening its own prompt: create (it uses up the tap's user activation, so Safari would refuse a
+  // second prompt in the same tap), then approve. Labels say what runs: the start request keeps the button's own label
+  // (off), "Waiting for your passkey…" only while the browser's prompt is open, "Saving your passkey…" while finish runs.
   async function createPasskey(){
-    said.replaceChildren();main.node.textContent=A.waiting;
+    said.replaceChildren();
     const s=await api('POST','/v1/engine/passkey/start');
     if(s.status!==200||!s.json.user){said.replaceChildren(note(words(s.json,A.failed)));stage();return}
-    let made;main.node.classList.add('asking');
+    let made;busy(A.waiting);
     try{made=await navigator.credentials.create({publicKey:{rp:{id:s.json.rp.id,name:s.json.rp.name},user:{id:new TextEncoder().encode(s.json.user.id),name:s.json.user.name,displayName:s.json.user.displayName},
       challenge:fromB64u(s.json.challenge),pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],excludeCredentials:(s.json.exclude||[]).map((id)=>({type:'public-key',id:fromB64u(id)})),
       authenticatorSelection:{userVerification:'required',residentKey:'discouraged'},attestation:'none',timeout:120000}})}
-    catch(e){main.node.classList.remove('asking');said.replaceChildren(note(cancelled(e)?A.cancelled:A.failed));stage();return}
-    main.node.classList.remove('asking');
-    const f=await api('POST','/v1/engine/passkey/finish',{code:s.json.code,credential:registrationOf(made)});
+    catch(e){idle();said.replaceChildren(note(cancelled(e)?A.cancelled:A.failed));stage();return}
+    busy(A.saving);saves.hidden=true;
+    const f=await track(api('POST','/v1/engine/passkey/finish',{code:s.json.code,credential:registrationOf(made)}));
+    idle();
+    if(S.screen!=='approve')return;
     if(f.status!==200){said.replaceChildren(note(words(f.json,A.failed)));stage();return}
+    if(typeof f.json.credential_id==='string'&&f.json.credential_id){
+      // The answer names the passkey: drawn at once. The status is read again in the background, and a later answer
+      // never takes the passkey away.
+      const pk={credential_id:f.json.credential_id};
+      eng=Object.assign({},eng,{passkey:pk});stage();
+      api('GET','/v1/engine').then((st)=>{if(st.status===200&&st.json&&typeof st.json==='object')eng=Object.assign({},st.json,{passkey:st.json.passkey||(eng&&eng.passkey)||pk})});
+      return;
+    }
     const st=await api('GET','/v1/engine');if(st.status===200)eng=st.json;
     stage();
   }
+  // The passkey's prompt opens on the tap itself: nothing is asked of the server before navigator.credentials.get.
   async function approve(){
-    said.replaceChildren();main.node.textContent=A.waiting;
+    said.replaceChildren();busy(A.waiting);
     let signed;
-    main.node.classList.add('asking');
-    try{signed=await signTerms(p.challenge,eng.passkey.credential_id)}catch(e){main.node.classList.remove('asking');said.replaceChildren(note(A.cancelled));stage();return}
-    main.node.classList.remove('asking');
+    try{signed=await signTerms(p.challenge,eng.passkey.credential_id)}catch(e){idle();said.replaceChildren(note(A.cancelled));stage();return}
+    // The ring stays while the approval is sent; the tick shows as soon as its answer is in.
+    busy(A.approving);
     const r=await track(api('POST','/v1/engine/proposals/'+encodeURIComponent(p.id)+'/approve',{terms_sha256:p.terms_sha256,credential:signed}));
+    idle();
     if(S.screen!=='approve')return;
     if(r.status===200&&r.json.status==='approved'&&r.json.held===true){
       // Held: the approval is stored and nothing is paid; the signature is kept for screen 4.

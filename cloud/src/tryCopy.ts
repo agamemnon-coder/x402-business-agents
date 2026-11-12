@@ -117,7 +117,12 @@ export const APPROVE = {
   saves: "This saves a test passkey for {host} on this device; you can delete it afterwards.",
   create: "Create your approval passkey",
   approve: "Approve {amount} with {method}",
+  /** On the button, each only while its step runs: the browser's passkey prompt is open, finish runs, approve runs. */
   waiting: "Waiting for your passkey…",
+  saving: "Saving your passkey…",
+  approving: "Approving…",
+  /** Under the button when a request is still out after 30 s (screens 3 and 4). */
+  slow: "This is taking longer than usual.",
   approved: "Approved. Nothing is paid yet.",
   next: "Pay it with your signature",
   cancelled: "Nothing was signed. Try again when you are ready.",
@@ -294,6 +299,9 @@ export const VISIBLE = {
     [APPROVE.heading, APPROVE.failed, APPROVE.fileAgain],
     [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.saves, APPROVE.create],
     [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.saves, APPROVE.waiting],
+    // Saving: the passkey is made on the device, so the sentence that it will be saved gives way.
+    [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.saving, APPROVE.slow],
+    [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.approving, APPROVE.slow],
     [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.approve.replace("{method}", METHOD.windows)],
     [APPROVE.heading, APPROVE.terms, APPROVE.cancelled, APPROVE.approve.replace("{method}", METHOD.other)],
     [APPROVE.heading, APPROVE.terms, APPROVE.noPasskey],
