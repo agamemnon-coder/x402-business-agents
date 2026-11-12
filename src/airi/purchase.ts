@@ -7,10 +7,12 @@
 //      lock: that is its hold) and runs at once. Above, a proposal whose terms (agent, amount, currency, merchant, items)
 //      the CFO signs with Face ID; it runs when the runner executes it (src/executors/index.ts).
 //   3. The run, each outside call a step in money_steps (src/policy/saga.ts): the checkout's order is opened (no card),
-//      the mandate is created from the terms only, the terms hash is checked again, the wallet owner taps in Airi
-//      (the link is shown on the operator console only), the credential goes to a fresh 0700 directory, the checkout
-//      reads it and pays, the directory is removed, and the result is reported to Airi. When Purser stops before the
-//      checkout, the mandate is cancelled.
+//      the mandate is created from the terms only, its description carrying the action's id and the full SHA-256 of
+//      those terms; the terms hash is checked again; the mandate is read back from Airi and must carry that id and the
+//      approved hash (Airi stores the description, it does not check it: the check is Purser's); only then the wallet
+//      owner taps in Airi (the link is shown on the operator console only), the credential goes to a fresh 0700
+//      directory, the checkout reads it and pays, the directory is removed, and the result is reported to Airi. When
+//      Purser stops before the checkout, the mandate is cancelled.
 //   4. Audit rows carry safe references only: the order's hash, the mandate id, the receipt's status and token type,
 //      the checkout's reference and code. Never the credential, its file, or the passkey link.
 //   5. After a crash nothing is sent twice: a started payment is looked up at the checkout by its reference; anything
@@ -36,13 +38,16 @@ import { frozen, paused } from "../policy/rules.js";
 import { finishStep, startStep, stepDone } from "../policy/saga.js";
 import { stopped } from "../policy/velocity.js";
 import { currentOrigin, withOrigin, type Origin } from "../provenance/origin.js";
-import { AiriRefusal, AiriWaitTimeout, CheckoutOutcomeUnknown, scrubText, type AiriCheckout, type AiriClient, type AiriMandateRequest, type CheckoutAnswer } from "./client.js";
+import { AIRI_TEXT_MAX, AiriRefusal, AiriWaitTimeout, CheckoutOutcomeUnknown, scrubText, type AiriCheckout, type AiriClient, type AiriMandateRecord, type AiriMandateRequest, type CheckoutAnswer } from "./client.js";
 import { airiPolicy, type AiriPolicy } from "./policy.js";
 
 export const AIRI_PURCHASE_KIND = "airi_purchase";
 export const AIRI_ALONE_RULE = "an Airi purchase within the CFO's limit for this rail";
 const TTL_MS = 30 * 60 * 1000;
 export const TMP_PREFIX = "purser-airi-";
+/** How often the mandate is looked for in Airi's list before the credential is asked for, and the wait between two tries. */
+export const READ_BACK_TRIES = 3;
+export const READ_BACK_WAIT_MS = 1500;
 
 export interface AiriPurchaseRequest {
   agent: Agent;
@@ -61,7 +66,8 @@ export type PurserRefusalCode =
   | "PURSER_EMERGENCY_STOP" | "PURSER_AGENT_PAUSED" | "PURSER_AGENT_STOPPED" | "PURSER_IDENTITY_DENIED"
   | "PURSER_AMOUNT_INVALID" | "PURSER_ITEMS_TOTAL_MISMATCH" | "PURSER_CURRENCY_NOT_ALLOWED"
   | "PURSER_MERCHANT_URL_INVALID" | "PURSER_MERCHANT_NOT_ALLOWED" | "PURSER_ABOVE_HARD_CAP"
-  | "PURSER_HASH_MISMATCH" | "PURSER_NOT_AN_AIRI_PURCHASE" | "PURSER_NO_TAP" | "PURSER_RESTARTED_BEFORE_CHECKOUT";
+  | "PURSER_HASH_MISMATCH" | "PURSER_MANDATE_HASH_MISMATCH" | "PURSER_MANDATE_NOT_READ_BACK"
+  | "PURSER_NOT_AN_AIRI_PURCHASE" | "PURSER_NO_TAP" | "PURSER_RESTARTED_BEFORE_CHECKOUT";
 
 export type AiriDecision = { route: "alone" } | { route: "cfo"; why: string } | { route: "refused"; code: PurserRefusalCode; reason: string };
 
@@ -83,6 +89,8 @@ export interface AiriDeps {
   say?: (line: string) => void;
   /** Where the 0700 credential directories go (default: the OS temp dir). */
   tmpRoot?: string;
+  /** The wait between two tries of the mandate read-back (default: a timer). */
+  sleep?: (ms: number) => Promise<void>;
 }
 
 const AMOUNT = /^(0|[1-9]\d{0,8})\.\d{2}$/;
@@ -143,8 +151,25 @@ function requestFromTerms(t: AiriTerms): AiriPurchaseRequest {
   };
 }
 
-/** The mandate's description carries the action id, so a restart can find the mandate it made. */
-const mandateDescription = (t: AiriTerms, actionId: string) => `${t.description} [${actionId}]`.slice(0, 200);
+/** The tag that ends a mandate's description: the action's id and the full SHA-256 of its terms. */
+const tagOf = (actionId: string, termsSha256: string) => `[${actionId} terms:${termsSha256}]`;
+
+/**
+ * The mandate's description: the purchase's own text, then the tag with the action's id (so a restart can find the
+ * mandate it made) and the full SHA-256 of the very terms the mandate is built from (the hash the CFO signed, above the
+ * limit). The text is cut to make room; the tag never is: the whole stays within AIRI_TEXT_MAX.
+ */
+export function mandateDescription(t: AiriTerms, actionId: string): string {
+  const tag = tagOf(actionId, termsHash(t));
+  const text = t.description.slice(0, Math.max(0, AIRI_TEXT_MAX - tag.length - 1)).trimEnd();
+  return text ? `${text} ${tag}` : tag;
+}
+
+/** The tag at the end of a mandate description, or null when it has none. */
+export function mandateTag(description: string): { actionId: string; termsSha256: string } | null {
+  const m = /\[(\S{1,64}) terms:([0-9a-f]{64})\]$/.exec(description);
+  return m ? { actionId: m[1]!, termsSha256: m[2]! } : null;
+}
 
 function mandateFromTerms(t: AiriTerms, actionId: string): AiriMandateRequest {
   return {
@@ -335,6 +360,17 @@ async function run(db: DB, deps: AiriDeps, row: Row, recheck: () => boolean, now
     return refuse(db, row, "purser", "PURSER_HASH_MISMATCH", "the terms no longer hash to what was approved; the mandate was cancelled and no credential requested", now, mandate.mandateId);
   }
 
+  // 3b. The mandate, read back from Airi: what Airi stores for this mandate id must carry this action's id and the
+  // approved terms hash. Otherwise the mandate is cancelled, the link is never shown and no credential is requested.
+  const back = await readBack(deps, row, mandate.mandateId);
+  if (!back.ok) {
+    audit(db, "system", "airi.mandate_read_back_failed", subject, { ...ids, mandate_id: mandate.mandateId, code: back.code, ...(back.found ? { action_id_in_mandate: safe(back.found.actionId), terms_sha256_in_mandate: back.found.termsSha256 } : {}) }, now);
+    await cancelQuietly(deps, db, row, mandate.mandateId, back.why, now);
+    return refuse(db, row, "purser", back.code, `${back.why}; the mandate was cancelled and no credential requested`, now, mandate.mandateId);
+  }
+  audit(db, "system", "airi.mandate_read_back", subject, { ...ids, mandate_id: mandate.mandateId, terms_sha256_in_mandate: back.termsSha256, match: true, status: safe(back.status) }, now);
+  say(`AIRI MANDATE ${row.action_id}: read back from Airi; its description carries this purchase's id and terms ${short(back.termsSha256)}`);
+
   // 4. The wallet owner's tap in Airi, then the credential into a fresh 0700 directory.
   setRow(db, row.action_id, { status: "WAITING_FOR_TAP" }, now);
   audit(db, "system", "airi.waiting_for_tap", subject, { ...ids, mandate_id: mandate.mandateId }, now);
@@ -385,6 +421,41 @@ async function run(db: DB, deps: AiriDeps, row: Row, recheck: () => boolean, now
     // The credential lives only for this checkout.
     rmSync(dir, { recursive: true, force: true });
   }
+}
+
+const short = (h: string) => `${h.slice(0, 8)}…`;
+
+type ReadBack =
+  | { ok: true; termsSha256: string; status: string }
+  | { ok: false; code: "PURSER_MANDATE_HASH_MISMATCH" | "PURSER_MANDATE_NOT_READ_BACK"; why: string; found?: { actionId: string; termsSha256: string } };
+
+/**
+ * Reads the mandate back from Airi and holds its description to this action's id and the approved terms hash (the
+ * row's order_sha256, which recheck() has just held to the approval). Airi stores the description; it does not check
+ * it. A mandate Airi does not list yet is asked for again, READ_BACK_TRIES times in all; a mandate that cannot be read
+ * back at all counts as not matching: nothing is assumed.
+ */
+async function readBack(deps: AiriDeps, row: Row, mandateId: string): Promise<ReadBack> {
+  const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const since = new Date(Date.parse(row.created_at) - 60_000).toISOString().replace(/\.\d{3}Z$/, "Z");
+  let stored: AiriMandateRecord | null;
+  for (let tries = 1; ; tries++) {
+    try {
+      stored = await deps.airi.readMandate(mandateId, since);
+    } catch (e) {
+      return { ok: false, code: "PURSER_MANDATE_NOT_READ_BACK", why: `the mandate could not be read back from Airi (${safe(e instanceof AiriRefusal ? `${e.code}: ${e.message}` : (e as Error).message ?? "")})` };
+    }
+    if (stored || tries >= READ_BACK_TRIES) break;
+    await sleep(READ_BACK_WAIT_MS);
+  }
+  if (!stored) return { ok: false, code: "PURSER_MANDATE_NOT_READ_BACK", why: `Airi did not list the mandate in ${READ_BACK_TRIES} tries` };
+  if (stored.description === null) return { ok: false, code: "PURSER_MANDATE_NOT_READ_BACK", why: "Airi listed the mandate with no description, so its terms hash could not be read back" };
+  const found = mandateTag(stored.description);
+  if (found && found.actionId === row.action_id && found.termsSha256 === row.order_sha256) return { ok: true, termsSha256: found.termsSha256, status: stored.status };
+  const why = !found ? `Airi's stored mandate does not carry this purchase's id and terms hash (its description has ${stored.description.length} characters)`
+    : found.actionId !== row.action_id ? `Airi's stored mandate carries the id ${safe(found.actionId)}, not ${row.action_id}`
+    : `Airi's stored mandate carries terms ${short(found.termsSha256)}, not the approved ${short(row.order_sha256)}`;
+  return { ok: false, code: "PURSER_MANDATE_HASH_MISMATCH", why, ...(found ? { found } : {}) };
 }
 
 function unconfirmed(db: DB, row: Row, mandateId: string, reference: string, reason: string, now: Date): AiriOutcome {

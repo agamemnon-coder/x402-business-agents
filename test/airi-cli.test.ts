@@ -121,6 +121,28 @@ describe("AiriCliClient: the answers, parsed strictly", () => {
   });
 });
 
+describe("AiriCliClient: the mandate read back", () => {
+  const tag = `[P-0001 terms:${"ab".repeat(32)}]`;
+  it("lists the mandates and returns the one with this id, with the description as Airi stores it", async () => {
+    const { c, seen } = client({ "mandate list": ok({ mandates: [{ mandateId: "mdt_0", status: "COMPLETED", description: "an older one" }, { mandateId: "mdt_1", status: "CREATED", description: `order 1 ${tag}`, createdAt: "2026-11-07T10:00:01Z" }], hasMore: false }) });
+    expect(await c.readMandate("mdt_1", "2026-11-07T09:59:00Z")).toEqual({ mandateId: "mdt_1", status: "CREATED", description: `order 1 ${tag}` });
+    expect(seen[1]!.args).toEqual(["mandate", "list", "--created-from", "2026-11-07T09:59:00Z", "--size", "100", "-o", "json", "--no-telemetry"]);
+  });
+
+  it("answers null when the mandate is not listed, and a null description when the row has none", async () => {
+    const { c } = client({ "mandate list": ok({ mandates: [{ mandateId: "mdt_1", status: "CREATED" }] }) });
+    expect(await c.readMandate("mdt_9", "2026-11-07T09:59:00Z")).toBeNull();
+    expect(await c.readMandate("mdt_1", "2026-11-07T09:59:00Z")).toEqual({ mandateId: "mdt_1", status: "CREATED", description: null });
+  });
+
+  it("refuses a list in another shape without repeating it, and keeps the CLI's own code when the list fails", async () => {
+    const odd = client({ "mandate list": ok({ rows: "4111111111111111" }) });
+    await expect(odd.c.readMandate("mdt_1", "2026-11-07T09:59:00Z")).rejects.toMatchObject({ code: "AIRI_OUTPUT_UNRECOGNISED" });
+    const down = client({ "mandate list": { code: 1, stdout: JSON.stringify({ error: { code: "unauthenticated", message: "sign in again" } }), stderr: "", timedOut: false } });
+    await expect(down.c.readMandate("mdt_1", "2026-11-07T09:59:00Z")).rejects.toMatchObject({ code: "unauthenticated" });
+  });
+});
+
 describe("scrubText", () => {
   it("keeps codes and words, drops what could be a secret", () => {
     expect(scrubText("declined: cvv 123, card 4111 1111 1111 1111, https://app.airi.com/x")).toBe("declined: cvv [digits], card [digits], [link]");

@@ -3,7 +3,7 @@
 // `npm run airi:vic-1 -- --dry`. Every result it produces carries its label.
 
 import { writeFileSync } from "node:fs";
-import { AiriRefusal, AiriWaitTimeout, CheckoutOutcomeUnknown, mandateCreateArgs, type AiriCheckout, type AiriClient, type AiriCredentialReceipt, type AiriMandate, type AiriMandateRequest, type AiriMandateResult, type AiriPaymentMethod, type AiriSession, type CheckoutAnswer } from "./client.js";
+import { AiriRefusal, AiriWaitTimeout, CheckoutOutcomeUnknown, mandateCreateArgs, type AiriCheckout, type AiriClient, type AiriCredentialReceipt, type AiriMandate, type AiriMandateRecord, type AiriMandateRequest, type AiriMandateResult, type AiriPaymentMethod, type AiriSession, type CheckoutAnswer } from "./client.js";
 
 export const STAND_IN_LABEL = "Stand-in for airi-cli: no call made, no card credential issued (not Airi, not Visa)";
 export const STAND_IN_CHECKOUT_LABEL = "Stand-in checkout: no merchant, nothing charged";
@@ -17,6 +17,12 @@ export interface StandInScript {
   noTap?: boolean;
   /** What `auth whoami` says. */
   session?: AiriSession;
+  /** What Airi keeps of a mandate's description (default: as sent); null: its list returns none. */
+  stored?: (description: string) => string | null;
+  /** The first this-many read-backs do not list the mandate yet. */
+  unlistedReads?: number;
+  /** The mandate list fails with this code. */
+  failRead?: string;
 }
 
 /** Records every call, so a test sees exactly what was asked, in order. */
@@ -26,6 +32,7 @@ export class StandInAiriClient implements AiriClient {
   readonly calls: { op: string; args: string[] }[] = [];
   readonly mandates = new Map<string, { description: string; status: string }>();
   private n = 0;
+  private reads = 0;
 
   constructor(private readonly script: StandInScript = {}) {}
 
@@ -54,6 +61,15 @@ export class StandInAiriClient implements AiriClient {
     this.calls.push({ op: "mandate list", args: ["--created-from", createdFrom] });
     for (const [id, m] of this.mandates) if (m.description === description) return { mandateId: id, status: m.status };
     return null;
+  }
+
+  async readMandate(mandateId: string, createdFrom: string): Promise<AiriMandateRecord | null> {
+    this.calls.push({ op: "mandate list", args: ["--mandate-id", mandateId, "--created-from", createdFrom] });
+    if (this.script.failRead) throw new AiriRefusal("airi", this.script.failRead, `stand-in: mandate list failed (${this.script.failRead})`);
+    this.reads += 1;
+    const m = this.mandates.get(mandateId);
+    if (!m || this.reads <= (this.script.unlistedReads ?? 0)) return null;
+    return { mandateId, status: m.status, description: this.script.stored ? this.script.stored(m.description) : m.description };
   }
 
   async getCredential(mandateId: string, file: string): Promise<AiriCredentialReceipt> {

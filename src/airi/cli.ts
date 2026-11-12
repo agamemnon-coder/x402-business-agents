@@ -14,7 +14,7 @@ import { createHash } from "node:crypto";
 import { readFileSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
 import { z } from "zod";
-import { AIRI_CLI_DOCUMENTED_VERSION, AiriRefusal, AiriWaitTimeout, mandateCreateArgs, scrubText, type AiriClient, type AiriCredentialReceipt, type AiriMandate, type AiriMandateRequest, type AiriMandateResult, type AiriPaymentMethod, type AiriSession } from "./client.js";
+import { AIRI_CLI_DOCUMENTED_VERSION, AiriRefusal, AiriWaitTimeout, mandateCreateArgs, scrubText, type AiriClient, type AiriCredentialReceipt, type AiriMandate, type AiriMandateRecord, type AiriMandateRequest, type AiriMandateResult, type AiriPaymentMethod, type AiriSession } from "./client.js";
 
 /** Where the container's install put it (npm -g, 7 November). */
 export const DEFAULT_AIRI_CLI = "/opt/node22/bin/airi-cli";
@@ -192,11 +192,20 @@ export class AiriCliClient implements AiriClient {
     return { mandateId: "mandate_id" in m ? m.mandate_id : m.mandateId, passkeyUrl: link };
   }
 
-  async findMandate(description: string, createdFrom: string): Promise<{ mandateId: string; status: string } | null> {
+  /** `mandate list` since `createdFrom`, most recent first, up to the 100 a page holds. */
+  private async listMandates(createdFrom: string): Promise<z.infer<typeof MandateRow>[]> {
     const raw = this.parse("mandate list", MandateList, await this.run("mandate list", ["mandate", "list", "--created-from", createdFrom, "--size", "100"]));
-    const rows = Array.isArray(raw) ? raw : "mandates" in raw ? raw.mandates : "items" in raw ? raw.items : "data" in raw ? raw.data : raw.content;
-    const hit = rows.find((r) => r.description === description);
+    return Array.isArray(raw) ? raw : "mandates" in raw ? raw.mandates : "items" in raw ? raw.items : "data" in raw ? raw.data : raw.content;
+  }
+
+  async findMandate(description: string, createdFrom: string): Promise<{ mandateId: string; status: string } | null> {
+    const hit = (await this.listMandates(createdFrom)).find((r) => r.description === description);
     return hit ? { mandateId: hit.mandateId, status: hit.status } : null;
+  }
+
+  async readMandate(mandateId: string, createdFrom: string): Promise<AiriMandateRecord | null> {
+    const hit = (await this.listMandates(createdFrom)).find((r) => r.mandateId === mandateId);
+    return hit ? { mandateId: hit.mandateId, status: hit.status, description: hit.description ?? null } : null;
   }
 
   async getCredential(mandateId: string, file: string): Promise<AiriCredentialReceipt> {

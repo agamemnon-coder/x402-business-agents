@@ -63,7 +63,12 @@ describe("vic-1 on the stand-ins", () => {
     expect(rec.label).toMatch(/DRY RUN/);
     const text = JSON.stringify(rec);
     expect(text).not.toContain("stand-in.invalid");
-    expect(calls.filter((c) => c.by === "airi").map((c) => c.op)).toEqual(["whoami", "listPaymentMethods", "createMandate", "getCredential", "reportResult", "createMandate", "getCredential", "reportResult"]);
+    // Each mandate is read back from Airi before its credential is asked for.
+    expect(calls.filter((c) => c.by === "airi").map((c) => c.op)).toEqual(["whoami", "listPaymentMethods", "createMandate", "readMandate", "getCredential", "reportResult", "createMandate", "readMandate", "getCredential", "reportResult"]);
+    // The record's audit rows hold the read-back of both purchases: the mandate's id and the terms hash Airi stores, matching.
+    const back = (rec.audit as { event: string; payload: { mandate_id: string; order_sha256: string; terms_sha256_in_mandate: string; match: boolean } }[]).filter((r) => r.event === "airi.mandate_read_back");
+    expect(back).toHaveLength(2);
+    for (const r of back) expect(r.payload).toMatchObject({ match: true, terms_sha256_in_mandate: r.payload.order_sha256 });
   });
 
   it("the preflight stops with 'Max must log in again' when the Airi session has lapsed or is about to", async () => {

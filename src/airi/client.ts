@@ -1,7 +1,8 @@
 // Airi rail (docs/plans/vic-airi.md). What Purser needs from Airwallex's Airi wallet, as the public airi-cli README and
 // its airi-get-credential skill describe it (github.com/airwallex/airi-cli, 0.1.0-beta.4, read 7 November 2026): list
-// the agent-enabled payment methods, create a mandate for one exact checkout, fetch the single-use credential once the
-// wallet owner has approved it with a passkey, report the checkout's result, cancel.
+// the agent-enabled payment methods, create a mandate for one exact checkout, read that mandate back as Airi stores it,
+// fetch the single-use credential once the wallet owner has approved it with a passkey, report the checkout's result,
+// cancel.
 //
 // Two implementations: the real one runs the pinned airi-cli binary (./cli.ts); the stand-in (./standIn.ts) calls
 // nothing. Airwallex's own docs do not use the words "Visa Intelligent Commerce"; nothing in this code says it either.
@@ -52,11 +53,28 @@ export interface AiriMandateRequest {
   description: string;
 }
 
+/**
+ * Purser's own bound for each free-text flag of `mandate create` (source, payment method id, merchant name,
+ * description). airi-cli 0.1.0-beta.4 states no length limit for --description (its README's flag table says "Mandate
+ * description" and nothing more) and its binary holds no such check (read 12 November 2026), so what Airi's server
+ * accepts is not documented. The live run of 7 November (vic-1) sent descriptions of 39 and 56 characters; with the
+ * terms hash in them (src/airi/purchase.ts, mandateDescription) the same two are 110 and 127. Purser keeps to 200, and
+ * reads the mandate back afterwards (readMandate), so a description Airi cut short or changed is found out.
+ */
+export const AIRI_TEXT_MAX = 200;
+
 export interface AiriMandate {
   mandateId: string;
   /** Where the wallet owner approves this mandate with a passkey: a one-time link. Shown to that person on the
    *  operator console only; never written to a log, the audit log, a record, an error or git. */
   passkeyUrl: string;
+}
+
+/** A mandate as Airi stores it, read back from `mandate list`: its id, its status and its description (null when the row has none). */
+export interface AiriMandateRecord {
+  mandateId: string;
+  status: string;
+  description: string | null;
 }
 
 /** What `mandate get-credential --file` prints: no card data. */
@@ -95,6 +113,9 @@ export interface AiriClient {
   createMandate(req: AiriMandateRequest): Promise<AiriMandate>;
   /** A mandate this purchase may already have (after a crash): looked up by its description, never created twice. */
   findMandate(description: string, createdFrom: string): Promise<{ mandateId: string; status: string } | null>;
+  /** The mandate with this id as Airi stores it now, from the mandates created since `createdFrom` (airi-cli has no
+   *  command that reads one mandate: `mandate list` is the only read). Null when Airi does not list it. */
+  readMandate(mandateId: string, createdFrom: string): Promise<AiriMandateRecord | null>;
   /** Waits for the wallet owner's approval, then writes the credential to `file` (0600). Returns the receipt only.
    *  Throws AiriWaitTimeout when the owner did not tap in time, AiriRefusal when Airi refused. */
   getCredential(mandateId: string, file: string): Promise<AiriCredentialReceipt>;
@@ -148,7 +169,7 @@ export function scrubText(s: string): string {
 
 // ---- the documented command line ---------------------------------------------------------------------------------
 
-const SAFE_TEXT = /^[^\p{Cc}]{1,200}$/u;
+const SAFE_TEXT = new RegExp(`^[^\\p{Cc}]{1,${AIRI_TEXT_MAX}}$`, "u");
 /** The CLI parses an item as `name:<product>,unit_price:<price>,quantity:<n>`, so a name holding , or : could add fields. */
 const ITEM_NAME = /^[^,:\p{Cc}]{1,120}$/u;
 const AMOUNT = /^(0|[1-9]\d{0,8})\.\d{2}$/;
