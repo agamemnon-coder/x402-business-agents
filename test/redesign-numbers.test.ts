@@ -93,6 +93,9 @@ const visibleText = (html: string) => html
   .replace(/It passed on the \w+ attempt that day\./g, " ")
   // What the Airwallex sandbox reports for the Airi run's two payments (12 Nov, folded on /visa), dated with its own
   // record; its values are checked against docs/runs/airwallex-vic-payment-intents-<date>.json in test/vic-network.test.ts.
+  // The latest live run (vic-3, 12 Nov) on top of /visa: its figures are checked against docs/runs/2026-11-12-vic-3.json
+  // in test/vic3-visa.test.ts.
+  .replace(/Latest live run[\s\S]*?docs\/runs\/2026-11-12-vic-3\.json/g, " ")
   .replace(/As reported by the Airwallex sandbox[\s\S]*?airwallex-vic-payment-intents-[\d-]+\.json/g, " ")
   // The CFO's policy next to Visa's published VIC rules (12 Nov, folded on /visa): Purser's figures from the two Airi
   // records and the code's constants, Visa's from its own quoted words; all checked in test/vic-rules.test.ts.
