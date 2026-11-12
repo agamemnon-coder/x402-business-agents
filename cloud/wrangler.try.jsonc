@@ -1,6 +1,6 @@
 // purser-try: a deployment of its own for the company engine on test money (a stand-in bank; no payment reaches a real
 // bank). It is cloud/wrangler.jsonc with only these changed: the name, the workers.dev address (RP_ID, ORIGIN), its own
-// D1 database and R2 bucket, and ENGINE_MODE "test_money" (test/cloud-try-config.test.ts holds the two files to that).
+// D1 database, no R2 bucket (documents and the archive are kept in D1), and ENGINE_MODE "test_money" (test/cloud-try-config.test.ts holds the two files to that).
 // Deploy it only as purser-try, never pointed at an existing Worker: a Durable Object class and its migration cannot be
 // rolled back past their first deploy. No secret goes in this file: SESSION_SECRET and ADMIN_TOKEN_SHA256 are set with
 // wrangler secret put. No mail domain, no real data.
@@ -17,10 +17,7 @@
     // wrangler d1 create purser-try --location weur  → paste its database_id here.
     { "binding": "DB", "database_name": "purser-try", "database_id": "SET-AFTER-wrangler-d1-create", "migrations_dir": "migrations" }
   ],
-  "r2_buckets": [
-    // wrangler r2 bucket create purser-try-docs --jurisdiction eu
-    { "binding": "DOCS", "bucket_name": "purser-try-docs", "jurisdiction": "eu" }
-  ],
+  // No R2 bucket: without the DOCS binding the Worker keeps documents and the archive in D1 (cloud/src/blobsSql.ts).
   "vars": {
     // The deployment's own address: passkeys are bound to it.
     "RP_ID": "purser-try.max-31b.workers.dev",

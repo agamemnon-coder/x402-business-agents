@@ -30,14 +30,17 @@ describe("the engine's deployment of its own on test money (cloud/wrangler.try.j
       "name": ["purser-cloud", "purser-try"],
       "workers_dev": [false, true],
       "d1_databases.0.database_name": ["purser-cloud", "purser-try"],
-      "r2_buckets.0.bucket_name": ["purser-cloud-docs", "purser-try-docs"],
+      // No R2: the owner's decision of 12 November (R2 is not enabled on the account); the documents live in D1.
+      "r2_buckets.0.binding": ["DOCS", undefined],
+      "r2_buckets.0.bucket_name": ["purser-cloud-docs", undefined],
+      "r2_buckets.0.jurisdiction": ["eu", undefined],
       "vars.RP_ID": [expect.any(String), "purser-try.max-31b.workers.dev"],
       "vars.ORIGIN": [expect.any(String), "https://purser-try.max-31b.workers.dev"],
       "vars.ENGINE_MODE": [undefined, "test_money"],
     });
-    // Its own stores: the database is created for it (the id is filled in after wrangler d1 create), the bucket in the EU.
+    // Its own database (the id is filled in after wrangler d1 create), and no bucket at all.
     expect(mine.get("d1_databases.0.database_id")).toBe("SET-AFTER-wrangler-d1-create");
-    expect(mine.get("r2_buckets.0.jurisdiction")).toBe("eu");
+    expect(tryConfig()).not.toHaveProperty("r2_buckets");
     // The daily purge stays: nothing says a try deployment must keep closed companies.
     expect(mine.get("triggers.crons.0")).toBe(base.get("triggers.crons.0"));
   });

@@ -7,6 +7,8 @@ import { d1Sql, type Sql } from "../cloud/src/store.js";
 
 const fresh = (): Sql => (process.env.CLOUD_DB === "d1" && globalThis.__cloudD1 ? d1Sql(globalThis.__cloudD1.next()) : sqliteSql());
 const bytes = (n: number, seed = 7): Uint8Array => Uint8Array.from({ length: n }, (_, i) => (i * 31 + seed) & 0xff);
+/** Byte for byte, without the element-by-element diff a deep equal makes of a megabyte. */
+const same = (got: Uint8Array | null, want: Uint8Array): boolean => got !== null && Buffer.from(got).equals(Buffer.from(want));
 
 describe("the cloud's document store in its own database (no R2)", () => {
   it("gives back the same bytes it was given, also empty and also over many parts", async () => {
@@ -15,7 +17,7 @@ describe("the cloud's document store in its own database (no R2)", () => {
     await blobs.put("t/a/docs/big.pdf", big);
     await blobs.put("t/a/docs/empty.pdf", new Uint8Array(0));
     await blobs.put("t/a/docs/small.pdf", bytes(10));
-    expect(await blobs.get("t/a/docs/big.pdf")).toEqual(big);
+    expect(same(await blobs.get("t/a/docs/big.pdf"), big)).toBe(true);
     expect(await blobs.get("t/a/docs/empty.pdf")).toEqual(new Uint8Array(0));
     expect(await blobs.get("t/a/docs/small.pdf")).toEqual(bytes(10));
     expect(await blobs.get("t/a/docs/none.pdf")).toBeNull();
@@ -26,7 +28,7 @@ describe("the cloud's document store in its own database (no R2)", () => {
     const blobs = sqlBlobs(sql);
     const backing = bytes(BLOB_PART_BYTES + 100);
     await blobs.put("k/view", backing.subarray(50, 50 + BLOB_PART_BYTES));
-    expect(await blobs.get("k/view")).toEqual(backing.slice(50, 50 + BLOB_PART_BYTES));
+    expect(same(await blobs.get("k/view"), backing.slice(50, 50 + BLOB_PART_BYTES))).toBe(true);
     const longest = await sql.first<{ n: number }>("SELECT MAX(LENGTH(data)) AS n FROM cloud_blob_parts");
     expect(longest!.n).toBeLessThanOrEqual(1_000_000);
   });

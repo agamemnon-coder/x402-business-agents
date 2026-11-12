@@ -117,7 +117,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/engine/proposals/{id}` | read | One proposal: the hash of its exact terms, the challenge a passkey signs, the facts a person reads; `{ proposal }`. |
 | `POST /v1/engine/passkey/start` | admin | A session only, never a key. Start the signed-in person's approval passkey: `{ challenge, code, rp, user, exclude }`. |
 | `POST /v1/engine/passkey/finish` | admin | A session only. `{ code, credential }`: the new passkey, labelled with the signed-in person's name; answers `{ credential_id }`, or 409 with the engine's reason when refused. |
-| `POST /v1/engine/proposals/{id}/approve` | admin | A session only. `{ terms_sha256, credential }`: the passkey's signature over the proposal's challenge. Answers `{ status, message, settled }`; only `approved` pays, on the stand-in bank. 404 for a proposal the company's engine does not hold. |
+| `POST /v1/engine/proposals/{id}/approve` | admin | A session only. `{ terms_sha256, credential }`: the passkey's signature over the proposal's challenge. Answers `{ status, message, settled }`; only `approved` pays, on the stand-in bank. A `terms_sha256` other than the proposal's is refused before the signature is read. 404 for a proposal the company's engine does not hold. |
 | `POST /v1/engine/proposals/{id}/retry` | admin | Try again: a payment that was approved but whose execution failed (the stand-in bank was away, say) is run once more by the executor's own resume path, which looks a payout written before the failure up by its request id and never pays twice. Answers `{ status: "retried", message, settled }`; 409 with the engine's reason when there is nothing to retry (paid, never approved, refused); 404 for a proposal the company's engine does not hold. |
 | `POST /v1/engine/sync` | admin | Follow the payments, book, archive and feed the read model again; safe to repeat. |
 | `GET /v1/engine/events` | read | What the engine did, oldest first: `?after=<seq>&limit=<1 to 200>`; `{ items, next }`. |
@@ -131,6 +131,12 @@ Durable Object, `CompanyEngine`). The routes answer 404 unless the Worker has th
 `ENGINE_MODE=test_money`. With both, each company's engine runs in its own Durable Object on its own SQLite
 (`cloud/src/engine/object.ts`), which keeps its ledger, its documents and its stand-in bank. The engine in
 `cloud/src/engine/node.ts` keeps each ledger in memory and is used by the tests only.
+
+A deployment without R2 leaves the `DOCS` binding out (`cloud/wrangler.try.jsonc`, the engine's deployment of its own,
+`purser-try`). The Worker then keeps every document it would put in R2 (the read model's documents, the archive under
+`t/<company>/vault/`, e-mails, staged exports) in D1 instead, in the tables `cloud_blobs` and `cloud_blob_parts`
+(`cloud/src/blobsSql.ts`): base64 in parts of 600,000 bytes, a document's header row written after its last part, so a
+write that fails half way leaves nothing to read. `GET /v1/health` then reports the D1 store under `r2`.
 
 ### The transactions register
 
