@@ -3,7 +3,8 @@
 // `npm run airi:vic-1 -- --dry`. Every result it produces carries its label.
 
 import { writeFileSync } from "node:fs";
-import { AiriRefusal, AiriWaitTimeout, CheckoutOutcomeUnknown, mandateCreateArgs, type AiriCheckout, type AiriClient, type AiriCredentialReceipt, type AiriMandate, type AiriMandateRecord, type AiriMandateRequest, type AiriMandateResult, type AiriPaymentMethod, type AiriSession, type CheckoutAnswer } from "./client.js";
+import { AiriRefusal, AiriWaitTimeout, CheckoutOutcomeUnknown, mandateCreateArgs, type AiriCheckout, type AiriClient, type AiriCredentialReceipt, type AiriMandate, type AiriMandateRecord, type AiriMandateRequest, type AiriMandateResult, type AiriPaymentMethod, type AiriSession, type CheckoutAnswer, type CheckoutOrder } from "./client.js";
+import { termsMetadata, type IntentMetadataReader } from "./termsMetadata.js";
 
 export const STAND_IN_LABEL = "Stand-in for airi-cli: no call made, no card credential issued (not Airi, not Visa)";
 export const STAND_IN_CHECKOUT_LABEL = "Stand-in checkout: no merchant, nothing charged";
@@ -111,21 +112,23 @@ export interface StandInCheckoutScript {
   lookup?: CheckoutAnswer | null;
 }
 
-/** A stand-in merchant checkout: never reads the credential's contents, only that the file is there. */
-export class StandInCheckout implements AiriCheckout {
+/** A stand-in merchant checkout: never reads the credential's contents, only that the file is there. It keeps each
+ *  order's metadata (the signed terms hash and proposal id, as checkout.ts sends them) so a dry run can read it back. */
+export class StandInCheckout implements AiriCheckout, IntentMetadataReader {
   readonly kind = "stand-in" as const;
   readonly label = STAND_IN_CHECKOUT_LABEL;
   readonly seen: { op: string; reference: string; credentialFile?: string }[] = [];
   private n = 0;
+  private readonly metadata = new Map<string, Record<string, string>>();
 
   constructor(private readonly script: StandInCheckoutScript = {}) {}
 
-  async prepare(order: { ref: string; amount: string; currency: string; description: string }): ReturnType<AiriCheckout["prepare"]> {
+  async prepare(order: CheckoutOrder): ReturnType<AiriCheckout["prepare"]> {
     if (this.script.unavailable) return { outcome: "NOT_SUBMITTED", reference: null, code: this.script.unavailable, reason: "stand-in: the checkout cannot take orders" };
     this.n += 1;
     const reference = `standin-order-${this.n}`;
+    if (order.signed) this.metadata.set(reference, termsMetadata(order.signed));
     this.seen.push({ op: "prepare", reference });
-    void order;
     return { reference };
   }
 
@@ -133,6 +136,13 @@ export class StandInCheckout implements AiriCheckout {
     this.seen.push({ op: "pay", reference, credentialFile });
     if (this.script.noAnswer) throw new CheckoutOutcomeUnknown(reference, "stand-in: no answer");
     return this.script.decline ? { outcome: "DECLINED", reference, code: this.script.decline } : { outcome: "SUCCEEDED", reference, code: "STAND_IN" };
+  }
+
+  /** The order's metadata as it was stored on prepare; null when it had none (no signed terms). */
+  async readMetadata(reference: string): Promise<Record<string, string> | null> {
+    this.seen.push({ op: "read metadata", reference });
+    const m = this.metadata.get(reference);
+    return m ? { ...m } : null;
   }
 
   async lookup(reference: string): Promise<CheckoutAnswer | null> {

@@ -12,6 +12,7 @@
 // file (./credential.ts), and the executor deletes it and its directory afterwards.
 
 import { CVV_PATTERN, SCRUB_DIGITS_FROM } from "./cardData.js";
+import type { SignedTerms } from "./termsMetadata.js";
 
 /** The airi-cli release these flags and output shapes were read from. The real client refuses any other version. */
 export const AIRI_CLI_DOCUMENTED_VERSION = "0.1.0-beta.4";
@@ -131,12 +132,16 @@ export type CheckoutAnswer =
   | { outcome: "NOT_SUBMITTED"; reference: string | null; code: string; reason: string };
 
 /** The merchant's checkout: the only code that reads the credential file. */
+/** An order for the merchant's checkout. `signed`: the terms the CFO signed for it (above the limit only); the
+ *  checkout puts their hash and the proposal id on the order (Airwallex: PaymentIntent metadata, src/airi/termsMetadata.ts). */
+export interface CheckoutOrder { ref: string; amount: string; currency: string; description: string; signed?: SignedTerms }
+
 export interface AiriCheckout {
   readonly kind: "stand-in" | "airwallex-sandbox" | "airwallex-sandbox-hosted";
   readonly label: string;
   /** Opens the order at the merchant, without the card (Airwallex: a PaymentIntent). Its reference is recorded
    *  before the card is sent, so a crash can be looked up. NOT_SUBMITTED when the merchant cannot take it. */
-  prepare(order: { ref: string; amount: string; currency: string; description: string }): Promise<{ reference: string } | Extract<CheckoutAnswer, { outcome: "NOT_SUBMITTED" }>>;
+  prepare(order: CheckoutOrder): Promise<{ reference: string } | Extract<CheckoutAnswer, { outcome: "NOT_SUBMITTED" }>>;
   /** Pays the prepared order with the card in `credentialFile`. Throws CheckoutOutcomeUnknown only when the outcome
    *  is unknown; no error carries card data. */
   pay(reference: string, ref: string, credentialFile: string): Promise<CheckoutAnswer>;
