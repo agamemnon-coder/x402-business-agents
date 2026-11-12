@@ -316,6 +316,76 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await look(page, `${path} ${tag}`, w);
       const t = await page.evaluate(() => document.body.innerText);
       if (path === "/runs" && !/Last live run: \d{1,2} \w{3} \d{4}/.test(t)) fail(`/runs ${tag}: no "Last live run" date`);
+      // /runs as a timeline (jury, 12 Nov): filters that keep the newest run, by Tab and Enter too; the rehearsals closed
+      // and opened by their summary or a link to one of them; 44 px tap targets and a short page on a phone.
+      if (path === "/runs" && (w === 390 || w === 1440)) {
+        // As strings: tsx would wrap named functions in a helper the page does not have.
+        const rowsNow = async () => page.evaluate(`[...document.querySelectorAll("ol.tl > li.run")].filter((li) => !li.closest("details")).map((li) => ({ key: li.id, cls: li.className.split(" "), shown: !!li.offsetParent }))`) as Promise<{ key: string; cls: string[]; shown: boolean }[]>;
+        const small = async () => page.evaluate(`[...document.querySelector("main").querySelectorAll("a, button, summary")].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && e.checkVisibility({ visibilityProperty: true }); }).filter((e) => e.getBoundingClientRect().height < 44).map((e) => Math.round(e.getBoundingClientRect().height) + "px " + (e.getAttribute("aria-label") || e.textContent || "").trim().slice(0, 30))`) as Promise<string[]>;
+        const live = await rowsNow();
+        const newest = live[0];
+        if (!newest || !newest.cls.includes("newest") || live.filter((r) => r.cls.includes("newest")).length !== 1) fail(`/runs ${tag}: the first live run is not the one marked newest`);
+        if (live.some((r) => !r.shown)) fail(`/runs ${tag}: not every live run shows on load`);
+        if (await page.evaluate(`document.querySelector("details.rehs").open`)) fail(`/runs ${tag}: the rehearsals group is open on load`);
+        if (w === 390) {
+          const height = await page.evaluate(() => document.documentElement.scrollHeight);
+          if (height > 2700) fail(`/runs ${tag}: ${height}px tall with every fold closed (at most 2,700; 5,386 before the timeline)`);
+          for (const s of await small()) fail(`/runs ${tag}: a tap target under 44px, folds closed: ${s}`);
+          await page.evaluate(`document.querySelectorAll("main details").forEach((d) => { d.open = true; })`);
+          for (const s of await small()) fail(`/runs ${tag}: a tap target under 44px, every fold open: ${s}`);
+          await page.evaluate(`document.querySelectorAll("main details").forEach((d) => { d.open = false; })`);
+        }
+        const filters = await page.$$eval("nav.flt a", (els) => els.map((a) => (a.getAttribute("href") ?? "").slice(1)));
+        if (filters[0] !== "all" || filters.length < 5) fail(`/runs ${tag}: the filters are not All and the partners (${filters.join(", ")})`);
+        for (const id of filters.slice(1)) {
+          await page.click(`nav.flt a[href="#${id}"]`);
+          // The mark follows the hashchange event, which fires after the click returns. Polled with page.evaluate, which the
+          // page's CSP allows (waitForFunction evaluates a string in the page, which its CSP refuses as eval).
+          for (let i = 0; i < 40 && !(await page.evaluate(`location.hash === "#${id}" && document.querySelector('nav.flt a[href="#${id}"]').getAttribute("aria-current") === "true"`)); i++) await page.waitForTimeout(50);
+          const seen = await rowsNow();
+          const wrong = seen.filter((r) => r.shown !== (r.cls.includes(`f-${id}`) || r.cls.includes("newest")));
+          if (wrong.length) fail(`/runs#${id} ${tag}: shows or hides the wrong runs (${wrong.map((r) => r.key).join(", ")})`);
+          if (!seen[0]?.shown) fail(`/runs#${id} ${tag}: the newest run is hidden`);
+          if (!seen.some((r) => r.shown && r.cls.includes(`f-${id}`))) fail(`/runs#${id} ${tag}: no run left`);
+          if (await page.getAttribute(`nav.flt a[href="#${id}"]`, "aria-current") !== "true") fail(`/runs#${id} ${tag}: the active filter is not marked`);
+        }
+        await page.click('nav.flt a[href="#all"]');
+        if ((await rowsNow()).some((r) => !r.shown)) fail(`/runs#all ${tag}: "All" does not show every live run again`);
+        // By keyboard: Tab reaches a filter, Enter applies it.
+        await page.evaluate(() => { (document.activeElement as HTMLElement | null)?.blur(); window.scrollTo(0, 0); });
+        let tabs = 0;
+        while (tabs++ < 60 && !(await page.evaluate(`!!document.activeElement && document.activeElement.matches('nav.flt a[href="#metal"]')`))) await page.keyboard.press("Tab");
+        if (tabs > 60) fail(`/runs ${tag}: the Metal filter is not reached by Tab`);
+        else {
+          await page.keyboard.press("Enter");
+          await page.waitForTimeout(100);
+          const seen = await rowsNow();
+          if (await page.evaluate(() => location.hash) !== "#metal" || seen.some((r) => r.shown !== (r.cls.includes("f-metal") || r.cls.includes("newest")))) fail(`/runs ${tag}: Enter on the Metal filter does not filter`);
+        }
+        // The rehearsals open by their summary; a link to one of them opens the group with the run in view.
+        await page.goto(`${base}/runs`, { waitUntil: "load" });
+        await page.click("details.rehs > summary");
+        if (!(await page.evaluate(`document.querySelector("details.rehs").open`)) || !(await page.isVisible("#agent-1"))) fail(`/runs ${tag}: the rehearsals do not open by their summary`);
+        await page.goto("about:blank");
+        await page.goto(`${base}/runs#agent-1`, { waitUntil: "load" });
+        await page.waitForTimeout(200);
+        const at = await page.evaluate(`(() => { const r = document.getElementById("agent-1").getBoundingClientRect(); return { open: document.querySelector("details.rehs").open, top: r.top, h: innerHeight }; })()`) as { open: boolean; top: number; h: number };
+        if (!at.open || at.top < 0 || at.top > at.h - 60) fail(`/runs#agent-1 ${tag}: the rehearsal is not opened and in view (${JSON.stringify(at)})`);
+        // Without JavaScript the filters still work (they are links and CSS) and keep the newest run.
+        if (scheme === "light") {
+          const off = await browser.newContext({ viewport: { width: w, height: h }, javaScriptEnabled: false });
+          const p2 = await off.newPage();
+          for (const id of filters) {
+            await p2.goto(`${base}/runs#${id}`, { waitUntil: "load" });
+            const keys = live.map((r) => r.key);
+            const shown = await Promise.all(keys.map((k) => p2.isVisible(`li.run#${k}`)));
+            const wrong = live.filter((r, i) => shown[i] !== (id === "all" || r.cls.includes(`f-${id}`) || r.cls.includes("newest")));
+            if (wrong.length) fail(`/runs#${id} ${tag}, JavaScript off: shows or hides the wrong runs (${wrong.map((r) => r.key).join(", ")})`);
+          }
+          await off.close();
+        }
+        await page.goto(`${base}/runs`, { waitUntil: "load" });
+      }
       if (path !== "/runs" && !/What Claude decided · \d+/.test(t)) fail(`${path} ${tag}: no decisions section`);
       const font = await page.evaluate(() => document.fonts.check("16px Inter"));
       if (!font) fail(`${path} ${tag}: Inter did not load`);

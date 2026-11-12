@@ -1,18 +1,30 @@
 // /runs and /agents/<id> (competitor gap list, 10 Nov): every live run in one list with its ids, checks and records,
 // and one page per Kit 11 agent, every figure read from the records. docs/runs/README.md is the same list, generated.
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import { AGENT_IDS, agentView } from "../src/redesign/agents.js";
 import { REPO_BLOB } from "../src/redesign/metalStory.js";
+import { esc } from "../src/redesign/ui.js";
 import { loadRecord, decisionsOf } from "../src/redesign/run.js";
-import { MAIN_RUN_GLOSSARY, liveRuns, mdCell, runsReadme } from "../src/redesign/runs.js";
+import { KIND_LABEL, MAIN_RUN_GLOSSARY, kindOf, liveRuns, mdCell, runsPage, runsReadme, type RunKind, type RunRow } from "../src/redesign/runs.js";
 import { loadTrace } from "../src/redesign/trace.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
+import { visibleWords } from "./support/visibleWords.js";
 
 const pages = buildPages({ ...process.env, TRY_SIGN_ENABLED: "on" }) as Pages;
 const text = (html: string) => html.replace(/<style>[\s\S]*?<\/style>/g, " ").replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ");
 const get = (path: string) => pageResponse(new Request(`https://kit11.example${path}`), pages);
+/** Everything a visitor can read on a page, folds included: scripts, styles, drawings and tags stripped. */
+const allText = (html: string) => text(html.replace(/<script[\s\S]*?<\/script>/g, " "));
+/** The run entries in a piece of the page: each one's classes, its key (the anchor), its HTML and its text. */
+const entriesOf = (html: string) => [...html.matchAll(/<li class="run ([^"]*)" id="([^"]+)">([\s\S]*?)<\/li>/g)].map((m) => ({ cls: m[1]!.split(" "), key: m[2]!, html: m[3]!, text: allText(m[3]!) }));
+/** The list of live runs, and the closed group of rehearsals after it. */
+const liveList = (html: string) => /<ol class="tl">[\s\S]*?<\/ol>/.exec(html)?.[0] ?? "";
+const rehGroup = (html: string) => /<details class="rehs" id="rehearsals">[\s\S]*?<\/ol>/.exec(html)?.[0] ?? "";
+/** What an entry shows without opening its fold. */
+const inSight = (entryHtml: string) => entryHtml.split("<details")[0]!;
+const escAttr = esc;
 
 describe("/runs", () => {
   const rows = liveRuns();
@@ -96,13 +108,23 @@ describe("/runs", () => {
     expect(tl.checks).toMatch(/14 Airwallex calls \(7 on 10 Nov, 7 on 12 Nov\)/);
     expect(twoLocksPaid()).toMatch(/14 Airwallex calls in total/);
     expect(`${tl.title} ${tl.rails}`).not.toMatch(/CFO/);
-    // The card's big numbers end in PAID, said to be simulated settlement.
-    expect(tl.stats!.at(-1)).toEqual({ v: "PAID", l: "settlement simulated" });
+    // The entry's one line ends in PAID, said to be simulated settlement and signed by a test passkey; its amount is the
+    // logs' (12 Nov, the timeline: the big numbers per card went, the one line replaces them).
+    expect(tl.line).toMatch(/PAID/);
+    expect(tl.line).toMatch(/settlement simulated/);
+    expect(tl.line).toMatch(/test passkey/);
+    expect(tl.line!.match(/EUR \d+\.\d{2}/g)).toEqual(["EUR 240.00"]);
+    expect(`${tl.name} ${tl.line}`).not.toMatch(/CFO/);
+    expect(tl.stats).toBeUndefined();
     // Both logs are linked, the 12 Nov one first, and both exist.
     expect(tl.files.map((f) => f.href)).toEqual(["../../docs/runs/2026-11-12-airwallex-two-locks-paid.md", "../../docs/runs/2026-11-10-airwallex-two-locks.md"]);
     for (const f of tl.files) expect(existsSync(f.href.replace("../../", ""))).toBe(true);
-    // The page shows it as the newest card.
-    expect(text(pages.runs!)).toContain(`Last live run: 12 Nov 2026 (${tl.title})`);
+    // The page dates the last live run by it and shows it as the newest entry, under its plain name.
+    expect(text(pages.runs!)).toContain("Last live run: 12 Nov 2026.");
+    const first = entriesOf(liveList(pages.runs!))[0]!;
+    expect(first.key).toBe("two-locks-1");
+    expect(inSight(first.html)).toContain(`<h2>${escAttr(tl.name!)}</h2>`);
+    expect(inSight(first.html)).toContain('<time datetime="2026-11-12T09:43:58.000Z" title="12 Nov 2026">12 Nov</time>');
   });
 
   it("takes every id from its record", () => {
@@ -149,6 +171,331 @@ describe("/runs", () => {
     expect(r.status).toBe(200);
     expect(r.headers.get("content-security-policy")).toMatch(/script-src|default-src 'none'/);
     expect(await r.text()).toContain("Every live run");
+    // The policy is computed from the page's one inline script and one inline style: the page keeps to one of each.
+    expect(pages.runs!.match(/<script>/g)).toHaveLength(1);
+    expect(pages.runs!.match(/<style>/g)).toHaveLength(1);
+  });
+});
+
+// The timeline (jury, 12 Nov): plain names, rehearsals folded, series as rates, one run marked as the product, filters
+// that work without JavaScript and never hide the newest run.
+describe("/runs as a timeline", () => {
+  const rows = liveRuns();
+  const html = pages.runs!;
+  const raw = (f: string) => readFileSync(f, "utf8");
+  const row = (key: string) => rows.find((r) => r.key === key)!;
+  // The kind of each run listed on 12 Nov. A row added later (in the old shape or the new) is held by the tests that
+  // go over every row; the ones that name runs go over these.
+  const KINDS: Record<string, RunKind> = {
+    "two-locks-1": "sandbox", "platform-e2e-1": "sandbox", "t0-1": "sandbox", "connected-1": "sandbox", "vic-2": "nothing", "vic-1": "sandbox",
+    "awx-1": "sandbox", "main-1": "both", "agent-1": "rehearsal", "tap-1": "sandbox", "friday-1": "rehearsal",
+  };
+  const known = (keys: string[]) => keys.filter((k) => k in KINDS);
+  const CODE_NAMES = /\b(awx-1|vic-1|vic-2|main-1|agent-1|friday-1|tap-1|rel-1b?|two-locks-1|platform-e2e-1|connected-1|t0-1)\b|\brun 1\b|\bsecond run\b/i;
+  // Two rows a later session could add: a series of payouts reported as one entry, and a row in the old shape.
+  const series: RunRow = {
+    key: "series-x", iso: "2026-11-13T10:00:00.000Z", date: "13 Nov 2026", title: "A series of payouts", name: "Twenty supplier payouts in a row",
+    line: "Twenty payouts were created; two were refused by the bank.", kind: "sandbox", rate: { done: 18, of: 20, what: "paid" },
+    rails: "Airwallex sandbox (payouts)", what: "Twenty payouts.", checks: "Each read back.", money: "Sandbox · test money",
+    ids: [{ label: "First payout", value: "pay-0001" }], files: [{ label: "run log", href: "../../docs/runs/series-x.md" }],
+  };
+  const oldShape: RunRow = {
+    key: "old-x", iso: "2026-11-11T08:00:00.000Z", date: "11 Nov 2026", title: "Payouts to five suppliers", rails: "Airwallex sandbox (payouts), Claude",
+    what: "Five payouts of EUR 1.50 were created. Each went PAID.", checks: "Each read back from Airwallex.", money: "Sandbox · test money",
+    ids: [{ label: "Payout", value: "pay-aaaa-1111" }, { label: "Second payout", value: "pay-bbbb-2222" }], files: [{ label: "run log", href: "../../docs/runs/old-x.md" }],
+    stats: [{ v: "5", l: "payouts created" }],
+  };
+
+  it("shows no code name in what a visitor reads: not in a name, a line, an id chip or a fold", () => {
+    const t = allText(html);
+    expect(t).toContain("Every live run");
+    expect(CODE_NAMES.exec(t)?.[0]).toBeUndefined();
+    // The keys stay as the rows' keys and as anchors, which are not text.
+    expect(entriesOf(html).map((e) => e.key).sort()).toEqual(rows.map((r) => r.key).sort());
+    // No row's own words carry one either (its name, line, what, checks, id labels and values, file labels).
+    for (const r of rows) expect(CODE_NAMES.exec([r.name, r.line, r.what, r.checks, r.money, ...r.ids.flatMap((i) => [i.label, i.value]), ...r.files.map((f) => f.label)].join(" | "))?.[0]).toBeUndefined();
+  });
+
+  it("names every run by what it shows, with one line, each typed figure held to the run's log", () => {
+    for (const r of rows.filter((x) => x.key in KINDS)) {
+      expect(r.name, r.key).toBeTruthy();
+      expect(r.line, r.key).toBeTruthy();
+      expect(r.name!.length, r.key).toBeLessThanOrEqual(90);
+      // One sentence, two at most, and short enough for three lines on a phone.
+      expect(r.line!.length, r.key).toBeLessThanOrEqual(170);
+      const e = entriesOf(html).find((x) => x.key === r.key)!;
+      expect(e.html).toContain(`<h2>${escAttr(r.name!)}</h2>`);
+      expect(e.html).toContain(`<p class="ln">${escAttr(r.line!)}`);
+      // Its date, without the year the page's first line carries (the full date is the element's title).
+      expect(r.date).toMatch(/^\d{1,2} \w{3} 2026$/);
+      expect(e.html).toContain(`<time datetime="${r.iso}" title="${r.date}">${r.date.replace(" 2026", "")}</time>`);
+    }
+    // The rows typed from a markdown run log: every amount and count in the name and the line is in the log.
+    const logs: Record<string, string> = {
+      "two-locks-1": raw("docs/runs/2026-11-10-airwallex-two-locks.md") + raw("docs/runs/2026-11-12-airwallex-two-locks-paid.md"),
+      "platform-e2e-1": raw("docs/runs/2026-11-10-platform-e2e.md"), "t0-1": raw("docs/runs/2026-11-10-t0-journal-sandbox.md"), "connected-1": raw("docs/runs/2026-11-10-connected-accounts-sandbox.md"),
+    };
+    for (const [key, log] of Object.entries(logs)) {
+      const said = `${row(key).name} ${row(key).line}`;
+      for (const amount of said.match(/EUR \d+\.\d{2}/g) ?? []) expect(log, `${key} ${amount}`).toContain(amount);
+    }
+    expect(logs["platform-e2e-1"]).toMatch(/three fictional companies/);
+    expect(row("platform-e2e-1").line).toMatch(/A test passkey signed\./);
+    expect(logs["platform-e2e-1"]).toMatch(/\*\*test passkey\*\*[^.]*it is not Face\s+ID/);
+    expect(row("t0-1").line).toMatch(/0 differences/);
+    expect(logs["t0-1"]).toMatch(/there are 0 differences/);
+    expect(row("t0-1").line).toMatch(/second push posted 0/);
+    expect(logs["t0-1"]).toMatch(/\*\*Second push:\*\* posted 0/);
+    expect(row("connected-1").line).toMatch(/[Ss]imulated/);
+    expect(row("two-locks-1").line).toMatch(/simulated/);
+    // The computed lines say what was simulated where the record says so.
+    expect(row("awx-1").line).toMatch(/SWIFT settlement simulated/);
+    expect(row("tap-1").line).toMatch(/merchant was simulated/);
+    expect(raw("docs/runs/visa-tap-live-2026-11-02.json")).toMatch(/a merchant we run, simulated/);
+    expect(row("main-1").line).toMatch(/Simulated: customer, supplier, settlement, second approver\./);
+    const v2 = JSON.parse(raw("docs/demo/vic-2-run.json")) as { outside_calls: { airi: number; airwallex: number }; planted_attack: string; label: string };
+    expect(row("vic-2").line).toContain(`${v2.outside_calls.airi} Airi and ${v2.outside_calls.airwallex} Airwallex calls`);
+    expect(v2.planted_attack).toMatch(/^our own planted attack/);
+    expect(v2.label).toMatch(/^live: the CFO's Face ID on the relay/);
+  });
+
+  it("gives every run exactly one honest badge, the kind its record says", () => {
+    expect(KIND_LABEL).toEqual({ sandbox: "Live sandbox", testnet: "Live testnet", both: "Live testnet and sandbox", simulated: "Simulated", rehearsal: "Rehearsal", nothing: "Live, nothing bought" });
+    expect(known(rows.map((r) => r.key)).sort()).toEqual(Object.keys(KINDS).sort());
+    for (const r of rows) {
+      // Every row, exactly one badge of the allowed set: its kind's.
+      const e = entriesOf(html).find((x) => x.key === r.key)!;
+      const badges = [...e.html.matchAll(/<span class="kd [a-z]+">([^<]+)<\/span>/g)].map((m) => m[1]);
+      expect(badges, r.key).toEqual([KIND_LABEL[kindOf(r)]]);
+      expect(Object.values(KIND_LABEL)).toContain(badges[0]);
+      expect(e.cls.filter((c) => c.startsWith("k-")), r.key).toEqual([`k-${kindOf(r)}`]);
+    }
+    for (const r of rows.filter((x) => x.key in KINDS)) {
+      expect(r.kind, r.key).toBe(KINDS[r.key]);
+      expect(kindOf(r)).toBe(KINDS[r.key]);
+      // A row in the old shape (no kind of its own) gets the same badge from its rails and money words.
+      expect(kindOf({ ...r, kind: undefined }), r.key).toBe(KINDS[r.key]);
+    }
+    // What the records say: the main run ran on Metal testnet and in the Airwallex sandbox; the second Airi run was live
+    // and called nobody; the two rehearsals call themselves rehearsals.
+    expect(row("main-1").rails).toMatch(/Metal testnet, Airwallex sandbox/);
+    const v2 = JSON.parse(raw("docs/demo/vic-2-run.json")) as { mode: string; outside_calls: { airi: number; airwallex: number } };
+    expect([v2.mode, v2.outside_calls.airi, v2.outside_calls.airwallex]).toEqual(["live", 0, 0]);
+    expect(raw("docs/runs/2026-11-02-agent-run-1.md")).toMatch(/\(rehearsal\)/);
+    for (const k of ["agent-1", "friday-1"]) expect(row(k).money).toMatch(/Rehearsal/);
+    // The page says once, at the top, that every run used test money and where the simulated parts are said.
+    expect(text(html)).toMatch(/Test money only; what was simulated is said on each run\./);
+  });
+
+  it("has a kind for a run on Purser's own fakes, Simulated, shown only when such a run is listed", () => {
+    const fake: RunRow = { ...oldShape, key: "fake-x", iso: "2026-11-11T09:00:00.000Z", title: "A day on fake rails", rails: "Purser's own fake rails", money: "Simulated · test money" };
+    expect(kindOf(fake)).toBe("simulated");
+    const page = runsPage([...rows, { ...fake, kind: "simulated" }]);
+    const e = entriesOf(page).find((x) => x.key === "fake-x")!;
+    expect(e.html).toContain('<span class="kd simulated">Simulated</span>');
+    expect(e.cls).toContain("f-simulated");
+    expect(page).toMatch(/<a href="#simulated">Simulated <b>1<\/b><\/a>/);
+    expect(html).not.toContain('<a href="#simulated">');
+    expect(html).not.toContain('id="simulated"');
+  });
+
+  it("keeps the rehearsals out of the live list, in one closed group with its count", () => {
+    const live = entriesOf(liveList(html)), reh = entriesOf(rehGroup(html));
+    expect(live.map((e) => e.key)).toEqual(rows.filter((r) => kindOf(r) !== "rehearsal").map((r) => r.key));
+    expect(known(reh.map((e) => e.key))).toEqual(["agent-1", "friday-1"]);
+    expect(reh.map((e) => e.key)).toEqual(rows.filter((r) => kindOf(r) === "rehearsal").map((r) => r.key));
+    for (const e of live) expect(e.cls).not.toContain("k-rehearsal");
+    // Closed by default (no open attribute), named with its count, with one link to the folder of the dry runs' logs.
+    expect(html).toContain(`<details class="rehs" id="rehearsals"><summary>Rehearsals and dry runs · ${reh.length}`);
+    expect(rehGroup(html) + html.slice(html.indexOf(rehGroup(html)) + rehGroup(html).length).split("</details>")[0]).toMatch(/<a class="f" href="https:\/\/github\.com\/agamemnon-coder\/x402-business-agents\/tree\/main\/docs\/runs"[^>]*>docs\/runs on GitHub/);
+    expect(existsSync("docs/runs")).toBe(true);
+    // Rehearsals do not count as live runs.
+    expect(text(html)).toContain(`${live.length} live runs, newest first`);
+    expect(known(live.map((e) => e.key))).toHaveLength(9);
+  });
+
+  it("marks exactly one run as the product: the main run", () => {
+    expect(rows.filter((r) => r.product).map((r) => r.key)).toEqual(["main-1"]);
+    const marked = entriesOf(html).filter((e) => e.cls.includes("prod"));
+    expect(marked.map((e) => e.key)).toEqual(["main-1"]);
+    expect(inSight(marked[0]!.html)).toContain('<span class="mk prod">The product, end to end</span>');
+    expect(html.match(/class="mk prod"/g)).toHaveLength(1);
+  });
+
+  it("filters by partner and by kind with plain links and CSS, and never hides the newest run", () => {
+    const live = entriesOf(liveList(html));
+    const nav = /<nav class="flt" aria-label="Filter the runs">([\s\S]*?)<\/nav>/.exec(html)![1]!;
+    const links = [...nav.matchAll(/<a(?: class="all")? href="#([a-z]+)">([^<]+) <b>(\d+)<\/b><\/a>/g)].map((m) => ({ id: m[1]!, label: m[2]!, n: Number(m[3]) }));
+    expect(nav.match(/<a /g)).toHaveLength(links.length);
+    // All first, then the partners, then the kinds present; only filters with at least one run.
+    expect(links.map((l) => [l.id, l.label])).toEqual([["all", "All"], ["airwallex", "Airwallex"], ["metal", "Metal"], ["visa", "Visa"], ["claude", "Claude"], ["sandbox", "Live sandbox"], ["testnet", "Live testnet"]]);
+    expect(links[0]!.n).toBe(live.length);
+    for (const l of links.slice(1)) {
+      expect(l.n, l.id).toBe(live.filter((e) => e.cls.includes(`f-${l.id}`)).length);
+      expect(l.n, l.id).toBeGreaterThan(0);
+    }
+    // Which runs carry which filter: from their rails and kind.
+    const carrying = (id: string) => known(live.filter((e) => e.cls.includes(`f-${id}`)).map((e) => e.key));
+    expect(carrying("metal")).toEqual(["main-1"]);
+    expect(carrying("testnet")).toEqual(["main-1"]);
+    expect(carrying("claude")).toEqual(["platform-e2e-1", "main-1"]);
+    expect(carrying("visa")).toEqual(["vic-2", "vic-1", "tap-1"]);
+    expect(carrying("sandbox")).toEqual(["two-locks-1", "platform-e2e-1", "t0-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
+    // Each filter is an empty anchor before the list (a sibling the CSS can select from), and so is "All".
+    const listAt = html.indexOf('<ol class="tl">');
+    for (const l of links) {
+      const at = html.indexOf(`<span class="fa" id="${l.id}"></span>`);
+      expect(at, l.id).toBeGreaterThan(-1);
+      expect(at, l.id).toBeLessThan(listAt);
+      expect(at, l.id).toBeLessThan(html.indexOf('<nav class="flt"'));
+    }
+    // The hiding is CSS only, on :target, one rule per filter; every rule that hides a run excludes the newest one.
+    const css = /<style>([\s\S]*?)<\/style>/.exec(html)![1]!;
+    const hiding = css.split("}").filter((rule) => /li\.run/.test(rule.split("{")[0]!) && /display:\s*none/.test(rule));
+    expect(hiding.length).toBeGreaterThanOrEqual(links.length - 1);
+    for (const rule of hiding) for (const selector of rule.split("{")[0]!.split(",")) expect(selector).toMatch(/:target[^,]*:not\(\.newest\)/);
+    for (const l of links.slice(1)) expect(css).toContain(`#${l.id}:target ~ ol.tl > li.run:not(.f-${l.id}):not(.newest)`);
+    expect(css).not.toMatch(/#all:target[^{]*\{[^}]*display:\s*none/);
+    // The first row is the newest: it carries the class and a small mark, and it is a PAID run.
+    expect(live.filter((e) => e.cls.includes("newest")).map((e) => e.key)).toEqual([live[0]!.key]);
+    expect(known(live.map((e) => e.key))[0]).toBe("two-locks-1");
+    expect(inSight(live[0]!.html)).toContain('<span class="mk new">Newest</span>');
+    expect(inSight(live[0]!.html)).toMatch(/PAID/);
+    // Nothing in the filtering depends on the script: it only names the active link and copies ids.
+    const js = /<script>([\s\S]*?)<\/script>/.exec(html)![1]!;
+    expect(js).toContain("aria-current");
+    expect(js).not.toMatch(/display|hidden = true;[^}]*li\.run/);
+  });
+
+  it("reports a series as a rate: today's checks from their records, a later run's \"N of M paid\"", () => {
+    const counted = (file: string) => {
+      const all = Object.values((JSON.parse(raw(file)) as { checks: Record<string, { ok: boolean }> }).checks);
+      return { done: all.filter((c) => c.ok).length, of: all.length, what: "checks passed" };
+    };
+    expect(row("awx-1").rate).toEqual(counted("docs/demo/airwallex-run.json"));
+    expect(row("vic-1").rate).toEqual(counted("docs/demo/airi-run.json"));
+    expect(row("vic-2").rate).toEqual(counted("docs/demo/vic-2-run.json"));
+    // Two rates typed from a markdown run log, held to it: the journal entries posted and the payouts paid.
+    const t0 = raw("docs/runs/2026-11-10-t0-journal-sandbox.md");
+    expect(row("t0-1").rate).toEqual({ done: 95, of: 95, what: "entries posted" });
+    expect(t0).toMatch(/\| Posted \| 95 of 95\./);
+    const pe = raw("docs/runs/2026-11-10-platform-e2e.md");
+    expect(row("platform-e2e-1").rate).toEqual({ done: (pe.match(/\| \*\*PAID\*\* /g) ?? []).length, of: (pe.match(/\| \*\*PAID\*\* |\| \*\*refused at create\*\* /g) ?? []).length, what: "payouts paid" });
+    expect(row("platform-e2e-1").rate).toEqual({ done: 1, of: 4, what: "payouts paid" });
+    expect(known(rows.filter((r) => r.rate).map((r) => r.key))).toEqual(["platform-e2e-1", "t0-1", "vic-2", "vic-1", "awx-1"]);
+    for (const r of rows.filter((x) => x.rate)) {
+      const e = entriesOf(html).find((x) => x.key === r.key)!;
+      const words = `${r.rate!.done} of ${r.rate!.of} ${r.rate!.what}`;
+      // A full rate carries the tick and the colour of success; one that fell short carries neither.
+      const full = r.rate!.done === r.rate!.of;
+      expect(inSight(e.html), r.key).toMatch(new RegExp(full ? `<span class="rt ok"><svg[^>]*>.*?</svg>${words}</span>` : `<span class="rt">${words}</span>`));
+      expect(runsReadme()).toContain(words);
+    }
+    for (const r of rows.filter((x) => !x.rate)) expect(entriesOf(html).find((x) => x.key === r.key)!.html, r.key).not.toContain('class="rt');
+    // A later session reports a whole series of payouts as one entry.
+    const page = runsPage([...rows, series]);
+    const e = entriesOf(liveList(page))[0]!;
+    expect(e.key).toBe("series-x");
+    expect(e.cls).toContain("newest");
+    expect(inSight(e.html)).toContain('<span class="rt">18 of 20 paid</span>');
+    expect(text(page)).toContain("Last live run: 13 Nov 2026.");
+    expect(entriesOf(page).filter((x) => x.cls.includes("newest"))).toHaveLength(1);
+    const readme = runsReadme([...rows, series]);
+    expect(readme).toContain("18 of 20 paid");
+    expect(readme).toContain("**Last live run:** 13 Nov 2026.");
+    expect(readme).toContain("Twenty supplier payouts in a row");
+  });
+
+  it("still renders a row in the old shape truthfully: name, derived badge, date, first id, record link", () => {
+    const page = runsPage([...rows, oldShape]);
+    const e = entriesOf(liveList(page)).find((x) => x.key === "old-x")!;
+    const seen = inSight(e.html);
+    expect(seen).toContain("<h2>Payouts to five suppliers</h2>");
+    expect(seen).toContain('<span class="kd sandbox">Live sandbox</span>');
+    expect(seen).toContain('<time datetime="2026-11-11T08:00:00.000Z" title="11 Nov 2026">11 Nov</time>');
+    // Its what, cut at the first sentence, is its one line (the decimal point in an amount does not end it).
+    expect(seen).toContain('<p class="ln">Five payouts of EUR 1.50 were created.');
+    expect(seen).not.toContain("Each went PAID.");
+    expect(seen).toContain("pay-aaaa-1111");
+    expect(seen).not.toContain("pay-bbbb-2222");
+    expect(seen).toContain('<a class="f" href="../../docs/runs/old-x.md" target="_blank" rel="noopener" aria-label="run log">Log ↗</a>');
+    expect(seen).not.toContain('class="rt');
+    // The partners come from its rails; it sits in date order; its big numbers are listed quietly in its fold.
+    expect(e.cls).toEqual(expect.arrayContaining(["k-sandbox", "f-airwallex", "f-claude", "f-sandbox"]));
+    expect(entriesOf(liveList(page)).map((x) => x.key).slice(0, 3)).toEqual(["two-locks-1", "old-x", "platform-e2e-1"]);
+    const fold = e.html.slice(seen.length);
+    expect(fold).toContain("pay-bbbb-2222");
+    expect(fold).toContain("Five payouts of EUR 1.50 were created. Each went PAID.");
+    expect(fold).toContain("5 payouts created");
+    expect(seen).not.toContain("5 payouts created");
+    expect(runsReadme([...rows, oldShape])).toContain("Payouts to five suppliers");
+  });
+
+  it("shows the first id in sight and folds the rest, with the longer text, the checks, the rails and the money words", () => {
+    for (const r of rows.filter((x) => kindOf(x) !== "rehearsal")) {
+      const e = entriesOf(liveList(html)).find((x) => x.key === r.key)!;
+      const seen = inSight(e.html), fold = e.html.slice(seen.length);
+      // One fold per entry, named by what is in it and how many more ids.
+      expect(e.html.match(/<details/g), r.key).toHaveLength(1);
+      const more = r.ids.slice(1).filter((i) => i.value !== "Trace any payment").length;
+      expect(fold, r.key).toContain(`<summary aria-label="Ids, what ran and the checks${more ? `: ${more} more id${more === 1 ? "" : "s"}` : ""}">`);
+      if (r.ids[0]) expect(seen, r.key).toContain(escAttr(r.ids[0].value));
+      for (const i of r.ids.slice(1)) {
+        expect(seen, r.key).not.toContain(escAttr(i.value));
+        expect(fold, r.key).toContain(escAttr(i.value));
+      }
+      for (const f of r.files) expect(seen, r.key).toContain(`href="${f.href}"`);
+      for (const part of [r.what, r.checks, r.rails, r.money]) expect(fold, r.key).toContain(escAttr(part));
+      expect(seen, r.key).not.toContain(escAttr(r.checks));
+    }
+    // In the rehearsals group (itself the fold) an entry shows the same parts without a fold of its own.
+    for (const e of entriesOf(rehGroup(html))) {
+      expect(e.html).not.toContain("<details");
+      for (const part of [row(e.key).what, row(e.key).checks, row(e.key).money]) expect(e.html).toContain(escAttr(part));
+    }
+    // No id chip names a run by its code name: the second Airi run shows the hash the CFO signed, from its record.
+    const v2 = JSON.parse(raw("docs/demo/vic-2-run.json")) as { audit: { event: string; payload: { terms_sha256?: string } }[] };
+    expect(row("vic-2").ids[0]!.value).toBe(v2.audit.find((a) => a.event === "proposal.created")!.payload.terms_sha256);
+    expect(row("vic-2").ids[0]!.value).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("starts its title with Purser, once", () => {
+    expect(html).toContain("<title>Purser · Every live run</title>");
+    expect(html).toContain('<meta property="og:title" content="Purser · Every live run">');
+    expect(html).toContain("<h1>Every live run</h1>");
+  });
+
+  it("docs/runs/README.md lists the live runs under their plain names, then the rehearsals in a smaller table", () => {
+    const md = runsReadme();
+    const [liveTable, rest] = md.split("## Rehearsals and dry runs");
+    expect(rest).toBeDefined();
+    const rehTable = rest!.split("## What")[0]!;
+    for (const r of rows) {
+      const table = kindOf(r) === "rehearsal" ? rehTable : liveTable!;
+      expect(table, r.key).toContain(`**${mdCell(r.name ?? r.title)}**`);
+      // Its line of the table: the kind once, then the money words the kind does not already say.
+      const line = table.split("\n").find((l) => l.includes(`**${mdCell(r.name ?? r.title)}**`))!;
+      expect(line, r.key).toContain(`<br>${KIND_LABEL[kindOf(r)]}`);
+      expect(line, r.key).toMatch(/test money|nothing bought/i);
+      expect(line, r.key).not.toMatch(/Rehearsal · Rehearsal|nothing bought · Nothing bought/i);
+      for (const f of r.files) expect(table, r.key).toContain(`[${f.label}](`);
+    }
+    expect(liveTable).toContain("| Date | Run | Rails | What ran | Checks | Key ids | Files |");
+    expect(rehTable).toContain("| Date | Run | What ran | Key ids | Files |");
+    expect(liveTable).not.toContain(row("agent-1").name!);
+    expect(liveTable).toContain("The product, end to end");
+    // The name a run goes by in the docs follows its plain name, only where the docs use that name.
+    const docs = readdirSync("docs", { recursive: true, encoding: "utf8" }).filter((f) => f.endsWith(".md") && f !== "runs/README.md").map((f) => raw(`docs/${f}`)).join("\n");
+    const named = [...md.matchAll(/\(in the docs: `([^`]+)`\)/g)].map((m) => m[1]!);
+    expect(named.sort()).toEqual(["agent-1", "awx-1", "friday-1", "main-1", "vic-1", "vic-2"]);
+    for (const n of named) expect(docs, n).toMatch(new RegExp(`\\b${n}\\b`));
+  });
+
+  it("reads in fewer words than before the timeline (501)", () => {
+    // 12 Nov: 479 words in sight as built (501 before the timeline); the pin leaves room for 10 more. A run added later
+    // raises it by its own words, no more: each entry stays at 60 words in sight or fewer.
+    expect(visibleWords(html)).toBeLessThanOrEqual(489);
+    for (const e of entriesOf(liveList(html))) expect(visibleWords(`<main>${e.html}</main>`), e.key).toBeLessThanOrEqual(60);
   });
 });
 
