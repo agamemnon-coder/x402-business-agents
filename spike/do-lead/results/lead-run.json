@@ -1,13 +1,13 @@
 {
  "http": 200,
- "start_ms": 379,
- "total_ms": 9024,
+ "start_ms": 71,
+ "total_ms": 4124,
  "ok": true,
  "engine_run": {
   "status": 200,
-  "ms": 879,
+  "ms": 428,
   "open": {
-   "ms": 41,
+   "ms": 15,
    "statements": 58,
    "shim_added": 0,
    "rows_read": 3418,
@@ -18,7 +18,7 @@
    }
   },
   "seed": {
-   "ms": 6,
+   "ms": 4,
    "statements": 30,
    "shim_added": 11,
    "rows_read": 533,
@@ -29,18 +29,18 @@
    }
   },
   "enrol": {
-   "ms": 10,
+   "ms": 6,
    "statements": 22,
    "shim_added": 10,
    "rows_read": 19,
    "rows_written": 18,
    "value": {
     "status": "pending",
-    "confirmed": "yggpIsFp74KOrFvVgRUZdw"
+    "confirmed": "SmAX3PqAIxjIkwQrSwDLlw"
    }
   },
   "ingest_real_pdf_reader": {
-   "ms": 147,
+   "ms": 54,
    "statements": 28,
    "shim_added": 3,
    "rows_read": 33,
@@ -58,7 +58,7 @@
    }
   },
   "propose": {
-   "ms": 45,
+   "ms": 13,
    "statements": 336,
    "shim_added": 13,
    "rows_read": 906,
@@ -67,34 +67,34 @@
     "proposal_id": "P-0001",
     "kind": "invoice_payment",
     "status": "PENDING_APPROVAL",
-    "terms_sha256": "48101ea6e9fef1450310ca40e107cbde1e075c48217afac8758c4bcf3d0ca96f",
+    "terms_sha256": "93bdd56b397cd21ac2e4d55de30746c49f21911166908b13e28005ebfd7a16ae",
     "invoice_status": "waiting_cfo"
    }
   },
   "approve_signature_over_other_terms": {
-   "ms": 9,
+   "ms": 2,
    "statements": 5,
    "shim_added": 2,
    "rows_read": 3,
    "rows_written": 2,
    "value": {
     "status": "refused",
-    "message": "Unexpected authentication response challenge \"KpBZ3vyGsERE_Vbr5guFCQ-XBvGRTCGobNeyR8ffftc\", expected \"SBAepun-8UUDEMpA4QfL3h4HXEghevrIdYxLzz0MqW8\""
+    "message": "Unexpected authentication response challenge \"KpBZ3vyGsERE_Vbr5guFCQ-XBvGRTCGobNeyR8ffftc\", expected \"k73Vazl80hrC5NVd4wdGxJ8hkRFmkIsT4oAF6_16Fq4\""
    }
   },
   "approve_signature_over_these_terms": {
-   "ms": 12,
+   "ms": 7,
    "statements": 289,
    "shim_added": 5,
    "rows_read": 337,
    "rows_written": 9,
    "value": {
     "status": "approved",
-    "message": "P-0001 approved with software passkey (not Face ID) (passkey yggpIsFp)"
+    "message": "P-0001 approved with software passkey (not Face ID) (passkey SmAX3PqA)"
    }
   },
   "execute": {
-   "ms": 26,
+   "ms": 6,
    "statements": 107,
    "shim_added": 30,
    "rows_read": 1463,
@@ -112,7 +112,7 @@
    }
   },
   "syncPayments": {
-   "ms": 6,
+   "ms": 2,
    "statements": 18,
    "shim_added": 3,
    "rows_read": 193,
@@ -125,7 +125,7 @@
    ]
   },
   "syncLedger": {
-   "ms": 23,
+   "ms": 11,
    "statements": 76,
    "shim_added": 22,
    "rows_read": 946,
@@ -140,7 +140,7 @@
    }
   },
   "feed_read_model_with_applySync": {
-   "ms": 121,
+   "ms": 66,
    "statements": 41,
    "shim_added": 0,
    "rows_read": 1719,
@@ -224,7 +224,7 @@
       }
      }
     ],
-    "ms": 121,
+    "ms": 66,
     "calls": {
      "d1": 18,
      "d1_statements": 68,
@@ -233,7 +233,7 @@
    }
   },
   "vault_into_r2": {
-   "ms": 60,
+   "ms": 44,
    "statements": 16,
    "shim_added": 2,
    "rows_read": 32,
@@ -249,7 +249,7 @@
    }
   },
   "vault_again_adds_nothing": {
-   "ms": 4,
+   "ms": 3,
    "statements": 14,
    "shim_added": 0,
    "rows_read": 30,
@@ -260,7 +260,7 @@
    }
   },
   "feed_again_only_what_is_new": {
-   "ms": 22,
+   "ms": 21,
    "statements": 41,
    "shim_added": 0,
    "rows_read": 1698,
@@ -307,7 +307,7 @@
       }
      }
     ],
-    "ms": 22,
+    "ms": 21,
     "calls": {
      "d1": 14,
      "d1_statements": 14,
@@ -316,7 +316,7 @@
    }
   },
   "one_row_of_5MB": {
-   "ms": 10,
+   "ms": 9,
    "statements": 0,
    "shim_added": 0,
    "rows_read": 0,
@@ -324,7 +324,7 @@
    "value": "accepted"
   },
   "document_of_15MB_in_pieces": {
-   "ms": 225,
+   "ms": 97,
    "statements": 0,
    "shim_added": 0,
    "rows_read": 0,
@@ -338,12 +338,12 @@
    "audit": {
     "ok": true,
     "rows": 23,
-    "head": "2065460a0b3474858696a32530ab20e9c55029139477bac317bfd0d2761e31c2"
+    "head": "092eacaf22111b89eb40daa47223b01768abf520f5ad622c0530752204c1022c"
    },
    "ledger": {
     "ok": true,
     "entries": 7,
-    "head": "4bae082cdbfe8e96a14e253c8bdf3e2622ebcf0cbddfa92c548049e9a0ae3c59"
+    "head": "1c385a13e24581f3f009425ea503fafbf79282c41a59d39d104c22f053a7a688"
    }
   },
   "sqlite_bytes": 21762048,
@@ -501,7 +501,7 @@
      }
     }
    ],
-   "ms": 116,
+   "ms": 30,
    "calls": {
     "d1": 23,
     "d1_statements": 33,
@@ -512,12 +512,12 @@
    "audit": {
     "ok": true,
     "rows": 28,
-    "head": "b176b4972b670c6bb400f03733e82babc5430e2b6f05c1e11c933d377082b8a2"
+    "head": "5ae8952daaa1898c4b155ae59d8350938e687267a64d797359eb020995cc70b1"
    },
    "ledger": {
     "ok": true,
     "entries": 8,
-    "head": "144de1fa34cd233780cc98b71e0740397cd685b4b588bde5a1dc15be6caefa42"
+    "head": "20a754614a9a134d7a90615e4d0a6ec7f07cb4eec56e8e285b5e1e5a24920b71"
    }
   }
  },
@@ -526,6 +526,27 @@
   "AP-0002 needs_review BTX-2026-17",
   "AP-0003 needs_review BTX-2027-01"
  ],
+ "reader_on_200_pages": {
+  "status": 200,
+  "request_ms": 1394,
+  "pages_200": {
+   "bytes": 216202,
+   "pages": 200,
+   "text_chars": 892229,
+   "ms": 643
+  },
+  "pages_200_again": {
+   "bytes": 216202,
+   "pages": 200,
+   "text_chars": 892229,
+   "ms": 741
+  },
+  "pages_201": {
+   "bytes": 217276,
+   "refused": "the PDF has 201 pages, more than the 200 read",
+   "ms": 7
+  }
+ },
  "after_dropping_the_objects_memory": {
   "status": 200,
   "bank_restored_from_sqlite": true,
@@ -580,7 +601,7 @@
      }
     }
    ],
-   "ms": 33,
+   "ms": 20,
    "calls": {
     "d1": 17,
     "d1_statements": 17,
@@ -592,12 +613,12 @@
    "audit": {
     "ok": true,
     "rows": 28,
-    "head": "b176b4972b670c6bb400f03733e82babc5430e2b6f05c1e11c933d377082b8a2"
+    "head": "5ae8952daaa1898c4b155ae59d8350938e687267a64d797359eb020995cc70b1"
    },
    "ledger": {
     "ok": true,
     "entries": 8,
-    "head": "144de1fa34cd233780cc98b71e0740397cd685b4b588bde5a1dc15be6caefa42"
+    "head": "20a754614a9a134d7a90615e4d0a6ec7f07cb4eec56e8e285b5e1e5a24920b71"
    }
   }
  },

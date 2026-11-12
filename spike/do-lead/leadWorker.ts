@@ -46,8 +46,11 @@ import { sha256 as sha256Of, type VaultSink } from "../../src/vault/sink.js";
 import invoicePdf from "./fixtures/bergtex.pdf";
 import bankChangePdf from "./fixtures/bankchange.pdf";
 import renumberedPdf from "./fixtures/renumbered.pdf";
+import big200 from "./fixtures/big-200p.pdf";
+import big201 from "./fixtures/big-201p.pdf";
+import { pdfText } from "../../src/ap/pdfText.js";
 
-interface EngineStub { runChain(tenantId: string, opts?: { bigDoc?: boolean }): Promise<unknown>; catches(tenantId: string): Promise<unknown>; again(tenantId: string): Promise<unknown>; rows(): Promise<unknown> }
+interface EngineStub { runChain(tenantId: string, opts?: { bigDoc?: boolean }): Promise<unknown>; catches(tenantId: string): Promise<unknown>; bigPdf(): Promise<unknown>; again(tenantId: string): Promise<unknown>; rows(): Promise<unknown> }
 interface Env extends Bindings { ENGINE: { idFromName(name: string): { toString(): string }; get(id: unknown): EngineStub } }
 
 const parserOnly = { ask: async (_a: unknown, fallback: () => unknown) => ({ value: fallback(), source: "fallback", model: null, note: "no key" }) } as unknown as Asker;
@@ -240,6 +243,17 @@ export class Engine extends DurableObject<Env> {
     return out;
   }
 
+  /** The reader's largest job: 200 pages (the engine's limit) on this thread, and one page more, which it refuses. */
+  async bigPdf(): Promise<unknown> {
+    this.open();
+    const read = async (bytes: ArrayBuffer) => {
+      const t = performance.now();
+      try { const r = await pdfText(new Uint8Array(bytes)); return { bytes: bytes.byteLength, pages: r.pages, text_chars: r.text.length, ms: Math.round(performance.now() - t) }; }
+      catch (e) { return { bytes: bytes.byteLength, refused: (e as Error).message.slice(0, 160), ms: Math.round(performance.now() - t) }; }
+    };
+    return { pages_200: await read(big200), pages_200_again: await read(big200), pages_201: await read(big201) };
+  }
+
   /** As after an eviction: the handle and the bank are dropped and rebuilt from this object's SQLite; then the engine goes on. */
   async again(tenantId: string): Promise<unknown> {
     this.db = null; this.shim = null; this.awx = null;
@@ -275,6 +289,7 @@ async function engineRoute(req: Request, env: Env): Promise<Response> {
   try {
     if (url.pathname === "/v1/engine/run" && req.method === "POST") { need(caller, "admin"); return json(await stubFor(env, caller.tenantId).runChain(caller.tenantId, { bigDoc: url.searchParams.get("big") === "1" })); }
     if (url.pathname === "/v1/engine/catches" && req.method === "POST") { need(caller, "admin"); return json(await stubFor(env, caller.tenantId).catches(caller.tenantId)); }
+    if (url.pathname === "/v1/engine/bigpdf" && req.method === "POST") { need(caller, "admin"); return json(await stubFor(env, caller.tenantId).bigPdf()); }
     if (url.pathname === "/v1/engine/again" && req.method === "POST") { need(caller, "admin"); return json(await stubFor(env, caller.tenantId).again(caller.tenantId)); }
     if (url.pathname === "/v1/engine/rows") { need(caller, "read"); return json(await stubFor(env, caller.tenantId).rows()); }
   } catch (e) { return json({ error: (e as Error).message, stack: String((e as Error).stack).split("\n").slice(0, 10) }, e instanceof AuthError ? 403 : 500); }
@@ -327,6 +342,9 @@ async function scenario(env: Env): Promise<Response> {
     const caught = await call("/v1/engine/catches", { method: "POST", token: a.session });
     out.catches_by_the_engines_own_checks = { status: caught.status, ...((await caught.json()) as object) };
     out.console_invoices_with_the_catches = (await get("/v1/invoices")).body.items?.map((i) => `${String(i.id)} ${String(i.status)} ${String(i.invoice_no)}`);
+    const tb = performance.now();
+    const big = await call("/v1/engine/bigpdf", { method: "POST", token: a.session });
+    out.reader_on_200_pages = { status: big.status, request_ms: Math.round(performance.now() - tb), ...((await big.json()) as object) };
     const again = await call("/v1/engine/again", { method: "POST", token: a.session });
     out.after_dropping_the_objects_memory = { status: again.status, ...((await again.json()) as object) };
     out.console_invoices_afterwards = (await get("/v1/invoices")).body.items?.map((i) => `${String(i.id)} ${String(i.status)}`);

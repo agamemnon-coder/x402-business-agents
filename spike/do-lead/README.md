@@ -19,6 +19,7 @@ What ran (local workerd through wrangler 4.155.0, nodejs_compat, a SQLite-backed
   (not `possible_fraud`: the demo's scenarios should pick their catch invoices by what the checks answer).
 - The two runtime probes not covered by the joined one, re-run: `node spike/do-runtime/run.mjs p5-claude p6-airwallex`, both HTTP 200.
 
+- The PDF reader on a 200-page text PDF inside the object: 643 and 741 ms; 201 pages are refused (`tools/mkpdf-big.ts`).
 - The engine loaded on first use (`spike/do-lead/lazyWorker.ts`, `startup.mjs`): before the object's first engine call the engine is
   not loaded; after it the chain pays as before. First-answer times of a fresh local workerd were the same with and without
   (1.5 to 2.4 s on a machine with load 30), so local timing does not answer the start-up question.
