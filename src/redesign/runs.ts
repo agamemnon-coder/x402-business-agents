@@ -21,6 +21,7 @@ import { REPO_BLOB } from "./metalStory.js";
 import { AGENT_RUN_1_FILE, AGENT_RUN_FILE, payments, tapRun, type RunRecord } from "./run.js";
 import { OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
 import { VIC2_RUN_FILE, VIC2_RUN_LOG, vic2Run } from "./vic2Run.js";
+import { VIC3_RUN_FILE, VIC3_RUN_LOG, vic3Finding, vic3Run, vic3Summary } from "./vic3Run.js";
 import { CAVEAT_LINE } from "../config/brand.js";
 import { EXPLORER_TX } from "../metal/network.js";
 
@@ -166,6 +167,23 @@ export function liveRuns(): RunRow[] {
     ids: [{ label: "Connected account", value: "acct_SC-QD89fOneAeqaRFgOymw" }, { label: "Payout", value: "a9460dba-f31b-4111-be58-6d9a9e71adb1" }],
     files: [{ label: "run log", href: "../../docs/runs/2026-11-10-connected-accounts-sandbox.md" }],
   });
+
+  // 12 Nov: vic-3, the Sourcing agent (Claude Haiku) chooses the Airi rail; the signed hash read back twice; F1/F2 the
+  // negative test (docs/runs/2026-11-12-vic-3.json). Every figure from the record.
+  const v3 = vic3Run();
+  if (v3) {
+    const s = vic3Summary(v3);
+    rows.push({
+      key: "vic-3", iso: v3.started_at, date: day(v3.started_at), kind: "sandbox", partners: ["Airwallex", "Visa", "Claude"],
+      title: "Airi, third run: the agent chooses the rail; the signed hash read back twice", rails: "Airi wallet, Airwallex sandbox, Claude, test card",
+      name: "Claude chooses the Airi rail; the CFO's signed hash read back from Airi and Airwallex", rate: { done: s.paid, of: s.of, what: "purchases paid" },
+      line: `${s.paid} of ${s.of} purchases paid, after the CFO's Face ID; ${s.byPurser.map((p) => p.step).join(", ")} refused by Purser with 0 calls. Test card.`,
+      what: `${s.paid} of ${s.of} purchases paid. The rail was chosen by ${s.model ?? "Claude"} from ${s.menu}. ${s.byPurser.map((p) => p.step).join(", ")} refused by Purser with 0 calls. ${vic3Finding(v3)}`,
+      checks: `${okOf(v3.checks)}.`, money: "Test card · test money",
+      ids: v3.purchases.filter((p) => p.payment_intent_id).map((p) => ({ label: `PaymentIntent, ${p.step}`, value: p.payment_intent_id! })),
+      files: [{ label: "record (JSON)", href: blob(VIC3_RUN_FILE) }, { label: "run log", href: blob(VIC3_RUN_LOG) }],
+    });
+  }
 
   const v2 = vic2Run() as unknown as { started_at: string; checks: Record<string, { ok: boolean }>; outside_calls: { airi: number; airwallex: number }; audit?: { event: string; payload: { terms_sha256?: string } }[] } | null;
   const v2Terms = v2?.audit?.find((a) => a.event === "proposal.created")?.payload.terms_sha256;
