@@ -16,9 +16,10 @@
 // - Timers exist for three things only (a test holds this): pollTimer, renewTimer (two minutes before the session
 //   ends) and askTimer (the running time of an open Claude call). A request still out after 30 s is seen by the poller's
 //   own tick (pollStart's onSlow), which adds one calm line; no other timer.
-// - Screens 3 (approve) and 4 (pay) sign and pay: the pure helpers are SIGN_JS (below, tested in Node). S also keeps
-//   the proposal ({id, challenge, terms_sha256, invoice}) and the approval's credential (cred) for screen 4, and the
-//   pay route's settled answer for screen 5.
+// - Screens 3 (approve) and 4 (pay) sign and pay: the pure helpers are SIGN_JS (below, tested in Node). Screen 3 pays
+//   as signed in the approval's own tap; screen 4 (after paid, from screen 5's link) lets the visitor change the terms.
+//   S also keeps the proposal ({id, challenge, terms_sha256, invoice}) and the approval's credential (cred) for screen
+//   4, and the pay route's settled answer for screen 5.
 // - Screen 5 (books) draws three blocks, each when its own reads return: the payment, this invoice's journal lines and
 //   its files (pure helpers: BOOKS_JS, tested in Node); not fed (settled.fed false), the books say they are not in yet;
 //   settled.error shows the engine's words and the retry route on the visitor's button. Files fetched with the session
@@ -525,6 +526,8 @@ function steps(name){
   for(let i=0;i<order.length;i++){const li=el('li',i<at?'done':i===at?'on':'');if(i===at)li.setAttribute('aria-current','step');ol.append(li)}
   return el('div','progw',[ol,el('span','stepname',C.steps.names[name])]);
 }
+// The rail moved on without a new screen (screen 3 lights Pay when its pay call starts).
+function rail(name){const o=$('#main .progw'),n=steps(name);if(o&&n)o.replaceWith(n)}
 function show(name,arg){
   const d=SCREENS[name];if(!d)return false;
   pollStop();askCloseAll();revokeAll();
@@ -789,6 +792,10 @@ async function signTerms(challenge,credentialId){
   const c=await navigator.credentials.get({publicKey:{challenge:fromB64u(challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(credentialId)}],userVerification:'required',timeout:120000}});
   return signedOf(c);
 }
+// The one pay request (screen 3's pay as signed, screen 4's fields): POST .../pay with payBody's {terms, credential}.
+const payCall=(pid,body)=>api('POST','/v1/engine/proposals/'+encodeURIComponent(pid)+'/pay',body);
+// The engine's retry route, on the visitor's button only (screens 3 and 4).
+const retryCall=(pid)=>api('POST','/v1/engine/proposals/'+encodeURIComponent(pid)+'/retry');
 const cancelled=(e)=>e&&typeof e.name==='string'&&/^(NotAllowedError|AbortError|InvalidStateError|SecurityError|NotSupportedError)$/.test(e.name);
 // One main button whose label and action change with the step; it is off while a request or a prompt is open.
 function mainButton(){
@@ -895,26 +902,57 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     idle();
     if(S.screen!=='approve')return;
     if(r.status===200&&r.json.status==='approved'&&r.json.held===true){
-      // Held: the approval is stored and nothing is paid; the signature is kept for screen 4.
+      // Held: the approval is stored and nothing is paid (drawn from its answer); the signature is kept for screen 4,
+      // and the pay call starts at once, in the same tap.
       S.cred=signed;save();
       said.replaceChildren(el('p','big ok tick',[icon('circle-check',24),el('span','',A.approved)]));
-      main.set(A.next,()=>show('pay'));main.node.focus();return;
+      return pay(signed);
     }
     if(r.status===200&&r.json.status==='approved'){S.settled=r.json.settled||null;save();show('books',{settled:S.settled});return}
     said.replaceChildren(note(words(r.json,A.failed)));
     if(r.json.status==='expired')main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});else stage();
   }
+  // Pay as signed, in the approval's tap: the terms from GET .../terms unchanged and the kept signature, to the one pay
+  // route. "Paying…" with the ring and the rail on Pay while it runs; nothing of the outcome before its answer.
+  async function pay(cred){
+    const Y=C.pay;
+    busy(Y.paying);rail('pay');
+    const t=await api('GET','/v1/engine/proposals/'+encodeURIComponent(p.id)+'/terms');
+    if(S.screen!=='approve')return;
+    if(t.status!==200||!t.json.terms||typeof t.json.terms!=='object'){idle();said.append(note(words(t.json,Y.failed)));main.set(Y.retry,()=>pay(cred));return}
+    const signedBody=payBody(t.json.terms,t.json.terms,cred);
+    const r=await track(payCall(p.id,signedBody));
+    idle();
+    if(S.screen!=='approve')return;
+    const j=r.json,o=r.status===200?j.outcome:null;
+    if(o==='paid'){S.settled=j.settled||null;save();show('books',{settled:S.settled});return}
+    // Any other answer: the engine's words, calmly, with the button for that outcome (as screen 4 has them).
+    const sig=j.layers&&j.layers.signature&&typeof j.layers.signature.reason==='string'&&j.layers.signature.reason?j.layers.signature.reason:null;
+    if(o==='paid_once'){said.replaceChildren(el('p','big',Y.paidOnce));main.set(C.books.next,()=>show('did'));return}
+    if(o==='expired'){said.replaceChildren(note(words(j,Y.failed)));main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});return}
+    if(o==='failed'){said.replaceChildren(note(words(j,j.settled&&j.settled.error||Y.failed)));main.set(Y.retry,retry);return}
+    if(o==='not_signed'||o==='refused'){if(o==='not_signed'){S.cred=null;save()}said.replaceChildren(note(words(j,sig||Y.failed)));stage();return}
+    said.replaceChildren(note(words(j,Y.failed)));main.set(Y.retry,()=>pay(cred));
+  }
+  async function retry(){
+    const r=await retryCall(p.id);
+    if(S.screen!=='approve')return;
+    if(r.status===200&&r.json.settled&&!r.json.settled.error){S.settled=r.json.settled;save();show('books',{settled:S.settled});return}
+    said.replaceChildren(note(words(r.json,r.json.settled&&r.json.settled.error||C.pay.failed)));
+  }
   file();
 }});
 
-// 4 Pay with your signature: the signed terms in three fields; the one button sends the fields' terms with the kept
-// signature to the one pay route, and only the answer, once back, is drawn.
+// 4 Pay with your signature, reached after paid from screen 5's quiet link: the signed terms in three fields; the one
+// button sends the fields' terms with the kept signature to the one pay route, and only the answer, once back, is drawn.
 screen('pay',{heading:C.pay.heading,draw(box){
   const Y=C.pay;const pid=S.proposal&&S.proposal.id;
   const top=el('div','',[el('p','muted',Y.loading)]);const out=el('div','outcome');out.setAttribute('role','status');
   const main=mainButton();main.off(Y.button);
   const live=livePanel();
-  box.append(top,main.node,out,live.node);
+  // Back to screen 5, a quiet link (the payment is already made).
+  const back=el('button','link',Y.back);back.type='button';back.addEventListener('click',()=>show('books',{settled:S.settled}));
+  box.append(top,main.node,out,el('p','',back),live.node);
   if(!pid){top.replaceChildren(note(Y.failed));return}
   let T=null;const F={};
   const field4=(label,key,cls)=>{const i=input('text');i.autocomplete='off';i.spellcheck=false;F[key]=i;return el('div','f'+(cls?' '+cls:''),[el('label','',label),i])};
@@ -931,8 +969,7 @@ screen('pay',{heading:C.pay.heading,draw(box){
     F.amount.inputMode='decimal';F.amount.classList.add('mono');F.iban_last4.classList.add('mono');F.amount.addEventListener('input',()=>F.amount.setCustomValidity(''));
     for(const k of ['amount','beneficiary_name','iban_last4'])F[k].addEventListener('input',mark);
     form.addEventListener('submit',(ev)=>{ev.preventDefault();if(!main.node.disabled)main.node.click()});
-    const when=Date.parse(T.expires_at||'');
-    const intro=el('div','',[el('p','muted',Y.line),isFinite(when)?el('p','hint',fill(Y.until,{time:new Date(when).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})})):null]);
+    const intro=el('div','',[el('p','muted',Y.line),el('p','hint',Y.already)]);
     top.replaceChildren(form,intro);reset();
     main.set(Y.button,()=>send(intro));
   });
@@ -953,7 +990,7 @@ screen('pay',{heading:C.pay.heading,draw(box){
     const body=payBody(T.terms,v,cred);
     const t0=performance.now();
     pollStart((items)=>live.add(items,t0),()=>{if(!slow.isConnected)out.append(slow)});
-    const r=await api('POST','/v1/engine/proposals/'+encodeURIComponent(pid)+'/pay',body);
+    const r=await payCall(pid,body);
     const ms=performance.now()-t0;
     pollDone();main.node.classList.remove('asking');slow.remove();
     if(S.screen!=='pay')return;
@@ -971,7 +1008,7 @@ screen('pay',{heading:C.pay.heading,draw(box){
     out.replaceChildren(note(words(j,Y.failed)));
   }
   async function retry(){
-    const r=await api('POST','/v1/engine/proposals/'+encodeURIComponent(pid)+'/retry');
+    const r=await retryCall(pid);
     if(S.screen!=='pay')return;
     if(r.status===200&&r.json.settled&&!r.json.settled.error){S.settled=r.json.settled;save();show('books',{settled:S.settled});return}
     out.replaceChildren(note(words(r.json,r.json.settled&&r.json.settled.error||Y.failed)));
@@ -1049,7 +1086,9 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
   const paid=slot(),booked=slot(),filed=slot();
   // A calm stamp, and the hash of the terms that were signed and paid (the proposal's own, kept from screen 3).
   const sha=S.proposal&&typeof S.proposal.terms_sha256==='string'?S.proposal.terms_sha256:'';
-  box.append(el('div','paidstamp',[el('span','ring',icon('circle-check',30)),sha?el('span','hashpill mono',[icon('key-round',13),' '+sha.slice(0,12)+'…']):null]),paid,booked,filed,main.node);
+  // The try-to-cheat story, after paid: a quiet link to screen 4's fields, prefilled with the signed terms.
+  const cheat=pid?el('button','link cheat',B.cheat):null;if(cheat){cheat.type='button';cheat.addEventListener('click',()=>show('pay'))}
+  box.append(el('div','paidstamp',[el('span','ring',icon('circle-check',30)),sha?el('span','hashpill mono',[icon('key-round',13),' '+sha.slice(0,12)+'…']):null]),paid,booked,filed,main.node,...(cheat?[el('p','',cheat)]:[]));
   // A block: its icon and heading, then what its read returned.
   const block=(name,head,kids,tone)=>el('section','card blk '+name,[el('p','bh'+(tone?' '+tone:''),[icon(name==='paid'?'landmark':name==='booked'?'database':'file-lock-2',20),el('span','',head)]),...kids.filter(Boolean)]);
   const wait=(words)=>el('p','wait',[icon('clock',18),el('span','',words)]);
