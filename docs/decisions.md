@@ -670,3 +670,28 @@ run only: TAP stays "not eligible Visa tooling for this hackathon (Visa, 5 Nov)"
 would add "Visa TAP" to "Built on") and the TAP work stays on /visa as a labelled extra. Nothing more is claimed: no
 "certified", "endorsed" or "confirmed by Visa" about TAP or anything else, no Visa logo. D27 stands for 5 to 7
 November; this entry replaces its "Metal only" from 7 November.
+
+### D29. The product for small companies is merged into `main` now (the owner, 12 November)
+
+The product built after the kit (the payables inbox, Purser's own books, the vault, the accounting links and Purser
+Cloud) sat on its integration branch, pull request #113, under the note "Do not merge before 15 November". On
+12 November the owner decided that it is merged into `main` now instead of after 15 November.
+
+- **Why:** the demo for the jury is planned to run on this product, and the judges must be able to read the code they
+  are shown. A public demo of it does not exist yet, and no text announces one.
+- **What changes:** the code is in this repository: `src/ap`, `src/ledger`, `src/vault`, `src/erp`, `src/payouts` and
+  `cloud/`. The texts that said "on a branch", "not public" or "not deployed" now say where the code is and how it
+  stands; the design notes of 8 November and the run record of 10 November keep their words and carry a dated line
+  beside them. `test/platform-in-main.test.ts` holds them to it. On the Kit 11 site no public page changes, except
+  that wording in `/llms.txt`. The CFO's phone pages share their script and stylesheet with the product, so those two
+  files now carry its payables and batch views as well.
+- **What stays true:**
+  - Sandbox and test money only. No payment has run against live Airwallex.
+  - It is not ready for real money; [go-live.md](go-live.md) lists what is missing.
+  - It is built and tested against stand-ins, and it ran once end to end in the Airwallex sandbox on 10 November
+    ([run record](runs/2026-11-10-platform-e2e.md)).
+  - A hosted preview exists but is private (behind an access key), and no customer uses it.
+  - The independent review of the integrated tree is still pending: a code and security review, and a red team on
+    PDFs, e-mail, tokens and tenancy, before any go-live.
+- **If wrong:** a juror reads the product as part of the Kit 11 submission, or as finished. The README, the form text
+  and [after-the-kit.md](after-the-kit.md) therefore keep it apart from the Kit 11 runs and say it is not live.

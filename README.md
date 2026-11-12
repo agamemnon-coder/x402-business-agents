@@ -8,7 +8,7 @@ For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice ov
 
 **[Try it in a minute.](https://kit11.max-31b.workers.dev/try/sign)**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 3097 passing](https://img.shields.io/badge/tests-3097%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 3930 passing](https://img.shields.io/badge/tests-3930%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
 
 **[Judge it in 3 minutes →](https://kit11.max-31b.workers.dev/judge)**
 
@@ -168,7 +168,7 @@ npm run judge -- --check
 ```
 
 - `npm ci` (under a minute): installs the exact versions in the lockfile; every dependency is pinned.
-- `npm test` (3 to 4 min): **3097 tests in 303 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included.
+- `npm test` (4 to 7 min): **3930 tests in 393 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included. One more test is skipped here: it runs only on local D1 (`npm run test:d1`).
 - `npm run judge -- --check` (about 3 s): builds the site's 18 pages from the main run's committed record, offline, and fetches each once.
 - `npm run verify-receipt -- receipt.json` (under 1 s): after you sign on [/try/sign](https://kit11.max-31b.workers.dev/try/sign), checks its receipt offline with Node's own crypto: your passkey signed exactly those terms; change one cent and it says NOT VALID. Getting the receipt needs the live site and your own passkey.
 
@@ -190,7 +190,7 @@ Not validated with customers yet: 2 finance conversations (a CFO and a bank fina
 
 ## Built after the kit (test environment, not live)
 
-On [/try/sign](https://kit11.max-31b.workers.dev/try/sign) the Treasury agent asks to pay one invoice above its limit and the CFO signs the exact terms with Face ID. The payables inbox below is built to do that for every supplier invoice of a small company. It is on a branch, not on this site: built and tested against stand-ins and on Cloudflare's local database, not public (a private preview only), no customer; on 10 November it ran once end to end in the Airwallex sandbox for three test companies (1 payout PAID, 3 refused by Airwallex: [run record](docs/runs/2026-11-10-platform-e2e.md)). Its connected-account payout did run in the Airwallex sandbox on 10 November: EUR 5.00 paid on a test company's behalf (`a9460dba-f31b-4111-be58-6d9a9e71adb1`, settlement simulated), Airwallex accepting Purser's EUR 0.05 fee. The Kit 11 build keeps Metal and x402 for the agents' own payments; the inbox pays suppliers through Airwallex payouts. Details and screenshots: [docs/after-the-kit.md](docs/after-the-kit.md).
+On [/try/sign](https://kit11.max-31b.workers.dev/try/sign) the Treasury agent asks to pay one invoice above its limit and the CFO signs the exact terms with Face ID. The payables inbox below is built to do that for every supplier invoice of a small company. Its code is in this repository, not on this site: the inbox in [src/ap](src/ap), the books in [src/ledger](src/ledger), the documents in [src/vault](src/vault), the accounting links in [src/erp](src/erp), payments in other currencies in [src/payouts](src/payouts), and Purser Cloud, the console and its API, in [cloud/](cloud). It is built and tested against stand-ins and on Cloudflare's local database; on 10 November it ran once end to end in the Airwallex sandbox for three test companies (1 payout PAID, 3 refused by Airwallex: [run record](docs/runs/2026-11-10-platform-e2e.md)). A hosted preview exists but is private (behind an access key); no customer uses it, and it is not ready for real money. Its connected-account payout did run in the Airwallex sandbox on 10 November: EUR 5.00 paid on a test company's behalf (`a9460dba-f31b-4111-be58-6d9a9e71adb1`, settlement simulated), Airwallex accepting Purser's EUR 0.05 fee. The Kit 11 build keeps Metal and x402 for the agents' own payments; the inbox pays suppliers through Airwallex payouts. Details and screenshots: [docs/after-the-kit.md](docs/after-the-kit.md).
 
 - **Payables inbox:** supplier invoices arrive as PDF or e-mail, are read, checked (duplicates, changed bank details, totals) and booked.
 - **Scanned invoices:** two independent readings must agree on IBAN, total, currency and invoice number; otherwise a person decides.
@@ -418,7 +418,7 @@ clearing under load (30 October): [docs/runs/](docs/runs/) and [docs/metal-award
 - [docs/controls.md](docs/controls.md): every guard in code, its test, and what needs a person
 - [docs/claims.md](docs/claims.md): every claim in this repo and its source
 - [docs/metal-award.md](docs/metal-award.md) and [docs/airwallex.md](docs/airwallex.md): what Purser uses from each
-- [docs/payables.md](docs/payables.md): the invoice inbox, built after the submission (its own branch, not in the submitted run)
+- [docs/payables.md](docs/payables.md): the invoice inbox, built after the submission (its code is in [src/ap](src/ap); not in the submitted run)
 - [docs/security.md](docs/security.md): threat model, attacks and what stops each one
 - [docs/submission/README.md](docs/submission/README.md): the submission text, with the short Description
 - [docs/submission/long-description.md](docs/submission/long-description.md): the long form text it replaced, in full

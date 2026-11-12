@@ -1,7 +1,8 @@
 # Payables: the invoice inbox
 
-Built after the hackathon submission (8 November 2026), on its own branch; not part of the submitted run or the live
-site. Design: [superpowers/specs/2026-11-08-payables-inbox-design.md](superpowers/specs/2026-11-08-payables-inbox-design.md).
+Built after the hackathon submission (8 November 2026). Its code is in this repository (`src/ap`, the page in
+`src/servers/payables.ts`); it is not part of the submitted run or the live site. Where the whole product stands:
+[after-the-kit.md](after-the-kit.md). Design: [superpowers/specs/2026-11-08-payables-inbox-design.md](superpowers/specs/2026-11-08-payables-inbox-design.md).
 Test money only: the Airwallex sandbox.
 
 Supplier invoices come in as PDFs; Purser reads them, checks them, files the payment for the CFO's Face ID and books

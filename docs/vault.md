@@ -84,5 +84,6 @@ the environment only, never from code, git, logs or the chat.
 
 ## Not done yet
 
-The cloud's own store (R2, on the backend branch), the OAuth flows for Drive and OneDrive, sales invoices, PDF/A,
-signing the PDFs themselves, and OCR for scanned invoices (a scan is filed as it came in).
+A sink to the cloud's own store (R2; the cloud is in `cloud/`, [cloud.md](cloud.md)), the OAuth flows for Drive and
+OneDrive, sales invoices, PDF/A, signing the PDFs themselves, and OCR for scanned invoices (a scan is filed as it came
+in).
