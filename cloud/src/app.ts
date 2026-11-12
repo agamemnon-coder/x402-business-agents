@@ -21,7 +21,7 @@ import { integrations } from "./integrations.js";
 import { platformCompanies } from "./platformView.js";
 import { accountOf, bindingOf, onboardingLink, openAccount, PlatformRefused, receiveAccountEvent, type AwxPlatformEnv } from "./awxPlatform.js";
 import { cloudHealth, companyStatus, HealthReport, MonitorRefused, notify, receiveReport, removeWebhook, setWebhook, webhookOf, type Outbound } from "./monitor.js";
-import { DEMO_BROWSER_SEC, DEMO_DOCUMENT_BROWSER_SEC, DEMO_DOCUMENT_ROUTES, DEMO_HEALTH_SEC, DEMO_LABEL, DEMO_NOTE, DEMO_OPEN, DEMO_READS, demoBusy, demoCompanies, demoDocument, demoKey, demoNoCompany, demoRefused, remembered, type DemoEnv } from "./demo.js";
+import { DEMO_BROWSER_SEC, DEMO_DOCUMENT_BROWSER_SEC, DEMO_DOCUMENT_ROUTES, DEMO_HEALTH_SEC, DEMO_LABEL, DEMO_NOTE, DEMO_OPEN, DEMO_READS, demoBusy, demoCompanies, demoDocument, demoKey, demoNoCompany, demoRefused, demoTenantId, remembered, type DemoEnv } from "./demo.js";
 
 export interface CloudEnv {
   sql: Sql;
@@ -604,16 +604,16 @@ async function demoRoute(req: Request, env: CloudEnv, demo: DemoEnv, url: URL, n
   // A document by its hash never changes, so a browser may keep it for a day.
   const keep = hit.r.path === "/v1/documents/{sha256}" ? { ttlSec: demo.ttlSec, browser: `public, max-age=${DEMO_DOCUMENT_BROWSER_SEC}, immutable` } : data;
   return remembered(demo, key, now, keep, async () => {
-    const t = await env.sql.first<{ id: string }>("SELECT id FROM tenants WHERE slug = ? AND closed_at IS NULL", [slug]);
-    if (!t) return demoNoCompany();
-    const tenant = new TenantDb(env.sql, t.id);
+    const id = await demoTenantId(env.sql, demo, slug, now);
+    if (!id) return demoNoCompany();
+    const tenant = new TenantDb(env.sql, id);
     if (DEMO_DOCUMENT_ROUTES.has(hit.r.path)) {
       const sha = hit.r.path === "/v1/documents/{sha256}" ? hit.p![0]! : (await tenant.one<{ doc_sha256: string }>("invoices", { id: hit.p![0]! }))?.doc_sha256;
       const row = sha ? await tenant.one<{ blob_key: string; filename: string; mime: string; size: number }>("documents", { sha256: sha }) : null;
       return demoDocument(env.blobs, row, hit.r.path === "/v1/documents/{sha256}" ? "document" : "invoice");
     }
     // The visitor: read-only, of this company, with no key and no person behind it; and no inbox, whatever is configured.
-    const caller: Caller = { tenantId: t.id, kind: "key", principal: "demo", scopes: new Set<Scope>(["read"]), role: "viewer", user: null };
+    const caller: Caller = { tenantId: id, kind: "key", principal: "demo", scopes: new Set<Scope>(["read"]), role: "viewer", user: null };
     return hit.r.run({ env: { ...env, mailDomain: "" }, req, url: new URL(`${url.origin}${inner}?${query.toString()}`), now, params: hit.p!, caller, db: tenant, demo: true });
   });
 }

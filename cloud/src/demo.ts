@@ -1,6 +1,7 @@
 // Purser Cloud's public demo mode: a deployment of its own (its own database and document store, holding seeded test
 // companies and nothing else) that anyone may read without an account. One deployment variable switches it on
-// (DEMO_PUBLIC=on, with DEMO_SLUGS naming the demo companies). With the variable unset nothing in this file runs.
+// (DEMO_PUBLIC=on, with DEMO_SLUGS naming the demo companies). With the variable unset demo mode is off: demoFromVars
+// answers undefined and nothing else in this file runs.
 //
 // In demo mode there is one caller: an anonymous, read-only visitor.
 //   GET /v1/demo/companies               the demo companies, for the console's switcher
@@ -62,6 +63,8 @@ export interface DemoEnv {
   /** This isolate's own state: its counters and the answers it remembers. Nothing of it is in the database. */
   readonly limiter: MemoryLimiter;
   readonly memo: ResponseMemo;
+  /** The demo companies' ids, each looked up once and kept as long as an answer is (demoTenantId). */
+  readonly tenants: Map<string, { id: string; expires: number }>;
   /**
    * Cloudflare's edge cache, shared by the isolates of one data centre. Used when the runtime has one; it is a saving,
    * never needed (as far as we know it stores nothing on a workers.dev address: the isolate's memory works everywhere).
@@ -78,7 +81,7 @@ export function demoEnv(slugs: readonly string[], o: { perMinute?: number; uncac
   if (bad !== undefined) throw new Error(`DEMO_SLUGS holds ${JSON.stringify(bad.slice(0, 60))}, which is not a company's address (lowercase letters, digits and dashes)`);
   return {
     slugs: list, rate: { perMinute: o.perMinute ?? DEMO_RATE.perMinute, uncachedPerMinute: o.uncachedPerMinute ?? DEMO_RATE.uncachedPerMinute }, ttlSec: o.ttlSec ?? DEMO_TTL_SEC,
-    limiter: new MemoryLimiter(), memo: new ResponseMemo(), ...(o.cache ? { cache: o.cache } : {}),
+    limiter: new MemoryLimiter(), memo: new ResponseMemo(), tenants: new Map(), ...(o.cache ? { cache: o.cache } : {}),
   };
 }
 
@@ -253,33 +256,46 @@ export interface DemoCompany {
   counts: { invoices: number; invoices_paid: number; suppliers: number; payments: number; transactions: number; documents: number; ledger_entries: number };
 }
 
-/** The demo companies that exist and are open, in the configured order, each with counts of what it holds. */
+/**
+ * A demo company's id by its address (the caller checked that the address is on the demo's list): asked of the database
+ * once, then kept in this isolate for as long as an answer is. A company that is not there, or closed, is asked again.
+ */
+export async function demoTenantId(sql: Sql, demo: DemoEnv, slug: string, now: Date): Promise<string | null> {
+  const kept = demo.tenants.get(slug);
+  if (kept && kept.expires > now.getTime()) return kept.id;
+  demo.tenants.delete(slug);
+  const t = await sql.first<{ id: string }>("SELECT id FROM tenants WHERE slug = ? AND closed_at IS NULL", [slug]);
+  if (!t) return null;
+  demo.tenants.set(slug, { id: t.id, expires: now.getTime() + demo.ttlSec * 1000 });
+  return t.id;
+}
+
+/**
+ * The demo companies that exist and are open, in the configured order, each with counts of what it holds: one statement
+ * for all of them (one trip to the database; the table names are this file's own).
+ */
 export async function demoCompanies(sql: Sql, slugs: readonly string[]): Promise<{ test_world: true; read_only: true; note: string; companies: DemoCompany[] }> {
-  const marks = (n: number) => Array.from({ length: n }, () => "?").join(", ");
-  const rows = await sql.all<{ id: string; slug: string; name: string; language: string }>(`SELECT id, slug, name, language FROM tenants WHERE closed_at IS NULL AND slug IN (${marks(slugs.length)})`, [...slugs]);
-  const ids = rows.map((r) => r.id);
-  // One statement per table for all companies together; the table names are this file's own.
-  const count = async (table: "invoices" | "vendors" | "payments" | "transactions" | "documents" | "ledger_entries", where = ""): Promise<Map<string, number>> =>
-    new Map(ids.length ? (await sql.all<{ tenant_id: string; n: number }>(`SELECT tenant_id, COUNT(*) AS n FROM ${table} WHERE tenant_id IN (${marks(ids.length)})${where} GROUP BY tenant_id`, ids)).map((r) => [r.tenant_id, r.n]) : []);
-  const [invoices, paid, suppliers, payments, transactions, documents, entries] = [await count("invoices"), await count("invoices", " AND status = 'paid'"), await count("vendors"), await count("payments"),
-    await count("transactions"), await count("documents"), await count("ledger_entries")];
+  const count = (table: "invoices" | "vendors" | "payments" | "transactions" | "documents" | "ledger_entries", as: keyof DemoCompany["counts"], and = "") =>
+    `(SELECT COUNT(*) FROM ${table} x WHERE x.tenant_id = t.id${and}) AS ${as}`;
+  const rows = await sql.all<{ slug: string; name: string; language: string } & DemoCompany["counts"]>(
+    `SELECT t.slug, t.name, t.language, ${[count("invoices", "invoices"), count("invoices", "invoices_paid", " AND x.status = 'paid'"), count("vendors", "suppliers"), count("payments", "payments"),
+      count("transactions", "transactions"), count("documents", "documents"), count("ledger_entries", "ledger_entries")].join(", ")}
+     FROM tenants t WHERE t.closed_at IS NULL AND t.slug IN (${slugs.map(() => "?").join(", ")})`, [...slugs]);
   const companies = slugs.flatMap((slug): DemoCompany[] => {
     const r = rows.find((x) => x.slug === slug);
-    if (!r) return [];
-    const n = (m: Map<string, number>) => m.get(r.id) ?? 0;
-    return [{ slug, name: r.name, language: r.language === "en" ? "en" : "nl",
-      counts: { invoices: n(invoices), invoices_paid: n(paid), suppliers: n(suppliers), payments: n(payments), transactions: n(transactions), documents: n(documents), ledger_entries: n(entries) } }];
+    return r ? [{ slug, name: r.name, language: r.language === "en" ? "en" : "nl",
+      counts: { invoices: r.invoices, invoices_paid: r.invoices_paid, suppliers: r.suppliers, payments: r.payments, transactions: r.transactions, documents: r.documents, ledger_entries: r.ledger_entries } }] : [];
   });
   return { ...DEMO_LABEL, companies };
 }
 
 /** The stored types the demo serves as they are; every other type (HTML, SVG, scripts, anything unknown) goes out as plain bytes. */
-const SAFE_TYPES: Record<string, string> = {
-  "application/pdf": "application/pdf", "image/png": "image/png", "image/jpeg": "image/jpeg",
-  "text/plain": "text/plain; charset=utf-8", "text/csv": "text/csv; charset=utf-8", "application/json": "application/json; charset=utf-8",
-};
+const SAFE_TYPES = new Map([
+  ["application/pdf", "application/pdf"], ["image/png", "image/png"], ["image/jpeg", "image/jpeg"],
+  ["text/plain", "text/plain; charset=utf-8"], ["text/csv", "text/csv; charset=utf-8"], ["application/json", "application/json; charset=utf-8"],
+]);
 export function demoContentType(stored: string): string {
-  return SAFE_TYPES[(stored.split(";")[0] ?? "").trim().toLowerCase()] ?? "application/octet-stream";
+  return SAFE_TYPES.get((stored.split(";")[0] ?? "").trim().toLowerCase()) ?? "application/octet-stream";
 }
 
 /**

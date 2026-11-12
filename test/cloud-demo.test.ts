@@ -207,9 +207,10 @@ describe("the test world, before demo mode is switched on", () => {
     expect([...DEMO_OPEN].sort()).toEqual(of("open"));
     for (const r of ROUTES.filter((x) => DEMO_READS.has(label(x)))) expect([r.method, r.need], label(r)).toEqual(["GET", "read"]);
     for (const r of ROUTES.filter((x) => DEMO_OPEN.has(label(x)))) expect([r.method, r.need], label(r)).toEqual(["GET", "public"]);
-    // The two reads that hand out a document's bytes are served by the demo's own, stricter code.
-    expect([...DEMO_DOCUMENT_ROUTES].map((p) => `GET ${p}`).every((k) => DEMO_READS.has(k))).toBe(true);
-    expect(ROUTES.filter((r) => DEMO_READS.has(label(r)) && /document/.test(r.path)).map((r) => r.path).sort()).toEqual([...DEMO_DOCUMENT_ROUTES].sort());
+    // The two reads that hand out a document's bytes are served by the demo's own, stricter code (a new read that
+    // returns stored bytes belongs on that list too).
+    expect([...DEMO_DOCUMENT_ROUTES].sort()).toEqual(["/v1/documents/{sha256}", "/v1/invoices/{id}/document"]);
+    expect([...DEMO_DOCUMENT_ROUTES].every((p) => DEMO_READS.has(`GET ${p}`))).toBe(true);
   });
 
   it("answers every GET route for its owner: what demo mode refuses below, it refuses on its own account", async () => {
@@ -304,7 +305,8 @@ describe("demo mode, every route in the route table", () => {
   });
 
   it("writes nothing: every statement is a SELECT, the schema script is not run, and the database is the same afterwards", () => {
-    expect(statements.length).toBeGreaterThan(50);
+    // At least one statement for each read of each demo company (the check below is not about an empty list).
+    expect(statements.length).toBeGreaterThanOrEqual(Object.values(DEMO).filter((v) => v === "read").length * 2);
     expect(statements.filter((s) => !/^\s*SELECT\b/i.test(s))).toEqual([]);
     expect(after).toBe(before);
   });
@@ -464,6 +466,24 @@ describe("demo mode, cost and abuse", () => {
     } finally { watch.stop(); }
   });
 
+  it("goes to the database as little as it can: the companies in one statement, and a company's id looked up once", async () => {
+    demoOn({ ttlSec: 300 });
+    const watch = watchSql(c.env.sql);
+    try {
+      expect((await get("/v1/demo/companies")).status).toBe(200);
+      expect(watch.seen.length).toBe(1);
+      const lookups = () => watch.seen.filter((q) => /FROM tenants WHERE slug = \?/.test(q)).length;
+      for (const p of ["vendors", "payments", "insights", `documents/${alder.sha}`]) expect((await get(`/v1/demo/alder/${p}`)).headers.get("x-purser-cache"), p).toBe("miss");
+      expect(lookups()).toBe(1);
+      expect((await get("/v1/demo/birch/vendors")).status).toBe(200);
+      expect(lookups()).toBe(2);
+      // And asked again once the time an answer is kept has passed.
+      c.clock.now = new Date(NOW.getTime() + 301_000);
+      expect((await get("/v1/demo/alder/vendors")).headers.get("x-purser-cache")).toBe("miss");
+      expect(lookups()).toBe(3);
+    } finally { watch.stop(); }
+  });
+
   it("remembers the health check and the API's description whatever is put after the question mark, the health check for half a minute", async () => {
     demoOn({ ttlSec: 300 });
     for (const p of ["/v1/health", "/v1/openapi.json", "/v1/demo/companies"]) {
@@ -603,6 +623,8 @@ describe("demo mode, documents", () => {
       ["index.json", "application/json", "application/json; charset=utf-8"], ["journal.csv", "text/csv", "text/csv; charset=utf-8"], ["upper.pdf", "Application/PDF; qs=1", "application/pdf"],
       ["page.html", "text/html", "application/octet-stream"], ["drawing.svg", "image/svg+xml", "application/octet-stream"], ["code.js", "text/javascript", "application/octet-stream"],
       ["page.xhtml", "application/xhtml+xml", "application/octet-stream"], ["unknown.bin", "", "application/octet-stream"],
+      // A stored type that is the name of something every object has is a type like any other unknown one.
+      ["odd-1.bin", "constructor", "application/octet-stream"], ["odd-2.bin", "__proto__", "application/octet-stream"], ["odd-3.bin", "toString", "application/octet-stream"],
     ];
     const shas: string[] = [];
     for (const [name, mime] of cases) shas.push(await plant(alder, name, mime, new Uint8Array([...page, ...new TextEncoder().encode(name)])));
