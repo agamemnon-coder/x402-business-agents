@@ -156,10 +156,11 @@ describe("/proof as served: each card shows its strongest claim as its one link 
       const card = cardOf(html, id), first = afterHeader(card), lead0 = leads[id][0]!, out = lead0.href.startsWith("https://");
       // The name as text, never a logo; then the first lead of proofLeads(record) as the card's main link, and nothing
       // else in sight: no other link above the fold.
-      expect(card.startsWith(`<article class="pcard card" id="${id}"><div class="ph"><h3>${name}</h3></div>`)).toBe(true);
+      // 12 Nov (owner): each card's partner mark beside its name (alt empty: the name is the heading).
+      expect(card).toMatch(new RegExp(`^<article class="pcard card" id="${id}"><div class="ph">(<span class="logo( dark)?"><img src="assets/logo-${id}\\.(png|svg)" alt="" width="\\d+" height="15"></span>)?<h3>${name}</h3></div>`));
       const sight = first.slice(0, first.indexOf('<details class="fold">'));
       expect(decode(sight)).toBe(`<ul class="lead"><li><a class="c" href="${lead0.href}"${out ? ' target="_blank" rel="noopener"' : ""}>${lead0.text}${out ? " ↗" : ""}</a></li></ul>`);
-      expect(card).not.toMatch(/<img /);
+      expect(card.replace(/<span class="logo( dark)?"><img [^>]*><\/span>/, "")).not.toMatch(/<img /);
       // The fold, closed: the facts first, each a bold number and plain words.
       const fold = card.slice(card.indexOf('<details class="fold">'));
       expect(fold.startsWith('<details class="fold"><summary>Show the live proof</summary><div class="facts">')).toBe(true);
