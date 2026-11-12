@@ -3,7 +3,9 @@
 // (test/fixtures/moneybird/openapi-subset.json, extracted from Moneybird's official OpenAPI file), so a field name the
 // connector made up, or an amount in the wrong shape, is answered with 400 as Moneybird would refuse it. Answers follow
 // the shapes in that OpenAPI file: ids as large integers, money as decimal strings, errors as {"error", "symbolic"}.
-// Test money only; nothing here is a real administration.
+// (The live API wrote its ids as strings on 12 November 2026, test/fixtures/moneybird/sandbox-2026-11-12.json; the
+// stand-in keeps the bare integers of the OpenAPI examples, the harder case, and the connector reads both.)
+// Test money only; nothing here is a real administration, unless a test hands it a real one's chart and tax rates.
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { ErpError, RecordingTransport, type HttpRequest, type HttpResponse } from "../../src/erp/connector.js";
@@ -106,6 +108,13 @@ export class FakeMoneybird {
   readonly admin = "123456789012345678";
   readonly base = `https://moneybird.com/api/v2/${this.admin}`;
   readonly token = "test-token";
+  /** The administration's chart and tax rates: the stand-in's own, or a real administration's as its API listed them. */
+  private readonly ledger: LedgerAccount[];
+  private readonly tax: TaxRate[];
+  constructor(o: { ledger?: LedgerAccount[]; tax?: TaxRate[] } = {}) {
+    this.ledger = o.ledger ?? LEDGER;
+    this.tax = o.tax ?? TAX;
+  }
   readonly contacts = new Map<string, Contact>();
   readonly invoices = new Map<string, Invoice>();
   readonly journals = new Map<string, Journal>();
@@ -176,8 +185,8 @@ export class FakeMoneybird {
       return this.json(200, slice, more ? { link: `<${next.toString()}>; rel="next"` } : {});
     };
 
-    if (req.method === "GET" && p === "/ledger_accounts") return this.json(200, LEDGER.map((l) => ({ ...l, administration_id: Number(this.admin), parent_id: null })));
-    if (req.method === "GET" && p === "/tax_rates") return paged(TAX.map((t) => ({ ...t, administration_id: Number(this.admin), show_tax: true, country: null })));
+    if (req.method === "GET" && p === "/ledger_accounts") return this.json(200, this.ledger.map((l) => ({ parent_id: null, ...l, administration_id: Number(this.admin) })));
+    if (req.method === "GET" && p === "/tax_rates") return paged(this.tax.map((t) => ({ show_tax: true, country: null, ...t, administration_id: Number(this.admin) })));
     if (req.method === "GET" && p === "/contacts") return paged([...this.contacts.values()]);
     const byCustomer = /^\/contacts\/customer_id\/(.+)$/.exec(p);
     if (req.method === "GET" && byCustomer) {
@@ -212,8 +221,8 @@ export class FakeMoneybird {
       let vat = 0;
       const details: Detail[] = [];
       for (const d of rows) {
-        const led = LEDGER.find((l) => l.id === String(d.ledger_account_id));
-        const tax = TAX.find((t) => t.id === String(d.tax_rate_id));
+        const led = this.ledger.find((l) => l.id === String(d.ledger_account_id));
+        const tax = this.tax.find((t) => t.id === String(d.tax_rate_id));
         if (!led || !led.allowed_document_types.includes("purchase_invoice")) return this.json(422, { error: { "details.ledger_account_id": ["is invalid"] } });
         if (!tax || tax.tax_rate_type !== "purchase_invoice") return this.json(422, { error: { "details.tax_rate_id": ["is invalid"] } });
         const qty = Number(d.amount ?? 1);

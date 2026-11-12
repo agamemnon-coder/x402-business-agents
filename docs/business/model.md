@@ -1,8 +1,8 @@
 # Business model: a hypothesis
 
-**Everything on this page is a hypothesis.** **We have not validated demand with customers yet:** no customer
-interviews, no discovery, no pilots, no letters of intent, no revenue. The buyer, the channel and the price below are
-what we would test first, not what we have found. Outside facts carry a source we opened on the date given.
+**Everything on this page is a hypothesis.**
+Not validated with customers yet: 2 finance conversations (a CFO and a bank finance professional, quoted, anonymous); more in progress; no pilots, no revenue.
+No letters of intent. The buyer, the channel and the price below are what we would test first, not what we have found. Outside facts carry a source we opened on the date given.
 
 Back to the [business case index](README.md). The problem it answers: [problem.md](problem.md).
 

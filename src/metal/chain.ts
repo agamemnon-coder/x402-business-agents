@@ -7,6 +7,10 @@ import { CHAIN_ID, USDZ, rpcUrl } from "./network.js";
 
 const TRANSFER_GAS_LIMIT = 200_000n;
 
+/** A plain *USDZ transfer as Purser sends it through metal-ts: gas paid in *USDZ, a fixed limit, 1 per gas. One shape
+ *  for transferUsdz here and for the owners path, which signs the same transaction behind its call budget. */
+export const USDZ_TRANSFER = { abi: erc20Abi, address: USDZ, functionName: "transfer", gasToken: USDZ, gasFallback: TRANSFER_GAS_LIMIT, gasLimit: TRANSFER_GAS_LIMIT, maxFeePerGas: 1n } as const;
+
 let client: PublicClient | undefined;
 
 export function publicClient(): PublicClient {
@@ -26,10 +30,15 @@ export function usdzBalance(address: Address): Promise<bigint> {
   return publicClient().readContract({ address: USDZ, abi: erc20Abi, functionName: "balanceOf", args: [address] });
 }
 
+/** A key file as the pinned metal-agent CLI writes it. An error names the file's path only, never anything the file holds. */
 export function readKeyFile(path: string): { address: Address; privateKey: Hex } {
-  const k = JSON.parse(readFileSync(path, "utf8")) as { address: Address; privateKey: Hex };
-  if (!k.address || !k.privateKey) throw new Error(`not a metal-agent key file: ${path}`);
-  return k;
+  let text: string;
+  try { text = readFileSync(path, "utf8"); } catch (e) { throw new Error(`the key file ${path} cannot be read (${(e as NodeJS.ErrnoException).code ?? "error"})`, { cause: e }); }
+  // JSON.parse's own message quotes the start of the text it could not read, and in a key file that is the key.
+  const parsed = ((): unknown => { try { return JSON.parse(text); } catch { return null; } })();
+  const k = (parsed && typeof parsed === "object" ? parsed : {}) as { address?: unknown; privateKey?: unknown };
+  if (typeof k.address !== "string" || !k.address || typeof k.privateKey !== "string" || !k.privateKey) throw new Error(`not a metal-agent key file: ${path}`);
+  return k as { address: Address; privateKey: Hex };
 }
 
 /** Plain *USDZ transfer from a key file, waited to a successful receipt. */
@@ -38,10 +47,7 @@ export async function transferUsdz(fromKeyFile: string, to: Address, amount: big
   const account = privateKeyToAccount(readKeyFile(fromKeyFile).privateKey);
   const walletClient = createWalletClient({ account, chain: pc.chain, transport: custom(pc) });
   const { writeMip20Contract } = await import("@metalntwx/metal-ts");
-  const hash = await writeMip20Contract({
-    walletClient, publicClient: pc, abi: erc20Abi, address: USDZ, functionName: "transfer", args: [to, amount],
-    gasToken: USDZ, gasFallback: TRANSFER_GAS_LIMIT, gasLimit: TRANSFER_GAS_LIMIT, maxFeePerGas: 1n,
-  });
+  const hash = await writeMip20Contract({ walletClient, publicClient: pc, ...USDZ_TRANSFER, args: [to, amount] });
   const receipt = await pc.waitForTransactionReceipt({ hash });
   if (receipt.status !== "success") throw new Error(`transfer ${hash} reverted`);
   return hash;
