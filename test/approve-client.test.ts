@@ -7,7 +7,7 @@ import { fingerprintOf, spkiSha256OfCose } from "../src/passkey/ledger.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
-import { agentOf, badBatchLines, batchRemovalHash, firstScreenFacts, isTestMoney, reasonWords, whyYou, amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, freshEnough, passkeyFingerprint, policyLoosens, rejectionHash, takeRunnerKey, takeViewKey, type PhoneProposal } from "../src/approve/client.js";
+import { agentOf, badBatchLines, batchRemovalHash, firstScreenFacts, isPayablesPayment, isTestMoney, reasonWords, whyYou, amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, freshEnough, passkeyFingerprint, policyLoosens, rejectionHash, takeRunnerKey, takeViewKey, type PhoneProposal } from "../src/approve/client.js";
 import { rejectionSha256, sha256Hex } from "../src/lib/terms.js";
 import { batchRemovalSha256 } from "../src/policy/batch.js";
 import { challengeFor } from "../src/passkey/webauthn.js";
@@ -294,6 +294,39 @@ describe("the first screen of an inbox payment (S6)", () => {
   it("adds nothing for a payment without the inbox's fields", () => {
     expect(firstScreenFacts({ kind: "invoice_payment", vendor: "Stockline" })).toEqual([]);
     expect(firstScreenFacts({ kind: "policy_change" })).toEqual([]);
+  });
+  it("adds nothing for a Kit 11 invoice payment: its real terms carry a payout reason, and none of the inbox's fields", () => {
+    // P-0004 of the rehearsal, as src/agents/euroBill.ts writes every Kit 11 invoice payment: a reason, no total line,
+    // no source. Its first screen stays payee, agent and why, as on main before the product came into this repository
+    // (review of 12 November: a "Reason" row had appeared on the CFO's Kit 11 approval).
+    const kit11 = byId("P-0004").terms;
+    expect(kit11).toMatchObject({ kind: "invoice_payment", reason: "professional_business_services" });
+    expect([kit11.document_total_line, kit11.source, kit11.test_money]).toEqual([undefined, undefined, undefined]);
+    expect(isPayablesPayment(kit11)).toBe(false);
+    expect(firstScreenFacts(kit11)).toEqual([]);
+    expect(isTestMoney(kit11)).toBe(false);
+    for (const f of F.proposals) expect({ id: f.proposal_id, rows: firstScreenFacts(f.terms) }).toEqual({ id: f.proposal_id, rows: [] });
+    // The same payment as the inbox files it does get its two rows.
+    expect(firstScreenFacts({ ...kit11, document_total_line: "Total due EUR 1,850.00", source: "payables_inbox" })).toEqual([
+      ["On the invoice", "\u201cTotal due EUR 1,850.00\u201d"],
+      ["Reason", "Professional or business services"],
+    ]);
+  });
+});
+
+describe("the first screen's label column", () => {
+  const css = readFileSync(new URL("../src/approve/style.css", import.meta.url), "utf8");
+  const client = readFileSync(new URL("../src/approve/client.ts", import.meta.url), "utf8");
+  it("stays 64px on every Kit 11 approval; only the payables and batch views take the wider one", () => {
+    // The stylesheet: one base rule, one modifier, nothing else sets the list's columns.
+    const rules = [...css.matchAll(/^(\.key-facts[^{\n]*) \{([^}]*)\}/gm)].filter((m) => m[2]!.includes("grid-template-columns")).map((m) => [m[1], /grid-template-columns: ([^;]+);/.exec(m[2]!)![1]]);
+    expect(rules).toEqual([[".key-facts", "64px minmax(0, 1fr)"], [".key-facts.wide", "92px minmax(0, 1fr)"]]);
+    // The script: the Kit 11 view (approvePage) builds the plain list; payablesView and batchView ask for "wide".
+    const at = (needle: string) => { const i = client.indexOf(needle); expect({ needle, found: i >= 0 }).toEqual({ needle, found: true }); return i; };
+    const lists = [...client.matchAll(/el\("dl", "(key-facts[^"]*)"/g)].map((m) => ({ cls: m[1], at: m.index }));
+    expect(lists.map((l) => l.cls)).toEqual(["key-facts", "key-facts wide", "key-facts wide"]);
+    const [kit11, payables, batch] = [at("async function approvePage("), at("function payablesView("), at("async function batchView(")];
+    expect(kit11 < lists[0]!.at && lists[0]!.at < payables && payables < lists[1]!.at && lists[1]!.at < batch && batch < lists[2]!.at).toBe(true);
   });
 });
 
