@@ -36,7 +36,7 @@ import { tokenizeRun, tokenizeRunBlock, type TokenizeRun } from "./tokenizeRun.j
 import { HOLD_NOT_FINISHED, METAL_CSS, METAL_HOLD_RECORD, METAL_INSPECT_JS, holdState, metalBody } from "./metalMandates.js";
 import { EVIDENCE_CSS, claudeEvidence, failureFold, mcpFold, measuredBlock, sweepFold } from "./claudeEvidence.js";
 import { T0_CSS, T0_FIRST_RECORD, T0_JOURNAL_RECORD, T0_LABEL, T0_SECOND_RECORD, t0Body, t0Data } from "./t0Page.js";
-import { OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
+import { OPEN_TARGET_JS, esc, icon, page, TRY_URL } from "./ui.js";
 
 const CSS = `.pp { padding: 26px 0 24px; }
 .pp .wrap { max-width: 1040px; display: grid; gap: 18px; }
@@ -426,6 +426,6 @@ export function t0Page(run: AgentRun = agentRun()): string {
 /** The clean 404: what happened, and the four tabs. No script. */
 export function notFoundPage(run: AgentRun = agentRun()): string {
   const body = `<main class="nf"><div class="wrap"><p class="pill">404</p><h1>This page does not exist.</h1><p class="line">Every page of the demo is one of these ${WATCH_IN_MENU ? "four" : "three"}.</p>
-<div class="tabs2"><a class="btn primary" href="home">${icon("feather", 18)}Home</a>${WATCH_IN_MENU ? `<a class="btn" href="watch">${icon("play", 18)}Watch</a>` : ""}<a class="btn" href="try">${icon("sparkles", 18)}Try</a><a class="btn" href="proof">${icon("shield-check", 18)}Proof</a></div></div></main>`;
+<div class="tabs2"><a class="btn primary" href="home">${icon("feather", 18)}Home</a>${WATCH_IN_MENU ? `<a class="btn" href="watch">${icon("play", 18)}Watch</a>` : ""}<a class="btn" href="${TRY_URL}">${icon("sparkles", 18)}Try</a><a class="btn" href="proof">${icon("shield-check", 18)}Proof</a></div></div></main>`;
   return page({ title: "Not found", description: "This page does not exist.", tab: null, css: CSS, body, source: SOURCE(run) });
 }
