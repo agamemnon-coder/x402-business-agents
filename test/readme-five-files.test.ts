@@ -41,9 +41,9 @@ const exists = (p: string) => existsSync(join(ROOT, p));
 const sourceLines = (p: string) => read(p).split("\n");
 
 describe("README: How it works in 5 files", () => {
-  it("sits after the proof sentences and before the deep docs links", () => {
-    expect(start).toBeGreaterThan(README.indexOf("## The proof, one sentence per partner"));
-    expect(README.indexOf("## The proof, one sentence per partner")).toBeGreaterThan(0);
+  it("sits after the first screen and why this is a company, and before the deep docs links", () => {
+    expect(start).toBeGreaterThan(README.indexOf("## Why this is a company"));
+    expect(README.indexOf("## Why this is a company")).toBeGreaterThan(0);
     expect(start).toBeLessThan(README.indexOf("## Links"));
   });
 

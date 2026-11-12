@@ -56,7 +56,7 @@ const PDF_PAGE_TOKENS = 3_000;
 const ROLE_WORD: Record<Role, string> = { classify: "classify", act: "read", review: "review" };
 
 export class ClaudeReader {
-  /** `models` swaps the model for a role; only the model benchmark (src/evals/bench.ts) passes one. */
+  /** `models` swaps the model for a role; the model benchmark (src/evals/bench.ts) and the demo's engine (cloud/src/engine/claudeAccess.ts, Haiku for speed) pass one. */
   constructor(private readonly db: DB, private readonly client: Anthropic | null = claudeClient(), private readonly clock: () => number = Date.now, private readonly models: Partial<Record<Role, string>> = {}, private readonly opts: ReaderOptions = {}) {}
 
   private get maxTokens(): number { return this.opts.maxTokens ?? 16000; }

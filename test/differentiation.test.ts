@@ -62,30 +62,38 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     const lines = readme.split("\n");
     // The one tagline in the title (jury QA, 6 Nov, Q8).
     expect(lines[0]).toBe("# Purser · AI agents spend. You sign off.");
+    // The pitch once (jury panel, 12 Nov): what Purser is and the sentence every juror repeated; the other two
+    // sentences stay in the form and the deck.
     const top = words(lines.slice(1, 16).join("\n"));
-    expect(top.startsWith(`${WHAT_IT_IS} ${DIFFERENTIATORS.join(" ")} ${TRY_IT}`)).toBe(true);
+    expect(top.startsWith(`${WHAT_IT_IS} ${DIFFERENTIATORS[0]} ${TRY_IT}`)).toBe(true);
+    for (const d of DIFFERENTIATORS.slice(1)) expect(readme).not.toContain(d);
     expect(top).toContain(KIT11_RUN_LINE.replace(/\.$/, ""));
     expect(lines.slice(0, 10).join("\n")).toContain("(https://kit11.max-31b.workers.dev/try/sign)");
-    expect(readme.indexOf("[![CI]")).toBeGreaterThan(readme.indexOf(DIFFERENTIATORS[2]));
+    expect(readme.indexOf("[![CI]")).toBeGreaterThan(readme.indexOf(DIFFERENTIATORS[0]));
     expect(readme.indexOf(KIT11_RUN_LINE.replace(/\.$/, ""))).toBeGreaterThan(readme.indexOf("[![CI]"));
   });
 
-  it("open Home under its heading: what Purser is, the one button, the Airwallex proof (competitive review, 10 Nov)", () => {
+  it("open Home under its heading: what Purser is, the one button with its reassurance line, then the first sentence, word for word, leading into the hero (home-story, 12 Nov)", () => {
     const html = PAGES.home!;
     const hero = /<section class="hero">[\s\S]*?<\/section>/.exec(html)![0];
     const t = words(hero);
-    // The one button, to /try/sign, right under what Purser is; the three sentences stay in the README and the form.
-    expect(t.startsWith(`AI agents spend. You sign off. ${WHAT_IT_IS} Try it: sign with your Face ID`)).toBe(true);
-    expect(t).toContain("Watch the agents");
-    expect(t).toContain(`${CAVEAT_LINE} Details →`);
-    // The caveat's link opens the footer's "What's real?", which lists what the line names.
-    expect(hero).toContain('<a href="#real" data-real>Details →</a>');
+    // The one button right under what Purser is; then the sentence every juror repeated. The other two sentences stay
+    // in the README and the form.
+    expect(t.startsWith(`AI agents spend. You sign off. ${WHAT_IT_IS} Try it yourself A test passkey, no account, no money. About a minute. ${DIFFERENTIATORS[0]} 1 Ask`)).toBe(true);
+    expect(t).not.toContain(DIFFERENTIATORS[1]);
+    expect(t).not.toContain(DIFFERENTIATORS[2]);
+    expect(t).not.toContain("Watch the agents");
+    // The caveat, word for word, once, in the one provenance line; its link opens the footer's "What's real?", which
+    // lists what the line names.
+    expect(t).toContain(`${CAVEAT_LINE} Step 4 checks that payment's real signature in your browser`);
+    expect(t.split(CAVEAT_LINE)).toHaveLength(2);
+    expect(hero).toContain('<a href="#real" data-real>What\'s real?</a>');
     expect(html).toContain('<details class="real" id="real">');
     const real = words(/<details class="real"[\s\S]*?<\/details>/.exec(html)![0]);
     for (const x of ["customer", "supplier", "settlement", "second approver", "Test money"]) expect({ x, has: real.includes(x) }).toEqual({ x, has: true });
-    // The Kit 11 line and the awards: under the first screen, never in the hero (Max, 10 Nov).
-    expect(hero).not.toContain(KIT_LINE.split(" · entered")[0]!);
-    expect(html).toContain(KIT_LINE.split(" · entered")[0]!);
+    // No Kit 11 chip and no awards strip on Home (jury panel, 12 Nov: jargon); /visa and /metal name the entries.
+    expect(html).not.toContain(KIT_LINE.split(" · entered")[0]!);
+    expect(html).not.toMatch(/Kit 11|Metal Award|Visa Award/);
     // Without /try/sign in the bundle the button leads to /try, never to a dead link.
     expect(homePage()).not.toContain('href="try/sign"');
   });
@@ -144,22 +152,24 @@ describe("the let-through, framed as the test it was (jury review, 6 Nov, #8)", 
   it("shows both layers where the refusal is told: Purser refuses first; with that check off once, Metal refused anyway", () => {
     expect(CHAIN_TEST).toBe("We switched off our own check once to prove the chain holds the line: Purser refuses an over-cap purchase before signing; with that check off for one purchase, Metal refused it anyway.");
     expect(agentRun().scenes[0]!.sentence).toContain("we switched off our own check once to prove the chain holds the line");
-    for (const [name, body] of [["proof", proofPage()], ["metal", String(PAGES.metal)], ["README.md", read("README.md")], ["form", form], ["long", read("docs/submission/long-description.md")], ["qa", read("docs/submission/qa.md")]] as const) {
+    for (const [name, body] of [["proof", proofPage()], ["metal", String(PAGES.metal)], ["docs/in-depth.md", read("docs/in-depth.md")], ["form", form], ["long", read("docs/submission/long-description.md")], ["qa", read("docs/submission/qa.md")]] as const) {
       const t = words(body);
-      const has = name === "README.md" ? t.includes("We switched off our own check once to prove the chain holds the line: Purser refuses an over-cap purchase before signing; with that check off for purchase #24, Metal refused it anyway")
+      const has = name === "docs/in-depth.md" ? t.includes("We switched off our own check once to prove the chain holds the line: Purser refuses an over-cap purchase before signing; with that check off for purchase #24, Metal refused it anyway")
         : name === "qa" ? t.includes("we switched off our own check once to prove the chain holds the line") : t.includes(CHAIN_TEST);
       expect({ name, has }).toEqual({ name, has: true });
     }
   });
 });
 
-describe("Visa TAP is on /visa only, in its one closed fold (jury panel, 12 Nov; a footer link on Home and Proof from 6 to 12 Nov)", () => {
-  it("is not in Home's main part or Proof's cards, and neither carries the old footer link \"Extra, not an award entry\"", () => {
+describe("Visa TAP is on /visa only, in its one closed fold (jury panel, 12 Nov; a footer link on Home and Proof from 6 to 12 Nov); Home says nothing about Visa (home-story, 12 Nov)", () => {
+  it("is not in Home's main part or Proof's cards, and neither carries the old footer link \"Extra, not an award entry\"; Home names no Visa at all", () => {
     for (const [name, html] of [["home", PAGES.home!], ["proof", PAGES.proof!]] as const) {
       const main = /<main[\s\S]*<\/main>/.exec(html)![0];
       // "Visa" alone is the card brand Airwallex issues (a virtual Visa card); TAP is what moved to the footer.
       expect({ name, tap: /Visa TAP|Trusted Agent|\bTAP\b(?! run)/.test(words(main)) }).toEqual({ name, tap: false });
+      // Home said both "entered for the Visa Award" and "not an award entry" (jury panel, 12 Nov): now it says neither.
       expect({ name, link: /<a class="flink" href="visa">|Extra, not an award entry/.test(html) }).toEqual({ name, link: false });
+      if (name === "home") expect(html.replace(/<header class="top">[\s\S]*?<\/header>/, "")).not.toMatch(/Visa|href="visa"/);
     }
   });
 

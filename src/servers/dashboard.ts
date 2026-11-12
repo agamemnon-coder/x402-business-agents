@@ -38,6 +38,10 @@ import { proofPage } from "../redesign/proof.js";
 import { judgePage } from "../redesign/judge.js";
 import { loadTrace, TRACE_LINK, tracePage } from "../redesign/trace.js";
 import { runsPage } from "../redesign/runs.js";
+import { pricingPage } from "../redesign/pricing.js";
+import { securityPage } from "../redesign/security.js";
+import { docsPage } from "../redesign/docs.js";
+import { statusPage } from "../redesign/status.js";
 import { agentPages } from "../redesign/agents.js";
 import { monthEndPack, PACK_LINK, PACK_NAME } from "../accounting/monthPack.js";
 import { restyle } from "../redesign/ui.js";
@@ -88,6 +92,9 @@ export const LOGOS: Record<string, { type: string; body: Buffer }> = {
   "logo-airwallex.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/airwallex.png", import.meta.url)) },
   "logo-metal.svg": { type: "image/svg+xml", body: readFileSync(new URL("../ui/logos/metal.svg", import.meta.url)) },
   "logo-claude.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/claude.png", import.meta.url)) },
+  // Added 12 Nov on the owner's stated permission (docs/evidence/logo-permissions.md); sources in src/ui/logos/README.md.
+  "logo-visa.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/visa.png", import.meta.url)) },
+  "logo-cloudflare.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/cloudflare.png", import.meta.url)) },
   // Purser's own mark and its link preview (src/ui/brand/), for every public page's favicon and Open Graph image.
   "favicon.svg": { type: "image/svg+xml", body: readFileSync(new URL("../ui/brand/favicon.svg", import.meta.url)) },
   "og.png": { type: "image/png", body: readFileSync(new URL("../ui/brand/og.png", import.meta.url)) },
@@ -258,6 +265,23 @@ export const CLAUDE_PAGE = claudePage();
 const styleAndScriptCsp = (page: string) => ["default-src 'none'", `script-src ${inlineHash(page, "script")}`, `style-src ${inlineHash(page, "style")}`, "font-src 'self'", "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'"].join("; ");
 export const AIRWALLEX_CSP = AIRWALLEX_PAGE.includes("<script>") ? styleAndScriptCsp(AIRWALLEX_PAGE) : styleOnlyCsp(AIRWALLEX_PAGE);
 export const CLAUDE_CSP = styleOnlyCsp(CLAUDE_PAGE);
+/** /pricing and /security (12 Nov), the product pages under "More" (src/ui/more.ts): no script, so a style-only policy. */
+export const PRICING_PAGE = pricingPage();
+export const PRICING_CSP = styleOnlyCsp(PRICING_PAGE);
+export const SECURITY_PAGE = securityPage();
+export const SECURITY_CSP = styleOnlyCsp(SECURITY_PAGE);
+/** /docs, "Docs and API" (12 Nov), under "More" too (src/redesign/docs.ts): no script, so a style-only policy. */
+export const DOCS_PAGE = docsPage();
+export const DOCS_CSP = styleOnlyCsp(DOCS_PAGE);
+/**
+ * /status (12 Nov), under "More" too (src/redesign/status.ts). Its one small script reads the site's own /health, so its
+ * policy names that script and the style by hash and allows requests to the site itself only (connect-src 'self').
+ * The offline copy (`npm run judge`, which has no /health) carries no script: a style-only policy.
+ */
+export const STATUS_PAGE = statusPage();
+export const STATUS_CSP = cspFor(STATUS_PAGE);
+export const STATUS_PAGE_OFFLINE = statusPage("offline");
+export const STATUS_OFFLINE_CSP = styleOnlyCsp(STATUS_PAGE_OFFLINE);
 /** /t0 (owner, 12 Nov): Purser's books in T:0's ledger, from the T:0 run records; no script, so a style-only policy. */
 export const T0_PAGE = t0Page();
 export const T0_CSP = styleOnlyCsp(T0_PAGE);
@@ -277,7 +301,9 @@ export const NOT_FOUND_CSP = styleOnlyCsp(NOT_FOUND_PAGE);
 export const HOME_PAGE = homePage();
 export const WATCH_PAGE = watchPage();
 export const PROOF_PAGE = proofPage();
-export const HOME_CSP = cspFor(HOME_PAGE);
+/** Home's hero checks a signature in the browser and Home calls no server: its CSP allows no connection at all. */
+const homeCsp = (html: string) => cspFor(html).replace("connect-src 'self'", "connect-src 'none'");
+export const HOME_CSP = homeCsp(HOME_PAGE);
 /** /try/sign (TRY_SIGN_ENABLED): the page, under the same kind of hash-based CSP; the bundle carries it only when on. */
 export const TRY_SIGN_PAGE = trySignPage();
 export const TRY_SIGN_CSP = cspFor(TRY_SIGN_PAGE);
@@ -290,7 +316,7 @@ export const JUDGE_CSP = cspFor(JUDGE_PAGE).replace("connect-src 'self'", "conne
 /** Home with its "Sign with your own Face ID" button: only in a bundle that also carries /try/sign. */
 export function homeWithTrySign(): { page: string; csp: string } {
   const page = homePage(undefined, { trySign: true });
-  return { page, csp: cspFor(page) };
+  return { page, csp: homeCsp(page) };
 }
 export const WATCH_CSP = cspFor(WATCH_PAGE);
 /**
@@ -418,6 +444,24 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   app.get("/claude", (_req, res) => {
     res.setHeader("Content-Security-Policy", CLAUDE_CSP);
     res.type("html").send(CLAUDE_PAGE);
+  });
+  app.get("/pricing", (_req, res) => {
+    res.setHeader("Content-Security-Policy", PRICING_CSP);
+    res.type("html").send(PRICING_PAGE);
+  });
+  app.get("/security", (_req, res) => {
+    res.setHeader("Content-Security-Policy", SECURITY_CSP);
+    res.type("html").send(SECURITY_PAGE);
+  });
+  app.get("/docs", (_req, res) => {
+    res.setHeader("Content-Security-Policy", DOCS_CSP);
+    res.type("html").send(DOCS_PAGE);
+  });
+  // /status as the relay serves it. This server's own /health (below) has the runner's shape, not the relay's, so here
+  // the page says the status could not be read and links to /health: it never reads another shape as good.
+  app.get("/status", (_req, res) => {
+    res.setHeader("Content-Security-Policy", STATUS_CSP);
+    res.type("html").send(STATUS_PAGE);
   });
   app.get("/t0", (_req, res) => {
     res.setHeader("Content-Security-Policy", T0_CSP);

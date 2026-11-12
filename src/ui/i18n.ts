@@ -384,6 +384,9 @@ const EN = {
   "cs.nav.settings": "Settings",
   "cs.sign_out": "Sign out",
   "cs.foot": "Purser Cloud · test money only: payments go through the Airwallex sandbox, approved on the CFO's phone with Face ID. The console never pays.",
+  // The trust line under the sign-in card: what the product ran with in recorded sandbox and testnet runs (docs/claims.md).
+  "cs.trust_works": "Works with Airwallex · Metal · Visa Intelligent Commerce · Claude (sandbox and testnet runs)",
+  "cs.trust_test": "Test money only",
   "cs.session_ended": "Your sign-in ended (sessions last 15 minutes). Sign in again with your passkey.",
   "cs.ends_in": "ends in {n} min",
   "cs.waiting_passkey": "Waiting for your passkey …",
@@ -1310,6 +1313,8 @@ const NL: { readonly [K in Key]: string } = {
   "cs.nav.settings": "Instellingen",
   "cs.sign_out": "Afmelden",
   "cs.foot": "Purser Cloud · alleen testgeld: betalingen gaan via de sandbox van Airwallex, goedgekeurd op de telefoon van de CFO met Face ID. De console betaalt nooit.",
+  "cs.trust_works": "Werkt met Airwallex · Metal · Visa Intelligent Commerce · Claude (sandbox- en testnetruns)",
+  "cs.trust_test": "Alleen testgeld",
   "cs.session_ended": "Je aanmelding is verlopen (een sessie duurt 15 minuten). Meld je opnieuw aan met je passkey.",
   "cs.ends_in": "nog {n} min",
   "cs.waiting_passkey": "Wachten op je passkey …",

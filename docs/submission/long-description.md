@@ -186,9 +186,9 @@ with its own date.
   one matched and one sent to the CFO as short, by the webhook alone, and a card transaction. Payout and conversion
   events are subscribed but were not caused live that day (awx-1 caused them on 7 November).
 - **For a bigger company, more control on chain (separate test worlds, Metal testnet, 30 October):**
-  - **Four eyes on chain.** A 2-of-2 Metal account: the CFO and a controller. A payment signed by the CFO alone, the
-    same payment co-signed by a stranger's key, and a mandate revoke by the CFO alone each reverted on chain; with both
-    owners signing, they went through.
+  - **Four eyes on chain.** A 2-of-2 Metal account: the CFO and a controller (two test keys on one machine, not two
+    people). A payment signed by the CFO alone, the same payment co-signed by a stranger's key, and a mandate revoke by
+    the CFO alone each reverted on chain; with both owners signing, they went through.
   - **Compliance before a payout.** Our send-policy contract pays only with Purser's signed screening decision for
     that payee, amount and moment. Eleven attacks reverted on chain, among them a replay, a redirect to the attacker
     and a self-made decision for a sanctioned stand-in. Agents' mandate payments do not pass through it (Metal's

@@ -5,13 +5,20 @@
 // claude.asking row before each call. The switches and the company's pool come from lane C (cloud/src/try): until it
 // lands, the stand-ins below say nothing is set, so Claude is off (switch_off) and nothing is spent.
 import type Anthropic from "@anthropic-ai/sdk";
-import { ClaudeReader } from "../../../src/claude/reader.js";
+import { ClaudeReader, MODELS } from "../../../src/claude/reader.js";
 import { tryClaudeClient, type ClaudeAccess } from "../../../src/engine/budget.js";
 import type { Sql } from "../store.js";
 import { d1Spend } from "./spend.js";
 
 /** The most an answer may hold for a visitor's company (the agents' turns get 2,000 with task A6). */
 export const READER_MAX_TOKENS = 4_000;
+
+/**
+ * The demo reads an invoice with the fastest model the product uses (Haiku, the classifier's), not the runner's Sonnet:
+ * a visitor waits on every read, and the owner measured about 6.4 s a request on the live demo (12 Nov). Low effort and
+ * no extended thinking, as every reader call.
+ */
+export const READER_MODELS = { act: MODELS.classify } as const;
 
 /** Until lane C's readSwitches is wired in: no switch is set. */
 export const noSwitches = async (): Promise<Record<string, unknown>> => ({});
@@ -33,7 +40,7 @@ export function claudeAccess(o: {
   const spend = async () => d1Spend(o.sql, await (o.switches ?? noSwitches)(o.sql), { tenantId: o.tenantId, ...(await (o.scopes ?? smokePool)(o.sql, o.tenantId)) });
   return {
     reserve: async () => (client ? (await spend()).reserve() : { ok: false, reason: "no_key" }),
-    reader: (db, budget) => new ClaudeReader(db, client, Date.now, {}, { budget, maxTokens: READER_MAX_TOKENS, announce: true }),
+    reader: (db, budget) => new ClaudeReader(db, client, Date.now, READER_MODELS, { budget, maxTokens: READER_MAX_TOKENS, announce: true }),
     status: async () => (client ? (await spend()).status() : { on: false, cap_micros: null, spent_micros: null }),
   };
 }

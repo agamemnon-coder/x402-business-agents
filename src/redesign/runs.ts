@@ -517,7 +517,7 @@ ${MAIN_RUN_GLOSSARY.map(([k, v]) => `<dt><code>${esc(k)}</code></dt><dd>${esc(v)
 <p class="more-links">Per agent: <a href="agents/sourcing">Sourcing</a><a href="agents/support">Support</a><a href="agents/treasury">Treasury</a><a href="trace">Trace any payment</a><a href="proof">Proof</a></p>
 </main>`;
   return page({
-    title: `Purser · ${RUNS_TITLE}`, description: `Every live run of Purser, newest first, with its ids, checks and records. Last live run: ${last.date}.`, tab: null, css: CSS, body,
+    title: `Purser · ${RUNS_TITLE}`, description: `Every live run of Purser, newest first, with its ids, checks and records. Last live run: ${last.date}.`, tab: "runs", css: CSS, body,
     js: `${COPY_JS}\n${OPEN_TARGET_JS}\n${FILTER_JS}`, stage: false,
     source: "Source: each run's record in docs/demo and docs/runs (listed per run).",
   });
