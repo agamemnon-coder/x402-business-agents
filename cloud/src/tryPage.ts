@@ -100,7 +100,7 @@ a { color: var(--accent); }
 .samples .btn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
 .panel + .panel + .btn.big { margin-top: 16px; }
 form { display: grid; gap: 12px; }
-.f { display: grid; gap: 4px; min-width: 0; }
+.f { display: grid; gap: 4px; min-width: 0; align-content: start; }
 .f label { font-size: 13px; font-weight: 600; color: var(--muted); }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 input, select { width: 100%; min-width: 0; height: 46px; padding: 0 12px; font: 400 16px/1.2 Inter, system-ui, sans-serif; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
@@ -159,7 +159,7 @@ main > h1 { animation: slide .34s cubic-bezier(.2,.7,.2,1) both; }
 /* Screen 2: the invoice as the engine's answer has it, its rows lit one by one once the answer is in. */
 .inv { margin: 14px 0 4px; padding: 14px 16px; }
 /* Screen 2 while the request is in flight: who reads (with the open call's running time), and the card's skeleton. */
-.reading { display: flex; align-items: center; gap: 8px; margin: 4px 0 0; color: var(--muted); font-size: 15px; }
+.reading { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--muted); font-size: 15px; }
 .reading .n { color: var(--faint); font-variant-numeric: tabular-nums; font-size: 13px; }
 .reading .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 1.2s ease-in-out infinite; }
 .inv.skel .rows > div { animation: none; }
@@ -596,7 +596,10 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
   // A calm hint under the amount when it cannot be read (normAmount, shared with screen 4); nothing is sent then.
   const amtHint=el('p','hint calm',C.invoice.amountBad);amtHint.id='f-amt-hint';amtHint.hidden=true;amtHint.setAttribute('aria-live','polite');
   amt.setAttribute('aria-describedby','f-amt-hint');
-  const amtRead=()=>{const v=normAmount(amt.value);amtHint.hidden=v!==null;amt.setAttribute('aria-invalid',String(v===null));if(v!==null)amt.value=v;return v};
+  // Past the demo's cap (5000.00: the simulated bank's USD floor) or under 1.00: the same hint, the cap's words for the cap.
+  const amtRead=()=>{const v=normAmount(amt.value);if(v!==null)amt.value=v;const out=v!==null&&(Number(v)>5000||Number(v)<1);
+    amtHint.textContent=out&&Number(v)>5000?C.invoice.amountCap:C.invoice.amountBad;
+    const ok=v!==null&&!out;amtHint.hidden=ok;amt.setAttribute('aria-invalid',String(!ok));return ok?v:null};
   const iss=input('date',today(0)),dueOn=input('date',today(14));iss.required=true;dueOn.required=true;
   const iban=input('text');iban.className='mono';iban.required=true;iban.autocomplete='off';iban.spellcheck=false;iban.setAttribute('autocapitalize','characters');
   const msg=el('div','');

@@ -138,7 +138,13 @@ describe("write your own", () => {
     for (const [o, field] of cases) {
       const r = await c.req("POST", "/v1/engine/compose", { key: s, body: typed(o) });
       expect(r.status, JSON.stringify(o)).toBe(400);
-      expect(r.json, JSON.stringify(o)).toMatchObject({ code: `invalid_${field}`, field, message: expect.stringContaining(field) });
+      expect(r.json, JSON.stringify(o)).toMatchObject({ code: `invalid_${field}`, field });
+      // Each message names its field, but the cap's, which says the demo's limit plainly.
+      if (r.json.message !== "Demo invoices go up to EUR 5,000.") expect(r.json.message, JSON.stringify(o)).toContain(field);
+    }
+    for (const amount of ["5000.01", "10000.00", "123456789.00"]) {
+      const r = await c.req("POST", "/v1/engine/compose", { key: s, body: typed({ amount }) });
+      expect(r.json, amount).toMatchObject({ code: "invalid_amount", field: "amount", message: "Demo invoices go up to EUR 5,000." });
     }
     // Shapes the route itself refuses: a field too long, a field more.
     expect((await c.req("POST", "/v1/engine/compose", { key: s, body: typed({ invoice_no: "A".repeat(10_000) }) })).status).toBe(400);

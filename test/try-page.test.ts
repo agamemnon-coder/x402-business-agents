@@ -125,6 +125,10 @@ describe("the page", () => {
     expect(inv).toMatch(/amount:v,/);
     expect(inv).not.toMatch(/amt\.setCustomValidity\(|amt\.reportValidity\(/);
     expect(inv).toContain("C.invoice.amountBad");
+    // Past the demo's cap (5000.00, the simulated bank's USD floor) or under 1.00: the same calm hint, with the cap's
+    // words above it, and nothing sent (amtRead answers null).
+    expect(inv).toMatch(/Number\(v\)>5000\|\|Number\(v\)<1/);
+    expect(inv).toContain("C.invoice.amountCap");
   });
 
   it("reads the token from the fragment, takes it out of the address bar, and sends it only in the start request's body", () => {
@@ -181,6 +185,7 @@ describe("the copy", () => {
     expect(COPY.WORK.reading).toBe("Claude is reading…");
     expect(COPY.WORK.readingCode).toBe("Purser's code is reading…");
     expect(COPY.INVOICE.amountBad).toBe("Write an amount such as 1,850.00 or 10k.");
+    expect(COPY.INVOICE.amountCap).toBe("Demo invoices go up to EUR 5,000.");
   });
 
 
@@ -207,7 +212,7 @@ describe("the copy", () => {
     // "recorded {date}" labels the runs inside the "Recorded real runs" fold; "What you just did" names the three icons for screen readers only.
       for (const [k, v] of Object.entries(group)) if (!["sandbox", "executorNote", "vAmount", "vPayee", "vAccount", "vOther", "recorded", "did"].includes(k)) expect(seen.has(v) || [...seen].some((x) => v.includes("{method}") && x === v.replace("{method}", COPY.METHOD.other)), `${screen}.${k}`).toBe(true);
     }
-    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["pay 7", "invoice 3"]);
+    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["pay 7", "invoice 3", "invoice 4"]);
   });
 
   it("holds screens 3 and 4 to the words of lanes/page.md B2", () => {

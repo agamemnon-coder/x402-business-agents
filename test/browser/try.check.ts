@@ -349,13 +349,21 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
       await page.locator("#f-amt").blur();
       ok(await page.inputValue("#f-amt") === want, `${tag}: "${typed}" reads as ${want} on blur`);
     }
+    // Past the demo's cap: 10k reads as 10000.00, the calm hint says the cap, and nothing is sent.
+    await page.fill("#f-amt", "10k");
+    await page.locator("#f-amt").blur();
+    let before = asked.length;
+    await page.click(`text=${INVOICE.send}`);
+    await page.waitForTimeout(300);
+    ok(await page.isVisible(`#f-amt-hint:text-is("${INVOICE.amountCap}")`) && await page.inputValue("#f-amt") === "10000.00" && !asked.slice(before).some((x) => x.endsWith("/compose")) && await page.locator(".note").count() === 0,
+      `${tag}: "10k": the calm hint "${INVOICE.amountCap}" under the field, no request sent`);
     await page.fill("#f-amt", "-5");
-    const before = asked.length;
+    before = asked.length;
     await page.click(`text=${INVOICE.send}`);
     await page.waitForTimeout(300);
     ok(await page.isVisible("#f-amt-hint") && !asked.slice(before).some((x) => x.endsWith("/compose")), `${tag}: an amount that is not one is not sent, the hint says how to write one`);
     // A compose the server still refuses: its words calmly under the form, the form as it was sent.
-    await page.fill("#f-amt", "10k");
+    await page.fill("#f-amt", "1k");
     stand.refuseCompose = true;
     await page.click(`text=${INVOICE.send}`);
     await page.waitForSelector(`h1:text-is("${INVOICE.heading}")`);
@@ -363,7 +371,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
     // Chromium logs the refused request itself as a console error: that one, made here on purpose, is not the page's.
     const own = errors.findIndex((x) => /status of 400/.test(x));
     if (own >= 0) errors.splice(own, 1);
-    ok((await page.textContent(".hint.calm[role=status]"))!.includes("amount is in euros") && await page.locator(".note").count() === 0 && await page.inputValue("#f-amt") === "10000.00", `${tag}: a refused compose: its words calmly under the form, no red box, the form kept`);
+    ok((await page.textContent(".hint.calm[role=status]"))!.includes("amount is in euros") && await page.locator(".note").count() === 0 && await page.inputValue("#f-amt") === "1000.00", `${tag}: a refused compose: its words calmly under the form, no red box, the form kept`);
     // Filed as 1.850,00 (the engine's own limit is 5000.00, so 10k is read but not paid; the walk pays 1850.00).
     await page.fill("#f-amt", "1.850,00");
     await screenChecks(page, `${tag} screen 1 (write your own)`, width, 1, false);

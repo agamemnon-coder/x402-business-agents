@@ -89,13 +89,8 @@ export function tryEngineRoutes<C extends TryEngineCtx>(kit: EngineKit<C>): Engi
       const b = await kit.body(c, Compose, 4_000);
       // The amount as people write it (10k, 1.850,00, € 10.000,00), read as the page reads it (./amount.ts), so a page
       // cached before the page read it works too; what cannot be read goes on as sent, to the engine's strict check.
-      // One read past the engine's four digits (10k is 10000.00) is refused here in the engine's own range words, not
-      // its format words: the visitor wrote an amount, only too large.
       const amount = normaliseAmount(b.amount);
-      const cents = amount === null ? null : Math.round(Number(amount) * 100);
-      const out: Awaited<ReturnType<EngineApi["compose"]>> = cents !== null && (cents < 100 || cents > 500_000)
-        ? { refused: { field: "amount", message: "amount is from 1.00 to 5000.00 euros" } }
-        : await filed(() => e.compose(amount === null ? b : { ...b, amount }));
+      const out = await filed(() => e.compose(amount === null ? b : { ...b, amount }));
       await counted(c, out);
       if ("refused" in out) return json(400, { error: out.refused.message, code: `invalid_${out.refused.field}`, message: out.refused.message, field: out.refused.field });
       return json(200, out);

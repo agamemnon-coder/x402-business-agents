@@ -226,10 +226,10 @@ describe("bodies and origins", () => {
       expect(r.status, amount).toBe(200);
       expect((r.json.invoice as { total: string }).total, amount).toBe(total);
     }
-    // 10k reads as 10000.00, and the engine's limit (1.00 to 5000.00) still refuses it, in its range words.
+    // 10k reads as 10000.00, and the demo's cap (EUR 5,000: the simulated bank's USD floor) still refuses it, plainly.
     const big = await c.req("POST", "/v1/engine/compose", { key: v.s, body: { ...base, invoice_no: "AM-4", amount: "10k" } });
     expect(big.status).toBe(400);
-    expect(big.json.message).toBe("amount is from 1.00 to 5000.00 euros");
+    expect(big.json).toMatchObject({ field: "amount", message: "Demo invoices go up to EUR 5,000." });
     for (const amount of ["abc", "-5", "0", "1850.001", ""]) {
       const r = await c.req("POST", "/v1/engine/compose", { key: v.s, body: { ...base, invoice_no: "AM-5", amount } });
       expect(r.status, amount).toBe(400);
