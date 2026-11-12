@@ -39,7 +39,7 @@ export function supplierApp(opts: { payTo: Address; price: () => string; name?: 
   });
   app.use(SUPPLIER_ROUTE, (req, res, next) => {
     const seq = Number(req.query.seq);
-    if (every > 0 && Number.isSafeInteger(seq) && seq % every === 0 && !req.headers["payment-signature"] && !req.headers["x-payment"]) {
+    if (every > 0 && Number.isSafeInteger(seq) && seq % every === 0 && !req.headers["payment-signature"]) {
       res.status(503).json({ error: `${name} is unavailable for this stock check; nothing was offered` });
       return;
     }
