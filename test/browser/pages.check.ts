@@ -1,10 +1,13 @@
 // The guest pages as a juror opens them, with no key: / (Home itself), /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirects), /month (start and end), at phone
 // (360 and 390 px), tablet (768 px; jury QA, 6 Nov: /try at 360 and /?autonomy at 768 scrolled sideways) and laptop (1440 px) width, light and dark. Fails on any console error or page error, on "null",
 // "undefined" or "NaN" anywhere on screen, on a page wider than the screen, and on basic accessibility faults (no page
-// language, not exactly one h1, a link or button with no name, an image with no alt text), and on a menu that wraps.
+// language, not exactly one h1, a link or button with no name, an image with no alt text), and on a menu that wraps, is
+// not the four tabs and "More" with the pages under it, or opens "More" off the screen (12 Nov; the dropdown needs no
+// script and works from the keyboard).
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
 import { VISA_ENTRY_LINE } from "../../src/redesign/partners.js";
+import { MORE_LABEL, moreLinks } from "../../src/ui/more.js";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { chromium, type Page } from "playwright";
@@ -32,6 +35,8 @@ const JUDGE_KEY = "purser.judge.v1";
 
 const failures: string[] = [];
 const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}`); };
+/** The menu on every page: the four tabs, then "More" with the pages under it, in this order (src/ui/more.ts). */
+const MENU = JSON.stringify({ items: ["Home", "Watch", "Try", "Proof", MORE_LABEL], more: moreLinks().map((l) => l.label) });
 // 1.1: the worst case as the README and step 0 say it, read from the policy code (src/policy/exposureSources.ts).
 const { worstCaseWords } = await import("../../src/policy/exposureSources.js");
 const WORST = worstCaseWords();
@@ -59,24 +64,61 @@ async function look(page: Page, name: string, width: number): Promise<void> {
   for (const u of a11y.noAlt) fail(`${name}: an image with no alt text: ${u}`);
   const over = await page.evaluate(() => document.documentElement.scrollWidth) - width;
   if (over > 1) fail(`${name}: ${over}px wider than the screen`);
-  // The "More" menu opens on the screen, wherever "More" wraps to (the site check found it off the left edge).
-  const menu = await page.evaluate(`(() => {
-    const d = document.querySelector(".pmore");
-    if (!d || !d.offsetParent) return null;
-    const was = d.open; d.open = true;
-    const r = d.querySelector(".pmenu").getBoundingClientRect();
-    d.open = was;
-    return { left: Math.round(r.left), right: Math.round(r.right) };
-  })()`) as { left: number; right: number } | null;
-  if (menu && (menu.left < 0 || menu.right > width)) fail(`${name}: the More menu opens off the screen (${menu.left} to ${menu.right} of ${width})`);
-  // The menu is one line at every width: "More" never wraps onto a line of its own (Max, 1 Nov: it did at 390 px).
-  const navRows = await page.evaluate(`(() => {
-    const n = document.querySelector(".pnav");
-    if (!n || !n.offsetParent) return 0;
-    const tops = [...n.querySelectorAll(":scope > a, :scope > details > summary")].filter((e) => e.offsetParent).map((e) => e.getBoundingClientRect().top);
-    return tops.length ? Math.round(Math.max(...tops) - Math.min(...tops)) : 0;
-  })()`) as number;
-  if (navRows > 12) fail(`${name}: the menu wraps onto a second line (${navRows}px between its links)`);
+  // The menu, on every page that carries it (both navigations: the redesign's header and the older pages'): exactly the
+  // four tabs and "More"; "More" closed until it is opened, and under it exactly the pages the site serves, in order.
+  const nav = await page.evaluate(`(() => {
+    const n = document.querySelector('nav[aria-label="Main"]');
+    if (!n || !n.offsetParent) return null;
+    const d = n.querySelector(":scope > details.pmore");
+    const items = [...n.querySelectorAll(":scope > a, :scope > details > summary")];
+    const tops = items.map((e) => e.getBoundingClientRect().top);
+    const out = { items: items.map((e) => e.textContent.trim()), more: d ? [...d.querySelectorAll(".pmenu a")].map((a) => a.textContent.trim()) : null,
+      rows: Math.round(Math.max(...tops) - Math.min(...tops)), right: Math.round(n.getBoundingClientRect().right), left: Math.round(n.getBoundingClientRect().left),
+      open: d ? d.open : null, menu: null, shown: null };
+    if (d) {
+      // Opened as a reader opens it; the dropdown hangs under the menu, on the screen, wherever the menu sits.
+      const was = d.open; d.open = true;
+      const r = d.querySelector(".pmenu").getBoundingClientRect();
+      out.menu = { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom) };
+      out.shown = [...d.querySelectorAll(".pmenu a")].every((a) => { const b = a.getBoundingClientRect(); return b.width > 0 && b.height >= 24 && b.left >= 0; });
+      d.open = was;
+    }
+    return out;
+  })()`) as { items: string[]; more: string[] | null; rows: number; left: number; right: number; open: boolean | null; menu: { left: number; right: number; top: number; bottom: number } | null; shown: boolean | null } | null;
+  if (nav) {
+    if (JSON.stringify({ items: nav.items, more: nav.more }) !== MENU) fail(`${name}: the menu is not the four tabs and More with its pages (${JSON.stringify({ items: nav.items, more: nav.more })})`);
+    // The menu is one line at every width: "More" never wraps onto a line of its own (Max, 1 Nov: it did at 390 px).
+    if (nav.rows > 12) fail(`${name}: the menu wraps onto a second line (${nav.rows}px between its items)`);
+    if (nav.left < 0 || nav.right > width) fail(`${name}: the menu runs off the screen (${nav.left} to ${nav.right} of ${width})`);
+    if (nav.open) fail(`${name}: "More" is open before the reader opens it`);
+    // The "More" menu opens on the screen, wherever "More" wraps to (the site check found it off the left edge).
+    if (!nav.menu || nav.menu.left < 0 || nav.menu.right > width || !nav.shown) fail(`${name}: the More menu opens off the screen, or its links are not all in sight (${JSON.stringify(nav.menu)} of ${width})`);
+  }
+}
+
+/**
+ * "More" from the keyboard, with no script on the page's side: Tab reaches it after the four tabs, Enter opens it, the
+ * next Tab lands on its first link, and Enter on "More" again closes it.
+ */
+async function moreByKeyboard(page: Page, name: string): Promise<void> {
+  const summary = page.locator('nav[aria-label="Main"] > details.pmore > summary');
+  const state = async () => (await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = document.activeElement; return { open: d.open, focus: a ? (a.textContent || "").trim() : "", inMenu: !!(a && a.closest(".pmenu")) }; })()`)) as { open: boolean; focus: string; inMenu: boolean };
+  // From the tab before it (Proof), one Tab reaches "More".
+  await page.locator('nav[aria-label="Main"] > a').last().focus();
+  await page.keyboard.press("Tab");
+  const reached = await state();
+  if (reached.focus !== MORE_LABEL || reached.open) fail(`${name}: Tab after the four tabs does not reach "More" (focus on "${reached.focus}")`);
+  const ring = await summary.evaluate((e) => { const s = getComputedStyle(e); return s.outlineStyle !== "none" && parseFloat(s.outlineWidth) >= 2; });
+  if (!ring) fail(`${name}: "More" shows no focus ring from the keyboard`);
+  await page.keyboard.press("Enter");
+  const opened = await state();
+  if (!opened.open) fail(`${name}: Enter on "More" does not open it`);
+  await page.keyboard.press("Tab");
+  const first = await state();
+  if (!first.inMenu || first.focus !== moreLinks()[0]!.label) fail(`${name}: Tab from the open "More" does not land on its first link (focus on "${first.focus}")`);
+  await summary.focus();
+  await page.keyboard.press("Enter");
+  if ((await state()).open) fail(`${name}: Enter on the open "More" does not close it`);
 }
 
 const browser = await chromium.launch();
@@ -126,6 +168,13 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       }
     }
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
+    // "More" from the keyboard, in the redesign's header (the older pages' navigation is checked on /month below), and
+    // open, as a reader sees it over the page.
+    await moreByKeyboard(page, `/ (Home) ${tag}`);
+    await page.locator('nav[aria-label="Main"] > details.pmore > summary').click();
+    if (!(await page.locator('nav[aria-label="Main"] .pmenu').isVisible())) fail(`/ (Home) ${tag}: a click on "More" does not open it`);
+    await page.screenshot({ path: join(shots, `home-more-${tag}.png`) });
+    await page.locator('nav[aria-label="Main"] > details.pmore > summary').click();
 
     // Every button works without a key: "CFO sign-in" explains how the CFO gets in, and the way back to the recording.
     await page.goto(`${base}/?signin`, { waitUntil: "load" });
@@ -327,6 +376,13 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.waitForTimeout(300);
       await look(page, `/month${q} ${tag}`, w);
       await page.screenshot({ path: join(shots, `month${q ? "-end" : ""}-${tag}.png`), fullPage: true });
+      // "More" from the keyboard in the older pages' navigation (src/ui/nav.ts), and open over the page.
+      if (!q) {
+        await moreByKeyboard(page, `/month ${tag}`);
+        await page.locator('nav[aria-label="Main"] > details.pmore > summary').click();
+        await page.screenshot({ path: join(shots, `month-more-${tag}.png`) });
+        await page.locator('nav[aria-label="Main"] > details.pmore > summary').click();
+      }
     }
 
     // Try Purser: each example ends in its outcome, step by step, labelled as the demo world. Against the relay a try
@@ -384,7 +440,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if ((await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
       if ((await page.locator("details.fold").count()) < 2) fail(`${path} ${tag}: the details are not folded`);
       if ((await page.locator("img[src*='visa' i], img[alt*='visa' i]").count()) > 0) fail(`${path} ${tag}: shows a Visa logo`);
-      await page.evaluate(() => document.querySelectorAll("details").forEach((d) => { d.open = true; }));
+      // Every fold of the page; "More" in the menu stays closed, as a reader leaves it.
+      await page.evaluate(() => document.querySelectorAll("details:not(.pmore)").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
       await look(page, `${path} folds open ${tag}`, w);
       const open = await page.evaluate(() => document.body.innerText);
       if (path === "/visa" && (!/Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours\./.test(open) || !/commit 16d59bd/.test(open) || !/simulated authorisations/.test(open) || !/Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon \(Visa, 5 Nov\)\./.test(open) || !open.includes(VISA_ENTRY_LINE) || /entered for[^.]{0,40}Visa Award/i.test(open.split(VISA_ENTRY_LINE).join(" ")) || /Dev test/.test(open))) fail(`/visa ${tag}: the claim, the award status or the honest label is wrong`);
@@ -592,4 +649,4 @@ if (failures.length) {
   console.log(`\npages check: ${failures.length} problem(s)`);
   process.exit(1);
 }
-console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /visa, /claude (folds open), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? ", /judge (ticks kept across a reload, and with storage blocked) and Home's link to it" : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);
+console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /visa, /claude (folds open), the menu (four tabs and More, by keyboard too), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? ", /judge (ticks kept across a reload, and with storage blocked) and Home's link to it" : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);

@@ -1,4 +1,5 @@
-// The public site after Max's mega-prompt v4 (C1-C8, D2, D3): four tabs; short partner pages with the details folded;
+// The public site after Max's mega-prompt v4 (C1-C8, D2, D3): four tabs and, since 12 Nov, "More" (the pages under it in
+// a script-free dropdown); short partner pages with the details folded;
 // a text budget per page; no forbidden words on any public page; one Face ID number from one source; the split between
 // Claude's decisions and code's routine payments, both counted from the record; the Claude call badge from each trace;
 // every internal link answers (old addresses redirect, anything else gets the clean 404).
@@ -7,6 +8,7 @@ import { buildPages } from "../src/relay/assets.js";
 import { notFoundResponse, pageResponse, type Pages } from "../worker/src/core.js";
 import { agentRun, callBadge, faceIdDecisions, highlights, loadRecord, payments, split, tapRun } from "../src/redesign/run.js";
 import { OPEN_TARGET_JS } from "../src/redesign/ui.js";
+import { MORE_LABEL, MORE_LINKS } from "../src/ui/more.js";
 import { scriptBlocks } from "./support/scriptBlocks.js";
 import { SECOND_APPROVER, SPLIT_LINE, VISA_CLAIM, VISA_TAP_STATUS, WORLD_SETUP } from "../src/config/brand.js";
 
@@ -82,10 +84,27 @@ describe("the site after v4", () => {
     for (const [name, html] of all) for (const re of bad) expect({ name, found: re.exec(allText(html))?.[0] ?? null }).toEqual({ name, found: null });
   });
 
-  it("has four tabs and nothing else in the menu, on every public page", () => {
+  it("has four tabs and More in the menu, on every public page; under More the pages the site serves, in one order: Pricing, Security, Docs, Status, then Airwallex, Metal, Visa, Claude", () => {
+    // The whole list, in the menu's order (src/ui/more.ts): the product pages, then the partner pages.
+    expect(MORE_LINKS.map((l) => [l.label, l.href])).toEqual([["Pricing", "pricing"], ["Security", "security"], ["Docs", "docs"], ["Status", "status"], ["Airwallex", "airwallex"], ["Metal", "metal"], ["Visa", "visa"], ["Claude", "claude"]]);
+    // The menu lists a page exactly when the site serves it, so "More" never opens onto a 404 (a page not built yet is
+    // left out until it is registered; then the menu must list it).
+    const served = MORE_LINKS.filter((l) => pageResponse(new Request(`https://x.test/${l.href}`), pages as Pages)?.status === 200).map((l) => l.label);
+    expect(served).toEqual(expect.arrayContaining(["Airwallex", "Metal", "Visa", "Claude"]));
     for (const [name, html] of Object.entries(PUBLIC)) {
       const nav = /<nav[^>]*aria-label="Main"[^>]*>([\s\S]*?)<\/nav>/.exec(html)?.[1] ?? "";
-      expect({ name, tabs: [...nav.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1]) }).toEqual({ name, tabs: ["Home", "Watch", "Try", "Proof"] });
+      // Five items, in this order: the four tabs as links, then "More", a <details> that needs no script.
+      const more = /<details class="pmore"><summary[^>]*>([^<]+)<\/summary><div class="pmenu">([\s\S]*?)<\/div><\/details>$/.exec(nav);
+      const tabs = [...nav.slice(0, more ? more.index : nav.length).matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1]);
+      expect({ name, items: [...tabs, more?.[1]] }).toEqual({ name, items: ["Home", "Watch", "Try", "Proof", MORE_LABEL] });
+      expect(MORE_LABEL).toBe("More");
+      expect({ name, more: [...(more?.[2] ?? "").matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1]) }).toEqual({ name, more: served });
+      // The partner pages follow the product pages after one divider; nothing else is in the dropdown.
+      const product = MORE_LINKS.filter((l) => l.group === "product" && served.includes(l.label));
+      expect({ name, rest: (more?.[2] ?? "").replace(/<a [^>]*>[^<]+<\/a>/g, "") }).toEqual({ name, rest: product.length ? "<hr>" : "" });
+      // The footer repeats the product pages' links (not the partner pages), in the same order; Try, an older page, has no footer.
+      const foot = /<footer class="foot">[\s\S]*?<\/footer>/.exec(html)?.[0] ?? "";
+      if (name !== "try") expect({ name, footer: [...foot.matchAll(/<a class="flink" href="\/?([a-z]+)">([^<]+)<\/a>/g)].map((m) => [m[1], m[2]]).filter(([href]) => MORE_LINKS.some((l) => l.href === href && l.group === "product")) }).toEqual({ name, footer: product.map((l) => [l.href, l.label]) });
     }
   });
 
