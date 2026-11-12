@@ -38,7 +38,8 @@ const day = (date: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric",
 export function iccRunHtml(r: IccRunRecord, md: string | null = null): string {
   // A refusal wears the red badge, as purchase C's does on the Airi run; any other outcome a neutral one: the words are the record's.
   const out = `<ul class="airi-out">${r.purchases.map((p) => `<li${p.refusal_code ? ' class="no"' : ""}><span class="${p.refusal_code ? "awm bad" : "pill"}">${esc(p.label)}</span> ${esc(`${p.currency} ${p.amount} at ${p.merchant}: ${p.outcome}${p.refusal_code ? ` (${p.refusal_code})` : ""}.`)}</li>`).join("")}</ul>`;
-  const notDone = r.not_done.length ? `<p><b>${esc("Not done")}</b></p><ul class="pl">${r.not_done.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>` : "";
+  // What was not done, in sight but quiet: one line in the sources' style, the record's own sentences.
+  const notDone = r.not_done.length ? `<p class="src">${esc(`Not done: ${r.not_done.join(" ")}`)}</p>` : "";
   const checks = r.checks.length ? `<p><b>${esc("Checks")}</b></p><ul class="awc">${r.checks.map((k) => `<li${k.ok ? "" : ' class="no"'}>${esc(`${k.ok ? "✓" : "✕"} ${k.stage} · ${k.name}: ${k.detail}`)}</li>`).join("")}</ul>` : "";
   const calls = `<p><b>${esc("Calls")}</b></p><ul class="awc">${r.calls.by_endpoint.map((e) => `<li><code>${esc(e.endpoint)}</code>: ${esc(`${e.calls}`)}</li>`).join("")}</ul>
 <p class="src">${esc(`${r.calls.total} calls in the call log, of a budget of ${r.calls.budget}.`)}</p>`;
