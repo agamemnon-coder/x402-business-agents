@@ -9,7 +9,7 @@ import { packFacts } from "../src/submission/facts.js";
 import { homePage } from "../src/redesign/home.js";
 import { watchPage } from "../src/redesign/watch.js";
 import { proofPage } from "../src/redesign/proof.js";
-import { CHAIN_TEST, DEFENSE_IN_DEPTH, HOME_BADGE, KIT_LINE, PRICE_LINE, SECOND_APPROVER, VISA_AWARD_ON, VISA_CLAIM, VISA_EXTRA_LINK, VISA_TAP_STATUS } from "../src/config/brand.js";
+import { CHAIN_TEST, DEFENSE_IN_DEPTH, HOME_BADGE, KIT_LINE, PRICE_LINE, SECOND_APPROVER, VISA_CLAIM, VISA_TAP_STATUS, VISA_VIC_BUILT_ON } from "../src/config/brand.js";
 import { buildPages } from "../src/relay/assets.js";
 import { CONNECTED_LINE, TWO_LOCKS_LINE } from "../src/redesign/partners.js";
 import { esc } from "../src/redesign/ui.js";
@@ -70,7 +70,15 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   .replace(/Visa Intelligent Commerce via Airwallex's Airi: a live run[\s\S]*?docs\/demo\/airi-run\.json/g, " ")
   // The second Airi run (vic-2, 7 Nov), dated with its own record; its figures are checked against docs/demo/vic-2-run.json
   // in test/vic2-run-page.test.ts.
-  .replace(/What Purser adds around Airi: a second live run[\s\S]{0,4000}?run log/g, " ")
+  // (Its heading since 12 Nov: a control test, not a Visa run.)
+  .replace(/Control test of Purser's own checks, not a Visa run[\s\S]{0,4000}?run log/g, " ")
+  // /visa since 12 Nov (jury panel): purchase B in three columns (docs/demo/airi-run.json and Airwallex's own record),
+  // the one summary of the paid run and the attempts that failed first, each from the Airi run's record; their figures
+  // are checked against the records in test/vic-facts.test.ts and test/visa-overview.test.ts.
+  .replace(/Purchase B: signed, sent, charged[\s\S]*?Airwallex's own record, read \d{1,2} \w{3}\./g, " ")
+  .replace(/The paid run VIC via Airi[\s\S]*?cardholder confirmed each purchase in Airi/g, " ")
+  .replace(/The \d+ attempts that failed first[\s\S]*?Each cause in full: run log/g, " ")
+  .replace(/It passed on the \w+ attempt that day\./g, " ")
   // What the Airwallex sandbox reports for the Airi run's two payments (12 Nov, folded on /visa), dated with its own
   // record; its values are checked against docs/runs/airwallex-vic-payment-intents-<date>.json in test/vic-network.test.ts.
   .replace(/As reported by the Airwallex sandbox[\s\S]*?airwallex-vic-payment-intents-[\d-]+\.json/g, " ")
@@ -228,17 +236,19 @@ describe("the redesigned public pages", () => {
   });
 
   it("carry Home's badge with the Metal Award and the Visa Award (Visa, 7 Nov: the VIC run counts; TAP still not eligible, 5 Nov), no Visa TAP in \"Built on\", and Visa only as text, never certified or endorsed", () => {
-    // VISA_AWARD_ON stays off: it would add "Visa TAP" to "Built on", and TAP is not the eligible tooling.
-    expect(VISA_AWARD_ON).toBe(false);
+    // "Visa (VIC via Airi)" in "Built on" since 12 Nov (jury panel): the Visa entry is the Airi run. Never "Visa TAP":
+    // TAP is not the eligible tooling. (The switch was VISA_AWARD_ON, off.)
+    expect(VISA_VIC_BUILT_ON).toBe(true);
     expect(KIT_LINE).toBe("Kit 11 · x402 Business Agents · entered for the Metal Award and the Visa Award");
     expect(HOME_BADGE).toBe("Kit 11 · Metal Award and Visa Award · built on Airwallex, Metal, Claude");
     // Two pills, each on one line: the kit, and the awards entered (never read as already won).
     expect(homePage()).toContain(">Kit 11 · x402 Business Agents<");
     expect(homePage()).toContain(">entered for the Metal Award and the Visa Award<");
-    expect(/<div class="built">([\s\S]*?)<\/div>/.exec(homePage())?.[1]).not.toMatch(/Visa|TAP/);
-    // The TAP work stays reachable from Home as a labelled extra, a footer link to /visa (jury review, 6 Nov, #7: no
-    // partner card, nothing in the three moments).
-    expect(homePage()).toContain(`<a class="flink" href="visa">${VISA_EXTRA_LINK}</a>`);
+    expect(/<div class="built">([\s\S]*?)<\/div>/.exec(homePage())?.[1]).toContain('<span class="logo txt">Visa (VIC via Airi)</span>');
+    expect(/<div class="built">([\s\S]*?)<\/div>/.exec(homePage())?.[1]).not.toMatch(/TAP/);
+    // The TAP work is on /visa only, in one closed fold (12 Nov): Home has no footer link to it, no partner card,
+    // nothing in the three moments.
+    expect(homePage()).not.toMatch(/<a class="flink" href="visa">|Extra, not an award entry/);
     expect(homePage()).not.toContain('<a class="partner card" href="visa">');
     expect(JSON.stringify(agentRun().scenes)).not.toMatch(/Visa|TAP/);
     for (const [name, body] of Object.entries(PAGES)) if (typeof body === "string") expect({ name, img: /<img[^>]*visa/i.test(body), words: body.split(/[.!?"]\s/).filter((s) => /Visa|TAP/.test(s)).map((s) => /\b(certified|endorsed|Visa-approved|open-source)\b/i.exec(s)?.[0]).find(Boolean) ?? null }).toEqual({ name, img: false, words: null });
@@ -257,16 +267,16 @@ describe("the redesigned public pages", () => {
     expect(run.scenes[0]!.steps.map((s) => s.text)).toEqual(expect.arrayContaining(["2 of 2 signatures"]));
   });
 
-  it("TAP's status is Max's wording (5 Nov), said once, on /visa (Home and Proof link to it as an extra); the Visa Award only in the Kit line, never on TAP", () => {
+  it("TAP's status is Max's wording (5 Nov), said once, on /visa; the Visa Award only in the Kit line and /visa's entry line, never on TAP", () => {
     const pages = buildPages() as unknown as Record<string, unknown>;
     expect(VISA_TAP_STATUS).toBe("Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov).");
-    // Said once: on /visa; Home and Proof only link to /visa, labelled as an extra, not an award entry.
+    // Said once: on /visa, inside its closed TAP fold; Home and Proof say nothing of it (their footer link went on 12 Nov).
     for (const name of ["home", "proof", "visa"]) {
       const html = name === "home" ? homePage() : name === "proof" ? proofPage() : String(pages.visa);
       expect({ name, has: html.split(esc(VISA_TAP_STATUS)).length - 1 }).toEqual({ name, has: name === "visa" ? 1 : 0 });
-      if (name !== "visa") expect({ name, link: html.includes(`href="visa">${esc(VISA_EXTRA_LINK)}</a>`) }).toEqual({ name, link: true });
+      if (name !== "visa") expect({ name, link: /Extra, not an award entry/.test(html) }).toEqual({ name, link: false });
     }
-    for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, bad: /confirmed (that )?TAP|TAP counts as Visa tooling|counts as Visa tooling|still being confirmed with Visa|\+ Visa Award|Visa Award entry/i.test(body) || /Visa Award/i.test(body.split("entered for the Metal Award and the Visa Award").join(" ")) }).toEqual({ name, bad: false });
+    for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, bad: /confirmed (that )?TAP|TAP counts as Visa tooling|counts as Visa tooling|still being confirmed with Visa|\+ Visa Award|Visa Award entry/i.test(body) || /Visa Award/i.test(body.split("entered for the Metal Award and the Visa Award").join(" ").split("This Airi run is Purser's entry for the Visa Award.").join(" ")) }).toEqual({ name, bad: false });
   });
 
   it("labels the licence payment by who planned it: the Treasury agent itself in the main run; agent run 1's honest note is kept", () => {

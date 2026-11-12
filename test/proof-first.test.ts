@@ -4,7 +4,7 @@
 // in the footer link only.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { PROOF_SENTENCES, VISA_EXTRA_LINK } from "../src/config/brand.js";
+import { PROOF_SENTENCES } from "../src/config/brand.js";
 import { AWX_CONTROLS_ID, AWX_HASH_ID, awxCardId, cardControlRows, cardsReadback, hashTravel, transferReadback } from "../src/redesign/airwallexProof.js";
 import { metalStory } from "../src/redesign/metalStory.js";
 import { proofLeads, reliabilityFix, RELIABILITY_CASE } from "../src/redesign/proofLead.js";
@@ -175,16 +175,15 @@ describe("/proof as served: each card shows 2–3 facts first, its claims linked
   });
 });
 
-describe("TAP on /proof: only the footer link to /visa (Max's last round, item 2)", () => {
+describe("TAP on /proof: nowhere (Max's last round, item 2; the footer link went on 12 Nov, jury panel)", () => {
   it("has no TAP remark under the figures or anywhere else on the page", () => {
     expect(html).not.toContain('class="septest"');
-    const body = words(dropBlocks(html)).split(VISA_EXTRA_LINK);
-    expect(body).toHaveLength(2);
     // (The red team's night batch of 2 November stays: it is not the TAP run.)
-    expect(body.join(" ")).not.toMatch(/\bTAP\b|LIMIT_EXCEEDED|card limit/);
+    expect(words(dropBlocks(html))).not.toMatch(/\bTAP\b|LIMIT_EXCEEDED|card limit/);
   });
 
-  it("keeps the footer link to /visa", () => {
-    expect(html).toMatch(/<a [^>]*href="visa"[^>]*>Extra, not an award entry: Visa TAP[^<]*<\/a>/);
+  it("no longer carries the footer link \"Extra, not an award entry\"; /visa is reached from the Airi run's block", () => {
+    expect(html).not.toMatch(/Extra, not an award entry|<a class="flink" href="visa"/);
+    expect(html).toMatch(/<a class="open" href="visa#vic-flow">/);
   });
 });

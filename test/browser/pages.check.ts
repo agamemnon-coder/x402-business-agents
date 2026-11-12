@@ -4,7 +4,8 @@
 // language, not exactly one h1, a link or button with no name, an image with no alt text), and on a menu that wraps.
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
-import { VISA_ENTRY_LINE, VISA_H1, VISA_TAP_HEADING } from "../../src/redesign/partners.js";
+import { VISA_ICC_LINE } from "../../src/config/brand.js";
+import { VISA_ENTRY_LINE, VISA_H1, VISA_TAP_HEADING, VISA_TITLE } from "../../src/redesign/partners.js";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { chromium, type Page } from "playwright";
@@ -363,8 +364,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     }
 
     // The partner pages (v4, C1): short (at most 150 words before anything is opened), the flow first, the run
-    // labelled, the details folded and every fold readable once open, no Visa logo; /visa carries the claim and the
-    // TAP status word for word (Visa, 5 Nov: not eligible Visa tooling), and its honest labels in a fold.
+    // labelled, the details folded and every fold readable once open, no Visa logo; /visa is one Visa Intelligent
+    // Commerce story (12 Nov, jury panel): the TAP claim, its status word for word (Visa, 5 Nov: not eligible Visa
+    // tooling) and its honest labels sit in one closed fold at the very end, labelled as outside the entry.
     for (const path of ["/metal", "/airwallex", "/visa", "/claude"]) {
       await page.goto(`${base}${path}`, { waitUntil: "load" });
       await look(page, `${path} ${tag}`, w);
@@ -385,9 +387,34 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // /visa 495 since 10 Nov (Max: we compete for the Visa Award, keep it visible): one plain sentence on top; 600 the
       // same day with the overview of the Visa runs above the Airi run (Max, 10 Nov: more Visa); 625 since 12 Nov, the
       // budget of test/site-v4.test.ts, for the three folded lines under the Airi runs.
-      const budget = path === "/airwallex" ? 365 : path === "/visa" ? 625 : path === "/metal" ? 180 : 150;
+      // /airwallex 374 since 12 Nov (jury panel): the Airi run's summary says "A scripted run, no Claude call".
+      const budget = path === "/airwallex" ? 374 : path === "/visa" ? 625 : path === "/metal" ? 180 : 150;
       if (words > budget + 25) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
-      if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(pt)) fail(`${path} ${tag}: its run is not labelled`);
+      // Each page is labelled with the run it shows: the main run; /visa with the Airi run's own label (the main run's
+      // label is inside its closed TAP fold, with the main run's TAP-signed buy).
+      if (!(path === "/visa" ? /7 Nov · Airwallex sandbox · test card · test money/ : /Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/).test(pt)) fail(`${path} ${tag}: its run is not labelled`);
+      // /visa before anything is opened (12 Nov, jury panel): "TAP" is on the page once, in the line of the one closed
+      // fold at the very end, below the first screen; the basis for "VIC" and the Intelligent Commerce Connect line are
+      // in sight; five facts under the drawing; purchase B's three amounts are equal; the footer cites the run's record.
+      if (path === "/visa") {
+        const c = await page.evaluate(`(() => {
+          const tap = document.getElementById("visa-tap"), sum = tap ? tap.querySelector("summary") : null;
+          const main = document.querySelector("main"), last = [...main.querySelectorAll("details")].pop();
+          const amounts = [...document.querySelectorAll("#vic-compare .awrow")][0];
+          return { open: !tap || tap.open, tapTop: sum ? Math.round(sum.getBoundingClientRect().top + window.scrollY) : -1, last: !!tap && last === tap, after: tap ? main.innerText.split(sum.innerText).pop().trim() : "?",
+            title: document.title, facts: [...document.querySelectorAll("#vic-facts li")].filter((li) => li.offsetParent !== null && !li.closest("details")).length,
+            amounts: amounts ? [...amounts.querySelectorAll("code")].map((x) => x.textContent) : [], foot: document.querySelector("footer").textContent };
+        })()`) as { open: boolean; tapTop: number; last: boolean; after: string; title: string; facts: number; amounts: string[]; foot: string };
+        if (c.title !== VISA_TITLE) fail(`/visa ${tag}: the title is "${c.title}"`);
+        if (c.open || !c.last || c.after !== "") fail(`/visa ${tag}: the TAP fold is open, or not the last thing on the page ("${c.after.slice(0, 60)}")`);
+        if ((pt.match(/\bTAP\b|Trusted Agent Protocol/g) ?? []).length !== 1 || !pt.includes(VISA_TAP_HEADING)) fail(`/visa ${tag}: TAP is named outside the closed fold's own line`);
+        if (!(c.tapTop > h)) fail(`/visa ${tag}: the TAP fold's line is on the first screen (${c.tapTop} px)`);
+        if (!pt.includes(VISA_ENTRY_LINE) || !pt.includes(VISA_ICC_LINE) || pt.split("Intelligent Commerce Connect").length !== 2) fail(`/visa ${tag}: the basis for VIC or the Intelligent Commerce Connect line is not in sight, once`);
+        if (c.facts !== 5) fail(`/visa ${tag}: ${c.facts} facts in sight under the drawing, not five`);
+        if (c.amounts.length !== 3 || new Set(c.amounts).size !== 1) fail(`/visa ${tag}: purchase B's three amounts are not equal (${c.amounts.join(" / ")})`);
+        if (!/A scripted run, no Claude call/.test(pt) || /Agents paid with a single-use Visa|three live runs/.test(pt)) fail(`/visa ${tag}: the run is not called scripted`);
+        if (!c.foot.includes("docs/demo/airi-run.json") || /main run|TAP/.test(c.foot)) fail(`/visa ${tag}: the footer does not cite the Airi run's record, or carries the main run's lines`);
+      }
       if ((await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
       if ((await page.locator("details.fold").count()) < 2) fail(`${path} ${tag}: the details are not folded`);
       if ((await page.locator("img[src*='visa' i], img[alt*='visa' i]").count()) > 0) fail(`${path} ${tag}: shows a Visa logo`);
@@ -409,24 +436,25 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         || (await page.locator('#airi-run a[href$="2026-11-07-vic-1.md#checks-the-records-checks"]').count()) !== 1 || /int_sgpvzc9hjhnxvpblt2r/.test(pt)
         || !/single-use card credential from Airwallex's Airi wallet[\s\S]*int_sgpvzc9hjhnxvpblt2r[\s\S]*P-0002[\s\S]*int_sgpvzc9hjhnxvxc26ie[\s\S]*PURSER_MERCHANT_NOT_ALLOWED/.test(open)
         || /airi\.com\/|\b\d{13,19}\b/.test(open))) fail(`${path} ${tag}: the Airi run is not shown, dated and labelled, with its badges, checks and steps`);
-      // On /visa above the TAP run: the block before the TAP section's flow.
+      // On /visa above the TAP fold: the block before the fold's own flow.
       if (path === "/visa" && !(await page.evaluate(() => { const a = document.querySelector("#airi-run"), f = document.querySelector(".flow.card"); return !!a && !!f && !!(a.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING); }))) fail(`/visa ${tag}: the Airi run is not above the TAP run`);
       // /visa opens with VIC (12 Nov; Visa, 5 Nov: TAP is not Visa tooling for this hackathon): the page's first heading
-      // is the h1 with the VIC heading; the drawing, the overview and both Airi runs are above the TAP section; nothing
-      // above that section names TAP; and the section opens with its heading and, at once, its status.
+      // is the h1 with the VIC heading; the drawing, the facts, the table, the summary, the Airi run and the control
+      // test are above the TAP fold; nothing above that fold names TAP; and the fold opens with its line and, at once,
+      // its status.
       if (path === "/visa") {
         const v = await page.evaluate(`(() => {
           const main = document.querySelector("main"), tap = document.getElementById("visa-tap");
           const first = main.querySelector("h1, h2, h3");
           const above = (id) => { const e = document.getElementById(id); return !!e && !!tap && !!(e.compareDocumentPosition(tap) & Node.DOCUMENT_POSITION_FOLLOWING); };
           const range = document.createRange(); range.setStart(main, 0); if (tap) range.setEndBefore(tap); else range.setEnd(main, main.childNodes.length);
-          return { first: first ? first.tagName + ": " + first.textContent : "", below: ["vic-flow", "visa-runs", "airi-run", "airi-run-2"].filter((id) => !above(id)), top: range.toString(),
-            tap: tap ? (tap.textContent + " " + (tap.nextElementSibling ? tap.nextElementSibling.textContent : "")).replace(/\\s+/g, " ").trim() : "" };
+          return { first: first ? first.tagName + ": " + first.textContent : "", below: ["vic-flow", "vic-facts", "vic-compare", "visa-runs", "airi-run", "airi-run-2", "vic-more"].filter((id) => !above(id)), top: range.toString(),
+            tap: tap ? tap.textContent.replace(/\\s+/g, " ").trim() : "" };
         })()`) as { first: string; below: string[]; top: string; tap: string };
         if (v.first !== `H1: ${VISA_H1}`) fail(`/visa ${tag}: the page's first heading is "${v.first}", not the VIC heading`);
-        if (v.below.length) fail(`/visa ${tag}: not above the TAP section: ${v.below.join(", ")}`);
-        if (/\bTAP\b|Trusted Agent Protocol/.test(v.top)) fail(`/visa ${tag}: TAP is named above the TAP section`);
-        if (v.tap !== `${VISA_TAP_HEADING} Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov).`) fail(`/visa ${tag}: the TAP section does not open with its heading and its status ("${v.tap.slice(0, 120)}")`);
+        if (v.below.length) fail(`/visa ${tag}: not above the TAP fold: ${v.below.join(", ")}`);
+        if (/\bTAP\b|Trusted Agent Protocol/.test(v.top)) fail(`/visa ${tag}: TAP is named above the TAP fold`);
+        if (!v.tap.startsWith(`${VISA_TAP_HEADING} Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov).`)) fail(`/visa ${tag}: the TAP fold does not open with its line and its status ("${v.tap.slice(0, 120)}")`);
       }
       if (path === "/airwallex" && ((await page.locator("#controls .awcard").count()) !== 3 || (await page.locator("#controls .awrow .k.ok").count()) !== 15)) fail(`/airwallex ${tag}: not three cards with five controls each, all matching the CFO policy`);
       if (path === "/claude" && (!/Claude call ✓ · (Haiku|Sonnet|Opus) · [\d,]+ tokens · [\d.]+ s · req_/.test(open) || !/routine payments by code/.test(open))) fail(`/claude ${tag}: no Claude call badges or no split`);

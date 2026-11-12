@@ -1,55 +1,49 @@
-// /visa's overview (Max, 10 Nov: "more Visa", fewer words; 12 Nov: VIC first): what ran, as cards with a few big
-// numbers, their key ids and their honest labels. Two kinds of run count here: a paid VIC run (the Airi run, where the
-// agent paid with a single-use Visa credential) and a controls run (the second Airi run: 0 Airi and 0 Airwallex calls,
-// nothing bought). The heading counts them from the cards, never typed. Every figure is read from the runs' own records
-// (docs/demo/airi-run.json, docs/demo/vic-2-run.json): a card shows only when its record does, and each links to the
-// run's full block lower on the page.
+// /visa's summary of the paid run (jury panel, 12 Nov: one summary of the paid run; it was "three live runs", then a
+// paid run beside a controls run): one card with a few big numbers, purchase B's ids and the run's honest label. The
+// heading says who asked (scripted, no Claude call, until a record holds a Claude request id for the rail choice) and
+// the series as "N of M attempts paid"; the attempts that failed are listed in a fold on the page
+// (src/redesign/vicFacts.ts). Every figure is read from the run's own record (docs/demo/airi-run.json); the card links
+// to the run's full block lower on the page.
 //
-// The TAP run's card (docs/runs/visa-tap-live-*.json) is not part of the overview: TAP is not eligible Visa tooling for
-// this hackathon (Visa, 5 Nov), so its card sits in the TAP section at the foot of the page, under that status
-// (tapCardHtml). visaOverviewHtml refuses a TAP card. No motion; at phone width the cards stack.
+// The control test (docs/demo/vic-2-run.json: 0 Airi and 0 Airwallex calls, nothing bought) is not a Visa run and has
+// no card here; its block lower on the page says what it is. The TAP run's card (docs/runs/visa-tap-live-*.json) is not
+// part of the summary either: TAP is not eligible Visa tooling for this hackathon (Visa, 5 Nov), so its card sits in
+// the one closed TAP fold at the foot of the page (tapCardHtml). visaOverviewHtml refuses both. No motion.
 
-import { airiRun, AIRI_RUN_ID, type AiriRunRecord } from "./airiRun.js";
+import { AIRI_SCRIPTED, airiClaudeChoices, airiRun, AIRI_RUN_ID, type AiriRunRecord } from "./airiRun.js";
 import { tapRun } from "./run.js";
-import { vic2Run, VIC2_RUN_ID, type Vic2Record } from "./vic2Run.js";
 import { esc } from "./ui.js";
+import { vicAttemptCount } from "./vicFacts.js";
 
-/** The TAP section's anchor on /visa: below every VIC block (src/redesign/partners.ts). */
+/** The TAP fold's anchor on /visa: the last thing on the page, closed (src/redesign/partners.ts). */
 export const VISA_TAP_ID = "visa-tap";
 export const VISA_OVERVIEW_ID = "visa-runs";
 
 type Tap = NonNullable<ReturnType<typeof tapRun>>;
 interface Stat { v: string; l: string }
-/** paid: an agent paid with a VIC credential. controls: Purser's controls only, nothing bought. tap: the TAP extra. */
-export type RunKind = "paid" | "controls" | "tap";
+/** paid: a purchase was paid with a VIC credential. tap: the TAP work, outside the entry. */
+export type RunKind = "paid" | "tap";
 export interface RunCard { kind: RunKind; tag: string; title: string; stats: Stat[]; ids: [string, string][]; label: string; href?: string }
 
 const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
 const short = (s: string) => (s.length > 14 ? `${s.slice(0, 12)}…` : s);
 const okOf = (c: Record<string, { ok: boolean }>) => { const v = Object.values(c); return `${v.filter((x) => x.ok).length}/${v.length}`; };
 
-/** The VIC run's card: what was paid, what Purser refused, its checks and purchase B's ids. Null when a fact is missing. */
+/**
+ * The paid run's card: the attempts of the day as "N of M", what was paid, what Purser refused, its checks and purchase
+ * B's ids. Null when a fact is missing.
+ */
 export function airiCard(rec: AiriRunRecord): RunCard | null {
   const paid = rec.purchases.filter((p) => p.outcome === "SUCCEEDED");
   const refused = rec.purchases.filter((p) => p.route === "refused" && p.by === "purser");
   const b = rec.purchases.find((p) => p.route === "cfo" && p.outcome === "SUCCEEDED");
   if (!b?.payment_intent_id || !b.mandate_id) return null;
+  const n = vicAttemptCount(rec), claude = airiClaudeChoices(rec);
   return {
-    kind: "paid", tag: `VIC via Airi · ${day(rec.started_at)}`, title: "Single-use Visa credential",
-    stats: [{ v: String(paid.length), l: "paid" }, { v: String(refused.length), l: "refused by Purser" }, { v: okOf(rec.checks), l: "checks" }],
-    ids: [["Mandate", b.mandate_id], ["Payment", b.payment_intent_id]],
+    kind: "paid", tag: `VIC via Airi · ${day(rec.started_at)} · ${claude.length ? `rail chosen by Claude` : AIRI_SCRIPTED}`, title: "Single-use Visa credential",
+    stats: [{ v: `1 of ${n.all}`, l: "attempts paid" }, { v: String(paid.length), l: "purchases paid" }, { v: String(refused.length), l: "refused by Purser" }, { v: okOf(rec.checks), l: "checks" }],
+    ids: [["Mandate", b.mandate_id], ["Payment", b.payment_intent_id], ...(claude[0] ? [["Claude request", claude[0]] as [string, string]] : [])],
     label: "Airwallex sandbox · test card · cardholder confirmed each purchase in Airi", href: `#${AIRI_RUN_ID}`,
-  };
-}
-
-/** The second Airi run's card: the tamper and the lock refused, no outside call, its checks. */
-export function vic2Card(rec: Vic2Record): RunCard {
-  const refused = (rec.steps.D.executor.refused ? 1 : 0) + (rec.steps.E.purchase.outcome.status === "refused" ? 1 : 0);
-  return {
-    kind: "controls", tag: `Controls run · ${day(rec.started_at)}`, title: "Changed or locked: refused",
-    stats: [{ v: String(refused), l: "refused" }, { v: String(rec.outside_calls.airi + rec.outside_calls.airwallex), l: "outside calls" }, { v: okOf(rec.checks), l: "checks" }],
-    ids: [["Face ID proposal", rec.steps.D.outcome.proposalId]],
-    label: "Nothing bought · test only", href: `#${VIC2_RUN_ID}`,
   };
 }
 
@@ -65,13 +59,10 @@ export function tapCard(tap: Tap): RunCard {
   };
 }
 
-const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
-const count = (n: number, what: string) => `${WORDS[n] ?? String(n)} ${what}${n === 1 ? "" : "s"}`;
-
-/** What ran, counted from the cards: "one paid VIC run and one controls run (nothing bought)". */
+/** The summary's heading: one paid run, and who asked. */
+export const VISA_SUMMARY_HEADING = "The paid run";
 export function visaOverviewHeading(cards: RunCard[]): string {
-  const paid = cards.filter((c) => c.kind === "paid").length, controls = cards.filter((c) => c.kind === "controls").length;
-  return `What ran: ${[...(paid ? [count(paid, "paid VIC run")] : []), ...(controls ? [`${count(controls, "controls run")} (nothing bought)`] : [])].join(" and ")}`;
+  return cards.some((c) => c.kind === "paid") ? VISA_SUMMARY_HEADING : "";
 }
 
 /** A run's card: a link to its block when it has one (the overview), a plain block otherwise (the TAP section). */
@@ -85,15 +76,15 @@ function cardHtml(c: RunCard): string {
 
 export function visaOverviewHtml(cards: RunCard[]): string {
   if (!cards.length) return "";
-  if (cards.some((c) => c.kind === "tap")) throw new Error("/visa's overview counts VIC runs only: the TAP run is not eligible Visa tooling (Visa, 5 Nov) and has its own section below");
+  if (cards.length !== 1 || cards[0]!.kind !== "paid") throw new Error("/visa's summary is the one paid VIC run: the TAP run is not eligible Visa tooling (Visa, 5 Nov) and sits in its own fold, and the control test bought nothing");
   return `<section class="card vo" id="${VISA_OVERVIEW_ID}" aria-labelledby="${VISA_OVERVIEW_ID}-h"><h2 id="${VISA_OVERVIEW_ID}-h">${esc(visaOverviewHeading(cards))}</h2>
 <div class="vo-runs">${cards.map(cardHtml).join("")}</div></section>`;
 }
 
-/** The overview from the committed records: only the VIC runs whose records are there. */
-export function visaOverviewBlock(): string {
-  const a = airiRun(), v = vic2Run();
-  return visaOverviewHtml([a ? airiCard(a) : null, v ? vic2Card(v) : null].filter((c): c is RunCard => !!c));
+/** The summary from the committed record: "" without the Airi run's record. */
+export function visaOverviewBlock(rec: AiriRunRecord | null = airiRun()): string {
+  const card = rec ? airiCard(rec) : null;
+  return card ? visaOverviewHtml([card]) : "";
 }
 
 /** The TAP run's card for the TAP section: not a link, the section is its place. "" without a TAP record. */
@@ -113,4 +104,4 @@ a.vo-run:hover { border-color: var(--accent); }
 .vo-ids { display: grid; gap: 4px; } .vo-ids > span { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; min-width: 0; }
 .vo-ids small { font-size: 12.5px; color: var(--muted); } .vo-ids code { font: 650 12.5px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; padding: 1px 6px; border-radius: 6px; background: var(--sunken); overflow-wrap: anywhere; }
 .vo-label { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
-@media (min-width: 900px) { .vo-runs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }`;
+.vo-run.tap { max-width: 420px; }`;

@@ -7,7 +7,12 @@
 // amounts, codes, counts and the date come from the record, and the block shows only when the record is a live run's
 // with test money and the test card. test/airi-run-page.test.ts holds every figure to the record.
 //
-// Wording: the owner's copy of 7 Nov, word for word (AIRI_HEADING, AIRI_SUMMARY, AIRI_A_SENTENCE, AIRI_BADGES): the
+// Who paid (jury panel, 12 Nov): the run of 7 Nov was scripted. Purser's code asked for each purchase and no Claude call
+// chose the rail, so every sentence about it says "scripted, no Claude call" (airiSummaryLine), counted from the record:
+// a purchase whose rail the Sourcing agent's Claude call chose carries rail_choice with that call's request id
+// (src/airi/purchase.ts), and only then is Claude named. It read "Agents paid with a single-use Visa (VIC) credential".
+//
+// Wording: the owner's copy of 7 Nov (AIRI_HEADING, AIRI_SUMMARY from "each purchase" on, AIRI_A_SENTENCE, AIRI_BADGES): the
 // programme is named, Visa Intelligent Commerce via Airwallex's Airi (until then the plan, docs/runs/vic-1-plan.md, kept
 // it unnamed). The cardholder and the CFO are roles, never a person's name; the run's working name stays off the pages
 // (the anchor is "airi-run").
@@ -32,8 +37,20 @@ export const AIRI_CREDENTIAL = "a single-use card credential from Airwallex's Ai
 export const AIRI_CHECKS_URL = `${REPO_BLOB}${AIRI_RUN_LOG}#checks-the-records-checks`;
 /** The heading (owner's copy, 7 Nov), with the run's date from the record ("7 Nov"). */
 export const airiHeading = (day: string) => `Visa Intelligent Commerce via Airwallex's Airi: a live run (${day})`;
-/** The one summary sentence at the top (owner's copy, 7 Nov), word for word. */
-export const AIRI_SUMMARY = "Agents paid with a single-use Visa (VIC) credential from Airi, each purchase confirmed by the cardholder's passkey: within Purser's limit without the CFO, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.";
+/** The 7 November run in three words, wherever it is named: Purser's code asked for each purchase; no Claude call chose the rail. */
+export const AIRI_SCRIPTED = "scripted, no Claude call";
+/**
+ * What was paid and how, after who asked (airiSummaryLine). Within the limit "with no Purser approval" (12 Nov; it read
+ * "without the CFO", but the person who was the CFO still confirmed it in Airi, as the cardholder).
+ */
+export const AIRI_SUMMARY = "paid with a single-use Visa (VIC) credential from Airi, each purchase confirmed by the cardholder's passkey: within Purser's limit with no Purser approval, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.";
+/** The Claude request ids of the rail choices in a record: one per purchase whose rail an agent's Claude call chose. */
+export const airiClaudeChoices = (rec: AiriRunRecord): string[] => rec.purchases.flatMap((p) => (p.rail_choice?.by === "claude" && p.rail_choice.request_id ? [p.rail_choice.request_id] : []));
+/** The one summary sentence: who asked (scripted, or the Sourcing agent's Claude call with its request id), then AIRI_SUMMARY. */
+export function airiSummaryLine(rec: AiriRunRecord): string {
+  const ids = airiClaudeChoices(rec);
+  return `${ids.length ? `The Sourcing agent (Claude) chose this rail (request ${ids.join(", ")})` : `A scripted run, no Claude call`}: ${AIRI_SUMMARY}`;
+}
 /** Purchase A's two sentences (owner's copy, 7 Nov): within Purser's limit no Purser approval, Airi's own passkey step. */
 export const AIRI_A_SENTENCE = "Within Purser's limit, no Purser approval is needed. Airi itself asks the cardholder to confirm each purchase with a passkey.";
 /** The outcome badge of each purchase (owner's copy, 7 Nov), shown only when the record says so. */
@@ -58,6 +75,10 @@ export interface AiriPurchase {
   credential_type?: string;
   /** Who confirmed the mandate in Airi, and how (the record's words). */
   tap?: string;
+  /** Who chose the Airi rail (src/airi/purchase.ts): an agent's Claude call with its request id, or code. Absent in the record of 7 Nov (scripted). */
+  rail_choice?: { by: "claude" | "code"; model?: string; request_id?: string | null };
+  /** The terms hash in the mandate's description, as read back from Airi (the rail does that since 12 Nov). Absent in the record of 7 Nov. */
+  mandate_terms_sha256?: string;
   outcome?: string;
   reported_to_airi?: string;
   proposal_end?: string;
@@ -102,6 +123,8 @@ export interface AiriRunSummary {
   date: string; checksOk: number; checksAll: number;
   /** The heading, with the run's date. */
   heading: string;
+  /** The one summary sentence: who asked (scripted, or Claude with its request id), then what was paid and how. */
+  summary: string;
   /** The three purchases, each with its outcome badge (owner's copy). */
   outcomes: AiriLine[];
   /** The record's checks, each named, for the fold. */
@@ -121,7 +144,9 @@ export function airiRunSummary(rec: AiriRunRecord): AiriRunSummary | null {
   if (!a?.payment_intent_id || !a.mandate_id || !a.outcome || !b?.proposal_id || !b.terms_sha256 || !b.payment_intent_id || !b.mandate_id || !b.outcome || !b.proposal_end
     || !c?.code || c.airi_calls === undefined || !rec.started_at) return null;
   const faceId = b.method === "passkey" ? "the CFO's Face ID" : "the CFO's approval";
-  const checks = Object.entries(rec.checks).map(([name, x]) => ({ name, ok: x.ok, detail: capital(x.detail) }));
+  // The record's own words for each check, but for one: "A ran without the CFO" reads as if the person was absent, and
+  // the same person confirmed A in Airi as the cardholder. The page says what the check tested: no Purser approval.
+  const checks = Object.entries(rec.checks).map(([name, x]) => ({ name, ok: x.ok, detail: capital(x.detail).replace(/\bwithout the CFO\b/, "with no Purser approval") }));
   const earlier = rec.attempts.filter((x) => x.world === rec.world && (x.attempt ?? 0) < rec.attempt);
   const limit = `${a.currency} ${rec.policy.alone_max_eur}`;
   // Each badge only as the record has it: paid alone, paid after the Face ID, refused by Purser before any Airi call.
@@ -142,14 +167,14 @@ export function airiRunSummary(rec: AiriRunRecord): AiriRunSummary | null {
     ...(earlier.length ? [`The second attempt in this world: the first stopped on a missed tap and a reused order reference before any card was used. The reference is fixed; both are in the run log.`] : []),
   ];
   return {
-    date: dayShort(rec.started_at), heading: airiHeading(dayShort(rec.started_at)), checksOk: checks.filter((x) => x.ok).length, checksAll: checks.length, outcomes, checks, lines,
+    date: dayShort(rec.started_at), heading: airiHeading(dayShort(rec.started_at)), summary: airiSummaryLine(rec), checksOk: checks.filter((x) => x.ok).length, checksAll: checks.length, outcomes, checks, lines,
     source: `${rec.calls.airwallex.this_attempt} Airwallex API calls · our own sandbox merchant on Airwallex's hosted checkout page · ${AIRI_RUN_FILE}`,
   };
 }
 
 const heading = (s: AiriRunSummary, h: "h2" | "h3") => `<${h} class="airi-h">${icon("wallet", 18)}${esc(s.heading)}</${h}>
 <p class="airi-label">${esc(`A separate run · ${AIRI_RUN_LABEL}`)}</p>
-<p class="airi-sum">${esc(AIRI_SUMMARY)}</p>`;
+<p class="airi-sum">${esc(s.summary)}</p>`;
 const outcomes = (s: AiriRunSummary) => `<ul class="airi-out">${s.outcomes.map((o) => `<li class="${o.ok ? "ok" : "no"}"><span class="awm ${o.ok ? "ok" : "bad"}">${esc(o.badge)}</span> ${esc(o.text)}</li>`).join("")}</ul>`;
 /** "5 of 5 checks pass", a link to the run log's checks section (the five named there and in the fold). */
 const checksLink = (s: AiriRunSummary) => {

@@ -1,5 +1,11 @@
 # vic-1: the Airi rail run, plan and runbook
 
+**Resolved (12 November 2026).** The run happened on 7 November, in four attempts: vic-1 (stopped), vic-1b (failed),
+vic-1c attempt 1 (failed) and vic-1c attempt 2, which passed 5 of 5 checks. Nothing was charged in the three that
+failed. Log: [2026-11-07-vic-1.md](2026-11-07-vic-1.md); record: `docs/demo/airi-run.json`. The run was scripted (no
+Claude call) and one person played both the CFO and the cardholder; /visa says both. The status line below is the
+plan's own, as it stood between vic-1b and vic-1c.
+
 **Status: run once live as vic-1b (7 November); the next run goes in a fresh world (vic-1c), only on Max's go.**
 In vic-1b, A was refused at the API confirm and B's tap link never reached Max (see below). Both are fixed on branch
 `airi-camelcase`, which has the hosted-page checkout and the conductor's tap watch. The dry run

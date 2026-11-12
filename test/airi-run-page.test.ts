@@ -10,7 +10,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import { VISA_ENTRY_LINE } from "../src/redesign/partners.js";
-import { AIRI_A_SENTENCE, AIRI_BADGES, AIRI_CHECKS_URL, AIRI_CREDENTIAL, AIRI_RUN_FILE, AIRI_RUN_LABEL, AIRI_RUN_LOG, AIRI_SUMMARY, airiHeading, airiRun, airiRunBlock, airiRunHtml, airiRunSummary, type AiriRunRecord } from "../src/redesign/airiRun.js";
+import { AIRI_A_SENTENCE, AIRI_BADGES, AIRI_CHECKS_URL, AIRI_CREDENTIAL, AIRI_RUN_FILE, AIRI_RUN_LABEL, AIRI_RUN_LOG, AIRI_SUMMARY, airiHeading, airiSummaryLine, airiRun, airiRunBlock, airiRunHtml, airiRunSummary, type AiriRunRecord } from "../src/redesign/airiRun.js";
 
 const RAW = readFileSync(AIRI_RUN_FILE, "utf8");
 const rec = JSON.parse(RAW) as AiriRunRecord;
@@ -22,9 +22,9 @@ const block = (html: string) => (html === pages.proof ? /<div class="card airi" 
 /** The block without its fold: what a visitor reads before opening anything. */
 const inSight = (html: string) => text(block(html).replace(/<details[\s\S]*?<\/details>/, " "));
 const PAGES = ["airwallex", "visa", "proof"] as const;
-/** The owner's copy (7 Nov), word for word. */
+/** The owner's copy (7 Nov), word for word; the summary since 12 Nov (jury panel): the run was scripted, and within the limit it is "with no Purser approval". */
 const HEADING = "Visa Intelligent Commerce via Airwallex's Airi: a live run (7 Nov)";
-const SUMMARY = "Agents paid with a single-use Visa (VIC) credential from Airi, each purchase confirmed by the cardholder's passkey: within Purser's limit without the CFO, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.";
+const SUMMARY = "A scripted run, no Claude call: paid with a single-use Visa (VIC) credential from Airi, each purchase confirmed by the cardholder's passkey: within Purser's limit with no Purser approval, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.";
 const A_SENTENCE = "Within Purser's limit, no Purser approval is needed. Airi itself asks the cardholder to confirm each purchase with a passkey.";
 const BADGES = ["✓ Within the limit", "✓ Paid after Face ID", "✕ Refused by Purser"];
 const CHECKS_URL = "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-07-vic-1.md#checks-the-records-checks";
@@ -41,7 +41,8 @@ describe("the Airi run on the site", () => {
   });
 
   it("says the owner's copy word for word on /airwallex, /visa and /proof: heading, summary, A's sentences, the three badges, the 5 of 5 checks linked", () => {
-    expect([airiHeading("7 Nov"), AIRI_SUMMARY, AIRI_A_SENTENCE, Object.values(AIRI_BADGES), AIRI_CHECKS_URL]).toEqual([HEADING, SUMMARY, A_SENTENCE, BADGES, CHECKS_URL]);
+    expect([airiHeading("7 Nov"), airiSummaryLine(rec), AIRI_A_SENTENCE, Object.values(AIRI_BADGES), AIRI_CHECKS_URL]).toEqual([HEADING, SUMMARY, A_SENTENCE, BADGES, CHECKS_URL]);
+    expect(SUMMARY.endsWith(AIRI_SUMMARY)).toBe(true);
     for (const name of PAGES) {
       const html = block(pages[name]!), t = inSight(pages[name]!);
       expect({ name, found: html.length > 0 }).toEqual({ name, found: true });
@@ -69,7 +70,8 @@ describe("the Airi run on the site", () => {
       expect(block(pages[name]!)).toContain('<details class="fold" id="airi-run-steps"><summary>Details</summary>');
       // The five checks named in the fold, each with its result, from the record.
       // Each check in words (its key only as the item's title, jargon out: 10 Nov).
-      for (const [k, c] of Object.entries(rec.checks)) { expect(text(block(pages[name]!))).toContain(`✓ ${c.detail.charAt(0).toUpperCase()}${c.detail.slice(1)}`); expect(block(pages[name]!)).toContain(`title="${k}"`); }
+      // (The record's "A ran without the CFO" reads "with no Purser approval" on the page: the same person confirmed A in Airi, as the cardholder.)
+      for (const [k, c] of Object.entries(rec.checks)) { expect(text(block(pages[name]!))).toContain(`✓ ${c.detail.charAt(0).toUpperCase()}${c.detail.slice(1)}`.replace("without the CFO", "with no Purser approval")); expect(block(pages[name]!)).toContain(`title="${k}"`); }
     }
     expect(block(pages.proof!)).toContain('href="airwallex#airi-run-steps"');
     expect(text(block(pages.proof!))).toContain("Details: every step and id");

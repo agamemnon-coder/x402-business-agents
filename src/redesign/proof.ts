@@ -5,7 +5,7 @@
 
 import { whyCompanyHtml } from "./home.js";
 import { readFileSync } from "node:fs";
-import { CFO_VIEW_LINK, CFO_VIEW_URL, CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, SPLIT_LINE, VISA_EXTRA_LINK } from "../config/brand.js";
+import { CFO_VIEW_LINK, CFO_VIEW_URL, CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, SPLIT_LINE } from "../config/brand.js";
 import { agentRun, faceIdDecisions, faceIdLine, family, letThroughOf, ownTap, payments, sandboxRails, runName, split, metalDetail, stopFigure, stopStory, stopSub, stops, stopsLine, tapRun, type AgentRun, type Ev, type RunRecord, type Tile } from "./run.js";
 import { AWX_HASH_ID, READBACK_CSS, cardControlRows, cardsReadback, controlsShortHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { AIRI_CSS, airiRunBlock } from "./airiRun.js";
@@ -311,8 +311,6 @@ export function proofPage(run: AgentRun = agentRun()): string {
 </div></main>`;
   return page({
     title: "Proof", description: "Every proof of the main run in one place: who decided, who paid, who stopped what, each partner's live proof.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH, body, js: JS, stage: false,
-    // Visa TAP as a footer link (jury review, 6 Nov, #7): an extra, not an award entry.
-    links: [["visa", VISA_EXTRA_LINK]],
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,
   });
 }

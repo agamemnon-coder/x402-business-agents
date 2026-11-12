@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { publish } from "../src/autonomy/bus.js";
 import { CHECK_PATHS, judgeMenu, startJudge } from "../src/cli/judge.js";
-import { CHAIN_TEST, SANDBOX_SETTLED, SECOND_APPROVER, VISA_EXTRA_LINK, VISA_TAP_STATUS, WORLD_SETUP } from "../src/config/brand.js";
+import { CHAIN_TEST, SANDBOX_SETTLED, SECOND_APPROVER, VISA_TAP_STATUS, WORLD_SETUP } from "../src/config/brand.js";
 import { agentChat } from "../src/dashboard/agentStats.js";
 import { railsView } from "../src/dashboard/rails.js";
 import { describe as feedLine } from "../src/dashboard/snapshot.js";
@@ -125,9 +125,12 @@ describe("2. What's real?, on each page its own", () => {
 
   it("the main run's pages keep the main run's lines", () => {
     const pages = buildPages();
-    for (const [name, html] of Object.entries({ home: pages.home!, watch: pages.watch!, proof: pages.proof!, metal: pages.metal, airwallex: pages.airwallex!, visa: pages.visa, claude: pages.claude! })) {
+    for (const [name, html] of Object.entries({ home: pages.home!, watch: pages.watch!, proof: pages.proof!, metal: pages.metal, airwallex: pages.airwallex!, claude: pages.claude! })) {
       expect({ name, main: real(html).includes(MAIN), setup: real(html).includes(WORLD_SETUP) }).toEqual({ name, main: true, setup: true });
     }
+    // /visa is the Airi run's page since 12 Nov (jury panel): its "What's real?" is that run's own line and its record,
+    // with no paragraph of the main run (the main run's TAP-signed buy sits in the page's one closed TAP fold, with its source).
+    expect({ main: real(pages.visa).includes(MAIN), setup: real(pages.visa).includes(WORLD_SETUP), airi: real(pages.visa).includes("docs/demo/airi-run.json") && /scripted, no Claude call: Airwallex sandbox, test card, test money/.test(real(pages.visa)) }).toEqual({ main: false, setup: false, airi: true });
   });
 
   it("/try says what is real in either mode: the hosted page never says 'offline copy'; the offline copy never says Claude reads it", () => {
@@ -243,12 +246,15 @@ describe("5. PAID in the sandbox, where the settlement is simulated", () => {
 });
 
 describe("6. TAP's status (Visa, 5 Nov: not eligible Visa tooling), said once, on /visa", () => {
-  it("is on /visa only; Home and Proof link to /visa as an extra, not an award entry; the Visa Award only in the Kit line (since 7 Nov, on the VIC run), never on TAP", () => {
+  it("is on /visa only, inside its one closed fold; Home and Proof no longer link to it as an extra (12 Nov); the Visa Award only in the Kit line and /visa's entry line (on the VIC run), never on TAP", () => {
     const pages = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv) as unknown as Record<string, unknown>;
     expect(String(pages.visa)).toContain(VISA_TAP_STATUS);
     for (const [name, body] of Object.entries(pages)) if (typeof body === "string" && name !== "visa") expect({ name, has: body.includes(VISA_TAP_STATUS) }).toEqual({ name, has: false });
-    for (const [name, html] of Object.entries({ home: homePage(), proof: proofPage() })) expect({ name, link: /<a [^>]*href="visa"[^>]*>Extra, not an award entry: Visa TAP[^<]*<\/a>/.test(html) && html.includes(VISA_EXTRA_LINK) }).toEqual({ name, link: true });
-    for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, entered: /\+ Visa Award|TAP counts as Visa tooling/i.test(body) || /Visa Award/i.test(body.split("entered for the Metal Award and the Visa Award").join(" ")) }).toEqual({ name, entered: false });
+    for (const [name, html] of Object.entries({ home: homePage(), proof: proofPage() })) expect({ name, link: /Extra, not an award entry/.test(html) }).toEqual({ name, link: false });
+    const fold = /<details class="fold" id="visa-tap">[\s\S]*?<\/details>/.exec(String(pages.visa))![0];
+    expect(fold).toContain(VISA_TAP_STATUS);
+    expect(String(pages.visa).replace(fold, "")).not.toMatch(/\bTAP\b/);
+    for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, entered: /\+ Visa Award|TAP counts as Visa tooling/i.test(body) || /Visa Award/i.test(body.split("entered for the Metal Award and the Visa Award").join(" ").split("This Airi run is Purser's entry for the Visa Award.").join(" ")) }).toEqual({ name, entered: false });
   });
 });
 

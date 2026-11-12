@@ -37,12 +37,12 @@ describe("the CFO's policy next to Visa's VIC rules", () => {
   it("reads every value on Purser's side from the run records and the code, never typed", () => {
     const by = Object.fromEntries(rows.map((r) => [r.topic, r]));
     const cur = buy("B").currency, limit = `${cur} ${run.policy.alone_max_eur}`, cap = `${cur} ${fromCents(AIRI_HARD_CAP_CENTS)}`;
-    expect(by.Amount!.purser).toBe(`Up to ${limit} without the CFO. Above it the CFO signs the exact amount with Face ID. Never above ${cap}.`);
+    expect(by.Amount!.purser).toBe(`Up to ${limit} with no Purser approval. Above it the CFO signs the exact amount with Face ID. Never above ${cap}.`);
     expect(by.Amount!.ran).toEqual({ text: `Ran: purchase B, ${buy("B").proposal_id}`, anchor: "airi-run" });
     expect(by.Merchant!.ran).toEqual({ text: `Ran: purchase C, ${buy("C").code}, ${buy("C").airi_calls} Airi calls`, anchor: "airi-run" });
     expect(by["How long an approval lasts"]!.purser).toBe(`An approval lapses after ${AIRI_TERMS_TTL_MS / 60_000} minutes.`);
     const ch = controls.steps.D.alteration.changed.amount, c2 = controls.steps.D.request.currency;
-    expect(by["A change after approval"]!.ran).toEqual({ text: `Ran: the controls run, ${c2} ${ch.from} changed to ${c2} ${ch.to}, refused`, anchor: "airi-run-2" });
+    expect(by["A change after approval"]!.ran).toEqual({ text: `Ran: the control test, ${c2} ${ch.from} changed to ${c2} ${ch.to}, refused`, anchor: "airi-run-2" });
     expect(controls.steps.D.executor.refused).toMatch(/terms do not match the approved hash/);
     expect(by["Total spend"]!.purser).toBe(`One approval covers one purchase. Without Face ID, at most ${run.policy.alone_per_day} purchases a day.`);
     // The policy really works that way: the same figures decide a purchase in code.
@@ -112,7 +112,7 @@ describe("the CFO's policy next to Visa's VIC rules", () => {
   it("is said in docs/claims.md with the same figures and the same source", () => {
     const row = readFileSync(root("docs/claims.md"), "utf8").split("\n").find((l) => l.startsWith("| \"The CFO's policy next to Visa's VIC rules\""))!;
     const cur = buy("B").currency, ch = controls.steps.D.alteration.changed.amount;
-    for (const said of [`up to ${cur} ${run.policy.alone_max_eur} without the CFO`, `never above ${cur} ${fromCents(AIRI_HARD_CAP_CENTS)}`, `purchase B, ${buy("B").proposal_id}`, `\`${buy("C").code}\`, ${buy("C").airi_calls} Airi calls`,
+    for (const said of [`up to ${cur} ${run.policy.alone_max_eur} with no Purser approval`, `never above ${cur} ${fromCents(AIRI_HARD_CAP_CENTS)}`, `purchase B, ${buy("B").proposal_id}`, `\`${buy("C").code}\`, ${buy("C").airi_calls} Airi calls`,
       `lapses after ${AIRI_TERMS_TTL_MS / 60_000} minutes`, `${cur} ${ch.from} changed to ${cur} ${ch.to}`, `at most ${run.policy.alone_per_day} purchases a day`, VIC_DOCS.url, `a comparison table of ${["no", "one", "two", "three", "four", "five", "six"][rows.length]} rules`,
       "There is no endpoint to modify an existing instruction or mandate."]) expect({ said, in: row.includes(said) }).toEqual({ said, in: true });
   });

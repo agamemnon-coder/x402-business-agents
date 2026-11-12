@@ -4,7 +4,7 @@
 // see the proof. One button. The numbers, the partners' proof and the business live on /proof. Everything from the
 // recorded run (src/redesign/run.ts).
 
-import { designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CAVEAT_LINK, CORE_SENTENCE, HERO, JUDGE_LINE, KIT_LINE, VISA_AWARD_ON, VISA_EXTRA_LINK, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
+import { designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CAVEAT_LINK, CORE_SENTENCE, HERO, JUDGE_LINE, KIT_LINE, VISA_BUILT_ON, VISA_VIC_BUILT_ON, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
 import { agentRun, faceIdDecisions, split, type AgentRun } from "./run.js";
 import { AWX_HASH_ID, hashTravel } from "./airwallexProof.js";
 import { AWX_RUN_STEPS_ID, awxRun } from "./awxRun.js";
@@ -259,14 +259,12 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
 ${awardsHtml()}
 <section class="agents"><div class="wrap"><h2 class="h-sec">${esc(AGENTS_HEAD)}</h2>
   <div class="agstage">${stageHtml(run.agents, s1?.steps[0]?.text ?? "Northwind Outdoor sells live stock data per query")}<div class="runlabel">${icon("database", 14)}<span>${esc(run.label)}</span></div>
-    <div class="built">Built on ${LOGOS.Airwallex}${LOGOS.Metal}${LOGOS.Claude}${VISA_AWARD_ON ? '<span class="logo txt">Visa TAP</span>' : ""}</div></div>
+    <div class="built">Built on ${LOGOS.Airwallex}${LOGOS.Metal}${LOGOS.Claude}${VISA_VIC_BUILT_ON ? `<span class="logo txt">${VISA_BUILT_ON}</span>` : ""}</div></div>
 </div></section>
 ${nextHtml()}
 </main>`;
   return page({
     title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, tab: "home", css: CSS + HERO_DEMO_CSS, body, js: JS + HERO_DEMO_JS,
-    // Visa TAP as a footer link (jury review, 6 Nov, #7): an extra, not an award entry.
-    links: [["visa", VISA_EXTRA_LINK]],
     data: { agents: run.agents, events: run.events, moments },
     source: `Source: ${run.file} (${run.name}).`,
   });

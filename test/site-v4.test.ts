@@ -68,7 +68,11 @@ describe("the site after v4", () => {
     // it and its evidence in sight, how, the code and the test folded (705 as built).
     // Visa: 495 since then (Max, 10 Nov: we compete for the Visa Award, keep it visible): one plain sentence on top naming
     // the entry and the run (490 as built).
-    const budget: Record<string, number> = { home: 250, watch: 125, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, metal: 200, airwallex: 370 /* +5, panel review 10 Nov */, visa: 625 /* +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa); +5 on 12 Nov for two folded lines under the Airi runs, "As reported by the Airwallex sandbox" and "The CFO's policy next to Visa's VIC rules" (14 words; 9 of them paid for by the TAP section's line that went; 614 as built); +10 on 12 Nov for a third folded line, "Card data: not a network-tokenised checkout, no PCI attestation" (9 words: what this checkout is not, readable without opening the fold; 623 as built) */, claude: 150, notFound: 40 };
+    // 12 Nov (jury panel): Home 250 → 254 for "Visa (VIC via Airi)" in "Built on" (4 words, 254 as built); /airwallex
+    // 370 → 374 because the Airi run's summary now says "A scripted run, no Claude call" and "with no Purser approval"
+    // (374 as built). /visa stays at 625 (617 as built): the TAP material went into one closed fold, which pays for the
+    // five facts, purchase B's table and the basis line.
+    const budget: Record<string, number> = { home: 254, watch: 125, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, metal: 200, airwallex: 374 /* +5, panel review 10 Nov; +4, jury panel 12 Nov */, visa: 625 /* +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa); +5 on 12 Nov for two folded lines under the Airi runs, "As reported by the Airwallex sandbox" and "The CFO's policy next to Visa's VIC rules" (14 words; 9 of them paid for by the TAP section's line that went; 614 as built); +10 on 12 Nov for a third folded line, "Card data: not a network-tokenised checkout, no PCI attestation" (9 words: what this checkout is not, readable without opening the fold; 623 as built) */, claude: 150, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 
@@ -179,16 +183,16 @@ describe("the site after v4", () => {
     expect(sp.routine).toBe(routine);
   });
 
-  it("gives Proof three partner cards (Visa TAP a footer link) and says the fixed lines word for word", () => {
+  it("gives Proof three partner cards (no Visa TAP on it) and says the fixed lines word for word", () => {
     const proof = pages.proof!;
     // Three partner cards since 6 Nov (jury review, #7): Visa TAP is a footer link to /visa, not a card.
     expect((proof.match(/<article class="pcard card"/g) ?? []).length).toBe(3);
     expect(proof).not.toMatch(/<span class="logo txt">Visa TAP<\/span>/);
     // The Visa paragraph is said once, on /visa (jury review, 4 Nov); TAP's status too (Visa, 5 Nov: not eligible Visa
-    // tooling): Proof links to /visa for it, as an extra, not an award entry.
+    // tooling), both inside /visa's one closed TAP fold. Proof's footer link to it went on 12 Nov (jury panel).
     expect(proof).not.toContain(VISA_CLAIM);
     expect(proof).not.toContain(VISA_TAP_STATUS);
-    expect(proof).toMatch(/<a [^>]*href="visa"[^>]*>Extra, not an award entry: Visa TAP[^<]*<\/a>/);
+    expect(proof).not.toMatch(/Extra, not an award entry|<a class="flink" href="visa"/);
     expect(proof).toContain(SECOND_APPROVER);
     expect(pages.visa).toContain(VISA_CLAIM);
     expect(pages.visa).toContain(VISA_TAP_STATUS);
@@ -199,18 +203,19 @@ describe("the site after v4", () => {
       const html = PUBLIC[name]!;
       const whole = /<main[\s\S]*<\/main>/.exec(html)![0];
       // /visa opens with Visa Intelligent Commerce (12 Nov): its picture is the VIC flow, right under the heading and
-      // before anything folded; the Airi run (owner's copy, 7 Nov) is under it and above the TAP section, whose own
-      // picture and folds come last (test/visa-overview.test.ts holds the order, test/airi-run-page.test.ts the block).
+      // before anything folded; the Airi run (owner's copy, 7 Nov) is under it and above the one closed TAP fold, the
+      // last thing on the page (test/visa-overview.test.ts holds the order, test/airi-run-page.test.ts the block).
       const airi = /<div class="awrb"><div class="card airi" id="airi-run">[\s\S]*?<\/details><\/div><\/div>/.exec(whole)?.[0] ?? "";
       expect({ name, airiAboveTap: name === "visa" ? airi.length > 0 && whole.indexOf(airi) < whole.indexOf('class="flow card"') : true }).toEqual({ name, airiAboveTap: true });
       const picture = name === "visa" ? 'class="card vicflow"' : 'class="flow card';
       expect({ name, pictureFirst: whole.indexOf(picture) >= 0 && whole.indexOf(picture) < whole.indexOf("<details") }).toEqual({ name, pictureFirst: true });
-      expect((whole.match(/<details class="fold">/g) ?? []).length).toBeGreaterThanOrEqual(2);
+      // /visa's folds each have their own anchor (the attempts, Airwallex's record, Visa's rules, card data, TAP).
+      expect((whole.match(name === "visa" ? /<details class="fold" id="[\w-]+">/g : /<details class="fold">/g) ?? []).length).toBeGreaterThanOrEqual(2);
       expect(html).not.toMatch(/<img[^>]*visa/i);
       // No script, but /airwallex's one (src/redesign/ui.ts OPEN_TARGET_JS: a link into its cards' fold opens it).
       expect(scriptBlocks(html)).toEqual(name === "airwallex" ? [`<script>\n${OPEN_TARGET_JS}</script>`] : []);
-      // Each page is labelled with the run it shows: the main run, which on /visa has its own TAP-signed card buy
-      // (the separate TAP run of 2 Nov is named inside, under its own label).
+      // Each page is labelled with the run it shows: the main run; on /visa that label sits inside the TAP fold, with
+      // the main run's own TAP-signed card buy (the separate TAP run of 2 Nov is named there too, under its own label).
       expect(html).toContain(run.label);
       if (name === "visa") expect(html).toContain(tapRun()!.label);
     }

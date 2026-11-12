@@ -88,11 +88,13 @@ describe("the VIC flow on /visa", () => {
     expect(vicFlowHtml(vicFlow(rec))).toContain('<h3 id="vic-flow-h">');
   });
 
-  it("is reachable from /proof's Airi block, and has dark colours, a phone layout and no motion", () => {
+  it("is reachable from /proof's Airi block, and has neutral colours from the design tokens (light and dark), a phone layout and no motion", () => {
     expect(airiRunBlock(undefined, { short: true })).toContain('<a class="open" href="visa#vic-flow">How it works');
     expect(pages.proof!).toContain('href="visa#vic-flow"');
-    expect(VIC_FLOW_CSS).toMatch(/@media \(prefers-color-scheme: dark\) \{ :root:not\(\[data-theme="light"\]\) \.vicflow/);
-    expect(VIC_FLOW_CSS).toMatch(/:root\[data-theme="dark"\] \.vicflow/);
+    // Every colour is a design token (each has its dark value in the shared stylesheet): no colour of the flow's own
+    // since 12 Nov, when Airi's steps went from a pink of their own to the text's neutral colour.
+    expect(VIC_FLOW_CSS).not.toMatch(/#[0-9a-f]{3,8}\b|rgb\(/i);
+    expect(VIC_FLOW_CSS).toContain("ol.vf > li.vf-airi { --vf-c: var(--text); }");
     expect(VIC_FLOW_CSS).toMatch(/@media \(min-width: 960px\) \{\s*ol\.vf \{ grid-template-columns: repeat\(7, minmax\(0, 1fr\)\)/);
     expect(VIC_FLOW_CSS).not.toMatch(/animation|transition|@keyframes/);
   });

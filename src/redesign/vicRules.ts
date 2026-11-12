@@ -1,5 +1,5 @@
 // "The CFO's policy next to Visa's VIC rules" on /visa (12 Nov): a small, sourced table, one folded row under the two
-// Airi runs. Left: Purser's own rule, its values read from the Airi run's record, the controls run's record and the
+// Airi runs. Left: Purser's own rule, its values read from the Airi run's record, the control test's record and the
 // code's constants, with where it ran (a block on the page) and where it is enforced (a source file; a test holds it).
 // Right: Visa's published rule for Visa Intelligent Commerce (v2), first in plain words, then in Visa's own.
 //
@@ -45,7 +45,7 @@ export interface VicRuleRow {
   mandate: { visa: string; purser: string }[];
 }
 
-/** The rows, from the Airi run's record, the controls run's record (when there is one) and the code's constants. */
+/** The rows, from the Airi run's record, the control test's record (when there is one) and the code's constants. */
 export function vicRules(run: AiriRunRecord, controls: Vic2Record | null): VicRuleRow[] {
   const buy = (s: string) => run.purchases.find((p) => p.step === s);
   const b = buy("B"), c = buy("C");
@@ -56,7 +56,7 @@ export function vicRules(run: AiriRunRecord, controls: Vic2Record | null): VicRu
   return [
     {
       topic: "Amount",
-      purser: `Up to ${cur} ${run.policy.alone_max_eur} without the CFO. Above it the CFO signs the exact amount with Face ID. Never above ${cur} ${fromCents(AIRI_HARD_CAP_CENTS)}.`,
+      purser: `Up to ${cur} ${run.policy.alone_max_eur} with no Purser approval. Above it the CFO signs the exact amount with Face ID. Never above ${cur} ${fromCents(AIRI_HARD_CAP_CENTS)}.`,
       ...(b?.proposal_id ? { ran: { text: `Ran: purchase ${b.step}, ${b.proposal_id}`, anchor: AIRI_RUN_ID } } : {}),
       source: code, test: held,
       visa: "Each mandate carries a limit, its decline threshold.", quotes: ["the transactionAmount alone does not exceed the mandate's declineThreshold"],
@@ -80,7 +80,7 @@ export function vicRules(run: AiriRunRecord, controls: Vic2Record | null): VicRu
     {
       topic: "A change after approval",
       purser: "The CFO signs a hash of the exact terms. Changed terms no longer match it and are refused; a change needs a new approval.",
-      ...(d?.executor.refused ? { ran: { text: `Ran: the controls run, ${d.request.currency} ${d.alteration.changed.amount.from} changed to ${d.request.currency} ${d.alteration.changed.amount.to}, refused`, anchor: VIC2_RUN_ID } } : {}),
+      ...(d?.executor.refused ? { ran: { text: `Ran: the control test, ${d.request.currency} ${d.alteration.changed.amount.from} changed to ${d.request.currency} ${d.alteration.changed.amount.to}, refused`, anchor: VIC2_RUN_ID } } : {}),
       source: "src/policy/approvals.ts", test: held,
       visa: "No edits: cancel it and create a new one.", quotes: ["There is no endpoint to modify an existing instruction or mandate."],
       section: "Controls and rules", mandate: [],
