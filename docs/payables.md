@@ -162,8 +162,9 @@ rule cites the Airwallex guide it comes from in `src/payouts/routes.ts`.
 Points the documentation leaves open; each is a setting or a single line, not a redesign.
 
 1. **Fee reserves.** The SWIFT defaults (EUR 20, USD 25, GBP 20, CHF 25, CNY 200, TRY 1,000, others 25) are safety
-   margins, not Airwallex's fees, and LOCAL is assumed to cost nothing. Check the fees charged on sandbox payouts and
-   set `fee_reserve.*` to match.
+   margins, not Airwallex's fees, and the LOCAL default is nothing; on 10 November the sandbox charged EUR 2.69 on a
+   EUR 4.84 SEPA (LOCAL) payout ([run record](runs/2026-11-10-platform-e2e.md)), so set `fee_reserve.*` to match the
+   fees charged.
 2. **Fee currency.** The fake charges the fee in the transfer's currency; check whether Airwallex charges it there or in
    the account's settlement currency, and book accordingly.
 3. **UK by SWIFT.** The UK guide lists a GB IBAN for SWIFT with no `swift_code` field; confirm a SWIFT payout to a GB
@@ -257,16 +258,20 @@ person; nothing is guessed.
 ## What is real, what is not in v1
 
 - Real: the reading and checks, the documents and the ledger, the payments in the Airwallex sandbox, Face ID.
-- Not yet: paying without Face ID under a limit; a live mailbox; direct links to bookkeeping
-  packages; several approvers per supplier; FX booking for the Kit 11 EUR invoice payment's conversions (they are in
+- Not yet: paying without Face ID under a limit; a live mailbox (the cloud's e-mail intake is built, no mail domain is
+  set: [go-live.md](go-live.md)); a live link to a bookkeeping package (connectors for Moneybird, Exact Online, Business
+  Central and Odoo are built in `src/erp` and tested against the vendors' documented shapes only: [erp.md](erp.md));
+  several approvers per supplier; FX booking for the Kit 11 EUR invoice payment's conversions (they are in
   the treasury ledger, not in the payables books).
 
 ## Where the next parts plug in
 
 - **A live mailbox:** a poller hands each message's raw bytes to `ingestEmail` (`src/ap/inbox.ts`); the MIME parsing is
-  its own function, `parseEml` (`src/ap/eml.ts`).
-- **Bookkeeping packages:** implement `BookkeepingSink` (`src/ap/books.ts`); the CSV file sink is the first. A sink that
-  fails is logged and never stops the inbox or a payment.
+  its own function, `parseEml` (`src/ap/eml.ts`). Purser Cloud already receives each company's mail and the runner pulls
+  it into `ingestEmail` (`npm run cloud -- mail`, [cloud.md](cloud.md)); no mail domain is set yet.
+- **Bookkeeping packages:** the ERP connectors in `src/erp` ([erp.md](erp.md)) read the inbox's invoices; the CSV file
+  sink (`BookkeepingSink`, `src/ap/books.ts`) stays for a plain export. A sink that fails is logged and never stops the
+  inbox or a payment.
 - **An API for companies:** the page's JSON routes are under `/api/payables/...` (`src/servers/payables.ts`); the same
   handlers can sit behind the authenticated agent API, with `source: "api"` on `ingestDocument`.
 - **Accounts:** the payables accounts (1510 input VAT, 2100 accounts payable, 1203 other-currency balances) are in

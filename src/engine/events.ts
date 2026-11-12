@@ -4,6 +4,9 @@
 // reading came from, a status, finding codes, an amount and its currency, a request id, a cost in micro-USD). An event
 // that is not on the list says that it happened and when, and nothing else: no fields and no subject.
 //
+// The agents' events (claude.asking, agent.*, ap.checker_decided, ap.payer_proposed, claude.capped) are described for
+// the page in docs/engine-events.md. Every text among them is masked (masked()): no IBAN, key or full account number.
+//
 // The list is read from the audit( calls of what the engine host runs: src/ap, src/claude, src/passkey,
 // src/policy/approvals.ts, src/executors (the payment executors), src/payouts, src/vault and the treasury's seed
 // (src/agents/euroBill.ts). src/ledger writes no audit rows.
@@ -35,6 +38,30 @@ const money = (v: unknown): { amount?: string; currency?: string } => {
 /** The codes of what the checks found, in one text ("possible_duplicate,total_mismatch"); never a finding's words. */
 const codes = (v: unknown): string | undefined =>
   Array.isArray(v) ? v.map((f) => (typeof f === "object" && f !== null ? (f as { code?: unknown }).code : undefined)).filter((c): c is string => typeof c === "string").join(",") : undefined;
+/**
+ * A text a page may show: every IBAN and every run of 8 or more digits (an account number), however it is spaced, cut to its last four
+ * ("****3000"), anything that looks like an API key or a bearer token removed, at most `max` characters.
+ */
+export function masked(v: unknown, max: number): string | undefined {
+  if (typeof v !== "string") return undefined;
+  const last4 = (m: string) => `****${m.replace(/[^A-Za-z0-9]/g, "").slice(-4)}`;
+  // Separators as people and PDFs write them: spaces (also non-breaking or doubled), hyphens, dots.
+  const out = v
+    // An IBAN: country, check digits, an optional four-letter bank code, then digits (never running on into a word).
+    .replace(/\b[A-Z]{2}\d{2}[\s.-]*(?:[A-Z]{4}[\s.-]*)?\d(?:[\s.-]*\d){6,29}\b/gi, last4)
+    // An account number: 8 or more digits; a date (2026-11-16, 16.11.2026, 16-11-2026) is not one.
+    .replace(/\b\d(?:[\s.-]*\d){7,}\b/g, (m) => (/^(\d{4}-\d{2}-\d{2}|\d{2}[.-]\d{2}[.-]\d{4})$/.test(m) ? m : last4(m)))
+    .replace(/\bsk-[A-Za-z0-9_-]{8,}/g, "[redacted]")
+    .replace(/\b(Bearer)\s+\S+/gi, "$1 [redacted]");
+  return out.length > max ? `${out.slice(0, max - 1)}…` : out;
+}
+/** The first sentence of a text, masked, at most `max` characters. */
+const firstSentence = (v: unknown, max: number): string | undefined => {
+  const m = masked(v, 10_000);
+  return m === undefined ? undefined : masked(m.split(/(?<=[.!?])\s/)[0], max);
+};
+/** Why Claude was not asked (src/engine/budget.ts): one of these words, nothing else. */
+const CAPPED = new Set(["switch_off", "no_key", "action_budget", "company_cap", "pool_day_cap", "address_cap", "all_time_cap", "busy"]);
 const transfer: Pick = (p) => ({ ...money(p.amount), status: p.status, request_id: p.request_id });
 const conversion: Pick = (p) => ({ ...money(p.buy), request_id: p.request_id });
 const fee: Pick = (p) => money(p.fee);
@@ -63,6 +90,21 @@ const EVENTS: Record<string, Pick> = {
   "claude.fallback": (p) => ({ source: "fallback", model: p.model }),
   "claude.rejected": copy("model"),
   "document.injection_flagged": NONE,
+  // A call on its way: written just before it is sent (by the reader with its role, by an agent with its turn). It says
+  // a call was sent, to which model; never the prompt, never what the answer will be.
+  "claude.asking": copy("agent", "role", "model", "turn"),
+  // Claude was not asked, and why (a switch, no key, or a cap): code read and decided instead.
+  "claude.capped": (p) => ({ reason: typeof p.reason === "string" && CAPPED.has(p.reason) ? p.reason : undefined }),
+  // The product's agents (src/agents/loop.ts on branch ap-agents-1112): a tool's name and the first sentence of what it
+  // answered, the model's words, a nudge, and the run's outcome. A tool's input is never shown.
+  "agent.tool": (p) => ({ agent: p.agent, tool: p.tool, turn: p.turn, model: p.model, request_id: p.request_id, ms: p.ms, answer: firstSentence(p.result, 160) }),
+  "agent.said": (p) => ({ agent: p.agent, turn: p.turn, model: p.model, text: masked(p.text, 600) }),
+  "agent.nudged": (p) => ({ agent: p.agent, reason: masked(p.reason, 160) }),
+  "agent.run": copy("agent", "model", "status", "turns", "cost_usd_micros", "latency_ms"),
+  // The agents' decisions (src/ap/checkerAgent.ts, src/ap/payerAgent.ts): who decided, what code required or overrode;
+  // the codes of code's findings, never their words, the agent's reason or the payment's terms.
+  "ap.checker_decided": (p) => ({ ...copy("source", "model", "action", "outcome", "overridden", "overridden_by", "code_requires")(p), codes: codes(p.code_findings) }),
+  "ap.payer_proposed": copy("source", "model", "rail", "pay_on", "pay_currency", "outcome", "overridden", "overridden_by"),
   // The passkey (src/passkey).
   "passkey.enrolment_opened": NONE,
   "passkey.pending": NONE,

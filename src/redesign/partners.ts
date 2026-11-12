@@ -7,7 +7,7 @@
 // Every figure from the record (src/redesign/run.ts), the TAP run's record or the read-back records; logos only as "built on",
 // never a Visa logo. No script. Also the clean 404 page.
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { SANDBOX_SETTLED, SPLIT_LINE, VISA_CLAIM, VISA_TAP_STATUS } from "../config/brand.js";
 import { airwallexData } from "../partners/data.js";
 import { agentRun, callBadge, cardRaiseOf, decisionsOf, faceIdDecisions, family, fxOf, ownTap, payments, split, stops, tapRun, timings, type AgentRun, type Ev } from "./run.js";
@@ -174,7 +174,7 @@ export function metalPage(run: AgentRun = agentRun(), tokenize: TokenizeRun | nu
 export const CARD_IN_LINE = "Money in by card, a separate sandbox run: a test customer paid a Northwind invoice with Airwallex's sandbox test card, and Purser booked it only after Airwallex reported PaymentIntent int_sgpv9bnppho0sezgl4a SUCCEEDED. Test money.";
 
 /** The connected-accounts runs of 10 November, as they ran (docs/runs/2026-11-10-connected-accounts-sandbox.md). */
-export const TWO_LOCKS_LINE = "Two locks on one payout, a separate sandbox run: after the CFO's passkey (a labelled test passkey) signed the exact terms, Airwallex's own approval workflow held transfer 4074d684-4704-406c-a527-2832753baf4f (EUR 240.00, the signed hash in its metadata) IN_APPROVAL; the web-app approval was not completed, so it is not paid. Test money.";
+export const TWO_LOCKS_LINE = "Two locks on one payout, a separate sandbox run: a labelled virtual test passkey (not a person's Face ID) signed the exact terms in Purser, then Airwallex's own approval workflow held transfer 4074d684-4704-406c-a527-2832753baf4f (EUR 240.00, the signed hash in its metadata) IN_APPROVAL until the owner approved it in Airwallex's sandbox web app on 12 November; it then went PAID, moved to SENT and PAID by the sandbox's simulation (settlement simulated). Test money.";
 export const CONNECTED_LINE = "Purser as an Airwallex platform, a separate sandbox run: a test company's own connected account acct_SC-QD89fOneAeqaRFgOymw opened through Purser and made ACTIVE (verification simulated), then a EUR 5.00 payout on its behalf (a9460dba-f31b-4111-be58-6d9a9e71adb1) carried Purser's fee as an application fee, accepted by Airwallex at exactly EUR 0.05; PAID by the sandbox's simulation. Test money.";
 
 export function airwallexPage(run: AgentRun = agentRun()): string {
@@ -260,6 +260,27 @@ export function visaPage(run: AgentRun = agentRun()): string {
   });
 }
 
+/** The hostile-model eval's record (jury panel, 12 Nov): a script in Claude's place, run in CI (npm run ap-hostile-eval). */
+export const HOSTILE_RECORD_FILE = "docs/evals/ap-hostile.json";
+
+/**
+ * /claude's line from that record, as a visitor reads it; "" when there is no record. It names its scope (review round
+ * 1, 12 Nov: the page shows the three Kit 11 agents, and the eval is of the payables agents): the agents and the number
+ * of test invoices, counted from the record's cases.
+ */
+export function hostileClaimText(file = HOSTILE_RECORD_FILE): string {
+  const url = new URL(`../../${file}`, import.meta.url);
+  if (!existsSync(url)) return "";
+  const { line, cases } = JSON.parse(readFileSync(url, "utf8")) as { line?: string; cases?: unknown[] };
+  return line ? `In CI, a script in place of the payables agents, on ${cases?.length ?? 0} test invoices: ${line}.` : "";
+}
+
+/** That line with its link to the record; "" when there is no record. */
+export function hostileClaimHtml(file = HOSTILE_RECORD_FILE): string {
+  const text = hostileClaimText(file);
+  return text ? `<p class="claim">${esc(text)} <a class="pf" href="${esc(`${REPO_BLOB}${file}`)}" target="_blank" rel="noopener">${esc("record")} ↗</a></p>` : "";
+}
+
 export function claudePage(run: AgentRun = agentRun()): string {
   const p = partnerProof(run), sp = split(run.record), s = run.record.snapshot;
   const calls = s.agent_stats.reduce((n, a) => n + a.claude_calls, 0);
@@ -277,6 +298,7 @@ export function claudePage(run: AgentRun = agentRun()): string {
     nums: nums([[`${sp.byClaude}/${sp.decisions}`, `decisions by Claude (${sp.fallbacks} fallbacks)`], [String(sp.routine), "routine payments by code"], [String(calls), "Claude calls, each with a request id"], [String(faceIdDecisions(run.record)), "Face ID decisions by the CFO"]]),
     // What a decision is here (jury review, 7 Nov, #19): holding and doing nothing count, as the record's own rows show.
     line: `${SPLIT_LINE} ${sp.decisions} decisions, including the ones to hold or do nothing.`,
+    extra: hostileClaimHtml(),
     folds: fold("Each agent: decisions, calls, cost", p.claude)
       // All the decisions the headline counts (final review, 4 Nov: the chat's 21 of 24), cut at a word, never inside a number.
       + fold("Every decision, with its Claude call", decisionsOf(run.record).map((d) => `<li class="ok">${esc(`${d.agent[0]!.toUpperCase()}${d.agent.slice(1)}, ${d.at.slice(11, 16)} UTC: ${d.text.length > 140 ? `${d.text.slice(0, 140).replace(/\s+\S*$/, "")}…` : d.text}`)}${d.call ? `<br><span class="call" title="${esc(d.call.requestIds.join(", "))}">${esc(callBadge(d.call))}</span>` : ""}</li>`))

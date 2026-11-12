@@ -51,6 +51,15 @@ export interface EngineApi {
   wipe(): Promise<void>;
 }
 
+/**
+ * The engine asked to be read less often: a company's object answers at most EVENTS_PER_SECOND reads of its events a
+ * second (cloud/src/engine/object.ts), and the route answers 429 slow_down with retryMs.
+ */
+export class SlowDown extends Error {
+  constructor(readonly retryMs: number, message: string) { super(message); this.name = "SlowDown"; }
+}
+export const EVENTS_PER_SECOND = 2;
+
 /** Every action of the interface by name, held to the interface by the compiler. */
 const everyMethod = <T extends readonly (keyof EngineApi)[]>(names: keyof EngineApi extends T[number] ? T : never): T => names;
 

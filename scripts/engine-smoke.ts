@@ -8,6 +8,14 @@
 // (refused), the right one (paid on the stand-in bank), and the invoice, the ledger and the archive read back.
 //
 // Test money only: the engine pays on its stand-in bank. The company it makes is a test company named as such.
+//
+// Flags (after the base URL):
+//   --plain              the cloud alone: health, a company, a sign-in, its invoices (the engine is not asked)
+//   --parallel N         N companies at once, each running the chain
+//   --poll <ms>          with --parallel: each company polls GET /v1/engine/events?after= every <ms> (default 1000)
+//                        while its upload and its payment are in flight, as the page does
+// A parallel run reports p50 and p95 per step and per poll, every answer that was not 2xx word for word, and the 429s
+// and 5xx by route; it exits non-zero when a company fails or any answer was not 2xx.
 import { randomBytes } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { pdfOf } from "../src/e2e/documents.js";
@@ -26,7 +34,11 @@ export const SMOKE_STEPS = [
   "make a company", "enrol the owner's sign-in passkey", "sign in", "upload the invoice", "file the payment",
   "set up the approval passkey", "approve other terms (refused)", "approve", "read the invoice back", "read the ledger back", "read the archive back",
 ] as const;
-type Step = (typeof SMOKE_STEPS)[number];
+/** --plain: the cloud alone, before anything of the engine (the first deploy of the cloud Worker with the engine). */
+export const PLAIN_STEPS = ["check health", "make a company", "enrol the owner's sign-in passkey", "sign in", "list the invoices"] as const;
+type Step = (typeof SMOKE_STEPS)[number] | (typeof PLAIN_STEPS)[number];
+/** The steps a parallel run polls the engine's events during: the ones that may take the engine a while. */
+const POLLED: readonly Step[] = ["upload the invoice", "approve"];
 
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 export interface SmokeResult { steps: { step: Step; ms: number }[]; failed: { step: Step; reason: string } | null }
@@ -34,7 +46,13 @@ export interface SmokeResult { steps: { step: Step; ms: number }[]; failed: { st
 class Mismatch extends Error {}
 const b64u = (u: Uint8Array) => Buffer.from(u).toString("base64url");
 
-export async function runSmoke(o: { base: string; adminToken: string; fetch: Fetch; log: (line: string) => void }): Promise<SmokeResult> {
+export async function runSmoke(o: {
+  base: string; adminToken: string; fetch: Fetch; log: (line: string) => void;
+  /** The cloud alone (PLAIN_STEPS) instead of the engine's chain (SMOKE_STEPS). */
+  plain?: boolean;
+  /** Called around each step with the owner's session once there is one (a parallel run polls the events there). */
+  around?: (step: Step, session: string) => () => Promise<void>;
+}): Promise<SmokeResult> {
   const url = new URL(o.base);
   const rp = { rpId: url.hostname, origin: url.origin };
   const req = async (method: string, path: string, x: { key?: string; body?: unknown } = {}): Promise<{ status: number; json: Record<string, unknown> }> => {
@@ -61,6 +79,14 @@ export async function runSmoke(o: { base: string; adminToken: string; fetch: Fet
   const bytes = await pdfOf(EN);
 
   const run: Record<Step, () => Promise<void>> = {
+    "check health": async () => {
+      const r = await req("GET", "/v1/health");
+      expectThat(r.status === 200 && r.json.ok === true, "the cloud answers healthy (200, its database and document store up)", { status: r.status, body: r.json });
+    },
+    "list the invoices": async () => {
+      const r = await req("GET", "/v1/invoices", { key: s.session });
+      expectThat(r.status === 200 && Array.isArray(r.json.items), "the company's invoices are listed (200)", { status: r.status, error: r.json.error });
+    },
     "make a company": async () => {
       const r = await req("POST", "/v1/admin/tenants", { key: o.adminToken, body: { slug: s.slug, name: `Smoke test company ${s.slug}`, owner: { display_name: "Smoke Owner" } } });
       expectThat(r.status === 201, "the platform makes the company (201)", { status: r.status, error: r.json.error });
@@ -135,11 +161,14 @@ export async function runSmoke(o: { base: string; adminToken: string; fetch: Fet
     },
   };
 
-  for (const step of SMOKE_STEPS) {
+  for (const step of o.plain ? PLAIN_STEPS : SMOKE_STEPS) {
     const t0 = Date.now();
+    const stop = o.around?.(step, s.session);
     try {
       await run[step]();
+      await stop?.();
     } catch (e) {
+      await stop?.();
       const reason = e instanceof Error ? e.message : String(e);
       steps.push({ step, ms: Date.now() - t0 });
       o.log(`${String(Date.now() - t0).padStart(7)} ms  ${step}  FAILED`);
@@ -154,6 +183,75 @@ export async function runSmoke(o: { base: string; adminToken: string; fetch: Fet
   return { steps, failed: null };
 }
 
+/** Nearest-rank percentile of a list of milliseconds (0 for none). */
+function pct(ms: number[], p: number): number {
+  if (!ms.length) return 0;
+  const sorted = [...ms].sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)]!;
+}
+const stats = (ms: number[]) => ({ n: ms.length, p50: pct(ms, 50), p95: pct(ms, 95) });
+/** A path as a route: ids and numbers made generic, the query dropped. */
+const routeOf = (method: string, input: string): string =>
+  `${method} ${new URL(input).pathname.replace(/\/(AP|P)-\d+/g, "/{id}").replace(/\/(usr|t)_[A-Za-z0-9_]+/g, "/{id}")}`;
+
+export interface ParallelResult {
+  ok: boolean;
+  runs: SmokeResult[];
+  steps: Record<string, { n: number; p50: number; p95: number }>;
+  polls: { n: number; p50: number; p95: number };
+  /** Every answer that was not 2xx, word for word (the body, cut at 400 characters). */
+  errors: { route: string; status: number; body: string }[];
+  /** Answers that were not 2xx, counted by route and status. */
+  byRoute: Record<string, Record<number, number>>;
+}
+
+/** N companies at once, each running the chain while it polls the engine's events during its upload and its payment. */
+export async function runParallel(o: { base: string; adminToken: string; fetch: Fetch; log: (line: string) => void; n: number; pollMs: number }): Promise<ParallelResult> {
+  const errors: ParallelResult["errors"] = [];
+  const byRoute: ParallelResult["byRoute"] = {};
+  const pollMs: number[] = [];
+  const watched: Fetch = async (input, init) => {
+    const res = await o.fetch(input, init);
+    if (res.status < 200 || res.status > 299) {
+      const route = routeOf(init?.method ?? "GET", input);
+      errors.push({ route, status: res.status, body: (await res.clone().text()).slice(0, 400) });
+      (byRoute[route] ??= {})[res.status] = (byRoute[route]![res.status] ?? 0) + 1;
+    }
+    return res;
+  };
+  const poller = (session: string) => {
+    let after = 0, on = true;
+    const loop = (async () => {
+      while (on) {
+        const t0 = Date.now();
+        const res = await watched(`${new URL(o.base).origin}/v1/engine/events?after=${after}`, { method: "GET", headers: { authorization: `Bearer ${session}` } });
+        pollMs.push(Date.now() - t0);
+        if (res.ok) { const j = (await res.json()) as { next?: number }; if (typeof j.next === "number") after = j.next; }
+        if (on) await new Promise((r) => setTimeout(r, o.pollMs));
+      }
+    })();
+    return async () => { on = false; await loop; };
+  };
+  const runs = await Promise.all(Array.from({ length: o.n }, () => runSmoke({
+    base: o.base, adminToken: o.adminToken, fetch: watched, log: () => undefined,
+    around: (step, session) => (POLLED.includes(step) && session ? poller(session) : async () => undefined),
+  })));
+  const steps: ParallelResult["steps"] = {};
+  for (const step of SMOKE_STEPS) {
+    const ms = runs.flatMap((r) => r.steps.filter((x) => x.step === step).map((x) => x.ms));
+    if (ms.length) steps[step] = stats(ms);
+  }
+  const polls = stats(pollMs);
+  for (const [step, st] of Object.entries(steps)) o.log(`${String(st.p50).padStart(7)} ms p50 ${String(st.p95).padStart(7)} ms p95  ${step} (${st.n})`);
+  o.log(`polls: ${polls.n}, p50 ${polls.p50} ms, p95 ${polls.p95} ms`);
+  for (const e of errors) o.log(`${e.status} ${e.route}: ${e.body}`);
+  for (const [route, counts] of Object.entries(byRoute)) for (const [status, n] of Object.entries(counts)) if (Number(status) === 429 || Number(status) >= 500) o.log(`${n} x ${status} on ${route}`);
+  for (const [i, r] of runs.entries()) if (r.failed) o.log(`company ${i + 1}: FAILED at "${r.failed.step}": ${r.failed.reason}`);
+  const passed = runs.filter((r) => !r.failed).length;
+  o.log(`smoke: ${passed} of ${o.n} companies passed${errors.length ? `; ${errors.length} answers were not 2xx` : ""}`);
+  return { ok: passed === o.n && errors.length === 0, runs, steps, polls, errors, byRoute };
+}
+
 /** The command line: 0 when every step passed, 1 on a mismatch, 2 when the base URL or the token is missing. */
 export async function main(argv: string[], env: Record<string, string | undefined>, io: { fetch: Fetch; log: (line: string) => void }): Promise<number> {
   const base = argv[0];
@@ -162,8 +260,17 @@ export async function main(argv: string[], env: Record<string, string | undefine
   if (!ok) { io.log("usage: npm run cloud:smoke -- <base URL, e.g. https://purser-try.<account>.workers.dev>"); return 2; }
   const token = env[TOKEN_VAR];
   if (!token) { io.log(`set ${TOKEN_VAR} to the platform admin token (it is read, never printed)`); return 2; }
+  const flags = argv.slice(1);
+  const value = (name: string): number | null => { const i = flags.indexOf(name); const v = i >= 0 ? Number(flags[i + 1]) : NaN; return Number.isInteger(v) && v > 0 ? v : null; };
+  const parallel = flags.includes("--parallel") ? value("--parallel") : 1;
+  const poll = flags.includes("--poll") ? value("--poll") : 1000;
+  if (parallel === null || poll === null || (flags.includes("--plain") && parallel > 1)) {
+    io.log("usage: npm run cloud:smoke -- <base URL> [--plain] [--parallel N [--poll <ms>]]");
+    return 2;
+  }
   io.log(`smoke: ${new URL(base!).origin}, on test money (the stand-in bank)`);
-  const out = await runSmoke({ base: base!, adminToken: token, fetch: io.fetch, log: io.log });
+  if (parallel > 1) return (await runParallel({ base: base!, adminToken: token, fetch: io.fetch, log: io.log, n: parallel, pollMs: poll })).ok ? 0 : 1;
+  const out = await runSmoke({ base: base!, adminToken: token, fetch: io.fetch, log: io.log, plain: flags.includes("--plain") });
   return out.failed ? 1 : 0;
 }
 

@@ -7,6 +7,7 @@ import { buildPages } from "../src/relay/assets.js";
 import { notFoundResponse, pageResponse, type Pages } from "../worker/src/core.js";
 import { agentRun, callBadge, faceIdDecisions, highlights, loadRecord, payments, split, tapRun } from "../src/redesign/run.js";
 import { OPEN_TARGET_JS } from "../src/redesign/ui.js";
+import { hostileClaimText } from "../src/redesign/partners.js";
 import { tokenizeRun } from "../src/redesign/tokenizeRun.js";
 import { scriptBlocks } from "./support/scriptBlocks.js";
 import { SECOND_APPROVER, SPLIT_LINE, VISA_CLAIM, VISA_TAP_STATUS, WORLD_SETUP } from "../src/config/brand.js";
@@ -84,7 +85,9 @@ describe("the site after v4", () => {
     // The phone's script, stylesheet and font are not pages (the phone pages themselves are checked).
     const all = Object.entries(pages as unknown as Record<string, unknown>).filter((e): e is [string, string] => typeof e[1] === "string" && !["client", "css", "font"].includes(e[0]));
     expect(all.map(([k]) => k)).toEqual(expect.arrayContaining(["dashboard", "month", "film", "try", "lab", "metal", "metalReport", "visa", "airwallex", "claude", "home", "watch", "proof", "notFound", "approve", "enrol", "policy"]));
-    for (const [name, html] of all) for (const re of bad) expect({ name, found: re.exec(allText(html))?.[0] ?? null }).toEqual({ name, found: null });
+    // 12 Nov (jury panel): /claude's hostile-model eval line says "0 unsafe" as CI computed it (docs/evals/ap-hostile.json).
+    const hostile = hostileClaimText();
+    for (const [name, html] of all) for (const re of bad) expect({ name, found: re.exec(allText(html).replace(hostile || "\u0000", " "))?.[0] ?? null }).toEqual({ name, found: null });
   });
 
   it("has four tabs and nothing else in the menu, on every public page", () => {
@@ -133,7 +136,10 @@ describe("the site after v4", () => {
   });
 
   it("reaches the archive (/lab, /film, /month, /metal/report) only through Proof's folded, labelled Archive", () => {
-    const archive = /<div class="card" id="archive">[\s\S]*?<\/details>/.exec(pages.proof!)?.[0] ?? "";
+    // Its own closed line at the end of Proof since 12 Nov (before: a card inside "Every check"), the replay first.
+    const archive = /<details class="deep" id="archive"><summary>Archive<\/summary>[\s\S]*?<\/details>/.exec(pages.proof!)?.[0] ?? "";
+    expect(archive).toContain(`<li><a class="pf" href="watch">Replay of the main run, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(run.recordedAt))}</a></li>`);
+    expect(archive).toContain('href="watch">Replay of the main run, 3 Nov</a>');
     for (const href of ["lab", "film", "month", "metal/report"]) {
       expect(archive).toMatch(new RegExp(`<details[\\s\\S]*href="${href}"`));
       for (const [name, html] of Object.entries(PUBLIC)) if (!["proof", "metal"].includes(name)) expect({ name, href, linked: html.includes(`href="${href}"`) }).toEqual({ name, href, linked: false });

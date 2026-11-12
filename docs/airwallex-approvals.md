@@ -8,7 +8,8 @@ its own lock as well, which Purser does not control. In the Airwallex web app (T
 
 From then on, every transfer Purser creates waits at Airwallex as `IN_APPROVAL`. A person at Airwallex then decides:
 
-- approves it in the web app: `SCHEDULED`, and it pays as normal;
+- approves it in the web app: `SCHEDULED` in Airwallex's documentation, and it pays as normal (in our sandbox run the
+  first read after the approval showed `PROCESSING`);
 - rejects it: `APPROVAL_REJECTED`;
 - recalls it: `APPROVAL_RECALLED`;
 - or nobody can approve it, because the workflow finds no next approver: `APPROVAL_BLOCKED`.
@@ -37,8 +38,18 @@ it at Airwallex. Neither one can pay alone.
 
 Tests: `test/airwallex-approvals.test.ts`.
 
-Not yet run live. The setting is Max's to switch on in the web app, and once it is on, every sandbox payout also needs a
-person to approve it there, including during a live demo.
+Run live in the Airwallex sandbox on 10 and 12 November 2026, with test money (records:
+[10 November](runs/2026-11-10-airwallex-two-locks.md), [12 November](runs/2026-11-12-airwallex-two-locks-paid.md)).
+Transfer `4074d684-4704-406c-a527-2832753baf4f` (EUR 240.00) waited `IN_APPROVAL` from 10 November until the owner
+approved it in Airwallex's sandbox web app on 12 November. The next read showed `PROCESSING`, and Airwallex's sandbox
+simulation endpoint then moved it to `SENT` and `PAID`.
+
+What that run does not show: Purser's lock was signed by a labelled virtual test passkey, not by a real Face ID; the
+person approved only at Airwallex; `SENT` and `PAID` came from the sandbox's simulation endpoints (settlement
+simulated).
+
+The setting is the owner's to switch on in the web app. With it on, every sandbox payout also needs a person to approve
+it there, including during a live demo.
 
 ## Money in by card (`src/airwallex/acceptance.ts`)
 

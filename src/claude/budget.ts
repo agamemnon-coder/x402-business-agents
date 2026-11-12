@@ -4,8 +4,12 @@
 
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 
-/** Dollars per block (about $250 in all). */
-export const BUDGET_BLOCKS = { evals: 80, redteam: 60, soak: 50, reviews: 30, try: 30 } as const;
+/**
+ * Dollars per block (about $250 in all). 12 November: $4 for the Coder agent's evals (npm run coder-evals), and
+ * "ap-agents", the live eval of the payables agents (npm run ap-agent-evals), with the $8 that eval was given, on top of
+ * the D26 split.
+ */
+export const BUDGET_BLOCKS = { evals: 80, redteam: 60, soak: 50, reviews: 30, try: 30, coder: 4, "ap-agents": 8 } as const;
 export type BudgetBlock = keyof typeof BUDGET_BLOCKS;
 export const BUDGET_RESERVE_USD = 30;
 const WARN_AT = 0.8;

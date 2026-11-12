@@ -17,3 +17,12 @@ export function passkeyOwnersOn(env: NodeJS.ProcessEnv = process.env): boolean {
 export function autonomyOn(env: NodeJS.ProcessEnv = process.env): boolean {
   return env.KIT11_AUTONOMY === "on" && agentsOn(env);
 }
+
+/**
+ * The payables chain's own agents (12 Nov): with KIT11_AP_AGENTS=on the Checker agent decides on each invoice and the
+ * Payer agent proposes each payment (src/ap/checkerAgent.ts, src/ap/payerAgent.ts), and code enforces the boundaries
+ * around both. Off (the default), the chain runs code's checks and code's plan exactly as before.
+ */
+export function apAgentsOn(env: NodeJS.ProcessEnv | Record<string, string | undefined> = process.env): boolean {
+  return env.KIT11_AP_AGENTS === "on";
+}
