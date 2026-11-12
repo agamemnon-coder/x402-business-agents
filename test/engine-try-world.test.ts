@@ -170,6 +170,16 @@ describe("one document cap per company", () => {
     expect((await c.req("POST", "/v1/engine/compose", { key: s, body: typed({ invoice_no: "CAP-1", amount: "101.00" }) })).json.kind).toBe("duplicate_document");
   });
 
+  it("takes PDF files only from a test company, so one e-mail cannot carry twenty documents past the cap", async () => {
+    const s = await visitor();
+    expect((await c.req("POST", "/v1/try/admin", { key: ADMIN_TOKEN, body: { op: "set", key: "own_upload", value: "on" } })).status).toBe(200);
+    const eml = Buffer.from("From: a@b.example\r\nTo: c@d.example\r\nSubject: x\r\n\r\nhello").toString("base64");
+    const r = await c.req("POST", "/v1/engine/documents", { key: s, body: { filename: "mail.eml", base64: eml } });
+    expect((await c.req("POST", "/v1/try/admin", { key: ADMIN_TOKEN, body: { op: "set", key: "own_upload", value: "off" } })).status).toBe(200);
+    expect(r.status).toBe(400);
+    expect(r.json.error).toMatch(/PDF files only; nothing was filed$/);
+  });
+
   it("does not apply to a company the admin made (the engine is unchanged without it)", async () => {
     const T = await c.tenant("no-cap-co");
     for (let i = 1; i <= 9; i++) {

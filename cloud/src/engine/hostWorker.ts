@@ -4,7 +4,7 @@
 //   documents      the object's SQLite, in 1 MB pieces (./docChunks.ts)
 //   PDF text       the engine's reader on this thread (a Durable Object has no worker threads)
 //   the bank       the stand-in bank, TEST MONEY ONLY, kept as text in the object's SQLite so it outlives the object's memory
-//   the reader     the parser (no model is asked)
+//   the reader     the parser; with ENGINE_CLAUDE "on", Claude under the caps (./claudeAccess.ts, ./spend.ts)
 //   the archive    the cloud's document store under t/<tenant>/vault/ (./vaultR2.ts): R2, or D1 without R2 (../blobsSql.ts)
 //   the read model the cloud's own applySync on D1 and R2 (./target.ts), fed with what changed
 //
@@ -28,6 +28,7 @@ import { sqlBlobs } from "../blobsSql.js";
 import { d1Sql, r2Blobs, type D1Like, type R2Like } from "../store.js";
 import { TenantDb } from "../tenant.js";
 import type { EngineApi } from "./api.js";
+import { claudeAccess } from "./claudeAccess.js";
 import { docChunks } from "./docChunks.js";
 import { SAMPLES } from "./samples.gen.js";
 import { cloudTarget } from "./target.js";
@@ -37,7 +38,13 @@ import { blobVault } from "./vaultR2.js";
 export interface HostCtx { storage: DoStorage & { deleteAll(): Promise<void> } }
 /** What the host needs of the Worker's bindings: the cloud's database and document store, and the passkeys' relying party. */
 /** DOCS absent (a deployment without R2): the read model's documents and the archive are kept in D1, as the Worker keeps them (../blobsSql.ts). */
-export interface HostEnv { DB: D1Like; DOCS?: R2Like; RP_ID: string; ORIGIN: string }
+export interface HostEnv {
+  DB: D1Like; DOCS?: R2Like; RP_ID: string; ORIGIN: string;
+  /** "on": the engine may read with Claude, under the caps (./claudeAccess.ts). Unset: the parser reads, as before. */
+  ENGINE_CLAUDE?: string;
+  /** The demo's own capped Claude key, a secret of the Worker (wrangler secret put); never in a file or a log. */
+  KIT11_ANTHROPIC_API_KEY?: string;
+}
 
 let runtimeReady = false;
 /** Once per isolate: the PDF reader without a worker thread, and the three fonts the archive's PDFs use (pdfkit's browser build carries none). */
@@ -72,6 +79,7 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     db, reader: parserOnly, rails: { rail: bank, sim: bank }, afterMoney: keepBank,
     rp: { rpId: env.RP_ID, origin: env.ORIGIN }, company: { name: company.name, lang: company.language === "en" ? "en" : "nl" },
     vault: blobVault(blobs, tenantId), feed: (d, now) => feedCloud(d, target, now),
+    ...withClaude(env, sql, tenantId),
     // The hands-on demo: the sample invoices, and a visitor's test company holds at most 8 documents.
     samples: SAMPLES, ...(tenantId.startsWith("t_try_") ? { maxDocuments: 8 } : {}),
   });
@@ -110,4 +118,10 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     wipe: async () => { await storage.deleteAll(); },
   };
   return { api };
+}
+
+/** Claude under the caps when the Worker says so (ENGINE_CLAUDE "on"); otherwise nothing, and the parser reads. */
+function withClaude(env: HostEnv, sql: ReturnType<typeof d1Sql>, tenantId: string) {
+  const claude = claudeAccess({ engineClaude: env.ENGINE_CLAUDE, key: env.KIT11_ANTHROPIC_API_KEY ?? process.env.KIT11_ANTHROPIC_API_KEY, sql, tenantId });
+  return claude ? { claude } : {};
 }

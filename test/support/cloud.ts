@@ -71,6 +71,10 @@ export function testCloud(opts: { rate?: CloudEnv["rate"]; engine?: boolean; try
     const headers: Record<string, string> = { ...(o.headers ?? {}) };
     if (o.key) headers.authorization = `Bearer ${o.key}`;
     if (o.body !== undefined || o.raw !== undefined) headers["content-type"] = "application/json";
+    // A browser on the cloud's own page says where it is on every write (the hands-on demo requires it); the header
+    // value "null-omit" sends none, as a program does.
+    if (method !== "GET" && method !== "HEAD" && !("origin" in headers)) headers.origin = ORIGIN;
+    if (headers.origin === "null-omit") delete headers.origin;
     const res = await fetchFn(`${ORIGIN}${path}`, { method, headers, ...(o.body !== undefined ? { body: JSON.stringify(o.body) } : o.raw !== undefined ? { body: o.raw } : {}) });
     const text = await res.clone().text();
     let json: Record<string, unknown> = {};

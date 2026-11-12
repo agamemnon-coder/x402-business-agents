@@ -157,7 +157,7 @@ describe("a visitor's company", () => {
     expect((await c.req("GET", "/v1/engine", { key: r.json.session as string })).status).toBe(200);
     const wrong = await c.req("POST", "/v1/try/session", { body: { tenant_id: A.tenant, visitor_token: B.visitor_token }, headers: { "cf-connecting-ip": "198.51.100.7" } });
     expect(wrong.status).toBe(401);
-    expect(await rateRows(c, `authfail-tenant:${A.tenant}`)).toEqual([{ bucket: `authfail-tenant:${A.tenant}`, count: 1 }]);
+    expect(await rateRows(c, `trytoken-fail:${A.tenant}`)).toEqual([{ bucket: `trytoken-fail:${A.tenant}`, count: 1 }]);
     expect(await rateRows(c, "authfail:%")).toEqual([]);
   });
 
@@ -397,5 +397,72 @@ describe("the logs", () => {
     const all = lines.join("\n");
     expect(lines.length).toBeGreaterThan(5);
     for (const secret of [ADMIN_TOKEN, t, A.visitor_token, A.session, r.json.session as string, "198.51.100.90"]) expect(all).not.toContain(secret);
+  });
+});
+
+describe("review round C4", () => {
+  it("answers a dead session of a test company with 429 past a per-company limit, and it never blocks the company's renewals", async () => {
+    const c = cloud();
+    await set(c, "starts", "on");
+    const A = await started(c, "198.51.100.110");
+    const at = { "cf-connecting-ip": "198.51.100.111" };
+    expect((await c.req("POST", "/v1/auth/logout", { key: A.session, headers: at })).status).toBe(200);
+    const codes: number[] = [];
+    for (let i = 0; i < 130; i++) codes.push((await c.req("GET", "/v1/engine/invoices", { key: A.session, headers: at })).status);
+    expect(codes.slice(0, 120).every((s) => s === 401)).toBe(true);
+    expect(codes.slice(120).every((s) => s === 429)).toBe(true);
+    // Never against the address, and the visitor still renews.
+    expect(await rateRows(c, "authfail:%")).toEqual([]);
+    const fresh = await c.req("POST", "/v1/try/session", { body: { tenant_id: A.tenant, visitor_token: A.visitor_token }, headers: at });
+    expect(fresh.status).toBe(200);
+    expect((await c.req("GET", "/v1/engine", { key: fresh.json.session as string, headers: at })).status).toBe(200);
+  });
+
+  it("does not let wrong visitor tokens use up a company's renewals; unknown companies count against the address", async () => {
+    const c = cloud();
+    await set(c, "starts", "on");
+    const A = await started(c, "198.51.100.120");
+    const at = { "cf-connecting-ip": "198.51.100.121" };
+    for (let i = 0; i < 40; i++) expect((await c.req("POST", "/v1/try/session", { body: { tenant_id: A.tenant, visitor_token: `wrong-${i}` }, headers: at })).status).toBe(401);
+    expect((await c.req("POST", "/v1/try/session", { body: { tenant_id: A.tenant, visitor_token: A.visitor_token }, headers: at })).status).toBe(200);
+    for (let i = 0; i < 25; i++) await c.req("POST", "/v1/try/session", { body: { tenant_id: `t_try_${String(i).padStart(16, "0")}`, visitor_token: "x" }, headers: at });
+    expect((await rateRows(c, "authfail:198.51.100.121")).reduce((n, r) => n + r.count, 0)).toBeGreaterThanOrEqual(20);
+    expect((await c.req("POST", "/v1/try/session", { body: { tenant_id: "t_try_ffffffffffffffff", visitor_token: "x" }, headers: at })).status).toBe(429);
+    // A known company at that address still renews.
+    expect((await c.req("POST", "/v1/try/session", { body: { tenant_id: A.tenant, visitor_token: A.visitor_token }, headers: at })).status).toBe(200);
+  });
+
+  it("keeps every live token when two are made at once", async () => {
+    const c = cloud();
+    const until = new Date(c.clock.now.getTime() + 3_600_000).toISOString();
+    const out = await Promise.all(Array.from({ length: 6 }, () => admin(c, { op: "token", pool: "event", until })));
+    for (const r of out) expect(r.status).toBe(200);
+    await set(c, "starts", "on");
+    for (const r of out) expect((await started(c, "198.51.100.130", r.json.token as string)).pool).toBe("event");
+  });
+
+  it("deletes a day's salt within 48 hours of the day's start", async () => {
+    const c = cloud();
+    await set(c, "starts", "on");
+    await started(c);
+    expect((await c.env.sql.all("SELECT day FROM try_salts")).length).toBe(1);
+    // The salt of 2026-11-08 goes once 48 hours have passed since that day began.
+    c.clock.now = new Date("2026-11-10T00:30:00Z");
+    await sweepTry({ sql: c.env.sql, blobs: c.env.blobs, now: c.clock.now });
+    expect(await c.env.sql.all("SELECT day FROM try_salts")).toEqual([]);
+  });
+
+  it("does not let companies whose wipe fails hold up the others", async () => {
+    const c = cloud();
+    await set(c, "starts", "on");
+    const A = await started(c, "198.51.100.140");
+    c.clock.now = new Date(c.clock.now.getTime() + 60_000);
+    const B = await started(c, "198.51.100.141");
+    c.clock.now = new Date(c.clock.now.getTime() + 25 * 3_600_000);
+    const engine = (id: string) => ({ wipe: async () => { if (id === A.tenant) throw new Error("away"); } });
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect((await sweepTry({ sql: c.env.sql, blobs: c.env.blobs, engine, now: c.clock.now, batch: 1 })).swept).toEqual([]);
+    expect((await sweepTry({ sql: c.env.sql, blobs: c.env.blobs, engine, now: c.clock.now, batch: 1 })).swept).toEqual([B.tenant]);
+    spy.mockRestore();
   });
 });

@@ -354,7 +354,9 @@ CREATE TABLE IF NOT EXISTS try_companies (
   pool TEXT NOT NULL CHECK (pool IN ('public', 'event', 'jury')),
   addr TEXT,
   visitor_sha256 TEXT NOT NULL,
-  wiped_at TEXT
+  wiped_at TEXT,
+  -- Sweeps whose engine would not wipe: such a company is tried again after the others, so it never holds them up.
+  sweep_tries INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS try_companies_by_expiry ON try_companies (wiped_at, expires_at);
 CREATE INDEX IF NOT EXISTS try_companies_by_created ON try_companies (created_at);
@@ -377,3 +379,21 @@ CREATE TABLE IF NOT EXISTS try_salts (
   day TEXT PRIMARY KEY,
   salt TEXT NOT NULL
 );
+
+-- Claude in the engine under caps (cloud/src/engine/spend.ts; lane A of the hands-on demo). try_spend: what each scope
+-- has spent or holds reserved, in micro-USD at list price; a scope is 'all', 'day:<pool>:<YYYY-MM-DD>', 'co:<tenant>' or
+-- 'addr:<hash>:<YYYY-MM-DD>'. A reservation adds its whole ceiling at once, and its settlement gives back what was not
+-- used. try_resv: one row per reservation; it counts as in flight while 'open', and one older than ten minutes is closed
+-- at its full amount. No prompt, no answer and no address is kept here (an address only as its salted hash in a scope).
+CREATE TABLE IF NOT EXISTS try_spend (
+  scope TEXT PRIMARY KEY,
+  micros INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS try_resv (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  micros INTEGER NOT NULL,
+  started_at TEXT NOT NULL,
+  state TEXT NOT NULL CHECK (state IN ('open', 'settled', 'expired'))
+);
+CREATE INDEX IF NOT EXISTS try_resv_open ON try_resv (state, started_at);

@@ -105,6 +105,21 @@ export function checkSwitch(key: string, value: string): string {
   throw new SwitchRefused(`${key} is not a switch of this deployment`);
 }
 
+/**
+ * Sets a switch only if it still holds `old` (null: no row yet), in one statement; false when another write came
+ * first. The admin's token op uses it, so two tokens made at once are both kept.
+ */
+export async function setSwitchIf(sql: Sql, key: string, value: string, old: string | null, now: Date): Promise<boolean> {
+  const v = checkSwitch(key, value);
+  const iso = now.toISOString();
+  const done = old === null
+    ? await sql.run("INSERT INTO try_switches (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO NOTHING", [key, v, iso])
+    : await sql.run("UPDATE try_switches SET value = ?, updated_at = ? WHERE key = ? AND value = ?", [v, iso, key, old]);
+  if (done.changes !== 1) return false;
+  await sql.run("INSERT INTO try_admin_log (at, key, old, new) VALUES (?, ?, ?, ?)", [iso, key, key === "tokens" ? tokenCount(old) : old, key === "tokens" ? tokenCount(v) : v]);
+  return true;
+}
+
 /** The tokens row in the admin log: how many, never their hashes. */
 const tokenCount = (v: string | null) => (v === null ? null : `[${tokensOf({ tokens: v }).length} tokens]`);
 

@@ -32,6 +32,7 @@ import { syncVault, type YearIndex } from "../vault/build.js";
 import { closedPeriods, invoiceDocs, receipts } from "../vault/data.js";
 import { yearIndexPath } from "../vault/layout.js";
 import { sha256, type VaultSink } from "../vault/sink.js";
+import { actionBudget, type ClaudeAccess } from "./budget.js";
 import { publicEvent, type EngineEvent, type EventRow } from "./events.js";
 import { checkCompose, invoiceText, SEEDED_SUPPLIERS, type ComposeInput, type ComposeRefusal, type Sample, type SupplierOnFile } from "./tryWorld.js";
 import { pdfOf } from "../e2e/documents.js";
@@ -64,6 +65,11 @@ export interface EngineDeps {
   samples?: readonly Sample[];
   /** At most this many documents in the company's ledger, whatever route brings them (8 for a try company); absent: no limit. */
   maxDocuments?: number;
+  /**
+   * Claude under caps (src/engine/budget.ts): each action that may ask Claude reserves its ceiling first, reads within
+   * it, and settles to what it cost; refused, the parser reads and a claude.capped row says why. Absent: `reader` reads.
+   */
+  claude?: ClaudeAccess;
 }
 
 /** What an upload, a sample or a composed invoice answers. */
@@ -199,16 +205,51 @@ export class EngineHost {
     return run;
   }
 
-  async status(): Promise<{ mode: "test_money"; passkey: { credential_id: string; label: string } | null; balances: Record<string, string>; chains: { audit: boolean; ledger: boolean } }> {
+  async status(): Promise<{
+    mode: "test_money"; passkey: { credential_id: string; label: string } | null; balances: Record<string, string>; chains: { audit: boolean; ledger: boolean };
+    /** Who reads the next document: Claude (when the caps allow it), or the parser. */
+    reader: "claude" | "parser";
+    /** Who decides: the product's agents with Claude, or code. The agents join with task A6. */
+    agents: "live" | "code";
+    /** What this company's Claude calls cost so far, in micro-USD at list price, and its cap (null: none known). */
+    spent_micros: number;
+    cap_micros: number | null;
+  }> {
     const { db, rails } = this.deps;
     const pk = activePasskey(db);
     const balances = await rails.rail.balances();
+    const claude = this.deps.claude ? await this.deps.claude.status() : { on: false, cap_micros: null };
     return {
       mode: "test_money",
       passkey: pk ? { credential_id: pk.credential_id, label: pk.label } : null,
       balances: Object.fromEntries(Object.entries(balances).map(([currency, b]) => [currency, fromCents(b?.availableCents ?? 0)])),
       chains: { audit: verifyAuditChain(db).ok, ledger: verifyLedger(db).ok },
+      reader: claude.on ? "claude" : "parser", agents: "code", spent_micros: claudeCost(db, 0), cap_micros: claude.cap_micros,
     };
+  }
+
+  /**
+   * One action that may ask Claude: its ceiling reserved first. Refused, the parser reads and a claude.capped row says
+   * why. Reserved, `run` gets a reader spending from the action's budget, and afterwards the reservation is settled to
+   * what the action's calls cost: the rows' costs, or what the budget counted (a call that failed after it was sent is
+   * counted at its worst case), never more than the reservation. Without Claude access, the host's own reader reads.
+   */
+  private async withClaude<T>(task: string, run: (reader: Asker) => Promise<T>): Promise<T> {
+    const { db, claude } = this.deps;
+    if (!claude) return run(this.deps.reader);
+    const got = await claude.reserve();
+    if (!got.ok) {
+      audit(db, "system", "claude.capped", task, { reason: got.reason });
+      return run(parserOnly);
+    }
+    const { micros, settle } = got.reservation;
+    const budget = actionBudget(micros);
+    const from = lastSeq(db);
+    try {
+      return await run(claude.reader(db, budget));
+    } finally {
+      await settle(Math.min(micros, Math.max(claudeCost(db, from), micros - budget.left())));
+    }
   }
 
   /** The treasury's test money, floors and payees on the rails, once; safe to repeat. */
@@ -224,12 +265,14 @@ export class EngineHost {
     return this.act(() => this.ingest(doc));
   }
 
-  /** The inbox, inside the queue: filed, read and checked, within the company's document cap. */
+  /** The inbox, inside the queue: filed, read (within the Claude caps when they are on) and checked, within the company's document cap. */
   private async ingest(doc: { bytes: Uint8Array; filename: string; mime?: string }): Promise<UploadResult> {
-    const { db, reader } = this.deps;
+    const { db } = this.deps;
     const bytes = Buffer.isBuffer(doc.bytes) ? doc.bytes : Buffer.from(doc.bytes.buffer, doc.bytes.byteOffset, doc.bytes.byteLength);
+    this.pdfOnly(bytes, doc.filename);
     this.roomFor(sha256(bytes));
-    const out = await ingestDocument(db, { dir: NO_FOLDER, reader, now: () => this.now() }, { bytes, filename: doc.filename, ...(doc.mime ? { mime: doc.mime } : {}), source: "upload" });
+    const out = await this.withClaude(`engine.upload:${sha256(bytes).slice(0, 16)}`, (reader) =>
+      ingestDocument(db, { dir: NO_FOLDER, reader, now: () => this.now() }, { bytes, filename: doc.filename, ...(doc.mime ? { mime: doc.mime } : {}), source: "upload" }));
     if (out.kind === "duplicate_document") return { kind: out.kind, sha256: out.sha256, invoice: out.invoice_id ? this.invoice(out.invoice_id) : null };
     const inv = firstInvoice(out);
     // Read again: a note written after the checks is on the row, not on what the inbox returned.
@@ -258,9 +301,9 @@ export class EngineHost {
   /** Files the invoice's payment for the CFO's approval. A reason not to (the engine's own words) comes back, and no proposal is made. */
   propose(invoiceId: string): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }> {
     return this.act(async () => {
-      const { db, rails, reader } = this.deps;
+      const { db, rails } = this.deps;
       try {
-        const out = await payApInvoice(db, rails.rail, invoiceId, this.now(), reader);
+        const out = await this.withClaude(`engine.propose:${invoiceId}`, (reader) => payApInvoice(db, rails.rail, invoiceId, this.now(), reader));
         if (out.kind !== "proposed") return { ok: false, reason: out.reason };
         const proposal = this.proposal(out.proposal.proposal_id);
         if (!proposal) return { ok: false, reason: `${out.proposal.proposal_id} was filed but is not in the ledger` };
@@ -477,6 +520,13 @@ export class EngineHost {
     if (n >= max) throw new Error(`this test company holds ${n} documents, its limit of ${max}; nothing was filed`);
   }
 
+  /** A capped company takes PDF files only: an e-mail may carry twenty documents, and a photo is filed as another file. */
+  private pdfOnly(bytes: Uint8Array, filename: string): void {
+    if (this.deps.maxDocuments !== undefined && !(bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46)) {
+      throw new Error(`${filename.slice(0, 100)}: a test company takes PDF files only; nothing was filed`);
+    }
+  }
+
   /** The sample invoices, in the tray's order: what the visitor does, never what the engine will answer. */
   samples(): { key: string; title: string; filename: string }[] {
     return (this.deps.samples ?? []).map((s) => ({ key: s.key, title: s.title, filename: s.filename }));
@@ -523,7 +573,8 @@ export class EngineHost {
     if (!p) return null;
     const terms = JSON.parse(p.terms_json) as Terms;
     const approved = !!db.prepare("SELECT 1 FROM approvals WHERE proposal_id = ? AND decision = 'APPROVED'").get(proposalId);
-    return { proposal_id: p.proposal_id, status: p.status, terms, canonical: canonicalTerms(terms), terms_sha256: termsHash(terms), approved, expires_at: p.expires_at };
+    // The hash as stored with the proposal (what the passkey signs), never one recomputed from the instruction's text.
+    return { proposal_id: p.proposal_id, status: p.status, terms, canonical: canonicalTerms(terms), terms_sha256: p.terms_sha256, approved, expires_at: p.expires_at };
   }
 
   /**
@@ -549,7 +600,9 @@ export class EngineHost {
       const transfers = () => (db.prepare("SELECT COUNT(*) AS n FROM transfers WHERE transfer_id IS NOT NULL").get() as { n: number }).n;
       const sentSha = termsHash(sent as Terms);
       const changed = Object.keys(stored.terms).filter((k) => JSON.stringify((stored.terms as Record<string, unknown>)[k]) !== JSON.stringify(sent[k]));
-      const base = { signed_sha256: stored.terms_sha256, sent_sha256: sentSha, changed, transfers_before: transfers() };
+      // What was signed: the approval's own hash once there is one, else the proposal's stored hash.
+      const approvedSha = (db.prepare("SELECT approved_sha256 FROM approvals WHERE proposal_id = ? AND decision = 'APPROVED'").get(proposalId) as { approved_sha256: string } | undefined)?.approved_sha256;
+      const base = { signed_sha256: approvedSha ?? stored.terms_sha256, sent_sha256: sentSha, changed, transfers_before: transfers() };
       const finish = (outcome: PaySignedResult["outcome"], layers: PaySignedResult["layers"], settled: Settled | null): PaySignedResult => {
         audit(db, "human", "try.pay", proposalId, { outcome, changed, signature_verified: layers.signature.verified, executor_accepted: layers.executor.accepted }, now);
         return { outcome, layers, ...base, transfers_after: transfers(), settled };
@@ -597,7 +650,8 @@ export class EngineHost {
         return finish(after === "EXECUTED" ? "paid" : "failed", layers, settled);
       }
       if (signature.verified && executor.accepted && status === "FAILED") return finish("failed", layers, null);
-      if (status === "EXECUTED") return finish(signature.verified ? "paid_once" : "refused", layers, null);
+      // Paid once: only for the very terms that were signed and paid, with a signature over them.
+      if (status === "EXECUTED") return finish(signature.verified && sentSha === base.signed_sha256 ? "paid_once" : "refused", layers, null);
       if (/expired/i.test(executor.said ?? "")) return finish("expired", layers, null);
       return finish("refused", layers, null);
     });
@@ -609,4 +663,19 @@ export class EngineHost {
     const batches = batchesFor(this.deps.db, { audit: { seq: 0, hash: null }, ledger: { entry_id: 0, hash: null }, documents: [] }, { now });
     return { format: "purser.cloud-sync/v1", company: this.deps.company.name, made_at: now.toISOString(), batches };
   }
+}
+
+/** The last row of the audit log (0 for none). */
+function lastSeq(db: DB): number {
+  return (db.prepare("SELECT COALESCE(MAX(seq), 0) AS n FROM audit_log").get() as { n: number }).n;
+}
+
+/** What the Claude calls written after `afterSeq` cost, in micro-USD: the readings' and the agents' runs' own figures. */
+function claudeCost(db: DB, afterSeq: number): number {
+  const rows = db.prepare("SELECT payload_json FROM audit_log WHERE seq > ? AND event IN ('claude.read', 'agent.run')").all(afterSeq) as { payload_json: string }[];
+  let n = 0;
+  for (const r of rows) {
+    try { const c = (JSON.parse(r.payload_json) as { cost_usd_micros?: unknown }).cost_usd_micros; if (typeof c === "number" && c > 0) n += c; } catch { /* a row without a cost adds nothing */ }
+  }
+  return n;
 }
