@@ -1,0 +1,421 @@
+{
+  "record": "The passkey account on chain: run record (with a virtual test passkey)",
+  "ran_at": "2026-11-12T13:43:25.504Z",
+  "last_row_at": "2026-11-12T13:54:28.158Z",
+  "dates_note": "The run's start is the time of this world's first audit row about the account. Every time in this record is the time of an audit row (UTC); none is read from the clock.",
+  "written_from": {
+    "audit_rows": 36,
+    "call_log_lines": 36,
+    "audit_log": {
+      "rows": 40,
+      "head": "3785a94ef97e36408d71b9008bb918f0756fa7912c74d8b1da203e2f689ad7d5",
+      "chain": "verified"
+    },
+    "note": "Written from the ledger's audit rows and the call log; no call was made to write it. A proposal's digest, deadline and limits are read from its stored terms, which hash to the terms hash in its audit row (terms_sha256). A step with no row is recorded as not run."
+  },
+  "network": "Metal testnet",
+  "chain_id": 63825,
+  "money": "amounts are in test USD (the testnet's token USDZ): test money, nothing here has real value",
+  "stand_in": "the second approver \"test-controller\" is a virtual test passkey: Chromium's virtual authenticator driven by docs/runs/driver/test-controller.ts; not a person's device",
+  "stand_in_note": "Read from the passkeys' labels. What device holds any other passkey is not proven (see The owners).",
+  "verifier": "0xd4c84c2bea087053691623bc463da61b528755ab",
+  "verifier_artifact": {
+    "openzeppelin": "5.6.1",
+    "compiler": "solc 0.8.36+commit.8a079791.Emscripten.clang",
+    "evm": "cancun",
+    "bytecode_sha256": "dcad730b48b944ad5e8bd3ced1d10fba7a191917a039eac4f6824405b2c19249"
+  },
+  "verifier_note": "The artifact is the one this repository compiles from OpenZeppelin's source (contracts/ERC7913WebAuthnVerifier.json), deployed on 1 November (docs/runs/passkey-owners.json). This run did not deploy it or compare the deployed code with it.",
+  "account": "0xb5A370DCdFb60F1Ede241C9c3B28135Ac4216a3c",
+  "threshold": 2,
+  "owners": [
+    {
+      "role": "CFO",
+      "label": "max",
+      "fingerprint": "C5A6-CBEE-8AED-3B33",
+      "enrolled_at": "2026-11-12T13:42:41.634Z",
+      "virtual": false,
+      "device": "iPhone (Face ID)",
+      "device_basis": "as stated by the owner"
+    },
+    {
+      "role": "second approver",
+      "label": "test-controller",
+      "fingerprint": "7CB5-8D76-24F1-9D0F",
+      "enrolled_at": "2026-11-12T13:43:17.844Z",
+      "virtual": true,
+      "device": "virtual test passkey: Chromium's virtual authenticator driven by docs/runs/driver/test-controller.ts; not a person's device",
+      "device_basis": "the passkey's label marks a virtual test passkey",
+      "stated_device_ignored": "a device description was stated for this owner and is not recorded: the label marks a virtual test passkey"
+    }
+  ],
+  "device_note": "Attestation is none, so the device type cannot be proven: a device description here is the owner's statement, not a finding of this record.",
+  "signing_note": "The rows show which enrolled passkey signed each approval, by its credential, and when. They do not show what kind of device holds a passkey.",
+  "steps": [
+    {
+      "kind": "setup",
+      "step": "create the passkey account (two passkey owners, threshold 2)",
+      "outcome": "done",
+      "at": "2026-11-12T13:43:26.980Z",
+      "tx": "0xf5ebbba94f42ed0a0d7f1fdf51f4d0d51b1889eb4d8fa0db37e8f608a87fdc79",
+      "explorer": "https://testnet.metalntwx.com/tx/0xf5ebbba94f42ed0a0d7f1fdf51f4d0d51b1889eb4d8fa0db37e8f608a87fdc79",
+      "detail": "block 26124763; 431996 gas"
+    },
+    {
+      "kind": "setup",
+      "step": "fund the passkey account with 0.60 test USD",
+      "outcome": "done",
+      "at": "2026-11-12T13:43:29.891Z",
+      "tx": "0x74e8a46282c971b3497b6a9917882cb33fdad44837597897a9c9a508925ba18c",
+      "explorer": "https://testnet.metalntwx.com/tx/0x74e8a46282c971b3497b6a9917882cb33fdad44837597897a9c9a508925ba18c",
+      "detail": "block 26124795; 62991 gas"
+    },
+    {
+      "kind": "proposal",
+      "step": "propose P-0001: bind the sourcing mandate: up to 0.05 a payment, 0.50 in all, Stockline only",
+      "outcome": "filed",
+      "at": "2026-11-12T13:43:37.220Z",
+      "tx": null,
+      "explorer": null,
+      "proposal_id": "P-0001",
+      "detail": "terms hash 5bc3f77ccf403a6395de139f2c8c1b99633a0d45418d06deb6571d766ad8763e; the digest the passkeys sign 0x7f772a9269c443be364bc28a528579bd51c0f3c9c8e0d0d60d5ee7b9f80bfe86; to be signed by 2026-11-12T13:58:37Z"
+    },
+    {
+      "kind": "approvals",
+      "step": "the owners sign P-0001",
+      "proposal_id": "P-0001",
+      "at": "2026-11-12T13:44:27.057Z",
+      "tx": null,
+      "explorer": null,
+      "outcome": "2 of 2 approvals",
+      "detail": "max (passkey C5A6-CBEE-8AED-3B33) at 2026-11-12T13:44:11.972Z; test-controller (virtual test passkey 7CB5-8D76-24F1-9D0F) at 2026-11-12T13:44:27.057Z"
+    },
+    {
+      "kind": "relay",
+      "step": "the runner relays P-0001 to the account",
+      "proposal_id": "P-0001",
+      "at": "2026-11-12T13:44:27.261Z",
+      "tx": "0x168c657909460959b0444f05db2e7c03728435311ac059415d3504ef7b2a8c2d",
+      "explorer": "https://testnet.metalntwx.com/tx/0x168c657909460959b0444f05db2e7c03728435311ac059415d3504ef7b2a8c2d",
+      "outcome": "executed",
+      "detail": "the account ran it: bind the sourcing mandate"
+    },
+    {
+      "kind": "payment",
+      "payment_id": "owners-P-0001-inside",
+      "proposal_id": "P-0001",
+      "at": "2026-11-12T13:44:46.818Z",
+      "tx": "0x053d2b7ce158a197e83d5c2ee143e3d9195ea4c6e7f1c5c194aba4130cd7c861",
+      "explorer": "https://testnet.metalntwx.com/tx/0x053d2b7ce158a197e83d5c2ee143e3d9195ea4c6e7f1c5c194aba4130cd7c861",
+      "step": "the Sourcing agent pays 0.05 to Stockline inside the mandate",
+      "outcome": "paid",
+      "detail": "the Sourcing agent's mandate key alone; no owner signed"
+    },
+    {
+      "kind": "refusal",
+      "step": "0.06 to Stockline, over the mandate's 0.05 cap",
+      "payment_id": "owners-P-0001-over-cap",
+      "proposal_id": "P-0001",
+      "at": "2026-11-12T13:44:54.651Z",
+      "tx": "0xe6d9c7eab36bb2c3af40269aa2e605982f3aa3d78a93a94d13b62ef96b585df4",
+      "explorer": "https://testnet.metalntwx.com/tx/0xe6d9c7eab36bb2c3af40269aa2e605982f3aa3d78a93a94d13b62ef96b585df4",
+      "outcome": "refused on chain",
+      "detail": "Metal's reason: mandate_cap_exceeded (the amount is above the mandate's per-payment cap)",
+      "paid_later": {
+        "payment_id": "owners-P-0002-after-P-0001",
+        "tx": "0x1add0f462da3cf0a1e60666a78df7777fed1dc2ac7c1ea397ac4ecd4c53adcce",
+        "explorer": "https://testnet.metalntwx.com/tx/0x1add0f462da3cf0a1e60666a78df7777fed1dc2ac7c1ea397ac4ecd4c53adcce",
+        "at": "2026-11-12T13:53:27.079Z",
+        "under_proposal": "P-0002",
+        "cap_then": "0.05",
+        "cap_now": "0.10"
+      }
+    },
+    {
+      "kind": "proposal",
+      "step": "propose P-0002: replace the sourcing mandate: cap 0.05 → 0.10, budget 0.50 (unchanged), Stockline only",
+      "outcome": "filed",
+      "at": "2026-11-12T13:45:02.337Z",
+      "tx": null,
+      "explorer": null,
+      "proposal_id": "P-0002",
+      "detail": "terms hash 345e9c38733e5f2721334bafa0d0bca0267350ecd2529852c1d18dda9fbf3455; the digest the passkeys sign 0xa93682fb43111c4c9b4850b50f54fc1f1946670228fb05fdcb273db4a64b107d; to be signed by 2026-11-12T14:00:02Z"
+    },
+    {
+      "kind": "approvals",
+      "step": "the owners sign P-0002",
+      "proposal_id": "P-0002",
+      "at": "2026-11-12T13:53:14.655Z",
+      "tx": null,
+      "explorer": null,
+      "outcome": "2 of 2 approvals",
+      "detail": "max (passkey C5A6-CBEE-8AED-3B33) at 2026-11-12T13:52:16.119Z; test-controller (virtual test passkey 7CB5-8D76-24F1-9D0F) at 2026-11-12T13:53:14.655Z"
+    },
+    {
+      "kind": "relay",
+      "step": "the runner relays P-0002 to the account",
+      "proposal_id": "P-0002",
+      "at": "2026-11-12T13:53:14.670Z",
+      "tx": "0xb6eff587c71ddec3014503364135c5072c6e1a1315df5abf52d26e554ddd315d",
+      "explorer": "https://testnet.metalntwx.com/tx/0xb6eff587c71ddec3014503364135c5072c6e1a1315df5abf52d26e554ddd315d",
+      "outcome": "executed",
+      "detail": "the account ran it: replace the sourcing mandate"
+    },
+    {
+      "kind": "payment",
+      "payment_id": "owners-P-0002-after-P-0001",
+      "proposal_id": "P-0002",
+      "at": "2026-11-12T13:53:27.079Z",
+      "tx": "0x1add0f462da3cf0a1e60666a78df7777fed1dc2ac7c1ea397ac4ecd4c53adcce",
+      "explorer": "https://testnet.metalntwx.com/tx/0x1add0f462da3cf0a1e60666a78df7777fed1dc2ac7c1ea397ac4ecd4c53adcce",
+      "step": "the Sourcing agent pays 0.06 to Stockline: the amount Metal refused before, under the mandate P-0002 bound",
+      "outcome": "paid",
+      "detail": "the Sourcing agent's mandate key alone; no owner signed",
+      "after_refusal": {
+        "payment_id": "owners-P-0001-over-cap",
+        "tx": "0xe6d9c7eab36bb2c3af40269aa2e605982f3aa3d78a93a94d13b62ef96b585df4",
+        "explorer": "https://testnet.metalntwx.com/tx/0xe6d9c7eab36bb2c3af40269aa2e605982f3aa3d78a93a94d13b62ef96b585df4",
+        "under_proposal": "P-0001",
+        "cap_then": "0.05",
+        "cap_now": "0.10"
+      }
+    },
+    {
+      "kind": "proposal",
+      "step": "propose P-0003: revoke the sourcing mandate: it ends the mandate that allowed up to 0.10 a payment, 0.50 in all, Stockline only",
+      "outcome": "filed",
+      "at": "2026-11-12T13:53:33.274Z",
+      "tx": null,
+      "explorer": null,
+      "proposal_id": "P-0003",
+      "detail": "terms hash 5d6e5789b3ac30fcc3b45a65f7c75f17e25d1ddf209c410490e0c348738c4366; the digest the passkeys sign 0xd3d30d9ad660be9a39a8384acb04b87f037d5c9ade7d4bb5f6456d5fc516f716; to be signed by 2026-11-12T14:08:33Z"
+    },
+    {
+      "kind": "approvals",
+      "step": "the owners sign P-0003",
+      "proposal_id": "P-0003",
+      "at": "2026-11-12T13:54:28.143Z",
+      "tx": null,
+      "explorer": null,
+      "outcome": "2 of 2 approvals",
+      "detail": "max (passkey C5A6-CBEE-8AED-3B33) at 2026-11-12T13:54:15.078Z; test-controller (virtual test passkey 7CB5-8D76-24F1-9D0F) at 2026-11-12T13:54:28.143Z"
+    },
+    {
+      "kind": "relay",
+      "step": "the runner relays P-0003 to the account",
+      "proposal_id": "P-0003",
+      "at": "2026-11-12T13:54:28.158Z",
+      "tx": "0xd3bf7e0df56fc267ff071fdbe2356ccd9270fb62585dbf31b0c9fef8b3e29f3e",
+      "explorer": "https://testnet.metalntwx.com/tx/0xd3bf7e0df56fc267ff071fdbe2356ccd9270fb62585dbf31b0c9fef8b3e29f3e",
+      "outcome": "executed",
+      "detail": "the account ran it: revoke the sourcing mandate"
+    }
+  ],
+  "refused_then_paid": [
+    {
+      "amount": "0.06",
+      "payee_name": "Stockline",
+      "refused": {
+        "at": "2026-11-12T13:44:54.651Z",
+        "tx": "0xe6d9c7eab36bb2c3af40269aa2e605982f3aa3d78a93a94d13b62ef96b585df4",
+        "explorer": "https://testnet.metalntwx.com/tx/0xe6d9c7eab36bb2c3af40269aa2e605982f3aa3d78a93a94d13b62ef96b585df4",
+        "reason": "mandate_cap_exceeded (the amount is above the mandate's per-payment cap)",
+        "cap": "0.05",
+        "under_proposal": "P-0001"
+      },
+      "raised_by": {
+        "proposal_id": "P-0002",
+        "what": "replace",
+        "was_cap": "0.05",
+        "cap": "0.10",
+        "at": "2026-11-12T13:53:14.670Z",
+        "tx": "0xb6eff587c71ddec3014503364135c5072c6e1a1315df5abf52d26e554ddd315d",
+        "explorer": "https://testnet.metalntwx.com/tx/0xb6eff587c71ddec3014503364135c5072c6e1a1315df5abf52d26e554ddd315d"
+      },
+      "paid": {
+        "at": "2026-11-12T13:53:27.079Z",
+        "tx": "0x1add0f462da3cf0a1e60666a78df7777fed1dc2ac7c1ea397ac4ecd4c53adcce",
+        "explorer": "https://testnet.metalntwx.com/tx/0x1add0f462da3cf0a1e60666a78df7777fed1dc2ac7c1ea397ac4ecd4c53adcce",
+        "cap": "0.10",
+        "under_proposal": "P-0002"
+      }
+    }
+  ],
+  "proposals": [
+    {
+      "proposal_id": "P-0001",
+      "what": "bind",
+      "status": "EXECUTED",
+      "created_at": "2026-11-12T13:43:37.220Z",
+      "terms_sha256": "5bc3f77ccf403a6395de139f2c8c1b99633a0d45418d06deb6571d766ad8763e",
+      "onchain_digest": "0x7f772a9269c443be364bc28a528579bd51c0f3c9c8e0d0d60d5ee7b9f80bfe86",
+      "expires_at": "2026-11-12T13:58:37Z",
+      "mandate": "0xf57a2eba9d54cc4459bac664d369f920420f561755a282e48de7c5f7fb37fc24",
+      "cap": "0.05",
+      "budget": "0.50",
+      "approvals": [
+        {
+          "by": "max",
+          "role": "CFO",
+          "fingerprint": "C5A6-CBEE-8AED-3B33",
+          "virtual": false,
+          "at": "2026-11-12T13:44:11.972Z",
+          "of": "1 of 2"
+        },
+        {
+          "by": "test-controller",
+          "role": "second approver",
+          "fingerprint": "7CB5-8D76-24F1-9D0F",
+          "virtual": true,
+          "at": "2026-11-12T13:44:27.057Z",
+          "of": "2 of 2"
+        }
+      ],
+      "not_counted": [],
+      "tx": "0x168c657909460959b0444f05db2e7c03728435311ac059415d3504ef7b2a8c2d",
+      "explorer": "https://testnet.metalntwx.com/tx/0x168c657909460959b0444f05db2e7c03728435311ac059415d3504ef7b2a8c2d"
+    },
+    {
+      "proposal_id": "P-0002",
+      "what": "replace",
+      "status": "EXECUTED",
+      "created_at": "2026-11-12T13:45:02.337Z",
+      "terms_sha256": "345e9c38733e5f2721334bafa0d0bca0267350ecd2529852c1d18dda9fbf3455",
+      "onchain_digest": "0xa93682fb43111c4c9b4850b50f54fc1f1946670228fb05fdcb273db4a64b107d",
+      "expires_at": "2026-11-12T14:00:02Z",
+      "mandate": "0xaaa561351a9b6a6c64b389bf2af137338110448d06a4f0d09712d0cc14263fdd",
+      "cap": "0.10",
+      "budget": "0.50",
+      "replaces": "0xf57a2eba9d54cc4459bac664d369f920420f561755a282e48de7c5f7fb37fc24",
+      "was_cap": "0.05",
+      "was_budget": "0.50",
+      "approvals": [
+        {
+          "by": "max",
+          "role": "CFO",
+          "fingerprint": "C5A6-CBEE-8AED-3B33",
+          "virtual": false,
+          "at": "2026-11-12T13:52:16.119Z",
+          "of": "1 of 2"
+        },
+        {
+          "by": "test-controller",
+          "role": "second approver",
+          "fingerprint": "7CB5-8D76-24F1-9D0F",
+          "virtual": true,
+          "at": "2026-11-12T13:53:14.655Z",
+          "of": "2 of 2"
+        }
+      ],
+      "not_counted": [],
+      "tx": "0xb6eff587c71ddec3014503364135c5072c6e1a1315df5abf52d26e554ddd315d",
+      "explorer": "https://testnet.metalntwx.com/tx/0xb6eff587c71ddec3014503364135c5072c6e1a1315df5abf52d26e554ddd315d"
+    },
+    {
+      "proposal_id": "P-0003",
+      "what": "revoke",
+      "status": "EXECUTED",
+      "created_at": "2026-11-12T13:53:33.274Z",
+      "terms_sha256": "5d6e5789b3ac30fcc3b45a65f7c75f17e25d1ddf209c410490e0c348738c4366",
+      "onchain_digest": "0xd3d30d9ad660be9a39a8384acb04b87f037d5c9ade7d4bb5f6456d5fc516f716",
+      "expires_at": "2026-11-12T14:08:33Z",
+      "mandate": "0xaaa561351a9b6a6c64b389bf2af137338110448d06a4f0d09712d0cc14263fdd",
+      "cap": "0.10",
+      "budget": "0.50",
+      "approvals": [
+        {
+          "by": "max",
+          "role": "CFO",
+          "fingerprint": "C5A6-CBEE-8AED-3B33",
+          "virtual": false,
+          "at": "2026-11-12T13:54:15.078Z",
+          "of": "1 of 2"
+        },
+        {
+          "by": "test-controller",
+          "role": "second approver",
+          "fingerprint": "7CB5-8D76-24F1-9D0F",
+          "virtual": true,
+          "at": "2026-11-12T13:54:28.143Z",
+          "of": "2 of 2"
+        }
+      ],
+      "not_counted": [],
+      "tx": "0xd3bf7e0df56fc267ff071fdbe2356ccd9270fb62585dbf31b0c9fef8b3e29f3e",
+      "explorer": "https://testnet.metalntwx.com/tx/0xd3bf7e0df56fc267ff071fdbe2356ccd9270fb62585dbf31b0c9fef8b3e29f3e"
+    }
+  ],
+  "calls": {
+    "budget": 60,
+    "used": 36,
+    "left": 24,
+    "by_method": {
+      "eth_call": 9,
+      "eth_getTransactionCount": 5,
+      "eth_getTransactionReceipt": 5,
+      "eth_sendRawTransaction": 5,
+      "eth_estimateGas": 4,
+      "cli:mandate pull": 3,
+      "eth_getCode": 3,
+      "cli:fund": 1,
+      "eth_chainId": 1
+    },
+    "by_step": [
+      {
+        "step": "preflight",
+        "requests": 2,
+        "cli_runs": 0
+      },
+      {
+        "step": "setup",
+        "requests": 12,
+        "cli_runs": 1
+      },
+      {
+        "step": "propose",
+        "requests": 1,
+        "cli_runs": 0
+      },
+      {
+        "step": "execute P-0001",
+        "requests": 4,
+        "cli_runs": 0
+      },
+      {
+        "step": "pay",
+        "requests": 1,
+        "cli_runs": 3
+      },
+      {
+        "step": "propose-replace",
+        "requests": 1,
+        "cli_runs": 0
+      },
+      {
+        "step": "status",
+        "requests": 2,
+        "cli_runs": 0
+      },
+      {
+        "step": "execute P-0002",
+        "requests": 4,
+        "cli_runs": 0
+      },
+      {
+        "step": "propose-revoke",
+        "requests": 1,
+        "cli_runs": 0
+      },
+      {
+        "step": "execute P-0003",
+        "requests": 4,
+        "cli_runs": 0
+      }
+    ],
+    "first_call_at": "2026-11-12T13:40:09.909Z",
+    "last_call_at": "2026-11-12T13:54:32.445Z",
+    "note": "A cli:<command> line is one whole run of the metal-agent CLI; the requests it makes inside are not counted."
+  },
+  "deviations": [],
+  "deviations_note": "No deviations file was given (OWNERS_DEVIATIONS): none are stated here, which is not the same as none happened."
+}

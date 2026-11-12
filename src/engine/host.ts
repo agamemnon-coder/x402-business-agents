@@ -211,20 +211,23 @@ export class EngineHost {
     reader: "claude" | "parser";
     /** Who decides: the product's agents with Claude, or code. The agents join with task A6. */
     agents: "live" | "code";
-    /** What this company's Claude calls cost so far, in micro-USD at list price, and its cap (null: none known). */
+    /**
+     * What this company's Claude calls cost so far, in micro-USD at list price: as the caps count it where the cloud keeps
+     * that (with calls counted at their worst case and reservations in flight), else this ledger's rows; and its cap.
+     */
     spent_micros: number;
     cap_micros: number | null;
   }> {
     const { db, rails } = this.deps;
     const pk = activePasskey(db);
     const balances = await rails.rail.balances();
-    const claude = this.deps.claude ? await this.deps.claude.status() : { on: false, cap_micros: null };
+    const claude = this.deps.claude ? await this.deps.claude.status() : { on: false, cap_micros: null, spent_micros: null };
     return {
       mode: "test_money",
       passkey: pk ? { credential_id: pk.credential_id, label: pk.label } : null,
       balances: Object.fromEntries(Object.entries(balances).map(([currency, b]) => [currency, fromCents(b?.availableCents ?? 0)])),
       chains: { audit: verifyAuditChain(db).ok, ledger: verifyLedger(db).ok },
-      reader: claude.on ? "claude" : "parser", agents: "code", spent_micros: claudeCost(db, 0), cap_micros: claude.cap_micros,
+      reader: claude.on ? "claude" : "parser", agents: "code", spent_micros: claude.spent_micros ?? claudeCost(db, 0), cap_micros: claude.cap_micros,
     };
   }
 

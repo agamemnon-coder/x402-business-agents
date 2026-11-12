@@ -235,7 +235,7 @@ describe("the export", () => {
 describe("the import graph", () => {
   it("the pay route and the engine host reach the simulated bank only, never the Airwallex sandbox client", async () => {
     for (const entry of ["cloud/src/try/engineRoutes.ts", "src/engine/host.ts", "cloud/src/engine/node.ts"]) {
-      const files = [...(await importGraph(entry))];
+      const files = importGraph(entry).files;
       expect(files.length, entry).toBeGreaterThan(5);
       expect(files.filter((f) => /src\/rails\/sandboxPayout|cloud\/src\/try\/rail/.test(f)), entry).toEqual([]);
     }

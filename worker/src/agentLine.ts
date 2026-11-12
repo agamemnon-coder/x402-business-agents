@@ -80,14 +80,15 @@ export interface Given { amounts: readonly string[]; references: readonly string
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 /** A day the ways a sentence may write it: 2026-11-12, 12 November 2026, 12 November, November 12, 12 Nov. */
-const dayForms = (iso: string): string[] => {
+export const dayForms = (iso: string): string[] => {
   const [y, m, d] = iso.split("-").map(Number);
   if (!y || !m || !d) return [iso];
   const name = MONTHS[m - 1]!;
   return [iso, `${d} ${name} ${y}`, `${name} ${d}, ${y}`, `${d} ${name}`, `${name} ${d}`, `${d} ${name.slice(0, 3)}`];
 };
 
-const timeForms = (iso: string): string[] => {
+/** A time the ways a sentence may write it: whole, or its time of day ("12:44:52Z", "12:44:52", "12:44"). */
+export const timeForms = (iso: string): string[] => {
   const m = /T(\d{2}):(\d{2}):(\d{2})Z$/.exec(iso);
   return m ? [iso, `${m[1]}:${m[2]}:${m[3]}Z`, `${m[1]}:${m[2]}:${m[3]}`, `${m[1]}:${m[2]}`] : [iso];
 };

@@ -3,7 +3,7 @@
 // directory (./store.ts), so nothing above it knows the difference.
 //
 // D1 keeps one value up to about 2 MB and Sql binds text, numbers and null, so a document is kept as base64 text in
-// parts of BLOB_PART_BYTES (800,000 characters each), and an invoice of 15 MB is 26 parts. A document exists when its
+// parts of BLOB_PART_BYTES (800,000 characters each), and an invoice of 15 MB (15 × 1024 × 1024 bytes) is 27 parts. A document exists when its
 // header row exists, and the header is written after its last part: a put that fails half way leaves no document to
 // read or list (its stray parts are cleared by the next put or delete of that key). Keys are the cloud's own,
 // prefixed t/<tenant>/ as in R2; the tables are made here, on first use, like the cloud's schema (CREATE ... IF NOT EXISTS).

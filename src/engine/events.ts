@@ -39,15 +39,18 @@ const money = (v: unknown): { amount?: string; currency?: string } => {
 const codes = (v: unknown): string | undefined =>
   Array.isArray(v) ? v.map((f) => (typeof f === "object" && f !== null ? (f as { code?: unknown }).code : undefined)).filter((c): c is string => typeof c === "string").join(",") : undefined;
 /**
- * A text a page may show: every IBAN and every run of 8 or more digits (an account number) cut to its last four
+ * A text a page may show: every IBAN and every run of 8 or more digits (an account number), however it is spaced, cut to its last four
  * ("****3000"), anything that looks like an API key or a bearer token removed, at most `max` characters.
  */
 export function masked(v: unknown, max: number): string | undefined {
   if (typeof v !== "string") return undefined;
-  const last4 = (m: string) => `****${m.replace(/\s/g, "").slice(-4)}`;
+  const last4 = (m: string) => `****${m.replace(/[^A-Za-z0-9]/g, "").slice(-4)}`;
+  // Separators as people and PDFs write them: spaces (also non-breaking or doubled), hyphens, dots.
   const out = v
-    .replace(/\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]){10,30}\b/g, last4)
-    .replace(/\b\d(?: ?\d){7,}\b/g, last4)
+    // An IBAN: country, check digits, an optional four-letter bank code, then digits (never running on into a word).
+    .replace(/\b[A-Z]{2}\d{2}[\s.-]*(?:[A-Z]{4}[\s.-]*)?\d(?:[\s.-]*\d){6,29}\b/gi, last4)
+    // An account number: 8 or more digits; a date (2026-11-16, 16.11.2026, 16-11-2026) is not one.
+    .replace(/\b\d(?:[\s.-]*\d){7,}\b/g, (m) => (/^(\d{4}-\d{2}-\d{2}|\d{2}[.-]\d{2}[.-]\d{4})$/.test(m) ? m : last4(m)))
     .replace(/\bsk-[A-Za-z0-9_-]{8,}/g, "[redacted]")
     .replace(/\b(Bearer)\s+\S+/gi, "$1 [redacted]");
   return out.length > max ? `${out.slice(0, max - 1)}…` : out;
