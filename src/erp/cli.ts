@@ -67,7 +67,7 @@ export async function runErpCli(args: string[], d: CliDeps): Promise<number> {
   if (cmd === "list") {
     for (const name of CONNECTOR_NAMES) {
       const miss = missingSettings(name, d.env);
-      d.out(`${name.padEnd(6)} ${SETTINGS[name].label}: ${miss.length ? `not set up (missing ${miss.join(", ")})` : "settings present (not tested against a live ERP yet)"}`);
+      d.out(`${name.padEnd(6)} ${SETTINGS[name].label}: ${miss.length ? `not set up (missing ${miss.join(", ")})` : `settings present (${SETTINGS[name].live})`}`);
     }
     return 0;
   }
@@ -129,7 +129,7 @@ export async function runErpCli(args: string[], d: CliDeps): Promise<number> {
         d.out(`${accounts.length} accounts, ${vendors.length} suppliers in ${SETTINGS[name].label}`);
         // Moneybird maps by ledger account id (ERP_MONEYBIRD_GL_MAP) and tax rate id (ERP_MONEYBIRD_TAX_RATES): show them.
         const ids = name === "moneybird";
-        for (const a of accounts) d.out(`  account ${a.code || "-"}  ${a.name}${ids ? `  [id ${a.externalId}]` : ""}`);
+        for (const a of accounts) d.out(`  account ${a.code || "-"}  ${a.name}${a.note ? `  (${a.note})` : ""}${ids ? `  [id ${a.externalId}]` : ""}`);
         for (const v of vendors) d.out(`  supplier ${v.name}${v.vatId ? ` (${v.vatId})` : ""}`);
         const taxes = (c as { pullTaxRates?: () => Promise<{ id: string; name: string; percentage: string; type: string }[]> }).pullTaxRates;
         if (taxes) for (const t of await taxes.call(c)) d.out(`  tax rate ${t.name} (${t.percentage}%, ${t.type})  [id ${t.id}]`);

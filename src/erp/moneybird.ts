@@ -80,7 +80,7 @@ const ENDPOINT_PATTERNS = MONEYBIRD_ENDPOINTS.map((endpoint) => {
   return { endpoint, method, re: new RegExp(`^${pattern}$`) };
 });
 
-interface Ledger { id: string; account_id: string | null; name: string; allowed_document_types?: string[] | null; active?: boolean }
+interface Ledger { id: string; account_id: string | null; name: string; account_type?: string | null; allowed_document_types?: string[] | null; active?: boolean }
 interface TaxRate { id: string; name: string; percentage: string | null; tax_rate_type: string; active?: boolean }
 interface MbInvoice { id: string; reference: string | null; state: string; total_price_excl_tax: string | null; total_price_incl_tax: string | null; payments?: { id: string; transaction_identifier: string | null; price: string }[]; attachments?: unknown[] }
 
@@ -255,9 +255,20 @@ export class MoneybirdConnector implements ErpConnector {
     return this.ledger;
   }
 
+  /**
+   * The chart, for the person who fills in ERP_MONEYBIRD_GL_MAP: with each account its kind and whether it may stand on
+   * the two documents Purser sends. (The sandbox administration's own chart, read on 12 November 2026, carries
+   * Moneybird's codes, none of them Purser's, and allows only some accounts on a purchase invoice: the map is needed,
+   * and this is what it is made from. test/fixtures/moneybird/sandbox-2026-11-12.json holds that answer.)
+   */
   async pullChartOfAccounts(): Promise<ErpAccount[]> {
     this.ledger = null;
-    return (await this.ledgerAccounts()).map((l) => ({ code: l.account_id ?? "", name: l.name, externalId: l.id }));
+    return (await this.ledgerAccounts()).map((l) => {
+      const docs = l.allowed_document_types ?? [];
+      const uses = [docs.includes("purchase_invoice") ? "purchase invoices" : "", docs.includes("general_journal_document") ? "journal entries" : ""].filter(Boolean);
+      const note = [l.account_type ?? "", uses.length ? uses.join(", ") : "not for purchase invoices or journal entries", l.active === false ? "not active" : ""].filter(Boolean).join("; ");
+      return { code: l.account_id ?? "", name: l.name, externalId: l.id, note };
+    });
   }
 
   // GET tax_rates.json (paginated): id, name, percentage, tax_rate_type (purchase_invoice, sales_invoice, general_journal_document).

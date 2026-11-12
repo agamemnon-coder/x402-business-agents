@@ -45,6 +45,15 @@ describe("npm run erp", () => {
     await expect(run(["sync", "--connector", "odoo", "--live"])).rejects.toThrow(/ERP_ODOO_API_KEY/);
   });
 
+  it("says of a connector with its settings present what was really proven live: Moneybird read from a sandbox, nothing sent; the others nothing", async () => {
+    const { text } = await run(["list"], {
+      ERP_MONEYBIRD_TOKEN: "t", ERP_MONEYBIRD_ADMINISTRATION_ID: "1", ERP_MONEYBIRD_TAX_RATES: "{}",
+      ERP_ODOO_API_KEY: "k", ERP_ODOO_URL: "https://x.odoo.com", ERP_ODOO_DB: "d", ERP_ODOO_LOGIN: "l", ERP_ODOO_PURCHASE_JOURNAL_ID: "1", ERP_ODOO_GENERAL_JOURNAL_ID: "2", ERP_ODOO_BANK_JOURNALS: "{}", ERP_ODOO_TAX_IDS: "{}",
+    });
+    expect(text).toMatch(/moneybird Moneybird: settings present \(read live from a sandbox administration; nothing sent to one yet: docs\/moneybird\.md\)/);
+    expect(text).toMatch(/odoo\s+Odoo: settings present \(not tested against a live ERP yet\)/);
+  });
+
   it("lists the connectors with the settings each still needs, and never a value", async () => {
     const { text } = await run(["list"], { ERP_ODOO_API_KEY: "secret-value-1", ERP_ODOO_URL: "https://x.odoo.com" });
     expect(text).toMatch(/exact\s+Exact Online: not set up \(missing ERP_EXACT_CLIENT_ID/);
@@ -98,8 +107,8 @@ describe("npm run erp, live (a go, a call budget and a call log)", () => {
     const { code, text } = await run(["pull", "--connector", "moneybird", "--live"], { ...settings(fake), ...go(file) }, fake.transport);
     expect(code).toBe(0);
     expect(text).toContain(`${LEDGER.length} accounts, 0 suppliers in Moneybird`);
-    expect(text).toContain(`account 6200  Inkoop  [id ${LEDGER[0]!.id}]`);
-    expect(text).toContain(`account -  Software  [id ${LEDGER[4]!.id}]`);
+    expect(text).toContain(`account 6200  Inkoop  (direct_costs; purchase invoices, journal entries)  [id ${LEDGER[0]!.id}]`);
+    expect(text).toContain(`account -  Software  (expenses; purchase invoices)  [id ${LEDGER[4]!.id}]`);
     expect(text).toContain(`tax rate 21% btw (21.0%, purchase_invoice)  [id ${TAX[0]!.id}]`);
     // Three requests, each in the log before it left, and the count is said at the end.
     expect(readCallLog(file).map((l) => `${l.method} ${l.endpoint}`)).toEqual([

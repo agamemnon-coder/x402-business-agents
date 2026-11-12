@@ -16,28 +16,34 @@ import { encodeValue, type XmlValue } from "./xmlrpc.js";
 
 type Env = Record<string, string | undefined>;
 
-/** The settings each connector reads: secrets first (never printed, only whether they are set). */
-export const SETTINGS: Record<ConnectorName, { label: string; secrets: string[]; settings: string[]; optional: string[] }> = {
+const UNTESTED = "not tested against a live ERP yet";
+
+/**
+ * The settings each connector reads: secrets first (never printed, only whether they are set). `live` is what was
+ * really proven against the ERP itself, said by `npm run erp -- list`; it changes only with a recorded run.
+ */
+export const SETTINGS: Record<ConnectorName, { label: string; secrets: string[]; settings: string[]; optional: string[]; live: string }> = {
   exact: {
-    label: "Exact Online",
+    label: "Exact Online", live: UNTESTED,
     secrets: ["ERP_EXACT_CLIENT_ID", "ERP_EXACT_CLIENT_SECRET", "ERP_EXACT_REFRESH_TOKEN"],
     settings: ["ERP_EXACT_DIVISION", "ERP_EXACT_PURCHASE_JOURNAL", "ERP_EXACT_GENERAL_JOURNAL", "ERP_EXACT_BANK_JOURNALS", "ERP_EXACT_VAT_CODES"],
     optional: ["ERP_EXACT_BASE_URL", "ERP_EXACT_GL_MAP", "ERP_EXACT_DOCUMENT_TYPE", "ERP_EXACT_AP_ACCOUNT", "ERP_EXACT_PAYMENT_SIGN"],
   },
   bc: {
-    label: "Microsoft Dynamics 365 Business Central",
+    label: "Microsoft Dynamics 365 Business Central", live: UNTESTED,
     secrets: ["ERP_BC_CLIENT_ID", "ERP_BC_CLIENT_SECRET"],
     settings: ["ERP_BC_TENANT", "ERP_BC_ENVIRONMENT", "ERP_BC_COMPANY_ID", "ERP_BC_GENERAL_JOURNAL_ID", "ERP_BC_PAYMENT_JOURNAL_ID", "ERP_BC_VAT_CODES"],
     optional: ["ERP_BC_LOCAL_CURRENCY", "ERP_BC_GL_MAP", "ERP_BC_POST_INVOICES"],
   },
   odoo: {
-    label: "Odoo",
+    label: "Odoo", live: UNTESTED,
     secrets: ["ERP_ODOO_API_KEY"],
     settings: ["ERP_ODOO_URL", "ERP_ODOO_DB", "ERP_ODOO_LOGIN", "ERP_ODOO_PURCHASE_JOURNAL_ID", "ERP_ODOO_GENERAL_JOURNAL_ID", "ERP_ODOO_BANK_JOURNALS", "ERP_ODOO_TAX_IDS"],
     optional: ["ERP_ODOO_COMPANY_CURRENCY", "ERP_ODOO_GL_MAP", "ERP_ODOO_POST"],
   },
   moneybird: {
-    label: "Moneybird",
+    // 12 November 2026, docs/runs/2026-11-12-moneybird-sandbox.md: the chart, the contacts and the tax rates were read.
+    label: "Moneybird", live: "read live from a sandbox administration; nothing sent to one yet: docs/moneybird.md",
     secrets: ["ERP_MONEYBIRD_TOKEN"],
     settings: ["ERP_MONEYBIRD_ADMINISTRATION_ID", "ERP_MONEYBIRD_TAX_RATES"],
     optional: ["ERP_MONEYBIRD_GL_MAP", "ERP_MONEYBIRD_PROJECTS", "ERP_MONEYBIRD_IGNORE_COST_CENTRES", "ERP_MONEYBIRD_BASE_CURRENCY", "ERP_MONEYBIRD_BASE_URL", "ERP_MONEYBIRD_SANDBOX_ONLY"],

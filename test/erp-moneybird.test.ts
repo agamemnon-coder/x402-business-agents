@@ -8,11 +8,11 @@ import { openDb } from "../src/db/open.js";
 import { staticToken } from "../src/erp/auth.js";
 import { readCallLog } from "../src/erp/callBudget.js";
 import { runErpCli } from "../src/erp/cli.js";
-import { ErpError } from "../src/erp/connector.js";
+import { ErpError, RecordingTransport } from "../src/erp/connector.js";
 import { liveConnector, missingSettings } from "../src/erp/registry.js";
 import { MONEYBIRD_ENDPOINTS, MONEYBIRD_SANDBOX_ADMINISTRATION, moneybirdConfigFromEnv, MoneybirdConnector, moneybirdEndpoint, moneybirdRetryAfterMs, parseMoneybirdJson, toMoney, type MoneybirdConfig } from "../src/erp/moneybird.js";
 import { syncAll, type SyncItem } from "../src/erp/sync.js";
-import { FakeMoneybird, LEDGER, OPENAPI_VERSION, TAX } from "./fakes/moneybird.js";
+import { FakeMoneybird, LEDGER, OPENAPI_VERSION, TAX, type LedgerAccount, type TaxRate } from "./fakes/moneybird.js";
 import { sampleInvoice, sampleJournal, samplePayment, sampleVendor, TEST_IBAN } from "./fakes/erp.js";
 
 const noSleep = async () => {};
@@ -271,8 +271,9 @@ describe("Moneybird connector", () => {
     const vendors = await c.pullVendors();
     expect(vendors).toHaveLength(120);
     const accounts = await c.pullChartOfAccounts();
-    expect(accounts).toContainEqual({ code: "6200", name: "Inkoop", externalId: LEDGER[0]!.id });
-    expect(accounts).toContainEqual({ code: "", name: "Software", externalId: LEDGER[4]!.id });
+    expect(accounts).toContainEqual({ code: "6200", name: "Inkoop", externalId: LEDGER[0]!.id, note: "direct_costs; purchase invoices, journal entries" });
+    expect(accounts).toContainEqual({ code: "", name: "Software", externalId: LEDGER[4]!.id, note: "expenses; purchase invoices" });
+    expect(accounts).toContainEqual({ code: "1200", name: "Airwallex EUR", externalId: LEDGER[3]!.id, note: "current_assets; journal entries" });
     expect(await c.pullTaxRates()).toContainEqual({ id: TAX[0]!.id, name: "21% btw", percentage: "21.0", type: "purchase_invoice" });
     expect(fake.transport.sent.filter((r) => r.url.includes("/contacts.json") && r.method === "GET").length).toBe(2);
   });
@@ -441,5 +442,110 @@ describe("Moneybird guard: one administration, a fixed list of endpoints", () =>
     expect(readCallLog(file)).toHaveLength(fake.transport.sent.length);
     // Without the go and the budget there is no live connector at all.
     expect(() => liveConnector("moneybird", { ...env, ERP_LIVE_GO: undefined }, fake.transport)).toThrow(/ERP_LIVE_GO=yes.*nothing was called/);
+  });
+});
+
+// What the live API really answered (12 November 2026, the owner's sandbox administration; the run is in
+// docs/runs/2026-11-12-moneybird-sandbox.md). The bodies are the text as received, so these tests read what the
+// connector read live, and the stand-in below holds that administration's real chart and tax rates.
+describe("Moneybird, the sandbox administration's real answers", () => {
+  interface Answer { method: string; url: string; status: number; headers: Record<string, string>; body: string }
+  const SANDBOX = JSON.parse(readFileSync(resolve(import.meta.dirname, "fixtures/moneybird/sandbox-2026-11-12.json"), "utf8")) as { answers: Answer[] };
+  const answer = (part: string) => SANDBOX.answers.find((a) => a.url.includes(part))!;
+  const realLedger = JSON.parse(answer("/ledger_accounts.json").body) as LedgerAccount[];
+  const realTax = JSON.parse(answer("/tax_rates.json").body) as TaxRate[];
+  const account = (name: string) => realLedger.find((l) => l.name === name)!.id;
+  const rate = (name: string, type: string) => realTax.find((t) => t.name === name && t.tax_rate_type === type)!.id;
+  const ADMIN = "503585935808530148";
+  /** Answers each request with what Moneybird answered to exactly that request; anything else was never asked live. */
+  const replay = () => new RecordingTransport((req) => {
+    const a = SANDBOX.answers.find((x) => x.method === req.method && x.url === req.url);
+    if (!a) throw new Error(`not asked live: ${req.method} ${req.url}`);
+    return { status: a.status, headers: a.headers, body: a.body };
+  });
+  const onRealChart = (cfg: Partial<MoneybirdConfig>) => {
+    const fake = new FakeMoneybird({ ledger: realLedger, tax: realTax });
+    const c = new MoneybirdConnector({
+      baseUrl: "https://moneybird.com/api/v2", administrationId: fake.admin, baseCurrency: "EUR", glMap: {}, projects: {}, ignoreCostCentres: true,
+      taxRates: { NL21: rate("21% btw", "purchase_invoice"), NL9: rate("9% btw", "purchase_invoice") }, ...cfg,
+    }, fake.transport, staticToken(fake.token));
+    return { fake, c, db: openDb(":memory:") };
+  };
+
+  it("holds the three answers of the live pull: 27 ledger accounts, no contact, 5 tax rates, ids written as strings", () => {
+    expect(SANDBOX.answers.map((a) => `${a.method} ${a.url} ${a.status}`)).toEqual([
+      `GET https://moneybird.com/api/v2/${ADMIN}/ledger_accounts.json 200`,
+      `GET https://moneybird.com/api/v2/${ADMIN}/contacts.json?per_page=100&page=1 200`,
+      `GET https://moneybird.com/api/v2/${ADMIN}/tax_rates.json?per_page=100&page=1 200`,
+    ]);
+    expect(realLedger).toHaveLength(27);
+    expect(answer("/contacts.json").body).toBe("[]");
+    expect(realTax.map((t) => `${t.name} ${t.tax_rate_type}`)).toEqual(["21% btw sales_invoice", "9% btw sales_invoice", "0% btw sales_invoice", "21% btw purchase_invoice", "9% btw purchase_invoice"]);
+    expect(answer("/ledger_accounts.json").body.startsWith('[{"id":"503585935947990807","administration_id":"503585935808530148","name":"Algemene kosten"')).toBe(true);
+    // A list that pages says so with X-Total-Count and a Link header, empty when there is no next page; the chart does not page.
+    expect(answer("/tax_rates.json").headers).toMatchObject({ link: "", "x-total-count": "5" });
+    expect(answer("/contacts.json").headers).toMatchObject({ link: "", "x-total-count": "0" });
+    expect(answer("/ledger_accounts.json").headers.link).toBeUndefined();
+  });
+
+  it("reads them as the live pull did: three requests, every id exact, and for each account where it may be used", async () => {
+    const transport = replay();
+    const lines: string[] = [];
+    const file = join(mkdtempSync(join(tmpdir(), "erp-mb-")), "calls.jsonl");
+    const env = { ERP_MONEYBIRD_TOKEN: "placeholder", ERP_MONEYBIRD_ADMINISTRATION_ID: ADMIN, ERP_MONEYBIRD_SANDBOX_ONLY: "on", ERP_LIVE_GO: "yes", ERP_CALL_BUDGET: "6", ERP_CALL_LOG: file };
+    expect(await runErpCli(["pull", "--connector", "moneybird", "--live"], { db: openDb(":memory:"), env, out: (l) => lines.push(l), transport })).toBe(0);
+    expect(transport.sent.map((r) => r.url)).toEqual(SANDBOX.answers.map((a) => a.url));
+    expect(lines[0]).toBe("27 accounts, 0 suppliers in Moneybird");
+    expect(lines).toContain(`  account 46801.01  Algemene kosten  (expenses; purchase invoices, journal entries)  [id ${account("Algemene kosten")}]`);
+    expect(lines).toContain(`  account 16011  Crediteuren  (current_liabilities; journal entries)  [id ${account("Crediteuren")}]`);
+    expect(lines).toContain(`  account 81180.01  Omzet  (revenue; journal entries)  [id ${account("Omzet")}]`);
+    expect(lines).toContain(`  tax rate 21% btw (21.0%, purchase_invoice)  [id ${rate("21% btw", "purchase_invoice")}]`);
+    expect(lines).toContain(`  tax rate 0% btw (0.0%, sales_invoice)  [id ${rate("0% btw", "sales_invoice")}]`);
+    expect(lines.filter((l) => l.startsWith("  account "))).toHaveLength(27);
+    expect(lines.filter((l) => l.includes("purchase invoices"))).toHaveLength(realLedger.filter((l) => l.allowed_document_types.includes("purchase_invoice")).length);
+    expect(lines.filter((l) => l.startsWith("  tax rate "))).toHaveLength(5);
+    expect(lines.at(-1)).toBe("3 of 6 approved requests used");
+    expect(account("Algemene kosten")).toBe("503585935947990807");
+    expect(readCallLog(file).map((l) => l.endpoint)).toEqual([`moneybird.com/api/v2/${ADMIN}/ledger_accounts.json`, `moneybird.com/api/v2/${ADMIN}/contacts.json`, `moneybird.com/api/v2/${ADMIN}/tax_rates.json`]);
+  });
+
+  it("finds none of Purser's account codes in that chart: an invoice is refused, naming the account to map, until it is mapped", async () => {
+    expect(realLedger.map((l) => l.account_id)).not.toContain("6200");
+    const { fake, c, db } = onRealChart({});
+    const res = await syncAll(db, c, all().slice(0, 2), { sleep: noSleep });
+    expect(res[1]!.outcome).toBe("failed");
+    expect(res[1]!.detail).toMatch(/no ledger account with code 6200.*ERP_MONEYBIRD_GL_MAP/);
+    expect(fake.posts("/documents/purchase_invoices.json")).toHaveLength(0);
+
+    // Mapped by name to "Algemene kosten", one of the accounts that chart allows on a purchase invoice.
+    const mapped = onRealChart({ glMap: { "6200": account("Algemene kosten"), "6900": account("Algemene kosten") } });
+    const ok = await syncAll(mapped.db, mapped.c, all().slice(0, 2), { sleep: noSleep });
+    expect(ok.map((r) => r.outcome)).toEqual(["pushed", "pushed"]);
+    const inv = [...mapped.fake.invoices.values()][0]!;
+    expect(inv.details.map((d) => [d.ledger_account_id, d.tax_rate_id])).toEqual([[account("Algemene kosten"), rate("21% btw", "purchase_invoice")], [account("Algemene kosten"), rate("9% btw", "purchase_invoice")]]);
+    expect([inv.total_price_excl_tax, inv.total_price_incl_tax]).toEqual(["1200.0", "1428.0"]);
+  });
+
+  it("refuses what that administration does not allow: creditors on an invoice line, and 0% VAT, which it has only as a sales rate", async () => {
+    const creditors = onRealChart({ glMap: { "6200": account("Crediteuren"), "6900": account("Algemene kosten") } });
+    const r1 = await syncAll(creditors.db, creditors.c, all().slice(0, 2), { sleep: noSleep });
+    expect(r1[1]!.detail).toMatch(/Crediteuren \(Purser account 6200\) is not allowed on a purchase invoice/);
+
+    expect(realTax.some((t) => t.tax_rate_type === "purchase_invoice" && Number(t.percentage) === 0)).toBe(false);
+    const zero = onRealChart({ glMap: { "6200": account("Algemene kosten"), "6900": account("Algemene kosten") }, taxRates: { NL21: rate("21% btw", "purchase_invoice"), NL9: rate("9% btw", "purchase_invoice"), NL0: rate("0% btw", "sales_invoice") } });
+    const inv = sampleInvoice();
+    inv.lines[1] = { ...inv.lines[1]!, vatCode: "NL0", vatCents: 0 };
+    inv.totals = { netCents: 120_000, vatCents: 21_000, grossCents: 141_000 };
+    const r2 = await syncAll(zero.db, zero.c, [{ kind: "vendor", object: sampleVendor() }, { kind: "invoice", object: inv }], { sleep: noSleep });
+    expect(r2[1]!.detail).toMatch(/0% btw, for NL0\) is a sales_invoice rate, not a purchase invoice rate/);
+    expect(creditors.fake.posts("/documents/purchase_invoices.json")).toHaveLength(0);
+    expect(zero.fake.posts("/documents/purchase_invoices.json")).toHaveLength(0);
+  });
+
+  it("takes a journal entry on that chart's accounts for money and costs", async () => {
+    const { fake, c, db } = onRealChart({ glMap: { "6800": account("Algemene kosten"), "1200": account("Financiële rekeningen") } });
+    const res = await syncAll(db, c, [{ kind: "journal", object: sampleJournal() }], { sleep: noSleep });
+    expect(res[0]!.outcome).toBe("pushed");
+    expect([...fake.journals.values()][0]!.entries.map((e) => e.ledger_account_id)).toEqual([account("Algemene kosten"), account("Financiële rekeningen")]);
   });
 });
