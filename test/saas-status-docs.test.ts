@@ -30,7 +30,8 @@ import { scriptBlocks, scriptBody } from "./support/scriptBlocks.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const json = <T>(p: string) => JSON.parse(read(p)) as T;
-const decode = (s: string) => s.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+// "&amp;" last, so an escaped entity ("&amp;lt;") is decoded once, never twice.
+const decode = (s: string) => s.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
 /** The page's <main> as a person reads it with every fold open: tags out, entities decoded, white space single. */
 const mainText = (html: string) => decode((/<main[\s\S]*<\/main>/.exec(html)?.[0] ?? "").replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
 /** The words in sight, as test/site-v4.test.ts counts them: <main>, no drawing, a fold as its summary only. */
@@ -48,7 +49,8 @@ const NUM = /\d+(?:[.,]\d+)*/g;
 const numbers = (text: string) => [...new Set(text.match(NUM) ?? [])];
 const REPO = "https://github.com/agamemnon-coder/x402-business-agents/blob/main/";
 /** The repository files a page links to on GitHub, each with its #anchor (or ""). */
-const repoLinks = (html: string) => [...html.matchAll(new RegExp(`href="${REPO.replace(/[.]/g, "\\.")}([^"#]+)(#[^"]*)?"`, "g"))].map((m) => ({ file: m[1]!, anchor: (m[2] ?? "").slice(1) }));
+const reEscape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const repoLinks = (html: string) => [...html.matchAll(new RegExp(`href="${reEscape(REPO)}([^"#]+)(#[^"]*)?"`, "g"))].map((m) => ({ file: m[1]!, anchor: (m[2] ?? "").slice(1) }));
 /** A Markdown heading's anchor, as GitHub makes it: lower case, punctuation out, spaces to dashes. */
 const anchorOf = (heading: string) => heading.toLowerCase().replace(/[^a-z0-9 -]/g, "").replace(/ /g, "-");
 const headings = (file: string) => read(file).split("\n").filter((l) => /^#{1,6} /.test(l)).map((l) => anchorOf(l.replace(/^#+ /, "")));
@@ -239,7 +241,7 @@ describe("/docs on the site", () => {
   });
 
   it("is named in llms.txt, one line, with what it is", () => {
-    expect(read("llms.txt").split("\n").filter((l) => l.includes("https://kit11.max-31b.workers.dev/docs"))).toEqual(["- Docs and API: https://kit11.max-31b.workers.dev/docs (the agent API's tools as the code defines them, the Purser Cloud REST API's reference, x402 and the Airwallex webhooks, and how to run it offline; sandbox and testnet only)"]);
+    expect(read("llms.txt").split("\n").filter((l) => / https:\/\/kit11\.max-31b\.workers\.dev\/docs( |$)/.test(l))).toEqual(["- Docs and API: https://kit11.max-31b.workers.dev/docs (the agent API's tools as the code defines them, the Purser Cloud REST API's reference, x402 and the Airwallex webhooks, and how to run it offline; sandbox and testnet only)"]);
   });
 });
 
@@ -624,6 +626,6 @@ describe("/status on the site", () => {
   });
 
   it("is named in llms.txt, one line, with what it is", () => {
-    expect(read("llms.txt").split("\n").filter((l) => l.includes("https://kit11.max-31b.workers.dev/status"))).toEqual(["- Status: https://kit11.max-31b.workers.dev/status (the site's own /health in plain words, where no live run in progress is the normal state, and the five latest live runs; sandbox and testnet only)"]);
+    expect(read("llms.txt").split("\n").filter((l) => / https:\/\/kit11\.max-31b\.workers\.dev\/status( |$)/.test(l))).toEqual(["- Status: https://kit11.max-31b.workers.dev/status (the site's own /health in plain words, where no live run in progress is the normal state, and the five latest live runs; sandbox and testnet only)"]);
   });
 });

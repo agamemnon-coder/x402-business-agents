@@ -27,7 +27,8 @@ import { pageResponse, type Pages } from "../worker/src/core.js";
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 /** A doc as running text: bold and code marks out, white space single, so a sentence wrapped over lines reads as one. */
 const flat = (p: string) => read(p).replace(/\*\*|`/g, "").replace(/\s+/g, " ");
-const decode = (s: string) => s.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+// "&amp;" last, so an escaped entity ("&amp;lt;") is decoded once, never twice.
+const decode = (s: string) => s.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
 /** A page's <main> as a person reads it with every fold open. */
 const mainText = (html: string) => decode((/<main[\s\S]*<\/main>/.exec(html)?.[0] ?? "").replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
 
@@ -255,7 +256,9 @@ describe("if the approver is unavailable (the panel's review, 12 Nov)", () => {
     expect((html.match(/id="unavailable"/g) ?? []).length).toBe(1);
     expect(securityCards().find((c) => c.more)!.id).toBe("s-sign");
     // A section that grows past five lines, or loses its numbering, stops the page: never a longer or a looser answer.
-    expect(() => unavailableLines(doc.replace("\n## Accepted risks", "\n6. **And more:** a sixth line.\n\n## Accepted risks").replace(/5\. \*\*Who may enrol, in Purser Cloud/, "5. **Who may enrol, in Purser Cloud"))).toThrow(/one to five numbered lines/);
+    expect(() => unavailableLines(doc.replace("\n## Accepted risks", "\n6. **And more:** a sixth line.\n\n## Accepted risks"))).toThrow(/one to five numbered lines/);
+    expect(doc).toContain("5. **Who may enrol, in Purser Cloud");
+    expect(() => unavailableLines(doc.replace("5. **Who may enrol, in Purser Cloud", "**Who may enrol, in Purser Cloud"))).toThrow(/one to five numbered lines/);
     expect(() => unavailableLines("# Security\n\n## Checks\n")).toThrow(/one to five numbered lines/);
     // A line that no longer names what it rests on stops the page too.
     expect(() => unavailableLines(doc.replace(" (`src/passkey/ledger.ts`)", ""))).toThrow(/each ending with the files it cites/);
@@ -380,7 +383,7 @@ describe("four eyes, worded exactly (the panel's review, 12 Nov)", () => {
 
   it("carries it on the site: on /metal where the on-chain run is named, and in every page's \"What's real?\" lines", () => {
     const pages = buildPages() as unknown as Record<string, string>;
-    const text = (html: string) => decode(html.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ");
+    const text = (html: string) => decode(html.replace(/<script\b[\s\S]*?<\/script\s*>/gi, " ").replace(/<style\b[\s\S]*?<\/style\s*>/gi, " ").replace(/<svg\b[\s\S]*?<\/svg\s*>/gi, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ");
     // /metal, folded under "Beyond the kit": the on-chain run with who signed (no words added in sight).
     expect(text(pages.metal!)).toContain(`Four eyes on chain : 1 signature: reverted (${FOUR_EYES_ON_CHAIN_NOTE}).`);
     expect(pages.metal).toMatch(/<details[^>]*>\s*<summary[^>]*>Beyond the kit: separate runs, each dated \(not the main run\)<\/summary>[\s\S]*?two test keys on one machine, not two people/);

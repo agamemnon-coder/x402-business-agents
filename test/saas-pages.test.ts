@@ -20,7 +20,8 @@ import { scriptBlocks } from "./support/scriptBlocks.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const json = <T>(p: string) => JSON.parse(read(p)) as T;
-const decode = (s: string) => s.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+// "&amp;" last, so an escaped entity ("&amp;lt;") is decoded once, never twice.
+const decode = (s: string) => s.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
 /** The page's <main> as a person reads it with every fold open: tags out, entities decoded, white space single. */
 const mainText = (html: string) => decode((/<main[\s\S]*<\/main>/.exec(html)?.[0] ?? "").replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
 /** A piece of a page as it is in sight: a fold counts as its summary only. */
@@ -31,7 +32,8 @@ const NUM = /\d+(?:[.,]\d+)*/g;
 const numbers = (text: string) => [...new Set(text.match(NUM) ?? [])];
 const REPO = "https://github.com/agamemnon-coder/x402-business-agents/blob/main/";
 /** The repository files a page links to on GitHub (without any #anchor). */
-const repoLinks = (html: string) => [...html.matchAll(new RegExp(`href="${REPO.replace(/[.]/g, "\\.")}([^"#]+)`, "g"))].map((m) => m[1]!);
+const reEscape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const repoLinks = (html: string) => [...html.matchAll(new RegExp(`href="${reEscape(REPO)}([^"#]+)`, "g"))].map((m) => m[1]!);
 
 describe("/pricing: pilot pricing", () => {
   const html = pricingPage(), text = mainText(html);
@@ -144,7 +146,7 @@ describe("/security: security and trust", () => {
       expect({ id: c.id, sentences: line.replace(/\bnpm run verify-log\b/, "the command").split(/[.!?](?:\s|$)/).filter(Boolean).length, ends: /\.$/.test(line) }).toEqual({ id: c.id, sentences: 1, ends: true });
       expect({ id: c.id, words: line.split(" ").length <= 26 }).toEqual({ id: c.id, words: true });
       expect({ id: c.id, links: (/<div class="links">([\s\S]*?)<\/div>/.exec(el)?.[1]?.match(/<a class="pf" href="[^"]+"/g) ?? []).length >= 1 }).toEqual({ id: c.id, links: true });
-      expect({ id: c.id, folds: (el.match(/<details class="fold"><summary>[^<]+<\/summary><ul class="pl">(?:<li>[\s\S]*?<\/li>)+<\/ul><\/details>/g) ?? []).length }).toEqual({ id: c.id, folds: 1 });
+      expect({ id: c.id, folds: (el.match(/<details class="fold"><summary>[^<]+<\/summary><ul class="pl"><li>/g) ?? []).length, closed: (el.match(/<\/li><\/ul><\/details>/g) ?? []).length === (el.match(/<details\b/g) ?? []).length }).toEqual({ id: c.id, folds: 1, closed: true });
       // One card carries a second fold, with an anchor of its own: "If the approver is unavailable", under the
       // signature (the panel's review, 12 Nov; test/saas-additions.test.ts reads its lines). No other card has one.
       expect({ id: c.id, more: (el.match(/<details class="fold" id="[a-z]+">/g) ?? []) }).toEqual({ id: c.id, more: c.id === "s-sign" ? ['<details class="fold" id="unavailable">'] : [] });
@@ -384,7 +386,7 @@ describe("the two pages on the site", () => {
 
   it("are named in llms.txt, one line each, with what they are", () => {
     const lines = read("llms.txt").split("\n");
-    expect(lines.filter((l) => l.includes("https://kit11.max-31b.workers.dev/pricing"))).toEqual(["- Pricing: https://kit11.max-31b.workers.dev/pricing (pilot prices for design partners; nothing is on sale yet)"]);
-    expect(lines.filter((l) => l.includes("https://kit11.max-31b.workers.dev/security"))).toEqual(["- Security and trust: https://kit11.max-31b.workers.dev/security (each control with its proof, and what is not in place yet; sandbox and testnet only)"]);
+    expect(lines.filter((l) => / https:\/\/kit11\.max-31b\.workers\.dev\/pricing( |$)/.test(l))).toEqual(["- Pricing: https://kit11.max-31b.workers.dev/pricing (pilot prices for design partners; nothing is on sale yet)"]);
+    expect(lines.filter((l) => / https:\/\/kit11\.max-31b\.workers\.dev\/security( |$)/.test(l))).toEqual(["- Security and trust: https://kit11.max-31b.workers.dev/security (each control with its proof, and what is not in place yet; sandbox and testnet only)"]);
   });
 });

@@ -617,7 +617,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if ((await page.locator("#invoice-token").count()) !== 1 || !(await page.evaluate(() => { const f = document.querySelector(".folds.card"), b = document.querySelector("#invoice-token"), a = document.querySelector("a.open"); return !!f && !!b && !!a && !!(f.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) && !!(b.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING); }))) fail(`/metal with an invoice-token record ${tag}: the block is not between the main run's proof and the link to all the proof`);
       await page.screenshot({ path: join(shots, `metal-token-${tag}.png`), fullPage: true });
       // The page's folds only: "More" in the menu is a <details> too (12 Nov) and stays closed, as a reader leaves it.
-      await page.evaluate(() => document.querySelectorAll("main details").forEach((d) => { d.open = true; }));
+      await page.evaluate(() => document.querySelectorAll("main details").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
       await look(page, `/metal with an invoice-token record, folds open ${tag}`, w);
       if ((await block.locator("a.pf[href^='https://testnet.metalntwx.com/tx/0x']").count()) !== 7 || (await block.locator("a.pf[href$='-tokenize.md']").count()) !== 1) fail(`/metal with an invoice-token record ${tag}: not seven transactions and the run record in its fold`);
       await block.screenshot({ path: join(shots, `metal-token-open-${tag}.png`) });
