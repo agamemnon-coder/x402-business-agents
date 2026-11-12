@@ -278,7 +278,9 @@ export function buildOwnersRecord(db: DB, calls: readonly OwnersCall[], inputs: 
       const by = owner?.label ?? clean(String(r.event === "proposal.cosigned" ? r.p.person ?? r.p.approver : String(r.p.approver).split(" + ").at(-1)), 80);
       approvals.push({ by, role: owner?.role ?? null, fingerprint: owner?.fingerprint ?? null, at: r.ts, of: r.event === "proposal.cosigned" ? String(r.p.of ?? "1 of 2") : `${approvals.length + 1} of ${approvals.length + 1}` });
     }
-    const notCounted = mine.filter((r) => r.event === "approval.too_late" || r.event === "passkey.refused").map((r) => ({ at: r.ts, why: r.event === "approval.too_late" ? `a signature arrived after the terms ran out (${String(r.p.expires_at)}) and was not counted` : clean(String(r.p.reason ?? "refused"), LINE_CAP) }));
+    const signerOf = (r: Row) => byCredential.get(str((r.p.passkey as { credential_id?: unknown } | undefined)?.credential_id) ?? "")?.label;
+    const notCounted = mine.filter((r) => r.event === "approval.too_late" || r.event === "passkey.refused").map((r) => ({ at: r.ts, why: r.event === "approval.too_late"
+      ? `a signature${signerOf(r) ? ` by ${signerOf(r)}` : ""} arrived after the terms ran out (${String(r.p.expires_at)}) and was not counted` : clean(String(r.p.reason ?? "refused"), LINE_CAP) }));
     const ended = mine.find((r) => r.event === "proposal.expired" || r.event === "proposal.rejected");
     add(signed[0]?.seq ?? filed.seq + 0.1, { kind: "approvals", step: `the owners sign ${id}`, proposal_id: id, at: signed.at(-1)?.ts ?? ended?.ts ?? null, tx: null, explorer: null,
       outcome: approvals.length ? `${approvals.length} of 2 approvals` : ended ? (ended.event === "proposal.expired" ? "expired: no approval counted" : "rejected") : "no approval recorded",
