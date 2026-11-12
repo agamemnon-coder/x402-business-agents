@@ -791,7 +791,7 @@ export function vic3LiveRefusals(cmd: string, env: NodeJS.ProcessEnv | Record<st
   return why;
 }
 
-const cell = (v: unknown): string => (v === null || v === undefined || v === "" ? "—" : String(v).replace(/\|/g, "\\|"));
+export const cell = (v: unknown): string => (v === null || v === undefined || v === "" ? "—" : String(v).replace(/\\/g, "\\\\").replace(/\|/g, "\\|"));
 const shortSha = (s: string | null | undefined) => (s ? `${s.slice(0, 16)}…` : "—");
 
 /** The record as a page (docs/runs): every value read from the record. A dry record says STAND-IN on every row. */

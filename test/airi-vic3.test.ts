@@ -332,3 +332,11 @@ describe("vic-3 budget stops are not swallowed (review)", () => {
     expect(proc.exitCode).toBe(130);
   });
 });
+
+describe("vic-3 page cells", () => {
+  it("escape a backslash before a pipe, so a cell cannot end early", async () => {
+    const { cell } = await import("../src/airi/vic3.js");
+    expect(cell("a\\|b")).toBe("a\\\\\\|b");
+    expect(cell(null)).toBe("—");
+  });
+});
