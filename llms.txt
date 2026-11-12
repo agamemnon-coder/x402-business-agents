@@ -6,7 +6,7 @@ Summary: within limits the CFO sets, the agents pay through Airwallex and Metal;
 
 Worst case, set by policy: EUR 28,200 on cards and task cards + USD 20 on chain a month. Task cards without Face ID: up to EUR 900 a day. Everything above waits for the CFO. Computed from the policy by exposureOf (src/policy/exposure.ts); the parts are in the README.
 
-Why not Airwallex's own approvals? Purser signs the exact terms with the CFO's passkey before the API call, enforces per-agent limits across Airwallex and Metal, and can additionally require Airwallex's approval workflow (IN_APPROVAL handled, src/airwallex/approvals.ts). Live on 10 Nov: Airwallex held a passkey-signed payout IN_APPROVAL (docs/runs/2026-11-10-airwallex-two-locks.md; the web-app approval was not completed).
+Why not Airwallex's own approvals? Purser signs the exact terms with the CFO's passkey before the API call, enforces per-agent limits across Airwallex and Metal, and can additionally require Airwallex's approval workflow (IN_APPROVAL handled, src/airwallex/approvals.ts). Live in the sandbox, 10 and 12 Nov: Airwallex held a payout signed by a labelled test passkey IN_APPROVAL until the owner approved it in Airwallex's web app; then PAID, settlement simulated (docs/runs/2026-11-12-airwallex-two-locks-paid.md).
 
 Test money only. Live: Claude's decisions, Airwallex sandbox calls, Metal testnet transactions. Simulated: the customer, the supplier, the merchants' charges, the settlement (Purser moves the SWIFT transfer to SENT, then PAID, through the sandbox's simulation API) and the second approver (a labelled test passkey).
 
@@ -47,3 +47,11 @@ Test money only. Live: Claude's decisions, Airwallex sandbox calls, Metal testne
 - src/policy/mandates.ts: the Metal mandates
 - src/airi/purchase.ts: Visa Intelligent Commerce through Airwallex's Airi
 - src/audit/log.ts: the hash-chained audit log
+
+## For agents
+
+- Proof as JSON: https://kit11.max-31b.workers.dev/proof.json. A signed receipt you can check offline: https://kit11.max-31b.workers.dev/receipt-sample.json
+- To check a receipt: write the terms as canonical JSON (keys sorted, money as decimal strings); its SHA-256 equals terms_sha256; that hash is the WebAuthn challenge in clientDataJSON; the ES256 signature verifies with public_key. In a clone: npm run verify-receipt -- docs/runs/2026-11-07-awx-1/receipt-P-0002.json
+- The sample is the owner's own passkey approval of 7 November (live, Airwallex sandbox, test money; Face ID, as stated by the owner): the receipt does not prove who holds the key, or that it was Face ID (no attestation is checked).
+- An outside agent can ask for a company card and pay within limits over MCP (npm run mcp, docs/agent-api.md). Only a person's passkey can approve.
+- skills/purser-spend/SKILL.md: how an outside agent should use the agent API

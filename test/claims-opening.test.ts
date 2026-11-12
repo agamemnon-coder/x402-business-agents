@@ -43,7 +43,7 @@ describe("docs/claims.md opens with the main run", () => {
   it("its first section is the main run's and the site's, before the archive of 30 October", () => {
     const headings = CLAIMS.split("\n").filter((l) => /^## /.test(l));
     expect(headings[0]).toBe("## The main run (3 November) and the site as it stands");
-    expect(CLAIMS.indexOf("## The main run (3 November)")).toBeLessThan(CLAIMS.indexOf("## The recorded run of 30 October"));
+    expect(CLAIMS.indexOf("## The main run (3 November)")).toBeLessThan(CLAIMS.indexOf("## The earlier recorded run, 30 October"));
     // The 30 October figures are not in the opening.
     expect(flat).not.toMatch(/\b106\b|\b8 stops\b/);
     expect(flat).toContain("docs/demo/main-run.json");

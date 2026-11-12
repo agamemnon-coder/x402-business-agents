@@ -17,7 +17,7 @@ const dir = (p: string, re: RegExp) => readdirSync(new URL(`../${p}`, import.met
 /** What a juror reads besides the pages: the README, the submission pack, the video, the claims and the dossiers. */
 const GUEST_DOCS = [
   "README.md", "docs/claims.md", "docs/requirements-matrix.md", "docs/metal-award.md", "docs/airwallex.md",
-  "docs/controls-matrix.md", "docs/internal/uitleg-voor-max.md", "docs/cfo-policy.md", "docs/cards-and-clearing.md",
+  "docs/controls-matrix.md", "docs/cfo-policy.md", "docs/cards-and-clearing.md",
   ...dir("docs/submission", /\.md$/), ...dir("docs/video", /\.(md|srt)$/),
   "docs/demo/story.json", "docs/demo/snapshot.json", "docs/demo/metal.json", "docs/lab/results.json", "docs/redteam/report.json",
   ...dir("docs/runs", /^visa-tap.*\.json$/),

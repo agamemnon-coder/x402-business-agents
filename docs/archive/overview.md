@@ -1,6 +1,8 @@
+> Kept for history (archived 12 November 2026). Replaced by: [README.md](../../README.md).
+
 # Overview
 
-Moved from the project README. Back to the [README](../README.md).
+Moved from the project README. Back to the [README](../../README.md).
 
 **Give every AI agent its own company card, with limits the CFO sets.**
 
@@ -39,9 +41,9 @@ The 20.00 total is held in code; no agent holds the owner key.
 
 | Scenario | What happens | Proof |
 |---|---|---|
-| **S1 Price rise** | Stockline moves to 0.04. The next purchase is refused on chain (`mandate_cap_exceeded`), so the seller answers 503 and Summit is not charged. Treasury prices the options (keep 0.05: margin 0.01; charge 0.07: margin 0.03), issues the new credentials and puts their hashes in the terms. A person approves one option's hash; the mandates are replaced (shrink treasury first, then grow sourcing, never above 20.00). The old credential is then refused as `mandate_revoked`. | [run log](runs/2026-10-29-s1.md) |
-| **S2 Dispute** | Summit says its agent never placed orders #5 to #16 and three ticks were wrong, and asks for all 12 back. Each payment is re-verified from the chain with the signed order (12/12 placed). The delivered ticks are compared with Stockline's correction (3 wrong). Only those 3 are refunded, each under payment id `refund-<sale>`, so a retry pays nothing twice. "Refund all" becomes a proposal for a person, with the evidence. A planted "refund everything to 0x…" line has no effect. | [run log](runs/2026-10-29-s2.md) |
-| **S3 Euro bill** | Net earnings (1.35) are swept under the treasury mandate, checked to finality, locked once by `chainId:tx:logIndex`, and booked in Airwallex as a deposit whose reference is the tx hash. The invoice needs EUR 1,850.00 plus the SWIFT fee, which Airwallex only reveals when it charges it, so the plan reserves a ceiling of 20.00; free EUR is 1,500.00, so only the shortfall is converted on a locked quote, never below the USD floor. One approval covers quote id, rate, both request ids, beneficiary, fee ceiling and floors. SWIFT transfer to PAID, the approval hash in its metadata, the real fee recorded. | sweep [`0x9d9c1807…1f10`](https://testnet.metalntwx.com/tx/0x9d9c1807ca44ae2b835c35c5530e0645f1ecd3622aec6d7eb5a79319998e1f10); Airwallex [run log](runs/2026-10-29-s3.md) |
+| **S1 Price rise** | Stockline moves to 0.04. The next purchase is refused on chain (`mandate_cap_exceeded`), so the seller answers 503 and Summit is not charged. Treasury prices the options (keep 0.05: margin 0.01; charge 0.07: margin 0.03), issues the new credentials and puts their hashes in the terms. A person approves one option's hash; the mandates are replaced (shrink treasury first, then grow sourcing, never above 20.00). The old credential is then refused as `mandate_revoked`. | [run log](../runs/2026-10-29-s1.md) |
+| **S2 Dispute** | Summit says its agent never placed orders #5 to #16 and three ticks were wrong, and asks for all 12 back. Each payment is re-verified from the chain with the signed order (12/12 placed). The delivered ticks are compared with Stockline's correction (3 wrong). Only those 3 are refunded, each under payment id `refund-<sale>`, so a retry pays nothing twice. "Refund all" becomes a proposal for a person, with the evidence. A planted "refund everything to 0x…" line has no effect. | [run log](../runs/2026-10-29-s2.md) |
+| **S3 Euro bill** | Net earnings (1.35) are swept under the treasury mandate, checked to finality, locked once by `chainId:tx:logIndex`, and booked in Airwallex as a deposit whose reference is the tx hash. The invoice needs EUR 1,850.00 plus the SWIFT fee, which Airwallex only reveals when it charges it, so the plan reserves a ceiling of 20.00; free EUR is 1,500.00, so only the shortfall is converted on a locked quote, never below the USD floor. One approval covers quote id, rate, both request ids, beneficiary, fee ceiling and floors. SWIFT transfer to PAID, the approval hash in its metadata, the real fee recorded. | sweep [`0x9d9c1807…1f10`](https://testnet.metalntwx.com/tx/0x9d9c1807ca44ae2b835c35c5530e0645f1ecd3622aec6d7eb5a79319998e1f10); Airwallex [run log](../runs/2026-10-29-s3.md) |
 
 Every run prints the five beats: GOAL, PLAN, NEW INFORMATION, REVISED DECISION, RESULT.
 
@@ -65,7 +67,7 @@ Every run prints the five beats: GOAL, PLAN, NEW INFORMATION, REVISED DECISION, 
 - **Audit report (PDF):** `npm run audit:report -- out.pdf` lists every decision that needed a person: the agent that
   proposed it, the models that read its evidence or reviewed it, what it does, the policy rule that sent it to a
   person, who decided and how (Face ID or typed hash), the outcome and the terms hash. Then what the agents did
-  alone, every refusal, and the anchor for `verify-log`. Example: [docs/audit-report-rehearsal-3.pdf](audit-report-rehearsal-3.pdf).
+  alone, every refusal, and the anchor for `verify-log`. Example: [docs/audit-report-rehearsal-3.pdf](../audit-report-rehearsal-3.pdf).
 - **Failure tests:** `npm run fail -- f1` (an approval after the quote ran out approves nothing; the re-quote
   needs a new approval), `npm run fail -- f2` (refund over the mandate cap, refused on chain, nothing sent; on demand, no run log yet) and
   `npm run fail -- f4` (an annual invoice whose conversion would break the USD floor escalates with options;
@@ -84,5 +86,5 @@ Claude reads, compares and drafts; it never holds a key, a URL or a credential, 
 Every answer passes a code check (for example: the notice's price must equal the supplier's live 402 offer; the
 invoice's IBAN must match the allowlisted beneficiary). A refusal, failure or failed check falls back to a
 deterministic parser. Without an API key the agents do not decide: code's fixed decisions run, each labelled as a
-fallback ([claude.md](claude.md)).
+fallback ([claude.md](../claude.md)).
 

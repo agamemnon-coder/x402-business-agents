@@ -9,7 +9,7 @@ import jsQRModule from "jsqr";
 import { describe, expect, it } from "vitest";
 import { DIFFERENTIATORS, PROOF_SENTENCES } from "../src/config/brand.js";
 import { faceIdDecisions, loadRecord, payments, split, stopStory, stopsLine, timings } from "../src/redesign/run.js";
-import { CORE_LINE, METAL_LINE, QR_URL, REFUSAL_LINE, RULE_LINE, T0_SHORT, T0_STATUS, deckHtml, type DeckShots } from "../src/submission/deck.js";
+import { CORE_LINE, METAL_LINE, QR_URL, REFUSAL_LINE, RULE_LINE, T0_SHORT, T0_STATUS, TWO_LOCKS_LINE, deckHtml, type DeckShots } from "../src/submission/deck.js";
 import { packFacts } from "../src/submission/facts.js";
 import { QR_PNG, qrPng } from "../src/submission/qr.js";
 import { TRY_SIGN_URL } from "../src/film/premiere.js";
@@ -226,6 +226,20 @@ describe("T:0 in one sentence, Metal counted (Max, 5 Nov)", () => {
       }
     }
     expect(TEXT.deck).toContain(T0_SHORT);
+  });
+
+  it("the deck's two-locks line tells the finished run as its logs have it: a test passkey, the owner's approval at Airwallex, PAID, settlement simulated", () => {
+    expect(TEXT.deck).toContain(words(TWO_LOCKS_LINE));
+    expect(TWO_LOCKS_LINE).toMatch(/^Two locks on one payout \(10 and 12 Nov\): a labelled test passkey signed the terms, /);
+    expect(TWO_LOCKS_LINE).toMatch(/held the transfer IN_APPROVAL until the owner approved it in Airwallex's web app; then PAID \(sandbox, settlement simulated\)\.$/);
+    expect(TWO_LOCKS_LINE).not.toMatch(/nobody approved|not paid|CFO/);
+    // Each part is in the run's two dated logs.
+    expect(read("docs/runs/2026-11-10-airwallex-two-locks.md")).toMatch(/\(10 November 2026\)[\s\S]*\*\*`IN_APPROVAL`\*\*/);
+    const paid = read("docs/runs/2026-11-12-airwallex-two-locks-paid.md");
+    expect(paid).toMatch(/\(12 November 2026\)/);
+    expect(paid).toMatch(/a labelled virtual test passkey, not a person's device/);
+    expect(paid).toMatch(/owner approved the transfer in the Airwallex sandbox web app/);
+    expect(paid).toMatch(/`PAID`, simulated settlement/);
   });
 
   it("every marked Metal block counts the run's own payments on chain: 86 (41 + 41 + 3 + 1), no clearing", () => {

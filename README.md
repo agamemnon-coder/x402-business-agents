@@ -46,7 +46,7 @@ Not validated with customers yet: 2 finance conversations (a CFO and a bank fina
 - **Why now:** Airwallex wrote on 5 October 2026 that agents moving money need limits enforced "through underlying infrastructure rather than prompts" ("Agentic banking starts with governance", source S1). ([problem.md](docs/business/problem.md#why-now-sourced))
 - **Why Purser:** it builds on Airwallex's own card controls and Metal's mandates, and adds what sits on top: one CFO policy for card and chain, approvals signed over the exact terms, a hash-chained audit log. ([model.md](docs/business/model.md#risks-and-what-we-do-not-know))
 
-**Why not Airwallex's own approvals?** Purser signs the exact terms with the CFO's passkey before the API call, enforces per-agent limits across Airwallex and Metal, and can additionally require Airwallex's approval workflow (`IN_APPROVAL` handled, [src/airwallex/approvals.ts](src/airwallex/approvals.ts)). Live on 10 Nov: Airwallex held a passkey-signed payout `IN_APPROVAL` ([run](docs/runs/2026-11-10-airwallex-two-locks.md); the web-app approval was not completed).
+**Why not Airwallex's own approvals?** Purser signs the exact terms with the CFO's passkey before the API call, enforces per-agent limits across Airwallex and Metal, and can additionally require Airwallex's approval workflow (`IN_APPROVAL` handled, [src/airwallex/approvals.ts](src/airwallex/approvals.ts)). Live in the sandbox, 10 and 12 Nov: Airwallex held a payout signed by a labelled test passkey `IN_APPROVAL` until the owner approved it in Airwallex's web app; then `PAID`, settlement simulated ([run](docs/runs/2026-11-12-airwallex-two-locks-paid.md)).
 
 ## How it works in 5 files
 
@@ -136,6 +136,7 @@ On [/try/sign](https://kit11.max-31b.workers.dev/try/sign) the Treasury agent as
 - [docs/metal-award.md](docs/metal-award.md) and [docs/airwallex.md](docs/airwallex.md): what Purser uses from each
 - [docs/payables.md](docs/payables.md): the invoice inbox, built after the submission (its code is in [src/ap](src/ap); not in the submitted run)
 - [docs/security.md](docs/security.md): threat model, attacks and what stops each one
+- [skills/purser-spend/SKILL.md](skills/purser-spend/SKILL.md): how an outside agent should use the agent API
 - [docs/submission/README.md](docs/submission/README.md): the submission text, with the short Description
 - [docs/submission/long-description.md](docs/submission/long-description.md): the long form text it replaced, in full
 - [The Visa TAP note](docs/submission/long-description.md#visa): built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov)

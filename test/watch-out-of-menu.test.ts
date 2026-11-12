@@ -20,9 +20,10 @@ const OFF = buildPages({} as NodeJS.ProcessEnv);
 const run = agentRun();
 const { record } = loadRecord();
 
-/** Every HTML page of a bundle, by name (the phone's script, stylesheet and font, and llms.txt, are not pages). */
+/** Every HTML page of a bundle, by name: the entries that are HTML documents (the phone's script, stylesheet and font,
+ * llms.txt and the JSON files are not pages). */
 function htmlPages(pages: Pages): [string, string][] {
-  const flat = Object.entries(pages as unknown as Record<string, unknown>).filter((e): e is [string, string] => typeof e[1] === "string" && !["client", "css", "font", "llms"].includes(e[0]));
+  const flat = Object.entries(pages as unknown as Record<string, unknown>).filter((e): e is [string, string] => typeof e[1] === "string" && /^\s*<!doctype html/i.test(e[1]));
   return [...flat, ...Object.entries(pages.agents ?? {}).map(([id, a]): [string, string] => [`agents/${id}`, a.page])];
 }
 const navs = (html: string) => [...html.matchAll(/<nav\b[^>]*>[\s\S]*?<\/nav>/g)].map((m) => m[0]);
@@ -30,6 +31,8 @@ const noScript = (html: string) => withoutBlocks(html, ["script", "style"], " ")
 /** What a visitor sees before opening anything: no script, no style, no fold's inside (its header stays). */
 const inSightHtml = (html: string) => noScript(html).replace(/<details\b[^>]*>\s*(<summary[^>]*>[\s\S]*?<\/summary>)[\s\S]*?<\/details>/g, " $1 ");
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+/** A link in a navigation to the replay (/watch), or an item named Watch; the film on YouTube is neither. */
+const toReplayIn = (nav: string) => [...nav.matchAll(/href="([^"]*)"/g)].map((m) => m[1]!).find((h) => !/^https?:/.test(h) && /(^|\/)watch([?#]|$)/.test(h)) ?? items(nav).find((t) => /^watch$/i.test(t)) ?? null;
 /** The items of a menu as a visitor reads them: its links, and a fold's header for a fold. */
 const items = (nav: string) => [...nav.replace(/<details\b[\s\S]*?<\/details>/g, (d) => /<summary[^>]*>[\s\S]*?<\/summary>/.exec(d)?.[0] ?? "").matchAll(/<(a|summary)\b[^>]*>([\s\S]*?)<\/\1>/g)].map((m) => textOutsideTags(m[2]!).replace(/\s+/g, " ").trim());
 
@@ -51,7 +54,7 @@ describe("the menu: Home, Try, Proof, and no Watch", () => {
       const all = htmlPages(pages);
       expect(all.length).toBeGreaterThan(20);
       for (const [name, html] of all) {
-        for (const nav of navs(html)) expect({ build, name, watch: /watch/i.exec(nav)?.[0] ?? null }).toEqual({ build, name, watch: null });
+        for (const nav of navs(html)) expect({ build, name, watch: toReplayIn(nav) }).toEqual({ build, name, watch: null });
         const main = navs(html).find((n) => /aria-label="Main"/.test(n));
         if (!main) continue;
         expect({ build, name, first: items(main).slice(0, 3) }).toEqual({ build, name, first: ["Home", "Try", "Proof"] });
