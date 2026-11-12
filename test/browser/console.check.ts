@@ -117,6 +117,41 @@ async function firstRun(p: Page, origin: string, slug: string, key: string, snap
   await p.click("text=Make my passkey");
   await p.waitForSelector("text=Make the key for my computer", { timeout: 20_000 });
 }
+// The sign-in in its two zones (the illustration, the card, the trust line), at a phone and a laptop, light and dark:
+// both zones in view, nothing wider than the screen, no large empty band, the feather mark, no console or CSP error.
+// Screenshots (the viewport) when a directory is given: console-signin-<width>-<scheme>.png.
+for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], [1440, 900, "light"], [1440, 900, "dark"]] as const) {
+  const c = await browser.newContext({ viewport: { width, height }, colorScheme: scheme, deviceScaleFactor: shots ? 2 : 1 });
+  const p = await c.newPage();
+  const errs: string[] = [];
+  p.on("console", (m) => { if (m.type() === "error") errs.push(m.text()); });
+  p.on("pageerror", (e) => errs.push(String(e)));
+  const tag = `sign-in ${width}x${height} ${scheme}`;
+  await p.goto(`${ORIGIN}/#/sign-in`);
+  await p.waitForSelector("text=Sign in with your passkey");
+  await p.waitForTimeout(500);
+  const box = (sel: string) => p.locator(sel).first().boundingBox();
+  const [hero, card, trust] = [await box(".hero"), await box(".auth"), await box(".trust")];
+  ok(!!hero && !!card && !!trust, `${tag}: the illustration, the card and the trust line are shown`);
+  if (hero && card && trust) {
+    ok(card.y + card.height <= height && trust.y + trust.height <= height + 1, `${tag}: the card and the trust line are in view without scrolling`);
+    if (width === 390) {
+      ok(hero.y + hero.height <= card.y + 40 && hero.height >= 0.3 * height, `${tag}: a phone: the illustration's band on top (${Math.round(hero.height)} px), the card below`);
+      ok(trust.y + trust.height >= 0.95 * height && trust.y - (card.y + card.height) < 0.15 * height, `${tag}: no empty band: the trust line ends the screen, close under the card`);
+    } else {
+      ok(hero.x === 0 && Math.abs(hero.width - width / 2) < 2 && hero.y + hero.height >= height - 1 && card.x >= width / 2, `${tag}: a wide screen: the illustration left (to the bottom), the card right`);
+      const above = card.y - hero.y, below = height - (trust.y + trust.height);
+      ok(Math.abs(above - below) < 0.15 * height, `${tag}: no empty band: the card and the trust line are centred (${Math.round(above)} px above, ${Math.round(below)} px below)`);
+    }
+  }
+  ok(await p.evaluate(() => document.documentElement.scrollWidth) <= width, `${tag}: nothing wider than ${width} px`);
+  ok((await p.textContent(".trust"))!.includes(tr("en", "cs.trust_works")) && (await p.textContent(".trust"))!.includes(tr("en", "cs.trust_test")), `${tag}: the trust line`);
+  ok(await p.locator("header .brand .mk svg").count() === 1, `${tag}: the brand's feather mark`);
+  if (shots) { await p.waitForTimeout(5800); await p.screenshot({ path: join(shots, `console-signin-${width}-${scheme}.png`) }); }
+  ok(errs.length === 0, `${tag}: no console or CSP errors${errs.length ? `: ${errs.join(" | ")}` : ""}`);
+  await c.close();
+}
+
 const { ctx, page, errors, urls } = await passkeyContext();
 const shot = async (name: string) => { if (shots) await page.screenshot({ path: join(shots, `${name}.png`), fullPage: true }); };
 // The PDF frame's worker keeps a request open in Playwright's count, so "network idle" is waited for briefly, not forever.

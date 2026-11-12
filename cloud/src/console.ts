@@ -8,6 +8,7 @@
 import { EVENT_LINE_JS } from "../../src/ui/engineEvents.js";
 import { consoleKeys, DATA_NL, I18N_JS, keysUsedIn, MESSAGES, t as tr } from "../../src/ui/i18n.js";
 import { escAttr, ICON_SET, PAYABLES_CSS, svg } from "../../src/ui/payablesKit.js";
+import { SCENE_CSS, sceneSvg } from "./scene.js";
 import { fromB64 } from "./crypto.js";
 import { INTER_WOFF2_B64 } from "./font.gen.js";
 import { tryPageResponse } from "./tryPage.js";
@@ -310,7 +311,25 @@ ol.stepper li.done .n .ic { display: inline-flex; }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .auth .stage { animation: none; } }
 @media (max-width: 640px) { .auth { margin-top: 4vh; padding: 28px 22px 24px; } .auth h1 { font-size: 24px; } }
-`;
+/* Signed out (sign-in, first run, a passkey's enrolment): two zones, as /try's start. The illustration (cloud/src/scene.ts)
+   in a band on the brand's tokens, the card, and the trust line under it. A phone: the band on top, the card below. A wide
+   screen: the band left, the card right, centred. Signed in: neither. */
+.hero, .trust { display: none; }
+.signed-out .hero { display: grid; flex: 1 0 auto; min-height: 34vh; min-height: 34svh; padding: 16px 12px 44px; }
+.signed-out #foot { display: none; }
+.signed-out { display: flex; flex-direction: column; min-height: 100vh; min-height: 100svh; }
+.signed-out main { position: relative; z-index: 1; margin-top: -28px; padding: 0; }
+.signed-out .auth { margin: 0 auto; border-radius: 16px; }
+.signed-out .trust { display: grid; gap: 2px; margin: auto 0 0; padding: 16px var(--gut, 16px) 20px; text-align: center; color: var(--faint); font-size: 12.5px; line-height: 1.5; }
+@media (min-width: 1024px) {
+  .signed-out { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr auto auto 1fr; }
+  .signed-out header.top { grid-column: 1 / -1; grid-row: 1; }
+  .signed-out .hero { grid-column: 1; grid-row: 2 / -1; min-height: 0; padding: 40px 48px; }
+  .signed-out main { grid-column: 2; grid-row: 3; margin: 0; padding: 0 40px; }
+  .signed-out .auth { max-width: 460px; }
+  .signed-out .trust { grid-column: 2; grid-row: 4; margin: 0; padding: 18px 40px 0; }
+}
+${SCENE_CSS}`;
 
 // The page's frame in English (the default); the script re-words it in Dutch when the person chose Dutch.
 const BODY = `
@@ -319,7 +338,9 @@ const BODY = `
 <span class="spacer"></span>
 <span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
 <span class="test" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></header>
+<div class="hero">${sceneSvg()}</div>
 <main><div class="wrap" id="view" aria-live="polite"></div></main>
+<p class="trust"><span data-t="cs.trust_works">${tr("en", "cs.trust_works")}</span><span data-t="cs.trust_test">${tr("en", "cs.trust_test")}</span></p>
 <p class="foot wrap" id="foot">${tr("en", "cs.foot")}</p>`;
 
 // The client: plain JS (no template literals in it, so it can sit in this file as a raw string).
