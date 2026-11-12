@@ -285,7 +285,7 @@ export function lifecycleSvg(layout: Layout = "wide", standalone?: Theme): strin
 export const REFUSALS_TITLE = "Held by the rail itself";
 const dayLabel = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${iso}T12:00:00Z`));
 
-const cardLines = (r: RailRefusal, chars: number) => ({ what: wrap(r.what, chars), note: r.note ? wrap(r.note, chars + 2) : [] });
+const cardLines = (r: RailRefusal, chars: number) => ({ what: wrap(r.short, chars), note: r.note ? wrap(r.note, chars + 2) : [] });
 const cardHeight = (r: RailRefusal, chars: number) => { const c = cardLines(r, chars); return 150 + c.what.length * 20 + (c.note.length ? c.note.length * 18 + 12 : 0) + 64; };
 
 function refusalCard(r: RailRefusal, x: number, y: number, w: number, h: number, href: (path: string) => string, chars: number): string {

@@ -5,6 +5,7 @@
 // Airi runs, Airwallex read back, every check (who stopped what, the Face ID decisions: one number, from the run's
 // ledger), the business and the Archive; the utility links last. Nothing typed in by hand.
 
+import { COUNT_JS } from "./stats.js";
 import { LIFE_TITLE, REFUSALS_TITLE, VISUAL_CSS, lifecycleSvg, refusalsSvg } from "../visuals/svg.js";
 import { railRefusals } from "../visuals/facts.js";
 import { MOTION_JS } from "../ui/motion.js";
@@ -420,7 +421,9 @@ function railsVisual(layout: "wide" | "tall"): string {
   const rails = railRefusals();
   if (!rails.length) return "";
   const href = (path: string) => `${REPO_BLOB}${path}`;
-  return `<article class="pvis pv-${layout} rails" data-rec="src/visuals/facts.ts" aria-label="${esc(REFUSALS_TITLE)}">${refusalsSvg(rails, href, layout)}</article>`;
+  // One line per card in the drawing; the full account of each, with its figures, in the fold under it.
+  const fold = `<details class="fold"><summary>${esc("What each rail did, in full")}</summary><ul>${rails.map((r) => `<li><b>${esc(r.name)}</b>: ${esc(r.what)}${r.note ? ` ${esc(r.note)}` : ""}</li>`).join("")}</ul></details>`;
+  return `<article class="pvis pv-${layout} rails" data-rec="src/visuals/facts.ts" aria-label="${esc(REFUSALS_TITLE)}">${refusalsSvg(rails, href, layout)}${fold}</article>`;
 }
 function checkItYourself(): string {
   const signed = signedByRun();
@@ -429,6 +432,11 @@ function checkItYourself(): string {
   return `<article class="vfa" data-rec="${esc(Object.values(SIGNED_FILES).join(" "))}"><h3>Check a signature yourself</h3><p class="q">Each button hashes the stored terms here, in your browser, and compares the result with the hash the passkey signed.</p>${verifyList(items)}${line ? `<p class="q">${esc(line)} <a class="pf" href="runs">Every run</a></p>` : ""}</article>`;
 }
 const vaultTree = () => `<article class="vault" data-rec="${VAULT_TREE_RECORD}"><h3>Where every document is filed</h3><picture><source srcset="assets/vault-tree-dark.svg" media="(prefers-color-scheme: dark)"><img src="assets/vault-tree-light.svg" width="505" height="438" alt="The vault's folders: company, year, quarter, then Inkoopfacturen (invoices), Betalingen (payments) and Rapporten (reports), as src/vault/layout.ts files them"></picture><p class="q">Computed from the code (src/vault/layout.ts), with the two invoices of the 7 November run.</p></article>`;
+/** A tile's figure ("24", "3 of 3", "16 stops") with its leading number as a count-up (src/redesign/stats.ts COUNT_JS). */
+const countUpValue = (v: string) => {
+  const m = /^(\d+)(.*)$/.exec(v);
+  return m ? `<span data-count="${m[1]}" data-dec="0">${esc(m[1]!)}</span>${esc(m[2]!)}` : esc(v);
+};
 const PROOF_VISUAL_CSS = `.proofp .pvis { margin: 18px 0 22px; } .proofp .pvis.pv-tall { display: none; }
 @media (max-width: 999px) { .proofp .pvis.pv-wide { display: none; } .proofp .pvis.pv-tall { display: block; max-width: 420px; margin: 18px auto; } }
 .proofp .vault img { display: block; max-width: 100%; height: auto; margin: 8px 0; }`;
@@ -455,7 +463,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
     // The stops by cause, summing to the figure (stopBreakdown). No TAP remark under the figures: TAP is on /visa.
     { cls: "stop", value: stopFigure(story), label: stopSub(story), explain: "", href: "#stops", parts: stopBreakdown(story).map((x) => ({ value: String(x.value), label: x.label })) },
   ];
-  const tile = (n: Tile & { cls: string }) => `<a class="num card ${n.cls}" href="${esc(n.href)}"><span class="v">${esc(n.value)}</span><span class="l">${esc(n.label)}</span>${noteHtml(n.note, "span")}${n.parts?.length ? `<span class="parts">${n.parts.map((x) => `<span><b>${esc(x.value)}</b> ${esc(x.label)}</span>`).join("")}</span>` : ""}</a>`;
+  const tile = (n: Tile & { cls: string }) => `<a class="num card ${n.cls}" href="${esc(n.href)}"><span class="v">${countUpValue(n.value)}</span><span class="l">${esc(n.label)}</span>${noteHtml(n.note, "span")}${n.parts?.length ? `<span class="parts">${n.parts.map((x) => `<span><b>${esc(x.value)}</b> ${esc(x.label)}</span>`).join("")}</span>` : ""}</a>`;
   const body = `<main class="proofp"><div class="wrap">
   <h1>Proof</h1>
   ${guaranteesHtml()}
@@ -478,7 +486,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   // No footer link to /visa since 12 Nov (before: "Extra, not an award entry", jury review, 6 Nov, #7): Visa is a
   // section of its own now ("Built on", the Airi run's fold) and /judge links the Visa run; Home drops it too.
   return page({
-    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}`, stage: false,
+    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}`, stage: false,
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,
   });
 }
