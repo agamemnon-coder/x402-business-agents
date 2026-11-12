@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import { INITIAL_MANDATES, LICENCE_FEE_EUR_CENTS, TOTAL_BUDGET_CENTS, type Agent } from "../src/config/policy.js";
 import { AGENT_DISPLAY } from "../src/config/brand.js";
 import { fromCents } from "../src/lib/money.js";
+import { pdfText } from "../src/ap/pdfText.js";
 
 const ROOT = resolve(dirname(new URL(import.meta.url).pathname), "..");
 const text = (path: string) => readFileSync(join(ROOT, path), "utf8");
@@ -340,6 +341,64 @@ function brokenLinks(file: string, md: string, exists: (path: string) => boolean
   }
   return { checked, broken };
 }
+
+describe("the requirements matrix: its own count, and the repository it says is public", () => {
+  const matrix = text("docs/requirements-matrix.md");
+  /** Each requirement row's status mark: the last cell of a table row that starts with one. */
+  const marks = matrix.split("\n").filter((l) => l.startsWith("| ")).map((l) => l.split("|").map((c) => c.trim()).at(-2) ?? "").map((c) => ["✅", "🟠", "❌"].find((m) => c.startsWith(m))).filter((m) => m !== undefined);
+
+  it("the count line is the count of its rows by status (it stayed at the 3 November count through two changes)", () => {
+    const n = (mark: string) => marks.filter((m) => m === mark).length;
+    const [met, partly, not] = [n("✅"), n("🟠"), n("❌")];
+    expect(met + partly + not).toBeGreaterThan(80);
+    expect(matrix).toContain(`\n✅ ${met} · 🟠 ${partly} · ❌ ${not} (${met + partly + not} rows, counted from the rows above`);
+  });
+
+  it("says in every row about it that the repository is public, with the day that was read, and no row still calls it private", () => {
+    // Review of 12 November: row H14 said "The repository is private, so the code is not public today", beside the
+    // decision to merge the product so that the judges can read its code (docs/decisions.md, D29).
+    const about = matrix.split("\n").filter((l) => /^\| (H1c|H14|Public repository) \|/.test(l));
+    expect(about.map((l) => l.split("|")[1]!.trim())).toEqual(["H1c", "H14", "Public repository"]);
+    for (const l of about) {
+      expect(l).toMatch(/repository is public/);
+      expect(l).toContain("GitHub's API answers `private: false`, read 12 November 2026");
+    }
+    for (const l of about.slice(0, 2)) expect(l.split("|").at(-2)!.trim()).toBe("✅");
+    expect(matrix).not.toMatch(/repository is private (until|, so)|No public link yet\.? \||Max decides\. Then: gitleaks/);
+    // The address the rows give is the one the package and the form text give; the licence they name is in the repository.
+    const repo = json<{ repository: { url: string } }>("package.json").repository.url.replace(/^git\+/, "").replace(/\.git$/, "");
+    expect(about[0]).toContain(`<${repo}>`);
+    expect(text("docs/submission/README.md")).toContain(repo);
+    expect(text("LICENSE")).toMatch(/^MIT License/);
+    // What the rows cite for "gitleaks on every push" is in the workflow.
+    expect(text(".github/workflows/ci.yml")).toMatch(/gitleaks, whole history/);
+  });
+});
+
+describe("the deck's test count against the README's test line", () => {
+  it("is the README's, or claims.md says in a dated note which count the committed deck shows", async () => {
+    // Review of 12 November: the README went to the merged tree's count while the committed deck (rendered from the
+    // README's line on 10 November, src/submission/deck.ts testCount) still showed the earlier one, and nothing said so.
+    const deck = (await pdfText(readFileSync(join(ROOT, "docs/submission/purser-deck.pdf")))).text.replace(/\s+/g, " ");
+    const shown = /([\d,]+) tests in (\d+) files, all passing/.exec(deck);
+    expect(shown).not.toBeNull();
+    const [deckTests, deckFiles] = [shown![1]!.replace(/,/g, ""), shown![2]!];
+    const readme = /\*\*(\d+) tests in (\d+) files, all passing\*\*/.exec(text("README.md"))!;
+    const claims = text("docs/claims.md");
+    const deckRow = claims.split("\n").find((l) => l.startsWith("| The deck (section D, 6 November)")) ?? "";
+    const note = /Dated note, [^:]+: the committed PDF and its "Security and tests" slide are the render of [^.]+? and show ([\d,]+) tests in (\d+) files/.exec(deckRow);
+    if (deckTests === readme[1] && deckFiles === readme[2]) {
+      // In step with the README: no note may say otherwise.
+      expect(note).toBeNull();
+      return;
+    }
+    expect({ deck: `${deckTests} in ${deckFiles}`, readme: `${readme[1]} in ${readme[2]}`, noted: note !== null }).toEqual({ deck: `${deckTests} in ${deckFiles}`, readme: `${readme[1]} in ${readme[2]}`, noted: true });
+    expect([note![1]!.replace(/,/g, ""), note![2]]).toEqual([deckTests, deckFiles]);
+    // The deck's count is one claims.md has on record, with its day, in the Tests row's history.
+    const testsRow = claims.split("\n").find((l) => l.startsWith("| Tests |")) ?? "";
+    expect(testsRow).toMatch(new RegExp(`(Was|;) ${deckTests} in ${deckFiles} files \\(\\d+ Nov`));
+  });
+});
 
 describe("relative markdown links in README.md and docs/", () => {
   const files = ["README.md", ...mdFiles("docs")];
