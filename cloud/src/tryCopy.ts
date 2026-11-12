@@ -153,7 +153,7 @@ export const PAY = {
   /** Screen 4 comes after paid. */
   already: "Already paid.",
   /** Screen 4's quiet link back to screen 5. */
-  back: "Back to the payment",
+  back: "Back",
   button: "Pay with my signature",
   /** On the button while the pay request runs (with the ring). */
   paying: "Paying…",
@@ -361,7 +361,10 @@ export const VISIBLE = {
  * the IBAN hint are held verbatim, so that state is raised to its count, for the lead to decide; with the cap's words
  * ("Demo invoices go up to EUR 5,000.") in its place it is 48.
  */
-export const OVER_BUDGET: Record<string, number> = { "pay 7": 80, "invoice 4": 49, "invoice 5": 48 };
+// 12 Nov (one-tap pay): screen 4 now comes after paid, so its states carry "Already paid." and a link back ("pay 4"
+// paid once, "pay 6" failed with retry, "pay 7" refused); screen 5 carries the link to it ("books 0", "books 1").
+// Each is pinned at its exact count.
+export const OVER_BUDGET: Record<string, number> = { "pay 7": 81, "invoice 4": 49, "invoice 5": 48, "pay 4": 52, "pay 6": 51, "books 0": 50, "books 1": 50 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
