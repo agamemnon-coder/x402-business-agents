@@ -136,7 +136,7 @@ export function statusPage(mode: StatusMode = "hosted"): string {
 </div>`;
   return productPage({
     key: "status", title: "Status", h1: "Status", label: "Sandbox and testnet only",
-    lead: mode === "hosted" ? "Read live from this site itself." : "An offline copy: nothing here is live.",
+    lead: mode === "hosted" ? "Read live from this site itself." : "An offline copy, with no live status.",
     description: "Purser's status in plain words: whether the site is up and a live run is in progress, the runner's last sync and alarms, and the five latest live runs. Sandbox and testnet only.",
     body, css: STATUS_CSS, ...(mode === "hosted" ? { js: STATUS_JS } : {}),
     source: "Source: this site's own /health (worker/src/core.ts) and each run's record, as /runs lists them (src/redesign/runs.ts).",
@@ -146,7 +146,7 @@ export function statusPage(mode: StatusMode = "hosted"): string {
       "No live run in progress is the normal state: the hosted pages replay the recorded run.",
     ] : [
       "Sandbox and testnet only: Airwallex's sandbox, Metal's testnet, test money.",
-      "This offline copy has no runner and no /health: nothing on it is live.",
+      "This offline copy has no runner and no /health, so it shows no live status.",
     ],
   });
 }

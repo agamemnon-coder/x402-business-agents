@@ -542,6 +542,20 @@ describe("/status on the site", () => {
     expect(pageResponse(new Request("https://x.test/health"), pages)).toBeNull();
   });
 
+  it("keeps both pages under their policies with /try/sign in the bundle: only the Try tab's link changes, never a script or a style", () => {
+    const on = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv) as Pages;
+    const hash = (html: string, tag: "script" | "style") => `'sha256-${createHash("sha256").update(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`).exec(html)![1]!, "utf8").digest("base64")}'`;
+    expect(on.csp.status).toBe(STATUS_CSP);
+    expect(on.csp.status).toContain(`script-src ${hash(on.status!, "script")};`);
+    expect(on.csp.status).toContain(`style-src ${hash(on.status!, "style")};`);
+    expect(on.csp.docs).toBe(DOCS_CSP);
+    expect(on.csp.docs).toContain(`style-src ${hash(on.docs!, "style")};`);
+    for (const [html, built] of [[on.status!, STATUS_PAGE], [on.docs!, DOCS_PAGE]] as const) {
+      expect(nav(html)).toContain('<a href="try/sign"');
+      expect(html.replace('<a href="try/sign"', '<a href="try"')).toBe(built);
+    }
+  });
+
   it("offline (npm run judge) there is no /health and no runner, so that copy says so: no script, no request, no link that leads nowhere", async () => {
     expect((await fetch(`${judgeUrl}/health`)).status).toBe(404);
     const res = await fetch(`${judgeUrl}/status`);
@@ -556,7 +570,7 @@ describe("/status on the site", () => {
     const now = card(html, "now");
     expect(plain(now)).toBe("No live status in this copy It runs on your computer, with no runner behind it. The hosted status page ↗");
     expect(now).toContain(`<a class="pf" href="${SITE_URL}/status" target="_blank" rel="noopener">The hosted status page ↗</a>`);
-    expect(html).toContain('<p class="lead">An offline copy: nothing here is live.</p>');
+    expect(html).toContain('<p class="lead">An offline copy, with no live status.</p>');
     // The runs are the same list.
     expect(card(html, "runs")).toBe(card(STATUS_PAGE, "runs"));
   });
