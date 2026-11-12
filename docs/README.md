@@ -28,4 +28,5 @@ Back to the [README](../README.md). Test money only throughout: the Airwallex sa
 
 - [video/README.md](video/README.md): the film's edit guide, its scenes and where each figure comes from.
 
-Not part of the submission: [internal/](internal/README.md), working notes for the owner.
+Not part of the submission: `internal/` holds only the working notes a test, a script or a run record still names
+(two runbooks, a restart plan, a requirements audit and a cheat sheet in Dutch; the Demo Day card; the after-submission list).
