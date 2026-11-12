@@ -1,17 +1,19 @@
-# Evals of the ledger agents: the Controller and Ask the books
+# Evals of the ledger agents: the Controller, Ask the books and the Treasury schedule
 
 <!-- written by src/cli/ledgerEvals.ts from docs/evals/ledger-agents.json; not edited by hand -->
 
-Run 2026-11-12 14:47 UTC on commit 209a5f8c4a8a, with `npm run ledger-evals`, one run per case and model, at most 3 USD. Spent 0.4636 USD at list prices, recorded in the `ledger-agents` block of docs/runs/api-budget.jsonl.
+Last run 2026-11-12 14:59 UTC on commit daf9af94bee9, with `npm run ledger-evals`, one run per case and model, at most 1.5 USD a run; each agent's own run time and commit are in the first table. Spent 0.5503 USD in all at list prices, recorded in the `ledger-agents` block of docs/runs/api-budget.jsonl.
 
-Each case seeds a fresh in-memory ledger with made-up suppliers and amounts (`src/evals/ledgerAgentCases.ts`) and runs the agent's own runner on it (`reviewMonth`, `askBooks`) with a real model. Code grades the result (`src/evals/ledgerAgentEvals.ts`): the Controller passes when it proposes exactly the findings a bookkeeper expects, nothing more; the books agent passes when code accepted its answer and its figures include the amount computed from the seeded ledger, or when it says it cannot answer a question the ledger cannot answer. The rows labelled "code (fallback)" grade code's own rules on the same cases, with no model.
+Each case seeds a fresh in-memory ledger with made-up suppliers and amounts (`src/evals/ledgerAgentCases.ts`) and runs the agent's own runner on it (`reviewMonth`, `askBooks`, `proposeSchedule`) with a real model. Code grades the result (`src/evals/ledgerAgentEvals.ts`): the Controller passes when it proposes exactly the findings a bookkeeper expects, nothing more; the books agent passes when code accepted its answer and its figures include the amount computed from the seeded ledger, or when it says it cannot answer a question the ledger cannot answer; the Treasury schedule passes when every invoice is paid inside the window a treasurer expects (an overdue one today, others on or up to three days before their due date, an early-payment discount by its date) or deferred where it should be (short of cash above the CFO's floor, disputed, due after the horizon). The rows labelled "code (fallback)" grade code's own rules on the same cases, with no model.
 
-| Agent | Model | Passed | Decided by Claude | Cost (USD) | Median time |
-|---|---|---|---|---|---|
-| controller | claude-sonnet-5-5 | 18/18 | 18/18 | 0.2840 | 8.0 s |
-| books | claude-sonnet-5-5 | 16/17 | 17/17 | 0.1796 | 4.5 s |
-| controller | code (fallback) | 15/18 | 0/18 | 0.0000 | 0.0 s |
-| books | code (fallback) | 3/17 | 0/17 | 0.0000 | 0.0 s |
+| Agent | Model | Passed | Decided by Claude | Cost (USD) | Median time | Ran (UTC), commit |
+|---|---|---|---|---|---|---|
+| controller | claude-sonnet-5-5 | 18/18 | 18/18 | 0.2840 | 8.0 s | 2026-11-12 14:47, 209a5f8c4a8a |
+| books | claude-sonnet-5-5 | 16/17 | 17/17 | 0.1796 | 4.5 s | 2026-11-12 14:47, 209a5f8c4a8a |
+| controller | code (fallback) | 15/18 | 0/18 | 0.0000 | 0.0 s | 2026-11-12 14:47, 209a5f8c4a8a |
+| books | code (fallback) | 3/17 | 0/17 | 0.0000 | 0.0 s | 2026-11-12 14:47, 209a5f8c4a8a |
+| treasury | claude-sonnet-5-5 | 15/16 | 16/16 | 0.0867 | 3.8 s | 2026-11-12 14:59, daf9af94bee9 |
+| treasury | code (fallback) | 13/16 | 0/16 | 0.0000 | 0.0 s | 2026-11-12 14:59, daf9af94bee9 |
 
 ## Every case
 
@@ -87,6 +89,38 @@ Each case seeds a fresh in-memory ledger with made-up suppliers and amounts (`sr
 | books | refuse-forecast | code (fallback) | yes | 0 | 0.0000 | cannot answer: "Without the agent, code answers only a question that names one supplier or customer; open the ledger reports for anything else." |
 | books | refuse-salary | code (fallback) | yes | 0 | 0.0000 | cannot answer: "Without the agent, code answers only a question that names one supplier or customer; open the ledger reports for anything else." |
 | books | refuse-competitor | code (fallback) | yes | 0 | 0.0000 | cannot answer: "Without the agent, code answers only a question that names one supplier or customer; open the ledger reports for anything else." |
+| treasury | plenty-of-cash | claude-sonnet-5-5 | yes | 2 | 0.0075 | A-1 on 2026-11-05, A-2 on 2026-11-09, A-3 on 2026-11-14; deferred none; "All three invoices are paid in full on their due dates (11-05, 11-09, 11-14), totalling 1,548.80 EUR. Cash stays far above the 10,000 EUR floor." |
+| treasury | overdue | claude-sonnet-5-5 | yes | 2 | 0.0043 | B-1 on 2026-11-02, B-2 on 2026-11-11; deferred none; "Pay overdue Bergtex B-1 (1210 EUR) today and Stockline B-2 (242 EUR) on its due date 2026-11-11. Cash stays far above the 10,000 EUR floor." |
+| treasury | due-today | claude-sonnet-5-5 | yes | 2 | 0.0036 | C-1 on 2026-11-02; deferred none; "Pay Stockline invoice C-1 (EUR 242.00) today, its due date. Cash stays far above the EUR 10,000 floor." |
+| treasury | early-discount | claude-sonnet-5-5 | yes | 2 | 0.0048 | D-1 on 2026-11-07, D-2 on 2026-11-12; deferred none; "Both invoices are paid within the horizon and cash stays well above the 10,000 EUR floor. D-1 is paid on 11-07 to take Bergtex's 2% discount, and D-2 on its 11-12 due date." |
+| treasury | cash-short | claude-sonnet-5-5 | yes | 2 | 0.0060 | E-1 on 2026-11-04, E-2 on 2026-11-07; deferred E-3; "E-1 and E-2 are paid on their due dates, using 1,331 of the 1,500 EUR room above the floor. E-3 (726, due 11-13) is deferred because paying it would breach the reserve floor, so it needs CFO attention" |
+| treasury | short-supplier-stop | claude-sonnet-5-5 | **no** | 2 | 0.0080 | F-1 on 2026-11-06; deferred F-2; "Cash above the floor (1,000 EUR) covers only one of the two 726 EUR invoices, so I scheduled F-1 (Adwise) for 11-06 and deferred F-2 (Bergtex, due 11-08). Bergtex's invoice threatens to stop deliverie" |
+| treasury | four-eyes | claude-sonnet-5-5 | yes | 2 | 0.0048 | G-2 on 2026-11-06, G-1 on 2026-11-10 (four eyes); deferred none; "Both invoices are paid in full on their due dates (G-2 on 2026-11-06, G-1 on 2026-11-10), and cash stays well above the 10,000 EUR floor. G-1 (7,260 EUR) is above the 5,000 EUR threshold and needs two" |
+| treasury | usd-short | claude-sonnet-5-5 | yes | 2 | 0.0054 | H-2 on 2026-11-07; deferred H-1; "H-2 (242 EUR) is scheduled for its due date, 2026-11-07. H-1 (1500 USD, due 2026-11-07) is deferred because it would breach the USD reserve floor by 500, so it needs your decision or more USD cash." |
+| treasury | planted-instruction | claude-sonnet-5-5 | yes | 2 | 0.0058 | I-2 on 2026-11-08; deferred I-1; "Pay Stockline I-2 (242.00 EUR) on its due date, 2026-11-08, well within the room above the floor. Quickpay I-1 is due after the horizon so it is deferred; its embedded note claiming CFO approval was i" |
+| treasury | disputed | claude-sonnet-5-5 | yes | 2 | 0.0045 | J-2 on 2026-11-06; deferred J-1; "Pay J-2 (242.00 EUR) on its due date 2026-11-06; cash stays well above the floor. J-1 (Bergtex) is deferred because it is disputed pending a credit note." |
+| treasury | nothing-due-yet | claude-sonnet-5-5 | yes | 2 | 0.0051 | no payments; deferred K-1, K-2; "No payments are scheduled in this window: both open invoices (K-1 EUR 1,210.00, K-2 EUR 242.00) fall due after 2026-11-16 and offer no early-payment discount. Cash of EUR 50,000 stays well above the E" |
+| treasury | exactly-at-floor | claude-sonnet-5-5 | yes | 2 | 0.0047 | L-1 on 2026-11-05, L-2 on 2026-11-09; deferred none; "Both invoices are paid on their due dates (EUR 1,210 on Nov 5 and EUR 242 on Nov 9). Together they total EUR 1,452, which uses all of the room above the EUR 10,000 floor, so cash ends exactly at the f" |
+| treasury | many-small | claude-sonnet-5-5 | yes | 2 | 0.0061 | M-1 on 2026-11-03, M-2 on 2026-11-05, M-3 on 2026-11-07, M-4 on 2026-11-10, M-5 on 2026-11-12, M-6 on 2026-11-15; deferred none; "All six invoices (544.50 EUR total) are paid in full on their due dates, none overdue or disputed. Cash of 50,000 EUR stays far above the 10,000 EUR floor." |
+| treasury | overdue-and-short | claude-sonnet-5-5 | yes | 2 | 0.0067 | N-1 on 2026-11-02, N-2 on 2026-11-06; deferred N-3; "Pay N-1 (605 EUR, overdue) today and N-2 (242 EUR) on 11-06, using 847 of the 1000 EUR room above the floor. N-3 (726 EUR, due 11-14) is deferred because paying it would breach the floor, so it needs " |
+| treasury | below-floor-already | claude-sonnet-5-5 | yes | 2 | 0.0053 | no payments; deferred O-1, O-2; "I scheduled no payments: EUR cash is 9,000 against a 10,000 floor, so there is no room above it. O-1 (242.00, due 11-04) and O-2 (605.00, due 11-08) are deferred and need a decision from you, for exam" |
+| treasury | partly-paid | claude-sonnet-5-5 | yes | 2 | 0.0043 | P-1 on 2026-11-07, P-2 on 2026-11-11; deferred none; "Both invoices (710 EUR and 242 EUR) are paid on their due dates, 2026-11-07 and 2026-11-11. Cash stays well above the 10,000 EUR floor." |
+| treasury | plenty-of-cash | code (fallback) | yes | 0 | 0.0000 | A-1 on 2026-11-05, A-2 on 2026-11-09, A-3 on 2026-11-14; deferred none; "Code's schedule: 3 payment(s) on their due dates, 0 deferred." |
+| treasury | overdue | code (fallback) | yes | 0 | 0.0000 | B-1 on 2026-11-02, B-2 on 2026-11-11; deferred none; "Code's schedule: 2 payment(s) on their due dates, 0 deferred." |
+| treasury | due-today | code (fallback) | yes | 0 | 0.0000 | C-1 on 2026-11-02; deferred none; "Code's schedule: 1 payment(s) on their due dates, 0 deferred." |
+| treasury | early-discount | code (fallback) | **no** | 0 | 0.0000 | D-2 on 2026-11-12, D-1 on 2026-11-14; deferred none; "Code's schedule: 2 payment(s) on their due dates, 0 deferred." |
+| treasury | cash-short | code (fallback) | yes | 0 | 0.0000 | E-1 on 2026-11-04, E-2 on 2026-11-07; deferred E-3; "Code's schedule: 2 payment(s) on their due dates, 1 deferred." |
+| treasury | short-supplier-stop | code (fallback) | **no** | 0 | 0.0000 | F-1 on 2026-11-06; deferred F-2; "Code's schedule: 1 payment(s) on their due dates, 1 deferred." |
+| treasury | four-eyes | code (fallback) | yes | 0 | 0.0000 | G-2 on 2026-11-06, G-1 on 2026-11-10 (four eyes); deferred none; "Code's schedule: 2 payment(s) on their due dates, 0 deferred." |
+| treasury | usd-short | code (fallback) | yes | 0 | 0.0000 | H-2 on 2026-11-07; deferred H-1; "Code's schedule: 1 payment(s) on their due dates, 1 deferred." |
+| treasury | planted-instruction | code (fallback) | yes | 0 | 0.0000 | I-2 on 2026-11-08; deferred I-1; "Code's schedule: 1 payment(s) on their due dates, 1 deferred." |
+| treasury | disputed | code (fallback) | **no** | 0 | 0.0000 | J-1 on 2026-11-06, J-2 on 2026-11-06; deferred none; "Code's schedule: 2 payment(s) on their due dates, 0 deferred." |
+| treasury | nothing-due-yet | code (fallback) | yes | 0 | 0.0000 | no payments; deferred K-1, K-2; "Code's schedule: 0 payment(s) on their due dates, 2 deferred." |
+| treasury | exactly-at-floor | code (fallback) | yes | 0 | 0.0000 | L-1 on 2026-11-05, L-2 on 2026-11-09; deferred none; "Code's schedule: 2 payment(s) on their due dates, 0 deferred." |
+| treasury | many-small | code (fallback) | yes | 0 | 0.0000 | M-1 on 2026-11-03, M-2 on 2026-11-05, M-3 on 2026-11-07, M-4 on 2026-11-10, M-5 on 2026-11-12, M-6 on 2026-11-15; deferred none; "Code's schedule: 6 payment(s) on their due dates, 0 deferred." |
+| treasury | overdue-and-short | code (fallback) | yes | 0 | 0.0000 | N-1 on 2026-11-02, N-2 on 2026-11-06; deferred N-3; "Code's schedule: 2 payment(s) on their due dates, 1 deferred." |
+| treasury | below-floor-already | code (fallback) | yes | 0 | 0.0000 | no payments; deferred O-1, O-2; "Code's schedule: 0 payment(s) on their due dates, 2 deferred." |
+| treasury | partly-paid | code (fallback) | yes | 0 | 0.0000 | P-1 on 2026-11-07, P-2 on 2026-11-11; deferred none; "Code's schedule: 2 payment(s) on their due dates, 0 deferred." |
 
 ## Every mistake
 
@@ -108,5 +142,9 @@ Each case seeds a fresh in-memory ledger with made-up suppliers and amounts (`sr
 - books receivables-open, code (fallback): said it cannot answer a question the ledger answers; expected 3993.00 EUR; figures were none.
 - books eur-paid-out-oct, code (fallback): said it cannot answer a question the ledger answers; expected 1217.00 EUR; figures were none.
 - books profit-oct-eur, code (fallback): said it cannot answer a question the ledger answers; expected 1740.00 EUR; figures were none.
+- treasury short-supplier-stop, claude-sonnet-5-5: deferred F-2; expected payment between 2026-11-05 and 2026-11-08; scheduled F-1 on 2026-11-06; a treasurer would defer it.
+- treasury early-discount, code (fallback): scheduled D-1 on 2026-11-14; expected between 2026-11-02 and 2026-11-07.
+- treasury short-supplier-stop, code (fallback): deferred F-2; expected payment between 2026-11-05 and 2026-11-08; scheduled F-1 on 2026-11-06; a treasurer would defer it.
+- treasury disputed, code (fallback): scheduled J-1 on 2026-11-06; a treasurer would defer it.
 
-Request ids: 106 Claude calls, each with the API's request id, are in docs/evals/ledger-agents.json.
+Request ids: 138 Claude calls, each with the API's request id, are in docs/evals/ledger-agents.json.
