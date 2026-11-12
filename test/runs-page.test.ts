@@ -222,7 +222,7 @@ describe("/runs as a timeline", () => {
   // The kind of each run listed on 12 Nov. A row added later (in the old shape or the new) is held by the tests that
   // go over every row; the ones that name runs go over these.
   const KINDS: Record<string, RunKind> = {
-    "vic-3": "sandbox", "two-locks-1": "sandbox", "platform-e2e-1": "sandbox", "t0-1": "sandbox", "connected-1": "sandbox", "vic-2": "nothing", "vic-1": "sandbox",
+    "vic-3": "sandbox", "two-locks-1": "sandbox", "platform-e2e-1": "sandbox", "t0-1": "sandbox", "connected-1": "sandbox", "vic-2": "control", "vic-1": "sandbox",
     "awx-1": "sandbox", "main-1": "both", "agent-1": "rehearsal", "tap-1": "sandbox", "friday-1": "rehearsal",
     "real-customers-1": "sandbox", "tokenize-1": "testnet", "batch-1": "sandbox", "payee-check-1": "sandbox", "faceid-onchain-1": "testnet", "moneybird-1": "sandbox",
     "metal-hold-1": "testnet", "acceptance-1": "sandbox",
@@ -299,7 +299,7 @@ describe("/runs as a timeline", () => {
   });
 
   it("gives every run exactly one honest badge, the kind its record says", () => {
-    expect(KIND_LABEL).toEqual({ sandbox: "Live sandbox", testnet: "Live testnet", both: "Live testnet and sandbox", simulated: "Simulated", rehearsal: "Rehearsal", nothing: "Live, nothing bought" });
+    expect(KIND_LABEL).toEqual({ sandbox: "Live sandbox", testnet: "Live testnet", both: "Live testnet and sandbox", simulated: "Simulated", rehearsal: "Rehearsal", nothing: "Live, nothing bought", control: "Local control test" });
     expect(known(rows.map((r) => r.key)).sort()).toEqual(Object.keys(KINDS).sort());
     for (const r of rows) {
       // Every row, exactly one badge of the allowed set: its kind's.
@@ -315,7 +315,8 @@ describe("/runs as a timeline", () => {
       // A row in the old shape (no kind of its own) gets the same badge from its rails and money words, except the one
       // whose money words say simulated (review 12 Nov, DC-4): the TAP run's merchant was simulated, so without its own
       // kind it can claim no more than Simulated; its explicit kind keeps it a live sandbox run.
-      expect(kindOf({ ...r, kind: undefined }), r.key).toBe(r.key === "tap-1" ? "simulated" : KINDS[r.key]);
+      // vic-2's own kind is "control" (0 outside calls, review 12 Nov); its money words alone say nothing was bought.
+      expect(kindOf({ ...r, kind: undefined }), r.key).toBe(r.key === "tap-1" ? "simulated" : r.key === "vic-2" ? "nothing" : KINDS[r.key]);
     }
     expect(row("tap-1").money).toBe("Simulated merchant · test money");
     // What the records say: the main run ran on Metal testnet and in the Airwallex sandbox; the second Airi run was live
@@ -390,17 +391,19 @@ describe("/runs as a timeline", () => {
 
   it("keeps the rehearsals out of the live list, in one closed group with its count", () => {
     const live = entriesOf(liveList(html)), reh = entriesOf(rehGroup(html));
-    expect(live.map((e) => e.key)).toEqual(rows.filter((r) => kindOf(r) !== "rehearsal").map((r) => r.key));
-    expect(known(reh.map((e) => e.key))).toEqual(["agent-1", "friday-1"]);
-    expect(reh.map((e) => e.key)).toEqual(rows.filter((r) => kindOf(r) === "rehearsal").map((r) => r.key));
+    // Review 12 Nov: a local control test (no partner called: vic-2) sits with the rehearsals, outside the live runs.
+    const outside = (r: RunRow) => kindOf(r) === "rehearsal" || kindOf(r) === "control";
+    expect(live.map((e) => e.key)).toEqual(rows.filter((r) => !outside(r)).map((r) => r.key));
+    expect(known(reh.map((e) => e.key))).toEqual(["vic-2", "agent-1", "friday-1"]);
+    expect(reh.map((e) => e.key)).toEqual(rows.filter(outside).map((r) => r.key));
     for (const e of live) expect(e.cls).not.toContain("k-rehearsal");
     // Closed by default (no open attribute), named with its count, with one link to the folder of the dry runs' logs.
-    expect(html).toContain(`<details class="rehs" id="rehearsals"><summary>Rehearsals and dry runs · ${reh.length}`);
+    expect(html).toContain(`<details class="rehs" id="rehearsals"><summary>Rehearsals, dry runs and control tests · ${reh.length}`);
     expect(rehGroup(html) + html.slice(html.indexOf(rehGroup(html)) + rehGroup(html).length).split("</details>")[0]).toMatch(/<a class="f" href="https:\/\/github\.com\/agamemnon-coder\/x402-business-agents\/tree\/main\/docs\/runs"[^>]*>docs\/runs on GitHub/);
     expect(existsSync("docs/runs")).toBe(true);
     // Rehearsals do not count as live runs.
     expect(text(html)).toContain(`${live.length} live runs, newest first`);
-    expect(known(live.map((e) => e.key))).toHaveLength(24);
+    expect(known(live.map((e) => e.key))).toHaveLength(23); // vic-2 is a local control test since 12 Nov (review)
   });
 
   it("marks exactly one run as the product: the main run", () => {
@@ -435,7 +438,7 @@ describe("/runs as a timeline", () => {
     expect(carrying("airwallex")).toEqual(["vic-3", "real-customers-1", "batch-1", "payee-check-1", "two-locks-1", "platform-e2e-1", "acceptance-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
     const v2 = JSON.parse(raw("docs/demo/vic-2-run.json")) as { outside_calls: { airi: number; airwallex: number } };
     expect([v2.outside_calls.airi, v2.outside_calls.airwallex]).toEqual([0, 0]);
-    const v2e = live.find((e) => e.key === "vic-2")!;
+    const v2e = [...live, ...entriesOf(rehGroup(html))].find((e) => e.key === "vic-2")!;
     expect(v2e.cls.filter((c) => /^f-(airwallex|visa|metal|claude)$/.test(c))).toEqual([]);
     expect(v2e.html).not.toMatch(/class="rl (awx|visa)"/);
     expect(row("vic-2").partners).toEqual([]);
@@ -463,8 +466,9 @@ describe("/runs as a timeline", () => {
     expect(script).toContain("a.focus({ preventScroll: true });");
     const hiding = css.split("}").filter((rule) => /li\.run/.test(rule.split("{")[0]!) && /display:\s*none/.test(rule));
     expect(hiding.length).toBeGreaterThanOrEqual(links.length - 1);
-    for (const rule of hiding) for (const selector of rule.split("{")[0]!.split(",")) expect(selector).toMatch(/:target[^,]*:not\(\.newest\)/);
-    for (const l of links.slice(1)) expect(css).toContain(`#${l.id}:target ~ ol.tl > li.run:not(.f-${l.id}):not(.newest)`);
+    // Review 12 Nov: a filter hides the newest run too when it is not of that filter.
+    for (const rule of hiding) for (const selector of rule.split("{")[0]!.split(",")) expect(selector).not.toMatch(/:not\(\.newest\)/);
+    for (const l of links.slice(1)) expect(css).toContain(`#${l.id}:target ~ ol.tl > li.run:not(.f-${l.id}) {`);
     expect(css).not.toMatch(/#all:target[^{]*\{[^}]*display:\s*none/);
     // The first row is the newest: it carries the class and a small mark, and it is a PAID run.
     expect(live.filter((e) => e.cls.includes("newest")).map((e) => e.key)).toEqual([live[0]!.key]);
@@ -544,7 +548,7 @@ describe("/runs as a timeline", () => {
   });
 
   it("shows the first id in sight and lists every id in full in the fold, with the longer text, the checks, the rails and the money words", () => {
-    for (const r of rows.filter((x) => kindOf(x) !== "rehearsal")) {
+    for (const r of rows.filter((x) => kindOf(x) !== "rehearsal" && kindOf(x) !== "control")) {
       const e = entriesOf(liveList(html)).find((x) => x.key === r.key)!;
       const seen = inSight(e.html), fold = e.html.slice(seen.length);
       // One fold per entry, named by what is in it and how many more ids.
@@ -615,7 +619,7 @@ describe("/runs as a timeline", () => {
     expect(rest).toBeDefined();
     const rehTable = rest!.split("## What")[0]!;
     for (const r of rows) {
-      const table = kindOf(r) === "rehearsal" ? rehTable : liveTable!;
+      const table = kindOf(r) === "rehearsal" || kindOf(r) === "control" ? rehTable : liveTable!;
       expect(table, r.key).toContain(`**${mdCell(r.name ?? r.title)}**`);
       // Its line of the table: the kind once, then the money words the kind does not already say.
       const line = table.split("\n").find((l) => l.includes(`**${mdCell(r.name ?? r.title)}**`))!;
