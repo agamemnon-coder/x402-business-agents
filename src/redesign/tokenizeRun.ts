@@ -1,9 +1,10 @@
 // The invoice token on /metal: one short block, "Invoice token (prototype)", shown only when a live run's record
 // exists (docs/runs/<date>-tokenize.json, written by `npm run tokenize -- record` from the run's own ledger and call
 // log). Without a record the page is byte for byte what it was. Everything in the block is read from the record: the
-// day, the price and the face value, the scale, the count and every link; the words follow what the record says ran
-// (minted, financed, settled, verified) and its labels (prototype, Metal testnet, the financier simulated, the face
-// value scaled). No new style: the card is the one /airwallex uses for a separate run (READBACK_CSS, already in the
+// day of the run and the day of the approval, the price and the face value, the scale, the count and every link; the
+// words follow what the record says ran (minted, financed, settled, verified) and its labels (prototype, Metal
+// testnet, the financier simulated, the face value divided). It says "the CFO approved" only when the record links a
+// committed run record that names the approving passkey; a passkey without a test label is not proof of a person. No new style: the card is the one /airwallex uses for a separate run (READBACK_CSS, already in the
 // partner pages' one stylesheet). test/tokenize-record.test.ts holds both states.
 
 import { readdirSync, readFileSync } from "node:fs";
@@ -38,16 +39,19 @@ export function showable(rec: TokenizeRunRecord): boolean {
     && /^\d{4}-\d{2}-\d{2}$/.test(rec.date) && !!landed(rec, "mint") && !!rec.face_value.amount;
 }
 
-const dayOf = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${iso}T12:00:00Z`));
+const dayOf = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${iso.slice(0, 10)}T12:00:00Z`));
 const shortHash = (h: string) => `${h.slice(0, 6)}…${h.slice(-4)}`;
 
 /** The block's one sentence, built from what the record says ran. */
 export function tokenizeRunSentence(rec: TokenizeRunRecord): string {
-  const by = rec.invoice.approval.test_passkey ? "An invoice approved with a labelled test passkey" : "An invoice the CFO approved with a passkey";
+  const a = rec.invoice.approval;
+  const by = a.test_passkey ? "An invoice approved with a labelled test passkey" : a.described_in ? "An invoice the CFO approved with a passkey" : "An invoice approved with a passkey";
+  // The approval's own day when it is not the day of the run: the token run did not ask for a new approval.
+  const on = a.approved_at.slice(0, 10) === rec.date ? "" : ` on ${dayOf(a.approved_at)}`;
   const financed = landed(rec, "accept") && rec.received.creditor ? ` A simulated financier bought it for ${rec.received.creditor} test USD` : "";
-  const settled = landed(rec, "settle") && rec.received.holder ? `the payer paid ${rec.received.holder} to its holder` : "";
-  const money = financed && settled ? `${financed}; ${settled}.` : financed ? `${financed}.` : settled ? ` The payer paid ${rec.received.holder} test USD to its holder.` : ` Its face value is ${rec.face_value.amount} test USD.`;
-  return `${dayOf(rec.date)}, a separate run on Metal testnet. ${by} became a token.${money} Face value scaled by ${rec.labels.face_value_scaled_by}.`;
+  const settled = landed(rec, "settle") && rec.received.holder ? `the debtor paid its holder ${rec.received.holder}` : "";
+  const money = financed && settled ? `${financed}; ${settled}.` : financed ? `${financed}.` : settled ? ` The debtor paid its holder ${rec.received.holder} test USD.` : ` Its face value is ${rec.face_value.amount} test USD.`;
+  return `${dayOf(rec.date)}, a separate Metal testnet run. ${by}${on} became a token.${money} Face value divided by ${rec.labels.face_value_scaled_by}.`;
 }
 
 /** The block, or "" when there is no record to show. */
@@ -61,6 +65,6 @@ export function tokenizeRunBlock(run: TokenizeRun | null = tokenizeRun()): strin
   return `<h2 class="vh">Prototype</h2><div class="awrb"><div class="card" id="${TOKENIZE_RUN_ID}"><h3>${icon("file-check", 18)}${esc(TOKENIZE_RUN_TITLE)}</h3>
 <p>${esc(tokenizeRunSentence(rec))}</p>
 ${verified ? `<span class="awm ok">${icon("circle-check", 16)}${esc("Chain record verified")}</span>` : ""}
-<details class="fold"><summary>${esc(`The ${txs.length} transactions`)}</summary><ul class="awc">${txs.map((t) => `<li>${esc(t.what)} <a class="pf" href="${esc(t.explorer)}" target="_blank" rel="noopener">${esc(shortHash(t.hash))} ↗</a></li>`).join("")}</ul>
-<p class="src">${esc(`Prototype · test money · ${rec.calls.used} RPC calls${rec.calls.budget_total ? ` of a budget of ${rec.calls.budget_total}` : ""} · `)}<a class="pf" href="${esc(`${REPO_BLOB}${file.replace(/\.json$/, ".md")}`)}" target="_blank" rel="noopener">${esc("run record")} ↗</a></p></details></div></div>`;
+<details class="fold"><summary>${esc(`${txs.length} transaction${txs.length === 1 ? "" : "s"}`)}</summary><ul class="awc">${txs.map((t) => `<li>${esc(t.what)} <a class="pf" href="${esc(t.explorer)}" target="_blank" rel="noopener">${esc(shortHash(t.hash))} ↗</a></li>`).join("")}</ul>
+<p class="src">${esc(`Prototype · test money · ${rec.calls.used} requests to Metal testnet${rec.calls.budget_total ? ` of a budget of ${rec.calls.budget_total}` : ""} · `)}<a class="pf" href="${esc(`${REPO_BLOB}${file.replace(/\.json$/, ".md")}`)}" target="_blank" rel="noopener">${esc("run record")} ↗</a></p></details></div></div>`;
 }

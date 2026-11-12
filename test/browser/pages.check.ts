@@ -37,8 +37,9 @@ const metalWithRecord = liveAt >= 0 ? null : await (async () => {
   const { sampleRunRecord } = await import("../support/tokenizeWorld.js");
   const { metalPage } = await import("../../src/redesign/partners.js");
   const { agentRun } = await import("../../src/redesign/run.js");
-  const s = await sampleRunRecord();
-  return metalPage(agentRun(), { file: s.file, rec: s.record });
+  const { removeTokenizeWorlds } = await import("../support/tokenizeWorld.js");
+  // The page is built from the record in memory; the world's temp files (keys, ledger) are deleted right away.
+  try { const s = await sampleRunRecord(); return metalPage(agentRun(), { file: s.file, rec: s.record }); } finally { removeTokenizeWorlds(); }
 })();
 const failures: string[] = [];
 const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}`); };
@@ -432,7 +433,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (words > 230 + 25) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 230 plus the frame`);
       const block = page.locator("#invoice-token");
       const sight = await block.innerText().catch(() => "");
-      if (!/^Invoice token \(prototype\)\s+\d{1,2} \w+, a separate run on Metal testnet\. An invoice approved with a labelled test passkey became a token\. A simulated financier bought it for 2\.35 test USD; the payer paid 2\.40 to its holder\. Face value scaled by 100\.\s+Chain record verified\s+The 7 transactions$/.test(sight.trim())) fail(`/metal with an invoice-token record ${tag}: the block is not the title, one sentence, the badge and a closed fold (${JSON.stringify(sight)})`);
+      if (!/^Invoice token \(prototype\)\s+\d{1,2} \w+, a separate Metal testnet run\. An invoice approved with a labelled test passkey(?: on \d{1,2} \w+)? became a token\. A simulated financier bought it for 2\.35 test USD; the debtor paid its holder 2\.40\. Face value divided by 100\.\s+Chain record verified\s+7 transactions$/.test(sight.trim())) fail(`/metal with an invoice-token record ${tag}: the block is not the title, one sentence, the badge and a closed fold (${JSON.stringify(sight)})`);
       if ((await page.locator("#invoice-token").count()) !== 1 || !(await page.evaluate(() => { const f = document.querySelector(".folds.card"), b = document.querySelector("#invoice-token"), a = document.querySelector("a.open"); return !!f && !!b && !!a && !!(f.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) && !!(b.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING); }))) fail(`/metal with an invoice-token record ${tag}: the block is not between the main run's proof and the link to all the proof`);
       await page.screenshot({ path: join(shots, `metal-token-${tag}.png`), fullPage: true });
       await page.evaluate(() => document.querySelectorAll("details").forEach((d) => { d.open = true; }));

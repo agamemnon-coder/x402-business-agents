@@ -60,6 +60,8 @@ export function openRunLedger(path: string, o: { cmd?: string; readonly?: boolea
     // The newest row of each key is the one that counts: an older row of a key was settled before the newer was signed.
     unresolved: (from) => rowOf(db.prepare(`SELECT ${COLUMNS} FROM tokenize_txs t WHERE lower(from_addr) = lower(?) AND status = 'signed'
       AND seq = (SELECT max(seq) FROM tokenize_txs WHERE key = t.key) ORDER BY seq LIMIT 1`).get(from) as Row | undefined),
+    // A transaction with a receipt has used its nonce, reverted or not.
+    nextNonce: (from) => ((db.prepare("SELECT max(nonce) AS n FROM tokenize_txs WHERE lower(from_addr) = lower(?) AND status IN ('success', 'reverted')").get(from) as { n: number | null }).n ?? -1) + 1,
     signed(row) {
       db.prepare("INSERT INTO tokenize_txs (key, step, hash, raw, from_addr, nonce, gas, status, cmd, at) VALUES (?, ?, ?, ?, ?, ?, ?, 'signed', ?, ?)")
         .run(row.key, row.label, row.hash, row.raw, row.from, row.nonce, row.gas.toString(), cmd, now().toISOString());

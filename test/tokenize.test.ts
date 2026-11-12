@@ -4,10 +4,10 @@ import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { generatePrivateKey, privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
-import { encodeDeployData, keccak256, parseTransaction, stringToHex, toHex, type Hex } from "viem";
+import { encodeDeployData, HttpRequestError, keccak256, parseTransaction, RpcRequestError, stringToHex, toHex, TransactionRejectedRpcError, type Hex } from "viem";
 import { compileContract, loadContract } from "../src/tokenize/compile.js";
 import { intrinsicGas, localChain, type LocalChain } from "../src/tokenize/localChain.js";
-import { budgeted, BudgetReached, ESTIMATE_MARGIN, GAS, invoiceTokenCalls, SenderBusy, standInTokenCalls, tokenIdOf, txClient, TxReverted, TxUnresolved, WouldRevert, type JournalRow, type OnChainInvoice, type TxJournal } from "../src/tokenize/client.js";
+import { alreadyThere, budgeted, BudgetReached, ESTIMATE_MARGIN, GAS, invoiceTokenCalls, nodeAnswered, SenderBusy, standInTokenCalls, tokenIdOf, txClient, TxRefusedByNode, TxReverted, TxUnresolved, WouldRevert, type JournalRow, type OnChainInvoice, type TxJournal } from "../src/tokenize/client.js";
 import { approvedInvoice, dueDateFromDocument, mintRecord, MintRefused, partyRef, sha256Bytes, testnetFaceValue, verifyRecord, type ApprovedInvoice } from "../src/tokenize/record.js";
 import { discountedPrice, financeToken, mintToken, settleToken } from "../src/tokenize/flow.js";
 import { liveRefusals } from "../src/tokenize/guard.js";
@@ -269,6 +269,7 @@ describe("tokenize: the client's journal rules (no network)", () => {
       signed: (r) => { rows.push({ ...r, status: "signed", receipt: null }); },
       done: (hash, status, receipt) => { const r = rows.find((x) => x.hash === hash)!; r.status = status; r.receipt = receipt; },
       unresolved: (from) => rows.find((r) => r.status === "signed" && r.from === from && rows.filter((x) => x.key === r.key).at(-1) === r),
+      nextNonce: (from) => Math.max(-1, ...rows.filter((r) => r.from === from && r.status !== "signed").map((r) => r.nonce)) + 1,
     };
     return { rows, journal };
   }
@@ -333,6 +334,81 @@ describe("tokenize: the client's journal rules (no network)", () => {
     expect(sent.how).toBe("sent");
     expect(limits).toEqual([300_000n, 600_000n]);
     expect(rows.map((r) => r.status)).toEqual(["reverted", "success"]);
+  });
+
+  it("takes a nonce no lower than the journal's: a node whose count lags cannot make it sign a transaction that can never land", async () => {
+    const chain = await localChain();
+    const { rows, journal } = memoryJournal();
+    const setup = txClient({ chainId: CHAIN_ID, sleep: async () => {}, request: chain.request });
+    const owner = acct(), other = acct();
+    const tokenAddr = await standInTokenCalls(setup).deploy(acct());
+    // A backend behind the RPC that has not caught up: the pending count it gives is always 0.
+    const asked: string[] = [];
+    const stale = async (a: { method: string; params?: unknown[] }) => { asked.push(a.method); return a.method === "eth_getTransactionCount" ? "0x0" : chain.request(a); };
+    // Each command is a process of its own: a new client, the same journal.
+    const client = () => invoiceTokenCalls(txClient({ chainId: CHAIN_ID, sleep: async () => {}, journal, request: stale }));
+    await client().approve(owner, tokenAddr, other.address, 1n, { key: "first", label: "first approval" });
+    const second = await client().approve(owner, tokenAddr, other.address, 2n, { key: "second", label: "second approval" });
+    expect(second.how).toBe("sent");
+    // The journal holds the first one's receipt, so the second took nonce 1 whatever the node said, and landed.
+    expect(rows.map((r) => [r.key, r.status, r.nonce])).toEqual([["first", "success", 0], ["second", "success", 1]]);
+    expect(asked.filter((m) => m === "eth_getTransactionCount")).toHaveLength(2);
+    // A node that is ahead of the journal (the key was used elsewhere) is followed: the higher of the two.
+    const ahead = txClient({ chainId: CHAIN_ID, sleep: async () => {}, journal, request: chain.request });
+    await invoiceTokenCalls(setup).approve(other, tokenAddr, owner.address, 1n, { key: "elsewhere", label: "outside the journal" });
+    expect((await invoiceTokenCalls(ahead).approve(other, tokenAddr, owner.address, 2n, { key: "third", label: "third approval" })).how).toBe("sent");
+    expect(rows.at(-1)).toMatchObject({ key: "third", status: "success", nonce: 1 });
+  });
+
+  it("a send the node itself refuses stops at once with no receipt read; the re-run reads the receipt, offers the bytes once and stops again", async () => {
+    const { rows, journal } = memoryJournal();
+    const from = acct();
+    const asked: string[] = [];
+    let onSend: () => unknown = () => { throw Object.assign(new Error("transaction type not supported"), { code: -32000 }); };
+    const request = async (a: { method: string; params?: unknown[] }) => {
+      asked.push(a.method);
+      if (a.method === "eth_getTransactionCount") return "0x0";
+      if (a.method === "eth_sendRawTransaction") return onSend();
+      return null; // no receipt, ever
+    };
+    const tx = { key: "fund", label: "a transfer", from, to: from.address, data: "0x" as Hex, gas: 200_000n, estimate: false };
+    const run = (resendReverted = false) => txClient({ chainId: CHAIN_ID, sleep: async () => {}, journal, request, polls: 6, resendReverted }).send(tx).then(() => null, (e: Error) => e);
+    // The first send: the nonce read and the send, then nothing more. Not "run the command again".
+    const first = await run();
+    expect(first).toBeInstanceOf(TxRefusedByNode);
+    expect(first!.message).toMatch(/^a transfer 0x[0-9a-f]{64}: the node refused it \(transaction type not supported\)\. It is recorded and was not accepted\. Do not run the command again: .* See "A transaction the node refuses for good" in docs\/runs\/driver\/tokenize-runbook\.md$/);
+    expect(asked).toEqual(["eth_getTransactionCount", "eth_sendRawTransaction"]);
+    expect(rows.map((r) => r.status)).toEqual(["signed"]); // the hash was stored before the send
+    // Run again all the same (also with TOKENIZE_RESEND_REVERTED): one receipt read, the same bytes once, no polling.
+    for (const resend of [false, true]) {
+      asked.length = 0;
+      expect(await run(resend)).toBeInstanceOf(TxRefusedByNode);
+      expect(asked).toEqual(["eth_getTransactionReceipt", "eth_sendRawTransaction"]);
+    }
+    expect(rows).toHaveLength(1);
+    // No answer at all on the resend (a dropped connection): stopped, to be run again, and still no polling.
+    asked.length = 0;
+    onSend = () => { throw new Error("socket hang up"); };
+    const dropped = await run();
+    expect(dropped).toBeInstanceOf(TxUnresolved);
+    expect(dropped!.message).toMatch(/no receipt yet \(sending the same signed bytes again failed: socket hang up\)\. It is recorded; run the command again/);
+    expect(asked).toEqual(["eth_getTransactionReceipt", "eth_sendRawTransaction"]);
+    // The node says it has them already: only then are receipts read, up to the limit.
+    asked.length = 0;
+    onSend = () => { throw Object.assign(new Error("already known"), { code: -32000 }); };
+    expect(await run()).toBeInstanceOf(TxUnresolved);
+    expect(asked).toEqual(["eth_getTransactionReceipt", "eth_sendRawTransaction", ...Array.from({ length: 6 }, () => "eth_getTransactionReceipt")]);
+  });
+
+  it("tells a node's answer from a request that got none, as viem's transport reports them", () => {
+    const rpc = new RpcRequestError({ body: {}, error: { code: -32000, message: "transaction type not supported" }, url: "http://node.invalid" });
+    expect(nodeAnswered(rpc)).toBe(true);
+    expect(nodeAnswered(new TransactionRejectedRpcError(rpc))).toBe(true);
+    expect(nodeAnswered(new HttpRequestError({ url: "http://node.invalid", status: 502 }))).toBe(false);
+    expect(nodeAnswered(new HttpRequestError({ url: "http://node.invalid", cause: Object.assign(new Error("fetch failed"), { code: "ECONNRESET" }) }))).toBe(false);
+    expect(nodeAnswered(new Error("socket hang up"))).toBe(false);
+    for (const said of ["already known", "ALREADY_EXISTS: already known", "known transaction: 0xabc", "nonce too low: next nonce 3, tx nonce 2", "Nonce is too low", "transaction already imported"]) expect({ said, there: alreadyThere(said) }).toEqual({ said, there: true });
+    for (const said of ["transaction type not supported", "insufficient funds for gas * price + value", "nonce too high", "intrinsic gas too low", "exceeds block gas limit"]) expect({ said, there: alreadyThere(said) }).toEqual({ said, there: false });
   });
 
   it("reads a receipt's status as a number: 0x01 is a success too, anything else a revert", async () => {

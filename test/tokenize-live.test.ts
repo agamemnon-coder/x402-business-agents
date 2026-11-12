@@ -6,7 +6,7 @@
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import Database from "better-sqlite3";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { privateKeyToAccount } from "viem/accounts";
 import { keccak256, parseTransaction, type Address, type Hex } from "viem";
 import { GAS, invoiceTokenCalls, standInTokenCalls, txClient, type Request } from "../src/tokenize/client.js";
@@ -21,10 +21,12 @@ import { testnetFaceValue } from "../src/tokenize/record.js";
 import { standInLedger } from "../src/tokenize/standIn.js";
 import { centsToBaseUnits } from "../src/lib/money.js";
 import { CHAIN_ID } from "../src/metal/network.js";
-import { liveWorld } from "./support/tokenizeWorld.js";
+import { liveWorld, removeTokenizeWorlds } from "./support/tokenizeWorld.js";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const FACE = centsToBaseUnits(240), PRICE = centsToBaseUnits(235);
+afterAll(removeTokenizeWorlds); // every world's keys, ledgers and call logs
+
 /** The run's eleven transactions, in the order a clean run sends them. */
 const ALL_KEYS = TX_STEPS.flatMap((s) => STEP_TXS[s].map((t) => ({ step: s, key: t.key })));
 
@@ -220,6 +222,23 @@ describe("tokenize live: fund", () => {
     expect(own.code).toBe(2);
     expect(own.text).toMatch(/TOKENIZE_DONOR_KEY is one of the run's own role keys/);
     expect(own.requests).toEqual([]);
+
+    // A key file that cannot be used is named by its variable or its role, never by its path (a variable's value).
+    const noDonor = await v.run("fund", { TOKENIZE_DONOR_KEY: join(v.dir, "no-such-donor.key.json") });
+    expect(noDonor.code).toBe(2);
+    expect(noDonor.text).toMatch(/REFUSED {2}cannot read the donor key file \(TOKENIZE_DONOR_KEY\)/);
+    const issuerFile = keyFile(v.env.KIT11_KEYS_DIR!, "issuer"), payerFile = keyFile(v.env.KIT11_KEYS_DIR!, "payer");
+    writeFileSync(issuerFile, JSON.stringify({ ...(JSON.parse(readFileSync(issuerFile, "utf8")) as object), address: v.donor.address }));
+    const notOwn = await v.run("deploy");
+    expect(notOwn.code).toBe(2);
+    expect(notOwn.text).toMatch(/REFUSED {2}the address in the issuer's key file in KIT11_KEYS_DIR is not its key's own/);
+    writeFileSync(payerFile, "{}");
+    createRoleKeys(join(v.dir, "spare"));
+    writeFileSync(issuerFile, readFileSync(keyFile(join(v.dir, "spare"), "issuer")));
+    const notKey = await v.run("preflight");
+    expect(notKey.code).toBe(2);
+    expect(notKey.text).toMatch(/REFUSED {2}the payer's key file in KIT11_KEYS_DIR is not a key file \(no private key in it\)/);
+    for (const o of [noDonor, notOwn, notKey]) { expect(o.text).not.toContain(v.dir); expect(o.requests).toEqual([]); }
 
     // An invoice nobody approved: refused offline, before a key is made or a request sent.
     const none = await standInLedger({ approve: false });
@@ -429,6 +448,50 @@ describe("tokenize live: nothing is sent twice, and a stopped step resumes", () 
     expect(w.chain.mined.length - w.baseline).toBe(5);
   }, 60_000);
 
+  it("a send the node refuses (the canary: the first funding transfer) ends with exit 4 and no receipt read; a re-run spends one receipt read and one send, not six polls", async () => {
+    const w = await liveWorld();
+    const refusing: Request = async (a) => { if (a.method === "eth_sendRawTransaction") throw Object.assign(new Error("transaction type not supported"), { code: -32000 }); return w.chain.request(a); };
+    const first = await w.run("fund", {}, refusing);
+    expect(first.code).toBe(4);
+    // The four balances, the donor's balance, the nonce and the send: nothing after the node said no.
+    expect(first.requests).toEqual(["eth_call", "eth_call", "eth_call", "eth_call", "eth_call", "eth_getTransactionCount", "eth_sendRawTransaction"]);
+    expect(first.text).toMatch(/FAILED {3}fund the issuer's key 0x[0-9a-f]{64}: the node refused it \(transaction type not supported\)\. It is recorded and was not accepted\. Do not run the command again/);
+    expect(first.text).not.toMatch(/run the command again: it reads|STOPPED/);
+    expect(w.txs().map((t) => [t.key, t.status])).toEqual([["fund-issuer", "signed"]]);
+    expect(w.chain.mined.length).toBe(w.baseline);
+    // Run again against the advice, with and without TOKENIZE_RESEND_REVERTED: the receipt is read once, the same
+    // bytes are offered once, and it ends the same way. No receipt polling, no second transaction signed.
+    for (const over of [{}, { TOKENIZE_RESEND_REVERTED: "yes" }]) {
+      const again = await w.run("fund", over, refusing);
+      expect(again.code).toBe(4);
+      expect(again.requests).toEqual(["eth_call", "eth_call", "eth_call", "eth_call", "eth_call", "eth_getTransactionReceipt", "eth_sendRawTransaction"]);
+    }
+    expect(w.txs()).toHaveLength(1);
+    // The same for a step of Purser's own contract: three requests the first time, two on a re-run.
+    const v = await liveWorld();
+    await v.upTo("mint");
+    const no: Request = async (a) => { if (a.method === "eth_sendRawTransaction") throw Object.assign(new Error("transaction type not supported"), { code: -32000 }); return v.chain.request(a); };
+    const mint = await v.run("mint", {}, no);
+    expect({ code: mint.code, requests: mint.requests }).toEqual({ code: 4, requests: ["eth_estimateGas", "eth_getTransactionCount", "eth_sendRawTransaction"] });
+    const mintAgain = await v.run("mint", {}, no);
+    expect({ code: mintAgain.code, requests: mintAgain.requests }).toEqual({ code: 4, requests: ["eth_getTransactionReceipt", "eth_sendRawTransaction"] });
+    // The message's pointer is a heading of the runbook, and the runbook gives the exit code.
+    const runbook = readFileSync(join(ROOT, "docs/runs/driver/tokenize-runbook.md"), "utf8");
+    expect(runbook).toContain("**A transaction the node refuses for good (exit 4).**");
+    expect(runbook).toMatch(/^\| 4 \| `FAILED … the node refused it`/m);
+    expect(mint.text).toContain(`See "A transaction the node refuses for good" in docs/runs/driver/tokenize-runbook.md`);
+  }, 60_000);
+
+  it("a stale nonce from the node does not brick the issuer: mint after deploy takes the nonce after the journal's", async () => {
+    const w = await liveWorld();
+    await w.upTo("mint");
+    // A lagging backend: the issuer's pending count still reads 0 after the deploy.
+    const stale: Request = async (a) => (a.method === "eth_getTransactionCount" ? "0x0" : w.chain.request(a));
+    const o = await w.run("mint", {}, stale);
+    expect({ code: o.code, text: o.text }).toMatchObject({ code: 0 });
+    expect(w.txs().filter((t) => t.key === "deploy" || t.key === "mint").map((t) => [t.key, t.status, t.nonce])).toEqual([["deploy", "success", 0], ["mint", "success", 1]]);
+  }, 60_000);
+
   it("a transaction that reverted on chain is not sent again, unless the operator says so", async () => {
     const w = await liveWorld();
     await w.upTo("finance");
@@ -495,6 +558,39 @@ describe("tokenize live: budgets", () => {
     const none = await w.run("mint", { TOKENIZE_CALL_BUDGET_TOTAL: "18" });
     expect(none.code).toBe(2);
     expect(none.requests).toEqual([]);
+  }, 60_000);
+
+  it("holds the whole run's budget against the run's own call log: another file or an emptied one is refused, and the ledger's own count stands", async () => {
+    const w = await liveWorld();
+    expect((await w.run("fund")).code).toBe(0);
+    const log = w.env.TOKENIZE_CALL_LOG!;
+    expect(callLog(log).count()).toBe(14);
+    // Another file (a mistyped or per-command log) would start the total at zero: refused before any request.
+    const elsewhere = join(w.dir, "deploy-calls.log");
+    const other = await w.run("deploy", { TOKENIZE_CALL_BUDGET_TOTAL: "17", TOKENIZE_CALL_LOG: elsewhere });
+    expect(other.code).toBe(2);
+    expect(other.text).toMatch(/REFUSED {2}TOKENIZE_CALL_LOG names another file than the call log this run's ledger started with; the whole run's budget is held against that one; nothing sent/);
+    expect(other.requests).toEqual([]);
+    expect(existsSync(elsewhere)).toBe(false);
+    // The same file, emptied: the ledger counted 14 itself.
+    const whole = readFileSync(log, "utf8");
+    writeFileSync(log, "");
+    const emptied = await w.run("deploy", { TOKENIZE_CALL_BUDGET_TOTAL: "17" });
+    expect(emptied.code).toBe(2);
+    expect(emptied.text).toMatch(/REFUSED {2}TOKENIZE_CALL_LOG holds 0 calls and this run's ledger counted 14: it is not this run's whole call log; nothing sent/);
+    expect(emptied.requests).toEqual([]);
+    expect(w.statusOf("deploy")).toBeUndefined();
+    // The whole log back: the total is still held (14 used, 17 allowed, deploy needs 4), then it runs with room for 4.
+    writeFileSync(log, whole);
+    expect((await w.run("deploy", { TOKENIZE_CALL_BUDGET_TOTAL: "17" })).code).toBe(2);
+    const ok = await w.run("deploy", { TOKENIZE_CALL_BUDGET_TOTAL: "18" });
+    expect(ok.code).toBe(0);
+    expect(ok.text).toMatch(/\(4 Metal RPC calls in this command; 18 of 18 in the call log\)/);
+    // The ledger keeps its own count and the log's identity as a hash: never the path (a variable's value).
+    const s = w.state();
+    expect(s.calls_counted).toBe("18");
+    expect(s.call_log_id).toMatch(/^[0-9a-f]{64}$/);
+    expect(JSON.stringify(s)).not.toContain(w.dir);
   }, 60_000);
 
   it("signs a transaction only when the send and one receipt read still fit: a budget used up meanwhile leaves nothing signed", async () => {

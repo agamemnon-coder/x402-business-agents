@@ -6,20 +6,25 @@
 // Exit codes: 0 done. 1 failed (a transaction reverted on chain, verify found a difference, preflight is not ready).
 // 2 refused before anything was signed (a guard, a missing earlier step, a refusal by the ledger checks or by the
 // chain's own answer to the estimate). 3 stopped midway (the budget, the network, a receipt not there yet): run the
-// same command again.
+// same command again. 4 the node answered a send with an error and does not take the transaction: running the command
+// again would only offer the same bytes again (the runbook's "A transaction the node refuses for good").
+//
+// The whole run's budget is held against the call log and against the ledger's own count of requests, whichever is
+// larger, and the ledger remembers which file its call log is: another file, or an emptied one, is refused.
 //
 // The tests run these very functions against the in-memory chain (`request`, `settlement`); a live run uses Metal's
 // RPC and *USDZ. This file never imports the in-memory chain.
 
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
+import { resolve } from "node:path";
 import { BaseError, decodeEventLog, type Abi, type Address } from "viem";
 import { CHAIN_ID, EXPLORER_TX, USDZ, rpcUrl } from "../metal/network.js";
 import { centsToBaseUnits } from "../lib/money.js";
-import { BudgetReached, budgeted, httpRequest, invoiceTokenCalls, nodeSays, SenderBusy, tokenIdOf, txClient, TxReverted, TxUnresolved, WouldRevert, type OnChainInvoice, type Receipt, type Request, type Sent } from "./client.js";
+import { BudgetReached, budgeted, httpRequest, invoiceTokenCalls, nodeSays, SenderBusy, tokenIdOf, txClient, TxRefusedByNode, TxReverted, TxUnresolved, WouldRevert, type OnChainInvoice, type Receipt, type Request, type Sent } from "./client.js";
 import { discountedPrice, financeToken, mintToken, settleToken, type Step } from "./flow.js";
 import { liveRefusals, type LiveCommand } from "./guard.js";
-import { createRoleKeys, keyFile, missingRoles, readKey, roleKeys, ROLES, type Role, type RoleKeys } from "./keys.js";
+import { createRoleKeys, missingRoles, readDonorKey, readRoleKey, roleKeys, ROLES, type Role, type RoleKeys } from "./keys.js";
 import { openRunLedger, type RunLedger } from "./ledger.js";
 import { callsNeeded, fundKey, GAS_ALLOWANCE, inputsOf, planRun, PREFLIGHT_MAX_CALLS, roleNeeds, STEP_TXS, TX_STEPS, type RunPlan, type TxStatus, type TxStep } from "./plan.js";
 import { mintRecord, MintRefused, verifyRecord } from "./record.js";
@@ -46,6 +51,22 @@ export class Refused extends Error {
 export function callLog(path: string) {
   const lines = () => (existsSync(path) ? readFileSync(path, "utf8").split("\n").filter((l) => l.trim()) : []);
   return { lines, count: () => lines().length, append: (line: string) => appendFileSync(path, `${line}\n`) };
+}
+
+/** Which file a run's call log is, as its ledger remembers it: the hash of the resolved path, never the path. */
+export const callLogId = (path: string): string => createHash("sha256").update(resolve(path)).digest("hex");
+
+/**
+ * Why this file cannot be the call log of the run whose ledger state `get` reads; null when it can. The ledger keeps
+ * the log's identity from its first command (call_log_id) and its own count of the run's requests (calls_counted,
+ * written after each log line), so a mistyped, per-command or emptied log cannot reset the whole run's total.
+ */
+export function callLogMismatch(get: (key: string) => string | undefined, path: string): string | null {
+  const id = get("call_log_id");
+  if (id && id !== callLogId(path)) return "TOKENIZE_CALL_LOG names another file than the call log this run's ledger started with; the whole run's budget is held against that one";
+  const counted = Number(get("calls_counted") ?? "0"), lines = callLog(path).count();
+  if (lines < counted) return `TOKENIZE_CALL_LOG holds ${lines} calls and this run's ledger counted ${counted}: it is not this run's whole call log`;
+  return null;
 }
 
 const CENT = centsToBaseUnits(1);
@@ -81,9 +102,15 @@ export async function runLive(cmd: LiveCommand, o: LiveOptions): Promise<number>
   let ledger: RunLedger;
   try { ledger = openRunLedger(env.TOKENIZE_DB!, { cmd, now }); } catch (e) { io.err(`REFUSED  ${(e as Error).message}`); return 2; }
   const log = callLog(env.TOKENIZE_CALL_LOG!);
+  const otherLog = callLogMismatch(ledger.get, env.TOKENIZE_CALL_LOG!);
+  if (otherLog) { io.err(`REFUSED  ${otherLog}; nothing sent`); ledger.close(); return 2; }
+  if (!ledger.get("call_log_id")) ledger.put("call_log_id", callLogId(env.TOKENIZE_CALL_LOG!));
+  // The run's total so far: the call log's lines or the ledger's own count, whichever is larger.
+  const logged = () => Math.max(log.count(), Number(ledger.get("calls_counted") ?? "0"));
   const rpc = budgeted(o.request ?? httpRequest(rpcUrl(env as NodeJS.ProcessEnv)), {
-    chainId: CHAIN_ID, max, total, logged: log.count, askChainId: cmd === "preflight",
-    onCall: (method, n) => log.append(`${now().toISOString()} ${cmd} ${method} ${n.used}/${n.max} ${n.running}/${n.total}`),
+    chainId: CHAIN_ID, max, total, logged, askChainId: cmd === "preflight",
+    // The log line first, then the ledger's count: a stop between the two leaves the log ahead, never behind.
+    onCall: (method, n) => { log.append(`${now().toISOString()} ${cmd} ${method} ${n.used}/${n.max} ${n.running}/${n.total}`); ledger.put("calls_counted", String(n.running)); },
   });
   const estimate = env.TOKENIZE_GAS !== "fixed";
   // One receipt read costs one call: the wait before each read (2.5 s unless TOKENIZE_POLL_MS says otherwise), six reads at most.
@@ -95,13 +122,14 @@ export async function runLive(cmd: LiveCommand, o: LiveOptions): Promise<number>
   } catch (e) {
     if (e instanceof Refused || e instanceof MintRefused || e instanceof WouldRevert || e instanceof SenderBusy) { io.err(`REFUSED  ${e.message}`); return 2; }
     if (e instanceof TxReverted) { io.err(`FAILED   ${e.label} reverted on chain: ${EXPLORER_TX}${e.hash}. Nothing is sent again for it unless TOKENIZE_RESEND_REVERTED=yes`); return 1; }
+    if (e instanceof TxRefusedByNode) { io.err(`FAILED   ${e.message}`); return 4; }
     if (e instanceof TxUnresolved) { io.err(`STOPPED  ${e.message}`); return 3; }
     if (e instanceof BudgetReached) { io.err(`STOPPED  ${e.message}. Run the command again with budget left: recorded transactions are never sent twice`); return 3; }
     if (e instanceof BaseError) { io.err(`STOPPED  a request to the RPC failed (${nodeSays(e)}). Run the command again: it continues from the journal`); return 3; }
     io.err(`FAILED   ${nodeSays(e)}`);
     return 1;
   } finally {
-    io.say(`(${rpc.used()} Metal RPC calls in this command; ${log.count()} of ${total} in the call log)`);
+    io.say(`(${rpc.used()} Metal RPC calls in this command; ${logged()} of ${total} in the call log)`);
     ledger.close();
   }
 }
@@ -190,7 +218,7 @@ function sayCallPlan(c: Ctx): boolean {
     const txs = step === "verify" ? "1 read of the chain's record" : STEP_TXS[step].map((t) => `${t.what.toLowerCase()}${c.statusOf(t.key) === "success" ? " (done)" : ""}`).join("; ");
     c.io.say(`PLAN     ${step.padEnd(8)} ${done ? "done" : `${step === "fund" ? "at most" : "at least"} ${n} calls`}: ${txs}`);
   }
-  const used = callLog(c.env.TOKENIZE_CALL_LOG!).count(), total = Number(c.env.TOKENIZE_CALL_BUDGET_TOTAL);
+  const used = Math.max(callLog(c.env.TOKENIZE_CALL_LOG!).count(), Number(c.ledger.get("calls_counted") ?? "0")), total = Number(c.env.TOKENIZE_CALL_BUDGET_TOTAL);
   c.io.say(`PLAN     total    ${left} calls still to make when every receipt is there on its first read; ${used} in the call log; TOKENIZE_CALL_BUDGET_TOTAL ${total} leaves ${Math.max(0, total - used)}: ${total - used >= left ? "enough" : "NOT enough"}`);
   return total - used >= left;
 }
@@ -203,9 +231,9 @@ async function preflight(c: Ctx): Promise<number> {
   sayInvoice(c, plan);
   const dir = c.env.KIT11_KEYS_DIR!;
   const missing = missingRoles(dir);
-  const keys = Object.fromEntries(ROLES.filter((r) => !missing.includes(r)).map((r) => [r, keyOrRefuse(() => readKey(keyFile(dir, r))).address])) as Partial<RoleAddresses>;
+  const keys = Object.fromEntries(ROLES.filter((r) => !missing.includes(r)).map((r) => [r, keyOrRefuse(() => readRoleKey(dir, r)).address])) as Partial<RoleAddresses>;
   if (!missing.length) rememberRoles(c, keyOrRefuse(() => roleKeys(dir)));
-  const donor = c.env.TOKENIZE_DONOR_KEY ? keyOrRefuse(() => readKey(c.env.TOKENIZE_DONOR_KEY!)) : null;
+  const donor = c.env.TOKENIZE_DONOR_KEY ? keyOrRefuse(() => readDonorKey(c.env.TOKENIZE_DONOR_KEY!)) : null;
   const needs = roleNeeds(plan, c.statusOf);
 
   const id = Number(BigInt((await c.rpc.request({ method: "eth_chainId" })) as string));
@@ -240,7 +268,7 @@ async function preflight(c: Ctx): Promise<number> {
 /** Creates the missing role keys, reads the four balances, prints the plan, then sends each shortfall from the donor. */
 async function fund(c: Ctx): Promise<number> {
   const plan = offlinePlan(c);
-  const donor = keyOrRefuse(() => readKey(c.env.TOKENIZE_DONOR_KEY!));
+  const donor = keyOrRefuse(() => readDonorKey(c.env.TOKENIZE_DONOR_KEY!));
   const made = createRoleKeys(c.env.KIT11_KEYS_DIR!);
   const keys = keysOf(c);
   if (made.length) c.io.say(`KEYS     created ${made.join(", ")} in KIT11_KEYS_DIR (mode 600)`);

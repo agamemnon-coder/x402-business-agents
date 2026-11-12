@@ -11,7 +11,7 @@ import type { LiveCommand } from "../src/tokenize/guard.js";
 import { openRunLedger } from "../src/tokenize/ledger.js";
 import { callLog, runLive } from "../src/tokenize/live.js";
 import { callsNeeded, TX_STEPS } from "../src/tokenize/plan.js";
-import { liveWorld } from "./support/tokenizeWorld.js";
+import { liveWorld, removeTokenizeWorlds } from "./support/tokenizeWorld.js";
 
 /** The path of the test server's address: it stands for the credential part of a real RPC URL (built here, not a literal). */
 const ENDPOINT = ["rpc", "endpoint", "part", "0123456789abcdef"].join("-");
@@ -47,7 +47,10 @@ beforeAll(async () => {
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   url = `http://127.0.0.1:${(server.address() as AddressInfo).port}${SECRET_PATH}`;
 }, 60_000);
-afterAll(() => new Promise<void>((r) => { server.close(() => r()); server.closeAllConnections(); }));
+afterAll(async () => {
+  await new Promise<void>((r) => { server.close(() => r()); server.closeAllConnections(); });
+  removeTokenizeWorlds(); // the keys, ledgers and call log this file made
+});
 
 /** A command as the CLI runs it: its own transport from METAL_RPC_URL; only the settlement token is the stand-in's. */
 async function live(cmd: LiveCommand, over: Record<string, string | undefined> = {}) {

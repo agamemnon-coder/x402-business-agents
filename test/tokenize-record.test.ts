@@ -6,7 +6,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import Database from "better-sqlite3";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { metalPage } from "../src/redesign/partners.js";
 import { agentRun } from "../src/redesign/run.js";
 import { REPO_BLOB } from "../src/redesign/metalStory.js";
@@ -16,7 +16,7 @@ import { callLog } from "../src/tokenize/live.js";
 import { ROLES } from "../src/tokenize/keys.js";
 import { buildRunRecord, recordRefusals, runRecordMarkdown, writeRunRecord, type TokenizeRunRecord } from "../src/tokenize/runRecord.js";
 import { EXPLORER_TX } from "../src/metal/network.js";
-import { liveWorld, ROOT, sampleRunRecord } from "./support/tokenizeWorld.js";
+import { liveWorld, removeTokenizeWorlds, ROOT, sampleRunRecord } from "./support/tokenizeWorld.js";
 
 const NOW = () => new Date("2026-11-12T10:00:00.000Z");
 const HASH = /^0x[0-9a-f]{64}$/, ADDRESS = /^0x[0-9a-fA-F]{40}$/;
@@ -42,6 +42,12 @@ beforeAll(async () => {
   mkdirSync(join(repo, "docs/runs"), { recursive: true });
   rec = buildRunRecord({ env: world.env, now: NOW, repo });
 }, 120_000);
+afterAll(removeTokenizeWorlds); // the keys, ledgers and call logs made here
+
+/** A day as the block writes it ("12 November"), from an ISO date or time. The run's own day is the day the test runs. */
+const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${iso.slice(0, 10)}T12:00:00Z`));
+/** " on 7 November" when the approval was on another day than the run, as the block's sentence has it. */
+const onDay = (r: TokenizeRunRecord) => (r.invoice.approval.approved_at.slice(0, 10) === r.date ? "" : ` on ${day(r.invoice.approval.approved_at)}`);
 
 describe("tokenize record: built from the run's ledger, its call log and the source ledger", () => {
   it("carries its labels, the invoice with the passkey that approved it, the amounts, the four roles and every transaction", () => {
@@ -54,7 +60,8 @@ describe("tokenize record: built from the run's ledger, its call log and the sou
     const src = new Database(world.source.file, { readonly: true });
     const p = src.prepare("SELECT terms_sha256 FROM proposals WHERE proposal_id = ?").get(world.source.proposalId) as { terms_sha256: string };
     const a = src.prepare("SELECT created_at FROM approvals WHERE proposal_id = ?").get(world.source.proposalId) as { created_at: string };
-    expect(rec.invoice).toMatchObject({ proposal_id: world.source.proposalId, kind: "invoice_payment", invoice_no: "SLL-2026-11B", amount: "240.00", currency: "EUR", terms_sha256: p.terms_sha256 });
+    const status = (src.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(world.source.proposalId) as { status: string }).status;
+    expect(rec.invoice).toMatchObject({ proposal_id: world.source.proposalId, kind: "invoice_payment", invoice_no: "SLL-2026-11B", amount: "240.00", currency: "EUR", terms_sha256: p.terms_sha256, source_status: status });
     expect(rec.invoice.document_sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(rec.invoice.approval).toMatchObject({ method: "passkey", approved_at: a.created_at, test_passkey: true, passkey_label: "tokenize virtual test passkey (not a phone)", described_in: null });
     expect(rec.invoice.approval.passkey_fingerprint).toMatch(/^[0-9A-F]{4}(-[0-9A-F]{4}){3}$/);
@@ -119,7 +126,11 @@ describe("tokenize record: built from the run's ledger, its call log and the sou
     expect(md).toContain("- **Face value:** EUR 240.00 ÷ 100 = 2.40 *USDZ (test money, no exchange rate)");
     expect(md).toContain("- **Discount:** 2% (200 basis points): the simulated financier's price is 2.35 *USDZ");
     for (const r of ROLES) expect(md).toContain(`\`${rec.roles[r]}\``);
-    expect(md).toMatch(/Max's go:\*\* given before the run: every live command refuses without `TOKENIZE_GO=yes`\. Its words and time were not given to this record\./);
+    // No go note was given: the record says what the files hold (the variable was set), and claims no person's go.
+    expect(md).toContain("- **Max's go:** not given to this record. `TOKENIZE_GO=yes` was set on every live command (each refuses without it); who gave the go, and when, is not in the run's files.");
+    expect(md).not.toMatch(/go:\*\* given/);
+    // The proposal's status in the source ledger, as it stands there.
+    expect(md).toContain(`  - status \`${rec.invoice.source_status}\` in the source ledger: ${rec.invoice.source_status === "EXECUTED" ? "the payment this approval was given for was already carried out there" : "the approval stands there; this run uses it to show the token path"}`);
     // The transactions: one row each, with the hash linked to the explorer.
     for (const t of rec.transactions) expect(md).toContain(`| ${t.what} | [\`${t.hash}\`](${EXPLORER_TX}${t.hash}) | success, block `);
     expect(md.match(/^\| .* \| \[`0x/gm)).toHaveLength(11);
@@ -156,6 +167,17 @@ describe("tokenize record: built from the run's ledger, its call log and the sou
     const real = buildRunRecord({ env: { ...world.env, TOKENIZE_SOURCE_DB: person, TOKENIZE_APPROVAL_RECORD: earlier }, now: NOW, repo });
     expect(real.invoice.approval).toMatchObject({ test_passkey: false, passkey_label: null, described_in: "docs/runs/earlier-run.md" });
     expect(runRecordMarkdown(real)).toContain(`by passkey \`${rec.invoice.approval.passkey_fingerprint}\`: not a labelled test passkey; who approved, and on what device, is in [docs/runs/earlier-run.md](earlier-run.md). Read from the source ledger.`);
+    // "test" or "virtual" as a whole word marks a test passkey; "latest phone" does not.
+    new Database(person).prepare("UPDATE passkeys SET label = 'latest phone'").run();
+    expect(buildRunRecord({ env: { ...world.env, TOKENIZE_SOURCE_DB: person }, now: NOW, repo }).invoice.approval).toMatchObject({ test_passkey: false, passkey_label: null, described_in: null });
+    // A proposal the source run already carried out (as P-0002 of the 7 November run was): the record says the invoice
+    // was paid there, and that the token run's settlement is not that payment.
+    const paid = join(world.dir, "paid.sqlite");
+    writeFileSync(paid, readFileSync(world.source.file));
+    new Database(paid).prepare("UPDATE proposals SET status = 'EXECUTED'").run();
+    const reused = buildRunRecord({ env: { ...world.env, TOKENIZE_SOURCE_DB: paid }, now: NOW, repo });
+    expect(reused.invoice.source_status).toBe("EXECUTED");
+    expect(runRecordMarkdown(reused)).toContain("  - status `EXECUTED` in the source ledger: the payment this approval was given for was already carried out there. This run reuses the approval to show the token path; its settlement in test money is not the invoice's payment.");
     writeFileSync(earlier, "Another passkey: 0000-0000-0000-0000.\n");
     expect(() => buildRunRecord({ env: { ...world.env, TOKENIZE_SOURCE_DB: person, TOKENIZE_APPROVAL_RECORD: earlier }, now: NOW, repo })).toThrow(/does not name the passkey that approved this invoice/);
 
@@ -197,6 +219,12 @@ describe("tokenize record: built from the run's ledger, its call log and the sou
     const fresh = await liveWorld();
     await fresh.run("preflight");
     expect(() => buildRunRecord({ env: fresh.env, now: NOW, repo })).toThrow(/holds no transaction: nothing ran/);
+    // Another call log than the one the run's ledger counted against, or a shorter one: it would under-report the calls.
+    expect(() => buildRunRecord({ env: { ...w.env, TOKENIZE_CALL_LOG: world.env.TOKENIZE_CALL_LOG }, now: NOW, repo })).toThrow(/TOKENIZE_CALL_LOG names another file than the call log this run's ledger started with/);
+    const whole = readFileSync(w.env.TOKENIZE_CALL_LOG!, "utf8");
+    writeFileSync(w.env.TOKENIZE_CALL_LOG!, whole.split("\n").slice(0, 5).join("\n") + "\n");
+    expect(() => buildRunRecord({ env: w.env, now: NOW, repo })).toThrow(/TOKENIZE_CALL_LOG holds 5 calls and this run's ledger counted 22: it is not this run's whole call log/);
+    writeFileSync(w.env.TOKENIZE_CALL_LOG!, whole);
     // Another proposal than the one this ledger minted.
     const other = join(world.dir, "other.sqlite");
     writeFileSync(other, readFileSync(world.source.file));
@@ -210,6 +238,8 @@ describe("tokenize record: built from the run's ledger, its call log and the sou
 describe("/metal: the invoice-token block, only with a run record", () => {
   const run = agentRun();
   const FILE = "docs/runs/2026-11-12-tokenize.json";
+  /** The run of 12 November as the record of a person's approval on 7 November would have it, with the earlier record linked. */
+  const person = (): TokenizeRunRecord => ({ ...rec, date: "2026-11-12", invoice: { ...rec.invoice, approval: { ...rec.invoice.approval, approved_at: "2026-11-07T12:12:20.000Z", test_passkey: false, passkey_label: null, described_in: "docs/runs/2026-11-07-awx-1.md" } } });
   const withRecord = () => metalPage(run, { file: FILE, rec });
   const without = () => metalPage(run, null);
 
@@ -233,16 +263,22 @@ describe("/metal: the invoice-token block, only with a run record", () => {
     const html = withRecord();
     expect(html.split(TOKENIZE_RUN_TITLE)).toHaveLength(2);
     const block = tokenizeRunBlock({ file: FILE, rec });
-    expect(textOf(block)).toBe(`Prototype Invoice token (prototype) 12 November, a separate run on Metal testnet. An invoice approved with a labelled test passkey became a token. A simulated financier bought it for 2.35 test USD; the payer paid 2.40 to its holder. Face value scaled by 100. Chain record verified The 7 transactions ${rec.transactions.slice(4).map((t) => `${t.what} ${t.hash.slice(0, 6)}…${t.hash.slice(-4)} ↗`).join(" ")} Prototype · test money · ${rec.calls.used} RPC calls of a budget of 200 · run record ↗`);
+    expect(textOf(block)).toBe(`Prototype Invoice token (prototype) ${day(rec.date)}, a separate Metal testnet run. An invoice approved with a labelled test passkey${onDay(rec)} became a token. A simulated financier bought it for 2.35 test USD; the debtor paid its holder 2.40. Face value divided by 100. Chain record verified 7 transactions ${rec.transactions.slice(4).map((t) => `${t.what} ${t.hash.slice(0, 6)}…${t.hash.slice(-4)} ↗`).join(" ")} Prototype · test money · ${rec.calls.used} requests to Metal testnet of a budget of 200 · run record ↗`);
+    // One word for the paying party, in sight and in the fold: the debtor.
+    expect(textOf(block)).not.toMatch(/\bpayer\b|RPC/);
     // It sits after the main run's proof, before the link to all the proof.
     expect(html.indexOf('<div class="folds card">')).toBeLessThan(html.indexOf('id="invoice-token"'));
     expect(html.indexOf('id="invoice-token"')).toBeLessThan(html.indexOf(">All the proof "));
     // Short: at most 50 words in sight, and the page within its budget with the block (250; 200 without).
     expect(visibleWords(html) - visibleWords(without())).toBeLessThanOrEqual(50);
     expect(visibleWords(html)).toBeLessThanOrEqual(250);
+    // The longest form of the block (a person's approval on an earlier day, named) stays within both budgets too.
+    const longest = metalPage(run, { file: FILE, rec: person() });
+    expect(visibleWords(longest) - visibleWords(without())).toBeLessThanOrEqual(50);
+    expect(visibleWords(longest)).toBeLessThanOrEqual(250);
     // Every label a public mention of the run carries.
     const sight = textOf(block.replace(/<details[\s\S]*<\/details>/, ""));
-    for (const label of [/\(prototype\)/, /Metal testnet/, /simulated financier/, /scaled by 100/, /test USD/, /a separate run/]) expect(sight).toMatch(label);
+    for (const label of [/\(prototype\)/, /Metal testnet/, /simulated financier/, /Face value divided by 100/, /test USD/, /a separate Metal testnet run/]) expect(sight).toMatch(label);
     // One design system: only classes the partner pages already style.
     const classes = new Set([...block.matchAll(/class="([^"]+)"/g)].flatMap((m) => m[1]!.split(" ")));
     expect([...classes].sort()).toEqual(["awc", "awm", "awrb", "card", "fold", "i", "ok", "pf", "src", "vh"]);
@@ -263,28 +299,40 @@ describe("/metal: the invoice-token block, only with a run record", () => {
     // Numbers: change them in the record and the block changes with them; none is written in the page's code.
     const other: TokenizeRunRecord = { ...rec, date: "2026-12-03", labels: { ...rec.labels, face_value_scaled_by: 50 }, received: { ...rec.received, creditor: "4.70", holder: "4.80" }, calls: { ...rec.calls, used: 41, budget_total: 45 } };
     const changed = textOf(tokenizeRunBlock({ file: "docs/runs/2026-12-03-tokenize.json", rec: other }));
-    expect(changed).toContain("3 December, a separate run on Metal testnet.");
-    expect(changed).toContain("bought it for 4.70 test USD; the payer paid 4.80 to its holder. Face value scaled by 50.");
-    expect(changed).toContain("41 RPC calls of a budget of 45");
-    expect(changed).not.toMatch(/2\.35|2\.40|scaled by 100|12 November/);
+    expect(changed).toContain("3 December, a separate Metal testnet run.");
+    expect(changed).toContain("bought it for 4.70 test USD; the debtor paid its holder 4.80. Face value divided by 50.");
+    expect(changed).toContain("41 requests to Metal testnet of a budget of 45");
+    expect(changed).not.toMatch(/2\.35|2\.40|divided by 100/);
+    expect(changed).not.toContain(`${day(rec.date)}, a separate`);
     // Every figure in sight is one of the record's.
     const sight = textOf(block.replace(/<details[\s\S]*<\/details>/, ""));
-    const known = new Set([String(Number(rec.date.slice(8, 10))), rec.received.creditor!, rec.received.holder!, String(rec.labels.face_value_scaled_by)]);
+    const known = new Set([String(Number(rec.date.slice(8, 10))), String(Number(rec.invoice.approval.approved_at.slice(8, 10))), rec.received.creditor!, rec.received.holder!, String(rec.labels.face_value_scaled_by)]);
     for (const n of sight.match(/\d+(?:\.\d+)?/g) ?? []) expect({ n, fromRecord: known.has(n) }).toEqual({ n, fromRecord: true });
-    expect(textOf(block)).toContain(`The ${rec.transactions.filter((t) => !t.key.startsWith("fund-")).length} transactions`);
+    expect(textOf(block)).toContain(`verified ${rec.transactions.filter((t) => !t.key.startsWith("fund-")).length} transactions`);
   });
 
   it("follows what the record says ran, and shows nothing for a record it may not show", () => {
     const drop = (keys: string[]): TokenizeRunRecord => ({ ...rec, transactions: rec.transactions.filter((t) => !keys.includes(t.key)) });
     const unsettled: TokenizeRunRecord = { ...drop(["payer-approve", "settle"]), received: { ...rec.received, holder: null, holder_address: null }, verify: null };
-    expect(tokenizeRunSentence(unsettled)).toBe("12 November, a separate run on Metal testnet. An invoice approved with a labelled test passkey became a token. A simulated financier bought it for 2.35 test USD. Face value scaled by 100.");
+    const start = `${day(rec.date)}, a separate Metal testnet run. An invoice approved with a labelled test passkey${onDay(rec)} became a token.`;
+    expect(tokenizeRunSentence(unsettled)).toBe(`${start} A simulated financier bought it for 2.35 test USD. Face value divided by 100.`);
     expect(tokenizeRunBlock({ file: FILE, rec: unsettled })).not.toContain("Chain record verified");
     const mintedOnly: TokenizeRunRecord = { ...drop(["offer", "financier-approve", "accept", "payer-approve", "settle"]), received: { creditor: null, creditor_address: null, holder: null, holder_address: null }, verify: null };
-    expect(tokenizeRunSentence(mintedOnly)).toBe("12 November, a separate run on Metal testnet. An invoice approved with a labelled test passkey became a token. Its face value is 2.40 test USD. Face value scaled by 100.");
-    expect(textOf(tokenizeRunBlock({ file: FILE, rec: mintedOnly }))).toContain("The 2 transactions");
-    // A person's passkey: the CFO's.
-    const person: TokenizeRunRecord = { ...rec, invoice: { ...rec.invoice, approval: { ...rec.invoice.approval, test_passkey: false, passkey_label: null } } };
-    expect(tokenizeRunSentence(person)).toContain("An invoice the CFO approved with a passkey became a token.");
+    expect(tokenizeRunSentence(mintedOnly)).toBe(`${start} Its face value is 2.40 test USD. Face value divided by 100.`);
+    expect(textOf(tokenizeRunBlock({ file: FILE, rec: mintedOnly }))).toContain(" 2 transactions ");
+    // Settled without a financier: the debtor paid the holder.
+    const direct: TokenizeRunRecord = { ...drop(["offer", "financier-approve", "accept"]), received: { ...rec.received, creditor: null, creditor_address: null } };
+    expect(tokenizeRunSentence(direct)).toBe(`${start} The debtor paid its holder 2.40 test USD. Face value divided by 100.`);
+    // "The CFO approved" only when the record links a committed run record that names the approving passkey; the
+    // approval's own day is named when it is not the day of the run.
+    expect(tokenizeRunSentence(person())).toBe("12 November, a separate Metal testnet run. An invoice the CFO approved with a passkey on 7 November became a token. A simulated financier bought it for 2.35 test USD; the debtor paid its holder 2.40. Face value divided by 100.");
+    // A passkey with no test label and no such record proves no person: neutral words.
+    const unnamed: TokenizeRunRecord = { ...person(), invoice: { ...person().invoice, approval: { ...person().invoice.approval, described_in: null } } };
+    expect(tokenizeRunSentence(unnamed)).toContain("An invoice approved with a passkey on 7 November became a token.");
+    expect(tokenizeRunSentence(unnamed)).not.toMatch(/CFO/);
+    // Approved on the day of the run: no second date.
+    const sameDay: TokenizeRunRecord = { ...person(), date: "2026-11-07" };
+    expect(tokenizeRunSentence(sameDay)).toContain("7 November, a separate Metal testnet run. An invoice the CFO approved with a passkey became a token.");
     // A failed verify gets no badge.
     expect(tokenizeRunBlock({ file: FILE, rec: { ...rec, verify: { ...rec.verify!, ok: false } } })).not.toContain("Chain record verified");
     // Not showable: no mint, a mint that did not land, a label missing, or a link that is not Metal's explorer.
@@ -297,12 +345,26 @@ describe("/metal: the invoice-token block, only with a run record", () => {
     // A look-alike link on another transaction is left out, never linked.
     const odd = tokenizeRunBlock({ file: FILE, rec: { ...rec, transactions: rec.transactions.map((t) => (t.key === "offer" ? { ...t, explorer: `https://evil.test/tx/${t.hash}` } : t)) } });
     expect(odd).not.toContain("evil.test");
-    expect(textOf(odd)).toContain("The 6 transactions");
+    expect(textOf(odd)).toContain(" 6 transactions ");
+    expect(textOf(tokenizeRunBlock({ file: FILE, rec: { ...rec, transactions: rec.transactions.filter((t) => t.key === "mint") } }))).toContain(" 1 transaction ");
   });
 
   it("finds the newest record by its name, and nothing else in docs/runs", () => {
     expect(tokenizeRunFile(["2026-11-10-metal-extra.md", "passkey-owners.json", "README.md"])).toBeNull();
     expect(tokenizeRunFile(["2026-11-12-tokenize.md", "2026-11-12-tokenize.json", "2026-11-13-tokenize.json", "x-2026-11-14-tokenize.json", "2026-11-12-tokenize.json.bak"])).toBe("docs/runs/2026-11-13-tokenize.json");
+  });
+
+  it("the docs say nothing has run live exactly as long as no run record is committed", () => {
+    const file = tokenizeRunFile();
+    const doc = readFileSync(join(ROOT, "docs/tokenize.md"), "utf8"), runbook = readFileSync(join(ROOT, "docs/runs/driver/tokenize-runbook.md"), "utf8");
+    // Without a record both say so; once a record is committed, the same commit must change both to point at it.
+    expect({ record: file, docSaysNothingRan: /Nothing has run on Metal testnet yet/.test(doc) }).toEqual({ record: file, docSaysNothingRan: file === null });
+    expect({ record: file, runbookSaysNothingRan: /Nothing here has run live yet/.test(runbook) }).toEqual({ record: file, runbookSaysNothingRan: file === null });
+    if (file) {
+      const md = file.replace(/^docs\//, "").replace(/\.json$/, ".md");
+      expect(doc).toContain(`](${md})`);
+      expect(runbook).toContain(`](../${md.replace(/^runs\//, "")})`);
+    }
   });
 
   it("the sample record the browser check shows is made by the same code", async () => {

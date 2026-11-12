@@ -5,10 +5,9 @@
 // runs under a preload that refuses the in-memory chain's packages (test/support/no-ethereumjs.mjs): the live commands
 // never load them. No request leaves this machine.
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -19,7 +18,7 @@ import { STAND_IN_FIXTURE } from "../src/tokenize/standIn.js";
 import type { TokenizeRunRecord } from "../src/tokenize/runRecord.js";
 import { centsToBaseUnits } from "../src/lib/money.js";
 import { CHAIN_ID, USDZ } from "../src/metal/network.js";
-import { ROOT, sourceLedger } from "./support/tokenizeWorld.js";
+import { removeTokenizeWorlds, ROOT, sourceLedger, tempDir } from "./support/tokenizeWorld.js";
 
 /** The part of the test server's address that stands for the credential in a real RPC URL (built here, not a literal). */
 const SECRET = ["rpc", "endpoint", "part", "0123456789abcdef"].join("-");
@@ -30,7 +29,7 @@ const wire: string[] = [];
 let failOnce: string | null = null;
 
 beforeAll(async () => {
-  dir = mkdtempSync(join(tmpdir(), "tokenize-cli-"));
+  dir = tempDir("tokenize-cli-");
   chain = await localChain();
   // The *USDZ stand-in's code at Metal's *USDZ address, and a donor that holds test money there.
   const setup = txClient({ request: chain.request, chainId: CHAIN_ID, sleep: async () => {} });
@@ -66,7 +65,10 @@ beforeAll(async () => {
     TOKENIZE_POLL_MS: "0", TOKENIZE_RECORD_REPO: join(dir, "repo"),
   };
 }, 60_000);
-afterAll(() => new Promise<void>((r) => { server.close(() => r()); server.closeAllConnections(); }));
+afterAll(async () => {
+  await new Promise<void>((r) => { server.close(() => r()); server.closeAllConnections(); });
+  removeTokenizeWorlds(); // the keys, ledgers and call log this file made
+});
 
 /** One command as its own process. `chain: false` runs it under the preload that refuses the in-memory chain's packages. */
 function cli(cmd: string, over: Record<string, string | undefined> = {}, o: { chain?: boolean } = {}): Promise<{ code: number; out: string; requests: string[] }> {

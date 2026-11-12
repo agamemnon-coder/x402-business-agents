@@ -1,8 +1,9 @@
 // npm run tokenize -- record: the run record of a live invoice-token run, docs/runs/<date>-tokenize.md and .json, in
 // the form of docs/tokenize-run-template.md. Everything in it is read from the run's own ledger (its transactions,
 // each with the hash that was stored before it was sent), the call log, and the source ledger (which passkey approved
-// the invoice, and when). Nothing is typed by hand and no request is made. What only a person knows (Max's go in
-// words, what did not go as planned) comes from optional text the operator names; without it the record says so.
+// the invoice, and when, and whether that proposal was already carried out there). Nothing is typed by hand and no
+// request is made. What only a person knows (Max's go in words, what did not go as planned) comes from optional text
+// the operator names; without it the record says only what the files hold: that TOKENIZE_GO was set, not who gave it.
 //
 // The record carries its labels: prototype, Metal testnet, test money, the financier simulated, the face value scaled.
 
@@ -11,15 +12,19 @@ import { dirname, join, relative, resolve } from "node:path";
 import Database from "better-sqlite3";
 import type { Address, Hex } from "viem";
 import { CHAIN_ID, EXPLORER_TX } from "../metal/network.js";
-import { callLog, usdzText } from "./live.js";
+import { callLog, callLogMismatch, usdzText } from "./live.js";
 import { openRunLedger } from "./ledger.js";
 import { ROLES, type Role } from "./keys.js";
 import { STEP_TXS, TX_STEPS } from "./plan.js";
 import { approvalPasskey, approvedInvoice } from "./record.js";
 
 export const RUN_RECORD_KIND = "tokenize-run";
-/** A passkey enrolled under a label like this is a test passkey, not a person's (src/tokenize/standIn.ts, src/cli/twoLocks.ts). */
-const TEST_PASSKEY_LABEL = /virtual|test/i;
+/**
+ * A passkey enrolled under a label with the word "virtual" or "test" is a test passkey, not a person's
+ * (src/tokenize/standIn.ts, src/cli/twoLocks.ts). Whole words only: "latest phone" is not one. The absence of such a
+ * label proves nothing about who approved: only `described_in` (a committed record that names the passkey) does.
+ */
+const TEST_PASSKEY_LABEL = /\b(virtual|test)\b/i;
 
 export interface RunRecordTx {
   key: string;
@@ -47,6 +52,8 @@ export interface TokenizeRunRecord {
   go: string | null;
   invoice: {
     proposal_id: string; kind: string; invoice_no: string; amount: string; currency: string; terms_sha256: string; document_sha256: string;
+    /** The proposal's status in the source ledger when the record was written; EXECUTED: already carried out (paid) there. */
+    source_status: string;
     approval: { method: "passkey"; passkey_fingerprint: string; approved_at: string; test_passkey: boolean; passkey_label: string | null; described_in: string | null };
   };
   face_value: { amount: string; unit: "*USDZ"; divisor: number };
@@ -115,6 +122,9 @@ export function buildRunRecord(i: RecordInputs): TokenizeRunRecord {
   const faceValue = state.face_value ? BigInt(state.face_value) : null;
   const divisor = minted?.divisor ?? null;
 
+  // The call log must be the one the run's ledger counted against: another or a shorter file would under-report.
+  const otherLog = callLogMismatch((k) => state[k], env.TOKENIZE_CALL_LOG!);
+  if (otherLog) throw new Error(otherLog);
   const lines = callLog(env.TOKENIZE_CALL_LOG!).lines();
   const byCommand: Record<string, number> = {};
   for (const l of lines) { const cmd = l.split(/\s+/)[1] ?? "?"; byCommand[cmd] = (byCommand[cmd] ?? 0) + 1; }
@@ -145,6 +155,7 @@ export function buildRunRecord(i: RecordInputs): TokenizeRunRecord {
     go: env.TOKENIZE_GO_NOTE?.trim() || null,
     invoice: {
       proposal_id: inv.proposalId, kind: inv.kind, invoice_no: inv.invoiceNo, amount: money(inv.amountCents), currency: inv.currency, terms_sha256: inv.termsSha256, document_sha256: inv.documentSha256,
+      source_status: inv.status,
       approval: { method: "passkey", passkey_fingerprint: passkey.fingerprint, approved_at: inv.approvedAt, test_passkey: testPasskey, passkey_label: testPasskey ? passkey.label : null, described_in: describedIn },
     },
     face_value: { amount: faceValue === null ? "" : usdzText(faceValue), unit: "*USDZ", divisor: divisor ?? 0 },
@@ -177,6 +188,10 @@ export function runRecordMarkdown(rec: TokenizeRunRecord): string {
   const approvedBy = a.test_passkey
     ? `a labelled test passkey ("${a.passkey_label}"), not a phone`
     : `not a labelled test passkey${a.described_in ? `; who approved, and on what device, is in [${a.described_in}](${relative("docs/runs", a.described_in)})` : ""}`;
+  // EXECUTED: the payment the approval was given for was already made in the source run. The token run is not that payment.
+  const sourceStatus = rec.invoice.source_status === "EXECUTED"
+    ? "the payment this approval was given for was already carried out there. This run reuses the approval to show the token path; its settlement in test money is not the invoice's payment"
+    : "the approval stands there; this run uses it to show the token path";
   const calls = Object.entries(rec.calls.by_command).map(([c, n]) => `${c} ${n}`).join(", ");
   // Who held the token when it was settled, when it is one of the run's own keys.
   const holderRole = ROLES.find((r) => rec.roles[r].toLowerCase() === rec.received.holder_address?.toLowerCase());
@@ -192,13 +207,14 @@ is typed by hand. [What this is](../tokenize.md) · [the same record as JSON](${
 
 ## Before the run
 
-- **Max's go:** ${rec.go ?? "given before the run: every live command refuses without `TOKENIZE_GO=yes`. Its words and time were not given to this record."}
+- **Max's go:** ${rec.go ?? "not given to this record. `TOKENIZE_GO=yes` was set on every live command (each refuses without it); who gave the go, and when, is not in the run's files."}
 - **Call budget:** ${rec.calls.budget_total ?? "not recorded"} Metal RPC calls for the whole run (\`TOKENIZE_CALL_BUDGET_TOTAL\`), funding the four test keys included.
 - **Invoice:**
   - proposal ${code(rec.invoice.proposal_id)} (${rec.invoice.kind}), invoice ${code(rec.invoice.invoice_no)}, ${amount}
   - signed terms SHA-256 ${code(rec.invoice.terms_sha256)}
   - document SHA-256 ${code(rec.invoice.document_sha256)}
   - approved on ${minute(a.approved_at)} by passkey ${code(a.passkey_fingerprint)}: ${approvedBy}. Read from the source ledger.
+  - status ${code(rec.invoice.source_status)} in the source ledger: ${sourceStatus}.
 - **Face value:** ${minted ? `${amount} ÷ ${rec.face_value.divisor} = ${rec.face_value.amount} *USDZ (test money, no exchange rate)` : "no token was minted"}
 - **Discount:** ${rec.discount ? `${rec.discount.bps / 100}% (${rec.discount.bps} basis points): the simulated financier's price is ${rec.discount.price} *USDZ` : "the token was not offered"}
 - **Keys (addresses only):** issuer ${code(rec.roles.issuer)}, creditor ${code(rec.roles.creditor)}, financier (simulated) ${code(rec.roles.financier)}, payer ${code(rec.roles.payer)}

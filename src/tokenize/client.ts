@@ -8,6 +8,12 @@
 // first has its receipt read, and only if there is none are the very same signed bytes sent again (same nonce, same
 // hash, so they cannot execute twice).
 //
+// A send can fail in two ways, and they are told apart (nodeAnswered). The request never got an answer (a dropped
+// connection, a timeout, an HTTP error): the node may or may not have the transaction, so the step stops and the
+// re-run reads its receipt (TxUnresolved). Or the node answered with a JSON-RPC error: it has seen these bytes and
+// does not take them. Unless its words mean "I already have it" (alreadyThere), offering them again cannot help, so
+// the step stops at once with no receipt read (TxRefusedByNode, its own exit code).
+//
 // Gas (docs/tokenize.md, "Gas"): a call to Purser's own contract asks the node first (eth_estimateGas, as Purser's
 // working contract runs on Metal do in src/cli/passkeyOwners.ts and src/cli/compliancePolicy.ts) and adds half, never
 // below the fixed floor; an estimate that reverts stops the step before anything is signed. A direct call to *USDZ
@@ -43,6 +49,16 @@ export class TxUnresolved extends Error {
     this.name = "TxUnresolved";
   }
 }
+/**
+ * The node answered the send with an error: it does not take these signed bytes. The transaction stays recorded, and
+ * running the command again would only offer the same bytes again, so the message points to the runbook instead.
+ */
+export class TxRefusedByNode extends Error {
+  constructor(readonly label: string, readonly hash: Hex, readonly said: string) {
+    super(`${label} ${hash}: the node refused it (${said}). It is recorded and was not accepted. Do not run the command again: it would only offer the same signed bytes once more. See "A transaction the node refuses for good" in docs/runs/driver/tokenize-runbook.md`);
+    this.name = "TxRefusedByNode";
+  }
+}
 /** The node says this transaction would revert. Nothing was signed or sent. */
 export class WouldRevert extends Error {
   constructor(readonly label: string, readonly reason: string) { super(`${label}: the chain would refuse it (${reason}); nothing signed, nothing sent`); this.name = "WouldRevert"; }
@@ -67,6 +83,19 @@ export function nodeSays(e: unknown): string {
   const s = typeof x.details === "string" && x.details ? x.details : typeof x.shortMessage === "string" && x.shortMessage ? x.shortMessage : String(x.message ?? e);
   return s.split("\n")[0]!.slice(0, 200);
 }
+
+/**
+ * true when the node itself answered with a JSON-RPC error (an EIP-1193 error carries a numeric `code`, as viem's
+ * RpcRequestError and the in-memory chain do); false when the request got no answer at all: a dropped connection, a
+ * timeout or an HTTP error, after which nobody knows whether the node has the transaction.
+ */
+export function nodeAnswered(e: unknown): boolean {
+  const numeric = (x: unknown) => typeof (x as { code?: unknown } | null)?.code === "number";
+  return e instanceof BaseError ? e.walk(numeric) !== null : numeric(e);
+}
+
+/** The node's refusal of a send means it has the transaction already (in its pool, or mined: its nonce is used). */
+export const alreadyThere = (said: string): boolean => /already[ _]?(known|imported|exists|in (the )?(mem)?pool)|known transaction|nonce (is )?too low|old nonce/i.test(said);
 
 export interface TxRequest {
   /** This transaction's name in the run's journal: one transaction per key, ever. */
@@ -103,6 +132,8 @@ export interface TxJournal {
   done(hash: Hex, status: "success" | "reverted", receipt: Receipt): void;
   /** A transaction of this sender that is recorded and still has no receipt, if any. */
   unresolved(from: Address): JournalRow | undefined;
+  /** One more than the highest nonce among this sender's recorded transactions that have a receipt; 0 when it has none. */
+  nextNonce(from: Address): number;
 }
 
 export interface TxClientOptions {
@@ -132,9 +163,16 @@ export interface TxClient {
 export function txClient(o: TxClientOptions): TxClient {
   const nonces = new Map<string, number>();
   const sleep = o.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  /**
+   * The node's pending count, but never below what the journal knows: a transaction of this sender with a receipt has
+   * used its nonce, whatever a lagging node answers. A stale count would sign bytes that can never land.
+   */
   const nonceOf = async (a: Address) => {
     const k = a.toLowerCase();
-    if (!nonces.has(k)) nonces.set(k, Number(BigInt((await o.request({ method: "eth_getTransactionCount", params: [a, "pending"] })) as string)));
+    if (!nonces.has(k)) {
+      const asked = Number(BigInt((await o.request({ method: "eth_getTransactionCount", params: [a, "pending"] })) as string));
+      nonces.set(k, Math.max(asked, o.journal?.nextNonce(a) ?? 0));
+    }
     return nonces.get(k)!;
   };
   const receiptOf = async (hash: Hex) => (await o.request({ method: "eth_getTransactionReceipt", params: [hash] })) as Receipt | null;
@@ -161,7 +199,12 @@ export function txClient(o: TxClientOptions): TxClient {
     if (!receipt) {
       try { await o.request({ method: "eth_sendRawTransaction", params: [prior.raw] }); } catch (e) {
         if (e instanceof BudgetReached) throw e;
-        note = `sending the same signed bytes again, the node said: ${nodeSays(e)}`; // "already known" or "nonce too low" when it is already there
+        const said = nodeSays(e);
+        // No answer at all: it may or may not have arrived. Stop here; the next run reads the receipt first.
+        if (!nodeAnswered(e)) throw new TxUnresolved(t.label, prior.hash, `sending the same signed bytes again failed: ${said}`);
+        // The node answered and does not take them: reading receipts for them would only spend the budget.
+        if (!alreadyThere(said)) throw new TxRefusedByNode(t.label, prior.hash, said);
+        note = `sending the same signed bytes again, the node said: ${said}`; // "already known" or "nonce too low": it has them
       }
       receipt = await poll(prior.hash);
     }
@@ -211,7 +254,9 @@ export function txClient(o: TxClientOptions): TxClient {
       } catch (e) {
         nonces.delete(t.from.address.toLowerCase()); // read the nonce again next time: the node may or may not have it
         if (e instanceof BudgetReached) throw e;
-        throw new TxUnresolved(t.label, hash, `the send failed: ${nodeSays(e)}`);
+        const said = nodeSays(e);
+        if (nodeAnswered(e) && !alreadyThere(said)) throw new TxRefusedByNode(t.label, hash, said);
+        throw new TxUnresolved(t.label, hash, `the send failed: ${said}`);
       }
       nonces.set(t.from.address.toLowerCase(), nonce + 1);
       const receipt = await poll(hash);

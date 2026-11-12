@@ -85,6 +85,9 @@ export async function localChain(chainId = CHAIN_ID): Promise<LocalChain> {
     }
   };
 
+  /** A send the chain does not take, as a node reports it: a JSON-RPC error (code -32000) with the reason. */
+  const refusal = (message: string) => Object.assign(new Error(message), { code: -32000 });
+
   const request: Request = async ({ method, params = [] }) => {
     calls.push(method);
     switch (method) {
@@ -100,11 +103,11 @@ export async function localChain(chainId = CHAIN_ID): Promise<LocalChain> {
       case "eth_sendRawTransaction": {
         const raw = params[0] as TransactionSerialized;
         const tx = parseTransaction(raw);
-        if (tx.chainId !== chainId) throw new Error(`wrong chain id ${tx.chainId}`);
+        if (tx.chainId !== chainId) throw refusal(`wrong chain id ${tx.chainId}`);
         const from = (await recoverTransactionAddress({ serializedTransaction: raw })).toLowerCase() as Address;
         const expected = nonces.get(from) ?? 0;
         const hash = keccak256(raw);
-        if (tx.nonce !== expected) throw new Error(`nonce too ${(tx.nonce ?? 0) < expected ? "low" : "high"}: expected ${expected}, got ${tx.nonce}`);
+        if (tx.nonce !== expected) throw refusal(`nonce too ${(tx.nonce ?? 0) < expected ? "low" : "high"}: expected ${expected}, got ${tx.nonce}`);
         await begin(from, tx.to);
         await setNonce(from, expected);
         const r = await evm.runCall({

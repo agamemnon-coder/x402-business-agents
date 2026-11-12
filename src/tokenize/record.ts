@@ -29,6 +29,8 @@ export interface ApprovedInvoice {
   documentSha256: string;
   approver: string;
   approvedAt: string;
+  /** The proposal's status in the source ledger: EXECUTED when the payment it was approved for was already made there. */
+  status: string;
 }
 
 const DONE = new Set(["APPROVED", "EXECUTING", "EXECUTED"]);
@@ -53,7 +55,7 @@ export function approvedInvoice(db: ReadableLedger, proposalId: string): Approve
   return {
     proposalId, kind: p.kind, termsSha256: p.terms_sha256, invoiceNo: terms.invoice_no, vendor: terms.vendor ?? "",
     amountCents: Math.round(Number(terms.amount) * 100), currency: terms.currency, documentSha256: doc.sha256,
-    approver: a.approver, approvedAt: a.created_at,
+    approver: a.approver, approvedAt: a.created_at, status: p.status,
   };
 }
 
