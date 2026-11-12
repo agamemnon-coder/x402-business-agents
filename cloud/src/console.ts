@@ -265,6 +265,8 @@ const CFG=JSON.parse(document.querySelector('meta[name=purser-cloud]').content);
 // A demo deployment (cloud/src/demo.ts): anyone may look at its test companies, nobody signs in, and this page sends
 // nothing but GET (api() refuses anything else before it is sent).
 const DEMO=CFG.demo||null;
+// A test world has no Face ID: its own words (cs.demo.o.<key>) take the place of those keys, before anything is drawn.
+if(DEMO)for(const k of Object.keys(L.m))if(k.indexOf('cs.demo.o.')===0)L.m[k.slice(10)]=L.m[k];
 document.documentElement.lang=L.lang;
 for(const a of document.querySelectorAll('[data-t]'))a.textContent=(a.classList.contains('tl')?' ':'')+t(a.dataset.t);
 document.querySelector('#foot').textContent=t(DEMO?'cs.demo.foot':'cs.foot');
@@ -275,7 +277,11 @@ const $=(s)=>document.querySelector(s);
 const el=(tag,cls,kids)=>{const e=document.createElement(tag);if(cls)e.className=cls;for(const k of [].concat(kids??[])){if(k===null||k===undefined||k===false)continue;e.append(typeof k==='string'?document.createTextNode(k):k)}return e};
 const ic=(name)=>{const s=document.createElement('span');s.className='ic';s.innerHTML=IC[name]||'';return s};
 const btn=(label,cls,icon)=>{const b=el('button','btn'+(cls?' '+cls:''),[icon?ic(icon):null,label]);b.type='button';return b};
-const today=new Date().toISOString().slice(0,10);
+// Today; in a test world, the day its time stands still (its company's last booking, from the demo's own list), so every
+// screen reads what is due and overdue as of the same day.
+const REAL_TODAY=new Date().toISOString().slice(0,10);let today=REAL_TODAY;
+// A finding in the words a reader gets; in a test world nobody approves with Face ID.
+const fw=(f)=>{const s=finding(f);return DEMO?s.split('with Face ID').join(t('cs.demo.with_face_id')):s};
 const view=()=>$('#view');
 const note=(text,tone)=>el('p','note-'+(tone||'info'),text);
 const chip=(status,words)=>el('span','st '+String(status||'').replace(/[^a-z_]/g,''),statusWords(status,words));
@@ -482,7 +488,7 @@ const meter=(v,max)=>{const m=el('span','meter');const f=el('span','');f.style.w
 const toCents=(v)=>{const m=/^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(String(v||''));if(!m)return 0;const c=Number(m[2])*100+Number((m[3]||'').padEnd(2,'0'));return m[1]?-c:c};
 async function overviewView(){
   title(t('cs.nav.overview'));
-  const [m,x,all]=await Promise.all([me(),api('/v1/insights'),api('/v1/invoices?limit=200')]);shell();
+  const [m,x,all]=await Promise.all([me(),api('/v1/insights'+(DEMO?'?as_of='+today:'')),api('/v1/invoices?limit=200')]);shell();
   const items=all.items||[];
   const blocked=Object.entries(x.blocked_by_reason||{}).sort((a,b)=>b[1]-a[1]);const nb=blocked.reduce((n,[,c])=>n+c,0);
   const waits=x.waiting.for_cfo+x.waiting.for_supplier_check+x.waiting.for_a_person;
@@ -491,7 +497,7 @@ async function overviewView(){
     tile(t('cs.t.due7'),'calendar-range',money(x.due_7_days_cents),byCur(x.due_30_days_cents).length?t('cs.x.due30',{amount:byCur(x.due_30_days_cents).map(([c,v])=>cur(c)+' '+cents(v)).join(' · ')}):null),
     tile(t('cs.t.overdue'),'clock',money(x.overdue_cents),byCur(x.overdue_cents).length?t('cs.x.pay_first'):t('cs.x.in_time'),byCur(x.overdue_cents).length?'alert':'calm'),
     tile(t('cs.t.waits'),'inbox',String(waits),t('cs.x.waits',{faceid:x.waiting.for_cfo,other:x.waiting.for_a_person+x.waiting.for_supplier_check})),
-    tile(t('cs.t.blocked'),'octagon-x',String(nb),blocked.length?tk('cs.w.f.'+blocked[0][0],t('cs.w.blocked')):t('cs.x.none_blocked'),nb?'alert':'calm')]);
+    tile(t('cs.t.blocked'),'octagon-x',String(nb),blocked.length?[...new Set(blocked.map(([k])=>tk('cs.w.f.'+k,t('cs.w.blocked'))))].join(' · '):t('cs.x.none_blocked'),nb?'alert':'calm')]);
   // The next thing to do, from the same invoices: the CFO's Face ID first, then what needs a person.
   const faceid=items.filter(i=>i.status==='waiting_cfo').length,todo=items.filter(i=>['ready','needs_review','needs_vendor'].includes(i.status)).length;
   const nx=el('a','card next'+(faceid||todo?' act':''));nx.href=at(faceid?'/invoices?f=waiting_cfo':'/invoices?f=act');
@@ -505,7 +511,10 @@ async function overviewView(){
   const main=Object.entries(per).sort((a,b)=>b[1]-a[1])[0];const days=(d)=>Math.round((Date.parse(d)-Date.parse(today))/86400000);
   const b=[0,0,0,0];for(const i of open){if(!main||i.currency!==main[0])continue;const n=i.due_date?days(i.due_date):99999;b[n<=0?0:n<=7?1:n<=30?2:3]+=toCents(i.total)}
   const lab=['cs.due.late','cs.due.d7','cs.due.d30','cs.due.later'];
+  // The bar counts invoices; an accepted credit note is set against them in the Open tile, and said here in one line.
+  const cr=main?((x.credits_cents||{})[main[0]]||0):0;
   const due=el('div','card panel due',[el('h2','',t('cs.due.title')),main?segbar(b.map((v,k)=>({l:t(lab[k]),v,t:cur(main[0])+' '+cents(v)})),t('cs.due.title')):el('p','lede',t('cs.due.none')),
+    cr>0?el('p','fine',t('cs.due.credit',{amount:cur(main[0])+' '+cents(cr),net:cur(main[0])+' '+cents((x.open_net_cents||{})[main[0]]||0)})):null,
     Object.keys(per).length>1?el('p','fine',t('cs.due.other_cur')):null]);
   const inbox=m.inbox?el('p','inbox',[ic('mail'),t('cs.mail_to'),el('b','mono',m.inbox)]):null;
   const w=items.filter(i=>i.status==='waiting_cfo');
@@ -519,7 +528,7 @@ async function overviewView(){
 
 // --- Invoices ------------------------------------------------------------------------------------------------------
 // Why, in two or three words with an icon; the whole finding stays in the row's title and on the invoice's page.
-function why(i){const fs=i.findings||[];const f=fs.filter(x=>x.level!=='warn')[0]||fs[0];const full=f?cap(finding(f)):'';
+function why(i){const fs=i.findings||[];const f=fs.filter(x=>x.level!=='warn')[0]||fs[0];const full=f?cap(fw(f)):'';
   if(i.status==='paid')return ['circle-check',i.paid_at?t('cs.w.paid',{date:day(i.paid_at)}):t('paid'),''];if(i.status==='ready')return ['circle-check',t('cs.w.ready'),t('all_checks_passed')];
   if(i.status==='waiting_cfo')return ['scan-face',t('cs.w.phone'),t('cs.why_on_phone')];if(i.status==='rejected')return ['circle-minus',t('cs.w.rejected'),full];
   if(i.status==='needs_vendor')return ['clock',t('cs.w.vendor'),full];if(i.status==='blocked')return ['octagon-x',f?tk('cs.w.f.'+f.code,t('cs.w.blocked')):t('cs.w.blocked'),full];
@@ -568,7 +577,7 @@ async function invoiceView(id){
     [t('dt.pay_to'),[acct,r.bic?'BIC '+r.bic:''].filter(Boolean).join(' · '),'mono'],[t('dt.bank_country'),r.bank_country],[t('dt.reference'),r.reference],[t('dt.booked_to'),i.gl_account?(i.gl_account+(i.cost_centre?' · '+i.cost_centre:'')):'']])]);
   const fs=i.findings||[];const fl=el('ul','findings');
   if(!fs.length)fl.append(el('li','ok',[ic('circle-check'),el('span','',t('cs.all_passed'))]));
-  for(const f of fs){const m=RES[f.level]||['circle-minus',f.level];fl.append(el('li',f.level,[ic(m[0]),el('span','',[el('b','',m[1]+': '),finding(f)])]))}
+  for(const f of fs){const m=RES[f.level]||['circle-minus',f.level];fl.append(el('li',f.level,[ic(m[0]),el('span','',[el('b','',m[1]+': '),fw(f)])]))}
   const checks=el('div','card panel',[el('h2','',t('dt.checks')),fl]);
   const tl=el('ul','timeline');
   tl.append(el('li','',[el('b','',t('tl.received')),el('span','',stamp(i.received_at))]));
@@ -581,7 +590,8 @@ async function invoiceView(id){
   const pages=el('div','pages',[el('p','wait',t('drawing_document'))]);
   const doc=el('div','card docv',[el('div','bar2',[ic('file-text'),el('span','fn',t('cs.as_received')+(i.doc_sha256?' · SHA-256 '+String(i.doc_sha256).slice(0,12)+'…':'')),getDoc]),pages]);
   const pay=el('div','card panel');pay.hidden=true;const book=el('div','card panel');book.hidden=true;
-  view().replaceChildren(back,top,el('div','split',[doc,el('div','stack',[read,checks,pay,book,el('div','card panel',[el('h2','',t('dt.timeline')),tl]),DEMO?null:note(t('cs.approved_on_phone'))])]));
+  // A credit note is not booked (src/ledger/feed.ts leaves it out): its page says so, so Books holds no surprise.
+  view().replaceChildren(back,top,el('div','split',[doc,el('div','stack',[read,checks,i.doc_kind==='credit_note'?note(t('cs.dt.credit_unbooked')):null,pay,book,el('div','card panel',[el('h2','',t('dt.timeline')),tl]),DEMO?null:note(t('cs.approved_on_phone'))].filter(Boolean))]));
   drawPdf('/v1/invoices/'+encodeURIComponent(id)+'/document',pages);
   movements(i,pay,book).catch((e)=>{if(!(e instanceof Expired)){pay.hidden=false;pay.replaceChildren(note(e.message,'bad'))}});
 }
@@ -682,10 +692,10 @@ const paymentId=(r)=>/^transfer:/.test(r.id||'')?r.id.slice(9):String(r.id||'');
 async function allEntries(){let out=[],cursor=null;for(let k=0;k<10;k++){const p=await api('/v1/ledger/entries?limit=200'+(cursor?'&cursor='+encodeURIComponent(cursor):''));out=out.concat(p.items||[]);cursor=p.next_cursor;if(!cursor)break}return out}
 // The vault's index when the cloud holds one; none is not an error (a runner files its vault on its own computer).
 const vaultOf=()=>api('/v1/vault').catch((e)=>{if(e instanceof Expired)throw e;return {years:[],files:[]}});
-function agreeBox(check){
+function agreeBox(check,standIn){
   const a=agreement(check);let b;
   if(a.nothing)b=note(t('cs.bk.nothing'));
-  else if(a.ok)b=el('p','note-ok',[el('b','',t('cs.bk.agree')),' · '+t('cs.bk.agree_sub',{n:a.moved})]);
+  else if(a.ok)b=el('p','note-ok',[el('b','',t('cs.bk.agree')),' · '+t(standIn?'cs.bk.agree_sub_stand_in':'cs.bk.agree_sub',{n:a.moved})]);
   else{const ul=el('ul','plain',a.parts.map((p)=>el('li','',t('cs.bk.d.'+p.k,{ids:p.ids.join(', ')}))));if(a.unreconciled)ul.append(el('li','',t('cs.bk.d.unreconciled',{n:a.unreconciled})));
     b=el('div','note-bad',[el('b','',t('cs.bk.differ')),ul])}
   b.id='agree';return b}
@@ -758,7 +768,7 @@ async function booksView(){
       ap&&ap.terms_sha256?[t('cs.vault.terms'),ap.terms_sha256,'mono']:null,[t('cs.bk.entry_hash'),e.entry_hash||'','mono']].filter(Boolean)));
     const d=el('details','ent',[s,...body]);d.dataset.entry=String(e.entry_id);return el('li','',[d])}
   more.onclick=draw;book.append(more);draw();
-  view().replaceChildren(head(t('cs.nav.books'),t('cs.books_lede')),agreeBox(sum.check),tiles,detail,el('section','section',[book]));
+  view().replaceChildren(head(t('cs.nav.books'),t('cs.books_lede')),agreeBox(sum.check,(txp.items||[]).some((r)=>kindOf(r,null)==='stand-in')),tiles,detail,el('section','section',[book]));
 }
 
 // --- Vault ---------------------------------------------------------------------------------------------------------
@@ -977,7 +987,9 @@ async function companiesView(){
     const by=c.invoices_by_status||{},n=(...ks)=>ks.reduce((x,k)=>x+(by[k]||0),0);
     const parts=[{l:t('filter.paid'),v:n('paid')},{l:t('cs.t.waits'),v:n('waiting_cfo','ready','needs_review','needs_vendor')},{l:t('filter.blocked'),v:n('blocked')},{l:t('filter.rejected'),v:n('rejected')}].filter((p,k)=>p.v>0||k<3).map((p)=>({...p,t:String(p.v)}));
     const open=el('a','btn',[t('cs.demo.open'),ic('chevron-right')]);open.href='#/c/'+c.slug+'/overview';
-    cards.append(el('div','card panel',[el('h2','',[av(c.name),el('span','',c.name)]),el('p','fine',t('cs.demo.c.invoices',{n:c.counts.invoices})),segbar(parts,t('cs.demo.c.invoices',{n:c.counts.invoices})),
+    // A credit note is counted apart: it is no invoice that waits.
+    const cn=c.counts.credit_notes||0;
+    cards.append(el('div','card panel',[el('h2','',[av(c.name),el('span','',c.name)]),el('p','fine',[t('cs.demo.c.invoices',{n:c.counts.invoices}),cn?t(cn===1?'cs.demo.c.credit_1':'cs.demo.c.credit_n',{n:cn}):''].filter(Boolean).join(' · ')),segbar(parts,t('cs.demo.c.invoices',{n:c.counts.invoices})),
       el('div','kv',[el('span','',t('cs.demo.c.payments')),el('span','',String(c.counts.payments)),el('span','',t('cs.demo.c.documents')),el('span','',String(c.counts.documents)),el('span','',t('cs.demo.c.entries')),el('span','',String(c.counts.ledger_entries))]),
       el('div','row2',[open])]));
   }
@@ -992,7 +1004,8 @@ async function route(){
   const h=location.hash||'#/';let [path,qs]=h.slice(1).split('?');const q=new URLSearchParams(qs||'');
   // In demo mode a company's pages are under #/c/{its address}/…; the companies' cards are at #/.
   if(DEMO){const c=/^\/c\/([a-z0-9][a-z0-9-]{1,40})(\/.*)?$/.exec(path);const co=c&&DEMO.slugs.includes(c[1])?c[1]:null;if(co!==CO){CO=co;ME=null}
-    path=c?(co?c[2]||'/overview':'/not-here'):path==='/'||path===''?'/companies':path}
+    path=c?(co?c[2]||'/overview':'/not-here'):path==='/'||path===''?'/companies':path;
+    today=REAL_TODAY;if(CO){const cs=await companies().catch(()=>null);const one=cs&&cs.find((x)=>x.slug===CO);if(one&&/^\d{4}-\d{2}-\d{2}$/.test(one.as_of||''))today=one.as_of}}
   else S=load();
   shell();
   const open=DEMO?{'/companies':companiesView}:{'/sign-in':signInView,'/start':startView,'/platform':platformView};
@@ -1072,6 +1085,12 @@ import {getDocument,GlobalWorkerOptions} from ${lib};
 const LIMIT_MS=15000,MAX_PAGES=6;
 let worker=null,task=null,timer=null,done=false;
 const size=()=>parent.postMessage({type:'size',h:document.documentElement.scrollHeight},'*');
+// The canvas cut below its last line that is not white, with a small margin; unchanged when little would be cut.
+function cropped(c){
+  const w=c.width,h=c.height,d=c.getContext('2d').getImageData(0,0,w,h).data;let last=-1;
+  for(let y=h-1;y>=0&&last<0;y--)for(let x=0;x<w;x+=4){const k=(y*w+x)*4;if(d[k]<240||d[k+1]<240||d[k+2]<240){last=y;break}}
+  const keep=Math.min(h,last+Math.round(h*0.03));if(last<0||keep>h*0.9)return c;
+  const n=document.createElement('canvas');n.width=w;n.height=keep;n.getContext('2d').drawImage(c,0,0);n.style.width=c.style.width;n.setAttribute('aria-label',c.getAttribute('aria-label'));c.replaceWith(n);return n}
 function fail(){if(done)return;done=true;try{task&&task.destroy()}catch(e){}try{worker&&worker.terminate()}catch(e){}document.body.textContent='';parent.postMessage({type:'failed'},'*')}
 addEventListener('message',async(ev)=>{
   if(ev.source!==parent||done)return;const d=ev.data||{};if(d.type!=='pdf'||!(d.data instanceof ArrayBuffer))return;
@@ -1084,7 +1103,12 @@ addEventListener('message',async(ev)=>{
     task=getDocument({data:new Uint8Array(d.data),isEvalSupported:false,enableXfa:false,useSystemFonts:false,stopAtErrors:false,verbosity:0});
     const doc=await task.promise;
     // The print intent draws without waiting for animation frames, which a frame below the fold never gets (12 Nov).
-    for(let i=1;i<=Math.min(doc.numPages,MAX_PAGES)&&!done;i++){const page=await doc.getPage(i);const vp=page.getViewport({scale:2});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;c.setAttribute('aria-label','Page '+i+' of the invoice');document.body.append(c);await page.render({canvasContext:c.getContext('2d'),viewport:vp,canvas:c,intent:'print'}).promise;size()}
+    // On a phone the page is drawn wider than the frame (about 12 px text) and pans sideways: at the frame's width an A4
+    // page's text is about 5 px and cannot be read (review, 12 Nov).
+    const narrow=innerWidth<560;if(narrow)document.documentElement.style.overflowX='auto';
+    for(let i=1;i<=Math.min(doc.numPages,MAX_PAGES)&&!done;i++){const page=await doc.getPage(i);const vp=page.getViewport({scale:2});let c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;if(narrow)c.style.width='720px';c.setAttribute('aria-label','Page '+i+' of the invoice');document.body.append(c);await page.render({canvasContext:c.getContext('2d'),viewport:vp,canvas:c,intent:'print'}).promise;
+      // A one-page document ends where its content ends: the empty rest of the page is not drawn.
+      if(doc.numPages===1)c=cropped(c);size()}
     if(doc.numPages>MAX_PAGES){const p=document.createElement('p');p.textContent=(doc.numPages-MAX_PAGES)+' more page(s): download the PDF to see them';document.body.append(p)}
     clearTimeout(timer);done=true;size();
   }catch(e){clearTimeout(timer);fail()}

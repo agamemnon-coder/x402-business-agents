@@ -93,6 +93,12 @@ describe("the demo world, as a visitor reads it", () => {
       expect(of("waiting_for_cfo")).toMatchObject({ status: "waiting_cfo", proposal_id: expect.stringMatching(/^P-\d+$/) });
       expect(of("held_possible_fraud").status).toBe("blocked");
       expect(codes(of("held_possible_fraud"))).toContain("possible_fraud");
+      // The finding names two different accounts: never the same masked number on both sides (review, 12 Nov: Northwind
+      // read "asks for IBAN ...3000; on file: IBAN ...3000", which looked like a false alarm).
+      const fraud = (of("held_possible_fraud").findings as { code: string; detail?: string }[]).find((f) => f.code === "possible_fraud")!.detail ?? "";
+      const masked = /asks for IBAN \.\.\.(\d{4})[^;]*; on file: IBAN \.\.\.(\d{4})/.exec(fraud);
+      expect(masked, `${c.slug}: ${fraud}`).not.toBeNull();
+      expect(masked![1], `${c.slug}: ${fraud}`).not.toBe(masked![2]);
       expect(of("duplicate_refused").status).toBe("blocked");
       expect(codes(of("duplicate_refused"))).toContain("duplicate");
       expect(of("new_supplier").status).toBe("needs_vendor");

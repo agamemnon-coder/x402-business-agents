@@ -15,8 +15,10 @@ export type MoneyWorld = "sandbox" | "stand-in";
 /** What a stand-in world's documents say instead (12 Nov: its receipts said "Airwallex sandbox" and "Face ID"). */
 const STAND_IN = {
   nl: { testMoney: "Testgeld (stand-in voor de bank, geen echte rekening)", testMoneyLine: "Alle bedragen in dit document zijn testgeld op een stand-in voor de bank; er is geen echt geld bewogen.",
+    transfer: "Overboeking (stand-in voor de bank)", fee: "Kosten (stand-in voor de bank)",
     passkey: "een testpasskey (stand-in voor de Face ID van de CFO) op de exacte voorwaarden", verify: "Controleren: npm run verify controleert elke goedkeuring met een passkey opnieuw tegen de opgeslagen handtekening en de vastgelegde publieke sleutel, zonder netwerk." },
   en: { testMoney: "Test money (a stand-in for the bank, no real account)", testMoneyLine: "Every amount in this document is test money on a stand-in for the bank; no real money moved.",
+    transfer: "Transfer (stand-in for the bank)", fee: "Fee (stand-in for the bank)",
     passkey: "a test passkey (stand-in for the CFO's Face ID) on the exact terms", verify: "To check: npm run verify re-checks every passkey approval against the stored signature and the pinned public key, offline." },
 } as const;
 const words = (lang: Lang, world: MoneyWorld) => (world === "stand-in" ? { ...T[lang], ...STAND_IN[lang] } : T[lang]);

@@ -87,7 +87,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/transactions/{id}` | read | One movement, with its earlier versions. |
 | `GET /v1/ledger/entries` | read | Ledger entries with their lines; filter by from, to; paginated. |
 | `GET /v1/reports/{name}` | read | trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger. |
-| `GET /v1/insights` | read | Payables at a glance: open, due, overdue, waiting, blocked, spend per supplier. |
+| `GET /v1/insights` | read | Payables at a glance: open, due, overdue, waiting, blocked, spend per supplier; as of today, or of the day in as_of. |
 | `GET /v1/documents/{sha256}` | read | A document the company holds, by its SHA-256 (the export lists them). |
 | `GET /v1/vault` | read | The vault's index for a year (`?year=2026`, the newest by default): each filed file's folder path, kind and SHA-256, and whether the cloud holds it as a document. Only a vault index the cloud was given is shown; a runner push does not send one yet. |
 | `POST /v1/sync` | sync | The runner's push: vendors, invoices, documents, payments, the transactions register, ledger entries, audit rows. Idempotent. Never passkeys. |
@@ -226,7 +226,7 @@ In demo mode there is one caller, an anonymous read-only visitor, and only this 
 
 | Endpoint | What it does |
 |---|---|
-| `GET /v1/demo/companies` | The demo companies in the configured order: `slug`, `name`, `language` and counts from their rows (invoices, paid invoices, suppliers, payments, transactions, documents, ledger entries), and the invoices by state (`invoices_by_status`). Says `test_world` and `read_only`. |
+| `GET /v1/demo/companies` | The demo companies in the configured order: `slug`, `name`, `language` and counts from their rows (invoices, paid invoices, credit notes apart, suppliers, payments, transactions, documents, ledger entries), the invoices by state (`invoices_by_status`, credit notes left out) and `as_of`, the day of the last booking, where the test world's time stands still (the console reads what is due as of that day on every screen). Says `test_world` and `read_only`. |
 | `GET /v1/demo/{company}/…` | A demo company's reads, with the same answers as the routes above: `me`, `invoices`, `invoices/{id}`, `invoices/{id}/document`, `vendors`, `payments`, `transactions`, `transactions/summary`, `transactions/export.csv`, `transactions/{id}`, `ledger/entries`, `reports/{name}`, `insights`, `documents/{sha256}`, `vault`. `me` answers `kind: "demo"`. |
 | `GET /v1/health`, `GET /v1/openapi.json` | The health check says whether the database and the document store answer and how many of the demo companies are there (`demo_companies`); it counts nothing over every company, so it has no mail queue. The OpenAPI document lists the demo's own routes only. |
 
@@ -240,7 +240,9 @@ In demo mode there is one caller, an anonymous read-only visitor, and only this 
   and the seed before the demo is switched on. A demo deployment needs no secret (`SESSION_SECRET`,
   `ADMIN_TOKEN_SHA256`); `MAIL_DOMAIN` is ignored.
 - **Cost and abuse.** Each address gets 300 requests a minute and each isolate makes at most 600 uncached reads a
-  minute, both counted in memory (`429`, with `retry-after`). A good answer is remembered for 300 seconds in the
+  minute, 120 of them from one address, all counted in memory (`429`, with `retry-after`). An answer is remembered by
+  its route and only the filters a read takes (anything else after the `?` is dropped), so a made-up filter cannot ask
+  for a fresh answer each time. A good answer is remembered for 300 seconds in the
   isolate's memory and, where the deployment has one, in Cloudflare's edge cache; browsers may keep it for 60 seconds
   (`cache-control: public`), a document by its hash for 86400 seconds (a day), the health check for 30 seconds. The
   limits are per isolate: a rate rule at Cloudflare in front of the Worker is still the real bound. Not checked against
@@ -275,7 +277,9 @@ writes it as files. The command loads nothing anywhere, uses no network and read
   `applySync`. No row is written by hand.
 - **What a visitor finds in each company:** invoices paid in the closed month and after it, one paid in a foreign
   currency with its FX, one waiting for the CFO's signature, one held as possible fraud (changed bank details), one
-  refused as a duplicate, one from a new supplier waiting to be verified, and one credit note.
+  refused as a duplicate, one from a new supplier waiting to be verified, and one credit note. The accepted credit
+  note is set against the same supplier's open invoices on the Overview; Purser does not book credit notes yet
+  (`src/ledger/feed.ts` leaves them out), so it is not in Books, and its page says so.
 - **Stand-in, and labelled so.** No rail and no model is called: payments run on the in-memory stand-in for Airwallex
   and the parser reads the invoices. Every supplier, invoice and payment says `provenance: "stand-in"`, every
   transaction's rail name ends in `(stand-in)`, and the opening entry in the books says "stand-in test money, no real

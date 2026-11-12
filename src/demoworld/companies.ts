@@ -49,7 +49,7 @@ export interface CompanySpec {
   foreign: ForeignSupplier;
   /** Net amounts: a's three real invoices and the forged one, b's two, c's one; and the credit note's total. */
   net: { a: [string, string, string, string]; b: [string, string]; c: string; credit: string };
-  /** The account the forged invoice asks to be paid on (fixtures/hard/bergtex-invoice-subtle-beneficiary.txt). */
+  /** The account the forged invoice asks to be paid on (from the fixtures: a bank change, or a subtle beneficiary). Its last four digits differ from the supplier's own. */
   forged: { iban: string; bic: string };
 }
 
@@ -107,7 +107,10 @@ export const DEMO_COMPANIES: CompanySpec[] = [
     slug: "northwind-outdoor", tenantId: "t_demo_northwind_outdoor", name: "Northwind Outdoor (test company)", profile: "An outdoor shop that sells jackets and tents online.",
     eurFloor: "2000.00", openingEurCents: 2_400_000, a: BERGTEX, b: ZEELAND, c: LAGERHAUS, foreign: PINECREST,
     net: { a: ["1554.62", "1420.00", "1610.00", "1585.00"], b: ["400.00", "360.00"], c: "1000.00", credit: "121.00" },
-    forged: { iban: "DE54 3704 0044 0523 0130 00", bic: "COBADEFFXXX" },
+    // Another German account (the closed "old bank details" of fixtures/hard/bergtex-invoice-messy.txt, at ING), not the
+    // subtle one of the other two: Bergtex's own IBAN ends in the same four digits as that one, so a masked "...3000"
+    // stood on both sides of the fraud finding and read as a false alarm (review, 12 Nov).
+    forged: { iban: "DE12 5001 0517 0648 4898 90", bic: "INGDDEFFXXX" },
   },
   {
     slug: "bakery-de-test", tenantId: "t_demo_bakery_de_test", name: "Bakery De Test (test company)", profile: "A bakery with two shops that buys flour and packaging every week.",

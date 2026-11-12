@@ -21,8 +21,11 @@ import type { Blobs, Sql } from "./store.js";
 const SLUG = /^[a-z0-9][a-z0-9-]{1,40}$/;
 /** A demo is a handful of companies; the list is checked on every request. */
 export const DEMO_MAX_COMPANIES = 12;
-/** Requests one address may make in a minute, and reads that may reach the database in a minute (all addresses), per isolate. */
-export const DEMO_RATE = { perMinute: 300, uncachedPerMinute: 600 };
+/**
+ * Requests one address may make in a minute; reads that may reach the database in a minute, from all addresses and from
+ * one address; per isolate.
+ */
+export const DEMO_RATE = { perMinute: 300, uncachedPerMinute: 600, uncachedPerAddress: 120 };
 /** How long an answer is remembered, in this isolate and in the edge cache: the data is static after seeding. */
 export const DEMO_TTL_SEC = 300;
 /** How long a visitor's browser may keep an answer; a document by its hash (it never changes); the health check, everywhere. */
@@ -38,6 +41,19 @@ export const DEMO_READS: ReadonlySet<string> = new Set([
   "GET /v1/transactions", "GET /v1/transactions/summary", "GET /v1/transactions/export.csv", "GET /v1/transactions/{id}",
   "GET /v1/ledger/entries", "GET /v1/reports/{name}", "GET /v1/insights", "GET /v1/documents/{sha256}", "GET /v1/vault",
 ]);
+/**
+ * The filters each demo read takes, by its route (the names the read functions in read.ts and vault.ts ask for). Any
+ * other name after the "?" is dropped before the cache key is made, so a name a read never looks at cannot turn a
+ * remembered answer into a fresh read of the database.
+ */
+const PAGE = ["limit", "cursor"] as const;
+const TX = ["rail", "currency", "reconciliation", "moved", "from", "to"] as const;
+export const DEMO_FILTERS: Readonly<Record<string, readonly string[]>> = {
+  "/v1/me": [], "/v1/invoices": ["status", "due_from", "due_to", ...PAGE], "/v1/invoices/{id}": [], "/v1/invoices/{id}/document": [],
+  "/v1/vendors": PAGE, "/v1/payments": PAGE, "/v1/transactions": [...TX, ...PAGE], "/v1/transactions/summary": TX, "/v1/transactions/export.csv": TX,
+  "/v1/transactions/{id}": [], "/v1/ledger/entries": ["from", "to", ...PAGE], "/v1/reports/{name}": ["from", "to", "quarter", "as_of"], "/v1/insights": ["as_of"],
+  "/v1/documents/{sha256}": [], "/v1/vault": ["year"],
+};
 /** The routes that name no company and still answer at their own path. */
 export const DEMO_OPEN: ReadonlySet<string> = new Set(["GET /v1/health", "GET /v1/openapi.json"]);
 /** The two reads that return a document's bytes: in demo mode demoDocument serves them. */
@@ -60,7 +76,7 @@ export interface DemoCache {
 export interface DemoEnv {
   /** The demo companies' addresses, in the order they are shown. */
   readonly slugs: readonly string[];
-  readonly rate: { readonly perMinute: number; readonly uncachedPerMinute: number };
+  readonly rate: { readonly perMinute: number; readonly uncachedPerMinute: number; readonly uncachedPerAddress: number };
   readonly ttlSec: number;
   /** This isolate's own state: its counters and the answers it remembers. Nothing of it is in the database. */
   readonly limiter: MemoryLimiter;
@@ -75,14 +91,15 @@ export interface DemoEnv {
 }
 
 /** A demo's configuration with fresh state. Throws on a list that is empty, too long or holds something that is no address. */
-export function demoEnv(slugs: readonly string[], o: { perMinute?: number; uncachedPerMinute?: number; ttlSec?: number; cache?: DemoCache } = {}): DemoEnv {
+export function demoEnv(slugs: readonly string[], o: { perMinute?: number; uncachedPerMinute?: number; uncachedPerAddress?: number; ttlSec?: number; cache?: DemoCache } = {}): DemoEnv {
   const list = [...new Set(slugs)];
   if (!list.length) throw new Error("DEMO_SLUGS names no company (demo mode needs the demo companies' addresses, separated by commas)");
   if (list.length > DEMO_MAX_COMPANIES) throw new Error(`DEMO_SLUGS names more than ${DEMO_MAX_COMPANIES} companies`);
   const bad = list.find((s) => !SLUG.test(s));
   if (bad !== undefined) throw new Error(`DEMO_SLUGS holds ${JSON.stringify(bad.slice(0, 60))}, which is not a company's address (lowercase letters, digits and dashes)`);
   return {
-    slugs: list, rate: { perMinute: o.perMinute ?? DEMO_RATE.perMinute, uncachedPerMinute: o.uncachedPerMinute ?? DEMO_RATE.uncachedPerMinute }, ttlSec: o.ttlSec ?? DEMO_TTL_SEC,
+    slugs: list, ttlSec: o.ttlSec ?? DEMO_TTL_SEC,
+    rate: { perMinute: o.perMinute ?? DEMO_RATE.perMinute, uncachedPerMinute: o.uncachedPerMinute ?? DEMO_RATE.uncachedPerMinute, uncachedPerAddress: o.uncachedPerAddress ?? DEMO_RATE.uncachedPerAddress },
     limiter: new MemoryLimiter(), memo: new ResponseMemo(), tenants: new Map(), ...(o.cache ? { cache: o.cache } : {}),
   };
 }
@@ -194,10 +211,14 @@ export class ResponseMemo {
   }
 }
 
-/** A read's filters, bounded, and its cache key: the same read asked with its filters in another order is the same read. */
-export function demoKey(origin: string, path: string, query: URLSearchParams): { key: string; query: URLSearchParams } {
-  const names = [...new Set(query.keys())].sort();
-  if (names.length > 12) throw new BadRequest("too many filters in one request");
+/**
+ * A read's filters, bounded, and its cache key: only the names the read takes (`allowed`, from DEMO_FILTERS) are kept,
+ * and the same read asked with its filters in another order is the same read.
+ */
+export function demoKey(origin: string, path: string, query: URLSearchParams, allowed: readonly string[]): { key: string; query: URLSearchParams } {
+  const all = [...new Set(query.keys())];
+  if (all.length > 12) throw new BadRequest("too many filters in one request");
+  const names = all.filter((n) => allowed.includes(n)).sort();
   const q = new URLSearchParams();
   for (const n of names) {
     // The first value of each, as the routes read it.
@@ -220,10 +241,11 @@ function served(v: Remembered, browser: string, from: "hit" | "edge" | "miss"): 
 /**
  * A demo read, answered from this isolate's memory, else from the edge cache, else made (and then remembered in both).
  * Only a 200 is remembered; anything else is passed on as it is and made again next time. A read that has to be made
- * counts against the isolate's budget of uncached reads: past it the answer is 429 until the minute is over, while
- * remembered answers are still served. `browser` is the Cache-Control the visitor's browser gets.
+ * counts against the asking address's budget of uncached reads and then the isolate's: past either the answer is 429
+ * until the minute is over, while remembered answers are still served. `browser` is the Cache-Control the visitor's
+ * browser gets; `who` is the asking address.
  */
-export async function remembered(demo: DemoEnv, key: string, now: Date, keep: { ttlSec: number; browser: string }, make: () => Promise<Response>): Promise<Response> {
+export async function remembered(demo: DemoEnv, key: string, now: Date, keep: { ttlSec: number; browser: string }, make: () => Promise<Response>, who = "unknown"): Promise<Response> {
   const nowMs = now.getTime();
   const kept = demo.memo.get(key, nowMs);
   if (kept) return served(kept, keep.browser, "hit");
@@ -237,6 +259,8 @@ export async function remembered(demo: DemoEnv, key: string, now: Date, keep: { 
       }
     } catch { /* the edge cache is a saving, never a dependency */ }
   }
+  // One address first, so an address that is over its own share uses none of what the others share.
+  if (!demo.limiter.take(`uncached:${who}`, nowMs, demo.rate.uncachedPerAddress)) return demoBusy(demo, now);
   if (!demo.limiter.take("uncached", nowMs, demo.rate.uncachedPerMinute)) return demoBusy(demo, now, "the demo is busy; try again in a minute");
   const res = await make();
   if (res.status !== 200) return res;
@@ -254,10 +278,15 @@ export interface DemoCompany {
   slug: string;
   name: string;
   language: "nl" | "en";
-  /** Counted from the company's rows when the answer is made; never typed. */
-  counts: { invoices: number; invoices_paid: number; suppliers: number; payments: number; transactions: number; documents: number; ledger_entries: number };
-  /** The company's invoices by their state (paid, waiting_cfo, blocked, …), for the console's company cards; counted too. */
+  /** Counted from the company's rows when the answer is made; never typed. A credit note is counted apart, not as an invoice. */
+  counts: { invoices: number; invoices_paid: number; credit_notes: number; suppliers: number; payments: number; transactions: number; documents: number; ledger_entries: number };
+  /** The company's invoices (credit notes left out) by their state (paid, waiting_cfo, blocked, …), for the console's company cards; counted too. */
   invoices_by_status: Record<string, number>;
+  /**
+   * The day of the company's last booking, or null with none: a test world's time stands still there, so the console
+   * reads what is due and overdue as of this day on every screen (Overview and Books alike), never as of today.
+   */
+  as_of: string | null;
 }
 
 /**
@@ -281,17 +310,21 @@ export async function demoTenantId(sql: Sql, demo: DemoEnv, slug: string, now: D
 export async function demoCompanies(sql: Sql, slugs: readonly string[]): Promise<{ test_world: true; read_only: true; note: string; companies: DemoCompany[] }> {
   const count = (table: "invoices" | "vendors" | "payments" | "transactions" | "documents" | "ledger_entries", as: keyof DemoCompany["counts"], and = "") =>
     `(SELECT COUNT(*) FROM ${table} x WHERE x.tenant_id = t.id${and}) AS ${as}`;
+  // A credit note is a row in invoices too (its body says doc_kind credit_note): counted apart, never as a waiting invoice.
+  const credit = "json_extract(x.body_json, '$.doc_kind') = 'credit_note'";
+  const invoice = ` AND COALESCE(${credit}, 0) = 0`;
   // The invoices by state as one JSON object per company (SQLite's and D1's json_group_object), in the same statement.
-  const byStatus = "(SELECT json_group_object(s.status, s.n) FROM (SELECT x.status, COUNT(*) AS n FROM invoices x WHERE x.tenant_id = t.id GROUP BY x.status) s) AS by_status";
-  const rows = await sql.all<{ slug: string; name: string; language: string; by_status: string | null } & DemoCompany["counts"]>(
-    `SELECT t.slug, t.name, t.language, ${[count("invoices", "invoices"), count("invoices", "invoices_paid", " AND x.status = 'paid'"), count("vendors", "suppliers"), count("payments", "payments"),
-      count("transactions", "transactions"), count("documents", "documents"), count("ledger_entries", "ledger_entries"), byStatus].join(", ")}
+  const byStatus = `(SELECT json_group_object(s.status, s.n) FROM (SELECT x.status, COUNT(*) AS n FROM invoices x WHERE x.tenant_id = t.id${invoice} GROUP BY x.status) s) AS by_status`;
+  const asOf = "(SELECT MAX(x.posting_date) FROM ledger_entries x WHERE x.tenant_id = t.id) AS as_of";
+  const rows = await sql.all<{ slug: string; name: string; language: string; by_status: string | null; as_of: string | null } & DemoCompany["counts"]>(
+    `SELECT t.slug, t.name, t.language, ${[count("invoices", "invoices", invoice), count("invoices", "invoices_paid", `${invoice} AND x.status = 'paid'`), count("invoices", "credit_notes", ` AND ${credit}`),
+      count("vendors", "suppliers"), count("payments", "payments"), count("transactions", "transactions"), count("documents", "documents"), count("ledger_entries", "ledger_entries"), byStatus, asOf].join(", ")}
      FROM tenants t WHERE t.closed_at IS NULL AND t.slug IN (${slugs.map(() => "?").join(", ")})`, [...slugs]);
   const companies = slugs.flatMap((slug): DemoCompany[] => {
     const r = rows.find((x) => x.slug === slug);
     return r ? [{ slug, name: r.name, language: r.language === "en" ? "en" : "nl",
-      counts: { invoices: r.invoices, invoices_paid: r.invoices_paid, suppliers: r.suppliers, payments: r.payments, transactions: r.transactions, documents: r.documents, ledger_entries: r.ledger_entries },
-      invoices_by_status: statusCounts(r.by_status) }] : [];
+      counts: { invoices: r.invoices, invoices_paid: r.invoices_paid, credit_notes: r.credit_notes, suppliers: r.suppliers, payments: r.payments, transactions: r.transactions, documents: r.documents, ledger_entries: r.ledger_entries },
+      invoices_by_status: statusCounts(r.by_status), as_of: /^\d{4}-\d{2}-\d{2}$/.test(r.as_of ?? "") ? r.as_of : null }] : [];
   });
   return { ...DEMO_LABEL, companies };
 }

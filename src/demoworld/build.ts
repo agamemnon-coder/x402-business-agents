@@ -36,7 +36,7 @@ import { fixed } from "./fixed.js";
 import { testPasskey, TEST_PASSKEY_LABEL } from "./passkey.js";
 
 /** The world's own version: part of every seed, so a changed world is a new world, never a silent edit. */
-export const WORLD_VERSION = "2";
+export const WORLD_VERSION = "3";
 /** When the world starts and when it stops: the last thing recorded in it. */
 export const WORLD_START = "2026-10-01T08:00:00Z";
 export const WORLD_AS_OF = "2026-11-10T09:30:00Z";

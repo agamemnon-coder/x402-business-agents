@@ -22,7 +22,7 @@ import { integrations } from "./integrations.js";
 import { platformCompanies } from "./platformView.js";
 import { accountOf, bindingOf, onboardingLink, openAccount, PlatformRefused, receiveAccountEvent, type AwxPlatformEnv } from "./awxPlatform.js";
 import { cloudHealth, companyStatus, HealthReport, MonitorRefused, notify, receiveReport, removeWebhook, setWebhook, webhookOf, type Outbound } from "./monitor.js";
-import { DEMO_BROWSER_SEC, DEMO_DOCUMENT_BROWSER_SEC, DEMO_DOCUMENT_ROUTES, DEMO_HEALTH_SEC, DEMO_HEALTH_SUMMARY, DEMO_LABEL, DEMO_NOTE, DEMO_OPEN, DEMO_READS, demoBusy, demoCompanies, demoDocument, demoHealth, demoKey, demoNoCompany, demoRefused, demoTenantId, remembered, type DemoEnv } from "./demo.js";
+import { DEMO_BROWSER_SEC, DEMO_DOCUMENT_BROWSER_SEC, DEMO_DOCUMENT_ROUTES, DEMO_FILTERS, DEMO_HEALTH_SEC, DEMO_HEALTH_SUMMARY, DEMO_LABEL, DEMO_NOTE, DEMO_OPEN, DEMO_READS, demoBusy, demoCompanies, demoDocument, demoHealth, demoKey, demoNoCompany, demoRefused, demoTenantId, remembered, type DemoEnv } from "./demo.js";
 
 export interface CloudEnv {
   sql: Sql;
@@ -316,7 +316,7 @@ export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/transactions/{id}", summary: "One movement, with its earlier versions.", need: "read", run: async (c) => { const r = await oneTransaction(db(c), c.params[0]!); return r ? json(200, r) : notFound("transaction"); } },
   { method: "GET", path: "/v1/ledger/entries", summary: "Ledger entries with their lines; filter by from, to; paginated.", need: "read", run: async (c) => json(200, await ledgerEntries(db(c), c.url.searchParams)) },
   { method: "GET", path: "/v1/reports/{name}", summary: "trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger.", need: "read", run: async (c) => json(200, await report(db(c), c.params[0]!, c.url.searchParams)) },
-  { method: "GET", path: "/v1/insights", summary: "Payables at a glance: open, due, overdue, waiting, blocked, spend per supplier.", need: "read", run: async (c) => json(200, await insights(db(c), c.now)) },
+  { method: "GET", path: "/v1/insights", summary: "Payables at a glance: open, due, overdue, waiting, blocked, spend per supplier; as of today, or of the day in as_of.", need: "read", run: async (c) => json(200, await insights(db(c), c.now, c.url.searchParams)) },
   { method: "GET", path: "/v1/vault", summary: "The vault's index for a year (?year=2026, the newest by default): every file filed, its folder path, kind and SHA-256, and whether the cloud holds it; its bytes come from /v1/documents/{sha256}.", need: "read", run: async (c) => {
     try { return json(200, await vaultView(db(c), c.env.blobs, c.url.searchParams)); } catch (e) { if (e instanceof VaultNotFound) return notFound("vault index for that year"); throw e; }
   } },
@@ -594,9 +594,9 @@ async function demoRoute(req: Request, env: CloudEnv, demo: DemoEnv, url: URL, n
     // Neither takes a filter: whatever comes after the "?" is dropped, so it cannot be used to ask for a fresh answer each time.
     const plain = new URL(`${url.origin}${url.pathname}`);
     const keep = hit.r.path === "/v1/health" ? { ttlSec: Math.min(DEMO_HEALTH_SEC, demo.ttlSec), browser: `public, max-age=${DEMO_HEALTH_SEC}` } : data;
-    return remembered(demo, plain.toString(), now, keep, () => hit.r.run({ env, req, url: plain, now, params: hit.p!, caller: null, db: null, demo: true }));
+    return remembered(demo, plain.toString(), now, keep, () => hit.r.run({ env, req, url: plain, now, params: hit.p!, caller: null, db: null, demo: true }), ip);
   }
-  if (seg.length === 4 && seg[3] === "companies") return remembered(demo, `${url.origin}/v1/demo/companies`, now, data, async () => json(200, await demoCompanies(env.sql, demo.slugs)));
+  if (seg.length === 4 && seg[3] === "companies") return remembered(demo, `${url.origin}/v1/demo/companies`, now, data, async () => json(200, await demoCompanies(env.sql, demo.slugs)), ip);
   // The company first: one that is not on the list gets the same answer whatever is asked of it.
   const slug = seg[3]!;
   if (!demo.slugs.includes(slug)) return demoNoCompany();
@@ -605,7 +605,8 @@ async function demoRoute(req: Request, env: CloudEnv, demo: DemoEnv, url: URL, n
   if (!candidates.length) return err(404, "no such route");
   const hit = candidates.find((x) => x.r.method === "GET" && x.r.need === "read" && DEMO_READS.has(`GET ${x.r.path}`));
   if (!hit) return demoRefused();
-  const { key, query } = demoKey(url.origin, url.pathname, url.searchParams);
+  // Only the filters this read takes make its key: any other name is dropped, so it cannot ask for a fresh answer each time.
+  const { key, query } = demoKey(url.origin, url.pathname, url.searchParams, DEMO_FILTERS[hit.r.path] ?? []);
   // A document by its hash never changes, so a browser may keep it for a day.
   const keep = hit.r.path === "/v1/documents/{sha256}" ? { ttlSec: demo.ttlSec, browser: `public, max-age=${DEMO_DOCUMENT_BROWSER_SEC}, immutable` } : data;
   return remembered(demo, key, now, keep, async () => {
@@ -620,7 +621,7 @@ async function demoRoute(req: Request, env: CloudEnv, demo: DemoEnv, url: URL, n
     // The visitor: read-only, of this company, with no key and no person behind it; and no inbox, whatever is configured.
     const caller: Caller = { tenantId: id, kind: "key", principal: "demo", scopes: new Set<Scope>(["read"]), role: "viewer", user: null };
     return hit.r.run({ env: { ...env, mailDomain: "" }, req, url: new URL(`${url.origin}${inner}?${query.toString()}`), now, params: hit.p!, caller, db: tenant, demo: true });
-  });
+  }, ip);
 }
 
 const ERROR = (description: string) => ({ description, content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } });

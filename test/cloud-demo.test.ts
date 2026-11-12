@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { ROUTES } from "../cloud/src/app.js";
-import { DEMO_BROWSER_SEC, DEMO_DOCUMENT_BROWSER_SEC, DEMO_DOCUMENT_ROUTES, DEMO_HEALTH_SEC, DEMO_MAX_DOCUMENT_BYTES, DEMO_OPEN, DEMO_RATE, DEMO_READS, DEMO_TTL_SEC, demoEnv, type DemoCache } from "../cloud/src/demo.js";
+import { DEMO_BROWSER_SEC, DEMO_DOCUMENT_BROWSER_SEC, DEMO_DOCUMENT_ROUTES, DEMO_FILTERS, DEMO_HEALTH_SEC, DEMO_MAX_DOCUMENT_BYTES, DEMO_OPEN, DEMO_RATE, DEMO_READS, DEMO_TTL_SEC, demoEnv, type DemoCache } from "../cloud/src/demo.js";
 import type { Sql, SqlValue } from "../cloud/src/store.js";
 import { pushToCloud } from "../src/cloudsync/client.js";
 import { EN, NL } from "./fakes/apInvoices.js";
@@ -175,7 +175,7 @@ const get = async (path: string, headers: Record<string, string> = {}) => {
   const r = await c.req("GET", path, { headers });
   return { status: r.status, json: r.json, headers: r.res.headers, bytes: new Uint8Array(await r.res.arrayBuffer()) };
 };
-const demoOn = (o: Parameters<typeof demoEnv>[1] = {}, slugs = ["alder", "birch"]) => { c.env.demo = demoEnv(slugs, { perMinute: 1_000_000, uncachedPerMinute: 1_000_000, ...o }); return c.env.demo; };
+const demoOn = (o: Parameters<typeof demoEnv>[1] = {}, slugs = ["alder", "birch"]) => { c.env.demo = demoEnv(slugs, { perMinute: 1_000_000, uncachedPerMinute: 1_000_000, uncachedPerAddress: 1_000_000, ...o }); return c.env.demo; };
 
 beforeAll(async () => {
   c = testCloud();
@@ -336,9 +336,13 @@ describe("demo mode, what a visitor gets", () => {
     expect(body.companies[1]).toMatchObject({ slug: "alder", name: "alder test company", language: "nl" });
     for (const co of [alder, birch]) {
       const n = async (table: string, extra = "") => (await c.env.sql.first<{ n: number }>(`SELECT COUNT(*) AS n FROM ${table} WHERE tenant_id = ?${extra}`, [co.t.id]))!.n;
-      const counts = body.companies.find((x) => x.slug === co.slug)!.counts;
-      expect(counts).toEqual({ invoices: await n("invoices"), invoices_paid: await n("invoices", " AND status = 'paid'"), suppliers: await n("vendors"), payments: await n("payments"),
-        transactions: await n("transactions"), documents: await n("documents"), ledger_entries: await n("ledger_entries") });
+      const listed = body.companies.find((x) => x.slug === co.slug)! as unknown as { counts: Record<string, number>; as_of: string | null };
+      const counts = listed.counts;
+      const credit = " AND json_extract(body_json, '$.doc_kind') = 'credit_note'";
+      expect(counts).toEqual({ invoices: (await n("invoices")) - (await n("invoices", credit)), invoices_paid: await n("invoices", " AND status = 'paid'"), credit_notes: await n("invoices", credit),
+        suppliers: await n("vendors"), payments: await n("payments"), transactions: await n("transactions"), documents: await n("documents"), ledger_entries: await n("ledger_entries") });
+      // The day the company's time stands still: its last booking.
+      expect(listed.as_of).toBe((await c.env.sql.first<{ d: string }>("SELECT MAX(posting_date) AS d FROM ledger_entries WHERE tenant_id = ?", [co.t.id]))!.d);
       expect(counts.invoices).toBe(1);
       expect(counts.invoices_paid).toBe(1);
       expect(counts.ledger_entries).toBeGreaterThan(0);
@@ -460,6 +464,8 @@ describe("demo mode, in docs/cloud.md", () => {
     // The numbers.
     expect(section).toContain(`Each address gets ${DEMO_RATE.perMinute} requests a minute`);
     expect(section).toContain(`at most ${DEMO_RATE.uncachedPerMinute} uncached reads`);
+    expect(section).toContain(`${DEMO_RATE.uncachedPerAddress} of them from one address`);
+    expect(section).toContain("only the filters a read takes");
     expect(section).toContain(`remembered for ${DEMO_TTL_SEC} seconds`);
     expect(section).toContain(`browsers may keep it for ${DEMO_BROWSER_SEC} seconds`);
     expect(section).toContain(`a document by its hash for ${DEMO_DOCUMENT_BROWSER_SEC} seconds`);
@@ -568,7 +574,7 @@ describe("demo mode, cost and abuse", () => {
       expect(a.headers.get("cache-control"), p).toBe("no-store");
       expect(b.headers.get("x-purser-cache"), p).toBeNull();
     }
-    // Filters without end are refused before anything is read.
+    // Filters without end are refused before anything is read (a name the read never takes counts too).
     expect((await get(`/v1/demo/alder/invoices?cursor=${"x".repeat(300)}`)).status).toBe(400);
     expect((await get(`/v1/demo/alder/invoices?${Array.from({ length: 20 }, (_, i) => `p${i}=1`).join("&")}`)).status).toBe(400);
   });
@@ -635,6 +641,44 @@ describe("demo mode, cost and abuse", () => {
     expect([kept.status, kept.headers.get("x-purser-cache")]).toEqual([200, "hit"]);
     c.clock.now = new Date(NOW.getTime() + 61_000);
     expect((await get("/v1/demo/alder/invoices", { "cf-connecting-ip": "198.51.100.3" })).status).toBe(200);
+  });
+
+  it("keys a read by the filters it takes only: a name it never reads cannot ask for a fresh answer (review, 12 Nov)", async () => {
+    demoOn({ ttlSec: 300 });
+    for (const [first, ...same] of [
+      ["/v1/demo/alder/me", "/v1/demo/alder/me?junk=1", "/v1/demo/alder/me?junk=2&limit=5"],
+      [`/v1/demo/alder/invoices/${alder.invoice}`, `/v1/demo/alder/invoices/${alder.invoice}?x=1`],
+      [`/v1/demo/alder/documents/${alder.sha}`, `/v1/demo/alder/documents/${alder.sha}?v=2`],
+      ["/v1/demo/alder/invoices?status=paid", "/v1/demo/alder/invoices?status=paid&junk=9", "/v1/demo/alder/invoices?junk=8&status=paid"],
+      ["/v1/demo/alder/insights?as_of=2026-11-10", "/v1/demo/alder/insights?as_of=2026-11-10&n=1"],
+      ["/v1/demo/alder/vault", "/v1/demo/alder/vault?junk=1"],
+    ] as const) {
+      const a = await get(first);
+      expect([a.status, a.headers.get("x-purser-cache")], first).toEqual([200, "miss"]);
+      for (const p of same) {
+        const b = await get(p);
+        expect([b.status, b.headers.get("x-purser-cache")], p).toEqual([200, "hit"]);
+        expect(b.json, p).toEqual(a.json);
+      }
+    }
+    // A filter the read does take is still its own read.
+    expect((await get("/v1/demo/alder/invoices?status=ready")).headers.get("x-purser-cache")).toBe("miss");
+    expect((await get("/v1/demo/alder/insights?as_of=2026-11-11")).headers.get("x-purser-cache")).toBe("miss");
+    // Every demo read has its list of filters, and only the demo's reads have one.
+    expect(Object.keys(DEMO_FILTERS).map((p) => `GET ${p}`).sort()).toEqual([...DEMO_READS].sort());
+  });
+
+  it("gives each address its own share of the uncached reads: one address cannot use up the reads every visitor shares", async () => {
+    demoOn({ uncachedPerAddress: 2, uncachedPerMinute: 1_000_000 });
+    const from = (ip: string, p: string) => get(`/v1/demo/alder/${p}`, { "cf-connecting-ip": ip });
+    expect((await from("192.0.2.1", "vendors")).status).toBe(200);
+    expect((await from("192.0.2.1", "payments")).status).toBe(200);
+    const over = await from("192.0.2.1", "invoices");
+    expect([over.status, over.json.code]).toEqual([429, "rate_limited"]);
+    // What is remembered still answers that address, and another address reads as before.
+    expect((await from("192.0.2.1", "vendors")).headers.get("x-purser-cache")).toBe("hit");
+    const other = await from("192.0.2.2", "invoices");
+    expect([other.status, other.headers.get("x-purser-cache")]).toEqual([200, "miss"]);
   });
 });
 

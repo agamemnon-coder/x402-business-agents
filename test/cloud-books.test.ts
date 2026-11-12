@@ -94,6 +94,30 @@ describe("the report cards, against the engine's own reports", () => {
     }
   });
 
+  it("use one clock with the Overview: the day the demo lists for each company is its last booking, and the Overview's figures are as of that day", async () => {
+    const list = await get<{ companies: { slug: string; as_of: string | null; counts: Record<string, number> }[] }>("/v1/demo/companies");
+    for (const c of demo.companies) {
+      const at = (p: string) => `/v1/demo/${c.slug}${p}`;
+      const entries = (await get<{ items: Entry[] }>(at("/ledger/entries?limit=200"))).items;
+      const last = entries.map((e) => e.posting_date).sort().at(-1)!;
+      const day = list.companies.find((x) => x.slug === c.slug)!.as_of;
+      expect(day, c.slug).toBe(last);
+      expect(B.period(last, "2027-01-15", true).as_of).toBe(day);
+      // The Overview asks for its figures as of that day, whatever today is; nothing it holds is overdue then.
+      const x = await get<{ as_of: string; overdue_cents: Record<string, number>; open_cents: Record<string, number>; credits_cents: Record<string, number>; open_net_cents: Record<string, number> }>(at(`/insights?as_of=${day}`));
+      expect(x.as_of).toBe(day);
+      expect(x.overdue_cents, c.slug).toEqual({});
+      // The Open tile and the due bar measure the same invoices: the credit note is set against them as its own line.
+      for (const cur of Object.keys(x.open_cents)) expect(x.open_net_cents[cur], `${c.slug} ${cur}`).toBe(x.open_cents[cur]! - (x.credits_cents[cur] ?? 0));
+      expect(Object.values(x.credits_cents).reduce((n, v) => n + v, 0), c.slug).toBeGreaterThan(0);
+      // A credit note is counted apart, never as an invoice that waits.
+      expect(list.companies.find((x) => x.slug === c.slug)!.counts.credit_notes).toBe(1);
+    }
+    // Today, a year on, the same invoices would be overdue: the day matters.
+    const c = demo.companies[0]!;
+    expect(Object.keys((await get<{ overdue_cents: Record<string, number> }>(`/v1/demo/${c.slug}/insights?as_of=2027-11-10`)).overdue_cents).length).toBeGreaterThan(0);
+  });
+
   it("count a signed-in company's open payables on today, and an empty ledger's period from today", () => {
     expect(B.period("2026-11-09", "2026-11-12", false)).toEqual({ end: "2026-11-09", from: "2026-01-01", quarter: "2026Q4", as_of: "2026-11-12" });
     expect(B.period(null, "2027-02-03", false)).toEqual({ end: "2027-02-03", from: "2027-01-01", quarter: "2027Q1", as_of: "2027-02-03" });
@@ -188,7 +212,15 @@ describe("the vault, as the engine filed it", () => {
       const { text } = await pdfText(new Uint8Array(await (await res(`/v1/demo/${c.slug}/documents/${f.sha256}`)).arrayBuffer()));
       expect(text, kind).toMatch(/stand-in for the bank/);
       expect(text, kind).not.toMatch(/sandbox/i);
-      if (kind === "receipt") { expect(text).toMatch(/a test passkey/); expect(text).not.toMatch(/Face ID \(passkey\)/); }
+      if (kind === "receipt") {
+        expect(text).toMatch(/a test passkey/);
+        expect(text).not.toMatch(/Face ID \(passkey\)/);
+        // No Airwallex in a world that never touched it, but in the chart's own account names (review, 12 Nov: the
+        // receipt said "Airwallex transfer" and "Fee (charged by Airwallex)").
+        expect(text.replace(/Bank: Airwallex[^\n]*/g, ""), kind).not.toMatch(/Airwallex/);
+        expect(text).toMatch(/Transfer \(stand-in for the bank\)/);
+        expect(text).toMatch(/Fee \(stand-in for the bank\)/);
+      }
     }
   });
 

@@ -93,8 +93,8 @@ npx wrangler secret list -c cloud/wrangler.jsonc --env demo
 It must list nothing. Then open the address in a browser: three test companies, the line "A test world: test
 companies, no real money, read-only." on every screen, and no way to sign in.
 
-Rate limits: the Worker allows 300 requests a minute per address and 600 uncached reads a minute per isolate, both
-counted in memory ([cloud.md](cloud.md#demo-mode-a-read-only-deployment-of-test-companies)). A Cloudflare rate rule
+Rate limits: the Worker allows 300 requests a minute per address and 600 uncached reads a minute per isolate (at most
+120 of them from one address), all counted in memory ([cloud.md](cloud.md#demo-mode-a-read-only-deployment-of-test-companies)). A Cloudflare rate rule
 belongs to a zone, and a workers.dev address has none, so those limits are the only bound there. Not checked against
 Cloudflare's documentation in this session (no external calls). To put a rate rule in front, serve the demo on a
 route in a zone of your own; `RP_ID` and `ORIGIN` then change to that address.
