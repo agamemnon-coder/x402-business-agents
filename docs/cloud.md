@@ -170,14 +170,32 @@ sets and overwrites: behind any other proxy this header must not be trusted, and
 
 ## The console
 
-The same Worker serves the company's console at `/` (`cloud/src/console.ts`): sign in with a passkey (no passwords),
-the overview (inbox address, what is open, due, overdue, waiting and blocked, and what waits for the CFO), invoices and
-each invoice (what Purser read, the checks, the timeline, the document), the transactions register with its filters and
-CSV, the books (VAT overview per quarter, the journal) and, for owners, settings: people and their single-use passkey
-links, API keys, and the export of everything. A new company's first run takes the starter key Purser hands over, makes
-the owner's passkey, shows the inbox address and makes the runner's sync key with the one command to run; the starter
-key can then be revoked from the same screen. The console reads and manages; it never pays: payments are approved on
-the CFO's phone with Face ID, through the runner.
+The same Worker serves the company's console at `/` (`cloud/src/console.ts`). It is in English; a switch in the header
+changes it to Dutch, and the browser remembers the choice (a signed-in person's choice is also saved with them). Sign in
+with a passkey (no passwords). The menu has five pages:
+
+- **Overview:** the inbox address, what is open, due, overdue, waiting and blocked, and what waits for the CFO.
+- **Invoices**, and each invoice: what Purser read, the checks, the timeline and the document; then how it was approved
+  and paid (what signed, the payment request, each money movement with its rail, the signed terms' SHA-256 last) and
+  how it was booked.
+- **Transactions:** the register with its filters and CSV.
+- **Books:** first, whether the books, the payments and the signatures agree; then five report cards (trial balance,
+  profit and loss, balance sheet, VAT for the quarter, open payables), each opening to its details; then every booking
+  as a timeline by month, a closed month marked with a lock. A booking opens to its lines, then its document, payment
+  and hashes.
+- **Vault:** the vault's folders as filed, the PDF drawn in the page, a download, and "Verify this document": the
+  browser takes the SHA-256 of the downloaded bytes and compares it with the SHA-256 on record (`GET /v1/vault`).
+
+Settings opens from the company name in the header; for owners it holds people and their single-use passkey links, API
+keys, and the export of everything. A new company's first run takes the starter key Purser hands over, makes the owner's passkey,
+shows the inbox address and makes the runner's sync key with the one command to run; the starter key can then be
+revoked from the same screen. The console reads and manages; it never pays: payments are approved on the CFO's phone
+with Face ID, through the runner.
+
+In [demo mode](#demo-mode-a-read-only-deployment-of-test-companies) the same page opens on the test companies, each with
+its invoices by state, and a switch in the header moves between them. Every screen says it is a test world with test
+companies and no real money, and that it is read-only. Sign-in, first run, enrolment and Settings are not there. The
+page sends only GET requests and does not poll.
 
 How it is kept safe: one page under a per-response nonce policy (no inline scripts, styles or handlers; `connect-src
 'self'`); every value from the API is set as text, never as HTML (only the page's own icons go through `innerHTML`, and
@@ -200,7 +218,9 @@ A mode for a deployment of its own that is read without an account: its own D1 d
 test companies and nothing else. Two variables switch it on: `DEMO_PUBLIC` set to `on`, and `DEMO_SLUGS`, the demo
 companies' addresses separated by commas. With `DEMO_PUBLIC` unset (every other deployment) no demo route exists and
 nothing else on this page changes. **No deployment runs in this mode today (12 November): the mode is built and
-tested locally only.** The code is `cloud/src/demo.ts`; the gate is `demoRoute` in `cloud/src/app.ts`.
+tested locally only.** The code is `cloud/src/demo.ts`; the gate is `demoRoute` in `cloud/src/app.ts`. Its deployment
+is the environment `demo` in `cloud/wrangler.jsonc` (a Worker, database and bucket of its own, no secret); how to
+deploy it, check it with `npm run cloud:smoke-demo` and roll it back is in [cloud-demo.md](cloud-demo.md).
 
 In demo mode there is one caller, an anonymous read-only visitor, and only this answers:
 
@@ -275,13 +295,14 @@ and bucket and no other:
 
 ```sh
 npm run cloud:seed-demo -- --out ../purser-demo-bundle
-npx wrangler d1 migrations apply <demo database> --remote -c cloud/wrangler.jsonc
-npx wrangler d1 execute <demo database> --remote --file ../purser-demo-bundle/seed.sql -c cloud/wrangler.jsonc
-(cd ../purser-demo-bundle && sh r2-put.sh <demo bucket>)
+npx wrangler d1 migrations apply purser-demo --env demo --remote -c cloud/wrangler.jsonc
+npx wrangler d1 execute purser-demo --env demo --remote --file ../purser-demo-bundle/seed.sql -c cloud/wrangler.jsonc
+(cd ../purser-demo-bundle && sh r2-put.sh purser-demo-docs)
 ```
 
-Then set `DEMO_PUBLIC=on` and `DEMO_SLUGS=northwind-outdoor,bakery-de-test,fietslab-bike-workshop` on that deployment.
-Seeding again replaces these three companies and touches no other row. `r2-put.sh` hands any further flags to
+The environment `demo` in `cloud/wrangler.jsonc` sets `DEMO_PUBLIC=on` and
+`DEMO_SLUGS=northwind-outdoor,bakery-de-test,fietslab-bike-workshop`; [cloud-demo.md](cloud-demo.md) is the whole
+runbook, from making the database to rolling back. Seeding again replaces these three companies and touches no other row. `r2-put.sh` hands any further flags to
 wrangler (for example `--jurisdiction eu`). The three wrangler commands were not run in this session (no external
 calls). What is tested: `test/demo-world.test.ts` checks the world itself (the chains, the books to the cent, the
 vault's hashes, every state, the labels, two builds giving the same bytes) and the bundle; `test/cloud-demo-world.test.ts`
