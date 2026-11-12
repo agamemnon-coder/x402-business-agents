@@ -420,15 +420,16 @@ answer.
 | Expiry | `effectiveUntilTime` against the signed `expires_at` in seconds; then the clock | they differ, or the instruction has expired or expires within the time a checkout needs |
 | Agent and reference | `applicationName`, `mandateId` and the action ID against the signed `agent` and Purser's row | any differs |
 | Hash carried | the hash inside `mandates[0].description` and `consumerPrompt` | missing or different |
-| Sent body | the SHA-256 of the body Purser stored before sending against a body rebuilt from the terms | they differ |
+| Sent record | Purser's record of the instruction it sent, stored with its SHA-256 before sending, against a record rebuilt from the terms. The record holds every field that comes from the terms. It holds no device or assurance data: those are passed through and never stored (section 8) | they differ, or the stored record no longer matches its stored hash |
 | Status | the create answer: HTTP 200, an `instructionId` of 36 to 50 characters, the same `clientCorrelationId` | HTTP 202, `PENDING`, a missing ID or another correlation ID |
 
 Any difference, an expired instruction or an over-cap amount refuses the purchase. No credential is requested. The
 refusal is written to the audit trail with Purser's code. An instruction that was already created is cancelled when
 fresh assurance data is at hand; otherwise it runs out at `effectiveUntilTime`, which is the signed expiry.
 
-If the sandbox turns out to have a read call that the documentation does not show, it replaces the "sent body" row and
-the comparison is made against Visa's copy.
+If the sandbox turns out to have a read call that the documentation does not show, it replaces the "sent record" row
+and the comparison is made against Visa's copy. The check is written as one function over the signed terms, the
+instruction as recorded, the create answer, the purchase to make and the time, so only the source of the record changes.
 
 ## 6. The flow and its calls
 
@@ -446,7 +447,7 @@ repeated, because no idempotency key is documented and no read call can tell wha
 | 5 | 1 | `POST /icc/v1/instructions` [s-init], built from the terms |
 | 6 | 0 | the checks of section 5 |
 | 7 | 1 | `POST /icc/v1/instructions/{instructionId}/credentials` [s-cred] |
-| 8 | 0 | the credential's envelope is checked, then it is wiped; no payment (section 7) |
+| 8 | 0 | the credential's envelope is checked, then it is dropped; no payment (section 7) |
 | 9 | 0 or 1 | `POST …/confirmations` [s-confirm] only if the first sandbox hour shows what to report for a credential that was not used |
 | 10 | 0 or 1 | `PUT …/cancel` [s-cancel] only after a refusal at step 6 and with fresh assurance data |
 | **Run, attempt B (over the limit)** | 0 | Purser refuses before any call: no instruction, no credential |
@@ -474,7 +475,7 @@ read says how to open the payload or how to put it into a payment request.
 | Stop before checkout | yes | It needs nothing the documentation leaves open |
 
 **Recommendation: the first run stops before checkout.** Purser requests the credential, checks only that the answer
-has the documented shape, wipes it and records "credential received, not used". Nothing is reported as paid. When the
+has the documented shape, drops it and records "credential received, not used". Nothing is reported as paid. When the
 sandbox shows what the payload holds and which payment call takes it, a Cybersource sandbox payment becomes the
 checkout step. The hosted page stays out unless the payload turns out to hold a card number, an expiry date and a
 security code, which nothing in the documentation suggests.
@@ -487,7 +488,8 @@ security code, which nothing in the documentation suggests.
   token ID only.
 - The credential (`signedPayload` and `authorization`) is treated as card data and as single-use, whatever the service
   allows: it lives in memory for one step, is never logged, never written to the ledger, a run record or an error,
-  never given to a model, and is wiped after use.
+  never given to a model, and is dropped after use. (A JavaScript string cannot be overwritten in memory: the client
+  holds the two values in one object that prints nothing, and lets go of them.)
 - Assurance data and device data are treated the same way.
 - Decrypted answers are never logged. The call log holds the method, the path with IDs replaced, the time and the
   process, as `src/airwallex/callBudget.ts` does.

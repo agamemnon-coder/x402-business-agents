@@ -271,9 +271,16 @@ async function runOnce(db: DB, deps: IccDeps, proposalId: string, storedTerms: s
   const existing = db.prepare("SELECT action_id FROM icc_purchases WHERE proposal_id = ?").get(proposalId) as { action_id: string } | undefined;
   if (existing) return rerun(db, rowOf(db, existing.action_id)!, now);
 
-  // The policy may have tightened since the CFO signed: checked again now; a refusal closes the proposal.
+  // The policy may have tightened since the CFO signed: checked again now; a refusal closes the proposal. So do terms
+  // that are not this rail's shape, or that the API's limits cannot take with this proposal's own id and expiry.
   const stored = JSON.parse(storedTerms) as IccTerms;
-  const again = stateRefusal(db, stored.agent as Agent, stored.currency, now) ?? decideIccPurchase(requestFromTerms(stored));
+  let again: IccDecision;
+  try {
+    again = stateRefusal(db, stored.agent as Agent, stored.currency, now) ?? decideIccPurchase(requestFromTerms(stored));
+    if (again.route !== "refused") buildInstruction(stored, "0".repeat(64), { actionId: proposalId, correlationId: "00000000-0000-4000-8000-000000000000" });
+  } catch (e) {
+    again = e instanceof IccFieldRefusal ? { route: "refused", code: e.code, reason: e.message } : { route: "refused", code: "PURSER_ICC_TERMS_MALFORMED", reason: "the stored terms are not an ICC purchase's terms" };
+  }
   if (again.route === "refused") {
     note(db, "icc.purchase_refused", proposalId, { agent: safe(String(stored.agent)), by: "purser", code: again.code, reason: safe(again.reason) }, now);
     closeAsStale(db, proposalId, { error: `${again.code}: ${again.reason}` }, {}, now);
@@ -438,12 +445,19 @@ function rerun(db: DB, row: Row, now: Date): IccOutcome {
   // An intent without a recorded answer (a crash), or an answer that never came: the call may have gone out.
   const open = row.status === "INSTRUCTION_SENT" || row.status === "CREDENTIAL_SENT" || row.status === "UNCONFIRMED";
   note(db, "icc.rerun_sent_nothing", row.proposal_id, { action_id: row.action_id, terms_sha256: row.terms_sha256, found: row.status, sent_again: false }, now);
+  const proposalStatus = (db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(row.proposal_id) as { status: string }).status;
+  if (row.status === "STARTED" || row.status === "INSTRUCTION_CREATED") {
+    // An earlier run stopped with no call in flight (a restart before the instruction, or before the credential).
+    // It is closed here; an instruction that exists ends at the signed expiry.
+    setRow(db, row.action_id, { status: "REFUSED", code: "PURSER_ICC_RESTARTED" }, now);
+    if (proposalStatus === "EXECUTING") finishExecution(db, row.proposal_id, "FAILED", { action_id: row.action_id, code: "PURSER_ICC_RESTARTED" }, now);
+    return { status: "refused", by: "purser", code: "PURSER_ICC_RESTARTED", reason: `an earlier run of ${row.proposal_id} stopped before a credential was requested; nothing is sent again, and a new purchase needs a new proposal`, ...base };
+  }
   if (!open) return { status: "refused", by: "purser", code: "PURSER_ALREADY_RAN", reason: `${row.proposal_id} already ran once (${row.status}); a new purchase needs a new proposal`, ...base };
   const step = row.status === "INSTRUCTION_SENT" || row.code === "ICC_NO_ANSWER_INSTRUCTION" ? "instruction" : "credential";
   if (row.status !== "UNCONFIRMED") {
     setRow(db, row.action_id, { status: "UNCONFIRMED", code: `ICC_NO_ANSWER_${step.toUpperCase()}` }, now);
-    const s = (db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(row.proposal_id) as { status: string }).status;
-    if (s === "EXECUTING") finishExecution(db, row.proposal_id, "FAILED", { action_id: row.action_id, unconfirmed: true, step }, now);
+    if (proposalStatus === "EXECUTING") finishExecution(db, row.proposal_id, "FAILED", { action_id: row.action_id, unconfirmed: true, step }, now);
   }
   return { status: "unconfirmed", step, reason: `the ${step} call of an earlier run has no recorded answer; nothing is sent again`, ...base };
 }

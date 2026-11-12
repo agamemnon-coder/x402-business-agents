@@ -15,13 +15,15 @@ import { ICC_PURCHASE_KIND } from "../src/icc/instruction.js";
 import { ICC_HARD_CAP_CENTS, ICC_MERCHANTS } from "../src/icc/policy.js";
 import { ICC_NOT_USED, executeIccPurchase, iccPurchases, requestIccPurchase, type IccDeps, type IccOutcome, type IccPurchaseRequest } from "../src/icc/purchase.js";
 import { fromCents } from "../src/lib/money.js";
+import { termsHash } from "../src/lib/terms.js";
 import { decide, resuming } from "../src/policy/approvals.js";
 import { makeIccTestKeys, type IccTestKeys } from "./support/iccKeys.js";
 import { IccStandIn } from "./support/iccStandIn.js";
 import { privateFindings } from "./support/privacyScan.js";
 
 const T0 = new Date("2026-11-12T10:00:00Z");
-const TOKEN = "A1B2C3D4E5F60718293A4B5C6D7E8F90";
+/** A made-up instrument identifier of the documented length (32). Not a card number and not a real ID. */
+const INSTRUMENT = "A1B2C3D4".repeat(4);
 const SHOP = ICC_MERCHANTS[0]!;
 /** Values that stand for the cardholder's device and assurance data: they must never be kept anywhere. */
 const PRIVATE = { fingerprint: "fp-session-0d5a7c1e", identity: "identity-91b7f3", ip: "192.168.0.100", device: "device-id-4e2b" };
@@ -33,7 +35,7 @@ afterEach(() => { resuming.clear(); vi.unstubAllEnvs(); vi.restoreAllMocks(); })
 
 function req(over: Partial<IccPurchaseRequest> = {}): IccPurchaseRequest {
   return {
-    agent: "sourcing", paymentMethodId: TOKEN, merchantName: SHOP.name, merchantUrl: SHOP.url, merchantCountry: SHOP.country,
+    agent: "sourcing", paymentMethodId: INSTRUMENT, merchantName: SHOP.name, merchantUrl: SHOP.url, merchantCountry: SHOP.country,
     amount: "12.00", currency: "EUR", items: [{ name: "Trail map pack", unitPrice: "6.00", quantity: "2" }], description: "Trail map packs for the spring range", ...over,
   };
 }
@@ -97,7 +99,7 @@ describe("the happy path", () => {
     const p = proposal(w.db, filed.proposalId);
     expect(p.kind).toBe(ICC_PURCHASE_KIND);
     expect(p.expires_at).toBe("2026-11-12T10:30:00Z");
-    expect(JSON.parse(p.terms_json)).toMatchObject({ agent: "sourcing", amount: "12.00", currency: "EUR", merchant: { name: SHOP.name, url: SHOP.url, country: SHOP.country }, payment_method_id: TOKEN });
+    expect(JSON.parse(p.terms_json)).toMatchObject({ agent: "sourcing", amount: "12.00", currency: "EUR", merchant: { name: SHOP.name, url: SHOP.url, country: SHOP.country }, payment_method_id: INSTRUMENT });
 
     // Nothing runs before the CFO signs.
     await expect(run(w, p.proposal_id)).rejects.toThrow(/not approved/);
@@ -288,6 +290,25 @@ describe("refused by Purser before any call", () => {
     expect(w.standIn.seen).toEqual([]);
   });
 
+  it("terms the API's limits cannot take, or that are not this rail's shape, close the proposal before anything runs", async () => {
+    const w = world();
+    const file = (id: string, terms: Record<string, unknown>) => {
+      const full = { ...terms, proposal_id: id };
+      const sha = termsHash(full as never);
+      w.db.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES (?, ?, ?, ?, 'sourcing', 'PENDING_APPROVAL', ?, ?)").run(id, ICC_PURCHASE_KIND, JSON.stringify(full), sha, String(terms.expires_at), T0.toISOString());
+      approve(w.db, id);
+    };
+    const good = JSON.parse(proposal(w.db, await approved(w)).terms_json) as Record<string, unknown>;
+    // An expiry with a fraction of a second cannot be written as the API's whole seconds, and is never rounded.
+    file("P-0002", { ...good, expires_at: "2026-11-12T10:30:00.500Z" });
+    expect(await run(w, "P-0002")).toMatchObject({ status: "refused", by: "purser", code: "PURSER_ICC_FIELD_NOT_ALLOWED" });
+    expect(proposal(w.db, "P-0002").status).toBe("NEEDS_REAPPROVAL");
+    file("P-0003", { schema: good.schema, kind: ICC_PURCHASE_KIND, expires_at: good.expires_at, agent: "sourcing", amount: "12.00", currency: "EUR" });
+    expect(await run(w, "P-0003")).toMatchObject({ status: "refused", by: "purser", code: "PURSER_ICC_TERMS_MALFORMED" });
+    expect(proposal(w.db, "P-0003").status).toBe("NEEDS_REAPPROVAL");
+    expect(w.standIn.seen).toEqual([]);
+  });
+
   it("the assurance file cannot be read: nothing is sent", async () => {
     const w = world();
     const id = await approved(w);
@@ -365,6 +386,22 @@ describe("nothing is sent twice", () => {
     expect(row(w.db, id)).toMatchObject({ status: "UNCONFIRMED" });
     expect(proposal(w.db, id).status).toBe("FAILED");
     expect(w.standIn.seen).toEqual([]);
+  });
+
+  it("a process that died with no call in flight (the instruction made, no credential asked): closed, nothing sent again", async () => {
+    const w = world();
+    const id = await approved(w);
+    // As a crash between the create answer and the credential request leaves it.
+    const dying: IccDeps = { ...w.deps, client: { ...afterCreate(w, () => {}).client, requestCredentials: () => new Promise<never>(() => {}) } };
+    void run(w, id, dying);
+    await new Promise((r) => setTimeout(r, 30));
+    w.db.prepare("UPDATE icc_purchases SET status = 'INSTRUCTION_CREATED' WHERE action_id = ?").run(id);
+    const out = await run(world({ db: w.db, log: w.log }), id);
+    expect(out).toMatchObject({ status: "refused", by: "purser", code: "PURSER_ICC_RESTARTED" });
+    expect(row(w.db, id)).toMatchObject({ status: "REFUSED", code: "PURSER_ICC_RESTARTED" });
+    expect(proposal(w.db, id).status).toBe("FAILED");
+    expect(w.standIn.seen.map((s) => s.op)).toEqual(["create"]);
+    expect(await run(w, id)).toMatchObject({ status: "refused", code: "PURSER_ALREADY_RAN" });
   });
 
   it("an error nobody expected after the intent was written counts as unknown too: unconfirmed, never sent again", async () => {
@@ -468,8 +505,11 @@ describe("nothing private is kept or printed", () => {
     // A number as long as a card number (the stand-in for one is built here from parts), grouped or not, and any security code word.
     const numberLike = ["4" + "1".repeat(3), "1".repeat(4), "1".repeat(4), "1".repeat(4)];
     expect(/\b\d{12,19}\b/.test(numberLike.join(""))).toBe(true);
-    expect(everything).not.toMatch(/\b\d{12,19}\b/);
-    expect(everything).not.toMatch(/\b\d{4}[ -]\d{4}[ -]\d{4}[ -]\d{1,7}\b/);
+    // A random UUID (the correlation ID, the tail of an instruction ID) can end in twelve digits by chance: UUIDs are
+    // taken out first, so that this check is about numbers and not about luck.
+    const withoutUuids = everything.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, "[uuid]");
+    expect(withoutUuids).not.toMatch(/\b\d{12,19}\b/);
+    expect(withoutUuids).not.toMatch(/\b\d{4}[ -]\d{4}[ -]\d{4}[ -]\d{1,7}\b/);
     expect(everything).not.toMatch(/\b(cvv2?|cvc|csc|security[ _-]?code)\b/i);
 
     // The repository's privacy scan over what the rail itself wrote and printed: no token, key, bearer value or long
