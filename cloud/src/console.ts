@@ -54,17 +54,9 @@ header.top .spacer { margin-left: auto; }
 .note-ok { background: var(--ok-soft); color: var(--ok); }
 .note-bad { background: var(--bad-soft); color: var(--bad); }
 .note-info { background: var(--sunken); color: var(--muted); }
-.steps { list-style: none; padding: 0; margin: 18px 0 18px; display: grid; gap: 10px; }
 .auth .inbox { margin: 0 0 12px; }
 .auth .btn + .btn, .auth .note-ok + .btn { margin-left: 8px; }
 .auth p + .btn, .auth .once + p { margin-top: 12px; }
-.steps li { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
-.steps li .n { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--sunken); color: var(--muted); font-weight: 700; font-size: 13px; }
-.steps li.done .n { background: var(--ok-soft); color: var(--ok); }
-.steps li.now { border-color: var(--accent); }
-.steps li.now .n { background: var(--accent); color: #fff; }
-.steps li b { display: block; }
-.steps li span.s { color: var(--muted); font-size: 14px; }
 .cmd { display: block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; line-height: 1.55; background: var(--sunken); padding: 12px 14px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; margin: 10px 0 0; }
 .waits { margin-top: 22px; }
 .form-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-top: 12px; }
@@ -281,23 +273,64 @@ ul.files .fd { display: block; color: var(--muted); font-size: 12.5px; overflow-
 .archive ul.files { margin: 6px 0 4px 14px; }
 /* A phone: on an invoice's page what was done and what to do come before the document. */
 @media (max-width: 980px) { .split.inv > .stack { order: -1; } }
+
+/* The polish (12 Nov): the site's mark as a Purser Cloud lockup, and a lighter first run and sign-in on the site's
+   tokens: more air, the site's card radius and shadow, a step indicator, the brand colour on the one main button. */
+.brand .mk { width: 30px; height: 30px; border-radius: 9px; }
+.brand .nm { font-weight: 750; }
+.brand .sec { font-weight: 500; }
+/* A phone: the word Purser beside the mark while signed out; signed in, the first row keeps its room for the company, the engine and test money. */
+@media (max-width: 640px) { .signed-out header.top .brand > span.nm { display: inline; } .signed-out header.top nav.tabs { display: none; } }
+.auth { max-width: 480px; margin: 9vh auto 48px; padding: 40px 40px 36px; border-radius: 22px; }
+.auth h1 { font-size: 28px; line-height: 1.2; margin: 0 0 10px; }
+.auth p { line-height: 1.6; margin: 0 0 22px; }
+.auth label { font-weight: 600; margin: 18px 0 8px; }
+.auth .btn.primary { margin-top: 24px; }
+.auth p.hint { font-size: 13px; color: var(--muted); margin: 8px 2px 0; line-height: 1.5; }
+.auth .alt { margin: 18px 0 0; color: var(--muted); }
+.auth .alt a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.auth .alt a:hover { text-decoration: underline; }
+.auth .note-ok, .auth .note-bad, .auth .note-info { font-weight: 500; line-height: 1.5; margin: 12px 0 0; }
+.auth .stage > .note-ok:first-child { margin: 0 0 4px; }
+.auth .stage > p { margin: 16px 0 0; }
+ol.stepper { list-style: none; margin: 4px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; counter-reset: none; }
+ol.stepper li { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--muted); font-size: 13.5px; font-weight: 600; }
+ol.stepper li .n { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; line-height: 1; background: var(--sunken); color: var(--muted); font-size: 12.5px; font-weight: 700; }
+ol.stepper li .sl { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ol.stepper li.now { color: var(--text); }
+ol.stepper li.now .n { background: var(--accent); color: #fff; box-shadow: 0 0 0 4px var(--accent-soft); }
+ol.stepper li.done .n { background: var(--ok-soft); color: var(--ok); }
+ol.stepper li.done .n .ic { display: inline-flex; }
+.auth p.stepsub { margin: 14px 0 6px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 14px; }
+/* The address field and its domain are one box: its focus ring goes round both, not a line inside. */
+.addr:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+.addr .field:focus { outline: none; }
+.auth .stage { animation: rise .28s ease-out both; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .auth .stage { animation: none; } }
+@media (max-width: 640px) { .auth { margin-top: 4vh; padding: 28px 22px 24px; } .auth h1 { font-size: 24px; } }
 `;
 
-// The page's frame in Dutch (the default); the script re-words it in the person's language when it starts.
+// The page's frame in English (the default); the script re-words it in Dutch when the person chose Dutch.
 const BODY = `
-<header class="top"><div class="wrap"><a class="brand" href="#/"><span class="mk">P</span><span>Purser</span><span class="sec">Cloud</span></a>
-<nav class="tabs" id="tabs" aria-label="${tr("nl", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("nl", "cs.nav.overview")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("nl", "nav.invoices")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("nl", "nav.transactions")}</a><a href="#/books" data-tab="books" data-t="cs.nav.books">${tr("nl", "cs.nav.books")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("nl", "cs.nav.settings")}</a></nav>
+<header class="top"><div class="wrap"><a class="brand" href="#/" aria-label="Purser Cloud"><span class="mk">${svg("feather", 17)}</span><span class="nm">Purser</span><span class="sec">Cloud</span></a>
+<nav class="tabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/books" data-tab="books" data-t="cs.nav.books">${tr("en", "cs.nav.books")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
 <span class="spacer"></span>
-<span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("nl", "cs.sign_out")}" aria-label="${tr("nl", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
-<span class="test" title="${escAttr(tr("nl", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("nl", "test.label")}</span></span></div></header>
+<span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
+<span class="test" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></header>
 <main><div class="wrap" id="view" aria-live="polite"></div></main>
-<p class="foot wrap" id="foot">${tr("nl", "cs.foot")}</p>`;
+<p class="foot wrap" id="foot">${tr("en", "cs.foot")}</p>`;
 
 // The client: plain JS (no template literals in it, so it can sit in this file as a raw string).
 const SCRIPT = String.raw`
 const LS=__CATALOGUES__;
-const PREF=(()=>{try{return localStorage.getItem('purser.cloud.lang')}catch(e){return null}})();
-const L=LS[PREF==='en'?'en':'nl'];
+// English unless Dutch was chosen on purpose: the person's own language (on their account), else a choice made in this
+// page (kept in this browser). The company's language is not a reason: the cloud stores Dutch for every new company
+// by default, so it cannot tell a choice from the default. The key older pages wrote (on their own, not on a
+// choice) is not read: this page keeps its own.
+const langOf=(saved,person)=>person==='nl'||person==='en'?person:saved==='nl'?'nl':'en';
+const PREF=(()=>{try{return localStorage.getItem('purser.cloud.language')}catch(e){return null}})();
+const L=LS[langOf(PREF,null)];
 __I18N__
 __EVENT_LINE__
 document.documentElement.lang=L.lang;
@@ -355,9 +388,10 @@ function shell(){
   const tab=(location.hash.split('/')[1]||'').split('?')[0];
   for(const a of document.querySelectorAll('#tabs a'))if(a.dataset.tab===tab)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
 }
-// The person's language (their own, else the company's): when it is not the page's, remember it and load the page again.
-function useLanguage(lang){if(lang!=='nl'&&lang!=='en')return;try{localStorage.setItem('purser.cloud.lang',lang)}catch(e){}if(lang!==L.lang)location.reload()}
-async function me(){if(!ME){ME=await api('/v1/me');if(ME.language&&ME.language!==L.lang)useLanguage(ME.language)}return ME}
+// A language chosen in the page (the person's own, or the company's for an owner who follows it): remember it in this
+// browser and load the page again when it is not the page's. Signed in, the person's own language decides (langOf).
+function useLanguage(lang){if(lang!=='nl'&&lang!=='en')return;try{localStorage.setItem('purser.cloud.language',lang)}catch(e){}if(lang!==L.lang)location.reload()}
+async function me(){if(!ME){ME=await api('/v1/me');const want=langOf(PREF,ME.user&&ME.user.language);if(want!==L.lang)useLanguage(want)}return ME}
 const title=(t)=>{document.title=t?'Purser Cloud · '+t:'Purser Cloud'};
 const head=(h,sub,tools)=>el('div','head',[el('div','',[el('h1','',h),sub?el('p','lede',sub):null]),tools?el('div','tools',tools):null]);
 
@@ -402,23 +436,26 @@ async function enrolPasskey(o){
 function startView(){
   title(t('cs.setup'));
   let key='',slug='',info=null,sync=null;
-  const box=el('div','card auth');
-  const steps=el('ol','steps');const status=el('div','');status.setAttribute('role','status');
-  function stepItem(n,t,s,state){return el('li',state||'',[el('span','n',state==='done'?ic('circle-check'):String(n)),el('div','',[el('b','',t),el('span','s',s)])])}
+  const box=el('div','card auth start');
+  // The three steps in one row: numbered, the current one marked, done ones ticked; the current one's line below.
+  const steps=el('ol','stepper');const sub=el('p','stepsub');const status=el('div','');status.setAttribute('role','status');
+  function stepItem(n,label,state){const li=el('li',state||'',[el('span','n',state==='done'?ic('circle-check'):String(n)),el('span','sl',label)]);if(state==='now')li.setAttribute('aria-current','step');return li}
   function draw(stage){
     steps.replaceChildren(
-      stepItem(1,t('cs.step1'),t('cs.step1_sub'),stage>1?'done':'now'),
-      stepItem(2,t('cs.step2'),t('cs.step2_sub'),stage>2?'done':stage===2?'now':''),
-      stepItem(3,t('cs.step3'),t('cs.step3_sub'),stage===3?'now':''));
+      stepItem(1,t('cs.step1'),stage>1?'done':'now'),
+      stepItem(2,t('cs.step2'),stage>2?'done':stage===2?'now':''),
+      stepItem(3,t('cs.step3'),stage===3?'now':''));
+    sub.textContent=[t('cs.step1_sub'),t('cs.step2_sub'),t('cs.step3_sub')][stage-1];
   }
-  const body=el('div','');
+  // Each stage in a fresh block, so it fades in (CSS only, off for those who ask for less motion).
+  const body=el('div','');const stageOf=(kids)=>body.replaceChildren(el('div','stage',kids));
   function stage1(){
     draw(1);
     const s=el('input','field');s.placeholder='your-company';s.spellcheck=false;s.id='start-slug';
     const k=el('input','field');k.type='password';k.placeholder='pck_…';k.autocomplete='off';k.id='start-key';
     const b=btn(t('cs.continue'),'primary big');
-    body.replaceChildren(el('label','',t('cs.company_address')),el('div','addr',[s,el('span','',CFG.mailDomain?'@'+CFG.mailDomain:'.purser')]),el('label','',t('cs.starter_key')),k,
-      note(t('cs.starter_note')),b);
+    stageOf([el('label','',t('cs.company_address')),el('div','addr',[s,el('span','',CFG.mailDomain?'@'+CFG.mailDomain:'.purser')]),el('label','',t('cs.starter_key')),k,
+      el('p','hint',t('cs.starter_note')),b]);
     b.onclick=async()=>{slug=s.value.trim().toLowerCase();key=k.value.trim();
       try{info=await api('/v1/me',{token:key});if(info.tenant.slug!==slug)throw new Error(t('cs.other_company_key'));if(!info.user)throw new Error(t('cs.not_owner_key'));stage2()}catch(e){status.replaceChildren(note(e.message,'bad'))}};
   }
@@ -426,7 +463,7 @@ function startView(){
     draw(2);status.replaceChildren();
     const name=el('input','field');name.value=info.tenant.name||'';name.id='start-name';
     const b=btn(t('cs.make_passkey'),'primary big','scan-face');
-    body.replaceChildren(el('label','',t('cs.company_name')),name,info.owner_has_passkey?note(t('cs.owner_has_passkey'),'bad'):null,b);
+    stageOf([el('label','',t('cs.company_name')),name,info.owner_has_passkey?note(t('cs.owner_has_passkey'),'bad'):null,b]);
     if(info.owner_has_passkey)b.disabled=true;
     if(!hasPasskeys()){b.disabled=true;status.append(note(t('cs.no_passkeys_short'),'bad'))}
     b.onclick=async()=>{b.disabled=true;try{
@@ -444,15 +481,14 @@ function startView(){
     const inbox=m.inbox?el('p','inbox',[ic('mail'),t('cs.mail_to'),el('b','mono',m.inbox)]):note(t('cs.inbox_later'));
     const make=btn(t('cs.make_runner_key'),'primary','key-round');
     const out=el('div','');
-    body.replaceChildren(inbox,el('p','',[t('cs.connect_runner')]),make,out,
-      note(t('cs.starter_gone'),'ok'),
-      (()=>{const a=el('a','btn big',t('cs.open_console'));a.href='#/overview';return a})());
+    stageOf([note(t('cs.starter_gone'),'ok'),inbox,el('p','',[t('cs.connect_runner')]),make,out,
+      el('p','alt',[(()=>{const a=el('a','',t('cs.open_console'));a.href='#/overview';return a})()])]);
     make.onclick=async()=>{make.disabled=true;try{sync=await api('/v1/keys',{method:'POST',body:{name:t('cs.runner_key_name'),scopes:['sync'],expires_in_days:90}});
       out.replaceChildren(el('div','once',[el('b','',t('cs.shown_once')),t('cs.run_this'),
         el('code','cmd','PURSER_CLOUD_URL='+CFG.origin+' PURSER_CLOUD_KEY='+sync.api_key+' npm run cloud -- push')]))}catch(e){out.replaceChildren(note(e.message,'bad'));make.disabled=false}};
     key='';
   }
-  box.append(el('h1','',t('cs.setup')),el('p','',t('cs.setup_lede')),steps,body,status);
+  box.append(el('h1','',t('cs.setup')),el('p','',t('cs.setup_lede')),steps,sub,body,status);
   view().replaceChildren(box);stage1();
 }
 
@@ -1009,7 +1045,7 @@ async function settingsView(){
   const langNames=[['nl','Nederlands'],['en','English']];
   const langBox=el('div','form-row');const langMsg=el('div','');
   if(owner){const c=langSel(langNames,m.tenant.language||'nl');c.onchange=async()=>{try{await api('/v1/company',{method:'POST',body:{language:c.value}});ME=null;langMsg.replaceChildren(note(t('cs.language_saved'),'ok'));if(!m.user||!m.user.language)useLanguage(c.value)}catch(e){if(!(e instanceof Expired))langMsg.replaceChildren(note(e.message,'bad'))}};langBox.append(el('div','',[el('label','',t('cs.language_company')),c]))}
-  if(m.kind==='session'&&m.user){const p=langSel([['',t('cs.language_follow')],...langNames],m.user.language||'');p.onchange=async()=>{try{const r=await api('/v1/me/language',{method:'POST',body:{language:p.value||null}});ME=null;langMsg.replaceChildren(note(t('cs.language_saved'),'ok'));useLanguage(r.language||m.tenant.language||'nl')}catch(e){if(!(e instanceof Expired))langMsg.replaceChildren(note(e.message,'bad'))}};langBox.append(el('div','',[el('label','',t('cs.language_mine')),p]))}
+  if(m.kind==='session'&&m.user){const p=langSel([['',t('cs.language_follow')],...langNames],m.user.language||'');p.onchange=async()=>{try{const r=await api('/v1/me/language',{method:'POST',body:{language:p.value||null}});ME=null;langMsg.replaceChildren(note(t('cs.language_saved'),'ok'));useLanguage(r.language||m.tenant.language||'en')}catch(e){if(!(e instanceof Expired))langMsg.replaceChildren(note(e.message,'bad'))}};langBox.append(el('div','',[el('label','',t('cs.language_mine')),p]))}
   const company=el('div','card panel',[el('h2','',t('cs.company')),dl([[t('cs.name'),m.tenant.name],[t('cs.address'),m.tenant.slug],[t('cs.inbox'),m.inbox||t('cs.not_routed'),'mono']]),langBox.children.length?el('h2','sub-h',t('cs.language')):null,langBox.children.length?langBox:null,langMsg]);
   if(!owner){view().replaceChildren(head(t('cs.nav.settings')),company,note(t('cs.only_owner',{name:m.tenant.name})));return}
   const people=el('div','card panel');const keys=el('div','card panel');const dataCard=el('div','card panel');const awx=el('div','card panel');awx.id='awx';awx.hidden=true;
@@ -1196,13 +1232,13 @@ const USED = keysUsedIn(SCRIPT + BODY);
 
 /** The console's page: one document, its config in a meta tag (the origin, the passkey RP id, the mail domain, whether the cloud runs an engine). */
 export function consolePage(n: string, cfg: { origin: string; rpId: string; mailDomain: string; engine?: boolean }): string {
-  // Both languages' words (the console's only) as JSON: the script picks the person's, Dutch until it knows.
+  // Both languages' words (the console's only) as JSON: the script picks English unless the person chose Dutch.
   const keep = (k: string) => consoleKeys(k as keyof typeof MESSAGES.en) || USED.has(k);
   const cat = (lang: "nl" | "en") => ({ lang, m: Object.fromEntries(Object.entries(MESSAGES[lang]).filter(([k]) => keep(k))), data: lang === "nl" ? DATA_NL : {} });
   const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
   const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS));
   return `<!doctype html>
-<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="purser-cloud" content="${escAttr(JSON.stringify(cfg))}">
 <title>Purser Cloud</title>

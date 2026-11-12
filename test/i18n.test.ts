@@ -220,11 +220,13 @@ describe("the console's language", () => {
     expect((await c.req("GET", "/v1/me", { key: session })).json).toMatchObject({ language: "en" });
   });
 
-  it("serves the console with both catalogues, Dutch first, and no English words in its HTML", () => {
+  // 12 Nov (console polish): the console now paints in English and turns Dutch only on a person's explicit choice
+  // (test/cloud-console.test.ts tests that rule); this test pinned the Dutch first paint and now pins the English one.
+  it("serves the console with both catalogues, English first, and no Dutch words in its HTML", () => {
     const html = consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "" });
-    expect(html).toContain('<html lang="nl">');
+    expect(html).toContain('<html lang="en">');
     const text = shownText(html).replace(/\b(Purser Cloud|Purser|Face ID|Airwallex)\b/g, " ");
-    expect(ENGLISH.exec(text)?.[0] ?? null).toBeNull();
+    expect(/\b(Overzicht|Facturen|Boekhouding|Instellingen|Testgeld|alleen|betalingen)\b/.exec(text)?.[0] ?? null).toBeNull();
     expect(html).toContain('"nl":{');
     expect(html).toContain('"en":{');
   });
