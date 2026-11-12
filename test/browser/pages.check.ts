@@ -6,6 +6,7 @@
 // script and works from the keyboard). Also /pricing and /security, the product pages under "More".
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
+import { TRY_URL } from "../../src/redesign/ui.js";
 import { WATCH_IN_MENU } from "../../src/config/film.js";
 import { VISA_ICC_LINE } from "../../src/config/brand.js";
 import { VISA_ENTRY_LINE, VISA_H1, VISA_TAP_HEADING, VISA_TITLE } from "../../src/redesign/partners.js";
@@ -225,7 +226,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // Home as one story (home-story, 12 Nov): two buttons, the hero that plays once and rests on step 4, the visitor's
     // own check with no request, the sizes, the screens (test/browser/homeStory.ts). The CFO's view is linked from
     // Proof's head (checked below), not from Home.
-    await checkHome(page, { url: `${base}/`, name: `/ (Home) ${tag}`, width: w, height: h, touch: w < 500, tryHref: liveAt >= 0 ? "try/sign" : "try", fail, shot: async (n) => { await page.locator("#hero-demo").screenshot({ path: join(shots, `home-demo-${n}-${tag}.png`) }); } });
+    await checkHome(page, { url: `${base}/`, name: `/ (Home) ${tag}`, width: w, height: h, touch: w < 500, tryHref: TRY_URL /* 12 Nov (#188): every Try button opens the hands-on demo */, fail, shot: async (n) => { await page.locator("#hero-demo").screenshot({ path: join(shots, `home-demo-${n}-${tag}.png`) }); } });
     await page.goto(`${base}/home?demo=4`, { waitUntil: "load" });
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
 
@@ -676,7 +677,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (path === "/airwallex") {
         // Seven tiles, each with the product's name, one number, an id in monospace and its run's date.
         const tiles = (await page.evaluate(`[...document.querySelectorAll(".awp .awt")].map((t) => ({ name: (t.querySelector("h2") || {}).textContent || "", v: t.querySelectorAll(".v").length, id: (t.querySelector(".i code") || {}).textContent || "", date: (t.querySelector("time") || {}).textContent || "", top: t.getBoundingClientRect().top }))`)) as { name: string; v: number; id: string; date: string; top: number }[];
-        if (tiles.map((t) => t.name).join("|") !== "Issuing|Payouts|FX|Transfer approvals|Connected accounts|Payment acceptance|Airi" || tiles.some((t) => t.v !== 1 || !t.id || !/^\d{1,2} [A-Z][a-z]{2}$/.test(t.date))) fail(`/airwallex ${tag}: not seven product tiles, each with one number, an id and a date (${JSON.stringify(tiles.map((t) => [t.name, t.v, t.id, t.date]))})`);
+        // 12 Nov (jury check): then three tiles behind flags, each live on 12 Nov, under their own line.
+        if (tiles.map((t) => t.name).join("|") !== "Issuing|Payouts|FX|Transfer approvals|Connected accounts|Payment acceptance|Airi|Payee check|Batch transfer|Ledger reconciliation" || tiles.some((t) => t.v !== 1 || !t.id || !/^\d{1,2} [A-Z][a-z]{2}$/.test(t.date))) fail(`/airwallex ${tag}: not seven product tiles, each with one number, an id and a date (${JSON.stringify(tiles.map((t) => [t.name, t.v, t.id, t.date]))})`);
         if (!(await page.evaluate(`(() => { const t = document.querySelector(".awp"), f = document.querySelector("#awx-hash"); return !!t && !!f && !!(t.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING); })()`))) fail(`/airwallex ${tag}: the tiles are not above the hash block`);
         // The first screen is about Airwallex's products: no Metal earnings and no simulated deposit before any scroll.
         const first = await firstScreen(page);
@@ -1111,7 +1113,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const box = await top.boundingBox();
       if ((await page.locator('a[href="judge"]').count()) !== 1 || (await top.innerText()).trim() !== "Judging? Take the 3-minute tour" || !box || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: no one "Judging? Take the 3-minute tour" link in the footer, inside the page's gutter`);
       if ((await page.locator("main p.reassure").innerText()).trim() !== "A test passkey, no account, no money. About a minute.") fail(`/ (Home, with /try/sign) ${tag}: the line under the button is not /try/sign's`);
-      await checkHome(page, { url: `${judgeBase}/`, name: `/ (Home, with /try/sign) ${tag}`, width: w, height: h, touch: w < 500, tryHref: "try/sign", fail, quick: true });
+      await checkHome(page, { url: `${judgeBase}/`, name: `/ (Home, with /try/sign) ${tag}`, width: w, height: h, touch: w < 500, tryHref: TRY_URL, fail, quick: true });
       await page.goto(`${judgeBase}/home?demo=4`, { waitUntil: "load" });
       await look(page, `/ (Home, with /try/sign) ${tag}`, w);
       if (w <= 430) await checkTaps(page, { name: `/ (Home, with /try/sign) ${tag}, header and footer`, scopes: CHROME, fail });

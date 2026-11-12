@@ -5,6 +5,7 @@
 // text under 14 px in the stage, the timeline or a card, or an internal link that does not end in a 200 (old addresses
 // redirect). External links (the testnet explorer, the partners' docs) are not fetched.
 //   npx tsx test/browser/redesign.check.ts [screenshot dir]
+import { TRY_URL } from "../../src/redesign/ui.js";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { chromium, type Page } from "playwright";
@@ -102,7 +103,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (tabs.slice(0, 3).join() !== "Home,Try,Proof" || tabs.length > 5 || (!WATCH_IN_MENU && (tabs.some((t) => /watch/i.test(t)) || (await page.locator('nav.tabs a[href*="watch"]').count()) > 0))) fail(`/home ${tag}: the menu is not Home, Try, Proof (at most five, no Watch): ${tabs.join(", ")}`);
       await menu(page, `/home ${tag}`);
     if (w < 500) await checkTaps(page, { name: `/home ${tag}, header and footer`, scopes: CHROME, fail });
-    await checkHome(page, { url: `${base}/`, name: `/home ${tag}`, width: w, height: h, touch: w < 500, tryHref: "try", fail, quick: true });
+    await checkHome(page, { url: `${base}/`, name: `/home ${tag}`, width: w, height: h, touch: w < 500, tryHref: TRY_URL, fail, quick: true });
     await look(page, `/home ${tag}, after the hero's check`, w);
     await page.goto(`${base}/home?demo=4`, { waitUntil: "load" });
     await page.screenshot({ path: join(shots, `home-${tag}.png`) });
