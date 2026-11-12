@@ -289,9 +289,8 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   });
 }
 
-/** One card for /books (owner, 12 Nov): one word, as Home's word budget allows (test/site-v4.test.ts); none without the T:0 record. */
+/** One card for /books (owner, 12 Nov): one word, as Home's word budget allows (test/site-v4.test.ts); none without the statement. */
 export function booksCardHtml(): string {
-  const j = booksData().journal;
-  if (!j) return "";
+  if (!booksData().statement) return "";
   return `<ol class="rows books"><li><a class="row reveal" href="books"><span class="ic">${icon("database", 22)}</span><strong>${esc("Books")}</strong>${icon("arrow-right", 18)}</a></li></ol>`;
 }
