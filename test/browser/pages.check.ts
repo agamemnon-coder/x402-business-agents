@@ -5,7 +5,8 @@
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
 import { WATCH_IN_MENU } from "../../src/config/film.js";
-import { VISA_ENTRY_LINE } from "../../src/redesign/partners.js";
+import { VISA_ICC_LINE } from "../../src/config/brand.js";
+import { VISA_ENTRY_LINE, VISA_H1, VISA_TAP_HEADING, VISA_TITLE } from "../../src/redesign/partners.js";
 import { AWX_PAGE_LABEL } from "../../src/redesign/airwallexProducts.js";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -549,11 +550,18 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     }
 
     // The partner pages (v4, C1): short (at most 150 words before anything is opened), the flow first, the run
-    // labelled, the details folded and every fold readable once open, no Visa logo; /visa carries the claim and the
-    // TAP status word for word (Visa, 5 Nov: not eligible Visa tooling), and its honest labels in a fold.
+    // labelled, the details folded and every fold readable once open, no Visa logo; /visa is one Visa Intelligent
+    // Commerce story (12 Nov, jury panel): the TAP claim, its status word for word (Visa, 5 Nov: not eligible Visa
+    // tooling) and its honest labels sit in one closed fold at the very end, labelled as outside the entry.
     for (const path of ["/metal", "/airwallex", "/visa", "/claude"]) {
       await page.goto(`${base}${path}`, { waitUntil: "load" });
       await look(page, `${path} ${tag}`, w);
+      // /visa opens with VIC (12 Nov): at most one screen of text before the first proof, so the drawing (purchase B's
+      // steps, with its ids) starts on the first screen at every width.
+      if (path === "/visa") {
+        const top = await page.evaluate(() => Math.round((document.getElementById("vic-flow")?.getBoundingClientRect().top ?? Infinity) + window.scrollY));
+        if (!(top < h)) fail(`/visa ${tag}: the drawing starts at ${top} px, below the first screen (${h} px)`);
+      }
       const pt = await page.evaluate(() => document.body.innerText);
       // The footer's "Built on" strip (owner, 12 Nov) is the frame's, not the page's: its words are not counted.
       const strip = await page.locator("footer .builton").innerText().catch(() => "");
@@ -565,16 +573,44 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // The second Airi run (vic-2, 7 Nov): /visa 465 with its three outcomes under the VIC flow, /airwallex 365 with its
       // heading and checks (the same budgets as test/site-v4.test.ts).
       // /visa 495 since 10 Nov (Max: we compete for the Visa Award, keep it visible): one plain sentence on top; 600 the
-      // same day with the overview of the three Visa runs above the Airi run (Max, 10 Nov: more Visa).
+      // same day with the overview of the Visa runs above the Airi run (Max, 10 Nov: more Visa); 625 since 12 Nov, the
+      // budget of test/site-v4.test.ts, for the three folded lines under the Airi runs.
+      // /airwallex 374 since 12 Nov (jury panel): the Airi run's summary says "A scripted run, no Claude call".
       // /metal: 230 only while a run record of the invoice token exists (12 Nov), for its one block (50 words in sight).
       // /metal: 275 since the jury panel of 12 Nov, for its four mandates in one table (each figure a word; its column
       // heads show from 700 px); 325 with the invoice token's block.
       // /claude: 195 since the jury panel of 12 Nov (measured, not asserted: four figures with their records).
-      const budget = path === "/airwallex" ? 365 : path === "/visa" ? 600 : path === "/metal" ? (tokenizeRun() ? 325 : 275) : path === "/claude" ? 195 : 150;
+      // /claude: 225 since the merge of 12 Nov, the budget of test/site-v4.test.ts, for the hostile-model eval's line beside
+      // the measured block.
+      const budget = path === "/airwallex" ? 374 : path === "/visa" ? 625 : path === "/metal" ? (tokenizeRun() ? 325 : 275) : path === "/claude" ? 225 : 150;
       if (words > budget + 25) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
+      // Each page is labelled with the run it shows: the main run; /visa with the Airi run's own label (the main run's
+      // label is inside its closed TAP fold, with the main run's TAP-signed buy).
       // /airwallex (jury panel, 12 Nov) shows several runs, each dated on its own tile: its label is true for all of them,
       // and it opens on a tile per Airwallex product in place of the flow of one run.
-      if (path === "/airwallex" ? !pt.includes(AWX_PAGE_LABEL) || /Replay of the main run/.test(await page.locator("main").innerText()) : !/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(pt)) fail(`${path} ${tag}: its run is not labelled`);
+      if (path === "/airwallex" ? !pt.includes(AWX_PAGE_LABEL) || /Replay of the main run/.test(await page.locator("main").innerText()) : !(path === "/visa" ? /7 Nov · Airwallex sandbox · test card · test money/ : /Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/).test(pt)) fail(`${path} ${tag}: its run is not labelled`);
+      // /visa before anything is opened (12 Nov, jury panel): "TAP" is on the page once, in the line of the one closed
+      // fold at the very end, below the first screen; the basis for "VIC" and the Intelligent Commerce Connect line are
+      // in sight; five facts under the drawing; purchase B's three amounts are equal; the footer cites the run's record.
+      if (path === "/visa") {
+        const c = await page.evaluate(`(() => {
+          const tap = document.getElementById("visa-tap"), sum = tap ? tap.querySelector("summary") : null;
+          const main = document.querySelector("main"), last = [...main.querySelectorAll("details")].pop();
+          const amounts = [...document.querySelectorAll("#vic-compare .awrow")][0];
+          return { open: !tap || tap.open, tapTop: sum ? Math.round(sum.getBoundingClientRect().top + window.scrollY) : -1, last: !!tap && last === tap, after: tap ? main.innerText.split(sum.innerText).pop().trim() : "?",
+            title: document.title, facts: [...document.querySelectorAll("#vic-facts li")].filter((li) => li.offsetParent !== null && !li.closest("details")).length,
+            amounts: amounts ? [...amounts.querySelectorAll("code")].map((x) => x.textContent) : [], foot: document.querySelector("footer").textContent };
+        })()`) as { open: boolean; tapTop: number; last: boolean; after: string; title: string; facts: number; amounts: string[]; foot: string };
+        if (c.title !== VISA_TITLE) fail(`/visa ${tag}: the title is "${c.title}"`);
+        if (c.open || !c.last || c.after !== "") fail(`/visa ${tag}: the TAP fold is open, or not the last thing on the page ("${c.after.slice(0, 60)}")`);
+        if ((pt.match(/\bTAP\b|Trusted Agent Protocol/g) ?? []).length !== 1 || !pt.includes(VISA_TAP_HEADING)) fail(`/visa ${tag}: TAP is named outside the closed fold's own line`);
+        if (!(c.tapTop > h)) fail(`/visa ${tag}: the TAP fold's line is on the first screen (${c.tapTop} px)`);
+        if (!pt.includes(VISA_ENTRY_LINE) || !pt.includes(VISA_ICC_LINE) || pt.split("Intelligent Commerce Connect").length !== 2) fail(`/visa ${tag}: the basis for VIC or the Intelligent Commerce Connect line is not in sight, once`);
+        if (c.facts !== 5) fail(`/visa ${tag}: ${c.facts} facts in sight under the drawing, not five`);
+        if (c.amounts.length !== 3 || new Set(c.amounts).size !== 1) fail(`/visa ${tag}: purchase B's three amounts are not equal (${c.amounts.join(" / ")})`);
+        if (!/A scripted run, no Claude call/.test(pt) || /Agents paid with a single-use Visa|three live runs/.test(pt)) fail(`/visa ${tag}: the run is not called scripted`);
+        if (!c.foot.includes("docs/demo/airi-run.json") || /main run|TAP/.test(c.foot)) fail(`/visa ${tag}: the footer does not cite the Airi run's record, or carries the main run's lines`);
+      }
       // /metal (jury panel, 12 Nov) opens on its four mandates in one table, in place of a picture of the flow.
       if (path !== "/airwallex" && path !== "/metal" && (await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
       if (path === "/metal" && (await page.locator("table.mtab tbody tr").count()) !== 4) fail(`/metal ${tag}: not four mandates in its table`);
@@ -606,7 +642,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // awx-1 (7 Nov): the separate Airwallex-only run in its fold since 12 Nov (the Issuing tile leads to it), dated and
       // labelled, with its checks and every step and id.
       if (path === "/airwallex" && (/awx-1: a separate run/.test(pt) || !/\d{1,2} November, awx-1: a separate run · Airwallex sandbox, test money/.test(open) || !/7 of 7 checks pass/.test(open) || !/LIMIT_EXCEEDED[\s\S]*MERCHANT_CATEGORY_NOT_ALLOWED[\s\S]*738a4263-6d6c-4de8-94a3-93da1c175fb4[\s\S]*4140dee2-6373-4eb4-a71f-bf69130f96a7/.test(open))) fail(`/airwallex ${tag}: awx-1 is not shown, dated and labelled, with its steps`);
-      // The Airi run (7 Nov), in the owner's copy on /airwallex and at the top of /visa: Visa Intelligent Commerce via
+      // The Airi run (7 Nov), in the owner's copy on /airwallex and on /visa: Visa Intelligent Commerce via
       // Airwallex's Airi, dated and labelled "Airwallex sandbox, test card, test money", the three outcome badges and the
       // 5 of 5 checks (a link to the run log's checks) in sight, every step and id in its "Details" fold; never an Airi
       // link or a card number.
@@ -618,8 +654,26 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         || (await page.locator('#airi-run a[href$="2026-11-07-vic-1.md#checks-the-records-checks"]').count()) !== 1 || /int_sgpvzc9hjhnxvpblt2r/.test(pt)
         || !/single-use card credential from Airwallex's Airi wallet[\s\S]*int_sgpvzc9hjhnxvpblt2r[\s\S]*P-0002[\s\S]*int_sgpvzc9hjhnxvxc26ie[\s\S]*PURSER_MERCHANT_NOT_ALLOWED/.test(open)
         || /airi\.com\/|\b\d{13,19}\b/.test(open))) fail(`${path} ${tag}: the Airi run is not shown, dated and labelled, with its badges, checks and steps`);
-      // On /visa above the TAP run: the block before the page's flow.
+      // On /visa above the TAP fold: the block before the fold's own flow.
       if (path === "/visa" && !(await page.evaluate(() => { const a = document.querySelector("#airi-run"), f = document.querySelector(".flow.card"); return !!a && !!f && !!(a.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING); }))) fail(`/visa ${tag}: the Airi run is not above the TAP run`);
+      // /visa opens with VIC (12 Nov; Visa, 5 Nov: TAP is not Visa tooling for this hackathon): the page's first heading
+      // is the h1 with the VIC heading; the drawing, the facts, the table, the summary, the Airi run and the control
+      // test are above the TAP fold; nothing above that fold names TAP; and the fold opens with its line and, at once,
+      // its status.
+      if (path === "/visa") {
+        const v = await page.evaluate(`(() => {
+          const main = document.querySelector("main"), tap = document.getElementById("visa-tap");
+          const first = main.querySelector("h1, h2, h3");
+          const above = (id) => { const e = document.getElementById(id); return !!e && !!tap && !!(e.compareDocumentPosition(tap) & Node.DOCUMENT_POSITION_FOLLOWING); };
+          const range = document.createRange(); range.setStart(main, 0); if (tap) range.setEndBefore(tap); else range.setEnd(main, main.childNodes.length);
+          return { first: first ? first.tagName + ": " + first.textContent : "", below: ["vic-flow", "vic-facts", "vic-compare", "visa-runs", "airi-run", "airi-run-2", "vic-more"].filter((id) => !above(id)), top: range.toString(),
+            tap: tap ? tap.textContent.replace(/\\s+/g, " ").trim() : "" };
+        })()`) as { first: string; below: string[]; top: string; tap: string };
+        if (v.first !== `H1: ${VISA_H1}`) fail(`/visa ${tag}: the page's first heading is "${v.first}", not the VIC heading`);
+        if (v.below.length) fail(`/visa ${tag}: not above the TAP fold: ${v.below.join(", ")}`);
+        if (/\bTAP\b|Trusted Agent Protocol/.test(v.top)) fail(`/visa ${tag}: TAP is named above the TAP fold`);
+        if (!v.tap.startsWith(`${VISA_TAP_HEADING} Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov).`)) fail(`/visa ${tag}: the TAP fold does not open with its line and its status ("${v.tap.slice(0, 120)}")`);
+      }
       if (path === "/airwallex" && ((await page.locator("#controls .awcard").count()) !== 3 || (await page.locator("#controls .awrow .k.ok").count()) !== 15)) fail(`/airwallex ${tag}: not three cards with five controls each, all matching the CFO policy`);
       if (path === "/claude" && (!/Claude call ✓ · (Haiku|Sonnet|Opus) · [\d,]+ tokens · [\d.]+ s · req_/.test(open) || !/routine payments by code/.test(open))) fail(`/claude ${tag}: no Claude call badges or no split`);
       if (path === "/metal" && (await page.locator("a.pf[href*='testnet.metalntwx.com/tx/0x']").count()) < 3) fail(`/metal ${tag}: fewer than three transactions`);
@@ -709,7 +763,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (!/The hash the CFO signed travels with the payment\./.test(rb) || (rb.match(/\b[0-9a-f]{64}\b/g) ?? []).length !== 2 || !/Match: the same hash/.test(rb) || !/3 of 3 cards match the CFO policy/.test(rb)) fail(`/proof ${tag}: Airwallex read back missing or not matching`);
     }
     // The strongest proof first (Max's last round, item 2; the jury, 12 Nov): each partner card shows its strongest
-    // claim as its one link, right under its name; no TAP remark under the figures (TAP is the footer link to /visa).
+    // claim as its one link, right under its name; no TAP remark under the figures (TAP is on /visa only, since 12 Nov).
     {
       // Each card: its name, then its first claim, a link in sight; in its closed fold 2–3 facts with a bold number,
       // then its other claims, each a link.
@@ -731,7 +785,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       }
       if (await page.locator(".septest").count()) fail(`/proof ${tag}: a TAP remark under the figures`);
       if (/\bTAP\b/.test((await page.locator("main").innerText()))) fail(`/proof ${tag}: TAP outside the footer link`);
-      if ((await page.locator('footer a.flink[href="visa"]').count()) !== 1) fail(`/proof ${tag}: no footer link to /visa ("Extra, not an award entry")`);
+      // 12 Nov (merge of #148 into #157): the footer link to /visa went from Proof too; Visa is a section of its own.
+      if (await page.locator('footer a.flink[href="visa"]').count()) fail(`/proof ${tag}: a footer link to /visa ("Extra, not an award entry")`);
       // The four tiles under the run's label, Airwallex's among them; the stops' parts sum to their figure.
       const tiles = (await page.evaluate(`[...document.querySelectorAll(".nums a.num")].map((a) => ({ cls: a.className, v: a.querySelector(".v").textContent, parts: [...a.querySelectorAll(".parts b")].map((b) => Number(b.textContent)) }))`)) as { cls: string; v: string; parts: number[] }[];
       const stop = tiles.find((t) => / stop$/.test(t.cls));

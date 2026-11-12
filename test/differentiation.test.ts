@@ -4,7 +4,7 @@
 // surface drops a sentence, changes a word, puts something before it, or when the record no longer holds the 24.
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { CAVEAT_LINE, CHAIN_TEST, DIFFERENTIATORS, KIT11_RUN_LINE, KIT_LINE, TRY_IT, VISA_EXTRA_LINK, WHAT_IT_IS } from "../src/config/brand.js";
+import { CAVEAT_LINE, CHAIN_TEST, DIFFERENTIATORS, KIT11_RUN_LINE, KIT_LINE, TRY_IT, WHAT_IT_IS } from "../src/config/brand.js";
 import { homePage } from "../src/redesign/home.js";
 import { proofPage } from "../src/redesign/proof.js";
 import { agentRun, loadRecord, split, stopStory, stopsLine } from "../src/redesign/run.js";
@@ -153,13 +153,13 @@ describe("the let-through, framed as the test it was (jury review, 6 Nov, #8)", 
   });
 });
 
-describe("Visa TAP as a footer link on Home and Proof (jury review, 6 Nov, #7)", () => {
-  it("is not in Home's main part or Proof's cards, and both link to /visa from the footer", () => {
+describe("Visa TAP is on /visa only, in its one closed fold (jury panel, 12 Nov; a footer link on Home and Proof from 6 to 12 Nov)", () => {
+  it("is not in Home's main part or Proof's cards, and neither carries the old footer link \"Extra, not an award entry\"", () => {
     for (const [name, html] of [["home", PAGES.home!], ["proof", PAGES.proof!]] as const) {
       const main = /<main[\s\S]*<\/main>/.exec(html)![0];
       // "Visa" alone is the card brand Airwallex issues (a virtual Visa card); TAP is what moved to the footer.
       expect({ name, tap: /Visa TAP|Trusted Agent|\bTAP\b(?! run)/.test(words(main)) }).toEqual({ name, tap: false });
-      expect({ name, link: html.includes(`<a class="flink" href="visa">${VISA_EXTRA_LINK}</a>`) }).toEqual({ name, link: true });
+      expect({ name, link: /<a class="flink" href="visa">|Extra, not an award entry/.test(html) }).toEqual({ name, link: false });
     }
   });
 

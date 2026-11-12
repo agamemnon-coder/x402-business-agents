@@ -69,7 +69,8 @@ describe("/judge: the five steps", () => {
     ]);
     expect(JUDGE_STEPS.reduce((t, s) => t + s.seconds, 0)).toBe(180);
     expect(JUDGE_STEPS.map((s) => s.links.map((l) => l.href))).toEqual([
-      ["/replay"], ["/try/sign"], ["/try/sign"], ["/try/sign"], ["/proof", "/airwallex#awx-1", "/metal", metalStory(loadRecord().record).refusal!.proof.href],
+      ["/replay"], ["/try/sign"], ["/try/sign"], ["/try/sign"], // The Visa run among the proof's links since 12 Nov (jury panel): the Airi run, Visa Intelligent Commerce via Airi.
+      ["/proof", "/airwallex#awx-1", "/metal", "/visa", metalStory(loadRecord().record).refusal!.proof.href],
     ]);
     // Home's three steps, in Home's order: the tour's first link is Home's first step, its last is Home's last.
     expect(JUDGE_STEPS[0]!.links[0]!.href).toBe("/replay");

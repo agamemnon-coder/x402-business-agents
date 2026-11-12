@@ -1,14 +1,14 @@
 // /proof puts the strongest proof first (Max's last round, item 2): each partner card opens with its strongest claim,
 // one link from its proof, and every number in it read from its record, never typed in (as
-// test/proof-sentences.test.ts does for PROOF_SENTENCES). TAP stays on /visa and
-// in the footer link only (the orchestrator, 12 Nov: the footer link lives on Proof).
+// test/proof-sentences.test.ts does for PROOF_SENTENCES). TAP stays on /visa only
+// (12 Nov, jury panel: the footer link went from Proof and Home; Visa is a section of its own, /judge links the Visa run).
 // Since the jury of 12 Nov the page opens with "What Purser guarantees", then the partners (one claim each in sight),
 // then the main run's numbers (four tiles, one of them Airwallex's, the stops with their breakdown), then the folds,
 // and the utility links last: the last describe blocks hold that order, the tiles, the folds, the anchors and the words.
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PACK_LINK, PACK_NAME } from "../src/accounting/monthPack.js";
-import { CFO_VIEW_LINK, CFO_VIEW_URL, FILM_LINK, FILM_URL, PROOF_SENTENCES, SPLIT_LINE, VISA_EXTRA_LINK } from "../src/config/brand.js";
+import { CFO_VIEW_LINK, CFO_VIEW_URL, FILM_LINK, FILM_URL, PROOF_SENTENCES, SPLIT_LINE } from "../src/config/brand.js";
 import { AWX_CONTROLS_ID, AWX_HASH_ID, awxCardId, cardControlRows, cardsReadback, hashTravel, transferReadback } from "../src/redesign/airwallexProof.js";
 import { GUARANTEES_ID, guaranteesHtml } from "../src/redesign/guarantees.js";
 import { metalStory } from "../src/redesign/metalStory.js";
@@ -228,17 +228,18 @@ describe("/proof as served: each card shows its strongest claim as its one link 
   });
 });
 
-describe("TAP on /proof: only the footer link to /visa (Max's last round, item 2)", () => {
+describe("TAP on /proof: nowhere (Max's last round, item 2; the footer link went on 12 Nov, jury panel)", () => {
   it("has no TAP remark under the figures or anywhere else on the page", () => {
     expect(html).not.toContain('class="septest"');
-    const body = words(dropBlocks(html)).split(VISA_EXTRA_LINK);
-    expect(body).toHaveLength(2);
     // (The red team's night batch of 2 November stays: it is not the TAP run.)
-    expect(body.join(" ")).not.toMatch(/\bTAP\b|LIMIT_EXCEEDED|card limit/);
+    expect(words(dropBlocks(html))).not.toMatch(/\bTAP\b|LIMIT_EXCEEDED|card limit/);
   });
 
-  it("keeps the footer link to /visa (the orchestrator, 12 Nov: it lives on Proof)", () => {
-    expect(html).toMatch(/<a [^>]*href="visa"[^>]*>Extra, not an award entry: Visa TAP[^<]*<\/a>/);
+  // 12 Nov (merge of #148 into #157): main kept this footer link on Proof; #157 removes it, as Visa is a section of its
+  // own now and /judge links the Visa run. So the test that it stays became the test that it is gone.
+  it("no longer carries the footer link \"Extra, not an award entry\"; /visa is reached from the Airi run's block", () => {
+    expect(html).not.toMatch(/Extra, not an award entry|<a class="flink" href="visa"/);
+    expect(html).toMatch(/<a class="open" href="visa#vic-flow">/);
   });
 });
 

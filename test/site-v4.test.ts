@@ -35,7 +35,7 @@ export function visibleWords(html: string): number {
 const allText = (html: string) => decode(html.replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " "));
 
 describe("the site after v4", () => {
-  it("keeps every page within its text budget (Home 195 with the three sentences and both awards; partner pages at most 150, /metal 275 with its table of the four mandates, /claude 195 with its measured block, /airwallex 365 with its read-back, awx-1, the Airi run and the second Airi run's heading, /visa 610 with the overview of the three Visa runs on top, the Airi run under it, the VIC flow under it and the second Airi run under that)", () => {
+  it("keeps every page within its text budget (Home 195 with the three sentences and both awards; partner pages at most 150, /metal 275 with its table of the four mandates, /claude 195 with its measured block, /airwallex 365 with its read-back, awx-1, the Airi run and the second Airi run's heading, /visa 625 with the VIC heading and drawing on top, what ran, the two Airi runs, their folded lines and the TAP section last)", () => {
     // Proof: 480 since 4 Nov, for the TAP run's decline on its own line below the stop figure (Max).
     // Home: 600 since 6 Nov, for the three sentences under the heading, the Kit 11 line and the one caveat line (jury review, #1, #7).
     // Proof 520 and Airwallex 190 since 6 Nov, for Airwallex read back (section B): the hash the CFO signed beside the one
@@ -73,13 +73,19 @@ describe("the site after v4", () => {
     // it and its evidence in sight, how, the code and the test folded (705 as built).
     // Visa: 495 since then (Max, 10 Nov: we compete for the Visa Award, keep it visible): one plain sentence on top naming
     // the entry and the run (490 as built).
+    // 12 Nov (jury panel): Home 250 → 254 for "Visa (VIC via Airi)" in "Built on" (4 words, 254 as built); /airwallex
+    // 370 → 374 because the Airi run's summary now says "A scripted run, no Claude call" and "with no Purser approval"
+    // (374 as built). /visa stays at 625 (617 as built): the TAP material went into one closed fold, which pays for the
+    // five facts, purchase B's table and the basis line. The review of 12 Nov: 621 as built (step 1 of the drawing
+    // says the run was scripted, purchase B's middle cell says "from the signed terms", the summary card keeps only the
+    // series and the ids).
     // Metal: 250 only while a run record of the invoice token exists (12 Nov; docs/runs/<date>-tokenize.json), for its one
     // block: the title, one sentence from the record, the verify badge and the summary of its fold (50 words with its
     // hidden section heading; the transactions folded). Without a record the page is unchanged and its budget stays 200 (test/tokenize-record.test.ts
     // holds both states).
     // Watch: 260 since the film page (12 Nov): the poster, 13 chapters with their times and the key of what is real
     // and what is simulated; the transcript is folded (the replay that was here moved to /replay).
-    const budget: Record<string, number> = { home: 250, watch: 260, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, metal: tokenizeRun() ? 325 : 275 /* +75, jury panel 12 Nov: the four mandates in one table (seven columns, each figure a word) */, airwallex: 370 /* +5, panel review 10 Nov */, visa: 610 /* +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa) */, claude: 225 /* +45, jury panel 12 Nov: measured, not asserted (four figures, each with its record, and the injection screen); +30, 12 Nov merge: the hostile-model eval's line with its record link (29 words), kept beside the measured block */, notFound: 40 };
+    const budget: Record<string, number> = { home: 254, watch: 260, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, metal: tokenizeRun() ? 325 : 275 /* +75, jury panel 12 Nov: the four mandates in one table (seven columns, each figure a word) */, airwallex: 374 /* +5, panel review 10 Nov; +4, jury panel 12 Nov */, visa: 625 /* +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa); +5 on 12 Nov for two folded lines under the Airi runs, "As reported by the Airwallex sandbox" and "The CFO's policy next to Visa's VIC rules" (14 words; 9 of them paid for by the TAP section's line that went; 614 as built); +10 on 12 Nov for a third folded line, "Card data: not a network-tokenised checkout, no PCI attestation" (9 words: what this checkout is not, readable without opening the fold; 623 as built) */, claude: 225 /* +45, jury panel 12 Nov: measured, not asserted (four figures, each with its record, and the injection screen); +30, 12 Nov merge: the hostile-model eval's line with its record link (29 words), kept beside the measured block */, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 
@@ -195,16 +201,16 @@ describe("the site after v4", () => {
     expect(sp.routine).toBe(routine);
   });
 
-  it("gives Proof three partner cards (Visa TAP a footer link) and says the fixed lines word for word", () => {
+  it("gives Proof three partner cards (no Visa TAP on it) and says the fixed lines word for word", () => {
     const proof = pages.proof!;
     // Three partner cards since 6 Nov (jury review, #7): Visa TAP is a footer link to /visa, not a card.
     expect((proof.match(/<article class="pcard card"/g) ?? []).length).toBe(3);
     expect(proof).not.toMatch(/<span class="logo txt">Visa TAP<\/span>/);
     // The Visa paragraph is said once, on /visa (jury review, 4 Nov); TAP's status too (Visa, 5 Nov: not eligible Visa
-    // tooling): Proof links to /visa for it, as an extra, not an award entry.
+    // tooling), both inside /visa's one closed TAP fold. Proof's footer link to it went on 12 Nov (jury panel).
     expect(proof).not.toContain(VISA_CLAIM);
     expect(proof).not.toContain(VISA_TAP_STATUS);
-    expect(proof).toMatch(/<a [^>]*href="visa"[^>]*>Extra, not an award entry: Visa TAP[^<]*<\/a>/);
+    expect(proof).not.toMatch(/Extra, not an award entry|<a class="flink" href="visa"/);
     expect(proof).toContain(SECOND_APPROVER);
     expect(pages.visa).toContain(VISA_CLAIM);
     expect(pages.visa).toContain(VISA_TAP_STATUS);
@@ -213,24 +219,25 @@ describe("the site after v4", () => {
   it("makes the partner pages picture first, numbers next, details folded, and no Visa logo", () => {
     for (const name of ["metal", "airwallex", "visa", "claude"] as const) {
       const html = PUBLIC[name]!;
-      // /visa opens with the Airi run (Visa Intelligent Commerce via Airwallex's Airi, owner, 7 Nov), above the TAP run;
-      // the TAP page under it keeps its own order, picture first (test/airi-run-page.test.ts holds the block).
       const whole = /<main[\s\S]*<\/main>/.exec(html)![0];
+      // /visa opens with Visa Intelligent Commerce (12 Nov): its picture is the VIC flow, right under the heading and
+      // before anything folded; the Airi run (owner's copy, 7 Nov) is under it and above the one closed TAP fold, the
+      // last thing on the page (test/visa-overview.test.ts holds the order, test/airi-run-page.test.ts the block).
       const airi = /<div class="awrb"><div class="card airi" id="airi-run">[\s\S]*?<\/details><\/div><\/div>/.exec(whole)?.[0] ?? "";
-      expect({ name, airiFirst: name === "visa" ? airi.length > 0 && whole.indexOf(airi) < whole.indexOf('class="flow card"') : true }).toEqual({ name, airiFirst: true });
-      const main = name === "visa" ? whole.replace(airi, "") : whole;
+      expect({ name, airiAboveTap: name === "visa" ? airi.length > 0 && whole.indexOf(airi) < whole.indexOf('class="flow card"') : true }).toEqual({ name, airiAboveTap: true });
       // /airwallex opens on a tile per Airwallex product (jury panel, 12 Nov); its flow of the main run is one of the folds.
       // /metal opens on its four mandates in one table (jury panel, 12 Nov), its one fold inside it (the read to repeat).
-      const first = name === "airwallex" ? '<section class="awp"' : name === "metal" ? '<section class="mt card"' : 'class="flow card"';
-      expect(main.indexOf(first)).toBeGreaterThan(-1);
-      expect(main.indexOf(first)).toBeLessThan(main.indexOf("<details"));
-      expect((main.match(/<details class="fold">/g) ?? []).length).toBeGreaterThanOrEqual(2);
+      // /visa's picture is the VIC flow (12 Nov).
+      const first = name === "airwallex" ? '<section class="awp"' : name === "metal" ? '<section class="mt card"' : name === "visa" ? 'class="card vicflow"' : 'class="flow card"';
+      expect({ name, pictureFirst: whole.indexOf(first) >= 0 && whole.indexOf(first) < whole.indexOf("<details") }).toEqual({ name, pictureFirst: true });
+      // /visa's folds each have their own anchor (the attempts, Airwallex's record, Visa's rules, card data, TAP).
+      expect((whole.match(name === "visa" ? /<details class="fold" id="[\w-]+">/g : /<details class="fold">/g) ?? []).length).toBeGreaterThanOrEqual(2);
       expect(html).not.toMatch(/<img[^>]*visa/i);
       // No script, but /airwallex's one (src/redesign/ui.ts OPEN_TARGET_JS: a link into its cards' fold opens it) and
       // /metal's (src/redesign/metalMandates.ts METAL_INSPECT_JS: the spend read live from its own origin, 12 Nov).
       expect(scriptBlocks(html)).toEqual(name === "airwallex" ? [`<script>\n${OPEN_TARGET_JS}</script>`] : name === "metal" ? [`<script>\n${METAL_INSPECT_JS}</script>`] : []);
-      // Each page is labelled with the run it shows: the main run, which on /visa has its own TAP-signed card buy
-      // (the separate TAP run of 2 Nov is named inside, under its own label).
+      // Each page is labelled with the run it shows: the main run; on /visa that label sits inside the TAP fold, with
+      // the main run's own TAP-signed card buy (the separate TAP run of 2 Nov is named there too, under its own label).
       // (/airwallex shows several runs, each dated on its own block: its label is true for all of them.)
       expect(html).toContain(name === "airwallex" ? AWX_PAGE_LABEL : run.label);
       if (name === "visa") expect(html).toContain(tapRun()!.label);

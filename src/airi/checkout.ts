@@ -68,6 +68,10 @@ function errCode(e: AirwallexError): string {
   return code(e.code) ?? `HTTP_${e.status}`;
 }
 
+/** Airwallex's code for a request_id it has seen before. */
+export const DUPLICATE_REQUEST = "duplicate_request";
+const RETRY_SUFFIX = "-pi-r2";
+
 export class AirwallexSandboxCheckout implements AiriCheckout {
   readonly kind: AiriCheckout["kind"] = "airwallex-sandbox";
   readonly label: string = "Airwallex sandbox PaymentIntent, confirmed over the API (our own test shop; test money)";
@@ -79,11 +83,21 @@ export class AirwallexSandboxCheckout implements AiriCheckout {
 
   async prepare(order: { ref: string; amount: string; currency: string; description: string }): ReturnType<AiriCheckout["prepare"]> {
     if (!/^\d+\.\d{2}$/.test(order.amount)) throw new Error("the amount must be a two-decimal string");
+    // Airwallex takes a request_id once. A retry of this same order after a create that got no answer comes back
+    // duplicate_request (seen live on 7 Nov, vic-1c): the create is then asked once more under a fresh request id. No
+    // card is in a create, and only the PaymentIntent this returns is ever paid.
+    const create = (requestId: string) => this.api.call("POST", "/pa/payment_intents/create", {
+      request_id: requestId, amount: Number(order.amount), currency: order.currency,
+      merchant_order_id: order.ref.slice(0, 64), descriptor: scrubText(order.description).slice(0, 22),
+    });
     try {
-      const raw = await this.api.call("POST", "/pa/payment_intents/create", {
-        request_id: `${order.ref}-pi`.slice(0, 64), amount: Number(order.amount), currency: order.currency,
-        merchant_order_id: order.ref.slice(0, 64), descriptor: scrubText(order.description).slice(0, 22),
-      });
+      let raw: unknown;
+      try {
+        raw = await create(`${order.ref}-pi`.slice(0, 64));
+      } catch (e) {
+        if (!(e instanceof AirwallexError) || errCode(e) !== DUPLICATE_REQUEST) throw e;
+        raw = await create(`${order.ref.slice(0, 64 - RETRY_SUFFIX.length)}${RETRY_SUFFIX}`);
+      }
       const i = Intent.parse(raw);
       this.created(i.id, raw);
       return { reference: i.id };

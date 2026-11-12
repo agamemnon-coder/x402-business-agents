@@ -6,21 +6,31 @@
 // below them awx-1 (7 Nov, src/redesign/awxRun.ts), the separate Airwallex-only run, dated, every step folded.
 // Every figure from the record (src/redesign/run.ts), the TAP run's record or the read-back records; logos only as "built on",
 // never a Visa logo. No script. Also the clean 404 page.
+// /visa is one story since 12 Nov (visaPage; jury panel the same day): Visa Intelligent Commerce via Airi. The title and
+// the heading name it; under them the basis for calling it that (date, channel, as reported by the builder) and the exact
+// state of Intelligent Commerce Connect; then the drawing of purchase B, what the sandbox could not show (five lines),
+// purchase B side by side, one summary of the paid run, the run in full, the control test, and folded rows. All TAP
+// material sits in one closed fold at the very end, labelled as outside the entry (Visa, 5 Nov: TAP is not Visa tooling
+// for this hackathon). assertVicFirst fails the page build if any of that is lost.
 
 import { WATCH_IN_MENU } from "../config/film.js";
 import { existsSync, readFileSync } from "node:fs";
-import { SANDBOX_SETTLED, SPLIT_LINE, VISA_CLAIM, VISA_TAP_STATUS } from "../config/brand.js";
+import { SANDBOX_SETTLED, SPLIT_LINE, VISA_CLAIM, VISA_ICC_LINE, VISA_TAP_STATUS } from "../config/brand.js";
 import { airwallexData } from "../partners/data.js";
 import { agentRun, callBadge, cardRaiseOf, decisionsOf, faceIdDecisions, family, fxOf, ownTap, payments, split, tapRun, timings, type AgentRun, type Ev } from "./run.js";
 import { LOGO, earlierLine, fold, partnerProof } from "./proof.js";
 import { EXPLORER, REPO_BLOB, metalStory } from "./metalStory.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
-import { AIRI_CSS, airiRun, airiRunBlock } from "./airiRun.js";
+import { AIRI_CSS, AIRI_RUN_FILE, AIRI_RUN_ID, airiAsker, airiRun, airiRunBlock, type AiriRunRecord } from "./airiRun.js";
 import { awxRunBlock } from "./awxRun.js";
 import { PLATFORM_RUN_FILE, PRODUCTS_CSS, airwallexBody, airwallexDescription, productTiles } from "./airwallexProducts.js";
-import { vic2RunBlock } from "./vic2Run.js";
-import { VIC_FLOW_CSS, vicFlowBlock } from "./vicFlow.js";
-import { VISA_OVERVIEW_CSS, VISA_TAP_ID, visaOverviewBlock } from "./visaOverview.js";
+import { CARD_DATA_CSS, cardDataHtml } from "./cardData.js";
+import { VIC2_RUN_FILE, VIC2_RUN_ID, vic2Run, vic2RunBlock } from "./vic2Run.js";
+import { VIC_COMPARE_ID, VIC_FACTS_CSS, VIC_FACTS_ID, vicAttemptsHtml, vicCompare, vicCompareHtml, vicFacts, vicFactsHtml } from "./vicFacts.js";
+import { VIC_FLOW_CSS, VIC_FLOW_ID, vicFlowBlock } from "./vicFlow.js";
+import { VIC_NETWORK_CSS, vicNetworkBlock, vicNetworkRecord } from "./vicNetwork.js";
+import { VIC_RULES_CSS, vicRulesBlock } from "./vicRules.js";
+import { VISA_OVERVIEW_CSS, VISA_OVERVIEW_ID, VISA_SUMMARY_HEADING, VISA_TAP_ID, tapCardHtml, visaOverviewBlock } from "./visaOverview.js";
 import { tokenizeRun, tokenizeRunBlock, type TokenizeRun } from "./tokenizeRun.js";
 import { HOLD_NOT_FINISHED, METAL_CSS, METAL_HOLD_RECORD, METAL_INSPECT_JS, holdState, metalBody } from "./metalMandates.js";
 import { EVIDENCE_CSS, claudeEvidence, failureFold, mcpFold, measuredBlock, sweepFold } from "./claudeEvidence.js";
@@ -50,7 +60,8 @@ const CSS = `.pp { padding: 26px 0 24px; }
 .line { margin: 0; font-size: clamp(18px, 1.8vw, 21px); font-weight: 600; max-width: 44em; }
 .claim { margin: 0; font-size: 16px; line-height: 1.5; border-left: 4px solid var(--accent); padding: 4px 0 4px 12px; max-width: 52em; }
 .folds { padding: 6px 20px 12px; }
-.vintro { margin: 4px 0 14px; font-size: clamp(17px, 1.7vw, 19px); font-weight: 620; line-height: 1.45; max-width: 46em; }
+.vintro { margin: 0; font-size: clamp(17px, 1.7vw, 19px); font-weight: 620; line-height: 1.45; max-width: 46em; }
+.vbasis { margin: 0; font-size: 15px; line-height: 1.5; color: var(--muted); max-width: 52em; }
 details.fold { border-top: 1px solid var(--border); padding-top: 6px; } details.fold:first-child { border-top: 0; }
 details.fold > summary { cursor: pointer; font-weight: 650; font-size: 16px; color: var(--accent); list-style: none; display: flex; align-items: center; gap: 6px; min-height: 44px; }
 details.fold > summary::-webkit-details-marker { display: none; }
@@ -64,12 +75,19 @@ ul.pl .call { margin-top: 4px; }
 abbr[title] { text-decoration: underline dotted; text-underline-offset: 3px; }
 a.pf { color: var(--accent); font-weight: 600; text-decoration: none; font-size: 15px; }
 .open { font-size: 16px; font-weight: 650; color: var(--accent); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+h2.vsec { font-size: clamp(22px, 2.2vw, 28px); font-weight: 750; margin: 18px 0 0; scroll-margin-top: 80px; }
+details.fold > .flow.card, details.fold > .claim, details.fold > .vo-run, details.fold > .phd { margin: 0 0 12px; }
+details.fold > p.src { color: var(--faint); font-size: 14px; overflow-wrap: anywhere; }
 .nf { padding: 64px 0; } .nf .wrap { display: grid; gap: 16px; justify-items: start; } .nf h1 { font-size: clamp(34px, 5vw, 56px); font-weight: 800; }
 .nf .tabs2 { display: flex; flex-wrap: wrap; gap: 10px; }
 ${READBACK_CSS}
 ${AIRI_CSS}
 ${VIC_FLOW_CSS}
-${VISA_OVERVIEW_CSS}`;
+${VISA_OVERVIEW_CSS}
+${VIC_NETWORK_CSS}
+${VIC_RULES_CSS}
+${CARD_DATA_CSS}
+${VIC_FACTS_CSS}`;
 
 const SOURCE = (run: AgentRun) => `Source: ${run.file} (${run.name}); the card run from ${tapRun()?.file ?? "docs/runs"}.`;
 const node = (ic: string, title: string, sub: string, tone = "") => `<div class="node ${tone}"><span class="ic">${icon(ic, 22)}</span><b>${esc(title)}</b><span>${esc(sub)}</span></div>`;
@@ -179,35 +197,143 @@ export function visaLabels(run: AgentRun, tap: NonNullable<ReturnType<typeof tap
   });
 }
 
-/** /visa's first line: the Visa Award entry in plain words, only what ran live (the Airi run, 7 Nov). */
-export const VISA_ENTRY_LINE = "Purser is entered for the Metal Award and the Visa Award. The Visa entry is this live run of Visa Intelligent Commerce through Airwallex's Airi, with a test card in Airwallex's sandbox.";
+/** /visa's title and its large heading (jury panel, 12 Nov): the Airi run by its name. */
+export const VISA_TITLE = "Visa Intelligent Commerce via Airi";
+export const VISA_H1 = VISA_TITLE;
+/**
+ * The story in one line, right under the heading, true of the run's three purchases: Purser's policy came before any
+ * request to Airi (within the limit it passed; above it the CFO signed first; the disallowed merchant got no credential).
+ */
+export const VISA_LEAD = "First the CFO's limit, then a single-use Visa credential.";
+/**
+ * On what basis the Airi credential counts as Visa Intelligent Commerce, and for which award: the date, the channel and
+ * who reports it. No dated quote from Visa is on record (docs/evidence/README.md, 7 November: "as reported by the
+ * owner"), so the page says "as reported by the builder" and nothing stronger.
+ */
+export const VISA_ENTRY_LINE = "This Airi run is Purser's entry for the Visa Award. Basis for calling it Visa Intelligent Commerce: Visa said in the hackathon Slack on 7 November that the VIC run counts, as reported by the builder.";
+/** The one closed fold at the end of /visa that holds all TAP material: its line says it is outside the entry. */
+export const VISA_TAP_HEADING = "Outside the entry: Visa TAP";
+/** The card of folded lines under the runs on /visa: more on the VIC run, each one line until opened. */
+export const VISA_MORE_ID = "vic-more";
 
-export function visaPage(run: AgentRun = agentRun()): string {
+const dayShort = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
+/** The label beside /visa's heading, from the Airi run's record: its date and its own label, "7 Nov · Airwallex sandbox · test card · test money". */
+export const visaRunLabel = (rec: AiriRunRecord) => `${dayShort(rec.started_at)} · ${rec.label.split(", ").join(" · ")}`;
+
+const plainWords = (html: string) => html.replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+const TAP_WORDS = /\bTAP\b|Trusted Agent Protocol/;
+
+/**
+ * /visa is one Visa Intelligent Commerce story, with TAP folded away: throws otherwise, so the page does not build (as
+ * the VIC flow does when a fact is missing). Checked on the built page:
+ *   - the title and the first heading name Visa Intelligent Commerce via Airi;
+ *   - the basis line and the Intelligent Commerce Connect line are there, visible, and Intelligent Commerce Connect is
+ *     named nowhere else on the page;
+ *   - TAP is named only inside one fold, which is closed, opens with its line and, at once, TAP's status word for word,
+ *     and is the last thing in the page's body; nothing after it (the footer included) names TAP;
+ *   - every VIC block is above that fold, and the five facts and purchase B's table are outside any fold;
+ *   - the summary is the one paid run's, and counts neither the TAP run nor the control test;
+ *   - the footer cites the Airi run's record.
+ */
+export function assertVicFirst(html: string): void {
+  const fail = (why: string): never => { throw new Error(`/visa must be one Visa Intelligent Commerce story, with TAP in one closed fold at the end: ${why}`); };
+  if (/<title>([^<]*)<\/title>/.exec(html)?.[1] !== esc(VISA_TITLE)) fail("the title does not name Visa Intelligent Commerce via Airi");
+  const main = /<main[\s\S]*<\/main>/.exec(html)?.[0] ?? fail("no <main>");
+  if (/<h[1-6]\b[^>]*>[\s\S]*?<\/h[1-6]>/.exec(main)?.[0] !== `<h1>${esc(VISA_H1)}</h1>`) fail("the page's first heading is not the VIC heading");
+  const tapOpen = `<details class="fold" id="${VISA_TAP_ID}">`;
+  const tapAt = main.indexOf(tapOpen);
+  if (/<details\b[^>]*\bid="visa-tap"[^>]*\bopen\b/.test(main)) fail("the TAP fold is open");
+  const top = tapAt < 0 ? main : main.slice(0, tapAt);
+  if (TAP_WORDS.test(plainWords(top))) fail("TAP is named above the TAP fold");
+  const after = html.slice(html.indexOf("</main>"));
+  if (TAP_WORDS.test(plainWords(after.replace(/<script[\s\S]*?<\/script>/g, " ")))) fail("TAP is named below the page's body (the footer)");
+  if (tapAt >= 0) {
+    const fold = main.slice(tapAt);
+    if (!plainWords(fold).startsWith(`${VISA_TAP_HEADING} ${VISA_TAP_STATUS}`)) fail("the TAP fold does not open with its line and its status");
+    // The last thing in the body: after the fold closes, only the wrappers' closing tags.
+    const rest = fold.slice(fold.lastIndexOf("</details>") + "</details>".length);
+    if (plainWords(rest) !== "" || /<details\b/.test(rest)) fail("the TAP fold is not the last thing on the page");
+    if ((fold.match(/<details\b/g) ?? []).length !== 1) fail("the TAP material is not one fold");
+  }
+  for (const id of [VIC_FLOW_ID, VIC_FACTS_ID, VISA_OVERVIEW_ID, AIRI_RUN_ID]) if (!top.includes(`id="${id}"`)) fail(`the VIC block #${id} is not above the TAP fold`);
+  for (const id of [VIC2_RUN_ID, VIC_COMPARE_ID]) if (main.includes(`id="${id}"`) && !top.includes(`id="${id}"`)) fail(`the block #${id} is not above the TAP fold`);
+  const unfolded = top.replace(/<details\b[\s\S]*?<\/details>/g, " ");
+  for (const id of [VIC_FACTS_ID, VIC_COMPARE_ID]) if (top.includes(`id="${id}"`) && !unfolded.includes(`id="${id}"`)) fail(`#${id} is inside a fold`);
+  const seen = plainWords(unfolded);
+  if (!seen.includes(VISA_ENTRY_LINE)) fail("the basis for calling it Visa Intelligent Commerce is not on the page, outside any fold");
+  if (!seen.includes(VISA_ICC_LINE)) fail("the Intelligent Commerce Connect line is not on the page, outside any fold");
+  if (plainWords(html.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ")).split("Intelligent Commerce Connect").length !== 2) fail("Intelligent Commerce Connect is named more than once");
+  const overview = /<section class="card vo"[\s\S]*?<\/section>/.exec(top)?.[0] ?? "";
+  if (!overview.includes(`>${esc(VISA_SUMMARY_HEADING)}</h2>`) || (overview.match(/class="vo-run[ "]/g) ?? []).length !== 1 || /class="vo-run tap"/.test(overview)) fail("the summary is not the one paid run's");
+  if (!plainWords(after).includes(AIRI_RUN_FILE)) fail(`the footer does not cite ${AIRI_RUN_FILE}`);
+}
+
+/**
+ * The TAP work: one closed fold, the last thing on /visa, whose line says it is outside the entry. Inside, at once its
+ * status (Visa, 5 Nov), then the TAP run's card, the picture, the claim, the live proof and what this is and is not,
+ * and its sources. Nothing inside is folded again, so the whole of it is one fold.
+ */
+function visaTapFold(run: AgentRun): string {
   const tap = tapRun(), p = partnerProof(run), own = ownTap(run.record);
   const buy = own ?? tap?.steps.find((x) => x.approved && x.model), decline = tap?.steps.find((x) => !x.approved);
-  // The Airi run (7 Nov), Visa Intelligent Commerce via Airwallex's Airi, at the top, above the TAP run (owner, 7 Nov):
-  // the same block as /airwallex, its heading an h2 here, since it comes before the page's h1.
-  const airi = airiRunBlock(undefined, { h: "h2" });
-  return shell(run, {
-    // One plain sentence first (Max, 10 Nov): what the Visa Award entry is, in words a juror reads at a glance.
-    ...(airi ? { intro: VISA_ENTRY_LINE } : {}),
-    // First the overview (Max, 10 Nov: more Visa, fewer words): the flow in four nodes and the three Visa runs as cards.
-    lead: visaOverviewBlock(),
-    top: airi,
-    // Under it, how a VIC purchase runs (7 Nov): seven steps, purchase B's ids, C's branch (src/redesign/vicFlow.ts);
-    // the second Airi run in the same padded column as the first (its card touched the page edge outside it), then the
-    // TAP run's anchor, which the overview's TAP card links to.
-    underTop: airi ? `${vicFlowBlock()}<div class="awrb">${vic2RunBlock(undefined, { fold: false })}</div><span id="${VISA_TAP_ID}"></span>` : "",
-    title: "Visa", description: "Visa Intelligent Commerce through Airwallex's Airi, run live in the Airwallex sandbox: above the limit, the agent gets a single-use Visa credential only after the CFO's Face ID. Visa TAP below, as an extra.",
-    logo: LOGO.visa, h1: "The agent signs before it pays", proofHash: "airi-run",
-    picture: [node("package", "Agent signs", buy?.model ? `Sourcing · Claude ${family(buy.model)}` : "TAP signature"), arrow,
-      node("shield-check", own ? "Both signatures verified" : "Reference verifier", own ? "by our layer, in this run" : `Visa's, commit ${tap?.commit ?? "16d59bd"}`), arrow,
-      node("credit-card", buy ? `€${buy.amount} paid` : "Card pays", own ? `Airwallex card ····${own.last4}` : "Airwallex card", "ok"), arrow,
-      node("ban", decline ? `€${decline.amount} declined` : "Over the limit", tap && own ? `by Airwallex · ${tap.label.replace(/ · test money$/, "")}` : "by Airwallex, at the limit", "bad")].join(""),
-    label: own ? undefined : tap?.label, nums: "", line: "The card's limit still holds: over it, Airwallex declines.",
-    extra: `<p class="claim">${esc(VISA_CLAIM)}</p><p class="claim">${esc(VISA_TAP_STATUS)}</p>`,
-    folds: fold(own ? "The live proof" : "The live TAP run", p.visa) + fold("What this is, and is not", (tap ? visaLabels(run, tap) : []).map(plainLi)),
+  const picture = [node("package", "Agent signs", buy?.model ? `Sourcing · Claude ${family(buy.model)}` : "TAP signature"), arrow,
+    node("shield-check", own ? "Both signatures verified" : "Reference verifier", own ? "by our layer, in this run" : `Visa's, commit ${tap?.commit ?? "16d59bd"}`), arrow,
+    node("credit-card", buy ? `€${buy.amount} paid` : "Card pays", own ? `Airwallex card ····${own.last4}` : "Airwallex card", "ok"), arrow,
+    node("ban", decline ? `€${decline.amount} declined` : "Over the limit", tap && own ? `by Airwallex · ${tap.label.replace(/ · test money$/, "")}` : "by Airwallex, at the limit", "bad")].join("");
+  const list = (title: string, items: string[]) => (items.length ? `<p><b>${esc(title)}</b></p><ul class="pl">${items.join("")}</ul>` : "");
+  return `<details class="fold" id="${VISA_TAP_ID}"><summary>${esc(VISA_TAP_HEADING)}</summary>
+  <p class="claim">${esc(VISA_TAP_STATUS)}</p>
+  ${tapCardHtml(tap)}
+  <div class="phd"><span class="pill run">${icon("database", 14)}${esc(own ? run.label : tap?.label ?? run.label)}</span></div>
+  <div class="flow card" role="img" aria-label="${esc("How Visa TAP fits in, step by step")}">${picture}</div>
+  <p class="claim">${esc(VISA_CLAIM)}</p>
+  ${list(own ? "The live proof" : "The live TAP run", p.visa)}${list("What this is, and is not", (tap ? visaLabels(run, tap) : []).map(plainLi))}
+  <p class="src">${esc(`Source: ${run.file} (${run.name}); the card run from ${tapRun()?.file ?? "docs/runs"}.`)}</p></details>`;
+}
+
+export function visaPage(run: AgentRun = agentRun()): string {
+  const rec = airiRun();
+  // Without the Airi run's live record there is no VIC story to tell: the page says so and keeps the TAP work folded.
+  if (!rec) {
+    const body = `<main class="pp"><div class="wrap">
+  <div class="phd">${LOGO.visa}<h1>${esc(VISA_H1)}</h1></div>
+  <p class="vbasis">${esc("No live record of the Airi run is on this build.")} ${esc(VISA_ICC_LINE)}</p>
+  <div class="folds card">${visaTapFold(run)}</div>
+</div></main>`;
+    return page({ title: VISA_TITLE, description: "Visa Intelligent Commerce via Airwallex's Airi: no live record on this build.", tab: "proof", css: CSS, body, real: [], source: "Source: no Airi run record on this build." });
+  }
+  // The top: the heading, beside it the Airi run's own label; the story in one line; the basis for calling it Visa
+  // Intelligent Commerce and the exact state of Intelligent Commerce Connect; then the drawing: purchase B's seven steps
+  // from the record. Under it, outside any fold: what the sandbox could not show (five lines) and purchase B side by
+  // side (signed, sent, charged). Then the one summary of the paid run, the run in full (its ids folded) and the control
+  // test. Folded, one line each: the attempts that failed first, what Airwallex's own record reports for the two
+  // payments, the CFO's policy next to Visa's published VIC rules, and how the card data is handled. Last: TAP, folded.
+  const asker = airiAsker(rec);
+  const more = [vicAttemptsHtml(rec), vicNetworkBlock(rec), vicRulesBlock(rec, vic2Run()), cardDataHtml()].join("");
+  const body = `<main class="pp"><div class="wrap">
+  <div class="phd">${LOGO.visa}<span class="pill run">${icon("database", 14)}${esc(visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
+  <p class="vintro">${esc(VISA_LEAD)}</p>
+  <p class="vbasis">${esc(VISA_ENTRY_LINE)}<br>${esc(VISA_ICC_LINE)}</p>
+  ${vicFlowBlock(rec, { h: "h2" })}
+  ${vicFactsHtml(vicFacts(rec))}
+  ${vicCompareHtml(vicCompare(rec, vicNetworkRecord()))}
+  ${visaOverviewBlock(rec)}
+  <div class="awrb">${airiRunBlock(rec, { h: "h2" })}</div>
+  <div class="awrb">${vic2RunBlock(undefined, { fold: false })}</div>
+  ${more ? `<div class="awrb"><div class="card" id="${VISA_MORE_ID}">${more}</div></div>` : ""}
+  <a class="open" href="proof#${AIRI_RUN_ID}">All the proof ${icon("arrow-right", 15)}</a>
+  <div class="folds card">${visaTapFold(run)}</div>
+</div></main>`;
+  const html = page({
+    title: VISA_TITLE, tab: "proof", css: CSS, body,
+    // Who asked, in the description and "What's real?", from the same function as the run's summary line (airiAsker).
+    description: `Visa Intelligent Commerce via Airwallex's Airi, run live in the Airwallex sandbox with a test card: above the limit, a single-use Visa credential is asked for only after the CFO's Face ID. ${asker.sentence}.`,
+    // "What's real?": the Airi run's own line (its label and merchant, from the record) and nothing of the main run.
+    real: [`Visa Intelligent Commerce via Airwallex's Airi (${dayShort(rec.started_at)}), ${asker.short}: ${rec.label}. The merchant is our own Airwallex sandbox account, ${rec.checkout.merchant}.`],
+    source: `Source: ${AIRI_RUN_FILE} (the Airi run) and ${VIC2_RUN_FILE} (the control test).`,
   });
+  assertVicFirst(html);
+  return html;
 }
 
 /** The hostile-model eval's record (jury panel, 12 Nov): a script in Claude's place, run in CI (npm run ap-hostile-eval). */

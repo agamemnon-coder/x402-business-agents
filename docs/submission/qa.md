@@ -279,8 +279,8 @@ The CFO's policy, applied before Airi is asked: a limit per purchase (EUR 20.00 
 (which the CFO can lock with Face ID: a EUR 12.00 purchase was then refused, 0 Airi calls), and Face ID on the exact
 terms above the limit (EUR 45.00, P-0002, paid only after it). A purchase outside the policy is refused before any
 call (`PURSER_MERCHANT_NOT_ALLOWED`), terms changed after the CFO's Face ID are refused because they no longer match
-the signed hash (EUR 30.00 → EUR 190.00, our own labelled test in the second live run,
-[log](../runs/2026-11-07-vic-2.md)), and every step lands in the audit trail. Airi's own passkey confirmation stays:
+the signed hash (EUR 30.00 → EUR 190.00, our own labelled control test, in which nothing was bought and neither
+Airi nor Airwallex was called, [log](../runs/2026-11-07-vic-2.md)), and every step lands in the audit trail. Airi's own passkey confirmation stays:
 Purser sits in front of it, not instead of it.
 
 **Evidence:** [docs/runs/2026-11-07-vic-1.md](../runs/2026-11-07-vic-1.md), "The rail's policy", "The purchases" and
