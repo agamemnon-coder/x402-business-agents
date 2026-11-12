@@ -1,3 +1,5 @@
+> Kept for history (archived 12 November 2026). Replaced by: [business/roadmap.md](../business/roadmap.md) and [after-the-kit.md](../after-the-kit.md).
+
 # Roadmap: from company cards for agents to the agent finance department
 
 **Today:** every AI agent gets its own company card and on-chain mandate, with limits the CFO sets.

@@ -138,3 +138,41 @@ describe("Verify it yourself in 3 commands", () => {
     expect(SECTION).toContain("### Verify it yourself in 3 commands");
   });
 });
+
+// Docs hygiene (the jury of 12 November): one name, one traction sentence, one way into the docs. Each is read from
+// the README, so a later edit there breaks this test instead of leaving two versions.
+describe("the README's own words elsewhere: the package, the business pages, the docs index", () => {
+  const flat = (s: string) => s.replace(/\s+/g, " ");
+
+  it("package.json's description is the README's first sentence", () => {
+    const first = README.split("\n").slice(1).find((l) => l.trim() !== "")!.trim();
+    expect(first.length).toBeGreaterThan(40);
+    expect(first).toMatch(/^[A-Z][^\n]*\.$/);
+    expect((JSON.parse(read("package.json")) as { description?: string }).description).toBe(first);
+  });
+
+  it("the business pages carry the README's traction sentence word for word", () => {
+    const heading = "## Why this is a company";
+    const traction = /^[^\n]*?no pilots, no revenue\./m.exec(README.slice(README.indexOf(heading) + heading.length).trimStart())![0];
+    expect(traction.startsWith("Not validated with customers yet")).toBe(true);
+    for (const p of ["docs/business/README.md", "docs/business/model.md", "docs/business/problem.md", "docs/business/roadmap.md"]) {
+      const t = flat(read(p));
+      expect({ p, carries: t.includes(traction) }).toEqual({ p, carries: true });
+      // No second, older version beside it.
+      expect({ p, old: /no customer interviews|no discovery|have not validated demand/i.exec(t)?.[0] ?? null }).toEqual({ p, old: null });
+    }
+  });
+
+  it("docs/README.md opens with five files in reading order, and each exists", () => {
+    const index = read("docs/README.md");
+    const firstList = /^(?:\d+\. [^\n]*\n)+/m.exec(index)![0];
+    // Nothing but the title and one line of introduction comes before the list.
+    expect(index.slice(0, index.indexOf(firstList)).trim().split("\n").filter(Boolean).length).toBeLessThanOrEqual(2);
+    const links = [...firstList.matchAll(/^\d+\. \[[^\]]+\]\(([^)]+)\): \S/gm)].map((m) => m[1]!);
+    expect(links).toEqual(["runs/README.md", "runs/2026-11-03-main-run.md", "claims.md", "controls-matrix.md", "business/README.md"]);
+    for (const l of links) expect({ l, exists: exists(`docs/${l}`) }).toEqual({ l, exists: true });
+    // The superseded documents have one line; the working notes are not what a reader is sent to.
+    expect(index).toContain("[archive/](archive/)");
+    expect(index).not.toMatch(/\]\(internal\//);
+  });
+});

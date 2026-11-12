@@ -121,7 +121,7 @@ and a separate load run pushed 2,000 clearing payments from 16 wallets through M
 agents we would need Postgres, keys in a KMS and connected accounts for many companies, none of which is built or
 measured.
 
-**Evidence:** [docs/runs/2026-10-30-clearing-load.md](../runs/2026-10-30-clearing-load.md); [docs/roadmap.md](../roadmap.md),
+**Evidence:** [docs/runs/2026-10-30-clearing-load.md](../runs/2026-10-30-clearing-load.md); [docs/archive/roadmap.md](../archive/roadmap.md),
 "Phases"; [docs/unit-economics.md](../unit-economics.md).
 
 ### 12. Worst-case loss per day inside the limits, and how fast does the CFO know?

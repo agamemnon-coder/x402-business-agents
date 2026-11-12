@@ -24,7 +24,7 @@
       "name": "x402-business-agents",
       "version": "0.1.0",
       "scope": "required",
-      "description": "Purser: give every AI agent its own company card, with limits the CFO sets. Airwallex cards, FX and SWIFT; Metal mandates, x402 and clearing. Airwallex Agentic Banking Hackathon, Starter Kit 11.",
+      "description": "For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice over its limit, you sign the exact terms with Face ID.",
       "purl": "pkg:npm/x402-business-agents@0.1.0",
       "properties": [
         {

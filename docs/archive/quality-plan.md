@@ -1,3 +1,5 @@
+> Kept for history (archived 12 November 2026). Replaced by: [README.md](../../README.md) and [decisions.md](../decisions.md).
+
 # Quality plan: from "works" to "best in class" (29 October 2026)
 
 **Rule:** no new features unless they are on this list. Every item ends with proof (a screenshot, a run log or a
@@ -10,7 +12,7 @@ QA test. **Done** means done with evidence.
 ## Already fixed today (QA findings)
 
 These six QA findings were fixed and deployed on 29 October. Run log:
-[runs/2026-10-29-qa-fixes.md](runs/2026-10-29-qa-fixes.md).
+[runs/2026-10-29-qa-fixes.md](../runs/2026-10-29-qa-fixes.md).
 
 1. `/` without a key shows a guest landing and polls nothing.
 2. `/demo` no longer prints "null", and the Face ID steps no longer break on a phone.
@@ -90,7 +92,7 @@ These six QA findings were fixed and deployed on 29 October. Run log:
 |---|---|---|
 | 26 | Video script, 4:30 | Problem 30 s, solution 20 s, five moments 3 min, why us and the vision 30 s, close; a shot list per scene. |
 | 27 | Pitch deck, 8 slides | Problem, customer, solution, live demo, safety, Airwallex and Metal, market and business model, team and vision; in the same design system. |
-| 28 | `docs/internal/uitleg-voor-max.md` | Each part in two plain sentences, plus 25 jury questions with short answers; a 15-minute daily quiz. |
+| 28 | An explainer for the owner (an internal working note, removed from the tree on 12 November 2026) | Each part in two plain sentences, plus 25 jury questions with short answers; a 15-minute daily quiz. |
 
 ## Schedule
 
@@ -102,7 +104,7 @@ These six QA findings were fixed and deployed on 29 October. Run log:
 | Sun 1 Nov | Demo-ready: presentation mode, every screenshot refreshed, the visible fallback, the Slack message to Metal. |
 | Mon 2 Nov | Coverage to 90% where it falls short, clean-up, independent review. |
 | Tue 3 to 4 Nov | Fixes from the review; the scoped Airwallex key; final CI. **Freeze on 4 Nov.** |
-| From 5 Nov | Video script, deck, `docs/internal/uitleg-voor-max.md`, the daily quiz. |
+| From 5 Nov | Video script, deck, the explainer for the owner (item 28), the daily quiz. |
 
 ## What we need from Max
 
