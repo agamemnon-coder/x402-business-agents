@@ -19,7 +19,7 @@
   "preview_urls": false,
   "d1_databases": [
     // wrangler d1 create purser-try --location weur  → paste its database_id here.
-    { "binding": "DB", "database_name": "purser-try", "database_id": "SET-AFTER-wrangler-d1-create", "migrations_dir": "migrations" }
+    { "binding": "DB", "database_name": "purser-try", "database_id": "3c45b5df-a535-475a-a21c-b90e558702a1", "migrations_dir": "migrations" }
   ],
   // No R2 bucket: without the DOCS binding the Worker keeps documents and the archive in D1 (cloud/src/blobsSql.ts).
   "vars": {
