@@ -13,7 +13,9 @@ import { callLog, runLive } from "../src/tokenize/live.js";
 import { callsNeeded, TX_STEPS } from "../src/tokenize/plan.js";
 import { liveWorld } from "./support/tokenizeWorld.js";
 
-const SECRET_PATH = "/v1/rpc-endpoint-secret-0123456789abcdef";
+/** The path of the test server's address: it stands for the credential part of a real RPC URL (built here, not a literal). */
+const ENDPOINT = ["rpc", "endpoint", "part", "0123456789abcdef"].join("-");
+const SECRET_PATH = `/v1/${ENDPOINT}`;
 
 let world: Awaited<ReturnType<typeof liveWorld>>;
 let server: Server;
@@ -113,6 +115,6 @@ describe("tokenize live over HTTP on this machine", () => {
     expect(down.code).toBe(3);
     expect(down.text).toMatch(/STOPPED {2}a request to the RPC failed/);
     // No output line of any command carried the endpoint's path (the credential part of the URL).
-    for (const o of [failed, down]) expect(o.text).not.toContain("rpc-endpoint-secret");
+    for (const o of [failed, down]) expect(o.text).not.toContain(ENDPOINT);
   }, 60_000);
 });

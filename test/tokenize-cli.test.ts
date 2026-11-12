@@ -21,7 +21,8 @@ import { centsToBaseUnits } from "../src/lib/money.js";
 import { CHAIN_ID, USDZ } from "../src/metal/network.js";
 import { ROOT, sourceLedger } from "./support/tokenizeWorld.js";
 
-const SECRET = "rpc-endpoint-secret-0123456789abcdef";
+/** The part of the test server's address that stands for the credential in a real RPC URL (built here, not a literal). */
+const SECRET = ["rpc", "endpoint", "part", "0123456789abcdef"].join("-");
 const NO_CHAIN = pathToFileURL(join(ROOT, "test/support/no-ethereumjs.mjs")).href;
 
 let chain: LocalChain, server: Server, dir: string, env: Record<string, string>;

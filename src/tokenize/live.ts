@@ -267,7 +267,8 @@ async function fund(c: Ctx): Promise<number> {
   const fresh = todo.filter((t) => !t.open).length;
   if (fresh) {
     c.io.say(`PLAN     ${fresh} transfer${fresh === 1 ? "" : "s"}, ${usdzText(sum)} *USDZ in all, from the donor ${donor.address}`);
-    gate(c, 2 + 2 * fresh + todo.filter((t) => t.open).length, "fund (the donor's balance and nonce, then a send and a receipt read per transfer)");
+    const again = todo.filter((t) => c.statusOf(fundKey(t.role)) === "reverted").length;
+    gate(c, 2 + 2 * fresh + again + todo.filter((t) => t.open).length, "fund (the donor's balance and nonce, then a send and a receipt read per transfer)");
     const donorHolds = await c.calls.balanceOf(c.settlement, donor.address);
     if (donorHolds < sum + GAS_ALLOWANCE) throw new Refused(`the donor holds ${usdzText(donorHolds)} *USDZ; the transfers need ${usdzText(sum)} plus gas; nothing sent`);
   }

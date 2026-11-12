@@ -109,7 +109,8 @@ facts` prints the run's ledger at any time.
   with no call. One that was sent but has no receipt in the ledger gets its receipt read first. Only if there is none
   are the same signed bytes sent once more: same nonce, same hash, so they cannot run twice.
 - **One contract per ledger.** `deploy` cannot deploy a second contract for the same run ledger.
-- **A revert stops.** A transaction that reverted on chain is not sent again unless the operator says so.
+- **A revert stops.** A transaction that reverted on chain is not sent again unless the operator says so. The new
+  one then asks the node's estimate first, whatever its kind.
 - **Two budgets.** Every request is counted against the command's budget and against the whole run's budget in the
   call log, before it goes out. A transaction is signed only when the send and one receipt read still fit.
 - **Keys.** Only `fund` creates a key. `deploy` refuses until the ledger shows the four roles funded.

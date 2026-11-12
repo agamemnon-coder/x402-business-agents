@@ -26,7 +26,7 @@ above its number.
 
 | # | Command | Calls | It ends with (exit 0) |
 |---|---|---|---|
-| 1 | `npm run tokenize -- preflight` | 2 | `NOT READY  no key yet for issuer, creditor, financier, payer` and a line to run fund (exit 1: expected before fund). Above it: the invoice, the amounts, `CHAIN    id 63825: Metal testnet`, the donor's balance and the plan. |
+| 1 | `npm run tokenize -- preflight` | 2 | `NOT READY  no key yet for issuer, creditor, financier, payer` and a line to run fund (exit 1: expected before fund). Above it: the invoice, the amounts, `CHAIN    id 63825: Metal testnet`, the donor's balance (with `TOKENIZE_DONOR_KEY` set) and the plan. |
 | 2 | `npm run tokenize -- fund` | at most 14 | The plan (one `PLAN` line per role), four `done fund the …` lines with explorer links, then `FUNDED issuer …, creditor …, financier (simulated) …, payer …` |
 | 3 | `npm run tokenize -- preflight` | 5 | `READY    the four roles hold what they need and the budget covers the steps still to run; nothing was sent` |
 | 4 | `npm run tokenize -- deploy` | 4 | `DEPLOYED PurserInvoiceToken 0x… https://testnet.metalntwx.com/tx/0x…` |
@@ -61,7 +61,8 @@ The amounts above are for proposal P-0002: EUR 240.00 divided by 100 is 2.40 *US
 - **`the chain would refuse it (…)`.** The node's own estimate said the call would revert, with the contract's
   reason. Nothing was signed. Stop and look; do not retry blindly.
 - **`reverted on chain`.** Open the explorer link in the line. The command will not send it again by itself. After
-  the cause is understood, one run with `TOKENIZE_RESEND_REVERTED` set to yes sends a new transaction.
+  the cause is understood, one run with `TOKENIZE_RESEND_REVERTED` set to yes sends a new transaction. It asks the
+  node's estimate first (one call more), so a limit that was too low is raised and a second revert is refused unsent.
 - **The estimate itself fails, or the budget is tight.** `TOKENIZE_GAS` set to `fixed` skips the five estimates and
   uses the fixed limits (the run then needs 34 calls for steps 2 and 4 to 8).
 - **The first funding transfer is the canary.** It is a plain call to *USDZ, the same kind as the two approvals

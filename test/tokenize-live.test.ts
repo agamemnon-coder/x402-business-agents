@@ -446,8 +446,11 @@ describe("tokenize live: nothing is sent twice, and a stopped step resumes", () 
     expect(w.chain.mined.length).toBe(mined);
     // The money is back and the operator decides to send it again: a new transaction, the old one stays in the record.
     await standInTokenCalls(w.setup).mint(w.minter, w.settlement, financier.address, PRICE);
+    // The plan counts the estimate a resend asks: 4 calls (the estimate, the nonce, the send, the receipt), fixed gas or not.
+    expect(callsNeeded("finance", w.statusOf, { estimate: false })).toBe(4);
     const resent = await w.run("finance", { TOKENIZE_GAS: "fixed", TOKENIZE_RESEND_REVERTED: "yes" });
     expect({ code: resent.code, text: resent.text }).toMatchObject({ code: 0 });
+    expect(resent.requests).toEqual(["eth_estimateGas", "eth_getTransactionCount", "eth_sendRawTransaction", "eth_getTransactionReceipt"]);
     expect(w.txs().filter((t) => t.key === "accept").map((t) => t.status)).toEqual(["reverted", "success"]);
   }, 60_000);
 

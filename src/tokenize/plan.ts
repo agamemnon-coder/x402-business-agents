@@ -92,7 +92,8 @@ export type TxStatus = "signed" | "success" | "reverted" | undefined;
 /**
  * The fewest requests a step still needs, with every receipt found on its first read. A finished transaction needs
  * none; a recorded one without a receipt needs one read; a new one needs its send and one receipt read, one estimate
- * when it calls Purser's own contract, and one nonce read for the first new transaction of each sender. `fund` reads
+ * when it calls Purser's own contract (or is sent again after a revert), and one nonce read for the first new
+ * transaction of each sender. `fund` reads
  * the four balances every time, and the donor's balance once when it has to send; counted here as if every role
  * without a finished transfer needs one, so for `fund` this is the most it needs.
  */
@@ -106,7 +107,8 @@ export function callsNeeded(step: TxStep | "verify", statusOf: (key: string) => 
     if (s === "success") continue;
     if (s === "signed") { n += 1; continue; }
     fresh++;
-    n += 2 + (tx.estimate && o.estimate ? 1 : 0);
+    // A transaction sent again after a revert asks the node's estimate first, whatever its kind.
+    n += 2 + ((tx.estimate && o.estimate) || s === "reverted" ? 1 : 0);
     if (!nonceRead.has(tx.sender)) { nonceRead.add(tx.sender); n += 1; }
   }
   if (step === "fund" && fresh > 0) n += 1;

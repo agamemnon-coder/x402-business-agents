@@ -299,6 +299,42 @@ describe("tokenize: the client's journal rules (no network)", () => {
     expect(rows.filter((r) => r.from === owner.address).map((r) => [r.key, r.status, r.nonce])).toEqual([["first", "success", 0], ["second", "success", 1]]);
   });
 
+  it("a transaction sent again after a revert asks the node first, also a direct token call with a fixed limit", async () => {
+    const { rows, journal } = memoryJournal();
+    const from = acct();
+    const asked: string[] = [];
+    const limits: bigint[] = [];
+    let status = "0x0", estimate: (() => string) = () => "0x61a80"; // 400,000
+    const request = async (a: { method: string; params?: unknown[] }) => {
+      asked.push(a.method);
+      if (a.method === "eth_getTransactionCount") return `0x${rows.filter((r) => r.status !== "signed").length.toString(16)}`;
+      if (a.method === "eth_estimateGas") return estimate();
+      if (a.method === "eth_sendRawTransaction") { limits.push(parseTransaction(a.params![0] as `0x02${string}`).gas!); return keccak256(a.params![0] as Hex); }
+      return { transactionHash: "0x", status, contractAddress: null, gasUsed: "0x493e0", logs: [], from: from.address, to: null };
+    };
+    const tx = { key: "approve", label: "an approval", from, to: from.address, data: "0x" as Hex, gas: 300_000n, estimate: false };
+    // The first one goes out with its fixed limit, no estimate, and reverts on chain.
+    await expect(txClient({ chainId: CHAIN_ID, sleep: async () => {}, journal, request }).send(tx)).rejects.toBeInstanceOf(TxReverted);
+    expect(asked).toEqual(["eth_getTransactionCount", "eth_sendRawTransaction", "eth_getTransactionReceipt"]);
+    expect(limits).toEqual([300_000n]);
+    // Without the operator's word nothing is sent again, and nothing is asked.
+    await expect(txClient({ chainId: CHAIN_ID, sleep: async () => {}, journal, request }).send(tx)).rejects.toBeInstanceOf(TxReverted);
+    expect(asked).toHaveLength(3);
+    // With it, and the node saying the call would revert again: refused before anything is signed.
+    estimate = () => { throw Object.assign(new Error("execution reverted"), { code: 3, data: "0x" }); };
+    await expect(txClient({ chainId: CHAIN_ID, sleep: async () => {}, journal, request, resendReverted: true }).send(tx)).rejects.toBeInstanceOf(WouldRevert);
+    expect(asked.slice(3)).toEqual(["eth_estimateGas"]);
+    expect(rows).toHaveLength(1);
+    // With it, and an estimate above the fixed limit: the new transaction carries the estimate plus half. Fixed gas
+    // for the whole run (estimate: false) does not switch this off.
+    estimate = () => "0x61a80";
+    status = "0x1";
+    const sent = await txClient({ chainId: CHAIN_ID, sleep: async () => {}, journal, request, resendReverted: true, estimate: false }).send(tx);
+    expect(sent.how).toBe("sent");
+    expect(limits).toEqual([300_000n, 600_000n]);
+    expect(rows.map((r) => r.status)).toEqual(["reverted", "success"]);
+  });
+
   it("reads a receipt's status as a number: 0x01 is a success too, anything else a revert", async () => {
     const from = acct();
     const withStatus = (status: string) => txClient({ chainId: CHAIN_ID, sleep: async () => {}, estimate: false, request: async (a) =>

@@ -115,7 +115,7 @@ export interface TxClientOptions {
   estimate?: boolean;
   /** How many requests the budget still allows. A transaction is signed only when at least two are left: the send and one receipt read. */
   room?: () => number;
-  /** Allow a new transaction for a key whose last one reverted on chain (TOKENIZE_RESEND_REVERTED=yes). */
+  /** Allow a new transaction for a key whose last one reverted on chain (TOKENIZE_RESEND_REVERTED=yes); it asks the node's estimate first. */
   resendReverted?: boolean;
   pollMs?: number;
   polls?: number;
@@ -184,7 +184,9 @@ export function txClient(o: TxClientOptions): TxClient {
       if (open) throw new SenderBusy(t.label, open);
 
       let gas = t.gas;
-      if (t.estimate && o.estimate !== false) {
+      // A new transaction after one that reverted always asks the node first, whatever its kind: a fixed limit that
+      // was too low is raised, and a call that would revert again is refused before it is signed.
+      if ((t.estimate && o.estimate !== false) || prior?.status === "reverted") {
         let estimated: bigint;
         try {
           estimated = BigInt((await o.request({ method: "eth_estimateGas", params: [{ from: t.from.address, ...(t.to ? { to: t.to } : {}), data: t.data }] })) as string);
