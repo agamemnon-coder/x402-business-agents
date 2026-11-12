@@ -242,6 +242,15 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
 /* A phone: the drop zone is its words and its button, and a line flows as one sentence after its time and who. */
 @media (max-width: 860px) { .drop.eng > .ic { display: none; } .drop.eng { gap: 10px; } }
 @media (max-width: 640px) { .work li { display: block; line-height: 1.45; } .work li time, .work li b { margin-right: 8px; } }
+/* The payment card on an invoice's page: one sentence or the terms, one button, the fingerprint folded. */
+.note-warn { padding: 10px 13px; border-radius: 12px; font-size: 14px; font-weight: 550; margin: 12px 0 0; background: var(--warn-soft); color: var(--warn); }
+.pay p.lead { margin: 0; font-size: 14px; }
+.pay dl.read { margin-top: 14px; }
+.pay .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.pay details { margin-top: 12px; }
+.pay summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 600; }
+.pay details dl.read { margin-top: 10px; }
+.stack > .work { margin-top: 0; }
 `;
 
 // The page's frame in Dutch (the default); the script re-words it in the person's language when it starts.
@@ -636,14 +645,32 @@ async function invoicesView(q){
   await page();
 }
 const RES={block:['octagon-x',t('res.block')],review:['triangle-alert',t('res.review')],wait:['clock',t('res.wait')],warn:['triangle-alert',t('res.warn')]};
+// The invoice's head (who, its status chip, the amount, when it is due or was paid) and its timeline, from the read model.
+function detailTop(i){
+  const late=i.due_date&&i.due_date<today&&!['paid','rejected'].includes(i.status);
+  return el('div','dhead',[el('div','who',[el('h1','',i.vendor||t('unknown_supplier')),el('div','meta',[chip(i.status,i.status_words),el('span','',t('dt.invoice',{no:i.invoice_no||t('no_number')})),el('span','','·'),el('span','',i.id),el('span','','·'),el('span','',t('cs.received_on',{date:day(i.received_at)}))])]),
+    el('div','money',[el('div','big',[el('small','',cur(i.currency)),amount(i.total)||'–']),el('div','when',i.status==='paid'&&i.paid_at?t('paid_on',{date:day(i.paid_at)}):i.due_date?t(late?'dt.was_due':'dt.due',{date:day(i.due_date)}):t('dt.no_due'))])])}
+function timelineOf(i){
+  const tl=el('ul','timeline');
+  tl.append(el('li','',[el('b','',t('tl.received')),el('span','',stamp(i.received_at))]));
+  for(const v of i.earlier_versions||[])tl.append(el('li','',[el('b','',t('cs.changed_version',{n:v.version})),el('span','',stamp(v.replaced_at))]));
+  if(i.status==='waiting_cfo')tl.append(el('li','',[el('b','',t('filed_for_face_id')),el('span','',i.proposal_id?t('cs.payment',{id:i.proposal_id}):'')]));
+  if(i.paid_at)tl.append(el('li','',[el('b','',t('paid')),el('span','',stamp(i.paid_at))]));
+  tl.append(el('li','',[el('b','',t('cs.last_update')),el('span','',stamp(i.updated_at))]));
+  return tl}
 async function invoiceView(id){
   title(t('cs.invoice'));
-  const i=await api('/v1/invoices/'+encodeURIComponent(id));const r=i.reading||{};
+  // With an engine, its own view of this invoice too: what it can do with it is the engine's to say, not the read model's.
+  const eng=await engineStatus();
+  const [i,ev]=await Promise.all([api('/v1/invoices/'+encodeURIComponent(id)),eng?api('/v1/engine/invoices').catch((e)=>{if(e instanceof Expired)throw e;return null}):null]);
+  const r=i.reading||{};
   title((i.vendor||t('cs.invoice'))+' '+(i.invoice_no||i.id));
-  const late=i.due_date&&i.due_date<today&&!['paid','rejected'].includes(i.status);
   const back=el('a','back',[ic('arrow-left'),' '+t('dt.all')]);back.href='#/invoices';
-  const top=el('div','dhead',[el('div','who',[el('h1','',i.vendor||t('unknown_supplier')),el('div','meta',[chip(i.status,i.status_words),el('span','',t('dt.invoice',{no:i.invoice_no||t('no_number')})),el('span','','·'),el('span','',i.id),el('span','','·'),el('span','',t('cs.received_on',{date:day(i.received_at)}))])]),
-    el('div','money',[el('div','big',[el('small','',cur(i.currency)),amount(i.total)||'–']),el('div','when',i.status==='paid'&&i.paid_at?t('paid_on',{date:day(i.paid_at)}):i.due_date?t(late?'dt.was_due':'dt.due',{date:day(i.due_date)}):t('dt.no_due'))])]);
+  let top=detailTop(i),tl=timelineOf(i);
+  // The read model again, once the engine filed or paid it: the head (its status chip) and the timeline follow.
+  const again=async()=>{const j=await api('/v1/invoices/'+encodeURIComponent(id));if(!top.isConnected)return;const nt=detailTop(j),nl=timelineOf(j);top.replaceWith(nt);tl.replaceWith(nl);top=nt;tl=nl};
+  const mine=ev&&(ev.items||[]).find((x)=>x.id===id);
+  const pay=mine?payCard({inv:mine,eng,write:(await me()).scopes.includes('admin'),moved:again}):null;
   const acct=r.iban?'IBAN …'+String(r.iban).slice(-4):r.account_number?t('dt.account')+' …'+String(r.account_number).slice(-4):(i.iban_last4?'…'+i.iban_last4:'');
   const rc=r.currency||i.currency||'';
   const read=el('div','card panel',[el('h2','',t('dt.read')),dl([[t('supplier'),r.vendor||i.vendor],[t('cs.vat_number'),r.vat_id],[t('dt.invoice_number'),r.invoice_no||i.invoice_no],[t('dt.invoice_date'),day(r.issue_date||i.issue_date)],[t('dt.due_date'),day(r.due_date||i.due_date)],
@@ -653,19 +680,72 @@ async function invoiceView(id){
   if(!fs.length)fl.append(el('li','ok',[ic('circle-check'),el('span','',t('cs.all_passed'))]));
   for(const f of fs){const m=RES[f.level]||['circle-minus',f.level];fl.append(el('li',f.level,[ic(m[0]),el('span','',[el('b','',m[1]+': '),finding(f)])]))}
   const checks=el('div','card panel',[el('h2','',t('dt.checks')),fl]);
-  const tl=el('ul','timeline');
-  tl.append(el('li','',[el('b','',t('tl.received')),el('span','',stamp(i.received_at))]));
-  for(const v of i.earlier_versions||[])tl.append(el('li','',[el('b','',t('cs.changed_version',{n:v.version})),el('span','',stamp(v.replaced_at))]));
-  if(i.status==='waiting_cfo')tl.append(el('li','',[el('b','',t('filed_for_face_id')),el('span','',i.proposal_id?t('cs.payment',{id:i.proposal_id}):'')]));
-  if(i.paid_at)tl.append(el('li','',[el('b','',t('paid')),el('span','',stamp(i.paid_at))]));
-  tl.append(el('li','',[el('b','',t('cs.last_update')),el('span','',stamp(i.updated_at))]));
   const getDoc=btn(t('cs.download'),'','download');
   getDoc.onclick=async()=>{getDoc.disabled=true;try{await download('/v1/invoices/'+encodeURIComponent(id)+'/document',(i.invoice_no||i.id).replace(/[^\w.-]+/g,'_')+'.pdf')}catch(e){if(!(e instanceof Expired))getDoc.after(note(e.message,'bad'))}finally{getDoc.disabled=false}};
   const pages=el('div','pages',[el('p','wait',t('drawing_document'))]);
   const doc=el('div','card docv',[el('div','bar2',[ic('file-text'),el('span','fn',t('cs.as_received')+(i.doc_sha256?' · SHA-256 '+String(i.doc_sha256).slice(0,12)+'…':'')),getDoc]),pages]);
-  view().replaceChildren(back,top,el('div','split',[doc,el('div','stack',[read,checks,el('div','card panel',[el('h2','',t('dt.timeline')),tl]),note(t('cs.approved_on_phone'))])]));
+  // The payment card where the person acts, the panel "At work" under it; without an engine, the note that the phone approves.
+  view().replaceChildren(back,top,el('div','split',[doc,el('div','stack',[pay,pay?workPanel():null,read,checks,el('div','card panel',[el('h2','',t('dt.timeline')),tl]),pay?null:note(t('cs.approved_on_phone'))])]));
+  if(pay)WORK.onEvents=(evs)=>{if(evs.some((e)=>e.event==='vault.filed'||(e.event==='ap.status'&&e.fields&&e.fields.status==='paid')))again().catch(()=>{})};
   drawPdf(id,pages);
 }
+
+// --- The payment card (engine only): pay, set up the approval passkey on this device, approve the exact terms ------------
+// What a passkey made or signed, as @simplewebauthn/server reads it (src/approve/client.ts serializeRegistration and
+// serializeAssertion, in this page's form).
+const credOf=(c,response)=>({id:c.id,rawId:b64u(c.rawId),type:c.type,response,clientExtensionResults:c.getClientExtensionResults(),...(c.authenticatorAttachment?{authenticatorAttachment:c.authenticatorAttachment}:{})});
+const registrationOf=(c)=>{const r=c.response;return credOf(c,{clientDataJSON:b64u(r.clientDataJSON),attestationObject:b64u(r.attestationObject),transports:typeof r.getTransports==='function'?r.getTransports():[]})};
+const signedOf=(c)=>{const r=c.response;return credOf(c,{clientDataJSON:b64u(r.clientDataJSON),authenticatorData:b64u(r.authenticatorData),signature:b64u(r.signature),...(r.userHandle?{userHandle:b64u(r.userHandle)}:{})})};
+// The approval passkey of the signed-in person, made on this device for the engine's enrolment window; the engine checks it.
+async function approvalPasskey(){
+  const s=await engineCall('/v1/engine/passkey/start',{method:'POST'});
+  const made=await navigator.credentials.create({publicKey:{rp:{id:s.rp.id,name:s.rp.name},user:{id:new TextEncoder().encode(s.user.id),name:s.user.name,displayName:s.user.displayName},challenge:fromB64u(s.challenge),
+    pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],excludeCredentials:(s.exclude||[]).map((id)=>({type:'public-key',id:fromB64u(id)})),
+    authenticatorSelection:{userVerification:'required',residentKey:'preferred'},attestation:'none',timeout:120000}});
+  await engineCall('/v1/engine/passkey/finish',{method:'POST',body:{code:s.code,credential:registrationOf(made)}});
+  engineStale()}
+// The engine's own view of the invoice (o.inv, from GET /v1/engine/invoices) decides what the card offers; o.write: an owner;
+// o.moved(): the read model is read again. Nothing shows as done before its answer is in: the one button is off and says
+// it is working while a request or a passkey prompt is open; a cancelled prompt leaves the card as it was.
+function payCard(o){
+  const i=o.inv;let eng=o.eng;
+  // A paid or rejected invoice has nothing to act on here.
+  if(['paid','rejected'].includes(i.status))return null;
+  const box=el('section','card panel pay');box.id='pay';
+  const said=el('div','');said.setAttribute('role','status');
+  const draw=(kids)=>box.replaceChildren(el('h2','',t('cs.eng.pay_h')),...kids.filter(Boolean));
+  const act=(b,run)=>{const kids=[...b.childNodes];b.onclick=async()=>{if(b.disabled)return;b.disabled=true;b.textContent=t('cs.eng.working');said.replaceChildren();
+    try{await run()}catch(e){if(!(e instanceof Expired))said.replaceChildren(note(e&&(e.name==='NotAllowedError'||e.name==='AbortError')?t('cs.eng.cancelled'):e.message,'bad'))}
+    finally{if(b.isConnected){b.disabled=false;b.replaceChildren(...kids)}}}};
+  // The terms as the engine gives them (the phone page's facts), the stand-in bank beside them, the fingerprint last.
+  const terms=(p,signed)=>[...(p.warnings||[]).map((w)=>note(w,'warn')),note(t('cs.eng.stand_in')),dl(p.facts||[]),signed?null:el('p','fine',t('cs.eng.signs')),
+    el('details','',[el('summary','',t('cs.eng.terms_fold')),dl([[t('cs.eng.terms_hash'),p.terms_sha256,'mono'],[t('cs.eng.proposal_id'),p.id,'mono']])])];
+  function proposal(p){
+    if(!o.write||p.status!=='PENDING_APPROVAL'){draw(terms(p));return}
+    if(!hasPasskeys()){draw([...terms(p),note(t('cs.no_passkeys'),'bad')]);return}
+    const b=eng&&eng.passkey?btn(t('cs.eng.approve'),'primary','scan-face'):btn(t('cs.eng.setup'),'primary','key-round');
+    if(eng&&eng.passkey)act(b,()=>approve(p));
+    else act(b,async()=>{await approvalPasskey();eng=await engineStatus();proposal(p);said.replaceChildren(note(t('cs.eng.set_up'),'ok'))});
+    draw([...terms(p),el('div','acts',[b]),said])}
+  async function approve(p){
+    const c=await navigator.credentials.get({publicKey:{challenge:fromB64u(p.challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(eng.passkey.credential_id)}],userVerification:'required',timeout:120000}});
+    const r=await engineCall('/v1/engine/proposals/'+encodeURIComponent(p.id)+'/approve',{method:'POST',body:{terms_sha256:p.terms_sha256,credential:signedOf(c)}});
+    // The engine's own words, for a refusal as for an approval.
+    if(r.status!=='approved'){said.replaceChildren(note(r.message,'bad'));return}
+    const s=r.settled||{};
+    draw([note(r.message,'ok'),s.error?note(s.error+' '+t('cs.eng.approval_stays'),'warn'):null,el('details','',[el('summary','',t('cs.eng.approved_terms')),...terms(p,true)]),said]);
+    await o.moved()}
+  if(i.status==='waiting_cfo'&&i.proposal)proposal(i.proposal);
+  else if(i.payable){
+    const b=o.write?btn(t('cs.eng.pay'),'primary'):null;
+    // Filed: the proposal shows; the engine then feeds the read model, so the head says what the engine says.
+    if(b)act(b,async()=>{const r=await engineCall('/v1/engine/invoices/'+encodeURIComponent(i.id)+'/pay',{method:'POST'});proposal(r.proposal);await engineCall('/v1/engine/sync',{method:'POST'});await o.moved()});
+    draw([el('p','lead',t('cs.eng.ready')),b?el('div','acts',[b]):null,said])}
+  // Not ready: the checks further down say why (the pay route's 409 is never asked just to learn it); where the reason is
+  // not a check, the rule the engine's payable comes from (src/ap/detail.ts actionsFor) says it.
+  else{const why=i.status==='needs_vendor'?t('action.needs_vendor'):i.status==='ready'?t('action.currency_not_paid',{currency:i.currency||''}):'';
+    draw([el('p','lead',why?t('cs.eng.not_yet_why',{why}):t('cs.eng.not_yet'))])}
+  return box}
 // The supplier's PDF is drawn in a sandboxed frame with an opaque origin (red team round 5): pdf.js parses it there, in
 // a worker, under its own policy and time limit; the frame cannot reach this page, its session or the API. This page
 // fetches the bytes (it holds the session) and hands them over; if the frame cannot draw them, the download stays.

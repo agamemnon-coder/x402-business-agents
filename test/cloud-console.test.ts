@@ -134,6 +134,40 @@ describe("the console of a cloud with an engine", () => {
     }
     expect(script(consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "", engine: true }))).toContain("t('cs.eng.foot')");
   });
+
+  it("carries the payment card's words in both languages: pay, set up approval, approve, and the stand-in bank beside the facts", () => {
+    const html = consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "", engine: true });
+    const js = script(html);
+    const keys = ["cs.eng.pay_h", "cs.eng.pay", "cs.eng.working", "cs.eng.ready", "cs.eng.not_yet", "cs.eng.not_yet_why", "cs.eng.stand_in", "cs.eng.signs",
+      "cs.eng.terms_fold", "cs.eng.terms_hash", "cs.eng.proposal_id", "cs.eng.setup", "cs.eng.set_up", "cs.eng.approve", "cs.eng.cancelled", "cs.eng.approval_stays", "cs.eng.approved_terms"] as const;
+    for (const k of keys) {
+      for (const lang of ["en", "nl"] as const) expect(MESSAGES[lang][k], `${lang} ${k}`).toBeTruthy();
+      expect({ k, carried: html.split(`"${k}":`).length - 1 }).toEqual({ k, carried: 2 });
+      expect(js, k).toContain(`t('${k}'`);
+    }
+    expect(MESSAGES.en["cs.eng.pay"]).toBe("Pay…");
+    expect(MESSAGES.en["cs.eng.setup"]).toBe("Set up approval on this device");
+    expect(MESSAGES.en["cs.eng.approve"]).toBe("Approve with passkey");
+    // The honesty line beside the phone page's facts (which name the Airwallex fee): this payment never reaches Airwallex.
+    expect(MESSAGES.en["cs.eng.stand_in"]).toMatch(/stand-in bank inside Purser.*test money.*Nothing is sent to Airwallex/);
+    expect(MESSAGES.nl["cs.eng.stand_in"]).toMatch(/nagebootste bank binnen Purser.*testgeld.*niets naar Airwallex/);
+    expect(MESSAGES.en["cs.eng.signs"]).toMatch(/exactly these terms/);
+    // The why of an invoice that cannot be paid is the engine's own (src/ap/detail.ts actionsFor) where it is not in the checks.
+    for (const k of ["action.needs_vendor", "action.currency_not_paid"]) expect(js).toContain(`t('${k}'`);
+  });
+
+  it("asks the engine to pay, set up and approve through the page's one request that marks it under way, with user verification required", () => {
+    const js = script(consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "", engine: true }));
+    for (const path of ["'/v1/engine/invoices/'", "'/v1/engine/passkey/start'", "'/v1/engine/passkey/finish'", "'/v1/engine/proposals/'"]) expect(js).toContain(`engineCall(${path}`);
+    expect(js).toMatch(/navigator\.credentials\.create\(\{publicKey:\{rp:\{id:s\.rp\.id,name:s\.rp\.name\},user:\{id:new TextEncoder\(\)\.encode\(s\.user\.id\)/);
+    expect(js).toContain("attestation:'none'");
+    expect(js).toContain("excludeCredentials:(s.exclude||[]).map(");
+    expect(js).toContain("allowCredentials:[{type:'public-key',id:fromB64u(eng.passkey.credential_id)}]");
+    expect(js.match(/userVerification:'required'/g)!.length).toBeGreaterThanOrEqual(4);
+    // What the passkey signed is sent as @simplewebauthn/server reads it.
+    expect(js).toContain("clientExtensionResults:c.getClientExtensionResults()");
+    expect(js).toContain("terms_sha256:p.terms_sha256");
+  });
 });
 
 describe("the API behind the console", () => {
