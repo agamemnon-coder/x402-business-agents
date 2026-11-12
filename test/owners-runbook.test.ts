@@ -161,7 +161,7 @@ describe("the runbook of the live Face ID run", () => {
     expect(prose).toMatch(/ONE proposal with one on-chain `replace` call; each owner signs it once/);
     expect(prose).toMatch(/If the replace reverts: `npm run owners -- propose-revoke`, both sign; then `npm run owners -- propose <cap> <budget>`, both sign; then `npm run owners -- pay`/);
     // What the code does when things go wrong, in the code's own words.
-    expect(read("src/cli/ownersExecute.ts")).toMatch(/OwnersBudgetSpent \? 3 : 1/);
+    expect(read("src/cli/ownersExecute.ts")).toMatch(/code = stop \? 3 : 1/);
     expect(prose).toMatch(/exits with code 3/);
     expect(prose).toMatch(/stays EXECUTING/);
     expect(prose).toMatch(/nothing is sent twice/);

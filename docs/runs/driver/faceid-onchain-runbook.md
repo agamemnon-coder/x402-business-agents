@@ -33,7 +33,7 @@ Set `OWNERS_CALL_BUDGET` to the higher number of the line "Lines in the call log
 | 5 propose the bind | `npm run owners -- propose` | 1 | 0 | none |
 | 5 the runner relays it | `npm run relay (running)` | 4 to 7 | 0 | executeSigned: the account binds the mandate (gas sponsor → account) |
 | 6 pay | `npm run owners -- pay` | 1 | 2 | 0.05 to Stockline inside the mandate (signed by the mandate key, sent by Metal's facilitator); 0.06, over the cap: refused, and the refusal recorded on chain (sent by the gas sponsor) |
-| 7 propose the replace | `npm run owners -- propose-replace <new cap> <new budget>` | 1 | 0 | none |
+| 7 propose the replace | `npm run owners -- propose-replace 0.10 0.50` | 1 | 0 | none |
 | 7 the runner relays it | `npm run relay (running)` | 4 to 7 | 0 | executeSigned: the account replaces the mandate (gas sponsor → account) |
 | 7 pay again | `npm run owners -- pay` | 0 | 1 | 0.06 to Stockline, the amount refused in step 6, now inside the new cap (signed by the mandate key, sent by Metal's facilitator) |
 | 8 propose the revoke | `npm run owners -- propose-revoke` | 1 | 0 | none |
@@ -49,9 +49,9 @@ Amounts, from the code: the mandate allows up to 0.05 per payment and 0.50 in to
 On the phone, by step:
 
 - **2 the owner's passkey**: Open the viewer link once. Open the enrol page and type the code. Tap "Create passkey with Face ID" and look at the phone. Read the fingerprint it shows aloud.
-- **5 propose the bind**: Open the approval link within 15 minutes. Check: "Bind the sourcing mandate, signed on chain", 0.50 USDZ budget, up to 0.05 per payment, Stockline only. Tap "Approve with Face ID" and look at the phone. It shows "1 of 2 approvals"; then the second approver signs.
-- **7 propose the replace**: Open the approval link within 15 minutes. Check: "Replace the sourcing mandate, signed on chain", <new budget> USDZ budget, up to <new cap> per payment (it was 0.05), Stockline only. Tap "Approve with Face ID" and look at the phone. It shows "1 of 2 approvals"; then the second approver signs.
-- **8 propose the revoke**: Open the approval link within 15 minutes. Check: "Revoke the sourcing mandate, signed on chain", <new budget> USDZ budget, up to <new cap> per payment, Stockline only. Tap "Approve with Face ID" and look at the phone. It shows "1 of 2 approvals"; then the second approver signs.
+- **5 propose the bind**: Open the approval link within 15 minutes. Check: "Bind the sourcing mandate, signed on chain", "0.50 USDZ in total" and the payee Stockline; under "Details", "Up to 0.05 per payment". Tap "Approve with Face ID" and look at the phone. It shows "1 of 2 approvals"; then the second approver signs.
+- **7 propose the replace**: Open the approval link within 15 minutes. Check: "Replace the sourcing mandate, signed on chain", under "Per payment" "0.10 USDZ (0.05 before)", and the payee Stockline; under "Details", "0.50 in total (0.50 before)". Tap "Approve with Face ID" and look at the phone. It shows "1 of 2 approvals"; then the second approver signs.
+- **8 propose the revoke**: Open the approval link within 15 minutes. Check: "Revoke the sourcing mandate, signed on chain" and the payee Stockline; under "Details", "It ends the mandate that allowed up to 0.10 per payment, 0.50 in total". Tap "Approve with Face ID" and look at the phone. It shows "1 of 2 approvals"; then the second approver signs.
 <!-- owners-plan:end -->
 
 ## Each step: run, expect, and what the owner does
