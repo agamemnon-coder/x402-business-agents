@@ -289,7 +289,7 @@ export class EngineHost {
     this.roomFor(sha256(bytes));
     const out = await this.withClaude(`engine.upload:${sha256(bytes).slice(0, 16)}`, (reader, agents) =>
       // Task A6: the Checker decides on the invoice as it is read, and the Coder codes it before its accrual is booked.
-      ingestDocument(db, { dir: NO_FOLDER, reader, now: () => this.now(), agents: agents.on, claude: agents.client, coder: agents.client }, { bytes, filename: doc.filename, ...(doc.mime ? { mime: doc.mime } : {}), source: "upload" }));
+      ingestDocument(db, { dir: NO_FOLDER, reader, now: () => this.now(), agents: agents.on, claude: agents.client, coder: agents.client, readInParallel: true }, { bytes, filename: doc.filename, ...(doc.mime ? { mime: doc.mime } : {}), source: "upload" }));
     if (out.kind === "duplicate_document") return { kind: out.kind, sha256: out.sha256, invoice: out.invoice_id ? this.invoice(out.invoice_id) : null };
     const inv = firstInvoice(out);
     // Read again: a note written after the checks is on the row, not on what the inbox returned.

@@ -47,6 +47,8 @@ export interface InboxDeps {
   claude?: Anthropic | null;
   /** The Claude client the Coder agent uses with KIT11_AP_AGENTS=on (src/ap/coderAgent.ts); absent: claudeClient(). */
   coder?: CoderDeps["client"];
+  /** Start the full reading together with the label (two model calls at once; the cloud engine, for speed). Absent: one after the other. */
+  readInParallel?: boolean;
   /**
    * Whether the payables agents run, said by the caller (the cloud engine, task A6: a Worker has no KIT11_AP_AGENTS);
    * absent: KIT11_AP_AGENTS decides, as on the runner.
@@ -190,9 +192,13 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
 
   // Haiku labels the document first; only an invoice, a credit note or a reminder is read in full (Sonnet). A scan
   // carries the label its two readings gave.
+  // Speed (12 Nov): where the caller says so (the cloud engine), the full reading starts together with the label, so the
+  // two model calls overlap; a document the label says is not read in full keeps the parser's reading, as before.
+  const readAhead = deps.readInParallel && !scan && !noText ? readDocument(db, deps.reader, text, sha).catch(() => null) : null;
   const cls = scan ? { kind: scan.docKind as DocKind, by: `claude-scan:${scan.model}` } : noText ? { kind: "unread" as const, by: "none" } : await classifyDocument(db, deps.reader, text, sha);
   const readFully = cls.kind === "invoice" || cls.kind === "credit_note" || cls.kind === "reminder";
-  const { reading, readBy } = scan ? { reading: scan.reading, readBy: `claude-scan:${scan.model}` } : readFully ? await readDocument(db, deps.reader, text, sha) : { reading: parseApFallback(text), readBy: "parser" };
+  const earlyRead = readAhead ? await readAhead : null;
+  const { reading, readBy } = scan ? { reading: scan.reading, readBy: `claude-scan:${scan.model}` } : readFully ? earlyRead ?? await readDocument(db, deps.reader, text, sha) : { reading: parseApFallback(text), readBy: "parser" };
   // A scan has no text layer: its checks run on the model's transcription of the pages (red team 6: credit-note words,
   // a bracketed total or a bank-change line on a scan were never seen by any check).
   const checkText = scan ? scan.transcription : text;
