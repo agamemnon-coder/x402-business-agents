@@ -1785,9 +1785,15 @@ function enrolPage(): void {
   const label = el("label", "", ["One-time code from Claude"]);
   label.setAttribute("for", "code");
   const box = el("div", "enrol", [label, input, go, status]);
+  // The three steps and how far this phone is: presentation only (data-step drives the style; nothing reads it back).
+  const steps = el("ol", "steps", ["Enter the code", "Create it with Face ID", "Confirm on the runner"].map((s) => el("li", "", [txt("span", "", s)])));
+  steps.setAttribute("aria-label", "Steps");
+  const step = (n: string) => { steps.dataset.step = n; };
+  step("1");
   app.replaceChildren(
     txt("h1", "", "Enrol your passkey"),
-    txt("p", "lead", "Once enrolled, every approval needs this passkey: Face ID signs the hash of the exact terms you see."),
+    txt("p", "lead", "A passkey is a private key that signs only after Face ID. Every approval needs it."),
+    steps,
     box,
   );
   go.addEventListener("click", async () => {
@@ -1804,6 +1810,7 @@ function enrolPage(): void {
       pubKeyCredParams: { type: "public-key"; alg: number }[]; timeout: number; attestation: AttestationConveyancePreference;
       authenticatorSelection: AuthenticatorSelectionCriteria; excludeCredentials: { type: "public-key"; id: string }[] };
     status.textContent = "Waiting for Face ID…";
+    step("2");
     let cred: PublicKeyCredential | null;
     try {
       cred = (await navigator.credentials.create({
@@ -1836,7 +1843,15 @@ function enrolPage(): void {
     }
     const home = el("a", "back", ["← Dashboard"]) as HTMLAnchorElement;
     home.href = "/";
-    const end = await follow(str(sent.data.ticket), box, home, fp ? `Fingerprint ${fp}` : "This browser cannot show the fingerprint; do not confirm it on the runner.");
+    step("3");
+    const following = follow(str(sent.data.ticket), box, home, fp ? `Fingerprint ${fp}` : "This browser cannot show the fingerprint; do not confirm it on the runner.");
+    // The same words, drawn large in groups of four to compare with the runner's line (textContent stays "Fingerprint <fp>").
+    const what = box.querySelector(".verdict-what");
+    if (what && fp) {
+      what.replaceChildren(txt("span", "fp-label", "Fingerprint "), el("span", "fp-code", fp.split("-").flatMap((g, i) => [i ? txt("span", "fp-dash", "-") : null, txt("span", "", g)])));
+    }
+    const end = await following;
+    if (end.status === "enrolled") step("done");
     // The runner names the fingerprint of the passkey it received: it must be the one this phone made.
     if (end.status === "pending" && fp && !end.message.includes(fp)) {
       box.prepend(txt("p", "alarm", `The runner received another passkey than this phone made (${fp}). Do not confirm it; tell Claude.`));
