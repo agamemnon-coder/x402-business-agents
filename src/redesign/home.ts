@@ -107,9 +107,10 @@ export const CFO_FORWARD_JS = `
 (function () {
   try {
     if (location.pathname.slice(-1) !== "/") return;
-    var h = location.hash, kept = "";
-    try { kept = localStorage.getItem("kit11.view") || ""; } catch (e) {}
-    if (!kept && !/(?:^#|&)(?:view=[0-9a-f]{32}|runner=[A-Za-z0-9_-]{80,200})(?:&|$)/.test(h)) return;
+    var h = location.hash;
+    // 12 Nov (owner): only the CFO's own link (its key after "#") opens the dashboard; a device that merely kept a key
+    // from an earlier link stays on Home, like every visitor.
+    if (!/(?:^#|&)(?:view=[0-9a-f]{32}|runner=[A-Za-z0-9_-]{80,200})(?:&|$)/.test(h)) return;
     if (h) try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
     location.replace("./?dashboard" + h);
   } catch (e) {}
