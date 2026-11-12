@@ -1,9 +1,9 @@
 // npm run erp (src/erp/cli.ts): a dry run sends nothing and prints the requests without secrets; a live run needs the
 // connector's settings and says --live; list names the missing settings, never a value.
-import { existsSync, mkdtempSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { openDb } from "../src/db/open.js";
 import { readCallLog } from "../src/erp/callBudget.js";
 import { runErpCli } from "../src/erp/cli.js";
@@ -77,7 +77,9 @@ describe("npm run erp -- resolve", () => {
 });
 
 describe("npm run erp, live (a go, a call budget and a call log)", () => {
-  const callLog = () => join(mkdtempSync(join(tmpdir(), "erp-cli-")), "calls.jsonl");
+  const made: string[] = [];
+  const callLog = () => { const dir = mkdtempSync(join(tmpdir(), "erp-cli-")); made.push(dir); return join(dir, "calls.jsonl"); };
+  afterAll(() => { for (const dir of made) rmSync(dir, { recursive: true, force: true }); });
   const settings = (fake: FakeMoneybird) => ({ ERP_MONEYBIRD_TOKEN: fake.token, ERP_MONEYBIRD_ADMINISTRATION_ID: fake.admin });
   const go = (file: string, budget = "6") => ({ ERP_LIVE_GO: "yes", ERP_CALL_BUDGET: budget, ERP_CALL_LOG: file });
   const taxes = { ERP_MONEYBIRD_TAX_RATES: JSON.stringify({ NL21: TAX[0]!.id, NL9: TAX[1]!.id }), ERP_MONEYBIRD_IGNORE_COST_CENTRES: "on" };

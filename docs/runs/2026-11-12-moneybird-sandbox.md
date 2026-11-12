@@ -7,7 +7,7 @@ invoices, reading them back and reconciling them is the next step of this run; t
 | | |
 |---|---|
 | Administration | "Purser" (EUR, the Netherlands), `503585935808530148`. A Moneybird sandbox administration the owner made on 12 Nov. Test data only. |
-| Token | A personal API token with the `documents` scope. The proxy on the run's machine adds it to each request to moneybird.com. It is not in code, git, logs, the environment or this page. |
+| Token | A personal API token with the `documents` scope, as the owner made it. The proxy on the run's machine adds it to each request to moneybird.com. It is not in code, git, logs, the environment or this page. |
 | Guards | The sandbox guard was on (`ERP_MONEYBIRD_SANDBOX_ONLY=on`): no other administration can be called. The connector calls only its fixed list of 12 endpoints, and none of them sends an e-mail, an invoice or a reminder. |
 | Calls | 3 of the 6 approved for this step. The whole run has 44. Each request is written to the call log before it is sent; `npm run erp -- calls` counts them. |
 | Before the run | The coordinator of the run reported one earlier request, outside this count: `GET administrations.json`, to check that the token reaches this administration. |

@@ -2,10 +2,10 @@
 // number of requests, every request is written to one log before it is sent (a retry and a lookup too), the request
 // that would go over is never sent, and a run that reaches the number stops instead of marking everything failed.
 // No network: the stand-in Moneybird administration answers (test/fakes/moneybird.ts).
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { openDb } from "../src/db/open.js";
 import { staticToken } from "../src/erp/auth.js";
 import { budgetedTransport, callsByEndpoint, endpointOf, ErpBudgetSpent, liveRefusals, liveTransport, readCallLog } from "../src/erp/callBudget.js";
@@ -17,7 +17,9 @@ import { FakeMoneybird, TAX } from "./fakes/moneybird.js";
 import { LIVE_KEYS } from "./support/noNetwork.js";
 
 const noSleep = async () => {};
-const tmp = () => mkdtempSync(join(tmpdir(), "erp-budget-"));
+const made: string[] = [];
+const tmp = () => { const dir = mkdtempSync(join(tmpdir(), "erp-budget-")); made.push(dir); return dir; };
+afterAll(() => { for (const dir of made) rmSync(dir, { recursive: true, force: true }); });
 const REPO = resolve(import.meta.dirname, "..");
 
 function moneybird(fake: FakeMoneybird, transport: Transport, token = fake.token) {

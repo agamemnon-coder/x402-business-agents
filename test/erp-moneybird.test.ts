@@ -1,10 +1,10 @@
 // The Moneybird connector (src/erp/moneybird.ts) against a stand-in administration that checks every request against
 // Moneybird's own OpenAPI request schemas (test/fakes/moneybird.ts). No live calls here: what the live API answered to
 // the first pull of a sandbox administration (12 November 2026) is replayed from a fixture, at the end of this file.
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { CHART } from "../src/config/gl.js";
 import { openDb } from "../src/db/open.js";
 import { staticToken } from "../src/erp/auth.js";
@@ -19,6 +19,10 @@ import { sampleInvoice, sampleJournal, samplePayment, sampleVendor, TEST_IBAN } 
 
 const noSleep = async () => {};
 const PROJECT = "458026356994737301";
+/** A call log in a folder of its own, removed when the file's tests are done. */
+const made: string[] = [];
+const callLog = () => { const dir = mkdtempSync(join(tmpdir(), "erp-mb-")); made.push(dir); return join(dir, "calls.jsonl"); };
+afterAll(() => { for (const dir of made) rmSync(dir, { recursive: true, force: true }); });
 
 function setup(o: { token?: string; cfg?: Partial<MoneybirdConfig> } = {}) {
   const fake = new FakeMoneybird();
@@ -432,7 +436,7 @@ describe("Moneybird guard: one administration, a fixed list of endpoints", () =>
 
   it("live, writes each request to the call log under the administration it went to, object ids left out", async () => {
     const fake = new FakeMoneybird();
-    const file = join(mkdtempSync(join(tmpdir(), "erp-mb-")), "calls.jsonl");
+    const file = callLog();
     const env = { ERP_MONEYBIRD_TOKEN: fake.token, ERP_MONEYBIRD_ADMINISTRATION_ID: fake.admin, ERP_MONEYBIRD_TAX_RATES: JSON.stringify({ NL21: TAX[0]!.id, NL9: TAX[1]!.id }), ERP_MONEYBIRD_IGNORE_COST_CENTRES: "on", ERP_LIVE_GO: "yes", ERP_CALL_BUDGET: "20", ERP_CALL_LOG: file };
     const res = await syncAll(openDb(":memory:"), liveConnector("moneybird", env, fake.transport), all().slice(0, 3), { sleep: noSleep });
     expect(res.map((r) => r.outcome)).toEqual(["pushed", "pushed", "pushed"]);
@@ -493,7 +497,7 @@ describe("Moneybird, the sandbox administration's real answers", () => {
   it("reads them as the live pull did: three requests, every id exact, and for each account where it may be used", async () => {
     const transport = replay();
     const lines: string[] = [];
-    const file = join(mkdtempSync(join(tmpdir(), "erp-mb-")), "calls.jsonl");
+    const file = callLog();
     const env = { ERP_MONEYBIRD_TOKEN: "placeholder", ERP_MONEYBIRD_ADMINISTRATION_ID: ADMIN, ERP_MONEYBIRD_SANDBOX_ONLY: "on", ERP_LIVE_GO: "yes", ERP_CALL_BUDGET: "6", ERP_CALL_LOG: file };
     expect(await runErpCli(["pull", "--connector", "moneybird", "--live"], { db: openDb(":memory:"), env, out: (l) => lines.push(l), transport })).toBe(0);
     expect(transport.sent.map((r) => r.url)).toEqual(SANDBOX.answers.map((a) => a.url));
