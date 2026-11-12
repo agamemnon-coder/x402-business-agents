@@ -70,22 +70,27 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     expect(readme.indexOf(KIT11_RUN_LINE.replace(/\.$/, ""))).toBeGreaterThan(readme.indexOf("[![CI]"));
   });
 
-  it("open Home under its heading: what Purser is, the one button, the Airwallex proof (competitive review, 10 Nov)", () => {
+  it("open Home under its heading: what Purser is, the one button with its reassurance line, then the first sentence, word for word, leading into the hero (home-story, 12 Nov)", () => {
     const html = PAGES.home!;
     const hero = /<section class="hero">[\s\S]*?<\/section>/.exec(html)![0];
     const t = words(hero);
-    // The one button, to /try/sign, right under what Purser is; the three sentences stay in the README and the form.
-    expect(t.startsWith(`AI agents spend. You sign off. ${WHAT_IT_IS} Try it: sign with your Face ID`)).toBe(true);
-    expect(t).toContain("Watch the agents");
-    expect(t).toContain(`${CAVEAT_LINE} Details →`);
-    // The caveat's link opens the footer's "What's real?", which lists what the line names.
-    expect(hero).toContain('<a href="#real" data-real>Details →</a>');
+    // The one button right under what Purser is; then the sentence every juror repeated. The other two sentences stay
+    // in the README and the form.
+    expect(t.startsWith(`AI agents spend. You sign off. ${WHAT_IT_IS} Try it yourself A test passkey, no account, no money. About a minute. ${DIFFERENTIATORS[0]} 1 Ask`)).toBe(true);
+    expect(t).not.toContain(DIFFERENTIATORS[1]);
+    expect(t).not.toContain(DIFFERENTIATORS[2]);
+    expect(t).not.toContain("Watch the agents");
+    // The caveat, word for word, once, in the one provenance line; its link opens the footer's "What's real?", which
+    // lists what the line names.
+    expect(t).toContain(`${CAVEAT_LINE} Step 4 runs in your browser`);
+    expect(t.split(CAVEAT_LINE)).toHaveLength(2);
+    expect(hero).toContain('<a href="#real" data-real>What\'s real?</a>');
     expect(html).toContain('<details class="real" id="real">');
     const real = words(/<details class="real"[\s\S]*?<\/details>/.exec(html)![0]);
     for (const x of ["customer", "supplier", "settlement", "second approver", "Test money"]) expect({ x, has: real.includes(x) }).toEqual({ x, has: true });
-    // The Kit 11 line and the awards: under the first screen, never in the hero (Max, 10 Nov).
-    expect(hero).not.toContain(KIT_LINE.split(" · entered")[0]!);
-    expect(html).toContain(KIT_LINE.split(" · entered")[0]!);
+    // No Kit 11 chip and no awards strip on Home (jury panel, 12 Nov: jargon); /visa and /metal name the entries.
+    expect(html).not.toContain(KIT_LINE.split(" · entered")[0]!);
+    expect(html).not.toMatch(/Kit 11|Metal Award|Visa Award/);
     // Without /try/sign in the bundle the button leads to /try, never to a dead link.
     expect(homePage()).not.toContain('href="try/sign"');
   });
@@ -153,13 +158,15 @@ describe("the let-through, framed as the test it was (jury review, 6 Nov, #8)", 
   });
 });
 
-describe("Visa TAP as a footer link on Home and Proof (jury review, 6 Nov, #7)", () => {
-  it("is not in Home's main part or Proof's cards, and both link to /visa from the footer", () => {
+describe("Visa TAP as a footer link on Proof (jury review, 6 Nov, #7); Home says nothing about Visa (home-story, 12 Nov)", () => {
+  it("is not in Home's main part or Proof's cards; Proof links to /visa from the footer, Home not at all", () => {
     for (const [name, html] of [["home", PAGES.home!], ["proof", PAGES.proof!]] as const) {
       const main = /<main[\s\S]*<\/main>/.exec(html)![0];
       // "Visa" alone is the card brand Airwallex issues (a virtual Visa card); TAP is what moved to the footer.
       expect({ name, tap: /Visa TAP|Trusted Agent|\bTAP\b(?! run)/.test(words(main)) }).toEqual({ name, tap: false });
-      expect({ name, link: html.includes(`<a class="flink" href="visa">${VISA_EXTRA_LINK}</a>`) }).toEqual({ name, link: true });
+      // Home said both "entered for the Visa Award" and "not an award entry" (jury panel, 12 Nov): now it says neither.
+      expect({ name, link: html.includes(`<a class="flink" href="visa">${VISA_EXTRA_LINK}</a>`) }).toEqual({ name, link: name === "proof" });
+      if (name === "home") expect(html.replace(/<header class="top">[\s\S]*?<\/header>/, "")).not.toMatch(/Visa|href="visa"/);
     }
   });
 

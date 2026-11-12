@@ -1,0 +1,61 @@
+{
+  "receipt": "purser.try-sign-receipt/v1",
+  "note": "A sample for Home's hero, not a record of a payment: the terms of the EUR 240.00 payment of invoice SLL-2026-11 in the Airwallex-only run of 7 November 2026, built again by Purser's own code in an offline test world (the ids and balances in them are that world's) and signed once with a test key. Not the CFO's signature and not Face ID; nothing real moved.",
+  "terms": {
+    "schema": "kit11.approval-terms/v1",
+    "kind": "invoice_payment",
+    "proposal_id": "P-0002",
+    "expires_at": "2026-11-12T11:51:39Z",
+    "invoice_no": "SLL-2026-11",
+    "vendor": "Stockline Data GmbH",
+    "amount": "240.00",
+    "currency": "EUR",
+    "fee_max": "20.00",
+    "beneficiary_id": "ben_3",
+    "beneficiary_name": "Stockline Data GmbH",
+    "iban_last4": "2051",
+    "bic": "BYLADEM1001",
+    "method": "SWIFT",
+    "reference": "SLL-2026-11",
+    "reason": "professional_business_services",
+    "transfer_request_id": "06482622-6f73-43e7-906f-941c75b7c802",
+    "conversion": null,
+    "balances_before": {
+      "eur_available": "35000.00",
+      "usd_available": "25000.00"
+    },
+    "floors": {
+      "eur_floor": "25000.00",
+      "eur_obligations": "8500.00",
+      "usd_floor": "20000.00"
+    },
+    "after": {
+      "eur_free": "1240.00",
+      "usd_available": "25000.00"
+    },
+    "evidence": [
+      {
+        "type": "invoice",
+        "ref": "SLL-2026-11",
+        "sha256": "004ee3b21920ab1cce16af31e383be6225310efb9f61132f9449fc9117a909f9"
+      }
+    ]
+  },
+  "terms_sha256": "9cfc78e32e1861d210d864710f4cba1cf0c019f3c95a6754c3a2fc0ea68f2805",
+  "algorithm": "ES256",
+  "public_key": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "8Ouf8sySGf7WJ-Mhgq8iTV9TTpb1ZEFV1ap2iA_1H0s",
+    "y": "zTcwG3slI284I9zj70G80RX70gMgFdKNTPv5ywXlw-w"
+  },
+  "credential_id": "cMXX2QyVFNm346BF6VozWA",
+  "rp_id": "hero-sample.purser.test",
+  "origin": "https://hero-sample.purser.test",
+  "assertion": {
+    "authenticatorData": "DazjDYWDGCGnjNPB05qvomA0dvlm_VYyGFoZoVmWRd0dAAAAAQ",
+    "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiblB4NDR5NFlZZElRMkdSeEQweTZIUERBR2ZQSldtZFV3Nkw4RHFhUEtBVSIsIm9yaWdpbiI6Imh0dHBzOi8vaGVyby1zYW1wbGUucHVyc2VyLnRlc3QiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+    "signature": "MEYCIQCOsu-jEFPUSUx7nS_bmuOrEV-Fw3-7lv-EAz0jdcD4WgIhAJ94sL0c8cHZbtE4AZwKW6-h9gdJZHfwFqnmUHM4joPJ"
+  },
+  "verify": "npm run verify-receipt -- docs/demo/hero-receipt.json"
+}

@@ -126,10 +126,9 @@ describe("the Airi run on the site", () => {
       expect(b).not.toMatch(/\b[0-9a-f]{64}\b/);
       expect(text(b)).not.toMatch(/vic-1|emulat|\bMax\b|\b(he|him|his|she|her|hers)\b|Visa Award|code decides/i);
     }
-    // Since 7 Nov (Visa: the VIC run counts) the Visa Award is named once, in Home's Kit line, "entered for the Metal Award
-    // and the Visa Award"; nowhere else on these pages, and never with TAP.
-    expect(text(pages.home!).match(/Visa Award/g)).toHaveLength(1);
-    expect(text(pages.home!)).toContain("entered for the Metal Award and the Visa Award");
+    // Home names no award since it became one story (home-story, 12 Nov: no Kit line, no awards strip; it had said both
+    // "entered for the Visa Award" and "not an award entry"). /visa names the entry, below.
+    expect(text(pages.home!)).not.toMatch(/Visa Award|Metal Award/);
     // Since 10 Nov (Max: we compete for the Visa Award, keep it visible) /visa opens with one plain sentence naming the
     // entry, the Kit line's words, then the run; nowhere else on these pages.
     expect(text(pages.visa!)).toContain(VISA_ENTRY_LINE);

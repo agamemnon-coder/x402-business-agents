@@ -151,13 +151,15 @@ describe("/judge: in the browser only", () => {
 });
 
 describe("the way in: Home, the README and the form", () => {
-  it("Home shows the way through itself (Max, 7 Nov: watch, try, proof), with the tour as one quiet text link under the one button", () => {
+  it("Home is one story with two buttons (home-story, 12 Nov: try it, see the proof), with the tour as one quiet footer link where /judge exists", () => {
     expect(JUDGE_LINK).toBe("Judge it in 3 minutes →");
     expect(ON.home!.match(/href="judge"/g)).toHaveLength(1);
-    expect(ON.home).toContain('<a href="judge">Judging? Take the 3-minute tour</a>');
+    expect(ON.home).toContain('<a class="flink" href="judge">Judging? Take the 3-minute tour</a>');
+    expect(/<main[\s\S]*<\/main>/.exec(ON.home!)![0]).not.toContain('href="judge"');
     expect(OFF.home).not.toContain('href="judge"');
-    // Home's three steps are /judge's first ones: the agents, then /try/sign, then the proof.
-    expect(ON.home).toContain('<a href="watch">'); expect(ON.home).toContain('<a class="btn primary big start" href="try/sign">'); expect(ON.home).toContain('<a href="proof">');
+    // Home's two buttons are two of /judge's steps: /try/sign, then the proof. Home no longer sends anyone to Watch.
+    expect(ON.home).toContain('<a class="btn primary big start" href="try/sign">'); expect(ON.home).toContain('<a class="btn big more" href="proof">');
+    expect(/<main[\s\S]*<\/main>/.exec(ON.home!)![0]).not.toContain('href="watch"');
   });
 
   it("the README has one line to /judge near the top", () => {

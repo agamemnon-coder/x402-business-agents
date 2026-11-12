@@ -82,9 +82,12 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   .replace(esc(TWO_LOCKS_LINE), " ")
   // Watch's playback speeds (Max, 10 Nov) are a control, not a figure of the run.
   .replace(/\b(?:0\.5|1|2)×/g, " ")
-  // Home's hero demo (10 Nov): the Airwallex-only run's invoice, dated with its own record; its figures are checked
-  // against docs/demo/airwallex-run.json in test/hero-demo.test.ts.
-  .replace(/\b1\s+Ask\s+2\s+Face ID[\s\S]*?Step 4 is the check every payment runs\./g, " ");
+  // Home's hero, its one provenance line and its three proof rows (home-story, 12 Nov): the Airwallex-only run's
+  // invoice, dated with its own record, the hero's receipt and the rows' ids; every figure is checked against
+  // docs/demo/airwallex-run.json, docs/demo/hero-receipt.json and docs/demo/main-run.json in test/hero-demo.test.ts and
+  // test/home-story.test.ts. The same run's and the receipt's own notes in Home's "What's real?" fold likewise.
+  .replace(/\b1\s+Ask\s+2\s+Face ID[\s\S]*?See the proof/g, " ")
+  .replace(/The hero's steps 1 to 3 and the two Airwallex rows:[\s\S]*?nothing real moved\./g, " ");
 
 /** Numbers on the page that are not in the record. */
 export const unknownNumbers = (html: string) => (visibleText(html).match(NUM) ?? []).map(norm).filter((n) => !ALLOWED.has(n));
@@ -212,25 +215,25 @@ describe("the redesigned public pages", () => {
     const ts = record.snapshot.agent_chat.map((c) => c.ts).concat(record.snapshot.flows.map((f) => f.at)).sort();
     expect(run.label).toContain(`${ts[0]!.slice(11, 16)}–`);
     expect(run.label).toContain(`–${ts[ts.length - 1]!.slice(11, 16)} UTC`);
-    for (const html of [homePage(), watchPage(), proofPage()]) {
-      expect(html).toContain(run.label);
-      expect(html).not.toMatch(/Stand-in|standing in|Replay of Autonomous dry run/);
-    }
+    // Home no longer replays the main run (home-story, 12 Nov): Watch and Proof carry its label, Home only names the
+    // run behind its Metal row, in its "What's real?" fold.
+    for (const html of [watchPage(), proofPage()]) expect(html).toContain(run.label);
+    expect(homePage()).not.toContain(run.label);
+    expect(homePage()).toMatch(/The Metal row: the main run of 3 November\./);
+    for (const html of [homePage(), watchPage(), proofPage()]) expect(html).not.toMatch(/Stand-in|standing in|Replay of Autonomous dry run/);
   });
 
-  it("carry Home's badge with the Metal Award and the Visa Award (Visa, 7 Nov: the VIC run counts; TAP still not eligible, 5 Nov), no Visa TAP in \"Built on\", and Visa only as text, never certified or endorsed", () => {
+  it("keep the Kit line and the badge as the form and the deck say them, off Home (home-story, 12 Nov: no Kit 11 chip, no awards strip, no \"Built on\" row), and Visa only as text, never certified or endorsed", () => {
     // VISA_AWARD_ON stays off: it would add "Visa TAP" to "Built on", and TAP is not the eligible tooling.
     expect(VISA_AWARD_ON).toBe(false);
     expect(KIT_LINE).toBe("Kit 11 · x402 Business Agents · entered for the Metal Award and the Visa Award");
     expect(HOME_BADGE).toBe("Kit 11 · Metal Award and Visa Award · built on Airwallex, Metal, Claude");
-    // Two pills, each on one line: the kit, and the awards entered (never read as already won).
-    expect(homePage()).toContain(">Kit 11 · x402 Business Agents<");
-    expect(homePage()).toContain(">entered for the Metal Award and the Visa Award<");
-    expect(/<div class="built">([\s\S]*?)<\/div>/.exec(homePage())?.[1]).not.toMatch(/Visa|TAP/);
-    // The TAP work stays reachable from Home as a labelled extra, a footer link to /visa (jury review, 6 Nov, #7: no
-    // partner card, nothing in the three moments).
-    expect(homePage()).toContain(`<a class="flink" href="visa">${VISA_EXTRA_LINK}</a>`);
-    expect(homePage()).not.toContain('<a class="partner card" href="visa">');
+    // Home said both "entered for the Visa Award" and "not an award entry" (jury panel, 12 Nov): it now says nothing
+    // about awards or Visa, and carries no chip, strip or "Built on" row. /visa and /proof say what is true there.
+    expect(homePage()).not.toMatch(/Kit 11|x402 Business Agents|Metal Award|Visa Award|Built on|class="built"/);
+    expect(homePage()).not.toContain(VISA_EXTRA_LINK);
+    expect(homePage().replace(/<header class="top">[\s\S]*?<\/header>/, "")).not.toMatch(/Visa|href="visa"/);
+    expect(proofPage()).toContain(`<a class="flink" href="visa">${VISA_EXTRA_LINK}</a>`);
     expect(JSON.stringify(agentRun().scenes)).not.toMatch(/Visa|TAP/);
     for (const [name, body] of Object.entries(PAGES)) if (typeof body === "string") expect({ name, img: /<img[^>]*visa/i.test(body), words: body.split(/[.!?"]\s/).filter((s) => /Visa|TAP/.test(s)).map((s) => /\b(certified|endorsed|Visa-approved|open-source)\b/i.exec(s)?.[0]).find(Boolean) ?? null }).toEqual({ name, img: false, words: null });
     expect(PAGES.visa).toContain(VISA_CLAIM.replace(/'/g, "&#39;").replace(/&#39;/g, "'"));
@@ -248,14 +251,14 @@ describe("the redesigned public pages", () => {
     expect(run.scenes[0]!.steps.map((s) => s.text)).toEqual(expect.arrayContaining(["2 of 2 signatures"]));
   });
 
-  it("TAP's status is Max's wording (5 Nov), said once, on /visa (Home and Proof link to it as an extra); the Visa Award only in the Kit line, never on TAP", () => {
+  it("TAP's status is Max's wording (5 Nov), said once, on /visa (Proof links to it as an extra; Home says nothing about Visa since 12 Nov); the Visa Award only in the Kit line, never on TAP", () => {
     const pages = buildPages() as unknown as Record<string, unknown>;
     expect(VISA_TAP_STATUS).toBe("Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov).");
-    // Said once: on /visa; Home and Proof only link to /visa, labelled as an extra, not an award entry.
+    // Said once: on /visa; Proof only links to /visa, labelled as an extra, not an award entry.
     for (const name of ["home", "proof", "visa"]) {
       const html = name === "home" ? homePage() : name === "proof" ? proofPage() : String(pages.visa);
       expect({ name, has: html.split(esc(VISA_TAP_STATUS)).length - 1 }).toEqual({ name, has: name === "visa" ? 1 : 0 });
-      if (name !== "visa") expect({ name, link: html.includes(`href="visa">${esc(VISA_EXTRA_LINK)}</a>`) }).toEqual({ name, link: true });
+      if (name !== "visa") expect({ name, link: html.includes(`href="visa">${esc(VISA_EXTRA_LINK)}</a>`) }).toEqual({ name, link: name === "proof" });
     }
     for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, bad: /confirmed (that )?TAP|TAP counts as Visa tooling|counts as Visa tooling|still being confirmed with Visa|\+ Visa Award|Visa Award entry/i.test(body) || /Visa Award/i.test(body.split("entered for the Metal Award and the Visa Award").join(" ")) }).toEqual({ name, bad: false });
   });
