@@ -44,7 +44,9 @@ const nameOf = (path: string) => (path === "latest_payment_attempt.status" ? pat
 export interface VicNetwork {
   purchases: { step: string; id: string; amount: string; currency: string }[];
   rows: { path: string; name: string; values: string[] }[];
+  /** The fold's line: the label alone (who says so). The count and the status open the block. */
   summary: string;
+  intro: string;
   /** What did not come back, and Airi's word for the credential beside Airwallex's. */
   notes: string[];
   readAt: string; calls: number; file: string;
@@ -88,7 +90,8 @@ export function vicNetwork(src: { file: string; rec: IntentsRecord }, run: AiriR
   const said = (ts: string[]) => ts.map((t) => (GLOSS[t] ? `${t} (${GLOSS[t]})` : t)).join(", ");
   return {
     purchases, rows,
-    summary: `${VIC_NETWORK_LABEL}: ${rec.payment_intents.length} payments ${statuses.join(", ")}`,
+    summary: VIC_NETWORK_LABEL,
+    intro: `Airwallex's own record of the Airi run's ${rec.payment_intents.length} payments, ${statuses.join(", ")}. Each value stands under Airwallex's field name, as it came back.`,
     notes: [
       ...(none.length ? [`Airwallex returned no field for ${none.length > 1 ? `${none.slice(0, -1).join(", ")} or ${none.at(-1)}` : none[0]}.`] : []),
       ...(types.length && airiTypes.length ? [`Airi's receipt named the credential's type ${said(airiTypes)}; Airwallex's record says number_type ${said(types)}.`] : []),
@@ -97,13 +100,13 @@ export function vicNetwork(src: { file: string; rec: IntentsRecord }, run: AiriR
   };
 }
 
-/** The folded row: the label and the count in its summary; inside, each field for each payment, the notes and the source. */
+/** The folded row: the label is its line; inside, the count and status, each field for each payment, the notes and the source. */
 export function vicNetworkHtml(n: VicNetwork | null): string {
   if (!n || n.rows.length === 0) return "";
   const head = `<div class="awhead"><span>${esc("Airwallex's field")}</span>${n.purchases.map((p) => `<span>${esc(`Purchase ${p.step} · ${p.currency} ${p.amount}`)}</span>`).join("")}</div>`;
   const row = (r: VicNetwork["rows"][number]) => `<div class="awrow"><span class="k"><code title="${esc(r.path)}">${esc(r.name)}</code></span>${r.values.map((v, i) => `<span><b class="lbl">${esc(`Purchase ${n.purchases[i]!.step}`)}</b>${esc(v)}</span>`).join("")}</div>`;
   return `<details class="fold" id="${VIC_NETWORK_ID}"><summary>${esc(n.summary)}</summary>
-<p>${esc("Airwallex's own record of the Airi run's payments. Each value stands under Airwallex's field name, as it came back.")}</p>
+<p>${esc(n.intro)}</p>
 <div class="awcard vn">${head}
 ${n.rows.map(row).join("\n")}</div>
 ${n.notes.length ? `<p>${esc(n.notes.join(" "))}</p>` : ""}

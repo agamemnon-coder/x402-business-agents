@@ -43,7 +43,9 @@ import { airiPolicy, type AiriPolicy } from "./policy.js";
 
 export const AIRI_PURCHASE_KIND = "airi_purchase";
 export const AIRI_ALONE_RULE = "an Airi purchase within the CFO's limit for this rail";
-const TTL_MS = 30 * 60 * 1000;
+/** How long the terms of an Airi purchase stand: a CFO approval older than this is refused (src/policy/approvals.ts). */
+export const AIRI_TERMS_TTL_MS = 30 * 60 * 1000;
+const TTL_MS = AIRI_TERMS_TTL_MS;
 export const TMP_PREFIX = "purser-airi-";
 /** How often the mandate is looked for in Airi's list before the credential is asked for, and the wait between two tries. */
 export const READ_BACK_TRIES = 3;

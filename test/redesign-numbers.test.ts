@@ -74,6 +74,9 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   // What the Airwallex sandbox reports for the Airi run's two payments (12 Nov, folded on /visa), dated with its own
   // record; its values are checked against docs/runs/airwallex-vic-payment-intents-<date>.json in test/vic-network.test.ts.
   .replace(/As reported by the Airwallex sandbox[\s\S]*?airwallex-vic-payment-intents-[\d-]+\.json/g, " ")
+  // The CFO's policy next to Visa's published VIC rules (12 Nov, folded on /visa): Purser's figures from the two Airi
+  // records and the code's constants, Visa's from its own quoted words; all checked in test/vic-rules.test.ts.
+  .replace(/The CFO's policy next to Visa's VIC rules[\s\S]*?developer\.visa\.com, read \d{1,2} \w{3} \d{4}\./g, " ")
   // The intended price (a hypothesis, not a figure of the run): one sentence, its numbers checked against
   // src/business/unitEconomics.ts's inputs in test/unit-economics-hypothesis.test.ts.
   .replace(PRICE_LINE, " ")

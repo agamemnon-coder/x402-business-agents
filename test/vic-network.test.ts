@@ -94,9 +94,10 @@ describe("\"As reported by the Airwallex sandbox\" on /visa", () => {
   it("is one folded row under the two Airi runs, labelled, with its source: the read date, the calls and the record", () => {
     expect(block.length).toBeGreaterThan(0);
     const summary = text(/<summary>([\s\S]*?)<\/summary>/.exec(block)![1]!);
-    expect(summary.startsWith(VIC_NETWORK_LABEL)).toBe(true);
+    expect(summary).toBe(VIC_NETWORK_LABEL);
     expect(VIC_NETWORK_LABEL).toBe("As reported by the Airwallex sandbox");
-    expect(summary).toBe(`${VIC_NETWORK_LABEL}: ${rec.payment_intents.length} payments ${rec.payment_intents[0]!.intent.status as string}`);
+    // Opened, it starts with how many payments and their status, from the record.
+    expect(text(block)).toContain(`Airwallex's own record of the Airi run's ${rec.payment_intents.length} payments, ${rec.payment_intents[0]!.intent.status as string}. Each value stands under Airwallex's field name, as it came back.`);
     expect(html.indexOf(`id="${VIC_NETWORK_ID}"`)).toBeGreaterThan(html.indexOf('id="airi-run-2"'));
     expect(html.indexOf(`id="${VIC_NETWORK_ID}"`)).toBeLessThan(html.indexOf('id="visa-tap"'));
     expect(block).not.toMatch(/<details[^>]* open/);
