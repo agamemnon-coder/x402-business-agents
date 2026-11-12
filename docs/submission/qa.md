@@ -130,7 +130,7 @@ Worst case, set by policy: the agents together can spend at most EUR 28,200 (car
 USD) a month; everything above waits for the CFO. The parts: at most 20.00 test USD on Metal (the three mandates'
 budgets, 10.00 + 4.00 + 6.00, held to that total in code); EUR 300.00 on the cards (monthly limits 100.00 + 150.00 +
 50.00); and the Treasury agent's task cards without Face ID, up to EUR 300.00 each and 3 in 24 hours, so EUR 900.00 a
-day and EUR 27,900.00 over 31 days. A card or a mandate has no daily ceiling, so it can all go in one day: the worst day
+day and EUR 27,900.00 over 31 days; a card or a mandate has no daily ceiling, so it can all go in one day: the worst day
 is EUR 1,200.00 and 20.00 test USD. The CFO sees each payment in the dashboard's feed as it happens, and a velocity breach (Sourcing: 30
 payments a minute, 4.00 test USD or EUR 100.00 an hour) stops that agent and raises an alarm on `/health`; no pager is
 connected yet.

@@ -270,7 +270,7 @@ describe("the Q&A, in Max's words (5 Nov)", () => {
     expect(qa).toContain(`task cards without Face ID, up to EUR ${eur(taskEach)} each and ${TASK_WITHIN_PER_DAY} in 24 hours, so EUR ${eur(taskDay)} a day and EUR ${eur(taskDay * MONTH_DAYS)} over ${MONTH_DAYS} days`);
     const day = exposureOf(startPolicy()).total.day;
     expect(qa).toContain(`the worst day is EUR ${eur(day.eurCents)} and ${usd(day.usdCents)} test USD`);
-    expect(qa).toContain("A card or a mandate has no daily ceiling");
+    expect(qa).toContain("over 31 days; a card or a mandate has no daily ceiling, so it can all go in one day");
     expect(TEXT.qa).toContain(`Sourcing: ${VELOCITY.sourcing.perMinute} payments a minute, ${usd(VELOCITY.sourcing.usdzPerHourCents)} test USD or EUR ${usd(VELOCITY.sourcing.eurPerHourCents)} an hour`);
   });
 });
