@@ -57,10 +57,11 @@ describe("/proof.json", () => {
     expect(doc.agents.map((a) => a.id)).toEqual(AGENT_IDS);
     for (const a of doc.agents) {
       const v = agentView(a.id);
+      // 12 November: each amount names its unit (the card is EUR, the mandate test USD), as the agent pages do.
       expect(a).toEqual({
         id: v.id, name: v.name, job: v.job, models: v.models,
-        card: v.card ? { per_purchase: v.card.per_tx, monthly: v.card.monthly, only: v.card.only } : null,
-        mandate: v.mandate ? { cap: v.mandate.cap, budget: v.mandate.budget, tx_url: v.mandate.tx ? `${EXPLORER}/tx/${v.mandate.tx}` : null } : null,
+        card: v.card ? { per_purchase: v.card.per_tx, monthly: v.card.monthly, unit: "EUR", only: v.card.only } : null,
+        mandate: v.mandate ? { cap: v.mandate.cap, budget: v.mandate.budget, unit: "test USD", tx_url: v.mandate.tx ? `${EXPLORER}/tx/${v.mandate.tx}` : null } : null,
         page: `${SITE_URL}/agents/${a.id}`,
       });
     }
@@ -89,7 +90,9 @@ describe("/proof.json", () => {
     // without the repository file path in the verify command: e-mails, keys, tokens, credential or assertion fields,
     // long base64 runs and unknown hashes.
     const noLinks = text.replace(/https:\/\/[^"\s]+/g, "").replace(/\bdocs\/[\w./-]+\.json\b/g, "");
-    expect(privateFindings(noLinks, { known64: new Set(), known40: new Set() })).toEqual([]);
+    // 12 November: runs may show a public hash as an id (the signed terms' SHA-256, also on /runs); those are known.
+    const runHashes = liveRuns().flatMap((r) => r.ids).filter((x) => /SHA-256|hash/i.test(x.label) && /^[0-9a-f]{64}$/i.test(x.value)).map((x) => x.value.toLowerCase());
+    expect(privateFindings(noLinks, { known64: new Set(runHashes), known40: new Set() })).toEqual([]);
   });
 });
 
