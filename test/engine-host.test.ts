@@ -260,6 +260,84 @@ describe("sync: follow the payments, book, archive, feed", () => {
   });
 });
 
+describe("try again: a payment whose execution failed is run once more by the executor's own resume path", () => {
+  /** Approved, then the bank was away at the transfer: FAILED, the payout row SUBMITTING, the invoice waiting. */
+  async function failed(w: World) {
+    const { proposal } = await proposed(w);
+    w.bank.createTransfer = async () => { throw new Error("the stand-in bank is away"); };
+    const out = await w.host.approve(signed(w, proposal, proposal.challenge, 1));
+    expect(out.settled).toMatchObject({ invoice_status: "waiting_cfo", transfer_status: "SUBMITTING" });
+    expect(w.host.proposal(proposal.id)!.status).toBe("FAILED");
+    // The bank is back.
+    delete (w.bank as { createTransfer?: unknown }).createTransfer;
+    return proposal;
+  }
+
+  it("pays once on a retry: PAID, booked with 7 entries, archived, both chains whole", async () => {
+    const w = world();
+    const proposal = await failed(w);
+    expect(w.bank.transfers).toHaveLength(0);
+    const out = await w.host.retry(proposal.id);
+    expect(out).toMatchObject({ status: "retried", message: "P-0001 was run again: EXECUTED", settled: { invoice_status: "paid", transfer_status: "PAID", ledger_entries: 7, error: null } });
+    // The invoice and the suppliers list were archived after the failed run; the receipt comes with the payment.
+    expect(out.settled!.vault_added).toEqual([expect.stringMatching(/\.pdf$/)]);
+    expect((await w.host.vaultFiles()).map((f) => f.kind).sort()).toEqual(["invoice", "receipt", "suppliers"]);
+    expect(w.bank.transfers).toHaveLength(1);
+    expect(count(w.db, "SELECT COUNT(*) AS n FROM transfers")).toBe(1);
+    expect(count(w.db, "SELECT COUNT(*) AS n FROM approvals")).toBe(1);
+    expect(w.host.invoice("AP-0001")).toMatchObject({ status: "paid", proposal: { status: "EXECUTED" } });
+    expect(verifyAuditChain(w.db).ok).toBe(true);
+    expect(verifyLedger(w.db).ok).toBe(true);
+    // The bank as it stands after the retry is the one kept.
+    expect(bankFromText(w.bankStore.text!).transfers).toHaveLength(1);
+
+    // Paid: a second retry moves no money, and says why.
+    const again = await w.host.retry(proposal.id);
+    expect(again).toEqual({ status: "nothing_to_retry", message: "P-0001 is EXECUTED: there is nothing to try again; nothing was paid", settled: null });
+    expect(w.bank.transfers).toHaveLength(1);
+  });
+
+  it("a retry that fails again says so in settled.error, and the next one still pays once", async () => {
+    const w = world();
+    const proposal = await failed(w);
+    w.bank.createTransfer = async () => { throw new Error("still away"); };
+    const out = await w.host.retry(proposal.id);
+    expect(out).toMatchObject({ status: "retried", message: "P-0001 was run again: FAILED", settled: { invoice_status: "waiting_cfo", transfer_status: "SUBMITTING", error: expect.stringContaining("still away") } });
+    delete (w.bank as { createTransfer?: unknown }).createTransfer;
+    expect((await w.host.retry(proposal.id)).settled).toMatchObject({ invoice_status: "paid", transfer_status: "PAID", error: null });
+    expect(w.bank.transfers).toHaveLength(1);
+  });
+
+  it("two retries at once run one after the other and make one transfer", async () => {
+    const w = world();
+    const proposal = await failed(w);
+    const [a, b] = await Promise.all([w.host.retry(proposal.id), w.host.retry(proposal.id)]);
+    expect(a).toMatchObject({ status: "retried", settled: { invoice_status: "paid", transfer_status: "PAID" } });
+    expect(b).toMatchObject({ status: "nothing_to_retry", settled: null });
+    expect(w.bank.transfers).toHaveLength(1);
+    expect(count(w.db, "SELECT COUNT(*) AS n FROM transfers")).toBe(1);
+  });
+
+  it("refuses a proposal that was never approved, one whose signature was refused, one paid, and one that is not there", async () => {
+    const w = world();
+    const { proposal } = await proposed(w);
+    // Never approved.
+    expect(await w.host.retry(proposal.id)).toEqual({ status: "nothing_to_retry", message: "P-0001 is PENDING_APPROVAL: there is nothing to try again; nothing was paid", settled: null });
+    // A signature over other terms was refused: still not approved.
+    expect((await w.host.approve(signed(w, proposal, challengeFor(sha256Hex("other terms")), 1))).status).toBe("refused");
+    expect(await w.host.retry(proposal.id)).toMatchObject({ status: "nothing_to_retry", settled: null });
+    expect(w.bank.transfers).toHaveLength(0);
+    expect(count(w.db, "SELECT COUNT(*) AS n FROM transfers")).toBe(0);
+    // Paid on the first run.
+    await w.host.approve(signed(w, proposal, proposal.challenge, 2));
+    expect(await w.host.retry(proposal.id)).toMatchObject({ status: "nothing_to_retry", message: expect.stringMatching(/^P-0001 is EXECUTED/), settled: null });
+    expect(w.bank.transfers).toHaveLength(1);
+    // Not there.
+    expect(await w.host.retry("P-0404")).toEqual({ status: "nothing_to_retry", message: "no proposal P-0404", settled: null });
+    expect(verifyAuditChain(w.db).ok).toBe(true);
+  });
+});
+
 describe("a second host on the same ledger and bank store (as after the object's memory was dropped)", () => {
   it("shows the same balances, and its sync changes nothing", async () => {
     const w = world();

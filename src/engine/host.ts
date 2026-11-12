@@ -274,14 +274,39 @@ export class EngineHost {
       const item: InboxItem = { ticket: "engine", kind: "assertion", proposal_id: null, body: JSON.stringify({ proposal_id: a.proposal_id, terms_sha256: a.terms_sha256, credential: a.credential }), received_at: now.toISOString() };
       const out = await processAssertion(db, item, now);
       if (out.status !== "approved" || !out.proposalId) return { status: out.status, message: out.message, settled: null };
-      const invoice = (db.prepare("SELECT id FROM ap_invoices WHERE proposal_id = ?").get(out.proposalId) as { id: string } | undefined)?.id ?? null;
-      const failed: string[] = [];
-      try { await execute(db, out.proposalId, undefined, undefined, rails); } catch (e) { failed.push(message(e)); }
-      // The money has moved (or not): whatever fails from here on is reported, and the rest still runs.
-      try { this.deps.afterMoney?.(); } catch (e) { failed.push(`after the payment: ${message(e)}`); }
-      const settled = await this.settle({ proposalId: out.proposalId, invoiceId: invoice });
-      return { status: out.status, message: out.message, settled: { ...settled, error: [...failed, ...(settled.error ? [settled.error] : [])].join("; ") || null } };
+      return { status: out.status, message: out.message, settled: await this.pay(out.proposalId) };
     });
+  }
+
+  /**
+   * Try again: a payment that was approved but whose execution failed (the bank was away, say) is run once more, by
+   * the executor's own path for that, the one a runner takes when it runs a FAILED proposal again: it starts again
+   * from its last finished step, and a payout written before the failure is looked up at the bank by its request id
+   * and adopted, never sent blind a second time (src/executors/invoicePayment.ts, src/policy/saga.ts). Only a FAILED
+   * invoice payment is run; anything else (paid, never approved, refused, not there) answers nothing_to_retry and
+   * nothing runs. Then, as after an approval, the payment is followed, booked, archived and fed.
+   */
+  retry(proposalId: string): Promise<{ status: "retried" | "nothing_to_retry"; message: string; settled: Settled | null }> {
+    return this.act(async () => {
+      const p = this.deps.db.prepare("SELECT status, kind FROM proposals WHERE proposal_id = ?").get(proposalId) as { status: string; kind: string } | undefined;
+      if (!p) return { status: "nothing_to_retry", message: `no proposal ${proposalId}`, settled: null };
+      if (p.status !== "FAILED" || p.kind !== "invoice_payment") return { status: "nothing_to_retry", message: `${proposalId} is ${p.status}: there is nothing to try again; nothing was paid`, settled: null };
+      const settled = await this.pay(proposalId);
+      const now = (this.deps.db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(proposalId) as { status: string }).status;
+      return { status: "retried", message: `${proposalId} was run again: ${now}`, settled };
+    });
+  }
+
+  /** An approved proposal through its executor on the host's rails, then followed, booked, archived and fed; inside the queue only. */
+  private async pay(proposalId: string): Promise<Settled> {
+    const { db, rails } = this.deps;
+    const invoice = (db.prepare("SELECT id FROM ap_invoices WHERE proposal_id = ?").get(proposalId) as { id: string } | undefined)?.id ?? null;
+    const failed: string[] = [];
+    try { await execute(db, proposalId, undefined, undefined, rails); } catch (e) { failed.push(message(e)); }
+    // The money has moved (or not): whatever fails from here on is reported, and the rest still runs.
+    try { this.deps.afterMoney?.(); } catch (e) { failed.push(`after the payment: ${message(e)}`); }
+    const settled = await this.settle({ proposalId, invoiceId: invoice });
+    return { ...settled, error: [...failed, ...(settled.error ? [settled.error] : [])].join("; ") || null };
   }
 
   /** Follows the payments, books them, archives and feeds the read model. Safe to repeat: a second run adds nothing. */
