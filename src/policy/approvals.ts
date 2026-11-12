@@ -272,7 +272,7 @@ export function beginExecution<T extends Terms>(db: DB, proposalId: string, prec
       { approved_sha256: string; decision: string } | undefined;
     const recomputed = termsHash(terms);
     if (!approval || approval.decision !== "APPROVED") throw new Error(`${proposalId} has no approval`);
-    if (recomputed !== p.terms_sha256 || recomputed !== approval.approved_sha256) throw new Error(`${proposalId}: terms do not match the approved hash`);
+    if (recomputed !== p.terms_sha256 || recomputed !== approval.approved_sha256) throw new Error(`${proposalId}: terms do not match the approved hash ${approval.approved_sha256}`);
     if (!resume) {
       // Again inside the write lock, so nothing can change between the gate and the transition.
       const why = hubGateRefusal(db, p, now);
