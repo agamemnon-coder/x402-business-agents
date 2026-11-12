@@ -26,7 +26,7 @@ const CSS = `.hero { padding: 24px 0 36px; }
 .btn.big { height: 56px; font-size: 17px; padding: 0 26px; }
 .btn.big.start { margin-top: 18px; }
 @media (max-width: 1099px) { .btn.big { width: 100%; justify-content: center; } }
-.reassure { margin: 10px 0 0; font-size: 15px; color: var(--muted); }
+.reassure { margin: 10px 0 0; font-size: 15px; color: var(--muted); text-wrap: balance; }
 /* The sentence every juror repeated: it leads into the hero. */
 .oneline { margin: 26px 0 0; padding-left: 13px; border-left: 3px solid var(--accent); font-size: 18px; line-height: 1.45; font-weight: 600; max-width: 30em; }
 p.partner { margin: 14px 0 0; font-weight: 650; } p.partner a { color: var(--accent); display: inline-flex; align-items: center; min-height: 44px; }

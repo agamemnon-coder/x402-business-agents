@@ -196,7 +196,7 @@ ${[1, 2, 3, 4].map((n) => AT(n, `.hd-lines [data-p="${n}"]`)).join(", ")} { visi
 @keyframes hd-shake { 10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(3px); } 30%, 50%, 70% { transform: translateX(-6px); } 40%, 60% { transform: translateX(6px); } }
 /* Both hashes, short in sight and whole in the title: the one the passkey signed, and the terms' own as they now stand. */
 .hd-hashes { display: flex; flex-wrap: wrap; gap: 2px 18px; margin: 12px 2px 0; font-size: 12.5px; font-weight: 600; color: var(--hd-dim); }
-.hd-hashes span { display: inline-grid; grid-template-columns: 3.4em auto; align-items: baseline; white-space: nowrap; }
+.hd-hashes span { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
 .hd[data-verdict="refused"] .hd-now { color: var(--hd-bad); }
 /* The controls: the widget's own, each a thumb's size. */
 .hd-ctl { display: grid; grid-template-columns: 1fr 1.5fr 1fr; gap: 8px; margin-top: 10px; }
@@ -204,7 +204,7 @@ ${[1, 2, 3, 4].map((n) => AT(n, `.hd-lines [data-p="${n}"]`)).join(", ")} { visi
 .hd-btn:hover { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.3); }
 .hd-btn.go { background: var(--hd-acc); border-color: var(--hd-acc); color: #0b0d18; font-weight: 750; }
 .hd-btn.go:hover { background: #a39eff; border-color: #a39eff; }
-@media (max-width: 480px) { .hd { padding: 12px; } .hd-stage { grid-template-columns: minmax(0, 1fr) 172px; gap: 10px; height: 300px; } .hd-phone { height: 292px; } .hd-node { padding: 8px 9px; column-gap: 8px; grid-template-columns: 26px minmax(0, 1fr); } .hd-node svg { width: 26px; height: 26px; padding: 5px; } .hd-node b { font-size: 13px; } .hd-steps li { font-size: 11.5px; padding: 6px 5px 8px; gap: 4px; } .hd-amt b, .hd-in { font-size: 23px; } .hd-in { width: 96px; } .hd-fid { width: 50px; height: 50px; margin: 6px 0 2px; } .hd-screen { padding: 36px 9px 12px; } .hd-st, .hd-verdict { bottom: 12px; font-size: 11.5px; padding: 6px 8px; } .hd-verdict { width: calc(100% - 14px); } .hd-btn { font-size: 13px; } .hd-lines p { font-size: 14px; } }
+@media (max-width: 480px) { .hd { padding: 12px; } .hd-stage { grid-template-columns: minmax(0, 1fr) 172px; gap: 10px; height: 300px; } .hd-phone { height: 292px; } .hd-node { padding: 8px 9px; column-gap: 8px; grid-template-columns: 26px minmax(0, 1fr); } .hd-node svg { width: 26px; height: 26px; padding: 5px; } .hd-node b { font-size: 13px; } .hd-steps li { font-size: 11.5px; padding: 6px 5px 8px; gap: 4px; } .hd-amt b, .hd-in { font-size: 23px; } .hd-in { width: 96px; } .hd-fid { width: 50px; height: 50px; margin: 6px 0 2px; } .hd-screen { padding: 36px 9px 12px; } .hd-st, .hd-verdict { bottom: 12px; font-size: 11.5px; padding: 6px 8px; } .hd-verdict { width: calc(100% - 14px); } .hd-btn { font-size: 13px; } .hd-lines p { font-size: 14px; } .hd-hashes { display: grid; } .hd-hashes span { display: grid; grid-template-columns: 4.1em auto; justify-content: start; gap: 0; } }
 @media (max-width: 340px) { .hd-btn { font-size: 12px; padding: 0 2px; } .hd-ctl { gap: 6px; } }
 @media (prefers-reduced-motion: reduce) { .hd *, .hd *::before, .hd *::after { transition: none !important; animation: none !important; } }`;
 
