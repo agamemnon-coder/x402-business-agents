@@ -467,7 +467,8 @@ async function enginePay(E: EnginePass): Promise<Proposal> {
   await p.click("#pay .btn");
   ok(await p.isDisabled("#pay .btn") && (await p.textContent("#pay .btn"))?.trim() === "Working …", "engine pass: while the payment is filed its button is off and says it is working");
   const res = await answer;
-  await p.unroute("**/v1/engine/invoices/*/pay");
+  // The route stays until the page's own follow-up (the sync) is answered: removing the last route while that request is
+  // paused for interception can leave it hanging, so the page never heard back (seen once in four runs).
   const proposal = ((await res.json()) as { proposal: Proposal }).proposal;
   ok(res.status() === 200 && /^[0-9a-f]{64}$/.test(proposal.terms_sha256) && proposal.status === "PENDING_APPROVAL", `engine pass: "Pay…" filed the payment (${proposal.id})`);
   await p.waitForSelector("#pay dl.read");
@@ -485,6 +486,7 @@ async function enginePay(E: EnginePass): Promise<Proposal> {
   // The head follows the engine once it fed the read model: the invoice waits for its approval.
   await p.waitForSelector(".dhead .st.waiting_cfo", { timeout: 10_000 });
   ok(true, "engine pass: after filing, the page's status chip says the invoice waits for its approval");
+  await p.unroute("**/v1/engine/invoices/*/pay");
   await E.settle();
   await engineShot(E, "02-proposal", 1440, "light");
   await engineShot(E, "02-proposal", 390, "dark");
