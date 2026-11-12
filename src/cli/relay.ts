@@ -36,7 +36,8 @@ import { cardPollMs, cardRows, pollCardTransactions, syncCardsIfChanged } from "
 import { handleAirwallexHook } from "../policy/cardHooks.js";
 import { WEBHOOK_SECRET_FILE } from "../airwallex/webhooks.js";
 import { existsSync, readFileSync } from "node:fs";
-import { agentsOn, autonomyOn } from "../config/agents.js";
+import { agentsOn, autonomyOn, passkeyOwnersOn } from "../config/agents.js";
+import { ownersBudget, ownersRefusals } from "../metal/ownersBudget.js";
 import { spawn, type ChildProcess } from "node:child_process";
 import { resolve } from "node:path";
 import { meetNewDeclines } from "../agents/declineTrigger.js";
@@ -93,6 +94,14 @@ if (mfaOn()) {
 if (args.includes("--enrol")) {
   const { window, code } = openEnrolment(db, { rpId: cfg.rpId, origin: cfg.origin, replace: args.includes("--replace") });
   console.log(`ENROL    on the phone open ${cfg.url}/enrol and type ${code} (valid until ${window.expires_at.slice(11, 19)} UTC, five tries)`);
+}
+
+// Block 1 (KIT11_PASSKEY_OWNERS=on): an approved owners_execute is relayed behind the owners call budget
+// (src/metal/ownersBudget.ts). Said at the start, so a missing setting shows before anyone signs with Face ID.
+if (passkeyOwnersOn()) {
+  const missing = ownersRefusals(process.env);
+  if (missing.length) console.log(`owners   on-chain signing is on, but nothing is relayed until this runner has ${missing.join("; ")}. An approved proposal stays approved and runs at the next start.`);
+  else { const b = ownersBudget(); console.log(`owners   relays behind the call budget: ${b.used()} of ${b.budget} lines in the call log used in this world`); }
 }
 
 // Airwallex's webhooks reach the relay; with the secret here too, the runner checks each one again and records it.

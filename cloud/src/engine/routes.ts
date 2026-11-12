@@ -14,7 +14,7 @@ import { z } from "zod";
 import { AuthError, type Caller } from "../auth.js";
 import { BadRequest } from "../read.js";
 import type { TenantDb } from "../tenant.js";
-import type { EngineApi } from "./api.js";
+import { SlowDown, type EngineApi } from "./api.js";
 
 /** What a handler needs of the request's context (cloud/src/app.ts Ctx is one). */
 export interface EngineCtx {
@@ -131,7 +131,7 @@ export function engineRoutes<C extends EngineCtx>(kit: EngineKit<C>): EngineRout
     { method: "POST", path: "/v1/engine/passkey/finish", summary: "Finish the approval passkey (a session only): { code, credential } with the passkey the browser made for the challenge; it is labelled with the signed-in person's name. 409 with the engine's reason when it is refused.", need: "admin", run: on(async (c, e) => {
       const user = signedIn(c);
       const b = await kit.body(c, PasskeyFinish, 64_000);
-      const out = await e.passkeyFinish({ code: b.code, credential: b.credential, label: await displayName(c, user) });
+      const out = await e.passkeyFinish({ code: b.code, credential: b.credential, label: await displayName(c, user), person: user });
       return out.ok ? json(200, { credential_id: out.credential_id }) : err(409, out.reason);
     }) },
     { method: "POST", path: "/v1/engine/proposals/{id}/approve", summary: "Approve a proposal with the approval passkey (a session only): { terms_sha256, credential } with the passkey's signature over the proposal's challenge. Answers { status, message, settled }: only status approved pays (on the stand-in bank), and settled says paid, booked, archived and fed; a signature over other terms is refused and nothing runs.", need: "admin", run: on(async (c, e) => {
@@ -146,8 +146,13 @@ export function engineRoutes<C extends EngineCtx>(kit: EngineKit<C>): EngineRout
       return out.status === "retried" ? json(200, out) : err(409, out.message);
     }) },
     { method: "POST", path: "/v1/engine/sync", summary: "Follow the payments, book them, archive and feed the read model again; safe to repeat. Answers where things stand (ledger_entries, vault_added, fed, error).", need: "admin", run: on(async (_c, e) => json(200, await e.sync())) },
-    { method: "GET", path: "/v1/engine/events", summary: "What the engine did, oldest first: ?after=<seq>&limit=<1 to 200>; { items, next }, where next is the seq to ask after. An event carries a short list of fields, never a bank account.", need: "read", run: on(async (c, e) =>
-      json(200, await e.events(whole(c, "after", 0, Number.MAX_SAFE_INTEGER, 0), whole(c, "limit", 1, 200, 100)))) },
+    { method: "GET", path: "/v1/engine/events", summary: "What the engine did, oldest first: ?after=<seq>&limit=<1 to 200>; { items, next }, where next is the seq to ask after. An event carries a short list of fields, never a bank account. 429 slow_down with retry_ms past 2 reads a second per company.", need: "read", run: on(async (c, e) => {
+      const after = whole(c, "after", 0, Number.MAX_SAFE_INTEGER, 0), limit = whole(c, "limit", 1, 200, 100);
+      try { return json(200, await e.events(after, limit)); } catch (x) {
+        if (x instanceof SlowDown) return json(429, { error: x.message, code: "slow_down", retry_ms: x.retryMs });
+        throw x;
+      }
+    }) },
     { method: "GET", path: "/v1/engine/vault", summary: "The files of the company's archive as its indexes list them: { files: [{ path, kind, bytes, sha256, added_at }] }.", need: "read", run: on(async (_c, e) => json(200, { files: await e.vaultFiles() })) },
     { method: "GET", path: "/v1/engine/vault/file", summary: "One file of the archive, ?path= as the list gives it; 404 for a path the archive's index does not list.", need: "read", run: on(async (c, e) => {
       const path = c.url.searchParams.get("path") ?? "";

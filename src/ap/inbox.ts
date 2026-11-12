@@ -15,6 +15,7 @@ import { accrualEntries, bookable, pushOnce, type BookkeepingSink } from "./book
 import { evaluate, statusOf } from "./checks.js";
 import { docStoreOf, readDoc } from "./docStore.js";
 import { classifyDocument, ruleSignals, type DocKind } from "./classify.js";
+import { ensureCoded, type CoderDeps } from "./coderAgent.js";
 import { needsNote, writeReviewNote } from "./review.js";
 import { parseApFallback } from "./reading.js";
 import { parseEml } from "./eml.js";
@@ -34,6 +35,8 @@ export interface InboxDeps {
   now?: () => Date;
   /** Where booked entries go as they happen (src/ap/books.ts); none: the export reads the ledger. */
   sink?: BookkeepingSink;
+  /** The Claude client the Coder agent uses with KIT11_AP_AGENTS=on (src/ap/coderAgent.ts); absent: claudeClient(). */
+  coder?: CoderDeps["client"];
 }
 
 export interface IncomingDocument {
@@ -179,7 +182,7 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
   }
   if (needsNote({ status, findings })) await writeReviewNote(db, deps.reader, id, now);
   const inv = apInvoice(db, id)!;
-  await book(db, deps, inv);
+  await book(db, deps, inv, checkText);
   return { kind: "invoice", invoice: inv };
 }
 
@@ -206,17 +209,21 @@ export async function ingestEmail(db: DB, deps: InboxDeps, raw: Buffer, meta: Re
   return results;
 }
 
-/** Books an invoice's accrual once it is checked clean (sinks see each invoice once: on its first bookable status). */
-async function book(db: DB, deps: Pick<InboxDeps, "sink" | "now">, inv: ApInvoiceRow): Promise<void> {
+/**
+ * Books an invoice's accrual once it is checked clean (sinks see each invoice once: on its first bookable status).
+ * With KIT11_AP_AGENTS=on the Coder agent codes the invoice first, and the accrual is booked from that coding.
+ */
+async function book(db: DB, deps: Pick<InboxDeps, "sink" | "now" | "coder">, inv: ApInvoiceRow, text?: string): Promise<void> {
   if (!bookable(inv)) return;
-  await pushOnce(db, deps.sink, "accrual", accrualEntries(inv), inv, (deps.now ?? (() => new Date()))());
+  const coded = await ensureCoded(db, inv, { text, client: deps.coder, now: deps.now });
+  await pushOnce(db, deps.sink, "accrual", accrualEntries(coded), coded, (deps.now ?? (() => new Date()))());
 }
 
 /**
  * Checks again the invoices waiting for a supplier (after one was added) and any the caller names. An invoice already
  * on its way to payment, paid or rejected is never re-checked.
  */
-export async function recheck(db: DB, deps: Pick<InboxDeps, "now" | "sink"> & { reader?: Asker }, ids?: string[]): Promise<ApInvoiceRow[]> {
+export async function recheck(db: DB, deps: Pick<InboxDeps, "now" | "sink" | "coder"> & { reader?: Asker }, ids?: string[]): Promise<ApInvoiceRow[]> {
   const now = (deps.now ?? (() => new Date()))();
   const targets = ids ? ids.map((id) => apInvoice(db, id)).filter((x): x is ApInvoiceRow => x !== null) : apInvoices(db, { status: "needs_vendor" });
   const out: ApInvoiceRow[] = [];
@@ -242,7 +249,7 @@ export async function recheck(db: DB, deps: Pick<InboxDeps, "now" | "sink"> & { 
     const kept = [...findings, ...inv.findings.filter((x) => (x.code === "credit_note" || x.code === "reminder") && !findings.some((y) => y.code === x.code))];
     if (inv.doc_kind === "invoice" && kept.some((x) => x.code === "credit_note")) db.prepare("UPDATE ap_invoices SET doc_kind = 'credit_note' WHERE id = ?").run(inv.id);
     const next = setStatus(db, inv.id, status, "system", { findings: kept, reason: "checked again" }, now);
-    if (!wasBookable) await book(db, deps, next);
+    if (!wasBookable) await book(db, deps, next, scanned ? scanned.transcription ?? "" : text);
     out.push(needsNote(next) ? await writeReviewNote(db, deps.reader, next.id, now) : next);
   }
   return out;

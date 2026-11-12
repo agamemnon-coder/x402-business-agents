@@ -3,6 +3,7 @@
 
 import { audit, type Actor } from "../audit/log.js";
 import type { DB } from "../db/open.js";
+import type { CodedLine, EnforcedCoding } from "./coderCore.js";
 import type { ApReading } from "./reading.js";
 
 export type ApStatus = "blocked" | "needs_review" | "needs_vendor" | "ready" | "waiting_cfo" | "paid" | "rejected";
@@ -27,23 +28,46 @@ interface Row {
   received_at: string; updated_at: string; paid_at: string | null;
 }
 
-export type ApInvoiceRow = Omit<Row, "reading_json" | "findings_json"> & { reading: ApReading; findings: Finding[] };
+/** The Coder's enforced coding as ap_codings keeps it: each line also carries the description code read for it. */
+export type StoredCoding = Omit<EnforcedCoding, "lines"> & { lines: (CodedLine & { description?: string })[] };
 
-const shape = (r: Row): ApInvoiceRow => {
+/** `coding`: the Coder's stored coding (src/ap/coderAgent.ts), only on an invoice that has one; the gl_ fields stay the engine's own default. */
+export type ApInvoiceRow = Omit<Row, "reading_json" | "findings_json"> & { reading: ApReading; findings: Finding[]; coding?: StoredCoding };
+
+const shape = (r: Row, coding?: StoredCoding | null): ApInvoiceRow => {
   const { reading_json, findings_json, ...rest } = r;
-  return { ...rest, reading: JSON.parse(reading_json) as ApReading, findings: JSON.parse(findings_json) as Finding[] };
+  return { ...rest, reading: JSON.parse(reading_json) as ApReading, findings: JSON.parse(findings_json) as Finding[], ...(coding ? { coding } : {}) };
 };
+
+// A ledger opened without the schema's latest tables (read-only, by an older build) has no codings to read.
+const hasCodings = (db: DB) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ap_codings'").get();
+const parsed = (json: string): StoredCoding | null => {
+  try {
+    const c = JSON.parse(json) as StoredCoding;
+    return c && Array.isArray(c.lines) ? c : null;
+  } catch {
+    return null;
+  }
+};
+
+/** The coding stored for one invoice, or null. */
+export function storedCoding(db: DB, id: string): StoredCoding | null {
+  if (!hasCodings(db)) return null;
+  const r = db.prepare("SELECT coding_json FROM ap_codings WHERE invoice_id = ?").get(id) as { coding_json: string } | undefined;
+  return r ? parsed(r.coding_json) : null;
+}
 
 export function apInvoice(db: DB, id: string): ApInvoiceRow | null {
   const r = db.prepare("SELECT * FROM ap_invoices WHERE id = ?").get(id) as Row | undefined;
-  return r ? shape(r) : null;
+  return r ? shape(r, storedCoding(db, id)) : null;
 }
 
 export function apInvoices(db: DB, filter: { status?: ApStatus } = {}): ApInvoiceRow[] {
   const rows = filter.status
     ? db.prepare("SELECT * FROM ap_invoices WHERE status = ? ORDER BY received_at, id").all(filter.status)
     : db.prepare("SELECT * FROM ap_invoices ORDER BY received_at, id").all();
-  return (rows as Row[]).map(shape);
+  const codings = new Map((hasCodings(db) ? db.prepare("SELECT invoice_id, coding_json FROM ap_codings").all() as { invoice_id: string; coding_json: string }[] : []).map((c) => [c.invoice_id, parsed(c.coding_json)]));
+  return (rows as Row[]).map((r) => shape(r, codings.get(r.id)));
 }
 
 export function nextApId(db: DB): string {

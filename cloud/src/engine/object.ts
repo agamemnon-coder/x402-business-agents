@@ -12,10 +12,11 @@
 // An answer is data, also when it is a refusal: { ok: false, error } carries the engine's own words across the stub
 // unchanged, and the stub's caller throws them again.
 import { DurableObject } from "cloudflare:workers";
-import { ENGINE_METHODS, type EngineApi } from "./api.js";
+import { ENGINE_METHODS, EVENTS_PER_SECOND, type EngineApi } from "./api.js";
 import type { HostEnv } from "./hostWorker.js";
 
-export type EngineAnswer = { ok: true; value: unknown } | { ok: false; error: string };
+/** retry_ms: the object asks to be read less often (its limit on the events); come back after that many milliseconds. */
+export type EngineAnswer = { ok: true; value: unknown } | { ok: false; error: string; retry_ms?: number };
 
 const STATE_TABLE = "CREATE TABLE IF NOT EXISTS do_state (key TEXT PRIMARY KEY, value TEXT NOT NULL) WITHOUT ROWID";
 
@@ -24,12 +25,22 @@ export class CompanyEngine extends DurableObject<HostEnv> {
   private pinned: string | null = null;
   /** The calls that have not answered yet: a wipe waits for them. */
   private readonly running = new Set<Promise<unknown>>();
+  /** When the reads of the events admitted in the last second came, oldest first (in memory: a restart forgets them). */
+  private readonly eventReads: number[] = [];
 
   /** One action of the company's engine. The answer is always data: the action's value, or what was refused or failed, in words. */
   async call(tenantId: string, method: keyof EngineApi, args: unknown[]): Promise<EngineAnswer> {
     try {
       this.pin(tenantId);
       if (typeof method !== "string" || !(ENGINE_METHODS as readonly string[]).includes(method) || !Array.isArray(args)) throw new Error("not an action of the engine");
+      if (method === "events") {
+        const now = Date.now();
+        while (this.eventReads.length && this.eventReads[0]! <= now - 1000) this.eventReads.shift();
+        if (this.eventReads.length >= EVENTS_PER_SECOND) {
+          return { ok: false, error: `slow down: at most ${EVENTS_PER_SECOND} reads of the events a second`, retry_ms: this.eventReads[0]! + 1000 - now };
+        }
+        this.eventReads.push(now);
+      }
       if (method === "wipe") {
         await this.wipe();
         return { ok: true, value: undefined };

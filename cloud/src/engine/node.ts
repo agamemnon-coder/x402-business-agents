@@ -85,7 +85,7 @@ export function nodeEngines(env: NodeEngineEnv): (tenantId: string) => EngineApi
       events: async (after, limit) => (await host()).events(after, limit),
       vaultFiles: async () => (await host()).vaultFiles(),
       vaultFile: async (path) => (await host()).vaultFile(path),
-      forgetPasskey: async (label) => (await host()).forgetPasskey(label),
+      forgetPasskey: async (person) => (await host()).forgetPasskey(person),
       wipe: async () => {
         const e = engines.get(tenantId);
         engines.delete(tenantId);

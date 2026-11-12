@@ -1,98 +1,124 @@
-// npm run owners -- setup | propose | status   (block 1, behind KIT11_PASSKEY_OWNERS=on; Metal testnet)
-//   setup    a business account whose only owners are the two enrolled passkeys (CFO and controller), threshold 2,
-//            with OpenZeppelin's WebAuthn verifier; the gas sponsor creates it and funds it with 0.60 test USD
-//   propose  an owners_execute: bind a Sourcing mandate on that account (cap 0.05, budget 0.50, Stockline only). The
-//            phone shows the terms and both passkeys sign the account's Execute digest; the runner relays it
-//   status   the mandate as the chain has it
+// npm run owners -- preflight | setup | propose [<cap> <budget>] | propose-replace <cap> <budget> | propose-revoke | pay | status | record
+// (block 1, "Face ID signs on chain", behind KIT11_PASSKEY_OWNERS=on; Metal testnet, test money)
+//   preflight       checks the settings, makes at most three reads and prints the plan of a live run: each step, its
+//                   transactions, its calls, and what the owner does on the phone. Sends nothing
+//   setup           a business account whose only owners are the two enrolled passkeys (CFO and controller), threshold 2,
+//                   with OpenZeppelin's WebAuthn verifier; the gas sponsor creates it. Needs no bootstrapped world
+//   propose         an owners_execute: bind a Sourcing mandate on that account (cap 0.05, budget 0.50, Stockline only;
+//                   or the cap and budget given). The phone shows the terms and both passkeys sign the account's
+//                   Execute digest; the runner relays it
+//   propose-replace an owners_execute that replaces the mandate this world has bound by one with a higher cap, and the
+//                   budget given (amounts like 0.10 0.50); what was spent carries over
+//   propose-revoke  an owners_execute that revokes the mandate this world has bound
+//   pay             the Sourcing agent's mandate key pays 0.05 inside the mandate; one cent over the cap is refused by
+//                   Metal and the refusal recorded on chain. After the owners raised the cap, it pays that refused
+//                   amount once, and tries nothing over the new cap
+//   status          the mandate as the chain has it
+//   record          writes the run's record (docs/runs/<date>-faceid-onchain.json and .md) from the ledger's audit rows
+//                   and the call log. It calls nothing
 // No server key is an owner: the sponsor (passkey-sponsor.key.json) only pays gas and relays.
+//
+// Every command but `record` calls Metal testnet, so each of them needs the owner's go and a call budget: OWNERS_GO=yes,
+// OWNERS_CALL_BUDGET (a whole number for this world, counted across commands and the runner) and OWNERS_CALL_LOG (a
+// JSONL file each call is appended to before it is sent). OWNERS_DONOR_KEY (a key file) funds the gas sponsor and the
+// account with one transfer each; without it the faucet (or KIT11_RECYCLE=on) funds the sponsor. The logic is in
+// src/metal/ownersFlow.ts.
+//
+// `record` makes no call: it needs the call log and the budget (to state the calls used against it), not the owner's
+// go and not the endpoint. OWNERS_DEVICE_CFO and OWNERS_DEVICE_CONTROLLER describe the owners' devices, as stated;
+// OWNERS_DEVIATIONS names a text file, one deviation a line. The logic is in src/metal/ownersRecord.ts.
 
-import { mkdirSync, readFileSync } from "node:fs";
-import { dirname } from "node:path";
-import { encodeFunctionData, type Address, type Hex } from "viem";
-import { audit } from "../audit/log.js";
+import { existsSync } from "node:fs";
 import { openDb } from "../db/open.js";
-import { keyPath, metalAgent } from "../metal/agentCli.js";
-import { publicClient, transferUsdz, usdzBalance } from "../metal/chain.js";
-import { CHAIN_ID, EXPLORER_TX } from "../metal/network.js";
-import { accountAbi, factoryAbi, quorumLane } from "../metal/fourEyes.js";
-import { coseP256, ownersExecuteTerms, type OwnersExecuteTerms } from "../metal/ownersExecute.js";
-import { passkeySigner } from "../metal/passkeyOwner.js";
-import { ACCOUNT_FACTORY, fundSponsor, passkeySponsor, PASSKEY_VERIFIER, liveRelay } from "../metal/passkeyRelay.js";
-import { createProposal, nextProposalId } from "../policy/approvals.js";
-import { addresses } from "../world/runtime.js";
-import { centsToBaseUnits } from "../lib/money.js";
 import { redactSecrets } from "../lib/redact.js";
+import { metalAgent } from "../metal/agentCli.js";
+import { OwnersGuardRefused, ownersBudget } from "../metal/ownersBudget.js";
+import { budgetStop, ownersChain, RECEIPT_POLLS } from "../metal/ownersChain.js";
+import { callsLine, countedCli, limitsOf, pay, preflight, preflightRefusals, propose, proposeReplace, proposeRevoke, setup, status, worldRefusals, type Limits, type OwnersWorld } from "../metal/ownersFlow.js";
 import { approvalHint } from "./hint.js";
-import { bindCall, ingestCredential, parseCredential, parseP256Jwk, readMandateState } from "@metalntwx/metal-pay/mandates";
 
-type TrustedIssuer = Parameters<typeof ingestCredential>[1]["trustedIssuers"][number];
-const db = openDb();
-const pc = publicClient();
-const say = (s: string) => console.log(redactSecrets(s));
+const COMMANDS = ["preflight", "setup", "propose [<cap> <budget>]", "propose-replace <cap> <budget>", "propose-revoke", "pay", "status", "record"] as const;
 const cmd = process.argv[2] ?? "status";
-
-function owners(): { label: string; signer: Hex }[] {
-  const rows = db.prepare("SELECT label, public_key FROM passkeys WHERE status = 'ACTIVE' ORDER BY label").all() as { label: string; public_key: string }[];
-  if (rows.length !== 2) throw new Error(`the passkey account needs exactly two people's passkeys (CFO and controller); ${rows.length} active`);
-  return rows.map((r) => ({ label: r.label, signer: passkeySigner(PASSKEY_VERIFIER, coseP256(r.public_key)) }));
-}
-function account(): Address {
-  const r = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'owners.account_created' ORDER BY seq DESC LIMIT 1").get() as { payload_json: string } | undefined;
-  if (!r) throw new Error("no passkey account yet: npm run owners -- setup");
-  return (JSON.parse(r.payload_json) as { account: Address }).account;
-}
-
-if (cmd === "setup") {
-  if (!(await pc.getCode({ address: PASSKEY_VERIFIER }))) throw new Error(`no WebAuthn verifier at ${PASSKEY_VERIFIER} on this network`);
-  const o = owners();
-  const config = [o.map((x) => x.signer), o.map(() => 1n), 2n] as const;
-  const acct = (await pc.readContract({ address: ACCOUNT_FACTORY, abi: factoryAbi, functionName: "predictAccount", args: [[...config[0]], [...config[1]], config[2]] })) as Address;
-  await fundSponsor();
-  const relay = liveRelay();
-  let tx: Hex | null = null;
-  if (!(await pc.getCode({ address: acct }))) {
-    tx = await relay.send(ACCOUNT_FACTORY, encodeFunctionData({ abi: factoryAbi, functionName: "createAccount", args: [[...config[0]], [...config[1]], config[2]] }));
-    if (!(await relay.wait(tx))) throw new Error(`creating the passkey account reverted (${tx})`);
-  }
-  if ((await usdzBalance(acct)) < centsToBaseUnits(60)) await transferUsdz(keyPath("passkey-sponsor.key.json"), acct, centsToBaseUnits(60));
-  audit(db, "owner-signer", "owners.account_created", acct, { account: acct, owners: o.map((x) => x.label), threshold: "2", verifier: PASSKEY_VERIFIER, tx }, new Date());
-  say(`ACCOUNT          ${acct}: owners ${o.map((x) => `${x.label}'s passkey`).join(" and ")}, threshold 2; no server key is an owner${tx ? `\n                 ${EXPLORER_TX}${tx}` : " (existed)"}`);
-} else if (cmd === "propose") {
-  const acct = account();
-  const o = owners();
-  const supplier = addresses(db).supplier;
-  const id = nextProposalId(db);
-  const cred = keyPath(`owners/${id}.credential.json`);
-  mkdirSync(dirname(cred), { recursive: true });
-  passkeySponsor();
-  const c = metalAgent(["mandate", "credential", "create", "--principal", acct, "--cap", "0.05", "--budget", "0.50", "--payee", `${supplier},Stockline`, "--expires-in", String(7 * 86400), "--description", `kit11 ${id} sourcing on the passkey account`, "--key", keyPath("passkey-sponsor.key.json"), "--out", cred]);
-  const issuerFile = c.fields.get("issuer-public-file")?.[0];
-  if (!issuerFile) throw new Error("the credential was created without an issuer file");
-  const iss = JSON.parse(readFileSync(issuerFile, "utf8")) as { iss: string; kid: string; jwk: unknown };
-  const ingested = await ingestCredential(parseCredential(JSON.parse(readFileSync(cred, "utf8"))), { trustedIssuers: [{ iss: iss.iss, kid: iss.kid, jwk: parseP256Jwk(iss.jwk, issuerFile) } as TrustedIssuer], account: acct });
-  const call = bindCall(ingested);
-  const lane = quorumLane();
-  const nonce = (lane << 64n) | (await pc.readContract({ address: acct, abi: accountAbi, functionName: "nonces", args: [acct, lane] }));
-  const expires = new Date(Date.now() + 15 * 60_000);
-  expires.setUTCMilliseconds(0);
-  const terms: OwnersExecuteTerms = ownersExecuteTerms({
-    proposal_id: id, expires_at: expires.toISOString().replace(".000Z", "Z"), account: acct, chain_id: String(CHAIN_ID), owners: o.map((x) => x.signer),
-    calls: [{ target: call.to, value: "0", call_data: call.data }], nonce: String(nonce), valid_until: String(Math.floor(expires.getTime() / 1000) + 120),
-    action: { what: "bind", agent: "sourcing", cap: "0.05", budget: "0.50", payee: supplier, payee_name: "Stockline", mandate: ingested.reference },
-  });
-  const p = createProposal(db, { terms, createdBy: "treasury" });
-  say(`PROPOSED         ${p.proposal_id}: bind the sourcing mandate on ${acct}, cap 0.05, budget 0.50, Stockline only`);
-  say(`                 both passkeys sign the account's Execute digest ${terms.onchain_digest.slice(0, 18)}…; ${approvalHint(db, p.proposal_id, p.terms_sha256.slice(0, 8))}`);
-} else if (cmd === "status") {
-  const acct = account();
-  const r = db.prepare("SELECT terms_json, status FROM proposals WHERE kind = 'owners_execute' ORDER BY created_at DESC LIMIT 1").get() as { terms_json: string; status: string } | undefined;
-  if (!r) { say(`ACCOUNT          ${acct}; no owners_execute yet`); process.exit(0); }
-  const t = JSON.parse(r.terms_json) as OwnersExecuteTerms;
-  const id = t.proposal_id;
-  const st = metalAgent(["mandate", "status", "--credential", keyPath(`owners/${id}.credential.json`)]);
-  const s = await readMandateState(pc, acct, t.action.mandate);
-  say(`MANDATE          ${t.action.mandate.slice(0, 18)}… on ${acct}: proposal ${r.status}; bound ${st.fields.get("bound")?.[0] ?? "?"}; revoked ${s.revoked ? "yes" : "no"}; spent ${s.spent}`);
-} else {
-  console.error("usage: npm run owners -- setup | propose | status");
+const say = (s: string) => console.log(redactSecrets(s));
+if (!COMMANDS.some((c) => c.split(" ")[0] === cmd)) {
+  console.error(`usage: npm run owners -- ${COMMANDS.join(" | ")}`);
   process.exit(2);
 }
+// The amounts a proposal may carry are read first: a mistyped one opens nothing and calls nothing.
+let limits: Limits | null = null;
+if (cmd === "propose" || cmd === "propose-replace") {
+  try {
+    limits = limitsOf(process.argv[3], process.argv[4]);
+    if (cmd === "propose-replace" && !limits) throw new Error("usage: npm run owners -- propose-replace <cap> <budget>: the cap and the budget are amounts like 0.10 0.50");
+  } catch (e) {
+    console.error((e as Error).message);
+    process.exit(2);
+  }
+}
+
+// The record is written from the ledger and the call log: no chain client is made, and no go or endpoint is asked for.
+if (cmd === "record") {
+  const { RecordRefused, recordRefusals, recordRun } = await import("../metal/ownersRecord.js");
+  const ledger = process.env.KIT11_DB ?? "";
+  try {
+    // The world is named, never the default ledger: a record of the wrong world would be worse than none.
+    if (!ledger) throw new RecordRefused("refused: the record needs KIT11_DB (this world's ledger). Nothing was written, and nothing was called.");
+    const missing = recordRefusals(process.env);
+    // A ledger that is not there is not made here: an empty one would have nothing to record.
+    if (!missing.length && !existsSync(ledger)) throw new RecordRefused("refused: this world's ledger is not there (KIT11_DB); there is nothing to record. Nothing was written.");
+    recordRun(missing.length ? (undefined as never) : openDb(ledger), process.env, say);
+  } catch (e) {
+    console.error(redactSecrets(e instanceof RecordRefused ? e.message : `FAILED           ${(e as Error).message}`));
+    process.exit(e instanceof RecordRefused ? 2 : 1);
+  }
+  process.exit(0);
+}
+
+// The guard first: without the owner's go, a budget and a log, nothing is opened and nothing is called. Nor without
+// the world named (KIT11_DB, KIT11_KEYS_DIR): the defaults would set up an account and spend donor money elsewhere.
+const unnamed = worldRefusals(process.env);
+if (unnamed.length && cmd !== "preflight") {
+  console.error(`refused: the owners commands work on a named world only: ${unnamed.join("; ")}. Nothing was opened and nothing was called.`);
+  process.exit(2);
+}
+if (cmd === "preflight") {
+  const missing = preflightRefusals(process.env);
+  if (missing.length) {
+    for (const m of missing) console.error(`MISSING          ${redactSecrets(m)}`);
+    console.error("REFUSED          preflight made no call. Set what is missing and run it again.");
+    process.exit(2);
+  }
+}
+let world: OwnersWorld;
+try {
+  const chain = ownersChain({ budget: ownersBudget(process.env) });
+  world = {
+    db: openDb(), chain, env: process.env, say, now: () => new Date(), sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+    cli: countedCli(chain, metalAgent),
+    cliOffline: (args) => metalAgent(args),
+  };
+} catch (e) {
+  if (!(e instanceof OwnersGuardRefused)) throw e;
+  console.error(e.message);
+  process.exit(2);
+}
+
+const before = world.chain.budget.used();
+let code = 0;
+try {
+  if (cmd === "preflight") code = (await preflight(world, RECEIPT_POLLS)).ok ? 0 : 1;
+  else if (cmd === "setup") await setup(world);
+  else if (cmd === "propose" || cmd === "propose-replace" || cmd === "propose-revoke") {
+    const { proposal, terms } = await (cmd === "propose" ? propose(world, limits ?? undefined) : cmd === "propose-replace" ? proposeReplace(world, limits!) : proposeRevoke(world));
+    say(`                 both passkeys sign the account's Execute digest ${terms.onchain_digest.slice(0, 18)}…; ${approvalHint(world.db, proposal.proposal_id, proposal.terms_sha256.slice(0, 8))}`);
+  } else if (cmd === "pay") await pay(world);
+  else await status(world);
+} catch (e) {
+  // A stop by the budget is the budget working: said plainly, with nothing of the error's inner text (it can quote the endpoint).
+  // viem wraps an error thrown inside its transport, so the budget's own stop is looked for inside it.
+  const stop = budgetStop(e);
+  console.error(redactSecrets(stop ? `STOPPED          ${stop.message}` : `FAILED           ${(e as Error).message}`));
+  code = stop ? 3 : 1;
+}
+say(callsLine(world, before));
+process.exit(code);

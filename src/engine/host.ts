@@ -32,6 +32,7 @@ import { syncVault, type YearIndex } from "../vault/build.js";
 import { closedPeriods, invoiceDocs, receipts } from "../vault/data.js";
 import { yearIndexPath } from "../vault/layout.js";
 import { sha256, type VaultSink } from "../vault/sink.js";
+import { actionBudget, type ClaudeAccess } from "./budget.js";
 import { publicEvent, type EngineEvent, type EventRow } from "./events.js";
 
 /** The reader that always takes the parser: no model is asked, and the invoice says it was read by the parser. */
@@ -53,6 +54,11 @@ export interface EngineDeps {
   /** Brings the cloud's read model up to the ledger (src/engine/feed.ts); null: nothing is fed. */
   feed: ((db: DB, now: Date) => Promise<unknown>) | null;
   now?: () => Date;
+  /**
+   * Claude under caps (src/engine/budget.ts): each action that may ask Claude reserves its ceiling first, reads within
+   * it, and settles to what it cost; refused, the parser reads and a claude.capped row says why. Absent: `reader` reads.
+   */
+  claude?: ClaudeAccess;
 }
 
 export interface ProposalView {
@@ -93,6 +99,8 @@ export interface VaultFile { path: string; kind: string; bytes: number; sha256: 
 
 /** The inbox's folder argument. It is never used: the ledger has its own document store (checked when the host is made). */
 const NO_FOLDER = "/purser-engine-has-no-folder";
+/** Whose each passkey is, by the id the caller (the cloud) gives its person; the host's own table, as feed.ts keeps one. */
+const PASSKEY_PEOPLE = "CREATE TABLE IF NOT EXISTS engine_passkey_people (credential_id TEXT PRIMARY KEY, person TEXT NOT NULL)";
 const message = (e: unknown): string => (e instanceof Error ? e.message : String(e)).slice(0, 500);
 
 /** What the phone's approval page shows of these terms, in the company's language, and what it warns about. */
@@ -116,6 +124,8 @@ const STAND_IN_FEE = { en: "Bank fee (stand-in bank, test money)", nl: "Bankkost
  */
 /** The answer to a signature over other terms than the proposal's: the screens show it as it is. */
 export const REFUSED_OTHER_TERMS = "This signature is over other terms than the ones on screen. Nothing was paid.";
+/** An approval whose request names other terms than the proposal holds: refused before the signature is read. */
+export const REFUSED_TERMS_NOT_ON_SCREEN = "The terms sent with this approval are not the ones on screen. Nothing was paid.";
 const LIBRARY_REFUSALS: [RegExp, string][] = [
   [/^Unexpected authentication response challenge\b/, REFUSED_OTHER_TERMS],
   [/^Unexpected (authentication response origin|cross-origin|top origin)\b|^Detected cross-origin\b/, "This signature was made on another website than this one. Nothing was paid."],
@@ -154,16 +164,51 @@ export class EngineHost {
     return run;
   }
 
-  async status(): Promise<{ mode: "test_money"; passkey: { credential_id: string; label: string } | null; balances: Record<string, string>; chains: { audit: boolean; ledger: boolean } }> {
+  async status(): Promise<{
+    mode: "test_money"; passkey: { credential_id: string; label: string } | null; balances: Record<string, string>; chains: { audit: boolean; ledger: boolean };
+    /** Who reads the next document: Claude (when the caps allow it), or the parser. */
+    reader: "claude" | "parser";
+    /** Who decides: the product's agents with Claude, or code. The agents join with task A6. */
+    agents: "live" | "code";
+    /** What this company's Claude calls cost so far, in micro-USD at list price, and its cap (null: none known). */
+    spent_micros: number;
+    cap_micros: number | null;
+  }> {
     const { db, rails } = this.deps;
     const pk = activePasskey(db);
     const balances = await rails.rail.balances();
+    const claude = this.deps.claude ? await this.deps.claude.status() : { on: false, cap_micros: null };
     return {
       mode: "test_money",
       passkey: pk ? { credential_id: pk.credential_id, label: pk.label } : null,
       balances: Object.fromEntries(Object.entries(balances).map(([currency, b]) => [currency, fromCents(b?.availableCents ?? 0)])),
       chains: { audit: verifyAuditChain(db).ok, ledger: verifyLedger(db).ok },
+      reader: claude.on ? "claude" : "parser", agents: "code", spent_micros: claudeCost(db, 0), cap_micros: claude.cap_micros,
     };
+  }
+
+  /**
+   * One action that may ask Claude: its ceiling reserved first. Refused, the parser reads and a claude.capped row says
+   * why. Reserved, `run` gets a reader spending from the action's budget, and afterwards the reservation is settled to
+   * what the action's calls cost: the rows' costs, or what the budget counted (a call that failed after it was sent is
+   * counted at its worst case), never more than the reservation. Without Claude access, the host's own reader reads.
+   */
+  private async withClaude<T>(task: string, run: (reader: Asker) => Promise<T>): Promise<T> {
+    const { db, claude } = this.deps;
+    if (!claude) return run(this.deps.reader);
+    const got = await claude.reserve();
+    if (!got.ok) {
+      audit(db, "system", "claude.capped", task, { reason: got.reason });
+      return run(parserOnly);
+    }
+    const { micros, settle } = got.reservation;
+    const budget = actionBudget(micros);
+    const from = lastSeq(db);
+    try {
+      return await run(claude.reader(db, budget));
+    } finally {
+      await settle(Math.min(micros, Math.max(claudeCost(db, from), micros - budget.left())));
+    }
   }
 
   /** The treasury's test money, floors and payees on the rails, once; safe to repeat. */
@@ -177,9 +222,10 @@ export class EngineHost {
   /** A document through the inbox: filed, read and checked. What the inbox refuses (not a PDF, too large) is thrown. */
   upload(doc: { bytes: Uint8Array; filename: string; mime?: string }): Promise<{ kind: string; sha256: string; invoice: InvoiceView | null }> {
     return this.act(async () => {
-      const { db, reader } = this.deps;
+      const { db } = this.deps;
       const bytes = Buffer.isBuffer(doc.bytes) ? doc.bytes : Buffer.from(doc.bytes.buffer, doc.bytes.byteOffset, doc.bytes.byteLength);
-      const out = await ingestDocument(db, { dir: NO_FOLDER, reader, now: () => this.now() }, { bytes, filename: doc.filename, ...(doc.mime ? { mime: doc.mime } : {}), source: "upload" });
+      const out = await this.withClaude(`engine.upload:${sha256(bytes).slice(0, 16)}`, (reader) =>
+        ingestDocument(db, { dir: NO_FOLDER, reader, now: () => this.now() }, { bytes, filename: doc.filename, ...(doc.mime ? { mime: doc.mime } : {}), source: "upload" }));
       if (out.kind === "duplicate_document") return { kind: out.kind, sha256: out.sha256, invoice: out.invoice_id ? this.invoice(out.invoice_id) : null };
       const inv = firstInvoice(out);
       // Read again: a note written after the checks is on the row, not on what the inbox returned.
@@ -209,9 +255,9 @@ export class EngineHost {
   /** Files the invoice's payment for the CFO's approval. A reason not to (the engine's own words) comes back, and no proposal is made. */
   propose(invoiceId: string): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }> {
     return this.act(async () => {
-      const { db, rails, reader } = this.deps;
+      const { db, rails } = this.deps;
       try {
-        const out = await payApInvoice(db, rails.rail, invoiceId, this.now(), reader);
+        const out = await this.withClaude(`engine.propose:${invoiceId}`, (reader) => payApInvoice(db, rails.rail, invoiceId, this.now(), reader));
         if (out.kind !== "proposed") return { ok: false, reason: out.reason };
         const proposal = this.proposal(out.proposal.proposal_id);
         if (!proposal) return { ok: false, reason: `${out.proposal.proposal_id} was filed but is not in the ledger` };
@@ -247,7 +293,7 @@ export class EngineHost {
    * The new passkey, verified against the window by the engine, then confirmed by the host itself: on a runner a
    * person confirms the fingerprint the phone shows; here the caller is the signed-in owner, and that is the confirmation.
    */
-  passkeyFinish(a: { code: string; credential: unknown; label: string }): Promise<{ ok: true; credential_id: string } | { ok: false; reason: string }> {
+  passkeyFinish(a: { code: string; credential: unknown; label: string; person?: string }): Promise<{ ok: true; credential_id: string } | { ok: false; reason: string }> {
     return this.act(async () => {
       const { db } = this.deps;
       const now = this.now();
@@ -259,19 +305,26 @@ export class EngineHost {
         if (!waiting) return { ok: false, reason: "the enrolment window closed before the passkey was confirmed; start again" };
         try { confirmPasskey(db, waiting.fingerprint, now); } catch (e) { return { ok: false, reason: message(e) }; }
       }
+      // Whose passkey it is, by the caller's own id for the person: a name is free text and two people may share one.
+      if (a.person !== undefined) {
+        db.exec(PASSKEY_PEOPLE);
+        db.prepare("INSERT INTO engine_passkey_people (credential_id, person) VALUES (?, ?) ON CONFLICT(credential_id) DO UPDATE SET person = excluded.person").run(out.credentialId, a.person);
+      }
       return { ok: true, credential_id: out.credentialId };
     });
   }
 
   /**
-   * A person the cloud erased (POST /v1/users/{id}/erase): every passkey labelled with their name is revoked and
-   * labelled "[erased]". The approvals they signed keep their name: those are bookkeeping records, kept seven years.
+   * A person the cloud erased (POST /v1/users/{id}/erase): every passkey enrolled for that person (passkeyFinish's
+   * person, never the name: another person may have the same one) is revoked and labelled "[erased]". Asking again
+   * changes nothing. The approvals they signed keep their name: those are bookkeeping records, kept seven years.
    */
-  forgetPasskey(label: string): Promise<{ revoked: number }> {
+  forgetPasskey(person: string): Promise<{ revoked: number }> {
     return this.act(async () => {
       const { db } = this.deps;
       const now = this.now();
-      const rows = db.prepare("SELECT credential_id, status FROM passkeys WHERE label = ?").all(label) as { credential_id: string; status: string }[];
+      db.exec(PASSKEY_PEOPLE);
+      const rows = db.prepare(`SELECT k.credential_id, k.status FROM passkeys k JOIN engine_passkey_people p ON p.credential_id = k.credential_id WHERE p.person = ?`).all(person) as { credential_id: string; status: string }[];
       db.transaction(() => {
         for (const r of rows) {
           db.prepare("UPDATE passkeys SET status = 'REVOKED', label = '[erased]' WHERE credential_id = ?").run(r.credential_id);
@@ -291,6 +344,10 @@ export class EngineHost {
     return this.act(async () => {
       const { db } = this.deps;
       const now = this.now();
+      // The terms the request names must be the proposal's own. The signature binds the stored terms either way, so no
+      // money is at risk; but an approval sent with other terms is not the one the person saw, and is refused as such.
+      const held = db.prepare("SELECT terms_sha256 FROM proposals WHERE proposal_id = ?").get(a.proposal_id) as { terms_sha256: string } | undefined;
+      if (held && held.terms_sha256 !== a.terms_sha256) return { status: "refused", message: REFUSED_TERMS_NOT_ON_SCREEN, settled: null };
       // Only these three fields travel: the decision is always an approval (rejecting is not one of the host's actions).
       const item: InboxItem = { ticket: "engine", kind: "assertion", proposal_id: null, body: JSON.stringify({ proposal_id: a.proposal_id, terms_sha256: a.terms_sha256, credential: a.credential }), received_at: now.toISOString() };
       const out = await processAssertion(db, item, now);
@@ -402,4 +459,19 @@ export class EngineHost {
     if (!(await this.vaultFiles()).some((f) => f.path === path)) return null;
     return (await vault.read(path)) ?? null;
   }
+}
+
+/** The last row of the audit log (0 for none). */
+function lastSeq(db: DB): number {
+  return (db.prepare("SELECT COALESCE(MAX(seq), 0) AS n FROM audit_log").get() as { n: number }).n;
+}
+
+/** What the Claude calls written after `afterSeq` cost, in micro-USD: the readings' and the agents' runs' own figures. */
+function claudeCost(db: DB, afterSeq: number): number {
+  const rows = db.prepare("SELECT payload_json FROM audit_log WHERE seq > ? AND event IN ('claude.read', 'agent.run')").all(afterSeq) as { payload_json: string }[];
+  let n = 0;
+  for (const r of rows) {
+    try { const c = (JSON.parse(r.payload_json) as { cost_usd_micros?: unknown }).cost_usd_micros; if (typeof c === "number" && c > 0) n += c; } catch { /* a row without a cost adds nothing */ }
+  }
+  return n;
 }

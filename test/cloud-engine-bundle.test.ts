@@ -80,8 +80,10 @@ describe("the cloud Worker's bundle with the engine's Durable Object", () => {
     expect(engine.filter((p) => /^node_modules\/(better-sqlite3|playwright)\//.test(p))).toEqual([]);
   });
 
-  it("stays under 9 MB", () => {
+  // 12 November 2026: 9 MB, then 10.5 MB once Claude came into the object (the Anthropic SDK, task A5) and main grew
+  // the engine's graph: this esbuild build measured 10,055,310 bytes after both (main at c26a0b8 merged in).
+  it("stays under 10.5 MB", () => {
     expect(bytes).toBeGreaterThan(1_000_000);
-    expect(bytes).toBeLessThan(9 * 1024 * 1024);
+    expect(bytes).toBeLessThan(10.5 * 1024 * 1024);
   });
 });

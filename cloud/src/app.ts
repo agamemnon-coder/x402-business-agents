@@ -409,12 +409,21 @@ export const ROUTES: Route[] = [
     return json(201, { id, role: b.role });
   } },
   { method: "POST", path: "/v1/users/{id}/erase", summary: "Erase a person's personal data (bookkeeping records are kept for 7 years).", need: "admin", run: async (c) => {
-    const name = (await db(c).one<{ display_name: string }>("users", { id: c.params[0]! }))?.display_name;
-    const out = await eraseUser(c.env.sql, c.caller!.tenantId, c.params[0]!, c.caller!.principal, c.now);
-    // The company's engine labels a passkey with its person's name (cloud/src/engine/routes.ts): that passkey goes too.
-    if (c.env.engine && name) await c.env.engine(c.caller!.tenantId).forgetPasskey(name);
+    const id = c.params[0]!;
+    // A repeat erase finishes what an earlier one could not (the engine's part); the cloud's part is done only once.
+    const already = (await db(c).one<{ erased_at: string | null }>("users", { id }))?.erased_at;
+    const out = already ? null : await eraseUser(c.env.sql, c.caller!.tenantId, id, c.caller!.principal, c.now);
+    // The company's engine knows the passkey a person enrolled by their id (cloud/src/engine/routes.ts): it goes too.
+    let engineFailed = false;
+    if (c.env.engine) {
+      try { await c.env.engine(c.caller!.tenantId).forgetPasskey(id); } catch (e) {
+        engineFailed = true;
+        logEvent("error", "erase_engine_failed", { error: e instanceof Error ? e.message : String(e) }, c.now);
+      }
+    }
     await purgeEndedExportParts(c.env.sql, c.env.blobs, c.caller!.tenantId);
-    return json(200, out);
+    if (engineFailed) return err(502, `${id} is erased, but the engine could not revoke the person's approval passkey yet: erase again to finish`);
+    return out ? json(200, out) : err(409, `${id} was already erased`);
   } },
   { method: "GET", path: "/v1/export", summary: "Everything the cloud holds for the company; documents listed, each fetched from /v1/documents/{sha256}. Needs admin and read.", need: "admin", run: async (c) => {
     need(c.caller!, "read");
