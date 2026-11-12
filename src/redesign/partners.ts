@@ -24,6 +24,7 @@ import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, h
 import { AIRI_CSS, AIRI_RUN_FILE, AIRI_RUN_ID, airiAsker, airiRun, airiRunBlock, type AiriRunRecord } from "./airiRun.js";
 import { awxRunBlock } from "./awxRun.js";
 import { VIC3_RUN_FILE, vic3Run, vic3RunHtml, vic3Summary } from "./vic3Run.js";
+import { COUNT_JS, STATS_CSS } from "./stats.js";
 import { PLATFORM_RUN_FILE, PRODUCTS_CSS, airwallexBody, airwallexDescription, productTiles } from "./airwallexProducts.js";
 import { CARD_DATA_CSS, cardDataHtml } from "./cardData.js";
 import { ICC_RUN_ID, iccBlock, iccRecordIn } from "./iccBlock.js";
@@ -337,7 +338,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
   <div class="folds card">${visaTapFold(run)}</div>
 </div></main>`;
   const html = page({
-    title: VISA_TITLE, tab: "visa", css: CSS, body,
+    title: VISA_TITLE, tab: "visa", css: `${CSS}\n${STATS_CSS}\n.airi-finding { margin: 12px 0 0; font-size: 14.5px; color: var(--muted); }`, body, js: COUNT_JS, stage: false,
     // Who asked, in the description and "What's real?", from the same function as the run's summary line (airiAsker).
     description: `Visa Intelligent Commerce via Airwallex's Airi, run live in the Airwallex sandbox with a test card: above the limit, a single-use Visa credential is asked for only after the CFO's Face ID. ${asker.sentence}.`,
     // "What's real?": the Airi run's own line (its label and merchant, from the record) and nothing of the main run.
