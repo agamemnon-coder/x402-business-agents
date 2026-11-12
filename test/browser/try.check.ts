@@ -248,7 +248,9 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
       ok(hero.y + hero.height <= card.y + 40 && hero.height >= 0.38 * height, `${tag}: a phone: the illustration's band on top (${Math.round(hero.height)} px, at least 38% of the screen), the card below`);
       ok(trust.y + trust.height >= 0.95 * height && trust.y - (card.y + card.height) < 0.15 * height, `${tag}: no empty band: the trust line ends the screen, close under the card`);
     } else {
-      ok(hero.x === 0 && Math.abs(hero.width - width / 2) < 2 && hero.height >= height - 1 && card.x >= width / 2, `${tag}: a wide screen: the illustration left (the full height), the card right`);
+      // 12 Nov: the site's header (cloud/src/siteHeader.ts, 64 px and its border) runs across the top; the illustration
+      // takes the full height under it.
+      ok(hero.x === 0 && Math.abs(hero.width - width / 2) < 2 && hero.y <= 66 && hero.y + hero.height >= height - 1 && card.x >= width / 2, `${tag}: a wide screen: the illustration left (the full height under the site's header), the card right`);
       const above = card.y, below = height - (trust.y + trust.height);
       ok(Math.abs(above - below) < 0.15 * height, `${tag}: no empty band: the card and the trust line are centred (${Math.round(above)} px above, ${Math.round(below)} px below)`);
     }
