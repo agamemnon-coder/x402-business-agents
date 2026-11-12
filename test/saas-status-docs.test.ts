@@ -607,13 +607,10 @@ describe("/status on the site", () => {
     expect(card(html, "runs")).toBe(card(STATUS_PAGE, "runs"));
   });
 
-  it("is in the menu under More, marked as the page the reader is on, and in the footer; the list's order is whole", () => {
-    for (const html of [STATUS_PAGE, STATUS_PAGE_OFFLINE]) {
-      const n = nav(html);
-      expect({ more: /<details class="pmore"><summary class="on">More<\/summary>/.test(n), here: n.includes('<a href="status" aria-current="page">Status</a>'), tabs: (n.match(/class="on" aria-current="page"/g) ?? []).length }).toEqual({ more: true, here: true, tabs: 0 });
-    }
-    expect([...nav(pages.home!).matchAll(/<div class="pmenu">([\s\S]*?)<\/div>/g)].flatMap((m) => [...m[1]!.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((a) => a[1]))).toEqual(["Purser Cloud", "Pricing", "Security", "Docs", "Status", "Airwallex", "Metal", "Visa", "Claude"]);
-    expect(/<footer class="foot">[\s\S]*?<\/footer>/.exec(pages.home!)![0]).toMatch(/<a class="flink" href="status">Status<\/a>/);
+  it("is no longer in the menu or the footer (12 Nov, owner); the page itself still answers", () => {
+    for (const html of [STATUS_PAGE, STATUS_PAGE_OFFLINE]) expect(nav(html)).not.toContain('href="status"');
+    expect([...nav(pages.home!).matchAll(/<div class="pmenu">([\s\S]*?)<\/div>/g)].flatMap((m) => [...m[1]!.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((a) => a[1]))).toEqual(["Purser Cloud", "Pricing", "Security", "Docs", "Airwallex", "Metal", "Visa", "Claude"]);
+    expect(/<footer class="foot">[\s\S]*?<\/footer>/.exec(pages.home!)![0]).not.toMatch(/href="status"/);
   });
 
   it("carries the site's icon and link-preview image like the other pages, and says what is real in its own words", () => {
