@@ -227,6 +227,37 @@ describe("the accrual of a coded invoice", () => {
       expect(accrualEntries({ ...inv, coding: c })).toEqual(engine);
     }
   });
+
+  it("an invoice whose VAT is its whole total is booked as the engine books it: the amount as an expense, never all to input VAT", async () => {
+    const ALL_TAX = `Zeeland Verpakkingen B.V.
+BTW-nummer: NL123456789B01
+Factuur
+Factuurnummer: ZV-4500
+Factuurdatum: 05-11-2026
+Vervaldatum: 19-11-2026
+Subtotaal € 0,00
+BTW € 100,00
+Totaal te betalen € 100,00
+IBAN: NL91 ABNA 0417 1643 00
+BIC: ABNANL2A`;
+    const inv = await coded(ALL_TAX, null);
+    const engine = accrualEntries(inv);
+    expect(engine.map(brief)).toEqual(["6900|100.00|||||", "2100||100.00||||"]);
+    // Code's fallback (no client) and an agent that leaves the VAT code to a person both give a line of net 0 and VAT 100.00.
+    for (const client of [null, scriptedCoder([[{ name: "code_invoice", input: { lines: [{ line_no: 1, account: "6200", vat_code: null, cost_centre: null }], reason: "Booked as goods." } }]])]) {
+      const d = openDb(":memory:");
+      onFile(d, "ben_zeeland", "Zeeland Verpakkingen B.V.", "NL91ABNA0417164300", "ABNANL2A");
+      const out = await ingestDocument(d, { dir, reader: parserOnly, now: () => now }, { bytes: await pdfOf(ALL_TAX), filename: "all-tax.pdf", source: "upload" });
+      if (out.kind !== "invoice") throw new Error(out.kind);
+      await codeInvoice(d, out.invoice, ALL_TAX, { client, now: () => now });
+      const row = apInvoice(d, out.invoice.id)!;
+      expect(row.coding!.lines.map((l) => [l.net_cents, l.vat_cents])).toEqual([[0, 10000]]);
+      expect(codedAccrual(row)).toBe(false);
+      expect(accrualEntries(row).map(brief)).toEqual(["6900|100.00|||||", "2100||100.00||||"]);
+      syncLedger(d, now);
+      expect(posted(d).map((l) => (l as { account: string }).account)).toEqual(["6900", "2100"]);
+    }
+  });
 });
 
 describe("with the flag off, nothing of the Coder runs and the books are what they were (pinned at 70863a9a)", () => {

@@ -74,15 +74,18 @@ const cents = (x: unknown): x is number => Number.isSafeInteger(x) && (x as numb
 /**
  * The Coder's coding an accrual is built from, or null (then the engine's own accrual is booked). Code does not take
  * a stored coding on trust: it must have lines, its amounts must be the invoice row's own total to the cent, every
- * account must be an expense account of the chart, and every VAT code a purchase code.
+ * account must be an expense account of the chart, and every VAT code a purchase code. Its VAT must stay below the
+ * total and sit on lines with a net, as the engine's own accrual requires: VAT with no expense under it would be booked
+ * as input VAT that no VAT code supports.
  */
 function bookedCoding(inv: ApInvoiceRow): StoredCoding | null {
   const c = inv.coding;
   if (!c || !Array.isArray(c.lines) || c.lines.length === 0 || !MONEY.test(inv.total)) return null;
   const sound = c.lines.every((l) => cents(l.net_cents) && cents(l.vat_cents) && /^[56]\d{3}$/.test(l.account) && l.account in CHART && typeof l.cost_centre === "string" && l.cost_centre !== ""
-    && (l.vat_code === null || VAT_CODES[l.vat_code]?.kind === "purchase"));
+    && (l.vat_code === null || VAT_CODES[l.vat_code]?.kind === "purchase") && (l.vat_cents === 0 || l.net_cents > 0));
   const sum = c.lines.reduce((s, l) => s + l.net_cents + l.vat_cents, 0);
-  return sound && sum === toCents(inv.total) && c.total_cents === sum ? c : null;
+  const vat = c.lines.reduce((s, l) => s + l.vat_cents, 0);
+  return sound && vat < sum && sum === toCents(inv.total) && c.total_cents === sum ? c : null;
 }
 
 /** Whether this invoice's accrual is built from the Coder's coding (and not the engine's own one-line coding). */
