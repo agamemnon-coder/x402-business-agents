@@ -1,10 +1,41 @@
 # Claims and their proof
 
 Every number and factual claim on the public pages, in the film, the video script, the README and compliance.md, with
-where it comes from. awx-1, the Airwallex-only run of 7 November, and the Airi run of 7 November (vic-1) were added
-that day (their rows under "Things that happened in separate live runs"). Last checked on 7 November 2026, against the main run's record (`docs/demo/main-run.json`), after
-the jury review of that day (its rows marked "jury review, 7 November"); before that on 6 November, after that day's
-jury review (the four tabs' section brought to the main run's figures), and on 4 November, after a final independent review. First checked on 30 October 2026 by two separate read-only audits by fresh reviewers:
+where it comes from. It opens with the main run of 3 November and the site as it stands; the sections after that keep
+each earlier check as it was.
+
+## The main run (3 November) and the site as it stands
+
+Last checked on 12 November 2026: this table, against the README, Home, the menu, the tour (`/judge`), the worst case
+and llms.txt as they stand that day, each number against its run record. Two runs are named in it, and each row says
+which: **the main run** of 3 November (log `docs/runs/2026-11-03-main-run.md`, record `docs/demo/main-run.json`) and
+**awx-1**, the Airwallex-only run of 7 November (log `docs/runs/2026-11-07-awx-1.md`, record
+`docs/demo/airwallex-run.json`). Both are Airwallex sandbox runs with test money; the main run also ran on Metal
+testnet. `test/claims-opening.test.ts` holds every number in this table to its record or to the code.
+
+| Claim | Value | Run and record | Where it is said |
+|---|---|---|---|
+| The main run | World `main-1`, 3 November 2026, 11:16–11:33 UTC, frozen commit `35e1cac`; Airwallex sandbox and Metal testnet, test money | Main run: the log's header | README, "The main run (3 November)" |
+| Decisions by Claude | 24 of 24, 0 fallbacks: Sourcing (Haiku) 11, Support (Sonnet) 4, Treasury (Opus) 9 | Main run: `snapshot.agent_stats` | README; llms.txt; /claude; /proof |
+| Claude calls and cost | 58 calls, USD 0.38 at list prices: 50 by the three agents, 8 that sort, read or review documents | Main run: `snapshot.claude`, `snapshot.agent_stats` | docs/claude.md |
+| Payments within the limits, no approval at the time | 87: 86 Metal payments + 1 card charge | Main run: `snapshot.counts.alone`; the card charge in `snapshot.tower.money_out` | README, "Payments"; /proof |
+| Stops | 16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing. | Main run: `snapshot.counts.blocked`; the sentence is `stopsLine(stopStory(record))` (`src/redesign/run.ts`) | README; /proof |
+| Signed with Face ID | 5 times, by the CFO | Main run: `proof.face_id` | README, "Watch" |
+| Metal refused on chain | Purchase #24, over the Sourcing mandate's cap, after our own check was switched off once: `mandate_cap_exceeded`, tx `0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871` | Main run: record and log | Home, "Three locks" (the Metal row); README, proof 3; llms.txt |
+| The signed hash in Airwallex's record, main run | EUR 240.00 by SWIFT for invoice SLL-2026-11 (P-0005), transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, fee EUR 13.42; EUR 110.00 bought for USD 124.29 first; settlement simulated in the sandbox | Main run: P-0005's terms in `ledger.proposals`; `snapshot` | README, proof 1; llms.txt; /airwallex |
+| Home's hero, steps 1 to 3, and Home's two Airwallex rows: awx-1 | The same invoice, SLL-2026-11, EUR 240.00, in awx-1's own world: terms hash `b0f075d9…` in Airwallex's record of transfer `738a4263-6d6c-4de8-94a3-93da1c175fb4`; Airwallex declined an agent's EUR 45.00 charge over its EUR 30.00 limit, `LIMIT_EXCEEDED`, card transaction `01a1b5e8-6dc2-7000-95bf-c8fc5e6e2f38`; 7 of 7 checks passed | awx-1: P-0002's `terms_sha256` in `proposals`, `webhooks`, `checks` | Home (the hero, its provenance line and "Three locks"); README, proof 2 |
+| The worst case, set by policy | "Worst case, set by policy: EUR 28,200 on cards and task cards + USD 20 on chain a month." The task cards are counted since 12 November (docs/decisions.md, D30) | Computed by `exposureOf` (`src/policy/exposure.ts`) from the starting policy (`src/config/policy.ts`); the main run's recorded policy gives the same | README; the CFO's view (`/?autonomy`); llms.txt; the form's sentence in docs/submission/qa.md. Step 0 of /try/sign shows its test world's own figure, which also counts the payments that world lets an agent make alone |
+| The menu and the tour | The menu: Home, Try, Proof. The replay of the main run stays at /watch, out of the menu since 12 November. The tour, /judge: 5 steps in 180 s, the first one a tap on "+1 cent" on Home | `NAV_MAIN` (`src/ui/nav.ts`) and the redesign's tabs (`src/redesign/ui.ts`); `judgeSteps` (`src/redesign/judge.ts`) | Every page's header; /judge |
+| Check it without keys | `npm ci && npm run judge` serves the site from the main run's committed record, offline; `npm run verify-receipt` checks a receipt offline; the audit log is hash-chained: 412 rows in the main run, chain intact | Main run: `snapshot.audit`; `package.json` scripts | README, "How to run" and "Verify it yourself in 3 commands" |
+
+## Earlier checks
+
+awx-1, the Airwallex-only run of 7 November, and the Airi run of 7 November (vic-1) were added that day (their rows
+under "Things that happened in separate live runs"). The sections below were checked on 7 November 2026, against the
+main run's record (`docs/demo/main-run.json`), after the jury review of that day (its rows marked "jury review,
+7 November"); the rows dated later were written on the day they give. Before that on 6 November, after that
+day's jury review (the four tabs' section brought to the main run's figures), and on 4 November, after a final
+independent review. First checked on 30 October 2026 by two separate read-only audits by fresh reviewers:
 - 191 claims on the pages;
 - 200 claims in the written materials.
 
@@ -21,7 +52,7 @@ Sources:
 - **The Airi run (vic-1, 7 November):** `docs/runs/2026-11-07-vic-1.md` and the record `docs/demo/airi-run.json` (a separate world; Airwallex sandbox, Airi's test card, test money).
 - **The second Airi run (vic-2, 7 November):** `docs/runs/2026-11-07-vic-2.md` and the record `docs/demo/vic-2-run.json` (a separate world; the CFO's Face ID, 0 Airi and 0 Airwallex calls).
 
-## The recorded run (landing, dashboard, /live, film)
+## The recorded run of 30 October (archive: the landing, dashboard, /live and film of that day)
 
 | Claim | Value | Proof | Changed |
 |---|---|---|---|
