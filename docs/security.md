@@ -177,6 +177,14 @@ Rate limits, where the docs say them (each asserted in the same test or the test
   allowlist would be added as well, as Airwallex recommends
   ([API key best practices](https://www.airwallex.com/docs/developer-tools/api/api-key-best-practices)).
 
+## If the approver is unavailable
+
+1. **Away or out of reach:** nothing above the limits is paid. The payment waits for the signature and expires unsigned; payments inside the limits go on. (`src/policy/approvals.ts`)
+2. **No deputy, no delegation:** neither is built. A second person can be enrolled beforehand; where four eyes does not apply either passkey approves, where it applies both must sign. Our runs had one person: the second signature came from a test passkey. (`src/policy/fourEyes.ts`; `npm run passkey -- add <name>`)
+3. **A lost phone:** the passkey is replaced, not recovered. The old one counts until the new one is confirmed, and is revoked then. (`src/passkey/ledger.ts`)
+4. **Who may enrol a new passkey, on the runner:** only the person at the runner, who opens a ten-minute window with a one-time code and confirms the new passkey's fingerprint. (`npm run relay -- --enrol --replace`, then `npm run passkey -- confirm`)
+5. **Who may enrol, in Purser Cloud (built, not live):** a signed-in owner or an API key with the admin scope starts a person's enrolment; an owner's passkey, once any owner has one, only a signed-in owner. An owner who lost the passkey gets a one-time recovery key from Purser's platform admin after an out-of-band check; using it removes the old passkeys and ends their sessions. (`docs/cloud.md`: `POST /v1/users/{id}/enrolment`, `POST /v1/admin/tenants/{id}/recovery`)
+
 ## Accepted risks and what is out of scope
 
 - **zod advisory (fixed 2026-10-29).** `@x402/*` is at 2.29.0, which uses fixed zod 4, and an override gives
@@ -258,3 +266,6 @@ Rate limits, where the docs say them (each asserted in the same test or the test
   service levels (decisions under 10 s, 0 double payments, 0 missing origin, fallbacks under 10%), from the ledger.
 - Before each commit, the real secret values are searched for in the diff. On 2026-10-29 the full history of the
   code, plan and keys repos was searched for every secret value. Nothing was found.
+- No third-party penetration test has been run: every check above is our own, and no auditor has tested the controls
+  ([controls.md](controls.md)). An outside audit is on the list for a real launch
+  ([compliance.md](compliance.md#what-a-real-launch-would-add)). Stated on 12 November.

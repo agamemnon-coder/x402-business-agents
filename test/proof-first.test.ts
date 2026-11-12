@@ -366,7 +366,8 @@ describe("links into /proof land on something", () => {
   it("every proof#… anchor used in src/, the README and llms.txt is an id on /proof", () => {
     const src = (readdirSync(new URL("../src", import.meta.url), { recursive: true }) as string[]).filter((f) => /\.(ts|html|md|css|json)$/.test(f)).map((f) => `src/${f.split("\\").join("/")}`);
     const used = new Set<string>();
-    for (const f of [...src, "README.md", "llms.txt"]) for (const m of read(f).matchAll(/\bproof#([a-z0-9-]+)/g)) used.add(m[1]!);
+    // docs/in-depth.md holds the README's run sections since 12 November (the Airi run's link to proof#airi-run with them).
+    for (const f of [...src, "README.md", "docs/in-depth.md", "llms.txt"]) for (const m of read(f).matchAll(/\bproof#([a-z0-9-]+)/g)) used.add(m[1]!);
     expect([...used].sort()).toEqual(expect.arrayContaining(["airi-run", "airwallex", "claude", "faceid", "guarantees", "metal", "stops"]));
     for (const id of used) expect({ id, ids: html.split(` id="${id}"`).length - 1 }).toEqual({ id, ids: 1 });
     // The page's own links to itself too (the tiles).

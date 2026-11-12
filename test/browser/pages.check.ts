@@ -1,18 +1,24 @@
 // The guest pages as a juror opens them, with no key: / (Home itself), /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirects), /month (start and end), at phone
 // (360 and 390 px), tablet (768 px; jury QA, 6 Nov: /try at 360 and /?autonomy at 768 scrolled sideways) and laptop (1440 px) width, light and dark. Fails on any console error or page error, on "null",
 // "undefined" or "NaN" anywhere on screen, on a page wider than the screen, and on basic accessibility faults (no page
-// language, not exactly one h1, a link or button with no name, an image with no alt text), and on a menu that wraps.
+// language, not exactly one h1, a link or button with no name, an image with no alt text), and on a menu that wraps, is
+// not the four tabs and "More" with the pages under it, or opens "More" off the screen (12 Nov; the dropdown needs no
+// script and works from the keyboard). Also /pricing and /security, the product pages under "More".
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
 import { WATCH_IN_MENU } from "../../src/config/film.js";
 import { VISA_ICC_LINE } from "../../src/config/brand.js";
 import { VISA_ENTRY_LINE, VISA_H1, VISA_TAP_HEADING, VISA_TITLE } from "../../src/redesign/partners.js";
 import { AWX_PAGE_LABEL } from "../../src/redesign/airwallexProducts.js";
+import { MORE_LABEL, moreLinks } from "../../src/ui/more.js";
+import { agentTools } from "../../src/redesign/docs.js";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "playwright";
 import { browserName, launchBrowser } from "./support/browser.js";
 import { startJudge } from "../../src/cli/judge.js";
+import { checkHome } from "./homeStory.js";
+import { CHROME, checkTaps } from "./tapTargets.js";
 import { tokenizeRun } from "../../src/redesign/tokenizeRun.js";
 import { METAL_CSP } from "../../src/servers/dashboard.js";
 
@@ -36,6 +42,8 @@ if (!judgeBase) console.log(`SKIP  ${base}/judge is not served there yet: /judge
 /** The tour's ticks in localStorage (src/redesign/judge.ts). */
 const JUDGE_KEY = "purser.judge.v1";
 
+/** The agent API's tools, as the code defines them (/docs lists exactly these). */
+const DOCS_TOOLS = agentTools().map((t) => t.name);
 // /metal's second state (see below): the page with an invoice-token run record, built from a record made here.
 const metalWithRecord = liveAt >= 0 ? null : await (async () => {
   const { sampleRunRecord } = await import("../support/tokenizeWorld.js");
@@ -47,6 +55,8 @@ const metalWithRecord = liveAt >= 0 ? null : await (async () => {
 })();
 const failures: string[] = [];
 const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}`); };
+/** The menu on every page: the four tabs, then "More" with the pages under it, in this order (src/ui/more.ts). */
+const MENU = JSON.stringify({ items: ["Home", "Watch", "Try", "Proof", MORE_LABEL], more: moreLinks().map((l) => l.label) });
 // 1.1: the worst case as the README and step 0 say it, read from the policy code (src/policy/exposureSources.ts).
 const { worstCaseWords } = await import("../../src/policy/exposureSources.js");
 const WORST = worstCaseWords();
@@ -74,24 +84,61 @@ async function look(page: Page, name: string, width: number): Promise<void> {
   for (const u of a11y.noAlt) fail(`${name}: an image with no alt text: ${u}`);
   const over = await page.evaluate(() => document.documentElement.scrollWidth) - width;
   if (over > 1) fail(`${name}: ${over}px wider than the screen`);
-  // The "More" menu opens on the screen, wherever "More" wraps to (the site check found it off the left edge).
-  const menu = await page.evaluate(`(() => {
-    const d = document.querySelector(".pmore");
-    if (!d || !d.offsetParent) return null;
-    const was = d.open; d.open = true;
-    const r = d.querySelector(".pmenu").getBoundingClientRect();
-    d.open = was;
-    return { left: Math.round(r.left), right: Math.round(r.right) };
-  })()`) as { left: number; right: number } | null;
-  if (menu && (menu.left < 0 || menu.right > width)) fail(`${name}: the More menu opens off the screen (${menu.left} to ${menu.right} of ${width})`);
-  // The menu is one line at every width: "More" never wraps onto a line of its own (Max, 1 Nov: it did at 390 px).
-  const navRows = await page.evaluate(`(() => {
-    const n = document.querySelector(".pnav");
-    if (!n || !n.offsetParent) return 0;
-    const tops = [...n.querySelectorAll(":scope > a, :scope > details > summary")].filter((e) => e.offsetParent).map((e) => e.getBoundingClientRect().top);
-    return tops.length ? Math.round(Math.max(...tops) - Math.min(...tops)) : 0;
-  })()`) as number;
-  if (navRows > 12) fail(`${name}: the menu wraps onto a second line (${navRows}px between its links)`);
+  // The menu, on every page that carries it (both navigations: the redesign's header and the older pages'): exactly the
+  // four tabs and "More"; "More" closed until it is opened, and under it exactly the pages the site serves, in order.
+  const nav = await page.evaluate(`(() => {
+    const n = document.querySelector('nav[aria-label="Main"]');
+    if (!n || !n.offsetParent) return null;
+    const d = n.querySelector(":scope > details.pmore");
+    const items = [...n.querySelectorAll(":scope > a, :scope > details > summary")];
+    const tops = items.map((e) => e.getBoundingClientRect().top);
+    const out = { items: items.map((e) => e.textContent.trim()), more: d ? [...d.querySelectorAll(".pmenu a")].map((a) => a.textContent.trim()) : null,
+      rows: Math.round(Math.max(...tops) - Math.min(...tops)), right: Math.round(n.getBoundingClientRect().right), left: Math.round(n.getBoundingClientRect().left),
+      open: d ? d.open : null, menu: null, shown: null };
+    if (d) {
+      // Opened as a reader opens it; the dropdown hangs under the menu, on the screen, wherever the menu sits.
+      const was = d.open; d.open = true;
+      const r = d.querySelector(".pmenu").getBoundingClientRect();
+      out.menu = { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom) };
+      out.shown = [...d.querySelectorAll(".pmenu a")].every((a) => { const b = a.getBoundingClientRect(); return b.width > 0 && b.height >= 24 && b.left >= 0; });
+      d.open = was;
+    }
+    return out;
+  })()`) as { items: string[]; more: string[] | null; rows: number; left: number; right: number; open: boolean | null; menu: { left: number; right: number; top: number; bottom: number } | null; shown: boolean | null } | null;
+  if (nav) {
+    if (JSON.stringify({ items: nav.items, more: nav.more }) !== MENU) fail(`${name}: the menu is not the four tabs and More with its pages (${JSON.stringify({ items: nav.items, more: nav.more })})`);
+    // The menu is one line at every width: "More" never wraps onto a line of its own (Max, 1 Nov: it did at 390 px).
+    if (nav.rows > 12) fail(`${name}: the menu wraps onto a second line (${nav.rows}px between its items)`);
+    if (nav.left < 0 || nav.right > width) fail(`${name}: the menu runs off the screen (${nav.left} to ${nav.right} of ${width})`);
+    if (nav.open) fail(`${name}: "More" is open before the reader opens it`);
+    // The "More" menu opens on the screen, wherever "More" wraps to (the site check found it off the left edge).
+    if (!nav.menu || nav.menu.left < 0 || nav.menu.right > width || !nav.shown) fail(`${name}: the More menu opens off the screen, or its links are not all in sight (${JSON.stringify(nav.menu)} of ${width})`);
+  }
+}
+
+/**
+ * "More" from the keyboard, with no script on the page's side: Tab reaches it after the four tabs, Enter opens it, the
+ * next Tab lands on its first link, and Enter on "More" again closes it.
+ */
+async function moreByKeyboard(page: Page, name: string): Promise<void> {
+  const summary = page.locator('nav[aria-label="Main"] > details.pmore > summary');
+  const state = async () => (await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = document.activeElement; return { open: d.open, focus: a ? (a.textContent || "").trim() : "", inMenu: !!(a && a.closest(".pmenu")) }; })()`)) as { open: boolean; focus: string; inMenu: boolean };
+  // From the tab before it (Proof), one Tab reaches "More".
+  await page.locator('nav[aria-label="Main"] > a').last().focus();
+  await page.keyboard.press("Tab");
+  const reached = await state();
+  if (reached.focus !== MORE_LABEL || reached.open) fail(`${name}: Tab after the four tabs does not reach "More" (focus on "${reached.focus}")`);
+  const ring = await summary.evaluate((e) => { const s = getComputedStyle(e); return s.outlineStyle !== "none" && parseFloat(s.outlineWidth) >= 2; });
+  if (!ring) fail(`${name}: "More" shows no focus ring from the keyboard`);
+  await page.keyboard.press("Enter");
+  const opened = await state();
+  if (!opened.open) fail(`${name}: Enter on "More" does not open it`);
+  await page.keyboard.press("Tab");
+  const first = await state();
+  if (!first.inMenu || first.focus !== moreLinks()[0]!.label) fail(`${name}: Tab from the open "More" does not land on its first link (focus on "${first.focus}")`);
+  await summary.focus();
+  await page.keyboard.press("Enter");
+  if ((await state()).open) fail(`${name}: Enter on the open "More" does not close it`);
 }
 
 /** The words on the first screen, before any scroll: every text whose element is drawn inside the viewport. */
@@ -173,35 +220,33 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     await page.waitForTimeout(1500);
     if (new URL(page.url()).pathname !== "/" || !(await page.isVisible("h1.h-hero"))) fail(`/ ${tag}: a guest does not get Home at / (${page.url()})`);
     await look(page, `/ (Home) ${tag}`, w);
-    // Competitive review, 10 Nov: one primary button, to Try, in the first screen; Watch and Proof as text links. The
-    // CFO's view is linked from Proof's head (checked below), not from Home.
-    {
-      const links = await page.locator("p.more a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
-      // "Watch the agents" leads to the replay (/replay; /watch is the film since 12 Nov).
-      if (!links.includes("replay") || !links.includes("proof")) fail(`/ ${tag}: the replay and Proof are not linked beside the button (${JSON.stringify(links)})`);
-      const primaries = page.locator("main a.btn.primary");
-      const box = await primaries.first().boundingBox();
-      if ((await primaries.count()) !== 1 || !/^try(\/sign)?$/.test((await primaries.first().getAttribute("href")) ?? "") || !box || box.y + box.height > h) fail(`/ ${tag}: not one primary button, to Try, in the first screen`);
-      // The hero demo (Max, 10 Nov): it plays (the phase moves on), it keeps its size while it plays (no layout shift),
-      // and with reduced motion it shows one still frame, the last.
-      const demo = page.locator("#hero-demo");
-      if (!(await demo.count())) fail(`/ ${tag}: no hero demo`);
-      else {
-        const size = async () => JSON.stringify(await demo.evaluate((e) => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
-        const p0 = await demo.getAttribute("data-phase"), s0 = await size();
-        await page.waitForTimeout(3800);
-        if ((await demo.getAttribute("data-phase")) === p0) fail(`/ ${tag}: the hero demo does not play`);
-        if ((await size()) !== s0) fail(`/ ${tag}: the hero demo changes size while it plays (${s0} → ${await size()})`);
-        if (!/Recorded run · Airwallex sandbox · test money/.test(await demo.innerText()) || !(await demo.locator('a[href$="try/sign"], a[href="try"]').count())) fail(`/ ${tag}: the hero demo lacks its label or its link to Try`);
-        await demo.screenshot({ path: join(shots, `home-demo-${tag}.png`) });
-        const still = await page.context().browser()!.newPage({ viewport: { width: w, height: h }, reducedMotion: "reduce" });
-        await still.goto(`${base}/home`, { waitUntil: "load" });
-        await still.waitForTimeout(2600);
-        if ((await still.locator("#hero-demo").getAttribute("data-phase")) !== "4" || await still.locator("#hero-demo").evaluate((e) => e.classList.contains("run"))) fail(`/ ${tag}: with reduced motion the hero demo is not one still frame`);
-        await still.close();
+    // Home as one story (home-story, 12 Nov): two buttons, the hero that plays once and rests on step 4, the visitor's
+    // own check with no request, the sizes, the screens (test/browser/homeStory.ts). The CFO's view is linked from
+    // Proof's head (checked below), not from Home.
+    await checkHome(page, { url: `${base}/`, name: `/ (Home) ${tag}`, width: w, height: h, touch: w < 500, tryHref: liveAt >= 0 ? "try/sign" : "try", fail, shot: async (n) => { await page.locator("#hero-demo").screenshot({ path: join(shots, `home-demo-${n}-${tag}.png`) }); } });
+    await page.goto(`${base}/home?demo=4`, { waitUntil: "load" });
+    await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
+
+    // Tap targets on a phone (jury review, 12 Nov: menu links 37 px): every link, button and fold header of the shared
+    // header and footer is at least 44 px high, on the three tabs and on the replay at /replay, and the redesign's
+    // header is no taller for it (test/browser/tapTargets.ts; the whole of /judge below).
+    if (w <= 430) {
+      for (const path of ["/home", "/try", "/proof", "/replay?autoplay=0"]) {
+        await page.goto(`${base}${path}`, { waitUntil: "load" });
+        await checkTaps(page, { name: `${path} ${tag}, header and footer`, scopes: CHROME, fail });
+        const head = await page.locator("header").first().evaluate((e) => e.getBoundingClientRect().height);
+        if (head > 65.5) fail(`${path} ${tag}: the header is ${head} px high, taller than before (65)`);
+        if (!WATCH_IN_MENU && await page.locator('header nav a[href*="watch"]').count()) fail(`${path} ${tag}: Watch is in the menu`);
       }
     }
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
+    // "More" from the keyboard, in the redesign's header (the older pages' navigation is checked on /month below), and
+    // open, as a reader sees it over the page.
+    await moreByKeyboard(page, `/ (Home) ${tag}`);
+    await page.locator('nav[aria-label="Main"] > details.pmore > summary').click();
+    if (!(await page.locator('nav[aria-label="Main"] .pmenu').isVisible())) fail(`/ (Home) ${tag}: a click on "More" does not open it`);
+    await page.screenshot({ path: join(shots, `home-more-${tag}.png`) });
+    await page.locator('nav[aria-label="Main"] > details.pmore > summary').click();
 
     // Every button works without a key: "CFO sign-in" explains how the CFO gets in, and the way back to the recording.
     await page.goto(`${base}/?signin`, { waitUntil: "load" });
@@ -514,6 +559,13 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.waitForTimeout(300);
       await look(page, `/month${q} ${tag}`, w);
       await page.screenshot({ path: join(shots, `month${q ? "-end" : ""}-${tag}.png`), fullPage: true });
+      // "More" from the keyboard in the older pages' navigation (src/ui/nav.ts), and open over the page.
+      if (!q) {
+        await moreByKeyboard(page, `/month ${tag}`);
+        await page.locator('nav[aria-label="Main"] > details.pmore > summary').click();
+        await page.screenshot({ path: join(shots, `month-more-${tag}.png`) });
+        await page.locator('nav[aria-label="Main"] > details.pmore > summary').click();
+      }
     }
 
     // Try Purser: each example ends in its outcome, step by step, labelled as the demo world. Against the relay a try
@@ -577,13 +629,15 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // budget of test/site-v4.test.ts, for the three folded lines under the Airi runs.
       // /airwallex 374 since 12 Nov (jury panel): the Airi run's summary says "A scripted run, no Claude call".
       // /metal: 230 only while a run record of the invoice token exists (12 Nov), for its one block (50 words in sight).
+      // The frame (header and footer): 25 words, 26 since 12 Nov: More and the footer's four product links added five
+      // words (18 at 360 and 390 px, 19 at 768 and 1440). The pages' own budgets are main's.
       // /metal: 275 since the jury panel of 12 Nov, for its four mandates in one table (each figure a word; its column
       // heads show from 700 px); 325 with the invoice token's block.
       // /claude: 195 since the jury panel of 12 Nov (measured, not asserted: four figures with their records).
       // /claude: 225 since the merge of 12 Nov, the budget of test/site-v4.test.ts, for the hostile-model eval's line beside
       // the measured block; 240 with the measured block's line on the zero-trust report (the budget of test/site-v4.test.ts).
       const budget = path === "/airwallex" ? 374 : path === "/visa" ? 625 : path === "/metal" ? (tokenizeRun() ? 375 : 325) /* +50, 12 Nov wire-in: "Face ID signs on chain" (test/site-v4.test.ts) */ : path === "/claude" ? 240 : 150;
-      if (words > budget + 25) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
+      if (words > budget + 26) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       // Each page is labelled with the run it shows: the main run; /visa with the Airi run's own label (the main run's
       // label is inside its closed TAP fold, with the main run's TAP-signed buy).
       // /airwallex (jury panel, 12 Nov) shows several runs, each dated on its own tile: its label is true for all of them,
@@ -632,7 +686,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if ((await page.locator("details.fold").count()) < 2) fail(`${path} ${tag}: the details are not folded`);
       // 12 Nov (wire-in): Visa's official mark only, on the owner's stated permission (docs/evidence/logo-permissions.md).
       if ((await page.locator("img[src*='visa' i]:not([src='assets/logo-visa.png']), img[alt*='visa' i]:not([src='assets/logo-visa.png'])").count()) > 0) fail(`${path} ${tag}: shows a Visa logo other than the official mark`);
-      await page.evaluate(() => document.querySelectorAll("details").forEach((d) => { d.open = true; }));
+      // Every fold of the page; "More" in the menu stays closed, as a reader leaves it.
+      await page.evaluate(() => document.querySelectorAll("details:not(.pmore)").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
       await look(page, `${path} folds open ${tag}`, w);
       const open = await page.evaluate(() => document.body.innerText);
       if (TAP_PAGES.includes(path) && w < 500) { await tapTargets(page, `${path} folds open ${tag}`); await foldTaps(page, `${path} folds open ${tag}`); }
@@ -680,6 +735,124 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (path === "/metal" && (await page.locator("a.pf[href*='testnet.metalntwx.com/tx/0x']").count()) < 3) fail(`/metal ${tag}: fewer than three transactions`);
       await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
     }
+    // /pricing and /security (12 Nov), the product pages under "More": short, the prices and the cards in sight, every
+    // detail folded and readable once open, "More" marked as where the reader is, and no text under 14 px in a card.
+    for (const path of ["/pricing", "/security"]) {
+      const res = await page.goto(`${base}${path}`, { waitUntil: "load" });
+      if (!res || res.status() !== 200) { fail(`${path} ${tag}: status ${res?.status()}`); continue; }
+      await look(page, `${path} ${tag}`, w);
+      const body = await page.locator("main").innerText();
+      const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
+      // The budgets of test/site-v4.test.ts, counted here as the browser shows the page's body (folds closed).
+      const budget = path === "/pricing" ? 150 : 265; // /security 265 since 12 Nov: nine controls (the owner), then the eval and zero-trust links
+      if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
+      const here = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null, tabs: document.querySelectorAll('nav[aria-label="Main"] > a.on').length }; })()`) as { more: boolean; link: string | null; tabs: number };
+      if (!here.more || here.link !== path.slice(1) || here.tabs) fail(`${path} ${tag}: "More" and the page's own link are not marked as where the reader is (${JSON.stringify(here)})`);
+      const small = await page.evaluate(`[...document.querySelectorAll("main .card *, main .lead, main .notyet")].filter((e) => (e.offsetParent || getComputedStyle(e).position === "fixed") && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) && parseFloat(getComputedStyle(e).fontSize) < 14).map((e) => (e.textContent || "").trim().slice(0, 30))`) as string[];
+      for (const t of small.slice(0, 5)) fail(`${path} ${tag}: text under 14 px: ${t}`);
+      if (!(await page.evaluate(() => document.fonts.check("16px Inter")))) fail(`${path} ${tag}: Inter did not load`);
+      const cards = await page.locator("main article.pc.card").count();
+      if (path === "/pricing") {
+        if (cards !== 3 || !/Pilot pricing\s+Pilot prices\. Nothing is on sale yet\./.test(body) || !/€49\s+a month/.test(body) || !/from\s+€249\s+a month/.test(body)) fail(`/pricing ${tag}: not the heading, the lead line and three cards with their prices`);
+        if (!/a EUR \d+\.\d{2} test fee on a EUR \d+\.\d{2} test payout\.\s+Test values, not prices/.test(body) || !(await page.locator('#platform-fee a[href$="docs/runs/2026-11-10-connected-accounts-sandbox.md"]').count())) fail(`/pricing ${tag}: the platform fee's test values are not labelled, or its run record is not linked`);
+        // One fold since the panel's review (12 Nov): "How the fee is set", closed, in the fee's card.
+        if (!/Not yet: no real-money go-live\./.test(body) || (await page.locator("main details").count()) !== 1 || (await page.locator("#platform-fee details.fold:not([open])").count()) !== 1) fail(`/pricing ${tag}: no "Not yet" line, or a fold that should not be there`);
+      } else {
+        // Nine controls and "Not yet" since the owner's request (12 Nov 15:55): ten cards, each with its detail folded, and "If the approver is unavailable" (#unavailable) under the signature.
+        if (cards !== 10 || (await page.locator("main article.pc.card details.fold").count()) !== 11 || (await page.locator("#s-sign details#unavailable").count()) !== 1 || (await page.locator("main details[open]").count())) fail(`/security ${tag}: not ten cards, each with its detail folded`);
+        if (!/Our red team ran \d+ attacks: \d+ stopped before anything moved, \d+ found afterwards\./.test(body) || !/npm run verify-log/.test(body) || !/No SOC 2 report, no ISO 27001 audit and no third-party penetration test yet/.test(body)) fail(`/security ${tag}: the red team's counts, the audit command or the "Not yet" line is missing`);
+        if (!/^try(\/sign)?$/.test((await page.locator("#s-sign .links a").getAttribute("href")) ?? "")) fail(`/security ${tag}: the signature card does not link to Try`);
+      }
+      await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
+      await page.evaluate(() => document.querySelectorAll("main details").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
+      await look(page, `${path} folds open ${tag}`, w);
+      await page.screenshot({ path: join(shots, `${path.slice(1)}-open-${tag}.png`), fullPage: true });
+    }
+    // Proof's guarantee 1 links "If the approver is unavailable" (12 Nov): it lands on /security#unavailable with the
+    // fold's heading in view, below the sticky header. At 390 and 1440 px.
+    if (w === 390 || w === 1440) {
+      await page.goto(`${base}/proof`, { waitUntil: "load" });
+      await page.locator("#g-terms details > summary").click();
+      await page.locator("#g-terms a", { hasText: "If the approver is unavailable" }).click();
+      await page.waitForURL(/\/security#unavailable$/);
+      await page.waitForTimeout(300);
+      const r = (await page.evaluate(`(() => {
+        const t = document.getElementById("unavailable"), head = document.querySelector("header.top").getBoundingClientRect().bottom, b = t.getBoundingClientRect();
+        return { top: Math.round(b.top), head: Math.round(head), inView: b.top >= head - 2 && b.top < innerHeight / 2 };
+      })()`)) as { top: number; head: number; inView: boolean };
+      if (!r.inView) fail(`/proof ${tag}: "If the approver is unavailable" does not land on /security#unavailable in view (${JSON.stringify(r)})`);
+    }
+    // /docs and /status (12 Nov), the other two product pages under "More": short, "More" marked as where the reader is,
+    // no text under 14 px in a card. /docs lists the agent API's tools as the code defines them, every description
+    // folded. /status: the judge's copy says it has no live status and asks for nothing (it has no /health); a hosted
+    // relay's page reads its own /health and ends in a state it read, never in "could not be read".
+    for (const path of ["/docs", "/status"]) {
+      const healthAsked: string[] = [];
+      const onHealth = (r: { url(): string }) => { if (new URL(r.url()).pathname === "/health") healthAsked.push(r.url()); };
+      page.on("request", onHealth);
+      const res = await page.goto(`${base}${path}`, { waitUntil: "load" });
+      if (!res || res.status() !== 200) { fail(`${path} ${tag}: status ${res?.status()}`); page.off("request", onHealth); continue; }
+      if (path === "/status" && liveAt >= 0) await page.waitForFunction(() => document.getElementById("now")?.hasAttribute("data-tone"), undefined, { timeout: 10_000 }).catch(() => fail(`/status ${tag}: the page's script never finished reading /health`));
+      await look(page, `${path} ${tag}`, w);
+      const body = await page.locator("main").innerText();
+      const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
+      // The budgets of test/site-v4.test.ts, counted here as the browser shows the page's body (folds closed).
+      const budget = path === "/docs" ? 200 : 90;
+      if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
+      const here = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null, tabs: document.querySelectorAll('nav[aria-label="Main"] > a.on').length }; })()`) as { more: boolean; link: string | null; tabs: number };
+      if (!here.more || here.link !== path.slice(1) || here.tabs) fail(`${path} ${tag}: "More" and the page's own link are not marked as where the reader is (${JSON.stringify(here)})`);
+      const small = await page.evaluate(`[...document.querySelectorAll("main .card *, main .lead")].filter((e) => (e.offsetParent || getComputedStyle(e).position === "fixed") && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) && parseFloat(getComputedStyle(e).fontSize) < 14).map((e) => (e.textContent || "").trim().slice(0, 30))`) as string[];
+      for (const t of small.slice(0, 5)) fail(`${path} ${tag}: text under 14 px: ${t}`);
+      if (!(await page.evaluate(() => document.fonts.check("16px Inter")))) fail(`${path} ${tag}: Inter did not load`);
+      const cards = await page.locator("main article.pc.card").count();
+      if (path === "/docs") {
+        if (cards !== 4 || !/Docs and API\s+For developers and integrators\./.test(body) || (await page.locator("main details[open]").count())) fail(`/docs ${tag}: not the heading, the lead line and four cards with every fold closed`);
+        const listed = await page.locator("#agent-api li[data-tool] > code").allInnerTexts();
+        if (JSON.stringify(listed) !== JSON.stringify(DOCS_TOOLS)) fail(`/docs ${tag}: the tools listed are not the code's (${listed.join(", ")})`);
+        if (!/npm run -s mcp/.test(body) || !/npm run judge/.test(body) || !/\/v1\/openapi\.json/.test(body) || !(await page.locator('#offline a[href$="README.md#how-to-run"]').count())) fail(`/docs ${tag}: a command, the OpenAPI document's path or the README's link is missing`);
+      } else {
+        if (cards !== 2 || (await page.locator("#runs ul.pl > li > a.pf").count()) !== 5 || (await page.locator('#runs a.pf[href="runs"]').count()) !== 1) fail(`/status ${tag}: not two cards with the five latest live runs and the link to every run`);
+        if (liveAt < 0) {
+          // The judge's copy: no script, no request for /health (it would be a 404 here), and it says so.
+          if (healthAsked.length || (await page.locator("script").count()) || !/No live status in this copy/.test(body) || (await page.locator('main a[href$="health"]').count())) fail(`/status ${tag}: the offline copy asks for /health, carries a script or does not say it has no live status`);
+        } else {
+          const tone = await page.locator("#now").getAttribute("data-tone");
+          if (!["quiet", "ok", "alarm"].includes(tone ?? "") || (await page.locator("#st-site").innerText()) !== "Up" || healthAsked.length !== 1) fail(`/status ${tag}: the hosted page did not read its own /health (${tone}, ${healthAsked.length} request(s))`);
+        }
+      }
+      page.off("request", onHealth);
+      await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
+      await page.evaluate(() => document.querySelectorAll("main details").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
+      await look(page, `${path} folds open ${tag}`, w);
+      await page.screenshot({ path: join(shots, `${path.slice(1)}-open-${tag}.png`), fullPage: true });
+    }
+    // /status as the relay serves it (the local relay, src/relay/local.ts; no runner has synced yet): the page reads the
+    // relay's own /health under its policy, with no console or policy error, and shows the quiet state, which is no
+    // error. Then /health failing: the page says plainly that the status could not be read, and nothing reads as good.
+    if (relay) {
+      await page.goto(`${relay.url}/status`, { waitUntil: "load" });
+      await page.waitForFunction(() => document.getElementById("now")?.hasAttribute("data-tone"), undefined, { timeout: 10_000 }).catch(() => fail(`/status on the relay ${tag}: the script never finished reading /health`));
+      await look(page, `/status on the relay ${tag}`, w);
+      const now = (await page.locator("#now").innerText()).replace(/\s+/g, " ").trim();
+      if ((await page.locator("#now").getAttribute("data-tone")) !== "quiet" || now !== "No live run in progress Site Up Runner Off between runs Last sync None on record Alarms No report on record The raw answer: /health") fail(`/status on the relay ${tag}: not the quiet state in plain words (${now})`);
+      const quietWords = (await page.locator("main").innerText()).split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
+      if (quietWords > 90) fail(`/status on the relay ${tag}: ${quietWords} words in sight in the quiet state, budget 90`);
+      await page.screenshot({ path: join(shots, `status-quiet-${tag}.png`), fullPage: true });
+      // A page of its own for the failing /health: the browser logs the failed answer as a console error, which is the point.
+      const broken = await context.newPage();
+      broken.on("pageerror", (e) => fail(`/status with /health failing ${tag}: page error: ${e.message}`));
+      for (const [what, answer] of [["a 500 that is no JSON", { status: 500, contentType: "text/plain", body: "error" }], ["a 200 in another shape", { status: 200, contentType: "application/json", body: JSON.stringify({ status: "ok" }) }], ["no answer", null]] as const) {
+        await broken.unroute("**/health");
+        await broken.route("**/health", (r) => (answer ? r.fulfill(answer) : r.abort()));
+        await broken.goto(`${relay.url}/status`, { waitUntil: "load" });
+        await broken.waitForFunction(() => document.getElementById("now")?.hasAttribute("data-tone"), undefined, { timeout: 10_000 }).catch(() => fail(`/status with /health failing (${what}) ${tag}: the page never said so`));
+        const text = (await broken.locator("#now").innerText()).replace(/\s+/g, " ").trim();
+        if ((await broken.locator("#now").getAttribute("data-tone")) !== "unread" || text !== "The status could not be read just now Site Not read Runner Not read Last sync Not read Alarms Not read The raw answer: /health") fail(`/status with /health failing (${what}) ${tag}: does not say plainly that the status could not be read (${text})`);
+        if (await broken.locator("#now .good").count()) fail(`/status with /health failing (${what}) ${tag}: a line reads as good`);
+      }
+      await broken.screenshot({ path: join(shots, `status-unread-${tag}.png`), fullPage: true });
+      await broken.close();
+    }
     // /t0 (owner, 12 Nov): Purser's books in T:0's ledger. At most 150 words in sight (the strip aside), labelled as the
     // T:0 sandbox with test data, nothing wider than the screen, every tap target 44 px on a phone, the strip in its footer.
     {
@@ -705,13 +878,14 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const stripWords = (await page.locator("footer .builton").innerText().catch(() => "")).split(/\s+/).filter((x) => /\w/.test(x)).length;
       const words = (await page.evaluate(() => document.body.innerText)).split(/\s+/).filter((x) => /\w/.test(x)).length - stripWords;
       // 375 since the 12 Nov wire-in ("Face ID signs on chain", +50; test/site-v4.test.ts).
-      if (words > 375 + 25) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 375 plus the frame`);
+      if (words > 375 + 26) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 375 plus the frame`);
       const block = page.locator("#invoice-token");
       const sight = await block.innerText().catch(() => "");
       if (!/^Invoice token \(prototype\)\s+\d{1,2} \w+, a separate Metal testnet run\. An invoice approved with a labelled test passkey(?: on \d{1,2} \w+)? became a token\. A simulated financier bought it for 2\.35 test USD; the debtor paid its holder 2\.40\. Face value divided by 100\.\s+Chain record verified\s+7 transactions$/.test(sight.trim())) fail(`/metal with an invoice-token record ${tag}: the block is not the title, one sentence, the badge and a closed fold (${JSON.stringify(sight)})`);
       if ((await page.locator("#invoice-token").count()) !== 1 || !(await page.evaluate(() => { const f = document.querySelector(".folds.card"), b = document.querySelector("#invoice-token"), a = document.querySelector("a.open"); return !!f && !!b && !!a && !!(f.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) && !!(b.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING); }))) fail(`/metal with an invoice-token record ${tag}: the block is not between the main run's proof and the link to all the proof`);
       await page.screenshot({ path: join(shots, `metal-token-${tag}.png`), fullPage: true });
-      await page.evaluate(() => document.querySelectorAll("details").forEach((d) => { d.open = true; }));
+      // The page's folds only: "More" in the menu is a <details> too (12 Nov) and stays closed, as a reader leaves it.
+      await page.evaluate(() => document.querySelectorAll("main details").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
       await look(page, `/metal with an invoice-token record, folds open ${tag}`, w);
       if ((await block.locator("a.pf[href^='https://testnet.metalntwx.com/tx/0x']").count()) !== 7 || (await block.locator("a.pf[href$='-tokenize.md']").count()) !== 1) fail(`/metal with an invoice-token record ${tag}: not seven transactions and the run record in its fold`);
       await block.screenshot({ path: join(shots, `metal-token-open-${tag}.png`) });
@@ -921,18 +1095,21 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
 
     // /judge, "Judge it in 3 minutes" (item 5.1): five steps, each with a checkbox and a time, three minutes in all; the
     // ticks survive a reload; the page asks nothing of any server (no request but the page, its font and its icon);
-    // and with /try/sign on, Home's flow leads to it (watch, then try/sign, then proof) and one quiet text link under the
-    // one button opens the tour, in the first screen (Max, 7 Nov).
+    // and with /try/sign on, Home's first button leads to it and one quiet footer link opens the tour (home-story, 12 Nov:
+    // Home has two buttons and no third call to action).
     if (judgeBase) {
       const asked: string[] = [];
       const onRequest = (r: { url(): string }) => { const u = new URL(r.url()); if (u.origin !== new URL(judgeBase).origin || !["/judge", "/assets/inter.woff2", "/assets/favicon.svg", "/favicon.ico"].includes(u.pathname)) asked.push(r.url()); };
       await page.goto(`${judgeBase}/`, { waitUntil: "load" });
       if ((await page.locator("main a.btn.primary").getAttribute("href")) !== "try/sign") fail(`/ (Home, with /try/sign) ${tag}: the button does not lead to /try/sign`);
-      const top = page.locator('p.more a[href="judge"]');
+      const top = page.locator('footer a.flink[href="judge"]');
       const box = await top.boundingBox();
-      if ((await page.locator('a[href="judge"]').count()) !== 1 || (await top.innerText()).trim() !== "Judging? Take the 3-minute tour" || !box || box.y + box.height > h || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: no one "Judging? Take the 3-minute tour" link beside the button, in the first screen, inside the page's gutter`);
-      if ((await page.locator("main a.btn").count()) !== 1) fail(`/ (Home, with /try/sign) ${tag}: more than one button`);
+      if ((await page.locator('a[href="judge"]').count()) !== 1 || (await top.innerText()).trim() !== "Judging? Take the 3-minute tour" || !box || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: no one "Judging? Take the 3-minute tour" link in the footer, inside the page's gutter`);
+      if ((await page.locator("main p.reassure").innerText()).trim() !== "A test passkey, no account, no money. About a minute.") fail(`/ (Home, with /try/sign) ${tag}: the line under the button is not /try/sign's`);
+      await checkHome(page, { url: `${judgeBase}/`, name: `/ (Home, with /try/sign) ${tag}`, width: w, height: h, touch: w < 500, tryHref: "try/sign", fail, quick: true });
+      await page.goto(`${judgeBase}/home?demo=4`, { waitUntil: "load" });
       await look(page, `/ (Home, with /try/sign) ${tag}`, w);
+      if (w <= 430) await checkTaps(page, { name: `/ (Home, with /try/sign) ${tag}, header and footer`, scopes: CHROME, fail });
       await page.screenshot({ path: join(shots, `home-trysign-${tag}.png`) });
       await top.click();
       await page.waitForURL(/\/judge$/);
@@ -946,6 +1123,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (steps.length !== 5 || steps.some((s) => !s.box || !s.secs || !s.links)) fail(`/judge ${tag}: not five steps, each with a checkbox, a time and a link (${JSON.stringify(steps)})`);
       if (steps.reduce((t, s) => t + s.secs, 0) !== 180) fail(`/judge ${tag}: the times do not add up to 3 minutes`);
       if (!(await page.isVisible("text=Want the code?")) || !(await page.isVisible("section.more >> text=How it works in 5 files"))) fail(`/judge ${tag}: no "Want the code? How it works in 5 files" at the bottom`);
+      // The tour starts on Home, not on the replay, and on a phone the whole page is 44 px targets: every box, title,
+      // button and link, the menu and the footer.
+      if ((await page.locator("ol.steps > li").first().locator(".go a").getAttribute("href")) !== "/home" || (await page.locator('a[href*="watch"]').count())) fail(`/judge ${tag}: the tour does not start on Home, or links to the replay`);
+      if (w <= 430) await checkTaps(page, { name: `/judge ${tag}`, scopes: ["body"], fail });
       // Tick steps 2 and 3 (one by its box, one by its title), reload: both still ticked, the count says so.
       await page.locator("#step-sign").check();
       await page.locator('label[for="step-trick"]').click();
@@ -993,6 +1174,34 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     await context.close();
   }
 }
+// /status in the live state, last (a sync makes the relay expect a live run for the next half hour): a runner syncs,
+// as the runner sends it (src/relay/runner.ts), and the page says a live run is in progress and no alarm stands.
+if (relay) {
+  const { openDb } = await import("../../src/db/open.js");
+  const { buildRelayState, stateHash } = await import("../../src/relay/state.js");
+  const state = buildRelayState(openDb(":memory:"), { rpId: "localhost", relayToken: "pages-check" }, new Date());
+  const synced = await fetch(`${relay.url}/api/runner/sync`, { method: "POST", headers: { authorization: "Bearer pages-check", "content-type": "application/json" }, body: JSON.stringify({ state_hash: stateHash(state), state, acks: [] }) });
+  if (synced.status !== 200) fail(`/status live: the runner's sync answered ${synced.status}`);
+  for (const [w, h] of [[390, 844], [1440, 900]] as const) {
+    for (const scheme of ["light", "dark"] as const) {
+      const context = await browser.newContext({ viewport: { width: w, height: h }, colorScheme: scheme, isMobile: w < 500, hasTouch: w < 500 });
+      const page = await context.newPage();
+      const tag = `${w}-${scheme}`;
+      page.on("console", (m) => { if (m.type() === "error") fail(`/status live ${tag}: console error: ${m.text()}`); });
+      page.on("pageerror", (e) => fail(`/status live ${tag}: page error: ${e.message}`));
+      await page.goto(`${relay.url}/status`, { waitUntil: "load" });
+      await page.waitForFunction(() => document.getElementById("now")?.hasAttribute("data-tone"), undefined, { timeout: 10_000 }).catch(() => fail(`/status live ${tag}: the script never finished reading /health`));
+      await look(page, `/status live ${tag}`, w);
+      const now = (await page.locator("#now").innerText()).replace(/\s+/g, " ").trim();
+      if ((await page.locator("#now").getAttribute("data-tone")) !== "ok" || !/^A live run is in progress Site Up Runner Syncing Last sync In the last \d+ minutes? Alarms None The raw answer: \/health$/.test(now)) fail(`/status live ${tag}: not the live state in plain words (${now})`);
+      const words = (await page.locator("main").innerText()).split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
+      if (words > 90) fail(`/status live ${tag}: ${words} words in sight, budget 90`);
+      await page.screenshot({ path: join(shots, `status-live-${tag}.png`), fullPage: true });
+      await context.close();
+    }
+  }
+  console.log("/docs and /status checked: the judge's copies, /status on the local relay quiet, with /health failing, and live");
+}
 await browser.close();
 judge?.server.close();
 relay?.server.close();
@@ -1000,4 +1209,4 @@ if (failures.length) {
   console.log(`\npages check: ${failures.length} problem(s)`);
   process.exit(1);
 }
-console.log(`pages check passes in ${BROWSER}: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /visa, /claude (folds open), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? `, /judge (ticks kept across a reload${BROWSER === "firefox" ? "; storage blocked not emulated in Firefox" : ", and with storage blocked"}) and Home's link to it` : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);
+console.log(`pages check passes in ${BROWSER}: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /visa, /claude (folds open), /pricing, /security (folds open), the menu (four tabs and More, by keyboard too), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? `, /judge (ticks kept across a reload${BROWSER === "firefox" ? "; storage blocked not emulated in Firefox" : ", and with storage blocked"}) and Home's link to it` : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);

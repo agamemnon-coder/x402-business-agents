@@ -7,6 +7,7 @@ import { T0Client, type T0Rate } from "../accounting/t0.js";
 import { ratesFromEnv } from "../accounting/t0Sink.js";
 import { t0AccountType } from "../accounting/t0.js";
 import { AP_CHART, CHART } from "../config/gl.js";
+import { PRICING } from "../config/pricing.js";
 import type { Asker } from "../ap/read.js";
 import { ClaudeReader } from "../claude/reader.js";
 import type { DB } from "../db/open.js";
@@ -16,6 +17,9 @@ import { BudgetSpent, CallBudget } from "./budget.js";
 import { FakePlatformOps, LivePlatformOps } from "./platformOps.js";
 import type { PlatformE2EDeps } from "./platformRun.js";
 import { WORLD } from "./world.js";
+
+/** The fee rate in the test policy of this run, in basis points: a test value (src/config/pricing.ts), not a price. */
+export const E2E_FEE_BPS = String(PRICING.platformFee.testPolicyBps);
 
 /** Purser's own sandbox account (the platform): where its fee goes. */
 export const PURSER_PLATFORM_ACCOUNT = "acct_op0_QItiOyWKsYb5pwQihA";
@@ -55,7 +59,7 @@ export function dryRunDeps(): DryRun {
   return {
     rails, platform, t0,
     deps: {
-      world: WORLD, platform, readerFor: () => parserOnly, t0: client, t0Rate: () => undefined, feeBps: "50", fundCents: FUND_CENTS, mode: "dry run",
+      world: WORLD, platform, readerFor: () => parserOnly, t0: client, t0Rate: () => undefined, feeBps: E2E_FEE_BPS, fundCents: FUND_CENTS, mode: "dry run",
       railFor: (accountId) => {
         let r = rails.get(accountId);
         if (!r) {
@@ -81,7 +85,7 @@ export function liveDeps(budget: CallBudget, env: NodeJS.ProcessEnv): Omit<Platf
   const t0 = new T0Client({ apiKey: PROXY_INJECTED, fetch: budget.fetchFor("t0"), retryDelayMs: 0 });
   const rails = new Map<string, AirwallexRest>();
   return {
-    world: WORLD, platform, readerFor: (db: DB) => budgetedReader(new ClaudeReader(db), budget), t0, t0Rate: rate as T0Rate, feeBps: "50", fundCents: FUND_CENTS, mode: "live",
+    world: WORLD, platform, readerFor: (db: DB) => budgetedReader(new ClaudeReader(db), budget), t0, t0Rate: rate as T0Rate, feeBps: E2E_FEE_BPS, fundCents: FUND_CENTS, mode: "live",
     railFor: (accountId) => {
       let r = rails.get(accountId);
       if (!r) rails.set(accountId, (r = new AirwallexRest(new Airwallex({ clientId: cfg.clientId, apiKey: cfg.apiKey, fetchImpl: fetchAwx, onBehalfOf: accountId }))));

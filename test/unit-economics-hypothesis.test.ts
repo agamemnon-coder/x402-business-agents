@@ -1,20 +1,22 @@
-// Max's last round, item 5.2: "Unit economics (hypothesis)". What a company of agents costs Purser a month against the
-// intended price, from the main run's record (docs/demo/main-run.json) and a short list of stated assumptions, each
-// with its source; approved by Max on 6 November with three changes (decisions in the price, one Opus line instead of
-// an Opus column, the payments sentence as the record supports it). docs/business/model.md and the deck's business
-// slide say the numbers src/business/unitEconomics.ts computes; every number in that section and on that slide is a
-// measured value, a sourced price, a stated assumption or a result; the price is the same sentence everywhere. Breaks
-// when a number drifts, loses its source, or a surface says another price.
+// Max's last round, item 5.2: "Unit economics (hypothesis)". What a company's supplier invoices cost Purser a month
+// against the pilot pricing (src/config/pricing.ts, 12 November: one model, a monthly plan by invoices plus a small fee
+// per payout; it replaced the price per agent with Claude decisions included, 6 November), from the main run's record
+// (docs/demo/main-run.json), the end-to-end sandbox run's record and a short list of stated assumptions, each with its
+// source. docs/business/model.md's section is exactly what src/business/unitEconomics.ts writes, and the deck's
+// business slide says the same numbers; every number there is a measured value, a sourced price, a stated assumption
+// or a result; the price is the same sentence everywhere. Breaks when a number drifts, loses its source, or a surface
+// says another price.
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PRICE_LINE, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
+import { PRICING, PRICING_LABEL, PRICING_LINE } from "../src/config/pricing.js";
 import { PRICES, callCostMicros } from "../src/claude/pricing.js";
 import { proofPage } from "../src/redesign/proof.js";
 import { payments, split } from "../src/redesign/run.js";
 import { buildPages } from "../src/relay/assets.js";
 import {
-  ASSUMPTIONS, INPUTS, SECTION_END, SECTION_START, SOURCES, allowedNumbers, assumptionsTable, measuredTable, opusLine, paymentsLine, priceFromInputs,
-  scenarioTable, sourcesList, unitEconomics,
+  ASSUMPTIONS, E2E_RECORD, EARLIER, INPUTS, SECTION_END, SECTION_START, SOURCES, allowedNumbers, assumptionsTable, e2eInvoiceCalls, earlierLine, invoiceLine, measuredTable, opusLine,
+  paymentsLine, priceFromInputs, scenarioTable, sectionMarkdown, sourcesList, unitEconomics,
 } from "../src/business/unitEconomics.js";
 import { deckHtml, type DeckShots } from "../src/submission/deck.js";
 import { packFacts } from "../src/submission/facts.js";
@@ -38,7 +40,7 @@ const numbers = (s: string) => (s.match(/\d[\d,]*(?:\.\d+)?/g) ?? []).map((n) =>
 /** Text without what is not a figure: URLs and link targets, source and assumption ids, the sources' own dates. */
 function figuresOnly(s: string): string {
   let t = s.replace(/<!--[\s\S]*?-->/g, " ").replace(/\]\([^)]*\)/g, "] ").replace(/https?:\/\/\S+/g, " ").replace(/\b[AURP]\d+\b/g, " ");
-  for (const src of SOURCES) t = t.split(src.read).join(" ");
+  for (const src of SOURCES) t = t.split(src.read).join(" ").split(src.url).join(" ");
   return t;
 }
 const OTHERS = /\b(Pleo|Ramp|Brex|Spendesk|Payhawk|Expensify|Mercury|Revolut|Wise|Stripe|Mastercard|Coinbase|Google|Visa)\b/;
@@ -78,6 +80,29 @@ describe("measured, from the main run's record", () => {
     expect(SECTION + DECK_TEXT).not.toMatch(/decided \d+ of \d+ payments/);
   });
 
+  it("Claude per invoice is an estimate from two records: the end-to-end run's calls per invoice times the main run's cost per call", () => {
+    // The end-to-end run's record, counted again here: its Claude calls in the run, and the rows of its invoice table.
+    const record = read(E2E_RECORD);
+    const calls = Number(/(\d+) in the run \(classify, read and review per invoice/.exec(record)![1]);
+    const rows = record.slice(record.indexOf("### Invoices, read by Claude"), record.indexOf("### Approvals")).split("\n").filter((l) => /^\| [A-Z]+ \| AP-\d+ /.test(l));
+    expect(e2eInvoiceCalls()).toEqual({ calls, invoices: rows.length });
+    expect([calls, rows.length]).toEqual([17, 4]);
+    // The main run's cost of a call: its whole Claude bill over its calls (the record's own per_call figure agrees).
+    const claude = RECORD.snapshot.claude as Rec["snapshot"]["claude"] & { calls: number; per_call_usd_micros: number };
+    expect(ue.measured.claudeCalls).toBe(claude.calls);
+    expect(Math.round(ue.measured.microsPerCall)).toBe(claude.per_call_usd_micros);
+    expect(ue.measured.microsPerInvoice).toBe(calls / rows.length * claude.cost_usd_micros / claude.calls);
+    expect([ue.measured.perCallUsd, ue.measured.perInvoiceUsd]).toEqual(["0.0065", "0.0276"]);
+    expect(invoiceLine()).toBe(`Claude per invoice, an estimate: USD ${ue.measured.perInvoiceUsd}. The end-to-end sandbox run made ${calls} Claude calls for ${rows.length} invoices, and a Claude call in the main run cost USD ${ue.measured.perCallUsd} on average at list prices.`);
+    expect(SECTION).toContain(invoiceLine());
+    // Said as what it is: an assumption, because no record holds a measured cost per invoice.
+    expect(ASSUMPTIONS.find((a) => a.id === "A3")!.why).toMatch(/^An estimate, not a measurement/);
+    expect(SECTION).toContain("No record holds a measured Claude cost per invoice, so this is an assumption (A3), not a measurement.");
+    // A record that no longer says its calls or its invoices stops the model: never a guess.
+    expect(() => e2eInvoiceCalls(record.replace(/in the run \(classify/, "in all (classify"))).toThrow(/not in the record/);
+    expect(() => e2eInvoiceCalls("# Another record\n")).toThrow();
+  });
+
   it("the Opus factor: the run's own Claude calls repriced at Opus list prices, about 2.1×, said as computed", () => {
     const opus = "claude-opus-5-5", t = RECORD.snapshot.traces;
     const agents = t.reduce((k, x) => k + callCostMicros(opus, x.tokens)!, 0);
@@ -104,37 +129,61 @@ describe("measured, from the main run's record", () => {
 });
 
 describe("the calculation", () => {
-  it("prices a company of 5 agents (€49 with 1,500 decisions, €3 per started 100 more) and costs Claude per decision + hosting, in EUR", () => {
+  it("takes the price from the pilot pricing's own module, never typed again: Starter, its invoices, the price per extra invoice, Business", () => {
+    expect([INPUTS.basePlanEur.value, INPUTS.includedInvoices.value, INPUTS.extraInvoiceEur.value, INPUTS.businessFromEur.value])
+      .toEqual([PRICING.starter.monthlyCents / 100, PRICING.starter.invoicesIncluded, PRICING.starter.extraInvoiceCents / 100, PRICING.business.fromMonthlyCents / 100]);
+    // The usage range hangs on what Starter includes: half of it, exactly it, five times it.
+    expect([INPUTS.usageLow.value, INPUTS.usageMid.value, INPUTS.usageHigh.value]).toEqual([PRICING.starter.invoicesIncluded / 2, PRICING.starter.invoicesIncluded, PRICING.starter.invoicesIncluded * 5]);
+  });
+
+  it("prices one company on Starter (€49 with 100 invoices, €0.25 per extra one) and costs Claude per invoice + hosting, in EUR", () => {
     const fx = INPUTS.usdPerEur.value;
     for (const s of ue.scenarios) {
-      expect(s.decisionsPerCompany).toBe(s.decisionsPerAgent * INPUTS.includedAgents.value);
-      const extra = Math.ceil(Math.max(0, s.decisionsPerCompany - INPUTS.includedDecisions.value) / INPUTS.extraDecisionsBlock.value);
-      expect(s.priceEur).toBe(INPUTS.basePlanEur.value + extra * INPUTS.extraDecisionsEur.value);
-      const usd = (s.decisionsPerCompany * ue.measured.allInMicrosPerDecision + INPUTS.workersPlanUsd.value * 1e6) / 1e6;
+      expect(s.extraInvoices).toBe(Math.max(0, s.invoices - INPUTS.includedInvoices.value));
+      expect(s.priceEur).toBe(INPUTS.basePlanEur.value + s.extraInvoices * INPUTS.extraInvoiceEur.value);
+      const usd = (s.invoices * ue.measured.microsPerInvoice + INPUTS.workersPlanUsd.value * 1e6) / 1e6;
       expect(s.costEur).toBeCloseTo(usd / fx, 10);
       expect(s.margin).toBeCloseTo((s.priceEur - s.costEur) / s.priceEur, 10);
     }
   });
 
-  it("gives low, mid and high usage, all positive on the run's mix, lowest at the 1,500 the base price includes", () => {
-    expect(ue.scenarios.map((s) => [s.usage, s.decisionsPerAgent, s.decisionsPerCompany, s.priceEurText, s.costEurText, s.marginText])).toEqual([
-      ["low", 100, 500, "€49.00", "€11.50", "77%"], ["mid", 300, 1500, "€49.00", "€25.53", "48%"], ["high", 1000, 5000, "€154.00", "€74.66", "52%"],
+  it("gives low, mid and high usage, all positive on this estimate, lowest at the 100 invoices Starter includes", () => {
+    expect(ue.scenarios.map((s) => [s.usage, s.invoices, s.extraInvoices, s.priceEurText, s.costEurText, s.marginText])).toEqual([
+      ["low", 50, 0, "€49.00", "€5.71", "88%"], ["mid", 100, 0, "€49.00", "€6.95", "86%"], ["high", 500, 400, "€149.00", "€16.82", "89%"],
     ]);
     expect(Math.min(...ue.scenarios.map((s) => s.margin))).toBe(ue.scenarios.find((s) => s.usage === "mid")!.margin);
-    expect(ue.extraBlock.claudeEur).toBeLessThan(ue.extraBlock.priceEur);
-    expect(ue.extraBlock.opusClaudeEur).toBeLessThan(ue.extraBlock.priceEur);
+    expect(ue.extraInvoice.claudeEur).toBeLessThan(ue.extraInvoice.priceEur);
+    expect(ue.extraInvoice.opusClaudeEur).toBeLessThan(ue.extraInvoice.priceEur);
+  });
+
+  it("says what the margin leaves out (the platform costs, the fee per payout) and what the replaced price's own table gave", () => {
+    // Not in the model: said in the assumptions, under the margin and on the slide. The margin is not the real margin.
+    expect(ASSUMPTIONS.find((a) => a.id === "A8")!.value).toMatch(/^the platform costs: Airwallex platform or partner fees/);
+    expect(DECK_TEXT).toContain("Gross margin, before platform costs");
+    expect(DECK_TEXT).toContain("Not counted: Airwallex's platform fees, people, the fee per payout.");
+    // The price before 12 November, at the usage it included, computed again here from the same record: 48%. It is
+    // said once, as what that price's own table gave, and nothing hides it.
+    const fx = INPUTS.usdPerEur.value;
+    const cost = (EARLIER.includedDecisions * ue.measured.allInMicrosPerDecision + INPUTS.workersPlanUsd.value * 1e6) / 1e6 / fx;
+    expect(Math.round((EARLIER.baseEur - cost) / EARLIER.baseEur * 100)).toBe(48);
+    expect(ue.earlier.margin).toBeCloseTo((EARLIER.baseEur - cost) / EARLIER.baseEur, 10);
+    expect(earlierLine()).toBe("The price before 12 November 2026 was per agent, with 1,500 Claude decisions included in €49 a company a month; at exactly that usage its own table gave a gross margin of 48%, because it sold Claude decisions close to what they cost. The pilot pricing replaces it and sells the supplier invoice instead.");
+    // 12 Nov (the owner): no margin in the doc, so the replaced price's figure is not in it either.
+    expect(SECTION).not.toContain(earlierLine());
+    expect(SECTION).toContain("No gross margin is computed here.");
+    expect(DECK_TEXT).not.toContain("48%");
   });
 
   it("checks the hosting assumption against the plan's included usage: one Durable Object awake all month fits", () => {
     expect(ue.hosting.doGbSecondsPerMonth).toBe(INPUTS.doMemoryMb.value / 1024 * INPUTS.daysPerMonth.value * 86400);
     expect(ue.hosting.doGbSecondsPerMonth).toBeLessThanOrEqual(INPUTS.doIncludedGbS.value);
-    const most = INPUTS.includedAgents.value * INPUTS.usageHigh.value;
-    expect(ue.hosting.workerRequestsPerDecision).toBe(INPUTS.workerIncludedRequests.value / most);
-    expect(ue.hosting.doRequestsPerDecision).toBe(INPUTS.doIncludedRequests.value / most);
+    const most = INPUTS.usageHigh.value;
+    expect(ue.hosting.workerRequestsPerInvoice).toBe(INPUTS.workerIncludedRequests.value / most);
+    expect(ue.hosting.doRequestsPerInvoice).toBe(INPUTS.doIncludedRequests.value / most);
   });
 });
 
-describe("the price, word for word everywhere (Max, 6 Nov)", () => {
+describe("the price, word for word everywhere (Max, 6 Nov; one model since the panel's review of 12 Nov)", () => {
   /** Every Markdown, TypeScript and HTML file under docs/ and src/ (records aside), the README, the built Home and the deck. */
   function surfaces(): [string, string][] {
     const out: [string, string][] = [];
@@ -150,23 +199,29 @@ describe("the price, word for word everywhere (Max, 6 Nov)", () => {
     return out;
   }
 
-  it("is the approved sentence, built from the model's own inputs", () => {
-    expect(PRICE_LINE).toBe("€49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions.");
+  it("is the pilot pricing's one sentence, built from its own module and from the model's inputs alike", () => {
+    expect(PRICE_LINE).toBe("Starter €49 a month (100 invoices, then €0.25 each); Business from €249 a month; a small fee per payout.");
+    expect(PRICE_LINE).toBe(PRICING_LINE);
     expect(priceFromInputs()).toBe(PRICE_LINE);
+    expect(WHY_COMPANY.find((l) => l.label === PRICING_LABEL)!.text).toBe(`${PRICE_LINE} A hypothesis.`);
   });
 
-  it("every price statement is that sentence, and the old price is gone", () => {
+  it("every price statement is that sentence, and the earlier prices are gone", () => {
     const seen = new Set<string>();
+    // The earlier price, per agent with Claude decisions included (6 November), and the one before it.
+    const earlier = /€49 per company|per extra agent|€3 per extra|EUR 49|EUR 10 (?:a month )?for each extra agent|including 5 agents|€10 a month for each extra agent|five agents included|with agents included/;
     for (const [name, raw] of surfaces()) {
+      // The release notes are a dated log of what each release said, and the sentence is built in two modules.
+      if (name === "docs/submission/release-notes.md") continue;
       const t = raw.replace(/\s*\n\s*/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&");
-      for (const m of t.matchAll(/€49 per company|€10 per extra agent|€3 per extra/g)) {
-        const at = t.lastIndexOf("€49 per company", m.index);
+      for (const m of t.matchAll(/Starter €49|then €0\.25 each|Business from €249/g)) {
+        const at = t.lastIndexOf("Starter €49", m.index);
         expect({ name, same: at >= 0 && t.slice(at, at + PRICE_LINE.length) === PRICE_LINE && m.index < at + PRICE_LINE.length }).toEqual({ name, same: true });
         seen.add(name);
       }
-      expect({ name, old: /EUR 49|EUR 10 (?:a month )?for each extra agent|including 5 agents;|€10 a month for each extra agent/.test(t) }).toEqual({ name, old: false });
+      expect({ name, earlier: earlier.exec(t)?.[0] ?? null }).toEqual({ name, earlier: null });
     }
-    for (const name of ["README.md", "docs/submission/README.md", "docs/business/model.md", "docs/submission/qa.md", "docs/claims.md", "proof", "deck", "src/config/brand.ts"]) expect({ name, said: seen.has(name) }).toEqual({ name, said: true });
+    for (const name of ["README.md", "docs/submission/README.md", "docs/business/model.md", "docs/after-the-kit.md", "docs/submission/qa.md", "docs/claims.md", "proof", "deck"]) expect({ name, said: seen.has(name) }).toEqual({ name, said: true });
   });
 });
 
@@ -202,17 +257,21 @@ describe("no unsourced numbers", () => {
 });
 
 describe("docs/business/model.md", () => {
+  it("holds exactly the section the module writes: no number in it is typed by hand", () => {
+    expect(SECTION).toBe(sectionMarkdown());
+  });
+
   it("has the section, marked hypothesis, with the tables the module computes", () => {
     expect(MODEL).toContain(SECTION_START);
     expect(MODEL).toContain(SECTION_END);
     expect(SECTION).toContain("## Unit economics (hypothesis)");
     expect(SECTION).toContain(assumptionsTable());
     expect(SECTION).toContain(measuredTable());
-    expect(SECTION).toContain(scenarioTable());
+    expect(SECTION).not.toContain(scenarioTable());
     expect(SECTION).toContain(sourcesList());
     expect(SECTION.match(/hypothesis/gi)!.length).toBeGreaterThanOrEqual(3);
     // The Opus line sits right under the outcome table (Max, 6 Nov).
-    expect(SECTION).toContain(`${scenarioTable()}\n\n${opusLine()}`);
+    expect(SECTION).toContain(opusLine());
   });
 
   it("says the outcome in one currency (EUR), with the rate, its date and its source", () => {
@@ -244,10 +303,10 @@ describe("the deck's business slide", () => {
   });
 
   it("shows the same numbers as model.md, the Opus line and the payments sentence", () => {
-    for (const s of ue.scenarios) for (const v of [s.priceEurText, s.costEurText, s.marginText, s.decisionsPerAgent.toLocaleString("en-GB"), s.decisionsPerCompany.toLocaleString("en-GB")]) expect({ v, on: DECK_TEXT.includes(v) }).toEqual({ v, on: true });
+    for (const s of ue.scenarios) for (const v of [s.priceEurText, s.costEurText, s.marginText, `${s.usage === "low" ? "Low" : s.usage === "mid" ? "Mid" : "High"}: ${s.invoices.toLocaleString("en-GB")}`]) expect({ v, on: DECK_TEXT.includes(v) }).toEqual({ v, on: true });
     expect(DECK_TEXT).toContain(opusLine());
-    expect(DECK_TEXT).toContain(paymentsLine());
-    expect(DECK_TEXT).toContain(`USD ${ue.measured.allInPerDecisionUsd}`);
+    expect(DECK_TEXT).toContain(invoiceLine());
+    expect(DECK_TEXT).toContain(`USD ${ue.measured.perInvoiceUsd}`);
     expect(DECK_TEXT).toContain("1.1165");
   });
 

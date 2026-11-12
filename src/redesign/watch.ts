@@ -1,17 +1,18 @@
-// Watch: the whole recorded agent run as an animation, event by event, from its record: each agent's decision in its
-// own words with its model and tools, the money on its rail with the result and its proof (a testnet tx or an
-// Airwallex id), the CFO's Face ID on the phone (both signatures when four eyes applies). Play/pause and one switch
-// (Highlights / Full run), nothing more (Max, 7 Nov); labelled with the run's own name.
+// /watch: the replay of the whole recorded agent run, event by event, from its record: each agent's decision in its
+// own words with its model, the money on its rail with the result and its proof (a testnet tx or an Airwallex id), the
+// CFO's Face ID on the phone (both signatures when four eyes applies). Play/pause and one switch (Highlights / Full
+// run), nothing more (Max, 7 Nov). Out of the menu and out of the judge tour since 12 Nov (home-story): the page stays
+// at /watch, under the Proof tab, and its heading says what it is, a replay of the run of that day. In sight it shows
+// no tool names and no proposal numbers; the fold under "Every step" has them all, with every word.
 
 import { WORLD_SETUP, FILM_LINK, FILM_URL } from "../config/brand.js";
-import { agentRun, callBadge, callTip, highlights, moments, type AgentRun, type Ev } from "./run.js";
+import { agentRun, callBadge, callTip, highlights, moments, runSpan, type AgentRun, type Ev } from "./run.js";
 import { AVATAR, esc, icon, iconSet, page, stageHtml } from "./ui.js";
 
-const CSS = `/* The next step (Max, 7 Nov: watch, then try, then the proof). */
+const CSS = `/* The way on from the replay: try it yourself. */
 .filmlink { color: var(--accent); font-weight: 650; font-size: 15px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
 .wside { display: grid; gap: 14px; align-content: start; min-width: 0; }
-.nextstep { display: grid; grid-template-columns: 30px minmax(0, 1fr) 22px; align-items: center; gap: 12px; padding: 14px 16px; text-decoration: none; color: var(--text); border: 2px solid var(--accent); }
-.nextstep .fn { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; font-weight: 750; }
+.nextstep { display: grid; grid-template-columns: minmax(0, 1fr) 22px; align-items: center; gap: 12px; padding: 14px 16px; text-decoration: none; color: var(--text); border: 2px solid var(--accent); }
 .nextstep b { display: block; font-size: 17px; } .nextstep small { color: var(--muted); font-size: 14.5px; } .nextstep .i { color: var(--accent); }
 .watch { padding: 26px 0 24px; }
 .whead { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 8px; }
@@ -29,7 +30,11 @@ const CSS = `/* The next step (Max, 7 Nov: watch, then try, then the proof). */
 .progress em { position: absolute; top: -3px; width: 2px; height: 12px; background: var(--text); opacity: .5; }
 .count { font-size: 15px; color: var(--faint); font-variant-numeric: tabular-nums; margin-left: auto; }
 .logp { padding: 6px 0; max-height: 700px; overflow: auto; }
-.logp h2 { font-size: 15px; font-weight: 750; letter-spacing: .04em; color: var(--faint); text-transform: uppercase; padding: 12px 18px 6px; }
+/* Every step, with its tools and ids, is a fold: closed until asked for. */
+.logp > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 4px 18px; color: var(--faint); border-radius: var(--r); }
+.logp > summary::-webkit-details-marker { display: none; }
+.logp > summary .i { transition: transform .2s; } .logp[open] > summary .i { transform: rotate(180deg); }
+.logp h2 { font-size: 15px; font-weight: 750; letter-spacing: .04em; color: var(--faint); text-transform: uppercase; }
 ol.log { list-style: none; margin: 0; padding: 0 10px 10px; display: grid; gap: 4px; }
 ol.log li { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 10px; padding: 10px 8px; border-radius: 14px; animation: in .35s ease-out; }
 ol.log li:first-child { background: var(--sunken); }
@@ -87,6 +92,8 @@ const JS = `
     else { who = e.k === "shield" ? "Blocked" : "The world changes"; what = first(e.text); }
     cap.textContent = ""; cap.appendChild(el("small", "", who)); cap.appendChild(document.createTextNode(what));
   }
+  // A step as the stage and the caption show it: its words without proposal numbers (see, seeWhat: built with the page).
+  function sight(e) { if (e.see == null && e.seeWhat == null) return e; var c = {}; for (var k in e) c[k] = e[k]; if (e.see != null) c.text = e.see; if (e.seeWhat != null) c.what = e.seeWhat; return c; }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   function svg(name) { var t = document.createElement("template"); t.innerHTML = IC[name]; return t.content.firstChild; }
   function time(at) { return at.slice(11, 19) + " UTC"; }
@@ -96,6 +103,8 @@ const JS = `
     requestAnimationFrame(function () { if (p.scrollHeight > p.clientHeight + 2) m.hidden = false; });
     m.addEventListener("click", function () { var open = p.classList.toggle("clamp"); m.textContent = open ? "more" : "less"; });
   }
+  // Nothing can be measured in a closed fold: when it opens, each long line gets its "more".
+  document.getElementById("steps").addEventListener("toggle", function () { log.querySelectorAll("p.clamp").forEach(function (p) { var m = p.nextElementSibling; if (m && p.scrollHeight > p.clientHeight + 2) m.hidden = false; }); });
   function proofEl(pr) {
     if (!pr) return null;
     if (pr.href) { var a = el("a", "pf", pr.label + " ↗"); a.href = pr.href; a.target = "_blank"; a.rel = "noopener"; return a; }
@@ -180,7 +189,7 @@ const JS = `
     var s = sceneOf(Math.max(0, i - 1));
     document.querySelectorAll("#chapters button").forEach(function (b) { b.classList.toggle("on", +b.getAttribute("data-n") === s); });
     backBtn.disabled = i <= 1; fwdBtn.disabled = i >= ev.length;
-    if (i > 0) caption(ev[i - 1]);
+    if (i > 0) caption(sight(ev[i - 1]));
   }
   function setPlay(on) {
     playing = on; playBtn.textContent = ""; playBtn.appendChild(svg(on ? "pause" : i >= ev.length ? "rotate-ccw" : "play"));
@@ -189,17 +198,17 @@ const JS = `
   }
   function tick() {
     if (i >= ev.length) { setPlay(false); return; }
-    var e = ev[i++]; log.insertBefore(entry(e), log.firstChild); var ms = st.show(e, { sentences: 2 }); mark();
+    var e = ev[i++]; log.insertBefore(entry(e), log.firstChild); var ms = st.show(sight(e), { sentences: 2 }); mark();
     timer = setTimeout(function () { if (playing) tick(); }, Math.round(ms / speed));
   }
   function jump(k) {
     clearTimeout(timer); st.reset(); log.textContent = "";
     st.prime(ev, k);
-    for (i = 0; i < k; i++) { var e = ev[i]; if (e.k !== "money") st.show(e, { instant: true, sentences: 2 }); log.insertBefore(entry(e), log.firstChild); }
+    for (i = 0; i < k; i++) { var e = ev[i]; if (e.k !== "money") st.show(sight(e), { instant: true, sentences: 2 }); log.insertBefore(entry(e), log.firstChild); }
     st.clear(); mark();
   }
   playBtn.addEventListener("click", function () { if (!playing && i >= ev.length) jump(0); setPlay(!playing); });
-  function stepTo(k) { setPlay(false); k = Math.max(1, Math.min(ev.length, k)); jump(k - 1); var e = ev[i++]; log.insertBefore(entry(e), log.firstChild); st.show(e, { sentences: 2, instant: st.reduce }); mark(); }
+  function stepTo(k) { setPlay(false); k = Math.max(1, Math.min(ev.length, k)); jump(k - 1); var e = ev[i++]; log.insertBefore(entry(e), log.firstChild); st.show(sight(e), { sentences: 2, instant: st.reduce }); mark(); }
   backBtn.addEventListener("click", function () { stepTo(i - 1); });
   fwdBtn.addEventListener("click", function () { stepTo(i + 1); });
   document.querySelectorAll("#speed button").forEach(function (b) {
@@ -220,7 +229,7 @@ const JS = `
   var sc = /[?&]scene=(\\d)/.exec(location.search), at = /[?&]at=(\\d+)/.exec(location.search), still = /[?&]autoplay=0/.test(location.search);
   var startAt = at ? Math.min(ev.length, +at[1]) : sc ? ((SC.filter(function (x) { return x.n === +sc[1]; })[0] || { start: 0 }).start) : 0;
   jump(startAt);
-  if (still || st.reduce) { setPlay(false); if (startAt < ev.length) { var e0 = ev[startAt]; if (e0) { st.show(e0, { instant: true, sentences: 2 }); log.insertBefore(entry(e0), log.firstChild); i = startAt + 1; mark(); } } } else setPlay(true);
+  if (still || st.reduce) { setPlay(false); if (startAt < ev.length) { var e0 = ev[startAt]; if (e0) { st.show(sight(e0), { instant: true, sentences: 2 }); log.insertBefore(entry(e0), log.firstChild); i = startAt + 1; mark(); } } } else setPlay(true);
 })();`;
 
 /** Watch's four moments, the same as Home's animation, each at its anchor event: marks on the progress bar and ?scene=n. */
@@ -229,18 +238,56 @@ const JUMPS: [1 | 2 | 3 | 4, string, keyof ReturnType<typeof moments>][] = [[1, 
 /** An event as the page's script reads it: a decision carries its Claude call badge (D2). */
 const withBadge = <T extends Ev>(e: T): T & { badge?: string; tip?: string } => (e.k === "say" && e.call ? { ...e, badge: callBadge(e.call), tip: callTip(e.call) } : e);
 
+/** A proposal number, or several joined ("P-0002/P-0003"). */
+const PROPOSAL = /\bP-\d{3,}(?:\/P-\d{3,})*/;
+/**
+ * A step's words as the stage and the caption show them, outside the fold: without proposal numbers. Nothing is
+ * reworded. Of several sentences, those that name a proposal are left out, and "…" marks the gap before the words that
+ * follow; a single line (Purser's own, about a payment or a change) loses only the reference ("…, for P-0005",
+ * "(P-0006, Face ID)"), and "…" stands in for one that cannot be cut out. The fold has every word and every id.
+ */
+export function inSight(text: string): string {
+  if (!PROPOSAL.test(text)) return text;
+  const sentences = text.replace(/\s+/g, " ").trim().split(/(?<=[.!?])\s+(?=[A-Z"(])/);
+  if (sentences.some((s) => !PROPOSAL.test(s))) {
+    const out: string[] = [];
+    let gap = false;
+    for (const s of sentences) { if (PROPOSAL.test(s)) gap = true; else { out.push(gap ? `… ${s}` : s); gap = false; } }
+    return out.join(" ");
+  }
+  const id = PROPOSAL.source;
+  return text.replace(new RegExp(`\\(${id}(?:,\\s*|\\s+)?`, "g"), "(").replace(/\s*\(\)/g, "").replace(new RegExp(`,?\\s+(?:for|as|on)\\s+${id}`, "g"), "").replace(new RegExp(id, "g"), "…");
+}
+/** The same event with its words for the stage, where they differ from the record's: `see` for a text, `seeWhat` for a payment's line. */
+function withSight<T extends Ev>(e: T): T & { see?: string; seeWhat?: string } {
+  const text = "text" in e && typeof e.text === "string" ? e.text : null, what = e.k === "money" ? e.what : null;
+  return { ...e, ...(text !== null && inSight(text) !== text ? { see: inSight(text) } : {}), ...(what !== null && inSight(what) !== what ? { seeWhat: inSight(what) } : {}) };
+}
+const dayMonth = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(iso));
+/**
+ * The heading says what the page is: a replay, of which run, of which day ("Replay of the main run, 3 November"). The
+ * words are the run label's own start and the day is the run's first event, from the record; the pill beside it carries
+ * the rest of the label (the hours, test money, who decided).
+ */
+export function replayHead(run: AgentRun): { heading: string; rest: string } {
+  const m = /^(Replay of .+?), \d+ \S+ (\d\d:\d\d.*)$/.exec(run.label);
+  return { heading: `${m ? m[1]! : `Replay of ${run.name}`}, ${dayMonth(runSpan(run.record).from)}`, rest: m ? m[2]! : run.label };
+}
+
 export function watchPage(run: AgentRun = agentRun()): string {
   const hl = highlights(run);
   const m = moments(run.events);
   const full = JUMPS.map(([n, title, k]) => ({ n, title, start: Math.max(0, m[k] as number) }));
   const hlScenes = full.map((j) => ({ ...j, start: Math.max(0, hl.findIndex((e) => e.at === run.events[j.start]!.at && e.k === run.events[j.start]!.k)) }));
   const s1 = run.scenes.find((s) => s.n === 1);
+  const head = replayHead(run);
+  const forPage = (e: Ev) => withSight(withBadge(e));
   const body = `<main class="watch"><div class="wrap">
-  <div class="whead"><h1>Watch the agents work</h1><span class="pill run">${icon("database", 14)}${esc(run.label)}</span><a class="filmlink" href="${FILM_URL}" target="_blank" rel="noopener">${icon("play", 14)}${esc(FILM_LINK)} ↗</a></div>
+  <div class="whead"><h1>${esc(head.heading)}</h1><span class="pill run">${icon("database", 14)}${esc(head.rest)}</span><a class="filmlink" href="${FILM_URL}" target="_blank" rel="noopener">${icon("play", 14)}${esc(FILM_LINK)} ↗</a></div>
   <p class="setup">${esc(WORLD_SETUP)}</p>
   <div class="wgrid">
     <div>
-      <p class="cap" id="cap" aria-live="off"><small>Press play</small>One step at a time, with the agent's own words on the right.</p>
+      <p class="cap" id="cap" aria-live="off"><small>Press play</small>One step at a time, in the agents' own words.</p>
       ${stageHtml(run.agents, s1?.steps[0]?.text ?? "Northwind Outdoor sells live stock data per query")}
       <div class="controls">
         <button class="sbtn" id="back" type="button" aria-label="Previous step">${icon("arrow-right", 18)}</button>
@@ -254,14 +301,14 @@ export function watchPage(run: AgentRun = agentRun()): string {
       <div class="chapters" id="chapters" role="group" aria-label="Chapters"></div>
     </div>
     <div class="wside">
-      <a class="nextstep card" href="try" data-next="try"><span class="fn">2</span><span class="ft"><b>Now try it yourself</b><small>Sign with your Face ID · about a minute</small></span>${icon("arrow-right", 20)}</a>
-      <section class="card logp" aria-labelledby="h-log"><h2 id="h-log">Every step, newest first</h2><ol class="log" id="log" aria-live="polite"></ol></section>
+      <a class="nextstep card" href="try" data-next="try"><span class="ft"><b>Now try it yourself</b><small>Sign with your Face ID · about a minute</small></span>${icon("arrow-right", 20)}</a>
+      <details class="card logp" id="steps"><summary><h2 id="h-log">Every step, with its tools and ids</h2>${icon("chevron-down", 18)}</summary><ol class="log" id="log" aria-labelledby="h-log"></ol></details>
     </div>
   </div>
 </div></main>`;
   return page({
-    title: "Watch the agents", description: "A replay of a recorded agent run: each decision in the agent's own words, the money on its rail, the CFO's Face ID.", tab: "watch", css: CSS, body, js: JS,
-    data: { agents: run.agents, events: run.events.map(withBadge), scenes: full, highlights: hl.map(withBadge), hlScenes, icons: { ...iconSet(["ban", "zap", "credit-card", "landmark", "scan-face", "shield-check", "sparkles", "play", "pause", "rotate-ccw", "clock"]), ...Object.fromEntries(Object.entries(AVATAR).map(([id, name]) => [`av-${id}`, icon(name, 18)])) } },
+    title: head.heading, description: "A replay of a recorded agent run: each decision in the agent's own words, the money on its rail, the CFO's Face ID.", tab: "proof", css: CSS, body, js: JS,
+    data: { agents: run.agents, events: run.events.map(forPage), scenes: full, highlights: hl.map(forPage), hlScenes, icons: { ...iconSet(["ban", "zap", "credit-card", "landmark", "scan-face", "shield-check", "sparkles", "play", "pause", "rotate-ccw", "clock"]), ...Object.fromEntries(Object.entries(AVATAR).map(([id, name]) => [`av-${id}`, icon(name, 18)])) } },
     source: `Source: ${run.file} (${run.name}).`,
   });
 }

@@ -64,10 +64,10 @@ Threat model: [security.md](security.md). Controls: [controls.md](controls.md). 
 
 Built with:
 
-<img src="assets/logos/built-with.png" alt="Built with Airwallex, Metal, Claude" height="44">
+<img src="assets/logos/built-with.png" alt="Built with Airwallex, Metal, Claude, Visa, Cloudflare" height="44">
 
 The logos are the partners' official files, unmodified ([sources](assets/logos/SOURCES.md)); no endorsement is
-implied. Named in text only: Visa, Cloudflare, Moneybird, T:0 (why: [sources](assets/logos/SOURCES.md#left-out-named-in-text-only)).
+implied. Named in text only: Moneybird, T:0 (why: [sources](assets/logos/SOURCES.md#left-out-named-in-text-only)).
 Every run is in sandbox or testnet with test money; dates and records in [runs/README.md](runs/README.md).
 
 - **Airwallex (sandbox).** Main run, 3 Nov: the hash the CFO signed is in Airwallex's own record of SWIFT transfer `03360bfa…` (EUR 240.00). awx-1, 7 Nov: Airwallex declined agents' cards with its own controls (`LIMIT_EXCEEDED`, `MERCHANT_CATEGORY_NOT_ALLOWED`). Two locks, from 10 Nov: A labelled virtual test passkey signed the terms in Purser; Purser created transfer 4074d684… for EUR 240.00. Airwallex held it IN_APPROVAL until a person approved it at Airwallex, 12 Nov; then PAID (simulated settlement).
@@ -96,20 +96,20 @@ Running it live (sandbox keys, a Metal RPC): [run-it.md](run-it.md).
 
 | Folder | What | Files |
 |---|---|---|
-| `src/` | Purser: agents, policy, passkey approvals, executors per rail, ledger, the site's pages | 529 |
-| `cloud/` | Purser Cloud: the small-company product (invoices in, read, paid after Face ID, booked, archived) | 28 |
-| `worker/` | The hosted site and relay (Cloudflare Worker): /try/sign, the phone-to-runner relay | 13 |
+| `src/` | Purser: agents, policy, passkey approvals, executors per rail, ledger, the site's pages | 650 |
+| `cloud/` | Purser Cloud: the small-company product (invoices in, read, paid after Face ID, booked, archived) | 81 |
+| `worker/` | The hosted site and relay (Cloudflare Worker): /try/sign, the phone-to-runner relay | 17 |
 | `contracts/` | Solidity contracts used on Metal testnet, with their ABIs | 7 |
-| `test/` | Unit, integration and browser checks | 474 |
-| `docs/` | Run logs, records, security, plans (the generated visuals in `docs/assets/` not counted) | 398 |
+| `test/` | Unit, integration and browser checks | 602 |
+| `docs/` | Run logs, records, security, plans (the generated visuals in `docs/assets/` not counted) | 447 |
 | `fixtures/` | Test invoices, including the hostile ones (bank change, look-alike, injection) | 19 |
 
 ## Tests and CI
 
 - **4523 of 4525 tests passed** in 421 files, 1 failed, 1 skipped, on commit `596114a` ([summary](assets/test-summary.json)); CI runs them on every push.
-- 417 test files under `test/`, 11 browser checks (Playwright, 390 and 1440 px), 2 workflows.
-- CI steps (from `.github/workflows/ci.yml`): Tests with coverage, per area; Relay Worker type check; Cloud tests on local D1; npm run judge (no keys, no ledger); Guest pages in Chromium (/, /demo, /month at 390 and 1440 px); Agent trace in Chromium (390 and 1440 px, light and dark); /try/sign in Chromium (360, 390 and 1440 px, light and dark; layout after signing and after the tamper); Purser Cloud's console in Chromium (first run and sign-in with a virtual passkey, every page at 1440 and 390 px); /try/sign in WebKit (390 px light, 1440 px dark; up to the passkey step where WebKit has WebAuthn); gitleaks, whole history of this commit; SBOM (CycloneDX, runtime dependencies); Semgrep (blocking; public sets plus .semgrep/purser.yml).
-- 65 dated run logs in [runs/](runs/).
+- 525 test files under `test/`, 13 browser checks (Playwright, 390 and 1440 px), 2 workflows.
+- CI steps (from `.github/workflows/ci.yml`): Tests with coverage, per area; Engine tests through the Durable Object handle; Hostile-model eval of the payables agents (the line /claude shows); Relay Worker type check; Cloud tests on local D1; npm run judge (no keys, no ledger); Guest pages in Chromium (/, /demo, /month at 390 and 1440 px); Agent trace in Chromium (390 and 1440 px, light and dark); /try/sign in Chromium (360, 390 and 1440 px, light and dark; layout after signing and after the tamper); The CFO's phone pages in Chromium (enrol, approve in every state, policy; 390 and 1440 px, light and dark); Purser Cloud's console in Chromium (first run and sign-in with a virtual passkey, every page at 1440 and 390 px); /try/sign in WebKit (390 px light, 1440 px dark; up to the passkey step where WebKit has WebAuthn); Playwright Firefox, with its system libraries; Guest pages in Firefox (360, 390, 768 and 1440 px, light and dark); /try/sign in Firefox (360, 390 and 1440 px, light and dark; signed with the software passkey); gitleaks, whole history of this commit; SBOM (CycloneDX, runtime dependencies); Semgrep (blocking; public sets plus .semgrep/purser.yml).
+- 77 dated run logs in [runs/](runs/).
 
 ## Limits, and what is simulated
 

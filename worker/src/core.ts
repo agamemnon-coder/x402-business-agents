@@ -49,6 +49,13 @@ export interface Pages {
   /** The partner pages (src/partners/), no script; absent in a bundle built before them. */
   airwallex?: string;
   claude?: string;
+  /** /pricing and /security, the product pages under "More" (src/redesign/pricing.ts, security.ts), no script; absent in a bundle built before them. */
+  pricing?: string;
+  security?: string;
+  /** /docs, "Docs and API", under "More" too (src/redesign/docs.ts), no script; absent in a bundle built before it. */
+  docs?: string;
+  /** /status, under "More" too (src/redesign/status.ts): its one script reads this Worker's own /health; absent in a bundle built before it. */
+  status?: string;
   /** /t0 (owner, 12 Nov): Purser's books in T:0's ledger. */
   t0?: string;
   /** The redesign's public pages (Home, Watch, Proof), no key needed; absent in a bundle built before them. */
@@ -85,7 +92,7 @@ export interface Pages {
   font: string;
   /** The sponsors' logos (base64), served as /assets/<name>. */
   images: Record<string, { type: string; data: string }>;
-  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; t0?: string; home?: string; watch?: string; replay?: string; proof?: string; trace?: string; runs?: string; notFound?: string; trySign?: string; tryVerify?: string; judge?: string; approve: string; enrol: string; policy: string };
+  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; pricing?: string; security?: string; docs?: string; status?: string; t0?: string; home?: string; watch?: string; replay?: string; proof?: string; trace?: string; runs?: string; notFound?: string; trySign?: string; tryVerify?: string; judge?: string; approve: string; enrol: string; policy: string };
 }
 
 const MAX_STATE_BYTES = 1_500_000;
@@ -180,6 +187,10 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/visa" && pages.visa) return page(pages.visa, pages.csp.visa);
   if (path === "/airwallex" && pages.airwallex && pages.csp.airwallex) return page(pages.airwallex, pages.csp.airwallex);
   if (path === "/claude" && pages.claude && pages.csp.claude) return page(pages.claude, pages.csp.claude);
+  if (path === "/pricing" && pages.pricing && pages.csp.pricing) return page(pages.pricing, pages.csp.pricing);
+  if (path === "/security" && pages.security && pages.csp.security) return page(pages.security, pages.csp.security);
+  if (path === "/docs" && pages.docs && pages.csp.docs) return page(pages.docs, pages.csp.docs);
+  if (path === "/status" && pages.status && pages.csp.status) return page(pages.status, pages.csp.status);
   if (path === "/t0" && pages.t0 && pages.csp.t0) return page(pages.t0, pages.csp.t0);
   if (path === "/metal/report" && pages.metalReport) return page(pages.metalReport, pages.csp.metalReport);
   if (path.startsWith("/approve/") && PROPOSAL_ID.test(path.slice("/approve/".length))) return page(pages.approve, pages.csp.approve);

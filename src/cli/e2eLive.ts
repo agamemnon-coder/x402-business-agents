@@ -11,7 +11,7 @@ import { CallBudget, PHASE2_BUDGET, type Service } from "../e2e/budget.js";
 import { estimateLive } from "../e2e/estimate.js";
 import { functionalCurrency } from "../accounting/t0.js";
 import { runPlatformE2E, type RunSummary } from "../e2e/platformRun.js";
-import { budgetedReader, dryRunDeps, liveDeps, parserOnly, PROXY_INJECTED, PURSER_PLATFORM_ACCOUNT } from "../e2e/setup.js";
+import { budgetedReader, dryRunDeps, E2E_FEE_BPS, liveDeps, parserOnly, PROXY_INJECTED, PURSER_PLATFORM_ACCOUNT } from "../e2e/setup.js";
 import { finishRun } from "../e2e/finish.js";
 import { openDb } from "../db/open.js";
 import { retryCompany } from "../e2e/retry.js";
@@ -84,7 +84,7 @@ if (retryAt >= 0) {
     for (const key of keys) {
       const c = WORLD.find((w) => w.key === key), account = facts.find((f) => f.key === key)?.account;
       if (!c || !account) throw new Error(`${key}: not a company of this run`);
-      await retryCompany({ platform: { feeAccount: PURSER_PLATFORM_ACCOUNT }, railFor, feeBps: "50", now: () => new Date(), log: retryLog }, runDir, { ...c, accountId: account }, { onlyFirst: args.includes("--one") });
+      await retryCompany({ platform: { feeAccount: PURSER_PLATFORM_ACCOUNT }, railFor, feeBps: E2E_FEE_BPS, now: () => new Date(), log: retryLog }, runDir, { ...c, accountId: account }, { onlyFirst: args.includes("--one") });
     }
   } catch (e) {
     for (const key of keys) {
