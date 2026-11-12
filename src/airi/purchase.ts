@@ -168,7 +168,8 @@ function stateRefusal(db: DB, agent: Agent, now: Date): AiriDecision | null {
 }
 
 const dayOf = (now: Date) => now.toISOString().slice(0, 10);
-const aloneToday = (db: DB, now: Date) => (db.prepare("SELECT COUNT(*) AS n FROM airi_purchases WHERE day = ? AND route = 'alone' AND status != 'RELEASED'").get(dayOf(now)) as { n: number }).n;
+/** This agent's purchases without Face ID today: each agent has its own count (src/airi/policy.ts AIRI_AGENTS). */
+const aloneToday = (db: DB, now: Date, agent: string) => (db.prepare("SELECT COUNT(*) AS n FROM airi_purchases WHERE day = ? AND route = 'alone' AND status != 'RELEASED' AND agent = ?").get(dayOf(now), agent) as { n: number }).n;
 
 interface Row {
   action_id: string; agent: Agent; route: "alone" | "cfo"; proposal_id: string | null; order_sha256: string; terms_json: string;
@@ -196,7 +197,7 @@ export async function requestAiriPurchase(db: DB, deps: AiriDeps, req: AiriPurch
   const expiresAt = new Date(now.getTime() + TTL_MS).toISOString().replace(/\.\d{3}Z$/, "Z");
   // Decided and, within the limit, reserved in one write transaction: two requests cannot both take the day's last one.
   const decided = db.transaction((): AiriDecision => {
-    const d = stateRefusal(db, req.agent, now) ?? decideAiriPurchase(airiPolicy(db), req, aloneToday(db, now));
+    const d = stateRefusal(db, req.agent, now) ?? decideAiriPurchase(airiPolicy(db, req.agent), req, aloneToday(db, now, req.agent));
     if (d.route !== "alone") return d;
     const terms = airiTerms(req, actionId, expiresAt);
     db.prepare(`INSERT INTO airi_purchases (action_id, agent, route, proposal_id, order_sha256, terms_json, cents, day, status, created_at, updated_at)
@@ -215,7 +216,7 @@ export async function requestAiriPurchase(db: DB, deps: AiriDeps, req: AiriPurch
         terms: airiTerms(req, nextProposalId(db), expiresAt), createdBy: req.agent, assignId: true,
         explanation: `An Airi purchase ${decided.why}: the CFO's Face ID over agent, amount, currency, merchant and items.`,
         // Checked again inside the proposal's own write lock.
-        guard: (g) => { const again = stateRefusal(g, req.agent, now) ?? decideAiriPurchase(airiPolicy(g), req, Number.MAX_SAFE_INTEGER); return again.route === "refused" ? `${again.code}: ${again.reason}` : null; },
+        guard: (g) => { const again = stateRefusal(g, req.agent, now) ?? decideAiriPurchase(airiPolicy(g, req.agent), req, Number.MAX_SAFE_INTEGER); return again.route === "refused" ? `${again.code}: ${again.reason}` : null; },
       }, now);
     } catch (e) {
       const reason = (e as Error).message;
@@ -247,7 +248,7 @@ export async function executeAiriPurchase(db: DB, deps: AiriDeps, proposalId: st
   }
   // The policy may have tightened since the CFO signed: checked again now; a refusal closes the proposal.
   const stored = JSON.parse(p.terms_json) as AiriTerms;
-  const again = stateRefusal(db, stored.agent, now) ?? decideAiriPurchase(airiPolicy(db), requestFromTerms(stored), Number.MAX_SAFE_INTEGER);
+  const again = stateRefusal(db, stored.agent, now) ?? decideAiriPurchase(airiPolicy(db, stored.agent), requestFromTerms(stored), Number.MAX_SAFE_INTEGER);
   if (again.route === "refused") {
     audit(db, "system", "airi.purchase_refused", proposalId, { agent: stored.agent, by: "purser", code: again.code, reason: safe(again.reason) }, now);
     closeAsStale(db, proposalId, { error: `${again.code}: ${again.reason}` }, {}, now);

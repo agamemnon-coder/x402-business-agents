@@ -653,3 +653,14 @@
 {"block":"ap-agents","usd_micros":13912,"what":"ap-agent-evals payer rt-payee-orders opus","at":"2026-11-12T13:35:56.675Z"}
 {"block":"ap-agents","usd_micros":14696,"what":"ap-agent-evals payer rt-late-approved opus","at":"2026-11-12T13:36:02.072Z"}
 {"block":"ap-agents","usd_micros":19992,"what":"ap-agent-evals payer rt-floor-waived opus","at":"2026-11-12T13:36:10.339Z"}
+{"block":"soak","usd_micros":102663,"what":"chain soak soak-2026-11-12-01 (Claude live, rails stand-in)","run":"soak-2026-11-12-01","at":"2026-11-12T14:28:14.376Z"}
+{"block":"soak","usd_micros":160795,"what":"chain soak soak-2026-11-12-02 (Claude live, rails stand-in)","run":"soak-2026-11-12-02","at":"2026-11-12T14:30:09.746Z"}
+{"block":"soak","usd_micros":49937,"what":"chain soak soak-2026-11-12-03 (Claude live, rails stand-in)","run":"soak-2026-11-12-03","at":"2026-11-12T14:30:58.261Z"}
+{"block":"soak","usd_micros":130024,"what":"chain soak soak-2026-11-12-04 (Claude live, rails stand-in)","run":"soak-2026-11-12-04","at":"2026-11-12T14:32:15.101Z"}
+{"block":"soak","usd_micros":118485,"what":"chain soak soak-2026-11-12-05 (Claude live, rails stand-in)","run":"soak-2026-11-12-05","at":"2026-11-12T14:33:39.481Z"}
+{"block":"soak","usd_micros":95271,"what":"chain soak soak-2026-11-12-06 (Claude live, rails stand-in)","run":"soak-2026-11-12-06","at":"2026-11-12T14:34:54.170Z"}
+{"block":"soak","usd_micros":123384,"what":"chain soak soak-2026-11-12-07 (Claude live, rails stand-in)","run":"soak-2026-11-12-07","at":"2026-11-12T14:36:17.006Z"}
+{"block":"soak","usd_micros":127836,"what":"chain soak soak-2026-11-12-08 (Claude live, rails stand-in)","run":"soak-2026-11-12-08","at":"2026-11-12T14:37:51.474Z"}
+{"block":"soak","usd_micros":105181,"what":"chain soak soak-2026-11-12-09 (Claude live, rails stand-in)","run":"soak-2026-11-12-09","at":"2026-11-12T14:39:09.913Z"}
+{"block":"soak","usd_micros":97729,"what":"chain soak soak-2026-11-12-10 (Claude live, rails stand-in)","run":"soak-2026-11-12-10","at":"2026-11-12T14:40:27.370Z"}
+{"block":"soak","usd_micros":92611,"what":"chain soak soak-2026-11-12-11 (Claude live, rails stand-in)","run":"soak-2026-11-12-11","at":"2026-11-12T14:41:27.775Z"}

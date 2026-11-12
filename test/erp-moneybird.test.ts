@@ -339,9 +339,10 @@ describe("Moneybird guard: one administration, a fixed list of endpoints", () =>
     for (const e of MONEYBIRD_ENDPOINTS) {
       // Moneybird's sending endpoints are named for what they do (send_invoice, send_reminders, send_estimate, ...).
       expect(e, e).not.toMatch(/send|mail|remind|deliver|invit/i);
-      // Only the purchase side: suppliers, the chart, tax rates, purchase invoices, journal documents. No sales
-      // invoices, estimates, recurring invoices or subscriptions, which Moneybird can send to a contact.
-      expect(e, e).toMatch(/^(GET|POST) \/\{administration_id\}\/(contacts|ledger_accounts|tax_rates|documents\/purchase_invoices|documents\/general_journal_documents)[/{]/);
+      // The purchase side: suppliers, the chart, tax rates, purchase invoices, journal documents. On the sales side
+      // only one read (GET sales_invoices, for the collections agent): no estimates, recurring invoices or
+      // subscriptions, and nothing on the sales side that Moneybird can send to a contact.
+      expect(e, e).toMatch(/^((GET|POST) \/\{administration_id\}\/(contacts|ledger_accounts|tax_rates|documents\/purchase_invoices|documents\/general_journal_documents)[/{]|GET \/\{administration_id\}\/sales_invoices\{format\}$)/);
       // Nothing is changed or removed after it was sent: no PATCH, PUT or DELETE.
       expect(e, e).not.toMatch(/^(PATCH|PUT|DELETE) /);
     }
@@ -362,6 +363,7 @@ describe("Moneybird guard: one administration, a fixed list of endpoints", () =>
     await c.pullChartOfAccounts();
     await c.pullVendors();
     await c.pullTaxRates();
+    await c.openSalesInvoices();
     const used = new Set(fake.transport.sent.map((r) => moneybirdEndpoint(r.method, r.url, cfgOf(fake.admin))));
     expect([...used].sort()).toEqual([...MONEYBIRD_ENDPOINTS].sort());
   });
@@ -563,7 +565,8 @@ describe("Moneybird, the sandbox administration's real answers", () => {
     expect(notes).toContain(`\`RateLimit-RequestsRemaining\`: ${h.map((x) => x["ratelimit-requestsremaining"]).join(", ")})`);
     for (const x of h) expect(Math.abs(Number(x["ratelimit-reset"]) - Date.parse(x.date!) / 1000 - Number(x["ratelimit-remaining"]))).toBeLessThanOrEqual(1);
     expect(notes).toContain(`${SANDBOX.answers.length} of the 6 approved`);
-    expect(notes).toContain(`list of ${MONEYBIRD_ENDPOINTS.length} endpoints`);
+    // The run used the list as it was then: every endpoint but the sales-invoice read added afterwards (12 November).
+    expect(notes).toContain(`list of ${MONEYBIRD_ENDPOINTS.filter((e) => !e.includes("/sales_invoices")).length} endpoints`);
     expect(notes).toContain(`\`${ADMIN}\``);
 
     // The tax rate map names purchase rates that the administration has, each exactly once.

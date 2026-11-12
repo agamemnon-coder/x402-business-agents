@@ -182,6 +182,29 @@ export interface ErpConnector {
   pushPayment(p: Payment, refs: RefResolver, progress?: PushProgress): Promise<string>;
   pushJournalEntry(j: JournalEntry, progress?: PushProgress): Promise<string>;
   pullPaymentStatus(inv: PurchaseInvoice, invoiceExternalId: string, refs: RefResolver): Promise<PaymentStatus>;
+  /** The company's own sales invoices that are still open (for the collections agent); read only. Absent where the
+   *  connector has no such read (Exact, today). */
+  openSalesInvoices?(): Promise<OpenSalesInvoice[]>;
+}
+
+/** A sales invoice of the company's that a customer has not fully paid, as the ERP holds it: amounts in whole cents. */
+export interface OpenSalesInvoice {
+  /** The ERP's id. */
+  id: string;
+  /** The invoice number (null while a draft, which is never listed here). */
+  number: string | null;
+  reference: string | null;
+  /** The ERP's own state word (Moneybird: open, pending_payment, reminded, late). */
+  state: string;
+  contactId: string | null;
+  contactName: string;
+  invoiceDate: string | null;
+  dueDate: string | null;
+  currency: string;
+  totalCents: number;
+  unpaidCents: number;
+  /** The ERP's own payment page for the customer, when it has one. */
+  paymentUrl: string | null;
 }
 
 /** Reads a required setting; a missing one is a config error naming the variable, never its value. */

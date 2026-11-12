@@ -47,11 +47,30 @@ export function merchantById(id: string): AiriMerchant | undefined {
   return AIRI_MERCHANTS.find((m) => m.id === id);
 }
 
+/**
+ * The agents that may buy on this rail, each with its own limit in the CFO policy (Visa #4b, 12 November): the Sourcing
+ * agent keeps the first keys (approval.airi_alone, approval.airi_alone_per_day); every other agent has its own keys with
+ * its name after them, and its own count of purchases without Face ID per day. One agent's purchases never use up
+ * another's room. A key changes only through an approved policy_change, like every limit.
+ */
+export const AIRI_AGENTS = ["sourcing", "support"] as const;
+export type AiriAgent = (typeof AIRI_AGENTS)[number];
+const DEFAULTS: Record<AiriAgent, { alone: string; perDay: string }> = { sourcing: { alone: "20.00", perDay: "3" }, support: { alone: "10.00", perDay: "2" } };
+const isAiriAgent = (a: string): a is AiriAgent => (AIRI_AGENTS as readonly string[]).includes(a);
+/** The policy key of an agent's limit alone, and of its count per day. */
+export const aloneKeyOf = (agent: AiriAgent) => (agent === "sourcing" ? ALONE_KEY : `${ALONE_KEY}.${agent}`);
+export const perDayKeyOf = (agent: AiriAgent) => (agent === "sourcing" ? PER_DAY_KEY : `${PER_DAY_KEY}.${agent}`);
+
 /** The policy rules this rail adds (the shape of src/policy/rules.ts's Rule; no import, to keep this module a leaf). */
 export function airiRuleDefs(): { key: string; label: string; unit: "EUR" | ""; kind: "money" | "choice"; min?: number; max?: number; choices?: string[]; fallback: string; agent?: string }[] {
   return [
-    { key: ALONE_KEY, label: "Airi purchases up to this run without Face ID", unit: "EUR", kind: "money", min: 0, max: AIRI_HARD_CAP_CENTS, fallback: "20.00", agent: "sourcing" },
-    { key: PER_DAY_KEY, label: "Airi purchases without Face ID, most per day", unit: "", kind: "choice", choices: [...PER_DAY_CHOICES], fallback: "3", agent: "sourcing" },
+    ...AIRI_AGENTS.flatMap((agent) => {
+      const who = agent === "sourcing" ? "" : ` (${agent} agent)`;
+      return [
+        { key: aloneKeyOf(agent), label: `Airi purchases up to this run without Face ID${who}`, unit: "EUR" as const, kind: "money" as const, min: 0, max: AIRI_HARD_CAP_CENTS, fallback: DEFAULTS[agent].alone, agent },
+        { key: perDayKeyOf(agent), label: `Airi purchases without Face ID, most per day${who}`, unit: "" as const, kind: "choice" as const, choices: [...PER_DAY_CHOICES], fallback: DEFAULTS[agent].perDay, agent },
+      ];
+    }),
     ...AIRI_MERCHANTS.map((m) => ({ key: `${MERCHANT_KEY_PREFIX}${m.id}`, label: `${m.name}: Airi purchases`, unit: "" as const, kind: "choice" as const, choices: ["allowed", "blocked"], fallback: "blocked" })),
   ];
 }
@@ -66,13 +85,18 @@ export interface AiriPolicy {
   merchants: readonly string[];
 }
 
-export function airiPolicy(db: DB): AiriPolicy {
+/**
+ * The rail's policy for one agent (the Sourcing agent's when none is named). An agent the rail does not list may buy
+ * nothing alone: its limit is 0, so every purchase of its asks the CFO.
+ */
+export function airiPolicy(db: DB, agent: string = "sourcing"): AiriPolicy {
   const value = (key: string, fallback: string) => (db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as { value: string } | undefined)?.value ?? fallback;
   const defs = airiRuleDefs();
   const fb = (key: string) => defs.find((d) => d.key === key)!.fallback;
-  const perDay = Number(value(PER_DAY_KEY, fb(PER_DAY_KEY)));
+  const listed = isAiriAgent(agent);
+  const perDay = listed ? Number(value(perDayKeyOf(agent), fb(perDayKeyOf(agent)))) : 0;
   return {
-    aloneMaxCents: toCents(value(ALONE_KEY, fb(ALONE_KEY))),
+    aloneMaxCents: listed ? toCents(value(aloneKeyOf(agent), fb(aloneKeyOf(agent)))) : 0,
     alonePerDay: Number.isInteger(perDay) && perDay >= 0 ? perDay : 0,
     hardCapCents: AIRI_HARD_CAP_CENTS,
     currencies: [AIRI_CURRENCY],
