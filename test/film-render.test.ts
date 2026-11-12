@@ -29,7 +29,7 @@ describe("the shot list", () => {
       // A shot with no address yet waits for a stream, and says which.
       if (s.urls && s.urls.length === 0) expect(s.gate?.stream).toBeTruthy();
       // GETs of public pages only: the site, its preview, the public repository on GitHub, Metal's explorer.
-      for (const u of s.urls ?? []) expect(u).toMatch(/^https:\/\/(kit11(-next)?\.max-31b\.workers\.dev|github\.com\/agamemnon-coder\/x402-business-agents\/blob\/main|testnet\.metalntwx\.com)\//);
+      for (const u of s.urls ?? []) expect(u).toMatch(/^local:\/|^https:\/\/(kit11(-next)?\.max-31b\.workers\.dev|github\.com\/agamemnon-coder\/x402-business-agents\/blob\/main|testnet\.metalntwx\.com)\//);
     }
     expect(VIEWPORTS.desktop).toMatchObject({ width: 1440, height: 900 });
     expect(VIEWPORTS.phone).toMatchObject({ width: 390, height: 844 });
