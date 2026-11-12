@@ -71,6 +71,40 @@ describe("/runs", () => {
     expect(log).toContain("(2026-11-10-airwallex-two-locks.md)");
   });
 
+  it("holds the two-locks row to its two logs: it ends PAID, settlement simulated, a test passkey, approved by the owner at Airwallex", () => {
+    const tl = rows.find((r) => r.key === "two-locks-1")!;
+    const logs = twoLocksFirst() + twoLocksPaid();
+    // The card is dated at the moment the transfer ended PAID, which the 12 Nov log has to the second.
+    expect(tl.iso).toBe("2026-11-12T09:43:58.000Z");
+    expect(tl.date).toBe("12 Nov 2026");
+    expect(twoLocksPaid()).toMatch(/\(12 November 2026\)[\s\S]*09:43:58[^\n]*`PAID`/);
+    // Every id and amount on the row is in the two logs taken together.
+    expect(tl.ids.map((i) => i.value)).toEqual(["4074d684-4704-406c-a527-2832753baf4f", "c25bfc22-64fe-4ff3-aeb2-102a3684fc19", "P261110-48HWOJN", "P-0001", "f9ba0fe8758eadbef3b48f23e571ea92e3208f4ebd802703b413a414d444ac28"]);
+    for (const id of tl.ids) expect(logs).toContain(id.value);
+    const said = `${tl.what} ${tl.checks}`;
+    const amounts = said.match(/EUR \d+\.\d{2}/g) ?? [];
+    expect(amounts).toEqual(["EUR 240.00"]);
+    for (const amount of amounts) expect(logs).toContain(amount);
+    // The finished story, with its limits.
+    expect(tl.what).toMatch(/[Cc]reated on 10 Nov/);
+    expect(tl.what).toMatch(/test passkey \(not a person's Face ID\)/);
+    expect(tl.what).toMatch(/the owner approved it in Airwallex's sandbox web app/);
+    expect(said).toMatch(/PAID/);
+    expect(said).toMatch(/simulat/);
+    expect(said).not.toMatch(/not completed|is not paid|SCHEDULED/);
+    expect(tl.checks).toMatch(/PROCESSING/);
+    expect(tl.checks).toMatch(/14 Airwallex calls \(7 on 10 Nov, 7 on 12 Nov\)/);
+    expect(twoLocksPaid()).toMatch(/14 Airwallex calls in total/);
+    expect(`${tl.title} ${tl.rails}`).not.toMatch(/CFO/);
+    // The card's big numbers end in PAID, said to be simulated settlement.
+    expect(tl.stats!.at(-1)).toEqual({ v: "PAID", l: "settlement simulated" });
+    // Both logs are linked, the 12 Nov one first, and both exist.
+    expect(tl.files.map((f) => f.href)).toEqual(["../../docs/runs/2026-11-12-airwallex-two-locks-paid.md", "../../docs/runs/2026-11-10-airwallex-two-locks.md"]);
+    for (const f of tl.files) expect(existsSync(f.href.replace("../../", ""))).toBe(true);
+    // The page shows it as the newest card.
+    expect(text(pages.runs!)).toContain(`Last live run: 12 Nov 2026 (${tl.title})`);
+  });
+
   it("takes every id from its record", () => {
     const raw = (f: string) => readFileSync(f, "utf8");
     const main = rows.find((r) => r.key === "main-1")!;

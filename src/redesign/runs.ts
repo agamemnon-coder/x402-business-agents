@@ -67,7 +67,7 @@ function ledgerRow(key: string, file: string, log: string, title: string, rehear
 
 /** The big numbers of the two runs typed in above (from their run logs), kept apart from their rows' text. */
 const TYPED_STATS: Record<string, RunStat[]> = {
-  "two-locks-1": [{ v: "2", l: "locks on one payout" }, { v: "IN_APPROVAL", l: "held by Airwallex" }, { v: "1", l: "transfer created" }],
+  "two-locks-1": [{ v: "2", l: "locks on one payout" }, { v: "1", l: "person approved, at Airwallex" }, { v: "PAID", l: "settlement simulated" }],
   "t0-1": [{ v: "95", l: "journal entries" }, { v: "0", l: "differences" }, { v: "0", l: "posted again" }],
   "platform-e2e-1": [{ v: "3", l: "connected accounts, ACTIVE" }, { v: "1", l: "payout PAID, Purser fee taken" }, { v: "3", l: "invoices refused by Airwallex" }],
   "connected-1": [{ v: "1", l: "connected account, ACTIVE" }, { v: "€5.00", l: "payout, PAID (simulated)" }, { v: "€0.05", l: "Purser fee" }],
@@ -77,14 +77,15 @@ const TYPED_STATS: Record<string, RunStat[]> = {
 export function liveRuns(): RunRow[] {
   const rows: RunRow[] = [];
 
-  // 10 Nov: two locks on one payout (docs/runs/2026-11-10-airwallex-two-locks.md).
+  // 10 and 12 Nov: two locks on one payout, created 10 Nov and PAID 12 Nov (docs/runs/2026-11-10-airwallex-two-locks.md,
+  // docs/runs/2026-11-12-airwallex-two-locks-paid.md). The row is dated at the moment it ended PAID.
   rows.push({
-    key: "two-locks-1", iso: "2026-11-10T09:02:16.000Z", date: day("2026-11-10T09:02:16.000Z"),
-    title: "Two locks on one payout: the CFO's passkey, then Airwallex's approval workflow", rails: "Airwallex sandbox (transfer approval workflow), CFO passkey",
-    what: "The CFO's passkey (a labelled virtual test passkey) signed the exact terms; only then did Purser create the EUR 240.00 transfer, and Airwallex's own approval workflow held it IN_APPROVAL with the signed hash in its metadata.",
-    checks: "Airwallex answered IN_APPROVAL on create and on a read-back; Purser did not simulate past it or send it again. The approval in the Airwallex web app was not completed (the transfer did not show in the sandbox web app), so it is not paid. 7 calls of the 10 approved.", money: "Sandbox · test money",
-    ids: [{ label: "Transfer", value: "4074d684-4704-406c-a527-2832753baf4f" }, { label: "Short reference", value: "P261110-48HWOJN" }],
-    files: [{ label: "run log", href: "../../docs/runs/2026-11-10-airwallex-two-locks.md" }],
+    key: "two-locks-1", iso: "2026-11-12T09:43:58.000Z", date: day("2026-11-12T09:43:58.000Z"),
+    title: "Two locks on one payout: a test passkey's signature, then a person's approval at Airwallex", rails: "Airwallex sandbox (transfer approval workflow), test passkey",
+    what: "Created on 10 Nov: a labelled virtual test passkey (not a person's Face ID) signed the exact terms in Purser, only then did Purser create the EUR 240.00 transfer, and Airwallex's own approval workflow held it IN_APPROVAL with the signed hash in its metadata. On 12 Nov the owner approved it in Airwallex's sandbox web app; it then went PAID (settlement simulated).",
+    checks: "Airwallex answered IN_APPROVAL on create and on a read on each day; Purser did not simulate past it or send it again. The first read after the approval showed PROCESSING; the sandbox's simulation endpoint then moved it to SENT and PAID (simulated settlement). A person approved only at Airwallex, not in Purser. 14 Airwallex calls (7 on 10 Nov, 7 on 12 Nov), within the budget the owner raised from 10 to 12 to 14.", money: "Sandbox · test money",
+    ids: [{ label: "Transfer", value: "4074d684-4704-406c-a527-2832753baf4f" }, { label: "Request id", value: "c25bfc22-64fe-4ff3-aeb2-102a3684fc19" }, { label: "Short reference", value: "P261110-48HWOJN" }, { label: "Purser proposal", value: "P-0001" }, { label: "Signed terms (SHA-256)", value: "f9ba0fe8758eadbef3b48f23e571ea92e3208f4ebd802703b413a414d444ac28" }],
+    files: [{ label: "run log, 12 Nov", href: "../../docs/runs/2026-11-12-airwallex-two-locks-paid.md" }, { label: "run log, 10 Nov", href: "../../docs/runs/2026-11-10-airwallex-two-locks.md" }],
   });
 
   // 10 Nov: the platform build end to end, three test companies (docs/runs/2026-11-10-platform-e2e.md).
