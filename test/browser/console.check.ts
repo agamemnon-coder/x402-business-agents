@@ -359,6 +359,7 @@ async function engineUpload(E: EnginePass) {
   await p.waitForSelector("#work");
   await p.waitForSelector("#eng-file", { state: "attached" });
   ok((await p.textContent("header .test .tl"))?.trim() === "Engine: test money", "engine pass: the header's test-money chip reads \"Engine: test money\"");
+  ok(/stand-in bank.*Nothing is sent to Airwallex/.test((await p.textContent("#foot")) ?? ""), "engine pass: the footer says the engine pays on a stand-in bank and nothing goes to Airwallex");
   ok(/stand-in bank.*no real money.*nothing is sent to Airwallex/.test((await p.getAttribute("header .test", "title")) ?? ""), "engine pass: the chip's title says the stand-in bank, no real money, nothing sent to Airwallex");
   ok((await p.$$("header .test")).length === 1, "engine pass: one chip in the header, not two");
 

@@ -680,6 +680,7 @@ const EN = {
   // --- the console of a cloud with an engine: upload an invoice, and what the engine does (src/ui/engineEvents.ts) ----
   "cs.eng.chip": "Engine: test money",
   "cs.eng.chip_title": "The engine in this cloud pays with test money on a stand-in bank inside Purser: no real money moves and nothing is sent to Airwallex.",
+  "cs.eng.foot": "Purser Cloud · test money only: the engine pays on a stand-in bank inside Purser, approved with a passkey over the exact terms. Nothing is sent to Airwallex.",
   "cs.eng.invoices_lede": "Every supplier invoice the engine read and checked. Upload one and watch it work.",
   "cs.eng.empty_sub": "Upload an invoice above. The engine reads and checks it here.",
   "cs.eng.upload": "Upload invoice",
@@ -1533,6 +1534,7 @@ const NL: { readonly [K in Key]: string } = {
   // --- the console of a cloud with an engine: upload an invoice, and what the engine does (src/ui/engineEvents.ts) ----
   "cs.eng.chip": "Engine: testgeld",
   "cs.eng.chip_title": "De engine in deze cloud betaalt met testgeld op een nagebootste bank binnen Purser: er beweegt geen echt geld en er gaat niets naar Airwallex.",
+  "cs.eng.foot": "Purser Cloud · alleen testgeld: de engine betaalt op een nagebootste bank binnen Purser, goedgekeurd met een passkey over de precieze voorwaarden. Er gaat niets naar Airwallex.",
   "cs.eng.invoices_lede": "Elke leveranciersfactuur die de engine las en controleerde. Upload er een en kijk mee.",
   "cs.eng.empty_sub": "Upload hierboven een factuur. De engine leest en controleert hem hier.",
   "cs.eng.upload": "Factuur uploaden",

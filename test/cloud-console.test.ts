@@ -128,7 +128,11 @@ describe("the console of a cloud with an engine", () => {
     for (const lang of ["en", "nl"] as const) {
       expect(MESSAGES[lang]["cs.eng.chip"]).toMatch(lang === "en" ? /^Engine: test money$/ : /^Engine: testgeld$/);
       expect(MESSAGES[lang]["cs.eng.chip_title"]).toMatch(lang === "en" ? /stand-in bank.*no real money.*nothing is sent to Airwallex/ : /nagebootste bank.*geen echt geld.*niets naar Airwallex/);
+      // The footer on every page says the same once the engine is on (the plain one speaks of the Airwallex sandbox).
+      expect(MESSAGES[lang]["cs.eng.foot"]).toMatch(lang === "en" ? /test money.*stand-in bank.*Nothing is sent to Airwallex/ : /testgeld.*nagebootste bank.*niets naar Airwallex/);
+      expect(MESSAGES[lang]["cs.eng.foot"]).not.toMatch(/sandbox/);
     }
+    expect(script(consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "", engine: true }))).toContain("t('cs.eng.foot')");
   });
 });
 

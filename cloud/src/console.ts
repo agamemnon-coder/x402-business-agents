@@ -499,7 +499,7 @@ function engineStatus(){
   return ENG.p}
 const engineStale=()=>{ENG.p=null};
 // The header's one test-money chip says the engine is there, and in its title what that means.
-function engineChip(on){const c=$('header .test');c.querySelector('.tl').textContent=' '+(on?t('cs.eng.chip'):t('test.label'));c.title=on?t('cs.eng.chip_title'):t('test.title')}
+function engineChip(on){const c=$('header .test');c.querySelector('.tl').textContent=' '+(on?t('cs.eng.chip'):t('test.label'));c.title=on?t('cs.eng.chip_title'):t('test.title');$('#foot').textContent=on?t('cs.eng.foot'):t('cs.foot')}
 
 // The panel "At work": the engine's events as lines (src/ui/engineEvents.ts), newest first, six in view and the rest
 // folded. Its state belongs to the page, not to a view, so any view can mount it (workPanel()): the seq read up to, the
