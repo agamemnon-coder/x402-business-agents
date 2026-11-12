@@ -309,6 +309,28 @@ export function closeAsStale(db: DB, proposalId: string, detail: { error: string
   }).immediate();
 }
 
+/**
+ * The terms a proposal was approved with, for what follows the payment (the books, the archive): the stored terms,
+ * only while they still hash to the stored hash and to the hash the approval records, as the execution guard checks
+ * before the payment. Otherwise why not: the terms were changed after they were signed, or nobody approved them.
+ */
+export function signedTerms<T extends Terms>(db: DB, proposalId: string): { ok: true; terms: T; sha256: string } | { ok: false; reason: string } {
+  const p = db.prepare("SELECT terms_json, terms_sha256 FROM proposals WHERE proposal_id = ?").get(proposalId) as { terms_json: string; terms_sha256: string } | undefined;
+  if (!p) return { ok: false, reason: `no proposal ${proposalId}` };
+  const approval = db.prepare("SELECT approved_sha256 FROM approvals WHERE proposal_id = ? AND decision = 'APPROVED'").get(proposalId) as { approved_sha256: string } | undefined;
+  if (!approval) return { ok: false, reason: `${proposalId} has no approval` };
+  let terms: T;
+  let recomputed: string;
+  try {
+    terms = JSON.parse(p.terms_json) as T;
+    recomputed = termsHash(terms);
+  } catch {
+    return { ok: false, reason: `${proposalId}: the stored terms cannot be read, so they do not match the approved hash` };
+  }
+  if (recomputed !== p.terms_sha256 || recomputed !== approval.approved_sha256) return { ok: false, reason: `${proposalId}: the stored terms do not match the approved hash` };
+  return { ok: true, terms, sha256: recomputed };
+}
+
 /** Marks every proposal whose time ran out as EXPIRED, so no list shows it as still waiting. */
 export function expireDue(db: DB, now = new Date()): string[] {
   // Timestamps are compared as instants, not strings: "…00Z" and "…00.000Z" are the same moment.
