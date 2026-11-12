@@ -262,7 +262,7 @@ export function hostileClaimHtml(file = HOSTILE_RECORD_FILE): string {
   const url = new URL(`../../${file}`, import.meta.url);
   if (!existsSync(url)) return "";
   const { line } = JSON.parse(readFileSync(url, "utf8")) as { line?: string };
-  return line ? `<p class="claim">${esc(`In CI, a script in Claude's place tries the worst on every turn: ${line}.`)} <a class="pf" href="${esc(`${REPO_BLOB}${file}`)}" target="_blank" rel="noopener">${esc("record")} ↗</a></p>` : "";
+  return line ? `<p class="claim">${esc(`In CI, a script in Claude's place: ${line}.`)} <a class="pf" href="${esc(`${REPO_BLOB}${file}`)}" target="_blank" rel="noopener">${esc("record")} ↗</a></p>` : "";
 }
 
 export function claudePage(run: AgentRun = agentRun()): string {
