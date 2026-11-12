@@ -37,6 +37,7 @@ Test money only. Live: Claude's decisions, Airwallex sandbox calls, Metal testne
 
 - Pricing: https://kit11.max-31b.workers.dev/pricing (pilot prices for design partners; nothing is on sale yet)
 - Security and trust: https://kit11.max-31b.workers.dev/security (each control with its proof, and what is not in place yet; sandbox and testnet only)
+- Docs and API: https://kit11.max-31b.workers.dev/docs (the agent API's tools as the code defines them, the Purser Cloud REST API's reference, x402 and the Airwallex webhooks, and how to run it offline; sandbox and testnet only)
 
 ## Key files
 

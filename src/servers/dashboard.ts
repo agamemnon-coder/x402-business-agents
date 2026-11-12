@@ -35,6 +35,7 @@ import { loadTrace, TRACE_LINK, tracePage } from "../redesign/trace.js";
 import { runsPage } from "../redesign/runs.js";
 import { pricingPage } from "../redesign/pricing.js";
 import { securityPage } from "../redesign/security.js";
+import { docsPage } from "../redesign/docs.js";
 import { agentPages } from "../redesign/agents.js";
 import { monthEndPack, PACK_LINK, PACK_NAME } from "../accounting/monthPack.js";
 import { restyle } from "../redesign/ui.js";
@@ -248,6 +249,9 @@ export const PRICING_PAGE = pricingPage();
 export const PRICING_CSP = styleOnlyCsp(PRICING_PAGE);
 export const SECURITY_PAGE = securityPage();
 export const SECURITY_CSP = styleOnlyCsp(SECURITY_PAGE);
+/** /docs, "Docs and API" (12 Nov), under "More" too (src/redesign/docs.ts): no script, so a style-only policy. */
+export const DOCS_PAGE = docsPage();
+export const DOCS_CSP = styleOnlyCsp(DOCS_PAGE);
 /** /trace: any payment of the main run, step by step (src/redesign/trace.ts); no script, so a style-only policy. */
 export const TRACE_PAGE = tracePage();
 export const TRACE_CSP = styleOnlyCsp(TRACE_PAGE);
@@ -404,6 +408,10 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   app.get("/security", (_req, res) => {
     res.setHeader("Content-Security-Policy", SECURITY_CSP);
     res.type("html").send(SECURITY_PAGE);
+  });
+  app.get("/docs", (_req, res) => {
+    res.setHeader("Content-Security-Policy", DOCS_CSP);
+    res.type("html").send(DOCS_PAGE);
   });
   app.get("/metal/report", (_req, res, next) => {
     if (!METAL_REPORT) return next();

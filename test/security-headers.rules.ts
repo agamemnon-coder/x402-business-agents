@@ -5,7 +5,7 @@ export type AnswerKind = "page" | "not-found" | "json" | "asset" | "redirect";
 
 /** The answers to check on a running relay (no key needed), each with its kind and status. */
 export const HEADER_PATHS: { path: string; kind: AnswerKind; status: number }[] = [
-  ...["/", "/home", "/watch", "/proof", "/month", "/film", "/try", "/lab", "/metal", "/metal/report", "/visa", "/airwallex", "/claude", "/pricing", "/security", "/approve/P-0001", "/enrol", "/policy"]
+  ...["/", "/home", "/watch", "/proof", "/month", "/film", "/try", "/lab", "/metal", "/metal/report", "/visa", "/airwallex", "/claude", "/pricing", "/security", "/docs", "/approve/P-0001", "/enrol", "/policy"]
     .map((path) => ({ path, kind: "page" as const, status: 200 })),
   { path: "/no/such/page", kind: "not-found", status: 404 },
   { path: "/health", kind: "json", status: 200 },
