@@ -26,6 +26,7 @@
 import { consoleCsp } from "./console.js";
 import { APPROVE, BAND, BOOKS, CHROME, COMPANY, ENDED, GONE, INVOICE, INVOICE_FIELDS, LIVE, METHOD, PAY, PROPOSAL_FIELDS, RECORDED, START, STEPS, WORK } from "./tryCopy.js";
 import { EVENT_LINE_JS } from "./tryEvents.js";
+import { AMOUNT_JS } from "./try/amount.js";
 import { SCENE_CSS, sceneSvg } from "./scene.js";
 import { TOKENS } from "../../src/redesign/ui.js";
 import { ICONS } from "../../src/ui/icons.js";
@@ -266,11 +267,9 @@ ul.runs .rd { font-size: 13px; color: var(--muted); }
  *   the console's credOf, registrationOf and signedOf, the same as src/approve/client.ts serializeRegistration and
  *   serializeAssertion).
  * - hashDiff(a, b): each hash as runs of [text, differs], every character where the two differ marked.
- * - normAmount(raw, like?): an amount as people write it (10k, 1.5k, 10.000, 10,000, € 10.000,00, EUR 10,000.00,
- *   1.850,01, 1850,01, 1850.5), in the format of like (the terms' own amount; two decimals when none), or null. A
- *   currency sign or code and spaces go; a trailing k is thousands; with both separators the last is the decimal mark;
- *   one kind of separator before groups of exactly three digits is thousands, otherwise the decimal mark. Negative,
- *   zero, letters and more decimals than like has: null. A field equal to like stays like. Screens 1 and 4 share it.
+ * - normAmount(raw, like?): an amount as people write it (10k, 10.000, € 10.000,00, 1850,01 ...), in like's format,
+ *   or null: normaliseAmount, cloud/src/try/amount.ts, embedded by its own source (one implementation for screens 1
+ *   and 4 and the compose route).
  * - payBody(terms, values, credential): the pay route's body: the stored terms with the three fields' values written in,
  *   and the kept credential; nothing else.
  * - changedFields, verdict: what changed, from the signed and the sent values (the route's `changed` is lane C's: an
@@ -288,30 +287,8 @@ const signKit=(()=>{
     const runs=(s,o)=>{const out=[];for(let i=0;i<s.length;i++){const d=s[i]!==o[i];const last=out[out.length-1];if(last&&last[1]===d)last[0]+=s[i];else out.push([s[i],d])}return out};
     a=String(a);b=String(b);return {a:runs(a,b),b:runs(b,a)};
   };
-  const normAmount=(raw,like)=>{
-    const L=like===undefined||like===null?'0.00':String(like);let s=String(raw).replace(/\s/g,'');
-    if(like!==undefined&&like!==null&&s===L&&/^\d+(\.\d+)?$/.test(L))return L;
-    s=s.replace(/^(€|eur)/i,'').replace(/(€|eur)$/i,'');
-    const k=/^[^k]*\d[kK]$/.test(s);if(k)s=s.slice(0,-1);
-    if(!/^\d[\d.,]*\d$|^\d$/.test(s))return null;
-    const grouped=(x,t)=>new RegExp('^\\d{1,3}(\\'+t+'\\d{3})+$').test(x);
-    const seps=s.replace(/\d/g,'');let int=s,frac='';
-    if(seps.indexOf('.')>=0&&seps.indexOf(',')>=0){
-      const dec=seps[seps.length-1],thou=dec==='.'?',':'.',at=s.lastIndexOf(dec);
-      if(s.indexOf(dec)!==at||!grouped(s.slice(0,at),thou))return null;
-      int=s.slice(0,at).split(thou).join('');frac=s.slice(at+1);
-    }else if(seps){
-      const c=seps[0];
-      if(grouped(s,c))int=s.split(c).join('');
-      else if(seps.length===1){int=s.slice(0,s.indexOf(c));frac=s.slice(s.indexOf(c)+1)}
-      else return null;
-    }
-    if(k){frac=frac.padEnd(3,'0');int=int+frac.slice(0,3);frac=frac.slice(3)}
-    const d=(/\.(\d+)$/.exec(L)||['',''])[1].length;
-    if(frac.length>d)return null;
-    int=int.replace(/^0+(?=\d)/,'');if(int.length>12||!/[1-9]/.test(int+frac))return null;
-    return d?int+'.'+frac.padEnd(d,'0'):int;
-  };
+  ${AMOUNT_JS}
+  const normAmount=normaliseAmount;
   const FIELDS=['amount','beneficiary_name','iban_last4'];
   const payBody=(terms,v,credential)=>{const t=Object.assign({},terms);for(const k of FIELDS)t[k]=v[k];return {terms:t,credential:credential}};
   const changedFields=(signed,sent,changed)=>{

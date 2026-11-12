@@ -216,6 +216,26 @@ describe("bodies and origins", () => {
     // One invoice so far: the clean sample.
     expect(((await c.req("GET", "/v1/engine/invoices", { key: v.s })).json.items as unknown[]).length).toBe(1);
   });
+
+  it("reads a composed invoice's amount as people write it (a page cached before the page read it), then checks it as strictly as before", async () => {
+    const v = await visitor();
+    const day = (o: number) => new Date(Date.now() + o * 86_400_000).toISOString().slice(0, 10);
+    const base = { supplier_key: "bergtex", issue_date: day(0), due_date: day(10), iban: "DE89370400440532013000" };
+    for (const [n, amount, total] of [["AM-1", "1.850,00", "1850.00"], ["AM-2", "1k", "1000.00"], ["AM-3", "€ 1.234,5", "1234.50"]] as const) {
+      const r = await c.req("POST", "/v1/engine/compose", { key: v.s, body: { ...base, invoice_no: n, amount } });
+      expect(r.status, amount).toBe(200);
+      expect((r.json.invoice as { total: string }).total, amount).toBe(total);
+    }
+    // 10k reads as 10000.00, and the engine's limit (1.00 to 5000.00) still refuses it, in its range words.
+    const big = await c.req("POST", "/v1/engine/compose", { key: v.s, body: { ...base, invoice_no: "AM-4", amount: "10k" } });
+    expect(big.status).toBe(400);
+    expect(big.json.message).toBe("amount is from 1.00 to 5000.00 euros");
+    for (const amount of ["abc", "-5", "0", "1850.001", ""]) {
+      const r = await c.req("POST", "/v1/engine/compose", { key: v.s, body: { ...base, invoice_no: "AM-5", amount } });
+      expect(r.status, amount).toBe(400);
+      expect(r.json.field, amount).toBe("amount");
+    }
+  });
 });
 
 describe("Claude's spend under 20 parallel actions (lane A's ledger, cloud/src/engine/spend.ts)", () => {

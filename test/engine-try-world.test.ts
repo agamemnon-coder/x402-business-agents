@@ -130,7 +130,7 @@ describe("write your own", () => {
     const cases: [Record<string, string>, string][] = [
       [{ supplier_key: "zeeland" }, "supplier_key"],
       [{ invoice_no: "" }, "invoice_no"], [{ invoice_no: "-BTX" }, "invoice_no"], [{ invoice_no: "BTX 1" }, "invoice_no"], [{ invoice_no: "A".repeat(33) }, "invoice_no"],
-      [{ amount: "0.99" }, "amount"], [{ amount: "5000.01" }, "amount"], [{ amount: "12" }, "amount"], [{ amount: "12.5" }, "amount"], [{ amount: "1,850.00" }, "amount"],
+      [{ amount: "0.99" }, "amount"], [{ amount: "5000.01" }, "amount"], [{ amount: "12.555" }, "amount"], [{ amount: "1.85.0" }, "amount"], [{ amount: "abc" }, "amount"], [{ amount: "10k" }, "amount"],
       [{ issue_date: "2026-13-01" }, "issue_date"], [{ issue_date: day(-61) }, "issue_date"], [{ due_date: day(61) }, "due_date"], [{ due_date: "tomorrow" }, "due_date"],
       [{ issue_date: day(5), due_date: day(1) }, "due_date"],
       [{ iban: "DE89 3704 0044 0532 0130 01" }, "iban"], [{ iban: "DE89" }, "iban"], [{ iban: "XX".repeat(20) }, "iban"],

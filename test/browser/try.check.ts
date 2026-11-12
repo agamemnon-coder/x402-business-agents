@@ -121,7 +121,7 @@ async function ledgerOf(session: string, id: string) {
 // the stand-in bank. The pay answer is held payDelay ms (the 800 ms test).
 const kept = new Map<string, unknown>();
 const paid = new Set<string>();
-const stand = { payDelay: 0, payAnswers: 0 };
+const stand = { payDelay: 0, payAnswers: 0, fileDelay: 0, refuseCompose: false };
 async function laneC(method: string, path: string, session: string, body: Record<string, unknown>, res: ServerResponse): Promise<boolean> {
   const m = /^\/v1\/engine\/proposals\/([A-Za-z0-9_-]+)\/(approve|terms|pay)$/.exec(path);
   if (!m) return false;
@@ -182,7 +182,10 @@ const server = createServer(async (req, res) => {
   if (req.method === "GET" && url.pathname === "/v1/engine/samples") return send(res, 200, { items: SAMPLES });
   if (req.method === "GET" && url.pathname === "/v1/engine/suppliers") return send(res, 200, { items: [SUPPLIER] });
   const sample = /^\/v1\/engine\/samples\/([a-z]+)$/.exec(url.pathname);
+  // Filing a sample or a written invoice is held fileDelay ms (the skeleton's check); refuseCompose answers one 400.
+  if (req.method === "POST" && (sample || url.pathname === "/v1/engine/compose") && stand.fileDelay) await new Promise((r) => setTimeout(r, stand.fileDelay));
   if (req.method === "POST" && sample) { const r = await upload(session, clean, `${sample[1]}.pdf`); return send(res, r.status, r.json); }
+  if (req.method === "POST" && url.pathname === "/v1/engine/compose" && stand.refuseCompose) { stand.refuseCompose = false; return send(res, 400, { error: "invalid", message: "amount is in euros with two decimals, such as 1850.00" }); }
   if (req.method === "POST" && url.pathname === "/v1/engine/compose") { const b = json(); const r = await upload(session, await composed(b), `${b.invoice_no}.pdf`); return send(res, r.status, r.json); }
   if (await laneC(req.method ?? "GET", url.pathname, session, body ? JSON.parse(body.toString()) as Record<string, unknown> : {}, res)) return;
   if (req.method === "GET" && url.pathname === "/v1/engine/export") {
@@ -298,11 +301,19 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await shot("0-start");
   await design("0-start");
 
+  // Nothing starts a company before the click (not the load, not a hover); right after the start: the engine warmed.
+  const asked: string[] = [];
+  page.on("request", (r) => { const u = new URL(r.url()); if (u.pathname.startsWith("/v1/")) asked.push(`${r.method()} ${u.pathname}`); });
+  await page.hover(`text=${START.button}`);
+  await page.waitForTimeout(300);
+  ok(asked.length === 0, `${tag}: no request on load or hover (${asked.join(", ") || "none"})`);
   const startReq = page.waitForRequest((r) => r.url().endsWith("/v1/try/start"));
   await page.click(`text=${START.button}`);
   ok(JSON.parse((await startReq).postData() ?? "{}").token === "jury-token-123", `${tag}: the token goes in the start request's body`);
   await page.waitForSelector(`h1:text-is("${INVOICE.heading}")`);
   await page.waitForSelector(".samples .btn");
+  const warm = asked.slice(asked.indexOf("POST /v1/try/start") + 1, asked.indexOf("POST /v1/try/start") + 3).sort().join(", ");
+  ok(warm === "GET /v1/engine, GET /v1/engine/samples" && asked.filter((x) => x === "GET /v1/engine/samples").length === 1, `${tag}: right after the start: the engine's status and the samples, once (${asked.join(", ")})`);
   ok((await page.textContent(".band"))!.includes(BAND.line) && (await page.textContent(".band"))!.includes(BAND.claudeCode), `${tag}: the band says test company, test money, simulated bank, and Purser's code reads today`);
   ok(await page.evaluate(() => document.activeElement?.tagName) === "H1", `${tag}: focus moved to the new heading`);
   await screenChecks(page, `${tag} screen 1 (samples)`, width);
@@ -311,21 +322,56 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await design("1-invoice");
 
   if (width === 390) {
+    // An amount that is not one: a calm hint under the field on blur, never a red box; the samples tab files after.
+    await page.click(`text=${INVOICE.tabWrite}`);
+    await page.fill("#f-amt", "12abc");
+    await page.locator("#f-amt").blur();
+    ok(await page.isVisible(`#f-amt-hint:text-is("${INVOICE.amountBad}")`) && await page.locator(".note").count() === 0 && await page.getAttribute("#f-amt", "aria-invalid") === "true", `${tag}: an amount that is not one: the calm hint under the field, no red box`);
+    if (shots) { await page.locator("#f-amt").scrollIntoViewIfNeeded(); await page.screenshot({ path: join(shots, "try-1-amount-hint-390-light.png") }); }
+    await page.click(`text=${INVOICE.tabSample}`);
     ok(await page.getAttribute(`.samples .btn:has-text("${SAMPLES[0]!.title}")`, "aria-pressed") === "true", `${tag}: the first sample is picked`);
+    // The answer held: the card's skeleton (labels only, no amount) under who is reading.
+    stand.fileDelay = 2500;
     await page.click(`text=${INVOICE.send}`);
+    await page.waitForSelector(".inv.skel");
+    const skel = (await page.textContent(".result")) ?? "";
+    ok(skel.includes(WORK.readingCode) && ["Supplier", "Invoice number", "Amount", "Due", "Status"].every((k) => skel.includes(k)) && await page.locator(".inv.skel .sk").count() === 5, `${tag}: while the request is held: "${WORK.readingCode}" over the card's five labels with placeholders`);
+    ok(!/\d/.test(skel) && !/EUR|Bergtex|Ready/.test(skel), `${tag}: the skeleton holds nothing of the outcome (${skel})`);
+    if (shots) { await page.waitForTimeout(300); await page.screenshot({ path: join(shots, "try-2-reading-390-light.png") }); }
+    await page.waitForSelector(".inv:not(.skel)", { timeout: 20_000 });
+    stand.fileDelay = 0;
+    ok(await page.locator(".inv.skel").count() === 0, `${tag}: the skeleton turned into the card when the answer came`);
   } else {
     await page.click(`text=${INVOICE.tabWrite}`);
     await page.waitForFunction(() => (document.querySelector("#f-iban") as HTMLInputElement | null)?.value !== "");
-    await page.fill("#f-amt", "1.234,5");
+    for (const [typed, want] of [["10.000", "10000.00"], ["€ 10.000,00", "10000.00"], ["EUR 10,000.00", "10000.00"], ["1.850,01", "1850.01"], ["1850.5", "1850.50"], ["10k", "10000.00"]] as const) {
+      await page.fill("#f-amt", typed);
+      await page.locator("#f-amt").blur();
+      ok(await page.inputValue("#f-amt") === want, `${tag}: "${typed}" reads as ${want} on blur`);
+    }
+    await page.fill("#f-amt", "-5");
+    const before = asked.length;
     await page.click(`text=${INVOICE.send}`);
-    ok(await page.evaluate(() => (document.querySelector("#f-amt") as HTMLInputElement).validationMessage) !== "", `${tag}: an amount that is not an amount is refused before anything is sent`);
-    await page.fill("#f-amt", "1850,00");
+    await page.waitForTimeout(300);
+    ok(await page.isVisible("#f-amt-hint") && !asked.slice(before).some((x) => x.endsWith("/compose")), `${tag}: an amount that is not one is not sent, the hint says how to write one`);
+    // A compose the server still refuses: its words calmly under the form, the form as it was sent.
+    await page.fill("#f-amt", "10k");
+    stand.refuseCompose = true;
+    await page.click(`text=${INVOICE.send}`);
+    await page.waitForSelector(`h1:text-is("${INVOICE.heading}")`);
+    await page.waitForSelector(".hint.calm[role=status]:not([hidden])");
+    // Chromium logs the refused request itself as a console error: that one, made here on purpose, is not the page's.
+    const own = errors.findIndex((x) => /status of 400/.test(x));
+    if (own >= 0) errors.splice(own, 1);
+    ok((await page.textContent(".hint.calm[role=status]"))!.includes("amount is in euros") && await page.locator(".note").count() === 0 && await page.inputValue("#f-amt") === "10000.00", `${tag}: a refused compose: its words calmly under the form, no red box, the form kept`);
+    // Filed as 1.850,00 (the engine's own limit is 5000.00, so 10k is read but not paid; the walk pays 1850.00).
+    await page.fill("#f-amt", "1.850,00");
     await screenChecks(page, `${tag} screen 1 (write your own)`, width, 1, false);
     await shot("1-write");
     const composeReq = page.waitForRequest((r) => r.url().endsWith("/v1/engine/compose"));
     await page.click(`text=${INVOICE.send}`);
     const sent = JSON.parse((await composeReq).postData() ?? "{}") as Record<string, string>;
-    ok(sent.amount === "1850.00" && sent.supplier_key === "bergtex" && sent.iban === SUPPLIER.iban && /^INV-\d{4}$/.test(sent.invoice_no!), `${tag}: compose sends the fields, the amount with a dot`);
+    ok(sent.amount === "1850.00" && sent.supplier_key === "bergtex" && sent.iban === SUPPLIER.iban && /^INV-\d{4}$/.test(sent.invoice_no!), `${tag}: "1.850,00" is filed as 1850.00, with the other fields`);
   }
   await page.waitForSelector(`h1:text-is("${WORK.heading}")`);
   await page.waitForSelector(".result .btn.primary", { timeout: 20_000 });

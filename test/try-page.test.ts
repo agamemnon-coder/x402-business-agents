@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { consoleCsp } from "../cloud/src/console.js";
 import * as COPY from "../cloud/src/tryCopy.js";
 import { BOOKS_JS, PROOF_URL, RUNS_URL, SIGN_JS, tryPage } from "../cloud/src/tryPage.js";
+import { AMOUNT_JS, normaliseAmount } from "../cloud/src/try/amount.js";
 import { liveRuns } from "../src/redesign/runs.js";
 import { ICONS } from "../src/ui/icons.js";
 import { SCENE_CSS, sceneSvg } from "../cloud/src/scene.js";
@@ -472,6 +473,24 @@ describe("signing and paying, in the page's own script", () => {
     expect(kit.normAmount("1850.00", "1850.00")).toBe("1850.00");
     expect(kit.normAmount("-5", "1850.00")).toBeNull();
     expect(kit.normAmount("", "1850.00")).toBeNull();
+  });
+
+  it("reads the lead's amounts: one separator before exactly three digits is thousands, before one or two it is decimals", () => {
+    for (const [raw, want] of [["1850", "1850.00"], ["1850,5", "1850.50"], ["1850,00", "1850.00"], ["1.850,00", "1850.00"], ["1,850.00", "1850.00"],
+      ["10k", "10000.00"], ["10.000", "10000.00"], ["10,000", "10000.00"], ["€ 10.000,00", "10000.00"]] as const) {
+      expect(kit.normAmount(raw), raw).toBe(want);
+      expect(normaliseAmount(raw), raw).toBe(want);
+    }
+  });
+
+  it("is one implementation: the page carries normaliseAmount's own source (cloud/src/try/amount.ts), with no helper of a bundler", () => {
+    expect(SIGN_JS).toContain(AMOUNT_JS);
+    expect(script).toContain(AMOUNT_JS);
+    expect(AMOUNT_JS).not.toMatch(/__name|__defProp|cov_|\?\?|\?\./);
+    for (const raw of ["10k", "1,5k", "€ 10.000,00", "EUR 10,000.00", "1850.5", "abc", "-5", "0", "1850.001"]) {
+      expect(kit.normAmount(raw), raw).toBe(normaliseAmount(raw));
+      expect(kit.normAmount(raw, "1850.00"), raw).toBe(normaliseAmount(raw, "1850.00"));
+    }
   });
 
   it("reads the amounts people write (screen 1's write your own): two decimals with a dot, or null", () => {
