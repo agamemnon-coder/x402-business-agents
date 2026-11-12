@@ -78,11 +78,21 @@ if (onD1) describe("the cloud Worker in workerd, in demo mode", () => {
     expect((await get(demo, "/v1/demo/alder/me")).json).toMatchObject({ tenant: { slug: "alder" }, kind: "demo", scopes: ["read"], user: null, inbox: null });
     expect(((await get(demo, "/v1/demo/alder/invoices")).json.items as { id: string }[]).map((i) => i.id)).toEqual(["AP-0001"]);
     for (const p of [`/v1/demo/alder/documents/${SHA}`, "/v1/demo/alder/invoices/AP-0001/document"]) {
-      const doc = await get(demo, p);
-      expect([doc.status, doc.headers.get("content-type"), doc.headers.get("x-content-type-options"), doc.headers.get("content-security-policy")], p)
-        .toEqual([200, "application/pdf", "nosniff", "default-src 'none'; sandbox; frame-ancestors 'none'"]);
-      expect(createHash("sha256").update(doc.bytes).digest("hex"), p).toBe(SHA);
+      // Made once, then served from the isolate's memory: the same bytes and headers every time, in this runtime too.
+      for (const from of ["miss", "hit", "hit"]) {
+        const doc = await get(demo, p);
+        expect([doc.status, doc.headers.get("x-purser-cache"), doc.headers.get("content-type"), doc.headers.get("x-content-type-options"), doc.headers.get("content-security-policy")], `${p} (${from})`)
+          .toEqual([200, from, "application/pdf", "nosniff", "default-src 'none'; sandbox; frame-ancestors 'none'"]);
+        expect(createHash("sha256").update(doc.bytes).digest("hex"), `${p} (${from})`).toBe(SHA);
+      }
     }
+    // A JSON answer from memory is the answer that was made.
+    const made = await get(demo, "/v1/demo/alder/invoices/AP-0001");
+    for (let i = 0; i < 2; i++) {
+      const kept = await get(demo, "/v1/demo/alder/invoices/AP-0001");
+      expect([kept.status, kept.headers.get("x-purser-cache"), kept.json]).toEqual([200, "hit", made.json]);
+    }
+    expect(made.json).toMatchObject({ id: "AP-0001", vendor: "Bergtex Textil GmbH", total: "100.00" });
     for (const p of ["/v1/demo/alder/insights", "/v1/demo/alder/reports/trial", "/v1/demo/alder/transactions/summary", "/v1/health", "/v1/openapi.json"]) expect((await get(demo, p)).status, p).toBe(200);
     // The health check counts the demo's own companies that are there: "never-seeded" is on the list and not in the database.
     expect((await get(demo, "/v1/health")).json).toEqual({ ok: true, version: "dev", d1: "ok", r2: "ok", demo_companies: 1 });
