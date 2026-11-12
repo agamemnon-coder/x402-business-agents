@@ -5,8 +5,10 @@
 import { readFileSync } from "node:fs";
 import { Script } from "node:vm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { consolePage } from "../cloud/src/console.js";
+import { consoleCsp, consolePage } from "../cloud/src/console.js";
 import { INTER_WOFF2_B64 } from "../cloud/src/font.gen.js";
+import { EVENT_LINE_JS } from "../src/ui/engineEvents.js";
+import { MESSAGES } from "../src/ui/i18n.js";
 import { scriptBlocks, scriptBody, withoutBlocks } from "./support/scriptBlocks.js";
 import { ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
 
@@ -76,6 +78,121 @@ describe("the console page", () => {
     expect((await c.fetch(`${ORIGIN}/admin`)).status).toBe(404);
     expect((await c.fetch(`${ORIGIN}/.env`)).status).toBe(404);
     expect((await c.fetch(`${ORIGIN}/`, { method: "POST" })).status).toBe(405);
+  });
+});
+
+/** The page's config, as its script reads it from the meta tag. */
+const config = (html: string) => {
+  const raw = /<meta name="purser-cloud" content="([^"]*)">/.exec(html)![1]!;
+  return JSON.parse(raw.replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")) as Record<string, unknown>;
+};
+
+describe("the console of a cloud with an engine", () => {
+  it("is told so by the page's config, and a cloud with no engine is told it has none", async () => {
+    // The script asks /v1/engine only when its config says engine true (test/browser/console.check.ts holds that no
+    // such request leaves a page whose config says false).
+    expect(config(await (await c.fetch(`${ORIGIN}/`)).text())).toEqual({ origin: ORIGIN, rpId: RP, mailDomain: "", engine: false });
+    const withEngine = testCloud({ engine: true });
+    try {
+      const page = await withEngine.fetch(`${ORIGIN}/`);
+      expect(config(await page.text())).toEqual({ origin: ORIGIN, rpId: RP, mailDomain: "", engine: true });
+      const csp = page.headers.get("content-security-policy")!;
+      expect(csp).toBe(consoleCsp(/'nonce-([^']+)'/.exec(csp)![1]!));
+    } finally { withEngine.close(); }
+    // A caller that says nothing of an engine gets a page that has none.
+    expect(config(consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "" })).engine).toBeUndefined();
+  });
+
+  it("keeps the policy it had: the engine's pages need nothing more", () => {
+    expect(consoleCsp("N")).toBe("default-src 'none'; script-src 'nonce-N' 'self'; style-src 'nonce-N'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'");
+  });
+
+  it("carries the engine's words in both languages, and the one script that writes an event's line", () => {
+    const html = consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "", engine: true });
+    const js = script(html);
+    const words = Object.keys(MESSAGES.en).filter((k) => k.startsWith("cs.eng."));
+    for (const k of ["cs.eng.chip", "cs.eng.chip_title", "cs.eng.upload", "cs.eng.upload_sub", "cs.eng.uploading", "cs.eng.too_big", "cs.eng.wrong_type", "cs.eng.duplicate", "cs.eng.work", "cs.eng.work_empty", "cs.eng.work_earlier",
+      "cs.eng.who.parser", "cs.eng.who.code", "cs.eng.who.person", "cs.eng.step", "cs.eng.ev.ap.received", "cs.eng.ev.ap.status", "cs.eng.ev.vault.filed"]) expect(words).toContain(k);
+    for (const k of words) {
+      expect(MESSAGES.nl[k as keyof typeof MESSAGES.nl], k).toBeTruthy();
+      expect({ k, carried: html.split(`"${k}":`).length - 1 }).toEqual({ k, carried: 2 });
+    }
+    // The page's own words (not an event's line, which the shared script looks up by the event's name) are all asked for by name.
+    const own = words.filter((k) => !/^cs\.eng\.(ev|who|method)\.|^cs\.eng\.step$/.test(k));
+    expect(own.filter((k) => !js.includes(`t('${k}'`))).toEqual([]);
+    expect(js).toContain(EVENT_LINE_JS.trim());
+    expect(js).toContain("eventLineOf(L.m,ma)");
+  });
+
+  it("says test money and the stand-in bank in the header's words, and never that the engine pays through Airwallex", () => {
+    for (const lang of ["en", "nl"] as const) {
+      expect(MESSAGES[lang]["cs.eng.chip"]).toMatch(lang === "en" ? /^Engine: test money$/ : /^Engine: testgeld$/);
+      expect(MESSAGES[lang]["cs.eng.chip_title"]).toMatch(lang === "en" ? /stand-in bank.*no real money.*nothing is sent to Airwallex/ : /nagebootste bank.*geen echt geld.*niets naar Airwallex/);
+      // The footer on every page says the same once the engine is on (the plain one speaks of the Airwallex sandbox).
+      expect(MESSAGES[lang]["cs.eng.foot"]).toMatch(lang === "en" ? /test money.*stand-in bank.*Nothing is sent to Airwallex/ : /testgeld.*nagebootste bank.*niets naar Airwallex/);
+      expect(MESSAGES[lang]["cs.eng.foot"]).not.toMatch(/sandbox/);
+    }
+    expect(script(consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "", engine: true }))).toContain("t('cs.eng.foot')");
+  });
+
+  it("carries the payment card's words in both languages: pay, set up approval, approve, and the stand-in bank beside the facts", () => {
+    const html = consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "", engine: true });
+    const js = script(html);
+    const keys = ["cs.eng.pay_h", "cs.eng.pay", "cs.eng.working", "cs.eng.ready", "cs.eng.not_yet", "cs.eng.not_yet_why", "cs.eng.stand_in", "cs.eng.signs",
+      "cs.eng.terms_fold", "cs.eng.terms_hash", "cs.eng.proposal_id", "cs.eng.setup", "cs.eng.set_up", "cs.eng.approve", "cs.eng.cancelled", "cs.eng.approval_stays", "cs.eng.approved_terms", "cs.eng.more_terms"] as const;
+    for (const k of keys) {
+      for (const lang of ["en", "nl"] as const) expect(MESSAGES[lang][k], `${lang} ${k}`).toBeTruthy();
+      expect({ k, carried: html.split(`"${k}":`).length - 1 }).toEqual({ k, carried: 2 });
+      expect(js, k).toContain(`t('${k}'`);
+    }
+    expect(MESSAGES.en["cs.eng.pay"]).toBe("Pay…");
+    expect(MESSAGES.en["cs.eng.setup"]).toBe("Set up approval on this device");
+    expect(MESSAGES.en["cs.eng.approve"]).toBe("Approve with passkey");
+    // The honesty line beside the phone page's facts (which name the Airwallex fee): this payment never reaches Airwallex.
+    expect(MESSAGES.en["cs.eng.stand_in"]).toMatch(/stand-in bank inside Purser.*test money.*Nothing is sent to Airwallex/);
+    expect(MESSAGES.nl["cs.eng.stand_in"]).toMatch(/nagebootste bank binnen Purser.*testgeld.*niets naar Airwallex/);
+    expect(MESSAGES.en["cs.eng.signs"]).toMatch(/exactly these terms/);
+    // The why of an invoice that cannot be paid is the engine's own (src/ap/detail.ts actionsFor) where it is not in the checks.
+    for (const k of ["action.needs_vendor", "action.currency_not_paid"]) expect(js).toContain(`t('${k}'`);
+  });
+
+  it("carries the proof's words in both languages (paid, booked, archived) and the archive page's, with the stand-in label on the paid block", () => {
+    const html = consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "", engine: true });
+    const js = script(html);
+    const keys = ["cs.eng.proof_h", "cs.eng.paid_h", "cs.eng.paid_line", "cs.eng.test_bank", "cs.eng.paid_fold", "cs.eng.fee", "cs.eng.method", "cs.eng.transfer_ref", "cs.eng.payment_id", "cs.eng.paid_wait",
+      "cs.eng.booked_h", "cs.eng.booked_line", "cs.eng.booked_uneven", "cs.eng.booked_fold", "cs.eng.account", "cs.eng.chain_head", "cs.eng.booked_wait",
+      "cs.eng.archived_h", "cs.eng.archived_line", "cs.eng.archived_fold", "cs.eng.archived_wait", "cs.eng.open_archive",
+      "cs.eng.archive", "cs.eng.archive_lede", "cs.eng.archive_empty", "cs.eng.archive_pick", "cs.eng.kb"] as const;
+    for (const k of keys) {
+      for (const lang of ["en", "nl"] as const) expect(MESSAGES[lang][k], `${lang} ${k}`).toBeTruthy();
+      expect({ k, carried: html.split(`"${k}":`).length - 1 }).toEqual({ k, carried: 2 });
+      expect(js, k).toContain(`t('${k}'`);
+    }
+    // Wherever money moved: the stand-in bank and test money, on the block itself.
+    expect(MESSAGES.en["cs.eng.test_bank"]).toMatch(/^Stand-in bank, test money$/);
+    expect(MESSAGES.nl["cs.eng.test_bank"]).toMatch(/^Nagebootste bank, testgeld$/);
+    // The archive's files open in the same sandboxed frame, with bytes the page fetched from the vault route.
+    expect(js).toContain("'/v1/engine/vault/file?path='+encodeURIComponent(");
+    expect(js).toContain("f.setAttribute('sandbox','allow-scripts')");
+    expect(js).toContain("PDF_MAX_BYTES");
+    // A page of its own, reached from links: the menu keeps its five items.
+    expect(js).toContain("'/archive':archiveView");
+    expect(html.match(/data-tab="/g)).toHaveLength(5);
+    expect(html).not.toMatch(/<nav[^>]*>[^]*#\/archive[^]*<\/nav>/);
+    expect(js).toContain("a.href='#/archive'");
+  });
+
+  it("asks the engine to pay, set up and approve through the page's one request that marks it under way, with user verification required", () => {
+    const js = script(consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "", engine: true }));
+    for (const path of ["'/v1/engine/invoices/'", "'/v1/engine/passkey/start'", "'/v1/engine/passkey/finish'", "'/v1/engine/proposals/'"]) expect(js).toContain(`engineCall(${path}`);
+    expect(js).toMatch(/navigator\.credentials\.create\(\{publicKey:\{rp:\{id:s\.rp\.id,name:s\.rp\.name\},user:\{id:new TextEncoder\(\)\.encode\(s\.user\.id\)/);
+    expect(js).toContain("attestation:'none'");
+    expect(js).toContain("excludeCredentials:(s.exclude||[]).map(");
+    expect(js).toContain("allowCredentials:[{type:'public-key',id:fromB64u(eng.passkey.credential_id)}]");
+    expect(js.match(/userVerification:'required'/g)!.length).toBeGreaterThanOrEqual(4);
+    // What the passkey signed is sent as @simplewebauthn/server reads it.
+    expect(js).toContain("clientExtensionResults:c.getClientExtensionResults()");
+    expect(js).toContain("terms_sha256:p.terms_sha256");
   });
 });
 
