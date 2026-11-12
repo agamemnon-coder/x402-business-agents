@@ -244,6 +244,8 @@ async function linksStep(): Promise<void> {
 
 // Block 1, behind KIT11_PASSKEY_OWNERS=on: an account whose only owners are the two passkeys; a mandate bound with both
 // Face IDs signing the account's Execute digest on the phone. The runner only relays: no server key is an owner.
+// Since 12 November the owners commands and the runner's relay call Metal only behind the owners guard, so this step
+// also needs OWNERS_GO=yes, OWNERS_CALL_BUDGET and OWNERS_CALL_LOG in the environment (src/metal/ownersBudget.ts).
 const OWNERS_STEP = "12d Face ID signs on chain: a mandate bound by both passkeys, no server key";
 async function ownersStep(): Promise<void> {
   const setup = cli("ownersExecute.ts", "setup");
