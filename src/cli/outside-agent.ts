@@ -1,5 +1,5 @@
 // npm run outside-agent -- "<goal>": a Claude agent that is not one of ours connects to the agent API over MCP (P1)
-// and works towards its goal with the four tools it is given, and nothing else. It is the "foreign agent" of the
+// and works towards its goal with the five tools it is given, and nothing else. It is the "foreign agent" of the
 // demo: it knows no ledger, no keys and no policy, only what the tools tell it. Every card and every raise it asks
 // for waits for the CFO's Face ID.
 //   KIT11_AGENT names it (default acme-research); KIT11_DB and the Airwallex sandbox keys are the runner's.
@@ -25,14 +25,24 @@ console.log(`${name}: connected to the agent API; tools: ${tools.map((t) => t.na
 // Our server always answers with content blocks (never the protocol's older toolResult shape).
 const caller: MCPClientLike = { callTool: async (p) => (await mcp.callTool(p)) as MCPCallToolResultLike };
 // Each tool call and its answer is printed as it happens, so the demo shows what the agent did, not what it says.
+// A refusal (isError: a declined charge, say) comes out of run() as a thrown ToolError that holds the result's content
+// (the sentence, then the structured object as JSON; its message joins them). It is printed and thrown on unchanged:
+// the tool runner gives that content to the model as an error tool result it can act on (read reason and next_tool),
+// and the run goes on.
+const show = (out: unknown) => (Array.isArray(out) ? out.map((b: { text?: string }) => b.text ?? "").join(" ") : String(out));
+const print = (arrow: string, out: unknown) => console.log(`  ${arrow} ${redactSecrets(show(out)).replace(/\s+/g, " ").slice(0, 400)}`);
 const logged = mcpTools(tools, caller).map((t) => ({
   ...t,
   run: async (input: Record<string, unknown>) => {
     console.log(`  → ${t.name} ${JSON.stringify(input)}`);
-    const out = await t.run(input);
-    const text = Array.isArray(out) ? out.map((b) => ("text" in b ? b.text : "")).join(" ") : String(out);
-    console.log(`  ← ${redactSecrets(text).replace(/\s+/g, " ").slice(0, 400)}`);
-    return out;
+    try {
+      const out = await t.run(input);
+      print("←", out);
+      return out;
+    } catch (e) {
+      print("← refused:", e instanceof Error ? e.message : e);
+      throw e;
+    }
   },
 }));
 
