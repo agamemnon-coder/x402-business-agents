@@ -138,8 +138,8 @@ describe("the site after v4", () => {
   it("reaches the archive (/lab, /film, /month, /metal/report) only through Proof's folded, labelled Archive", () => {
     // Its own closed line at the end of Proof since 12 Nov (before: a card inside "Every check"), the replay first.
     const archive = /<details class="deep" id="archive"><summary>Archive<\/summary>[\s\S]*?<\/details>/.exec(pages.proof!)?.[0] ?? "";
-    expect(archive).toContain(`<li><a class="pf" href="watch">Replay of the main run, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(run.recordedAt))}</a></li>`);
-    expect(archive).toContain('href="watch">Replay of the main run, 3 Nov</a>');
+    expect(archive).toContain(`<li><a class="pf" href="replay">Replay of the main run, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(run.recordedAt))}</a></li>`);
+    expect(archive).toContain('href="replay">Replay of the main run, 3 Nov</a>');
     for (const href of ["lab", "film", "month", "metal/report"]) {
       expect(archive).toMatch(new RegExp(`<details[\\s\\S]*href="${href}"`));
       for (const [name, html] of Object.entries(PUBLIC)) if (!["proof", "metal"].includes(name)) expect({ name, href, linked: html.includes(`href="${href}"`) }).toEqual({ name, href, linked: false });

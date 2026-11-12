@@ -296,7 +296,7 @@ ${box("health", "database", "audit rows", String(s.audit.rows), `Hash chain ${s.
  */
 function archiveFold(run: AgentRun): string {
   const links: [string, string][] = [
-    ["watch", `Replay of ${run.name}, ${shortDay(run.recordedAt)}`],
+    ["replay", `Replay of ${run.name}, ${shortDay(run.recordedAt)}`],
     ["./?recorded", "The CFO dashboard of the earlier recorded run (30 October)"], ["metal/report", "The Dispute desk's evidence report (30 October)"],
     ["film", "The earlier animation (30 October)"], ["month", "A month in 90 seconds (simulated)"], ["lab", "The Scenario Lab"],
   ];

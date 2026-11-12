@@ -694,7 +694,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // The archive is the last closed line: opened by its link, even where the page cannot scroll it to the top.
       await page.goto(`${base}/proof#archive`, { waitUntil: "load" });
       await page.waitForTimeout(250);
-      if ((await landed("archive")).closed || !(await page.locator('#archive a[href="watch"]', { hasText: "Replay of the main run, 3 Nov" }).isVisible())) fail(`/proof#archive ${tag}: the archive does not open with the replay of the main run first`);
+      if ((await landed("archive")).closed || !(await page.locator('#archive a[href="replay"]', { hasText: "Replay of the main run, 3 Nov" }).isVisible())) fail(`/proof#archive ${tag}: the archive does not open with the replay of the main run first`);
       await page.goto(`${base}/proof`, { waitUntil: "load" });
       await page.locator(".nums a.num.stop").click();
       await page.waitForTimeout(250);

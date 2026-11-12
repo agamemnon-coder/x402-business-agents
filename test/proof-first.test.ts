@@ -336,7 +336,7 @@ describe("/proof's folds: the Airi runs, the read-back, every check, the busines
   it("the archive is its own fold, last: the replay of the main run with its date from the record, then the archived pages", () => {
     expect(starts[4]![1]).toBe("archive");
     const links = [...part(4).matchAll(/<li><a class="pf" href="([^"]+)">([^<]+)<\/a><\/li>/g)].map((m) => [m[1]!, m[2]!]);
-    expect(links.map((l) => l[0])).toEqual(["watch", "./?recorded", "metal/report", "film", "month", "lab"]);
+    expect(links.map((l) => l[0])).toEqual(["replay", "./?recorded", "metal/report", "film", "month", "lab"]);
     expect(links[0]![1]).toBe(`Replay of the main run, ${day(agentRun().recordedAt)}`);
     expect(links[0]![1]).toBe("Replay of the main run, 3 Nov");
     expect((main.match(/id="archive"/g) ?? []).length).toBe(1);

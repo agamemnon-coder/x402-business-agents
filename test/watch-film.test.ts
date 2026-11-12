@@ -123,7 +123,8 @@ describe("/watch with the film's id set", () => {
 describe("the page says what the film says", () => {
   it("\"What you just saw ran for real\": each run links its own record, and rests on claims that hold", () => {
     const shown = runsSeen();
-    expect(shown.map((r) => r.rail)).toEqual(["Airwallex", "Metal", "Visa via Airi", "Claude", "Moneybird"]);
+    // The five written entries are always there; a later run's entry only when its record is (Face ID on chain is, 12 Nov).
+    expect(shown.map((r) => r.rail).filter((_, i) => !/faceid|tokeni/.test(shown[i]!.file))).toEqual(["Airwallex", "Metal", "Visa via Airi", "Claude", "Moneybird"]);
     for (const r of shown) {
       expect(none).toContain(`<a href="${r.href}" target="_blank" rel="noopener">`);
       expect(r.href).toBe(REPO_BLOB + r.file);
@@ -146,8 +147,8 @@ describe("the page says what the film says", () => {
       ["Metal", "12 Nov", "The owners' Face ID on chain, 12 November"], ["Metal", "12 Nov", "An invoice token on Metal, 12 November"],
       ["Claude", "3 Nov", RUNS_SEEN[5]!.text],
     ]);
-    // Not here: not shown (today's repository has neither record).
-    expect(runsSeen().some((r) => /faceid|tokeni/.test(r.file))).toBe(false);
+    // Not here: not shown.
+    expect(runsSeen(["2026-11-07-awx-1.md"], () => "# x\n").map((r) => r.rail)).toEqual(["Airwallex"]);
   });
 
   it("the transcript, folded, is the film's narration row by row, with its times", () => {
