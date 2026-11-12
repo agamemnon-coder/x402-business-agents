@@ -230,10 +230,10 @@ describe("Purser's side and a bookkeeping package (stand-in)", () => {
   });
 
   it("a read that fails leaves the document not compared, with the reason and no secret", async () => {
-    const x = await readConnector(db, standIn({ readBack: true, held: asSent(), fail: "401 for https://x.test?api_key=sk-live-abcdef1234567890" }), ledgerItems(db));
+    const x = await readConnector(db, standIn({ readBack: true, held: asSent(), fail: "401 for https://x.test?api_key=aaaaaaaaaaaaaaaa" }), ledgerItems(db));
     expect(x.docs[0]).toMatchObject({ net_cents: null, paid_cents: null, state: null });
     expect(x.docs[0]!.note).toMatch(/^could not be read: 401/);
-    expect(x.docs[0]!.note).not.toContain("sk-live-abcdef1234567890");
+    expect(x.docs[0]!.note).not.toContain("aaaaaaaaaaaaaaaa");
   });
 });
 
@@ -307,7 +307,7 @@ describe("npm run reconcile-books", () => {
   const kept = () => (db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'books.reconciled'").get() as { n: number }).n;
 
   it("names the missing settings (never a value), reads nothing and keeps nothing", async () => {
-    const secret = "mb-token-abcdef123456";
+    const secret = "bbbbbbbbbbbbbbbb";
     let r = await run(["--books", "moneybird"], { env: { ERP_MONEYBIRD_TOKEN: secret } });
     expect(r).toEqual({ code: 2, text: "Not compared: ERP_MONEYBIRD_ADMINISTRATION_ID, ERP_MONEYBIRD_TAX_RATES are not set. Nothing was kept." });
     expect(r.text).not.toContain(secret);
