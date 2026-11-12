@@ -6,13 +6,13 @@
 // proposal: paid once the ledger's transfer is PAID.
 
 import { followPayouts } from "../payouts/follow.js";
-import { readFileSync } from "node:fs";
 import type { AirwallexRail, PayoutRail } from "../airwallex/port.js";
 import { proposeInvoicePayment, type InvoiceOutcome } from "../agents/euroBill.js";
 import type { DB } from "../db/open.js";
 import type { InboxDeps } from "./inbox.js";
 import { accrualEntries, accrualPushed, paymentEntries, pushOnce, reversalEntries, type BookkeepingSink } from "./books.js";
 import { expireDue } from "../policy/approvals.js";
+import { readDoc } from "./docStore.js";
 import { pdfText } from "./pdfText.js";
 import type { Asker } from "./read.js";
 import { writeReviewNote } from "./review.js";
@@ -50,7 +50,7 @@ export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id:
   }
   if (!payableCurrency(inv.currency)) throw new Error(`${id} is in ${inv.currency}; Purser does not pay that currency (pays EUR only in two-decimal currencies SWIFT carries), so a person pays it`);
   const doc = db.prepare("SELECT path FROM ap_documents WHERE sha256 = ?").get(inv.doc_sha256) as { path: string };
-  const text = (await pdfText(readFileSync(doc.path))).text;
+  const text = (await pdfText(readDoc(db, doc.path))).text;
   const r = inv.reading;
   const invoiceNo = ledgerInvoiceNo(r.invoice_no, r.vendor);
   const due = r.due_date || now.toISOString().slice(0, 10);
