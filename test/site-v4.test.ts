@@ -79,7 +79,7 @@ describe("the site after v4", () => {
     // holds both states).
     // Pricing 150 and Security 220 since 12 Nov (the pages under "More"): three price cards and one "Not yet" line; seven
     // short cards, each one sentence with its proof link, the detail folded.
-    const budget: Record<string, number> = { home: 250, watch: 125, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, pricing: 150, security: 220, metal: tokenizeRun() ? 250 : 200, airwallex: 370 /* +5, panel review 10 Nov */, visa: 610 /* +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa) */, claude: 150, notFound: 40 };
+    const budget: Record<string, number> = { home: 250, watch: 125, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, pricing: 150, security: 260 /* 220 until 12 Nov 15:55: nine controls, each with its proof (the owner) */, metal: tokenizeRun() ? 250 : 200, airwallex: 370 /* +5, panel review 10 Nov */, visa: 610 /* +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa) */, claude: 150, notFound: 40 };
     // Docs 200 since 12 Nov: four cards, the agent API's tools by name with one short line each, every description folded.
     // Status 90 since 12 Nov: the status lines (empty until /health is read) and the five latest live runs.
     Object.assign(budget, { docs: 200, status: 90 });

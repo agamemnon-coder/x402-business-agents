@@ -603,7 +603,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const body = await page.locator("main").innerText();
       const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
       // The budgets of test/site-v4.test.ts, counted here as the browser shows the page's body (folds closed).
-      const budget = path === "/pricing" ? 150 : 220;
+      const budget = path === "/pricing" ? 150 : 260; // /security 260 since 12 Nov 15:55: nine controls (the owner)
       if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
       const here = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null, tabs: document.querySelectorAll('nav[aria-label="Main"] > a.on').length }; })()`) as { more: boolean; link: string | null; tabs: number };
       if (!here.more || here.link !== path.slice(1) || here.tabs) fail(`${path} ${tag}: "More" and the page's own link are not marked as where the reader is (${JSON.stringify(here)})`);
@@ -617,9 +617,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         // One fold since the panel's review (12 Nov): "How the fee is set", closed, in the fee's card.
         if (!/Not yet: no real-money go-live\./.test(body) || (await page.locator("main details").count()) !== 1 || (await page.locator("#platform-fee details.fold:not([open])").count()) !== 1) fail(`/pricing ${tag}: no "Not yet" line, or a fold that should not be there`);
       } else {
-        // Eight folds since the panel's review (12 Nov): each card's detail, and "If the approver is unavailable" (#unavailable) under the signature.
-        if (cards !== 7 || (await page.locator("main article.pc.card details.fold").count()) !== 8 || (await page.locator("#s-sign details#unavailable").count()) !== 1 || (await page.locator("main details[open]").count())) fail(`/security ${tag}: not seven cards, each with its detail folded`);
-        if (!/Our red team ran \d+ attacks in a test world: \d+ were stopped before anything moved and \d+ were found afterwards, not prevented\./.test(body) || !/npm run verify-log/.test(body) || !/No third-party penetration test and no SOC 2 report yet/.test(body)) fail(`/security ${tag}: the red team's counts, the audit command or the "Not yet" line is missing`);
+        // Nine controls and "Not yet" since the owner's request (12 Nov 15:55): ten cards, each with its detail folded, and "If the approver is unavailable" (#unavailable) under the signature.
+        if (cards !== 10 || (await page.locator("main article.pc.card details.fold").count()) !== 11 || (await page.locator("#s-sign details#unavailable").count()) !== 1 || (await page.locator("main details[open]").count())) fail(`/security ${tag}: not ten cards, each with its detail folded`);
+        if (!/Our red team ran \d+ attacks: \d+ stopped before anything moved, \d+ found afterwards\./.test(body) || !/npm run verify-log/.test(body) || !/No SOC 2 report, no ISO 27001 audit and no third-party penetration test yet/.test(body)) fail(`/security ${tag}: the red team's counts, the audit command or the "Not yet" line is missing`);
         if (!/^try(\/sign)?$/.test((await page.locator("#s-sign .links a").getAttribute("href")) ?? "")) fail(`/security ${tag}: the signature card does not link to Try`);
       }
       await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });

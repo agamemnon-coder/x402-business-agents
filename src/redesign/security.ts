@@ -89,7 +89,7 @@ export const CHAIN_LINES: readonly DocLine[] = [
   { doc: "docs/metal-award.md", anchor: "", quote: "the customer is simulated and Purser holds no personal data on chain" },
 ];
 /** The "Not yet" card's one sentence, and the docs' own sentences behind each part of it. */
-export const NOT_YET_LINE = "No third-party penetration test and no SOC 2 report yet; sandbox and testnet only; the SME product's independent security review is pending.";
+export const NOT_YET_LINE = "No SOC 2 report, no ISO 27001 audit and no third-party penetration test yet; sandbox and testnet only; the SME product's independent security review is pending.";
 export const NOT_YET_SOURCES: readonly DocLine[] = [
   { doc: "docs/security.md", anchor: "#checks", quote: "No third-party penetration test has been run" },
   { doc: "docs/controls.md", anchor: "", quote: "This is not a SOC 2 report: no auditor has tested these controls, and the build runs on the Airwallex sandbox and Metal testnet only." },
@@ -118,6 +118,26 @@ export function unavailableLines(text: string = repoText(UNAVAILABLE.doc)): stri
   return lines.map((l) => l.replace(/^\d\. /, "").replace(/ \(`[^\n]*\)$/, "").replace(/\*\*|`/g, "").trim());
 }
 
+/** Two locks on one payout (10 and 12 November, Airwallex sandbox): the passkey in Purser, then Airwallex's own approval. */
+export const TWO_LOCKS_RUN = "docs/runs/2026-11-12-airwallex-two-locks-paid.md";
+export const TWO_LOCKS_LINES: readonly DocLine[] = [
+  { doc: TWO_LOCKS_RUN, anchor: "", quote: "a labelled virtual test passkey signed the exact terms in Purser" },
+  { doc: TWO_LOCKS_RUN, anchor: "", quote: "Airwallex's own approval workflow held it IN_APPROVAL" },
+  { doc: TWO_LOCKS_RUN, anchor: "", quote: "On 12 November the owner approved it at Airwallex and it ended PAID, with simulated settlement." },
+];
+/** The models: no keys or tools; code checks what they return (docs/security.md, least privilege). */
+export const MODELS_LINE: DocLine = { doc: "docs/security.md", anchor: "#least-privilege", quote: "Models: no key, URL, credential or tool. They read text and return typed data that code checks" };
+/** Secrets: only the runner holds keys; every push is scanned; the cloud's logs are cleaned. */
+export const SECRETS_LINES: readonly DocLine[] = [
+  { doc: "docs/security.md", anchor: "#trust-boundaries", quote: "Only the runner holds keys and writes the ledger." },
+  { doc: "docs/security.md", anchor: "#checks", quote: "gitleaks on the pushed commits and the whole history of the branch under check" },
+  { doc: "docs/cloud.md", anchor: "#monitoring-logs-and-alert-webhooks", quote: "cloud/src/log.ts cleans every field: anything named like a secret becomes [redacted]" },
+];
+/** Each company apart in Purser Cloud: one database, every row scoped to its company (not a Durable Object per company). */
+export const TENANT_LINE: DocLine = { doc: "docs/cloud.md", anchor: "#how-it-fits", quote: "Every row carries the company (tenant_id); routes only reach data through a tenant-scoped layer (cloud/src/tenant.ts), and a test tries every route against another company's objects." };
+/** The full matrix behind the page: each risk, its control, who enforces it, its test and its evidence. */
+export const CONTROLS_MATRIX = "docs/controls-matrix.md";
+
 /**
  * A card: `line` is its one sentence, `links` its proof, `fold` its detail; `more`, where a card has one, is a second
  * fold with an anchor of its own. `line`, `links` and the folds' lines are markup, built here.
@@ -141,7 +161,7 @@ export function securityCards(): SecurityCard[] {
   return [
     {
       id: "s-sign", icon: "scan-face", title: "Signed terms",
-      line: esc("The CFO signs the exact terms with a passkey: change one cent and the signature is refused."),
+      line: esc("The CFO signs the exact terms with a passkey (Face ID); one changed cent is refused."),
       links: [siteLink("try", "Try it yourself", true)],
       fold: { summary: "How", lines: [esc(terms.how), code(terms)] },
       // The doc's own lines, each checked against the doc as every quoted line on this page is, then the doc itself.
@@ -151,43 +171,64 @@ export function securityCards(): SecurityCard[] {
       },
     },
     {
-      id: "s-funds", icon: "wallet", title: "No customer money held", pill: "Sandbox only",
-      // "No customer money" (docs/compliance.md), not "no funds of its own": in the sandbox run Purser's own platform
-      // account funded the test company and took the test fee (docs/airwallex-platform.md). Review, 12 Nov.
-      line: esc("Purser holds no customer money: each company's money stays in its own Airwallex account, and Purser is the control layer."),
-      links: [outLink(repoHref(SANDBOX_RUN), "The sandbox run")],
-      fold: { summary: "How", lines: [
-        quoted(FUNDS_LINE),
-        esc("In the sandbox run a payout was made on behalf of a test company's own connected account, with test money."),
-        `${esc("In this build the runner keeps the testnet owner key.")} ${outLink(repoHref(docLine(OWNER_KEY_NOTE).doc), OWNER_KEY_NOTE.doc)}`,
-      ] },
+      id: "s-locks", icon: "lock", title: "Two locks",
+      line: esc("A payout needs the CFO's signature in Purser, then Airwallex's own approval."),
+      links: [outLink(repoHref(TWO_LOCKS_RUN), "The sandbox run")],
+      fold: { summary: "How", lines: TWO_LOCKS_LINES.map(quoted) },
     },
     {
-      id: "s-limits", icon: "sliders-horizontal", title: "Limits",
-      line: esc("Limits live outside the prompt: card controls per agent at Airwallex, and a mandate per agent on chain at Metal."),
+      id: "s-limits", icon: "sliders-horizontal", title: "Limits outside the prompt",
+      line: esc("Card controls per agent at Airwallex, and a mandate per agent on Metal's chain."),
       links: [siteLink("airwallex#controls", "Card controls, read back"), siteLink("metal", "A refusal on chain")],
       fold: { summary: "How", lines: [`Airwallex: ${esc(cards.how)} ${code(cards)}`, `Metal: ${esc(chain.how)} ${code(chain)}`] },
     },
     {
+      id: "s-code", icon: "bot", title: "Code decides",
+      line: esc("Claude reads and advises without keys or tools; code checks every answer."),
+      links: [outLink(repoHref(MODELS_LINE.doc, MODELS_LINE.anchor), "Least privilege")],
+      fold: { summary: "How", lines: [quoted(MODELS_LINE)] },
+    },
+    {
+      id: "s-secrets", icon: "shield-check", title: "Secrets",
+      line: esc("Only the runner holds keys, and every push is scanned for leaked secrets."),
+      links: [outLink(repoHref("docs/security.md", "#trust-boundaries"), "Trust boundaries")],
+      fold: { summary: "How", lines: SECRETS_LINES.map(quoted) },
+    },
+    {
+      id: "s-tenants", icon: "users", title: "Each company apart",
+      line: esc("Every row carries its company, and a test tries each route on another company's data."),
+      links: [outLink(repoHref(TENANT_LINE.doc, TENANT_LINE.anchor), "Purser Cloud")],
+      fold: { summary: "How", lines: [quoted(TENANT_LINE)] },
+    },
+    {
       id: "s-audit", icon: "file-lock-2", title: "Audit trail",
-      line: `Every step goes into a hash-chained audit log that anyone can re-check: <code>${esc(AUDIT_COMMAND)}</code>.`,
+      line: `Every step goes into a hash-chained log that anyone can re-check: <code>${esc(AUDIT_COMMAND)}</code>.`,
       links: [outLink(repoHref(AUDIT_README), "Check the published log")],
       fold: { summary: "How", lines: [quoted(AUDIT_LINE), `The ${esc(audit.day)} run's log is in the repository, ${audit.rows} rows. Check it offline, with no keys: <code>${esc(audit.command)}</code>`, code(log)] },
     },
     {
-      id: "s-chain", icon: "link-2", title: "On chain",
-      line: esc("On Metal's chain are each agent's mandate and its payments, and of an approval only a hash: no personal data."),
-      links: [siteLink("metal", "See it on Metal's testnet")],
-      fold: { summary: "How", lines: [esc("Metal's testnet is public: each agent's mandate and every payment can be seen on its explorer."), ...CHAIN_LINES.map(quoted)] },
-    },
-    {
-      id: "s-redteam", icon: "shield-alert", title: "Tested by attack",
-      line: esc(`Our red team ran ${first.attempts} attacks in a test world: ${first.before} were stopped before anything moved and ${first.after} were found afterwards, not prevented.`),
+      id: "s-redteam", icon: "shield-alert", title: "Tested by attack", pill: "Test world",
+      line: esc(`Our red team ran ${first.attempts} attacks: ${first.before} stopped before anything moved, ${first.after} found afterwards.`),
       links: [outLink(repoHref(REDTEAM_REPORT), "The report")],
       fold: { summary: "Later rounds", lines: [
         `${esc(oct31.day)}, three runs in a row: ${oct31.attempts} attacks, ${oct31.before} stopped before anything moved, ${oct31.after} found afterwards, ${oct31.inconclusive} inconclusive. ${outLink(repoHref(REDTEAM_OCT31_README), "The runs")}`,
         `${esc(night.day)}, tests written by Claude Opus as the attacker: ${night.attempts} run, ${night.blocked} blocked, ${night.notBlocked} not blocked by code's verdict (checked by hand: ${esc(recheck.words)}), ${night.inconclusive} inconclusive. ${outLink(repoHref(REDTEAM_NIGHT_RECORD), "The record")}`,
         esc("Every round ran in a throwaway test world on simulated rails, with test data: not live."),
+      ] },
+    },
+    {
+      id: "s-data", icon: "wallet", title: "Money and data", pill: "Test money only",
+      // "No customer money" (docs/compliance.md), not "no funds of its own": in the sandbox run Purser's own platform
+      // account funded the test company and took the test fee (docs/airwallex-platform.md). Review, 12 Nov.
+      line: esc("Each company's money stays in its own Airwallex account, and on chain there is no personal data."),
+      links: [outLink(repoHref(SANDBOX_RUN), "The sandbox run"), siteLink("metal", "See it on Metal's testnet")],
+      fold: { summary: "How", lines: [
+        quoted(FUNDS_LINE),
+        esc("In the sandbox run a payout was made on behalf of a test company's own connected account, with test money."),
+        `${esc("In this build the runner keeps the testnet owner key.")} ${outLink(repoHref(docLine(OWNER_KEY_NOTE).doc), OWNER_KEY_NOTE.doc)}`,
+        esc("Every card is an Airwallex sandbox test card and every amount is test money."),
+        esc("Metal's testnet is public: each agent's mandate and every payment can be seen on its explorer."),
+        ...CHAIN_LINES.map(quoted),
       ] },
     },
     {
@@ -207,9 +248,9 @@ export function securityPage(): string {
   const cards = securityCards();
   return productPage({
     key: "security", title: "Security and trust", h1: "Security and trust", label: "Sandbox and testnet only",
-    lead: "What protects the money, each point with its proof.",
+    lead: "Each control below, with its proof.",
     description: "How Purser protects company money: signatures over the exact terms, no customer money held, limits outside the prompt, a hash-chained audit log, the red team's results, and what is not in place yet. Sandbox and testnet only.",
-    body: `<div class="cols c2">\n  ${cards.map(cardHtml).join("\n  ")}\n</div>`,
+    body: `<div class="links">${outLink(repoHref(CONTROLS_MATRIX), "Every risk, its control and its test")}</div>\n<div class="cols c3">\n  ${cards.map(cardHtml).join("\n  ")}\n</div>`,
     source: `Source: ${REDTEAM_REPORT} and the later red-team records, ${AUDIT_LOG}, and the docs each fold names.`,
     real: [
       "Sandbox and testnet only: Airwallex's sandbox, Metal's testnet, test money.",

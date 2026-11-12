@@ -6,6 +6,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CHECK_PATHS } from "../src/cli/judge.js";
+import { repoHref } from "../src/redesign/productPage.js";
 import { FEE_BPS_CAP } from "../src/airwallex/platform.js";
 import { PRICING, euro, percentOfBps } from "../src/config/pricing.js";
 import { FEE_FOLD, PRICING_LEAD, TEST_VALUES, e2eFeeRun, feeLine, feeRun, pricingPage } from "../src/redesign/pricing.js";
@@ -139,14 +140,22 @@ describe("/security: security and trust", () => {
   const inSight = (id: string) => mainText(`<main>${card(html, id).replace(/<details\b[^>]*>\s*<summary[^>]*>([\s\S]*?)<\/summary>[\s\S]*?<\/details>/g, " $1 ")}</main>`);
   const folded = (id: string) => mainText(`<main>${/<details class="fold">[\s\S]*?<\/details>/.exec(card(html, id))?.[0] ?? ""}</main>`);
 
-  it("has seven short cards in this order, each one sentence, a link to its proof and a folded detail", () => {
-    expect(cards.map((c) => [c.id, c.title])).toEqual([["s-sign", "Signed terms"], ["s-funds", "No customer money held"], ["s-limits", "Limits"], ["s-audit", "Audit trail"], ["s-chain", "On chain"], ["s-redteam", "Tested by attack"], ["s-notyet", "Not yet"]]);
+  // The owner, 12 Nov 15:55: the strongest page of the site, enterprise grade and calm: one header line, a grid of
+  // controls each with its proof, and a short honest "Not yet".
+  it("has nine controls and a \"Not yet\" box in this order, each one short sentence, a link to its proof and a folded detail", () => {
+    expect(cards.map((c) => [c.id, c.title])).toEqual([["s-sign", "Signed terms"], ["s-locks", "Two locks"], ["s-limits", "Limits outside the prompt"], ["s-code", "Code decides"], ["s-secrets", "Secrets"], ["s-tenants", "Each company apart"], ["s-audit", "Audit trail"], ["s-redteam", "Tested by attack"], ["s-data", "Money and data"], ["s-notyet", "Not yet"]]);
+    // A grid of three at desktop width, the "Not yet" box across it.
+    expect(html).toContain('<div class="cols c3">');
+    expect(cards.filter((c) => c.wide).map((c) => c.id)).toEqual(["s-notyet"]);
+    // One header line, then the full matrix behind it.
+    expect(text).toContain("Each control below, with its proof. Every risk, its control and its test ↗");
+    expect(html).toContain(`href="${repoHref("docs/controls-matrix.md")}"`);
     expect([...html.matchAll(/<article class="pc card[^"]*" id="(s-[a-z]+)">/g)].map((m) => m[1])).toEqual(cards.map((c) => c.id));
     for (const c of cards) {
       const el = card(html, c.id), line = mainText(`<main>${/<p>([\s\S]*?)<\/p>/.exec(el)![0]}</main>`);
       // One sentence: it ends with a full stop and has no other sentence end inside it.
       expect({ id: c.id, sentences: line.replace(/\bnpm run verify-log\b/, "the command").split(/[.!?](?:\s|$)/).filter(Boolean).length, ends: /\.$/.test(line) }).toEqual({ id: c.id, sentences: 1, ends: true });
-      expect({ id: c.id, words: line.split(" ").length <= 26 }).toEqual({ id: c.id, words: true });
+      expect({ id: c.id, words: line.split(" ").length <= (c.id === "s-notyet" ? 30 : 17) }).toEqual({ id: c.id, words: true });
       expect({ id: c.id, links: (/<div class="links">([\s\S]*?)<\/div>/.exec(el)?.[1]?.match(/<a class="pf" href="[^"]+"/g) ?? []).length >= 1 }).toEqual({ id: c.id, links: true });
       expect({ id: c.id, folds: (el.match(/<details class="fold"><summary>[^<]+<\/summary><ul class="pl"><li>/g) ?? []).length, closed: (el.match(/<\/li><\/ul><\/details>/g) ?? []).length === (el.match(/<details\b/g) ?? []).length }).toEqual({ id: c.id, folds: 1, closed: true });
       // One card carries a second fold, with an anchor of its own: "If the approver is unavailable", under the
@@ -163,7 +172,7 @@ describe("/security: security and trust", () => {
   });
 
   it("signatures: the exact terms, signed with a passkey, one changed cent refused; the proof is the Try tab", () => {
-    expect(inSight("s-sign")).toBe("Signed terms The CFO signs the exact terms with a passkey: change one cent and the signature is refused. Try it yourself How If the approver is unavailable");
+    expect(inSight("s-sign")).toBe("Signed terms The CFO signs the exact terms with a passkey (Face ID); one changed cent is refused. Try it yourself How If the approver is unavailable");
     expect(card(html, "s-sign")).toContain('<a class="pf" href="try" data-next="try">Try it yourself</a>');
     // In a bundle that carries /try/sign the link leads there, as the Try tab does; in one without it, to /try.
     expect(flowLinks(html, true)).toContain('<a class="pf" href="try/sign" data-next="try">Try it yourself</a>');
@@ -173,8 +182,8 @@ describe("/security: security and trust", () => {
 
   // 12 Nov (review): "no customer money", not "no funds of its own": in the linked sandbox run Purser's own platform
   // account funded the test company and took the test fee (docs/airwallex-platform.md: "the only place a Purser fee can go").
-  it("funds: only wording the docs support (no customer money; the company's own Airwallex account; the control layer), sandbox only, with the claims register's note", () => {
-    expect(inSight("s-funds")).toBe("No customer money held Sandbox only Purser holds no customer money: each company's money stays in its own Airwallex account, and Purser is the control layer. The sandbox run ↗ How");
+  it("money and data: only wording the docs support (the company's own Airwallex account; no personal data on chain), test money only, with the claims register's note", () => {
+    expect(inSight("s-data")).toBe("Money and data Test money only Each company's money stays in its own Airwallex account, and on chain there is no personal data. The sandbox run ↗ See it on Metal's testnet How");
     const flat = (p: string) => read(p).replace(/\*\*|`/g, "").replace(/\s+/g, " ");
     expect(flat("docs/compliance.md")).toContain("Purser is software the business runs. It holds no customer money");
     expect(flat("docs/airwallex-platform.md")).toContain("Purser's own platform account (awxPlatform.feeAccount), the only place a Purser fee can go");
@@ -185,13 +194,33 @@ describe("/security: security and trust", () => {
     // The softened wording of the claims register, and the note it asks for with it.
     expect(flat("docs/claims.md")).toContain("\"Purser holds no money\" → \"holds no funds of its own\", noting that the runner keeps the testnet owner key.");
     expect(text).not.toMatch(/holds no money/i);
-    expect(folded("s-funds")).toContain("“The money sits in the business's own Airwallex account and Metal account. Purser asks those rails to move it”");
-    expect(folded("s-funds")).toContain("In this build the runner keeps the testnet owner key.");
-    expect(folded("s-funds")).toContain("on behalf of a test company's own connected account, with test money");
+    expect(folded("s-data")).toContain("“The money sits in the business's own Airwallex account and Metal account. Purser asks those rails to move it”");
+    expect(folded("s-data")).toContain("In this build the runner keeps the testnet owner key.");
+    expect(folded("s-data")).toContain("on behalf of a test company's own connected account, with test money");
+  });
+
+  it("two locks: the CFO's signature in Purser, then Airwallex's own approval; the run records say it ran once, with a test passkey", () => {
+    expect(inSight("s-locks")).toBe("Two locks A payout needs the CFO's signature in Purser, then Airwallex's own approval. The sandbox run ↗ How");
+    expect(card(html, "s-locks")).toContain(`href="${repoHref("docs/runs/2026-11-12-airwallex-two-locks-paid.md")}"`);
+    for (const q of ["a labelled virtual test passkey signed the exact terms in Purser", "Airwallex's own approval workflow held it IN_APPROVAL", "On 12 November the owner approved it at Airwallex and it ended PAID, with simulated settlement."]) expect(folded("s-locks")).toContain(`“${q}”`);
+  });
+
+  it("code decides: the models hold no key or tool, code checks their answers; secrets stay with the runner and every push is scanned", () => {
+    expect(inSight("s-code")).toBe("Code decides Claude reads and advises without keys or tools; code checks every answer. Least privilege ↗ How");
+    expect(folded("s-code")).toContain("“Models: no key, URL, credential or tool. They read text and return typed data that code checks");
+    expect(inSight("s-secrets")).toBe("Secrets Only the runner holds keys, and every push is scanned for leaked secrets. Trust boundaries ↗ How");
+    for (const q of ["Only the runner holds keys and writes the ledger.", "gitleaks on the pushed commits and the whole history of the branch under check", "cloud/src/log.ts cleans every field: anything named like a secret becomes [redacted]"]) expect(folded("s-secrets")).toContain(`“${q}”`);
+  });
+
+  // Not "a Durable Object per company": Purser Cloud keeps every company in one database, each row scoped (docs/cloud.md).
+  it("each company apart: every row carries its company, and a test tries each route on another company's data", () => {
+    expect(inSight("s-tenants")).toBe("Each company apart Every row carries its company, and a test tries each route on another company's data. Purser Cloud ↗ How");
+    expect(folded("s-tenants")).toContain("“Every row carries the company (tenant_id); routes only reach data through a tenant-scoped layer (cloud/src/tenant.ts), and a test tries every route against another company's objects.”");
+    expect(text).not.toMatch(/Durable Object per company/i);
   });
 
   it("limits: outside the prompt, per agent, at Airwallex (card controls) and on Metal (a mandate on chain)", () => {
-    expect(inSight("s-limits")).toBe("Limits Limits live outside the prompt: card controls per agent at Airwallex, and a mandate per agent on chain at Metal. Card controls, read back A refusal on chain How");
+    expect(inSight("s-limits")).toBe("Limits outside the prompt Card controls per agent at Airwallex, and a mandate per agent on Metal's chain. Card controls, read back A refusal on chain How");
     expect(card(html, "s-limits")).toContain('<a class="pf" href="airwallex#controls">Card controls, read back</a><a class="pf" href="metal">A refusal on chain</a>');
     // The anchor exists on /airwallex.
     expect(buildPages().airwallex).toMatch(/id="controls"/);
@@ -201,7 +230,7 @@ describe("/security: security and trust", () => {
 
   it("audit trail: hash-chained, anyone can re-check it, and the command is named; the published log's rows are counted from the file", () => {
     expect(AUDIT_COMMAND).toBe("npm run verify-log");
-    expect(inSight("s-audit")).toBe("Audit trail Every step goes into a hash-chained audit log that anyone can re-check: npm run verify-log . Check the published log ↗ How");
+    expect(inSight("s-audit")).toBe("Audit trail Every step goes into a hash-chained log that anyone can re-check: npm run verify-log . Check the published log ↗ How");
     expect(card(html, "s-audit")).toContain("<code>npm run verify-log</code>");
     expect(json<{ scripts: Record<string, string> }>("package.json").scripts["verify-log"]).toBe("tsx src/cli/verifyLog.ts");
     const rows = read(AUDIT_LOG).split("\n").filter((l) => l.trim()).length;
@@ -217,9 +246,10 @@ describe("/security: security and trust", () => {
   });
 
   it("on chain: each agent's mandate and its payments, of an approval only a hash, no personal data, as the docs say", () => {
-    expect(inSight("s-chain")).toBe("On chain On Metal's chain are each agent's mandate and its payments, and of an approval only a hash: no personal data. See it on Metal's testnet How");
-    expect(folded("s-chain")).toContain("“Mandate changes anchor the approval on chain (the new credential's hash is bound)”");
-    expect(folded("s-chain")).toContain("“the customer is simulated and Purser holds no personal data on chain”");
+    expect(folded("s-data")).toContain("Every card is an Airwallex sandbox test card and every amount is test money.");
+    expect(folded("s-data")).toContain("Metal's testnet is public: each agent's mandate and every payment can be seen on its explorer.");
+    expect(folded("s-data")).toContain("“Mandate changes anchor the approval on chain (the new credential's hash is bound)”");
+    expect(folded("s-data")).toContain("“the customer is simulated and Purser holds no personal data on chain”");
     expect(read(OVERVIEW_DOC).replace(/\s+/g, " ")).toContain("Mandate changes anchor the approval on chain (the new credential's hash is bound)");
     expect(CHAIN_LINES[0]!.doc).toBe(OVERVIEW_DOC);
   });
@@ -243,7 +273,7 @@ describe("/security: security and trust", () => {
     const first = json<R>(REDTEAM_REPORT);
     const after = first.results.filter((r) => r.caught === "after").length, before = first.results.filter((r) => r.outcome === "blocked" && r.caught === "before").length;
     expect([first.attempts, before + after, after]).toEqual([first.results.length, first.blocked, first.caught_after]);
-    expect(inSight("s-redteam")).toBe(`Tested by attack Our red team ran ${first.attempts} attacks in a test world: ${before} were stopped before anything moved and ${after} were found afterwards, not prevented. The report ↗ Later rounds`);
+    expect(inSight("s-redteam")).toBe(`Tested by attack Test world Our red team ran ${first.attempts} attacks: ${before} stopped before anything moved, ${after} found afterwards. The report ↗ Later rounds`);
     expect(redTeamRound([REDTEAM_REPORT])).toMatchObject({ day: "30 October", attempts: first.attempts, before, after, inconclusive: 0, notBlocked: 0 });
     // 31 October, three runs: counted from each run's results.
     const oct = { attempts: sum(REDTEAM_OCT31, (r) => r.results.length), after: sum(REDTEAM_OCT31, (r) => r.results.filter((x) => x.caught === "after").length), blocked: sum(REDTEAM_OCT31, (r) => r.results.filter((x) => x.outcome === "blocked").length), inconclusive: sum(REDTEAM_OCT31, (r) => r.results.filter((x) => x.outcome === "inconclusive").length) };
@@ -261,7 +291,7 @@ describe("/security: security and trust", () => {
   });
 
   it("not yet: one honest sentence, each part of it a sentence the docs say, word for word", () => {
-    expect(NOT_YET_LINE).toBe("No third-party penetration test and no SOC 2 report yet; sandbox and testnet only; the SME product's independent security review is pending.");
+    expect(NOT_YET_LINE).toBe("No SOC 2 report, no ISO 27001 audit and no third-party penetration test yet; sandbox and testnet only; the SME product's independent security review is pending.");
     expect(inSight("s-notyet")).toBe(`Not yet ${NOT_YET_LINE} What is not in place ↗ Sources`);
     expect(NOT_YET_SOURCES.map((s) => s.doc)).toEqual(["docs/security.md", "docs/controls.md", "docs/cloud.md"]);
     const flat = (p: string) => read(p).replace(/\*\*|`/g, "").replace(/\s+/g, " ");
@@ -290,9 +320,11 @@ describe("/security: security and trust", () => {
     const first = redTeamRound([REDTEAM_REPORT]), oct = redTeamRound(REDTEAM_OCT31), night = redTeamRound(REDTEAM_NIGHT), audit = publishedAudit();
     const allowed = new Set([first.attempts, first.before, first.after, oct.attempts, oct.before, oct.after, oct.inconclusive, night.attempts, night.blocked, night.notBlocked, night.inconclusive, audit.rows].map(String)
       // And the days of the dated rounds and of the published log's run.
-      .concat(first.day.split(" ")[0]!, oct.day.split(" ")[0]!, night.day.split(" ")[0]!, audit.day.split(" ")[0]!));
+      .concat(first.day.split(" ")[0]!, oct.day.split(" ")[0]!, night.day.split(" ")[0]!, audit.day.split(" ")[0]!)
+      // And the day the two-locks run's record names, from its own heading.
+      .concat(/^# [^\n]*\((\d{1,2}) [A-Z][a-z]+ \d{4}\)/.exec(read("docs/runs/2026-11-12-airwallex-two-locks-paid.md"))![1]!));
     // Names that carry a digit are not figures: "SOC 2", "SHA-256", and the files the folds name.
-    const figures = (t: string) => numbers(t.replace(/SOC 2|SHA-256/g, " ").replace(/(?:src|test|docs)\/[\w/.-]+/g, " "));
+    const figures = (t: string) => numbers(t.replace(/SOC 2|SHA-256|ISO 27001/g, " ").replace(/(?:src|test|docs)\/[\w/.-]+/g, " "));
     expect(figures(text).filter((n) => !allowed.has(n))).toEqual([]);
     expect(figures(`${text} 100% safe`).filter((n) => !allowed.has(n))).toEqual(["100"]);
   });
