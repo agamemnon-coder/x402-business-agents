@@ -15,6 +15,7 @@ import { TenantDb } from "./tenant.js";
 import { closeTenant, eraseUser, exportTenant, PrivacyRefused } from "./privacy.js";
 import { download, ExportRefused, exportStatus, purgeEndedExportParts, signedLink, stageExport } from "./exports.js";
 import { consoleResponse } from "./console.js";
+import { vaultView, VaultNotFound } from "./vault.js";
 import { qrSvg } from "./qr.js";
 import { logEvent } from "./log.js";
 import { integrations } from "./integrations.js";
@@ -316,6 +317,9 @@ export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/ledger/entries", summary: "Ledger entries with their lines; filter by from, to; paginated.", need: "read", run: async (c) => json(200, await ledgerEntries(db(c), c.url.searchParams)) },
   { method: "GET", path: "/v1/reports/{name}", summary: "trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger.", need: "read", run: async (c) => json(200, await report(db(c), c.params[0]!, c.url.searchParams)) },
   { method: "GET", path: "/v1/insights", summary: "Payables at a glance: open, due, overdue, waiting, blocked, spend per supplier.", need: "read", run: async (c) => json(200, await insights(db(c), c.now)) },
+  { method: "GET", path: "/v1/vault", summary: "The vault's index for a year (?year=2026, the newest by default): every file filed, its folder path, kind and SHA-256, and whether the cloud holds it; its bytes come from /v1/documents/{sha256}.", need: "read", run: async (c) => {
+    try { return json(200, await vaultView(db(c), c.env.blobs, c.url.searchParams)); } catch (e) { if (e instanceof VaultNotFound) return notFound("vault index for that year"); throw e; }
+  } },
 
   { method: "GET", path: "/v1/documents/{sha256}", summary: "A document the company holds, by its SHA-256 (the export lists them).", need: "read", run: async (c) => {
     const d = await db(c).one<{ blob_key: string; filename: string; mime: string }>("documents", { sha256: c.params[0]! });

@@ -36,7 +36,7 @@ export const DEMO_MAX_DOCUMENT_BYTES = 5 * 1024 * 1024;
 export const DEMO_READS: ReadonlySet<string> = new Set([
   "GET /v1/me", "GET /v1/invoices", "GET /v1/invoices/{id}", "GET /v1/invoices/{id}/document", "GET /v1/vendors", "GET /v1/payments",
   "GET /v1/transactions", "GET /v1/transactions/summary", "GET /v1/transactions/export.csv", "GET /v1/transactions/{id}",
-  "GET /v1/ledger/entries", "GET /v1/reports/{name}", "GET /v1/insights", "GET /v1/documents/{sha256}",
+  "GET /v1/ledger/entries", "GET /v1/reports/{name}", "GET /v1/insights", "GET /v1/documents/{sha256}", "GET /v1/vault",
 ]);
 /** The routes that name no company and still answer at their own path. */
 export const DEMO_OPEN: ReadonlySet<string> = new Set(["GET /v1/health", "GET /v1/openapi.json"]);

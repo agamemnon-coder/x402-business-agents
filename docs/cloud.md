@@ -89,6 +89,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/reports/{name}` | read | trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger. |
 | `GET /v1/insights` | read | Payables at a glance: open, due, overdue, waiting, blocked, spend per supplier. |
 | `GET /v1/documents/{sha256}` | read | A document the company holds, by its SHA-256 (the export lists them). |
+| `GET /v1/vault` | read | The vault's index for a year (`?year=2026`, the newest by default): each filed file's folder path, kind and SHA-256, and whether the cloud holds it as a document. Only a vault index the cloud was given is shown; a runner push does not send one yet. |
 | `POST /v1/sync` | sync | The runner's push: vendors, invoices, documents, payments, the transactions register, ledger entries, audit rows. Idempotent. Never passkeys. |
 | `GET /v1/sync/state` | sync | Where the cloud's copy stands: the heads of the audit and ledger chains, and the documents it holds. |
 | `GET /v1/mail` | sync | Inbound e-mail waiting for the runner; paginated (limit, cursor). |
@@ -206,7 +207,7 @@ In demo mode there is one caller, an anonymous read-only visitor, and only this 
 | Endpoint | What it does |
 |---|---|
 | `GET /v1/demo/companies` | The demo companies in the configured order: `slug`, `name`, `language` and counts from their rows (invoices, paid invoices, suppliers, payments, transactions, documents, ledger entries), and the invoices by state (`invoices_by_status`). Says `test_world` and `read_only`. |
-| `GET /v1/demo/{company}/…` | A demo company's reads, with the same answers as the routes above: `me`, `invoices`, `invoices/{id}`, `invoices/{id}/document`, `vendors`, `payments`, `transactions`, `transactions/summary`, `transactions/export.csv`, `transactions/{id}`, `ledger/entries`, `reports/{name}`, `insights`, `documents/{sha256}`. `me` answers `kind: "demo"`. |
+| `GET /v1/demo/{company}/…` | A demo company's reads, with the same answers as the routes above: `me`, `invoices`, `invoices/{id}`, `invoices/{id}/document`, `vendors`, `payments`, `transactions`, `transactions/summary`, `transactions/export.csv`, `transactions/{id}`, `ledger/entries`, `reports/{name}`, `insights`, `documents/{sha256}`, `vault`. `me` answers `kind: "demo"`. |
 | `GET /v1/health`, `GET /v1/openapi.json` | The health check says whether the database and the document store answer and how many of the demo companies are there (`demo_companies`); it counts nothing over every company, so it has no mail queue. The OpenAPI document lists the demo's own routes only. |
 
 - **Everything else is off.** Every other method, and every route that signs in, enrols a passkey, recovers an owner,
@@ -264,8 +265,9 @@ writes it as files. The command loads nothing anywhere, uses no network and read
   09:30 UTC), so two builds give the same SQL and the same objects.
 - **Nobody can sign in to these companies.** They hold no passkey credential, no key and no invite.
 - **The vault.** Its PDFs are stored as documents under their SHA-256, like any other. The vault's own index (the
-  runner's `index.json`: each file's folder path, kind and hash) is stored at `t/<tenant>/vault/2026/index.json`. No
-  route serves the index yet, and the folder names in it are the runner's Dutch ones.
+  runner's `index.json`: each file's folder path, kind and hash) is stored at `t/<tenant>/vault/2026/index.json`, and
+  `GET /v1/vault` serves it. The folder names in it are the runner's Dutch ones; the console shows them as stored, with
+  an English label beside each Dutch name.
 
 The bundle holds `seed.sql` (the rows), `r2/` (every object under its key), `r2-put.sh` (one `wrangler r2 object put`
 per object) and `manifest.json` (what is in it, with every hash). To load it, into the demo deployment's own database

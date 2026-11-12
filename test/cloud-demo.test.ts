@@ -58,6 +58,7 @@ const DEMO: Record<string, "read" | "open" | "off"> = {
   "GET /v1/reports/{name}": "read",
   "GET /v1/insights": "read",
   "GET /v1/documents/{sha256}": "read",
+  "GET /v1/vault": "read",
   "POST /v1/sync": "off",
   "GET /v1/sync/state": "off",
   "GET /v1/mail": "off",
