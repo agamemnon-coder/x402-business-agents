@@ -218,7 +218,7 @@ export function awardsHtml(): string {
 <a href="metal">${esc("The Metal proof")} →</a><a href="visa">${esc("The Visa proof")} →</a></p></div></section>`;
 }
 
-/** Built vs next (competitive review, 10 Nov), as docs/after-the-kit.md says it: on a branch, not live. */
+/** Built vs next (competitive review, 10 Nov), as docs/after-the-kit.md says it: its code in this repository, not live. */
 export const NEXT_HEAD = "What comes next";
 /** The agents' run, under the first screen since the hero demo (10 Nov). */
 export const AGENTS_HEAD = "The agents' live run";

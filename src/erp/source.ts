@@ -1,6 +1,7 @@
 // What the ERP sync sends from Purser's own ledger today, mapped to the canonical model: the payees on the allowlist as
 // vendors, the invoices, the PAID payouts as payments, and the GL journal's other money movements as journal entries.
-// The payables inbox and the bookkeeping core (other branches) will feed richer objects through the same model.
+// The payables inbox (src/ap) feeds its invoices through the same model (below); the bookkeeping core (src/ledger) does
+// not feed it yet.
 //
 // Honest limits of this feed: the Treasury flow's own invoices carry no issue date (the due date stands in) and no VAT split (the
 // amount is booked as one line with VAT treatment NONE); movements in Metal's test token (USDZ) are not ISO currencies,

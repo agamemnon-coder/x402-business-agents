@@ -2,8 +2,9 @@
 
 One place for everything a company's finance runs on: supplier invoices and their documents, suppliers, payments, the
 ledger, its reports and the audit log. The company's apps, its accountant and its ERP read it through one JSON API, so
-nobody exports a CSV. Design: [the spec](superpowers/specs/2026-11-08-backend-design.md). **Not deployed yet; test
-money only.**
+nobody exports a CSV. Design: [the spec](superpowers/specs/2026-11-08-backend-design.md). **A hosted preview exists but is
+private (behind an access key); no customer uses it. Not ready for real money: test money only.** What is missing
+before real money: [go-live.md](go-live.md).
 
 ## How it fits
 
@@ -255,7 +256,7 @@ Nothing here needs to be in git; every secret goes through `wrangler secret put`
 4. **E-mail:** in the Cloudflare dashboard, Email Routing for a mail domain (for example `in.<domain>`), a catch-all
    rule "Send to a Worker: purser-cloud", and `MAIL_DOMAIN` set to that domain. Each company is then reached at
    `<its-slug>@in.<domain>`.
-5. **Deploy** (after 15 November, on Max's word): `npm run cloud:pdfjs` (copies pdf.js into `cloud/public`, the Worker's static assets, so the console can draw an invoice; without it the console offers the download only), then `npx wrangler deploy -c cloud/wrangler.jsonc`.
+5. **Deploy** (on Max's word): `npm run cloud:pdfjs` (copies pdf.js into `cloud/public`, the Worker's static assets, so the console can draw an invoice; without it the console offers the download only), then `npx wrangler deploy -c cloud/wrangler.jsonc`.
 
 ## Limits on what comes in
 
@@ -273,14 +274,18 @@ What the code does not do yet, and must be in place before a company's real data
 2. **Monitoring and alerts** on 4xx/5xx rates, failed sign-ins and the scheduled job.
 3. **R2 lifecycle rules** for anything orphaned, and a check that R2 and D1 encryption at rest is on (it is by default).
 4. **Sync keys bound to the runner** (Cloudflare mTLS or an IP allow-list) and short expiries for them.
-5. **An independent security review** of this branch after these fixes, and a red-team run against a deployed staging copy.
+5. **An independent security review** of this code after these fixes, and a red-team run against a deployed staging copy.
 
 ## Not done yet
 
-- Never deployed; tested only through the Worker's own handler over SQLite and a folder (`test/cloud-*.test.ts`).
+- No production deployment: a hosted preview exists but is private (behind an access key), and no customer uses it.
+  The automated tests run through the Worker's own handler over SQLite and a folder (`test/cloud-*.test.ts`) and on
+  local D1 (`npm run test:d1`); none runs against a deployed copy.
 - No web app beyond the JSON API; the enrolment flow is API-only (a client registers the passkey, then signs the
   enrolment's secret with it).
-- ERP connectors live on their own branch; billing, SSO and per-row encryption beyond D1's and R2's are not built.
+- The ERP connectors (`src/erp`, [erp.md](erp.md)) run on the company's runner, not in the cloud; the cloud only shows
+  where the accounting link stands (`GET /v1/integrations`). Billing, SSO and per-row encryption beyond D1's and R2's
+  are not built.
 - Reports per company are read in one piece; very large companies would need streaming.
 
 ## Monitoring, logs and alert webhooks

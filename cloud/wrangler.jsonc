@@ -1,5 +1,5 @@
-// Purser Cloud: the multi-tenant API (docs/cloud.md). Not deployed yet. Before the first deploy, create the stores
-// (EU) and set the secrets; see docs/cloud.md. Never put a secret in this file.
+// Purser Cloud: the multi-tenant API (docs/cloud.md). The database_id, RP_ID and ORIGIN below are placeholders: before
+// a deploy from this file, create the stores (EU) and set the secrets; see docs/cloud.md. Never put a secret in this file.
 {
   "$schema": "../worker/node_modules/wrangler/config-schema.json",
   "name": "purser-cloud",
