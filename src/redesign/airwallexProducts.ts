@@ -454,7 +454,7 @@ ol.aws li.ok b { background: var(--ok-soft); color: var(--ok); } ol.aws li.bad b
 .awrb p.awswift { font-size: 15px; color: var(--muted); padding: 0 20px; } .awswift a { color: var(--accent); font-weight: 600; text-decoration: none; }
 .folds .awrb .card { border: 0; border-radius: 0; box-shadow: none; background: none; padding: 0 0 10px; }
 .folds .flow { padding: 6px 0 10px; } .folds > details > p.src { margin: 0 0 10px; color: var(--faint); font-size: 14px; overflow-wrap: anywhere; }
-details#${PLATFORM_FOLD_ID}, details#${MAIN_RUN_FOLD_ID} { scroll-margin-top: 80px; }
+details#${PLATFORM_FOLD_ID}, details#${MAIN_RUN_FOLD_ID}, details#${AWX_RUN_STEPS_ID}, details#${AIRI_RUN_STEPS_ID} { scroll-margin-top: 80px; }
 /* Tap targets (jury panel, 12 Nov): on a phone every link and fold header in the page is at least 44 px high. A link
    inside a sentence keeps its place in the line and grows by its padding; a pill grows by a clear border. */
 @media (max-width: 700px) { .awxp a.pf, .awxp .awswift a { padding: 14px 0; } .awxp a.open { min-height: 44px; }

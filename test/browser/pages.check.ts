@@ -547,6 +547,22 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.waitForTimeout(300);
       const k = await fold("card-sourcing");
       if (!k.open || k.cards !== 3 || !k.inView) fail(`/airwallex#card-sourcing ${tag}: the fold around the card is not open, or the card not in view (open ${k.open}, top ${k.top} px)`);
+      // Every other target that sits in a fold opens it too (12 Nov): the Airwallex-only run and its steps (a fold inside
+      // a fold), the Airi run's steps, the platform run and the main run's flow, where the tiles and the other pages link.
+      for (const id of ["awx-1", "awx-1-steps", "airi-run-steps", "platform-run", "main-run"]) {
+        await page.goto(`${base}/proof`, { waitUntil: "load" });
+        await page.goto(`${base}/airwallex#${id}`, { waitUntil: "load" });
+        await page.waitForTimeout(300);
+        const t = (await page.evaluate(`(() => {
+          const t = document.getElementById(${JSON.stringify(id)});
+          if (!t) return null;
+          let closed = 0;
+          for (let d = t.closest("details"); d; d = d.parentElement && d.parentElement.closest("details")) if (!d.open) closed++;
+          const head = document.querySelector("header.top").getBoundingClientRect().bottom, r = t.getBoundingClientRect();
+          return { closed, shown: t.checkVisibility(), inView: r.top >= head - 2 && r.top < innerHeight / 2 };
+        })()`)) as { closed: number; shown: boolean; inView: boolean } | null;
+        if (!t || t.closed || !t.shown || !t.inView) fail(`/airwallex#${id} ${tag}: the target is missing, in a closed fold or not in view (${JSON.stringify(t)})`);
+      }
       // Without a hash the fold stays closed, as designed.
       await page.goto(`${base}/airwallex`, { waitUntil: "load" });
       if (await page.evaluate(`document.getElementById("controls").open`)) fail(`/airwallex ${tag}: the cards' fold is open without a link into it`);
