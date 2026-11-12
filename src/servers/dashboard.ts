@@ -262,12 +262,12 @@ export async function sendInspector(res: Response): Promise<void> {
 // the mandates' spend; so its hash and connect-src 'self', nothing else.
 export const METAL_CSP = cspFor(METAL_PAGE);
 export const VISA_PAGE = visaPage();
-export const VISA_CSP = styleOnlyCsp(VISA_PAGE);
 export const AIRWALLEX_PAGE = airwallexPage();
 export const CLAUDE_PAGE = claudePage();
 // /airwallex has one inline script (OPEN_TARGET_JS: a link into its cards' fold opens it), hashed like its style; it
 // connects nowhere, so no connect-src.
 const styleAndScriptCsp = (page: string) => ["default-src 'none'", `script-src ${inlineHash(page, "script")}`, `style-src ${inlineHash(page, "style")}`, "font-src 'self'", "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'"].join("; ");
+export const VISA_CSP = VISA_PAGE.includes("<script>") ? styleAndScriptCsp(VISA_PAGE) : styleOnlyCsp(VISA_PAGE);
 export const AIRWALLEX_CSP = AIRWALLEX_PAGE.includes("<script>") ? styleAndScriptCsp(AIRWALLEX_PAGE) : styleOnlyCsp(AIRWALLEX_PAGE);
 export const CLAUDE_CSP = styleOnlyCsp(CLAUDE_PAGE);
 /** /pricing and /security (12 Nov), the product pages under "More" (src/ui/more.ts): no script, so a style-only policy. */
