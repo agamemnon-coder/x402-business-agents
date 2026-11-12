@@ -1,15 +1,15 @@
 {
  "probe": "p6-airwallex",
  "http": 200,
- "start_ms": 15,
- "total_ms": 1416,
+ "start_ms": 12,
+ "total_ms": 1055,
  "fromEnv_reads_process_env": {
   "ok": true,
   "value": {
    "clientId": true,
    "hasBudgetedFetch": false
   },
-  "ms": 6
+  "ms": 14
  },
  "airwallexFromEnv_constructs": {
   "ok": true,
@@ -30,15 +30,15 @@
    "loginOnce": true,
    "bearer": "Bearer stand-in-token"
   },
-  "ms": 3
+  "ms": 4
  },
  "client_spacing_and_timeouts": {
   "ok": true,
   "value": {
-   "three_calls_ms": 88,
+   "three_calls_ms": 171,
    "abortSignalTimeout": true
   },
-  "ms": 88
+  "ms": 171
  },
  "adapter_balances_on_behalf_of": {
   "ok": true,
@@ -57,7 +57,7 @@
    "ambiguous": "AirwallexAmbiguous (a POST that got 503 is not resent)",
    "second": "tr_spike_1"
   },
-  "ms": 1
+  "ms": 3
  },
  "call_budget_on_tmp_file": {
   "ok": true,
@@ -66,7 +66,7 @@
    "third": "refused: the approved Airwallex call budget of 2 is spent; GET /balances/curren",
    "sent": 2
   },
-  "ms": 6
+  "ms": 3
  },
  "call_budget_file_from_an_earlier_request": {
   "ok": true,

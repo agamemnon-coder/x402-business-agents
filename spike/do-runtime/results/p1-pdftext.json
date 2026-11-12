@@ -1,8 +1,8 @@
 {
  "probe": "p1-pdftext",
  "http": 200,
- "start_ms": 142,
- "total_ms": 2302,
+ "start_ms": 293,
+ "total_ms": 2805,
  "A_engine_module_loads": {
   "ok": true,
   "value": [
@@ -15,12 +15,12 @@
    "pdfText",
    "usePdfReader"
   ],
-  "ms": 0
+  "ms": 1
  },
  "A_checkDecodedSize_zlib_budget": {
   "ok": true,
   "value": "within budget",
-  "ms": 1
+  "ms": 2
  },
  "A_checkDecodedSize_refuses_bomb": {
   "ok": true,
@@ -29,8 +29,8 @@
  },
  "A_pdfText_worker_thread": {
   "ok": false,
-  "error": "TypeError: The argument 'path' The argument must be a file URL object, a file URL string, or an absolute path string.. Received 'undefined' |     at createRequire (node:module:34:15) |     at UNPDF (file:///dev/shm/spike-do-runtime-TMucDE/.wrangler/tmp/dev-vKPUE6/p1-pdftext.js:210:69) |     at spawn (file:///dev/shm/spike-do-runtime-TMucDE/.wrangler/tmp/dev-vKPUE6/p1-pdftext.js:90:69)",
-  "ms": 6
+  "error": "TypeError: createRequire(...).resolve is not a function |     at UNPDF (file:///dev/shm/spike-do-runtime-KbeTzN/.wrangler/tmp/dev-u6l9Yr/p1-pdftext.js:210:117) |     at spawn (file:///dev/shm/spike-do-runtime-KbeTzN/.wrangler/tmp/dev-u6l9Yr/p1-pdftext.js:90:69) |     at readInWorker (file:///dev/shm/spike-do-runtime-KbeTzN/.wrangler/tmp/dev-u6l9Yr/p1-pdftext.js:112:25)",
+  "ms": 2
  },
  "C_usePdfReader_inline": {
   "ok": true,
@@ -43,7 +43,7 @@
    "equalToNode": true,
    "pages": 1
   },
-  "ms": 75
+  "ms": 45
  },
  "C_engine_pdfText_receipt": {
   "ok": true,
@@ -51,7 +51,7 @@
    "equalToNode": true,
    "pages": 1
   },
-  "ms": 18
+  "ms": 12
  },
  "C_engine_pdfText_still_refuses_bomb": {
   "ok": true,
@@ -61,12 +61,12 @@
  "C_engine_pdfText_not_a_pdf": {
   "ok": true,
   "value": "refused: Invalid PDF structure.",
-  "ms": 3
+  "ms": 2
  },
  "C_isPdf": {
   "ok": true,
   "value": true,
-  "ms": 0
+  "ms": 1
  },
  "B_unpdf_inline_invoice": {
   "ok": true,
@@ -75,7 +75,7 @@
    "pages": 1,
    "chars": 265
   },
-  "ms": 48
+  "ms": 17
  },
  "B_unpdf_inline_receipt": {
   "ok": true,
@@ -84,16 +84,21 @@
    "pages": 1,
    "chars": 1208
   },
-  "ms": 34
+  "ms": 26
  },
  "B_unpdf_inline_again": {
   "ok": true,
   "value": {
    "equalToNode": true
   },
-  "ms": 3
+  "ms": 2
  },
  "node_ms": {
   "invoice_pdfText": 183
+ },
+ "second_request": {
+  "node_ms": {
+   "invoice_pdfText": 183
+  }
  }
 }

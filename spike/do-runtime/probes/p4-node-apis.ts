@@ -38,6 +38,15 @@ export default {
     await step("fs_what_exists", () => ({ root: fs.readdirSync("/"), bundle: fs.readdirSync("/bundle").slice(0, 12), tmp: fs.readdirSync("/tmp") }));
     await step("fs_read_bundled_sql_by_path", () => fs.readdirSync("/bundle").filter((f) => f.endsWith(".sql")).map((f) => ({ f, chars: fs.readFileSync(`/bundle/${f}`, "utf8").length })));
     await step("fs_write_tmp_then_read", () => { fs.mkdirSync("/tmp/ap/docs", { recursive: true }); fs.writeFileSync("/tmp/ap/docs/abc.pdf", new Uint8Array([37, 80, 68, 70]), { mode: 0o444 }); return { back: [...fs.readFileSync("/tmp/ap/docs/abc.pdf")], exists: fs.existsSync("/tmp/ap/docs/abc.pdf") }; });
+    // Exactly what src/ap/inbox.ts does to keep a document (lines 105-109), then what pay.ts and detail.ts do to read it.
+    await step("fs_inbox_style_document_store_on_tmp", () => {
+      const docs = path.join("/tmp/ap", "docs"), file = path.join(docs, "0f0f.pdf");
+      fs.mkdirSync(docs, { recursive: true });
+      if (!fs.existsSync(file)) { fs.writeFileSync(file, new Uint8Array([37, 80, 68, 70, 45]), { flag: "wx" }); fs.chmodSync(file, 0o444); }
+      let second = "";
+      try { fs.writeFileSync(file, new Uint8Array([1]), { flag: "wx" }); second = "overwrote"; } catch (e) { second = `refused: ${(e as NodeJS.ErrnoException).code ?? (e as Error).message.slice(0, 60)}`; }
+      return { read_back: Buffer.from(fs.readFileSync(file)).toString("latin1"), second_write_wx: second, size: fs.statSync(file).size };
+    });
     await step("fs_tmp_from_an_earlier_request", () => ({ marker_exists: fs.existsSync("/tmp/marker-from-first-request") }));
     await step("fs_leave_marker", () => { fs.writeFileSync("/tmp/marker-from-first-request", "x"); return "written"; });
     await step("fs_write_outside_tmp", () => { try { fs.writeFileSync("/data/ledger.db", "x"); return "written"; } catch (e) { return `refused: ${(e as Error).message.slice(0, 80)}`; } });

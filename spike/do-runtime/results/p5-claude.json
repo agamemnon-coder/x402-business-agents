@@ -1,15 +1,15 @@
 {
  "probe": "p5-claude",
  "http": 200,
- "start_ms": 75,
- "total_ms": 2813,
+ "start_ms": 19,
+ "total_ms": 2491,
  "audit_log_ddl_from_schema_sql": {
   "ok": true,
   "value": {
    "ddl_chars": 511,
    "schema_sql_chars": 35887
   },
-  "ms": 1
+  "ms": 0
  },
  "sdk_constructs": {
   "ok": true,
@@ -26,7 +26,7 @@
    "client": true,
    "keyVisibleInProcessEnv": true
   },
-  "ms": 1
+  "ms": 0
  },
  "reader_ask_structured": {
   "ok": true,
@@ -54,7 +54,7 @@
     "cost_usd_micros": 3200
    }
   },
-  "ms": 12
+  "ms": 32
  },
  "reader_falls_back_on_wrong_shape": {
   "ok": true,
@@ -88,7 +88,7 @@
     "agent": "treasury",
     "model": "claude-sonnet-5-5",
     "request_id": "req_spike_1",
-    "run_id": "run-treasury-2-98d09e"
+    "run_id": "run-treasury-2-a379b4"
    },
    "apiCalls": 2,
    "secondCallHadTools": 1,
@@ -99,7 +99,7 @@
     "agent.run"
    ]
   },
-  "ms": 12
+  "ms": 14
  },
  "agent_loop_tool_input_refused_by_schema": {
   "ok": true,
@@ -109,7 +109,7 @@
     "schema"
    ]
   },
-  "ms": 6
+  "ms": 11
  },
  "audit_chain_verifies_and_is_append_only": {
   "ok": true,
@@ -117,7 +117,7 @@
    "chain": {
     "ok": true,
     "rows": 6,
-    "head": "46d1501b5b659b481998acddfb45dcd44bf51a5b703260bb816c5793522fd8f1"
+    "head": "e0d222aacaad76bd7a6e69f41a80a63062610d7af192558fa2a8429dc87b0537"
    },
    "update_refused": "audit_log is append-only: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_TRIGGER"
   },

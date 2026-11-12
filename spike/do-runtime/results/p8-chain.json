@@ -1,8 +1,8 @@
 {
  "probe": "p8-chain",
  "http": 200,
- "start_ms": 114,
- "total_ms": 2553,
+ "start_ms": 10,
+ "total_ms": 4660,
  "loaded": 37,
  "failed": [
   "src/db/open (better-sqlite3 stubbed)"
@@ -10,17 +10,17 @@
  "src/lib/terms": {
   "ok": true,
   "value": "7 exports",
-  "ms": 50
+  "ms": 228
  },
  "src/provenance/origin": {
   "ok": true,
   "value": "10 exports",
-  "ms": 4
+  "ms": 2
  },
  "src/audit/log": {
   "ok": true,
   "value": "6 exports",
-  "ms": 0
+  "ms": 1
  },
  "src/metal/agentCli": {
   "ok": true,
@@ -35,7 +35,7 @@
  "src/policy/approvals": {
   "ok": true,
   "value": "10 exports",
-  "ms": 20
+  "ms": 18
  },
  "src/agents/euroBill": {
   "ok": true,
@@ -65,12 +65,12 @@
  "src/ap/scan": {
   "ok": true,
   "value": "14 exports",
-  "ms": 85
+  "ms": 171
  },
  "src/ap/pdfText": {
   "ok": true,
   "value": "8 exports",
-  "ms": 0
+  "ms": 1
  },
  "src/ap/inbox": {
   "ok": true,
@@ -90,7 +90,7 @@
  "src/ap/pay": {
   "ok": true,
   "value": "5 exports",
-  "ms": 0
+  "ms": 1
  },
  "src/ap/batchPay": {
   "ok": true,
@@ -100,7 +100,7 @@
  "src/passkey/process": {
   "ok": true,
   "value": "3 exports",
-  "ms": 2
+  "ms": 7
  },
  "src/executors/invoicePayment": {
   "ok": true,
@@ -115,7 +115,7 @@
  "src/executors/index": {
   "ok": true,
   "value": "2 exports",
-  "ms": 1
+  "ms": 3
  },
  "src/ledger/core": {
   "ok": true,
@@ -145,17 +145,17 @@
  "src/vault/pdf": {
   "ok": true,
   "value": "12 exports",
-  "ms": 1
+  "ms": 0
  },
  "src/vault/build": {
   "ok": true,
   "value": "3 exports",
-  "ms": 0
+  "ms": 1
  },
  "src/money/register": {
   "ok": true,
   "value": "6 exports",
-  "ms": 0
+  "ms": 8
  },
  "src/ops/health": {
   "ok": true,
@@ -170,7 +170,7 @@
  "src/claude/reader": {
   "ok": true,
   "value": "3 exports",
-  "ms": 6
+  "ms": 10
  },
  "src/agents/loop": {
   "ok": true,
@@ -185,7 +185,7 @@
  "src/redteam/airwallex (the stand-in sandbox)": {
   "ok": true,
   "value": "2 exports",
-  "ms": 0
+  "ms": 1
  },
  "src/redteam/authenticator (the software passkey)": {
   "ok": true,
@@ -194,8 +194,8 @@
  },
  "src/db/open (better-sqlite3 stubbed)": {
   "ok": false,
-  "error": "Error: no such file or directory, readAll '/purser-cloud/schema.sql' |     at node-internal:internal_fs_sync:369:21 |     at readFileSync (node-internal:internal_fs_sync:370:7) |     at ../../../home/user/wt/spike-do-runtime/src/db/open.ts (file:///dev/shm/spike-do-runtime-ncK9ZG/.wrangler/tmp/dev-VYjXRl/p8-chain.js:143978:14)",
-  "ms": 10
+  "error": "Error: no such file or directory, readAll '/purser-cloud/schema.sql' |     at node-internal:internal_fs_sync:369:21 |     at readFileSync (node-internal:internal_fs_sync:370:7) |     at ../../../home/user/wt/spike-do-runtime/src/db/open.ts (file:///dev/shm/spike-do-runtime-Hj68On/.wrangler/tmp/dev-974Lvm/p8-chain.js:143978:14)",
+  "ms": 14
  },
  "second_request": {
   "loaded": 0,

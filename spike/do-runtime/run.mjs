@@ -3,8 +3,9 @@
 // once and writes what it answered to results/<probe>.json. Local only: no Cloudflare account, no network.
 //
 //   node spike/do-runtime/run.mjs p3-crypto p1-pdftext …      (no arguments: every probe in probes/)
+import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
-import { mkdtempSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -30,7 +31,7 @@ export const configFor = (name) => ({
   vars: {
     RP_ID: "cloud.example.invalid", ORIGIN: "https://cloud.example.invalid", MAIL_DOMAIN: "mail.example.invalid",
     // Test values, made up for this spike; nothing real.
-    SESSION_SECRET: "spike-session-secret-0123456789abcdef-not-a-real-secret", ADMIN_TOKEN_SHA256: "f0a4c2a5ce0a3bb7ad4f4ac7a2a1b6b0d6c3c9f0d5d9d0d2b9f0c0c1d1e2f3a4",
+    SESSION_SECRET: "spike-session-secret-0123456789abcdef-not-a-real-secret", ADMIN_TOKEN_SHA256: createHash("sha256").update("spike-admin-token").digest("hex"),
     AIRWALLEX_CLIENT_ID: "spike-client-id", AIRWALLEX_API_KEY: "spike-api-key", KIT11_ANTHROPIC_API_KEY: "spike-not-a-key",
   },
   // A wrangler bundle has no import.meta.url (measured: undefined in workerd), and pdfkit's browser build reads it when
@@ -60,6 +61,16 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       ]);
       const text = await res.text();
       let body; try { body = JSON.parse(text); } catch { body = { raw: text.slice(0, 4000) }; }
+      // A real e-mail event (workerd's local Email Routing endpoint) between the two requests, for the probe that asks.
+      if (name === "p7-cloud-seam") {
+        const pdf = readFileSync(join(here, "fixtures/invoice.pdf"));
+        const b = "=_spike";
+        const eml = [`From: boekhouding@zeeland-verpakkingen.example`, `To: mailprobe@mail.example.invalid`, `Subject: Factuur ZV-5001`, `Message-ID: <spike-${Date.now()}@zeeland-verpakkingen.example>`, `Date: Thu, 12 Nov 2026 10:00:00 +0100`, `MIME-Version: 1.0`,
+          `Content-Type: multipart/mixed; boundary="${b}"`, ``, `--${b}`, `Content-Type: text/plain; charset=utf-8`, ``, `Factuur in de bijlage. (Test e-mail.)`, `--${b}`, `Content-Type: application/pdf; name="ZV-5001.pdf"`,
+          `Content-Disposition: attachment; filename="ZV-5001.pdf"`, `Content-Transfer-Encoding: base64`, ``, pdf.toString("base64").replace(/.{76}/g, "$&\r\n"), `--${b}--`, ``].join("\r\n");
+        const ev = await worker.fetch("http://probe.local/cdn-cgi/handler/email?from=boekhouding@zeeland-verpakkingen.example&to=mailprobe@mail.example.invalid", { method: "POST", body: eml }).then(async (r) => ({ status: r.status, text: (await r.text()).slice(0, 300) })).catch((e) => ({ error: String(e).slice(0, 300) }));
+        body.real_email_event = ev;
+      }
       // A second request to the same Worker: what the first one left behind (the per-request /tmp, isolate memory).
       const again = await worker.fetch("http://probe.local/?only=second_request").then((r) => r.json()).catch(() => ({}));
       if (Object.keys(again).length) body.second_request = again;

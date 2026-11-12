@@ -1,8 +1,8 @@
 {
  "probe": "p2-pdfkit",
  "http": 200,
- "start_ms": 92,
- "total_ms": 2839,
+ "start_ms": 15,
+ "total_ms": 3120,
  "pdfkit_exports": [
   "LineWrapper",
   "PDFDocument",
@@ -12,8 +12,8 @@
  ],
  "A_receipt_as_is": {
   "ok": false,
-  "error": "Error: Standard font \"Helvetica\" is not registered. Call registerStdFonts() before using it. |     at getStandardFont (file:///dev/shm/spike-do-runtime-IpTYxS/.wrangler/tmp/dev-rGckGk/p2-pdfkit.js:67493:11) |     at PDFFontFactory.open (file:///dev/shm/spike-do-runtime-IpTYxS/.wrangler/tmp/dev-rGckGk/p2-pdfkit.js:67511:44) |     at PDFDocument.font (file:///dev/shm/spike-do-runtime-IpTYxS/.wrangler/tmp/dev-rGckGk/p2-pdfkit.js:67579:33)",
-  "ms": 10
+  "error": "Error: Standard font \"Helvetica\" is not registered. Call registerStdFonts() before using it. |     at getStandardFont (file:///dev/shm/spike-do-runtime-QhT3LQ/.wrangler/tmp/dev-LZv4wF/p2-pdfkit.js:67493:11) |     at PDFFontFactory.open (file:///dev/shm/spike-do-runtime-QhT3LQ/.wrangler/tmp/dev-LZv4wF/p2-pdfkit.js:67511:44) |     at PDFDocument.font (file:///dev/shm/spike-do-runtime-QhT3LQ/.wrangler/tmp/dev-LZv4wF/p2-pdfkit.js:67579:33)",
+  "ms": 8
  },
  "B_registerStdFonts": {
   "ok": true,
@@ -35,7 +35,7 @@
    "isBuffer": true,
    "header": "%PDF-1.3"
   },
-  "ms": 137
+  "ms": 89
  },
  "B_month_report": {
   "ok": true,
@@ -46,14 +46,26 @@
    "text_equal_to_node": true,
    "pages": 1
   },
-  "ms": 29
+  "ms": 23
  },
  "B_receipt_english": {
   "ok": true,
   "value": "N O RT H W I N D O U T D O O R B. V. ( T E S T )\nPayment receipt\nBergtex Textil GmbH · Invoice BTX-2026-21\nTest money (A",
-  "ms": 16
+  "ms": 21
  },
  "node_ms": {
   "receipt": 14
+ },
+ "second_request": {
+  "pdfkit_exports": [
+   "LineWrapper",
+   "PDFDocument",
+   "default",
+   "registerFile",
+   "registerStdFonts"
+  ],
+  "node_ms": {
+   "receipt": 14
+  }
  }
 }
