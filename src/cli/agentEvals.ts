@@ -10,6 +10,7 @@ import { claudeClient } from "../claude/reader.js";
 import { PRICES } from "../claude/pricing.js";
 import { budgetStatus, recordSpend } from "../claude/budget.js";
 import { AGENT_CASES, type AgentName } from "../evals/agentEvals.js";
+import { withCoderSection, type CoderEvalRecord } from "../evals/coderReport.js";
 
 const args = process.argv.slice(2);
 const runs = Number(args[args.indexOf("--runs") + 1] ?? 1) || 1;
@@ -23,7 +24,7 @@ if (budgetStatus(SPEND).blocks.evals.over) { console.error("the evals block of t
 // The code each row ran: the commit, and whether the checkout had changes outside this report's own files.
 const git = (a: string[]) => { try { return execFileSync("git", a, { cwd: resolve(import.meta.dirname, "../.."), encoding: "utf8" }).trim(); } catch { return ""; } };
 const COMMIT = git(["rev-parse", "--short=12", "HEAD"]) || "unknown";
-const DIRTY = git(["status", "--porcelain", "--", ".", ":!docs/evals/agents.json", ":!docs/agent-evals.md", ":!docs/runs/api-budget.jsonl"]) !== "";
+const DIRTY = git(["status", "--porcelain", "--", ".", ":!docs/evals/agents.json", ":!docs/evals/coder.json", ":!docs/agent-evals.md", ":!docs/runs/api-budget.jsonl"]) !== "";
 
 interface Row { case: string; agent: AgentName; kind: string; model: string; passed: number; runs: number; cost_usd_micros: number; median_ms: number; details: string[]; commit?: string; dirty?: boolean; words?: string[][] }
 const rows: Row[] = [];
@@ -99,5 +100,7 @@ const md = [
   `Not in this comparison: the cases that rebuild a run's moment on that run's model only (${AGENT_CASES.filter((c) => c.model).map((c) => `${c.id} on ${c.model}`).join(", ")}).`,
   "",
 ].join("\n");
-writeFileSync(resolve(import.meta.dirname, "../../docs/agent-evals.md"), md);
+// The Coder evals' section (npm run coder-evals) is kept: it is rendered again from its own run record.
+const coderPath = resolve(import.meta.dirname, "../../docs/evals/coder.json");
+writeFileSync(resolve(import.meta.dirname, "../../docs/agent-evals.md"), withCoderSection(md, existsSync(coderPath) ? JSON.parse(readFileSync(coderPath, "utf8")) as CoderEvalRecord : null));
 console.log(`\ncheapest passing: ${agents.map((a) => `${a} ${cheapest[a] ?? "none"}`).join(", ")}`);
