@@ -72,11 +72,12 @@ describe("/watch without the film (as today)", () => {
       expect(pages.watch).toContain("<h1>Purser, in under five minutes</h1>");
       const replay = pageResponse(new Request(`${SITE}/replay`), pages)!;
       expect(replay.status).toBe(200);
-      expect(pages.replay).toContain("Watch the agents work");
+      // The replay's heading since 12 Nov (home-story): what it is and its day, read from the record.
+      expect(pages.replay).toContain("<h1>Replay of the main run, 3 November</h1>");
       expect(replay.headers.get("content-security-policy")).toBe(pages.csp.replay);
       for (const old of ["/live", "/demo"]) expect(pageResponse(new Request(`${SITE}${old}`), pages)?.headers.get("location")).toBe("/replay");
     }
-    expect(WATCH_PAGE).toContain("Watch the agents work");
+    expect(WATCH_PAGE).toContain("Replay of the main run, 3 November");
   });
 
   it("keeps Watch out of every menu until the film is there (one constant)", () => {
@@ -168,8 +169,9 @@ describe("the page says what the film says", () => {
 
 describe("the next step", () => {
   it("ends in \"Now try it yourself\": /try/sign when the bundle has it, else /try", () => {
-    expect(buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).watch).toContain('<a class="btn primary nextstep" href="try/sign" data-next="try">');
-    expect(buildPages({} as NodeJS.ProcessEnv).watch).toContain('<a class="btn primary nextstep" href="try" data-next="try">');
+    // Since 12 Nov (the owner) every Try call to action opens the hands-on demo (TRY_URL); /try/sign keeps its own page.
+    expect(buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).watch).toContain('<a class="btn primary nextstep" href="https://purser-try.max-31b.workers.dev/try" data-next="try">');
+    expect(buildPages({} as NodeJS.ProcessEnv).watch).toContain('<a class="btn primary nextstep" href="https://purser-try.max-31b.workers.dev/try" data-next="try">');
   });
 });
 

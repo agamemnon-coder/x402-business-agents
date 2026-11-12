@@ -168,7 +168,7 @@ describe("the way in: Home, the README and the form", () => {
     expect(/<main[\s\S]*<\/main>/.exec(ON.home!)![0]).not.toContain('href="judge"');
     expect(OFF.home).not.toContain('href="judge"');
     // Home's two buttons are two of /judge's steps: /try/sign, then the proof. Home sends no one to the replay (/replay, at /watch until 12 Nov).
-    expect(ON.home).toContain('<a class="btn primary big start" href="try/sign">'); expect(ON.home).toContain('<a class="btn big more" href="proof">');
+    expect(ON.home).toContain('<a class="btn primary big start" href="https://purser-try.max-31b.workers.dev/try">'); expect(ON.home).toContain('<a class="btn big more" href="proof">');
     expect(/<main[\s\S]*<\/main>/.exec(ON.home!)![0]).not.toMatch(/href="(?:watch|replay)"/);
   });
 

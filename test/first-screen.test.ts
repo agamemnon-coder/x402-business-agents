@@ -50,14 +50,15 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(t.startsWith(`${HERO} ${WHAT_IT_IS} ${START} ${REASSURE.sign} ${DIFFERENTIATORS[0]} 1 Ask 2 Face ID 3 Paid 4 +1 cent`)).toBe(true);
     // One button in the first screen, to /try/sign: the thing a juror can do in a minute. No "Watch the agents".
     expect(hero(HOME).match(/class="btn[^"]*"/g)).toEqual(['class="btn primary big start"']);
-    expect(hero(HOME)).toContain(`<a class="btn primary big start" href="try/sign">`);
+    // Since 12 Nov (the owner) every Try call to action opens the hands-on demo (TRY_URL); /try/sign keeps its own page.
+    expect(hero(HOME)).toContain(`<a class="btn primary big start" href="https://purser-try.max-31b.workers.dev/try">`);
     expect(HOME).not.toContain("Watch the agents");
     // The first of the three sentences is on Home, word for word; the other two stay in the README, the form and the deck.
     expect(t).toContain(DIFFERENTIATORS[0]);
     for (const d of DIFFERENTIATORS.slice(1)) expect(words(HOME)).not.toContain(d);
     // Without /try/sign in the bundle the button leads to /try, never to a dead link, and the line under it says what /try is.
     expect(homePage()).not.toContain('href="try/sign"');
-    expect(hero(homePage())).toContain('<a class="btn primary big start" href="try">');
+    expect(hero(homePage())).toContain('<a class="btn primary big start" href="https://purser-try.max-31b.workers.dev/try">');
     expect(words(hero(homePage()))).toContain(`${START} ${REASSURE.world} ${DIFFERENTIATORS[0]}`);
     // The judge's tour: one footer link, only where /judge exists; never a third call to action in the page.
     expect(HOME).toContain(`<a class="flink" href="judge">${JUDGE_LINE}</a>`);

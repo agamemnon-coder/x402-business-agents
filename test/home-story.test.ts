@@ -58,8 +58,9 @@ describe("Home is one story, in this order", () => {
   it("has exactly two buttons that lead somewhere: Try it yourself (to /try/sign, or /try without it) and See the proof", () => {
     const buttons = (html: string) => [...mainOf(html).matchAll(/<a class="btn[^"]*" href="([^"]+)">([\s\S]*?)<\/a>/g)].map((m) => [m[1], text(m[2]!)]);
     expect([START, PROOF_BUTTON]).toEqual(["Try it yourself", "See the proof"]);
-    expect(buttons(ON)).toEqual([["try/sign", START], ["proof", PROOF_BUTTON]]);
-    expect(buttons(OFF)).toEqual([["try", START], ["proof", PROOF_BUTTON]]);
+    // Since 12 Nov (the owner) the first button opens the hands-on demo (TRY_URL) in both bundles.
+    expect(buttons(ON)).toEqual([["https://purser-try.max-31b.workers.dev/try", START], ["proof", PROOF_BUTTON]]);
+    expect(buttons(OFF)).toEqual([["https://purser-try.max-31b.workers.dev/try", START], ["proof", PROOF_BUTTON]]);
     expect(OFF).not.toContain('href="try/sign"');
     expect(ON.match(/class="btn\b/g)).toHaveLength(2);
     // The bundles agree (TRY_SIGN_ENABLED on and off).
@@ -72,7 +73,8 @@ describe("Home is one story, in this order", () => {
   });
 
   it("A6: one reassurance line under the button, saying only what the page behind it does", () => {
-    expect(REASSURE).toEqual({ sign: "A test passkey, no account, no money. About a minute.", world: "A test world: no account, no money." });
+    // Since 12 Nov (the owner) every Try call to action opens the hands-on demo (TRY_URL); /try/sign keeps its own page.
+    expect(REASSURE).toEqual({ sign: "A test company of your own, deleted after 24 hours.", world: "A test company of your own, deleted after 24 hours." });
     expect(ON).toMatch(new RegExp(`${START}</a>\\s*<p class="reassure">${REASSURE.sign}</p>`));
     expect(OFF).toMatch(new RegExp(`${START}</a>\\s*<p class="reassure">${REASSURE.world}</p>`));
     // /try/sign as it is on this branch: the passkey is a test passkey made on the page, with no name or e-mail, in a test world; about a minute.

@@ -14,6 +14,7 @@ import { hostileClaimText } from "../src/redesign/partners.js";
 import { AWX_PAGE_LABEL } from "../src/redesign/airwallexProducts.js";
 import { METAL_INSPECT_JS } from "../src/redesign/metalMandates.js";
 import { tokenizeRun } from "../src/redesign/tokenizeRun.js";
+import { vic3Run } from "../src/redesign/vic3Run.js";
 import { scriptBlocks } from "./support/scriptBlocks.js";
 import { SECOND_APPROVER, SPLIT_LINE, VISA_CLAIM, VISA_TAP_STATUS, WORLD_SETUP } from "../src/config/brand.js";
 
@@ -94,7 +95,7 @@ describe("the site after v4", () => {
     // short cards, each one sentence with its proof link, the detail folded.
     // Watch: 260 since the film page (12 Nov): the poster, 13 chapters with their times and the key of what is real
     // and what is simulated; the transcript is folded (the replay that was here moved to /replay).
-    const budget: Record<string, number> = { home: 254, watch: 260, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, pricing: 150, security: 265 /* 220 until 12 Nov 15:55: nine controls, each with its proof (the owner); +5, 12 Nov merge: the hostile-model eval and the zero-trust report linked */, metal: tokenizeRun() ? 375 : 325 /* +75, jury panel 12 Nov: the four mandates in one table (seven columns, each figure a word); +50, 12 Nov wire-in: "Face ID signs on chain", six steps from docs/runs/2026-11-12-faceid-onchain.json (49 words as built) */, airwallex: 374 /* +5, panel review 10 Nov; +4, jury panel 12 Nov */, visa: 625 /* +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa); +5 on 12 Nov for two folded lines under the Airi runs, "As reported by the Airwallex sandbox" and "The CFO's policy next to Visa's VIC rules" (14 words; 9 of them paid for by the TAP section's line that went; 614 as built); +10 on 12 Nov for a third folded line, "Card data: not a network-tokenised checkout, no PCI attestation" (9 words: what this checkout is not, readable without opening the fold; 623 as built) */, claude: 240 /* +45, jury panel 12 Nov: measured, not asserted (four figures, each with its record, and the injection screen); +30, 12 Nov merge: the hostile-model eval's line with its record link (29 words), kept beside the measured block; +15, 12 Nov merge: the measured block's line on the zero-trust report, shown once docs/zero-trust/report.json is in the tree */, notFound: 40 };
+    const budget: Record<string, number> = { home: 254, watch: 260, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, pricing: 150, security: 265 /* 220 until 12 Nov 15:55: nine controls, each with its proof (the owner); +5, 12 Nov merge: the hostile-model eval and the zero-trust report linked */, metal: tokenizeRun() ? 375 : 325 /* +75, jury panel 12 Nov: the four mandates in one table (seven columns, each figure a word); +50, 12 Nov wire-in: "Face ID signs on chain", six steps from docs/runs/2026-11-12-faceid-onchain.json (49 words as built) */, airwallex: 374 /* +5, panel review 10 Nov; +4, jury panel 12 Nov */, visa: 710 /* +85, the orchestrator 12 Nov: the latest live run (vic-3) leads /visa, four lines from its record, its purchases folded (708 as built); +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa); +5 on 12 Nov for two folded lines under the Airi runs, "As reported by the Airwallex sandbox" and "The CFO's policy next to Visa's VIC rules" (14 words; 9 of them paid for by the TAP section's line that went; 614 as built); +10 on 12 Nov for a third folded line, "Card data: not a network-tokenised checkout, no PCI attestation" (9 words: what this checkout is not, readable without opening the fold; 623 as built) */, claude: 240 /* +45, jury panel 12 Nov: measured, not asserted (four figures, each with its record, and the injection screen); +30, 12 Nov merge: the hostile-model eval's line with its record link (29 words), kept beside the measured block; +15, 12 Nov merge: the measured block's line on the zero-trust report, shown once docs/zero-trust/report.json is in the tree */, notFound: 40 };
     // Docs 200 since 12 Nov: four cards, the agent API's tools by name with one short line each, every description folded.
     // Status 90 since 12 Nov: the status lines (empty until /health is read) and the five latest live runs.
     Object.assign(budget, { docs: 200, status: 90 });
@@ -156,7 +157,8 @@ describe("the site after v4", () => {
         expect({ name, href, status: res?.status ?? 404 }).toEqual({ name, href, status: res && res.status === 302 ? 302 : 200 });
       }
     }
-    for (const want of ["/home", "/watch", "/try", "/proof", "/pricing", "/security", "/metal", "/airwallex", "/visa", "/claude", "/lab", "/film", "/month", "/metal/report"]) expect(seen).toContain(want);
+    // "/try" is no longer linked: since 12 Nov the Try tab and every Try button open the hands-on demo (TRY_URL).
+    for (const want of ["/home", "/watch", "/proof", "/pricing", "/security", "/metal", "/airwallex", "/visa", "/claude", "/lab", "/film", "/month", "/metal/report"]) expect(seen).toContain(want);
     for (const want of ["/docs", "/status"]) expect(seen).toContain(want);
     for (const [from, to] of [["/live", "/replay"], ["/demo", "/replay"], ["/overview", "/home"]]) expect(pageResponse(new Request(`https://x.test${from}`), p)?.headers.get("location")).toBe(to);
     expect(pageResponse(new Request("https://x.test/no/such/page"), p)).toBeNull();
@@ -264,7 +266,7 @@ describe("the site after v4", () => {
       // /airwallex opens on a tile per Airwallex product (jury panel, 12 Nov); its flow of the main run is one of the folds.
       // /metal opens on its four mandates in one table (jury panel, 12 Nov), its one fold inside it (the read to repeat).
       // /visa's picture is the VIC flow (12 Nov).
-      const first = name === "airwallex" ? '<section class="awp"' : name === "metal" ? '<section class="mt card"' : name === "visa" ? 'class="card vicflow"' : 'class="flow card"';
+      const first = name === "airwallex" ? '<section class="awp"' : name === "metal" ? '<section class="mt card"' : name === "visa" ? (vic3Run() ? 'id="vic3-run"' : 'class="card vicflow"') : 'class="flow card"';
       expect({ name, pictureFirst: whole.indexOf(first) >= 0 && whole.indexOf(first) < whole.indexOf("<details") }).toEqual({ name, pictureFirst: true });
       // /visa's folds each have their own anchor (the attempts, Airwallex's record, Visa's rules, card data, TAP).
       expect((whole.match(name === "visa" ? /<details class="fold" id="[\w-]+">/g : /<details class="fold">/g) ?? []).length).toBeGreaterThanOrEqual(2);

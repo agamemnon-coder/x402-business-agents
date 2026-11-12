@@ -2,6 +2,7 @@
 // agent's model from code; each is short with its details folded; the nav keeps its tabs (Home, Try, Proof; Watch once
 // the film is set) and lists the partner pages under "More" (12 Nov).
 import { readFileSync } from "node:fs";
+import { TRY_URL } from "../src/redesign/ui.js";
 import { WATCH_IN_MENU } from "../src/config/film.js";
 import { describe, expect, it } from "vitest";
 import { AGENT_MODELS, airwallexData, claudeData } from "../src/partners/data.js";
@@ -123,7 +124,8 @@ describe("the partner pages", () => {
     expect(NAV_MAIN.map(([k]) => k)).toEqual(WATCH_IN_MENU ? ["home", "watch", "try", "proof"] : ["home", "try", "proof"]);
     // The fifth item, "More" (12 Nov): the product pages, then the four partner pages, the same list in both navigations.
     expect(MORE_LABEL).toBe("More");
-    expect(MORE_LINKS.map((l) => l.key)).toEqual(["pricing", "security", "docs", "status", "airwallex", "metal", "visa", "claude"]);
+    // Purser Cloud first (the owner, 12 Nov): the hosted product, on its own address.
+    expect(MORE_LINKS.map((l) => l.key)).toEqual(["cloud", "pricing", "security", "docs", "status", "airwallex", "metal", "visa", "claude"]);
     expect(MORE_LINKS.filter((l) => l.group === "partner").map((l) => l.label)).toEqual(["Airwallex", "Metal", "Visa", "Claude"]);
     // The template pages' navigation (src/ui/nav.ts): the four tabs as links with their keys, then More, a <details>
     // with the same links as the redesign's header (src/redesign/ui.ts), in the same order.
@@ -133,7 +135,8 @@ describe("the partner pages", () => {
     expect(more?.[1]).toBe("More");
     expect([...(more?.[2] ?? "").matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => [m[1], m[2]])).toEqual(moreLinks().map((l) => [l.href, l.label]));
     expect(moreLinks().map((l) => l.label)).toEqual(expect.arrayContaining(["Pricing", "Security", "Airwallex", "Metal", "Visa", "Claude"]));
-    expect(nav).toContain('<a href="try" data-nav="try" class="on" aria-current="page">Try</a>');
+    // The Try tab opens the hands-on demo (TRY_URL, the owner, 12 Nov).
+    expect(nav).toContain(`<a href="${TRY_URL}" data-nav="try" class="on" aria-current="page">Try</a>`);
     const pages = buildPages();
     expect(pages.airwallex).toBe(AIRWALLEX_PAGE);
     expect(pages.claude).toBe(CLAUDE_PAGE);

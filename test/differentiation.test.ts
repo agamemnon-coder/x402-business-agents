@@ -79,7 +79,7 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     const t = words(hero);
     // The one button right under what Purser is; then the sentence every juror repeated. The other two sentences stay
     // in the README and the form.
-    expect(t.startsWith(`AI agents spend. You sign off. ${WHAT_IT_IS} Try it yourself A test passkey, no account, no money. About a minute. ${DIFFERENTIATORS[0]} 1 Ask`)).toBe(true);
+    expect(t.startsWith(`AI agents spend. You sign off. ${WHAT_IT_IS} Try it yourself A test company of your own, deleted after 24 hours. ${DIFFERENTIATORS[0]} 1 Ask`)).toBe(true);
     expect(t).not.toContain(DIFFERENTIATORS[1]);
     expect(t).not.toContain(DIFFERENTIATORS[2]);
     expect(t).not.toContain("Watch the agents");

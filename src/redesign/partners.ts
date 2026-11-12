@@ -23,6 +23,7 @@ import { EXPLORER, REPO_BLOB, metalStory } from "./metalStory.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { AIRI_CSS, AIRI_RUN_FILE, AIRI_RUN_ID, airiAsker, airiRun, airiRunBlock, type AiriRunRecord } from "./airiRun.js";
 import { awxRunBlock } from "./awxRun.js";
+import { VIC3_RUN_FILE, vic3Run, vic3RunHtml } from "./vic3Run.js";
 import { PLATFORM_RUN_FILE, PRODUCTS_CSS, airwallexBody, airwallexDescription, productTiles } from "./airwallexProducts.js";
 import { CARD_DATA_CSS, cardDataHtml } from "./cardData.js";
 import { VIC2_RUN_FILE, VIC2_RUN_ID, vic2Run, vic2RunBlock } from "./vic2Run.js";
@@ -36,7 +37,7 @@ import { METAL_ONCHAIN_CSS, faceIdOnChainSection } from "./metalOnchain.js";
 import { HOLD_NOT_FINISHED, METAL_CSS, METAL_HOLD_RECORD, METAL_INSPECT_JS, holdState, metalBody } from "./metalMandates.js";
 import { EVIDENCE_CSS, claudeEvidence, failureFold, mcpFold, measuredBlock, sweepFold } from "./claudeEvidence.js";
 import { T0_CSS, T0_FIRST_RECORD, T0_JOURNAL_RECORD, T0_LABEL, T0_SECOND_RECORD, t0Body, t0Data } from "./t0Page.js";
-import { OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
+import { OPEN_TARGET_JS, esc, icon, page, TRY_URL } from "./ui.js";
 
 const CSS = `.pp { padding: 26px 0 24px; }
 .pp .wrap { max-width: 1040px; display: grid; gap: 18px; }
@@ -310,11 +311,14 @@ export function visaPage(run: AgentRun = agentRun()): string {
   // test. Folded, one line each: the attempts that failed first, what Airwallex's own record reports for the two
   // payments, the CFO's policy next to Visa's published VIC rules, and how the card data is handled. Last: TAP, folded.
   const asker = airiAsker(rec);
+  // The latest live run leads (12 Nov, vic-3): the record's own numbers and ids; the first run (7 Nov) follows.
+  const vic3 = vic3Run();
   const more = [vicAttemptsHtml(rec), vicNetworkBlock(rec), vicRulesBlock(rec, vic2Run()), cardDataHtml()].join("");
   const body = `<main class="pp"><div class="wrap">
   <div class="phd">${LOGO.visa}<span class="pill run">${icon("database", 14)}${esc(visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
   <p class="vintro">${esc(VISA_LEAD)}</p>
   <p class="vbasis">${esc(VISA_ENTRY_LINE)}<br>${esc(VISA_ICC_LINE)}</p>
+  ${vic3 ? `<div class="awrb">${vic3RunHtml(vic3, { first: dayShort(rec.started_at) })}</div>` : ""}
   ${vicFlowBlock(rec, { h: "h2" })}
   ${vicFactsHtml(vicFacts(rec))}
   ${vicCompareHtml(vicCompare(rec, vicNetworkRecord()))}
@@ -331,7 +335,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
     description: `Visa Intelligent Commerce via Airwallex's Airi, run live in the Airwallex sandbox with a test card: above the limit, a single-use Visa credential is asked for only after the CFO's Face ID. ${asker.sentence}.`,
     // "What's real?": the Airi run's own line (its label and merchant, from the record) and nothing of the main run.
     real: [`Visa Intelligent Commerce via Airwallex's Airi (${dayShort(rec.started_at)}), ${asker.short}: ${rec.label}. The merchant is our own Airwallex sandbox account, ${rec.checkout.merchant}.`],
-    source: `Source: ${AIRI_RUN_FILE} (the Airi run) and ${VIC2_RUN_FILE} (the control test).`,
+    source: `Source: ${AIRI_RUN_FILE} (the Airi run), ${vic3 ? `${VIC3_RUN_FILE} (the latest live run), ` : ""}and ${VIC2_RUN_FILE} (the control test).`,
   });
   assertVicFirst(html);
   return html;
@@ -423,6 +427,6 @@ export function t0Page(run: AgentRun = agentRun()): string {
 /** The clean 404: what happened, and the four tabs. No script. */
 export function notFoundPage(run: AgentRun = agentRun()): string {
   const body = `<main class="nf"><div class="wrap"><p class="pill">404</p><h1>This page does not exist.</h1><p class="line">Every page of the demo is one of these ${WATCH_IN_MENU ? "four" : "three"}.</p>
-<div class="tabs2"><a class="btn primary" href="home">${icon("feather", 18)}Home</a>${WATCH_IN_MENU ? `<a class="btn" href="watch">${icon("play", 18)}Watch</a>` : ""}<a class="btn" href="try">${icon("sparkles", 18)}Try</a><a class="btn" href="proof">${icon("shield-check", 18)}Proof</a></div></div></main>`;
+<div class="tabs2"><a class="btn primary" href="home">${icon("feather", 18)}Home</a>${WATCH_IN_MENU ? `<a class="btn" href="watch">${icon("play", 18)}Watch</a>` : ""}<a class="btn" href="${TRY_URL}">${icon("sparkles", 18)}Try</a><a class="btn" href="proof">${icon("shield-check", 18)}Proof</a></div></div></main>`;
   return page({ title: "Not found", description: "This page does not exist.", tab: null, css: CSS, body, source: SOURCE(run) });
 }

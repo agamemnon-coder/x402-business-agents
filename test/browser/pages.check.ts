@@ -56,7 +56,8 @@ const metalWithRecord = liveAt >= 0 ? null : await (async () => {
 const failures: string[] = [];
 const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}`); };
 /** The menu on every page: the four tabs, then "More" with the pages under it, in this order (src/ui/more.ts). */
-const MENU = JSON.stringify({ items: ["Home", "Watch", "Try", "Proof", MORE_LABEL], more: moreLinks().map((l) => l.label) });
+// Watch is a tab only once the film is set (src/config/film.ts WATCH_IN_MENU).
+const MENU = JSON.stringify({ items: [...(WATCH_IN_MENU ? ["Home", "Watch", "Try", "Proof"] : ["Home", "Try", "Proof"]), MORE_LABEL], more: moreLinks().map((l) => l.label) });
 // 1.1: the worst case as the README and step 0 say it, read from the policy code (src/policy/exposureSources.ts).
 const { worstCaseWords } = await import("../../src/policy/exposureSources.js");
 const WORST = worstCaseWords();
@@ -235,7 +236,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         await page.goto(`${base}${path}`, { waitUntil: "load" });
         await checkTaps(page, { name: `${path} ${tag}, header and footer`, scopes: CHROME, fail });
         const head = await page.locator("header").first().evaluate((e) => e.getBoundingClientRect().height);
-        if (head > 65.5) fail(`${path} ${tag}: the header is ${head} px high, taller than before (65)`);
+        // /try's header wraps under about 450 px by design (#151, src/ui/nav.ts): its tabs take a line of their own there.
+        if (head > 65.5 && !(path === "/try" && w < 450)) fail(`${path} ${tag}: the header is ${head} px high, taller than before (65)`);
         if (!WATCH_IN_MENU && await page.locator('header nav a[href*="watch"]').count()) fail(`${path} ${tag}: Watch is in the menu`);
       }
     }
@@ -611,8 +613,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // /visa opens with VIC (12 Nov): at most one screen of text before the first proof, so the drawing (purchase B's
       // steps, with its ids) starts on the first screen at every width.
       if (path === "/visa") {
-        const top = await page.evaluate(() => Math.round((document.getElementById("vic-flow")?.getBoundingClientRect().top ?? Infinity) + window.scrollY));
-        if (!(top < h)) fail(`/visa ${tag}: the drawing starts at ${top} px, below the first screen (${h} px)`);
+        // Since 12 Nov the first proof is the latest live run's card (vic-3, with its ids), above the 7 Nov drawing.
+        const top = await page.evaluate(() => Math.round(((document.getElementById("vic3-run") ?? document.getElementById("vic-flow"))?.getBoundingClientRect().top ?? Infinity) + window.scrollY));
+        if (!(top < h)) fail(`/visa ${tag}: the first proof starts at ${top} px, below the first screen (${h} px)`);
       }
       const pt = await page.evaluate(() => document.body.innerText);
       // The footer's "Built on" strip (owner, 12 Nov) is the frame's, not the page's: its words are not counted.
@@ -636,7 +639,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // /claude: 195 since the jury panel of 12 Nov (measured, not asserted: four figures with their records).
       // /claude: 225 since the merge of 12 Nov, the budget of test/site-v4.test.ts, for the hostile-model eval's line beside
       // the measured block; 240 with the measured block's line on the zero-trust report (the budget of test/site-v4.test.ts).
-      const budget = path === "/airwallex" ? 374 : path === "/visa" ? 625 : path === "/metal" ? (tokenizeRun() ? 375 : 325) /* +50, 12 Nov wire-in: "Face ID signs on chain" (test/site-v4.test.ts) */ : path === "/claude" ? 240 : 150;
+      const budget = path === "/airwallex" ? 374 : path === "/visa" ? 710 : path === "/metal" ? (tokenizeRun() ? 375 : 325) /* +50, 12 Nov wire-in: "Face ID signs on chain" (test/site-v4.test.ts) */ : path === "/claude" ? 240 : 150;
       if (words > budget + 26) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       // Each page is labelled with the run it shows: the main run; /visa with the Airi run's own label (the main run's
       // label is inside its closed TAP fold, with the main run's TAP-signed buy).
@@ -809,7 +812,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         if (cards !== 4 || !/Docs and API\s+For developers and integrators\./.test(body) || (await page.locator("main details[open]").count())) fail(`/docs ${tag}: not the heading, the lead line and four cards with every fold closed`);
         const listed = await page.locator("#agent-api li[data-tool] > code").allInnerTexts();
         if (JSON.stringify(listed) !== JSON.stringify(DOCS_TOOLS)) fail(`/docs ${tag}: the tools listed are not the code's (${listed.join(", ")})`);
-        if (!/npm run -s mcp/.test(body) || !/npm run judge/.test(body) || !/\/v1\/openapi\.json/.test(body) || !(await page.locator('#offline a[href$="README.md#how-to-run"]').count())) fail(`/docs ${tag}: a command, the OpenAPI document's path or the README's link is missing`);
+        if (!/npm run -s mcp/.test(body) || !/npm run judge/.test(body) || !/\/v1\/openapi\.json/.test(body) || !(await page.locator('#offline a[href$="README.md#verify-it-yourself-in-3-commands"]').count())) fail(`/docs ${tag}: a command, the OpenAPI document's path or the README's link is missing`);
       } else {
         if (cards !== 2 || (await page.locator("#runs ul.pl > li > a.pf").count()) !== 5 || (await page.locator('#runs a.pf[href="runs"]').count()) !== 1) fail(`/status ${tag}: not two cards with the five latest live runs and the link to every run`);
         if (liveAt < 0) {

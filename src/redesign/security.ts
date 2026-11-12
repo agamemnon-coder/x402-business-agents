@@ -11,7 +11,7 @@ import { HOSTILE_RECORD_FILE, hostileClaimText } from "./partners.js";
 import { existingDoc, foldHtml, outLink, productPage, repoHref, repoText, siteLink } from "./productPage.js";
 
 export { existingDoc };
-import { esc, icon } from "./ui.js";
+import { esc, icon, TRY_URL } from "./ui.js";
 
 const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(iso));
 /** A doc as running text: bold and code marks out and line breaks as spaces, so a sentence wrapped over lines reads as one. */
@@ -165,7 +165,7 @@ export function securityCards(): SecurityCard[] {
     {
       id: "s-sign", icon: "scan-face", title: "Signed terms",
       line: esc("The CFO signs the exact terms with a passkey (Face ID); one changed cent is refused."),
-      links: [siteLink("try", "Try it yourself", true)],
+      links: [siteLink(TRY_URL, "Try it yourself", true)],
       fold: { summary: "How", lines: [esc(terms.how), code(terms)] },
       // The doc's own lines, each checked against the doc as every quoted line on this page is, then the doc itself.
       more: {
