@@ -38,6 +38,10 @@ jobs:
         run: npx playwright install chromium
       - name: Tests with coverage, per area
         run: npm run test:coverage
+      # The engine's own tests again, with every ledger handle swapped for the Durable Object handle over a stand-in for
+      # a Durable Object's storage (vitest.shim.config.ts): plain Node, no browser, no wrangler.
+      - name: Engine tests through the Durable Object handle
+        run: npm run test:shim
       # Jury panel, 12 Nov: a script in Claude's place makes the worst tool call it can on every turn; no network, no key.
       - name: Hostile-model eval of the payables agents (the line /claude shows)
         run: npm run -s ap-hostile-eval

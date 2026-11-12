@@ -29,6 +29,13 @@ describe("generated PDFs", () => {
     expect(formatMoney("EUR", "1850.00", "en")).toBe("EUR 1,850.00");
   });
 
+  it("a receipt of the cloud's engine names its stand-in bank: no Airwallex transfer or fee, no npm run verify", async () => {
+    const r = receiptData(w.db, w.paidId)!;
+    const { text } = await pdfText(await receiptPdf("Northwind Outdoor", r, "nl", "stand-in"));
+    for (const s of ["Betaalbewijs", "Testgeld (nagebootste bank)", "testgeld op een nagebootste bank", r.terms_sha256.slice(0, 16)]) expect(text).toContain(s);
+    expect(text.replace(/, not Airwallex;|, niet Airwallex;/g, "")).not.toMatch(/Airwallex|npm run verify/);
+  });
+
   it("a payment receipt says who approved what, how to check it, and that it is test money", async () => {
     const r = receiptData(w.db, w.paidId)!;
     const pdf = await receiptPdf("Northwind Outdoor", r);

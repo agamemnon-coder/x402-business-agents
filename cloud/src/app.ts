@@ -9,7 +9,7 @@ import { allTransactions, BadRequest, insights, invoiceDocument, ledgerEntries, 
 import { registerCsv } from "../../src/money/registerShape.js";
 import { SCHEMA } from "./schema.js";
 import type { Blobs, Sql } from "./store.js";
-import { applySync, SyncBatch, SyncRefused } from "./sync.js";
+import { applySync, SyncBatch, SyncRefused, syncState } from "./sync.js";
 import { WriteConflict } from "./tenant.js";
 import { TenantDb } from "./tenant.js";
 import { closeTenant, eraseUser, exportTenant, PrivacyRefused } from "./privacy.js";
@@ -21,6 +21,17 @@ import { integrations } from "./integrations.js";
 import { platformCompanies } from "./platformView.js";
 import { accountOf, bindingOf, onboardingLink, openAccount, PlatformRefused, receiveAccountEvent, type AwxPlatformEnv } from "./awxPlatform.js";
 import { cloudHealth, companyStatus, HealthReport, MonitorRefused, notify, receiveReport, removeWebhook, setWebhook, webhookOf, type Outbound } from "./monitor.js";
+import type { EngineApi } from "./engine/api.js";
+import { engineRoutes } from "./engine/routes.js";
+import { isEngineWrite, noteEngineCompany } from "./edge/autopilot.js";
+import { edgeRoutes } from "./edge/routes.js";
+import { signedTrySession, tryGate } from "./try/gate.js";
+import { tryEngineRoutes } from "./try/engineRoutes.js";
+import { tryExtraEngineRoutes } from "./try/extraEngineRoutes.js";
+import { tryError, tryRoutes } from "./try/routes.js";
+import { DEAD_SESSIONS_PER_MINUTE, isTryTenant, noteTryFail, TryRefused, type TryConfig } from "./try/start.js";
+import { SwitchRefused } from "./try/switches.js";
+import { noteRequest } from "./try/metrics.js";
 
 export interface CloudEnv {
   sql: Sql;
@@ -56,6 +67,18 @@ export interface CloudEnv {
    * hosted onboarding template and the webhook secret. Absent (the default): the /v1/airwallex routes answer 404.
    */
   awxPlatform?: AwxPlatformEnv;
+  /**
+   * A company's engine (cloud/src/engine/api.ts): in the Worker a stub of the company's Durable Object, in tests and
+   * local runs an engine in this process. Test money only. Absent (the default): the /v1/engine routes answer 404.
+   */
+  engine?: (tenantId: string) => EngineApi;
+  /** Whether the daily counters behind GET /v1/stats are on (cloud/src/edge/stats.ts). Absent: /v1/stats answers 404. */
+  edge?: { stats?: boolean };
+  /**
+   * The hands-on deployment (purser-try, HANDS_ON=on; cloud/src/try/): a visitor's test company of their own, for a day,
+   * on the engine. Absent (the default): the /v1/try routes answer 404. Needs `engine`.
+   */
+  tryIt?: TryConfig;
 }
 
 interface Ctx { env: CloudEnv; req: Request; url: URL; now: Date; params: string[]; caller: Caller | null; db: TenantDb | null }
@@ -316,13 +339,7 @@ export const ROUTES: Route[] = [
     const b = await body(c, SyncBatch, 50_000_000);
     return json(200, { applied: await applySync(db(c), c.env.blobs, b, c.now, { kind: c.caller!.kind, principal: c.caller!.principal }) });
   } },
-  { method: "GET", path: "/v1/sync/state", summary: "Where the cloud's copy stands: the heads of the audit and ledger chains, and the documents it holds.", need: "sync", run: async (c) => {
-    const t = db(c);
-    const a = (await t.select<{ seq: number; row_hash: string }>("audit_rows", {}, { order: ["seq"], desc: true, limit: 1 }))[0];
-    const l = (await t.select<{ entry_id: number; entry_hash: string }>("ledger_entries", {}, { order: ["entry_id"], desc: true, limit: 1 }))[0];
-    const docs = await t.select<{ sha256: string }>("documents", {}, { order: ["sha256"] });
-    return json(200, { audit: { seq: a?.seq ?? 0, hash: a?.row_hash ?? null }, ledger: { entry_id: l?.entry_id ?? 0, hash: l?.entry_hash ?? null }, documents: docs.map((d) => d.sha256) });
-  } },
+  { method: "GET", path: "/v1/sync/state", summary: "Where the cloud's copy stands: the heads of the audit and ledger chains, and the documents it holds.", need: "sync", run: async (c) => json(200, await syncState(db(c))) },
   { method: "GET", path: "/v1/mail", summary: "Inbound e-mail waiting for the runner; paginated (limit, cursor).", need: "sync", run: async (c) => json(200, await paged<Record<string, unknown>>(db(c), "inbound_mail", "id", { status: "queued" }, c.url.searchParams, (r) => r)) },
   { method: "GET", path: "/v1/mail/{id}/raw", summary: "One inbound e-mail, raw (RFC 822).", need: "sync", run: async (c) => {
     const m = await db(c).one<{ blob_key: string }>("inbound_mail", { id: c.params[0]! });
@@ -408,9 +425,21 @@ export const ROUTES: Route[] = [
     return json(201, { id, role: b.role });
   } },
   { method: "POST", path: "/v1/users/{id}/erase", summary: "Erase a person's personal data (bookkeeping records are kept for 7 years).", need: "admin", run: async (c) => {
-    const out = await eraseUser(c.env.sql, c.caller!.tenantId, c.params[0]!, c.caller!.principal, c.now);
+    const id = c.params[0]!;
+    // A repeat erase finishes what an earlier one could not (the engine's part); the cloud's part is done only once.
+    const already = (await db(c).one<{ erased_at: string | null }>("users", { id }))?.erased_at;
+    const out = already ? null : await eraseUser(c.env.sql, c.caller!.tenantId, id, c.caller!.principal, c.now);
+    // The company's engine knows the passkey a person enrolled by their id (cloud/src/engine/routes.ts): it goes too.
+    let engineFailed = false;
+    if (c.env.engine) {
+      try { await c.env.engine(c.caller!.tenantId).forgetPasskey(id); } catch (e) {
+        engineFailed = true;
+        logEvent("error", "erase_engine_failed", { error: e instanceof Error ? e.message : String(e) }, c.now);
+      }
+    }
     await purgeEndedExportParts(c.env.sql, c.env.blobs, c.caller!.tenantId);
-    return json(200, out);
+    if (engineFailed) return err(502, `${id} is erased, but the engine could not revoke the person's approval passkey yet: erase again to finish`);
+    return out ? json(200, out) : err(409, `${id} was already erased`);
   } },
   { method: "GET", path: "/v1/export", summary: "Everything the cloud holds for the company; documents listed, each fetched from /v1/documents/{sha256}. Needs admin and read.", need: "admin", run: async (c) => {
     need(c.caller!, "read");
@@ -431,6 +460,17 @@ export const ROUTES: Route[] = [
     return new Response(typeof r.body === "string" ? r.body : new Uint8Array(r.body), { status: r.status, headers: { ...JSON_HEADERS, ...(r.status === 200 ? { "content-disposition": `attachment; filename="${c.params[0]!}-${c.params[1]!}.json"` } : {}) } });
   } },
   { method: "POST", path: "/v1/close", summary: "Close the company's account: access ends; records are kept until the retention day, then purged.", need: "admin", run: async (c) => json(200, await closeTenant(c.env.sql, c.caller!.tenantId, c.now)) },
+
+  // The company's engine (cloud/src/engine/routes.ts): one block, the caller's own company only, 404 while no engine is wired.
+  ...engineRoutes<Ctx>({ json, err, body }),
+  ...edgeRoutes<Ctx>({ json, err }),
+
+  // The hands-on demo's engine routes (cloud/src/try/engineRoutes.ts): one block, the caller's own company only.
+  ...tryEngineRoutes<Ctx>({ json, err, body }),
+  ...tryExtraEngineRoutes<Ctx>({ json, err, body }),
+
+  // The hands-on deployment (cloud/src/try/routes.ts): one block, 404 unless the deployment runs the hands-on demo.
+  ...tryRoutes<Ctx>({ json, err, body }),
 ];
 
 function match(path: string, pattern: string): string[] | null {
@@ -465,6 +505,8 @@ export async function handle(req: Request, env: CloudEnv): Promise<Response> {
   const res = await route(req, env);
   const path = new URL(req.url).pathname;
   const pattern = path.startsWith("/v1/") ? (ROUTES.find((r) => { try { return match(path, r.path) !== null; } catch { return false; } })?.path ?? "unknown") : "console";
+  // The hands-on deployment's own figures for the owner's page (cloud/src/try/metrics.ts): counts and buckets only.
+  if (env.tryIt && path.startsWith("/v1/")) await noteRequest(env.sql, pattern, res.status, Date.now() - started, new Date());
   logEvent(res.status >= 500 ? "error" : res.status === 401 || res.status === 403 || res.status === 429 ? "warn" : "info", "request", { method: req.method, route: pattern, status: res.status, ms: Date.now() - started });
   return res;
 }
@@ -481,6 +523,9 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
     if (req.method !== "GET" && req.method !== "HEAD") {
       const from = req.headers.get("origin");
       if (from !== null && from !== env.origin) return err(403, "this request came from another site");
+      // The hands-on demo's start and renewal are a browser's only: they must say they come from this site (the admin's
+      // controls are a program's, with the platform token, and are not held to it).
+      if (from === null && (url.pathname === "/v1/try/start" || url.pathname === "/v1/try/session")) return tryError(json, 403, "forbidden", "this request must come from the hands-on demo's own page");
     }
     await ensureSchema(env.sql);
     const candidates = ROUTES.map((r) => ({ r, p: match(url.pathname, r.path) })).filter((x) => x.p);
@@ -503,8 +548,22 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
       try {
         caller = await callerOf(env.sql, env.sessionSecret, req.headers.get("authorization"), now);
       } catch (e) {
-        if (e instanceof AuthError) await noteFailedAuth(env.sql, ip, keyIdOf(/^Bearer (\S+)$/.exec(req.headers.get("authorization") ?? "")?.[1]), now);
+        if (e instanceof AuthError) {
+          // A try company's own session that no longer works (expired, or the company was swept) counts against that
+          // company, never against the address (cloud/src/try/gate.ts); anything else counts per address, as ever.
+          const tryTenant = await signedTrySession(env.sessionSecret, req.headers.get("authorization"));
+          if (tryTenant) {
+            if ((await noteTryFail(env.sql, tryTenant, now)) > DEAD_SESSIONS_PER_MINUTE) return tryError(json, 429, "limit", "This test company's old session was sent too often; renew the session, or wait a minute.");
+          } else await noteFailedAuth(env.sql, ip, keyIdOf(/^Bearer (\S+)$/.exec(req.headers.get("authorization") ?? "")?.[1]), now);
+        }
         throw e;
+      }
+      // A visitor's test company calls only the hands-on demo's routes, while it lives (cloud/src/try/gate.ts).
+      const tryCaller = isTryTenant(caller.tenantId);
+      if (tryCaller) {
+        await tryGate(env.sql, caller.tenantId, req.method, hit.r.path, now);
+        // A test company's writes come from the demo's page only, which always says where it is.
+        if (req.method !== "GET" && req.headers.get("origin") === null) return tryError(json, 403, "forbidden", "this request must come from the hands-on demo's own page");
       }
       need(caller, hit.r.need);
       // The starter key makes the first owner's passkey and nothing else (red team round 5): who it is, the company's
@@ -520,10 +579,14 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
           || (req.method === "POST" && hit.r.path === "/v1/users/{id}/enrolment" && hit.p![0] === caller.user);
         if (!ok) return err(403, "the starter key only makes the first owner's passkey; sign in with that passkey to do the rest");
       }
-      if (!(await withinRate(env.sql, `${caller.kind}:${caller.principal}`, now, { windowSec: 60, max: rate.perMinute }))) return err(429, "too many requests; wait a minute");
+      // A try session's event polls write no rate bucket: the company's engine limits those reads itself.
+      const tryPoll = tryCaller && req.method === "GET" && hit.r.path === "/v1/engine/events";
+      if (!tryPoll && !(await withinRate(env.sql, `${caller.kind}:${caller.principal}`, now, { windowSec: 60, max: rate.perMinute }))) return err(429, "too many requests; wait a minute");
       ctx.caller = caller;
       ctx.db = new TenantDb(env.sql, caller.tenantId);
     }
+    // A company that writes to its engine is in tonight's autopilot (cloud/src/edge/autopilot.ts).
+    if (env.engine && ctx.caller && isEngineWrite(req.method, hit.r.path)) await noteEngineCompany(env.sql, ctx.caller.tenantId, now);
     return await hit.r.run(ctx);
   } catch (e) {
     if (e instanceof AuthError) return err(e.status, e.message);
@@ -533,6 +596,8 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
     if (e instanceof ExportRefused) return err(e.status, e.message);
     if (e instanceof MonitorRefused) return err(400, e.message);
     if (e instanceof PlatformRefused) return err(e.status, e.message);
+    if (e instanceof TryRefused) return tryError(json, e.status, e.code, e.message);
+    if (e instanceof SwitchRefused) return tryError(json, 400, "bad_request", e.message);
     // A write that lost a race with another request for the same company: nothing of it was written.
     if (e instanceof WriteConflict) return err(409, "another change for this company landed at the same time; nothing of this request was written: send it again");
     // Nothing internal leaks: the caller gets a reference, the log gets the error.

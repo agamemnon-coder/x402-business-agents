@@ -21,6 +21,12 @@ import { pushRuns, type DecisionsRead, type HubDeps } from "../hub/client.js";
 import { hubPushEnabled } from "../hub/config.js";
 import { t0SinkFor } from "../accounting/t0Sink.js";
 
+/**
+ * The Airwallex rails a payment runs on, handed in by a host that holds them (the engine in a Durable Object, with a
+ * client of its own or a stand-in bank). Without them, as before: the rails made from this process's environment.
+ */
+export type Rails = NonNullable<Awaited<ReturnType<typeof airwallexFromEnv>>>;
+
 /** D24: the origin of every money movement an approved proposal makes: its approval, and with four eyes the cosigner. */
 export function approvalOrigin(db: DB, proposalId: string): Origin | null {
   const a = db.prepare("SELECT approval_id, approver, method FROM approvals WHERE proposal_id = ? AND decision = 'APPROVED'").get(proposalId) as { approval_id: number; approver: string; method: string } | undefined;
@@ -36,20 +42,21 @@ const liveHub: HubDeps = { fetch: (...a) => fetch(...a), log: (line) => console.
  *  records the approval as its origin (D24); without an approval the executor refuses on its own check.
  *  Phase D: with HUB_DECISIONS_ENABLED the hub is asked first (src/hub/consult.ts) and its answer recorded; the gate in
  *  beginExecution then decides, on top of the approval, never instead of it. `read`: the hub's decisions as the
- *  runner's hub loop just read them. With HUB_PUSH_ENABLED a run that executed is pushed again (never waited on). */
-export async function execute(db: DB, proposalId: string, read?: DecisionsRead, hub: HubDeps = liveHub): Promise<void> {
+ *  runner's hub loop just read them. With HUB_PUSH_ENABLED a run that executed is pushed again (never waited on).
+ *  `rails`: the Airwallex rails of a host that holds its own; without them they are made from the environment. */
+export async function execute(db: DB, proposalId: string, read?: DecisionsRead, hub: HubDeps = liveHub, rails?: Rails): Promise<void> {
   const asked = await consultHub(db, proposalId, hub, read);
   // The gate in beginExecution refuses these too; stopping here also spares the executor's own reads.
   if (asked === "reject") throw new Error(`${proposalId} was rejected on the hub; nothing runs`);
   if (asked === "none") throw new Error(`${proposalId} is approved with Face ID and waits for the hub's decision; nothing runs yet`);
   const origin = approvalOrigin(db, proposalId);
-  await (origin ? withOrigin(origin, () => executeApproved(db, proposalId)) : executeApproved(db, proposalId));
+  await (origin ? withOrigin(origin, () => executeApproved(db, proposalId, rails)) : executeApproved(db, proposalId, rails));
   if (hubPushEnabled(hub.env ?? process.env)) void pushRuns(db, hub);
   // Phase E (T0_ENABLED): the books go to T:0 after the action, in the background; T:0 never holds up or fails a payment.
   void t0SinkFor(db).afterMoney();
 }
 
-async function executeApproved(db: DB, proposalId: string): Promise<void> {
+async function executeApproved(db: DB, proposalId: string, rails?: Rails): Promise<void> {
   const row = db.prepare("SELECT kind FROM proposals WHERE proposal_id = ?").get(proposalId) as { kind: string } | undefined;
   if (!row) throw new Error(`no proposal ${proposalId}`);
   if (row.kind === "dev_test") return executeDevTest(db, proposalId);
@@ -113,7 +120,7 @@ async function executeApproved(db: DB, proposalId: string): Promise<void> {
     await executeAgentOnboard(db, issuing.rail, proposalId);
     return;
   }
-  const awx = await airwallexFromEnv();
+  const awx = rails ?? await airwallexFromEnv();
   switch (row.kind) {
     case "mandate_replace":
       return executeMandateReplace(db, proposalId);
@@ -145,7 +152,7 @@ async function executeApproved(db: DB, proposalId: string): Promise<void> {
     case "payment_batch": {
       // One Face ID for many payments: each line runs as its own payment, with its own checks and idempotency.
       const { executePaymentBatch } = await import("./paymentBatch.js");
-      const r = await executePaymentBatch(db, proposalId, (id) => executeApproved(db, id));
+      const r = await executePaymentBatch(db, proposalId, (id) => executeApproved(db, id, rails));
       const unpaid = r.lines.filter((l) => l.outcome !== "paid");
       if (unpaid.length) throw new Error(`${unpaid.length} of ${r.lines.length} lines not paid: ${unpaid.map((l) => `${l.proposal_id} ${l.detail ?? l.status}`).join("; ").slice(0, 280)}`);
       return;

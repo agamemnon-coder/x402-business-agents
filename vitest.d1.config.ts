@@ -4,7 +4,9 @@ import base from "./vitest.config.js";
 
 export default mergeConfig(base, defineConfig({
   test: {
-    include: ["test/cloud-*.test.ts", "test/rt4-cloud-*.test.ts", "test/ap-credit-netting.test.ts"],
+    // test/db-do-sql-workerd.test.ts: not D1, but the same toolchain (a Durable Object's SQLite in local workerd).
+    // test/cloud-engine-workerd.test.ts (the engine in a Durable Object behind the cloud's routes) is one of test/cloud-*.
+    include: ["test/cloud-*.test.ts", "test/rt4-cloud-*.test.ts", "test/ap-credit-netting.test.ts", "test/db-do-sql-workerd.test.ts"],
     setupFiles: ["test/support/d1.ts"],
     testTimeout: 60_000,
     hookTimeout: 120_000,

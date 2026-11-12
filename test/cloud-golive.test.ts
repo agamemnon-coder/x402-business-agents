@@ -3,7 +3,8 @@
 import { createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { logEvent, redact } from "../cloud/src/log.js";
-import { testCloud, type TestCloud } from "./support/cloud.js";
+import { ADMIN_TOKEN, ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
+import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 
 let c: TestCloud;
 let t: { id: string; key: string; owner: string };
@@ -153,6 +154,44 @@ describe("structured logs", () => {
     expect(out.length).toBeGreaterThan(0);
     for (const s of [t.key, sk, "pck_not_a_real_key_0000000000000000", String(inv.token ?? "§"), String(inv.link ?? "§"), "DE89370400440532013000", "acc@example.test"]) expect(log).not.toContain(s);
     for (const l of out.filter((x) => x.startsWith("{"))) expect(() => JSON.parse(l) as unknown).not.toThrow();
+  });
+});
+
+describe("structured logs of the engine and the hands-on demo", () => {
+  it("hold no admin token, pool token, visitor token, session, passkey answer or account number", async () => {
+    const out: string[] = [];
+    const sink = (x: unknown, ...rest: unknown[]) => { out.push([x, ...rest].map(String).join(" ")); };
+    vi.spyOn(console, "log").mockImplementation(sink);
+    vi.spyOn(console, "error").mockImplementation(sink);
+    vi.spyOn(console, "warn").mockImplementation(sink);
+    const d = testCloud({ engine: true, tryIt: {} });
+    try {
+      await d.req("POST", "/v1/try/admin", { key: ADMIN_TOKEN, body: { op: "set", key: "starts", value: "on" } });
+      const token = (await d.req("POST", "/v1/try/admin", { key: ADMIN_TOKEN, body: { op: "token", pool: "jury", until: new Date(d.clock.now.getTime() + 3_600_000).toISOString() } })).json.token as string;
+      const st = await d.req("POST", "/v1/try/start", { body: { token }, headers: { "cf-connecting-ip": "203.0.113.77" } });
+      const s = st.json.session as string, vt = st.json.visitor_token as string;
+      const renewed = (await d.req("POST", "/v1/try/session", { body: { tenant_id: st.json.tenant, visitor_token: vt } })).json.session as string;
+      await d.req("POST", "/v1/try/session", { body: { tenant_id: st.json.tenant, visitor_token: "wrong-visitor-token" } });
+      const day = (o: number) => new Date(Date.now() + o * 86_400_000).toISOString().slice(0, 10);
+      const up = await d.req("POST", "/v1/engine/compose", { key: s, body: { supplier_key: "bergtex", invoice_no: "LOG-1", amount: "321.00", issue_date: day(0), due_date: day(9), iban: "DE89 3704 0044 0532 0130 00" } });
+      const phone = new FakeAuthenticator();
+      const ps = await d.req("POST", "/v1/engine/passkey/start", { key: s });
+      const reg = phone.register({ challenge: ps.json.challenge as string, origin: ORIGIN, rpId: RP });
+      await d.req("POST", "/v1/engine/passkey/finish", { key: s, body: { code: ps.json.code, credential: reg } });
+      const p = (await d.req("POST", `/v1/engine/invoices/${(up.json.invoice as { id: string }).id}/pay`, { key: s })).json.proposal as { id: string; terms_sha256: string; challenge: string };
+      const sig = phone.sign({ challenge: p.challenge, origin: ORIGIN, rpId: RP, counter: 1 });
+      await d.req("POST", `/v1/engine/proposals/${p.id}/approve`, { key: s, body: { terms_sha256: p.terms_sha256, credential: sig } });
+      const terms = (await d.req("GET", `/v1/engine/proposals/${p.id}/terms`, { key: s })).json.terms as Record<string, unknown>;
+      await d.req("POST", `/v1/engine/proposals/${p.id}/pay`, { key: s, body: { terms: { ...terms, amount: "321.01" }, credential: sig } });
+      await d.req("POST", `/v1/engine/proposals/${p.id}/pay`, { key: s, body: { terms, credential: sig } });
+      await d.req("GET", "/v1/engine/export", { key: s });
+      await d.req("POST", "/v1/try/admin", { key: "wrong-admin-token", body: { op: "get" } });
+      const log = out.join("\n");
+      expect(out.length).toBeGreaterThan(10);
+      const answer = (sig as { response: { signature: string; authenticatorData: string } }).response;
+      for (const secret of [ADMIN_TOKEN, "wrong-admin-token", token, s, renewed, vt, "wrong-visitor-token", answer.signature, answer.authenticatorData,
+        "DE89370400440532013000", "DE89 3704 0044 0532 0130 00", "203.0.113.77"]) expect(log).not.toContain(secret);
+    } finally { d.close(); }
   });
 });
 

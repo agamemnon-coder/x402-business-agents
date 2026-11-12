@@ -5,7 +5,7 @@
 
 import type Anthropic from "@anthropic-ai/sdk";
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Json } from "@metalntwx/metal-pay/mandates";
 import { audit } from "../audit/log.js";
@@ -18,6 +18,7 @@ import { accrualEntries, bookable, pushOnce, type BookkeepingSink } from "./book
 import { enforceAgain, recordChecked, runChecker, statusAfter, type CheckerOutcome } from "./checkerAgent.js";
 import { codeFindings, type InvoiceCase } from "./checkerCore.js";
 import { invoiceCase, statusOf, type CheckContext } from "./checks.js";
+import { docStoreOf, readDoc } from "./docStore.js";
 import { classifyDocument, ruleSignals, type DocKind } from "./classify.js";
 import { ensureCoded, type CoderDeps } from "./coderAgent.js";
 import { needsNote, writeReviewNote } from "./review.js";
@@ -143,12 +144,17 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
     }
   }
 
+  // A ledger with its own document store (src/ap/docStore.ts: the engine in a Durable Object has no folder) keeps the
+  // bytes there; without one they are a file in the payables folder, as before.
+  const store = docStoreOf(db);
   const docs = join(deps.dir, "docs");
-  mkdirSync(docs, { recursive: true });
-  const path = join(docs, `${sha}.pdf`);
-  if (!existsSync(path)) {
-    writeFileSync(path, bytes, { flag: "wx" });
-    chmodSync(path, 0o444);
+  const path = store ? store.put(sha, bytes) : join(docs, `${sha}.pdf`);
+  if (!store) {
+    mkdirSync(docs, { recursive: true });
+    if (!existsSync(path)) {
+      writeFileSync(path, bytes, { flag: "wx" });
+      chmodSync(path, 0o444);
+    }
   }
 
   let text = "";
@@ -287,7 +293,7 @@ export async function recheck(db: DB, deps: Pick<InboxDeps, "now" | "sink" | "cl
     if (!["invoice", "credit_note", "reminder"].includes(inv.doc_kind)) continue;
     const doc = db.prepare("SELECT path, text_chars FROM ap_documents WHERE sha256 = ?").get(inv.doc_sha256) as { path: string; text_chars: number };
     let text: string;
-    try { text = doc.text_chars ? (await pdfText(readFileSync(doc.path))).text : ""; } catch { text = ""; }
+    try { text = doc.text_chars ? (await pdfText(readDoc(db, doc.path))).text : ""; } catch { text = ""; }
     // A scan has no text: it is checked again on its stored reading, with its scan finding as read.
     const scanned = text ? undefined : (db.prepare("SELECT agreed, differ_json, readings, transcription FROM ap_scan_readings WHERE invoice_id = ?").get(inv.id) as { agreed: number; differ_json: string; readings: number; transcription: string | null } | undefined);
     if (!text && !scanned) { out.push(inv); continue; }

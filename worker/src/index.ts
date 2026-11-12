@@ -8,6 +8,7 @@ import { TryDesk } from "./try.js";
 import { isTrySignPath, trySignNotFound, trySignRoute, TrySignDesk } from "./trySign.js";
 import { SandboxQuotes } from "./fxQuote.js";
 import { invoiceReaderSource, treasuryAdvisorSource } from "./agentLine.js";
+import { talkSource } from "./talkRound.js";
 import { PAGES } from "./pages.gen.js";
 import { X402Desk, X402_PATH } from "./x402.js";
 import { METAL_INSPECTOR_PATH, MetalInspector, inspectorOff } from "./metalInspector.js";
@@ -53,6 +54,8 @@ export interface Env {
   METAL_RPC_URL?: string;
   /** The inspector's switch: "off" (any case, trimmed) stops every call to the chain; any other value, or none, leaves it on. */
   METAL_INSPECTOR?: string;
+  /** "on": /try/sign's "talk the agent round" step (worker/src/talkRound.ts); off when missing. */
+  TRY_TALK?: string;
 }
 
 export class RelayObject extends DurableObject<Env> {
@@ -75,6 +78,8 @@ export class RelayObject extends DurableObject<Env> {
         // functions that make those calls: the desk never holds the key itself. Both under the switch and the budget.
         reader: invoiceReaderSource(this.env, fetch),
         advisor: treasuryAdvisorSource(this.env, fetch),
+        // "Talk the agent round" (worker/src/talkRound.ts): only with TRY_TALK=on; under the same switch and budget.
+        ...(this.env.TRY_TALK === "on" ? { talk: talkSource(this.env, fetch) } : {}),
         // The recorded real outputs, built into the bundle, for when a live agent is unavailable.
         recorded: PAGES.tryAgentsRecorded ?? null,
         // 1.1: the main run's recorded rate, built in with the pages, for step 0's worst case.

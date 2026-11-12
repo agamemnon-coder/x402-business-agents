@@ -8,7 +8,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { apAgentsOn } from "../config/agents.js";
 import { followPayouts } from "../payouts/follow.js";
-import { readFileSync } from "node:fs";
 import type { AirwallexRail, PayoutRail } from "../airwallex/port.js";
 import { proposeInvoicePayment, type InvoiceOutcome } from "../agents/euroBill.js";
 import type { DB } from "../db/open.js";
@@ -18,6 +17,7 @@ import { audit } from "../audit/log.js";
 import type { Terms } from "../lib/terms.js";
 import { ensureCoded } from "./coderAgent.js";
 import { expireDue, signedTerms } from "../policy/approvals.js";
+import { readDoc } from "./docStore.js";
 import { PAY_LATER, payerGate } from "./payerAgent.js";
 import { pdfText } from "./pdfText.js";
 import type { Asker } from "./read.js";
@@ -59,7 +59,7 @@ export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id:
   }
   if (!payableCurrency(inv.currency)) throw new Error(`${id} is in ${inv.currency}; Purser does not pay that currency (pays EUR only in two-decimal currencies SWIFT carries), so a person pays it`);
   const doc = db.prepare("SELECT path FROM ap_documents WHERE sha256 = ?").get(inv.doc_sha256) as { path: string };
-  const text = (await pdfText(readFileSync(doc.path))).text;
+  const text = (await pdfText(readDoc(db, doc.path))).text;
   const r = inv.reading;
   const invoiceNo = ledgerInvoiceNo(r.invoice_no, r.vendor);
   const due = r.due_date || now.toISOString().slice(0, 10);
