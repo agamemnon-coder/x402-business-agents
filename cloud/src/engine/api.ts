@@ -30,7 +30,8 @@ export interface EngineApi {
   /** Files the invoice's payment for approval; a reason not to comes back in the engine's words, and no proposal is made. */
   propose(invoiceId: string): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }>;
   proposal(id: string): Promise<ProposalView | null>;
-  passkeyStart(): Promise<{ challenge: string; code: string; exclude: string[] }>;
+  /** `rp`: the relying party of the request's host (cloud/src/hostOrigin.ts); without it, the engine's own. */
+  passkeyStart(rp?: { rpId: string; origin: string }): Promise<{ challenge: string; code: string; exclude: string[] }>;
   /** label: the person's name, shown; person: the cloud's id for them, by which forgetPasskey finds the passkey. */
   passkeyFinish(a: { code: string; credential: unknown; label: string; person: string }): Promise<{ ok: true; credential_id: string } | { ok: false; reason: string }>;
   /** A passkey's signature over a proposal's exact terms; only an approval pays, and what follows is in settled. */

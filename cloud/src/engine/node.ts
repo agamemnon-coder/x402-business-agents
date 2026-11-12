@@ -16,6 +16,7 @@ import type { EngineApi } from "./api.js";
 import { SAMPLES } from "./samples.gen.js";
 import { cloudTarget } from "./target.js";
 import { blobVault } from "./vaultR2.js";
+import { rpAllowed } from "../hostOrigin.js";
 
 export interface NodeEngineEnv {
   sql: Sql;
@@ -82,7 +83,7 @@ export function nodeEngines(env: NodeEngineEnv): (tenantId: string) => EngineApi
       invoice: async (id) => (await host()).invoice(id),
       propose: async (invoiceId) => (await host()).propose(invoiceId),
       proposal: async (id) => (await host()).proposal(id),
-      passkeyStart: async () => (await host()).passkeyStart(),
+      passkeyStart: async (rp) => (await host()).passkeyStart(rp && rpAllowed(rp, env) ? { rpId: rp.rpId, origin: rp.origin } : undefined),
       passkeyFinish: async (a) => (await host()).passkeyFinish(a),
       approve: async (a) => (await host()).approve(a),
       retry: async (proposalId) => (await host()).retry(proposalId),

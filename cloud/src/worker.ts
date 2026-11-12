@@ -15,6 +15,7 @@ import { sweepTry } from "./try/sweep.js";
 import { expireStale } from "./engine/spend.js";
 import { logEvent } from "./log.js";
 import type { ConnectEnv } from "./connect.js";
+import { forRequest } from "./hostOrigin.js";
 
 export interface Bindings {
   DB: D1Like;
@@ -88,7 +89,8 @@ function envOf(b: Bindings): CloudEnv {
 
 export default {
   async fetch(req: Request, b: Bindings, ctx?: Waits): Promise<Response> {
-    const env = envOf(b);
+    // The passkeys' relying party and the same-origin check follow the request's host when it is allowed (./hostOrigin.ts).
+    const env = forRequest(envOf(b), req);
     const res = await handle(req, env);
     // The day's counters, after the answer is sent (cloud/src/edge/stats.ts); a counter that fails never fails the request.
     if (env.edge?.stats && ctx) {
