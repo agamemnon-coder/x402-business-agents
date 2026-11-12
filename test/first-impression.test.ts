@@ -77,11 +77,11 @@ describe("/ for a guest", () => {
     expect(await get("/", older)!.text()).toBe(pages.dashboard);
   });
 
-  it("sends the CFO's viewer link on to the dashboard, \"#\" and all, and a device that keeps a key", () => {
+  it("sends the CFO's viewer link on to the dashboard, \"#\" and all; a device that merely kept a key stays on Home (owner, 12 Nov)", () => {
     expect(forward("/", `#view=${KEY}`, null)).toEqual([`./?dashboard#view=${KEY}`]);
     expect(forward("/", `#view=${KEY}&runner=${RUNNER}`, null)).toEqual([`./?dashboard#view=${KEY}&runner=${RUNNER}`]);
     expect(forward("/", `#runner=${RUNNER}`, null)).toEqual([`./?dashboard#runner=${RUNNER}`]);
-    expect(forward("/", "", KEY)).toEqual(["./?dashboard"]);
+    expect(forward("/", "", KEY)).toEqual([]);
   });
 
   it("leaves a guest on Home, and Home's own tab (/home) alone even for the CFO", () => {
