@@ -33,12 +33,25 @@ export interface EngineApi {
   passkeyFinish(a: { code: string; credential: unknown; label: string }): Promise<{ ok: true; credential_id: string } | { ok: false; reason: string }>;
   /** A passkey's signature over a proposal's exact terms; only an approval pays, and what follows is in settled. */
   approve(a: { proposal_id: string; terms_sha256: string; credential: unknown }): Promise<{ status: string; message: string; settled: Settled | null }>;
+  /**
+   * Try again: an approved payment whose execution failed is run once more by the executor's own resume path (never a
+   * second payment), then followed, booked, archived and fed. Anything else answers nothing_to_retry and nothing runs.
+   */
+  retry(proposalId: string): Promise<{ status: "retried" | "nothing_to_retry"; message: string; settled: Settled | null }>;
   /** Follows the payments, books, archives and feeds the read model; safe to repeat. */
   sync(): Promise<Settled>;
   events(after: number, limit?: number): Promise<{ items: EngineEvent[]; next: number }>;
   vaultFiles(): Promise<VaultFile[]>;
   /** A file's bytes, only for a path the archive's index lists. */
   vaultFile(path: string): Promise<Uint8Array | null>;
+  /** A person erased by the cloud: every passkey labelled with their name is revoked, and the name leaves it. */
+  forgetPasskey(label: string): Promise<{ revoked: number }>;
   /** Forgets everything this company's engine holds (its ledger, its documents, its stand-in bank). */
   wipe(): Promise<void>;
 }
+
+/** Every action of the interface by name, held to the interface by the compiler. */
+const everyMethod = <T extends readonly (keyof EngineApi)[]>(names: keyof EngineApi extends T[number] ? T : never): T => names;
+
+/** What a caller across a boundary may ask a company's engine for (the Worker's stub of its Durable Object passes the name on). */
+export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "approve", "retry", "sync", "events", "vaultFiles", "vaultFile", "forgetPasskey", "wipe"] as const);

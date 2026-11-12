@@ -10,6 +10,7 @@ import { sessionToken } from "../cloud/src/auth.js";
 import { blobVault, vaultKey } from "../cloud/src/engine/vaultR2.js";
 import { sha256Hex } from "../src/lib/terms.js";
 import { challengeFor } from "../src/passkey/webauthn.js";
+import { FakeAirwallex } from "../src/redteam/airwallex.js";
 import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 import { EN } from "./fakes/apInvoices.js";
 import { pdfOf } from "./fakes/pdf.js";
@@ -49,7 +50,7 @@ beforeAll(async () => {
 afterAll(() => c.close());
 
 describe("the route table", () => {
-  it("holds the engine's twelve routes, each with what it needs", () => {
+  it("holds the engine's thirteen routes, each with what it needs", () => {
     expect(ENGINE_ROUTES.map((r) => `${r.method} ${r.path} ${r.need}`)).toEqual([
       "GET /v1/engine read",
       "POST /v1/engine/documents admin",
@@ -59,6 +60,7 @@ describe("the route table", () => {
       "POST /v1/engine/passkey/start admin",
       "POST /v1/engine/passkey/finish admin",
       "POST /v1/engine/proposals/{id}/approve admin",
+      "POST /v1/engine/proposals/{id}/retry admin",
       "POST /v1/engine/sync admin",
       "GET /v1/engine/events read",
       "GET /v1/engine/vault read",
@@ -134,8 +136,8 @@ describe("one supplier invoice, from upload to paid, booked and archived, over H
   it("refuses a signature over other terms: nothing is paid", async () => {
     const r = await c.req("POST", "/v1/engine/proposals/P-0001/approve", { key: A.session, body: { terms_sha256: proposal.terms_sha256, credential: phone.sign({ challenge: challengeFor(sha256Hex("other terms")), origin: ORIGIN, rpId: RP, counter: 1 }) } });
     expect(r.status, JSON.stringify(r.json)).toBe(200);
-    expect(r.json).toMatchObject({ status: "refused", settled: null });
-    expect(r.json.message).toEqual(expect.any(String));
+    // In plain words, never the WebAuthn library's own sentence (and not as an error: the request itself was fine).
+    expect(r.json).toEqual({ status: "refused", message: "This signature is over other terms than the ones on screen. Nothing was paid.", settled: null });
     expect(((await c.req("GET", "/v1/engine/invoices", { key: A.session })).json.items as Invoice[])[0]).toMatchObject({ id: "AP-0001", status: "waiting_cfo" });
     expect((await c.req("GET", "/v1/payments", { key: A.session })).json.items).toEqual([]);
   });
@@ -236,13 +238,69 @@ describe("the engine's catches, through the routes", () => {
   });
 });
 
+describe("try again: a payment whose execution failed, run once more over HTTP", () => {
+  it("answers 200 with where things stand and pays once; 409 when there is nothing to retry; 403 to a viewer and a read-only key; 404 to another company", async () => {
+    const t = await c.tenant("charlie");
+    expect((await c.req("POST", "/v1/company", { key: t.session, body: { language: "en" } })).status).toBe(200);
+    const v = await c.req("POST", "/v1/users", { key: t.session, body: { display_name: "Vic Viewer", role: "viewer" } });
+    const tViewer = await sessionToken(c.env.sessionSecret, { tenantId: t.id, userId: v.json.id as string, role: "viewer", gen: 0 }, c.clock.now);
+    const tReader = (await c.req("POST", "/v1/keys", { key: t.session, body: { name: "read only", scopes: ["read"] } })).json.api_key as string;
+    const own = new FakeAuthenticator();
+    expect((await c.req("POST", "/v1/engine/documents", { key: t.session, body: { filename: "bergtex.pdf", base64: b64(bytes) } })).status).toBe(200);
+    const p = (await c.req("POST", "/v1/engine/invoices/AP-0001/pay", { key: t.session })).json.proposal as Proposal;
+    const start = await c.req("POST", "/v1/engine/passkey/start", { key: t.session });
+    expect((await c.req("POST", "/v1/engine/passkey/finish", { key: t.session, body: { code: start.json.code, credential: own.register({ challenge: start.json.challenge as string, origin: ORIGIN, rpId: RP }) } })).status).toBe(200);
+    const retry = (key: string) => c.req("POST", `/v1/engine/proposals/${p.id}/retry`, { key });
+
+    // Not approved yet: nothing to retry, in the engine's words.
+    const early = await retry(t.session);
+    expect(early.status).toBe(409);
+    expect(early.json).toMatchObject({ code: "conflict", error: "P-0001 is PENDING_APPROVAL: there is nothing to try again; nothing was paid" });
+
+    // Approved while the stand-in bank is away at the transfer: the payment fails and waits.
+    const real = Object.getOwnPropertyDescriptor(FakeAirwallex.prototype, "createTransfer")!;
+    try {
+      FakeAirwallex.prototype.createTransfer = async () => { throw new Error("the stand-in bank is away"); };
+      const r = await c.req("POST", `/v1/engine/proposals/${p.id}/approve`, { key: t.session, body: { terms_sha256: p.terms_sha256, credential: own.sign({ challenge: p.challenge, origin: ORIGIN, rpId: RP, counter: 1 }) } });
+      expect(r.json).toMatchObject({ status: "approved", settled: { invoice_status: "waiting_cfo", transfer_status: "SUBMITTING", error: expect.stringContaining("the stand-in bank is away") } });
+      expect((await c.req("GET", `/v1/engine/proposals/${p.id}`, { key: t.session })).json.proposal).toMatchObject({ status: "FAILED" });
+
+      // Those who may only read, and another company, cannot make it run.
+      for (const key of [tViewer, tReader]) expect((await retry(key)).status).toBe(403);
+      const other = await c.req("POST", `/v1/engine/proposals/${p.id}/retry`, { key: B.session });
+      expect(other.status).toBe(404);
+      expect(other.json.error).toBe("no proposal");
+    } finally {
+      Object.defineProperty(FakeAirwallex.prototype, "createTransfer", real);
+    }
+    expect((await c.req("GET", `/v1/engine/proposals/${p.id}`, { key: t.session })).json.proposal).toMatchObject({ status: "FAILED" });
+
+    // The bank is back: the retry pays, once.
+    const paid = await retry(t.session);
+    expect(paid.status, JSON.stringify(paid.json)).toBe(200);
+    expect(paid.json).toMatchObject({ status: "retried", message: "P-0001 was run again: EXECUTED", settled: { invoice_status: "paid", transfer_status: "PAID", ledger_entries: 7, fed: true, error: null } });
+    expect(((await c.req("GET", "/v1/payments", { key: t.session })).json.items as { status: string }[]).map((x) => x.status)).toEqual(["PAID"]);
+    expect(((await c.req("GET", "/v1/invoices", { key: t.session })).json.items as { id: string; status: string }[]).find((i) => i.id === "AP-0001")).toMatchObject({ status: "paid" });
+
+    // Paid: nothing to retry, for the session and for an admin key alike; no proposal there is 404.
+    for (const key of [t.session, t.key]) {
+      const again = await retry(key);
+      expect(again.status).toBe(409);
+      expect(again.json.error).toBe("P-0001 is EXECUTED: there is nothing to try again; nothing was paid");
+    }
+    expect((await c.req("POST", "/v1/engine/proposals/P-0404/retry", { key: t.session })).status).toBe(404);
+    expect(((await c.req("GET", "/v1/payments", { key: t.session })).json.items as unknown[])).toHaveLength(1);
+    expect((await c.req("GET", "/v1/engine", { key: t.session })).json.chains).toEqual({ audit: true, ledger: true });
+  });
+});
+
 describe("the cloud's own gates", () => {
   const posts = ENGINE_ROUTES.filter((r) => r.method === "POST");
   // The file route answers 404 without a path; every other read answers by itself.
   const reads = ENGINE_ROUTES.filter((r) => r.method === "GET" && r.path !== "/v1/engine/vault/file");
 
   it("lets a viewer and a read-only key read, and do nothing else", async () => {
-    expect(posts).toHaveLength(6);
+    expect(posts).toHaveLength(7);
     for (const key of [viewer, reader]) {
       for (const r of posts) {
         const res = await c.req("POST", at(r.path), { key, body: {} });
@@ -324,12 +382,45 @@ describe("what an upload must be", () => {
   });
 });
 
+describe("erasing a person and purging a closed company reach the company's engine", () => {
+  it("erasing the person revokes their approval passkey and drops their name from it", async () => {
+    const e = testCloud({ engine: true });
+    try {
+      const t = await e.tenant("echo");
+      const second = await e.req("POST", "/v1/users", { key: t.session, body: { display_name: "Second Owner", role: "owner" } });
+      const other = await sessionToken(e.env.sessionSecret, { tenantId: t.id, userId: second.json.id as string, role: "owner", gen: 0 }, e.clock.now);
+      const own = new FakeAuthenticator();
+      const start = await e.req("POST", "/v1/engine/passkey/start", { key: t.session });
+      const done = await e.req("POST", "/v1/engine/passkey/finish", { key: t.session, body: { code: start.json.code, credential: own.register({ challenge: start.json.challenge as string, origin: ORIGIN, rpId: RP }) } });
+      expect(done.status, JSON.stringify(done.json)).toBe(200);
+      expect((await e.req("GET", "/v1/engine", { key: other })).json.passkey).toEqual({ credential_id: own.credentialId, label: "Owner" });
+
+      expect((await e.req("POST", `/v1/users/${t.owner}/erase`, { key: other })).status).toBe(200);
+      expect((await e.req("GET", "/v1/engine", { key: other })).json.passkey).toBeNull();
+      expect(JSON.stringify(await e.env.engine!(t.id).status())).not.toContain("Owner");
+    } finally { e.close(); }
+  });
+
+  it("the purge of a closed company wipes its engine: its ledger, documents and passkey go with its rows", async () => {
+    const e = testCloud({ engine: true });
+    try {
+      const t = await e.tenant("foxtrot");
+      expect((await e.req("POST", "/v1/engine/documents", { key: t.session, body: { filename: "bergtex.pdf", base64: b64(bytes) } })).status).toBe(200);
+      expect(await e.env.engine!(t.id).invoices()).toHaveLength(1);
+      expect((await e.req("POST", "/v1/close", { key: t.key })).status).toBe(200);
+      const purge = (await import("../cloud/src/privacy.js")).purgeExpired;
+      expect(await purge(e.env.sql, e.env.blobs, new Date("2034-01-01T12:00:00Z"), e.env.engine)).toEqual([t.id]);
+      expect(await e.env.engine!(t.id).invoices()).toEqual([]);
+    } finally { e.close(); }
+  });
+});
+
 describe("a cloud with no engine wired", () => {
   it("answers 404 on every engine route, whoever asks", async () => {
     const off = testCloud();
     try {
       const t = await off.tenant("plain");
-      expect(ENGINE_ROUTES).toHaveLength(12);
+      expect(ENGINE_ROUTES).toHaveLength(13);
       for (const key of [t.session, t.key]) {
         for (const r of ENGINE_ROUTES) {
           const res = await off.req(r.method, at(r.path), { key, ...(r.method === "POST" ? { body: {} } : {}) });

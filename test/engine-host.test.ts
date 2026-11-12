@@ -5,6 +5,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { useDocStore, type DocStore } from "../src/ap/docStore.js";
+import { pdfText } from "../src/ap/pdfText.js";
 import { verifyAuditChain } from "../src/audit/log.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { publicEvent, type EngineEvent } from "../src/engine/events.js";
@@ -103,12 +104,16 @@ describe("the chain: one supplier invoice from upload to paid, booked and archiv
     expect(proposal.challenge).toBe(challengeFor(proposal.terms_sha256));
     expect(proposal.facts).toEqual(expect.arrayContaining([["Amount", "EUR 1,850.00"], ["Payee", "Bergtex Textil GmbH, IBAN …3000"], ["On the invoice", "“Total due EUR 1,850.00”"], ["Reason", "Goods purchased"]]));
     expect(proposal.facts.flat().join(" ")).not.toMatch(/\bph\.[a-z_]+/);
+    // The bank is the stand-in: no fact names Airwallex or its fee.
+    expect(proposal.facts).toEqual(expect.arrayContaining([["Bank fee (stand-in bank, test money)", expect.stringMatching(/^at most EUR /)]]));
+    expect(proposal.facts.flat().join(" ")).not.toMatch(/Airwallex/);
     expect(w.host.proposal("P-0001")).toEqual(proposal);
     expect(w.host.invoice("AP-0001")).toMatchObject({ status: "waiting_cfo", payable: false, proposal });
 
     // A signature over other terms: refused, and nothing runs.
     const wrong = await w.host.approve(signed(w, proposal, challengeFor(sha256Hex("other terms")), 1));
-    expect(wrong).toMatchObject({ status: "refused", settled: null });
+    // In plain words, never the WebAuthn library's own sentence.
+    expect(wrong).toEqual({ status: "refused", message: "This signature is over other terms than the ones on screen. Nothing was paid.", settled: null });
     expect(w.bank.transfers).toHaveLength(0);
     expect(w.host.proposal("P-0001")!.status).toBe("PENDING_APPROVAL");
     expect(count(w.db, "SELECT COUNT(*) AS n FROM transfers")).toBe(0);
@@ -140,6 +145,13 @@ describe("the chain: one supplier invoice from upload to paid, booked and archiv
     expect(index).toBeTruthy();
     expect(await w.host.vaultFile(index)).toBeNull();
     expect(await w.host.vaultFile("Engine Test Co/2026/nothing.pdf")).toBeNull();
+
+    // The receipt names the bank it ran on: test money on the stand-in bank, never the Airwallex sandbox or its fee.
+    const receipt = files.find((f) => f.kind === "receipt")!;
+    const { text } = await pdfText(Buffer.from((await w.host.vaultFile(receipt.path))!));
+    expect(text).toContain("Test money (stand-in bank)");
+    expect(text).toContain("Fee (set by the stand-in bank)");
+    expect(text.replace(/, not Airwallex;|, niet Airwallex;/g, "")).not.toMatch(/Airwallex|npm run verify/);
   });
 
   it("seeds the treasury once, however often it is asked", async () => {
@@ -245,6 +257,137 @@ describe("sync: follow the payments, book, archive, feed", () => {
     expect(w.host.invoice("AP-0001")).toMatchObject({ status: "waiting_cfo", payable: false, proposal: { status: "FAILED" } });
     expect(count(w.db, "SELECT COUNT(*) AS n FROM approvals WHERE proposal_id = 'P-0001' AND decision = 'APPROVED'")).toBe(1);
     expect(count(w.db, "SELECT COUNT(*) AS n FROM transfers WHERE status = 'PAID'")).toBe(0);
+    expect(verifyAuditChain(w.db).ok).toBe(true);
+  });
+});
+
+describe("an approval refused: in plain words, never the WebAuthn library's own sentence", () => {
+  const sign = (w: World, p: { id: string; terms_sha256: string; challenge: string }, c: Partial<{ origin: string; rpId: string; counter: number; userVerified: boolean }>, phone = w.phone) =>
+    ({ proposal_id: p.id, terms_sha256: p.terms_sha256, credential: phone.sign({ challenge: p.challenge, origin: ORIGIN, rpId: RP, counter: 5, ...c }) });
+
+  it("says what was wrong with the signature, and nothing is paid", async () => {
+    const w = world();
+    const { proposal } = await proposed(w);
+    const cases: [string, ReturnType<typeof sign>, string][] = [
+      ["made on another site", sign(w, proposal, { origin: "https://elsewhere.example" }), "This signature was made on another website than this one. Nothing was paid."],
+      ["for another site's passkey", sign(w, proposal, { rpId: "elsewhere.example" }), "This signature belongs to a passkey of another website. Nothing was paid."],
+      ["without Face ID, fingerprint or PIN", sign(w, proposal, { userVerified: false }), "The passkey did not confirm it was you (Face ID, fingerprint or PIN). Nothing was paid."],
+      ["by a passkey that is not set up here", sign(w, proposal, {}, new FakeAuthenticator()), "this passkey is not enrolled"],
+    ];
+    const odd = sign(w, proposal, {});
+    // A response of another ceremony (the library's "Unexpected authentication response type ...").
+    const data = JSON.parse(Buffer.from(odd.credential.response.clientDataJSON, "base64url").toString("utf8")) as Record<string, unknown>;
+    const other = Buffer.from(JSON.stringify({ ...data, type: "webauthn.create" })).toString("base64url");
+    cases.push(["of another ceremony", { ...odd, credential: { ...odd.credential, response: { ...odd.credential.response, clientDataJSON: other } } }, "This signature could not be read. Nothing was paid."]);
+    for (const [what, a, message] of cases) {
+      const out = await w.host.approve(a);
+      expect(out, what).toEqual({ status: "refused", message, settled: null });
+      expect(out.message, what).not.toMatch(/Unexpected|expected|challenge|origin "|RP ID/);
+    }
+    expect(w.bank.transfers).toHaveLength(0);
+    expect(w.host.proposal(proposal.id)!.status).toBe("PENDING_APPROVAL");
+  });
+
+  it("says a signature older than the passkey's last one may be a copy", async () => {
+    const w = world();
+    const { proposal } = await proposed(w);
+    // A first payment moves the passkey's counter on to 9.
+    expect((await w.host.approve(sign(w, proposal, { counter: 9 }))).status).toBe("approved");
+    // Another invoice of the same supplier (another number, another amount), filed for approval.
+    const next = EN.replace(/BTX-2026-21/g, "BTX-2026-22").replace("1,554.62", "1,000.00").replace("295.38", "190.00").replace("1,850.00", "1,190.00").replace("2 November", "3 November").replace("16 November", "17 November");
+    const up = await w.host.upload({ bytes: await pdfOf(next), filename: "bergtex-BTX-2026-22.pdf" });
+    const filed = await w.host.propose(up.invoice!.id);
+    if (!filed.ok) throw new Error(filed.reason);
+    const out = await w.host.approve(sign(w, filed.proposal, { counter: 3 }));
+    expect(out).toEqual({ status: "refused", message: "This signature is older than one this passkey already gave, so it may be a copy. Nothing was paid.", settled: null });
+    expect(w.bank.transfers).toHaveLength(1);
+  });
+
+  it("an expired proposal answers in the engine's own words, as before", async () => {
+    let clock = new Date();
+    const w = world({ now: () => clock });
+    const { proposal } = await proposed(w);
+    clock = new Date(clock.getTime() + 2 * 86_400_000);
+    const out = await w.host.approve(signed(w, proposal, proposal.challenge, 1));
+    expect(out).toEqual({ status: "too_late", message: expect.stringMatching(/^P-0001 expired at \S+; nothing was approved$/), settled: null });
+    expect(w.bank.transfers).toHaveLength(0);
+  });
+});
+
+describe("try again: a payment whose execution failed is run once more by the executor's own resume path", () => {
+  /** Approved, then the bank was away at the transfer: FAILED, the payout row SUBMITTING, the invoice waiting. */
+  async function failed(w: World) {
+    const { proposal } = await proposed(w);
+    w.bank.createTransfer = async () => { throw new Error("the stand-in bank is away"); };
+    const out = await w.host.approve(signed(w, proposal, proposal.challenge, 1));
+    expect(out.settled).toMatchObject({ invoice_status: "waiting_cfo", transfer_status: "SUBMITTING" });
+    expect(w.host.proposal(proposal.id)!.status).toBe("FAILED");
+    // The bank is back.
+    delete (w.bank as { createTransfer?: unknown }).createTransfer;
+    return proposal;
+  }
+
+  it("pays once on a retry: PAID, booked with 7 entries, archived, both chains whole", async () => {
+    const w = world();
+    const proposal = await failed(w);
+    expect(w.bank.transfers).toHaveLength(0);
+    const out = await w.host.retry(proposal.id);
+    expect(out).toMatchObject({ status: "retried", message: "P-0001 was run again: EXECUTED", settled: { invoice_status: "paid", transfer_status: "PAID", ledger_entries: 7, error: null } });
+    // The invoice and the suppliers list were archived after the failed run; the receipt comes with the payment.
+    expect(out.settled!.vault_added).toEqual([expect.stringMatching(/\.pdf$/)]);
+    expect((await w.host.vaultFiles()).map((f) => f.kind).sort()).toEqual(["invoice", "receipt", "suppliers"]);
+    expect(w.bank.transfers).toHaveLength(1);
+    expect(count(w.db, "SELECT COUNT(*) AS n FROM transfers")).toBe(1);
+    expect(count(w.db, "SELECT COUNT(*) AS n FROM approvals")).toBe(1);
+    expect(w.host.invoice("AP-0001")).toMatchObject({ status: "paid", proposal: { status: "EXECUTED" } });
+    expect(verifyAuditChain(w.db).ok).toBe(true);
+    expect(verifyLedger(w.db).ok).toBe(true);
+    // The bank as it stands after the retry is the one kept.
+    expect(bankFromText(w.bankStore.text!).transfers).toHaveLength(1);
+
+    // Paid: a second retry moves no money, and says why.
+    const again = await w.host.retry(proposal.id);
+    expect(again).toEqual({ status: "nothing_to_retry", message: "P-0001 is EXECUTED: there is nothing to try again; nothing was paid", settled: null });
+    expect(w.bank.transfers).toHaveLength(1);
+  });
+
+  it("a retry that fails again says so in settled.error, and the next one still pays once", async () => {
+    const w = world();
+    const proposal = await failed(w);
+    w.bank.createTransfer = async () => { throw new Error("still away"); };
+    const out = await w.host.retry(proposal.id);
+    expect(out).toMatchObject({ status: "retried", message: "P-0001 was run again: FAILED", settled: { invoice_status: "waiting_cfo", transfer_status: "SUBMITTING", error: expect.stringContaining("still away") } });
+    delete (w.bank as { createTransfer?: unknown }).createTransfer;
+    expect((await w.host.retry(proposal.id)).settled).toMatchObject({ invoice_status: "paid", transfer_status: "PAID", error: null });
+    expect(w.bank.transfers).toHaveLength(1);
+  });
+
+  it("two retries at once run one after the other and make one transfer", async () => {
+    const w = world();
+    const proposal = await failed(w);
+    const [a, b] = await Promise.all([w.host.retry(proposal.id), w.host.retry(proposal.id)]);
+    expect(a).toMatchObject({ status: "retried", settled: { invoice_status: "paid", transfer_status: "PAID" } });
+    expect(b).toMatchObject({ status: "nothing_to_retry", settled: null });
+    expect(w.bank.transfers).toHaveLength(1);
+    expect(count(w.db, "SELECT COUNT(*) AS n FROM transfers")).toBe(1);
+  });
+
+  it("refuses a proposal that was never approved, one whose signature was refused, one paid, and one that is not there", async () => {
+    const w = world();
+    const { proposal } = await proposed(w);
+    // Never approved.
+    expect(await w.host.retry(proposal.id)).toEqual({ status: "nothing_to_retry", message: "P-0001 is PENDING_APPROVAL: there is nothing to try again; nothing was paid", settled: null });
+    // A signature over other terms was refused: still not approved.
+    expect((await w.host.approve(signed(w, proposal, challengeFor(sha256Hex("other terms")), 1))).status).toBe("refused");
+    expect(await w.host.retry(proposal.id)).toMatchObject({ status: "nothing_to_retry", settled: null });
+    expect(w.bank.transfers).toHaveLength(0);
+    expect(count(w.db, "SELECT COUNT(*) AS n FROM transfers")).toBe(0);
+    // Paid on the first run.
+    await w.host.approve(signed(w, proposal, proposal.challenge, 2));
+    expect(await w.host.retry(proposal.id)).toMatchObject({ status: "nothing_to_retry", message: expect.stringMatching(/^P-0001 is EXECUTED/), settled: null });
+    expect(w.bank.transfers).toHaveLength(1);
+    // Not there.
+    expect(await w.host.retry("P-0404")).toEqual({ status: "nothing_to_retry", message: "no proposal P-0404", settled: null });
     expect(verifyAuditChain(w.db).ok).toBe(true);
   });
 });

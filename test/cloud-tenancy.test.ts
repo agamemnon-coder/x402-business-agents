@@ -98,7 +98,7 @@ describe("two companies", () => {
     const withId = ROUTES.filter((r) => r.path.includes("{id}") && r.need !== "platform");
     expect(withId.length).toBeGreaterThanOrEqual(6);
     // The engine's routes that name an invoice or a proposal are in the walk.
-    expect(withId.filter((r) => r.path.startsWith("/v1/engine/")).map((r) => `${r.method} ${r.path}`)).toEqual(["POST /v1/engine/invoices/{id}/pay", "GET /v1/engine/proposals/{id}", "POST /v1/engine/proposals/{id}/approve"]);
+    expect(withId.filter((r) => r.path.startsWith("/v1/engine/")).map((r) => `${r.method} ${r.path}`)).toEqual(["POST /v1/engine/invoices/{id}/pay", "GET /v1/engine/proposals/{id}", "POST /v1/engine/proposals/{id}/approve", "POST /v1/engine/proposals/{id}/retry"]);
     for (const r of withId) {
       const engine = r.path.startsWith("/v1/engine/");
       const id = r.path.includes("/keys/") ? bIds.key : r.path.includes("/users/") ? bIds.user : r.path.includes("/mail/") ? bIds.mail

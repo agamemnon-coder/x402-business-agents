@@ -80,10 +80,12 @@ export function nodeEngines(env: NodeEngineEnv): (tenantId: string) => EngineApi
       passkeyStart: async () => (await host()).passkeyStart(),
       passkeyFinish: async (a) => (await host()).passkeyFinish(a),
       approve: async (a) => (await host()).approve(a),
+      retry: async (proposalId) => (await host()).retry(proposalId),
       sync: async () => (await host()).sync(),
       events: async (after, limit) => (await host()).events(after, limit),
       vaultFiles: async () => (await host()).vaultFiles(),
       vaultFile: async (path) => (await host()).vaultFile(path),
+      forgetPasskey: async (label) => (await host()).forgetPasskey(label),
       wipe: async () => {
         const e = engines.get(tenantId);
         engines.delete(tenantId);

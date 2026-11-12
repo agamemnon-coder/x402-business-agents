@@ -17,6 +17,7 @@
     "test": "vitest run",
     "cloud:font": "tsx cloud/scripts/font.ts",
     "cloud:pdfjs": "tsx cloud/scripts/pdfjs.ts",
+    "cloud:smoke": "tsx scripts/engine-smoke.ts",
     "test:d1": "CLOUD_DB=d1 vitest run --config vitest.d1.config.ts",
     "test:shim": "vitest run --config vitest.shim.config.ts",
     "test:coverage": "vitest run --coverage && tsx test/coverage-areas.ts",
@@ -120,7 +121,9 @@
     "reliability": "tsx src/cli/reliability.ts",
     "record-try-agents": "tsx src/cli/recordTryAgents.ts",
     "cloud": "tsx src/cli/cloud.ts",
-    "two-locks": "tsx src/cli/twoLocks.ts"
+    "two-locks": "tsx src/cli/twoLocks.ts",
+    "tokenize": "tsx src/cli/tokenize.ts",
+    "contracts:tokenize": "tsx src/tokenize/compile.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",
@@ -145,6 +148,9 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@ethereumjs/common": "10.1.3",
+    "@ethereumjs/evm": "10.1.3",
+    "@ethereumjs/util": "10.1.3",
     "@openzeppelin/contracts": "5.6.1",
     "@types/better-sqlite3": "9.6.0",
     "@types/express": "5.0.6",

@@ -6,6 +6,7 @@ import { receiveEmail, type InboundEmail } from "./mail.js";
 import { purgeExpired } from "./privacy.js";
 import { sweepExports } from "./exports.js";
 import { d1Sql, r2Blobs, type D1Like, type R2Like } from "./store.js";
+import { ENGINE_MODE, engineStubs, type EngineNamespace } from "./engine/client.js";
 
 export interface Bindings {
   DB: D1Like;
@@ -19,6 +20,9 @@ export interface Bindings {
   VERSION?: string;
   /** Workers static assets (cloud/public, filled by npm run cloud:pdfjs): pdf.js for the console's invoice view. */
   ASSETS?: { fetch(req: Request): Promise<Response> };
+  /** The company engines' Durable Object (cloud/src/engine/object.ts), and the switch that turns the /v1/engine routes on: "test_money". */
+  ENGINE?: EngineNamespace;
+  ENGINE_MODE?: string;
 }
 
 function envOf(b: Bindings): CloudEnv {
@@ -26,7 +30,8 @@ function envOf(b: Bindings): CloudEnv {
   const assets = b.ASSETS;
   return { sql: d1Sql(b.DB), blobs: r2Blobs(b.DOCS), sessionSecret: b.SESSION_SECRET, adminTokenSha256: b.ADMIN_TOKEN_SHA256 ?? "", rpId: b.RP_ID, origin: b.ORIGIN, mailDomain: b.MAIL_DOMAIN ?? "",
     version: b.VERSION ?? "dev", outbound: (url: string, init: RequestInit) => fetch(url, init),
-    ...(assets ? { asset: async (path: string) => assets.fetch(new Request(new URL(path, b.ORIGIN))) } : {}) };
+    ...(assets ? { asset: async (path: string) => assets.fetch(new Request(new URL(path, b.ORIGIN))) } : {}),
+    ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE ? { engine: engineStubs(b.ENGINE) } : {}) };
 }
 
 export default {
@@ -41,7 +46,7 @@ export default {
   async scheduled(_event: unknown, b: Bindings): Promise<void> {
     const env = envOf(b);
     await ensureSchema(env.sql);
-    await purgeExpired(env.sql, env.blobs, new Date());
+    await purgeExpired(env.sql, env.blobs, new Date(), env.engine);
     // Staged exports past their day lose their parts (a request for the company does the same on its way).
     await sweepExports(env.sql, env.blobs, new Date());
   },

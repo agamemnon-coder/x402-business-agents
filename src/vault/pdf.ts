@@ -65,6 +65,24 @@ export const PDF_STRINGS = {
 const T = PDF_STRINGS;
 
 /**
+ * Which bank the money moved on: the Airwallex sandbox (a runner's, the default) or the stand-in bank of the cloud's
+ * engine (src/engine/standInBank.ts), which never reaches Airwallex. Its pages say so, name no Airwallex transfer or
+ * fee, and point to no `npm run verify` (the cloud's company has no runner to run it on).
+ */
+export type Bank = "sandbox" | "stand-in";
+export const STAND_IN_STRINGS = {
+  nl: {
+    testMoney: "Testgeld (nagebootste bank)", testMoneyLine: "Alle bedragen in dit document zijn testgeld op een nagebootste bank, niet Airwallex; er is geen echt geld bewogen.",
+    transfer: "Overboeking (nagebootste bank)", fee: "Kosten (door de nagebootste bank berekend)", verify: "",
+  },
+  en: {
+    testMoney: "Test money (stand-in bank)", testMoneyLine: "Every amount in this document is test money on a stand-in bank, not Airwallex; no real money moved.",
+    transfer: "Transfer (stand-in bank)", fee: "Fee (set by the stand-in bank)", verify: "",
+  },
+} as const;
+const words = (lang: Lang, bank: Bank) => (bank === "stand-in" ? { ...T[lang], ...STAND_IN_STRINGS[lang] } : T[lang]);
+
+/**
  * The chart's account names in Dutch, for the Dutch PDFs (screenshot pass S7); English stays as the chart has it. An
  * account without a Dutch name keeps its own.
  */
@@ -146,7 +164,7 @@ function render(title: string, created: string, draw: (doc: Doc) => void): Promi
   return done;
 }
 
-function header(doc: Doc, company: string, title: string, sub: string, test: boolean, lang: Lang) {
+function header(doc: Doc, company: string, title: string, sub: string, test: boolean, lang: Lang, bank: Bank = "sandbox") {
   doc.fillColor(MUTED).font("Helvetica").fontSize(9).text(company.toUpperCase(), { characterSpacing: 1 });
   doc.moveDown(0.3).fillColor(INK).font("Helvetica-Bold").fontSize(20).text(title);
   doc.font("Helvetica").fontSize(11).fillColor(MUTED).text(sub);
@@ -154,8 +172,8 @@ function header(doc: Doc, company: string, title: string, sub: string, test: boo
     doc.moveDown(0.6);
     const y = doc.y;
     doc.rect(50, y, 495, 34).fill("#fffbeb");
-    doc.fillColor(WARN).font("Helvetica-Bold").fontSize(10).text(T[lang].testMoney, 60, y + 6);
-    doc.font("Helvetica").fontSize(8.5).text(T[lang].testMoneyLine, 60, y + 19);
+    doc.fillColor(WARN).font("Helvetica-Bold").fontSize(10).text(words(lang, bank).testMoney, 60, y + 6);
+    doc.font("Helvetica").fontSize(8.5).text(words(lang, bank).testMoneyLine, 60, y + 19);
     doc.y = y + 40;
   }
   doc.moveDown(0.6).x = 50;
@@ -207,10 +225,10 @@ function footer(doc: Doc, lang: Lang) {
 
 // ---------- documents ----------
 
-export function receiptPdf(company: string, r: ReceiptData, lang: Lang = "nl"): Promise<Buffer> {
-  const t = T[lang];
+export function receiptPdf(company: string, r: ReceiptData, lang: Lang = "nl", bank: Bank = "sandbox"): Promise<Buffer> {
+  const t = words(lang, bank);
   return render(`${t.receipt} ${r.vendor} ${r.invoice_no}`, r.paid_at, (doc) => {
-    header(doc, company, t.receipt, `${r.vendor} · ${t.invoice} ${r.invoice_no}`, true, lang);
+    header(doc, company, t.receipt, `${r.vendor} · ${t.invoice} ${r.invoice_no}`, true, lang, bank);
     section(doc, t.invoice);
     kv(doc, [[t.supplier, r.vendor], [t.invoice, r.invoice_no], [t.invoiceDate, r.invoice_date ? pdfDate(r.invoice_date, lang) : t.none], [t.dueDate, r.due_date ? pdfDate(r.due_date, lang) : t.none], [t.reference, r.reference || t.none],
       [t.account, r.account]]);
@@ -226,7 +244,7 @@ export function receiptPdf(company: string, r: ReceiptData, lang: Lang = "nl"): 
       kv(doc, [[t.approvedBy, r.approval.approver], [t.how, r.approval.method === "passkey" ? t.passkey : `${r.approval.method}: ${t.typed}`], [t.when, pdfDate(r.approval.at, lang)],
         ...(r.cosigner ? [[t.cosigner, r.cosigner] as [string, string]] : []), [t.proposal, r.proposal_id], [t.termsHash, r.terms_sha256], [t.signed, r.approval.signed_sha256]]);
     } else kv(doc, [[t.approval, t.noApproval], [t.proposal, r.proposal_id], [t.termsHash, r.terms_sha256]]);
-    doc.moveDown(0.4).font("Helvetica").fontSize(9).fillColor(INK).text(t.verify, 50, undefined, { width: 495 });
+    if (t.verify) doc.moveDown(0.4).font("Helvetica").fontSize(9).fillColor(INK).text(t.verify, 50, undefined, { width: 495 });
     footer(doc, lang);
   });
 }
@@ -240,10 +258,10 @@ function pnlBlock(doc: Doc, pnl: MonthData["pnl"], lang: Lang) {
   }
 }
 
-export function monthReportPdf(company: string, m: MonthData, lang: Lang = "nl"): Promise<Buffer> {
+export function monthReportPdf(company: string, m: MonthData, lang: Lang = "nl", bank: Bank = "sandbox"): Promise<Buffer> {
   const t = T[lang];
   return render(`${t.month} ${m.month}`, m.to, (doc) => {
-    header(doc, company, `${t.month} ${m.month}`, `${pdfDate(m.from, lang)} – ${pdfDate(m.to, lang)}`, true, lang);
+    header(doc, company, `${t.month} ${m.month}`, `${pdfDate(m.from, lang)} – ${pdfDate(m.to, lang)}`, true, lang, bank);
     section(doc, t.received);
     table(doc, [t.currency, t.count, t.amount], m.received.map((a) => [a.currency, String(a.count), formatMoney(a.currency, a.total, lang)]), [120, 120, 255], [1, 2], lang);
     section(doc, t.paid);
@@ -282,10 +300,10 @@ export function vatPdf(company: string, v: VatOverview, lang: Lang = "nl"): Prom
   });
 }
 
-export function yearReportPdf(company: string, y: YearData, lang: Lang = "nl"): Promise<Buffer> {
+export function yearReportPdf(company: string, y: YearData, lang: Lang = "nl", bank: Bank = "sandbox"): Promise<Buffer> {
   const t = T[lang];
   return render(`${t.year} ${y.year}`, `${y.year}-12-31`, (doc) => {
-    header(doc, company, `${t.year} ${y.year}`, `${y.year}-01-01 – ${y.year}-12-31`, true, lang);
+    header(doc, company, `${t.year} ${y.year}`, `${y.year}-01-01 – ${y.year}-12-31`, true, lang, bank);
     section(doc, `${t.pnl} (${t.beforeClose})`);
     pnlBlock(doc, y.pnl, lang);
     section(doc, `${t.balanceSheet} ${y.year}-12-31`);

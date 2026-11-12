@@ -3,6 +3,7 @@
 // (invoices, documents, ledger, payments, the audit log) are not personal data of that person and must be kept for
 // seven years (Dutch law, Article 52 AWR); a closed company's records are purged only after that, by the scheduled job.
 
+import type { EngineApi } from "./engine/api.js";
 import type { Blobs, Sql } from "./store.js";
 import { TENANT_TABLES, TenantDb, WriteConflict } from "./tenant.js";
 
@@ -105,11 +106,16 @@ export async function closeTenant(sql: Sql, tenantId: string, now: Date): Promis
   return { closed_at: iso, purge_after };
 }
 
-/** The scheduled job: closed companies past their retention day are removed, rows and documents; a tombstone stays. */
-export async function purgeExpired(sql: Sql, blobs: Blobs, now: Date): Promise<string[]> {
+/**
+ * The scheduled job: closed companies past their retention day are removed, rows and documents; a tombstone stays.
+ * With an engine wired, the company's engine is wiped first (its ledger, documents and passkey); a wipe that fails
+ * leaves the company for the next run.
+ */
+export async function purgeExpired(sql: Sql, blobs: Blobs, now: Date, engine?: (tenantId: string) => Pick<EngineApi, "wipe">): Promise<string[]> {
   const today = now.toISOString().slice(0, 10);
   const due = await sql.all<{ id: string }>("SELECT id FROM tenants WHERE closed_at IS NOT NULL AND purge_after IS NOT NULL AND purge_after < ? AND name <> '[purged]'", [today]);
   for (const t of due) {
+    if (engine) await engine(t.id).wipe();
     for (const key of await blobs.list(`t/${t.id}/`)) await blobs.delete(key);
     for (const key of await blobs.list(`exports/${t.id}/`)) await blobs.delete(key);
     await sql.batch([

@@ -18,7 +18,7 @@ import { payApInvoice, syncPayments } from "../ap/pay.js";
 import type { Asker } from "../ap/read.js";
 import { apInvoice, apInvoices, type ApInvoiceRow } from "../ap/store.js";
 import { firstScreenFacts, isPayablesPayment, payablesFacts } from "../approve/client.js";
-import { verifyAuditChain } from "../audit/log.js";
+import { audit, verifyAuditChain } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { execute, type Rails } from "../executors/index.js";
 import { verifyLedger } from "../ledger/core.js";
@@ -102,7 +102,32 @@ function termsFacts(terms: Record<string, unknown>, lang: "en" | "nl"): { facts:
   const g = globalThis as { PURSER_PHRASES?: unknown };
   g.PURSER_PHRASES ??= phonePhrases();
   const p = payablesFacts(terms, lang);
-  return { facts: [[t(lang, "ph.amount"), p.amount], ...p.first, ...p.details], warnings: p.warnings };
+  const facts: [string, string][] = [[t(lang, "ph.amount"), p.amount], ...p.first, ...p.details];
+  return { facts: facts.map(([k, v]): [string, string] => [k === t(lang, "ph.bank_fee") ? STAND_IN_FEE[lang] : k, v]), warnings: p.warnings };
+}
+
+/** The phone page's fee label (ph.bank_fee) names Airwallex; the host's bank is the stand-in, so its facts name that instead. */
+const STAND_IN_FEE = { en: "Bank fee (stand-in bank, test money)", nl: "Bankkosten (nagebootste bank, testgeld)" } as const;
+
+/**
+ * A refused signature in plain words. The engine passes on the WebAuthn library's own sentence when the library
+ * refuses (src/passkey/webauthn.ts): a person at the screen reads what was wrong instead, and that nothing was paid.
+ * The engine's own refusals (written in our words: "this passkey is not enrolled", "P-0001 expired at ...") stay.
+ */
+/** The answer to a signature over other terms than the proposal's: the screens show it as it is. */
+export const REFUSED_OTHER_TERMS = "This signature is over other terms than the ones on screen. Nothing was paid.";
+const LIBRARY_REFUSALS: [RegExp, string][] = [
+  [/^Unexpected authentication response challenge\b/, REFUSED_OTHER_TERMS],
+  [/^Unexpected (authentication response origin|cross-origin|top origin)\b|^Detected cross-origin\b/, "This signature was made on another website than this one. Nothing was paid."],
+  [/\bRP ID\b/, "This signature belongs to a passkey of another website. Nothing was paid."],
+  [/^User (verification required|not present)\b/, "The passkey did not confirm it was you (Face ID, fingerprint or PIN). Nothing was paid."],
+  [/^Response counter value\b/, "This signature is older than one this passkey already gave, so it may be a copy. Nothing was paid."],
+];
+/** The library's other refusals of a response it cannot read (@simplewebauthn/server verifyAuthenticationResponse). */
+const LIBRARY_UNREADABLE = /^(Unexpected |Credential |Missing credential|ClientDataJSON |Custom challenge )/;
+function plainRefusal(message: string): string {
+  for (const [library, plain] of LIBRARY_REFUSALS) if (library.test(message)) return plain;
+  return LIBRARY_UNREADABLE.test(message) ? "This signature could not be read. Nothing was paid." : message;
 }
 
 const firstInvoice = (r: IngestResult): ApInvoiceRow | null =>
@@ -239,26 +264,71 @@ export class EngineHost {
   }
 
   /**
+   * A person the cloud erased (POST /v1/users/{id}/erase): every passkey labelled with their name is revoked and
+   * labelled "[erased]". The approvals they signed keep their name: those are bookkeeping records, kept seven years.
+   */
+  forgetPasskey(label: string): Promise<{ revoked: number }> {
+    return this.act(async () => {
+      const { db } = this.deps;
+      const now = this.now();
+      const rows = db.prepare("SELECT credential_id, status FROM passkeys WHERE label = ?").all(label) as { credential_id: string; status: string }[];
+      db.transaction(() => {
+        for (const r of rows) {
+          db.prepare("UPDATE passkeys SET status = 'REVOKED', label = '[erased]' WHERE credential_id = ?").run(r.credential_id);
+          if (r.status === "ACTIVE") audit(db, "human", "passkey.revoked", r.credential_id, { reason: "the person was erased" }, now);
+        }
+      })();
+      return { revoked: rows.filter((r) => r.status === "ACTIVE").length };
+    });
+  }
+
+  /**
    * A passkey's signature over a proposal's exact terms. Verified by the engine; only when it approves does the
    * executor run, on the host's rails, and then the payment is followed, booked, archived and fed. An error of the
    * executor or of what follows comes back in settled.error; the approval stays.
    */
   approve(a: { proposal_id: string; terms_sha256: string; credential: unknown }): Promise<{ status: string; message: string; settled: Settled | null }> {
     return this.act(async () => {
-      const { db, rails } = this.deps;
+      const { db } = this.deps;
       const now = this.now();
       // Only these three fields travel: the decision is always an approval (rejecting is not one of the host's actions).
       const item: InboxItem = { ticket: "engine", kind: "assertion", proposal_id: null, body: JSON.stringify({ proposal_id: a.proposal_id, terms_sha256: a.terms_sha256, credential: a.credential }), received_at: now.toISOString() };
       const out = await processAssertion(db, item, now);
+      if (out.status === "refused") return { status: out.status, message: plainRefusal(out.message), settled: null };
       if (out.status !== "approved" || !out.proposalId) return { status: out.status, message: out.message, settled: null };
-      const invoice = (db.prepare("SELECT id FROM ap_invoices WHERE proposal_id = ?").get(out.proposalId) as { id: string } | undefined)?.id ?? null;
-      const failed: string[] = [];
-      try { await execute(db, out.proposalId, undefined, undefined, rails); } catch (e) { failed.push(message(e)); }
-      // The money has moved (or not): whatever fails from here on is reported, and the rest still runs.
-      try { this.deps.afterMoney?.(); } catch (e) { failed.push(`after the payment: ${message(e)}`); }
-      const settled = await this.settle({ proposalId: out.proposalId, invoiceId: invoice });
-      return { status: out.status, message: out.message, settled: { ...settled, error: [...failed, ...(settled.error ? [settled.error] : [])].join("; ") || null } };
+      return { status: out.status, message: out.message, settled: await this.pay(out.proposalId) };
     });
+  }
+
+  /**
+   * Try again: a payment that was approved but whose execution failed (the bank was away, say) is run once more, by
+   * the executor's own path for that, the one a runner takes when it runs a FAILED proposal again: it starts again
+   * from its last finished step, and a payout written before the failure is looked up at the bank by its request id
+   * and adopted, never sent blind a second time (src/executors/invoicePayment.ts, src/policy/saga.ts). Only a FAILED
+   * invoice payment is run; anything else (paid, never approved, refused, not there) answers nothing_to_retry and
+   * nothing runs. Then, as after an approval, the payment is followed, booked, archived and fed.
+   */
+  retry(proposalId: string): Promise<{ status: "retried" | "nothing_to_retry"; message: string; settled: Settled | null }> {
+    return this.act(async () => {
+      const p = this.deps.db.prepare("SELECT status, kind FROM proposals WHERE proposal_id = ?").get(proposalId) as { status: string; kind: string } | undefined;
+      if (!p) return { status: "nothing_to_retry", message: `no proposal ${proposalId}`, settled: null };
+      if (p.status !== "FAILED" || p.kind !== "invoice_payment") return { status: "nothing_to_retry", message: `${proposalId} is ${p.status}: there is nothing to try again; nothing was paid`, settled: null };
+      const settled = await this.pay(proposalId);
+      const now = (this.deps.db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(proposalId) as { status: string }).status;
+      return { status: "retried", message: `${proposalId} was run again: ${now}`, settled };
+    });
+  }
+
+  /** An approved proposal through its executor on the host's rails, then followed, booked, archived and fed; inside the queue only. */
+  private async pay(proposalId: string): Promise<Settled> {
+    const { db, rails } = this.deps;
+    const invoice = (db.prepare("SELECT id FROM ap_invoices WHERE proposal_id = ?").get(proposalId) as { id: string } | undefined)?.id ?? null;
+    const failed: string[] = [];
+    try { await execute(db, proposalId, undefined, undefined, rails); } catch (e) { failed.push(message(e)); }
+    // The money has moved (or not): whatever fails from here on is reported, and the rest still runs.
+    try { this.deps.afterMoney?.(); } catch (e) { failed.push(`after the payment: ${message(e)}`); }
+    const settled = await this.settle({ proposalId, invoiceId: invoice });
+    return { ...settled, error: [...failed, ...(settled.error ? [settled.error] : [])].join("; ") || null };
   }
 
   /** Follows the payments, books them, archives and feeds the read model. Safe to repeat: a second run adds nothing. */
@@ -277,7 +347,7 @@ export class EngineHost {
     let fed = false;
     await step("following the payments", () => syncPayments(db, { now: () => this.now(), rail: rails.rail }));
     await step("booking", () => syncLedger(db, this.now()));
-    if (vault) await step("the archive", async () => { vaultAdded.push(...(await syncVault(db, vault, { company: company.name, lang: company.lang, now: this.now() })).added.map((x) => x.path)); });
+    if (vault) await step("the archive", async () => { vaultAdded.push(...(await syncVault(db, vault, { company: company.name, lang: company.lang, now: this.now(), bank: "stand-in" })).added.map((x) => x.path)); });
     if (feed) await step("the read model", async () => { await feed(db, this.now()); fed = true; });
     const one = (sql: string, ...args: unknown[]) => (db.prepare(sql).get(...args) as { v: string | number | null } | undefined)?.v ?? null;
     return {
