@@ -286,3 +286,74 @@ Purser sits in front of it, not instead of it.
 **Evidence:** [docs/runs/2026-11-07-vic-1.md](../runs/2026-11-07-vic-1.md), "The rail's policy", "The purchases" and
 "Checks"; [docs/demo/airi-run.json](../demo/airi-run.json) (`policy`, `purchases[].audit_seq`);
 [docs/runs/2026-11-07-vic-2.md](../runs/2026-11-07-vic-2.md), "Checks"; [docs/demo/vic-2-run.json](../demo/vic-2-run.json).
+
+## The seven near-certain questions (added 12 November)
+
+Each in two sentences, checked by `test/demo-day-pack.test.ts`: every figure in an answer appears in a record or doc it
+links. Prices are never typed here by hand: they come from the pricing config (`src/config/pricing.ts`, stream
+saas-pages), and the test holds the price line to it.
+
+### 27. What if Claude makes a mistake?
+
+Then code catches it before money moves: Claude reads and proposes but holds no key and approves nothing, code checks
+every amount against the invoice, the allowlist and the limits, and anything beyond the limits waits for a person's
+signature on the exact terms. When an agent was wrong in our evals, the rails and code's checks decided what happened,
+and in the main run Claude made 24 of 24 decisions with 0 fallbacks.
+
+**Evidence:** [docs/agent-was-wrong.md](../agent-was-wrong.md); [docs/claude.md](../claude.md);
+[docs/runs/2026-11-03-main-run.md](../runs/2026-11-03-main-run.md).
+
+### 28. Why not a spending limit or 2FA?
+
+We use spending limits, and the rails enforce them: Airwallex declined an agent's EUR 45.00 purchase on a 30.00 card
+limit with `LIMIT_EXCEEDED`, and Metal refused #24 over its mandate. But a limit only says no, and 2FA approves
+whatever is on the screen, while the CFO's passkey signs a hash of the exact terms, so one changed cent makes that
+signature worthless.
+
+**Evidence:** [docs/runs/2026-11-07-awx-1.md](../runs/2026-11-07-awx-1.md); [docs/phone-approval.md](../phone-approval.md);
+`test/webauthn-soundness.test.ts`.
+
+### 29. Do you hold money? Are you regulated?
+
+No: the money stays in the company's own Airwallex account and Metal wallet, and Purser is software that asks those
+rails to move it within limits they enforce themselves. Airwallex is the regulated party on the bank side; Purser is
+not licensed, certified or audited, we have had no legal advice yet, and everything so far ran on test money.
+
+**Evidence:** [docs/compliance.md](../compliance.md), "Roles and money"; [docs/business/model.md](../business/model.md),
+"Regulatory".
+
+### 30. Why Metal?
+
+Because the limit then lives outside our code: each agent's Metal mandate holds its cap, its budget and its payee, and
+with our own check switched off once, Metal refused #24 itself and the refusal is on chain. The payments are checkable
+by anyone on the explorer, on testnet and with test money.
+
+**Evidence:** [tx `0x2e92f9cb…1871`](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871);
+[docs/runs/2026-11-03-main-run.md](../runs/2026-11-03-main-run.md); [docs/metal-award.md](../metal-award.md).
+
+### 31. How do you make money?
+
+<!-- PRICING-LINE -->A monthly plan by the number of supplier invoices, plus a small fee per payout made through Airwallex connected accounts; the pilot prices are in the pricing config.<!-- /PRICING-LINE -->
+The fee per payout ran once end to end in the Airwallex sandbox, and nobody has paid us anything yet: these are pilot
+prices for design partners.
+
+**Evidence:** `src/config/pricing.ts`; [docs/runs/2026-11-10-platform-e2e.md](../runs/2026-11-10-platform-e2e.md);
+[docs/business/model.md](../business/model.md).
+
+### 32. Customers?
+
+None yet: no paying customers, no pilots and no revenue, and 2 finance conversations so far. We are looking for design
+partners, finance teams on Airwallex whose agents pay suppliers.
+
+**Evidence:** [docs/business/README.md](../business/README.md).
+
+### 33. What is real and what is simulated?
+
+Real, in sandboxes and on testnet with test money: Airwallex's own approvals, declines and payouts, Metal's on-chain
+refusals, Claude's decisions, Max's passkey with Face ID, and the posts to the Moneybird and T:0 sandboxes. Simulated
+or ours: the companies, suppliers and customers, the second approver, every settlement (the sandbox's simulation), the
+bank on the hands-on page, and the invoice tokens on Metal, which have not run live yet.
+
+**Evidence:** [docs/runs/README.md](../runs/README.md); [/runs](https://kit11.max-31b.workers.dev/runs);
+[docs/runs/2026-11-12-airwallex-two-locks-paid.md](../runs/2026-11-12-airwallex-two-locks-paid.md);
+[docs/tokenize.md](../tokenize.md).

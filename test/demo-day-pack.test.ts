@@ -2,7 +2,7 @@
 // evidence (a link or a path); the 3-minute Demo Day pitch fits about 2.3 words a second per part, as its own table
 // says; the runbook has the three fallbacks; the cheat sheet is one A4 page with the three sentences. Breaks when an
 // answer grows, loses its evidence, or a part of the pitch runs over its time.
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { DIFFERENTIATORS } from "../src/config/brand.js";
 
@@ -64,6 +64,52 @@ describe("the Q&A (docs/submission/qa.md)", () => {
     expect(t).toContain('attestation is "none"');
     expect(t).toContain("all money is test money");
     expect(t).toContain("we have not validated demand");
+  });
+});
+
+describe("the seven near-certain questions (qa.md, 27 to 33)", () => {
+  const qa = read("docs/submission/qa.md");
+  const QS = ["What if Claude makes a mistake?", "Why not a spending limit or 2FA?", "Do you hold money? Are you regulated?", "Why Metal?",
+    "How do you make money?", "Customers?", "What is real and what is simulated?"];
+  const block = (q: string) => {
+    const at = qa.indexOf(`. ${q}\n`);
+    const body = qa.slice(qa.indexOf("\n", at) + 1).split(/^#{2,3} /m)[0]!;
+    const answer = body.split("\n\n").filter((p) => p.trim() && !p.trim().startsWith("**Evidence:**")).join("\n");
+    const evidence = body.split("\n\n").filter((p) => p.trim().startsWith("**Evidence:**")).join("\n");
+    return { at, answer, evidence };
+  };
+
+  it("asks all seven, numbered 27 to 33, each answered in at most 2 sentences", () => {
+    QS.forEach((q, i) => {
+      const b = block(q);
+      expect({ q, found: b.at > 0 }).toEqual({ q, found: true });
+      expect({ q, heading: qa.includes(`### ${27 + i}. ${q}\n`) }).toEqual({ q, heading: true });
+      const n = sentences(b.answer);
+      expect({ q, sentences: n >= 1 && n <= 2 }).toEqual({ q, sentences: true });
+    });
+  });
+
+  it("finds every figure in an answer in a record or doc it links", () => {
+    for (const q of QS) {
+      const b = block(q);
+      const files = [...b.evidence.matchAll(/\]\((\.\.\/[^)#]+)(?:#[^)]*)?\)/g)].map((m) => readFileSync(new URL(m[1]!, new URL("../docs/submission/", import.meta.url)), "utf8"));
+      const said = dropComments(b.answer).replace(/`[^`]*`/g, " ");
+      for (const num of said.match(/\d+(?:[.,]\d+)*/g) ?? []) expect({ q, num, found: files.some((t) => t.includes(num)) }).toEqual({ q, num, found: true });
+    }
+  });
+
+  it("types no price by hand: the price line is the pricing config's, or carries no figure", async () => {
+    const line = /<!-- PRICING-LINE -->([\s\S]*?)<!-- \/PRICING-LINE -->/.exec(qa)?.[1] ?? "";
+    expect(line.length).toBeGreaterThan(0);
+    const cfg = new URL("../src/config/pricing.ts", import.meta.url);
+    const pricing = existsSync(cfg) ? ((await import(/* @vite-ignore */ cfg.href)) as { PRICING_LINE?: string }) : null;
+    if (pricing?.PRICING_LINE && line.trim() === pricing.PRICING_LINE) return;
+    expect(line).not.toMatch(/€|EUR|USD|\$|\d/);
+  });
+
+  it("says plainly: no paying customers yet, design partners wanted, tokens not live, no licence", () => {
+    const t = prose(qa.slice(qa.indexOf("### 27. ")));
+    for (const s of ["no paying customers", "looking for design partners", "have not run live yet", "not licensed, certified or audited", "no legal advice"]) expect({ s, has: t.includes(s) }).toEqual({ s, has: true });
   });
 });
 
