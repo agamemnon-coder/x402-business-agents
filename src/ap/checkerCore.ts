@@ -375,33 +375,37 @@ const strictness = (a: string) => ACTIONS.indexOf(a as Action);
 export type LimitRule = "above_alone_limit" | "no_alone_limit" | "alone_limit_other_currency" | "amount_unreadable";
 
 /** Cents of a plain two-decimal amount, or null (never throws: an amount too large to count is not plain). */
-function cents(amount: string): number | null {
-  if (!MONEY.test(amount)) return null;
+export function plainCents(amount: string): number | null {
+  if (typeof amount !== "string" || !MONEY.test(amount)) return null;
   try { return toCents(amount); } catch { return null; }
 }
+const cents = plainCents;
 
-const money = (currency: string, amount: string) => (amount ? (currency ? `${currency} ${amount}` : amount) : "");
+/** An amount with its currency code as code writes it ("EUR 1850.00"); "" when there is no amount. */
+export const money = (currency: string, amount: string) => (amount ? (currency ? `${currency} ${amount}` : amount) : "");
 
 /**
- * Whether the agent may pay this invoice without the CFO: only when the policy sets a limit, in the invoice's own
- * currency, and the total is a plain amount at or below it. Anything else goes to the CFO.
+ * Whether an amount may be paid without the CFO: only when the policy sets a limit, in the amount's own currency, and
+ * the amount is a plain one at or below it. Anything else goes to the CFO. One rule for the Checker's decision on an
+ * invoice and the Payer's proposal to pay it (src/ap/payerCore.ts).
  */
-function aloneRule(c: InvoiceCase): { rule: LimitRule | null; why: string } {
-  const limit = c.policy.aloneLimit;
-  const r = c.invoice.reading;
+export function limitRule(limit: { currency: string; amount: string } | null, currency: string, amount: string): { rule: LimitRule | null; why: string } {
   const most = limit ? cents(limit.amount) : null;
   if (!limit || most === null) return { rule: "no_alone_limit", why: "the agent may pay no invoice alone, so the CFO decides" };
-  const total = cents(r.total);
+  const total = cents(amount);
   if (total === null) return { rule: "amount_unreadable", why: "the invoice's total is not a plain amount, so the CFO decides" };
-  if (!r.currency || r.currency !== limit.currency) {
-    return { rule: "alone_limit_other_currency", why: `the agent's limit to pay alone is set in ${limit.currency || "no currency"} and this invoice is in ${r.currency || "no currency that was read"}, so the CFO decides` };
+  if (!currency || currency !== limit.currency) {
+    return { rule: "alone_limit_other_currency", why: `the agent's limit to pay alone is set in ${limit.currency || "no currency"} and this invoice is in ${currency || "no currency that was read"}, so the CFO decides` };
   }
-  const asked = money(r.currency, r.total);
+  const asked = money(currency, amount);
   const top = money(limit.currency, limit.amount);
   return total > most
     ? { rule: "above_alone_limit", why: `${asked} is above the ${top} the agent may pay alone, so the CFO decides` }
     : { rule: null, why: `${asked} is within the ${top} the agent may pay alone` };
 }
+
+/** Whether the agent may pay this invoice without the CFO (limitRule, over the invoice's total). */
+const aloneRule = (c: InvoiceCase) => limitRule(c.policy.aloneLimit, c.invoice.reading.currency, c.invoice.reading.total);
 
 /**
  * What code alone requires for this invoice, from its findings and the policy's limit: hold when a finding stops
@@ -453,7 +457,8 @@ export function enforce<D extends CheckerDecision>(c: InvoiceCase, decision: D, 
   return { decision, outcome: stricter ? need.action : asked, overridden_by: stricter ? need.by : known ? null : "invalid_action", findings };
 }
 
-const closed = (s: string) => (/[.!?]["”']?$/.test(s.trim()) ? s.trim() : `${s.trim()}.`);
+/** A text as one closed sentence: its own full stop kept, one added when it has none. */
+export const closed = (s: string) => (/[.!?]["”']?$/.test(s.trim()) ? s.trim() : `${s.trim()}.`);
 
 /** What code alone decides when Claude is unavailable, labelled as the fallback: exactly what code requires, in code's words. */
 export function fallbackDecision(c: InvoiceCase, findings: Finding[]): CheckerDecision & { source: "fallback" } {
