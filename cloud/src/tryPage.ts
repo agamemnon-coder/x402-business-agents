@@ -27,6 +27,7 @@ import { consoleCsp } from "./console.js";
 import { APPROVE, BAND, BOOKS, CHROME, COMPANY, ENDED, GONE, INVOICE, INVOICE_FIELDS, LIVE, METHOD, PAY, PROPOSAL_FIELDS, RECORDED, START, STEPS, WORK } from "./tryCopy.js";
 import { EVENT_LINE_JS } from "./tryEvents.js";
 import { AMOUNT_JS } from "./try/amount.js";
+import { DID_CSS, DID_KIT_JS, DID_SCREEN_JS, didGlobals } from "./try/books.js";
 import { SCENE_CSS, sceneSvg } from "./scene.js";
 import { TOKENS } from "../../src/redesign/ui.js";
 import { ICONS } from "../../src/ui/icons.js";
@@ -986,7 +987,7 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
     box.append(said,el('div','acts',[main.node,next]));
     return;
   }
-  main.set(B.next,toCompany);
+  main.set(B.next,()=>show('did'));
   const slot=()=>el('div','slot');
   const paid=slot(),booked=slot(),filed=slot();
   // A calm stamp, and the hash of the terms that were signed and paid (the proposal's own, kept from screen 3).
@@ -1068,6 +1069,9 @@ screen('company',{heading:C.company.heading,draw(box){
   }
 }});
 
+// 5b What Purser did with it (cloud/src/try/books.ts): filed, booked, matched, then what next.
+__DID__
+
 // The visit is over: the company is gone, or the session could not be renewed.
 for(const [name,words] of [['gone',C.gone],['ended',C.ended]])screen(name,{heading:words.heading,band:false,draw(box){
   const b=btn(words.button,true);b.addEventListener('click',()=>{forget();show('start')});box.append(b);
@@ -1085,6 +1089,7 @@ async function boot(){
   const last=items[items.length-1];
   // Signing and paying return where they were: the proposal and the kept signature are in this tab's state.
   if(S.screen==='company'){show('company');return}
+  if(S.screen==='did'){show('did');return}
   if(S.screen==='books'&&S.settled){show('books',{settled:S.settled});return}
   if(S.screen==='pay'&&S.proposal){show('pay');return}
   if(S.screen==='approve'&&last){show('approve',{invoice:last});return}
@@ -1111,13 +1116,14 @@ export function tryPage(n: string, cfg: { origin: string; rpId: string }): strin
     feather: ICONS.feather, "arrow-right": ICONS["arrow-right"], sparkles: ICONS.sparkles, "scan-face": ICONS["scan-face"], "file-check": ICONS["file-check"],
     "external-link": ICONS["external-link"] };
   const script = SCRIPT.replace("__COPY__", () => json(copy)).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__SIGN__", () => SIGN_JS).replace("__BOOKS__", () => BOOKS_JS)
+    .replace("__DID__", () => `${didGlobals(json)}\n${DID_KIT_JS}\n${DID_SCREEN_JS}`)
     .replace("__ICONS__", () => json(icons)).replace("__RUNS__", () => json(RUNS_URL)).replace("__PROOF__", () => json(PROOF_URL));
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="purser-try" content="${escAttr(JSON.stringify(cfg))}">
 <title>Purser · hands-on</title>
-<style nonce="${n}">${CSS}${SCENE_CSS}</style></head><body>
+<style nonce="${n}">${CSS}${SCENE_CSS}${DID_CSS}</style></head><body>
 <header class="top"><span class="brand"><span class="mk"></span><span class="nm">${CHROME.brand}</span></span></header>
 <div class="hero">${sceneSvg()}</div>
 <main id="main"></main>

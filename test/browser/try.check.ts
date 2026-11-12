@@ -20,6 +20,7 @@ import type { BrowserContext, Page, Route } from "playwright";
 import { handle, type CloudEnv } from "../../cloud/src/app.js";
 import { nodeEngines } from "../../cloud/src/engine/node.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
+import { DID } from "../../cloud/src/try/books.js";
 import { SyncBatch } from "../../cloud/src/sync.js";
 import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INVOICE, PAY, START, STEPS, WORK } from "../../cloud/src/tryCopy.js";
 import { PROOF_URL, RUNS_URL } from "../../cloud/src/tryPage.js";
@@ -562,8 +563,32 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   if (shots) { await page.waitForTimeout(600); await page.screenshot({ path: join(shots, `b3-5-books-${width}-${scheme}.png`), fullPage: true }); }
   await design("5-paid", { full: true, wide: true });
 
-  // Screen 6: the export as a file, the recorded runs, start again.
+  // 5b What Purser did with it: filed, booked, matched, from this company's own answers; then the three links.
   await page.click(`.btn.primary:has-text("${BOOKS.next}")`);
+  await page.waitForSelector(`h1:text-is("${DID.heading}")`);
+  await page.waitForSelector(".did-step .did-doc", { timeout: 20_000 });
+  await page.waitForSelector(".did-step .bal", { timeout: 20_000 });
+  await page.waitForSelector(".did-step .did-match .pill", { timeout: 20_000 });
+  const folder = original.path.slice(0, original.path.lastIndexOf("/") + 1);
+  ok((await page.textContent(".did-doc")) === original.path.split("/").pop() && (await page.textContent(".did-folder")) === folder, `${tag}: did: filed, the invoice's folder and file in the archive (${folder}${original.path.split("/").pop()})`);
+  const didAccounts = await page.locator(".did-step table.lines tbody td span.mono").allTextContents();
+  ok(didAccounts.slice().sort().join() === apiLines.map((l) => l.account).sort().join(), `${tag}: did: booked, every journal line the ledger holds for this invoice (${didAccounts.join(" ")})`);
+  const roles = await page.locator(".did-step table.lines tbody td span.role").allTextContents();
+  ok(["expense", "VAT", "creditors", "bank"].every((r) => roles.includes(r)), `${tag}: did: the lines named expense, VAT, creditors and bank (${roles.join(", ")})`);
+  ok((await page.textContent(".did-step .bal")) === DID.balanced && dr === cr, `${tag}: did: "${DID.balanced}", from the lines' own sums (${dr} = ${cr})`);
+  ok((await page.textContent(".did-match .pill")) === ourPay.status && (await page.textContent(".did-match .mono")) === String(ourPay.invoice_no), `${tag}: did: matched, the payment ${ourPay.status as string} with its reference (${ourPay.invoice_no as string})`);
+  const nexts = await page.locator("a.did-next").evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).getAttribute("href")));
+  ok(nexts.join() === ["/", "https://kit11.max-31b.workers.dev/runs", "https://kit11.max-31b.workers.dev/security"].join(), `${tag}: did: next steps, Purser Cloud, the live runs, how it stays safe`);
+  ok((await page.textContent(".did-label")) === DID.label, `${tag}: did: labelled test company, simulated bank`);
+  await screenChecks(page, `${tag} screen 5b`, width);
+  if (shots) {
+    await page.waitForTimeout(1200);
+    await page.screenshot({ path: join(shots, `try-5b-did-${width}-${scheme}.png`), fullPage: true });
+    if (width === 390) { await page.emulateMedia({ colorScheme: "dark" }); await page.waitForTimeout(400); await page.screenshot({ path: join(shots, "try-5b-did-390-dark.png"), fullPage: true }); await page.emulateMedia({ colorScheme: scheme }); }
+  }
+  await page.click(`.btn.primary:has-text("${DID.company}")`);
+
+  // Screen 6: the export as a file, the recorded runs, start again.
   await page.waitForSelector(`h1:text-is("${COMPANY.heading}")`);
   await screenChecks(page, `${tag} screen 6`, width);
   const dl = page.waitForEvent("download");
