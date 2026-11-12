@@ -281,8 +281,8 @@ What the code does not do yet, and must be in place before a company's real data
 - No production deployment: a hosted preview exists but is private (behind an access key), and no customer uses it.
   The automated tests run through the Worker's own handler over SQLite and a folder (`test/cloud-*.test.ts`) and on
   local D1 (`npm run test:d1`); none runs against a deployed copy.
-- No web app beyond the JSON API; the enrolment flow is API-only (a client registers the passkey, then signs the
-  enrolment's secret with it).
+- The only web app is the console above; a person enrols a passkey there through an owner's one-time invite link, or a
+  client does the same through the API (it registers the passkey, then signs the enrolment's secret with it).
 - The ERP connectors (`src/erp`, [erp.md](erp.md)) run on the company's runner, not in the cloud; the cloud only shows
   where the accounting link stands (`GET /v1/integrations`). Billing, SSO and per-row encryption beyond D1's and R2's
   are not built.
