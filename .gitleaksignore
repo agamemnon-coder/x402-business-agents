@@ -82,3 +82,13 @@ f0c548f8f380f9bccc58521b710870523621be3b:src/cli/reliability.ts:generic-api-key:
 07da41fd7e7fbdf531a25d9a0a5775ac0016978c:docs/runs/2026-11-10-platform-e2e/receipt-SANDBOXTEST-P-0002.json:generic-api-key:65
 # A list of env-variable names (twoLocks stand-in clears them), not a secret.
 a78858859d27df0fdfdc11020a34ded76175d8f7:src/cli/twoLocks.ts:generic-api-key:85
+# 12 Nov: test fixtures on the spike branches for the engine-in-a-Durable-Object probe (a software passkey fixture and a
+# dummy admin-token hash next to the literal "not-a-real-secret"); the whole-history scan reads every remote branch.
+9047e7dd3d417d2be9f2618ef0b565888711e2e7:spike/do-runtime/fixtures/passkey.json:generic-api-key:45
+9047e7dd3d417d2be9f2618ef0b565888711e2e7:spike/do-runtime/run.mjs:generic-api-key:33
+# 12 Nov: the sample receipt for the home page widget on branch home-story-1112: public WebAuthn authenticatorData of a
+# labelled test key, not a secret (the whole-history scan reads every remote branch).
+a97ac3b46eb9484771bc153d2ace5f2e1425758e:docs/demo/hero-receipt.json:generic-api-key:56
+# 12 Nov: a test on branch faceid-onchain-1112 lists the NAMES of the environment variables a runbook may mention
+# (KIT11_PASSKEY_OWNERS among them): names, never values (the whole-history scan reads every remote branch).
+a711ca69f258de95b640a2e7815522611a9eb828:test/owners-runbook.test.ts:generic-api-key:101

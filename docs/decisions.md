@@ -692,9 +692,21 @@ Cloud) sat on its integration branch, pull request #113, under the note "Do not 
 - **What changes:** the code is in this repository: `src/ap`, `src/ledger`, `src/vault`, `src/erp`, `src/payouts` and
   `cloud/`. The texts that said "on a branch", "not public" or "not deployed" now say where the code is and how it
   stands; the design notes of 8 November and the run record of 10 November keep their words and carry a dated line
-  beside them. `test/platform-in-main.test.ts` holds them to it. On the Kit 11 site no public page changes, except
-  that wording in `/llms.txt`. The CFO's phone pages share their script and stylesheet with the product, so those two
-  files now carry its payables and batch views as well.
+  beside them. `test/platform-in-main.test.ts` holds them to it.
+- **What changes on the Kit 11 site:** the site was built from `main` and from this tree and compared on 12 November.
+  Every page, policy header, redirect, font and image is the same byte for byte. Four things differ:
+  - `/llms.txt`: its one line about the product, with the wording above.
+  - The CFO's phone pages share their script and stylesheet with the product, so those two files now also carry its
+    payables and batch views. A Kit 11 approval looks as it did (both trees in Chromium at 390 and 1440 px, light and
+    dark), with one difference under "Details": the advisory review is labelled by who wrote it. A note that no model
+    wrote reads "Purser's code (no model), advisory"; it read "Opus review, advisory: note".
+  - `/try/sign`, "Try to trick the agent": the first fake invoice lists one more line under "What the agent did", "the
+    invoice announces a change of bank". The site shares its invoice-fraud check with the product, and red-team round 4
+    widened the wording that check looks for (`src/policy/fraudCore.ts`). The outcome line is the same and the invoice
+    is still blocked.
+  - Not visible on a Kit 11 run: the relay accepts one more signed request, taking one line out of a payment batch
+    (`worker/src/core.ts`; Kit 11 files no batches), and `src/policy/loosens.ts` knows the product's floor and
+    fee-reserve rules (the site's test world has none).
 - **What stays true:**
   - Sandbox and test money only. No payment has run against live Airwallex.
   - It is not ready for real money; [go-live.md](go-live.md) lists what is missing.
