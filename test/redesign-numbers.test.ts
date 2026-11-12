@@ -55,6 +55,9 @@ const visibleText = (html: string) => html
   // /airwallex (jury panel, 12 Nov): a block that names its own record (data-rec: a product tile, the platform run's fold,
   // the line on SWIFT) is dated with that record; its figures are checked against it in test/airwallex-products.test.ts.
   .replace(/<(article|details|p|li)\b[^>]*\sdata-rec="[^"]+"[\s\S]*?<\/\1>/g, " ")
+  // The partner pages' "Built on" strip (owner, 12 Nov): one proof number per partner, each from its own record (the
+  // Airwallex tiles, the Airi run, the T:0 posting); test/t0-page.test.ts holds each to its record.
+  .replace(/<p class="builton">[\s\S]*?<\/p>/g, " ")
   .replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " ")
   .replace(/&amp;/g, "&").replace(/&#39;|&quot;/g, "'").replace(KIT_LINE, " ").replace(/\bx402\b/g, " ").replace(/Kit 11/g, " ").replace(VISA_CLAIM, " ").replace(/agent run 1/g, " ").replace(HOME_BADGE, " ").replace(/\b404\b/g, " ").replace(/\breq_[A-Za-z0-9]+/g, " ")
   // Other named records /proof cites, each with its own name and date: the variation test, the red team, the archive.

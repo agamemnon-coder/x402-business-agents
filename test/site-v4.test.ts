@@ -8,6 +8,7 @@ import { notFoundResponse, pageResponse, type Pages } from "../worker/src/core.j
 import { agentRun, callBadge, faceIdDecisions, highlights, loadRecord, payments, split, tapRun } from "../src/redesign/run.js";
 import { OPEN_TARGET_JS } from "../src/redesign/ui.js";
 import { AWX_PAGE_LABEL } from "../src/redesign/airwallexProducts.js";
+import { METAL_INSPECT_JS } from "../src/redesign/metalMandates.js";
 import { tokenizeRun } from "../src/redesign/tokenizeRun.js";
 import { scriptBlocks } from "./support/scriptBlocks.js";
 import { SECOND_APPROVER, SPLIT_LINE, VISA_CLAIM, VISA_TAP_STATUS, WORLD_SETUP } from "../src/config/brand.js";
@@ -32,7 +33,7 @@ export function visibleWords(html: string): number {
 const allText = (html: string) => decode(html.replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " "));
 
 describe("the site after v4", () => {
-  it("keeps every page within its text budget (Home 195 with the three sentences and both awards; partner pages at most 150, /metal 180 with the explorer note and the mandates replaced after Face ID, /airwallex 365 with its read-back, awx-1, the Airi run and the second Airi run's heading, /visa 610 with the overview of the three Visa runs on top, the Airi run under it, the VIC flow under it and the second Airi run under that)", () => {
+  it("keeps every page within its text budget (Home 195 with the three sentences and both awards; partner pages at most 150, /metal 275 with its table of the four mandates, /airwallex 365 with its read-back, awx-1, the Airi run and the second Airi run's heading, /visa 610 with the overview of the three Visa runs on top, the Airi run under it, the VIC flow under it and the second Airi run under that)", () => {
     // Proof: 480 since 4 Nov, for the TAP run's decline on its own line below the stop figure (Max).
     // Home: 600 since 6 Nov, for the three sentences under the heading, the Kit 11 line and the one caveat line (jury review, #1, #7).
     // Proof 520 and Airwallex 190 since 6 Nov, for Airwallex read back (section B): the hash the CFO signed beside the one
@@ -74,7 +75,7 @@ describe("the site after v4", () => {
     // block: the title, one sentence from the record, the verify badge and the summary of its fold (50 words with its
     // hidden section heading; the transactions folded). Without a record the page is unchanged and its budget stays 200 (test/tokenize-record.test.ts
     // holds both states).
-    const budget: Record<string, number> = { home: 250, watch: 125, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, metal: tokenizeRun() ? 250 : 200, airwallex: 370 /* +5, panel review 10 Nov */, visa: 610 /* +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa) */, claude: 150, notFound: 40 };
+    const budget: Record<string, number> = { home: 250, watch: 125, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, metal: tokenizeRun() ? 325 : 275 /* +75, jury panel 12 Nov: the four mandates in one table (seven columns, each figure a word) */, airwallex: 370 /* +5, panel review 10 Nov */, visa: 610 /* +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa) */, claude: 150, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 
@@ -210,12 +211,15 @@ describe("the site after v4", () => {
       expect({ name, airiFirst: name === "visa" ? airi.length > 0 && whole.indexOf(airi) < whole.indexOf('class="flow card"') : true }).toEqual({ name, airiFirst: true });
       const main = name === "visa" ? whole.replace(airi, "") : whole;
       // /airwallex opens on a tile per Airwallex product (jury panel, 12 Nov); its flow of the main run is one of the folds.
-      if (name === "airwallex") expect(main.indexOf('<section class="awp"')).toBeGreaterThan(-1);
-      expect(main.indexOf(name === "airwallex" ? '<section class="awp"' : 'class="flow card"')).toBeLessThan(main.indexOf("<details"));
+      // /metal opens on its four mandates in one table (jury panel, 12 Nov), its one fold inside it (the read to repeat).
+      const first = name === "airwallex" ? '<section class="awp"' : name === "metal" ? '<section class="mt card"' : 'class="flow card"';
+      expect(main.indexOf(first)).toBeGreaterThan(-1);
+      expect(main.indexOf(first)).toBeLessThan(main.indexOf("<details"));
       expect((main.match(/<details class="fold">/g) ?? []).length).toBeGreaterThanOrEqual(2);
       expect(html).not.toMatch(/<img[^>]*visa/i);
-      // No script, but /airwallex's one (src/redesign/ui.ts OPEN_TARGET_JS: a link into its cards' fold opens it).
-      expect(scriptBlocks(html)).toEqual(name === "airwallex" ? [`<script>\n${OPEN_TARGET_JS}</script>`] : []);
+      // No script, but /airwallex's one (src/redesign/ui.ts OPEN_TARGET_JS: a link into its cards' fold opens it) and
+      // /metal's (src/redesign/metalMandates.ts METAL_INSPECT_JS: the spend read live from its own origin, 12 Nov).
+      expect(scriptBlocks(html)).toEqual(name === "airwallex" ? [`<script>\n${OPEN_TARGET_JS}</script>`] : name === "metal" ? [`<script>\n${METAL_INSPECT_JS}</script>`] : []);
       // Each page is labelled with the run it shows: the main run, which on /visa has its own TAP-signed card buy
       // (the separate TAP run of 2 Nov is named inside, under its own label).
       // (/airwallex shows several runs, each dated on its own block: its label is true for all of them.)

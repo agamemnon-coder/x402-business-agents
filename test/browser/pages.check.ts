@@ -106,7 +106,7 @@ const firstScreen = (page: Page) => page.evaluate(`(() => {
  * Tap targets (jury panel, 12 Nov): on a phone every link, button and fold header inside <main> is at least 44 px high,
  * with the folds closed and with them open. The pages held to it; add /metal and /claude here once their links are sized.
  */
-const TAP_PAGES = ["/airwallex"];
+const TAP_PAGES = ["/airwallex", "/metal"];
 async function tapTargets(page: Page, name: string): Promise<void> {
   const small = (await page.evaluate(`[...document.querySelectorAll("main a, main button, main summary")].filter((e) => e.checkVisibility())
     .map((e) => ({ h: Math.round(e.getBoundingClientRect().height * 10) / 10, what: (e.textContent || "").trim().replace(/\\s+/g, " ").slice(0, 40) })).filter((x) => x.h < 44)`)) as { h: number; what: string }[];
@@ -437,7 +437,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.goto(`${base}${path}`, { waitUntil: "load" });
       await look(page, `${path} ${tag}`, w);
       const pt = await page.evaluate(() => document.body.innerText);
-      const words = pt.split(/\s+/).filter((x) => /\w/.test(x)).length;
+      // The footer's "Built on" strip (owner, 12 Nov) is the frame's, not the page's: its words are not counted.
+      const strip = await page.locator("footer .builton").innerText().catch(() => "");
+      const words = pt.split(/\s+/).filter((x) => /\w/.test(x)).length - strip.split(/\s+/).filter((x) => /\w/.test(x)).length;
       // /airwallex carries Airwallex read back (section B, 6 Nov; cards folded) and awx-1 (7 Nov, its steps folded):
       // budget 210 there (test/site-v4.test.ts), plus the frame; 235 since the Airi run (7 Nov) joined it; 345 since the
       // Airi run's block in the owner's copy (7 Nov), which also tops /visa (275 there; 375 with the VIC flow under it,
@@ -447,12 +449,16 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // /visa 495 since 10 Nov (Max: we compete for the Visa Award, keep it visible): one plain sentence on top; 600 the
       // same day with the overview of the three Visa runs above the Airi run (Max, 10 Nov: more Visa).
       // /metal: 230 only while a run record of the invoice token exists (12 Nov), for its one block (50 words in sight).
-      const budget = path === "/airwallex" ? 365 : path === "/visa" ? 600 : path === "/metal" ? (tokenizeRun() ? 230 : 180) : 150;
+      // /metal: 265 since the jury panel of 12 Nov, for its four mandates in one table (each figure a word); 315 with the
+      // invoice token's block.
+      const budget = path === "/airwallex" ? 365 : path === "/visa" ? 600 : path === "/metal" ? (tokenizeRun() ? 315 : 265) : 150;
       if (words > budget + 25) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       // /airwallex (jury panel, 12 Nov) shows several runs, each dated on its own tile: its label is true for all of them,
       // and it opens on a tile per Airwallex product in place of the flow of one run.
       if (path === "/airwallex" ? !pt.includes(AWX_PAGE_LABEL) || /Replay of the main run/.test(await page.locator("main").innerText()) : !/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(pt)) fail(`${path} ${tag}: its run is not labelled`);
-      if (path !== "/airwallex" && (await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
+      // /metal (jury panel, 12 Nov) opens on its four mandates in one table, in place of a picture of the flow.
+      if (path !== "/airwallex" && path !== "/metal" && (await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
+      if (path === "/metal" && (await page.locator("table.mtab tbody tr").count()) !== 4) fail(`/metal ${tag}: not four mandates in its table`);
       if (path === "/airwallex") {
         // Seven tiles, each with the product's name, one number, an id in monospace and its run's date.
         const tiles = (await page.evaluate(`[...document.querySelectorAll(".awp .awt")].map((t) => ({ name: (t.querySelector("h2") || {}).textContent || "", v: t.querySelectorAll(".v").length, id: (t.querySelector(".i code") || {}).textContent || "", date: (t.querySelector("time") || {}).textContent || "", top: t.getBoundingClientRect().top }))`)) as { name: string; v: number; id: string; date: string; top: number }[];
@@ -500,6 +506,20 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (path === "/metal" && (await page.locator("a.pf[href*='testnet.metalntwx.com/tx/0x']").count()) < 3) fail(`/metal ${tag}: fewer than three transactions`);
       await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
     }
+    // /t0 (owner, 12 Nov): Purser's books in T:0's ledger. At most 150 words in sight (the strip aside), labelled as the
+    // T:0 sandbox with test data, nothing wider than the screen, every tap target 44 px on a phone, the strip in its footer.
+    {
+      await page.goto(`${base}/t0`, { waitUntil: "load" });
+      await look(page, `/t0 ${tag}`, w);
+      const pt = await page.evaluate(() => document.body.innerText);
+      const strip = await page.locator("footer .builton").innerText().catch(() => "");
+      const words = pt.split(/\s+/).filter((x) => /\w/.test(x)).length - strip.split(/\s+/).filter((x) => /\w/.test(x)).length;
+      if (words > 150 + 25) fail(`/t0 ${tag}: ${words} words on screen, budget 150 plus the frame`);
+      if (!pt.includes("T:0 sandbox, test data")) fail(`/t0 ${tag}: not labelled as the T:0 sandbox with test data`);
+      if (!/^Built on\s/.test(strip.trim()) || !/T:0: \d+ journal entries/.test(strip)) fail(`/t0 ${tag}: no Built on strip in the footer`);
+      if (w < 500) await tapTargets(page, `/t0 ${tag}`);
+      await page.screenshot({ path: join(shots, `t0-${tag}.png`), fullPage: true });
+    }
     // /metal in its other state: with a run record of the invoice token (12 Nov). The page the judge serves has the
     // block only once a live run is recorded; here the same page is built with a record made on the in-memory chain
     // (test/support/tokenizeWorld.ts, never written to docs/runs) and served in its place, under the page's own CSP:
@@ -508,8 +528,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.route(`${base}/metal`, (r) => r.fulfill({ status: 200, contentType: "text/html; charset=utf-8", headers: { "content-security-policy": METAL_CSP }, body: metalWithRecord }));
       await page.goto(`${base}/metal`, { waitUntil: "load" });
       await look(page, `/metal with an invoice-token record ${tag}`, w);
-      const words = (await page.evaluate(() => document.body.innerText)).split(/\s+/).filter((x) => /\w/.test(x)).length;
-      if (words > 230 + 25) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 230 plus the frame`);
+      const stripWords = (await page.locator("footer .builton").innerText().catch(() => "")).split(/\s+/).filter((x) => /\w/.test(x)).length;
+      const words = (await page.evaluate(() => document.body.innerText)).split(/\s+/).filter((x) => /\w/.test(x)).length - stripWords;
+      if (words > 315 + 25) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 315 plus the frame`);
       const block = page.locator("#invoice-token");
       const sight = await block.innerText().catch(() => "");
       if (!/^Invoice token \(prototype\)\s+\d{1,2} \w+, a separate Metal testnet run\. An invoice approved with a labelled test passkey(?: on \d{1,2} \w+)? became a token\. A simulated financier bought it for 2\.35 test USD; the debtor paid its holder 2\.40\. Face value divided by 100\.\s+Chain record verified\s+7 transactions$/.test(sight.trim())) fail(`/metal with an invoice-token record ${tag}: the block is not the title, one sentence, the badge and a closed fold (${JSON.stringify(sight)})`);

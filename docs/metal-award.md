@@ -6,24 +6,43 @@ against the chain one by one in [the data check](runs/2026-11-03-main-run-data-q
 https://testnet.metalntwx.com. Packages: `@metalntwx/metal-pay` 0.3.4, `@metalntwx/metal-agent` 0.3.3,
 `@metalntwx/metal-ts` 0.3.2.
 
-## The main run on Metal, transaction by transaction
+## What it uses
+
+From Metal, in the main run of 3 November: a smart account for the business and one for the customer; a **mandate per
+agent** on chain (a cap per payment, a total budget, one payee, an end date), bound with `metal-agent mandate bind` and
+replaced with `mandate replace`; **x402 `exact`** payments with signed orders through Metal's hosted facilitator;
+**mandate pulls** for refunds and the earnings sweep; Metal's **`MandateRefused`** event for a payment over the cap;
+and the Mandate Binding's `mandates(ref)` view, to read each mandate back. Sections 1 to 3 cite the main run's
+transactions. The features that ran in separate worlds (sections 4, 5, 5b and 8) are dated, each with its own record;
+the rehearsals and the Friday runs before the main run are in [the appendix](#appendix-earlier-runs-dated).
 
 | What | Proof on Metal testnet |
 |---|---|
 | A mandate bound on chain per agent at the start (Sourcing 0.03 a payment, Support 0.10, Treasury 6.00, the customer's agent 0.10) | Sourcing [`0xb7ef08bb…44ad`](https://testnet.metalntwx.com/tx/0xb7ef08bb4531c3cbd4b56f4307255b4d88f68d279c8073d9bc96d352fb3d44ad), Support [`0x9cb93362…1808`](https://testnet.metalntwx.com/tx/0x9cb933624be5946c890f77a33aceb2adde3d75d138890a6e1abb91fdad721808), Treasury [`0x809e7a30…3a9f`](https://testnet.metalntwx.com/tx/0x809e7a30aff19c19e0eb9f147267a60a97fee6872e3ad52195473db7b0f93a9f), customer [`0x9c7d37f2…a2f7`](https://testnet.metalntwx.com/tx/0x9c7d37f248cd0037881c6becf0ef2e865769b411313ee267cf763f28b9e8a2f7) |
 | 86 payments, each its own transaction: 41 sales over x402, 41 supplier purchases, 3 refunds as mandate pulls, 1 sweep | All 86 listed one by one on `/metal` ("All 86 Metal transactions of the main run"); refunds #7 [`0xe4bf7962…c89d`](https://testnet.metalntwx.com/tx/0xe4bf79623f9cb9212a49ea7c0ced60d241041051f322d199e319989d6548c89d), #10 [`0xe44a3460…75e5`](https://testnet.metalntwx.com/tx/0xe44a3460faf6cb2050067bf22791df61803f8646adeb5fcc2a205d1f1afa75e5), #13 [`0x5099fe44…4510`](https://testnet.metalntwx.com/tx/0x5099fe44b03d83f4dd3963fc59a40e2a506bee533e5a41e8f1b00a12bee14510); sweep 0.69 after finality [`0x86936a5b…ccb4`](https://testnet.metalntwx.com/tx/0x86936a5b29f9550857676fa710231af9e20882ebe6eee16f75a90af29767ccb4) |
-| Purchase #24: 0.04 over the 0.03 cap. We switched off Purser's own check for this one purchase; Metal refused it, and the refusal (`mandate_cap_exceeded`) is recorded on chain | [`0x2e92f9cb…1871`](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871) (a `MandateRefused` event; the explorer shows the transaction, not the decoded reason) |
+| Purchase #24: 0.04 over the 0.03 cap. We switched off Purser's own check for this one purchase; Metal's facilitator answered 402, and a second call (`mandate pull --record-refusal`, `src/metal/recordRefusal.ts`) had Metal record the refusal on chain | [`0x2e92f9cb…1871`](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871): a `MandateRefused` event, reason 8 (`OverPerPaymentCap`), decoded in [the check of 12 November](runs/2026-11-12-metal-inspector.md) (the explorer shows the log undecoded) |
 | The mandates replaced after the CFO's Face ID (P-0002): Treasury to 2.00, Sourcing to 0.04 a payment | Treasury [`0x789abb24…ebbc`](https://testnet.metalntwx.com/tx/0x789abb249896e01cee8e3641d7794676b6f2ce5d05f45093f6cc64101c9aebbc), Sourcing [`0x2a91ac97…e790`](https://testnet.metalntwx.com/tx/0x2a91ac97fc2a459da2b0c73f2b8020edec1901d051c7ef03bb088d36067fe790) |
 | Query #37 on the old Sourcing mandate during the replace | Refused by Metal's facilitator, `mandate_revoked`: a 402, so no transaction |
+| Read back from the chain on 12 November: the three agents' mandates on Northwind's account at block 26003049, spent 1.18 (41 payments), 0.15 (3) and 0.69 (1), as the main run recorded them, none revoked | [The check of 12 November](runs/2026-11-12-metal-inspector.md): 8 read-only calls, its record [2026-11-12-metal-inspector.json](runs/2026-11-12-metal-inspector.json) |
 
 **Who signs what on chain.** In the main run the CFO approves with Face ID inside Purser, over the exact terms; the
-second approver on the mandate change was a test passkey pressed by the build tool, labelled as such; then the
-account's owner key, held by Purser's runner, signs the replace on chain. Passkeys signing on chain themselves ran in a
-separate world on 1 November (section 8).
+second approver on the mandate change was a test passkey pressed by the build tool, labelled as such. Then one owner
+key of the account, held by Purser's runner, signed each replace on chain (audit actor `owner-signer`): **the chain
+did not check Face ID.** Passkeys as the account's own owners, signing on chain, ran in a separate world on
+1 November with software passkeys, not a phone (section 8).
+
+**Read it yourself, now.** `/metal` reads each mandate's spend from Metal testnet through a read-only endpoint on the
+hosted site, `GET /api/metal/mandates` (`worker/src/metalInspector.ts`): one `eth_blockNumber`, then one `eth_call`
+of `mandates(ref)` per mandate at that block. One answer serves everyone for 15 minutes; at most 500 calls a UTC day,
+counted before each call; the Worker variable `METAL_INSPECTOR=off` stops every call, and the RPC URL is a Worker
+secret (`METAL_RPC_URL`), never in an answer or a log. Without an answer from the chain the page shows the read of
+12 November, labelled with its date. From a clone: `npm run metal-inspect` (no key: the recorded read; with
+`METAL_RPC_URL` set: one live read, at most 6 calls) and `npm run metal-inspect -- refusal <tx>` (decodes a
+`MandateRefused` event; both refusals of the check are in its record).
 
 The same evidence as a page: **`/metal`** (served by `npm run judge` and the relay), every figure read from
-`docs/demo/main-run.json` (`src/redesign/metalStory.ts`). A review of how Purser uses `metal-agent` and `metal-pay`
-against their own docs: [metal-review.md](metal-review.md).
+`docs/demo/main-run.json`, its trace and the check of 12 November (`src/redesign/metalMandates.ts`). A review of how
+Purser uses `metal-agent` and `metal-pay` against their own docs: [metal-review.md](metal-review.md).
 
 ## Why this wins
 
@@ -31,8 +50,8 @@ against their own docs: [metal-review.md](metal-review.md).
   own on-chain mandate: a cap per payment, a total budget, one payee and an end date. When the supplier raised its
   price, Purser refuses the over-cap payment before signing, and in the main run, with that check switched off for
   purchase #24, Metal's own refusal is recorded on chain (above).
-- **The CFO changes on-chain limits with Face ID, safely.** A price rise becomes options; the CFO signs the exact
-  terms on the phone; the runner's owner key then replaces the mandates on chain in an order that never exceeds the
+- **The CFO changes on-chain limits with Face ID, safely.** A price rise becomes options; the CFO approves the exact
+  terms with Face ID in Purser; the runner's owner key then replaces the mandates on chain in an order that never exceeds the
   20.00 the business allows, and the old credential is refused (`mandate_revoked`).
 - **Three ways to pay on Metal, each where it fits:** `exact` x402 with signed orders for per-request sales,
   mandate pulls for refunds and the earnings sweep, and Offer Pay-per-Call Clearing (new in October 2026) for a
@@ -68,40 +87,31 @@ The packages are pinned to the versions above. Two things a reader of `package-l
 
 ## 1. Accounts, *USDZ and the faucet
 
-| What | Where in the code | Proof | Metal docs |
+| What | Where in the code | Proof (main run, 3 November) | Metal docs |
 |---|---|---|---|
-| Metal smart accounts for the business and the customer (`metal-agent account create`) | `src/cli/bootstrap.ts` | [bootstrap run log](runs/2026-10-29-bootstrap.md) | [Create and manage a smart account](https://docs.metalntwx.com/build/controls/create-and-manage-a-smart-account.md) |
-| Testnet *USDZ from the faucet (`metal-agent fund`) | `src/cli/bootstrap.ts`, `src/metal/clearing.ts` | [bootstrap run log](runs/2026-10-29-bootstrap.md) | [Fund a test account](https://docs.metalntwx.com/build/prepare/fund-a-test-account.md) |
-| A MIP20 *USDZ transfer: exactly 20.00 from the owner key into the business account; *USDZ pays the gas | `src/metal/chain.ts` `transferUsdz` | [`0xe8150bf7…afd5`](https://testnet.metalntwx.com/tx/0xe8150bf7c4f98d85085d470e8f7b2ef9ca9bdc9adda812768f3aefdec26aafd5) | [Direct payment](https://docs.metalntwx.com/build/payments/direct-payment.md), [Estimate and record fees](https://docs.metalntwx.com/build/prepare/estimate-and-record-fees.md) |
+| Metal smart accounts for the business and the customer (`metal-agent account create`); every mandate, payment and refusal of the run is on Northwind's account | `src/cli/bootstrap.ts` | Northwind's account [`0x6e621D0f…Efefc`](https://testnet.metalntwx.com/address/0x6e621D0f1ff6a03cAF1dbFE9747eCEc4513Efefc) | [Create and manage a smart account](https://docs.metalntwx.com/build/controls/create-and-manage-a-smart-account.md) |
+| Testnet *USDZ from the faucet (`metal-agent fund`), and *USDZ pays the gas | `src/cli/bootstrap.ts`, `src/metal/chain.ts` | funded at bootstrap (29 October, [appendix](#appendix-earlier-runs-dated)) | [Fund a test account](https://docs.metalntwx.com/build/prepare/fund-a-test-account.md), [Estimate and record fees](https://docs.metalntwx.com/build/prepare/estimate-and-record-fees.md) |
 
 ## 2. Mandates: each agent's limits enforced by the account
 
-| What | Where in the code | Proof | Metal docs |
+| What | Where in the code | Proof (main run, 3 November) | Metal docs |
 |---|---|---|---|
-| Four mandates bound on chain (three agents and the customer's; the links here are from the 29 October rehearsal world, Northwind's own binds are audit rows 2 to 5 of the recorded run, e.g. the customer's [`0x6a4622a9…59a6`](https://testnet.metalntwx.com/tx/0x6a4622a9ed5a1880b9e56f89adb59f003c9793a78c080db7ec2ae2f4f2ba59a6)), each with a per-payment cap, a total budget, one payee and an expiry (`metal-agent mandate bind`) | `src/executors/ownerSigner.ts`, `src/cli/bootstrap.ts` | sourcing [`0xd525573c…19bf`](https://testnet.metalntwx.com/tx/0xd525573c5ef06c01e4a92c39f0ab087c06ef21ec5281a3a490dfe410615919bf), support [`0x12a319f3…76ee`](https://testnet.metalntwx.com/tx/0x12a319f3baf957dbbb6a6cadfc4f1dda0a28ccda6fe4c4f766de1853fad576ee), treasury [`0x6ea66684…8e0e`](https://testnet.metalntwx.com/tx/0x6ea6668492b625f7812cbae5be1178dc2adc13f83342136b074a547283378e0e), Summit [`0xe78b3197…c729`](https://testnet.metalntwx.com/tx/0xe78b3197e617179a3a78fd0f59c4a8f05715984caca0594e82e0d293edd9c729) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
-| Metal refuses a payment over the cap, against the on-chain mandate: `mandate_cap_exceeded`, so the customer is not charged (S1) | `src/agents/sourcing.ts`, `src/servers/seller.ts` | [S1 run log](runs/2026-10-29-s1.md) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
-| Mandates replaced after Face ID, in a safe order (shrink treasury, then grow sourcing; never over 20.00) (`metal-agent mandate replace`) | `src/executors/mandateReplace.ts`, `src/policy/mandates.ts` | treasury [`0x6b77d994…6f7e`](https://testnet.metalntwx.com/tx/0x6b77d9942f5e7ff9669c0a2fd11d4cea166f7db4eaf3f9728c89bc45ac846f7e), sourcing [`0x4c995a76…ccdc`](https://testnet.metalntwx.com/tx/0x4c995a768da10d611bee3d82d0d54812b3018bbdc12969bc4c20e46f3a5dccdc) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
-| The replaced credential is refused: `mandate_revoked` | `src/cli/s1.ts` | [S1 run log](runs/2026-10-29-s1.md) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
-| Pull payments under a mandate: refunds and the earnings sweep, each with its own payment id, so a retry pays nothing twice (`metal-agent mandate pull`) | `src/executors/refunds.ts`, `src/agents/sweep.ts` | refunds [`0x0197b1c9…2281`](https://testnet.metalntwx.com/tx/0x0197b1c9e3c8339775439ff90b22d416644f9f0774fc58244826cc724c622281), [`0xa4fb723c…8e52`](https://testnet.metalntwx.com/tx/0xa4fb723c41bddbe6de84ac1064aa9abbadaab3a2d4c5be29efeba04e25b48e52), [`0x788788ee…08d1`](https://testnet.metalntwx.com/tx/0x788788eec4c8d99bb7d7129a68f0a0eea42412b87879d8ec41e66cefee0c08d1); sweep [`0x7c53378d…486b`](https://testnet.metalntwx.com/tx/0x7c53378d3e989e8f780657f39392dfd0a319a79cb0e4d84aae158a430fd0486b) | [Mandates](https://docs.metalntwx.com/agents/mandates.md), [metal-agent](https://docs.metalntwx.com/agents/metal-agent.md) |
-| Every credential checked again by `metal-agent mandate verify`; mandate state read from the chain (`mandate status`) | `src/cli/verify.ts`, `src/metal/mandate.ts` | `npm run verify`: all checks pass on rehearsal 3 (20 in its run log) and on both Friday runs | [metal-agent](https://docs.metalntwx.com/agents/metal-agent.md) |
-
-**In the recorded run (Friday run 1, 30 October),** the CFO approved P-0002 with Face ID and the mandates were
-replaced in the safe order: treasury shrunk to 4.00
-([`0x2909b164…8aed`](https://testnet.metalntwx.com/tx/0x2909b164c50779c342783309943901472cf1c966402c550d0d28f5ab86a08aed)),
-then sourcing grown to 0.04 a check and 12.00 in total
-([`0xbc70858f…b5d7`](https://testnet.metalntwx.com/tx/0xbc70858fef5ca185cb8dffb860becac2fe0876888aa5ea57d8aee2700449b5d7)).
-Both are rows 102 and 103 of the run's audit log ([docs/audit/](audit/README.md)). The rows above link the
-rehearsals of 29 October.
+| Four mandates bound on chain (three agents and the customer's), each with a per-payment cap, a total budget, one payee and an expiry (`metal-agent mandate bind`) | `src/executors/ownerSigner.ts`, `src/cli/bootstrap.ts` | Sourcing [`0xb7ef08bb…44ad`](https://testnet.metalntwx.com/tx/0xb7ef08bb4531c3cbd4b56f4307255b4d88f68d279c8073d9bc96d352fb3d44ad), Support [`0x9cb93362…1808`](https://testnet.metalntwx.com/tx/0x9cb933624be5946c890f77a33aceb2adde3d75d138890a6e1abb91fdad721808), Treasury [`0x809e7a30…3a9f`](https://testnet.metalntwx.com/tx/0x809e7a30aff19c19e0eb9f147267a60a97fee6872e3ad52195473db7b0f93a9f), customer [`0x9c7d37f2…a2f7`](https://testnet.metalntwx.com/tx/0x9c7d37f248cd0037881c6becf0ef2e865769b411313ee267cf763f28b9e8a2f7) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
+| Metal refuses a payment over the cap, against the on-chain mandate: #24, 0.04 over the 0.03 cap, with Purser's own check off for that one purchase; the facilitator answered 402 and the refusal was recorded on chain (`MandateRefused`, reason 8, `OverPerPaymentCap`) | `src/agents/sourcing.ts`, `src/metal/recordRefusal.ts` | [`0x2e92f9cb…1871`](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
+| Mandates replaced after Face ID (P-0002), in a safe order (shrink Treasury, then grow Sourcing; never over 20.00), signed on chain by the runner's owner key (`metal-agent mandate replace`) | `src/executors/mandateReplace.ts`, `src/policy/mandates.ts` | Treasury [`0x789abb24…ebbc`](https://testnet.metalntwx.com/tx/0x789abb249896e01cee8e3641d7794676b6f2ce5d05f45093f6cc64101c9aebbc), Sourcing [`0x2a91ac97…e790`](https://testnet.metalntwx.com/tx/0x2a91ac97fc2a459da2b0c73f2b8020edec1901d051c7ef03bb088d36067fe790) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
+| The replaced credential is refused: #37, `mandate_revoked` (a 402 from the facilitator, so no transaction) | `src/agents/sourcing.ts` | [main run log](runs/2026-11-03-main-run.md) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
+| Pull payments under a mandate: refunds and the earnings sweep, each with its own payment id, so a retry pays nothing twice (`metal-agent mandate pull`) | `src/executors/refunds.ts`, `src/agents/sweep.ts` | refunds #7 [`0xe4bf7962…c89d`](https://testnet.metalntwx.com/tx/0xe4bf79623f9cb9212a49ea7c0ced60d241041051f322d199e319989d6548c89d), #10 [`0xe44a3460…75e5`](https://testnet.metalntwx.com/tx/0xe44a3460faf6cb2050067bf22791df61803f8646adeb5fcc2a205d1f1afa75e5), #13 [`0x5099fe44…4510`](https://testnet.metalntwx.com/tx/0x5099fe44b03d83f4dd3963fc59a40e2a506bee533e5a41e8f1b00a12bee14510); sweep [`0x86936a5b…ccb4`](https://testnet.metalntwx.com/tx/0x86936a5b29f9550857676fa710231af9e20882ebe6eee16f75a90af29767ccb4) | [Mandates](https://docs.metalntwx.com/agents/mandates.md), [metal-agent](https://docs.metalntwx.com/agents/metal-agent.md) |
+| Every credential checked again by `metal-agent mandate verify`; mandate state read from the chain (`mandate status`; on 12 November, `mandates(ref)` at one block) | `src/cli/verify.ts`, `src/metal/mandate.ts`, `worker/src/metalInspector.ts` | `npm run verify`: all checks pass on the main run ([run log](runs/2026-11-03-main-run.md)); [the check of 12 November](runs/2026-11-12-metal-inspector.md) | [metal-agent](https://docs.metalntwx.com/agents/metal-agent.md) |
 
 ## 3. x402 on Metal: agents pay per request
 
-| What | Where in the code | Proof | Metal docs |
+| What | Where in the code | Proof (main run, 3 November) | Metal docs |
 |---|---|---|---|
-| Our seller offers `exact` x402 on Metal through Metal's hosted facilitator (`registerMetalScheme`) | `src/servers/seller.ts`, `src/servers/supplier.ts` | first sale [`0xc1b06070…ecfa`](https://testnet.metalntwx.com/tx/0xc1b06070a050556f5e2ef820fb2826dd1babde33787fab5c75aef7d3b677ecfa); first supplier purchase [`0xf6f364ea…643d`](https://testnet.metalntwx.com/tx/0xf6f364ea7114b3b3bd47271b4938677629744a939ac9af285733c8b86a33643d) | [x402 on Metal](https://docs.metalntwx.com/agents/x402-on-metal.md), [Facilitator](https://docs.metalntwx.com/agents/facilitator.md) |
-| Agents pay under their mandate (`createMandatePaymentClient`); the buyer must sign the order (`requireSignedOffer`) | `src/metal/pay.ts`, `src/servers/seller.ts` | 50 sales in rehearsal 3 | [Mandates](https://docs.metalntwx.com/agents/mandates.md), [Authorized payment](https://docs.metalntwx.com/build/payments/authorized-payment.md) |
-| A dispute re-checks each payment and its signed order from the chain (`verifyMandatePayment`): 12 of 12 ordered | `src/agents/disputes.ts` | [S2 run log](runs/2026-10-29-s2.md) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
+| Our seller offers `exact` x402 on Metal through Metal's hosted facilitator (`registerMetalScheme`) | `src/servers/seller.ts`, `src/servers/supplier.ts` | first sale [`0x2cc5a16e…2fc7`](https://testnet.metalntwx.com/tx/0x2cc5a16e4aa74d5912e1b155f815270bd6f8a82796c08371dafa540410fa2fc7); first supplier purchase [`0x64d22177…4c7d`](https://testnet.metalntwx.com/tx/0x64d22177140e07b30b4493eb6cab456c9af594383ffeb0f07599766073dd4c7d) | [x402 on Metal](https://docs.metalntwx.com/agents/x402-on-metal.md), [Facilitator](https://docs.metalntwx.com/agents/facilitator.md) |
+| Agents pay under their mandate (`createMandatePaymentClient`); the buyer must sign the order (`requireSignedOffer`) | `src/metal/pay.ts`, `src/servers/seller.ts` | 41 sales and 41 supplier purchases, every one listed in [the main run's Metal transactions](runs/2026-11-03-main-run-metal-transactions.md) | [Mandates](https://docs.metalntwx.com/agents/mandates.md), [Authorized payment](https://docs.metalntwx.com/build/payments/authorized-payment.md) |
+| A dispute re-checks each payment and its signed order from the chain (`verifyMandatePayment`) | `src/agents/disputes.ts` | the main run's dispute: only #7, #10 and #13 refunded ([run log](runs/2026-11-03-main-run.md)) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
 | A payment in doubt is looked up in the facilitator's `/settlements` by its nonce, never paid twice | `src/metal/pay.ts` | tested in code (`test/` in-doubt cases); not yet exercised live (Metal QA, 1 November) | [Facilitator](https://docs.metalntwx.com/agents/facilitator.md), [Verify and reconcile payments](https://docs.metalntwx.com/build/payments/verify-and-reconcile-payments.md) |
-| The sweep is credited only once final, locked once by `chainId:tx:logIndex` | `src/agents/sweep.ts` | [S3 run log](runs/2026-10-29-s3.md) | [Settlement and finality](https://docs.metalntwx.com/reference/network-fundamentals/settlement.md) |
+| The sweep is credited only once final, locked once by `chainId:tx:logIndex` | `src/agents/sweep.ts` | sweep 0.69 [`0x86936a5b…ccb4`](https://testnet.metalntwx.com/tx/0x86936a5b29f9550857676fa710231af9e20882ebe6eee16f75a90af29767ccb4), locked after its block was finalized ([run log](runs/2026-11-03-main-run.md)) | [Settlement and finality](https://docs.metalntwx.com/reference/network-fundamentals/settlement.md) |
 
 ## 4. Offer Pay-per-Call Clearing (new on testnet, October 2026)
 
@@ -282,7 +292,40 @@ pacs.008.001.08 message: [`docs/iso20022/pacs008-BTX-2026-11.xml`](iso20022/pacs
 - **What it is not.** It is not a message a bank sent. The sandbox assigns no SWIFT UETR, and the IBAN is masked
   in the export (the audit log keeps the IBAN read from the invoice).
 
-## Friday runs (30 October): the chain's answers, twice
+## 10. How a judge checks it
+
+With no keys:
+- **Every hash on this page and on `/metal`** opens on the Metal testnet explorer; `/metal` reads the mandates' spend
+  live (or shows the read of 12 November, labelled), and `npm run metal-inspect` makes the same read from a clone.
+- **The main run's audit log**: 412 rows, head `f8d2a633…3220`, intact when the run ended. Its links (each row's hash
+  and the hash before it) are in [the main run's trace](demo/main-run-trace.json); `/trace` checks every link offline
+  and shows the head. The rows themselves stay in the run's ledger, where `npm run verify` recomputes each hash.
+- **`npm run judge`** serves the main run's pages offline: start at `/`, then `/metal`.
+
+With the ledger and a Metal RPC endpoint, `npm run verify` goes further. It re-checks every credential, pull,
+disputed payment and clearing receipt against the chain and Metal's services, and every Face ID approval against its
+stored passkey signature.
+
+## Appendix: earlier runs, dated
+
+Before the main run, the same story ran in rehearsal 3 (29 October, [run log](runs/2026-10-29-rehearsal-3.md)) and in
+two Friday runs on 30 October ([Friday run 1](runs/2026-10-30-friday-1.md), the earlier recorded demo, and
+[Friday run 2](runs/2026-10-30-friday-2.md)); `npm run verify` passes on both. In those runs #24's refusal came from
+Metal's facilitator as a 402, with no transaction. Friday run 1's audit log is in the repo; this recomputes its
+194-row chain offline:
+
+```bash
+npm run verify-log -- --jsonl docs/audit/friday-1-audit.jsonl
+```
+
+**In Friday run 1 (30 October),** the CFO approved P-0002 with Face ID and the mandates were replaced in the safe
+order: treasury shrunk to 4.00
+([`0x2909b164…8aed`](https://testnet.metalntwx.com/tx/0x2909b164c50779c342783309943901472cf1c966402c550d0d28f5ab86a08aed)),
+then sourcing grown to 0.04 a check and 12.00 in total
+([`0xbc70858f…b5d7`](https://testnet.metalntwx.com/tx/0xbc70858fef5ca185cb8dffb860becac2fe0876888aa5ea57d8aee2700449b5d7)),
+rows 102 and 103 of that run's audit log ([docs/audit/](audit/README.md)).
+
+### Friday runs (30 October): the chain's answers, twice
 
 | What Metal did | Run 1 | Run 2 |
 |---|---|---|
@@ -292,26 +335,33 @@ pacs.008.001.08 message: [`docs/iso20022/pacs008-BTX-2026-11.xml`](iso20022/pacs
 | Refunds pulled under the support mandate, to the customer only | 3 ([`0xcf11b76d…`](https://testnet.metalntwx.com/tx/0xcf11b76d424f22ca07c514e9a9acb325238ea851f8c600ee92a578b6e421bed1)) | 3 + 9 (P-0003 approved by mistake; still paid only to Summit's own account) ([`0x3fd87766…`](https://testnet.metalntwx.com/tx/0x3fd87766d4392f93ed20a88c47d6d5e7a1c7fee2a8d534990371694aed9321a5)) |
 | Earnings swept under the treasury mandate, credited to Airwallex after finality | 1.35 ([`0x808f9133…`](https://testnet.metalntwx.com/tx/0x808f913345b176d20a1a319c1fd29965c283980c7616a9c838ccc522341fa94f)) | 1.15 ([`0x1844bff9…`](https://testnet.metalntwx.com/tx/0x1844bff9d11282add2b74a3cc639e61cc6b3258bff87d44b00eb98b90e82fea8)) |
 
-## 10. How a judge checks it
+### Sections 1 to 3 in the rehearsals of 29 October
 
-With no keys:
-- **Every hash on this page and on `/metal`** opens on the Metal testnet explorer.
-- **The recorded run's audit log** is in the repo. This recomputes its 194-row chain offline:
+#### 1. Accounts, *USDZ and the faucet (bootstrap, 29 October)
 
-  ```bash
-  npm run verify-log -- --jsonl docs/audit/friday-1-audit.jsonl
-  ```
+| What | Where in the code | Proof | Metal docs |
+|---|---|---|---|
+| Metal smart accounts for the business and the customer (`metal-agent account create`) | `src/cli/bootstrap.ts` | [bootstrap run log](runs/2026-10-29-bootstrap.md) | [Create and manage a smart account](https://docs.metalntwx.com/build/controls/create-and-manage-a-smart-account.md) |
+| Testnet *USDZ from the faucet (`metal-agent fund`) | `src/cli/bootstrap.ts`, `src/metal/clearing.ts` | [bootstrap run log](runs/2026-10-29-bootstrap.md) | [Fund a test account](https://docs.metalntwx.com/build/prepare/fund-a-test-account.md) |
+| A MIP20 *USDZ transfer: exactly 20.00 from the owner key into the business account; *USDZ pays the gas | `src/metal/chain.ts` `transferUsdz` | [`0xe8150bf7…afd5`](https://testnet.metalntwx.com/tx/0xe8150bf7c4f98d85085d470e8f7b2ef9ca9bdc9adda812768f3aefdec26aafd5) | [Direct payment](https://docs.metalntwx.com/build/payments/direct-payment.md), [Estimate and record fees](https://docs.metalntwx.com/build/prepare/estimate-and-record-fees.md) |
 
-  The head matches the one the pages show ([docs/audit/](audit/README.md)).
-- **`npm run judge`** serves the recorded run's pages offline: start at `/`, then `/metal`.
+#### 2. Mandates (rehearsals, 29 October)
 
-With the ledger and a Metal RPC endpoint, `npm run verify` goes further. It re-checks every credential, pull,
-disputed payment and clearing receipt against the chain and Metal's services, and every Face ID approval against its
-stored passkey signature.
+| What | Where in the code | Proof | Metal docs |
+|---|---|---|---|
+| Four mandates bound on chain (three agents and the customer's; the links here are from the 29 October rehearsal world, Northwind's own binds are audit rows 2 to 5 of the recorded run, e.g. the customer's [`0x6a4622a9…59a6`](https://testnet.metalntwx.com/tx/0x6a4622a9ed5a1880b9e56f89adb59f003c9793a78c080db7ec2ae2f4f2ba59a6)), each with a per-payment cap, a total budget, one payee and an expiry (`metal-agent mandate bind`) | `src/executors/ownerSigner.ts`, `src/cli/bootstrap.ts` | sourcing [`0xd525573c…19bf`](https://testnet.metalntwx.com/tx/0xd525573c5ef06c01e4a92c39f0ab087c06ef21ec5281a3a490dfe410615919bf), support [`0x12a319f3…76ee`](https://testnet.metalntwx.com/tx/0x12a319f3baf957dbbb6a6cadfc4f1dda0a28ccda6fe4c4f766de1853fad576ee), treasury [`0x6ea66684…8e0e`](https://testnet.metalntwx.com/tx/0x6ea6668492b625f7812cbae5be1178dc2adc13f83342136b074a547283378e0e), Summit [`0xe78b3197…c729`](https://testnet.metalntwx.com/tx/0xe78b3197e617179a3a78fd0f59c4a8f05715984caca0594e82e0d293edd9c729) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
+| Metal refuses a payment over the cap, against the on-chain mandate: `mandate_cap_exceeded`, so the customer is not charged (S1) | `src/agents/sourcing.ts`, `src/servers/seller.ts` | [S1 run log](runs/2026-10-29-s1.md) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
+| Mandates replaced after Face ID, in a safe order (shrink treasury, then grow sourcing; never over 20.00) (`metal-agent mandate replace`) | `src/executors/mandateReplace.ts`, `src/policy/mandates.ts` | treasury [`0x6b77d994…6f7e`](https://testnet.metalntwx.com/tx/0x6b77d9942f5e7ff9669c0a2fd11d4cea166f7db4eaf3f9728c89bc45ac846f7e), sourcing [`0x4c995a76…ccdc`](https://testnet.metalntwx.com/tx/0x4c995a768da10d611bee3d82d0d54812b3018bbdc12969bc4c20e46f3a5dccdc) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
+| The replaced credential is refused: `mandate_revoked` | `src/cli/s1.ts` | [S1 run log](runs/2026-10-29-s1.md) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
+| Pull payments under a mandate: refunds and the earnings sweep, each with its own payment id, so a retry pays nothing twice (`metal-agent mandate pull`) | `src/executors/refunds.ts`, `src/agents/sweep.ts` | refunds [`0x0197b1c9…2281`](https://testnet.metalntwx.com/tx/0x0197b1c9e3c8339775439ff90b22d416644f9f0774fc58244826cc724c622281), [`0xa4fb723c…8e52`](https://testnet.metalntwx.com/tx/0xa4fb723c41bddbe6de84ac1064aa9abbadaab3a2d4c5be29efeba04e25b48e52), [`0x788788ee…08d1`](https://testnet.metalntwx.com/tx/0x788788eec4c8d99bb7d7129a68f0a0eea42412b87879d8ec41e66cefee0c08d1); sweep [`0x7c53378d…486b`](https://testnet.metalntwx.com/tx/0x7c53378d3e989e8f780657f39392dfd0a319a79cb0e4d84aae158a430fd0486b) | [Mandates](https://docs.metalntwx.com/agents/mandates.md), [metal-agent](https://docs.metalntwx.com/agents/metal-agent.md) |
+| Every credential checked again by `metal-agent mandate verify`; mandate state read from the chain (`mandate status`) | `src/cli/verify.ts`, `src/metal/mandate.ts` | `npm run verify`: all checks pass on rehearsal 3 (20 in its run log) and on both Friday runs | [metal-agent](https://docs.metalntwx.com/agents/metal-agent.md) |
 
----
+#### 3. x402 on Metal (rehearsal 3, 29 October)
 
-*Earlier, dated: the same story ran in rehearsal 3 (29 October, [run log](runs/2026-10-29-rehearsal-3.md)) and in two
-Friday runs on 30 October ([Friday run 1](runs/2026-10-30-friday-1.md), the earlier recorded demo, and
-[Friday run 2](runs/2026-10-30-friday-2.md)); `npm run verify` passes on both. In those runs #24's refusal came from
-Metal's facilitator as a 402, with no transaction. Section 10's audit chain is Friday run 1's.*
+| What | Where in the code | Proof | Metal docs |
+|---|---|---|---|
+| Our seller offers `exact` x402 on Metal through Metal's hosted facilitator (`registerMetalScheme`) | `src/servers/seller.ts`, `src/servers/supplier.ts` | first sale [`0xc1b06070…ecfa`](https://testnet.metalntwx.com/tx/0xc1b06070a050556f5e2ef820fb2826dd1babde33787fab5c75aef7d3b677ecfa); first supplier purchase [`0xf6f364ea…643d`](https://testnet.metalntwx.com/tx/0xf6f364ea7114b3b3bd47271b4938677629744a939ac9af285733c8b86a33643d) | [x402 on Metal](https://docs.metalntwx.com/agents/x402-on-metal.md), [Facilitator](https://docs.metalntwx.com/agents/facilitator.md) |
+| Agents pay under their mandate (`createMandatePaymentClient`); the buyer must sign the order (`requireSignedOffer`) | `src/metal/pay.ts`, `src/servers/seller.ts` | 50 sales in rehearsal 3 | [Mandates](https://docs.metalntwx.com/agents/mandates.md), [Authorized payment](https://docs.metalntwx.com/build/payments/authorized-payment.md) |
+| A dispute re-checks each payment and its signed order from the chain (`verifyMandatePayment`): 12 of 12 ordered | `src/agents/disputes.ts` | [S2 run log](runs/2026-10-29-s2.md) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
+| A payment in doubt is looked up in the facilitator's `/settlements` by its nonce, never paid twice | `src/metal/pay.ts` | tested in code (`test/` in-doubt cases); not yet exercised live (Metal QA, 1 November) | [Facilitator](https://docs.metalntwx.com/agents/facilitator.md), [Verify and reconcile payments](https://docs.metalntwx.com/build/payments/verify-and-reconcile-payments.md) |
+| The sweep is credited only once final, locked once by `chainId:tx:logIndex` | `src/agents/sweep.ts` | [S3 run log](runs/2026-10-29-s3.md) | [Settlement and finality](https://docs.metalntwx.com/reference/network-fundamentals/settlement.md) |
