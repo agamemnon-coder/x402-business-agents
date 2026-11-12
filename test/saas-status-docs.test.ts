@@ -12,6 +12,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { CHECK_PATHS, startJudge } from "../src/cli/judge.js";
+import { TRY_URL } from "../src/redesign/ui.js";
 import { openDb } from "../src/db/open.js";
 import { agentId } from "../src/platform/externalAgents.js";
 import { agentApiServer } from "../src/platform/mcpServer.js";
@@ -175,9 +176,10 @@ describe("/docs: docs and API", () => {
     const off = card(html, "offline");
     expect(json<{ scripts: Record<string, string> }>("package.json").scripts.judge).toBe("tsx src/cli/judge.ts");
     expect(off).toContain("<code>npm run judge</code>");
-    expect(repoLinks(off)).toEqual([{ file: "README.md", anchor: "how-to-run" }]);
-    expect(read("README.md")).toMatch(/^npm run judge$/m);
-    expect(read("README.md")).toContain("Offline, with no keys.");
+    // The README's commands are under "Verify it yourself in 3 commands" since its first screen was shortened (12 Nov).
+    expect(repoLinks(off)).toEqual([{ file: "README.md", anchor: "verify-it-yourself-in-3-commands" }]);
+    expect(read("README.md")).toMatch(/^npm run judge -- --check$/m);
+    expect(read("README.md")).toContain("after that, no network and no keys.");
     expect(plain(off)).toContain("no keys");
   });
 
@@ -570,7 +572,7 @@ describe("/status on the site", () => {
     expect(pageResponse(new Request("https://x.test/health"), pages)).toBeNull();
   });
 
-  it("keeps both pages under their policies with /try/sign in the bundle: only the Try tab's link changes, never a script or a style", () => {
+  it("keeps both pages under their policies with /try/sign in the bundle: the Try tab is the hands-on demo either way, never a script or a style changes", () => {
     const on = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv) as Pages;
     const hash = (html: string, tag: "script" | "style") => `'sha256-${createHash("sha256").update(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`).exec(html)![1]!, "utf8").digest("base64")}'`;
     expect(on.csp.status).toBe(STATUS_CSP);
@@ -579,8 +581,10 @@ describe("/status on the site", () => {
     expect(on.csp.docs).toBe(DOCS_CSP);
     expect(on.csp.docs).toContain(`style-src ${hash(on.docs!, "style")};`);
     for (const [html, built] of [[on.status!, STATUS_PAGE], [on.docs!, DOCS_PAGE]] as const) {
-      expect(nav(html)).toContain('<a href="try/sign"');
-      expect(html.replace('<a href="try/sign"', '<a href="try"')).toBe(built);
+      // The Try tab opens the hands-on demo (TRY_URL, the owner, 12 Nov) whatever the bundle carries; at most an in-page
+      // "next" link turns to /try/sign.
+      expect(nav(html)).toContain(`<a href="${TRY_URL}">Try</a>`);
+      expect(html.replace(/href="try\/sign" data-next="try"/g, 'href="try" data-next="try"')).toBe(built);
     }
   });
 
@@ -608,7 +612,7 @@ describe("/status on the site", () => {
       const n = nav(html);
       expect({ more: /<details class="pmore"><summary class="on">More<\/summary>/.test(n), here: n.includes('<a href="status" aria-current="page">Status</a>'), tabs: (n.match(/class="on" aria-current="page"/g) ?? []).length }).toEqual({ more: true, here: true, tabs: 0 });
     }
-    expect([...nav(pages.home!).matchAll(/<div class="pmenu">([\s\S]*?)<\/div>/g)].flatMap((m) => [...m[1]!.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((a) => a[1]))).toEqual(["Pricing", "Security", "Docs", "Status", "Airwallex", "Metal", "Visa", "Claude"]);
+    expect([...nav(pages.home!).matchAll(/<div class="pmenu">([\s\S]*?)<\/div>/g)].flatMap((m) => [...m[1]!.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((a) => a[1]))).toEqual(["Purser Cloud", "Pricing", "Security", "Docs", "Status", "Airwallex", "Metal", "Visa", "Claude"]);
     expect(/<footer class="foot">[\s\S]*?<\/footer>/.exec(pages.home!)![0]).toMatch(/<a class="flink" href="status">Status<\/a>/);
   });
 
