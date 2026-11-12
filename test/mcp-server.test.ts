@@ -102,6 +102,7 @@ describe("what an outside agent reads back (the agent API's results)", () => {
     const r = await pay(client, "TrailData Reports", "40.00");
     expect(r.isError).toBe(true);
     expect(r.content[0]!.text).toMatch(/^Airwallex declined 40\.00 EUR at TrailData Reports: LIMIT_EXCEEDED/);
+    expect(r.content[0]!.text).toMatch(/If you need a higher limit, ask with request_limit_raise\.$/);
     const declined = { approved: false, refused_by: "airwallex", reason: "LIMIT_EXCEEDED", amount_eur: "40.00", merchant: "TrailData Reports", next_tool: "request_limit_raise" };
     expect(r.structuredContent).toEqual(declined);
     expect(r.content[1]).toEqual({ type: "text", text: JSON.stringify(declined) });
@@ -138,6 +139,9 @@ describe("what an outside agent reads back (the agent API's results)", () => {
     expect(r.isError).toBe(true);
     expect(r.structuredContent).toMatchObject({ approved: false, refused_by: "airwallex", reason: "CARD_INACTIVE" });
     expect(r.structuredContent).not.toHaveProperty("next_tool");
+    // The sentence says the same as the object: the card is frozen; a raise would not help.
+    expect(r.content[0]!.text).toMatch(/^Airwallex declined 19\.00 EUR at TrailData Reports: CARD_INACTIVE\. The card is frozen: stop and tell your user\.$/);
+    expect(r.content[0]!.text).not.toContain("request_limit_raise");
     await client.close();
   });
 
