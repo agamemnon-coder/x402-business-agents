@@ -133,18 +133,18 @@ beyond them, with Face ID on the exact terms.
 Within the limits an agent pays on its own; beyond them, nothing runs without the CFO's passkey.
 
 <!-- worst-case -->
-**Worst case, set by policy: EUR 300 on cards + USD 20 on chain a month.**
+**Worst case, set by policy: EUR 28,200 on cards and task cards + USD 20 on chain a month.**
 
-Task cards the Treasury agent may issue alone: up to EUR 900 a day. Everything above waits for the CFO.
+Task cards without Face ID: up to EUR 900 a day. Everything above waits for the CFO.
 
 <details><summary>How this is computed</summary>
 
 - Sourcing agent: EUR 100 on its card + USD 10 on chain (test USD) a month.
 - Support agent: EUR 150 on its card + USD 4 on chain (test USD) a month.
-- Treasury agent: EUR 50 on its card + USD 6 on chain (test USD) a month.
-- A day: EUR 300 + USD 20, the same as a month: neither a card nor a mandate has a daily limit.
-- Counted: each card's monthly limit (card.*.monthly, EUR) and each Metal mandate's budget (test USD, *USDZ; it lasts 40 days and can all go at once). Task cards: up to EUR 300 each (approval.task_card_eur), 3 a day, not counted above.
-- ≈ EUR 317.70 in all at the main run's rate of 3 Nov 2026 (1.129917 USD per EUR, docs/demo/main-run.json); test USD is never added to EUR otherwise.
+- Treasury agent: EUR 50 on its card + EUR 27,900 in task cards + USD 6 on chain (test USD) a month.
+- A day: EUR 1,200 + USD 20: a card or a mandate can go in one day, task cards 3 a day.
+- Counted: each card's monthly limit (card.*.monthly, EUR) and each Metal mandate's budget (test USD, *USDZ; it lasts 40 days and can all go at once). Task cards, which the Treasury agent may issue without Face ID: up to EUR 300 each (approval.task_card_eur), 3 a day (EUR 900), 31 days a month (EUR 27,900), counted above.
+- ≈ EUR 28,217.70 in all at the main run's rate of 3 Nov 2026 (1.129917 USD per EUR, docs/demo/main-run.json); test USD is never added to EUR otherwise.
 - With a shared card or an API key, the limit is the card's or the account's.
 - Computed from the policy by [`exposureOf`](src/policy/exposure.ts); `test/exposure.test.ts` checks this block against it.
 

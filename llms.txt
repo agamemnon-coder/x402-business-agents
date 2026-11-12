@@ -4,6 +4,8 @@
 
 Summary: Purser is a control layer for AI agents that spend company money: within limits the CFO sets they pay through Airwallex and Metal, and above them nothing runs until the CFO's passkey signs a SHA-256 of the exact terms, so changing one cent voids it. Live sandbox and testnet runs show it end to end: 24 Claude decisions, a SWIFT payout carrying the signed hash in Airwallex's own record, Airwallex's card controls and Metal refusing over-limit purchases, a VIC purchase via Airi, a connected-account payout with Purser's fee, and the books posted to T:0. Test money only; customers, suppliers and settlement are simulated, and the business model is not yet validated.
 
+Worst case, set by policy: EUR 28,200 on cards and task cards + USD 20 on chain a month. Task cards without Face ID: up to EUR 900 a day. Everything above waits for the CFO. Computed from the policy by exposureOf (src/policy/exposure.ts); the parts are in the README.
+
 Why not Airwallex's own approvals? Purser signs the exact terms with the CFO's passkey before the API call, enforces per-agent limits across Airwallex and Metal, and can additionally require Airwallex's approval workflow (IN_APPROVAL handled, src/airwallex/approvals.ts). Live on 10 Nov: Airwallex held a passkey-signed payout IN_APPROVAL (docs/runs/2026-11-10-airwallex-two-locks.md; the web-app approval was not completed).
 
 Test money only. Live: Claude's decisions, Airwallex sandbox calls, Metal testnet transactions. Simulated: the customer, the supplier, the merchants' charges, the settlement (Purser moves the SWIFT transfer to SENT, then PAID, through the sandbox's simulation API) and the second approver (a labelled test passkey).

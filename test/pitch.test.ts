@@ -253,15 +253,25 @@ describe("the Q&A, in Max's words (5 Nov)", () => {
     for (const h of ["Isn't letting one purchase through staged?", "Worst-case loss per day inside the limits, and how fast does the CFO know?", "Why not Airwallex's own spend controls and approvals?"]) expect(q).toContain(h);
   });
 
-  it("gives the worst case inside the limits from the code's own budgets and card limits", async () => {
-    const { TOTAL_BUDGET_CENTS, INITIAL_MANDATES, CARDS, VELOCITY } = await import("../src/config/policy.js");
+  it("gives the worst case inside the limits from the code's own budgets, card limits and task cards (12 Nov: task cards counted)", async () => {
+    const { TOTAL_BUDGET_CENTS, INITIAL_MANDATES, CARDS, VELOCITY, TASK_CARD_EUR_FALLBACK, TASK_WITHIN_PER_DAY } = await import("../src/config/policy.js");
+    const { worstCaseLine, startPolicy } = await import("../src/policy/exposureSources.js");
+    const { MONTH_DAYS, exposureOf } = await import("../src/policy/exposure.js");
     const usd = (c: number) => (c / 100).toFixed(2);
+    const eur = (c: number) => (c / 100).toLocaleString("en-GB", { minimumFractionDigits: 2 });
     const budgets = Object.values(INITIAL_MANDATES).map((m) => m.budgetCents), monthly = Object.values(CARDS).map((c) => c.monthlyCents);
+    const taskEach = Math.round(Number(TASK_CARD_EUR_FALLBACK) * 100), taskDay = taskEach * TASK_WITHIN_PER_DAY;
     expect(budgets.reduce((a, b) => a + b, 0)).toBe(TOTAL_BUDGET_CENTS);
-    expect(TEXT.qa).toContain(`At most ${usd(TOTAL_BUDGET_CENTS)} test USD on Metal (the three mandates' budgets, ${budgets.map(usd).join(" + ")}`);
-    expect(TEXT.qa).toContain(`EUR ${usd(monthly.reduce((a, b) => a + b, 0))} on the cards (monthly limits ${monthly.map(usd).join(" + ")})`);
+    const qa = TEXT.qa!.replace(/\s+/g, " ");
+    // The form's sentence, word for word, then its parts, each from the policy code.
+    expect(qa).toContain(`### 12. Worst-case loss per day inside the limits, and how fast does the CFO know? ${worstCaseLine()} The parts:`);
+    expect(qa).toContain(`at most ${usd(TOTAL_BUDGET_CENTS)} test USD on Metal (the three mandates' budgets, ${budgets.map(usd).join(" + ")}`);
+    expect(qa).toContain(`EUR ${usd(monthly.reduce((a, b) => a + b, 0))} on the cards (monthly limits ${monthly.map(usd).join(" + ")})`);
+    expect(qa).toContain(`task cards without Face ID, up to EUR ${eur(taskEach)} each and ${TASK_WITHIN_PER_DAY} in 24 hours, so EUR ${eur(taskDay)} a day and EUR ${eur(taskDay * MONTH_DAYS)} over ${MONTH_DAYS} days`);
+    const day = exposureOf(startPolicy()).total.day;
+    expect(qa).toContain(`the worst day is EUR ${eur(day.eurCents)} and ${usd(day.usdCents)} test USD`);
+    expect(qa).toContain("A card or a mandate has no daily ceiling");
     expect(TEXT.qa).toContain(`Sourcing: ${VELOCITY.sourcing.perMinute} payments a minute, ${usd(VELOCITY.sourcing.usdzPerHourCents)} test USD or EUR ${usd(VELOCITY.sourcing.eurPerHourCents)} an hour`);
-    expect(TEXT.qa).toContain("there is no daily ceiling");
   });
 });
 
