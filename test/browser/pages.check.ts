@@ -600,6 +600,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       }
       await broken.screenshot({ path: join(shots, `status-unread-${tag}.png`), fullPage: true });
       await broken.close();
+    }
     // /metal in its other state: with a run record of the invoice token (12 Nov). The page the judge serves has the
     // block only once a live run is recorded; here the same page is built with a record made on the in-memory chain
     // (test/support/tokenizeWorld.ts, never written to docs/runs) and served in its place, under the page's own CSP:
