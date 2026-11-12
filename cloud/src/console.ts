@@ -271,7 +271,9 @@ ul.files button.linkish { text-align: left; font-weight: 600; overflow-wrap: any
 ul.files button.linkish[aria-pressed="true"] { color: var(--text); }
 ul.files .fd { display: block; color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; margin-top: 2px; }
 .proof .pages { margin-top: 12px; }
-.proof a.arch { display: inline-block; margin-top: 12px; font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; }
+.proof .pages:empty { display: none; }
+.proof a.arch { margin-left: auto; font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; white-space: nowrap; }
+.proof .pb.wait a.arch { display: inline-block; margin: 8px 0 0; }
 /* The archive's tree: one folder per line, collapsed below the year. */
 .archive details { margin: 4px 0 0 0; }
 .archive details details { margin-left: 14px; }
@@ -731,7 +733,8 @@ async function everyPage(path){let out=[],cursor=null;for(let n=0;n<50;n++){cons
 // A path segment as the archive names it (src/vault/layout.ts safeSegment), to find this invoice's receipt by its name.
 const seg=(s)=>{let v=String(s||'').normalize('NFC').replace(/\p{Cf}/gu,'').replace(/[\u0000-\u001f\u007f<>:"/\\|?*]+/g,' ').replace(/\.{2,}/g,' ').replace(/\s+/g,' ').trim().replace(/^[.\s]+|[.\s]+$/g,'');return v||'_'};
 const fileName=(p)=>String(p).slice(String(p).lastIndexOf('/')+1);
-const folderOf=(p)=>String(p).slice(0,Math.max(0,String(p).lastIndexOf('/')));
+// A file's folder as a person reads it: below the company's own root folder, the steps spaced so it wraps between them.
+const folderWords=(p)=>String(p).split('/').slice(1,-1).join(' / ');
 const kb=(n)=>t('cs.eng.kb',{n:(Math.max(0,Number(n)||0)/1024).toFixed(1)});
 // This invoice's files: the original by its own hash (the invoice's doc_sha256), the receipt by the name the archive gives it
 // (Betalingen/<date> <supplier> <invoice no>.pdf, or that name with a correction or id beside it).
@@ -741,7 +744,7 @@ function filesOf(i,files){const base=seg(i.vendor)+' '+seg(i.invoice_no);
   return ours.sort((a,b)=>(a.kind===b.kind?a.path.localeCompare(b.path):a.kind==='invoice'?-1:1))}
 // A file's name to open it in the viewer, its folder small beneath.
 function fileItem(f,open){const b=el('button','linkish',fileName(f.path));b.type='button';b.setAttribute('aria-pressed','false');b.onclick=()=>open(f,b);
-  return el('li','',[b,el('span','fd',folderOf(f.path))])}
+  return el('li','',[b,el('span','fd',folderWords(f.path))])}
 // One file of the archive in the sandboxed frame; the button that opened it is marked.
 function vaultOpener(box,list){return (f,b)=>{for(const x of list.querySelectorAll('button[aria-pressed]'))x.setAttribute('aria-pressed','false');b.setAttribute('aria-pressed','true');
   box.replaceChildren(el('p','wait',t('drawing_document')));drawPdf('/v1/engine/vault/file?path='+encodeURIComponent(f.path),box,fileName(f.path))}}
@@ -795,8 +798,9 @@ function proofCard(i0){
     if(!fs.length)return block('archived wait','clock',t('cs.eng.archived_h'),'',[el('p','wt',t('cs.eng.archived_wait')),arch]);
     const list=el('ul','files');const viewer=el('div','pages');const open=vaultOpener(viewer,list);
     for(const f of fs)list.append(fileItem(f,open));
-    return block('archived','circle-check',t('cs.eng.archived_h'),t('cs.eng.archived_line',{n:fs.length}),
-      [list,viewer,el('details','',[el('summary','',t('cs.eng.archived_fold')),dl(fs.map((f)=>[fileName(f.path),f.sha256,'mono']))]),arch])}
+    const b=block('archived','circle-check',t('cs.eng.archived_h'),t('cs.eng.archived_line',{n:fs.length}),
+      [list,viewer,el('details','',[el('summary','',t('cs.eng.archived_fold')),dl(fs.map((f)=>[fileName(f.path),f.sha256,'mono']))])]);
+    b.firstChild.append(arch);return b}
   // One read at a time; one more if asked meanwhile.
   let busy=null,more=false,inv=i0,seen='';
   async function load(){
