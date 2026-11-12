@@ -22,7 +22,7 @@ import { nodeEngines } from "../../cloud/src/engine/node.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
 import { SyncBatch } from "../../cloud/src/sync.js";
 import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INVOICE, PAY, START, STEPS, WORK } from "../../cloud/src/tryCopy.js";
-import { RUNS_URL } from "../../cloud/src/tryPage.js";
+import { PROOF_URL, RUNS_URL } from "../../cloud/src/tryPage.js";
 import { batchesFor } from "../../src/cloudsync/client.js";
 import type { DB } from "../../src/db/open.js";
 import { EngineHost } from "../../src/engine/host.js";
@@ -220,6 +220,52 @@ async function passkeyContext(width: number, scheme: "light" | "dark"): Promise<
   return ctx;
 }
 
+// Part 0: the start screen in its two zones (the illustration, the card, the trust line) at a phone and a laptop, light
+// and dark: both zones in view, nothing wider than the screen, no large empty band, the feather mark, no console or CSP
+// error. Screenshots (the viewport) when a directory is given: try-start-<width>-<scheme>.png.
+for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], [1440, 900, "light"], [1440, 900, "dark"]] as const) {
+  const ctx = await browser.newContext({ viewport: { width, height }, colorScheme: scheme, deviceScaleFactor: shots ? 2 : 1 });
+  const page = await ctx.newPage();
+  const errors: string[] = [];
+  page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+  page.on("pageerror", (e) => errors.push(String(e)));
+  const tag = `start ${width}x${height} ${scheme}`;
+  await page.goto(`${ORIGIN}/try`);
+  await page.waitForSelector(`h1:text-is("${START.heading}")`);
+  await page.waitForTimeout(700);
+  const box = (sel: string) => page.locator(sel).first().boundingBox();
+  const [hero, card, trust, main] = [await box(".hero"), await box("#main"), await box(".trust"), await box("#main .btn.primary")];
+  ok(!!hero && !!card && !!trust && !!main, `${tag}: the illustration, the card, its button and the trust line are shown`);
+  if (hero && card && trust && main) {
+    ok(main.y + main.height <= height && card.y >= 0 && card.y + card.height <= height && trust.y + trust.height <= height + 1, `${tag}: the card, its button and the trust line are in view without scrolling`);
+    if (width === 390) {
+      ok(hero.y + hero.height <= card.y + 40 && hero.height >= 0.38 * height, `${tag}: a phone: the illustration's band on top (${Math.round(hero.height)} px, at least 38% of the screen), the card below`);
+      ok(trust.y + trust.height >= 0.95 * height && trust.y - (card.y + card.height) < 0.15 * height, `${tag}: no empty band: the trust line ends the screen, close under the card`);
+    } else {
+      ok(hero.x === 0 && Math.abs(hero.width - width / 2) < 2 && hero.height >= height - 1 && card.x >= width / 2, `${tag}: a wide screen: the illustration left (the full height), the card right`);
+      const above = card.y, below = height - (trust.y + trust.height);
+      ok(Math.abs(above - below) < 0.15 * height, `${tag}: no empty band: the card and the trust line are centred (${Math.round(above)} px above, ${Math.round(below)} px below)`);
+    }
+  }
+  ok(await page.evaluate(() => document.documentElement.scrollWidth) <= width, `${tag}: nothing wider than ${width} px`);
+  ok(await page.locator(".brand .mk svg").count() === 1 && (await page.textContent(".brand"))!.trim() === "Purser", `${tag}: the brand is the feather mark and the name`);
+  ok(await page.getAttribute(".hero svg.scene", "aria-label") === "How Purser pays an invoice: an illustration", `${tag}: the illustration is named as one`);
+  if (shots) { await page.waitForTimeout(5800); await page.screenshot({ path: join(shots, `try-start-${width}-${scheme}.png`) }); }
+  ok(errors.length === 0, `${tag}: no console or CSP errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
+  await ctx.close();
+}
+{
+  // With reduced motion the illustration stands still on its paid frame.
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
+  const page = await ctx.newPage();
+  await page.goto(`${ORIGIN}/try`);
+  await page.waitForSelector(".scene");
+  const still = await page.evaluate(() => [...document.querySelectorAll(".scene *")].every((e) => getComputedStyle(e).animationName === "none")
+    && getComputedStyle(document.querySelector(".sc-paid")!).opacity === "1" && getComputedStyle(document.querySelector(".sc-refused")!).opacity === "0");
+  ok(still, "reduced motion: the illustration does not move, and shows its paid frame");
+  await ctx.close();
+}
+
 // Part 1: a visit at each size.
 for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   const ctx = await passkeyContext(width, scheme);
@@ -235,6 +281,14 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   const tag = `${width} ${scheme}`;
   const shot = async (n: string) => { if (shots) await page.screenshot({ path: join(shots, `b1-${n}-${width}-${scheme}.png`), fullPage: true }); };
   const shot2 = async (n: string) => { if (shots) await page.screenshot({ path: join(shots, `b2-${n}-${width}-${scheme}.png`), fullPage: true }); };
+  /** The design pass's screenshots (design-1112): at 390 px the viewport (and the full page when asked), at 1440 px dark only those named. */
+  const design = async (n: string, o: { full?: boolean; wide?: boolean } = {}) => {
+    if (!shots || (width === 1440 && !o.wide)) return;
+    await page.waitForTimeout(1200);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: join(shots, `try-${n}-${width}-${scheme}.png`) });
+    if (o.full) await page.screenshot({ path: join(shots, `try-${n}-${width}-${scheme}-full.png`), fullPage: true });
+  };
   await page.goto(`${ORIGIN}/try#j=jury-token-123`);
   await page.waitForSelector(`h1:text-is("${START.heading}")`);
   ok(new URL(page.url()).hash === "", `${tag}: the token is gone from the address bar`);
@@ -242,6 +296,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   ok(await page.locator(".band").count() === 0, `${tag}: no band before the start`);
   await screenChecks(page, `${tag} screen 0`, width);
   await shot("0-start");
+  await design("0-start");
 
   const startReq = page.waitForRequest((r) => r.url().endsWith("/v1/try/start"));
   await page.click(`text=${START.button}`);
@@ -251,7 +306,9 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   ok((await page.textContent(".band"))!.includes(BAND.line) && (await page.textContent(".band"))!.includes(BAND.claudeCode), `${tag}: the band says test company, test money, simulated bank, and Purser's code reads today`);
   ok(await page.evaluate(() => document.activeElement?.tagName) === "H1", `${tag}: focus moved to the new heading`);
   await screenChecks(page, `${tag} screen 1 (samples)`, width);
+  ok(!(await page.isVisible(".hero")) && !(await page.isVisible(".trust")) && await page.locator(".prog li.on").count() === 1, `${tag}: after the start: no illustration, no trust line; the rail lights the current step`);
   await shot("1-invoice");
+  await design("1-invoice");
 
   if (width === 390) {
     ok(await page.getAttribute(`.samples .btn:has-text("${SAMPLES[0]!.title}")`, "aria-pressed") === "true", `${tag}: the first sample is picked`);
@@ -280,6 +337,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   ok(await page.locator(".live li:visible").count() <= 3, `${tag}: the live panel shows at most three rows`);
   await screenChecks(page, `${tag} screen 2`, width);
   await shot("2-work");
+  await design("2-work", { full: true });
 
   await page.reload();
   await page.waitForSelector(".result .btn.primary", { timeout: 20_000 });
@@ -316,6 +374,8 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   const ab = JSON.parse((await approveReq).postData() ?? "{}") as { terms_sha256?: string; credential?: { response?: { signature?: string } } };
   ok(ab.terms_sha256 === L0.terms_sha256 && typeof ab.credential?.response?.signature === "string" && Object.keys(ab).sort().join() === "credential,terms_sha256", `${tag}: approve carries the terms' hash and the passkey's signature, nothing else`);
   await page.waitForSelector(`text=${APPROVE.approved}`);
+  ok(await page.locator(".tick svg").count() === 1, `${tag}: the approval's tick, once its answer is back`);
+  await design("3-approve", { full: true });
   ok((await ledgerOf(visitor.session, pid))!.transfers() === transfers0, `${tag}: approved and held: no transfer`);
   const cred1 = (await keptState(page)).cred as { response: { signature: string } } | null;
   ok(cred1?.response.signature === ab.credential?.response?.signature, `${tag}: the approval's signature is kept in this tab for screen 4`);
@@ -366,6 +426,10 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   ok(!(await page.isVisible(`text=${PAY.line}`)), `${tag}: refused: the line gives way to the answer`);
   await screenChecks(page, `${tag} screen 4 (refused)`, width, 1, false);
   await shot2("4-refused");
+  ok(await page.locator(".refusal.shake").count() === 1 && await page.locator(".proof.xfer").count() === 1, `${tag}: refused: the card shakes once and says the transfers in big type`);
+  ok(await page.locator(".f.changed #p-amt").count() === 1 && await page.locator(".f.changed").count() === 1, `${tag}: the edited field, and only it, glows while it differs from the signed value`);
+  await design("4-refused", { full: true });
+  if (shots && width === 390) { await page.emulateMedia({ colorScheme: "dark" }); await page.waitForTimeout(400); await page.screenshot({ path: join(shots, "try-4-refused-390-dark.png") }); await page.emulateMedia({ colorScheme: "light" }); }
   await page.click(`button.link:has-text("${PAY.putBack}")`);
   ok(await page.inputValue("#p-amt") === "1850.00", `${tag}: put back what you signed`);
 
@@ -426,6 +490,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   ok(href!.startsWith("blob:") && head4 === "%PDF", `${tag}: filed: the receipt opens in a new tab (${pop.url()}) from a blob, and it is a PDF (${head4})`);
   await pop.close();
   if (shots) { await page.waitForTimeout(600); await page.screenshot({ path: join(shots, `b3-5-books-${width}-${scheme}.png`), fullPage: true }); }
+  await design("5-paid", { full: true, wide: true });
 
   // Screen 6: the export as a file, the recorded runs, start again.
   await page.click(`.btn.primary:has-text("${BOOKS.next}")`);
@@ -443,6 +508,8 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await page.click(`summary:has-text("${COMPANY.runs}")`);
   await screenChecks(page, `${tag} screen 6 (after the download)`, width, 1, false);
   if (shots) await page.screenshot({ path: join(shots, `b3-6-company-${width}-${scheme}.png`), fullPage: true });
+  ok(await page.locator("ul.did li").count() === 3 && await page.getAttribute("a.proofl", "href") === PROOF_URL, `${tag}: screen 6: what you just did in three icons, and the site's proof page`);
+  await design("6-company", { full: true });
   await page.click(`button:has-text("${COMPANY.again}")`);
   await page.waitForSelector(`h1:text-is("${START.heading}")`);
   ok(!(await keptState(page)).session, `${tag}: start again shows screen 0 and forgets the company in this tab`);
