@@ -25,6 +25,20 @@ function ledger(name: string): string {
   return path;
 }
 const lockAt = (path: string) => { const db = new Database(path); try { return lockOf(db); } finally { db.close(); } };
+/** The runner's and its child's pids from its READY line. */
+const readyPids = (text: string) => { const m = /READY (\d+) (\d+) (\d+)/.exec(text)!; return { runner: Number(m[1]), child: Number(m[3]) }; };
+/**
+ * A world's group is its runner and what the runner started: both pids are in it, and every other live member (a
+ * toolchain helper the loader starts, such as a transform service, for as long as it runs) descends from the runner.
+ * An exact count raced with such a helper under CI load (CI, 10 Nov: 3 instead of 2).
+ */
+function expectWorldGroup(pgid: number, pids: { runner: number; child: number }) {
+  const procs = osProcesses.list();
+  const members = osProcesses.psGroup(pgid);
+  expect(members).toEqual(expect.arrayContaining([pids.runner, pids.child]));
+  const descends = (pid: number) => { for (let p = procs.find((x) => x.pid === pid), n = 0; p && n < 20; p = procs.find((x) => x.pid === p!.ppid), n++) if (p.pid === pids.runner) return true; return false; };
+  for (const m of members) expect({ pid: m, descendsFromRunner: descends(m) }).toEqual({ pid: m, descendsFromRunner: true });
+}
 
 /** Starts a stand-in runner on this ledger, as `npm run relay` is started: not in a group of its own. */
 function runner(path: string, detached = false): { p: ChildProcess; ready: Promise<string>; exit: Promise<number | null>; out: () => string } {
@@ -45,7 +59,7 @@ function runner(path: string, detached = false): { p: ChildProcess; ready: Promi
 
 afterAll(() => {
   // Only the process groups this test's own locks name, and only if still there.
-  for (const name of ["world-a", "world-b", "world-c"]) {
+  for (const name of ["world-a", "world-b", "world-c", "world-d"]) {
     const path = join(dir, `${name}.sqlite`);
     const l = existsSync(path) ? lockAt(path) : null;
     if (l && l.pgid > 1 && osProcesses.list().some((p) => p.pgid === l.pgid && p.token === l.token)) try { process.kill(-l.pgid, "SIGKILL"); } catch { /* gone */ }
@@ -59,15 +73,15 @@ describe.runIf(linux)("stop with real processes", () => {
     const b = ledger("world-b");
     const ra = runner(a);
     const rb = runner(b);
-    await Promise.all([ra.ready, rb.ready]);
+    const [ta, tb] = await Promise.all([ra.ready, rb.ready]);
     const la = lockAt(a)!;
     const lb = lockAt(b)!;
     expect(la).toMatchObject({ world: "world-a", host: hostname() });
     expect(la.pgid).not.toBe(lb.pgid);
     expect(la.pgid).not.toBe(ownPgid());
     // Each world's group: the runner and the child it started.
-    expect(osProcesses.psGroup(la.pgid).length).toBe(2);
-    expect(osProcesses.psGroup(lb.pgid).length).toBe(2);
+    expectWorldGroup(la.pgid, readyPids(ta));
+    expectWorldGroup(lb.pgid, readyPids(tb));
 
     const second = runner(a);
     expect(await second.exit).toBe(3);
@@ -83,7 +97,7 @@ describe.runIf(linux)("stop with real processes", () => {
     expect(await ra.exit).toBe(0);
     // World B: same lock, same group, both processes still running.
     expect(lockAt(b)).toEqual(lb);
-    expect(osProcesses.psGroup(lb.pgid).length).toBe(2);
+    expectWorldGroup(lb.pgid, readyPids(tb));
 
     const rbStop = await stopWorld(b, { table: osProcesses, host: hostname(), ownPgid: ownPgid(), sleep: (ms) => new Promise((ok) => setTimeout(ok, ms)), now: () => Date.now(), log: () => undefined, graceMs: 10_000 });
     expect(rbStop.ok).toBe(true);
@@ -105,13 +119,15 @@ describe.runIf(linux)("stop with real processes", () => {
   }, 60_000);
 
   it("a runner killed outright leaves a stale lock that the next start clears", async () => {
-    const a = ledger("world-a");
+    // Its own ledger: a failure in the first test (which leaves world A's runner up until afterAll) cannot refuse it.
+    const a = ledger("world-d");
     const ra = runner(a);
     await ra.ready;
     const l = lockAt(a)!;
     process.kill(-l.pgid, "SIGKILL");
     await ra.exit;
-    for (let i = 0; i < 50 && osProcesses.psGroup(l.pgid).length; i++) await new Promise((ok) => setTimeout(ok, 100));
+    for (let i = 0; i < 200 && osProcesses.psGroup(l.pgid).length; i++) await new Promise((ok) => setTimeout(ok, 100));
+    expect(osProcesses.psGroup(l.pgid)).toEqual([]);
     expect(lockAt(a)).toEqual(l);
     const next = runner(a);
     const text = await next.ready;

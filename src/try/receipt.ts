@@ -6,6 +6,7 @@
 // server checks no attestation), and nothing real moved: the terms are a test world's.
 
 import { createHash, createPublicKey, verify } from "node:crypto";
+import { verifyE2e } from "../e2e/receiptChain.js";
 
 /** The receipt's format name: a field the page writes and the verifier requires. */
 export const RECEIPT_FORMAT = "purser.try-sign-receipt/v1";
@@ -23,6 +24,8 @@ export interface TryReceipt {
   assertion: { authenticatorData: string; clientDataJSON: string; signature: string };
   verified_by_server_at?: string;
   verify?: string;
+  /** The platform end-to-end's steps (src/e2e/receiptChain.ts); checked when present. */
+  e2e?: unknown;
   /** 6c: the test world's hash chain when it was signed (worker/src/worldChain.ts); checked when present. */
   chain?: { length: number; head: string | null; rows: ChainRowOf[] };
 }
@@ -148,6 +151,8 @@ export function verifyReceipt(input: unknown): ReceiptResult {
       add("chain signature", !!row, row ? `row ${row.seq} records this signature (${String(R.terms.proposal_id)}, the terms hash signed)` : "no row of the chain records this signature");
     }
   }
+  // 6. The platform end-to-end's steps (invoice to T:0), when the receipt carries them.
+  if (R.e2e !== undefined) checks.push(...verifyE2e(R.e2e, R.terms_sha256));
   return done();
 }
 

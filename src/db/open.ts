@@ -5,9 +5,14 @@ import { dirname } from "node:path";
 export type DB = Database.Database;
 
 const SCHEMA = readFileSync(new URL("./schema.sql", import.meta.url), "utf8");
+/** Purser's own books: the stored general ledger (src/ledger/core.ts). */
+const LEDGER = readFileSync(new URL("./ledger.sql", import.meta.url), "utf8");
+
+/** Where the ledger is when KIT11_DB names no other file. */
+export const DEFAULT_LEDGER = "data/kit11.sqlite";
 
 /** Opens (and creates) the ledger. Use ":memory:" in tests. */
-export function openDb(path = process.env.KIT11_DB ?? "data/kit11.sqlite"): DB {
+export function openDb(path = process.env.KIT11_DB ?? DEFAULT_LEDGER): DB {
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
   const db = new Database(path);
   // The runner, the agent API and the CLIs share one ledger: a writer waits for another instead of failing at once.
@@ -45,6 +50,7 @@ function walWithRetry(db: DB): void {
 function prepare(db: DB): void {
   db.transaction(() => {
     db.exec(SCHEMA);
+    db.exec(LEDGER);
     migrate(db);
   }).immediate();
   allowPasskeyApprovals(db);
@@ -57,10 +63,20 @@ function migrate(db: DB): void {
     (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).some((c) => c.name === column);
   // Backend review B4: the policy version a proposal, an approval and a hold were made under.
   for (const t of ["proposals", "approvals", "holds"]) if (!has(t, "policy_version")) db.exec(`ALTER TABLE ${t} ADD COLUMN policy_version INTEGER`);
+  // Bookkeeping core: a sale's key on its stock move (review of PR #108, finding 4), once per sale.
+  if (!has("stock_moves", "ref")) db.exec("ALTER TABLE stock_moves ADD COLUMN ref TEXT");
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS stock_moves_ref ON stock_moves (sku, ref) WHERE ref IS NOT NULL");
   if (!has("sales", "requirements_json")) db.exec("ALTER TABLE sales ADD COLUMN requirements_json TEXT");
   if (!has("upstream_purchases", "supplier")) db.exec("ALTER TABLE upstream_purchases ADD COLUMN supplier TEXT");
   if (!has("transfers", "fee_actual")) db.exec("ALTER TABLE transfers ADD COLUMN fee_actual TEXT");
+  // Red team 6: a scan's transcription, so its text checks run again on a recheck.
+  if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ap_scan_readings'").get() && !has("ap_scan_readings", "transcription")) db.exec("ALTER TABLE ap_scan_readings ADD COLUMN transcription TEXT");
   if (!has("beneficiaries", "status")) db.exec("ALTER TABLE beneficiaries ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE'");
+  // Payables FX payouts: the route a supplier added through payee_add is paid on (masked account, method, clearing).
+  if (!has("beneficiaries", "details_json")) db.exec("ALTER TABLE beneficiaries ADD COLUMN details_json TEXT");
+  if (!has("payee_adds", "details_json")) db.exec("ALTER TABLE payee_adds ADD COLUMN details_json TEXT");
+  // Red team round 4: a credit note counts against the supplier's invoices only once a person accepted it.
+  for (const c of ["credit_accepted_at", "credit_accepted_by"]) if (!has("ap_invoices", c)) db.exec(`ALTER TABLE ap_invoices ADD COLUMN ${c} TEXT`);
   // D24: who decided each money action, recorded when it starts (src/provenance/origin.ts); readers look events up by name.
   db.exec("CREATE INDEX IF NOT EXISTS audit_event ON audit_log (event, seq)");
   for (const t of ["holds", "refunds", "sweeps", "upstream_purchases", "transfers", "money_steps"]) if (!has(t, "origin_json")) db.exec(`ALTER TABLE ${t} ADD COLUMN origin_json TEXT`);
@@ -93,6 +109,17 @@ function migrate(db: DB): void {
   if (!has("velocity_events", "payment_id")) {
     db.exec("ALTER TABLE velocity_events ADD COLUMN payment_id TEXT");
     db.exec("CREATE UNIQUE INDEX IF NOT EXISTS velocity_payment_id ON velocity_events (payment_id)");
+  }
+  // Payables: a new-supplier request whose proposal died is CLOSED (review, 8 November), for a ledger made before.
+  const pa = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'payee_adds'").get() as { sql: string } | undefined;
+  if (pa && !pa.sql.includes("'CLOSED'")) {
+    // Copied by column name, details_json (FX payouts) included: the old table may or may not have it yet.
+    const cols = ["add_id", "vendor", "iban", "bic", "source", "requested_by", "verification_json", "details_json", "proposal_id", "status", "created_at"]
+      .filter((c) => has("payee_adds", c)).join(", ");
+    db.exec(`ALTER TABLE payee_adds RENAME TO payee_adds_old;
+      CREATE TABLE payee_adds (add_id TEXT PRIMARY KEY, vendor TEXT NOT NULL, iban TEXT NOT NULL, bic TEXT NOT NULL, source TEXT, requested_by TEXT NOT NULL,
+        verification_json TEXT, details_json TEXT, proposal_id TEXT, status TEXT NOT NULL CHECK (status IN ('REQUESTED', 'VERIFIED', 'PROPOSED', 'APPLIED', 'CLOSED')), created_at TEXT NOT NULL);
+      INSERT INTO payee_adds (${cols}) SELECT ${cols} FROM payee_adds_old; DROP TABLE payee_adds_old;`);
   }
   // Finality evidence (enterprise item 3): CERTIFIED became REPORTED (the BLS signature is not verified), and NOT_FOUND.
   const fe = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'finality_evidence'").get() as { sql: string } | undefined;

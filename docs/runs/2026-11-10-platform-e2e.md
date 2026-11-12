@@ -1,18 +1,17 @@
 # Platform end-to-end, live: three test companies on Airwallex connected accounts (10 November 2026)
 
-_Copied from the platform branch (the SME product, not merged to main); its code: `npm run e2e:live` on that branch._
-
 Purser's SME product, run live in the Airwallex sandbox with test money: three fictional companies, each its own Purser
 company on its own Airwallex connected account. Invoices came in through the real inbox and were read by Claude.
 Approvals were signed with a **test passkey**, a software authenticator standing in for the CFO's phone; it is not Face
 ID. Payouts went out on behalf of each company's account, with Purser's fee as `application_fee_options`, and were booked
-and posted to the T:0 sandbox. Code: `npm run e2e:live` (docs/e2e-live.md), platform branch.
+and posted to the T:0 sandbox. Code: `npm run e2e:live` (docs/e2e-live.md), platform branch. (Added 12 November: that
+code is in this repository now, in `src/e2e`.)
 
 **Result:** 3 companies onboarded as Airwallex connected accounts. 1 payout PAID with Purser's fee taken, booked, in T:0
 and with a receipt that verifies offline. 3 payouts from the two newly opened accounts refused by Airwallex: it requires
 the paying company's business registration number, and they were opened as unregistered sole traders.
 
-## Calls (every one counted before it was sent; logs: [platform branch](https://github.com/agamemnon-coder/x402-business-agents/blob/platform/docs/runs/2026-11-10-platform-e2e))
+## Calls (every one counted before it was sent; logs in `2026-11-10-platform-e2e/`)
 
 | Service | Used | Approved | What |
 |---|---|---|---|
@@ -87,9 +86,9 @@ onboarding), and a payout from them needs the payer's registration number. The e
     chart has no VAT account). Owed to suppliers → 24000 Other Current Liabilities.
   - T:0 refused the first post on its A/P account 21110 because it needs a T:0 vendor as counterparty (400 CAPI33).
     Nothing was posted by that refusal.
-- **Receipt:** [`receipt-SANDBOXTEST-P-0002.json`](https://github.com/agamemnon-coder/x402-business-agents/blob/platform/docs/runs/2026-11-10-platform-e2e/receipt-SANDBOXTEST-P-0002.json) (platform branch). `npm run verify-receipt` checks it offline: the
+- **Receipt:** `2026-11-10-platform-e2e/receipt-SANDBOXTEST-P-0002.json`. `npm run verify-receipt` checks it offline: the
   test passkey's signature over the exact terms, then 8 steps from account to T:0 in a hash chain. **VALID.**
-- **Facts:** every id per company is in [`facts.json`](https://github.com/agamemnon-coder/x402-business-agents/blob/platform/docs/runs/2026-11-10-platform-e2e/facts.json) (platform branch).
+- **Facts:** every id per company is in `2026-11-10-platform-e2e/facts.json`.
 
 ## Found and fixed during the run
 
@@ -114,7 +113,7 @@ Airwallex refused both again at create with **`400 validation_failed`**:
 | VE-889, P-0007 | `27c42b632c1c43c4a7539d492db5c23a` |
 
 The retry stopped there, as the stop rule says. Fietslab was not tried. Calls: 9 Airwallex (1 login, 6 balance reads,
-2 transfer creates), 0 T:0, 0 Claude ([`calls-retry.jsonl`](https://github.com/agamemnon-coder/x402-business-agents/blob/platform/docs/runs/2026-11-10-platform-e2e/calls-retry.jsonl)).
+2 transfer creates), 0 T:0, 0 Claude (`calls-retry.jsonl`).
 
 The refusal named its fields only in the error body, which the audit did not keep. So this run cannot say which field
 Airwallex wanted this time. It may still be the registration number (format or place), or another `payer` field. Since

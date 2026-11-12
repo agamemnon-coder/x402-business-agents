@@ -20,8 +20,13 @@ import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
-import { invoiceKey, snapshot, treasuryState, type InvoicePaymentTerms } from "../agents/euroBill.js";
+import { checkPayingAccount } from "../airwallex/binding.js";
+import { applicationFeeOf, noteApplicationFee, takePlatformFee } from "./supplierPayment.js";
+import type { PlatformFields, SupplierPaymentTerms } from "../payouts/plan.js";
+import { partyOf, snapshot, treasuryState, type InvoicePaymentTerms } from "../agents/euroBill.js";
+import { sameLedgerInvoice } from "../lib/invoiceKey.js";
 import { eurInFlightCents } from "../policy/available.js";
+import { exclusive, heldPayoutCents, holdPayout, releasePayout } from "../policy/payoutLock.js";
 import { checkpoint, step } from "../policy/saga.js";
 import { authorize } from "../policy/principals.js";
 
@@ -29,6 +34,12 @@ export interface InvoicePaymentResult {
   conversionId: string | null;
   transfer: Transfer;
 }
+
+/**
+ * What this payment takes from the EUR balance as signed: the amount, the fee reserve and Purser's fee (on this route
+ * too since 9 November). Purser's fee is held from here until it is settled (src/policy/payoutLock.ts).
+ */
+const outCents = (t: InvoicePaymentTerms) => toCents(t.amount) + toCents(t.fee_max) + toCents((t as PlatformFields).platform_fee?.amount ?? "0.00");
 
 /** The retry of a transfer create that Airwallex refused for its own fee configuration (see FEE_RETRY_CODES). */
 export interface FeeRetry {
@@ -47,36 +58,46 @@ export const FEE_RETRY: FeeRetry = { delaysMs: [15_000, 30_000, 60_000, 90_000, 
 export const FEE_RETRY_CODES = AIRWALLEX_FEE_CODES;
 
 export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: SandboxSim | null, proposalId: string, now = () => new Date(), feeRetry: FeeRetry = FEE_RETRY): Promise<InvoicePaymentResult> {
-  const pre = treasuryState(db, await snapshot(db, rail, `pre-exec:${proposalId}`));
   const sha = (db.prepare("SELECT terms_sha256 FROM proposals WHERE proposal_id = ?").get(proposalId) as { terms_sha256: string }).terms_sha256;
 
   const begun = (name: string) => !!db.prepare("SELECT 1 FROM money_steps WHERE action_id = ? AND step = ?").get(proposalId, name);
   const resumedAfterConversion = begun("conversion") && !begun("transfer");
-  const terms = beginExecution<InvoicePaymentTerms>(db, proposalId, (t) => {
-    // The CFO may block a payee after the approval: checked again here, before Airwallex is called (review L2).
-    const held = holdReason(db, t, now());
-    if (held) throw new Error(held);
-    // Another payout for the same invoice (an older proposal approved elsewhere): stop before any conversion.
-    const other = (db.prepare("SELECT invoice_no, status FROM transfers WHERE request_id <> ? AND status <> 'CANCELLED'").all(t.transfer_request_id) as { invoice_no: string; status: string }[])
-      .find((r) => invoiceKey(r.invoice_no) === invoiceKey(t.invoice_no));
-    if (other) throw new Error(`invoice ${t.invoice_no} ${other.status === "PAID" ? "is already paid" : `already has a payout (${other.status})`} by another proposal; nothing is converted or paid`);
-    // A resume after a crash (src/policy/saga.ts): a step already started was decided on when it started; it is now
-    // finished, not judged again on balances it has itself changed. The euro check is then made fresh before step 2.
-    if (begun("transfer")) return;
-    if (t.conversion && !begun("conversion")) {
-      if (Date.parse(t.conversion.valid_to) - 30_000 <= now().getTime()) throw new Error(`quote ${t.conversion.quote_id} expired at ${t.conversion.valid_to}; approval void`);
-      const q = db.prepare("SELECT used_by_conversion FROM fx_quotes WHERE quote_id = ?").get(t.conversion.quote_id) as { used_by_conversion: string | null } | undefined;
-      if (!q) throw new Error(`unknown quote ${t.conversion.quote_id}`);
-      if (q.used_by_conversion && q.used_by_conversion !== t.conversion.request_id) throw new Error(`quote ${t.conversion.quote_id} was already used`);
-      if (pre.usdAvailableCents - toCents(t.conversion.sell_amount) < pre.usdFloorCents) throw new Error("USD would now drop under its floor; a new proposal is needed");
-    }
-    if (begun("conversion")) return;
-    const eurAfter = pre.eurAvailableCents + (t.conversion ? toCents(t.conversion.buy_amount) : 0);
-    // Other payouts written but not yet at Airwallex are spoken for too (this one's own row, on a retry, is not).
-    if (eurAfter - toCents(t.amount) - toCents(t.fee_max) < pre.eurFloorCents + pre.eurObligationsCents + eurInFlightCents(db, t.transfer_request_id)) {
-      throw new Error("EUR would now drop under its floor, commitments and payouts under way; a new proposal is needed");
-    }
-  }, now());
+  // The balances are read and judged, and what this payment speaks for is held, under the one payout lock shared with
+  // the supplier payments (src/policy/payoutLock.ts): a payment executed at the same time, by either executor, counts it.
+  const terms = await exclusive(async () => {
+    const pre = treasuryState(db, await snapshot(db, rail, `pre-exec:${proposalId}`));
+    return beginExecution<InvoicePaymentTerms>(db, proposalId, (t) => {
+      // Purser as a platform (red team 6): only from the account the CFO signed for, the company's own in its binding.
+      checkPayingAccount(db, t, rail as { payingAccount?: string | null }, now());
+      // The CFO may block a payee after the approval: checked again here, before Airwallex is called (review L2).
+      const held = holdReason(db, t, now());
+      if (held) throw new Error(held);
+      // Another payout for the same invoice (an older proposal approved elsewhere): stop before any conversion.
+      const other = (db.prepare("SELECT invoice_no, status FROM transfers WHERE request_id <> ? AND status <> 'CANCELLED'").all(t.transfer_request_id) as { invoice_no: string; status: string }[])
+        .find((r) => sameLedgerInvoice(r.invoice_no, partyOf(db, r.invoice_no), t.invoice_no, { ...partyOf(db, t.invoice_no), vendor: t.vendor }));
+      if (other) throw new Error(`invoice ${t.invoice_no} ${other.status === "PAID" ? "is already paid" : `already has a payout (${other.status})`} by another proposal; nothing is converted or paid`);
+      // A resume after a crash (src/policy/saga.ts): a step already started was decided on when it started; it is now
+      // finished, not judged again on balances it has itself changed. The euro check is then made fresh before step 2.
+      if (begun("transfer")) return;
+      if (t.conversion && !begun("conversion")) {
+        if (Date.parse(t.conversion.valid_to) - 30_000 <= now().getTime()) throw new Error(`quote ${t.conversion.quote_id} expired at ${t.conversion.valid_to}; approval void`);
+        const q = db.prepare("SELECT used_by_conversion FROM fx_quotes WHERE quote_id = ?").get(t.conversion.quote_id) as { used_by_conversion: string | null } | undefined;
+        if (!q) throw new Error(`unknown quote ${t.conversion.quote_id}`);
+        if (q.used_by_conversion && q.used_by_conversion !== t.conversion.request_id) throw new Error(`quote ${t.conversion.quote_id} was already used`);
+        if (pre.usdAvailableCents - toCents(t.conversion.sell_amount) - heldPayoutCents(db, "USD", proposalId) < pre.usdFloorCents) throw new Error("USD would now drop under its floor; a new proposal is needed");
+      }
+      if (begun("conversion")) return;
+      const eurAfter = pre.eurAvailableCents + (t.conversion ? toCents(t.conversion.buy_amount) : 0);
+      // Other payouts written but not yet at Airwallex are spoken for too (this one's own row, on a retry, is not).
+      if (eurAfter - outCents(t) < pre.eurFloorCents + pre.eurObligationsCents + eurInFlightCents(db, t.transfer_request_id, proposalId)) {
+        throw new Error("EUR would now drop under its floor, commitments and payouts under way; a new proposal is needed");
+      }
+      // Spoken for in the same transaction as the check: the USD a conversion sells, and the euros the payout needs beyond
+      // what the conversion brings in, until the conversion is recorded and the payout row is written.
+      if (t.conversion) holdPayout(db, proposalId, t.conversion.request_id, "USD", toCents(t.conversion.sell_amount));
+      holdPayout(db, proposalId, t.transfer_request_id, "EUR", outCents(t) - (t.conversion ? toCents(t.conversion.buy_amount) : 0));
+    }, now());
+  });
 
   let conversionId: string | null = null;
   try {
@@ -97,23 +118,32 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
         });
         return { conversionId: made.conversionId, buyAmountCents: made.buyAmountCents, sellAmountCents: made.sellAmountCents, status: made.status, adopted: !!found };
       }, now);
-      const added = db.prepare("INSERT OR IGNORE INTO fx_conversions (conversion_id, quote_id, request_id, buy_amount, sell_amount, status, approval_sha256) VALUES (?, ?, ?, ?, ?, ?, ?)")
-        .run(conv.conversionId, c.quote_id, c.request_id, fromCents(conv.buyAmountCents), fromCents(conv.sellAmountCents), conv.status, sha);
-      if (added.changes === 1) {
-        audit(db, "awx-executor", conv.adopted ? "fx.adopted" : "fx.converted", conv.conversionId, { quote_id: c.quote_id, request_id: c.request_id, buy: `EUR ${fromCents(conv.buyAmountCents)}`, sell: `USD ${fromCents(conv.sellAmountCents)}`, approval_sha256: sha });
-      }
+      // Recorded, and the hold moved onto the balance it is now in, before any other payment reads the balances.
+      await exclusive(() => db.transaction(() => {
+        const added = db.prepare("INSERT OR IGNORE INTO fx_conversions (conversion_id, quote_id, request_id, buy_amount, sell_amount, status, approval_sha256) VALUES (?, ?, ?, ?, ?, ?, ?)")
+          .run(conv.conversionId, c.quote_id, c.request_id, fromCents(conv.buyAmountCents), fromCents(conv.sellAmountCents), conv.status, sha);
+        if (added.changes === 1) {
+          audit(db, "awx-executor", conv.adopted ? "fx.adopted" : "fx.converted", conv.conversionId, { quote_id: c.quote_id, request_id: c.request_id, buy: `EUR ${fromCents(conv.buyAmountCents)}`, sell: `USD ${fromCents(conv.sellAmountCents)}`, approval_sha256: sha });
+        }
+        releasePayout(db, c.request_id);
+        if (!db.prepare("SELECT 1 FROM transfers WHERE request_id = ?").get(terms.transfer_request_id)) holdPayout(db, proposalId, terms.transfer_request_id, "EUR", outCents(terms));
+      }).immediate());
       conversionId = conv.conversionId;
     }
 
     if (resumedAfterConversion) {
       // Resumed between the conversion and the payout: the euro check on a fresh balance, now the conversion is in it.
-      const fresh = treasuryState(db, await snapshot(db, rail, `resume:${proposalId}`));
-      if (fresh.eurAvailableCents - toCents(terms.amount) - toCents(terms.fee_max) < fresh.eurFloorCents + fresh.eurObligationsCents + eurInFlightCents(db, terms.transfer_request_id)) {
-        throw new Error("EUR would now drop under its floor, commitments and payouts under way; a new proposal is needed");
-      }
+      await exclusive(async () => {
+        const fresh = treasuryState(db, await snapshot(db, rail, `resume:${proposalId}`));
+        if (fresh.eurAvailableCents - outCents(terms) < fresh.eurFloorCents + fresh.eurObligationsCents + eurInFlightCents(db, terms.transfer_request_id, proposalId)) {
+          throw new Error("EUR would now drop under its floor, commitments and payouts under way; a new proposal is needed");
+        }
+        if (!db.prepare("SELECT 1 FROM transfers WHERE request_id = ?").get(terms.transfer_request_id)) holdPayout(db, proposalId, terms.transfer_request_id, "EUR", outCents(terms));
+      });
     }
     // Step 2: the payout, under its own request_id (the transfers row is its outbox entry). Step 3: its settlement.
     const transfer = await step(db, proposalId, 2, "transfer", terms.transfer_request_id, () => submitTransfer(db, rail, terms, sha, now, feeRetry), now);
+    noteApplicationFee(db, terms as unknown as PlatformFields, transfer);
     // Airwallex's own approval workflow (docs/airwallex-approvals.md): the payout waits for a person at Airwallex. Purser's
     // part is done; it never simulates past that wait, and src/airwallex/approvals.ts follows the transfer from here.
     if (inAirwallexApproval(transfer.status)) {
@@ -125,10 +155,19 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
     }
     const final = sim ? await step(db, proposalId, 3, "settle", transfer.id, () => settleInSandbox(db, rail, sim, transfer), now) : transfer;
     recordFee(db, final, terms, sha);
+    // Purser's fee, once the payment is PAID (never failing it); a live payment's is taken when the follow-up reads it PAID.
+    if (final.status === "PAID") takePlatformFee(db, terms as unknown as SupplierPaymentTerms, sha, proposalId, final);
     await snapshot(db, rail, `post-exec:${proposalId}`);
-    finishExecution(db, proposalId, final.status === "PAID" ? "EXECUTED" : "FAILED", { conversion_id: conversionId, transfer_id: final.id, status: final.status });
+    // Written at Airwallex and not failed (IN_APPROVAL, SCHEDULED, PROCESSING, SENT, PAID): EXECUTED, and a payout not
+    // yet PAID is followed up (followPayouts) like a supplier payment's. Only a payout that failed fails the payment.
+    const failed = final.status === "FAILED" || final.status === "CANCELLED";
+    finishExecution(db, proposalId, failed ? "FAILED" : "EXECUTED", { conversion_id: conversionId, transfer_id: final.id, status: final.status });
     return { conversionId, transfer: final };
   } catch (err) {
+    // The payout's hold goes (a payout written is counted by its own row); a conversion refused outright moved nothing,
+    // while one whose answer was lost keeps its hold until a person or a re-run resolves it.
+    releasePayout(db, terms.transfer_request_id);
+    if (terms.conversion && !(err instanceof AirwallexAmbiguous) && !db.prepare("SELECT 1 FROM fx_conversions WHERE request_id = ?").get(terms.conversion.request_id)) releasePayout(db, terms.conversion.request_id);
     finishExecution(db, proposalId, err instanceof AirwallexError && err.code === "expired_quote" ? "NEEDS_REAPPROVAL" : "FAILED", { error: (err as Error).message, ...awxFacts(err) });
     throw err;
   }
@@ -153,13 +192,18 @@ function payeeReason(db: DB, t: InvoicePaymentTerms): string | null {
 
 /** The EUR floor, commitments and other payouts under way, on a fresh balance (as on a resume after the conversion). */
 async function floorReason(db: DB, rail: AirwallexRail, t: InvoicePaymentTerms): Promise<string | null> {
+  // Under the payout lock, like every other balance read a payment is judged on.
+  return exclusive(() => floorReasonNow(db, rail, t));
+}
+
+async function floorReasonNow(db: DB, rail: AirwallexRail, t: InvoicePaymentTerms): Promise<string | null> {
   let s: ReturnType<typeof treasuryState>;
   try {
     s = treasuryState(db, await snapshot(db, rail, `retry:${t.proposal_id}`));
   } catch (e) {
     return `the EUR balance could not be read (${(e as Error).message}); no attempt without the floor check`;
   }
-  return s.eurAvailableCents - toCents(t.amount) - toCents(t.fee_max) < s.eurFloorCents + s.eurObligationsCents + eurInFlightCents(db, t.transfer_request_id)
+  return s.eurAvailableCents - outCents(t) < s.eurFloorCents + s.eurObligationsCents + eurInFlightCents(db, t.transfer_request_id, t.proposal_id)
     ? "EUR would now drop under its floor, commitments and payouts under way; a new proposal is needed" : null;
 }
 
@@ -180,9 +224,19 @@ async function submitTransfer(db: DB, rail: AirwallexRail, t: InvoicePaymentTerm
     return made;
   }
   if (!existing) {
-    // Written before the call: the partial unique index allows one live payout per invoice.
-    db.prepare("INSERT INTO transfers (request_id, invoice_no, amount, currency, method, fee_estimate, status, approval_sha256, updated_at, origin_json) VALUES (?, ?, ?, 'EUR', 'SWIFT', ?, 'SUBMITTING', ?, ?, ?)")
-      .run(t.transfer_request_id, t.invoice_no, t.amount, t.fee_max, sha, new Date().toISOString(), originJson());
+    // Written before the call: the partial unique index allows one live payout per invoice. Its hold goes in the same
+    // transaction, under the payout lock: from now on the SUBMITTING row counts it.
+    await exclusive(() => db.transaction(() => {
+      db.prepare("INSERT INTO transfers (request_id, invoice_no, amount, currency, method, fee_estimate, status, approval_sha256, updated_at, origin_json) VALUES (?, ?, ?, 'EUR', 'SWIFT', ?, 'SUBMITTING', ?, ?, ?)")
+        .run(t.transfer_request_id, t.invoice_no, t.amount, t.fee_max, sha, new Date().toISOString(), originJson());
+      // Purser's fee stays spoken for from here until it is settled, in the write that ends the hold (as a supplier payment's).
+      const fee = (t as PlatformFields).platform_fee;
+      if (fee) {
+        db.prepare(`INSERT OR IGNORE INTO platform_fees (request_id, proposal_id, payout_request_id, amount, currency, destination, fee_transfer_id, status, approval_sha256, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, NULL, 'DUE', ?, ?)`).run(fee.request_id, t.proposal_id, t.transfer_request_id, fee.amount, fee.currency, fee.to_account, sha, new Date().toISOString());
+      }
+      releasePayout(db, t.transfer_request_id);
+    }).immediate());
   }
   // A crash here: the row is written, nothing was sent. The re-run is a resend (it may never close the row); a row left
   // SUBMITTING with nothing behind it is closed by the CFO's `npm run reconcile -- --close-unsent` (src/finance/closeUnsent.ts).
@@ -299,7 +353,7 @@ function recordTransfer(db: DB, t: InvoicePaymentTerms, tr: Transfer, sha: strin
 
 const req = (t: InvoicePaymentTerms, sha: string): NewTransfer => ({
   requestId: t.transfer_request_id, beneficiaryId: t.beneficiary_id, amountCents: toCents(t.amount), currency: "EUR", sourceCurrency: "EUR",
-  reference: t.reference, reason: t.reason, approvalSha256: sha,
+  reference: t.reference, reason: t.reason, approvalSha256: sha, ...applicationFeeOf(t as unknown as PlatformFields),
 });
 
 /**
@@ -429,6 +483,9 @@ function recordFee(db: DB, tr: Transfer, t: InvoicePaymentTerms, sha: string): v
 /** Sandbox only: the transfer goes SENT, then PAID. Status is read back, never assumed. */
 async function settleInSandbox(db: DB, rail: AirwallexRail, sim: SandboxSim, tr: Transfer): Promise<Transfer> {
   let cur = await rail.getTransfer(tr.id);
+  // Airwallex's own approval workflow holds the transfer IN_APPROVAL until a person approves it in Airwallex's web app:
+  // a second lock next to the CFO's Face ID. Purser never simulates past it; the payout is followed up once approved.
+  if (cur.status === "IN_APPROVAL") return cur;
   for (const to of ["SENT", "PAID"] as const) {
     if (cur.status === "PAID") break;
     if (to === "SENT" && cur.status === "SENT") continue;

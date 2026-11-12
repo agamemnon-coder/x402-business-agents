@@ -1,0 +1,386 @@
+[
+  {
+    "key": "SANDBOXTEST",
+    "account": "acct_SC-QD89fOneAeqaRFgOymw",
+    "account_line": "account acct_SC-QD89fOneAeqaRFgOymw existing, ACTIVE (opened 10 November, not read again)",
+    "funding": "skipped: EUR 61.59 already held",
+    "invoices": [
+      {
+        "id": "AP-0001",
+        "vendor": "Zeeland Verpakkingen B.V.",
+        "invoice_no": "ZV-5001",
+        "total": "EUR 4.84",
+        "received_at": "2026-11-10T07:06:04.809Z",
+        "read_by": "claude:claude-sonnet-5-5",
+        "doc_sha256": "d9443f2f2732c1c3c4365025f6f1871533b08823bd4b0b9feba664d9fc2220ed"
+      }
+    ],
+    "claude_reads": [
+      {
+        "at": "2026-11-10T07:06:06.176Z",
+        "task": "ap.classify:d9443f2f2732c1c3",
+        "model": "claude-haiku-5-5",
+        "request_id": null
+      },
+      {
+        "at": "2026-11-10T07:06:08.783Z",
+        "task": "ap.read:d9443f2f2732c1c3",
+        "model": "claude-sonnet-5-5",
+        "request_id": null
+      },
+      {
+        "at": "2026-11-10T07:06:11.463Z",
+        "task": "ap.review:AP-0001",
+        "model": "claude-opus-5-5",
+        "request_id": null
+      },
+      {
+        "at": "2026-11-10T07:06:18.153Z",
+        "task": "ap.review:AP-0001",
+        "model": "claude-opus-5-5",
+        "request_id": null
+      }
+    ],
+    "beneficiaries": [
+      {
+        "id": "e8599d32-5f16-42e6-842c-f7356d5de239",
+        "name": "Zeeland Verpakkingen B.V.",
+        "method": "LOCAL",
+        "bic": "ABNANL2A",
+        "account": "IBAN NL91…4300"
+      }
+    ],
+    "approvals": [
+      {
+        "proposal_id": "P-0001",
+        "kind": "payee_add",
+        "status": "EXECUTED",
+        "terms_sha256": "abbfa7d54e0418a21999afb09a867fa5c7150de7cc7220259b1ca9adbba3be71",
+        "approved_with": "cfo (test passkey) (passkey D4VqbzBp)"
+      },
+      {
+        "proposal_id": "P-0002",
+        "kind": "supplier_payment",
+        "status": "EXECUTED",
+        "terms_sha256": "e3057c735d9b8381baa9c59315f204fe8c686d8c92214777cab6765d5e82a236",
+        "approved_with": "cfo (test passkey) (passkey D4VqbzBp)"
+      }
+    ],
+    "transfers": [
+      {
+        "transfer_id": "593c340b-1752-4537-9ef2-0eb3558897cc",
+        "status": "PAID",
+        "amount": "4.84",
+        "invoice_no": "ZV-5001 · Zeeland Verpakkingen B.V.",
+        "airwallex_fee": "EUR 2.69",
+        "failure": null
+      }
+    ],
+    "purser_fees": [
+      {
+        "amount": "0.02",
+        "status": "SETTLED",
+        "with_payout": "593c340b-1752-4537-9ef2-0eb3558897cc",
+        "to": "acct_op0_QItiOyWKsYb5pwQihA"
+      }
+    ],
+    "refusals": [],
+    "audit": {
+      "ok": true,
+      "rows": 34,
+      "head": "2ede0e7dac1311c9f72feccd1971685b68e38ea64d26272a928921f54194d9ad"
+    },
+    "t0_entries": [
+      "je_prod_wop0vx1B8xOmHQl0",
+      "je_prod_WN96JsvKXGCY7mYs"
+    ],
+    "receipt": "data/e2e/live-20261110c/sandboxtest/receipt-P-0002.json"
+  },
+  {
+    "key": "BAKKERIJ",
+    "account": "acct_O07lI0VvMLagXlj5aeOgyg",
+    "account_line": "account acct_O07lI0VvMLagXlj5aeOgyg opened, ACTIVE",
+    "funding": "funded EUR 60.00 test money: tr_jUpMd20pNreYz0hjLT992Q NEW (request e2e-fund-bakkerij-202611100707)",
+    "invoices": [
+      {
+        "id": "AP-0001",
+        "vendor": "Meelhandel Molenaar B.V.",
+        "invoice_no": "MM-2026-114",
+        "total": "EUR 3.63",
+        "received_at": "2026-11-10T07:07:30.440Z",
+        "read_by": "claude:claude-sonnet-5-5",
+        "doc_sha256": "0c005064a3ec054f7bb3450ae2052dc7c6da9d0f4804a96f48f2abd095d755f6"
+      },
+      {
+        "id": "AP-0002",
+        "vendor": "Verpakking Express B.V.",
+        "invoice_no": "VE-889",
+        "total": "EUR 2.42",
+        "received_at": "2026-11-10T07:07:37.305Z",
+        "read_by": "claude:claude-sonnet-5-5",
+        "doc_sha256": "22813092f98414992038266225e776ef8b2a21bf2161839b6cb9d1a0b8df3439"
+      }
+    ],
+    "claude_reads": [
+      {
+        "at": "2026-11-10T07:07:32.449Z",
+        "task": "ap.classify:0c005064a3ec054f",
+        "model": "claude-haiku-5-5",
+        "request_id": null
+      },
+      {
+        "at": "2026-11-10T07:07:34.626Z",
+        "task": "ap.read:0c005064a3ec054f",
+        "model": "claude-sonnet-5-5",
+        "request_id": null
+      },
+      {
+        "at": "2026-11-10T07:07:37.301Z",
+        "task": "ap.review:AP-0001",
+        "model": "claude-opus-5-5",
+        "request_id": null
+      },
+      {
+        "at": "2026-11-10T07:07:39.218Z",
+        "task": "ap.classify:22813092f9841499",
+        "model": "claude-haiku-5-5",
+        "request_id": null
+      },
+      {
+        "at": "2026-11-10T07:07:41.677Z",
+        "task": "ap.read:22813092f9841499",
+        "model": "claude-sonnet-5-5",
+        "request_id": null
+      },
+      {
+        "at": "2026-11-10T07:07:44.162Z",
+        "task": "ap.review:AP-0002",
+        "model": "claude-opus-5-5",
+        "request_id": null
+      },
+      {
+        "at": "2026-11-10T07:07:52.371Z",
+        "task": "ap.review:AP-0002",
+        "model": "claude-opus-5-5",
+        "request_id": null
+      },
+      {
+        "at": "2026-11-10T07:07:59.361Z",
+        "task": "ap.review:AP-0001",
+        "model": "claude-opus-5-5",
+        "request_id": null
+      },
+      {
+        "at": "2026-11-10T07:08:05.514Z",
+        "task": "ap.review:AP-0002",
+        "model": "claude-opus-5-5",
+        "request_id": null
+      }
+    ],
+    "beneficiaries": [
+      {
+        "id": "2488dd1d-f481-4ea1-81eb-2eba2e4cef1a",
+        "name": "Meelhandel Molenaar B.V.",
+        "method": "LOCAL",
+        "bic": "ABNANL2A",
+        "account": "IBAN NL02…6789"
+      },
+      {
+        "id": "276d70ed-bf34-4c64-a11a-139d3e2e8be7",
+        "name": "Verpakking Express B.V.",
+        "method": "LOCAL",
+        "bic": "INGBNL2A",
+        "account": "IBAN NL20…4567"
+      }
+    ],
+    "approvals": [
+      {
+        "proposal_id": "P-0001",
+        "kind": "payee_add",
+        "status": "EXECUTED",
+        "terms_sha256": "5b3808e92490551b758733f5ab6f8e5e3180d2dff443462d3c3873e25df98577",
+        "approved_with": "cfo (test passkey) (passkey Rd-p5ly8)"
+      },
+      {
+        "proposal_id": "P-0002",
+        "kind": "payee_add",
+        "status": "EXECUTED",
+        "terms_sha256": "c1c9971517dd5d6544fe60bde281bab8f5765961784cceee99f73a5f920c5373",
+        "approved_with": "cfo (test passkey) (passkey Rd-p5ly8)"
+      },
+      {
+        "proposal_id": "P-0003",
+        "kind": "supplier_payment",
+        "status": "FAILED",
+        "terms_sha256": "814377bfe65a8f31e52228dffc520afb87535e2ecb83a29432166aa3d9a5d979",
+        "approved_with": "cfo (test passkey) (passkey Rd-p5ly8)"
+      },
+      {
+        "proposal_id": "P-0004",
+        "kind": "supplier_payment",
+        "status": "FAILED",
+        "terms_sha256": "c43e956614fd63a796060dffcdab3696f3994254749d0ab4544661f2db453cda",
+        "approved_with": "cfo (test passkey) (passkey Rd-p5ly8)"
+      },
+      {
+        "proposal_id": "P-0005",
+        "kind": "payment_batch",
+        "status": "FAILED",
+        "terms_sha256": "8fcb2a4fc4e054b80af7b29ec2ea4542a1724e3fda817760e9741a9bb7ac2af1",
+        "approved_with": "cfo (test passkey) (passkey Rd-p5ly8)"
+      }
+    ],
+    "transfers": [
+      {
+        "transfer_id": null,
+        "status": "CANCELLED",
+        "amount": "3.63",
+        "invoice_no": "MM-2026-114 · Meelhandel Molenaar B.V.",
+        "airwallex_fee": null,
+        "failure": "refused by Airwallex at create: validation_failed"
+      },
+      {
+        "transfer_id": null,
+        "status": "CANCELLED",
+        "amount": "2.42",
+        "invoice_no": "VE-889 · Verpakking Express B.V.",
+        "airwallex_fee": null,
+        "failure": "refused by Airwallex at create: validation_failed"
+      }
+    ],
+    "purser_fees": [
+      {
+        "amount": "0.02",
+        "status": "DUE",
+        "with_payout": null,
+        "to": "acct_op0_QItiOyWKsYb5pwQihA"
+      },
+      {
+        "amount": "0.01",
+        "status": "DUE",
+        "with_payout": null,
+        "to": "acct_op0_QItiOyWKsYb5pwQihA"
+      }
+    ],
+    "refusals": [
+      {
+        "proposal_id": "P-0003",
+        "detail": "Airwallex /transfers/create -> 400 validation_failed (trace 9bd733ccc0694443a94f56da9c3491b6)"
+      },
+      {
+        "proposal_id": "P-0004",
+        "detail": "Airwallex /transfers/create -> 400 validation_failed (trace 64bd007328c1478eb1d16c3d834bb92e)"
+      },
+      {
+        "proposal_id": "P-0005",
+        "detail": "batch: see its lines"
+      }
+    ],
+    "audit": {
+      "ok": true,
+      "rows": 61,
+      "head": "46b827749e1670c7f1f7a87d67c3e4b3ad13ff25b627ff54066aabb5d8872fa7"
+    },
+    "t0_entries": [],
+    "receipt": null
+  },
+  {
+    "key": "FIETSLAB",
+    "account": "acct_XFhJLpkwNp6lzl8rpySE_Q",
+    "account_line": "account acct_XFhJLpkwNp6lzl8rpySE_Q opened, ACTIVE",
+    "funding": "funded EUR 60.00 test money: tr_wOZ5xhSIOaGB8lhcl34GKw NEW (request e2e-fund-fietslab-202611100709)",
+    "invoices": [
+      {
+        "id": "AP-0001",
+        "vendor": "Onderdelen Direct B.V.",
+        "invoice_no": "OD-77",
+        "total": "EUR 6.05",
+        "received_at": "2026-11-10T07:09:14.747Z",
+        "read_by": "claude:claude-sonnet-5-5",
+        "doc_sha256": "10bbbf8716bfca7de38df46ee8ecea5b852eaa90e527a196e3cba613b8036425"
+      }
+    ],
+    "claude_reads": [
+      {
+        "at": "2026-11-10T07:09:15.624Z",
+        "task": "ap.classify:10bbbf8716bfca7d",
+        "model": "claude-haiku-5-5",
+        "request_id": null
+      },
+      {
+        "at": "2026-11-10T07:09:18.229Z",
+        "task": "ap.read:10bbbf8716bfca7d",
+        "model": "claude-sonnet-5-5",
+        "request_id": null
+      },
+      {
+        "at": "2026-11-10T07:09:22.633Z",
+        "task": "ap.review:AP-0001",
+        "model": "claude-opus-5-5",
+        "request_id": null
+      },
+      {
+        "at": "2026-11-10T07:09:30.003Z",
+        "task": "ap.review:AP-0001",
+        "model": "claude-opus-5-5",
+        "request_id": null
+      }
+    ],
+    "beneficiaries": [
+      {
+        "id": "94860af0-d078-4e66-a06e-2b140e677380",
+        "name": "Onderdelen Direct B.V.",
+        "method": "LOCAL",
+        "bic": "RABONL2U",
+        "account": "IBAN NL44…6789"
+      }
+    ],
+    "approvals": [
+      {
+        "proposal_id": "P-0001",
+        "kind": "payee_add",
+        "status": "EXECUTED",
+        "terms_sha256": "048c78d775639e5f98049b6943da693c1bd3858e365a5eca211e71ee6f055c68",
+        "approved_with": "cfo (test passkey) (passkey eqZbMSEl)"
+      },
+      {
+        "proposal_id": "P-0002",
+        "kind": "supplier_payment",
+        "status": "FAILED",
+        "terms_sha256": "d2658f30cdf3e461d32fc6310b0626f0572c775591c89f20c9a1773a12a6aac2",
+        "approved_with": "cfo (test passkey) (passkey eqZbMSEl)"
+      }
+    ],
+    "transfers": [
+      {
+        "transfer_id": null,
+        "status": "CANCELLED",
+        "amount": "6.05",
+        "invoice_no": "OD-77 · Onderdelen Direct B.V.",
+        "airwallex_fee": null,
+        "failure": "refused by Airwallex at create: validation_failed"
+      }
+    ],
+    "purser_fees": [
+      {
+        "amount": "0.03",
+        "status": "DUE",
+        "with_payout": null,
+        "to": "acct_op0_QItiOyWKsYb5pwQihA"
+      }
+    ],
+    "refusals": [
+      {
+        "proposal_id": "P-0002",
+        "detail": "Airwallex /transfers/create -> 400 validation_failed (trace 9e367dfa7dff41ab896be161dfeaea93)"
+      }
+    ],
+    "audit": {
+      "ok": true,
+      "rows": 29,
+      "head": "29738fdc42ff30739bdb6951dc727bfd7dfbf3ace5bcf4510891e14161fea3d8"
+    },
+    "t0_entries": [],
+    "receipt": null
+  }
+]

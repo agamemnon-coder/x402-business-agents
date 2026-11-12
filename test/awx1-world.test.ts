@@ -53,6 +53,10 @@ describe("the Airwallex call budget", () => {
     expect(endpointOf("https://api.sandbox.airwallex.com/api/v1/pa/payment_intents/create")).toBe("/pa/payment_intents/create");
     expect(endpointOf("https://api.sandbox.airwallex.com/api/v1/financial_transactions")).toBe("/financial_transactions");
     expect(endpointOf("https://api.sandbox.airwallex.com/api/v1/pa/customers/cus_abcdefghijklmnopqr")).toBe("/pa/customers/{id}");
+    // Connected accounts (live run 10 Nov): account ids carry - and _, and update_status is a word, not an id.
+    expect(endpointOf("https://api.sandbox.airwallex.com/api/v1/accounts/acct_SC-QD89fOneAeqaRFgOymw/submit")).toBe("/accounts/{id}/submit");
+    expect(endpointOf("https://api.sandbox.airwallex.com/api/v1/simulation/accounts/acct_SC-QD89fOneAeqaRFgOymw/update_status")).toBe("/simulation/accounts/{id}/update_status");
+    expect(endpointOf("https://api.sandbox.airwallex.com/api/v1/hosted_flows/ahfi_IriUYRv-TuWIHnst2Dj4pw/authorize")).toBe("/hosted_flows/{id}/authorize");
   });
 
   it("counts every request, the login too, and refuses the one over budget before it is sent; a refused POST is not ambiguous", async () => {

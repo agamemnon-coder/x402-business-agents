@@ -317,6 +317,7 @@ const KIND_TITLES: Record<string, string> = {
   invoice_payment: "Invoice payment",
   policy_change: "Policy change",
   payee_change: "Supplier bank details",
+  payee_add: "New supplier",
   agent_onboard: "Company card for an outside agent",
   task_card: "Task card",
   quarantine_release: "Held payment",
@@ -352,6 +353,10 @@ export function summarize(kind: string, termsJson: string): string {
   if (kind === "payee_change") {
     const v = (t.verification ?? {}) as P;
     return `Pay ${str(t.vendor)} to the account ending ${str(t.new_iban).slice(-4)} instead of …${str(t.old_iban_last4)}; verified by ${str(v.by)}`;
+  }
+  if (kind === "payee_add") {
+    const v = (t.verification ?? {}) as P;
+    return `Add ${str(t.vendor)} as a supplier, paid to the account ending ${str(t.iban).slice(-4)}; verified by ${str(v.by)}`;
   }
   if (kind === "quarantine_release") {
     return t.action === "return"
