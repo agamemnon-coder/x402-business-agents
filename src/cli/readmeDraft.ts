@@ -4,9 +4,10 @@
 // (`npx vitest run --reporter=json --outputFile.json=<file>`, then `npm run readme-draft -- --tests <file>`), the CI
 // steps from .github/workflows/ci.yml, the repository's counts from the tree. Nothing typed in.
 
-import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { railRefusals } from "../visuals/facts.js";
+import { airwallexHold, railRefusals } from "../visuals/facts.js";
 import { agentRun, faceIdDecisions, split } from "../redesign/run.js";
 import { metalStory } from "../redesign/metalStory.js";
 import { hashTravel } from "../redesign/airwallexProof.js";
@@ -21,10 +22,17 @@ const read = (p: string) => readFileSync(p, "utf8");
 const arg = (name: string) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : undefined; };
 const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
 
-// The test counts, from a vitest JSON report.
-interface VitestReport { numTotalTests: number; numPassedTests: number; numFailedTests: number; numPendingTests: number; numTodoTests: number; numTotalTestSuites: number; testResults: unknown[]; success: boolean }
-const reportPath = arg("--tests");
+// The test counts: from a vitest JSON report when one is given (kept as docs/assets/test-summary.json, with the commit
+// it ran on), else from that summary, so `--check` can rebuild the draft without running the tests.
+interface VitestReport { numTotalTests: number; numPassedTests: number; numFailedTests: number; numPendingTests: number; numTodoTests: number; testResults: unknown[] }
+interface TestSummary { total: number; passed: number; failed: number; skipped: number; files: number; commit: string }
+const SUMMARY = "docs/assets/test-summary.json";
+const reportPath = arg("--tests"), check = process.argv.includes("--check");
 const report = reportPath ? JSON.parse(read(reportPath)) as VitestReport : null;
+const summary: TestSummary | null = report
+  ? { total: report.numTotalTests, passed: report.numPassedTests, failed: report.numFailedTests, skipped: report.numPendingTests + report.numTodoTests, files: report.testResults.length,
+      commit: execFileSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" }).trim() }
+  : existsSync(SUMMARY) ? JSON.parse(read(SUMMARY)) as TestSummary : null;
 
 // The repository, counted.
 function files(dir: string, re: RegExp): string[] {
@@ -43,7 +51,7 @@ const runLogs = readdirSync("docs/runs").filter((f) => /^\d{4}-\d\d-\d\d-.*\.md$
 
 // The records.
 const run = agentRun(), r = run.record, sp = split(r), m = metalStory(r), h = hashTravel(r), awx = awxRun();
-const refusals = railRefusals();
+const refusals = railRefusals(), twoLocks = airwallexHold();
 const declines = [...new Set(awx?.card_transactions.filter((t) => !t.approved && t.decline_code).map((t) => t.decline_code) ?? [])];
 const airi = JSON.parse(read(AIRI_RUN_FILE)) as { purchases: { step: string; route: string; outcome?: string }[]; checks: Record<string, { ok: boolean }>; started_at: string };
 const airiChecks = Object.values(airi.checks), airiPaid = airi.purchases.filter((p) => p.outcome === "SUCCEEDED").length;
@@ -52,14 +60,16 @@ const mb = JSON.parse(read("docs/runs/2026-11-12-moneybird-sandbox.json")) as { 
 const mainDay = run.events.find((e) => e.k === "money")?.at ?? r.snapshot.flows[0]!.at;
 
 const pic = (name: string, alt: string) => `<picture>
+  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="assets/${name}-tall-dark.svg">
+  <source media="(max-width: 600px)" srcset="assets/${name}-tall-light.svg">
   <source media="(prefers-color-scheme: dark)" srcset="assets/${name}-wide-dark.svg">
   <img src="assets/${name}-wide-light.svg" alt="${alt}" width="100%">
 </picture>`;
 
-const proofCards = refusals.map((x) => `| **${x.name}**<br>\`${x.code}\` | ${x.what}${x.note ? `<br>_${x.note}_` : ""} | ${day(`${x.date}T12:00:00Z`)}, ${x.label}.<br>[Run record](${x.record.replace(/^docs\//, "")})${x.proof ? ` · [${x.proof.label}](${x.proof.href})` : ""} |`);
+const proofCards = refusals.map((x) => `| **${x.name}**<br>${x.code ? `\`${x.code}\`` : x.held} | ${x.what}${x.note ? `<br>_${x.note}_` : ""} | ${day(`${x.date}T12:00:00Z`)}, ${x.label}.<br>[Run record](${x.record.replace(/^docs\//, "")})${x.proof ? ` · [${x.proof.label}](${x.proof.href})` : ""} |`);
 
-const testsLine = report
-  ? `**${report.numPassedTests} of ${report.numTotalTests} tests passed** in ${report.testResults.length} files${report.numFailedTests ? `, ${report.numFailedTests} failed` : ""}${report.numPendingTests + report.numTodoTests ? `, ${report.numPendingTests + report.numTodoTests} skipped` : ""} (vitest report of this draft's build; CI runs them on every push).`
+const testsLine = summary
+  ? `**${summary.passed} of ${summary.total} tests passed** in ${summary.files} files${summary.failed ? `, ${summary.failed} failed` : ""}${summary.skipped ? `, ${summary.skipped} skipped` : ""}, on commit \`${summary.commit}\` ([summary](assets/test-summary.json)); CI runs them on every push.`
   : `The test count is not in this build: run \`npx vitest run --reporter=json --outputFile.json=vitest.json\`, then \`npm run readme-draft -- --tests vitest.json\`.`;
 
 const md = `<!-- Draft of the README's next structure (12 Nov), written by \`npm run readme-draft\` (src/cli/readmeDraft.ts).
@@ -72,7 +82,7 @@ const md = `<!-- Draft of the README's next structure (12 Nov), written by \`npm
 
 ${pic("payment-life", "One payment's life: invoice, read by Claude, checked by Purser's code, the exact terms hashed, signed by the CFO's Face ID, checked again by the rail's own control, paid, booked.")}
 
-Three proofs that the rail itself holds the line, each from a live sandbox or testnet run:
+Three runs where the rail itself held a payment, each a live sandbox or testnet run:
 
 | Rail | What happened | Record |
 |---|---|---|
@@ -83,17 +93,19 @@ in your own test world (stand-in executors: no payment reaches Airwallex or Meta
 
 ## How it works
 
-${pic("architecture", "AI agents propose; three layers that do not trust each other must each say yes: Purser's checks in code, the CFO's Face ID over the exact terms, the rail's own controls; then the ledger, the books and the archive.")}
+${pic("architecture", "AI agents propose; three layers that do not trust each other can each stop a payment: Purser's checks in code, the CFO's Face ID over the exact terms above a limit, the rail's own controls; then the ledger.")}
 
 1. **Agents propose.** Claude agents read invoices and propose payments. An agent cannot change its own limits.
 2. **Purser's code checks.** Per-agent limits and budgets, allowed payees and merchants, the invoice's totals. It
    hashes the exact terms (SHA-256).
-3. **The CFO signs.** Above a limit, the CFO approves with Face ID: a passkey signs that hash. Before paying, Purser
-   hashes the terms again; changed terms are refused.
+3. **The CFO signs.** Above a limit, the CFO approves with Face ID: a passkey signs that hash. Every change to a
+   limit is a proposal the CFO signs too. Before paying, Purser hashes the terms again; changed terms are refused.
+   Within the limits, a payment goes without a new signature: the CFO signed those limits.
 4. **The rail checks on its own.** Airwallex (transfer approvals, card controls), Metal (a mandate cap on chain) and
    Visa Intelligent Commerce via Airwallex's Airi (the cardholder's passkey per purchase) each keep their own limit.
-5. **Booked and archived.** Every step goes to a hash-chained audit log; the books go to the accounting; documents
-   keep every version.
+5. **Recorded.** Every step goes to the ledger's hash-chained audit log. Books were posted to T:0 and Moneybird in
+   sandbox runs; Purser Cloud (a private preview, no customer) keeps invoices, suppliers and payments with every
+   version.
 
 ## Security model
 
@@ -102,6 +114,10 @@ ${pic("architecture", "AI agents propose; three layers that do not trust each ot
 | 1. Purser's checks | Code in this repository | over a limit or budget, an unknown payee, totals that do not add up | No |
 | 2. The CFO's signature | The CFO's passkey (Face ID) over the hash of the exact terms | terms changed after signing (the executor re-hashes) | No |
 | 3. The rail's own controls | Airwallex, Metal, Airi | over the rail's own limit or approval, even after Purser's yes | No |
+
+What this does not cover: the rails' limits (Metal mandate caps, Airwallex card limits) are set by Purser's runner,
+which holds the keys, with the CFO's signature for each change. So the layers hold against an agent, a changed
+invoice or changed terms, not against a compromised runner (see the threat model).
 
 Threat model: [security.md](security.md). Controls: [controls.md](controls.md). Security reports:
 [SECURITY.md](../SECURITY.md).
@@ -116,7 +132,7 @@ The logos are the partners' official files, unmodified ([sources](assets/logos/S
 implied. Named in text only: ${LEFT_OUT.map((l) => l.name).join(", ")} (why: [sources](assets/logos/SOURCES.md#left-out-named-in-text-only)).
 Every run is in sandbox or testnet with test money; dates and records in [runs/README.md](runs/README.md).
 
-- **Airwallex (sandbox).** Main run, ${day(mainDay)}: ${h ? `the hash the CFO signed is in Airwallex's own record of ${h.transferMethod} transfer \`${h.transferId.slice(0, 8)}…\` (${h.currency} ${h.amount})` : "the SWIFT payment after the CFO's Face ID"}. awx-1${awx?.attempts[0]?.at ? `, ${day(awx.attempts[0].at)}` : ""}: Airwallex declined agents' cards with its own controls${declines.length ? ` (${declines.map((d) => `\`${d}\``).join(", ")})` : ""}. Two locks${refusals.find((x) => x.rail === "airwallex") ? `, ${day(`${refusals.find((x) => x.rail === "airwallex")!.date}T12:00:00Z`)}` : ""}: its approval workflow held a signed transfer \`IN_APPROVAL\`.
+- **Airwallex (sandbox).** Main run, ${day(mainDay)}: ${h ? `the hash the CFO signed is in Airwallex's own record of ${h.transferMethod} transfer \`${h.transferId.slice(0, 8)}…\` (${h.currency} ${h.amount})` : "the SWIFT payment after the CFO's Face ID"}. awx-1${awx?.attempts[0]?.at ? `, ${day(awx.attempts[0].at)}` : ""}: Airwallex declined agents' cards with its own controls${declines.length ? ` (${declines.map((d) => `\`${d}\``).join(", ")})` : ""}. ${twoLocks ? `Two locks, from ${day(`${twoLocks.date}T12:00:00Z`)}: ${twoLocks.what}` : ""}
 - **Metal (testnet).** Main run: a mandate on chain per agent; ${m.payments.total} payments, each its own transaction${m.refusal ? `; #${m.refusal.seq} refused on chain (\`${m.refusal.code}\`)` : ""}${m.replace ? `; the mandates replaced on chain after the CFO's Face ID` : ""}.
 - **Visa Intelligent Commerce via Airwallex's Airi (sandbox, test card).** ${day(airi.started_at)}: ${airiPaid} purchase${airiPaid === 1 ? "" : "s"} paid with a single-use credential, each confirmed by the cardholder's passkey in Airi; ${airiChecks.filter((c) => c.ok).length} of ${airiChecks.length} checks passed ([run log](${AIRI_RUN_LOG.replace(/^docs\//, "")})).
 - **Claude (Anthropic).** Main run: ${sp.byClaude} of ${sp.decisions} decisions by Claude, ${sp.fallbacks} fallbacks; ${faceIdDecisions(r)} Face ID signatures in the same run.
@@ -153,7 +169,7 @@ Running it live (sandbox keys, a Metal RPC): [run-it.md](run-it.md).
 ## Tests and CI
 
 - ${testsLine}
-- ${testFiles} test files, ${browserChecks} browser checks (Playwright, 390 and 1440 px), ${workflows.length} workflows.
+- ${testFiles} test files under \`test/\`, ${browserChecks} browser checks (Playwright, 390 and 1440 px), ${workflows.length} workflows.
 - CI steps (from \`.github/workflows/ci.yml\`): ${ciSteps.map((s) => s.replace(/\|/g, "/")).join("; ")}.
 - ${runLogs} dated run logs in [runs/](runs/).
 
@@ -167,7 +183,7 @@ Running it live (sandbox keys, a Metal RPC): [run-it.md](run-it.md).
 | Home, Watch, Proof | Replay the main run's record. |
 | /try/sign | Your own test world on stand-in executors: your passkey's signature is real, no payment reaches a rail. |
 | Airi | Its own passkey step held a purchase; it has not refused one outright in a live run. |
-| Two locks | Airwallex held the transfer \`IN_APPROVAL\`; it was never approved in the web app, so never paid. |
+| Two locks | Purser's lock was a labelled virtual test passkey, not a person's Face ID. Airwallex held the transfer \`IN_APPROVAL\` until a person approved it at Airwallex; \`SENT\` and \`PAID\` came from the sandbox's simulation. |
 | Purser Cloud | A hosted preview behind an access key; no customer uses it; test money only. |
 | Tests | Run on stand-ins for Airwallex, Metal and Anthropic. |
 | Customers | Not validated with customers yet; no pilots, no revenue. |
@@ -175,5 +191,11 @@ Running it live (sandbox keys, a Metal RPC): [run-it.md](run-it.md).
 Screenshots and short loops of the live site: [assets/screens/](assets/screens/README.md).
 `;
 
-writeFileSync(OUT, md);
-console.log(`wrote ${OUT}${report ? "" : " (no test report: test counts left out)"}`);
+if (check) {
+  if (read(OUT) !== md) { console.error(`${OUT} differs from what the records give now: npm run readme-draft`); process.exit(1); }
+  console.log(`${OUT} matches the records`);
+} else {
+  writeFileSync(OUT, md);
+  if (report) writeFileSync(SUMMARY, `${JSON.stringify(summary, null, 2)}\n`);
+  console.log(`wrote ${OUT}${summary ? "" : " (no test summary: test counts left out)"}`);
+}

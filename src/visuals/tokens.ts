@@ -6,7 +6,7 @@ import { TOKENS } from "../redesign/ui.js";
 /** The tokens the visuals use. */
 export const VISUAL_TOKENS = [
   "bg", "surface", "sunken", "border", "text", "muted", "faint", "accent", "accent-soft", "ok", "ok-soft",
-  "bad", "bad-soft", "metal", "metal-soft", "awx", "awx-soft", "claude", "claude-soft",
+  "bad", "bad-soft", "metal", "metal-soft", "awx", "awx-soft", "claude", "claude-soft", "a-sourcing",
 ] as const;
 export type Theme = "light" | "dark";
 export type Palette = Record<(typeof VISUAL_TOKENS)[number], string>;

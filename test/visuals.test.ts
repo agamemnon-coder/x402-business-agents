@@ -5,7 +5,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { visualFiles } from "../src/visuals/files.js";
-import { airiHold, airwallexHold, metalRefusal, railRefusals, TWO_LOCKS_LOG } from "../src/visuals/facts.js";
+import { airiHold, airwallexHold, metalRefusal, railRefusals, TWO_LOCKS_LOG, TWO_LOCKS_PAID_LOG } from "../src/visuals/facts.js";
 import { LIFE_STEPS, VISUAL_CSS, architectureSvg, lifecycleSvg, refusalsSvg, wrap } from "../src/visuals/svg.js";
 import { palette } from "../src/visuals/tokens.js";
 import { TOKENS } from "../src/redesign/ui.js";
@@ -32,6 +32,13 @@ describe("visual files", () => {
       expect(s).not.toMatch(/<style>/);
     }
   });
+  it("say what the records back: the CFO signs above a limit, each layer can stop a payment, books in sandbox runs", () => {
+    const all = Object.values(files).join("\n");
+    expect(all).not.toMatch(/only when all three layers say yes|none can be skipped|Only after every yes/);
+    expect(all).toMatch(/Above a limit/);
+    expect(all).toMatch(/sandbox runs/);
+    expect(all).toMatch(/private preview/);
+  });
   it("take their colours from the site's tokens, light and dark", () => {
     const light = palette("light"), dark = palette("dark");
     expect(TOKENS).toContain(`--accent: ${light.accent};`);
@@ -56,16 +63,18 @@ describe("motion", () => {
   });
 });
 
-describe("refused by the rail itself: from the records", () => {
-  it("Airwallex: the two-locks run log", () => {
-    const a = airwallexHold()!, log = read(TWO_LOCKS_LOG);
+describe("held by the rail itself: from the records", () => {
+  it("Airwallex: the two-locks run logs, held IN_APPROVAL, approved at Airwallex on 12 Nov, then PAID (simulated)", () => {
+    const a = airwallexHold()!, log = read(TWO_LOCKS_LOG), paid = read(TWO_LOCKS_PAID_LOG);
     expect(a.code).toBe("IN_APPROVAL");
     expect(log).toContain(a.what.match(/transfer ([0-9a-f]{8})…/)![1]!);
     expect(log).toContain(a.what.match(/EUR \d+\.\d\d/)![0]);
-    expect(log).toMatch(/\*\*Not completed\.\*\*/);
+    expect(a.what).toMatch(/labelled virtual test passkey/);
+    expect(a.what).toMatch(/approved it at Airwallex, 12 Nov; then PAID \(simulated settlement\)/);
+    expect(paid).toMatch(/\| `PAID`, simulated settlement \|/);
   });
-  it("Airwallex: a log that no longer says it was never approved drops the card", () => {
-    expect(airwallexHold(read(TWO_LOCKS_LOG).replace("**Not completed.**", "Completed."))).toBeNull();
+  it("Airwallex: a paid log that no longer says PAID drops the card", () => {
+    expect(airwallexHold(read(TWO_LOCKS_LOG), read(TWO_LOCKS_PAID_LOG).replace("| `PAID`, simulated settlement |", "| |"))).toBeNull();
   });
   it("Metal: the main run's refusal on chain", () => {
     const m = metalRefusal()!, rec = read("docs/demo/main-run.json");
@@ -73,8 +82,11 @@ describe("refused by the rail itself: from the records", () => {
     expect(m.proof!.href).toMatch(/^https:\/\/testnet\.metalntwx\.com\/tx\/0x[0-9a-f]{64}$/);
     expect(rec).toContain(m.proof!.href.split("/tx/")[1]);
   });
-  it("Airi: says what held, and that Airi has not refused outright", () => {
+  it("Airi: names the step that held (no rail code), the failed attempt, Purser's timeout, and that Airi has not refused outright", () => {
     const a = airiHold()!;
+    expect(a.code).toBeNull();
+    expect(a.what).toMatch(/^In a failed attempt/);
+    expect(a.what).toMatch(/Purser's own timeout \(PURSER_NO_TAP\)/);
     expect(a.note).toMatch(/has not refused a purchase outright/);
     expect(a.label).toMatch(/test card, test money/);
     expect(airiHold({ mode: "dry", test_money: true, test_card: true, attempts: [] })).toBeNull();

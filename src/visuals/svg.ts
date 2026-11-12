@@ -1,12 +1,14 @@
-// Purser's visual system as code (12 Nov): inline SVG drawn from the site's design tokens, light and dark, no images,
-// no partner logos or brand marks (rails are named in text). Three visuals:
+// Purser's visual system as code (12 Nov): inline SVG drawn from the site's design tokens, light and dark, no images.
+// The diagrams carry no partner logos or brand marks: rails are named in text (the logos are a separate "Built with"
+// row, src/visuals/logos.ts). Each partner keeps one colour (Airwallex, Metal, Airi, Claude); Purser is the accent.
+// Three visuals:
 //
 // - architecture: agents → Purser's checks → the CFO's Face ID → the rail's own controls → ledger and books → archive,
 //   the three layers that do not trust each other marked as such;
 // - lifecycle: one payment's life, invoice → read → checked → terms → Face ID → rail's own control → paid → booked,
 //   animated in CSS. The first frame is the whole picture (every step drawn), so a viewer that shows no animation, or
 //   prefers reduced motion, sees it complete; the animation only moves a highlight along it;
-// - refusals: the rail itself holding a payment, one card per rail, from the run records (src/visuals/facts.ts).
+// - rails: the rail itself holding a payment, one card per rail, from the run records (src/visuals/facts.ts).
 //
 // Each comes in two layouts: "wide" (README, desktop) and "tall" (phones). Standalone files carry their own palette
 // (src/cli/visuals.ts writes a light and a dark file of each); on the site the SVG takes the page's tokens and its
@@ -48,7 +50,7 @@ const defs = `<defs><marker id="pv-arrow" viewBox="0 0 10 10" refX="8.5" refY="5
 export const LIFE_STEP_S = 1.75;
 const LIFE_N = 8;
 const LIFE_CYCLE = +(LIFE_N * LIFE_STEP_S / 0.88).toFixed(2);
-const LIFE_WIDE = { w: 1200, x0: 60, gap: (1200 - 120) / (LIFE_N - 1) };
+const LIFE_WIDE = { w: 1200, x0: 84, gap: (1200 - 168) / (LIFE_N - 1) };
 const LIFE_TALL = { w: 400, y0: 40, row: 66 };
 const LIFE_LEN = { wide: Math.round(LIFE_WIDE.gap * (LIFE_N - 1)), tall: LIFE_TALL.row * (LIFE_N - 1) };
 
@@ -58,7 +60,7 @@ export const VISUAL_CSS = `.pv { display: block; width: 100%; height: auto; font
 .pv .pv-sunk { fill: var(--sunken); stroke: none; }
 .pv .pv-layer { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 6 5; }
 .pv .pv-trust { fill: var(--accent-soft); stroke: none; }
-.pv .pv-awx { fill: var(--awx-soft); stroke: none; } .pv .pv-metal { fill: var(--metal-soft); stroke: none; } .pv .pv-airi { fill: var(--accent-soft); stroke: none; }
+.pv .pv-awx { fill: var(--awx-soft); stroke: none; } .pv .pv-metal { fill: var(--metal-soft); stroke: none; } .pv .pv-airi { fill: color-mix(in srgb, var(--a-sourcing) 13%, var(--surface)); stroke: none; }
 .pv .pv-claude { fill: var(--claude-soft); stroke: none; } .pv .pv-ok { fill: var(--ok-soft); stroke: none; } .pv .pv-badbg { fill: var(--bad-soft); stroke: none; }
 .pv text { fill: var(--text); font-family: ${FONT}; }
 .pv .t-eye { font-size: 12.5px; font-weight: 700; letter-spacing: .08em; fill: var(--faint); }
@@ -70,7 +72,7 @@ export const VISUAL_CSS = `.pv { display: block; width: 100%; height: auto; font
 .pv .t-cap { font-size: 15px; font-weight: 650; fill: var(--accent); }
 .pv .t-bad { font-size: 13px; font-weight: 650; fill: var(--bad); }
 .pv .t-code { font-family: ${MONO}; font-size: 15px; font-weight: 700; fill: var(--bad); }
-.pv .t-awx { fill: var(--awx); } .pv .t-metal { fill: var(--metal); } .pv .t-airi { fill: var(--accent); } .pv .t-claude { fill: var(--claude); } .pv .t-ok { fill: var(--ok); }
+.pv .t-awx { fill: var(--awx); } .pv .t-metal { fill: var(--metal); } .pv .t-airi { fill: var(--a-sourcing); } .pv .t-acc { fill: var(--accent); } .pv .t-rail { fill: var(--text); } .pv .t-claude { fill: var(--claude); } .pv .t-ok { fill: var(--ok); }
 .pv .t-link { font-size: 13.5px; font-weight: 650; fill: var(--accent); }
 .pv a:hover .t-link, .pv a:focus .t-link { text-decoration: underline; }
 .pv a:focus-visible .pv-box { stroke: var(--accent); stroke-width: 3; }
@@ -109,64 +111,68 @@ ${o.body}
 
 // ---------------------------------------------------------------------------------------------------------------------
 // 1. The architecture: who can stop a payment, in order, and the three layers that do not trust each other.
+//
+// Wording held to the records (review, 12 Nov): the CFO signs above the limits and every change to them, not every
+// payment; each layer can stop a payment on its own; the rails' limits are set by Purser's runner with the CFO's
+// signature, so they hold against an agent, not against a compromised runner (said in the README draft); books ran in
+// sandbox runs (T:0, Moneybird) and the archive is Purser Cloud's, a private preview.
 
-export const ARCH_TITLE = "Purser: how a payment is allowed";
-export const ARCH_DESC = "AI agents propose payments. Three layers that do not trust each other must each say yes: Purser's checks in code, the CFO's Face ID over the exact terms, and the rail's own controls (Airwallex, Metal, Visa Intelligent Commerce via Airi). Then the payment is written to the ledger and the books, and archived.";
-export const LAYERS_LINE = "Three layers that do not trust each other: each one checks again, on its own.";
+export const ARCH_TITLE = "Purser: who can stop a payment";
+export const ARCH_DESC = "AI agents propose payments. Three layers that do not trust each other can each stop one on its own: Purser's checks in code; the CFO's Face ID, a passkey over the exact terms, above the limits and on every change to them; and the rail's own controls (Airwallex, Metal, Visa Intelligent Commerce via Airi). Then the ledger and its hash-chained audit log; the books in sandbox runs; the archive in Purser Cloud, a private preview.";
+export const LAYERS_LINE = "Three layers that do not trust each other: each can stop a payment on its own.";
+export const FOOT = "Sandbox and testnet runs, test money.";
 
 const AGENT_NAMES = ["Sourcing", "Support", "Treasury"] as const;
 const LAYERS = [
   { n: "LAYER 1 · CODE", h: "Purser's checks", body: ["Limits and budgets per agent", "Allowed payees and merchants", "The invoice adds up", "Hashes the exact terms"], refuses: "Refuses over a limit or an unknown payee" },
-  { n: "LAYER 2 · SIGNATURE", h: "The CFO's Face ID", body: ["A passkey signs the hash of the exact terms", "Before paying, Purser hashes the terms again"], refuses: "Refuses terms changed after signing" },
+  { n: "LAYER 2 · SIGNATURE", h: "CFO's Face ID", body: ["Above a limit, a passkey signs the hash of the exact terms", "Every change to a limit is signed too"], refuses: "Refuses terms changed after signing" },
 ] as const;
 const RAILS = [
-  { cls: "awx", name: "Airwallex", line: "Transfer approvals, card limits" },
-  { cls: "metal", name: "Metal", line: "Mandate cap, on chain" },
+  { cls: "awx", name: "Airwallex", line: "Approvals, card limits" },
+  { cls: "metal", name: "Metal", line: "Mandate cap on chain" },
   { cls: "airi", name: "Visa via Airi", line: "Cardholder's passkey" },
 ] as const;
-const RAIL_REFUSES = ["Refuses on its own limits,", "even after Purser's yes"];
-const BOOKS = { h: "Ledger and books", body: ["Hash-chained audit log", "Books posted to the accounting"] } as const;
-const ARCHIVE = { h: "Archive", body: ["Invoice, terms, signature and receipt, every version kept"] } as const;
+const RAIL_REFUSES = "Refuses over its own limits, even after Purser's yes";
+const BOOKS = { h: "Ledger", body: ["Hash-chained audit log", "Books: T:0 and Moneybird, sandbox runs"] } as const;
+const ARCHIVE = { h: "Archive", body: ["Purser Cloud (private preview): invoices, suppliers, payments, every version kept"] } as const;
 
 function archWide(): { w: number; h: number; body: string } {
-  const W = 1200, H = 540, top = 78, bh = 400, mid = top + bh / 2;
-  const out: string[] = [];
-  // The bracket over the three layers.
-  out.push(`<path class="pv-still" d="M244 52 L244 40 L960 40 L960 52"/>`, text(602, 30, [LAYERS_LINE], "t-cap", 18, "middle"));
+  const W = 1200, top = 74, bh = 410, mid = top + 170, out: string[] = [];
   // Agents.
-  out.push(rect(16, top, 188, bh, "pv-box", 18), rect(16, top, 188, bh, "pv-claude", 18).replace("pv-claude", "pv-claude"),
-    text(36, top + 34, ["AGENTS"], "t-eye", 16), text(36, top + 62, ["AI agents"], "t-h", 22), text(36, top + 92, wrap("Claude reads invoices and proposes payments", 21), "t-b", 21));
-  AGENT_NAMES.forEach((a, i) => out.push(rect(36, top + 168 + i * 50, 148, 38, "pv-box", 19), text(110, top + 192 + i * 50, [a], "t-h2", 18, "middle")));
-  out.push(text(36, top + 350, wrap("Cannot change its own limits", 20), "t-bad", 18));
-  // Layers 1 and 2.
+  const ax = 16, aw = 172;
+  out.push(rect(ax, top, aw, bh, "pv-claude", 18), text(ax + 18, top + 32, ["AGENTS"], "t-eye", 16), text(ax + 18, top + 58, ["AI agents"], "t-h", 22),
+    text(ax + 18, top + 86, wrap("Claude reads invoices and proposes payments", 17), "t-b", 20));
+  AGENT_NAMES.forEach((a, i) => out.push(rect(ax + 16, top + 170 + i * 46, aw - 32, 36, "pv-box", 18), text(ax + aw / 2, top + 193 + i * 46, [a], "t-h2", 18, "middle")));
+  out.push(text(ax + 18, top + bh - 26, wrap("Cannot change its own limits", 16), "t-bad", 18));
+  // The three layers in one dashed group, its line above it.
+  const gx = 224, cw = 216, gap = 36, cx = (i: number) => gx + 14 + i * (cw + gap), gw = 3 * cw + 2 * gap + 28;
+  out.push(rect(gx, top - 14, gw, bh + 28, "pv-layer", 24), text(gx + gw / 2, top - 26, [LAYERS_LINE], "t-cap", 18, "middle"));
+  const card = (x: number, eye: string, h: string) => {
+    const hl = wrap(h, 15);
+    out.push(rect(x, top, cw, bh, "pv-box", 18), text(x + 18, top + 32, [eye], "t-eye", 16), text(x + 18, top + 58, hl, "t-h", 22));
+    return top + 58 + (hl.length - 1) * 22 + 34;
+  };
+  const refuse = (x: number, y: number, t: string) => { const ls = wrap(t, 20); out.push(rect(x + 12, y, cw - 24, ls.length * 18 + 22, "pv-badbg", 12), text(x + 24, y + 25, ls, "t-bad", 18)); };
   LAYERS.forEach((l, i) => {
-    const x = 244 + i * 244, w = 220;
-    out.push(rect(x, top, w, bh, "pv-box", 18), rect(x - 6, top - 6, w + 12, bh + 12, "pv-layer", 22),
-      text(x + 20, top + 34, [l.n], "t-eye", 16), text(x + 20, top + 62, wrap(l.h, 20), "t-h", 22));
-    let y = top + 104;
-    for (const b of l.body) { const ls = wrap(b, 24); out.push(text(x + 20, y, ls, "t-b", 20)); y += ls.length * 20 + 12; }
-    out.push(rect(x + 14, top + bh - 74, w - 28, 58, "pv-badbg", 12), text(x + 26, top + bh - 50, wrap(l.refuses, 25), "t-bad", 18));
+    const x = cx(i);
+    let y = card(x, l.n, l.h);
+    for (const b of l.body) { const ls = wrap(b, 21); out.push(text(x + 18, y, ls, "t-b", 20)); y += ls.length * 20 + 10; }
+    refuse(x, y + 4, l.refuses);
   });
-  // Layer 3: the rails.
-  { const x = 732, w = 228;
-    out.push(rect(x, top, w, bh, "pv-box", 18), rect(x - 6, top - 6, w + 12, bh + 12, "pv-layer", 22),
-      text(x + 20, top + 34, ["LAYER 3 · THE RAIL"], "t-eye", 16), text(x + 20, top + 62, ["The rail's own controls"], "t-h", 22));
-    RAILS.forEach((r, i) => {
-      const y = top + 86 + i * 78;
-      out.push(rect(x + 14, y, w - 28, 66, `pv-${r.cls}`, 12), text(x + 28, y + 26, [r.name], `t-h2 t-${r.cls}`, 18), text(x + 28, y + 48, [r.line], "t-s", 18));
-    });
-    out.push(rect(x + 14, top + bh - 74, w - 28, 58, "pv-badbg", 12), text(x + 26, top + bh - 50, RAIL_REFUSES, "t-bad", 18));
-  }
-  // Ledger and books, then the archive.
-  const rx = 996, rw = 188;
-  out.push(rect(rx, top, rw, 220, "pv-box", 18), text(rx + 18, top + 34, ["RECORD"], "t-eye", 16), text(rx + 18, top + 62, wrap(BOOKS.h, 16), "t-h", 22));
-  let y = top + 118;
-  for (const b of BOOKS.body) { const ls = wrap(b, 20); out.push(text(rx + 18, y, ls, "t-b", 20)); y += ls.length * 20 + 10; }
-  out.push(rect(rx, top + 260, rw, 140, "pv-box", 18), text(rx + 18, top + 294, [ARCHIVE.h], "t-h", 22), text(rx + 18, top + 322, wrap(ARCHIVE.body[0], 20), "t-b", 20));
-  out.push(arrow(rx + rw / 2, top + 222, rx + rw / 2, top + 256));
-  // The flow between the columns.
-  out.push(arrow(206, mid, 236, mid), arrow(466, mid, 482, mid), arrow(710, mid, 724, mid), arrow(968, mid - 90, 992, mid - 90));
-  out.push(text(W / 2, H - 22, ["A payment moves only when all three layers say yes. Sandbox and testnet runs, test money."], "t-f", 16, "middle"));
+  { const x = cx(2); let y = card(x, "LAYER 3 · THE RAIL", "The rail's own controls") - 18;
+    for (const r of RAILS) { out.push(rect(x + 12, y, cw - 24, 58, `pv-${r.cls}`, 12), text(x + 26, y + 24, [r.name], `t-h2 t-${r.cls}`, 18), text(x + 26, y + 45, [r.line], "t-s", 18)); y += 66; }
+    refuse(x, y + 2, RAIL_REFUSES); }
+  // The ledger, then the archive.
+  const rx = gx + gw + 30, rw = W - 16 - rx;
+  out.push(rect(rx, top, rw, 214, "pv-box", 18), text(rx + 18, top + 32, ["RECORD"], "t-eye", 16), text(rx + 18, top + 58, [BOOKS.h], "t-h", 22));
+  let y = top + 90;
+  for (const b of BOOKS.body) { const ls = wrap(b, 17); out.push(text(rx + 18, y, ls, "t-b", 20)); y += ls.length * 20 + 8; }
+  out.push(rect(rx, top + 244, rw, bh - 244, "pv-box", 18), text(rx + 18, top + 276, [ARCHIVE.h], "t-h", 22), text(rx + 18, top + 302, wrap(ARCHIVE.body[0], 19), "t-s", 17));
+  out.push(arrow(rx + rw / 2, top + 216, rx + rw / 2, top + 240));
+  // The flow: agents → group, card → card, group → ledger.
+  out.push(arrow(ax + aw + 4, mid, gx - 4, mid), arrow(cx(0) + cw + 4, mid, cx(1) - 4, mid), arrow(cx(1) + cw + 4, mid, cx(2) - 4, mid), arrow(gx + gw + 4, top + 85, rx - 4, top + 85));
+  const H = top + bh + 56;
+  out.push(text(W / 2, H - 18, [FOOT], "t-f", 16, "middle"));
   return { w: W, h: H, body: out.join("\n") };
 }
 
@@ -177,35 +183,39 @@ function archTall(): { w: number; h: number; body: string } {
   const down = () => { out.push(arrow(W / 2, y + 2, W / 2, y + 26)); y += 30; };
   // Agents.
   box(170, "pv-claude");
-  out.push(text(x + 18, y + 30, ["AGENTS"], "t-eye", 16), text(x + 18, y + 56, ["AI agents"], "t-h", 22), text(x + 18, y + 82, wrap("Claude reads invoices and proposes payments", 36), "t-b", 20));
+  out.push(text(x + 18, y + 30, ["AGENTS"], "t-eye", 16), text(x + 18, y + 56, ["AI agents"], "t-h", 22), text(x + 18, y + 82, wrap("Claude reads invoices and proposes payments", 34), "t-b", 20));
   AGENT_NAMES.forEach((a, i) => out.push(rect(x + 14 + i * 114, y + 120, 106, 34, "pv-box", 17), text(x + 67 + i * 114, y + 142, [a], "t-s", 18, "middle")));
   y += 170; down();
-  // The three layers inside one dashed bracket.
+  // The three layers inside one dashed group.
   const y0 = y;
-  out.push(text(W / 2, y + 16, wrap(LAYERS_LINE, 44), "t-cap", 19, "middle"));
-  y += 60;
+  const cap = wrap(LAYERS_LINE, 40);
+  out.push(text(W / 2, y + 16, cap, "t-cap", 19, "middle"));
+  y += cap.length * 19 + 42;
   LAYERS.forEach((l) => {
-    const lines = l.body.flatMap((b) => wrap(b, 40));
+    const lines = l.body.flatMap((b) => wrap(b, 38));
     const h = 92 + lines.length * 20 + 44;
     box(h);
     out.push(text(x + 18, y + 28, [l.n], "t-eye", 16), text(x + 18, y + 54, [l.h], "t-h", 22), text(x + 18, y + 82, lines, "t-b", 20),
       rect(x + 12, y + h - 46, w - 24, 34, "pv-badbg", 10), text(x + 24, y + h - 24, [l.refuses], "t-bad", 18));
     y += h; down();
   });
-  { const h = 92 + 3 * 52 + 46; box(h);
+  { const ref = wrap(RAIL_REFUSES, 36), h = 92 + 3 * 52 + ref.length * 18 + 22; box(h);
     out.push(text(x + 18, y + 28, ["LAYER 3 · THE RAIL"], "t-eye", 16), text(x + 18, y + 54, ["The rail's own controls"], "t-h", 22));
     RAILS.forEach((r, i) => { const ry = y + 70 + i * 52; out.push(rect(x + 12, ry, w - 24, 44, `pv-${r.cls}`, 10), text(x + 26, ry + 27, [r.name], `t-h2 t-${r.cls}`, 18), text(x + w - 26, ry + 27, [r.line], "t-s", 18).replace('<text class="t-s"', '<text class="t-s" text-anchor="end"')); });
-    out.push(rect(x + 12, y + h - 66, w - 24, 54, "pv-badbg", 10), text(x + 24, y + h - 44, RAIL_REFUSES, "t-bad", 18));
+    const ry = y + 70 + 3 * 52 + 4;
+    out.push(rect(x + 12, ry, w - 24, ref.length * 18 + 22, "pv-badbg", 10), text(x + 24, ry + 25, ref, "t-bad", 18));
     y += h; }
-  out.push(rect(x - 6, y0 + 48, w + 12, y - y0 - 42, "pv-layer", 22));
+  out.push(rect(x - 6, y0 + cap.length * 19 + 30, w + 12, y - y0 - cap.length * 19 - 24, "pv-layer", 22));
   y += 8; down();
-  box(112);
-  out.push(text(x + 18, y + 28, ["RECORD"], "t-eye", 16), text(x + 18, y + 54, [BOOKS.h], "t-h", 22), text(x + 18, y + 80, BOOKS.body.slice(), "t-b", 20));
-  y += 112; down();
-  box(92);
-  out.push(text(x + 18, y + 32, [ARCHIVE.h], "t-h", 22), text(x + 18, y + 58, wrap(ARCHIVE.body[0], 42), "t-b", 20));
-  y += 92 + 16;
-  out.push(text(W / 2, y + 8, wrap("A payment moves only when all three layers say yes. Sandbox and testnet runs, test money.", 48), "t-f", 16, "middle"));
+  const bl = BOOKS.body.flatMap((b) => wrap(b, 38)), bh = 64 + bl.length * 20 + 10;
+  box(bh);
+  out.push(text(x + 18, y + 28, ["RECORD"], "t-eye", 16), text(x + 18, y + 54, [BOOKS.h], "t-h", 22), text(x + 18, y + 80, bl, "t-b", 20));
+  y += bh; down();
+  const al = wrap(ARCHIVE.body[0], 38), ah = 44 + al.length * 20 + 14;
+  box(ah);
+  out.push(text(x + 18, y + 32, [ARCHIVE.h], "t-h", 22), text(x + 18, y + 58, al, "t-b", 20));
+  y += ah + 16;
+  out.push(text(W / 2, y + 8, [FOOT], "t-f", 16, "middle"));
   return { w: W, h: y + 30, body: out.join("\n") };
 }
 
@@ -215,19 +225,21 @@ export function architectureSvg(layout: Layout = "wide", standalone?: Theme): st
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-// 2. One payment's life, animated.
+// 2. One payment's life, animated. A payment within the limits skips step 5 (the CFO signed those limits); the step is
+// drawn as "above a limit".
 
 export const LIFE_TITLE = "One payment's life";
-export const LIFE_DESC = "Eight steps: an invoice arrives; Claude reads it; Purser's code checks it; the exact terms are hashed; the CFO signs that hash with Face ID; the rail checks with its own controls; the payment is made; it is booked and archived.";
+export const LIFE_DESC = "Eight steps: an invoice arrives; Claude reads it; Purser's code checks it; the exact terms are hashed; above a limit, the CFO signs that hash with Face ID; the rail checks with its own controls; the payment is made; it is written to the ledger. Each layer can stop it on its own.";
+export const LIFE_FOOT = "Each layer can stop it on its own.";
 export const LIFE_STEPS = [
   { h: "Invoice", who: "Supplier", s: "Arrives by e-mail or upload", cls: "" },
   { h: "Read", who: "Claude", s: "Payee, amount, account", cls: "t-claude" },
-  { h: "Checked", who: "Purser's code", s: "Limits, payee, totals", cls: "t-airi" },
-  { h: "Terms", who: "Purser's code", s: "The exact terms, hashed", cls: "t-airi" },
-  { h: "Face ID", who: "The CFO", s: "A passkey signs that hash", cls: "t-ok" },
-  { h: "Rail's control", who: "The rail", s: "Its own limits and approvals", cls: "t-awx" },
-  { h: "Paid", who: "The rail", s: "Only after every yes", cls: "t-awx" },
-  { h: "Booked", who: "Ledger", s: "Books, audit log, archive", cls: "t-metal" },
+  { h: "Checked", who: "Purser's code", s: "Limits, payee, totals", cls: "t-acc" },
+  { h: "Terms", who: "Purser's code", s: "The exact terms, hashed", cls: "t-acc" },
+  { h: "Face ID", who: "The CFO", s: "Above a limit: a passkey signs", cls: "t-ok" },
+  { h: "Rail's control", who: "The rail", s: "Its own limits and approvals", cls: "t-rail" },
+  { h: "Paid", who: "The rail", s: "When no layer said no", cls: "t-rail" },
+  { h: "Booked", who: "Ledger", s: "Ledger and audit log", cls: "t-rail" },
 ] as const;
 
 function lifeWide(): { w: number; h: number; body: string } {
@@ -235,13 +247,13 @@ function lifeWide(): { w: number; h: number; body: string } {
   out.push(`<path class="pv-line" d="M${x0} ${cy} H${x1}"/>`, `<path class="pv-prog" d="M${x0} ${cy} H${x1}" stroke-dasharray="${len}" stroke-dashoffset="0"/>`);
   LIFE_STEPS.forEach((s, i) => {
     const x = Math.round(x0 + gap * i), d = `pv-d${i}`;
-    out.push(`<rect class="pv-step-hl ${d}" x="${x - 70}" y="${cy - 74}" width="140" height="196" rx="16"/>`,
+    out.push(`<rect class="pv-step-hl ${d}" x="${x - 68}" y="${cy - 74}" width="136" height="196" rx="16"/>`,
       text(x, cy - 44, [s.who.toUpperCase()], `t-eye ${s.cls}`, 16, "middle"),
       `<circle class="pv-dot" cx="${x}" cy="${cy}" r="20"/>`, `<circle class="pv-ring ${d}" cx="${x}" cy="${cy}" r="27"/>`,
       text(x, cy + 5, [String(i + 1)], "pv-num", 16, "middle"),
-      text(x, cy + 50, [s.h], "t-h2", 18, "middle"), text(x, cy + 72, wrap(s.s, 17), "t-s", 17, "middle"));
+      text(x, cy + 50, [s.h], "t-h2", 18, "middle"), text(x, cy + 72, wrap(s.s, 16), "t-s", 17, "middle"));
   });
-  out.push(text(W / 2, H - 14, ["Any layer can stop it; none can be skipped. Sandbox and testnet runs, test money."], "t-f", 16, "middle"));
+  out.push(text(W / 2, H - 14, [`${LIFE_FOOT} ${FOOT}`], "t-f", 16, "middle"));
   return { w: W, h: H, body: out.join("\n") };
 }
 
@@ -257,8 +269,8 @@ function lifeTall(): { w: number; h: number; body: string } {
       text(W - 22, y - 4, [s.who.toUpperCase()], `t-eye ${s.cls}`, 16).replace('<text class', '<text text-anchor="end" class'));
   });
   const h = y1 + 46;
-  out.push(text(W / 2, h - 2, ["Any layer can stop it; none can be skipped."], "t-f", 16, "middle"));
-  return { w: W, h: h + 14, body: out.join("\n") };
+  out.push(text(W / 2, h - 2, [LIFE_FOOT, FOOT], "t-f", 17, "middle"));
+  return { w: W, h: h + 32, body: out.join("\n") };
 }
 
 export function lifecycleSvg(layout: Layout = "wide", standalone?: Theme): string {
@@ -267,9 +279,10 @@ export function lifecycleSvg(layout: Layout = "wide", standalone?: Theme): strin
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-// 3. Refused by the rail itself: one card per rail, each linking to its run record.
+// 3. Held by the rail itself: one card per rail, each linking to its run record. The red monospace line is the rail's
+// own answer (a status or code); a card without one names the step that held, in plain type.
 
-export const REFUSALS_TITLE = "Refused by the rail itself";
+export const REFUSALS_TITLE = "Held by the rail itself";
 const dayLabel = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${iso}T12:00:00Z`));
 
 const cardLines = (r: RailRefusal, chars: number) => ({ what: wrap(r.what, chars), note: r.note ? wrap(r.note, chars + 2) : [] });
@@ -281,7 +294,8 @@ function refusalCard(r: RailRefusal, x: number, y: number, w: number, h: number,
   const body = [
     rect(x, y, w, h, "pv-box", 18), rect(x, y, w, 70, `pv-${cls}`, 18), `<rect class="pv-${cls}" x="${x}" y="${y + 40}" width="${w}" height="30"/>`,
     text(x + 20, y + 30, [r.name], `t-h2 t-${cls}`, 18), text(x + 20, y + 54, [r.control], "t-s", 18),
-    rect(x + 20, y + 86, w - 40, 36, "pv-badbg", 10), text(x + 34, y + 110, [r.code], "t-code", 18),
+    ...(r.code ? [rect(x + 20, y + 86, w - 40, 36, "pv-badbg", 10), text(x + 34, y + 110, [r.code], "t-code", 18)]
+      : [rect(x + 20, y + 86, w - 40, 36, "pv-sunk", 10), text(x + 34, y + 109, [r.held ?? ""], "t-h2", 18)]),
     text(x + 20, y + 150, what, "t-b", 20),
     ...(note.length ? [text(x + 20, y + 150 + what.length * 20 + 10, note, "t-f", 18)] : []),
     text(x + 20, y + h - 44, [`${dayLabel(r.date)} · ${r.label}`], "t-f", 16),
@@ -291,9 +305,9 @@ function refusalCard(r: RailRefusal, x: number, y: number, w: number, h: number,
 }
 
 export function refusalsSvg(items: RailRefusal[], href: (path: string) => string, layout: Layout = "wide", standalone?: Theme): string {
-  const desc = items.map((r) => `${r.name}: ${r.code}. ${r.what}${r.note ? ` ${r.note}` : ""}`).join(" ");
+  const desc = items.map((r) => `${r.name}: ${r.code ?? r.held}. ${r.what}${r.note ? ` ${r.note}` : ""}`).join(" ");
   if (layout === "wide") {
-    const W = 1200, gap = 20, w = (W - 32 - gap * (items.length - 1)) / items.length, chars = Math.floor(w / 8.1);
+    const W = 1200, gap = 20, w = (W - 32 - gap * (items.length - 1)) / items.length, chars = Math.floor(w / 8.7);
     const h = Math.max(...items.map((r) => cardHeight(r, chars)));
     const cards = items.map((r, i) => refusalCard(r, 16 + i * (w + gap), 16, w, h, href, chars));
     return svg({ w: W, h: h + 32, id: "rails-wide", title: REFUSALS_TITLE, desc, body: cards.join("\n"), standalone });
@@ -319,7 +333,7 @@ export function socialSvg(site: string): string {
     { t: "Purser's checks", s: "code", cls: "pv-box", tc: "" },
     { t: "CFO's Face ID", s: "signature", cls: "pv-box", tc: "" },
     { t: "The rail", s: "its own controls", cls: "pv-box", tc: "" },
-    { t: "Books", s: "booked, archived", cls: "pv-metal", tc: "t-metal" },
+    { t: "Ledger", s: "audit log", cls: "pv-box", tc: "" },
   ];
   const y = 430, w = 190, gap = 28;
   chips.forEach((c, i) => {
