@@ -155,19 +155,22 @@ describe("/airwallex: transfer approvals, three states read from the record and 
   const md = read(TWO_LOCKS_FILE);
   const row = liveRuns().find((r) => r.key === TWO_LOCKS_KEY);
 
+  // Written to hold on any record: today's (held IN_APPROVAL, not approved in the web app) and a finished one alike.
   it("today: what the record says, which is what the runs list says", () => {
     const s = twoLocksState(md, row)!;
-    const recordNow = /\| \*\*The web-app approval\*\* \|[^\n]*`([A-Z_]+)`/.exec(md)?.[1] ?? /\*\*`([A-Z_]+)`\*\*/.exec(md)![1]!;
+    const section = md.split(/^## What happened[^\n]*$/m)[1]!.split(/^## /m)[0]!;
+    const named = [...section.matchAll(/\b(IN_APPROVAL|SCHEDULED|PROCESSING|SENT|PAID|FAILED|CANCELLED|REJECTED)\b/g)].map((m) => m[1]);
     expect(row).toBeTruthy();
     expect(s.source).toBe("record");
     expect(s.disagree).toBe(false);
-    expect(md).toContain(s.transferId);
-    expect(md).toContain(`EUR ${s.amount}`);
-    expect(md).toContain(`created ${s.iso.replace(".000Z", "Z")}`);
+    expect(section).toContain(s.transferId);
+    expect(section).toContain(`EUR ${s.amount}`);
     expect(row!.ids.find((i) => i.label === "Transfer")!.value).toBe(s.transferId);
     expect(row!.stats!.map((x) => x.v)).toContain(s.now);
-    expect(md).toContain(`\`${s.now}\``);
-    expect(s.held).toBe(/Airwallex answered \*\*`([A-Z_]+)`\*\*/.exec(md)![1]);
+    // The state on create is the first status the run log names; the state now is one it names, and none it names is further along.
+    expect(s.held).toBe(named[0]);
+    expect(named).toContain(s.now);
+    if (named.includes("PAID")) expect(s.now).toBe("PAID");
     expect(s.finished).toBe(s.now === "PAID");
     // The page shows the three states as the record has them, whatever they are today.
     const t = tiles.find((x) => x.key === "approvals")!;
@@ -175,17 +178,19 @@ describe("/airwallex: transfer approvals, three states read from the record and 
     expect(t.states).toHaveLength(3);
     expect(t.states![0]!.text).toBe("Signed in Purser");
     expect(t.states![1]!.text).toBe(`${s.held} at Airwallex`);
-    expect(t.states![2]!.text).toContain(s.now);
-    expect(t.states![2]!.text).toContain(recordNow);
+    expect(t.states![2]!.text).toBe(`Now: ${s.now}${s.finished ? "" : ", not paid"}`);
     for (const x of t.states!) expect(text(tileHtml("approvals"))).toContain(x.text);
+    expect(/not paid/.test(text(tileHtml("approvals")))).toBe(!s.finished);
     expect(t.id).toBe(s.transferId);
     expect(t.href).toBe(`runs#${TWO_LOCKS_KEY}`);
     expect(pages.runs).toContain(`id="${TWO_LOCKS_KEY}"`);
-    // A passkey signed it, a labelled test passkey: the tile says "signed", never Face ID.
-    expect(md).toMatch(/labelled virtual test passkey/);
-    expect(s.testPasskey).toBe(true);
-    expect(text(tileHtml("approvals"))).not.toMatch(/Face ID/);
-    expect(text(awx)).toMatch(/two-locks run[^.]*labelled test passkey/);
+    // Who signed is the record's too: while it says a labelled test passkey, the tile says "signed", never Face ID,
+    // and the fold of what is simulated names the run.
+    expect(s.testPasskey).toBe(/test passkey/i.test(section));
+    if (s.testPasskey) {
+      expect(text(tileHtml("approvals"))).not.toMatch(/Face ID/);
+      expect(text(awx)).toMatch(/two-locks run[^.]*labelled test passkey/);
+    }
   });
 
   it("a finished record and row: the tile shows PAID and no longer says it is not paid", () => {

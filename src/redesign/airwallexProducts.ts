@@ -417,6 +417,8 @@ export function airwallexBody(run: AgentRun, o: AirwallexBody): string {
       ...(o.deposit ? [liPlain(`Metal earnings: USD ${o.deposit} booked as a simulated sandbox deposit; no test USD reached Airwallex.`)] : []),
       liPlain("Card charges at merchants are simulated by the sandbox; the approve or decline is Airwallex's own."),
       ...(platform ? [liPlain("Connected accounts: verification simulated (the sandbox made them ACTIVE), and PAID through the sandbox's simulation API.")] : []),
+      // A sandbox transfer reaches PAID only through the simulation API: said for the two-locks transfer too, once its run is finished.
+      ...(locks?.finished ? [liPlain("The two-locks transfer's PAID came through the sandbox's simulation API too.")] : []),
       ...(testPasskeys.length ? [liPlain(`In ${testPasskeys.join(" and ")} the approvals were signed with a labelled test passkey, not Face ID.`)] : []),
     ].join("")}</ul>`),
   ].join("");

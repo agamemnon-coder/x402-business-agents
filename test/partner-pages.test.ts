@@ -47,8 +47,8 @@ describe("the partner pages", () => {
     expect(TWO_LOCKS_RUN).toContain(s.transferId);
     expect(TWO_LOCKS_RUN).toContain(`EUR ${s.amount}`);
     // The state on create and the state now are the run log's own words, whatever they are when the site is built.
-    expect(TWO_LOCKS_RUN).toMatch(new RegExp(`\\*\\*\`${s.held}\`\\*\\*`));
-    expect(TWO_LOCKS_RUN).toContain(`\`${s.now}\``);
+    expect(TWO_LOCKS_RUN).toContain(s.held!);
+    expect(TWO_LOCKS_RUN).toContain(s.now);
     for (const x of approvalsTile(s)!.states!) expect(tile).toContain(x.text);
     expect(tile).toContain(`${s.held} at Airwallex`);
     expect(tile).toContain(`Now: ${s.now}`);
