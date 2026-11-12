@@ -42,7 +42,7 @@ const eventLineOf=(m,money)=>{
   return (e)=>{
     e=e||{};const f=e.fields||{};const name=typeof e.event==='string'?e.event:'';
     const by=/^claude(?:-scan)?:(.+)$/.exec(typeof f.read_by==='string'?f.read_by:'');
-    const claude=by?by[1]:(name==='claude.read'||name==='ap.scan_read')?String(f.model||''):null;
+    const claude=by?by[1]:(name==='claude.read'||name==='ap.scan_read'||name==='claude.asking')?String(f.model||''):null;
     let who=m['cs.eng.who.code'],tag='code';
     if(claude!==null){who=modelName(claude);tag='claude'}
     else if(f.read_by==='parser'){who=m['cs.eng.who.parser'];tag='parser'}
