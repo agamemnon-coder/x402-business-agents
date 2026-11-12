@@ -87,8 +87,13 @@ export class OAuthRefused extends Error {
     super(`${where}: ${status}${code ? ` ${code}` : ""}`);
     this.name = "OAuthRefused";
   }
-  /** 4xx except 429: the grant or refresh token is dead (Airwallex: "Stop retrying"). The connection must be made again. */
-  get permanent(): boolean { return this.status >= 400 && this.status < 500 && this.status !== 429; }
+  /**
+   * The grant or refresh token itself is dead (`invalid_grant`: expired, revoked, already used outside the grace period,
+   * or the consenting user lost their role): the connection must be made again. Any other refusal (`invalid_client`, a
+   * malformed request, 429, 5xx) is Purser's configuration or a passing fault: the company's tokens are kept, so one
+   * wrong client secret never ends every company's connection.
+   */
+  get permanent(): boolean { return this.code === "invalid_grant"; }
 }
 
 const b64u = (u: Uint8Array) => {
@@ -120,6 +125,8 @@ export function authorizeUrl(p: OAuthProvider, c: Pick<OAuthClient, "clientId" |
 }
 
 const CODE = /^[a-z_]{1,40}$/;
+/** A token request that has not answered in this time is abandoned (below Purser Cloud's 30 s refresh lock). */
+export const TOKEN_TIMEOUT_MS = 20_000;
 
 async function tokenCall(f: typeof fetch, p: OAuthProvider, c: OAuthClient, form: Record<string, string>, where: string): Promise<TokenSet> {
   let res: Response;
@@ -128,6 +135,7 @@ async function tokenCall(f: typeof fetch, p: OAuthProvider, c: OAuthClient, form
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
       body: new URLSearchParams({ client_id: c.clientId, client_secret: c.clientSecret, ...form }).toString(),
+      signal: AbortSignal.timeout(TOKEN_TIMEOUT_MS),
     });
   } catch {
     // No answer: the request may or may not have been taken (Airwallex: retry a refresh within its 60 s grace).

@@ -9,7 +9,7 @@ What this run was for ([docs/real-customers.md](../real-customers.md)): open one
 company and read its status; get Airwallex's hosted onboarding (KYC) link; see what Airwallex answers to an OAuth
 connection with the credentials Purser has.
 
-Call log (method, path with ids replaced, time; no bodies, no headers):
+Times are the call log's (written just before each request was sent). Call log (method, path with ids replaced, time; no bodies, no headers):
 [2026-11-12-real-customers-calls.jsonl](2026-11-12-real-customers-calls.jsonl). The answers are as the run printed them
 (status, code, ids, trace ids only).
 
@@ -21,8 +21,8 @@ Call log (method, path with ids replaced, time; no bodies, no headers):
 | 4 | 14:18:27.148 | `POST /hosted_flows/create` with `account_id`, `return_url`, `error_url`, **no `template`** (Airwallex has not given us one) | **400** (trace `eee48d3b82e745afaf5ce29bfd7e3453`) |
 | 5 | 14:18:27.455 | `GET https://www.sandbox.airwallex.com/oauth/authorize` with Purser's sandbox client id, the redirect URI `…/v1/connect/airwallex/callback`, Purser's scopes, `state`, an S256 `code_challenge`; redirects not followed | **302** to `www.sandbox.airwallex.com/app/login-auth/sandbox` (Airwallex's sign-in page; no `error` in the redirect) |
 | 6 | 14:18:28.091 | `POST https://api.sandbox.airwallex.com/oauth/token`, `grant_type=authorization_code`, Purser's sandbox client id, **no client secret**, a made-up code, the verifier | **401 `invalid_client`** (trace `0f3283401778430a857614ecd22d18a3`) |
-| 7 | 14:18:42.958 | `POST /authentication/login` (a second, raw run to read call 4's error body, which Purser's client does not keep) | 201 |
-| 8 | 14:18:43.508 | `POST /hosted_flows/create`, the same body as call 4 | **400 with an empty body** (trace `c74fa9f1b1ae4ac8b584e58bd0ced1af`) |
+| 7 | 14:18:42.407 | `POST /authentication/login` (a second, raw run to read call 4's error body, which Purser's client does not keep) | 201 |
+| 8 | 14:18:42.959 | `POST /hosted_flows/create`, the same body as call 4 | **400 with an empty body** (trace `c74fa9f1b1ae4ac8b584e58bd0ced1af`) |
 
 ## Confirmed live
 

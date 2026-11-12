@@ -182,33 +182,49 @@ export async function accessToken(sql: Sql, tenantId: string, provider: OAuthPro
     return { access_token: await unseal(key, r.access_sealed, aadOf(tenantId, provider, "access")), expires_at: r.access_expires_at ? new Date(r.access_expires_at).toISOString() : null, account: r.account_ref };
   }
   if (!r.refresh_sealed) throw new ConnectRefused(409, `the ${provider} access token ran out and there is no refresh token; an owner connects it again`);
+  // The lock is this request's own value: only the request holding it may write the refreshed pair or release it, so a
+  // refresh that outlived its lock (or a disconnect and reconnect meanwhile) can never write over newer tokens.
+  const mine = now.getTime() + REFRESH_LOCK_MS;
   const lock = await sql.run("UPDATE oauth_connections SET refreshing_until = ? WHERE tenant_id = ? AND provider = ? AND status = 'connected' AND refreshing_until < ? AND updated_at = ?",
-    [now.getTime() + REFRESH_LOCK_MS, tenantId, provider, now.getTime(), r.updated_at]);
+    [mine, tenantId, provider, now.getTime(), r.updated_at]);
   if (lock.changes !== 1) throw new ConnectRefused(409, "another request is refreshing this company's token right now; try again in a few seconds");
-  const refresh = await unseal(key, r.refresh_sealed, aadOf(tenantId, provider, "refresh"));
+  const release = () => sql.run("UPDATE oauth_connections SET refreshing_until = 0 WHERE tenant_id = ? AND provider = ? AND refreshing_until = ?", [tenantId, provider, mine]);
   let t: TokenSet;
   try {
+    const refresh = await unseal(key, r.refresh_sealed, aadOf(tenantId, provider, "refresh"));
     t = await refreshTokens(env.fetch, OAUTH_PROVIDERS[provider], client, refresh);
   } catch (e) {
+    await release();
     if (e instanceof OAuthRefused && e.permanent) {
       await endConnection(sql, tenantId, provider, "refused", now);
       logEvent("warn", "oauth_refresh_refused", { tenant: tenantId, provider, status: e.status, code: e.code }, now);
       throw new ConnectRefused(409, `${provider} no longer accepts this company's connection; an owner connects it again in Settings`);
     }
+    if (e instanceof OAuthRefused && e.status >= 400 && e.status < 500 && e.status !== 429) {
+      // Purser's own application was refused (invalid_client, a malformed request): the company's tokens are kept.
+      logEvent("error", "oauth_refresh_config", { tenant: tenantId, provider, status: e.status, code: e.code }, now);
+      throw new ConnectRefused(502, `${provider} refused Purser's application (${e.code || e.status}); the connection is kept, and Purser's operator looks into it`);
+    }
+    if (e instanceof ConnectRefused) throw e;
     // No answer, 429 or 5xx: the refresh token is kept (Airwallex's 60 s grace answers a retry with the same new pair).
-    await sql.run("UPDATE oauth_connections SET refreshing_until = 0 WHERE tenant_id = ? AND provider = ?", [tenantId, provider]);
     throw new ConnectRefused(502, `${provider} did not answer the token refresh; try again shortly`);
   }
-  const iso = now.toISOString();
-  await sql.run("UPDATE oauth_connections SET access_sealed = ?, access_expires_at = ?, refresh_sealed = ?, refresh_expires_at = ?, scope = ?, refreshing_until = 0, updated_at = ? WHERE tenant_id = ? AND provider = ? AND status = 'connected'",
-    [await seal(key, t.accessToken, aadOf(tenantId, provider, "access")), t.expiresIn ? now.getTime() + t.expiresIn * 1000 : null,
-      t.refreshToken ? await seal(key, t.refreshToken, aadOf(tenantId, provider, "refresh")) : r.refresh_sealed,
-      t.refreshExpiresIn ? now.getTime() + t.refreshExpiresIn * 1000 : r.refresh_expires_at, t.scope || r.scope, iso, tenantId, provider]);
   if (provider === "airwallex" && t.accountId && t.accountId !== r.account_ref) {
     // The provider answered for another account than the one connected: nothing is handed out, the owner looks.
+    await release();
     await endConnection(sql, tenantId, provider, "refused", now);
     logEvent("error", "oauth_account_changed", { tenant: tenantId, provider }, now);
     throw new ConnectRefused(409, "Airwallex answered the refresh for another account than the one connected; the connection is ended, connect again");
+  }
+  const iso = now.toISOString();
+  const saved = await sql.run("UPDATE oauth_connections SET access_sealed = ?, access_expires_at = ?, refresh_sealed = ?, refresh_expires_at = ?, scope = ?, refreshing_until = 0, updated_at = ? WHERE tenant_id = ? AND provider = ? AND status = 'connected' AND refreshing_until = ?",
+    [await seal(key, t.accessToken, aadOf(tenantId, provider, "access")), t.expiresIn ? now.getTime() + t.expiresIn * 1000 : null,
+      t.refreshToken ? await seal(key, t.refreshToken, aadOf(tenantId, provider, "refresh")) : r.refresh_sealed,
+      t.refreshExpiresIn ? now.getTime() + t.refreshExpiresIn * 1000 : r.refresh_expires_at, t.scope || r.scope, iso, tenantId, provider, mine]);
+  if (saved.changes !== 1) {
+    // The connection changed while this refresh ran (disconnected, reconnected, or the lock ran out): nothing is handed out.
+    logEvent("warn", "oauth_refresh_superseded", { tenant: tenantId, provider }, now);
+    throw new ConnectRefused(409, "the connection changed while its token was refreshed; try again");
   }
   return { access_token: t.accessToken, expires_at: t.expiresIn ? new Date(now.getTime() + t.expiresIn * 1000).toISOString() : null, account: r.account_ref };
 }
@@ -219,12 +235,13 @@ export async function accessToken(sql: Sql, tenantId: string, provider: OAuthPro
  * Airwallex's own settings (the answer says so).
  */
 export async function disconnect(sql: Sql, tenantId: string, provider: OAuthProviderName, env: ConnectEnv, now: Date): Promise<{ disconnected: boolean; revoked_at_provider: boolean; note: string | null }> {
-  const client = clientOf(env, provider);
+  // Works even when the provider's application is no longer configured: then the tokens are only removed here.
+  const client = env.clients[provider];
   const r = await rowOf(sql, tenantId, provider);
   if (!r || r.status !== "connected") return { disconnected: false, revoked_at_provider: false, note: null };
   let revoked = false;
   const sealedToken = r.refresh_sealed ?? r.access_sealed;
-  if (OAUTH_PROVIDERS[provider].revokeUrl && sealedToken) {
+  if (client && OAUTH_PROVIDERS[provider].revokeUrl && sealedToken) {
     try {
       const key = await sealKey(env.tokenKey);
       const token = await unseal(key, sealedToken, aadOf(tenantId, provider, r.refresh_sealed ? "refresh" : "access"));

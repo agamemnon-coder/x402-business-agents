@@ -197,7 +197,10 @@ export async function receiveAccountEvent(sql: Sql, p: AwxPlatformEnv, headers: 
   if (!status) return { applied: false };
   const id = accountIdOf(e);
   if (!id) return { applied: false };
-  const r = await sql.run("UPDATE awx_accounts SET status = ?, updated_at = ?, event_at = ? WHERE account_id = ? AND event_at <= ?", [status, now.toISOString(), at, id, at]);
+  // A webhook never makes a refused (suspended) or closed account active again: x-timestamp orders deliveries, and a late
+  // or re-signed retry of an old account.active must not switch payments back on. Reactivation is read by a poll
+  // (refreshAccount), which asks Airwallex for the account as it is now.
+  const r = await sql.run("UPDATE awx_accounts SET status = ?, updated_at = ?, event_at = ? WHERE account_id = ? AND event_at <= ? AND NOT (? = 'active' AND status IN ('refused', 'closed'))", [status, now.toISOString(), at, id, at, status]);
   if (r.changes > 0) { logEvent("info", "awx_platform_status", { status }, now); return { applied: true, status }; }
   return { applied: false };
 }

@@ -70,6 +70,19 @@ describe("KYC onboarding through Airwallex's hosted flow", () => {
     expect((await paysFrom()).ok).toBe(false);
   });
 
+  it("a late webhook never makes a suspended account active again; only a poll of Airwallex does", async () => {
+    await c.req("POST", "/v1/airwallex/account", { key: t.session, body: OPEN });
+    rail.status = "ACTIVE";
+    await c.req("POST", "/v1/airwallex/account/refresh", { key: t.session });
+    expect((await hook("account.suspended", new Date(c.clock.now.getTime() + 1000))).json).toMatchObject({ applied: true, status: "refused" });
+    // A retry of an old account.active, signed later than the suspension.
+    expect((await hook("account.active", new Date(c.clock.now.getTime() + 2000))).json).toEqual({ applied: false });
+    expect((await paysFrom()).ok).toBe(false);
+    c.clock.now = new Date(c.clock.now.getTime() + 60_000);
+    expect((await c.req("POST", "/v1/airwallex/account/refresh", { key: t.session })).json.account).toMatchObject({ status: "active" });
+    expect((await paysFrom()).ok).toBe(true);
+  });
+
   it("a poll is the newest word: an older webhook arriving after it changes nothing", async () => {
     await c.req("POST", "/v1/airwallex/account", { key: t.session, body: OPEN });
     rail.status = "ACTIVE";

@@ -82,12 +82,23 @@ stream adds following the status by poll and the record below.
 | No payment until Airwallex reports `ACTIVE`: the runner pays only from the account in the cloud's signed binding, and only while its status is `active` (`checkBinding`); suspended later, payments stop again | `src/airwallex/binding.ts` (existing), proven end to end through the cloud | `AIRWALLEX_PLATFORM=on` | `test/cloud-real-customers-kyc.test.ts` |
 | OAuth helpers: authorize URL, PKCE S256 (RFC 7636 test vector), code exchange, refresh, revoke; a refused request keeps only the OAuth error code | `src/lib/oauth.ts` | — | `test/cloud-real-customers-connect.test.ts` |
 | Tokens sealed at rest per company: AES-256-GCM, key from a Worker secret (`OAUTH_TOKEN_KEY`), each value bound to company + provider + field as additional data, so a sealed token copied to another company's row does not open | `cloud/src/sealed.ts`, tables `oauth_connections`, `oauth_states` | — | same |
-| Connect / finish / token / disconnect: owner session only for start, finish, disconnect; `state` (only its hash kept, single use, ten minutes, bound to the person and company) and PKCE verifier (sealed); code exchanged server side; one Airwallex account belongs to one company; refresh one at a time under a lock, rotated refresh token sealed at once; a 4xx refusal ends the connection, a 5xx keeps it; Moneybird revoked at Moneybird on disconnect; Airwallex has no app revocation, so the owner is told to remove Purser in Airwallex's settings; `partner_connection.disconnected` ends the named accounts' connections; closing a company deletes its tokens | `cloud/src/connect.ts`, routes `/v1/connect*` in `cloud/src/app.ts`, console card "Accounts you already have" in `cloud/src/console.ts` | `PURSER_OAUTH_CONNECT=on` plus `OAUTH_TOKEN_KEY` and an app per provider (Worker secrets, `cloud/src/worker.ts`) | same |
+| Connect / finish / token / disconnect: owner session only for start, finish, disconnect; `state` (only its hash kept, single use, ten minutes, bound to the person and company) and PKCE verifier (sealed); code exchanged server side; one Airwallex account belongs to one company; refresh one at a time under a lock that only its holder may write through or release (token call abandoned after 20 s, below the 30 s lock), rotated refresh token sealed at once; only `invalid_grant` ends the connection (an `invalid_client` or malformed-request refusal is Purser's configuration and keeps every company's tokens), 429/5xx/no answer keep it; Moneybird revoked at Moneybird on disconnect (if Moneybird does not confirm, the owner is told; the tokens are removed here either way); Airwallex has no app revocation, so the owner is told to remove Purser in Airwallex's settings; `partner_connection.disconnected` ends the named accounts' connections; closing a company deletes its tokens (without a revocation call: **not built**, the owner revokes at the provider) | `cloud/src/connect.ts`, routes `/v1/connect*` in `cloud/src/app.ts`, console card "Accounts you already have" in `cloud/src/console.ts` | `PURSER_OAUTH_CONNECT=on` plus `OAUTH_TOKEN_KEY` and an app per provider (Worker secrets, `cloud/src/worker.ts`) | same |
 | Every Airwallex call for that company with its own token: the runner fetches a short-lived access token with **its own** sync key (`GET /v1/connect/airwallex/token`); the cloud answers a key only with its own company's token; the client then sends no API key and never `x-on-behalf-of`; a token for another account than the one pinned (`AIRWALLEX_CONNECTED_ACCOUNT`) is refused before any call | `src/cloudsync/connections.ts`, `src/airwallex/client.ts` (`oauth`) | `AIRWALLEX_OAUTH=on` | same ("company A's token can never be used for company B") |
 | The Moneybird connector takes the company's token from the cloud the same way | `src/erp/registry.ts` | `ERP_MONEYBIRD_OAUTH=on` | same |
 
-With every flag off, `fromEnv` returns the API key pair as before, the `/v1/connect*` routes answer 404 and the console
-shows no new card (tested).
+With every flag off, `fromEnv` returns the API key pair as before, `GET /v1/connect` answers `switched_on: false`, every
+other `/v1/connect*` route answers 404, and the console shows no new card (tested).
+
+A webhook never makes a suspended or closed account active again (a late or re-signed `account.active` must not switch
+payments back on); reactivation is read by the poll, which asks Airwallex for the account as it is now.
+
+Known limits (reviewed, not fixed):
+- **Moneybird has no PKCE** (none is documented). The `state` binds a finish to the owner who started it, but a stolen
+  Moneybird code could be redeemed by another Purser owner within its lifetime. The console removes the code from the
+  browser's address and history as soon as it is read.
+- After a 401 the runner asks the cloud again, and the cloud hands out the same access token until it is within a
+  minute of its end; a token Airwallex revoked early is replaced only then.
+- Ordering of `account.*` webhooks uses `x-timestamp`; whether Airwallex re-signs a retried delivery is **unknown**.
 
 Not built: the platform rail in the Worker itself (the Airwallex client is Node-only; see
 [airwallex-platform.md](airwallex-platform.md)), so in production the cloud's `awxPlatform` rail and the OAuth token
@@ -139,7 +150,8 @@ Other sessions are rewriting `src/redesign/*`; these lines are for them. Accurat
   Airwallex and choose what Purser may do. Purser keeps the connection encrypted, for your company only. You can
   disconnect at any time, in Purser and in Airwallex's settings."
 - **Books:** "Connect your Moneybird administration: you sign in at Moneybird and allow Purser to file purchase
-  invoices and payments. Disconnecting in Purser revokes the access at Moneybird too."
+  invoices and payments. Disconnecting in Purser asks Moneybird to revoke the access too; if Moneybird does not confirm,
+  Purser says so."
 - **Status line under the account:** "Waiting for Airwallex's check" (created, pending), "Airwallex needs more from you"
   (action required), "Active", "Stopped by Airwallex" (suspended).
 - **Be exact about state:** say "sandbox" and "test money" until a company goes live; do not say the OAuth connection

@@ -802,6 +802,8 @@ async function route(){
   try{
     if(path==='/enrol')return enrolView(q);
     if(open[path])return open[path]();
+    // A provider's code in the address is spent or useless without a session: it leaves the browser's history at once.
+    if(path==='/connect'&&!S){history.replaceState(null,'','#/settings');return go('#/sign-in')}
     if(!S)return go('#/sign-in');
     if(path==='/'||path==='')return go('#/overview');
     // Back from Airwallex's or Moneybird's consent screen (GET /v1/connect/{provider}/callback put the code here, in the

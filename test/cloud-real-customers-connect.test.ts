@@ -20,6 +20,9 @@ class FakeProviders {
   revoked: string[] = [];
   n = 0;
   failRefresh: number | null = null;
+  failCode = "invalid_grant";
+  /** Runs while a refresh is in flight (to change the connection under it). */
+  duringRefresh: (() => Promise<void>) | null = null;
   issue(provider: "airwallex" | "moneybird", challenge: string | undefined, account = "acct_companyA0001") {
     const code = `code-${++this.n}`;
     this.codes.set(code, { challenge, redirect: provider === "airwallex" ? AWX.redirectUri : MB.redirectUri, account, provider });
@@ -51,7 +54,8 @@ class FakeProviders {
       return json(200, pair(c.account));
     }
     if (form.grant_type === "refresh_token") {
-      if (this.failRefresh) { const s = this.failRefresh; this.failRefresh = null; return json(s, { error: s === 400 ? "invalid_grant" : "server_error", refresh_token: form.refresh_token }); }
+      if (this.duringRefresh) { const d = this.duringRefresh; this.duringRefresh = null; await d(); }
+      if (this.failRefresh) { const s = this.failRefresh; this.failRefresh = null; return json(s, { error: s >= 500 ? "server_error" : this.failCode, refresh_token: form.refresh_token }); }
       const r = this.refresh.get(form.refresh_token!);
       // Single use: the old refresh token stops working once a new one is issued.
       this.refresh.delete(form.refresh_token!);
@@ -108,6 +112,8 @@ describe("the OAuth helpers (provider documentation)", () => {
     expect((e as OAuthRefused).code).toBe("invalid_grant");
     expect((e as Error).message).not.toContain("secret-looking-code");
     expect((e as OAuthRefused).permanent).toBe(true);
+    expect(new OAuthRefused(401, "invalid_client", "x").permanent).toBe(false);
+    expect(new OAuthRefused(400, "invalid_request", "x").permanent).toBe(false);
   });
 });
 
@@ -229,12 +235,38 @@ describe("Connect your Airwallex account", () => {
     fake.failRefresh = 503;
     expect((await c.req("GET", "/v1/connect/airwallex/token", { key: a.key })).status).toBe(502);
     expect((await c.req("GET", "/v1/connect", { key: a.session })).json.connections).toContainEqual(expect.objectContaining({ provider: "airwallex", status: "connected" }));
-    fake.failRefresh = 400;
+    fake.failRefresh = 400; fake.failCode = "invalid_grant";
     expect((await c.req("GET", "/v1/connect/airwallex/token", { key: a.key })).status).toBe(409);
     const v = (await c.req("GET", "/v1/connect", { key: a.session })).json.connections as { provider: string; status: string; ended_reason: string }[];
     expect(v.find((x) => x.provider === "airwallex")).toMatchObject({ status: "disconnected", ended_reason: "refused" });
     expect(await c.env.sql.first("SELECT access_sealed, refresh_sealed FROM oauth_connections WHERE tenant_id = ?", [a.id])).toEqual({ access_sealed: null, refresh_sealed: null });
     expect((await connect(a, "airwallex")).status).toBe(201);
+  });
+
+  it("Purser's own application refused (invalid_client) keeps every company's connection; only invalid_grant ends one", async () => {
+    await connect(a, "airwallex");
+    c.clock.now = new Date(c.clock.now.getTime() + 290_000);
+    fake.failRefresh = 401; fake.failCode = "invalid_client";
+    const r = await c.req("GET", "/v1/connect/airwallex/token", { key: a.key });
+    expect(r.status).toBe(502);
+    expect(r.json.error).toMatch(/refused Purser's application/);
+    const row = await c.env.sql.first<{ status: string; refresh_sealed: string | null; refreshing_until: number }>("SELECT status, refresh_sealed, refreshing_until FROM oauth_connections WHERE tenant_id = ?", [a.id]);
+    expect(row).toMatchObject({ status: "connected", refreshing_until: 0 });
+    expect(row!.refresh_sealed).toBeTruthy();
+    expect((await c.req("GET", "/v1/connect/airwallex/token", { key: a.key })).status).toBe(200);
+  });
+
+  it("a refresh that the connection changed under (disconnected and connected again) writes nothing over the new tokens", async () => {
+    await connect(a, "airwallex", "acct_companyA0001");
+    c.clock.now = new Date(c.clock.now.getTime() + 290_000);
+    let fresh = "";
+    fake.duringRefresh = async () => {
+      await c.req("DELETE", "/v1/connect/airwallex", { key: a.session });
+      expect((await connect(a, "airwallex", "acct_companyA0001")).status).toBe(201);
+      fresh = (await c.env.sql.first<{ access_sealed: string }>("SELECT access_sealed FROM oauth_connections WHERE tenant_id = ?", [a.id]))!.access_sealed;
+    };
+    expect((await c.req("GET", "/v1/connect/airwallex/token", { key: a.key })).status).toBe(409);
+    expect((await c.env.sql.first<{ access_sealed: string }>("SELECT access_sealed FROM oauth_connections WHERE tenant_id = ?", [a.id]))!.access_sealed).toBe(fresh);
   });
 
   it("disconnecting removes the tokens; Airwallex has no revocation for apps, so the owner is told to remove Purser there too", async () => {
