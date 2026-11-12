@@ -26,10 +26,19 @@ describe("What Purser guarantees", () => {
     expect(GUARANTEES.find((g) => g.id === "g-chain")!.evidence.label).toContain("our own check switched off once");
   });
 
-  it("is on /proof, above the partners", () => {
+  it("is the first thing on /proof, directly under the heading, above the partners and the numbers (jury, 12 Nov)", () => {
     const proof = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).proof!;
     expect(proof).toContain(guaranteesHtml());
     expect(proof.indexOf(`id="${GUARANTEES_ID}"`)).toBeLessThan(proof.indexOf("The partners"));
+    expect(proof.indexOf(`id="${GUARANTEES_ID}"`)).toBeLessThan(proof.indexOf('<div class="nums">'));
+    expect(proof.slice(proof.indexOf("<h1>Proof</h1>") + "<h1>Proof</h1>".length, proof.indexOf(guaranteesHtml())).trim()).toBe("");
+  });
+
+  it("keeps its seven promises, numbered in this order, each with who enforces it and its evidence in sight, how folded", () => {
+    const html = guaranteesHtml();
+    expect(GUARANTEES.map((g) => g.id)).toEqual(["g-terms", "g-cards", "g-visa", "g-chain", "g-once", "g-keys", "g-log"]);
+    expect([...html.matchAll(/<li id="([a-z-]+)" data-by="(airwallex|metal|purser)"><b>[^<]+<\/b><span class="by">[^<]+<\/span><span class="ev"><a href="[^"]+"[^>]*>[^<]+<\/a><\/span>\s*<details><summary>How<\/summary>/g)].map((m) => m[1])).toEqual(GUARANTEES.map((g) => g.id));
+    expect(html).not.toMatch(/<details[^>]* open/);
   });
 });
 

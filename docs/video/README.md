@@ -201,8 +201,7 @@ Purser” left and “Built on Airwallex · Metal · Claude” right (Inter Medi
 edges), text only, no logos. Every text colour is WCAG AA over the brightest point of that background (a dot; the
 test computes it), and the corner credits 4.6:1 on the black bar.
 
-Earlier drafts (`hybrid-script.md`, `script-v0.md`, `review-2026-11-02.md`) are kept for the record; the premiere
-replaces them, and so does the narrator script for [max-opening-close.md](max-opening-close.md), an early plan for Max
-to say the opening and the closing on camera.
+The earlier drafts and their review left the tree on 12 November 2026 (git history keeps them); the premiere replaced
+them. One draft stays, `hybrid-script.md`, because the requirements review of 1 November cites it as its source.
 The earlier animated film of the 30 October recording still renders with `npm run video -- --film` (into
 `out/video/film/`); it is not the submission video.

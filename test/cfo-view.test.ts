@@ -36,10 +36,13 @@ describe("See the CFO's view: on Home and /proof, to the main run's dashboard re
     // Home shows only the way through since Max's round of 7 Nov (watch, try, proof): the CFO's view is on /proof.
     expect(decode(homePage()).includes(`href="${CFO_VIEW_URL}"`)).toBe(false);
     for (const [name, html] of [["proof", proofPage()]] as const) {
-      // Proof also keeps its "Open the CFO dashboard" under the audit rows, to the same view.
+      // Proof also keeps its "Open the CFO dashboard" under the audit rows, to the same view. Since 12 Nov the link
+      // worded as Max asked is in the utility row at the end of the page, so it is the second of the two.
       const links = decode(html).split(`href="${CFO_VIEW_URL}"`).length - 1;
-      const a = decode(html).indexOf(`href="${CFO_VIEW_URL}"`), end = decode(html).indexOf("</a>", a);
+      const a = decode(html).lastIndexOf(`href="${CFO_VIEW_URL}"`), end = decode(html).indexOf("</a>", a);
       expect({ name, links, text: decode(html).slice(a, end).endsWith(CFO_VIEW_LINK) }).toEqual({ name, links: name === "proof" ? 2 : 1, text: true });
+      const first = decode(html).indexOf(`href="${CFO_VIEW_URL}"`);
+      expect(decode(html).slice(first, decode(html).indexOf("</a>", first))).toContain("Open the CFO dashboard");
     }
   });
 

@@ -21,7 +21,7 @@ Sources are at the bottom; "verbatim" means copied from the source on the date a
 
 ## What the judges are likely to look for
 
-Dan Kim (VP at Airwallex, co-author of x402) published "Agentic banking starts with governance" on the day
+Dan Kim published "Agentic banking starts with governance" on the day
 applications opened. Its six principles read like the judging lens for "agentic behaviour and controls", and
 the build maps onto each:
 
