@@ -185,6 +185,17 @@ describe("/proof as served: each card shows its strongest claim as its one link 
     expect((cards.match(/<article class="pcard card"/g) ?? []).length).toBe(3);
   });
 
+  it("a first claim with links of its own (each card's anchor) keeps them: it is said again in the fold, with them", () => {
+    // What the Airwallex card shows when Airwallex returns another hash: the cards' claim comes first.
+    const cardsLead = leads.airwallex[1]!;
+    const card = cardOf(partnerCards(agentRun(), { airwallex: [cardsLead], metal: [], claude: [] }), "airwallex");
+    const sight = afterHeader(card).slice(0, afterHeader(card).indexOf('<details class="fold">'));
+    expect(decode(sight)).toBe(`<ul class="lead"><li><a class="c" href="${cardsLead.href}">${cardsLead.text}</a></li></ul>`);
+    const fold = card.slice(card.indexOf('<details class="fold">'));
+    expect(decode(fold)).toContain(`<a class="c" href="${cardsLead.href}">${cardsLead.text}</a><span class="ks">`);
+    for (const l of cardsLead.links!) expect(fold).toContain(`href="${l.href}"`);
+  });
+
   it("the Airwallex card links each card to its own anchor, and the Claude card says the exact reading under Max's line", () => {
     const awx = cardOf(html, "airwallex");
     for (const r of cardControlRows(record)) expect(awx).toContain(`href="airwallex#${awxCardId(r.agent)}"`);
