@@ -139,7 +139,7 @@ describe("the console of a cloud with an engine", () => {
     const html = consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "", engine: true });
     const js = script(html);
     const keys = ["cs.eng.pay_h", "cs.eng.pay", "cs.eng.working", "cs.eng.ready", "cs.eng.not_yet", "cs.eng.not_yet_why", "cs.eng.stand_in", "cs.eng.signs",
-      "cs.eng.terms_fold", "cs.eng.terms_hash", "cs.eng.proposal_id", "cs.eng.setup", "cs.eng.set_up", "cs.eng.approve", "cs.eng.cancelled", "cs.eng.approval_stays", "cs.eng.approved_terms"] as const;
+      "cs.eng.terms_fold", "cs.eng.terms_hash", "cs.eng.proposal_id", "cs.eng.setup", "cs.eng.set_up", "cs.eng.approve", "cs.eng.cancelled", "cs.eng.approval_stays", "cs.eng.approved_terms", "cs.eng.more_terms"] as const;
     for (const k of keys) {
       for (const lang of ["en", "nl"] as const) expect(MESSAGES[lang][k], `${lang} ${k}`).toBeTruthy();
       expect({ k, carried: html.split(`"${k}":`).length - 1 }).toEqual({ k, carried: 2 });

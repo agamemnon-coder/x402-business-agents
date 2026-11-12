@@ -347,6 +347,9 @@ async function enginePass() {
   await firstRun(p, origin, "harbour", madeE.json.api_key as string);
   const E: EnginePass = { origin, page: p, errors: errs, settle: () => settleOn(p), invoiceId: "", pdf: await pdfOf(EN) };
   await engineUpload(E);
+  const proposal = await enginePay(E);
+  await engineSetUp(E);
+  await engineApprove(E, proposal);
   ok(errs.length === 0, `engine pass: no console or CSP errors${errs.length ? ` (${errs.join(" | ")})` : ""}`);
   await ctxE.close();
   serverE.close();
@@ -426,6 +429,144 @@ async function engineUpload(E: EnginePass) {
   await p.frameLocator("iframe.pdfframe").locator("canvas").first().waitFor({ timeout: 20_000 });
   ok((await p.textContent("main"))!.includes("Bergtex Textil GmbH"), "engine pass: the uploaded invoice's page opens, its PDF drawn");
   await E.settle();
+}
+
+/** A GET of the cloud's API as the page's own signed-in session, from inside the page. */
+async function apiAs(E: EnginePass, path: string): Promise<Record<string, unknown>> {
+  return E.page.evaluate(async (path) => {
+    const s = JSON.parse(sessionStorage.getItem("purser.cloud.session") ?? "{}") as { token?: string };
+    return (await fetch(path, { headers: { authorization: `Bearer ${s.token ?? ""}` } })).json() as Promise<Record<string, unknown>>;
+  }, path);
+}
+/** Screenshots of the page at a width and in a colour scheme, then back to laptop width in light. */
+async function engineShot(E: EnginePass, name: string, width: 1440 | 390, scheme: "light" | "dark") {
+  const p = E.page;
+  await p.setViewportSize(width === 1440 ? { width: 1440, height: 1000 } : { width: 390, height: 844 });
+  await p.emulateMedia({ colorScheme: scheme });
+  await p.waitForTimeout(150);
+  if (shots) await p.screenshot({ path: join(shots, `engine-${name}-${width}-${scheme}.png`), fullPage: true });
+  const over = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  if (width === 390) ok(over <= 0, `engine pass: ${name} at 390 px is no wider than the phone (${over} px over)`);
+  await p.emulateMedia({ colorScheme: "light" });
+  await p.setViewportSize({ width: 1440, height: 1000 });
+}
+type Proposal = { id: string; status: string; terms_sha256: string; challenge: string; facts: [string, string][]; warnings: string[] };
+
+/** On the invoice's page, "Pay…" files the payment: the proposal shows the engine's facts, the stand-in bank, the fingerprint folded. */
+async function enginePay(E: EnginePass): Promise<Proposal> {
+  const p = E.page;
+  await p.waitForSelector("#pay");
+  ok((await p.textContent("#pay"))!.includes("Ready to pay. Nothing is paid until a passkey approves the exact terms."), "engine pass: the payment card says the invoice is ready, and that nothing is paid before a passkey approves");
+  ok(await p.locator("#pay .btn").count() === 1 && (await p.textContent("#pay .btn"))?.trim() === "Pay…", "engine pass: the card's one button reads \"Pay…\"");
+  ok(await p.locator("#view #work").count() === 1, "engine pass: the panel \"At work\" is on the invoice's page too");
+  // The answer is held back a moment, so the button can be seen working meanwhile.
+  await p.route("**/v1/engine/invoices/*/pay", async (r) => { await new Promise((done) => setTimeout(done, 600)); await r.continue(); });
+  const answer = p.waitForResponse((r) => /\/v1\/engine\/invoices\/[^/]+\/pay$/.test(r.url()) && r.request().method() === "POST");
+  await p.click("#pay .btn");
+  ok(await p.isDisabled("#pay .btn") && (await p.textContent("#pay .btn"))?.trim() === "Working …", "engine pass: while the payment is filed its button is off and says it is working");
+  const res = await answer;
+  await p.unroute("**/v1/engine/invoices/*/pay");
+  const proposal = ((await res.json()) as { proposal: Proposal }).proposal;
+  ok(res.status() === 200 && /^[0-9a-f]{64}$/.test(proposal.terms_sha256) && proposal.status === "PENDING_APPROVAL", `engine pass: "Pay…" filed the payment (${proposal.id})`);
+  await p.waitForSelector("#pay dl.read");
+  const shown = await p.$$eval("#pay dl.facts dt", (ds) => ds.map((dt) => [dt.textContent ?? "", dt.nextElementSibling?.textContent ?? ""]));
+  ok(await p.locator("#pay > dl.facts dt").count() === Math.min(4, proposal.facts.length), "engine pass: the first four facts are in view, the rest in a fold, as on the phone page");
+  ok(JSON.stringify(shown) === JSON.stringify(proposal.facts) && shown.length > 0, `engine pass: the proposal shows the engine's facts as it gives them (${shown.length} facts, the first ${JSON.stringify(shown[0])})`);
+  ok((await p.textContent("#pay .note-info"))?.trim() === tr("en", "cs.eng.stand_in"), "engine pass: beside the facts, the line that it runs on the stand-in bank with test money and nothing is sent to Airwallex");
+  ok((await p.textContent("#pay p.fine"))?.trim() === "The passkey signs exactly these terms. If one of them changes, the approval fails.", "engine pass: one sentence says the passkey signs exactly these terms");
+  ok(!(await p.isVisible("#pay details dd.mono")), "engine pass: the terms' fingerprint is folded away at first");
+  await p.click("#pay details:has(dl.facts) summary");
+  await p.click("#pay details:has(dd.mono) summary");
+  const hash = (await p.textContent("#pay details dd.mono"))?.trim() ?? "";
+  ok(hash === proposal.terms_sha256 && hash.length === 64, `engine pass: the fold holds the whole terms hash, as the API gives it (${hash})`);
+  ok((await p.$$eval("#pay details dd.mono", (ds) => ds.map((d) => d.textContent)))[1] === proposal.id, "engine pass: and the request's id, last");
+  // The head follows the engine once it fed the read model: the invoice waits for its approval.
+  await p.waitForSelector(".dhead .st.waiting_cfo", { timeout: 10_000 });
+  ok(true, "engine pass: after filing, the page's status chip says the invoice waits for its approval");
+  await E.settle();
+  await engineShot(E, "02-proposal", 1440, "light");
+  await engineShot(E, "02-proposal", 390, "dark");
+  return proposal;
+}
+
+/** The first time: set up approval on this device, with the engine's enrolment window and this context's virtual authenticator. */
+async function engineSetUp(E: EnginePass) {
+  const p = E.page;
+  ok((await apiAs(E, "/v1/engine")).passkey === null, "engine pass: the engine has no approval passkey yet");
+  ok((await p.textContent("#pay .btn"))?.trim() === "Set up approval on this device", "engine pass: so the card's button reads \"Set up approval on this device\"");
+  await p.click("#pay .btn");
+  await p.waitForSelector("text=Approval is set up on this device.", { timeout: 20_000 });
+  const pk = (await apiAs(E, "/v1/engine")).passkey as { credential_id: string; label: string } | null;
+  ok(!!pk && /^[A-Za-z0-9_-]{16,}$/.test(pk.credential_id) && pk.label === "The CFO", `engine pass: the passkey made in the page is the engine's approval passkey now (${JSON.stringify(pk)})`);
+  ok((await p.textContent("#pay .btn"))?.trim() === "Approve with passkey", "engine pass: the button now reads \"Approve with passkey\"");
+}
+
+/**
+ * The approval: first over other terms, refused in the engine's words; then the real one, which pays.
+ * Changing only terms_sha256 in the approve request's body is not refused: the engine checks the signature against the
+ * terms it holds and does not compare the body's hash (src/passkey/process.ts processAssertion), so that request is
+ * approved. The other terms are therefore put where the page reads the proposal (its GET /v1/engine/invoices): the page
+ * then shows them, the passkey signs them and the request carries their terms_sha256, as a page showing other terms would.
+ * Order: the spec's "second pass" runs first here; it proves the same and leaves the proposal to approve for real.
+ */
+async function engineApprove(E: EnginePass, proposal: Proposal) {
+  const p = E.page;
+  const id = E.invoiceId;
+  const approveUrl = /\/v1\/engine\/proposals\/[^/]+\/approve$/;
+  const challengeOf = (hex: string) => Buffer.from(hex, "hex").toString("base64url");
+  ok(challengeOf(proposal.terms_sha256) === proposal.challenge, "engine pass: what the passkey signs is the terms hash's 32 bytes");
+  const other = createHash("sha256").update("other terms").digest("hex");
+  ok(other !== proposal.terms_sha256, "engine pass: the other terms' hash is another 64-hex value");
+  await p.route("**/v1/engine/invoices", async (r) => {
+    const real = await r.fetch();
+    const j = (await real.json()) as { items: { id: string; proposal: Proposal | null }[] };
+    for (const i of j.items) if (i.id === id && i.proposal) i.proposal = { ...i.proposal, terms_sha256: other, challenge: challengeOf(other) };
+    await r.fulfill({ response: real, json: j });
+  });
+  await p.reload();
+  await p.waitForSelector("#pay .btn");
+  await p.click("#pay details:has(dd.mono) summary");
+  ok((await p.textContent("#pay details dd.mono"))?.trim() === other, "engine pass: the page shows the other terms' fingerprint, the one its passkey will sign");
+  let answer = p.waitForResponse((r) => approveUrl.test(r.url()) && r.request().method() === "POST");
+  await p.click("#pay .btn");
+  let res = await answer;
+  ok((JSON.parse(res.request().postData() ?? "{}") as { terms_sha256?: string }).terms_sha256 === other, "engine pass: the approval request carries the other terms_sha256");
+  const refused = (await res.json()) as { status: string; message: string; settled: unknown };
+  ok(refused.status === "refused" && refused.settled === null, `engine pass: a signature over other terms is refused by the engine (${refused.message})`);
+  await p.waitForSelector("#pay .note-bad");
+  ok((await p.textContent("#pay .note-bad"))?.trim() === refused.message, "engine pass: the page shows the refusal as the engine words it");
+  ok(await p.locator(".dhead .st.paid").count() === 0 && await p.locator("#pay .note-ok").count() === 0, "engine pass: nothing on the page says paid or approved");
+  ok(!(await p.isDisabled("#pay .btn")) && (await p.textContent("#pay .btn"))?.trim() === "Approve with passkey", "engine pass: the button is back");
+  await p.click("#pay details:has(dd.mono) summary");
+  await engineShot(E, "02-refused", 390, "light");
+  await p.unroute("**/v1/engine/invoices");
+  ok((((await apiAs(E, "/v1/engine/invoices")).items as { id: string; status: string }[]).find((i) => i.id === id)?.status) === "waiting_cfo", "engine pass: after the refusal the invoice is still not paid (the engine)");
+  ok(((await apiAs(E, `/v1/invoices/${id}`)).status) === "waiting_cfo", "engine pass: nor in the read model");
+
+  // The page again, with the engine's own proposal: approve properly.
+  await p.reload();
+  await p.waitForSelector("#pay .btn");
+  await p.click("#pay details:has(dd.mono) summary");
+  ok((await p.textContent("#pay details dd.mono"))?.trim() === proposal.terms_sha256, "engine pass: on the page again, the engine's own terms and fingerprint");
+  await p.click("#pay details:has(dd.mono) summary");
+  answer = p.waitForResponse((r) => approveUrl.test(r.url()) && r.request().method() === "POST");
+  await p.click("#pay .btn");
+  res = await answer;
+  ok((JSON.parse(res.request().postData() ?? "{}") as { terms_sha256?: string }).terms_sha256 === proposal.terms_sha256, "engine pass: this time the request carries the proposal's own terms_sha256");
+  const approved = (await res.json()) as { status: string; message: string; settled: { invoice_status: string; error: string | null } | null };
+  ok(approved.status === "approved" && approved.settled?.invoice_status === "paid", `engine pass: the real signature is approved and paid on the stand-in bank (${approved.message})`);
+  await p.waitForSelector("#pay .note-ok");
+  ok((await p.textContent("#pay .note-ok"))?.trim() === approved.message, "engine pass: the page shows the engine's approved message as it words it");
+  ok(approved.settled?.error === null ? await p.locator("#pay .note-warn").count() === 0 : (await p.textContent("#pay .note-warn"))!.includes(approved.settled!.error!), "engine pass: what failed after the approval, if anything, is said; here nothing did");
+  await p.waitForSelector(".dhead .st.paid", { timeout: 10_000 });
+  const read = await apiAs(E, `/v1/invoices/${id}`);
+  ok((await p.textContent(".dhead .st.paid"))?.trim() === read.status_words && read.status_words === tr("en", "status.paid"), `engine pass: the page's status chip reads the paid words (${read.status_words as string})`);
+  ok((((await apiAs(E, "/v1/invoices?limit=200")).items as { id: string; status: string }[]).find((i) => i.id === id)?.status) === "paid", "engine pass: GET /v1/invoices shows the invoice paid");
+  await p.waitForFunction(() => /payment of .* was sent at the stand-in bank/.test(document.querySelector("#work")?.textContent ?? "") && /New files in the archive/.test(document.querySelector("#work")?.textContent ?? ""), undefined, { timeout: 15_000 });
+  ok(true, "engine pass: the panel \"At work\" carries on: sent at the stand-in bank, filed in the archive");
+  await E.settle();
+  await engineShot(E, "02-approved", 1440, "dark");
+  await engineShot(E, "02-approved", 390, "light");
 }
 
 await enginePass();

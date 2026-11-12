@@ -720,6 +720,7 @@ const EN = {
   "cs.eng.cancelled": "The passkey was cancelled or timed out. Nothing changed.",
   "cs.eng.approval_stays": "The approval stays.",
   "cs.eng.approved_terms": "The approved terms",
+  "cs.eng.more_terms": "The other terms ({n})",
   // One line per event on the allowlist of src/engine/events.ts: _why when the checks found something, _plain when the
   // event carries none of the fields its line names. The bank is always the stand-in bank, the money test money.
   "cs.eng.ev.ap.received_why": "An invoice of {money} came in and was checked: {status}. Found: {why}.",
@@ -1591,6 +1592,7 @@ const NL: { readonly [K in Key]: string } = {
   "cs.eng.cancelled": "De passkey is geannuleerd of verlopen. Er is niets veranderd.",
   "cs.eng.approval_stays": "De goedkeuring blijft staan.",
   "cs.eng.approved_terms": "De goedgekeurde voorwaarden",
+  "cs.eng.more_terms": "De andere voorwaarden ({n})",
   "cs.eng.ev.ap.received_why": "Een factuur van {money} kwam binnen en is gecontroleerd: {status}. Gevonden: {why}.",
   "cs.eng.ev.ap.received": "Een factuur van {money} kwam binnen en is gecontroleerd: {status}.",
   "cs.eng.ev.ap.received_plain": "Een document kwam binnen en is gelezen en gecontroleerd.",

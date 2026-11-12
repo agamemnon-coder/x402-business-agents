@@ -245,6 +245,7 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
 /* The payment card on an invoice's page: one sentence or the terms, one button, the fingerprint folded. */
 .note-warn { padding: 10px 13px; border-radius: 12px; font-size: 14px; font-weight: 550; margin: 12px 0 0; background: var(--warn-soft); color: var(--warn); }
 .pay p.lead { margin: 0; font-size: 14px; }
+.pay p { overflow-wrap: anywhere; }
 .pay dl.read { margin-top: 14px; }
 .pay .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .pay details { margin-top: 12px; }
@@ -684,8 +685,8 @@ async function invoiceView(id){
   getDoc.onclick=async()=>{getDoc.disabled=true;try{await download('/v1/invoices/'+encodeURIComponent(id)+'/document',(i.invoice_no||i.id).replace(/[^\w.-]+/g,'_')+'.pdf')}catch(e){if(!(e instanceof Expired))getDoc.after(note(e.message,'bad'))}finally{getDoc.disabled=false}};
   const pages=el('div','pages',[el('p','wait',t('drawing_document'))]);
   const doc=el('div','card docv',[el('div','bar2',[ic('file-text'),el('span','fn',t('cs.as_received')+(i.doc_sha256?' · SHA-256 '+String(i.doc_sha256).slice(0,12)+'…':'')),getDoc]),pages]);
-  // The payment card where the person acts, the panel "At work" under it; without an engine, the note that the phone approves.
-  view().replaceChildren(back,top,el('div','split',[doc,el('div','stack',[pay,pay?workPanel():null,read,checks,el('div','card panel',[el('h2','',t('dt.timeline')),tl]),pay?null:note(t('cs.approved_on_phone'))])]));
+  // The payment card where the person acts, first; the panel "At work" last; without an engine, the note that the phone approves.
+  view().replaceChildren(back,top,el('div','split',[doc,el('div','stack',[pay,read,checks,el('div','card panel',[el('h2','',t('dt.timeline')),tl]),pay?workPanel():note(t('cs.approved_on_phone'))])]));
   if(pay)WORK.onEvents=(evs)=>{if(evs.some((e)=>e.event==='vault.filed'||(e.event==='ap.status'&&e.fields&&e.fields.status==='paid')))again().catch(()=>{})};
   drawPdf(id,pages);
 }
@@ -717,23 +718,26 @@ function payCard(o){
   const act=(b,run)=>{const kids=[...b.childNodes];b.onclick=async()=>{if(b.disabled)return;b.disabled=true;b.textContent=t('cs.eng.working');said.replaceChildren();
     try{await run()}catch(e){if(!(e instanceof Expired))said.replaceChildren(note(e&&(e.name==='NotAllowedError'||e.name==='AbortError')?t('cs.eng.cancelled'):e.message,'bad'))}
     finally{if(b.isConnected){b.disabled=false;b.replaceChildren(...kids)}}}};
-  // The terms as the engine gives them (the phone page's facts), the stand-in bank beside them, the fingerprint last.
-  const terms=(p,signed)=>[...(p.warnings||[]).map((w)=>note(w,'warn')),note(t('cs.eng.stand_in')),dl(p.facts||[]),signed?null:el('p','fine',t('cs.eng.signs')),
-    el('details','',[el('summary','',t('cs.eng.terms_fold')),dl([[t('cs.eng.terms_hash'),p.terms_sha256,'mono'],[t('cs.eng.proposal_id'),p.id,'mono']])])];
+  // The terms as the engine gives them (the phone page's facts): the first four in view and the rest in a fold, as the
+  // phone page shows first and details; the stand-in bank beside them; the fingerprint (hash and request id) last.
+  const factsDl=(fs)=>{const d=dl(fs);d.classList.add('facts');return d};
+  const terms=(p)=>{const fs=p.facts||[];return [...(p.warnings||[]).map((w)=>note(w,'warn')),note(t('cs.eng.stand_in')),factsDl(fs.slice(0,4)),
+    fs.length>4?el('details','',[el('summary','',t('cs.eng.more_terms',{n:fs.length-4})),factsDl(fs.slice(4))]):null]};
+  const print=(p)=>el('details','',[el('summary','',t('cs.eng.terms_fold')),dl([[t('cs.eng.terms_hash'),p.terms_sha256,'mono'],[t('cs.eng.proposal_id'),p.id,'mono']])]);
   function proposal(p){
-    if(!o.write||p.status!=='PENDING_APPROVAL'){draw(terms(p));return}
-    if(!hasPasskeys()){draw([...terms(p),note(t('cs.no_passkeys'),'bad')]);return}
+    if(!o.write||p.status!=='PENDING_APPROVAL'){draw([...terms(p),print(p)]);return}
+    if(!hasPasskeys()){draw([...terms(p),note(t('cs.no_passkeys'),'bad'),print(p)]);return}
     const b=eng&&eng.passkey?btn(t('cs.eng.approve'),'primary','scan-face'):btn(t('cs.eng.setup'),'primary','key-round');
     if(eng&&eng.passkey)act(b,()=>approve(p));
     else act(b,async()=>{await approvalPasskey();eng=await engineStatus();proposal(p);said.replaceChildren(note(t('cs.eng.set_up'),'ok'))});
-    draw([...terms(p),el('div','acts',[b]),said])}
+    draw([...terms(p),el('p','fine',t('cs.eng.signs')),el('div','acts',[b]),said,print(p)])}
   async function approve(p){
     const c=await navigator.credentials.get({publicKey:{challenge:fromB64u(p.challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(eng.passkey.credential_id)}],userVerification:'required',timeout:120000}});
     const r=await engineCall('/v1/engine/proposals/'+encodeURIComponent(p.id)+'/approve',{method:'POST',body:{terms_sha256:p.terms_sha256,credential:signedOf(c)}});
     // The engine's own words, for a refusal as for an approval.
     if(r.status!=='approved'){said.replaceChildren(note(r.message,'bad'));return}
     const s=r.settled||{};
-    draw([note(r.message,'ok'),s.error?note(s.error+' '+t('cs.eng.approval_stays'),'warn'):null,el('details','',[el('summary','',t('cs.eng.approved_terms')),...terms(p,true)]),said]);
+    draw([note(r.message,'ok'),s.error?note(s.error+' '+t('cs.eng.approval_stays'),'warn'):null,el('details','',[el('summary','',t('cs.eng.approved_terms')),...terms(p),print(p)]),said]);
     await o.moved()}
   if(i.status==='waiting_cfo'&&i.proposal)proposal(i.proposal);
   else if(i.payable){
