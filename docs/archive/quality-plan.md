@@ -1,3 +1,5 @@
+> Kept for history (archived 12 November 2026). Replaced by: [README.md](../../README.md) and [decisions.md](../decisions.md).
+
 # Quality plan: from "works" to "best in class" (29 October 2026)
 
 **Rule:** no new features unless they are on this list. Every item ends with proof (a screenshot, a run log or a
@@ -10,7 +12,7 @@ QA test. **Done** means done with evidence.
 ## Already fixed today (QA findings)
 
 These six QA findings were fixed and deployed on 29 October. Run log:
-[runs/2026-10-29-qa-fixes.md](runs/2026-10-29-qa-fixes.md).
+[runs/2026-10-29-qa-fixes.md](../runs/2026-10-29-qa-fixes.md).
 
 1. `/` without a key shows a guest landing and polls nothing.
 2. `/demo` no longer prints "null", and the Face ID steps no longer break on a phone.
@@ -26,7 +28,7 @@ These six QA findings were fixed and deployed on 29 October. Run log:
 | 1 | Product name | **poor**: only the kit name; "Northwind Outdoor" heads every page, as if it were the product | Max picks one of five names. Then use it everywhere: README, page titles (today three different ones), headers, phone, demo, PDF, package description. Northwind becomes "example company". |
 | 2 | One core sentence | **mediocre**: on the pages, but not first everywhere, and the tab titles differ | Every page and the README open with "Give every AI agent its own company card, with limits the CFO sets." A test checks each page. |
 | 3 | One customer | **poor**: a juror cannot tell whether the buyer is a CFO or a data reseller | Name the customer: the CFO or controller of an SMB that runs AI agents. Say it in the README, on the landing and in the deck. Northwind is the example. |
-| 4 | Landscape | **poor**: missing | `docs/landscape.md` covers Ramp, Brex, Stripe (Agent Toolkit, Issuing for agents), Payman, Skyfire, Crossmint, Coinbase AgentKit / x402, Visa Intelligent Commerce and Mastercard Agent Pay. Only sourced facts. One table: one policy over card and chain, hash-bound Face ID, mandates on chain, a prompt is not a control. |
+| 4 | Landscape | **poor**: missing | `docs/landscape.md` compares Purser with other products for agent payments (their names were removed on 12 November: this repository names no competitors). Only sourced facts. One table: one policy over card and chain, hash-bound Face ID, mandates on chain, a prompt is not a control. |
 
 ## B. The first 30 seconds
 
@@ -90,7 +92,7 @@ These six QA findings were fixed and deployed on 29 October. Run log:
 |---|---|---|
 | 26 | Video script, 4:30 | Problem 30 s, solution 20 s, five moments 3 min, why us and the vision 30 s, close; a shot list per scene. |
 | 27 | Pitch deck, 8 slides | Problem, customer, solution, live demo, safety, Airwallex and Metal, market and business model, team and vision; in the same design system. |
-| 28 | `docs/internal/uitleg-voor-max.md` | Each part in two plain sentences, plus 25 jury questions with short answers; a 15-minute daily quiz. |
+| 28 | An explainer for the owner (an internal working note, removed from the tree on 12 November 2026) | Each part in two plain sentences, plus 25 jury questions with short answers; a 15-minute daily quiz. |
 
 ## Schedule
 
@@ -102,7 +104,7 @@ These six QA findings were fixed and deployed on 29 October. Run log:
 | Sun 1 Nov | Demo-ready: presentation mode, every screenshot refreshed, the visible fallback, the Slack message to Metal. |
 | Mon 2 Nov | Coverage to 90% where it falls short, clean-up, independent review. |
 | Tue 3 to 4 Nov | Fixes from the review; the scoped Airwallex key; final CI. **Freeze on 4 Nov.** |
-| From 5 Nov | Video script, deck, `docs/internal/uitleg-voor-max.md`, the daily quiz. |
+| From 5 Nov | Video script, deck, the explainer for the owner (item 28), the daily quiz. |
 
 ## What we need from Max
 

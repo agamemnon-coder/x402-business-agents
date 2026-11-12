@@ -129,9 +129,10 @@ that cannot be read says so and asks to authorise Exact Online again.
 ## What the ledger sends today
 
 `src/erp/source.ts` maps what Purser already records: the payees on the allowlist, the invoices, the PAID payouts, and
-the GL journal's other movements. The ledger's invoices carry no issue date (the due date stands in) and no VAT split;
-movements in Metal's test token (USDZ) are not an ISO currency and are left out. The payables inbox and the bookkeeping
-core will send richer records through the same model.
+the GL journal's other movements. The Treasury flow's own invoices carry no issue date (the due date stands in) and no VAT split;
+movements in Metal's test token (USDZ) are not an ISO currency and are left out. The payables inbox (`src/ap`) feeds its
+invoices through the same model, with Dutch 21% or 9% VAT when the invoice shows it; the bookkeeping core
+(`src/ledger`) does not feed it yet.
 
 ## Next
 
