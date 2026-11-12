@@ -136,7 +136,7 @@ export function amountsOn(line: string): Found[] {
 }
 
 /** The currencies code knows, by ISO code. Anything else written beside a total is a currency code does not know. */
-const KNOWN_CODES = new Set(["EUR", "GBP", "USD", "CHF", "SEK", "NOK", "DKK", "PLN", "CZK", "HKD", "SGD", "AUD", "CAD", "JPY", "CNY", "NZD", "TRY", "HUF", "RON", "BGN"]);
+export const KNOWN_CODES = new Set(["EUR", "GBP", "USD", "CHF", "SEK", "NOK", "DKK", "PLN", "CZK", "HKD", "SGD", "AUD", "CAD", "JPY", "CNY", "NZD", "TRY", "HUF", "RON", "BGN"]);
 const SYMBOLS: Readonly<Record<string, string>> = { "€": "EUR", "£": "GBP", $: "USD" };
 /** Words a total, subtotal or tax line may carry beside its label, amount and currency (compared in lower case). */
 const FILLER = new Set([

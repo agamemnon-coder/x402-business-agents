@@ -92,6 +92,14 @@ describe("invoiceLines: the lines code reads from the document", () => {
     ]);
   });
 
+  it("keeps a word in capitals in the description, and takes a currency code, a quantity and a position number out", () => {
+    const text = "Omschrijving\n1.  Hosting AWS      EUR 50,00\n2)  Jacket XXL   3   20,00   60,00 EUR\nSubtotaal EUR 110,00\nTotaal EUR 110,00";
+    expect(invoiceLines({ subtotal: "110.00", tax: "", total: "110.00" }, text)).toEqual([
+      { line_no: 1, description: "Hosting AWS", net: "50.00", vat_rate: null },
+      { line_no: 2, description: "Jacket XXL", net: "60.00", vat_rate: null },
+    ]);
+  });
+
   it("gives the one whole-net line when the document's lines do not add up to the net", () => {
     const off = MESSY.replace("EUR 18,62       EUR 18,62", "EUR 18,62       EUR 19,62");
     expect(invoiceLines(parseApFallback(off), off)).toEqual([{ line_no: 1, description: WHOLE_INVOICE, net: "1554.62", vat_rate: null }]);
@@ -537,7 +545,7 @@ describe("answerCoderTool: what each tool shows", () => {
       'Line 3: "Packing and pallet", net 18.62.',
       'Line 4: "Freight Reutlingen -> Amsterdam", net 400.00.',
     ].join("\n") });
-    expect(ask(caseOf(TWO_RATES), "invoice_lines").text).toContain('Line 1: "Verpakkingsmateriaal 21%", net 100.00, the line states 21% VAT.');
+    expect(ask(caseOf(TWO_RATES), "invoice_lines").text).toContain('Line 1: "Verpakkingsmateriaal 21%", net 100.00, the line itself states 21%.');
     expect(ask(caseOf(NL), "invoice_lines").text).toBe([
       "Invoice ZV-4471, currency EUR: net 400.00, VAT 84.00, total 484.00.",
       "The document shows no item lines that add up to its net, so the invoice is coded as one line.",
