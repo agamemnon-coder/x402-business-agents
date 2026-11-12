@@ -36,8 +36,9 @@ const PHONE_CSP = [
 const TRY_AGENTS_RECORDED = (() => { try { return readRecorded(JSON.parse(read(`../../${RECORDED_PATH}`)) as unknown); } catch { return null; } })();
 /** The repository's llms.txt, served at /llms.txt; missing: not served. */
 const LLMS = (() => { try { return read("../../llms.txt"); } catch { return undefined; } })();
-/** The signed receipt served at /receipt-sample.json (src/redesign/agentData.ts names it), byte for byte; missing: not served. */
-const RECEIPT_SAMPLE = (() => { try { return read(`../../${RECEIPT_SAMPLE_FILE}`); } catch { return undefined; } })();
+/** The signed receipt served at /receipt-sample.json (src/redesign/agentData.ts names it), byte for byte. proofData()
+ * reads it too, so a missing file fails the build rather than quietly dropping the proof. */
+const RECEIPT_SAMPLE = read(`../../${RECEIPT_SAMPLE_FILE}`);
 const EXPOSURE_RATE = (() => { try { return recordedRate(loadRecord().record as unknown as RecordForExposure); } catch { return null; } })();
 
 /**
@@ -68,7 +69,7 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     ...(LLMS ? { llms: LLMS } : {}),
     // The proof as data for a tool that fetches the site, and one receipt it can verify itself (agent-surface, 12 Nov).
     proofJson: JSON.stringify(proofData(), null, 2),
-    ...(RECEIPT_SAMPLE ? { receiptSample: RECEIPT_SAMPLE } : {}),
+    receiptSample: RECEIPT_SAMPLE,
     tryAgentsRecorded: TRY_AGENTS_RECORDED,
     month: monthPage(),
     demo: demoPage(),

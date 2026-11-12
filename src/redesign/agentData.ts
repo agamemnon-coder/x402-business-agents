@@ -41,7 +41,7 @@ export function proofData() {
   const receipt = JSON.parse(readFileSync(new URL(`../../${RECEIPT_SAMPLE_FILE}`, import.meta.url), "utf8")) as { note: string; verify: string };
   return {
     schema: "purser.proof/v1",
-    note: "Test money only: the customer, the supplier, the settlement and the second approver are simulated, and every value here is built from the repository's run records at build time.",
+    note: "Test money only: the customer, the supplier, the settlement and the second approver are simulated, and the runs and limits here are read from the repository's run records and code at build time.",
     site: SITE_URL,
     repository: REPOSITORY_URL,
     runs: liveRuns().map((r) => ({

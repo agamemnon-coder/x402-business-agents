@@ -113,6 +113,11 @@ describe("/receipt-sample.json", () => {
     expect(r.checks.find((c) => c.check === "terms hash")?.ok).toBe(false);
   });
 
+  it("claims no more than is read at build time: the guarantees and check steps are code, not run records", () => {
+    expect(proofData().note).not.toMatch(/every value/i);
+    expect(proofData().note).toMatch(/run records and code/);
+  });
+
   it("is described in proof.json by its own note and the verifier's own sentences", () => {
     expect(doc.receipt_sample).toEqual({
       url: `${SITE_URL}/receipt-sample.json`, what: receipt.note, proves: RECEIPT_MEANS[0], does_not_prove: RECEIPT_MEANS[1],
@@ -150,6 +155,8 @@ describe("llms.txt, for agents", () => {
     expect(block).toContain(`${SITE_URL}/proof.json`);
     expect(block).toContain(`${SITE_URL}/receipt-sample.json`);
     expect(block).toContain("npm run mcp, docs/agent-api.md");
+    // The command an agent can run in a clone is the receipt's own, so it names a file that exists there.
+    expect(block).toContain((JSON.parse(receiptText) as { verify: string }).verify);
     expect(block).not.toMatch(/agent-ready|WebMCP|MCP endpoint|certified|endorsed|approved by/i);
   });
 

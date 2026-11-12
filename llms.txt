@@ -48,7 +48,7 @@ Test money only. Live: Claude's decisions, Airwallex sandbox calls, Metal testne
 ## For agents
 
 - Proof as JSON: https://kit11.max-31b.workers.dev/proof.json. A signed receipt you can check offline: https://kit11.max-31b.workers.dev/receipt-sample.json
-- To check a receipt: write the terms as canonical JSON (keys sorted, money as decimal strings); its SHA-256 equals terms_sha256; that hash is the WebAuthn challenge in clientDataJSON; the ES256 signature verifies with public_key. In a clone: npm run verify-receipt -- receipt-sample.json
+- To check a receipt: write the terms as canonical JSON (keys sorted, money as decimal strings); its SHA-256 equals terms_sha256; that hash is the WebAuthn challenge in clientDataJSON; the ES256 signature verifies with public_key. In a clone: npm run verify-receipt -- docs/runs/2026-11-07-awx-1/receipt-P-0002.json
 - The sample is the owner's own passkey approval of 7 November (live, Airwallex sandbox, test money; Face ID, as stated by the owner): the receipt does not prove who holds the key, or that it was Face ID (no attestation is checked).
 - An outside agent can ask for a company card and pay within limits over MCP (npm run mcp, docs/agent-api.md). Only a person's passkey can approve.
 - skills/purser-spend/SKILL.md: how an outside agent should use the agent API

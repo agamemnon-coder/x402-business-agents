@@ -29,7 +29,7 @@ An approved charge has `approved` true and its `transaction_id`.
 
 - `refused_by` is "airwallex": the card was declined at Airwallex, and nothing was paid. `reason` says why.
   - `LIMIT_EXCEEDED`: over the card's limit per purchase or per month. `next_tool` is `request_limit_raise`.
-  - `CARD_INACTIVE`: the CFO froze the card. There is no `next_tool`: a higher limit does not help. Stop and tell
+  - `CARD_INACTIVE`: the card is frozen. There is no `next_tool`: a higher limit does not help. Stop and tell
     your user.
   - Any other reason: the card may not pay this. Stop and tell your user.
 - `refused_by` is "purser": Purser refused before anything was charged. `code` says why, `message` in words.
