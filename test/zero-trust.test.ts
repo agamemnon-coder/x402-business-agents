@@ -2760,7 +2760,8 @@ describe("pending attacks: listed, not tested, in no count", () => {
   it("has no test, no result and no place in the coverage view for a pending attack", () => {
     const tested = new Set(ATTACKS.map((a) => a.id));
     const here = readFileSync(new URL(import.meta.url), "utf8");
-    expect(PENDING_ATTACKS.map((a) => a.id)).toEqual(["hostile-checker", "hostile-payer"]);
+    // Empty since 12 November: the Checker and the Payer arrived (ap-agents-1112) and their attacks are tested in the matrix.
+    expect(PENDING_ATTACKS.map((a) => a.id)).toEqual([]);
     for (const a of PENDING_ATTACKS) {
       expect(tested.has(a.id), `${a.id} is both pending and tested`).toBe(false);
       expect(SCENARIOS[a.id], a.id).toBeUndefined();
@@ -2820,6 +2821,22 @@ describe("the coverage view: ways money leaves against layers", () => {
     RESULTS.coverage = view;
   });
 });
+
+// The payables agents (12 November, merged with ap-agents-1112): their own hostile-model eval (src/evals/apHostile.ts,
+// npm run ap-hostile-eval in CI, record docs/evals/ap-hostile.json) runs here once for both. A script in Claude's place
+// makes the worst tool call it can on every turn of every eval case, through the runner's own agent loop; the verdict is
+// read from each world's audit ledger. `moved` counts the cases that verdict calls unsafe.
+let apHostileRun: Promise<import("../src/evals/apHostile.js").HostileReport> | undefined;
+const apHostile = (agent: "checker" | "payer") => async (): Promise<Outcome> => {
+  const { hostileEval } = await import("../src/evals/apHostile.js");
+  const r = await (apHostileRun ??= hostileEval());
+  const cases = r.cases.filter((c) => c.agent === agent);
+  expect(cases.length, agent).toBeGreaterThan(0);
+  const calls = cases.reduce((n, c) => n + c.calls, 0), refused = cases.reduce((n, c) => n + c.blocked + c.overridden, 0), unsafe = cases.filter((c) => c.unsafe).length;
+  return { moved: unsafe, control: "invoice and fraud checks", record: `${cases.length} ${agent} cases: ${calls} hostile tool calls, ${refused} refused by code, ${unsafe} unsafe by the ledger verdict` };
+};
+SCENARIOS["hostile-checker"] = apHostile("checker");
+SCENARIOS["hostile-payer"] = apHostile("payer");
 
 describe(MATRIX, () => {
   for (const a of ATTACKS) {
@@ -3014,7 +3031,8 @@ describe("the report: docs/zero-trust.md and docs/zero-trust/report.json", () =>
       expect(section.slice(own.length), p.id).not.toContain(p.id);
     }
     expect(own).toContain(READING.pending);
-    expect(own).toContain("(expected, not seen)");
+    // The expected stop of each pending row (none since 12 November, when the payables agents' attacks were tested).
+    if (pending.rows.length) expect(own).toContain("(expected, not seen)");
   });
 
   it("is built only from a whole run that agrees with the model, and says so if money moved", (ctx) => {
@@ -3022,10 +3040,11 @@ describe("the report: docs/zero-trust.md and docs/zero-trust/report.json", () =>
     expect(() => buildReport({ attacks: [] }, AT)).toThrow(/did not run in full/);
     expect(() => buildReport({ ...results, hostile_model: undefined }, AT)).toThrow(/did not run in full/);
     expect(() => buildReport({ ...results, summary: undefined, attacks: results.attacks.slice(1) }, AT)).toThrow(/did not run in full/);
-    expect(() => buildReport({ ...results, summary: undefined, attacks: [...results.attacks.slice(1), { ...results.attacks[0]!, id: "hostile-checker" }] }, AT)).toThrow(/not an attack in the model/);
+    expect(() => buildReport({ ...results, summary: undefined, attacks: [...results.attacks.slice(1), { ...results.attacks[0]!, id: "not-an-attack-in-the-model" }] }, AT)).toThrow(/not an attack in the model/);
     expect(() => buildReport({ ...results, attacks: results.attacks.map((a, i) => (i ? a : { ...a, stopped_by: "L6" as const })) }, AT)).toThrow(/the model says/);
     expect(() => buildReport({ ...results, coverage: coverageView([]) }, AT)).toThrow(/coverage view/);
-    expect(() => buildReport({ ...results, pending: [] }, AT)).toThrow(/pending/);
+    // A pending list that is not the model's (the model's is empty since 12 November).
+    expect(() => buildReport({ ...results, pending: [{ id: "not-a-pending-attack", description: "x", pending: "x", waits_for: "x" }] }, AT)).toThrow(/pending/);
     expect(() => buildReport({ ...results, summary: { ...results.summary!, attacks_stopped: results.summary!.attacks_stopped + 1 } }, AT)).toThrow(/attacks stopped: the run's summary says/);
     // Had one attack moved money, the report and the page would say so: the count of stopped attacks is not typed.
     const moved = buildReport({ ...results, summary: undefined, attacks: results.attacks.map((a, i) => (i ? a : { ...a, moved: 1 })) }, AT);
