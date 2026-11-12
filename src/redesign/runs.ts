@@ -359,7 +359,7 @@ function extraRuns(): RunRow[] {
     });
   }
 
-  type Mb = { administration: string; reconciliation: { read_at: string; documents: number; differences: number } };
+  type Mb = { reconciliation: { read_at: string; documents: number; differences: number } };
   const mb = has("docs/runs/2026-11-12-moneybird-sandbox.json") ? readJson<Mb>("docs/runs/2026-11-12-moneybird-sandbox.json") : null;
   if (mb) out.push({
     key: "moneybird-1", iso: mb.reconciliation.read_at, date: day(mb.reconciliation.read_at), kind: "sandbox", partners: [],
@@ -368,7 +368,8 @@ function extraRuns(): RunRow[] {
     title: "Moneybird", rails: "Moneybird sandbox administration",
     what: "A small test company's purchase books (suppliers, invoices with their PDF, a payment, a journal entry, a correction) sent to a Moneybird sandbox administration and read back.",
     checks: `Read back: ${mb.reconciliation.differences} differences in ${mb.reconciliation.documents} documents; the same sync again made 0 requests. No e-mail sent; the payment was on a simulated rail.`, money: "Sandbox · test money; none moved",
-    ids: [{ label: "Administration", value: mb.administration }], files: [{ label: "record (JSON)", href: blob("docs/runs/2026-11-12-moneybird-sandbox.json") }, { label: "run log", href: blob("docs/runs/2026-11-12-moneybird-sandbox.md") }],
+    // No id in sight: the administration's number is 18 digits, which the privacy scans read as a card number; it is in the record.
+    ids: [], files: [{ label: "record (JSON)", href: blob("docs/runs/2026-11-12-moneybird-sandbox.json") }, { label: "run log", href: blob("docs/runs/2026-11-12-moneybird-sandbox.md") }],
   });
 
   if (has("docs/runs/2026-11-12-real-customers.md")) out.push({
