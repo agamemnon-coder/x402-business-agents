@@ -96,7 +96,7 @@ describe("the site after v4", () => {
     // short cards, each one sentence with its proof link, the detail folded.
     // Watch: 260 since the film page (12 Nov): the poster, 13 chapters with their times and the key of what is real
     // and what is simulated; the transcript is folded (the replay that was here moved to /replay).
-    const budget: Record<string, number> = { home: 254, watch: 260, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, pricing: 150, security: 265 /* 220 until 12 Nov 15:55: nine controls, each with its proof (the owner); +5, 12 Nov merge: the hostile-model eval and the zero-trust report linked */, metal: tokenizeRun() ? 325 : 275 /* +75, jury panel 12 Nov: the four mandates in one table (seven columns, each figure a word) */, airwallex: 374 /* +5, panel review 10 Nov; +4, jury panel 12 Nov */, visa: 710 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) /* + ICC_RUN_EXTRA_WORDS only while an ICC run record exists (12 Nov; test/icc-block.test.ts holds the block to it); +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa); +5 on 12 Nov for two folded lines under the Airi runs, "As reported by the Airwallex sandbox" and "The CFO's policy next to Visa's VIC rules" (14 words; 9 of them paid for by the TAP section's line that went; 614 as built); +10 on 12 Nov for a third folded line, "Card data: not a network-tokenised checkout, no PCI attestation" (9 words: what this checkout is not, readable without opening the fold; 623 as built) */, claude: 240 /* +45, jury panel 12 Nov: measured, not asserted (four figures, each with its record, and the injection screen); +30, 12 Nov merge: the hostile-model eval's line with its record link (29 words), kept beside the measured block; +15, 12 Nov merge: the measured block's line on the zero-trust report, shown once docs/zero-trust/report.json is in the tree */, notFound: 40 };
+    const budget: Record<string, number> = { home: 254, watch: 260, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, pricing: 150, security: 280 /* 220 until 12 Nov 15:55: nine controls, each with its proof (the owner); +5, 12 Nov merge: the hostile-model eval and the zero-trust report linked; +15, jury check 12 Nov: "Face ID signs on chain" and "How the 2 were detected" linked */, metal: tokenizeRun() ? 380 : 330 /* +75, jury panel 12 Nov: the four mandates in one table (seven columns, each figure a word); +50, 12 Nov wire-in: "Face ID signs on chain", six steps from docs/runs/2026-11-12-faceid-onchain.json (49 words as built); +5, jury check 12 Nov: "Since 12 Nov it does", linking it from the replace card */, airwallex: 415 /* +5, panel review 10 Nov; +4, jury panel 12 Nov; +41, jury check 12 Nov: three tiles behind flags (payee check, batch transfer, ledger reconciliation) and their line, 411 as built */, visa: 710 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) /* + ICC_RUN_EXTRA_WORDS only while an ICC run record exists (12 Nov; test/icc-block.test.ts holds the block to it); +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa); +5 on 12 Nov for two folded lines under the Airi runs, "As reported by the Airwallex sandbox" and "The CFO's policy next to Visa's VIC rules" (14 words; 9 of them paid for by the TAP section's line that went; 614 as built); +10 on 12 Nov for a third folded line, "Card data: not a network-tokenised checkout, no PCI attestation" (9 words: what this checkout is not, readable without opening the fold; 623 as built) */, claude: 240 /* +45, jury panel 12 Nov: measured, not asserted (four figures, each with its record, and the injection screen); +30, 12 Nov merge: the hostile-model eval's line with its record link (29 words), kept beside the measured block; +15, 12 Nov merge: the measured block's line on the zero-trust report, shown once docs/zero-trust/report.json is in the tree */, notFound: 40 };
     // Docs 200 since 12 Nov: four cards, the agent API's tools by name with one short line each, every description folded.
     // Status 90 since 12 Nov: the status lines (empty until /health is read) and the five latest live runs.
     Object.assign(budget, { docs: 200, status: 90 });
@@ -116,15 +116,16 @@ describe("the site after v4", () => {
     for (const [name, html] of all) for (const re of bad) expect({ name, found: re.exec(allText(html).replace(hostile || "\u0000", " "))?.[0] ?? null }).toEqual({ name, found: null });
   });
 
-  it("has four tabs and More in the menu, on every public page; under More the pages the site serves, in one order: Pricing, Security, Docs, Status, then Airwallex, Metal, Visa, Claude", () => {
+  it("has four tabs and More in the menu, on every public page; under More the pages the site serves, in one order: Pricing, Security, Docs, then Airwallex, Metal, Visa, Claude", () => {
     // The whole list, in the menu's order (src/ui/more.ts): the product pages, then the partner pages.
-    expect(MORE_LINKS.map((l) => [l.label, l.href])).toEqual([["Purser Cloud", "https://purser-try.max-31b.workers.dev/"], ["Pricing", "pricing"], ["Security", "security"], ["Docs", "docs"], ["Status", "status"], ["Airwallex", "airwallex"], ["Metal", "metal"], ["Visa", "visa"], ["Claude", "claude"]]);
+    expect(MORE_LINKS.map((l) => [l.label, l.href])).toEqual([["Purser Cloud", "https://purser-try.max-31b.workers.dev/"], ["Pricing", "pricing"], ["Security", "security"], ["Docs", "docs"], ["Airwallex", "airwallex"], ["Metal", "metal"], ["Visa", "visa"], ["Claude", "claude"]]);
     // The menu lists a page exactly when the site serves it, so "More" never opens onto a 404 (a page not built yet is
     // left out until it is registered; then the menu must list it).
     // 12 Nov: Purser Cloud is its own deployment (an absolute link), served there, not by this Worker.
     const served = MORE_LINKS.filter((l) => /^https:\/\//.test(l.href) || pageResponse(new Request(`https://x.test/${l.href}`), pages as Pages)?.status === 200).map((l) => l.label);
     expect(served).toEqual(expect.arrayContaining(["Pricing", "Security", "Airwallex", "Metal", "Visa", "Claude"]));
-    expect(served).toEqual(expect.arrayContaining(["Docs", "Status"]));
+    expect(served).toEqual(expect.arrayContaining(["Docs"]));
+    expect(served).not.toContain("Status"); // 12 Nov (owner): Status left the menu
     for (const [name, html] of Object.entries(PUBLIC)) {
       const nav = /<nav[^>]*aria-label="Main"[^>]*>([\s\S]*?)<\/nav>/.exec(html)?.[1] ?? "";
       // Five items, in this order: the four tabs as links, then "More", a <details> that needs no script.
@@ -160,7 +161,7 @@ describe("the site after v4", () => {
     }
     // "/try" is no longer linked: since 12 Nov the Try tab and every Try button open the hands-on demo (TRY_URL).
     for (const want of ["/home", "/watch", "/proof", "/pricing", "/security", "/metal", "/airwallex", "/visa", "/claude", "/lab", "/film", "/month", "/metal/report"]) expect(seen).toContain(want);
-    for (const want of ["/docs", "/status"]) expect(seen).toContain(want);
+    for (const want of ["/docs"]) expect(seen).toContain(want);
     for (const [from, to] of [["/live", "/replay"], ["/demo", "/replay"], ["/overview", "/home"]]) expect(pageResponse(new Request(`https://x.test${from}`), p)?.headers.get("location")).toBe(to);
     expect(pageResponse(new Request("https://x.test/no/such/page"), p)).toBeNull();
     const nf = notFoundResponse(p);
@@ -242,7 +243,8 @@ describe("the site after v4", () => {
   it("gives Proof three partner cards (no Visa TAP on it) and says the fixed lines word for word", () => {
     const proof = pages.proof!;
     // Three partner cards since 6 Nov (jury review, #7): Visa TAP is a footer link to /visa, not a card.
-    expect((proof.match(/<article class="pcard card"/g) ?? []).length).toBe(3);
+    // 12 Nov (wire-in, owner): five cards, Visa (VIC via Airi, vic-3) and T:0 added; still no Visa TAP card.
+    expect((proof.match(/<article class="pcard card"/g) ?? []).length).toBe(5);
     expect(proof).not.toMatch(/<span class="logo txt">Visa TAP<\/span>/);
     // The Visa paragraph is said once, on /visa (jury review, 4 Nov); TAP's status too (Visa, 5 Nov: not eligible Visa
     // tooling), both inside /visa's one closed TAP fold. Proof's footer link to it went on 12 Nov (jury panel).
@@ -270,7 +272,8 @@ describe("the site after v4", () => {
       expect({ name, pictureFirst: whole.indexOf(first) >= 0 && whole.indexOf(first) < whole.indexOf("<details") }).toEqual({ name, pictureFirst: true });
       // /visa's folds each have their own anchor (the attempts, Airwallex's record, Visa's rules, card data, TAP).
       expect((whole.match(name === "visa" ? /<details class="fold" id="[\w-]+">/g : /<details class="fold">/g) ?? []).length).toBeGreaterThanOrEqual(2);
-      expect(html).not.toMatch(/<img[^>]*visa/i);
+      // 12 Nov (wire-in): partner marks as images (docs/evidence/logo-permissions.md); Visa's only as its official file.
+      expect(html.replace(/<img src="assets\/logo-visa\.png" alt="Visa" width="46" height="15">/g, "")).not.toMatch(/<img[^>]*visa/i);
       // No script, but /airwallex's one (src/redesign/ui.ts OPEN_TARGET_JS: a link into its cards' fold opens it) and
       // /metal's (src/redesign/metalMandates.ts METAL_INSPECT_JS: the spend read live from its own origin, 12 Nov).
       expect(scriptBlocks(html)).toEqual(name === "airwallex" ? [`<script>\n${OPEN_TARGET_JS}</script>`] : name === "metal" ? [`<script>\n${METAL_INSPECT_JS}</script>`] : []);

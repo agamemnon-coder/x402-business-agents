@@ -10,7 +10,7 @@ finance professional at a bank, both anonymous); more in progress.
 Where it stands: work in progress, built and tested against **stand-ins** for Airwallex and Claude and on Cloudflare's
 local database. Its connected-account payout path ran once in Airwallex's sandbox on 10 November, and later that day
 the inbox ran end to end for three test companies: 1 payout PAID, 3 refused by Airwallex (below;
-[run record](runs/2026-11-10-platform-e2e.md)). A hosted preview exists but is **private** (behind an access key); no
+[run record](runs/2026-11-10-platform-e2e.md)). Purser Cloud runs publicly as a test preview at purser-try.max-31b.workers.dev/try: test companies, test money on a simulated bank. Its console's hosted preview exists but is **private** (behind an access key); no
 customer uses it, and it is **not ready for real money** ([what is missing](go-live.md)). None of it is part of the
 Kit 11 runs described in the README. The Kit 11 build keeps Metal and x402 for the agents' own payments; the inbox
 pays suppliers through Airwallex payouts.

@@ -4,7 +4,7 @@
 // counter. It reports p50 and p95 per route, the share of 429 answers ("busy" or "limit"), every 5xx, and the platform
 // admin's figures before and after (the Claude spend must not move past the caps).
 //
-// Run it against a local `wrangler dev` (docs/runs/2026-11-13-try-load.md says how). A run against a deployed Worker
+// Run it against a local `wrangler dev` (docs/runs/2026-11-12-try-load.md says how). A run against a deployed Worker
 // needs the owner's word first. The admin token is read from PURSER_ADMIN_TOKEN, never printed.
 import { pathToFileURL } from "node:url";
 import { BOT_SOLVER_JS } from "../cloud/src/try/botCheck.js";

@@ -6,6 +6,8 @@
 // script and works from the keyboard). Also /pricing and /security, the product pages under "More".
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
+import { REASSURE } from "../../src/redesign/home.js";
+import { TRY_URL } from "../../src/redesign/ui.js";
 import { WATCH_IN_MENU } from "../../src/config/film.js";
 import { VISA_ICC_LINE } from "../../src/config/brand.js";
 import { VISA_ENTRY_LINE, VISA_H1, VISA_TAP_HEADING, VISA_TITLE } from "../../src/redesign/partners.js";
@@ -474,7 +476,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
           // 2,657 px; 5,386 before the timeline). The frame's pin leaves room for one more line of filters.
           const m = await page.evaluate(`(() => { const main = document.querySelector("main"); const lis = [...main.querySelectorAll(":scope > ol.tl > li.run")]; const hs = lis.map((li) => ({ key: li.id, h: li.getBoundingClientRect().height })); return { entries: hs, frame: main.getBoundingClientRect().height - hs.reduce((n, x) => n + x.h, 0) }; })()`) as { entries: { key: string; h: number }[]; frame: number };
           for (const e of m.entries.filter((x) => x.h > 270)) fail(`/runs ${tag}: the entry ${e.key} is ${Math.round(e.h)}px tall with its fold closed (at most 270)`);
-          if (m.frame > 470) fail(`/runs ${tag}: the frame around the entries (heading, line, filters, closed groups, last links) is ${Math.round(m.frame)}px tall (at most 470)`);
+          // +14 px, 12 Nov wire-in: the one "Face ID to paid" line, a 44 px tap target (master list 81).
+          if (m.frame > 484) fail(`/runs ${tag}: the frame around the entries (heading, line, filters, closed groups, last links) is ${Math.round(m.frame)}px tall (at most 484)`);
           for (const s of await small()) fail(`/runs ${tag}: a tap target under 44px, folds closed: ${s}`);
           await page.evaluate(`document.querySelectorAll("main details").forEach((d) => { d.open = true; })`);
           for (const s of await small()) fail(`/runs ${tag}: a tap target under 44px, every fold open: ${s}`);
@@ -641,7 +644,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // /claude: 225 since the merge of 12 Nov, the budget of test/site-v4.test.ts, for the hostile-model eval's line beside
       // the measured block; 240 with the measured block's line on the zero-trust report (the budget of test/site-v4.test.ts).
       // /visa + ICC_RUN_EXTRA_WORDS only while an ICC run record exists (12 Nov), as in test/site-v4.test.ts.
-      const budget = path === "/airwallex" ? 374 : path === "/visa" ? 710 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) : path === "/metal" ? (tokenizeRun() ? 325 : 275) : path === "/claude" ? 240 : 150;
+      const budget = path === "/airwallex" ? 415 /* +41, jury check 12 Nov: three tiles behind flags (test/site-v4.test.ts) */ : path === "/visa" ? 710 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) : path === "/metal" ? (tokenizeRun() ? 380 : 330) /* +50 and +5, 12 Nov wire-in and jury check (test/site-v4.test.ts) */ : path === "/claude" ? 240 : 150;
       if (words > budget + 26) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       // Each page is labelled with the run it shows: the main run; /visa with the Airi run's own label (the main run's
       // label is inside its closed TAP fold, with the main run's TAP-signed buy).
@@ -676,7 +679,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (path === "/airwallex") {
         // Seven tiles, each with the product's name, one number, an id in monospace and its run's date.
         const tiles = (await page.evaluate(`[...document.querySelectorAll(".awp .awt")].map((t) => ({ name: (t.querySelector("h2") || {}).textContent || "", v: t.querySelectorAll(".v").length, id: (t.querySelector(".i code") || {}).textContent || "", date: (t.querySelector("time") || {}).textContent || "", top: t.getBoundingClientRect().top }))`)) as { name: string; v: number; id: string; date: string; top: number }[];
-        if (tiles.map((t) => t.name).join("|") !== "Issuing|Payouts|FX|Transfer approvals|Connected accounts|Payment acceptance|Airi" || tiles.some((t) => t.v !== 1 || !t.id || !/^\d{1,2} [A-Z][a-z]{2}$/.test(t.date))) fail(`/airwallex ${tag}: not seven product tiles, each with one number, an id and a date (${JSON.stringify(tiles.map((t) => [t.name, t.v, t.id, t.date]))})`);
+        // 12 Nov (jury check): then three tiles behind flags, each live on 12 Nov, under their own line.
+        if (tiles.map((t) => t.name).join("|") !== "Issuing|Payouts|FX|Transfer approvals|Connected accounts|Payment acceptance|Airi|Payee check|Batch transfer|Ledger reconciliation" || tiles.some((t) => t.v !== 1 || !t.id || !/^\d{1,2} [A-Z][a-z]{2}$/.test(t.date))) fail(`/airwallex ${tag}: not seven product tiles, each with one number, an id and a date (${JSON.stringify(tiles.map((t) => [t.name, t.v, t.id, t.date]))})`);
         if (!(await page.evaluate(`(() => { const t = document.querySelector(".awp"), f = document.querySelector("#awx-hash"); return !!t && !!f && !!(t.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING); })()`))) fail(`/airwallex ${tag}: the tiles are not above the hash block`);
         // The first screen is about Airwallex's products: no Metal earnings and no simulated deposit before any scroll.
         const first = await firstScreen(page);
@@ -685,11 +689,12 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         const states = (await page.evaluate(`[...document.querySelectorAll("#p-approvals ol.aws li")].map((l) => l.textContent.trim())`)) as string[];
         if (states.length !== 3 || !/^Signed in Purser( \(test passkey\))?$/.test(states[0] ?? "") || !/ at Airwallex$|^Held by Airwallex/.test(states[1] ?? "") || !/^Now: [A-Z_]+/.test(states[2] ?? "")) fail(`/airwallex ${tag}: transfer approvals does not show its three states (${JSON.stringify(states)})`);
         // The platform run's refused payouts are told in its fold, with their cause: never among the tiles.
-        if (/refus/i.test(await page.locator("main .awp").innerText())) fail(`/airwallex ${tag}: a refusal on a tile (they belong in the platform run's fold)`);
+        if (/refus/i.test((await page.locator("main .awp").allInnerTexts()).join(" "))) fail(`/airwallex ${tag}: a refusal on a tile (they belong in the platform run's fold)`);
       }
       if (TAP_PAGES.includes(path) && w < 500) await tapTargets(page, `${path} ${tag}`);
       if ((await page.locator("details.fold").count()) < 2) fail(`${path} ${tag}: the details are not folded`);
-      if ((await page.locator("img[src*='visa' i], img[alt*='visa' i]").count()) > 0) fail(`${path} ${tag}: shows a Visa logo`);
+      // 12 Nov (wire-in): Visa's official mark only, on the owner's stated permission (docs/evidence/logo-permissions.md).
+      if ((await page.locator("img[src*='visa' i]:not([src='assets/logo-visa.png']), img[alt*='visa' i]:not([src='assets/logo-visa.png'])").count()) > 0) fail(`${path} ${tag}: shows a Visa logo other than the official mark`);
       // Every fold of the page; "More" in the menu stays closed, as a reader leaves it.
       await page.evaluate(() => document.querySelectorAll("details:not(.pmore)").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
       await look(page, `${path} folds open ${tag}`, w);
@@ -748,7 +753,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const body = await page.locator("main").innerText();
       const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
       // The budgets of test/site-v4.test.ts, counted here as the browser shows the page's body (folds closed).
-      const budget = path === "/pricing" ? 150 : 265; // /security 265 since 12 Nov: nine controls (the owner), then the eval and zero-trust links
+      const budget = path === "/pricing" ? 150 : 280; // /security 265 since 12 Nov: nine controls (the owner), then the eval and zero-trust links; 280, jury check 12 Nov: two links (test/site-v4.test.ts)
       if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
       const here = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null, tabs: document.querySelectorAll('nav[aria-label="Main"] > a.on').length }; })()`) as { more: boolean; link: string | null; tabs: number };
       if (!here.more || here.link !== path.slice(1) || here.tabs) fail(`${path} ${tag}: "More" and the page's own link are not marked as where the reader is (${JSON.stringify(here)})`);
@@ -764,8 +769,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       } else {
         // Nine controls and "Not yet" since the owner's request (12 Nov 15:55): ten cards, each with its detail folded, and "If the approver is unavailable" (#unavailable) under the signature.
         if (cards !== 10 || (await page.locator("main article.pc.card details.fold").count()) !== 11 || (await page.locator("#s-sign details#unavailable").count()) !== 1 || (await page.locator("main details[open]").count())) fail(`/security ${tag}: not ten cards, each with its detail folded`);
-        if (!/Our red team ran \d+ attacks: \d+ stopped before anything moved, \d+ found afterwards\./.test(body) || !/npm run verify-log/.test(body) || !/No SOC 2 report, no ISO 27001 audit and no third-party penetration test yet/.test(body)) fail(`/security ${tag}: the red team's counts, the audit command or the "Not yet" line is missing`);
-        if (!/^try(\/sign)?$/.test((await page.locator("#s-sign .links a").getAttribute("href")) ?? "")) fail(`/security ${tag}: the signature card does not link to Try`);
+        // 12 Nov (jury check): "not prevented (detected after)".
+        if (!/Red team: \d+ attacks, \d+ stopped before anything moved, \d+ not prevented \(detected after\)\./.test(body) || !/npm run verify-log/.test(body) || !/No SOC 2 report, no ISO 27001 audit and no third-party penetration test yet/.test(body)) fail(`/security ${tag}: the red team's counts, the audit command or the "Not yet" line is missing`);
+        // The first link is Try (since #188 the hands-on demo, TRY_URL); since 12 Nov the second is Face ID on chain.
+        if (!/^(try(\/sign)?|https:\/\/purser-try\.max-31b\.workers\.dev\/try)$/.test((await page.locator("#s-sign .links a").first().getAttribute("href")) ?? "")) fail(`/security ${tag}: the signature card does not link to Try`);
       }
       await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
       await page.evaluate(() => document.querySelectorAll("main details").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
@@ -881,7 +888,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await look(page, `/metal with an invoice-token record ${tag}`, w);
       const stripWords = (await page.locator("footer .builton").innerText().catch(() => "")).split(/\s+/).filter((x) => /\w/.test(x)).length;
       const words = (await page.evaluate(() => document.body.innerText)).split(/\s+/).filter((x) => /\w/.test(x)).length - stripWords;
-      if (words > 325 + 26) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 325 plus the frame`);
+      // 375 since the 12 Nov wire-in ("Face ID signs on chain", +50; test/site-v4.test.ts).
+      if (words > 380 + 26) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 380 plus the frame`);
       const block = page.locator("#invoice-token");
       const sight = await block.innerText().catch(() => "");
       if (!/^Invoice token \(prototype\)\s+\d{1,2} \w+, a separate Metal testnet run\. An invoice approved with a labelled test passkey(?: on \d{1,2} \w+)? became a token\. A simulated financier bought it for 2\.35 test USD; the debtor paid its holder 2\.40\. Face value divided by 100\.\s+Chain record verified\s+7 transactions$/.test(sight.trim())) fail(`/metal with an invoice-token record ${tag}: the block is not the title, one sentence, the badge and a closed fold (${JSON.stringify(sight)})`);
@@ -913,7 +921,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (first.next !== "guarantees" || first.open) fail(`/proof ${tag}: "What Purser guarantees" is not directly under the heading (${first.next || "something else"} is), or a fold is open on load (${first.open})`);
       if (w === 390) {
         if (first.guarantees < 0 || first.guarantees >= 780) fail(`/proof ${tag}: the guarantees start at ${first.guarantees} px, not on the first screen (under 780 px)`);
-        if (first.fold < 0 || first.fold > 2249) fail(`/proof ${tag}: the first closed line starts at ${first.fold} px, over 2,249 px (half of the 4,499 px before)`);
+        // +200 px, 12 Nov (owner): the Visa and T:0 partner cards, a name and one line each (2,427 px as built at 390).
+        if (first.fold < 0 || first.fold > 2449) fail(`/proof ${tag}: the first closed line starts at ${first.fold} px, over 2,449 px (half of the 4,499 px before, plus the two cards)`);
         const closed = await targets();
         for (const x of closed.filter((y) => y.h < 44)) fail(`/proof ${tag}: a tap target under 44 px with the folds closed: ${Math.round(x.h * 10) / 10} px "${x.t}"`);
         if (closed.length < 30) fail(`/proof ${tag}: only ${closed.length} links and fold headers in sight, the check is not looking at the page`);
@@ -1104,11 +1113,12 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const asked: string[] = [];
       const onRequest = (r: { url(): string }) => { const u = new URL(r.url()); if (u.origin !== new URL(judgeBase).origin || !["/judge", "/assets/inter.woff2", "/assets/favicon.svg", "/favicon.ico"].includes(u.pathname)) asked.push(r.url()); };
       await page.goto(`${judgeBase}/`, { waitUntil: "load" });
-      if ((await page.locator("main a.btn.primary").getAttribute("href")) !== "try/sign") fail(`/ (Home, with /try/sign) ${tag}: the button does not lead to /try/sign`);
+      // Since #188 (12 Nov) every Try button opens the hands-on demo (TRY_URL), with /try/sign in the bundle too.
+      if ((await page.locator("main a.btn.primary").getAttribute("href")) !== TRY_URL) fail(`/ (Home, with /try/sign) ${tag}: the button does not lead to the hands-on demo`);
       const top = page.locator('footer a.flink[href="judge"]');
       const box = await top.boundingBox();
       if ((await page.locator('a[href="judge"]').count()) !== 1 || (await top.innerText()).trim() !== "Judging? Take the 3-minute tour" || !box || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: no one "Judging? Take the 3-minute tour" link in the footer, inside the page's gutter`);
-      if ((await page.locator("main p.reassure").innerText()).trim() !== "A test passkey, no account, no money. About a minute.") fail(`/ (Home, with /try/sign) ${tag}: the line under the button is not /try/sign's`);
+      if ((await page.locator("main p.reassure").innerText()).trim() !== REASSURE.sign) fail(`/ (Home, with /try/sign) ${tag}: the line under the button is not Home's (src/redesign/home.ts REASSURE)`);
       await checkHome(page, { url: `${judgeBase}/`, name: `/ (Home, with /try/sign) ${tag}`, width: w, height: h, touch: w < 500, tryHref: "https://purser-try.max-31b.workers.dev/try", fail, quick: true });
       await page.goto(`${judgeBase}/home?demo=4`, { waitUntil: "load" });
       await look(page, `/ (Home, with /try/sign) ${tag}`, w);

@@ -103,6 +103,22 @@ function expected(): Record<string, string | string[]> {
     "co-signature": String(signatures - faceIds),
     "valid": String(orders - refunds),
     "refunded": String(refunds),
+    // 12 Nov (wire-in, owner): /proof's Visa and T:0 cards, each from its own run record (docs/runs/2026-11-12-vic-3.json,
+    // docs/runs/2026-11-10-t0-journal-sandbox.md), read here from the record itself, not from the page's code.
+    ...separateCards(),
+  };
+}
+function separateCards(): Record<string, string> {
+  const v = JSON.parse(readFileSync(new URL("../docs/runs/2026-11-12-vic-3.json", import.meta.url), "utf8")) as { purchases: { step: string; request?: { amount: string; currency: string }; outcome?: { status?: string; by?: string } }[] };
+  const b = v.purchases.find((x) => x.step === "B")!;
+  const refused = v.purchases.filter((x) => x.step !== "A" && x.outcome?.status === "refused" && /^purser/.test(x.outcome.by ?? "")).length;
+  const t0 = readFileSync(new URL("../docs/runs/2026-11-10-t0-journal-sandbox.md", import.meta.url), "utf8");
+  return {
+    "paid after Face ID": `${b.request!.currency} ${b.request!.amount}`,
+    "refused by Purser before any Airi call": String(refused),
+    "entries posted": /(\d+) journal entries posted to T:0/.exec(t0)![1]!,
+    "differences": /there are (\d+) differences/.exec(t0)![1]!,
+    "debits equal credits": `${/debits equal to credits: ([\d,.]+) USD each/.exec(t0)![1]!} USD`,
   };
 }
 

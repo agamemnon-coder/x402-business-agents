@@ -8,7 +8,7 @@ import type { ClaudeReader } from "../claude/reader.js";
 import type { DB } from "../db/open.js";
 import { agentApiServer } from "../platform/mcpServer.js";
 import { foldHtml, outLink, productPage, repoHref, repoText } from "./productPage.js";
-import { esc, icon } from "./ui.js";
+import { TRY_URL, esc, icon } from "./ui.js";
 
 // The agent API.
 
@@ -62,14 +62,15 @@ const NO_TOOL = "no tool approves, sets a limit or touches another agent's card"
 // The Purser Cloud REST API.
 
 /**
- * A public demo of Purser Cloud, when there is one: its address (https). Unset for now: the hosted preview is private
- * (docs/cloud.md), so the page links the repository only. Once set, the page also links the demo's OpenAPI document.
+ * A public demo of Purser Cloud's API, when there is one: its address (https). Unset for now: the page links the hands-on
+ * test preview (TRY_URL) and the repository. Once set, the page also links the demo's OpenAPI document.
  */
 export const CLOUD_DEMO_URL: string | null = null;
 /** The OpenAPI document's route (cloud/src/app.ts builds it from its route table). */
 export const CLOUD_OPENAPI_PATH = "/v1/openapi.json";
 const CLOUD_DOC = "docs/cloud.md", CLOUD_ROUTES = "cloud/src/app.ts";
-const PREVIEW_PRIVATE = "A hosted preview exists but is private (behind an access key); no customer uses it.";
+/** One statement wherever Purser Cloud's status is said (jury check, 12 Nov): docs/cloud.md, this page, the form. */
+export const CLOUD_PREVIEW_LINE = "Purser Cloud runs publicly as a test preview at purser-try.max-31b.workers.dev/try: test companies, test money on a simulated bank. Its console's hosted preview exists but is private (behind an access key); no customer uses it.";
 
 /** The demo's OpenAPI address; only an https address is ever linked. */
 function demoOpenApi(url: string): string {
@@ -92,7 +93,7 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
   const demo = o.cloudDemoUrl === undefined ? CLOUD_DEMO_URL : o.cloudDemoUrl;
   if (!repoText("src/platform/mcpServer.ts").includes(NO_TOOL)) throw new Error("src/platform/mcpServer.ts no longer says what no tool can do");
   if (!repoText(CLOUD_ROUTES).includes(`path: "${CLOUD_OPENAPI_PATH}"`)) throw new Error(`${CLOUD_ROUTES} no longer serves ${CLOUD_OPENAPI_PATH}`);
-  if (!repoText(CLOUD_DOC).replace(/\*\*/g, "").replace(/\s+/g, " ").includes(PREVIEW_PRIVATE)) throw new Error(`${CLOUD_DOC} no longer says the hosted preview is private`);
+  if (!repoText(CLOUD_DOC).replace(/\*\*/g, "").replace(/\s+/g, " ").includes(CLOUD_PREVIEW_LINE)) throw new Error(`${CLOUD_DOC} no longer says what the preview is`);
   const body = `<div class="cols c2">
   <article class="pc card fd wide" id="agent-api">${head("bot", "Agent API (MCP server)")}
     <p>An outside agent works under the CFO's policy through these tools. ${esc(NO_TOOL.replace(/^n/, "N"))}.</p>
@@ -102,9 +103,9 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
     <div class="links">${outLink(repoHref(AGENT_API_DOC, "#outside-agents-the-agent-api-mcp"), "The agent API guide")}</div>
     ${foldHtml("What each tool does", tools.map((t) => `${code(t.name)}: ${esc(t.description)}`))}
     ${foldHtml("What each variable is", env.map((e) => `${code(e.name)}: ${esc(e.what)}`))}</article>
-  <article class="pc card" id="cloud-api">${head("database", "Purser Cloud REST API", demo ? "" : "Private preview")}
-    <p>One JSON API for invoices, suppliers, payments and the ledger. Its OpenAPI document, ${code(CLOUD_OPENAPI_PATH)}, is built from the route table.${demo ? "" : " The hosted preview is private, so there is no public address yet."}</p>
-    <div class="links">${outLink(repoHref(CLOUD_DOC, "#the-api"), "The API reference")}${outLink(repoHref(CLOUD_ROUTES), "The route table")}${demo ? outLink(demoOpenApi(demo), "OpenAPI on the demo (test money)") : ""}</div></article>
+  <article class="pc card" id="cloud-api">${head("database", "Purser Cloud REST API", demo ? "" : "Test preview")}
+    <p>One JSON API for invoices, suppliers, payments and the ledger. Its OpenAPI document, ${code(CLOUD_OPENAPI_PATH)}, is built from the route table.${demo ? "" : " It runs publicly as a test preview: test companies, test money on a simulated bank."}</p>
+    <div class="links">${outLink(repoHref(CLOUD_DOC, "#the-api"), "The API reference")}${outLink(repoHref(CLOUD_ROUTES), "The route table")}${demo ? outLink(demoOpenApi(demo), "OpenAPI on the demo (test money)") : outLink(TRY_URL, "The test preview")}</div></article>
   <article class="pc card" id="payments">${head("arrow-left-right", "Payments and webhooks")}
     <ul class="pl"><li>Agents pay each other per request over x402, on Metal's testnet. ${outLink(repoHref(X402_DOC, X402_ANCHOR), "x402 on Metal")}</li><li>Airwallex's sandbox sends its webhooks to the relay, which checks each signature. ${outLink(repoHref(WEBHOOKS_DOC, WEBHOOKS_ANCHOR), "Airwallex webhooks")}</li></ul></article>
   <article class="pc card wide" id="offline">${head("play", "Run it yourself, offline")}
@@ -120,7 +121,7 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
     real: [
       "Sandbox and testnet only: Airwallex's sandbox, Metal's testnet, test money.",
       "The tools are read from the agent API's own code where this page is built.",
-      "Purser Cloud's hosted preview is private (behind an access key); no customer uses it.",
+      "Purser Cloud runs publicly as a test preview at purser-try.max-31b.workers.dev/try: test companies, test money on a simulated bank. Its console's hosted preview exists but is private (behind an access key); no customer uses it.",
     ],
   });
 }

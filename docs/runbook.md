@@ -308,8 +308,8 @@ How to tell: `npm run health` fails on the RPC or the facilitator; the facilitat
 
 Purser Cloud (`cloud/`, [cloud.md](cloud.md)) is a Cloudflare Worker with one D1 database for every company and one R2
 bucket for documents, raw mail and staged exports. Purser Cloud moves no real money. Its hands-on deployment runs the engine on test money and a simulated bank. The runner's ledger
-stays the source, and the cloud holds a copy the runner pushes. **The cloud is not in production:** a hosted preview
-exists but is private (behind an access key), and no customer uses it. No step below is recorded as exercised against
+stays the source, and the cloud holds a copy the runner pushes. **The cloud is not in production:** Purser Cloud runs publicly as a test preview at purser-try.max-31b.workers.dev/try: test companies, test money on a simulated bank. Its console's hosted
+preview exists but is private (behind an access key), and no customer uses it. No step below is recorded as exercised against
 Cloudflare. Each step says whether it is **tested** (an automated test against the Worker's own handler, on SQLite
 and, with `npm run test:d1`, on local D1 under workerd) or **not yet exercised**.
 

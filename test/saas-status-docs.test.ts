@@ -16,7 +16,7 @@ import { TRY_URL } from "../src/redesign/ui.js";
 import { openDb } from "../src/db/open.js";
 import { agentId } from "../src/platform/externalAgents.js";
 import { agentApiServer } from "../src/platform/mcpServer.js";
-import { CLOUD_DEMO_URL, CLOUD_OPENAPI_PATH, MCP_COMMAND, MCP_ENV, agentTools, docsPage } from "../src/redesign/docs.js";
+import { CLOUD_DEMO_URL, CLOUD_PREVIEW_LINE, CLOUD_OPENAPI_PATH, MCP_COMMAND, MCP_ENV, agentTools, docsPage } from "../src/redesign/docs.js";
 import { LIVE_RUN_EXPECTED_MS, RUNNER_DOWN_AFTER_MS } from "../src/ops/publicHealth.js";
 import { RUNS_TITLE, liveRuns } from "../src/redesign/runs.js";
 import { STATUS_RUNS, latestRuns, runLabels, statusPage } from "../src/redesign/status.js";
@@ -137,10 +137,11 @@ describe("/docs: docs and API", () => {
     const api = card(html, "cloud-api");
     expect(repoLinks(api)).toEqual([{ file: "docs/cloud.md", anchor: "the-api" }, { file: "cloud/src/app.ts", anchor: "" }]);
     expect(plain(api)).toContain(CLOUD_OPENAPI_PATH);
-    // Unset: no link to any address but the repository's files, and the page says the preview is private, as the doc does.
-    expect([...api.matchAll(/href="([^"]+)"/g)].map((m) => m[1]!).filter((h) => !h.startsWith(REPO))).toEqual([]);
-    expect(read("docs/cloud.md").replace(/\s+/g, " ")).toContain("A hosted preview exists but is private (behind an access key); no customer uses it.");
-    expect(plain(api)).toContain("The hosted preview is private, so there is no public address yet.");
+    // Unset: no link to any address but the repository's files and the hands-on test preview (jury check, 12 Nov: one
+    // statement on Purser Cloud everywhere), and the page says what the doc says.
+    expect([...api.matchAll(/href="([^"]+)"/g)].map((m) => m[1]!).filter((h) => !h.startsWith(REPO))).toEqual([TRY_URL]);
+    expect(read("docs/cloud.md").replace(/\*\*/g, "").replace(/\s+/g, " ")).toContain(CLOUD_PREVIEW_LINE);
+    expect(plain(api)).toContain("It runs publicly as a test preview: test companies, test money on a simulated bank.");
     expect(html).toBe(docsPage({ cloudDemoUrl: null }));
   });
 
@@ -149,7 +150,7 @@ describe("/docs: docs and API", () => {
     const api = card(set, "cloud-api");
     expect([...api.matchAll(/href="([^"]+)"/g)].map((m) => m[1]!).filter((h) => !h.startsWith(REPO))).toEqual(["https://demo.example.test/v1/openapi.json"]);
     expect(api).toContain('<a class="pf" href="https://demo.example.test/v1/openapi.json" target="_blank" rel="noopener">OpenAPI on the demo (test money) ↗</a>');
-    expect(plain(api)).not.toContain("no public address yet");
+    expect(plain(api)).not.toContain("It runs publicly as a test preview");
     expect(repoLinks(api)).toEqual([{ file: "docs/cloud.md", anchor: "the-api" }, { file: "cloud/src/app.ts", anchor: "" }]);
     // The other cards are the same.
     for (const id of ["agent-api", "payments", "offline"]) expect(card(set, id)).toBe(card(html, id));
@@ -200,7 +201,8 @@ describe("/docs: docs and API", () => {
   it("says what is real in its own words: sandbox and testnet only, and that the preview is private", () => {
     const real = decode(/<details class="real" id="real">([\s\S]*?)<\/details>/.exec(html)?.[1] ?? "");
     expect(real).toContain("Sandbox and testnet only: Airwallex's sandbox, Metal's testnet, test money.");
-    expect(real).toContain("Purser Cloud's hosted preview is private (behind an access key); no customer uses it.");
+    // 12 Nov (jury check): one statement on Purser Cloud everywhere (src/redesign/docs.ts CLOUD_PREVIEW_LINE).
+    expect(real).toContain(CLOUD_PREVIEW_LINE);
     expect(real).not.toMatch(/Northwind|Real Claude decisions/);
     expect(html).not.toMatch(/certified|endorsed|approved by/i);
   });
@@ -607,13 +609,10 @@ describe("/status on the site", () => {
     expect(card(html, "runs")).toBe(card(STATUS_PAGE, "runs"));
   });
 
-  it("is in the menu under More, marked as the page the reader is on, and in the footer; the list's order is whole", () => {
-    for (const html of [STATUS_PAGE, STATUS_PAGE_OFFLINE]) {
-      const n = nav(html);
-      expect({ more: /<details class="pmore"><summary class="on">More<\/summary>/.test(n), here: n.includes('<a href="status" aria-current="page">Status</a>'), tabs: (n.match(/class="on" aria-current="page"/g) ?? []).length }).toEqual({ more: true, here: true, tabs: 0 });
-    }
-    expect([...nav(pages.home!).matchAll(/<div class="pmenu">([\s\S]*?)<\/div>/g)].flatMap((m) => [...m[1]!.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((a) => a[1]))).toEqual(["Purser Cloud", "Pricing", "Security", "Docs", "Status", "Airwallex", "Metal", "Visa", "Claude"]);
-    expect(/<footer class="foot">[\s\S]*?<\/footer>/.exec(pages.home!)![0]).toMatch(/<a class="flink" href="status">Status<\/a>/);
+  it("is no longer in the menu or the footer (12 Nov, owner); the page itself still answers", () => {
+    for (const html of [STATUS_PAGE, STATUS_PAGE_OFFLINE]) expect(nav(html)).not.toContain('href="status"');
+    expect([...nav(pages.home!).matchAll(/<div class="pmenu">([\s\S]*?)<\/div>/g)].flatMap((m) => [...m[1]!.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((a) => a[1]))).toEqual(["Purser Cloud", "Pricing", "Security", "Docs", "Airwallex", "Metal", "Visa", "Claude"]);
+    expect(/<footer class="foot">[\s\S]*?<\/footer>/.exec(pages.home!)![0]).not.toMatch(/href="status"/);
   });
 
   it("carries the site's icon and link-preview image like the other pages, and says what is real in its own words", () => {

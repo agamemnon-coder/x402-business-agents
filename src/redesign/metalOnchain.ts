@@ -94,12 +94,14 @@ export function faceIdOnChainSection(run: OwnersRun | null = ownersRun()): strin
   const steps = ownersSteps(rec);
   const virtual = rec.owners.filter((o) => o.virtual).length;
   const cfo = rec.owners.find((o) => o.role === "CFO" && !o.virtual);
-  const lead = `${dayOf(rec.ran_at)}: the agent's spending rule on Metal changed only after ${rec.threshold} passkeys signed. The account checked both signatures itself.`;
-  const labels = [`${rec.network}`, "test money", ...(virtual ? [`${virtual === 1 ? "the second signer is" : `${virtual} signers are`} a labelled virtual test passkey`] : []), ...(cfo?.device_basis ? [`the CFO's device ${cfo.device_basis}`] : [])];
-  return `<section class="moc" id="faceid-onchain" aria-labelledby="moc-faceid"><h2 id="moc-faceid">${esc(FACEID_TITLE)}</h2>
+  const lead = `${dayOf(rec.ran_at)}: the agent's limit changed only with ${rec.threshold} passkeys, checked on chain.`;
+  const labels = [`${rec.network}`, "test money", ...(virtual ? [`${virtual === 1 ? "second signer" : `${virtual} signers`}: labelled virtual test passkey`] : []), ...(cfo?.device_basis ? [`CFO's device ${cfo.device_basis}`] : [])];
+  // data-rec: every figure here is the record's own (test/metal-onchain.test.ts); the hash of each step is its link's,
+  // last, in its label for a screen reader, not in sight.
+  return `<article class="moc" id="faceid-onchain" aria-labelledby="moc-faceid" data-rec="${esc(file)}"><h2 id="moc-faceid">${esc(FACEID_TITLE)}</h2>
 <p class="moc-lead">${esc(lead)}</p>
-<ol class="moc-steps">${steps.map((s) => `<li class="moc-${s.key}"><span class="moc-ic">${stepIcon(s.key)}</span><span class="moc-l">${esc(s.label)}</span><a class="pf" href="${esc(s.href)}" target="_blank" rel="noopener" aria-label="${esc(`${s.label}: transaction ${s.hash} on Metal's explorer`)}">${esc(shortHash(s.hash))} ↗</a></li>`).join("")}</ol>
-<p class="moc-src">${esc(labels.join(" · "))} · <a class="pf" href="${esc(`${REPO_BLOB}${file.replace(/\.json$/, ".md")}`)}" target="_blank" rel="noopener">run record ↗</a></p></section>`;
+<ol class="moc-steps">${steps.map((s) => `<li class="moc-${s.key}"><a href="${esc(s.href)}" target="_blank" rel="noopener" aria-label="${esc(`${s.label}: transaction ${s.hash} on Metal's explorer`)}"><span class="moc-ic">${stepIcon(s.key)}</span><span class="moc-l">${esc(s.label)}</span><span class="moc-x" aria-hidden="true">↗</span></a></li>`).join("")}</ol>
+<p class="moc-src">${esc(labels.join(" · "))} · <a class="pf" href="${esc(`${REPO_BLOB}${file.replace(/\.json$/, ".md")}`)}" target="_blank" rel="noopener">run record ↗</a></p></article>`;
 }
 
 // ── 2. Invoice → token → pre-financing → settlement ──
@@ -151,13 +153,16 @@ export const METAL_ONCHAIN_CSS = `
 .moc { margin: 28px 0; }
 .moc h2 { margin: 0 0 6px; }
 .moc-lead { margin: 0 0 12px; max-width: 62ch; }
-.moc-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
-.moc-steps li { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); min-width: 0; }
+.moc-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+.moc-steps li { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); min-width: 0; }
+.moc-steps li a { display: flex; align-items: center; gap: 8px; padding: 10px 12px; color: var(--text); text-decoration: none; border-radius: 12px; min-height: 44px; }
+.moc-steps li a:hover .moc-l { text-decoration: underline; } .moc-steps li a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.moc-steps .moc-x { margin-left: auto; color: var(--muted); }
 .moc-steps .moc-ic { display: inline-flex; color: var(--ok); }
 .moc-steps .moc-refused { border-color: var(--bad); } .moc-steps .moc-refused .moc-ic { color: var(--bad); }
 .moc-steps .moc-revoke .moc-ic { color: var(--muted); }
 .moc-steps .moc-l { font-weight: 650; }
-.moc-steps a, .moc-flow a { font-size: 13px; overflow-wrap: anywhere; }
+.moc-flow a { font-size: 13px; overflow-wrap: anywhere; }
 .moc-flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; counter-reset: moc; }
 .moc-flow li { display: grid; gap: 4px; align-content: start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); min-width: 0; }
 .moc-flow li.off { color: var(--muted); border-style: dashed; }
