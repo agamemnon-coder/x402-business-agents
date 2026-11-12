@@ -2,7 +2,11 @@
 // every cap at once, in one batch, and settled to what it cost. Plain run: better-sqlite3; with CLOUD_DB=d1, D1 itself.
 import { describe, expect, it } from "vitest";
 import { ensureSchema } from "../cloud/src/app.js";
+import Anthropic from "@anthropic-ai/sdk";
+import { claudeAccess } from "../cloud/src/engine/claudeAccess.js";
 import { d1Spend, expireStale } from "../cloud/src/engine/spend.js";
+import { openDb } from "../src/db/open.js";
+import { actionBudget } from "../src/engine/budget.js";
 import { sqliteSql } from "../cloud/src/node.js";
 import { d1Sql, type Sql } from "../cloud/src/store.js";
 
@@ -122,5 +126,49 @@ describe("Claude's spend in the cloud's database", () => {
     const sql = await fresh();
     expect(await d1Spend(sql, ON, smoke(), () => T0).status()).toEqual({ on: true, cap_micros: 400_000 });
     expect(await d1Spend(sql, {}, smoke(), () => T0).status()).toEqual({ on: false, cap_micros: null });
+  });
+});
+
+describe("Claude for a company's engine in the Worker (cloud/src/engine/claudeAccess.ts)", () => {
+  const KEY = "stand-in-not-a-key";
+  it("is not there unless ENGINE_CLAUDE is on: the engine reads with the parser, as before", async () => {
+    const sql = await fresh();
+    expect(claudeAccess({ engineClaude: undefined, key: KEY, sql, tenantId: "t_a" })).toBeUndefined();
+    expect(claudeAccess({ engineClaude: "off", key: KEY, sql, tenantId: "t_a" })).toBeUndefined();
+  });
+
+  it("without the key: no_key, nothing reserved, and the status says the parser reads", async () => {
+    const sql = await fresh();
+    const a = claudeAccess({ engineClaude: "on", key: undefined, sql, tenantId: "t_a", switches: async () => ON })!;
+    expect(await a.reserve()).toEqual({ ok: false, reason: "no_key" });
+    expect(await a.status()).toEqual({ on: false, cap_micros: null });
+    expect(await scopes(sql)).toEqual({});
+  });
+
+  it("with the key but no switches set (lane C's switches not there yet): switch_off, nothing reserved", async () => {
+    const sql = await fresh();
+    const a = claudeAccess({ engineClaude: "on", key: KEY, sql, tenantId: "t_a" })!;
+    expect(await a.reserve()).toEqual({ ok: false, reason: "switch_off" });
+    expect(await scopes(sql)).toEqual({});
+  });
+
+  it("with the key and the switches: reserves in the company's pool, and reads with 4,000 tokens at most, each call announced", async () => {
+    const sql = await fresh();
+    const asked: { max_tokens: number }[] = [];
+    const f = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const body = (await new Request(input as RequestInfo, init).json()) as { model: string; max_tokens: number };
+      asked.push({ max_tokens: body.max_tokens });
+      return new Response(JSON.stringify({ id: "m", type: "message", role: "assistant", model: body.model, stop_reason: "end_turn", stop_sequence: null, content: [{ type: "text", text: JSON.stringify({ v: "x" }) }], usage: { input_tokens: 10, output_tokens: 5 } }), { status: 200, headers: { "content-type": "application/json" } });
+    }) as typeof fetch;
+    const a = claudeAccess({ engineClaude: "on", key: KEY, sql, tenantId: "t_try_1", switches: async () => ON, scopes: async () => ({ pool: "public", address: "h9" }), client: (key) => new Anthropic({ apiKey: key, fetch: f, maxRetries: 0 }) })!;
+    const got = await a.reserve();
+    expect(got.ok).toBe(true);
+    expect(Object.keys(await scopes(sql))).toEqual(["addr:h9:" + new Date().toISOString().slice(0, 10), "all", "co:t_try_1", "day:public:" + new Date().toISOString().slice(0, 10)]);
+    const db = openDb(":memory:");
+    const { z } = await import("zod");
+    await a.reader(db, actionBudget(250_000)).ask({ task: "t", role: "act", actor: "treasury", schema: z.object({ v: z.string() }), instruction: "Read.", document: "x" }, () => ({ v: "" }));
+    expect(asked).toEqual([{ max_tokens: 4_000 }]);
+    expect((db.prepare("SELECT event FROM audit_log ORDER BY seq").all() as { event: string }[]).map((r) => r.event)).toEqual(["claude.asking", "claude.read"]);
+    expect(await a.status()).toEqual({ on: true, cap_micros: 400_000 });
   });
 });
