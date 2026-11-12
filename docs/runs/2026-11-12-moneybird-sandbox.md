@@ -260,23 +260,32 @@ customer-portal link and several answers hold the user id of the token's owner. 
 ## Wording to apply
 
 For the coordinator of the run. This stream did not edit `README.md`, `llms.txt`, the site or the submission form.
+Each block below is the exact text for that file, with that file's own links.
 
-**README.md**, section "After the kit", after the sentence that ends "(1 payout PAID, 3 refused by Airwallex:
-[run record](docs/runs/2026-11-10-platform-e2e.md)).", add:
+**README.md**, section "After the kit", after the sentence that ends with the link to the run record of 10 November
+("1 payout PAID, 3 refused by Airwallex"), add:
 
-> On 12 November its Moneybird link ran in a Moneybird sandbox administration with test data: 4 suppliers, 4 purchase invoices with their PDF, 1 payment, 1 journal entry and 1 correction were sent, and all 6 purchase invoices read back equal to Purser's ledger to the cent ([run record](docs/runs/2026-11-12-moneybird-sandbox.md)). No customer's administration is connected.
+```text
+On 12 November its Moneybird link ran in a Moneybird sandbox administration with test data: 4 suppliers, 4 purchase invoices with their PDF, 1 payment, 1 journal entry and 1 correction were sent, and all 6 purchase invoices read back equal to Purser's ledger to the cent ([run record](docs/runs/2026-11-12-moneybird-sandbox.md)). No customer's administration is connected.
+```
 
 **llms.txt**, line "After the kit", before ": docs/after-the-kit.md", add:
 
-> ; its Moneybird link ran in a Moneybird sandbox administration on 12 Nov with test data (4 suppliers, 4 purchase invoices with PDF, 1 payment, 1 journal entry, 1 correction sent; 6 purchase invoices read back, 0 differences with the ledger; a second sync made 0 requests; 33 requests), no customer's administration connected: docs/runs/2026-11-12-moneybird-sandbox.md
+```text
+; its Moneybird link ran in a Moneybird sandbox administration on 12 Nov with test data (4 suppliers, 4 purchase invoices with PDF, 1 payment, 1 journal entry, 1 correction sent; 6 purchase invoices read back, 0 differences with the ledger; a second sync made 0 requests; 33 requests), no customer's administration connected: docs/runs/2026-11-12-moneybird-sandbox.md
+```
 
 **Site** (wherever the accounting links are named; today no public page names Moneybird). If one does:
 
-> Moneybird: tested in a Moneybird sandbox administration with test data (12 Nov 2026). Read back to the cent.
+```text
+Moneybird: tested in a Moneybird sandbox administration with test data (12 Nov 2026). Read back to the cent.
+```
 
 **Submission form**, where the product for small companies is described, add:
 
-> Its Moneybird link ran in a Moneybird sandbox administration (12 Nov, test data): invoices, PDFs, a payment and a correction went in, and came back equal to the ledger to the cent.
+```text
+Its Moneybird link ran in a Moneybird sandbox administration (12 Nov, test data): invoices, PDFs, a payment and a correction went in, and came back equal to the ledger to the cent.
+```
 
 **/runs list** (`src/redesign/runs.ts` and `docs/runs/README.md`). Not added in this stream: the list is a public page
 whose rows are pinned by tests, and other streams change it today. A row for it, every figure from the record:

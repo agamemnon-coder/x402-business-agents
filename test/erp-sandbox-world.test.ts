@@ -11,6 +11,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { openDb, type DB } from "../src/db/open.js";
 import { WORLD } from "../src/e2e/world.js";
 import { staticToken } from "../src/erp/auth.js";
+import { liveTransport } from "../src/erp/callBudget.js";
 import { runErpCli } from "../src/erp/cli.js";
 import type { JournalEntry, Payment, PurchaseInvoice, Vendor } from "../src/erp/model.js";
 import { validate } from "../src/erp/model.js";
@@ -221,6 +222,34 @@ describe("the sandbox run, rehearsed on the administration's real chart and tax 
     expect(md).toContain("| credit note | OD-77 |");
   });
 
+  it("the CLI reads back under the go and the call budget, writes the comparison as data, and counts its requests", async () => {
+    const lines: string[] = [];
+    const log = join(dir, "readback-calls.jsonl");
+    const out = join(dir, "readback.json");
+    const env = { ERP_LIVE_GO: "yes", ERP_CALL_BUDGET: "6", ERP_CALL_LOG: log };
+    // The stand-in administration behind the same call budget a live run has.
+    const live = () => new MoneybirdConnector({ baseUrl: "https://moneybird.com/api/v2", administrationId: fake.admin, baseCurrency: "EUR", projects: {}, ignoreCostCentres: true, ...mapsFromNotes() }, liveTransport(env, fake.transport), staticToken(fake.token));
+    await expect(runErpCli(["readback", "--connector", "moneybird", "--live"], { db, env: { ...env, ERP_LIVE_GO: "no" }, out: (l) => lines.push(l), live })).rejects.toThrow(/a live run needs ERP_LIVE_GO=yes/);
+    await expect(runErpCli(["readback", "--connector", "odoo", "--live"], { db, env, out: (l) => lines.push(l), live })).rejects.toThrow(/built for Moneybird only/);
+    expect(await runErpCli(["readback", "--connector", "moneybird", "--live", "--out", out], { db, env, out: (l) => lines.push(l), live })).toBe(0);
+    expect(lines.slice(-2)).toEqual(["0 differences in 6 documents read back", "6 of 6 approved requests used"]);
+    expect(lines.filter((l) => / equal$/.test(l))).toHaveLength(6);
+    expect(JSON.parse(readFileSync(out, "utf8"))).toMatchObject({ connector: "moneybird", documents: 6, differences: 0 });
+    // One request over the approved number is not sent, and the command fails.
+    await expect(runErpCli(["readback", "--connector", "moneybird", "--live"], { db, env, out: (l) => lines.push(l), live })).rejects.toThrow(/call budget of 6 is spent/);
+    expect(lines.at(-1)).toBe("6 of 6 approved requests used");
+  });
+
+  it("the world command builds only in a new ledger and says which step it wants", async () => {
+    const lines: string[] = [];
+    await expect(runErpCli(["world"], { db, env: {}, out: (l) => lines.push(l) })).rejects.toThrow(/--step build --dir <folder> or --step recode/);
+    await expect(runErpCli(["world", "--step", "build"], { db, env: {}, out: (l) => lines.push(l) })).rejects.toThrow(/--dir/);
+    await expect(runErpCli(["world", "--step", "build", "--dir", join(dir, "again")], { db, env: {}, out: (l) => lines.push(l) })).rejects.toThrow(/already holds invoices/);
+    // Step 2 was done above: a second time there is nothing to move.
+    await expect(runErpCli(["world", "--step", "recode"], { db, env: {}, out: (l) => lines.push(l) })).rejects.toThrow(/already on 6300/);
+    expect(lines).toEqual([]);
+  });
+
   it("the CLI prints the record, and its dry run shows the same 16 requests on the run's own maps without sending", async () => {
     const lines: string[] = [];
     const log = join(dir, "calls.jsonl");
@@ -350,6 +379,7 @@ describe("the live run of 12 November 2026, as recorded", () => {
     const wording = NOTES.slice(NOTES.indexOf("## Wording to apply"));
     expect(wording).toContain(`${rec.documents} purchase invoices read back, ${rec.differences} differences with the ledger; a second sync made ${RECORD.idempotency!.requests} requests; ${RECORD.calls.used} requests`);
     expect(wording).toContain(`| Stats | ${RECORD.calls.used} of ${RECORD.calls.approved} requests; ${rec.documents} documents reconciled; ${rec.differences} differences |`);
+    expect(wording).toContain(`${count("vendor")} suppliers, ${count("invoice")} purchase invoices with their PDF, ${count("payment")} payment, ${count("journal")} journal entry and ${count("invoice", "erp.corrected")} correction were sent, and all ${rec.documents} purchase invoices read back equal`);
     expect(wording).not.toMatch(/certified by|endorsed by|approved by/i);
   });
 });
