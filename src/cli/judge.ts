@@ -11,10 +11,11 @@ import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import type { Server } from "node:http";
 import express from "express";
-import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE_OFFLINE, demoPage, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
+import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE_OFFLINE, demoPage, filmPage, labPage, livePage, monthPage, T0_CSP, T0_PAGE, sendInspector } from "../servers/dashboard.js";
 import { readFileSync } from "node:fs";
 import { loadRecord } from "../redesign/run.js";
 import { localTryAnswer } from "../try/local.js";
+import { METAL_INSPECTOR_PATH } from "../../worker/src/metalInspector.js";
 
 export async function startJudge(port: number): Promise<{ server: Server; url: string }> {
   const app = express();
@@ -54,9 +55,12 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   const lab = labPage();
   app.get("/lab", page(LAB_CSP, () => lab));
   app.get("/metal", page(METAL_CSP, () => METAL_PAGE));
+  // /metal's read-only inspector, as a local copy answers it: the record's read of 12 November, no chain call, no secret.
+  app.get(METAL_INSPECTOR_PATH, (_req, res) => { void sendInspector(res); });
   app.get("/visa", page(VISA_CSP, () => VISA_PAGE));
   app.get("/airwallex", page(AIRWALLEX_CSP, () => AIRWALLEX_PAGE));
   app.get("/claude", page(CLAUDE_CSP, () => CLAUDE_PAGE));
+  app.get("/t0", page(T0_CSP, () => T0_PAGE));
   const report = METAL_REPORT;
   if (report) app.get("/metal/report", page(METAL_REPORT_CSP, () => report));
   app.get("/assets/inter.woff2", (_req, res) => { res.type("font/woff2").send(FONT); });
@@ -100,7 +104,7 @@ a{display:inline-block;margin-top:4px;padding:10px 16px;border-radius:8px;backgr
 const LIVE_ONLY_CSP = `default-src 'none'; style-src 'sha256-${createHash("sha256").update(/<style>([\s\S]*?)<\/style>/.exec(LIVE_ONLY_PAGE)![1]!, "utf8").digest("base64")}'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
 
 /** The pages `--check` fetches once each: every page a juror reaches, both CFO dashboards included. */
-export const CHECK_PATHS = ["/", "/home", "/watch", "/proof", "/trace", "/runs", "/agents/sourcing", "/agents/support", "/agents/treasury", "/metal", "/metal/report", "/visa", "/airwallex", "/claude", "/?autonomy", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab"];
+export const CHECK_PATHS = ["/", "/home", "/watch", "/proof", "/trace", "/runs", "/agents/sourcing", "/agents/support", "/agents/treasury", "/metal", "/metal/report", "/visa", "/airwallex", "/claude", "/t0", "/?autonomy", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab"];
 
 /**
  * The menu printed at start. The main run's CFO dashboard comes first, and each dashboard is named by its own run, its

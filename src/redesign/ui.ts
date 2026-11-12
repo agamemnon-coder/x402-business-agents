@@ -190,6 +190,8 @@ details.real { position: relative; }
 details.real > summary { list-style: none; cursor: pointer; } details.real > summary::-webkit-details-marker { display: none; }
 details.real { flex-basis: 100%; }
 footer.foot a.flink { color: var(--muted); }
+footer.foot .builton { flex-basis: 100%; margin: 0; color: var(--muted); line-height: 1.9; }
+footer.foot .builton b { color: var(--text); font-weight: 650; }
 details.real .pop { margin-top: 10px; max-width: 640px; padding: 16px 18px; font-size: 15px; color: var(--text); }
 details.real .pop ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }`;
@@ -215,10 +217,10 @@ export const MAIN_RUN_REAL = [
  * "What's real?", opened from the footer: the main run's lines on the pages that play it, or a page's own (final review,
  * 4 Nov: /try/sign, which calls no Airwallex, Metal or Claude, carried the main run's), then the page's source.
  */
-export function footer(source: string, real: string[] = MAIN_RUN_REAL, links: [string, string][] = []): string {
+export function footer(source: string, real: string[] = MAIN_RUN_REAL, links: [string, string][] = [], builtOn = ""): string {
   return `<footer class="foot"><div class="wrap"><details class="real" id="real"><summary class="pill">${icon("info", 15)} What's real?</summary><div class="pop card"><ul>
 ${real.map((line) => `<li>${esc(line)}</li>`).join("\n")}
-<li>${esc(source)}</li></ul></div></details><span>Built for the Airwallex Agentic Banking Hackathon</span>${links.map(([href, label]) => `<a class="flink" href="${esc(href)}">${esc(label)}</a>`).join("")}</div></footer>`;
+<li>${esc(source)}</li></ul></div></details>${builtOn}<span>Built for the Airwallex Agentic Banking Hackathon</span>${links.map(([href, label]) => `<a class="flink" href="${esc(href)}">${esc(label)}</a>`).join("")}</div></footer>`;
 }
 
 /** Each agent's avatar: an icon for its job (Sourcing buys, Support answers, Treasury holds the money). */
@@ -437,7 +439,7 @@ export const OPEN_TARGET_JS = `(function () {
 })();`;
 
 /** A page around a body: one style, one script, the run's data in a data block ("<" escaped). */
-export function page(o: { title: string; description: string; tab: Tab | null; css: string; body: string; data?: unknown; js?: string; stage?: boolean; source: string; real?: string[]; links?: [string, string][] }): string {
+export function page(o: { title: string; description: string; tab: Tab | null; css: string; body: string; data?: unknown; js?: string; stage?: boolean; source: string; real?: string[]; links?: [string, string][]; /** The partner pages' "Built on" strip (src/redesign/partners.ts builtOnHtml). */ builtOn?: string }): string {
   const script = o.js === undefined ? "" : `${o.data === undefined ? "" : `<script type="application/json" id="run-data">${JSON.stringify(o.data).replace(/</g, "\\u003c")}</script>\n`}<script>${o.stage === false ? "" : STAGE_JS}
 ${o.js}</script>`;
   return `<!doctype html>
@@ -461,7 +463,7 @@ ${o.css}</style>
 <body>
 ${header(o.tab)}
 ${o.body}
-${footer(o.source, o.real, o.links)}
+${footer(o.source, o.real, o.links, o.builtOn)}
 ${script}
 </body>
 </html>`;

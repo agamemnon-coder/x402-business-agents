@@ -7,11 +7,13 @@ import { recordedRate, type RecordForExposure } from "../policy/exposureSources.
 import { loadRecord } from "../redesign/run.js";
 import { proofData, RECEIPT_SAMPLE_FILE } from "../redesign/agentData.js";
 import ts from "typescript";
-import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, JUDGE_CSP, JUDGE_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, CSP as DASHBOARD_CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE as DASHBOARD_PAGE, TRY_CSP, TRY_PAGE, TRY_SIGN_CSP, TRY_SIGN_PAGE, TRY_VERIFY_CSP, TRY_VERIFY_PAGE, demoPage, homeWithTrySign, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
+import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, JUDGE_CSP, JUDGE_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, CSP as DASHBOARD_CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE as DASHBOARD_PAGE, TRY_CSP, TRY_PAGE, TRY_SIGN_CSP, TRY_SIGN_PAGE, TRY_VERIFY_CSP, TRY_VERIFY_PAGE, demoPage, homeWithTrySign, filmPage, labPage, livePage, monthPage, T0_CSP, T0_PAGE } from "../servers/dashboard.js";
 import type { Pages } from "../../worker/src/core.js";
 import { trySignOn } from "../try/sign.js";
 import { phonePhrases } from "../ui/i18n.js";
 import { RECORDED_PATH, readRecorded } from "../try/recorded.js";
+import { metalRecordedOf } from "../../worker/src/metalInspector.js";
+import { METAL_INSPECTOR_RECORD } from "../redesign/metalMandates.js";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 
@@ -40,6 +42,8 @@ const LLMS = (() => { try { return read("../../llms.txt"); } catch { return unde
  * reads it too, so a missing file fails the build rather than quietly dropping the proof. */
 const RECEIPT_SAMPLE = read(`../../${RECEIPT_SAMPLE_FILE}`);
 const EXPOSURE_RATE = (() => { try { return recordedRate(loadRecord().record as unknown as RecordForExposure); } catch { return null; } })();
+/** /metal's mandate inspector: the record's read of 12 November (its answer when it makes no chain call); missing or not in its shape: none. */
+export const METAL_RECORDED = (() => { try { return metalRecordedOf(JSON.parse(read(`../../${METAL_INSPECTOR_RECORD}`)) as unknown); } catch { return null; } })();
 
 /**
  * The site's one way through (Max, 7 Nov: watch the agents, try it yourself, see the proof). With /try/sign in the
@@ -66,6 +70,7 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     // src/servers/dashboard.ts carry them already (src/ui/meta.ts withMeta), the redesign's write their own.
     dashboard: DASHBOARD_PAGE,
     exposureRate: EXPOSURE_RATE,
+    metalRecorded: METAL_RECORDED,
     ...(LLMS ? { llms: LLMS } : {}),
     // The proof as data for a tool that fetches the site, and one receipt it can verify itself (agent-surface, 12 Nov).
     proofJson: JSON.stringify(proofData(), null, 2),
@@ -82,6 +87,7 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     visa: flow(VISA_PAGE),
     airwallex: flow(AIRWALLEX_PAGE),
     claude: flow(CLAUDE_PAGE),
+    t0: flow(T0_PAGE),
     home: flow(home.page),
     watch: flow(WATCH_PAGE),
     proof: flow(PROOF_PAGE),
@@ -101,7 +107,7 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     font: FONT.toString("base64"),
     // The month-end pack (DOWNLOADS) rides with the images: served the same way, at /assets/<name>, under its own type.
     images: Object.fromEntries(Object.entries({ ...LOGOS, ...DOWNLOADS }).map(([name, l]) => [name, { type: l.type, data: l.body.toString("base64") }])),
-    csp: { dashboard: DASHBOARD_CSP, month: MONTH_CSP, demo: DEMO_CSP, live: LIVE_CSP, film: FILM_CSP, try: TRY_CSP, lab: LAB_CSP, metal: METAL_CSP, metalReport: METAL_REPORT_CSP, visa: VISA_CSP, airwallex: AIRWALLEX_CSP, claude: CLAUDE_CSP, home: home.csp, watch: WATCH_CSP, proof: PROOF_CSP, trace: TRACE_CSP, runs: RUNS_CSP, notFound: NOT_FOUND_CSP, ...(trySign ? { trySign: TRY_SIGN_CSP, tryVerify: TRY_VERIFY_CSP, judge: JUDGE_CSP } : {}), approve: PHONE_CSP, enrol: PHONE_CSP, policy: PHONE_CSP },
+    csp: { dashboard: DASHBOARD_CSP, month: MONTH_CSP, demo: DEMO_CSP, live: LIVE_CSP, film: FILM_CSP, try: TRY_CSP, lab: LAB_CSP, metal: METAL_CSP, metalReport: METAL_REPORT_CSP, visa: VISA_CSP, airwallex: AIRWALLEX_CSP, claude: CLAUDE_CSP, t0: T0_CSP, home: home.csp, watch: WATCH_CSP, proof: PROOF_CSP, trace: TRACE_CSP, runs: RUNS_CSP, notFound: NOT_FOUND_CSP, ...(trySign ? { trySign: TRY_SIGN_CSP, tryVerify: TRY_VERIFY_CSP, judge: JUDGE_CSP } : {}), approve: PHONE_CSP, enrol: PHONE_CSP, policy: PHONE_CSP },
   };
 }
 

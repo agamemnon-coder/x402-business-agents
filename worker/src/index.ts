@@ -10,6 +10,7 @@ import { SandboxQuotes } from "./fxQuote.js";
 import { invoiceReaderSource, treasuryAdvisorSource } from "./agentLine.js";
 import { PAGES } from "./pages.gen.js";
 import { X402Desk, X402_PATH } from "./x402.js";
+import { METAL_INSPECTOR_PATH, MetalInspector, inspectorOff } from "./metalInspector.js";
 
 export interface Env {
   RELAY: DurableObjectNamespace<RelayObject>;
@@ -44,6 +45,14 @@ export interface Env {
   X402_TESTNET_SETTLE?: string;
   /** /x402/proof's payee on Metal testnet; Northwind's business account when unset. */
   X402_PAY_TO?: string;
+  /**
+   * /metal's live mandate inspector (GET /api/metal/mandates, worker/src/metalInspector.ts): the Metal testnet RPC URL,
+   * a Worker secret Max sets himself; no script in this repo sets it. Read-only calls, at most 500 a UTC day. Without it
+   * the inspector answers the record's read of 12 November, labelled as recorded.
+   */
+  METAL_RPC_URL?: string;
+  /** The inspector's switch: "off" (any case, trimmed) stops every call to the chain; any other value, or none, leaves it on. */
+  METAL_INSPECTOR?: string;
 }
 
 export class RelayObject extends DurableObject<Env> {
@@ -54,6 +63,7 @@ export class RelayObject extends DurableObject<Env> {
   private tryDesk?: TryDesk;
   private trySign?: TrySignDesk;
   private x402?: X402Desk;
+  private metal?: MetalInspector;
 
   override fetch(req: Request): Promise<Response> {
     const path = new URL(req.url).pathname;
@@ -72,6 +82,8 @@ export class RelayObject extends DurableObject<Env> {
       })).fetch(req);
     }
     if (path === X402_PATH) return (this.x402 ??= new X402Desk(this.ctx.storage.sql, { settle: this.env.X402_TESTNET_SETTLE, payTo: this.env.X402_PAY_TO })).fetch(req);
+    // The mandate inspector's own instance holds only the RPC URL and the switch, inside the desk.
+    if (path === METAL_INSPECTOR_PATH) return (this.metal ??= new MetalInspector(this.ctx.storage.sql, { rpcUrl: this.env.METAL_RPC_URL, off: inspectorOff(this.env.METAL_INSPECTOR) ? "switched off" : null, recorded: PAGES.metalRecorded ?? null })).fetch(req);
     if (path === "/api/try") return (this.tryDesk ??= new TryDesk(this.ctx.storage.sql, { anthropicKey: this.env.ANTHROPIC_API_KEY })).fetch(req);
     return (this.relay ??= new Relay(this.ctx.storage.sql, { relayToken: this.env.RELAY_TOKEN, webhookSecret: this.env.AIRWALLEX_WEBHOOK_SECRET, mfa: this.env.MFA_SESSIONS === "on", liveRun: this.env.LIVE_RUN === "on" })).fetch(req);
   }
@@ -90,6 +102,8 @@ export default {
     const trySign = trySignRoute(path, PAGES);
     if (trySign) return trySign === "desk" ? env.RELAY.get(env.RELAY.idFromName("try-sign")).fetch(req) : trySignNotFound();
     if (path === X402_PATH) return env.RELAY.get(env.RELAY.idFromName("x402")).fetch(req);
+    // /metal's mandate inspector in its own instance: its cache and its daily count of calls stay apart.
+    if (path === METAL_INSPECTOR_PATH) return env.RELAY.get(env.RELAY.idFromName("metal-inspector")).fetch(req);
     // Try Purser runs in its own instance: its storage and its load stay apart from the approvals.
     if (path === "/api/try") return env.RELAY.get(env.RELAY.idFromName("try")).fetch(req);
     // /health and /health/live are the relay's too: it knows when the runner last synced (B7).

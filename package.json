@@ -87,6 +87,7 @@
     "mcp": "tsx src/cli/mcp.ts",
     "outside-agent": "tsx src/cli/outside-agent.ts",
     "judge": "tsx src/cli/judge.ts",
+    "metal-inspect": "tsx src/cli/metalInspect.ts",
     "submission": "tsx src/cli/submission.ts",
     "social-preview": "tsx src/cli/socialPreview.ts",
     "visuals": "tsx src/cli/visuals.ts",
