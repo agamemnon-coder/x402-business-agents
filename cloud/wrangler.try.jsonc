@@ -41,6 +41,17 @@
   // pdf.js for the console's invoice view, served through the Worker (run_worker_first: every request meets the Worker's
   // own headers and only /assets/pdfjs.mjs is ever read from here). npm run cloud:pdfjs fills cloud/public before a deploy.
   "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
-  // Daily: purge closed companies past their 7-year retention; clear spent challenges and old rate windows.
-  "triggers": { "crons": ["17 3 * * *"] }
+  // Daily: purge closed companies past their 7-year retention; clear spent challenges and old rate windows; then the
+  // nightly autopilot (cloud/src/edge/autopilot.ts: each company's engine synced, its digest written; never a payment).
+  "triggers": { "crons": ["17 3 * * *"] },
+  // Cloudflare's Rate Limiting bindings (cloud/src/edge/limits.ts): approximate, per Cloudflare location, counted at the
+  // edge without a database write. Nothing to create: a namespace_id is a number chosen here, unique in the account.
+  // Keys carry the deployment's RP_ID, so two deployments never share counts. Remove a binding to switch it off.
+  "ratelimits": [
+    // Per company: its writes to /v1/engine (upload, pay, approve, retry, sync, passkey), 20 a minute.
+    { "name": "ENGINE_LIMITER", "namespace_id": "41101", "simple": { "limit": 20, "period": 60 } },
+    // Per address: the routes anyone may call (health, stats, sign-in, OpenAPI, webhooks), 120 a minute.
+    { "name": "PUBLIC_LIMITER", "namespace_id": "41102", "simple": { "limit": 120, "period": 60 } }
+  ]
+  // AUTOPILOT=off or STATS=off (a var) switches the nightly autopilot or the daily counters off; both are on unset.
 }
