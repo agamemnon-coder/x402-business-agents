@@ -22,7 +22,7 @@ import { nodeEngines } from "../../cloud/src/engine/node.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
 import { DID } from "../../cloud/src/try/books.js";
 import { SyncBatch } from "../../cloud/src/sync.js";
-import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INVOICE, PAY, START, STEPS, WORK } from "../../cloud/src/tryCopy.js";
+import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INVOICE, LIVE, PAY, START, STEPS, WORK } from "../../cloud/src/tryCopy.js";
 import { PROOF_URL, RUNS_URL } from "../../cloud/src/tryPage.js";
 import { batchesFor } from "../../src/cloudsync/client.js";
 import type { DB } from "../../src/db/open.js";
@@ -866,6 +866,38 @@ const setHidden = (page: Page, hidden: boolean) => page.evaluate((h) => { (windo
   const stopped = await row.locator(".t").textContent();
   await run(p.page, 2000);
   ok((await row.locator(".t").textContent()) === stopped, `asking: the count stops at the reader's next row (${stopped})`);
+  p.release();
+  await p.ctx.close();
+}
+{
+  // The agents (A6), as stand-in events: each decision is one line in view (the agent, Claude and its model, the lead,
+  // the reason marked as its own words, what Purser's code enforced), and their working rows wait in "All steps".
+  const at = (seq: number, actor: string, event: string, fields: Record<string, unknown>) => ({ seq, ts: "t", actor, event, subject: "AP-0001", fields });
+  const items = [
+    at(1, "checker", "claude.asking", { agent: "checker", model: "claude-haiku-4-5", turn: 1 }),
+    at(2, "checker", "agent.tool", { agent: "checker", tool: "vendor_on_file", turn: 1, model: "claude-haiku-4-5", request_id: "req_1", ms: 3, answer: "Bergtex is on file." }),
+    at(3, "checker", "agent.said", { agent: "checker", turn: 2, model: "claude-haiku-4-5", text: "All checks pass." }),
+    at(4, "checker", "agent.run", { agent: "checker", model: "claude-haiku-4-5", status: "done", turns: 2, cost_usd_micros: 900, latency_ms: 2100, request_id: "req_2" }),
+    at(5, "checker", "ap.checker_decided", { source: "claude", model: "claude-haiku-4-5", action: "pay", outcome: "ask_cfo", overridden: true, overridden_by: "agent_may_not_pay_alone", code_requires: "ask_cfo", codes: "",
+      reason: "Bergtex is on file and the totals add up.", enforced: "The agent may pay no invoice alone.", request_id: "req_2", secret: "SECRET-1" }),
+    at(6, "treasury", "agent.tool", { agent: "coder", tool: "chart", turn: 1, model: "claude-haiku-4-5", request_id: "req_3", ms: 2, answer: "6200 Office costs." }),
+    at(7, "treasury", "ap.coded", { source: "claude", model: "claude-haiku-4-5", status: "coded", lines: 1, account: "6200", vat_code: "P21", cost_centre: "OPS", reason: "Office supplies at the high rate.", request_id: "req_3" }),
+    at(8, "payer", "agent.run", { agent: "payer", model: "claude-haiku-4-5", status: "done", turns: 1, cost_usd_micros: 700, latency_ms: 1800, request_id: "req_4" }),
+    at(9, "payer", "ap.payer_proposed", { source: "claude", model: "claude-haiku-4-5", rail: "bank_swift", pay_on: "2026-11-20", pay_currency: "EUR", outcome: "ask_cfo", overridden: false,
+      reason: "Due on the 26th; paying on the 20th keeps the float.", enforced: "Over the agent's limit: the CFO signs these exact terms.", request_id: "req_4" }),
+  ];
+  const p = await poller({ events: (n) => ({ status: 200, body: n === 1 ? { items, next: 9 } : { items: [], next: 9 } }), session: () => ({ status: 200, body: {} }) });
+  await run(p.page, 1000);
+  const shown = await p.page.locator(".live li:visible").allInnerTexts();
+  ok(shown.length === 3 && await p.page.locator(".live li.agent:visible").count() === 3, `agents: three lines in view, one per agent (${shown.length})`);
+  ok(/^Checker agent · Claude Haiku 4\.5\s+Decided: pay, because “?Bergtex is on file and the totals add up”? \(its own words\)\s+Purser's code enforced: ask cfo; The agent may pay no invoice alone/.test(shown[0] ?? ""), `agents: the Checker's line (${shown[0]?.replace(/\s+/g, " ")})`);
+  ok(/^Coder agent · Claude Haiku 4\.5\s+6200 expense, VAT 21%: “?Office supplies at the high rate”? \(its own words\)/.test(shown[1] ?? "") && !(shown[1] ?? "").includes("enforced"), `agents: the Coder's line (${shown[1]?.replace(/\s+/g, " ")})`);
+  ok(/^Payer agent · Claude Haiku 4\.5\s+Proposed: pay on 2026-11-20 via bank swift from EUR, because .*\(its own words\)\s+Purser's code enforced: ask cfo/.test(shown[2] ?? ""), `agents: the Payer's line (${shown[2]?.replace(/\s+/g, " ")})`);
+  ok(await p.page.locator(".live .own").count() === 3 && await p.page.locator(".live .enf:visible").count() === 2, "agents: each reason marked as its own words; what code enforced, where the event says it");
+  ok(await p.page.locator(".live li.fold").count() === 6 && await p.page.locator(".live li.fold:visible").count() === 0, "agents: the tool calls, words, runs and the agent's Claude call wait in the fold");
+  ok(!(await p.page.textContent(".live"))!.includes("SECRET"), "agents: a field the allowlist does not name is never shown");
+  await p.page.click(`button:has-text("${LIVE.allSteps}")`);
+  ok(await p.page.locator(".live li:visible").count() === 9, "agents: All steps opens every row");
   p.release();
   await p.ctx.close();
 }

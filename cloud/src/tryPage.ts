@@ -108,12 +108,16 @@ input, select { width: 100%; min-width: 0; height: 46px; padding: 0 12px; font: 
 .live { list-style: none; margin: 0; padding: 0; }
 .live li { display: grid; grid-template-columns: 1fr auto; gap: 0 12px; padding: 8px 0; border-top: 1px solid var(--border); font-size: 14px; line-height: 1.4; }
 .live li:first-child { border-top: 0; }
-.live:not(.open) li:nth-last-child(n+4) { display: none; }
+.live:not(.open) li.fold, .live:not(.open) li.past { display: none; }
 .live .who { font-weight: 650; }
 .live .claude .who { color: var(--claude); }
 .live .money .who { color: var(--ok); }
 .live .sign .who { color: var(--accent); }
 .live .what { grid-column: 1; color: var(--muted); overflow-wrap: anywhere; }
+.live .agent .what { color: var(--text); }
+.live .own { color: var(--muted); font-style: italic; }
+.live .ownw, .live .enf { color: var(--faint); font-size: 12.5px; }
+.live .enf { grid-column: 1; }
 .live .t { grid-column: 2; grid-row: 1 / span 2; color: var(--faint); font-variant-numeric: tabular-nums; font-size: 13px; }
 .steps { margin-top: 4px; font-size: 14px; }
 .result { margin-top: 20px; }
@@ -677,6 +681,9 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
 // A reader's key (its agent, or the reader), and whether a row is a reader's (it closes that reader's open call).
 const keyOf=(e)=>{const a=e.fields&&typeof e.fields.agent==='string'&&/^[A-Za-z_-]{1,32}$/.test(e.fields.agent)?e.fields.agent.toLowerCase():'reader';return a};
 const agentRow=(e)=>typeof e.event==='string'&&(e.event.indexOf('claude.')===0||e.event.indexOf('agent.')===0||!!(e.fields&&e.fields.agent));
+// Shown at once: the last three rows that are not an agent's working steps; the rest, and every working step (a tool
+// call, its words, its run), in the "All steps" fold. An agent's decision: its lead, its reason marked as its own words,
+// and what Purser's code enforced on a muted line under it.
 function livePanel(){
   const list=el('ol','live');list.setAttribute('aria-live','off');
   const more=el('button','link steps',C.live.allSteps);more.type='button';more.hidden=true;more.setAttribute('aria-expanded','false');
@@ -687,11 +694,15 @@ function livePanel(){
       if(agentRow(e))askClose(keyOf(e));
       const l=lineOf(e);
       const t=el('span','t',t0===undefined?'':fill(W.at,{s:secs(performance.now()-t0)}));
-      list.append(el('li',l.tag||'',[el('span','who',l.who),el('span','what',l.text),t]));
+      const what=l.lead?el('span','what',[l.lead,...(l.own?[' ',el('q','own',l.own),' ',el('span','ownw','('+W.ownWords+')')]:[])]):el('span','what',l.text);
+      list.append(el('li',[l.tag||'',l.fold?'fold':'',l.lead?'agent':''].filter(Boolean).join(' '),[el('span','who',l.who),what,l.enforced?el('span','enf',l.enforced):null,t]));
       if(l.asking)askOpen(keyOf(e),t);
-      say(l.who+' · '+l.text);
+      if(!l.fold)say(l.who+' · '+l.text);
     }
-    node.hidden=!list.children.length;more.hidden=list.children.length<=3;
+    // The last three rows outside the fold stay in view; every other row waits behind "All steps".
+    let seen=0;
+    for(let i=list.children.length-1;i>=0;i--){const li=list.children[i];if(li.classList.contains('fold'))continue;seen++;li.classList.toggle('past',seen>3)}
+    node.hidden=!list.children.length;more.hidden=!list.querySelector('.fold,.past');
   }
   return {node,add};
 }

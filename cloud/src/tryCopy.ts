@@ -370,6 +370,15 @@ export const LIVE = {
   /** Task A6: the payables agents' decisions, each its own step on the "At work" panel. */
   agents: { "ap.checker_decided": "Checker agent", "ap.coded": "Coder agent", "ap.payer_proposed": "Payer agent" } as Record<string, string>,
   noVat: "none (a person books it)",
+  /** An agent's decision on the page: its lead (with a reason, then without), its reason marked as its own words, and
+   *  what Purser's code enforced, on a muted line under it. */
+  lead: {
+    "ap.checker_decided": "Decided: {action}, because", "ap.checker_decided_plain": "Decided: {action}.",
+    "ap.coded": "{account} expense, VAT {vat}:", "ap.coded_plain": "{account} expense, VAT {vat}.",
+    "ap.payer_proposed": "Proposed: pay on {pay_on} via {rail} from {currency}, because", "ap.payer_proposed_plain": "Proposed: pay on {pay_on} via {rail} from {currency}.",
+  } as Record<string, string>,
+  ownWords: "its own words",
+  enforced: "Purser's code enforced: {enforced}",
   method: { passkey: "with your passkey" } as Record<string, string>,
   status: {
     blocked: "blocked", needs_review: "needs a person", needs_vendor: "waits for a new supplier", waiting_cfo: "waits for a signature",
@@ -409,8 +418,8 @@ export const LIVE = {
     "agent.run": "Finished its work on this step.",
     "ap.checker_decided_why": "Decided: {action}, because {reason}. Purser's code enforced: {outcome}; {enforced}.",
     "ap.checker_decided": "The check is decided. Purser's code compared it with its own rules.",
-    "ap.coded_why": "{account}, VAT {vat}: {reason}. Purser's code enforced: {enforced}.",
-    "ap.coded": "{account}, VAT {vat}: {reason}. Purser's code checked it and booked it.",
+    "ap.coded_why": "{account} expense, VAT {vat}: {reason}. Purser's code enforced: {enforced}.",
+    "ap.coded": "{account} expense, VAT {vat}: {reason}. Purser's code checked it and booked it.",
     "ap.coded_plain": "The invoice was coded. Purser's code checked it.",
     "ap.payer_proposed_why": "Proposed: pay on {pay_on} via {rail} from {currency}, because {reason}. Purser's code enforced: {outcome}; {enforced}.",
     "ap.payer_proposed": "A way to pay was proposed. Purser's code checked it.",
