@@ -17,6 +17,9 @@ const FACTS = heroDemoFacts()!;
 const RECEIPT = heroReceipt(FACTS, HERO_RECEIPT_FILE)!;
 const SIGNED = RECEIPT.data.terms_sha256;
 const AMOUNT = RECEIPT.shown.amount;
+// Step 4 runs on the published receipt of the approval of 7 November itself: the hash it shows as signed is the one the
+// run record holds, the hash Airwallex's transfer carries and the third proof row shows.
+if (RECEIPT.kind !== "recorded" || SIGNED !== FACTS.hash) throw new Error(`Home's hero does not check the recorded approval (${RECEIPT.kind}, ${SIGNED.slice(0, 8)} against ${FACTS.hash.slice(0, 8)})`);
 const plusCent = (a: string) => ((Math.round(Number(a) * 100) + 1) / 100).toFixed(2);
 /** Every transfer id the run records hold: Home may show the hero's, and no other. */
 const TRANSFERS = [
@@ -162,6 +165,9 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
     if (locks.rows !== 3 || locks.height > o.height - 64) fail(`the three rows with their heading and button are ${locks.height}px high (${locks.rows} rows): more than one screen under the menu`);
   }
   for (const row of await page.locator("a.row").all()) if (!(await row.getAttribute("href"))) fail("a proof row leads nowhere");
+  // The signature the visitor checks in step 4 is the one in Airwallex's record: the third row's hash.
+  const rowHash = await page.locator("a.row code").nth(2).getAttribute("title");
+  if (rowHash !== SIGNED) fail(`the third proof row shows ${String(rowHash).slice(0, 8)}, not the hash step 4 checks (${SIGNED.slice(0, 8)})`);
 
   if (o.quick) return;
   // Step 3, still: the one transfer id is the record's.

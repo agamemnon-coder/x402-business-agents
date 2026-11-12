@@ -5,7 +5,7 @@
 // tap from the partner's own record; and the second and last button, "See the proof". No replay of the agents' run, no
 // awards strip, no run counts, no second caveat: the full list of what is real stays in the footer's fold. Every id,
 // amount and date is read from the run records (docs/demo/airwallex-run.json, docs/demo/main-run.json) and the hero's
-// receipt (docs/demo/hero-receipt.json).
+// receipt (the published receipt of the approval of 7 November, src/redesign/heroReceipt.ts).
 
 import { designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CHAIN_TEST, CORE_SENTENCE, DIFFERENTIATORS, HERO, JUDGE_LINE, SMALL_COMPANY_DEMO_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
 import type { Awx1Record } from "../awx/scenario.js";
@@ -185,7 +185,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   const real = [
     ...MAIN_RUN_REAL,
     ...(awx && facts ? [`The hero's steps 1 to 3 and the two Airwallex rows: the Airwallex-only run (${awx.run}) of ${facts.date}. ${awx.note}`] : []),
-    ...(receipt ? [receipt.kind === "recorded" ? "The hero's step 4 checks the recorded approval's own receipt in your browser." : `The hero's step 4: ${receipt.note}`] : []),
+    ...(receipt ? [receipt.kind === "recorded" ? `The hero's step 4 checks the published receipt of this approval in your browser: ${receipt.note}` : `The hero's step 4: ${receipt.note}`] : []),
     `The Metal row: the main run${refusedAt ? ` of ${dayMonth(refusedAt)}` : ""}. ${CHAIN_TEST}`,
   ];
   return page({

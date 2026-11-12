@@ -84,10 +84,11 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   .replace(/\b(?:0\.5|1|2)×/g, " ")
   // Home's hero, its one provenance line and its three proof rows (home-story, 12 Nov): the Airwallex-only run's
   // invoice, dated with its own record, the hero's receipt and the rows' ids; every figure is checked against
-  // docs/demo/airwallex-run.json, docs/demo/hero-receipt.json and docs/demo/main-run.json in test/hero-demo.test.ts and
-  // test/home-story.test.ts. The same run's and the receipt's own notes in Home's "What's real?" fold likewise.
+  // docs/demo/airwallex-run.json, the published receipt (docs/runs/2026-11-07-awx-1/receipt-P-0002.json) and
+  // docs/demo/main-run.json in test/hero-demo.test.ts and test/home-story.test.ts. The same run's and the receipt's own
+  // notes in Home's "What's real?" fold likewise.
   .replace(/\b1\s+Ask\s+2\s+Face ID[\s\S]*?See the proof/g, " ")
-  .replace(/The hero's steps 1 to 3 and the two Airwallex rows:[\s\S]*?nothing real moved\./g, " ");
+  .replace(/The hero's steps 1 to 3 and the two Airwallex rows:[\s\S]*?The terms are exactly as signed\./g, " ");
 
 /** Numbers on the page that are not in the record. */
 export const unknownNumbers = (html: string) => (visibleText(html).match(NUM) ?? []).map(norm).filter((n) => !ALLOWED.has(n));

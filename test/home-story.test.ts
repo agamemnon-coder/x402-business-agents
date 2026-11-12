@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CAVEAT_LINE, CHAIN_TEST, DESIGN_PARTNER_LABEL, DIFFERENTIATORS, HERO, JUDGE_LINE, SECOND_APPROVER, SMALL_COMPANY_DEMO_URL, VISA_EXTRA_LINK, WHAT_IT_IS } from "../src/config/brand.js";
 import { DEMO_STEPS, heroDemoFacts, heroProvenance } from "../src/redesign/heroDemo.js";
-import { heroReceipt } from "../src/redesign/heroReceipt.js";
+import { heroReceipt, HERO_RECEIPT_FILE } from "../src/redesign/heroReceipt.js";
 import { LOCKS_HEAD, NEXT_NEXT, PROOF_BUTTON, REASSURE, START, WHATS_REAL, homePage, proofRows } from "../src/redesign/home.js";
 import { buildPages } from "../src/relay/assets.js";
 
@@ -192,10 +192,13 @@ describe("Home is one story, in this order", () => {
     }
   });
 
-  it("keeps the full list in the What's real? fold: the main run's lines, the run behind the hero, the sample's own note, the Metal test", () => {
+  it("keeps the full list in the What's real? fold: the main run's lines, the run behind the hero, the receipt's own note, the Metal test", () => {
     const fold = text(/<details class="real"[\s\S]*?<\/details>/.exec(ON)![0]);
     const awx = JSON.parse(read("docs/demo/airwallex-run.json")) as { note: string };
-    const receipt = JSON.parse(read("docs/demo/hero-receipt.json")) as { note: string };
+    const receipt = JSON.parse(read(HERO_RECEIPT_FILE)) as { note: string };
+    // Step 4 runs on the published receipt of the approval of 7 November: the fold says whose passkey, as its note does.
+    expect(HERO_RECEIPT_FILE).toBe("docs/runs/2026-11-07-awx-1/receipt-P-0002.json");
+    expect(fold).toContain(`The hero's step 4 checks the published receipt of this approval in your browser: ${receipt.note}`);
     for (const line of [SECOND_APPROVER, CHAIN_TEST, awx.note, receipt.note, "Simulated: the customer and its agent, the supplier, the merchants' charges, the settlement"]) expect({ line, found: fold.includes(line) }).toEqual({ line, found: true });
     expect(awx.note).toContain("Merchant charges and SENT/PAID are the sandbox's simulation endpoints");
   });

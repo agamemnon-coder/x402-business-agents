@@ -1,23 +1,22 @@
 // The receipt Home's hero checks in the visitor's browser (step 4): a file in the repository's own receipt format
-// (purser.try-sign-receipt/v1, src/try/receipt.ts; `npm run verify-receipt -- docs/demo/hero-receipt.json` checks it).
-// The hero reads everything step 4 shows from this file: the terms, the hash the passkey signed, the public key.
+// (purser.try-sign-receipt/v1, src/try/receipt.ts; `npm run verify-receipt -- <the file>` checks it offline). The hero
+// reads everything step 4 shows from this file: the terms, the hash the passkey signed, the public key.
+//
+// Since 12 November the file is the published receipt of the approval itself: invoice SLL-2026-11, EUR 240.00, signed on
+// 7 November 2026 in the Airwallex-only run with the owner's own passkey (Face ID, as stated by the owner; the server
+// checks no attestation). The owner chose to publish it that day: public key, credential id and assertion, no secret.
 //
 // SWAPPING THE FILE needs no code change: put any valid receipt for the same payment (the invoice number and the amount
 // of the Airwallex-only run's record, docs/demo/airwallex-run.json) at HERO_RECEIPT_FILE. When its terms_sha256 is the
-// hash that record holds for the invoice, the page says step 4 checks the recorded approval itself; otherwise its note
+// hash that record holds for the invoice, the page says step 4 checks that payment's real signature; otherwise its note
 // must call it a sample signed with a test key, and the page says that. Anything else, a missing file or one that does
 // not verify: the hero is not rendered and test/home-story.test.ts fails.
-//
-// Today no complete record of that approval is public (the run record has its hash and transfer, not its terms nor the
-// passkey assertion), so the committed file is a labelled sample, written once by `npm run hero-receipt`
-// (src/cli/heroReceipt.ts): the same invoice's terms, built by Purser's own code in an offline test world and signed
-// with a software key that lived in memory only.
 
 import { existsSync, readFileSync } from "node:fs";
 import { RECEIPT_FORMAT, verifyReceipt, type TryReceipt } from "../try/receipt.js";
 
-export const HERO_RECEIPT_FILE = "docs/demo/hero-receipt.json";
-/** The sample's relying party: a name under .test, which no site can ever have. */
+export const HERO_RECEIPT_FILE = "docs/runs/2026-11-07-awx-1/receipt-P-0002.json";
+/** A sample's relying party, if a sample is ever put in the file's place: a name under .test, which no site can ever have. */
 export const HERO_SAMPLE_RP = "hero-sample.purser.test";
 export const HERO_SAMPLE_ORIGIN = `https://${HERO_SAMPLE_RP}`;
 

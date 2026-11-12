@@ -37,7 +37,6 @@
     "audit:report": "tsx src/cli/auditReport.ts",
     "verify-log": "tsx src/cli/verifyLog.ts",
     "verify-receipt": "tsx src/cli/verifyReceipt.ts",
-    "hero-receipt": "tsx src/cli/heroReceipt.ts",
     "e2e:live": "tsx src/cli/e2eLive.ts",
     "passkey": "tsx src/cli/passkey.ts",
     "approvals": "tsx src/cli/approvals-page.ts",

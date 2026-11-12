@@ -1,15 +1,17 @@
 // Home's hero (home-story, 12 Nov): four steps, the first three from the Airwallex-only run's record, the fourth the
-// visitor's own check, run in the browser on a receipt file. Held here: every figure of steps 1 to 3 against the record;
-// the verification the page embeds, run in Node on the committed receipt (untouched, one cent more, another IBAN, back
-// again); the receipt itself (it verifies, its terms have the shape Purser's code builds, its note says what it is, no
-// private key anywhere); the page's data (only what the check needs); and that the hero follows the file, not the code:
-// another valid receipt drives it, a bad one removes it.
+// visitor's own check, run in the browser on a receipt file: since 12 November the published receipt of the approval of
+// 7 November itself (docs/runs/2026-11-07-awx-1/receipt-P-0002.json, published by the owner's decision). Held here: every
+// figure of steps 1 to 3 against the record; the verification the page embeds, run in Node on that receipt (untouched,
+// one cent more, another IBAN, back again); the receipt itself (it verifies, its canonical terms hash to the hash the
+// record holds and Airwallex's transfer carries, its note says what it is, no private key anywhere); the page's data
+// (only what the check needs); and that the hero follows the file, not the code: another valid receipt drives it, a bad
+// one removes it, a labelled sample would be called one.
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import { DEMO_LINES, DEMO_STEPS, HERO_CHECK_JS, HERO_DEMO_CSS, HERO_DEMO_JS, HERO_VERDICT, heroDemoFacts, heroDemoHtml, heroProvenance } from "../src/redesign/heroDemo.js";
-import { HERO_DATA_KEYS, HERO_RECEIPT_FILE, HERO_SAMPLE_ORIGIN, HERO_SAMPLE_RP, heroReceipt } from "../src/redesign/heroReceipt.js";
+import { HERO_DATA_KEYS, HERO_RECEIPT_FILE, heroReceipt } from "../src/redesign/heroReceipt.js";
 import { homePage } from "../src/redesign/home.js";
 import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 import { canonicalTerms, RECEIPT_FORMAT, verifyReceipt, type TryReceipt } from "../src/try/receipt.js";
@@ -17,7 +19,7 @@ import { VERIFY_CORE } from "../src/try/verify.js";
 import { CAVEAT_LINE } from "../src/config/brand.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
-const rec = JSON.parse(read("docs/demo/airwallex-run.json")) as { attempts: { at: string }[]; invoices: { invoice_no: string; amount: string; transfer_id: string; approval_sha256: string; proposal_id: string; status: string }[]; proposals: { proposal_id: string; terms_sha256: string; method: string; created_by: string }[]; verify: { level: string; what: string; detail: string }[] };
+const rec = JSON.parse(read("docs/demo/airwallex-run.json")) as { attempts: { at: string }[]; invoices: { invoice_no: string; amount: string; transfer_id: string; transfer_request_id: string; approval_sha256: string; proposal_id: string; status: string }[]; proposals: { proposal_id: string; terms_sha256: string; method: string; created_by: string; decided_by: string }[]; verify: { level: string; what: string; detail: string }[] };
 const RAW = read(HERO_RECEIPT_FILE);
 const RECEIPT = JSON.parse(RAW) as TryReceipt & { verify?: string };
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -87,7 +89,7 @@ describe("the hero's steps 1 to 3", () => {
   });
 });
 
-describe("the hero's step 4: the check the page embeds, on the committed receipt", () => {
+describe("the hero's step 4: the check the page embeds, on the published receipt", () => {
   it("is in Home's one script word for word: the checks of /try/verify and the hero's few lines around them", () => {
     const script = /<script>([\s\S]*?)<\/script>/.exec(homePage())![1]!;
     expect(script).toContain(VERIFY_CORE);
@@ -138,17 +140,37 @@ describe("the hero's step 4: the check the page embeds, on the committed receipt
   });
 });
 
-describe("the committed receipt (docs/demo/hero-receipt.json)", () => {
+describe("the published receipt of the approval of 7 November (docs/runs/2026-11-07-awx-1/receipt-P-0002.json)", () => {
   const f = heroDemoFacts()!;
-  it("verifies with verifyReceipt, and is for the record's invoice and amount", () => {
+  const inv = rec.invoices.find((i) => i.invoice_no === f.invoice)!;
+  it("is the one file the hero reads, and the sample that stood in for it is gone", () => {
+    expect(HERO_RECEIPT_FILE).toBe("docs/runs/2026-11-07-awx-1/receipt-P-0002.json");
+    expect(RECEIPT.verify).toBe(`npm run verify-receipt -- ${HERO_RECEIPT_FILE}`);
+    expect(existsSync(new URL("../docs/demo/hero-receipt.json", import.meta.url))).toBe(false);
+    expect(existsSync(new URL("../src/cli/heroReceipt.ts", import.meta.url))).toBe(false);
+    expect((JSON.parse(read("package.json")) as { scripts: Record<string, string> }).scripts["hero-receipt"]).toBeUndefined();
+  });
+
+  it("verifies with verifyReceipt, and is the recorded approval: its hash is the record's, which Airwallex's transfer carries", () => {
     const v = verifyReceipt(RECEIPT);
     expect(v.checks.filter((c) => !c.ok)).toEqual([]);
     expect(v.ok).toBe(true);
-    expect([RECEIPT.terms.invoice_no, RECEIPT.terms.amount, RECEIPT.terms.currency]).toEqual([f.invoice, f.amount, "EUR"]);
-    expect(heroReceipt(f)).toMatchObject({ kind: "sample", shown: { invoice: f.invoice, amount: f.amount, currency: "EUR" } });
+    expect([RECEIPT.terms.invoice_no, RECEIPT.terms.amount, RECEIPT.terms.currency, RECEIPT.terms.proposal_id]).toEqual([f.invoice, f.amount, "EUR", inv.proposal_id]);
+    // The canonical terms hash to exactly the hash the record holds for this invoice (and the third proof row shows).
+    expect(sha(canonicalTerms(RECEIPT.terms))).toBe(RECEIPT.terms_sha256);
+    expect(RECEIPT.terms_sha256).toBe(f.hash);
+    expect(RECEIPT.terms_sha256).toBe("b0f075d94da077084d7fc6745f99e2c2253548d967e9c0413bffa9748dbbf7bb");
+    expect(RECEIPT.terms.transfer_request_id).toBe(inv.transfer_request_id);
+    // The challenge the passkey signed is that hash, as WebAuthn defines it (base64url inside the client data).
+    const client = JSON.parse(Buffer.from(RECEIPT.assertion.clientDataJSON, "base64url").toString("utf8")) as { type: string; challenge: string; origin: string };
+    expect(client).toMatchObject({ type: "webauthn.get", challenge: Buffer.from(f.hash, "hex").toString("base64url"), origin: RECEIPT.origin });
+    // Made by the passkey the record names for that approval.
+    const decided = rec.proposals.find((p) => p.proposal_id === inv.proposal_id)!.decided_by;
+    expect(RECEIPT.credential_id.startsWith(/passkey (\S+)\)/.exec(decided)![1]!)).toBe(true);
+    expect(heroReceipt(f)).toMatchObject({ kind: "recorded", shown: { invoice: f.invoice, amount: f.amount, currency: "EUR", ibanLast4: RECEIPT.terms.iban_last4 } });
   });
 
-  it("has terms shaped exactly like the approval's (src/agents/euroBill.ts InvoicePaymentTerms)", () => {
+  it("has the terms exactly as signed, shaped as Purser's code builds them (src/agents/euroBill.ts InvoicePaymentTerms)", () => {
     const t = RECEIPT.terms as Record<string, unknown>;
     expect(Object.keys(t)).toEqual(["schema", "kind", "proposal_id", "expires_at", "invoice_no", "vendor", "amount", "currency", "fee_max", "beneficiary_id", "beneficiary_name", "iban_last4", "bic", "method", "reference", "reason", "transfer_request_id", "conversion", "balances_before", "floors", "after", "evidence"]);
     expect([t.schema, t.kind, t.amount, t.currency, t.method, t.conversion]).toEqual(["kit11.approval-terms/v1", "invoice_payment", "240.00", "EUR", "SWIFT", null]);
@@ -161,23 +183,16 @@ describe("the committed receipt (docs/demo/hero-receipt.json)", () => {
     expect(ev[0]).toEqual({ type: "invoice", ref: f.invoice, sha256: sha(read("fixtures/stockline-licence-SLL-2026-11.txt")) });
   });
 
-  it("says what it is in its note: a sample, the 7 November payment's terms, a test key, not the CFO's signature, not Face ID, nothing real moved", () => {
-    for (const label of ["sample for Home's hero", "not a record of a payment", `EUR ${f.amount}`, f.invoice, `Airwallex-only run of ${f.date}`, "signed once with a test key", "Not the CFO's signature", "not Face ID", "nothing real moved"]) expect({ label, found: RECEIPT.note.includes(label) }).toEqual({ label, found: true });
-    expect([RECEIPT.rp_id, RECEIPT.origin]).toEqual([HERO_SAMPLE_RP, HERO_SAMPLE_ORIGIN]);
-    expect(RECEIPT.rp_id).toMatch(/\.test$/);
-    // Not the recorded approval, and it does not pass for it.
-    expect(RECEIPT.terms_sha256).not.toBe(f.hash);
+  it("says what it is in its note: the run, live in the sandbox with test money, the owner's own passkey, Face ID as stated, no attestation", () => {
+    for (const label of ["Airwallex-only run", "live, Airwallex sandbox, test money", "7 November 2026", `EUR ${f.amount}`, f.invoice, "the owner's own passkey on an iPhone", "Face ID, as stated by the owner", "the server checks no attestation", "The terms are exactly as signed."]) expect({ label, found: RECEIPT.note.includes(label) }).toEqual({ label, found: true });
+    expect([RECEIPT.rp_id, RECEIPT.origin]).toEqual(["kit11.max-31b.workers.dev", "https://kit11.max-31b.workers.dev"]);
   });
 
-  it("carries no private key, and its generator never writes one", () => {
-    expect(Object.keys(RECEIPT)).toEqual(["receipt", "note", "terms", "terms_sha256", "algorithm", "public_key", "credential_id", "rp_id", "origin", "assertion", "verify"]);
+  it("carries public data only: no private key", () => {
+    expect(Object.keys(RECEIPT)).toEqual(["receipt", "note", "terms", "terms_sha256", "algorithm", "public_key", "credential_id", "rp_id", "origin", "assertion", "verified_by_server_at", "verify"]);
     expect(Object.keys(RECEIPT.public_key)).toEqual(["kty", "crv", "x", "y"]);
     expect(RAW).not.toMatch(/PRIVATE KEY|"d"\s*:|private/i);
-    const gen = read("src/cli/heroReceipt.ts");
-    expect(gen.match(/writeFileSync\(/g)).toHaveLength(1);
-    expect(gen).toContain("writeFileSync(out, `${JSON.stringify(receipt, null, 2)}\\n`)");
-    expect(gen).not.toMatch(/privateKey|\.export\(/);
-    expect((JSON.parse(read("package.json")) as { scripts: Record<string, string> }).scripts["hero-receipt"]).toBe("tsx src/cli/heroReceipt.ts");
+    expect(RAW.endsWith("}\n")).toBe(true);
   });
 });
 
@@ -200,21 +215,27 @@ describe("the hero follows the receipt file, not the code", () => {
     expect(html).toContain("Stockline Daten AG");
     expect(html).toContain("····7731");
     expect(html).not.toContain(String(RECEIPT.terms.iban_last4));
-    expect(html).not.toContain(RECEIPT.terms_sha256.slice(0, 16));
-    expect(html).toContain(other.terms_sha256.slice(0, 16));
+    // Step 4's hashes are the other receipt's. (The record's hash, which the published receipt shares, still shows in
+    // steps 2 and 3 and in the third proof row: those come from the run record, not from the file.)
+    const step4 = /<p class="hd-hashes">[\s\S]*?<\/p>/.exec(html)![0];
+    expect(step4).toContain(`title="${other.terms_sha256}"`);
+    expect(step4).not.toContain(RECEIPT.terms_sha256);
     const v = await web.heroCheck(data);
     expect(v).toMatchObject({ ok: true, signed: other.terms_sha256 });
     expect((await web.heroCheck(data, { amount: "240.01" })).failed).toEqual(["terms hash"]);
   });
 
-  it("says what step 4 is from the file: a copy signed with a test key, or the recorded approval itself", () => {
-    const sample = heroReceipt(f)!;
-    expect(heroProvenance(f, sample)).toEqual([`Steps 1 to 3: recorded on ${f.date} in the Airwallex sandbox.`, CAVEAT_LINE, "Step 4 runs in your browser, on a copy of these terms signed with a test key."]);
+  it("says what step 4 is from the file: the recorded approval itself, or a copy signed with a test key", () => {
+    const real = heroReceipt(f)!;
+    expect(real.kind).toBe("recorded");
+    expect(heroProvenance(f, real)).toEqual([`Steps 1 to 3: recorded on ${f.date} in the Airwallex sandbox.`, CAVEAT_LINE, "Step 4 checks that payment's real signature in your browser: the owner's own passkey (Face ID, as stated by the owner)."]);
     // A receipt whose hash is the one the record holds is the approval itself, whatever its note says.
     const plain = receiptFor({}, { note: "" });
-    const recorded = heroReceipt({ ...f, hash: plain.terms_sha256 }, plain)!;
-    expect(recorded.kind).toBe("recorded");
-    expect(heroProvenance(f, recorded)[2]).toBe("Step 4 checks that signature in your browser.");
+    expect(heroReceipt({ ...f, hash: plain.terms_sha256 }, plain)!.kind).toBe("recorded");
+    // Any other receipt must call itself a sample signed with a test key, and the page says so.
+    const sample = heroReceipt(f, receiptFor())!;
+    expect(sample.kind).toBe("sample");
+    expect(heroProvenance(f, sample)[2]).toBe("Step 4 runs in your browser, on a copy of these terms signed with a test key.");
     expect(HERO_VERDICT).toEqual({ valid: "Signature valid for these exact terms", refused: "Hash no longer matches" });
   });
 
