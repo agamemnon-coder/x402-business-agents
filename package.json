@@ -106,6 +106,7 @@
     "awx-readback": "tsx src/cli/awxReadback.ts",
     "awx-1": "tsx src/cli/awx1.ts",
     "airi:vic-1": "tsx src/cli/airiVic1.ts",
+    "icc": "tsx src/cli/icc.ts",
     "airi:vic-2": "tsx src/cli/airiVic2.ts",
     "demo-tower": "tsx src/cli/demoTower.ts",
     "autonomy-record": "tsx src/cli/autonomyRecord.ts",
