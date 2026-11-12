@@ -25,7 +25,8 @@ const HASH = /^0x[0-9a-f]{64}$/, ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 function visibleWords(html: string): number {
   let main = /<main[\s\S]*<\/main>/.exec(html)?.[0] ?? html;
   for (let prev = ""; prev !== main;) { prev = main; main = main.replace(/<svg\b[^>]*>(?:(?!<svg\b)[\s\S])*?<\/svg>/g, " "); }
-  const text = main.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ")
+  // Tag names in any case, and an end tag with spaces or attributes in it (</SCRIPT >), as a browser reads them.
+  const text = main.replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, " ").replace(/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, " ")
     .replace(/<details\b[^>]*>\s*<summary[^>]*>([\s\S]*?)<\/summary>[\s\S]*?<\/details>/g, " $1 ").replace(/<[^>]+>/g, " ");
   return text.replace(/&amp;/g, "&").split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
 }
