@@ -111,7 +111,7 @@ describe("a purchase within the CFO's limit", () => {
     expect(readdirSync(tmpRoot).filter((n) => n.startsWith(TMP_PREFIX))).toEqual([]);
     expect(row(db, out.actionId)).toMatchObject({ route: "alone", status: "SETTLED", outcome: "SUCCEEDED", mandate_id: "standin-mdt-1" });
     expect(db.prepare("SELECT COUNT(*) AS n FROM proposals").get()).toEqual({ n: 0 });
-    expect(events(db)).toEqual(["airi.purchase_requested", "airi.checkout_prepared", "airi.mandate_created", "airi.mandate_read_back", "airi.waiting_for_tap", "airi.credential_received", "airi.checkout_result", "airi.result_reported"]);
+    expect(events(db)).toEqual(["airi.purchase_requested", "airi.rail_choice", "airi.checkout_prepared", "airi.mandate_created", "airi.mandate_read_back", "airi.waiting_for_tap", "airi.credential_received", "airi.checkout_result", "airi.result_reported"]);
     expect((db.prepare("SELECT step, status FROM money_steps ORDER BY n").all() as { step: string; status: string }[]).map((s) => `${s.step}:${s.status}`))
       .toEqual(["airi.checkout_prepare:DONE", "airi.mandate:DONE", "airi.checkout_pay:DONE", "airi.result:DONE"]);
   });

@@ -43,6 +43,16 @@ import { AIRI_TEXT_MAX, AiriRefusal, AiriWaitTimeout, CheckoutOutcomeUnknown, sc
 import { airiPolicy, type AiriPolicy } from "./policy.js";
 
 export const AIRI_PURCHASE_KIND = "airi_purchase";
+/** The Airi rail's name in the Sourcing agent's rail choice (src/agents/railChoice.ts) and in a purchase's record. */
+export const AIRI_RAIL = "airi_vic";
+/**
+ * Who chose the Airi rail for a purchase. "claude": the purchase was asked for inside an agent's Claude call (the
+ * Sourcing agent's rail choice), with that call's request id as Anthropic returned it (null when it returned none).
+ * "code": a script or code's fallback asked for it; no Claude call chose the rail.
+ */
+export type AiriRailChoice =
+  | { rail: typeof AIRI_RAIL; by: "claude"; agent: string; model: string; request_id: string | null }
+  | { rail: typeof AIRI_RAIL; by: "code" };
 export const AIRI_ALONE_RULE = "an Airi purchase within the CFO's limit for this rail";
 /** How long the terms of an Airi purchase stand: a CFO approval older than this is refused (src/policy/approvals.ts). */
 export const AIRI_TERMS_TTL_MS = 30 * 60 * 1000;
@@ -214,6 +224,20 @@ function aloneOrigin(agent: Agent): Origin {
   return { actor: "code", rule: AIRI_ALONE_RULE, agent, ...(base && base.actor !== "code" ? { set_by: base } : {}) };
 }
 
+/** Who is asking, as it stands on this code path (D24): an agent's Claude call, or code. Never assumed. */
+function railChoiceNow(): AiriRailChoice {
+  const o = currentOrigin();
+  return o?.actor === "agent" ? { rail: AIRI_RAIL, by: "claude", agent: o.agent, model: o.model, request_id: o.request_id } : { rail: AIRI_RAIL, by: "code" };
+}
+
+/** The recorded rail choice of a purchase, by its action id (a proposal's id above the limit); null when none was recorded. */
+export function airiRailChoice(db: DB, actionId: string): AiriRailChoice | null {
+  const r = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'airi.rail_choice' AND subject = ? ORDER BY seq DESC LIMIT 1").get(actionId) as { payload_json: string } | undefined;
+  if (!r) return null;
+  const p = JSON.parse(r.payload_json) as Record<string, unknown>;
+  return p.by === "claude" ? { rail: AIRI_RAIL, by: "claude", agent: String(p.agent), model: String(p.model), request_id: typeof p.request_id === "string" ? p.request_id : null } : { rail: AIRI_RAIL, by: "code" };
+}
+
 /**
  * An agent asks to buy. Refused: audited, nothing outside is called. Above the limit (or past the day's count): a
  * proposal for the CFO's Face ID, nothing outside is called. Within: reserved and run now.
@@ -231,7 +255,11 @@ export async function requestAiriPurchase(db: DB, deps: AiriDeps, req: AiriPurch
       VALUES (?, ?, 'alone', NULL, ?, ?, ?, ?, 'HELD', ?, ?)`).run(actionId, req.agent, termsHash(terms), JSON.stringify(terms), toCents(req.amount), dayOf(now), now.toISOString(), now.toISOString());
     return d;
   }).immediate();
-  audit(db, req.agent, "airi.purchase_requested", merchantOrigin, { agent: req.agent, amount: req.amount, currency: req.currency, merchant: safe(req.merchantName), route: decided.route, client: deps.airi.kind, ...(decided.route === "alone" ? { action_id: actionId } : {}) }, now);
+  // Who chose this rail (12 Nov): the Claude call the purchase was asked in, with its request id, or code. Kept with the
+  // purchase (its action id; above the limit, its proposal's id), so a run record shows it beside the mandate and payment.
+  const choice = railChoiceNow();
+  audit(db, req.agent, "airi.purchase_requested", merchantOrigin, { agent: req.agent, amount: req.amount, currency: req.currency, merchant: safe(req.merchantName), route: decided.route, client: deps.airi.kind, rail_choice: choice, ...(decided.route === "alone" ? { action_id: actionId } : {}) }, now);
+  if (decided.route === "alone") audit(db, req.agent, "airi.rail_choice", actionId, { ...choice }, now);
   if (decided.route === "refused") {
     audit(db, "system", "airi.purchase_refused", merchantOrigin, { agent: req.agent, by: "purser", code: decided.code, reason: safe(decided.reason) }, now);
     return { status: "refused", by: "purser", code: decided.code, reason: decided.reason };
@@ -250,6 +278,7 @@ export async function requestAiriPurchase(db: DB, deps: AiriDeps, req: AiriPurch
       audit(db, "system", "airi.purchase_refused", merchantOrigin, { agent: req.agent, by: "purser", code: "PURSER_POLICY_CHANGED", reason: safe(reason) }, now);
       return { status: "refused", by: "purser", code: "PURSER_POLICY_CHANGED", reason };
     }
+    audit(db, req.agent, "airi.rail_choice", p.proposal_id, { ...choice }, now);
     return { status: "pending_approval", proposalId: p.proposal_id, termsSha256: p.terms_sha256 };
   }
   const row = rowOf(db, actionId)!;
@@ -548,7 +577,11 @@ async function recoverSteps(db: DB, deps: AiriDeps, row: Row, now: Date): Promis
   return refuse(db, row, "purser", "PURSER_RESTARTED_BEFORE_CHECKOUT", "Purser restarted before the checkout; the mandate was cancelled and nothing was charged", now, mandateId ?? undefined);
 }
 
-/** The rail's rows for a run record and the dashboard: safe fields only. */
+/**
+ * The rail's rows for a run record and the dashboard: safe fields only. Each row carries who chose the rail (rail_choice:
+ * Claude with its request id, or code) beside the mandate id and the checkout's reference (Airwallex: the PaymentIntent).
+ */
 export function airiPurchases(db: DB): Json[] {
-  return db.prepare("SELECT action_id, agent, route, proposal_id, order_sha256, cents, day, status, mandate_id, checkout_ref, outcome, code, created_at, updated_at FROM airi_purchases ORDER BY created_at, action_id").all() as Json[];
+  const rows = db.prepare("SELECT action_id, agent, route, proposal_id, order_sha256, cents, day, status, mandate_id, checkout_ref, outcome, code, created_at, updated_at FROM airi_purchases ORDER BY created_at, action_id").all() as { action_id: string }[];
+  return rows.map((r) => { const choice = airiRailChoice(db, r.action_id); return { ...r, ...(choice ? { rail_choice: choice } : {}) } as Json; });
 }
