@@ -25,7 +25,7 @@ export const DEMO_STEPS = ["Ask", "Face ID", "Paid", "+1 cent"] as const;
 export const DEMO_LINES = [
   "The agent may not pay this alone. It asks.",
   "The CFO signs the exact terms with Face ID.",
-  "Airwallex pays. The signed hash is in its record.",
+  "Airwallex pays. The hash is in its record.",
   "Your turn: change one cent.",
 ] as const;
 /** Step 4's verdicts, word for word; which one shows is the browser's check, nothing else. */
@@ -205,6 +205,7 @@ ${[1, 2, 3, 4].map((n) => AT(n, `.hd-lines [data-p="${n}"]`)).join(", ")} { visi
 .hd-btn.go { background: var(--hd-acc); border-color: var(--hd-acc); color: #0b0d18; font-weight: 750; }
 .hd-btn.go:hover { background: #a39eff; border-color: #a39eff; }
 @media (max-width: 480px) { .hd { padding: 12px; } .hd-stage { grid-template-columns: minmax(0, 1fr) 172px; gap: 10px; height: 300px; } .hd-phone { height: 292px; } .hd-node { padding: 8px 9px; column-gap: 8px; grid-template-columns: 26px minmax(0, 1fr); } .hd-node svg { width: 26px; height: 26px; padding: 5px; } .hd-node b { font-size: 13px; } .hd-steps li { font-size: 11.5px; padding: 6px 5px 8px; gap: 4px; } .hd-amt b, .hd-in { font-size: 23px; } .hd-in { width: 96px; } .hd-fid { width: 50px; height: 50px; margin: 6px 0 2px; } .hd-screen { padding: 36px 9px 12px; } .hd-st, .hd-verdict { bottom: 12px; font-size: 11.5px; padding: 6px 8px; } .hd-verdict { width: calc(100% - 14px); } .hd-btn { font-size: 13px; } .hd-lines p { font-size: 14px; } }
+@media (max-width: 340px) { .hd-btn { font-size: 12px; padding: 0 2px; } .hd-ctl { gap: 6px; } }
 @media (prefers-reduced-motion: reduce) { .hd *, .hd *::before, .hd *::after { transition: none !important; animation: none !important; } }`;
 
 /**

@@ -42,7 +42,7 @@ a.row { display: grid; grid-template-columns: minmax(0, 1fr) 18px; column-gap: 1
 a.row:hover { border-color: var(--accent); }
 a.row b { grid-column: 1; font-size: 14px; font-weight: 700; letter-spacing: .02em; color: var(--muted); }
 a.row span { grid-column: 1; font-size: 16.5px; font-weight: 620; line-height: 1.4; }
-a.row code { grid-column: 1; font: 500 13.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
+a.row code { grid-column: 1; font: 500 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
 a.row .i { grid-column: 2; grid-row: 1 / span 3; color: var(--accent); }
 .btn.big.more { margin-top: 22px; }
 p.next { margin: 18px 0 0; font-size: 15.5px; color: var(--muted); max-width: 44em; } p.next a { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; white-space: nowrap; }

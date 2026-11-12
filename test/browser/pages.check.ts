@@ -9,6 +9,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { chromium, type Page } from "playwright";
 import { startJudge } from "../../src/cli/judge.js";
+import { checkHome } from "./homeStory.js";
 
 const args = process.argv.slice(2);
 const liveAt = args.indexOf("--live");
@@ -98,33 +99,11 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     await page.waitForTimeout(1500);
     if (new URL(page.url()).pathname !== "/" || !(await page.isVisible("h1.h-hero"))) fail(`/ ${tag}: a guest does not get Home at / (${page.url()})`);
     await look(page, `/ (Home) ${tag}`, w);
-    // Competitive review, 10 Nov: one primary button, to Try, in the first screen; Watch and Proof as text links. The
-    // CFO's view is linked from Proof's head (checked below), not from Home.
-    {
-      const links = await page.locator("p.more a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
-      if (!links.includes("watch") || !links.includes("proof")) fail(`/ ${tag}: Watch and Proof are not linked beside the button (${JSON.stringify(links)})`);
-      const primaries = page.locator("main a.btn.primary");
-      const box = await primaries.first().boundingBox();
-      if ((await primaries.count()) !== 1 || !/^try(\/sign)?$/.test((await primaries.first().getAttribute("href")) ?? "") || !box || box.y + box.height > h) fail(`/ ${tag}: not one primary button, to Try, in the first screen`);
-      // The hero demo (Max, 10 Nov): it plays (the phase moves on), it keeps its size while it plays (no layout shift),
-      // and with reduced motion it shows one still frame, the last.
-      const demo = page.locator("#hero-demo");
-      if (!(await demo.count())) fail(`/ ${tag}: no hero demo`);
-      else {
-        const size = async () => JSON.stringify(await demo.evaluate((e) => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
-        const p0 = await demo.getAttribute("data-phase"), s0 = await size();
-        await page.waitForTimeout(3800);
-        if ((await demo.getAttribute("data-phase")) === p0) fail(`/ ${tag}: the hero demo does not play`);
-        if ((await size()) !== s0) fail(`/ ${tag}: the hero demo changes size while it plays (${s0} → ${await size()})`);
-        if (!/Recorded run · Airwallex sandbox · test money/.test(await demo.innerText()) || !(await demo.locator('a[href$="try/sign"], a[href="try"]').count())) fail(`/ ${tag}: the hero demo lacks its label or its link to Try`);
-        await demo.screenshot({ path: join(shots, `home-demo-${tag}.png`) });
-        const still = await page.context().browser()!.newPage({ viewport: { width: w, height: h }, reducedMotion: "reduce" });
-        await still.goto(`${base}/home`, { waitUntil: "load" });
-        await still.waitForTimeout(2600);
-        if ((await still.locator("#hero-demo").getAttribute("data-phase")) !== "4" || await still.locator("#hero-demo").evaluate((e) => e.classList.contains("run"))) fail(`/ ${tag}: with reduced motion the hero demo is not one still frame`);
-        await still.close();
-      }
-    }
+    // Home as one story (home-story, 12 Nov): two buttons, the hero that plays once and rests on step 4, the visitor's
+    // own check with no request, the sizes, the screens (test/browser/homeStory.ts). The CFO's view is linked from
+    // Proof's head (checked below), not from Home.
+    await checkHome(page, { url: `${base}/`, name: `/ (Home) ${tag}`, width: w, height: h, touch: w < 500, tryHref: liveAt >= 0 ? "try/sign" : "try", fail, shot: async (n) => { await page.locator("#hero-demo").screenshot({ path: join(shots, `home-demo-${n}-${tag}.png`) }); } });
+    await page.goto(`${base}/home?demo=4`, { waitUntil: "load" });
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
 
     // Every button works without a key: "CFO sign-in" explains how the CFO gets in, and the way back to the recording.
@@ -518,17 +497,19 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
 
     // /judge, "Judge it in 3 minutes" (item 5.1): five steps, each with a checkbox and a time, three minutes in all; the
     // ticks survive a reload; the page asks nothing of any server (no request but the page, its font and its icon);
-    // and with /try/sign on, Home's flow leads to it (watch, then try/sign, then proof) and one quiet text link under the
-    // one button opens the tour, in the first screen (Max, 7 Nov).
+    // and with /try/sign on, Home's first button leads to it and one quiet footer link opens the tour (home-story, 12 Nov:
+    // Home has two buttons and no third call to action).
     if (judgeBase) {
       const asked: string[] = [];
       const onRequest = (r: { url(): string }) => { const u = new URL(r.url()); if (u.origin !== new URL(judgeBase).origin || !["/judge", "/assets/inter.woff2", "/assets/favicon.svg", "/favicon.ico"].includes(u.pathname)) asked.push(r.url()); };
       await page.goto(`${judgeBase}/`, { waitUntil: "load" });
       if ((await page.locator("main a.btn.primary").getAttribute("href")) !== "try/sign") fail(`/ (Home, with /try/sign) ${tag}: the button does not lead to /try/sign`);
-      const top = page.locator('p.more a[href="judge"]');
+      const top = page.locator('footer a.flink[href="judge"]');
       const box = await top.boundingBox();
-      if ((await page.locator('a[href="judge"]').count()) !== 1 || (await top.innerText()).trim() !== "Judging? Take the 3-minute tour" || !box || box.y + box.height > h || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: no one "Judging? Take the 3-minute tour" link beside the button, in the first screen, inside the page's gutter`);
-      if ((await page.locator("main a.btn").count()) !== 1) fail(`/ (Home, with /try/sign) ${tag}: more than one button`);
+      if ((await page.locator('a[href="judge"]').count()) !== 1 || (await top.innerText()).trim() !== "Judging? Take the 3-minute tour" || !box || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: no one "Judging? Take the 3-minute tour" link in the footer, inside the page's gutter`);
+      if ((await page.locator("main p.reassure").innerText()).trim() !== "A test passkey, no account, no money. About a minute.") fail(`/ (Home, with /try/sign) ${tag}: the line under the button is not /try/sign's`);
+      await checkHome(page, { url: `${judgeBase}/`, name: `/ (Home, with /try/sign) ${tag}`, width: w, height: h, touch: w < 500, tryHref: "try/sign", fail, quick: true });
+      await page.goto(`${judgeBase}/home?demo=4`, { waitUntil: "load" });
       await look(page, `/ (Home, with /try/sign) ${tag}`, w);
       await page.screenshot({ path: join(shots, `home-trysign-${tag}.png`) });
       await top.click();

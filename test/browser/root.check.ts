@@ -11,6 +11,7 @@ import { mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { chromium } from "playwright";
 import { HERO } from "../../src/config/brand.js";
+import { homeHeadingHtml } from "../../src/redesign/home.js";
 import { openDb } from "../../src/db/open.js";
 import { viewKey } from "../../src/relay/config.js";
 import { startLocalRelay } from "../../src/relay/local.js";
@@ -36,7 +37,7 @@ const check = (ok: boolean, what: string) => { console.log(`${ok ? "ok  " : "FAI
 // Without a browser: what a link preview or a fetch gets.
 {
   const root = await (await fetch(`${base}/`)).text();
-  check(root.includes(`<h1 class="h-hero">${HERO}</h1>`) && !root.includes('id="recorded-data"'), "no script: / is Home's HTML, nothing of the CFO dashboard");
+  check(root.includes(homeHeadingHtml()) && homeHeadingHtml().replace(/<[^>]+>/g, "") === HERO && !root.includes('id="recorded-data"'), "no script: / is Home's HTML, nothing of the CFO dashboard");
   for (const q of ["?recorded", "?autonomy"]) check((await (await fetch(`${base}/${q}`)).text()).includes('id="recorded-data"'), `no script: /${q} is the dashboard's page`);
   const h = await fetch(`${base}/health`);
   check(h.status === 200 && ((await h.json()) as { status: string }).status === "ok", "/health: 200 ok while the runner syncs");
@@ -59,7 +60,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     await page.goto(`${base}/`, { waitUntil: "load" });
     await page.waitForTimeout(800);
     check(new URL(page.url()).pathname === "/" && !new URL(page.url()).search, `${tag} guest: stays on / (${page.url().slice(base.length)})`);
-    check(await page.isVisible("h1.h-hero") && (await page.locator("h1.h-hero").innerText()).trim() === HERO, `${tag} guest: Home's heading "${HERO}"`);
+    check(await page.isVisible("h1.h-hero") && (await page.locator("h1.h-hero").innerText()).replace(/\s+/g, " ").trim() === HERO, `${tag} guest: Home's heading "${HERO}"`);
     check(api.length === 0, `${tag} guest: no request to the CFO's API${api.length ? ` (${api.join(", ")})` : ""}`);
     await page.screenshot({ path: join(shots, `guest-root-${tag}.png`) });
 

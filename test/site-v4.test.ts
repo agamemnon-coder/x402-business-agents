@@ -30,7 +30,7 @@ export function visibleWords(html: string): number {
 const allText = (html: string) => decode(html.replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " "));
 
 describe("the site after v4", () => {
-  it("keeps every page within its text budget (Home 195 with the three sentences and both awards; partner pages at most 150, /metal 180 with the explorer note and the mandates replaced after Face ID, /airwallex 365 with its read-back, awx-1, the Airi run and the second Airi run's heading, /visa 610 with the overview of the three Visa runs on top, the Airi run under it, the VIC flow under it and the second Airi run under that)", () => {
+  it("keeps every page within its text budget (Home 250, as one story since 12 Nov; partner pages at most 150, /metal 180 with the explorer note and the mandates replaced after Face ID, /airwallex 365 with its read-back, awx-1, the Airi run and the second Airi run's heading, /visa 610 with the overview of the three Visa runs on top, the Airi run under it, the VIC flow under it and the second Airi run under that)", () => {
     // Proof: 480 since 4 Nov, for the TAP run's decline on its own line below the stop figure (Max).
     // Home: 600 since 6 Nov, for the three sentences under the heading, the Kit 11 line and the one caveat line (jury review, #1, #7).
     // Proof 520 and Airwallex 190 since 6 Nov, for Airwallex read back (section B): the hash the CFO signed beside the one
@@ -64,6 +64,9 @@ describe("the site after v4", () => {
     // Home: 250 since the competitive review of 10 Nov (249 as built): one button to /try/sign, the other ways in as text
     // links, the hero demo in place of the three sentences, Airwallex's own decline with the main run's counts and one
     // id, the awards line under the first screen and one line on what comes next (README and form keep the sentences).
+    // Home: still 250 since it became one story (home-story, 12 Nov; 240 as built, 243 with /try/sign): the heading, one
+    // sentence, one button and its line, the first of the three sentences, the hero's four steps with one short line
+    // each, one provenance line, three proof rows, the last button. test/home-story.test.ts holds both builds to it.
     // Proof: 715 since then, for "What Purser guarantees" under the run's figures: seven promises, each with who enforces
     // it and its evidence in sight, how, the code and the test folded (705 as built).
     // Visa: 495 since then (Max, 10 Nov: we compete for the Visa Award, keep it visible): one plain sentence on top naming

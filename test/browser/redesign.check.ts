@@ -8,6 +8,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { chromium, type Page } from "playwright";
 import { startJudge } from "../../src/cli/judge.js";
+import { checkHome } from "./homeStory.js";
 
 const shots = process.argv[2] ?? "test-results/redesign";
 mkdirSync(shots, { recursive: true });
@@ -69,35 +70,22 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     page.on("pageerror", (e) => fail(`${tag} ${page.url()}: page error: ${e.message}`));
     page.on("requestfailed", (r) => { if (!/testnet\.metalntwx\.com/.test(r.url())) fail(`${tag} ${page.url()}: request failed: ${r.url()}`); });
 
-    // "/" is Home itself for a guest (no redirect). The first frame already shows the refusal on chain; then it plays.
+    // "/" is Home itself for a guest (no redirect). Home is one story (home-story, 12 Nov): two buttons, the hero whose
+    // fourth step is the visitor's own check, three proof rows (test/browser/homeStory.ts; pages.check.ts runs it in
+    // full, with the play-through). The replay stage and its four-eyes frame left Home: Watch plays the run.
     await page.goto(`${base}/`, { waitUntil: "load" });
     if (new URL(page.url()).pathname !== "/") fail(`/ ${tag}: a guest is sent away from / (${page.url()})`);
     await page.waitForTimeout(300);
-    // The main run: Metal refused the purchase let through to it, on chain ("Refused by Metal · on chain").
-    if (!/Refused · recorded on chain|Refused by Metal · on chain/.test(await page.locator("[data-stage]").innerText())) fail(`/home ${tag}: the first frame does not show the refusal on chain`);
     await page.screenshot({ path: join(shots, `home-first-${tag}.png`) });
-    await page.waitForTimeout(9000);
     await look(page, `/home ${tag}`, w);
-    // One primary button, to /try/sign (competitive review, 10 Nov); the other ways in are text links.
     if ((await page.locator("main a.btn.primary").count()) !== 1) fail(`/home ${tag}: not one primary button`);
-    if (!/try(\/sign)?$/.test((await page.locator("main a.btn.primary").getAttribute("href")) ?? "")) fail(`/home ${tag}: the button does not lead to Try`);
-    // The hero demo (Max, 10 Nov): four steps, the stylesheet parsed to the end (its stage is a grid), within the page.
-    if ((await page.locator("#hero-demo .hd-steps > li").count()) !== 4) fail(`/home ${tag}: the hero demo has not four steps`);
-    if (await page.locator("#hero-demo .hd-stage").evaluate((e) => getComputedStyle(e).display) !== "grid") fail(`/home ${tag}: the hero demo lost its style`);
-    if (await page.locator("#hero-demo").evaluate((e) => e.getBoundingClientRect().right > window.innerWidth + 1)) fail(`/home ${tag}: the hero demo runs off the page`);
+    if (await page.locator("#hero-demo").evaluate((e) => e.getBoundingClientRect().right > window.innerWidth + 1)) fail(`/home ${tag}: the hero runs off the page`);
     if ((await page.locator("nav.tabs a").count()) !== 4) fail(`/home ${tag}: not four tabs`);
-    if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(await page.evaluate(() => document.body.innerText))) fail(`/home ${tag}: no run label`);
-    // The rail's line is said in full (Max, 2 Nov: it was cut off).
-    for (const s of await page.locator("[data-stage] .lane .ln small").all()) if (await s.evaluate((e) => e.scrollWidth > e.clientWidth + 1 || getComputedStyle(e).display === "none")) fail(`/home ${tag}: a rail line is cut off or hidden`);
+    await checkHome(page, { url: `${base}/`, name: `/home ${tag}`, width: w, height: h, touch: w < 500, tryHref: "try", fail, quick: true });
+    await look(page, `/home ${tag}, after the hero's check`, w);
+    await page.goto(`${base}/home?demo=4`, { waitUntil: "load" });
     await page.screenshot({ path: join(shots, `home-${tag}.png`) });
     await page.screenshot({ path: join(shots, `home-full-${tag}.png`), fullPage: true });
-    // The four-eyes moment, still: 2 of 2 signatures and who the second approver is.
-    const sig = await page.evaluate(() => (JSON.parse(document.getElementById("run-data")!.textContent!) as { events: { k: string; signers?: string[] }[]; moments: number[] }).moments.findIndex((i, _n, all) => { const d = JSON.parse(document.getElementById("run-data")!.textContent!) as { events: { k: string; signers?: string[] }[] }; void all; return d.events[i]!.k === "face" && (d.events[i]!.signers ?? []).length > 1; }));
-    await page.goto(`${base}/home?frame=${sig}`, { waitUntil: "load" });
-    await page.waitForTimeout(300);
-    const stage = await page.locator("[data-stage]").innerText();
-    if (!/2 of 2 signatures/.test(stage) || !/second approver: labelled test passkey/.test(stage)) fail(`/home ${tag}: the four-eyes frame lacks "2 of 2 signatures" or its label`);
-    await page.locator("[data-stage]").screenshot({ path: join(shots, `home-stage-foureyes-${tag}.png`) });
 
     // Watch: the start, then each moment by its jump.
     await page.goto(`${base}/watch`, { waitUntil: "load" });
