@@ -5,7 +5,9 @@
 // Sandbox and testnet only. No script.
 
 import { GUARANTEES } from "./guarantees.js";
-import { foldHtml, outLink, productPage, repoHref, repoText, siteLink } from "./productPage.js";
+import { existingDoc, foldHtml, outLink, productPage, repoHref, repoText, siteLink } from "./productPage.js";
+
+export { existingDoc };
 import { esc, icon } from "./ui.js";
 
 const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(iso));
@@ -79,9 +81,11 @@ export function publishedAudit(): { rows: number; day: string; command: string }
 export const FUNDS_LINE: DocLine = { doc: "docs/compliance.md", anchor: "#1-roles-and-money", quote: "The money sits in the business's own Airwallex account and Metal account. Purser asks those rails to move it" };
 /** The note the claims register asks for whenever "no funds of its own" is said (docs/claims.md): the runner keeps the testnet owner key. */
 export const OWNER_KEY_NOTE: DocLine = { doc: "docs/claims.md", anchor: "", quote: "\"holds no funds of its own\", noting that the runner keeps the testnet owner key" };
-/** What goes on chain of an approval (docs/overview.md), and that no personal data does (docs/metal-award.md). */
+/** docs/overview.md, or docs/archive/overview.md once another branch has moved it there (12 Nov). */
+export const OVERVIEW_DOC = existingDoc(["docs/overview.md", "docs/archive/overview.md"]);
+/** What goes on chain of an approval (the overview), and that no personal data does (docs/metal-award.md). */
 export const CHAIN_LINES: readonly DocLine[] = [
-  { doc: "docs/overview.md", anchor: "#controls", quote: "Mandate changes anchor the approval on chain (the new credential's hash is bound)" },
+  { doc: OVERVIEW_DOC, anchor: "#controls", quote: "Mandate changes anchor the approval on chain (the new credential's hash is bound)" },
   { doc: "docs/metal-award.md", anchor: "", quote: "the customer is simulated and Purser holds no personal data on chain" },
 ];
 /** The "Not yet" card's one sentence, and the docs' own sentences behind each part of it. */

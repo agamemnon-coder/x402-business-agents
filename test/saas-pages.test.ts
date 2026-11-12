@@ -9,7 +9,7 @@ import { CHECK_PATHS } from "../src/cli/judge.js";
 import { FEE_BPS_CAP } from "../src/airwallex/platform.js";
 import { PRICING, euro, percentOfBps } from "../src/config/pricing.js";
 import { FEE_FOLD, PRICING_LEAD, TEST_VALUES, e2eFeeRun, feeLine, feeRun, pricingPage } from "../src/redesign/pricing.js";
-import { AUDIT_COMMAND, AUDIT_LOG, NOT_YET_LINE, NOT_YET_SOURCES, docLine, publishedAudit, redTeamRound, securityCards, securityPage, REDTEAM_NIGHT, REDTEAM_NIGHT_RECORD, REDTEAM_OCT31, REDTEAM_REPORT } from "../src/redesign/security.js";
+import { AUDIT_COMMAND, AUDIT_LOG, CHAIN_LINES, OVERVIEW_DOC, existingDoc, NOT_YET_LINE, NOT_YET_SOURCES, docLine, publishedAudit, redTeamRound, securityCards, securityPage, REDTEAM_NIGHT, REDTEAM_NIGHT_RECORD, REDTEAM_OCT31, REDTEAM_REPORT } from "../src/redesign/security.js";
 import { buildPages, flowLinks } from "../src/relay/assets.js";
 import { AIRWALLEX_PAGE, CLAUDE_PAGE, METAL_PAGE, PRICING_CSP, PRICING_PAGE, PROOF_PAGE, RUNS_PAGE, SECURITY_CSP, SECURITY_PAGE, VISA_PAGE } from "../src/servers/dashboard.js";
 import { menuItemOf } from "../src/ui/more.js";
@@ -216,7 +216,19 @@ describe("/security: security and trust", () => {
     expect(inSight("s-chain")).toBe("On chain On Metal's chain are each agent's mandate and its payments, and of an approval only a hash: no personal data. See it on Metal's testnet How");
     expect(folded("s-chain")).toContain("“Mandate changes anchor the approval on chain (the new credential's hash is bound)”");
     expect(folded("s-chain")).toContain("“the customer is simulated and Purser holds no personal data on chain”");
-    expect(read("docs/overview.md").replace(/\s+/g, " ")).toContain("Mandate changes anchor the approval on chain (the new credential's hash is bound)");
+    expect(read(OVERVIEW_DOC).replace(/\s+/g, " ")).toContain("Mandate changes anchor the approval on chain (the new credential's hash is bound)");
+    expect(CHAIN_LINES[0]!.doc).toBe(OVERVIEW_DOC);
+  });
+
+  // 12 Nov: another branch moves docs/overview.md to docs/archive/overview.md. The page reads whichever exists, links
+  // there, and stops the build when neither does.
+  it("finds the overview where it is, before or after its move to docs/archive", () => {
+    const at = (present: string[]) => (p: string) => present.includes(p);
+    expect(existingDoc(["docs/overview.md", "docs/archive/overview.md"], at(["docs/overview.md"]))).toBe("docs/overview.md");
+    expect(existingDoc(["docs/overview.md", "docs/archive/overview.md"], at(["docs/archive/overview.md"]))).toBe("docs/archive/overview.md");
+    expect(() => existingDoc(["docs/overview.md", "docs/archive/overview.md"], at([]))).toThrow(/none of/);
+    expect(["docs/overview.md", "docs/archive/overview.md"]).toContain(OVERVIEW_DOC);
+    expect(SECURITY_PAGE).toContain(`${OVERVIEW_DOC}#controls`);
     expect(read("docs/metal-award.md")).toContain("Purser holds no personal data on chain");
   });
 

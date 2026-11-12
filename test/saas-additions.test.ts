@@ -20,7 +20,7 @@ import { PLATFORM_FEE_RULE } from "../src/policy/rules.js";
 import { GUARANTEES, guaranteesHtml } from "../src/redesign/guarantees.js";
 import { PRICING_LEAD, e2eFeeRun, feeFacts, feeLine, feeRun, pricingPage } from "../src/redesign/pricing.js";
 import { proofPage } from "../src/redesign/proof.js";
-import { UNAVAILABLE, securityCards, securityPage, unavailableLines } from "../src/redesign/security.js";
+import { OVERVIEW_DOC, UNAVAILABLE, securityCards, securityPage, unavailableLines } from "../src/redesign/security.js";
 import { buildPages } from "../src/relay/assets.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
 
@@ -316,7 +316,7 @@ describe("four eyes, worded exactly (the panel's review, 12 Nov)", () => {
   ].join("|"), "i");
 
   /** The places a reader meets the short form: the README, llms.txt, the current docs and the submission texts. Run records and design specs are history. */
-  const PLACES = ["README.md", "llms.txt", "docs/security.md", "docs/claims.md", "docs/overview.md", "docs/after-the-kit.md", "docs/idea-vs-build.md", "docs/requirements-matrix.md", "docs/controls.md", "docs/controls-matrix.md", "docs/compliance.md",
+  const PLACES = ["README.md", "llms.txt", "docs/security.md", "docs/claims.md", OVERVIEW_DOC, "docs/after-the-kit.md", "docs/idea-vs-build.md", "docs/requirements-matrix.md", "docs/controls.md", "docs/controls-matrix.md", "docs/compliance.md",
     "docs/metal-award.md", "docs/cfo-policy.md", "docs/architecture.md", "docs/business/model.md", "docs/business/problem.md", "docs/business/roadmap.md",
     "docs/submission/README.md", "docs/submission/demo-day.md", "docs/submission/long-description.md", "docs/submission/pitch.md", "docs/submission/qa.md",
     "docs/submission/release-notes.md"];

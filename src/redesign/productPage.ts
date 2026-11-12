@@ -3,7 +3,7 @@
 // detail folded. Only the design system's tokens and components (src/redesign/ui.ts). No script, so each page is served
 // under a style-only policy; /status alone carries one small script, which reads the site's own /health.
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import type { MoreKey } from "../ui/more.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { esc, icon, page } from "./ui.js";
@@ -44,6 +44,15 @@ ul.pl a.pf { display: inline; font-size: 15px; }
 
 /** A repository file as text, read where the page is built; missing: an error, so no page is built on a guess. */
 export const repoText = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
+/**
+ * The first of a doc's possible places that is in the repository (12 Nov: another branch moves docs/overview.md to
+ * docs/archive/overview.md); none of them: an error, so the page is never built on a missing doc. `has` is for tests.
+ */
+export function existingDoc(paths: readonly string[], has: (path: string) => boolean = (p) => existsSync(new URL(`../../${p}`, import.meta.url))): string {
+  const found = paths.find(has);
+  if (!found) throw new Error(`none of ${paths.join(", ")} is in the repository`);
+  return found;
+}
 /** A repository file's address on GitHub (the same base the other pages link to), with an optional #anchor. */
 export const repoHref = (path: string, anchor = "") => `${REPO_BLOB}${path}${anchor}`;
 
