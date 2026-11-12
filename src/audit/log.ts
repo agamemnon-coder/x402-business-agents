@@ -11,9 +11,7 @@ export type Actor =
   | "system" | "claude" | "sourcing" | "support" | "treasury" | "customer"
   | "human" | "owner-signer" | "awx-executor"
   // An outside agent connected through the agent API (P1).
-  | `ext:${string}`
-  // The ledger agents (12 Nov, behind their own flags): month-end review and questions about the books.
-  | "controller" | "books";
+  | `ext:${string}` | "controller" | "books";
 
 export const GENESIS = "0".repeat(64);
 
