@@ -316,6 +316,23 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await look(page, `${path} ${tag}`, w);
       const t = await page.evaluate(() => document.body.innerText);
       if (path === "/runs" && !/Last live run: \d{1,2} \w{3} \d{4}/.test(t)) fail(`/runs ${tag}: no "Last live run" date`);
+      // On a phone every id and its label can be read in full in its entry (review 12 Nov, DC-2): with every fold open, no
+      // label is cut anywhere, no id in a fold is cut, and the id in sight (which may be cut) is listed in full in the fold.
+      if (path === "/runs" && w <= 390) {
+        await page.evaluate(`document.querySelectorAll("main details").forEach((d) => { d.open = true; })`);
+        const cut = await page.evaluate(`[...document.querySelectorAll("main li.run")].flatMap((li) => {
+          const short = (e) => { const rg = document.createRange(); rg.selectNodeContents(e); return rg.getBoundingClientRect().width - e.getBoundingClientRect().width > 0.05; };
+          const val = (e) => (e.textContent || "").replace(/ ↗$/, "");
+          const folded = [...li.querySelectorAll(".fold .idc")];
+          const out = [...li.querySelectorAll(".idc .k")].filter(short).map((e) => li.id + ": label cut: " + e.textContent);
+          for (const c of folded) if (short(c.querySelector(".v"))) out.push(li.id + ": id cut in the fold: " + val(c.querySelector(".v")));
+          const full = folded.map((c) => c.querySelector(".k").textContent + " " + val(c.querySelector(".v")));
+          for (const c of li.querySelectorAll(".ch .idc")) { const id = c.querySelector(".k").textContent + " " + val(c.querySelector(".v")); if (!full.includes(id)) out.push(li.id + ": the id in sight is not in its fold: " + id); }
+          return out;
+        })`) as string[];
+        for (const c of cut) fail(`/runs ${tag}: ${c}`);
+        await page.evaluate(`document.querySelectorAll("main details").forEach((d) => { d.open = false; })`);
+      }
       // /runs as a timeline (jury, 12 Nov): filters that keep the newest run, by Tab and Enter too; the rehearsals closed
       // and opened by their summary or a link to one of them; 44 px tap targets and a short page on a phone.
       if (path === "/runs" && (w === 390 || w === 1440)) {
@@ -328,8 +345,12 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         if (live.some((r) => !r.shown)) fail(`/runs ${tag}: not every live run shows on load`);
         if (await page.evaluate(`document.querySelector("details.rehs").open`)) fail(`/runs ${tag}: the rehearsals group is open on load`);
         if (w === 390) {
-          const height = await page.evaluate(() => document.documentElement.scrollHeight);
-          if (height > 2700) fail(`/runs ${tag}: ${height}px tall with every fold closed (at most 2,700; 5,386 before the timeline)`);
+          // Per entry and for the frame around the entries, not for the whole page (review 12 Nov, DC-5: a page pin of 2,700 px
+          // went red at the next row added). As built after the review: entries 193 to 263 px, the frame 418 px (the page
+          // 2,657 px; 5,386 before the timeline). The frame's pin leaves room for one more line of filters.
+          const m = await page.evaluate(`(() => { const main = document.querySelector("main"); const lis = [...main.querySelectorAll(":scope > ol.tl > li.run")]; const hs = lis.map((li) => ({ key: li.id, h: li.getBoundingClientRect().height })); return { entries: hs, frame: main.getBoundingClientRect().height - hs.reduce((n, x) => n + x.h, 0) }; })()`) as { entries: { key: string; h: number }[]; frame: number };
+          for (const e of m.entries.filter((x) => x.h > 270)) fail(`/runs ${tag}: the entry ${e.key} is ${Math.round(e.h)}px tall with its fold closed (at most 270)`);
+          if (m.frame > 470) fail(`/runs ${tag}: the frame around the entries (heading, line, filters, closed groups, last links) is ${Math.round(m.frame)}px tall (at most 470)`);
           for (const s of await small()) fail(`/runs ${tag}: a tap target under 44px, folds closed: ${s}`);
           await page.evaluate(`document.querySelectorAll("main details").forEach((d) => { d.open = true; })`);
           for (const s of await small()) fail(`/runs ${tag}: a tap target under 44px, every fold open: ${s}`);
@@ -351,6 +372,15 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         }
         await page.click('nav.flt a[href="#all"]');
         if ((await rowsNow()).some((r) => !r.shown)) fail(`/runs#all ${tag}: "All" does not show every live run again`);
+        // A filter tap keeps the reader's place: the filter row stays where it was on screen (review 12 Nov, DC-6).
+        await page.evaluate(`window.scrollTo(0, document.querySelector("nav.flt").getBoundingClientRect().top + scrollY - 90)`);
+        const before = await page.evaluate(`[scrollY, document.querySelector("nav.flt").getBoundingClientRect().top]`) as number[];
+        await page.click(`nav.flt a[href="#${filters[filters.length - 1]}"]`);
+        await page.waitForTimeout(150);
+        const after = await page.evaluate(`[scrollY, document.querySelector("nav.flt").getBoundingClientRect().top, document.documentElement.scrollHeight - innerHeight]`) as number[];
+        // (Unless the filtered page is too short to stay scrolled that far: then it rests at its end.)
+        if (Math.abs(after[1]! - before[1]!) > 2 && after[0]! < after[2]! - 1) fail(`/runs ${tag}: a filter tap moves the filter row from ${Math.round(before[1]!)} to ${Math.round(after[1]!)} px on screen (scroll ${before[0]} to ${after[0]})`);
+        await page.click('nav.flt a[href="#all"]');
         // By keyboard: Tab reaches a filter, Enter applies it.
         await page.evaluate(() => { (document.activeElement as HTMLElement | null)?.blur(); window.scrollTo(0, 0); });
         let tabs = 0;
@@ -361,6 +391,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
           await page.waitForTimeout(100);
           const seen = await rowsNow();
           if (await page.evaluate(() => location.hash) !== "#metal" || seen.some((r) => r.shown !== (r.cls.includes("f-metal") || r.cls.includes("newest")))) fail(`/runs ${tag}: Enter on the Metal filter does not filter`);
+          // The next Tab goes on after the activated filter, not back to "All" (review 12 Nov, DC-6).
+          await page.keyboard.press("Tab");
+          const next = await page.evaluate(`(() => { const a = document.activeElement, m = document.querySelector('nav.flt a[href="#metal"]'); return { after: !!a && a !== m && !!(m.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING), what: a ? (a.getAttribute("href") || a.textContent || a.tagName).trim().slice(0, 30) : "nothing" }; })()`) as { after: boolean; what: string };
+          if (!next.after) fail(`/runs ${tag}: after Enter on the Metal filter, Tab goes to "${next.what}", not on after it`);
         }
         // The rehearsals open by their summary; a link to one of them opens the group with the run in view.
         await page.goto(`${base}/runs`, { waitUntil: "load" });
@@ -382,6 +416,13 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
             const wrong = live.filter((r, i) => shown[i] !== (id === "all" || r.cls.includes(`f-${id}`) || r.cls.includes("newest")));
             if (wrong.length) fail(`/runs#${id} ${tag}, JavaScript off: shows or hides the wrong runs (${wrong.map((r) => r.key).join(", ")})`);
           }
+          // Without the script a tap lands on the filter row (its anchors sit at it), in view under the header, not at the top.
+          await p2.goto(`${base}/runs`, { waitUntil: "load" });
+          await p2.evaluate(`window.scrollTo(0, document.querySelector("nav.flt").getBoundingClientRect().top + scrollY - 90)`);
+          await p2.click('nav.flt a[href="#metal"]');
+          await p2.waitForTimeout(150);
+          const at2 = await p2.evaluate(`[document.querySelector("nav.flt").getBoundingClientRect().top, document.querySelector("header.top") ? document.querySelector("header.top").getBoundingClientRect().bottom : 0, innerHeight]`) as number[];
+          if (at2[0]! < at2[1]! || at2[0]! > at2[2]! / 3) fail(`/runs ${tag}, JavaScript off: a filter tap puts the filter row at ${Math.round(at2[0]!)} px (the header ends at ${Math.round(at2[1]!)} px), not in view near where it was`);
           await off.close();
         }
         await page.goto(`${base}/runs`, { waitUntil: "load" });

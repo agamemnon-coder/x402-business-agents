@@ -148,6 +148,37 @@ describe("/runs", () => {
     }
   });
 
+  // Review 12 Nov (DC-1): the rows typed from a markdown log carried "../../docs/runs/….md", right in docs/runs/README.md
+  // and a 404 on the site. On the page every link is absolute, a fragment or a path the site serves; every repository link
+  // points at a file in the checkout, a row added later with a "../../docs/…" href included.
+  it("links nothing the site does not serve: every href is absolute, a fragment or a served path", () => {
+    const hrefsOf = (html: string) => [...html.matchAll(/\shref="([^"]+)"/g)].map((m) => m[1]!.replace(/&amp;/g, "&"));
+    const check = (html: string) => {
+      const hrefs = hrefsOf(html);
+      expect(hrefs.length).toBeGreaterThan(20);
+      for (const href of hrefs) {
+        if (href.startsWith("#")) continue;
+        if (/^https:\/\//.test(href)) {
+          if (href.startsWith(REPO_BLOB)) expect(existsSync(href.slice(REPO_BLOB.length).replace(/#.*$/, "")), href).toBe(true);
+          continue;
+        }
+        const u = new URL(href, "https://kit11.example/runs");
+        expect(u.origin, href).toBe("https://kit11.example");
+        expect(get(u.pathname + u.search)?.status, href).toBe(200);
+      }
+    };
+    check(pages.runs!);
+    // A row in the old shape with a link relative to docs/runs/README.md opens the file on GitHub, on the page only.
+    const later: RunRow = { ...rows.find((r) => r.key === "connected-1")!, key: "later-x", files: [{ label: "run log", href: "../../docs/runs/2026-11-10-connected-accounts-sandbox.md" }] };
+    const page = runsPage([...rows, later]);
+    check(page);
+    expect(page).toContain(`href="${REPO_BLOB}docs/runs/2026-11-10-connected-accounts-sandbox.md"`);
+    expect(page).not.toContain('href="../');
+    // The README keeps its links relative to its own folder.
+    expect(runsReadme([...rows, later])).toContain("[run log](../../docs/runs/2026-11-10-connected-accounts-sandbox.md)");
+    expect(runsReadme()).not.toContain(REPO_BLOB);
+  });
+
   it("explains main-run.json's fields, each one in the record", () => {
     const rec = JSON.parse(readFileSync("docs/demo/main-run.json", "utf8")) as Record<string, Record<string, unknown>>;
     for (const [k] of MAIN_RUN_GLOSSARY) {
@@ -273,9 +304,12 @@ describe("/runs as a timeline", () => {
     for (const r of rows.filter((x) => x.key in KINDS)) {
       expect(r.kind, r.key).toBe(KINDS[r.key]);
       expect(kindOf(r)).toBe(KINDS[r.key]);
-      // A row in the old shape (no kind of its own) gets the same badge from its rails and money words.
-      expect(kindOf({ ...r, kind: undefined }), r.key).toBe(KINDS[r.key]);
+      // A row in the old shape (no kind of its own) gets the same badge from its rails and money words, except the one
+      // whose money words say simulated (review 12 Nov, DC-4): the TAP run's merchant was simulated, so without its own
+      // kind it can claim no more than Simulated; its explicit kind keeps it a live sandbox run.
+      expect(kindOf({ ...r, kind: undefined }), r.key).toBe(r.key === "tap-1" ? "simulated" : KINDS[r.key]);
     }
+    expect(row("tap-1").money).toBe("Simulated merchant · test money");
     // What the records say: the main run ran on Metal testnet and in the Airwallex sandbox; the second Airi run was live
     // and called nobody; the two rehearsals call themselves rehearsals.
     expect(row("main-1").rails).toMatch(/Metal testnet, Airwallex sandbox/);
@@ -297,6 +331,53 @@ describe("/runs as a timeline", () => {
     expect(page).toMatch(/<a href="#simulated">Simulated <b>1<\/b><\/a>/);
     expect(html).not.toContain('<a href="#simulated">');
     expect(html).not.toContain('id="simulated"');
+  });
+
+  // Review 12 Nov (DC-4): an old-shape row for a run on Purser's own fakes that names the partners it faked was badged
+  // "Live testnet and sandbox", counted as live and could become the last live run.
+  it("never badges a row as live when its own words say simulated, fake or mock", () => {
+    const faked: RunRow[] = [
+      { ...oldShape, key: "fake-a", iso: "2026-11-13T09:00:00.000Z", date: "13 Nov 2026", title: "A day on simulated rails", rails: "Simulated Airwallex and Metal (Purser's own fakes)", money: "Simulated · test money" },
+      { ...oldShape, key: "fake-b", iso: "2026-11-13T08:00:00.000Z", date: "13 Nov 2026", title: "Payouts on fakes", rails: "Fake Airwallex sandbox, fake Metal testnet", money: "Simulated · no partner called" },
+      { ...oldShape, key: "fake-c", iso: "2026-11-13T07:00:00.000Z", date: "13 Nov 2026", title: "Payouts to a mock bank", rails: "Airwallex sandbox (mocked), Metal testnet", money: "Test money" },
+    ];
+    for (const f of faked) expect(kindOf(f), f.key).toBe("simulated");
+    const page = runsPage([...rows, ...faked]);
+    for (const f of faked) {
+      const e = entriesOf(page).find((x) => x.key === f.key)!;
+      expect(e.html, f.key).toContain('<span class="kd simulated">Simulated</span>');
+      expect(e.html, f.key).not.toMatch(/class="kd (sandbox|testnet|both)"/);
+      expect(e.cls, f.key).not.toEqual(expect.arrayContaining(["f-sandbox"]));
+      expect(e.cls, f.key).not.toEqual(expect.arrayContaining(["f-testnet"]));
+      // The partners it names are the ones it faked: no partner chip or filter for them.
+      expect(e.cls.filter((c) => /^f-(airwallex|metal|visa)$/.test(c)), f.key).toEqual([]);
+      expect(e.html, f.key).not.toMatch(/class="rl (awx|metal|visa)"/);
+    }
+    // Not counted as live sandbox or testnet runs, and not the last live run: the counts are today's.
+    const count = (h: string, id: string) => Number(new RegExp(`<a href="#${id}">[^<]+ <b>(\\d+)</b>`).exec(h)?.[1] ?? 0);
+    for (const id of ["sandbox", "testnet", "airwallex", "metal"]) expect(count(page, id), id).toBe(count(html, id));
+    expect(count(page, "simulated")).toBe(3);
+    expect(text(page)).toContain(`Last live run: ${rows[0]!.date}.`);
+    expect(runsReadme([...rows, ...faked])).toContain(`**Last live run:** ${rows[0]!.date}.`);
+    // "Rehearsal" is read from the money words, not from a title that mentions one.
+    const after: RunRow = { ...oldShape, key: "again-x", title: "The main run again, after its rehearsal", rails: "Metal testnet, Airwallex sandbox", money: "Test money" };
+    expect(kindOf(after)).toBe("both");
+    expect(kindOf({ ...after, money: "Rehearsal · test money" })).toBe("rehearsal");
+    // A row with its own kind keeps it.
+    expect(kindOf({ ...faked[0]!, kind: "sandbox" })).toBe("sandbox");
+  });
+
+  it("cuts an old-shape row's one line at its first full sentence, not at an abbreviation or a date", () => {
+    const line = (what: string) => {
+      const e = entriesOf(runsPage([...rows, { ...oldShape, what }])).find((x) => x.key === "old-x")!;
+      return /<p class="ln">([\s\S]*?) <a /.exec(e.html)![1];
+    };
+    expect(line("Paid on 12 Nov. at 09:00 UTC by the owner. Simulated settlement.")).toBe("Paid on 12 Nov. at 09:00 UTC by the owner.");
+    expect(line("Paid on 12 Nov. 2026, then booked. Each read back.")).toBe("Paid on 12 Nov. 2026, then booked.");
+    expect(line("Fees, e.g. EUR 0.05, were taken. Each read back.")).toBe("Fees, e.g. EUR 0.05, were taken.");
+    expect(line("Five payouts of EUR 1.50 were created. Each went PAID.")).toBe("Five payouts of EUR 1.50 were created.");
+    expect(line("One sentence only")).toBe("One sentence only");
+    expect(line("Did it pay? Yes, PAID.")).toBe("Did it pay?");
   });
 
   it("keeps the rehearsals out of the live list, in one closed group with its count", () => {
@@ -339,7 +420,18 @@ describe("/runs as a timeline", () => {
     expect(carrying("metal")).toEqual(["main-1"]);
     expect(carrying("testnet")).toEqual(["main-1"]);
     expect(carrying("claude")).toEqual(["platform-e2e-1", "main-1"]);
-    expect(carrying("visa")).toEqual(["vic-2", "vic-1", "tap-1"]);
+    // Review 12 Nov (DC-3): a partner's chip, class and count are for the runs it took part in, by the records. The second
+    // Airi run made 0 Airi and 0 Airwallex calls: no Airwallex, no Visa. Visa: the runs that used a Visa credential.
+    expect(carrying("visa")).toEqual(["vic-1", "tap-1"]);
+    expect(carrying("airwallex")).toEqual(["two-locks-1", "platform-e2e-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
+    const v2 = JSON.parse(raw("docs/demo/vic-2-run.json")) as { outside_calls: { airi: number; airwallex: number } };
+    expect([v2.outside_calls.airi, v2.outside_calls.airwallex]).toEqual([0, 0]);
+    const v2e = live.find((e) => e.key === "vic-2")!;
+    expect(v2e.cls.filter((c) => /^f-(airwallex|visa|metal|claude)$/.test(c))).toEqual([]);
+    expect(v2e.html).not.toMatch(/class="rl (awx|visa)"/);
+    expect(row("vic-2").partners).toEqual([]);
+    expect(links.find((l) => l.id === "visa")!.n).toBe(2);
+    expect(links.find((l) => l.id === "airwallex")!.n).toBe(7);
     expect(carrying("sandbox")).toEqual(["two-locks-1", "platform-e2e-1", "t0-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
     // Each filter is an empty anchor before the list (a sibling the CSS can select from), and so is "All".
     const listAt = html.indexOf('<ol class="tl">');
@@ -351,6 +443,15 @@ describe("/runs as a timeline", () => {
     }
     // The hiding is CSS only, on :target, one rule per filter; every rule that hides a run excludes the newest one.
     const css = /<style>([\s\S]*?)<\/style>/.exec(html)![1]!;
+    // Review 12 Nov (DC-6): a filter tap does not jump to the top. The anchors sit directly before the filter row, in the
+    // flow, with no height and a margin for the sticky header (without the script a tap lands at the filter row); with
+    // the script on they take no box, so going to one does not scroll, and the focus stays on the tapped link.
+    expect(html).toMatch(/<span class="fa" id="all"><\/span>(?:<span class="fa" id="[a-z]+"><\/span>)+\n<nav class="flt"/);
+    expect(css).toContain(".runsp .fa { display: block; height: 0; scroll-margin-top: 72px; } .runsp.js .fa { display: none; }");
+    expect(css).not.toMatch(/\.fa \{[^}]*position: absolute/);
+    const script = /<script>([\s\S]*?)<\/script>/.exec(html)![1]!;
+    expect(script).toContain('document.querySelector("main.runsp").classList.add("js");');
+    expect(script).toContain("a.focus({ preventScroll: true });");
     const hiding = css.split("}").filter((rule) => /li\.run/.test(rule.split("{")[0]!) && /display:\s*none/.test(rule));
     expect(hiding.length).toBeGreaterThanOrEqual(links.length - 1);
     for (const rule of hiding) for (const selector of rule.split("{")[0]!.split(",")) expect(selector).toMatch(/:target[^,]*:not\(\.newest\)/);
@@ -418,7 +519,7 @@ describe("/runs as a timeline", () => {
     expect(seen).not.toContain("Each went PAID.");
     expect(seen).toContain("pay-aaaa-1111");
     expect(seen).not.toContain("pay-bbbb-2222");
-    expect(seen).toContain('<a class="f" href="../../docs/runs/old-x.md" target="_blank" rel="noopener" aria-label="run log">Log ↗</a>');
+    expect(seen).toContain(`<a class="f" href="${REPO_BLOB}docs/runs/old-x.md" target="_blank" rel="noopener" aria-label="run log">Log ↗</a>`);
     expect(seen).not.toContain('class="rt');
     // The partners come from its rails; it sits in date order; its big numbers are listed quietly in its fold.
     expect(e.cls).toEqual(expect.arrayContaining(["k-sandbox", "f-airwallex", "f-claude", "f-sandbox"]));
@@ -431,7 +532,7 @@ describe("/runs as a timeline", () => {
     expect(runsReadme([...rows, oldShape])).toContain("Payouts to five suppliers");
   });
 
-  it("shows the first id in sight and folds the rest, with the longer text, the checks, the rails and the money words", () => {
+  it("shows the first id in sight and lists every id in full in the fold, with the longer text, the checks, the rails and the money words", () => {
     for (const r of rows.filter((x) => kindOf(x) !== "rehearsal")) {
       const e = entriesOf(liveList(html)).find((x) => x.key === r.key)!;
       const seen = inSight(e.html), fold = e.html.slice(seen.length);
@@ -440,11 +541,13 @@ describe("/runs as a timeline", () => {
       const more = r.ids.slice(1).filter((i) => i.value !== "Trace any payment").length;
       expect(fold, r.key).toContain(`<summary aria-label="Ids, what ran and the checks${more ? `: ${more} more id${more === 1 ? "" : "s"}` : ""}">`);
       if (r.ids[0]) expect(seen, r.key).toContain(escAttr(r.ids[0].value));
-      for (const i of r.ids.slice(1)) {
-        expect(seen, r.key).not.toContain(escAttr(i.value));
-        expect(fold, r.key).toContain(escAttr(i.value));
-      }
-      for (const f of r.files) expect(seen, r.key).toContain(`href="${f.href}"`);
+      for (const i of r.ids.slice(1)) expect(seen, r.key).not.toContain(escAttr(i.value));
+      // Review 12 Nov (DC-2): the chip in sight may be cut on a phone; the fold lists every id, the first one included,
+      // under its full label, so each can be read in full without JavaScript.
+      const foldIds = [...fold.matchAll(/<span class="idc"><span class="k">([^<]+)<\/span><(?:a|code) class="v"[^>]*>([^<]+?)(?: ↗)?<\/(?:a|code)>/g)].map((m) => [m[1], m[2]]);
+      expect(foldIds, r.key).toEqual(r.ids.map((i) => [escAttr(i.label), escAttr(i.value)]));
+      // A link relative to docs/runs/README.md opens the file on GitHub from the page.
+      for (const f of r.files) expect(seen, r.key).toContain(`href="${f.href.replace(/^\.\.\/\.\.\//, REPO_BLOB)}"`);
       for (const part of [r.what, r.checks, r.rails, r.money]) expect(fold, r.key).toContain(escAttr(part));
       expect(seen, r.key).not.toContain(escAttr(r.checks));
     }
@@ -452,6 +555,12 @@ describe("/runs as a timeline", () => {
     for (const e of entriesOf(rehGroup(html))) {
       expect(e.html).not.toContain("<details");
       for (const part of [row(e.key).what, row(e.key).checks, row(e.key).money]) expect(e.html).toContain(escAttr(part));
+      // Review 12 Nov (DC-8): what ran is said once; an entry whose one line already says it does not repeat it below.
+      expect(e.text.split(row(e.key).what).length - 1, e.key).toBe(1);
+      expect(e.html, e.key).toContain(`Rails: ${escAttr(row(e.key).rails)}. Money: ${escAttr(row(e.key).money)}.`);
+      // Every id once, in full, in the list under it (no cut chip above it).
+      expect(/<div class="ch">([^\n]*)<\/div>/.exec(e.html)![1], e.key).not.toContain('class="idc"');
+      for (const i of row(e.key).ids) expect(e.text.split(i.value).length - 1, `${e.key} ${i.value}`).toBe(1);
     }
     // No id chip names a run by its code name: the second Airi run shows the hash the CFO signed, from its record.
     const v2 = JSON.parse(raw("docs/demo/vic-2-run.json")) as { audit: { event: string; payload: { terms_sha256?: string } }[] };
@@ -484,6 +593,17 @@ describe("/runs as a timeline", () => {
     expect(rehTable).toContain("| Date | Run | What ran | Key ids | Files |");
     expect(liveTable).not.toContain(row("agent-1").name!);
     expect(liveTable).toContain("The product, end to end");
+    // Review 12 Nov (DC-9): each row says what the page's entry says was simulated: every sentence of its one line that
+    // says simulated, fake or mock is in its row of the table (the main run and its rehearsal included).
+    const rowOf = (r: RunRow) => md.split("\n").find((l) => l.includes(`**${mdCell(r.name ?? r.title)}**`))!;
+    const saidSimulated = (r: RunRow) => r.line!.split(/(?<=[.!?]) (?=[A-Z0-9])/).filter((x) => /simulat|fake|mock/i.test(x));
+    let simulated = 0;
+    for (const r of rows) for (const sentence of saidSimulated(r)) {
+      expect(rowOf(r), r.key).toContain(mdCell(sentence));
+      simulated++;
+    }
+    expect(simulated).toBeGreaterThanOrEqual(7);
+    for (const k of ["main-1", "agent-1"]) expect(rowOf(row(k)), k).toContain("Simulated: customer, supplier, settlement, second approver.");
     // The name a run goes by in the docs follows its plain name, only where the docs use that name.
     const docs = readdirSync("docs", { recursive: true, encoding: "utf8" }).filter((f) => f.endsWith(".md") && f !== "runs/README.md").map((f) => raw(`docs/${f}`)).join("\n");
     const named = [...md.matchAll(/\(in the docs: `([^`]+)`\)/g)].map((m) => m[1]!);
@@ -491,11 +611,19 @@ describe("/runs as a timeline", () => {
     for (const n of named) expect(docs, n).toMatch(new RegExp(`\\b${n}\\b`));
   });
 
-  it("reads in fewer words than before the timeline (501)", () => {
-    // 12 Nov: 479 words in sight as built (501 before the timeline); the pin leaves room for 10 more. A run added later
-    // raises it by its own words, no more: each entry stays at 60 words in sight or fewer.
-    expect(visibleWords(html)).toBeLessThanOrEqual(489);
-    for (const e of entriesOf(liveList(html))) expect(visibleWords(`<main>${e.html}</main>`), e.key).toBeLessThanOrEqual(60);
+  it("keeps each entry short and the frame around the entries short, so that a truthful row added later stays green", () => {
+    // 12 Nov: 479 words in sight as built (501 before the timeline). Review 12 Nov (DC-5): one pin on the whole page went
+    // red at the next row added; the pins are now per entry (60 words in sight at most) and on the frame around the
+    // entries: the heading, the line, the filters, the closed groups and the last links (68 words as of the review fix;
+    // the pin leaves room for one more filter, such as "Simulated 1").
+    const frame = (h: string) => visibleWords(h.replace(liveList(h), ""));
+    for (const page of [html, runsPage([...rows, oldShape]), runsPage([...rows, oldShape, series])]) {
+      expect(frame(page)).toBeLessThanOrEqual(72);
+      for (const e of entriesOf(liveList(page))) expect(visibleWords(`<main>${e.html}</main>`), e.key).toBeLessThanOrEqual(60);
+    }
+    // The frame is what is not an entry: the page is the frame plus its entries.
+    const entryWords = entriesOf(liveList(html)).reduce((n, e) => n + visibleWords(`<main>${e.html}</main>`), 0);
+    expect(frame(html) + entryWords).toBe(visibleWords(html));
   });
 });
 

@@ -36,6 +36,8 @@ export interface RunStat { v: string; l: string }
  * moved nothing.
  */
 export type RunKind = "sandbox" | "testnet" | "both" | "simulated" | "rehearsal" | "nothing";
+/** A partner a run can take part in: its chip, its filter and its count. */
+export type RunPartner = "Airwallex" | "Metal" | "T:0" | "Visa" | "Claude";
 /** A series as a rate: "done of of what" ("7 of 7 checks passed", "18 of 20 paid"). */
 export interface RunRate { done: number; of: number; what: string }
 export interface RunRow {
@@ -51,6 +53,11 @@ export interface RunRow {
   rate?: RunRate;
   /** The one run to open if you open one: the product, end to end. */
   product?: true;
+  /**
+   * The partners that took part, from the run's record, where reading them from the rails and title words would be wrong
+   * (without it: railsOf). A partner's chip, filter class and count follow it.
+   */
+  partners?: RunPartner[];
 }
 
 const readJson = <T>(file: string): T => JSON.parse(readFileSync(new URL(`../../${file}`, import.meta.url), "utf8")) as T;
@@ -59,6 +66,11 @@ const short = (id: string) => id.length > 20 ? `${id.slice(0, 10)}…${id.slice(
 const tx = (label: string, hash: string): RunId => ({ label, value: short(hash), href: `${EXPLORER_TX}${hash}` });
 const pl = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
 const blob = (file: string) => `${REPO_BLOB}${file}`;
+/**
+ * A record link as the site opens it: a link written relative to docs/runs/README.md ("../../docs/runs/….md", right in
+ * the README) opens the file at the repository's address on the page, where "../../docs/…" is not served.
+ */
+const siteHref = (href: string) => href.startsWith("../../") ? blob(href.slice("../../".length)) : href;
 /** A record's checks as a rate: how many passed, of how many. */
 const checkRate = (checks: Record<string, { ok: boolean }>): RunRate => {
   const all = Object.values(checks);
@@ -158,6 +170,8 @@ export function liveRuns(): RunRow[] {
   if (v2) rows.push({
     key: "vic-2", iso: v2.started_at, date: day(v2.started_at), title: "Airi, second run: what Purser adds around it", rails: "Purser relay, CFO passkey",
     name: "A purchase changed after the CFO signed is refused; nothing is bought", kind: "nothing", rate: checkRate(v2.checks),
+    // The partners its record shows called: an Airi call is an Airwallex wallet paying with a Visa credential.
+    partners: [...(v2.outside_calls.airi + v2.outside_calls.airwallex > 0 ? ["Airwallex" as const] : []), ...(v2.outside_calls.airi > 0 ? ["Visa" as const] : [])],
     line: `Our own test changed it; the CFO's Face ID was real. ${v2.outside_calls.airi} Airi and ${v2.outside_calls.airwallex} Airwallex calls.`,
     what: `A purchase changed after the CFO's Face ID was refused, a shop the CFO locked was refused, and unlocking offered it again. ${v2.outside_calls.airi} Airi and ${v2.outside_calls.airwallex} Airwallex calls.`,
     checks: `${okOf(v2.checks)}.`, money: "Nothing bought",
@@ -246,29 +260,61 @@ const RAILS: [RegExp, string, string, string][] = [
 ];
 export const railsOf = (r: Pick<RunRow, "rails" | "title">) => RAILS.filter(([re]) => re.test(`${r.rails} ${r.title}`));
 const railChip = ([, name, ic, cls]: (typeof RAILS)[number]) => `<span class="rl ${cls}">${icon(ic, 13)}${esc(name)}</span>`;
-/** The partners shown as chips (T:0 where it took part). A passkey is not a partner: it stays in the fold's rails line. */
-const partnersOf = (r: RunRow) => railsOf(r).filter(([, , , cls]) => cls !== "pk");
+/**
+ * The partners shown as chips and counted by the filters: the row's own list where it has one, else read from its words
+ * (T:0 where it took part). A passkey is not a partner: it stays in the fold's rails line.
+ */
+const partnersOf = (r: RunRow) => r.partners ? RAILS.filter(([, n]) => (r.partners as string[]).includes(n))
+  // A simulated run without its own list names the partners it faked: none of them took part.
+  : kindOf(r) === "simulated" ? [] : railsOf(r).filter(([, , , cls]) => cls !== "pk");
 
 /** The honest badge: the kind of run, in the words the page shows. */
 export const KIND_LABEL: Record<RunKind, string> = {
   sandbox: "Live sandbox", testnet: "Live testnet", both: "Live testnet and sandbox", simulated: "Simulated", rehearsal: "Rehearsal", nothing: "Live, nothing bought",
 };
+/** Words that say a run, or a part of it, was not real: such a row can claim no more than Simulated. */
+const FAKED = /simulat|\bfake|\bmock|\bstub|\bdummy|\bemulat/i;
 /**
  * A row's kind: its own, or (a row in the old shape) read from its money words and the payment rails it names. A row
- * that names no payment partner's sandbox or testnet is Simulated: the least it can claim.
+ * whose own money, rails or title words say simulated, fake or mock, or that names no payment partner's sandbox or
+ * testnet, is Simulated: the least it can claim. "Rehearsal" is read from the money words only.
  */
 export function kindOf(r: Pick<RunRow, "kind" | "title" | "rails" | "money">): RunKind {
   if (r.kind) return r.kind;
-  if (/rehearsal|dry run/i.test(`${r.money} ${r.title}`)) return "rehearsal";
+  if (/rehearsal|dry run/i.test(r.money)) return "rehearsal";
+  if (FAKED.test(`${r.money} ${r.rails} ${r.title}`)) return "simulated";
   if (/no money moved|nothing bought/i.test(r.money)) return "nothing";
   const testnet = /Metal/i.test(r.rails), sandbox = /Airwallex|Airi\b|T:0|sandbox/i.test(r.rails);
   return testnet && sandbox ? "both" : testnet ? "testnet" : sandbox ? "sandbox" : "simulated";
 }
 const isRehearsal = (r: RunRow) => kindOf(r) === "rehearsal";
 const nameOf = (r: RunRow) => r.name ?? r.title;
-/** A row's one line: its own, or the first sentence of what ran (the point in "EUR 4.84" does not end a sentence). */
-const lineOf = (r: RunRow) => r.line ?? /^.*?[.!?](?=\s|$)/.exec(r.what)?.[0] ?? r.what;
+/** Words whose point does not end a sentence: a month ("12 Nov. at 09:00"), "e.g.", "i.e." and their like. */
+const ABBREV = /(?:\b(?:Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|etc|vs|approx|incl|No|Nr|cf|Inc|Ltd|Co)|\be\.g|\bi\.e)$/;
+/**
+ * The first full sentence of a text: up to the first ".", "!" or "?" followed by a space and a word that starts a
+ * sentence, not after an abbreviation (the point in "EUR 4.84", "12 Nov. at 09:00" or "e.g. EUR 0.05" does not end it).
+ */
+export function firstSentence(text: string): string {
+  for (const m of text.matchAll(/[.!?](?=\s+(\S)|\s*$)/g)) {
+    const at = m.index!, next = m[1];
+    if (next === undefined) return text.slice(0, at + 1);
+    if (/[a-z]/.test(next) || ABBREV.test(text.slice(0, at))) continue;
+    return text.slice(0, at + 1);
+  }
+  return text;
+}
+/** A text's full sentences, in order (firstSentence, again and again). */
+const sentencesOf = (text: string): string[] => {
+  const out: string[] = [];
+  for (let rest = text.trim(); rest;) { const s = firstSentence(rest); out.push(s); rest = rest.slice(s.length).trim(); }
+  return out;
+};
+/** A row's one line: its own, or the first full sentence of what ran. */
+const lineOf = (r: RunRow) => r.line ?? firstSentence(r.what);
 const newestFirst = (rows: RunRow[]) => [...rows].sort((a, b) => b.iso.localeCompare(a.iso));
+/** The last live run, newest first: a run on Purser's own fakes is listed but never dates the last live run. */
+const lastLive = (live: RunRow[]) => live.find((r) => kindOf(r) !== "simulated") ?? live[0]!;
 /** The main run's "Trace any payment" is a link among its ids, not an id. */
 const isId = (i: RunId) => i.value !== "Trace any payment";
 /** A record link's words in sight: "JSON" for "record (JSON)", "Log" for "run log" (the full label stays its name). */
@@ -285,7 +331,7 @@ const DOC_NAMES = new Set(["awx-1", "vic-1", "vic-2", "main-1", "agent-1", "frid
  * class of every entry it keeps.
  */
 const FILTERS: { id: string; label: string; has: (r: RunRow) => boolean }[] = [
-  ...["Airwallex", "Metal", "Visa", "Claude"].map((name) => ({ id: name.toLowerCase(), label: name, has: (r: RunRow) => railsOf(r).some(([, n]) => n === name) })),
+  ...["Airwallex", "Metal", "Visa", "Claude"].map((name) => ({ id: name.toLowerCase(), label: name, has: (r: RunRow) => partnersOf(r).some(([, n]) => n === name) })),
   { id: "sandbox", label: KIND_LABEL.sandbox, has: (r) => ["sandbox", "both"].includes(kindOf(r)) },
   { id: "testnet", label: KIND_LABEL.testnet, has: (r) => ["testnet", "both"].includes(kindOf(r)) },
   { id: "simulated", label: KIND_LABEL.simulated, has: (r) => kindOf(r) === "simulated" },
@@ -301,23 +347,26 @@ const idChip = (i: RunId) => {
 /**
  * One run, one compact entry. In sight: its date and badge, its name, one line with the links to its record, its
  * partners, its rate and its first id. Behind its one fold (or, in the rehearsals group, which is itself the fold, under
- * it): the other ids, what ran, the checks, the rails and the money words.
+ * it, where the first id is not repeated above): every id in full, what ran, the checks, the rails and the money words.
  */
 function entry(r: RunRow, o: { newest?: boolean; folded: boolean }): string {
   const kind = kindOf(r), [first, ...rest] = r.ids;
+  // The fold lists every id in full, the first one included: the chip in sight may be cut on a phone (review 12 Nov).
   const more = rest.filter(isId).length;
+  // An entry shown without a fold of its own does not repeat what ran when its one line already says it (review 12 Nov).
+  const said = !o.folded && lineOf(r).includes(r.what);
   const cls = ["run", `k-${kind}`, ...FILTERS.filter((f) => f.has(r)).map((f) => `f-${f.id}`), ...(r.product ? ["prod"] : []), ...(o.newest ? ["newest"] : [])].join(" ");
   // A rate that fell short is not a success: no tick, no green.
   const full = r.rate && r.rate.done === r.rate.of;
   const rate = r.rate ? `<span class="rt${full ? " ok" : ""}">${full ? icon("check", 14) : ""}${esc(rateWords(r.rate))}</span>` : "";
-  const files = r.files.map((f) => `<a class="f" href="${esc(f.href)}" target="_blank" rel="noopener"${linkWords(f.label) === f.label ? "" : ` aria-label="${esc(f.label)}"`}>${esc(linkWords(f.label))} ↗</a>`).join(" ");
-  const fold = `<div class="fold">${rest.length ? `<div class="ids">${rest.map(idChip).join("")}</div>` : ""}<p>${esc(r.what)}</p><p><b>Checks:</b> ${esc(r.checks)}</p>${r.stats?.length ? `<p class="q">${r.stats.map((x) => `${esc(x.v)} ${esc(x.l)}`).join(" · ")}</p>` : ""}<p class="q">Rails: ${esc(r.rails)}. Money: ${esc(r.money)}.</p></div>`;
+  const files = r.files.map((f) => `<a class="f" href="${esc(siteHref(f.href))}" target="_blank" rel="noopener"${linkWords(f.label) === f.label ? "" : ` aria-label="${esc(f.label)}"`}>${esc(linkWords(f.label))} ↗</a>`).join(" ");
+  const fold = `<div class="fold">${r.ids.length ? `<div class="ids">${r.ids.map(idChip).join("")}</div>` : ""}${said ? "" : `<p>${esc(r.what)}</p>`}<p><b>Checks:</b> ${esc(r.checks)}</p>${r.stats?.length ? `<p class="q">${r.stats.map((x) => `${esc(x.v)} ${esc(x.l)}`).join(" · ")}</p>` : ""}<p class="q">Rails: ${esc(r.rails)}. Money: ${esc(r.money)}.</p></div>`;
   const label = `Ids, what ran and the checks${more ? `: ${pl(more, "more id")}` : ""}`;
   return `<li class="${cls}" id="${esc(r.key)}"><article${o.folded ? ' class="fd"' : ""} aria-label="${esc(nameOf(r))}">
 <p class="meta"><time datetime="${esc(r.iso)}" title="${esc(r.date)}">${esc(r.date.replace(/ \d{4}$/, ""))}</time><span class="kd ${kind}">${esc(KIND_LABEL[kind])}</span>${o.newest ? '<span class="mk new">Newest</span>' : ""}${r.product ? `<span class="mk prod">${esc(PRODUCT_MARK)}</span>` : ""}</p>
 <h2>${esc(nameOf(r))}</h2>
 <p class="ln">${esc(lineOf(r))} ${files}</p>
-<div class="ch">${partnersOf(r).map(railChip).join("")}${rate}${first ? idChip(first) : ""}</div>
+<div class="ch">${partnersOf(r).map(railChip).join("")}${rate}${first && o.folded ? idChip(first) : ""}</div>
 ${o.folded ? `<details class="more"><summary aria-label="${esc(label)}">${more ? esc(pl(more, "more id")) : "Checks"}${icon("chevron-down", 16)}</summary>${fold}</details>` : fold}
 </article></li>`;
 }
@@ -329,7 +378,8 @@ const FILTER_CSS = `${FILTERS.map((f) => `#${f.id}:target ~ ol.tl > li.run:not(.
 
 const CSS = `.runsp h1 { margin: 24px 0 6px; }
 .runsp .last { color: var(--muted); margin: 0 0 12px; font-size: 16px; line-height: 1.5; max-width: 64ch; }
-.runsp .fa { position: absolute; top: 0; }
+/* The filters' anchors sit at the filter row: without the script a tap lands there, under the header. */
+.runsp .fa { display: block; height: 0; scroll-margin-top: 72px; } .runsp.js .fa { display: none; }
 .runsp nav.flt { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 6px; }
 .runsp nav.flt a { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font: 650 13.5px/1 Inter, system-ui, sans-serif; text-decoration: none; white-space: nowrap; }
 .runsp nav.flt a b { font-weight: 650; opacity: .75; font-variant-numeric: tabular-nums; }
@@ -361,7 +411,8 @@ ${FILTER_CSS}
 .runsp .idc .k { color: var(--muted); font-weight: 600; white-space: nowrap; }
 .runsp .idc .v { font: 500 13px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); overflow-wrap: anywhere; min-width: 0; }
 .runsp .idc a.v { color: var(--accent); text-decoration: none; padding: 14px 0; } .runsp .idc a.v:hover { text-decoration: underline; }
-.runsp .ch .idc { flex: 0 1 auto; } .runsp .ch .idc .k { flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 3em; }
+.runsp .ch .idc { flex: 0 1 auto; } .runsp .ch .idc .k { flex: 0 1 auto; white-space: normal; }
+.runsp .fold .idc { flex-wrap: wrap; row-gap: 0; } .runsp .fold .idc .k { white-space: normal; }
 .runsp .ch .idc .v { flex: 0 1000 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 9ch; }
 .runsp .cp { flex: none; width: 44px; height: 44px; margin: 0 -12px; border: 0; background: transparent; color: var(--muted); cursor: pointer; border-radius: 10px; display: inline-grid; place-items: center; }
 .runsp .cp:hover { color: var(--text); } .runsp .cp.ok { color: var(--ok); }
@@ -395,9 +446,24 @@ const COPY_JS = `document.querySelectorAll("button.cp").forEach(function (b) {
   b.addEventListener("click", function () { navigator.clipboard.writeText(b.dataset.copy || "").then(function () { b.classList.add("ok"); setTimeout(function () { b.classList.remove("ok"); }, 1200); }); });
 });`;
 
-/** Names the active filter for a screen reader (aria-current). The filtering itself is CSS and needs no script. */
+/**
+ * Names the active filter for a screen reader (aria-current), and keeps the reader's place on a filter tap: the page does
+ * not move and the focus stays on the link, so the next Tab goes on after it (review 12 Nov). The filtering itself is CSS
+ * on the anchor the link sets and needs no script.
+ */
 const FILTER_JS = `(function () {
   var links = document.querySelectorAll("nav.flt a");
+  // With the script on, the anchors take no box: going to one keeps the page where it is (the filtering is unchanged).
+  document.querySelector("main.runsp").classList.add("js");
+  // The focus stays on the activated filter, so the next Tab goes on after it, not back to the first filter.
+  links.forEach(function (a) {
+    a.addEventListener("click", function (e) {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      location.hash = a.getAttribute("href");
+      a.focus({ preventScroll: true });
+    });
+  });
   function mark() {
     var on = links[0];
     links.forEach(function (a) { if (a.getAttribute("href") === location.hash) on = a; });
@@ -409,7 +475,7 @@ const FILTER_JS = `(function () {
 
 export function runsPage(all: RunRow[] = liveRuns()): string {
   const rows = newestFirst(all), live = rows.filter((r) => !isRehearsal(r)), rehearsals = rows.filter(isRehearsal);
-  const last = live[0]!;
+  const last = lastLive(live);
   const filters = FILTERS.map((f) => ({ ...f, n: live.filter(f.has).length })).filter((f) => f.n > 0);
   const chevron = icon("chevron-down", 16);
   const body = `<main class="wrap runsp">
@@ -445,6 +511,8 @@ export function runsReadme(all: RunRow[] = liveRuns()): string {
   const rows = newestFirst(all), live = rows.filter((r) => !isRehearsal(r)), rehearsals = rows.filter(isRehearsal);
   const cell = mdCell;
   const idCell = (i: RunId) => `${i.label}: ${i.href?.startsWith("http") ? `[\`${i.value}\`](${i.href})` : `\`${i.value}\``}`;
+  // What the entry's one line says was simulated, where what ran does not already say it in the same words.
+  const whatRan = (r: RunRow) => [r.what, ...sentencesOf(lineOf(r)).filter((x) => FAKED.test(x) && !r.what.includes(x))].join(" ");
   const ids = (r: RunRow) => r.ids.filter(isId).map((i) => cell(idCell(i))).join("<br>");
   const files = (r: RunRow) => r.files.map((f) => `[${f.label}](${f.href.replace(REPO_BLOB, "../../")})`).join("<br>");
   // The money words the kind does not already say ("Rehearsal · test money" after "Rehearsal": "test money").
@@ -457,11 +525,11 @@ Every live run, newest first, generated from the records by \`src/redesign/runs.
 The same list is on the site at [/runs](https://kit11.max-31b.workers.dev/runs). Test money only; what is simulated is
 said per run. The other files in this folder are build notes, dry runs and rehearsals.
 
-**Last live run:** ${live[0]!.date}.
+**Last live run:** ${lastLive(live).date}.
 
 | Date | Run | Rails | What ran | Checks | Key ids | Files |
 |---|---|---|---|---|---|---|
-${live.map((r) => `| ${r.date} | ${run(r)} | ${cell(r.rails)} | ${cell(r.what)} | ${cell(r.checks)} | ${ids(r)} | ${files(r)} |`).join("\n")}
+${live.map((r) => `| ${r.date} | ${run(r)} | ${cell(r.rails)} | ${cell(whatRan(r))} | ${cell(r.checks)} | ${ids(r)} | ${files(r)} |`).join("\n")}
 
 ## Rehearsals and dry runs
 
@@ -469,7 +537,7 @@ Not counted as live runs. The dry runs' logs are the other files in this folder.
 
 | Date | Run | What ran | Key ids | Files |
 |---|---|---|---|---|
-${rehearsals.map((r) => `| ${r.date} | ${run(r)} | ${cell(r.what)} | ${ids(r)} | ${files(r)} |`).join("\n")}
+${rehearsals.map((r) => `| ${r.date} | ${run(r)} | ${cell(whatRan(r))} | ${ids(r)} | ${files(r)} |`).join("\n")}
 
 ## What \`docs/demo/main-run.json\` holds
 

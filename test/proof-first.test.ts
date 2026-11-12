@@ -178,6 +178,24 @@ describe("/proof as served: each card shows its strongest claim as its one link 
     });
   }
 
+  it("gives the three main claims one visible link affordance: the accent colour and an accent underline (review 12 Nov, DC-7)", () => {
+    // Two of the three read as bold headings (body text colour, an underline in the border colour); the Metal claim alone
+    // had an arrow. One rule, for the main claim of every card (the claims in the folds keep theirs), existing tokens only.
+    const css = /<style>([\s\S]*?)<\/style>/.exec(html)![1]!;
+    const rule = /\.pcard > ul\.lead a\.c \{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(rule).toMatch(/(^|;)\s*color: var\(--accent\)/);
+    expect(rule).toMatch(/text-decoration-color: color-mix\(in srgb, var\(--accent\) \d+%, transparent\)/);
+    expect(css.match(/\.pcard > ul\.lead a\.c \{/g)).toHaveLength(1);
+    for (const id of ["airwallex", "metal", "claude"]) expect(afterHeader(cardOf(html, id)).startsWith('<ul class="lead"><li><a class="c" href="'), id).toBe(true);
+  });
+
+  it("uses no gendered pronoun for the CFO or anyone else, folds included (rule 1; seen by the review of 12 Nov)", () => {
+    const pronoun = /\b(he|she|his|her|hers|him|himself|herself)\b/i;
+    const pagesText = [html, buildPages({ ...process.env, TRY_SIGN_ENABLED: "on" }).runs!].map((p) => decode(p.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " ")));
+    for (const t of pagesText) expect(pronoun.exec(t)?.[0]).toBeUndefined();
+    expect(decode(html)).toContain("Proposals the CFO decided on the phone");
+  });
+
   it("a card whose partner has no lead shows its fold only", () => {
     const cards = partnerCards(agentRun(), { airwallex: [], metal: leads.metal, claude: [] });
     for (const id of ["airwallex", "claude"]) expect(afterHeader(cardOf(cards, id)).startsWith('<details class="fold"><summary>Show the live proof</summary>')).toBe(true);
