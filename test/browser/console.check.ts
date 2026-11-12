@@ -2,6 +2,8 @@
 // starter key with a virtual passkey (Chromium's WebAuthn test authenticator), the runner's test world pushed to it,
 // then every page at laptop and phone width. It checks: the passkey first run and sign-in, a supplier name that is
 // HTML shows as text, no console or CSP errors, nothing wider than the phone, and an ended session goes back to sign-in.
+// That cloud runs no engine, and its page never asks for one. Then the engine pass: a second cloud that runs an engine
+// (test money, on its stand-in bank), a company of its own, and an invoice uploaded in the console and watched at work.
 // npx tsx test/browser/console.check.ts [screenshot dir]
 import { t as tr } from "../../src/ui/i18n.js";
 import { createHash } from "node:crypto";
@@ -11,11 +13,14 @@ import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { BrowserContext, Page } from "playwright";
 import { handle, type CloudEnv } from "../../cloud/src/app.js";
+import { nodeEngines } from "../../cloud/src/engine/node.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
 import { batchesFor, pushToCloud } from "../../src/cloudsync/client.js";
 import { payApInvoice } from "../../src/ap/pay.js";
 import { DE, EN, NL } from "../fakes/apInvoices.js";
+import { pdfOf } from "../fakes/pdf.js";
 import { world } from "../support/rt4World.js";
 
 const shots = process.argv[2] ?? "";
@@ -40,22 +45,32 @@ await w.add(NL, "zeeland.pdf");
 
 // The cloud, served by its own request handler over SQLite and a folder.
 const dir = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "console-check-"));
-const env: CloudEnv = { sql: sqliteSql(":memory:"), blobs: dirBlobs(join(dir, "blobs")), sessionSecret: "c".repeat(48), adminTokenSha256: createHash("sha256").update(ADMIN).digest("hex"),
-  rpId: "localhost", origin: ORIGIN, mailDomain: "in.purser.test", rate: { perMinute: 100_000, signInPerMinute: 100_000, failedAuthPerMinute: 100_000 },
-  // The Worker's static assets: pdf.js, as npm run cloud:pdfjs copies it.
-  asset: async (path) => (path === "/assets/pdfjs.mjs" ? new Response(readFileSync(fileURLToPath(import.meta.resolve("unpdf/pdfjs")))) : null) };
-const server = createServer(async (req, res) => {
-  const chunks: Buffer[] = [];
-  for await (const c of req) chunks.push(c as Buffer);
-  const r = await handle(new Request(`${ORIGIN}${req.url}`, { method: req.method, headers: req.headers as Record<string, string>, ...(chunks.length ? { body: Buffer.concat(chunks) } : {}) }), env);
-  res.writeHead(r.status, Object.fromEntries(r.headers));
-  res.end(Buffer.from(await r.arrayBuffer()));
-});
-await new Promise<void>((r) => server.listen(PORT, "127.0.0.1", () => r()));
-const call = async (method: string, path: string, key: string, body?: unknown) => {
-  const r = await fetch(`${ORIGIN}${path}`, { method, headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
+/** A cloud on this machine (SQLite in memory, a folder for blobs), served on a port by its own request handler. */
+function cloudEnv(origin: string, blobs: string): CloudEnv {
+  return { sql: sqliteSql(":memory:"), blobs: dirBlobs(blobs), sessionSecret: "c".repeat(48), adminTokenSha256: createHash("sha256").update(ADMIN).digest("hex"),
+    rpId: "localhost", origin, mailDomain: "in.purser.test", rate: { perMinute: 100_000, signInPerMinute: 100_000, failedAuthPerMinute: 100_000 },
+    // The Worker's static assets: pdf.js, as npm run cloud:pdfjs copies it.
+    asset: async (path) => (path === "/assets/pdfjs.mjs" ? new Response(readFileSync(fileURLToPath(import.meta.resolve("unpdf/pdfjs")))) : null) };
+}
+async function serve(env: CloudEnv, port: number) {
+  const s = createServer(async (req, res) => {
+    const chunks: Buffer[] = [];
+    for await (const c of req) chunks.push(c as Buffer);
+    const r = await handle(new Request(`${env.origin}${req.url}`, { method: req.method, headers: req.headers as Record<string, string>, ...(chunks.length ? { body: Buffer.concat(chunks) } : {}) }), env);
+    res.writeHead(r.status, Object.fromEntries(r.headers));
+    res.end(Buffer.from(await r.arrayBuffer()));
+  });
+  await new Promise<void>((r) => s.listen(port, "127.0.0.1", () => r()));
+  return s;
+}
+const caller = (origin: string) => async (method: string, path: string, key: string, body?: unknown) => {
+  const r = await fetch(`${origin}${path}`, { method, headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
   return { status: r.status, json: await r.json() as Record<string, unknown> };
 };
+// The cloud of the walk below runs no engine.
+const env = cloudEnv(ORIGIN, join(dir, "blobs"));
+const server = await serve(env, PORT);
+const call = caller(ORIGIN);
 const made = await call("POST", "/v1/admin/tenants", ADMIN, { slug: "northwind", name: "Northwind Outdoor (test company)", owner: { display_name: "The CFO" } });
 const starter = made.json.api_key as string;
 // The console is Dutch by default (src/ui/i18n.ts); this check walks it in English, then looks at the Dutch pages near the end.
@@ -66,30 +81,46 @@ ok((await call("POST", "/v1/company", starter, { language: "en" })).status === 2
 const require = createRequire(import.meta.url);
 const { chromium } = require("playwright") as typeof import("playwright");
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
-const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: shots ? 2 : 1 });
-await ctx.addInitScript(() => { try { if (!localStorage.getItem("purser.cloud.lang")) localStorage.setItem("purser.cloud.lang", "en"); } catch { /* none */ } });
-const page = await ctx.newPage();
-const errors: string[] = [];
-page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
-page.on("pageerror", (e) => errors.push(String(e)));
-const cdp = await ctx.newCDPSession(page);
-await cdp.send("WebAuthn.enable");
-await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
+/**
+ * A browser context of its own, in English, with a page, its console errors, every URL it asked for, and its own virtual
+ * passkey authenticator (the platform kind: user verification, discoverable credentials). Both clouds use the relying
+ * party "localhost", so each company's passkey lives in its own context's authenticator.
+ */
+async function passkeyContext(): Promise<{ ctx: BrowserContext; page: Page; errors: string[]; urls: string[] }> {
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: shots ? 2 : 1 });
+  await ctx.addInitScript(() => { try { if (!localStorage.getItem("purser.cloud.lang")) localStorage.setItem("purser.cloud.lang", "en"); } catch { /* none */ } });
+  const urls: string[] = [];
+  ctx.on("request", (r) => urls.push(r.url()));
+  const page = await ctx.newPage();
+  const errors: string[] = [];
+  page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+  page.on("pageerror", (e) => errors.push(String(e)));
+  const cdp = await ctx.newCDPSession(page);
+  await cdp.send("WebAuthn.enable");
+  await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
+  return { ctx, page, errors, urls };
+}
+/** A company's first run in the console, from its starter key to the owner's passkey made and signed in (the first run's last step on screen). */
+async function firstRun(p: Page, origin: string, slug: string, key: string, snap: (name: string) => Promise<void> = async () => {}) {
+  await p.goto(`${origin}/#/start`);
+  await p.fill("#start-slug", slug);
+  await p.fill("#start-key", key);
+  await snap("01-eerste-keer-1-bedrijf");
+  await p.click("text=Continue");
+  await p.waitForSelector("#start-name");
+  await snap("02-eerste-keer-2-passkey");
+  await p.click("text=Make my passkey");
+  await p.waitForSelector("text=Make the key for my computer", { timeout: 20_000 });
+}
+const { ctx, page, errors, urls } = await passkeyContext();
 const shot = async (name: string) => { if (shots) await page.screenshot({ path: join(shots, `${name}.png`), fullPage: true }); };
 // The PDF frame's worker keeps a request open in Playwright's count, so "network idle" is waited for briefly, not forever.
-const settle = async () => { await page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => {}); await page.waitForTimeout(250); };
+const settleOn = async (p: Page) => { await p.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => {}); await p.waitForTimeout(250); };
+const settle = () => settleOn(page);
 const text = async () => (await page.textContent("body")) ?? "";
 
 // First run.
-await page.goto(`${ORIGIN}/#/start`);
-await page.fill("#start-slug", "northwind");
-await page.fill("#start-key", starter);
-await shot("01-eerste-keer-1-bedrijf");
-await page.click("text=Continue");
-await page.waitForSelector("#start-name");
-await shot("02-eerste-keer-2-passkey");
-await page.click("text=Make my passkey");
-await page.waitForSelector("text=Make the key for my computer", { timeout: 20_000 });
+await firstRun(page, ORIGIN, "northwind", starter, shot);
 ok((await text()).includes("northwind@in.purser.test"), "the first run shows the inbox address");
 await page.click("text=Make the key for my computer");
 await page.waitForSelector(".once code");
@@ -293,8 +324,112 @@ await page.setViewportSize({ width: 1440, height: 1000 });
 
 // 401 (an ended session) and 409 (the last owner passkey refused) are answers the check asks for, not errors.
 ok(errors.filter((e) => !/(401 \(Unauthorized\)|409 \(Conflict\))/.test(e)).length === 0, `no console or CSP errors${errors.length ? ` (${errors.join(" | ")})` : ""}`);
-await browser.close();
+ok(urls.length > 0 && !urls.some((u) => new URL(u).pathname.startsWith("/v1/engine")), "a cloud with no engine: its console never asked for one (no /v1/engine request)");
+await ctx.close();
 server.close();
+
+// --- The engine pass ------------------------------------------------------------------------------------------------
+// A second cloud that runs an engine (cloud/src/engine/node.ts: test money on a stand-in bank inside Purser), with its
+// own database, blobs and port, and a company of its own (an engine starts its ledger at AP-0001, which would collide
+// with the test world's invoices above). Its own browser context holds its own passkey. The steps are functions over
+// one EnginePass, so the next ones (pay, the approval passkey, approve) follow the upload in the same form.
+interface EnginePass { origin: string; page: Page; errors: string[]; settle(): Promise<void>; invoiceId: string; pdf: Buffer }
+async function enginePass() {
+  const port = PORT + 100;
+  const origin = `http://localhost:${port}`;
+  const envE = cloudEnv(origin, join(dir, "engine-blobs"));
+  envE.engine = nodeEngines({ sql: envE.sql, blobs: envE.blobs, rpId: "localhost", origin });
+  const serverE = await serve(envE, port);
+  const callE = caller(origin);
+  const madeE = await callE("POST", "/v1/admin/tenants", ADMIN, { slug: "harbour", name: "Harbour Tools (test company)", owner: { display_name: "The CFO" } });
+  ok(madeE.status === 201 && (await callE("POST", "/v1/company", madeE.json.api_key as string, { language: "en" })).status === 200, "engine pass: a company of its own on a cloud that runs an engine, in English");
+  const { ctx: ctxE, page: p, errors: errs } = await passkeyContext();
+  await firstRun(p, origin, "harbour", madeE.json.api_key as string);
+  const E: EnginePass = { origin, page: p, errors: errs, settle: () => settleOn(p), invoiceId: "", pdf: await pdfOf(EN) };
+  await engineUpload(E);
+  ok(errs.length === 0, `engine pass: no console or CSP errors${errs.length ? ` (${errs.join(" | ")})` : ""}`);
+  await ctxE.close();
+  serverE.close();
+}
+
+/** Upload an invoice on the Invoices page and watch the engine read it; a refused file and the same file again. */
+async function engineUpload(E: EnginePass) {
+  const p = E.page;
+  await p.goto(`${E.origin}/#/invoices`);
+  await p.waitForSelector("#work");
+  await p.waitForSelector("#eng-file", { state: "attached" });
+  ok((await p.textContent("header .test .tl"))?.trim() === "Engine: test money", "engine pass: the header's test-money chip reads \"Engine: test money\"");
+  ok(/stand-in bank.*no real money.*nothing is sent to Airwallex/.test((await p.getAttribute("header .test", "title")) ?? ""), "engine pass: the chip's title says the stand-in bank, no real money, nothing sent to Airwallex");
+  ok((await p.$$("header .test")).length === 1, "engine pass: one chip in the header, not two");
+
+  await p.setInputFiles("#eng-file", { name: "bergtex-BTX-2026-21.pdf", mimeType: "application/pdf", buffer: E.pdf });
+  ok(await p.isDisabled("#view .drop.eng button"), "engine pass: while the upload runs its button is disabled");
+  await p.waitForSelector("#view .note-ok", { timeout: 30_000 });
+  const done = (await p.textContent("#view .note-ok")) ?? "";
+  const id = /as (AP-\d+)\./.exec(done)?.[1] ?? "";
+  E.invoiceId = id;
+  ok(id === "AP-0001", `engine pass: the upload says where the invoice is in the list (${done})`);
+  const row = p.locator(`a.row[href="#/invoices/${id}"]`);
+  ok(await row.count() === 1 && await row.locator(".st.ready").count() === 1 && (await row.textContent())!.includes("BTX-2026-21"), "engine pass: after the sync the list shows the uploaded invoice once, ready to pay");
+  await p.waitForSelector("#work li", { timeout: 10_000 });
+  const lines = await p.$$eval("#work li", (ls) => ls.map((l) => ({ time: l.querySelector("time")?.textContent ?? "", who: l.querySelector("b")?.textContent ?? "", text: l.querySelector("span")?.textContent ?? "" })));
+  const received = lines.find((l) => /came in and was checked/.test(l.text));
+  ok(!!received && received.who === "The parser" && /^\d{2}:\d{2}:\d{2}$/.test(received.time), `engine pass: the panel "At work" shows the received line, who and when (${JSON.stringify(received ?? lines[0] ?? null)})`);
+  ok(await p.locator("#work ol[aria-live] li").count() <= 6 && await p.getAttribute("#work ol[aria-live]", "aria-live") === "polite", "engine pass: the panel shows at most six lines in view, in a polite live region");
+  await E.settle();
+
+  // The screenshots: the Invoices page with the panel, after the upload, laptop and phone, light and dark.
+  const wide = async () => p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  for (const [w, h] of [[1440, 1000], [390, 844]] as const) {
+    await p.setViewportSize({ width: w, height: h });
+    for (const scheme of ["light", "dark"] as const) {
+      await p.emulateMedia({ colorScheme: scheme });
+      await p.waitForTimeout(150);
+      if (shots) await p.screenshot({ path: join(shots, `engine-01-upload-${w}-${scheme}.png`), fullPage: true });
+    }
+  }
+  await p.emulateMedia({ colorScheme: "light" });
+  const over = await wide();
+  ok(over <= 0, `engine pass: the Invoices page at 390 px is no wider than the phone (${over} px over)`);
+  const head = await p.evaluate(() => {
+    // (No named function in here: the bundler would wrap it in a helper the page does not have.)
+    const chip = document.querySelector("header .test")!.getBoundingClientRect(), brand = document.querySelector("header .brand")!.getBoundingClientRect();
+    return { sameRow: Math.abs(chip.top - brand.top) < 12, inView: chip.right <= window.innerWidth, label: getComputedStyle(document.querySelector("header .test .tl")!).display };
+  });
+  ok(head.sameRow && head.inView && head.label === "none", `engine pass: at 390 px the chip keeps to the header's first row as an icon, as before (${JSON.stringify(head)})`);
+  await p.setViewportSize({ width: 1440, height: 1000 });
+
+  // A file that says it is a PDF but is not one: the engine refuses it, and the page says so in the engine's words.
+  const before = E.errors.length;
+  await p.setInputFiles("#eng-file", { name: "notes.pdf", mimeType: "application/pdf", buffer: Buffer.from("just some words") });
+  await p.waitForSelector("#view .note-bad", { timeout: 20_000 });
+  const refused = (await p.textContent("#view .note-bad")) ?? "";
+  ok(/^notes\.pdf .*nothing was filed$/.test(refused), `engine pass: a refused upload shows the engine's own sentence (${refused})`);
+  // The refused upload's 400 is the answer this step asks for; it is the only error tolerated, and only here.
+  const during = E.errors.splice(before);
+  ok(during.every((e) => /400 \(Bad Request\)/.test(e)), `engine pass: the refused upload logs nothing but its 400 (${during.join(" | ")})`);
+  // Refused in the page before anything is sent: a file of another kind.
+  await p.setInputFiles("#eng-file", { name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("just some words") });
+  await p.waitForSelector("text=Only a PDF, JPEG or PNG can be uploaded");
+  ok(true, "engine pass: a file of another kind is refused in the page, in words, before sending");
+
+  // The same file again: already filed, with a link to its invoice.
+  await p.setInputFiles("#eng-file", { name: "bergtex-again.pdf", mimeType: "application/pdf", buffer: E.pdf });
+  await p.waitForSelector("text=This file was already filed", { timeout: 20_000 });
+  ok(await p.locator(`#view .note-info a[href="#/invoices/${id}"]`).count() === 1, "engine pass: the same file again says it was already filed, with a link to its invoice");
+  ok(await p.locator("a.row").count() === 1, "engine pass: the list still holds the invoice once");
+
+  // The invoice's own page opens, with the document drawn.
+  await p.click(`a.row[href="#/invoices/${id}"]`);
+  await p.waitForSelector("text=What Purser read");
+  await p.frameLocator("iframe.pdfframe").locator("canvas").first().waitFor({ timeout: 20_000 });
+  ok((await p.textContent("main"))!.includes("Bergtex Textil GmbH"), "engine pass: the uploaded invoice's page opens, its PDF drawn");
+  await E.settle();
+}
+
+await enginePass();
+
+await browser.close();
 rmSync(dir, { recursive: true, force: true });
 rmSync(w.dir, { recursive: true, force: true });
 console.log(failed ? `\nconsole check: ${failed} problem(s)` : "\nconsole check: all passed");
