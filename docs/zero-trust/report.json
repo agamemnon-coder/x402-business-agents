@@ -10,7 +10,7 @@
   "hostile_refused_by_rail": 3,
   "hostile_ran_inside_limits": 20,
   "hostile_unsafe_by_ledger": 0,
-  "holes_found_and_fixed": 6,
+  "holes_found_and_fixed": 7,
   "principle": [
     "A spending limit written in a prompt can be talked out of, so Purser enforces it outside the model, in layers that do not trust each other.",
     "Every attack here starts with part of the system already in the attacker's hands, and a test on the real code shows that a layer outside the attacker's reach still stops the money."
@@ -1229,11 +1229,11 @@
         "control": "four eyes"
       },
       "needs": "the CFO has set a four-eyes threshold (approval.four_eyes_eur)",
-      "note": null,
+      "note": "The test also changes the kind stored beside the terms, which the hash does not cover, to one that needs one person only. Found here and fixed: four eyes read that copy, so the CFO's signature alone approved the payment (src/policy/approvals.ts).",
       "moved": 0,
       "evidence": {
         "test": "test/zero-trust.test.ts > the matrix: every attack against the real code > four-eyes-cfo-signs-rewritten-terms: A payment's stored terms are rewritten to the attacker's account and the CFO's own passkey signs them on a breached phone page.",
-        "record": "proposal.cosigned: 1 of 2; passkey.refused: max already approved P-0002; a second person must approve it with their own passkey",
+        "record": "with the kind column changed: P-0002 is filed as dev_test, but its signed terms say invoice_payment; nothing is approved; proposal.cosigned: 1 of 2; passkey.refused: max already approved P-0002; a second person must approve it with their own passkey",
         "live": null
       }
     },
@@ -1300,7 +1300,7 @@
       "moved": 0,
       "evidence": {
         "test": "test/zero-trust.test.ts > the matrix: every attack against the real code > supplier-invoice-four-eyes: An inbox invoice's payment is rewritten to ten times the amount and the CFO's own passkey signs it on a breached phone page.",
-        "record": "proposal.cosigned: 1 of 2; passkey.refused: max already approved P-0003; a second person must approve it with their own passkey",
+        "record": "with the kind column changed: P-0003 is filed as dev_test, but its signed terms say supplier_payment; nothing is approved; proposal.cosigned: 1 of 2; passkey.refused: max already approved P-0003; a second person must approve it with their own passkey",
         "live": null
       }
     },
@@ -3012,6 +3012,12 @@
       "was": "Where two people must sign, a first signature made before the stored terms changed was counted towards the changed terms, so one person's signature over them was enough.",
       "now": "A first signature counts only for the exact terms it was made over.",
       "where": "src/policy/approvals.ts"
+    },
+    {
+      "attack": "four-eyes-cfo-signs-rewritten-terms",
+      "was": "Whether a payment needs two people was read from the kind stored beside its terms, which the signed hash does not cover: changed to a kind that needs one person while the CFO signed, it let the CFO's signature alone approve a payment above the four-eyes threshold.",
+      "now": "An approval counts only when the kind stored beside the terms is the kind inside the signed terms; otherwise nothing is approved and the refusal is in the audit log.",
+      "where": "src/policy/approvals.ts"
     }
   ],
   "pending": {
@@ -3096,6 +3102,6 @@
   ],
   "generated": {
     "date": "2026-11-12",
-    "commit": "4da6318"
+    "commit": "9abeeff with uncommitted changes"
   }
 }

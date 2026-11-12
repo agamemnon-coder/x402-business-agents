@@ -157,7 +157,7 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
   }
   const passkey = args.passkey && { credential_id: args.passkey.credentialId, assertion_sha256: args.passkey.assertionSha256 };
   return db.transaction((): ProposalStatus => {
-    const p = get(db, args.proposalId);
+    const p = args.decision === "APPROVED" ? ofSignedKind(get(db, args.proposalId)) : get(db, args.proposalId);
     if (p.status !== "PENDING_APPROVAL") throw new Error(`${p.proposal_id} is ${p.status}, not waiting for approval`);
     // A payment in a waiting batch is decided with its batch only: the CFO signs the list, not the line on its own.
     const inBatch = BATCHABLE.has(p.kind) ? openBatchOf(db, p.proposal_id) : null;
@@ -294,6 +294,18 @@ function signedExpiry(p: Pick<ProposalRow, "terms_json" | "expires_at">): string
   let inTerms: unknown;
   try { inTerms = (JSON.parse(p.terms_json) as { expires_at?: unknown }).expires_at; } catch { return p.expires_at; }
   return typeof inTerms === "string" && Date.parse(inTerms) < Date.parse(p.expires_at) ? inTerms : p.expires_at;
+}
+
+/**
+ * A proposal whose kind column is the kind inside its terms, the one the hash covers; refused otherwise. The column
+ * decides four eyes and batches, so a kind changed beside the terms would let one person approve what needs two
+ * (zero-trust matrix, 12 November).
+ */
+function ofSignedKind(p: ProposalRow): ProposalRow {
+  let inTerms: unknown;
+  try { inTerms = (JSON.parse(p.terms_json) as { kind?: unknown }).kind; } catch { inTerms = null; }
+  if (inTerms !== p.kind) throw new Error(`${p.proposal_id} is filed as ${p.kind}, but its signed terms say ${String(inTerms)}; nothing is approved`);
+  return p;
 }
 
 export function finishExecution(db: DB, proposalId: string, outcome: "EXECUTED" | "FAILED" | "NEEDS_REAPPROVAL", detail: Json = {}, now = new Date()): void {

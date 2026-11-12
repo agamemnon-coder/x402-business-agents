@@ -1471,6 +1471,15 @@ function rewriteTerms(db: DB, id: string, change: Record<string, string>): strin
   db.prepare("UPDATE proposals SET terms_json = ?, terms_sha256 = ? WHERE proposal_id = ?").run(JSON.stringify(terms), hash, id);
   return hash;
 }
+/**
+ * The proposal's kind column (beside the terms; the hash does not cover it) set to a kind that needs one person only
+ * while `f` runs, then set back: what the breach "stored terms" can also do (as in approval-run-by-another-executor).
+ */
+async function kindSwapped<T>(db: DB, id: string, f: () => Promise<T>): Promise<T> {
+  const { kind } = db.prepare("SELECT kind FROM proposals WHERE proposal_id = ?").get(id) as { kind: string };
+  db.prepare("UPDATE proposals SET kind = 'dev_test' WHERE proposal_id = ?").run(id);
+  try { return await f(); } finally { db.prepare("UPDATE proposals SET kind = ? WHERE proposal_id = ?").run(kind, id); }
+}
 
 // L2 on a card purchase, the agent hostile. It asks for a charge at its own merchant for its own amount in every way
 // its tools could be bent; no tool takes a merchant or an amount, the purchase code knows only the plans on its list,
@@ -1512,6 +1521,10 @@ SCENARIOS["four-eyes-cfo-signs-rewritten-terms"] = async () => {
   const id = await propose(w, LARGE);
   const other = await w.awx.createBeneficiary(ATTACKER_PAYEE);
   rewriteTerms(w.db, id, { beneficiary_id: other.id, beneficiary_name: ATTACKER_PAYEE.name, iban_last4: ATTACKER_IBAN.slice(-4), bic: ATTACKER_PAYEE.bic });
+  // The kind column beside the terms, which the hash does not cover, set to a kind that needs one person only while
+  // the CFO signs, then set back: the kind the CFO signed is the one inside the terms.
+  const swapped = await kindSwapped(w.db, id, () => sign(w.db, w.cfo, id, w.now));
+  expect(swapped).toMatchObject({ status: "refused", message: expect.stringMatching(/its signed terms say invoice_payment/) });
   const first = await sign(w.db, w.cfo, id, w.now);
   const again = await sign(w.db, w.cfo, id, w.now);
   expect(first.status).toBe("cosigned");
@@ -1522,8 +1535,8 @@ SCENARIOS["four-eyes-cfo-signs-rewritten-terms"] = async () => {
   const cosigned = events(w.db, "proposal.cosigned");
   expect(cosigned).toHaveLength(1);
   const refused = events(w.db, "passkey.refused");
-  expect(refused).toHaveLength(1);
-  return { moved: bankMoved(w), control: "four eyes", record: `proposal.cosigned: ${String(cosigned[0]!.of)}; passkey.refused: ${String(refused[0]!.reason)}` };
+  expect(refused).toHaveLength(2);
+  return { moved: bankMoved(w), control: "four eyes", record: `with the kind column changed: ${swapped.message}; proposal.cosigned: ${String(cosigned[0]!.of)}; passkey.refused: ${String(refused[1]!.reason)}` };
 };
 
 // L3 on an inbox invoice, the checks breached. The CFO signed the supplier payment; then its amount, payee or currency
@@ -1560,6 +1573,8 @@ SCENARIOS["supplier-invoice-four-eyes"] = async () => {
   const w = await supplierWorld({ fourEyes: true });
   const id = await planSupplier(w);
   rewriteTerms(w.db, id, { amount: "98500.00" });
+  const swapped = await kindSwapped(w.db, id, () => sign(w.db, w.cfo, id, w.now));
+  expect(swapped).toMatchObject({ status: "refused", message: expect.stringMatching(/its signed terms say supplier_payment/) });
   const first = await sign(w.db, w.cfo, id, w.now);
   const again = await sign(w.db, w.cfo, id, w.now);
   expect(first.status).toBe("cosigned");
@@ -1567,8 +1582,8 @@ SCENARIOS["supplier-invoice-four-eyes"] = async () => {
   expect(await refusalOf(() => executeSupplierPayment(w.db, w.awx, w.awx, id))).toMatch(/not approved/);
   expect(w.awx.transfers).toHaveLength(0);
   const refused = events(w.db, "passkey.refused");
-  expect(refused).toHaveLength(1);
-  return { moved: bankMoved(w), control: "four eyes", record: `proposal.cosigned: 1 of 2; passkey.refused: ${String(refused[0]!.reason)}` };
+  expect(refused).toHaveLength(2);
+  return { moved: bankMoved(w), control: "four eyes", record: `with the kind column changed: ${swapped.message}; proposal.cosigned: 1 of 2; passkey.refused: ${String(refused[1]!.reason)}` };
 };
 
 // L5 on an inbox invoice, with Purser's own decision code forced to say pay: the attacker's invoice arrives, the new

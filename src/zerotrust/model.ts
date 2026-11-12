@@ -507,6 +507,7 @@ export const ATTACKS: readonly Attack[] = [
     breach: ["stored_terms", "phone_page"], target: "bank_payout",
     action: "Pay EUR 9,850.00 to the attacker's account on the CFO's signature alone.",
     bypasses: ["L1", "L2", "L3"], stoppedBy: "L4",
+    note: "The test also changes the kind stored beside the terms, which the hash does not cover, to one that needs one person only. Found here and fixed: four eyes read that copy, so the CFO's signature alone approved the payment (src/policy/approvals.ts).",
     needs: "the CFO has set a four-eyes threshold (approval.four_eyes_eur)",
   },
   {
@@ -838,6 +839,12 @@ export const FIXES: readonly Fix[] = [
     attack: "cosignature-before-terms-change",
     was: "Where two people must sign, a first signature made before the stored terms changed was counted towards the changed terms, so one person's signature over them was enough.",
     now: "A first signature counts only for the exact terms it was made over.",
+    where: "src/policy/approvals.ts",
+  },
+  {
+    attack: "four-eyes-cfo-signs-rewritten-terms",
+    was: "Whether a payment needs two people was read from the kind stored beside its terms, which the signed hash does not cover: changed to a kind that needs one person while the CFO signed, it let the CFO's signature alone approve a payment above the four-eyes threshold.",
+    now: "An approval counts only when the kind stored beside the terms is the kind inside the signed terms; otherwise nothing is approved and the refusal is in the audit log.",
     where: "src/policy/approvals.ts",
   },
 ];
