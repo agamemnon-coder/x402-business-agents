@@ -6,7 +6,7 @@
 import Database from "better-sqlite3";
 import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ENGINE_METHODS, type EngineApi } from "../cloud/src/engine/api.js";
+import { ENGINE_METHODS, SlowDown, type EngineApi } from "../cloud/src/engine/api.js";
 import { engineStubs, type EngineNamespace } from "../cloud/src/engine/client.js";
 import { docChunks } from "../cloud/src/engine/docChunks.js";
 import type { EngineAnswer } from "../cloud/src/engine/object.js";
@@ -31,6 +31,7 @@ vi.mock("../cloud/src/engine/hostWorker.js", () => {
           return { kind: "invoice", sha256: createHash("sha256").update(doc.bytes).digest("hex"), invoice: null };
         },
         sync: async () => { await host.gate; return { fed: true }; },
+        events: async (after: number) => ({ items: [], next: after }),
       } };
     },
   };
@@ -136,6 +137,36 @@ describe("a company's engine object", () => {
   });
 });
 
+describe("the object's limit on reading the events", () => {
+  it("answers at most 2 event reads a second per company; past that a refusal that says when to come back", async () => {
+    vi.useFakeTimers({ now: new Date("2026-11-13T10:00:00Z") });
+    try {
+      const o = await object(storage().storage);
+      expect(await o.call(A, "events", [0])).toEqual({ ok: true, value: { items: [], next: 0 } });
+      vi.advanceTimersByTime(300);
+      expect((await o.call(A, "events", [0])).ok).toBe(true);
+      vi.advanceTimersByTime(100);
+      // The third within a second: refused, with the time until the first one leaves the window.
+      expect(await o.call(A, "events", [0])).toEqual({ ok: false, error: "slow down: at most 2 reads of the events a second", retry_ms: 600 });
+      // Other actions are not counted, and are not held back.
+      expect((await o.call(A, "status", [])).ok).toBe(true);
+      vi.advanceTimersByTime(600);
+      expect((await o.call(A, "events", [0])).ok).toBe(true);
+      expect((await o.call(A, "events", [0])).ok).toBe(false);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("counts each company's own object: another company's reads are not held back by these", async () => {
+    vi.useFakeTimers({ now: new Date("2026-11-13T10:00:00Z") });
+    try {
+      const a = await object(storage().storage), b = await object(storage().storage);
+      for (let i = 0; i < 2; i++) expect((await a.call(A, "events", [0])).ok).toBe(true);
+      expect((await a.call(A, "events", [0])).ok).toBe(false);
+      expect((await b.call(B, "events", [0])).ok).toBe(true);
+    } finally { vi.useRealTimers(); }
+  });
+});
+
 describe("the Worker's stub of a company's engine", () => {
   const calls: { name: string; tenantId: string; method: string; args: unknown[] }[] = [];
   let answer: EngineAnswer = { ok: true, value: 1 };
@@ -166,6 +197,13 @@ describe("the Worker's stub of a company's engine", () => {
   it("throws what the object refused, in the object's words", async () => {
     answer = { ok: false, error: "notes.txt is not a PDF; nothing was filed" };
     await expect(engineStubs(ns)(B).upload({ bytes: new Uint8Array(), filename: "notes.txt" })).rejects.toThrow(/^notes\.txt is not a PDF; nothing was filed$/);
+  });
+
+  it("throws the object's limit as SlowDown, with when to come back", async () => {
+    answer = { ok: false, error: "slow down: at most 2 reads of the events a second", retry_ms: 600 };
+    const e = await engineStubs(ns)(B).events(0).catch((x: unknown) => x);
+    expect(e).toBeInstanceOf(SlowDown);
+    expect(e).toMatchObject({ message: "slow down: at most 2 reads of the events a second", retryMs: 600 });
   });
 });
 

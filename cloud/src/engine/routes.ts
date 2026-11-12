@@ -14,7 +14,7 @@ import { z } from "zod";
 import { AuthError, type Caller } from "../auth.js";
 import { BadRequest } from "../read.js";
 import type { TenantDb } from "../tenant.js";
-import type { EngineApi } from "./api.js";
+import { SlowDown, type EngineApi } from "./api.js";
 
 /** What a handler needs of the request's context (cloud/src/app.ts Ctx is one). */
 export interface EngineCtx {
@@ -147,8 +147,13 @@ export function engineRoutes<C extends EngineCtx>(kit: EngineKit<C>): EngineRout
       return out.status === "retried" ? json(200, out) : err(409, out.message);
     }) },
     { method: "POST", path: "/v1/engine/sync", summary: "Follow the payments, book them, archive and feed the read model again; safe to repeat. Answers where things stand (ledger_entries, vault_added, fed, error).", need: "admin", run: on(async (_c, e) => json(200, await e.sync())) },
-    { method: "GET", path: "/v1/engine/events", summary: "What the engine did, oldest first: ?after=<seq>&limit=<1 to 200>; { items, next }, where next is the seq to ask after. An event carries a short list of fields, never a bank account.", need: "read", run: on(async (c, e) =>
-      json(200, await e.events(whole(c, "after", 0, Number.MAX_SAFE_INTEGER, 0), whole(c, "limit", 1, 200, 100)))) },
+    { method: "GET", path: "/v1/engine/events", summary: "What the engine did, oldest first: ?after=<seq>&limit=<1 to 200>; { items, next }, where next is the seq to ask after. An event carries a short list of fields, never a bank account. 429 slow_down with retry_ms past 2 reads a second per company.", need: "read", run: on(async (c, e) => {
+      const after = whole(c, "after", 0, Number.MAX_SAFE_INTEGER, 0), limit = whole(c, "limit", 1, 200, 100);
+      try { return json(200, await e.events(after, limit)); } catch (x) {
+        if (x instanceof SlowDown) return json(429, { error: x.message, code: "slow_down", retry_ms: x.retryMs });
+        throw x;
+      }
+    }) },
     { method: "GET", path: "/v1/engine/vault", summary: "The files of the company's archive as its indexes list them: { files: [{ path, kind, bytes, sha256, added_at }] }.", need: "read", run: on(async (_c, e) => json(200, { files: await e.vaultFiles() })) },
     { method: "GET", path: "/v1/engine/vault/file", summary: "One file of the archive, ?path= as the list gives it; 404 for a path the archive's index does not list.", need: "read", run: on(async (c, e) => {
       const path = c.url.searchParams.get("path") ?? "";
