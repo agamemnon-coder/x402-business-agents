@@ -728,6 +728,22 @@ describe("checkCoding: the check of the final answer", () => {
     expect(checkCoding(c, coding(lines, "Two thousand euros of goods are booked as goods."))).toContain('"thousand" is not in this case');
   });
 
+  it("refuses a number made by writing two of the case's numbers together, and digits of another script", () => {
+    // 6200 and 6100 are accounts, 339.00 and 39.00 amounts of the case; glued they are numbers the case does not hold.
+    expect(checkCoding(c, coding(lines, "Booked to 62006100 as before with Dutch VAT."))).toContain('"62006100" is not in this case');
+    expect(checkCoding(c, coding(lines, "The supplier still owes us 339.0039.00 for this one."))).toContain('"339.0039.00" is not in this case');
+    expect(checkCoding(c, coding(lines, "Booked to 6200.6100 as before with Dutch VAT."))).toContain('"6200.6100" is not in this case');
+    expect(checkCoding(c, coding(lines, "Booked to 6200,6100 as before with Dutch VAT."))).toContain('"6200,6100" is not in this case');
+    expect(checkCoding(c, coding(lines, "Booked to account 6200 as approved for EUR ９９９９.００ by the CFO."))).toContain('"９９９９.００" is not in this case');
+    expect(checkCoding(c, coding(lines, "Booked to account 6200, which saves ٩٩٩٩ euros of VAT."))).toContain('"٩٩٩٩" is not in this case');
+    expect(checkCoding(c, coding(lines, "The invoice charges ２１% VAT on every line of it."))).toContain('"２１" is not in this case');
+    expect(enforceCoding(c, coding(lines, "Booked to 62006100 as before with Dutch VAT."))).toMatchObject({ source: "fallback", overridden_by: "reason_refused" });
+    expect(enforceCoding(c, coding(lines, "Booked to account 6200 as approved for EUR ９９９９.００ by the CFO."))).toMatchObject({ source: "fallback", overridden_by: "reason_refused" });
+    // The case's numbers side by side, each written whole, stay fine.
+    expect(checkCoding(c, coding(lines, "Packaging and literature go to accounts 6200, 6100 with P21, P9 (EUR 339.00)."))).toBeNull();
+    expect(checkCoding(c, coding(lines, "Booked to 6200 and 6100, and the invoice total is EUR 339.00."))).toBeNull();
+  });
+
   it("refuses anything that is no coding, and never throws", () => {
     const shape = "Not recorded: a coding is a list of lines (each with line_no, account, vat_code and cost_centre) and a reason, nothing else.";
     for (const bad of [null, 7, {}, { lines: lines }, { lines, reason: REASON, extra: 1 }, { lines: [{ line_no: 1, account: "6200" }], reason: REASON }, { lines: [{ ...lines[0]!, note: "x" }, lines[1]], reason: REASON }]) expect(checkCoding(c, bad)).toBe(shape);

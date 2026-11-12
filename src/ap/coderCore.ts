@@ -1022,6 +1022,33 @@ function reasonShape(raw: string, names: readonly string[]): { reason: string | 
   return { reason: plain === null ? null : plain.replaceAll(NAME_DOT, "."), ...shape };
 }
 
+const DIGIT = /\p{Nd}/u;
+/** Whether a number runs on past this end of a piece of the sentence: a digit, or a decimal mark with a digit behind it. */
+const runsOn = (s: string, at: number, step: 1 | -1) => DIGIT.test(s[at] ?? "") || (/[.,]/.test(s[at] ?? "") && DIGIT.test(s[at + step] ?? ""));
+
+/**
+ * The first number of the sentence that is not the case's, or null. strayIn takes the given pieces out wherever they
+ * occur, so two of them written together ("62006900", "484.0084.00") pass as given, and it only knows the digits 0 to
+ * 9. Here a given piece counts only where it stands whole (no digit runs on before or after it), and a digit of any
+ * script that is left over is a number the case does not hold.
+ */
+function strayNumber(sentence: string, given: Given): string | null {
+  let rest = sentence;
+  for (const t of [...new Set([...given.amounts, ...given.references])].sort((a, b) => b.length - a.length)) {
+    if (!t) continue;
+    for (let from = 0; ;) {
+      const i = rest.indexOf(t, from);
+      if (i < 0) break;
+      const end = i + t.length;
+      const whole = !(DIGIT.test(t[0]!) && runsOn(rest, i - 1, -1)) && !(DIGIT.test(t.at(-1)!) && runsOn(rest, end, 1));
+      if (whole) rest = `${rest.slice(0, i)} | ${rest.slice(end)}`;
+      from = whole ? i + 3 : i + 1;
+    }
+  }
+  const m = /\p{Nd}[\p{Nd},.:\-]*/u.exec(rest);
+  return m ? m[0].replace(/[.,:\-]+$/, "") : null;
+}
+
 type ReasonCheck = { reason: string; refusal: null } | { reason: null; refusal: { rule: "shape" | "numbers"; why: string } };
 
 /** The reason as it may be shown, or why not: its shape, then every number it cites against the case. */
@@ -1034,7 +1061,7 @@ function reasonCheck(v: View, raw: string): ReasonCheck {
   const given = givenOf(v);
   // A percentage is checked whole first: "19%" is not the given "9%" with a digit before it.
   const percent = [...shaped.reason.matchAll(/(?<![\d.,])\d+(?:[.,]\d+)?\s?(?:%|percent\b)/g)].map((m) => m[0]).find((p) => !given.references.includes(p));
-  const stray = percent ?? strayIn(shaped.reason, given);
+  const stray = percent ?? strayIn(shaped.reason, given) ?? strayNumber(shaped.reason, given);
   if (stray !== null) {
     // The examples are the case's own fields, some of them the supplier's words: quoted like everything a tool shows of them.
     const like = [c.invoice.total && c.invoice.currency ? `${c.invoice.currency} ${c.invoice.total}` : c.invoice.total, c.invoice.invoice_no, c.today].filter((x) => words(x)).map(quoted).join(", ");
