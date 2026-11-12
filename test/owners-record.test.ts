@@ -177,7 +177,7 @@ describe("a virtual second approver, or a virtual CFO", () => {
     for (const line of [...page.split("\n"), ...said].filter((l) => l.includes("test-controller"))) expect(line).toMatch(/test-controller"? (is a |\()virtual test passkey|\| test-controller \| .* virtual test passkey/);
     expect(text(r)).not.toMatch(/the controller\b/);
     // A signature of its that came too late is named the same way.
-    const late = await propose(w.again());
+    const late = await proposeRevoke(w.again());
     await w.sign(late.proposal.proposal_id, 0);
     w.clock.now = new Date(Date.parse(late.terms.expires_at) + 60_000);
     await w.sign(late.proposal.proposal_id, 1);
