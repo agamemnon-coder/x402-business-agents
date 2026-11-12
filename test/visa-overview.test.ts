@@ -4,7 +4,8 @@
 //     calling it that, with its date, channel and source ("as reported by the builder");
 //   - one line reads "Intelligent Commerce Connect: access requested, not granted yet; not used in this entry", and no
 //     other claim about it exists on the site or in the README;
-//   - one summary of the paid run: "1 of 4 attempts paid", scripted with no Claude call, its failures listed in a fold;
+//   - one summary of the paid run: purchase B paid after the CFO's Face ID, scripted with no Claude call; the day's
+//     attempts ("1 of 4 paid") and its failures in a fold;
 //   - "TAP" appears only inside one closed fold, the last thing on the page, labelled as outside the entry;
 //   - the footer cites docs/demo/airi-run.json and has no main-run paragraph;
 //   - Home and /proof no longer carry "Extra, not an award entry"; "Visa (VIC via Airi)" is in Home's "Built on"; /judge
@@ -36,16 +37,18 @@ const TAP = /\bTAP\b|Trusted Agent Protocol/;
 describe("/visa: one summary of the paid run", () => {
   const airi = raw("docs/demo/airi-run.json"), tap = raw(tapRun()!.file);
 
-  it("reads the paid run's card from docs/demo/airi-run.json: N of M attempts paid, purchases paid, refused, checks, purchase B's ids", () => {
+  // The jury check of 12 Nov: the card leads with the paid purchase; the day's attempts are counted in their fold.
+  it("reads the paid run's card from docs/demo/airi-run.json: the paid purchase B, its amount and ids; the attempts in their fold", () => {
     const c = airiCard(airiRun()!)!;
     const b = airi.purchases.find((p: { route: string }) => p.route === "cfo");
     const attempts = airi.attempts as { outcome: string; at: string }[];
     expect(attempts.every((a) => a.at.slice(0, 10) === airi.started_at.slice(0, 10))).toBe(true);
     expect(attempts.filter((a) => a.outcome === "passed")).toHaveLength(1);
     expect(c.kind).toBe("paid");
-    // The series alone, counted: what was paid, refused and checked is the run block's, right under the card.
-    expect(c.stats).toEqual([{ v: `${attempts.filter((a) => a.outcome === "passed").length} of ${attempts.length}`, l: "attempts paid" }]);
-    expect(c.stats[0]!.v).toBe("1 of 4");
+    expect(c.stats).toEqual([{ v: `${b.currency} ${b.amount}`, l: "paid after the CFO's Face ID" }]);
+    expect(c.stats[0]!.v).toBe("EUR 45.00");
+    const fold = /<details class="fold" id="vic-attempts">[\s\S]*?<\/details>/.exec(visaPage())![0];
+    expect(text(fold)).toContain(`${attempts.filter((a) => a.outcome === "passed").length} of ${attempts.length} attempts that day paid.`);
     expect(c.ids).toEqual([["Mandate", b.mandate_id], ["Payment", b.payment_intent_id]]);
   });
 
@@ -100,7 +103,7 @@ describe("/visa: one summary of the paid run", () => {
     const html = visaPage(), paid = airiCard(airiRun()!)!;
     const overview = /<section class="card vo"[\s\S]*?<\/section>/.exec(html)![0];
     expect(visaOverviewHeading([paid])).toBe(VISA_SUMMARY_HEADING);
-    expect(text(overview)).toMatch(/^The paid run VIC via Airi · 7 Nov · scripted, no Claude call Single-use Visa credential 1 of 4 attempts paid/);
+    expect(text(overview)).toMatch(/^The paid run VIC via Airi · 7 Nov · scripted, no Claude call Single-use Visa credential EUR 45\.00 paid after the CFO's Face ID/);
     expect([...overview.matchAll(/<a class="vo-run" href="#([^"]+)"/g)].map((m) => m[1]!)).toEqual(["airi-run"]);
     expect(html.indexOf(`id="${VISA_OVERVIEW_ID}"`)).toBeLessThan(html.indexOf('id="airi-run"'));
     expect(overview).not.toMatch(TAP);
