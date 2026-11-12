@@ -388,8 +388,8 @@ describe("the deck's test count against the README's test line", () => {
     const deckRow = claims.split("\n").find((l) => l.startsWith("| The deck (section D, 6 November)")) ?? "";
     const note = /Dated note, [^:]+: the committed PDF and its "Security and tests" slide are the render of [^.]+? and show ([\d,]+) tests in (\d+) files/.exec(deckRow);
     if (deckTests === readme[1] && deckFiles === readme[2]) {
-      // In step with the README: no note may say otherwise.
-      expect(note).toBeNull();
+      // In step with the README (the deck was rendered again): the dated note has done its work and must go.
+      expect({ deck: "shows the README's count", datedNoteStillInClaims: note !== null }).toEqual({ deck: "shows the README's count", datedNoteStillInClaims: false });
       return;
     }
     expect({ deck: `${deckTests} in ${deckFiles}`, readme: `${readme[1]} in ${readme[2]}`, noted: note !== null }).toEqual({ deck: `${deckTests} in ${deckFiles}`, readme: `${readme[1]} in ${readme[2]}`, noted: true });
