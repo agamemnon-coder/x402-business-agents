@@ -95,3 +95,6 @@ a711ca69f258de95b640a2e7815522611a9eb828:test/owners-runbook.test.ts:generic-api
 # test/tokenize-cli.test.ts in ae1e2dd: a made-up address path for a JSON-RPC server on the test machine itself, written
 # as one literal; the test now builds it at run time.
 ae1e2ddc37804a70b4ddafb581f10e8968742d68:test/tokenize-cli.test.ts:generic-api-key:24
+# src/cli/awxDepth.ts in ff08387: the stand-in deletes these environment variable NAMES before it runs (as
+# src/cli/twoLocks.ts does); no values.
+ff083878d6a3d83d17bbb6be0caf35ce8c56a018:src/cli/awxDepth.ts:generic-api-key:143
