@@ -25,7 +25,7 @@ const trace = JSON.parse(traceRaw) as { mandates: { event: "mandate.bound" | "ma
 const record = loadRecord().record;
 const story = metalStory(record);
 const insp = inspectorRecord();
-const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(/&quot;/g, "\"").replace(/\s+/g, " ");
+const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&quot;/g, "\"").replace(/&amp;/g, "&").replace(/\s+/g, " ");
 const main = /<main[\s\S]*<\/main>/.exec(METAL_PAGE)![0];
 const top = main.slice(0, main.indexOf('<div class="folds card">'));
 const table = /<section class="mt card"[\s\S]*?<\/section>/.exec(main)![0];

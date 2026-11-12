@@ -18,7 +18,7 @@ import { FakeIssuing } from "../src/redteam/issuing.js";
 import { CLAUDE_PAGE } from "../src/servers/dashboard.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
-const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/&quot;/g, "\"").replace(/\s+/g, " ");
+const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&quot;/g, "\"").replace(/&amp;/g, "&").replace(/\s+/g, " ");
 const main = /<main[\s\S]*<\/main>/.exec(CLAUDE_PAGE)![0];
 const block = /<section class="cev card"[\s\S]*?<\/section>/.exec(main)?.[0] ?? "";
 const ev = claudeEvidence();

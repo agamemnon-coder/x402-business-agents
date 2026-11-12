@@ -17,7 +17,7 @@ import {
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const pages = buildPages() as unknown as Record<string, string>;
 const awx = pages.airwallex!;
-const text = (html: string) => html.replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/\s+/g, " ").trim();
+const text = (html: string) => html.replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
 /** The page with every fold taken out, nested ones included (innermost first). */
 function withoutFolds(html: string): string {
   let out = html;
