@@ -4,8 +4,9 @@ Purser's first accounting link for small companies. When Purser has booked or pa
 invoice lands in the company's Moneybird administration, together with its supplier, the PDF, the VAT, the ledger
 account and the payment.
 
-**Status: built and tested against Moneybird's own OpenAPI request schemas only. Nothing has been sent to a live
-Moneybird administration yet. There is no Moneybird account or token yet.**
+**Status: built and tested against Moneybird's own OpenAPI request schemas. On 12 November 2026 Purser read a Moneybird
+sandbox administration live for the first time: its ledger accounts, contacts and tax rates
+([run notes](runs/2026-11-12-moneybird-sandbox.md)). Nothing has been sent to a Moneybird administration yet.**
 
 ## What it sends
 
@@ -42,6 +43,14 @@ Moneybird administration yet. There is no Moneybird account or token yet.**
   Moneybird needs the base-currency amount too (`price_base`).
 - **Ids and money are exact.** Moneybird's ids go past 2^53, so they are read as strings. Amounts are sent as exact
   decimal strings.
+- **One administration, a fixed list of requests.** Before a request leaves, Purser checks two things: it goes to the
+  administration in the settings, and it is on the connector's own list (`MONEYBIRD_ENDPOINTS` in
+  `src/erp/moneybird.ts`).
+  - Nothing on that list sends an e-mail, an invoice or a reminder to a contact, and nothing changes or removes what
+    was sent. A supplier's e-mail address is never sent to Moneybird.
+  - `ERP_MONEYBIRD_SANDBOX_ONLY=on` allows only the sandbox administration of Purser's own tests.
+- **A go and a call budget.** A live command runs only with the owner's go and an approved number of requests
+  (`docs/erp.md`, "A go and a call budget"). The call log names each request under its administration.
 - **Console.** The **Koppelingen** card in the settings shows the link's state: niet gekoppeld, gekoppeld or vraagt
   aandacht. It also shows the last sync and what was sent, failed or waits.
   - The card reads it from the sync results in the audit log.
@@ -60,15 +69,21 @@ Moneybird administration yet. There is no Moneybird account or token yet.**
 3. **Settings on the runner** (environment only, never in git or chat):
    - `ERP_MONEYBIRD_TOKEN`;
    - `ERP_MONEYBIRD_ADMINISTRATION_ID`;
-   - `ERP_MONEYBIRD_TAX_RATES`, for example `{"NL21":"<id>","NL9":"<id>","NL0":"<id>"}`.
+   - `ERP_MONEYBIRD_TAX_RATES`, for example `{"NL21":"<id>","NL9":"<id>","NL0":"<id>"}`. Fill it in after step 4.
    - Optional:
      - `ERP_MONEYBIRD_GL_MAP` (a Purser account to a ledger account id; otherwise the codes are matched);
      - `ERP_MONEYBIRD_PROJECTS` (a cost centre to a project id);
      - `ERP_MONEYBIRD_IGNORE_COST_CENTRES=on`;
-     - `ERP_MONEYBIRD_BASE_CURRENCY` (default EUR).
-4. **Look before sending.** `npm run erp -- pull --connector moneybird --live` lists the ledger accounts and tax rates
-   with their ids, for the maps above. `npm run erp -- sync --connector moneybird --dry-run` shows the requests without
-   sending them.
+     - `ERP_MONEYBIRD_BASE_CURRENCY` (default EUR);
+     - `ERP_MONEYBIRD_SANDBOX_ONLY=on` (only Purser's own sandbox administration may be called).
+4. **Look before sending.**
+   - `npm run erp -- pull --connector moneybird --live` lists the ledger accounts and tax rates with their ids, for the
+     maps above. It needs the token and the administration, not the maps. Each account shows its kind and whether it
+     may stand on a purchase invoice or a journal entry.
+   - Expect to need `ERP_MONEYBIRD_GL_MAP`. The sandbox's chart had Moneybird's own account codes and none of Purser's.
+   - `npm run erp -- sync --connector moneybird --dry-run` shows the requests without sending them.
+     - Known gap (12 November): with real ids in the maps a dry run stops at the first of them. It answers from an
+       example chart that does not hold them.
 5. **Confirm in the sandbox before a real administration:**
    - that a negative-price purchase invoice is the right correction;
    - Moneybird's VAT rounding on a few real invoices.

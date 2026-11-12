@@ -4,8 +4,9 @@ Purser keeps its own books and can also send them to a company's ERP: suppliers,
 payments and journal entries. It can read back the chart of accounts, the suppliers and whether an invoice is paid.
 No CSV is needed. Design: [docs/superpowers/specs/2026-11-08-erp-connectors-design.md](superpowers/specs/2026-11-08-erp-connectors-design.md).
 
-**Status: built and tested against the vendors' documented request and answer shapes only. Nothing has been sent to a
-live ERP yet.** Each connector needs a test administration and its credentials first (below).
+**Status: built and tested against the vendors' documented request and answer shapes. Moneybird was read live from a
+sandbox administration on 12 November 2026 (docs/moneybird.md). Nothing has been sent to a live ERP yet.** Each
+connector needs a test administration and its credentials first (below).
 
 Moneybird, for small companies, has its own page: [docs/moneybird.md](moneybird.md).
 
@@ -46,6 +47,20 @@ Moneybird, for small companies, has its own page: [docs/moneybird.md](moneybird.
 - Retries: rate limits, server and network errors, with back-off and the ERP's Retry-After up to two minutes; an ERP
   that asks to wait longer fails the push, naming the wait. Everything else fails with the ERP's own message. Every
   result is in the audit log.
+- Stops at the call budget (below): the object it was sending fails with that reason and keeps the steps already done,
+  and what follows is not tried. The next run goes on from there.
+
+## A go and a call budget
+
+Every `--live` command needs three settings, or it refuses to run and calls nothing:
+
+- `ERP_LIVE_GO=yes`: the owner's go for this run.
+- `ERP_CALL_BUDGET`: the approved number of requests, for every command of the run together.
+- `ERP_CALL_LOG`: a file outside the repository that counts them.
+
+Each request is written to the log before it is sent, a retry and a lookup too: the time, the method and the endpoint,
+never a body or a header. The request that would go over the number is not sent. Each live command ends by saying how
+many are used, and `npm run erp -- calls` shows the log by endpoint.
 
 ## Commands
 
@@ -57,6 +72,7 @@ npm run erp -- pull --connector exact --live         # read the ERP's chart of a
 npm run erp -- status                                # what was sent, what failed, what needs a correction
 npm run erp -- correct --connector exact --object invoice:<id> --live
 npm run erp -- resolve --connector bc --object invoice:<id> --as synced|retry --by <who>   # a person settles needs_review
+npm run erp -- calls                                 # the run's call log by endpoint, against the approved number
 ```
 
 A dry run needs no account: without settings it uses example settings and says so.

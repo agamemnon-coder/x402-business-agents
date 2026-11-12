@@ -1,9 +1,11 @@
 // The Moneybird connector (src/erp/moneybird.ts) against a stand-in administration that checks every request against
-// Moneybird's own OpenAPI request schemas (test/fakes/moneybird.ts). No live calls: there is no Moneybird account yet.
+// Moneybird's own OpenAPI request schemas (test/fakes/moneybird.ts). No live calls here: what the live API answered to
+// the first pull of a sandbox administration (12 November 2026) is replayed from a fixture, at the end of this file.
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { CHART } from "../src/config/gl.js";
 import { openDb } from "../src/db/open.js";
 import { staticToken } from "../src/erp/auth.js";
 import { readCallLog } from "../src/erp/callBudget.js";
@@ -540,6 +542,47 @@ describe("Moneybird, the sandbox administration's real answers", () => {
     expect(r2[1]!.detail).toMatch(/0% btw, for NL0\) is a sales_invoice rate, not a purchase invoice rate/);
     expect(creditors.fake.posts("/documents/purchase_invoices.json")).toHaveLength(0);
     expect(zero.fake.posts("/documents/purchase_invoices.json")).toHaveLength(0);
+  });
+
+  it("is written up in run notes that say what the answers hold and map by names found in them", () => {
+    const notes = readFileSync(resolve(import.meta.dirname, "../docs/runs/2026-11-12-moneybird-sandbox.md"), "utf8");
+    const onInvoices = realLedger.filter((l) => l.allowed_document_types.includes("purchase_invoice"));
+    // Every count in the notes is the answers' own.
+    expect(notes).toContain(`| \`GET ledger_accounts.json\` | ${realLedger.length} ledger accounts |`);
+    expect(notes).toContain("| `GET contacts.json` | 0 contacts |");
+    expect(notes).toContain(`| \`GET tax_rates.json\` | ${realTax.length} tax rates |`);
+    expect(notes).toContain(`${onInvoices.length} of the ${realLedger.length} accounts are allowed on a purchase invoice`);
+    expect(notes).toContain(`${SANDBOX.answers.length} of the 6 approved`);
+    expect(notes).toContain(`list of ${MONEYBIRD_ENDPOINTS.length} endpoints`);
+    expect(notes).toContain(`\`${ADMIN}\``);
+
+    // The tax rate map names purchase rates that the administration has, each exactly once.
+    const taxRows = [...notes.matchAll(/^\| `([A-Z0-9_]+)` \| ([^|`]+) \| (purchase_invoice|sales_invoice|general_journal_document) \|$/gm)].map((m) => ({ code: m[1]!, name: m[2]!.trim(), type: m[3]! }));
+    expect(taxRows.map((r) => r.code)).toEqual(["NL21", "NL9"]);
+    for (const r of taxRows) {
+      expect(realTax.filter((t) => t.name === r.name && t.tax_rate_type === r.type), `${r.code}: ${r.name}`).toHaveLength(1);
+      expect(r.type).toBe("purchase_invoice");
+    }
+    expect(Number(realTax.find((t) => t.id === rate(taxRows[0]!.name, "purchase_invoice"))!.percentage)).toBe(21);
+    expect(Number(realTax.find((t) => t.id === rate(taxRows[1]!.name, "purchase_invoice"))!.percentage)).toBe(9);
+
+    // The ledger account map: Purser's own account and name, a Moneybird account that exists once, allowed where it is used.
+    const rows = [...notes.matchAll(/^\| `(\d{4})` ([^|]+) \| ([^|`]+) \| ([^|]+) \|$/gm)].map((m) => ({ code: m[1]!, purser: m[2]!.trim(), moneybird: m[3]!.trim(), uses: m[4]!.trim().split(", ") }));
+    expect(rows.length).toBeGreaterThan(0);
+    expect(new Set(rows.map((r) => r.code)).size).toBe(rows.length);
+    for (const r of rows) {
+      expect(CHART[r.code], r.code).toBe(r.purser);
+      const hits = realLedger.filter((l) => l.name === r.moneybird);
+      expect(hits, `${r.code}: ${r.moneybird}`).toHaveLength(1);
+      for (const use of r.uses) {
+        expect(["purchase invoices", "journal entries"]).toContain(use);
+        expect(hits[0]!.allowed_document_types, `${r.moneybird} on ${use}`).toContain(use === "purchase invoices" ? "purchase_invoice" : "general_journal_document");
+      }
+    }
+    // The fixtures the next step sends (test/fakes/erp.ts) use accounts that are on the map, where they are used.
+    const mapped = (code: string, use: string) => rows.some((r) => r.code === code && r.uses.includes(use));
+    for (const l of sampleInvoice().lines) expect(mapped(l.glAccount, "purchase invoices"), l.glAccount).toBe(true);
+    for (const l of sampleJournal().lines) expect(mapped(l.glAccount, "journal entries"), l.glAccount).toBe(true);
   });
 
   it("takes a journal entry on that chart's accounts for money and costs", async () => {
