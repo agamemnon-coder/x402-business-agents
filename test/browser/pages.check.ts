@@ -339,8 +339,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         if (filters[0] !== "all" || filters.length < 5) fail(`/runs ${tag}: the filters are not All and the partners (${filters.join(", ")})`);
         for (const id of filters.slice(1)) {
           await page.click(`nav.flt a[href="#${id}"]`);
-          // The mark follows the hashchange event, which fires after the click returns.
-          await page.waitForFunction(`location.hash === "#${id}" && document.querySelector('nav.flt a[href="#${id}"]').getAttribute("aria-current") === "true"`, undefined, { timeout: 2000 }).catch(() => undefined);
+          // The mark follows the hashchange event, which fires after the click returns. Polled with page.evaluate, which the
+          // page's CSP allows (waitForFunction evaluates a string in the page, which its CSP refuses as eval).
+          for (let i = 0; i < 40 && !(await page.evaluate(`location.hash === "#${id}" && document.querySelector('nav.flt a[href="#${id}"]').getAttribute("aria-current") === "true"`)); i++) await page.waitForTimeout(50);
           const seen = await rowsNow();
           const wrong = seen.filter((r) => r.shown !== (r.cls.includes(`f-${id}`) || r.cls.includes("newest")));
           if (wrong.length) fail(`/runs#${id} ${tag}: shows or hides the wrong runs (${wrong.map((r) => r.key).join(", ")})`);
