@@ -607,6 +607,16 @@ export const ATTACKS: readonly Attack[] = [
     note: "A first signature counts only for the exact terms it was made over. Found here and fixed: a signature made before the terms changed was counted for the changed terms (src/policy/approvals.ts).",
     needs: "the CFO has set a four-eyes threshold (approval.four_eyes_eur)",
   },
+  // The hostile model, at every tool.
+  {
+    id: "hostile-model-every-tool",
+    description: "A hostile model calls every tool of every agent with the attacker's payee, amounts over the limit, fields that do not exist, other agents' tools and the same call again.",
+    breach: ["agent_output"], target: "card_purchase", alsoTries: ["bank_payout", "onchain_payment"],
+    action: "Move money to the attacker through any tool an agent has.",
+    bypasses: ["L1"], stoppedBy: "L2",
+    note: "One kind of call is let through to the card on purpose (a plan over the card's limit), and Airwallex's stand-in declines it, as in hostile-agent-card. An agent can still spend inside its limits: that is what the limits are for.",
+    evidence: EVIDENCE.cardLimit,
+  },
 ];
 
 /** Listed for the payables agents that another branch builds; no test yet, in no count. */
@@ -735,6 +745,57 @@ export const LIMITS: readonly Limit[] = [
     what: "Four eyes and Airwallex's transfer approval guard a payout only once the company switches them on.",
     stillHolds: "Without them a bank payout still needs Purser's checks and the CFO's signature over the exact terms.",
     source: "docs/controls-matrix.md; docs/airwallex-approvals.md",
+  },
+];
+
+/** A hole the matrix found in Purser's own code, and the fix: each has an attack whose test fails without it. */
+export interface Fix {
+  /** The attack whose test fails without the fix. */
+  attack: string;
+  /** What was wrong, in plain words. */
+  was: string;
+  /** What the code does now. */
+  now: string;
+  /** The file that changed. */
+  where: string;
+}
+
+export const FIXES: readonly Fix[] = [
+  {
+    attack: "changed-after-signing-at-booking",
+    was: "A payout was booked as paid without checking again that its terms were the ones the CFO signed.",
+    now: "The books take a paid payout only while its stored terms still hash to what the CFO approved and the payout matches them; otherwise they book nothing and say why (ap.booking_refused).",
+    where: "src/ap/pay.ts",
+  },
+  {
+    attack: "changed-after-signing-at-archive",
+    was: "A payment receipt was filed from the stored terms without checking them against the approved hash.",
+    now: "The archive files a receipt only while its terms still hash to what the CFO approved; otherwise it files none and says why (vault.receipt_refused).",
+    where: "src/vault/build.ts",
+  },
+  {
+    attack: "emergency-stop-ignored",
+    was: "After the emergency stop, a card purchase was refused only once the card was frozen at Airwallex; in the moments before, Purser's own code let it through to the card.",
+    now: "Purser's own code refuses a card purchase as soon as the stop is on.",
+    where: "src/policy/holds.ts",
+  },
+  {
+    attack: "approval-run-by-another-executor",
+    was: "The euro payment executor ran any kind of signed payment: a supplier payment signed in another currency, started there after its own first try failed, left as the same number of euros.",
+    now: "The euro executor runs invoice payments only and refuses any other kind before anything is sent.",
+    where: "src/executors/invoicePayment.ts",
+  },
+  {
+    attack: "expiry-edges",
+    was: "The step that begins a payment read the expiry from a copy stored beside the terms, which the signed hash does not cover: pushed out, an approval ran after the expiry the CFO signed.",
+    now: "The expiry inside the signed terms counts, or the copy when that is earlier.",
+    where: "src/policy/approvals.ts",
+  },
+  {
+    attack: "cosignature-before-terms-change",
+    was: "Where two people must sign, a first signature made before the stored terms changed was counted towards the changed terms, so one person's signature over them was enough.",
+    now: "A first signature counts only for the exact terms it was made over.",
+    where: "src/policy/approvals.ts",
   },
 ];
 
