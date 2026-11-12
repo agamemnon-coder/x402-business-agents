@@ -130,6 +130,10 @@ describe("the engine in a Durable Object per company, behind the cloud's routes 
     const r = await req("POST", "/v1/engine/documents", { key: A.session, body: { filename: "notes.txt", base64: b64(Buffer.from("just some words")) } });
     expect(r.status, JSON.stringify(r.json)).toBe(400);
     expect(r.json.error).toMatch(/^notes\.txt is not a PDF.*nothing was filed$/);
+    // The largest document the route takes (15 MB) crosses the stub too: it is the inbox, inside the object, that refuses it.
+    const large = await req("POST", "/v1/engine/documents", { key: A.session, body: { filename: "large.bin", base64: Buffer.alloc(15 * 1024 * 1024, 0x20).toString("base64") } });
+    expect(large.status, JSON.stringify(large.json)).toBe(400);
+    expect(large.json.error).toMatch(/^large\.bin is not a PDF.*nothing was filed$/);
     expect(((await req("GET", "/v1/engine/invoices", { key: A.session })).json.items as Invoice[]).map((i) => `${i.id} ${i.status}`)).toEqual(["AP-0001 ready"]);
   });
 
