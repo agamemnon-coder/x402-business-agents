@@ -19,7 +19,9 @@ import { qrSvg } from "./qr.js";
 import { logEvent } from "./log.js";
 import { integrations } from "./integrations.js";
 import { platformCompanies } from "./platformView.js";
-import { accountOf, bindingOf, onboardingLink, openAccount, PlatformRefused, receiveAccountEvent, type AwxPlatformEnv } from "./awxPlatform.js";
+import { accountOf, bindingOf, onboardingLink, openAccount, PlatformRefused, receiveAccountEvent, refreshAccount, type AwxPlatformEnv } from "./awxPlatform.js";
+import { accessToken, ConnectRefused, connections, disconnect, finishConnect, receivePartnerEvent, startConnect, type ConnectEnv } from "./connect.js";
+import { isProvider, type OAuthProviderName } from "../../src/lib/oauth.js";
 import { cloudHealth, companyStatus, HealthReport, MonitorRefused, notify, receiveReport, removeWebhook, setWebhook, webhookOf, type Outbound } from "./monitor.js";
 
 export interface CloudEnv {
@@ -56,6 +58,11 @@ export interface CloudEnv {
    * hosted onboarding template and the webhook secret. Absent (the default): the /v1/airwallex routes answer 404.
    */
   awxPlatform?: AwxPlatformEnv;
+  /**
+   * A company connects accounts it already has by OAuth (cloud/src/connect.ts, docs/real-customers.md): its Airwallex
+   * account and its Moneybird administration. Absent (the default): the /v1/connect routes answer 404.
+   */
+  connect?: ConnectEnv;
 }
 
 interface Ctx { env: CloudEnv; req: Request; url: URL; now: Date; params: string[]; caller: Caller | null; db: TenantDb | null }
@@ -113,6 +120,20 @@ export function withoutSecret(r: Record<string, unknown>): Record<string, unknow
 function platformOf(c: Ctx): AwxPlatformEnv {
   if (!c.env.awxPlatform) throw new PlatformRefused(404, "opening an Airwallex account through Purser is not switched on");
   return c.env.awxPlatform;
+}
+/** The OAuth connection configuration, or 404: the cloud does not offer connecting accounts by OAuth. */
+function connectOf(c: Ctx): ConnectEnv {
+  if (!c.env.connect) throw new ConnectRefused(404, "connecting accounts by OAuth is not switched on");
+  return c.env.connect;
+}
+function providerOf(c: Ctx): OAuthProviderName {
+  const p = c.params[0]!;
+  if (!isProvider(p)) throw new ConnectRefused(404, "no such provider (airwallex or moneybird)");
+  return p;
+}
+/** A signed-in owner, for connecting or disconnecting an account (never a key: a key cannot consent for the company). */
+function ownerSession(c: Ctx): void {
+  if (c.caller!.kind !== "session" || c.caller!.role !== "owner") throw new AuthError(403, "only a signed-in owner connects or disconnects the company's accounts");
 }
 /** A signed-in owner only: not a key, not another role. */
 function ownerOnly(c: Ctx): void {
@@ -172,6 +193,55 @@ export const ROUTES: Route[] = [
       return json(200, await receiveAccountEvent(c.env.sql, p, c.req.headers, text, c.now));
     } catch (e) {
       if (e instanceof PlatformRefused && e.status === 401) await noteFailedAuth(c.env.sql, ip, null, c.now);
+      throw e;
+    }
+  } },
+  { method: "POST", path: "/v1/airwallex/account/refresh", summary: "Read the onboarding status of the company's Airwallex account from Airwallex now (for a late or missed webhook); only its id and status are kept.", need: "admin", run: async (c) => {
+    const p = platformOf(c);
+    ownerOnly(c);
+    return json(200, { account: await refreshAccount(c.env.sql, c.caller!.tenantId, p, c.now) });
+  } },
+  { method: "GET", path: "/v1/connect", summary: "The accounts the company connected by OAuth (Airwallex, Moneybird): status, the Airwallex account id, scopes and when; never a token.", need: "admin", run: async (c) =>
+    json(200, await connections(c.env.sql, c.caller!.tenantId, c.env.connect)) },
+  { method: "POST", path: "/v1/connect/{provider}/start", summary: "Start connecting the company's own account (airwallex or moneybird) for the signed-in owner: returns the provider's sign-in and consent URL (state, and PKCE where the provider takes it).", need: "admin", run: async (c) => {
+    const env = connectOf(c);
+    ownerSession(c);
+    return json(200, await startConnect(c.env.sql, c.caller!.tenantId, c.caller!.principal, providerOf(c), env, c.now));
+  } },
+  { method: "GET", path: "/v1/connect/{provider}/callback", summary: "Where the provider sends the owner's browser back: forwards the code and state to the console (in the address's fragment), where the signed-in owner finishes the connection. Stores nothing.", need: "public", run: async (c) => {
+    connectOf(c);
+    const provider = providerOf(c);
+    const q = c.url.searchParams;
+    const keep = (v: string | null) => (v && /^[A-Za-z0-9._~-]{1,512}$/.test(v) ? v : "");
+    const out = new URLSearchParams({ provider });
+    const code = keep(q.get("code")), state = keep(q.get("state")), error = keep(q.get("error"));
+    if (code && state) { out.set("code", code); out.set("state", state); } else out.set("error", error || "invalid_request");
+    return new Response(null, { status: 302, headers: { location: `${c.env.origin}/#/connect?${out.toString()}`, "cache-control": "no-store", "referrer-policy": "no-referrer" } });
+  } },
+  { method: "POST", path: "/v1/connect/{provider}/finish", summary: "Finish connecting: the signed-in owner who started it sends the code and state back; Purser exchanges the code with the provider and keeps the tokens sealed for this company only.", need: "admin", run: async (c) => {
+    const env = connectOf(c);
+    ownerSession(c);
+    const b = await body(c, z.object({ code: z.string().min(1).max(512).regex(/^[A-Za-z0-9._~-]+$/), state: z.string().min(16).max(512).regex(/^[A-Za-z0-9._~-]+$/) }).strict(), 4_000);
+    return json(201, { connection: await finishConnect(c.env.sql, c.caller!.tenantId, c.caller!.principal, providerOf(c), env, b, c.now) });
+  } },
+  { method: "GET", path: "/v1/connect/{provider}/token", summary: "For the company's own runner (a sync key): a short-lived access token for the company's connected account, refreshed when needed. Every call for this company then uses it; it is never for another company.", need: "sync", run: async (c) => {
+    const env = connectOf(c);
+    return json(200, await accessToken(c.env.sql, c.caller!.tenantId, providerOf(c), env, c.now));
+  } },
+  { method: "DELETE", path: "/v1/connect/{provider}", summary: "Disconnect: Purser removes the company's tokens at once (Moneybird: revoked at Moneybird too). Airwallex documents no revocation for apps: the owner also removes Purser in Airwallex's settings.", need: "admin", run: async (c) => {
+    const env = connectOf(c);
+    ownerSession(c);
+    return json(200, await disconnect(c.env.sql, c.caller!.tenantId, providerOf(c), env, c.now));
+  } },
+  { method: "POST", path: "/v1/connect/airwallex/webhook", summary: "Airwallex's partner_connection.disconnected webhook (signed: x-timestamp, x-signature): the connections of the accounts it names end.", need: "public", run: async (c) => {
+    const env = connectOf(c);
+    const ip = c.req.headers.get("cf-connecting-ip") ?? "unknown";
+    if (await failedAuthBlocked(c.env.sql, ip, c.now, c.env.rate?.failedAuthPerMinute ?? 20)) return err(429, "too many failed signatures from this address; wait a minute");
+    const text = await readCapped(c.req, 64_000);
+    try {
+      return json(200, await receivePartnerEvent(c.env.sql, env, c.req.headers, text, c.now));
+    } catch (e) {
+      if (e instanceof ConnectRefused && e.status === 401) await noteFailedAuth(c.env.sql, ip, null, c.now);
       throw e;
     }
   } },
@@ -533,6 +603,7 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
     if (e instanceof ExportRefused) return err(e.status, e.message);
     if (e instanceof MonitorRefused) return err(400, e.message);
     if (e instanceof PlatformRefused) return err(e.status, e.message);
+    if (e instanceof ConnectRefused) return err(e.status, e.message);
     // A write that lost a race with another request for the same company: nothing of it was written.
     if (e instanceof WriteConflict) return err(409, "another change for this company landed at the same time; nothing of this request was written: send it again");
     // Nothing internal leaks: the caller gets a reference, the log gets the error.
