@@ -102,7 +102,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (tabs.slice(0, 3).join() !== "Home,Try,Proof" || tabs.length > 5 || (!WATCH_IN_MENU && (tabs.some((t) => /watch/i.test(t)) || (await page.locator('nav.tabs a[href*="watch"]').count()) > 0))) fail(`/home ${tag}: the menu is not Home, Try, Proof (at most five, no Watch): ${tabs.join(", ")}`);
       await menu(page, `/home ${tag}`);
     if (w < 500) await checkTaps(page, { name: `/home ${tag}, header and footer`, scopes: CHROME, fail });
-    await checkHome(page, { url: `${base}/`, name: `/home ${tag}`, width: w, height: h, touch: w < 500, tryHref: "try", fail, quick: true });
+    await checkHome(page, { url: `${base}/`, name: `/home ${tag}`, width: w, height: h, touch: w < 500, tryHref: "https://purser-try.max-31b.workers.dev/try", fail, quick: true });
     await look(page, `/home ${tag}, after the hero's check`, w);
     await page.goto(`${base}/home?demo=4`, { waitUntil: "load" });
     await page.screenshot({ path: join(shots, `home-${tag}.png`) });
