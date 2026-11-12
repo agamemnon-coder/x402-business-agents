@@ -156,6 +156,32 @@ describe("the console of a cloud with an engine", () => {
     for (const k of ["action.needs_vendor", "action.currency_not_paid"]) expect(js).toContain(`t('${k}'`);
   });
 
+  it("carries the proof's words in both languages (paid, booked, archived) and the archive page's, with the stand-in label on the paid block", () => {
+    const html = consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "", engine: true });
+    const js = script(html);
+    const keys = ["cs.eng.proof_h", "cs.eng.paid_h", "cs.eng.paid_line", "cs.eng.test_bank", "cs.eng.paid_fold", "cs.eng.fee", "cs.eng.method", "cs.eng.transfer_ref", "cs.eng.payment_id", "cs.eng.paid_wait",
+      "cs.eng.booked_h", "cs.eng.booked_line", "cs.eng.booked_uneven", "cs.eng.booked_fold", "cs.eng.account", "cs.eng.chain_head", "cs.eng.booked_wait",
+      "cs.eng.archived_h", "cs.eng.archived_line", "cs.eng.archived_fold", "cs.eng.archived_wait", "cs.eng.open_archive",
+      "cs.eng.archive", "cs.eng.archive_lede", "cs.eng.archive_empty", "cs.eng.archive_pick", "cs.eng.kb"] as const;
+    for (const k of keys) {
+      for (const lang of ["en", "nl"] as const) expect(MESSAGES[lang][k], `${lang} ${k}`).toBeTruthy();
+      expect({ k, carried: html.split(`"${k}":`).length - 1 }).toEqual({ k, carried: 2 });
+      expect(js, k).toContain(`t('${k}'`);
+    }
+    // Wherever money moved: the stand-in bank and test money, on the block itself.
+    expect(MESSAGES.en["cs.eng.test_bank"]).toMatch(/^Stand-in bank, test money$/);
+    expect(MESSAGES.nl["cs.eng.test_bank"]).toMatch(/^Nagebootste bank, testgeld$/);
+    // The archive's files open in the same sandboxed frame, with bytes the page fetched from the vault route.
+    expect(js).toContain("'/v1/engine/vault/file?path='+encodeURIComponent(");
+    expect(js).toContain("f.setAttribute('sandbox','allow-scripts')");
+    expect(js).toContain("PDF_MAX_BYTES");
+    // A page of its own, reached from links: the menu keeps its five items.
+    expect(js).toContain("'/archive':archiveView");
+    expect(html.match(/data-tab="/g)).toHaveLength(5);
+    expect(html).not.toMatch(/<nav[^>]*>[^]*#\/archive[^]*<\/nav>/);
+    expect(js).toContain("a.href='#/archive'");
+  });
+
   it("asks the engine to pay, set up and approve through the page's one request that marks it under way, with user verification required", () => {
     const js = script(consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "", engine: true }));
     for (const path of ["'/v1/engine/invoices/'", "'/v1/engine/passkey/start'", "'/v1/engine/passkey/finish'", "'/v1/engine/proposals/'"]) expect(js).toContain(`engineCall(${path}`);

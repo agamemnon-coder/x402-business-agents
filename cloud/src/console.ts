@@ -252,6 +252,33 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
 .pay summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 600; }
 .pay details dl.read { margin-top: 10px; }
 .stack > .work { margin-top: 0; }
+/* The proof on a paid invoice: paid, booked, archived, each a result line, its details folded, hashes last. */
+.proof .pb { padding: 14px 0 0; margin-top: 14px; border-top: 1px solid var(--border); }
+.proof .pb:first-of-type { padding-top: 0; margin-top: 0; border-top: 0; }
+.proof p.pr { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin: 0; font-size: 14px; }
+.proof p.pr > .ic { flex: none; color: var(--ok); }
+.proof .pb.wait p.pr > .ic { color: var(--faint); }
+.proof p.pr > b { font-weight: 650; }
+.proof p.wt { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+.proof details, .archive details { margin-top: 10px; }
+.proof summary, .archive summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 600; }
+.proof details dl.read, .proof details .table { margin-top: 10px; }
+.proof .table th, .proof .table td { padding: 6px 8px; }
+.proof .table tr.en td { padding-top: 10px; font-size: 13px; color: var(--muted); }
+ul.files { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+ul.files li { min-width: 0; font-size: 14px; }
+ul.files button.linkish { text-align: left; font-weight: 600; overflow-wrap: anywhere; }
+ul.files button.linkish[aria-pressed="true"] { color: var(--text); }
+ul.files .fd { display: block; color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; margin-top: 2px; }
+.proof .pages { margin-top: 12px; }
+.proof a.arch { display: inline-block; margin-top: 12px; font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; }
+/* The archive's tree: one folder per line, collapsed below the year. */
+.archive details { margin: 4px 0 0 0; }
+.archive details details { margin-left: 14px; }
+.archive summary { color: var(--text); font-size: 14px; }
+.archive ul.files { margin: 6px 0 4px 14px; }
+/* A phone: on an invoice's page what was done and what to do come before the document. */
+@media (max-width: 980px) { .split.inv > .stack { order: -1; } }
 `;
 
 // The page's frame in Dutch (the default); the script re-words it in the person's language when it starts.
@@ -668,8 +695,13 @@ async function invoiceView(id){
   title((i.vendor||t('cs.invoice'))+' '+(i.invoice_no||i.id));
   const back=el('a','back',[ic('arrow-left'),' '+t('dt.all')]);back.href='#/invoices';
   let top=detailTop(i),tl=timelineOf(i);
-  // The read model again, once the engine filed or paid it: the head (its status chip) and the timeline follow.
-  const again=async()=>{const j=await api('/v1/invoices/'+encodeURIComponent(id));if(!top.isConnected)return;const nt=detailTop(j),nl=timelineOf(j);top.replaceWith(nt);tl.replaceWith(nl);top=nt;tl=nl};
+  // With an engine, a paid invoice shows its proof (paid, booked, archived) where the payment card was: first.
+  let proof=eng&&i.status==='paid'?proofCard(i):null;let stack=null;
+  // The read model again, once the engine filed or paid it: the head (its status chip), the timeline and the proof follow.
+  const again=async()=>{const j=await api('/v1/invoices/'+encodeURIComponent(id));if(!top.isConnected)return;const nt=detailTop(j),nl=timelineOf(j);top.replaceWith(nt);tl.replaceWith(nl);top=nt;tl=nl;
+    if(!eng||j.status!=='paid')return;
+    if(proof){await proof.refresh(j);return}
+    proof=proofCard(j);if(pay&&pay.isConnected)pay.after(proof);else stack.prepend(proof)};
   const mine=ev&&(ev.items||[]).find((x)=>x.id===id);
   const pay=mine?payCard({inv:mine,eng,write:(await me()).scopes.includes('admin'),moved:again}):null;
   const acct=r.iban?'IBAN …'+String(r.iban).slice(-4):r.account_number?t('dt.account')+' …'+String(r.account_number).slice(-4):(i.iban_last4?'…'+i.iban_last4:'');
@@ -685,11 +717,98 @@ async function invoiceView(id){
   getDoc.onclick=async()=>{getDoc.disabled=true;try{await download('/v1/invoices/'+encodeURIComponent(id)+'/document',(i.invoice_no||i.id).replace(/[^\w.-]+/g,'_')+'.pdf')}catch(e){if(!(e instanceof Expired))getDoc.after(note(e.message,'bad'))}finally{getDoc.disabled=false}};
   const pages=el('div','pages',[el('p','wait',t('drawing_document'))]);
   const doc=el('div','card docv',[el('div','bar2',[ic('file-text'),el('span','fn',t('cs.as_received')+(i.doc_sha256?' · SHA-256 '+String(i.doc_sha256).slice(0,12)+'…':'')),getDoc]),pages]);
-  // The payment card where the person acts, first; the panel "At work" last; without an engine, the note that the phone approves.
-  view().replaceChildren(back,top,el('div','split',[doc,el('div','stack',[pay,read,checks,el('div','card panel',[el('h2','',t('dt.timeline')),tl]),pay?workPanel():note(t('cs.approved_on_phone'))])]));
-  if(pay)WORK.onEvents=(evs)=>{if(evs.some((e)=>e.event==='vault.filed'||(e.event==='ap.status'&&e.fields&&e.fields.status==='paid')))again().catch(()=>{})};
-  drawPdf(id,pages);
+  // The payment card where the person acts, or the proof once paid, first; the panel "At work" last; without an engine,
+  // the note that the phone approves. On a phone this column comes before the document (.split.inv).
+  stack=el('div','stack',[pay,proof,read,checks,el('div','card panel',[el('h2','',t('dt.timeline')),tl]),pay||proof?workPanel():note(t('cs.approved_on_phone'))]);
+  view().replaceChildren(back,top,el('div','split inv',[doc,stack]));
+  if(pay||proof)WORK.onEvents=(evs)=>{if(evs.some((e)=>e.event==='vault.filed'||(e.event==='ap.status'&&e.fields&&e.fields.status==='paid')))again().catch(()=>{})};
+  drawPdf('/v1/invoices/'+encodeURIComponent(id)+'/document',pages,t('cs.invoice_drawn'));
 }
+
+// --- The proof on a paid invoice (engine only): paid, booked, archived, each from what the read model and the archive say --
+// Every page of a list route (limit 200, its cursor), so nothing is missed on a busy company.
+async function everyPage(path){let out=[],cursor=null;for(let n=0;n<50;n++){const r=await api(path+(path.includes('?')?'&':'?')+'limit=200'+(cursor?'&cursor='+encodeURIComponent(cursor):''));out=out.concat(r.items||[]);cursor=r.next_cursor;if(!cursor)break}return out}
+// A path segment as the archive names it (src/vault/layout.ts safeSegment), to find this invoice's receipt by its name.
+const seg=(s)=>{let v=String(s||'').normalize('NFC').replace(/\p{Cf}/gu,'').replace(/[\u0000-\u001f\u007f<>:"/\\|?*]+/g,' ').replace(/\.{2,}/g,' ').replace(/\s+/g,' ').trim().replace(/^[.\s]+|[.\s]+$/g,'');return v||'_'};
+const fileName=(p)=>String(p).slice(String(p).lastIndexOf('/')+1);
+const folderOf=(p)=>String(p).slice(0,Math.max(0,String(p).lastIndexOf('/')));
+const kb=(n)=>t('cs.eng.kb',{n:(Math.max(0,Number(n)||0)/1024).toFixed(1)});
+// This invoice's files: the original by its own hash (the invoice's doc_sha256), the receipt by the name the archive gives it
+// (Betalingen/<date> <supplier> <invoice no>.pdf, or that name with a correction or id beside it).
+function filesOf(i,files){const base=seg(i.vendor)+' '+seg(i.invoice_no);
+  const ours=files.filter((f)=>{if(f.kind==='invoice')return !!i.doc_sha256&&f.sha256===i.doc_sha256;if(f.kind!=='receipt')return false;
+    const n=fileName(f.path).replace(/^\d{4}-\d{2}-\d{2} /,'').replace(/\.pdf$/i,'');return n===base||n.startsWith(base+' (')});
+  return ours.sort((a,b)=>(a.kind===b.kind?a.path.localeCompare(b.path):a.kind==='invoice'?-1:1))}
+// A file's name to open it in the viewer, its folder small beneath.
+function fileItem(f,open){const b=el('button','linkish',fileName(f.path));b.type='button';b.setAttribute('aria-pressed','false');b.onclick=()=>open(f,b);
+  return el('li','',[b,el('span','fd',folderOf(f.path))])}
+// One file of the archive in the sandboxed frame; the button that opened it is marked.
+function vaultOpener(box,list){return (f,b)=>{for(const x of list.querySelectorAll('button[aria-pressed]'))x.setAttribute('aria-pressed','false');b.setAttribute('aria-pressed','true');
+  box.replaceChildren(el('p','wait',t('drawing_document')));drawPdf('/v1/engine/vault/file?path='+encodeURIComponent(f.path),box,fileName(f.path))}}
+function proofCard(i0){
+  const box=el('section','card panel proof');box.id='proof';
+  box.append(el('h2','',t('cs.eng.proof_h')),el('p','lede',t('loading')));
+  const block=(name,icon,head,line,kids)=>el('div','pb '+name,[el('p','pr',[ic(icon),el('b','',head),line?el('span','',line):null]),...kids.filter(Boolean)]);
+  const waiting=(name,head,words)=>{const b=block(name+' wait','clock',head,'',[el('p','wt',words)]);return b};
+  const failed=(e)=>e&&e.message?note(e.message,'bad'):null;
+  // Each source on its own: one that fails leaves the others standing.
+  const get=(p)=>p.then((v)=>({v}),(e)=>{if(e instanceof Expired)throw e;return {e}});
+  function paid(i,ps,txs){
+    if(ps.e)return block('paid wait','clock',t('cs.eng.paid_h'),'',[failed(ps.e)]);
+    // The read model links a payment to its invoice by "<invoice no> · <supplier>" (src/cloudsync/client.ts batchesFor).
+    const p=ps.v.filter((x)=>x.invoice_no===i.invoice_no+' · '+i.vendor).sort((a,b)=>String(a.updated_at).localeCompare(String(b.updated_at))).pop();
+    if(!p)return waiting('paid',t('cs.eng.paid_h'),t('cs.eng.paid_wait'));
+    const tx=txs.v?txs.v.find((x)=>x.id==='transfer:'+p.id):null;
+    const fm=/^([A-Z]{3,4}) (\d+\.\d{2})$/.exec(String(p.fee_actual||''));const fee=fm?ma(fm[1],fm[2]):tx&&tx.fee?ma(tx.fee.currency,tx.fee.amount):'';
+    const b=block('paid','circle-check',t('cs.eng.paid_h'),t('cs.eng.paid_line',{money:ma(p.currency,p.amount),date:day(p.updated_at)}),[]);
+    b.firstChild.append(el('span','pill ok',String(p.status||'')),el('span','pill warn',t('cs.eng.test_bank')));
+    b.append(el('details','',[el('summary','',t('cs.eng.paid_fold')),dl([[t('status'),String(p.status||'')],[t('amount'),ma(p.currency,p.amount)],[t('cs.eng.fee'),fee],[t('cs.eng.method'),p.method],
+      [t('cs.eng.transfer_ref'),p.transfer_id||(tx&&tx.proof)||'','mono'],[t('cs.eng.payment_id'),p.id,'mono']])]));
+    if(txs.e)b.append(failed(txs.e));
+    return b}
+  function booked(i,ps,txs,es){
+    if(es.e)return block('booked wait','clock',t('cs.eng.booked_h'),'',[failed(es.e)]);
+    const p=ps.v?ps.v.filter((x)=>x.invoice_no===i.invoice_no+' · '+i.vendor).sort((a,b)=>String(a.updated_at).localeCompare(String(b.updated_at))).pop():null;
+    const tx=p&&txs.v?txs.v.find((x)=>x.id==='transfer:'+p.id):null;
+    // This invoice's entries: its accrual on receipt (source ap-accrual|<id>, any version), the payment's entries as the
+    // transactions register books them, and any entry that reverses one of these.
+    const ids=new Set(tx&&tx.booking?tx.booking.entry_ids:[]);
+    const mine=es.v.filter((e)=>String(e.source_key||'').split('@')[0]==='ap-accrual|'+i.id||ids.has(e.entry_id));
+    const have=new Set(mine.map((e)=>e.entry_id));
+    for(const e of es.v)if(e.reverses!==null&&e.reverses!==undefined&&have.has(e.reverses)&&!have.has(e.entry_id)){mine.push(e);have.add(e.entry_id)}
+    mine.sort((a,b)=>a.entry_id-b.entry_id);
+    if(!mine.length)return waiting('booked',t('cs.eng.booked_h'),t('cs.eng.booked_wait'));
+    const dr={},cr={};for(const e of mine)for(const l of e.lines||[]){dr[l.currency]=(dr[l.currency]||0)+(Number(l.debit_cents)||0);cr[l.currency]=(cr[l.currency]||0)+(Number(l.credit_cents)||0)}
+    const even=Object.keys({...dr,...cr}).every((c)=>(dr[c]||0)===(cr[c]||0));
+    const tb=el('tbody','');
+    for(const e of mine){const h=el('td','','#'+e.entry_id+' · '+day(e.posting_date)+' · '+data('journal',e.description||''));h.colSpan=3;tb.append(el('tr','en',[h]));
+      for(const l of e.lines||[])tb.append(el('tr','ln',[el('td','',l.account+(l.vat_code?' · '+t('cs.vat_code',{code:l.vat_code}):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
+    const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('cs.eng.account')),el('th','r',t('cs.debit')),el('th','r',t('cs.credit'))])]),tb]);
+    // The head of the ledger chain: the newest entry's own hash, as the read model holds it (a session may not ask /v1/sync/state).
+    const head=es.v[es.v.length-1];
+    return block('booked',even?'circle-check':'triangle-alert',t('cs.eng.booked_h'),even?t('cs.eng.booked_line',{n:mine.length}):t('cs.eng.booked_uneven',{n:mine.length}),
+      [el('details','',[el('summary','',t('cs.eng.booked_fold')),el('div','scroll',tbl),head?dl([[t('cs.eng.chain_head',{n:head.entry_id}),head.entry_hash,'mono']]):null])])}
+  function archived(i,vs){
+    if(vs.e)return block('archived wait','clock',t('cs.eng.archived_h'),'',[failed(vs.e)]);
+    const fs=filesOf(i,vs.v.files||[]);
+    const arch=el('a','arch',t('cs.eng.open_archive'));arch.href='#/archive';
+    if(!fs.length)return block('archived wait','clock',t('cs.eng.archived_h'),'',[el('p','wt',t('cs.eng.archived_wait')),arch]);
+    const list=el('ul','files');const viewer=el('div','pages');const open=vaultOpener(viewer,list);
+    for(const f of fs)list.append(fileItem(f,open));
+    return block('archived','circle-check',t('cs.eng.archived_h'),t('cs.eng.archived_line',{n:fs.length}),
+      [list,viewer,el('details','',[el('summary','',t('cs.eng.archived_fold')),dl(fs.map((f)=>[fileName(f.path),f.sha256,'mono']))]),arch])}
+  // One read at a time; one more if asked meanwhile.
+  let busy=null,more=false,inv=i0,seen='';
+  async function load(){
+    const [ps,txs,es,vs]=await Promise.all([get(everyPage('/v1/payments')),get(everyPage('/v1/transactions?rail=airwallex_transfer')),get(everyPage('/v1/ledger/entries')),get(api('/v1/engine/vault'))]);
+    if(seen&&!box.isConnected)return;
+    // Drawn again only when an answer changed, so an open fold or file stays open while the engine carries on.
+    const sig=JSON.stringify([inv.status,inv.invoice_no,inv.vendor,inv.doc_sha256,ps,txs,es,vs]);if(sig===seen)return;seen=sig;
+    box.replaceChildren(el('h2','',t('cs.eng.proof_h')),paid(inv,ps,txs),booked(inv,ps,txs,es),archived(inv,vs))}
+  box.refresh=(j)=>{if(j)inv=j;if(busy){more=true;return busy}
+    busy=(async()=>{try{do{more=false;await load()}while(more)}catch(e){if(!(e instanceof Expired))box.append(note(e.message,'bad'))}finally{busy=null}})();return busy};
+  box.refresh();
+  return box}
 
 // --- The payment card (engine only): pay, set up the approval passkey on this device, approve the exact terms ------------
 // What a passkey made or signed, as @simplewebauthn/server reads it (src/approve/client.ts serializeRegistration and
@@ -753,15 +872,16 @@ function payCard(o){
 // The supplier's PDF is drawn in a sandboxed frame with an opaque origin (red team round 5): pdf.js parses it there, in
 // a worker, under its own policy and time limit; the frame cannot reach this page, its session or the API. This page
 // fetches the bytes (it holds the session) and hands them over; if the frame cannot draw them, the download stays.
+// src: this origin's API path that answers the PDF (an invoice's document, a file of the archive); name: the frame's title.
 const PDF_MAX_BYTES=16*1024*1024;
-async function drawPdf(id,box){
+async function drawPdf(src,box,name){
   try{
-    const r=await api('/v1/invoices/'+encodeURIComponent(id)+'/document',{raw:true});
+    const r=await api(src,{raw:true});
     const buf=await r.arrayBuffer();
     if(buf.byteLength>PDF_MAX_BYTES){box.replaceChildren(el('p','wait',t('cs.too_large')));return}
-    const f=document.createElement('iframe');f.setAttribute('sandbox','allow-scripts');f.src='/pdfview';f.className='pdfframe';f.title=t('cs.invoice_drawn');f.setAttribute('referrerpolicy','no-referrer');
+    const f=document.createElement('iframe');f.setAttribute('sandbox','allow-scripts');f.src='/pdfview';f.className='pdfframe';f.title=name||t('cs.invoice_drawn');f.setAttribute('referrerpolicy','no-referrer');
     let sent=false;
-    const onMsg=(ev)=>{if(ev.source!==f.contentWindow||ev.origin!=='null')return;const d=ev.data||{};
+    const onMsg=(ev)=>{if(!f.isConnected){window.removeEventListener('message',onMsg);return}if(ev.source!==f.contentWindow||ev.origin!=='null')return;const d=ev.data||{};
       if(d.type==='ready'&&!sent){sent=true;f.contentWindow.postMessage({type:'pdf',data:buf},'*',[buf])}
       else if(d.type==='size'&&typeof d.h==='number')f.style.height=Math.max(120,Math.min(20000,Math.round(d.h)))+'px';
       else if(d.type==='failed'){window.removeEventListener('message',onMsg);box.replaceChildren(el('p','wait',t('cs.not_drawn')))}};
@@ -802,6 +922,28 @@ async function transactionsView(){
   await load();
 }
 
+// --- The archive (engine only): the vault's folder tree as its indexes list it, each file in the same sandboxed frame -----
+async function archiveView(){
+  title(t('cs.eng.archive'));
+  const v=await api('/v1/engine/vault');const files=v.files||[];
+  // The tree from the paths: the product's own (Dutch) folder names, as they are.
+  const root={dirs:new Map(),files:[]};
+  for(const f of files){let n=root;const parts=String(f.path).split('/');for(const p of parts.slice(0,-1)){if(!n.dirs.has(p))n.dirs.set(p,{dirs:new Map(),files:[]});n=n.dirs.get(p)}n.files.push(f)}
+  const count=(n)=>n.files.length+[...n.dirs.values()].reduce((s,d)=>s+count(d),0);
+  const pages=el('div','pages',[el('p','wait',t('cs.eng.archive_pick'))]);const fn=el('span','fn',t('cs.eng.archive'));
+  const viewer=el('div','card docv',[el('div','bar2',[ic('file-text'),fn]),pages]);
+  const tree=el('div','card panel archive');
+  const draw=vaultOpener(pages,tree);
+  const open=(f,b)=>{fn.textContent=fileName(f.path);draw(f,b);viewer.scrollIntoView({block:'nearest'})};
+  const items=(fs)=>{const u=el('ul','files');for(const f of fs.slice().sort((a,b)=>a.path.localeCompare(b.path))){const li=fileItem(f,open);li.querySelector('.fd').textContent=kb(f.bytes)+' · '+day(f.added_at);u.append(li)}return u};
+  // Folders as native folds: the company and its years open, everything below the year folded.
+  const folder=(name,n,depth)=>{const d=el('details','',[el('summary','',name+' ('+count(n)+')'),...[...n.dirs.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([k,c])=>folder(k,c,depth+1)),n.files.length?items(n.files):null]);d.open=depth<2;return d};
+  if(!files.length)tree.append(el('p','lede',t('cs.eng.archive_empty')));
+  for(const [k,c] of [...root.dirs.entries()].sort((a,b)=>a[0].localeCompare(b[0])))tree.append(folder(k,c,0));
+  if(root.files.length)tree.append(items(root.files));
+  view().replaceChildren(head(t('cs.eng.archive'),t('cs.eng.archive_lede')),el('div','split',[tree,viewer]));
+}
+
 // --- Books ---------------------------------------------------------------------------------------------------------
 const RUBRIC=(k)=>tk('cs.rubric.'+k,k);
 async function booksView(){
@@ -809,7 +951,9 @@ async function booksView(){
   const now=new Date();const qs=[];for(let k=0;k<6;k++){const d=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-3*k,1));qs.push(d.getUTCFullYear()+'Q'+(Math.floor(d.getUTCMonth()/3)+1))}
   const pick=el('select','field');for(const v of qs){const o=el('option','',v);o.value=v;pick.append(o)}
   const vat=el('div','card panel');const journal=el('div','card panel');
-  view().replaceChildren(head(t('cs.nav.books'),t('cs.books_lede')),el('div','split2',[vat,journal]));
+  // With an engine, its archive is one link away from the books.
+  const arch=(await engineStatus())?(()=>{const a=el('a','btn',[ic('file-text'),t('cs.eng.open_archive')]);a.href='#/archive';return a})():null;
+  view().replaceChildren(head(t('cs.nav.books'),t('cs.books_lede'),arch?[arch]:null),el('div','split2',[vat,journal]));
   async function drawVat(){
     const v=await api('/v1/reports/vat?quarter='+encodeURIComponent(pick.value));
     const tbl=el('table','table vat',[el('thead','',[el('tr','',[el('th','',t('cs.rubric')),el('th','sh',t('cs.vat.share')),el('th','r',t('cs.base')),el('th','r',t('dt.vat'))])])]);const tb=el('tbody','');
@@ -1007,7 +1151,7 @@ async function route(){
     view().replaceChildren(el('p','lede',t('loading')));
     const m=/^\/invoices\/([^/]+)$/.exec(path);
     if(m)return await invoiceView(decodeURIComponent(m[1]));
-    const pages={'/overview':overviewView,'/invoices':invoicesView,'/transactions':transactionsView,'/books':booksView,'/settings':settingsView};
+    const pages={'/overview':overviewView,'/invoices':invoicesView,'/transactions':transactionsView,'/books':booksView,'/settings':settingsView,...(CFG.engine?{'/archive':archiveView}:{})};
     if(!pages[path])return view().replaceChildren(el('div','expired',[el('h1','',t('cs.not_here')),(()=>{const a=el('a','btn',t('cs.back_overview'));a.href='#/overview';return a})()]));
     await pages[path](q);shell();
   }catch(e){if(e instanceof Expired)return;view().replaceChildren(note(t('cs.load_failed',{error:e.message}),'bad'))}
