@@ -30,10 +30,13 @@ export const RECEIPT_CHECK_STEPS = [
 /** A link made absolute: "http…" stays; "../../x" (from the repository's docs) is the repository's x; else a page of the site. */
 export const absolute = (href: string) => href.startsWith("http") ? href : href.startsWith("../../") ? REPO_BLOB + href.slice("../../".length) : `${SITE_URL}/${href}`;
 
+/** The units the agent pages show next to these amounts: the Airwallex card is in EUR; a Metal mandate in test USD. */
+const CARD_UNIT = "EUR", MANDATE_UNIT = "test USD";
+
 const agentEntry = (v: AgentView) => ({
   id: v.id, name: v.name, job: v.job, models: v.models,
-  card: v.card ? { per_purchase: v.card.per_tx, monthly: v.card.monthly, only: v.card.only } : null,
-  mandate: v.mandate ? { cap: v.mandate.cap, budget: v.mandate.budget, tx_url: v.mandate.tx ? `${EXPLORER}/tx/${v.mandate.tx}` : null } : null,
+  card: v.card ? { per_purchase: v.card.per_tx, monthly: v.card.monthly, unit: CARD_UNIT, only: v.card.only } : null,
+  mandate: v.mandate ? { cap: v.mandate.cap, budget: v.mandate.budget, unit: MANDATE_UNIT, tx_url: v.mandate.tx ? `${EXPLORER}/tx/${v.mandate.tx}` : null } : null,
   page: `${SITE_URL}/agents/${v.id}`,
 });
 
