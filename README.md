@@ -6,7 +6,7 @@ An approval is usually a button. In Purser it's a signature over the exact terms
 
 **[Try it in a minute.](https://kit11.max-31b.workers.dev/try/sign)** · **[Judge it in 3 minutes →](https://kit11.max-31b.workers.dev/judge)** · [Film, 3:58](https://youtu.be/kCUsFHrxE-o) · [Verify it offline](#verify-it-yourself-in-3-commands)
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 4598 passing](https://img.shields.io/badge/tests-4598%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 4598 passing](https://img.shields.io/badge/tests-4598%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox · Visa Intelligent Commerce · Claude: test money only](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox%20%C2%B7%20Visa%20Intelligent%20Commerce%20%C2%B7%20Claude-test%20money%20only-555)
 
 ## For reviewers in 30 seconds
 
@@ -32,13 +32,13 @@ every run and id: [docs/in-depth.md](docs/in-depth.md).\
 **Simulated:** the customer, the supplier, the merchants' charges, the settlement and the second approver; test money
 only. Built with Claude (Anthropic) as the developer, directed and reviewed by Max Geurtsen.
 
+<picture><source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="docs/assets/payment-life-tall-dark.svg"><source media="(max-width: 600px)" srcset="docs/assets/payment-life-tall-light.svg"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/payment-life-wide-dark.svg"><img src="docs/assets/payment-life-wide-light.svg" alt="One payment's life: an invoice arrives, Claude reads it, Purser's code checks it, the exact terms are hashed, above a limit the CFO signs that hash with Face ID, the rail checks with its own controls, the payment is made and written to the ledger." width="100%"></picture>
+
+<table><tr><td width="25%"><a href="https://kit11.max-31b.workers.dev/try/sign"><img src="docs/assets/readme/phone-faceid.webp" alt="The CFO's phone: the exact terms and one button, Approve with Face ID"></a><br><b>Approve with Face ID</b></td><td width="25%"><a href="https://kit11.max-31b.workers.dev/"><img src="docs/assets/readme/tamper-refused.webp" alt="One cent changed, EUR 240.01: the terms hash no longer matches and the payment is refused"></a><br><b>One cent changed, refused</b></td><td width="25%"><a href="https://kit11.max-31b.workers.dev/proof"><img src="docs/assets/readme/proof.webp" alt="Proof: each claim with its id, its code and its run"></a><br><b>Proof, every id</b></td><td width="25%"><a href="https://purser-try.max-31b.workers.dev/try"><img src="docs/assets/readme/hands-on.webp" alt="Hands-on: a test company of your own on Purser's engine, test money"></a><br><b>Hands-on, test money</b></td></tr></table>
+
 ## Why this is a company
 
 Not validated with customers yet: 2 finance conversations (a CFO and a bank finance professional, quoted, anonymous); more in progress; no pilots, no revenue. Every line below is a hypothesis except the cited source.
-
-> "At our company invoices go through a full approval process in our ERP. I think Purser is something for SMEs." — CFO at a US company (anonymous)
->
-> "At the front it's automated, at the back it's a human check." (on the invoice process at their bank) — finance professional at a large Dutch bank (anonymous)
 
 - **The problem:** when an AI agent pays today, its limit lives in a prompt it can be talked out of, or in a month-end review that finds the money after it has left. ([problem.md](docs/business/problem.md#what-goes-wrong))
 - **Who buys:** the finance team of a small company or scale-up that already banks with Airwallex and lets AI agents pay; the CFO uses it and decides. ([model.md](docs/business/model.md#who-buys-and-who-uses-it-hypothesis))
@@ -115,6 +115,8 @@ On [/try/sign](https://kit11.max-31b.workers.dev/try/sign) the Treasury agent as
 
 ## Who does what
 
+<img src="docs/assets/logos/built-with.png" alt="Built with Airwallex, Metal and Claude" height="40"> official files, unmodified, no endorsement implied ([sources](docs/assets/logos/SOURCES.md))
+
 - **Built by Max Geurtsen:** Purser itself: the CFO's policy and limits, the approval flow (Face ID on the exact terms,
   four eyes), the agents' tools and prompts, the relay and the site, the hash-chained audit log, the books, the tests.
 - **Airwallex (sandbox):** the agents' cards and card limits, FX, the SWIFT euro payout, webhooks.
@@ -123,6 +125,8 @@ On [/try/sign](https://kit11.max-31b.workers.dev/try/sign) the Treasury agent as
   on Claude Opus.
 - **Face ID and passkeys (WebAuthn on the CFO's phone):** the CFO's passkey, unlocked with Face ID, signs the hash of
   the exact terms.
+- **Visa Intelligent Commerce via Airwallex's Airi (sandbox, test card):** an agent pays with a single-use card credential.
+- **Cloudflare:** Workers and Durable Objects run the relay, the site and Purser Cloud's engine (one object per company).
 
 ## Links
 
@@ -135,6 +139,7 @@ On [/try/sign](https://kit11.max-31b.workers.dev/try/sign) the Treasury agent as
 - [docs/claims.md](docs/claims.md): every claim in this repo and its source
 - [docs/metal-award.md](docs/metal-award.md) and [docs/airwallex.md](docs/airwallex.md): what Purser uses from each
 - [docs/payables.md](docs/payables.md): the invoice inbox, built after the submission (its code is in [src/ap](src/ap); not in the submitted run)
+- [Hands-on demo](https://purser-try.max-31b.workers.dev/try): a test company of your own on Purser's engine, test money; [/security](https://kit11.max-31b.workers.dev/security): the security page
 - [docs/security.md](docs/security.md): threat model, attacks and what stops each one
 - [skills/purser-spend/SKILL.md](skills/purser-spend/SKILL.md): how an outside agent should use the agent API
 - [docs/submission/README.md](docs/submission/README.md): the submission text, with the short Description
