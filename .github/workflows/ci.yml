@@ -1,6 +1,7 @@
 # Runs on every push and pull request: type checks, the full test suite (including the adversarial suite in
 # test/adversarial.test.ts), the relay Worker's type check, npm audit (root and worker/), a juror's first run
 # (npm run judge on a fresh clone, then the guest pages in Chromium, and /try/sign in WebKit), the SBOM and Semgrep (blocking), and gitleaks on the pushed commits and on the whole history (accepted false positives are listed by fingerprint in .gitleaksignore).
+# The zero-trust matrix (test/zero-trust.test.ts) runs in the test job with the suite; its last tests hold docs/zero-trust.md and docs/zero-trust/report.json to that run (npm run zero-trust writes them).
 # No secrets and no network beyond npm and GitHub: the tests use fakes for Metal, Airwallex and Claude.
 name: ci
 on:

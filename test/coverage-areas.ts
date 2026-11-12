@@ -10,6 +10,8 @@ const AREAS: Record<string, { prefixes: string[]; floor: number }> = {
   executors: { prefixes: ["executors/"], floor: 90 },
   relay: { prefixes: ["relay/"], floor: 90 },
   clearing: { prefixes: ["metal/clearing"], floor: 90 },
+  // The zero-trust model, its coverage view and its report (test/zero-trust.test.ts; added 12 November).
+  zerotrust: { prefixes: ["zerotrust/"], floor: 90 },
 };
 
 const root = resolve(import.meta.dirname, "..");
