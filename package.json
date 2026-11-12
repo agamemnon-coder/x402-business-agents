@@ -60,6 +60,7 @@
     "dispute": "tsx src/cli/dispute.ts",
     "video": "tsx src/cli/video.ts",
     "agent-evals": "tsx src/cli/agentEvals.ts",
+    "coder-evals": "tsx src/cli/coderEvals.ts",
     "budget": "tsx src/cli/budget.ts",
     "payables": "tsx src/cli/payables.ts",
     "vault": "tsx src/cli/vault.ts",
