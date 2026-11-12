@@ -1,6 +1,7 @@
 // The runner's side of Purser Cloud (cloud/): it pushes what this ledger records (suppliers, payables invoices with
 // their documents, payments, the transactions register, ledger entries, the audit log) and pulls the e-mail the cloud received for this company,
-// filing it through the inbox. The cloud never moves money and holds no payment keys. Passkeys are never pushed: people
+// filing it through the inbox. Purser Cloud moves no real money. Its hands-on deployment runs the engine on test money
+// and a simulated bank. Passkeys are never pushed: people
 // enrol their passkey in the cloud itself, with an enrolment an owner starts (docs/cloud.md).
 // The API key comes from the environment (PURSER_CLOUD_KEY), never from code, git or a log.
 

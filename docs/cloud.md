@@ -17,7 +17,8 @@ before real money: [go-live.md](go-live.md).
                      (agents, inbox, ledger; the only part that touches Airwallex and Metal)
 ```
 
-- The cloud never moves money and holds no payment keys. The runner keeps doing that, with the CFO's Face ID.
+- Purser Cloud moves no real money. Its hands-on deployment runs the engine on test money and a simulated bank. A company's real payments stay with its runner and the
+  CFO's Face ID.
 - Every row carries the company (`tenant_id`); routes only reach data through a tenant-scoped layer
   (`cloud/src/tenant.ts`), and a test tries every route against another company's objects.
 - Pushes are idempotent. Ledger entries and audit rows are append-only and their hash chains are recomputed on
@@ -117,7 +118,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/engine/proposals/{id}` | read | One proposal: the hash of its exact terms, the challenge a passkey signs, the facts a person reads; `{ proposal }`. |
 | `POST /v1/engine/passkey/start` | admin | A session only, never a key. Start the signed-in person's approval passkey: `{ challenge, code, rp, user, exclude }`. |
 | `POST /v1/engine/passkey/finish` | admin | A session only. `{ code, credential }`: the new passkey, labelled with the signed-in person's name; answers `{ credential_id }`, or 409 with the engine's reason when refused. |
-| `POST /v1/engine/proposals/{id}/approve` | admin | A session only. `{ terms_sha256, credential }`: the passkey's signature over the proposal's challenge. Answers `{ status, message, settled }`; only `approved` pays, on the stand-in bank. A `terms_sha256` other than the proposal's is refused before the signature is read. 404 for a proposal the company's engine does not hold. |
+| `POST /v1/engine/proposals/{id}/approve` | admin | A session only. `{ terms_sha256, credential }`: the passkey's signature over the proposal's challenge. Answers `{ status, message, settled }`; only `approved` pays, on the stand-in bank. For a test company of the hands-on demo the approval is stored and the payment held (`{ status: "approved", message, settled: null, held: true }`): it is paid through `POST /v1/engine/proposals/{id}/pay`. A `terms_sha256` other than the proposal's is refused before the signature is read. 404 for a proposal the company's engine does not hold. |
 | `POST /v1/engine/proposals/{id}/retry` | admin | Try again: a payment that was approved but whose execution failed (the stand-in bank was away, say) is run once more by the executor's own resume path, which looks a payout written before the failure up by its request id and never pays twice. Answers `{ status: "retried", message, settled }`; 409 with the engine's reason when there is nothing to retry (paid, never approved, refused); 404 for a proposal the company's engine does not hold. |
 | `POST /v1/engine/sync` | admin | Follow the payments, book, archive and feed the read model again; safe to repeat. |
 | `GET /v1/engine/events` | read | What the engine did, oldest first: `?after=<seq>&limit=<1 to 200>`; `{ items, next }`. At most 2 reads a second per company, counted in its object: past that 429 `{ error, code: "slow_down", retry_ms }`. |
@@ -125,6 +126,16 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/engine/vault/file` | read | One file of the archive, `?path=` as the list gives it; 404 for a path the index does not list. |
 | `GET /v1/autopilot` | read | The company's nightly autopilot runs, newest first (`?limit=` 1 to 90, default 14): each night the engine is synced and a digest written (invoices by status, the overdue ones, payments waiting for an approval, both hash chains). It never pays. 404 when the cloud runs no engine. See [Cloudflare's platform](#cloudflares-platform-cloudsrcedge). |
 | `GET /v1/stats` | anyone | The cloud's own counters per day, UTC, across every company, with no company's id or amount (`?days=` 1 to 90, default 14): requests, refused, rate_limited, errors, uploads, payments_filed, approvals, engine_refusals. 404 when the counters are off. |
+| `GET /v1/engine/samples` | read | The hands-on demo's sample invoices (test invoices, fake), in the tray's order: `{ items: [{ key, title, filename }] }`. Each title says what the visitor does, never what the engine will answer. |
+| `POST /v1/engine/samples/{key}` | admin | A sample through the engine's inbox, as an upload of its PDF; answers as `POST /v1/engine/documents`. 404 for a key that is not a sample; 400 in the engine's words when refused (a test company holds at most 8 documents, whatever route brings them). |
+| `GET /v1/engine/suppliers` | read | The suppliers the company has on file, as the engine's seed recorded them: `{ items: [{ key, name, iban, bic }] }`. Their IBANs are published test IBANs, not anyone's account. |
+| `POST /v1/engine/compose` | admin | "Write your own" (a test company of the hands-on demo only): `{ supplier_key, invoice_no, amount, issue_date, due_date, iban }`, checked (EUR 1.00 to 5,000.00 with two decimals; dates within 60 days of today; an IBAN with a valid mod-97 check), written in the sample's layout, rendered to a PDF inside the engine and filed through its inbox. Answers as `POST /v1/engine/documents`; a refused field is 400 `{ code, message, field }`. The typed text stays in the company's own ledger and is never logged. |
+| `GET /v1/engine/proposals/{id}/terms` | read | A proposal's exact terms as the passkey signs them: `{ proposal_id, status, terms, canonical, terms_sha256, approved, expires_at }` (the canonical JSON and its SHA-256, the signature's challenge). |
+| `POST /v1/engine/proposals/{id}/pay` | admin | The hands-on demo's one pay route (a test company only; at most 8 KB, 30 a company): `{ terms, credential }`, the terms to pay (only `amount`, `beneficiary_name` and `iban_last4` may differ from the signed ones, else 400) with the signature the browser made at the approval. Two layers answer, always both: the product's verifier on that signature over the sent terms, and the executor's own gate asked with the sent terms written into the payment instruction, inside a transaction that is always rolled back. Only when both say yes is the held payment run, from the stored terms, on the simulated bank (test money). Answers `{ outcome, layers, signed_sha256, sent_sha256, changed, transfers_before, transfers_after, sandbox_calls, settled, request_id }`; `outcome` is `paid`, `refused`, `paid_once`, `not_signed`, `expired` or `failed` (the retry route runs a failed one again). |
+| `GET /v1/engine/export` | read | The company in the product's sync format, as a file (`purser-test-company.json`): `{ format: "purser.cloud-sync/v1", company, made_at, batches }`, the batches a runner's push sends (the invoices with their documents, payments, transactions, the ledger and the audit log). No archive files. At most 5 MB; a test company may download it 5 times. |
+| `POST /v1/try/start` | anyone | The hands-on deployment only (`HANDS_ON=on`; 404 elsewhere). A test company of your own on the engine, test money on a simulated bank, deleted after 24 hours: `{ token? }` (an event or jury token). Answers 201 `{ tenant, session, visitor_token, expires_at, session_expires_at, company, pool, mode }`; 429 `{ code: "limit" }` past a limit (per keyed address and per pool and day); 503 `{ code: "paused" }` while the switch `starts` is off. Like the renewal and every write of a test company, it must carry this site's `Origin` (the demo's own page); a program without one gets 403. |
+| `POST /v1/try/session` | anyone | The hands-on deployment only. `{ tenant_id, visitor_token }`: a fresh 15-minute session for that test company; `{ session, expires_at, company_expires_at }`, or 410 `{ code: "gone" }` once it was deleted. Limited per company (30 a minute), never per address. |
+| `POST /v1/try/admin` | platform admin | The hands-on deployment's controls: `{ op: "get" }` (the switches, today's counters), `{ op: "set", key, value }` (one switch, refused past its ceiling; logged without the token), `{ op: "token", pool, until }` (an event or jury token, shown once; only its hash is kept). |
 
 The `/v1/engine` routes are the company's engine behind the API (`cloud/src/engine/routes.ts`): the same inbox, checks,
 approval and executor a runner has, on **test money only** (a stand-in bank; no payment reaches a real bank). The
@@ -225,6 +236,45 @@ them in a worker (eval off, no XFA), draws up to six pages and stops after 15 se
 network but pdf.js, and cannot reach the console page; the console page parses no supplier PDF at all (red team round
 5: a PDF bomb froze the tab that held the session). The download stays. `test/cloud-console.test.ts` checks the page and the routes; `test/browser/console.check.ts` runs the whole thing
 in Chromium with a virtual passkey (CI, judge job).
+
+## The hands-on deployment
+
+`purser-try` (`cloud/wrangler.try.jsonc`, `HANDS_ON=on`) lets a visitor start a test company of their own on Purser's
+real engine, from `POST /v1/try/start` (code in `cloud/src/try/`). Purser Cloud moves no real money. Its hands-on deployment runs the engine on test money and a simulated bank.
+
+- **One object per company.** Each test company is a tenant of its own (`t_try_<16 hex>`) with one Durable Object running
+  the product's engine on its own SQLite ledger: the same inbox, checks, approval and executor a runner has. The seed
+  puts an opening balance of test money and two suppliers on file (their IBANs are published test IBANs); nothing else
+  in a company is made up.
+- **Test money on a simulated bank.** Every payment is made on a bank simulated inside the company's object. No payment
+  reaches a real bank.
+- **The invoice.** Five sample invoices, each chosen by what the engine answers when it reads it (`npm run cloud:samples`,
+  held by `test/engine-try-world.test.ts`), or "write your own": the visitor's fields, checked, rendered to a PDF inside
+  the object and filed through the inbox. At most 8 documents a company, PDF files only.
+- **The held approval and the one pay route.** A test company's approval (its passkey over the SHA-256 of the exact
+  terms) is stored and the payment held. `POST /v1/engine/proposals/{id}/pay` then tries the terms the visitor sends
+  with the signature their browser made, through two layers that always both answer: the product's verifier on that
+  signature over the sent terms, and the executor's own gate asked with the sent terms inside a transaction that is
+  always rolled back. Only when both say yes is the held payment run, from the stored terms, on the simulated bank.
+  A changed cent is refused by both and moves nothing (`test/engine-try-pay.test.ts`, `test/try-redteam.test.ts`).
+- **Switches, pools and caps** (`POST /v1/try/admin`, table `try_switches`). Every switch fails closed: a missing row is
+  off (`starts`, `claude`, `agents`, `rail_awx`, `rail_metal`, `own_upload`) or 0 (every Claude cap). Three pools:
+  public, event and jury; event and jury tokens are made by the admin and kept as hashes only. Public starts are
+  limited per address (an IPv6 address by its /64, kept only as a SHA-256 with a salt that changes each UTC day and is
+  deleted after 48 hours) and per day; event and jury starts count against their own pool's day. Claude's spend is
+  capped per action, company, address, pool and day, and in all (`cloud/src/engine/spend.ts`). A test company may call
+  only the routes listed in `cloud/src/try/gate.ts`; its expired session counts against itself, never against the
+  address, so one phone cannot turn away a room on the same Wi-Fi.
+- **Measured limits:** in [the run record](runs/2026-11-13-engine-in-cloud.md); its numbers are not copied here.
+- **The sweep.** Hourly, every company past its 24 hours is wiped: its object, its rows and its documents.
+- **The export.** `GET /v1/engine/export` gives the company in the product's sync format (`purser.cloud-sync/v1`): the
+  invoices with their documents, payments, transactions, the ledger and the audit log; no archive files.
+- **What is not there:** real money; e-mail into a test company; the console's engine actions for a test company; a
+  visitor's own file upload (switch `own_upload`, off); a live Airwallex payment (the sandbox leg is built only if its
+  gate passes, and is then switched on separately).
+
+What a public launch would still need: a bot check, WAF rate rules at Cloudflare, a budget alert on the Claude key, the
+sweep watched, and a limit tested against a hostile PDF on the deployment itself.
 
 ## Tested on D1 itself
 

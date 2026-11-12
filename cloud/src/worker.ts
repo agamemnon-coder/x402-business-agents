@@ -11,6 +11,8 @@ import { ENGINE_MODE, engineStubs, type EngineNamespace } from "./engine/client.
 import { pruneAutopilot, runAutopilot } from "./edge/autopilot.js";
 import { consumeMail, enqueueMail, requeueWaitingMail, type MailQueue, type QueuedMessage } from "./edge/inbox.js";
 import { countsOf, countUp, pruneCounts, writeCounts } from "./edge/stats.js";
+import { sweepTry } from "./try/sweep.js";
+import { expireStale } from "./engine/spend.js";
 import { logEvent } from "./log.js";
 
 export interface Bindings {
@@ -35,6 +37,12 @@ export interface Bindings {
   INBOX_QUEUE?: MailQueue;
   /** "off": no daily counters, and GET /v1/stats answers 404 (cloud/src/edge/stats.ts). Unset: on. */
   STATS?: string;
+  /** "on": the hands-on demo's routes (/v1/try, cloud/src/try/); at run time its switches decide, and a missing one is off. */
+  HANDS_ON?: string;
+  /** "on": the engine may call Claude (with its key, under the demo's caps). */
+  ENGINE_CLAUDE?: string;
+  /** The demo's own capped Claude key (a secret, set by hand on purser-try); only whether it is set is read here. */
+  KIT11_ANTHROPIC_API_KEY?: string;
 }
 
 /** The part of the Workers runtime's ExecutionContext used here: work that may finish after the answer is sent. */
@@ -47,7 +55,7 @@ function envOf(b: Bindings): CloudEnv {
   return { sql, blobs: b.DOCS ? r2Blobs(b.DOCS) : sqlBlobs(sql), sessionSecret: b.SESSION_SECRET, adminTokenSha256: b.ADMIN_TOKEN_SHA256 ?? "", rpId: b.RP_ID, origin: b.ORIGIN, mailDomain: b.MAIL_DOMAIN ?? "",
     version: b.VERSION ?? "dev", outbound: (url: string, init: RequestInit) => fetch(url, init),
     ...(assets ? { asset: async (path: string) => assets.fetch(new Request(new URL(path, b.ORIGIN))) } : {}),
-    ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE ? { engine: engineStubs(b.ENGINE) } : {}),
+    ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE ? { engine: engineStubs(b.ENGINE), ...(b.HANDS_ON === "on" ? { tryIt: { claude: b.ENGINE_CLAUDE === "on" && !!b.KIT11_ANTHROPIC_API_KEY } } : {}) } : {}),
     edge: { stats: b.STATS !== "off" } };
 }
 
@@ -86,6 +94,14 @@ export default {
   async scheduled(_event: unknown, b: Bindings): Promise<void> {
     const env = envOf(b);
     await ensureSchema(env.sql);
+    // The hands-on deployment: visitors' companies past their 24 hours are wiped (cloud/src/try/sweep.ts), whatever
+    // the other jobs do: it runs first and on its own, so neither of them failing can skip it.
+    if (env.tryIt) {
+      // Lane A's Claude reservations older than ten minutes are closed at their full amount (cloud/src/engine/spend.ts).
+      try { await sweepTry({ sql: env.sql, blobs: env.blobs, ...(env.engine ? { engine: env.engine } : {}), settle: expireStale, now: new Date() }); } catch (e) {
+        logEvent("error", "try_sweep_failed", { error: e instanceof Error ? e.message : String(e) });
+      }
+    }
     await purgeExpired(env.sql, env.blobs, new Date(), env.engine);
     // Staged exports past their day lose their parts (a request for the company does the same on its way).
     await sweepExports(env.sql, env.blobs, new Date());

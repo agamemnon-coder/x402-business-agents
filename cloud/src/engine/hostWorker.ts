@@ -30,6 +30,7 @@ import { TenantDb } from "../tenant.js";
 import type { EngineApi } from "./api.js";
 import { claudeAccess } from "./claudeAccess.js";
 import { docChunks } from "./docChunks.js";
+import { SAMPLES } from "./samples.gen.js";
 import { cloudTarget } from "./target.js";
 import { blobVault } from "./vaultR2.js";
 
@@ -79,6 +80,8 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     rp: { rpId: env.RP_ID, origin: env.ORIGIN }, company: { name: company.name, lang: company.language === "en" ? "en" : "nl" },
     vault: blobVault(blobs, tenantId), feed: (d, now) => feedCloud(d, target, now),
     ...withClaude(env, sql, tenantId),
+    // The hands-on demo: the sample invoices, and a visitor's test company holds at most 8 documents.
+    samples: SAMPLES, ...(tenantId.startsWith("t_try_") ? { maxDocuments: 8 } : {}),
   });
   // The treasury's test money, once in the object's life (the Node engine seeds at its start, which is once in its life too).
   if (state.get("seeded") === null) {
@@ -104,6 +107,13 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     vaultFiles: async () => host.vaultFiles(),
     vaultFile: async (path) => host.vaultFile(path),
     forgetPasskey: async (person) => host.forgetPasskey(person),
+    samples: async () => host.samples(),
+    uploadSample: async (key) => host.uploadSample(key),
+    suppliers: async () => host.suppliers(),
+    compose: async (input) => host.compose(input),
+    terms: async (id) => host.terms(id),
+    paySigned: async (id, sent, credential) => kept(host.paySigned(id, sent, credential)),
+    exportBatch: async () => host.exportBatch(),
     // The object does this itself (it must also forget this host); here for the interface's sake.
     wipe: async () => { await storage.deleteAll(); },
   };

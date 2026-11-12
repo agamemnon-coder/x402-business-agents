@@ -25,6 +25,11 @@ import type { EngineApi } from "./engine/api.js";
 import { engineRoutes } from "./engine/routes.js";
 import { isEngineWrite, noteEngineCompany } from "./edge/autopilot.js";
 import { edgeRoutes } from "./edge/routes.js";
+import { signedTrySession, tryGate } from "./try/gate.js";
+import { tryEngineRoutes } from "./try/engineRoutes.js";
+import { tryError, tryRoutes } from "./try/routes.js";
+import { DEAD_SESSIONS_PER_MINUTE, isTryTenant, noteTryFail, TryRefused, type TryConfig } from "./try/start.js";
+import { SwitchRefused } from "./try/switches.js";
 
 export interface CloudEnv {
   sql: Sql;
@@ -67,6 +72,11 @@ export interface CloudEnv {
   engine?: (tenantId: string) => EngineApi;
   /** Whether the daily counters behind GET /v1/stats are on (cloud/src/edge/stats.ts). Absent: /v1/stats answers 404. */
   edge?: { stats?: boolean };
+  /**
+   * The hands-on deployment (purser-try, HANDS_ON=on; cloud/src/try/): a visitor's test company of their own, for a day,
+   * on the engine. Absent (the default): the /v1/try routes answer 404. Needs `engine`.
+   */
+  tryIt?: TryConfig;
 }
 
 interface Ctx { env: CloudEnv; req: Request; url: URL; now: Date; params: string[]; caller: Caller | null; db: TenantDb | null }
@@ -452,6 +462,12 @@ export const ROUTES: Route[] = [
   // The company's engine (cloud/src/engine/routes.ts): one block, the caller's own company only, 404 while no engine is wired.
   ...engineRoutes<Ctx>({ json, err, body }),
   ...edgeRoutes<Ctx>({ json, err }),
+
+  // The hands-on demo's engine routes (cloud/src/try/engineRoutes.ts): one block, the caller's own company only.
+  ...tryEngineRoutes<Ctx>({ json, err, body }),
+
+  // The hands-on deployment (cloud/src/try/routes.ts): one block, 404 unless the deployment runs the hands-on demo.
+  ...tryRoutes<Ctx>({ json, err, body }),
 ];
 
 function match(path: string, pattern: string): string[] | null {
@@ -502,6 +518,9 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
     if (req.method !== "GET" && req.method !== "HEAD") {
       const from = req.headers.get("origin");
       if (from !== null && from !== env.origin) return err(403, "this request came from another site");
+      // The hands-on demo's start and renewal are a browser's only: they must say they come from this site (the admin's
+      // controls are a program's, with the platform token, and are not held to it).
+      if (from === null && (url.pathname === "/v1/try/start" || url.pathname === "/v1/try/session")) return tryError(json, 403, "forbidden", "this request must come from the hands-on demo's own page");
     }
     await ensureSchema(env.sql);
     const candidates = ROUTES.map((r) => ({ r, p: match(url.pathname, r.path) })).filter((x) => x.p);
@@ -524,8 +543,22 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
       try {
         caller = await callerOf(env.sql, env.sessionSecret, req.headers.get("authorization"), now);
       } catch (e) {
-        if (e instanceof AuthError) await noteFailedAuth(env.sql, ip, keyIdOf(/^Bearer (\S+)$/.exec(req.headers.get("authorization") ?? "")?.[1]), now);
+        if (e instanceof AuthError) {
+          // A try company's own session that no longer works (expired, or the company was swept) counts against that
+          // company, never against the address (cloud/src/try/gate.ts); anything else counts per address, as ever.
+          const tryTenant = await signedTrySession(env.sessionSecret, req.headers.get("authorization"));
+          if (tryTenant) {
+            if ((await noteTryFail(env.sql, tryTenant, now)) > DEAD_SESSIONS_PER_MINUTE) return tryError(json, 429, "limit", "This test company's old session was sent too often; renew the session, or wait a minute.");
+          } else await noteFailedAuth(env.sql, ip, keyIdOf(/^Bearer (\S+)$/.exec(req.headers.get("authorization") ?? "")?.[1]), now);
+        }
         throw e;
+      }
+      // A visitor's test company calls only the hands-on demo's routes, while it lives (cloud/src/try/gate.ts).
+      const tryCaller = isTryTenant(caller.tenantId);
+      if (tryCaller) {
+        await tryGate(env.sql, caller.tenantId, req.method, hit.r.path, now);
+        // A test company's writes come from the demo's page only, which always says where it is.
+        if (req.method !== "GET" && req.headers.get("origin") === null) return tryError(json, 403, "forbidden", "this request must come from the hands-on demo's own page");
       }
       need(caller, hit.r.need);
       // The starter key makes the first owner's passkey and nothing else (red team round 5): who it is, the company's
@@ -541,7 +574,9 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
           || (req.method === "POST" && hit.r.path === "/v1/users/{id}/enrolment" && hit.p![0] === caller.user);
         if (!ok) return err(403, "the starter key only makes the first owner's passkey; sign in with that passkey to do the rest");
       }
-      if (!(await withinRate(env.sql, `${caller.kind}:${caller.principal}`, now, { windowSec: 60, max: rate.perMinute }))) return err(429, "too many requests; wait a minute");
+      // A try session's event polls write no rate bucket: the company's engine limits those reads itself.
+      const tryPoll = tryCaller && req.method === "GET" && hit.r.path === "/v1/engine/events";
+      if (!tryPoll && !(await withinRate(env.sql, `${caller.kind}:${caller.principal}`, now, { windowSec: 60, max: rate.perMinute }))) return err(429, "too many requests; wait a minute");
       ctx.caller = caller;
       ctx.db = new TenantDb(env.sql, caller.tenantId);
     }
@@ -556,6 +591,8 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
     if (e instanceof ExportRefused) return err(e.status, e.message);
     if (e instanceof MonitorRefused) return err(400, e.message);
     if (e instanceof PlatformRefused) return err(e.status, e.message);
+    if (e instanceof TryRefused) return tryError(json, e.status, e.code, e.message);
+    if (e instanceof SwitchRefused) return tryError(json, 400, "bad_request", e.message);
     // A write that lost a race with another request for the same company: nothing of it was written.
     if (e instanceof WriteConflict) return err(409, "another change for this company landed at the same time; nothing of this request was written: send it again");
     // Nothing internal leaks: the caller gets a reference, the log gets the error.

@@ -7,6 +7,7 @@ import { build } from "esbuild";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ROUTES } from "../cloud/src/app.js";
 import { SlowDown } from "../cloud/src/engine/api.js";
+import { TRY_ENGINE_ROUTES } from "../cloud/src/try/engineRoutes.js";
 import { sessionToken } from "../cloud/src/auth.js";
 import { blobVault, vaultKey } from "../cloud/src/engine/vaultR2.js";
 import { sha256Hex } from "../src/lib/terms.js";
@@ -22,7 +23,8 @@ const sha256 = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
 const b64 = (b: Uint8Array) => Buffer.from(b).toString("base64");
 /** A renumbered copy of the same invoice: the engine holds it for a person (possible duplicate). */
 const EN_COPY = EN.replace(/BTX-2026-21/g, "BTX-2026-21A");
-const ENGINE_ROUTES = ROUTES.filter((r) => r.path === "/v1/engine" || r.path.startsWith("/v1/engine/"));
+// The engine's own block; the hands-on demo's engine routes are a block of their own (test/engine-try-world.test.ts).
+const ENGINE_ROUTES = ROUTES.filter((r) => (r.path === "/v1/engine" || r.path.startsWith("/v1/engine/")) && !(TRY_ENGINE_ROUTES as readonly string[]).includes(`${r.method} ${r.path}`));
 const at = (path: string) => path.replace("{id}", "AP-0001");
 
 interface Proposal { id: string; kind: string; status: string; terms_sha256: string; challenge: string; facts: [string, string][]; warnings: string[] }

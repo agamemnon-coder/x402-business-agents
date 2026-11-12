@@ -6,9 +6,10 @@
 //
 // Only types are imported here: nothing of the engine reaches the Worker's bundle through this file.
 import type { EngineEvent } from "../../../src/engine/events.js";
-import type { InvoiceView, ProposalView, Settled, VaultFile } from "../../../src/engine/host.js";
+import type { InvoiceView, PaySignedResult, ProposalView, Settled, TermsView, UploadResult, VaultFile } from "../../../src/engine/host.js";
+import type { ComposeInput, ComposeRefusal, SupplierOnFile } from "../../../src/engine/tryWorld.js";
 
-export type { EngineEvent, InvoiceView, ProposalView, Settled, VaultFile };
+export type { ComposeInput, ComposeRefusal, EngineEvent, InvoiceView, PaySignedResult, ProposalView, Settled, SupplierOnFile, TermsView, UploadResult, VaultFile };
 
 /** Where the engine stands: always test money (the stand-in bank), the approval passkey, the bank's balances, both chains. */
 export interface EngineStatus {
@@ -33,7 +34,7 @@ export interface EngineApi {
   /** label: the person's name, shown; person: the cloud's id for them, by which forgetPasskey finds the passkey. */
   passkeyFinish(a: { code: string; credential: unknown; label: string; person: string }): Promise<{ ok: true; credential_id: string } | { ok: false; reason: string }>;
   /** A passkey's signature over a proposal's exact terms; only an approval pays, and what follows is in settled. */
-  approve(a: { proposal_id: string; terms_sha256: string; credential: unknown }): Promise<{ status: string; message: string; settled: Settled | null }>;
+  approve(a: { proposal_id: string; terms_sha256: string; credential: unknown; hold?: boolean }): Promise<{ status: string; message: string; settled: Settled | null; held?: true }>;
   /**
    * Try again: an approved payment whose execution failed is run once more by the executor's own resume path (never a
    * second payment), then followed, booked, archived and fed. Anything else answers nothing_to_retry and nothing runs.
@@ -49,6 +50,22 @@ export interface EngineApi {
   forgetPasskey(person: string): Promise<{ revoked: number }>;
   /** Forgets everything this company's engine holds (its ledger, its documents, its stand-in bank). */
   wipe(): Promise<void>;
+
+  // The hands-on demo (purser-try, cloud/src/try/): its sample invoices, the suppliers on file, "write your own".
+  /** The sample invoices in the tray's order (none unless the deployment hands them in). */
+  samples(): Promise<{ key: string; title: string; filename: string }[]>;
+  /** A sample through the inbox; null for a key that is not a sample. The document cap applies, in the engine's words. */
+  uploadSample(key: string): Promise<UploadResult | null>;
+  /** The suppliers the seed put on file (test IBANs). */
+  suppliers(): Promise<SupplierOnFile[]>;
+  /** The visitor's typed invoice, checked, rendered to a PDF and filed; a refused field comes back naming it. */
+  compose(input: ComposeInput): Promise<UploadResult | ComposeRefusal>;
+  /** A proposal's stored terms, their canonical text and hash, and whether an approval is stored. */
+  terms(proposalId: string): Promise<TermsView | null>;
+  /** The one pay route: the sent terms with the browser's own signature, through the verifier and the executor's gate; pays only the signed terms. */
+  paySigned(proposalId: string, sent: Record<string, unknown>, credential: unknown): Promise<PaySignedResult | { bad: string } | null>;
+  /** The company in the product's sync format (the batches a runner's push sends), with no archive files. */
+  exportBatch(): Promise<{ format: "purser.cloud-sync/v1"; company: string; made_at: string; batches: Record<string, unknown>[] }>;
 }
 
 /**
@@ -64,4 +81,4 @@ export const EVENTS_PER_SECOND = 2;
 const everyMethod = <T extends readonly (keyof EngineApi)[]>(names: keyof EngineApi extends T[number] ? T : never): T => names;
 
 /** What a caller across a boundary may ask a company's engine for (the Worker's stub of its Durable Object passes the name on). */
-export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "approve", "retry", "sync", "events", "vaultFiles", "vaultFile", "forgetPasskey", "wipe"] as const);
+export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "approve", "retry", "sync", "events", "vaultFiles", "vaultFile", "forgetPasskey", "wipe", "samples", "uploadSample", "suppliers", "compose", "terms", "paySigned", "exportBatch"] as const);
