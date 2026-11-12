@@ -1,6 +1,18 @@
 // Block 1: runs an approved owners_execute. The two approvals are the account's owners' WebAuthn signatures over its
 // Execute digest; this builds the account signature from them and relays executeSigned. The sender only pays gas: no
 // key it holds is an owner, so a wrong or missing signature reverts on chain whatever this code does.
+//
+// Sent at most once (src/metal/ownersTx.ts): the transaction's hash is in the ledger (owners.sent) before it leaves,
+// and a later run carries on from it. How a run ends:
+//   - the account ran it: EXECUTED;
+//   - the chain refused it (a revert on chain, or a call the chain would revert, which is then not sent), or it is
+//     known that it can no longer run (nothing was sent and the signed deadline is too close; or the deadline is over
+//     and the sent transaction never landed: no receipt, the sender's nonce still unused): FAILED, with the account's
+//     own error decoded;
+//   - anything that leaves the outcome open (no receipt yet, the network, a spent call budget): the proposal stays
+//     EXECUTING, and the runner's next start resumes it (src/policy/saga.ts) from the recorded hash; nothing is sent
+//     twice. That holds after the deadline too when the sender's nonce has moved past the transaction: it may have
+//     landed in time while the node does not show its receipt yet, so nothing is settled and a person looks.
 
 import { encodeFunctionData, type Address, type Hex } from "viem";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
@@ -8,13 +20,20 @@ import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { ACCOUNT_BATCH_MODE, accountAbi, executionData } from "../metal/fourEyes.js";
 import { approvalHashOf, OWNERS_EXECUTE, quorumOf, type OwnersExecuteTerms } from "../metal/ownersExecute.js";
+import { ChainRefused, NoReceiptYet } from "../metal/ownersChain.js";
+import { sendOnce, type Sent, type TxJournal } from "../metal/ownersTx.js";
 import { beginExecution, finishExecution } from "../policy/approvals.js";
 import { passkeyOwnersOn } from "../config/agents.js";
 
-/** Sends a transaction to the account (returns its hash), and waits for a receipt (success or revert). */
 export interface Relay {
-  send(to: Address, data: Hex): Promise<Hex>;
+  /** Sends a transaction to the account and returns its hash. `onSigned` gets the hash before the transaction leaves. */
+  send(to: Address, data: Hex, onSigned?: (s: Sent) => void): Promise<Hex>;
+  /** Waits for a receipt: true for success, false for a revert. Throws while there is none. */
   wait(tx: Hex): Promise<boolean>;
+  /** Sends the identical transaction again when the chain does not have it (the recorded nonce and gas, so the same hash). */
+  again?(to: Address, data: Hex, earlier: Sent): Promise<void>;
+  /** Why the account refuses this call, from one read-only call: its own error, decoded. Null when the call would pass. */
+  why?(to: Address, data: Hex): Promise<string | null>;
 }
 
 /** The executeSigned call data for an approved owners_execute, from its stored approvals. */
@@ -33,26 +52,74 @@ export function signedCallOf(db: DB, proposalId: string): { account: Address; da
   return { account: t.account, data, terms: t };
 }
 
+/** The proposal's sends in the audit log: owners.sent before a transaction leaves, owners.unsent when a node refused it outright. */
+function journal(db: DB, proposalId: string, account: Address, now: Date): TxJournal {
+  const of = (event: string) => (db.prepare("SELECT payload_json FROM audit_log WHERE event = ? AND subject = ? ORDER BY seq").all(event, proposalId) as { payload_json: string }[]).map((r) => JSON.parse(r.payload_json) as Sent);
+  return {
+    open() {
+      const void_ = new Set(of("owners.unsent").map((s) => s.tx.toLowerCase()));
+      return of("owners.sent").filter((s) => !void_.has(s.tx.toLowerCase())).at(-1) ?? null;
+    },
+    sent: (s) => { audit(db, "owner-signer", "owners.sent", proposalId, { account, tx: s.tx, ...(s.from ? { from: s.from } : {}), ...(s.nonce === undefined ? {} : { nonce: s.nonce }), ...(s.gas === undefined ? {} : { gas: s.gas }) }, now); },
+    unsent: (tx, why) => { audit(db, "owner-signer", "owners.unsent", proposalId, { tx, why: why.slice(0, 300) }, now); },
+  };
+}
+
+/** An outcome that will not change: the chain refused the call, or its signed deadline is over. */
+class Settled extends Error {}
+
 export async function executeOwnersExecute(db: DB, proposalId: string, relay: Relay, now = new Date()): Promise<{ tx: Hex }> {
   const terms = beginExecution<OwnersExecuteTerms>(db, proposalId, (t) => {
     if (t.kind !== OWNERS_EXECUTE) throw new Error(`${proposalId} is not an owners_execute`);
     if (!passkeyOwnersOn()) throw new Error("on-chain owner signing is off (KIT11_PASSKEY_OWNERS)");
-    if (BigInt(t.valid_until) * 1000n < BigInt(now.getTime() + 15_000)) throw new Error("the signed deadline has passed (or is too close); a new proposal is needed");
   }, now);
+  const sends = journal(db, proposalId, terms.account, now);
+  const late = BigInt(terms.valid_until) * 1000n < BigInt(now.getTime() + 15_000);
+  /** The signed deadline is over: a transaction that has not landed by now can no longer run. */
+  const over = BigInt(terms.valid_until) * 1000n < BigInt(now.getTime());
+  let tx: Hex | null = sends.open()?.tx ?? null;
   try {
-    const { account, data } = signedCallOf(db, proposalId);
-    // A send recorded by an earlier attempt (a crash or a lost receipt) is waited for, never sent again: the nonce
+    let call: { account: Address; data: Hex };
+    try { call = signedCallOf(db, proposalId); } catch (e) { throw new Settled((e as Error).message, { cause: e }); }
+    const { account, data } = call;
+    // Nothing sent yet: the signed deadline must still leave time to land. A send recorded earlier is past this check:
+    // it left in time, and the chain decides what became of it.
+    if (!tx && late) throw new Settled("the signed deadline has passed (or is too close); a new proposal is needed");
+    // A send recorded by an earlier attempt (a crash or a lost receipt) is waited for, never signed again: the nonce
     // would make a second send revert and the proposal read FAILED although the account ran it (review of block 1).
-    const earlier = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'owners.sent' AND subject = ? ORDER BY seq DESC LIMIT 1").get(proposalId) as { payload_json: string } | undefined;
-    const tx = earlier ? (JSON.parse(earlier.payload_json) as { tx: Hex }).tx : await relay.send(account, data);
-    if (!earlier) audit(db, "owner-signer", "owners.sent", proposalId, { account, tx }, now);
-    const ok = await relay.wait(tx);
-    if (!ok) throw new Error(`the account reverted executeSigned (${tx})`);
+    const r = await sendOnce(
+      { ...sends, sent: (s) => { tx = s.tx; sends.sent(s); } },
+      { send: (onSigned) => relay.send(account, data, onSigned), ...(relay.again ? { again: (earlier: Sent) => relay.again!(account, data, earlier) } : {}) },
+      (hash) => relay.wait(hash),
+    );
+    tx = r.tx;
+    if (!r.ok) {
+      const why = (await relay.why?.(account, data).catch((e: Error) => `the reason could not be read (${e.message.slice(0, 120)})`)) ?? "the account gave no reason this runner could read";
+      audit(db, "owner-signer", "owners.reverted", proposalId, { account, tx, reason: why }, now);
+      throw new Settled(`the account reverted executeSigned (${tx}): ${why}`);
+    }
     audit(db, "owner-signer", "owners.executed", proposalId, { account, tx, action: terms.action, note: "signed by the CFO's and the controller's passkeys; the runner only relayed it" }, now);
     finishExecution(db, proposalId, "EXECUTED", { tx }, now);
     return { tx };
   } catch (e) {
-    finishExecution(db, proposalId, "FAILED", { error: (e as Error).message.slice(0, 300) }, now);
+    const message = (e as Error).message;
+    if (e instanceof Settled || e instanceof ChainRefused) {
+      finishExecution(db, proposalId, "FAILED", { error: message.slice(0, 300) }, now);
+      throw e;
+    }
+    const mayHaveLanded = e instanceof NoReceiptYet && e.nonceMoved;
+    if (tx && over && e instanceof NoReceiptYet && !mayHaveLanded) {
+      // The deadline is over and it never landed (the sender's nonce is unused where that was read): the account
+      // refuses these signatures from now on, so this transaction cannot run any more.
+      const error = `${proposalId} was sent as ${tx}, but it has no receipt and the signed deadline has passed: the account refuses it from now on; a new proposal is needed`;
+      finishExecution(db, proposalId, "FAILED", { error, tx }, now);
+      throw new Error(error, { cause: e });
+    }
+    // The outcome is open: the proposal stays EXECUTING for the next start.
+    audit(db, "owner-signer", "owners.waiting", proposalId, { ...(tx ? { tx } : {}), why: message.slice(0, 300) }, now);
+    (e as Error).message = tx && mayHaveLanded
+      ? `${message}; ${proposalId} stays executing: it may have landed, so nothing is settled and nothing was sent again; a person looks ${tx} up, and the runner's next start reads its receipt`
+      : `${message}; ${proposalId} stays executing: start the runner again to carry on${tx ? ` from ${tx}` : ""}, nothing is sent twice`;
     throw e;
   }
 }

@@ -102,10 +102,9 @@ const nums = (items: [string, string][]) => `<div class="nums">${items.map(([v, 
 const docsLi = (title: string, docs: { label: string; href: string }[]) => `<li>${esc(title)}: ${docs.map((d) => `<a class="pf" href="${esc(d.href)}" target="_blank" rel="noopener">${esc(d.label)} ↗</a>`).join(" · ")}</li>`;
 const plainLi = (t: string) => `<li>${esc(t)}</li>`;
 
-function shell(run: AgentRun, o: { intro?: string; lead?: string; top?: string; underTop?: string; label?: string; title: string; description: string; logo: string; h1: string; picture: string; flowClass?: string; nums: string; line: string; extra?: string; folds: string; after?: string; proofHash: string; js?: string }): string {
+function shell(run: AgentRun, o: { title: string; description: string; logo: string; h1: string; picture: string; flowClass?: string; nums: string; line: string; extra?: string; folds: string; after?: string; proofHash: string; js?: string }): string {
   const body = `<main class="pp"><div class="wrap">
-  ${o.intro ? `<p class="vintro">${esc(o.intro)}</p>` : ""}${o.lead ?? ""}${o.top ? `<div class="awrb">${o.top}</div>` : ""}${o.underTop ?? ""}
-  <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(o.label ?? run.label)}</span><h1>${esc(o.h1)}</h1></div>
+  <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(run.label)}</span><h1>${esc(o.h1)}</h1></div>
   ${o.flowClass ? `<div class="flow card ${o.flowClass}">${o.picture}</div>` : `<div class="flow card" role="img" aria-label="${esc(`How ${o.title} fits in, step by step`)}">${o.picture}</div>`}
   ${o.nums}
   <p class="line">${esc(o.line)}</p>
@@ -192,7 +191,7 @@ export function metalPage(run: AgentRun = agentRun(), tokenize: TokenizeRun | nu
 export const CARD_IN_LINE = "Money in by card, a separate sandbox run: a test customer paid a Northwind invoice with Airwallex's sandbox test card, and Purser booked it only after Airwallex reported PaymentIntent int_sgpv9bnppho0sezgl4a SUCCEEDED. Test money.";
 
 /** The connected-accounts runs of 10 November, as they ran (docs/runs/2026-11-10-connected-accounts-sandbox.md). */
-export const TWO_LOCKS_LINE = "Two locks on one payout, a separate sandbox run: after the CFO's passkey (a labelled test passkey) signed the exact terms, Airwallex's own approval workflow held transfer 4074d684-4704-406c-a527-2832753baf4f (EUR 240.00, the signed hash in its metadata) IN_APPROVAL; the web-app approval was not completed, so it is not paid. Test money.";
+export const TWO_LOCKS_LINE = "Two locks on one payout, a separate sandbox run: a labelled virtual test passkey (not a person's Face ID) signed the exact terms in Purser, then Airwallex's own approval workflow held transfer 4074d684-4704-406c-a527-2832753baf4f (EUR 240.00, the signed hash in its metadata) IN_APPROVAL until the owner approved it in Airwallex's sandbox web app on 12 November; it then went PAID, moved to SENT and PAID by the sandbox's simulation (settlement simulated). Test money.";
 export const CONNECTED_LINE = "Purser as an Airwallex platform, a separate sandbox run: a test company's own connected account acct_SC-QD89fOneAeqaRFgOymw opened through Purser and made ACTIVE (verification simulated), then a EUR 5.00 payout on its behalf (a9460dba-f31b-4111-be58-6d9a9e71adb1) carried Purser's fee as an application fee, accepted by Airwallex at exactly EUR 0.05; PAID by the sandbox's simulation. Test money.";
 
 export function airwallexPage(run: AgentRun = agentRun()): string {
@@ -296,7 +295,7 @@ export function assertVicFirst(html: string): void {
   const top = tapAt < 0 ? main : main.slice(0, tapAt);
   if (TAP_WORDS.test(plainWords(top))) fail("TAP is named above the TAP fold");
   const after = html.slice(html.indexOf("</main>"));
-  if (TAP_WORDS.test(plainWords(after.replace(/<script\b[\s\S]*?<\/script\b[^>]*>/gi, " ")))) fail("TAP is named below the page's body (the footer)");
+  if (TAP_WORDS.test(plainWords(after.replace(/<script[\s\S]*?<\/script>/g, " ")))) fail("TAP is named below the page's body (the footer)");
   if (tapAt >= 0) {
     const fold = main.slice(tapAt);
     if (!plainWords(fold).startsWith(`${VISA_TAP_HEADING} ${VISA_TAP_STATUS}`)) fail("the TAP fold does not open with its line and its status");
@@ -312,7 +311,7 @@ export function assertVicFirst(html: string): void {
   const seen = plainWords(unfolded);
   if (!seen.includes(VISA_ENTRY_LINE)) fail("the basis for calling it Visa Intelligent Commerce is not on the page, outside any fold");
   if (!seen.includes(VISA_ICC_LINE)) fail("the Intelligent Commerce Connect line is not on the page, outside any fold");
-  if (plainWords(html.replace(/<script\b[\s\S]*?<\/script\b[^>]*>/gi, " ").replace(/<style\b[\s\S]*?<\/style\b[^>]*>/gi, " ")).split("Intelligent Commerce Connect").length !== 2) fail("Intelligent Commerce Connect is named more than once");
+  if (plainWords(html.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ")).split("Intelligent Commerce Connect").length !== 2) fail("Intelligent Commerce Connect is named more than once");
   const overview = /<section class="card vo"[\s\S]*?<\/section>/.exec(top)?.[0] ?? "";
   if (!overview.includes(`>${esc(VISA_SUMMARY_HEADING)}</h2>`) || (overview.match(/class="vo-run[ "]/g) ?? []).length !== 1 || /class="vo-run tap"/.test(overview)) fail("the summary is not the one paid run's");
   if (!plainWords(after).includes(AIRI_RUN_FILE)) fail(`the footer does not cite ${AIRI_RUN_FILE}`);
