@@ -255,11 +255,11 @@ describe("6. TAP's status (Visa, 5 Nov: not eligible Visa tooling), said once, o
 describe("7. copy slips", () => {
   it("Home's first scene says the purchase Metal refused was a test of the chain: our own check switched off once (jury review, 6 Nov, #8)", () => {
     expect(agentRun().scenes[0]!.sentence).toBe("Stockline raises its price to 0.04 → we switched off our own check once to prove the chain holds the line: Metal refused the purchase on chain → Treasury replans → two signatures → the mandate is replaced.");
-    // Home shows no scene cards since Max's round of 7 Nov; where the refusal is replayed (/watch), its step says why,
+    // Home shows no scene cards since Max's round of 7 Nov; where the refusal is replayed (/replay, /watch before the film), its step says why,
     // as the chain test (jury review, 7 Nov, #13: not the Defense-in-depth label beside it).
     expect(homePage()).not.toContain('class="scene card"');
-    expect(buildPages().watch!).toContain(CHAIN_TEST);
-    expect(buildPages().watch!).not.toContain("To prove the rail itself enforces the limit");
+    expect(buildPages().replay!).toContain(CHAIN_TEST);
+    expect(buildPages().replay!).not.toContain("To prove the rail itself enforces the limit");
     // Both layers where the refusal is told in full: Purser refuses first; with that check off once, Metal refused anyway.
     for (const html of [proofPage(), buildPages().metal]) expect(words(html)).toContain(CHAIN_TEST);
   });

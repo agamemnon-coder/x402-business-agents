@@ -180,7 +180,7 @@ export function whyCompanyHtml(): string {
  * step everywhere (jury review, 7 Nov, #25): the Highlights replay on /watch plays in about 40 s.
  */
 export const FLOW = [
-  { n: 1, icon: "play", title: "Watch the agents", sub: "about 40 s", href: "watch" },
+  { n: 1, icon: "play", title: "Watch the agents", sub: "about 40 s", href: "replay" },
   { n: 2, icon: "scan-face", title: "Try it yourself", sub: "about a minute", href: "try/sign" },
   { n: 3, icon: "shield-check", title: "See the proof", sub: "every id, checkable", href: "proof" },
 ] as const;
@@ -236,7 +236,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   const s1 = run.scenes.find((s) => s.n === 1);
   const tryHref = opts.trySign ? "try/sign" : "try";
   const more = [
-    `<a href="watch">${esc("Watch the agents")}</a>`,
+    `<a href="replay">${esc("Watch the agents")}</a>`,
     `<a href="proof">${esc("See the proof")}</a>`,
     ...(opts.trySign ? [`<a href="judge">${esc(JUDGE_LINE)}</a>`] : []),
   ];

@@ -31,6 +31,9 @@ import { homePage } from "../redesign/home.js";
 import { trySignPage } from "../try/sign.js";
 import { tryVerifyPage } from "../try/verify.js";
 import { watchPage } from "../redesign/watch.js";
+import { filmWatchCsp, filmWatchPage } from "../redesign/filmWatch.js";
+import { filmId } from "../config/film.js";
+import { filmStills } from "../film/stills.js";
 import { proofPage } from "../redesign/proof.js";
 import { judgePage } from "../redesign/judge.js";
 import { loadTrace, TRACE_LINK, tracePage } from "../redesign/trace.js";
@@ -89,6 +92,8 @@ export const LOGOS: Record<string, { type: string; body: Buffer }> = {
   "favicon.svg": { type: "image/svg+xml", body: readFileSync(new URL("../ui/brand/favicon.svg", import.meta.url)) },
   "og.png": { type: "image/png", body: readFileSync(new URL("../ui/brand/og.png", import.meta.url)) },
 };
+/** /watch's stills (src/film/stills/: the poster and the chapter thumbnails, real frames of the film's shots), as /assets/film-<name>. */
+export const FILM_STILLS = filmStills();
 const MONTH_TEMPLATE = withNav(readFileSync(new URL("../dashboard/month.html", import.meta.url), "utf8"), "month");
 const DEMO_TEMPLATE = withNav(readFileSync(new URL("../demo/demo.html", import.meta.url), "utf8"), "demo");
 const LAB_TEMPLATE = withNav(readFileSync(new URL("../dashboard/lab.html", import.meta.url), "utf8"), "lab");
@@ -288,9 +293,16 @@ export function homeWithTrySign(): { page: string; csp: string } {
   return { page, csp: cspFor(page) };
 }
 export const WATCH_CSP = cspFor(WATCH_PAGE);
+/**
+ * /watch: the film (src/redesign/filmWatch.ts). No script and no frame while there is no film; with its id set
+ * (src/config/film.ts), its few lines of script and youtube-nocookie.com's player only. The replay of the main run
+ * (WATCH_PAGE above) moved to /replay.
+ */
+export const FILM_WATCH_PAGE = filmWatchPage();
+export const FILM_WATCH_CSP = filmWatchCsp(FILM_WATCH_PAGE, filmId() !== null, cspFor, styleOnlyCsp);
 export const PROOF_CSP = cspFor(PROOF_PAGE);
 /** Old addresses of pages folded into the four tabs: they redirect, so no link a juror has ends in a 404. */
-export const REDIRECTS: Record<string, string> = { "/live": "/watch", "/demo": "/watch", "/overview": "/home" };
+export const REDIRECTS: Record<string, string> = { "/live": "/replay", "/demo": "/replay", "/overview": "/home" };
 /** The label on the public evidence report: the customer in the 30 October case is simulated. */
 export const SIMULATED_CUSTOMER = "Summit Outfitters is a simulated customer run by us; we filed this claim on its behalf (30 October recorded run).";
 /** The evidence report the seller sends for the recorded case: no script at all, only its own style. */

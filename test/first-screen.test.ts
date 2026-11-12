@@ -43,7 +43,8 @@ describe("the first screen (section D, 6 Nov)", () => {
   it("opens Home under its heading with what Purser is, then one button to /try/sign, the other ways in as text links, and the Airwallex proof (competitive review, 10 Nov)", () => {
     const t = words(hero(HOME));
     expect(t.startsWith(`${HERO} ${WHAT_IT_IS} ${START} Watch the agents · See the proof · ${JUDGE_LINE} Airwallex declined an agent's card over the CFO's limit`)).toBe(true);
-    expect(FLOW.map((f) => f.href)).toEqual(["watch", "try/sign", "proof"]);
+    // "Watch the agents" is the replay at /replay since /watch became the film (12 Nov).
+    expect(FLOW.map((f) => f.href)).toEqual(["replay", "try/sign", "proof"]);
     // One button, to /try/sign: the thing a juror can do in a minute.
     expect(hero(HOME).match(/class="btn[^"]*"/g)).toEqual(['class="btn primary big start"']);
     expect(hero(HOME)).toContain(`<a class="btn primary big start" href="try/sign">`);

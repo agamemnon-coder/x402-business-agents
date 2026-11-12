@@ -54,6 +54,8 @@ export interface Pages {
   /** The redesign's public pages (Home, Watch, Proof), no key needed; absent in a bundle built before them. */
   home?: string;
   watch?: string;
+  /** /replay: the main run of 3 November replayed step by step (it was /watch until the film came). */
+  replay?: string;
   proof?: string;
   /** /trace: any payment of the main run, step by step (no script); absent in a bundle built before it. */
   trace?: string;
@@ -83,7 +85,7 @@ export interface Pages {
   font: string;
   /** The sponsors' logos (base64), served as /assets/<name>. */
   images: Record<string, { type: string; data: string }>;
-  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; t0?: string; home?: string; watch?: string; proof?: string; trace?: string; runs?: string; notFound?: string; trySign?: string; tryVerify?: string; judge?: string; approve: string; enrol: string; policy: string };
+  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; t0?: string; home?: string; watch?: string; replay?: string; proof?: string; trace?: string; runs?: string; notFound?: string; trySign?: string; tryVerify?: string; judge?: string; approve: string; enrol: string; policy: string };
 }
 
 const MAX_STATE_BYTES = 1_500_000;
@@ -157,6 +159,7 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/") return !new URL(req.url).search && pages.home && pages.csp.home ? page(pages.home, pages.csp.home) : page(pages.dashboard, pages.csp.dashboard);
   if (path === "/home" && pages.home && pages.csp.home) return page(pages.home, pages.csp.home);
   if (path === "/watch" && pages.watch && pages.csp.watch) return page(pages.watch, pages.csp.watch);
+  if (path === "/replay" && pages.replay && pages.csp.replay) return page(pages.replay, pages.csp.replay);
   if (path === "/proof" && pages.proof && pages.csp.proof) return page(pages.proof, pages.csp.proof);
   if (path === "/trace" && pages.trace && pages.csp.trace) return page(pages.trace, pages.csp.trace);
   if (path === "/runs" && pages.runs && pages.csp.runs) return page(pages.runs, pages.csp.runs);

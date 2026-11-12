@@ -61,6 +61,8 @@
     "vault:tree": "tsx src/cli/vaultTree.ts",
     "dispute": "tsx src/cli/dispute.ts",
     "video": "tsx src/cli/video.ts",
+    "capture": "tsx src/cli/capture.ts",
+    "cut": "tsx src/cli/cut.ts",
     "agent-evals": "tsx src/cli/agentEvals.ts",
     "ap-agent-evals": "tsx src/cli/apAgentEvals.ts",
     "ap-hostile-eval": "tsx src/cli/apHostile.ts",

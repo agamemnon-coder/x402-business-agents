@@ -2,6 +2,7 @@
 // a text budget per page; no forbidden words on any public page; one Face ID number from one source; the split between
 // Claude's decisions and code's routine payments, both counted from the record; the Claude call badge from each trace;
 // every internal link answers (old addresses redirect, anything else gets the clean 404).
+import { WATCH_IN_MENU } from "../src/config/film.js";
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import { notFoundResponse, pageResponse, type Pages } from "../worker/src/core.js";
@@ -76,7 +77,9 @@ describe("the site after v4", () => {
     // block: the title, one sentence from the record, the verify badge and the summary of its fold (50 words with its
     // hidden section heading; the transactions folded). Without a record the page is unchanged and its budget stays 200 (test/tokenize-record.test.ts
     // holds both states).
-    const budget: Record<string, number> = { home: 250, watch: 125, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, metal: tokenizeRun() ? 325 : 275 /* +75, jury panel 12 Nov: the four mandates in one table (seven columns, each figure a word) */, airwallex: 370 /* +5, panel review 10 Nov */, visa: 610 /* +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa) */, claude: 225 /* +45, jury panel 12 Nov: measured, not asserted (four figures, each with its record, and the injection screen); +30, 12 Nov merge: the hostile-model eval's line with its record link (29 words), kept beside the measured block */, notFound: 40 };
+    // Watch: 260 since the film page (12 Nov): the poster, 13 chapters with their times and the key of what is real
+    // and what is simulated; the transcript is folded (the replay that was here moved to /replay).
+    const budget: Record<string, number> = { home: 250, watch: 260, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, metal: tokenizeRun() ? 325 : 275 /* +75, jury panel 12 Nov: the four mandates in one table (seven columns, each figure a word) */, airwallex: 370 /* +5, panel review 10 Nov */, visa: 610 /* +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa) */, claude: 225 /* +45, jury panel 12 Nov: measured, not asserted (four figures, each with its record, and the injection screen); +30, 12 Nov merge: the hostile-model eval's line with its record link (29 words), kept beside the measured block */, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 
@@ -95,7 +98,7 @@ describe("the site after v4", () => {
   it("has four tabs and nothing else in the menu, on every public page", () => {
     for (const [name, html] of Object.entries(PUBLIC)) {
       const nav = /<nav[^>]*aria-label="Main"[^>]*>([\s\S]*?)<\/nav>/.exec(html)?.[1] ?? "";
-      expect({ name, tabs: [...nav.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1]) }).toEqual({ name, tabs: ["Home", "Watch", "Try", "Proof"] });
+      expect({ name, tabs: [...nav.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1]) }).toEqual({ name, tabs: WATCH_IN_MENU ? ["Home", "Watch", "Try", "Proof"] : ["Home", "Try", "Proof"] });
     }
   });
 
@@ -114,7 +117,7 @@ describe("the site after v4", () => {
       }
     }
     for (const want of ["/home", "/watch", "/try", "/proof", "/metal", "/airwallex", "/visa", "/claude", "/lab", "/film", "/month", "/metal/report"]) expect(seen).toContain(want);
-    for (const [from, to] of [["/live", "/watch"], ["/demo", "/watch"], ["/overview", "/home"]]) expect(pageResponse(new Request(`https://x.test${from}`), p)?.headers.get("location")).toBe(to);
+    for (const [from, to] of [["/live", "/replay"], ["/demo", "/replay"], ["/overview", "/home"]]) expect(pageResponse(new Request(`https://x.test${from}`), p)?.headers.get("location")).toBe(to);
     expect(pageResponse(new Request("https://x.test/no/such/page"), p)).toBeNull();
     const nf = notFoundResponse(p);
     expect(nf.status).toBe(404);
@@ -140,8 +143,8 @@ describe("the site after v4", () => {
   it("reaches the archive (/lab, /film, /month, /metal/report) only through Proof's folded, labelled Archive", () => {
     // Its own closed line at the end of Proof since 12 Nov (before: a card inside "Every check"), the replay first.
     const archive = /<details class="deep" id="archive"><summary>Archive<\/summary>[\s\S]*?<\/details>/.exec(pages.proof!)?.[0] ?? "";
-    expect(archive).toContain(`<li><a class="pf" href="watch">Replay of the main run, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(run.recordedAt))}</a></li>`);
-    expect(archive).toContain('href="watch">Replay of the main run, 3 Nov</a>');
+    expect(archive).toContain(`<li><a class="pf" href="replay">Replay of the main run, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(run.recordedAt))}</a></li>`);
+    expect(archive).toContain('href="replay">Replay of the main run, 3 Nov</a>');
     for (const href of ["lab", "film", "month", "metal/report"]) {
       expect(archive).toMatch(new RegExp(`<details[\\s\\S]*href="${href}"`));
       for (const [name, html] of Object.entries(PUBLIC)) if (!["proof", "metal"].includes(name)) expect({ name, href, linked: html.includes(`href="${href}"`) }).toEqual({ name, href, linked: false });
@@ -158,7 +161,7 @@ describe("the site after v4", () => {
       const secs = (tr.claude_ms.reduce((n, x) => n + x, 0) / 1000).toFixed(1);
       const fam = /claude-(haiku|sonnet|opus)/.exec(tr.model)![1]!;
       expect(callBadge(e.call!)).toBe(`Claude call ✓ · ${fam[0]!.toUpperCase()}${fam.slice(1)} · ${total.toLocaleString("en-US")} tokens · ${secs} s · ${tr.request_ids[0]!.slice(0, 12)}…`);
-      expect(pages.watch).toContain(callBadge(e.call!));
+      expect(pages.replay).toContain(callBadge(e.call!));
     }
   });
 
@@ -168,8 +171,8 @@ describe("the site after v4", () => {
     expect(h.length).toBeLessThanOrEqual(15);
     expect(h.some((e) => e.k === "money" && (e.refused?.code === "fee_unknown" || e.earlier))).toBe(false);
     expect(run.events.some((e) => e.k === "money" && e.earlier)).toBe(false);
-    expect(pages.watch).toContain(`Full run (${run.events.length} steps)`);
-    expect(pages.watch).toContain(WORLD_SETUP);
+    expect(pages.replay).toContain(`Full run (${run.events.length} steps)`);
+    expect(pages.replay).toContain(WORLD_SETUP);
   });
 
   it("shows one Face ID number from one source, and the split between Claude and code (D3)", () => {

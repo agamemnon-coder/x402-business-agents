@@ -1,6 +1,7 @@
 // The partner pages (/airwallex, /claude): every id, tx and figure on them comes from the recorded files, every
 // agent's model from code; each is short with its details folded; the nav keeps the four tabs.
 import { readFileSync } from "node:fs";
+import { WATCH_IN_MENU } from "../src/config/film.js";
 import { describe, expect, it } from "vitest";
 import { AGENT_MODELS, airwallexData, claudeData } from "../src/partners/data.js";
 import { AIRWALLEX_PAGE, CLAUDE_PAGE } from "../src/servers/dashboard.js";
@@ -114,7 +115,8 @@ describe("the partner pages", () => {
   });
 
   it("are reached from Proof, with the main nav four tabs, and served by the relay", () => {
-    expect(NAV_MAIN.map(([k]) => k)).toEqual(["home", "watch", "try", "proof"]);
+    // Watch is a tab once the film is on /watch (src/config/film.ts).
+    expect(NAV_MAIN.map(([k]) => k)).toEqual(WATCH_IN_MENU ? ["home", "watch", "try", "proof"] : ["home", "try", "proof"]);
     const pages = buildPages();
     expect(pages.airwallex).toBe(AIRWALLEX_PAGE);
     expect(pages.claude).toBe(CLAUDE_PAGE);
@@ -124,7 +126,7 @@ describe("the partner pages", () => {
     // Live QA (7 Nov, Lighthouse): on the jury's pages no heading skips a level (/airwallex went h1 to h3), Proof's
     // "More" links each name their partner for screen readers, /metal's tx links are at least 24 px tall, and the
     // stage never fades its words below readable contrast (it greys them instead).
-    const jury = { home: pages.home, watch: pages.watch, proof: pages.proof, airwallex: pages.airwallex, metal: pages.metal, claude: pages.claude, visa: pages.visa };
+    const jury = { home: pages.home, watch: pages.watch, replay: pages.replay, proof: pages.proof, airwallex: pages.airwallex, metal: pages.metal, claude: pages.claude, visa: pages.visa };
     for (const [name, html] of Object.entries(jury)) {
       const levels = [...String(html).matchAll(/<h([1-6])\b/g)].map((m) => Number(m[1]));
       expect({ name, skips: levels.filter((l, i) => i > 0 && l > levels[i - 1]! + 1) }).toEqual({ name, skips: [] });

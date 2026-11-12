@@ -6,6 +6,7 @@
 import { ICONS, type Icon } from "../ui/icons.js";
 import { NORTHWIND_LINE, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js";
 import { OG_IMAGE, TAGLINE_LINE, ogTitle } from "../ui/meta.js";
+import { WATCH_IN_MENU } from "../config/film.js";
 
 const EXTRA: Record<string, Icon> = {
   copy: [["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2" }], ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" }]],
@@ -31,7 +32,8 @@ export const iconSet = (names: string[]) => Object.fromEntries(names.map((n) => 
 export const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 export type Tab = "home" | "watch" | "try" | "proof";
-const TABS: [Tab, string, string][] = [["home", "Home", "home"], ["watch", "Watch", "watch"], ["try", "Try", "try"], ["proof", "Proof", "proof"]];
+// Watch is a tab only once the new film is on /watch (src/config/film.ts WATCH_IN_MENU, one constant for every menu).
+const TABS: [Tab, string, string][] = ([["home", "Home", "home"], ["watch", "Watch", "watch"], ["try", "Try", "try"], ["proof", "Proof", "proof"]] as [Tab, string, string][]).filter(([t]) => t !== "watch" || WATCH_IN_MENU);
 
 /** The design tokens, light and dark: the same on every page. */
 export const TOKENS = `@font-face { font-family: Inter; src: url(assets/inter.woff2) format("woff2"); font-weight: 100 900; font-display: swap; }
