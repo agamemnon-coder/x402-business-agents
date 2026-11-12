@@ -114,6 +114,18 @@ async function executeApproved(db: DB, proposalId: string, rails?: Rails): Promi
     if (out.status === "unconfirmed") throw new Error(`the checkout's outcome is not known (${out.reason}); nothing is retried`);
     return;
   }
+  if (row.kind === "icc_purchase") {
+    // The ICC rail (src/icc/purchase.ts), only with KIT11_ICC_RAIL=on. The flow re-checks the approved hash before the
+    // instruction and again before the credential, and stops before checkout: nothing is paid.
+    const { iccRailOn } = await import("../icc/policy.js");
+    if (!iccRailOn()) throw new Error("the ICC rail is off (KIT11_ICC_RAIL); nothing was run");
+    const { liveIccDeps } = await import("../icc/deps.js");
+    const { executeIccPurchase } = await import("../icc/purchase.js");
+    const out = await executeIccPurchase(db, liveIccDeps((line) => console.log(line)), proposalId);
+    if (out.status === "refused") throw new Error(`refused by ${out.by}: ${out.code}`);
+    if (out.status === "unconfirmed") throw new Error(`the ${out.step} call's outcome is not known (${out.reason}); nothing is retried`);
+    return;
+  }
   if (row.kind === "agent_onboard") {
     const issuing = issuingFromEnv(db);
     if (!issuing) throw new Error("Airwallex sandbox keys are not set; the card cannot be issued");
