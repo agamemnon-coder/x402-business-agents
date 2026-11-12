@@ -28,6 +28,7 @@ import { tryEngineRoutes } from "./try/engineRoutes.js";
 import { tryError, tryRoutes } from "./try/routes.js";
 import { isTryTenant, noteTryFail, TryRefused, type TryConfig } from "./try/start.js";
 import { SwitchRefused } from "./try/switches.js";
+import { noteRequest } from "./try/metrics.js";
 
 export interface CloudEnv {
   sql: Sql;
@@ -497,6 +498,8 @@ export async function handle(req: Request, env: CloudEnv): Promise<Response> {
   const res = await route(req, env);
   const path = new URL(req.url).pathname;
   const pattern = path.startsWith("/v1/") ? (ROUTES.find((r) => { try { return match(path, r.path) !== null; } catch { return false; } })?.path ?? "unknown") : "console";
+  // The hands-on deployment's own figures for the owner's page (cloud/src/try/metrics.ts): counts and buckets only.
+  if (env.tryIt && path.startsWith("/v1/")) await noteRequest(env.sql, pattern, res.status, Date.now() - started, new Date());
   logEvent(res.status >= 500 ? "error" : res.status === 401 || res.status === 403 || res.status === 429 ? "warn" : "info", "request", { method: req.method, route: pattern, status: res.status, ms: Date.now() - started });
   return res;
 }

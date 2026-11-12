@@ -16,6 +16,8 @@ import type { Sql } from "../store.js";
 import { BadRequest } from "../read.js";
 import type { EngineApi } from "../engine/api.js";
 import type { EngineCtx, EngineKit, EngineRoute } from "../engine/routes.js";
+import { tallyFiled, tallyPay } from "./counter.js";
+import { noteReader } from "./metrics.js";
 import { isTryTenant, TryRefused } from "./start.js";
 
 /** What these routes need of the request's context beyond the engine's: the cloud's database and the request's time. */
@@ -52,6 +54,12 @@ async function filed<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
+/** The counter's tallies and who read the invoice (./counter.ts, ./metrics.ts); neither ever fails the request. */
+async function counted(c: TryEngineCtx, out: Awaited<ReturnType<EngineApi["compose"]>> | null): Promise<void> {
+  await tallyFiled(c.env.sql, out, c.now);
+  if (out && !("refused" in out)) await noteReader(c.env.sql, out.invoice?.read_by, c.now);
+}
+
 const field = (max: number) => z.string().max(max);
 const Compose = z.object({ supplier_key: field(40), invoice_no: field(64), amount: field(32), issue_date: field(32), due_date: field(32), iban: field(64) }).strict();
 
@@ -71,6 +79,7 @@ export function tryEngineRoutes<C extends TryEngineCtx>(kit: EngineKit<C>): Engi
     { method: "GET", path: "/v1/engine/samples", summary: "The hands-on demo's sample invoices, in the tray's order: { items: [{ key, title, filename }] }. Each title says what you do, never what the engine will answer. Test invoices (fake).", need: "read", run: on(async (_c, e) => json(200, { items: await e.samples() })) },
     { method: "POST", path: "/v1/engine/samples/{key}", summary: "Send a sample invoice to the engine's inbox, as an upload of its PDF: answers as POST /v1/engine/documents ({ kind, sha256, invoice }); 404 for a key that is not a sample; 400 in the engine's words when it is refused (a test company's limit of 8 documents).", need: "admin", run: on(async (c, e) => {
       const out = await filed(() => e.uploadSample(c.params[0]!));
+      await counted(c, out);
       return out ? json(200, out) : err(404, "no such sample");
     }) },
     { method: "GET", path: "/v1/engine/suppliers", summary: "The suppliers the company has on file, as the engine's seed recorded them: { items: [{ key, name, iban, bic }] }. Their IBANs are published test IBANs, not anyone's account.", need: "read", run: on(async (_c, e) => json(200, { items: await e.suppliers() })) },
@@ -78,6 +87,7 @@ export function tryEngineRoutes<C extends TryEngineCtx>(kit: EngineKit<C>): Engi
       if (!isTryTenant(c.caller!.tenantId)) throw new AuthError(403, "only a test company of the hands-on demo writes its own invoice here");
       const b = await kit.body(c, Compose, 4_000);
       const out = await filed(() => e.compose(b));
+      await counted(c, out);
       if ("refused" in out) return json(400, { error: out.refused.message, code: `invalid_${out.refused.field}`, message: out.refused.message, field: out.refused.field });
       return json(200, out);
     }) },
@@ -93,6 +103,7 @@ export function tryEngineRoutes<C extends TryEngineCtx>(kit: EngineKit<C>): Engi
       if (!(await e.proposal(c.params[0]!))) return err(404, "no proposal");
       await countFor(c, "trypay", PAYS_PER_COMPANY, `This test company has tried to pay ${PAYS_PER_COMPANY} times, its limit. Start a new one to try again.`);
       const out = await e.paySigned(c.params[0]!, b.terms, b.credential);
+      await tallyPay(c.env.sql, out, c.now);
       if (!out) return err(404, "no proposal");
       if ("bad" in out) return json(400, { error: out.bad, code: "bad_terms", message: out.bad });
       return json(200, { ...out, sandbox_calls: await sandboxCalls(c.env.sql, c.caller!.tenantId, c.params[0]!, since), request_id: `req_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}` });

@@ -5,11 +5,12 @@
 //
 // Lane A's spend ledger (cloud/src/engine/spend.ts) reads the Claude caps from here; the rail (C8) reads its limits.
 import type { Sql } from "../store.js";
+import { EXTRA_SWITCHES } from "./extraSwitches.js";
 
 export type Switches = Record<string, string>;
 
 /** On or off; a missing row is off. */
-export const ON_OFF = ["starts", "claude", "agents", "rail_awx", "rail_metal", "own_upload"] as const;
+export const ON_OFF = ["starts", "claude", "agents", "rail_awx", "rail_metal", "own_upload", ...EXTRA_SWITCHES] as const;
 
 /** Whole numbers with a ceiling no `set` may pass; a missing row is 0 unless it has a default here. */
 export const NUMBERS: Record<string, { ceiling: number; fallback: number }> = {
