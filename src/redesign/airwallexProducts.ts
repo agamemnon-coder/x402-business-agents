@@ -95,6 +95,11 @@ const read = (file: string): string | null => {
 };
 /** "45.00" → "€45", "4.84" → "€4.84". */
 const euro = (amount: string) => `€${amount.replace(/,/g, "").replace(/\.00$/, "")}`;
+/** A figure such as "€4.84" as a count-up (src/redesign/stats.ts COUNT_JS), anything else as it is. */
+const countUp = (v: string) => {
+  const m = /^(€)(\d+(?:\.(\d+))?)$/.exec(v);
+  return m ? `${m[1]}<span data-count="${m[2]}" data-dec="${m[3]?.length ?? 0}">${esc(m[2]!)}</span>` : esc(v);
+};
 const money = (currency: string, amount: string) => currency === "EUR" ? euro(amount) : `${currency} ${amount}`;
 const dayShort = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
 const faceId = (method: string | null | undefined, virtual = false) => method === "passkey" && !virtual ? "Face ID" : "the CFO's approval";
@@ -464,7 +469,7 @@ const link = (href: string, inner: string, attrs = "") => `<a href="${esc(href)}
 function tileHtml(t: ProductTile): string {
   const body = t.states ? `<ol class="aws">${t.states.map((s) => `<li class="${s.tone}"><b>${esc(s.text)}</b></li>`).join("")}</ol>` : `<p class="w">${esc(t.what)}</p>`;
   return `<article class="awt card${t.states ? " wide" : ""}" id="p-${t.key}" data-rec="${esc(t.files.join(" "))}"><h2>${esc(t.name)}</h2>
-<span class="v">${esc(t.value)}</span>
+<span class="v">${countUp(t.value)}</span>
 ${body}
 <p class="y">${esc(t.why)}</p>
 <p class="i">${link(t.href, `<code>${esc(shortId(t.id))}</code>`, ` title="${esc(`${t.idLabel} ${t.id}`)}"`)}<time datetime="${esc(t.iso)}">${esc(dayShort(t.iso))}</time></p></article>`;

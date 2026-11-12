@@ -12,6 +12,7 @@ import { readFileSync } from "node:fs";
 import { INSPECTOR_DAILY_CEILING, INSPECTOR_TTL_SECONDS, METAL_INSPECTOR_PATH, metalRecordedOf, type MetalRecorded } from "../../worker/src/metalInspector.js";
 import { EXPLORER, MAIN_RUN_CHECK, REPO_BLOB, metalStory, refusalNote, separateRuns, type MetalStory } from "./metalStory.js";
 import type { RunRecord } from "./run.js";
+import { statsHtml } from "./stats.js";
 import { esc, icon } from "./ui.js";
 
 /** The read-only check of 12 November: its read, the two refusals decoded, and two mandates' terms from their events. */
@@ -180,7 +181,7 @@ export function metalBody(record: RunRecord, o: MetalBody): string {
   const rows = mandateRows(record, trace), insp = inspectorRecord(), live = insp.recorded, st: MetalStory = metalStory(record);
   const liveOf = (agent: string) => live?.mandates.find((m) => m.agent === agent);
   const name = (r: MandateRow) => r.whose === "customer" ? "Customer's agent" : AGENT(r.agent);
-  const table = `<section class="mt card" aria-labelledby="mt-h"><h2 id="mt-h">${esc(`${rows.length} mandates on chain, one per agent`)}</h2>
+  const table = `<section class="mt card" aria-labelledby="mt-h"><h2 id="mt-h">${esc("Each mandate, its cap and its spend")}</h2>
 <table class="mtab"><thead><tr><th scope="col">Agent</th><th scope="col">Cap a payment</th><th scope="col">Budget</th><th scope="col">Spent</th><th scope="col">Payee</th><th scope="col">Expires</th><th scope="col">Revoked</th></tr></thead><tbody>
 ${rows.map((r) => {
     const l = liveOf(r.agent);
@@ -194,7 +195,7 @@ ${live ? `<details class="fold" data-rec="${esc(METAL_INSPECTOR_RECORD)}"><summa
 
   const r = st.refusal, decoded = insp.refusals.find((x) => r && x.tx === (r.proof.href ?? "").split("/").pop()), revoked = insp.refusals.find((x) => x !== decoded);
   const payCard = `<div class="mc card"><h2>${esc(`${st.payments.total} Metal payments, each its own transaction`)}</h2><p>${esc(`${st.payments.sales} sales, ${st.payments.purchases} supplier purchases, ${st.payments.refunds} refunds and ${st.payments.sweeps} sweep, in *USDZ.`)}</p><p class="tx2">${a(st.payments.account.href!, st.payments.account.label)}${a(`${REPO_BLOB}${MAIN_RUN_CHECK}`, "checked one by one")}</p></div>`;
-  const refusalCard = r ? `<div class="mc card"><h2>${esc(`#${r.seq} refused on chain`)}</h2><p>${esc(`Our own check was off for this one test. Metal's facilitator answered 402; a second call had Metal record the refusal on chain: ${r.amount} *USDZ over the ${r.cap} cap. Nothing moved.`)}</p><p class="tx2">${a(r.proof.href!, `tx ${short(r.proof.href!.split("/").pop()!)}`)}</p></div>` : "";
+  const refusalCard = r ? `<div class="mc card"><h2>${esc(`#${r.seq} refused on chain`)}</h2><p>${esc("Our own check was off for this test. Metal refused it on chain; nothing moved.")}</p><p class="tx2">${a(r.proof.href!, `tx ${short(r.proof.href!.split("/").pop()!)}`)}</p></div>` : "";
   const signer = replaceSigner(record), x = st.replace;
   const replaceCard = x ? `<div class="mc card"><h2>${esc("Mandates replaced after Face ID")}</h2><p>${esc(`${x.proposal}: the CFO's Face ID and a test passkey approved it in Purser${signer?.actor === "owner-signer" ? "; one owner key, held by Purser's runner, signed on chain. The chain did not check Face ID." : "."}`)}${signer?.actor === "owner-signer" && ownersRun() ? ` <a class="pf" href="#faceid-onchain">${esc("Since 12 Nov it does")} ↓</a>` : ""}</p><p class="tx2">${x.steps.map((s) => a(tx(s.proof.href!.split("/").pop()!), `${AGENT(s.agent)} ${s.cap}`)).join("")}</p>${x.revoked ? `<p class="mnote">${esc(`#${x.revoked.seq} on the old mandate: refused by Metal's facilitator (${x.revoked.code}), no transaction.`)}</p>` : ""}</div>` : "";
 
@@ -212,6 +213,11 @@ ${revoked ? `<p class="mnote"><b>${esc(`A revoked credential, ${day(revoked.bloc
 
   return `<main class="pp mtp"><div class="wrap">
   <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(o.label)}</span><h1>${esc("A limit the agent cannot talk past")}</h1></div>
+  ${statsHtml([
+    { n: rows.length, label: "mandates on chain, one per agent", icon: "link-2" },
+    { n: st.payments.total, label: "Metal payments, each its own transaction", icon: "credit-card", tone: "ok" },
+    ...(r ? [{ n: Number(r.amount), dec: (r.amount.split(".")[1] ?? "").length, suf: " *USDZ", label: `refused on chain, over the ${r.cap} cap`, icon: "ban", tone: "bad" as const }] : []),
+  ])}
   ${table}
   <div class="mgrid">${payCard}${refusalCard}${replaceCard}</div>
   <div class="folds card">${coverage}${decodedFold}${o.folds}</div>${o.after ?? ""}
