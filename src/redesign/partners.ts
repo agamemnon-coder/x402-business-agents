@@ -36,6 +36,7 @@ import { VISA_OVERVIEW_CSS, VISA_OVERVIEW_ID, VISA_SUMMARY_HEADING, VISA_TAP_ID,
 import { tokenizeRun, tokenizeRunBlock, type TokenizeRun } from "./tokenizeRun.js";
 import { HOLD_NOT_FINISHED, METAL_CSS, METAL_HOLD_RECORD, METAL_INSPECT_JS, holdState, metalBody } from "./metalMandates.js";
 import { EVIDENCE_CSS, claudeEvidence, failureFold, mcpFold, measuredBlock, sweepFold } from "./claudeEvidence.js";
+import { BOOKS_CSS, CODER_EVAL, LEDGER_AGENTS_RECORD, MONEYBIRD_RECORD, booksBody, booksData } from "./booksPage.js";
 import { T0_CSS, T0_FIRST_RECORD, T0_JOURNAL_RECORD, T0_LABEL, T0_SECOND_RECORD, t0Body, t0Data } from "./t0Page.js";
 import { OPEN_TARGET_JS, esc, icon, page, TRY_URL } from "./ui.js";
 
@@ -429,6 +430,12 @@ export function t0Page(run: AgentRun = agentRun()): string {
   const body = t0Body(t0Data(), { logo: T0_LOGO, pill: T0_LABEL });
   return page({ title: "T:0", description: "How Purser uses T:0: its double-entry books posted to T:0's general ledger as journal entries, then read back line by line.", tab: "proof", css: `${CSS}\n${T0_CSS}`, body,
     source: `Source: ${T0_JOURNAL_RECORD}, ${PLATFORM_RUN_FILE}, ${T0_FIRST_RECORD} and ${T0_SECOND_RECORD}.`, real: T0_REAL, builtOn: builtOnHtml(run) });
+}
+
+/** /books (owner, 12 Nov): Purser's bookkeeping with AI agents, from the run records and evals alone (src/redesign/booksPage.ts). */
+export function booksPage(run: AgentRun = agentRun()): string {
+  return page({ title: "Books", description: "Purser's bookkeeping with AI agents: the journal posted to T:0, the Coder agent's coding, the ledger agents, and the books synced to Moneybird and T:0, from the run records.", tab: "books", css: `${CSS}\n${BOOKS_CSS}`, body: booksBody(booksData()),
+    source: `Source: ${T0_JOURNAL_RECORD}, ${CODER_EVAL}, ${LEDGER_AGENTS_RECORD} and ${MONEYBIRD_RECORD}.`, real: ["The journal is the main run's books of 3 November, test money, posted to T:0's shared sandbox entity.", "Moneybird is a sandbox administration with test data.", "The ledger agents are behind flags, off by default; their figures are from one eval run each."], builtOn: builtOnHtml(run) });
 }
 
 /** The clean 404: what happened, and the four tabs. No script. */

@@ -3,7 +3,7 @@
 // The page uses relative URLs only, so the same file can later be served by another host unchanged.
 
 import { withMeta } from "../ui/meta.js";
-import { airwallexPage, claudePage, metalPage, notFoundPage, t0Page, visaPage } from "../redesign/partners.js";
+import { airwallexPage, booksPage, claudePage, metalPage, notFoundPage, t0Page, visaPage } from "../redesign/partners.js";
 import { inspectorRecord } from "../redesign/metalMandates.js";
 import { METAL_INSPECTOR_PATH, localInspector } from "../../worker/src/metalInspector.js";
 import { WORLD_CHANGES } from "../try/world.js";
@@ -287,6 +287,9 @@ export const STATUS_OFFLINE_CSP = styleOnlyCsp(STATUS_PAGE_OFFLINE);
 /** /t0 (owner, 12 Nov): Purser's books in T:0's ledger, from the T:0 run records; no script, so a style-only policy. */
 export const T0_PAGE = t0Page();
 export const T0_CSP = styleOnlyCsp(T0_PAGE);
+/** /books (owner, 12 Nov): the bookkeeping with AI agents, from the run records; no script, so a style-only policy. */
+export const BOOKS_PAGE = booksPage();
+export const BOOKS_CSP = styleOnlyCsp(BOOKS_PAGE);
 /** /trace: any payment of the main run, step by step (src/redesign/trace.ts); no script, so a style-only policy. */
 export const TRACE_PAGE = tracePage();
 export const TRACE_CSP = styleOnlyCsp(TRACE_PAGE);
@@ -464,6 +467,10 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   app.get("/status", (_req, res) => {
     res.setHeader("Content-Security-Policy", STATUS_CSP);
     res.type("html").send(STATUS_PAGE);
+  });
+  app.get("/books", (_req, res) => {
+    res.setHeader("Content-Security-Policy", BOOKS_CSP);
+    res.type("html").send(BOOKS_PAGE);
   });
   app.get("/t0", (_req, res) => {
     res.setHeader("Content-Security-Policy", T0_CSP);

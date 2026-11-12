@@ -3,7 +3,7 @@
 // so the two definitions cannot drift apart. "More" is a <details> element: it opens and closes without any script, by
 // mouse, touch or keyboard (Enter or Space on the summary; its links take focus only while it is open).
 
-export type MoreKey = "cloud" | "pricing" | "security" | "docs" | "status" | "airwallex" | "metal" | "visa" | "claude";
+export type MoreKey = "cloud" | "pricing" | "security" | "docs" | "books" | "status" | "airwallex" | "metal" | "visa" | "claude";
 
 export interface MoreLink {
   key: MoreKey;
@@ -28,6 +28,8 @@ export const MORE_LINKS: readonly MoreLink[] = [
   { key: "pricing", label: "Pricing", href: "pricing", group: "product" },
   { key: "security", label: "Security", href: "security", group: "product" },
   { key: "docs", label: "Docs", href: "docs", group: "product" },
+  // 12 Nov (owner): the bookkeeping with AI agents, from the run records (src/redesign/booksPage.ts).
+  { key: "books", label: "Books", href: "books", group: "product" },
   // 12 Nov (owner): Status is out of the menu and the footer; /status itself still answers.
   { key: "airwallex", label: "Airwallex", href: "airwallex", group: "partner" },
   { key: "metal", label: "Metal", href: "metal", group: "partner" },

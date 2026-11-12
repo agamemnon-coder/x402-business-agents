@@ -18,6 +18,7 @@ import { VIC3_RUN_ID, vic3Run, type Vic3Record } from "./vic3Run.js";
 import { esc, icon, MAIN_RUN_REAL, page, TRY_URL } from "./ui.js";
 import { lifecycleSvg, VISUAL_CSS } from "../visuals/svg.js";
 import { BUILT_WITH } from "../visuals/logos.js";
+import { booksData } from "./booksPage.js";
 
 const CSS = `.hero { padding: 24px 0 36px; }
 .hero .wrap { display: grid; gap: 20px; }
@@ -239,6 +240,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
     <li><a class="row reveal" href="${esc(r.href)}"${r.external ? ' target="_blank" rel="noopener"' : ""}><span class="ic">${icon(r.icon, 22)}</span><strong>${esc(r.title)}</strong><span>${esc(r.text)}</span><code title="${esc(r.full)}">${esc(r.id)}</code>${icon(r.external ? "external-link" : "arrow-right", 18)}</a></li>`).join("")}
   </ol>
   <a class="btn big more" href="proof">${esc(PROOF_BUTTON)}${icon("arrow-right", 18)}</a>
+  ${booksCardHtml()}
   ${nextHtml(opts.smallCompanyUrl ?? SMALL_COMPANY_DEMO_URL)}
   ${designPartnerHtml(opts.partnerUrl ?? DESIGN_PARTNER_URL)}
 </div></section>
@@ -264,4 +266,11 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
     real,
     source: `Source: ${AWX_RUN_FILE}, ${HERO_RECEIPT_FILE} and ${run.file} (${run.name}).`,
   });
+}
+
+/** One card for /books (owner, 12 Nov): one word, as Home's word budget allows (test/site-v4.test.ts); none without the T:0 record. */
+export function booksCardHtml(): string {
+  const j = booksData().journal;
+  if (!j) return "";
+  return `<ol class="rows books"><li><a class="row reveal" href="books"><span class="ic">${icon("database", 22)}</span><strong>${esc("Books")}</strong>${icon("arrow-right", 18)}</a></li></ol>`;
 }
