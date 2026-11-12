@@ -44,7 +44,7 @@ export const DEMO_OPEN: ReadonlySet<string> = new Set(["GET /v1/health", "GET /v
 export const DEMO_DOCUMENT_ROUTES: ReadonlySet<string> = new Set(["/v1/invoices/{id}/document", "/v1/documents/{sha256}"]);
 
 /** What the demo says about itself wherever it answers in its own words. */
-export const DEMO_NOTE = "A public, read-only demo of Purser Cloud: test companies and test money. Nothing here is real, and nothing can be changed.";
+export const DEMO_NOTE = "A public, read-only demo of Purser Cloud: test companies and test money, no real company and no real money. Nothing can be changed here.";
 export const DEMO_LABEL = { read_only: true, test_world: true, note: DEMO_NOTE } as const;
 /** Why the demo takes no mail (the Worker's e-mail handler). */
 export const DEMO_MAIL_REFUSAL = "this address is a read-only demo and takes no mail";
