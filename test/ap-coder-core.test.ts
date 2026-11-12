@@ -276,8 +276,32 @@ describe("fallbackCoding: what code alone decides", () => {
     // The invoice's VAT is carried on the lines in proportion to their nets, to the cent.
     expect(out.lines.map((l) => l.vat_cents)).toEqual([16340, 5244, 354, 7600]);
     expect(out.lines.reduce((a, l) => a + l.vat_cents, 0)).toBe(29538);
-    expect(out.review).toBe("No VAT code fits: the invoice's VAT 295.38 on its net 1554.62 is no rate Purser has a code for (a foreign VAT rate, or a rounding difference). A person codes the VAT; code does not guess.");
+    expect(out.review).toBe("No single VAT code gives the invoice's VAT 295.38 on its net 1554.62: the lines may carry different rates, the rate may be a foreign one, or the amounts may differ by rounding. A person codes the VAT; code does not guess.");
     expect(out.reason).toContain("account 6200");
+  });
+
+  it("says only what code checked when no rate fits: a Dutch invoice with two rates is not called foreign", () => {
+    const out = fallbackCoding(caseOf(TWO_RATES, { country: "NL" }));
+    expect(out).toMatchObject({ status: "needs_review", lines: [{ vat_code: null }, { vat_code: null }] });
+    expect(out.review).toBe("No single VAT code gives the invoice's VAT 39.00 on its net 300.00: the lines may carry different rates, the rate may be a foreign one, or the amounts may differ by rounding. A person codes the VAT; code does not guess.");
+    // One rate gives the VAT on the whole net, yet the lines state other rates: the review says that, and no code is set.
+    const odd = "Zeeland Verpakkingen B.V.\nBTW-nummer: NL123456789B01\nBoek 9%      € 100,00\nDienst 33%   € 100,00\nSubtotaal € 200,00\nBTW € 42,00\nTotaal te betalen € 242,00";
+    const c = caseOf(odd);
+    expect(c.invoice.lines.map((l) => l.vat_rate)).toEqual([9, 33]);
+    expect(fallbackCoding(c)).toMatchObject({ status: "needs_review", lines: [{ vat_code: null }, { vat_code: null }], review: "VAT code P21 gives the invoice's VAT 42.00 on its net 200.00, but line 1 itself states 9% VAT, and VAT code P21 charges 21%. A person codes the VAT; code does not guess." });
+  });
+
+  it("a net so small that two rates give the same VAT: no VAT code, code does not pick one", () => {
+    const c = caseOf(NL);
+    for (const [net, total] of [["0.06", "0.07"], ["0.07", "0.08"]] as const) {
+      const tiny = { ...c, invoice: { ...c.invoice, subtotal: net, tax: "0.01", total, lines: [{ line_no: 1, description: WHOLE_INVOICE, net, vat_rate: null }] } };
+      expect([vatOn(Number(net) * 100, "P21"), vatOn(Number(net) * 100, "P9")]).toEqual([1, 1]);
+      const out = fallbackCoding(tiny);
+      expect(out).toMatchObject({ status: "needs_review", source: "fallback", lines: [{ account: "6900", vat_code: null, vat_cents: 1 }] });
+      expect(out.review).toBe(`More than one VAT code gives the invoice's VAT 0.01 on its net ${net} (P21, P9). A person codes the VAT; code does not guess.`);
+      // The agent may still decide between them: either reproduces the VAT.
+      expect(enforceCoding(tiny, coding(all(tiny, "6900", "P9")))).toMatchObject({ status: "coded", source: "claude", lines: [{ vat_code: "P9", vat_cents: 1 }] });
+    }
   });
 
   it("a one-cent difference from 21%: no VAT code", () => {
@@ -409,6 +433,26 @@ describe("enforceCoding: the rules, one by one", () => {
     refused(c, all(c, "6900", "P21", "CC999"), "unknown_cost_centre", "cost centre CC999 does not exist");
     for (const cc of [undefined, null, ""]) expect(enforceCoding(c, coding([{ line_no: 1, account: "6900", vat_code: "P21", cost_centre: cc }])).lines[0]).toMatchObject({ cost_centre: "CC300" });
     expect(enforceCoding(c, coding(all(c, "6900", "P21", "CC100")))).toMatchObject({ source: "claude", lines: [{ cost_centre: "CC100" }] });
+  });
+
+  it("unknown_cost_centre: a default that is no cost centre of the company is never booked", () => {
+    const c = caseOf(NL);
+    for (const cost_centre of ["CC999", ""]) {
+      const odd = { ...c, engineDefault: { ...c.engineDefault, cost_centre } };
+      const said = cost_centre || "(empty)";
+      expect(fallbackCoding(odd)).toMatchObject({ status: "needs_review", source: "fallback", lines: [], review: `Nothing is coded: code's default cost centre ${said} is not one of the company's cost centres. A person looks.` });
+      refused(odd, all(odd, "6900", "P21"), "unknown_cost_centre", `the default cost centre ${said} is not one of the company's cost centres`);
+      // A coding that names a real cost centre on every line does not need the default.
+      const named = enforceCoding(odd, coding(all(odd, "6900", "P21", "CC100")));
+      expect(named).toMatchObject({ status: "coded", source: "claude", lines: [{ cost_centre: "CC100" }] });
+      expect(codingHolds(odd, named)).toBe(true);
+      expect(answerCoderTool(odd, { name: "cost_centres", input: {} }).text.split("\n").at(-1)).toBe("Code's default cost centre is not one of these: give a cost centre on every line.");
+      expect(codingHolds(odd, { ...named, lines: named.lines.map((l) => ({ ...l, cost_centre })) })).toBe(false);
+      // The supplier's last coding with its own cost centre still stands; one that leans on the default does not.
+      const history = (cc: string): HistoryCoding[] => [{ invoice_id: "inv_3", invoice_no: "ZV-4400", date: "2026-10-03", lines: [{ description: "Dozen", account: "6200", vat_code: "P21", cost_centre: cc }] }];
+      expect(fallbackCoding({ ...odd, history: history("CC100") })).toMatchObject({ status: "coded", lines: [{ account: "6200", cost_centre: "CC100" }] });
+      expect(fallbackCoding({ ...odd, history: history("") })).toMatchObject({ status: "needs_review", lines: [] });
+    }
   });
 
   it("line_coverage: every line exactly once", () => {

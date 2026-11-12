@@ -158,6 +158,9 @@ function broken(c: CodingCase, out: EnforcedCoding): string | null {
     const entries = c.chart.filter((a) => a.account === l.account);
     if (entries.length === 0 || entries.some((a) => a.purchase !== true)) return `account ${l.account} may not take purchase lines`;
   }
+  for (const l of out.lines) {
+    if (l.cost_centre === "" || !c.costCentres.some((x) => x.code === l.cost_centre)) return `cost centre "${l.cost_centre}" is no cost centre of the company`;
+  }
   const codes = [...new Set(out.lines.map((l) => l.vat_code))];
   if (codes.includes(null)) return codes.length === 1 && out.status === "needs_review" ? null : "a line without a VAT code beside coded ones, or called coded";
   for (const name of codes) {
@@ -249,7 +252,8 @@ describe("fallbackCoding: for every case", () => {
   });
 
   it("sets a rate code only when that rate is exactly the invoice's VAT; otherwise no code at all", () => {
-    fc.assert(fc.property(fc.integer({ min: 1, max: 50_000_000 }), fc.integer({ min: 0, max: 15_000_000 }), (net, tax) => {
+    // Small nets too: on 0.06 and 0.07 both Dutch rates round to 0.01, and code then picks neither.
+    fc.assert(fc.property(fc.oneof(fc.integer({ min: 1, max: 50_000_000 }), fc.integer({ min: 1, max: 12 })), fc.oneof(fc.integer({ min: 0, max: 15_000_000 }), fc.integer({ min: 0, max: 3 })), (net, tax) => {
       const c: CodingCase = {
         invoice: { id: null, vendor: "Bergtex Textil GmbH", vat_id: "", invoice_no: "BTX-1", issue_date: "", currency: "EUR", subtotal: "", tax: tax ? str(tax) : "", total: str(net + tax), lines: [{ line_no: 1, description: "The whole invoice", net: str(net), vat_rate: null }], text: "" },
         supplier: { name: "Bergtex Textil GmbH", country: "", vat_id: "" }, company: { name: "Northwind Outdoor", country: "NL" },
@@ -257,7 +261,8 @@ describe("fallbackCoding: for every case", () => {
         regime: { reverse_charge: "unknown", states_reverse_charge: false, charges_vat: tax > 0, supplier_country: "" }, engineDefault: { account: "6900", rule: "", cost_centre: "CC300" }, today: "2026-11-12",
       };
       const out = fallbackCoding(c);
-      const want = tax > 0 && vatOn(net, "P21") === tax ? "P21" : tax > 0 && vatOn(net, "P9") === tax ? "P9" : null;
+      const fits = tax > 0 ? ["P21", "P9"].filter((code) => vatOn(net, code) === tax) : [];
+      const want = fits.length === 1 ? fits[0]! : null;
       expect(out.lines).toEqual([{ line_no: 1, account: "6900", vat_code: want, cost_centre: "CC300", net_cents: net, vat_cents: tax }]);
       expect(out.status).toBe(want ? "coded" : "needs_review");
     }), RUNS);

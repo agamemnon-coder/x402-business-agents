@@ -1,7 +1,7 @@
 // The Coder agent's pure part: the case a coding decision is made on, the lines code reads from a document, the VAT
 // regime hints, the agent's system prompt, prompt and tools, the check of its final answer, and the rules code enforces
 // on a coding whoever wrote it. No database, no SDK, no Node modules, no environment and no clock (today comes in the
-// case), so the runner's loop (src/agents/loop.ts) and a Worker (src/try/claude.ts) run the very same agent.
+// case), so the runner's loop (src/agents/loop.ts) and a Worker (src/try/claude.ts) can run the very same agent.
 //
 // The agent decides the ledger account, the VAT code and the cost centre of every invoice line; code enforces it. A
 // coding that would book a wrong amount, use an account that may not take purchase lines, or use a VAT code that does
@@ -429,6 +429,9 @@ function accountState(c: CodingCase, account: string): "purchase" | "not_purchas
   return account === "" || entries.length === 0 ? "unknown" : entries.every((a) => a.purchase) ? "purchase" : "not_purchase";
 }
 
+/** Whether the company has this cost centre. */
+const isCostCentre = (c: CodingCase, code: string) => code !== "" && c.costCentres.some((x) => x.code === code);
+
 /** A VAT code of the case, when the case lists it exactly once with a rate between 0 and 100 percent; otherwise it is no code to book with. */
 function vatCodeOf(c: CodingCase, code: string): CaseVatCode | null {
   const entries = c.vatCodes.filter((v) => v.code === code);
@@ -473,7 +476,11 @@ export const CODER_RULES = [
 ] as const;
 export type CoderRule = (typeof CODER_RULES)[number];
 
-/** One coded line, with its amounts in whole cents. `vat_cents` is the VAT the invoice charges for the line. */
+/**
+ * One coded line, with its amounts in whole cents. `vat_cents` is code's share-out, not an amount the line itself
+ * states: the VAT the line's VAT code gives on all the lines with that code, shared over them in proportion to their
+ * nets; on lines without a VAT code, the invoice's VAT shared the same way. Only the sums are the invoice's own.
+ */
 export interface CodedLine { line_no: number; account: string; vat_code: string | null; cost_centre: string; net_cents: number; vat_cents: number }
 
 /** A coding as code lets it into the books. */
@@ -536,9 +543,10 @@ function applyRules(v: View & { amounts: { ok: true; net: number; tax: number; t
     if (!vatCodeOf(c, coding.vat_code)) return { rule: "unknown_vat_code", why: `VAT code ${shown(coding.vat_code)} does not exist` };
     if (vatCodeOf(c, coding.vat_code)!.kind !== "purchase") return { rule: "sale_vat_code", why: `VAT code ${shown(coding.vat_code)} is a sales code; a supplier invoice takes a purchase code` };
   }
-  const centres = new Set(c.costCentres.map((x) => x.code));
   for (const { coding } of picked) {
-    if (coding.cost_centre && !centres.has(coding.cost_centre)) return { rule: "unknown_cost_centre", why: `cost centre ${shown(coding.cost_centre)} does not exist` };
+    if (coding.cost_centre && !isCostCentre(c, coding.cost_centre)) return { rule: "unknown_cost_centre", why: `cost centre ${shown(coding.cost_centre)} does not exist` };
+    // A line without one takes the default, which must be a cost centre of the company like any other.
+    if (!coding.cost_centre && !isCostCentre(c, c.engineDefault.cost_centre)) return { rule: "unknown_cost_centre", why: `the default cost centre ${shown(c.engineDefault.cost_centre)} is not one of the company's cost centres` };
   }
   const centre = (l: LineCoding) => l.cost_centre || c.engineDefault.cost_centre;
 
@@ -595,7 +603,7 @@ function holds(v: View, e: EnforcedCoding): boolean {
   if (r.lines.length !== v.lines.length || r.lines.some((l, i) => obj(l).line_no !== v.lines[i]!.line_no || l.net_cents !== v.lines[i]!.net)) return false;
   if (r.lines.some((l) => !Number.isSafeInteger(l.vat_cents) || l.vat_cents < 0)) return false;
   if (sum(r.lines.map((l) => l.net_cents)) !== amounts.net || sum(r.lines.map((l) => l.vat_cents)) !== amounts.tax || amounts.net + amounts.tax !== amounts.total) return false;
-  if (r.lines.some((l) => accountState(c, l.account) !== "purchase")) return false;
+  if (r.lines.some((l) => accountState(c, l.account) !== "purchase" || typeof l.cost_centre !== "string" || !isCostCentre(c, l.cost_centre))) return false;
   const codes = [...new Set(r.lines.map((l) => l.vat_code))];
   if (codes.includes(null)) return codes.length === 1 && r.status === "needs_review";
   for (const name of codes) {
@@ -613,8 +621,8 @@ function holds(v: View, e: EnforcedCoding): boolean {
  * Whether a coding holds to its invoice, the one promise of everything enforceCoding and fallbackCoding return: it has
  * no lines at all (and says why a person must look), or its lines are the invoice's, their nets add up to the
  * invoice's net, their VAT to the invoice's VAT, net plus VAT is the total (all to the cent), every account may take
- * purchase lines, and every VAT code on a line is a purchase code that reproduces the VAT of its lines to the cent
- * and stands on no line that itself states another VAT rate.
+ * purchase lines, every cost centre is one of the company's, and every VAT code on a line is a purchase code that
+ * reproduces the VAT of its lines to the cent and stands on no line that itself states another VAT rate.
  */
 export function codingHolds(c: CodingCase, e: EnforcedCoding): boolean {
   try {
@@ -672,19 +680,26 @@ function fallbackOf(v: View): EnforcedCoding {
 
   const def = c.engineDefault;
   if (accountState(c, def.account) !== "purchase") return nothing(`code's default account ${shown(def.account)} may not take purchase lines in this chart`);
+  if (!isCostCentre(c, def.cost_centre)) return nothing(`code's default cost centre ${shown(def.cost_centre)} is not one of the company's cost centres`);
   const where = `account ${def.account}${def.rule ? ` (${cleanText(def.rule, 120)})` : ""} and cost centre ${def.cost_centre}`;
   const every = (vat_code: string | null): LineCoding[] => v.lines.map((l) => ({ line_no: l.line_no, account: def.account, vat_code, cost_centre: null }));
-  // A rate code only when its rate on the invoice's net is exactly the invoice's VAT, to the cent.
-  const rate = amounts.tax > 0 ? c.vatCodes.find((x) => x.kind === "purchase" && !x.reverse && x.rate > 0 && vatCodeOf(c, x.code) !== null && vatAt(amounts.net, x.rate) === amounts.tax) : undefined;
+  // A rate code only when its rate on the invoice's net is exactly the invoice's VAT, to the cent, and no other rate
+  // code's is: on a net of a few cents 21% and 9% round to the same VAT, and code does not pick one.
+  const fits = amounts.tax > 0 ? c.vatCodes.filter((x) => x.kind === "purchase" && !x.reverse && x.rate > 0 && vatCodeOf(c, x.code) !== null && vatAt(amounts.net, x.rate) === amounts.tax) : [];
+  const rate = fits.length === 1 ? fits[0]! : null;
   const withRate = rate ? applyRules(sound, every(rate.code)) : null;
   if (rate && withRate && "lines" in withRate) {
     const out: EnforcedCoding = { ...base, status: "coded", review: null, lines: withRate.lines, reason: `Code's default: ${where}, with VAT code ${rate.code} because ${rate.rate}% of the net ${money(amounts.net)} is exactly the invoice's VAT ${money(amounts.tax)}.` };
     if (holds(v, out)) return out;
   }
   const none = applyRules(sound, every(null));
-  const review = amounts.tax > 0
-    ? `No VAT code fits: the invoice's VAT ${money(amounts.tax)} on its net ${money(amounts.net)} is no rate Purser has a code for (a foreign VAT rate, or a rounding difference). A person codes the VAT; code does not guess.`
-    : "No VAT code is set: the invoice charges no VAT and code cannot show which rule applies (reverse charge, a 0% supply or an exemption). A person codes the VAT; code does not guess.";
+  // The review says what code checked, and no more: why no single code gives the VAT is for a person to find.
+  const onNet = `the invoice's VAT ${money(amounts.tax)} on its net ${money(amounts.net)}`;
+  const found = amounts.tax === 0 ? "No VAT code is set: the invoice charges no VAT and code cannot show which rule applies (reverse charge, a 0% supply or an exemption)."
+    : fits.length > 1 ? `More than one VAT code gives ${onNet} (${fits.map((x) => x.code).join(", ")}).`
+      : rate && withRate && "rule" in withRate ? `VAT code ${rate.code} gives ${onNet}, but ${withRate.why}.`
+        : `No single VAT code gives ${onNet}: the lines may carry different rates, the rate may be a foreign one, or the amounts may differ by rounding.`;
+  const review = `${found} A person codes the VAT; code does not guess.`;
   const out: EnforcedCoding = { ...base, status: "needs_review", review, lines: "lines" in none ? none.lines : [], reason: `Code's default: ${where}, with no VAT code. A person codes the VAT.` };
   return out.lines.length > 0 && holds(v, out) ? out : nothing("code could not lay its default coding on this invoice's lines");
 }
@@ -692,8 +707,8 @@ function fallbackOf(v: View): EnforcedCoding {
 /**
  * What code alone decides, labelled as the fallback: the supplier's last coding when it still fits this invoice under
  * the same rules; otherwise the engine's default account and cost centre on every line, with a rate code only when
- * that rate reproduces the invoice's VAT exactly to the cent, and otherwise no VAT code at all: a person codes it, and
- * code does not guess. Nothing is coded when the invoice's own amounts cannot be read or do not reconcile. Never
+ * that rate, and no other rate code's, reproduces the invoice's VAT exactly to the cent, and otherwise no VAT code at
+ * all: a person codes it, and code does not guess. Nothing is coded when the invoice's own amounts cannot be read or do not reconcile. Never
  * throws; whatever it returns holds to the invoice (codingHolds).
  */
 export function fallbackCoding(c: CodingCase): EnforcedCoding {
@@ -929,7 +944,7 @@ function costCentresAnswer(v: View): string {
   return [
     c.costCentres.length ? "Cost centres:" : "The company has no cost centres on file.",
     ...c.costCentres.map((x) => `${x.code} ${cleanText(x.name)}`),
-    `Leave a line's cost centre null to use the default, ${c.engineDefault.cost_centre || "(none)"}.`,
+    isCostCentre(c, c.engineDefault.cost_centre) ? `Leave a line's cost centre null to use the default, ${c.engineDefault.cost_centre}.` : "Code's default cost centre is not one of these: give a cost centre on every line.",
   ].join("\n");
 }
 
