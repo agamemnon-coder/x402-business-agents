@@ -29,6 +29,28 @@ export const MOTION_CSS = `
   .mo-count.counting { -webkit-text-fill-color: currentColor; } .mo-count.counting::after { content: none; }
 }`;
 
+/**
+ * Site-wide motion (owner, 12 Nov: "more visuals and animations"), in every page's one stylesheet: sections lift into
+ * place as they scroll in (a scroll-driven animation: transform only, so nothing is ever hidden or shifted, and a
+ * browser without view timelines shows the page as it is); cards lift a little under a pointer; a run that is live has a
+ * pulsing dot. All of it is off under prefers-reduced-motion.
+ */
+export const SITE_MOTION_CSS = `
+.live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); margin-right: 6px; vertical-align: middle; position: relative; flex: none; }
+.live-dot::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--ok); opacity: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .live-dot::after { animation: mo-pulse 2s ease-out infinite; }
+  @media (hover: hover) {
+    a.card, .card.lift, .nums .card, .pcard { transition: transform .18s ease-out, box-shadow .18s ease-out; }
+    a.card:hover, .card.lift:hover, .nums .card:hover, .pcard:hover { transform: translateY(-2px); box-shadow: 0 6px 18px color-mix(in srgb, var(--text) 10%, transparent); }
+  }
+  @supports (animation-timeline: view()) {
+    main section, main .nums, main .reveal, main details.deep, main ol.tl > li { animation: mo-lift linear both; animation-timeline: view(); animation-range: entry 0% entry 60%; }
+  }
+}
+@keyframes mo-pulse { 0% { transform: scale(1); opacity: .55; } 100% { transform: scale(2.6); opacity: 0; } }
+@keyframes mo-lift { from { transform: translateY(18px); } to { transform: none; } }`;
+
 /** The Face ID tick: a circle and a check that draw themselves in (lucide's circle-check paths, stroke only). */
 export function faceIdTick(size = 20, label = "Signed with Face ID"): string {
   return `<svg class="mo-tick" role="img" aria-label="${label.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" pathLength="100"/><path d="m9 12 2 2 4-4" pathLength="100"/></svg>`;

@@ -105,7 +105,9 @@ describe("the partner pages", () => {
         expect(page).toMatch(/<details class="fold"><summary>The (Airwallex|Claude) [^<]*docs/);
         expect(page.split(docs).length - 1).toBeGreaterThanOrEqual(4);
       }
-      expect(page).not.toMatch(/<img[^>]*visa/i);
+      // 12 Nov (wire-in): the partner marks are images on the owner's stated permission (docs/evidence/logo-permissions.md);
+      // only the official file, never another picture of Visa.
+      expect([...page.matchAll(/<img[^>]*visa[^>]*>/gi)].map((m) => m[0])).toEqual(page.includes("logo-visa.png") ? ['<img src="assets/logo-visa.png" alt="Visa" width="46" height="15">'] : []);
       expect(page).not.toMatch(/\b(null|undefined|NaN)\b/);
       // No script on /claude; /airwallex has one, the shared OPEN_TARGET_JS (a link into its cards' fold opens it).
       expect(scriptBlocks(page)).toEqual(page === AIRWALLEX_PAGE ? [`<script>\n${OPEN_TARGET_JS}</script>`] : []);

@@ -5,6 +5,13 @@
 // Airi runs, Airwallex read back, every check (who stopped what, the Face ID decisions: one number, from the run's
 // ledger), the business and the Archive; the utility links last. Nothing typed in by hand.
 
+import { LIFE_TITLE, REFUSALS_TITLE, VISUAL_CSS, lifecycleSvg, refusalsSvg } from "../visuals/svg.js";
+import { railRefusals } from "../visuals/facts.js";
+import { MOTION_JS } from "../ui/motion.js";
+import { runTimes, runTimesLine } from "./runTimes.js";
+import { REPO_BLOB } from "./metalStory.js";
+import { SIGNED_FILES, VERIFY_CSS, VERIFY_TERMS_JS, signedByRun, verifyList } from "./verifyTerms.js";
+import { VAULT_TREE_RECORD } from "../vault/treeSvg.js";
 import { whyCompanyHtml } from "./home.js";
 import { readFileSync } from "node:fs";
 import { CFO_VIEW_LINK, CFO_VIEW_URL, CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, SPLIT_LINE } from "../config/brand.js";
@@ -177,11 +184,17 @@ const noteHtml = (note: string | undefined, tag = "p") => (note ? `<${tag} class
 export const fold = (summary: string, items: string[], open = false) => items.length ? `<details class="fold"${open ? " open" : ""}><summary>${esc(summary)}</summary><ul class="pl">${items.join("")}</ul></details>` : "";
 const fact = (v: string, l: string) => `<span class="fact"><b>${esc(v)}</b> ${esc(l)}</span>`;
 /** Partner names as text, never a brand logo (Max, 7 Nov: "overal alleen tekst"). */
+/**
+ * The partner pages' marks (owner, 12 Nov: logos as images, on his stated permission, docs/evidence/logo-permissions.md):
+ * the official files in src/ui/logos, unchanged, served as /assets/logo-*; on a white chip (Claude's white letters on a
+ * dark one), the name in alt. A mark names a service Purser uses, never an endorsement.
+ */
+const mark = (file: string, name: string, w: number, dark = false) => `<span class="logo${dark ? " dark" : ""}"><img src="assets/${file}" alt="${name}" width="${w}" height="15"></span>`;
 export const LOGO = {
-  metal: '<span class="logo txt">Metal</span>',
-  airwallex: '<span class="logo txt">Airwallex</span>',
-  claude: '<span class="logo txt">Claude</span>',
-  visa: '<span class="logo txt">Visa</span>',
+  metal: mark("logo-metal.svg", "Metal", 48),
+  airwallex: mark("logo-airwallex.png", "Airwallex", 109),
+  claude: mark("logo-claude.png", "Claude", 69, true),
+  visa: mark("logo-visa.png", "Visa", 46),
 };
 
 /**
@@ -349,6 +362,30 @@ export function readBack(run: AgentRun): string {
   <div class="awrb">${awx1}</div>` : ""}`;
 }
 
+// ── The visuals (owner, 12 Nov: "more visuals and animations"), from src/visuals: one payment's life, animated where
+// the viewer allows motion, and the three rails each holding a payment on their own. Their figures are the visuals'
+// own records (src/visuals/facts.ts, held by test/visuals.test.ts); the wide drawing on a wide screen, the tall one on a
+// phone. Then, folded: each signed approval checked in this browser (src/redesign/verifyTerms.ts) with the Face ID to
+// paid times (src/redesign/runTimes.ts), and the vault's folders (docs/media/vault-tree-*.svg, computed from layout.ts).
+
+const lifeVisual = () => `<article class="pvis" data-rec="src/visuals/facts.ts" aria-label="${esc(LIFE_TITLE)}"><div class="pvw">${lifecycleSvg("wide")}</div><div class="pvt">${lifecycleSvg("tall")}</div></article>`;
+function railsVisual(): string {
+  const rails = railRefusals();
+  if (!rails.length) return "";
+  const href = (path: string) => `${REPO_BLOB}${path}`;
+  return `<article class="pvis rails" data-rec="src/visuals/facts.ts" aria-label="${esc(REFUSALS_TITLE)}"><div class="pvw">${refusalsSvg(rails, href, "wide")}</div><div class="pvt">${refusalsSvg(rails, href, "tall")}</div></article>`;
+}
+function checkItYourself(): string {
+  const signed = signedByRun();
+  const items = ["awx-1", "platform-e2e-1", "main-1"].flatMap((k) => (signed[k] ?? []).filter((x) => x.terms));
+  const t = runTimes(), line = runTimesLine(t);
+  return `<article class="vfa" data-rec="${esc(Object.values(SIGNED_FILES).join(" "))}"><h3>Check a signature yourself</h3><p class="q">Each button hashes the stored terms here, in your browser, and compares the result with the hash the passkey signed.</p>${verifyList(items)}${line ? `<p class="q">${esc(line)} <a class="pf" href="runs">Every run</a></p>` : ""}</article>`;
+}
+const vaultTree = () => `<article class="vault" data-rec="${VAULT_TREE_RECORD}"><h3>Where every document is filed</h3><picture><source srcset="assets/vault-tree-dark.svg" media="(prefers-color-scheme: dark)"><img src="assets/vault-tree-light.svg" width="505" height="438" alt="The vault's folders: company, year, quarter, then Inkoopfacturen (invoices), Betalingen (payments) and Rapporten (reports), as src/vault/layout.ts files them"></picture><p class="q">Computed from the code (src/vault/layout.ts), with the two invoices of the 7 November run.</p></article>`;
+const PROOF_VISUAL_CSS = `.proofp .pvis { margin: 18px 0 22px; } .proofp .pvis .pvt { display: none; }
+@media (max-width: 720px) { .proofp .pvis .pvw { display: none; } .proofp .pvis .pvt { display: block; max-width: 420px; margin: 0 auto; } }
+.proofp .vault img { display: block; max-width: 100%; height: auto; margin: 8px 0; }`;
+
 export function proofPage(run: AgentRun = agentRun()): string {
   const r = run.record, sp = split(r), story = stopStory(r), pay = payments(r);
   // The Airi runs (7 Nov): Visa Intelligent Commerce via Airwallex's Airi, short: its outcomes and checks, then a link
@@ -375,6 +412,8 @@ export function proofPage(run: AgentRun = agentRun()): string {
   const body = `<main class="proofp"><div class="wrap">
   <h1>Proof</h1>
   ${guaranteesHtml()}
+  ${lifeVisual()}
+  ${railsVisual()}
   <h2 class="sec">The partners</h2>
   ${partnerCards(run)}
   <div class="runline"><span class="pill run">${icon("database", 14)}${esc(run.label)}</span></div>
@@ -382,15 +421,15 @@ export function proofPage(run: AgentRun = agentRun()): string {
   <div class="nums">${nums.map(tile).join("")}</div>
   ${airi ? `<details class="deep"><summary>Visa Intelligent Commerce via Airwallex's Airi</summary><div class="awrb">${airi}</div></details>` : ""}
   <details class="deep"><summary>Airwallex, read back</summary>${readBack(run)}</details>
-  <details class="deep"><summary>Every check</summary>${moreCards(run)}</details>
-  <details class="deep"><summary>Why this is a company</summary>${whyCompanyHtml()}</details>
+  <details class="deep"><summary>Every check</summary>${checkItYourself()}${moreCards(run)}</details>
+  <details class="deep"><summary>Why this is a company</summary>${vaultTree()}${whyCompanyHtml()}</details>
   ${archiveFold(run)}
   <nav class="util" aria-label="More from this run"><a class="open" href="${FILM_URL}" target="_blank" rel="noopener">${icon("play", 14)}${esc(FILM_LINK)} ↗</a><a class="open" href="${CFO_VIEW_URL}">${icon("layout-dashboard", 14)}${esc(CFO_VIEW_LINK)}</a><a class="open" href="${TRACE_URL}">${icon("receipt", 14)}${esc(TRACE_LINK)}</a><a class="open" href="assets/${PACK_NAME}" download>${icon("file-check", 14)}${esc(PACK_LINK)}</a></nav>
 </div></main>`;
   // No footer link to /visa since 12 Nov (before: "Extra, not an award entry", jury review, 6 Nov, #7): Visa is a
   // section of its own now ("Built on", the Airi run's fold) and /judge links the Visa run; Home drops it too.
   return page({
-    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH, body, js: JS, stage: false,
+    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}`, stage: false,
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,
   });
 }

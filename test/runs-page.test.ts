@@ -643,7 +643,8 @@ describe("/runs as a timeline", () => {
     // the pin leaves room for one more filter, such as "Simulated 1").
     const frame = (h: string) => visibleWords(h.replace(liveList(h), ""));
     for (const page of [html, runsPage([...rows, oldShape]), runsPage([...rows, oldShape, series])]) {
-      expect(frame(page)).toBeLessThanOrEqual(72);
+      // 12 Nov (wire-in): +12 for the one "Face ID to paid" line (master list 81, src/redesign/runTimes.ts).
+      expect(frame(page)).toBeLessThanOrEqual(84);
       for (const e of entriesOf(liveList(page))) expect(visibleWords(`<main>${e.html}</main>`), e.key).toBeLessThanOrEqual(60);
     }
     // The frame is what is not an entry: the page is the frame plus its entries.

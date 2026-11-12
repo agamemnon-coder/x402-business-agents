@@ -18,6 +18,8 @@ import { readFileSync } from "node:fs";
 import { AIRI_RUN_FILE, AIRI_RUN_LOG, airiRun } from "./airiRun.js";
 import { AWX_RUN_FILE, AWX_RUN_LOG, awxRun } from "./awxRun.js";
 import { REPO_BLOB } from "./metalStory.js";
+import { runTimes, secs, type RunTimes } from "./runTimes.js";
+import { VERIFY_CSS, VERIFY_TERMS_JS, signedByRun, verifyList, type Signed } from "./verifyTerms.js";
 import { AGENT_RUN_1_FILE, AGENT_RUN_FILE, payments, tapRun, type RunRecord } from "./run.js";
 import { OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
 import { VIC2_RUN_FILE, VIC2_RUN_LOG, vic2Run } from "./vic2Run.js";
@@ -351,7 +353,7 @@ const idChip = (i: RunId) => {
  * partners, its rate and its first id. Behind its one fold (or, in the rehearsals group, which is itself the fold, under
  * it, where the first id is not repeated above): every id in full, what ran, the checks, the rails and the money words.
  */
-function entry(r: RunRow, o: { newest?: boolean; folded: boolean }): string {
+function entry(r: RunRow, o: { newest?: boolean; folded: boolean; signed?: Signed[] }): string {
   const kind = kindOf(r), [first, ...rest] = r.ids;
   // The fold lists every id in full, the first one included: the chip in sight may be cut on a phone (review 12 Nov).
   const more = rest.filter(isId).length;
@@ -362,10 +364,10 @@ function entry(r: RunRow, o: { newest?: boolean; folded: boolean }): string {
   const full = r.rate && r.rate.done === r.rate.of;
   const rate = r.rate ? `<span class="rt${full ? " ok" : ""}">${full ? icon("check", 14) : ""}${esc(rateWords(r.rate))}</span>` : "";
   const files = r.files.map((f) => `<a class="f" href="${esc(siteHref(f.href))}" target="_blank" rel="noopener"${linkWords(f.label) === f.label ? "" : ` aria-label="${esc(f.label)}"`}>${esc(linkWords(f.label))} ↗</a>`).join(" ");
-  const fold = `<div class="fold">${r.ids.length ? `<div class="ids">${r.ids.map(idChip).join("")}</div>` : ""}${said ? "" : `<p>${esc(r.what)}</p>`}<p><b>Checks:</b> ${esc(r.checks)}</p>${r.stats?.length ? `<p class="q">${r.stats.map((x) => `${esc(x.v)} ${esc(x.l)}`).join(" · ")}</p>` : ""}<p class="q">Rails: ${esc(r.rails)}. Money: ${esc(r.money)}.</p></div>`;
+  const fold = `<div class="fold">${r.ids.length ? `<div class="ids">${r.ids.map(idChip).join("")}</div>` : ""}${said ? "" : `<p>${esc(r.what)}</p>`}<p><b>Checks:</b> ${esc(r.checks)}</p>${r.stats?.length ? `<p class="q">${r.stats.map((x) => `${esc(x.v)} ${esc(x.l)}`).join(" · ")}</p>` : ""}<p class="q">Rails: ${esc(r.rails)}. Money: ${esc(r.money)}.</p>${verifyList(o.signed)}</div>`;
   const label = `Ids, what ran and the checks${more ? `: ${pl(more, "more id")}` : ""}`;
   return `<li class="${cls}" id="${esc(r.key)}"><article${o.folded ? ' class="fd"' : ""} aria-label="${esc(nameOf(r))}">
-<p class="meta"><time datetime="${esc(r.iso)}" title="${esc(r.date)}">${esc(r.date.replace(/ \d{4}$/, ""))}</time><span class="kd ${kind}">${esc(KIND_LABEL[kind])}</span>${o.newest ? '<span class="mk new">Newest</span>' : ""}${r.product ? `<span class="mk prod">${esc(PRODUCT_MARK)}</span>` : ""}</p>
+<p class="meta"><time datetime="${esc(r.iso)}" title="${esc(r.date)}">${esc(r.date.replace(/ \d{4}$/, ""))}</time><span class="kd ${kind}">${esc(KIND_LABEL[kind])}</span>${o.newest ? '<span class="live-dot" aria-hidden="true"></span><span class="mk new">Newest</span>' : ""}${r.product ? `<span class="mk prod">${esc(PRODUCT_MARK)}</span>` : ""}</p>
 <h2>${esc(nameOf(r))}</h2>
 <p class="ln">${esc(lineOf(r))} ${files}</p>
 <div class="ch">${partnersOf(r).map(railChip).join("")}${rate}${first && o.folded ? idChip(first) : ""}</div>
@@ -443,6 +445,11 @@ ${FILTER_CSS}
   .runsp .ln { font-size: 15px; max-width: 80ch; }
 }`;
 
+const FTP_CSS = `.runsp details.ftp { margin: 4px 0 14px; } .runsp details.ftp summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; font-weight: 650; }
+.runsp details.ftp summary::-webkit-details-marker { display: none; } .runsp details.ftp summary .i:first-child { color: var(--ok); flex: none; }
+.runsp details.ftp summary .i:last-child { color: var(--muted); flex: none; } .runsp details.ftp[open] summary .i:last-child { transform: rotate(180deg); }
+.runsp details.ftp ul { margin: 6px 0 0; padding-left: 24px; font-size: 14px; } .runsp details.ftp .mo-count { font-variant-numeric: tabular-nums; }`;
+
 const COPY_JS = `document.querySelectorAll("button.cp").forEach(function (b) {
   if (!navigator.clipboard) { b.hidden = true; return; }
   b.addEventListener("click", function () { navigator.clipboard.writeText(b.dataset.copy || "").then(function () { b.classList.add("ok"); setTimeout(function () { b.classList.remove("ok"); }, 1200); }); });
@@ -475,22 +482,38 @@ const FILTER_JS = `(function () {
   window.addEventListener("hashchange", mark);
 })();`;
 
-export function runsPage(all: RunRow[] = liveRuns()): string {
+/**
+ * Face ID to paid (master list 81), one calm line from the run records (src/redesign/runTimes.ts): its median and spread
+ * count up; the payouts and the runs left out sit behind its fold. Nothing when no payout is timed.
+ */
+export function faceIdToPaid(t: RunTimes = runTimes()): string {
+  if (!t.n || t.medianMs === null || t.minMs === null || t.maxMs === null) return "";
+  const n = (ms: number) => `<span class="mo-count">${esc(secs(ms))}</span>`;
+  const line = `Face ID to paid: median ${n(t.medianMs)}${t.n > 1 ? `, from ${n(t.minMs)} to ${n(t.maxMs)}` : ""}, over ${esc(pl(t.n, "payout"))}`;
+  const rows = t.payouts.map((p) => `<li>${esc(`${p.proposal}: ${secs(p.ms)} (Face ID ${p.approvedAt.slice(11, 19)}, PAID ${p.paidAt.slice(11, 19)} UTC, ${p.approvedAt.slice(0, 10)})`)} <a class="f" href="${esc(blob(p.record))}" target="_blank" rel="noopener">Log ↗</a></li>`).join("");
+  const out = t.leftOut.map((l) => `<li class="q">${esc(`Left out: ${l.record.replace(/^docs\/runs\//, "")}, ${l.why}.`)}</li>`).join("");
+  return `<details class="ftp"><summary>${icon("scan-face", 16)}<span>${line}</span>${icon("chevron-down", 16)}</summary><ul>${rows}${out}</ul></details>`;
+}
+
+export function runsPage(all: RunRow[] = liveRuns(), times: RunTimes = runTimes()): string {
   const rows = newestFirst(all), live = rows.filter((r) => !isRehearsal(r)), rehearsals = rows.filter(isRehearsal);
   const last = lastLive(live);
   const filters = FILTERS.map((f) => ({ ...f, n: live.filter(f.has).length })).filter((f) => f.n > 0);
   const chevron = icon("chevron-down", 16);
+  // Verify per approval and payment (master list 686): the signed approvals of each run, read from its records.
+  const signed = signedByRun();
   const body = `<main class="wrap runsp">
 <h1>${esc(RUNS_TITLE)}</h1>
 <p class="last">Last live run: ${esc(last.date)}. ${pl(live.length, "live run")}, newest first, every id from its own record. Test money only; what was simulated is said on each run.</p>
+${faceIdToPaid(times)}
 <span class="fa" id="all"></span>${filters.map((f) => `<span class="fa" id="${f.id}"></span>`).join("")}
 <nav class="flt" aria-label="Filter the runs"><a class="all" href="#all">All <b>${live.length}</b></a>${filters.map((f) => `<a href="#${f.id}">${esc(f.label)} <b>${f.n}</b></a>`).join("")}</nav>
 <ol class="tl">
-${live.map((r, i) => entry(r, { newest: i === 0, folded: true })).join("\n")}
+${live.map((r, i) => entry(r, { newest: i === 0, folded: true, signed: signed[r.key] })).join("\n")}
 </ol>
 ${rehearsals.length ? `<details class="rehs" id="rehearsals"><summary>Rehearsals and dry runs · ${rehearsals.length}${chevron}</summary>
 <ol class="tl">
-${rehearsals.map((r) => entry(r, { folded: false })).join("\n")}
+${rehearsals.map((r) => entry(r, { folded: false, signed: signed[r.key] })).join("\n")}
 </ol>
 <p class="q">Every dry run's log: <a class="f" href="${esc(RUN_LOGS_URL)}" target="_blank" rel="noopener">docs/runs on GitHub ↗</a></p></details>` : ""}
 <details class="gloss"><summary>What the main run's record holds (docs/demo/main-run.json)${chevron}</summary><dl>
@@ -499,8 +522,8 @@ ${MAIN_RUN_GLOSSARY.map(([k, v]) => `<dt><code>${esc(k)}</code></dt><dd>${esc(v)
 <p class="more-links">Per agent: <a href="agents/sourcing">Sourcing</a><a href="agents/support">Support</a><a href="agents/treasury">Treasury</a><a href="trace">Trace any payment</a><a href="proof">Proof</a></p>
 </main>`;
   return page({
-    title: `Purser · ${RUNS_TITLE}`, description: `Every live run of Purser, newest first, with its ids, checks and records. Last live run: ${last.date}.`, tab: null, css: CSS, body,
-    js: `${COPY_JS}\n${OPEN_TARGET_JS}\n${FILTER_JS}`, stage: false,
+    title: `Purser · ${RUNS_TITLE}`, description: `Every live run of Purser, newest first, with its ids, checks and records. Last live run: ${last.date}.`, tab: null, css: `${CSS}\n${VERIFY_CSS}\n${FTP_CSS}`, body,
+    js: `${COPY_JS}\n${OPEN_TARGET_JS}\n${FILTER_JS}\n${VERIFY_TERMS_JS}`, stage: false,
     source: "Source: each run's record in docs/demo and docs/runs (listed per run).",
   });
 }
