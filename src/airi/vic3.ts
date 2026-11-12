@@ -39,6 +39,7 @@ import { approvalOrigin } from "../executors/index.js";
 import { closeAsStale } from "../policy/approvals.js";
 import { currentOrigin, withOrigin } from "../provenance/origin.js";
 import type { RunnerLock } from "../ops/runnerLock.js";
+import { AirwallexBudgetSpent } from "../airwallex/callBudget.js";
 import { CREDENTIAL_DIR_MODE, CREDENTIAL_FILE_NAME } from "./cardData.js";
 import { AiriRefusal, AiriWaitTimeout, CheckoutOutcomeUnknown, scrubText, type AiriCheckout, type AiriClient, type CheckoutAnswer } from "./client.js";
 import { AIRI_CURRENCY, airiPolicy } from "./policy.js";
@@ -66,7 +67,10 @@ export const PLANTED_F2 = "our own planted misuse: the vic-3 conductor, not Purs
 /** The stand-in model's name: never a Claude model id, so nothing reads it as Claude. */
 export const STAND_IN_MODEL = "stand-in-model-not-claude";
 
-export class Vic3Stop extends Error {}
+export class Vic3Stop extends Error {
+  /** The rail choice in progress when the stop came, so the record keeps it. */
+  choice?: RailChoiceRecord;
+}
 
 /** A call budget: counted before each call is sent; past it the call is not sent, `over` says why, and the run stops. */
 export class Budget {
@@ -118,6 +122,39 @@ export function standInClaude(): Anthropic {
         content: [{ type: "tool_use", id: `standin-tu-${n}`, name: "pay", input: { rail: AIRI_RAIL, reason: "STAND-IN answer, not Claude: the merchant takes only the Airi rail" } }] };
     } } },
   } as unknown as Anthropic;
+}
+
+export const HTTP_BUDGET_SPENT = "the approved Airwallex call budget (AIRWALLEX_CALL_BUDGET, counted per HTTP request) is spent";
+
+/**
+ * The checkout under the owner's HTTP budget (src/airwallex/callBudget.ts): a call it refuses comes back as an answer
+ * (NOT_SUBMITTED, CALL_BUDGET_SPENT) or an error, not as a stop. Either one marks the conductor's Airwallex budget as
+ * spent, so the run stops at its next step instead of going on to Airi and Claude.
+ */
+export function watchHttpBudget<T extends object>(target: T, budget: Budget): T {
+  const mark = () => { budget.over ??= HTTP_BUDGET_SPENT; };
+  return new Proxy(target, {
+    get(t, prop, recv) {
+      const v = Reflect.get(t, prop, recv) as unknown;
+      if (typeof v !== "function" || prop === "constructor") return v;
+      return async (...args: unknown[]) => {
+        try {
+          const out = await (v as (...a: unknown[]) => Promise<unknown>).apply(t, args);
+          if (out && typeof out === "object" && (out as { code?: unknown }).code === "CALL_BUDGET_SPENT") mark();
+          return out;
+        } catch (e) {
+          if (e instanceof AirwallexBudgetSpent || /call budget is spent/.test((e as Error)?.message ?? "")) mark();
+          throw e;
+        }
+      };
+    },
+  });
+}
+
+/** Removes the run's credential root on SIGINT, SIGTERM or SIGHUP (a `finally` does not run on a signal), then exits. */
+export function removeOnSignal(root: string, proc: Pick<NodeJS.Process, "once" | "exit"> = process): void {
+  const go = () => { rmSync(root, { recursive: true, force: true }); proc.exit(130); };
+  for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"] as const) proc.once(sig, go);
 }
 
 /** The checkout's PaymentIntent read-back, where the checkout has one. */
@@ -232,6 +269,7 @@ export async function chooseRail<T>(d: { db: DB; claude: Anthropic | null; model
   }
   let paid: T | null = null;
   let done = false;
+  let stop: Vic3Stop | null = null;
   const run = await runAgent(d.db, {
     agent: "sourcing", task: "purchase.rail.vic3", model: d.model, system: SYSTEM, maxTurns: 2, effort: "low", retryDelayMs: d.mode === "dry" ? 0 : undefined,
     prompt: `One purchase is due at ${MERCHANT.name}: ${item.item}, ${item.amount} ${AIRI_CURRENCY}. Its checkout is Airwallex's hosted checkout and accepts only ${AIRI_RAIL} (${AIRI_RAIL_WORDS}); the cardholder confirms it in Airi with a passkey. Purser: ${offer.why}. Your rails: ${MENU.map((m) => `${m.rail} (${m.words})`).join("; ")}. Pick the rail and pay it once.`,
@@ -251,12 +289,20 @@ export async function chooseRail<T>(d: { db: DB; claude: Anthropic | null; model
         if (o?.actor === "agent") { choice.model = o.model; choice.request_id = o.request_id; }
         choice.chosen = rail;
         choice.reason = scrubText(reason).slice(0, 300);
-        paid = await pay();
+        try {
+          paid = await pay();
+        } catch (e) {
+          // A stop (a spent budget) must not reach runAgent: it would hand it to Claude and ask again. Kept, rethrown below.
+          if (!(e instanceof Vic3Stop)) throw e;
+          stop = e;
+        }
         return { text: "Handed to Purser's Airi rail.", final: true };
       },
     }],
   }, d.claude);
   choice.cost_usd_micros = run.costMicros;
+  const halted = stop as Vic3Stop | null; // set inside the tool (TypeScript cannot see it)
+  if (halted) { halted.choice = choice; throw halted; }
   if (!done) {
     choice.note = `code's fallback, labelled: the agent did not pay on the Airi rail (${run.status}${run.note ? `: ${scrubText(run.note).slice(0, 200)}` : ""})`;
     return { choice, paid: null };
@@ -335,7 +381,7 @@ export async function runVic3(d: Vic3Deps): Promise<Vic3Record> {
     airi: new Budget("airi", d.budgets?.airi ?? BUDGETS.airi),
   };
   const airi = budgeted(d.airi, b.airi);
-  const checkout = budgeted(d.checkout, b.airwallex);
+  const checkout = budgeted(watchHttpBudget(d.checkout, b.airwallex), b.airwallex);
   const claude = d.claude ? budgetedClaude(d.claude, b.anthropic) : null;
   const model = d.model ?? MODELS.classify;
   const tmpRoot = d.tmpRoot ?? tmpdir();
@@ -350,6 +396,23 @@ export async function runVic3(d: Vic3Deps): Promise<Vic3Record> {
   const stopIfSpent = () => { const s = spent(); if (s) throw new Vic3Stop(s); };
   const blank = (step: Step, what: string, request: Vic3Purchase["request"]): Vic3Purchase => ({ step, what, request, rail_choice: null, proposal_id: null, mandate_id: null, payment_intent_id: null, terms_sha256: null, read_back: { mandate: null, payment_intent: null }, outcome: null, calls: { anthropic: 0, airwallex: 0, airi: 0 }, failed_attempts: [] });
   const say = (p: Vic3Purchase, line: string) => d.log(`${p.step.padEnd(3)}        ${line}`);
+  /** A stop inside a step: the step keeps its rail choice and whatever its purchase row holds, then the stop goes on. */
+  const keepOnStop = async <T,>(p: Vic3Purchase, from: Record<Budgeted, number>, fn: () => Promise<T>): Promise<T> => {
+    try {
+      return await fn();
+    } catch (e) {
+      if (e instanceof Vic3Stop) {
+        p.rail_choice = e.choice ?? p.rail_choice;
+        const row = d.db.prepare("SELECT action_id, mandate_id, checkout_ref, order_sha256, status, code FROM airi_purchases ORDER BY created_at DESC, rowid DESC LIMIT 1").get() as { action_id: string; mandate_id: string | null; checkout_ref: string | null; order_sha256: string; status: string; code: string | null } | undefined;
+        const mine = row && !purchases.some((q) => q !== p && q.mandate_id && q.mandate_id === row.mandate_id);
+        if (row && mine) Object.assign(p, { mandate_id: row.mandate_id, payment_intent_id: row.checkout_ref, terms_sha256: row.order_sha256 });
+        p.outcome = brief({ status: "stopped", why: e.message, ...(row && mine ? { row: { status: row.status, code: row.code } } : {}) });
+        p.failed_attempts.push(p.outcome);
+        p.calls = diff(from);
+      }
+      throw e;
+    }
+  };
   let stopped: string | null = null;
   let pf: Json = null;
   let pm = "";
@@ -369,7 +432,7 @@ export async function runVic3(d: Vic3Deps): Promise<Vic3Record> {
       purchases.push(p);
       const from = counts();
       say(p, `${AMOUNTS.A} EUR at ${MERCHANT.name}: the Sourcing agent chooses the rail from three`);
-      const r = await chooseRail({ db: d.db, claude, model, mode: d.mode, env: d.env }, { item: "Trail map pack", amount: AMOUNTS.A }, () => requestAiriPurchase(d.db, rail(checkout), order(pm, { amount: AMOUNTS.A, item: "Trail map pack", description: "vic-3 A: within the CFO's limit" }), clock()));
+      const r = await keepOnStop(p, from, () => chooseRail({ db: d.db, claude, model, mode: d.mode, env: d.env }, { item: "Trail map pack", amount: AMOUNTS.A }, () => requestAiriPurchase(d.db, rail(checkout), order(pm, { amount: AMOUNTS.A, item: "Trail map pack", description: "vic-3 A: within the CFO's limit" }), clock())));
       p.rail_choice = r.choice;
       const o: AiriOutcome | null = r.paid;
       p.outcome = brief(o ?? { status: "not_paid", why: r.choice.note ?? "the agent did not pay" });
@@ -390,7 +453,7 @@ export async function runVic3(d: Vic3Deps): Promise<Vic3Record> {
       purchases.push(p);
       const from = counts();
       say(p, `${AMOUNTS.B} EUR at ${MERCHANT.name}: the Sourcing agent chooses the rail from three; then the CFO's Face ID`);
-      const r = await chooseRail({ db: d.db, claude, model, mode: d.mode, env: d.env }, { item: "Field repair kit", amount: AMOUNTS.B }, () => requestAiriPurchase(d.db, rail(checkout), order(pm, { amount: AMOUNTS.B, item: "Field repair kit", description: "vic-3 B: above the CFO's limit" }), clock()));
+      const r = await keepOnStop(p, from, () => chooseRail({ db: d.db, claude, model, mode: d.mode, env: d.env }, { item: "Field repair kit", amount: AMOUNTS.B }, () => requestAiriPurchase(d.db, rail(checkout), order(pm, { amount: AMOUNTS.B, item: "Field repair kit", description: "vic-3 B: above the CFO's limit" }), clock())));
       p.rail_choice = r.choice;
       const asked: AiriOutcome | null = r.paid;
       if (asked?.status === "pending_approval") {
@@ -489,7 +552,22 @@ export async function runVic3(d: Vic3Deps): Promise<Vic3Record> {
       purchases.push(p);
       const from = counts();
       say(p, `${AMOUNTS.F1_MANDATE} EUR at ${MERCHANT.name}: the Sourcing agent chooses the rail from three; then ${PLANTED_F1}`);
-      const r = await chooseRail({ db: d.db, claude, model, mode: d.mode, env: d.env }, { item: "Spare tent pegs", amount: AMOUNTS.F1_MANDATE }, () => misuseF1(d.db, airi, checkout, d, pm, tmpRoot, clock));
+      // Filled as F1 goes, so a stop midway still leaves its mandate and answers in the record.
+      const partial: F1Result = { mandate_id: null, payment_intent_id: null, terms_sha256: null, mandate_read_back: null, outcome: null, airi: null, airwallex: null, failed: null };
+      let r: Awaited<ReturnType<typeof chooseRail<F1Result>>>;
+      try {
+        r = await chooseRail({ db: d.db, claude, model, mode: d.mode, env: d.env }, { item: "Spare tent pegs", amount: AMOUNTS.F1_MANDATE }, () => misuseF1(d.db, airi, checkout, d, pm, tmpRoot, clock, partial));
+      } catch (e) {
+        if (e instanceof Vic3Stop) {
+          p.rail_choice = e.choice ?? null;
+          Object.assign(p, { mandate_id: partial.mandate_id, payment_intent_id: partial.payment_intent_id, terms_sha256: partial.terms_sha256 });
+          p.read_back.mandate = partial.mandate_read_back;
+          p.outcome = brief({ status: "stopped", why: e.message, airi: partial.airi, airwallex: partial.airwallex });
+          p.failed_attempts.push(p.outcome);
+          p.calls = diff(from);
+        }
+        throw e;
+      }
       p.rail_choice = r.choice;
       const f = r.paid;
       if (f) {
@@ -573,7 +651,7 @@ interface F1Result { mandate_id: string | null; payment_intent_id: string | null
  * executor, creates a 10.00 mandate, reads it back, takes the credential after the owner's tap, and tries it on a 40.00
  * PaymentIntent. Every answer is kept. The credential directory is removed in every case.
  */
-async function misuseF1(db: DB, airi: AiriClient, checkout: Checkout, d: Vic3Deps, pm: string, tmpRoot: string, clock: () => Date): Promise<F1Result> {
+async function misuseF1(db: DB, airi: AiriClient, checkout: Checkout, d: Vic3Deps, pm: string, tmpRoot: string, clock: () => Date, out: F1Result): Promise<F1Result> {
   const req = order(pm, { amount: AMOUNTS.F1_MANDATE, item: "Spare tent pegs", description: "vic-3 F1: our own planted misuse (negative test)" });
   const route = decideAiriPurchase(airiPolicy(db), req, 0);
   const now = clock();
@@ -581,8 +659,9 @@ async function misuseF1(db: DB, airi: AiriClient, checkout: Checkout, d: Vic3Dep
   const sha = createHash("sha256").update(JSON.stringify({ run: RUN, step: "F1", amount: req.amount, currency: req.currency, merchant: req.merchantUrl, items: req.items })).digest("hex");
   const description = `vic-3 F1 negative test [vic3-F1 terms:${sha}]`;
   audit(db, "system", "vic3.redteam_misuse", "F1", { run: RUN, label: PLANTED_F1, purser_route: route.route, mandate_amount: AMOUNTS.F1_MANDATE, intent_amount: AMOUNTS.F1_INTENT }, now);
-  const out: F1Result = { mandate_id: null, payment_intent_id: null, terms_sha256: sha, mandate_read_back: null, outcome: null, airi: null, airwallex: null, failed: null };
+  out.terms_sha256 = sha;
   const airiAnswers: Record<string, Json> = { purser_route_for_10_00: route.route };
+  out.airi = airiAnswers;
   let mandate;
   try {
     mandate = await airi.createMandate({ source: "Purser sourcing agent", paymentMethodId: pm, merchantName: req.merchantName, merchantUrl: req.merchantUrl, merchantCountry: req.merchantCountry, totalAmount: req.amount, currency: req.currency, items: req.items, description });
@@ -594,6 +673,7 @@ async function misuseF1(db: DB, airi: AiriClient, checkout: Checkout, d: Vic3Dep
   }
   out.mandate_id = mandate.mandateId;
   airiAnswers.mandate_create = { mandate_id: mandate.mandateId, amount: AMOUNTS.F1_MANDATE };
+  try {
   const stored = await airi.readMandate(mandate.mandateId, new Date(now.getTime() - 60_000).toISOString().replace(/\.\d{3}Z$/, "Z")).catch((e: unknown) => { if (e instanceof Vic3Stop) throw e; return null; });
   const tag = stored?.description ? /terms:([0-9a-f]{64})\]$/.exec(stored.description)?.[1] ?? null : null;
   out.mandate_read_back = { terms_sha256_in_mandate: tag, equal: tag === sha, before_credential: true };
@@ -649,6 +729,12 @@ async function misuseF1(db: DB, airi: AiriClient, checkout: Checkout, d: Vic3Dep
     return out;
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+  } catch (e) {
+    // A stop (a spent budget) after the mandate exists: the mandate is cancelled if the Airi budget still allows it, so
+    // no mandate with an issued credential is left open; then the stop goes on.
+    if (e instanceof Vic3Stop && !airiAnswers.result_reported) await airi.cancelMandate(mandate.mandateId).catch(() => {});
+    throw e;
   }
 }
 

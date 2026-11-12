@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { AIRI_RAIL, airiTerms } from "../src/airi/purchase.js";
 import { StandInAiriClient, StandInCheckout } from "../src/airi/standIn.js";
 import type { CheckoutAnswer } from "../src/airi/client.js";
-import { BUDGETS, DRY_LABEL, NOT_REFUSED_FINDING, STAND_IN_MODEL, plantChange, runVic3, standInClaude, vic3LiveRefusals, vic3Markdown, vic3RunnerProblems, type Vic3Deps, type Vic3Record } from "../src/airi/vic3.js";
+import { BUDGETS, DRY_LABEL, NOT_REFUSED_FINDING, STAND_IN_MODEL, plantChange, runVic3, standInClaude, removeOnSignal, vic3LiveRefusals, vic3Markdown, vic3RunnerProblems, type Vic3Deps, type Vic3Record } from "../src/airi/vic3.js";
 import { assertNoSecrets } from "../src/airi/vic1.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { decide, resuming } from "../src/policy/approvals.js";
@@ -283,5 +283,52 @@ describe("vic-3 live guards and the page", () => {
     expect(rows.length).toBe(7 + 14);
     for (const l of rows) expect(l).toMatch(/^\| STAND-IN /);
     expect(md).not.toMatch(/Visa (refused|declined|approved)/i);
+  });
+});
+
+describe("vic-3 budget stops are not swallowed (review)", () => {
+  it("a stop inside the agent's pay sends no further Claude call", async () => {
+    const c = claude();
+    const r = await runVic3(world({ mode: "live", claude: c.client, budgets: { airi: 11 } }).deps);
+    expect(r.stopped).toMatch(/airi call budget of 11 is spent/);
+    expect(c.calls()).toBe(3);
+  });
+
+  it("a stop after F1's credential cancels F1's mandate when the Airi budget allows", async () => {
+    const w = world({ mode: "live", claude: claude().client, budgets: { airwallex: 5 } });
+    const r = await runVic3(w.deps);
+    expect(r.stopped).toMatch(/airwallex call budget of 5 is spent/);
+    const f1 = step(r, "F1");
+    expect(w.airi.calls.filter((c) => c.op === "mandate cancel" && c.args.includes(f1.mandate_id!))).toHaveLength(1);
+  });
+
+  it("the approved HTTP budget (AIRWALLEX_CALL_BUDGET) spent at the checkout stops the run before F1", async () => {
+    let n = 0;
+    class Spent extends StandInCheckout {
+      override async prepare(o: Parameters<StandInCheckout["prepare"]>[0]) {
+        if (++n >= 2) return { outcome: "NOT_SUBMITTED" as const, reference: null, code: "CALL_BUDGET_SPENT", reason: "the approved Airwallex call budget is spent; nothing was sent" };
+        return super.prepare(o);
+      }
+    }
+    const c = claude();
+    const w = world({ mode: "live", claude: c.client, checkout: new Spent() });
+    const r = await runVic3(w.deps);
+    expect(r.stopped).toMatch(/AIRWALLEX_CALL_BUDGET/);
+    expect(r.purchases.map((p) => p.step)).toEqual(["A", "B"]);
+    expect(c.calls()).toBe(2);
+    expect(r.checks.within_budgets!.ok).toBe(false);
+  });
+
+  it("a signal removes the credential root and exits", async () => {
+    const { EventEmitter } = await import("node:events");
+    const { mkdirSync, writeFileSync, existsSync } = await import("node:fs");
+    const root = mkdtempSync(join(tmpdir(), "vic3-sig-"));
+    mkdirSync(join(root, "purser-vic3-keep-x"));
+    writeFileSync(join(root, "purser-vic3-keep-x", "credential.json"), "{}");
+    const proc = Object.assign(new EventEmitter(), { exitCode: undefined as number | undefined, exit: (c: number) => { proc.exitCode = c; } });
+    removeOnSignal(root, proc as never);
+    proc.emit("SIGINT");
+    expect(existsSync(root)).toBe(false);
+    expect(proc.exitCode).toBe(130);
   });
 });

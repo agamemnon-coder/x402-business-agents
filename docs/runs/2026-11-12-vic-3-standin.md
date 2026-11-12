@@ -4,17 +4,17 @@
 
 STAND-IN: every row below comes from the stand-ins (src/airi/standIn.ts) and a stand-in model that is not Claude. No Airi, Airwallex or Anthropic call was made, no card was used, and no approval is the CFO's Face ID. It is not the run's evidence: the live run is the owner's.
 
-Run 2026-11-12T13:29:03.163Z to 2026-11-12T13:29:03.228Z. Mode: dry.
+Run 2026-11-12T13:37:06.862Z to 2026-11-12T13:37:06.969Z. Mode: dry.
 
 ## Purchases
 
 | | Step | Amount | Rail chosen (by, request id) | Mandate | PaymentIntent | Terms hash | Mandate read-back | PaymentIntent read-back | Outcome | Calls (Anthropic / Airwallex / airi-cli) |
 |---|---|---|---|---|---|---|---|---|---|---|
-| STAND-IN A | within the CFO's limit: the agent alone, one tap in Airi | 12.00 EUR | airi_vic (stand-in, standin-req-1; 3 rails offered) | standin-mdt-1 | standin-order-1 | 35e64be1fc5a64a7… | equal, before the credential | — | succeeded, STAND_IN | 1 / 2 / 4 |
-| STAND-IN B | above the CFO's limit: Face ID, then the terms hash in Airi's mandate and in Airwallex's PaymentIntent record, both read back | 45.00 EUR | airi_vic (stand-in, standin-req-2; 3 rails offered) | standin-mdt-2 | standin-order-2 | 277f5de497a41eff… | equal, before the credential | equal | succeeded, STAND_IN | 1 / 3 / 4 |
+| STAND-IN A | within the CFO's limit: the agent alone, one tap in Airi | 12.00 EUR | airi_vic (stand-in, standin-req-1; 3 rails offered) | standin-mdt-1 | standin-order-1 | 4727497b94dc05c5… | equal, before the credential | — | succeeded, STAND_IN | 1 / 2 / 4 |
+| STAND-IN B | above the CFO's limit: Face ID, then the terms hash in Airi's mandate and in Airwallex's PaymentIntent record, both read back | 45.00 EUR | airi_vic (stand-in, standin-req-2; 3 rails offered) | standin-mdt-2 | standin-order-2 | a9f84001d7565f1a… | equal, before the credential | equal | succeeded, STAND_IN | 1 / 3 / 4 |
 | STAND-IN C | over the hard cap: refused by Purser | 250.00 EUR | — | — | — | — | — | — | refused, PURSER_ABOVE_HARD_CAP, by purser | 0 / 0 / 0 |
 | STAND-IN D | a merchant not on the CFO's allowlist: refused by Purser | 5.00 EUR | — | — | — | — | — | — | refused, PURSER_MERCHANT_NOT_ALLOWED, by purser | 0 / 0 / 0 |
-| STAND-IN E | terms changed after the Face ID (our own planted change): refused by the executor's hash check | 30.00 EUR | — | — | — | d4259c907fbbc6a1… | — | — | refused, by purser (the executor's hash check, before any Airi call) | 0 / 0 / 0 |
+| STAND-IN E | terms changed after the Face ID (our own planted change): refused by the executor's hash check | 30.00 EUR | — | — | — | 2391cc08dc735e3d… | — | — | refused, by purser (the executor's hash check, before any Airi call) | 0 / 0 / 0 |
 | STAND-IN F1 | negative test: a 10.00 EUR mandate's credential tried on a 40.00 EUR PaymentIntent | 10.00 EUR | airi_vic (stand-in, standin-req-3; 3 rails offered) | standin-mdt-3 | standin-order-3 | 45b34094c87264a8… | equal, before the credential | — | SUCCEEDED, STAND_IN | 1 / 2 / 4 |
 | STAND-IN F2 | negative test: B's credential, already used once, tried on a new PaymentIntent | 45.00 EUR | — | — | standin-order-4 | — | — | — | SUCCEEDED, STAND_IN | 0 / 2 / 0 |
 

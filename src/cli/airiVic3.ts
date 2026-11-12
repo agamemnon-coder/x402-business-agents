@@ -11,7 +11,7 @@
 // page), --log <file>.
 // Nothing here approves anything live: the CFO does, with Face ID on the relay; Max taps in Airi with his passkey.
 
-import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
@@ -89,7 +89,7 @@ if (cmd === "dry") {
     process.exit(2);
   }
   check = (await import("../airi/vic1.js")).assertNoSecrets;
-  const { runVic3, vic3RunnerProblems, readRunnerEnv, Vic3Stop, BUDGETS, budgeted, Budget } = await import("../airi/vic3.js");
+  const { runVic3, vic3RunnerProblems, readRunnerEnv, removeOnSignal, Vic3Stop, BUDGETS, budgeted, Budget } = await import("../airi/vic3.js");
   const { preflight } = await import("../airi/vic1.js");
   const { pollDecision } = await import("../airi/vic2.js");
   const { openDb } = await import("../db/open.js");
@@ -126,8 +126,13 @@ if (cmd === "dry") {
         await preflight({ db, mode: "live", airi: budgeted(new AiriCliClient(), b), rail: null as never, log, awaitCfo: async () => "" });
         log(`preflight  ${b.n} read-only Airi call(s); no purchase, no credential, no Airwallex or Anthropic call`);
       } else {
+        // Every credential directory of the run (B's kept copy for F2 among them) lives under this root, which is removed
+        // when the run ends and also on Ctrl-C or a kill signal, where a finally would not run.
+        const root = mkdtempSync(join(tmpdir(), "vic3-live-"));
+        chmodSync(root, 0o700);
+        removeOnSignal(root);
         const rec = await runVic3({
-          db, mode: "live", airi: new AiriCliClient(), checkout: live.checkout, claude: claudeClient(), log,
+          db, mode: "live", airi: new AiriCliClient(), checkout: live.checkout, claude: claudeClient(), log, tmpRoot: root,
           showPasskeyUrl: (url, i) => tap(tapLine(i.actionId === "vic3-F1" ? "F1" : i.actionId.startsWith("P-") ? "B" : "A", i.actionId, i, url)),
           awaitCfo: async (id) => {
             log(`FACE ID    ${approvalHint(db, id)}`);
@@ -135,6 +140,7 @@ if (cmd === "dry") {
             return pollDecision(db, id, "decided", { sleep: (ms) => new Promise((ok) => setTimeout(ok, ms)), now: () => new Date(), log });
           },
         });
+        rmSync(root, { recursive: true, force: true });
         await write(rec, resolve(repo, "data/vic-3-record.json"), log);
       }
     }
