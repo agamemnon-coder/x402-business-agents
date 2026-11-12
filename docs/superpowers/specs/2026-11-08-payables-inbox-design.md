@@ -1,5 +1,9 @@
 # Purser Payables: the invoice inbox (design)
 
+> **Status, 12 November 2026:** this is the design note of 8 November, kept as written. Where it says "on a branch" or
+> "nothing is deployed", it describes that day. The code is now in this repository, and a hosted preview exists but is
+> private (behind an access key), with no customer: [after-the-kit.md](../../after-the-kit.md).
+
 Max, 8 November 2026: "a kind of inbox where PDFs come in, then check and do everything, process every invoice and
 store it properly". Max said go for all four parts; this note records the decisions so the build can be checked against
 them. Built on a branch; nothing is deployed until after 15 November (the submission freeze).

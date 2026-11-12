@@ -4,7 +4,8 @@ Purser's SME product, run live in the Airwallex sandbox with test money: three f
 company on its own Airwallex connected account. Invoices came in through the real inbox and were read by Claude.
 Approvals were signed with a **test passkey**, a software authenticator standing in for the CFO's phone; it is not Face
 ID. Payouts went out on behalf of each company's account, with Purser's fee as `application_fee_options`, and were booked
-and posted to the T:0 sandbox. Code: `npm run e2e:live` (docs/e2e-live.md), platform branch.
+and posted to the T:0 sandbox. Code: `npm run e2e:live` (docs/e2e-live.md), platform branch. (Added 12 November: that
+code is in this repository now, in `src/e2e`.)
 
 **Result:** 3 companies onboarded as Airwallex connected accounts. 1 payout PAID with Purser's fee taken, booked, in T:0
 and with a receipt that verifies offline. 3 payouts from the two newly opened accounts refused by Airwallex: it requires
