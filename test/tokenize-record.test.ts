@@ -278,7 +278,7 @@ describe("/metal: the invoice-token block, only with a run record", () => {
     // The longest form of the block (a person's approval on an earlier day, named) stays within both budgets too.
     const longest = metalPage(run, { file: FILE, rec: person() });
     expect(visibleWords(longest) - visibleWords(without())).toBeLessThanOrEqual(55); // 55 since 12 Nov (review): the scaling said in plain words
-    expect(visibleWords(longest)).toBeLessThanOrEqual(380);
+    expect(visibleWords(longest)).toBeLessThanOrEqual(385); // +5, 12 Nov review: the scaling in plain words
     // Every label a public mention of the run carries.
     const sight = textOf(block.replace(/<details[\s\S]*<\/details>/, ""));
     for (const label of [/\(prototype\)/, /Metal testnet/, /simulated financier/, /Amounts are scaled down 100× for testnet/, /test USD/, /a separate Metal testnet run/]) expect(sight).toMatch(label);
