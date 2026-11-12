@@ -97,6 +97,8 @@ export const LOGOS: Record<string, { type: string; body: Buffer }> = {
   "logo-cloudflare.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/cloudflare.png", import.meta.url)) },
   // Home's "Works with" row (home-polish, 12 Nov): the partners' official logos on white tiles, rendered by npm run visuals.
   "built-with.png": { type: "image/png", body: readFileSync(new URL("../../docs/assets/logos/built-with.png", import.meta.url)) },
+  // Home's hero walkthrough (src/redesign/walk.ts): the hands-on demo's own screens, captured by test/browser/try.check.ts.
+  ...Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`try-walk-${n}.webp`, { type: "image/webp", body: readFileSync(new URL(`../../docs/assets/try-walk/walk-${n}.webp`, import.meta.url)) }])),
   // Purser's own mark and its link preview (src/ui/brand/), for every public page's favicon and Open Graph image.
   "favicon.svg": { type: "image/svg+xml", body: readFileSync(new URL("../ui/brand/favicon.svg", import.meta.url)) },
   "og.png": { type: "image/png", body: readFileSync(new URL("../ui/brand/og.png", import.meta.url)) },
