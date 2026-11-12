@@ -104,6 +104,7 @@
     "dashboard-vs-chain": "tsx src/cli/dashboardVsChain.ts",
     "origins": "tsx src/cli/origins.ts",
     "chain:gate": "tsx src/cli/chainGate.ts",
+    "chain:soak": "tsx src/cli/chainSoak.ts",
     "test-funds": "tsx src/cli/testFunds.ts",
     "metal-balance": "tsx src/cli/metalBalance.ts",
     "awx-readback": "tsx src/cli/awxReadback.ts",

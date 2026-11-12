@@ -122,9 +122,9 @@ export function generateApWorld(seed: number, day = "2026-11-13"): ApWorld {
   const usedTotals = new Map<string, Set<number>>();
   let n = 0;
   const invoice = (s: WorldSupplier, extra: Partial<InvoiceSpec> = {}): InvoiceSpec => {
-    // A net amount from 80.00 to 4,800.00, never a total this supplier already has in the world (that would be a twin).
+    // A net amount from 40.00 to 599.99 (what the stand-in treasury holds for a run), never a total this supplier already has in the world (that would be a twin).
     const seen = usedTotals.get(s.name) ?? new Set<number>();
-    const draw = () => (80 + Math.floor(r() * 4720)) * 100 + Math.floor(r() * 100);
+    const draw = () => (40 + Math.floor(r() * 560)) * 100 + Math.floor(r() * 100);
     let net = draw();
     while (seen.has(net)) net = draw();
     seen.add(net);
