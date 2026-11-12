@@ -1,6 +1,6 @@
 // The console's folder view (master list 476): "Verify this proof" and corrections, as plain browser JavaScript the
 // console includes beside the vault tree of cloud/src/consoleBooks.ts (cloud-demo-1112), which draws the folders from
-// GET /v1/vault (Company/Year/Quarter/Inkoopfacturen | Betalingen | Rapporten, src/vault/layout.ts). The bytes come from
+// GET /v1/vault (Company/Year/Quarter/Inkoopfacturen | Betalingen | Rapporten, or Purchase invoices | Payments for an English company; src/vault/layout.ts). The bytes come from
 // GET /v1/documents/{sha256}, the store the console already serves documents from.
 //
 // Verify this proof recomputes, in the browser:

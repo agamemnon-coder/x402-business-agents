@@ -4,7 +4,7 @@
 //   1. Filed    the invoice's PDF in its folder of the archive: the folder and the file name, as GET /v1/engine/vault lists them
 //   2. Booked   the journal lines of the invoice (expense, VAT, creditors) and of the payment (creditors, bank), as
 //               GET /v1/ledger/entries holds them, each line named by its account's role; "debits = credits" only
-//               when the lines' own sums agree; the VAT line marked
+//               when the lines' own sums agree; the VAT line's role in the text colour, its amount aligned like every other
 //   3. Matched  the payment linked to the invoice (the read model's payment and the transactions register), with its
 //               status and reference
 //   4. Next     three links: Purser Cloud, the live runs, how it stays safe
@@ -131,10 +131,10 @@ export const DID_CSS = `
 @keyframes did-drop { from { transform: translate(-14px, -10px) scale(.96); opacity: 0; } to { transform: none; opacity: 1; } }
 .did-step .role { color: var(--muted); font-size: 12.5px; }
 .did-lines { table-layout: fixed; width: 100%; }
-.did-lines td.r, .did-lines th.r { text-align: right; }
+.did-lines td.r, .did-lines th.r { text-align: right; padding-right: 0; font-weight: 400; }
 .did-lines th:nth-child(2), .did-lines th:nth-child(3) { width: 34%; }
 .did-match .mono { font-size: 13px; }
-.did-step tr.vatl td { font-weight: 650; }
+.did-step tr.vatl .role { color: var(--fg); }
 .did-match { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .did-acts { display: grid; gap: 8px; }
 .did-acts .did-next { display: inline-flex; justify-content: center; gap: 6px; text-decoration: none; }
