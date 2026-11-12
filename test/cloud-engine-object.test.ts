@@ -147,7 +147,7 @@ describe("the Worker's stub of a company's engine", () => {
   it("has every action of the interface, each one call across the stub with the company's id", async () => {
     const engine = engineStubs(ns)(A);
     expect(Object.keys(engine).sort()).toEqual([...ENGINE_METHODS].sort());
-    expect(ENGINE_METHODS).toHaveLength(15);
+    expect(ENGINE_METHODS).toHaveLength(16);
     answer = { ok: true, value: { items: [], next: 7 } };
     expect(await engine.events(7, 50)).toEqual({ items: [], next: 7 });
     const bytes = new Uint8Array([1, 2, 3]);

@@ -18,7 +18,7 @@ import { payApInvoice, syncPayments } from "../ap/pay.js";
 import type { Asker } from "../ap/read.js";
 import { apInvoice, apInvoices, type ApInvoiceRow } from "../ap/store.js";
 import { firstScreenFacts, isPayablesPayment, payablesFacts } from "../approve/client.js";
-import { verifyAuditChain } from "../audit/log.js";
+import { audit, verifyAuditChain } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { execute, type Rails } from "../executors/index.js";
 import { verifyLedger } from "../ledger/core.js";
@@ -235,6 +235,25 @@ export class EngineHost {
         try { confirmPasskey(db, waiting.fingerprint, now); } catch (e) { return { ok: false, reason: message(e) }; }
       }
       return { ok: true, credential_id: out.credentialId };
+    });
+  }
+
+  /**
+   * A person the cloud erased (POST /v1/users/{id}/erase): every passkey labelled with their name is revoked and
+   * labelled "[erased]". The approvals they signed keep their name: those are bookkeeping records, kept seven years.
+   */
+  forgetPasskey(label: string): Promise<{ revoked: number }> {
+    return this.act(async () => {
+      const { db } = this.deps;
+      const now = this.now();
+      const rows = db.prepare("SELECT credential_id, status FROM passkeys WHERE label = ?").all(label) as { credential_id: string; status: string }[];
+      db.transaction(() => {
+        for (const r of rows) {
+          db.prepare("UPDATE passkeys SET status = 'REVOKED', label = '[erased]' WHERE credential_id = ?").run(r.credential_id);
+          if (r.status === "ACTIVE") audit(db, "human", "passkey.revoked", r.credential_id, { reason: "the person was erased" }, now);
+        }
+      })();
+      return { revoked: rows.filter((r) => r.status === "ACTIVE").length };
     });
   }
 

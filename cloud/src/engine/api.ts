@@ -39,6 +39,8 @@ export interface EngineApi {
   vaultFiles(): Promise<VaultFile[]>;
   /** A file's bytes, only for a path the archive's index lists. */
   vaultFile(path: string): Promise<Uint8Array | null>;
+  /** A person erased by the cloud: every passkey labelled with their name is revoked, and the name leaves it. */
+  forgetPasskey(label: string): Promise<{ revoked: number }>;
   /** Forgets everything this company's engine holds (its ledger, its documents, its stand-in bank). */
   wipe(): Promise<void>;
 }
@@ -47,4 +49,4 @@ export interface EngineApi {
 const everyMethod = <T extends readonly (keyof EngineApi)[]>(names: keyof EngineApi extends T[number] ? T : never): T => names;
 
 /** What a caller across a boundary may ask a company's engine for (the Worker's stub of its Durable Object passes the name on). */
-export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "approve", "sync", "events", "vaultFiles", "vaultFile", "wipe"] as const);
+export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "approve", "sync", "events", "vaultFiles", "vaultFile", "forgetPasskey", "wipe"] as const);

@@ -409,7 +409,10 @@ export const ROUTES: Route[] = [
     return json(201, { id, role: b.role });
   } },
   { method: "POST", path: "/v1/users/{id}/erase", summary: "Erase a person's personal data (bookkeeping records are kept for 7 years).", need: "admin", run: async (c) => {
+    const name = (await db(c).one<{ display_name: string }>("users", { id: c.params[0]! }))?.display_name;
     const out = await eraseUser(c.env.sql, c.caller!.tenantId, c.params[0]!, c.caller!.principal, c.now);
+    // The company's engine labels a passkey with its person's name (cloud/src/engine/routes.ts): that passkey goes too.
+    if (c.env.engine && name) await c.env.engine(c.caller!.tenantId).forgetPasskey(name);
     await purgeEndedExportParts(c.env.sql, c.env.blobs, c.caller!.tenantId);
     return json(200, out);
   } },

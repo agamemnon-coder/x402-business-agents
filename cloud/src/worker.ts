@@ -46,7 +46,7 @@ export default {
   async scheduled(_event: unknown, b: Bindings): Promise<void> {
     const env = envOf(b);
     await ensureSchema(env.sql);
-    await purgeExpired(env.sql, env.blobs, new Date());
+    await purgeExpired(env.sql, env.blobs, new Date(), env.engine);
     // Staged exports past their day lose their parts (a request for the company does the same on its way).
     await sweepExports(env.sql, env.blobs, new Date());
   },

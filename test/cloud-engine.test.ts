@@ -324,6 +324,39 @@ describe("what an upload must be", () => {
   });
 });
 
+describe("erasing a person and purging a closed company reach the company's engine", () => {
+  it("erasing the person revokes their approval passkey and drops their name from it", async () => {
+    const e = testCloud({ engine: true });
+    try {
+      const t = await e.tenant("echo");
+      const second = await e.req("POST", "/v1/users", { key: t.session, body: { display_name: "Second Owner", role: "owner" } });
+      const other = await sessionToken(e.env.sessionSecret, { tenantId: t.id, userId: second.json.id as string, role: "owner", gen: 0 }, e.clock.now);
+      const own = new FakeAuthenticator();
+      const start = await e.req("POST", "/v1/engine/passkey/start", { key: t.session });
+      const done = await e.req("POST", "/v1/engine/passkey/finish", { key: t.session, body: { code: start.json.code, credential: own.register({ challenge: start.json.challenge as string, origin: ORIGIN, rpId: RP }) } });
+      expect(done.status, JSON.stringify(done.json)).toBe(200);
+      expect((await e.req("GET", "/v1/engine", { key: other })).json.passkey).toEqual({ credential_id: own.credentialId, label: "Owner" });
+
+      expect((await e.req("POST", `/v1/users/${t.owner}/erase`, { key: other })).status).toBe(200);
+      expect((await e.req("GET", "/v1/engine", { key: other })).json.passkey).toBeNull();
+      expect(JSON.stringify(await e.env.engine!(t.id).status())).not.toContain("Owner");
+    } finally { e.close(); }
+  });
+
+  it("the purge of a closed company wipes its engine: its ledger, documents and passkey go with its rows", async () => {
+    const e = testCloud({ engine: true });
+    try {
+      const t = await e.tenant("foxtrot");
+      expect((await e.req("POST", "/v1/engine/documents", { key: t.session, body: { filename: "bergtex.pdf", base64: b64(bytes) } })).status).toBe(200);
+      expect(await e.env.engine!(t.id).invoices()).toHaveLength(1);
+      expect((await e.req("POST", "/v1/close", { key: t.key })).status).toBe(200);
+      const purge = (await import("../cloud/src/privacy.js")).purgeExpired;
+      expect(await purge(e.env.sql, e.env.blobs, new Date("2034-01-01T12:00:00Z"), e.env.engine)).toEqual([t.id]);
+      expect(await e.env.engine!(t.id).invoices()).toEqual([]);
+    } finally { e.close(); }
+  });
+});
+
 describe("a cloud with no engine wired", () => {
   it("answers 404 on every engine route, whoever asks", async () => {
     const off = testCloud();
