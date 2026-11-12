@@ -10,18 +10,21 @@ import { DEMO_STEPS, heroDemoFacts, heroProvenance } from "../src/redesign/heroD
 import { heroReceipt, HERO_RECEIPT_FILE } from "../src/redesign/heroReceipt.js";
 import { LOCKS_HEAD, NEXT_NEXT, PROOF_BUTTON, REASSURE, START, WHATS_REAL, homePage, proofRows } from "../src/redesign/home.js";
 import { buildPages } from "../src/relay/assets.js";
+import { scriptBlocks, scriptBody, withoutBlocks } from "./support/scriptBlocks.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
-const decode = (s: string) => s.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+/** esc() undone in one pass, so "&amp;lt;" reads "&lt;" (a chain of replaces would decode it twice). */
+const ENTITIES: Record<string, string> = { "&amp;": "&", "&quot;": '"', "&#39;": "'", "&lt;": "<", "&gt;": ">" };
+const decode = (s: string) => s.replace(/&(?:amp|quot|#39|lt|gt);/g, (e) => ENTITIES[e]!);
 const text = (html: string) => decode(html.replace(/<svg\b[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
 const mainOf = (html: string) => /<main[\s\S]*<\/main>/.exec(html)![0];
 /** The page without the "What's real?" fold (the footer's closed list), scripts and styles: what is in sight or said aloud. */
-const outsideFold = (html: string) => html.replace(/<details class="real"[\s\S]*?<\/details>/, " ").replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ");
+const outsideFold = (html: string) => withoutBlocks(html.replace(/<details class="real"[\s\S]*?<\/details>/, " "), ["script", "style"], " ");
 /** As test/site-v4.test.ts counts them: <main>, no drawings, scripts, styles or folded details. */
 function visibleWords(html: string): number {
   let main = mainOf(html);
   for (let prev = ""; prev !== main;) { prev = main; main = main.replace(/<svg\b[^>]*>(?:(?!<svg\b)[\s\S])*?<\/svg>/g, " "); }
-  const t = main.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ")
+  const t = withoutBlocks(main, ["script", "style"], " ")
     .replace(/<details\b[^>]*>\s*<summary[^>]*>([\s\S]*?)<\/summary>[\s\S]*?<\/details>/g, " $1 ").replace(/<[^>]+>/g, " ");
   return decode(t).split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
 }
@@ -162,7 +165,7 @@ describe("Home is one story, in this order", () => {
       expect(DEMO_STEPS[3]).toBe("+1 cent");
       expect(main).toContain('<button type="button" class="hd-btn go" data-act="cent">+1 cent</button>');
       expect(html).not.toMatch(/data-stage|function Stage\(/);
-      const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join("\n");
+      const script = scriptBlocks(html).map(scriptBody).join("\n");
       expect(script).not.toMatch(/\bfetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource/);
     }
     // And the browser may not connect anywhere from Home: its CSP says so.

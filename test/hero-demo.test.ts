@@ -17,6 +17,7 @@ import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 import { canonicalTerms, RECEIPT_FORMAT, verifyReceipt, type TryReceipt } from "../src/try/receipt.js";
 import { VERIFY_CORE } from "../src/try/verify.js";
 import { CAVEAT_LINE } from "../src/config/brand.js";
+import { scriptBlocks, scriptBody } from "./support/scriptBlocks.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const rec = JSON.parse(read("docs/demo/airwallex-run.json")) as { attempts: { at: string }[]; invoices: { invoice_no: string; amount: string; transfer_id: string; transfer_request_id: string; approval_sha256: string; proposal_id: string; status: string }[]; proposals: { proposal_id: string; terms_sha256: string; method: string; created_by: string; decided_by: string }[]; verify: { level: string; what: string; detail: string }[] };
@@ -91,7 +92,7 @@ describe("the hero's steps 1 to 3", () => {
 
 describe("the hero's step 4: the check the page embeds, on the published receipt", () => {
   it("is in Home's one script word for word: the checks of /try/verify and the hero's few lines around them", () => {
-    const script = /<script>([\s\S]*?)<\/script>/.exec(homePage())![1]!;
+    const script = scriptBody(scriptBlocks(homePage()).find((b) => b.toLowerCase().startsWith("<script>"))!);
     expect(script).toContain(VERIFY_CORE);
     expect(script).toContain(HERO_CHECK_JS);
     // No verdict but the check's: the script calls no network and holds no hash or amount of its own.

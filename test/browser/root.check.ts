@@ -16,6 +16,7 @@ import { openDb } from "../../src/db/open.js";
 import { viewKey } from "../../src/relay/config.js";
 import { startLocalRelay } from "../../src/relay/local.js";
 import { buildRelayState, stateHash } from "../../src/relay/state.js";
+import { textOutsideTags } from "../support/scriptBlocks.js";
 
 const shots = resolve(process.argv[2] ?? "test-results/root");
 mkdirSync(shots, { recursive: true });
@@ -37,7 +38,7 @@ const check = (ok: boolean, what: string) => { console.log(`${ok ? "ok  " : "FAI
 // Without a browser: what a link preview or a fetch gets.
 {
   const root = await (await fetch(`${base}/`)).text();
-  check(root.includes(homeHeadingHtml()) && homeHeadingHtml().replace(/<[^>]+>/g, "") === HERO && !root.includes('id="recorded-data"'), "no script: / is Home's HTML, nothing of the CFO dashboard");
+  check(root.includes(homeHeadingHtml()) && textOutsideTags(homeHeadingHtml()).replace(/\s+/g, " ").trim() === HERO && !root.includes('id="recorded-data"'), "no script: / is Home's HTML, nothing of the CFO dashboard");
   for (const q of ["?recorded", "?autonomy"]) check((await (await fetch(`${base}/${q}`)).text()).includes('id="recorded-data"'), `no script: /${q} is the dashboard's page`);
   const h = await fetch(`${base}/health`);
   check(h.status === 200 && ((await h.json()) as { status: string }).status === "ok", "/health: 200 ok while the runner syncs");

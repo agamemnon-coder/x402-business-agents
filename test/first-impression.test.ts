@@ -12,6 +12,7 @@ import { CFO_FORWARD_JS, homeHeadingHtml } from "../src/redesign/home.js";
 import { esc } from "../src/redesign/ui.js";
 import { buildPages } from "../src/relay/assets.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
+import { textOutsideTags } from "./support/scriptBlocks.js";
 
 // The bundle as deployed (TRY_SIGN_ENABLED on since 4 November).
 const pages = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv);
@@ -45,7 +46,7 @@ describe("/ for a guest", () => {
     // README, the form and the deck.
     // Home as one story (12 Nov): the heading's two sentences on two lines, what Purser is, then the one button.
     expect(homeHeadingHtml()).toBe('<h1 class="h-hero"><span>AI agents spend.</span> <span>You sign off.</span></h1>');
-    expect(homeHeadingHtml().replace(/<[^>]+>/g, "")).toBe(HERO);
+    expect(textOutsideTags(homeHeadingHtml()).replace(/\s+/g, " ").trim()).toBe(HERO);
     expect(pages.home).toContain(`${homeHeadingHtml()}\n    <p class="what">${esc(WHAT_IT_IS)}</p>\n    <a class="btn primary big start" href="try/sign">`);
     expect(DIFFERENTIATORS.length).toBe(3);
     // The core sentence stays the page's description.

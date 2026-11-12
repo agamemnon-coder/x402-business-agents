@@ -12,6 +12,7 @@ import { header, STAGE_JS } from "../src/redesign/ui.js";
 import { JUDGE_STEPS, judgePage } from "../src/redesign/judge.js";
 import { agentRun, loadRecord } from "../src/redesign/run.js";
 import { inSight, replayHead, watchPage } from "../src/redesign/watch.js";
+import { scriptBlocks, scriptBody, textOutsideTags, withoutBlocks } from "./support/scriptBlocks.js";
 
 const SITE = "https://x.test";
 const ON = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv);
@@ -25,12 +26,12 @@ function htmlPages(pages: Pages): [string, string][] {
   return [...flat, ...Object.entries(pages.agents ?? {}).map(([id, a]): [string, string] => [`agents/${id}`, a.page])];
 }
 const navs = (html: string) => [...html.matchAll(/<nav\b[^>]*>[\s\S]*?<\/nav>/g)].map((m) => m[0]);
-const noScript = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ");
+const noScript = (html: string) => withoutBlocks(html, ["script", "style"], " ");
 /** What a visitor sees before opening anything: no script, no style, no fold's inside (its header stays). */
 const inSightHtml = (html: string) => noScript(html).replace(/<details\b[^>]*>\s*(<summary[^>]*>[\s\S]*?<\/summary>)[\s\S]*?<\/details>/g, " $1 ");
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
 /** The items of a menu as a visitor reads them: its links, and a fold's header for a fold. */
-const items = (nav: string) => [...nav.replace(/<details\b[\s\S]*?<\/details>/g, (d) => /<summary[^>]*>[\s\S]*?<\/summary>/.exec(d)?.[0] ?? "").matchAll(/<(a|summary)\b[^>]*>([\s\S]*?)<\/\1>/g)].map((m) => m[2]!.replace(/<[^>]+>/g, "").trim());
+const items = (nav: string) => [...nav.replace(/<details\b[\s\S]*?<\/details>/g, (d) => /<summary[^>]*>[\s\S]*?<\/summary>/.exec(d)?.[0] ?? "").matchAll(/<(a|summary)\b[^>]*>([\s\S]*?)<\/\1>/g)].map((m) => textOutsideTags(m[2]!).replace(/\s+/g, " ").trim());
 
 describe("the menu: Home, Try, Proof, and no Watch", () => {
   it("in both definitions: the redesign's header and the older pages' navigation", () => {
@@ -167,7 +168,7 @@ describe("/watch still answers, as a replay under Proof", () => {
     expect(reworded).toBeGreaterThan(0);
     // The stage never draws a tool chip or a proposal's id, and the page's script shows it only steps passed through sight().
     expect(STAGE_JS).not.toMatch(/\.tools|"tool"|ev\.id\b/);
-    const script = /<script>([\s\S]*?)<\/script>/.exec(html)![1]!;
+    const script = scriptBody(scriptBlocks(html).find((b) => b.toLowerCase().startsWith("<script>"))!);
     expect(script.match(/st\.show\(/g)!.length).toBe(script.match(/st\.show\(sight\(/g)!.length);
     expect(script.match(/\bcaption\(sight\(/g)).toHaveLength(1);
     // The chips and ids are drawn in one place: a row of the fold's list.

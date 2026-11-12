@@ -8,7 +8,7 @@ import { notFoundResponse, pageResponse, type Pages } from "../worker/src/core.j
 import { agentRun, callBadge, faceIdDecisions, highlights, loadRecord, payments, split, tapRun } from "../src/redesign/run.js";
 import { OPEN_TARGET_JS } from "../src/redesign/ui.js";
 import { tokenizeRun } from "../src/redesign/tokenizeRun.js";
-import { scriptBlocks } from "./support/scriptBlocks.js";
+import { scriptBlocks, textOutsideTags } from "./support/scriptBlocks.js";
 import { SECOND_APPROVER, SPLIT_LINE, VISA_CLAIM, VISA_TAP_STATUS, WORLD_SETUP } from "../src/config/brand.js";
 
 const pages = buildPages();
@@ -95,7 +95,7 @@ describe("the site after v4", () => {
     // fifth item joins: the first three tabs in this order, no Watch, at most five items, links or a fold's header.
     for (const [name, html] of Object.entries(PUBLIC)) {
       const nav = /<nav[^>]*aria-label="Main"[^>]*>([\s\S]*?)<\/nav>/.exec(html)?.[1] ?? "";
-      const items = [...nav.replace(/<details\b[\s\S]*?<\/details>/g, (d) => /<summary[^>]*>[\s\S]*?<\/summary>/.exec(d)?.[0] ?? "").matchAll(/<(a|summary)\b[^>]*>([\s\S]*?)<\/\1>/g)].map((m) => m[2]!.replace(/<[^>]+>/g, "").trim());
+      const items = [...nav.replace(/<details\b[\s\S]*?<\/details>/g, (d) => /<summary[^>]*>[\s\S]*?<\/summary>/.exec(d)?.[0] ?? "").matchAll(/<(a|summary)\b[^>]*>([\s\S]*?)<\/\1>/g)].map((m) => textOutsideTags(m[2]!).replace(/\s+/g, " ").trim());
       expect({ name, first: items.slice(0, 3) }).toEqual({ name, first: ["Home", "Try", "Proof"] });
       expect({ name, items: items.length <= 5 ? "at most five" : items }).toEqual({ name, items: "at most five" });
       expect({ name, watch: /watch/i.test(nav) }).toEqual({ name, watch: false });
