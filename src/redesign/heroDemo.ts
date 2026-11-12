@@ -59,7 +59,7 @@ export function heroDemoFacts(rec: Awx1Record | null = awxRun()): HeroDemoFacts 
  */
 export function heroProvenance(f: HeroDemoFacts, r: HeroReceipt): string[] {
   return [
-    `Steps 1 to 3: recorded on ${f.date} in the Airwallex sandbox.`,
+    `Steps 1 to 3: recorded ${f.date} in the Airwallex sandbox.`,
     CAVEAT_LINE,
     r.kind === "recorded" ? "Step 4 checks that payment's real signature in your browser: the owner's own passkey, acting as the CFO (Face ID, as stated by the owner)." : "Step 4 runs in your browser, on a copy of these terms signed with a test key.",
   ];

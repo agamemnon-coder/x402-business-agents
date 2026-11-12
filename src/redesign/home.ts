@@ -14,6 +14,7 @@ import { AWX_RUN_FILE, AWX_RUN_STEPS_ID, awxRun } from "./awxRun.js";
 import { metalStory, REPO_BLOB } from "./metalStory.js";
 import { HERO_DEMO_CSS, HERO_DEMO_JS, heroDemoFacts, heroDemoHtml, heroProvenance } from "./heroDemo.js";
 import { HERO_RECEIPT_FILE, heroReceipt } from "./heroReceipt.js";
+import { liveRuns, RUNS_URL } from "./runs.js";
 import { esc, icon, MAIN_RUN_REAL, page } from "./ui.js";
 
 const CSS = `.hero { padding: 24px 0 36px; }
@@ -45,6 +46,14 @@ a.row span { grid-column: 1; font-size: 16.5px; font-weight: 620; line-height: 1
 a.row code { grid-column: 1; font: 500 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
 a.row .i { grid-column: 2; grid-row: 1 / span 3; color: var(--accent); }
 .btn.big.more { margin-top: 22px; }
+/* About Purser: one closed fold at the end, styled as Proof's closed lines (details.deep). */
+section.about { padding: 0 0 48px; }
+details.about { border-top: 1px solid var(--border); }
+details.about > summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; min-height: 56px; font-size: 20px; font-weight: 750; letter-spacing: -.01em; }
+details.about > summary::-webkit-details-marker { display: none; }
+details.about > summary::after { content: "▾"; font-size: 16px; color: var(--accent); } details.about[open] > summary::after { content: "▴"; }
+details.about .body { max-width: 680px; padding: 0 0 8px; display: grid; gap: 10px; } details.about .body p { margin: 0; }
+details.about a.runs { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; min-height: 44px; }
 p.next { margin: 18px 0 0; font-size: 15.5px; color: var(--muted); max-width: 44em; } p.next a { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; white-space: nowrap; }
 section.band { padding: 60px 0; border-top: 1px solid var(--border); }
 .sechead { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 26px; }
@@ -111,6 +120,34 @@ export const WHATS_REAL = "What's real?";
 export const LOCKS_HEAD = "Three locks";
 /** Home's second and last button. */
 export const PROOF_BUTTON = "See the proof";
+/** The fold at the end of Home (the owner, 12 Nov, for the Founder's award): no new page, no menu item, no person. */
+export const ABOUT_HEAD = "About Purser";
+
+/** The fold's numbers, from the run records as /runs holds them: the live runs, and the payout with Purser's fee. */
+export function aboutFacts(): { runs: number; payout: string; fee: string } {
+  const rows = liveRuns();
+  const paid = /one EUR (\d+\.\d{2}) payout PAID, Purser's fee EUR (\d+\.\d{2})/.exec(rows.find((r) => r.key === "platform-e2e-1")?.line ?? "");
+  return { runs: rows.length, payout: paid?.[1] ?? "", fee: paid?.[2] ?? "" };
+}
+
+/**
+ * About Purser: the problem, what Purser does, what ran and the business, closed by default. No date, no "test money",
+ * no "live" and no run label here: the hero's provenance line says those once (test/home-story.test.ts A1, A3, A4); no
+ * Visa either, as on the rest of Home (its runs are on /runs). The pricing is the owner's plan; no customer, pilot or
+ * revenue is claimed (test/home-about.test.ts).
+ */
+function aboutHtml(): string {
+  const f = aboutFacts();
+  const paid = f.payout && f.fee ? `; in Airwallex's sandbox a EUR ${f.payout} payout was paid with Purser's EUR ${f.fee} fee` : "";
+  const line = (head: string, text: string, tail = "") => `<p><b>${esc(head)}</b> ${esc(text)}${tail}</p>`;
+  return `<details class="about" id="about"><summary>${esc(ABOUT_HEAD)}</summary><div class="body">
+    ${line("The problem:", "AI agents can pay with company money, but nobody signs the exact terms they pay.")}
+    ${line("What Purser does:", "the CFO signs the exact terms with Face ID. Airwallex and Metal enforce each agent's limits on their rails. Claude agents decide within those limits, and each payment keeps its proof.")}
+    ${line("What ran:", `${f.runs} runs in sandboxes and on testnet, each with its ids and log.`, ` <a class="runs" href="${RUNS_URL}">See every run${icon("arrow-right", 16)}</a>`)}
+    ${line("The business:", `pilots will be priced per invoice, plus a fee per payout through Airwallex connected accounts${paid}. Companies open their own Airwallex account through Purser, with Airwallex's KYC: built, switched off.`)}
+    <p>No customers, pilots or revenue yet.</p>
+  </div></details>`;
+}
 
 export interface ProofRow { partner: "Airwallex" | "Metal"; text: string; id: string; full: string; href: string; external: boolean }
 
@@ -177,6 +214,9 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   <a class="btn big more" href="proof">${esc(PROOF_BUTTON)}${icon("arrow-right", 18)}</a>
   ${nextHtml(opts.smallCompanyUrl ?? SMALL_COMPANY_DEMO_URL)}
   ${designPartnerHtml(opts.partnerUrl ?? DESIGN_PARTNER_URL)}
+</div></section>
+<section class="about" aria-label="${esc(ABOUT_HEAD)}"><div class="wrap">
+  ${aboutHtml()}
 </div></section>
 </main>`;
   // The full list behind the one provenance line: the main run's lines, the run the hero replays (its own note), what

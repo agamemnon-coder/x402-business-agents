@@ -48,8 +48,8 @@ describe("Home is one story, in this order", () => {
       expect(at.filter((x) => x.i < 0)).toEqual([]);
       expect(at.map((x) => x.i)).toEqual([...at.map((x) => x.i)].sort((a, b) => a - b));
       expect(text(/<h1[\s\S]*?<\/h1>/.exec(main)![0])).toBe(HERO);
-      // No added section: the hero and the three locks, nothing else.
-      expect(main.match(/<section\b[^>]*>/g)).toEqual(['<section class="hero">', '<section class="locks" aria-labelledby="h-locks">']);
+      // No other section: the hero, the three locks and, last and closed, "About Purser" (the owner, 12 Nov; test/home-about.test.ts).
+      expect(main.match(/<section\b[^>]*>/g)).toEqual(['<section class="hero">', '<section class="locks" aria-labelledby="h-locks">', '<section class="about" aria-label="About Purser">']);
     }
     expect(DIFFERENTIATORS[0]).toBe("An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless.");
     expect(text(mainOf(ON))).toContain(DIFFERENTIATORS[0]);

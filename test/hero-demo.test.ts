@@ -229,7 +229,7 @@ describe("the hero follows the receipt file, not the code", () => {
   it("says what step 4 is from the file: the recorded approval itself, or a copy signed with a test key", () => {
     const real = heroReceipt(f)!;
     expect(real.kind).toBe("recorded");
-    expect(heroProvenance(f, real)).toEqual([`Steps 1 to 3: recorded on ${f.date} in the Airwallex sandbox.`, CAVEAT_LINE, "Step 4 checks that payment's real signature in your browser: the owner's own passkey, acting as the CFO (Face ID, as stated by the owner)."]);
+    expect(heroProvenance(f, real)).toEqual([`Steps 1 to 3: recorded ${f.date} in the Airwallex sandbox.`, CAVEAT_LINE, "Step 4 checks that payment's real signature in your browser: the owner's own passkey, acting as the CFO (Face ID, as stated by the owner)."]);
     // A receipt whose hash is the one the record holds is the approval itself, whatever its note says.
     const plain = receiptFor({}, { note: "" });
     expect(heroReceipt({ ...f, hash: plain.terms_sha256 }, plain)!.kind).toBe("recorded");

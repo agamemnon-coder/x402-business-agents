@@ -92,7 +92,11 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   // docs/demo/main-run.json in test/hero-demo.test.ts and test/home-story.test.ts. The same run's and the receipt's own
   // notes in Home's "What's real?" fold likewise.
   .replace(/\b1\s+Ask\s+2\s+Face ID[\s\S]*?See the proof/g, " ")
-  .replace(/The hero's steps 1 to 3 and the two Airwallex rows:[\s\S]*?The terms are exactly as signed\./g, " ");
+  .replace(/The hero's steps 1 to 3 and the two Airwallex rows:[\s\S]*?The terms are exactly as signed\./g, " ")
+  // Home's "About Purser" fold (the owner, 12 Nov): how many runs /runs lists, and the payout and fee of the run of 10
+  // November, dated in that run's own record; each figure is read from liveRuns() and checked against
+  // docs/runs/2026-11-10-platform-e2e.md in test/home-about.test.ts.
+  .replace(/About Purser\s+The problem:[\s\S]*?No customers, pilots or revenue yet\./g, " ");
 
 /** Numbers on the page that are not in the record. */
 export const unknownNumbers = (html: string) => (visibleText(html).match(NUM) ?? []).map(norm).filter((n) => !ALLOWED.has(n));
