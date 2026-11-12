@@ -162,7 +162,7 @@ describe("the engine in a Durable Object per company, behind the cloud's routes 
   it("refuses a signature over other terms: nothing is paid", async () => {
     const r = await req("POST", "/v1/engine/proposals/P-0001/approve", { key: A.session, body: { terms_sha256: proposal.terms_sha256, credential: phone.sign({ challenge: challengeFor(sha256Hex("other terms")), origin: ORIGIN, rpId: RP, counter: 1 }) } });
     expect(r.status, JSON.stringify(r.json)).toBe(200);
-    expect(r.json).toMatchObject({ status: "refused", settled: null });
+    expect(r.json).toEqual({ status: "refused", message: "This signature is over other terms than the ones on screen. Nothing was paid.", settled: null });
     expect(((await req("GET", "/v1/engine/invoices", { key: A.session })).json.items as Invoice[])[0]).toMatchObject({ id: "AP-0001", status: "waiting_cfo" });
     expect((await req("GET", "/v1/payments", { key: A.session })).json.items).toEqual([]);
   });

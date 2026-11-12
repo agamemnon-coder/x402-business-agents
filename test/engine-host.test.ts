@@ -112,7 +112,8 @@ describe("the chain: one supplier invoice from upload to paid, booked and archiv
 
     // A signature over other terms: refused, and nothing runs.
     const wrong = await w.host.approve(signed(w, proposal, challengeFor(sha256Hex("other terms")), 1));
-    expect(wrong).toMatchObject({ status: "refused", settled: null });
+    // In plain words, never the WebAuthn library's own sentence.
+    expect(wrong).toEqual({ status: "refused", message: "This signature is over other terms than the ones on screen. Nothing was paid.", settled: null });
     expect(w.bank.transfers).toHaveLength(0);
     expect(w.host.proposal("P-0001")!.status).toBe("PENDING_APPROVAL");
     expect(count(w.db, "SELECT COUNT(*) AS n FROM transfers")).toBe(0);
@@ -257,6 +258,59 @@ describe("sync: follow the payments, book, archive, feed", () => {
     expect(count(w.db, "SELECT COUNT(*) AS n FROM approvals WHERE proposal_id = 'P-0001' AND decision = 'APPROVED'")).toBe(1);
     expect(count(w.db, "SELECT COUNT(*) AS n FROM transfers WHERE status = 'PAID'")).toBe(0);
     expect(verifyAuditChain(w.db).ok).toBe(true);
+  });
+});
+
+describe("an approval refused: in plain words, never the WebAuthn library's own sentence", () => {
+  const sign = (w: World, p: { id: string; terms_sha256: string; challenge: string }, c: Partial<{ origin: string; rpId: string; counter: number; userVerified: boolean }>, phone = w.phone) =>
+    ({ proposal_id: p.id, terms_sha256: p.terms_sha256, credential: phone.sign({ challenge: p.challenge, origin: ORIGIN, rpId: RP, counter: 5, ...c }) });
+
+  it("says what was wrong with the signature, and nothing is paid", async () => {
+    const w = world();
+    const { proposal } = await proposed(w);
+    const cases: [string, ReturnType<typeof sign>, string][] = [
+      ["made on another site", sign(w, proposal, { origin: "https://elsewhere.example" }), "This signature was made on another website than this one. Nothing was paid."],
+      ["for another site's passkey", sign(w, proposal, { rpId: "elsewhere.example" }), "This signature belongs to a passkey of another website. Nothing was paid."],
+      ["without Face ID, fingerprint or PIN", sign(w, proposal, { userVerified: false }), "The passkey did not confirm it was you (Face ID, fingerprint or PIN). Nothing was paid."],
+      ["by a passkey that is not set up here", sign(w, proposal, {}, new FakeAuthenticator()), "this passkey is not enrolled"],
+    ];
+    const odd = sign(w, proposal, {});
+    // A response of another ceremony (the library's "Unexpected authentication response type ...").
+    const data = JSON.parse(Buffer.from(odd.credential.response.clientDataJSON, "base64url").toString("utf8")) as Record<string, unknown>;
+    const other = Buffer.from(JSON.stringify({ ...data, type: "webauthn.create" })).toString("base64url");
+    cases.push(["of another ceremony", { ...odd, credential: { ...odd.credential, response: { ...odd.credential.response, clientDataJSON: other } } }, "This signature could not be read. Nothing was paid."]);
+    for (const [what, a, message] of cases) {
+      const out = await w.host.approve(a);
+      expect(out, what).toEqual({ status: "refused", message, settled: null });
+      expect(out.message, what).not.toMatch(/Unexpected|expected|challenge|origin "|RP ID/);
+    }
+    expect(w.bank.transfers).toHaveLength(0);
+    expect(w.host.proposal(proposal.id)!.status).toBe("PENDING_APPROVAL");
+  });
+
+  it("says a signature older than the passkey's last one may be a copy", async () => {
+    const w = world();
+    const { proposal } = await proposed(w);
+    // A first payment moves the passkey's counter on to 9.
+    expect((await w.host.approve(sign(w, proposal, { counter: 9 }))).status).toBe("approved");
+    // Another invoice of the same supplier (another number, another amount), filed for approval.
+    const next = EN.replace(/BTX-2026-21/g, "BTX-2026-22").replace("1,554.62", "1,000.00").replace("295.38", "190.00").replace("1,850.00", "1,190.00").replace("2 November", "3 November").replace("16 November", "17 November");
+    const up = await w.host.upload({ bytes: await pdfOf(next), filename: "bergtex-BTX-2026-22.pdf" });
+    const filed = await w.host.propose(up.invoice!.id);
+    if (!filed.ok) throw new Error(filed.reason);
+    const out = await w.host.approve(sign(w, filed.proposal, { counter: 3 }));
+    expect(out).toEqual({ status: "refused", message: "This signature is older than one this passkey already gave, so it may be a copy. Nothing was paid.", settled: null });
+    expect(w.bank.transfers).toHaveLength(1);
+  });
+
+  it("an expired proposal answers in the engine's own words, as before", async () => {
+    let clock = new Date();
+    const w = world({ now: () => clock });
+    const { proposal } = await proposed(w);
+    clock = new Date(clock.getTime() + 2 * 86_400_000);
+    const out = await w.host.approve(signed(w, proposal, proposal.challenge, 1));
+    expect(out).toEqual({ status: "too_late", message: expect.stringMatching(/^P-0001 expired at \S+; nothing was approved$/), settled: null });
+    expect(w.bank.transfers).toHaveLength(0);
   });
 });
 

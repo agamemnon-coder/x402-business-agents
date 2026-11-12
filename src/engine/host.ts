@@ -109,6 +109,25 @@ function termsFacts(terms: Record<string, unknown>, lang: "en" | "nl"): { facts:
 /** The phone page's fee label (ph.bank_fee) names Airwallex; the host's bank is the stand-in, so its facts name that instead. */
 const STAND_IN_FEE = { en: "Bank fee (stand-in bank, test money)", nl: "Bankkosten (nagebootste bank, testgeld)" } as const;
 
+/**
+ * A refused signature in plain words. The engine passes on the WebAuthn library's own sentence when the library
+ * refuses (src/passkey/webauthn.ts): a person at the screen reads what was wrong instead, and that nothing was paid.
+ * The engine's own refusals (written in our words: "this passkey is not enrolled", "P-0001 expired at ...") stay.
+ */
+const LIBRARY_REFUSALS: [RegExp, string][] = [
+  [/^Unexpected authentication response challenge\b/, "This signature is over other terms than the ones on screen. Nothing was paid."],
+  [/^Unexpected (authentication response origin|cross-origin|top origin)\b|^Detected cross-origin\b/, "This signature was made on another website than this one. Nothing was paid."],
+  [/\bRP ID\b/, "This signature belongs to a passkey of another website. Nothing was paid."],
+  [/^User (verification required|not present)\b/, "The passkey did not confirm it was you (Face ID, fingerprint or PIN). Nothing was paid."],
+  [/^Response counter value\b/, "This signature is older than one this passkey already gave, so it may be a copy. Nothing was paid."],
+];
+/** The library's other refusals of a response it cannot read (@simplewebauthn/server verifyAuthenticationResponse). */
+const LIBRARY_UNREADABLE = /^(Unexpected |Credential |Missing credential|ClientDataJSON |Custom challenge )/;
+function plainRefusal(message: string): string {
+  for (const [library, plain] of LIBRARY_REFUSALS) if (library.test(message)) return plain;
+  return LIBRARY_UNREADABLE.test(message) ? "This signature could not be read. Nothing was paid." : message;
+}
+
 const firstInvoice = (r: IngestResult): ApInvoiceRow | null =>
   r.kind === "invoice" ? r.invoice : r.kind === "email" ? r.results.map(firstInvoice).find((i) => i !== null) ?? null : null;
 
@@ -273,6 +292,7 @@ export class EngineHost {
       // Only these three fields travel: the decision is always an approval (rejecting is not one of the host's actions).
       const item: InboxItem = { ticket: "engine", kind: "assertion", proposal_id: null, body: JSON.stringify({ proposal_id: a.proposal_id, terms_sha256: a.terms_sha256, credential: a.credential }), received_at: now.toISOString() };
       const out = await processAssertion(db, item, now);
+      if (out.status === "refused") return { status: out.status, message: plainRefusal(out.message), settled: null };
       if (out.status !== "approved" || !out.proposalId) return { status: out.status, message: out.message, settled: null };
       return { status: out.status, message: out.message, settled: await this.pay(out.proposalId) };
     });
