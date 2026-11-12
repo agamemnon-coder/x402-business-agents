@@ -146,6 +146,126 @@ describe("owners setup in a fresh world (no npm run bootstrap)", () => {
   });
 });
 
+describe("owners setup, refused and resumed", () => {
+  it("needs both passkeys and the verifier: without them it sends nothing", async () => {
+    await world();
+    w.db.prepare("UPDATE passkeys SET status = 'REVOKED' WHERE label = 'controller'").run();
+    await expect(setup(w.d)).rejects.toThrow(/exactly two people's passkeys .*1 active/);
+    expect(readdirSync(w.keys).filter((f) => f.endsWith(".json"))).toEqual([]);
+    expect(w.node.requests).toEqual([]);
+    w.close();
+    await world();
+    w.node.code.delete(PASSKEY_VERIFIER.toLowerCase());
+    await expect(setup(w.d)).rejects.toThrow(/no WebAuthn verifier/);
+    expect(w.node.methods()).toEqual(["eth_getCode"]);
+  });
+
+  it("refuses a donor key inside the repository", async () => {
+    await world({ env: { OWNERS_DONOR_KEY: join(REPO, "donor.key.json") } });
+    await expect(setup(w.d)).rejects.toThrow(/OWNERS_DONOR_KEY names a file inside the code repo/);
+    expect(w.node.sent()).toEqual([]);
+  });
+
+  it("stopped while the sponsor's funding was on its way, the next run sends the identical transfer, and every transaction lands once", async () => {
+    await world();
+    w.node.state.sendFault = "drop";
+    await expect(setup(w.d)).rejects.toThrow(/fetch failed/);
+    expect(w.node.sent()).toEqual([]);
+    const recorded = events("owners.tx_sent")[0]!;
+    const r = await setup(w.again());
+    expect(w.node.sent().map((t) => t.hash)[0]).toBe(recorded.tx);
+    expect(w.node.sent()).toHaveLength(3);
+    expect(balance(keyAddress("passkey-sponsor.key.json"))).toBe(centsToBaseUnits(SPONSOR_CENTS));
+    expect(balance(r.account)).toBe(centsToBaseUnits(ACCOUNT_CENTS));
+    // Carried on with another donor key, the open transfer is not signed again.
+    w.close();
+    await world();
+    w.node.state.receiptAfter = Infinity;
+    await expect(setup(w.d)).rejects.toThrow(/no receipt yet/);
+    const other = join(w.dir, "other-donor.key.json");
+    const otherKey = generatePrivateKey();
+    writeFileSync(other, JSON.stringify({ address: privateKeyToAccount(otherKey).address, privateKey: otherKey }));
+    const d = w.again();
+    await expect(setup({ ...d, env: { ...d.env, OWNERS_DONOR_KEY: other } })).rejects.toThrow(/was sent from 0x[0-9a-fA-F]{40} by an earlier run/);
+    expect(w.node.sent()).toHaveLength(1);
+  });
+
+  it("stopped while the account's funding was on its way, the next run waits for that transfer and sends no second one", async () => {
+    await world();
+    let sends = 0;
+    const rpc = async (a: Parameters<typeof w.node.rpc>[0]) => { if (a.method === "eth_sendRawTransaction" && ++sends === 3) w.node.state.receiptAfter = Infinity; return w.node.rpc(a); };
+    const d = w.again();
+    const { ownersChain } = await import("../src/metal/ownersChain.js");
+    await expect(setup({ ...d, chain: ownersChain({ budget: d.chain.budget, rpc, sleep: async () => {}, pollsMs: [1] }) })).rejects.toThrow(/no receipt yet/);
+    w.node.state.receiptAfter = 0;
+    const before = readOwnersCalls(w.log).length;
+    const r = await setup(w.again());
+    expect(w.node.sent()).toHaveLength(3);
+    expect(balance(r.account)).toBe(centsToBaseUnits(ACCOUNT_CENTS));
+    // The verifier, the account's address, then the receipt of the transfer already sent: nothing is signed.
+    expect(w.calls(before)).toEqual(["setup:eth_getCode", "setup:eth_call", "setup:eth_getTransactionReceipt"]);
+  });
+
+  it("in a world set up before this record kept the owners' signers, it reads, finds everything there, and sends nothing", async () => {
+    const { audit } = await import("../src/audit/log.js");
+    const { encodeFunctionData } = await import("viem");
+    const { factoryAbi } = await import("../src/metal/fourEyes.js");
+    const { ownersOf } = await import("../src/metal/ownersFlow.js");
+    const { predictedAccount } = await import("./support/fakeMetal.js");
+    const { plainKey } = await import("../src/metal/keyFiles.js");
+    await world();
+    const signers = ownersOf(w.db).map((x) => x.signer);
+    const account = predictedAccount(encodeFunctionData({ abi: factoryAbi, functionName: "predictAccount", args: [signers, [1n, 1n], 2n] }));
+    w.node.code.set(account.toLowerCase(), "0x363d");
+    w.node.balances.set(account.toLowerCase(), centsToBaseUnits(ACCOUNT_CENTS));
+    w.node.balances.set(plainKey("passkey-sponsor.key.json").address.toLowerCase(), centsToBaseUnits(9000));
+    audit(w.db, "owner-signer", "owners.account_created", account, { account, owners: ["controller", "max"], threshold: "2", verifier: PASSKEY_VERIFIER, tx: null }, T0);
+    const r = await setup(w.d);
+    expect(r).toMatchObject({ created: null, existed: true });
+    expect(r.account.toLowerCase()).toBe(account);
+    expect(w.node.sent()).toEqual([]);
+    // The verifier's code, the sponsor's balance, the account's address, its code, its balance.
+    expect(w.calls()).toEqual(["setup:eth_getCode", "setup:eth_call", "setup:eth_call", "setup:eth_getCode", "setup:eth_call"]);
+    expect(events("owners.account_created").at(-1)).toMatchObject({ signers });
+  });
+
+  it("waits when the faucet says so, and tries again", async () => {
+    await world({ donor: false });
+    w.faucetErrors.push("metal-agent fund exited 1: faucet answered 429 client_rate_limited: this client asked the faucet too recently; retry in 4 s");
+    const slept: number[] = [];
+    await setup({ ...w.d, sleep: async (ms) => { slept.push(ms); } });
+    expect(slept).toEqual([7000]);
+    expect(w.calls().filter((c) => c === "setup:cli:fund")).toHaveLength(2);
+    w.close();
+    await world({ donor: false });
+    w.faucetErrors.push("the faucet reached its daily grant limit for every client; try tomorrow");
+    await expect(setup(w.d)).rejects.toThrow(/daily grant limit/);
+    expect(w.node.sent()).toEqual([]);
+  });
+
+  it("recycling: a transfer left open is carried on first, and a world that gave is not asked again", async () => {
+    await world({ donor: false, env: { KIT11_RECYCLE: "on" } });
+    const old = privateKeyToAccount(generatePrivateKey());
+    w.node.balances.set(old.address.toLowerCase(), centsToBaseUnits(4000));
+    const recycle = { key: () => old, deps: {
+      recycle: true, current: "faceid-1", worlds: () => [{ name: "dry-3", ageMs: 7_200_000 }], address: () => old.address as Address,
+      balance: async () => 0n, transfer: async () => "0x" as Hex, faucet: () => {}, log: () => {},
+    } };
+    w.node.state.sendFault = "drop";
+    await expect(setup({ ...w.d, recycle })).rejects.toThrow(/fetch failed/);
+    const recorded = events("owners.tx_sent")[0]!.tx;
+    // The next run stops at the creation; the recycled transfer has landed by then, as the transaction recorded first.
+    w.node.state.reverts.set(ACCOUNT_FACTORY.toLowerCase(), "0x");
+    await expect(setup({ ...w.again(), recycle })).rejects.toThrow(/would refuse creating the passkey account/);
+    expect(w.node.sent().map((t) => t.hash)).toEqual([recorded]);
+    // Were the sponsor short again, the same finished world is not asked a second time.
+    w.node.state.reverts.clear();
+    w.node.balances.set(keyAddress("passkey-sponsor.key.json").toLowerCase(), centsToBaseUnits(100));
+    await expect(setup({ ...w.again(), recycle })).rejects.toThrow(/dry-3 already gave/);
+    expect(w.node.sent()).toHaveLength(1);
+  });
+});
+
 describe("owners propose", () => {
   it("works without a bootstrapped world: a real credential for the Sourcing agent's key, bound by one account call the terms check accepts", async () => {
     await world();

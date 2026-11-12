@@ -48,6 +48,8 @@ export interface TestWorld {
   cliRuns: string[][];
   /** What the stand-in CLI answers a pull for a payment id: paid, or refused on chain. */
   pulls: { refuseOverCap: boolean };
+  /** Errors the stand-in faucet answers with first, one per run of `fund`, before it grants. */
+  faucetErrors: string[];
   donor: ReturnType<typeof privateKeyToAccount>;
   /** A fresh process of the same world: a new budgeted chain over the same node, ledger, keys and call log. */
   again(o?: { budget?: number; pollsMs?: number[] }): OwnersWorld;
@@ -80,6 +82,7 @@ export async function ownersWorld(o: { budget?: number; pollsMs?: number[]; dono
   const said: string[] = [];
   const cliRuns: string[][] = [];
   const pulls = { refuseOverCap: true };
+  const faucetErrors: string[] = [];
   const paidIds = new Map<string, string>();
   // The CLI's network commands, answered as metal-agent 0.3.3 prints them.
   const network = (args: string[]): CliResult => {
@@ -87,6 +90,8 @@ export async function ownersWorld(o: { budget?: number; pollsMs?: number[]; dono
     const arg = (k: string) => args[args.indexOf(k) + 1]!;
     const result = (code: number, lines: string[]): CliResult => ({ code, out: lines.join("\n"), fields: new Map(lines.map((l) => { const i = l.indexOf(" "); return [l.slice(0, i), [l.slice(i + 1)]] as const; })) });
     if (args[0] === "fund") {
+      const refusal = faucetErrors.shift();
+      if (refusal) throw new Error(refusal);
       const a = args[1]!.toLowerCase();
       node.balances.set(a, (node.balances.get(a) ?? 0n) + centsToBaseUnits(10_000));
       return result(0, [`funded ${args[1]} with 100.00 *USDZ from the testnet faucet`, `transaction 0x${"fa".repeat(32)}`]);
@@ -114,7 +119,7 @@ export async function ownersWorld(o: { budget?: number; pollsMs?: number[]; dono
   let signed = 0;
   const terms = (id: string) => db.prepare("SELECT kind, terms_json, terms_sha256 FROM proposals WHERE proposal_id = ?").get(id) as { kind: string; terms_json: string; terms_sha256: string };
   return {
-    d, db, node, dir, keys, log, said, cliRuns, pulls, donor,
+    d, db, node, dir, keys, log, said, cliRuns, pulls, faucetErrors, donor,
     again: make,
     calls: (from = 0) => readOwnersCalls(log).slice(from).map((c) => `${c.step}:${c.method}`),
     async signBoth(id) {

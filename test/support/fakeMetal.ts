@@ -88,7 +88,8 @@ export function fakeMetal() {
       case "eth_call": {
         const c = params[0] as { to: Address; data: Hex };
         const revert = state.reverts.get(lower(c.to));
-        if (revert && !c.data.startsWith(SEL.nonces) && !c.data.startsWith(SEL.mandates)) throw rpcError(3, "execution reverted", revert === "0x" ? undefined : revert);
+        // A view still answers; the account's (or factory's) own calls are what it reverts.
+        if (revert && ![SEL.nonces, SEL.mandates, SEL.predict, SEL.balanceOf].some((v) => c.data.startsWith(v))) throw rpcError(3, "execution reverted", revert === "0x" ? undefined : revert);
         if (a.method === "eth_estimateGas") return numberToHex(500_000);
         if (c.data.startsWith(SEL.predict)) return encodeAbiParameters(parseAbiParameters("address"), [predictedAccount(c.data)]);
         if (c.data.startsWith(SEL.balanceOf)) return encodeFunctionResult({ abi: erc20Abi, functionName: "balanceOf", result: balances.get(lower(decodeFunctionData({ abi: erc20Abi, data: c.data }).args![0] as string)) ?? 0n });

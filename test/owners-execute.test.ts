@@ -355,6 +355,35 @@ describe("relaying an owners_execute: recorded first, never twice, behind the bu
     expect(status(db)).toBe("EXECUTED");
   });
 
+  it("over the budgeted chain: a send that never reached a node is sent again as the identical transaction, and a revert on chain reads as the account's error", async () => {
+    const { db } = await approved();
+    const node = fakeMetal();
+    const file = join(mkdtempSync(join(tmpdir(), "owners-relay-")), "calls.jsonl");
+    const sponsor = privateKeyToAccount(generatePrivateKey());
+    let revertOnSend = false;
+    const relay = () => {
+      const chain = ownersChain({ budget: callBudget({ budget: 40, file }), sleep: async () => {}, pollsMs: [1], rpc: async (a) => {
+        // The account changes its mind between the estimate and the block (as a deadline that passes would).
+        if (revertOnSend && a.method === "eth_sendRawTransaction") node.state.reverts.set(ACCOUNT.toLowerCase(), encodeErrorResult({ abi: mandateBindingAbi, errorName: "AlreadyExpired" }));
+        return node.rpc(a);
+      } });
+      chain.step("execute P-0001");
+      return ownersRelay(chain, sponsor);
+    };
+    node.state.sendFault = "drop";
+    await expect(executeOwnersExecute(db, "P-0001", relay(), t0)).rejects.toThrow(/fetch failed.*stays executing/);
+    expect(node.sent()).toEqual([]);
+    const recorded = events(db, "owners.sent").at(-1)!;
+    expect(recorded).toMatchObject({ from: sponsor.address, nonce: 0 });
+    revertOnSend = true;
+    await expect(resume(() => executeOwnersExecute(db, "P-0001", relay(), t0))).rejects.toThrow(`the account reverted executeSigned (${String(recorded.tx)}): AlreadyExpired()`);
+    // One transaction, the recorded one, sent once; its revert is the proposal's failure.
+    expect(node.sent().map((t) => [t.hash, t.nonce, t.ok])).toEqual([[recorded.tx, 0, false]]);
+    expect(events(db, "owners.sent")).toHaveLength(1);
+    expect(events(db, "owners.reverted")).toEqual([expect.objectContaining({ tx: recorded.tx, reason: "AlreadyExpired()" })]);
+    expect(status(db)).toBe("FAILED");
+  });
+
   it("over the budgeted chain: a relay the budget cannot cover does not start, and a call the account would revert is decoded and not sent", async () => {
     const { db } = await approved();
     const node = fakeMetal();
