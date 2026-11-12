@@ -13,6 +13,15 @@ red team's run against in-memory stand-ins, not the real rails.
 
 What to do when a control fires: [runbook.md](runbook.md). Claims and their sources: [claims.md](claims.md).
 
+## Layer by layer (zero trust)
+
+This matrix lists each control once. [zero-trust.md](zero-trust.md) attacks them in layers: each attack starts with
+part of the system already in the attacker's hands, and its test shows which layer outside the attacker's reach still
+stops the money. Those tests ran against stand-ins of the rails, not the live rails; the report says which refusals a
+run record also shows on the live sandbox and testnet. It is written by `npm run zero-trust` from
+`src/zerotrust/model.ts` and a run of `test/zero-trust.test.ts`, with the same content as data in
+[zero-trust/report.json](zero-trust/report.json); the numbers are there, not here.
+
 ## Spending limits
 
 | Risk | Control | Enforced by | Test | Evidence (live run, or red team on stand-ins) |

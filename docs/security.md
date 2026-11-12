@@ -32,6 +32,17 @@ phone (passkey) ──> relay Worker (Cloudflare) ──┼──> runner (verif
 Everything left of the runner is untrusted input. That includes every document, every model answer, and the
 relay with whatever it queues. Only the runner holds keys and writes the ledger.
 
+## Zero trust, layer by layer
+
+The limits are enforced in layers that do not trust each other, and one matrix attacks them layer by layer on the real
+code. Each attack starts with part of the system already in the attacker's hands, and its test shows which layer
+outside the attacker's reach still stops the money. The matrix ran against stand-ins of the rails in this
+repository's test harness, not against the live rails; where a run record shows the live rail refusing in the same
+way, the report cites it. The layers, every attack with its evidence, the coverage, the depth of each way money
+leaves, the stand-ins and the open risks are in [zero-trust.md](zero-trust.md), and as data in
+[zero-trust/report.json](zero-trust/report.json). `npm run zero-trust` writes both from `src/zerotrust/model.ts` and a
+run of `test/zero-trust.test.ts`; that test fails when they differ. The numbers are there, not here.
+
 ## Attackers and attacks
 
 | # | Attacker | Attack | What stops it | Proof |
@@ -225,6 +236,9 @@ Rate limits, where the docs say them (each asserted in the same test or the test
 - `npm run redteam`: 35 scripted attacks plus documents Claude Opus writes as the attacker, each in a fresh
   throwaway world, through the code the runner runs; every attack must fail (report in `docs/redteam/report.json`,
   shown on the landing).
+- `npm run zero-trust`: the zero-trust matrix, every attack against the real code with the rails stood in, and its
+  report ([zero-trust.md](zero-trust.md)); with `-- --check` it writes nothing and fails when the committed report
+  differs. The matrix also runs in `npm test`.
 - `npm run evals`: the agents' eval set (normal, too expensive, fraud, injection, double payment, price notice)
   with the real models; CI runs the same cases with the parsers.
 - `npm run reconcile`: the ledger against Airwallex and Metal; the runner does it a minute after start, then daily.
