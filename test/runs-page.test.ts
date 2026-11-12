@@ -370,7 +370,18 @@ describe("/runs as a timeline", () => {
     expect(carrying("metal")).toEqual(["main-1"]);
     expect(carrying("testnet")).toEqual(["main-1"]);
     expect(carrying("claude")).toEqual(["platform-e2e-1", "main-1"]);
-    expect(carrying("visa")).toEqual(["vic-2", "vic-1", "tap-1"]);
+    // Review 12 Nov (DC-3): a partner's chip, class and count are for the runs it took part in, by the records. The second
+    // Airi run made 0 Airi and 0 Airwallex calls: no Airwallex, no Visa. Visa: the runs that used a Visa credential.
+    expect(carrying("visa")).toEqual(["vic-1", "tap-1"]);
+    expect(carrying("airwallex")).toEqual(["two-locks-1", "platform-e2e-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
+    const v2 = JSON.parse(raw("docs/demo/vic-2-run.json")) as { outside_calls: { airi: number; airwallex: number } };
+    expect([v2.outside_calls.airi, v2.outside_calls.airwallex]).toEqual([0, 0]);
+    const v2e = live.find((e) => e.key === "vic-2")!;
+    expect(v2e.cls.filter((c) => /^f-(airwallex|visa|metal|claude)$/.test(c))).toEqual([]);
+    expect(v2e.html).not.toMatch(/class="rl (awx|visa)"/);
+    expect(row("vic-2").partners).toEqual([]);
+    expect(links.find((l) => l.id === "visa")!.n).toBe(2);
+    expect(links.find((l) => l.id === "airwallex")!.n).toBe(7);
     expect(carrying("sandbox")).toEqual(["two-locks-1", "platform-e2e-1", "t0-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
     // Each filter is an empty anchor before the list (a sibling the CSS can select from), and so is "All".
     const listAt = html.indexOf('<ol class="tl">');

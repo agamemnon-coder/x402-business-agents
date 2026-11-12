@@ -36,6 +36,8 @@ export interface RunStat { v: string; l: string }
  * moved nothing.
  */
 export type RunKind = "sandbox" | "testnet" | "both" | "simulated" | "rehearsal" | "nothing";
+/** A partner a run can take part in: its chip, its filter and its count. */
+export type RunPartner = "Airwallex" | "Metal" | "T:0" | "Visa" | "Claude";
 /** A series as a rate: "done of of what" ("7 of 7 checks passed", "18 of 20 paid"). */
 export interface RunRate { done: number; of: number; what: string }
 export interface RunRow {
@@ -51,6 +53,11 @@ export interface RunRow {
   rate?: RunRate;
   /** The one run to open if you open one: the product, end to end. */
   product?: true;
+  /**
+   * The partners that took part, from the run's record, where reading them from the rails and title words would be wrong
+   * (without it: railsOf). A partner's chip, filter class and count follow it.
+   */
+  partners?: RunPartner[];
 }
 
 const readJson = <T>(file: string): T => JSON.parse(readFileSync(new URL(`../../${file}`, import.meta.url), "utf8")) as T;
@@ -163,6 +170,8 @@ export function liveRuns(): RunRow[] {
   if (v2) rows.push({
     key: "vic-2", iso: v2.started_at, date: day(v2.started_at), title: "Airi, second run: what Purser adds around it", rails: "Purser relay, CFO passkey",
     name: "A purchase changed after the CFO signed is refused; nothing is bought", kind: "nothing", rate: checkRate(v2.checks),
+    // The partners its record shows called: an Airi call is an Airwallex wallet paying with a Visa credential.
+    partners: [...(v2.outside_calls.airi + v2.outside_calls.airwallex > 0 ? ["Airwallex" as const] : []), ...(v2.outside_calls.airi > 0 ? ["Visa" as const] : [])],
     line: `Our own test changed it; the CFO's Face ID was real. ${v2.outside_calls.airi} Airi and ${v2.outside_calls.airwallex} Airwallex calls.`,
     what: `A purchase changed after the CFO's Face ID was refused, a shop the CFO locked was refused, and unlocking offered it again. ${v2.outside_calls.airi} Airi and ${v2.outside_calls.airwallex} Airwallex calls.`,
     checks: `${okOf(v2.checks)}.`, money: "Nothing bought",
@@ -251,8 +260,11 @@ const RAILS: [RegExp, string, string, string][] = [
 ];
 export const railsOf = (r: Pick<RunRow, "rails" | "title">) => RAILS.filter(([re]) => re.test(`${r.rails} ${r.title}`));
 const railChip = ([, name, ic, cls]: (typeof RAILS)[number]) => `<span class="rl ${cls}">${icon(ic, 13)}${esc(name)}</span>`;
-/** The partners shown as chips (T:0 where it took part). A passkey is not a partner: it stays in the fold's rails line. */
-const partnersOf = (r: RunRow) => railsOf(r).filter(([, , , cls]) => cls !== "pk");
+/**
+ * The partners shown as chips and counted by the filters: the row's own list where it has one, else read from its words
+ * (T:0 where it took part). A passkey is not a partner: it stays in the fold's rails line.
+ */
+const partnersOf = (r: RunRow) => r.partners ? RAILS.filter(([, n]) => (r.partners as string[]).includes(n)) : railsOf(r).filter(([, , , cls]) => cls !== "pk");
 
 /** The honest badge: the kind of run, in the words the page shows. */
 export const KIND_LABEL: Record<RunKind, string> = {
@@ -290,7 +302,7 @@ const DOC_NAMES = new Set(["awx-1", "vic-1", "vic-2", "main-1", "agent-1", "frid
  * class of every entry it keeps.
  */
 const FILTERS: { id: string; label: string; has: (r: RunRow) => boolean }[] = [
-  ...["Airwallex", "Metal", "Visa", "Claude"].map((name) => ({ id: name.toLowerCase(), label: name, has: (r: RunRow) => railsOf(r).some(([, n]) => n === name) })),
+  ...["Airwallex", "Metal", "Visa", "Claude"].map((name) => ({ id: name.toLowerCase(), label: name, has: (r: RunRow) => partnersOf(r).some(([, n]) => n === name) })),
   { id: "sandbox", label: KIND_LABEL.sandbox, has: (r) => ["sandbox", "both"].includes(kindOf(r)) },
   { id: "testnet", label: KIND_LABEL.testnet, has: (r) => ["testnet", "both"].includes(kindOf(r)) },
   { id: "simulated", label: KIND_LABEL.simulated, has: (r) => kindOf(r) === "simulated" },
