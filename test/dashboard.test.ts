@@ -4,7 +4,7 @@ import { request } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
 import { audit } from "../src/audit/log.js";
-import { buildSnapshot, parseReview, summarize } from "../src/dashboard/snapshot.js";
+import { approverName, buildSnapshot, parseReview, summarize } from "../src/dashboard/snapshot.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { TERMS_SCHEMA, type Terms } from "../src/lib/terms.js";
 import { openEnrolment, recordPasskey } from "../src/passkey/ledger.js";
@@ -13,6 +13,7 @@ import { CSP, dashboardApp, dashboardPage, FONT, monthPage, MONTH_CSP, PAGE as B
 import type { Recorded } from "../src/demo/recorded.js";
 import { createHash } from "node:crypto";
 import { simulateMonth } from "../src/sim/month.js";
+import { signerLabel } from "../src/ops/reliability.js";
 import { setSetting } from "../src/world/settings.js";
 import { buyPlan } from "../src/agents/cardBuyer.js";
 import { setupCards } from "../src/policy/cards.js";
@@ -285,6 +286,30 @@ describe("dashboard snapshot", () => {
     db.prepare("UPDATE proposals SET status = 'EXECUTED' WHERE proposal_id = 'P-0001'").run();
     db.prepare("INSERT INTO approvals (proposal_id, decision, approved_sha256, approver, method, typed_prefix, created_at) VALUES ('P-0001', 'APPROVED', 'x', 'max (passkey k_EWzUuv)', 'passkey', 'x', ?)").run(t0.toISOString());
     expect(buildSnapshot(db, t0).decisions[0]).toMatchObject({ proposal_id: "P-0001", title: "Dev test (moves no money)", by: "Max · Face ID" });
+  });
+
+  it("never calls a labelled virtual test passkey a person or its approval Face ID (the convention of signerLabel)", () => {
+    expect(approverName("max (passkey k_EWzUuv) + anna (passkey Zx91)", "passkey")).toBe("Max & Anna · Face ID");
+    expect(approverName("max (passkey k_EWzUuv) + test-controller (passkey FbRa0Ia1)", "passkey")).toBe("Max · Face ID & virtual test passkey (second approver role)");
+    expect(approverName("test-cfo (passkey Pya6Ldso)", "passkey")).toBe("Virtual test passkey (CFO role)");
+    expect(approverName("test-cfo (passkey Pya6Ldso) + test-controller (passkey FbRa0Ia1)", "passkey")).toBe("Virtual test passkey (CFO role) & virtual test passkey (second approver role)");
+    for (const label of ["test-cfo", "test-controller"]) expect(approverName(`${label} (passkey x)`, "passkey").toLowerCase()).toBe(signerLabel(label).toLowerCase());
+
+    const db = ledger();
+    audit(db, "human", "passkey.enrolled", "5117abcd9999", { label: "test-controller", window_id: "E-2" });
+    audit(db, "system", "owners.account_created", null, { account: "0x00000000000000000000000000000000000000a7", owners: ["max", "test-controller"], threshold: 2 });
+    audit(db, "human", "proposal.cosigned", "P-0001", { approver: "max (passkey AbCdEf12)", method: "passkey", of: "1 of 2" });
+    audit(db, "human", "proposal.approved", "P-0001", { approver: "max (passkey AbCdEf12) + test-controller (passkey 5117abcd)", method: "passkey", passkey: { credential_id: "5117abcd9999", assertion_sha256: "ab" } });
+    audit(db, "system", "owners.account_created", null, { account: "0x00000000000000000000000000000000000000a8", owners: ["max", "anna"], threshold: 2 });
+    const feed = buildSnapshot(db, t0).feed.slice(0, 5).map((f) => f.text);
+    expect(feed).toEqual([
+      "Business account 0x0000…00a8 created with two owners, max's and anna's passkeys (threshold 2): no server key can change its mandates",
+      "Max · Face ID & virtual test passkey (second approver role) approved P-0001",
+      "Max · Face ID approved P-0001: 1 of 2 (four eyes); it waits for a second approval",
+      "Business account 0x0000…00a7 created with two owners, max's passkey and test-controller (virtual test passkey), threshold 2: no server key can change its mandates",
+      "test-controller (virtual test passkey) enrolled passkey 5117abcd; approvals now need it",
+    ]);
+    expect(feed.join(" ")).not.toMatch(/test-c\w+[^.]*Face ID|Test-c/);
   });
 
   it("turns audit rows into feed lines with model chips, checked tx links and Airwallex ids", () => {

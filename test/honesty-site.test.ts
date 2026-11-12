@@ -272,6 +272,13 @@ describe("7. copy slips", () => {
     expect(t).toContain("In the separate TAP run (2 November) no approval was asked for or given. In the main run the card buy came after the CFO approved P-0006 with Face ID, which raised the card's limit per purchase from EUR 30.00 to EUR 46.00.");
   });
 
+  it("the README says x402 in the protocol's own words: the seller settles before it answers, and the payer's budget is Purser's part", () => {
+    // x402's default flow verifies, runs the resource, then settles; the specification leaves client-side budgets out of scope.
+    const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8");
+    expect(readme).not.toContain("paid on Metal before it is answered");
+    expect(readme).toContain("leaves the payer's budget to the payer");
+  });
+
   it("Proof's note under the payments reads as a sentence", () => {
     const pay = payments(record);
     const t = words(proofPage());

@@ -159,7 +159,8 @@ export function scoped(progress: PushProgress | undefined, prefix: string): Push
   return progress && { get: (s) => progress.get(`${prefix}${s}`), set: (s, v) => progress.set(`${prefix}${s}`, v) };
 }
 
-export interface ErpAccount { code: string; name: string; externalId: string }
+/** `note`: what the ERP says about the account that a person mapping it needs (its kind, where it may be used). */
+export interface ErpAccount { code: string; name: string; externalId: string; note?: string }
 export interface ErpVendorRow { externalId: string; name: string; vatId?: string }
 export type PaymentStatus = "unpaid" | "partial" | "paid" | "unknown";
 

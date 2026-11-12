@@ -71,3 +71,11 @@ export function pullWith(deps: PullDeps): Puller {
 }
 
 export const livePull: Puller = pullWith(liveDeps);
+
+/**
+ * One pull under one known mandate, with no look-up of credentials replaced before it: the passkey account's flows
+ * (npm run owners -- pay, npm run passkey-owners), where each mandate has its one credential. `run` starts the CLI.
+ */
+export function pullUnder(m: Pick<LoadedMandate, "credentialPath" | "keyFile" | "reference">, run: PullDeps["run"] = metalAgent): Puller {
+  return pullWith({ active: async () => m, all: () => [m], kept: () => false, run });
+}
