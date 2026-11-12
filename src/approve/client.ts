@@ -1804,6 +1804,7 @@ function enrolPage(): void {
       const left = opt.data.attempts_left === undefined ? "" : ` (${str(opt.data.attempts_left)} tries left)`;
       status.textContent = `${str(opt.data.error) || `error ${opt.status}`}${left}.`;
       go.disabled = false;
+      step("1");
       return;
     }
     const o = opt.data as { challenge: string; rp: { id: string; name: string }; user: { id: string; name: string; displayName: string };
@@ -1824,11 +1825,13 @@ function enrolPage(): void {
     } catch (e) {
       status.textContent = passkeyError(e);
       go.disabled = false;
+      step("1");
       return;
     }
     if (!cred) {
       status.textContent = "Cancelled. No passkey was created.";
       go.disabled = false;
+      step("1");
       return;
     }
     const att = cred.response as AuthenticatorAttestationResponse;
@@ -1839,6 +1842,7 @@ function enrolPage(): void {
     if (sent.status !== 202) {
       status.textContent = `Not accepted: ${str(sent.data.error) || `error ${sent.status}`}.`;
       go.disabled = false;
+      step("1");
       return;
     }
     const home = el("a", "back", ["← Dashboard"]) as HTMLAnchorElement;
