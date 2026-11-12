@@ -28,7 +28,7 @@ describe("Face ID signs on chain", () => {
   it("labels the stand-in, the network and the money next to it", () => {
     const t = text(html);
     expect(t).toContain(FACEID_TITLE);
-    expect(t).toMatch(/Metal testnet · test money · second signer: a labelled virtual test passkey · CFO's device as stated by the owner/);
+    expect(t).toMatch(/Metal testnet · test money · second signer: labelled virtual test passkey · CFO's device as stated by the owner/);
   });
 
   it("links only Metal's explorer and the run record", () => {

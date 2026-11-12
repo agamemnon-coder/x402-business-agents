@@ -138,7 +138,7 @@ export const VERIFY_CSS = `
 .vf .vfb:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .vf .vfo { font-weight: 650; } .vf .vfo.ok { color: var(--ok); } .vf .vfo.bad { color: var(--bad); }
 .vf .vfn { color: var(--muted); font-size: 13.5px; flex-basis: 100%; }
-.vf .vfr { color: var(--muted); font-size: 13.5px; overflow-wrap: anywhere; }
+.vf .vfr { color: var(--muted); font-size: 13.5px; overflow-wrap: anywhere; } .vf .vfr a { display: inline-flex; align-items: center; min-height: 44px; }
 .vf .vfh { flex-basis: 100%; color: var(--muted); font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }`;
 
 /**

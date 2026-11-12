@@ -521,7 +521,7 @@ function entry(r: RunRow, o: { newest?: boolean; folded: boolean; signed?: Signe
   const fold = `<div class="fold">${r.ids.length ? `<div class="ids">${r.ids.map(idChip).join("")}</div>` : ""}${said ? "" : `<p>${esc(r.what)}</p>`}<p><b>Checks:</b> ${esc(r.checks)}</p>${r.stats?.length ? `<p class="q">${r.stats.map((x) => `${esc(x.v)} ${esc(x.l)}`).join(" · ")}</p>` : ""}<p class="q">Rails: ${esc(r.rails)}. Money: ${esc(r.money)}.</p>${verifyList(o.signed)}</div>`;
   const label = `Ids, what ran and the checks${more ? `: ${pl(more, "more id")}` : ""}`;
   return `<li class="${cls}" id="${esc(r.key)}"><article${o.folded ? ' class="fd"' : ""} aria-label="${esc(nameOf(r))}">
-<p class="meta"><time datetime="${esc(r.iso)}" title="${esc(r.date)}">${esc(r.date.replace(/ \d{4}$/, ""))}</time><span class="kd ${kind}">${esc(KIND_LABEL[kind])}</span>${o.newest ? '<span class="live-dot" aria-hidden="true"></span><span class="mk new">Newest</span>' : ""}${r.product ? `<span class="mk prod">${esc(PRODUCT_MARK)}</span>` : ""}</p>
+<p class="meta"><time datetime="${esc(r.iso)}" title="${esc(r.date)}">${esc(r.date.replace(/ \d{4}$/, ""))}</time><span class="kd ${kind}">${esc(KIND_LABEL[kind])}</span>${o.newest ? '<span class="mk new">Newest</span>' : ""}${r.product ? `<span class="mk prod">${esc(PRODUCT_MARK)}</span>` : ""}</p>
 <h2>${esc(nameOf(r))}</h2>
 <p class="ln">${esc(lineOf(r))} ${files}</p>
 <div class="ch">${partnersOf(r).map(railChip).join("")}${rate}${first && o.folded ? idChip(first) : ""}</div>
@@ -599,9 +599,13 @@ ${FILTER_CSS}
   .runsp .ln { font-size: 15px; max-width: 80ch; }
 }`;
 
-const FTP_CSS = `.runsp details.ftp { margin: 4px 0 14px; } .runsp details.ftp summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; font-weight: 650; font-size: 14.5px; }
+const FTP_CSS = `.runsp details.ftp { margin: 4px 0 14px; } .runsp details.ftp summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; font-weight: 600; font-size: 14px; }
 .runsp details.ftp summary::-webkit-details-marker { display: none; } .runsp details.ftp summary .i:first-child { color: var(--ok); flex: none; }
-.runsp details.ftp summary .i:last-child { color: var(--muted); flex: none; } .runsp details.ftp[open] summary .i:last-child { transform: rotate(180deg); }
+/* The newest run's pulsing dot (src/ui/motion.ts .live-dot), drawn by CSS on its "Newest" mark: no extra line. */
+.runsp li.newest .mk.new { position: relative; padding-left: 18px; }
+.runsp li.newest .mk.new::before { content: ""; position: absolute; left: 6px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%; background: var(--ok); }
+@media (prefers-reduced-motion: no-preference) { .runsp li.newest .mk.new::before { animation: mo-pulse-in 2s ease-out infinite; } }
+@keyframes mo-pulse-in { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 55%, transparent); } 100% { box-shadow: 0 0 0 7px transparent; } }
 .runsp details.ftp ul { margin: 6px 0 0; padding-left: 24px; font-size: 14px; } .runsp details.ftp .mo-count { font-variant-numeric: tabular-nums; }`;
 
 const COPY_JS = `document.querySelectorAll("button.cp").forEach(function (b) {
@@ -647,7 +651,7 @@ export function faceIdToPaid(t: RunTimes = runTimes()): string {
   const line = `Face ID to paid: median ${n(t.medianMs)}${t.n > 1 ? ` (${n(t.minMs)}–${n(t.maxMs)})` : ""}, ${esc(pl(t.n, "payout"))}`;
   const rows = t.payouts.map((p) => `<li>${esc(`${p.proposal}: ${secs(p.ms)} (Face ID ${p.approvedAt.slice(11, 19)}, PAID ${p.paidAt.slice(11, 19)} UTC, ${p.approvedAt.slice(0, 10)})`)} <a class="f" href="${esc(blob(p.record))}" target="_blank" rel="noopener">Log ↗</a></li>`).join("");
   const out = t.leftOut.map((l) => `<li class="q">${esc(`Left out: ${l.record.replace(/^docs\/runs\//, "")}, ${l.why}.`)}</li>`).join("");
-  return `<details class="ftp"><summary>${icon("scan-face", 16)}<span>${line}</span>${icon("chevron-down", 16)}</summary><ul>${rows}${out}</ul></details>`;
+  return `<details class="ftp"><summary>${icon("scan-face", 16)}<span>${line}</span></summary><ul>${rows}${out}</ul></details>`;
 }
 
 export function runsPage(all: RunRow[] = liveRuns(), times: RunTimes = runTimes()): string {

@@ -6,6 +6,7 @@
 // script and works from the keyboard). Also /pricing and /security, the product pages under "More".
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
+import { REASSURE } from "../../src/redesign/home.js";
 import { TRY_URL } from "../../src/redesign/ui.js";
 import { WATCH_IN_MENU } from "../../src/config/film.js";
 import { VISA_ICC_LINE } from "../../src/config/brand.js";
@@ -1110,11 +1111,12 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const asked: string[] = [];
       const onRequest = (r: { url(): string }) => { const u = new URL(r.url()); if (u.origin !== new URL(judgeBase).origin || !["/judge", "/assets/inter.woff2", "/assets/favicon.svg", "/favicon.ico"].includes(u.pathname)) asked.push(r.url()); };
       await page.goto(`${judgeBase}/`, { waitUntil: "load" });
-      if ((await page.locator("main a.btn.primary").getAttribute("href")) !== "try/sign") fail(`/ (Home, with /try/sign) ${tag}: the button does not lead to /try/sign`);
+      // Since #188 (12 Nov) every Try button opens the hands-on demo (TRY_URL), with /try/sign in the bundle too.
+      if ((await page.locator("main a.btn.primary").getAttribute("href")) !== TRY_URL) fail(`/ (Home, with /try/sign) ${tag}: the button does not lead to the hands-on demo`);
       const top = page.locator('footer a.flink[href="judge"]');
       const box = await top.boundingBox();
       if ((await page.locator('a[href="judge"]').count()) !== 1 || (await top.innerText()).trim() !== "Judging? Take the 3-minute tour" || !box || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: no one "Judging? Take the 3-minute tour" link in the footer, inside the page's gutter`);
-      if ((await page.locator("main p.reassure").innerText()).trim() !== "A test passkey, no account, no money. About a minute.") fail(`/ (Home, with /try/sign) ${tag}: the line under the button is not /try/sign's`);
+      if ((await page.locator("main p.reassure").innerText()).trim() !== REASSURE.sign) fail(`/ (Home, with /try/sign) ${tag}: the line under the button is not Home's (src/redesign/home.ts REASSURE)`);
       await checkHome(page, { url: `${judgeBase}/`, name: `/ (Home, with /try/sign) ${tag}`, width: w, height: h, touch: w < 500, tryHref: TRY_URL, fail, quick: true });
       await page.goto(`${judgeBase}/home?demo=4`, { waitUntil: "load" });
       await look(page, `/ (Home, with /try/sign) ${tag}`, w);

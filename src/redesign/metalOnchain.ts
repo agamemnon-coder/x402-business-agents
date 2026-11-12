@@ -94,8 +94,8 @@ export function faceIdOnChainSection(run: OwnersRun | null = ownersRun()): strin
   const steps = ownersSteps(rec);
   const virtual = rec.owners.filter((o) => o.virtual).length;
   const cfo = rec.owners.find((o) => o.role === "CFO" && !o.virtual);
-  const lead = `${dayOf(rec.ran_at)}: the agent's limit changed only after ${rec.threshold} passkeys signed; the account checked them on chain.`;
-  const labels = [`${rec.network}`, "test money", ...(virtual ? [`${virtual === 1 ? "second signer" : `${virtual} signers`}: a labelled virtual test passkey`] : []), ...(cfo?.device_basis ? [`CFO's device ${cfo.device_basis}`] : [])];
+  const lead = `${dayOf(rec.ran_at)}: the agent's limit changed only with ${rec.threshold} passkeys, checked on chain.`;
+  const labels = [`${rec.network}`, "test money", ...(virtual ? [`${virtual === 1 ? "second signer" : `${virtual} signers`}: labelled virtual test passkey`] : []), ...(cfo?.device_basis ? [`CFO's device ${cfo.device_basis}`] : [])];
   // data-rec: every figure here is the record's own (test/metal-onchain.test.ts); the hash of each step is its link's,
   // last, in its label for a screen reader, not in sight.
   return `<article class="moc" id="faceid-onchain" aria-labelledby="moc-faceid" data-rec="${esc(file)}"><h2 id="moc-faceid">${esc(FACEID_TITLE)}</h2>

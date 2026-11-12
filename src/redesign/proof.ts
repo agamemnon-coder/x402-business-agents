@@ -430,7 +430,7 @@ function checkItYourself(): string {
 }
 const vaultTree = () => `<article class="vault" data-rec="${VAULT_TREE_RECORD}"><h3>Where every document is filed</h3><picture><source srcset="assets/vault-tree-dark.svg" media="(prefers-color-scheme: dark)"><img src="assets/vault-tree-light.svg" width="505" height="438" alt="The vault's folders: company, year, quarter, then Inkoopfacturen (invoices), Betalingen (payments) and Rapporten (reports), as src/vault/layout.ts files them"></picture><p class="q">Computed from the code (src/vault/layout.ts), with the two invoices of the 7 November run.</p></article>`;
 const PROOF_VISUAL_CSS = `.proofp .pvis { margin: 18px 0 22px; } .proofp .pvis.pv-tall { display: none; }
-@media (max-width: 720px) { .proofp .pvis.pv-wide { display: none; } .proofp .pvis.pv-tall { display: block; max-width: 420px; margin: 18px auto; } }
+@media (max-width: 999px) { .proofp .pvis.pv-wide { display: none; } .proofp .pvis.pv-tall { display: block; max-width: 420px; margin: 18px auto; } }
 .proofp .vault img { display: block; max-width: 100%; height: auto; margin: 8px 0; }`;
 
 export function proofPage(run: AgentRun = agentRun()): string {
