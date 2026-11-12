@@ -227,7 +227,7 @@ describe("/security: security and trust", () => {
       expect(folded("s-notyet")).toContain(`“${s.quote}” ${s.doc} ↗`);
     }
     // The quote from the SME product's doc says what it is about, in our words, before the doc's own.
-    expect(folded("s-notyet")).toContain("The SME product, still to do before real customer data: “An independent security review of this branch");
+    expect(folded("s-notyet")).toContain("The SME product, still to do before real customer data: “An independent security review of this code");
     expect(flat("docs/cloud.md")).toMatch(/^# Purser Cloud/);
     // The anchors the links use are headings of those docs.
     expect(read("docs/security.md")).toMatch(/^## Checks$/m);
