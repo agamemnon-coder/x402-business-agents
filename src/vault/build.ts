@@ -10,7 +10,8 @@ import type { DB } from "../db/open.js";
 import { audit } from "../audit/log.js";
 import { closedPeriods, dataSha, invoiceDocs, monthData, receipts, suppliersData, vatData, yearData } from "./data.js";
 import { correctionName, invoicePath, monthReportPath, paymentPath, suppliersPath, vatPath, withId, yearIndexPath, yearReportPath } from "./layout.js";
-import { monthReportPdf, receiptPdf, suppliersPdf, vatPdf, yearReportPdf, type Lang } from "./pdf.js";
+import { monthReportPdf, receiptPdf, suppliersPdf, vatPdf, yearReportPdf, type Lang, type MoneyWorld } from "./pdf.js";
+import { getSetting } from "../world/settings.js";
 import { LocalSink, sha256, type VaultSink } from "./sink.js";
 
 export type VaultKind = "invoice" | "receipt" | "month" | "vat" | "year" | "suppliers";
@@ -27,6 +28,8 @@ const INDEX_NOTE = "Every file in this year of the Purser vault, with its sha256
 
 function plan(db: DB, company: string, lang: Lang, today: string): Planned[] {
   const out: Planned[] = [];
+  // A world whose rails are stand-ins says so on every page with money on it, not "Airwallex sandbox".
+  const world: MoneyWorld = getSetting(db, "world.stand_in_rails", "off") === "on" ? "stand-in" : "sandbox";
   for (const d of invoiceDocs(db)) {
     out.push({ kind: "invoice", key: d.key, id: d.id, year: Number(d.date.slice(0, 4)), base: invoicePath(company, d), dataSha: d.doc_sha256, produce: () => {
       const bytes = readFileSync(d.doc_path);
@@ -36,12 +39,12 @@ function plan(db: DB, company: string, lang: Lang, today: string): Planned[] {
   }
   for (const r of receipts(db)) {
     const day = r.paid_at.slice(0, 10);
-    out.push({ kind: "receipt", key: r.key, id: r.id, year: Number(day.slice(0, 4)), base: paymentPath(company, { vendor: r.vendor, invoice_no: r.invoice_no, date: day }), dataSha: dataSha(r), produce: () => receiptPdf(company, r, lang) });
+    out.push({ kind: "receipt", key: r.key, id: r.id, year: Number(day.slice(0, 4)), base: paymentPath(company, { vendor: r.vendor, invoice_no: r.invoice_no, date: day }), dataSha: dataSha(r), produce: () => receiptPdf(company, r, lang, world) });
   }
   const closed = closedPeriods(db);
   for (const m of closed.months) {
     const d = monthData(db, m);
-    out.push({ kind: "month", key: d.key, year: Number(m.slice(0, 4)), base: monthReportPath(company, m), dataSha: dataSha(d), produce: () => monthReportPdf(company, d, lang) });
+    out.push({ kind: "month", key: d.key, year: Number(m.slice(0, 4)), base: monthReportPath(company, m), dataSha: dataSha(d), produce: () => monthReportPdf(company, d, lang, world) });
   }
   for (const q of closed.quarters) {
     const d = vatData(db, q);
@@ -49,7 +52,7 @@ function plan(db: DB, company: string, lang: Lang, today: string): Planned[] {
   }
   for (const y of closed.years) {
     const d = yearData(db, y);
-    out.push({ kind: "year", key: d.key, year: y, base: yearReportPath(company, y), dataSha: dataSha(d), produce: () => yearReportPdf(company, d, lang) });
+    out.push({ kind: "year", key: d.key, year: y, base: yearReportPath(company, y), dataSha: dataSha(d), produce: () => yearReportPdf(company, d, lang, world) });
   }
   const s = suppliersData(db);
   if (s.rows.length) out.push({ kind: "suppliers", key: s.key, year: Number(today.slice(0, 4)), base: suppliersPath(company, today), dataSha: dataSha(s.rows), produce: () => suppliersPdf(company, s, today, lang) });

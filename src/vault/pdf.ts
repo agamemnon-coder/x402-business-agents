@@ -8,6 +8,18 @@ import type { MonthData, ReceiptData, SuppliersData, YearData } from "./data.js"
 import type { VatOverview } from "../ledger/reports.js";
 
 export type Lang = "nl" | "en";
+/** Where the money in a document lived: the Airwallex sandbox (the default), or a stand-in for the bank (the cloud's demo
+ *  world, src/demoworld, with the setting world.stand_in_rails on), whose approvals used a test passkey. */
+export type MoneyWorld = "sandbox" | "stand-in";
+
+/** What a stand-in world's documents say instead (12 Nov: its receipts said "Airwallex sandbox" and "Face ID"). */
+const STAND_IN = {
+  nl: { testMoney: "Testgeld (stand-in voor de bank, geen echte rekening)", testMoneyLine: "Alle bedragen in dit document zijn testgeld op een stand-in voor de bank; er is geen echt geld bewogen.",
+    passkey: "een testpasskey (stand-in voor de Face ID van de CFO) op de exacte voorwaarden", verify: "Controleren: npm run verify controleert elke goedkeuring met een passkey opnieuw tegen de opgeslagen handtekening en de vastgelegde publieke sleutel, zonder netwerk." },
+  en: { testMoney: "Test money (a stand-in for the bank, no real account)", testMoneyLine: "Every amount in this document is test money on a stand-in for the bank; no real money moved.",
+    passkey: "a test passkey (stand-in for the CFO's Face ID) on the exact terms", verify: "To check: npm run verify re-checks every passkey approval against the stored signature and the pinned public key, offline." },
+} as const;
+const words = (lang: Lang, world: MoneyWorld) => (world === "stand-in" ? { ...T[lang], ...STAND_IN[lang] } : T[lang]);
 
 /** The PDFs' words in Dutch and English. */
 export const PDF_STRINGS = {
@@ -146,7 +158,7 @@ function render(title: string, created: string, draw: (doc: Doc) => void): Promi
   return done;
 }
 
-function header(doc: Doc, company: string, title: string, sub: string, test: boolean, lang: Lang) {
+function header(doc: Doc, company: string, title: string, sub: string, test: boolean, lang: Lang, world: MoneyWorld = "sandbox") {
   doc.fillColor(MUTED).font("Helvetica").fontSize(9).text(company.toUpperCase(), { characterSpacing: 1 });
   doc.moveDown(0.3).fillColor(INK).font("Helvetica-Bold").fontSize(20).text(title);
   doc.font("Helvetica").fontSize(11).fillColor(MUTED).text(sub);
@@ -154,8 +166,8 @@ function header(doc: Doc, company: string, title: string, sub: string, test: boo
     doc.moveDown(0.6);
     const y = doc.y;
     doc.rect(50, y, 495, 34).fill("#fffbeb");
-    doc.fillColor(WARN).font("Helvetica-Bold").fontSize(10).text(T[lang].testMoney, 60, y + 6);
-    doc.font("Helvetica").fontSize(8.5).text(T[lang].testMoneyLine, 60, y + 19);
+    doc.fillColor(WARN).font("Helvetica-Bold").fontSize(10).text(words(lang, world).testMoney, 60, y + 6);
+    doc.font("Helvetica").fontSize(8.5).text(words(lang, world).testMoneyLine, 60, y + 19);
     doc.y = y + 40;
   }
   doc.moveDown(0.6).x = 50;
@@ -207,10 +219,10 @@ function footer(doc: Doc, lang: Lang) {
 
 // ---------- documents ----------
 
-export function receiptPdf(company: string, r: ReceiptData, lang: Lang = "nl"): Promise<Buffer> {
-  const t = T[lang];
+export function receiptPdf(company: string, r: ReceiptData, lang: Lang = "nl", world: MoneyWorld = "sandbox"): Promise<Buffer> {
+  const t = words(lang, world);
   return render(`${t.receipt} ${r.vendor} ${r.invoice_no}`, r.paid_at, (doc) => {
-    header(doc, company, t.receipt, `${r.vendor} · ${t.invoice} ${r.invoice_no}`, true, lang);
+    header(doc, company, t.receipt, `${r.vendor} · ${t.invoice} ${r.invoice_no}`, true, lang, world);
     section(doc, t.invoice);
     kv(doc, [[t.supplier, r.vendor], [t.invoice, r.invoice_no], [t.invoiceDate, r.invoice_date ? pdfDate(r.invoice_date, lang) : t.none], [t.dueDate, r.due_date ? pdfDate(r.due_date, lang) : t.none], [t.reference, r.reference || t.none],
       [t.account, r.account]]);
@@ -240,10 +252,10 @@ function pnlBlock(doc: Doc, pnl: MonthData["pnl"], lang: Lang) {
   }
 }
 
-export function monthReportPdf(company: string, m: MonthData, lang: Lang = "nl"): Promise<Buffer> {
+export function monthReportPdf(company: string, m: MonthData, lang: Lang = "nl", world: MoneyWorld = "sandbox"): Promise<Buffer> {
   const t = T[lang];
   return render(`${t.month} ${m.month}`, m.to, (doc) => {
-    header(doc, company, `${t.month} ${m.month}`, `${pdfDate(m.from, lang)} – ${pdfDate(m.to, lang)}`, true, lang);
+    header(doc, company, `${t.month} ${m.month}`, `${pdfDate(m.from, lang)} – ${pdfDate(m.to, lang)}`, true, lang, world);
     section(doc, t.received);
     table(doc, [t.currency, t.count, t.amount], m.received.map((a) => [a.currency, String(a.count), formatMoney(a.currency, a.total, lang)]), [120, 120, 255], [1, 2], lang);
     section(doc, t.paid);
@@ -282,10 +294,10 @@ export function vatPdf(company: string, v: VatOverview, lang: Lang = "nl"): Prom
   });
 }
 
-export function yearReportPdf(company: string, y: YearData, lang: Lang = "nl"): Promise<Buffer> {
+export function yearReportPdf(company: string, y: YearData, lang: Lang = "nl", world: MoneyWorld = "sandbox"): Promise<Buffer> {
   const t = T[lang];
   return render(`${t.year} ${y.year}`, `${y.year}-12-31`, (doc) => {
-    header(doc, company, `${t.year} ${y.year}`, `${y.year}-01-01 – ${y.year}-12-31`, true, lang);
+    header(doc, company, `${t.year} ${y.year}`, `${y.year}-01-01 – ${y.year}-12-31`, true, lang, world);
     section(doc, `${t.pnl} (${t.beforeClose})`);
     pnlBlock(doc, y.pnl, lang);
     section(doc, `${t.balanceSheet} ${y.year}-12-31`);
