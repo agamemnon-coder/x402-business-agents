@@ -406,8 +406,10 @@ export class MoneybirdConnector implements ErpConnector {
     return this.pushDocument(inv, refs, 1, inv.number, progress);
   }
 
-  // The same lines with negative prices, on the same ledger accounts and tax rates, so the two cancel out. (Moneybird's
-  // `revenue_invoice` flag would book a supplier's credit as income instead; confirm in a sandbox administration.)
+  // The same lines with negative prices, on the same ledger accounts and tax rates, so the two cancel out. The sandbox
+  // administration took one on 12 November 2026 and computed its totals as the original's, negative. It does not link
+  // the two: both stay open there until a person sets them against each other. (Moneybird's `revenue_invoice` flag
+  // would book a supplier's credit as income instead.)
   async pushCreditNote(original: PurchaseInvoice, _originalExternalId: string, refs: RefResolver, progress?: PushProgress): Promise<string> {
     return this.pushDocument(original, refs, -1, creditRef(original.number), progress);
   }

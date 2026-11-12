@@ -4,8 +4,9 @@ Purser keeps its own books and can also send them to a company's ERP: suppliers,
 payments and journal entries. It can read back the chart of accounts, the suppliers and whether an invoice is paid.
 No CSV is needed. Design: [docs/superpowers/specs/2026-11-08-erp-connectors-design.md](superpowers/specs/2026-11-08-erp-connectors-design.md).
 
-**Status: built and tested against the vendors' documented request and answer shapes. Moneybird was read live from a
-sandbox administration on 12 November 2026 (docs/moneybird.md). Nothing has been sent to a live ERP yet.** Each
+**Status: built and tested against the vendors' documented request and answer shapes. Moneybird ran live once, in a
+sandbox administration with test data, on 12 November 2026: sent, corrected, read back and reconciled to the cent
+(docs/moneybird.md). Exact Online, Business Central and Odoo have not been tested against a live system yet.** Each
 connector needs a test administration and its credentials first (below).
 
 Moneybird, for small companies, has its own page: [docs/moneybird.md](moneybird.md).

@@ -50,7 +50,7 @@ describe("npm run erp", () => {
       ERP_MONEYBIRD_TOKEN: "t", ERP_MONEYBIRD_ADMINISTRATION_ID: "1", ERP_MONEYBIRD_TAX_RATES: "{}",
       ERP_ODOO_API_KEY: "k", ERP_ODOO_URL: "https://x.odoo.com", ERP_ODOO_DB: "d", ERP_ODOO_LOGIN: "l", ERP_ODOO_PURCHASE_JOURNAL_ID: "1", ERP_ODOO_GENERAL_JOURNAL_ID: "2", ERP_ODOO_BANK_JOURNALS: "{}", ERP_ODOO_TAX_IDS: "{}",
     });
-    expect(text).toMatch(/moneybird Moneybird: settings present \(read live from a sandbox administration; nothing sent to one yet: docs\/moneybird\.md\)/);
+    expect(text).toMatch(/moneybird Moneybird: settings present \(run live once in a sandbox administration with test data: docs\/moneybird\.md\)/);
     expect(text).toMatch(/odoo\s+Odoo: settings present \(not tested against a live ERP yet\)/);
   });
 

@@ -42,8 +42,8 @@ export const SETTINGS: Record<ConnectorName, { label: string; secrets: string[];
     optional: ["ERP_ODOO_COMPANY_CURRENCY", "ERP_ODOO_GL_MAP", "ERP_ODOO_POST"],
   },
   moneybird: {
-    // 12 November 2026, docs/runs/2026-11-12-moneybird-sandbox.md: the chart, the contacts and the tax rates were read.
-    label: "Moneybird", live: "read live from a sandbox administration; nothing sent to one yet: docs/moneybird.md",
+    // 12 November 2026, docs/runs/2026-11-12-moneybird-sandbox.md: read, sent, corrected, read back and reconciled.
+    label: "Moneybird", live: "run live once in a sandbox administration with test data: docs/moneybird.md",
     secrets: ["ERP_MONEYBIRD_TOKEN"],
     settings: ["ERP_MONEYBIRD_ADMINISTRATION_ID", "ERP_MONEYBIRD_TAX_RATES"],
     optional: ["ERP_MONEYBIRD_GL_MAP", "ERP_MONEYBIRD_PROJECTS", "ERP_MONEYBIRD_IGNORE_COST_CENTRES", "ERP_MONEYBIRD_BASE_CURRENCY", "ERP_MONEYBIRD_BASE_URL", "ERP_MONEYBIRD_SANDBOX_ONLY"],

@@ -2,7 +2,8 @@
 // real engine on stand-in rails, sent through the connector to a stand-in administration that carries the sandbox
 // administration's real chart and tax rates (as its API listed them on 12 November 2026) and checks every request
 // against Moneybird's own OpenAPI request schemas, then corrected, read back, reconciled to the cent and sent again.
-// No network: this is the rehearsal of the live run, and it stays as its regression test.
+// No network: this is the rehearsal of the live run, and it stays as its regression test. The last part holds the live
+// run's record and its page (docs/runs/2026-11-12-moneybird-sandbox.*) to what Moneybird answered that day.
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -13,9 +14,10 @@ import { staticToken } from "../src/erp/auth.js";
 import { runErpCli } from "../src/erp/cli.js";
 import type { JournalEntry, Payment, PurchaseInvoice, Vendor } from "../src/erp/model.js";
 import { validate } from "../src/erp/model.js";
-import { MoneybirdConnector, type MoneybirdConfig } from "../src/erp/moneybird.js";
-import { reconcile, type Reconciliation } from "../src/erp/readback.js";
-import { buildRunRecord, runRecordMarkdown, type RunStep } from "../src/erp/runRecord.js";
+import { RecordingTransport } from "../src/erp/connector.js";
+import { MONEYBIRD_BASE_URL, moneybirdCallName, MoneybirdConnector, type MoneybirdConfig } from "../src/erp/moneybird.js";
+import { cents, reconcile, type Reconciliation } from "../src/erp/readback.js";
+import { buildRunRecord, runRecordMarkdown, type RunRecord, type RunStep } from "../src/erp/runRecord.js";
 import { buildSandboxWorld, LOW_VAT_INVOICE, PAID_INVOICE, RECODED_INVOICE, recodeSandboxInvoice, SANDBOX_COMPANY, sandboxInvoices, type SandboxWorldSummary } from "../src/erp/sandboxWorld.js";
 import { ledgerItems } from "../src/erp/source.js";
 import { correct, syncAll, syncStatus } from "../src/erp/sync.js";
@@ -242,5 +244,129 @@ describe("the sandbox run, rehearsed on the administration's real chart and tax 
     expect(shown).toContain(`"tax_rate_id":"${mapsFromNotes().taxRates.NL9}"`);
     expect(shown).not.toContain("placeholder");
     expect(readFileSync(log, "utf8")).toBe("");
+  });
+});
+
+describe("the live run of 12 November 2026, as recorded", () => {
+  interface Live { at: string; method: string; path: string; status: number; answer?: unknown; same_as_step_1?: boolean; rows?: number }
+  const ADMIN = "503585935808530148";
+  const LIVE = JSON.parse(readFileSync(resolve(import.meta.dirname, "fixtures/moneybird/sandbox-2026-11-12-sync.json"), "utf8")) as { answers: Live[] };
+  const RECORD = JSON.parse(readFileSync(resolve(import.meta.dirname, "../docs/runs/2026-11-12-moneybird-sandbox.json"), "utf8")) as RunRecord;
+  const rec = RECORD.reconciliation!;
+
+  it("the record: within the approved number, nothing off the connector's list, no difference, nothing sent twice", () => {
+    expect(RECORD.administration).toBe(ADMIN);
+    expect(RECORD.labels).toEqual(["Moneybird sandbox administration", "test data", "no e-mail sent"]);
+    expect(RECORD.calls.used).toBeLessThanOrEqual(RECORD.calls.approved);
+    expect(RECORD.calls.by_endpoint.reduce((s, e) => s + e.calls, 0)).toBe(RECORD.calls.used);
+    expect(RECORD.calls.off_the_list).toBe(0);
+    for (const e of RECORD.calls.by_endpoint) expect(e.endpoint).not.toMatch(/send|mail|remind/i);
+    // The requests outside step 2's steps are step 1's pull, and step 2's answers are all in the fixture.
+    expect(RECORD.calls.outside_steps).toBe(SANDBOX.answers.length);
+    expect(LIVE.answers).toHaveLength(RECORD.calls.used - SANDBOX.answers.length);
+    expect(rec).toMatchObject({ differences: 0, not_compared: [] });
+    expect(rec.rows.every((r) => r.differences.length === 0)).toBe(true);
+    expect(RECORD.idempotency).toEqual({ step: "sync-again", requests: 0 });
+    expect(RECORD.objects.every((o) => o.status === "synced" && /^\d{15,}$/.test(o.external_id ?? ""))).toBe(true);
+    // No secret and nothing personal: no token, no header, no user id, no portal link.
+    const text = JSON.stringify(RECORD) + JSON.stringify(LIVE.answers);
+    expect(text).not.toMatch(/bearer|authorization|user_id|sales_invoices_url|placeholder/i);
+  });
+
+  it("every live request was on the connector's list, in the sandbox administration, and was answered 200 or 201", () => {
+    const cfg = { baseUrl: MONEYBIRD_BASE_URL, administrationId: ADMIN, sandboxOnly: true };
+    const named = LIVE.answers.map((a) => `${a.method} ${moneybirdCallName({ method: a.method as "GET" | "POST", url: `${MONEYBIRD_BASE_URL}/${a.path}` }, cfg)}`);
+    const counted = new Map<string, number>();
+    for (const n of named) counted.set(n, (counted.get(n) ?? 0) + 1);
+    // With step 1's three requests, these are the record's counts per endpoint.
+    for (const a of SANDBOX.answers) { const n = `${a.method} ${moneybirdCallName({ method: a.method as "GET", url: a.url }, cfg)}`; counted.set(n, (counted.get(n) ?? 0) + 1); }
+    expect(Object.fromEntries(counted)).toEqual(Object.fromEntries(RECORD.calls.by_endpoint.map((e) => [e.endpoint, e.calls])));
+    expect(LIVE.answers.every((a) => a.status === 200 || a.status === 201)).toBe(true);
+    // The lookups of step 2 got the lists of step 1 again.
+    const lists = LIVE.answers.filter((a) => a.same_as_step_1 !== undefined);
+    expect(lists.every((a) => a.same_as_step_1)).toBe(true);
+    expect(NOTES).toContain(`all ${LIVE.answers.length} requests of step 2 were answered 200 or 201`);
+    expect(NOTES).toContain(`each of the ${lists.length} later lookups got the same`);
+  });
+
+  it("the read-back, replayed from Moneybird's own answers, gives the record's reconciliation", async () => {
+    const transport = new RecordingTransport((req) => {
+      const path = req.url.slice(`${MONEYBIRD_BASE_URL}/`.length);
+      const a = LIVE.answers.filter((x) => x.method === req.method && x.path === path).at(-1);
+      if (!a) throw new Error(`not asked live: ${req.method} ${path}`);
+      return { status: a.status, headers: {}, body: JSON.stringify(a.answer) };
+    });
+    const c = new MoneybirdConnector({ baseUrl: MONEYBIRD_BASE_URL, administrationId: ADMIN, baseCurrency: "EUR", projects: {}, ignoreCostCentres: true, sandboxOnly: true, ...mapsFromNotes() }, transport, staticToken("placeholder"));
+    for (const row of rec.rows) {
+      const d = await c.readPurchaseInvoice(row.external_id);
+      const vat = d.grossCents! - d.netCents!;
+      expect({ net: cents(d.netCents), vat: cents(vat), gross: cents(d.grossCents), paid: cents(d.payments.reduce((s, p) => s + p.cents!, 0)), state: d.state, attachments: d.attachments, payments: d.payments.length, reference: d.reference })
+        .toEqual({ net: row.erp.net, vat: row.erp.vat, gross: row.erp.gross, paid: row.erp.paid, state: row.erp.state, attachments: row.erp.attachments, payments: row.erp.payments, reference: row.erp.reference });
+      // The ledger account and tax rate on each line are ones the pull listed, where the run's maps point.
+      for (const l of d.lines) {
+        expect(realLedger.find((x) => x.id === l.ledgerAccountId)?.allowed_document_types).toContain("purchase_invoice");
+        expect(realTax.find((x) => x.id === l.taxRateId)?.tax_rate_type).toBe("purchase_invoice");
+      }
+    }
+    expect(transport.sent).toHaveLength(rec.documents);
+    // What the world sends offline is what Moneybird held: the same six documents, the same amounts and states.
+    const live = rec.rows.map((r) => [r.role, r.number, r.erp.net, r.erp.vat, r.erp.gross, r.erp.paid, r.erp.state, r.erp.attachments]);
+    expect(live).toEqual([
+      ["invoice", "MM-2026-114", "3.00", "0.27", "3.27", "0.00", "open", 1], ["invoice", "OD-77", "5.00", "1.05", "6.05", "0.00", "open", 1],
+      ["replaced", "OD-77", "5.00", "1.05", "6.05", "0.00", "open", 1], ["credit_note", "OD-77", "-5.00", "-1.05", "-6.05", "0.00", "open", 0],
+      ["invoice", "VE-889", "2.00", "0.42", "2.42", "2.42", "paid", 1], ["invoice", "ZV-5001", "4.00", "0.84", "4.84", "0.00", "open", 1],
+    ]);
+    // The moved invoice's new version is on the transport account; its first version and the credit note are not.
+    const lineOf = (role: string) => rec.rows.find((r) => r.number === RECODED_INVOICE && r.role === role)!.erp.lines[0]!.ledger_account_id;
+    expect([lineOf("invoice"), lineOf("replaced"), lineOf("credit_note")]).toEqual([account("Vervoerskosten"), account("Algemene kosten"), account("Algemene kosten")]);
+  });
+
+  it("what the answers taught: the payment's account, the attachment's answer, a contact with no address", () => {
+    const of = (part: string, method = "POST") => LIVE.answers.filter((a) => a.method === method && a.path.split("?")[0]!.endsWith(part));
+    const payment = of("/payments.json")[0]!.answer as { ledger_account_id: string; financial_account_id: string | null; transaction_identifier: string; price: string };
+    expect(realLedger.find((l) => l.id === payment.ledger_account_id)?.name).toBe("Te rubriceren betalingen");
+    expect(payment.financial_account_id).toBeNull();
+    expect(of("/attachments.json").map((a) => [a.status, a.answer])).toEqual(Array.from({ length: 5 }, () => [200, "200"]));
+    for (const a of of("/contacts.json")) expect(a.answer).toMatchObject({ email: "", send_invoices_to_email: "", delivery_method: "Email", bank_account: "" });
+    const created = of("/documents/purchase_invoices.json").map((a) => a.answer as { reference: string; state: string });
+    expect(created.map((x) => x.state)).toEqual(Array.from({ length: 6 }, () => "open"));
+    expect(created.filter((x) => x.reference === RECODED_INVOICE)).toHaveLength(2);
+  });
+
+  it("the run notes carry the record's own tables and figures", () => {
+    const block = /<!-- record:start -->\n([\s\S]*?)\n<!-- record:end -->/.exec(NOTES)?.[1];
+    expect(block).toBe(runRecordMarkdown(RECORD));
+    const count = (kind: string, event = "erp.pushed") => RECORD.sent.filter((s) => s.kind === kind && s.event === event).length;
+    expect(NOTES).toContain(`${count("vendor")} suppliers, ${count("invoice")} purchase invoices with their PDF, ${count("payment")} payment, ${count("journal")} journal entry and ${count("invoice", "erp.corrected")} correction`);
+    expect(NOTES).toContain(`all ${rec.documents} purchase invoices in Moneybird equal Purser's ledger to the cent:\n${rec.differences} differences`);
+    expect(NOTES).toContain(`The same sync run again made ${RECORD.idempotency!.requests} requests. The run used ${RECORD.calls.used} of the ${RECORD.calls.approved} approved requests.`);
+    expect(NOTES).toContain(`**Labels: ${RECORD.labels.join("; ")}.**`);
+    expect(NOTES).toContain(`| Calls | ${RECORD.calls.used} of the ${RECORD.calls.approved} approved for the whole run.`);
+    expect(NOTES).toContain(`The first part was capped at ${RECORD.calls.by_step.find((s) => s.step === "sync-1")!.calls} requests`);
+    expect(NOTES).toContain(`The ${RECORD.calls.outside_steps} requests outside these steps are the pull of step 1.`);
+    // The test world's table is the world's own.
+    for (const i of world.invoices) expect(NOTES).toContain(`| \`${i.number}\` | ${i.supplier} | ${i.net} | ${i.vat} (${i.number === LOW_VAT_INVOICE ? 9 : 21}%) | ${i.total} |`);
+    // The wording for other pages repeats the same figures.
+    const wording = NOTES.slice(NOTES.indexOf("## Wording to apply"));
+    expect(wording).toContain(`${rec.documents} purchase invoices read back, ${rec.differences} differences with the ledger; a second sync made ${RECORD.idempotency!.requests} requests; ${RECORD.calls.used} requests`);
+    expect(wording).toContain(`| Stats | ${RECORD.calls.used} of ${RECORD.calls.approved} requests; ${rec.documents} documents reconciled; ${rec.differences} differences |`);
+    expect(wording).not.toMatch(/certified by|endorsed by|approved by/i);
+  });
+});
+
+describe("what the docs say about the Moneybird run", () => {
+  const RECORD = JSON.parse(readFileSync(resolve(import.meta.dirname, "../docs/runs/2026-11-12-moneybird-sandbox.json"), "utf8")) as RunRecord;
+  const flat = (file: string) => readFileSync(resolve(import.meta.dirname, "..", file), "utf8").replace(/\s+/g, " ");
+
+  it("claims.md repeats the record's figures, and no page says more than ran", () => {
+    const rec = RECORD.reconciliation!;
+    const count = (kind: string, event = "erp.pushed") => RECORD.sent.filter((s) => s.kind === kind && s.event === event).length;
+    expect(flat("docs/claims.md")).toContain(`${count("vendor")} suppliers, ${count("invoice")} purchase invoices with their PDF, ${count("payment")} payment, ${count("journal")} journal entry and ${count("invoice", "erp.corrected")} correction sent; ${rec.documents} purchase invoices read back, ${rec.differences} differences with the ledger to the cent; a second sync made ${RECORD.idempotency!.requests} requests; ${RECORD.calls.used} of ${RECORD.calls.approved} approved requests`);
+    for (const f of ["docs/moneybird.md", "docs/erp.md", "docs/claims.md"]) {
+      expect(flat(f), f).toMatch(/sandbox administration with test data/);
+      expect(flat(f), f).not.toMatch(/certified|endorsed|approved by Moneybird/i);
+    }
+    expect(flat("docs/moneybird.md")).toMatch(/Not done: a real company's administration, OAuth for customers/);
+    expect(flat("docs/erp.md")).toMatch(/Exact Online, Business Central and Odoo have not been tested against a live system yet/);
   });
 });
