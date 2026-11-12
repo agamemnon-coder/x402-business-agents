@@ -11,12 +11,13 @@ import { KIND_LABEL, MAIN_RUN_GLOSSARY, kindOf, liveRuns, mdCell, runsPage, runs
 import { loadTrace } from "../src/redesign/trace.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
 import { visibleWords } from "./support/visibleWords.js";
+import { scriptBlocks, scriptBody, withoutBlocks } from "./support/scriptBlocks.js";
 
 const pages = buildPages({ ...process.env, TRY_SIGN_ENABLED: "on" }) as Pages;
 const text = (html: string) => html.replace(/<style>[\s\S]*?<\/style>/g, " ").replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ");
 const get = (path: string) => pageResponse(new Request(`https://kit11.example${path}`), pages);
 /** Everything a visitor can read on a page, folds included: scripts, styles, drawings and tags stripped. */
-const allText = (html: string) => text(html.replace(/<script[\s\S]*?<\/script>/g, " "));
+const allText = (html: string) => text(withoutBlocks(html, ["script"], " "));
 /** The run entries in a piece of the page: each one's classes, its key (the anchor), its HTML and its text. */
 const entriesOf = (html: string) => [...html.matchAll(/<li class="run ([^"]*)" id="([^"]+)">([\s\S]*?)<\/li>/g)].map((m) => ({ cls: m[1]!.split(" "), key: m[2]!, html: m[3]!, text: allText(m[3]!) }));
 /** The list of live runs, and the closed group of rehearsals after it. */
@@ -203,7 +204,7 @@ describe("/runs", () => {
     expect(r.headers.get("content-security-policy")).toMatch(/script-src|default-src 'none'/);
     expect(await r.text()).toContain("Every live run");
     // The policy is computed from the page's one inline script and one inline style: the page keeps to one of each.
-    expect(pages.runs!.match(/<script>/g)).toHaveLength(1);
+    expect(scriptBlocks(pages.runs!)).toHaveLength(1);
     expect(pages.runs!.match(/<style>/g)).toHaveLength(1);
   });
 });
@@ -449,7 +450,7 @@ describe("/runs as a timeline", () => {
     expect(html).toMatch(/<span class="fa" id="all"><\/span>(?:<span class="fa" id="[a-z]+"><\/span>)+\n<nav class="flt"/);
     expect(css).toContain(".runsp .fa { display: block; height: 0; scroll-margin-top: 72px; } .runsp.js .fa { display: none; }");
     expect(css).not.toMatch(/\.fa \{[^}]*position: absolute/);
-    const script = /<script>([\s\S]*?)<\/script>/.exec(html)![1]!;
+    const script = scriptBody(scriptBlocks(html)[0]!);
     expect(script).toContain('document.querySelector("main.runsp").classList.add("js");');
     expect(script).toContain("a.focus({ preventScroll: true });");
     const hiding = css.split("}").filter((rule) => /li\.run/.test(rule.split("{")[0]!) && /display:\s*none/.test(rule));
@@ -463,7 +464,7 @@ describe("/runs as a timeline", () => {
     expect(inSight(live[0]!.html)).toContain('<span class="mk new">Newest</span>');
     expect(inSight(live[0]!.html)).toMatch(/PAID/);
     // Nothing in the filtering depends on the script: it only names the active link and copies ids.
-    const js = /<script>([\s\S]*?)<\/script>/.exec(html)![1]!;
+    const js = scriptBody(scriptBlocks(html)[0]!);
     expect(js).toContain("aria-current");
     expect(js).not.toMatch(/display|hidden = true;[^}]*li\.run/);
   });

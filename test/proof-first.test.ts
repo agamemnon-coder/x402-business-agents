@@ -20,6 +20,7 @@ import { VIC2_RUN_ID } from "../src/redesign/vic2Run.js";
 import { buildPages } from "../src/relay/assets.js";
 import { ogTitle } from "../src/ui/meta.js";
 import { visibleWords } from "./support/visibleWords.js";
+import { scriptBlocks, scriptBody, textOutsideTags, withoutBlocks } from "./support/scriptBlocks.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const { record } = loadRecord();
@@ -192,7 +193,7 @@ describe("/proof as served: each card shows its strongest claim as its one link 
 
   it("uses no gendered pronoun for the CFO or anyone else, folds included (rule 1; seen by the review of 12 Nov)", () => {
     const pronoun = /\b(he|she|his|her|hers|him|himself|herself)\b/i;
-    const pagesText = [html, buildPages({ ...process.env, TRY_SIGN_ENABLED: "on" }).runs!].map((p) => decode(p.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " ")));
+    const pagesText = [html, buildPages({ ...process.env, TRY_SIGN_ENABLED: "on" }).runs!].map((p) => decode(textOutsideTags(withoutBlocks(p, ["script", "style"], " "))));
     for (const t of pagesText) expect(pronoun.exec(t)?.[0]).toBeUndefined();
     expect(decode(html)).toContain("Proposals the CFO decided on the phone");
   });
@@ -371,7 +372,7 @@ describe("links into /proof land on something", () => {
   });
 
   it("the page's script opens every fold around the target, also a fold inside a fold, on load and when the hash changes", () => {
-    const js = /<script>([\s\S]*?)<\/script>/.exec(html)![1]!;
+    const js = scriptBody(scriptBlocks(html)[0]!);
     expect(js).toContain('for (var d = t; d; d = d.parentElement) if (d.tagName === "DETAILS") d.open = true;');
     expect(js).toContain('open(); window.addEventListener("hashchange", open);');
   });
