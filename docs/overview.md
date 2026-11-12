@@ -83,5 +83,6 @@ Claude reads, compares and drafts; it never holds a key, a URL or a credential, 
 
 Every answer passes a code check (for example: the notice's price must equal the supplier's live 402 offer; the
 invoice's IBAN must match the allowlisted beneficiary). A refusal, failure or failed check falls back to a
-deterministic parser, so the demo makes the same decisions with or without an API key.
+deterministic parser. Without an API key the agents do not decide: code's fixed decisions run, each labelled as a
+fallback ([claude.md](claude.md)).
 
