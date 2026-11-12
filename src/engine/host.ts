@@ -328,10 +328,15 @@ export class EngineHost {
     return { id: p.proposal_id, kind: p.kind, status: p.status, terms_sha256: p.terms_sha256, challenge: challengeFor(p.terms_sha256), facts, warnings };
   }
 
-  /** Opens the window in which one passkey can be created (a new one replaces the same person's earlier one). */
-  passkeyStart(): Promise<{ challenge: string; code: string; exclude: string[] }> {
+  /**
+   * Opens the window in which one passkey can be created (a new one replaces the same person's earlier one). `relying`:
+   * the relying party of the page that asks (a host that serves the engine on more than one address checks it first);
+   * without it, the host's own.
+   */
+  passkeyStart(relying?: { rpId: string; origin: string }): Promise<{ challenge: string; code: string; exclude: string[] }> {
     return this.act(async () => {
-      const { db, rp } = this.deps;
+      const { db } = this.deps;
+      const rp = relying ?? this.deps.rp;
       const active = (db.prepare("SELECT credential_id FROM passkeys WHERE status = 'ACTIVE' ORDER BY enrolled_at, credential_id").all() as { credential_id: string }[]).map((p) => p.credential_id);
       const { window, code } = openEnrolment(db, { rpId: rp.rpId, origin: rp.origin, replace: active.length > 0 }, this.now());
       return { challenge: window.challenge, code, exclude: active };

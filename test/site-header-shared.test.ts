@@ -35,6 +35,8 @@ describe("the site's header, byte for byte as before", () => {
   });
 });
 
+const CLOUD = "https://purser-try.max-31b.workers.dev/";
+
 describe("the cloud pages carry the site's header", () => {
   it("reads the site's origin from package.json's homepage", () => {
     const home = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { homepage: string }).homepage;
@@ -47,7 +49,7 @@ describe("the cloud pages carry the site's header", () => {
       const html = siteHeader(k);
       expect(shape(html)).toBe(shape(snap.header[String(k)]!));
       for (const h of hrefs(html)) {
-        if (h === "/try" || h === "/") continue;
+        if (h === "/try" || (h === "/" && k !== "try") || (h === CLOUD && k === "try")) continue;
         expect(h.startsWith(`${SITE_ORIGIN}/`), h).toBe(true);
       }
     }
@@ -55,7 +57,9 @@ describe("the cloud pages carry the site's header", () => {
     expect(t).toContain('<a href="/try" class="on" aria-current="page">Try</a>');
     expect(t).toContain(`<a class="brand" href="${SITE_ORIGIN}/home"`);
     expect(t).toContain(`<a href="${SITE_ORIGIN}/proof">Proof</a>`);
-    expect(t).toContain('<a href="/">Purser Cloud</a>');
+    // /try is served on the site's host too (kit11's TRY_ENGINE): Purser Cloud is absolute there, never "/".
+    expect(t).toContain(`<a href="${CLOUD}">Purser Cloud</a>`);
+    expect(hrefs(t)).not.toContain("/");
     expect(t).toContain(`<a href="${SITE_ORIGIN}/pricing">Pricing</a>`);
     const c = siteHeader("cloud");
     expect(c).toContain('<a href="/" aria-current="page">Purser Cloud</a>');

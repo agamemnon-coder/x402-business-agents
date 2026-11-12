@@ -176,9 +176,9 @@ describe("/security: security and trust", () => {
     // 12 Nov (jury check): the Face ID on chain run linked beside it.
     expect(inSight("s-sign")).toBe("Signed terms The CFO signs the exact terms with a passkey (Face ID); one changed cent is refused. Try it yourself Face ID signs on chain How If the approver is unavailable");
     // Since 12 Nov (the owner) every Try call to action opens the hands-on demo (TRY_URL); /try/sign keeps its own page.
-    expect(card(html, "s-sign")).toContain('<a class="pf" href="https://purser-try.max-31b.workers.dev/try" data-next="https://purser-try.max-31b.workers.dev/try">Try it yourself</a>');
-    expect(flowLinks(html, true)).toContain('<a class="pf" href="https://purser-try.max-31b.workers.dev/try" data-next="https://purser-try.max-31b.workers.dev/try">Try it yourself</a>');
-    expect(flowLinks(html, false)).toContain('<a class="pf" href="https://purser-try.max-31b.workers.dev/try" data-next="https://purser-try.max-31b.workers.dev/try">Try it yourself</a>');
+    expect(card(html, "s-sign")).toContain('<a class="pf" href="/try" data-next="/try">Try it yourself</a>');
+    expect(flowLinks(html, true)).toContain('<a class="pf" href="/try" data-next="/try">Try it yourself</a>');
+    expect(flowLinks(html, false)).toContain('<a class="pf" href="/try" data-next="/try">Try it yourself</a>');
     expect(folded("s-sign")).toContain("signs the hash of the exact terms");
   });
 
@@ -356,7 +356,7 @@ describe("the two pages on the site", () => {
     // Without /try/sign in the bundle the pages are served unchanged; with it, /security's link to Try leads there.
     expect(pages.pricing).toBe(PRICING_PAGE);
     expect(pages.security).toBe(SECURITY_PAGE);
-    expect((buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv) as Pages).security).toContain('href="https://purser-try.max-31b.workers.dev/try" data-next="https://purser-try.max-31b.workers.dev/try"');
+    expect((buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv) as Pages).security).toContain('href="/try" data-next="/try"');
     expect(CHECK_PATHS).toEqual(expect.arrayContaining(["/pricing", "/security"]));
     // 12 Nov (review): the README said "18 pages" while the list grew; it now names the list, which no count can outdate.
     const check = read("README.md").split("\n").find((l) => l.startsWith("- `npm run judge -- --check`")) ?? "";

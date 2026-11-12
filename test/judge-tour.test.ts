@@ -73,7 +73,7 @@ describe("/judge: the five steps", () => {
     expect(JUDGE_STEPS.reduce((t, s) => t + s.seconds, 0)).toBe(180);
     expect(JUDGE_STEPS.map((s) => s.links.map((l) => l.href))).toEqual([
       // Since 12 Nov (one Try everywhere): steps 2 to 4 in the hands-on demo (TRY_URL); /try/sign once, as "the 60-second story".
-      ["/home"], ["https://purser-try.max-31b.workers.dev/try", "/try/sign"], ["https://purser-try.max-31b.workers.dev/try"], ["https://purser-try.max-31b.workers.dev/try"], // The Visa run among the proof's links since 12 Nov (jury panel): the Airi run, Visa Intelligent Commerce via Airi.
+      ["/home"], ["/try", "/try/sign"], ["/try"], ["/try"], // The Visa run among the proof's links since 12 Nov (jury panel): the Airi run, Visa Intelligent Commerce via Airi.
       ["/proof", "/airwallex#awx-1", "/metal", "/visa", metalStory(loadRecord().record).refusal!.proof.href],
     ]);
     // The tour starts on Home and ends on the proof; no step is the replay, by its link, its title or its line.
@@ -154,7 +154,7 @@ describe("/judge: in the browser only", () => {
     const r = pageResponse(new Request(`${SITE}/judge`), ON);
     expect(r?.status).toBe(200);
     expect(r?.headers.get("content-security-policy")).toBe(JUDGE_CSP);
-    // As served: the header's "Try" tab leads to /try/sign in this bundle (src/relay/assets.ts flowLinks).
+    // As served (src/relay/assets.ts flowLinks); the header's "Try" tab is the hands-on demo at /try in either bundle.
     expect(ON.judge).toBe(flowLinks(JUDGE_PAGE, true));
     expect(pageResponse(new Request(`${SITE}/judge`), OFF)).toBeNull();
     expect(OFF.judge).toBeUndefined();
@@ -169,7 +169,7 @@ describe("the way in: Home, the README and the form", () => {
     expect(/<main[\s\S]*<\/main>/.exec(ON.home!)![0]).not.toContain('href="judge"');
     expect(OFF.home).not.toContain('href="judge"');
     // Home's two buttons are two of /judge's steps: /try/sign, then the proof. Home sends no one to the replay (/replay, at /watch until 12 Nov).
-    expect(ON.home).toContain('<a class="btn primary big start" href="https://purser-try.max-31b.workers.dev/try">'); expect(ON.home).toContain('<a class="btn big more" href="proof">');
+    expect(ON.home).toContain('<a class="btn primary big start" href="/try">'); expect(ON.home).toContain('<a class="btn big more" href="proof">');
     expect(/<main[\s\S]*<\/main>/.exec(ON.home!)![0]).not.toMatch(/href="(?:watch|replay)"/);
   });
 
