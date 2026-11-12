@@ -358,9 +358,10 @@ describe("four eyes, worded exactly (the panel's review, 12 Nov)", () => {
   });
 
   it("says it in these words where this work changed a sentence", () => {
-    // The main run's mandate change (P-0002): the exact short form.
-    expect(flat("README.md")).toContain(`The CFO signed A; after ${FOUR_EYES}, both mandates were replaced on chain`);
-    expect(flat("README.md")).toContain("in the main run the second signature came from a test passkey, not a second person); the proposer never approves.");
+    // The main run's mandate change (P-0002): the exact short form. Since the README's rewrite of 12 Nov (#185) both
+    // sentences live in docs/in-depth.md, which the README links for every run and id.
+    expect(flat("docs/in-depth.md")).toContain(`The CFO signed A; after ${FOUR_EYES}, both mandates were replaced on chain`);
+    expect(flat("docs/in-depth.md")).toContain("in the main run the second signature came from a test passkey, not a second person); the proposer never approves.");
     expect(flat("docs/requirements-matrix.md")).toContain(`Treasury's options 40 s later; ${FOUR_EYES}, then the mandates replaced (P-0002);`);
     expect(flat("docs/submission/demo-day.md")).toContain(`Treasury proposes options 40 s later; ${FOUR_EYES} |`);
     expect(flat("docs/idea-vs-build.md")).toContain(`Four eyes ran in the main run (P-0002; ${FOUR_EYES_NOTE});`);
@@ -368,7 +369,7 @@ describe("four eyes, worded exactly (the panel's review, 12 Nov)", () => {
     expect(flat("docs/security.md")).toContain("Our runs had one person: the second signature came from a test passkey.");
     // The on-chain run of 30 October: its own note.
     for (const [doc, said] of [
-      ["README.md", `four eyes on chain (${FOUR_EYES_ON_CHAIN_NOTE}), the compliance contract`],
+      ["docs/in-depth.md", `four eyes on chain (${FOUR_EYES_ON_CHAIN_NOTE}), the compliance contract`],
       ["docs/claims.md", `In a separate test world, with ${FOUR_EYES_ON_CHAIN_NOTE}; Northwind's recorded account is one-owner`],
       ["docs/claims.md", `| Four eyes on chain (2-of-2 account; ${FOUR_EYES_ON_CHAIN_NOTE}) |`],
       ["docs/controls-matrix.md", `the CFO and the controller together passed (${FOUR_EYES_ON_CHAIN_NOTE}) |`],

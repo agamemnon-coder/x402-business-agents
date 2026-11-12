@@ -5,14 +5,14 @@
 // still picture is the paid frame, complete.
 //
 // Every number in it is read or computed here, never typed: the invoice is the try samples' clean one
-// (src/engine/tryWorld.ts CLEAN: supplier, number, due date, IBAN, amount), the changed amount is that amount plus one
+// (src/config/trySample.ts CLEAN, which src/engine/tryWorld.ts re-exports: supplier, number, due date, IBAN, amount), the changed amount is that amount plus one
 // cent, and the stamp's hash is the SHA-256 of the canonical terms the scene shows (RFC 8785 JCS: for an object of
 // strings, its keys sorted), shortened to 10 characters. test/scene.test.ts holds both to their source.
 //
 // The scene is an image with one accessible name (SCENE_NAME); its own text is aria-hidden. The pages put the markup
 // in their HTML as it is (built from these constants only) and the CSS in their nonce style.
 import { createHash } from "node:crypto";
-import { CLEAN } from "../../src/engine/tryWorld.js";
+import { CLEAN } from "../../src/config/trySample.js";
 import { ICONS } from "../../src/ui/icons.js";
 
 /** The scene's accessible name. */
