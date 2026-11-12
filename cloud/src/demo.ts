@@ -256,6 +256,8 @@ export interface DemoCompany {
   language: "nl" | "en";
   /** Counted from the company's rows when the answer is made; never typed. */
   counts: { invoices: number; invoices_paid: number; suppliers: number; payments: number; transactions: number; documents: number; ledger_entries: number };
+  /** The company's invoices by their state (paid, waiting_cfo, blocked, …), for the console's company cards; counted too. */
+  invoices_by_status: Record<string, number>;
 }
 
 /**
@@ -279,16 +281,27 @@ export async function demoTenantId(sql: Sql, demo: DemoEnv, slug: string, now: D
 export async function demoCompanies(sql: Sql, slugs: readonly string[]): Promise<{ test_world: true; read_only: true; note: string; companies: DemoCompany[] }> {
   const count = (table: "invoices" | "vendors" | "payments" | "transactions" | "documents" | "ledger_entries", as: keyof DemoCompany["counts"], and = "") =>
     `(SELECT COUNT(*) FROM ${table} x WHERE x.tenant_id = t.id${and}) AS ${as}`;
-  const rows = await sql.all<{ slug: string; name: string; language: string } & DemoCompany["counts"]>(
+  // The invoices by state as one JSON object per company (SQLite's and D1's json_group_object), in the same statement.
+  const byStatus = "(SELECT json_group_object(s.status, s.n) FROM (SELECT x.status, COUNT(*) AS n FROM invoices x WHERE x.tenant_id = t.id GROUP BY x.status) s) AS by_status";
+  const rows = await sql.all<{ slug: string; name: string; language: string; by_status: string | null } & DemoCompany["counts"]>(
     `SELECT t.slug, t.name, t.language, ${[count("invoices", "invoices"), count("invoices", "invoices_paid", " AND x.status = 'paid'"), count("vendors", "suppliers"), count("payments", "payments"),
-      count("transactions", "transactions"), count("documents", "documents"), count("ledger_entries", "ledger_entries")].join(", ")}
+      count("transactions", "transactions"), count("documents", "documents"), count("ledger_entries", "ledger_entries"), byStatus].join(", ")}
      FROM tenants t WHERE t.closed_at IS NULL AND t.slug IN (${slugs.map(() => "?").join(", ")})`, [...slugs]);
   const companies = slugs.flatMap((slug): DemoCompany[] => {
     const r = rows.find((x) => x.slug === slug);
     return r ? [{ slug, name: r.name, language: r.language === "en" ? "en" : "nl",
-      counts: { invoices: r.invoices, invoices_paid: r.invoices_paid, suppliers: r.suppliers, payments: r.payments, transactions: r.transactions, documents: r.documents, ledger_entries: r.ledger_entries } }] : [];
+      counts: { invoices: r.invoices, invoices_paid: r.invoices_paid, suppliers: r.suppliers, payments: r.payments, transactions: r.transactions, documents: r.documents, ledger_entries: r.ledger_entries },
+      invoices_by_status: statusCounts(r.by_status) }] : [];
   });
   return { ...DEMO_LABEL, companies };
+}
+
+/** The invoices-by-state object the statement made: state names and whole counts only, anything else left out. */
+function statusCounts(json: string | null): Record<string, number> {
+  let o: unknown;
+  try { o = JSON.parse(json ?? "{}"); } catch { return {}; }
+  if (!o || typeof o !== "object") return {};
+  return Object.fromEntries(Object.entries(o as Record<string, unknown>).filter((e): e is [string, number] => /^[a-z_]{1,40}$/.test(e[0]) && Number.isInteger(e[1])).sort(([a], [b]) => a.localeCompare(b)));
 }
 
 /**

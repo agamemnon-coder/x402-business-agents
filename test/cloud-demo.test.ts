@@ -341,6 +341,9 @@ describe("demo mode, what a visitor gets", () => {
       expect(counts.invoices).toBe(1);
       expect(counts.invoices_paid).toBe(1);
       expect(counts.ledger_entries).toBeGreaterThan(0);
+      // The invoices by state, for the console's company cards: counted from the rows too.
+      const by = await c.env.sql.all<{ status: string; n: number }>("SELECT status, COUNT(*) AS n FROM invoices WHERE tenant_id = ? GROUP BY status", [co.t.id]);
+      expect((body.companies.find((x) => x.slug === co.slug) as unknown as { invoices_by_status: Record<string, number> }).invoices_by_status).toEqual(Object.fromEntries(by.map((r) => [r.status, r.n])));
     }
     expect(JSON.stringify(body)).not.toContain(hidden.t.id);
   });
