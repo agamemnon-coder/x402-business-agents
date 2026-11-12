@@ -148,6 +148,37 @@ describe("/runs", () => {
     }
   });
 
+  // Review 12 Nov (DC-1): the rows typed from a markdown log carried "../../docs/runs/….md", right in docs/runs/README.md
+  // and a 404 on the site. On the page every link is absolute, a fragment or a path the site serves; every repository link
+  // points at a file in the checkout, a row added later with a "../../docs/…" href included.
+  it("links nothing the site does not serve: every href is absolute, a fragment or a served path", () => {
+    const hrefsOf = (html: string) => [...html.matchAll(/\shref="([^"]+)"/g)].map((m) => m[1]!.replace(/&amp;/g, "&"));
+    const check = (html: string) => {
+      const hrefs = hrefsOf(html);
+      expect(hrefs.length).toBeGreaterThan(20);
+      for (const href of hrefs) {
+        if (href.startsWith("#")) continue;
+        if (/^https:\/\//.test(href)) {
+          if (href.startsWith(REPO_BLOB)) expect(existsSync(href.slice(REPO_BLOB.length).replace(/#.*$/, "")), href).toBe(true);
+          continue;
+        }
+        const u = new URL(href, "https://kit11.example/runs");
+        expect(u.origin, href).toBe("https://kit11.example");
+        expect(get(u.pathname + u.search)?.status, href).toBe(200);
+      }
+    };
+    check(pages.runs!);
+    // A row in the old shape with a link relative to docs/runs/README.md opens the file on GitHub, on the page only.
+    const later: RunRow = { ...rows.find((r) => r.key === "connected-1")!, key: "later-x", files: [{ label: "run log", href: "../../docs/runs/2026-11-10-connected-accounts-sandbox.md" }] };
+    const page = runsPage([...rows, later]);
+    check(page);
+    expect(page).toContain(`href="${REPO_BLOB}docs/runs/2026-11-10-connected-accounts-sandbox.md"`);
+    expect(page).not.toContain('href="../');
+    // The README keeps its links relative to its own folder.
+    expect(runsReadme([...rows, later])).toContain("[run log](../../docs/runs/2026-11-10-connected-accounts-sandbox.md)");
+    expect(runsReadme()).not.toContain(REPO_BLOB);
+  });
+
   it("explains main-run.json's fields, each one in the record", () => {
     const rec = JSON.parse(readFileSync("docs/demo/main-run.json", "utf8")) as Record<string, Record<string, unknown>>;
     for (const [k] of MAIN_RUN_GLOSSARY) {
@@ -418,7 +449,7 @@ describe("/runs as a timeline", () => {
     expect(seen).not.toContain("Each went PAID.");
     expect(seen).toContain("pay-aaaa-1111");
     expect(seen).not.toContain("pay-bbbb-2222");
-    expect(seen).toContain('<a class="f" href="../../docs/runs/old-x.md" target="_blank" rel="noopener" aria-label="run log">Log ↗</a>');
+    expect(seen).toContain(`<a class="f" href="${REPO_BLOB}docs/runs/old-x.md" target="_blank" rel="noopener" aria-label="run log">Log ↗</a>`);
     expect(seen).not.toContain('class="rt');
     // The partners come from its rails; it sits in date order; its big numbers are listed quietly in its fold.
     expect(e.cls).toEqual(expect.arrayContaining(["k-sandbox", "f-airwallex", "f-claude", "f-sandbox"]));
@@ -444,7 +475,8 @@ describe("/runs as a timeline", () => {
         expect(seen, r.key).not.toContain(escAttr(i.value));
         expect(fold, r.key).toContain(escAttr(i.value));
       }
-      for (const f of r.files) expect(seen, r.key).toContain(`href="${f.href}"`);
+      // A link relative to docs/runs/README.md opens the file on GitHub from the page.
+      for (const f of r.files) expect(seen, r.key).toContain(`href="${f.href.replace(/^\.\.\/\.\.\//, REPO_BLOB)}"`);
       for (const part of [r.what, r.checks, r.rails, r.money]) expect(fold, r.key).toContain(escAttr(part));
       expect(seen, r.key).not.toContain(escAttr(r.checks));
     }

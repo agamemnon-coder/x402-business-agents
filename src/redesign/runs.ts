@@ -59,6 +59,11 @@ const short = (id: string) => id.length > 20 ? `${id.slice(0, 10)}…${id.slice(
 const tx = (label: string, hash: string): RunId => ({ label, value: short(hash), href: `${EXPLORER_TX}${hash}` });
 const pl = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
 const blob = (file: string) => `${REPO_BLOB}${file}`;
+/**
+ * A record link as the site opens it: a link written relative to docs/runs/README.md ("../../docs/runs/….md", right in
+ * the README) opens the file at the repository's address on the page, where "../../docs/…" is not served.
+ */
+const siteHref = (href: string) => href.startsWith("../../") ? blob(href.slice("../../".length)) : href;
 /** A record's checks as a rate: how many passed, of how many. */
 const checkRate = (checks: Record<string, { ok: boolean }>): RunRate => {
   const all = Object.values(checks);
@@ -310,7 +315,7 @@ function entry(r: RunRow, o: { newest?: boolean; folded: boolean }): string {
   // A rate that fell short is not a success: no tick, no green.
   const full = r.rate && r.rate.done === r.rate.of;
   const rate = r.rate ? `<span class="rt${full ? " ok" : ""}">${full ? icon("check", 14) : ""}${esc(rateWords(r.rate))}</span>` : "";
-  const files = r.files.map((f) => `<a class="f" href="${esc(f.href)}" target="_blank" rel="noopener"${linkWords(f.label) === f.label ? "" : ` aria-label="${esc(f.label)}"`}>${esc(linkWords(f.label))} ↗</a>`).join(" ");
+  const files = r.files.map((f) => `<a class="f" href="${esc(siteHref(f.href))}" target="_blank" rel="noopener"${linkWords(f.label) === f.label ? "" : ` aria-label="${esc(f.label)}"`}>${esc(linkWords(f.label))} ↗</a>`).join(" ");
   const fold = `<div class="fold">${rest.length ? `<div class="ids">${rest.map(idChip).join("")}</div>` : ""}<p>${esc(r.what)}</p><p><b>Checks:</b> ${esc(r.checks)}</p>${r.stats?.length ? `<p class="q">${r.stats.map((x) => `${esc(x.v)} ${esc(x.l)}`).join(" · ")}</p>` : ""}<p class="q">Rails: ${esc(r.rails)}. Money: ${esc(r.money)}.</p></div>`;
   const label = `Ids, what ran and the checks${more ? `: ${pl(more, "more id")}` : ""}`;
   return `<li class="${cls}" id="${esc(r.key)}"><article${o.folded ? ' class="fd"' : ""} aria-label="${esc(nameOf(r))}">
