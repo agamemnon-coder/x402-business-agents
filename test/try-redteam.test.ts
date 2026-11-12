@@ -164,3 +164,77 @@ describe("the admin route", () => {
     expect((await admin({ op: "get" }, ADMIN_TOKEN, at)).status).toBe(200);
   });
 });
+
+describe("bodies and origins", () => {
+  const OMIT = { origin: "null-omit" };
+  const CROSS = { origin: "https://evil.example" };
+
+  it("refuses a body one byte over each cap", async () => {
+    const v = await visitor();
+    /** A JSON body of exactly `bytes` bytes: one string field padded to fit. */
+    const sized = (field: string, bytes: number) => { const shell = JSON.stringify({ [field]: "" }).length; return JSON.stringify({ [field]: "x".repeat(bytes - shell) }); };
+    const cases: [string, string, number, string | null, string][] = [
+      ["POST", "/v1/try/start", 2_000, null, "token"],
+      ["POST", "/v1/try/session", 2_000, null, "tenant_id"],
+      ["POST", "/v1/try/admin", 8_000, ADMIN_TOKEN, "op"],
+      ["POST", "/v1/engine/compose", 4_000, v.s, "invoice_no"],
+      ["POST", `/v1/engine/proposals/${v.proposal.id}/pay`, 8_000, v.s, "terms"],
+    ];
+    for (const [m, p, cap, key, field] of cases) {
+      const r = await c.req(m, p, { key, raw: sized(field, cap + 1), headers: { "cf-connecting-ip": ip() } });
+      expect(r.status, p).toBe(400);
+      expect(r.json.error, p).toBe(`the body is larger than ${cap} bytes`);
+    }
+  });
+
+  it("refuses a cross-site Origin on every POST of the demo, and a missing one on the start, the renewal and a test company's writes", async () => {
+    const v = await visitor();
+    const posts = ROUTES.filter((r) => r.method === "POST" && TRY_ROUTES.includes(`POST ${r.path}`)).map((r) => r.path.replace("{id}", v.proposal.id).replace("{key}", "clean"));
+    for (const p of [...posts, "/v1/try/start", "/v1/try/session", "/v1/try/admin"]) {
+      const cross = await c.req("POST", p, { key: p === "/v1/try/admin" ? ADMIN_TOKEN : v.s, body: {}, headers: CROSS });
+      expect(cross.status, p).toBe(403);
+    }
+    for (const p of [...posts, "/v1/try/start", "/v1/try/session"]) {
+      const none = await c.req("POST", p, { key: v.s, body: {}, headers: OMIT });
+      expect(none.status, p).toBe(403);
+    }
+    // The admin's tool is a program with the platform token: it sends no Origin.
+    expect((await admin({ op: "get" }, ADMIN_TOKEN, OMIT)).status).toBe(200);
+    // Nothing moved.
+    expect(await transfers(v)).toBe(0);
+  });
+
+  it("refuses a composed invoice with control characters, a 10,000-character field or an IBAN with a bad check digit", async () => {
+    const v = await visitor();
+    const day = (o: number) => new Date(Date.now() + o * 86_400_000).toISOString().slice(0, 10);
+    const base = { supplier_key: "bergtex", invoice_no: "RT-1", amount: "100.00", issue_date: day(0), due_date: day(10), iban: "DE89370400440532013000" };
+    for (const o of [{ invoice_no: "RT\u00001" }, { invoice_no: "RT-1\n" }, { supplier_key: "bergtex\u0007" }, { iban: "DE89370400440532013000\u0000" }, { amount: "100.00‮" },
+      { invoice_no: "x".repeat(10_000) }, { iban: "DE88370400440532013000" }]) {
+      const r = await c.req("POST", "/v1/engine/compose", { key: v.s, body: { ...base, ...o } });
+      expect(r.status, JSON.stringify(o).slice(0, 60)).toBe(400);
+    }
+    // One invoice so far: the clean sample.
+    expect(((await c.req("GET", "/v1/engine/invoices", { key: v.s })).json.items as unknown[]).length).toBe(1);
+  });
+});
+
+describe("Claude's spend under 20 parallel actions (lane A's ledger, cloud/src/engine/spend.ts)", () => {
+  it("never reserves past a company, address, pool-day or all-time cap", async () => {
+    const { d1Spend } = await import("../cloud/src/engine/spend.js");
+    const caps = { claude: "on", cap_action_micros: "100000", max_inflight: "20" };
+    const scenarios: [Record<string, string>, { tenantId: string; pool: string; address: string | null }, number][] = [
+      [{ cap_company_micros: "300000", cap_addr_micros: "3000000", cap_day_micros_public: "30000000", cap_all_micros: "78000000" }, { tenantId: "t_try_a", pool: "public", address: "h1" }, 3],
+      [{ cap_company_micros: "1000000", cap_addr_micros: "400000", cap_day_micros_public: "30000000", cap_all_micros: "78000000" }, { tenantId: "t_try_b", pool: "public", address: "h2" }, 4],
+      [{ cap_company_micros: "1000000", cap_day_micros_jury: "500000", cap_all_micros: "78000000" }, { tenantId: "t_try_c", pool: "jury", address: null }, 5],
+      [{ cap_company_micros: "1000000", cap_day_micros_event: "30000000", cap_all_micros: "200000" }, { tenantId: "t_try_d", pool: "event", address: null }, 2],
+    ];
+    for (const [more, who, expected] of scenarios) {
+      const d = testCloud();
+      try {
+        await d.req("GET", "/v1/health");
+        const out = await Promise.all(Array.from({ length: 20 }, () => d1Spend(d.env.sql, { ...caps, ...more }, who).reserve()));
+        expect(out.filter((r) => r.ok), JSON.stringify(more)).toHaveLength(expected);
+      } finally { d.close(); }
+    }
+  });
+});

@@ -513,6 +513,9 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
     if (req.method !== "GET" && req.method !== "HEAD") {
       const from = req.headers.get("origin");
       if (from !== null && from !== env.origin) return err(403, "this request came from another site");
+      // The hands-on demo's start and renewal are a browser's only: they must say they come from this site (the admin's
+      // controls are a program's, with the platform token, and are not held to it).
+      if (from === null && (url.pathname === "/v1/try/start" || url.pathname === "/v1/try/session")) return tryError(json, 403, "forbidden", "this request must come from the hands-on demo's own page");
     }
     await ensureSchema(env.sql);
     const candidates = ROUTES.map((r) => ({ r, p: match(url.pathname, r.path) })).filter((x) => x.p);
@@ -547,7 +550,11 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
       }
       // A visitor's test company calls only the hands-on demo's routes, while it lives (cloud/src/try/gate.ts).
       const tryCaller = isTryTenant(caller.tenantId);
-      if (tryCaller) await tryGate(env.sql, caller.tenantId, req.method, hit.r.path, now);
+      if (tryCaller) {
+        await tryGate(env.sql, caller.tenantId, req.method, hit.r.path, now);
+        // A test company's writes come from the demo's page only, which always says where it is.
+        if (req.method !== "GET" && req.headers.get("origin") === null) return tryError(json, 403, "forbidden", "this request must come from the hands-on demo's own page");
+      }
       need(caller, hit.r.need);
       // The starter key makes the first owner's passkey and nothing else (red team round 5): who it is, the company's
       // name, and an enrolment for its own owner.
