@@ -24,6 +24,11 @@ export interface LocalChain {
   gas: Map<Hex, bigint>;
   /** The hash of every transaction the chain accepted, in order. */
   mined: Hex[];
+  /**
+   * Puts a deployed contract's code at another address, with fresh storage. The tests put the *USDZ stand-in at
+   * Metal's own *USDZ address this way, so the unmodified command line runs against this chain.
+   */
+  cloneCode(from: Address, to: Address): Promise<void>;
 }
 
 /** What a transaction costs before it runs: 21,000, its data (4 per zero byte, 16 otherwise), and for a creation 32,000 plus 2 per word of init code. */
@@ -122,5 +127,11 @@ export async function localChain(chainId = CHAIN_ID): Promise<LocalChain> {
       default: throw new Error(`local chain: ${method} is not served`);
     }
   };
-  return { request, calls, gas, mined };
+  const cloneCode = async (from: Address, to: Address) => {
+    const code = await evm.stateManager.getCode(createAddressFromString(from));
+    if (!code.length) throw new Error(`local chain: no code at ${from}`);
+    await evm.stateManager.putAccount(createAddressFromString(to), new Account());
+    await evm.stateManager.putCode(createAddressFromString(to), code);
+  };
+  return { request, calls, gas, mined, cloneCode };
 }

@@ -178,6 +178,9 @@ export function runRecordMarkdown(rec: TokenizeRunRecord): string {
     ? `a labelled test passkey ("${a.passkey_label}"), not a phone`
     : `not a labelled test passkey${a.described_in ? `; who approved, and on what device, is in [${a.described_in}](${relative("docs/runs", a.described_in)})` : ""}`;
   const calls = Object.entries(rec.calls.by_command).map(([c, n]) => `${c} ${n}`).join(", ");
+  // Who held the token when it was settled, when it is one of the run's own keys.
+  const holderRole = ROLES.find((r) => rec.roles[r].toLowerCase() === rec.received.holder_address?.toLowerCase());
+  const holderIs = holderRole === "financier" ? " (the simulated financier)" : holderRole ? ` (the ${holderRole})` : "";
   const rows = rec.transactions.map((t) => `| ${t.what} | [${code(t.hash)}](${t.explorer}) | ${t.status === "success" ? "success" : t.status === "reverted" ? "reverted on chain" : "signed, no receipt recorded"}${t.block ? `, block ${t.block}` : ""}${t.gas_used ? `, gas ${t.gas_used} of ${t.gas_limit}` : ""} |`);
   const notRun = TX_STEPS.flatMap((s) => STEP_TXS[s]).filter((s) => !s.key.startsWith("fund-") && !rec.transactions.some((t) => t.key === s.key)).map((s) => `| ${s.what} | not sent | |`);
   const deviations = [...rec.deviations.from_ledger.map((d) => `- ${d}`), ...(rec.deviations.notes ? ["", rec.deviations.notes] : [])];
@@ -212,7 +215,7 @@ ${[...rows, ...notRun].join("\n")}
 ## Checks
 
 - \`verify\`: ${rec.verify ? `${rec.verify.ok ? "yes, the chain record matches the ledger and the document" : `no: ${rec.verify.mismatches.join("; ") || "the token id is not the document hash"}`} (${minute(rec.verify.at)})${rec.verify.settled_on_chain ? "; the chain marks the invoice settled" : ""}.` : "not run."}
-- ${rec.received.creditor ? `The creditor ${code(rec.received.creditor_address!)} received ${rec.received.creditor} *USDZ (the contract's Financed event)` : "The token was not financed"}${rec.received.holder ? `, and the holder ${code(rec.received.holder_address!)} received ${rec.received.holder} *USDZ at settlement (the contract's Settled event).` : "; it was not settled."}
+- ${rec.received.creditor ? `The creditor ${code(rec.received.creditor_address!)} received ${rec.received.creditor} *USDZ (the contract's Financed event)` : "The token was not financed"}${rec.received.holder ? `, and the holder ${code(rec.received.holder_address!)}${holderIs} received ${rec.received.holder} *USDZ at settlement (the contract's Settled event).` : "; it was not settled."}
 - Calls used: ${rec.calls.used} of ${rec.calls.budget_total ?? "an unrecorded budget"} (from \`TOKENIZE_CALL_LOG\`)${calls ? `: ${calls}` : ""}.
 
 ## What did not go as planned

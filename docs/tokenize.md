@@ -1,8 +1,9 @@
 # Invoice tokens on Metal (prototype)
 
 **Status: built and tested on an in-memory EVM only. Nothing has run on Metal testnet yet.** The live run is planned
-with Max's go and a call budget ([run record template](tokenize-run-template.md)). Test money only. The financier is
-simulated. This is not legal advice and not a claim about how tokenized receivables are treated by any regulator.
+with Max's go and a call budget: [the runbook](runs/driver/tokenize-runbook.md), and the form of
+[its run record](tokenize-run-template.md). Test money only. The financier is simulated. This is not legal advice and
+not a claim about how tokenized receivables are treated by any regulator.
 
 ## What it is
 
@@ -85,26 +86,63 @@ same contract bytecode and the same locally signed transactions as a live run, a
 mints, finances at a 2% discount, settles and verifies. It then shows five refusals: a second settlement, a second
 mint, a mint by a key that is not the issuer, an invoice with no passkey approval, and a changed document.
 
-Live, one step at a time (each command refuses without its guards, `src/tokenize/guard.ts`):
+Live, one step at a time, in this order: `preflight`, `fund`, `deploy`, `mint`, `finance`, `settle`, `verify`, then
+`record`. [The runbook](runs/driver/tokenize-runbook.md) has the variables, what each command prints and how many
+calls it needs.
 
 ```bash
-TOKENIZE_GO=yes TOKENIZE_CALL_BUDGET=10 TOKENIZE_CALL_LOG=… TOKENIZE_DB=…/tokenize-1.sqlite npm run tokenize -- deploy
+npm run tokenize -- preflight   # no transaction, at most 6 reads; the offline checks, the plan, the calls per step
+npm run tokenize -- fund        # creates the four test keys, sends each what it lacks from a donor key
+npm run tokenize -- deploy      # then mint, finance, settle, verify
+npm run tokenize -- record      # writes docs/runs/<date>-tokenize.md and .json from the run's ledger; no call
 ```
 
-The commands run in this order: `deploy`, `mint`, `finance`, `settle`, `verify`. `mint` and `verify` also need
-`TOKENIZE_SOURCE_DB` (the ledger with the passkey approval, opened read-only), `TOKENIZE_PROPOSAL` and
-`TOKENIZE_DOCUMENT`. `npm run tokenize -- facts` prints this run's ledger: the transaction hashes, each stored before
-it was sent.
+Each live command refuses without its guards (`src/tokenize/guard.ts`): Max's go, a call budget for the command and
+one for the whole run, a call log, the run's own ledger, and the keys outside the repository. `npm run tokenize --
+facts` prints the run's ledger at any time.
+
+## The live run: nothing is sent twice
+
+- **The hash first.** Each transaction is signed on this machine, and its hash and signed bytes are written to the
+  run's ledger before it is sent.
+- **A stopped step resumes.** Run the same command again. A transaction that finished is answered from the ledger
+  with no call. One that was sent but has no receipt in the ledger gets its receipt read first. Only if there is none
+  are the same signed bytes sent once more: same nonce, same hash, so they cannot run twice.
+- **One contract per ledger.** `deploy` cannot deploy a second contract for the same run ledger.
+- **A revert stops.** A transaction that reverted on chain is not sent again unless the operator says so.
+- **Two budgets.** Every request is counted against the command's budget and against the whole run's budget in the
+  call log, before it goes out. A transaction is signed only when the send and one receipt read still fit.
+- **Keys.** Only `fund` creates a key. `deploy` refuses until the ledger shows the four roles funded.
+
+## Gas
+
+Gas on Metal testnet is paid in *USDZ at 1 wei per unit, so a high limit costs nothing. A limit that is too low
+would waste a transaction, so each limit follows a path that already ran on Metal:
+
+| Transaction | Limit | Why |
+|---|---|---|
+| Deploy, mint, offer, accept, settle (Purser's own contract) | The node's `eth_estimateGas` plus half, never below a fixed floor | Purser's contract runs on Metal ask the node the same way (`src/cli/passkeyOwners.ts`, `src/cli/compliancePolicy.ts`; they add a fifth). The floor is at least twice what the in-memory chain measures. An estimate that reverts stops the step before anything is signed. |
+| Funding transfer (a direct call to *USDZ) | 200,000, fixed | The limit of Purser's working *USDZ transfers (`src/metal/chain.ts`). No estimate call. |
+| The two approvals (direct calls to *USDZ) | 300,000, fixed | The limit of the approval in Purser's hold run (`src/metal/hold.ts`). No estimate call. |
+
+The estimate costs one call per transaction of Purser's own contract: five in a run. `TOKENIZE_GAS=fixed` skips
+them and sends each floor as the limit. Not yet shown on Metal: these transactions are plain EIP-1559 ones, where
+Purser's working *USDZ calls use Metal's own transaction type. The first funding transfer shows whether a plain call
+to *USDZ is accepted, before anything else is spent.
 
 ## Code
 
 - **Contract:** `contracts/PurserInvoiceToken.sol`, built on OpenZeppelin 5.6.1 ERC-721 and SafeERC20. The committed
   artifact `contracts/PurserInvoiceToken.json` is rebuilt and compared in the tests. Compile with
   `npm run contracts:tokenize`.
-- **Client:** `src/tokenize/client.ts` signs locally, hands each hash to the ledger before sending, uses fixed gas
-  limits, and runs behind a call budget.
+- **Client:** `src/tokenize/client.ts` signs locally, writes each hash to the ledger before sending, resumes from the
+  ledger, sets the gas limits, and runs behind the two call budgets.
+- **Live commands:** `src/tokenize/live.ts`, with the guards in `src/tokenize/guard.ts`, the plan and call counts in
+  `src/tokenize/plan.ts`, the keys in `src/tokenize/keys.ts` and the run's ledger in `src/tokenize/ledger.ts`.
 - **Ledger checks:** `src/tokenize/record.ts`.
 - **Steps:** `src/tokenize/flow.ts`.
-- **In-memory chain:** `src/tokenize/localChain.ts`.
+- **Run record:** `src/tokenize/runRecord.ts`; the block on `/metal` is `src/redesign/tokenizeRun.ts`.
+- **In-memory chain:** `src/tokenize/localChain.ts`, loaded only by the stand-in (`src/tokenize/standInRun.ts`) and
+  the tests.
 - **CLI:** `src/cli/tokenize.ts`.
-- **Tests:** `test/tokenize.test.ts`.
+- **Tests:** `test/tokenize.test.ts`, `test/tokenize-live.test.ts`, `test/tokenize-record.test.ts`.

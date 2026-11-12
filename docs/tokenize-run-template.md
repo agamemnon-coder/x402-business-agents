@@ -1,13 +1,16 @@
 # Run record template: invoice token on Metal testnet
 
-Fill this in **only with what ran**. Copy it to `docs/runs/<date>-tokenize.md` after the run, then link it from
-`docs/runs/README.md` and `/runs`. Test money only; the financier is simulated. ([What this is](tokenize.md))
+The form of the run record. After the run, `npm run tokenize -- record` writes it as `docs/runs/<date>-tokenize.md`
+and `.json` from the run's own ledger and call log: **only what ran**, no figure typed by hand. The words only a
+person knows come from the operator: Max's go (`TOKENIZE_GO_NOTE`) and what did not go as planned
+(`TOKENIZE_DEVIATIONS`). Test money only; the financier is simulated. ([What this is](tokenize.md) ·
+[the runbook](runs/driver/tokenize-runbook.md))
 
 ## Before the run
 
 - **Max's go:** (time, words)
-- **Call budget:** ___ Metal RPC calls for the tokenize commands, plus ___ for funding the four test keys. Estimate:
-  about 29 for the commands and up to 12 for funding (see the PR).
+- **Call budget:** ___ Metal RPC calls for the whole run, funding the four test keys included
+  (`TOKENIZE_CALL_BUDGET_TOTAL`). `npm run tokenize -- preflight` prints the calls each step needs.
 - **Invoice:**
   - proposal ___ in ledger ___
   - document ___ (SHA-256 ___)
@@ -19,6 +22,7 @@ Fill this in **only with what ran**. Copy it to `docs/runs/<date>-tokenize.md` a
 
 | Step | Transaction | Result |
 |---|---|---|
+| Fund the four test keys (one row each) | | |
 | Deploy PurserInvoiceToken | | |
 | Mint to the creditor | | |
 | Offer to the financier | | |

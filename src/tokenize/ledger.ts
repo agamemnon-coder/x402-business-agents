@@ -52,12 +52,14 @@ export function openRunLedger(path: string, o: { cmd?: string; readonly?: boolea
     db.exec(SCHEMA);
   }
   const get = (k: string) => (db.prepare("SELECT value FROM tokenize_state WHERE key = ?").get(k) as { value: string } | undefined)?.value;
+  type Row = { key: string; step: string; hash: Hex; raw: Hex; from_addr: `0x${string}`; nonce: number; gas: string; status: JournalRow["status"]; receipt_json: string | null };
+  const rowOf = (r: Row | undefined): JournalRow | undefined => r && { key: r.key, label: r.step, hash: r.hash, raw: r.raw, from: r.from_addr, nonce: r.nonce, gas: BigInt(r.gas), status: r.status, receipt: r.receipt_json ? (JSON.parse(r.receipt_json) as Receipt) : null };
+  const COLUMNS = "key, step, hash, raw, from_addr, nonce, gas, status, receipt_json";
   const journal: TxJournal = {
-    last(key) {
-      const r = db.prepare("SELECT key, step, hash, raw, from_addr, nonce, gas, status, receipt_json FROM tokenize_txs WHERE key = ? ORDER BY seq DESC LIMIT 1").get(key) as
-        { key: string; step: string; hash: Hex; raw: Hex; from_addr: `0x${string}`; nonce: number; gas: string; status: JournalRow["status"]; receipt_json: string | null } | undefined;
-      return r && { key: r.key, label: r.step, hash: r.hash, raw: r.raw, from: r.from_addr, nonce: r.nonce, gas: BigInt(r.gas), status: r.status, receipt: r.receipt_json ? (JSON.parse(r.receipt_json) as Receipt) : null };
-    },
+    last: (key) => rowOf(db.prepare(`SELECT ${COLUMNS} FROM tokenize_txs WHERE key = ? ORDER BY seq DESC LIMIT 1`).get(key) as Row | undefined),
+    // The newest row of each key is the one that counts: an older row of a key was settled before the newer was signed.
+    unresolved: (from) => rowOf(db.prepare(`SELECT ${COLUMNS} FROM tokenize_txs t WHERE lower(from_addr) = lower(?) AND status = 'signed'
+      AND seq = (SELECT max(seq) FROM tokenize_txs WHERE key = t.key) ORDER BY seq LIMIT 1`).get(from) as Row | undefined),
     signed(row) {
       db.prepare("INSERT INTO tokenize_txs (key, step, hash, raw, from_addr, nonce, gas, status, cmd, at) VALUES (?, ?, ?, ?, ?, ?, ?, 'signed', ?, ?)")
         .run(row.key, row.label, row.hash, row.raw, row.from, row.nonce, row.gas.toString(), cmd, now().toISOString());

@@ -39,5 +39,6 @@ export function liveRefusals(cmd: LiveCommand, env: Record<string, string | unde
     else if (insideRepo(env.TOKENIZE_DONOR_KEY, repo)) why.push("TOKENIZE_DONOR_KEY must be outside the code repository");
   }
   if (env.TOKENIZE_GAS !== undefined && env.TOKENIZE_GAS !== "estimate" && env.TOKENIZE_GAS !== "fixed") why.push("TOKENIZE_GAS is estimate (the default) or fixed");
+  if (env.TOKENIZE_POLL_MS !== undefined && (!/^\d+$/.test(env.TOKENIZE_POLL_MS) || Number(env.TOKENIZE_POLL_MS) > 60_000)) why.push("TOKENIZE_POLL_MS is a whole number of milliseconds, at most 60000 (the wait before each receipt read; default 2500)");
   return why;
 }

@@ -3,76 +3,30 @@
 // send and the receipt is simulated for every transaction of every step, and the re-run reads the receipt and goes on.
 // Both budgets hold before every request; the plan's call counts are the requests the chain counts; the live commands
 // never load the in-memory chain. No network.
-import { existsSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import Database from "better-sqlite3";
-import { beforeAll, describe, expect, it } from "vitest";
-import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+import { describe, expect, it } from "vitest";
+import { privateKeyToAccount } from "viem/accounts";
 import { keccak256, parseTransaction, type Address, type Hex } from "viem";
 import { GAS, invoiceTokenCalls, standInTokenCalls, txClient, type Request } from "../src/tokenize/client.js";
-import { LIVE_COMMANDS, type LiveCommand } from "../src/tokenize/guard.js";
-import { createRoleKeys, keyFile, readKey, ROLES, type Role } from "../src/tokenize/keys.js";
+import { discountedPrice } from "../src/tokenize/flow.js";
+import { LIVE_COMMANDS, liveRefusals } from "../src/tokenize/guard.js";
+import { createRoleKeys, keyFile, ROLES } from "../src/tokenize/keys.js";
 import { openRunLedger } from "../src/tokenize/ledger.js";
-import { callLog, runLive } from "../src/tokenize/live.js";
-import { localChain, type LocalChain } from "../src/tokenize/localChain.js";
+import { callLog, runLive, usdzText } from "../src/tokenize/live.js";
+import type { LocalChain } from "../src/tokenize/localChain.js";
 import { callsNeeded, GAS_ALLOWANCE, PREFLIGHT_MAX_CALLS, STEP_TXS, TX_STEPS, type TxStep } from "../src/tokenize/plan.js";
-import { standInLedger, STAND_IN_FIXTURE } from "../src/tokenize/standIn.js";
+import { testnetFaceValue } from "../src/tokenize/record.js";
+import { standInLedger } from "../src/tokenize/standIn.js";
 import { centsToBaseUnits } from "../src/lib/money.js";
 import { CHAIN_ID } from "../src/metal/network.js";
+import { liveWorld } from "./support/tokenizeWorld.js";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const FACE = centsToBaseUnits(240), PRICE = centsToBaseUnits(235);
 /** The run's eleven transactions, in the order a clean run sends them. */
 const ALL_KEYS = TX_STEPS.flatMap((s) => STEP_TXS[s].map((t) => ({ step: s, key: t.key })));
-
-let sourceDb: string, proposalId: string;
-beforeAll(async () => {
-  // One approved invoice (a labelled virtual test passkey), written to a file as a live run's source ledger is.
-  const l = await standInLedger();
-  sourceDb = join(mkdtempSync(join(tmpdir(), "tokenize-source-")), "source.sqlite");
-  writeFileSync(sourceDb, l.db.serialize());
-  proposalId = l.proposalId;
-}, 60_000);
-
-interface Out { code: number; out: string[]; errs: string[]; text: string; requests: string[] }
-
-async function liveWorld() {
-  const dir = mkdtempSync(join(tmpdir(), "tokenize-live-"));
-  const chain: LocalChain = await localChain();
-  // Outside the commands (not on their budget): the *USDZ stand-in and a donor that holds test money.
-  const setup = txClient({ request: chain.request, chainId: CHAIN_ID, sleep: async () => {} });
-  const minter = privateKeyToAccount(generatePrivateKey());
-  const settlement = await standInTokenCalls(setup).deploy(minter);
-  const donorKey = generatePrivateKey(), donor = privateKeyToAccount(donorKey);
-  const donorFile = join(dir, "donor.key.json");
-  writeFileSync(donorFile, JSON.stringify({ address: donor.address, privateKey: donorKey }), { mode: 0o600 });
-  await standInTokenCalls(setup).mint(minter, settlement, donor.address, centsToBaseUnits(10_000));
-  const baseline = chain.mined.length;
-  const env: Record<string, string> = {
-    TOKENIZE_GO: "yes", TOKENIZE_CALL_BUDGET: "20", TOKENIZE_CALL_BUDGET_TOTAL: "200", TOKENIZE_CALL_LOG: join(dir, "calls.log"),
-    TOKENIZE_DB: join(dir, "tokenize-test.sqlite"), METAL_RPC_URL: "https://rpc.invalid/never-asked", KIT11_KEYS_DIR: join(dir, "keys"),
-    TOKENIZE_SOURCE_DB: sourceDb, TOKENIZE_PROPOSAL: proposalId, TOKENIZE_DOCUMENT: join(ROOT, "fixtures", STAND_IN_FIXTURE), TOKENIZE_DONOR_KEY: donorFile,
-  };
-  const run = async (cmd: LiveCommand, over: Record<string, string | undefined> = {}, request: Request = chain.request): Promise<Out> => {
-    const out: string[] = [], errs: string[] = [], requests: string[] = [];
-    const counted: Request = async (a) => { requests.push(a.method); return request(a); };
-    const code = await runLive(cmd, { env: { ...env, ...over }, io: { say: (s) => out.push(s), err: (s) => errs.push(s) }, request: counted, settlement, sleep: async () => {} });
-    return { code, out, errs, text: [...out, ...errs].join("\n"), requests };
-  };
-  const read = invoiceTokenCalls(setup);
-  const balance = (who: Address) => read.balanceOf(settlement, who);
-  const ledger = () => openRunLedger(env.TOKENIZE_DB!, { readonly: true });
-  const statusOf = (key: string) => { if (!existsSync(env.TOKENIZE_DB!)) return undefined; const l = ledger(); try { return l.journal.last(key)?.status; } finally { l.close(); } };
-  const state = () => { const l = ledger(); try { return l.state(); } finally { l.close(); } };
-  const txs = () => { const l = ledger(); try { return l.txs(); } finally { l.close(); } };
-  const role = (r: Role) => readKey(keyFile(env.KIT11_KEYS_DIR!, r));
-  /** The steps before `step`, run cleanly. */
-  const upTo = async (step: TxStep | "verify") => {
-    for (const s of TX_STEPS) { if (s === step) return; const o = await run(s); expect({ s, code: o.code, text: o.text }).toMatchObject({ s, code: 0 }); }
-  };
-  return { dir, chain, settlement, donor, env, run, balance, statusOf, state, txs, role, upTo, baseline, setup, minter };
-}
 
 describe("tokenize live: a clean run on the in-memory chain", () => {
   it("funds, deploys, mints, finances, settles and verifies; each command makes exactly the requests the plan counts", async () => {
@@ -227,6 +181,26 @@ describe("tokenize live: fund", () => {
     expect(await v.balance(v.role("issuer").address)).toBe(centsToBaseUnits(50));
     expect(await v.balance(v.role("financier").address)).toBe(PRICE + GAS_ALLOWANCE); // topped up to what it needs, not more
     expect(o.requests).toHaveLength(4 + 1 + 1 + 3 * 2);
+  }, 60_000);
+
+  it("settles a recorded transfer before it signs a new one from the donor, whatever the order of the roles", async () => {
+    const w = await liveWorld();
+    // The issuer is funded another way; the creditor's transfer is recorded but never reaches the node.
+    createRoleKeys(w.env.KIT11_KEYS_DIR!);
+    await standInTokenCalls(w.setup).mint(w.minter, w.settlement, w.role("issuer").address, GAS_ALLOWANCE);
+    const lost = failing(w.chain, { nthSend: 1, where: "before-send" });
+    const stopped = await w.run("fund", {}, lost.request);
+    expect(stopped.code).toBe(3);
+    expect(w.txs().map((t) => [t.key, t.status, t.nonce])).toEqual([["fund-creditor", "signed", 0]]);
+    // Meanwhile the issuer's money is gone: on the next run it needs a transfer too, and it comes first in the list.
+    await invoiceTokenCalls(w.setup).transfer(w.role("issuer"), w.settlement, w.minter.address, GAS_ALLOWANCE, { key: "x", label: "drain" });
+    const again = await w.run("fund");
+    expect({ code: again.code, text: again.text }).toMatchObject({ code: 0 });
+    // The creditor's recorded bytes went out first and landed with their nonce; the new transfers follow it.
+    expect(w.txs().map((t) => [t.key, t.status, t.nonce])).toEqual([["fund-creditor", "success", 0], ["fund-issuer", "success", 1], ["fund-financier", "success", 2], ["fund-payer", "success", 3]]);
+    expect(w.chain.mined.slice(-4)).toEqual(w.txs().map((t) => t.hash));
+    for (const r of ROLES) expect(await w.balance(w.role(r).address)).toBeGreaterThanOrEqual(GAS_ALLOWANCE);
+    expect(await w.balance(w.role("creditor").address)).toBe(GAS_ALLOWANCE);
   }, 60_000);
 
   it("refuses before any transfer when the donor holds too little, the donor is a role key, or the invoice is not approved", async () => {
@@ -576,7 +550,7 @@ describe("tokenize live: preflight", () => {
 
     // The source ledger's approval made by something other than a passkey.
     const cli = join(w.dir, "cli.sqlite");
-    writeFileSync(cli, readFileSync(sourceDb));
+    writeFileSync(cli, readFileSync(w.source.file));
     new Database(cli).prepare("UPDATE approvals SET method = 'cli'").run();
     const notPasskey = await w.run("preflight", { TOKENIZE_SOURCE_DB: cli });
     expect(notPasskey.code).toBe(2);
@@ -661,6 +635,49 @@ describe("tokenize live: the guards, the checks before a mint, and verify", () =
     expect(bad.text).toMatch(/MISMATCH debtorRef: chain 0x[0-9a-f]{64}, ledger 0x[0-9a-f]{64}/);
     expect(JSON.parse(w.state().verify!)).toMatchObject({ ok: false });
   }, 60_000);
+});
+
+describe("the live run's runbook (docs/runs/driver/tokenize-runbook.md)", () => {
+  const runbook = () => readFileSync(join(ROOT, "docs/runs/driver/tokenize-runbook.md"), "utf8");
+  const fresh = (step: TxStep | "verify", estimate = true) => callsNeeded(step, () => undefined, { estimate });
+
+  it("gives each command's calls as the plan counts them, in the order of the run", () => {
+    const rows = [...runbook().matchAll(/^\| \d+ \| `npm run tokenize -- (\w+)` \| (?:at most )?(\d+) \|/gm)].map((m) => [m[1], Number(m[2])]);
+    // preflight makes 2 reads before fund (the chain id, the donor's balance) and 5 after (the chain id, four balances):
+    // the tests above count both.
+    expect(rows).toEqual([["preflight", 2], ["fund", fresh("fund")], ["preflight", 5], ["deploy", fresh("deploy")], ["mint", fresh("mint")], ["finance", fresh("finance")], ["settle", fresh("settle")], ["verify", fresh("verify")], ["record", 0]]);
+    const all = [...TX_STEPS, "verify" as const];
+    const steps = all.reduce((n, s) => n + fresh(s), 0), fixed = all.reduce((n, s) => n + fresh(s, false), 0);
+    expect(runbook()).toContain(`Steps 2 and 4 to 8 need ${steps} calls; with both preflights the run needs ${steps + 2 + 5}.`);
+    expect(runbook()).toContain(`skips the five estimates and\n  uses the fixed limits (the run then needs ${fixed} calls for steps 2 and 4 to 8)`);
+    expect(steps - fixed).toBe(all.flatMap((s) => (s === "verify" ? [] : STEP_TXS[s])).filter((t) => t.estimate).length);
+    // The amounts it expects for the invoice of the run: computed, not typed.
+    const face = testnetFaceValue(24_000, 100);
+    expect(runbook()).toContain(`EUR 240.00 divided by 100 is ${usdzText(face)} *USDZ; less 2% is ${usdzText(discountedPrice(face, 200))}.`);
+    expect(runbook()).toContain(`face value ${usdzText(face)} *USDZ`);
+    expect(runbook()).toContain(`paid ${usdzText(discountedPrice(face, 200))} *USDZ to the creditor`);
+  });
+
+  it("names every variable the guards ask for and never a value, and says what each command prints", async () => {
+    const text = runbook();
+    for (const cmd of LIVE_COMMANDS) for (const why of liveRefusals(cmd, {})) expect({ why, named: text.includes(/[A-Z][A-Z0-9_]{5,}/.exec(why)![0]) }).toEqual({ why, named: true });
+    for (const name of ["TOKENIZE_DONOR_KEY", "TOKENIZE_GAS", "TOKENIZE_POLL_MS", "TOKENIZE_RESEND_REVERTED", "TOKENIZE_GO_NOTE", "TOKENIZE_DEVIATIONS", "TOKENIZE_APPROVAL_RECORD", "TOKENIZE_DIVISOR", "TOKENIZE_DISCOUNT_BPS", "TOKENIZE_DEBTOR", "NODE_USE_ENV_PROXY"]) expect(text).toContain(`\`${name}\``);
+    // Names only: no NAME=value, no RPC address, no key, no wallet address.
+    expect(text).not.toMatch(/[A-Z][A-Z0-9_]{5,}=/);
+    expect(text).not.toMatch(/https?:\/\/(?!testnet\.metalntwx\.com\/tx\/0x…)/);
+    expect(text).not.toMatch(/0x[0-9a-fA-F]{8,}/);
+    // The words each command ends with are the words the commands print.
+    const live = readFileSync(join(ROOT, "src/tokenize/live.ts"), "utf8") + readFileSync(join(ROOT, "src/cli/tokenize.ts"), "utf8") + readFileSync(join(ROOT, "src/tokenize/standInRun.ts"), "utf8");
+    for (const word of ["STAND-IN ", "NOT READY  ", "FUNDED   issuer ", "READY    the four roles hold what they need and the budget covers the steps still to run; nothing was sent", "DEPLOYED PurserInvoiceToken ", "MINTED   token ", "FINANCED the simulated financier ", "SETTLED  the debtor's wallet paid ", "VERIFIED token id = document hash; the chain record matches the ledger and the document", "RECORDED "]) {
+      expect({ word, inCode: live.includes(word) }).toEqual({ word, inCode: true });
+      expect({ word, inRunbook: text.includes(word.trim().split("  ")[0]!) }).toEqual({ word, inRunbook: true });
+    }
+    for (const code of ["REFUSED", "STOPPED", "FAILED"]) { expect(text).toContain(`\`${code}\``); expect(live).toContain(`${code}  `); }
+    // One page, and its link resolves.
+    expect(text.split("\n").length).toBeLessThanOrEqual(80);
+    expect(existsSync(resolve(ROOT, "docs/runs/driver", "../../tokenize.md"))).toBe(true);
+    expect(text).toContain("](../../tokenize.md)");
+  });
 });
 
 describe("tokenize: the live commands never load the in-memory chain", () => {

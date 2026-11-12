@@ -44,12 +44,15 @@ if (cmd === "stand-in") {
   const why = recordRefusals(process.env);
   if (why.length) { for (const w of why) err(`REFUSED  ${w}`); process.exit(2); }
   try {
-    const out = writeRunRecord({ env: process.env });
+    // TOKENIZE_RECORD_REPO: another checkout's root to write docs/runs under (default: this checkout).
+    const out = writeRunRecord({ env: process.env, ...(process.env.TOKENIZE_RECORD_REPO ? { repo: process.env.TOKENIZE_RECORD_REPO } : {}) });
     say(`RECORDED ${out.md}\n         ${out.json}\n         ${out.record.transactions.length} transactions, ${out.record.calls.used} calls${out.record.calls.budget_total ? ` of ${out.record.calls.budget_total}` : ""}; no request was made`);
   } catch (e) { err(`REFUSED  ${(e as Error).message}`); process.exit(2); }
 } else if ((LIVE_COMMANDS as readonly string[]).includes(cmd)) {
   const { runLive } = await import("../tokenize/live.js");
-  process.exitCode = await runLive(cmd as LiveCommand, { env: process.env, io: { say, err } });
+  const { nodeSays } = await import("../tokenize/client.js");
+  // Whatever goes wrong, one redacted line: an RPC error's own text quotes the RPC URL, which is a credential.
+  try { process.exitCode = await runLive(cmd as LiveCommand, { env: process.env, io: { say, err } }); } catch (e) { err(`FAILED   ${nodeSays(e)}`); process.exitCode = 1; }
 } else {
   console.error("usage: npm run tokenize -- stand-in | preflight | fund | deploy | mint | finance | settle | verify | record | facts");
   process.exit(2);

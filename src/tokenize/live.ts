@@ -16,7 +16,7 @@ import { randomBytes } from "node:crypto";
 import { BaseError, decodeEventLog, type Abi, type Address } from "viem";
 import { CHAIN_ID, EXPLORER_TX, USDZ, rpcUrl } from "../metal/network.js";
 import { centsToBaseUnits } from "../lib/money.js";
-import { BudgetReached, budgeted, httpRequest, invoiceTokenCalls, nodeSays, tokenIdOf, txClient, TxReverted, TxUnresolved, WouldRevert, type OnChainInvoice, type Receipt, type Request, type Sent } from "./client.js";
+import { BudgetReached, budgeted, httpRequest, invoiceTokenCalls, nodeSays, SenderBusy, tokenIdOf, txClient, TxReverted, TxUnresolved, WouldRevert, type OnChainInvoice, type Receipt, type Request, type Sent } from "./client.js";
 import { discountedPrice, financeToken, mintToken, settleToken, type Step } from "./flow.js";
 import { liveRefusals, type LiveCommand } from "./guard.js";
 import { createRoleKeys, keyFile, missingRoles, readKey, roleKeys, ROLES, type Role, type RoleKeys } from "./keys.js";
@@ -86,13 +86,14 @@ export async function runLive(cmd: LiveCommand, o: LiveOptions): Promise<number>
     onCall: (method, n) => log.append(`${now().toISOString()} ${cmd} ${method} ${n.used}/${n.max} ${n.running}/${n.total}`),
   });
   const estimate = env.TOKENIZE_GAS !== "fixed";
-  const client = txClient({ request: rpc.request, chainId: CHAIN_ID, journal: ledger.journal, estimate, room: rpc.room, resendReverted: env.TOKENIZE_RESEND_REVERTED === "yes", polls: 6, ...(o.sleep ? { sleep: o.sleep } : {}) });
+  // One receipt read costs one call: the wait before each read (2.5 s unless TOKENIZE_POLL_MS says otherwise), six reads at most.
+  const client = txClient({ request: rpc.request, chainId: CHAIN_ID, journal: ledger.journal, estimate, room: rpc.room, resendReverted: env.TOKENIZE_RESEND_REVERTED === "yes", polls: 6, pollMs: Number(env.TOKENIZE_POLL_MS ?? "2500"), ...(o.sleep ? { sleep: o.sleep } : {}) });
   const c: Ctx = { cmd, env, io, ledger, rpc, calls: invoiceTokenCalls(client), settlement: o.settlement ?? USDZ, now, estimate, statusOf: (key) => ledger.journal.last(key)?.status };
   ledger.put("budget_total", String(total));
   try {
     return await COMMANDS[cmd](c);
   } catch (e) {
-    if (e instanceof Refused || e instanceof MintRefused || e instanceof WouldRevert) { io.err(`REFUSED  ${e.message}`); return 2; }
+    if (e instanceof Refused || e instanceof MintRefused || e instanceof WouldRevert || e instanceof SenderBusy) { io.err(`REFUSED  ${e.message}`); return 2; }
     if (e instanceof TxReverted) { io.err(`FAILED   ${e.label} reverted on chain: ${EXPLORER_TX}${e.hash}. Nothing is sent again for it unless TOKENIZE_RESEND_REVERTED=yes`); return 1; }
     if (e instanceof TxUnresolved) { io.err(`STOPPED  ${e.message}`); return 3; }
     if (e instanceof BudgetReached) { io.err(`STOPPED  ${e.message}. Run the command again with budget left: recorded transactions are never sent twice`); return 3; }
@@ -260,6 +261,8 @@ async function fund(c: Ctx): Promise<number> {
     todo.push({ role: r, amount: needs[r].target - holds[r], open: false });
     c.io.say(`PLAN     ${r.padEnd(9)} ${keys[r].address} holds ${usdzText(holds[r])} *USDZ, needs ${usdzText(needs[r].target)}: send ${usdzText(needs[r].target - holds[r])} *USDZ`);
   }
+  // A recorded transfer without a receipt is settled before any new one is signed: a new one must not take its nonce.
+  todo.sort((a, b) => Number(b.open) - Number(a.open));
   const sum = todo.reduce((s, t) => s + t.amount, 0n);
   const fresh = todo.filter((t) => !t.open).length;
   if (fresh) {

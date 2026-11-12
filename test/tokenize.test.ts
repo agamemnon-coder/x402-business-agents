@@ -4,10 +4,10 @@ import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { generatePrivateKey, privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
-import { encodeDeployData, parseTransaction, stringToHex, toHex, type Hex } from "viem";
+import { encodeDeployData, keccak256, parseTransaction, stringToHex, toHex, type Hex } from "viem";
 import { compileContract, loadContract } from "../src/tokenize/compile.js";
 import { intrinsicGas, localChain, type LocalChain } from "../src/tokenize/localChain.js";
-import { budgeted, BudgetReached, ESTIMATE_MARGIN, GAS, invoiceTokenCalls, standInTokenCalls, tokenIdOf, txClient, TxReverted, WouldRevert, type OnChainInvoice } from "../src/tokenize/client.js";
+import { budgeted, BudgetReached, ESTIMATE_MARGIN, GAS, invoiceTokenCalls, SenderBusy, standInTokenCalls, tokenIdOf, txClient, TxReverted, TxUnresolved, WouldRevert, type JournalRow, type OnChainInvoice, type TxJournal } from "../src/tokenize/client.js";
 import { approvedInvoice, dueDateFromDocument, mintRecord, MintRefused, partyRef, sha256Bytes, testnetFaceValue, verifyRecord, type ApprovedInvoice } from "../src/tokenize/record.js";
 import { discountedPrice, financeToken, mintToken, settleToken } from "../src/tokenize/flow.js";
 import { liveRefusals } from "../src/tokenize/guard.js";
@@ -260,6 +260,57 @@ describe("tokenize on an in-memory EVM: mint, finance, settle, verify", () => {
   }, 60_000);
 });
 
+describe("tokenize: the client's journal rules (no network)", () => {
+  /** A journal in memory, as src/tokenize/ledger.ts keeps one in the run's ledger. */
+  function memoryJournal() {
+    const rows: JournalRow[] = [];
+    const journal: TxJournal = {
+      last: (key) => rows.filter((r) => r.key === key).at(-1),
+      signed: (r) => { rows.push({ ...r, status: "signed", receipt: null }); },
+      done: (hash, status, receipt) => { const r = rows.find((x) => x.hash === hash)!; r.status = status; r.receipt = receipt; },
+      unresolved: (from) => rows.find((r) => r.status === "signed" && r.from === from && rows.filter((x) => x.key === r.key).at(-1) === r),
+    };
+    return { rows, journal };
+  }
+
+  it("signs nothing new for a sender whose earlier transaction has no receipt yet: the new one could take its nonce", async () => {
+    const chain = await localChain();
+    const { rows, journal } = memoryJournal();
+    let drop = true;
+    const c = txClient({ chainId: CHAIN_ID, sleep: async () => {}, journal, request: async (a) => { if (a.method === "eth_sendRawTransaction" && drop) { drop = false; throw new Error("connection lost"); } return chain.request(a); } });
+    const setup = txClient({ chainId: CHAIN_ID, sleep: async () => {}, request: chain.request });
+    const owner = acct(), other = acct();
+    const tokenAddr = await standInTokenCalls(setup).deploy(acct());
+    const calls = invoiceTokenCalls(c);
+    // The first approval is recorded, but never reaches the node.
+    await expect(calls.approve(owner, tokenAddr, other.address, 1n, { key: "first", label: "first approval" })).rejects.toBeInstanceOf(TxUnresolved);
+    expect(rows.map((r) => [r.key, r.status, r.nonce])).toEqual([["first", "signed", 0]]);
+    // A second transaction from the same key is refused before any request: it would be signed with nonce 0 too.
+    const asked = chain.calls.length;
+    await expect(calls.approve(owner, tokenAddr, other.address, 2n, { key: "second", label: "second approval" })).rejects.toBeInstanceOf(SenderBusy);
+    await expect(calls.approve(owner, tokenAddr, other.address, 2n, { key: "second", label: "second approval" })).rejects.toThrow(/second approval: not signed\. An earlier transaction of the same sender has no receipt yet \(first approval 0x[0-9a-f]{64}\); run its command again first/);
+    expect(chain.calls.length).toBe(asked);
+    expect(rows).toHaveLength(1);
+    // Another sender is not held up.
+    await calls.approve(other, tokenAddr, owner.address, 1n, { key: "other", label: "another sender" });
+    // The first one again: the same bytes go out and land; then the second may be signed, with the next nonce.
+    expect((await calls.approve(owner, tokenAddr, other.address, 1n, { key: "first", label: "first approval" })).how).toBe("resumed");
+    expect((await calls.approve(owner, tokenAddr, other.address, 2n, { key: "second", label: "second approval" })).how).toBe("sent");
+    expect(rows.filter((r) => r.from === owner.address).map((r) => [r.key, r.status, r.nonce])).toEqual([["first", "success", 0], ["second", "success", 1]]);
+  });
+
+  it("reads a receipt's status as a number: 0x01 is a success too, anything else a revert", async () => {
+    const from = acct();
+    const withStatus = (status: string) => txClient({ chainId: CHAIN_ID, sleep: async () => {}, estimate: false, request: async (a) =>
+      a.method === "eth_getTransactionCount" ? "0x0" : a.method === "eth_sendRawTransaction" ? keccak256(a.params![0] as Hex) : { transactionHash: "0x", status, contractAddress: null, gasUsed: "0x5208", logs: [], from: from.address, to: null } });
+    const tx = { key: "k", label: "a transfer", from, to: from.address, data: "0x" as Hex, gas: 21_000n, estimate: false };
+    expect((await withStatus("0x1").send(tx)).how).toBe("sent");
+    expect((await withStatus("0x01").send(tx)).how).toBe("sent");
+    await expect(withStatus("0x0").send(tx)).rejects.toBeInstanceOf(TxReverted);
+    await expect(withStatus("0x00").send(tx)).rejects.toBeInstanceOf(TxReverted);
+  });
+});
+
 describe("tokenize: the live path's guards and budget (no network)", () => {
   it("refuses every live command without Max's go, both budgets, a call log, its own ledger, the RPC and keys outside the repository", () => {
     const why = liveRefusals("mint", {}).join("\n");
@@ -288,6 +339,8 @@ describe("tokenize: the live path's guards and budget (no network)", () => {
     expect(liveRefusals("verify", { ...noKeys, ...source })).toEqual([]);
     expect(liveRefusals("deploy", { ...ok, TOKENIZE_GAS: "guess" })).toEqual(["TOKENIZE_GAS is estimate (the default) or fixed"]);
     expect(liveRefusals("deploy", { ...ok, TOKENIZE_GAS: "fixed" })).toEqual([]);
+    for (const bad of ["soon", "-1", "2.5", "60001"]) expect(liveRefusals("deploy", { ...ok, TOKENIZE_POLL_MS: bad })).toHaveLength(1);
+    for (const good of ["0", "2500", "60000"]) expect(liveRefusals("deploy", { ...ok, TOKENIZE_POLL_MS: good })).toEqual([]);
   });
 
   it("the budgeted transport refuses past its budget before any network request, and answers the chain id itself", async () => {

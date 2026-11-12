@@ -50,6 +50,16 @@ export class WouldRevert extends Error {
 export class BudgetReached extends Error {
   constructor(message: string) { super(message); this.name = "BudgetReached"; }
 }
+/**
+ * The sender still has a recorded transaction without a receipt, under another key. A new transaction from it could
+ * take that one's nonce, so nothing is signed until the earlier one is settled by running its own command again.
+ */
+export class SenderBusy extends Error {
+  constructor(readonly label: string, readonly earlier: { label: string; hash: Hex }) {
+    super(`${label}: not signed. An earlier transaction of the same sender has no receipt yet (${earlier.label} ${earlier.hash}); run its command again first`);
+    this.name = "SenderBusy";
+  }
+}
 
 /** What the node itself said, in one line: never viem's full message, which quotes the RPC URL and the request. */
 export function nodeSays(e: unknown): string {
@@ -91,6 +101,8 @@ export interface TxJournal {
   /** Called with a signed transaction before it is sent. */
   signed(row: Omit<JournalRow, "status" | "receipt">): void;
   done(hash: Hex, status: "success" | "reverted", receipt: Receipt): void;
+  /** A transaction of this sender that is recorded and still has no receipt, if any. */
+  unresolved(from: Address): JournalRow | undefined;
 }
 
 export interface TxClientOptions {
@@ -136,7 +148,8 @@ export function txClient(o: TxClientOptions): TxClient {
     return null;
   };
   const finish = (t: { key: string; label: string }, hash: Hex, from: Address, receipt: Receipt, how: Sent["how"]): Sent => {
-    const ok = receipt.status === "0x1";
+    // The receipt's status as a number (0x1 and 0x01 are both success), so a spelling never reads as a revert.
+    const ok = BigInt(receipt.status) === 1n;
     o.journal?.done(hash, ok ? "success" : "reverted", receipt);
     if (!ok) throw new TxReverted(t.label, hash);
     return { key: t.key, label: t.label, hash, from, receipt, how };
@@ -167,6 +180,8 @@ export function txClient(o: TxClientOptions): TxClient {
         // Reverted on chain: a new transaction only on an explicit decision.
         if (!o.resendReverted) throw new TxReverted(t.label, prior.hash);
       }
+      const open = o.journal?.unresolved(t.from.address);
+      if (open) throw new SenderBusy(t.label, open);
 
       let gas = t.gas;
       if (t.estimate && o.estimate !== false) {
