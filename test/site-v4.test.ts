@@ -17,8 +17,8 @@ const run = agentRun();
 const { record } = loadRecord();
 /** The public pages a juror reaches: the four tabs, the pages under "More" (pricing, security, the four partner pages) and the 404. */
 const PUBLIC: Record<string, string> = { home: pages.home!, watch: pages.watch!, try: pages.try, proof: pages.proof!, pricing: pages.pricing!, security: pages.security!, metal: pages.metal, airwallex: pages.airwallex!, visa: pages.visa, claude: pages.claude!, notFound: pages.notFound! };
-// /docs (12 Nov), the next product page under "More".
-Object.assign(PUBLIC, { docs: pages.docs! });
+// /docs and /status (12 Nov), the other two product pages under "More".
+Object.assign(PUBLIC, { docs: pages.docs!, status: pages.status! });
 
 const decode = (s: string) => s.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
 /** The words a person reads without opening anything: <main> only, no script, style, drawing, or folded details (their summary stays). */
@@ -76,7 +76,8 @@ describe("the site after v4", () => {
     // short cards, each one sentence with its proof link, the detail folded.
     const budget: Record<string, number> = { home: 250, watch: 125, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, pricing: 150, security: 220, metal: 200, airwallex: 370 /* +5, panel review 10 Nov */, visa: 610 /* +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa) */, claude: 150, notFound: 40 };
     // Docs 200 since 12 Nov: four cards, the agent API's tools by name with one short line each, every description folded.
-    Object.assign(budget, { docs: 200 });
+    // Status 90 since 12 Nov: the status lines (empty until /health is read) and the five latest live runs.
+    Object.assign(budget, { docs: 200, status: 90 });
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 
@@ -87,7 +88,7 @@ describe("the site after v4", () => {
     // The phone's script, stylesheet and font are not pages (the phone pages themselves are checked).
     const all = Object.entries(pages as unknown as Record<string, unknown>).filter((e): e is [string, string] => typeof e[1] === "string" && !["client", "css", "font"].includes(e[0]));
     expect(all.map(([k]) => k)).toEqual(expect.arrayContaining(["dashboard", "month", "film", "try", "lab", "metal", "metalReport", "visa", "airwallex", "claude", "pricing", "security", "home", "watch", "proof", "notFound", "approve", "enrol", "policy"]));
-    expect(all.map(([k]) => k)).toEqual(expect.arrayContaining(["docs"]));
+    expect(all.map(([k]) => k)).toEqual(expect.arrayContaining(["docs", "status"]));
     for (const [name, html] of all) for (const re of bad) expect({ name, found: re.exec(allText(html))?.[0] ?? null }).toEqual({ name, found: null });
   });
 
@@ -98,7 +99,7 @@ describe("the site after v4", () => {
     // left out until it is registered; then the menu must list it).
     const served = MORE_LINKS.filter((l) => pageResponse(new Request(`https://x.test/${l.href}`), pages as Pages)?.status === 200).map((l) => l.label);
     expect(served).toEqual(expect.arrayContaining(["Pricing", "Security", "Airwallex", "Metal", "Visa", "Claude"]));
-    expect(served).toEqual(expect.arrayContaining(["Docs"]));
+    expect(served).toEqual(expect.arrayContaining(["Docs", "Status"]));
     for (const [name, html] of Object.entries(PUBLIC)) {
       const nav = /<nav[^>]*aria-label="Main"[^>]*>([\s\S]*?)<\/nav>/.exec(html)?.[1] ?? "";
       // Five items, in this order: the four tabs as links, then "More", a <details> that needs no script.
@@ -124,6 +125,8 @@ describe("the site after v4", () => {
       for (const m of html.matchAll(/href="([^"#]*)(#[^"]*)?"/g)) {
         const href = m[1]!;
         if (!href || /^(https?:|mailto:)/.test(href)) continue;
+        // /status links to /health, the relay's own JSON answer and not a page of the bundle (test/saas-status-docs.test.ts fetches it).
+        if (name === "status" && href === "health") continue;
         const path = new URL(href, "https://x.test/").pathname;
         seen.add(path);
         const res = pageResponse(new Request(`https://x.test${path}`), p);
@@ -131,7 +134,7 @@ describe("the site after v4", () => {
       }
     }
     for (const want of ["/home", "/watch", "/try", "/proof", "/pricing", "/security", "/metal", "/airwallex", "/visa", "/claude", "/lab", "/film", "/month", "/metal/report"]) expect(seen).toContain(want);
-    for (const want of ["/docs"]) expect(seen).toContain(want);
+    for (const want of ["/docs", "/status"]) expect(seen).toContain(want);
     for (const [from, to] of [["/live", "/watch"], ["/demo", "/watch"], ["/overview", "/home"]]) expect(pageResponse(new Request(`https://x.test${from}`), p)?.headers.get("location")).toBe(to);
     expect(pageResponse(new Request("https://x.test/no/such/page"), p)).toBeNull();
     const nf = notFoundResponse(p);

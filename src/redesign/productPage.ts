@@ -1,7 +1,7 @@
 // The product pages under "More" (src/ui/more.ts): /pricing and /security (12 Nov). One layout for them, in the partner
 // pages' style (src/redesign/partners.ts, the same sizes): an honest label, the heading, one lead line, cards, and every
 // detail folded. Only the design system's tokens and components (src/redesign/ui.ts). No script, so each page is served
-// under a style-only policy.
+// under a style-only policy; /status alone carries one small script, which reads the site's own /health.
 
 import { readFileSync } from "node:fs";
 import type { MoreKey } from "../ui/more.js";
@@ -53,11 +53,12 @@ export const siteLink = (href: string, label: string, next = false) => `<a class
 /** A folded detail: the summary in sight, the lines behind it. */
 export const foldHtml = (summary: string, lines: string[]) => `<details class="fold"><summary>${esc(summary)}</summary><ul class="pl">${lines.map((l) => `<li>${l}</li>`).join("")}</ul></details>`;
 
-export function productPage(o: { key: MoreKey; title: string; description: string; label: string; h1: string; lead: string; body: string; source: string; real: string[] }): string {
+/** `css`: a page's own few rules after the shared ones. `js`: a page's one inline script (only /status has one; the rest carry none). */
+export function productPage(o: { key: MoreKey; title: string; description: string; label: string; h1: string; lead: string; body: string; source: string; real: string[]; css?: string; js?: string }): string {
   const body = `<main class="sp"><div class="wrap">
   <div class="shd"><span class="pill note">${icon("info", 14)}${esc(o.label)}</span><h1>${esc(o.h1)}</h1></div>
   <p class="lead">${esc(o.lead)}</p>
   ${o.body}
 </div></main>`;
-  return page({ title: o.title, description: o.description, tab: o.key, css: PRODUCT_CSS, body, source: o.source, real: o.real });
+  return page({ title: o.title, description: o.description, tab: o.key, css: o.css ? `${PRODUCT_CSS}\n${o.css}` : PRODUCT_CSS, body, source: o.source, real: o.real, ...(o.js === undefined ? {} : { js: o.js, stage: false }) });
 }

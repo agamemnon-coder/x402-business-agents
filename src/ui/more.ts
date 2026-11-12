@@ -26,7 +26,7 @@ export const MORE_LINKS: readonly MoreLink[] = [
   { key: "pricing", label: "Pricing", href: "pricing", group: "product" },
   { key: "security", label: "Security", href: "security", group: "product" },
   { key: "docs", label: "Docs", href: "docs", group: "product" },
-  { key: "status", label: "Status", href: "status", group: "product", built: false },
+  { key: "status", label: "Status", href: "status", group: "product" },
   { key: "airwallex", label: "Airwallex", href: "airwallex", group: "partner" },
   { key: "metal", label: "Metal", href: "metal", group: "partner" },
   { key: "visa", label: "Visa", href: "visa", group: "partner" },

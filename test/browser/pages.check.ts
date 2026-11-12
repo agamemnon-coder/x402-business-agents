@@ -8,6 +8,7 @@
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
 import { VISA_ENTRY_LINE } from "../../src/redesign/partners.js";
 import { MORE_LABEL, moreLinks } from "../../src/ui/more.js";
+import { agentTools } from "../../src/redesign/docs.js";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { chromium, type Page } from "playwright";
@@ -33,6 +34,8 @@ if (!judgeBase) console.log(`SKIP  ${base}/judge is not served there yet: /judge
 /** The tour's ticks in localStorage (src/redesign/judge.ts). */
 const JUDGE_KEY = "purser.judge.v1";
 
+/** The agent API's tools, as the code defines them (/docs lists exactly these). */
+const DOCS_TOOLS = agentTools().map((t) => t.name);
 const failures: string[] = [];
 const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}`); };
 /** The menu on every page: the four tabs, then "More" with the pages under it, in this order (src/ui/more.ts). */
@@ -435,7 +438,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // /visa 495 since 10 Nov (Max: we compete for the Visa Award, keep it visible): one plain sentence on top; 600 the
       // same day with the overview of the three Visa runs above the Airi run (Max, 10 Nov: more Visa).
       const budget = path === "/airwallex" ? 365 : path === "/visa" ? 600 : path === "/metal" ? 180 : 150;
-      if (words > budget + 25) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
+      // The frame (header and footer): 25 words, 27 since 12 Nov, when the footer gained its links to Docs and Status
+      // (two words; /metal and /visa stood at the limit). The pages' own budgets are unchanged.
+      if (words > budget + 27) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(pt)) fail(`${path} ${tag}: its run is not labelled`);
       if ((await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
       if ((await page.locator("details.fold").count()) < 2) fail(`${path} ${tag}: the details are not folded`);
@@ -496,6 +501,77 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.evaluate(() => document.querySelectorAll("main details").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
       await look(page, `${path} folds open ${tag}`, w);
       await page.screenshot({ path: join(shots, `${path.slice(1)}-open-${tag}.png`), fullPage: true });
+    }
+    // /docs and /status (12 Nov), the other two product pages under "More": short, "More" marked as where the reader is,
+    // no text under 14 px in a card. /docs lists the agent API's tools as the code defines them, every description
+    // folded. /status: the judge's copy says it has no live status and asks for nothing (it has no /health); a hosted
+    // relay's page reads its own /health and ends in a state it read, never in "could not be read".
+    for (const path of ["/docs", "/status"]) {
+      const healthAsked: string[] = [];
+      const onHealth = (r: { url(): string }) => { if (new URL(r.url()).pathname === "/health") healthAsked.push(r.url()); };
+      page.on("request", onHealth);
+      const res = await page.goto(`${base}${path}`, { waitUntil: "load" });
+      if (!res || res.status() !== 200) { fail(`${path} ${tag}: status ${res?.status()}`); page.off("request", onHealth); continue; }
+      if (path === "/status" && liveAt >= 0) await page.waitForFunction(() => document.getElementById("now")?.hasAttribute("data-tone"), undefined, { timeout: 10_000 }).catch(() => fail(`/status ${tag}: the page's script never finished reading /health`));
+      await look(page, `${path} ${tag}`, w);
+      const body = await page.locator("main").innerText();
+      const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
+      // The budgets of test/site-v4.test.ts, counted here as the browser shows the page's body (folds closed).
+      const budget = path === "/docs" ? 200 : 90;
+      if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
+      const here = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null, tabs: document.querySelectorAll('nav[aria-label="Main"] > a.on').length }; })()`) as { more: boolean; link: string | null; tabs: number };
+      if (!here.more || here.link !== path.slice(1) || here.tabs) fail(`${path} ${tag}: "More" and the page's own link are not marked as where the reader is (${JSON.stringify(here)})`);
+      const small = await page.evaluate(`[...document.querySelectorAll("main .card *, main .lead")].filter((e) => (e.offsetParent || getComputedStyle(e).position === "fixed") && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) && parseFloat(getComputedStyle(e).fontSize) < 14).map((e) => (e.textContent || "").trim().slice(0, 30))`) as string[];
+      for (const t of small.slice(0, 5)) fail(`${path} ${tag}: text under 14 px: ${t}`);
+      if (!(await page.evaluate(() => document.fonts.check("16px Inter")))) fail(`${path} ${tag}: Inter did not load`);
+      const cards = await page.locator("main article.pc.card").count();
+      if (path === "/docs") {
+        if (cards !== 4 || !/Docs and API\s+For developers and integrators\./.test(body) || (await page.locator("main details[open]").count())) fail(`/docs ${tag}: not the heading, the lead line and four cards with every fold closed`);
+        const listed = await page.locator("#agent-api li[data-tool] > code").allInnerTexts();
+        if (JSON.stringify(listed) !== JSON.stringify(DOCS_TOOLS)) fail(`/docs ${tag}: the tools listed are not the code's (${listed.join(", ")})`);
+        if (!/npm run -s mcp/.test(body) || !/npm run judge/.test(body) || !/\/v1\/openapi\.json/.test(body) || !(await page.locator('#offline a[href$="README.md#how-to-run"]').count())) fail(`/docs ${tag}: a command, the OpenAPI document's path or the README's link is missing`);
+      } else {
+        if (cards !== 2 || (await page.locator("#runs ul.pl > li > a.pf").count()) !== 5 || (await page.locator('#runs a.pf[href="runs"]').count()) !== 1) fail(`/status ${tag}: not two cards with the five latest live runs and the link to every run`);
+        if (liveAt < 0) {
+          // The judge's copy: no script, no request for /health (it would be a 404 here), and it says so.
+          if (healthAsked.length || (await page.locator("script").count()) || !/No live status in this copy/.test(body) || (await page.locator('main a[href$="health"]').count())) fail(`/status ${tag}: the offline copy asks for /health, carries a script or does not say it has no live status`);
+        } else {
+          const tone = await page.locator("#now").getAttribute("data-tone");
+          if (!["quiet", "ok", "alarm"].includes(tone ?? "") || (await page.locator("#st-site").innerText()) !== "Up" || healthAsked.length !== 1) fail(`/status ${tag}: the hosted page did not read its own /health (${tone}, ${healthAsked.length} request(s))`);
+        }
+      }
+      page.off("request", onHealth);
+      await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
+      await page.evaluate(() => document.querySelectorAll("main details").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
+      await look(page, `${path} folds open ${tag}`, w);
+      await page.screenshot({ path: join(shots, `${path.slice(1)}-open-${tag}.png`), fullPage: true });
+    }
+    // /status as the relay serves it (the local relay, src/relay/local.ts; no runner has synced yet): the page reads the
+    // relay's own /health under its policy, with no console or policy error, and shows the quiet state, which is no
+    // error. Then /health failing: the page says plainly that the status could not be read, and nothing reads as good.
+    if (relay) {
+      await page.goto(`${relay.url}/status`, { waitUntil: "load" });
+      await page.waitForFunction(() => document.getElementById("now")?.hasAttribute("data-tone"), undefined, { timeout: 10_000 }).catch(() => fail(`/status on the relay ${tag}: the script never finished reading /health`));
+      await look(page, `/status on the relay ${tag}`, w);
+      const now = (await page.locator("#now").innerText()).replace(/\s+/g, " ").trim();
+      if ((await page.locator("#now").getAttribute("data-tone")) !== "quiet" || now !== "No live run in progress Site Up Runner Off between runs Last sync None on record Alarms No report on record The raw answer: /health") fail(`/status on the relay ${tag}: not the quiet state in plain words (${now})`);
+      const quietWords = (await page.locator("main").innerText()).split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
+      if (quietWords > 90) fail(`/status on the relay ${tag}: ${quietWords} words in sight in the quiet state, budget 90`);
+      await page.screenshot({ path: join(shots, `status-quiet-${tag}.png`), fullPage: true });
+      // A page of its own for the failing /health: the browser logs the failed answer as a console error, which is the point.
+      const broken = await context.newPage();
+      broken.on("pageerror", (e) => fail(`/status with /health failing ${tag}: page error: ${e.message}`));
+      for (const [what, answer] of [["a 500 that is no JSON", { status: 500, contentType: "text/plain", body: "error" }], ["a 200 in another shape", { status: 200, contentType: "application/json", body: JSON.stringify({ status: "ok" }) }], ["no answer", null]] as const) {
+        await broken.unroute("**/health");
+        await broken.route("**/health", (r) => (answer ? r.fulfill(answer) : r.abort()));
+        await broken.goto(`${relay.url}/status`, { waitUntil: "load" });
+        await broken.waitForFunction(() => document.getElementById("now")?.hasAttribute("data-tone"), undefined, { timeout: 10_000 }).catch(() => fail(`/status with /health failing (${what}) ${tag}: the page never said so`));
+        const text = (await broken.locator("#now").innerText()).replace(/\s+/g, " ").trim();
+        if ((await broken.locator("#now").getAttribute("data-tone")) !== "unread" || text !== "The status could not be read just now Site Not read Runner Not read Last sync Not read Alarms Not read The raw answer: /health") fail(`/status with /health failing (${what}) ${tag}: does not say plainly that the status could not be read (${text})`);
+        if (await broken.locator("#now .good").count()) fail(`/status with /health failing (${what}) ${tag}: a line reads as good`);
+      }
+      await broken.screenshot({ path: join(shots, `status-unread-${tag}.png`), fullPage: true });
+      await broken.close();
     }
     // Proof carries the read-back briefly (section B): the hash pair and the cards' match, with each card in a fold.
     await page.goto(`${base}/proof`, { waitUntil: "load" });
@@ -672,6 +748,34 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     }
     await context.close();
   }
+}
+// /status in the live state, last (a sync makes the relay expect a live run for the next half hour): a runner syncs,
+// as the runner sends it (src/relay/runner.ts), and the page says a live run is in progress and no alarm stands.
+if (relay) {
+  const { openDb } = await import("../../src/db/open.js");
+  const { buildRelayState, stateHash } = await import("../../src/relay/state.js");
+  const state = buildRelayState(openDb(":memory:"), { rpId: "localhost", relayToken: "pages-check" }, new Date());
+  const synced = await fetch(`${relay.url}/api/runner/sync`, { method: "POST", headers: { authorization: "Bearer pages-check", "content-type": "application/json" }, body: JSON.stringify({ state_hash: stateHash(state), state, acks: [] }) });
+  if (synced.status !== 200) fail(`/status live: the runner's sync answered ${synced.status}`);
+  for (const [w, h] of [[390, 844], [1440, 900]] as const) {
+    for (const scheme of ["light", "dark"] as const) {
+      const context = await browser.newContext({ viewport: { width: w, height: h }, colorScheme: scheme, isMobile: w < 500, hasTouch: w < 500 });
+      const page = await context.newPage();
+      const tag = `${w}-${scheme}`;
+      page.on("console", (m) => { if (m.type() === "error") fail(`/status live ${tag}: console error: ${m.text()}`); });
+      page.on("pageerror", (e) => fail(`/status live ${tag}: page error: ${e.message}`));
+      await page.goto(`${relay.url}/status`, { waitUntil: "load" });
+      await page.waitForFunction(() => document.getElementById("now")?.hasAttribute("data-tone"), undefined, { timeout: 10_000 }).catch(() => fail(`/status live ${tag}: the script never finished reading /health`));
+      await look(page, `/status live ${tag}`, w);
+      const now = (await page.locator("#now").innerText()).replace(/\s+/g, " ").trim();
+      if ((await page.locator("#now").getAttribute("data-tone")) !== "ok" || !/^A live run is in progress Site Up Runner Syncing Last sync In the last \d+ minutes? Alarms None The raw answer: \/health$/.test(now)) fail(`/status live ${tag}: not the live state in plain words (${now})`);
+      const words = (await page.locator("main").innerText()).split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
+      if (words > 90) fail(`/status live ${tag}: ${words} words in sight, budget 90`);
+      await page.screenshot({ path: join(shots, `status-live-${tag}.png`), fullPage: true });
+      await context.close();
+    }
+  }
+  console.log("/docs and /status checked: the judge's copies, /status on the local relay quiet, with /health failing, and live");
 }
 await browser.close();
 judge?.server.close();

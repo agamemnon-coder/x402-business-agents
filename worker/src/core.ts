@@ -47,6 +47,8 @@ export interface Pages {
   security?: string;
   /** /docs, "Docs and API", under "More" too (src/redesign/docs.ts), no script; absent in a bundle built before it. */
   docs?: string;
+  /** /status, under "More" too (src/redesign/status.ts): its one script reads this Worker's own /health; absent in a bundle built before it. */
+  status?: string;
   /** The redesign's public pages (Home, Watch, Proof), no key needed; absent in a bundle built before them. */
   home?: string;
   watch?: string;
@@ -79,7 +81,7 @@ export interface Pages {
   font: string;
   /** The sponsors' logos (base64), served as /assets/<name>. */
   images: Record<string, { type: string; data: string }>;
-  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; pricing?: string; security?: string; docs?: string; home?: string; watch?: string; proof?: string; trace?: string; runs?: string; notFound?: string; trySign?: string; tryVerify?: string; judge?: string; approve: string; enrol: string; policy: string };
+  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; pricing?: string; security?: string; docs?: string; status?: string; home?: string; watch?: string; proof?: string; trace?: string; runs?: string; notFound?: string; trySign?: string; tryVerify?: string; judge?: string; approve: string; enrol: string; policy: string };
 }
 
 const MAX_STATE_BYTES = 1_500_000;
@@ -176,6 +178,7 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/pricing" && pages.pricing && pages.csp.pricing) return page(pages.pricing, pages.csp.pricing);
   if (path === "/security" && pages.security && pages.csp.security) return page(pages.security, pages.csp.security);
   if (path === "/docs" && pages.docs && pages.csp.docs) return page(pages.docs, pages.csp.docs);
+  if (path === "/status" && pages.status && pages.csp.status) return page(pages.status, pages.csp.status);
   if (path === "/metal/report" && pages.metalReport) return page(pages.metalReport, pages.csp.metalReport);
   if (path.startsWith("/approve/") && PROPOSAL_ID.test(path.slice("/approve/".length))) return page(pages.approve, pages.csp.approve);
   if (path === "/enrol") return page(pages.enrol, pages.csp.enrol);

@@ -36,6 +36,7 @@ import { runsPage } from "../redesign/runs.js";
 import { pricingPage } from "../redesign/pricing.js";
 import { securityPage } from "../redesign/security.js";
 import { docsPage } from "../redesign/docs.js";
+import { statusPage } from "../redesign/status.js";
 import { agentPages } from "../redesign/agents.js";
 import { monthEndPack, PACK_LINK, PACK_NAME } from "../accounting/monthPack.js";
 import { restyle } from "../redesign/ui.js";
@@ -252,6 +253,15 @@ export const SECURITY_CSP = styleOnlyCsp(SECURITY_PAGE);
 /** /docs, "Docs and API" (12 Nov), under "More" too (src/redesign/docs.ts): no script, so a style-only policy. */
 export const DOCS_PAGE = docsPage();
 export const DOCS_CSP = styleOnlyCsp(DOCS_PAGE);
+/**
+ * /status (12 Nov), under "More" too (src/redesign/status.ts). Its one small script reads the site's own /health, so its
+ * policy names that script and the style by hash and allows requests to the site itself only (connect-src 'self').
+ * The offline copy (`npm run judge`, which has no /health) carries no script: a style-only policy.
+ */
+export const STATUS_PAGE = statusPage();
+export const STATUS_CSP = cspFor(STATUS_PAGE);
+export const STATUS_PAGE_OFFLINE = statusPage("offline");
+export const STATUS_OFFLINE_CSP = styleOnlyCsp(STATUS_PAGE_OFFLINE);
 /** /trace: any payment of the main run, step by step (src/redesign/trace.ts); no script, so a style-only policy. */
 export const TRACE_PAGE = tracePage();
 export const TRACE_CSP = styleOnlyCsp(TRACE_PAGE);
@@ -412,6 +422,12 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   app.get("/docs", (_req, res) => {
     res.setHeader("Content-Security-Policy", DOCS_CSP);
     res.type("html").send(DOCS_PAGE);
+  });
+  // /status as the relay serves it. This server's own /health (below) has the runner's shape, not the relay's, so here
+  // the page says the status could not be read and links to /health: it never reads another shape as good.
+  app.get("/status", (_req, res) => {
+    res.setHeader("Content-Security-Policy", STATUS_CSP);
+    res.type("html").send(STATUS_PAGE);
   });
   app.get("/metal/report", (_req, res, next) => {
     if (!METAL_REPORT) return next();
