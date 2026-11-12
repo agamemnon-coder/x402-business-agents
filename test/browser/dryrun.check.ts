@@ -30,6 +30,8 @@ import type { SilentRise } from "../../src/world/supplierEvents.js";
 import { generateWorld } from "../../src/evals/worlds.js";
 import { liveMapping } from "../../src/evals/liveWorld.js";
 import { spendLimits } from "../../src/policy/holds.js";
+import { ownersPlan, planTotals } from "../../src/metal/ownersFlow.js";
+import { RECEIPT_POLLS } from "../../src/metal/ownersChain.js";
 
 const ledger = process.env.KIT11_DB ?? "";
 const keys = process.env.KIT11_KEYS_DIR ?? "";
@@ -44,7 +46,14 @@ mkdirSync(keys, { recursive: true });
 const PORT = Number(process.env.KIT11_RELAY_PORT ?? 4466);
 const url = `http://localhost:${PORT}`;
 // One local relay token for every start of the runner, so a restart keeps the phones' viewer link (never printed).
-const env = { ...process.env, KIT11_APPROVER: "test-cfo", KIT11_RELAY_PORT: String(PORT), KIT11_LOCAL_RELAY_TOKEN: randomBytes(32).toString("hex") };
+// Step 12d (KIT11_PASSKEY_OWNERS=on): the owners commands and the runner's relay call Metal only behind the owners guard.
+// Starting this dry run with the switch on is the go; the call log is kept in the out dir, and the budget is the one the
+// operator set (OWNERS_CALL_BUDGET) or else the most the plan of the owners steps can take (src/metal/ownersFlow.ts).
+const ownersGuard = process.env.KIT11_PASSKEY_OWNERS === "on" ? {
+  OWNERS_GO: "yes", OWNERS_CALL_LOG: process.env.OWNERS_CALL_LOG ?? join(out, "owners-calls.jsonl"),
+  OWNERS_CALL_BUDGET: process.env.OWNERS_CALL_BUDGET ?? String(planTotals(ownersPlan({ funding: process.env.OWNERS_DONOR_KEY ? "donor" : process.env.KIT11_RECYCLE === "on" ? "recycle" : "faucet", polls: RECEIPT_POLLS })).lines.max),
+} : {};
+const env = { ...process.env, ...ownersGuard, KIT11_APPROVER: "test-cfo", KIT11_RELAY_PORT: String(PORT), KIT11_LOCAL_RELAY_TOKEN: randomBytes(32).toString("hex") };
 const repo = resolve(import.meta.dirname, "../..");
 
 const log = createWriteStream(join(out, "dryrun.log"));
@@ -244,8 +253,8 @@ async function linksStep(): Promise<void> {
 
 // Block 1, behind KIT11_PASSKEY_OWNERS=on: an account whose only owners are the two passkeys; a mandate bound with both
 // Face IDs signing the account's Execute digest on the phone. The runner only relays: no server key is an owner.
-// Since 12 November the owners commands and the runner's relay call Metal only behind the owners guard, so this step
-// also needs OWNERS_GO=yes, OWNERS_CALL_BUDGET and OWNERS_CALL_LOG in the environment (src/metal/ownersBudget.ts).
+// Since 12 November the owners commands and the runner's relay call Metal only behind the owners guard: `env` above
+// sets it for both when KIT11_PASSKEY_OWNERS=on (src/metal/ownersBudget.ts).
 const OWNERS_STEP = "12d Face ID signs on chain: a mandate bound by both passkeys, no server key";
 async function ownersStep(): Promise<void> {
   const setup = cli("ownersExecute.ts", "setup");
