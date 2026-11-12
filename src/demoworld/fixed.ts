@@ -24,7 +24,6 @@ export async function fixed<T>(seed: string, start: string, fn: (clock: FixedClo
   if (running) throw new Error("a fixed world is already being built in this process: one at a time");
   let ms = RealDate.parse(start);
   if (Number.isNaN(ms)) throw new Error(`not a time: ${start}`);
-  running = true;
   let counter = 0;
   const bytes = (n: number): Buffer => {
     const parts: Buffer[] = [];
@@ -49,18 +48,6 @@ export async function fixed<T>(seed: string, start: string, fn: (clock: FixedClo
   const nodeCrypto = createRequire(import.meta.url)("node:crypto") as Record<string, unknown>;
   const kept = { randomUUID: nodeCrypto.randomUUID, randomBytes: nodeCrypto.randomBytes, randomInt: nodeCrypto.randomInt, mathRandom: Math.random };
   const web = globalThis.crypto as unknown as Record<string, unknown>;
-  nodeCrypto.randomUUID = uuid;
-  nodeCrypto.randomBytes = (n: number, cb?: (err: null, buf: Buffer) => void) => { const b = bytes(n); if (cb) { cb(null, b); return undefined; } return b; };
-  nodeCrypto.randomInt = (a: number, b?: number | ((err: null, n: number) => void)) => {
-    const [min, max] = typeof b === "number" ? [a, b] : [0, a];
-    return min + (bytes(6).readUIntBE(0, 6) % (max - min));
-  };
-  syncBuiltinESMExports();
-  Object.defineProperty(web, "getRandomValues", { configurable: true, value: <A extends ArrayBufferView>(a: A): A => { new Uint8Array(a.buffer, a.byteOffset, a.byteLength).set(bytes(a.byteLength)); return a; } });
-  Object.defineProperty(web, "randomUUID", { configurable: true, value: uuid });
-  Math.random = () => bytes(6).readUIntBE(0, 6) / 2 ** 48;
-  globalThis.Date = FixedDate;
-
   const clock: FixedClock = {
     now: () => new RealDate(ms),
     set: (iso) => {
@@ -71,7 +58,19 @@ export async function fixed<T>(seed: string, start: string, fn: (clock: FixedClo
     },
     tick: (minutes) => { ms += Math.round(minutes * 60_000); return new RealDate(ms); },
   };
+  running = true;
   try {
+    nodeCrypto.randomUUID = uuid;
+    nodeCrypto.randomBytes = (n: number, cb?: (err: null, buf: Buffer) => void) => { const b = bytes(n); if (cb) { cb(null, b); return undefined; } return b; };
+    nodeCrypto.randomInt = (a: number, b?: number | ((err: null, n: number) => void)) => {
+      const [min, max] = typeof b === "number" ? [a, b] : [0, a];
+      return min + (bytes(6).readUIntBE(0, 6) % (max - min));
+    };
+    syncBuiltinESMExports();
+    Object.defineProperty(web, "getRandomValues", { configurable: true, value: <A extends ArrayBufferView>(a: A): A => { new Uint8Array(a.buffer, a.byteOffset, a.byteLength).set(bytes(a.byteLength)); return a; } });
+    Object.defineProperty(web, "randomUUID", { configurable: true, value: uuid });
+    Math.random = () => bytes(6).readUIntBE(0, 6) / 2 ** 48;
+    globalThis.Date = FixedDate;
     return await fn(clock);
   } finally {
     running = false;
