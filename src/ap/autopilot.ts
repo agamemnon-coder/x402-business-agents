@@ -28,9 +28,10 @@ import { checkpoint } from "../policy/saga.js";
 import { withOrigin } from "../provenance/origin.js";
 import { syncVault } from "../vault/build.js";
 import type { VaultSink } from "../vault/sink.js";
-import { accrualPushed, bookable } from "./books.js";
-import { apAgentsOn } from "./coderAgent.js";
-import { bookAccrual, ingestDocument, MAX_DOCUMENT_BYTES, type InboxDeps, type IngestResult, type Source } from "./inbox.js";
+import { suppliersOnFile } from "./bank.js";
+import { accrualEntries, accrualPushed, bookable, paymentEntries, pushOnce, reversalEntries, type BookkeepingSink } from "./books.js";
+import { apAgentsOn, ensureCoded } from "./coderAgent.js";
+import { bookAccrual, ingestDocument, MAX_DOCUMENT_BYTES, recheck, type InboxDeps, type IngestResult, type Source } from "./inbox.js";
 import { payApInvoice, syncPayments } from "./pay.js";
 import { apInvoice, apInvoices, type ApInvoiceRow } from "./store.js";
 import { proposePayeeAdd, requestPayeeAddForInvoice } from "./vendors.js";
@@ -69,6 +70,8 @@ export interface AutopilotDeps {
   alive?: (pid: number, host: string) => boolean;
   /** A document filed but never read is read again once it is this old (a reading still running is never doubled). */
   orphanGraceMs?: number;
+  /** How often a running step renews the lease (tests make it short). */
+  heartbeatMs?: number;
 }
 
 /** The words a step's outcome is told in. */
@@ -82,10 +85,19 @@ export interface PassResult {
   holder?: { owner: string; pid: number; host: string; heartbeat: string };
 }
 
-/** A lease older than this is taken over: longer than any one step may run (a Claude call is bounded far below it). */
+/**
+ * A lease not renewed for this long is taken over. A running step renews it every HEARTBEAT_MS, so only a holder that
+ * stopped (or hangs) loses it, however long one step takes.
+ */
 export const LEASE_MS = 15 * 60_000;
-/** A document filed this long ago and still unread was left by a process that stopped. */
-export const ORPHAN_GRACE_MS = 15 * 60_000;
+export const HEARTBEAT_MS = 60_000;
+/**
+ * A document filed this long ago and still unread was left by a process that stopped. Longer than one reading can
+ * take: up to three Claude calls (classify, read, a review note), each at most three tries of 180 seconds
+ * (src/claude/reader.ts), so about 27 minutes. A document may be filed by another process than the autopilot (the
+ * payables page, npm run payables -- add), which holds no lease.
+ */
+export const ORPHAN_GRACE_MS = 60 * 60_000;
 /** The waits after the first and the second failure of an item; the third failure parks it for a person. */
 export const BACKOFF_MS = [60_000, 5 * 60_000] as const;
 export const MAX_ATTEMPTS = 3;
@@ -135,7 +147,8 @@ export function takeLease(db: DB, me: { id: string; pid: number; host: string },
   return db.transaction((): { ok: true } | { ok: false; holder: Lease } => {
     const held = db.prepare("SELECT owner, pid, host, heartbeat, taken_at FROM autopilot_lease WHERE id = 1").get() as Lease | undefined;
     const mine = held?.owner === me.id;
-    // A fresh lease of this process is left as it is, so a pass with nothing to do writes nothing.
+    // A fresh lease of this process is left as it is: a pass with nothing to do writes no row (the lease's heartbeat is
+    // renewed once it is a third of LEASE_MS old).
     if (mine && Date.parse(held!.heartbeat) + LEASE_MS / 3 > now.getTime()) return { ok: true };
     const free = !held || mine || (held.host === me.host && !alive(held.pid, held.host)) || Date.parse(held.heartbeat) + LEASE_MS <= now.getTime();
     if (!free) return { ok: false, holder: held! };
@@ -145,6 +158,11 @@ export function takeLease(db: DB, me: { id: string; pid: number; host: string },
     if (held && !mine) audit(db, "system", "autopilot.lease_taken_over", held.owner, { from: { pid: held.pid, host: held.host, heartbeat: held.heartbeat }, to: { pid: me.pid, host: me.host } }, now);
     return { ok: true };
   }).immediate();
+}
+
+/** Renews this process's lease while a step runs; false when it is no longer this process's. */
+function renewLease(db: DB, ownerId: string, now: Date): boolean {
+  return db.prepare("UPDATE autopilot_lease SET heartbeat = ? WHERE id = 1 AND owner = ?").run(now.toISOString(), ownerId).changes === 1;
 }
 
 /** Gives the lease back (a clean stop; a killed process gives nothing back). */
@@ -205,6 +223,12 @@ async function step(ctx: Ctx, item: string, name: string, run: () => Promise<Don
   if (!lease.ok) throw new LeaseLost();
   await checkpoint(`autopilot:${name}`);
   const started = ctx.now().getTime();
+  // The lease is renewed while the step runs (a Claude call may take minutes), so no other process takes it over.
+  let lost = false;
+  const beat = setInterval(() => {
+    try { lost ||= !renewLease(ctx.db, ctx.me.id, ctx.now()); } catch { /* the ledger is closed: the process is stopping */ }
+  }, ctx.deps.heartbeatMs ?? HEARTBEAT_MS);
+  beat.unref?.();
   let done: Done | null;
   try {
     done = await withOrigin({ actor: "code", rule: `autopilot: ${name}` }, run);
@@ -212,7 +236,10 @@ async function step(ctx: Ctx, item: string, name: string, run: () => Promise<Don
     if (e instanceof LeaseLost) throw e;
     failed(ctx, item, name, e, ctx.now().getTime() - started);
     return 0;
+  } finally {
+    clearInterval(beat);
   }
+  if (lost) throw new LeaseLost();
   if (!done) return 0;
   const now = ctx.now();
   ctx.db.transaction(() => {
@@ -230,22 +257,32 @@ const summary = (r: IngestResult): string =>
     : r.kind === "duplicate_document" ? `already filed${r.invoice_id ? ` as ${r.invoice_id}` : ""}`
       : r.results.map(summary).join("; ") || "an e-mail with no PDF attached";
 
-/** Runs an approved proposal, marked so that a restart finishes exactly the executions this autopilot began. */
-async function execute(ctx: Ctx, proposalId: string, resume: boolean): Promise<Done> {
+/**
+ * Runs an approved proposal, marked so that a restart finishes exactly the executions this autopilot began. Null when
+ * another process (the runner) began it first: the executor's approval check refused this one, and it is left to that
+ * process, unmarked.
+ */
+async function execute(ctx: Ctx, proposalId: string, resume: boolean): Promise<Done | null> {
   const db = ctx.db;
+  const mark = `${RUNNING}${proposalId}`;
   db.prepare(`INSERT INTO autopilot_items (item, step, state, attempts, updated_at) VALUES (?, 'execute', 'executing', 0, ?)
-    ON CONFLICT(item) DO NOTHING`).run(`${RUNNING}${proposalId}`, ctx.now().toISOString());
+    ON CONFLICT(item) DO NOTHING`).run(mark, ctx.now().toISOString());
   if (resume) resuming.add(proposalId);
+  let othersRun = false;
   try {
     await ctx.deps.execute(db, proposalId);
+  } catch (e) {
+    // beginExecution's refusal (src/policy/approvals.ts) of a proposal another process moved to EXECUTING after this
+    // pass looked at it: this autopilot began nothing.
+    othersRun = !resume && String((e as Error)?.message ?? "").includes(`${proposalId} is EXECUTING, not approved`);
+    if (!othersRun) throw e;
   } finally {
     if (resume) resuming.delete(proposalId);
     // Still executing (an outside answer that is not known yet): the mark stays, and the next pass finishes it.
-    const st = (db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(proposalId) as { status: string } | undefined)?.status;
-    if (st !== "EXECUTING") db.prepare("DELETE FROM autopilot_items WHERE item = ? AND state = 'executing'").run(`${RUNNING}${proposalId}`);
+    if (othersRun || proposalStatus(db, proposalId) !== "EXECUTING") db.prepare("DELETE FROM autopilot_items WHERE item = ? AND state = 'executing'").run(mark);
   }
-  const st = (db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(proposalId) as { status: string }).status;
-  return { outcome: "executed", detail: `${proposalId} ${st.toLowerCase()}` };
+  if (othersRun) return null;
+  return { outcome: "executed", detail: `${proposalId} ${String(proposalStatus(db, proposalId)).toLowerCase()}` };
 }
 
 const proposalStatus = (db: DB, id: string) => (db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(id) as { status: string } | undefined)?.status ?? null;
@@ -329,6 +366,18 @@ function needsBooking(ctx: Ctx, inv: ApInvoiceRow): boolean {
   return !!ctx.deps.inbox.sink && !accrualPushed(ctx.db, inv, ctx.deps.inbox.sink);
 }
 
+/** Whether the sink took this event of this invoice. */
+const pushed = (db: DB, inv: ApInvoiceRow, sink: BookkeepingSink, event: "payment" | "reversal") =>
+  !!db.prepare("SELECT 1 FROM ap_sink_events WHERE invoice_id = ? AND event = ? AND sink = ?").get(inv.id, event, sink.name);
+
+/** When and by whom an invoice was rejected (its last ap.status row), for the reversal a sink never took. */
+function rejection(db: DB, inv: ApInvoiceRow): { date: string; why: string } {
+  const r = db.prepare("SELECT ts, json_extract(payload_json, '$.reason') AS reason FROM audit_log WHERE event = 'ap.status' AND subject = ? AND json_extract(payload_json, '$.to') = 'rejected' ORDER BY seq DESC LIMIT 1")
+    .get(inv.id) as { ts: string; reason: string | null } | undefined;
+  const date = (r?.ts ?? inv.updated_at).slice(0, 10);
+  return { date, why: r?.reason?.startsWith("the CFO rejected") ? "the CFO rejected the payment" : "a person rejected the invoice" };
+}
+
 /** The open request to add this invoice's supplier (one per supplier, whichever invoice asked first). */
 function openAdd(db: DB, inv: ApInvoiceRow): { add_id: string; status: string; proposal_id: string | null } | undefined {
   return db.prepare("SELECT add_id, status, proposal_id FROM payee_adds WHERE vendor = ? AND status NOT IN ('APPLIED', 'CLOSED') ORDER BY created_at DESC, add_id DESC LIMIT 1")
@@ -348,9 +397,36 @@ async function invoices(ctx: Ctx): Promise<number> {
         return { outcome: "done", detail: now.coding ? `coded by ${now.coding.source}, booked` : "booked" };
       });
     }
+    // A payment (or a CFO's rejection) the sink never took: it was down, or a stop came after the invoice moved on.
+    const sink = ctx.deps.inbox.sink;
+    if (sink && inv.status === "paid" && !pushed(db, inv, sink, "payment") && paymentEntries(db, inv).length) {
+      moved += await step(ctx, inv.id, "book the payment", async () => {
+        const coded = await ensureCoded(db, inv, { now: ctx.now });
+        await pushOnce(db, sink, "accrual", accrualEntries(coded), coded, ctx.now());
+        await pushOnce(db, sink, "payment", paymentEntries(db, inv), inv, ctx.now());
+        if (!accrualPushed(db, inv, sink) || !pushed(db, inv, sink, "payment")) throw new Error(`the bookkeeping sink (${sink.name}) did not take the payment`);
+        return { outcome: "done", detail: "the payment booked" };
+      });
+    }
+    if (sink && inv.status === "rejected" && accrualPushed(db, inv, sink) && !pushed(db, inv, sink, "reversal")) {
+      moved += await step(ctx, inv.id, "book the reversal", async () => {
+        const r = rejection(db, inv);
+        await pushOnce(db, sink, "reversal", reversalEntries(inv, r.date, r.why), inv, ctx.now());
+        if (!pushed(db, inv, sink, "reversal")) throw new Error(`the bookkeeping sink (${sink.name}) did not take the reversal`);
+        return { outcome: "done", detail: "the accrual taken back" };
+      });
+    }
     if (inv.status === "needs_vendor" && inv.doc_kind === "invoice") {
       const add = openAdd(db, inv);
-      if (!add) {
+      const onFile = suppliersOnFile(db).some((b) => b.name.trim() === inv.vendor.trim());
+      if (!add && onFile) {
+        // The supplier was added and a stop came before its invoices were checked again (src/ap/vendors.ts).
+        moved += await step(ctx, inv.id, "check again", async () => {
+          const [next] = await recheck(db, ctx.deps.inbox, [inv.id]);
+          if (!next || next.status === "needs_vendor") throw new Error(`${inv.vendor} is on file, and the invoice still waits for a supplier; a person looks at it`);
+          return { outcome: "done", detail: `${inv.id} ${next.status.replace(/_/g, " ")}` };
+        });
+      } else if (!add) {
         moved += await step(ctx, inv.id, "ask for the supplier", async () => {
           const r = requestPayeeAddForInvoice(db, inv.id, "treasury", ctx.now());
           return { outcome: "waiting for a person", detail: `${r.add_id}: a person checks ${r.vendor}'s account with the supplier` };
@@ -378,18 +454,33 @@ async function invoices(ctx: Ctx): Promise<number> {
   return moved;
 }
 
+/** Whether an earlier payment proposal of the same invoice failed, or its terms could never run. */
+function failedBefore(db: DB, proposalId: string, terms: Record<string, unknown>): boolean {
+  if (typeof terms.invoice_no !== "string") return true;
+  return !!db.prepare(`SELECT 1 FROM proposals WHERE proposal_id <> ? AND kind IN ('invoice_payment', 'supplier_payment')
+    AND json_extract(terms_json, '$.invoice_no') = ? AND status IN ('FAILED', 'NEEDS_REAPPROVAL') LIMIT 1`).get(proposalId, terms.invoice_no);
+}
+
 /** Proposals of payables: within the gate's limit approved by the gate; approved ones (by the CFO or the gate) executed. */
 async function proposals(ctx: Ctx): Promise<number> {
   let moved = 0;
   const db = ctx.db;
-  const rows = db.prepare(`SELECT proposal_id, kind, status, terms_json FROM proposals WHERE kind IN (${KINDS.map(() => "?").join(", ")}) AND status IN ('PENDING_APPROVAL', 'APPROVED') ORDER BY created_at, proposal_id`)
+  // A line of a payment batch is the batch's: decided with it by the CFO and run by the runner, never by the autopilot.
+  const rows = db.prepare(`SELECT p.proposal_id, p.kind, p.status, p.terms_json FROM proposals p
+    WHERE p.kind IN (${KINDS.map(() => "?").join(", ")}) AND p.status IN ('PENDING_APPROVAL', 'APPROVED')
+      AND NOT EXISTS (SELECT 1 FROM batch_lines b JOIN proposals bp ON bp.proposal_id = b.batch_id
+        WHERE b.proposal_id = p.proposal_id AND bp.status NOT IN ('REJECTED', 'EXPIRED', 'SUPERSEDED', 'NEEDS_REAPPROVAL'))
+    ORDER BY p.created_at, p.proposal_id`)
     .all(...KINDS) as { proposal_id: string; kind: string; status: string; terms_json: string }[];
   for (const p of rows) {
     if (p.status === "PENDING_APPROVAL") {
       // A new supplier, and any payment above the limit, waits for the CFO's Face ID.
       const gate = ctx.deps.gate;
       const limit = gate?.limit(db) ?? null;
-      if (!gate || !withinAloneLimit(JSON.parse(p.terms_json) as Record<string, unknown>, limit)) continue;
+      const terms = JSON.parse(p.terms_json) as Record<string, unknown>;
+      if (!gate || !withinAloneLimit(terms, limit)) continue;
+      // A payment of an invoice whose earlier payment failed waits for the CFO: the gate never sends it again.
+      if (failedBefore(db, p.proposal_id, terms)) continue;
       moved += await step(ctx, p.proposal_id, "approve within the limit", async () => {
         gate.approve(db, p.proposal_id, ctx.now());
         return { outcome: "done", detail: `${p.proposal_id} is within ${limit!.currency} ${limit!.amount}, approved by ${gate.name}` };

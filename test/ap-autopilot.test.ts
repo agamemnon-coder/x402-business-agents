@@ -9,18 +9,20 @@ import { join, relative } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { seedTreasury } from "../src/agents/euroBill.js";
 import { autopilotPass, drain, LEASE_MS, parkedItems, retryItem, takeLease, withinAloneLimit, type AloneGate, type AutopilotDeps } from "../src/ap/autopilot.js";
-import { CsvFileSink, type BookkeepingSink } from "../src/ap/books.js";
+import { CsvFileSink, type ApEntry, type BookkeepingSink } from "../src/ap/books.js";
 import { ingestDocument, type InboxDeps } from "../src/ap/inbox.js";
 import type { Asker } from "../src/ap/read.js";
 import { apInvoices } from "../src/ap/store.js";
 import { executePayeeAdd, recordPayeeAddVerification } from "../src/ap/vendors.js";
 import { openDb, type DB } from "../src/db/open.js";
 import type { ErpConnector } from "../src/erp/connector.js";
+import { AirwallexError } from "../src/airwallex/client.js";
 import { approvalOrigin } from "../src/executors/index.js";
 import { executeInvoicePayment } from "../src/executors/invoicePayment.js";
 import { executeSupplierPayment } from "../src/executors/supplierPayment.js";
 import { verifyLedger } from "../src/ledger/core.js";
-import { decide, resuming } from "../src/policy/approvals.js";
+import { beginExecution, decide, resuming } from "../src/policy/approvals.js";
+import { createBatch } from "../src/policy/batch.js";
 import { chaos } from "../src/policy/saga.js";
 import { originsCheck } from "../src/provenance/check.js";
 import { withOrigin } from "../src/provenance/origin.js";
@@ -437,6 +439,141 @@ describe("a document filed but never read", () => {
 // ── Stopped between any two steps ──
 
 interface EndState { invoices: Record<string, string>; transfers: string[]; ledger: string[]; journal: string[]; vault: string[]; books: [string, number][]; codings: string[]; proposals: string[] }
+
+describe("after the review: stops, failures and the runner's own work", () => {
+  it("a payment the sink did not take is booked on a later pass, once", async () => {
+    let down = 1;
+    const journal: ApEntry[] = [];
+    const sink: BookkeepingSink = { name: "flaky", push: (entries) => {
+      if (entries[0]?.event === "payment" && down-- > 0) throw new Error("the bookkeeping package is down");
+      journal.push(...entries);
+    } };
+    const w = await world({ sink });
+    writeFileSync(join(w.folder, "small.pdf"), await pdfOf(SMALL));
+    await drain(w.db, w.deps);
+    cfoApproves(w.db);
+    await drain(w.db, w.deps);
+    const [inv] = apInvoices(w.db);
+    expect(inv!.status).toBe("paid");
+    expect(w.db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'ap.sink_failed'").get()).toEqual({ n: 1 });
+    expect(journal.filter((e) => e.event === "payment").length).toBeGreaterThan(0);
+    expect(w.db.prepare("SELECT event FROM ap_sink_events WHERE invoice_id = ? ORDER BY event").all(inv!.id)).toEqual([{ event: "accrual" }, { event: "payment" }]);
+    expect(steps(w.db).filter((x) => x.step === "book the payment").map((x) => x.outcome)).toEqual(["done"]);
+    // Nothing more to do: a second drain books nothing twice.
+    const lines = journal.length;
+    expect((await drain(w.db, w.deps)).moved).toBe(0);
+    expect(journal.length).toBe(lines);
+  }, 60_000);
+
+  it("a reversal the sink did not take is booked on a later pass", async () => {
+    let down = 1;
+    const journal: ApEntry[] = [];
+    const sink: BookkeepingSink = { name: "flaky", push: (entries) => {
+      if (entries[0]?.event === "reversal" && down-- > 0) throw new Error("the bookkeeping package is down");
+      journal.push(...entries);
+    } };
+    const w = await world({ sink });
+    writeFileSync(join(w.folder, "small.pdf"), await pdfOf(SMALL));
+    await drain(w.db, w.deps);
+    const waiting = w.db.prepare("SELECT proposal_id, terms_sha256 FROM proposals WHERE status = 'PENDING_APPROVAL'").get() as { proposal_id: string; terms_sha256: string };
+    decide(w.db, { proposalId: waiting.proposal_id, decision: "REJECTED", typedPrefix: waiting.terms_sha256.slice(0, 8), approver: "cfo", method: "cli" });
+    await drain(w.db, w.deps);
+    const [inv] = apInvoices(w.db);
+    expect(inv!.status).toBe("rejected");
+    expect(w.db.prepare("SELECT event FROM ap_sink_events WHERE invoice_id = ? ORDER BY event").all(inv!.id)).toEqual([{ event: "accrual" }, { event: "reversal" }]);
+    expect(journal.filter((e) => e.event === "reversal").map((e) => e.memo).join(" ")).toMatch(/the CFO rejected the payment/);
+    expect(w.awx.transfers).toEqual([]);
+  }, 60_000);
+
+  it("under a gate, a payment that fails is not sent again: the next plan waits for the CFO", async () => {
+    const w = await world({ gate: standInGate("500.00") });
+    // Every transfer create is refused with a documented 400 (nothing is made at Airwallex).
+    w.awx.createTransfer = async () => { w.awx.calls.push("createTransfer"); throw new AirwallexError(400, "validation_failed", { message: "refused by the stand-in" }, "/api/v1/transfers/create"); };
+    writeFileSync(join(w.folder, "small.pdf"), await pdfOf(SMALL));
+    const r = await drain(w.db, w.deps);
+    expect(r.passes).toBeLessThan(10);
+    const creates = w.awx.calls.filter((c) => /createTransfer|createPayoutTransfer/.test(c));
+    expect(creates.length).toBeLessThanOrEqual(1);
+    expect(w.awx.transfers).toEqual([]);
+    const props = w.db.prepare("SELECT status FROM proposals WHERE kind IN ('invoice_payment', 'supplier_payment') ORDER BY created_at, proposal_id").all() as { status: string }[];
+    expect(props.map((p) => p.status)).toEqual(["FAILED", "PENDING_APPROVAL"]);
+    expect(apInvoices(w.db)[0]!.status).toBe("waiting_cfo");
+    // A second drain changes nothing: it waits for the CFO.
+    expect((await drain(w.db, w.deps)).moved).toBe(0);
+  }, 60_000);
+
+  it("a payment the runner began after the autopilot looked at it is left to the runner, unmarked", async () => {
+    const w = await world();
+    writeFileSync(join(w.folder, "small.pdf"), await pdfOf(SMALL));
+    await drain(w.db, w.deps);
+    const [id] = cfoApproves(w.db);
+    const real = w.deps.execute;
+    // The runner begins the execution first (and is still running it); the autopilot's executor then runs.
+    w.deps.execute = async (db, pid) => {
+      beginExecution(db, pid);
+      return real(db, pid);
+    };
+    await drain(w.db, w.deps);
+    expect(w.db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(id)).toEqual({ status: "EXECUTING" });
+    expect(w.db.prepare("SELECT COUNT(*) AS n FROM autopilot_items").get()).toEqual({ n: 0 });
+    w.deps.execute = real;
+    // Later passes do not take over the runner's execution.
+    expect((await drain(w.db, w.deps)).moved).toBe(0);
+    expect(w.awx.transfers).toEqual([]);
+    expect(steps(w.db).filter((x) => x.step === "finish execution" || x.step === "execute")).toEqual([]);
+  }, 60_000);
+
+  it("the lines of a payment batch are the runner's: neither approved by a gate nor executed by the autopilot", async () => {
+    const w = await world({ gate: standInGate("5000.00") });
+    const gate = w.deps.gate;
+    w.deps.gate = null;
+    writeFileSync(join(w.folder, "small.pdf"), await pdfOf(SMALL));
+    writeFileSync(join(w.folder, "stockline.pdf"), await pdfOf(fixture("stockline-licence-SLL-2026-11.txt")));
+    await drain(w.db, w.deps);
+    const lines = (w.db.prepare("SELECT proposal_id FROM proposals WHERE status = 'PENDING_APPROVAL' ORDER BY proposal_id").all() as { proposal_id: string }[]).map((p) => p.proposal_id);
+    expect(lines).toHaveLength(2);
+    const b = createBatch(w.db, lines, "treasury");
+    w.deps.gate = gate;
+    expect((await drain(w.db, w.deps)).moved).toBe(0);
+    expect(steps(w.db).filter((x) => x.step === "approve within the limit")).toEqual([]);
+    // The CFO approves the batch: its lines are approved with it, and the runner runs them, not the autopilot.
+    decide(w.db, { proposalId: b.proposal_id, decision: "APPROVED", typedPrefix: b.terms_sha256.slice(0, 8), approver: "cfo", method: "cli" });
+    expect(w.db.prepare(`SELECT COUNT(*) AS n FROM proposals WHERE proposal_id IN (${lines.map(() => "?").join(", ")}) AND status = 'APPROVED'`).get(...lines)).toEqual({ n: 2 });
+    expect((await drain(w.db, w.deps)).moved).toBe(0);
+    expect(w.awx.transfers).toEqual([]);
+  }, 60_000);
+
+  it("a step that runs long keeps the lease: a second process does not take it over", async () => {
+    let t = Date.now();
+    const now = () => new Date(t);
+    const w = await world({ now });
+    w.deps.heartbeatMs = 5;
+    w.deps.rail = null;
+    // The first reading hangs (a slow Claude call) until it is let go.
+    let release: () => void = () => {};
+    const held = new Promise<void>((r) => { release = r; });
+    let started: () => void = () => {};
+    const inside = new Promise<void>((r) => { started = r; });
+    let first = true;
+    w.deps.inbox = { ...w.deps.inbox, reader: { ask: async (_a: unknown, fallback: () => unknown) => {
+      if (first) { first = false; started(); await held; }
+      return { value: fallback(), source: "fallback", model: null, note: "no key" };
+    } } as unknown as Asker };
+    writeFileSync(join(w.folder, "small.pdf"), await pdfOf(SMALL));
+    const pass = autopilotPass(w.db, w.deps);
+    await inside;
+    // Sixteen minutes later, the first process is still in its step and has renewed its lease.
+    t += 16 * 60_000;
+    await new Promise((r) => setTimeout(r, 40));
+    const second = await autopilotPass(w.db, { ...w.deps, owner: { id: "autopilot-2", pid: 2, host: "other-host" } });
+    expect(second.lease).toBe("busy");
+    expect(w.db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'autopilot.lease_taken_over'").get()).toEqual({ n: 0 });
+    release();
+    expect((await pass).lease).toBe("held");
+    expect(apInvoices(w.db)).toHaveLength(1);
+    expect(steps(w.db).filter((x) => x.step === "take in").map((x) => x.outcome)).toEqual(["done"]);
+  }, 60_000);
+});
 
 function walk(dir: string): string[] {
   if (!existsSync(dir)) return [];
