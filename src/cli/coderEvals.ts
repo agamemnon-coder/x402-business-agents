@@ -107,7 +107,7 @@ if (rows.every((r) => r.no_answer && r.run_status === "unavailable" && r.cost_us
 
 const record: CoderEvalRecord = {
   ran_at: new Date().toISOString(), commit: COMMIT, dirty: DIRTY, runs, max_usd: maxUsd, models: names.map((n) => ALL[n as keyof typeof ALL]),
-  cases: cases.map((c) => c.id), coder_model: CODER_MODEL, stopped, rows,
+  cases: cases.map((c) => c.id), all_cases: CODER_CASES.length, coder_model: CODER_MODEL, stopped, rows,
 };
 mkdirSync(join(ROOT, "docs/evals"), { recursive: true });
 writeFileSync(join(ROOT, "docs/evals/coder.json"), JSON.stringify(record, null, 2) + "\n");

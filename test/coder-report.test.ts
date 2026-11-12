@@ -16,7 +16,7 @@ const row = (over: Partial<CoderEvalRow> & Pick<CoderEvalRow, "case" | "model">)
 
 const record = (rows: CoderEvalRow[]): CoderEvalRecord => ({
   ran_at: "2026-11-12T13:00:00.000Z", commit: "abc123def456", dirty: false, runs: 1, max_usd: 3, models: ["claude-haiku-5-5", "claude-sonnet-5-5"],
-  cases: ["a", "b"], coder_model: "claude-haiku-5-5", stopped: null, rows,
+  cases: ["a", "b"], all_cases: 2, coder_model: "claude-haiku-5-5", stopped: null, rows,
 });
 
 describe("the summary per model", () => {
@@ -47,6 +47,10 @@ describe("the summary per model", () => {
     expect(coderSummary(record([row({ case: "a", model: "claude-haiku-5-5" })])).chosen).toBeNull();
     const wrong = { correct: { account: true, vat_code: false, cost_centre: true } };
     expect(coderSummary(record([row({ case: "a", model: "claude-haiku-5-5", ...wrong }), row({ case: "b", model: "claude-haiku-5-5" })])).chosen).toBeNull();
+    // A run of some of the cases chooses nothing, and says so.
+    const some = { ...record([row({ case: "a", model: "claude-haiku-5-5" })]), cases: ["a"] };
+    expect(coderSummary(some).chosen).toBeNull();
+    expect(coderEvalSection(some)).toContain("This run did 1 of the 2 cases, so it chooses no default model: CODER_MODEL stays claude-haiku-5-5.");
   });
 });
 

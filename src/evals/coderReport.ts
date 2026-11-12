@@ -43,6 +43,8 @@ export interface CoderEvalRecord {
   models: string[];
   /** The cases the run set out to do. */
   cases: string[];
+  /** How many cases the eval file held: a run of fewer chooses no default model. */
+  all_cases: number;
   /** CODER_MODEL when the run started. */
   coder_model: string;
   /** Why the run stopped before it did every case, or null. */
@@ -93,7 +95,8 @@ export function coderSummary(r: CoderEvalRecord): { models: CoderModelSummary[];
       p50_ms: percentile(times, 0.5), p95_ms: percentile(times, 0.95),
     };
   });
-  const passing = models.filter((m) => m.complete && m.account >= CODER_BAR && m.vat_code >= CODER_BAR).sort((a, b) => a.cost_per_invoice_micros - b.cost_per_invoice_micros);
+  // Only a run of every case chooses: a few cases say little about a model.
+  const passing = models.filter((m) => r.cases.length === r.all_cases && m.complete && m.account >= CODER_BAR && m.vat_code >= CODER_BAR).sort((a, b) => a.cost_per_invoice_micros - b.cost_per_invoice_micros);
   return { models, chosen: passing[0]?.model ?? null };
 }
 
@@ -141,7 +144,8 @@ export function coderEvalSection(r: CoderEvalRecord): string {
     "",
     chosen
       ? `Default model: ${chosen.model}, the cheapest per invoice that reached at least ${CODER_BAR * 100}% on account class (${pct(chosen.account)}) and on VAT code (${pct(chosen.vat_code)}) over every case. CODER_MODEL in \`src/ap/coderCore.ts\` is set to it.`
-      : `No model reached ${CODER_BAR * 100}% on both account class and VAT code over every case, so the default model was not changed: CODER_MODEL stays ${r.coder_model}.`,
+      : r.cases.length < r.all_cases ? `This run did ${r.cases.length} of the ${r.all_cases} cases, so it chooses no default model: CODER_MODEL stays ${r.coder_model}.`
+        : `No model reached ${CODER_BAR * 100}% on both account class and VAT code over every case, so the default model was not changed: CODER_MODEL stays ${r.coder_model}.`,
     "",
     "### Every mistake",
     "",
