@@ -839,6 +839,20 @@ function el(tag: string, cls?: string, kids: (Node | string | null | false | und
 }
 const txt = (tag: string, cls: string, s: unknown) => el(tag, cls, [str(s)]);
 
+/** The Face ID mark (the site's line icon), drawn from fixed paths here: presentation only, hidden from screen readers. */
+const FACE_ID = ["M3 7V5a2 2 0 0 1 2-2h2", "M17 3h2a2 2 0 0 1 2 2v2", "M21 17v2a2 2 0 0 1-2 2h-2", "M7 21H5a2 2 0 0 1-2-2v-2", "M8 14s1.5 2 4 2 4-2 4-2", "M9 9h.01", "M15 9h.01"];
+function glyph(cls: string, paths: string[]): SVGSVGElement {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  for (const [k, v] of Object.entries({ class: cls, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true", focusable: "false" })) svg.setAttribute(k, v);
+  for (const d of paths) {
+    const path = document.createElementNS(ns, "path");
+    path.setAttribute("d", d);
+    svg.appendChild(path);
+  }
+  return svg;
+}
+
 export function countdown(iso: string, lang = "en"): { text: string; soon: boolean; over: boolean } {
   const ms = Date.parse(iso) - Date.now();
   const nl = lang === "nl";
@@ -1510,6 +1524,7 @@ async function approvePage(attempt = 0): Promise<void> {
     const name = many && f ? `${f.label.charAt(0).toLowerCase()}${f.label.slice(1)} ` : "";
     const approve = el("button", against ? "confirm against" : "confirm", [against ? `Approve ${name}anyway with Face ID` : `Approve ${name}with Face ID`]) as HTMLButtonElement;
     approve.id = "approve";
+    approve.prepend(glyph("btn-ico", FACE_ID));
     const reject = el("button", against ? "confirm reject" : "reject-btn", [against ? "Reject (Opus advises this)" : "Reject"]) as HTMLButtonElement;
     reject.id = "reject";
     for (const b of [approve, reject]) b.type = "button";
@@ -1639,6 +1654,7 @@ function payablesView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, ter
   ];
   const approve = el("button", against ? "confirm against" : "confirm", [ph(lang, "ph.approve")]) as HTMLButtonElement;
   approve.id = "approve";
+  approve.prepend(glyph("btn-ico", FACE_ID));
   const reject = el("button", against ? "confirm reject" : "reject-btn", [ph(lang, "ph.reject")]) as HTMLButtonElement;
   reject.id = "reject";
   for (const b of [approve, reject]) { b.type = "button"; b.disabled = true; }
@@ -1736,6 +1752,7 @@ async function batchView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, 
   const reject = el("button", "reject-btn", [ph(lang, "ph.reject_batch")]) as HTMLButtonElement;
   for (const b of [approve, reject]) { b.type = "button"; b.disabled = true; }
   approve.id = "approve";
+  approve.prepend(glyph("btn-ico", FACE_ID));
   reject.id = "reject";
   setTimeout(() => {
     approve.disabled = !enrolled || !approvable || countdown(o.expires_at).over;
@@ -1823,16 +1840,18 @@ function enrolPage(): void {
   label.setAttribute("for", "code");
   const box = el("div", "enrol", [label, input, go, status]);
   // The three steps and how far this phone is: presentation only (data-step drives the style; nothing reads it back).
-  const steps = el("ol", "steps", ["Enter the code", "Create it with Face ID", "Confirm on the runner"].map((s) => el("li", "", [txt("span", "", s)])));
+  const steps = el("ol", "steps", ["Code", "Face ID", "Fingerprint"].map((s) => el("li", "", [txt("span", "", s)])));
   steps.setAttribute("aria-label", "Steps");
-  const step = (n: string) => { steps.dataset.step = n; };
-  step("1");
-  app.replaceChildren(
+  const flow = el("section", "enrol-flow", [
+    el("div", "enrol-ill", [glyph("faceid", FACE_ID), el("span", "scan")]),
     txt("h1", "", "Enrol your passkey"),
-    txt("p", "lead", "A passkey is a private key that signs only after Face ID. Every approval needs it."),
+    txt("p", "lead", "It signs every approval, after Face ID."),
     steps,
     box,
-  );
+  ]);
+  const step = (n: string) => { flow.dataset.step = n; };
+  step("1");
+  app.replaceChildren(flow);
   go.addEventListener("click", async () => {
     go.disabled = true;
     status.textContent = "Checking the code…";

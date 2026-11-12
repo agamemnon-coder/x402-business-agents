@@ -151,7 +151,7 @@ async function state(name: string, path: string, scenario: () => Scenario, drive
     try {
       await page.goto(`${base}${path}${link}`);
       await drive(page);
-      await page.waitForTimeout(150);
+      await page.waitForTimeout(900); // the entrance animations (.35 s) and the tick (.6 s) have finished
       await layout(page, tag);
       const file = join(shots, `${name}-${size.w}-${scheme}.png`);
       await page.screenshot({ path: file });
