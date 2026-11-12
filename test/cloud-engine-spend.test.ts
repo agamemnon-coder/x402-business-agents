@@ -6,6 +6,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { claudeAccess } from "../cloud/src/engine/claudeAccess.js";
 import { d1Spend, expireStale } from "../cloud/src/engine/spend.js";
 import { openDb } from "../src/db/open.js";
+import { MODELS } from "../src/claude/reader.js";
 import { actionBudget } from "../src/engine/budget.js";
 import { sqliteSql } from "../cloud/src/node.js";
 import { d1Sql, type Sql } from "../cloud/src/store.js";
@@ -163,12 +164,12 @@ describe("Claude for a company's engine in the Worker (cloud/src/engine/claudeAc
     expect(await scopes(sql)).toEqual({});
   });
 
-  it("with the key and the switches: reserves in the company's pool, and reads with 4,000 tokens at most, each call announced", async () => {
+  it("with the key and the switches: reserves in the company's pool, and reads with Haiku and 4,000 tokens at most, each call announced", async () => {
     const sql = await fresh();
-    const asked: { max_tokens: number }[] = [];
+    const asked: { model: string; max_tokens: number }[] = [];
     const f = (async (input: RequestInfo | URL, init?: RequestInit) => {
       const body = (await new Request(input as RequestInfo, init).json()) as { model: string; max_tokens: number };
-      asked.push({ max_tokens: body.max_tokens });
+      asked.push({ model: body.model, max_tokens: body.max_tokens });
       return new Response(JSON.stringify({ id: "m", type: "message", role: "assistant", model: body.model, stop_reason: "end_turn", stop_sequence: null, content: [{ type: "text", text: JSON.stringify({ v: "x" }) }], usage: { input_tokens: 10, output_tokens: 5 } }), { status: 200, headers: { "content-type": "application/json" } });
     }) as typeof fetch;
     const a = claudeAccess({ engineClaude: "on", key: KEY, sql, tenantId: "t_try_1", switches: async () => ON, scopes: async () => ({ pool: "public", address: "h9" }), client: (key) => new Anthropic({ apiKey: key, fetch: f, maxRetries: 0 }) })!;
@@ -178,7 +179,9 @@ describe("Claude for a company's engine in the Worker (cloud/src/engine/claudeAc
     const db = openDb(":memory:");
     const { z } = await import("zod");
     await a.reader(db, actionBudget(250_000)).ask({ task: "t", role: "act", actor: "treasury", schema: z.object({ v: z.string() }), instruction: "Read.", document: "x" }, () => ({ v: "" }));
-    expect(asked).toEqual([{ max_tokens: 4_000 }]);
+    // The demo reads with the fastest model the product uses (Haiku, MODELS.classify), not the runner's Sonnet: the owner
+    // measured about 6.4 s a request on the live demo (12 Nov).
+    expect(asked).toEqual([{ model: MODELS.classify, max_tokens: 4_000 }]);
     expect((db.prepare("SELECT event FROM audit_log ORDER BY seq").all() as { event: string }[]).map((r) => r.event)).toEqual(["claude.asking", "claude.read"]);
     expect(await a.status()).toEqual({ on: true, cap_micros: 400_000, spent_micros: (await scopes(sql))["co:t_try_1"] });
   });
