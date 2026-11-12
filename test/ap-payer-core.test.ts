@@ -77,8 +77,9 @@ describe("enforceProposal: what happens to a proposal, whatever the agent wrote"
     const tight = small({ balances: { EUR: "25200.00" } });
     const e = enforced(tight);
     expect(e).toMatchObject({ outcome: "hold", overridden_by: "below_floor", terms: null, why: "paying EUR 300.00 from the EUR balance would leave EUR 24900.00, below the EUR 25000.00 floor" });
-    // Exactly at the floor is not below it.
+    // Exactly at the floor is not below it; one cent under is.
     expect(enforced(small({ balances: { EUR: "25300.00" } })).outcome).toBe("pay");
+    expect(enforced(small({ balances: { EUR: "25299.99" } }))).toMatchObject({ outcome: "hold", overridden_by: "below_floor" });
     // The fee reserve counts: SWIFT's EUR 25.00 beside the invoice.
     expect(enforced(small({ balances: { EUR: "25310.00" }, rails: [SWIFT] }), { rail: "bank_swift" })).toMatchObject({ outcome: "hold", overridden_by: "below_floor", why: "paying EUR 325.00 (the invoice plus a fee reserve of EUR 25.00) from the EUR balance would leave EUR 24985.00, below the EUR 25000.00 floor" });
     // Money already spoken for is not there to pay with.

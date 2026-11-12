@@ -70,6 +70,7 @@ const wildCase: fc.Arbitrary<PaymentCase> = fc.record({
 }).map(caseOf);
 
 const some = (min: number, max: number) => fc.integer({ min, max }).map(money);
+const toCents = (a: string) => Number(a.replace(".", ""));
 /**
  * A EUR invoice in a company that could plausibly pay it: the amounts sit around the limit, the balances around the
  * floors, the quote buys the invoice or about what is short. This is where the boundary's edges are.
@@ -85,12 +86,18 @@ const plausibleCase: fc.Arbitrary<PaymentCase> = fc.record({
   quote: fc.option(fc.record({ sell: some(1, 200_000), buy: fc.option(some(1, 120_000), { nil: undefined }), ends: fc.integer({ min: 0, max: 2 }) }), { nil: undefined, freq: 2 }),
   limit: fc.oneof({ weight: 4, arbitrary: fc.record({ currency: fc.constant("EUR"), amount: fc.oneof(some(0, 120_000), fc.constant("500.00")) }) }, { weight: 1, arbitrary: wildLimit }),
   payLate: fc.oneof(fc.constant(null), fc.record({ maxDays: fc.integer({ min: 1, max: 10 }) })),
+  // The EUR balance a few cents around what the payment needs above the floor, and a rail that only carries another currency.
+  edge: fc.option(fc.integer({ min: -2, max: 2 }), { nil: undefined, freq: 3 }),
+  foreign: fc.boolean(),
 }).map((x) => caseOf({
   amount: x.amount, currency: "EUR", due: x.due,
-  balances: { EUR: x.eur, ...(x.usd !== undefined ? { USD: x.usd } : {}) },
+  balances: { EUR: x.edge === undefined ? x.eur : money(Math.max(0, toCents(x.amount) + (x.rails[0] === "bank_swift" ? 2500 : 0) + toCents(x.eurFloor ?? "0.00") + toCents(x.spoken ?? "0.00") + x.edge)), ...(x.usd !== undefined ? { USD: x.usd } : {}) },
   spokenFor: x.spoken !== undefined ? { EUR: x.spoken } : undefined,
   floors: { ...(x.eurFloor !== undefined ? { EUR: x.eurFloor } : {}), ...(x.usdFloor !== undefined ? { USD: x.usdFloor } : {}) },
-  rails: (x.rails as RailOnOffer["rail"][]).map((rail) => ({ rail, currency: "EUR", feeReserve: rail === "bank_swift" ? "25.00" : "0.00", ...(x.cap !== undefined && rail === "bank_local" ? { maxPerPayout: x.cap } : {}) })),
+  rails: [
+    ...(x.rails as RailOnOffer["rail"][]).map((rail) => ({ rail, currency: "EUR", feeReserve: rail === "bank_swift" ? "25.00" : "0.00", ...(x.cap !== undefined && rail === "bank_local" ? { maxPerPayout: x.cap } : {}) })),
+    ...(x.foreign && x.rails.length === 1 ? [{ rail: (x.rails[0] === "bank_local" ? "bank_swift" : "bank_local") as RailOnOffer["rail"], currency: "GBP", feeReserve: "0.00" }] : []),
+  ],
   fx: x.quote ? { sellCurrency: "USD", sellAmount: x.quote.sell, buyCurrency: "EUR", buyAmount: x.quote.buy ?? x.amount, rate: "1.0818", validTo: `${day(x.quote.ends)}T10:15:00Z` } : null,
   limit: x.limit, payLate: x.payLate,
 }));
