@@ -297,7 +297,7 @@ saas-pages), and the test holds the price line to it.
 
 Then code catches it before money moves: Claude reads and proposes but holds no key and approves nothing, code checks
 every amount against the invoice, the allowlist and the limits, and anything beyond the limits waits for a person's
-signature on the exact terms. When an agent was wrong in our evals, the rails and code's checks decided what happened,
+signature on the exact terms. When an agent was wrong in our evals and dry runs, the rails and code's checks decided what happened,
 and in the main run Claude made 24 of 24 decisions with 0 fallbacks.
 
 **Evidence:** [docs/agent-was-wrong.md](../agent-was-wrong.md); [docs/claude.md](../claude.md);
@@ -333,7 +333,7 @@ by anyone on the explorer, on testnet and with test money.
 
 ### 31. How do you make money?
 
-<!-- PRICING-LINE -->A monthly plan by the number of supplier invoices, plus a small fee per payout made through Airwallex connected accounts; the pilot prices are in the pricing config.<!-- /PRICING-LINE -->
+<!-- PRICING-LINE -->A monthly plan per company, plus a small fee per payout made through Airwallex connected accounts; the pilot prices are in the pricing config.<!-- /PRICING-LINE -->
 The fee per payout ran once end to end in the Airwallex sandbox, and nobody has paid us anything yet: these are pilot
 prices for design partners.
 

@@ -49,7 +49,7 @@ The reader falls back to a plain parser, logs why, and the agent goes on, which 
 
 ## 8. Which parts of the Claude API do you use?
 
-Structured outputs for typed readings, tool use for the Treasury agent's own checks, and prompt caching on the reader's instructions. Every call is an audit row with the model, the request id, a hash of the input and the token use.
+Structured outputs for typed readings, tool use for the Treasury agent's own checks, and prompt caching on the reader's instructions. Every call is an audit row with the model, a hash of the input and the token use, and the agents' calls also carry the request id.
 
 **Source:** `src/claude/reader.ts`; `src/try/claude.ts`; [docs/compliance.md](../../compliance.md), section 2
 

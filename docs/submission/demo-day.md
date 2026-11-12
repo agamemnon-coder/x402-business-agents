@@ -29,16 +29,18 @@ the short URL `<short URL from /go>`. If someone asks for the link in the chat, 
 | **The organisers cannot play our file** | Paste the backup video link in the chat (the same file, uploaded unlisted, link tested that evening): `<backup video link>`. Keep the file itself on the desktop: `purser-demo-day.mp4`, ready to share the screen and play it from there, sound on. |
 | **They ask to see it live** | The 3-minute demo path (section 5), from the backup demo link: the `purser-try` page `/try`, a test company started the hour before. |
 | **The network is down** | The phone's hotspot. Still down: `npm run judge` in the repository, already started in a second terminal; it serves the site on `http://localhost:4311/` with no network and no key. Say: "The network is down, so this is the same site served from my laptop." |
-| **Face ID fails live** | Try once more; then the laptop's own browser (Touch ID). Say: "Same signature, another device." |
+| **Face ID fails live** | Try once more; then the laptop's own browser (Touch ID). Say: "Same check, another passkey." |
 | **Screen sharing drops** | Send the deck PDF in the chat and talk over it: "Let me walk you through the slides while the screen comes back." |
 
 ## 3. Tabs to have open (one private window, in this order)
 
 1. The video file, paused at 0:00 (only for when they ask us to play it ourselves).
 2. The hands-on page `/try` on `purser-try` (`<short URL from /go>`), a test company started within the hour.
-3. The public demo world of Purser Cloud (read-only, three test companies; [docs/cloud.md](../cloud.md), "Demo mode").
+3. The public demo world of Purser Cloud (read-only, three test companies; stream cloud-demo-1112, its "Demo mode" in
+   [docs/cloud.md](../cloud.md) once merged and deployed; until then it is not public).
 4. [/proof](https://kit11.max-31b.workers.dev/proof).
-5. [/runs](https://kit11.max-31b.workers.dev/runs): every live run, newest first.
+5. [/runs](https://kit11.max-31b.workers.dev/runs): the live runs, newest first (the Moneybird sandbox run is not on it:
+   open [its record](../runs/2026-11-12-moneybird-sandbox.md)).
 6. `http://localhost:4311/` from `npm run judge` (reserve).
 
 Nothing private on screen: no `.env`, no key, no viewer link, no mail. The terminal shows only the repository.
@@ -66,7 +68,7 @@ its URL and what to do if it fails. Performing it is Max's job; rehearse it once
 | 2. The invoice | 0:15–0:35 | `/try` on `purser-try` | File the sample invoice; the agents read it, each Claude call labelled | A sample that will not file: the second sample. The page down: the demo world (tab 3), its waiting invoice |
 | 3. Forged IBAN refused | 0:35–0:55 | `/try` (the forged sample), or the demo world's held invoice | Held as possible fraud: changed bank details, no proposal | Say it and show [docs/runs/2026-10-29-fraud.md](../runs/2026-10-29-fraud.md) |
 | 4. Face ID, then Airwallex | 0:55–1:30 | `/try` on the mirrored iPhone; then [/airwallex](https://kit11.max-31b.workers.dev/airwallex) | Sign the exact terms with Face ID; change one cent: refused. On `/try` the bank is simulated and says so; the Airwallex sandbox payouts are on /airwallex | Face ID fails: the laptop (Touch ID). /airwallex down: [the two-locks record](../runs/2026-11-12-airwallex-two-locks-paid.md) |
-| 5. T:0, Moneybird and the vault | 1:30–1:55 | [/runs](https://kit11.max-31b.workers.dev/runs); the `/try` company's vault | The T:0 journal sandbox run, the Moneybird sandbox run, then the paid invoice filed in the vault | Records: [T:0](../runs/2026-11-10-t0-journal-sandbox.md), [Moneybird](../runs/2026-11-12-moneybird-sandbox.md) |
+| 5. T:0, Moneybird and the vault | 1:30–1:55 | [/runs](https://kit11.max-31b.workers.dev/runs) (T:0); [the Moneybird record](../runs/2026-11-12-moneybird-sandbox.md); the `/try` company's vault | The T:0 journal sandbox run, the Moneybird sandbox run, then the paid invoice filed in the vault | Records: [T:0](../runs/2026-11-10-t0-journal-sandbox.md), [Moneybird](../runs/2026-11-12-moneybird-sandbox.md) |
 | 6. The token on Metal | 1:55–2:10 | [docs/tokenize.md](../tokenize.md) | Said by record status: **built and tested on an in-memory chain, live run pending** (say "live on testnet" only once its run record is on main) | Skip it: "next" |
 | 7. The agent overview | 2:10–2:35 | [/airwallex#awx-1](https://kit11.max-31b.workers.dev/airwallex#awx-1); [/metal](https://kit11.max-31b.workers.dev/metal) | An agent's own card declined over its limit (`LIMIT_EXCEEDED`); Metal refused #24 on chain | Local: `http://localhost:4311/metal` |
 | 8. The proof | 2:35–3:00 | [/proof](https://kit11.max-31b.workers.dev/proof) | Every id, the Metal ones on chain; then the QR | Local: `http://localhost:4311/proof` |

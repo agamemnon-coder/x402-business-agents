@@ -40,11 +40,13 @@ One browser window, a private one (no old keys or sessions), zoom 125 %, bookmar
 
 1. **The hands-on page:** `/try` on the `purser-try` deployment, through `<short URL from /go>`. Start a new test company
    in it within the hour before recording.
-2. **The public demo world of Purser Cloud** (read-only, three test companies, labelled stand-in): its URL is the
-   demo deployment described in [docs/cloud.md](../cloud.md), "Demo mode". Open the company `northwind-outdoor`.
+2. **The public demo world of Purser Cloud** (read-only, three test companies, labelled stand-in): the demo deployment
+   of stream cloud-demo-1112 ("Demo mode" in [docs/cloud.md](../cloud.md) once merged; not public until deployed).
+   Open the company `northwind-outdoor`.
 3. **The Airwallex runs:** [/airwallex](https://kit11.max-31b.workers.dev/airwallex) (awx-1 and the two-locks payout).
 4. **Metal:** [/metal](https://kit11.max-31b.workers.dev/metal), with #24's refusal and its transaction.
-5. **The runs:** [/runs](https://kit11.max-31b.workers.dev/runs) (T:0 and Moneybird sandbox runs).
+5. **The runs:** [/runs](https://kit11.max-31b.workers.dev/runs) (the T:0 sandbox run) and the Moneybird sandbox run's
+   record, [docs/runs/2026-11-12-moneybird-sandbox.md](../runs/2026-11-12-moneybird-sandbox.md) (not on /runs).
 6. **The proof:** [/proof](https://kit11.max-31b.workers.dev/proof).
 7. **The QR code**, full screen: an image of the code for `<short URL from /go>`, with the short URL printed under it.
 
@@ -85,7 +87,8 @@ Record beat by beat, not in one take; the script's beats are the cuts.
 3. **Beats 3 and 4** (the mirrored iPhone, tab 1): sign with Face ID; then change one cent and send it with the same
    signature: refused.
 4. **Beat 5** (tab 1, then tab 3 and tab 5): the signed invoice paid on the page's simulated bank, booked and filed; then
-   the Airwallex sandbox payout's record (`PAID`, simulated settlement) and the Moneybird and T:0 sandbox runs.
+   awx-1's EUR 240.00 payout on /airwallex (Face ID, `PAID`, simulated settlement), the T:0 run on /runs and the
+   Moneybird record.
 5. **Beat 6** (tab 3, awx-1's `LIMIT_EXCEEDED`; tab 4, #24's refusal on Metal).
 6. **Beats 7 and 8** (Max full frame; tab 6 for the outcome; "What's next" as plain text over the frame, no slide).
 7. **Beat 9** (tab 7, the QR code, held for the last seconds).

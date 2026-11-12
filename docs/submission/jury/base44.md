@@ -49,6 +49,6 @@ Purser Cloud for small businesses, the books in Moneybird, which ran in its sand
 
 ## 8. How do you make money?
 
-A monthly plan by the number of supplier invoices, plus a small fee per payout made through Airwallex connected accounts. These are pilot prices for design partners, and nobody has paid us yet.
+A monthly plan per company, plus a small fee per payout made through Airwallex connected accounts. These are pilot prices for design partners, and nobody has paid us yet.
 
 **Source:** `src/config/pricing.ts`; [docs/runs/2026-11-10-platform-e2e.md](../../runs/2026-11-10-platform-e2e.md)

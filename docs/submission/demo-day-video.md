@@ -19,16 +19,16 @@ Rules for these words, checked by `test/demo-day-pack.test.ts`:
 
 ## The beats at a glance
 
-- **A forged IBAN is caught:** 0:00–0:22; budget 50 words; written 48 words
-- **Over the limit, the agent asks the CFO:** 0:22–0:40; budget 41 words; written 32 words
+- **A forged IBAN is caught:** 0:00–0:22; budget 50 words; written 50 words
+- **Over the limit, the agent asks the CFO:** 0:22–0:40; budget 41 words; written 37 words
 - **Face ID on a mirrored iPhone:** 0:40–0:55; budget 34 words; written 26 words
 - **One cent changed, and refused:** 0:55–1:10; budget 34 words; written 20 words
-- **Paid via Airwallex, booked, archived:** 1:10–1:38; budget 64 words; written 48 words
-- **An agent overspends, and the rails refuse:** 1:38–2:05; budget 62 words; written 47 words
+- **Paid via Airwallex, booked, archived:** 1:10–1:38; budget 64 words; written 52 words
+- **An agent overspends, and the rails refuse:** 1:38–2:05; budget 62 words; written 53 words
 - **The outcome:** 2:05–2:20; budget 34 words; written 29 words
 - **What's next:** 2:20–2:42; budget 50 words; written 35 words
 - **Try it yourself:** 2:42–2:55; budget 29 words; written 22 words
-- **Total:** 2:55; budget 398 words; written 307 words
+- **Total:** 2:55; budget 398 words; written 324 words
 
 ## The beats
 
@@ -36,16 +36,16 @@ Rules for these words, checked by `test/demo-day-pack.test.ts`:
 
 - **Screen:** the test company's inbox. The invoice from its usual supplier, the same amount, a different IBAN. The row
   says it is held as possible fraud (changed bank details). The label "test company, stand-in rail" is visible.
-- **Max says:** "This invoice looks right: the same supplier, the same amount. But the bank account has changed. An AI agent read it, and Purser's code holds it as possible fraud. No proposal, no payment. That is Purser: AI agents pay a company's bills, only within limits the CFO signs."
+- **Max says:** "This invoice looks right: same supplier, same amount. But the bank account has changed. In our test run, an AI agent read an invoice like this, and Purser's code held it as possible fraud. No payment. That is Purser: AI agents pay company bills, only within limits the CFO signs."
 - **Source:** [docs/runs/2026-10-29-fraud.md](../runs/2026-10-29-fraud.md) (live Claude reading; code blocked it as
   `bank_details_changed`; no proposal was created); the demo world's held invoice: `src/demoworld/companies.ts` (the
-  forged account), stand-in, labelled.
+  forged account; stream cloud-demo-1112, once merged), stand-in, labelled.
 
 ### Beat 2 · 0:22–0:40 · Over the limit, the agent asks the CFO
 
-- **Screen:** the next invoice from the same company, real supplier, over the agent's limit. The proposal shows the
+- **Screen:** the next invoice from the same stand-in supplier, with the right bank account, over the agent's limit. The proposal shows the
   exact terms: amount, payee, IBAN, the hash of the terms.
-- **Max says:** "The next invoice is real, but it is over the agent's limit. So the agent cannot pay it alone. It asks me, the CFO, with the exact terms: amount, payee, bank account."
+- **Max says:** "The next invoice is genuine, with the right bank account, but it is over the agent's limit. So the agent cannot pay it alone. It asks me, the CFO, with the exact terms: amount, payee, bank account."
 - **Source:** [docs/runs/2026-11-07-awx-1.md](../runs/2026-11-07-awx-1.md) (two invoices went out only after the CFO's
   Face ID on the exact terms; Airwallex sandbox, test money).
 
@@ -70,10 +70,9 @@ Rules for these words, checked by `test/demo-day-pack.test.ts`:
 
 - **Screen:** the signed invoice paid, then its booking and its file in the vault. On the hands-on page the bank is
   simulated and says so; for the Airwallex step, cut to the run record's payout (`PAID`, simulated settlement).
-- **Max says:** "The signed terms get paid. In our Airwallex sandbox run, a 240 euro payout waited for Airwallex's own approval too, then went to PAID, with settlement simulated. Purser books each payment: we ran that in Moneybird's sandbox and in T:0's. And it files the invoice in its vault."
-- **Source:** [docs/runs/2026-11-12-airwallex-two-locks-paid.md](../runs/2026-11-12-airwallex-two-locks-paid.md)
-  (EUR 240.00, `IN_APPROVAL`, then `PAID`; simulated settlement; Purser's signature was a labelled virtual test
-  passkey); [docs/runs/2026-11-12-moneybird-sandbox.md](../runs/2026-11-12-moneybird-sandbox.md) (sandbox
+- **Max says:** "The signed terms get paid. In our Airwallex sandbox run, my Face ID approved a 240 euro payout, and it went to PAID, with settlement simulated. Purser books each payment: we ran that in Moneybird's sandbox and in T:0's. And it files the invoice in its vault, tested, not yet run live."
+- **Source:** [docs/runs/2026-11-07-awx-1.md](../runs/2026-11-07-awx-1.md) (P-0002: EUR 240.00, Max's Face ID, then
+  SENT and `PAID`, simulated settlement); [docs/runs/2026-11-12-moneybird-sandbox.md](../runs/2026-11-12-moneybird-sandbox.md) (sandbox
   administration, 0 differences); [docs/runs/2026-11-10-t0-journal-sandbox.md](../runs/2026-11-10-t0-journal-sandbox.md)
   (95 journal entries, shared sandbox entity); [docs/vault.md](../vault.md) (the vault; tested, not a live run).
 
@@ -81,7 +80,7 @@ Rules for these words, checked by `test/demo-day-pack.test.ts`:
 
 - **Screen:** the agent overview: the Sourcing agent's Airwallex card decline (`LIMIT_EXCEEDED`), then Metal's refusal
   and its transaction on the testnet explorer.
-- **Max says:** "Agents have limits of their own. One agent tried a 45 euro purchase on its own Airwallex card, with a limit of 30. Airwallex declined it. Another tried to pay over its Metal mandate, with our own check switched off on purpose. Metal refused it, on chain."
+- **Max says:** "Agents have limits of their own. In one run, an agent tried a 45 euro purchase on its own Airwallex card, with a limit of 30. Airwallex declined it. In another, an agent tried to pay over its Metal mandate, with our own check switched off on purpose. Metal refused it, on chain."
 - **Source:** [docs/runs/2026-11-07-awx-1.md](../runs/2026-11-07-awx-1.md) (EUR 45.00 on a 30.00 limit, declined
   `LIMIT_EXCEEDED` by Airwallex); [docs/runs/2026-11-03-main-run.md](../runs/2026-11-03-main-run.md) (#24 let through
   by our own flag; Metal refused it, tx `0x2e92f9cb…1871`, testnet).
@@ -117,7 +116,7 @@ Rules for these words, checked by `test/demo-day-pack.test.ts`:
 |---|---|
 | The demo company, its suppliers and the bank on the hands-on page are stand-ins | Beat 1 and 5 screens (the labels on the page) |
 | Airwallex is the sandbox, settlement simulated, test money | Beat 5 words; Beat 7 words |
-| The payout's Purser signature in the two-locks run was a labelled virtual test passkey | Beat 5 source; the run record |
+| The vault is tested, not yet run live | Beat 5 words |
 | Metal is testnet | Beat 6 screen (the testnet explorer) and source |
 | Exact has not run | Beat 8: "Exact next" |
 | Invoice tokens on Metal have not run live | Beat 8: "built, the live run still pending" |

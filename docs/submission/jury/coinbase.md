@@ -25,7 +25,7 @@ No: the x402 payments ran on Metal testnet, and we have not run on Base. That is
 
 ## 4. What stops an agent draining its wallet?
 
-Each agent's mandate holds a cap per payment, a budget and one payee, and Metal refuses what is over them, as it refused #24. A velocity breach stops the agent and raises an alarm.
+Each agent's mandate holds a cap per payment, a budget and one payee, and Metal refuses what is over them, as it refused #24. A velocity breach stops the agent and raises an alarm; that is tested, not yet triggered live.
 
 **Source:** [docs/runs/2026-11-03-main-run.md](../../runs/2026-11-03-main-run.md); [docs/controls.md](../../controls.md), I3
 
@@ -49,6 +49,6 @@ Through Airwallex: Treasury converts only the shortfall and pays by SWIFT, as in
 
 ## 8. Can an outside agent pay a Purser agent?
 
-Yes: the customer's agent in the main run bought data over x402 under its own mandate, and its signatures settled the dispute later. It was our own simulated customer, not an outside party.
+Not tested with an outside party yet: in the main run our own simulated customer's agent bought data over x402 under its own mandate. Its signatures on those orders later settled the dispute.
 
 **Source:** [docs/runs/2026-11-03-main-run.md](../../runs/2026-11-03-main-run.md); [docs/submission/qa.md](../qa.md), question 3

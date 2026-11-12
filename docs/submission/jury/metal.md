@@ -15,7 +15,7 @@ Because the limit then lives outside our code: each agent's Metal mandate holds 
 
 In the main run: 86 payments, each its own transaction (41 sales over x402, 41 supplier purchases, 3 refunds and 1 sweep), plus 6 mandate transactions and the refusal of #24. All of it on testnet, every id listed on the site and checkable on the explorer.
 
-**Source:** [docs/runs/2026-11-03-main-run-metal-transactions.md](../../runs/2026-11-03-main-run-metal-transactions.md); [docs/submission/qa.md](../qa.md), question 3
+**Source:** [docs/runs/2026-11-03-main-run-metal-transactions.md](../../runs/2026-11-03-main-run-metal-transactions.md); [docs/runs/2026-11-03-main-run-data-qa.md](../../runs/2026-11-03-main-run-data-qa.md); [docs/submission/qa.md](../qa.md), question 3
 
 ## 3. Was the refusal of #24 staged?
 
