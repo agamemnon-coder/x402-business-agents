@@ -8,8 +8,11 @@ const SCHEMA = readFileSync(new URL("./schema.sql", import.meta.url), "utf8");
 /** Purser's own books: the stored general ledger (src/ledger/core.ts). */
 const LEDGER = readFileSync(new URL("./ledger.sql", import.meta.url), "utf8");
 
+/** Where the ledger is when KIT11_DB names no other file. */
+export const DEFAULT_LEDGER = "data/kit11.sqlite";
+
 /** Opens (and creates) the ledger. Use ":memory:" in tests. */
-export function openDb(path = process.env.KIT11_DB ?? "data/kit11.sqlite"): DB {
+export function openDb(path = process.env.KIT11_DB ?? DEFAULT_LEDGER): DB {
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
   const db = new Database(path);
   // The runner, the agent API and the CLIs share one ledger: a writer waits for another instead of failing at once.

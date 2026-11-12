@@ -17,18 +17,21 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createPrivateKey } from "node:crypto";
 import { resolve } from "node:path";
 import { createWalletClient, custom, encodeDeployData, encodeFunctionData, erc20Abi, parseAbi, toFunctionSelector, type Address, type Hex } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
 
 process.env.KIT11_KEYS_DIR ??= resolve(import.meta.dirname, "../../../x402-business-agents-keys/passkey-owners");
 const { keyPath, metalAgent } = await import("../metal/agentCli.js");
-const { publicClient, readKeyFile, transferUsdz, usdzBalance } = await import("../metal/chain.js");
+const { publicClient, transferUsdz, usdzBalance } = await import("../metal/chain.js");
+// Shared with the owners path (npm run owners): key files, the agent's payment, a credential's ingest, a revert decoded.
+const { plainKey: eoa } = await import("../metal/keyFiles.js");
+const { pullUnder } = await import("../metal/pull.js");
+const { ingestIssued } = await import("../metal/mandate.js");
+const { whyRefused: decodedRefusal } = await import("../metal/accountErrors.js");
 const { CHAIN_ID, EXPLORER_TX, USDZ } = await import("../metal/network.js");
 const { accountAbi, executeDigest, executionData, factoryAbi, quorumLane, ACCOUNT_BATCH_MODE } = await import("../metal/fourEyes.js");
 const { passkeyQuorum, passkeySigner, webauthnSignature } = await import("../metal/passkeyOwner.js");
 const { softPasskey } = await import("../metal/softPasskey.js");
 const { loadVerifier } = await import("../metal/verifierCompile.js");
-const { authorizeMandateCall, bindCall, ingestCredential, parseCredential, parseP256Jwk, revokeCall } = await import("@metalntwx/metal-pay/mandates");
-type TrustedIssuer = Parameters<typeof ingestCredential>[1]["trustedIssuers"][number];
+const { authorizeMandateCall, bindCall, revokeCall } = await import("@metalntwx/metal-pay/mandates");
 const { centsToBaseUnits, fromCents, baseUnitsToCents } = await import("../lib/money.js");
 const { redactSecrets } = await import("../lib/redact.js");
 
@@ -43,10 +46,6 @@ const record = (step: string, outcome: Outcome, tx: string | null, detail: strin
   say(`${outcome.padEnd(8)} ${step}${tx ? `  ${EXPLORER_TX}${tx}` : ""}  ${detail}`);
 };
 
-function eoa(file: string) {
-  if (!existsSync(keyPath(file))) metalAgent(["key", "create", "--out", keyPath(file)]);
-  return privateKeyToAccount(readKeyFile(keyPath(file)).privateKey);
-}
 /** A software stand-in passkey kept as a PKCS#8 PEM in the test keys dir (mode 600), made once. */
 function passkey(file: string) {
   const p = keyPath(file);
@@ -66,10 +65,9 @@ async function send(to: Address | null, data: Hex, gas?: bigint) {
   const r = await pc.waitForTransactionReceipt({ hash: tx });
   return { tx, ok: r.status === "success", gasUsed: r.gasUsed, gas: g, address: r.contractAddress ?? null };
 }
-async function whyRefused(to: Address, data: Hex): Promise<string> {
-  try { await pc.call({ account: sponsor.address, to, data }); return "the simulation passed"; } catch (e) {
-    return redactSecrets(((e as { shortMessage?: string }).shortMessage ?? (e as Error).message).split("\n")[0]!.slice(0, 160));
-  }
+/** The account's own error for a call it refuses, decoded (src/metal/accountErrors.ts), from one read-only call. */
+function whyRefused(to: Address, data: Hex): Promise<string> {
+  return decodedRefusal(() => pc.call({ account: sponsor.address, to, data })).then((why) => why ?? "the simulation passed", (e: Error) => `the simulation failed (${redactSecrets(e.message.split("\n")[0]!).slice(0, 120)})`);
 }
 
 // 0. Gas for the sponsor.
@@ -148,8 +146,7 @@ if (!existsSync(cred)) {
   writeFileSync(issuerFile, `${c.fields.get("issuer-public-file")?.[0] ?? ""}\n`);
 }
 issuerFile = readFileSync(issuerFile, "utf8").trim();
-const iss = JSON.parse(readFileSync(issuerFile, "utf8")) as { iss: string; kid: string; jwk: unknown };
-const ingested = await ingestCredential(parseCredential(JSON.parse(readFileSync(cred, "utf8"))), { trustedIssuers: [{ iss: iss.iss, kid: iss.kid, jwk: parseP256Jwk(iss.jwk, issuerFile) } as TrustedIssuer], account });
+const ingested = await ingestIssued(cred, issuerFile, account);
 const quorumOf = (who: [Pk, Hex][]) => async (digest: Hex) => passkeyQuorum(who.map(([pk, signer]) => ({ signer, signature: webauthnSignature(digest, pk.assert(digest)) })));
 const bound = metalAgent(["mandate", "status", "--credential", cred]).fields.get("bound")?.[0] === "yes";
 if (!bound) {
@@ -160,8 +157,9 @@ if (!bound) {
   const r2 = await send(okBind.to, okBind.data, okBind.gas);
   record("bind the agent's mandate with both passkeys (Metal's authorizeMandateCall)", r2.ok ? "done" : "reverted", r2.tx, r2.ok ? `mandate ${ingested.reference.slice(0, 18)}…; cap 0.05, budget 0.50; ${r2.gasUsed} gas` : "UNEXPECTED: reverted");
 }
-const small = metalAgent(["mandate", "pull", "--credential", cred, "--to", payee.address, "--amount", "0.05", "--payment-id", `passkey-owners-${Date.now()}`], [0, 1]);
-record("the agent pays 0.05 inside the passkey-approved mandate, no owner signs", small.code === 0 ? "done" : "reverted", small.fields.get("transaction")?.[0] ?? null, small.code === 0 ? "paid with the mandate key alone" : small.out.split("\n")[0]!.slice(0, 120));
+// The mandate key metal-agent wrote beside the credential signs; no owner does.
+const small = await pullUnder({ credentialPath: cred, keyFile: keyPath("agent.credential.key.json"), reference: ingested.reference })({ agent: "sourcing", to: payee.address, amountCents: 5, paymentId: `passkey-owners-${Date.now()}` });
+record("the agent pays 0.05 inside the passkey-approved mandate, no owner signs", small.outcome === "PAID" ? "done" : "reverted", small.tx, small.outcome === "PAID" ? "paid with the mandate key alone" : `${small.outcome.toLowerCase()}${small.reason ? `: ${small.reason}` : ""}`.slice(0, 120));
 
 // 5. Revoked with both passkeys.
 const rv = await authorizeMandateCall(pc, FACTORY, revokeCall(account, ingested.reference), validUntil(), quorumOf([[cfo, sCfo], [controller, sCtl]]));

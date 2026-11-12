@@ -4,8 +4,10 @@ Purser keeps its own books and can also send them to a company's ERP: suppliers,
 payments and journal entries. It can read back the chart of accounts, the suppliers and whether an invoice is paid.
 No CSV is needed. Design: [docs/superpowers/specs/2026-11-08-erp-connectors-design.md](superpowers/specs/2026-11-08-erp-connectors-design.md).
 
-**Status: built and tested against the vendors' documented request and answer shapes only. Nothing has been sent to a
-live ERP yet.** Each connector needs a test administration and its credentials first (below).
+**Status: built and tested against the vendors' documented request and answer shapes. Moneybird ran live once, in a
+sandbox administration with test data, on 12 November 2026: sent, corrected, read back and reconciled to the cent
+(docs/moneybird.md). Exact Online, Business Central and Odoo have not been tested against a live system yet.** Each
+connector needs a test administration and its credentials first (below).
 
 Moneybird, for small companies, has its own page: [docs/moneybird.md](moneybird.md).
 
@@ -41,11 +43,31 @@ Moneybird, for small companies, has its own page: [docs/moneybird.md](moneybird.
   synced --by <who>` once they finished it in the ERP, or `--as retry` to let the next sync try again.
 - Never overwritten: something that changed after it was sent is marked `needs_correction`. An invoice is corrected with
   a credit note plus the new version (`npm run erp -- correct ...`), a journal entry with a reversal plus the new one.
-  Each part is recorded as soon as it succeeds, so a correction run again after a failure never posts its credit note
-  or reversal twice. A changed supplier or payment goes to a person.
+  Each part is recorded as soon as it succeeds, so a correction run again after a failure goes on from there. If the
+  answer to a part never came, the ERP may hold it, and a lookup cannot tell two versions of one invoice apart. So
+  that part is not sent again: it goes to a person (`needs_review`), who looks in the ERP and says `--as retry` (not
+  there) or `--as synced --external-id <its id>` (there, complete). The next `correct` goes on from there. A changed
+  supplier or payment goes to a person.
+- The PDF: an invoice from the inbox takes the PDF the inbox stored, checked against its SHA-256. If that file is not on
+  this machine, or is another file now, the invoice is not sent: it fails with that reason. Whether the file is here is
+  not a change to an invoice already sent: the hash holds the document's own hash, not the file.
 - Retries: rate limits, server and network errors, with back-off and the ERP's Retry-After up to two minutes; an ERP
   that asks to wait longer fails the push, naming the wait. Everything else fails with the ERP's own message. Every
   result is in the audit log.
+- Stops at the call budget (below): the object it was sending fails with that reason and keeps the steps already done,
+  and what follows is not tried. The next run goes on from there.
+
+## A go and a call budget
+
+Every `--live` command needs three settings, or it refuses to run and calls nothing:
+
+- `ERP_LIVE_GO=yes`: the owner's go for this run.
+- `ERP_CALL_BUDGET`: the approved number of requests, for every command of the run together.
+- `ERP_CALL_LOG`: a file outside the repository that counts them.
+
+Each request is written to the log before it is sent, a retry and a lookup too: the time, the method and the endpoint,
+never a body or a header. The request that would go over the number is not sent. Each live command ends by saying how
+many are used, and `npm run erp -- calls` shows the log by endpoint.
 
 ## Commands
 
@@ -56,7 +78,8 @@ npm run erp -- sync --connector exact --live         # send what changed
 npm run erp -- pull --connector exact --live         # read the ERP's chart of accounts and suppliers
 npm run erp -- status                                # what was sent, what failed, what needs a correction
 npm run erp -- correct --connector exact --object invoice:<id> --live
-npm run erp -- resolve --connector bc --object invoice:<id> --as synced|retry --by <who>   # a person settles needs_review
+npm run erp -- resolve --connector bc --object invoice:<id> --as synced|retry --by <who> [--external-id <id>]   # a person settles needs_review
+npm run erp -- calls                                 # the run's call log by endpoint, against the approved number
 ```
 
 A dry run needs no account: without settings it uses example settings and says so.
@@ -106,9 +129,10 @@ that cannot be read says so and asks to authorise Exact Online again.
 ## What the ledger sends today
 
 `src/erp/source.ts` maps what Purser already records: the payees on the allowlist, the invoices, the PAID payouts, and
-the GL journal's other movements. The ledger's invoices carry no issue date (the due date stands in) and no VAT split;
-movements in Metal's test token (USDZ) are not an ISO currency and are left out. The payables inbox and the bookkeeping
-core will send richer records through the same model.
+the GL journal's other movements. The Treasury flow's own invoices carry no issue date (the due date stands in) and no VAT split;
+movements in Metal's test token (USDZ) are not an ISO currency and are left out. The payables inbox (`src/ap`) feeds its
+invoices through the same model, with Dutch 21% or 9% VAT when the invoice shows it; the bookkeeping core
+(`src/ledger`) does not feed it yet.
 
 ## Next
 

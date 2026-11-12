@@ -1,5 +1,8 @@
 # Platform end-to-end: three test companies, invoice to T:0
 
+Ran live on 10 November 2026: 3 connected accounts ACTIVE, 1 payout PAID (`593c340b-1752-4537-9ef2-0eb3558897cc`,
+EUR 4.84, Purser's EUR 0.02 fee), 3 refused by Airwallex ([run record](runs/2026-11-10-platform-e2e.md)).
+
 `npm run e2e:live` runs Purser's SME product end to end for three fictional small companies, each its own Purser
 company on its own Airwallex connected account (src/e2e). The flow for each company, through the product's own code:
 
@@ -44,7 +47,7 @@ which payout is waiting. Only a person approves it there; the run never moves it
 - **T:0's currency.** The sandbox entity is a US company, so if its functional currency is not EUR, the live run needs
   `T0_RATES` (for example `EUR=<rate>`) for the EUR entries. The run does not pick a rate itself.
 
-## What a live run would call (measured on the dry run, 10 November)
+## What the live run was planned to call (measured on the dry run, 10 November, before it ran)
 
 | Service | Planned | Approved | Where the calls go |
 |---|---|---|---|
@@ -52,15 +55,17 @@ which payout is waiting. Only a person approves it there; the run never moves it
 | T:0 | 13 | 12 | chart, P&L for the currency, one list, 10 entries (one accrual and one payment per invoice) |
 | Claude | 22 | 8 | every reading the inbox asks for: classification and reading per document, and checks |
 
-So with the approved budget the live run refuses before its first call. It needs either a larger budget (about 56 / 13 / 22) or a
+With the default budget the live run refuses before its first call; for the live run of 10 November a larger budget
+was approved (Airwallex 66, Claude 22, T:0 13), and it used 61, 20 and 12 ([run record](runs/2026-11-10-platform-e2e.md)). It needs either a larger budget (about 56 / 13 / 22) or a
 smaller world: one invoice per company, or one new account instead of two. Balances are read three times per payout by
 the planner and the four-eyes check; that is product code, not changed for this run.
 
-## Not confirmed before the live run
+## Not confirmed before the live run (written before it ran)
 
 - **The new accounts' update body** (`soleTraderDetails` in src/e2e/platformOps.ts) follows the fields named in the
-  10 November run record. The exact field names are not checked against Airwallex's schema. Airwallex names one missing
-  field per refusal, so a wrong name costs calls. Check the schema before going live.
+  10 November run record. It was accepted in the live run of 10 November: both new accounts went ACTIVE. Their payouts
+  were refused, because Airwallex wants the paying company's registration number; next time open them as registered
+  sole traders (`business_identifiers`).
 - **The funding body** (`connected_account_transfers/create`) follows Airwallex's API reference, read 10 November:
   amount, currency, destination, reason (`business_expenses`), reference, request_id.
 - **Metal.** It is not in this run. The SME product pays suppliers by bank transfer through Airwallex; no step in this

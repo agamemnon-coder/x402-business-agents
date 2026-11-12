@@ -2,8 +2,10 @@
 
 The point: the agents are agents, not a script. The same world gives varied but always safe choices; unseen
 situations get reasonable, safe answers in the agents' own words. Max's choices (D26): 40 simulated-rail worlds and
-10 live worlds, calibration on 3 seeds, 10 holdouts with at least 3 live. The report and the site show the two counts
-apart ("40 simulated-rail worlds + 10 live worlds, 0 unsafe actions").
+10 live worlds, calibration on 3 seeds, 10 holdouts with at least 3 live. The report shows the two counts
+apart. What ran on 2 November (40 simulated-rail worlds, in which 2 unsafe actions were found; 10 live worlds; the
+calibration; the holdouts) is in [runs/2026-11-02-night-batch.md](runs/2026-11-02-night-batch.md); no safety count is
+claimed from it.
 
 ## What is built
 
@@ -59,7 +61,10 @@ The chain and the sandbox themselves: on-chain refusals recorded by Metal, final
 quotes, the CFO's passkey. The CFO never approves anything in a simulated world, so proposals stay pending. That is
 what the 10 live worlds and the calibration are for.
 
-## Live worlds (not built here)
+## Live worlds (run through the dry-run harness, not by this command)
+
+Ten live worlds ran this way on 2 November (dry-142 to dry-151; results in `docs/runs/variation/2026-11-02/live-*.json`,
+report [runs/2026-11-02-night-batch.md](runs/2026-11-02-night-batch.md), section 3).
 
 `npm run variation -- --live` prints "run via the dry-run harness" and exits. A live world needs:
 
@@ -78,7 +83,11 @@ what the 10 live worlds and the calibration are for.
    `dry-N.sqlite` copy and write the same result shape with `rails: "live"`.
 5. About 2 hours for 10 worlds (D26), with the evals block's spend recorded per world.
 
-## Calibration (3 seeds, not run yet)
+## Calibration (3 seeds, run on 2 November)
+
+Seeds 3, 6 and 28 ran both ways on 2 November: the refusal over the cap (`mandate_cap_exceeded`) and the card decline
+(`LIMIT_EXCEEDED`) answered live as the stand-ins do; the SWIFT fee was EUR 13.39 to 13.40 live against 13.47 in the
+stand-in ([runs/2026-11-02-night-batch.md](runs/2026-11-02-night-batch.md), section 3). The method:
 
 Run three seeds both ways (simulated, then live as above), and compare per step: the error codes (the refusal
 reason over the cap, `LIMIT_EXCEEDED`), the refusals, the fees (SWIFT, the conversion), the proposals filed and the
