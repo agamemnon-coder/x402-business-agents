@@ -249,9 +249,10 @@ describe("if the approver is unavailable (the panel's review, 12 Nov)", () => {
     expect(plain[0]).toBe("Away or out of reach: nothing above the limits is paid. The payment waits for the signature and expires unsigned; payments inside the limits go on.");
     expect(fold).not.toBeNull();
     expect(fold![1]).toBe("If the approver is unavailable");
-    // Compared as the page's markup (the doc's lines escaped as the page escapes them), so nothing is unescaped here.
-    const items = [...fold![2]!.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => m[1]!.replace(/<[^>]*>/g, ""));
-    expect(items).toEqual([...plain.map(esc), "docs/security.md ↗"]);
+    // Compared as the page's markup, exactly: each line is the doc's line escaped as the page escapes it, then the link.
+    const items = [...fold![2]!.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => m[1]!);
+    expect(items.slice(0, -1)).toEqual(plain.map(esc));
+    expect(items.at(-1)).toMatch(/^<a class="pf" href="[^"]+docs\/security\.md#if-the-approver-is-unavailable"[^>]*>docs\/security\.md ↗<\/a>$/);
     expect(items.length - 1).toBeLessThanOrEqual(5);
     expect(fold![2]).toContain('<a class="pf" href="https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/security.md#if-the-approver-is-unavailable" target="_blank" rel="noopener">docs/security.md ↗</a>');
     // Folded: in sight it is five words under the signature's card, and one anchor on the page.
