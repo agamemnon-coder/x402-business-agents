@@ -215,9 +215,15 @@ describe("the redesigned public pages", () => {
     const ts = record.snapshot.agent_chat.map((c) => c.ts).concat(record.snapshot.flows.map((f) => f.at)).sort();
     expect(run.label).toContain(`${ts[0]!.slice(11, 16)}–`);
     expect(run.label).toContain(`–${ts[ts.length - 1]!.slice(11, 16)} UTC`);
-    // Home no longer replays the main run (home-story, 12 Nov): Watch and Proof carry its label, Home only names the
-    // run behind its Metal row, in its "What's real?" fold.
-    for (const html of [watchPage(), proofPage()]) expect(html).toContain(run.label);
+    // Home no longer replays the main run (home-story, 12 Nov): Proof carries its label, Home only names the run
+    // behind its Metal row, in its "What's real?" fold. The replay at /watch says the label in two parts: its heading
+    // is the label's start with the day in full, the pill beside it the rest (the hours, test money, who decided).
+    expect(proofPage()).toContain(run.label);
+    const [start, rest] = [run.label.slice(0, run.label.indexOf(",")), run.label.replace(/^[^,]+, \d+ \S+ /, "")];
+    expect(start).toBe("Replay of the main run");
+    expect(rest).toBe(`${ts[0]!.slice(11, 16)}–${ts[ts.length - 1]!.slice(11, 16)} UTC · test money · real Claude decisions`);
+    expect(watchPage()).toContain(`<h1>${start}, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(ts[0]!))}</h1><span class="pill run">`);
+    expect(watchPage()).toMatch(new RegExp(`<span class="pill run"><svg[^>]*>.*?</svg>${rest.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}</span>`));
     expect(homePage()).not.toContain(run.label);
     expect(homePage()).toMatch(/The Metal row: the main run of 3 November\./);
     for (const html of [homePage(), watchPage(), proofPage()]) expect(html).not.toMatch(/Stand-in|standing in|Replay of Autonomous dry run/);

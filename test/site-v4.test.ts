@@ -1,4 +1,4 @@
-// The public site after Max's mega-prompt v4 (C1-C8, D2, D3): four tabs; short partner pages with the details folded;
+// The public site after Max's mega-prompt v4 (C1-C8, D2, D3): the tabs (Home, Try, Proof; Watch left the menu on 12 Nov); short partner pages with the details folded;
 // a text budget per page; no forbidden words on any public page; one Face ID number from one source; the split between
 // Claude's decisions and code's routine payments, both counted from the record; the Claude call badge from each trace;
 // every internal link answers (old addresses redirect, anything else gets the clean 404).
@@ -13,7 +13,7 @@ import { SECOND_APPROVER, SPLIT_LINE, VISA_CLAIM, VISA_TAP_STATUS, WORLD_SETUP }
 const pages = buildPages();
 const run = agentRun();
 const { record } = loadRecord();
-/** The public pages a juror reaches: the four tabs, the four partner pages and the 404. */
+/** The public pages a juror reaches: the tabs, the replay at /watch, the four partner pages and the 404. */
 const PUBLIC: Record<string, string> = { home: pages.home!, watch: pages.watch!, try: pages.try, proof: pages.proof!, metal: pages.metal, airwallex: pages.airwallex!, visa: pages.visa, claude: pages.claude!, notFound: pages.notFound! };
 
 const decode = (s: string) => s.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
@@ -85,10 +85,15 @@ describe("the site after v4", () => {
     for (const [name, html] of all) for (const re of bad) expect({ name, found: re.exec(allText(html))?.[0] ?? null }).toEqual({ name, found: null });
   });
 
-  it("has four tabs and nothing else in the menu, on every public page", () => {
+  it("has Home, Try, Proof first in the menu, no Watch and at most five items, on every public page", () => {
+    // Watch left the menu on 12 Nov (home-story; test/watch-out-of-menu.test.ts). The form holds before and after a
+    // fifth item joins: the first three tabs in this order, no Watch, at most five items, links or a fold's header.
     for (const [name, html] of Object.entries(PUBLIC)) {
       const nav = /<nav[^>]*aria-label="Main"[^>]*>([\s\S]*?)<\/nav>/.exec(html)?.[1] ?? "";
-      expect({ name, tabs: [...nav.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1]) }).toEqual({ name, tabs: ["Home", "Watch", "Try", "Proof"] });
+      const items = [...nav.replace(/<details\b[\s\S]*?<\/details>/g, (d) => /<summary[^>]*>[\s\S]*?<\/summary>/.exec(d)?.[0] ?? "").matchAll(/<(a|summary)\b[^>]*>([\s\S]*?)<\/\1>/g)].map((m) => m[2]!.replace(/<[^>]+>/g, "").trim());
+      expect({ name, first: items.slice(0, 3) }).toEqual({ name, first: ["Home", "Try", "Proof"] });
+      expect({ name, items: items.length <= 5 ? "at most five" : items }).toEqual({ name, items: "at most five" });
+      expect({ name, watch: /watch/i.test(nav) }).toEqual({ name, watch: false });
     }
   });
 

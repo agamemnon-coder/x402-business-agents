@@ -1,5 +1,5 @@
 // The partner pages (/airwallex, /claude): every id, tx and figure on them comes from the recorded files, every
-// agent's model from code; each is short with its details folded; the nav keeps the four tabs.
+// agent's model from code; each is short with its details folded; the nav keeps its tabs (Home, Try, Proof; no Watch since 12 Nov).
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { AGENT_MODELS, airwallexData, claudeData } from "../src/partners/data.js";
@@ -85,8 +85,11 @@ describe("the partner pages", () => {
     for (const f of airwallexData().features) for (const d of f.docs) expect(d.href.startsWith("https://www.airwallex.com/docs/")).toBe(true);
   });
 
-  it("are reached from Proof, with the main nav four tabs, and served by the relay", () => {
-    expect(NAV_MAIN.map(([k]) => k)).toEqual(["home", "watch", "try", "proof"]);
+  it("are reached from Proof, with the main nav's tabs (Home, Try, Proof first, no Watch, at most five), and served by the relay", () => {
+    // Watch left the menu on 12 Nov (home-story): the first three tabs in order, no Watch, at most five items.
+    expect(NAV_MAIN.map(([k]) => k).slice(0, 3)).toEqual(["home", "try", "proof"]);
+    expect(NAV_MAIN.map(([k, label, href]) => `${k} ${label} ${href}`).join(" ")).not.toMatch(/watch/i);
+    expect(NAV_MAIN.length).toBeLessThanOrEqual(5);
     const pages = buildPages();
     expect(pages.airwallex).toBe(AIRWALLEX_PAGE);
     expect(pages.claude).toBe(CLAUDE_PAGE);

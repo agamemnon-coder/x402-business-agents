@@ -1,5 +1,6 @@
-// "Judge it in 3 minutes" (Max's last round, item 5.1): /judge, five steps a juror ticks off in the demo's order (Max,
-// 7 Nov: Home, Watch, Try, Proof), each a link to a page that already exists and one line of what they will see there.
+// "Judge it in 3 minutes" (Max's last round, item 5.1): /judge, five steps a juror ticks off in the menu's order (Home,
+// Try, Proof; the replay at /watch left the tour on 12 Nov), each a link to a page that already exists and one line of
+// what they will see there.
 // The ticks live in the browser only (localStorage, in try/catch); the page has no fetch and a CSP that allows no
 // connection.
 //
@@ -14,6 +15,7 @@ import { buildPages, flowLinks } from "../src/relay/assets.js";
 import { JUDGE_CSP, JUDGE_PAGE } from "../src/servers/dashboard.js";
 import { JUDGE_CODE_HREF, JUDGE_LINK, JUDGE_STEPS, JUDGE_URL, judgePage } from "../src/redesign/judge.js";
 import { FILM_URL } from "../src/config/brand.js";
+import { DEMO_STEPS, HERO_VERDICT } from "../src/redesign/heroDemo.js";
 import { metalStory } from "../src/redesign/metalStory.js";
 import { loadRecord } from "../src/redesign/run.js";
 import { scriptBlocks } from "./support/scriptBlocks.js";
@@ -47,7 +49,8 @@ const ownLinks = (s: (typeof JUDGE_STEPS)[number]) => s.links.map((l) => l.href)
  * both of the trick screen's lines).
  */
 const SEES: Record<string, { path: string; marks: (string | RegExp)[] }[]> = {
-  watch: [{ path: "/watch", marks: ["Watch the agents work", "Replay of the main run"] }],
+  // Home's own moment: the hero's four tabs by name, the "+1 cent" button, and the verdict the browser's check writes.
+  home: [{ path: "/home", marks: [...DEMO_STEPS.map((s, i) => `<li data-p="${i + 1}"><span>${i + 1}</span>${s}</li>`), `<button type="button" class="hd-btn go" data-act="cent">${DEMO_STEPS[3]}</button>`, '<p class="hd-stamp" aria-hidden="true">Refused</p>', `"refused":${JSON.stringify(HERO_VERDICT.refused)}`, "crypto.subtle"] }],
   sign: [{ path: "/try/sign", marks: ["Your Treasury agent wants to pay an invoice above its limit.", "Now try to cheat: change one cent", 'id="go-cheat"', "Sign with Face ID"] }],
   trick: [{ path: "/try/sign", marks: ["Try to trick the agent.", "Send your agent a fake invoice", "Sonnet", "Purser's code checks it"] }],
   policy: [{ path: "/try/sign", marks: ["Change the rule.", 'id="rule-chips"', /worst.case/i, "The agent pays it alone.", "That's Purser."] }],
@@ -59,9 +62,9 @@ const SEES: Record<string, { path: string; marks: (string | RegExp)[] }[]> = {
 };
 
 describe("/judge: the five steps", () => {
-  it("go in the demo's order (Max, 7 Nov: Home, Watch, Try, Proof), with their times, three minutes in all", () => {
+  it("go in the menu's order (Home, Try, Proof; no replay since 12 Nov), with their times, three minutes in all", () => {
     expect(JUDGE_STEPS.map((s) => [s.title, s.seconds])).toEqual([
-      ["Watch the agents", 40],
+      ["Tap “+1 cent” on Home", 40],
       ["Sign, then try to cheat", 40],
       ["Try to trick the agent", 30],
       ["Change the rule, see the worst case", 30],
@@ -69,11 +72,16 @@ describe("/judge: the five steps", () => {
     ]);
     expect(JUDGE_STEPS.reduce((t, s) => t + s.seconds, 0)).toBe(180);
     expect(JUDGE_STEPS.map((s) => s.links.map((l) => l.href))).toEqual([
-      ["/watch"], ["/try/sign"], ["/try/sign"], ["/try/sign"], ["/proof", "/airwallex#awx-1", "/metal", metalStory(loadRecord().record).refusal!.proof.href],
+      ["/home"], ["/try/sign"], ["/try/sign"], ["/try/sign"], ["/proof", "/airwallex#awx-1", "/metal", metalStory(loadRecord().record).refusal!.proof.href],
     ]);
-    // Home's three steps, in Home's order: the tour's first link is Home's first step, its last is Home's last.
-    expect(JUDGE_STEPS[0]!.links[0]!.href).toBe("/watch");
+    // The tour starts on Home and ends on the proof; no step is the replay, by its link, its title or its line.
+    expect(JUDGE_STEPS[0]!.links[0]!.href).toBe("/home");
     expect(JUDGE_STEPS.at(-1)!.links[0]!.href).toBe("/proof");
+    expect(JSON.stringify(JUDGE_STEPS)).not.toMatch(/watch|replay/i);
+    // The first step's line is the hero's own words: its four tabs by name and the verdict its check writes.
+    expect(JUDGE_STEPS[0]!.see).toBe("Home's four steps: Ask, Face ID, Paid, +1 cent. Tap “+1 cent”: the amount changes by one cent, and the check in your browser says Refused, “Hash no longer matches”.");
+    expect(JUDGE_STEPS[0]!.see).toContain(DEMO_STEPS.join(", "));
+    expect(JUDGE_STEPS[0]!.see).toContain(HERO_VERDICT.refused);
     // Each says in one line what the juror will see.
     for (const s of JUDGE_STEPS) expect({ step: s.id, oneLine: s.see.length > 0 && !s.see.includes("\n") && s.see.length <= 200 }).toEqual({ step: s.id, oneLine: true });
   });
@@ -82,6 +90,7 @@ describe("/judge: the five steps", () => {
   for (const s of JUDGE_STEPS) {
     it(`step ${JUDGE_STEPS.indexOf(s) + 1} (${s.id}) links only to routes the site serves, and its page shows what the step says`, () => {
       for (const path of ownLinks(s)) expect({ step: s.id, path, status: served(path) }).toEqual({ step: s.id, path, status: 200 });
+      expect({ step: s.id, checked: (SEES[s.id] ?? []).length > 0 }).toEqual({ step: s.id, checked: true });
       for (const { path, marks } of SEES[s.id] ?? []) {
         const html = path === "/try/verify" ? `${bodyOf(path)}\n${ON.csp.tryVerify}` : bodyOf(path);
         for (const m of marks) expect({ step: s.id, path, mark: String(m), shown: typeof m === "string" ? html.includes(m) : m.test(html) }).toEqual({ step: s.id, path, mark: String(m), shown: true });
