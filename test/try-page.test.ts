@@ -8,6 +8,8 @@ import { consoleCsp } from "../cloud/src/console.js";
 import * as COPY from "../cloud/src/tryCopy.js";
 import { BOOKS_JS, RUNS_URL, SIGN_JS, tryPage } from "../cloud/src/tryPage.js";
 import { liveRuns } from "../src/redesign/runs.js";
+import { ICONS } from "../src/ui/icons.js";
+import { SCENE_CSS, sceneSvg } from "../cloud/src/scene.js";
 import { scriptBlocks, scriptBody, textOutsideTags, withoutBlocks } from "./support/scriptBlocks.js";
 import { ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
 
@@ -101,9 +103,33 @@ describe("the page", () => {
     expect(script.replace("const TOKEN=", "").replace("TOKEN?{token:TOKEN}:{}", "")).not.toContain("TOKEN");
   });
 
-  it("has no words outside the copy: the markup's own text is the brand", () => {
-    expect(textOutsideTags(withoutBlocks(html, ["script", "style", "title"])).trim().split(/\s+/)).toEqual(["P", "Purser"]);
+  it("has no words outside the copy: the markup's own text is the brand and the start's trust line (the illustration aside)", () => {
+    expect(textOutsideTags(withoutBlocks(html, ["script", "style", "title", "svg"])).trim().split(/\s+/)).toEqual(`${COPY.CHROME.brand} ${COPY.START.trust}`.split(" "));
     expect(readFileSync(new URL("../cloud/src/tryPage.ts", import.meta.url), "utf8")).not.toMatch(/ui\/i18n/);
+  });
+});
+
+describe("the frame and the start", () => {
+  it("brands the page with the console's feather lockup, not a letter mark", () => {
+    expect(html).toContain('<header class="top"><span class="brand"><span class="mk"></span><span class="nm">Purser</span></span></header>');
+    expect(html).not.toMatch(/class="mk">P</);
+    expect(script).toContain("$('.brand .mk').append(icon('feather',17));");
+    const ic = JSON.parse(/const IC=(\{.*?\});\n/.exec(script)![1]!) as Record<string, unknown>;
+    expect(ic.feather).toEqual(ICONS.feather);
+  });
+
+  it("shows the illustration in the page as it is built, with its CSS and its reduced-motion rule in the page's one nonce style", () => {
+    expect(html).toContain(`<div class="hero">${sceneSvg()}</div>`);
+    expect(html).toContain(SCENE_CSS);
+    expect(html).toContain("@media (prefers-reduced-motion: reduce) { .scene, .scene * { animation: none !important; } }");
+    expect(html.match(/<style/g)).toHaveLength(1);
+  });
+
+  it("keeps the start's words: the product line, the button, test money deleted after 24 h, and the trust line", () => {
+    expect(COPY.START.fine).toBe("Test money · deleted after 24 h");
+    expect(COPY.START.text).toContain("Purser's real engine");
+    expect(COPY.START.trust).toBe("Works with Airwallex · Metal · Visa Intelligent Commerce · Claude (sandbox and testnet runs)");
+    expect(COPY.VISIBLE.start.every((state) => state.includes(COPY.START.fine) && state.includes(COPY.START.trust))).toBe(true);
   });
 });
 

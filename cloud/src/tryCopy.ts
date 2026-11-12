@@ -13,11 +13,19 @@ export const BAND = {
   claudeCode: "Purser's code reads today",
 };
 
-/** Screen 0. The text describes the product, never this visit: what this visit runs on is in the band, from the answer. */
+/**
+ * Screen 0. The text describes the product, never this visit: what this visit runs on is in the band, from the answer.
+ * Beside it the illustration (cloud/src/scene.ts: its words are aria-hidden, the image has one name; not counted here);
+ * under the card the trust line: what the product ran with in recorded sandbox and testnet runs (docs/claims.md).
+ */
 export const START = {
   heading: "Run a company's payables with Purser.",
-  text: "AI agents read and check each invoice. Nothing is paid until a person signs the exact terms. Try a test company on Purser's real engine, with test money, deleted after 24 hours.",
+  text: "AI agents check each invoice on Purser's real engine. You sign the exact terms.",
   button: "Start with a test company",
+  /** Under the button. */
+  fine: "Test money · deleted after 24 h",
+  /** Under the card, small and grey. */
+  trust: "Works with Airwallex · Metal · Visa Intelligent Commerce · Claude (sandbox and testnet runs)",
   starting: "Starting…",
   /** In the text's place when the start answer has no sentence of its own. */
   failed: "Purser could not start a test company. Try again soon.",
@@ -230,10 +238,10 @@ export const ENDED = {
  */
 export const VISIBLE = {
   start: [
-    [START.heading, START.text, START.button],
-    [START.heading, START.text, START.starting],
-    [START.heading, START.failed, START.button],
-    [START.heading, START.runs, START.button],
+    [START.heading, START.text, START.button, START.fine, START.trust],
+    [START.heading, START.text, START.starting, START.fine, START.trust],
+    [START.heading, START.failed, START.button, START.fine, START.trust],
+    [START.heading, START.runs, START.button, START.fine, START.trust],
   ],
   invoice: [
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.loading, INVOICE.send],

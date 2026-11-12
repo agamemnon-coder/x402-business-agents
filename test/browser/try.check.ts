@@ -220,6 +220,52 @@ async function passkeyContext(width: number, scheme: "light" | "dark"): Promise<
   return ctx;
 }
 
+// Part 0: the start screen in its two zones (the illustration, the card, the trust line) at a phone and a laptop, light
+// and dark: both zones in view, nothing wider than the screen, no large empty band, the feather mark, no console or CSP
+// error. Screenshots (the viewport) when a directory is given: try-start-<width>-<scheme>.png.
+for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], [1440, 900, "light"], [1440, 900, "dark"]] as const) {
+  const ctx = await browser.newContext({ viewport: { width, height }, colorScheme: scheme, deviceScaleFactor: shots ? 2 : 1 });
+  const page = await ctx.newPage();
+  const errors: string[] = [];
+  page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+  page.on("pageerror", (e) => errors.push(String(e)));
+  const tag = `start ${width}x${height} ${scheme}`;
+  await page.goto(`${ORIGIN}/try`);
+  await page.waitForSelector(`h1:text-is("${START.heading}")`);
+  await page.waitForTimeout(700);
+  const box = (sel: string) => page.locator(sel).first().boundingBox();
+  const [hero, card, trust, main] = [await box(".hero"), await box("#main"), await box(".trust"), await box("#main .btn.primary")];
+  ok(!!hero && !!card && !!trust && !!main, `${tag}: the illustration, the card, its button and the trust line are shown`);
+  if (hero && card && trust && main) {
+    ok(main.y + main.height <= height && card.y >= 0 && card.y + card.height <= height && trust.y + trust.height <= height + 1, `${tag}: the card, its button and the trust line are in view without scrolling`);
+    if (width === 390) {
+      ok(hero.y + hero.height <= card.y + 40 && hero.height >= 0.38 * height, `${tag}: a phone: the illustration's band on top (${Math.round(hero.height)} px, at least 38% of the screen), the card below`);
+      ok(trust.y + trust.height >= 0.95 * height && trust.y - (card.y + card.height) < 0.15 * height, `${tag}: no empty band: the trust line ends the screen, close under the card`);
+    } else {
+      ok(hero.x === 0 && Math.abs(hero.width - width / 2) < 2 && hero.height >= height - 1 && card.x >= width / 2, `${tag}: a wide screen: the illustration left (the full height), the card right`);
+      const above = card.y, below = height - (trust.y + trust.height);
+      ok(Math.abs(above - below) < 0.15 * height, `${tag}: no empty band: the card and the trust line are centred (${Math.round(above)} px above, ${Math.round(below)} px below)`);
+    }
+  }
+  ok(await page.evaluate(() => document.documentElement.scrollWidth) <= width, `${tag}: nothing wider than ${width} px`);
+  ok(await page.locator(".brand .mk svg").count() === 1 && (await page.textContent(".brand"))!.trim() === "Purser", `${tag}: the brand is the feather mark and the name`);
+  ok(await page.getAttribute(".hero svg.scene", "aria-label") === "How Purser pays an invoice: an illustration", `${tag}: the illustration is named as one`);
+  if (shots) { await page.waitForTimeout(5800); await page.screenshot({ path: join(shots, `try-start-${width}-${scheme}.png`) }); }
+  ok(errors.length === 0, `${tag}: no console or CSP errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
+  await ctx.close();
+}
+{
+  // With reduced motion the illustration stands still on its paid frame.
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
+  const page = await ctx.newPage();
+  await page.goto(`${ORIGIN}/try`);
+  await page.waitForSelector(".scene");
+  const still = await page.evaluate(() => [...document.querySelectorAll(".scene *")].every((e) => getComputedStyle(e).animationName === "none")
+    && getComputedStyle(document.querySelector(".sc-paid")!).opacity === "1" && getComputedStyle(document.querySelector(".sc-refused")!).opacity === "0");
+  ok(still, "reduced motion: the illustration does not move, and shows its paid frame");
+  await ctx.close();
+}
+
 // Part 1: a visit at each size.
 for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   const ctx = await passkeyContext(width, scheme);

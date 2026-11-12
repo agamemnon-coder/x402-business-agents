@@ -26,6 +26,7 @@
 import { consoleCsp } from "./console.js";
 import { APPROVE, BAND, BOOKS, CHROME, COMPANY, ENDED, GONE, INVOICE, INVOICE_FIELDS, LIVE, METHOD, PAY, PROPOSAL_FIELDS, RECORDED, START, STEPS, WORK } from "./tryCopy.js";
 import { EVENT_LINE_JS } from "./tryEvents.js";
+import { SCENE_CSS, sceneSvg } from "./scene.js";
 import { TOKENS } from "../../src/redesign/ui.js";
 import { ICONS } from "../../src/ui/icons.js";
 import { MORE } from "../../src/ui/payablesKit.js";
@@ -43,9 +44,36 @@ html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 400 16px/1.5 Inter, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
 .top, main { max-width: 560px; margin: 0 auto; padding: 0 var(--gut); }
 .top { display: flex; align-items: center; height: 56px; }
-.brand { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: -.01em; }
-.brand .mk { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: var(--text); color: var(--bg); font-size: 14px; }
+/* The console's lockup (cloud/src/console.ts): the feather in a dark square, then the name. */
+.brand { display: inline-flex; align-items: center; gap: 9px; font-size: 18px; letter-spacing: -.02em; }
+.brand .mk { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--text); color: var(--bg); }
+.brand .mk .i { vertical-align: 0; }
+.brand .nm { font-weight: 750; }
 main { padding-bottom: 56px; }
+/* Screen 0 in two zones (the console's sign-in has the same): the illustration (cloud/src/scene.ts) in a band on the
+   brand's tokens, the card with the words and the button, the trust line under it. A phone: the band on top (with the
+   brand over it), the card below. A wide screen: the band left, the card right, centred. Other screens: neither. */
+.hero, .trust { display: none; }
+body:has(.screen.start) .hero { display: grid; }
+body:has(.screen.start) .trust { display: block; margin: 0 auto; padding: 14px var(--gut) 18px; max-width: 560px; width: 100%; text-align: center; color: var(--faint); font-size: 12.5px; line-height: 1.5; }
+body:has(.screen.start) .top { position: absolute; top: 0; left: 0; right: 0; z-index: 2; max-width: none; padding: 0 20px; }
+body:has(.screen.start) main { width: calc(100% - 2 * var(--gut)); max-width: 560px; margin: -28px auto 0; position: relative; z-index: 1; padding: 22px 22px 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
+body:has(.screen.start) h1 { margin-top: 0; }
+body:has(.screen.start) { display: flex; flex-direction: column; min-height: 100vh; min-height: 100svh; }
+body:has(.screen.start) .hero { flex: 1 0 auto; min-height: 40vh; min-height: 40svh; padding: 56px 12px 40px; }
+body:has(.screen.start) .trust { margin-top: auto; }
+.start .lede { margin: 0 0 18px; font-size: 16.5px; }
+.start .btn.big { margin-top: 0; width: 100%; }
+.start .btn .i { vertical-align: 0; }
+.start .fine { margin: 12px 0 0; font-size: 13px; color: var(--muted); text-align: center; }
+@media (min-width: 1024px) {
+  body:has(.screen.start) { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr auto auto 1fr; }
+  body:has(.screen.start) .top { right: 50%; padding: 0 36px; height: 72px; }
+  body:has(.screen.start) .hero { grid-column: 1; grid-row: 1 / -1; height: 100vh; position: sticky; top: 0; padding: 72px 48px 48px; }
+  body:has(.screen.start) main { grid-column: 2; grid-row: 2; width: calc(100% - 96px); max-width: 500px; margin: 0 auto; padding: 36px 36px 32px; }
+  body:has(.screen.start) .trust { grid-column: 2; grid-row: 3; max-width: 500px; padding: 18px 0 0; margin: 0 auto; }
+  body:has(.screen.start) h1 { font-size: 32px; }
+}
 h1 { font-size: 28px; line-height: 1.15; letter-spacing: -.02em; margin: 20px 0 12px; }
 h1:focus { outline: none; }
 p { margin: 0 0 12px; }
@@ -311,6 +339,9 @@ function icon(name,size){
   return s;
 }
 
+// The brand's mark: the console's feather (src/ui/icons.ts), drawn here like every other icon.
+$('.brand .mk').append(icon('feather',17));
+
 // The token from the link (#e=… or #j=…): read once, taken out of the address bar at once, and sent only in the start
 // request's body.
 const TOKEN=(()=>{const m=/^#([ej])=([A-Za-z0-9_.~-]{1,256})$/.exec(location.hash);if(location.hash)history.replaceState(null,'',location.pathname+location.search);return m?m[2]:null})();
@@ -426,17 +457,20 @@ function show(name,arg){
 }
 
 // 0 Start.
+// In two zones with the illustration (static in the page, cloud/src/scene.ts) and the trust line under the card (CSS).
 screen('start',{heading:C.start.heading,band:false,draw(box){
+  box.classList.add('start');
   const text=el('p','lede',C.start.text);const b=btn(C.start.button,true);
-  box.append(text,b);
+  const label=(words,glyph)=>b.replaceChildren(...[words,glyph?icon('arrow-right',18):null].filter(Boolean));label(C.start.button,true);
+  box.append(text,b,el('p','fine',C.start.fine));
   b.addEventListener('click',async()=>{
-    b.disabled=true;b.textContent=C.start.starting;
+    b.disabled=true;label(C.start.starting,false);
     const r=await call('POST','/v1/try/start',TOKEN?{token:TOKEN}:{});
     if((r.status===201||r.status===200)&&typeof r.json.session==='string'){
       for(const k of ['tenant','session','visitor_token','expires_at','pool','mode'])S[k]=r.json[k]??null;
       S.after=0;save();armRenewal();show('invoice');return;
     }
-    b.disabled=false;b.textContent=C.start.button;
+    b.disabled=false;label(C.start.button,true);
     const said=typeof r.json.message==='string'&&r.json.message?r.json.message:C.start.failed;
     const why=el('div','',[el('p','note',said)]);
     if(r.status===429||r.status===503){const a=el('a','',C.start.runs);a.href=RUNS;a.rel='noopener';why.append(el('p','',a))}
@@ -922,7 +956,8 @@ const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 export function tryPage(n: string, cfg: { origin: string; rpId: string }): string {
   const copy = { band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, proposal: PROPOSAL_FIELDS, method: METHOD, pay: PAY, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
-    clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download };
+    clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,
+    feather: ICONS.feather, "arrow-right": ICONS["arrow-right"] };
   const script = SCRIPT.replace("__COPY__", () => json(copy)).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__SIGN__", () => SIGN_JS).replace("__BOOKS__", () => BOOKS_JS)
     .replace("__ICONS__", () => json(icons)).replace("__RUNS__", () => json(RUNS_URL));
   return `<!doctype html>
@@ -930,9 +965,11 @@ export function tryPage(n: string, cfg: { origin: string; rpId: string }): strin
 <meta name="color-scheme" content="light dark">
 <meta name="purser-try" content="${escAttr(JSON.stringify(cfg))}">
 <title>Purser · hands-on</title>
-<style nonce="${n}">${CSS}</style></head><body>
-<header class="top"><span class="brand"><span class="mk">P</span>${CHROME.brand}</span></header>
+<style nonce="${n}">${CSS}${SCENE_CSS}</style></head><body>
+<header class="top"><span class="brand"><span class="mk"></span><span class="nm">${CHROME.brand}</span></span></header>
+<div class="hero">${sceneSvg()}</div>
 <main id="main"></main>
+<p class="trust">${escAttr(START.trust)}</p>
 <p class="sr" id="say" role="status" aria-live="polite"></p>
 <script type="module" nonce="${n}">${script}</script>
 </body></html>`;
