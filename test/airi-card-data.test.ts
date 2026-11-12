@@ -217,6 +217,12 @@ describe("the committed run records", () => {
     "docs/runs/2026-11-10-payment-acceptance-sandbox.md": ["4035501000000008"],
     "docs/runs/vic-1-plan.md": ["4035501000000008"],
   };
+  /** Not card numbers: a service's own record ids that happen to pass the card check digit, in the files that hold them. */
+  const NOT_CARDS: Record<string, string[]> = {
+    // Moneybird's id of a sandbox invoice (the Moneybird run of 12 Nov): an 18-digit record id, not a card.
+    "docs/runs/2026-11-12-moneybird-sandbox.json": ["503594084810622802"],
+    "docs/runs/2026-11-12-moneybird-sandbox.md": ["503594084810622802"],
+  };
   const read = (f: string) => readFileSync(new URL(`../${f}`, import.meta.url), "utf8");
   const all = ["docs/runs", "docs/demo"].flatMap((d) => readdirSync(new URL(`../${d}`, import.meta.url)).filter((n) => /\.(json|md|jsonl|txt|csv)$/.test(n)).map((n) => `${d}/${n}`));
 
@@ -231,7 +237,7 @@ describe("the committed run records", () => {
 
   it("every record under docs/runs and docs/demo: no security-code pattern, and no card number but a published test number where a document names it", () => {
     expect(all.length).toBeGreaterThan(50);
-    const found = all.flatMap((f) => { const t = read(f); const cards = [...new Set(cardNumbersIn(t))]; return cards.length || t.match(CVV_PATTERN) ? [{ f, cards, cvv: t.match(CVV_PATTERN) }] : []; });
+    const found = all.flatMap((f) => { const t = read(f); const cards = [...new Set(cardNumbersIn(t))].filter((c) => !(NOT_CARDS[f] ?? []).includes(c)); return cards.length || t.match(CVV_PATTERN) ? [{ f, cards, cvv: t.match(CVV_PATTERN) }] : []; });
     expect(found).toEqual(Object.entries(PUBLISHED).map(([f, cards]) => ({ f, cards, cvv: null })));
   });
 });
