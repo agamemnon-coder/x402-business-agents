@@ -1,0 +1,293 @@
+{
+ "summary": "Metal testnet is reachable (chain id 63825, block 25,874,189 at 09:11 UTC, 12 Nov) and existing test keys hold enough *USDZ for all three runs without the faucet. All 8 permitted read-only calls are used.\n\n**Runbook A (real Face ID on chain) is built but has three gaps for a run in one hour:**\n- The owners path (`npm run owners -- setup | propose | status`, proposal kind `owners_execute`, behind `KIT11_PASSKEY_OWNERS=on`) creates a new, small 2-of-2 passkey account. It does not add the iPhone passkey to Northwind's existing business account; that (`addSigners` / `setThreshold`) is not built.\n- It needs exactly two active passkeys from two different people. With only Max's iPhone, the second must be a labelled virtual `test-controller`, and no committed script drives one against the hosted relay.\n- `propose` calls `addresses(db)`, which needs a bootstrapped world (`npm run bootstrap`, about 8-10 extra transactions and about 28 *USDZ). Without a small patch, the planned budget of about 10 calls is far too low; the path also does not run behind the call budget.\n- No real iPhone has signed on chain yet. On 1 November software stand-in passkeys ran it live; Chrome virtual authenticators ran the phone flow in dry-93.\n\n**Runbook B (invoice token) is ready apart from setup:**\n- The tokenize code has only run on an in-memory EVM; nothing has run on Metal yet.\n- An invoice with Max's real Face ID already exists: `P-0002` in `data/awx-1.sqlite` (7 November, EUR 240.00, document `fixtures/stockline-licence-SLL-2026-11.txt`). I checked offline, on a scratch copy, that it meets the `approvedInvoice` conditions (passkey approval, status EXECUTED, signed hash equals terms hash, terms rehash, document hash matches the fixture).\n- The branch needs `npm ci` (`@ethereumjs/*` is not installed anywhere here), and the four test keys must be created and funded before `deploy`. No command does either.\n\n**The hold (0.25 *USDZ) is still in place:** the holder's spendable balance is 1.0999, which is 1.35 minus 0.25. Finishing takes about 3-8 calls, but there is no CLI and no release path in `liveHoldDeps`.\n\nNothing was modified except the permitted symlink `/home/user/ro/main/node_modules`; both snapshots are still clean.",
+ "key_files": [
+  {
+   "path": "/home/user/ro/main/src/metal/network.ts",
+   "role": "Network config: `CHAIN_ID` 63825, `USDZ` 0x…B5d5, `FACILITATOR_ROOT`/`FACILITATOR_URL`, `EXPLORER_TX`, `rpcUrl()` (env `METAL_RPC_URL`), `rpc()` helper that never leaks the URL."
+  },
+  {
+   "path": "/home/user/ro/main/src/metal/chain.ts",
+   "role": "viem `publicClient()` (not budgeted), `usdzBalance()`, `readKeyFile()`, `transferUsdz()` via metal-ts `writeMip20Contract` (gas paid in *USDZ, limit 200,000)."
+  },
+  {
+   "path": "/home/user/ro/main/src/metal/agentCli.ts",
+   "role": "Wrapper for the pinned `metal-agent` 0.3.3 CLI: `keysDir()` (env `KIT11_KEYS_DIR`, must be outside the repo), `keyPath()`, `metalAgent()`, `metalAgentAsync()`, output scrubbing."
+  },
+  {
+   "path": "/home/user/ro/main/src/metal/mandate.ts",
+   "role": "Mandates: `loadCredentialFile()`, `credentialFiles()`, `activeMandate()`, `mandateSpent()`. Related: `credentialArgs.ts`, `pull.ts`, `recordRefusal.ts`, `pauseChain.ts`, `src/executors/mandateReplace.ts`, `src/executors/ownerSigner.ts`, `src/cli/bootstrap.ts`."
+  },
+  {
+   "path": "/home/user/ro/main/src/metal/pay.ts",
+   "role": "x402 payments under a mandate: `payUnderMandate()`, `NOTHING_SETTLED`, `nothingSettled()`. Related: `offer.ts` (read a 402 offer), `clearing.ts` (pay-per-call clearing), `src/seller/settling.ts`."
+  },
+  {
+   "path": "/home/user/ro/main/src/metal/hold.ts",
+   "role": "MIP20 holds: `HOLD_ABI`, `runApprovedHold()`, `HoldPlan`/`HoldDeps`/`HoldRecord`, `budgetedTransport()` (the call-budgeted viem transport), `liveHoldDeps()` (hash handed to `onSigned` before send; one receipt read per poll). No CLI calls it."
+  },
+  {
+   "path": "/home/user/ro/main/docs/runs/2026-11-10-metal-extra.md",
+   "role": "Record of the unfinished hold run: 15-call budget used up, `approve` and `holdFrom` landed, capture not sent, two tx hashes lost."
+  },
+  {
+   "path": "/home/user/ro/main/src/metal/ownersExecute.ts",
+   "role": "Proposal kind `owners_execute`: `ownersExecuteTerms()`, `digestOfTerms()`, `checkOwnersTerms()` (one bind or revoke on the account itself), `approvalHashOf()`, `coseP256()`, `ownerSignerOf()`, `quorumOf()`, `OWNER_CALL_SELECTORS`, `DEADLINE_SLACK_S`."
+  },
+  {
+   "path": "/home/user/ro/main/src/metal/passkeyOwner.ts",
+   "role": "ERC-7913 / WebAuthn encoding: `passkeySigner()` (verifier ‖ qx ‖ qy), `derToRs()` (low-s), `challengeOf()`, `webauthnSignature()` (checks type, challenge, UP and UV flags), `passkeyQuorum()`."
+  },
+  {
+   "path": "/home/user/ro/main/src/metal/passkeyRelay.ts",
+   "role": "Gas sponsor and relay: `PASSKEY_VERIFIER` 0xd4c84c2bea087053691623bc463da61b528755ab, `ACCOUNT_FACTORY` 0x3dbED5DebA965A639bB0Fd40BE96b97922070FA8, `passkeySponsor()` (`passkey-sponsor.key.json`), `fundSponsor()` (5.00 threshold; faucet or `KIT11_RECYCLE=on`), `liveRelay()`."
+  },
+  {
+   "path": "/home/user/ro/main/src/cli/ownersExecute.ts",
+   "role": "`npm run owners -- setup | propose | status`: creates the 2-of-2 passkey account, proposes a Sourcing mandate bind (cap 0.05, budget 0.50, Stockline only, expires in 15 min), reads status. `propose` needs a bootstrapped world via `addresses(db)`."
+  },
+  {
+   "path": "/home/user/ro/main/src/executors/ownersExecute.ts",
+   "role": "`signedCallOf()` and `executeOwnersExecute()`: builds `executeSigned` from both stored assertions, relays it, writes audit events `owners.sent` and `owners.executed`; a recorded send is never sent twice."
+  },
+  {
+   "path": "/home/user/ro/main/src/cli/passkeyOwners.ts",
+   "role": "`npm run passkey-owners`: the 1 November live proof with software stand-in passkeys; writes `docs/runs/passkey-owners.json` (`RUN_OUT`, `RUN_OUT_DIR` rename it)."
+  },
+  {
+   "path": "/home/user/ro/main/src/metal/softPasskey.ts",
+   "role": "Software stand-in authenticator (`softPasskey()`), used by tests and the 1 November run only."
+  },
+  {
+   "path": "/home/user/ro/main/src/metal/verifierCompile.ts",
+   "role": "Compiles OpenZeppelin 5.6.1 `ERC7913WebAuthnVerifier` (solc 0.8.36, cancun) into `contracts/ERC7913WebAuthnVerifier.json`; `loadVerifier()`."
+  },
+  {
+   "path": "/home/user/ro/main/src/metal/fourEyes.ts",
+   "role": "MetalAccount ABIs (`factoryAbi`, `accountAbi`), `executeDigest()` (EIP-712 Execute), `executionData()`, `quorumLane()`, `ACCOUNT_BATCH_MODE`."
+  },
+  {
+   "path": "/home/user/ro/main/src/passkey/process.ts",
+   "role": "Runner-side check of each phone assertion; for `owners_execute` it requires the flag, the account this world created, an owner passkey, and a signature over the on-chain digest."
+  },
+  {
+   "path": "/home/user/ro/main/src/approve/client.ts",
+   "role": "Phone pages: the `owners_execute` view (title \"Bind the sourcing mandate, signed on chain\"), `navigator.credentials.get` with the digest as challenge, verdict texts (\"1 of 2 approvals\", \"Approved\", \"Done\"), enrol page (\"Create passkey with Face ID\")."
+  },
+  {
+   "path": "/home/user/ro/main/worker/src/core.ts",
+   "role": "Relay Worker: `approvalChallenge()` accepts the on-chain digest for `owners_execute` only; `enrolOptions()` (ES256 and RS256, UV required, empty `excludeCredentials`)."
+  },
+  {
+   "path": "/home/user/ro/main/src/cli/relay.ts",
+   "role": "The runner (`npm run relay [-- --enrol] [-- --once]`): needs `KIT11_DB`, prints the `ENROL`, `viewer` and `key` lines, executes approved proposals. Not behind a call budget."
+  },
+  {
+   "path": "/home/user/ro/main/src/cli/passkey.ts",
+   "role": "`npm run passkey [-- confirm <fingerprint> | add <name>]`: confirm Max's passkey, open a window for a second person."
+  },
+  {
+   "path": "/home/user/ro/main/docs/runs/driver/thursday-dry.ts",
+   "role": "Helpers `phone()`, `enrol()`, `sign()` for a Chromium virtual authenticator (lines 147-205), written for the local relay. The basis for a virtual `test-controller` driver."
+  },
+  {
+   "path": "/home/user/ro/main/src/metal/testFunds.ts",
+   "role": "`fundTestWallet()`: faucet, or with `KIT11_RECYCLE=on` transfers from finished `dry-N` worlds' `owner-customer.key.json`, logged in `docs/runs/testgeld-recycling.md`."
+  },
+  {
+   "path": "/home/user/ro/main/docs/decisions.md",
+   "role": "D16 (from line 184): P-256 precompile, ERC-7913 signers, the 1 November testnet result, the phone path, and the security review of block 1."
+  },
+  {
+   "path": "/home/user/ro/main/docs/security.md",
+   "role": "Lines 180-189: the accepted risk that a compromised relay page could collect both passkeys' signatures over its own digest."
+  },
+  {
+   "path": "/home/user/ro/main/docs/internal/metal-qa-2026-11-01.md",
+   "role": "Metal QA: passkey owners are stand-ins (lines 58, 137, 180); passkey owners on Northwind's own account not built (line 161)."
+  },
+  {
+   "path": "/home/user/ro/main/docs/runs/passkey-owners.json",
+   "role": "Run record of 1 November: verifier, account 0x44aF42d8f16981932Aa6CEC7668b8FAeF3f037e8, 15 steps with tx hashes. The shape to copy for runbook A's record."
+  },
+  {
+   "path": "/home/user/ro/tokenize/src/cli/tokenize.ts",
+   "role": "`npm run tokenize -- stand-in | deploy | mint | finance | settle | verify | facts`; own ledger tables `tokenize_state` and `tokenize_txs`; creates the four keys lazily in `KIT11_KEYS_DIR`."
+  },
+  {
+   "path": "/home/user/ro/tokenize/src/tokenize/guard.ts",
+   "role": "`liveRefusals()`: the guards every live tokenize command needs (`TOKENIZE_GO`, `TOKENIZE_CALL_BUDGET`, `TOKENIZE_CALL_LOG`, `TOKENIZE_DB`, `METAL_RPC_URL`, and for mint/verify the source ledger, proposal and document)."
+  },
+  {
+   "path": "/home/user/ro/tokenize/src/tokenize/client.ts",
+   "role": "`txClient()` (local signing, hash to `onSigned` before send, fixed `GAS` limits, receipt polling), `budgetedHttp()` (budget per process), `invoiceTokenCalls()`."
+  },
+  {
+   "path": "/home/user/ro/tokenize/src/tokenize/record.ts",
+   "role": "`approvedInvoice()` (passkey approval checks), `mintRecord()`, `testnetFaceValue()`, `dueDateFromDocument()`, `verifyRecord()`, `MintRefused`."
+  },
+  {
+   "path": "/home/user/ro/tokenize/docs/tokenize-run-template.md",
+   "role": "Run record template for the live tokenize run (budget, invoice, keys, seven transactions, checks)."
+  },
+  {
+   "path": "/home/user/ro/tokenize/docs/tokenize.md",
+   "role": "What the token is, what goes on chain, what is simulated, how to run it."
+  },
+  {
+   "path": "/home/user/x402-business-agents/data/awx-1.sqlite",
+   "role": "Ledger of the 7 November run; `P-0002` is an invoice payment approved by Max's real Face ID. Candidate `TOKENIZE_SOURCE_DB`."
+  },
+  {
+   "path": "/home/user/x402-business-agents-keys/plans/2026-11-11/purser-masterlijst.md",
+   "role": "Master list with the planned call budgets: Face ID about 10, tokenization about 45, hold about 3."
+  }
+ ],
+ "how_it_works": "**Gas and money.** On Metal testnet the native balance is the *USDZ balance: `eth_getBalance` and `balanceOf` returned the same 98.999999 for one address. A plain EIP-1559 transaction with `maxFeePerGas: 1n` therefore pays its gas in *USDZ, and gas costs are dust.\n\n**Mandates and x402.** Agents pay under mandates loaded by `src/metal/mandate.ts`. `payUnderMandate()` in `src/metal/pay.ts` pays an x402 route and classifies the result as paid, refused or in doubt. Mandate changes go through the pinned `metal-agent` CLI (`src/metal/agentCli.ts`), signed by the business owner key on the runner.\n\n**Holds.** `runApprovedHold()` runs approve, `holdFrom`, a simulated over-capture, then `captureHold`, always from the start. `liveHoldDeps()` signs with metal-ts `signMip20Contract` and hands each hash to `onSigned` before sending. `budgetedTransport()` answers `eth_chainId` locally and throws `Metal RPC budget of N calls reached; stopping` past the limit.\n\n**How tx hashes are saved.**\n- Main ledger: columns such as `sales.tx_hash`, `mandates.bound_tx`, `metal_accounts.created_tx` (the list is `LEDGER_TXS` in `src/metal/finality.ts`).\n- Owners path: audit events `owners.account_created`, `owners.sent` (before waiting) and `owners.executed`.\n- Holds: only through the caller's `onSigned` and `onStep` callbacks; nothing persists them.\n- Tokenize: table `tokenize_txs`, status `signed` before send, then `success` or `reverted`.\n\n**Passkey owners, 1 November.** `npm run passkey-owners` deployed the OpenZeppelin verifier and created a 2-of-2 account whose owners were software stand-in passkeys. It showed four refusals and a replay reverting on chain, a payment, and a mandate bind and revoke through Metal's `authorizeMandateCall`.\n\n**The phone path.**\n1. `npm run owners -- setup` builds signers from the two active enrolled passkeys, creates the account through the factory from a gas-only sponsor, and funds it with 0.60 *USDZ.\n2. `npm run owners -- propose` issues a credential with `metal-agent`, builds the bind call, and stores terms holding the calls, nonce, deadline and the account's Execute digest.\n3. The phone page checks the terms and signs the digest as the WebAuthn challenge. The Worker accepts the digest as challenge for this kind only.\n4. The runner re-derives the digest, checks the passkey is an owner, and verifies the assertion. After two different people sign, `executeOwnersExecute()` relays `executeSigned`; the account verifies both signatures on chain.\n\n**Tokenize.** Each live command is a separate process with its own budget. `approvedInvoice()` reads the source ledger read-only and refuses anything not approved by a passkey over the stored terms. `mintRecord()` refuses a document whose SHA-256 is not in the signed terms. Seven transactions: deploy, mint, offer, financier approve, accept, payer approve, settle.",
+ "answers": [
+  {
+   "question": "1) Files: network config, mandates, x402 payments, holds, the call-budgeted transport, how tx hashes are saved",
+   "answer": "All paths are under `/home/user/ro/main/src/metal/` unless noted.\n\n- **Network config:** `network.ts` (`CHAIN_ID`, `USDZ`, `FACILITATOR_URL`, `EXPLORER_TX`, `rpcUrl()`, `rpc()`); `chain.ts` (`publicClient()`, `usdzBalance()`, `transferUsdz()`).\n- **Mandates:** `mandate.ts`, `credentialArgs.ts`, `pull.ts`, `recordRefusal.ts`, `pauseChain.ts`, `agentCli.ts`; `src/executors/mandateReplace.ts`, `src/executors/ownerSigner.ts`, `src/cli/bootstrap.ts`.\n- **x402 payments:** `pay.ts` (`payUnderMandate()`), `offer.ts`, `clearing.ts`; seller side `src/seller/settling.ts`.\n- **Holds:** `hold.ts` (`runApprovedHold()`, `liveHoldDeps()`, `HOLD_ABI`); tests `test/metal-hold.test.ts` (5). No CLI or npm script calls it.\n- **Call-budgeted transport:** `budgetedTransport(url, max, onCall)` in `hold.ts`; on the tokenize branch `budgetedHttp(url, chainId, max, onCall)` in `src/tokenize/client.ts`. Neither covers `publicClient()`, the owners path or the `metal-agent` CLI.\n- **Tx hashes:**\n  - Holds: `onSigned(step, hash)` before `signed.send()`, plus `onStep`; the caller must persist them.\n  - Owners: audit events `owners.account_created`, `owners.sent`, `owners.executed`.\n  - Tokenize: table `tokenize_txs` in `TOKENIZE_DB`, read with `npm run tokenize -- facts`.\n  - Main ledger: the columns in `LEDGER_TXS` (`finality.ts`)."
+  },
+  {
+   "question": "2) Passkey owners on chain: code, docs, what ran on 1 Nov, what the phone path does",
+   "answer": "**Code**\n- Flag: `passkeyOwnersOn()` in `src/config/agents.ts` (env `KIT11_PASSKEY_OWNERS=on`), checked in `src/passkey/process.ts` and `src/executors/ownersExecute.ts`.\n- Proposal kind `owners_execute`: `src/metal/ownersExecute.ts`, `src/executors/ownersExecute.ts`, `src/cli/ownersExecute.ts`.\n- Verifier and encoding: `src/metal/passkeyOwner.ts`, `src/metal/verifierCompile.ts`, `contracts/ERC7913WebAuthnVerifier.json`, `src/metal/passkeyRelay.ts`.\n- Phone and relay: `src/approve/client.ts`, `worker/src/core.ts` (`approvalChallenge()`), `src/policy/fourEyes.ts` (always two people).\n- Tests: `test/owners-execute.test.ts` (13), `test/passkey-owner.test.ts` (6), `test/passkey-verifier.test.ts` (1), dry-run step 12d in `test/browser/dryrun.check.ts`.\n\n**Docs**\n- `docs/decisions.md` D16, lines 184-250.\n- `docs/runs/passkey-owners.json`.\n- `docs/security.md` lines 180-189.\n- `docs/internal/metal-qa-2026-11-01.md` lines 58, 137, 161, 180.\n- `docs/metal-qa-2026-11-01-week.md` line 112.\n- `docs/metal-review.md` lines 54-58.\n- `docs/metal-award.md` section 8 covers four eyes with EOA keys, the compliance policy, finality and clearing load. It does not claim passkey owners.\n\n**What ran on 1 November (04:51 UTC, software stand-ins)**\n- Verifier deployed at 0xd4c84c2bea087053691623bc463da61b528755ab (1,166,805 gas).\n- 2-of-2 account 0x44aF42d8f16981932Aa6CEC7668b8FAeF3f037e8 created and funded to 1.00.\n- Four bad payments reverted on chain: CFO alone, CFO plus a stranger, wrong challenge, expired deadline.\n- Payment with both passkeys paid (1,048,803 gas); the replay reverted.\n- Mandate bind with the CFO alone reverted; with both it bound (1,862,891 gas).\n- The agent paid 0.05 alone inside the mandate; both passkeys revoked it.\n\n**The phone path**\n- The phone signs the account's Execute digest as its WebAuthn challenge.\n- The runner verifies and relays `executeSigned` from a gas-only sponsor.\n- It ran once with Chrome virtual authenticators (dry-93, no hashes kept). No real phone has signed on chain."
+  },
+  {
+   "question": "3) RUNBOOK A: real iPhone passkey as on-chain owner, then one mandate action with Face ID",
+   "answer": "**Built and tested**\n- The whole `owners_execute` flow: terms, phone page, Worker challenge, runner checks, relay, audit events.\n- The verifier contract is already on testnet.\n- Tested by unit tests, by the 1 November stand-in run, and by the dry-93 dry run with virtual authenticators.\n\n**Not built**\n- (a) Adding the passkey to Northwind's existing business account (`addSigners` / `setThreshold`). The run creates a new small account.\n- (b) A single-owner variant: `owners()` throws unless exactly two passkeys are active, and four eyes refuses the same person twice.\n- (c) A committed driver for a virtual `test-controller` on the hosted relay.\n- (d) `propose` without a bootstrapped world.\n- (e) A revoke proposal: the terms check allows it, but the CLI only builds a bind.\n- (f) A call budget for this path.\n- (g) A run-record writer.\n\n**Prerequisites**\n- A checkout of origin/main with `node_modules`.\n- Env: `METAL_RPC_URL`, `KIT11_PASSKEY_OWNERS=on`, `KIT11_DB=data/<world>.sqlite`, `KIT11_KEYS_DIR=/home/user/x402-business-agents-keys/<world>` (set it explicitly; the default resolves relative to the checkout), `KIT11_RELAY_TOKEN=$(cat /home/user/.kit11/relay-token)`, and `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` or `KIT11_RELAY_URL`.\n- `KIT11_CARD_POLL_MS=off`, or unset the Airwallex variables, to avoid Airwallex calls.\n- In this container Node fetch needed `NODE_USE_ENV_PROXY=1`.\n- A second approver: a second person with a phone, or a labelled virtual `test-controller`.\n\n**Commands**\n1. `npm run relay -- --enrol`. It prints `ENROL on the phone open <url>/enrol and type <code>`, a `viewer` link and a `key` line.\n2. Max opens the viewer link once, then `/enrol`, types the code, taps \"Create passkey with Face ID\", and sees \"Confirm on the runner\" with \"Fingerprint XXXX-XXXX-XXXX-XXXX\". He says \"Bevestig passkey <fingerprint>\".\n3. `npm run passkey -- confirm <fingerprint>`.\n4. `npm run passkey -- add test-controller`. Wait about 10 s before the code is typed, then confirm its fingerprint.\n5. Without a patch: `npm run bootstrap` (use `KIT11_RECYCLE=on` to avoid the faucet).\n6. `npm run owners -- setup`.\n7. `npm run owners -- propose`.\n8. Max opens `<url>/approve/<P-id>` and signs within 15 minutes; then the controller signs.\n9. The runner relays. `npm run owners -- status` should say `bound yes; revoked no`.\n\n**What Max sees on the approval page**\n- Label \"On chain\", title \"Bind the sourcing mandate, signed on chain\", big \"0.50\" with \"USDZ budget\".\n- The sentence \"Your Face ID signs this on chain: the business account 0x… is owned by two passkeys, the CFO's and the controller's, and runs this only with both. Up to 0.05 per payment, 0.50 in total, to Stockline only.\"\n- Under Details: Account, Mandate, Per payment, Budget, May pay, Digest, Valid until.\n- After Face ID: \"Signed\", then \"1 of 2 approvals\".\n\n**Transactions**\n- Sponsor funding (faucet grant or one transfer).\n- `createAccount` on the factory.\n- Transfer of 0.60 *USDZ to the account.\n- `executeSigned` (the bind; about 1.86M gas on 1 November).\n- Without the patch, add the bootstrap's roughly 8-10 transactions.\n\n**Calls (my count from the code, not measured)**\n- `setup`: about 24-26, plus funding.\n- `propose`: 1, plus whatever the CLI makes.\n- Execute: about 9.\n- `status`: 2-3, plus the CLI.\n- Total: about 40-45 JSON-RPC requests plus `metal-agent`'s own, against a planned budget of about 10.\n\n**Known issues and security notes**\n- Never run with real iPhone or Safari.\n- A compromised relay page could have both passkeys sign its own digest; the account must stay a small demo account (`docs/security.md`).\n- Reverts show \"unknown reason\"; the account's custom errors are not decoded.\n- The verifier is our own deployment of OpenZeppelin 5.6.1, not Metal's.\n- The deadline is the proposal expiry plus 120 s.\n- Whether the hosted Worker has the `owners_execute` change: unknown, not checked.\n\n**Run record (no generator exists; follow `docs/runs/passkey-owners.json`)**\n- `ran_at`, `network`, `verifier`, `verifier_artifact`, `account`, `threshold`, `owners`.\n- Who signed: Max's passkey fingerprint; the controller's label and fingerprint, stated as virtual if it is.\n- `steps[]` with `step`, `outcome`, `tx`, `detail`.\n- Proposal id, `terms_sha256`, `onchain_digest`.\n- The three `owners.*` audit events.\n- Calls used and deviations."
+  },
+  {
+   "question": "4) Tokenization: CLI commands, guards, call estimate, run template; RUNBOOK B",
+   "answer": "**Commands** (`npm run tokenize -- <cmd>` on branch `tokenize-1110`)\n- `stand-in`: whole flow on an in-memory EVM, zero network.\n- Live, in order: `deploy`, `mint`, `finance`, `settle`, `verify`.\n- `facts`: this run's ledger as JSON, zero calls.\n- Optional env: `TOKENIZE_DIVISOR` (default 100), `TOKENIZE_DISCOUNT_BPS` (default 200), `TOKENIZE_DEBTOR` (default \"Northwind Outdoor\").\n\n**Guards** (`liveRefusals()`)\n- `TOKENIZE_GO=yes`.\n- `TOKENIZE_CALL_BUDGET` (whole number, per command).\n- `TOKENIZE_CALL_LOG`.\n- `TOKENIZE_DB` matching `tokenize*.sqlite`.\n- `METAL_RPC_URL`.\n- For `mint` and `verify` also `TOKENIZE_SOURCE_DB` (must differ from `TOKENIZE_DB`), `TOKENIZE_PROPOSAL`, `TOKENIZE_DOCUMENT`.\n- Each step refuses to run twice (\"nothing is sent twice\").\n\n**Call estimate (my count from the code)**\n- `deploy` 3, `mint` 4, `finance` 8, `settle` 6, `verify` 1: 22 minimum for 7 transactions.\n- One extra receipt poll per transaction gives 29, which matches the template's \"about 29\".\n- Worst case with six polls each is 57.\n- Funding four keys: the template says up to 12.\n\n**Template:** `docs/tokenize-run-template.md` (go, budget, invoice, face value, keys, seven transaction rows, checks, deviations). Copy it to `docs/runs/<date>-tokenize.md`.\n\n**RUNBOOK B**\n1. Check out `tokenize-1110` and run `npm ci`. `src/cli/tokenize.ts` imports the in-memory chain at the top, so even live commands need `@ethereumjs/*`.\n2. `npm run tokenize -- stand-in` must print `STAND-IN OK`.\n3. Create the four key files `issuer`, `creditor`, `financier`, `payer` (`<role>.key.json` with `address` and `privateKey`, mode 600) in `/home/user/x402-business-agents-keys/tokenize`, and fund them: financier at least 2.35, payer at least 2.40, the other two dust. About 5.20 *USDZ in total. No command does this; without it `deploy` creates the keys and fails unfunded.\n4. Set the common env: `KIT11_KEYS_DIR=/home/user/x402-business-agents-keys/tokenize TOKENIZE_GO=yes TOKENIZE_CALL_LOG=<file> TOKENIZE_DB=<dir>/tokenize-1.sqlite`.\n5. `TOKENIZE_CALL_BUDGET=6 npm run tokenize -- deploy`.\n6. `TOKENIZE_CALL_BUDGET=7 TOKENIZE_SOURCE_DB=/home/user/x402-business-agents/data/awx-1.sqlite TOKENIZE_PROPOSAL=P-0002 TOKENIZE_DOCUMENT=fixtures/stockline-licence-SLL-2026-11.txt npm run tokenize -- mint`.\n7. `TOKENIZE_CALL_BUDGET=14 npm run tokenize -- finance`.\n8. `TOKENIZE_CALL_BUDGET=10 npm run tokenize -- settle`.\n9. `verify` with budget 2 and the same three source variables.\n10. `npm run tokenize -- facts`.\n\n**Expected numbers:** face value 2.40 *USDZ (EUR 240.00 ÷ 100), price 2.35 (2% discount, rounded down to the cent).\n\n**Using a real passkey:** `P-0002` in `awx-1.sqlite` was approved by Max's own Face ID on 7 November (fingerprint 52BF-C694-773F-2CAE per `docs/runs/2026-11-07-awx-1.md`). A fresh approval today would need a real Airwallex sandbox payout, because a FAILED proposal is refused by `approvedInvoice()`."
+  },
+  {
+   "question": "5) The unfinished hold run: what is needed to capture or release the held 0.25 *USDZ",
+   "answer": "**State now**\n- Holder (sweep wallet W) 0xb598Ae440Ff61d234999f2E9923fECB94E85962a has 1.0999 spendable, which is 1.35 minus 0.25, so the hold is still in place.\n- Spender (business owner key) 0xFe75eBfFB5427693C46956eF3d345D51526AFd8e has 79.9999 *USDZ, enough for gas.\n- Both keys are in the keys folder `testnet`.\n\n**To capture**\n- Call `liveHoldDeps({ holderKeyFile, spenderKeyFile, maxCalls, onSigned }).deps.capture(holder, supplier, 0.25 in base units)` from a small script. `runApprovedHold()` cannot resume; it always starts at approve.\n- Optionally run `deps.simulateCapture()` for one base unit more first, to claim the refusal.\n\n**To release instead**\n- `releaseHold` is in `HOLD_ABI`, but `liveHoldDeps` only sends `approve`, `holdFrom` and `captureHold`. A release needs a small addition.\n\n**Calls**\n- Capture alone: about 3-4 (nonce, send, one or two receipt reads).\n- Over-capture simulation: 1.\n- Recovering the two lost hashes (two nonce reads, two receipt reads; re-signing the same transaction gives the same hash): about 4.\n- That gives the run record's \"about 8\"; the master list's \"2-3\" is the capture alone.\n\n**Unknown**\n- The 10 November script was never committed, so the exact supplier address, the `termsHash` and the `approvedCents` plan are unknown. The testnet world's supplier S is 0x5D72985B418C6eF4753BA630B285882a14e47336.\n- Whether the spender is the one who calls `releaseHold`: not tested."
+  },
+  {
+   "question": "6) Test funds: how *USDZ and gas are obtained; chain reachability and balances; what needs topping up",
+   "answer": "**How funds are obtained**\n- Faucet: `metal-agent fund <address>` grants 100 *USDZ at a time. One grant a minute (`withFaucetRetry` in `src/cli/bootstrap.ts` waits 65 s); a 429 \"retry in N s\" is waited out in `fundSponsor()`.\n- Daily limit: `src/metal/testFunds.ts` and the master list note one exists and was hit once. The number is unknown.\n- Recycling: `KIT11_RECYCLE=on` makes `fundTestWallet()` take spare money from finished `dry-N` worlds, logged in `docs/runs/testgeld-recycling.md`. It only sees worlds whose ledger exists under the running checkout's `data/`.\n- Gas is paid in *USDZ; the native balance equals the *USDZ balance.\n\n**The 8 calls (12 Nov, 09:11:29-33 UTC)**\n\n| # | Method | What | Result |\n|---|---|---|---|\n| 1 | `eth_chainId` | chain id | 63825, matches the repo |\n| 2 | `eth_blockNumber` | head | 25,874,189 |\n| 3 | `eth_call` balanceOf | hold holder 0xb598Ae440Ff61d234999f2E9923fECB94E85962a | 1.099999 |\n| 4 | `eth_call` balanceOf | hold spender 0xFe75eBfFB5427693C46956eF3d345D51526AFd8e | 79.999999 |\n| 5 | `eth_call` balanceOf | 1 Nov sponsor 0xFd485B319D6159cECc5380b306A803dB25949c12 | 98.999999 |\n| 6 | `eth_getBalance` | same sponsor, native | 98.999999 |\n| 7 | `eth_call` balanceOf | dry-14 owner-customer 0x2c4ad94f8206BC3A9F777d70E2CdDE8159F21090 | 39.349999 |\n| 8 | `eth_call` balanceOf | dry-142 owner-customer 0x426De416C5D177bDAa75615aD8C1f9f70cf171fb | 43.799999 |\n\n**What needs topping up**\n- Runbook A: the new world's `passkey-sponsor.key.json` does not exist yet, so it holds 0 and needs at least 5.00. Use the faucet (automatic), recycling (dry-14 qualifies; dry-142 has no ledger in the main checkout's `data/`), or one transfer from the 1 November sponsor.\n- Runbook A with a bootstrap: about 28 more (21 + 1 + 6); dry-14's 39.35 covers it.\n- Runbook B: the four tokenize keys do not exist yet, so they hold 0. They need about 5.20 in total, by transfer from an existing key or four faucet grants.\n- Hold: nothing to top up."
+  },
+  {
+   "question": "7) Directory names under /home/user/x402-business-agents-keys relevant to these runs",
+   "answer": "- `passkey-owners`: the 1 November stand-in world (sponsor, payee, three stand-in passkeys, verifier address).\n- `testnet`: the hold's holder and spender keys (sweep and business owner), plus the supplier.\n- `awx-1`: the 7 November run with Max's real Face ID; its ledger is `/home/user/x402-business-agents/data/awx-1.sqlite`.\n- `main-1` (with `main-1/ledger`): the 3 November main run, where Max approved a licence invoice with Face ID.\n- `two-locks`: the 10 November run (virtual passkey, so not usable as a real approval).\n- `dry-1` … `dry-180`: finished dry worlds, the recycle donors; `dry-14` and `dry-142` still hold money.\n- `four-eyes`, `four-eyes-2`, `four-eyes-3`: EOA four-eyes worlds.\n- `plans/2026-11-11`: handover and master list with the budgets.\n- `reviews/2026-11-09`: includes a Metal review.\n- There is no `tokenize` directory yet, and no directory for a new Face ID world."
+  },
+  {
+   "question": "8) Step list for the owner in plain words, runbooks A and B",
+   "answer": "**Runbook A**\n1. Claude sends you a link. Open it once in Safari. If the phone says the runner's key changed, compare the short code with the one Claude names, then tap the button.\n2. Open the enrol page Claude names and type the code (XXXX-XXXX). Tap \"Create passkey with Face ID\" and look at the phone.\n3. The page shows \"Confirm on the runner\" and a fingerprint of four groups. Tell Claude: \"Bevestig passkey\" plus that fingerprint.\n4. Wait while Claude sets up the second approver and the small on-chain account. If the second approver is a test passkey, Claude names its fingerprint and you say go.\n5. Claude sends an approval link. Open it within 15 minutes. You see \"Bind the sourcing mandate, signed on chain\" and \"0.50 USDZ budget\". Check: up to 0.05 per payment, 0.50 in total, Stockline only.\n6. Tap \"Approve with Face ID\", confirm, and look at the phone. You see \"Signed\", then \"1 of 2 approvals\".\n7. The second approver signs. Claude shows you the transaction in the Metal explorer and the line that the mandate is bound.\n\n**Runbook B**\n1. Decide which invoice: the EUR 240.00 Stockline licence you approved with Face ID on 7 November needs nothing on your phone.\n2. Say go and agree the number of calls in the chat.\n3. If you want a fresh approval instead, open the approval link, check amount and payee, and tap \"Approve with Face ID\". That costs a real Airwallex sandbox payout.\n4. Watch five steps in the chat: deploy, mint, finance, settle, verify. Claude shows seven explorer links and the final line that the chain record matches the ledger and the document.\n5. Nothing leaves real accounts; it is test money and the financier is simulated."
+  }
+ ],
+ "extension_points": [
+  {
+   "what": "Let `npm run owners -- propose` work without a bootstrapped world",
+   "where": "/home/user/ro/main/src/cli/ownersExecute.ts, `propose` branch (`const supplier = addresses(db).supplier`)",
+   "how": "Take the payee from an argument or env, or read only `supplier.key.json`, instead of `addresses(db)`, which needs `metal_accounts` rows for `business` and `customer` plus `sweep.key.json`. Removes about 8-10 transactions and about 28 *USDZ from runbook A."
+  },
+  {
+   "what": "Put the owners path behind a call budget",
+   "where": "/home/user/ro/main/src/metal/passkeyRelay.ts `liveRelay()` and /home/user/ro/main/src/cli/ownersExecute.ts",
+   "how": "Build the clients on `budgetedTransport()` from `src/metal/hold.ts` and replace `waitForTransactionReceipt` with one receipt read per poll, as `liveHoldDeps` does."
+  },
+  {
+   "what": "A committed driver for the labelled virtual `test-controller` on the hosted relay",
+   "where": "new file under /home/user/ro/main/src/cli/, based on /home/user/ro/main/docs/runs/driver/thursday-dry.ts lines 147-205",
+   "how": "Reuse `phone()`, `enrol()`, `sign()` with the relay's url and rpId from `relayConfig()` instead of `localhost`; open the viewer link first."
+  },
+  {
+   "what": "Passkey as owner of Northwind's existing business account",
+   "where": "/home/user/ro/main/src/metal/ownersExecute.ts `checkOwnersTerms()` and /home/user/ro/main/src/cli/ownersExecute.ts",
+   "how": "Add an `addSigners` / `setThreshold` call kind signed by the current owner. Estimated 4-8 h in `docs/internal/metal-qa-2026-11-01.md` line 161."
+  },
+  {
+   "what": "A revoke proposal for the passkey account",
+   "where": "/home/user/ro/main/src/cli/ownersExecute.ts",
+   "how": "`checkOwnersTerms()` already accepts `action.what = \"revoke\"` with selector 0xb75c7dc6; add a `revoke` command that builds the call with metal-pay's `revokeCall`."
+  },
+  {
+   "what": "Finish or release the hold",
+   "where": "/home/user/ro/main/src/metal/hold.ts `liveHoldDeps()`; new `src/cli/hold.ts`",
+   "how": "Add a `release` dep (`releaseHold` is already in `HOLD_ABI`), a resume entry that skips approve and `holdFrom`, and a CLI that persists `onSigned` hashes."
+  },
+  {
+   "what": "Zero-call `keys` command and a budgeted `fund` command for tokenize",
+   "where": "/home/user/ro/tokenize/src/cli/tokenize.ts",
+   "how": "Split key creation from the live commands so addresses are known before `deploy`; add funding transfers through `txClient()` so they count against `TOKENIZE_CALL_BUDGET`."
+  },
+  {
+   "what": "Balance reads for the tokenize run record",
+   "where": "/home/user/ro/tokenize/src/cli/tokenize.ts, `finance` and `settle`",
+   "how": "The template asks what the creditor and financier received; only the stand-in reads balances. Add `calls.balanceOf()` before and after, or read the Transfer logs from the receipts already fetched."
+  },
+  {
+   "what": "Run-record writer for the owners path",
+   "where": "/home/user/ro/main/src/cli/ownersExecute.ts or a new `record` command",
+   "how": "Emit the shape of `docs/runs/passkey-owners.json` from the `owners.*` audit events, the proposal and `passkey_assertions`."
+  }
+ ],
+ "pinned_by_tests": [
+  {
+   "check": "/home/user/ro/main/test/owners-execute.test.ts (13 tests)",
+   "pins": "Both owners must sign the digest; a passkey that signed the terms hash, a non-owner passkey, and the same person twice are refused; terms whose calls differ from what the phone shows are refused; a lost receipt is waited for and never re-sent; the switch off and a foreign account are refused; no relay with one approval or after the deadline."
+  },
+  {
+   "check": "/home/user/ro/main/test/passkey-owner.test.ts (6 tests) and /home/user/ro/main/test/passkey-verifier.test.ts (1 test)",
+   "pins": "Signer and WebAuthn signature encoding; the committed verifier artifact recompiles to the same bytecode."
+  },
+  {
+   "check": "/home/user/ro/main/test/metal-hold.test.ts (5 tests)",
+   "pins": "Hold order (approve, hold, refused over-capture, capture); each id reported as soon as it exists; no capture when the chain would accept more; malformed approval refused before any call; the budgeted transport answers `eth_chainId` locally and stops past its budget."
+  },
+  {
+   "check": "/home/user/ro/main/test/browser/dryrun.check.ts step \"12d Face ID signs on chain\" (`DRYRUN_ONLY_OWNERS=1` or `KIT11_PASSKEY_OWNERS=on`)",
+   "pins": "End to end with two virtual authenticators: \"1 of 2 approvals\", then \"Done\" or \"Approved\", an `owners.executed` tx, and `bound yes; revoked no`."
+  },
+  {
+   "check": "/home/user/ro/tokenize/test/tokenize.test.ts (16 tests)",
+   "pins": "Artifact matches source; only passkey approvals over unchanged terms mint; no personal data in calldata; finance and settle amounts; each fixed gas limit at least twice the in-memory use; every live command refused without its guards; hash handed over before send; one transaction is exactly nonce, send, receipt."
+  },
+  {
+   "check": "/home/user/ro/main/test/test-funds.test.ts and /home/user/ro/main/test/no-owner-key.test.ts",
+   "pins": "Recycling moves whole cents from finished dry worlds only; the business owner key is named only by the owner signer and people's own CLIs."
+  }
+ ],
+ "risks": [
+  "Runbook A has never run with a real iPhone or Safari; only software stand-ins and Chrome virtual authenticators have signed on chain.",
+  "Runbook A cannot fit the planned budget of about 10 calls: my count is about 40-45 requests plus the CLI's own, and more with a bootstrap. Nothing stops it in code.",
+  "Max alone cannot complete runbook A: two different people's passkeys are required, and the virtual `test-controller` driver for the hosted relay is not in the repo.",
+  "`npm run owners -- propose` throws `no business account in the ledger; run npm run bootstrap` in a fresh world.",
+  "The proposal expires 15 minutes after `propose`, and the on-chain deadline is 120 s later; a slow second signature means a new proposal.",
+  "Accepted security risk (`docs/security.md`): a compromised relay page could have both passkeys sign its own Execute digest. The passkey account must stay a small demo account.",
+  "Whether the hosted Worker carries the `owners_execute` challenge change is not verified; the 1 November note says a redeploy was still open then.",
+  "Tokenize has never touched Metal. Its plain EIP-1559 `approve` on *USDZ uses a 120,000 gas limit, where Purser's working MIP20 calls use 200,000-300,000 through metal-ts.",
+  "Tokenize `deploy` without pre-funded keys creates the keys and then fails, spending calls.",
+  "A tokenize step stopped mid-way does not resume per transaction: a `deploy` whose receipt was missed is not recorded and a re-run would deploy a second contract; a re-run of `finance` after `accept` landed would revert.",
+  "`TOKENIZE_CALL_BUDGET` is per command, not cumulative; only the call log adds up.",
+  "The default keys directory resolves relative to the checkout; in a worktree it points to the wrong place unless `KIT11_KEYS_DIR` is set.",
+  "The faucet has a daily limit that was hit before; its size is unknown."
+ ],
+ "runtime_constraints": [
+  "`METAL_RPC_URL` is a credential; `rpc()` and `redactSecrets` keep it out of output.",
+  "In this container Node's fetch needed `NODE_USE_ENV_PROXY=1` to reach the RPC (Node 22.22.0); I did not test without it.",
+  "`KIT11_KEYS_DIR` must be outside the code repo; both `keysDir()` and the tokenize CLI refuse otherwise.",
+  "`npm run relay` refuses to start without `KIT11_DB` and takes a runner lock per ledger.",
+  "Every runner start on the hosted relay needs `KIT11_RELAY_TOKEN=$(cat /home/user/.kit11/relay-token)`.",
+  "`owners_execute` is refused by runner and executor unless `KIT11_PASSKEY_OWNERS=on`.",
+  "A passkey owner must be ES256 (P-256); `coseP256()` refuses anything else.",
+  "Tokenize live commands need the guards in `liveRefusals()`, and `TOKENIZE_DB` must be named `tokenize*.sqlite`.",
+  "The tokenize branch needs `@ethereumjs/common`, `@ethereumjs/evm` and `@ethereumjs/util` 10.1.3, which are not installed in any checkout here.",
+  "Recycling only sees donor worlds whose ledger exists under the running checkout's `data/` and is at least an hour old.",
+  "Faucet: one grant a minute, 100 *USDZ per grant.",
+  "The main checkout `/home/user/x402-business-agents` is on branch `invoice-inbox`, not main."
+ ],
+ "open_questions": [
+  "Does the hosted Worker at kit11.max-31b.workers.dev include the `owners_execute` challenge code? Not checked (no network calls allowed beyond the RPC).",
+  "Who is the second approver for runbook A: a second person with a phone, or a labelled virtual `test-controller` that Claude presses on Max's go?",
+  "Should runbook A use a full bootstrap (no code change, many calls) or the small `propose` patch (few calls)?",
+  "Is the call budget for runbook A raised from about 10 to about 50, or is the path first put behind `budgetedTransport()`?",
+  "How many RPC calls does the `metal-agent` CLI make per command (`fund`, `mandate credential create`, `mandate status`)? Unknown.",
+  "Does a plain EIP-1559 `approve` on *USDZ succeed within 120,000 gas on Metal? Unknown until the canary transaction.",
+  "Hold: which supplier address and terms hash did the 10 November script use, and does the spender call `releaseHold`? Unknown; the script was not committed.",
+  "What is the faucet's daily limit, and has it been used today? Unknown.",
+  "Tokenize: use the 7 November invoice (`awx-1` `P-0002`) or a fresh Face ID approval today, which costs Airwallex sandbox calls?"
+ ]
+}
