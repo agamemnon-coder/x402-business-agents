@@ -109,12 +109,13 @@ export type InvoiceAmounts = { ok: true; net: number; tax: number; total: number
  * charges none; one that states no subtotal has the total minus the tax as its net. A stated subtotal plus the tax
  * must be the total, to the cent.
  */
-export function invoiceAmounts(inv: { subtotal: string; tax: string; total: string }): InvoiceAmounts {
+export function invoiceAmounts(invoice: { subtotal: string; tax: string; total: string }): InvoiceAmounts {
+  const inv = obj(invoice);
   const total = cents(inv.total);
   if (total === null) return { ok: false, why: "the invoice's total is not an amount code can read" };
-  const tax = inv.tax === "" ? 0 : cents(inv.tax);
+  const tax = inv.tax === "" || inv.tax === undefined || inv.tax === null ? 0 : cents(inv.tax);
   if (tax === null) return { ok: false, why: "the invoice's VAT is not an amount code can read" };
-  const net = inv.subtotal === "" ? total - tax : cents(inv.subtotal);
+  const net = inv.subtotal === "" || inv.subtotal === undefined || inv.subtotal === null ? total - tax : cents(inv.subtotal);
   if (net === null) return { ok: false, why: "the invoice's net amount is not an amount code can read" };
   if (net < 0 || net + tax !== total) return { ok: false, why: `the invoice's net ${net < 0 ? `-${money(-net)}` : money(net)} plus its VAT ${money(tax)} is not its total ${money(total)}` };
   return { ok: true, net, tax, total };
@@ -247,7 +248,7 @@ export const REVERSE_CODES: Readonly<Record<Exclude<ReverseCharge, "none" | "unk
 
 /** The country a VAT id starts with (ISO alpha-2; Greek ids start with EL), or "" when it is no VAT id. */
 export function vatIdCountry(vatId: string): string {
-  const m = /^([A-Z]{2})[A-Z0-9]{2,13}$/.exec(String(vatId ?? "").replace(/[\s.-]/g, "").toUpperCase());
+  const m = /^([A-Z]{2})[A-Z0-9]{2,13}$/.exec(str(vatId).replace(/[\s.-]/g, "").toUpperCase());
   return m ? (m[1] === "EL" ? "GR" : m[1]!) : "";
 }
 
@@ -260,14 +261,15 @@ const STATES_REVERSE = /reverse[\s-]*charge|btw\s+(?:is\s+)?verlegd|verleggingsr
  * when the invoice itself says so (nl); a supplier in another EU country when it has a VAT id or the invoice says so
  * (eu); a supplier outside the EU (non_eu); and unknown where code cannot tell the country.
  */
-export function vatRegime(x: { supplierVatId: string; supplierCountry: string; companyCountry: string; tax: string; text: string }): VatRegime {
+export function vatRegime(hints: { supplierVatId: string; supplierCountry: string; companyCountry: string; tax: string; text: string }): VatRegime {
+  const x = obj(hints);
   const charges = (cents(x.tax) ?? 0) > 0;
-  const states = STATES_REVERSE.test(String(x.text ?? "").slice(0, CODER_TEXT_LIMIT).normalize("NFC"));
-  const named = /^[A-Za-z]{2}$/.test(String(x.supplierCountry ?? "").trim()) ? x.supplierCountry.trim().toUpperCase() : "";
-  const fromId = vatIdCountry(x.supplierVatId);
+  const states = STATES_REVERSE.test(str(x.text).slice(0, CODER_TEXT_LIMIT).normalize("NFC"));
+  const named = /^[A-Za-z]{2}$/.test(str(x.supplierCountry).trim()) ? str(x.supplierCountry).trim().toUpperCase() : "";
+  const fromId = vatIdCountry(str(x.supplierVatId));
   // A record of one country and a VAT id of another: code cannot tell which it is.
   const country = named && fromId && named !== fromId ? "" : named || fromId;
-  const home = String(x.companyCountry ?? "").trim().toUpperCase();
+  const home = str(x.companyCountry).trim().toUpperCase();
   const reverse: ReverseCharge = charges ? "none"
     : !country ? "unknown"
       : country === home ? (states ? "nl" : "none")

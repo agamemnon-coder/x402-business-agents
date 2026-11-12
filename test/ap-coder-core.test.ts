@@ -121,6 +121,7 @@ describe("invoiceAmounts: the invoice's own net, VAT and total in cents", () => 
     expect(invoiceAmounts({ subtotal: "", tax: "", total: "1,850.00" })).toMatchObject({ ok: false, why: "the invoice's total is not an amount code can read" });
     expect(invoiceAmounts({ subtotal: "", tax: "-1.00", total: "10.00" })).toMatchObject({ ok: false });
     expect(invoiceAmounts({ subtotal: "", tax: "", total: "999999999999.00" })).toMatchObject({ ok: false });
+    for (const bad of [null, undefined, 7, {}, { total: 5 }]) expect(invoiceAmounts(bad as never)).toMatchObject({ ok: false });
   });
 });
 
@@ -143,6 +144,8 @@ describe("vatRegime: the hints code works out", () => {
     // Greek VAT ids start with EL.
     expect(vatIdCountry("EL123456789")).toBe("GR");
     expect(of({ supplierVatId: "EL123456789" })).toMatchObject({ reverse_charge: "eu", supplier_country: "GR" });
+    // Never throws: a hint from nothing is "unknown".
+    for (const bad of [null, undefined, 7, { supplierVatId: 5, text: {} }]) expect(vatRegime(bad as never)).toEqual({ reverse_charge: "unknown", states_reverse_charge: false, charges_vat: false, supplier_country: "" });
   });
 
   it("no VAT from a supplier at home: nl only when the invoice itself says the VAT is reverse-charged (English, Dutch, German)", () => {
