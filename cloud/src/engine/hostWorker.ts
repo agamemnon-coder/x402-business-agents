@@ -83,7 +83,8 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     vault: blobVault(blobs, tenantId), feed: (d, now) => feedCloud(d, target, now),
     ...withClaude(env, sql, tenantId),
     // The hands-on demo: the sample invoices, and a visitor's test company holds at most 8 documents.
-    samples: SAMPLES, ...(tenantId.startsWith("t_try_") ? { maxDocuments: 8 } : {}),
+    // Speed (12 Nov): on Pay no Claude review note for a try company; code writes it (the Payer agent's reason is on screen).
+    samples: SAMPLES, ...(tenantId.startsWith("t_try_") ? { maxDocuments: 8, reviewNoteOnPay: false } : {}),
   });
   // The treasury's test money, once in the object's life (the Node engine seeds at its start, which is once in its life too).
   if (state.get("seeded") === null) {
