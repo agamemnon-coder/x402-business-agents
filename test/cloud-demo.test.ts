@@ -413,7 +413,7 @@ describe("demo mode, in docs/cloud.md", () => {
     expect(section).toContain(`the health check for ${DEMO_HEALTH_SEC} seconds`);
     expect(section).toContain(`never\n  larger than ${DEMO_MAX_DOCUMENT_BYTES / 1024 / 1024} MB`);
     // Nothing runs in this mode yet, and the page says so, in words that announce nothing that does not exist.
-    expect(section.replace(/\s+/g, " ")).toContain("**No deployment runs in this mode today (12 November): the mode is built and tested on stand-ins only.**");
+    expect(section.replace(/\s+/g, " ")).toContain("**No deployment runs in this mode today (12 November): the mode is built and tested locally only.**");
     expect(section).not.toMatch(/public(ly)? (jury )?(demo|preview|console)|open to (the public|everyone|anyone)|anyone can (try|sign in)|not deployed|deployed yet|not public/i);
   });
 });

@@ -199,7 +199,7 @@ A mode for a deployment of its own that is read without an account: its own D1 d
 test companies and nothing else. Two variables switch it on: `DEMO_PUBLIC` set to `on`, and `DEMO_SLUGS`, the demo
 companies' addresses separated by commas. With `DEMO_PUBLIC` unset (every other deployment) no demo route exists and
 nothing else on this page changes. **No deployment runs in this mode today (12 November): the mode is built and
-tested on stand-ins only.** The code is `cloud/src/demo.ts`; the gate is `demoRoute` in `cloud/src/app.ts`.
+tested locally only.** The code is `cloud/src/demo.ts`; the gate is `demoRoute` in `cloud/src/app.ts`.
 
 In demo mode there is one caller, an anonymous read-only visitor, and only this answers:
 
@@ -232,7 +232,9 @@ In demo mode there is one caller, an anonymous read-only visitor, and only this 
 `test/cloud-demo.test.ts` builds a real pushed world with one company that is not a demo company, then walks every
 route in the route table in demo mode: only the reads above answer, only for the demo companies, nothing is written and
 no answer carries a secret, a key hash, a session or a person's name. `test/cloud-demo-worker.test.ts` covers the
-Worker's entry (variables, e-mail, the scheduled job). Both also run on local D1.
+Worker's entry (variables, e-mail, the scheduled job). Both also run on local D1. On that run
+`test/cloud-demo-workerd.test.ts` bundles the Worker and starts it locally in workerd, Cloudflare's own runtime: the
+demo's reads answer from local D1 and R2 and nothing is written. None of this ran on Cloudflare's network.
 
 ## Tested on D1 itself
 
