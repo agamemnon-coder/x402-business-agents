@@ -318,7 +318,7 @@ describe("four eyes, worded exactly (the panel's review, 12 Nov)", () => {
     // Names: the four-eyes run, world, rule, check and test, their files and command, a link's own name.
     "four[- ]eyes (?:rule|run|world|check|approval|test)", "four-eyes and compliance runs", "four-eyes(?:-onchain)?\\.(?:md|test|json)", "npm run four-eyes", "cfo-policy\\.md, four eyes",
     // The glossary's heading, the list of what was built, a requirement's own text, a line kept off the site, a row's name.
-    "Mandate, x402, terms hash, four eyes", "four eyes\\), the agents' tools", "Four eyes on chain: a Metal account with several owners", ", four eyes on chain, limits enforced", "\"Four eyes on the mandate change\"",
+    "Mandate, x402, terms hash, four eyes", "the video, four eyes, the open items", "four eyes\\), the agents' tools", "Four eyes on chain: a Metal account with several owners", ", four eyes on chain, limits enforced", "\"Four eyes on the mandate change\"",
   ].join("|"), "i");
 
   /** The places a reader meets the short form: the README, llms.txt, the current docs and the submission texts. Run records and design specs are history. */

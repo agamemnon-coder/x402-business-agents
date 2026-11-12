@@ -191,8 +191,12 @@ Rate limits, where the docs say them (each asserted in the same test or the test
   Execute digest instead (a transfer of the account's balance, a new signer), collect both people's signatures that
   way and send `executeSigned` itself; the runner would never see it. What limits it today: the passkey account is a
   separate demo account holding at most 1.00 test USD (`npm run owners -- setup` funds 0.60), the agents' real
-  mandates stay on the business account, and the runner and the phone refuse owner calls other than binding or revoking
-  a mandate on the account itself whose cap, budget and payee match the words shown. **Before real funds** the owner
+  mandates stay on the business account, and the runner refuses owner calls other than one call that binds, replaces
+  or revokes a mandate on the account itself: it decodes that call and checks that its cap, budget and payee (and, for a
+  replace, the mandate it ends and the one it creates) match the words shown. The phone checks less: that there is one
+  call, to the account itself, with no value, of the kind the words name, with a deadline that ends with the proposal
+  and a two-owner nonce lane. The earlier limits a replace shows ("0.05 before") are words in the terms that no check
+  can prove from the call. **Before real funds** the owner
   signing needs a page the relay cannot serve (a native app, or a separate origin the relay does not control), or an
   on-chain delay or guardian on the account; until then the passkey account stays small and labelled as a demo.
 - **Audit anchors are not signed.** Someone who can write the SQLite file can append forged rows after the last

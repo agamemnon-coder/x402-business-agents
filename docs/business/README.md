@@ -1,6 +1,6 @@
 # Business case (hypothesis)
 
-**We have not validated demand with customers yet.** These pages are a hypothesis: 2 finance conversations (a CFO and a bank finance professional, quoted, anonymous); more in progress; no pilots, no revenue.
+**These pages are a hypothesis.** Not validated with customers yet: 2 finance conversations (a CFO and a bank finance professional, quoted, anonymous); more in progress; no pilots, no revenue.
 
 | Page | What it covers |
 |---|---|

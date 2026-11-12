@@ -25,6 +25,13 @@ The outside agent gets five tools:
 | `company_card` | Reads its card, limits, spend this month and recent charges. |
 | `ask_for_task_card` | Asks, in plain words, for a single-use card for one flight, hotel or train, with the most it may cost. It becomes a proposal the CFO approves with Face ID; the agent never gets a card at once. |
 
+A refusal is a tool result with isError: true and a structured object that names the next tool: the same shape the
+x402 MCP transport uses for a payment refusal (these tools pay by card, not by x402). The sentence stays the first text;
+the object (`refused_by`, then `reason` and `next_tool`, or Purser's `code`) is in structuredContent and a second text.
+
+The repository includes a Skill file (the open SKILL.md format) for agents that use the agent API:
+[skills/purser-spend/SKILL.md](../skills/purser-spend/SKILL.md).
+
 The agent cannot approve, set a limit, or reach another agent's card. Once its card is issued:
 
 - its limits are part of the CFO policy, and the phone may tighten them;

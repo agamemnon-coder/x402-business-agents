@@ -82,11 +82,11 @@ Demo Day script".
 
 | Do | Max says | Source |
 |---|---|---|
-| Laptop: tab [/proof](https://kit11.max-31b.workers.dev/proof), at "The hash the CFO signed travels with the payment." | Proof one, from that run: Airwallex's record of our 240 euro SWIFT payment. | [airwallex-transfer-approval-2026-11-06.json](../runs/airwallex-transfer-approval-2026-11-06.json): transfer `03360bfa…3985`, EUR 240, SWIFT, PAID (read with GET only) |
+| Laptop: tab [/proof](https://kit11.max-31b.workers.dev/proof), open "Airwallex, read back", at "The hash the CFO signed travels with the payment." | Proof one, from that run: Airwallex's record of our 240 euro SWIFT payment. | [airwallex-transfer-approval-2026-11-06.json](../runs/airwallex-transfer-approval-2026-11-06.json): transfer `03360bfa…3985`, EUR 240, SWIFT, PAID (read with GET only) |
 | Point at the two hashes, side by side. | It carries the hash I signed with Face ID. | Same record, `metadata.approval_sha256` `797d4483…abcd` = P-0005's `terms_sha256`, approved by Max with his passkey (record seq 360); matched in code (`hashTravel`, `src/redesign/airwallexProof.ts`) |
 | | All 3 agent cards carry my policy as Airwallex's own controls. | [airwallex-cards-2026-11-06.json](../runs/airwallex-cards-2026-11-06.json); `cardControlRows`: 3 of 3 cards match the CFO policy |
 | Point at awx-1 below, "a separate run · Airwallex sandbox, test money". | On 7 November, an Airwallex-only run passed every check. | [docs/runs/2026-11-07-awx-1.md](../runs/2026-11-07-awx-1.md): ACCEPTED, checks a–g all passed; on `/proof` through `awxRunBlock` (`src/redesign/awxRun.ts`) |
-| Scroll up to the Airi run under the partners: ✓ Within the limit · ✓ Paid after Face ID · ✕ Refused by Purser. | Agents also paid with Visa Intelligent Commerce, through Airwallex's Airi. | [docs/runs/2026-11-07-vic-1.md](../runs/2026-11-07-vic-1.md): PASSED, 5 of 5 checks (Airwallex sandbox, test card, test money); on `/proof` through `airiRunBlock` (`src/redesign/airiRun.ts`) |
+| Open the line above, "Visa Intelligent Commerce via Airwallex's Airi": ✓ Within the limit · ✓ Paid after Face ID · ✕ Refused by Purser. | Agents also paid with Visa Intelligent Commerce, through Airwallex's Airi. | [docs/runs/2026-11-07-vic-1.md](../runs/2026-11-07-vic-1.md): PASSED, 5 of 5 checks (Airwallex sandbox, test card, test money); on `/proof` through `airiRunBlock` (`src/redesign/airiRun.ts`) |
 | Tab [/metal](https://kit11.max-31b.workers.dev/metal); point at #24's refusal and its tx. | Proof two: each agent has its own mandate on Metal. | `/metal` (`src/redesign/metalStory.ts`): one mandate per agent, on chain |
 | | We switched off our own check once; Metal refused purchase 24 anyway. | `CHAIN_TEST`; Record: `mandate_cap_exceeded`, tx `0x2e92f9cb…1871` |
 | | That refusal is on chain, next to 86 payments, each its own transaction. | README, "On Metal testnet"; Record: `payments` (onChain 86) |
@@ -215,11 +215,11 @@ own signature and "One cent. Worthless." stay last.
 |---|---|
 | Today this runs on the Airwallex sandbox and Metal testnet. | README; deck slide 12 |
 | One company per ledger, with test money only. | Deck slide 12, "Now" |
-| Next: keys in a KMS, Postgres, and a pager on the health check. | `docs/roadmap.md`; deck slide 12, "Next" |
+| Next: keys in a KMS, Postgres, and a pager on the health check. | Deck slide 12, "Next" (`src/submission/deck.ts`) |
 | Then Metal mainnet, with four eyes as the default. | Deck slide 12, "Then" |
-| Airwallex already offers what comes next: global accounts, local payouts, refunds. | `docs/roadmap.md`, "Airwallex products that fit next" |
-| Airwallex's own AgentOS says to require manual approval for agents. | `docs/roadmap.md` (`developer-tools/ai/agentos`) |
-| Purser is that approval, on the exact terms, with limits in the rails. | `docs/roadmap.md`, same paragraph |
+| Airwallex already offers what comes next: global accounts, local payouts, refunds. | Research of Airwallex's docs, 30 October, kept for history: `docs/archive/roadmap.md`, "Airwallex products that fit next" |
+| Airwallex's own AgentOS says to require manual approval for agents. | Research of Airwallex's docs, 30 October, kept for history: `docs/archive/roadmap.md` (`developer-tools/ai/agentos`); `docs/business/model.md`, "Risks and what we do not know" |
+| Purser is that approval, on the exact terms, with limits in the rails. | `docs/business/model.md`, "Risks and what we do not know" (what Purser adds on top) |
 
 ### 3e. The business case (after the road; 20 s; deck slide 11)
 
@@ -231,7 +231,7 @@ own signature and "One cent. Worthless." stay last.
 | €49 a company a month, a hundred invoices included; a hypothesis. | `PRICE_LINE` in `src/config/brand.ts` (the form's Description, "The business"); [model.md](../business/model.md), "Pilot pricing (hypothesis)" |
 | Why now? | [docs/business/problem.md](../business/problem.md), "Why now (sourced)" |
 | Airwallex wrote it on 5 October: limits belong in infrastructure, not prompts. | [problem.md](../business/problem.md) [S1] (Airwallex, "Agentic banking starts with governance") |
-| Agents can pay now; the sign-off still has to stay with a person. | Core message; `docs/roadmap.md`, "The CFO signs off" |
+| Agents can pay now; the sign-off still has to stay with a person. | Core message (the README's title: "AI agents spend. You sign off.") |
 
 About 640 words in all: 4:30 of speech, plus the demo.
 

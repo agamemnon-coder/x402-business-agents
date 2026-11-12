@@ -41,12 +41,16 @@ dollar, "test USD" on the pages.
 - **Company cards from Airwallex Issuing** per agent, with limits Airwallex enforces: in the main run the Sourcing
   agent asked for a card raise (P-0006, EUR 30.00 → 46.00), the CFO approved it with Face ID, and Airwallex approved the
   TAP-signed EUR 45.00 purchase (authorization `01a1a12f-4113-7000-b76d-014677710007`). Airwallex's own events (a
-  declined card, money paid in) reaching the agents: the autonomous dry runs of the 1 November soak (D22,
+  declined card, money paid in) reaching the agents: live in awx-1 (7 November), where the Sourcing agent read
+  Airwallex's `LIMIT_EXCEEDED` decline and asked the CFO for a raise instead of retrying
+  ([run log](runs/2026-11-07-awx-1.md)); before that, the autonomous dry runs of the 1 November soak (D22,
   [soak report](runs/2026-11-01-soak.md)).
 - **Four eyes, an emergency stop, velocity limits, MFA** (behind its flag), each with tests. Four eyes ran in the main
   run (P-0002; the second signature from a test passkey, not a second person); the emergency stop is tested against stand-ins, not yet run live.
 
-## Promised and not done yet
+## Promised and done since: the video
 
-- The plan named "a video under 5 minutes": the film is cut at 2:30 from the main run
-  ([docs/video/README.md](video/README.md)); its link goes into the form when Max has recorded his lines.
+- The plan named "a video under 5 minutes": the film is 3:58, made from the main run of 3 November with the two live
+  runs of 7 November ([docs/video/README.md](video/README.md)), and is on YouTube: https://youtu.be/kCUsFHrxE-o.
+  Its voice-over is an AI-generated voice (ElevenLabs), and its link is in the submission text
+  ([docs/submission/README.md](submission/README.md)).

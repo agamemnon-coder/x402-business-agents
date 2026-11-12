@@ -145,8 +145,21 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await page.goto(`${base}/proof`, { waitUntil: "load" });
     await look(page, `/proof ${tag}`, w);
     await menu(page, `/proof ${tag}`);
-    // Metal, Airwallex, Claude (Visa TAP is a footer link to /visa since the jury review of 6 Nov).
+    // Airwallex, Metal, Claude (Visa TAP is on /visa; its footer link left Proof on 12 Nov).
     if ((await page.locator(".pcard").count()) !== 3) fail(`/proof ${tag}: not three partner cards`);
+    // The jury's order (12 Nov): the guarantees directly under the heading, on the first screen; each partner card with
+    // one claim to tap in sight; four tiles; every closed line still closed; the utility links last.
+    const order = (await page.evaluate(`(() => {
+      const h1 = document.querySelector("main h1"), g = document.getElementById("guarantees"), u = document.querySelector("main .util");
+      const shown = (e) => e.getBoundingClientRect().height > 0 && e.checkVisibility();
+      return {
+        first: h1 && h1.nextElementSibling === g, top: g ? Math.round(g.getBoundingClientRect().top + scrollY) : -1, promises: g ? g.querySelectorAll("li .by").length : 0,
+        claims: [...document.querySelectorAll(".pcard > ul.lead a.c")].filter(shown).length, tiles: document.querySelectorAll(".nums a.num").length,
+        closed: [...document.querySelectorAll("main details.deep")].filter((d) => !d.open).length, last: !!u && !u.nextElementSibling && u.querySelectorAll("a").length,
+      };
+    })()`)) as { first: boolean; top: number; promises: number; claims: number; tiles: number; closed: number; last: number | false };
+    if (!order.first || order.top < 0 || order.top >= h || order.promises !== 7) fail(`/proof ${tag}: the seven guarantees are not directly under the heading on the first screen (top ${order.top} px, ${order.promises} promises)`);
+    if (order.claims !== 3 || order.tiles !== 4 || order.closed !== 5 || order.last !== 4) fail(`/proof ${tag}: not three claims in sight, four tiles, five closed lines and four utility links last (${JSON.stringify(order)})`);
     await page.screenshot({ path: join(shots, `proof-${tag}.png`) });
     // Every fold of the page; "More" in the menu stays closed, as a reader leaves it.
     await page.evaluate(() => document.querySelectorAll("details:not(.pmore)").forEach((d) => { (d as HTMLDetailsElement).open = true; }));

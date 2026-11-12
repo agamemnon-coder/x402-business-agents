@@ -8,7 +8,7 @@ For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice ov
 
 **[Try it in a minute.](https://kit11.max-31b.workers.dev/try/sign)**
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 4169 passing](https://img.shields.io/badge/tests-4169%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 4595 passing](https://img.shields.io/badge/tests-4595%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
 
 **[Judge it in 3 minutes →](https://kit11.max-31b.workers.dev/judge)**
 
@@ -16,7 +16,7 @@ The Kit 11 scenario, run live on 3 November, and a demo you sign yourself: **[ki
 
 **In three sentences.** Purser is a control layer for AI agents that spend company money: within limits the CFO sets they pay through Airwallex and Metal, and above them nothing runs until the CFO's passkey signs a SHA-256 of the exact terms, so changing one cent voids it. Live sandbox and testnet runs show it end to end: 24 Claude decisions, a SWIFT payout carrying the signed hash in Airwallex's own record, Airwallex's card controls and Metal refusing over-limit purchases, a VIC purchase via Airi, a connected-account payout with Purser's fee, and the books posted to T:0. Test money only; customers, suppliers and settlement are simulated, and the business model is not yet validated.
 
-**Why not Airwallex's own approvals?** Purser signs the exact terms with the CFO's passkey before the API call, enforces per-agent limits across Airwallex and Metal, and can additionally require Airwallex's approval workflow (`IN_APPROVAL` handled, [src/airwallex/approvals.ts](src/airwallex/approvals.ts)). Live on 10 Nov: Airwallex held a passkey-signed payout `IN_APPROVAL` ([run](docs/runs/2026-11-10-airwallex-two-locks.md); the web-app approval was not completed).
+**Why not Airwallex's own approvals?** Purser signs the exact terms with the CFO's passkey before the API call, enforces per-agent limits across Airwallex and Metal, and can additionally require Airwallex's approval workflow (`IN_APPROVAL` handled, [src/airwallex/approvals.ts](src/airwallex/approvals.ts)). Live in the sandbox, 10 and 12 Nov: Airwallex held a payout signed by a labelled test passkey `IN_APPROVAL` until the owner approved it in Airwallex's web app; then `PAID`, settlement simulated ([run](docs/runs/2026-11-12-airwallex-two-locks-paid.md)).
 
 [![Every live run, with its ids](https://img.shields.io/badge/live%20runs-every%20id%20%E2%86%92-0f766e)](https://kit11.max-31b.workers.dev/runs) [![Airwallex sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff5a36)](https://kit11.max-31b.workers.dev/airwallex) [![Metal testnet](https://img.shields.io/badge/Metal-testnet-1f1f1f)](https://kit11.max-31b.workers.dev/metal) [![Visa Intelligent Commerce via Airi](https://img.shields.io/badge/Visa%20Intelligent%20Commerce-via%20Airi-1a1f71)](https://kit11.max-31b.workers.dev/visa) [![T:0: 95 entries, 0 differences](https://img.shields.io/badge/T%3A0-95%20entries%20%C2%B7%200%20differences-4b5563)](docs/runs/2026-11-10-t0-journal-sandbox.md) [![Claude: 24 of 24 decisions](https://img.shields.io/badge/Claude-24%20of%2024%20decisions-c2410c)](https://kit11.max-31b.workers.dev/claude)
 
@@ -168,7 +168,7 @@ npm run judge -- --check
 ```
 
 - `npm ci` (under a minute): installs the exact versions in the lockfile; every dependency is pinned.
-- `npm test` (4 to 7 min): **4169 tests in 403 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included. One more test is skipped here: it runs only on local D1 (`npm run test:d1`).
+- `npm test` (4 to 7 min): **4595 tests in 423 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included. One more test is skipped here: it runs only on local D1 (`npm run test:d1`).
 - `npm run judge -- --check` (about 3 s): builds every page in `CHECK_PATHS` (src/cli/judge.ts) from the main run's committed record, offline, and fetches each once.
 - `npm run verify-receipt -- receipt.json` (under 1 s): after you sign on [/try/sign](https://kit11.max-31b.workers.dev/try/sign), checks its receipt offline with Node's own crypto: your passkey signed exactly those terms; change one cent and it says NOT VALID. Getting the receipt needs the live site and your own passkey.
 
@@ -403,7 +403,7 @@ clearing under load (30 October): [docs/runs/](docs/runs/) and [docs/metal-award
 <details><summary>Mandate, x402, terms hash, four eyes</summary>
 
 - **Mandate:** an agent's on-chain spending permission on Metal: a cap per payment, a total budget, one payee, an end date.
-- **x402:** HTTP 402 "Payment Required" as a protocol: each data query is paid on Metal before it is answered.
+- **x402:** HTTP 402 "Payment Required" as a payment protocol (version 2). On the mandate route the seller checks each payment before it does the work and settles it on Metal before it sends the answer. The protocol leaves the payer's budget to the payer; in Purser that is the CFO's signed limit, checked before anything is signed.
 - **Terms hash:** the SHA-256 of a proposal's exact terms; the CFO's Face ID signs that hash, and nothing else runs.
 - **Four eyes:** above the CFO's threshold, two approvers must each sign with their own passkey (in production two
   different people; in the main run the second signature came from a test passkey, not a second person); the proposer never approves.
@@ -420,6 +420,7 @@ clearing under load (30 October): [docs/runs/](docs/runs/) and [docs/metal-award
 - [docs/metal-award.md](docs/metal-award.md) and [docs/airwallex.md](docs/airwallex.md): what Purser uses from each
 - [docs/payables.md](docs/payables.md): the invoice inbox, built after the submission (its code is in [src/ap](src/ap); not in the submitted run)
 - [docs/security.md](docs/security.md): threat model, attacks and what stops each one
+- [skills/purser-spend/SKILL.md](skills/purser-spend/SKILL.md): how an outside agent should use the agent API
 - [docs/submission/README.md](docs/submission/README.md): the submission text, with the short Description
 - [docs/submission/long-description.md](docs/submission/long-description.md): the long form text it replaced, in full
 - [The Visa TAP note](docs/submission/long-description.md#visa): built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov)

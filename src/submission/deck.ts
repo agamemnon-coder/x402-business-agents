@@ -42,8 +42,8 @@ export const REFUSAL_LINE = "Metal refused it; the refusal is recorded on chain.
 export const T0_STATUS = "T:0: 95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q); debits equal credits, and T:0 matches our books line by line.";
 /** The T:0 sentence without its error codes, for a slide (the codes are in docs/submission/qa.md). */
 export const T0_SHORT = "T:0: 95 journal entries posted to its shared sandbox, 0 differences with our books; a second push posted none; its own balance sheet balances.";
-/** The two-locks run (10 Nov, docs/runs/2026-11-10-airwallex-two-locks.md), as honest as its record. */
-export const TWO_LOCKS_LINE = "Two locks on one payout (10 Nov): a labelled test passkey signed the terms, then Airwallex held the transfer IN_APPROVAL; nobody approved it in the web app, so it is not paid.";
+/** The two-locks run (10 and 12 Nov, docs/runs/2026-11-12-airwallex-two-locks-paid.md), as honest as its record. */
+export const TWO_LOCKS_LINE = "Two locks on one payout (10 and 12 Nov): a labelled test passkey signed the terms, Airwallex held the transfer IN_APPROVAL until the owner approved it in Airwallex's web app; then PAID (sandbox, settlement simulated).";
 /** What of the main run is on Metal testnet (README, checked against the chain on 5 Nov), in one sentence for a slide. */
 export const METAL_LINE = "Metal testnet: 86 payments and 6 mandate transactions, on chain, checkable; no clearing in this run.";
 

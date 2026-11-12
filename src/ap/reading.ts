@@ -116,11 +116,11 @@ export function decimalAmount(token: string): string {
 
 const AMOUNT_TOKEN = /\d[\d.,'\u2019\u02bc \u00a0\u202f]*\d/g;
 
-/** A two-decimal amount on a line: its value, where its digits end, and whether a digit sits right before it, split off by a mark that is no separator. */
-interface Found { amount: string; end: number; split: boolean }
+/** A two-decimal amount on a line: its value, where its digits start and end, and whether a digit sits right before it, split off by a mark that is no separator. */
+export interface Found { amount: string; start: number; end: number; split: boolean }
 
 /** Every two-decimal amount on a line, in order (a percentage or an id on the same line is skipped). */
-function amountsOn(line: string): Found[] {
+export function amountsOn(line: string): Found[] {
   return [...line.matchAll(AMOUNT_TOKEN)].map((x) => {
     // "EUR 1 190,00" may have run on into a following number; try the token, then its tail after a space.
     const tok = x[0];
@@ -129,14 +129,14 @@ function amountsOn(line: string): Found[] {
     // "3\u2018400.00": a digit, one mark that is not a separator, then the amount's digits (red team round 3: read as 400.00).
     const split = /\d[^\d\s\p{L}\p{Sc}]$/u.test(line.slice(Math.max(0, at - 2), at));
     const whole = decimalAmount(tok);
-    if (whole) return { amount: whole, end, split };
+    if (whole) return { amount: whole, start: at, end, split };
     const tail = tok.split(/\s+/).pop() ?? "";
-    return { amount: decimalAmount(tail), end, split: false };
+    return { amount: decimalAmount(tail), start: end - tail.length, end, split: false };
   }).filter((f) => f.amount);
 }
 
 /** The currencies code knows, by ISO code. Anything else written beside a total is a currency code does not know. */
-const KNOWN_CODES = new Set(["EUR", "GBP", "USD", "CHF", "SEK", "NOK", "DKK", "PLN", "CZK", "HKD", "SGD", "AUD", "CAD", "JPY", "CNY", "NZD", "TRY", "HUF", "RON", "BGN"]);
+export const KNOWN_CODES = new Set(["EUR", "GBP", "USD", "CHF", "SEK", "NOK", "DKK", "PLN", "CZK", "HKD", "SGD", "AUD", "CAD", "JPY", "CNY", "NZD", "TRY", "HUF", "RON", "BGN"]);
 const SYMBOLS: Readonly<Record<string, string>> = { "€": "EUR", "£": "GBP", $: "USD" };
 /** Words a total, subtotal or tax line may carry beside its label, amount and currency (compared in lower case). */
 const FILLER = new Set([
@@ -200,9 +200,9 @@ export function totalIsNegative(text: string): boolean {
 
 const lines = (text: string) => text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 
-type LineKind = "subtotal" | "tax" | "total";
+export type LineKind = "subtotal" | "tax" | "total";
 /** A labelled line with a two-decimal amount: what it is, its total label's rank (1 is "the amount to pay"), and the line after the label. */
-interface Labelled { kind: LineKind; tier: number; amount: string; line: string; rest: string; amounts: Found[] }
+export interface Labelled { kind: LineKind; tier: number; amount: string; line: string; rest: string; amounts: Found[] }
 
 const NOT_LETTER = "(?![\\p{L}])";
 const SUBTOTAL = new RegExp(`^(?:sub-?total|subtotaal|net\\s+amount|nettobetrag|zwischensumme|netto|summe\\s+netto|total\\s+(?:excl\\.?|excluding|ex\\.?|exkl\\.?|before\\s+(?:vat|tax)|net)|totaal\\s+(?:excl\\.?|exclusief))${NOT_LETTER}`, "iu");
@@ -215,7 +215,7 @@ const TOTAL_TIERS = [
 ];
 
 /** What a line is. A subtotal or tax label is checked before a total one: "Total excl. VAT" is a subtotal. */
-function labelled(l: string): Labelled | null {
+export function labelled(l: string): Labelled | null {
   const amounts = amountsOn(l);
   const amount = amounts.at(-1)?.amount ?? "";
   if (!amount) return null;

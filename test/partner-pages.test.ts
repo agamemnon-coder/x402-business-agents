@@ -21,6 +21,7 @@ const auto = JSON.parse(read(AGENT_RUN)) as { snapshot: { agent_stats: { agent: 
 
 const CONNECTED_RUN = read("docs/runs/2026-11-10-connected-accounts-sandbox.md");
 const TWO_LOCKS_RUN = read("docs/runs/2026-11-10-airwallex-two-locks.md");
+const TWO_LOCKS_PAID = read("docs/runs/2026-11-12-airwallex-two-locks-paid.md");
 
 describe("the partner pages", () => {
   it("carry the connected-accounts run (10 Nov) only as its run record has it: every id and amount", () => {
@@ -31,15 +32,25 @@ describe("the partner pages", () => {
     expect(CONNECTED_LINE).toMatch(/simulat/);
   });
 
-  it("carry the two-locks run (10 Nov) only as its run record has it, and say the web-app approval was not completed", () => {
+  it("carry the two-locks run (10 and 12 Nov) only as its two run logs have it: PAID, settlement simulated, a test passkey, approved by the owner at Airwallex", () => {
     expect(buildPages().airwallex).toContain(esc(TWO_LOCKS_LINE));
     const ids = TWO_LOCKS_LINE.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) ?? [];
     expect(ids.length).toBe(1);
-    for (const id of ids) expect(TWO_LOCKS_RUN).toContain(id);
-    for (const amount of TWO_LOCKS_LINE.match(/EUR \d+\.\d{2}/g) ?? []) expect(TWO_LOCKS_RUN).toContain(amount);
+    for (const id of ids) for (const log of [TWO_LOCKS_RUN, TWO_LOCKS_PAID]) expect(log).toContain(id);
+    for (const amount of TWO_LOCKS_LINE.match(/EUR \d+\.\d{2}/g) ?? []) for (const log of [TWO_LOCKS_RUN, TWO_LOCKS_PAID]) expect(log).toContain(amount);
+    // The 10 Nov log keeps its dated text (held, the approval not completed that day); the 12 Nov log has what followed.
     expect(TWO_LOCKS_RUN).toMatch(/\*\*`IN_APPROVAL`\*\*/);
-    expect(TWO_LOCKS_LINE).toMatch(/IN_APPROVAL; the web-app approval was not completed, so it is not paid/);
     expect(TWO_LOCKS_RUN).toMatch(/\*\*Not completed\.\*\*/);
+    expect(TWO_LOCKS_PAID).toMatch(/\(12 November 2026\)/);
+    expect(TWO_LOCKS_PAID).toMatch(/owner approved the transfer in the Airwallex sandbox web app/);
+    expect(TWO_LOCKS_PAID).toMatch(/09:43:57[^\n]*`SENT`[^\n]*simulated settlement/);
+    expect(TWO_LOCKS_PAID).toMatch(/09:43:58[^\n]*`PAID`[^\n]*simulated settlement/);
+    expect(TWO_LOCKS_PAID).toMatch(/a labelled virtual test passkey, not a person's device/);
+    // The line says the finished story with its limits, and no longer the half of 10 Nov.
+    expect(TWO_LOCKS_LINE).toMatch(/a labelled virtual test passkey \(not a person's Face ID\) signed the exact terms in Purser/);
+    expect(TWO_LOCKS_LINE).toMatch(/IN_APPROVAL until the owner approved it in Airwallex's sandbox web app on 12 November/);
+    expect(TWO_LOCKS_LINE).toMatch(/it then went PAID, moved to SENT and PAID by the sandbox's simulation \(settlement simulated\)\. Test money\.$/);
+    expect(TWO_LOCKS_LINE).not.toMatch(/not completed|is not paid|CFO/);
   });
 
   it("take each agent's model from code, and it is the model the dry run recorded", () => {

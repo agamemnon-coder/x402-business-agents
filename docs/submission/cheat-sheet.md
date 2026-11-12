@@ -46,5 +46,6 @@ and the ask: "we're looking for design partners on Airwallex."
 Test money: Airwallex sandbox, Metal testnet. The second approver was a labelled test passkey. The sandbox simulates
 the SWIFT settlement. The server checks no attestation (it is "none"). The business case is a hypothesis: no
 customer has seen a price. T:0: 95 journal entries posted to its shared sandbox on 10 Nov, 0 differences with our books;
-a second push posted none; T:0's own balance sheet balances. Two locks (10 Nov): a test passkey signed, then Airwallex
-held the payout `IN_APPROVAL`; nobody approved it in the web app, so it is not paid.
+a second push posted none; T:0's own balance sheet balances. Two locks (10 and 12 Nov): a labelled test passkey
+signed, Airwallex held the payout `IN_APPROVAL` until the owner approved it in Airwallex's web app; then PAID (sandbox,
+settlement simulated).
