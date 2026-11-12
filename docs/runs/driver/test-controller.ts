@@ -7,7 +7,7 @@
 //   KIT11_DB=… KIT11_KEYS_DIR=… KIT11_RELAY_URL=… KIT11_RELAY_TOKEN=… npx tsx docs/runs/driver/test-controller.ts enrol
 //   (the same settings)                                              npx tsx docs/runs/driver/test-controller.ts approve <proposal id>
 //
-//   enrol     opens an enrolment window for the added person test-controller (as npm run passkey -- add does), creates
+//   enrol     opens an enrolment window that adds test-controller (as npm run passkey -- add adds a person), creates
 //             the passkey on the relay's enrol page, keeps its credential in the keys folder and prints its
 //             fingerprint. It does NOT confirm it: the operator runs npm run passkey -- confirm <fingerprint> on the
 //             owner's go.
@@ -162,9 +162,10 @@ export async function enrol(d: ControllerDeps): Promise<{ fingerprint: string }>
   const cfg = relayOf(d.env);
   const why = enrolRefusal(d.db, d.now());
   if (why) throw new Refused(why);
-  // The window is this driver's own: it adds the person test-controller and revokes nothing (src/passkey/ledger.ts).
+  // The window is this driver's own: it adds test-controller (virtual, not a person) beside the owner's passkey and
+  // revokes nothing (src/passkey/ledger.ts, whose word for a second passkey's label is "person").
   const { window, code } = openEnrolment(d.db, { rpId: cfg.rpId, origin: cfg.origin, addPerson: NAME }, d.now());
-  d.say(`WINDOW           ${LABEL}: an enrolment window for the added person ${NAME} is open until ${window.expires_at.slice(11, 19)} UTC; the runner (npm run relay) must be running`);
+  d.say(`WINDOW           ${LABEL}: an enrolment window for ${NAME} (virtual, not a person) is open until ${window.expires_at.slice(11, 19)} UTC; the runner (npm run relay) must be running`);
   await d.sleep(SYNC_WAIT_MS);
   const phone = await d.phone();
   try {

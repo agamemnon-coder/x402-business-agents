@@ -207,6 +207,9 @@ describe("enrol", () => {
     expect(text).toMatch(/on the owner's go/);
     // Every line it prints says what it is; none holds the key or the relay's token.
     for (const l of w.lines) expect(l).toMatch(/virtual test passkey \(test-controller\)|^ {17}/);
+    // No line calls it a person: the window is for test-controller, virtual, and the passkey is not on a person's device.
+    expect(w.lines[0]).toMatch(/^WINDOW {11}virtual test passkey \(test-controller\): an enrolment window for test-controller \(virtual, not a person\) is open until \d\d:\d\d:\d\d UTC; the runner \(npm run relay\) must be running$/);
+    expect(text.replaceAll("not a person", "").replaceAll("not on a person's device", "")).not.toMatch(/person/i);
     expect(text).not.toContain("cHJpdmF0ZQ==");
     expect(text).not.toContain(w.env.KIT11_RELAY_TOKEN);
     // The operator's confirmation pins it under the label, and the audit row carries the label.
