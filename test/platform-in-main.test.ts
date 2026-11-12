@@ -177,7 +177,8 @@ describe("the product for small companies, in this repository (decision D29, 12 
     expect(flat(section(cloud, /^## The console/))).toMatch(/first run takes the starter key Purser hands over, makes the owner's passkey/);
     const notDone = flat(section(cloud, /^## Not done yet/));
     for (const re of [/no web app/i, /API-only/i, /beyond the JSON API/i]) expect({ says: String(re), found: re.test(notDone) }).toEqual({ says: String(re), found: false });
-    expect(notDone).toMatch(/No production deployment: a hosted preview exists but is private/);
+    // 12 Nov (jury check): the public test preview first, then the console's private one.
+    expect(notDone).toMatch(/No production deployment: Purser Cloud runs publicly as a test preview at purser-try[\s\S]*hosted preview exists but is private/);
   });
 
   it("tells the red-team rounds the same way in the README, after-the-kit.md and claims.md: how many, and the one point still open", () => {

@@ -229,7 +229,8 @@ describe("if the approver is unavailable (the panel's review, 12 Nov)", () => {
     expect(cloud).toContain("| POST /v1/admin/tenants/{id}/recovery | platform admin | An owner lost their passkey: after checking out of band who asks (checked_by says how), issue a one-time recovery key for that owner");
     expect(cloud).toContain("Redeemed, it removes the owner's old passkeys, ends their sessions and is spent, in the same write as the new passkey.");
     // "Built, not live": the hosted preview is private and no customer uses it.
-    expect(flat("docs/after-the-kit.md")).toContain("A hosted preview exists but is private (behind an access key); no customer uses it");
+    // 12 Nov (jury check): one statement on Purser Cloud: the public test preview, then the console's private one.
+    expect(flat("docs/after-the-kit.md")).toContain("Its console's hosted preview exists but is private (behind an access key); no customer uses it");
   });
 
   it("/security gives the same answer, in the doc's own lines, folded under the signature with the anchor \"unavailable\"", () => {

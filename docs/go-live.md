@@ -2,7 +2,7 @@
 
 Every item the reviews named before real customers and real money, with where it stands. **Done** means built and
 tested in this repo, with the evidence. **Partly** says what is missing. **Who** is Max (an account, a contract, a
-setting only the owner can make) or code. The cloud is not live: a hosted preview exists but is private (behind an
+setting only the owner can make) or code. The cloud is not live: Purser Cloud runs publicly as a test preview at purser-try.max-31b.workers.dev/try: test companies, test money on a simulated bank. Its console's hosted preview exists but is private (behind an
 access key), no customer uses it, and nothing here is in production.
 
 The rows are as written on 9 November, except "Live sandbox confirmation of fees and field limits" and "Airwallex
