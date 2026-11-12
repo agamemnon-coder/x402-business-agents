@@ -184,7 +184,9 @@ describe("/visa is one Visa Intelligent Commerce story; TAP folded away", () => 
     expect(text(unfolded(main))).toContain(VISA_ICC_LINE);
     expect(text(html).split("Intelligent Commerce Connect")).toHaveLength(2);
     for (const [name, page] of Object.entries(buildPages() as unknown as Record<string, unknown>)) {
-      if (typeof page !== "string" || name === "visa") continue;
+      // The phone's approval script ("client", src/approve/client.ts) carries the sentence the CFO signs for an ICC
+      // proposal (src/icc/purchase.ts); it shows only for such a proposal, which needs KIT11_ICC_RAIL=on (12 Nov).
+      if (typeof page !== "string" || name === "visa" || name === "client") continue;
       // The partner pages' "Built on" strip (owner, 12 Nov; test/t0-page.test.ts) ends with its one ICC note, the same
       // state in short ("access requested, not used in this entry"): left out here, and nothing else may name ICC.
       expect({ name, icc: /Intelligent Commerce Connect|\bICC\b/.test(page.replace(esc(ICC_LINE), " ")) }).toEqual({ name, icc: false });

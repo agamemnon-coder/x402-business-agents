@@ -26,6 +26,7 @@ import { awxRunBlock } from "./awxRun.js";
 import { VIC3_RUN_FILE, vic3Run, vic3RunHtml } from "./vic3Run.js";
 import { PLATFORM_RUN_FILE, PRODUCTS_CSS, airwallexBody, airwallexDescription, productTiles } from "./airwallexProducts.js";
 import { CARD_DATA_CSS, cardDataHtml } from "./cardData.js";
+import { ICC_RUN_ID, iccBlock, iccRecordIn } from "./iccBlock.js";
 import { VIC2_RUN_FILE, VIC2_RUN_ID, vic2Run, vic2RunBlock } from "./vic2Run.js";
 import { VIC_COMPARE_ID, VIC_FACTS_CSS, VIC_FACTS_ID, vicAttemptsHtml, vicCompare, vicCompareHtml, vicFacts, vicFactsHtml } from "./vicFacts.js";
 import { VIC_FLOW_CSS, VIC_FLOW_ID, vicFlowBlock } from "./vicFlow.js";
@@ -263,7 +264,8 @@ export function assertVicFirst(html: string): void {
   for (const id of [VIC_FACTS_ID, VIC_COMPARE_ID]) if (top.includes(`id="${id}"`) && !unfolded.includes(`id="${id}"`)) fail(`#${id} is inside a fold`);
   const seen = plainWords(unfolded);
   if (!seen.includes(VISA_ENTRY_LINE)) fail("the basis for calling it Visa Intelligent Commerce is not on the page, outside any fold");
-  if (!seen.includes(VISA_ICC_LINE)) fail("the Intelligent Commerce Connect line is not on the page, outside any fold");
+  // With an ICC run record (src/redesign/iccBlock.ts), its block takes the status line's place: the line would no longer be true.
+  if (!seen.includes(VISA_ICC_LINE) && !main.includes(`id="${ICC_RUN_ID}"`)) fail("the Intelligent Commerce Connect line is not on the page, outside any fold");
   if (plainWords(html.replace(/<script\b[\s\S]*?<\/script\b[^>]*>/gi, " ").replace(/<style\b[\s\S]*?<\/style\b[^>]*>/gi, " ")).split("Intelligent Commerce Connect").length !== 2) fail("Intelligent Commerce Connect is named more than once");
   const overview = /<section class="card vo"[\s\S]*?<\/section>/.exec(top)?.[0] ?? "";
   if (!overview.includes(`>${esc(VISA_SUMMARY_HEADING)}</h2>`) || (overview.match(/class="vo-run[ "]/g) ?? []).length !== 1 || /class="vo-run tap"/.test(overview)) fail("the summary is not the one paid run's");
@@ -295,11 +297,15 @@ function visaTapFold(run: AgentRun): string {
 
 export function visaPage(run: AgentRun = agentRun()): string {
   const rec = airiRun();
+  // Intelligent Commerce Connect (12 Nov): the status line until an ICC run record exists under docs/runs; then, in its
+  // place, the block read from that record (src/redesign/iccBlock.ts).
+  const icc = iccRecordIn() ? iccBlock() : "";
+  const iccLine = icc ? "" : esc(VISA_ICC_LINE);
   // Without the Airi run's live record there is no VIC story to tell: the page says so and keeps the TAP work folded.
   if (!rec) {
     const body = `<main class="pp"><div class="wrap">
   <div class="phd">${LOGO.visa}<h1>${esc(VISA_H1)}</h1></div>
-  <p class="vbasis">${esc("No live record of the Airi run is on this build.")} ${esc(VISA_ICC_LINE)}</p>
+  <p class="vbasis">${esc("No live record of the Airi run is on this build.")} ${iccLine}</p>${icc}
   <div class="folds card">${visaTapFold(run)}</div>
 </div></main>`;
     return page({ title: VISA_TITLE, description: "Visa Intelligent Commerce via Airwallex's Airi: no live record on this build.", tab: "visa", css: CSS, body, real: [], source: "Source: no Airi run record on this build." });
@@ -317,7 +323,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
   const body = `<main class="pp"><div class="wrap">
   <div class="phd">${LOGO.visa}<span class="pill run">${icon("database", 14)}${esc(visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
   <p class="vintro">${esc(VISA_LEAD)}</p>
-  <p class="vbasis">${esc(VISA_ENTRY_LINE)}<br>${esc(VISA_ICC_LINE)}</p>
+  <p class="vbasis">${esc(VISA_ENTRY_LINE)}${iccLine ? `<br>${iccLine}` : ""}</p>${icc}
   ${vic3 ? `<div class="awrb">${vic3RunHtml(vic3, { first: dayShort(rec.started_at) })}</div>` : ""}
   ${vicFlowBlock(rec, { h: "h2" })}
   ${vicFactsHtml(vicFacts(rec))}
