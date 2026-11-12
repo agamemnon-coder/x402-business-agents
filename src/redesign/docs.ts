@@ -99,7 +99,7 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
     <p>An outside agent works under the CFO's policy through these tools. ${esc(NO_TOOL.replace(/^n/, "N"))}.</p>
     <ul class="pl">${tools.map((t) => `<li data-tool="${esc(t.name)}">${code(t.name)} ${esc(t.title)}</li>`).join("")}</ul>
     <p>Run it: ${code(MCP_COMMAND)}</p>
-    <p class="sub">It reads ${env.map((e) => code(e.name)).join(", ")}.</p>
+    <p class="sub">It reads ${env.map((e) => code(e.name)).join(", ")} (KIT11 = Purser's internal project name).</p>
     <div class="links">${outLink(repoHref(AGENT_API_DOC, "#outside-agents-the-agent-api-mcp"), "The agent API guide")}</div>
     ${foldHtml("What each tool does", tools.map((t) => `${code(t.name)}: ${esc(t.description)}`))}
     ${foldHtml("What each variable is", env.map((e) => `${code(e.name)}: ${esc(e.what)}`))}</article>
