@@ -8,7 +8,7 @@ import type { DB } from "../db/open.js";
 import { BATCH_MAX_LINES, createBatch } from "../policy/batch.js";
 import type { ProposalRow } from "../policy/approvals.js";
 import { reserveForBatch, withBatchPlanning } from "../payouts/planContext.js";
-import { payApInvoice } from "./pay.js";
+import { payApInvoice, type PayAgents } from "./pay.js";
 import type { Asker } from "./read.js";
 
 export interface BatchPayOutcome {
@@ -17,7 +17,7 @@ export interface BatchPayOutcome {
   notPlanned: { id: string; reason: string }[];
 }
 
-export async function payApInvoices(db: DB, rail: AirwallexRail & PayoutRail, ids: string[], now = new Date(), reader?: Asker): Promise<BatchPayOutcome> {
+export async function payApInvoices(db: DB, rail: AirwallexRail & PayoutRail, ids: string[], now = new Date(), reader?: Asker, agents: PayAgents = {}): Promise<BatchPayOutcome> {
   const unique = [...new Set(ids)];
   if (unique.length === 0) throw new Error("pick at least one invoice to pay");
   if (unique.length > BATCH_MAX_LINES) throw new Error(`pay at most ${BATCH_MAX_LINES} invoices with one Face ID; ${unique.length} were picked`);
@@ -27,7 +27,7 @@ export async function payApInvoices(db: DB, rail: AirwallexRail & PayoutRail, id
   await withBatchPlanning(async () => {
     for (const id of unique) {
       try {
-        const out = await payApInvoice(db, rail, id, now, reader);
+        const out = await payApInvoice(db, rail, id, now, reader, agents);
         if (out.kind === "proposed") {
           planned.push({ id, proposal_id: out.proposal.proposal_id });
           reserveForBatch(JSON.parse(out.proposal.terms_json) as Parameters<typeof reserveForBatch>[0]);

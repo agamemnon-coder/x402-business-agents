@@ -38,6 +38,10 @@ export interface EntryInput {
   source_key?: string;
   doc_ref?: string;
   doc_sha256?: string;
+  /** The CFO's Face ID hash (the signed terms) this entry was made under; next to doc_sha256. */
+  approval_sha256?: string;
+  /** The rail's own id for the money movement: an Airwallex transfer or conversion id, or a transaction hash. */
+  rail_ref?: string;
   lines: LineInput[];
 }
 
@@ -69,6 +73,12 @@ export interface LedgerEntry {
   created_at: string;
   prev_hash: string;
   entry_hash: string;
+  /**
+   * Added 12 November (an additive column): present only on an entry that carries it, so every entry posted before
+   * hashes exactly as it did.
+   */
+  approval_sha256?: string;
+  rail_ref?: string;
   lines: LedgerLine[];
 }
 
@@ -77,6 +87,23 @@ export interface Posted { entry_id: number; posting_date: string; duplicate: boo
 const DAY = /^(\d{4})-(\d{2})-(\d{2})/;
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 const CURRENCY = /^[A-Z]{3,4}$/;
+const SHA256 = /^[0-9a-f]{64}$/;
+
+interface Links { approval_sha256?: string | null; rail_ref?: string | null }
+
+/** The links an entry carries, checked: only those set, so an entry without them hashes as before. */
+function linksOf(input: Links): { approval_sha256?: string; rail_ref?: string } {
+  const out: { approval_sha256?: string; rail_ref?: string } = {};
+  if (input.approval_sha256 !== undefined && input.approval_sha256 !== null) {
+    if (!SHA256.test(input.approval_sha256)) throw new LedgerRefused("approval_sha256 is a SHA-256 in lowercase hex");
+    out.approval_sha256 = input.approval_sha256;
+  }
+  if (input.rail_ref !== undefined && input.rail_ref !== null) {
+    if (!input.rail_ref.trim() || input.rail_ref.length > 200) throw new LedgerRefused("rail_ref is the rail's id, 1 to 200 characters");
+    out.rail_ref = input.rail_ref;
+  }
+  return out;
+}
 
 function dayOf(date: string): string {
   const m = DAY.exec(date);
@@ -146,13 +173,14 @@ function hashOf(e: Omit<LedgerEntry, "entry_hash">): string {
 export function postEntry(db: DB, input: EntryInput, now = new Date()): Posted {
   const docDay = dayOf(input.date);
   const lines = checkLines(input.lines);
+  const links = linksOf(input);
   if (!input.description.trim()) throw new LedgerRefused("an entry needs a description");
   return db.transaction((): Posted => {
     if (input.source_key) {
       const had = db.prepare("SELECT entry_id, posting_date FROM ledger_entries WHERE source_key = ?").get(input.source_key) as { entry_id: number; posting_date: string } | undefined;
       if (had) return { ...had, duplicate: true };
     }
-    return write(db, { docDay, description: input.description, source_key: input.source_key ?? null, doc_ref: input.doc_ref ?? null, doc_sha256: input.doc_sha256 ?? null, created_by: input.created_by, reverses: null }, lines, now);
+    return write(db, { docDay, description: input.description, source_key: input.source_key ?? null, doc_ref: input.doc_ref ?? null, doc_sha256: input.doc_sha256 ?? null, created_by: input.created_by, reverses: null, ...links }, lines, now);
   }).immediate();
 }
 
@@ -170,15 +198,22 @@ export function postClosingEntry(db: DB, input: EntryInput & { source_key: strin
   }).immediate();
 }
 
-function write(db: DB, h: { docDay: string; description: string; source_key: string | null; doc_ref: string | null; doc_sha256: string | null; created_by: string; reverses: number | null }, lines: LedgerLine[], now: Date, fixedDay?: string): Posted {
+function write(db: DB, h: { docDay: string; description: string; source_key: string | null; doc_ref: string | null; doc_sha256: string | null; created_by: string; reverses: number | null; approval_sha256?: string; rail_ref?: string }, lines: LedgerLine[], now: Date, fixedDay?: string): Posted {
   const last = db.prepare("SELECT entry_id, entry_hash FROM ledger_entries ORDER BY entry_id DESC LIMIT 1").get() as { entry_id: number; entry_hash: string } | undefined;
   const entry: Omit<LedgerEntry, "entry_hash"> = {
     entry_id: (last?.entry_id ?? 0) + 1, posting_date: fixedDay ?? postingDay(db, h.docDay), doc_date: h.docDay, description: h.description, source_key: h.source_key,
-    doc_ref: h.doc_ref, doc_sha256: h.doc_sha256, created_by: h.created_by, reverses: h.reverses, created_at: now.toISOString(), prev_hash: last?.entry_hash ?? LEDGER_GENESIS, lines,
+    doc_ref: h.doc_ref, doc_sha256: h.doc_sha256, created_by: h.created_by, reverses: h.reverses, created_at: now.toISOString(), prev_hash: last?.entry_hash ?? LEDGER_GENESIS,
+    ...(h.approval_sha256 ? { approval_sha256: h.approval_sha256 } : {}), ...(h.rail_ref ? { rail_ref: h.rail_ref } : {}), lines,
   };
   const entry_hash = hashOf(entry);
-  db.prepare(`INSERT INTO ledger_entries (entry_id, posting_date, doc_date, description, source_key, doc_ref, doc_sha256, created_by, reverses, created_at, prev_hash, entry_hash)
-    VALUES (@entry_id, @posting_date, @doc_date, @description, @source_key, @doc_ref, @doc_sha256, @created_by, @reverses, @created_at, @prev_hash, @entry_hash)`).run({ ...entry, lines: undefined, entry_hash });
+  if (entry.approval_sha256 || entry.rail_ref) {
+    db.prepare(`INSERT INTO ledger_entries (entry_id, posting_date, doc_date, description, source_key, doc_ref, doc_sha256, created_by, reverses, created_at, prev_hash, entry_hash, approval_sha256, rail_ref)
+      VALUES (@entry_id, @posting_date, @doc_date, @description, @source_key, @doc_ref, @doc_sha256, @created_by, @reverses, @created_at, @prev_hash, @entry_hash, @approval_sha256, @rail_ref)`)
+      .run({ ...entry, lines: undefined, entry_hash, approval_sha256: entry.approval_sha256 ?? null, rail_ref: entry.rail_ref ?? null });
+  } else {
+    db.prepare(`INSERT INTO ledger_entries (entry_id, posting_date, doc_date, description, source_key, doc_ref, doc_sha256, created_by, reverses, created_at, prev_hash, entry_hash)
+      VALUES (@entry_id, @posting_date, @doc_date, @description, @source_key, @doc_ref, @doc_sha256, @created_by, @reverses, @created_at, @prev_hash, @entry_hash)`).run({ ...entry, lines: undefined, entry_hash });
+  }
   const ins = db.prepare(`INSERT INTO ledger_lines (entry_id, line_no, account, debit_cents, credit_cents, currency, cost_centre, vat_code, vat_cents, party, due_date, doc_ref, memo)
     VALUES (@entry_id, @line_no, @account, @debit_cents, @credit_cents, @currency, @cost_centre, @vat_code, @vat_cents, @party, @due_date, @doc_ref, @memo)`);
   for (const l of lines) ins.run({ ...l, entry_id: entry.entry_id });
@@ -203,7 +238,7 @@ export function reverseEntry(db: DB, entryId: number, reason: string, by: string
       const h = db.prepare("SELECT COALESCE(SUM(qty_delta), 0) AS qty, COALESCE(SUM(value_delta_cents), 0) AS value FROM stock_moves WHERE sku = ?").get(m.sku) as { qty: number; value: number };
       if (h.qty - m.qty_delta < 0 || h.value - m.value_delta_cents < 0) throw new LedgerRefused(`entry ${entryId} moved ${m.qty_delta} x ${m.sku}; only ${h.qty} are on hand to take back`);
     }
-    const posted = write(db, { docDay: now.toISOString().slice(0, 10), description: `Reversal of entry ${entryId}: ${reason}`, source_key: key, doc_ref: orig.doc_ref, doc_sha256: orig.doc_sha256, created_by: by, reverses: entryId }, lines, now);
+    const posted = write(db, { docDay: now.toISOString().slice(0, 10), description: `Reversal of entry ${entryId}: ${reason}`, source_key: key, doc_ref: orig.doc_ref, doc_sha256: orig.doc_sha256, created_by: by, reverses: entryId, ...linksOf(orig) }, lines, now);
     const move = db.prepare("INSERT INTO stock_moves (sku, qty_delta, value_delta_cents, entry_id, at) VALUES (?, ?, ?, ?, ?)");
     for (const m of moves) move.run(m.sku, -m.qty_delta, -m.value_delta_cents, posted.entry_id, now.toISOString());
     return posted;
@@ -218,7 +253,9 @@ export function lockMonth(db: DB, month: string, by: string, now = new Date(), k
 
 /** Every entry with its lines, in posting order. */
 export function ledgerRows(db: DB): LedgerEntry[] {
-  const entries = db.prepare("SELECT * FROM ledger_entries ORDER BY entry_id").all() as Omit<LedgerEntry, "lines">[];
+  // The two links are columns added later: an entry without them reads back without the keys, as it was hashed.
+  const entries = (db.prepare("SELECT * FROM ledger_entries ORDER BY entry_id").all() as (Omit<LedgerEntry, "lines" | "approval_sha256" | "rail_ref"> & Links)[])
+    .map(({ approval_sha256, rail_ref, ...e }) => ({ ...e, ...(approval_sha256 ? { approval_sha256 } : {}), ...(rail_ref ? { rail_ref } : {}) }));
   const lines = db.prepare("SELECT * FROM ledger_lines ORDER BY entry_id, line_no").all() as (LedgerLine & { entry_id: number })[];
   const by = new Map<number, LedgerLine[]>();
   for (const { entry_id, ...l } of lines) (by.get(entry_id) ?? by.set(entry_id, []).get(entry_id)!).push(l);

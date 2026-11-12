@@ -23,7 +23,7 @@
 // reminder to a contact (a sandbox administration delivers its e-mail for real).
 
 import type { TokenProvider } from "./auth.js";
-import { errorForStatus, ErpError, redactUrl, step, type ErpAccount, type ErpConnector, type ErpVendorRow, type HttpRequest, type HttpResponse, type PaymentStatus, type PushProgress, type RefResolver, type Transport } from "./connector.js";
+import { errorForStatus, ErpError, redactUrl, step, type ErpAccount, type ErpConnector, type ErpVendorRow, type HttpRequest, type HttpResponse, type OpenSalesInvoice, type PaymentStatus, type PushProgress, type RefResolver, type Transport } from "./connector.js";
 import { VAT_CODES, type JournalEntry, type ObjectKind, type Payment, type PurchaseInvoice, type VatCode, type Vendor } from "./model.js";
 
 export interface MoneybirdConfig {
@@ -69,6 +69,9 @@ export const MONEYBIRD_ENDPOINTS = [
   "POST /{administration_id}/documents/purchase_invoices/{id}/payments{format}",
   "GET /{administration_id}/documents/general_journal_documents{format}",
   "POST /{administration_id}/documents/general_journal_documents{format}",
+  // Read only, for the collections agent: the company's own open sales invoices. Nothing on this list sends, changes or
+  // reminds anything on the sales side. Moneybird asks the token for the `sales_invoices` scope for this one.
+  "GET /{administration_id}/sales_invoices{format}",
 ] as const;
 export type MoneybirdEndpoint = (typeof MONEYBIRD_ENDPOINTS)[number];
 
@@ -87,6 +90,28 @@ interface MbInvoice {
   payments?: { id: string; transaction_identifier: string | null; price: string; payment_date?: string | null }[]; attachments?: unknown[];
   contact_id?: string | null; date?: string | null; due_date?: string | null; currency?: string | null;
   details?: { ledger_account_id?: string | null; tax_rate_id?: string | null; price?: string | null }[];
+}
+
+/** A sales invoice as Moneybird's GET sales_invoices answers it (only the fields read here). */
+interface MbSalesInvoice {
+  id: string; invoice_id: string | null; reference: string | null; state: string; contact_id: string | null;
+  contact?: { company_name?: string | null; firstname?: string | null; lastname?: string | null } | null;
+  invoice_date: string | null; due_date: string | null; currency: string; total_price_incl_tax: string; total_unpaid: string; payment_url?: string | null;
+}
+
+/** Moneybird's states of a sales invoice that is sent and not fully paid (its OpenAPI file, sales_invoice_response). */
+export const MONEYBIRD_OPEN_SALES_STATES = ["open", "pending_payment", "reminded", "late"] as const;
+
+/** One sales invoice as Purser reads it; null when its amounts are not money (it is then left out, never guessed). */
+export function openSalesInvoiceOf(r: MbSalesInvoice): OpenSalesInvoice | null {
+  const total = fromMoney(r.total_price_incl_tax), unpaid = fromMoney(r.total_unpaid);
+  if (total === null || unpaid === null) return null;
+  const c = r.contact ?? {};
+  const name = (c.company_name || [c.firstname, c.lastname].filter(Boolean).join(" ")).trim();
+  return {
+    id: String(r.id), number: r.invoice_id, reference: r.reference, state: r.state, contactId: r.contact_id === null ? null : String(r.contact_id),
+    contactName: name, invoiceDate: r.invoice_date, dueDate: r.due_date, currency: r.currency, totalCents: total, unpaidCents: unpaid, paymentUrl: r.payment_url || null,
+  };
 }
 
 /** A purchase invoice as Moneybird holds it now, read back for a reconciliation: amounts in whole cents, ids as strings. */
@@ -284,6 +309,16 @@ export class MoneybirdConnector implements ErpConnector {
       const note = [l.account_type ?? "", uses.length ? uses.join(", ") : "not for purchase invoices or journal entries", l.active === false ? "not active" : ""].filter(Boolean).join("; ");
       return { code: l.account_id ?? "", name: l.name, externalId: l.id, note };
     });
+  }
+
+  /**
+   * GET sales_invoices.json?filter=state:open|pending_payment|reminded|late (paginated): the company's sent sales
+   * invoices that are not fully paid, of any date (a filter without a period does not limit dates). Read only; an
+   * invoice with nothing left unpaid is left out.
+   */
+  async openSalesInvoices(): Promise<OpenSalesInvoice[]> {
+    const rows = await this.list<MbSalesInvoice>(`sales_invoices.json?filter=${encodeURIComponent(`state:${MONEYBIRD_OPEN_SALES_STATES.join("|")}`)}`);
+    return rows.map(openSalesInvoiceOf).filter((x): x is OpenSalesInvoice => x !== null && x.unpaidCents > 0);
   }
 
   // GET tax_rates.json (paginated): id, name, percentage, tax_rate_type (purchase_invoice, sales_invoice, general_journal_document).

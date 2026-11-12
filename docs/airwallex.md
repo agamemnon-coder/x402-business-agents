@@ -1,277 +1,308 @@
 # Airwallex in Purser
 
-This page lists every Airwallex API that the Kit 11 build calls. The calls of what was built after the kit are on their own pages: connected accounts and payouts on a company's behalf in [airwallex-platform.md](airwallex-platform.md), Airwallex's approval workflow and money in by card in [airwallex-approvals.md](airwallex-approvals.md), each with its own sandbox runs. For each call here it gives the method and path (as in `src/airwallex/*.ts`), what Purser uses it for, why that is a necessary financial action, and the proof.
+This page lists every Airwallex API that Purser calls: the method and path as the code (`src/airwallex/`) and the run logs show them, what Purser uses it for, why that is a necessary financial action, and the run that proves it. After the kit, also: [airwallex-platform.md](airwallex-platform.md), [airwallex-approvals.md](airwallex-approvals.md).
 
-All calls go to the Airwallex sandbox (`https://api.sandbox.airwallex.com/api/v1`). The client refuses any other base URL (`src/airwallex/client.ts`).
+All calls go to the Airwallex sandbox (`https://api.sandbox.airwallex.com/api/v1`), with test money. The client refuses any other base URL (`src/airwallex/client.ts`).
 
-Two marks are used in the tables:
+**Sandbox only** marks a call that simulates what the sandbox cannot do by itself: a merchant's charge, a settlement, a deposit, an account's activation. These calls sit behind separate interfaces (`SandboxSim`, `IssuingSim`), so no production path can reach them.
 
-- **Sandbox only.** The call exists to simulate something the sandbox cannot do by itself. Purser keeps these calls behind separate interfaces (`SandboxSim`, `IssuingSim`), so no production path can reach them.
-- † The proof comes from the 29 October rehearsals with the earlier example company (Tidemark Data). The Friday 30 October runs with Northwind Outdoor repeated these steps live (Friday run 1: cards •••• 8120, 6882, 7786; conversion `08736b6e…`; SWIFT transfer `4d508b0b…`, fee EUR 13.41); each of those ids was re-read from the sandbox, read-only, on 30 October.
+## The runs of record
 
-Run logs are in `docs/runs/`. Tests are in `test/`.
+| Date | Run | Record |
+|---|---|---|
+| 3 Nov | The main run | [log](runs/2026-11-03-main-run.md), [record](demo/main-run.json); read back on 6 Nov: [transfer](runs/airwallex-transfer-approval-2026-11-06.json), [cards](runs/airwallex-cards-2026-11-06.json) |
+| 7 Nov | The Airwallex-only run: cards, declines, webhooks, FX, SWIFT | [log](runs/2026-11-07-awx-1.md), [record](demo/airwallex-run.json) |
+| 7 Nov | The Airi run: a single-use card credential | [log](runs/2026-11-07-vic-1.md), [record](demo/airi-run.json) |
+| 10 Nov | Connected accounts: a payout with Purser's fee | [log](runs/2026-11-10-connected-accounts-sandbox.md) |
+| 10 Nov | Three test companies on connected accounts | [log](runs/2026-11-10-platform-e2e.md), [facts](runs/2026-11-10-platform-e2e/facts.json), [calls](runs/2026-11-10-platform-e2e/calls.jsonl) |
+| 10 Nov | Payment acceptance: an invoice paid by test card | [log](runs/2026-11-10-payment-acceptance-sandbox.md) |
+| 10 Nov | Two locks: Airwallex's approval workflow | [log](runs/2026-11-10-airwallex-two-locks.md) |
 
-## awx-1: the whole Airwallex path in one run (7 November; sandbox, test money)
+Runs of 29 and 30 October are cited only where no later run shows the step, each with its date. Every live run: [docs/runs/README.md](runs/README.md).
 
-One fresh world on the Airwallex sandbox only (0 Metal calls), accepted with all seven checks passed. Log:
-[`docs/runs/2026-11-07-awx-1.md`](runs/2026-11-07-awx-1.md); record:
-[`docs/demo/airwallex-run.json`](demo/airwallex-run.json); plan and call budget: [`docs/runs/awx-1-plan.md`](runs/awx-1-plan.md).
-Shown on `/airwallex` and in Proof's "Airwallex, read back".
+## Three more Airwallex capabilities (12 November; sandbox, test money; each behind its own flag, off by default)
+
+32 Airwallex calls in all, of the 40 approved for this work, counted by the call log. Signed by a labelled virtual test
+passkey, not a person's Face ID. Nothing was approved in Airwallex's web app.
+
+| Capability | Endpoints | What ran live | Run record |
+|---|---|---|---|
+| One signed batch as ONE Airwallex batch transfer (`AIRWALLEX_BATCH_TRANSFER=on`; `src/executors/airwallexBatch.ts`) | `POST /batch_transfers/create`, `/{id}/add_items`, `/{id}/quote`, `/{id}/submit`, `/{id}/delete` (only a DRAFTING batch, on a read-back difference); `GET /batch_transfers` (by request_id, after a lost answer), `/{id}`, `/{id}/items` | twice: two EUR 240.00 test invoices, signed once, became one Airwallex batch with the batch hash in its metadata (`3960a081-b058-422b-95b1-6298e45fe257`; then `40486a4e-a08c-4480-847b-d22012f3c604` under the stricter read-back: fee EUR 13.53 per item, total EUR 507.06); read back item by item with 0 differences; submitted; Airwallex's approval workflow holds both `IN_APPROVAL`. Not approved, booked or paid. A line of an Airwallex batch is never sent on its own. | [batch transfer](runs/2026-11-12-airwallex-batch-transfer.md) |
+| The payee's bank checks the account and name before the CFO is asked (`AIRWALLEX_PAYEE_CHECK=on`; `src/airwallex/payeeName.ts`) | `POST /beneficiaries/verify_account` | four checks: `NOT_MATCHED` twice on our German test IBAN, `PARTIAL_MATCH` on Airwallex's documented example (held as "Betty Morris"), `FULL_MATCH` on the name the bank gave back | [payee check](runs/2026-11-12-airwallex-payee-check.md) |
+| Reconciliation with Airwallex's own ledger, to the cent (`AIRWALLEX_FINANCIAL_TX=on`: `npm run reconcile -- --financial-transactions <from> <to>`; `src/finance/awxFinancialTx.ts`) | `GET /financial_transactions` | the awx-1 window: both payouts (a PAYOUT debit and a FEE debit each), and the conversion's credit and debit, agree with the awx-1 record exactly, with their signs; 0 differences; no payout, fee or conversion at Airwallex that the record lacks (2 card holds not compared) | [financial transactions](runs/2026-11-12-airwallex-financial-transactions.md) |
+
+## The Airwallex-only run (7 November)
+
+One fresh world on the Airwallex sandbox only: 0 Metal calls, test money, all seven checks passed. [Log](runs/2026-11-07-awx-1.md), [record](demo/airwallex-run.json), [plan and call budget](runs/awx-1-plan.md). Shown on `/airwallex`.
 
 | Step | What Airwallex did | Ids |
 |---|---|---|
 | a | 3 virtual cards issued with the policy's `PER_TRANSACTION` and `MONTHLY` limits, merchant category, EUR only and `active_to`; each read back with `GET /issuing/cards/{id}` | ····2441 (Sourcing, 30.00 / 100.00, MCC 5734), ····4175 (Support, 60.00 / 150.00, MCC 7372), ····1562 (Treasury, 25.00 / 50.00, MCC 5734) |
 | b | 19.99 EUR at Packwise approved | `01a1b5e8-5933-7000-94c1-0a9d4115f515` |
-| c | 45.00 EUR over the 30.00 limit declined `LIMIT_EXCEEDED`; the Sourcing agent (Claude Haiku) asked the CFO for a raise (P-0001) instead of retrying; after Max's Face ID (12:11:01 UTC) `POST /issuing/cards/{id}/update` set 45.00, and the same charge was approved | `01a1b5e8-6dc2-7000-95bf-c8fc5e6e2f38` (declined), `01a1b5eb-5c54-7000-8227-1f077fc047f5` (approved) |
+| c | 45.00 EUR over the 30.00 limit declined `LIMIT_EXCEEDED`. The Sourcing agent (Claude Haiku) asked the CFO for a raise (P-0001) instead of retrying. After Max's Face ID (12:11:01 UTC) `POST /issuing/cards/{id}/update` set 45.00, and the same charge was approved | `01a1b5e8-6dc2-7000-95bf-c8fc5e6e2f38` (declined), `01a1b5eb-5c54-7000-8227-1f077fc047f5` (approved) |
 | d | 19.99 EUR (MCC 5734) on the Support card (MCC 7372 only) declined `MERCHANT_CATEGORY_NOT_ALLOWED`; the Support agent asked for no raise | `01a1b5eb-6784-7000-8bb2-ecf137506d3f` |
-| e | 21 webhooks, each signature checked by the relay and the runner, all recorded and agreeing: `issuing.card.active` ×3, `issuing.transaction.succeeded` / `.failed` ×2 each, `issuing.card_transaction_event.success` / `.failed` ×2 each, `payout.transfer.scheduled` / `.processing` / `.sent` / `.paid` ×2 each, `conversion.scheduled`, `conversion.settled`; every card transaction recorded from them (card poll off) | event ids in the record |
-| f1 | SLL-2026-11, EUR 240.00: free EUR 1,500.00 ≥ 260.00 (with the fee ceiling), no quote, no conversion; SWIFT after Max's Face ID (12:12:20 UTC) | transfer `738a4263-6d6c-4de8-94a3-93da1c175fb4`, PAID, fee EUR 13.50 |
-| f2 | BTX-2026-11, EUR 1,850.00: free EUR 1,246.50 < 1,870.00, so a fresh quote for the shortfall only: EUR 623.50 for USD 704.45 at 1.129833 (market 1.128941, 8 bps over); conversion, then SWIFT after Max's Face ID (12:13:16 UTC) | quote `1605354b-5f6f-3ab5-8dbc-3af479c54b33`, conversion `fafcc208-bd1e-43d9-bd09-69191a8aa81f` (SETTLED), transfer `4140dee2-6373-4eb4-a71f-bf69130f96a7`, PAID, fee EUR 13.50 |
-| g | Each payout's `metadata.approval_sha256` is the hash of the terms Max signed; `npm run verify` read both back (`GET /transfers`, `GET /fx/conversions`): all checks pass; `npm run reconcile`: 0 differences | P-0002 `b0f075d9…`, P-0003 `68f85b99…` |
+| e | 21 webhooks, each signature checked by the relay and the runner, all agreeing with the ledger; every card transaction was recorded from them (card poll off) | event ids in the record |
+| f1 | SLL-2026-11, EUR 240.00: free EUR 1,500.00 covers the 260.00 needed (with the fee ceiling), so no quote and no conversion; SWIFT after Max's Face ID (12:12:20 UTC) | transfer `738a4263-6d6c-4de8-94a3-93da1c175fb4`, PAID, fee EUR 13.50 |
+| f2 | BTX-2026-11, EUR 1,850.00: free EUR 1,246.50 is less than the 1,870.00 needed, so a quote for the shortfall only: EUR 623.50 for USD 704.45 at 1.129833 (market 1.128941, 8 bps over). The proposal expired at 12:27:03, 30 seconds before the quote. Conversion, then SWIFT after Max's Face ID (12:13:16 UTC) | quote `1605354b-5f6f-3ab5-8dbc-3af479c54b33`, conversion `fafcc208-bd1e-43d9-bd09-69191a8aa81f` (SETTLED), transfer `4140dee2-6373-4eb4-a71f-bf69130f96a7`, PAID, fee EUR 13.50 |
+| g | Each payout's `metadata.approval_sha256` is the hash of the terms Max signed. `npm run verify` read both back (`GET /transfers`, `GET /fx/conversions`): all checks pass. `npm run reconcile`: 0 differences | P-0002 `b0f075d9…`, P-0003 `68f85b99…` |
 
-71 Airwallex API calls (run budget: 96; 85 expected). Simulated by the sandbox, as everywhere on this page: the merchants'
-charges (`POST /simulation/issuing/create`) and each payout's SENT and PAID (`POST /simulation/transfers/{id}/transition`).
+71 Airwallex API calls (run budget: 96; 85 expected). Simulated by the sandbox: the merchants' charges and each payout's SENT and PAID. Every approve, decline, code, limit, quote and rate is Airwallex's own.
 
-## The Airi run: an agent pays with a single-use card credential from Airwallex's Airi wallet (7 November; Airwallex sandbox, test card, test money)
+## The hash the CFO signed, in Airwallex's own record (main run, 3 November)
 
-A separate world (vic-1c; 0 Metal calls, 0 Claude calls): the Sourcing agent buys at our own Airwallex sandbox
-merchant with a single-use card credential from Airwallex's Airi wallet (airi-cli 0.1.0-beta.4, Airi's test card visa
-•••• 1111, test money). Passed, all five checks, in the second attempt in its world. Log:
-[`docs/runs/2026-11-07-vic-1.md`](runs/2026-11-07-vic-1.md) (every attempt, the failed ones included); record:
-[`docs/demo/airi-run.json`](demo/airi-run.json); plan and call budget: [`docs/runs/vic-1-plan.md`](runs/vic-1-plan.md).
-Shown on `/airwallex` and in Proof's "Airwallex, read back". Airwallex (hackathon Slack, 7 November) confirmed that
-our own sandbox merchant with their checkout page is fine.
+In the main run the Treasury agent planned P-0005: pay invoice SLL-2026-11, EUR 240.00, by SWIFT. Max approved the exact terms with Face ID at 11:31:18 UTC. [Log](runs/2026-11-03-main-run.md), [record](demo/main-run.json).
+
+| | Value | Where it is |
+|---|---|---|
+| The hash the CFO signed | `797d4483594fc4f6585466f39bb3f9e4ad4200c85b82d5b7dc078527dcababcd` | The record's `proposal.approved` row for P-0005 |
+| `metadata.approval_sha256` at Airwallex | `797d4483594fc4f6585466f39bb3f9e4ad4200c85b82d5b7dc078527dcababcd` | Transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, PAID, fee EUR 13.42, as `GET /transfers/{id}` returned it on 6 November: [read-back](runs/airwallex-transfer-approval-2026-11-06.json) |
+
+Match: the same hash. Anyone who can read Airwallex's record can check that this payout is the one the CFO signed. `npm run verify` makes that comparison and also fails on a different amount, quote or fee (`src/airwallex/verify.ts`).
+
+**FX for the shortfall only, with the quote inside the signed terms.** The payment needed EUR 260.00 (240.00 plus a fee ceiling of 20.00). Free EUR was 150.00, so only EUR 110.00 was bought, for USD 124.29. The signed terms in the record hold `conversion.quote_id` `f6a63046-6e8c-3eee-9098-e3c605832015` and `conversion.valid_to` 2026-11-03T11:45:31Z, and the proposal itself expired 30 seconds earlier. A new quote would mean a new hash and a new Face ID. Conversion `3ca88196-05da-4d88-9caa-796f03704636` was booked before the transfer was created.
+
+Simulated in this run: SENT and PAID were set through the sandbox's simulation API.
+
+## The Airi run (7 November)
+
+The Sourcing agent buys at our own Airwallex sandbox merchant with a single-use card credential from Airwallex's Airi wallet (airi-cli 0.1.0-beta.4, Airi's test card visa •••• 1111, test money; 0 Metal calls, 0 Claude calls). All five checks passed, in the second attempt in its world. [Log, with every failed attempt](runs/2026-11-07-vic-1.md), [record](demo/airi-run.json).
 
 | Purchase | What happened | Ids |
 |---|---|---|
-| A, EUR 12.00 | within the CFO's limit for this rail (EUR 20.00 alone): the agent alone. Purser opened the order (`POST /pa/payment_intents/create`, no card), Airi created the mandate, the CFO confirmed it once in Airi with a passkey, and the agent typed the card from Airi's credential into Airwallex's Hosted Payment Page and pressed Pay; `GET /pa/payment_intents/{id}` read SUCCEEDED, reported to Airi | PaymentIntent `int_sgpvzc9hjhnxvpblt2r`, mandate `mdt_nlpdgv8gqhnxvpbv09m` |
-| B, EUR 45.00 | above the limit: P-0002 waited for Max's Face ID on its exact terms (14:05:02 UTC); then the runner opened the order and the mandate, the CFO confirmed it in Airi, and the hosted page paid it: SUCCEEDED, P-0002 EXECUTED | PaymentIntent `int_sgpvzc9hjhnxvxc26ie`, mandate `mdt_nlpdgv8gqhnxvxcjxbv`, terms `8bbfffc9…` |
-| C, EUR 5.00 | a merchant the CFO does not allow: refused by Purser, `PURSER_MERCHANT_NOT_ALLOWED`, before any call to Airi or Airwallex | — |
+| A, EUR 12.00 | Within the CFO's limit for this rail (EUR 20.00): scripted, no Claude call, no Purser approval. Purser opened the order, Airi created the mandate, the CFO confirmed it once in Airi, and the agent typed the card into Airwallex's Hosted Payment Page: SUCCEEDED | PaymentIntent `int_sgpvzc9hjhnxvpblt2r`, mandate `mdt_nlpdgv8gqhnxvpbv09m` |
+| B, EUR 45.00 | Above the limit: P-0002 waited for Max's Face ID on its exact terms (14:05:02 UTC). Then the same path: SUCCEEDED | PaymentIntent `int_sgpvzc9hjhnxvxc26ie`, mandate `mdt_nlpdgv8gqhnxvxcjxbv`, terms `8bbfffc9…` |
+| C, EUR 5.00 | A merchant the CFO does not allow: refused by Purser, `PURSER_MERCHANT_NOT_ALLOWED`, before any call to Airi or Airwallex | — |
 
-6 Airwallex API calls in that attempt (2 logins, 2 PaymentIntent creates, 2 reads), 10 in the world, of the 14
-approved; the hosted page's two loads are page loads, not API calls. What the sandbox cannot show: the credential comes
-from Airi's test card, and the merchant is our own sandbox account, not a real shop.
-
-### Payments: the endpoints the Airi rail calls
-
-| Endpoint | What Purser uses it for | Why it is a necessary financial action | Evidence |
-|---|---|---|---|
-| `POST /pa/payment_intents/create` | Opens the order at our own sandbox merchant: amount, currency, `merchant_order_id`, with a `request_id` unique per purchase (the purchase id plus its start). No card. | The checkout the agent pays; the order is fixed before Airi's mandate is asked for. | `docs/runs/2026-11-07-vic-1.md` (`int_sgpvzc9hjhnxvpblt2r`, `int_sgpvzc9hjhnxvxc26ie`); `test/airi-checkout.test.ts` |
-| Airwallex's Hosted Payment Page (`checkout.sandbox.airwallex.com`, through Airwallex.js `redirectToCheckout`) | The agent types the card from Airi's credential into Airwallex's own page and presses Pay, like a shopper, in headless Chromium. Not an API call. | Our sandbox may not confirm with raw card data over the API ("This account is not enabled for native API access", vic-1b); Airi's credential is meant to be used at a checkout. | `src/airi/hostedCheckout.ts`; `test/airi-hosted-checkout.test.ts` |
-| `GET /pa/payment_intents/{id}` | Reads the real outcome after the hosted page (SUCCEEDED, or the decline code as given). | The result reported to Airi and booked is Airwallex's, not the page's. | `docs/runs/2026-11-07-vic-1.md` |
-| `POST /pa/payment_intents/{id}/confirm` | Only with `AIRI_CHECKOUT=api`: the confirm with the card's fields. Refused for our sandbox (`validation_error`, vic-1b). | — | `docs/runs/vic-1-plan.md` |
+Not shown: a real card or a real shop. The credential comes from Airi's test card, and the merchant is our own sandbox account. A second run that day made 0 Airwallex calls and shows what Purser refuses around the rail ([log](runs/2026-11-07-vic-2.md)). The endpoints are under "Payment acceptance".
 
 ## How Purser talks to Airwallex
 
-- One client holds the client id, the API key and the bearer token. Nothing else does.
+- One client holds the client id, the API key and the bearer token.
 - `POST /authentication/login` sends `x-client-id` and `x-api-key` as headers and gets a 30-minute token. The client refreshes it five minutes early.
-- Calls run one at a time, at most one per 200 ms. That is half of the sandbox limit per endpoint. A 429 is retried with backoff (up to 4 times).
+- Calls run one at a time, at most one per 200 ms: half of the sandbox limit per endpoint. A 429 is retried with backoff (up to 4 times).
 - A `POST` that gets no answer is never resent blindly. It becomes "ambiguous" and is looked up by its `request_id` or its nickname.
-- Amounts are major units at the API. Purser turns them into integer cents at one boundary (`src/airwallex/adapter.ts`) and nowhere else.
+- Amounts are major units at the API. Purser turns them into integer cents at one boundary (`src/airwallex/adapter.ts`).
 - Evidence: `test/airwallex-client.test.ts`, `test/airwallex-adapter.test.ts`.
 
 ## Issuing
 
-Each agent has a DELEGATE cardholder and one virtual Visa card. The CFO policy sets the card's per-transaction and monthly limits. Airwallex enforces them. Agents never see the card number or CVV, and no call asks for them.
+Each agent has a DELEGATE cardholder and one virtual Visa card. The CFO policy sets the card's limits. Airwallex enforces them. Agents never see the card number or CVV, and no call asks for them.
+
+Run of record: [the Airwallex-only run](runs/2026-11-07-awx-1.md). The main run's cards were read back on 6 November with the controls Airwallex holds ([read-back](runs/airwallex-cards-2026-11-06.json)).
 
 | Endpoint | What Purser uses it for | Why it is a necessary financial action | Evidence |
 |---|---|---|---|
-| `GET /issuing/cardholders` | Finds an agent's cardholder by email, so setup runs only once. | Avoids a second cardholder, and so a second card with its own limits, for the same agent. | `test/cards.test.ts` (issues once; adopts an existing card) |
-| `POST /issuing/cardholders/create` | Creates a DELEGATE cardholder for each agent. | A card can only be issued to a cardholder. DELEGATE is the type for someone who spends on the business's behalf. | `docs/runs/2026-10-29-cards.md` † |
-| `GET /issuing/cards` | Finds an agent's card by cardholder and nickname. | Lets a lost answer be settled by a look-up, not by issuing another card. | `test/cards.test.ts` |
-| `POST /issuing/cards/create` | Issues a VIRTUAL, commercial card with `authorization_controls`: `PER_TRANSACTION` and `MONTHLY` limits set from the CFO policy. Also issues the card an outside agent asks for, after Face ID, and single-use task cards from Ask Purser (`allowed_transaction_count: SINGLE`, one merchant category, an end date). | The card is the control. Airwallex declines any purchase over the limit, whatever the agent does; a task card closes itself after its one purchase. | `docs/runs/2026-10-29-cards.md` † (three cards); `docs/runs/2026-10-29-agent-api.md` † (card issued only after Face ID on P-0011); `docs/runs/2026-10-30-single-use.md` (three task cards: a second charge declined `CARD_CLOSED`, a wrong merchant `MERCHANT_CATEGORY_NOT_ALLOWED`) |
-| `GET /issuing/cards/{id}` | Reads the card back after every change and every few seconds. Purser trusts what Airwallex reports, not what it asked for. | A limit is only real if Airwallex holds it. A drift is corrected from the policy. | `test/cards.test.ts` ("brings its limits back to the policy") |
-| `POST /issuing/cards/{id}/update` | Two uses. (1) Sets new limits when the CFO approves a policy change. (2) Sets `card_status` to `INACTIVE` or `ACTIVE` for the emergency stop. | Raising or lowering what an agent can spend is a financial decision. The stop freezes every card at once. | `docs/runs/2026-10-29-cards.md` † (raise 30.00 to 50.00 after Face ID, then the same 45.00 purchase was approved). The stop is covered by `test/freeze.test.ts`. A live `CARD_INACTIVE` decline is in `docs/runs/2026-10-30-single-use.md` (after Purser set a task card INACTIVE); the emergency stop itself is tested against stand-ins only. |
-| `GET /issuing/transactions` | Polls each card's transactions every few seconds and records each one once, by `card_transaction_id`. | The ledger must show what Airwallex approved and declined, or the CFO cannot rely on it. | `docs/runs/2026-10-29-cards.md` †; `test/cards.test.ts` (recorded once however it arrives); `test/issuing-adapter.test.ts` |
-| `POST /simulation/issuing/create` (**sandbox only**) | Simulates a merchant's charge on an agent's card (amount, merchant, merchant category code). | A sandbox has no real merchants. The approval or decline that follows is Airwallex's own. The merchant's charge is the simulated part. | `docs/runs/2026-10-29-cards.md` † (19.99 EUR approved; 45.00 EUR declined `LIMIT_EXCEEDED`) |
+| `GET /issuing/cardholders` | Finds an agent's cardholder by email. | Avoids a second cardholder, and so a second card with its own limits. | 7 Nov run: 3 calls; `test/cards.test.ts` |
+| `POST /issuing/cardholders/create` | Creates a DELEGATE cardholder for each agent. | A card can only be issued to a cardholder. | Not among the 7 November calls. Only an earlier rehearsal of 29 October shows it ([log](runs/2026-10-29-cards.md)). |
+| `GET /issuing/cards` | Finds an agent's card by cardholder and nickname. | A lost answer is settled by a look-up, not by issuing another card. | 7 Nov run: 4 calls; `test/cards.test.ts` |
+| `POST /issuing/cards/create` | Issues a VIRTUAL card with `authorization_controls`: `PER_TRANSACTION` and `MONTHLY` limits from the CFO policy. Also single-use task cards (`allowed_transaction_count: SINGLE`). | The card is the control. Airwallex declines any purchase over the limit, whatever the agent does. | 7 Nov run: 3 calls. Task cards: run of 30 October ([log](runs/2026-10-30-single-use.md)), a second charge declined `CARD_CLOSED`. |
+| `GET /issuing/cards/{id}` | Reads the card back after every change. | A limit is only real if Airwallex holds it. A drift is corrected from the policy. | 7 Nov run: 8 calls; `test/cards.test.ts` |
+| `POST /issuing/cards/{id}/update` | Sets new limits when the CFO approves a policy change. Sets `card_status` to `INACTIVE` or `ACTIVE` for the emergency stop. | Raising or lowering what an agent can spend is a financial decision. | 7 Nov run: 1 call (30.00 to 45.00 after Face ID). The stop is tested against stand-ins only (`test/freeze.test.ts`). |
+| `GET /issuing/transactions` | Records each card transaction once, by `card_transaction_id`. | The ledger must show what Airwallex approved and declined. | 7 Nov run: 6 calls; `test/issuing-adapter.test.ts` |
+| `POST /simulation/issuing/create` (**sandbox only**) | Simulates a merchant's charge. | A sandbox has no real merchants. The approve or decline that follows is Airwallex's own. | 7 Nov run: 4 calls |
+
+In the main run the Sourcing agent's card was raised from 30.00 to 46.00 after Face ID (P-0006), and Airwallex then approved EUR 45.00 on it: `01a1a12f-4113-7000-b76d-014677710007` ([log](runs/2026-11-03-main-run.md)). A card for an outside agent, issued only after Face ID, is shown only by an earlier rehearsal of 29 October ([log](runs/2026-10-29-agent-api.md)).
 
 ## Webhooks
 
-Airwallex tells the relay about each change as it happens. The relay checks the signature and keeps the event. The runner then checks the signature again with its own copy of the secret, because it trusts no relay.
+Airwallex tells the relay about each change. The relay checks the signature and keeps the event. The runner checks it again with its own copy of the secret, because it trusts no relay. A webhook never approves, pays, thaws a card or changes a limit.
 
-**Live since 30 October** (`docs/runs/2026-10-30-webhooks.md`): one subscription with 23 events: card transactions, cards, payouts, conversions and deposits. `conversion.overdue` is left out: this key lacks the permission. Shown live: deposits matched by the webhook alone (EUR 300.00 matched in about 2 seconds; GBP 100.00 short by 20.00, escalated) and a card transaction in both of Airwallex's event shapes. Payout, conversion and card status events are subscribed but were not caused in that run; their checks are covered by tests. On 7 November awx-1 caused them live: 3 `issuing.card.active`, 8 `payout.transfer.*` and 2 `conversion.*` events, each checked against the ledger and agreeing ([log](runs/2026-11-07-awx-1.md#e-webhooks-every-one-that-arrived)).
-How each object is handled (`src/policy/airwallexEvents.ts`, `test/airwallex-events.test.ts`). Each signed event is
-recorded once and checked against the ledger:
+Runs of record: the subscription was made on 30 October with 23 events ([log](runs/2026-10-30-webhooks.md)); `conversion.overdue` is left out, because the key lacks that permission. On 7 November [the Airwallex-only run](runs/2026-11-07-awx-1.md) received 21 events, all agreeing with the ledger.
 
 | Object | Events | What the runner does with it |
 |---|---|---|
-| Card transaction | `issuing.card_transaction_event.*`, `issuing.transaction.*` | Books Airwallex's approve or decline once (as before). A transaction on a card that is no agent's is flagged. |
-| Card | `issuing.card.active`, `.inactive`, `.closed`, `.blocked`, `.lost`, `.stolen` | Compares with the status the CFO policy wants. A card live at Airwallex while the policy has it frozen is flagged; a stricter status is not. |
-| Payout | `payout.transfer.scheduled` … `.paid`, `.failed`, `.cancelled` | Compares with the ledger's transfer. A payout Purser did not make, or one paid in one place and failed in the other, is flagged. |
-| Conversion | `conversion.scheduled`, `.overdue`, `.settled`, `.cancelled` | Compares with the ledger's conversion. A conversion Purser did not make is flagged. |
-| Deposit | `deposit.pending`, `.settled`, `.rejected`, `.reversed` | A settled EUR or GBP deposit into one of Northwind's Global Accounts goes to the receivables agent, which books it once. The poll stays the backup. |
+| Card transaction | `issuing.card_transaction_event.*`, `issuing.transaction.*` | Books Airwallex's approve or decline once. |
+| Card | `issuing.card.active`, `.inactive`, `.closed`, `.blocked`, `.lost`, `.stolen` | Flags a card live at Airwallex while the policy has it frozen. |
+| Payout, conversion | `payout.transfer.*`, `conversion.*` | Compares with the ledger. One that Purser did not make is flagged. |
+| Deposit | `deposit.pending`, `.settled`, `.rejected`, `.reversed` | A settled deposit goes to the receivables agent, which books it once. |
 
-A flagged event stands as the `airwallex_disagrees` alarm in `/health` for a day, and shows on the dashboard. A webhook never
-approves, pays, thaws a card or changes a limit. Airwallex cannot add events to an existing subscription (its update call
-changes only the url), so adding events means a new subscription with a new signing secret:
-`npm run cards -- webhook --replace`. That creates the new one, puts its secret on the relay and the runner, and only then
-deletes the old one. It changes a secret, so it needs the CFO's go (given on 30 October).
+A flagged event stands as the `airwallex_disagrees` alarm in `/health` for a day (`src/policy/airwallexEvents.ts`, `test/airwallex-events.test.ts`). The code's list also holds the approval events (`payout.transfer.in_approval` and the three that end it) and `payment_intent.succeeded`. They need a new subscription, and no recorded run has received one.
 
 | Endpoint | What Purser uses it for | Why it is a necessary financial action | Evidence |
 |---|---|---|---|
-| `GET /webhooks` | Lists subscriptions, so setup does not subscribe twice. | A duplicate subscription would deliver every event twice. | `src/airwallex/webhooks.ts` |
-| `POST /webhooks/create` | Subscribes the relay's `/hooks/airwallex` to the 23 events above (API version 2025-11-11); until 30 October, to the four card-transaction events only. The signing secret in the answer is stored and never printed. | The CFO sees a card decision within seconds, not at the next poll. | `docs/runs/2026-10-29-cards.md` † (live from 16:57: a merchant's own 9.00 EUR charge and a declined 61.00 EUR charge reached the ledger by webhook) |
-| `POST /webhooks/{id}/delete` | Removes the old subscription once `--replace` has put the new one in place. | Two subscriptions would deliver every event twice, one signed with a secret nobody checks any more. | `docs/runs/2026-10-30-webhooks.md` (the 29 October subscription was deleted after the new one was in place) |
+| `GET /webhooks` | Lists subscriptions, so setup does not subscribe twice. | A duplicate subscription would deliver every event twice. | 7 Nov run: 1 call |
+| `POST /webhooks/create` | Subscribes the relay's `/hooks/airwallex`. The signing secret in the answer is stored and never printed. | The CFO sees a card decision within seconds. | Run of 30 October |
+| `POST /webhooks/{id}/delete` | Removes the old subscription once the new one is in place. | Two subscriptions would deliver every event twice. | Run of 30 October |
 
-How a delivery is checked (`worker/src/core.ts`, `src/policy/cardHooks.ts`):
-
-- The HMAC-SHA256 is computed over `x-timestamp` plus the raw body, as received, before anything parses it.
-- A timestamp more than five minutes from our clock is refused.
-- The relay keeps one row per event id and answers 200.
-- An event only records what Airwallex decided. It moves no money.
-- A card transaction is recorded once by its Airwallex id, whichever source sees it first.
-- Evidence: `test/relay-hooks.test.ts`.
+How a delivery is checked (`worker/src/core.ts`, `test/relay-hooks.test.ts`): HMAC-SHA256 over `x-timestamp` plus the raw body, before anything parses it. A timestamp more than five minutes off is refused. The relay keeps one row per event id.
 
 ## FX: rates, quotes with expiry, conversions
 
-The Treasury agent pays a euro invoice from a USD balance. It converts only the shortfall, fee included, and only if USD stays above its floor.
+The Treasury agent converts only the shortfall, fee included, and only if USD stays above its floor. Runs of record: [the Airwallex-only run](runs/2026-11-07-awx-1.md) (step f2) and the main run (above).
 
 | Endpoint | What Purser uses it for | Why it is a necessary financial action | Evidence |
 |---|---|---|---|
-| `GET /fx/rates/current` | Checks the locked quote against the market's current rate before the CFO sees it; a quote more than 0.50% dearer is escalated to the CFO. | The CFO approves the quote; this check stops a bad one reaching the phone. | feed event `fx.rate_checked` |
-| `POST /fx/quotes/create` | Locks a rate for the amount to buy (`buy_currency` EUR, `sell_currency` USD, `buy_amount`, `validity` `MIN_15`, or `MIN_1` in the late-approval test). The quote id, the rate and `valid_to_at` go into the terms the CFO approves. | Without a locked rate the CFO would approve an amount that can move before it is booked. | `docs/runs/2026-10-29-s3.md` † (quote `101475c7-493b-3442-9734-3b2c0ce83f6f`); `docs/runs/2026-10-29-f1.md` † |
-| `POST /fx/conversions/create` | Books the conversion on the approved quote, with a `request_id` and `metadata.approval_sha256`. | This moves company money between currencies. It happens only after Face ID on the exact terms. | `docs/runs/2026-10-29-rehearsal-3.md` † (conversion `0650049f-acb1-476e-a72f-c4de56d5b7b1`, EUR 370.00); `docs/runs/2026-10-29-s3.md` †; `test/airwallex-adapter.test.ts` |
-| `GET /fx/conversions` | Reads the conversion back by `request_id` for `npm run verify`: amount, quote and the approval hash in metadata. | An auditor can check that Airwallex booked what the CFO approved. | `src/airwallex/verify.ts`; `test/airwallex-verify.test.ts`; `docs/runs/2026-10-29-s3.md` † |
+| `GET /fx/rates/current` | Checks the quote against the market's rate. A quote more than 0.50% dearer is escalated. | It stops a bad quote reaching the phone. | 7 Nov run: 1 call |
+| `POST /fx/quotes/create` | Locks a rate (`validity` `MIN_15`). The quote id, the rate and `valid_to_at` go into the terms the CFO approves. | Without a locked rate the CFO would approve an amount that can move. | 7 Nov run: 1 call |
+| `POST /fx/conversions/create` | Books the conversion on the approved quote, with a `request_id` and `metadata.approval_sha256`. | This moves company money between currencies, only after Face ID on the exact terms. | 7 Nov run: 1 call |
+| `GET /fx/conversions` | Reads the conversion back for `npm run verify`. | An auditor can check that Airwallex booked what the CFO approved. | 7 Nov run: 1 call |
 
 The rules in code (`src/policy/treasury.ts`, `src/agents/euroBill.ts`):
 
-- **Only the shortfall.** The need is the invoice plus a SWIFT fee ceiling of EUR 20.00. Free EUR is the balance minus the EUR floor and what is already committed. Only the difference is bought. Rehearsal 3: EUR 1,870.00 needed, EUR 1,500.00 free, EUR 370.00 converted. †
-- **Fee-aware.** The kit says the SWIFT fee is a flat EUR 12.85. Airwallex charged between EUR 13.36 and EUR 13.50 in our runs. The ceiling absorbs that. `npm run verify` fails a fee above the ceiling.
-- **Above the reserve floor.** A quote is usable only if selling its USD keeps USD at or above its floor. If not, the agent escalates with options, asks for no approval and moves nothing (`docs/runs/2026-10-29-f4.md` †). If EUR is already below its floor plus commitments, it makes no plan and gets no quote.
-- **Quote expiry.** A proposal expires 30 seconds before its quote does. A late approval approves nothing (`docs/runs/2026-10-29-f1.md` †). A new quote means a new hash and a new approval.
-- **Single use.** A quote is booked once, under one `request_id`. Airwallex would accept the same quote under a new `request_id`, so the single use is enforced in our code (`src/executors/invoicePayment.ts`).
+- **Only the shortfall.** The need is the invoice plus a fee ceiling of EUR 20.00. Free EUR is the balance minus the floor and what is already committed. Only the difference is bought.
+- **Fee-aware.** The kit says the SWIFT fee is a flat EUR 12.85. Airwallex charged EUR 13.42 in the main run and EUR 13.50 on 7 November. The ceiling absorbs that; `npm run verify` fails a fee above it.
+- **Above the reserve floor.** A quote is usable only if selling its USD keeps USD at or above its floor. If not, the agent escalates and moves nothing. Only an earlier rehearsal of 29 October shows that ([log](runs/2026-10-29-f4.md)).
+- **Quote expiry.** A proposal expires 30 seconds before its quote does. A late approval approves nothing. Only an earlier rehearsal of 29 October shows a late approval ([log](runs/2026-10-29-f1.md)).
+- **Single use.** A quote is booked once, under one `request_id`. Airwallex would accept it again under a new one, so our code enforces this (`src/executors/invoicePayment.ts`).
 
 ## Beneficiaries
 
-Only an allowlisted beneficiary can be paid. The allowlist is in the ledger. An agent cannot change it.
+Only an allowlisted beneficiary can be paid. The allowlist is in the ledger; an agent cannot change it. Runs of record: [the Airwallex-only run](runs/2026-11-07-awx-1.md) and [the three test companies](runs/2026-11-10-platform-e2e.md).
 
 | Endpoint | What Purser uses it for | Why it is a necessary financial action | Evidence |
 |---|---|---|---|
-| `GET /beneficiaries` | Finds a beneficiary by IBAN, so an invoice is checked against the real account at Airwallex. | A payout goes to an account on file or it does not go. | `src/airwallex/adapter.ts`; `test/euroBill.test.ts` |
-| `POST /beneficiaries/validate` | Reads `POST /beneficiaries/schema` for the required fields, then validates the bank details (DE, EUR, IBAN plus `swift_code`) with `POST /beneficiaries/validate` before create. | A wrong IBAN would send money to the wrong place. | `docs/runs/2026-10-29-s3.md` † |
-| `POST /beneficiaries/create` | Adds the supplier as a SWIFT beneficiary (setup), or the new account after a bank-detail change. | A transfer needs a `beneficiary_id`. | `docs/runs/2026-10-29-s3.md` † (beneficiary `1322d7e4-5102-4858-ac2f-912d0ad5b999`) |
+| `GET /beneficiaries` | Finds a beneficiary by IBAN, so an invoice is checked against the account at Airwallex. | A payout goes to an account on file or it does not go. | 7 Nov run: 2 calls |
+| `POST /beneficiaries/schema`, `POST /beneficiaries/validate` | Reads the required fields, then validates the bank details before create. | A wrong IBAN would send money to the wrong place. | 10 Nov, for each of four suppliers |
+| `POST /beneficiaries/create` | Adds a supplier (setup), or the new account after an approved bank-detail change. | A transfer needs a `beneficiary_id`. | 10 Nov: four SEPA beneficiaries, the first `e8599d32-5f16-42e6-842c-f7356d5de239` |
 
-A supplier's bank-detail change takes three separate steps (`src/policy/payeeChange.ts`):
-
-1. A request. It changes nothing.
-2. A person records that the supplier confirmed the account on a contact already in our own records. An agent cannot do this.
-3. A proposal with the full new IBAN and that verification, approved with Face ID. When four eyes is on, a bank-detail change always needs two people, whatever the amount.
-
-Only then is the account created at Airwallex and made the active payee. The old account stays in the ledger as REPLACED. Before any of this, an invoice with changed bank details is blocked by code, before Airwallex is called (`src/policy/fraud.ts`).
-
-Evidence: `test/payee-change.test.ts`, `test/fraud.test.ts`, `docs/runs/2026-10-29-fraud.md` †. The three-step change has tests only; there is no live run log yet.
+A supplier's bank-detail change takes three steps (`src/policy/payeeChange.ts`): a request that changes nothing; a person records that the supplier confirmed the account on a contact already on file; a proposal with the full new IBAN, approved with Face ID. It has tests only (`test/payee-change.test.ts`). Before any of this, code blocks an invoice with changed bank details (`src/policy/fraud.ts`, `test/fraud.test.ts`); only an earlier rehearsal of 29 October shows that live ([log](runs/2026-10-29-fraud.md)).
 
 ## Transfers: SWIFT, status to PAID
 
+Runs of record: [the Airwallex-only run](runs/2026-11-07-awx-1.md) (two payouts) and the main run (above).
+
 | Endpoint | What Purser uses it for | Why it is a necessary financial action | Evidence |
 |---|---|---|---|
-| `POST /transfers/create` | Pays the invoice by SWIFT: `request_id`, `beneficiary_id`, `transfer_amount`, `transfer_currency` EUR, `source_currency` EUR, `transfer_method` SWIFT, `reference`, `reason`, `metadata.approval_sha256`. | This is money leaving the company. It runs once, after Face ID, on the approved terms only. | `docs/runs/2026-10-29-rehearsal-3.md` † (transfer `260638bd-3400-4a6f-b170-268ecc1ffc5b`, PAID, fee EUR 13.46); `docs/runs/2026-10-29-s3.md` † (`26954165-5c6d-4796-91bd-c9aa356e1ea9`); `docs/runs/2026-10-29-f1.md` † (`c443a5da-aebb-486d-9101-5cf9ea0e3bae`) |
-| `GET /transfers` (by `request_id`) | Finds a transfer after a lost answer, and reads it back in `npm run verify`. | A payment must never be paid twice. | `test/euroBill.test.ts` (F8: a lost answer is adopted, not repaid); `test/airwallex-verify.test.ts` |
-| `GET /transfers/{id}` | Reads the status and the fee Airwallex charged. | The fee is only known after the charge. The status shows whether the money arrived. | `src/airwallex/adapter.ts`; `docs/runs/2026-10-29-rehearsal-3.md` † |
-| `POST /simulation/transfers/{id}/transition` (**sandbox only**) | Moves the transfer to SENT, then PAID. | The sandbox does not settle SWIFT by itself. In the logs, PAID comes from this simulation. | `docs/runs/2026-10-29-s3.md` † |
+| `POST /transfers/create` | Pays the invoice: `request_id`, `beneficiary_id`, amount, currency, `transfer_method`, `reference`, `reason`, `metadata.approval_sha256`. | This is money leaving the company. It runs once, after Face ID, on the approved terms only. | 7 Nov run: 2 calls |
+| `GET /transfers` (by `request_id`) | Finds a transfer after a lost answer, and reads it back in `npm run verify`. | A payment must never be paid twice. | 7 Nov run: 2 calls; `test/euroBill.test.ts` (a lost answer is adopted, not repaid) |
+| `GET /transfers/{id}` | Reads the status and the fee Airwallex charged. | The fee is only known after the charge. | 7 Nov run: 8 calls |
+| `POST /simulation/transfers/{id}/transition` (**sandbox only**) | Moves the transfer to SENT, then PAID. | The sandbox does not settle by itself. In the logs, PAID comes from this call. | 7 Nov run: 4 calls |
 
-Other rules:
+- One invoice has at most one live payout. The Treasury agent's advice sits outside the hash and cannot change what is paid.
+- **For the bank and the ERP.** `npm run iso20022` exports a paid invoice as a pacs.008 message with Airwallex's transfer id as the UETR. The example is from a rehearsal of 30 October: [`docs/iso20022/pacs008-BTX-2026-11.xml`](iso20022/pacs008-BTX-2026-11.xml). It is not a message a bank sent.
 
-- A transfer starts as SUBMITTING in our ledger before the call. One invoice has at most one live payout (`one_live_transfer_per_invoice`).
-- A failed transfer is read as FAILED, then CANCELLED, which is how the sandbox ends it.
-- Opus's advice sits beside the proposal, outside the hash. It cannot change what is paid.
-- **For the bank and the ERP: ISO 20022.** `npm run iso20022 -- BTX-2026-11` exports the paid invoice as a
-  pacs.008.001.08 message ([`docs/iso20022/pacs008-BTX-2026-11.xml`](iso20022/pacs008-BTX-2026-11.xml)). The SWIFT
-  transfer carries EndToEndId `BTX-2026-11`, Airwallex's transfer id `4d508b0b…feb4` as the UETR, and the invoice as
-  structured remittance. The same message holds the Metal transaction whose earnings were booked at Airwallex as
-  deposit `56366c9d…c838`, so one message links both rails. It is valid against the official XSD; it is not a
-  message a bank sent, and the sandbox assigns no SWIFT UETR.
+## Transfer approvals
+
+Airwallex has its own lock, which Purser does not control: a transfer approval workflow in the web app that also holds API-created transfers. A payout then needs two approvals that do not depend on each other: the CFO's signature in Purser, and a person in Airwallex's web app. Airwallex docs: [Manage approvals for transfers](https://www.airwallex.com/docs/payouts/transfers/manage-transfers/manage-approvals-for-transfers), [Transfer statuses](https://www.airwallex.com/docs/payouts/transfers/create-a-transfer/transfer-statuses).
+
+Run of record: [two locks on one payout, 10 November](runs/2026-11-10-airwallex-two-locks.md).
+
+| Lock | What the record shows |
+|---|---|
+| 1. Signed in Purser | Proposal P-0001, EUR 240.00 by SWIFT, signed by a labelled virtual test passkey (no person's Face ID in this run). Terms hash `f9ba0fe8758eadbef3b48f23e571ea92e3208f4ebd802703b413a414d444ac28`. |
+| 2. Held at Airwallex | `POST /transfers/create`, once: transfer `4074d684-4704-406c-a527-2832753baf4f`, answered `IN_APPROVAL`, with the signed hash in its metadata. A read-back a few minutes later still said `IN_APPROVAL`. Purser did not simulate past it and did not send it again. |
+| 3. Approved in the web app | State at the time of writing, 12 November, in the record's words: "Not completed." and "It stays `IN_APPROVAL`: without a person approving it in Airwallex it cannot be paid." The record is updated if that changes; the record is what counts. |
+
+What Purser does with the wait (`src/airwallex/approvals.ts`, `test/airwallex-approvals.test.ts`): it follows the transfer with `GET /transfers/{id}` and only reads. `SCHEDULED` and then `PAID` are booked; `APPROVAL_REJECTED`, `APPROVAL_RECALLED` and `APPROVAL_BLOCKED` are shown as not paid. If the amount at Airwallex no longer matches what the CFO signed, Purser raises an alarm and does not book it.
+
+## Connected accounts and application fees
+
+As a platform, Purser opens an Airwallex account for a company (a connected account) and pays that company's suppliers on its behalf, with the header `x-on-behalf-of`. The money stays in the company's own wallet. Purser's fee goes with the payout as an application fee. Built after the kit, behind `AIRWALLEX_PLATFORM=on` ([design](airwallex-platform.md)). Airwallex docs: [About connected accounts](https://www.airwallex.com/docs/connected-accounts/about/about-connected-accounts), [Platform relationships](https://www.airwallex.com/docs/connected-accounts/about/platform-relationships), [Create connected account](https://www.airwallex.com/docs/api/scale/accounts/create).
+
+Runs of record, both 10 November: [connected accounts](runs/2026-11-10-connected-accounts-sandbox.md) and [three test companies](runs/2026-11-10-platform-e2e.md) ([facts](runs/2026-11-10-platform-e2e/facts.json), [calls](runs/2026-11-10-platform-e2e/calls.jsonl)). The companies are fake. Approvals in the second run were signed with a test passkey, not Face ID; the first run's payout had no Face ID ([runs list](runs/README.md)).
+
+| Endpoint | What Purser uses it for | What the run shows |
+|---|---|---|
+| `POST /accounts/create` | Opens the company's account. | `acct_SC-QD89fOneAeqaRFgOymw`, `CREATED` |
+| `POST /accounts/{id}/update`, `POST /accounts/{id}/submit` | Sends the company's verification details, then submits them. | `SUBMITTED` |
+| `POST /simulation/accounts/{id}/update_status` (**sandbox only**) | Makes a submitted test account `ACTIVE`. In production Airwallex verifies the company. | `ACTIVE`. Two more accounts the same way: `acct_O07lI0VvMLagXlj5aeOgyg`, `acct_XFhJLpkwNp6lzl8rpySE_Q` |
+| `POST /connected_account_transfers/create` | Funds a test account from the platform (test money). | EUR 20.00, `tr_oZIJlT2oNQ2OX33f83UCag` |
+| With `x-on-behalf-of`: the beneficiary and transfer calls above | The payout, from the company's own wallet. | Below |
+
+Purser's fee is one `FIXED` entry in `application_fee_options` on `POST /transfers/create`: the exact amount in the signed terms, at most 100 basis points of the payout (`FEE_BPS_CAP`). It is counted as taken only when that payout is PAID.
+
+| Payout | Method | Result | Purser's fee | Airwallex's fee |
+|---|---|---|---|---|
+| `a9460dba-f31b-4111-be58-6d9a9e71adb1`, EUR 5.00 | SWIFT | PAID | EUR 0.05, accepted by Airwallex in `application_fees` | EUR 13.41 |
+| `593c340b-1752-4537-9ef2-0eb3558897cc`, EUR 4.84 | SEPA | PAID | EUR 0.02, to the platform account `acct_op0_QItiOyWKsYb5pwQihA` | EUR 2.69 |
+| 3 payouts from the two new accounts | SEPA | Refused by Airwallex at create | Not taken | None |
+
+Both PAID results came through the sandbox's settlement simulation. The SEPA payout's terms name the paying account and the fee, and its receipt verifies offline ([log](runs/2026-11-10-platform-e2e.md)).
+
+The refusals, as the record gives the cause: `400 validation_failed`, source `payer.additional_info.business_registration_number`. The two new accounts were opened as non-registered sole traders, and a payout from them needs the payer's registration number. A retry with a test number in a `payer` object was refused too (field `payer`, code 048), so the number has to come from the account itself. A company opened with a registration number has not been tried yet.
+
+Not confirmed by any run: whether a live PAID answer carries `application_fees`, where the fee shows in the platform's balance, and the `account.*` webhooks.
+
+## Payment acceptance
+
+Money in by card: a PaymentIntent for an order, paid by card, booked only after Airwallex itself reports `SUCCEEDED`. Airwallex docs: [Create a PaymentIntent](https://www.airwallex.com/docs/api/payments/payment_intents/create), [Hosted Payment Page](https://www.airwallex.com/docs/payments/integration-options/web-checkout/hosted-payment-page).
+
+Runs of record: [payment acceptance, 10 November](runs/2026-11-10-payment-acceptance-sandbox.md), and [the Airi run, 7 November](runs/2026-11-07-vic-1.md).
+
+| Endpoint | What Purser uses it for | What the run shows |
+|---|---|---|
+| `POST /pa/payment_intents/create` | Opens the order: amount, currency, `merchant_order_id`, a `request_id` unique per order. No card. | 10 Nov: invoice NW-R-PA1, EUR 24.90, `int_sgpv9bnppho0sezgl4a`, `REQUIRES_PAYMENT_METHOD`. 7 Nov: `int_sgpvzc9hjhnxvpblt2r`, `int_sgpvzc9hjhnxvxc26ie` |
+| `POST /pa/payment_intents/{id}/confirm` | Confirms with Airwallex's documented test card (`src/airwallex/acceptance.ts`). No other card number is accepted. | 10 Nov: 200. On 7 November the same call was refused for our sandbox ("This account is not enabled for native API access"). |
+| Airwallex's Hosted Payment Page (not an API call) | In the Airi run the agent types the card from Airi's credential into Airwallex's own page, like a shopper (`src/airi/hostedCheckout.ts`). | 7 Nov: both purchases |
+| `GET /pa/payment_intents/{id}` | Reads the real outcome. Purser books from this answer, not from the confirm's. | 10 Nov: `SUCCEEDED`, card ending 0008. 7 Nov: `SUCCEEDED` twice |
+
+On 10 November Purser matched the receipt to invoice NW-R-PA1 by `merchant_order_id` and recorded it once, under the PaymentIntent id. 4 Airwallex calls of the 15 approved.
+
+Not shown by any run: a `payment_intent.succeeded` webhook, settlement of the card money into the wallet, and a live decline. The webhook and the decline have tests only (`test/payment-acceptance.test.ts`).
 
 ## Deposits and balances
 
+Run of record: [the Airwallex-only run](runs/2026-11-07-awx-1.md); for the deposit, [the main run](runs/2026-11-03-main-run.md).
+
 | Endpoint | What Purser uses it for | Why it is a necessary financial action | Evidence |
 |---|---|---|---|
-| `GET /balances/current` | Reads cash balances (`account_type=cash`). Only `available_amount` counts as spendable. Pending and reserved amounts never count. Also used by `npm run health`. | The Treasury agent's plan depends on free EUR and USD above the floors. | `docs/runs/2026-10-29-s3.md` † (starting balances read live); `test/euroBill.test.ts` |
-| `GET /deposits` | Finds a deposit by its `reference`. | Earnings are credited once the on-chain sweep is final. The reference is the Metal transaction hash. | `docs/runs/2026-10-29-s3.md` † ("the reference comes back verbatim"); `test/airwallex-adapter.test.ts` |
-| `POST /simulation/deposit/create` (**sandbox only**) | Seeds USD, and books the sweep as a deposit with the Metal transaction hash as `reference`. | The sandbox cannot receive stablecoins. So the USDZ to Airwallex step is **simulated**: 1 USDZ is booked as 1 USD. No real USDZ reaches Airwallex. | `docs/runs/2026-10-29-s3.md` † (deposit `e49d68f2-bcc2-4a0d-ab22-abca60ea6509`); `docs/runs/2026-10-29-rehearsal-3.md` † (deposit `03d9d67d-449a-482b-9281-e2acf4fe058c`); `docs/security.md` |
+| `GET /balances/current` | Reads cash balances. Only `available_amount` counts as spendable. | The Treasury agent's plan depends on free EUR and USD above the floors. | 7 Nov run: 9 calls |
+| `GET /deposits` | Finds a deposit by its `reference`. | Earnings are credited once the on-chain sweep is final. The reference is the Metal transaction hash. | 7 Nov run: 2 calls |
+| `POST /simulation/deposit/create` (**sandbox only**) | Books the sweep as a deposit with the Metal transaction hash as `reference`. | The sandbox cannot receive stablecoins, so this step is **simulated**: 1 USDZ is booked as 1 USD. No real USDZ reaches Airwallex. | Main run: deposit `b3812e05-2afa-4698-8f64-429f9608e0a0`, SETTLED |
 
-A credit is booked only after the sweep is final on Metal, and once per `chainId:tx:logIndex` (`test/euroBill.test.ts`, F6).
+A credit is booked only after the sweep is final on Metal, and once per `chainId:tx:logIndex` (`test/euroBill.test.ts`).
 
 ## Global accounts
 
 | Endpoint | What Purser uses it for | Why it is a necessary financial action | Evidence |
 |---|---|---|---|
-| `GET /global_accounts` | Finds the active USD global account that receives deposits. | The USD balance that funds the euro invoice comes in through it. | `src/airwallex/adapter.ts` (`usdGlobalAccountId`) |
-| `POST /global_accounts/create` | Creates a US, USD, LOCAL account once, only if none exists. For receivables, a GB, GBP, LOCAL account the same way. | Without a USD account there is nowhere to book the earnings; without a GBP one, UK retailers cannot pay in pounds. | `src/airwallex/adapter.ts`; `src/cli/receivables.ts` (GBP account `3964c579…` created 30 Oct) |
+| `GET /global_accounts` | Finds the active USD global account that receives deposits. | The USD balance that funds the euro invoice comes in through it. | `src/airwallex/adapter.ts` |
+| `POST /global_accounts/create` | Creates a US, USD, LOCAL account once, only if none exists; a GB, GBP account the same way. | Without the account there is nowhere to book the money. | `src/cli/receivables.ts`; run of 30 October |
 
-### Receivables: retailers pay into the Global Accounts
-
-Retailers pay Northwind's invoices into its EUR account (NL, SEPA) and GBP account (GB). The receivables agent
-(`src/agents/receivables.ts`, `npm run receivables`) works as follows:
-- It reads every settled deposit into those accounts (`GET /deposits`).
-- It matches each one once, by its Airwallex id, to an open invoice, using the invoice number in the reference
-  (written any way).
-- It books the payment as wholesale revenue in its own currency.
-- It escalates a short payment, an overpayment, the wrong currency or a payment with no invoice to the CFO. Nothing here
-  moves money.
-
-Live in the sandbox on 30 October (`docs/runs/2026-10-30-receivables.md`); the retailers' payments are the sandbox's
-`POST /simulation/deposit/create`:
-
-| Deposit | Amount | Result |
-|---|---|---|
-| `50f623ac…` | 1,240.00 EUR | matched to NW-R-101 |
-| `95fcf339…` | 860.50 GBP | matched to NW-R-102 |
-| `5a6323a6…` | 500.00 EUR | short by 10.00 EUR on NW-R-103: escalated |
-| `acf543d2…` | 25.00 EUR | no invoice: held in suspense, escalated |
-
-On a live runner the dashboard's Books tab and the Airwallex rail show them. They are kept out of the public recording, so that its balances, reconciliation and waiting items stay one consistent moment.
-
-### Card spend by merchant
-
-From the card transactions Purser already records (`GET /issuing/transactions`, the webhooks), `src/agents/spendReview.ts`
-gives each agent's card spend per merchant and category, with the declines counted apart. A merchant that charged the
-same amount again about a month later is flagged as a subscription, with how the CFO stops it: lower the card's monthly
-limit, or take the category off the card. Both are tightenings the CFO can make on the phone. It reads only; it changes
-no card. The recorded run has no subscription yet; `test/spend-review.test.ts` shows one being found.
+**Receivables.** Retailers pay Northwind's invoices into its EUR and GBP accounts. The receivables agent (`src/agents/receivables.ts`) matches each settled deposit once to an open invoice and escalates a short payment or one with no invoice to the CFO. It moves no money. Live in the sandbox on 30 October ([log](runs/2026-10-30-receivables.md)), with the retailers' payments simulated by `POST /simulation/deposit/create`: two deposits matched (`50f623ac…`, `95fcf339…`), one short by 10.00 EUR and one with no invoice, both escalated (`5a6323a6…`, `acf543d2…`).
 
 ## Best practices we follow
 
-- **Idempotency keys on every money movement.** Each conversion and each transfer carries a `request_id` (a UUID) that is fixed inside the approved terms. It is reused only to retry the same operation. A new operation gets a new id. A lost answer is looked up by `request_id`, never resent with a new one. Card creation is looked up by nickname after a lost answer. Setting a card's limits twice is harmless, so that is settled by reading the card back. Proof: `test/euroBill.test.ts` (F8), `test/cards.test.ts`, `test/airwallex-client.test.ts`.
-- **The approval hash in transfer metadata.** `metadata.approval_sha256` on `POST /fx/conversions/create` and `POST /transfers/create` is the SHA-256 of the exact terms the CFO signed with Face ID. `npm run verify` reads Airwallex back and fails if the metadata, amount, quote or fee differs from the approved terms. Proof: `test/airwallex-verify.test.ts`, `docs/runs/2026-10-29-rehearsal-3.md` †.
-- **Tracing each payment to agent, task and policy rule.** Airwallex holds the hash and the Airwallex ids. Our ledger ties them to the rest. Each card transaction row holds the agent and, when the agent gave one, the purpose (the task). The GL export adds the cost centre, the rule that chose the account and the approval. The audit report lists each decision that needed a person: the agent that proposed it, the policy rule that sent it to a person, who decided and how, and the terms hash. Limits: one card per agent, not per task, and the purpose is stored in our ledger, not at Airwallex. Proof: `src/accounting/gl.ts`, `test/gl-export.test.ts`, `docs/audit-report-rehearsal-3.pdf` †.
-- **Webhook signature checks.** HMAC-SHA256 over timestamp plus raw body, a five-minute window, checked on the relay and again on the runner. See "Webhooks" above.
-- **Quote expiry.** The proposal ends before the quote does. A late approval approves nothing. See "FX" above.
-- **Only the shortfall is converted.** Fee-aware, and never below the reserve floors. See "FX" above.
-- **Limits and read-backs.** Calls are spaced to half of the sandbox limit. Card limits are read back from Airwallex, not assumed.
-- **Data QA reads Airwallex back.** `npm run data-qa` checks every payment the ledger shows against Airwallex with GET requests only: `GET /balances/current`, `GET /transfers/{id}`, `GET /fx/conversions/{id}` (or by `request_id`), `GET /deposits/{id}` (or the list) and `GET /issuing/transactions/{id}`. Proof: `src/finance/dataQa.ts`, `test/data-qa.test.ts`.
-- **Sandbox calls are separate.** Simulations sit behind their own interface, as the builder guide advises.
-- **Secrets.** The API key never reaches a model. Logged bodies are redacted. Card numbers and CVVs are never requested. Proof: `test/redact.test.ts`, `test/adversarial.test.ts`.
+- **Idempotency keys on every money movement.** Each conversion and each transfer carries a `request_id` (a UUID) fixed inside the approved terms. A lost answer is looked up by it, never resent with a new one (`test/euroBill.test.ts`, `test/cards.test.ts`).
+- **Tracing each payment to agent, task and policy rule.** Airwallex holds the approval hash and its own ids. Our ledger ties them to the agent, the purpose, the rule that sent the decision to a person, and who decided (`src/accounting/gl.ts`, `test/gl-export.test.ts`). Limits: one card per agent, not per task; the purpose is in our ledger, not at Airwallex.
+- **Read-backs.** `npm run data-qa` checks every payment the ledger shows against Airwallex with GET requests only (`src/finance/dataQa.ts`, `test/data-qa.test.ts`).
+- **Secrets.** The API key never reaches a model. Logged bodies are redacted. Card numbers and CVVs are never requested (`test/redact.test.ts`, `test/adversarial.test.ts`).
 
 ## The scoped key
 
-Purser should run on a scoped API key, not an admin key. Airwallex lets each key have Read or Write per resource. Read covers `GET`. Write covers `GET` and `POST` ([manage API keys](https://www.airwallex.com/docs/developer-tools/api/manage-api-keys), [API key best practices](https://www.airwallex.com/docs/developer-tools/api/api-key-best-practices)).
+Purser should run on scoped API keys. Airwallex lets each key have Read or Write per resource: Read covers `GET`, Write covers `GET` and `POST` ([manage API keys](https://www.airwallex.com/docs/developer-tools/api/manage-api-keys), [API key best practices](https://www.airwallex.com/docs/developer-tools/api/api-key-best-practices)).
 
-The permissions below come from the endpoints on this page. Max creates the key in the Airwallex web app before submission. We do not create it and we never see the secret in a chat. The names in the web app may differ a little from the names here. If one is missing, tell us and we will match it.
+There are two roles. The code reads either key from the same two variables (`AIRWALLEX_CLIENT_ID`, `AIRWALLEX_API_KEY`); the account a key belongs to decides its role. The permissions below are derived from the endpoints the run logs show ([7 November](demo/airwallex-run.json), [10 November](runs/2026-11-10-platform-e2e/calls.jsonl)). The owner creates the keys in the Airwallex web app, where the names may differ a little.
 
-| Resource | Endpoints used | Permission |
+### The company key
+
+The key of a company's own Airwallex account, as in the main run and on 7 November.
+
+| Resource | Endpoints | Permission |
 |---|---|---|
+| Login | `POST /authentication/login` | Every key |
 | Balances | `GET /balances/current` | Read |
 | Global accounts | `GET /global_accounts`; `POST /global_accounts/create` (once, at setup) | Read; Write only until the account exists |
 | Deposits | `GET /deposits` | Read |
-| Beneficiaries | `GET /beneficiaries`; `POST /beneficiaries/schema`; `POST /beneficiaries/validate`; `POST /beneficiaries/create` | Write (needed at setup and for every approved bank-detail change) |
-| FX rates, quotes and conversions | `GET /fx/rates/current`; `POST /fx/quotes/create`; `POST /fx/conversions/create`; `GET /fx/conversions` | Write |
-| Transfers | `POST /transfers/create`; `GET /transfers`; `GET /transfers/{id}` | Write |
-| Issuing: cardholders, cards, transactions | `GET`/`POST /issuing/cardholders`; `GET`/`POST /issuing/cards` and `/issuing/cards/{id}/update`; `GET /issuing/transactions` | Write |
-| Webhooks | `GET /webhooks`; `POST /webhooks/create`; `POST /webhooks/{id}/delete` (setup and `--replace` only) | Write at setup, then none |
-| Sandbox simulation | `POST /simulation/deposit/create`; `POST /simulation/transfers/{id}/transition`; `POST /simulation/issuing/create` | Write (sandbox only; these do not exist in production) |
+| Beneficiaries | `GET /beneficiaries`; `POST /beneficiaries/schema`; `POST /beneficiaries/validate`; `POST /beneficiaries/create`; `POST /beneficiaries/verify_account` (with `AIRWALLEX_PAYEE_CHECK=on`) | Write |
+| FX | `GET /fx/rates/current`; `POST /fx/quotes/create`; `POST /fx/conversions/create`; `GET /fx/conversions` | Write |
+| Transfers | `POST /transfers/create`; `GET /transfers`; `GET /transfers/{id}`; batch transfers (`/batch_transfers…`, with `AIRWALLEX_BATCH_TRANSFER=on`) | Write |
+| Financial transactions | `GET /financial_transactions` (with `AIRWALLEX_FINANCIAL_TX=on`) | Read |
+| Issuing | `GET /issuing/cardholders`; `POST /issuing/cardholders/create`; `GET /issuing/cards`; `POST /issuing/cards/create`; `GET /issuing/cards/{id}`; `POST /issuing/cards/{id}/update`; `GET /issuing/transactions` | Write |
+| Webhooks | `GET /webhooks`; `POST /webhooks/create`; `POST /webhooks/{id}/delete` | Write at setup, then none |
+| Payment acceptance (Airi rail, or `AIRWALLEX_PAYMENT_ACCEPTANCE=on`) | `POST /pa/payment_intents/create`; `POST /pa/payment_intents/{id}/confirm`; `GET /pa/payment_intents/{id}` | Write |
+| Sandbox simulation | `POST /simulation/issuing/create`; `POST /simulation/transfers/{id}/transition`; `POST /simulation/deposit/create` | Write (sandbox only) |
 
-What the key does not need:
+This key needs no permission for sensitive card details, users, roles, API keys, settings or billing, and none for connected accounts: it acts for its own account only.
 
-- No permission for sensitive card details. Purser never asks for a card number or CVV.
-- No permission for users, roles, API keys, settings or billing. Connected accounts are needed only for the platform build behind `AIRWALLEX_PLATFORM=on` (off by default; [airwallex-platform.md](airwallex-platform.md)).
-- No read of other products or entities.
+### The platform key
 
-Proof that Airwallex enforces key scope: before the Webhooks permission was added, `GET /webhooks` and `POST /webhooks/create` answered `401 Insufficient permissions` (`docs/runs/2026-10-29-cards.md` †).
+The key of Purser's own platform account. It opens connected accounts and acts for one of them when a call carries `x-on-behalf-of`. It does need connected accounts: Airwallex enabled them on our sandbox on 10 November, and a day earlier `POST /accounts/create` was refused.
 
-After the key is created:
+| Resource | Endpoints | Permission |
+|---|---|---|
+| Login | `POST /authentication/login` | Every key |
+| Connected accounts | `POST /accounts/create`; `POST /accounts/{id}/update`; `POST /accounts/{id}/submit`; `GET /reference/industry_categories` | Write |
+| Funding a test account | `POST /connected_account_transfers/create` | Write |
+| On behalf of a connected account | `GET /balances/current`; `GET /beneficiaries`; `POST /beneficiaries/schema`; `POST /beneficiaries/validate`; `POST /beneficiaries/create`; `POST /transfers/create` (with `application_fee_options`); `GET /transfers/{id}` | Write |
+| FX rate | `GET /fx/rates/current` | Read |
+| Sandbox simulation | `POST /simulation/accounts/{id}/update_status`; `POST /simulation/transfers/{id}/transition` | Write (sandbox only) |
 
-1. Put the client id and the API key in the environment (`AIRWALLEX_CLIENT_ID`, `AIRWALLEX_API_KEY`), as in `.env.example`.
-2. Run `npm run health`.
-3. Run the cards and the euro bill once. Any `401 Insufficient permissions` names the missing permission.
-4. In production, add an IP allowlist, as Airwallex recommends. This build only talks to the sandbox.
+Built and not yet called in a recorded run: `GET /accounts/{id}`, `POST /hosted_flows/create` and `POST /hosted_flows/{id}/authorize` (`src/airwallex/platform.ts`).
+
+Whoever holds this key can call Airwallex for any connected account. In this build the runner holds it, and a binding signed by Purser Cloud keeps it to its own company's account (`src/airwallex/binding.ts`). Before production, a service Purser holds makes every on-behalf-of call. That is open ([go-live list](go-live.md)).
+
+### Checks
+
+- Airwallex enforces key scope. On 30 October the key was refused the event `conversion.overdue` with `401 Insufficient permissions` ([log](runs/2026-10-30-webhooks.md)). Only an earlier rehearsal of 29 October shows the same for `GET /webhooks` ([log](runs/2026-10-29-cards.md)).
+- After a key is created, run `npm run health`. Any `401 Insufficient permissions` names the missing permission.

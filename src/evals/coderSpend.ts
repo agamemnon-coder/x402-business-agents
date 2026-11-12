@@ -41,7 +41,8 @@ export interface SpendGuard {
 export function spendGuard(inner: Anthropic, room: () => number): SpendGuard {
   let used = 0;
   let refused: string | null = null;
-  const create = async (req: Request, options?: unknown) => {
+  // `create` for the agent runner (src/agents/loop.ts), `parse` for the structured reader (src/claude/reader.ts).
+  const guarded = (method: "create" | "parse") => async (req: Request, options?: unknown) => {
     const worst = worstCallMicros(req);
     const left = room() - used;
     if (worst > left) {
@@ -50,11 +51,11 @@ export function spendGuard(inner: Anthropic, room: () => number): SpendGuard {
     }
     // The runner turns the SDK's own retries off; the guard keeps that.
     const c = inner.withOptions ? inner.withOptions({ maxRetries: 0 }) : inner;
-    const res = await (c.beta.messages.create as (r: Request, o?: unknown) => Promise<Anthropic.Beta.BetaMessage>)(req, options);
+    const res = await (c.beta.messages[method] as unknown as (r: Request, o?: unknown) => Promise<Anthropic.Beta.BetaMessage>)(req, options);
     const u = res.usage;
     used += callCostMicros(res.model, { input: u.input_tokens, output: u.output_tokens, cache_read: u.cache_read_input_tokens ?? 0, cache_write: u.cache_creation_input_tokens ?? 0 }) ?? 0;
     return res;
   };
-  const client = { beta: { messages: { create } } } as unknown as Anthropic;
+  const client = { beta: { messages: { create: guarded("create"), parse: guarded("parse") } } } as unknown as Anthropic;
   return { client, used: () => used, refused: () => refused };
 }

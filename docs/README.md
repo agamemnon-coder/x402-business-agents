@@ -20,6 +20,8 @@ Back to the [README](../README.md). Test money only throughout: the Airwallex sa
 - [airwallex.md](airwallex.md): Airwallex in Purser: the APIs it calls, and why.
 - [airwallex-approvals.md](airwallex-approvals.md): Airwallex's own approval workflow as a second lock, and money in by card.
 - [metal-award.md](metal-award.md): what Purser uses from Metal, and the proof on Metal testnet.
+- [/claude](https://kit11.max-31b.workers.dev/claude), measured, not asserted: the 40 simulated worlds ([night batch](runs/2026-11-02-night-batch.md)), the [blind holdouts](runs/holdouts/2026-11-03-blind/results.md), each model on each agent ([evals/agents.json](evals/agents.json)) and the agent interface over MCP ([one session](runs/2026-11-12-mcp-transcript.json)).
+- [t0.md](t0.md) and [/t0](https://kit11.max-31b.workers.dev/t0): Purser's books in T:0's ledger; the posting of 10 November is [runs/2026-11-10-t0-journal-sandbox.md](runs/2026-11-10-t0-journal-sandbox.md).
 - [metal-review.md](metal-review.md): a review: does Purser use metal-agent and metal-pay the way Metal intends?
 - [submission/long-description.md#visa](submission/long-description.md#visa): the Visa TAP note; the Airi run (Visa Intelligent Commerce) is in [runs/2026-11-07-vic-1.md](runs/2026-11-07-vic-1.md).
 - [claude.md](claude.md): how Purser uses Claude.

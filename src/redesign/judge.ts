@@ -31,7 +31,7 @@ export function judgeSteps(record = loadRecord().record): JudgeStep[] {
     {
       id: "watch", title: "Watch the agents", seconds: 40,
       see: "The main run of 3 November, replayed: each Claude agent's decision in its own words, the money on its rail, the CFO's Face ID.",
-      links: [{ label: "Open /watch", href: "/watch" }],
+      links: [{ label: "Open /replay", href: "/replay" }],
     },
     {
       id: "sign", title: "Sign, then try to cheat", seconds: 40,
@@ -53,6 +53,8 @@ export function judgeSteps(record = loadRecord().record): JudgeStep[] {
       see: "What Purser guarantees, with the code and the test for each; every id of the main run; the Airwallex-only run of 7 November, every check passed, and Airwallex's own decline; Metal's refusal on chain.",
       links: [
         { label: "Open /proof", href: "/proof" }, { label: "The Airwallex-only run", href: "/airwallex#awx-1" }, { label: "Open /metal", href: "/metal" },
+        // The Visa entry (12 Nov, jury panel): the Airi run, Visa Intelligent Commerce via Airwallex's Airi.
+        { label: "The Visa run (VIC via Airi)", href: "/visa" },
         ...(refusal ? [{ label: "The refusal on the explorer", href: refusal }] : []),
       ],
       // What the explorer shows for the refusal (jury review, 7 Nov, #3): its log is not decoded there.

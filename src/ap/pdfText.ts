@@ -133,7 +133,21 @@ const WORKER = `(async () => {
   });
 })();`;
 
-const UNPDF = pathToFileURL(createRequire(import.meta.url).resolve("unpdf").replace(/index\.cjs$/, "index.mjs")).href;
+// Worked out when the first worker thread starts, not when this module loads: a runtime without a module path (a
+// Cloudflare Worker's bundle has no import.meta.url) can then still load this file, and reads through usePdfReader().
+let unpdfUrl: string | null = null;
+const UNPDF = (): string => (unpdfUrl ??= pathToFileURL(createRequire(import.meta.url).resolve("unpdf").replace(/index\.cjs$/, "index.mjs")).href);
+
+/** Reads one PDF's text: what the worker thread does here, and what a runtime without worker threads supplies. */
+export type PdfReader = (bytes: Uint8Array, maxPages: number) => Promise<{ text: string; pages: number }>;
+let reader: PdfReader | null = null;
+/**
+ * A runtime without worker threads (the engine in a Durable Object) sets its own reader once at start
+ * (src/ap/pdfTextInline.ts); null puts the worker thread back. The decode budget is checked first either way. What
+ * bounds a reader set here is that runtime's own limit on a request (CPU time, memory), not PDF_MAX_MS and
+ * PDF_WORKER_HEAP_MB.
+ */
+export function usePdfReader(r: PdfReader | null): void { reader = r; }
 
 type Reply = { id: number; ok: true; text: string; pages: number } | { id: number; ok: false; error: string };
 let worker: Worker | null = null;
@@ -143,7 +157,7 @@ let nextId = 1;
 let queue: Promise<unknown> = Promise.resolve();
 
 function spawn(): Worker {
-  const w = new Worker(WORKER, { eval: true, workerData: { unpdf: UNPDF }, resourceLimits: { maxOldGenerationSizeMb: PDF_WORKER_HEAP_MB, maxYoungGenerationSizeMb: 32 } });
+  const w = new Worker(WORKER, { eval: true, workerData: { unpdf: UNPDF() }, resourceLimits: { maxOldGenerationSizeMb: PDF_WORKER_HEAP_MB, maxYoungGenerationSizeMb: 32 } });
   w.on("message", (r: Reply) => {
     if (pending?.owner === w && pending.id === r.id) { const p = pending; pending = null; p.resolve(r); }
   });
@@ -189,7 +203,7 @@ async function readInWorker(bytes: Uint8Array, timeoutMs: number): Promise<{ tex
 export function pdfText(bytes: Uint8Array, opts: PdfTextOptions = {}): Promise<{ text: string; pages: number }> {
   const run = queue.then(() => {
     checkDecodedSize(bytes, opts.maxDecodedBytes ?? PDF_MAX_DECODED_BYTES);
-    return readInWorker(bytes, opts.timeoutMs ?? PDF_MAX_MS);
+    return reader ? reader(bytes, PDF_MAX_PAGES) : readInWorker(bytes, opts.timeoutMs ?? PDF_MAX_MS);
   });
   queue = run.catch(() => undefined);
   return run;

@@ -94,7 +94,8 @@ describe("an invoice that comes in with the flag on", () => {
       { account: "2100", debit_cents: 0, credit_cents: 48400, cost_centre: null, vat_code: null, vat_cents: null },
     ]);
     // The run is the treasury agent's, on the Coder's model, under the invoice's own task.
-    const run = db.prepare("SELECT actor, subject, payload_json FROM audit_log WHERE event = 'agent.run'").get() as { actor: string; subject: string; payload_json: string };
+    // With the flag on the Checker agent also runs on arrival (src/ap/checkerAgent.ts), so the Coder's run is picked by its task.
+    const run = db.prepare("SELECT actor, subject, payload_json FROM audit_log WHERE event = 'agent.run' AND subject LIKE 'ap.code.%'").get() as { actor: string; subject: string; payload_json: string };
     expect([run.actor, run.subject]).toEqual(["treasury", `ap.code.${id}`]);
     expect(JSON.parse(run.payload_json)).toMatchObject({ status: "done", tools: ["invoice_lines", "chart_of_accounts", "vat_codes", "code_invoice"] });
     expect(coder.prompts[0]).toContain("Code the lines of this supplier invoice for Northwind Outdoor (AP-0001 in the inbox). Today is 2026-11-08.");
@@ -113,7 +114,7 @@ describe("an invoice that comes in with the flag on", () => {
     });
     // D24: the origin is the agent's own call of code_invoice, as the loop recorded it.
     const origin = parseOrigin(JSON.stringify(d.origin));
-    const run = JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'agent.run'").get() as { payload_json: string }).payload_json) as { run_id: string };
+    const run = JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'agent.run' AND subject LIKE 'ap.code.%'").get() as { payload_json: string }).payload_json) as { run_id: string };
     expect(origin).toEqual({ actor: "agent", agent: "treasury", model: "claude-haiku-5-5", request_id: null, run_id: run.run_id });
     expect(originsCheck(db).missing).toEqual([]);
   });

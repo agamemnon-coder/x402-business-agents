@@ -5,7 +5,8 @@ everything else. This page lists what we protect, who might attack it and how, w
 out of scope. It covers our own system only. Every claim below points to code or to a test. Updated on 2 November for
 what was added since 30 October: the autonomous agents, D24 origins, MFA sessions, the TAP plan and test-money
 recycling (rows 31 to 38), and the headers and rate limits as the code serves them. The controls in SOC 2 form, with
-their evidence and what is not in place: [controls.md](controls.md).
+their evidence and what is not in place: [controls.md](controls.md). Corrected on 12 November from the zero-trust
+matrix (rows 8, 9, 15, 19 and 23, and the accepted risks).
 
 ## What we protect
 
@@ -21,7 +22,7 @@ their evidence and what is not in place: [controls.md](controls.md).
 
 ```text
 outside documents (invoices, emails, notices)  ─┐
-supplier / customer x402 servers               ─┤──>  agents (code)  ──> Claude (reads, advises; no keys, no tools)
+supplier / customer x402 servers               ─┤──>  agents (code)  ──> Claude (reads, advises; no keys; fixed tools, each call checked by code)
                                                 │         │
 phone (passkey) ──> relay Worker (Cloudflare) ──┼──> runner (verifies, decides) ──> executor ──> Metal / Airwallex
                                                 │         │
@@ -29,7 +30,20 @@ phone (passkey) ──> relay Worker (Cloudflare) ──┼──> runner (verif
 ```
 
 Everything left of the runner is untrusted input. That includes every document, every model answer, and the
-relay with whatever it queues. Only the runner holds keys and writes the ledger.
+relay with whatever it queues. Only the runner holds keys and writes the ledger. Claude asks for actions only
+through a fixed set of tools per agent; code checks every call, and the zero-trust report lists the tools each flow
+offered a hostile model.
+
+## Zero trust, layer by layer
+
+The limits are enforced in layers that do not trust each other, and one matrix attacks them layer by layer on the real
+code. Each attack starts with part of the system already in the attacker's hands, and its test shows which layer
+outside the attacker's reach still stops the money. The matrix ran against stand-ins of the rails in this
+repository's test harness, not against the live rails; where a run record shows the live rail refusing in the same
+way, the report cites it. The layers, every attack with its evidence, the coverage, the depth of each way money
+leaves, the stand-ins and the open risks are in [zero-trust.md](zero-trust.md), and as data in
+[zero-trust/report.json](zero-trust/report.json). `npm run zero-trust` writes both from `src/zerotrust/model.ts` and a
+run of `test/zero-trust.test.ts`; that test fails when they differ. The numbers are there, not here.
 
 ## Attackers and attacks
 
@@ -42,23 +56,23 @@ relay with whatever it queues. Only the runner holds keys and writes the ledger.
 | 5 | Customer | False dispute ("refund everything") | Each order is re-verified on chain; only verified wrong ticks are refunded automatically; refund-all goes to a person | S2 run log, `test/disputes.test.ts` |
 | 6 | An agent (bug or misuse) | Overspend | On-chain mandates (cap, budget, payee, expiry) are the outer wall; the CFO policy refuses before signing | F2 run log (`mandate_cap_exceeded`), `test/policy-rules.test.ts` |
 | 7 | Anyone | Forged, replayed or reused approval | An approval binds the SHA-256 of the exact terms (typed prefix or passkey signature); a second approval, another proposal's signature, or a rejection signature used as approval are all refused | `test/passkey.test.ts`, `test/adversarial.test.ts` |
-| 8 | Anyone | Terms changed after approval | The executor recomputes the hash and refuses on mismatch | `test/adversarial.test.ts` |
-| 9 | Time | Expired quote, late approval | Expiry is part of the terms; a late approval approves nothing; re-quoting changes the hash | F1 run log, `test/adversarial.test.ts` |
+| 8 | Anyone | Terms changed after approval | The executor recomputes the hash and refuses on mismatch. After the payment the same hash is checked twice more (12 November): a paid payout is booked only while its stored terms still hash to what was approved and the payout matches them (`ap.booking_refused`), and its receipt is archived only then (`vault.receipt_refused`). Each payment executor runs only its own kind of payment | `test/adversarial.test.ts`, `test/zero-trust.test.ts` |
+| 9 | Time | Expired quote, late approval | Expiry is part of the terms; a late approval approves nothing; re-quoting changes the hash; the step that begins a payment takes the expiry inside the signed terms, so a later date stored beside them buys no time (12 November) | F1 run log, `test/adversarial.test.ts`, `test/zero-trust.test.ts` |
 | 10 | Anyone | Double payment | Idempotency keys everywhere (below); an executed proposal cannot run again; a lost answer is looked up, never resent | `test/euroBill.test.ts`, `test/adversarial.test.ts` |
 | 11 | Old credential | Pull under a replaced mandate | The chain refuses (`mandate_revoked`) | S1 run log |
 | 12 | Internet visitor | Abuse of the relay | Same-origin POSTs, size caps, per-address (IPv6 /64) and per-queue limits, five tries per enrolment code; 20 failed viewer-key or webhook-signature attempts per address in ten minutes, then refused (HF1); HSTS on every answer; the relay cannot approve | `test/relay-worker.test.ts` |
 | 13 | Relay or Cloudflare account that changes *data* | Change what the phone shows (terms, names, policy) or replay an older state | The runner signs those plus the ledger counter (ES256); the phone checks them against the runner key it pinned from the viewer link (out of band; a later link with a new run's key replaces it only on the person's press, after both fingerprints are shown and only when that key signed what the relay sends; a key no link offered is refused) and refuses an older counter. **This does not hold against a relay that serves a different *script*: see below** | `test/relay-sign.test.ts`, `test/approve-client.test.ts`, `test/approve-runner-key.test.ts`, browser check |
 | 13b | Someone who saw the enrolment code, or a relay at enrolment time | Enrol their own passkey | A new passkey counts only after the person on the runner confirms its 64-bit fingerprint; the first passkey in a window wins and a second closes the window with an alarm; a replaced passkey stays active until then; the relay gets only an HMAC of the code. **Enrolment trusts the page at that moment**: a relay serving a malicious script could show its own key's fingerprint. What limits it: enrol right after a deploy from this repo, with two-factor login on the Cloudflare account; a passkey is bound to the relay's address, so it cannot be enrolled anywhere safer for this address | `test/passkey.test.ts` |
 | 14 | Stolen phone | Approve as the CFO | The passkey needs Face ID (user verification is required and checked); revocation means re-enrolment | `src/passkey/webauthn.ts` |
-| 15 | Insider with database access | Edit or truncate the log | The database refuses updates and deletes; the hash chain detects edits; an anchor printed in the audit report detects truncation or a full rehash | `test/audit.test.ts`, `test/audit-report.test.ts`, `npm run verify-log` |
+| 15 | Insider with database access | Edit or truncate the log | The database refuses updates and deletes; the hash chain detects edits; an anchor printed in the audit report detects truncation or a full rehash. An approval written straight into the database is another matter: Purser's own code does not refuse it (accepted risks, below) | `test/audit.test.ts`, `test/audit-report.test.ts`, `npm run verify-log`, `test/zero-trust.test.ts` |
 | 16 | Leaked secret | A key in git or in a model's context | No key ever goes to a model (tested); every commit is scanned for the real values; gitleaks scans the pushed commits and the whole history in CI | `test/adversarial.test.ts`, `.github/workflows/ci.yml` |
-| 17 | An agent (or a model steering it) that overspends on its card | Buy past the CFO's limit | The limit is set on the card at Airwallex (synced from the policy and read back), so Airwallex itself declines; a raise is a policy change approved with Face ID; the phone can only lower a card limit; the agent never sees the card number or CVV | `src/policy/cards.ts`, `test/cards.test.ts` |
+| 17 | An agent (or a model steering it) that overspends on its card | Buy past the CFO's limit | The limit is set on the card at Airwallex (synced from the policy and read back), so Airwallex itself declines; a raise is a policy change approved with Face ID, but Purser sets the limit with its own key, so whoever controls Purser's own decision code or its database file can raise it unsigned, and only the card's merchant categories, fixed at issue, still hold (an open risk in [zero-trust.md](zero-trust.md); 12 November); the phone can only lower a card limit; the agent never sees the card number or CVV | `src/policy/cards.ts`, `test/cards.test.ts` |
 | 18 | Anyone who can reach the webhook URL, or a relay that forges events | Fake a card transaction on the dashboard | The relay accepts an event only with Airwallex's HMAC-SHA256 over `x-timestamp` + raw body and a timestamp within 5 minutes; the runner checks the signature again with its own copy of the secret; an event only records what Airwallex decided and moves no money; each transaction is recorded once by its Airwallex id, and the poll reads the same transactions from Airwallex directly | `worker/src/core.ts`, `src/policy/cardHooks.ts`, `test/relay-hooks.test.ts` |
-| 19 | Anyone who sees an agent misbehave, or a breach in progress | Keep spending while people investigate | The emergency stop: one Face ID refuses every agent payment before signing and freezes every card at Airwallex; lifting it needs a proposal and Face ID | `src/policy/rules.ts` (`frozen`), `src/policy/cards.ts`, `test/freeze.test.ts` |
+| 19 | Anyone who sees an agent misbehave, or a breach in progress | Keep spending while people investigate | The emergency stop: one Face ID refuses every agent payment before signing, refuses an approved payout that is started afterwards, and freezes every card at Airwallex; Purser's own code refuses a card purchase too, also in the moments before the freeze has reached the card (12 November); lifting it needs a proposal and Face ID. The stop works through Purser's code and the rails: it does not hold a card or on-chain payment once both of those have failed | `src/policy/rules.ts` (`frozen`), `src/policy/holds.ts`, `src/policy/cards.ts`, `test/freeze.test.ts`, `test/zero-trust.test.ts` |
 | 20 | A fraudster who changes a supplier's bank details (email, invoice, a planted document) | Divert the next payment | The fraud check blocks a changed IBAN; a change counts only after a request, a person's out-of-band verification (agents cannot record it) and the CFO's approval, which shows the full new IBAN | `src/policy/payeeChange.ts`, `test/payee-change.test.ts` |
 | 21 | A model that misreads (or is steered by) the CFO's plain-words policy, or someone with only the viewer link who types words on the phone | Loosen a limit, or invent an amount the CFO never wrote | Opus's draft is never applied: code keeps a rule only if its setting exists, its quote is the CFO's own words, its amount is written as a whole number in that quote and in the CFO's text, and the value passes the setting's limits; the survivors become one proposal that needs Face ID. Words from the phone may only tighten (as with the policy editor). One text at a time on the relay, at most 2,000 characters | `test/policy-from-text.test.ts`, `test/relay-policy-text.test.ts`, `test/relay-worker.test.ts`, `test/browser/approve.check.ts` |
 | 22 | An outside AI agent connected through the agent API (MCP), or a model steering it | Get a card or spend without the CFO; raise its own limit; reach another agent's money | Its tools only ask, pay and read: a card exists only after the CFO approves its request with Face ID, and the executor issues exactly the approved limits and checks what Airwallex reports back; Airwallex declines charges over the card's limits; a raise is a policy change approved with Face ID; the emergency stop freezes its card too. Its name is fixed by whoever sets up the server, not by the agent; names are checked (`ext:` plus lower-case letters, digits and dashes, never one of ours). Inputs are schema-checked before any code runs | `test/external-agents.test.ts`, `test/mcp-server.test.ts` |
-| 23 | One person (a CFO acting alone, a stolen phone, or the agent's own proposer) | Approve a large payment or a bank-detail change alone | Four eyes (E1): above the CFO's threshold, approval needs two different people's passkeys; the first signature only counts toward it; the same person twice does not count; the proposer can never approve; one rejection stops it; a typed prefix never counts; each person has one active passkey; `npm run verify` re-checks both signatures | `test/four-eyes.test.ts`, `test/relay-e2e.test.ts` |
+| 23 | One person (a CFO acting alone, a stolen phone, or the agent's own proposer) | Approve a large payment or a bank-detail change alone | Four eyes (E1): above the CFO's threshold, approval needs two different people's passkeys; the first signature only counts toward it, and only for the exact terms it was made over (12 November); whether two are needed is read from the signed terms, not from a copy beside them, and the executor of a change of the agents' mandates runs only terms signed as one (12 November); the same person twice does not count; the proposer can never approve; one rejection stops it; a typed prefix never counts; each person has one active passkey; `npm run verify` re-checks both signatures. It counts passkeys under two names, not two human beings (accepted risks, below) | `test/four-eyes.test.ts`, `test/relay-e2e.test.ts`, `test/zero-trust.test.ts` |
 | 24 | A runaway or hijacked agent, or a loop in our own code | Pay many times, or a lot, inside each single limit | Velocity limits per agent (payments a minute, amount an hour, per rail), checked before signing on Metal and on card events; a breach turns on the policy rule `stop.<agent>`, which freezes its card at Airwallex; only an approved policy change with Face ID lifts it; declines and refunds do not count (D7) | `test/velocity.test.ts` |
 | 25 | An agent (or whoever controls it) with a card | Use the card for something it is not for, or after its time | Airwallex `authorization_controls` on every card: allowed merchant categories (the support card pays only helpdesk software, MCC 7372; in the 30 October recording it paid only ads), EUR only, valid 90 days; the issuer itself declines (`MERCHANT_CATEGORY_NOT_ALLOWED`, seen live in rehearsal 6) | `test/cards.test.ts`, [rehearsal 6](runs/2026-10-29-rehearsal-6.md) |
 | 26 | A supplier or a mistake that sends the same invoice twice | Get paid twice | A copy of an invoice already paid, with a payout, or waiting for approval escalates with options; if two proposals were approved anyway, the second stops before any currency is converted; one live payout per invoice is also a database rule | `test/euroBill.test.ts`, `test/evals.test.ts` |
@@ -194,6 +208,19 @@ Rate limits, where the docs say them (each asserted in the same test or the test
 - **Audit anchors are not signed.** Someone who can write the SQLite file can append forged rows after the last
   anchor, including a passkey row, and `verify` still passes. Anchors in committed run records and audit reports
   limit this to rows after the last published anchor.
+- **Whoever can write the ledger file gets past Purser's own layers.** The executor trusts its own database: an
+  approval written straight into it, with terms and hashes that agree, is run. What still holds: Airwallex's own
+  approval of transfers holds the payout once the company has switched it on (it is optional), and `npm run verify`
+  finds the approval afterwards, because no stored signature stands behind it (the attack `database-approval-forged`
+  in `test/zero-trust.test.ts`). With that approval switched off, nothing stops this payout before it is sent.
+- **Four eyes counts passkeys, not people.** It counts passkeys enrolled under two names and cannot know that two
+  names are two human beings. A second name can only be added through an enrolment opened and confirmed on the
+  runner, and the enrolment is in the audit log; the phone and the relay cannot add one.
+- **A ledger restored from an old backup can plan a payment again.** A backup taken before a payment was planned no
+  longer knows that payment. Planned again, it gets a new request id, and Airwallex would treat it as a new transfer.
+  The second plan needs the CFO's signature again. A backup taken after the plan carries the request id; in the test
+  harness the Airwallex stand-in then refuses the repeat, and no run record shows the live rail doing so. Compare a
+  restored ledger with Airwallex before paying from it.
 - **No limit per invoice beyond the reserve floors.** An invoice to the allowlisted payee with a larger amount is
   stopped only by the person who reads the amount on the confirm screen before Face ID.
 - **metal-agent runs with zod 4 by override** (it asks for zod 3). The unit tests use fakes. A live `npm run verify`,
@@ -216,6 +243,9 @@ Rate limits, where the docs say them (each asserted in the same test or the test
 - `npm run redteam`: 35 scripted attacks plus documents Claude Opus writes as the attacker, each in a fresh
   throwaway world, through the code the runner runs; every attack must fail (report in `docs/redteam/report.json`,
   shown on the landing).
+- `npm run zero-trust`: the zero-trust matrix, every attack against the real code with the rails stood in, and its
+  report ([zero-trust.md](zero-trust.md)); with `-- --check` it writes nothing and fails when the committed report
+  differs. The matrix also runs in `npm test`.
 - `npm run evals`: the agents' eval set (normal, too expensive, fraud, injection, double payment, price notice)
   with the real models; CI runs the same cases with the parsers.
 - `npm run reconcile`: the ledger against Airwallex and Metal; the runner does it a minute after start, then daily.

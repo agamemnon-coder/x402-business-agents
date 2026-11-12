@@ -47,6 +47,12 @@ describe("the Airwallex call budget", () => {
     expect(endpointOf("https://api.sandbox.airwallex.com/api/v1/transfers/1b0c2f7e-0b3c-4f3e-9a3e-2b0e1c4d5e6f?x=1")).toBe("/transfers/{id}");
     expect(endpointOf("https://api.sandbox.airwallex.com/api/v1/simulation/transfers/1b0c2f7e-0b3c-4f3e-9a3e-2b0e1c4d5e6f/transition")).toBe("/simulation/transfers/{id}/transition");
     expect(endpointOf("https://api.sandbox.airwallex.com/api/v1/issuing/cards/create")).toBe("/issuing/cards/create");
+    // A path segment with an underscore is a word unless it carries a digit or is long (12 Nov: payment_intents was
+    // folded as if it were an id); Airwallex's own ids still fold.
+    expect(endpointOf("https://api.sandbox.airwallex.com/api/v1/pa/payment_intents/int_sgpvzc9hjhnxvpblt2r")).toBe("/pa/payment_intents/{id}");
+    expect(endpointOf("https://api.sandbox.airwallex.com/api/v1/pa/payment_intents/create")).toBe("/pa/payment_intents/create");
+    expect(endpointOf("https://api.sandbox.airwallex.com/api/v1/financial_transactions")).toBe("/financial_transactions");
+    expect(endpointOf("https://api.sandbox.airwallex.com/api/v1/pa/customers/cus_abcdefghijklmnopqr")).toBe("/pa/customers/{id}");
     // Connected accounts (live run 10 Nov): account ids carry - and _, and update_status is a word, not an id.
     expect(endpointOf("https://api.sandbox.airwallex.com/api/v1/accounts/acct_SC-QD89fOneAeqaRFgOymw/submit")).toBe("/accounts/{id}/submit");
     expect(endpointOf("https://api.sandbox.airwallex.com/api/v1/simulation/accounts/acct_SC-QD89fOneAeqaRFgOymw/update_status")).toBe("/simulation/accounts/{id}/update_status");

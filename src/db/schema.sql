@@ -159,6 +159,32 @@ CREATE TABLE IF NOT EXISTS batch_lines (
 );
 CREATE INDEX IF NOT EXISTS batch_lines_by_line ON batch_lines (proposal_id);
 
+-- A signed batch sent as ONE Airwallex batch transfer (src/executors/airwallexBatch.ts, AIRWALLEX_BATCH_TRANSFER=on):
+-- the batch's request_id at Airwallex (derived from the signed hash, so it is never sent twice), Airwallex's id once
+-- known, its status, and the read-back's verdict before submit.
+CREATE TABLE IF NOT EXISTS awx_batches (
+  batch_id TEXT PRIMARY KEY,
+  request_id TEXT NOT NULL UNIQUE,
+  awx_batch_id TEXT UNIQUE,
+  status TEXT NOT NULL,
+  batch_sha256 TEXT NOT NULL,
+  detail_json TEXT,
+  updated_at TEXT NOT NULL
+);
+
+-- The payee's bank's answer to Airwallex's account verification (src/airwallex/payeeName.ts, AIRWALLEX_PAYEE_CHECK=on),
+-- keyed by the exact name and account: a payee proposal needs one that proceeds, from the last day.
+CREATE TABLE IF NOT EXISTS payee_name_checks (
+  check_key TEXT PRIMARY KEY,
+  vendor TEXT NOT NULL,
+  code TEXT NOT NULL,
+  match TEXT,
+  resolved_name TEXT,
+  proceed INTEGER NOT NULL,
+  label TEXT NOT NULL,
+  checked_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS approvals (
   approval_id INTEGER PRIMARY KEY,
   proposal_id TEXT NOT NULL UNIQUE REFERENCES proposals(proposal_id),
@@ -892,4 +918,36 @@ CREATE TABLE IF NOT EXISTS ap_sink_events (
   sink TEXT NOT NULL,
   pushed_at TEXT NOT NULL,
   PRIMARY KEY (invoice_id, event, sink)
+);
+
+-- The autopilot (src/ap/autopilot.ts): its own bookkeeping, never a business fact. One lease per ledger (one autopilot
+-- runs at a time); the files it took in from its folders, by their hash; the items that failed (tried again after a
+-- wait, then parked for a person) and the proposals it began executing (so a restart finishes exactly those); and the
+-- fingerprint of what it last sent to the outside books.
+CREATE TABLE IF NOT EXISTS autopilot_lease (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  owner TEXT NOT NULL,
+  pid INTEGER NOT NULL,
+  host TEXT NOT NULL,
+  heartbeat TEXT NOT NULL,
+  taken_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS autopilot_files (
+  sha256 TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  outcome TEXT NOT NULL,
+  taken_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS autopilot_items (
+  item TEXT PRIMARY KEY,
+  step TEXT NOT NULL,
+  state TEXT NOT NULL CHECK (state IN ('retrying', 'needs_attention', 'executing')),
+  attempts INTEGER NOT NULL DEFAULT 0,
+  next_try TEXT,
+  reason TEXT,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS autopilot_state (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
 );

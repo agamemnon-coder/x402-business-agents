@@ -93,10 +93,12 @@ flowchart LR
 3. **[Proof](https://kit11.max-31b.workers.dev/proof): every id.** The main run's, each checkable, and the
    Airwallex-only run of 7 November: accepted, every check passed ([below](#the-airwallex-only-run-awx-1-7-november-sandbox-test-money)).
 4. **[The Airi run](#visa-intelligent-commerce-via-airwallexs-airi-a-live-run-7-nov): Visa Intelligent Commerce via
-   Airwallex's Airi (7 November).** Agents paid with a single-use Visa credential from Airi: within the limit on their
-   own, above it only after the CFO's Face ID; passed 5 of 5 checks, in the second attempt in its world. Log: [docs/runs/2026-11-07-vic-1.md](docs/runs/2026-11-07-vic-1.md).
+   Airwallex's Airi (7 November).** A scripted run, no Claude call: paid with a single-use Visa credential from Airi,
+   within Purser's limit with no Purser approval (the cardholder still confirms each purchase in Airi), above it only
+   after the CFO's Face ID; passed 5 of 5 checks, on the fourth attempt that day (the second in its world).
+   Log: [docs/runs/2026-11-07-vic-1.md](docs/runs/2026-11-07-vic-1.md).
 
-Starter Kit 11 · x402 Business Agents · entered for the Metal Award and the Visa Award (Visa: [the Airi run](#visa-intelligent-commerce-via-airwallexs-airi-a-live-run-7-nov), Visa Intelligent Commerce; TAP is an extra: [note](docs/submission/long-description.md#visa)). Northwind Outdoor,
+Starter Kit 11 · x402 Business Agents · entered for the Metal Award and the Visa Award (Visa: [the Airi run](#visa-intelligent-commerce-via-airwallexs-airi-a-live-run-7-nov), Visa Intelligent Commerce; TAP is outside the entry: [note](docs/submission/long-description.md#visa)). Northwind Outdoor,
 the example company, is an outdoor wholesaler that sells live stock data to retailers per query: the kit's data business.
 
 ## How to run
@@ -274,8 +276,8 @@ supplier purchases + 3 refunds + 1 sweep on Metal, and 1 card charge at Airwalle
 20.00 test USD between them, before and after, held in code (`TOTAL_BUDGET_CENTS`). The limits in code, each with its test:
 [docs/controls.md](docs/controls.md#guards-in-code).
 
-**Visa:** each agent signs its card checkout with Visa's Trusted Agent Protocol (TAP), so a merchant can check which
-agent is buying. Visa's public reference verifier accepted the signatures in a separate test on 2 November; the
+**Visa:** the Sourcing agent signs its card checkout with Visa's Trusted Agent Protocol (TAP), so a merchant can check
+which agent is buying. Visa's public reference verifier accepted the signatures in a separate test on 2 November; the
 merchant is ours.
 
 ## The Airwallex-only run, awx-1 (7 November; sandbox, test money)
@@ -309,18 +311,20 @@ one attempt. The CFO signed all three proposals with Face ID on a personal phone
 
 ## Visa Intelligent Commerce via Airwallex's Airi: a live run (7 Nov)
 
-Agents paid with a single-use Visa (VIC) credential from Airi, each purchase confirmed by the cardholder's passkey:
-within Purser's limit without the CFO, above it only after the CFO's Face ID; a disallowed merchant was refused by
-Purser first. A separate world: Airwallex
-sandbox, test card, test money; the Sourcing agent paid on Airwallex's hosted checkout page for our own Airwallex
-sandbox merchant. Passed, [5 of 5 checks](docs/runs/2026-11-07-vic-1.md#checks-the-records-checks), in the second
-attempt in its world (the attempts before it are in the log). Log:
+A scripted run, no Claude call: paid with a single-use Visa (VIC) credential from Airi, each purchase confirmed by the
+cardholder's passkey: within Purser's limit with no Purser approval, above it only after the CFO's Face ID; a
+disallowed merchant was refused by Purser first. A separate world: Airwallex sandbox, test card, test money. What the
+sandbox could not show: the credential is a test credential from Airi's test card; one person played both the CFO and
+the cardholder; the agent's process typed the single-use number into Airwallex's hosted checkout page with a headless
+browser, because the sandbox refuses a direct confirm; the merchant is our own Airwallex sandbox merchant. Passed,
+[5 of 5 checks](docs/runs/2026-11-07-vic-1.md#checks-the-records-checks), on the fourth attempt that day, the second
+in its world (the attempts before it are in the log). Log:
 [docs/runs/2026-11-07-vic-1.md](docs/runs/2026-11-07-vic-1.md); record:
 [docs/demo/airi-run.json](docs/demo/airi-run.json); on the site:
 [/airwallex](https://kit11.max-31b.workers.dev/airwallex#airi-run),
 [/visa](https://kit11.max-31b.workers.dev/visa#airi-run) and [/proof](https://kit11.max-31b.workers.dev/proof#airi-run).
 
-<details><summary>The three purchases, and the second run (vic-2)</summary>
+<details><summary>The three purchases, and the control test (vic-2)</summary>
 
 - **✓ Within the limit:** EUR 12.00 (Purser's limit: EUR 20.00). Within Purser's limit, no Purser approval is needed. Airi
   itself asks the cardholder to confirm each purchase with a passkey. PaymentIntent `int_sgpvzc9hjhnxvpblt2r`
@@ -331,8 +335,8 @@ attempt in its world (the attempts before it are in the log). Log:
 - **✕ Refused by Purser:** EUR 5.00 at a merchant the CFO does not allow (`PURSER_MERCHANT_NOT_ALLOWED`), before any
   call to Airi.
 
-**A second live run (vic-2, 7 Nov, 19:06–19:08 UTC): what Purser adds around Airi.** The CFO's Face ID on a phone,
-three times; 0 Airi and 0 Airwallex calls in the whole run, so nothing was bought.
+**A control test of Purser's own checks, not a Visa run (vic-2, 7 Nov, 19:06–19:08 UTC).** The CFO's Face ID on a
+phone, three times; 0 Airi and 0 Airwallex calls in the whole test, so nothing was bought.
 [7 of 7 checks](docs/runs/2026-11-07-vic-2.md#checks); log:
 [docs/runs/2026-11-07-vic-2.md](docs/runs/2026-11-07-vic-2.md); on the site:
 [/visa](https://kit11.max-31b.workers.dev/visa#airi-run-2).

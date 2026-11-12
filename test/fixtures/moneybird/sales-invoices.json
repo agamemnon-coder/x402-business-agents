@@ -1,0 +1,398 @@
+{
+ "_source": {
+  "url": "https://raw.githubusercontent.com/moneybird/openapi/refs/heads/main/openapi.yml",
+  "version": "v2-20261112-c3338a6f57"
+ },
+ "contact_fields": {
+  "company_name": [
+   "string",
+   "null"
+  ],
+  "firstname": [
+   "string",
+   "null"
+  ],
+  "id": "object",
+  "lastname": [
+   "string",
+   "null"
+  ]
+ },
+ "endpoint": "GET /{administration_id}/sales_invoices{format}",
+ "examples": {
+  "ReturnsAllInvoicesFilteredOnPeriod": [
+   {
+    "contact": {
+     "company_name": "Foobar Holding B.V.",
+     "firstname": null,
+     "id": "503602218236118830",
+     "lastname": null
+    },
+    "contact_id": "503602218236118830",
+    "currency": "EUR",
+    "due_date": "2026-11-26",
+    "id": "503602218430105428",
+    "invoice_date": "2026-11-12",
+    "invoice_id": "2026-0003",
+    "payment_url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/acb2dff786fed55374c35431e56f332ea7e66678a0035b1742a32c479eee9204/sales_invoice",
+    "reference": "Project X",
+    "state": "open",
+    "total_price_incl_tax": "363.0",
+    "total_unpaid": "363.0",
+    "url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/acb2dff786fed55374c35431e56f332ea7e66678a0035b1742a32c479eee9204/sales_invoice"
+   },
+   {
+    "contact": {
+     "company_name": "Foobar Holding B.V.",
+     "firstname": null,
+     "id": "503602218236118830",
+     "lastname": null
+    },
+    "contact_id": "503602218236118830",
+    "currency": "EUR",
+    "due_date": "2026-11-26",
+    "id": "503602218348316484",
+    "invoice_date": "2026-11-12",
+    "invoice_id": "2026-0002",
+    "payment_url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/b4102e863b70a7b6fa3d9010829e0933796c4a422c413deec9f7c275923829a9/sales_invoice",
+    "reference": "Project X",
+    "state": "open",
+    "total_price_incl_tax": "363.0",
+    "total_unpaid": "363.0",
+    "url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/b4102e863b70a7b6fa3d9010829e0933796c4a422c413deec9f7c275923829a9/sales_invoice"
+   },
+   {
+    "contact": {
+     "company_name": "Foobar Holding B.V.",
+     "firstname": null,
+     "id": "503602218236118830",
+     "lastname": null
+    },
+    "contact_id": "503602218236118830",
+    "currency": "EUR",
+    "due_date": "2026-11-26",
+    "id": "503602218270721843",
+    "invoice_date": "2026-11-12",
+    "invoice_id": "2026-0001",
+    "payment_url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/983627723ba6291e10fa796b7c4f62ece1b0e499855ef99997c2376a18874eee/sales_invoice",
+    "reference": "Project X",
+    "state": "open",
+    "total_price_incl_tax": "363.0",
+    "total_unpaid": "363.0",
+    "url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/983627723ba6291e10fa796b7c4f62ece1b0e499855ef99997c2376a18874eee/sales_invoice"
+   }
+  ],
+  "ReturnsAllInvoicesFilteredOnState": [],
+  "ReturnsAllInvoicesOfAnAdministration": [
+   {
+    "contact": {
+     "company_name": "Foobar Holding B.V.",
+     "firstname": null,
+     "id": "503602220781012203",
+     "lastname": null
+    },
+    "contact_id": "503602220781012203",
+    "currency": "EUR",
+    "due_date": "2026-11-26",
+    "id": "503602220984435985",
+    "invoice_date": "2026-11-12",
+    "invoice_id": "2026-0003",
+    "payment_url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/5758b8351427db2dabc9a2502ca20c80e40bc61152adf1406cbf4874acc78588/sales_invoice",
+    "reference": "Project X",
+    "state": "open",
+    "total_price_incl_tax": "363.0",
+    "total_unpaid": "363.0",
+    "url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/5758b8351427db2dabc9a2502ca20c80e40bc61152adf1406cbf4874acc78588/sales_invoice"
+   },
+   {
+    "contact": {
+     "company_name": "Foobar Holding B.V.",
+     "firstname": null,
+     "id": "503602220781012203",
+     "lastname": null
+    },
+    "contact_id": "503602220781012203",
+    "currency": "EUR",
+    "due_date": "2026-11-26",
+    "id": "503602220908938497",
+    "invoice_date": "2026-11-12",
+    "invoice_id": "2026-0002",
+    "payment_url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/b6da5f5867e1821ade509c11bf716e8ad7c4e716e3423e43f98761616cc4d859/sales_invoice",
+    "reference": "Project X",
+    "state": "open",
+    "total_price_incl_tax": "363.0",
+    "total_unpaid": "363.0",
+    "url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/b6da5f5867e1821ade509c11bf716e8ad7c4e716e3423e43f98761616cc4d859/sales_invoice"
+   },
+   {
+    "contact": {
+     "company_name": "Foobar Holding B.V.",
+     "firstname": null,
+     "id": "503602220781012203",
+     "lastname": null
+    },
+    "contact_id": "503602220781012203",
+    "currency": "EUR",
+    "due_date": "2026-11-26",
+    "id": "503602220806178032",
+    "invoice_date": "2026-11-12",
+    "invoice_id": "2026-0001",
+    "payment_url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/4ff0334329b04bc1c7323098aec169dcf76b500ac615f89e0b6d97a188d3c692/sales_invoice",
+    "reference": "Project X",
+    "state": "open",
+    "total_price_incl_tax": "363.0",
+    "total_unpaid": "363.0",
+    "url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/4ff0334329b04bc1c7323098aec169dcf76b500ac615f89e0b6d97a188d3c692/sales_invoice"
+   }
+  ],
+  "ReturnsAllSalesInvoicesCreatedAfterGivenDatetime": [
+   {
+    "contact": {
+     "company_name": "Foobar Holding B.V.",
+     "firstname": null,
+     "id": "503602221625116048",
+     "lastname": null
+    },
+    "contact_id": "503602221625116048",
+    "currency": "EUR",
+    "due_date": "2026-11-26",
+    "id": "503602221790791094",
+    "invoice_date": "2026-11-12",
+    "invoice_id": "2026-0003",
+    "payment_url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/2728d3295189116ef360ed214fe38dc7c72a6c805d5113a8968dfbde5d8f63f1/sales_invoice",
+    "reference": "Project X",
+    "state": "open",
+    "total_price_incl_tax": "363.0",
+    "total_unpaid": "363.0",
+    "url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/2728d3295189116ef360ed214fe38dc7c72a6c805d5113a8968dfbde5d8f63f1/sales_invoice"
+   },
+   {
+    "contact": {
+     "company_name": "Foobar Holding B.V.",
+     "firstname": null,
+     "id": "503602221625116048",
+     "lastname": null
+    },
+    "contact_id": "503602221625116048",
+    "currency": "EUR",
+    "due_date": "2026-11-26",
+    "id": "503602221718439334",
+    "invoice_date": "2026-11-12",
+    "invoice_id": "2026-0002",
+    "payment_url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/4c039fbb79207424539e0d81851a6588338df3e80f99797806fe2937bdcaa234/sales_invoice",
+    "reference": "Project X",
+    "state": "open",
+    "total_price_incl_tax": "363.0",
+    "total_unpaid": "363.0",
+    "url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/4c039fbb79207424539e0d81851a6588338df3e80f99797806fe2937bdcaa234/sales_invoice"
+   },
+   {
+    "contact": {
+     "company_name": "Foobar Holding B.V.",
+     "firstname": null,
+     "id": "503602221625116048",
+     "lastname": null
+    },
+    "contact_id": "503602221625116048",
+    "currency": "EUR",
+    "due_date": "2026-11-26",
+    "id": "503602221646087573",
+    "invoice_date": "2026-11-12",
+    "invoice_id": "2026-0001",
+    "payment_url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/b9e301ceacefa58caf9746b55eaf720488abf7b24948ea4ee79d3dc574006629/sales_invoice",
+    "reference": "Project X",
+    "state": "open",
+    "total_price_incl_tax": "363.0",
+    "total_unpaid": "363.0",
+    "url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/b9e301ceacefa58caf9746b55eaf720488abf7b24948ea4ee79d3dc574006629/sales_invoice"
+   }
+  ],
+  "ReturnsAnEmptyListWhenFilterContactIdDoesNotMatchAnyContact": [],
+  "ReturnsAnEmptyPageBeyondTheLastOne": [],
+  "ReturnsOnlySalesInvoicesUpdatedAfterGivenDatetime": [
+   {
+    "contact": {
+     "company_name": "Foobar Holding B.V.",
+     "firstname": null,
+     "id": "503602222770161260",
+     "lastname": null
+    },
+    "contact_id": "503602222770161260",
+    "currency": "EUR",
+    "due_date": "2026-11-26",
+    "id": "503602222796375665",
+    "invoice_date": "2026-11-12",
+    "invoice_id": "2026-0001",
+    "payment_url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/a591a27a2175a402ccec18b174c0ca5f09e6f841c6144da5280d30ad4e39337e/sales_invoice",
+    "reference": "foo",
+    "state": "open",
+    "total_price_incl_tax": "363.0",
+    "total_unpaid": "363.0",
+    "url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/a591a27a2175a402ccec18b174c0ca5f09e6f841c6144da5280d30ad4e39337e/sales_invoice"
+   }
+  ],
+  "ReturnsPaginatedSalesInvoicesOnPage1": [
+   {
+    "contact": {
+     "company_name": "Foobar Holding B.V.",
+     "firstname": null,
+     "id": "503602219409474575",
+     "lastname": null
+    },
+    "contact_id": "503602219409474575",
+    "currency": "EUR",
+    "due_date": "2026-11-26",
+    "id": "503602219665327157",
+    "invoice_date": "2026-11-12",
+    "invoice_id": "2026-0003",
+    "payment_url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/68756c281bec6e4431132180ea2b7ba8fe3a3ebafda607018d05844f73371cdd/sales_invoice",
+    "reference": "Project X",
+    "state": "open",
+    "total_price_incl_tax": "363.0",
+    "total_unpaid": "363.0",
+    "url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/68756c281bec6e4431132180ea2b7ba8fe3a3ebafda607018d05844f73371cdd/sales_invoice"
+   }
+  ],
+  "ReturnsPaginatedSalesInvoicesOnPage2": [
+   {
+    "contact": {
+     "company_name": "Foobar Holding B.V.",
+     "firstname": null,
+     "id": "503602218849535905",
+     "lastname": null
+    },
+    "contact_id": "503602218849535905",
+    "currency": "EUR",
+    "due_date": "2026-11-26",
+    "id": "503602218940762039",
+    "invoice_date": "2026-11-12",
+    "invoice_id": "2026-0002",
+    "payment_url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/8b9787c7b24fe3858f1ef48d05f74e502ed4412d860eec10eb4a0be3e29a908e/sales_invoice",
+    "reference": "Project X",
+    "state": "open",
+    "total_price_incl_tax": "363.0",
+    "total_unpaid": "363.0",
+    "url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/8b9787c7b24fe3858f1ef48d05f74e502ed4412d860eec10eb4a0be3e29a908e/sales_invoice"
+   }
+  ],
+  "ReturnsTheOldestInvoicesFirstWhenSortedByDateAscending": [
+   {
+    "contact": {
+     "company_name": "Relation 1",
+     "firstname": null,
+     "id": "503602218788718492",
+     "lastname": null
+    },
+    "contact_id": "503602218788718492",
+    "currency": "EUR",
+    "due_date": "2025-11-26",
+    "id": "503602218798155677",
+    "invoice_date": "2025-11-12",
+    "invoice_id": "2026-1",
+    "payment_url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000002/9288a124a698c878ade1b8f3324184838a117a6827582d808bbab80ecd289780/sales_invoice",
+    "reference": "Project X",
+    "state": "open",
+    "total_price_incl_tax": "121.0",
+    "total_unpaid": "121.0",
+    "url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000002/9288a124a698c878ade1b8f3324184838a117a6827582d808bbab80ecd289780/sales_invoice"
+   },
+   {
+    "contact": {
+     "company_name": "Foobar Holding B.V.",
+     "firstname": null,
+     "id": "503602218546497381",
+     "lastname": null
+    },
+    "contact_id": "503602218546497381",
+    "currency": "EUR",
+    "due_date": "2026-11-26",
+    "id": "503602218570614634",
+    "invoice_date": "2026-11-12",
+    "invoice_id": "2026-0001",
+    "payment_url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/3623c1baf9c323fe2304130b025e6e5ae52e5a6d6b5cbf23d924e7858e46f2bb/sales_invoice",
+    "reference": "Project X",
+    "state": "open",
+    "total_price_incl_tax": "363.0",
+    "total_unpaid": "363.0",
+    "url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/3623c1baf9c323fe2304130b025e6e5ae52e5a6d6b5cbf23d924e7858e46f2bb/sales_invoice"
+   },
+   {
+    "contact": {
+     "company_name": "Foobar Holding B.V.",
+     "firstname": null,
+     "id": "503602218546497381",
+     "lastname": null
+    },
+    "contact_id": "503602218546497381",
+    "currency": "EUR",
+    "due_date": "2026-11-26",
+    "id": "503602218649257851",
+    "invoice_date": "2026-11-12",
+    "invoice_id": "2026-0002",
+    "payment_url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/98065cc61148cf19c143aa359ceef260ea5ea01f23afafcd597376a3477a427a/sales_invoice",
+    "reference": "Project X",
+    "state": "open",
+    "total_price_incl_tax": "363.0",
+    "total_unpaid": "363.0",
+    "url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/98065cc61148cf19c143aa359ceef260ea5ea01f23afafcd597376a3477a427a/sales_invoice"
+   },
+   {
+    "contact": {
+     "company_name": "Foobar Holding B.V.",
+     "firstname": null,
+     "id": "503602218546497381",
+     "lastname": null
+    },
+    "contact_id": "503602218546497381",
+    "currency": "EUR",
+    "due_date": "2026-11-26",
+    "id": "503602218725803915",
+    "invoice_date": "2026-11-12",
+    "invoice_id": "2026-0003",
+    "payment_url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/73331e432447cc59f08d1f982616f587d24b1d4e78d0af7b38cbdac9d758b748/sales_invoice",
+    "reference": "Project X",
+    "state": "open",
+    "total_price_incl_tax": "363.0",
+    "total_unpaid": "363.0",
+    "url": "http://moneybird.dev/123/external/0000000000000000000000000000000000000000000000000000000000000001/73331e432447cc59f08d1f982616f587d24b1d4e78d0af7b38cbdac9d758b748/sales_invoice"
+   }
+  ]
+ },
+ "fields": {
+  "contact": "object",
+  "contact_id": "object",
+  "currency": "string",
+  "due_date": "string",
+  "id": "object",
+  "invoice_date": [
+   "string",
+   "null"
+  ],
+  "invoice_id": [
+   "string",
+   "null"
+  ],
+  "payment_url": "string",
+  "reference": [
+   "string",
+   "null"
+  ],
+  "state": "string",
+  "total_price_incl_tax": "string",
+  "total_unpaid": "string",
+  "url": "string"
+ },
+ "scopes": [
+  "sales_invoices"
+ ],
+ "states": [
+  "draft",
+  "scheduled",
+  "open",
+  "pending_payment",
+  "reminded",
+  "late",
+  "paid",
+  "uncollectible"
+ ]
+}

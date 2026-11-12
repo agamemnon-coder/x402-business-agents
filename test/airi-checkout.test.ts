@@ -94,6 +94,26 @@ describe("AirwallexSandboxCheckout", () => {
     expect(a.calls.at(-1)).toEqual({ method: "GET", path: "/pa/payment_intents/int_1", body: undefined });
   });
 
+  it("duplicate_request on the create (a retry after no answer; vic-1c, 7 Nov): asked once more under a fresh request id, no card sent", async () => {
+    const dup = () => { throw new AirwallexError(400, "duplicate_request", { code: "duplicate_request", message: "request_id airi-x1-pi was used before" }, "/pa/payment_intents/create"); };
+    const a = api((c) => ((c.body as { request_id: string }).request_id === "airi-x1-pi" ? dup() : { id: "int_2", status: "REQUIRES_PAYMENT_METHOD" }));
+    const co = new AirwallexSandboxCheckout(a);
+    expect(await co.prepare({ ref: "airi-x1", amount: "12.00", currency: "EUR", description: "vic-1 A" })).toEqual({ reference: "int_2" });
+    expect(a.calls.map((c) => (c.body as { request_id: string; merchant_order_id: string }))).toEqual([
+      expect.objectContaining({ request_id: "airi-x1-pi", merchant_order_id: "airi-x1" }), expect.objectContaining({ request_id: "airi-x1-pi-r2", merchant_order_id: "airi-x1" })]);
+    // Twice a duplicate: it stops there, with Airwallex's own code. Still no card.
+    const b = api(() => dup());
+    expect(await new AirwallexSandboxCheckout(b).prepare({ ref: "airi-x1", amount: "12.00", currency: "EUR", description: "vic-1 A" })).toMatchObject({ outcome: "NOT_SUBMITTED", reference: null, code: "duplicate_request" });
+    expect(b.calls).toHaveLength(2);
+    for (const c of [...a.calls, ...b.calls]) never(PAN)(c);
+    // A long order ref: the fresh request id still fits Airwallex's 64 characters and differs from the first.
+    const long = api((c) => ((c.body as { request_id: string }).request_id.endsWith("-r2") ? { id: "int_3", status: "REQUIRES_PAYMENT_METHOD" } : dup()));
+    await new AirwallexSandboxCheckout(long).prepare({ ref: "x".repeat(70), amount: "12.00", currency: "EUR", description: "d" });
+    const ids = long.calls.map((c) => (c.body as { request_id: string }).request_id);
+    expect(ids.every((i) => i.length <= 64)).toBe(true);
+    expect(new Set(ids).size).toBe(2);
+  });
+
   it("acquiring not available: says so plainly and sends no card", async () => {
     const a = api((c) => { throw new AirwallexError(401, "unauthorized", {}, c.path); });
     expect(await new AirwallexSandboxCheckout(a).prepare({ ref: "airi-x1", amount: "12.00", currency: "EUR", description: "d" }))

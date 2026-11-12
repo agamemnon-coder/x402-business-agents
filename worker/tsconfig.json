@@ -9,6 +9,7 @@
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
     "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
     "noEmit": true
   },
   "include": ["src"]

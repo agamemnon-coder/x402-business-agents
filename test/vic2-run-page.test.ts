@@ -21,14 +21,15 @@ describe("the second Airi run on the site", () => {
 
   it("shows on /visa with the three outcomes from the record, and on /airwallex and /proof as its heading and checks", () => {
     for (const p of ["airwallex", "proof"]) {
-      expect(text(block(pages[p]!)), p).toContain("What Purser adds around Airi: a second live run (7 Nov)");
+      // A control test, not a second Visa run (its heading since 12 Nov, jury panel).
+      expect(text(block(pages[p]!)), p).toContain("Control test of Purser's own checks, not a Visa run (7 Nov)");
       expect(text(block(pages[p]!)), p).toContain("7 of 7 checks pass");
       expect(block(pages[p]!), p).toContain('href="visa#airi-run-2"');
     }
     expect(block(pages.visa!)).not.toContain("<details");
     for (const p of ["visa"]) {
       const t = text(block(pages[p]!));
-      expect(t, p).toContain("What Purser adds around Airi: a second live run (7 Nov)");
+      expect(t, p).toContain("Control test of Purser's own checks, not a Visa run (7 Nov)");
       for (const b of Object.values(VIC2_BADGES)) expect(t, p).toContain(b);
       expect(t, p).toContain("EUR 30.00");
       expect(t, p).toContain("EUR 190.00");
