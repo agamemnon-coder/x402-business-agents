@@ -40,6 +40,15 @@ export function latestRuns(rows: RunRow[] = liveRuns(), n = STATUS_RUNS): Latest
   return rows.slice(0, n).map((r) => ({ key: r.key, iso: r.iso, day: r.date.replace(/ \d{4}$/, ""), title: r.title, short: r.title.split(/: | \(/)[0]!, href: recordHref(r) }));
 }
 
+/**
+ * How the list is labelled (review, 12 Nov): one pill only when every run shares its label; otherwise each run carries
+ * its own, as /runs does, so no run's label reads as if it applied to the others.
+ */
+export function runLabels(rows: { money: string }[]): { pill: string | null; each: boolean } {
+  const labels = [...new Set(rows.map((r) => r.money))];
+  return labels.length === 1 ? { pill: labels[0]!, each: false } : { pill: null, each: true };
+}
+
 const minutes = (ms: number) => `${ms / 60_000} minute${ms === 60_000 ? "" : "s"}`;
 
 /**
@@ -115,12 +124,12 @@ const STATUS_CSS = `.kv { margin: 0; }
 #st-head { flex: 1 1 0; min-width: 0; }
 #now[data-tone="unread"] .kv dd { color: var(--muted); }
 #now[data-tone="ok"] h2 .ic { color: var(--ok); } #now[data-tone="alarm"] h2 .ic { color: var(--bad); } #now[data-tone="unread"] h2 .ic { color: var(--muted); }
-ul.pl time { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 4px; white-space: nowrap; }`;
+ul.pl time, ul.pl .lbl { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 4px; white-space: nowrap; }`;
 
 const line = (label: string, id: string, rowId = "") => `<div${rowId ? ` id="${rowId}" hidden` : ""}><dt>${esc(label)}</dt><dd id="${id}">—</dd></div>`;
 
 export function statusPage(mode: StatusMode = "hosted"): string {
-  const runs = latestRuns(), labels = [...new Set(liveRuns().slice(0, STATUS_RUNS).map((r) => r.money))];
+  const rows = liveRuns().slice(0, STATUS_RUNS), runs = latestRuns(rows), { pill, each } = runLabels(rows);
   const now = mode === "hosted"
     ? `<article class="pc card" id="now" aria-live="polite"><h2><span class="ic">${icon("circle-dot", 19)}</span><span id="st-head">Live status not read yet</span></h2>
     <dl class="kv">${line("Site", "st-site")}${line("Runner", "st-runner")}${line("Last sync", "st-sync")}${line("Alarms", "st-alarms")}${line("Try agents today", "st-agents", "st-agents-row")}</dl>
@@ -130,8 +139,8 @@ export function statusPage(mode: StatusMode = "hosted"): string {
     <div class="links">${outLink(`${SITE_URL}/status`, "The hosted status page")}</div></article>`;
   const body = `<div class="cols c2">
   ${now}
-  <article class="pc card" id="runs"><h2><span class="ic">${icon("calendar-range", 19)}</span>Latest live runs<span class="pill">${esc(labels.join(" · "))}</span></h2>
-    <ul class="pl">${runs.map((r) => `<li><time datetime="${esc(r.iso)}">${esc(r.day)}</time> <a class="pf" href="${esc(r.href)}" target="_blank" rel="noopener" title="${esc(r.title)}">${esc(r.short)} ↗</a></li>`).join("")}</ul>
+  <article class="pc card" id="runs"><h2><span class="ic">${icon("calendar-range", 19)}</span>Latest live runs${pill === null ? "" : `<span class="pill">${esc(pill)}</span>`}</h2>
+    <ul class="pl">${runs.map((r, i) => `<li><time datetime="${esc(r.iso)}">${esc(r.day)}</time> <a class="pf" href="${esc(r.href)}" target="_blank" rel="noopener" title="${esc(r.title)}">${esc(r.short)} ↗</a>${each ? ` <span class="lbl">${esc(rows[i]!.money)}</span>` : ""}</li>`).join("")}</ul>
     <div class="links">${siteLink(RUNS_URL, RUNS_TITLE)}</div></article>
 </div>`;
   return productPage({

@@ -18,7 +18,7 @@ import { agentApiServer } from "../src/platform/mcpServer.js";
 import { CLOUD_DEMO_URL, CLOUD_OPENAPI_PATH, MCP_COMMAND, MCP_ENV, agentTools, docsPage } from "../src/redesign/docs.js";
 import { LIVE_RUN_EXPECTED_MS, RUNNER_DOWN_AFTER_MS } from "../src/ops/publicHealth.js";
 import { RUNS_TITLE, liveRuns } from "../src/redesign/runs.js";
-import { STATUS_RUNS, latestRuns, statusPage } from "../src/redesign/status.js";
+import { STATUS_RUNS, latestRuns, runLabels, statusPage } from "../src/redesign/status.js";
 import { buildPages } from "../src/relay/assets.js";
 import { sqlOver, startLocalRelay } from "../src/relay/local.js";
 import { buildRelayState, stateHash } from "../src/relay/state.js";
@@ -488,7 +488,7 @@ describe("/status: the latest live runs", () => {
     expect([...all].sort((a, b) => b.iso.localeCompare(a.iso)).map((r) => r.key)).toEqual(all.map((r) => r.key));
     const five = latestRuns();
     expect(five.map((r) => r.key)).toEqual(all.slice(0, 5).map((r) => r.key));
-    const items = [...runs.matchAll(/<li><time datetime="([^"]+)">([^<]+)<\/time> <a class="pf" href="([^"]+)" target="_blank" rel="noopener" title="([^"]+)">([^<]+) ↗<\/a><\/li>/g)].map((m) => ({ iso: m[1]!, day: m[2]!, href: m[3]!, full: decode(m[4]!), short: decode(m[5]!) }));
+    const items = [...runs.matchAll(/<li><time datetime="([^"]+)">([^<]+)<\/time> <a class="pf" href="([^"]+)" target="_blank" rel="noopener" title="([^"]+)">([^<]+) ↗<\/a>(?: <span class="lbl">([^<]+)<\/span>)?<\/li>/g)].map((m) => ({ iso: m[1]!, day: m[2]!, href: m[3]!, full: decode(m[4]!), short: decode(m[5]!), label: m[6] === undefined ? null : decode(m[6]) }));
     expect(items.length).toBe(5);
     items.forEach((it, i) => {
       const row = all[i]!;
@@ -513,10 +513,21 @@ describe("/status: the latest live runs", () => {
     });
   });
 
-  it("labels the list with the runs' own money labels, and links to every live run", () => {
-    const labels = [...new Set(all.slice(0, 5).map((r) => r.money))];
-    expect(runs).toContain(`<span class="pill">${labels.join(" · ")}</span>`);
+  // 12 Nov (review): one pill of all five runs' labels read as if each applied to every run ("Nothing bought" is the
+  // Airi run's alone). Each run now carries its own label, as /runs does; one pill only when all five share it.
+  it("labels each run with its own money label, as /runs does, and links to every live run", () => {
+    const five = all.slice(0, 5), labels = [...new Set(five.map((r) => r.money))];
     for (const l of labels) expect(l).toMatch(/test money|Nothing bought/i);
+    expect(runLabels([{ money: "A" }, { money: "A" }])).toEqual({ pill: "A", each: false });
+    expect(runLabels([{ money: "A" }, { money: "B" }])).toEqual({ pill: null, each: true });
+    const { pill, each } = runLabels(five);
+    const head = /<h2>[\s\S]*?<\/h2>/.exec(runs)?.[0] ?? "";
+    if (pill === null) expect(head).not.toContain('<span class="pill">');
+    else expect(head).toContain(`<span class="pill">${pill}</span>`);
+    const shown = [...runs.matchAll(/↗<\/a>(?: <span class="lbl">([^<]+)<\/span>)?<\/li>/g)].map((m) => (m[1] === undefined ? null : decode(m[1])));
+    expect(shown).toEqual(five.map((r) => (each ? r.money : null)));
+    // With today's five runs the labels differ, so each run carries its own.
+    expect(each).toBe(labels.length > 1);
     expect(runs).toContain(`<a class="pf" href="runs">${RUNS_TITLE}</a>`);
   });
 
