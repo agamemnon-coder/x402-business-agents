@@ -438,9 +438,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // /visa 495 since 10 Nov (Max: we compete for the Visa Award, keep it visible): one plain sentence on top; 600 the
       // same day with the overview of the three Visa runs above the Airi run (Max, 10 Nov: more Visa).
       const budget = path === "/airwallex" ? 365 : path === "/visa" ? 600 : path === "/metal" ? 180 : 150;
-      // The frame (header and footer): 25 words, 27 since 12 Nov, when the footer gained its links to Docs and Status
-      // (two words; /metal and /visa stood at the limit). The pages' own budgets are unchanged.
-      if (words > budget + 27) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
+      // The frame (header and footer): 25 words, 26 since 12 Nov: More and the footer's four product links added five
+      // words (18 at 360 and 390 px, 19 at 768 and 1440); /metal and /visa had four to spare. The pages' own budgets are unchanged.
+      if (words > budget + 26) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(pt)) fail(`${path} ${tag}: its run is not labelled`);
       if ((await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
       if ((await page.locator("details.fold").count()) < 2) fail(`${path} ${tag}: the details are not folded`);
