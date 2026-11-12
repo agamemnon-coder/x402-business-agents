@@ -7,7 +7,7 @@
 //    percentage, worked out from the run records and the paying code's own figures; and the unit economics restated for
 //    that model by its own generator (test/unit-economics-hypothesis.test.ts checks its arithmetic).
 // 2. Security answers the buyer's first two questions, and "four eyes" is worded exactly (further down).
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { platformFeeCents } from "../src/airwallex/binding.js";
 import { FEE_BPS_CAP } from "../src/airwallex/platform.js";
@@ -15,8 +15,14 @@ import { figures as modelFigures, unitEconomics } from "../src/business/unitEcon
 import { PRICE_LINE, WHY_COMPANY } from "../src/config/brand.js";
 import { PRICING, PRICING_LABEL, PRICING_LINE, PRICING_STATEMENT, euro, percentOfBps } from "../src/config/pricing.js";
 import { E2E_FEE_BPS } from "../src/e2e/setup.js";
+import { ENROLMENT_TTL_MS } from "../src/passkey/ledger.js";
 import { PLATFORM_FEE_RULE } from "../src/policy/rules.js";
+import { GUARANTEES, guaranteesHtml } from "../src/redesign/guarantees.js";
 import { PRICING_LEAD, e2eFeeRun, feeFacts, feeLine, feeRun, pricingPage } from "../src/redesign/pricing.js";
+import { proofPage } from "../src/redesign/proof.js";
+import { UNAVAILABLE, securityCards, securityPage, unavailableLines } from "../src/redesign/security.js";
+import { buildPages } from "../src/relay/assets.js";
+import { pageResponse, type Pages } from "../worker/src/core.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 /** A doc as running text: bold and code marks out, white space single, so a sentence wrapped over lines reads as one. */
@@ -151,5 +157,117 @@ describe("the fee per payout: one line fits the fixed test fees to the percentag
     expect(flat("docs/claims.md")).toContain("Test values, not prices: EUR 0.05 on the EUR 5.00 sandbox payout above (1.00%, a fixed test fee set for that run), and EUR 0.02 on the EUR 4.84 payout of the end-to-end run (the test policy's 0.50%, rounded to the cent)");
     // The old wording, which called the test policy's rate a cap, is gone.
     for (const doc of ["docs/after-the-kit.md", "docs/claims.md", "docs/business/model.md", "README.md"]) expect({ doc, old: /\| 0\.50% in the test world, capped|capped in the CFO's policy \(0\.50%/.test(flat(doc)) }).toEqual({ doc, old: false });
+  });
+});
+
+// 2a. "If the approver is unavailable": the buyer's first two questions (what happens when the approver is away or
+// loses the phone; who may enrol a new passkey), answered in at most five lines in docs/security.md, shown on /security
+// in the doc's own words, and linked from guarantee 1 on /proof. Every line is true of the code as it is: each claim
+// is held here against the file it cites.
+describe("if the approver is unavailable (the panel's review, 12 Nov)", () => {
+  const doc = read("docs/security.md");
+  const section = /^## If the approver is unavailable\n\n([\s\S]*?)\n## /m.exec(doc)?.[1] ?? "";
+  const lines = section.split("\n").filter((l) => l.trim());
+  const html = securityPage();
+  const card = /<article class="pc card[^"]*" id="s-sign">[\s\S]*?<\/article>/.exec(html)?.[0] ?? "";
+  const fold = /<details class="fold" id="unavailable"><summary>([^<]+)<\/summary><ul class="pl">([\s\S]*?)<\/ul><\/details>/.exec(card);
+
+  it("docs/security.md answers both questions in at most five lines, and says plainly what is not built", () => {
+    expect(lines.length).toBeGreaterThanOrEqual(2);
+    expect(lines.length).toBeLessThanOrEqual(5);
+    for (const l of lines) expect({ l: l.slice(0, 30), numbered: /^\d\. \*\*[^*]+\*\* /.test(l) }).toEqual({ l: l.slice(0, 30), numbered: true });
+    const text = section.replace(/\*\*|`/g, "");
+    // What happens when the approver is away, or loses the phone.
+    expect(text).toContain("Away or out of reach: nothing above the limits is paid. The payment waits for the signature and expires unsigned; payments inside the limits go on");
+    expect(text).toContain("A lost phone: the passkey is replaced, not recovered.");
+    // Who may enrol a new passkey: on the runner, and in Purser Cloud.
+    expect(text).toContain("Who may enrol a new passkey, on the runner: only the person at the runner");
+    expect(text).toContain("Who may enrol, in Purser Cloud (built, not live): a signed-in owner starts a person's enrolment");
+    // Not built, said so: no deputy, no delegation. And the runs had one person.
+    expect(text).toContain("No deputy, no delegation: neither is built.");
+    expect(text).toContain("Our runs had one person: the second signature came from a test passkey.");
+    // No gendered pronoun for the approver, and nothing absolute.
+    expect(text).not.toMatch(/\b(he|she|his|her|him)\b/i);
+    expect(text).not.toMatch(/\b(always|never fails|guarantee|cannot be)\b/i);
+  });
+
+  it("is true of the code it cites: waiting and expiry, four eyes, replacing a passkey, who opens an enrolment", () => {
+    // Every file and command the section names exists.
+    const cited = [...section.matchAll(/`((?:src|docs)\/[\w/.-]+)`/g)].map((m) => m[1]!);
+    expect(cited).toEqual(["src/policy/approvals.ts", "src/policy/fourEyes.ts", "src/passkey/ledger.ts", "docs/cloud.md"]);
+    for (const f of cited) expect({ f, exists: existsSync(new URL(`../${f}`, import.meta.url)) }).toEqual({ f, exists: true });
+    const scripts = (JSON.parse(read("package.json")) as { scripts: Record<string, string> }).scripts;
+    expect([scripts.relay, scripts.passkey]).toEqual(["tsx src/cli/relay.ts", "tsx src/cli/passkey.ts"]);
+    // 1. A proposal waits for approval and expires unsigned; only an approved one is paid.
+    const approvals = read("src/policy/approvals.ts");
+    expect(approvals).toContain('PENDING_APPROVAL: ["APPROVED", "REJECTED", "EXPIRED", "SUPERSEDED", "NEEDS_REAPPROVAL"]');
+    expect(approvals).toContain('transition(db, p.proposal_id, p.status, "EXPIRED");');
+    expect(approvals).toContain("expired at ${expired}; approval void");
+    // 2. No deputy and no delegation in the approval, passkey or cloud code; a second person has a passkey of their own,
+    //    and where four eyes applies one person's signature only counts toward two.
+    for (const f of ["src/policy/approvals.ts", "src/policy/fourEyes.ts", "src/passkey/ledger.ts", "src/passkey/process.ts", "src/cli/passkey.ts", "cloud/src/auth.ts", "cloud/src/app.ts"]) expect({ f, deputy: /deput|delegat|stand[- ]in approver|out of office/i.test(read(f)) }).toEqual({ f, deputy: false });
+    expect(read("src/cli/passkey.ts")).toContain('if (cmd === "add")');
+    expect(read("src/passkey/ledger.ts")).toContain("// E1: another person beside those enrolled, each with a passkey of their own.");
+    expect(approvals).toContain("a second person must approve it with their own passkey");
+    expect(read("src/passkey/process.ts")).toContain('if (pk.status !== "ACTIVE") return refuse("revoked_passkey"');
+    // 3. A replaced passkey counts until the new one is confirmed, and is revoked then.
+    const ledger = read("src/passkey/ledger.ts");
+    expect(ledger).toContain("the old passkey stays active until the new one is enrolled");
+    expect(ledger).toContain("The person on the runner confirms the fingerprint the phone shows; only then is the passkey pinned (and a passkey");
+    expect(ledger).toContain("UPDATE passkeys SET status = 'REVOKED' WHERE credential_id = ?");
+    // 4. On the runner: a ten-minute window with a one-time code, opened and confirmed from the runner's own commands.
+    expect(ENROLMENT_TTL_MS).toBe(10 * 60 * 1000);
+    expect(read("src/cli/relay.ts")).toContain("//   --enrol    opens a ten-minute window and prints a one-time code for enrolling the approver's passkey");
+    expect(read("src/cli/relay.ts")).toContain("//   --replace  with --enrol: the new passkey replaces the enrolled one once it is enrolled");
+    expect(read("src/cli/passkey.ts")).toContain('if (cmd === "confirm")');
+    // 5. In Purser Cloud, as its doc says it.
+    const cloud = flat("docs/cloud.md");
+    expect(cloud).toContain("| POST /v1/users/{id}/enrolment | admin | Start a person's passkey enrolment: a single-use secret for 30 minutes (an owner's passkey: a signed-in owner only, once any owner has one). |");
+    expect(cloud).toContain("| POST /v1/admin/tenants/{id}/recovery | platform admin | An owner lost their passkey: after checking out of band who asks (checked_by says how), issue a one-time recovery key for that owner");
+    expect(cloud).toContain("Redeemed, it removes the owner's old passkeys, ends their sessions and is spent, in the same write as the new passkey.");
+    // "Built, not live": the hosted preview is private and no customer uses it.
+    expect(flat("docs/after-the-kit.md")).toContain("A hosted preview exists but is private (behind an access key); no customer uses it");
+  });
+
+  it("/security gives the same answer, in the doc's own lines, folded under the signature with the anchor \"unavailable\"", () => {
+    expect(UNAVAILABLE).toEqual({ id: "unavailable", doc: "docs/security.md", heading: "If the approver is unavailable", anchor: "#if-the-approver-is-unavailable" });
+    expect(doc).toMatch(/^## If the approver is unavailable$/m);
+    // The page's lines are the doc's lines: at most five, in the doc's order and words, bold and code marks out, and
+    // without the files and commands each line names in brackets at its end (the doc keeps those; the page links it).
+    const plain = lines.map((l) => l.replace(/^\d\. /, "").replace(/ \(`[^\n]*\)$/, "").replace(/\*\*|`/g, ""));
+    expect(unavailableLines()).toEqual(plain);
+    for (const l of plain) {
+      expect({ l: l.slice(0, 30), inDoc: flat("docs/security.md").includes(l), ends: /[.]$/.test(l), code: /src\/|npm run|POST \//.test(l) }).toEqual({ l: l.slice(0, 30), inDoc: true, ends: true, code: false });
+    }
+    expect(plain[0]).toBe("Away or out of reach: nothing above the limits is paid. The payment waits for the signature and expires unsigned; payments inside the limits go on.");
+    expect(fold).not.toBeNull();
+    expect(fold![1]).toBe("If the approver is unavailable");
+    const items = [...fold![2]!.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => decode(m[1]!.replace(/<[^>]+>/g, "")));
+    expect(items).toEqual([...plain, "docs/security.md ↗"]);
+    expect(items.length - 1).toBeLessThanOrEqual(5);
+    expect(fold![2]).toContain('<a class="pf" href="https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/security.md#if-the-approver-is-unavailable" target="_blank" rel="noopener">docs/security.md ↗</a>');
+    // Folded: in sight it is five words under the signature's card, and one anchor on the page.
+    expect((html.match(/id="unavailable"/g) ?? []).length).toBe(1);
+    expect(securityCards().find((c) => c.more)!.id).toBe("s-sign");
+    // A section that grows past five lines, or loses its numbering, stops the page: never a longer or a looser answer.
+    expect(() => unavailableLines(doc.replace("\n## Accepted risks", "\n6. **And more:** a sixth line.\n\n## Accepted risks").replace(/5\. \*\*Who may enrol, in Purser Cloud/, "5. **Who may enrol, in Purser Cloud"))).toThrow(/one to five numbered lines/);
+    expect(() => unavailableLines("# Security\n\n## Checks\n")).toThrow(/one to five numbered lines/);
+    // A line that no longer names what it rests on stops the page too.
+    expect(() => unavailableLines(doc.replace(" (`src/passkey/ledger.ts`)", ""))).toThrow(/each ending with the files it cites/);
+  });
+
+  it("guarantee 1 on /proof links there, folded with its \"How\"; the link resolves on the site", () => {
+    const g = GUARANTEES[0]!;
+    expect([g.id, g.more]).toEqual(["g-terms", { label: "If the approver is unavailable", href: "security#unavailable" }]);
+    expect(GUARANTEES.filter((x) => x.more).map((x) => x.id)).toEqual(["g-terms"]);
+    const li = /<li id="g-terms"[\s\S]*?<\/li>/.exec(proofPage())?.[0] ?? "";
+    // Inside the fold, after how it works and before the file and the test: nothing new in sight on /proof.
+    expect(li).toMatch(/<details><summary>How<\/summary><p>[^<]+<\/p><p><a href="security#unavailable">If the approver is unavailable<\/a><\/p><p class="src">/);
+    expect(li.replace(/<details>[\s\S]*?<\/details>/, "")).not.toContain("unavailable");
+    expect(guaranteesHtml()).toContain('<a href="security#unavailable">If the approver is unavailable</a>');
+    // The page it leads to is served, and carries the anchor.
+    const pages = buildPages() as Pages;
+    expect(pageResponse(new Request("https://x.test/security"), pages)?.status).toBe(200);
+    expect(pages.security).toContain('<details class="fold" id="unavailable">');
   });
 });

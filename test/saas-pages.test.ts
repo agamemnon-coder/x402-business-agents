@@ -143,14 +143,21 @@ describe("/security: security and trust", () => {
       expect({ id: c.id, words: line.split(" ").length <= 26 }).toEqual({ id: c.id, words: true });
       expect({ id: c.id, links: (/<div class="links">([\s\S]*?)<\/div>/.exec(el)?.[1]?.match(/<a class="pf" href="[^"]+"/g) ?? []).length >= 1 }).toEqual({ id: c.id, links: true });
       expect({ id: c.id, folds: (el.match(/<details class="fold"><summary>[^<]+<\/summary><ul class="pl">(?:<li>[\s\S]*?<\/li>)+<\/ul><\/details>/g) ?? []).length }).toEqual({ id: c.id, folds: 1 });
+      // One card carries a second fold, with an anchor of its own: "If the approver is unavailable", under the
+      // signature (the panel's review, 12 Nov; test/saas-additions.test.ts reads its lines). No other card has one.
+      expect({ id: c.id, more: (el.match(/<details class="fold" id="[a-z]+">/g) ?? []) }).toEqual({ id: c.id, more: c.id === "s-sign" ? ['<details class="fold" id="unavailable">'] : [] });
+      expect({ id: c.id, folds: (el.match(/<details\b/g) ?? []).length }).toEqual({ id: c.id, folds: c.id === "s-sign" ? 2 : 1 });
     }
+    expect(cards.filter((c) => c.more).map((c) => [c.id, c.more!.id, c.more!.summary])).toEqual([["s-sign", "unavailable", "If the approver is unavailable"]]);
+    // Nothing is open until the reader opens it.
+    expect(html).not.toMatch(/<details[^>]* open/);
     expect((html.match(/<h1\b/g) ?? []).length).toBe(1);
     expect(html).toContain("<h1>Security and trust</h1>");
     expect(text.startsWith("Sandbox and testnet only Security and trust")).toBe(true);
   });
 
   it("signatures: the exact terms, signed with a passkey, one changed cent refused; the proof is the Try tab", () => {
-    expect(inSight("s-sign")).toBe("Signed terms The CFO signs the exact terms with a passkey: change one cent and the signature is refused. Try it yourself How");
+    expect(inSight("s-sign")).toBe("Signed terms The CFO signs the exact terms with a passkey: change one cent and the signature is refused. Try it yourself How If the approver is unavailable");
     expect(card(html, "s-sign")).toContain('<a class="pf" href="try" data-next="try">Try it yourself</a>');
     // In a bundle that carries /try/sign the link leads there, as the Try tab does; in one without it, to /try.
     expect(flowLinks(html, true)).toContain('<a class="pf" href="try/sign" data-next="try">Try it yourself</a>');

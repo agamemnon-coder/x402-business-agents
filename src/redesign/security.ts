@@ -95,8 +95,30 @@ export const NOT_IN_PLACE = { doc: "docs/controls.md", anchor: "#not-in-place-su
 /** The sandbox run in which a payout was made on behalf of a test company's own connected account. */
 export const SANDBOX_RUN = "docs/runs/2026-11-10-connected-accounts-sandbox.md";
 
-/** A card: `line` is its one sentence, `links` its proof, `fold` its detail; `line`, `links` and the fold's lines are markup, built here. */
-export interface SecurityCard { id: string; icon: string; title: string; line: string; pill?: string; links: string[]; fold: { summary: string; lines: string[] }; wide?: boolean }
+/**
+ * "If the approver is unavailable" (the panel's review, 12 Nov): the buyer's first two questions, what happens when the
+ * approver is away or loses the phone, and who may enrol a new passkey. The answer is docs/security.md's section of
+ * that name, at most five lines; the page shows those lines in the doc's own words, so it cannot say something else.
+ * `id` is the anchor other pages link to (security#unavailable: guarantee 1 on /proof).
+ */
+export const UNAVAILABLE = { id: "unavailable", doc: "docs/security.md", heading: "If the approver is unavailable", anchor: "#if-the-approver-is-unavailable" } as const;
+/**
+ * The section's lines, in the doc's order and words: bold and code marks out, and without the files and commands each
+ * line names in brackets at its end (the doc keeps them; the page links the doc). Not one to five numbered lines, each
+ * ending with what it cites: an error.
+ */
+export function unavailableLines(text: string = repoText(UNAVAILABLE.doc)): string[] {
+  const body = new RegExp(`^## ${UNAVAILABLE.heading}\\n\\n([\\s\\S]*?)\\n(?=## |$(?![\\s\\S]))`, "m").exec(text)?.[1] ?? "";
+  const lines = body.split("\n").filter((l) => l.trim());
+  if (lines.length < 1 || lines.length > 5 || lines.some((l) => !/^\d\. \S[^\n]*[.!?] \(`[^\n]*\)$/.test(l))) throw new Error(`${UNAVAILABLE.doc}: "${UNAVAILABLE.heading}" must answer in one to five numbered lines, each ending with the files it cites`);
+  return lines.map((l) => l.replace(/^\d\. /, "").replace(/ \(`[^\n]*\)$/, "").replace(/\*\*|`/g, "").trim());
+}
+
+/**
+ * A card: `line` is its one sentence, `links` its proof, `fold` its detail; `more`, where a card has one, is a second
+ * fold with an anchor of its own. `line`, `links` and the folds' lines are markup, built here.
+ */
+export interface SecurityCard { id: string; icon: string; title: string; line: string; pill?: string; links: string[]; fold: { summary: string; lines: string[] }; more?: { id: string; summary: string; lines: string[] }; wide?: boolean }
 
 const how = (id: string) => {
   const g = GUARANTEES.find((x) => x.id === id);
@@ -118,6 +140,11 @@ export function securityCards(): SecurityCard[] {
       line: esc("The CFO signs the exact terms with a passkey: change one cent and the signature is refused."),
       links: [siteLink("try", "Try it yourself", true)],
       fold: { summary: "How", lines: [esc(terms.how), code(terms)] },
+      // The doc's own lines, each checked against the doc as every quoted line on this page is, then the doc itself.
+      more: {
+        id: UNAVAILABLE.id, summary: UNAVAILABLE.heading,
+        lines: [...unavailableLines().map((quote) => esc(docLine({ doc: UNAVAILABLE.doc, anchor: UNAVAILABLE.anchor, quote }).quote)), outLink(repoHref(UNAVAILABLE.doc, UNAVAILABLE.anchor), UNAVAILABLE.doc)],
+      },
     },
     {
       id: "s-funds", icon: "wallet", title: "No funds held", pill: "Sandbox only",
@@ -168,7 +195,7 @@ export function securityCards(): SecurityCard[] {
 
 const cardHtml = (c: SecurityCard) => `<article class="pc card fd${c.wide ? " wide" : ""}" id="${c.id}"><h2><span class="ic">${icon(c.icon, 19)}</span>${esc(c.title)}${c.pill ? `<span class="pill">${esc(c.pill)}</span>` : ""}</h2>
     <p>${c.line}</p><div class="links">${c.links.join("")}</div>
-    ${foldHtml(c.fold.summary, c.fold.lines)}</article>`;
+    ${foldHtml(c.fold.summary, c.fold.lines)}${c.more ? `\n    ${foldHtml(c.more.summary, c.more.lines).replace('<details class="fold">', `<details class="fold" id="${c.more.id}">`)}` : ""}</article>`;
 
 export function securityPage(): string {
   const cards = securityCards();
