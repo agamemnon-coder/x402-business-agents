@@ -38,6 +38,10 @@ jobs:
         run: npx playwright install chromium
       - name: Tests with coverage, per area
         run: npm run test:coverage
+      # The engine's own tests again, with every ledger handle swapped for the Durable Object handle over a stand-in for
+      # a Durable Object's storage (vitest.shim.config.ts): plain Node, no browser, no wrangler.
+      - name: Engine tests through the Durable Object handle
+        run: npm run test:shim
       - run: npm run relay:pages
       - name: Relay Worker type check
         working-directory: worker
