@@ -12,8 +12,8 @@ import type { Awx1Record } from "../awx/scenario.js";
 import { agentRun, type AgentRun } from "./run.js";
 import { AWX_RUN_FILE, AWX_RUN_STEPS_ID, awxRun } from "./awxRun.js";
 import { metalStory, REPO_BLOB } from "./metalStory.js";
-import { HERO_DEMO_CSS, HERO_DEMO_JS, heroDemoFacts, heroDemoHtml, heroProvenance } from "./heroDemo.js";
-import { HERO_RECEIPT_FILE, heroReceipt } from "./heroReceipt.js";
+import { heroDemoFacts } from "./heroDemo.js";
+import { WALK_CSS, WALK_NOTE, walkHtml } from "./walk.js";
 import { VIC3_RUN_ID, vic3Run, type Vic3Record } from "./vic3Run.js";
 import { esc, icon, MAIN_RUN_REAL, page, TRY_URL } from "./ui.js";
 import { BUILT_WITH } from "../visuals/logos.js";
@@ -23,7 +23,8 @@ const CSS = `.hero { padding: 24px 0 36px; }
 .hero .copy, .hero .show { min-width: 0; }
 /* The heading: two sentences, two lines (jury panel, A10), never broken mid-sentence where there is room for one. */
 .hero .h-hero { font-size: clamp(38px, 4.4vw, 58px); } .hero .h-hero span { display: block; }
-@media (min-width: 1100px) { .hero { padding: 56px 0 56px; } .hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 560px); gap: 0 52px; align-items: center; } .hero .h-hero span { white-space: nowrap; } }
+@media (min-width: 1100px) { .hero { padding: 56px 0 56px; } .hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 460px); grid-template-rows: 1fr auto 1fr; gap: 0 52px; } .hero .copy { grid-row: 1; align-self: end; } .hero .cta { grid-row: 2; } .hero .show { grid-column: 2; grid-row: 1 / span 3; } .hero .h-hero span { white-space: nowrap; } }
+.hero .walk-note a { color: var(--accent); font-weight: 650; display: inline-flex; align-items: center; min-height: 44px; }
 .hero .what { margin: 14px 0 0; font-size: 19px; line-height: 1.45; font-weight: 600; max-width: 34em; }
 .btn.big { height: 56px; font-size: 17px; padding: 0 26px; }
 .btn.big.start { margin-top: 18px; }
@@ -238,19 +239,20 @@ const dayMonth = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numer
 export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; partnerUrl?: string; smallCompanyUrl?: string; receipt?: string | object } = {}): string {
   // The owner, 12 Nov: the button opens the hands-on demo on Purser Cloud (TRY_URL), with /try/sign in the bundle or not.
   const tryHref = TRY_URL;
-  const awx = awxRun(), facts = heroDemoFacts(awx), receipt = heroReceipt(facts, opts.receipt ?? HERO_RECEIPT_FILE);
-  const hero = heroDemoHtml(facts, receipt);
+  const awx = awxRun(), facts = heroDemoFacts(awx);
   const rows = proofRows(run, awx);
   const body = `<main>
 <section class="hero"><div class="wrap">
   <div class="copy">
     ${homeHeadingHtml()}
     <p class="what">${esc(HOME_SUB)}</p>
+  </div>
+  <div class="show">${walkHtml()}
+    <p class="walk-note">${esc(WALK_NOTE)} <a href="#real" data-real>${esc(WHATS_REAL)}</a></p></div>
+  <div class="cta">
     <a class="btn primary big start" href="${tryHref}">${icon("scan-face", 18)}${esc(START)}</a>
     <p class="reassure">${esc(opts.trySign ? REASSURE.sign : REASSURE.world)}</p>
   </div>
-  <div class="show">${hero}${hero && facts && receipt ? `
-    <p class="prov">${esc(heroProvenance(facts, receipt).join(" "))} <a href="#real" data-real>${esc(WHATS_REAL)}</a></p>` : ""}</div>
 </div></section>
 <section class="locks" aria-labelledby="h-locks"><div class="wrap">
   <h2 class="h-sec reveal" id="h-locks">${esc(LOCKS_HEAD)}</h2>
@@ -270,17 +272,16 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   const refusedAt = run.events.find((e) => e.k === "money")?.at ?? run.record.snapshot.flows[0]?.at ?? "";
   // What Home shows first (the hero and its two Airwallex rows), then the Metal row and the main run it comes from.
   const real = [
-    ...(awx && facts ? [`The hero's steps 1 to 3 and the two Airwallex rows: the Airwallex-only run (${awx.run}) of ${facts.date}. ${awx.note}`] : []),
-    ...(receipt ? [receipt.kind === "recorded" ? `The hero's step 4 checks the published receipt of this approval in your browser: ${receipt.note}` : `The hero's step 4: ${receipt.note}`] : []),
+    "The hero's screens: the hands-on demo (/try), captured from this repository's own engine by test/browser/try.check.ts with no API key set, so Purser's code read the invoice (the screens say so). Test money, a simulated bank, a test passkey.",
+    ...(awx && facts ? [`The Airwallex row: the Airwallex-only run (${awx.run}) of ${facts.date}. ${awx.note}`] : []),
     `The Metal row: the main run${refusedAt ? ` of ${dayMonth(refusedAt)}` : ""}. ${CHAIN_TEST}`,
     ...MAIN_RUN_REAL,
   ];
   return page({
-    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, tab: "home", css: CSS + (hero ? HERO_DEMO_CSS : ""), body, js: JS + (hero ? HERO_DEMO_JS : ""), stage: false,
+    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, tab: "home", css: CSS + WALK_CSS, body, js: JS, stage: false,
     // The judge's tour: one quiet footer link, only where /judge exists.
     links: opts.trySign ? [["judge", JUDGE_LINE]] : [],
-    ...(hero && receipt ? { data: receipt.data } : {}),
     real,
-    source: `Source: ${AWX_RUN_FILE}, ${HERO_RECEIPT_FILE} and ${run.file} (${run.name}).`,
+    source: `Source: the /try screens (docs/assets/try-walk), ${AWX_RUN_FILE} and ${run.file} (${run.name}).`,
   });
 }
