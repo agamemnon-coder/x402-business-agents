@@ -6,9 +6,11 @@ import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ROUTES } from "../cloud/src/app.js";
 import { digestOf, noteEngineCompany, runAutopilot, type AutopilotRun } from "../cloud/src/edge/autopilot.js";
-import { edgeRefusal, type RateLimiter } from "../cloud/src/edge/limits.js";
-import { EDGE_SCHEMA } from "../cloud/src/edge/schema.js";
-import { countsOf, countUp, dailyCounts, pruneCounts } from "../cloud/src/edge/stats.js";
+import { addressOf, edgeRefusal, type RateLimiter } from "../cloud/src/edge/limits.js";
+import { EDGE_SCHEMA, edgeSql } from "../cloud/src/edge/schema.js";
+import { countsOf, countUp, dailyCounts, pruneCounts, writeCounts } from "../cloud/src/edge/stats.js";
+import { sqliteSql } from "../cloud/src/node.js";
+import type { Sql } from "../cloud/src/store.js";
 import type { EngineApi, EngineStatus, InvoiceView, Settled } from "../cloud/src/engine/api.js";
 import { EN } from "./fakes/apInvoices.js";
 import { pdfOf } from "./fakes/pdf.js";
@@ -33,6 +35,15 @@ function fakeLimiter(max: number): RateLimiter & { keys: string[] } {
 }
 
 describe("the edge's tables", () => {
+  it("are made on demand where the migration did not run, and an error that is not theirs is left alone", async () => {
+    const raw = sqliteSql(":memory:");
+    const sql = edgeSql(raw);
+    expect(await sql.all("SELECT * FROM daily_counts")).toEqual([]);
+    expect(await sql.first<{ n: number }>("SELECT COUNT(*) AS n FROM autopilot_runs")).toEqual({ n: 0 });
+    await expect(sql.all("SELECT * FROM no_such_thing")).rejects.toThrow(/no such table: no_such_thing/);
+    raw.close();
+  });
+
   it("are cloud/migrations/0002_edge.sql word for word, and hold no secret, account or person", () => {
     expect(EDGE_SCHEMA).toBe(readFileSync("cloud/migrations/0002_edge.sql", "utf8"));
     expect(EDGE_SCHEMA).not.toMatch(/secret TEXT|iban|account TEXT|display_name|email/i);
@@ -61,7 +72,25 @@ describe("the Rate Limiting bindings in front of what costs", () => {
     expect(await pub("198.51.100.7")).toMatch(/too many requests from this address/);
     expect(await pub("198.51.100.8")).toBeNull();
     expect(engineWrites.keys).toEqual(["cloud.test|engine:t_a", "cloud.test|engine:t_a", "cloud.test|engine:t_a", "cloud.test|engine:t_b"]);
-    expect(publicCalls.keys).toEqual(["cloud.test|public:198.51.100.7", "cloud.test|public:198.51.100.7", "cloud.test|public:198.51.100.8"]);
+    // An address is never handed over as it is: a SHA-256 of it with the deployment's prefix.
+    expect(publicCalls.keys).toHaveLength(3);
+    for (const k of publicCalls.keys) expect(k).toMatch(/^cloud\.test\|public:[0-9a-f]{64}$/);
+    expect(publicCalls.keys[0]).toBe(publicCalls.keys[1]);
+    expect(publicCalls.keys[0]).not.toBe(publicCalls.keys[2]);
+  });
+
+  it("takes an IPv6 address by its /64 (one host may change its last 64 bits), an IPv4 address whole", async () => {
+    expect(addressOf("198.51.100.7")).toBe("198.51.100.7");
+    expect(addressOf("2001:db8:aa:bb:1:2:3:4")).toBe("2001:db8:aa:bb::/64");
+    expect(addressOf("2001:0DB8:00aa:00bb::9")).toBe("2001:db8:aa:bb::/64");
+    expect(addressOf("2001:db8::1")).toBe("2001:db8:0:0::/64");
+    expect(addressOf("::1")).toBe("0:0:0:0::/64");
+    expect(addressOf("::ffff:192.0.2.1")).toBe("192.0.2.1");
+    const publicCalls = fakeLimiter(1);
+    const pub = (ip: string) => edgeRefusal({ publicCalls }, { method: "GET", route: "/v1/stats", need: "public", tenantId: null, ip });
+    expect(await pub("2001:db8:aa:bb::1")).toBeNull();
+    expect(await pub("2001:db8:aa:bb:ffff:ffff:ffff:ffff")).toMatch(/too many requests from this address/);
+    expect(await pub("2001:db8:aa:bc::1")).toBeNull();
   });
 
   it("refuses nothing when unbound, and lets a request through when the binding itself fails", async () => {
@@ -288,6 +317,37 @@ describe("the daily counters (GET /v1/stats)", () => {
     c.close();
   });
 
+  it("write no row per request: an isolate's counts go in one batch at most every ten seconds, or at once for an approval", async () => {
+    const raw = sqliteSql(":memory:");
+    await raw.exec(EDGE_SCHEMA);
+    let batches = 0;
+    const sql: Sql = { ...raw, batch: (s) => { batches++; return raw.batch(s); } };
+    const db = {};
+    const t0 = new Date("2026-11-12T10:00:00Z");
+    const at = (ms: number) => new Date(t0.getTime() + ms);
+    // A page polling every second for nine seconds: one write (the first), the rest kept.
+    for (let i = 0; i < 10; i++) await countUp(sql, ["requests"], at(i * 1000), db);
+    expect(batches).toBe(1);
+    expect((await dailyCounts(sql, t0, 1))[0]!.requests).toBe(1);
+    // An approval is written at once, with what was kept.
+    await countUp(sql, ["requests", "approvals"], at(9500), db);
+    expect(batches).toBe(2);
+    expect((await dailyCounts(sql, t0, 1))[0]).toMatchObject({ requests: 11, approvals: 1 });
+    // Ten seconds on, the next count writes what was kept.
+    await countUp(sql, ["requests"], at(12_000), db);
+    expect(batches).toBe(2);
+    await countUp(sql, ["requests"], at(19_600), db);
+    expect(batches).toBe(3);
+    expect((await dailyCounts(sql, t0, 1))[0]!.requests).toBe(13);
+    // A write that fails keeps its counts for the next one; the daily job writes what is left.
+    const failing: Sql = { ...sql, batch: () => Promise.reject(new Error("D1 away")) };
+    await countUp(failing, ["requests"], at(19_700), db);
+    await expect(writeCounts(failing, at(30_000), db)).rejects.toThrow(/D1 away/);
+    await writeCounts(sql, at(40_000), db);
+    expect((await dailyCounts(sql, t0, 1))[0]!.requests).toBe(14);
+    raw.close();
+  });
+
   it("answer 404 when the counters are off", async () => {
     const c = testCloud();
     expect((await c.req("GET", "/v1/stats")).status).toBe(404);
@@ -296,12 +356,13 @@ describe("the daily counters (GET /v1/stats)", () => {
 });
 
 describe("cloud/wrangler.jsonc", () => {
-  it("binds the two rate limiters, each a namespace of its own, a whole minute, and keeps the one daily Cron Trigger", () => {
+  it("binds the two rate limiters, each a namespace of its own, a whole minute, and has a Cron Trigger for the autopilot", () => {
     const w = cloudWranglerConfig() as unknown as { ratelimits: { name: string; namespace_id: string; simple: { limit: number; period: number } }[]; triggers: { crons: string[] } };
     expect(w.ratelimits).toEqual([
       { name: "ENGINE_LIMITER", namespace_id: "41101", simple: { limit: 20, period: 60 } },
       { name: "PUBLIC_LIMITER", namespace_id: "41102", simple: { limit: 120, period: 60 } },
     ]);
-    expect(w.triggers.crons).toEqual(["17 3 * * *"]);
+    // Daily or hourly: the autopilot runs on the first firing of each UTC day either way.
+    expect(w.triggers.crons.length).toBeGreaterThan(0);
   });
 });

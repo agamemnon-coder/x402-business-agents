@@ -66,7 +66,7 @@ describe("Cloudflare's platform behind the cloud (local workerd): the rate limit
       durable_objects: config.durable_objects, migrations: config.migrations, define: config.define, alias: aliasOf(config), rules: config.rules,
       ratelimits: config.ratelimits,
       d1_databases: [{ binding: config.d1_databases[0]!.binding, database_name: config.d1_databases[0]!.database_name, database_id: "00000000-0000-0000-0000-000000000002" }],
-      r2_buckets: [{ binding: config.r2_buckets[0]!.binding, bucket_name: config.r2_buckets[0]!.bucket_name }],
+      ...(config.r2_buckets?.length ? { r2_buckets: [{ binding: config.r2_buckets[0]!.binding, bucket_name: config.r2_buckets[0]!.bucket_name }] } : {}),
       vars: { RP_ID: RP, ORIGIN, ENGINE_MODE: "test_money", SESSION_SECRET, ADMIN_TOKEN_SHA256 },
     }));
     workerd = await wrangler.unstable_startWorker({ config: join(dir, "wrangler.json"), dev: { persist: false, watch: false, remote: false, inspector: false, testScheduled: true, logLevel: "error", server: { hostname: "127.0.0.1", port: 0 } } });
@@ -97,8 +97,9 @@ describe("Cloudflare's platform behind the cloud (local workerd): the rate limit
   }, 120_000);
 
   it("counts after each answer: the upload, the requests and the rate-limited one are in today's counters", async () => {
+    // The upload was written at once; the rest is kept in the isolate and written with a count ten seconds on.
     let d = await today();
-    for (let i = 0; i < 50 && !(d.uploads === 1 && d.rate_limited >= 1); i++) { await new Promise((r) => setTimeout(r, 100)); d = await today(); }
+    for (let i = 0; i < 200 && !(d.uploads === 1 && d.rate_limited >= 1); i++) { await new Promise((r) => setTimeout(r, 100)); d = await today(); }
     expect(d).toMatchObject({ uploads: 1, rate_limited: 1, approvals: 0 });
     expect(d.requests).toBeGreaterThanOrEqual(23);
   }, 30_000);

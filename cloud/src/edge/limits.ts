@@ -7,6 +7,10 @@
 // here refuses anything. The binding's counts are approximate and per Cloudflare location (its docs say so): a guard
 // against a script or a crowd, not an exact quota. A binding that throws lets the request through (logged): the D1
 // limit still holds.
+//
+// An address is never handed over as it is: an IPv6 address is cut to its /64 (one host can change its last 64 bits at
+// will), an IPv4 address is taken whole, and the key is a SHA-256 of that with the deployment's prefix.
+import { sha256Hex } from "../crypto.js";
 import { logEvent } from "../log.js";
 
 /** The Rate Limiting binding's one method. */
@@ -35,9 +39,21 @@ export async function edgeRefusal(limits: EdgeLimits | undefined, a: { method: s
     if (!(await allowed(limits.engineWrites, `${at}engine:${a.tenantId}`))) return "too many uploads, payments or approvals for this company in a minute; wait a minute";
   }
   if (limits.publicCalls && a.need === "public") {
-    if (!(await allowed(limits.publicCalls, `${at}public:${a.ip}`))) return "too many requests from this address; wait a minute";
+    if (!(await allowed(limits.publicCalls, `${at}public:${await sha256Hex(`${at}${addressOf(a.ip)}`)}`))) return "too many requests from this address; wait a minute";
   }
   return null;
+}
+
+/** The part of an address that names one subscriber: an IPv6 address's first 64 bits, an IPv4 address whole. */
+export function addressOf(ip: string): string {
+  if (!ip.includes(":")) return ip;
+  // An IPv4 address written as IPv6 (::ffff:192.0.2.1) is that IPv4 address.
+  if (ip.includes(".")) return ip.slice(ip.lastIndexOf(":") + 1);
+  const [head = "", tail] = ip.toLowerCase().split("%")[0]!.split("::");
+  const left = head ? head.split(":") : [];
+  const right = tail ? tail.split(":") : [];
+  const groups = tail === undefined ? left : [...left, ...Array<string>(Math.max(0, 8 - left.length - right.length)).fill("0"), ...right];
+  return `${groups.slice(0, 4).map((g) => g.replace(/^0+(?=.)/, "")).join(":")}::/64`;
 }
 
 async function allowed(limiter: RateLimiter, key: string): Promise<boolean> {

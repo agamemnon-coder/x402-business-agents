@@ -28,7 +28,7 @@ function whole(c: EdgeCtx, name: string, min: number, max: number, fallback: num
 export function edgeRoutes<C extends EdgeCtx>(kit: { json(status: number, body: unknown): Response; err(status: number, error: string): Response }): EdgeRoute<C>[] {
   const { json, err } = kit;
   return [
-    { method: "GET", path: "/v1/autopilot", summary: "The company's nightly autopilot (a Cron Trigger, once a day, UTC): each night its engine follows the payments, books and archives, and writes a digest: invoices by status, the overdue ones, payments waiting for an approval, whether both hash chains verify. It never pays. ?limit=<1 to 90> (default 14); { items }, newest first. 404 when the cloud runs no engine.", need: "read", run: async (c) => {
+    { method: "GET", path: "/v1/autopilot", summary: "The company's nightly autopilot (the Cron Trigger's first firing each UTC day): each day its engine follows the payments, books and archives, and writes a digest: invoices by status, the overdue ones, payments waiting for an approval, whether both hash chains verify. It never pays. ?limit=<1 to 90> (default 14); { items }, newest first. 404 when the cloud runs no engine.", need: "read", run: async (c) => {
       if (!c.env.engine) return err(404, "the engine is not switched on for this cloud");
       return json(200, { items: await autopilotRuns(c.env.sql, c.caller!.tenantId, whole(c, "limit", 1, 90, 14)) });
     } },

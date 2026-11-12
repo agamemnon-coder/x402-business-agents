@@ -334,9 +334,11 @@ configuration. Tested with fakes (`test/cloud-edge.test.ts`) and in local worker
 | What | Cloudflare feature | Binding or setting | Off |
 |---|---|---|---|
 | A company's writes to its engine (upload, pay, approve, retry, sync, passkey) are limited to 20 a minute per company; anyone's calls to the public routes to 120 a minute per address. Past it: 429 `rate_limited`. Counted at the edge without a database write, before the route runs; the cloud's own per-key limit in D1 stays behind it. | [Rate Limiting binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/) | `ratelimits`: `ENGINE_LIMITER` (namespace 41101), `PUBLIC_LIMITER` (41102) | remove the binding |
-| The nightly autopilot: once a day (03:17 UTC) every open company that wrote to its engine has its engine synced (payments followed, booked, archived, read model fed) and a digest written: invoices by status, the overdue ones, those due within a week, payments waiting for an approval, whether both hash chains verify. `GET /v1/autopilot`. It never makes or uses an approval. | [Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/) | the existing `triggers.crons` `17 3 * * *`, tables `engine_companies` and `autopilot_runs` (`cloud/migrations/0002_edge.sql`) | var `AUTOPILOT=off` |
-| The cloud's daily counters, written after each answer is sent (`ctx.waitUntil`), read by the public `GET /v1/stats`: no company's id, route parameter or amount. | Workers `waitUntil` and D1 | table `daily_counts` | var `STATS=off` |
+| The nightly autopilot: on the first firing of the Cron Trigger each UTC day (today `17 3 * * *`; an hourly trigger changes nothing), every open company that wrote to its engine has its engine synced (payments followed, booked, archived, read model fed) and a digest written: invoices by status, the overdue ones, those due within a week, payments waiting for an approval, whether both hash chains verify. `GET /v1/autopilot`. It never makes or uses an approval. | [Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/) | the existing `triggers.crons` `17 3 * * *`, tables `engine_companies` and `autopilot_runs` (`cloud/migrations/0002_edge.sql`) | var `AUTOPILOT=off` |
+| The cloud's daily counters, counted after each answer is sent (`ctx.waitUntil`), read by the public `GET /v1/stats`: no company's id, route parameter or amount. No D1 write per request: an isolate keeps its counts in memory and writes them in one batch at most every 10 seconds, at once for an upload, a payment, an approval or an engine refusal. What an isolate counted in its last seconds before Cloudflare ends it is lost: the numbers can be a little low, never high. | Workers `waitUntil` and D1 | table `daily_counts` | var `STATS=off` |
 
+- **The address** behind a public call is never handed over as it is: an IPv6 address is cut to its /64, an IPv4
+  address taken whole, and the limiter's key is a SHA-256 of that.
 - **The rate limits are approximate.** Cloudflare counts per location and lets a burst exceed the limit while counts
   sync; a binding that fails lets the request through (logged as `edge_rate_limit_unavailable`). They are a guard
   against a script or a crowd, not a quota; WAF rules in front of the Worker are still on the list below. The keys
@@ -353,7 +355,7 @@ configuration. Tested with fakes (`test/cloud-edge.test.ts`) and in local worker
   ```
   applies `0002_edge.sql` (the Worker also creates the three tables on first use if the migration was not run). Then
   deploy as before. To check: `GET /v1/stats` answers today's counters, and a company's first digest is at
-  `GET /v1/autopilot` after the next 03:17 UTC.
+  `GET /v1/autopilot` after the Cron Trigger's next firing.
 
 ## Backups and restore
 

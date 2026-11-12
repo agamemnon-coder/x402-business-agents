@@ -9,7 +9,7 @@ import { d1Sql, r2Blobs, type D1Like, type R2Like } from "./store.js";
 import { ENGINE_MODE, engineStubs, type EngineNamespace } from "./engine/client.js";
 import type { RateLimiter } from "./edge/limits.js";
 import { runAutopilot } from "./edge/autopilot.js";
-import { countsOf, countUp, pruneCounts } from "./edge/stats.js";
+import { countsOf, countUp, pruneCounts, writeCounts } from "./edge/stats.js";
 import { logEvent } from "./log.js";
 
 export interface Bindings {
@@ -55,7 +55,7 @@ export default {
     const res = await handle(req, env);
     // The day's counters, after the answer is sent (cloud/src/edge/stats.ts); a counter that fails never fails the request.
     if (env.edge?.stats && ctx) {
-      const counted = countsOf(req, res).then((m) => countUp(env.sql, m, new Date()))
+      const counted = countsOf(req, res).then((m) => countUp(env.sql, m, new Date(), b.DB))
         .catch((e: unknown) => logEvent("warn", "stats_not_counted", { error: e instanceof Error ? e.message.slice(0, 200) : "unknown" }));
       ctx.waitUntil(counted);
     }
@@ -74,6 +74,9 @@ export default {
     await sweepExports(env.sql, env.blobs, new Date());
     // The nightly autopilot (cloud/src/edge/autopilot.ts): each company's engine synced and its digest written, once a day.
     if (env.engine && b.AUTOPILOT !== "off") await runAutopilot(env.sql, env.engine, { now: new Date() });
-    if (env.edge?.stats) await pruneCounts(env.sql, new Date());
+    if (env.edge?.stats) {
+      await writeCounts(env.sql, new Date(), b.DB);
+      await pruneCounts(env.sql, new Date());
+    }
   },
 };

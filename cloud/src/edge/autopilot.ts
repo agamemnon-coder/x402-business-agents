@@ -1,6 +1,7 @@
-// The nightly autopilot: the Worker's Cron Trigger (cloud/wrangler.jsonc triggers.crons, the daily job in
-// cloud/src/worker.ts) runs each company's engine once a day (UTC) without anyone asking. For every company that used
-// its engine it follows the payments, books, archives and feeds the read model again (the engine's own sync, safe to
+// The nightly autopilot: the Worker's Cron Trigger (cloud/wrangler.jsonc triggers.crons, the scheduled job in
+// cloud/src/worker.ts) runs each company's engine once a day (UTC), on the trigger's first firing that day (a daily or
+// an hourly trigger alike), without anyone asking. For every open company that used its engine it follows the
+// payments, books, archives and feeds the read model again (the engine's own sync, safe to
 // repeat), then writes the day's digest: the invoices by status, the overdue ones (unpaid past their due date), the
 // payments waiting for an approval, and whether the audit and ledger hash chains still verify. GET /v1/autopilot shows
 // the company its digests.
@@ -17,7 +18,7 @@
 import type { EngineApi, EngineStatus, InvoiceView, Settled } from "../engine/api.js";
 import { logEvent, redact } from "../log.js";
 import type { Sql } from "../store.js";
-import { ensureEdgeSchema } from "./schema.js";
+import { edgeSql } from "./schema.js";
 
 /** An invoice past its due date and not paid (nor rejected). */
 export interface OverdueLine { id: string; vendor: string; invoice_no: string; currency: string; total: string; due_date: string; days_overdue: number; status: string }
@@ -75,7 +76,7 @@ export function digestOf(day: string, invoices: InvoiceView[], settled: Settled,
 
 /** A company used its engine (a write to /v1/engine): the autopilot runs for it from tonight. Safe to repeat. */
 export async function noteEngineCompany(sql: Sql, tenantId: string, now: Date): Promise<void> {
-  await ensureEdgeSchema(sql);
+  sql = edgeSql(sql);
   await sql.run("INSERT OR IGNORE INTO engine_companies (tenant_id, first_at) VALUES (?, ?)", [tenantId, now.toISOString()]);
 }
 
@@ -95,7 +96,7 @@ export interface AutopilotReport { day: string; done: string[]; failed: string[]
 
 /** Tonight's runs: every open company that used its engine and has no finished run today. */
 export async function runAutopilot(sql: Sql, engine: (tenantId: string) => EngineApi, o: AutopilotOptions): Promise<AutopilotReport> {
-  await ensureEdgeSchema(sql);
+  sql = edgeSql(sql);
   const day = dayOf(o.now);
   const staleBefore = new Date(o.now.getTime() - (o.staleAfterMs ?? 30 * 60_000)).toISOString();
   // A purged company keeps nothing here either; old digests go.
@@ -150,7 +151,7 @@ export interface AutopilotRun { day: string; status: string; started_at: string;
 
 /** The company's nightly runs, newest first. */
 export async function autopilotRuns(sql: Sql, tenantId: string, limit: number): Promise<AutopilotRun[]> {
-  await ensureEdgeSchema(sql);
+  sql = edgeSql(sql);
   const rows = await sql.all<{ day: string; status: string; started_at: string; finished_at: string | null; digest_json: string | null; error: string | null }>(
     "SELECT day, status, started_at, finished_at, digest_json, error FROM autopilot_runs WHERE tenant_id = ? ORDER BY day DESC LIMIT ?", [tenantId, limit]);
   return rows.map((r) => ({ day: r.day, status: r.status, started_at: r.started_at, finished_at: r.finished_at, digest: r.digest_json ? JSON.parse(r.digest_json) as Digest : null, error: r.error }));
