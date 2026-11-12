@@ -6,8 +6,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CHECK_PATHS } from "../src/cli/judge.js";
-import { PRICING, euro } from "../src/config/pricing.js";
-import { PRICING_LEAD, TEST_VALUES, feeRun, pricingPage } from "../src/redesign/pricing.js";
+import { FEE_BPS_CAP } from "../src/airwallex/platform.js";
+import { PRICING, euro, percentOfBps } from "../src/config/pricing.js";
+import { FEE_FOLD, PRICING_LEAD, TEST_VALUES, e2eFeeRun, feeLine, feeRun, pricingPage } from "../src/redesign/pricing.js";
 import { AUDIT_COMMAND, AUDIT_LOG, NOT_YET_LINE, NOT_YET_SOURCES, docLine, publishedAudit, redTeamRound, securityCards, securityPage, REDTEAM_NIGHT, REDTEAM_NIGHT_RECORD, REDTEAM_OCT31, REDTEAM_REPORT } from "../src/redesign/security.js";
 import { buildPages, flowLinks } from "../src/relay/assets.js";
 import { PRICING_CSP, PRICING_PAGE, SECURITY_CSP, SECURITY_PAGE } from "../src/servers/dashboard.js";
@@ -20,6 +21,8 @@ const json = <T>(p: string) => JSON.parse(read(p)) as T;
 const decode = (s: string) => s.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
 /** The page's <main> as a person reads it with every fold open: tags out, entities decoded, white space single. */
 const mainText = (html: string) => decode((/<main[\s\S]*<\/main>/.exec(html)?.[0] ?? "").replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+/** A piece of a page as it is in sight: a fold counts as its summary only. */
+const inSight = (el: string) => mainText(`<main>${el.replace(/<details\b[^>]*>\s*<summary[^>]*>([\s\S]*?)<\/summary>[\s\S]*?<\/details>/g, " $1 ")}</main>`);
 /** One card of a page, by its id. */
 const card = (html: string, id: string) => new RegExp(`<article class="pc card[^"]*" id="${id}">[\\s\\S]*?</article>`).exec(html)?.[0] ?? "";
 const NUM = /\d+(?:[.,]\d+)*/g;
@@ -35,7 +38,9 @@ describe("/pricing: pilot pricing", () => {
   it("keeps the prices in one module, as decided on 12 November: Starter 49 a month with 100 invoices and 0.25 per extra invoice, Business from 249 a month", () => {
     expect(PRICING.starter).toEqual({ name: "Starter", monthlyCents: 4900, invoicesIncluded: 100, extraInvoiceCents: 25 });
     expect(PRICING.business).toEqual({ name: "Business", fromMonthlyCents: 24900, includes: ["Several companies", "Four-eyes approval", "Bookkeeping connectors"] });
-    expect(PRICING.platformFee).toEqual({ name: "Platform fee", runRecord: "docs/runs/2026-11-10-connected-accounts-sandbox.md" });
+    // The fee per payout has no price here: the two run records, the code's own ceiling and the test policy's rate
+    // (test/saas-additions.test.ts checks how they fit).
+    expect(PRICING.platformFee).toEqual({ name: "Platform fee", runRecord: "docs/runs/2026-11-10-connected-accounts-sandbox.md", e2eRecord: "docs/runs/2026-11-10-platform-e2e.md", capBps: FEE_BPS_CAP, testPolicyBps: 50 });
     expect([euro(4900), euro(25), euro(24900), euro(120000), euro(5)]).toEqual(["€49", "€0.25", "€249", "€1,200", "€0.05"]);
     expect(() => euro(0.5)).toThrow();
   });
@@ -49,7 +54,7 @@ describe("/pricing: pilot pricing", () => {
   });
 
   it("shows three cards, each price formatted from the module", () => {
-    expect([...html.matchAll(/<article class="pc card" id="([a-z-]+)">/g)].map((m) => m[1])).toEqual(["starter", "business", "platform-fee"]);
+    expect([...html.matchAll(/<article class="pc card[^"]*" id="([a-z-]+)">/g)].map((m) => m[1])).toEqual(["starter", "business", "platform-fee"]);
     const starter = mainText(`<main>${card(html, "starter")}</main>`), business = mainText(`<main>${card(html, "business")}</main>`);
     expect(starter).toBe(`Starter ${euro(PRICING.starter.monthlyCents)} a month ${PRICING.starter.invoicesIncluded} invoices included ${euro(PRICING.starter.extraInvoiceCents)} per extra invoice`);
     expect(business).toBe(`Business from ${euro(PRICING.business.fromMonthlyCents)} a month ${PRICING.business.includes.join(" ")}`);
@@ -65,8 +70,9 @@ describe("/pricing: pilot pricing", () => {
     expect(record).toMatch(/\*\*`PAID`\*\*/);
     expect(record).toMatch(/^# Connected accounts, sandbox runs \(10 November 2026\)/);
     expect(feeRun()).toEqual({ day: "10 November", payout, fee, record: PRICING.platformFee.runRecord });
-    const fees = mainText(`<main>${card(html, "platform-fee")}</main>`);
-    expect(fees).toBe(`Platform fee A small fee per payout Collected through Airwallex connected accounts Already ran in the Airwallex sandbox (10 November) In that run: a ${fee} test fee on a ${payout} test payout. ${TEST_VALUES} The run record ↗`);
+    // In sight: the card as before, and one folded line, "How the fee is set" (12 Nov: counted as its summary only).
+    const fees = inSight(card(html, "platform-fee"));
+    expect(fees).toBe(`Platform fee A small fee per payout Collected through Airwallex connected accounts Already ran in the Airwallex sandbox (10 November) In that run: a ${fee} test fee on a ${payout} test payout. ${TEST_VALUES} The run record ↗ ${FEE_FOLD}`);
     expect(TEST_VALUES).toBe("Test values, not prices");
     expect(card(html, "platform-fee")).toContain(`<a class="pf" href="${REPO}${PRICING.platformFee.runRecord}" target="_blank" rel="noopener">The run record ↗</a>`);
     // A record that no longer says the payout and its fee is an error, never a guess.
@@ -79,18 +85,30 @@ describe("/pricing: pilot pricing", () => {
     expect(text).toMatch(/Not yet: no real-money go-live\. Everything so far ran in the sandbox, with test money\.$/);
   });
 
+  it("folds one line into the fee's card: how the fee is set, and how the two runs' fixed test fees fit the percentage", () => {
+    // One fold on the page, in the fee's card, closed; its words are feeLine's, and it links the second record.
+    expect((html.match(/<details class="fold"/g) ?? []).length).toBe(1);
+    expect(html).not.toMatch(/<details[^>]* open/);
+    const fold = /<details class="fold"><summary>([^<]+)<\/summary><ul class="pl">([\s\S]*?)<\/ul><\/details>/.exec(card(html, "platform-fee"))!;
+    expect(fold[1]).toBe(FEE_FOLD);
+    expect(FEE_FOLD).toBe("How the fee is set");
+    expect(mainText(`<main>${fold[2]}</main>`)).toBe(`${feeLine()} The end-to-end run record ↗`);
+    expect(fold[2]).toContain(`<a class="pf" href="${REPO}${PRICING.platformFee.e2eRecord}" target="_blank" rel="noopener">The end-to-end run record ↗</a>`);
+  });
+
   it("shows no Claude cost per invoice: no eval or run record in the repository holds a measured one (12 Nov)", () => {
     expect(html).not.toMatch(/costs us in Claude calls/i);
-    expect(html).not.toMatch(/<details class="fold"/);
     expect(text).not.toMatch(/Claude|USD|\$/);
     // What the records do hold: the end-to-end run counted its Claude calls, not their cost.
     expect(read("docs/runs/2026-11-10-platform-e2e.md")).toMatch(/\| Claude \| \d+ \| \d+ \| [^|]*classify, read and review per invoice/);
   });
 
   it("shows no number that is not in the pricing module or the run record", () => {
-    const run = feeRun();
+    const run = feeRun(), second = e2eFeeRun();
     const allowed = new Set([euro(PRICING.starter.monthlyCents), euro(PRICING.starter.extraInvoiceCents), euro(PRICING.business.fromMonthlyCents)].map((e) => e.slice(1))
-      .concat(String(PRICING.starter.invoicesIncluded), run.day.split(" ")[0]!, run.fee.replace("EUR ", ""), run.payout.replace("EUR ", "")));
+      .concat(String(PRICING.starter.invoicesIncluded), run.day.split(" ")[0]!, run.fee.replace("EUR ", ""), run.payout.replace("EUR ", ""))
+      // In the fold: the second run's fee and payout, the code's ceiling and the test policy's rate, as percentages.
+      .concat(second.fee.replace("EUR ", ""), second.payout.replace("EUR ", ""), percentOfBps(PRICING.platformFee.capBps).slice(0, -1), percentOfBps(PRICING.platformFee.testPolicyBps).slice(0, -1)));
     expect(numbers(text).filter((n) => !allowed.has(n))).toEqual([]);
     expect(numbers(text).sort()).toEqual([...allowed].sort());
     // And a typed-in price would be caught.
@@ -125,14 +143,21 @@ describe("/security: security and trust", () => {
       expect({ id: c.id, words: line.split(" ").length <= 26 }).toEqual({ id: c.id, words: true });
       expect({ id: c.id, links: (/<div class="links">([\s\S]*?)<\/div>/.exec(el)?.[1]?.match(/<a class="pf" href="[^"]+"/g) ?? []).length >= 1 }).toEqual({ id: c.id, links: true });
       expect({ id: c.id, folds: (el.match(/<details class="fold"><summary>[^<]+<\/summary><ul class="pl">(?:<li>[\s\S]*?<\/li>)+<\/ul><\/details>/g) ?? []).length }).toEqual({ id: c.id, folds: 1 });
+      // One card carries a second fold, with an anchor of its own: "If the approver is unavailable", under the
+      // signature (the panel's review, 12 Nov; test/saas-additions.test.ts reads its lines). No other card has one.
+      expect({ id: c.id, more: (el.match(/<details class="fold" id="[a-z]+">/g) ?? []) }).toEqual({ id: c.id, more: c.id === "s-sign" ? ['<details class="fold" id="unavailable">'] : [] });
+      expect({ id: c.id, folds: (el.match(/<details\b/g) ?? []).length }).toEqual({ id: c.id, folds: c.id === "s-sign" ? 2 : 1 });
     }
+    expect(cards.filter((c) => c.more).map((c) => [c.id, c.more!.id, c.more!.summary])).toEqual([["s-sign", "unavailable", "If the approver is unavailable"]]);
+    // Nothing is open until the reader opens it.
+    expect(html).not.toMatch(/<details[^>]* open/);
     expect((html.match(/<h1\b/g) ?? []).length).toBe(1);
     expect(html).toContain("<h1>Security and trust</h1>");
     expect(text.startsWith("Sandbox and testnet only Security and trust")).toBe(true);
   });
 
   it("signatures: the exact terms, signed with a passkey, one changed cent refused; the proof is the Try tab", () => {
-    expect(inSight("s-sign")).toBe("Signed terms The CFO signs the exact terms with a passkey: change one cent and the signature is refused. Try it yourself How");
+    expect(inSight("s-sign")).toBe("Signed terms The CFO signs the exact terms with a passkey: change one cent and the signature is refused. Try it yourself How If the approver is unavailable");
     expect(card(html, "s-sign")).toContain('<a class="pf" href="try" data-next="try">Try it yourself</a>');
     // In a bundle that carries /try/sign the link leads there, as the Try tab does; in one without it, to /try.
     expect(flowLinks(html, true)).toContain('<a class="pf" href="try/sign" data-next="try">Try it yourself</a>');

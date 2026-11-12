@@ -44,7 +44,7 @@ dollar, "test USD" on the pages.
   declined card, money paid in) reaching the agents: the autonomous dry runs of the 1 November soak (D22,
   [soak report](runs/2026-11-01-soak.md)).
 - **Four eyes, an emergency stop, velocity limits, MFA** (behind its flag), each with tests. Four eyes ran in the main
-  run (P-0002); the emergency stop is tested against stand-ins, not yet run live.
+  run (P-0002; the second signature from a test passkey, not a second person); the emergency stop is tested against stand-ins, not yet run live.
 
 ## Promised and not done yet
 

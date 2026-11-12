@@ -60,7 +60,7 @@ Who is who:
 |---|---|---|---|
 | The person who proposes cannot approve | Purser | Agents propose; only the CFO's passkey approves; an agent has no way to sign. With four eyes, two different people sign and the proposer never counts. | `src/policy/approvals.ts`, `test/approvals.test.ts` |
 | Changes to the rules are controlled too | Purser | A change to the CFO policy is itself a proposal approved with Face ID; from the phone, limits can only be tightened. | `src/executors/policyChange.ts`, `docs/cfo-policy.md` |
-| Two people for the account's own money, on chain | Metal enforces | A Metal account with two owners, the CFO and the controller, and a threshold of two: binding or revoking a mandate, or paying from the account itself, needs both signatures (live on testnet in a test world, 30 October; Northwind's recorded account has one owner). | `docs/runs/2026-10-30-four-eyes.md` |
+| Two people for the account's own money, on chain | Metal enforces | A Metal account with two owners, the CFO and the controller, and a threshold of two: binding or revoking a mandate, or paying from the account itself, needs both signatures (live on testnet in a test world, 30 October, with two test keys on one machine, not two people; Northwind's recorded account has one owner). | `docs/runs/2026-10-30-four-eyes.md` |
 
 ## 7. Record keeping and audit
 

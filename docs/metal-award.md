@@ -217,7 +217,7 @@ reference. Purser is software, not a payment service provider, but it keeps the 
 Each was first checked against Metal's docs, then run live on testnet in a separate test world (test keys, test
 money), not in Northwind's recorded run. Risks, controls and tests: [controls-matrix.md](controls-matrix.md).
 
-**Four eyes on chain** ([run log](runs/2026-10-30-four-eyes.md)).
+**Four eyes on chain** ([run log](runs/2026-10-30-four-eyes.md); two test keys on one machine, not two people).
 - **The account.** A MetalAccount with two owners, the CFO's key and the controller's key, threshold 2 (account
   [`0x15Eb7c1322952E0C549b7Da0b57d35171518A41A`](https://testnet.metalntwx.com/address/0x15Eb7c1322952E0C549b7Da0b57d35171518A41A)).
 - **Binding.** Binding the agent's mandate with the CFO alone was refused by the account; with both, it was bound:

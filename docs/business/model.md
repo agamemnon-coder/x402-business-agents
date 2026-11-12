@@ -32,15 +32,33 @@ not a finding about where demand is.
   on Airwallex's own rails is easiest to explain to Airwallex's customers. It also makes us dependent on Airwallex
   (see the risks below).
 
-## Intended pricing (hypothesis)
+## Pilot pricing (hypothesis)
 
-**€49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions.** This is our assumption; no customer has seen a price.
+**Pilot pricing: Starter €49 a month (100 invoices, then €0.25 each); Business from €249 a month; a small fee per payout.**
+These are pilot prices for design partners, set on 12 November 2026. Nothing is on sale yet and no customer has seen a
+price. Business adds several companies, four-eyes approval and bookkeeping connectors.
 
-Why this shape (our reasoning): a CFO already pays per card user for spend software, so a base fee with a number of
-agents included reads the same way. Claude's cost is per decision, so the price includes a number of decisions and
-charges for more; without that, a busy agent would cost more than it pays ([unit economics](#unit-economics-hypothesis)
-below). The comparables below are what spend-management tools charge for a **person**
-with a card, not for an agent, so they are a reference point only.
+It is one model, said in the same sentence in the [README](../../README.md#why-this-is-a-company) and in
+[after-the-kit.md](../after-the-kit.md); [/pricing](https://kit11.max-31b.workers.dev/pricing) shows the same figures.
+Every figure comes from `src/config/pricing.ts`, and `test/saas-additions.test.ts` keeps the four places in step.
+
+Why this shape (our reasoning): the unit a finance team counts is the supplier invoice, and Claude's cost is per
+invoice read, so the monthly plan includes a number of invoices and charges for more
+([unit economics](#unit-economics-hypothesis) below). The monthly price does not grow with the money paid out; the fee
+per payout does, and it is collected with the payout itself, so there is no second bill.
+
+**The fee per payout.** The fee is a percentage of each payout: the CFO signs the rate in the policy, and code keeps it at or under 1.00%, rounds it to the cent and sends it to Airwallex as a fixed amount. The two sandbox runs used test values, not prices: EUR 0.05 on EUR 5.00 (1.00%, a fixed test fee set for that run) and EUR 0.02 on EUR 4.84 (the test policy's 0.50%, rounded to the cent).
+No rate is set as a price: it is what a pilot would test. The two runs:
+[connected accounts](../runs/2026-11-10-connected-accounts-sandbox.md) and
+[end to end](../runs/2026-11-10-platform-e2e.md). The ceiling is `FEE_BPS_CAP` in `src/airwallex/platform.ts`; the
+rate is the policy rule `platform.fee_bps` in `src/policy/rules.ts`.
+
+This replaces the price of 6 November 2026, which was per agent with Claude decisions included. Two prices stood side
+by side (a monthly price per agent and an unsettled fee per payment), so there is one model now. What the earlier
+price's own table gave is said under the [unit economics](#unit-economics-hypothesis) below.
+
+The comparables below are what spend-management tools charge for a **person** with a card, not for an invoice, so
+they are a reference point only.
 
 **Comparables (public pricing pages, read 6 November 2026):**
 
@@ -49,11 +67,12 @@ with a card, not for an agent, so they are a reference point only.
 | Airwallex (EU plans) | Explore €0 or €19 a month; Grow €49 a month. Spend users: 5 free, then €6 per additional employee card user a month (Explore) or €12 per additional active spend user a month (Grow). Prices in EUR, VAT exclusive | [P1] |
 | Pleo (UK plans, small businesses) | Start £8, Build £14, Optimise £18 per user a month (Build and Optimise billed yearly, 3 users minimum) | [P2] |
 
-Our base price, with 5 agents included, sits inside the band these tools charge for one human card user. That anchor is our assumption, not a finding.
+Starter's monthly price is what Airwallex charges for its own Grow plan [P1]. That anchor is our assumption, not a
+finding.
 
-What could make us change it: a per-agent fee nudges customers to put several jobs behind one agent and one card,
-which undoes the control we sell (one agent, one card, one set of limits); and the price does not grow with the money
-at risk. A fee on governed spend would answer both, but we found no public spend-management price of that kind.
+What could make us change it: we do not know how many invoices a small company would send through Purser, or whether
+a finance team accepts a fee per payout next to a monthly plan. Both are what a pilot would test. We found no public
+spend-management price that is a fee on the money paid out.
 
 **Compared with after-the-fact control (qualitative only).** Expense review after the fact finds a bad payment once
 the money has gone; Purser's limits and approvals act before it leaves. We have no sourced figure for what after-the-fact
@@ -63,12 +82,7 @@ agents, in test money: [unit-economics.md](../unit-economics.md).
 <!-- unit-economics -->
 ## Unit economics (hypothesis)
 
-**A hypothesis, not a result.** What a company's agents would cost Purser a month, against the intended price above.
-The measured part comes from the main run of 3 November 2026; everything else is a price we read, with its page and
-date, or an assumption stated below (approved by Max on 6 November 2026, with the price changed to include
-decisions). The numbers are computed by `src/business/unitEconomics.ts`; `test/unit-economics-hypothesis.test.ts`
-checks that every number in this section is what it computes from the record and the assumptions, and that none is
-unsourced.
+**A hypothesis, not a result.** What a company's supplier invoices would cost Purser a month, against the pilot pricing above. The measured part comes from the main run of 3 November 2026 and the end-to-end sandbox run of 10 November 2026; everything else is a price we read, with its page and date, or an assumption stated below. Hosting, the currency and the Opus line are as Max approved them on 6 November 2026; the usage in invoices and the Claude cost per invoice were restated for the pilot pricing. This section is written by `src/business/unitEconomics.ts` (`sectionMarkdown`); `test/unit-economics-hypothesis.test.ts` checks that this page holds exactly what it computes from the records and the assumptions, and that no number is unsourced.
 
 ### Measured in the main run
 
@@ -79,66 +93,55 @@ unsourced.
 | Per decision (USD) | 0.0008 | 0.0125 | 0.0287 | 0.0132 |
 | Every Claude call of the run, documents and reviews included (USD) |  |  |  | 0.3761 |
 | Per decision, everything included (USD) |  |  |  | 0.0157 |
+| Claude calls in the run |  |  |  | 58 |
+| Per Claude call, everything included (USD) |  |  |  | 0.0065 |
 
-**Claude per decision: USD 0.0132 for the agents' own calls, USD 0.0157 for every Claude call of the run.** The
-agents' own calls (`agent_stats`) come to USD 0.3170 for 24 decisions, the figure in [claims.md](../claims.md). The
-run's whole Claude bill (`snapshot.claude`) is USD 0.3761: it also sorted and read the documents and ran the Opus
-reviews for the CFO, USD 0.0592 or 16% of the bill, which 0.0132 leaves out. This model uses the whole bill.
+**Claude per decision: USD 0.0132 for the agents' own calls, USD 0.0157 for every Claude call of the run.** The agents' own calls (`agent_stats`) come to USD 0.3170 for 24 decisions, the figure in [claims.md](../claims.md). The run's whole Claude bill (`snapshot.claude`) is USD 0.3761 for 58 calls: it also sorted and read the documents and ran the Opus reviews for the CFO, USD 0.0592 or 16% of the bill. This model uses the whole bill: USD 0.0065 a call.
 
-**In the main run, Claude made 24 decisions; of the 88 payments, 82 were routine sales and purchases that code handled inside the limits.** The 24 decisions are not one per payment: they are the agents' checks, plans, proposals, a dispute
-ruling and timing advice, several of which moved no money. The 88 payments are 86 on Metal (41 sales, 41 supplier
-purchases, 3 refunds, 1 sweep), 1 card charge and 1 SWIFT transfer [R1].
+**In the main run, Claude made 24 decisions; of the 88 payments, 82 were routine sales and purchases that code handled inside the limits.** The 24 decisions are not one per payment: they are the agents' checks, plans, proposals, a dispute ruling and timing advice, several of which moved no money. The 88 payments are 86 on Metal (41 sales, 41 supplier purchases, 3 refunds, 1 sweep), 1 card charge and 1 SWIFT transfer [R1].
+
+**Claude per invoice, an estimate: USD 0.0276. The end-to-end sandbox run made 17 Claude calls for 4 invoices, and a Claude call in the main run cost USD 0.0065 on average at list prices.** That is 4.25 calls an invoice [R3] at the main run's cost per call [R1]. No record holds a measured Claude cost per invoice, so this is an assumption (A3), not a measurement.
 
 ### Assumptions (hypothesis)
 
 | # | Assumption (hypothesis) | Value | Why |
 | --- | --- | --- | --- |
-| A1 | Price | €49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions. VAT excluded; a company of 5 agents (no extra agents); extra decisions billed per started block of 100 | The intended pricing above (hypothesis); no customer has seen it. Claude's cost is per decision, so the price includes decisions and charges for more. |
-| A2 | Usage | 100 (low), 300 (mid), 1,000 (high) decisions per agent a month | Not measured: no company has used Purser for a month. An agent calls Claude for an exception (a price change, a dispute, a payment beyond its limits), not for each routine payment, which code handles alone inside the limits. Low is a quiet agent, high a busy one; the range is the one Max proposed. |
-| A3 | Claude per decision | the main run's whole Claude bill divided by its decisions [R1], at list prices [U1], on the run's model mix | The only measured figure. It counts every Claude call of the run, including sorting and reading documents and the Opus reviews for the CFO, so it is above the agents' own cost per decision. The run was a scenario full of exceptions; a real month may cost more or less per decision. No batch or cache discount beyond what the run used. |
+| A1 | Price | Starter €49 a month (100 invoices, then €0.25 each); Business from €249 a month; a small fee per payout. VAT excluded; the table prices one company on Starter; no revenue from Business or from the fee per payout is counted | The pilot pricing above (hypothesis); no customer has seen it. The unit a finance team counts is the supplier invoice, and Claude's cost is per invoice read, so the plan includes invoices and charges for more. |
+| A2 | Usage | 50 (low), 100 (mid), 500 (high) supplier invoices per company a month | Not measured: no company has used Purser for a month. Mid is exactly what Starter includes, low is half of it and high is five times it. Our own range, set with the pilot pricing; not a finding. |
+| A3 | Claude per invoice | the end-to-end sandbox run's Claude calls per invoice [R3] times the main run's cost per Claude call [R1], at list prices [U1] | An estimate, not a measurement: the end-to-end run counted its Claude calls (classify, read and review per invoice), not their cost, and the main run measured what a call cost on its own mix of models, in an agents' scenario. A real month may cost more or less per invoice. No batch or cache discount beyond what the main run used. |
 | A4 | Opus for every agent (one line, not in the table) | the run's Claude calls repriced at Opus list prices [R1, U1]: the agents' own calls from their recorded tokens; the other calls by the price ratio, Sonnet to Opus 2×, Haiku to Opus at most 40× (an upper bound) | Shows what routing each task to a smaller model is worth. It assumes Opus would use the same tokens for the same work, which a real run would not exactly do. |
 | A5 | Hosting | one Cloudflare Workers Paid account per company, USD 5 a month [U2]; usage inside the plan's included amounts; a month of 30 days | An upper bound for a company's own Worker and Durable Object: one account could serve many companies. The check below shows one Durable Object awake all month, and the high scenario's requests, fit inside what the plan includes. |
 | A6 | The runner | runs on Cloudflare too | Today the runner (agents, ledger, keys) is a separate process and the relay is on Cloudflare ([architecture](../architecture.md#the-shape-today)). We assume production moves the runner onto Workers and a Durable Object per company; compute elsewhere is not priced. |
-| A7 | Currency | everything in EUR at EUR 1 = USD 1.1165 [U3] | Claude and Cloudflare charge in USD and the price is in EUR. One rate, the ECB's reference rate of the day we wrote this. |
-| A8 | Not in the model | Airwallex platform or partner fees, Metal fees on mainnet, the cost of collecting our own invoices, people | Airwallex prices platform use on request [P1], so the cost is unknown; Purser has run on Metal testnet only. Gross margin here is the price minus Claude and hosting, so the real margin is lower. |
+| A7 | Currency | everything in EUR at EUR 1 = USD 1.1165 [U3] | Claude and Cloudflare charge in USD and the price is in EUR. One rate, the ECB's reference rate of the day we first wrote this. |
+| A8 | Not in the model | the platform costs: Airwallex platform or partner fees, Metal fees on mainnet, the cost of collecting our own invoices, support and people. On the revenue side: the fee per payout, which has no rate set | Airwallex prices platform use on request [P1], so the cost is unknown; Purser has run on Metal testnet only. Gross margin here is the price minus Claude and hosting, so the real margin is lower. |
 
-**Hosting check (A5), at Cloudflare's prices [U2].** The Workers Paid plan costs USD 5 a month per account and includes
-10,000,000 Worker requests, 1,000,000 Durable Object requests and 400,000 GB-s of Durable Object duration a month. A
-Durable Object is billed for 128 MB; awake all 30 days, one uses 324,000 GB-s, inside what is included. At high usage
-(5 agents × 1,000 decisions), the included requests allow 2,000 Worker requests and 200 Durable Object requests per
-decision. Hosting is USD 5.00, or €4.48, per company a month.
+**Hosting check (A5), at Cloudflare's prices [U2].** The Workers Paid plan costs USD 5 a month per account and includes 10,000,000 Worker requests, 1,000,000 Durable Object requests and 400,000 GB-s of Durable Object duration a month. A Durable Object is billed for 128 MB; awake all 30 days, one uses 324,000 GB-s, inside what is included. At high usage (500 invoices a month), the included requests allow 20,000 Worker requests and 2,000 Durable Object requests per invoice. Hosting is USD 5.00, or €4.48, per company a month.
 
-### Outcome: a company of 5 agents a month (hypothesis)
+### Outcome: one company on Starter a month (hypothesis)
 
-In EUR only, at EUR 1 = USD 1.1165, the ECB's reference rate of 6 November 2026 [U3]. Gross margin = (price − Claude −
-hosting) ÷ price. Price per company = €49, plus €3 for each started 100 decisions above 1,500 (at high usage, 35 of
-them).
+In EUR only, at EUR 1 = USD 1.1165, the ECB's reference rate of 6 November 2026 [U3]. Gross margin = (price − Claude − hosting) ÷ price. Price per company = €49, plus €0.25 for each invoice above 100 (at high usage, 400 of them).
 
-| Usage (A2) | Decisions per agent a month | Decisions per company a month | Price per company | Claude | Hosting | Cost per company | Gross margin | Per agent: price · cost |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Low | 100 | 500 | €49.00 | €7.02 | €4.48 | **€11.50** | **77%** | €9.80 · €2.30 |
-| Mid | 300 | 1,500 | €49.00 | €21.06 | €4.48 | **€25.53** | **48%** | €9.80 · €5.11 |
-| High | 1,000 | 5,000 | €154.00 | €70.18 | €4.48 | **€74.66** | **52%** | €30.80 · €14.93 |
+| Usage (A2) | Invoices per company a month | Price per company | Claude | Hosting | Cost per company | Gross margin | Per invoice: price · cost |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Low | 50 | €49.00 | €1.23 | €4.48 | **€5.71** | **88%** | €0.98 · €0.11 |
+| Mid | 100 | €49.00 | €2.47 | €4.48 | **€6.95** | **86%** | €0.49 · €0.07 |
+| High | 500 | €149.00 | €12.34 | €4.48 | **€16.82** | **89%** | €0.30 · €0.03 |
 
 If every agent ran on Opus, Claude costs would be about 2.1× higher; Purser gives each agent the smallest model that passed its evals.
 
-**Gross margin per company (hypothesis): 48% to 77%** across low, mid and high usage. It is lowest at exactly 1,500
-decisions a company, the most the base price includes; above that, each 100 extra decisions earn €3.00 and cost €1.40
-in Claude on the run's mix.
+**Gross margin per company (hypothesis): 86% to 89%** across low, mid and high usage, before the platform costs (A8). It is lowest at exactly 100 invoices a month, the most Starter includes; above that, each extra invoice earns €0.25 and costs €0.02 in Claude on this estimate.
 
-**Where the Opus factor comes from (A4).** It is the run's own Claude calls repriced at Opus list prices: USD 0.7771 instead of USD
-0.3761, 2.07 times. The agents' own calls, from their recorded tokens, would cost USD 0.6970; the other calls are
-scaled by 2 (Sonnet) and at most 40 (Haiku); the Opus calls stay as they were. At that factor, 100 extra decisions
-would cost €2.90 in Claude against the €3.00 they earn. On the benchmark's eval cases the factor is higher [R2],
-because Purser's split there runs only the reviews on Opus; in the main run the Treasury agent already ran on Opus.
+**What this margin leaves out, and what it replaced.** It is the price minus Claude and hosting only. Airwallex's platform or partner fees, support and people are not in it (A8), so the real margin is lower; the fee per payout is not in it either, because it has no rate set. The price before 12 November 2026 was per agent, with 1,500 Claude decisions included in €49 a company a month; at exactly that usage its own table gave a gross margin of 48%, because it sold Claude decisions close to what they cost. The pilot pricing replaces it and sells the supplier invoice instead.
 
-The costs left out (A8) lower every margin in this table. For a different measure, per customer query in the demo's own
-business, see [unit-economics.md](../unit-economics.md).
+**Where the Opus factor comes from (A4).** It is the run's own Claude calls repriced at Opus list prices: USD 0.7771 instead of USD 0.3761, 2.07 times. The agents' own calls, from their recorded tokens, would cost USD 0.6970; the other calls are scaled by 2 (Sonnet) and at most 40 (Haiku); the Opus calls stay as they were. At that factor, an extra invoice would cost €0.05 in Claude against the €0.25 it earns. On the benchmark's eval cases the factor is higher [R2], because Purser's split there runs only the reviews on Opus; in the main run the Treasury agent already ran on Opus.
+
+For a different measure, per customer query in the demo's own business, see [unit-economics.md](../unit-economics.md).
 
 **Sources for this section:**
 
 - [R1] The main run's record: `snapshot.agent_stats` and `snapshot.traces` (each agent's decisions, the tokens and the cost of its own Claude calls), `snapshot.claude` (every Claude call of the run, by model) and `snapshot.flows` (the payments): `docs/demo/main-run.json`, recorded 3 November 2026.
 - [R2] Model benchmark, the agents' eval cases: the same cases with Purser's split and with Opus for every role ([report](../model-benchmark.md)): `docs/evals/model-benchmark.json`, run 31 October 2026.
+- [R3] The end-to-end sandbox run's record ([record](../runs/2026-11-10-platform-e2e.md)): the Claude calls of the run (classify, read and review per invoice) and the invoices it read; test companies, test money: `docs/runs/2026-11-10-platform-e2e.md`, run 10 November 2026.
 - [U1] Anthropic, Claude API pricing (list prices, standard routing, no batch), as `src/claude/pricing.ts` applies them to the record: https://platform.claude.com/docs/en/about-claude/pricing, read 30 October 2026.
 - [U2] Cloudflare, Workers pricing (Workers Paid plan; Durable Objects, SQLite storage backend): https://developers.cloudflare.com/workers/platform/pricing/, read 6 November 2026.
 - [U3] European Central Bank, euro foreign exchange reference rates (USD): https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml, read 6 November 2026.

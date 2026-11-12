@@ -491,9 +491,11 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (path === "/pricing") {
         if (cards !== 3 || !/Pilot pricing\s+These are pilot prices for design partners\. Nothing is on sale yet\./.test(body) || !/€49\s+a month/.test(body) || !/from\s+€249\s+a month/.test(body)) fail(`/pricing ${tag}: not the heading, the lead line and three cards with their prices`);
         if (!/a EUR \d+\.\d{2} test fee on a EUR \d+\.\d{2} test payout\.\s+Test values, not prices/.test(body) || !(await page.locator('#platform-fee a[href$="docs/runs/2026-11-10-connected-accounts-sandbox.md"]').count())) fail(`/pricing ${tag}: the platform fee's test values are not labelled, or its run record is not linked`);
-        if (!/Not yet: no real-money go-live\./.test(body) || (await page.locator("main details").count())) fail(`/pricing ${tag}: no "Not yet" line, or a fold that should not be there`);
+        // One fold since the panel's review (12 Nov): "How the fee is set", closed, in the fee's card.
+        if (!/Not yet: no real-money go-live\./.test(body) || (await page.locator("main details").count()) !== 1 || (await page.locator("#platform-fee details.fold:not([open])").count()) !== 1) fail(`/pricing ${tag}: no "Not yet" line, or a fold that should not be there`);
       } else {
-        if (cards !== 7 || (await page.locator("main article.pc.card details.fold").count()) !== 7 || (await page.locator("main details[open]").count())) fail(`/security ${tag}: not seven cards, each with its detail folded`);
+        // Eight folds since the panel's review (12 Nov): each card's detail, and "If the approver is unavailable" (#unavailable) under the signature.
+        if (cards !== 7 || (await page.locator("main article.pc.card details.fold").count()) !== 8 || (await page.locator("#s-sign details#unavailable").count()) !== 1 || (await page.locator("main details[open]").count())) fail(`/security ${tag}: not seven cards, each with its detail folded`);
         if (!/Our red team ran \d+ attacks in a test world: \d+ were stopped before anything moved and \d+ were found afterwards, not prevented\./.test(body) || !/npm run verify-log/.test(body) || !/No third-party penetration test and no SOC 2 report yet/.test(body)) fail(`/security ${tag}: the red team's counts, the audit command or the "Not yet" line is missing`);
         if (!/^try(\/sign)?$/.test((await page.locator("#s-sign .links a").getAttribute("href")) ?? "")) fail(`/security ${tag}: the signature card does not link to Try`);
       }

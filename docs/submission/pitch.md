@@ -99,7 +99,7 @@ Demo Day script".
 |---|---|---|
 | Deck slide 12: the QR to `/try/sign`. | Purser is for finance teams on Airwallex whose AI agents spend money. | [docs/business/model.md](../business/model.md), "Who buys and who uses it (hypothesis)" |
 | | Inside its limits an agent pays alone; beyond them, the CFO signs. | `RULE_LINE` (`src/submission/deck.ts`) |
-| | We'd charge a monthly fee per company, with agents included. | [docs/business/model.md](../business/model.md), "Intended pricing (hypothesis)" |
+| | We'd charge a monthly fee per company, with invoices included. | [docs/business/model.md](../business/model.md), "Pilot pricing (hypothesis)" |
 | | That is a hypothesis: no customer has seen a price yet. | [docs/business/model.md](../business/model.md): "no customer has seen a price" |
 | | The more agent features Airwallex ships, the more there is to govern. | [docs/business/model.md](../business/model.md), "Risks": "the more there is for Purser to govern" |
 | Look at the jury. | Our ask: we're looking for design partners on Airwallex. | The ask; [docs/business/roadmap.md](../business/roadmap.md): "Test the demand hypothesis" comes first |
@@ -228,7 +228,7 @@ own signature and "One cent. Worthless." stay last.
 | Who is it for? | [docs/business/model.md](../business/model.md), "Who buys and who uses it (hypothesis)" |
 | Finance teams at small companies on Airwallex whose AI agents pay. | `WHY_COMPANY` "Who buys" in `src/config/brand.ts`, as the README and /proof's "Why this is a company" say it; [model.md](../business/model.md) |
 | The CFO uses it and decides. | Same line; [model.md](../business/model.md), the user and the decider |
-| €49 a company a month, five agents included; a hypothesis. | `PRICE_LINE` in `src/config/brand.ts` (the form's Description, "The business"); [model.md](../business/model.md), "Intended pricing (hypothesis)" |
+| €49 a company a month, a hundred invoices included; a hypothesis. | `PRICE_LINE` in `src/config/brand.ts` (the form's Description, "The business"); [model.md](../business/model.md), "Pilot pricing (hypothesis)" |
 | Why now? | [docs/business/problem.md](../business/problem.md), "Why now (sourced)" |
 | Airwallex wrote it on 5 October: limits belong in infrastructure, not prompts. | [problem.md](../business/problem.md) [S1] (Airwallex, "Agentic banking starts with governance") |
 | Agents can pay now; the sign-off still has to stay with a person. | Core message; `docs/roadmap.md`, "The CFO signs off" |
