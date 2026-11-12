@@ -16,6 +16,11 @@
 //
 // What the documentation leaves to the administration is a setting, never a guess: which tax rate each of Purser's VAT
 // treatments uses, which ledger account an account code without a match is, which project a cost centre is.
+//
+// Two guards sit in front of every request (moneybirdEndpoint): it must be one of the endpoints listed below, and it
+// must go to the administration the settings name. With ERP_MONEYBIRD_SANDBOX_ONLY=on that can only be the owner's
+// sandbox administration. The list is the purchase side of the books; nothing on it sends an e-mail, an invoice or a
+// reminder to a contact (a sandbox administration delivers its e-mail for real).
 
 import type { TokenProvider } from "./auth.js";
 import { errorForStatus, ErpError, redactUrl, step, type ErpAccount, type ErpConnector, type ErpVendorRow, type HttpRequest, type HttpResponse, type PaymentStatus, type PushProgress, type RefResolver, type Transport } from "./connector.js";
@@ -37,13 +42,82 @@ export interface MoneybirdConfig {
   ignoreCostCentres: boolean;
   /** Compare Moneybird's own totals with the invoice's (off only for a dry run, where nothing computes them). */
   verifyTotals?: boolean;
+  /** ERP_MONEYBIRD_SANDBOX_ONLY=on: no request goes anywhere but the sandbox administration, on Moneybird's own address. */
+  sandboxOnly?: boolean;
 }
+
+export const MONEYBIRD_BASE_URL = "https://moneybird.com/api/v2";
+/** The owner's Moneybird sandbox administration ("Purser", EUR, the Netherlands; created 12 November 2026). Test data only. */
+export const MONEYBIRD_SANDBOX_ADMINISTRATION = "503585935808530148";
+
+/**
+ * Every request the connector can make, named as Moneybird's OpenAPI file names its paths. A request to anything else
+ * is refused before it is sent. All of it is the purchase side of the books: suppliers, the chart, the tax rates,
+ * purchase invoices with their PDF and payments, and journal documents. Nothing here sends an e-mail, an invoice or a
+ * reminder to a contact, and nothing changes or removes what was sent (no PATCH, no DELETE).
+ */
+export const MONEYBIRD_ENDPOINTS = [
+  "GET /{administration_id}/ledger_accounts{format}",
+  "GET /{administration_id}/tax_rates{format}",
+  "GET /{administration_id}/contacts{format}",
+  "GET /{administration_id}/contacts/customer_id/{customer_id}{format}",
+  "POST /{administration_id}/contacts{format}",
+  "GET /{administration_id}/documents/purchase_invoices{format}",
+  "POST /{administration_id}/documents/purchase_invoices{format}",
+  "GET /{administration_id}/documents/purchase_invoices/{id}{format}",
+  "POST /{administration_id}/documents/purchase_invoices/{id}/attachments{format}",
+  "POST /{administration_id}/documents/purchase_invoices/{id}/payments{format}",
+  "GET /{administration_id}/documents/general_journal_documents{format}",
+  "POST /{administration_id}/documents/general_journal_documents{format}",
+] as const;
+export type MoneybirdEndpoint = (typeof MONEYBIRD_ENDPOINTS)[number];
+
+const ADMIN_PART = "/{administration_id}";
+/** Each endpoint as a pattern over the path after the administration: the format is always .json, an id is digits. */
+const ENDPOINT_PATTERNS = MONEYBIRD_ENDPOINTS.map((endpoint) => {
+  const [method, path] = endpoint.split(" ") as [string, string];
+  const pattern = path.slice(ADMIN_PART.length).replace(/[.*+?^$()|[\]\\]/g, "\\$&").replace("{format}", "\\.json").replace("{id}", "\\d+").replace("{customer_id}", "[^/]+");
+  return { endpoint, method, re: new RegExp(`^${pattern}$`) };
+});
 
 interface Ledger { id: string; account_id: string | null; name: string; allowed_document_types?: string[] | null; active?: boolean }
 interface TaxRate { id: string; name: string; percentage: string | null; tax_rate_type: string; active?: boolean }
 interface MbInvoice { id: string; reference: string | null; state: string; total_price_excl_tax: string | null; total_price_incl_tax: string | null; payments?: { id: string; transaction_identifier: string | null; price: string }[]; attachments?: unknown[] }
 
 const ID = /^\d+$/;
+
+type Guarded = Pick<MoneybirdConfig, "baseUrl" | "administrationId" | "sandboxOnly">;
+
+/**
+ * The endpoint a request is, or the reason it may not be sent. Read from the URL as it would leave this machine (so a
+ * "../" in an id cannot lead elsewhere): it must be on Moneybird's address from the settings, inside the administration
+ * from the settings, and on the list above. With the sandbox guard on, that administration is the sandbox one.
+ */
+export function moneybirdEndpoint(method: string, url: string, cfg: Guarded): MoneybirdEndpoint {
+  const where = `${method} ${redactUrl(url)}`;
+  if (cfg.sandboxOnly && (cfg.administrationId !== MONEYBIRD_SANDBOX_ADMINISTRATION || cfg.baseUrl !== MONEYBIRD_BASE_URL)) {
+    throw new ErpError("config", `${where}: ERP_MONEYBIRD_SANDBOX_ONLY is on, so only the sandbox administration ${MONEYBIRD_SANDBOX_ADMINISTRATION} at ${MONEYBIRD_BASE_URL} may be called; nothing was sent`);
+  }
+  const outside = new ErpError("config", `${where} is outside administration ${cfg.administrationId} at ${cfg.baseUrl}; nothing was sent`);
+  let u: URL;
+  let base: URL;
+  try { u = new URL(url); base = new URL(cfg.baseUrl); } catch { throw outside; }
+  const prefix = `${base.pathname.replace(/\/+$/, "")}/`;
+  if (u.origin !== base.origin || !u.pathname.startsWith(prefix)) throw outside;
+  const [admin, ...rest] = u.pathname.slice(prefix.length).split("/");
+  if (!ID.test(cfg.administrationId) || admin !== cfg.administrationId) throw outside;
+  const path = `/${rest.join("/")}`;
+  const hit = ENDPOINT_PATTERNS.find((e) => e.method === method && e.re.test(path));
+  if (!hit) throw new ErpError("unexpected", `${where} is not an endpoint Purser's Moneybird connector uses; nothing was sent`);
+  return hit.endpoint;
+}
+
+/** What the call log names a request: Moneybird's host and path with the administration kept and object ids left out. */
+export function moneybirdCallName(req: Pick<HttpRequest, "method" | "url">, cfg: Guarded): string {
+  const endpoint = moneybirdEndpoint(req.method, req.url, cfg);
+  const base = new URL(cfg.baseUrl);
+  return `${base.host}${base.pathname.replace(/\/+$/, "")}/${cfg.administrationId}${endpoint.slice(endpoint.indexOf(ADMIN_PART) + ADMIN_PART.length).replace("{format}", ".json")}`;
+}
 
 /** Whole cents as the decimal string Moneybird's money fields take: exact, two decimals, a sign only when negative. */
 export function toMoney(cents: number): string {
@@ -124,6 +198,8 @@ export class MoneybirdConnector implements ErpConnector {
   private async call(method: HttpRequest["method"], path: string, o: { json?: unknown; file?: { contentType: string; body: Uint8Array } } = {}): Promise<{ res: HttpResponse; data: unknown }> {
     const url = this.url(path);
     const where = `${method} ${redactUrl(url)}`;
+    // Refused here, before anything is sent: a request outside the administration, or one that is not on the list.
+    moneybirdEndpoint(method, url, this.cfg);
     for (let attempt = 0; ; attempt++) {
       const req: HttpRequest = {
         method, url,
@@ -424,13 +500,23 @@ export function moneybirdConfigFromEnv(env: Record<string, string | undefined>):
   };
   const admin = need("ERP_MONEYBIRD_ADMINISTRATION_ID");
   if (!ID.test(admin)) throw new ErpError("config", "ERP_MONEYBIRD_ADMINISTRATION_ID must be the administration's number (digits only)");
+  const baseUrl = env.ERP_MONEYBIRD_BASE_URL ?? MONEYBIRD_BASE_URL;
+  // The sandbox guard is on or off: a value that only looks like "on" is refused, never read as off.
+  const guard = env.ERP_MONEYBIRD_SANDBOX_ONLY ?? "off";
+  if (guard !== "on" && guard !== "off") throw new ErpError("config", "ERP_MONEYBIRD_SANDBOX_ONLY must be on or off");
+  if (guard === "on" && admin !== MONEYBIRD_SANDBOX_ADMINISTRATION) {
+    throw new ErpError("config", `ERP_MONEYBIRD_SANDBOX_ONLY is on: only the sandbox administration ${MONEYBIRD_SANDBOX_ADMINISTRATION} may be called, and ERP_MONEYBIRD_ADMINISTRATION_ID names another one; nothing was called`);
+  }
+  if (guard === "on" && baseUrl !== MONEYBIRD_BASE_URL) {
+    throw new ErpError("config", `ERP_MONEYBIRD_SANDBOX_ONLY is on: only ${MONEYBIRD_BASE_URL} may be called, and ERP_MONEYBIRD_BASE_URL names another address; nothing was called`);
+  }
   const taxRates = map("ERP_MONEYBIRD_TAX_RATES", false);
   for (const k of Object.keys(taxRates)) if (!(VAT_CODES as readonly string[]).includes(k)) throw new ErpError("config", `ERP_MONEYBIRD_TAX_RATES: ${k} is not one of Purser's VAT treatments (${VAT_CODES.join(", ")})`);
   const base = env.ERP_MONEYBIRD_BASE_CURRENCY ?? "EUR";
   if (!/^[A-Z]{3}$/.test(base)) throw new ErpError("config", "ERP_MONEYBIRD_BASE_CURRENCY must be a three-letter currency code");
   return {
-    baseUrl: env.ERP_MONEYBIRD_BASE_URL ?? "https://moneybird.com/api/v2", administrationId: admin, baseCurrency: base,
+    baseUrl, administrationId: admin, baseCurrency: base,
     taxRates: taxRates as Partial<Record<VatCode, string>>, glMap: map("ERP_MONEYBIRD_GL_MAP", true), projects: map("ERP_MONEYBIRD_PROJECTS", true),
-    ignoreCostCentres: env.ERP_MONEYBIRD_IGNORE_COST_CENTRES === "on",
+    ignoreCostCentres: env.ERP_MONEYBIRD_IGNORE_COST_CENTRES === "on", sandboxOnly: guard === "on",
   };
 }

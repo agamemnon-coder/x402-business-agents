@@ -1,11 +1,14 @@
 // The Moneybird connector (src/erp/moneybird.ts) against a stand-in administration that checks every request against
 // Moneybird's own OpenAPI request schemas (test/fakes/moneybird.ts). No live calls: there is no Moneybird account yet.
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { openDb } from "../src/db/open.js";
 import { staticToken } from "../src/erp/auth.js";
 import { runErpCli } from "../src/erp/cli.js";
+import { ErpError } from "../src/erp/connector.js";
 import { missingSettings } from "../src/erp/registry.js";
-import { moneybirdConfigFromEnv, MoneybirdConnector, moneybirdRetryAfterMs, parseMoneybirdJson, toMoney, type MoneybirdConfig } from "../src/erp/moneybird.js";
+import { MONEYBIRD_ENDPOINTS, MONEYBIRD_SANDBOX_ADMINISTRATION, moneybirdConfigFromEnv, MoneybirdConnector, moneybirdEndpoint, moneybirdRetryAfterMs, parseMoneybirdJson, toMoney, type MoneybirdConfig } from "../src/erp/moneybird.js";
 import { syncAll, type SyncItem } from "../src/erp/sync.js";
 import { FakeMoneybird, LEDGER, OPENAPI_VERSION, TAX } from "./fakes/moneybird.js";
 import { sampleInvoice, sampleJournal, samplePayment, sampleVendor, TEST_IBAN } from "./fakes/erp.js";
@@ -315,5 +318,110 @@ describe("Moneybird settings", () => {
     expect(text).toMatch(/Example settings/);
     expect(text).toMatch(/POST https:\/\/moneybird\.com\/api\/v2\/\d+\/documents\/purchase_invoices\.json/);
     expect(text).not.toMatch(/aaaa-bbbb-aaaa-bbbb/);
+  });
+});
+
+describe("Moneybird guard: one administration, a fixed list of endpoints", () => {
+  const cfgOf = (administrationId: string, sandboxOnly = false) => ({ baseUrl: "https://moneybird.com/api/v2", administrationId, sandboxOnly });
+  const subset = JSON.parse(readFileSync(resolve(import.meta.dirname, "fixtures/moneybird/openapi-subset.json"), "utf8")) as { requests: Record<string, unknown> };
+
+  it("lists every endpoint it can call, and none sends an e-mail, an invoice or a reminder to a contact", () => {
+    expect(MONEYBIRD_ENDPOINTS.length).toBeGreaterThan(0);
+    for (const e of MONEYBIRD_ENDPOINTS) {
+      // Moneybird's sending endpoints are named for what they do (send_invoice, send_reminders, send_estimate, ...).
+      expect(e, e).not.toMatch(/send|mail|remind|deliver|invit/i);
+      // Only the purchase side: suppliers, the chart, tax rates, purchase invoices, journal documents. No sales
+      // invoices, estimates, recurring invoices or subscriptions, which Moneybird can send to a contact.
+      expect(e, e).toMatch(/^(GET|POST) \/\{administration_id\}\/(contacts|ledger_accounts|tax_rates|documents\/purchase_invoices|documents\/general_journal_documents)[/{]/);
+      // Nothing is changed or removed after it was sent: no PATCH, PUT or DELETE.
+      expect(e, e).not.toMatch(/^(PATCH|PUT|DELETE) /);
+    }
+    // Every POST on the list is one whose body the tests check against Moneybird's own OpenAPI schema.
+    expect(MONEYBIRD_ENDPOINTS.filter((e) => e.startsWith("POST ")).sort()).toEqual(Object.keys(subset.requests).sort());
+  });
+
+  it("makes no request that is not on the list, and the list holds nothing it never calls", async () => {
+    const { fake, c, db } = setup();
+    // Everything the connector does: a full sync, each lookup after a lost answer, the completeness check, the paid
+    // state, a credit note, and the three pulls.
+    await syncAll(db, c, all(), { sleep: noSleep });
+    const refs = { vendor: () => [...fake.contacts.keys()][0]!, invoice: () => [...fake.invoices.keys()][0]! };
+    for (const [kind, o] of [["vendor", sampleVendor()], ["invoice", sampleInvoice()], ["payment", samplePayment()], ["journal", sampleJournal()]] as const) await c.findExisting(kind, o, refs);
+    await c.incomplete("invoice", sampleInvoice(), refs.invoice());
+    await c.pullPaymentStatus(sampleInvoice(), refs.invoice(), refs);
+    await c.pushCreditNote({ ...sampleInvoice(), pdf: undefined }, refs.invoice(), refs);
+    await c.pullChartOfAccounts();
+    await c.pullVendors();
+    await c.pullTaxRates();
+    const used = new Set(fake.transport.sent.map((r) => moneybirdEndpoint(r.method, r.url, cfgOf(fake.admin))));
+    expect([...used].sort()).toEqual([...MONEYBIRD_ENDPOINTS].sort());
+  });
+
+  it("never sends a supplier's e-mail address: Moneybird has no address to deliver anything to", async () => {
+    const { fake, c, db } = setup();
+    expect(sampleVendor().email).toBe("billing@example.com");
+    await syncAll(db, c, all(), { sleep: noSleep });
+    for (const r of fake.transport.sent) {
+      if (typeof r.body !== "string") continue;
+      expect(r.body).not.toContain("billing@example.com");
+      expect(r.body).not.toMatch(/"(email|send_invoices_to_email|send_estimates_to_email|send_invoices_to_attention|delivery_method)"/);
+    }
+  });
+
+  it("names a request by its endpoint, and refuses one off the list or outside its administration", () => {
+    const cfg = cfgOf("123456789012345678");
+    const base = "https://moneybird.com/api/v2/123456789012345678";
+    expect(moneybirdEndpoint("GET", `${base}/ledger_accounts.json`, cfg)).toBe("GET /{administration_id}/ledger_accounts{format}");
+    expect(moneybirdEndpoint("GET", `${base}/tax_rates.json?per_page=100&page=1`, cfg)).toBe("GET /{administration_id}/tax_rates{format}");
+    expect(moneybirdEndpoint("GET", `${base}/contacts/customer_id/PURSER-V%2F1.json`, cfg)).toBe("GET /{administration_id}/contacts/customer_id/{customer_id}{format}");
+    expect(moneybirdEndpoint("POST", `${base}/documents/purchase_invoices/458026356994737217/payments.json`, cfg)).toBe("POST /{administration_id}/documents/purchase_invoices/{id}/payments{format}");
+    for (const [method, url] of [
+      ["PATCH", `${base}/sales_invoices/458026356994737217/send_invoice.json`],
+      ["POST", `${base}/sales_invoices/send_reminders.json`],
+      ["POST", `${base}/sales_invoices.json`],
+      ["DELETE", `${base}/contacts/458026356994737217.json`],
+      ["PATCH", `${base}/documents/purchase_invoices/458026356994737217.json`],
+      ["GET", `${base}/documents/purchase_invoices/458026356994737217/send_invoice.json`],
+      ["GET", `${base}/ledger_accounts`],
+    ] as const) expect(() => moneybirdEndpoint(method, url, cfg), `${method} ${url}`).toThrow(/not an endpoint Purser.*nothing was sent/);
+    for (const url of [
+      "https://moneybird.com/api/v2/999999999999999999/ledger_accounts.json",
+      `${base}/../999999999999999999/ledger_accounts.json`,
+      `${base}/%2e%2e/999999999999999999/ledger_accounts.json`,
+      "https://moneybird.example/api/v2/123456789012345678/ledger_accounts.json",
+      "https://moneybird.com/api/v1/123456789012345678/ledger_accounts.json",
+      "https://moneybird.com/api/v2/administrations.json",
+    ]) expect(() => moneybirdEndpoint("GET", url, cfg), url).toThrow(/outside administration 123456789012345678.*nothing was sent/);
+  });
+
+  it("sends nothing when an id it was given would lead out of the administration or to another endpoint", async () => {
+    const { fake, c } = setup();
+    const elsewhere = "../../../999999999999999999/documents/purchase_invoices/1";
+    const refs = { vendor: () => null, invoice: () => elsewhere };
+    await expect(c.pullPaymentStatus(sampleInvoice(), elsewhere, refs)).rejects.toThrow(/outside administration/);
+    await expect(c.pullPaymentStatus(sampleInvoice(), "1/send_invoice", refs)).rejects.toThrow(/not an endpoint/);
+    await expect(c.pushPayment(samplePayment(), refs)).rejects.toThrow(/outside administration/);
+    await expect(c.pullPaymentStatus(sampleInvoice(), "1/send_invoice", refs)).rejects.toBeInstanceOf(ErpError);
+    expect(fake.transport.sent).toHaveLength(0);
+  });
+
+  it("with the sandbox guard on, takes no administration but the sandbox one, on Moneybird's own address", () => {
+    const base = { ERP_MONEYBIRD_TOKEN: "x", ERP_MONEYBIRD_TAX_RATES: '{"NL21":"1"}', ERP_MONEYBIRD_SANDBOX_ONLY: "on" };
+    expect(MONEYBIRD_SANDBOX_ADMINISTRATION).toBe("503585935808530148");
+    expect(moneybirdConfigFromEnv({ ...base, ERP_MONEYBIRD_ADMINISTRATION_ID: "503585935808530148" })).toMatchObject({ administrationId: "503585935808530148", sandboxOnly: true });
+    expect(() => moneybirdConfigFromEnv({ ...base, ERP_MONEYBIRD_ADMINISTRATION_ID: "123456789012345678" })).toThrow(/ERP_MONEYBIRD_SANDBOX_ONLY is on.*503585935808530148.*nothing was called/);
+    expect(() => moneybirdConfigFromEnv({ ...base, ERP_MONEYBIRD_ADMINISTRATION_ID: "503585935808530148", ERP_MONEYBIRD_BASE_URL: "https://moneybird.example/api/v2" })).toThrow(/ERP_MONEYBIRD_SANDBOX_ONLY is on.*ERP_MONEYBIRD_BASE_URL/);
+    // The switch is on or off; a value that only looks like "on" is refused rather than read as off.
+    for (const v of ["true", "yes", "1", "ON"]) expect(() => moneybirdConfigFromEnv({ ...base, ERP_MONEYBIRD_SANDBOX_ONLY: v, ERP_MONEYBIRD_ADMINISTRATION_ID: "123456789012345678" }), v).toThrow(/ERP_MONEYBIRD_SANDBOX_ONLY must be on or off/);
+    expect(moneybirdConfigFromEnv({ ...base, ERP_MONEYBIRD_SANDBOX_ONLY: "off", ERP_MONEYBIRD_ADMINISTRATION_ID: "123456789012345678" }).sandboxOnly).toBe(false);
+    expect(moneybirdConfigFromEnv({ ERP_MONEYBIRD_TOKEN: "x", ERP_MONEYBIRD_TAX_RATES: '{"NL21":"1"}', ERP_MONEYBIRD_ADMINISTRATION_ID: "123456789012345678" }).sandboxOnly).toBe(false);
+  });
+
+  it("with the sandbox guard on, a connector pointed at another administration sends nothing", async () => {
+    const { fake, c } = setup({ cfg: { sandboxOnly: true } });
+    await expect(c.pullChartOfAccounts()).rejects.toThrow(/only the sandbox administration 503585935808530148.*nothing was sent/);
+    await expect(c.pushVendor(sampleVendor())).rejects.toThrow(/only the sandbox administration/);
+    expect(fake.transport.sent).toHaveLength(0);
+    expect(() => moneybirdEndpoint("GET", "https://moneybird.com/api/v2/503585935808530148/ledger_accounts.json", cfgOf("503585935808530148", true))).not.toThrow();
   });
 });
