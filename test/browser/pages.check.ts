@@ -476,8 +476,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
           // 2,657 px; 5,386 before the timeline). The frame's pin leaves room for one more line of filters.
           const m = await page.evaluate(`(() => { const main = document.querySelector("main"); const lis = [...main.querySelectorAll(":scope > ol.tl > li.run")]; const hs = lis.map((li) => ({ key: li.id, h: li.getBoundingClientRect().height })); return { entries: hs, frame: main.getBoundingClientRect().height - hs.reduce((n, x) => n + x.h, 0) }; })()`) as { entries: { key: string; h: number }[]; frame: number };
           for (const e of m.entries.filter((x) => x.h > 270)) fail(`/runs ${tag}: the entry ${e.key} is ${Math.round(e.h)}px tall with its fold closed (at most 270)`);
-          // +14 px, 12 Nov wire-in: the one "Face ID to paid" line, a 44 px tap target (master list 81).
-          if (m.frame > 484) fail(`/runs ${tag}: the frame around the entries (heading, line, filters, closed groups, last links) is ${Math.round(m.frame)}px tall (at most 484)`);
+          // +14 px, 12 Nov wire-in: the one "Face ID to paid" line, a 44 px tap target (master list 81); +100 px, 12 Nov
+          // (owner: "showing works better"): the strip of the live runs under the heading.
+          if (m.frame > 584) fail(`/runs ${tag}: the frame around the entries (heading, line, filters, closed groups, last links) is ${Math.round(m.frame)}px tall (at most 584)`);
           for (const s of await small()) fail(`/runs ${tag}: a tap target under 44px, folds closed: ${s}`);
           await page.evaluate(`document.querySelectorAll("main details").forEach((d) => { d.open = true; })`);
           for (const s of await small()) fail(`/runs ${tag}: a tap target under 44px, every fold open: ${s}`);
