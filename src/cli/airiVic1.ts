@@ -1,8 +1,9 @@
 // npm run airi:vic-1 -- <command>: the Airi rail's run (docs/runs/vic-1-plan.md).
 //   --dry                 A, B and C on the stand-ins, 0 network: no key is read, fetch is refused, airi-cli is not run.
 //                         B's approval is a labelled stand-in decision, not Max's Face ID. The record says DRY RUN.
-//   preflight             the pinned airi-cli, Max's Airi session (stops when it has lapsed), an agent-enabled card:
-//                         2 Airi calls (auth whoami, payment-methods list); no purchase, no credential
+//   preflight             the pinned airi-cli, Max's Airi session (stops when it has lapsed), an agent-enabled card,
+//                         the mandate list readable: 3 read-only Airi calls (auth whoami, payment-methods list,
+//                         mandate list); no purchase, no credential
 //   live                  the run, with the runner (npm run relay, KIT11_AIRI_RAIL=on, the same KIT11_DB) beside it;
 //                         VIC1_GO=yes only
 //   recover               purchases a crash left open: looked up at the checkout or cancelled at Airi

@@ -2,7 +2,7 @@
 // The answers are the shapes airi-cli 0.1.0-beta.4 gave on 7 November (README, skill, and the coordinator's own run).
 import { describe, expect, it } from "vitest";
 import { AiriRefusal, AiriWaitTimeout, scrubText } from "../src/airi/client.js";
-import { AiriCliClient, childEnv, type Exec, type ExecResult } from "../src/airi/cli.js";
+import { AiriCliClient, camelKeys, childEnv, type Exec, type ExecResult } from "../src/airi/cli.js";
 
 const BIN = "/opt/airi/vendor/airi-cli";
 const SHA = "a".repeat(64);
@@ -97,6 +97,27 @@ describe("AiriCliClient: the answers, parsed strictly", () => {
     await expect(c.createMandate({ source: "s", paymentMethodId: "p", merchantName: "m", merchantUrl: "https://m.example/", merchantCountry: "NL", totalAmount: "1.00", currency: "EUR", items: [{ name: "i", unitPrice: "1.00", quantity: "1" }], description: "d" })).rejects.toMatchObject({ code: "AIRI_OUTPUT_UNRECOGNISED" });
   });
 
+  it("camelKeys: a key named like something every object inherits is a key like any other, and a capital after the underscore is read too", () => {
+    // Each of these threw a clash with itself before 12 Nov ("the answer gives toString twice"): `in` saw Object.prototype.
+    expect(camelKeys({ constructor: "x" })).toEqual({ constructor: "x" });
+    expect(camelKeys({ to_string: "x" })).toEqual({ toString: "x" });
+    expect(camelKeys({ value_of: 1, has_own_property: { is_prototype_of: [{ to_locale_string: 2 }] } })).toEqual({ valueOf: 1, hasOwnProperty: { isPrototypeOf: [{ toLocaleString: 2 }] } });
+    // __proto__ stays a field of the answer; it never becomes the object's prototype.
+    const p = camelKeys(JSON.parse('{"__proto__":{"mandate_id":"mdt_x"},"status":"CREATED"}')) as Record<string, unknown>;
+    expect(Object.getPrototypeOf(p)).toBe(Object.prototype);
+    expect(Object.keys(p).sort()).toEqual(["__proto__", "status"]);
+    expect((p as { mandateId?: string }).mandateId).toBeUndefined();
+    // mandate_Id is mandateId; the same field twice with one value is fine, with two it is refused.
+    expect(camelKeys({ mandate_Id: "mdt_1", passkey__url: "u" })).toEqual({ mandateId: "mdt_1", passkeyUrl: "u" });
+    expect(camelKeys({ mandateId: "mdt_1", mandate_id: "mdt_1" })).toEqual({ mandateId: "mdt_1" });
+    expect(() => camelKeys({ toString: "a", to_string: "b" })).toThrow();
+  });
+
+  it("an answer that carries such a key at any depth is still read", async () => {
+    const { c } = client({ "mandate list": ok({ mandates: [{ mandate_id: "mdt_1", status: "CREATED", description: "order [airi-1]", constructor: "x", to_string: "y" }], value_of: 1 }) });
+    expect(await c.readMandate("mdt_1", "2026-11-07T09:59:00Z")).toEqual({ mandateId: "mdt_1", status: "CREATED", description: "order [airi-1]" });
+  });
+
   it("mandate create: the documented flags, the id and the one-time link", async () => {
     const { c, seen } = client({ "mandate create": ok({ mandate_id: "mdt_1", passkey_url: "https://app.airi.com/pay/abc" }) });
     const m = await c.createMandate({ source: "Purser sourcing agent", paymentMethodId: "pm_123", merchantName: "Shop", merchantUrl: "https://shop.example/", merchantCountry: "NL", totalAmount: "12.00", currency: "EUR", items: [{ name: "Map", unitPrice: "12.00", quantity: "1" }], description: "order [airi-1]" });
@@ -160,6 +181,25 @@ describe("AiriCliClient: the mandate read back", () => {
     const { c } = client({ "mandate list": ok({ mandates: [{ mandateId: "mdt_1", status: "CREATED" }] }) });
     expect(await c.readMandate("mdt_9", "2026-11-07T09:59:00Z")).toBeNull();
     expect(await c.readMandate("mdt_1", "2026-11-07T09:59:00Z")).toEqual({ mandateId: "mdt_1", status: "CREATED", description: null });
+  });
+
+  it("reads the rows from a bare array or from the answer's one list, whatever its key: the CLI's docs do not name it", async () => {
+    const rows = [{ mandateId: "mdt_1", status: "CREATED", description: `order 1 ${tag}` }];
+    for (const answer of [rows, { mandates: rows, hasMore: false }, { items: rows }, { data: rows, has_more: true }, { content: rows }, { results: rows, hasMore: false, page: { size: 100 } }, { mandate_list: rows }]) {
+      const { c } = client({ "mandate list": ok(answer) });
+      expect(await c.readMandate("mdt_1", "2026-11-07T09:59:00Z")).toEqual({ mandateId: "mdt_1", status: "CREATED", description: `order 1 ${tag}` });
+    }
+    // An empty page is an empty list, not an error: the mandate is "not listed yet".
+    expect(await client({ "mandate list": ok({ anything: [], hasMore: false }) }).c.readMandate("mdt_1", "2026-11-07T09:59:00Z")).toBeNull();
+  });
+
+  it("refuses an answer with no list, with two lists, or whose rows are not mandates: no list is picked by guess", async () => {
+    for (const answer of [{ hasMore: false }, { mandates: [{ mandateId: "mdt_1", status: "CREATED" }], other: [] }, { mandates: [{ id: "mdt_1" }] }, { mandates: ["4111111111111111"] }, "mdt_1", null]) {
+      const e = (await client({ "mandate list": ok(answer) }).c.readMandate("mdt_1", "2026-11-07T09:59:00Z").then(() => null, (x: unknown) => x)) as AiriRefusal;
+      expect(e).toBeInstanceOf(AiriRefusal);
+      expect(e.code).toBe("AIRI_OUTPUT_UNRECOGNISED");
+      expect(e.message).not.toMatch(/4111|mdt_1/);
+    }
   });
 
   it("refuses a list in another shape without repeating it, and keeps the CLI's own code when the list fails", async () => {

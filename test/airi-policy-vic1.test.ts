@@ -64,7 +64,7 @@ describe("vic-1 on the stand-ins", () => {
     const text = JSON.stringify(rec);
     expect(text).not.toContain("stand-in.invalid");
     // Each mandate is read back from Airi before its credential is asked for.
-    expect(calls.filter((c) => c.by === "airi").map((c) => c.op)).toEqual(["whoami", "listPaymentMethods", "createMandate", "readMandate", "getCredential", "reportResult", "createMandate", "readMandate", "getCredential", "reportResult"]);
+    expect(calls.filter((c) => c.by === "airi").map((c) => c.op)).toEqual(["whoami", "listPaymentMethods", "findMandate", "createMandate", "readMandate", "getCredential", "reportResult", "createMandate", "readMandate", "getCredential", "reportResult"]);
     // The record's audit rows hold the read-back of both purchases: the mandate's id and the terms hash Airi stores, matching.
     const back = (rec.audit as { event: string; payload: { mandate_id: string; order_sha256: string; terms_sha256_in_mandate: string; match: boolean } }[]).filter((r) => r.event === "airi.mandate_read_back");
     expect(back).toHaveLength(2);
@@ -78,6 +78,19 @@ describe("vic-1 on the stand-ins", () => {
       expect(calls.map((c) => c.op)).toEqual(["whoami"]);
     }
     await expect(preflight(dryDeps({ session: { authenticated: true, sessionExpires: "2026-11-07T10:30:00Z" } }).d)).resolves.toMatchObject({ method: { paymentMethodId: "standin-pm-1" } });
+  });
+
+  it("the preflight reads Airi's mandate list once, read-only, and stops before any purchase when it cannot", async () => {
+    const ok = dryDeps({ session: { authenticated: true, sessionExpires: "2026-11-07T10:30:00Z" } });
+    await preflight(ok.d);
+    expect(ok.calls.map((c) => c.op)).toEqual(["whoami", "listPaymentMethods", "findMandate"]);
+    expect(ok.lines.at(-1)).toMatch(/mandate list readable/);
+    const db = openDb(":memory:");
+    const calls: { op: string; by: string }[] = [];
+    const airi = counted(new StandInAiriClient({ session: { authenticated: true, sessionExpires: "2026-11-07T10:30:00Z" }, failRead: "AIRI_OUTPUT_UNRECOGNISED" }), "airi", calls);
+    const d: Vic1Deps = { ...ok.d, db, airi, rail: { ...ok.d.rail, airi } };
+    await expect(preflight(d)).rejects.toThrow(/mandate list cannot be read \(AIRI_OUTPUT_UNRECOGNISED.*nothing was started/);
+    expect(calls.map((c) => c.op)).toEqual(["whoami", "listPaymentMethods", "findMandate"]);
   });
 
   it("refuses to write a link or a card-like number; the call counter refuses past its budget", () => {

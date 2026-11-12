@@ -464,22 +464,26 @@ type ReadBack =
 /**
  * Reads the mandate back from Airi and holds its description to this action's id and the approved terms hash (the
  * row's order_sha256, which recheck() has just held to the approval). Airi stores the description; it does not check
- * it. A mandate Airi does not list yet is asked for again, READ_BACK_TRIES times in all; a mandate that cannot be read
- * back at all counts as not matching: nothing is assumed.
+ * it. A mandate Airi does not list yet is asked for again, and so is a read that failed (12 Nov: it is read-only, and
+ * one `mandate list` that timed out used to end the purchase), READ_BACK_TRIES times in all; a mandate that cannot be
+ * read back at all counts as not matching: nothing is assumed.
  */
 async function readBack(deps: AiriDeps, row: Row, mandateId: string): Promise<ReadBack> {
   const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
   const since = new Date(Date.parse(row.created_at) - 60_000).toISOString().replace(/\.\d{3}Z$/, "Z");
-  let stored: AiriMandateRecord | null;
+  let stored: AiriMandateRecord | null = null;
+  let failed: string | null;
   for (let tries = 1; ; tries++) {
     try {
       stored = await deps.airi.readMandate(mandateId, since);
+      failed = null;
     } catch (e) {
-      return { ok: false, code: "PURSER_MANDATE_NOT_READ_BACK", why: `the mandate could not be read back from Airi (${safe(e instanceof AiriRefusal ? `${e.code}: ${e.message}` : (e as Error).message ?? "")})` };
+      failed = safe(e instanceof AiriRefusal ? `${e.code}: ${e.message}` : (e as Error).message ?? "");
     }
     if (stored || tries >= READ_BACK_TRIES) break;
     await sleep(READ_BACK_WAIT_MS);
   }
+  if (!stored && failed !== null) return { ok: false, code: "PURSER_MANDATE_NOT_READ_BACK", why: `the mandate could not be read back from Airi in ${READ_BACK_TRIES} tries (${failed})` };
   if (!stored) return { ok: false, code: "PURSER_MANDATE_NOT_READ_BACK", why: `Airi did not list the mandate in ${READ_BACK_TRIES} tries` };
   if (stored.description === null) return { ok: false, code: "PURSER_MANDATE_NOT_READ_BACK", why: "Airi listed the mandate with no description, so its terms hash could not be read back" };
   const found = mandateTag(stored.description);

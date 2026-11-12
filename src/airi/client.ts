@@ -154,8 +154,12 @@ export class CheckoutOutcomeUnknown extends Error {
 
 // ---- text that leaves the CLI or the checkout ---------------------------------------------------------------------
 
-/** A run of SCRUB_DIGITS_FROM digits or more, alone or split by single spaces or dashes. */
-const DIGIT_RUN = new RegExp(`\\b(?:\\d[ -]?){${SCRUB_DIGITS_FROM},19}\\b`, "g");
+/**
+ * A run of SCRUB_DIGITS_FROM digits or more, alone or split by single spaces or dashes: of any length, and wherever it
+ * stands (12 Nov: it was held to 19 digits between two word boundaries, so a 20-digit token, or a card number glued to
+ * a letter or an underscore as in "pan_4111…", came through unchanged).
+ */
+const DIGIT_RUN = new RegExp(`\\d(?:[ -]?\\d){${SCRUB_DIGITS_FROM - 1},}`, "g");
 
 /**
  * Text from airi-cli or a checkout, made safe to show or store: no URL (a passkey or device link is a one-time

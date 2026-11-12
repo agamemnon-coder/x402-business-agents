@@ -21,8 +21,10 @@ export interface StandInScript {
   stored?: (description: string) => string | null;
   /** The first this-many read-backs do not list the mandate yet. */
   unlistedReads?: number;
-  /** The mandate list fails with this code. */
+  /** The mandate list (read back or searched) fails with this code. */
   failRead?: string;
+  /** Only the first this-many reads of the list fail (with failRead's code); default: every one. */
+  failReads?: number;
 }
 
 /** Records every call, so a test sees exactly what was asked, in order. */
@@ -33,6 +35,7 @@ export class StandInAiriClient implements AiriClient {
   readonly mandates = new Map<string, { description: string; status: string }>();
   private n = 0;
   private reads = 0;
+  private listed = 0;
 
   constructor(private readonly script: StandInScript = {}) {}
 
@@ -59,13 +62,16 @@ export class StandInAiriClient implements AiriClient {
 
   async findMandate(description: string, createdFrom: string): Promise<{ mandateId: string; status: string } | null> {
     this.calls.push({ op: "mandate list", args: ["--created-from", createdFrom] });
+    this.listed += 1;
+    if (this.script.failRead && this.listed <= (this.script.failReads ?? Infinity)) throw new AiriRefusal("airi", this.script.failRead, `stand-in: mandate list failed (${this.script.failRead})`);
     for (const [id, m] of this.mandates) if (m.description === description) return { mandateId: id, status: m.status };
     return null;
   }
 
   async readMandate(mandateId: string, createdFrom: string): Promise<AiriMandateRecord | null> {
     this.calls.push({ op: "mandate list", args: ["--mandate-id", mandateId, "--created-from", createdFrom] });
-    if (this.script.failRead) throw new AiriRefusal("airi", this.script.failRead, `stand-in: mandate list failed (${this.script.failRead})`);
+    this.listed += 1;
+    if (this.script.failRead && this.listed <= (this.script.failReads ?? Infinity)) throw new AiriRefusal("airi", this.script.failRead, `stand-in: mandate list failed (${this.script.failRead})`);
     this.reads += 1;
     const m = this.mandates.get(mandateId);
     if (!m || this.reads <= (this.script.unlistedReads ?? 0)) return null;

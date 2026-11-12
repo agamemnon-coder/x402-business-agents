@@ -372,6 +372,16 @@ describe("the CFO's terms hash in the Airi mandate, read back before the credent
     }
   });
 
+  it("a read that failed is tried again (it is read-only): one failed list does not end the purchase; three do", async () => {
+    const once = await approvedPurchase({ failRead: "timeout", failReads: 1 });
+    expect(once.res).toMatchObject({ status: "succeeded" });
+    expect(ops(once.d)).toEqual(["mandate create", "mandate list", "mandate list", "mandate get-credential", "mandate result"]);
+    const always = await approvedPurchase({ failRead: "timeout" });
+    expect(always.res).toMatchObject({ status: "refused", code: "PURSER_MANDATE_NOT_READ_BACK" });
+    expect((always.res as { reason: string }).reason).toMatch(new RegExp(`in ${READ_BACK_TRIES} tries \\(.*timeout`));
+    expect(ops(always.d)).toEqual(["mandate create", ...Array.from({ length: READ_BACK_TRIES }, () => "mandate list"), "mandate cancel"]);
+  });
+
   it("a mandate listed a moment later is read on the next try", async () => {
     const { d, res } = await approvedPurchase({ unlistedReads: 1 });
     expect(res).toMatchObject({ status: "succeeded" });

@@ -183,6 +183,16 @@ describe("the Airi credential: gone after use, and in no record", () => {
     expect(scrubText(`ref ${run} end`)).not.toContain(run);
     expect(scrubText(`ref ${run} end`)).toContain("[digits]");
     expect(scrubText(`ref ${run.slice(1)} end`)).toBe(`ref ${run.slice(1)} end`);
+    // Every such run, as /visa says (12 Nov): of any length, and next to a letter or an underscore too. Before, a run
+    // of 20 digits or a card number glued to a word came through unchanged.
+    expect(scrubText("id 12345678901234567890 x")).toBe("id [digits] x");
+    expect(scrubText(`token ${"7".repeat(40)}.`)).toBe("token [digits].");
+    for (const glued of ["ref_4111111111111111", "a4111111111111111b", "pan_4111111111111111", "pan:4111-1111-1111-1111;", "4111 1111 1111 1111x", "x4111 1111 1111 1111"]) {
+      expect({ glued, out: /\d{4}/.test(scrubText(glued)) }).toEqual({ glued, out: false });
+      expect(scrubText(glued)).toContain("[digits]");
+    }
+    // What stays: a time, an amount, a short id, an Airwallex id, a hash's first characters.
+    for (const kept of ["2026-11-07T13:56:57.873Z", "2026-11-07 13:56:57", "EUR 45.00", "P-0002", "int_sgpvzc9hjhnxvpblt2r", "airi-mw6gw810-4f53f4f0", "terms 8bbfffc9…", "provider code 00, auth 539054"]) expect(scrubText(kept)).toBe(kept);
     expect(scrubText(`declined: ${PAN_FORMS[1]} cvv ${CVC}`)).not.toMatch(/\d{3}/);
     expect(scrubText(`cvv ${CVC}`)).toBe("cvv [digits]");
   });

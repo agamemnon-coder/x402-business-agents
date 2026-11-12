@@ -78,31 +78,45 @@ const MandateCreated = z.object({ mandateId: z.string().min(1).max(200), passkey
 const Receipt = z.object({ status: z.string().max(100), tokenType: z.string().max(100), tokenExpiration: z.string().max(100) });
 const Cancelled = z.object({ status: z.literal("ok") });
 const MandateRow = z.object({ mandateId: z.string().min(1).max(200), status: z.string().max(40), description: z.string().max(500).optional() });
+/**
+ * `mandate list`: the rows as a bare array, or under the one array-valued property of the answer. airi-cli
+ * 0.1.0-beta.4's README says a page has `hasMore` and rows with mandateId, status and description, and does not name
+ * the rows' key, so none is assumed (12 Nov; five names were guessed before). An answer with no array, or with two,
+ * is refused: nothing is picked by guess.
+ */
 const MandateList = z.union([
   z.array(MandateRow),
-  z.object({ mandates: z.array(MandateRow) }),
-  z.object({ items: z.array(MandateRow) }),
-  z.object({ data: z.array(MandateRow) }),
-  z.object({ content: z.array(MandateRow) }),
+  z.record(z.string(), z.unknown()).transform((o, ctx) => {
+    const arrays = Object.values(o).filter((x): x is unknown[] => Array.isArray(x));
+    const rows = arrays.length === 1 ? z.array(MandateRow).safeParse(arrays[0]) : null;
+    if (!rows?.success) { ctx.addIssue({ code: "custom", message: arrays.length === 1 ? "the rows are not mandates" : `${arrays.length} lists in the answer` }); return z.NEVER; }
+    return rows.data;
+  }),
 ]);
 
 /** Thrown by camelKeys when an answer gives one field in both spellings with different values: nothing is guessed. */
 class KeyClash extends Error {}
-const camel = (k: string) => k.replace(/_+([a-z0-9])/g, (_, c: string) => c.toUpperCase());
+/**
+ * mandate_id → mandateId, and mandate_Id too (a capital after the underscore stays a capital). Only an underscore
+ * between two letters or digits joins them: a leading or trailing one (__proto__, _links) is part of the name.
+ */
+const camel = (k: string) => k.replace(/(?<=[A-Za-z0-9])_+([A-Za-z0-9])/g, (_, c: string) => c.toUpperCase());
 /**
  * An answer with every key in camelCase (mandate_id → mandateId), at any depth; values are untouched. A field given in
- * both spellings must say the same thing, or the answer is refused (KeyClash).
+ * both spellings must say the same thing, or the answer is refused (KeyClash). The keys are held in a Map and only an
+ * answer's own keys count, so a key named like something every object inherits (constructor, to_string, value_of,
+ * __proto__) is a key like any other and never clashes with itself.
  */
 export function camelKeys(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(camelKeys);
   if (!v || typeof v !== "object") return v;
-  const out: Record<string, unknown> = {};
+  const out = new Map<string, unknown>();
   for (const [k, x] of Object.entries(v)) {
     const key = camel(k), val = camelKeys(x);
-    if (key in out && JSON.stringify(out[key]) !== JSON.stringify(val)) throw new KeyClash(key);
-    out[key] = val;
+    if (out.has(key) && JSON.stringify(out.get(key)) !== JSON.stringify(val)) throw new KeyClash(key);
+    out.set(key, val);
   }
-  return out;
+  return Object.fromEntries(out);
 }
 const CliError = z.object({
   error: z.union([z.string(), z.object({ code: z.string().optional(), message: z.string().optional() })]).optional(),
@@ -215,8 +229,7 @@ export class AiriCliClient implements AiriClient {
 
   /** `mandate list` since `createdFrom`, most recent first, up to the 100 a page holds. */
   private async listMandates(createdFrom: string): Promise<z.infer<typeof MandateRow>[]> {
-    const raw = this.parse("mandate list", MandateList, await this.run("mandate list", ["mandate", "list", "--created-from", createdFrom, "--size", "100"]));
-    return Array.isArray(raw) ? raw : "mandates" in raw ? raw.mandates : "items" in raw ? raw.items : "data" in raw ? raw.data : raw.content;
+    return this.parse("mandate list", MandateList, await this.run("mandate list", ["mandate", "list", "--created-from", createdFrom, "--size", "100"]));
   }
 
   async findMandate(description: string, createdFrom: string): Promise<{ mandateId: string; status: string } | null> {
