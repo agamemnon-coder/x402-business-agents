@@ -13,7 +13,7 @@ import { INTER_WOFF2_B64 } from "./font.gen.js";
 import type { CloudEnv } from "./app.js";
 
 const ICONS = ["wallet", "calendar-range", "clock", "inbox", "octagon-x", "chevron-right", "circle-check", "triangle-alert", "circle-minus", "file-text",
-  "download", "mail", "scan-face", "users", "key-round", "log-out", "arrow-left", "flask", "x", "arrow-down-left", "arrow-up-right", "shield-check", "copy", "upload"];
+  "download", "mail", "scan-face", "users", "key-round", "log-out", "arrow-left", "flask", "x", "arrow-down-left", "arrow-up-right", "shield-check", "copy"];
 
 const EXTRA_CSS = `
 .pdfframe { display: block; width: 100%; max-width: 820px; height: 600px; border: 0; background: #fff; border-radius: 6px; box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 8px 24px -8px rgba(16,24,40,.18); }
@@ -231,7 +231,7 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
 .work { margin-top: 14px; }
 .work h2 { margin-bottom: 10px; }
 .work ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.work li { display: grid; grid-template-columns: 4.6em minmax(0, 11em) minmax(0, 1fr); gap: 2px 12px; align-items: baseline; font-size: 14px; }
+.work li { display: grid; grid-template-columns: 4.6em minmax(0, 8.5em) minmax(0, 1fr); gap: 2px 12px; align-items: baseline; font-size: 14px; }
 .work li time { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
 .work li b { font-weight: 650; overflow-wrap: anywhere; }
 .work li b.claude { color: var(--accent); }
@@ -239,7 +239,9 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
 .work details { margin-top: 10px; }
 .work summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 600; }
 .work details ol { margin-top: 8px; }
-@media (max-width: 640px) { .work li { grid-template-columns: auto minmax(0, 1fr); } .work li > span { grid-column: 1 / -1; } }
+/* A phone: the drop zone is its words and its button, and a line flows as one sentence after its time and who. */
+@media (max-width: 860px) { .drop.eng > .ic { display: none; } .drop.eng { gap: 10px; } }
+@media (max-width: 640px) { .work li { display: block; line-height: 1.45; } .work li time, .work li b { margin-right: 8px; } }
 `;
 
 // The page's frame in Dutch (the default); the script re-words it in the person's language when it starts.
@@ -520,14 +522,17 @@ function workPoll(){
     catch(e){/* an ended session has gone to sign-in; anything else is asked again on the next tick */}
     finally{WORK.polling=null}
     if(WORK.token!==token)return;
-    if(fresh.length){const add=fresh.map((e)=>({ts:e.ts,l:lineOf(e)}));WORK.lines=WORK.lines.concat(add).slice(-WORK_KEPT);workAdd(add);if(WORK.caught&&WORK.onEvents)WORK.onEvents(fresh)}
+    if(fresh.length){const add=fresh.map((e)=>({n:Number(e.seq)||0,ts:e.ts,l:lineOf(e)}));WORK.lines=WORK.lines.concat(add).slice(-WORK_KEPT);workAdd(add);if(WORK.caught&&WORK.onEvents)WORK.onEvents(fresh)}
     WORK.caught=true})();
   return WORK.polling}
 const workItem=(x)=>{const d=new Date(x.ts);const tm=el('time','',isNaN(d)?'':d.toLocaleTimeString(NL?'nl-NL':'en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));tm.dateTime=String(x.ts||'');tm.title=stamp(x.ts);
-  return el('li','',[tm,el('b',x.l.tag||'',cap(x.l.who)),el('span','',x.l.text)])};
-// New lines go on top of the live list; a line pushed out of the newest six moves into the fold, which keeps its place.
+  const li=el('li','',[tm,el('b',x.l.tag||'',cap(x.l.who)),el('span','',x.l.text)]);li.dataset.n=String(x.n);return li};
+// New lines go on top of the live list; a line pushed out of the newest six moves into the fold, newest first there too.
+// A step with no words of its own (the neutral line) goes straight into the fold: in view, every line says something.
+const foldIn=(older,li)=>{const n=Number(li.dataset.n);let at=older.firstElementChild;while(at&&Number(at.dataset.n)>n)at=at.nextElementSibling;older.insertBefore(li,at)};
 function workAdd(add){const u=WORK.ui;if(!u)return;
-  for(const x of add){u.live.prepend(workItem(x));if(u.live.children.length>WORK_SHOWN)u.older.prepend(u.live.lastElementChild)}
+  for(const x of add){if(x.l.text===L.m['cs.eng.step']){foldIn(u.older,workItem(x));continue}
+    u.live.prepend(workItem(x));if(u.live.children.length>WORK_SHOWN)foldIn(u.older,u.live.lastElementChild)}
   const n=u.older.children.length;u.empty.hidden=!!u.live.children.length;u.live.hidden=!u.live.children.length;u.fold.hidden=!n;u.sum.textContent=t('cs.eng.work_earlier',{n})}
 function workPanel(){
   const box=el('section','card panel work');box.id='work';
@@ -553,9 +558,9 @@ const readBase64=(f)=>new Promise((ok,no)=>{const r=new FileReader();r.onload=()
 function uploadRow(o){
   const said=el('div','');said.setAttribute('role','status');
   const file=el('input','');file.type='file';file.id='eng-file';file.accept='application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png';file.tabIndex=-1;file.setAttribute('aria-hidden','true');
-  const up=btn(t('cs.eng.upload'),'primary','upload');
+  const up=btn(t('cs.eng.upload'),'primary');
   const drop=el('div','drop eng',[ic('file-text'),el('span','sub',t('cs.eng.upload_sub')),up,file]);
-  const busy=(on)=>{up.disabled=on;up.replaceChildren(ic('upload'),on?t('cs.eng.uploading'):t('cs.eng.upload'))};
+  const busy=(on)=>{up.disabled=on;up.textContent=on?t('cs.eng.uploading'):t('cs.eng.upload')};
   async function send(fs){
     if(!fs.length||up.disabled)return;
     const f=fs[0],mime=fs.length===1?fileType(f):'';
