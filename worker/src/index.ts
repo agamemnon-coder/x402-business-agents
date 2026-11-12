@@ -3,6 +3,7 @@
 
 import { DurableObject } from "cloudflare:workers";
 import { notFoundResponse, pageResponse, Relay } from "./core.js";
+import { goResponse } from "./go.js";
 import { TryDesk } from "./try.js";
 import { isTrySignPath, trySignNotFound, trySignRoute, TrySignDesk } from "./trySign.js";
 import { SandboxQuotes } from "./fxQuote.js";
@@ -36,6 +37,8 @@ export interface Env {
   AIRWALLEX_API_KEY?: string;
   /** "on" declares a live run (a plain var, off by default): /health then keeps the alarm however long the runner is silent. */
   LIVE_RUN?: string;
+  /** Where the short URL /go points (a plain var, an https URL; never an event token). Default: worker/src/go.ts. */
+  TRY_GO_URL?: string;
 }
 
 export class RelayObject extends DurableObject<Env> {
@@ -69,6 +72,9 @@ export class RelayObject extends DurableObject<Env> {
 
 export default {
   async fetch(req, env): Promise<Response> {
+    // /go: the short URL under the QR code, 302 to the hands-on demo (TRY_GO_URL, or its default).
+    const go = goResponse(req, env.TRY_GO_URL);
+    if (go) return go;
     const page = pageResponse(req, PAGES);
     if (page) return page;
     const path = new URL(req.url).pathname;
