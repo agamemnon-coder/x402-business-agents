@@ -112,7 +112,8 @@ export function decodeRefusal(log: RefusalLog): { account: string; ref: string; 
   if (words.length < 5) return null;
   const at = Number(BigInt(`0x${words[1]!}`) / 32n), len = Number(BigInt(`0x${words[at] ?? "0"}`));
   const reason = Number(BigInt(`0x${words[3]!}`));
-  if (!Number.isSafeInteger(at) || at < 4 || at >= words.length || !Number.isSafeInteger(len) || reason >= REFUSAL_REASONS.length) return null;
+  // The key's stated length must fit in the data that follows it: a log cut short is no refusal.
+  if (!Number.isSafeInteger(at) || at < 4 || at >= words.length || !Number.isSafeInteger(len) || words.length < at + 1 + Math.ceil(len / 32) || reason >= REFUSAL_REASONS.length) return null;
   return {
     account: log.address.toLowerCase(), ref: log.topics[1]!.toLowerCase(), to: `0x${log.topics[2]!.slice(-40)}`.toLowerCase(), l3aDigest: `0x${words[0]!.slice(0, 40)}`,
     agentKey: `0x${words.slice(at + 1).join("").slice(0, len * 2)}`, amount: amountOf(BigInt(`0x${words[2]!}`)), reason, reason_name: REFUSAL_REASONS[reason]!,

@@ -21,7 +21,7 @@ const record = {
   note: "Every call is a read (eth_getTransactionReceipt, eth_blockNumber, eth_call); nothing was signed or sent. The RPC URL is a credential and is not in this file. Receipts are kept without their logsBloom.",
   account: { address: s.business_account, name: "Northwind's account", source: "docs/demo/main-run.json, snapshot.world.business" },
   abi: {
-    mandates: "function mandates(bytes32 ref) view returns (address principal, bool revoked, bytes32 agentX, bytes32 agentY, string kid, bytes32 openSdHash, uint64 boundBlock, uint64 occurrences, uint128 spent)",
+    mandates: "function mandates(bytes32 ref) view returns ((address principal, bool revoked, bytes32 agentX, bytes32 agentY, string kid, bytes32 openSdHash, uint64 boundBlock, uint64 occurrences, uint128 spent))",
     mandates_selector: s.abi.selector,
     MandateRefused: "event MandateRefused(bytes32 indexed ref, address indexed to, bytes20 l3aDigest, bytes agentKey, uint256 amount, uint8 reason)",
     MandateBound: "event MandateBound(bytes32 indexed ref, bytes32 hashC, bytes32 issuerKey, bytes agentKey, (address token, uint256 perPaymentCap, uint256 budget, uint256 expiry, uint256 recurrenceStart, uint256 recurrenceEnd, uint256 maxOccurrences) constraints, (string kid, string instrument, string currency, uint256 unitsPerMinor, (address account, bytes32 sdHash, string object)[] payees, bytes32 openSdHash) terms)",

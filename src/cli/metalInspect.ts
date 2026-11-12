@@ -51,7 +51,8 @@ async function receipt(o: InspectOptions, tx: string): Promise<{ blockNumber?: s
   try {
     const res = await (o.fetcher ?? fetch)(o.rpcUrl!, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getTransactionReceipt", params: [tx] }), signal: AbortSignal.timeout(8_000) });
     if (!res.ok) return "the RPC answered with an error";
-    const body = (await res.json()) as { result?: unknown };
+    const body = (await res.json()) as { result?: unknown; error?: unknown };
+    if (body.error !== undefined) return "the RPC answered with an error";
     return body.result && typeof body.result === "object" ? body.result as { blockNumber?: string; logs?: RefusalLog[] } : "no receipt for this transaction";
   } catch {
     return "the RPC did not answer";

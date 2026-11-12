@@ -63,6 +63,8 @@ describe("npm run metal-inspect", () => {
     expect(rpc.calls).toEqual(["eth_getTransactionReceipt"]);
     expect(live.out.join("\n")).not.toMatch(/FAKE0|rpc\.example/);
     expect((await metalInspect(["refusal", other], { rpcUrl: URL_WITH_KEY, fetcher: standIn(null).fetcher })).out[0]).toMatch(/no receipt for this transaction/);
+    const failing = (async () => Response.json({ jsonrpc: "2.0", id: 1, error: { code: -32000, message: "over the limit" } })) as typeof fetch;
+    expect((await metalInspect(["refusal", other], { rpcUrl: URL_WITH_KEY, fetcher: failing })).out[0]).toMatch(/the RPC answered with an error/);
     expect((await metalInspect(["refusal", "0x12"])).code).toBe(2);
     expect((await metalInspect(["something"])).code).toBe(2);
   });

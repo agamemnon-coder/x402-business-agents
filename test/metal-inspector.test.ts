@@ -220,6 +220,8 @@ describe("a MandateRefused log, decoded (the two refusals of the check of 12 Nov
     expect(decodeRefusal({ ...log, topics: [`0x${"00".repeat(32)}`, ...log.topics.slice(1)] })).toBeNull();
     expect(decodeRefusal({ ...log, topics: log.topics.slice(0, 2) })).toBeNull();
     expect(decodeRefusal({ ...log, data: log.data.slice(0, 2 + 64 * 3) })).toBeNull();
+    // Cut inside the 65-byte key: the length word is there, the key is not all there.
+    expect(decodeRefusal({ ...log, data: log.data.slice(0, 2 + 64 * 6) })).toBeNull();
     expect(decodeRefusal({ ...log, data: "0x12" })).toBeNull();
   });
 });
