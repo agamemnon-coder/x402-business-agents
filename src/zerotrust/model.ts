@@ -168,6 +168,10 @@ export interface Attack {
   needs?: string;
   /** Where the same refusal was seen on the live rails; absent when no run record shows it. */
   evidence?: Evidence;
+  /** Other ways money leaves that the same test tries, beside the target. */
+  alsoTries?: MoneyPath[];
+  /** Listed, not tested yet: the code it attacks is not in this tree. It has no test and is left out of every count. */
+  pending?: string;
 }
 
 const EVIDENCE = {
@@ -465,7 +469,7 @@ export const ATTACKS: readonly Attack[] = [
   {
     id: "paused-agent-ignored",
     description: "An agent the CFO paused keeps trying to pay, on its card and on chain.",
-    breach: ["agent_output"], target: "onchain_payment",
+    breach: ["agent_output"], target: "onchain_payment", alsoTries: ["card_purchase"],
     action: "Buy on the card and pay on chain after the pause.",
     bypasses: ["L1"], stoppedBy: "L6",
     evidence: EVIDENCE.mandateRevoked,
@@ -473,8 +477,56 @@ export const ATTACKS: readonly Attack[] = [
   {
     id: "emergency-stop-ignored",
     description: "After the CFO pulls the emergency stop, a later request tries to pay anyway, on every way money leaves.",
-    breach: ["agent_output"], target: "bank_payout",
+    breach: ["agent_output"], target: "bank_payout", alsoTries: ["card_purchase", "onchain_payment"],
     action: "Run an approved payout, buy on a card and pay on chain after the stop.",
+    bypasses: ["L1"], stoppedBy: "L6",
+  },
+  // The cells the coverage view asked for (src/zerotrust/coverage.ts): a layer on a way out, the layers inside it breached.
+  {
+    id: "hostile-agent-card-own-merchant",
+    description: "A hostile agent tries to charge its card at a merchant of its own, for an amount of its own.",
+    breach: ["agent_output"], target: "card_purchase",
+    action: "Charge EUR 500.00 at a merchant the company never chose.",
+    bypasses: ["L1"], stoppedBy: "L2",
+    note: "No tool takes a merchant or an amount: an agent buys a plan from a fixed list, or asks for a raise that code bounds and the CFO signs.",
+  },
+  {
+    id: "four-eyes-cfo-signs-rewritten-terms",
+    description: "A payment's stored terms are rewritten to the attacker's account and the CFO's own passkey signs them on a breached phone page.",
+    breach: ["stored_terms", "phone_page"], target: "bank_payout",
+    action: "Pay EUR 9,850.00 to the attacker's account on the CFO's signature alone.",
+    bypasses: ["L1", "L2", "L3"], stoppedBy: "L4",
+    needs: "the CFO has set a four-eyes threshold (approval.four_eyes_eur)",
+  },
+  {
+    id: "supplier-invoice-changed-after-signing",
+    description: "An inbox invoice's amount, payee or currency is changed after the CFO signed, and the supplier payment is started.",
+    breach: ["stored_terms"], target: "supplier_invoice",
+    action: "Pay other terms under the CFO's signature, through the supplier payment's own executor.",
+    bypasses: ["L1", "L2"], stoppedBy: "L3",
+  },
+  {
+    id: "supplier-invoice-four-eyes",
+    description: "An inbox invoice's payment is rewritten to ten times the amount and the CFO's own passkey signs it on a breached phone page.",
+    breach: ["stored_terms", "phone_page"], target: "supplier_invoice",
+    action: "Pay EUR 98,500.00 for a EUR 9,850.00 invoice on the CFO's signature alone.",
+    bypasses: ["L1", "L2", "L3"], stoppedBy: "L4",
+    needs: "the CFO has set a four-eyes threshold (approval.four_eyes_eur)",
+  },
+  {
+    id: "supplier-invoice-forced-past-signatures",
+    description: "Purser's own decision code is forced to say pay: an attacker's invoice is accepted, its supplier added and its payment run with nobody's signature.",
+    breach: ["document", "decision_code"], target: "supplier_invoice",
+    action: "Pay EUR 9,850.00 to a supplier nobody checked, on an invoice nobody approved.",
+    bypasses: ["L1", "L2", "L3", "L4"], stoppedBy: "L5",
+    needs: "Airwallex's approval workflow is switched on for transfers made over the API",
+    evidence: EVIDENCE.transferApproval,
+  },
+  {
+    id: "supplier-invoice-after-stop",
+    description: "After the CFO pulls the emergency stop, or pauses the Treasury agent, an approved inbox invoice is started anyway.",
+    breach: ["agent_output"], target: "supplier_invoice",
+    action: "Run an approved supplier payment after the stop.",
     bypasses: ["L1"], stoppedBy: "L6",
   },
 ];

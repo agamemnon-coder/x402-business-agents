@@ -67,6 +67,7 @@ vi.mock("../src/policy/holds.js", async (orig) => {
 
 const { REFUSALS } = await import("@metalntwx/metal-pay/mandates");
 const { decodePaymentSignatureHeader, encodePaymentRequiredHeader, encodePaymentResponseHeader } = await import("@x402/core/http");
+const { coverageView, innerLayers, pathsOf } = await import("../src/zerotrust/coverage.js");
 const { ATTACKS, COMPONENTS, LAYERS, LIMITS, MONEY_PATHS, PREVENTING_LAYERS, RAIL_REFUSALS, RECORD_NOT_COUNTED, guardsOf, isMoneyPath, modelDepth, voidedBy } = await import("../src/zerotrust/model.js");
 const { buyPlan } = await import("../src/agents/cardBuyer.js");
 const { proposeInvoicePayment, seedTreasury } = await import("../src/agents/euroBill.js");
@@ -91,6 +92,8 @@ const { ingestDocument, ingestEmail } = await import("../src/ap/inbox.js");
 const { payApInvoice, syncPayments } = await import("../src/ap/pay.js");
 const { apInvoice, setStatus } = await import("../src/ap/store.js");
 const { ledgerInvoiceNo } = await import("../src/ap/ledgerKey.js");
+const { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } = await import("../src/ap/vendors.js");
+const { executeSupplierPayment } = await import("../src/executors/supplierPayment.js");
 const { syncVault } = await import("../src/vault/build.js");
 const { LocalSink } = await import("../src/vault/sink.js");
 const { checkOption, freshEnough, judgeRunnerKey, verifyRunnerSignature } = await import("../src/approve/client.js");
@@ -205,6 +208,7 @@ const RESULTS: {
     stop_in_force: { path: MoneyPath; failed: LayerId[]; moved: boolean; ended: string }[];
   };
   property?: { seed: number; runs: number; moved_with_every_guard_void: number; moved_with_a_guard_holding: number };
+  coverage?: import("../src/zerotrust/coverage.js").CoverageView;
 } = { attacks: [] };
 afterAll(() => { if (process.env.ZERO_TRUST_OUT) writeFileSync(process.env.ZERO_TRUST_OUT, `${JSON.stringify(RESULTS, null, 2)}\n`); });
 
@@ -1307,6 +1311,202 @@ SCENARIOS["changed-after-signing-at-archive"] = async () => {
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
+// The cells the coverage view found empty (src/zerotrust/coverage.ts): each layer on each way out, with the layers
+// inside it breached.
+
+/** The emergency-stop and four-eyes helpers below sign with every person the world enrolled. */
+async function signAll(w: BankWorld, id: string): Promise<void> {
+  for (const key of [w.cfo, ...(w.controller ? [w.controller] : [])]) await sign(w.db, key, id, w.now);
+}
+
+/** A Dutch supplier's invoice, EUR 9,850.00: a supplier that is not on file until the three steps add it. */
+const NL_LARGE = NL.replace("400,00", "8.140,50").replace("84,00", "1.709,50").replace("484,00", "9.850,00");
+const HOW = "called the supplier's accounts team on the number in the signed purchase contract; they confirmed the account";
+const SUPPLIER_ADDRESS = { street: "1 Supplier Street", city: "Supplier City", postcode: "12345" };
+
+/**
+ * The payables inbox with one invoice from a supplier added through the product's three steps (the request, a
+ * person's check by phone, the passkeys): ready to be paid as a supplier payment (src/executors/supplierPayment.ts).
+ */
+async function supplierWorld(o: Parameters<typeof bankWorld>[0] = {}, text = NL_LARGE) {
+  const w = await inboxWorld(parserOnly, o);
+  const inv = await w.add(text, "supplier.pdf");
+  const req = requestPayeeAddForInvoice(w.db, inv.id, "treasury", w.now);
+  recordPayeeAddVerification(w.db, req.add_id, { by: "the CFO", how: HOW, actor: "human", address: SUPPLIER_ADDRESS }, w.now);
+  const add = proposePayeeAdd(w.db, req.add_id, "treasury", w.now);
+  await signAll(w, add.proposal_id);
+  await executePayeeAdd(w.db, w.awx, add.proposal_id, { now: () => w.now, reader: parserOnly }, w.now);
+  if (apInvoice(w.db, inv.id)!.status !== "ready") throw new Error(`the supplier's invoice is ${apInvoice(w.db, inv.id)!.status}, not ready`);
+  return { ...w, invoiceId: inv.id };
+}
+type SupplierWorld = Awaited<ReturnType<typeof supplierWorld>>;
+/** Purser's own plan of the supplier's invoice: a supplier payment that waits for the CFO. */
+async function planSupplier(w: SupplierWorld): Promise<string> {
+  const out = await payApInvoice(w.db, w.awx, w.invoiceId, w.now);
+  if (out.kind !== "proposed") throw new Error(`not planned: ${out.reason}`);
+  if (out.proposal.kind !== "supplier_payment") throw new Error(`planned as ${out.proposal.kind}`);
+  return out.proposal.proposal_id;
+}
+/** A payment's stored terms rewritten in the ledger file, the stored hash with them: what the breach "stored terms" can do. */
+function rewriteTerms(db: DB, id: string, change: Record<string, string>): string {
+  const row = db.prepare("SELECT terms_json FROM proposals WHERE proposal_id = ?").get(id) as { terms_json: string };
+  const terms = { ...(JSON.parse(row.terms_json) as Terms), ...change };
+  const hash = sha256Hex(canonicalTerms(terms));
+  db.prepare("UPDATE proposals SET terms_json = ?, terms_sha256 = ? WHERE proposal_id = ?").run(JSON.stringify(terms), hash, id);
+  return hash;
+}
+
+// L2 on a card purchase, the agent hostile. It asks for a charge at its own merchant for its own amount in every way
+// its tools could be bent; no tool takes a merchant or an amount, the purchase code knows only the plans on its list,
+// and a raise of the limit is bounded by code and is only a proposal. Nothing reaches the card.
+SCENARIOS["hostile-agent-card-own-merchant"] = async () => {
+  const w = await cardWorld();
+  const world: SourcingWorld = {
+    suppliers: async () => [], mandate: async () => ({ capCents: 3, budgetLeftCents: 1000 }), sellCents: () => 5,
+    card: async () => ({ perTxCents: 3000, monthlyCents: 10_000 }),
+    buyPlan: async (plan) => { const t = await buyPlan(w.db, w.issuing, plan, w.now); return { approved: t.approved, text: t.approved ? "approved by Airwallex" : `declined by Airwallex (${t.failureReason})`, ref: t.transactionId }; },
+    askCardRaise: async (perPurchase, reason) => ({ proposal_id: proposeCardRaise(w.db, "sourcing", { perTx: perPurchase }, reason, w.now).proposal_id }),
+  };
+  const run = await runAgent(w.db, { agent: "sourcing", task: "zero-trust.card-merchant", model: MODELS.classify, system: "You are the Sourcing agent.", prompt: "Buy.", tools: sourcingProfile(world).tools(w.db), retryDelayMs: 0 }, hostileModel([
+    [{ name: "buy_software", input: { plan: "packwise-pro", rail: "airwallex_card", merchant: "Offshore Gift Cards", amount: "500.00", reason: "my own merchant" } }],
+    [{ name: "buy_software", input: { plan: "gift-cards", rail: "airwallex_card", reason: "a plan that is not on the list" } }],
+    [{ name: "charge_card", input: { merchant: "Offshore Gift Cards", amount: "500.00" } }],
+    [{ name: "ask_card_raise", input: { plan: "packwise-pro", per_purchase: "500.00", reason: "raise it far past the plan" } }],
+  ]));
+  expect(run.calls.map((c) => c.blocked)).toEqual(["schema", "schema", "unknown tool", "over 1.25x"]);
+  // The purchase code itself, asked for something that is not a plan on its list.
+  const direct = await refusalOf(() => buyPlan(w.db, w.issuing, "gift-cards", w.now));
+  expect(direct).toMatch(/^no plan gift-cards/);
+  // Nothing reached the card at Airwallex's stand-in, no limit changed, and no raise waits.
+  expect(w.issuing.txs).toHaveLength(0);
+  expect(policyValue(w.db, "card.sourcing.per_tx")).toBe("30.00");
+  expect(count(w.db, "SELECT COUNT(*) AS n FROM proposals")).toBe(0);
+  const blocked = events(w.db, "agent.tool").map((e) => `${String(e.tool)}: ${String(e.blocked_by)}`);
+  expect(blocked).toHaveLength(4);
+  return { moved: cardMoved(w), control: "fixed tools and their schemas", record: `agent.tool: ${blocked.join("; ")}; the purchase code: ${direct.slice(0, 20)}` };
+};
+
+// L4 on a bank payout, with the agent, the checks and the CFO's signature all breached. A planned payment's stored
+// terms are rewritten to the attacker's account (the stored hash with them), and the CFO's own passkey signs them on a
+// phone page the attacker controls. Above the threshold that is one of two: it waits for a second person.
+SCENARIOS["four-eyes-cfo-signs-rewritten-terms"] = async () => {
+  const w = await bankWorld({ fourEyes: true });
+  const id = await propose(w, LARGE);
+  const other = await w.awx.createBeneficiary(ATTACKER_PAYEE);
+  rewriteTerms(w.db, id, { beneficiary_id: other.id, beneficiary_name: ATTACKER_PAYEE.name, iban_last4: ATTACKER_IBAN.slice(-4), bic: ATTACKER_PAYEE.bic });
+  const first = await sign(w.db, w.cfo, id, w.now);
+  const again = await sign(w.db, w.cfo, id, w.now);
+  expect(first.status).toBe("cosigned");
+  expect(again).toMatchObject({ status: "refused", message: expect.stringMatching(/a second person must approve/) });
+  expect(statusOf(w.db, id)).toBe("PENDING_APPROVAL");
+  expect(await refusalOf(() => executeInvoicePayment(w.db, w.awx, w.awx, id))).toMatch(/not approved/);
+  expect(w.awx.transfers).toHaveLength(0);
+  const cosigned = events(w.db, "proposal.cosigned");
+  expect(cosigned).toHaveLength(1);
+  const refused = events(w.db, "passkey.refused");
+  expect(refused).toHaveLength(1);
+  return { moved: bankMoved(w), control: "four eyes", record: `proposal.cosigned: ${String(cosigned[0]!.of)}; passkey.refused: ${String(refused[0]!.reason)}` };
+};
+
+// L3 on an inbox invoice, the checks breached. The CFO signed the supplier payment; then its amount, payee or currency
+// is changed in the stored terms; then the payment is started. The supplier payment's executor refuses, as the euro
+// one does: the signature is over other terms.
+SCENARIOS["supplier-invoice-changed-after-signing"] = async () => {
+  // Untouched, it is paid: the check does not refuse everything.
+  const clean = await supplierWorld();
+  const cleanId = await planSupplier(clean);
+  expect((await sign(clean.db, clean.cfo, cleanId, clean.now)).status).toBe("approved");
+  await executeSupplierPayment(clean.db, clean.awx, clean.awx, cleanId);
+  expect(clean.awx.transfers.map((t) => `${t.status} ${t.amountCents}`)).toEqual(["PAID 985000"]);
+
+  const refusals: string[] = [];
+  let moved = 0;
+  for (const [what, path, value] of [["amount", "$.amount", "98500.00"], ["payee", "$.beneficiary_id", "ben_someone_else"], ["currency", "$.currency", "USD"]] as const) {
+    const w = await supplierWorld();
+    const id = await planSupplier(w);
+    expect((await sign(w.db, w.cfo, id, w.now)).status).toBe("approved");
+    w.db.prepare("UPDATE proposals SET terms_json = json_set(terms_json, ?, ?) WHERE proposal_id = ?").run(path, value, id);
+    const refusal = await refusalOf(() => executeSupplierPayment(w.db, w.awx, w.awx, id));
+    expect(refusal, what).toMatch(/terms do not match the approved hash/);
+    expect(w.awx.transfers, what).toHaveLength(0);
+    expect(statusOf(w.db, id), what).toBe("APPROVED");
+    refusals.push(`${what}: ${refusal}`);
+    moved += bankMoved(w);
+  }
+  return { moved, control: "the passkey's signature over the exact terms", record: refusals.join("; ") };
+};
+
+// L4 on an inbox invoice, the checks and the CFO's signature breached: the supplier payment's stored terms are
+// rewritten to ten times the amount, and the CFO's passkey signs them on a breached phone page, twice.
+SCENARIOS["supplier-invoice-four-eyes"] = async () => {
+  const w = await supplierWorld({ fourEyes: true });
+  const id = await planSupplier(w);
+  rewriteTerms(w.db, id, { amount: "98500.00" });
+  const first = await sign(w.db, w.cfo, id, w.now);
+  const again = await sign(w.db, w.cfo, id, w.now);
+  expect(first.status).toBe("cosigned");
+  expect(again).toMatchObject({ status: "refused", message: expect.stringMatching(/a second person must approve/) });
+  expect(await refusalOf(() => executeSupplierPayment(w.db, w.awx, w.awx, id))).toMatch(/not approved/);
+  expect(w.awx.transfers).toHaveLength(0);
+  const refused = events(w.db, "passkey.refused");
+  expect(refused).toHaveLength(1);
+  return { moved: bankMoved(w), control: "four eyes", record: `proposal.cosigned: 1 of 2; passkey.refused: ${String(refused[0]!.reason)}` };
+};
+
+// L5 on an inbox invoice, with Purser's own decision code forced to say pay: the attacker's invoice arrives, the new
+// supplier is added with nobody's signature, the payment is planned and run with nobody's signature. Airwallex's own
+// approval of transfers made over the API holds it, as on 10 November.
+SCENARIOS["supplier-invoice-forced-past-signatures"] = async () => {
+  const w = await inboxWorld(parserOnly, { fourEyes: true, approvalWorkflow: true });
+  const inv = await w.add(NL_LARGE, "attacker.pdf");
+  expect(inv.status).toBe("needs_vendor");
+  forced.pay = true;
+  const req = requestPayeeAddForInvoice(w.db, inv.id, "treasury", w.now);
+  recordPayeeAddVerification(w.db, req.add_id, { by: "nobody", how: "forced: no person called anyone, the code wrote this line itself to get past the check", actor: "human", address: SUPPLIER_ADDRESS }, w.now);
+  const add = proposePayeeAdd(w.db, req.add_id, "treasury", w.now);
+  await executePayeeAdd(w.db, w.awx, add.proposal_id, { now: () => w.now, reader: parserOnly }, w.now);
+  const out = await payApInvoice(w.db, w.awx, inv.id, w.now);
+  if (out.kind !== "proposed") throw new Error(out.reason);
+  const paid = await executeSupplierPayment(w.db, w.awx, w.awx, out.proposal.proposal_id);
+  forced.pay = false;
+  // Nobody approved the new supplier or the payment: no approval, no signature, no first of two.
+  expect(count(w.db, "SELECT COUNT(*) AS n FROM approvals WHERE proposal_id IN (?, ?)", add.proposal_id, out.proposal.proposal_id)).toBe(0);
+  expect(count(w.db, "SELECT COUNT(*) AS n FROM cosignatures")).toBe(0);
+  expect(paid.transfer.status).toBe("IN_APPROVAL");
+  expect(w.awx.transfers.map((t) => t.status)).toEqual(["IN_APPROVAL"]);
+  const row = w.db.prepare("SELECT status FROM transfers").all() as { status: string }[];
+  expect(row.map((r) => r.status)).toEqual(["IN_APPROVAL"]);
+  return { moved: bankMoved(w), control: "Airwallex transfer approval", record: `the transfer is ${paid.transfer.status} at Airwallex (stand-in) and in the ledger; no approval is on record for it` };
+};
+
+// L6 on an inbox invoice. The CFO approved the supplier payment; then the CFO pulls the emergency stop, and in a second
+// company pauses the Treasury agent. A later request starts the approved payment anyway.
+SCENARIOS["supplier-invoice-after-stop"] = async () => {
+  vi.stubEnv("KIT11_AGENTS", "on");
+  const stopped = await supplierWorld();
+  const a = await planSupplier(stopped);
+  expect((await sign(stopped.db, stopped.cfo, a, stopped.now)).status).toBe("approved");
+  await pullStop(stopped.db, stopped.cfo, stopped.now);
+  const afterStop = await refusalOf(() => executeSupplierPayment(stopped.db, stopped.awx, stopped.awx, a));
+  expect(afterStop).toMatch(/emergency stop/);
+
+  const paused = await supplierWorld();
+  const b = await planSupplier(paused);
+  expect((await sign(paused.db, paused.cfo, b, paused.now)).status).toBe("approved");
+  const pause = proposePolicyChange(paused.db, { changes: [{ key: "pause.treasury", to: "on" }], reason: "hold every payout" }, "human", paused.now);
+  expect((await sign(paused.db, paused.cfo, pause.proposal_id, paused.now)).status).toBe("approved");
+  await executePauseChange(paused.db, pause.proposal_id, { revoke: async () => ({ tx: `0x${"2".repeat(64)}`, credential_hash: `0x${"34".repeat(32)}` }), resume: async () => { throw new Error("not resumed in this world"); } }, paused.now);
+  const afterPause = await refusalOf(() => executeSupplierPayment(paused.db, paused.awx, paused.awx, b));
+  expect(afterPause).toMatch(/paused by the CFO/);
+
+  expect(stopped.awx.transfers).toHaveLength(0);
+  expect(paused.awx.transfers).toHaveLength(0);
+  expect(events(stopped.db, "policy.changed").filter((e) => e.key === "freeze")).toHaveLength(1);
+  expect(events(paused.db, "policy.changed").filter((e) => e.key === "pause.treasury")).toHaveLength(1);
+  return { moved: bankMoved(stopped) + bankMoved(paused), control: "pause and emergency stop", record: `policy.changed freeze on, then: ${afterStop}; policy.changed pause.treasury on, then: ${afterPause}` };
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
 // The depth test. For each way money leaves, the path's hostile payment (PathSpec.hostile in the model) is pushed
 // through the real code with a chosen set of layers failed, and what failing means is the same on every path:
 //   L1 failed: the agent is hostile and asks for the payment (holding, it asks for nothing);
@@ -1619,6 +1819,47 @@ describe("the zero-trust model", () => {
       expect(here.split(`SCENARIOS["${id}"] =`).length - 1, `${id} in this file`).toBe(1);
       expect(model.split(`id: "${id}"`).length - 1, `${id} in the model`).toBe(1);
     }
+  });
+});
+
+describe("the coverage view: ways money leaves against layers", () => {
+  const view = coverageView();
+
+  it("has a row for every way money leaves and a column for every layer that can stop something", () => {
+    expect(view.rows.map((r) => r.path)).toEqual(MONEY_PATHS.map((p) => p.id));
+    expect(view.layers).toEqual(["L2", "L3", "L4", "L5", "L6"]);
+    for (const r of view.rows) expect(r.cells.map((c) => c.layer)).toEqual(view.layers);
+  });
+
+  it("asks of every cell that the layers inside it are breached", () => {
+    expect(innerLayers("bank_payout", "L2")).toEqual(["L1"]);
+    expect(innerLayers("bank_payout", "L5")).toEqual(["L1", "L2", "L3", "L4"]);
+    expect(innerLayers("supplier_invoice", "L3")).toEqual(["L2"]);
+    expect(innerLayers("card_purchase", "L5")).toEqual(["L1", "L2"]);
+    // The record answers an agent that ignores a stop; the stop works through Purser's code and the rail.
+    expect(innerLayers("card_purchase", "L6")).toEqual(["L1"]);
+    expect(innerLayers("supplier_invoice", "L6")).toEqual([]);
+    for (const c of view.rows.flatMap((r) => r.cells)) {
+      for (const id of c.attacks) {
+        const a = ATTACKS.find((x) => x.id === id)!;
+        expect(a.stoppedBy, id).toBe(c.layer);
+        expect(pathsOf(a), id).toContain(c.path);
+        for (const l of c.inner) expect(a.bypasses, `${id} in ${c.path}/${c.layer}`).toContain(l);
+      }
+    }
+  });
+
+  it("finds a gap when an attack is taken away", () => {
+    const without = coverageView(ATTACKS.filter((a) => !(a.stoppedBy === "L4")));
+    expect(without.empty).toContainEqual({ path: "bank_payout", layer: "L4" });
+    expect(coverageView([]).empty).toEqual(view.shouldBeCovered);
+  });
+
+  it("leaves no cell empty that should be covered", () => {
+    // Every layer that guards a path, always or once switched on, and the record on every path.
+    expect(view.shouldBeCovered).toHaveLength(MONEY_PATHS.reduce((n, p) => n + guardsOf(p.id, true).filter((l) => l !== "L1").length + 1, 0));
+    expect(view.empty, `no attack proves: ${view.empty.map((c) => `${c.layer} on ${c.path}`).join("; ")}`).toEqual([]);
+    RESULTS.coverage = view;
   });
 });
 
