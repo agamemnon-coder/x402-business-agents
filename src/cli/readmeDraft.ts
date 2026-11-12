@@ -163,7 +163,7 @@ Running it live (sandbox keys, a Metal RPC): [run-it.md](run-it.md).
 | \`worker/\` | The hosted site and relay (Cloudflare Worker): /try/sign, the phone-to-runner relay | ${count("worker")} |
 | \`contracts/\` | Solidity contracts used on Metal testnet, with their ABIs | ${count("contracts")} |
 | \`test/\` | Unit, integration and browser checks | ${count("test")} |
-| \`docs/\` | Run logs, records, security, plans, the visuals | ${count("docs", /\.(md|json|svg)$/)} |
+| \`docs/\` | Run logs, records, security, plans (the generated visuals in \`docs/assets/\` not counted) | ${files("docs", /\.(md|json|svg)$/).filter((f) => !f.startsWith("docs/assets/")).length} |
 | \`fixtures/\` | Test invoices, including the hostile ones (bank change, look-alike, injection) | ${count("fixtures", /./)} |
 
 ## Tests and CI
