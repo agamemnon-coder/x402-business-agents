@@ -33,8 +33,8 @@ for (const c of m.companies) console.log(`  ${c.slug.padEnd(24)} ${c.name}: ${c.
 console.log(`  seed.sql: ${m.sql.statements} statements, sha256 ${m.sql.sha256}`);
 console.log(`  r2/: ${m.objects.length} objects`);
 console.log("");
-console.log("To load it into the demo deployment (its own database and bucket only; run from the repository root, wrangler signed in):");
-console.log(`  npx wrangler d1 migrations apply <demo database> --remote -c cloud/wrangler.jsonc`);
-console.log(`  npx wrangler d1 execute <demo database> --remote --file ${resolve(target, "seed.sql")} -c cloud/wrangler.jsonc`);
-console.log(`  (cd ${target} && sh r2-put.sh <demo bucket>)`);
-console.log(`Then set DEMO_PUBLIC=on and DEMO_SLUGS=${m.demo_slugs} on that deployment.`);
+console.log("To load it into the demo deployment (its own database and bucket only; run from the repository root, wrangler signed in; docs/cloud-demo.md):");
+console.log(`  npx wrangler d1 migrations apply purser-demo --env demo --remote -c cloud/wrangler.jsonc`);
+console.log(`  npx wrangler d1 execute purser-demo --env demo --remote --file ${resolve(target, "seed.sql")} -c cloud/wrangler.jsonc`);
+console.log(`  (cd ${target} && sh r2-put.sh purser-demo-docs)`);
+console.log(`The demo environment in cloud/wrangler.jsonc sets DEMO_PUBLIC=on and DEMO_SLUGS=${m.demo_slugs}.`);
