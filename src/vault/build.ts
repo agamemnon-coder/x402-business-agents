@@ -36,7 +36,7 @@ function plan(db: DB, company: string, lang: Lang, today: string, now: Date, ban
   const out: Planned[] = [];
   const refused: RefusedReceipt[] = [];
   for (const d of invoiceDocs(db)) {
-    out.push({ kind: "invoice", key: d.key, id: d.id, year: Number(d.date.slice(0, 4)), base: invoicePath(company, d), dataSha: d.doc_sha256, produce: () => {
+    out.push({ kind: "invoice", key: d.key, id: d.id, year: Number(d.date.slice(0, 4)), base: invoicePath(company, d, lang), dataSha: d.doc_sha256, produce: () => {
       const bytes = readDoc(db, d.doc_path);
       if (sha256(bytes) !== d.doc_sha256) throw new Error(`the stored document of ${d.id} does not match the hash on record (${d.doc_sha256.slice(0, 12)}…); it is not filed`);
       return Promise.resolve(bytes);
@@ -48,7 +48,7 @@ function plan(db: DB, company: string, lang: Lang, today: string, now: Date, ban
     const signed = signedTerms(db, r.proposal_id);
     if (!signed.ok) { refused.push({ key: r.key, proposal_id: r.proposal_id, reason: signed.reason }); continue; }
     const day = r.paid_at.slice(0, 10);
-    out.push({ kind: "receipt", key: r.key, id: r.id, year: Number(day.slice(0, 4)), base: paymentPath(company, { vendor: r.vendor, invoice_no: r.invoice_no, date: day }), dataSha: dataSha(r), produce: () => receiptPdf(company, r, lang, bank) });
+    out.push({ kind: "receipt", key: r.key, id: r.id, year: Number(day.slice(0, 4)), base: paymentPath(company, { vendor: r.vendor, invoice_no: r.invoice_no, date: day }, lang), dataSha: dataSha(r), produce: () => receiptPdf(company, r, lang, bank) });
   }
   const closed = closedPeriods(db);
   for (const m of closed.months) {

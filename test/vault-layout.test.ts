@@ -45,3 +45,14 @@ describe("paths", () => {
     expect(correctionName("N/2026/2026 Jaarrapport.pdf", 2)).toBe("N/2026/2026 Jaarrapport (correctie 2).pdf");
   });
 });
+
+describe("the folders in the company's language", () => {
+  it("are Dutch by default and English for an English company", async () => {
+    const { invoicePath, paymentPath } = await import("../src/vault/layout.js");
+    const i = { vendor: "Bergtex Textil GmbH", invoice_no: "BTX-1", date: "2026-11-02", currency: "EUR", total: "1850.00", blocked: false };
+    expect(invoicePath("N", i)).toBe("N/2026/2026-Q4/Inkoopfacturen/Bergtex Textil GmbH/2026-11-02 BTX-1 EUR 1850.00.pdf");
+    expect(invoicePath("N", i, "en")).toBe("N/2026/2026-Q4/Purchase invoices/Bergtex Textil GmbH/2026-11-02 BTX-1 EUR 1850.00.pdf");
+    expect(invoicePath("N", { ...i, blocked: true }, "en")).toBe("N/2026/2026-Q4/Purchase invoices/_Blocked/Bergtex Textil GmbH/2026-11-02 BTX-1 EUR 1850.00.pdf");
+    expect(paymentPath("N", { vendor: "Bergtex Textil GmbH", invoice_no: "BTX-1", date: "2026-11-08" }, "en")).toBe("N/2026/2026-Q4/Payments/2026-11-08 Bergtex Textil GmbH BTX-1.pdf");
+  });
+});

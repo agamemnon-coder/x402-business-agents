@@ -35,13 +35,25 @@ const yearOf = (day: string) => day.slice(0, 4);
 
 export interface InvoiceName { vendor: string; invoice_no: string; date: string; currency: string; total: string; blocked: boolean }
 
-export function invoicePath(company: string, i: InvoiceName): string {
-  const folder = i.blocked ? ["Inkoopfacturen", "_Geblokkeerd", i.vendor] : ["Inkoopfacturen", i.vendor];
+/**
+ * The folders for invoices and payments, in the company's language: Dutch by default (a Dutch company's accountant
+ * reads them), English for a company set to English (the hands-on demo's test companies). A file already filed keeps
+ * its path: the vault finds earlier files by their key (src/vault/build.ts), never by the folder's name.
+ */
+export const FOLDERS = {
+  nl: { invoices: "Inkoopfacturen", blocked: "_Geblokkeerd", payments: "Betalingen" },
+  en: { invoices: "Purchase invoices", blocked: "_Blocked", payments: "Payments" },
+} as const;
+export type FolderLang = keyof typeof FOLDERS;
+
+export function invoicePath(company: string, i: InvoiceName, lang: FolderLang = "nl"): string {
+  const F = FOLDERS[lang];
+  const folder = i.blocked ? [F.invoices, F.blocked, i.vendor] : [F.invoices, i.vendor];
   return join(company, yearOf(i.date), quarterOf(i.date), ...folder, `${i.date} ${i.invoice_no} ${i.currency} ${i.total}.pdf`);
 }
 
-export function paymentPath(company: string, p: { vendor: string; invoice_no: string; date: string }): string {
-  return join(company, yearOf(p.date), quarterOf(p.date), "Betalingen", `${p.date} ${p.vendor} ${p.invoice_no}.pdf`);
+export function paymentPath(company: string, p: { vendor: string; invoice_no: string; date: string }, lang: FolderLang = "nl"): string {
+  return join(company, yearOf(p.date), quarterOf(p.date), FOLDERS[lang].payments, `${p.date} ${p.vendor} ${p.invoice_no}.pdf`);
 }
 
 export function monthReportPath(company: string, month: string): string {

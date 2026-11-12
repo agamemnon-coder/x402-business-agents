@@ -570,11 +570,33 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await page.waitForSelector(".did-step .bal", { timeout: 20_000 });
   await page.waitForSelector(".did-step .did-match .pill", { timeout: 20_000 });
   const folder = original.path.slice(0, original.path.lastIndexOf("/") + 1);
+  ok(folder.includes("/Purchase invoices/") && !folder.includes("Inkoopfacturen"), `${tag}: did: an English company's archive folder is in English (${folder})`);
   ok((await page.textContent(".did-doc")) === original.path.split("/").pop() && (await page.textContent(".did-folder")) === folder, `${tag}: did: filed, the invoice's folder and file in the archive (${folder}${original.path.split("/").pop()})`);
   const didAccounts = await page.locator(".did-step table.lines tbody td span.mono").allTextContents();
   ok(didAccounts.slice().sort().join() === apiLines.map((l) => l.account).sort().join(), `${tag}: did: booked, every journal line the ledger holds for this invoice (${didAccounts.join(" ")})`);
   const roles = await page.locator(".did-step table.lines tbody td span.role").allTextContents();
   ok(["expense", "VAT", "creditors", "bank"].every((r) => roles.includes(r)), `${tag}: did: the lines named expense, VAT, creditors and bank (${roles.join(", ")})`);
+  // Every amount ends where its column's heading ends (the VAT row like the others).
+  // The text's own right edge (a range over the cell's text) against the heading's (plain loops: no named functions in
+  // the page, which tsx would wrap in a helper the page does not have).
+  await page.waitForTimeout(900);
+  const edges = await page.locator(".did-lines").evaluate((t) => {
+    const ths = t.querySelectorAll("thead th");
+    const out: number[][] = [];
+    const rows = t.querySelectorAll("tbody tr");
+    for (let i = 0; i < rows.length; i++) {
+      const cells = rows[i]!.querySelectorAll("td.r");
+      for (let k = 0; k < cells.length; k++) {
+        if (!cells[k]!.textContent) continue;
+        const r = document.createRange(); r.selectNodeContents(cells[k]!);
+        const h = document.createRange(); h.selectNodeContents(ths[k + 1]!);
+        out.push([Math.round(r.getBoundingClientRect().right), Math.round(h.getBoundingClientRect().right), k]);
+      }
+    }
+    return out;
+  });
+  ok(edges.length > 0 && edges.every(([a, b]) => Math.abs(a! - b!) <= 1) && [0, 1].every((k) => new Set(edges.filter((e) => e[2] === k).map((e) => e[0])).size <= 1), `${tag}: did: every amount, VAT included, ends where its Debit or Credit heading ends (${edges.map(([a, b]) => `${a}/${b}`).join(" ")})`);
+  ok((await page.locator(".did-step tr.vatl td.r").evaluateAll((cs) => cs.map((c) => getComputedStyle(c).fontWeight))).every((w) => w === "400"), `${tag}: did: the VAT amount in the same weight as the others`);
   ok((await page.textContent(".did-step .bal")) === DID.balanced && dr === cr, `${tag}: did: "${DID.balanced}", from the lines' own sums (${dr} = ${cr})`);
   ok((await page.textContent(".did-match .pill")) === ourPay.status && (await page.textContent(".did-match .mono")) === String(ourPay.invoice_no), `${tag}: did: matched, the payment ${ourPay.status as string} with its reference (${ourPay.invoice_no as string})`);
   const nexts = await page.locator("a.did-next").evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).getAttribute("href")));
