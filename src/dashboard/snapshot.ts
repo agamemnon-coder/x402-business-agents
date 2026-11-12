@@ -33,6 +33,7 @@ import { heldCents } from "../policy/holds.js";
 import { health, type Health } from "../ops/health.js";
 import { railsView, type RailsView } from "./rails.js";
 import { towerView, type Tower } from "./tower.js";
+import { signerLabel } from "../ops/reliability.js";
 
 export type DashAgent = "sourcing" | "support" | "treasury" | "customer";
 
@@ -373,12 +374,23 @@ export function summarize(kind: string, termsJson: string): string {
   return kindTitle(kind);
 }
 
-/** "max (passkey k_EWzUuv)" approving by passkey reads as "Max · Face ID"; other approvers as recorded. */
+/** Passkey labels that are virtual test passkeys by this repository's convention; their words are signerLabel's. */
+const VIRTUAL_PASSKEYS: readonly string[] = ["test-cfo", "test-controller"];
+/** "test-controller (virtual test passkey)": a labelled virtual test passkey is named as that, never as a person. */
+const passkeyOwnerName = (label: string): string => (VIRTUAL_PASSKEYS.includes(label) ? `${label} (virtual test passkey)` : label);
+
+/**
+ * "max (passkey k_EWzUuv)" approving by passkey reads as "Max · Face ID"; other approvers as recorded. A labelled
+ * virtual test passkey is never called a person or Face ID: "Max · Face ID & virtual test passkey (second approver role)".
+ */
 export function approverName(approver: string, method: string | null | undefined): string {
   if (method !== "passkey") return approver;
   // E1: two people ("max (passkey …) + anna (passkey …)") read as "Max & Anna · Face ID".
-  const names = approver.split(" + ").map((a) => a.split(" (")[0] ?? a).map((n) => `${n.charAt(0).toUpperCase()}${n.slice(1)}`);
-  return `${names.join(" & ")} · Face ID`;
+  const cap = (n: string) => `${n.charAt(0).toUpperCase()}${n.slice(1)}`;
+  const labels = approver.split(" + ").map((a) => a.split(" (")[0] ?? a);
+  const virtual = (label: string | undefined) => label !== undefined && VIRTUAL_PASSKEYS.includes(label);
+  // "· Face ID" closes each run of people, so it never follows a virtual test passkey.
+  return cap(labels.map((n, i) => (virtual(n) ? signerLabel(n) : `${cap(n)}${i + 1 < labels.length && !virtual(labels[i + 1]) ? "" : " · Face ID"}`)).join(" & "));
 }
 
 function safeCents(s: string): number {
@@ -736,7 +748,13 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
       });
     }
     // Block 1: the account's owners are passkeys; the runner only relays.
-    case "owners.account_created": return out(`Business account ${short(str(p.account))} created with two owners, ${(Array.isArray(p.owners) ? (p.owners as unknown[]).map(str) : []).join("'s and ")}'s passkeys (threshold 2): no server key can change its mandates`, "ok");
+    case "owners.account_created": {
+      const labels = Array.isArray(p.owners) ? (p.owners as unknown[]).map(str) : [];
+      const owners = labels.some((l) => VIRTUAL_PASSKEYS.includes(l))
+        ? `${labels.map((l) => (VIRTUAL_PASSKEYS.includes(l) ? passkeyOwnerName(l) : `${l}'s passkey`)).join(" and ")}, threshold 2`
+        : `${labels.join("'s and ")}'s passkeys (threshold 2)`;
+      return out(`Business account ${short(str(p.account))} created with two owners, ${owners}: no server key can change its mandates`, "ok");
+    }
     case "owners.executed": return out(`Both passkeys signed ${s} on chain and the account ran it: ${str((p.action as P | undefined)?.what)} the ${str((p.action as P | undefined)?.agent)} mandate (up to ${str((p.action as P | undefined)?.cap)} a payment, ${str((p.action as P | undefined)?.budget)} in total); the runner only relayed it`, "ok", { tx: /^0x[0-9a-f]{64}$/i.test(str(p.tx)) ? str(p.tx) : null });
     case "owners.sent": return out(`${s}, signed by both passkeys, was sent to the business account on chain`);
     case "owners.reverted": return out(`The account refused ${s} on chain: ${str(p.reason)}`, "refusal");
@@ -802,7 +820,7 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
       const key = p.passkey && typeof p.passkey === "object" ? str((p.passkey as P).credential_id).slice(0, 8) : "";
       return out(`${approverName(str(p.approver), str(p.method)) || "A person"} approved ${s}${key ? "" : " by typed hash"}`, "approval");
     }
-    case "proposal.cosigned": return out(`${approverName(str(p.approver), str(p.method))} approved ${s}: 1 of 2 (four eyes); it waits for a second person`, "approval");
+    case "proposal.cosigned": return out(`${approverName(str(p.approver), str(p.method))} approved ${s}: 1 of 2 (four eyes); it waits for a second approval`, "approval");
     case "proposal.rejected": return out(`${approverName(str(p.approver), str(p.method)) || "A person"} rejected ${s}`, "refusal");
     case "proposal.executing": return out(`Running ${s}, after checking its terms are exactly what was approved`);
     case "proposal.executed": return out(`${s} executed`, "ok");
@@ -925,7 +943,7 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     case "card.duplicate_merged": return out(`A card authorisation recorded twice (Airwallex names it by two ids) was merged into one: ${str(p.amount)} ${str(p.currency)}`);
     case "card.charge_reversed": return out(`Airwallex reversed ${str(p.amount)} EUR at ${str(p.merchant)} ${onCard(str(p.agent), str(p.last4))}`, "refusal", { awx_id: s || null });
     case "passkey.enrolment_opened": return out("A one-time code to enrol a passkey was issued (valid 10 minutes)");
-    case "passkey.enrolled": return out(`${str(p.label) || "A person"} enrolled passkey ${s.slice(0, 8)}; approvals now need it`, "ok");
+    case "passkey.enrolled": return out(`${passkeyOwnerName(str(p.label)) || "A person"} enrolled passkey ${s.slice(0, 8)}; approvals now need it`, "ok");
     case "passkey.revoked": return out(`Passkey ${s.slice(0, 8)} revoked: replaced by ${str(p.replaced_by).slice(0, 8)}`);
     case "passkey.refused": return out(`Passkey approval${s ? ` of ${s}` : ""} refused: ${str(p.reason)}`, "refusal");
     case "passkey.enrol_refused": return out(`Passkey enrolment refused: ${str(p.reason)}`, "refusal");
