@@ -11,7 +11,7 @@ import { REPO_URL } from "../submission/deck.js";
 import { DEMO_STEPS, HERO_VERDICT } from "./heroDemo.js";
 import { metalStory, refusalNote } from "./metalStory.js";
 import { loadRecord } from "./run.js";
-import { esc, icon, page } from "./ui.js";
+import { esc, icon, page, TRY_URL } from "./ui.js";
 
 /** The link to /judge, word for word: at the top of Home, in the README and in the form. */
 export const JUDGE_LINK = "Judge it in 3 minutes →";
@@ -24,9 +24,9 @@ export interface JudgeStep { id: string; title: string; seconds: number; see: st
 
 /**
  * The five steps, in the menu's order: Home's own moment (one tap on the hero's last step, in the hero's own words),
- * then /try/sign as its story goes (the agent asks, signed with Face ID, try to cheat, try to trick the agent, change
- * the rule and see the worst case, the agent pays alone, the closing card), then the proof. The tour no longer starts
- * with the replay (12 Nov): /watch is reached from Proof.
+ * then the hands-on demo (TRY_URL, since 12 Nov: one Try everywhere): a test company of your own, sign the exact terms,
+ * try to cheat, try to trick the reader, paid and booked; the old /try/sign story stays one link, "the 60-second story".
+ * Then the proof. The tour no longer starts with the replay (12 Nov): /watch is reached from Proof.
  */
 export function judgeSteps(record = loadRecord().record): JudgeStep[] {
   const st = metalStory(record), refusal = st.refusal?.proof.href, note = refusalNote(st.refusal);
@@ -38,18 +38,18 @@ export function judgeSteps(record = loadRecord().record): JudgeStep[] {
     },
     {
       id: "sign", title: "Sign, then try to cheat", seconds: 40,
-      see: "Your own test world: the agent asks, you sign with your passkey, then “Now try to cheat: change one cent”. The server refuses the same signature.",
-      links: [{ label: "Open /try/sign", href: "/try/sign" }],
+      see: "Start a test company of your own and file an invoice. Approve the exact terms with your passkey, then change one term and try to pay: Purser refuses it.",
+      links: [{ label: "Open the hands-on demo", href: TRY_URL }, { label: "The 60-second story", href: "/try/sign" }],
     },
     {
       id: "trick", title: "Try to trick the agent", seconds: 30,
-      see: "Next: send your agent a fake invoice. Claude Sonnet reads it live; Purser's code checks it and stops the payment.",
-      links: [{ label: "Trick the agent on /try/sign", href: "/try/sign" }],
+      see: "File an invoice with a changed IBAN, or write your own. Claude or Purser's code reads it; Purser's code checks it and stops what does not add up.",
+      links: [{ label: "Trick the reader in the demo", href: TRY_URL }],
     },
     {
-      id: "policy", title: "Change the rule, see the worst case", seconds: 30,
-      see: "A looser rule needs your signature, and the worst case is in sight. Then the agent pays its next invoice alone, and a closing card sums it up.",
-      links: [{ label: "Change the rule on /try/sign", href: "/try/sign" }],
+      id: "policy", title: "Paid, booked, filed", seconds: 30,
+      see: "Pay the terms as signed: the payment on the simulated bank (test money), the ledger's lines, and the invoice and receipt in the archive.",
+      links: [{ label: "Finish it in the demo", href: TRY_URL }],
     },
     {
       id: "proof", title: "See the proof", seconds: 40,
