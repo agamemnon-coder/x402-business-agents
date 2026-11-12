@@ -1,5 +1,6 @@
 // The Airi run on the site (7 Nov): Visa Intelligent Commerce via Airwallex's Airi, a separate world, shows on /airwallex
-// (in full), at the top of /visa (in full, above the TAP run) and on /proof under the partners (short), dated and
+// (in full), on /visa (in full, under the page's VIC heading, drawing and overview, above the TAP section; 12 Nov) and on
+// /proof under the partners (short), dated and
 // labelled "Airwallex sandbox, test card, test money", in the owner's copy of 7 Nov word for word (the heading, the
 // summary sentence, purchase A's two sentences, the three outcome badges, the 5 of 5 checks linked to the run log's
 // checks section), every figure and id from its record (docs/demo/airi-run.json), the ids in a "Details" fold, nothing
@@ -74,13 +75,14 @@ describe("the Airi run on the site", () => {
     expect(text(block(pages.proof!))).toContain("Details: every step and id");
   });
 
-  it("sits below awx-1 on /airwallex, at the top of /visa above the TAP run, and in sight under the partners on /proof", () => {
+  it("sits below awx-1 on /airwallex, on /visa under the VIC heading and above the TAP section, and in sight under the partners on /proof", () => {
     expect(pages.airwallex!.indexOf('id="airi-run"')).toBeGreaterThan(pages.airwallex!.indexOf('id="awx-1"'));
     expect(pages.airwallex!).toContain('<details class="fold" id="airi-run-steps">');
-    // /visa: first in <main>, before the page's h1 and the TAP flow; its heading an h2 there, an h3 on /airwallex.
-    const visa = pages.visa!, main = visa.indexOf("<main");
-    expect(visa.indexOf('id="airi-run"')).toBeGreaterThan(main);
-    expect(visa.indexOf('id="airi-run"')).toBeLessThan(visa.indexOf("<h1"));
+    // /visa (12 Nov): under the page's h1, which is the VIC heading, and above the TAP section and its flow; its
+    // heading an h2 there, an h3 on /airwallex.
+    const visa = pages.visa!;
+    expect(visa.indexOf('id="airi-run"')).toBeGreaterThan(visa.indexOf("<h1"));
+    expect(visa.indexOf('id="airi-run"')).toBeLessThan(visa.indexOf('id="visa-tap"'));
     expect(visa.indexOf('id="airi-run"')).toBeLessThan(visa.indexOf('class="flow card'));
     expect(block(visa)).toMatch(/<h2 class="airi-h">/);
     expect(block(pages.airwallex!)).toMatch(/<h3 class="airi-h">/);
@@ -99,7 +101,9 @@ describe("the Airi run on the site", () => {
     for (const x of [a.mandate_id!, a.payment_intent_id!, b.proposal_id!, b.mandate_id!, b.payment_intent_id!, c.code!, b.terms_sha256!.slice(0, 8)]) expect({ x, shown: t.includes(x) }).toEqual({ x, shown: true });
     expect(t).toContain(`PaymentIntent ${a.payment_intent_id} SUCCEEDED, reported to Airi`);
     expect(t).toContain(`PaymentIntent ${b.payment_intent_id} SUCCEEDED: P-0002 EXECUTED`);
-    expect(t).toContain(`within Purser's limit of EUR ${rec.policy.alone_max_eur} for this rail: the Sourcing agent alone, with no Purser approval. The cardholder confirmed it once in Airi with a passkey`);
+    // Purchase A (12 Nov): no "agent alone"; no CFO approval, and the cardholder's own step right after it.
+    expect(t).toContain(`within Purser's limit of EUR ${rec.policy.alone_max_eur} for this rail: no CFO approval. The cardholder still confirmed it once in Airi with a passkey, and the Sourcing agent received`);
+    expect(t).not.toMatch(/agent alone/);
     expect(t).toContain(`(terms hash ${b.terms_sha256!.slice(0, 8)}…)`);
     expect(t).toContain(AIRI_CREDENTIAL);
     expect(t).toContain(`refused by Purser, PURSER_MERCHANT_NOT_ALLOWED, with 0 Airi calls`);

@@ -138,7 +138,7 @@ export const LOGO = {
   metal: '<span class="logo txt">Metal</span>',
   airwallex: '<span class="logo txt">Airwallex</span>',
   claude: '<span class="logo txt">Claude</span>',
-  visa: '<span class="logo txt">Visa TAP</span>',
+  visa: '<span class="logo txt">Visa</span>',
 };
 
 /**

@@ -197,14 +197,15 @@ describe("the site after v4", () => {
   it("makes the partner pages picture first, numbers next, details folded, and no Visa logo", () => {
     for (const name of ["metal", "airwallex", "visa", "claude"] as const) {
       const html = PUBLIC[name]!;
-      // /visa opens with the Airi run (Visa Intelligent Commerce via Airwallex's Airi, owner, 7 Nov), above the TAP run;
-      // the TAP page under it keeps its own order, picture first (test/airi-run-page.test.ts holds the block).
       const whole = /<main[\s\S]*<\/main>/.exec(html)![0];
+      // /visa opens with Visa Intelligent Commerce (12 Nov): its picture is the VIC flow, right under the heading and
+      // before anything folded; the Airi run (owner's copy, 7 Nov) is under it and above the TAP section, whose own
+      // picture and folds come last (test/visa-overview.test.ts holds the order, test/airi-run-page.test.ts the block).
       const airi = /<div class="awrb"><div class="card airi" id="airi-run">[\s\S]*?<\/details><\/div><\/div>/.exec(whole)?.[0] ?? "";
-      expect({ name, airiFirst: name === "visa" ? airi.length > 0 && whole.indexOf(airi) < whole.indexOf('class="flow card"') : true }).toEqual({ name, airiFirst: true });
-      const main = name === "visa" ? whole.replace(airi, "") : whole;
-      expect(main.indexOf('class="flow card"')).toBeLessThan(main.indexOf("<details"));
-      expect((main.match(/<details class="fold">/g) ?? []).length).toBeGreaterThanOrEqual(2);
+      expect({ name, airiAboveTap: name === "visa" ? airi.length > 0 && whole.indexOf(airi) < whole.indexOf('class="flow card"') : true }).toEqual({ name, airiAboveTap: true });
+      const picture = name === "visa" ? 'class="card vicflow"' : 'class="flow card';
+      expect({ name, pictureFirst: whole.indexOf(picture) >= 0 && whole.indexOf(picture) < whole.indexOf("<details") }).toEqual({ name, pictureFirst: true });
+      expect((whole.match(/<details class="fold">/g) ?? []).length).toBeGreaterThanOrEqual(2);
       expect(html).not.toMatch(/<img[^>]*visa/i);
       // No script, but /airwallex's one (src/redesign/ui.ts OPEN_TARGET_JS: a link into its cards' fold opens it).
       expect(scriptBlocks(html)).toEqual(name === "airwallex" ? [`<script>\n${OPEN_TARGET_JS}</script>`] : []);

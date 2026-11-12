@@ -29,9 +29,10 @@ export const VISA_AWARD_ON = false;
 /**
  * The Visa claim in plain words (jury review, 4 Nov), said once per surface (/visa, the README, the form, the deck);
  * nothing stronger anywhere. "Public reference verifier", never "open source": Visa's reference has no open-source
- * licence (docs/decisions.md).
+ * licence (docs/decisions.md). "The Sourcing agent" since 12 Nov (was "each agent"): only the Sourcing agent ran TAP
+ * live, in the TAP run of 2 Nov and in the main run (test/visa-overview.test.ts reads both records).
  */
-export const VISA_CLAIM = "Visa: each agent signs its card checkout with Visa's Trusted Agent Protocol (TAP), so a merchant can check which agent is buying. Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours.";
+export const VISA_CLAIM = "Visa: the Sourcing agent signs its card checkout with Visa's Trusted Agent Protocol (TAP), so a merchant can check which agent is buying. Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours.";
 /**
  * TAP's status, on Max's wording (5 Nov, after Visa's answer in the hackathon Slack), said once per surface (/visa, the
  * form, the deck): built and verified against Visa's public reference verifier, not eligible Visa tooling for this

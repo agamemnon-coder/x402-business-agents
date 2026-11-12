@@ -1,5 +1,6 @@
-// The VIC flow on /visa (7 Nov): how a purchase with a single-use Visa credential from Airwallex's Airi runs, in seven
-// steps under the Airi run's block, as an ordered list a screen reader reads in order. Breaks if a step is missing or
+// The VIC flow on /visa (7 Nov; the page's drawing, right under its heading and entry line, since 12 Nov): how a purchase
+// with a single-use Visa credential from Airwallex's Airi runs, in seven steps, as an ordered list a screen reader reads
+// in order. Breaks if a step is missing or
 // out of order, if a step is marked as someone else's (Purser 2 and 7, Airi and Visa 3 to 5, Airwallex 6), if an id or
 // value is not purchase B's from the record, if C's branch is not "refused by Purser, 0 Airi calls", if the label is
 // gone, if a fact is missing and the page still builds, if a number is not the record's, if it moves or has no dark
@@ -22,12 +23,17 @@ const without = (step: string, drop: string) => ({ ...rec, purchases: rec.purcha
 describe("the VIC flow on /visa", () => {
   const visa = pages.visa!, flow = flowOn(visa);
 
-  it("sits under the Airi run's block, before the page's h1 and the TAP flow, once", () => {
+  it("is the page's drawing: right under the h1 and the entry line, above the Airi run's block and the TAP flow, once", () => {
     expect(flow.length).toBeGreaterThan(0);
     expect(visa.match(/id="vic-flow"/g)).toHaveLength(1);
-    expect(visa.indexOf(`id="${VIC_FLOW_ID}"`)).toBeGreaterThan(visa.indexOf('id="airi-run"'));
-    expect(visa.indexOf(`id="${VIC_FLOW_ID}"`)).toBeLessThan(visa.indexOf("<h1"));
+    expect(visa.indexOf(`id="${VIC_FLOW_ID}"`)).toBeGreaterThan(visa.indexOf("<h1"));
+    expect(visa.indexOf(`id="${VIC_FLOW_ID}"`)).toBeLessThan(visa.indexOf('id="airi-run"'));
     expect(visa.indexOf(`id="${VIC_FLOW_ID}"`)).toBeLessThan(visa.indexOf('class="flow card'));
+    // Its heading is an h2 there: it follows the page's h1, and no heading level is skipped.
+    expect(flow).toMatch(/<h2 id="vic-flow-h">How it works: purchase B<\/h2>/);
+    // Nothing but the heading and the entry line stands between the top of the page and the drawing.
+    const before = visa.slice(visa.indexOf("<main"), visa.indexOf('<section class="card vicflow"'));
+    expect(before).not.toMatch(/<section|class="card|<details/);
     // Not on the other pages: /proof links to it.
     for (const name of ["airwallex", "proof", "home"]) expect({ name, flow: pages[name]!.includes('id="vic-flow"') }).toEqual({ name, flow: false });
   });
@@ -78,7 +84,8 @@ describe("the VIC flow on /visa", () => {
     expect(() => vicFlow({ ...rec, purchases: rec.purchases.map((p) => p.step === "C" ? { ...p, by: "airi" } : p) })).toThrow(/refused by Purser/);
     expect(() => vicFlow({ ...rec, test_card: false })).toThrow(/test card/);
     // Read again from the record: the same flow the page shows.
-    expect(flow).toBe(vicFlowHtml(vicFlow(rec)));
+    expect(flow).toBe(vicFlowHtml(vicFlow(rec), { h: "h2" }));
+    expect(vicFlowHtml(vicFlow(rec))).toContain('<h3 id="vic-flow-h">');
   });
 
   it("is reachable from /proof's Airi block, and has dark colours, a phone layout and no motion", () => {

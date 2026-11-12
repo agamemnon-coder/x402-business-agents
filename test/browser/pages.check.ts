@@ -4,7 +4,7 @@
 // language, not exactly one h1, a link or button with no name, an image with no alt text), and on a menu that wraps.
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
-import { VISA_ENTRY_LINE } from "../../src/redesign/partners.js";
+import { VISA_ENTRY_LINE, VISA_H1, VISA_TAP_HEADING } from "../../src/redesign/partners.js";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { chromium, type Page } from "playwright";
@@ -368,6 +368,12 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     for (const path of ["/metal", "/airwallex", "/visa", "/claude"]) {
       await page.goto(`${base}${path}`, { waitUntil: "load" });
       await look(page, `${path} ${tag}`, w);
+      // /visa opens with VIC (12 Nov): at most one screen of text before the first proof, so the drawing (purchase B's
+      // steps, with its ids) starts on the first screen at every width.
+      if (path === "/visa") {
+        const top = await page.evaluate(() => Math.round((document.getElementById("vic-flow")?.getBoundingClientRect().top ?? Infinity) + window.scrollY));
+        if (!(top < h)) fail(`/visa ${tag}: the drawing starts at ${top} px, below the first screen (${h} px)`);
+      }
       const pt = await page.evaluate(() => document.body.innerText);
       const words = pt.split(/\s+/).filter((x) => /\w/.test(x)).length;
       // /airwallex carries Airwallex read back (section B, 6 Nov; cards folded) and awx-1 (7 Nov, its steps folded):
@@ -393,7 +399,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (path === "/airwallex" && (!/The hash the CFO signed travels with the payment\./.test(pt) || (pt.match(/\b[0-9a-f]{64}\b/g) ?? []).length !== 2 || !/Match: the same hash/.test(pt))) fail(`/airwallex ${tag}: the CFO's hash and Airwallex's are not shown side by side, or do not match`);
       // awx-1 (7 Nov): the separate Airwallex-only run, dated and labelled, its checks in sight, every step and id in its fold.
       if (path === "/airwallex" && (!/\d{1,2} November, awx-1: a separate run · Airwallex sandbox, test money/.test(pt) || !/7 of 7 checks pass/.test(pt) || !/LIMIT_EXCEEDED[\s\S]*MERCHANT_CATEGORY_NOT_ALLOWED[\s\S]*738a4263-6d6c-4de8-94a3-93da1c175fb4[\s\S]*4140dee2-6373-4eb4-a71f-bf69130f96a7/.test(open))) fail(`/airwallex ${tag}: awx-1 is not shown, dated and labelled, with its steps`);
-      // The Airi run (7 Nov), in the owner's copy on /airwallex and at the top of /visa: Visa Intelligent Commerce via
+      // The Airi run (7 Nov), in the owner's copy on /airwallex and on /visa: Visa Intelligent Commerce via
       // Airwallex's Airi, dated and labelled "Airwallex sandbox, test card, test money", the three outcome badges and the
       // 5 of 5 checks (a link to the run log's checks) in sight, every step and id in its "Details" fold; never an Airi
       // link or a card number.
@@ -402,8 +408,25 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         || (await page.locator('#airi-run a[href$="2026-11-07-vic-1.md#checks-the-records-checks"]').count()) !== 1 || /int_sgpvzc9hjhnxvpblt2r/.test(pt)
         || !/single-use card credential from Airwallex's Airi wallet[\s\S]*int_sgpvzc9hjhnxvpblt2r[\s\S]*P-0002[\s\S]*int_sgpvzc9hjhnxvxc26ie[\s\S]*PURSER_MERCHANT_NOT_ALLOWED/.test(open)
         || /airi\.com\/|\b\d{13,19}\b/.test(open))) fail(`${path} ${tag}: the Airi run is not shown, dated and labelled, with its badges, checks and steps`);
-      // On /visa above the TAP run: the block before the page's flow.
+      // On /visa above the TAP run: the block before the TAP section's flow.
       if (path === "/visa" && !(await page.evaluate(() => { const a = document.querySelector("#airi-run"), f = document.querySelector(".flow.card"); return !!a && !!f && !!(a.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING); }))) fail(`/visa ${tag}: the Airi run is not above the TAP run`);
+      // /visa opens with VIC (12 Nov; Visa, 5 Nov: TAP is not Visa tooling for this hackathon): the page's first heading
+      // is the h1 with the VIC heading; the drawing, the overview and both Airi runs are above the TAP section; nothing
+      // above that section names TAP; and the section opens with its heading and, at once, its status.
+      if (path === "/visa") {
+        const v = await page.evaluate(`(() => {
+          const main = document.querySelector("main"), tap = document.getElementById("visa-tap");
+          const first = main.querySelector("h1, h2, h3");
+          const above = (id) => { const e = document.getElementById(id); return !!e && !!tap && !!(e.compareDocumentPosition(tap) & Node.DOCUMENT_POSITION_FOLLOWING); };
+          const range = document.createRange(); range.setStart(main, 0); if (tap) range.setEndBefore(tap); else range.setEnd(main, main.childNodes.length);
+          return { first: first ? first.tagName + ": " + first.textContent : "", below: ["vic-flow", "visa-runs", "airi-run", "airi-run-2"].filter((id) => !above(id)), top: range.toString(),
+            tap: tap ? (tap.textContent + " " + (tap.nextElementSibling ? tap.nextElementSibling.textContent : "")).replace(/\\s+/g, " ").trim() : "" };
+        })()`) as { first: string; below: string[]; top: string; tap: string };
+        if (v.first !== `H1: ${VISA_H1}`) fail(`/visa ${tag}: the page's first heading is "${v.first}", not the VIC heading`);
+        if (v.below.length) fail(`/visa ${tag}: not above the TAP section: ${v.below.join(", ")}`);
+        if (/\bTAP\b|Trusted Agent Protocol/.test(v.top)) fail(`/visa ${tag}: TAP is named above the TAP section`);
+        if (v.tap !== `${VISA_TAP_HEADING} Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov).`) fail(`/visa ${tag}: the TAP section does not open with its heading and its status ("${v.tap.slice(0, 120)}")`);
+      }
       if (path === "/airwallex" && ((await page.locator("#controls .awcard").count()) !== 3 || (await page.locator("#controls .awrow .k.ok").count()) !== 15)) fail(`/airwallex ${tag}: not three cards with five controls each, all matching the CFO policy`);
       if (path === "/claude" && (!/Claude call ✓ · (Haiku|Sonnet|Opus) · [\d,]+ tokens · [\d.]+ s · req_/.test(open) || !/routine payments by code/.test(open))) fail(`/claude ${tag}: no Claude call badges or no split`);
       if (path === "/metal" && (await page.locator("a.pf[href*='testnet.metalntwx.com/tx/0x']").count()) < 3) fail(`/metal ${tag}: fewer than three transactions`);

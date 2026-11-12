@@ -93,8 +93,9 @@ flowchart LR
 3. **[Proof](https://kit11.max-31b.workers.dev/proof): every id.** The main run's, each checkable, and the
    Airwallex-only run of 7 November: accepted, every check passed ([below](#the-airwallex-only-run-awx-1-7-november-sandbox-test-money)).
 4. **[The Airi run](#visa-intelligent-commerce-via-airwallexs-airi-a-live-run-7-nov): Visa Intelligent Commerce via
-   Airwallex's Airi (7 November).** Agents paid with a single-use Visa credential from Airi: within the limit on their
-   own, above it only after the CFO's Face ID; passed 5 of 5 checks, in the second attempt in its world. Log: [docs/runs/2026-11-07-vic-1.md](docs/runs/2026-11-07-vic-1.md).
+   Airwallex's Airi (7 November).** Agents paid with a single-use Visa credential from Airi: within Purser's limit
+   without the CFO's approval (the cardholder still confirms each purchase in Airi), above it only after the CFO's Face
+   ID; passed 5 of 5 checks, in the second attempt in its world. Log: [docs/runs/2026-11-07-vic-1.md](docs/runs/2026-11-07-vic-1.md).
 
 Starter Kit 11 · x402 Business Agents · entered for the Metal Award and the Visa Award (Visa: [the Airi run](#visa-intelligent-commerce-via-airwallexs-airi-a-live-run-7-nov), Visa Intelligent Commerce; TAP is an extra: [note](docs/submission/long-description.md#visa)). Northwind Outdoor,
 the example company, is an outdoor wholesaler that sells live stock data to retailers per query: the kit's data business.
@@ -274,8 +275,8 @@ supplier purchases + 3 refunds + 1 sweep on Metal, and 1 card charge at Airwalle
 20.00 test USD between them, before and after, held in code (`TOTAL_BUDGET_CENTS`). The limits in code, each with its test:
 [docs/controls.md](docs/controls.md#guards-in-code).
 
-**Visa:** each agent signs its card checkout with Visa's Trusted Agent Protocol (TAP), so a merchant can check which
-agent is buying. Visa's public reference verifier accepted the signatures in a separate test on 2 November; the
+**Visa:** the Sourcing agent signs its card checkout with Visa's Trusted Agent Protocol (TAP), so a merchant can check
+which agent is buying. Visa's public reference verifier accepted the signatures in a separate test on 2 November; the
 merchant is ours.
 
 ## The Airwallex-only run, awx-1 (7 November; sandbox, test money)

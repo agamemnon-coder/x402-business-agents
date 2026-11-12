@@ -1,7 +1,7 @@
 // The Airi run on the site (7 Nov): the Sourcing agent pays with a single-use Visa credential from Airwallex's Airi
 // wallet (Visa Intelligent Commerce, VIC), in a separate world on the Airwallex sandbox with Airi's test card and test
-// money. Shown on /airwallex below awx-1 (in full, its ids folded), at the top of /visa (in full, above the TAP run) and
-// on /proof under the partners (short, linking to the ids on /airwallex). Everything
+// money. Shown on /airwallex below awx-1 (in full, its ids folded), on /visa (in full, under the page's heading, drawing
+// and overview, above the TAP section) and on /proof under the partners (short, linking to the ids on /airwallex). Everything
 // here is read from its record, docs/demo/airi-run.json (the conductor's record, sanitised: no passkey credential, no
 // payment method id, never an Airi link); the run log is docs/runs/2026-11-07-vic-1.md. Nothing is typed in: the ids,
 // amounts, codes, counts and the date come from the record, and the block shows only when the record is a live run's
@@ -132,8 +132,10 @@ export function airiRunSummary(rec: AiriRunRecord): AiriRunSummary | null {
     { badge: bPaid ? AIRI_BADGES.B : `✕ ${b.outcome}`, ok: bPaid, text: `${b.currency} ${b.amount}, above the limit: Purser asked Airi only after ${faceId} on the exact terms.` },
     { badge: cRefused ? AIRI_BADGES.C : "✕ Not refused before Airi", ok: false, text: `${c.currency} ${c.amount} at a merchant the CFO does not allow: refused before Airi was asked (${c.airi_calls} Airi calls).` },
   ];
+  // Purchase A (12 Nov): "no CFO approval", and the cardholder's own step said right after it. It read "the Sourcing agent
+  // alone", which a reader took as nobody confirming it; Airi asks the cardholder for every purchase.
   const lines = [
-    `${a.currency} ${a.amount} at ${a.merchant}, within Purser's limit of ${limit} for this rail: the Sourcing agent alone, with no Purser approval. The cardholder confirmed it once in Airi with a passkey, and the agent received ${AIRI_CREDENTIAL} (Airi's test card; mandate ${a.mandate_id}). The agent paid on Airwallex's hosted checkout page: PaymentIntent ${a.payment_intent_id} ${a.outcome}, reported to Airi.`,
+    `${a.currency} ${a.amount} at ${a.merchant}, within Purser's limit of ${limit} for this rail: no CFO approval. The cardholder still confirmed it once in Airi with a passkey, and the Sourcing agent received ${AIRI_CREDENTIAL} (Airi's test card; mandate ${a.mandate_id}). The agent paid on Airwallex's hosted checkout page: PaymentIntent ${a.payment_intent_id} ${a.outcome}, reported to Airi.`,
     `${b.currency} ${b.amount}, above that limit: ${b.proposal_id} waited for ${faceId} on its exact terms (terms hash ${short(b.terms_sha256)}). Only then did the runner ask Airi for mandate ${b.mandate_id}; the cardholder confirmed it in Airi with a passkey, and PaymentIntent ${b.payment_intent_id} ${b.outcome}: ${b.proposal_id} ${b.proposal_end}.`,
     `${c.currency} ${c.amount} at a merchant the CFO does not allow: refused by Purser, ${c.code}, with ${c.airi_calls} Airi calls.`,
     `The record and the run log hold ids, order hashes and codes only: no one-time Airi link, no card number, no credential.`,

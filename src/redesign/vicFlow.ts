@@ -1,7 +1,9 @@
-// How a VIC purchase runs, as /visa draws it under the Airi run's block (7 Nov): seven steps, left to right at desktop
-// and top to bottom at phone width, each marked with whose step it is (the agent; Purser at 2 and 7; Airi and Visa at
-// 3 to 5; Airwallex at 6), with purchase B's own id or value under it, and purchase C's branch off step 2 (refused by
-// Purser before any Airi call). /proof's Airi block links here ("How it works").
+// How a VIC purchase runs: /visa's drawing, right under the page's heading and its entry line since 12 Nov (it sat
+// under the Airi run's block before): seven steps, left to right at desktop and top to bottom at phone width, each
+// marked with whose step it is (the agent; Purser at 2 and 7; Airi and Visa at 3 to 5; Airwallex at 6), with purchase
+// B's own id or value under it, and purchase C's branch off step 2 (refused by Purser before any Airi call). The CFO's
+// limit, the Airi mandate, the cardholder's passkey, the single-use credential and the Airwallex PaymentIntent are
+// steps 2 to 6. /proof's Airi block links here ("How it works").
 //
 // The drawing IS the list: an <ol> styled as a flow (CSS only, no motion), so a screen reader reads the seven steps in
 // order. Every figure and id is read from the run's record (docs/demo/airi-run.json, the same one the block reads):
@@ -74,25 +76,29 @@ export function vicFlow(rec: AiriRunRecord): VicFlow {
   };
 }
 
-/** The flow: a heading, its label, and the steps as an ordered list (step 2 carries C's branch). */
-export function vicFlowHtml(f: VicFlow): string {
+/**
+ * The flow: a heading, its label, and the steps as an ordered list (step 2 carries C's branch). The heading is an h2 on
+ * /visa, where the flow comes straight after the page's h1 (no heading level skipped).
+ */
+export function vicFlowHtml(f: VicFlow, o: { h?: "h2" | "h3" } = {}): string {
+  const h = o.h ?? "h3";
   const li = (s: VicStep, i: number) => `<li class="vf-${s.owner}"><span class="vf-who">${esc(VIC_OWNER_WORDS[s.owner])}</span><b>${esc(s.title)}</b><span class="vf-what">${esc(s.what)}</span><code class="vf-v${s.tone ? ` ${s.tone}` : ""}">${esc(s.value)}</code>${i === 1
     ? `<p class="vf-no"><b>${esc(f.refused.head)}</b><span>${esc(f.refused.sub)}</span></p>` : ""}</li>`;
-  return `<section class="card vicflow" id="${VIC_FLOW_ID}" aria-labelledby="${VIC_FLOW_ID}-h"><h3 id="${VIC_FLOW_ID}-h">${esc(`${VIC_FLOW_HEADING}: ${f.follows.charAt(0).toLowerCase()}${f.follows.slice(1)}`)}</h3>
+  return `<section class="card vicflow" id="${VIC_FLOW_ID}" aria-labelledby="${VIC_FLOW_ID}-h"><${h} id="${VIC_FLOW_ID}-h">${esc(`${VIC_FLOW_HEADING}: ${f.follows.charAt(0).toLowerCase()}${f.follows.slice(1)}`)}</${h}>
 <p class="vf-label">${esc(f.label)}</p>
 <ol class="vf" role="list">${f.steps.map(li).join("")}</ol></section>`;
 }
 
 /** The flow as /visa shows it, from the committed record: "" without a live record; throws when a fact is missing. */
-export function vicFlowBlock(rec: AiriRunRecord | null = airiRun()): string {
-  return rec ? vicFlowHtml(vicFlow(rec)) : "";
+export function vicFlowBlock(rec: AiriRunRecord | null = airiRun(), o: { h?: "h2" | "h3" } = {}): string {
+  return rec ? vicFlowHtml(vicFlow(rec), o) : "";
 }
 
 /** The flow's styles: owner colours in light and dark, horizontal from 960 px, vertical below; no motion. */
 export const VIC_FLOW_CSS = `.vicflow { --vf-airi: #be185d; padding: 16px 18px; display: grid; gap: 8px; scroll-margin-top: 80px; min-width: 0; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .vicflow { --vf-airi: #f472b6; } }
 :root[data-theme="dark"] .vicflow { --vf-airi: #f472b6; }
-.vicflow h3 { font-size: 18px; margin: 0; }
+.vicflow h2, .vicflow h3 { font-size: 18px; margin: 0; }
 .vicflow .vf-label { margin: 0; color: var(--muted); font-size: 14.5px; font-weight: 600; }
 ol.vf { list-style: none; margin: 4px 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; counter-reset: vf; }
 ol.vf > li { counter-increment: vf; position: relative; display: grid; gap: 3px; align-content: start; padding: 10px 12px 10px 44px; border-radius: 14px; background: var(--sunken); border-left: 4px solid var(--vf-c); min-width: 0; --vf-c: var(--muted); }

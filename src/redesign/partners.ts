@@ -6,6 +6,10 @@
 // below them awx-1 (7 Nov, src/redesign/awxRun.ts), the separate Airwallex-only run, dated, every step folded.
 // Every figure from the record (src/redesign/run.ts), the TAP run's record or the read-back records; logos only as "built on",
 // never a Visa logo. No script. Also the clean 404 page.
+// /visa has its own order since 12 Nov (visaPage): it opens with Visa Intelligent Commerce through Airwallex's Airi (the
+// heading, the Airi run's label, the entry line, the drawing of purchase B, what ran), and the TAP work sits below every
+// VIC block as a labelled extra (Visa, 5 Nov: only VIC or Intelligent Commerce Connect is Visa tooling for this
+// hackathon). assertVicFirst fails the page build if that order is lost.
 
 import { readFileSync } from "node:fs";
 import { SANDBOX_SETTLED, SPLIT_LINE, VISA_CLAIM, VISA_TAP_STATUS } from "../config/brand.js";
@@ -14,12 +18,12 @@ import { agentRun, callBadge, cardRaiseOf, decisionsOf, faceIdDecisions, family,
 import { LOGO, earlierLine, fold, partnerProof } from "./proof.js";
 import { EXPLORER, REPO_BLOB, metalStory, refusalNote, separateRuns, type MetalStory } from "./metalStory.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
-import { AIRI_CSS, airiRunBlock } from "./airiRun.js";
+import { AIRI_CSS, AIRI_RUN_FILE, AIRI_RUN_ID, airiRun, airiRunBlock, type AiriRunRecord } from "./airiRun.js";
 import { awxRun, awxRunBlock } from "./awxRun.js";
-import { vic2RunBlock } from "./vic2Run.js";
-import { VIC_FLOW_CSS, vicFlowBlock } from "./vicFlow.js";
-import { VISA_OVERVIEW_CSS, VISA_TAP_ID, visaOverviewBlock } from "./visaOverview.js";
-import { OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
+import { VIC2_RUN_FILE, VIC2_RUN_ID, vic2RunBlock } from "./vic2Run.js";
+import { VIC_FLOW_CSS, VIC_FLOW_ID, vicFlowBlock } from "./vicFlow.js";
+import { VISA_OVERVIEW_CSS, VISA_OVERVIEW_ID, VISA_TAP_ID, tapCardHtml, visaOverviewBlock } from "./visaOverview.js";
+import { MAIN_RUN_REAL, OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
 
 const CSS = `.pp { padding: 26px 0 24px; }
 .pp .wrap { max-width: 1040px; display: grid; gap: 18px; }
@@ -69,6 +73,8 @@ a.pf { color: var(--accent); font-weight: 600; text-decoration: none; font-size:
 @media (max-width: 700px) { .flow.story { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 8px; }
   .st { grid-template-columns: minmax(0, 1fr); padding: 9px 12px; border-left: 4px solid var(--metal); } .st .ic { display: none; } .st.bad { border-left-color: var(--bad); } .st.ok { border-left-color: var(--ok); }
   .st b { font-size: 16.5px; } .st span { font-size: 14px; line-height: 1.35; } .st .tx { margin-top: 2px; } .st .tx a.pf { font-size: 14px; } .st code { font-size: 12.5px; } }
+h2.vsec { font-size: clamp(22px, 2.2vw, 28px); font-weight: 750; margin: 18px 0 0; scroll-margin-top: 80px; }
+.vo-run.tap { max-width: 420px; }
 .nf { padding: 64px 0; } .nf .wrap { display: grid; gap: 16px; justify-items: start; } .nf h1 { font-size: clamp(34px, 5vw, 56px); font-weight: 800; }
 .nf .tabs2 { display: flex; flex-wrap: wrap; gap: 10px; }
 ${READBACK_CSS}
@@ -83,10 +89,9 @@ const nums = (items: [string, string][]) => `<div class="nums">${items.map(([v, 
 const docsLi = (title: string, docs: { label: string; href: string }[]) => `<li>${esc(title)}: ${docs.map((d) => `<a class="pf" href="${esc(d.href)}" target="_blank" rel="noopener">${esc(d.label)} ↗</a>`).join(" · ")}</li>`;
 const plainLi = (t: string) => `<li>${esc(t)}</li>`;
 
-function shell(run: AgentRun, o: { intro?: string; lead?: string; top?: string; underTop?: string; label?: string; title: string; description: string; logo: string; h1: string; picture: string; flowClass?: string; nums: string; line: string; extra?: string; folds: string; proofHash: string; js?: string }): string {
+function shell(run: AgentRun, o: { title: string; description: string; logo: string; h1: string; picture: string; flowClass?: string; nums: string; line: string; extra?: string; folds: string; proofHash: string; js?: string }): string {
   const body = `<main class="pp"><div class="wrap">
-  ${o.intro ? `<p class="vintro">${esc(o.intro)}</p>` : ""}${o.lead ?? ""}${o.top ? `<div class="awrb">${o.top}</div>` : ""}${o.underTop ?? ""}
-  <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(o.label ?? run.label)}</span><h1>${esc(o.h1)}</h1></div>
+  <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(run.label)}</span><h1>${esc(o.h1)}</h1></div>
   ${o.flowClass ? `<div class="flow card ${o.flowClass}">${o.picture}</div>` : `<div class="flow card" role="img" aria-label="${esc(`How ${o.title} fits in, step by step`)}">${o.picture}</div>`}
   ${o.nums}
   <p class="line">${esc(o.line)}</p>
@@ -223,35 +228,98 @@ export function visaLabels(run: AgentRun, tap: NonNullable<ReturnType<typeof tap
   });
 }
 
-/** /visa's first line: the Visa Award entry in plain words, only what ran live (the Airi run, 7 Nov). */
+/** /visa's line under its heading: the Visa Award entry in plain words, only what ran live (the Airi run, 7 Nov). */
 export const VISA_ENTRY_LINE = "Purser is entered for the Metal Award and the Visa Award. The Visa entry is this live run of Visa Intelligent Commerce through Airwallex's Airi, with a test card in Airwallex's sandbox.";
+/**
+ * /visa's heading since 12 Nov: the Airi run in one line, true of its three purchases: Purser's policy came before any
+ * request to Airi (within the limit it passed; above it the CFO signed first; the disallowed merchant got no credential).
+ * It was the TAP work's "The agent signs before it pays", and TAP is not eligible Visa tooling here (Visa, 5 Nov).
+ */
+export const VISA_H1 = "First the CFO's limit, then a single-use Visa credential";
+/** The TAP section's heading on /visa, in the words Home and Proof link to it with (VISA_EXTRA_LINK). */
+export const VISA_TAP_HEADING = "Extra, not an award entry: Visa TAP";
 
-export function visaPage(run: AgentRun = agentRun()): string {
+const dayShort = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
+/** The label beside /visa's heading, from the Airi run's record: its date and its own label, "7 Nov · Airwallex sandbox · test card · test money". */
+export const visaRunLabel = (rec: AiriRunRecord) => `${dayShort(rec.started_at)} · ${rec.label.split(", ").join(" · ")}`;
+
+const plainWords = (html: string) => html.replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+
+/**
+ * /visa opens with VIC and keeps TAP below it, under its status: throws otherwise, so the page does not build (as the
+ * VIC flow does when a fact is missing). Checked on the built page: the first heading is the VIC one; nothing above the
+ * TAP section names TAP; every VIC block is above that section; the overview says what ran and counts no TAP run; and
+ * the TAP section opens with its heading and, at once, the status word for word.
+ */
+export function assertVicFirst(html: string): void {
+  const fail = (why: string): never => { throw new Error(`/visa must open with VIC and keep TAP below it, under its status: ${why}`); };
+  const main = /<main[\s\S]*<\/main>/.exec(html)?.[0] ?? fail("no <main>");
+  if (/<h[1-6]\b[^>]*>[\s\S]*?<\/h[1-6]>/.exec(main)?.[0] !== `<h1>${esc(VISA_H1)}</h1>`) fail("the page's first heading is not the VIC heading");
+  const tapHead = `<h2 class="vsec" id="${VISA_TAP_ID}">`;
+  const tapAt = main.indexOf(tapHead);
+  const top = tapAt < 0 ? main : main.slice(0, tapAt);
+  if (/\bTAP\b|Trusted Agent Protocol/.test(plainWords(top))) fail("TAP is named above the TAP section");
+  for (const id of [VIC_FLOW_ID, VISA_OVERVIEW_ID, AIRI_RUN_ID]) if (!top.includes(`id="${id}"`)) fail(`the VIC block #${id} is not above the TAP section`);
+  if (main.includes(`id="${VIC2_RUN_ID}"`) && !top.includes(`id="${VIC2_RUN_ID}"`)) fail(`the VIC block #${VIC2_RUN_ID} is not above the TAP section`);
+  const overview = /<section class="card vo"[\s\S]*?<\/section>/.exec(top)?.[0] ?? "";
+  if (!/<h2[^>]*>What ran: /.test(overview) || /class="vo-run tap"/.test(overview)) fail("the overview does not say what ran, or counts the TAP run");
+  if (tapAt >= 0 && !plainWords(main.slice(tapAt)).startsWith(`${VISA_TAP_HEADING} ${VISA_TAP_STATUS}`)) fail("the TAP section does not open with its status");
+}
+
+/** The TAP work, the last section of /visa, under its heading: at once its status (Visa, 5 Nov), the TAP run's card, then the picture, the claim and the folds. */
+function visaTapSection(run: AgentRun): string {
   const tap = tapRun(), p = partnerProof(run), own = ownTap(run.record);
   const buy = own ?? tap?.steps.find((x) => x.approved && x.model), decline = tap?.steps.find((x) => !x.approved);
-  // The Airi run (7 Nov), Visa Intelligent Commerce via Airwallex's Airi, at the top, above the TAP run (owner, 7 Nov):
-  // the same block as /airwallex, its heading an h2 here, since it comes before the page's h1.
-  const airi = airiRunBlock(undefined, { h: "h2" });
-  return shell(run, {
-    // One plain sentence first (Max, 10 Nov): what the Visa Award entry is, in words a juror reads at a glance.
-    ...(airi ? { intro: VISA_ENTRY_LINE } : {}),
-    // First the overview (Max, 10 Nov: more Visa, fewer words): the flow in four nodes and the three Visa runs as cards.
-    lead: visaOverviewBlock(),
-    top: airi,
-    // Under it, how a VIC purchase runs (7 Nov): seven steps, purchase B's ids, C's branch (src/redesign/vicFlow.ts);
-    // the second Airi run in the same padded column as the first (its card touched the page edge outside it), then the
-    // TAP run's anchor, which the overview's TAP card links to.
-    underTop: airi ? `${vicFlowBlock()}<div class="awrb">${vic2RunBlock(undefined, { fold: false })}</div><span id="${VISA_TAP_ID}"></span>` : "",
-    title: "Visa", description: "Visa Intelligent Commerce through Airwallex's Airi, run live in the Airwallex sandbox: above the limit, the agent gets a single-use Visa credential only after the CFO's Face ID. Visa TAP below, as an extra.",
-    logo: LOGO.visa, h1: "The agent signs before it pays", proofHash: "airi-run",
-    picture: [node("package", "Agent signs", buy?.model ? `Sourcing · Claude ${family(buy.model)}` : "TAP signature"), arrow,
-      node("shield-check", own ? "Both signatures verified" : "Reference verifier", own ? "by our layer, in this run" : `Visa's, commit ${tap?.commit ?? "16d59bd"}`), arrow,
-      node("credit-card", buy ? `€${buy.amount} paid` : "Card pays", own ? `Airwallex card ····${own.last4}` : "Airwallex card", "ok"), arrow,
-      node("ban", decline ? `€${decline.amount} declined` : "Over the limit", tap && own ? `by Airwallex · ${tap.label.replace(/ · test money$/, "")}` : "by Airwallex, at the limit", "bad")].join(""),
-    label: own ? undefined : tap?.label, nums: "", line: "The card's limit still holds: over it, Airwallex declines.",
-    extra: `<p class="claim">${esc(VISA_CLAIM)}</p><p class="claim">${esc(VISA_TAP_STATUS)}</p>`,
-    folds: fold(own ? "The live proof" : "The live TAP run", p.visa) + fold("What this is, and is not", (tap ? visaLabels(run, tap) : []).map(plainLi)),
+  const picture = [node("package", "Agent signs", buy?.model ? `Sourcing · Claude ${family(buy.model)}` : "TAP signature"), arrow,
+    node("shield-check", own ? "Both signatures verified" : "Reference verifier", own ? "by our layer, in this run" : `Visa's, commit ${tap?.commit ?? "16d59bd"}`), arrow,
+    node("credit-card", buy ? `€${buy.amount} paid` : "Card pays", own ? `Airwallex card ····${own.last4}` : "Airwallex card", "ok"), arrow,
+    node("ban", decline ? `€${decline.amount} declined` : "Over the limit", tap && own ? `by Airwallex · ${tap.label.replace(/ · test money$/, "")}` : "by Airwallex, at the limit", "bad")].join("");
+  return `<p class="claim">${esc(VISA_TAP_STATUS)}</p>
+  ${tapCardHtml(tap)}
+  <div class="phd"><span class="pill run">${icon("database", 14)}${esc(own ? run.label : tap?.label ?? run.label)}</span></div>
+  <div class="flow card" role="img" aria-label="${esc("How Visa TAP fits in, step by step")}">${picture}</div>
+  <p class="line">${esc("The card's limit still holds: over it, Airwallex declines.")}</p>
+  <p class="claim">${esc(VISA_CLAIM)}</p>
+  <div class="folds card">${fold(own ? "The live proof" : "The live TAP run", p.visa)}${fold("What this is, and is not", (tap ? visaLabels(run, tap) : []).map(plainLi))}</div>`;
+}
+
+export function visaPage(run: AgentRun = agentRun()): string {
+  const rec = airiRun();
+  const tapSource = `${run.file} (${run.name}); the card run from ${tapRun()?.file ?? "docs/runs"}.`;
+  // Without the Airi run's live record there is no VIC story to tell: the page is the TAP extra alone, under its own
+  // heading and status.
+  if (!rec) {
+    const body = `<main class="pp"><div class="wrap">
+  <div class="phd"><h1 id="${VISA_TAP_ID}">${esc(VISA_TAP_HEADING)}</h1></div>
+  ${visaTapSection(run)}
+  <a class="open" href="proof">All the proof ${icon("arrow-right", 15)}</a>
+</div></main>`;
+    return page({ title: "Visa", description: "Visa TAP: built and verified against Visa's public reference verifier; an extra, not an award entry.", tab: "proof", css: CSS, body, source: `Source: ${tapSource}` });
+  }
+  // The top (12 Nov): the heading, beside it the Airi run's own label, one plain sentence naming the Visa Award entry
+  // (Max, 10 Nov), then the drawing: purchase B's seven steps from the record (the CFO's limit, the Airi mandate, the
+  // cardholder's passkey, the single-use credential, the Airwallex PaymentIntent). Then what ran, as two cards; the
+  // Airi run in full (its ids folded) and the second Airi run in the same padded column. The TAP work last.
+  const body = `<main class="pp"><div class="wrap">
+  <div class="phd">${LOGO.visa}<span class="pill run">${icon("database", 14)}${esc(visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
+  <p class="vintro">${esc(VISA_ENTRY_LINE)}</p>
+  ${vicFlowBlock(rec, { h: "h2" })}
+  ${visaOverviewBlock()}
+  <div class="awrb">${airiRunBlock(rec, { h: "h2" })}</div>
+  <div class="awrb">${vic2RunBlock(undefined, { fold: false })}</div>
+  <h2 class="vsec" id="${VISA_TAP_ID}">${esc(VISA_TAP_HEADING)}</h2>
+  ${visaTapSection(run)}
+  <a class="open" href="proof#${AIRI_RUN_ID}">All the proof ${icon("arrow-right", 15)}</a>
+</div></main>`;
+  const html = page({
+    title: "Visa", tab: "proof", css: CSS, body,
+    description: "Visa Intelligent Commerce through Airwallex's Airi, run live in the Airwallex sandbox: above the limit, the agent gets a single-use Visa credential only after the CFO's Face ID. Visa TAP below, as an extra.",
+    // "What's real?": the Airi run's own line first (its label and merchant, from the record), then the main run's (the TAP extra plays it).
+    real: [`Visa Intelligent Commerce through Airwallex's Airi (${dayShort(rec.started_at)}): ${rec.label}. The merchant is our own Airwallex sandbox account, ${rec.checkout.merchant}.`, ...MAIN_RUN_REAL],
+    source: `Source: ${AIRI_RUN_FILE} and ${VIC2_RUN_FILE} (the Airi runs). The TAP extra: ${tapSource}`,
   });
+  assertVicFirst(html);
+  return html;
 }
 
 export function claudePage(run: AgentRun = agentRun()): string {
