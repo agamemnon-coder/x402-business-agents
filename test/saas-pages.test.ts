@@ -221,7 +221,7 @@ describe("/security: security and trust", () => {
     expect(flat("docs/security.md")).toContain("No third-party penetration test has been run");
     expect(flat("docs/controls.md")).toContain("This is not a SOC 2 report: no auditor has tested these controls, and the build runs on the Airwallex sandbox and Metal testnet only.");
     expect(flat("docs/cloud.md")).toContain("What the code does not do yet, and must be in place before a company's real data goes in: 1.");
-    expect(flat("docs/cloud.md")).toContain("5. An independent security review of this branch after these fixes, and a red-team run against a deployed staging copy.");
+    expect(flat("docs/cloud.md")).toContain("5. An independent security review of this code after these fixes, and a red-team run against a deployed staging copy.");
     for (const s of NOT_YET_SOURCES) {
       expect({ doc: s.doc, said: flat(s.doc).includes(s.quote) }).toEqual({ doc: s.doc, said: true });
       expect(folded("s-notyet")).toContain(`“${s.quote}” ${s.doc} ↗`);

@@ -89,7 +89,7 @@ export const NOT_YET_LINE = "No third-party penetration test and no SOC 2 report
 export const NOT_YET_SOURCES: readonly DocLine[] = [
   { doc: "docs/security.md", anchor: "#checks", quote: "No third-party penetration test has been run" },
   { doc: "docs/controls.md", anchor: "", quote: "This is not a SOC 2 report: no auditor has tested these controls, and the build runs on the Airwallex sandbox and Metal testnet only." },
-  { doc: "docs/cloud.md", anchor: "#before-real-customer-data", about: "The SME product, still to do before real customer data:", quote: "An independent security review of this branch after these fixes, and a red-team run against a deployed staging copy." },
+  { doc: "docs/cloud.md", anchor: "#before-real-customer-data", about: "The SME product, still to do before real customer data:", quote: "An independent security review of this code after these fixes, and a red-team run against a deployed staging copy." },
 ];
 export const NOT_IN_PLACE = { doc: "docs/controls.md", anchor: "#not-in-place-summary" };
 /** The sandbox run in which a payout was made on behalf of a test company's own connected account. */
