@@ -191,6 +191,7 @@ await page.click("text=Sign in with your passkey");
 await page.waitForSelector("text=Waits for the CFO's Face ID", { timeout: 20_000 });
 await settle();
 ok((await text()).includes("BTX-2026-24"), "the overview lists the invoice that waits for the CFO");
+ok(!(await page.isVisible(".hero")) && !(await page.isVisible(".trust")), "signed in: no illustration and no trust line");
 await shot("05-overzicht");
 
 await page.goto(`${ORIGIN}/#/invoices`);

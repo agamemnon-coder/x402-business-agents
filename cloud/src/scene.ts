@@ -89,11 +89,11 @@ export function sceneSvg(): string {
 }
 
 /**
- * The scene's CSS, and the two-zone layout's band: a soft mesh of the brand's tokens (--accent, --accent-soft, --bg,
+ * The scene's CSS, and the two-zone layout's band (each page shows it, display: grid, where it wants it): a soft mesh of the brand's tokens (--accent, --accent-soft, --bg,
  * --surface). One loop of 16 s: the first half pays, the second half refuses the changed amount.
  */
 export const SCENE_CSS = `
-.hero { position: relative; display: grid; place-items: center; overflow: hidden; padding: 20px 16px;
+.hero { position: relative; place-items: center; overflow: hidden; padding: 20px 16px;
   background: radial-gradient(90% 70% at 15% 10%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%),
     radial-gradient(80% 70% at 95% 95%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
     linear-gradient(160deg, var(--accent-soft), var(--bg)); }
