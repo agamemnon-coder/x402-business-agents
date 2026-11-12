@@ -13,6 +13,7 @@ import { TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { ibanSha } from "../agents/invoice.js";
 import type { AirwallexRail } from "../airwallex/port.js";
 import { beginExecution, createProposal, finishExecution, nextProposalId, type ProposalRow } from "./approvals.js";
+import { nameCheckGate, runNameCheck, type NameCheckRow, type PayeeNameVerifier } from "../airwallex/payeeName.js";
 
 /** A payee change waits an hour for the CFO, like a mandate change. */
 const PAYEE_CHANGE_TTL_MS = 60 * 60 * 1000;
@@ -99,16 +100,27 @@ export function recordVerification(db: DB, id: string, v: { by: string; how: str
   return row(db, id);
 }
 
+/** Asks the new account's bank, through Airwallex, whether it carries the supplier's name (before the proposal). */
+export async function checkPayeeChangeName(db: DB, verifier: PayeeNameVerifier, id: string, by: Actor, now = new Date()): Promise<NameCheckRow> {
+  const r = row(db, id);
+  if (r.status !== "VERIFIED") throw new Error(`${id} is ${r.status}; only a change a person verified is checked with the bank`);
+  const iban = normal(r.new_iban);
+  return runNameCheck(db, verifier, { name: r.vendor, entity: "COMPANY", country: iban.slice(0, 2), currency: "EUR", iban, accountKey: iban }, by, now);
+}
+
 export function proposePayeeChange(db: DB, id: string, by: Actor, now = new Date()): ProposalRow {
   const r = row(db, id);
   if (r.status !== "VERIFIED" || !r.verification_json) throw new Error(`${id} is not verified by a person yet; nothing to propose`);
   const on = active(db, r.vendor);
   if (!on || on.beneficiary_id !== r.old_beneficiary_id) throw new Error(`${r.vendor}'s account on file changed since ${id} was requested`);
+  // AIRWALLEX_PAYEE_CHECK=on: the new account must carry the supplier's name at its bank (src/airwallex/payeeName.ts).
+  const nameCheck = nameCheckGate(db, r.vendor, normal(r.new_iban), now);
   const terms: PayeeChangeTerms = {
     schema: TERMS_SCHEMA, kind: "payee_change", proposal_id: nextProposalId(db),
     expires_at: new Date(now.getTime() + PAYEE_CHANGE_TTL_MS).toISOString().replace(/\.\d{3}Z$/, "Z"),
     change_id: id, vendor: r.vendor, old_beneficiary_id: on.beneficiary_id, old_iban_last4: on.iban_last4,
     new_iban: r.new_iban, new_bic: r.new_bic, verification: JSON.parse(r.verification_json) as PayeeChangeTerms["verification"],
+    ...(nameCheck ? { name_check: nameCheck } : {}),
   };
   const p = createProposal(db, { terms, createdBy: by }, now);
   db.prepare("UPDATE payee_changes SET status = 'PROPOSED', proposal_id = ? WHERE change_id = ?").run(p.proposal_id, id);

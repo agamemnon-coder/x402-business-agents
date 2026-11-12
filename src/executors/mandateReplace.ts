@@ -130,6 +130,8 @@ function guard(db: DB, proposalId: string, facts: Facts, now: Date): MandateRepl
  */
 function preconditions(db: DB, t: MandateReplaceTerms, facts: Facts, onlyRead = false): void {
   try {
+    // The kind inside the signed terms, never the copy filed beside them: that kind decided who had to sign (zero-trust matrix, 12 November).
+    if (t.kind !== "mandate_replace") throw new Error(`${t.proposal_id} is not a mandate change: its signed terms say ${String(t.kind)}`);
     if (toCents(t.total_budget) > TOTAL_BUDGET_CENTS) throw new Error(`total ${t.total_budget} exceeds the limit`);
     // Block 6: the chain budgets were set for the spend carried at proposal; a resume since would make them wrong.
     checkCarried(db, t.steps);

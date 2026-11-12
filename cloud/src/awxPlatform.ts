@@ -128,6 +128,30 @@ export async function onboardingLink(sql: Sql, tenantId: string, p: AwxPlatformE
   }
 }
 
+/**
+ * The account's status read from Airwallex now (GET /api/v1/accounts/{id}), for when a webhook is late or was missed
+ * (docs/real-customers.md). Only the id and the status are read and kept; the account's details (which can hold the
+ * company's people and identity data, `view_type`) are never stored. The poll counts as the newest word on the status:
+ * an older webhook arriving after it changes nothing.
+ */
+export async function refreshAccount(sql: Sql, tenantId: string, p: AwxPlatformEnv, now: Date): Promise<AwxAccount> {
+  const a = await accountOf(sql, tenantId);
+  if (!a || !a.account_id) throw new PlatformRefused(404, "the company has no Airwallex account through Purser yet");
+  let r: { accountId: string; status: string };
+  try {
+    r = await p.rail.getAccount(a.account_id);
+  } catch {
+    throw new PlatformRefused(502, "Airwallex did not answer about the account; try again in a minute");
+  }
+  if (r.accountId !== a.account_id) throw new PlatformRefused(502, "Airwallex answered about another account; nothing is changed");
+  const status = statusFromAccount(r.status);
+  if (!status) return a; // an unknown status is left as it was (Airwallex: "handle unknown values gracefully")
+  await sql.run("UPDATE awx_accounts SET status = ?, updated_at = ?, event_at = ? WHERE tenant_id = ? AND id = 'main' AND account_id = ? AND event_at <= ?",
+    [status, now.toISOString(), now.getTime(), tenantId, a.account_id, now.getTime()]);
+  if (status !== a.status) logEvent("info", "awx_platform_status", { status, via: "poll" }, now);
+  return (await accountOf(sql, tenantId))!;
+}
+
 async function hmacHex(secret: string, message: string): Promise<string> {
   const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   return [...new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(message)))].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -173,7 +197,10 @@ export async function receiveAccountEvent(sql: Sql, p: AwxPlatformEnv, headers: 
   if (!status) return { applied: false };
   const id = accountIdOf(e);
   if (!id) return { applied: false };
-  const r = await sql.run("UPDATE awx_accounts SET status = ?, updated_at = ?, event_at = ? WHERE account_id = ? AND event_at <= ?", [status, now.toISOString(), at, id, at]);
+  // A webhook never makes a refused (suspended) or closed account active again: x-timestamp orders deliveries, and a late
+  // or re-signed retry of an old account.active must not switch payments back on. Reactivation is read by a poll
+  // (refreshAccount), which asks Airwallex for the account as it is now.
+  const r = await sql.run("UPDATE awx_accounts SET status = ?, updated_at = ?, event_at = ? WHERE account_id = ? AND event_at <= ? AND NOT (? = 'active' AND status IN ('refused', 'closed'))", [status, now.toISOString(), at, id, at, status]);
   if (r.changes > 0) { logEvent("info", "awx_platform_status", { status }, now); return { applied: true, status }; }
   return { applied: false };
 }

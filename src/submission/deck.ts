@@ -10,9 +10,10 @@ import { readFileSync } from "node:fs";
 import type { PackFacts } from "./facts.js";
 import { DIFFERENTIATORS, HERO, KIT11_RUN_LINE, NORTHWIND_LINE, PROOF_SENTENCES, TRY_IT, VISA_TAP_STATUS, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../config/brand.js";
 import { cardControlRows, hashTravel } from "../redesign/airwallexProof.js";
-import { AIRI_RUN_LABEL, AIRI_SUMMARY, airiRun, airiRunSummary } from "../redesign/airiRun.js";
+import { AIRI_RUN_LABEL, airiRun, airiRunSummary } from "../redesign/airiRun.js";
 import { agentRun, homeFilm, stopsLine } from "../redesign/run.js";
-import { INPUTS, USAGE_LABEL, figures, opusLine, paymentsLine, unitEconomics } from "../business/unitEconomics.js";
+import { INPUTS, USAGE_LABEL, invoiceLine, opusLine, unitEconomics } from "../business/unitEconomics.js";
+import { PRICING, PRICING_LABEL } from "../config/pricing.js";
 
 const asset = (p: string) => readFileSync(new URL(`../ui/${p}`, import.meta.url));
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -84,7 +85,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
   // The Airi run (7 Nov), Visa Intelligent Commerce via Airwallex's Airi, on the Airwallex slide in the owner's copy: its
   // heading, label, summary sentence, outcome badges and checks, from its record (docs/demo/airi-run.json).
   const airiRec = airiRun(), airi = airiRec ? airiRunSummary(airiRec) : null;
-  const ue = unitEconomics(), uf = figures(ue);
+  const ue = unitEconomics();
   const slides: Slide[] = [
     {
       kicker: "Purser · Starter Kit 11 · x402 Business Agents",
@@ -157,7 +158,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
           <div><h2>Each agent's card: the CFO policy as Airwallex's own controls</h2><ul class="cards">${cards.map((r) => `<li><b>${esc(r.name)}</b> ····${esc(r.last4)}: ${r.checks.filter((c) => c.ok).length} of ${r.checks.length} controls match${r.match ? "" : " (not all)"}</li>`).join("")}</ul>
           <p class="small">Limit per purchase and per month, merchant category, currency, end date.</p></div>
         </div>
-        ${airi ? `<div class="vic"><b>${esc(airi.heading)}</b> <span>${esc(AIRI_RUN_LABEL)}</span><p>${esc(AIRI_SUMMARY)}</p><p class="badges">${airi.outcomes.map((o) => `<em class="${o.ok ? "ok" : "bad"}">${esc(o.badge)}</em>`).join("")}<em class="${airi.checksOk === airi.checksAll ? "ok" : "bad"}">${esc(`${airi.checksOk} of ${airi.checksAll} checks pass`)}</em></p></div>` : ""}
+        ${airi ? `<div class="vic"><b>${esc(airi.heading)}</b> <span>${esc(AIRI_RUN_LABEL)}</span><p>${esc(airi.summary)}</p><p class="badges">${airi.outcomes.map((o) => `<em class="${o.ok ? "ok" : "bad"}">${esc(o.badge)}</em>`).join("")}<em class="${airi.checksOk === airi.checksAll ? "ok" : "bad"}">${esc(`${airi.checksOk} of ${airi.checksAll} checks pass`)}</em></p></div>` : ""}
         <p class="src">Read on ${esc(hash?.readAt.slice(0, 10) ?? "")} from the sandbox: <code>${esc(hash?.file ?? "")}</code> and the cards' record beside it. Also on /proof and /airwallex; the Airi run on /airwallex, /visa and /proof (<code>docs/demo/airi-run.json</code>).</p>`,
     },
     {
@@ -221,12 +222,12 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       title: "Unit economics (hypothesis)",
       wide: true,
       extra: `<p class="small note">${esc(WHY_COMPANY_NOTE)}</p>
-        <ul class="biz">${WHY_COMPANY.filter((l) => ["Who buys", "Intended pricing", "Why now"].includes(l.label)).map((l) => `<li><b>${esc(l.label)}:</b> ${esc(l.text)}</li>`).join("")}</ul>
-        <table class="ue"><thead><tr><th>Usage (hypothesis): decisions a month, per agent · per company of 5</th><th>Price per company</th><th>Cost per company</th><th>Gross margin</th></tr></thead><tbody>
-        ${ue.scenarios.map((x) => `<tr><td>${esc(`${USAGE_LABEL[x.usage]}: ${x.decisionsPerAgent.toLocaleString("en-GB")} · ${x.decisionsPerCompany.toLocaleString("en-GB")}`)}</td><td>${esc(x.priceEurText)}</td><td>${esc(x.costEurText)}</td><td><b class="${x.margin < 0 ? "bad" : "ok"}">${esc(x.marginText)}</b></td></tr>`).join("")}
+        <ul class="biz">${WHY_COMPANY.filter((l) => ["Who buys", PRICING_LABEL, "Why now"].includes(l.label)).map((l) => `<li><b>${esc(l.label)}:</b> ${esc(l.text)}</li>`).join("")}</ul>
+        <table class="ue"><thead><tr><th>Usage (hypothesis): supplier invoices a month, one company on ${esc(PRICING.starter.name)}</th><th>Price per company</th><th>Cost per company</th><th>Gross margin, before platform costs</th></tr></thead><tbody>
+        ${ue.scenarios.map((x) => `<tr><td>${esc(`${USAGE_LABEL[x.usage]}: ${x.invoices.toLocaleString("en-GB")}`)}</td><td>${esc(x.priceEurText)}</td><td>${esc(x.costEurText)}</td><td><b class="${x.margin < 0 ? "bad" : "ok"}">${esc(x.marginText)}</b></td></tr>`).join("")}
         </tbody></table>
-        <p class="uefoot">${esc(opusLine(ue))}<br>${esc(paymentsLine(ue))} Claude cost per decision, every call included: USD ${esc(uf.allInPerDecisionUsd)} at list prices.</p>
-        <p class="src">Assumptions: usage; hosting on Cloudflare at USD ${INPUTS.workersPlanUsd.value} a company a month; EUR 1 = USD ${INPUTS.usdPerEur.value} (ECB, 6 November 2026). Each with its source: docs/business/model.md, "Unit economics (hypothesis)".</p>`,
+        <p class="uefoot">${esc(opusLine(ue))}<br>${esc(invoiceLine(ue))}</p>
+        <p class="src">Assumptions: usage; Claude per invoice (an estimate); hosting on Cloudflare at USD ${INPUTS.workersPlanUsd.value} a company a month; EUR 1 = USD ${INPUTS.usdPerEur.value} (ECB, 6 November 2026). Not counted: Airwallex's platform fees, people, the fee per payout. Each with its source: docs/business/model.md, "Unit economics (hypothesis)".</p>`,
     },
     {
       kicker: "Roadmap · a plan, not a promise",

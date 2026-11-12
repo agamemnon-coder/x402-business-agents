@@ -1,0 +1,228 @@
+{
+  "_fixture": "Made by test/support/tokenizeWorld.ts sampleRunRecord on the in-memory chain: not a live run; its hashes are not on Metal testnet. For test/metal-onchain.test.ts only.",
+  "kind": "tokenize-run",
+  "recorded_at": "2026-11-12T10:00:00.000Z",
+  "date": "2026-11-12",
+  "labels": {
+    "prototype": true,
+    "network": "Metal testnet",
+    "chain_id": 63825,
+    "test_money": true,
+    "financier": "simulated",
+    "face_value_scaled_by": 100
+  },
+  "go": null,
+  "invoice": {
+    "proposal_id": "P-0001",
+    "kind": "invoice_payment",
+    "invoice_no": "SLL-2026-11B",
+    "amount": "240.00",
+    "currency": "EUR",
+    "terms_sha256": "57a2e4966858815e33047da4a3068274594fb96845dbabdce0ebe4bb970cbbec",
+    "document_sha256": "8fb5ebd62d137657f7daa49ffe57ebf5172018fcc9935626116567914c3a2909",
+    "source_status": "APPROVED",
+    "approval": {
+      "method": "passkey",
+      "passkey_fingerprint": "5B62-93F3-EA9C-B137",
+      "approved_at": "2026-11-12T14:37:34.737Z",
+      "test_passkey": true,
+      "passkey_label": "tokenize virtual test passkey (not a phone)",
+      "described_in": null
+    }
+  },
+  "face_value": {
+    "amount": "2.40",
+    "unit": "*USDZ",
+    "divisor": 100
+  },
+  "discount": {
+    "bps": 200,
+    "price": "2.35"
+  },
+  "roles": {
+    "issuer": "0x42A8ba5DDbeb1983e38FCE0d2fc8750c3123Cb73",
+    "creditor": "0x302a12bF705E44a2Edd101BE368A887a9a62C1b0",
+    "financier": "0xE8B500E4BB5DB7421B1913aC0FA45c0017F4d578",
+    "payer": "0xa769d33FF29ddC2Fb79a7b0493123be153571Cf1"
+  },
+  "contract": "0xeb3482250ead3616958f1f93f31f5cbdd39c5d7b",
+  "token_id": "0x8fb5ebd62d137657f7daa49ffe57ebf5172018fcc9935626116567914c3a2909",
+  "transactions": [
+    {
+      "key": "fund-issuer",
+      "what": "Fund the issuer's key",
+      "hash": "0xfe2076459dcce64208a276a3e1db7a86e553062bbd83eb63a7c58a9b061bb12b",
+      "explorer": "https://testnet.metalntwx.com/tx/0xfe2076459dcce64208a276a3e1db7a86e553062bbd83eb63a7c58a9b061bb12b",
+      "from": "0xa401d2D13630166d4bB192ce6C29FA4942aE5643",
+      "sender": "donor",
+      "status": "success",
+      "at": "2026-11-12T14:37:34.875Z",
+      "gas_limit": "200000",
+      "gas_used": "51601",
+      "block": "3"
+    },
+    {
+      "key": "fund-creditor",
+      "what": "Fund the creditor's key",
+      "hash": "0x19fda3dbd221c7fdc57891ff203b83ff71b763c1b51eda2043eca16f9943a762",
+      "explorer": "https://testnet.metalntwx.com/tx/0x19fda3dbd221c7fdc57891ff203b83ff71b763c1b51eda2043eca16f9943a762",
+      "from": "0xa401d2D13630166d4bB192ce6C29FA4942aE5643",
+      "sender": "donor",
+      "status": "success",
+      "at": "2026-11-12T14:37:34.890Z",
+      "gas_limit": "200000",
+      "gas_used": "51601",
+      "block": "4"
+    },
+    {
+      "key": "fund-financier",
+      "what": "Fund the financier's key",
+      "hash": "0xab6c73efa96f32a241d4fe9aadfb44bb07b201ee3e2ce16bb38f899007398ddc",
+      "explorer": "https://testnet.metalntwx.com/tx/0xab6c73efa96f32a241d4fe9aadfb44bb07b201ee3e2ce16bb38f899007398ddc",
+      "from": "0xa401d2D13630166d4bB192ce6C29FA4942aE5643",
+      "sender": "donor",
+      "status": "success",
+      "at": "2026-11-12T14:37:34.903Z",
+      "gas_limit": "200000",
+      "gas_used": "51589",
+      "block": "5"
+    },
+    {
+      "key": "fund-payer",
+      "what": "Fund the payer's key",
+      "hash": "0x8d185f1ba0d6cf4feb114e74a62515f1685616eac0403c2b14f6a96890dcbfa9",
+      "explorer": "https://testnet.metalntwx.com/tx/0x8d185f1ba0d6cf4feb114e74a62515f1685616eac0403c2b14f6a96890dcbfa9",
+      "from": "0xa401d2D13630166d4bB192ce6C29FA4942aE5643",
+      "sender": "donor",
+      "status": "success",
+      "at": "2026-11-12T14:37:34.918Z",
+      "gas_limit": "200000",
+      "gas_used": "51613",
+      "block": "6"
+    },
+    {
+      "key": "deploy",
+      "what": "Deploy PurserInvoiceToken",
+      "hash": "0x6384a85a4fd0151727d21f897ff82bef93c6a2529a2f78271aabc9bf6b2046d2",
+      "explorer": "https://testnet.metalntwx.com/tx/0x6384a85a4fd0151727d21f897ff82bef93c6a2529a2f78271aabc9bf6b2046d2",
+      "from": "0x42A8ba5DDbeb1983e38FCE0d2fc8750c3123Cb73",
+      "sender": "issuer",
+      "status": "success",
+      "at": "2026-11-12T14:37:34.958Z",
+      "gas_limit": "3500000",
+      "gas_used": "1740064",
+      "block": "7"
+    },
+    {
+      "key": "mint",
+      "what": "Mint to the creditor",
+      "hash": "0xf4e434c41134c60900bd353394c0483d30b1e869e0e8cc1b6e3533cc92cd9316",
+      "explorer": "https://testnet.metalntwx.com/tx/0xf4e434c41134c60900bd353394c0483d30b1e869e0e8cc1b6e3533cc92cd9316",
+      "from": "0x42A8ba5DDbeb1983e38FCE0d2fc8750c3123Cb73",
+      "sender": "issuer",
+      "status": "success",
+      "at": "2026-11-12T14:37:34.996Z",
+      "gas_limit": "700000",
+      "gas_used": "298081",
+      "block": "8"
+    },
+    {
+      "key": "offer",
+      "what": "Offer to the financier",
+      "hash": "0xaed60ce80ff42507164e107d9baeef5a45d3a4ab615844a7962ff1ec83ec4ff9",
+      "explorer": "https://testnet.metalntwx.com/tx/0xaed60ce80ff42507164e107d9baeef5a45d3a4ab615844a7962ff1ec83ec4ff9",
+      "from": "0x302a12bF705E44a2Edd101BE368A887a9a62C1b0",
+      "sender": "creditor",
+      "status": "success",
+      "at": "2026-11-12T14:37:35.028Z",
+      "gas_limit": "200000",
+      "gas_used": "73443",
+      "block": "9"
+    },
+    {
+      "key": "financier-approve",
+      "what": "Financier approves the price",
+      "hash": "0x0b0e8826648839d6b3ce454afb9d86c59441a28f69d480f335a740e6f5e640d8",
+      "explorer": "https://testnet.metalntwx.com/tx/0x0b0e8826648839d6b3ce454afb9d86c59441a28f69d480f335a740e6f5e640d8",
+      "from": "0xE8B500E4BB5DB7421B1913aC0FA45c0017F4d578",
+      "sender": "financier",
+      "status": "success",
+      "at": "2026-11-12T14:37:35.045Z",
+      "gas_limit": "300000",
+      "gas_used": "46366",
+      "block": "10"
+    },
+    {
+      "key": "accept",
+      "what": "Financier accepts: advance to the creditor",
+      "hash": "0x0218184513c6e8703d97e4202b66aca44411f2de2246d69367b58a82e82ac478",
+      "explorer": "https://testnet.metalntwx.com/tx/0x0218184513c6e8703d97e4202b66aca44411f2de2246d69367b58a82e82ac478",
+      "from": "0xE8B500E4BB5DB7421B1913aC0FA45c0017F4d578",
+      "sender": "financier",
+      "status": "success",
+      "at": "2026-11-12T14:37:35.066Z",
+      "gas_limit": "400000",
+      "gas_used": "94259",
+      "block": "11"
+    },
+    {
+      "key": "payer-approve",
+      "what": "Debtor approves the face value",
+      "hash": "0x12510ff06a82d00e9ba4807d96a2b3f184d34f6e67162864ad0541486e748792",
+      "explorer": "https://testnet.metalntwx.com/tx/0x12510ff06a82d00e9ba4807d96a2b3f184d34f6e67162864ad0541486e748792",
+      "from": "0xa769d33FF29ddC2Fb79a7b0493123be153571Cf1",
+      "sender": "payer",
+      "status": "success",
+      "at": "2026-11-12T14:37:35.091Z",
+      "gas_limit": "300000",
+      "gas_used": "46366",
+      "block": "12"
+    },
+    {
+      "key": "settle",
+      "what": "Debtor settles: face value to the holder, token burned",
+      "hash": "0xeb0694fb190075f26c85afb82a4087eee7665cf8466fbbb425c20650cc4845c4",
+      "explorer": "https://testnet.metalntwx.com/tx/0xeb0694fb190075f26c85afb82a4087eee7665cf8466fbbb425c20650cc4845c4",
+      "from": "0xa769d33FF29ddC2Fb79a7b0493123be153571Cf1",
+      "sender": "payer",
+      "status": "success",
+      "at": "2026-11-12T14:37:35.112Z",
+      "gas_limit": "400000",
+      "gas_used": "75119",
+      "block": "13"
+    }
+  ],
+  "received": {
+    "creditor": "2.35",
+    "creditor_address": "0x302a12bF705E44a2Edd101BE368A887a9a62C1b0",
+    "holder": "2.40",
+    "holder_address": "0xE8B500E4BB5DB7421B1913aC0FA45c0017F4d578"
+  },
+  "verify": {
+    "ok": true,
+    "at": "2026-11-12T14:37:35.137Z",
+    "mismatches": [],
+    "settled_on_chain": true
+  },
+  "calls": {
+    "used": 39,
+    "budget_total": 200,
+    "by_command": {
+      "fund": 14,
+      "deploy": 4,
+      "mint": 4,
+      "finance": 10,
+      "settle": 6,
+      "verify": 1
+    }
+  },
+  "deviations": {
+    "from_ledger": [],
+    "notes": null
+  },
+  "sources": {
+    "ledger": "tokenize_state and tokenize_txs in TOKENIZE_DB",
+    "call_log": "TOKENIZE_CALL_LOG, one line per request",
+    "source_ledger": "proposals, approvals, passkey_assertions and passkeys in TOKENIZE_SOURCE_DB, read-only"
+  }
+}

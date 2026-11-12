@@ -1,11 +1,12 @@
-// Section D (6 Nov): the first screen is the same in three places, the README, Home and the form's synopsis: what
-// Purser is in one sentence, the three sentences, "Try it in 30 seconds." to /try/sign, and only then the badges and
-// the details. And "Why this is a company", five lines from docs/business/, on the README and on Home. One source of
+// Section D (6 Nov): the first screen is the same in two places, the README and the form's synopsis: what Purser is in
+// one sentence, the three sentences, "Try it in a minute." to /try/sign, and only then the badges and the details. Home
+// (home-story, 12 Nov) opens with what Purser is, one button with one reassurance line, and the first of the three
+// sentences, word for word, leading into its hero. And "Why this is a company", five lines from docs/business/, on the README and on Home. One source of
 // truth: src/config/brand.ts (FIRST_SCREEN, WHY_COMPANY). Breaks when a place drops, adds or reorders a word.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, JUDGE_LINE, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
-import { FLOW, START, homePage } from "../src/redesign/home.js";
+import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, FILM_URL, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, JUDGE_LINE, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
+import { PROOF_BUTTON, REASSURE, START, homePage } from "../src/redesign/home.js";
 import { buildPages } from "../src/relay/assets.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
@@ -32,28 +33,35 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(WHAT_IT_IS).not.toMatch(/cannot break|can't break|every limit|holds? no keys?/i);
   });
 
-  it("opens the README under its title, with Try it linked to /try/sign, and the badges only after it", () => {
+  it("opens the README under its title with the pitch once: what Purser is, the sentence every juror repeated, one line of links with Try it, then the badges (jury panel, 12 Nov)", () => {
     const lines = README.split("\n");
     expect(lines[0]).toBe(`# Purser · ${HERO}`);
     const badges = lines.findIndex((l) => l.startsWith("[![CI]"));
-    expect(words(lines.slice(1, badges).join("\n"))).toBe(FIRST_SCREEN_TEXT);
-    expect(lines.slice(1, badges).join("\n")).toContain(`[${TRY_IT}](${TRY_SIGN_URL})`);
+    const links = `**[${TRY_IT}](${TRY_SIGN_URL})** · **[Judge it in 3 minutes →](https://kit11.max-31b.workers.dev/judge)** · [Film, 3:58](${FILM_URL}) · [Verify it offline](#verify-it-yourself-in-3-commands)`;
+    expect(lines.slice(1, badges)).toEqual(["", WHAT_IT_IS, "", DIFFERENTIATORS[0], "", links, ""]);
+    // The first screen ends with the reviewers' block, and "Why this is a company" starts within the first 60 lines.
+    expect(lines[badges + 2]).toBe("## For reviewers in 30 seconds");
+    expect(lines.findIndex((l) => l === "## Why this is a company")).toBeLessThan(60);
   });
 
-  it("opens Home under its heading with what Purser is, then one button to /try/sign, the other ways in as text links, and the Airwallex proof (competitive review, 10 Nov)", () => {
+  it("opens Home under its heading with what Purser is, one button to /try/sign with one reassurance line, then the sentence every juror repeated (home-story, 12 Nov)", () => {
     const t = words(hero(HOME));
-    expect(t.startsWith(`${HERO} ${WHAT_IT_IS} ${START} Watch the agents · See the proof · ${JUDGE_LINE} Airwallex declined an agent's card over the CFO's limit`)).toBe(true);
-    expect(FLOW.map((f) => f.href)).toEqual(["watch", "try/sign", "proof"]);
-    // One button, to /try/sign: the thing a juror can do in a minute.
+    expect([START, PROOF_BUTTON]).toEqual(["Try it yourself", "See the proof"]);
+    expect(t.startsWith(`${HERO} ${WHAT_IT_IS} ${START} ${REASSURE.sign} ${DIFFERENTIATORS[0]} 1 Ask 2 Face ID 3 Paid 4 +1 cent`)).toBe(true);
+    // One button in the first screen, to /try/sign: the thing a juror can do in a minute. No "Watch the agents".
     expect(hero(HOME).match(/class="btn[^"]*"/g)).toEqual(['class="btn primary big start"']);
     expect(hero(HOME)).toContain(`<a class="btn primary big start" href="try/sign">`);
-    // The three sentences stay in the README, the form and the deck; Home leads with the Airwallex proof instead.
-    for (const d of DIFFERENTIATORS) expect(t).not.toContain(d);
-    // Without /try/sign in the bundle the button leads to /try, never to a dead link.
+    expect(HOME).not.toContain("Watch the agents");
+    // The first of the three sentences is on Home, word for word; the other two stay in the README, the form and the deck.
+    expect(t).toContain(DIFFERENTIATORS[0]);
+    for (const d of DIFFERENTIATORS.slice(1)) expect(words(HOME)).not.toContain(d);
+    // Without /try/sign in the bundle the button leads to /try, never to a dead link, and the line under it says what /try is.
     expect(homePage()).not.toContain('href="try/sign"');
     expect(hero(homePage())).toContain('<a class="btn primary big start" href="try">');
-    // The judge's tour: a text link beside the others, only where /judge exists (Max, 7 Nov).
-    expect(hero(HOME)).toContain(`<a href="judge">${JUDGE_LINE}</a>`);
+    expect(words(hero(homePage()))).toContain(`${START} ${REASSURE.world} ${DIFFERENTIATORS[0]}`);
+    // The judge's tour: one footer link, only where /judge exists; never a third call to action in the page.
+    expect(HOME).toContain(`<a class="flink" href="judge">${JUDGE_LINE}</a>`);
+    expect(hero(HOME)).not.toContain('href="judge"');
     expect(homePage()).not.toContain('href="judge"');
   });
 
@@ -69,9 +77,10 @@ describe("why this is a company (section D, 6 Nov)", () => {
   // On /proof since Max's round of 7 Nov (Home shows the way through), behind its own closed line.
   const band = /<section class="band" aria-labelledby="h-company">[\s\S]*?<\/section>/.exec(PROOF)?.[0] ?? "";
 
-  it("has five lines: the problem, who buys, the intended pricing, why now, why Purser", () => {
-    expect(WHY_COMPANY.map((l) => l.label)).toEqual(["The problem", "Who buys", "Intended pricing", "Why now", "Why Purser"]);
-    expect(WHY_COMPANY[2]!.text).toBe("€49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions. A hypothesis.");
+  it("has five lines: the problem, who buys, the pilot pricing, why now, why Purser", () => {
+    // The price is the pilot pricing since 12 Nov (one model, src/config/pricing.ts), labelled as that and as a hypothesis.
+    expect(WHY_COMPANY.map((l) => l.label)).toEqual(["The problem", "Who buys", "Pilot pricing", "Why now", "Why Purser"]);
+    expect(WHY_COMPANY[2]!.text).toBe("Starter €49 a month (100 invoices, then €0.25 each); Business from €249 a month; a small fee per payout. A hypothesis.");
   });
 
   it("is on the README and on /proof, word for word; the README links each line to its page, /proof once to the case (Max, 7 Nov)", () => {
@@ -93,7 +102,7 @@ describe("why this is a company (section D, 6 Nov)", () => {
 
   it("says each line as docs/business/ does: the price from model.md, the cited source from problem.md", () => {
     const model = read("docs/business/model.md").replace(/\s+/g, " "), problem = read("docs/business/problem.md").replace(/\s+/g, " ");
-    expect(model).toContain("**€49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions.**");
+    expect(model).toContain("**Pilot pricing: Starter €49 a month (100 invoices, then €0.25 each); Business from €249 a month; a small fee per payout.**");
     // Why now: Airwallex's own post, quoted as problem.md quotes it, with its title, date and source number.
     expect(problem).toContain("through underlying infrastructure rather than prompts");
     expect(problem).toContain('[S1] Airwallex, Dan Kim, "Agentic banking starts with governance", published 5 October 2026');

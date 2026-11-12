@@ -11,7 +11,7 @@ import { verifyAuditChain } from "../audit/log.js";
 import { agentName } from "../config/brand.js";
 import { FX_QUOTE_MAX_MARKUP_BPS, MANDATE_EXPIRES_IN_SECONDS, TOTAL_BUDGET_CENTS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
-import { AGENT_DISPLAY, SANDBOX_SETTLED } from "../config/brand.js";
+import { AGENT_DISPLAY, AP_AGENT_DISPLAY, SANDBOX_SETTLED } from "../config/brand.js";
 import { receivablesView, type ReceivablesView } from "../agents/receivables.js";
 import { airwallexEventsView, type AirwallexEventsView } from "../policy/airwallexEvents.js";
 import { spendReview, type SpendReview } from "../agents/spendReview.js";
@@ -611,7 +611,13 @@ const TASK_WORDS: Record<string, string> = {
   draft_customer_reply: "drafted the reply to the customer (a person sends it)",
 };
 
-const agentWho = (id: string): string => (id in AGENT_DISPLAY ? `the ${AGENT_DISPLAY[id as keyof typeof AGENT_DISPLAY].name}` : `agent ${id}`);
+const agentWho = (id: string): string => (id in AGENT_DISPLAY ? `the ${AGENT_DISPLAY[id as keyof typeof AGENT_DISPLAY].name}` : id in AP_AGENT_DISPLAY ? `the ${AP_AGENT_DISPLAY[id as keyof typeof AP_AGENT_DISPLAY].name}` : `agent ${id}`);
+
+/** The payables agents' words (src/ap/checkerCore.ts ACTIONS, src/ap/payerCore.ts PAY_RAIL_WORDS). */
+const AP_ACTION_WORDS: Record<string, string> = { pay: "to pay", ask_cfo: "to ask the CFO about", hold: "to hold", reject: "to reject" };
+const AP_OUTCOME_WORDS: Record<string, string> = { pay: "it may be paid", ask_cfo: "it goes to the CFO", hold: "it is held for a person", reject: "it is not paid as it is" };
+const AP_RAIL_WORDS: Record<string, string> = { bank_local: "a local bank payout through Airwallex", bank_swift: "a SWIFT bank payout through Airwallex" };
+const sentence = (t: string) => (/[.!?]["”']?$/.test(t.trim()) ? t.trim() : `${t.trim()}.`);
 
 /** A refund the ledger holds under a dispute (refunds.dispute_id; one row per sale). */
 export interface DisputeRefund { sale_id: number; amount_cents: number; outcome: string }
@@ -738,6 +744,25 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
       if (str(p.blocked_by) === "Metal mandate") return out(`Metal refused ${who}'s purchase against its on-chain mandate`, "refusal", { model: modelName(str(p.model)) });
       if (str(p.blocked_by).startsWith("mandate cap")) return out(`${capFirst(who)}'s purchase was refused before signing: over its mandate's cap`, "refusal", { model: modelName(str(p.model)) });
       return out(`Code refused ${who}'s ${str(p.tool).replace(/_/g, " ")}: ${str(p.blocked_by)}`, "refusal", { model: modelName(str(p.model)) });
+    }
+    // The payables agents (src/ap/checkerAgent.ts, src/ap/payerAgent.ts): the agent's own reason, then what code made of it.
+    case "ap.checker_decided": {
+      const claude = str(p.source) === "claude";
+      const said = claude
+        ? `The Checker agent decided ${AP_ACTION_WORDS[str(p.action)] ?? str(p.action)} ${s}: "${str(p.reason)}"`
+        : `Code's checks decided ${AP_ACTION_WORDS[str(p.action)] ?? str(p.action)} ${s} (the fallback: the Checker agent did not decide): "${str(p.reason)}"`;
+      const outcome = AP_OUTCOME_WORDS[str(p.outcome)] ?? str(p.outcome);
+      return p.overridden === true
+        ? out(`${said} Code's checks overrode it: ${sentence(str(p.why))} So ${outcome}.`, "refusal", { model: modelName(str(p.model)) })
+        : out(`${said} Outcome: ${outcome}.`, "info", { model: claude ? modelName(str(p.model)) : null });
+    }
+    case "ap.payer_proposed": {
+      const claude = str(p.source) === "claude";
+      const plan = `paying ${str(p.invoice_no) || s} on ${str(p.pay_on)} by ${AP_RAIL_WORDS[str(p.rail)] ?? (str(p.rail) || "no rail")}, from ${str(p.pay_currency)}`;
+      const said = claude ? `The Payer agent proposed ${plan}: "${str(p.reason)}"` : `Code's own plan stands (the fallback: the Payer agent did not propose): ${plan}: "${str(p.reason)}"`;
+      const next = str(p.next);
+      if (next === "hold") return out(`${said} Code held it: ${sentence(str(p.why))}`, "refusal", { model: claude ? modelName(str(p.model)) : null });
+      return out(`${said} ${next === "pay_later" ? "Nothing is filed until that day." : "Filed for the CFO's Face ID."}`, "info", { model: claude ? modelName(str(p.model)) : null });
     }
     case "agent.nudged": return out(`Code sent ${agentWho(str(p.agent))} back, not finished: ${str(p.reason)}`, "info", { model: modelName(str(p.model)) });
     case "price_rise.met": return str(p.source) === "claude"

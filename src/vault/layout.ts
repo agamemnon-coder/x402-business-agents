@@ -48,6 +48,16 @@ export function monthReportPath(company: string, month: string): string {
   return join(company, yearOf(month), quarterOf(`${month}-01`), "Rapporten", `${month} Maandrapport.pdf`);
 }
 
+/** The month pack (src/ledger/pack.ts) beside the month report. */
+export function monthPackPath(company: string, month: string): string {
+  return join(company, yearOf(month), quarterOf(`${month}-01`), "Rapporten", `${month} Maandpakket.pdf`);
+}
+
+/** The accountant's export of a month's journal (src/ledger/accountantExport.ts), as CSV or JSON. */
+export function monthExportPath(company: string, month: string, ext: "csv" | "json"): string {
+  return join(company, yearOf(month), quarterOf(`${month}-01`), "Rapporten", `${month} Journaal voor de accountant.${ext}`);
+}
+
 /** `quarter` as the ledger writes it: 2026Q4. */
 export function vatPath(company: string, quarter: string): string {
   const q = `${quarter.slice(0, 4)}-${quarter.slice(4)}`;

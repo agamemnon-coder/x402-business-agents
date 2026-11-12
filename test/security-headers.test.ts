@@ -62,8 +62,8 @@ describe("relay Worker: security headers on every answer", () => {
     }
   });
 
-  it("old public addresses redirect to the four tabs, with the common headers", () => {
-    for (const [from, to] of [["/live", "/watch"], ["/demo", "/watch"]] as const) {
+  it("old public addresses redirect, with the common headers (the replay's old addresses to /replay)", () => {
+    for (const [from, to] of [["/live", "/replay"], ["/demo", "/replay"]] as const) {
       const res = page(from);
       expect(res.status, from).toBe(302);
       expect(res.headers.get("location"), from).toBe(to);

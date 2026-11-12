@@ -613,7 +613,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   <p>One CFO policy for both rails: Airwallex cards and bank transfers, and Metal mandates for paying per request. In the Airwallex sandbox the merchant's charge on a card is simulated; the approve or decline is Airwallex's own. On Metal testnet, amounts are in USDZ, Metal's test dollars, shown here as "test USD". The step from test USD to Airwallex is a simulated sandbox deposit that names the real testnet transaction. Metal's pay-per-call clearing is new on testnet (October 2026); when it cannot take a payment, the sale falls back to the mandate.</p></details>
 <div class="frozen" id="frozen" hidden></div>
 <div class="frozen" id="stopped" hidden></div>
-<div class="frozen offline" id="offline" role="status" hidden><span data-icon="info"></span><span>The runner is offline, so this page is not live. Nothing can be paid or approved until it is back.</span><a href="demo">Watch the recorded run →</a></div>
+<div class="frozen offline" id="offline" role="status" hidden><span data-icon="info"></span><span>The runner is offline, so this page is not live. Nothing can be paid or approved until it is back.</span><a href="?recorded">See the recorded dashboard →</a></div>
 
 <!-- How the CFO gets in: no password, a private link to view and a passkey to approve. -->
 <section class="section signin" id="signin" hidden>
@@ -624,17 +624,17 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     <div class="item"><span class="ic" data-icon="scan-face"></span><h3>2. Face ID to decide</h3><p>Approving needs the CFO's passkey: Face ID or Touch ID on the phone, bound to this site. It signs the exact terms (amount, payee, fee), and the runner checks that signature against the key it pinned when the CFO enrolled. A copied link can look, but never approve.</p></div>
     <div class="item"><span class="ic" data-icon="shield-check"></span><h3>3. Enrolment you confirm</h3><p>A new passkey only counts after the CFO reads its fingerprint off the phone and confirms it on the runner. A second approver for large amounts is added the same way.</p></div>
   </div>
-  <div class="callout"><span data-icon="info"></span><p>You are a guest, so there is nothing to sign in to here. Everything the CFO sees is in the <a href="?recorded">recorded CFO dashboard</a>, and the <a href="demo">demo</a> walks through one real run step by step. To run it yourself, the README has the steps.</p></div>
+  <div class="callout"><span data-icon="info"></span><p>You are a guest, so there is nothing to sign in to here. Everything the CFO sees is in the <a href="?recorded">recorded CFO dashboard</a>, and <a href="proof">Proof</a> has the record of one real run. To run it yourself, the README has the steps.</p></div>
 </section>
 
-<!-- For guests the public pages are Home, Watch, Try and Proof: "/" is Home itself, and this page (served at "/" with a
+<!-- For guests the public pages are Home, Try and Proof: "/" is Home itself, and this page (served at "/" with a
      query) sends a guest with none of its modes to Home. This block is shown only to a device whose viewer link no
      longer works. -->
 <div id="landing" hidden>
   <section class="section">
     <h1 class="big">Purser</h1>
     <p class="lead" id="p-src">This page is the CFO's dashboard and needs the private viewer link.</p>
-    <div class="ctas"><a class="btn primary" href="home">Home</a><a class="btn" href="watch">Watch the agents</a><a class="btn" href="proof">Proof</a></div>
+    <div class="ctas"><a class="btn primary" href="home">Home</a><a class="btn" href="try">Try</a><a class="btn" href="proof">Proof</a></div>
   </section>
 </div>
 
@@ -1142,7 +1142,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
         var ab = st.map(function (x) {
           var tr = el("tr", "", [
             el("td", "", [txt("b", "", capFirst(x.agent))]), el("td", "", [x.models.map(modelWord).join(", ") || "—"]), el("td", "num", [String(x.decisions)]),
-            el("td", "num", [String(x.by_claude)]), el("td", "num", [x.fallback + " (" + x.fallback_pct + "%)"]), el("td", "num", [usdMicros(x.cost_last_hour_usd_micros || 0)]),
+            el("td", "num", [x.by_claude + (x.overridden ? " (" + x.overridden + " overridden)" : "")]), el("td", "num", [x.fallback + " (" + x.fallback_pct + "%)"]), el("td", "num", [usdMicros(x.cost_last_hour_usd_micros || 0)]),
           ]);
           Array.prototype.forEach.call(tr.children, function (td, i) { td.setAttribute("data-label", al[i]); });
           return tr;

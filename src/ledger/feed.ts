@@ -18,6 +18,7 @@ import { openingLines } from "../accounting/books.js";
 import type { DB } from "../db/open.js";
 import { toCents } from "../lib/money.js";
 import { postEntry, reverseEntry, type LineInput } from "./core.js";
+import { signedTermsRefusal } from "./termsLock.js";
 
 export const FEED_ACTOR = "purser-feed";
 
@@ -67,8 +68,24 @@ function lastVersion(db: DB, base: string): number {
  */
 const hasAp = (db: DB) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ap_invoices'").get();
 
-export function syncLedger(db: DB, now = new Date()): { posted: number; already: number; reversed: number } {
+export interface LedgerSync {
+  posted: number;
+  already: number;
+  reversed: number;
+  /**
+   * What was not booked because a signed proposal speaks for it and its stored terms no longer hash to the hash the CFO
+   * signed (src/ledger/termsLock.ts): one plain sentence each. Nothing was posted or reversed for these. Present only
+   * when there is one.
+   */
+  refused?: string[];
+}
+
+export function syncLedger(db: DB, now = new Date()): LedgerSync {
   const moved = journal(db);
+  // The books' lock on signed terms: a source line or an invoice a signed proposal speaks for is booked only while its
+  // stored terms still hash to what the CFO signed. A refused key is left as it stands: nothing posted, nothing reversed.
+  const refusals = new Map<string, string>();
+  const held = new Set<string>();
   const lines = [...openingLines(db, moved), ...moved];
   const want = new Map<string, { date: string; description: string; doc_ref: string; pair: LineInput[]; coded?: boolean }>();
   const seen = new Map<string, number>();
@@ -79,6 +96,8 @@ export function syncLedger(db: DB, now = new Date()): { posted: number; already:
     const base = identityOf(db, l);
     const n = (seen.get(base) ?? 0) + 1;
     seen.set(base, n);
+    const why = l.approval ? signedTermsRefusal(db, l.approval) : null;
+    if (why) { refusals.set(l.approval, why); held.add(n === 1 ? base : `${base}#${n}`); continue; }
     // A payout that settles an inbox payable names the invoice on its 2100 line, as the accrual does, so ageing nets them.
     const settles = l.source === "transfer" && l.gl_account === "2100" ? (invoiceOf.get(l.ref) as { invoice_no: string } | undefined)?.invoice_no : undefined;
     const gl: LineInput = { account: l.gl_account, currency: l.currency, cost_centre: l.cost_centre || undefined, party: l.counterparty || undefined, memo: l.rule || undefined, ...(settles ? { doc_ref: settles } : {}) };
@@ -93,6 +112,8 @@ export function syncLedger(db: DB, now = new Date()): { posted: number; already:
   // owes itself, so the VAT overview counts it in its rubric and in 5b); a line without a VAT code carries none.
   for (const inv of hasAp(db) ? apInvoices(db).filter((i) => i.doc_kind !== "credit_note" && bookable(i)) : []) {
     const key = ledgerInvoiceNo(inv.invoice_no, inv.vendor);
+    const locked = inv.proposal_id ? signedTermsRefusal(db, inv.proposal_id, { amount_cents: toCents(inv.total), currency: inv.currency }) : null;
+    if (locked) { refusals.set(inv.proposal_id!, locked); held.add(`ap-accrual|${inv.id}`); continue; }
     const es = accrualEntries(inv);
     const coded = codedAccrual(inv);
     const vat = es.find((e) => e.account === "1510");
@@ -113,6 +134,7 @@ export function syncLedger(db: DB, now = new Date()): { posted: number; already:
   const standing = new Map<string, Active>();
   const extra: Active[] = [];
   for (const a of activeFeed(db)) {
+    if (held.has(a.base)) continue;
     const had = standing.get(a.base);
     if (had) extra.push(had);
     standing.set(a.base, a);
@@ -138,5 +160,5 @@ export function syncLedger(db: DB, now = new Date()): { posted: number; already:
     reverseEntry(db, a.entry_id, "its source no longer shows this movement", FEED_ACTOR, now);
     reversed += 1;
   }
-  return { posted, already, reversed };
+  return { posted, already, reversed, ...(refusals.size ? { refused: [...refusals.values()] } : {}) };
 }

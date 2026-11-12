@@ -25,7 +25,7 @@ afterEach(() => rmSync(w.dir, { recursive: true, force: true }));
 const opts = () => ({ company: C, now: w.now, today: w.now.toISOString().slice(0, 10) });
 
 describe("filing into the vault", () => {
-  it("writes the fixed tree: originals byte for byte, the receipt, the month report, the suppliers list and the index", async () => {
+  it("writes the fixed tree: originals byte for byte, the receipt, the month report and pack, the export, the suppliers list and the index", async () => {
     const out = await syncVault(w.db, sink, opts());
     const year = w.month.slice(0, 4);
     const q = quarterOf(`${w.month}-01`);
@@ -35,6 +35,11 @@ describe("filing into the vault", () => {
       `${C}/2026/2026-Q4/Inkoopfacturen/_Geblokkeerd/Bergtex Textil GmbH/2026-11-02 BTX-2026-22 EUR 1850.00.pdf`,
       `${C}/${paidOn.slice(0, 4)}/${quarterOf(paidOn)}/Betalingen/${paidOn} Bergtex Textil GmbH BTX-2026-21.pdf`,
       `${C}/${year}/${q}/Rapporten/${w.month} Maandrapport.pdf`,
+      // Closing the month also files its month pack and the accountant's export of its journal (src/ledger/pack.ts,
+      // src/ledger/accountantExport.ts).
+      `${C}/${year}/${q}/Rapporten/${w.month} Maandpakket.pdf`,
+      `${C}/${year}/${q}/Rapporten/${w.month} Journaal voor de accountant.csv`,
+      `${C}/${year}/${q}/Rapporten/${w.month} Journaal voor de accountant.json`,
       `${C}/${year}/Leveranciers ${opts().today}.pdf`,
     ];
     for (const p of expected) expect(existsSync(join(root, p)), p).toBe(true);

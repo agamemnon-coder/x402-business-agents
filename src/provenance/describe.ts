@@ -5,7 +5,7 @@ import type { Origin } from "./origin.js";
 
 export const NOT_RECORDED = "who decided is not recorded";
 const MODEL_WORDS: Record<string, string> = { "claude-haiku-5-5": "Claude Haiku", "claude-sonnet-5-5": "Claude Sonnet", "claude-opus-5-5": "Claude Opus" };
-const AGENT_WORDS: Record<string, string> = { sourcing: "the Sourcing agent", support: "the Support agent", treasury: "the Treasury agent" };
+const AGENT_WORDS: Record<string, string> = { sourcing: "the Sourcing agent", support: "the Support agent", treasury: "the Treasury agent", checker: "the Checker agent", payer: "the Payer agent" };
 
 export function describeOrigin(o: Origin | null): { model: string | null; decided: string; request?: string } {
   if (!o) return { model: null, decided: NOT_RECORDED };

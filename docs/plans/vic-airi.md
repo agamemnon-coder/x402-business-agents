@@ -1,5 +1,14 @@
 # Airi single-use credentials (the route Airwallex calls VIC): step 0 findings and the step 1 plan
 
+**Resolved (12 November 2026).** This plan ran. The live run is vic-1 of 7 November: passed 5 of 5 checks on the fourth
+attempt that day (world vic-1c, attempt 2), log [docs/runs/2026-11-07-vic-1.md](../runs/2026-11-07-vic-1.md), record
+`docs/demo/airi-run.json`. It was a scripted run with no Claude call, and one person played both the CFO and the
+cardholder. Visa said in the hackathon Slack on 7 November that the VIC run counts (as reported by the builder), so it
+is Purser's entry for the Visa Award ([docs/submission/visa-award.md](../submission/visa-award.md)). Since 12 November
+the code also puts the terms hash in the mandate's description and reads it back from Airi, reads airi-cli's answers in
+either spelling, asks once more after `duplicate_request`, and records who chose the rail (a Claude request id, or
+code); none of that has run live yet. The text below is the plan as it stood on 7 November.
+
 Status, 7 November 2026: step 0 researched; **step 1 built** on branch `vic` (Max's go), run live once as vic-1b
 (the API confirm refused, B's tap link unseen; both fixed on `airi-camelcase`, see the run plan). The run
 plan is [docs/runs/vic-1-plan.md](../runs/vic-1-plan.md). Since step 0: airi-cli 0.1.0-beta.4 is installed in the

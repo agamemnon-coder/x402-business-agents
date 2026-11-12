@@ -857,6 +857,22 @@ function el(tag: string, cls?: string, kids: (Node | string | null | false | und
 }
 const txt = (tag: string, cls: string, s: unknown) => el(tag, cls, [str(s)]);
 
+/** The Face ID mark (the site's line icon), drawn from fixed paths here: presentation only, hidden from screen readers. */
+const FACE_ID = ["M3 7V5a2 2 0 0 1 2-2h2", "M17 3h2a2 2 0 0 1 2 2v2", "M21 17v2a2 2 0 0 1-2 2h-2", "M7 21H5a2 2 0 0 1-2-2v-2", "M8 14s1.5 2 4 2 4-2 4-2", "M9 9h.01", "M15 9h.01"];
+/** A padlock (the same icon set): the guest card. */
+const LOCK = ["M7 11V7a5 5 0 0 1 10 0v4", "M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z", "M12 15v3"];
+function glyph(cls: string, paths: string[]): SVGSVGElement {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  for (const [k, v] of Object.entries({ class: cls, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true", focusable: "false" })) svg.setAttribute(k, v);
+  for (const d of paths) {
+    const path = document.createElementNS(ns, "path");
+    path.setAttribute("d", d);
+    svg.appendChild(path);
+  }
+  return svg;
+}
+
 export function countdown(iso: string, lang = "en"): { text: string; soon: boolean; over: boolean } {
   const ms = Date.parse(iso) - Date.now();
   const nl = lang === "nl";
@@ -1076,11 +1092,18 @@ const NEEDS_LINK = "This device needs the viewer link. Open the link Claude gave
  */
 function guestWithoutLink(app: HTMLElement): boolean {
   if (viewKey || /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) return false;
-  const signin = el("a", "", ["how the CFO signs in"]) as HTMLAnchorElement;
+  // One calm card: what to do, the same two places to go (the sign-in explained first), and the same words a check reads.
+  const signin = el("a", "confirm", ["How the CFO signs in"]) as HTMLAnchorElement;
   signin.href = "/?signin";
-  const rec = el("a", "", ["the recorded CFO dashboard"]) as HTMLAnchorElement;
+  const rec = el("a", "secondary", ["The recorded CFO dashboard"]) as HTMLAnchorElement;
   rec.href = "/?recorded";
-  app.replaceChildren(el("p", "alarm", ["This page is for the CFO and needs the private viewer link. As a guest, see ", signin, " or ", rec, "."]));
+  app.replaceChildren(el("section", "guest", [
+    el("div", "guest-ill", [glyph("lock", LOCK)]),
+    txt("h1", "", "Open your private link once on this phone to approve"),
+    txt("p", "muted", "This page is for the CFO and needs the private viewer link. As a guest:"),
+    signin,
+    rec,
+  ]));
   return true;
 }
 
@@ -1528,6 +1551,7 @@ async function approvePage(attempt = 0): Promise<void> {
     const name = many && f ? `${f.label.charAt(0).toLowerCase()}${f.label.slice(1)} ` : "";
     const approve = el("button", against ? "confirm against" : "confirm", [against ? `Approve ${name}anyway with Face ID` : `Approve ${name}with Face ID`]) as HTMLButtonElement;
     approve.id = "approve";
+    approve.prepend(glyph("btn-ico", FACE_ID));
     const reject = el("button", against ? "confirm reject" : "reject-btn", [against ? "Reject (Opus advises this)" : "Reject"]) as HTMLButtonElement;
     reject.id = "reject";
     for (const b of [approve, reject]) b.type = "button";
@@ -1657,6 +1681,7 @@ function payablesView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, ter
   ];
   const approve = el("button", against ? "confirm against" : "confirm", [ph(lang, "ph.approve")]) as HTMLButtonElement;
   approve.id = "approve";
+  approve.prepend(glyph("btn-ico", FACE_ID));
   const reject = el("button", against ? "confirm reject" : "reject-btn", [ph(lang, "ph.reject")]) as HTMLButtonElement;
   reject.id = "reject";
   for (const b of [approve, reject]) { b.type = "button"; b.disabled = true; }
@@ -1754,6 +1779,7 @@ async function batchView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, 
   const reject = el("button", "reject-btn", [ph(lang, "ph.reject_batch")]) as HTMLButtonElement;
   for (const b of [approve, reject]) { b.type = "button"; b.disabled = true; }
   approve.id = "approve";
+  approve.prepend(glyph("btn-ico", FACE_ID));
   reject.id = "reject";
   setTimeout(() => {
     approve.disabled = !enrolled || !approvable || countdown(o.expires_at).over;
@@ -1834,17 +1860,25 @@ function enrolPage(): void {
   input.spellcheck = false;
   input.maxLength = 12;
   input.placeholder = "XXXX-XXXX";
-  const go = el("button", "confirm", ["Create passkey with Face ID"]) as HTMLButtonElement;
+  const go = el("button", "confirm", [glyph("btn-ico", FACE_ID), "Create passkey with Face ID"]) as HTMLButtonElement;
   go.type = "button";
   const status = el("p", "sheet-status");
-  const label = el("label", "", ["One-time code from Claude"]);
+  const label = el("label", "", ["One-time code"]);
   label.setAttribute("for", "code");
   const box = el("div", "enrol", [label, input, go, status]);
-  app.replaceChildren(
+  // The three steps and how far this phone is: presentation only (data-step drives the style; nothing reads it back).
+  const steps = el("ol", "steps", ["Code", "Face ID", "Confirmed"].map((s) => el("li", "", [txt("span", "", s)])));
+  steps.setAttribute("aria-label", "Steps");
+  const flow = el("section", "enrol-flow", [
+    el("div", "enrol-ill", [glyph("faceid", FACE_ID), el("span", "scan")]),
     txt("h1", "", "Enrol your passkey"),
-    txt("p", "lead", "Once enrolled, every approval needs this passkey: Face ID signs the hash of the exact terms you see."),
+    txt("p", "lead", "It signs every approval, after Face ID."),
+    steps,
     box,
-  );
+  ]);
+  const step = (n: string) => { flow.dataset.step = n; };
+  step("1");
+  app.replaceChildren(flow);
   go.addEventListener("click", async () => {
     go.disabled = true;
     status.textContent = "Checking the code…";
@@ -1853,12 +1887,14 @@ function enrolPage(): void {
       const left = opt.data.attempts_left === undefined ? "" : ` (${str(opt.data.attempts_left)} tries left)`;
       status.textContent = `${str(opt.data.error) || `error ${opt.status}`}${left}.`;
       go.disabled = false;
+      step("1");
       return;
     }
     const o = opt.data as { challenge: string; rp: { id: string; name: string }; user: { id: string; name: string; displayName: string };
       pubKeyCredParams: { type: "public-key"; alg: number }[]; timeout: number; attestation: AttestationConveyancePreference;
       authenticatorSelection: AuthenticatorSelectionCriteria; excludeCredentials: { type: "public-key"; id: string }[] };
     status.textContent = "Waiting for Face ID…";
+    step("2");
     let cred: PublicKeyCredential | null;
     try {
       cred = (await navigator.credentials.create({
@@ -1872,11 +1908,13 @@ function enrolPage(): void {
     } catch (e) {
       status.textContent = passkeyError(e);
       go.disabled = false;
+      step("1");
       return;
     }
     if (!cred) {
       status.textContent = "Cancelled. No passkey was created.";
       go.disabled = false;
+      step("1");
       return;
     }
     const att = cred.response as AuthenticatorAttestationResponse;
@@ -1887,11 +1925,20 @@ function enrolPage(): void {
     if (sent.status !== 202) {
       status.textContent = `Not accepted: ${str(sent.data.error) || `error ${sent.status}`}.`;
       go.disabled = false;
+      step("1");
       return;
     }
     const home = el("a", "back", ["← Dashboard"]) as HTMLAnchorElement;
     home.href = "/";
-    const end = await follow(str(sent.data.ticket), box, home, fp ? `Fingerprint ${fp}` : "This browser cannot show the fingerprint; do not confirm it on the runner.");
+    step("3");
+    const following = follow(str(sent.data.ticket), box, home, fp ? `Fingerprint ${fp}` : "This browser cannot show the fingerprint; do not confirm it on the runner.");
+    // The same words, drawn large in groups of four to compare with the runner's line (textContent stays "Fingerprint <fp>").
+    const what = box.querySelector(".verdict-what");
+    if (what && fp) {
+      what.replaceChildren(txt("span", "fp-label", "Fingerprint "), el("span", "fp-code", fp.split("-").flatMap((g, i) => [i ? txt("span", "fp-dash", "-") : null, txt("span", "", g)])));
+    }
+    const end = await following;
+    if (end.status === "enrolled") step("done");
     // The runner names the fingerprint of the passkey it received: it must be the one this phone made.
     if (end.status === "pending" && fp && !end.message.includes(fp)) {
       box.prepend(txt("p", "alarm", `The runner received another passkey than this phone made (${fp}). Do not confirm it; tell Claude.`));

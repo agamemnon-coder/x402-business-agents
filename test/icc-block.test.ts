@@ -147,13 +147,15 @@ describe("the ICC block, with a record", () => {
 });
 
 describe("/visa in the repository's real state", () => {
-  it("docs/runs holds no ICC record, and /visa carries the status sentence exactly once, low on the page", () => {
+  it("docs/runs holds no ICC record, and /visa carries the status sentence exactly once, in sight above the folds", () => {
     expect(readdirSync(new URL("../docs/runs/", import.meta.url)).filter((f) => /-icc\./.test(f))).toEqual([]);
     const html = visaPage();
     expect(html.split(esc(STATUS)).length - 1).toBe(1);
+    expect(html).not.toContain(`id="icc-run"`);
     const at = html.indexOf(esc(STATUS));
-    // After the Visa runs (the TAP run's picture is the last of them), before the folds.
-    expect(at).toBeGreaterThan(html.indexOf('class="flow card"'));
+    // Since the /visa rewrite of 12 Nov the sentence sits in the basis line under the heading, outside any fold.
+    expect(at).toBeGreaterThan(html.indexOf("<h1>"));
     expect(at).toBeLessThan(html.indexOf('<div class="folds card">'));
+    expect(html.slice(0, at).lastIndexOf("<details")).toBeLessThan(html.slice(0, at).lastIndexOf("</details>") + 1);
   });
 });

@@ -6,7 +6,7 @@
 // the agents off there are no agent rows, so there are no traces.
 
 import { MONEY_EVENTS } from "../provenance/origin.js";
-import { AGENT_DISPLAY } from "../config/brand.js";
+import { agentName } from "../config/brand.js";
 import type { DB } from "../db/open.js";
 import { describe as words } from "./snapshot.js";
 
@@ -53,6 +53,8 @@ type P = Record<string, unknown>;
 
 /** The decision row code writes after each agent's run. */
 const DECISION: Record<string, string> = { sourcing: "price_rise.met", treasury: "price_rise.plan", support: "dispute.settled_by_agent" };
+/** The payables agents' decision rows, by their task (src/ap/checkerAgent.ts "ap.check.<document>", src/ap/payerAgent.ts "ap.pay.<invoice>"). */
+const AP_DECISION: [prefix: string, event: string][] = [["ap.check.", "ap.checker_decided"], ["ap.pay.", "ap.payer_proposed"]];
 /** Where an agent has more than one task, the decision row of each (block 5.1: the Sourcing agent's rail choice). */
 const DECISION_BY_TASK: Record<string, string> = { "purchase.rails": "purchase.rails_chosen", "price_rise.meet": "price_rise.met" };
 
@@ -77,6 +79,20 @@ const TOOL_CHECK: Record<string, string> = {
   submit_plan: "code's plan checks (the 20.00 total, caps, budgets, margin)",
   refund: "code's evidence gate and the automatic refund limits, then the Metal mandate",
   escalate_to_cfo: "goes to the CFO, who decides with Face ID",
+  // The Checker agent (src/ap/checkerCore.ts): six lookups answered from the invoice's case, then its decision.
+  supplier_on_file: "read only: Purser's record of the supplier and its account on file",
+  check_bank_details: "read only: code's check of the bank details against the account on file",
+  invoice_history: "read only: this supplier's other invoices and code's duplicate checks",
+  verify_totals: "read only: code's arithmetic on the invoice",
+  policy_limits: "read only: the CFO's policy",
+  expected_amount: "read only: the amount a contract or order names",
+  decide: "code's check of the reason (only amounts and numbers that are in the case); then code's own checks decide whether it stands",
+  // The Payer agent (src/ap/payerCore.ts): five lookups answered from the engine's plan, then its proposal.
+  cash_position: "read only: the balances, the floors and code's numbers for each way to pay",
+  supplier_rails: "read only: the rail the supplier's account on file is paid by",
+  fx_quote: "read only: the locked FX quote and its validity",
+  due_date: "read only: today, the due date and what the CFO's policy allows after it",
+  propose_payment: "code's check of the rail, the day and the reason; then code's floors decide whether it is filed for the CFO",
 };
 
 const str = (v: unknown) => (v === undefined || v === null ? "" : String(v));
@@ -93,6 +109,17 @@ function decisionCheck(r: Row, p: P): string {
   if (r.event === "card.decline_met") return str(p.proposal_id) ? `a raise within code's bounds went to the CFO (${str(p.proposal_id)}), who decides with Face ID; Airwallex enforces the limit` : "no raise proposed: the limit did not cause it";
   if (r.event === "purchase.rails_chosen") return str(p.source) === "claude" ? "every supplier paid on a rail it accepts (code's check); Metal and Airwallex enforced the limits" : "code paid on the registry's rails (the agent did not finish)";
   if (r.event === "dispute.settled_by_agent") return "complete: every wrong order refunded, the rest sent to the CFO, who decides with Face ID";
+  if (r.event === "ap.checker_decided") {
+    if (str(p.source) !== "claude") return `fallback (code): ${str(p.note) || "the agent did not decide"}; code's own checks decided`;
+    if (p.overridden === true) return `code's checks overrode the agent (${str(p.overridden_by)}): ${str(p.why)}`;
+    return str(p.outcome) === "ask_cfo" || str(p.outcome) === "pay" ? "code's checks found nothing that stops it; no payment is made without the CFO's Face ID" : "the agent's own decision stands: code lets an agent be stricter than its checks, never looser";
+  }
+  if (r.event === "ap.payer_proposed") {
+    const who = str(p.source) === "claude" ? "" : `fallback (code): ${str(p.note) || "the agent did not propose"}; `;
+    if (str(p.next) === "hold") return `${who}code held ${str(p.source) === "claude" ? "the agent's proposal" : "its own plan"} (${str(p.overridden_by)}): ${str(p.why)}`;
+    if (str(p.next) === "pay_later") return `${who}within the due date, so code allows the day; nothing is filed for the CFO until then`;
+    return `${who}the rail is the supplier's and every balance stays above its floor; the CFO signs the exact terms with Face ID`;
+  }
   if (r.event === "price_rise.met") return str(p.source) === "claude" ? "Metal decided on chain; the agent's message goes to the Treasury agent" : "applied by code (the agent did not try)";
   return "";
 }
@@ -118,7 +145,7 @@ export function agentTraces(db: DB, all?: Row[]): Trace[] {
       return o?.run_id === runId || o?.set_by?.run_id === runId;
     };
     const mine = rows.filter((r) => r.seq > Math.max(from, prevRun) && r.seq <= run.seq && r.actor === agent && r.event !== "agent.run" && (r.event !== "agent.tool" || r.subject === run.subject) && ofRun(r));
-    const decision = rows.find((r) => r.seq > run.seq && r.seq < nextRun && r.actor === agent && r.event === (DECISION_BY_TASK[str(run.subject)] ?? (str(run.subject).startsWith("wake.") ? "agent.decision" : str(run.subject).startsWith("card.decline.") ? "card.decline_met" : str(run.subject).startsWith("licence.timing.") ? "licence.timing_advised" : DECISION[agent]))) ?? null;
+    const decision = rows.find((r) => r.seq > run.seq && r.seq < nextRun && r.actor === agent && r.event === (DECISION_BY_TASK[str(run.subject)] ?? AP_DECISION.find(([prefix]) => str(run.subject).startsWith(prefix))?.[1] ?? (str(run.subject).startsWith("wake.") ? "agent.decision" : str(run.subject).startsWith("card.decline.") ? "card.decline_met" : str(run.subject).startsWith("licence.timing.") ? "licence.timing_advised" : DECISION[agent]))) ?? null;
 
     const steps: TraceStep[] = [];
     for (const r of [...mine, run, ...(decision ? [decision] : [])]) {
@@ -148,7 +175,7 @@ export function agentTraces(db: DB, all?: Row[]): Trace[] {
       }
     }
     traces.push({
-      run_seq: run.seq, agent, agent_name: (AGENT_DISPLAY as Record<string, { name: string }>)[agent]?.name ?? agent,
+      run_seq: run.seq, agent, agent_name: agentName(agent),
       task: str(run.subject), model: str(p.model), status: str(p.status), turns: num(p.turns) ?? 0,
       tokens: (p.tokens as Trace["tokens"]) ?? null, cost_usd_micros: num(p.cost_usd_micros) ?? 0, latency_ms: num(p.latency_ms),
       claude_ms: Array.isArray(p.claude_ms) ? (p.claude_ms as number[]) : [],

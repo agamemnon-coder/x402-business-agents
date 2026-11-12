@@ -9,7 +9,6 @@
 // accrual is then booked from it (src/ap/books.ts accrualEntries, src/ledger/feed.ts syncLedger). The row's own
 // gl_account and cost_centre stay the engine's default, which is what the ERP feed still sends.
 
-import { readFileSync } from "node:fs";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { Json } from "@metalntwx/metal-pay/mandates";
 import type { z } from "zod";
@@ -29,6 +28,7 @@ import {
   answerCoderTool, buildCodingCase, CODER_EFFORT, CODER_MAX_TURNS, CODER_MODEL, CODER_SYSTEM, CODER_UNFINISHED, coderInputs, coderPrompt, coderTools, enforceCoding,
   fallbackCoding, invoiceAmounts, vatIdCountry, WHOLE_INVOICE, type CaseVatCode, type ChartAccount, type Coding, type CodingCase, type CostCentre, type EnforcedCoding, type HistoryCoding,
 } from "./coderCore.js";
+import { readDoc } from "./docStore.js";
 import { pdfText } from "./pdfText.js";
 import { EXPENSE_ACCOUNTS } from "./read.js";
 import { cleanText } from "./reading.js";
@@ -207,7 +207,7 @@ export async function codeInvoice(db: DB, inv: ApInvoiceRow, text: string, deps:
 async function documentText(db: DB, inv: ApInvoiceRow): Promise<string> {
   const doc = db.prepare("SELECT path, text_chars FROM ap_documents WHERE sha256 = ?").get(inv.doc_sha256) as { path: string; text_chars: number } | undefined;
   try {
-    const text = doc?.text_chars ? (await pdfText(readFileSync(doc.path))).text : "";
+    const text = doc?.text_chars ? (await pdfText(readDoc(db, doc.path))).text : "";
     if (text) return text;
   } catch { /* A PDF that cannot be opened has no text layer to read: the scan's transcription, if any, is used. */ }
   return (db.prepare("SELECT transcription FROM ap_scan_readings WHERE invoice_id = ?").get(inv.id) as { transcription: string | null } | undefined)?.transcription ?? "";
