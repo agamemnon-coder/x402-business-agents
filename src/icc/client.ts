@@ -81,7 +81,7 @@ export function allowedCall(method: string, path: string, prefix: IccPathPrefix)
   return ok ? { endpoint: `${prefix}/instructions${tail ? `/{id}/${tail}` : ""}`, icc: true, write: true } : null;
 }
 
-/** The single-use payment credential of one answer. It prints nothing, serialises to nothing, and can be dropped. */
+/** The payment credential of one answer, used once by Purser (whether the service allows more: unknown until sandbox access). It prints nothing, serialises to nothing, and can be dropped. */
 export class IccCredential {
   #authorization: string | null;
   #signedPayload: string | null;
@@ -150,6 +150,8 @@ export type IccCredentialsAnswer =
   | { kind: "pending"; httpStatus: number; clientCorrelationId: string | null; instructionId: string | null; status: string | null; pendingEvents: string[]; encrypted: boolean };
 
 const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+/** The wrappers of the credentials answer: the spec schema's spelling and its example's. */
+const CREDENTIALS_WRAPPERS = ["TransactionResponseComplete", "transactionResponseComplete", "TransactionResponseWithPendingEvents", "transactionResponseWithPendingEvents"] as const;
 const text = (v: unknown, max = 255): string | null => (typeof v === "string" && v.length > 0 && v.length <= max ? v : null);
 /** A code as the documentation's examples show them (INVALID_ARGUMENT, PENDING): kept only in that plain form. */
 const code = (v: unknown): string | null => (typeof v === "string" && /^[A-Z][A-Z0-9_]{0,63}$/.test(v) ? v : null);
@@ -253,10 +255,19 @@ export class IccClient {
   /** POST {prefix}/instructions/{id}/credentials: the credential for one transaction, or the pending answer. */
   async requestCredentials(instructionId: string, body: Record<string, unknown>): Promise<IccCredentialsAnswer> {
     const r = await this.request("POST", `${this.pathPrefix}/instructions/${instructionId}/credentials`, body);
-    const j = r.json as Record<string, unknown>;
+    // The spec's 200 schema wraps the fields in TransactionResponseComplete or TransactionResponseWithPendingEvents; its
+    // example spells them in lower camel case. A flat answer is read as it is. Which the sandbox sends is unknown until
+    // sandbox access, so all three are read; two wrappers at once are read as neither.
+    const outer = r.json as Record<string, unknown>;
+    const wrapped = CREDENTIALS_WRAPPERS.filter((w) => isObject(outer[w]));
+    const j = wrapped.length === 1 ? (outer[wrapped[0]!] as Record<string, unknown>) : outer;
     const common = { httpStatus: r.httpStatus, clientCorrelationId: text(j.clientCorrelationId), instructionId: text(j.instructionId, 50), status: code(j.status), encrypted: r.encrypted };
-    const pendingEvents = codes(j.pendingEvents);
-    if (pendingEvents.length > 0 || (j.authorization === undefined && j.signedPayload === undefined)) return { kind: "pending", ...common, pendingEvents };
+    // The example gives pendingEvents as one string, the schema as a list: both are read.
+    const pendingEvents = codes(typeof j.pendingEvents === "string" ? [j.pendingEvents] : j.pendingEvents);
+    // Pending only when the answer says so. An answer with neither a credential nor a pending event is not "pending":
+    // it goes on as a complete answer with nothing in it, which the flow refuses as not the documented shape.
+    const hasCredential = j.authorization !== undefined || j.signedPayload !== undefined;
+    if (!hasCredential && (pendingEvents.length > 0 || common.status === "PENDING")) return { kind: "pending", ...common, pendingEvents };
     const credential = new IccCredential(j.authorization, j.signedPayload);
     // The parsed answer is let go of here; only the credential object holds the two values now.
     delete j.authorization;

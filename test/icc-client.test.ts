@@ -110,6 +110,30 @@ describe("the six documented calls", () => {
     await expect(other.client.createInstruction(createBody())).rejects.toMatchObject({ name: "IccApiError", httpStatus: 401, reason: "UNAUTHENTICATED" });
   });
 
+  it("reads the credentials answer in the published spec's wrapped shape (either spelling) as well as flat", async () => {
+    // The spec's 200 schema holds TransactionResponseComplete or TransactionResponseWithPendingEvents; its example spells
+    // them in lower camel case and gives pendingEvents as one string. Which shape the sandbox sends: unknown until access.
+    const { standIn, client } = setup();
+    const id = (await client.createInstruction(createBody())).instructionId!;
+    const complete = { clientCorrelationId: "corr-1", instructionId: id, status: "COMPLETED", authorization: standIn.credential.authorization, signedPayload: standIn.credential.signedPayload };
+    for (const wrapper of ["TransactionResponseComplete", "transactionResponseComplete"]) {
+      standIn.answerNext("credentials", { [wrapper]: complete });
+      const cred = await client.requestCredentials(id, credentialsBody());
+      expect(cred).toMatchObject({ kind: "complete", clientCorrelationId: "corr-1", instructionId: id, status: "COMPLETED" });
+      if (cred.kind === "complete") expect(cred.credential.envelope()).toEqual({ authorization: true, signedPayload: true, signedPayloadForm: "three parts" });
+    }
+    for (const wrapper of ["TransactionResponseWithPendingEvents", "transactionResponseWithPendingEvents"]) {
+      standIn.answerNext("credentials", { [wrapper]: { clientCorrelationId: "corr-1", instructionId: id, status: "PENDING", pendingEvents: "PENDING_CARDHOLDER_AUTHENTICATION" } });
+      expect(await client.requestCredentials(id, credentialsBody())).toMatchObject({ kind: "pending", instructionId: id, pendingEvents: ["PENDING_CARDHOLDER_AUTHENTICATION"] });
+    }
+    // An answer with neither a credential nor a pending event is not "pending": it is a complete answer with nothing in
+    // it, which the flow refuses as not the documented shape (a credential may have come in a form not read here).
+    standIn.answerNext("credentials", { somethingElse: { clientCorrelationId: "corr-1" } });
+    const odd = await client.requestCredentials(id, credentialsBody());
+    expect(odd.kind).toBe("complete");
+    if (odd.kind === "complete") expect(odd.credential.envelope().signedPayload).toBe(false);
+  });
+
   it("202 PENDING and the pending credentials answer come back as documented, not as errors", async () => {
     const { standIn, client } = setup();
     standIn.pendingNext("create");
