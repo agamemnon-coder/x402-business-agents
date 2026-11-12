@@ -68,7 +68,7 @@ vi.mock("../src/policy/holds.js", async (orig) => {
 const { REFUSALS } = await import("@metalntwx/metal-pay/mandates");
 const { decodePaymentSignatureHeader, encodePaymentRequiredHeader, encodePaymentResponseHeader } = await import("@x402/core/http");
 const { coverageView, innerLayers, pathsOf } = await import("../src/zerotrust/coverage.js");
-const { ATTACKS, COMPONENTS, LAYERS, LIMITS, MONEY_PATHS, PREVENTING_LAYERS, RAIL_REFUSALS, RECORD_NOT_COUNTED, guardsOf, isMoneyPath, modelDepth, voidedBy } = await import("../src/zerotrust/model.js");
+const { ATTACKS, COMPONENTS, LAYERS, LIMITS, MONEY_PATHS, PENDING_ATTACKS, PREVENTING_LAYERS, RAIL_REFUSALS, RECORD_NOT_COUNTED, guardsOf, isMoneyPath, modelDepth, voidedBy } = await import("../src/zerotrust/model.js");
 const { buyPlan } = await import("../src/agents/cardBuyer.js");
 const { proposeInvoicePayment, seedTreasury } = await import("../src/agents/euroBill.js");
 const { ibanSha, parseInvoiceFallback } = await import("../src/agents/invoice.js");
@@ -215,6 +215,7 @@ const RESULTS: {
   };
   property?: { seed: number; runs: number; moved_with_every_guard_void: number; moved_with_a_guard_holding: number };
   coverage?: import("../src/zerotrust/coverage.js").CoverageView;
+  pending?: { id: string; description: string; pending: string; waits_for: string }[];
 } = { attacks: [] };
 afterAll(() => { if (process.env.ZERO_TRUST_OUT) writeFileSync(process.env.ZERO_TRUST_OUT, `${JSON.stringify(RESULTS, null, 2)}\n`); });
 
@@ -2202,6 +2203,29 @@ describe("the zero-trust model", () => {
       expect(here.split(`SCENARIOS["${id}"] =`).length - 1, `${id} in this file`).toBe(1);
       expect(model.split(`id: "${id}"`).length - 1, `${id} in the model`).toBe(1);
     }
+  });
+});
+
+describe("pending attacks: listed, not tested, in no count", () => {
+  it("has no test, no result and no place in the coverage view for a pending attack", () => {
+    const tested = new Set(ATTACKS.map((a) => a.id));
+    const here = readFileSync(new URL(import.meta.url), "utf8");
+    expect(PENDING_ATTACKS.map((a) => a.id)).toEqual(["hostile-checker", "hostile-payer"]);
+    for (const a of PENDING_ATTACKS) {
+      expect(tested.has(a.id), `${a.id} is both pending and tested`).toBe(false);
+      expect(SCENARIOS[a.id], a.id).toBeUndefined();
+      expect(here.split(`SCENARIOS["${a.id}"] =`).length - 1, a.id).toBe(0);
+      expect(a.pending.length, a.id).toBeGreaterThan(20);
+      expect(a.description, a.id).toMatch(/^[A-Z][^.]*\.$/);
+      expect(a.bypasses, a.id).not.toContain(a.stoppedBy);
+      expect(JSON.stringify(coverageView()), a.id).not.toContain(a.id);
+      expect(JSON.stringify(coverageView([...ATTACKS, ...PENDING_ATTACKS]).empty)).toBe(JSON.stringify(coverageView().empty));
+    }
+    RESULTS.pending = PENDING_ATTACKS.map((a) => ({ id: a.id, description: a.description, pending: a.pending, waits_for: a.waitsFor }));
+  });
+
+  it("still waits: the code a pending attack is for is not in this tree (when it arrives, write the attack and its test)", () => {
+    for (const a of PENDING_ATTACKS) expect(existsSync(repo(a.waitsFor)), `${a.waitsFor} is here now: move ${a.id} from PENDING_ATTACKS to ATTACKS and write its scenario`).toBe(false);
   });
 });
 

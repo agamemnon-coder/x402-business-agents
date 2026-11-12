@@ -172,8 +172,17 @@ export interface Attack {
   evidence?: Evidence;
   /** Other ways money leaves that the same test tries, beside the target. */
   alsoTries?: MoneyPath[];
-  /** Listed, not tested yet: the code it attacks is not in this tree. It has no test and is left out of every count. */
-  pending?: string;
+}
+
+/**
+ * An attack that is listed and not tested yet, because the code it attacks is not in this tree. It has no test, proves
+ * nothing and is left out of every count, the coverage view included; `stoppedBy` is what is expected, not what was seen.
+ */
+export interface PendingAttack extends Attack {
+  /** Why it waits, in plain words. */
+  pending: string;
+  /** The file whose arrival ends the wait: the tests fail once it exists, until the attack is written. */
+  waitsFor: string;
 }
 
 const EVIDENCE = {
@@ -597,6 +606,28 @@ export const ATTACKS: readonly Attack[] = [
     bypasses: ["L1", "L2", "L4"], stoppedBy: "L3",
     note: "A first signature counts only for the exact terms it was made over. Found here and fixed: a signature made before the terms changed was counted for the changed terms (src/policy/approvals.ts).",
     needs: "the CFO has set a four-eyes threshold (approval.four_eyes_eur)",
+  },
+];
+
+/** Listed for the payables agents that another branch builds; no test yet, in no count. */
+export const PENDING_ATTACKS: readonly PendingAttack[] = [
+  {
+    id: "hostile-checker",
+    description: "The Checker agent, which checks supplier invoices, is turned and calls an invoice with changed bank details clean.",
+    breach: ["agent_output"], target: "supplier_invoice",
+    action: "Get an invoice with the attacker's bank details marked ready to pay.",
+    bypasses: ["L1"], stoppedBy: "L2",
+    pending: "The Checker agent's code is built on another branch and is not in this tree yet.",
+    waitsFor: "src/ap/checkerCore.ts",
+  },
+  {
+    id: "hostile-payer",
+    description: "The Payer agent, which files payments for checked invoices, is turned and files a payment to another account for another amount.",
+    breach: ["agent_output"], target: "supplier_invoice",
+    action: "Get a payment filed to the attacker's account, or for more than the invoice.",
+    bypasses: ["L1"], stoppedBy: "L2",
+    pending: "The Payer agent's code is built on another branch and is not in this tree yet.",
+    waitsFor: "src/ap/payerCore.ts",
   },
 ];
 

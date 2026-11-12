@@ -56,10 +56,10 @@ function dutyOf(path: MoneyPath, layer: LayerId): CellDuty {
   return guardsOf(path, true).includes(layer) ? "optional" : "none";
 }
 
-/** The coverage view. Pending attacks (no test yet) are left out: they prove nothing. */
+/** The coverage view of the tested attacks. Pending attacks (PENDING_ATTACKS: no test yet) are not in it: they prove nothing. */
 export function coverageView(attacks: readonly Attack[] = ATTACKS): CoverageView {
   const layers = LAYERS.filter((l) => l.kind !== "untrusted").map((l) => l.id);
-  const counted = attacks.filter((a) => !a.pending);
+  const counted = attacks;
   const rows = MONEY_PATHS.map((p) => ({
     path: p.id,
     cells: layers.map((layer): CoverageCell => {
