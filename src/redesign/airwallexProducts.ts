@@ -94,7 +94,8 @@ const read = (file: string): string | null => {
   return existsSync(url) ? readFileSync(url, "utf8") : null;
 };
 /** "45.00" → "€45", "4.84" → "€4.84". */
-const euro = (amount: string) => `€${amount.replace(/,/g, "").replace(/\.00$/, "")}`;
+// "EUR 45.00", the site's one style for an amount (review 12 Nov).
+const euro = (amount: string) => `EUR ${Number(amount.replace(/,/g, "")).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 /** A figure such as "€4.84" as a count-up (src/redesign/stats.ts COUNT_JS), anything else as it is. */
 const countUp = (v: string) => {
   const m = /^(€)(\d+(?:\.(\d+))?)$/.exec(v);
@@ -412,7 +413,7 @@ export function firstConnectedRunOfRecord(): FirstConnectedRun | null {
 export const PAYEE_CHECK_FILE = "docs/runs/2026-11-12-airwallex-payee-check.json";
 export const BATCH_FILE = "docs/runs/2026-11-12-airwallex-batch-transfer.json";
 export const FT_FILE = "docs/runs/2026-11-12-airwallex-financial-transactions.json";
-export const FLAGGED_LINE = "Behind flags in this build; each ran live on 12 Nov.";
+export const FLAGGED_LINE = "Built, not yet switched on; each ran live on 12 Nov.";
 const json = <T>(file: string): T | null => { const t = read(file); try { return t ? JSON.parse(t) as T : null; } catch { return null; } };
 
 export function payeeCheckTile(r: { checks: { match: string; proceed: number; checked_at: string }[] } | null): ProductTile | null {
@@ -561,8 +562,9 @@ export function airwallexBody(run: AgentRun, o: AirwallexBody): string {
     ].join("")}</ul>`),
   ].join("");
   const count = WORDS[tiles.length] ?? String(tiles.length);
+  const flagged = flaggedTiles();
   return `<main class="pp awxp"><div class="wrap">
-  <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(AWX_PAGE_LABEL)}</span><h1>${esc(tiles.length > 1 ? `Purser uses ${count} Airwallex products` : "Purser on Airwallex")}</h1></div>
+  <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(AWX_PAGE_LABEL)}</span><h1>${esc(tiles.length > 1 ? `${count[0]!.toUpperCase()}${count.slice(1)} Airwallex products in the product${flagged.length ? `, ${WORDS[flagged.length] ?? flagged.length} more tested live on 12 Nov` : ""}` : "Purser on Airwallex")}</h1></div>
   ${tilesHtml(tiles)}
   ${flaggedHtml()}
   ${o.hash || o.controls ? `<h2 class="vh">Airwallex, read back</h2><div class="awrb">${o.hash}${swiftLineHtml(kitSwift(read(KIT_FILE)), platform)}${o.controls}</div>` : ""}

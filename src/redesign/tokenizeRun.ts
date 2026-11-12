@@ -51,7 +51,7 @@ export function tokenizeRunSentence(rec: TokenizeRunRecord): string {
   const financed = landed(rec, "accept") && rec.received.creditor ? ` A simulated financier bought it for ${rec.received.creditor} test USD` : "";
   const settled = landed(rec, "settle") && rec.received.holder ? `the debtor paid its holder ${rec.received.holder}` : "";
   const money = financed && settled ? `${financed}; ${settled}.` : financed ? `${financed}.` : settled ? ` The debtor paid its holder ${rec.received.holder} test USD.` : ` Its face value is ${rec.face_value.amount} test USD.`;
-  return `${dayOf(rec.date)}, a separate Metal testnet run. ${by}${on} became a token.${money} Face value divided by ${rec.labels.face_value_scaled_by}.`;
+  return `${dayOf(rec.date)}, a separate Metal testnet run. ${by}${on} became a token.${money} Amounts are scaled down ${rec.labels.face_value_scaled_by}× for testnet.`;
 }
 
 /** The block, or "" when there is no record to show. */
