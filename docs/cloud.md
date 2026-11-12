@@ -170,9 +170,9 @@ sets and overwrites: behind any other proxy this header must not be trusted, and
 
 ## The console
 
-The same Worker serves the company's console at `/` (`cloud/src/console.ts`). It is in English; a switch in the header
-changes it to Dutch, and the browser remembers the choice (a signed-in person's choice is also saved with them). Sign in
-with a passkey (no passwords). The menu has five pages:
+The same Worker serves the company's console at `/` (`cloud/src/console.ts`): sign in with a passkey (no passwords). It
+is in English; a switch in the header changes it to Dutch, and the browser remembers the choice (a signed-in person's
+choice is also saved with them). The menu has five pages:
 
 - **Overview:** the inbox address, what is open, due, overdue, waiting and blocked, and what waits for the CFO.
 - **Invoices**, and each invoice: what Purser read, the checks, the timeline and the document; then how it was approved
