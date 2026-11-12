@@ -25,6 +25,7 @@ import type { EngineApi } from "./engine/api.js";
 import { engineRoutes } from "./engine/routes.js";
 import { signedTrySession, tryGate } from "./try/gate.js";
 import { tryEngineRoutes } from "./try/engineRoutes.js";
+import { tryExtraEngineRoutes } from "./try/extraEngineRoutes.js";
 import { tryError, tryRoutes } from "./try/routes.js";
 import { isTryTenant, noteTryFail, TryRefused, type TryConfig } from "./try/start.js";
 import { SwitchRefused } from "./try/switches.js";
@@ -461,6 +462,7 @@ export const ROUTES: Route[] = [
 
   // The hands-on demo's engine routes (cloud/src/try/engineRoutes.ts): one block, the caller's own company only.
   ...tryEngineRoutes<Ctx>({ json, err, body }),
+  ...tryExtraEngineRoutes<Ctx>({ json, err, body }),
 
   // The hands-on deployment (cloud/src/try/routes.ts): one block, 404 unless the deployment runs the hands-on demo.
   ...tryRoutes<Ctx>({ json, err, body }),

@@ -38,6 +38,8 @@ export const TRY_ROUTES: readonly string[] = [
   "POST /v1/engine/samples/{key}",
   "GET /v1/engine/suppliers",
   "POST /v1/engine/compose",
+  // The demo extras (./extraEngineRoutes.ts), each behind its own switch.
+  "GET /v1/engine/books/effect",
   "GET /v1/engine/proposals/{id}/terms",
   "POST /v1/engine/proposals/{id}/pay",
   "GET /v1/engine/export",
