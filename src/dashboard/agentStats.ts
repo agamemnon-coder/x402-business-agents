@@ -49,8 +49,13 @@ export function agentStats(db: DB, now = new Date()): AgentStats[] {
     s.cost_usd_micros += p.cost_usd_micros ?? 0;
     if (r.ts > hourAgo && r.ts <= now.toISOString()) s.cost_last_hour_usd_micros += p.cost_usd_micros ?? 0;
   }
-  for (const s of out.values()) s.fallback_pct = s.decisions ? Math.round((s.fallback / s.decisions) * 1000) / 10 : 0;
+  for (const s of out.values()) s.fallback_pct = fallbackPct(s.fallback, s.decisions);
   return [...out.values()].sort((a, b) => a.agent.localeCompare(b.agent));
+}
+
+/** The fallback share in percent, one decimal (0 when there were no decisions): the dashboard's and the records' figure. */
+export function fallbackPct(fallback: number, decisions: number): number {
+  return decisions ? Math.round((fallback / decisions) * 1000) / 10 : 0;
 }
 
 export interface ChatLine {
