@@ -270,8 +270,10 @@ describe("/airwallex: transfer approvals, three states read from the record and 
   it("when the record and the runs list disagree, the record's state is shown", () => {
     const ahead = twoLocksState(FINISHED, ROW({ status: "IN_APPROVAL" }))!;
     expect(ahead).toMatchObject({ now: "PAID", disagree: true, source: "record" });
-    const behind = twoLocksState(md, ROW({ status: "PAID" }))!;
-    expect(behind).toMatchObject({ now: twoLocksState(md, row)!.now, disagree: true, source: "record" });
+    // The log of 10 November held the transfer IN_APPROVAL: a row that says PAID beside it is a disagreement.
+    const held = read(TWO_LOCKS_FILE);
+    const behind = twoLocksState(held, ROW({ status: "PAID" }))!;
+    expect(behind).toMatchObject({ now: "IN_APPROVAL", disagree: true, source: "record" });
     expect(approvalsTile(behind)!.states![2]!.text).not.toBe("Now: PAID");
     // Another transfer id in the list: the record's id stays.
     expect(twoLocksState(md, ROW({ id: "00000000-0000-4000-8000-000000000000" }))!).toMatchObject({ transferId: twoLocksState(md, row)!.transferId, disagree: true });
