@@ -133,7 +133,8 @@ describe("/visa is one Visa Intelligent Commerce story; TAP folded away", () => 
   const rec = raw("docs/demo/airi-run.json");
 
   it("names Visa Intelligent Commerce via Airi in its title and first heading, then the story in one line and the drawing from the record", () => {
-    expect(/<title>([^<]*)<\/title>/.exec(html)![1]).toBe(VISA_TITLE);
+    // #216 (12 Nov): every <title> reads "Purser · <Page>".
+    expect(/<title>([^<]*)<\/title>/.exec(html)![1]).toBe(`Purser · ${VISA_TITLE}`);
     expect(VISA_TITLE).toBe("Visa Intelligent Commerce via Airi");
     // One h1, the first heading of the page.
     expect(html.match(/<h1\b/g)).toHaveLength(1);
@@ -256,7 +257,7 @@ describe("/visa is one Visa Intelligent Commerce story; TAP folded away", () => 
     expect(() => assertVicFirst(html.replace(`<p class="claim">${esc(VISA_TAP_STATUS)}</p>`, ""))).toThrow(/status/);
     // The old headings.
     expect(() => assertVicFirst(html.replace(`<h1>${esc(VISA_H1)}</h1>`, "<h1>The agent signs before it pays</h1>"))).toThrow(/heading/);
-    expect(() => assertVicFirst(html.replace(`<title>${esc(VISA_TITLE)}</title>`, "<title>Visa</title>"))).toThrow(/title/);
+    expect(() => assertVicFirst(html.replace(`<title>Purser · ${esc(VISA_TITLE)}</title>`, "<title>Visa</title>"))).toThrow(/title/);
     // The basis or the Connect line gone, or Connect claimed a second time.
     expect(() => assertVicFirst(html.replace(esc(VISA_ENTRY_LINE), ""))).toThrow(/entry line/);
     expect(() => assertVicFirst(html.replace(esc(VISA_ICC_LINE), ""))).toThrow(/Intelligent Commerce Connect/);
@@ -272,7 +273,8 @@ describe("the Visa entry on the rest of the site", () => {
   const home = homePage(), proof = proofPage(), airwallex = airwallexPage(), visa = visaPage();
 
   it("drops \"Extra, not an award entry\" from Home and /proof: no footer link, and the constant is gone", () => {
-    for (const [name, html] of Object.entries({ home, proof })) expect({ name, extra: /Extra, not an award entry/.test(html), flink: /<a class="flink" href="visa"/.test(html) }).toEqual({ name, extra: false, flink: false });
+    // The footer's Built on list links /visa on every page since #216; the old "Extra" link is what must stay gone.
+    for (const [name, html] of Object.entries({ home, proof })) expect({ name, extra: /Extra, not an award entry/.test(html), flink: /<a class="flink" href="visa">(?!Visa \(VIC)/.test(html) }).toEqual({ name, extra: false, flink: false });
     expect("VISA_EXTRA_LINK" in brand).toBe(false);
   });
 
@@ -282,8 +284,9 @@ describe("the Visa entry on the rest of the site", () => {
     expect(VISA_VIC_BUILT_ON).toBe(true);
     expect("VISA_AWARD_ON" in brand).toBe(false);
     expect(VISA_BUILT_ON).toBe("Visa (VIC via Airi)");
-    expect(home).not.toMatch(/<div class="built">|<p class="builton">/);
-    const built = /<p class="builton">[\s\S]*?<\/p>/.exec(airwallex)![0];
+    // #216: the list is in every page's footer, never in <main>.
+    expect(/<main[\s\S]*<\/main>/.exec(home)![0]).not.toMatch(/<div class="built">|class="builton"/);
+    const built = /<ul class="builton">[\s\S]*?<\/ul>/.exec(airwallex)![0];
     // The same count /visa shows: the purchases paid across the live Airi runs (the jury check, 12 Nov).
     expect(built).toMatch(/<a class="flink" href="visa">Visa \(VIC through Airwallex's Airi\): \d+ purchases paid in \d+ live runs?<\/a>/);
     expect(built).not.toMatch(/TAP|<img[^>]*visa/i);
