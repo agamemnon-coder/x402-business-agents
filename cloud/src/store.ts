@@ -33,7 +33,23 @@ export interface R2Like {
   list(opts: { prefix: string; cursor?: string }): Promise<{ objects: { key: string }[]; truncated: boolean; cursor?: string }>;
 }
 
+/**
+ * One wrapper per D1 binding (speed, 12 Nov). The Worker builds its env on every request; a new wrapper each time made
+ * every "once per database per isolate" cache keyed on it (the schema, the metrics, the blobs and counters tables) miss,
+ * so each request ran the schema's 40 statements against D1 again, one round trip each: about 1.5 s a request next to the
+ * database, and about 6 s from across the ocean.
+ */
+const wrappers = new WeakMap<D1Like, Sql>();
+
 export function d1Sql(db: D1Like): Sql {
+  const had = wrappers.get(db);
+  if (had) return had;
+  const made = makeD1Sql(db);
+  wrappers.set(db, made);
+  return made;
+}
+
+function makeD1Sql(db: D1Like): Sql {
   const stmt = (sql: string, params: SqlValue[] = []) => db.prepare(sql).bind(...params);
   return {
     all: async <T>(sql: string, params?: SqlValue[]) => (await stmt(sql, params).all<T>()).results,
