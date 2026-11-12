@@ -6,10 +6,13 @@
 
 import { createHash, createHmac } from "node:crypto";
 import type { Address, Hex } from "viem";
-import type { DB } from "../db/open.js";
 import { centsToBaseUnits } from "../lib/money.js";
 import { termsHash, type Terms } from "../lib/terms.js";
+import { fingerprintOf, spkiSha256OfCose } from "../passkey/ledger.js";
 import { currencyBytes3, type OnChainInvoice } from "./client.js";
+
+/** The ledger as these checks read it: a better-sqlite3 database, opened read-only by the live commands. */
+export interface ReadableLedger { prepare(sql: string): { get(...params: unknown[]): unknown } }
 
 export class MintRefused extends Error {
   constructor(readonly reason: string) { super(`not tokenized: ${reason}`); this.name = "MintRefused"; }
@@ -31,7 +34,7 @@ export interface ApprovedInvoice {
 const DONE = new Set(["APPROVED", "EXECUTING", "EXECUTED"]);
 
 /** The ledger's facts for one proposal, refused unless a passkey approved exactly these terms. */
-export function approvedInvoice(db: DB, proposalId: string): ApprovedInvoice {
+export function approvedInvoice(db: ReadableLedger, proposalId: string): ApprovedInvoice {
   const p = db.prepare("SELECT proposal_id, kind, terms_json, terms_sha256, status FROM proposals WHERE proposal_id = ?").get(proposalId) as
     { proposal_id: string; kind: string; terms_json: string; terms_sha256: string; status: string } | undefined;
   if (!p) throw new MintRefused(`no proposal ${proposalId} in the ledger`);
@@ -52,6 +55,29 @@ export function approvedInvoice(db: DB, proposalId: string): ApprovedInvoice {
     amountCents: Math.round(Number(terms.amount) * 100), currency: terms.currency, documentSha256: doc.sha256,
     approver: a.approver, approvedAt: a.created_at,
   };
+}
+
+export interface ApprovalPasskey {
+  /** What a person compares on the phone and the runner: the first 64 bits of the passkey's public key hash. */
+  fingerprint: string;
+  /** The name the passkey was enrolled under in the source ledger. */
+  label: string;
+  aaguid: string | null;
+  /** When the runner verified the passkey's signature over the terms. */
+  verifiedAt: string;
+}
+
+/**
+ * Which passkey approved the proposal, from the source ledger: the verified assertion over exactly these terms, and
+ * the pinned public key it was checked against. Refused when the ledger holds no such assertion.
+ */
+export function approvalPasskey(db: ReadableLedger, proposalId: string): ApprovalPasskey {
+  const a = db.prepare(`SELECT s.verified_at, k.public_key, k.label, k.aaguid FROM passkey_assertions s
+    JOIN passkeys k ON k.credential_id = s.credential_id JOIN proposals p ON p.proposal_id = s.proposal_id
+    WHERE s.proposal_id = ? AND s.outcome = 'APPROVED' AND s.terms_sha256 = p.terms_sha256 ORDER BY s.verified_at LIMIT 1`).get(proposalId) as
+    { verified_at: string; public_key: string; label: string; aaguid: string | null } | undefined;
+  if (!a) throw new MintRefused(`the ledger holds no verified passkey signature over ${proposalId}'s terms`);
+  return { fingerprint: fingerprintOf(spkiSha256OfCose(a.public_key)), label: a.label, aaguid: a.aaguid, verifiedAt: a.verified_at };
 }
 
 export const sha256Bytes = (b: Uint8Array | string): string => createHash("sha256").update(b).digest("hex");

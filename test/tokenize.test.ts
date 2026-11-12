@@ -4,10 +4,10 @@ import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { generatePrivateKey, privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
-import { stringToHex, toHex, type Hex } from "viem";
+import { encodeDeployData, parseTransaction, stringToHex, toHex, type Hex } from "viem";
 import { compileContract, loadContract } from "../src/tokenize/compile.js";
-import { localChain, type LocalChain } from "../src/tokenize/localChain.js";
-import { budgetedHttp, GAS, invoiceTokenCalls, standInTokenCalls, tokenIdOf, txClient, TxReverted, type OnChainInvoice } from "../src/tokenize/client.js";
+import { intrinsicGas, localChain, type LocalChain } from "../src/tokenize/localChain.js";
+import { budgeted, BudgetReached, ESTIMATE_MARGIN, GAS, invoiceTokenCalls, standInTokenCalls, tokenIdOf, txClient, TxReverted, WouldRevert, type OnChainInvoice } from "../src/tokenize/client.js";
 import { approvedInvoice, dueDateFromDocument, mintRecord, MintRefused, partyRef, sha256Bytes, testnetFaceValue, verifyRecord, type ApprovedInvoice } from "../src/tokenize/record.js";
 import { discountedPrice, financeToken, mintToken, settleToken } from "../src/tokenize/flow.js";
 import { liveRefusals } from "../src/tokenize/guard.js";
@@ -17,9 +17,9 @@ import { CHAIN_ID } from "../src/metal/network.js";
 
 const acct = () => privateKeyToAccount(generatePrivateKey());
 
-async function world() {
+async function world(o: { estimate?: boolean } = {}) {
   const chain = await localChain();
-  const c = txClient({ request: chain.request, chainId: CHAIN_ID, sleep: async () => {} });
+  const c = txClient({ request: chain.request, chainId: CHAIN_ID, sleep: async () => {}, ...o });
   const calls = invoiceTokenCalls(c);
   const [issuer, creditor, financier, payer, stranger] = [acct(), acct(), acct(), acct(), acct()] as PrivateKeyAccount[];
   const usd = standInTokenCalls(c);
@@ -161,9 +161,13 @@ describe("tokenize on an in-memory EVM: mint, finance, settle, verify", () => {
     expect(await w.calls.ownerOf(w.contract, tokenId)).toBe(w.financier.address);
   });
 
-  it("refuses settlement by a stranger, then pays the face value to the holder once and burns the token", async () => {
+  it("refuses settlement by a stranger before anything is signed, then pays the face value to the holder once and burns the token", async () => {
     expect(await w.calls.simulate(w.stranger.address, w.contract, w.calls.settleData(tokenId))).toBe("NotPayer");
-    await expect(w.calls.settle(w.stranger, w.contract, tokenId)).rejects.toBeInstanceOf(TxReverted);
+    // The node's own estimate names the refusal: nothing is signed, nothing reaches the chain.
+    const before = w.chain.mined.length;
+    await expect(w.calls.settle(w.stranger, w.contract, tokenId)).rejects.toThrow(WouldRevert);
+    await expect(w.calls.settle(w.stranger, w.contract, tokenId)).rejects.toThrow(/NotPayer.*nothing signed, nothing sent/);
+    expect(w.chain.mined.length).toBe(before);
     const h0 = await w.calls.balanceOf(w.settlement, w.financier.address);
     const p0 = await w.calls.balanceOf(w.settlement, w.payer.address);
     await settleToken(w.calls, w.payer, w.contract, w.settlement, tokenId, record.faceValue);
@@ -172,10 +176,21 @@ describe("tokenize on an in-memory EVM: mint, finance, settle, verify", () => {
     await expect(w.calls.ownerOf(w.contract, tokenId)).rejects.toThrow();
     expect((await w.calls.invoiceOf(w.contract, tokenId)).settled).toBe(true);
     expect(await w.calls.simulate(w.payer.address, w.contract, w.calls.settleData(tokenId))).toBe("AlreadySettled");
-    await w.calls.approve(w.payer, w.settlement, w.contract, record.faceValue, "approve again");
-    await expect(w.calls.settle(w.payer, w.contract, tokenId)).rejects.toBeInstanceOf(TxReverted);
+    await w.calls.approve(w.payer, w.settlement, w.contract, record.faceValue, { key: "approve-again", label: "approve again" });
+    await expect(w.calls.settle(w.payer, w.contract, tokenId)).rejects.toThrow(/AlreadySettled/);
     expect(await w.calls.simulate(w.issuer.address, w.contract, w.calls.mintData(w.creditor.address, record))).toBe("AlreadyTokenized");
   });
+
+  it("with fixed gas limits (no estimate) a refused call lands as a reverted transaction and is reported as one", async () => {
+    const fixed = await world({ estimate: false });
+    const l = await standInLedger();
+    const r = mintRecord(approvedInvoice(l.db, l.proposalId), { document: l.document, creditor: fixed.creditor.address, payer: fixed.payer.address, salt, debtorName: "N", faceValue: centsToBaseUnits(240) });
+    await fixed.calls.mint(fixed.issuer, fixed.contract, fixed.creditor.address, r);
+    const before = fixed.chain.mined.length;
+    await expect(fixed.calls.settle(fixed.stranger, fixed.contract, tokenIdOf(r.documentHash))).rejects.toBeInstanceOf(TxReverted);
+    expect(fixed.chain.mined.length).toBe(before + 1);
+    expect(fixed.chain.calls.filter((m) => m === "eth_estimateGas")).toEqual([]);
+  }, 60_000);
 
   it("verify catches a changed document, a changed amount and a different salt against the chain record", async () => {
     const onChain = await w.calls.invoiceOf(w.contract, tokenId);
@@ -187,51 +202,129 @@ describe("tokenize on an in-memory EVM: mint, finance, settle, verify", () => {
     expect(verifyRecord(onChain, otherSalt).map((m) => m.split(":")[0])).toEqual(["debtorRef", "creditorRef"]);
   });
 
-  it("each fixed gas limit is at least twice what its transaction used here (intrinsic gas included)", async () => {
+  it("each gas floor or fixed limit is at least twice what its transaction used here (intrinsic gas included), the deploy and a funding transfer too", async () => {
     const fresh = await world();
     const l = await standInLedger();
     const r = mintRecord(approvedInvoice(l.db, l.proposalId), { document: l.document, creditor: fresh.creditor.address, payer: fresh.payer.address, salt, debtorName: "N", faceValue: centsToBaseUnits(240) });
     const id = tokenIdOf(r.documentHash);
     const price = centsToBaseUnits(235);
-    const tx = async (k: keyof typeof GAS, f: () => Promise<{ hash: Hex }>, data: Hex) => ({ k, hash: (await f()).hash, data });
+    const used = async (k: keyof typeof GAS, f: () => Promise<{ receipt: { gasUsed: Hex } }>) => ({ k, gas: BigInt((await f()).receipt.gasUsed) });
     const all = [
-      await tx("mint", () => fresh.calls.mint(fresh.issuer, fresh.contract, fresh.creditor.address, r), fresh.calls.mintData(fresh.creditor.address, r)),
-      await tx("offer", () => fresh.calls.offer(fresh.creditor, fresh.contract, id, fresh.financier.address, price), fresh.calls.offerData(id, fresh.financier.address, price)),
-      await tx("approve", () => fresh.calls.approve(fresh.financier, fresh.settlement, fresh.contract, price, "a"), `0x095ea7b3${"00".repeat(64)}` as Hex),
-      await tx("accept", () => fresh.calls.accept(fresh.financier, fresh.contract, id, price), fresh.calls.acceptData(id, price)),
-      await tx("approve", () => fresh.calls.approve(fresh.payer, fresh.settlement, fresh.contract, r.faceValue, "b"), `0x095ea7b3${"00".repeat(64)}` as Hex),
-      await tx("settle", () => fresh.calls.settle(fresh.payer, fresh.contract, id), fresh.calls.settleData(id)),
+      await used("transfer", () => fresh.calls.transfer(fresh.stranger, fresh.settlement, fresh.creditor.address, centsToBaseUnits(1), { key: "fund-creditor", label: "fund" })),
+      await used("mint", () => fresh.calls.mint(fresh.issuer, fresh.contract, fresh.creditor.address, r)),
+      await used("offer", () => fresh.calls.offer(fresh.creditor, fresh.contract, id, fresh.financier.address, price)),
+      await used("approve", () => fresh.calls.approve(fresh.financier, fresh.settlement, fresh.contract, price, { key: "financier-approve", label: "a" })),
+      await used("accept", () => fresh.calls.accept(fresh.financier, fresh.contract, id, price)),
+      await used("approve", () => fresh.calls.approve(fresh.payer, fresh.settlement, fresh.contract, r.faceValue, { key: "payer-approve", label: "b" })),
+      await used("settle", () => fresh.calls.settle(fresh.payer, fresh.contract, id)),
     ];
-    const intrinsic = (data: Hex) => 21_000n + BigInt((data.length - 2) / 2) * 16n;
-    for (const t of all) expect(GAS[t.k]).toBeGreaterThanOrEqual(2n * (fresh.chain.gas.get(t.hash)! + intrinsic(t.data)));
-    const deployHash = [...fresh.chain.gas.keys()][3]!; // stand-in token, 3 mints, then the token contract
-    const deployData = loadContract("PurserInvoiceToken").bytecode;
-    expect(GAS.deploy).toBeGreaterThanOrEqual(2n * (fresh.chain.gas.get(deployHash)! + intrinsic(deployData) + 32_000n));
+    for (const t of all) expect({ k: t.k, ok: GAS[t.k] >= 2n * t.gas, used: t.gas }).toMatchObject({ k: t.k, ok: true });
+    // The token contract's own deployment: the transaction whose receipt names the contract.
+    const deployData = encodeDeployData({ abi: loadContract("PurserInvoiceToken").abi, bytecode: loadContract("PurserInvoiceToken").bytecode, args: [fresh.settlement, fresh.issuer.address] });
+    let deployGas = 0n;
+    for (const h of fresh.chain.mined) {
+      const rc = (await fresh.chain.request({ method: "eth_getTransactionReceipt", params: [h] })) as { contractAddress: string | null };
+      if (rc.contractAddress?.toLowerCase() === fresh.contract.toLowerCase()) deployGas = fresh.chain.gas.get(h)! + intrinsicGas(deployData, true);
+    }
+    expect(deployGas).toBeGreaterThan(500_000n);
+    expect(GAS.deploy).toBeGreaterThanOrEqual(2n * deployGas);
   }, 120_000);
+
+  it("a call to Purser's own contract is sent with the node's estimate plus half, never below its floor; a direct token call with its fixed limit and no estimate", async () => {
+    const chain = await localChain();
+    const limits: { to: string | null; gas: bigint }[] = [];
+    const estimates: bigint[] = [];
+    const c = txClient({ chainId: CHAIN_ID, sleep: async () => {}, request: async (a) => {
+      const out = await chain.request(a);
+      if (a.method === "eth_estimateGas") estimates.push(BigInt(out as string));
+      if (a.method === "eth_sendRawTransaction") { const tx = parseTransaction(a.params![0] as `0x02${string}`); limits.push({ to: tx.to ?? null, gas: tx.gas! }); }
+      return out;
+    } });
+    const calls = invoiceTokenCalls(c);
+    const issuer = acct();
+    const settlement = await standInTokenCalls(c).deploy(issuer);
+    expect(estimates).toEqual([]); // the stand-in token's own deployment asks no estimate
+    await calls.deploy(issuer, settlement);
+    expect(estimates).toHaveLength(1);
+    // The deployment's floor is above estimate × 3/2 here: the floor is sent.
+    expect((estimates[0]! * ESTIMATE_MARGIN.num) / ESTIMATE_MARGIN.den).toBeLessThan(GAS.deploy);
+    expect(limits.at(-1)!.gas).toBe(GAS.deploy);
+    await calls.approve(issuer, settlement, acct().address, 1n, { key: "a", label: "approve" });
+    expect(estimates).toHaveLength(1);
+    expect(limits.at(-1)).toEqual({ to: settlement.toLowerCase(), gas: GAS.approve });
+    // A floor below the estimate: the estimate plus half is sent.
+    const sent = await c.send({ key: "low-floor", label: "low floor", from: issuer, to: settlement, data: "0x095ea7b3" + "00".repeat(31) + "01" + "00".repeat(31) + "01" as Hex, gas: 30_000n, estimate: true });
+    expect(sent.receipt.status).toBe("0x1");
+    expect(limits.at(-1)!.gas).toBe((estimates.at(-1)! * 3n) / 2n);
+    expect(limits.at(-1)!.gas).toBeGreaterThan(30_000n);
+  }, 60_000);
 });
 
 describe("tokenize: the live path's guards and budget (no network)", () => {
-  it("refuses every live command without Max's go, a budget, a call log, its own ledger and the RPC", () => {
-    const why = liveRefusals("mint", {});
-    expect(why.join("\n")).toMatch(/TOKENIZE_GO=yes/);
-    expect(why.join("\n")).toMatch(/TOKENIZE_CALL_BUDGET/);
-    expect(why.join("\n")).toMatch(/TOKENIZE_CALL_LOG/);
-    expect(why.join("\n")).toMatch(/tokenize\*\.sqlite/);
-    expect(why.join("\n")).toMatch(/TOKENIZE_SOURCE_DB/);
-    const ok = { TOKENIZE_GO: "yes", TOKENIZE_CALL_BUDGET: "40", TOKENIZE_CALL_LOG: "/tmp/x.log", TOKENIZE_DB: "/tmp/tokenize-1.sqlite", METAL_RPC_URL: "https://rpc.invalid" };
-    expect(liveRefusals("deploy", ok)).toEqual([]);
+  it("refuses every live command without Max's go, both budgets, a call log, its own ledger, the RPC and keys outside the repository", () => {
+    const why = liveRefusals("mint", {}).join("\n");
+    for (const name of ["TOKENIZE_GO=yes", "TOKENIZE_CALL_BUDGET ", "TOKENIZE_CALL_BUDGET_TOTAL", "TOKENIZE_CALL_LOG", "tokenize*.sqlite", "METAL_RPC_URL", "KIT11_KEYS_DIR", "TOKENIZE_SOURCE_DB", "TOKENIZE_PROPOSAL", "TOKENIZE_DOCUMENT"]) expect(why).toContain(name);
+    const ok = { TOKENIZE_GO: "yes", TOKENIZE_CALL_BUDGET: "40", TOKENIZE_CALL_BUDGET_TOTAL: "45", TOKENIZE_CALL_LOG: "/tmp/x.log", TOKENIZE_DB: "/tmp/tokenize-1.sqlite", METAL_RPC_URL: "https://rpc.invalid", KIT11_KEYS_DIR: "/tmp/tokenize-keys" };
+    const source = { TOKENIZE_SOURCE_DB: "/tmp/awx.sqlite", TOKENIZE_PROPOSAL: "P-0001", TOKENIZE_DOCUMENT: "x" };
+    for (const cmd of ["deploy", "finance", "settle"] as const) expect(liveRefusals(cmd, ok)).toEqual([]);
+    for (const cmd of ["preflight", "mint", "verify"] as const) {
+      expect(liveRefusals(cmd, ok)).toHaveLength(3);
+      expect(liveRefusals(cmd, { ...ok, ...source })).toEqual([]);
+    }
+    expect(liveRefusals("fund", { ...ok, ...source }).join()).toMatch(/TOKENIZE_DONOR_KEY/);
+    expect(liveRefusals("fund", { ...ok, ...source, TOKENIZE_DONOR_KEY: "/tmp/donor.key.json" })).toEqual([]);
     expect(liveRefusals("deploy", { ...ok, TOKENIZE_DB: "/tmp/kit11.sqlite" })).toHaveLength(1);
-    expect(liveRefusals("deploy", { ...ok, TOKENIZE_CALL_BUDGET: "0" })).toHaveLength(1);
-    expect(liveRefusals("mint", { ...ok, TOKENIZE_SOURCE_DB: "/tmp/tokenize-1.sqlite", TOKENIZE_PROPOSAL: "P-0001", TOKENIZE_DOCUMENT: "x" })).toEqual(["TOKENIZE_SOURCE_DB must not be this run's own ledger"]);
+    for (const bad of ["0", "-3", "1.5", "ten", ""]) {
+      expect(liveRefusals("deploy", { ...ok, TOKENIZE_CALL_BUDGET: bad })).toHaveLength(1);
+      expect(liveRefusals("deploy", { ...ok, TOKENIZE_CALL_BUDGET_TOTAL: bad })).toHaveLength(1);
+    }
+    expect(liveRefusals("mint", { ...ok, ...source, TOKENIZE_SOURCE_DB: "/tmp/tokenize-1.sqlite" })).toEqual(["TOKENIZE_SOURCE_DB must not be this run's own ledger"]);
+    // Keys never live in the repository; verify alone needs none.
+    const repo = "/work/repo";
+    expect(liveRefusals("deploy", { ...ok, KIT11_KEYS_DIR: "/work/repo/keys" }, repo)).toEqual(["KIT11_KEYS_DIR must be outside the code repository"]);
+    expect(liveRefusals("deploy", { ...ok, KIT11_KEYS_DIR: "/work/repo-keys" }, repo)).toEqual([]);
+    expect(liveRefusals("fund", { ...ok, ...source, TOKENIZE_DONOR_KEY: "/work/repo/donor.key.json" }, repo)).toEqual(["TOKENIZE_DONOR_KEY must be outside the code repository"]);
+    const { KIT11_KEYS_DIR: _none, ...noKeys } = ok;
+    expect(liveRefusals("verify", { ...noKeys, ...source })).toEqual([]);
+    expect(liveRefusals("deploy", { ...ok, TOKENIZE_GAS: "guess" })).toEqual(["TOKENIZE_GAS is estimate (the default) or fixed"]);
+    expect(liveRefusals("deploy", { ...ok, TOKENIZE_GAS: "fixed" })).toEqual([]);
   });
 
   it("the budgeted transport refuses past its budget before any network request, and answers the chain id itself", async () => {
     const methods: string[] = [];
-    const b = budgetedHttp("https://rpc.invalid", CHAIN_ID, 0, (m) => methods.push(m));
+    const reached: string[] = [];
+    const b = budgeted(async (a) => { reached.push(a.method); return "0x1"; }, { chainId: CHAIN_ID, max: 0, total: 100, logged: () => 0, onCall: (m) => methods.push(m) });
     expect(await b.request({ method: "eth_chainId" })).toBe(`0x${CHAIN_ID.toString(16)}`);
     await expect(b.request({ method: "eth_blockNumber" })).rejects.toThrow(/budget of 0 calls/);
+    await expect(b.request({ method: "eth_blockNumber" })).rejects.toBeInstanceOf(BudgetReached);
     expect(methods).toEqual([]);
+    expect(reached).toEqual([]);
     expect(b.used()).toBe(0);
+    expect(b.room()).toBe(0);
+  });
+
+  it("holds every request against the whole run's budget in the call log, before the request goes out", async () => {
+    const log: string[] = ["earlier command", "earlier command"]; // two requests by earlier commands
+    const reached: string[] = [];
+    const b = budgeted(async (a) => { reached.push(a.method); return "0x1"; }, { chainId: CHAIN_ID, max: 10, total: 4, logged: () => log.length, onCall: (m, n) => log.push(`${m} ${n.used}/${n.max} ${n.running}/${n.total}`) });
+    expect(b.room()).toBe(2);
+    await b.request({ method: "eth_call" });
+    await b.request({ method: "eth_call" });
+    expect(log.slice(2)).toEqual(["eth_call 1/10 3/4", "eth_call 2/10 4/4"]);
+    expect(b.room()).toBe(0);
+    await expect(b.request({ method: "eth_call" })).rejects.toThrow(/budget of 4 calls for the whole run reached \(4 in the call log\)/);
+    expect(reached).toHaveLength(2);
+    expect(log).toHaveLength(4);
+    // Another process appended to the same log in between: it counts at once.
+    const c = budgeted(async () => "0x1", { chainId: CHAIN_ID, max: 10, total: 6, logged: () => log.length, onCall: (m) => log.push(m) });
+    await c.request({ method: "eth_call" });
+    log.push("another command's request");
+    await expect(c.request({ method: "eth_call" })).rejects.toBeInstanceOf(BudgetReached);
+    // With askChainId the chain id is a real, counted request (preflight).
+    const d = budgeted(async (a) => { reached.push(a.method); return "0xf951"; }, { chainId: CHAIN_ID, max: 1, total: 100, logged: () => 0, onCall: () => {}, askChainId: true });
+    expect(await d.request({ method: "eth_chainId" })).toBe("0xf951");
+    expect(d.used()).toBe(1);
+    expect(reached.at(-1)).toBe("eth_chainId");
   });
 
   it("hands every transaction's hash over before it is sent, and a live run's calls are what the in-memory chain counts", async () => {
@@ -243,6 +336,10 @@ describe("tokenize: the live path's guards and budget (no network)", () => {
     expect(addr).toMatch(/^0x[0-9a-fA-F]{40}$/);
     expect(seen).toHaveLength(1);
     expect(seen[0]!.known).toBe(true);
+    // A direct token call: its sender's nonce once, the send, one receipt read.
     expect(chain.calls).toEqual(["eth_getTransactionCount", "eth_sendRawTransaction", "eth_getTransactionReceipt"]);
+    // A call to Purser's own contract adds the estimate; the nonce is not asked again.
+    await invoiceTokenCalls(c).deploy(issuer, addr);
+    expect(chain.calls.slice(3)).toEqual(["eth_estimateGas", "eth_sendRawTransaction", "eth_getTransactionReceipt"]);
   });
 });
