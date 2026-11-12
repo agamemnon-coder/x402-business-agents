@@ -8,6 +8,8 @@ import { resolve } from "node:path";
 export const LIVE_KEYS = [
   "KIT11_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY", "AIRWALLEX_CLIENT_ID", "AIRWALLEX_API_KEY", "AIRWALLEX_CALL_BUDGET", "AIRWALLEX_CALL_LOG",
   "METAL_RPC_URL", "METAL_ENDPOINT_SECRET", "T0_API_KEY", "CLOUDFLARE_API_TOKEN", "HUB_PUSH_TOKEN",
+  // A live ERP run's go and call budget (src/erp/callBudget.ts): a test run never counts in a real run's log.
+  "ERP_LIVE_GO", "ERP_CALL_BUDGET", "ERP_CALL_LOG",
 ] as const;
 for (const k of LIVE_KEYS) delete process.env[k];
 

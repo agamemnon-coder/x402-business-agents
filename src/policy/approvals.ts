@@ -246,11 +246,11 @@ export const resuming = new Set<string>();
 export function beginExecution<T extends Terms>(db: DB, proposalId: string, preconditions: (terms: T) => void = () => {}, now = new Date()): T {
   // Expiry is committed on its own, so the EXPIRED status survives the error thrown below.
   const expired = db.transaction(() => {
-    const p = get(db, proposalId);
+    const row = get(db, proposalId);
     // The expiry the CFO signed is the one inside the terms. The column is a copy the hash does not cover, so the
     // earlier of the two counts: pushing the column out buys no time (zero-trust matrix, 12 November).
-    const due = signedExpiry(p);
-    return (p.status === "APPROVED" || p.status === "FAILED") && Date.parse(due) <= now.getTime() ? (expireIfDue(db, { ...p, expires_at: due }, now), due) : null;
+    const p = { ...row, expires_at: signedExpiry(row) };
+    return (p.status === "APPROVED" || p.status === "FAILED") && Date.parse(p.expires_at) <= now.getTime() ? (expireIfDue(db, p, now), p.expires_at) : null;
   }).immediate();
   if (expired) throw new Error(`${proposalId} expired at ${expired}; approval void`);
   // The hub gate (src/hub/gate.ts), an extra gate on top of every check below, never instead of one; off unless

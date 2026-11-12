@@ -10,9 +10,17 @@ import { BUDGET_BLOCKS, budgetStatus, recordSpend } from "../src/claude/budget.j
 const file = () => join(mkdtempSync(join(tmpdir(), "budget-")), "spend.jsonl");
 
 describe("the API budget per block (D26)", () => {
-  it("splits about $250 over the blocks and keeps $30 back", () => {
-    expect(BUDGET_BLOCKS).toEqual({ evals: 80, redteam: 60, soak: 50, reviews: 30, try: 30 });
-    expect(Object.values(BUDGET_BLOCKS).reduce((a, b) => a + b, 0)).toBe(250);
+  it("splits about $250 over the blocks and keeps $30 back; the Coder evals have $4 of their own", () => {
+    expect(BUDGET_BLOCKS).toEqual({ evals: 80, redteam: 60, soak: 50, reviews: 30, try: 30, coder: 4 });
+    expect(Object.values(BUDGET_BLOCKS).reduce((a, b) => a + b, 0)).toBe(254);
+  });
+  it("counts the Coder evals' spend in its own block, and says when it is over its $4", () => {
+    const f = file();
+    recordSpend(f, { block: "coder", usd_micros: 3_900_000, what: "coder-evals haiku,sonnet" });
+    expect(budgetStatus(f).blocks.coder).toMatchObject({ spentUsd: 3.9, capUsd: 4, warn: true, over: false });
+    expect(budgetStatus(f).blocks.evals.spentUsd).toBe(0);
+    recordSpend(f, { block: "coder", usd_micros: 200_000, what: "one more case" });
+    expect(budgetStatus(f).blocks.coder.over).toBe(true);
   });
   it("adds up what each block spent, from the cost recorded per call", () => {
     const f = file();

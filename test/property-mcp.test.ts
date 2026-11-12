@@ -50,11 +50,14 @@ async function connect(db: DB, id: ExternalAgentId, awx: FakeIssuing) {
   return client;
 }
 
-/** Calls a tool and never lets the outcome escape: a protocol error counts as refused. */
-async function tryCall(client: Client, c: { name: string; arguments: Record<string, unknown> }): Promise<"ok" | "refused"> {
+/** Calls a tool and never lets the outcome escape: a protocol error counts as refused. A charge Airwallex declined is
+ *  a refusal too (isError), told apart by its structured object, so declines can be counted against the ledger. */
+async function tryCall(client: Client, c: { name: string; arguments: Record<string, unknown> }): Promise<"ok" | "refused" | "declined"> {
   try {
     const r = await client.callTool(c);
-    return r.isError ? "refused" : "ok";
+    if (!r.isError) return "ok";
+    const s = r.structuredContent as { approved?: unknown; refused_by?: unknown } | undefined;
+    return s?.approved === false && s.refused_by === "airwallex" ? "declined" : "refused";
   } catch {
     return "refused";
   }
@@ -176,8 +179,12 @@ describe("the MCP agent API, with arbitrary tool calls", () => {
     // The velocity limit may stop the agent by itself (a tightening code makes); nothing else may touch the policy.
     const policyNow = () => (settings(db) as { key: string; value: string }[]).filter((x) => !(x.key === `stop.${id}` && x.value === "on"));
     try {
+      let declines = 0;
       await fc.assert(fc.asyncProperty(payOrAny, async (c) => {
-        await tryCall(client, c);
+        if (await tryCall(client, c) === "declined") declines++;
+        // Every decline the agent was told of is a declined charge in the ledger, and no other.
+        expect(db.prepare("SELECT COUNT(*) AS n FROM card_transactions WHERE approved = 0").get()).toEqual({ n: declines });
+        expect(awx.txs.filter((t) => !t.approved)).toHaveLength(declines);
         for (const cents of charged) expect(Number.isSafeInteger(cents) && cents > 0).toBe(true);
         const approved = awx.txs.filter((t) => t.approved);
         for (const t of approved) expect(t.amountCents).toBeLessThanOrEqual(limits.perTxCents);

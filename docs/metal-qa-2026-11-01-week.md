@@ -1,3 +1,8 @@
+> Record of 1 November 2026, before the main run; its "Still open" list (section 5) is as it stood that day. Since then
+> the main run of 3 November ([run log](runs/2026-11-03-main-run.md)) recorded a replace of the mandates proposed by the
+> Treasury agent and the refusal that follows it (point 1), ran the whole Kit 11 flow in one world (point 3), and its
+> refusal on chain is linked from the README and the site (point 2). Point 4 still holds.
+
 # Purser: independent Metal QA, afternoon (Kit 11, Metal Award)
 
 Reviewer: independent, read-only. Date: 1 November 2026. Project: this repository.
