@@ -1,0 +1,476 @@
+{
+ "http": 200,
+ "start_ms": 194,
+ "total_ms": 6514,
+ "ok": true,
+ "engine_run": {
+  "status": 200,
+  "ms": 519,
+  "open": {
+   "ms": 18,
+   "statements": 58,
+   "shim_added": 0,
+   "rows_read": 3418,
+   "rows_written": 17,
+   "value": {
+    "fresh": true,
+    "tables": 74
+   }
+  },
+  "seed": {
+   "ms": 4,
+   "statements": 30,
+   "shim_added": 11,
+   "rows_read": 533,
+   "rows_written": 23,
+   "value": {
+    "usd": 2500000,
+    "eur": 3500000
+   }
+  },
+  "enrol": {
+   "ms": 8,
+   "statements": 22,
+   "shim_added": 10,
+   "rows_read": 19,
+   "rows_written": 18,
+   "value": {
+    "status": "pending",
+    "confirmed": "pkSwP6_neOmFT5Y1JZRZYQ"
+   }
+  },
+  "ingest_real_pdf_reader": {
+   "ms": 72,
+   "statements": 28,
+   "shim_added": 3,
+   "rows_read": 33,
+   "rows_written": 9,
+   "value": {
+    "id": "AP-0001",
+    "status": "ready",
+    "vendor": "Bergtex Textil GmbH",
+    "invoice_no": "BTX-2026-21",
+    "total": "1850.00",
+    "currency": "EUR",
+    "read_by": "parser",
+    "findings": [],
+    "text_chars": 292
+   }
+  },
+  "propose": {
+   "ms": 18,
+   "statements": 336,
+   "shim_added": 13,
+   "rows_read": 906,
+   "rows_written": 28,
+   "value": {
+    "proposal_id": "P-0001",
+    "kind": "invoice_payment",
+    "status": "PENDING_APPROVAL",
+    "terms_sha256": "55a2dd64767da6adcdc6db6c51ee1b6f6c5c3c614e661b7fb4344b9b764705e8",
+    "invoice_status": "waiting_cfo"
+   }
+  },
+  "approve_signature_over_other_terms": {
+   "ms": 2,
+   "statements": 5,
+   "shim_added": 2,
+   "rows_read": 3,
+   "rows_written": 2,
+   "value": {
+    "status": "refused",
+    "message": "Unexpected authentication response challenge \"KpBZ3vyGsERE_Vbr5guFCQ-XBvGRTCGobNeyR8ffftc\", expected \"VaLdZHZ9pq3NxttsUe4bb2xcPGFOZht_tDRLm3ZHBeg\""
+   }
+  },
+  "approve_signature_over_these_terms": {
+   "ms": 5,
+   "statements": 289,
+   "shim_added": 5,
+   "rows_read": 337,
+   "rows_written": 9,
+   "value": {
+    "status": "approved",
+    "message": "P-0001 approved with software passkey (not Face ID) (passkey pkSwP6_n)"
+   }
+  },
+  "execute": {
+   "ms": 8,
+   "statements": 107,
+   "shim_added": 30,
+   "rows_read": 1463,
+   "rows_written": 59,
+   "value": {
+    "proposal": "EXECUTED",
+    "transfers": [
+     {
+      "status": "PAID",
+      "amount": "1850.00",
+      "currency": "EUR",
+      "fee_actual": "EUR 13.40"
+     }
+    ]
+   }
+  },
+  "syncPayments": {
+   "ms": 1,
+   "statements": 18,
+   "shim_added": 3,
+   "rows_read": 193,
+   "rows_written": 5,
+   "value": [
+    {
+     "id": "AP-0001",
+     "status": "paid"
+    }
+   ]
+  },
+  "syncLedger": {
+   "ms": 11,
+   "statements": 76,
+   "shim_added": 22,
+   "rows_read": 946,
+   "rows_written": 73,
+   "value": {
+    "result": {
+     "posted": 7,
+     "already": 0,
+     "reversed": 0
+    },
+    "entries": 7
+   }
+  },
+  "feed_read_model_with_applySync": {
+   "ms": 64,
+   "statements": 41,
+   "shim_added": 0,
+   "rows_read": 1719,
+   "rows_written": 0,
+   "value": {
+    "batches": 2,
+    "batch_bytes": 24568,
+    "applied": [
+     {
+      "documents": {
+       "added": 1,
+       "changed": 0,
+       "unchanged": 0
+      },
+      "vendors": {
+       "added": 0,
+       "changed": 0,
+       "unchanged": 0
+      },
+      "invoices": {
+       "added": 0,
+       "changed": 0,
+       "unchanged": 0
+      },
+      "payments": {
+       "added": 0,
+       "changed": 0,
+       "unchanged": 0
+      },
+      "transactions": {
+       "added": 0,
+       "changed": 0,
+       "unchanged": 0
+      },
+      "ledger_entries": {
+       "added": 0,
+       "changed": 0,
+       "unchanged": 0
+      },
+      "audit_rows": {
+       "added": 0,
+       "changed": 0,
+       "unchanged": 0
+      }
+     },
+     {
+      "documents": {
+       "added": 0,
+       "changed": 0,
+       "unchanged": 0
+      },
+      "vendors": {
+       "added": 2,
+       "changed": 0,
+       "unchanged": 0
+      },
+      "invoices": {
+       "added": 1,
+       "changed": 0,
+       "unchanged": 0
+      },
+      "payments": {
+       "added": 1,
+       "changed": 0,
+       "unchanged": 0
+      },
+      "transactions": {
+       "added": 3,
+       "changed": 0,
+       "unchanged": 0
+      },
+      "ledger_entries": {
+       "added": 7,
+       "changed": 0,
+       "unchanged": 0
+      },
+      "audit_rows": {
+       "added": 22,
+       "changed": 0,
+       "unchanged": 0
+      }
+     }
+    ],
+    "ms": 64,
+    "calls": {
+     "d1": 18,
+     "d1_statements": 68,
+     "r2": 2
+    }
+   }
+  },
+  "vault_into_r2": {
+   "ms": 50,
+   "statements": 16,
+   "shim_added": 2,
+   "rows_read": 32,
+   "rows_written": 3,
+   "value": {
+    "added": [
+     "invoice: Lead Probe (test)/2026/2026-Q4/Inkoopfacturen/Bergtex Textil GmbH/2026-11-02 BTX-2026-21 EUR 1850.00.pdf",
+     "receipt: Lead Probe (test)/2026/2026-Q4/Betalingen/2026-11-12 Bergtex Textil GmbH BTX-2026-21.pdf",
+     "suppliers: Lead Probe (test)/2026/Leveranciers 2026-11-12.pdf"
+    ],
+    "unchanged": 0,
+    "r2_objects": 3
+   }
+  },
+  "vault_again_adds_nothing": {
+   "ms": 3,
+   "statements": 14,
+   "shim_added": 0,
+   "rows_read": 30,
+   "rows_written": 0,
+   "value": {
+    "added": 0,
+    "unchanged": 3
+   }
+  },
+  "feed_again_only_what_is_new": {
+   "ms": 24,
+   "statements": 41,
+   "shim_added": 0,
+   "rows_read": 1698,
+   "rows_written": 0,
+   "value": {
+    "batches": 1,
+    "batch_bytes": 5995,
+    "applied": [
+     {
+      "documents": {
+       "added": 0,
+       "changed": 0,
+       "unchanged": 0
+      },
+      "vendors": {
+       "added": 0,
+       "changed": 0,
+       "unchanged": 2
+      },
+      "invoices": {
+       "added": 0,
+       "changed": 0,
+       "unchanged": 1
+      },
+      "payments": {
+       "added": 0,
+       "changed": 0,
+       "unchanged": 1
+      },
+      "transactions": {
+       "added": 0,
+       "changed": 0,
+       "unchanged": 3
+      },
+      "ledger_entries": {
+       "added": 0,
+       "changed": 0,
+       "unchanged": 0
+      },
+      "audit_rows": {
+       "added": 1,
+       "changed": 0,
+       "unchanged": 0
+      }
+     }
+    ],
+    "ms": 24,
+    "calls": {
+     "d1": 14,
+     "d1_statements": 14,
+     "r2": 0
+    }
+   }
+  },
+  "one_row_of_5MB": {
+   "ms": 12,
+   "statements": 0,
+   "shim_added": 0,
+   "rows_read": 0,
+   "rows_written": 0,
+   "value": "accepted"
+  },
+  "document_of_15MB_in_pieces": {
+   "ms": 116,
+   "statements": 0,
+   "shim_added": 0,
+   "rows_read": 0,
+   "rows_written": 0,
+   "value": {
+    "pieces": 15,
+    "same_bytes_back": true
+   }
+  },
+  "chains": {
+   "audit": {
+    "ok": true,
+    "rows": 23,
+    "head": "1ae09e9e52527c534ba4a751ac1b9af222bee13dde52989d79677d027f5772e3"
+   },
+   "ledger": {
+    "ok": true,
+    "entries": 7,
+    "head": "f6bdf47d0eb0b6a92e04f91f26a58058e96c5a565295d8849324f62bc24b234d"
+   }
+  },
+  "sqlite_bytes": 21762048,
+  "shim_totals": {
+   "statements": 1085,
+   "added": 101,
+   "rowsRead": 11548,
+   "rowsWritten": 246,
+   "transactions": 48
+  }
+ },
+ "console_api_after_the_engine_fed_it": {
+  "invoices": [
+   "AP-0001 paid Bergtex Textil GmbH EUR 1850.00"
+  ],
+  "invoice_detail_status": 200,
+  "document": {
+   "status": 200,
+   "bytes": 1620,
+   "sha_matches_invoice": true,
+   "same_bytes_as_uploaded": true
+  },
+  "ledger_entries": 7,
+  "trial_status": 200,
+  "trial_keys": [
+   "to",
+   "rows"
+  ],
+  "transactions": [
+   "airwallex_transfer out EUR  matched",
+   "airwallex_fx internal USD  matched",
+   "airwallex_fx internal EUR  matched"
+  ],
+  "vendors": 2,
+  "payments": [
+   "PAID"
+  ],
+  "me_status": 200
+ },
+ "other_company_sees": {
+  "invoices": 0,
+  "engine_rows": {
+   "__miniflare_do_name": 1
+  }
+ },
+ "vault_objects_in_r2": [
+  "Lead Probe (test)/2026/2026-Q4/Betalingen/2026-11-12 Bergtex Textil GmbH BTX-2026-21.pdf",
+  "Lead Probe (test)/2026/2026-Q4/Inkoopfacturen/Bergtex Textil GmbH/2026-11-02 BTX-2026-21 EUR 1850.00.pdf",
+  "Lead Probe (test)/2026/Leveranciers 2026-11-12.pdf",
+  "Lead Probe (test)/2026/index.json"
+ ],
+ "after_dropping_the_objects_memory": {
+  "status": 200,
+  "bank_restored_from_sqlite": true,
+  "reopened_ms": 8,
+  "transfers_the_bank_still_knows": 1,
+  "bank_eur_available_cents": 3350660,
+  "syncPayments_changed": 0,
+  "syncLedger": {
+   "posted": 0,
+   "already": 7,
+   "reversed": 0
+  },
+  "feed": {
+   "batches": 1,
+   "batch_bytes": 5693,
+   "applied": [
+    {
+     "documents": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "vendors": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 2
+     },
+     "invoices": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 1
+     },
+     "payments": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 1
+     },
+     "transactions": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 3
+     },
+     "ledger_entries": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "audit_rows": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     }
+    }
+   ],
+   "ms": 21,
+   "calls": {
+    "d1": 13,
+    "d1_statements": 13,
+    "r2": 0
+   }
+  },
+  "invoice": "paid",
+  "chains": {
+   "audit": {
+    "ok": true,
+    "rows": 23,
+    "head": "1ae09e9e52527c534ba4a751ac1b9af222bee13dde52989d79677d027f5772e3"
+   },
+   "ledger": {
+    "ok": true,
+    "entries": 7,
+    "head": "f6bdf47d0eb0b6a92e04f91f26a58058e96c5a565295d8849324f62bc24b234d"
+   }
+  }
+ },
+ "console_invoices_afterwards": [
+  "AP-0001 paid"
+ ]
+}
