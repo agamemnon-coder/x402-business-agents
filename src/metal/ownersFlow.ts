@@ -16,7 +16,7 @@
 // Every send is recorded before it leaves and made at most once (src/metal/ownersTx.ts). The two payments in `pay` are
 // signed and sent inside the CLI: there the payment id is what is recorded first (metal-agent pays an id at most once).
 
-import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 import { bindCall, readMandateState, revokeCall } from "@metalntwx/metal-pay/mandates";
 import { encodeFunctionData, type Address, type Hex, type LocalAccount } from "viem";
@@ -37,7 +37,7 @@ import { boundCapUnits, ingestIssued, loadCredentialFile } from "./mandate.js";
 import { CHAIN_ID, EXPLORER_TX } from "./network.js";
 import { countByStep, ownersRefusals, readOwnersCalls } from "./ownersBudget.js";
 import type { OwnersChain } from "./ownersChain.js";
-import { coseP256, ownersExecuteTerms, type OwnersExecuteTerms } from "./ownersExecute.js";
+import { checkOwnersTerms, coseP256, ownersExecuteTerms, type OwnersExecuteTerms } from "./ownersExecute.js";
 import { stepJournal, stepOnce } from "./ownersTx.js";
 import { passkeySigner } from "./passkeyOwner.js";
 import { ACCOUNT_FACTORY, PASSKEY_VERIFIER, RELAY_CALLS, SPONSOR_KEY } from "./passkeyRelay.js";
@@ -272,16 +272,21 @@ export async function setup(d: OwnersWorld): Promise<{ account: Address; created
 /** How long both owners have to sign a proposal on their phones. */
 const SIGN_MINUTES = 15;
 
-/** Files the owners_execute for one account call: a fresh two-owner nonce lane (one read), fifteen minutes to sign, the deadline two minutes later. */
-async function file(d: OwnersWorld, id: string, account: Address, signers: Hex[], call: { to: Address; data: Hex }, action: OwnersExecuteTerms["action"]): Promise<{ proposal: ProposalRow; terms: OwnersExecuteTerms }> {
+/** A fresh two-owner nonce lane on the account, with its next sequence: the one read a proposal costs. */
+async function laneNonce(d: OwnersWorld, account: Address): Promise<bigint> {
   const lane = quorumLane();
-  const nonce = (lane << 64n) | ((await d.chain.read({ address: account, abi: accountAbi, functionName: "nonces", args: [account, lane] })) as bigint);
+  return (lane << 64n) | ((await d.chain.read({ address: account, abi: accountAbi, functionName: "nonces", args: [account, lane] })) as bigint);
+}
+
+/** Files the owners_execute for one account call: fifteen minutes to sign, the deadline two minutes later. Terms the runner would refuse are not filed. */
+function file(d: OwnersWorld, id: string, account: Address, signers: Hex[], call: { to: Address; data: Hex }, action: OwnersExecuteTerms["action"], nonce: bigint): { proposal: ProposalRow; terms: OwnersExecuteTerms } {
   const expires = new Date(d.now().getTime() + SIGN_MINUTES * 60_000);
   expires.setUTCMilliseconds(0);
   const terms = ownersExecuteTerms({
     proposal_id: id, expires_at: expires.toISOString().replace(".000Z", "Z"), account, chain_id: String(CHAIN_ID), owners: signers,
     calls: [{ target: call.to, value: "0", call_data: call.data }], nonce: String(nonce), valid_until: String(Math.floor(expires.getTime() / 1000) + 120), action,
   });
+  checkOwnersTerms(terms);
   return { proposal: createProposal(d.db, { terms, createdBy: "treasury" }, d.now()), terms };
 }
 
@@ -291,19 +296,26 @@ export async function propose(d: OwnersWorld): Promise<{ proposal: ProposalRow; 
   const signers = made.signers ?? ownersOf(d.db).map((x) => x.signer);
   const keys = await worldKeys();
   const id = nextProposalId(d.db);
+  // The one read first: a run the call budget stops here has made nothing.
+  const nonce = await laneNonce(d, made.account);
   const cred = keyPath(`owners/${id}.credential.json`);
-  mkdirSync(dirname(cred), { recursive: true });
-  const c = d.cliOffline([
-    ...credentialCreateArgs({ principal: made.account, capCents: MANDATE.capCents, budgetCents: MANDATE.budgetCents, payees: [{ address: keys.payee, name: MANDATE.payee.name }], expiresInSeconds: MANDATE.expiresInSeconds, description: `kit11 ${id} sourcing on the passkey account` }),
-    "--key", keyPath(SPONSOR_KEY), "--out", cred, "--mandate-key-file", keys.agent.file,
-  ]);
-  const issuerFile = c.fields.get("issuer-public-file")?.[0];
-  if (!issuerFile) throw new Error("the credential was created without an issuer file");
+  // The issuer's public half, where metal-agent 0.3.3 keeps it beside the key that issues (`<key>.issuer.public.json`).
+  const issuerFile = keyPath(SPONSOR_KEY.replace(/\.json$/, ".issuer.public.json"));
+  // A credential already there was made by an earlier run for this same proposal number, which it did not get to file:
+  // the same one is used (the checks below refuse it if it is not for this account, these limits and this payee).
+  if (!existsSync(cred)) {
+    mkdirSync(dirname(cred), { recursive: true });
+    const c = d.cliOffline([
+      ...credentialCreateArgs({ principal: made.account, capCents: MANDATE.capCents, budgetCents: MANDATE.budgetCents, payees: [{ address: keys.payee, name: MANDATE.payee.name }], expiresInSeconds: MANDATE.expiresInSeconds, description: `kit11 ${id} sourcing on the passkey account` }),
+      "--key", keyPath(SPONSOR_KEY), "--out", cred, "--mandate-key-file", keys.agent.file,
+    ]);
+    if (c.fields.get("issuer-public-file")?.[0] !== issuerFile) throw new Error("the credential's issuer file is not where this flow expects metal-agent to keep it");
+  }
   const ingested = await ingestIssued(cred, issuerFile, made.account);
   const call = bindCall(ingested);
-  const out = await file(d, id, made.account, signers, call, {
+  const out = file(d, id, made.account, signers, call, {
     what: "bind", agent: MANDATE.agent, cap: fromCents(MANDATE.capCents), budget: fromCents(MANDATE.budgetCents), payee: keys.payee, payee_name: MANDATE.payee.name, mandate: ingested.reference,
-  });
+  }, nonce);
   d.say(`PROPOSED         ${id}: bind the sourcing mandate on ${made.account}, cap ${fromCents(MANDATE.capCents)}, budget ${fromCents(MANDATE.budgetCents)}, ${MANDATE.payee.name} only`);
   return out;
 }
@@ -319,7 +331,7 @@ export async function proposeRevoke(d: OwnersWorld): Promise<{ proposal: Proposa
   const id = nextProposalId(d.db);
   const call = revokeCall(made.account, mandate);
   // The same words as the bind, so the phone shows which mandate goes: its agent, its limits and its payee.
-  const out = await file(d, id, made.account, bind.terms.owners, call, { ...bind.terms.action, what: "revoke" });
+  const out = file(d, id, made.account, bind.terms.owners, call, { ...bind.terms.action, what: "revoke" }, await laneNonce(d, made.account));
   d.say(`PROPOSED         ${id}: revoke the sourcing mandate ${mandate.slice(0, 18)}… that ${bind.id} bound on ${made.account}`);
   return out;
 }
@@ -332,8 +344,9 @@ const PAY_ORIGIN = { actor: "code", rule: "npm run owners -- pay: one payment in
 /** How metal-agent recorded a payment id's pull under a mandate (its kept `<nonce>.done` file, CLI 0.3.3), or null. */
 function keptOutcome(reference: Hex, paymentId: string): { outcome: string; tx: string | null; reason: string | null } | null {
   const dir = keptPullDir(join(keysDir(), "home"), reference, paymentId);
-  const done = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".done")).sort() : [];
-  for (const f of done.reverse()) {
+  // The latest first: a payment id can hold more than one pull (a refused one may be followed by another).
+  const done = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".done")).sort((x, y) => statSync(join(dir, y)).mtimeMs - statSync(join(dir, x)).mtimeMs) : [];
+  for (const f of done) {
     try {
       const r = JSON.parse(readFileSync(join(dir, f), "utf8")) as { outcome?: string; lines?: string[] };
       const line = (k: string) => r.lines?.find((l) => l.startsWith(`${k} `))?.slice(k.length + 1) ?? null;

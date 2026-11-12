@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { join, resolve } from "node:path";
 import { decodeFunctionData, type Address, type Hex } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { mandateBindingAbi } from "@metalntwx/metal-pay/mandates";
 import { centsToBaseUnits } from "../src/lib/money.js";
 import { approvalHashOf, checkOwnersTerms, OWNER_CALL_SELECTORS, type OwnersExecuteTerms } from "../src/metal/ownersExecute.js";
@@ -19,6 +19,8 @@ import { keptPullDir } from "../src/metal/pull.js";
 import { USDZ } from "../src/metal/network.js";
 import { ownersWorld, T0, type TestWorld } from "./support/ownersWorld.js";
 
+// A proposal's credential is made by the real pinned CLI (offline), a child process each time: slow on a loaded machine.
+vi.setConfig({ testTimeout: 30_000 });
 const REPO = resolve(import.meta.dirname, "..");
 let w: TestWorld;
 afterEach(() => w?.close());
@@ -286,6 +288,25 @@ describe("owners propose", () => {
     expect(w.cliRuns).toEqual([]);
   });
 
+  it("stopped before the proposal was filed, it leaves nothing that blocks the next propose", async () => {
+    await world();
+    await setup(w.d);
+    // The budget stops the one read: no credential was made for a proposal that does not exist.
+    const used = readOwnersCalls(w.log).length;
+    await expect(propose(w.again({ budget: used }))).rejects.toThrow(OwnersBudgetSpent);
+    expect(existsSync(join(w.keys, "owners"))).toBe(false);
+    // A run that stopped after the credential was made (here: at filing) left its file; the next propose uses it.
+    let clock = 0;
+    await expect(propose({ ...w.again(), now: () => { if (clock++ >= 0) throw new Error("stopped here"); return T0; } })).rejects.toThrow(/stopped here/);
+    expect(readdirSync(join(w.keys, "owners")).sort()).toEqual(["P-0001.credential.json"]);
+    expect(w.db.prepare("SELECT COUNT(*) AS n FROM proposals").get()).toEqual({ n: 0 });
+    const { proposal, terms } = await propose(w.again());
+    expect(proposal.proposal_id).toBe("P-0001");
+    expect(() => approvalHashOf(proposal)).not.toThrow();
+    expect(terms.action.payee).toBe(keyAddress("supplier.key.json"));
+    expect(readdirSync(join(w.keys, "owners")).sort()).toEqual(["P-0001.credential.json"]);
+  });
+
   it("in a bootstrapped world Stockline's own key stays the payee", async () => {
     await world();
     const stocklineKey = generatePrivateKey();
@@ -526,7 +547,8 @@ describe("the CFO's feed of an owners world", () => {
     const feed = buildSnapshot(w.db).feed;
     expect(feed.filter((f) => /^owners\.(tx_|unsent|waiting|pay_started)/.test(f.event))).toEqual([]);
     // No line is a raw event name: every owners line is a sentence.
-    expect(feed.filter((f) => f.event.startsWith("owners.") && f.event !== "owners.sent").filter((f) => f.text.startsWith("owners."))).toEqual([]);
+    expect(feed.filter((f) => f.event.startsWith("owners.")).filter((f) => f.text.startsWith("owners."))).toEqual([]);
+    expect(feed.find((f) => f.event === "owners.sent")).toMatchObject({ text: expect.stringMatching(/^P-0001, signed by both passkeys, was sent to the business account on chain$/), tx: expect.stringMatching(/^0x[0-9a-f]{64}$/) });
     expect(feed.find((f) => f.event === "owners.paid")).toMatchObject({ text: "The Sourcing agent paid 0.05 USDZ to Stockline inside its mandate on the passkey account: its mandate key signed, no owner did", tone: "ok", tx: r.inside.tx });
     expect(feed.find((f) => f.event === "owners.refused_on_chain")).toMatchObject({ text: "Metal refused 0.06 USDZ to Stockline, over the mandate's 0.05 cap, and recorded the refusal on chain", tone: "refusal", tx: r.over.tx });
   });

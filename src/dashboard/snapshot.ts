@@ -738,6 +738,7 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     // Block 1: the account's owners are passkeys; the runner only relays.
     case "owners.account_created": return out(`Business account ${short(str(p.account))} created with two owners, ${(Array.isArray(p.owners) ? (p.owners as unknown[]).map(str) : []).join("'s and ")}'s passkeys (threshold 2): no server key can change its mandates`, "ok");
     case "owners.executed": return out(`Both passkeys signed ${s} on chain and the account ran it: ${str((p.action as P | undefined)?.what)} the ${str((p.action as P | undefined)?.agent)} mandate (up to ${str((p.action as P | undefined)?.cap)} a payment, ${str((p.action as P | undefined)?.budget)} in total); the runner only relayed it`, "ok", { tx: /^0x[0-9a-f]{64}$/i.test(str(p.tx)) ? str(p.tx) : null });
+    case "owners.sent": return out(`${s}, signed by both passkeys, was sent to the business account on chain`);
     case "owners.reverted": return out(`The account refused ${s} on chain: ${str(p.reason)}`, "refusal");
     // The agent's own payments on the passkey account (npm run owners -- pay): inside the mandate, and one cent over its cap.
     case "owners.paid": return out(`The Sourcing agent paid ${str(p.amount)} USDZ to ${str(p.payee_name)} inside its mandate on the passkey account: its mandate key signed, no owner did`, "ok");
