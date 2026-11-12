@@ -1,0 +1,62 @@
+{
+  "receipt": "purser.try-sign-receipt/v1",
+  "note": "Airwallex-only run awx-1 (live, Airwallex sandbox, test money), 7 November 2026: the licence invoice SLL-2026-11, EUR 240.00 to Stockline Data GmbH (a test supplier). Approved on the relay with the owner's own passkey on an iPhone (Face ID, as stated by the owner; the server checks no attestation). The terms are exactly as signed.",
+  "terms": {
+    "schema": "kit11.approval-terms/v1",
+    "kind": "invoice_payment",
+    "proposal_id": "P-0002",
+    "expires_at": "2026-11-07T12:31:13Z",
+    "invoice_no": "SLL-2026-11",
+    "vendor": "Stockline Data GmbH",
+    "amount": "240.00",
+    "currency": "EUR",
+    "fee_max": "20.00",
+    "beneficiary_id": "46c2bbca-8b37-4ac9-ad3e-ef975dd35eeb",
+    "beneficiary_name": "Stockline Data GmbH",
+    "iban_last4": "2051",
+    "bic": "BYLADEM1001",
+    "method": "SWIFT",
+    "reference": "SLL-2026-11",
+    "reason": "professional_business_services",
+    "transfer_request_id": "0439af88-a9c7-45f6-8d15-d15f66b70f0e",
+    "conversion": null,
+    "balances_before": {
+      "eur_available": "9968920.73",
+      "usd_available": "9995334.64"
+    },
+    "floors": {
+      "eur_floor": "25000.00",
+      "eur_obligations": "9942420.73",
+      "usd_floor": "9990334.64"
+    },
+    "after": {
+      "eur_free": "1240.00",
+      "usd_available": "9995334.64"
+    },
+    "evidence": [
+      {
+        "type": "invoice",
+        "ref": "SLL-2026-11",
+        "sha256": "004ee3b21920ab1cce16af31e383be6225310efb9f61132f9449fc9117a909f9"
+      }
+    ]
+  },
+  "terms_sha256": "b0f075d94da077084d7fc6745f99e2c2253548d967e9c0413bffa9748dbbf7bb",
+  "algorithm": "ES256",
+  "public_key": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "XH_en21ezQ05quXpoKsR8Pc-5Nb6gQGji_JWY4hlwiI",
+    "y": "T9xRr9o9gS5vfrF-YjbPI2zAS6A6AVuFqXod4FJ4wCY"
+  },
+  "credential_id": "GOvzfcV_7gRwPYxsbM1cN3TudEE",
+  "rp_id": "kit11.max-31b.workers.dev",
+  "origin": "https://kit11.max-31b.workers.dev",
+  "assertion": {
+    "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoic1BCMTJVMmdkd2hOZjhaMFg1bml3aVUxU05sbjZjQkJPXy1wZEkyNzk3cyIsIm9yaWdpbiI6Imh0dHBzOi8va2l0MTEubWF4LTMxYi53b3JrZXJzLmRldiIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
+    "authenticatorData": "Z25uI6ub1RwUR-JksUdeKxBD5kUJLernzQx15CB8arIdAAAAAA",
+    "signature": "MEUCIH5kropYKfqMHOXjCtM3BI3uhRosibwZ_7ateiF7RwpdAiEAxjh_rg-9kRXy8vu-PFdObgiJGY6O0KaX6L-8BsC2YTo"
+  },
+  "verified_by_server_at": "2026-11-07T12:12:20.250Z",
+  "verify": "npm run verify-receipt -- docs/runs/2026-11-07-awx-1/receipt-P-0002.json"
+}
