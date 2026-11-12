@@ -1,5 +1,5 @@
 // The four tabs as a juror opens them (Home, Watch, Try, Proof), at 390 and 1440 px, light and dark, against the judge
-// server on a port the system picks. Fails on a console or page error (a CSP violation is one), "null", "undefined" or
+// server on a port the system picks. The menu on them is the four tabs and "More" with its pages (12 Nov). Fails on a console or page error (a CSP violation is one), "null", "undefined" or
 // "NaN" on screen, a page wider than the screen, not exactly one h1, a nameless control, an image with no alt text,
 // text under 14 px in the stage, the timeline or a card, or an internal link that does not end in a 200 (old addresses
 // redirect). External links (the testnet explorer, the partners' docs) are not fetched.
@@ -8,12 +8,23 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { chromium, type Page } from "playwright";
 import { startJudge } from "../../src/cli/judge.js";
+import { MORE_LABEL, moreLinks } from "../../src/ui/more.js";
 
 const shots = process.argv[2] ?? "test-results/redesign";
 mkdirSync(shots, { recursive: true });
 const { server, url: base } = await startJudge(0);
 const failures: string[] = [];
 const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}`); };
+
+/** The menu: exactly the four tabs, then "More" (closed) with exactly the pages under it, in order (src/ui/more.ts). */
+const MENU = JSON.stringify({ items: ["Home", "Watch", "Try", "Proof", MORE_LABEL], more: moreLinks().map((l) => l.label), open: false });
+async function menu(page: Page, name: string): Promise<void> {
+  const seen = await page.evaluate(`(() => {
+    const n = document.querySelector('nav[aria-label="Main"]'), d = n && n.querySelector(":scope > details.pmore");
+    return n ? { items: [...n.querySelectorAll(":scope > a, :scope > details > summary")].map((e) => e.textContent.trim()), more: d ? [...d.querySelectorAll(".pmenu a")].map((a) => a.textContent.trim()) : null, open: d ? d.open : null } : null;
+  })()`);
+  if (JSON.stringify(seen) !== MENU) fail(`${name}: the menu is not the four tabs and More with its pages (${JSON.stringify(seen)})`);
+}
 
 async function look(page: Page, name: string, width: number): Promise<void> {
   const text = await page.evaluate(() => document.body.innerText);
@@ -85,7 +96,8 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if ((await page.locator("#hero-demo .hd-steps > li").count()) !== 4) fail(`/home ${tag}: the hero demo has not four steps`);
     if (await page.locator("#hero-demo .hd-stage").evaluate((e) => getComputedStyle(e).display) !== "grid") fail(`/home ${tag}: the hero demo lost its style`);
     if (await page.locator("#hero-demo").evaluate((e) => e.getBoundingClientRect().right > window.innerWidth + 1)) fail(`/home ${tag}: the hero demo runs off the page`);
-    if ((await page.locator("nav.tabs a").count()) !== 4) fail(`/home ${tag}: not four tabs`);
+    if ((await page.locator("nav.tabs > a").count()) !== 4) fail(`/home ${tag}: not four tabs`);
+    await menu(page, `/home ${tag}`);
     if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(await page.evaluate(() => document.body.innerText))) fail(`/home ${tag}: no run label`);
     // The rail's line is said in full (Max, 2 Nov: it was cut off).
     for (const s of await page.locator("[data-stage] .lane .ln small").all()) if (await s.evaluate((e) => e.scrollWidth > e.clientWidth + 1 || getComputedStyle(e).display === "none")) fail(`/home ${tag}: a rail line is cut off or hidden`);
@@ -106,6 +118,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(await page.locator(".pill.run").innerText())) fail(`/watch ${tag}: no run label`);
     if (!/^Highlights$/.test(await page.locator('#mode button[aria-pressed="true"]').innerText())) fail(`/watch ${tag}: not on the highlights by default`);
     if (!/^Full run \(\d+ steps\)$/.test(await page.locator('#mode button[data-mode="full"]').innerText())) fail(`/watch ${tag}: no full-run button with its steps`);
+    await menu(page, `/watch ${tag}`);
     await page.screenshot({ path: join(shots, `watch-${tag}.png`) });
     for (const n of [1, 2, 3]) {
       await page.goto(`${base}/watch?scene=${n}&autoplay=0`, { waitUntil: "load" });
@@ -122,7 +135,8 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
 
     await page.goto(`${base}/try`, { waitUntil: "load" });
     await page.waitForTimeout(600);
-    if ((await page.locator("nav a").count()) !== 4) fail(`/try ${tag}: not the four tabs`);
+    if ((await page.locator("nav.pnav > a").count()) !== 4) fail(`/try ${tag}: not the four tabs`);
+    await menu(page, `/try ${tag}`);
     if (!(await page.isVisible("#q-price")) || (await page.locator("text=Open a dispute").count())) fail(`/try ${tag}: "Raise the supplier price" missing, or a live dispute offered`);
     if ((await page.locator("#examples i").count()) > 0) fail(`/try ${tag}: dots without a legend`);
     await page.screenshot({ path: join(shots, `try-${tag}.png`) });
@@ -130,6 +144,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
 
     await page.goto(`${base}/proof`, { waitUntil: "load" });
     await look(page, `/proof ${tag}`, w);
+    await menu(page, `/proof ${tag}`);
     // Airwallex, Metal, Claude (Visa TAP is on /visa; its footer link left Proof on 12 Nov).
     if ((await page.locator(".pcard").count()) !== 3) fail(`/proof ${tag}: not three partner cards`);
     // The jury's order (12 Nov): the guarantees directly under the heading, on the first screen; each partner card with
@@ -146,7 +161,8 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (!order.first || order.top < 0 || order.top >= h || order.promises !== 7) fail(`/proof ${tag}: the seven guarantees are not directly under the heading on the first screen (top ${order.top} px, ${order.promises} promises)`);
     if (order.claims !== 3 || order.tiles !== 4 || order.closed !== 5 || order.last !== 4) fail(`/proof ${tag}: not three claims in sight, four tiles, five closed lines and four utility links last (${JSON.stringify(order)})`);
     await page.screenshot({ path: join(shots, `proof-${tag}.png`) });
-    await page.evaluate(() => document.querySelectorAll("details").forEach((d) => { d.open = true; }));
+    // Every fold of the page; "More" in the menu stays closed, as a reader leaves it.
+    await page.evaluate(() => document.querySelectorAll("details:not(.pmore)").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
     await look(page, `/proof open ${tag}`, w);
     await page.screenshot({ path: join(shots, `proof-full-${tag}.png`), fullPage: true });
     await context.close();
@@ -155,4 +171,4 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
 await browser.close();
 server.close();
 if (failures.length) { console.log(`\nredesign check: ${failures.length} problem(s)`); process.exit(1); }
-console.log(`redesign check passes: /home, /watch, /try, /proof at 390 and 1440 px, light and dark, links and redirects (screenshots in ${shots})`);
+console.log(`redesign check passes: /home, /watch, /try, /proof at 390 and 1440 px, light and dark, the menu (four tabs and More), links and redirects (screenshots in ${shots})`);

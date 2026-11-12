@@ -96,7 +96,7 @@ const nums = (items: [string, string][]) => `<div class="nums">${items.map(([v, 
 const docsLi = (title: string, docs: { label: string; href: string }[]) => `<li>${esc(title)}: ${docs.map((d) => `<a class="pf" href="${esc(d.href)}" target="_blank" rel="noopener">${esc(d.label)} ↗</a>`).join(" · ")}</li>`;
 const plainLi = (t: string) => `<li>${esc(t)}</li>`;
 
-function shell(run: AgentRun, o: { builtOn?: string; /** Under the h1, before the picture (/claude's measured block, 12 Nov). */ head?: string; css?: string; intro?: string; lead?: string; top?: string; underTop?: string; label?: string; title: string; description: string; logo: string; h1: string; picture: string; nums: string; line: string; extra?: string; folds: string; after?: string; proofHash: string; js?: string }): string {
+function shell(run: AgentRun, o: { key: "metal" | "airwallex" | "visa" | "claude"; builtOn?: string; /** Under the h1, before the picture (/claude's measured block, 12 Nov). */ head?: string; css?: string; intro?: string; lead?: string; top?: string; underTop?: string; label?: string; title: string; description: string; logo: string; h1: string; picture: string; nums: string; line: string; extra?: string; folds: string; after?: string; proofHash: string; js?: string }): string {
   const body = `<main class="pp"><div class="wrap">
   ${o.intro ? `<p class="vintro">${esc(o.intro)}</p>` : ""}${o.lead ?? ""}${o.top ? `<div class="awrb">${o.top}</div>` : ""}${o.underTop ?? ""}
   <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(o.label ?? run.label)}</span><h1>${esc(o.h1)}</h1></div>${o.head ?? ""}
@@ -107,7 +107,7 @@ function shell(run: AgentRun, o: { builtOn?: string; /** Under the h1, before th
   <div class="folds card">${o.folds}</div>${o.after ?? ""}
   <a class="open" href="proof#${o.proofHash}">All the proof ${icon("arrow-right", 15)}</a>
 </div></main>`;
-  return page({ title: o.title, description: o.description, tab: "proof", css: o.css ? `${CSS}\n${o.css}` : CSS, body, source: SOURCE(run), ...(o.js ? { js: o.js, stage: false } : {}), ...(o.builtOn ? { builtOn: o.builtOn } : {}) });
+  return page({ title: o.title, description: o.description, tab: o.key, css: o.css ? `${CSS}\n${o.css}` : CSS, body, source: SOURCE(run), ...(o.js ? { js: o.js, stage: false } : {}), ...(o.builtOn ? { builtOn: o.builtOn } : {}) });
 }
 
 const moneyOf = (run: AgentRun) => run.events.filter((e): e is Extract<Ev, { k: "money" }> => e.k === "money");
@@ -154,7 +154,7 @@ export function metalPage(run: AgentRun = agentRun(), tokenize: TokenizeRun | nu
       plainLi("The second approver on the mandate change is a labelled test passkey; in production it is a second person."), plainLi("Passkeys as the account's owners ran on 1 November with software passkeys, not a phone."), ...(holdState(readFileSync(new URL(`../../${METAL_HOLD_RECORD}`, import.meta.url), "utf8"))?.finished === false ? [plainLi(`${HOLD_NOT_FINISHED}.`)] : [])])
     + fold("Archive", [`<li><a class="pf" href="metal/report">The Dispute desk's evidence report (30 October)</a></li>`]);
   const body = metalBody(run.record, { logo: LOGO.metal, label: run.label, folds, proofHash: "metal", after: tokenize ? `\n  ${tokenizeRunBlock(tokenize)}` : "" });
-  return page({ title: "Metal", description: "How Purser uses Metal: each agent's limit is a mandate on chain, read live; payments per query over x402; a payment over the cap is refused on chain.", tab: "proof", css: `${CSS}\n${METAL_CSS}`, body, source: SOURCE(run), js: METAL_INSPECT_JS, stage: false, builtOn: builtOnHtml(run) });
+  return page({ title: "Metal", description: "How Purser uses Metal: each agent's limit is a mandate on chain, read live; payments per query over x402; a payment over the cap is refused on chain.", tab: "metal", css: `${CSS}\n${METAL_CSS}`, body, source: SOURCE(run), js: METAL_INSPECT_JS, stage: false, builtOn: builtOnHtml(run) });
 }
 
 export function airwallexPage(run: AgentRun = agentRun()): string {
@@ -179,7 +179,7 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
     simulated: [...(licence ? [`The SWIFT payout's settlement: Purser moves the sandbox transfer to SENT, then PAID, through Airwallex's simulation API${t.faceToPaid !== null ? `; the ${t.faceToPaid} s are measured from the CFO's Face ID to PAID` : ""}.`] : []),
       ...money.filter((e) => e.earlier).map((e) => earlierLine(e))],
   });
-  return page({ title: "Airwallex", description: airwallexDescription(run), tab: "proof", css: `${CSS}\n${PRODUCTS_CSS}`, body, source: SOURCE(run), js: OPEN_TARGET_JS, stage: false, builtOn: builtOnHtml(run) });
+  return page({ title: "Airwallex", description: airwallexDescription(run), tab: "airwallex", css: `${CSS}\n${PRODUCTS_CSS}`, body, source: SOURCE(run), js: OPEN_TARGET_JS, stage: false, builtOn: builtOnHtml(run) });
 }
 
 /**
@@ -300,7 +300,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
   <p class="vbasis">${esc("No live record of the Airi run is on this build.")} ${esc(VISA_ICC_LINE)}</p>
   <div class="folds card">${visaTapFold(run)}</div>
 </div></main>`;
-    return page({ title: VISA_TITLE, description: "Visa Intelligent Commerce via Airwallex's Airi: no live record on this build.", tab: "proof", css: CSS, body, real: [], source: "Source: no Airi run record on this build." });
+    return page({ title: VISA_TITLE, description: "Visa Intelligent Commerce via Airwallex's Airi: no live record on this build.", tab: "visa", css: CSS, body, real: [], source: "Source: no Airi run record on this build." });
   }
   // The top: the heading, beside it the Airi run's own label; the story in one line; the basis for calling it Visa
   // Intelligent Commerce and the exact state of Intelligent Commerce Connect; then the drawing: purchase B's seven steps
@@ -325,7 +325,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
   <div class="folds card">${visaTapFold(run)}</div>
 </div></main>`;
   const html = page({
-    title: VISA_TITLE, tab: "proof", css: CSS, body,
+    title: VISA_TITLE, tab: "visa", css: CSS, body,
     // Who asked, in the description and "What's real?", from the same function as the run's summary line (airiAsker).
     description: `Visa Intelligent Commerce via Airwallex's Airi, run live in the Airwallex sandbox with a test card: above the limit, a single-use Visa credential is asked for only after the CFO's Face ID. ${asker.sentence}.`,
     // "What's real?": the Airi run's own line (its label and merchant, from the record) and nothing of the main run.
@@ -365,6 +365,7 @@ export function claudePage(run: AgentRun = agentRun()): string {
   // record; each agent on each model as measured in place of the per-agent fold; the failure story; the MCP interface.
   const ev = claudeEvidence(), used = Object.fromEntries(run.agents.map((a) => [a.id, a.family]));
   return shell(run, {
+    key: "claude",
     builtOn: builtOnHtml(run), css: EVIDENCE_CSS, head: measuredBlock(ev),
     title: "Claude", description: "How Purser uses Claude: three agents decide the exceptions, each decision a recorded Claude call; routine payments per query are code.",
     logo: LOGO.claude, h1: "Claude decides the exceptions", proofHash: "claude",

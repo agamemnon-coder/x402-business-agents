@@ -97,11 +97,11 @@ the record, `agent_stats[].cost_usd_micros`.
 
 ### 9. Who pays for this, and how much?
 
-The finance team of a company on Airwallex that lets AI agents spend; the CFO decides. Our intended price:
-€49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions. That is a hypothesis: we have not
+The finance team of a company on Airwallex that lets AI agents spend; the CFO decides. Our pilot pricing:
+Starter €49 a month (100 invoices, then €0.25 each); Business from €249 a month; a small fee per payout. That is a hypothesis: we have not
 validated demand, and no customer has seen a price.
 
-**Evidence:** [docs/business/model.md](../business/model.md), "Intended pricing (hypothesis)".
+**Evidence:** [docs/business/model.md](../business/model.md), "Pilot pricing (hypothesis)".
 
 ### 10. What if Airwallex builds this itself?
 

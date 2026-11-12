@@ -15,6 +15,8 @@ export interface Guarantee {
   source: string;
   test: string;
   evidence: { label: string; href: string };
+  /** One more link, folded with "How": the question a promise leaves open, answered on another page. */
+  more?: { label: string; href: string };
 }
 
 export const GUARANTEES: readonly Guarantee[] = [
@@ -23,6 +25,9 @@ export const GUARANTEES: readonly Guarantee[] = [
     how: "The CFO's passkey (Face ID) signs the hash of the exact terms; the runner checks the signature and the hash before it pays. Single use, it expires.",
     source: "src/policy/approvals.ts", test: "test/approvals.test.ts",
     evidence: { label: "Main run: the CFO's Face ID decisions", href: "proof#faceid" },
+    // The panel's review, 12 Nov: a promise that hangs on one person's signature must say what happens without that
+    // person. /security answers it in five lines (its fold "unavailable", read from docs/security.md).
+    more: { label: "If the approver is unavailable", href: "security#unavailable" },
   },
   {
     id: "g-cards", promise: "An agent's card cannot spend over the CFO's limit.", by: "Airwallex",
@@ -124,5 +129,5 @@ const byKind = (by: string) => (/^Airwallex/.test(by) ? "airwallex" : /^Metal/.t
 export function guaranteesHtml(rows: readonly Guarantee[] = GUARANTEES): string {
   return `<section class="gtee" id="${GUARANTEES_ID}" aria-labelledby="h-gtee"><h2 id="h-gtee">${icon("shield-check", 20)} ${esc(GUARANTEES_HEADING)}</h2>
 <ul>${rows.map((g) => `<li id="${g.id}" data-by="${byKind(g.by)}"><b>${esc(g.promise)}</b><span class="by">${esc(g.by)}</span><span class="ev">${link(g.evidence.href, g.evidence.label)}</span>
-<details><summary>${esc("How")}</summary><p>${esc(g.how)}</p><p class="src">${link(`${REPO_BLOB}${g.source}`, g.source)} ${link(`${REPO_BLOB}${g.test}`, g.test)}</p></details></li>`).join("")}</ul></section>`;
+<details><summary>${esc("How")}</summary><p>${esc(g.how)}</p>${g.more ? `<p>${link(g.more.href, g.more.label)}</p>` : ""}<p class="src">${link(`${REPO_BLOB}${g.source}`, g.source)} ${link(`${REPO_BLOB}${g.test}`, g.test)}</p></details></li>`).join("")}</ul></section>`;
 }

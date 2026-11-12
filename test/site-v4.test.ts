@@ -1,4 +1,5 @@
-// The public site after Max's mega-prompt v4 (C1-C8, D2, D3): four tabs; short partner pages with the details folded;
+// The public site after Max's mega-prompt v4 (C1-C8, D2, D3): four tabs and, since 12 Nov, "More" (pricing, security and
+// the partner pages in a script-free dropdown); short partner pages with the details folded;
 // a text budget per page; no forbidden words on any public page; one Face ID number from one source; the split between
 // Claude's decisions and code's routine payments, both counted from the record; the Claude call badge from each trace;
 // every internal link answers (old addresses redirect, anything else gets the clean 404).
@@ -8,6 +9,7 @@ import { buildPages } from "../src/relay/assets.js";
 import { notFoundResponse, pageResponse, type Pages } from "../worker/src/core.js";
 import { agentRun, callBadge, faceIdDecisions, highlights, loadRecord, payments, split, tapRun } from "../src/redesign/run.js";
 import { OPEN_TARGET_JS } from "../src/redesign/ui.js";
+import { MORE_LABEL, MORE_LINKS } from "../src/ui/more.js";
 import { hostileClaimText } from "../src/redesign/partners.js";
 import { AWX_PAGE_LABEL } from "../src/redesign/airwallexProducts.js";
 import { METAL_INSPECT_JS } from "../src/redesign/metalMandates.js";
@@ -18,8 +20,10 @@ import { SECOND_APPROVER, SPLIT_LINE, VISA_CLAIM, VISA_TAP_STATUS, WORLD_SETUP }
 const pages = buildPages();
 const run = agentRun();
 const { record } = loadRecord();
-/** The public pages a juror reaches: the four tabs, the four partner pages and the 404. */
-const PUBLIC: Record<string, string> = { home: pages.home!, watch: pages.watch!, try: pages.try, proof: pages.proof!, metal: pages.metal, airwallex: pages.airwallex!, visa: pages.visa, claude: pages.claude!, notFound: pages.notFound! };
+/** The public pages a juror reaches: the four tabs, the pages under "More" (pricing, security, the four partner pages) and the 404. */
+const PUBLIC: Record<string, string> = { home: pages.home!, watch: pages.watch!, try: pages.try, proof: pages.proof!, pricing: pages.pricing!, security: pages.security!, metal: pages.metal, airwallex: pages.airwallex!, visa: pages.visa, claude: pages.claude!, notFound: pages.notFound! };
+// /docs and /status (12 Nov), the other two product pages under "More".
+Object.assign(PUBLIC, { docs: pages.docs!, status: pages.status! });
 
 const decode = (s: string) => s.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
 /** The words a person reads without opening anything: <main> only, no script, style, drawing, or folded details (their summary stays). */
@@ -83,9 +87,14 @@ describe("the site after v4", () => {
     // block: the title, one sentence from the record, the verify badge and the summary of its fold (50 words with its
     // hidden section heading; the transactions folded). Without a record the page is unchanged and its budget stays 200 (test/tokenize-record.test.ts
     // holds both states).
+    // Pricing 150 and Security 220 since 12 Nov (the pages under "More"): three price cards and one "Not yet" line; seven
+    // short cards, each one sentence with its proof link, the detail folded.
     // Watch: 260 since the film page (12 Nov): the poster, 13 chapters with their times and the key of what is real
     // and what is simulated; the transcript is folded (the replay that was here moved to /replay).
-    const budget: Record<string, number> = { home: 254, watch: 260, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, metal: tokenizeRun() ? 325 : 275 /* +75, jury panel 12 Nov: the four mandates in one table (seven columns, each figure a word) */, airwallex: 374 /* +5, panel review 10 Nov; +4, jury panel 12 Nov */, visa: 625 /* +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa); +5 on 12 Nov for two folded lines under the Airi runs, "As reported by the Airwallex sandbox" and "The CFO's policy next to Visa's VIC rules" (14 words; 9 of them paid for by the TAP section's line that went; 614 as built); +10 on 12 Nov for a third folded line, "Card data: not a network-tokenised checkout, no PCI attestation" (9 words: what this checkout is not, readable without opening the fold; 623 as built) */, claude: 240 /* +45, jury panel 12 Nov: measured, not asserted (four figures, each with its record, and the injection screen); +30, 12 Nov merge: the hostile-model eval's line with its record link (29 words), kept beside the measured block; +15, 12 Nov merge: the measured block's line on the zero-trust report, shown once docs/zero-trust/report.json is in the tree */, notFound: 40 };
+    const budget: Record<string, number> = { home: 254, watch: 260, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, pricing: 150, security: 265 /* 220 until 12 Nov 15:55: nine controls, each with its proof (the owner); +5, 12 Nov merge: the hostile-model eval and the zero-trust report linked */, metal: tokenizeRun() ? 325 : 275 /* +75, jury panel 12 Nov: the four mandates in one table (seven columns, each figure a word) */, airwallex: 374 /* +5, panel review 10 Nov; +4, jury panel 12 Nov */, visa: 625 /* +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa); +5 on 12 Nov for two folded lines under the Airi runs, "As reported by the Airwallex sandbox" and "The CFO's policy next to Visa's VIC rules" (14 words; 9 of them paid for by the TAP section's line that went; 614 as built); +10 on 12 Nov for a third folded line, "Card data: not a network-tokenised checkout, no PCI attestation" (9 words: what this checkout is not, readable without opening the fold; 623 as built) */, claude: 240 /* +45, jury panel 12 Nov: measured, not asserted (four figures, each with its record, and the injection screen); +30, 12 Nov merge: the hostile-model eval's line with its record link (29 words), kept beside the measured block; +15, 12 Nov merge: the measured block's line on the zero-trust report, shown once docs/zero-trust/report.json is in the tree */, notFound: 40 };
+    // Docs 200 since 12 Nov: four cards, the agent API's tools by name with one short line each, every description folded.
+    // Status 90 since 12 Nov: the status lines (empty until /health is read) and the five latest live runs.
+    Object.assign(budget, { docs: 200, status: 90 });
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 
@@ -95,16 +104,35 @@ describe("the site after v4", () => {
       /every limit/i, /can['’]t break/i];
     // The phone's script, stylesheet and font are not pages (the phone pages themselves are checked).
     const all = Object.entries(pages as unknown as Record<string, unknown>).filter((e): e is [string, string] => typeof e[1] === "string" && !["client", "css", "font"].includes(e[0]));
-    expect(all.map(([k]) => k)).toEqual(expect.arrayContaining(["dashboard", "month", "film", "try", "lab", "metal", "metalReport", "visa", "airwallex", "claude", "home", "watch", "proof", "notFound", "approve", "enrol", "policy"]));
+    expect(all.map(([k]) => k)).toEqual(expect.arrayContaining(["dashboard", "month", "film", "try", "lab", "metal", "metalReport", "visa", "airwallex", "claude", "pricing", "security", "home", "watch", "proof", "notFound", "approve", "enrol", "policy"]));
+    expect(all.map(([k]) => k)).toEqual(expect.arrayContaining(["docs", "status"]));
     // 12 Nov (jury panel): /claude's hostile-model eval line says "0 unsafe" as CI computed it (docs/evals/ap-hostile.json).
     const hostile = hostileClaimText();
     for (const [name, html] of all) for (const re of bad) expect({ name, found: re.exec(allText(html).replace(hostile || "\u0000", " "))?.[0] ?? null }).toEqual({ name, found: null });
   });
 
-  it("has four tabs and nothing else in the menu, on every public page", () => {
+  it("has four tabs and More in the menu, on every public page; under More the pages the site serves, in one order: Pricing, Security, Docs, Status, then Airwallex, Metal, Visa, Claude", () => {
+    // The whole list, in the menu's order (src/ui/more.ts): the product pages, then the partner pages.
+    expect(MORE_LINKS.map((l) => [l.label, l.href])).toEqual([["Pricing", "pricing"], ["Security", "security"], ["Docs", "docs"], ["Status", "status"], ["Airwallex", "airwallex"], ["Metal", "metal"], ["Visa", "visa"], ["Claude", "claude"]]);
+    // The menu lists a page exactly when the site serves it, so "More" never opens onto a 404 (a page not built yet is
+    // left out until it is registered; then the menu must list it).
+    const served = MORE_LINKS.filter((l) => pageResponse(new Request(`https://x.test/${l.href}`), pages as Pages)?.status === 200).map((l) => l.label);
+    expect(served).toEqual(expect.arrayContaining(["Pricing", "Security", "Airwallex", "Metal", "Visa", "Claude"]));
+    expect(served).toEqual(expect.arrayContaining(["Docs", "Status"]));
     for (const [name, html] of Object.entries(PUBLIC)) {
       const nav = /<nav[^>]*aria-label="Main"[^>]*>([\s\S]*?)<\/nav>/.exec(html)?.[1] ?? "";
-      expect({ name, tabs: [...nav.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1]) }).toEqual({ name, tabs: WATCH_IN_MENU ? ["Home", "Watch", "Try", "Proof"] : ["Home", "Try", "Proof"] });
+      // Five items, in this order: the four tabs as links, then "More", a <details> that needs no script.
+      const more = /<details class="pmore"><summary[^>]*>([^<]+)<\/summary><div class="pmenu">([\s\S]*?)<\/div><\/details>$/.exec(nav);
+      const tabs = [...nav.slice(0, more ? more.index : nav.length).matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1]);
+      expect({ name, items: [...tabs, more?.[1]] }).toEqual({ name, items: [...(WATCH_IN_MENU ? ["Home", "Watch", "Try", "Proof"] : ["Home", "Try", "Proof"]), MORE_LABEL] });
+      expect(MORE_LABEL).toBe("More");
+      expect({ name, more: [...(more?.[2] ?? "").matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1]) }).toEqual({ name, more: served });
+      // The partner pages follow the product pages after one divider; nothing else is in the dropdown.
+      const product = MORE_LINKS.filter((l) => l.group === "product" && served.includes(l.label));
+      expect({ name, rest: (more?.[2] ?? "").replace(/<a [^>]*>[^<]+<\/a>/g, "") }).toEqual({ name, rest: product.length ? "<hr>" : "" });
+      // The footer repeats the product pages' links (not the partner pages), in the same order; Try, an older page, has no footer.
+      const foot = /<footer class="foot">[\s\S]*?<\/footer>/.exec(html)?.[0] ?? "";
+      if (name !== "try") expect({ name, footer: [...foot.matchAll(/<a class="flink" href="\/?([a-z]+)">([^<]+)<\/a>/g)].map((m) => [m[1], m[2]]).filter(([href]) => MORE_LINKS.some((l) => l.href === href && l.group === "product")) }).toEqual({ name, footer: product.map((l) => [l.href, l.label]) });
     }
   });
 
@@ -116,13 +144,16 @@ describe("the site after v4", () => {
       for (const m of html.matchAll(/href="([^"#]*)(#[^"]*)?"/g)) {
         const href = m[1]!;
         if (!href || /^(https?:|mailto:)/.test(href)) continue;
+        // /status links to /health, the relay's own JSON answer and not a page of the bundle (test/saas-status-docs.test.ts fetches it).
+        if (name === "status" && href === "health") continue;
         const path = new URL(href, "https://x.test/").pathname;
         seen.add(path);
         const res = pageResponse(new Request(`https://x.test${path}`), p);
         expect({ name, href, status: res?.status ?? 404 }).toEqual({ name, href, status: res && res.status === 302 ? 302 : 200 });
       }
     }
-    for (const want of ["/home", "/watch", "/try", "/proof", "/metal", "/airwallex", "/visa", "/claude", "/lab", "/film", "/month", "/metal/report"]) expect(seen).toContain(want);
+    for (const want of ["/home", "/watch", "/try", "/proof", "/pricing", "/security", "/metal", "/airwallex", "/visa", "/claude", "/lab", "/film", "/month", "/metal/report"]) expect(seen).toContain(want);
+    for (const want of ["/docs", "/status"]) expect(seen).toContain(want);
     for (const [from, to] of [["/live", "/replay"], ["/demo", "/replay"], ["/overview", "/home"]]) expect(pageResponse(new Request(`https://x.test${from}`), p)?.headers.get("location")).toBe(to);
     expect(pageResponse(new Request("https://x.test/no/such/page"), p)).toBeNull();
     const nf = notFoundResponse(p);
@@ -252,7 +283,7 @@ describe("the site after v4", () => {
   });
 
   it("carries a favicon and an Open Graph image on the redesign's pages, both served", () => {
-    for (const name of ["home", "watch", "proof", "metal", "airwallex", "visa", "claude"]) {
+    for (const name of ["home", "watch", "proof", "pricing", "security", "metal", "airwallex", "visa", "claude"]) {
       expect(PUBLIC[name]).toMatch(/<link rel="icon" href="assets\/favicon\.svg"/);
       // Absolute since 6 Nov (jury QA, Q5): a relative image was a 404 from /try/sign and not read by every link preview.
       expect(PUBLIC[name]).toMatch(/<meta property="og:image" content="https:\/\/kit11\.max-31b\.workers\.dev\/assets\/og\.png">/);

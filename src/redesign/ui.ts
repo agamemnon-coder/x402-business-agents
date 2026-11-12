@@ -6,6 +6,7 @@
 import { ICONS, type Icon } from "../ui/icons.js";
 import { NORTHWIND_LINE, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js";
 import { OG_IMAGE, TAGLINE_LINE, ogTitle } from "../ui/meta.js";
+import { MORE_CSS, footerLinks, menuItemOf, moreHtml, type PageKey } from "../ui/more.js";
 import { WATCH_IN_MENU } from "../config/film.js";
 
 const EXTRA: Record<string, Icon> = {
@@ -32,7 +33,7 @@ export const iconSet = (names: string[]) => Object.fromEntries(names.map((n) => 
 export const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 export type Tab = "home" | "watch" | "try" | "proof";
-// Watch is a tab only once the new film is on /watch (src/config/film.ts WATCH_IN_MENU, one constant for every menu).
+/** The four tabs; the menu's fifth item, "More", and the pages under it are in src/ui/more.ts (shared with src/ui/nav.ts). */
 const TABS: [Tab, string, string][] = ([["home", "Home", "home"], ["watch", "Watch", "watch"], ["try", "Try", "try"], ["proof", "Proof", "proof"]] as [Tab, string, string][]).filter(([t]) => t !== "watch" || WATCH_IN_MENU);
 
 /** The design tokens, light and dark: the same on every page. */
@@ -69,15 +70,23 @@ a { color: inherit; }
 .vh { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .i { flex: none; vertical-align: -3px; }
 .wrap { max-width: 1200px; margin: 0 auto; padding: 0 var(--gut); }
-/* Header: brand, four tabs, nothing else. */
+/* Header: brand, four tabs and "More" (a <details>, no script), nothing else. */
 header.top { position: sticky; top: 0; z-index: 40; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px); border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
 header.top .wrap { display: flex; align-items: center; gap: 12px; height: 64px; }
 .brand { display: inline-flex; align-items: center; gap: 9px; font-weight: 750; font-size: 18px; letter-spacing: -.02em; text-decoration: none; }
 .brand .mk { width: 30px; height: 30px; border-radius: 9px; background: var(--text); color: var(--bg); display: grid; place-items: center; }
-nav.tabs { margin-left: auto; display: flex; gap: 2px; background: var(--sunken); border-radius: 999px; padding: 4px; }
-nav.tabs a { text-decoration: none; font-weight: 600; font-size: 15px; color: var(--muted); padding: 7px 14px; border-radius: 999px; }
-nav.tabs a.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
-@media (max-width: 420px) { .brand span.nm { display: none; } nav.tabs a { padding: 7px 12px; } }
+nav.tabs { margin-left: auto; display: flex; align-items: center; gap: 2px; background: var(--sunken); border-radius: 999px; padding: 4px; }
+nav.tabs > a { text-decoration: none; font-weight: 600; font-size: 15px; line-height: 1.2; color: var(--muted); padding: 7px 14px; border-radius: 999px; white-space: nowrap; }
+nav.tabs > a.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+${MORE_CSS}
+nav.tabs .pmore > summary { padding: 7px 12px 7px 14px; }
+/* On a phone the five items stay on one line beside the brand (checked at 360 px): the items move closer together step
+   by step, and at 420 px and under the brand shows its mark only, as before. */
+@media (max-width: 520px) { header.top .wrap { gap: 8px; } nav.tabs > a { padding: 7px 10px; } nav.tabs .pmore > summary { padding: 7px 8px 7px 10px; } }
+@media (max-width: 460px) { nav.tabs { gap: 0; } nav.tabs > a { padding: 7px 8px; font-size: 14.5px; } nav.tabs .pmore > summary { padding: 7px 6px 7px 8px; font-size: 14.5px; } }
+@media (max-width: 420px) { .brand span.nm { display: none; } }
+@media (max-width: 380px) { nav.tabs > a { padding: 7px 7px; } nav.tabs .pmore > summary { padding: 7px 5px 7px 7px; } }
+@media (max-width: 340px) { nav.tabs > a { padding: 7px 5px; font-size: 14px; } nav.tabs .pmore > summary { padding: 7px 4px 7px 5px; font-size: 14px; gap: 2px; } }
 /* Type. */
 h1, h2, h3 { margin: 0; letter-spacing: -.025em; line-height: 1.08; }
 .h-hero { font-size: clamp(38px, 5.4vw, 64px); font-weight: 780; }
@@ -201,9 +210,11 @@ details.real .pop ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
 /** The one tagline (jury QA, 6 Nov, Q8: was "Agents spend. Limits hold." in og:title): Home's heading, the film's line. */
 export const HEADLINE = TAGLINE_LINE;
 
-export function header(current: Tab | null): string {
+/** The header: the four tabs, then "More". `current` is the page's own key; menuItemOf (src/ui/more.ts) says which item it marks. */
+export function header(current: PageKey | null): string {
+  const item = menuItemOf(current);
   return `<header class="top"><div class="wrap"><a class="brand" href="home" aria-label="Purser, home"><span class="mk">${icon("feather", 17)}</span><span class="nm">Purser</span></a>
-<nav class="tabs" aria-label="Main">${TABS.map(([k, label, href]) => `<a href="${href}"${k === current ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("")}</nav></div></header>`;
+<nav class="tabs" aria-label="Main">${TABS.map(([k, label, href]) => `<a href="${href}"${k === item ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("")}${moreHtml(current)}</nav></div></header>`;
 }
 
 /** What is real in the main run, the run the public pages play: test money, sandbox, what is simulated, the world set-up, the second approver. */
@@ -217,12 +228,13 @@ export const MAIN_RUN_REAL = [
 ];
 /**
  * "What's real?", opened from the footer: the main run's lines on the pages that play it, or a page's own (final review,
- * 4 Nov: /try/sign, which calls no Airwallex, Metal or Claude, carried the main run's), then the page's source.
+ * 4 Nov: /try/sign, which calls no Airwallex, Metal or Claude, carried the main run's), then the page's source. After it,
+ * the product pages under "More" (pricing, security, docs, status; src/ui/more.ts), then a page's own extra links.
  */
 export function footer(source: string, real: string[] = MAIN_RUN_REAL, links: [string, string][] = [], builtOn = ""): string {
   return `<footer class="foot"><div class="wrap"><details class="real" id="real"><summary class="pill">${icon("info", 15)} What's real?</summary><div class="pop card"><ul>
 ${real.map((line) => `<li>${esc(line)}</li>`).join("\n")}
-<li>${esc(source)}</li></ul></div></details>${builtOn}<span>Built for the Airwallex Agentic Banking Hackathon</span>${links.map(([href, label]) => `<a class="flink" href="${esc(href)}">${esc(label)}</a>`).join("")}</div></footer>`;
+<li>${esc(source)}</li></ul></div></details>${builtOn}<span>Built for the Airwallex Agentic Banking Hackathon</span>${footerLinks().map((l) => `<a class="flink" href="${l.href}">${l.label}</a>`).join("")}${links.map(([href, label]) => `<a class="flink" href="${esc(href)}">${esc(label)}</a>`).join("")}</div></footer>`;
 }
 
 /** Each agent's avatar: an icon for its job (Sourcing buys, Support answers, Treasury holds the money). */
@@ -441,7 +453,7 @@ export const OPEN_TARGET_JS = `(function () {
 })();`;
 
 /** A page around a body: one style, one script, the run's data in a data block ("<" escaped). */
-export function page(o: { title: string; description: string; tab: Tab | null; css: string; body: string; data?: unknown; js?: string; stage?: boolean; source: string; real?: string[]; links?: [string, string][]; /** The partner pages' "Built on" strip (src/redesign/partners.ts builtOnHtml). */ builtOn?: string }): string {
+export function page(o: { title: string; description: string; tab: PageKey | null; css: string; body: string; data?: unknown; js?: string; stage?: boolean; source: string; real?: string[]; links?: [string, string][]; /** The partner pages' "Built on" strip (src/redesign/partners.ts builtOnHtml). */ builtOn?: string }): string {
   const script = o.js === undefined ? "" : `${o.data === undefined ? "" : `<script type="application/json" id="run-data">${JSON.stringify(o.data).replace(/</g, "\\u003c")}</script>\n`}<script>${o.stage === false ? "" : STAGE_JS}
 ${o.js}</script>`;
   return `<!doctype html>

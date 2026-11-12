@@ -1,13 +1,15 @@
-// The one navigation every guest page carries: five main links and the rest under "More", so a juror sees one short
-// path (Overview, Try it, Metal, the CFO dashboard, Watch). Put into each page by src/servers/dashboard.ts before the
-// page's CSP hash is taken; "More" is a <details> element, so it needs no script. Colours come from the page's own
-// tokens, with fallbacks for pages that name them differently.
+// The one navigation every older (template) page carries, the same five items as the redesign's header
+// (src/redesign/ui.ts): the four tabs, then "More" with the pages under it (src/ui/more.ts, one list for both). Put into
+// each page by src/servers/dashboard.ts before the page's CSP hash is taken; "More" is a <details> element, so it needs
+// no script. Colours come from the page's own tokens, with fallbacks for pages that name them differently.
+
+import { MORE_CSS, moreHtml } from "./more.js";
 
 import { WATCH_IN_MENU } from "../config/film.js";
 
 export type NavKey = "home" | "watch" | "try" | "proof" | "overview" | "metal" | "dashboard" | "live" | "demo" | "month" | "lab" | "visa" | "airwallex" | "claude";
 
-/** Four tabs, nothing else (redesign, Max 2 Nov): every other page is reached from Proof. */
+/** The four tabs (redesign, Max 2 Nov); the fifth item, "More", follows them in navHtml (12 Nov). */
 export const NAV_MAIN: [NavKey, string, string][] = ([
   ["home", "Home", "home"],
   ["watch", "Watch", "watch"],
@@ -16,12 +18,13 @@ export const NAV_MAIN: [NavKey, string, string][] = ([
 ] as [NavKey, string, string][]).filter(([k]) => k !== "watch" || WATCH_IN_MENU);
 
 /** Which tab a page belongs to: the detail pages and the dashboard sit under Proof. */
-const TAB_OF: Partial<Record<NavKey, NavKey>> = { overview: "home", live: "watch", demo: "watch", metal: "proof", dashboard: "proof", month: "proof", lab: "proof", visa: "proof", airwallex: "proof", claude: "proof" };
+// The partner pages (metal, visa, airwallex, claude) are listed under "More" (12 Nov): they mark it themselves (moreHtml), not Proof.
+const TAB_OF: Partial<Record<NavKey, NavKey>> = { overview: "home", live: "watch", demo: "watch", dashboard: "proof", month: "proof", lab: "proof" };
 
-/** The navigation, with the current tab marked. */
+/** The navigation, with the current tab marked: the four tabs, then "More". */
 export function navHtml(current: NavKey | null, id?: string, cls?: string): string {
   const on = current ? TAB_OF[current] ?? current : null;
-  return `<nav class="${cls ? `${cls} ` : ""}pnav"${id ? ` id="${id}"` : ""} aria-label="Main">${NAV_MAIN.map(([key, label, href]) => `<a href="${href}" data-nav="${key}"${key === on ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("")}</nav>`;
+  return `<nav class="${cls ? `${cls} ` : ""}pnav"${id ? ` id="${id}"` : ""} aria-label="Main">${NAV_MAIN.map(([key, label, href]) => `<a href="${href}" data-nav="${key}"${key === on ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("")}${moreHtml(on)}</nav>`;
 }
 
 /** The redesign's tabs (src/redesign/ui.ts), the same on every page; colours from the page's own tokens. */
@@ -29,7 +32,15 @@ export const NAV_CSS = `.pnav { display: flex !important; align-items: center; g
 .pnav > a { text-decoration: none; color: var(--muted, #667085) !important; font: 600 15px/1.2 Inter, system-ui, sans-serif !important; padding: 8px 14px !important; border-radius: 999px; white-space: nowrap; }
 .pnav > a:hover { color: var(--text, #0b1220) !important; }
 .pnav > a.on { color: var(--text, #0b1220) !important; background: var(--surface, var(--panel, #fff)); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
-@media (max-width: 420px) { .pnav > a { padding: 8px 11px !important; } }`;
+${MORE_CSS}
+.pnav .pmore > summary { padding: 8px 12px 8px 14px; }
+/* On a phone the five items stay on one line (checked at 360 px), in the same steps as the redesign's header; a page's
+   own phone sizes for its tabs are outweighed. Where the items do not fit beside a brand and a page's own button (Try,
+   under about 450 px), the header wraps and the tabs take a line of their own, as Try's did under 400 px. */
+@media (max-width: 520px) { header.top { flex-wrap: wrap !important; } header.top nav.pnav.pnav > a { padding: 8px 10px !important; font-size: 15px !important; } .pnav .pmore > summary { padding: 8px 8px 8px 10px; } }
+@media (max-width: 460px) { .pnav { gap: 0 !important; } header.top nav.pnav.pnav > a { padding: 8px 8px !important; font-size: 14.5px !important; } .pnav .pmore > summary { padding: 8px 6px 8px 8px; font-size: 14.5px; } }
+@media (max-width: 380px) { header.top nav.pnav.pnav > a { padding: 8px 7px !important; } .pnav .pmore > summary { padding: 8px 5px 8px 7px; } }
+@media (max-width: 340px) { header.top nav.pnav.pnav > a { padding: 8px 5px !important; font-size: 14px !important; } .pnav .pmore > summary { padding: 8px 4px 8px 5px; font-size: 14px; gap: 2px; } }`;
 
 /** Purser's mark (a feather), the same on every page's brand. */
 const MARK = '<span class="mark"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></svg></span>';
