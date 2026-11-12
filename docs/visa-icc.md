@@ -76,7 +76,7 @@ access.
 
 | Part | Content |
 |---|---|
-| HTTP headers | `content-type: application/json`; `host: <API host>`; `authorization: Bearer <JWS token>` |
+| HTTP headers | `content-type: application/json`; `host: <API host>`; `authorization: Bearer <JWS token>`. The page lists all three as required; the client sends `content-type` on every call, with and without a body |
 | JWS token | `<Base64URL header>.<Base64URL body claims>.<Base64URL signature>` |
 | Header `alg` | P12 key: `RS256` (default), `RS384`, `RS512`, `PS256`, `PS384`, `PS512` [r-jwt-p12]. Shared secret: `HS256`, `HS384`, `HS512` [r-jwt-ss] |
 | Header `kid` | the key ID of the P12 certificate [r-jwt-p12], or of the shared secret key pair [r-jwt-ss] |
@@ -184,7 +184,7 @@ Paths as in the API reference; the guide has the same paths under `/acp/v1` [g-e
 | Initiate a purchase intent | `POST /icc/v1/instructions` | creates the instruction with its mandates; returns `instructionId` | 200 with `instructionId`; 202 `PENDING` with `pendingEvents` | [s-init], [g-init] |
 | Update a purchase intent | `PUT /icc/v1/instructions/{instructionId}` | changes the instruction; same body as initiate; returns the same `instructionId` | 200; 202 | [a-app], [g-update] |
 | Cancel a purchase intent | `PUT /icc/v1/instructions/{instructionId}/cancel` | cancels before credentials are used | 200; 202 | [s-cancel], [g-cancel] |
-| Retrieve payment credentials | `POST /icc/v1/instructions/{instructionId}/credentials` | returns the payment credential for one transaction | 200 in one of two shapes | [s-cred], [g-cred] |
+| Retrieve payment credentials | `POST /icc/v1/instructions/{instructionId}/credentials` | returns the payment credential for one transaction | 200 `COMPLETED`; 202 `PENDING` with `pendingEvents` [a-app]. The spec lists both shapes under 200 | [s-cred], [g-cred], [a-app] |
 | Confirm transaction events | `POST /icc/v1/instructions/{instructionId}/confirmations` | reports the payment's outcome | 202 | [s-confirm], [g-confirm] |
 
 **No read call.** The reference's script lists every `/icc/v1` method and path. There is no GET for an instruction, a
@@ -250,7 +250,7 @@ All from `mandates[]` in the spec [s-init]; the guide lists the same required fi
 
 | Constraint | Field | Type and limit | Required | Notes |
 |---|---|---|---|---|
-| Amount cap | `declineThreshold.amount` | string, 1 to 12 | the object is required; the guide requires the field | "the maximum transaction amount the consumer is willing to authorize under this mandate"; examples `"10000.00"` and `"100.00"` |
+| Amount cap | `declineThreshold.amount` | string, 1 to 12 | the object is required; the guide requires the field | "the maximum transaction amount the consumer is willing to authorize under this mandate"; examples `"10000.00"` [s-init] and `"100.00"` [g-update] |
 | Currency | `declineThreshold.currencyCode` | string, 3, ISO 4217 | guide: yes | examples use `USD` only |
 | Expiry | `effectiveUntilTime` | string, up to 12, UTC Unix epoch | yes | example `"1784841600"` |
 | Merchant | `preferredMerchantName` | string, up to 255 | no | "User merchant preference"; a preference by its name |
@@ -298,7 +298,11 @@ Request, from the spec [s-cred]; the guide's field names differ as listed at the
 | `transactionData[].orderInformation.lineItems[].items.*` | object | no | `productName` up to 10; `additionalInfo[].key` and `.value` up to 255; `policies.*` up to 4098 | line items |
 | `transactionData[].orderInformation.shipTo.*`, `.deliveryMethod`, `attachments[]`, `paymentServiceProviderName`, `paymentServiceProviderUrl` | | no | | shipping, delivery, images, payment service provider |
 
-Answer, HTTP 200, one of two shapes [s-cred]:
+Answer, one of two shapes. The spec's 200 schema wraps each in an object, `TransactionResponseComplete` or
+`TransactionResponseWithPendingEvents`; its example spells them `transactionResponseComplete` and
+`transactionResponseWithPendingEvents` and gives `pendingEvents` as one string, where the schema has a list [s-cred]. The
+reference says the pending shape comes with HTTP 202 [a-app]. Whether the sandbox wraps the fields, and with which
+spelling: unknown until sandbox access. The client reads all three forms: either wrapper, or the fields at the top level.
 
 | Shape | Fields |
 |---|---|
@@ -403,7 +407,7 @@ else, the way `mandateFromTerms` does for Airi.
 One mandate per instruction. `isRecurring` is left out (false by default). Device and assurance data do not come from
 the terms: they come from the cardholder's passkey step and are passed through unchanged.
 
-## 5. What Purser checks on read-back
+## 5. What Purser checks before the credential
 
 **The API offers no read-back GET** (section 2, "No read call"). The stream's plan was to read the instruction back
 from Visa and compare it. That cannot be done with the documented calls. What is compared instead, before any

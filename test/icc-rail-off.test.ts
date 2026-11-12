@@ -194,7 +194,7 @@ describe("the phone's words for the kind", () => {
   it("the CFO can approve it, and reads what will and will not happen: a credential is requested, nothing is paid", () => {
     const f = describeTerms(terms, {});
     expect(f.approvable).toBe(true);
-    expect(f.sentence).toBe(`Let the sourcing agent request a single-use payment credential through Intelligent Commerce Connect (sandbox) for at most EUR 12.00 at ${SHOP.name} (${SHOP.url}), for: Trail map packs. Nothing is paid: Purser stops before checkout.`);
+    expect(f.sentence).toBe(`Let the sourcing agent request a payment credential (Purser uses it once) through Intelligent Commerce Connect (sandbox) for at most EUR 12.00 at ${SHOP.name} (${SHOP.url}), for: Trail map packs. Nothing is paid: Purser stops before checkout.`);
     expect(f.rows).toEqual([["Agent", "sourcing"], ["At most", "EUR 12.00"], ["Merchant", `${SHOP.name} (${SHOP.url})`], ["Items", "2 × Trail map pack at 6.00"], ["For", "Trail map packs"], ["Ends", "2026-11-12T10:30:00Z"]]);
     expect(agentOf("sourcing", terms)).toBe("Sourcing agent");
     expect(whyYou(terms)).toBe("A payment credential is requested for an agent only with your Face ID.");

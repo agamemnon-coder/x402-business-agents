@@ -1,5 +1,5 @@
-// The ICC rail's flow (docs/visa-icc.md, sections 4 to 7): an agent's purchase for which a single-use payment
-// credential is requested through Intelligent Commerce Connect, within the terms the CFO signed. Built from the public
+// The ICC rail's flow (docs/visa-icc.md, sections 4 to 7): an agent's purchase for which a payment
+// credential (used once by Purser) is requested through Intelligent Commerce Connect, within the terms the CFO signed. Built from the public
 // documentation only; nothing here has been sent to the service. On only with KIT11_ICC_RAIL=on (src/icc/policy.ts).
 //
 //   1. Purser's checks first, calling nothing outside: emergency stop, pause, velocity stop, the agent's identity,

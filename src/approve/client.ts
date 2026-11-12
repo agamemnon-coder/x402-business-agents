@@ -525,7 +525,7 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
     const agent = str(t.agent);
     return {
       approvable: true, title: "Payment credential request",
-      sentence: `Let the ${agent} agent request a single-use payment credential through Intelligent Commerce Connect (sandbox) for at most ${str(t.currency)} ${money(t.amount)} at ${str(m.name)} (${str(m.url)}), for: ${str(t.description)}. Nothing is paid: Purser stops before checkout.`,
+      sentence: `Let the ${agent} agent request a payment credential (Purser uses it once) through Intelligent Commerce Connect (sandbox) for at most ${str(t.currency)} ${money(t.amount)} at ${str(m.name)} (${str(m.url)}), for: ${str(t.description)}. Nothing is paid: Purser stops before checkout.`,
       amount: `${str(t.currency)} ${money(t.amount)} at most`, margin: null, recipient: `${str(m.name)}, ${str(m.country)}`,
       rows: [["Agent", agent], ["At most", `${str(t.currency)} ${money(t.amount)}`], ["Merchant", `${str(m.name)} (${str(m.url)})`], ["Items", items], ["For", str(t.description)], ["Ends", str(t.expires_at)]],
       short: "this credential request",
