@@ -115,7 +115,7 @@ On [/try/sign](https://kit11.max-31b.workers.dev/try/sign) the Treasury agent as
 
 ## Who does what
 
-<img src="docs/assets/logos/built-with.png" alt="Built with Airwallex, Metal and Claude" height="40"> official files, unmodified, no endorsement implied ([sources](docs/assets/logos/SOURCES.md))
+<img src="docs/assets/logos/built-with.png" alt="Built with Airwallex, Metal, Claude, Visa and Cloudflare" height="40"> official files, unmodified, no endorsement implied ([sources](docs/assets/logos/SOURCES.md))
 
 - **Built by Max Geurtsen:** Purser itself: the CFO's policy and limits, the approval flow (Face ID on the exact terms,
   four eyes), the agents' tools and prompts, the relay and the site, the hash-chained audit log, the books, the tests.
