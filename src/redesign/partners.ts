@@ -20,6 +20,7 @@ import { EXPLORER, REPO_BLOB, metalStory, refusalNote, separateRuns, type MetalS
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { AIRI_CSS, AIRI_RUN_FILE, AIRI_RUN_ID, airiRun, airiRunBlock, type AiriRunRecord } from "./airiRun.js";
 import { awxRun, awxRunBlock } from "./awxRun.js";
+import { CARD_DATA_CSS, cardDataHtml } from "./cardData.js";
 import { VIC2_RUN_FILE, VIC2_RUN_ID, vic2Run, vic2RunBlock } from "./vic2Run.js";
 import { VIC_FLOW_CSS, VIC_FLOW_ID, vicFlowBlock } from "./vicFlow.js";
 import { VIC_NETWORK_CSS, vicNetworkBlock } from "./vicNetwork.js";
@@ -84,7 +85,8 @@ ${AIRI_CSS}
 ${VIC_FLOW_CSS}
 ${VISA_OVERVIEW_CSS}
 ${VIC_NETWORK_CSS}
-${VIC_RULES_CSS}`;
+${VIC_RULES_CSS}
+${CARD_DATA_CSS}`;
 
 const SOURCE = (run: AgentRun) => `Source: ${run.file} (${run.name}); the card run from ${tapRun()?.file ?? "docs/runs"}.`;
 const node = (ic: string, title: string, sub: string, tone = "") => `<div class="node ${tone}"><span class="ic">${icon(ic, 22)}</span><b>${esc(title)}</b><span>${esc(sub)}</span></div>`;
@@ -310,9 +312,9 @@ export function visaPage(run: AgentRun = agentRun()): string {
   // (Max, 10 Nov), then the drawing: purchase B's seven steps from the record (the CFO's limit, the Airi mandate, the
   // cardholder's passkey, the single-use credential, the Airwallex PaymentIntent). Then what ran, as two cards; the
   // Airi run in full (its ids folded) and the second Airi run in the same padded column. Under them, folded, one line
-  // each: what Airwallex's own record reports for the two payments, and the CFO's policy next to Visa's published VIC
-  // rules. The TAP work last.
-  const more = [vicNetworkBlock(rec), vicRulesBlock(rec, vic2Run())].join("");
+  // each: what Airwallex's own record reports for the two payments, the CFO's policy next to Visa's published VIC
+  // rules, and how the card data is handled (and what this checkout is not). The TAP work last.
+  const more = [vicNetworkBlock(rec), vicRulesBlock(rec, vic2Run()), cardDataHtml()].join("");
   const body = `<main class="pp"><div class="wrap">
   <div class="phd">${LOGO.visa}<span class="pill run">${icon("database", 14)}${esc(visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
   <p class="vintro">${esc(VISA_ENTRY_LINE)}</p>

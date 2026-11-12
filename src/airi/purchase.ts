@@ -38,6 +38,7 @@ import { frozen, paused } from "../policy/rules.js";
 import { finishStep, startStep, stepDone } from "../policy/saga.js";
 import { stopped } from "../policy/velocity.js";
 import { currentOrigin, withOrigin, type Origin } from "../provenance/origin.js";
+import { CREDENTIAL_DIR_MODE, CREDENTIAL_FILE_NAME } from "./cardData.js";
 import { AIRI_TEXT_MAX, AiriRefusal, AiriWaitTimeout, CheckoutOutcomeUnknown, scrubText, type AiriCheckout, type AiriClient, type AiriMandateRecord, type AiriMandateRequest, type CheckoutAnswer } from "./client.js";
 import { airiPolicy, type AiriPolicy } from "./policy.js";
 
@@ -380,8 +381,8 @@ async function run(db: DB, deps: AiriDeps, row: Row, recheck: () => boolean, now
   say(`AIRI WAIT  ${row.action_id}: waiting for your tap in Airi (up to 5 minutes) for ${terms.amount} ${terms.currency} at ${terms.merchant.name}`);
   const dir = mkdtempSync(join(deps.tmpRoot ?? tmpdir(), TMP_PREFIX));
   try {
-    chmodSync(dir, 0o700);
-    const file = join(dir, "credential.json");
+    chmodSync(dir, CREDENTIAL_DIR_MODE);
+    const file = join(dir, CREDENTIAL_FILE_NAME);
     let receipt;
     try {
       receipt = await deps.airi.getCredential(mandate.mandateId, file);

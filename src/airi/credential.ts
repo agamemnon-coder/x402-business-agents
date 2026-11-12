@@ -10,6 +10,7 @@
 import { closeSync, fstatSync, openSync, readSync } from "node:fs";
 import { constants } from "node:fs";
 import { z } from "zod";
+import { CREDENTIAL_MAX_BYTES, CREDENTIAL_OTHERS_MASK } from "./cardData.js";
 
 /** The card for one checkout request. Never stored; never in an error. */
 export interface CardForCheckout {
@@ -92,9 +93,9 @@ export function readCredentialFile(file: string): CardForCheckout {
   try {
     const st = fstatSync(fd);
     if (!st.isFile()) throw new CredentialFileError("the credential file is not a regular file");
-    if ((st.mode & 0o077) !== 0) throw new CredentialFileError("the credential file is readable by others; refused");
+    if ((st.mode & CREDENTIAL_OTHERS_MASK) !== 0) throw new CredentialFileError("the credential file is readable by others; refused");
     if (typeof process.getuid === "function" && st.uid !== process.getuid()) throw new CredentialFileError("the credential file belongs to another user; refused");
-    if (st.size > 64 * 1024) throw new CredentialFileError("the credential file is too large");
+    if (st.size > CREDENTIAL_MAX_BYTES) throw new CredentialFileError("the credential file is too large");
     const buf = Buffer.alloc(st.size);
     readSync(fd, buf, 0, st.size, 0);
     let json: unknown;

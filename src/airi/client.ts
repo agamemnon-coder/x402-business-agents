@@ -11,6 +11,8 @@
 // to a 0600 file and returns only the receipt (status, token type, token expiry). Only a checkout adapter reads the
 // file (./credential.ts), and the executor deletes it and its directory afterwards.
 
+import { CVV_PATTERN, SCRUB_DIGITS_FROM } from "./cardData.js";
+
 /** The airi-cli release these flags and output shapes were read from. The real client refuses any other version. */
 export const AIRI_CLI_DOCUMENTED_VERSION = "0.1.0-beta.4";
 
@@ -152,16 +154,19 @@ export class CheckoutOutcomeUnknown extends Error {
 
 // ---- text that leaves the CLI or the checkout ---------------------------------------------------------------------
 
+/** A run of SCRUB_DIGITS_FROM digits or more, alone or split by single spaces or dashes. */
+const DIGIT_RUN = new RegExp(`\\b(?:\\d[ -]?){${SCRUB_DIGITS_FROM},19}\\b`, "g");
+
 /**
  * Text from airi-cli or a checkout, made safe to show or store: no URL (a passkey or device link is a one-time
- * credential), no run of 12 or more digits (a card or token number), no 3–4 digits after cvv/cvc/csc, no e-mail, one
- * line, at most 300 characters.
+ * credential), no run of 12 or more digits (a card or token number; SCRUB_DIGITS_FROM), no 3–4 digits after
+ * cvv/cvc/csc (CVV_PATTERN), no e-mail, one line, at most 300 characters.
  */
 export function scrubText(s: string): string {
   return s
     .replace(/https?:\/\/\S+/gi, "[link]")
-    .replace(/\b(?:\d[ -]?){12,19}\b/g, "[digits]")
-    .replace(/\b(cvv|cvc|csc|cvv2|security[ _-]?code)\b\W{0,3}\d{3,4}/gi, "$1 [digits]")
+    .replace(DIGIT_RUN, "[digits]")
+    .replace(CVV_PATTERN, "$1 [digits]")
     .replace(/[^\s@]+@[^\s@]+\.[^\s@]+/g, "[email]")
     .replace(/\p{Cc}+/gu, " ")
     .slice(0, 300);

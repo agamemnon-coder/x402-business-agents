@@ -77,6 +77,9 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   // The CFO's policy next to Visa's published VIC rules (12 Nov, folded on /visa): Purser's figures from the two Airi
   // records and the code's constants, Visa's from its own quoted words; all checked in test/vic-rules.test.ts.
   .replace(/The CFO's policy next to Visa's VIC rules[\s\S]*?developer\.visa\.com, read \d{1,2} \w{3} \d{4}\./g, " ")
+  // How the Airi rail handles card data (12 Nov, folded on /visa): two figures, the code's own constants (the folder's
+  // mode, the digit run cut from kept text), not the run's; held to src/airi/cardData.ts in test/airi-card-data.test.ts.
+  .replace(/Card data: not a network-tokenised checkout[\s\S]*?held by\s+test\/airi-card-data\.test\.ts/g, " ")
   // The intended price (a hypothesis, not a figure of the run): one sentence, its numbers checked against
   // src/business/unitEconomics.ts's inputs in test/unit-economics-hypothesis.test.ts.
   .replace(PRICE_LINE, " ")
