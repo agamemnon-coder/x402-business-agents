@@ -140,6 +140,11 @@ export function engineRoutes<C extends EngineCtx>(kit: EngineKit<C>): EngineRout
       const b = await kit.body(c, Approve, 64_000);
       return json(200, await e.approve({ proposal_id: c.params[0]!, terms_sha256: b.terms_sha256, credential: b.credential }));
     }) },
+    { method: "POST", path: "/v1/engine/proposals/{id}/retry", summary: "Try again: an approved payment whose execution failed (the bank was away, say) is run once more by the executor's own resume path, which never pays twice. Answers { status: retried, message, settled } with where things stand; 409 with the engine's reason when there is nothing to retry (paid, never approved, refused).", need: "admin", run: on(async (c, e) => {
+      if (!(await e.proposal(c.params[0]!))) return err(404, "no proposal");
+      const out = await e.retry(c.params[0]!);
+      return out.status === "retried" ? json(200, out) : err(409, out.message);
+    }) },
     { method: "POST", path: "/v1/engine/sync", summary: "Follow the payments, book them, archive and feed the read model again; safe to repeat. Answers where things stand (ledger_entries, vault_added, fed, error).", need: "admin", run: on(async (_c, e) => json(200, await e.sync())) },
     { method: "GET", path: "/v1/engine/events", summary: "What the engine did, oldest first: ?after=<seq>&limit=<1 to 200>; { items, next }, where next is the seq to ask after. An event carries a short list of fields, never a bank account.", need: "read", run: on(async (c, e) =>
       json(200, await e.events(whole(c, "after", 0, Number.MAX_SAFE_INTEGER, 0), whole(c, "limit", 1, 200, 100)))) },

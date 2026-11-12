@@ -87,6 +87,7 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     passkeyStart: async () => host.passkeyStart(),
     passkeyFinish: async (a) => host.passkeyFinish(a),
     approve: async (a) => kept(host.approve(a)),
+    retry: async (proposalId) => kept(host.retry(proposalId)),
     sync: async () => kept(host.sync()),
     events: async (after, limit) => host.events(after, limit),
     vaultFiles: async () => host.vaultFiles(),

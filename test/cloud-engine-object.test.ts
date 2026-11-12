@@ -147,15 +147,19 @@ describe("the Worker's stub of a company's engine", () => {
   it("has every action of the interface, each one call across the stub with the company's id", async () => {
     const engine = engineStubs(ns)(A);
     expect(Object.keys(engine).sort()).toEqual([...ENGINE_METHODS].sort());
-    expect(ENGINE_METHODS).toHaveLength(16);
+    expect(ENGINE_METHODS).toHaveLength(17);
+    expect(ENGINE_METHODS).toContain("retry");
     answer = { ok: true, value: { items: [], next: 7 } };
     expect(await engine.events(7, 50)).toEqual({ items: [], next: 7 });
     const bytes = new Uint8Array([1, 2, 3]);
     answer = { ok: true, value: { kind: "invoice", sha256: "x", invoice: null } };
     await engine.upload({ bytes, filename: "a.pdf" });
+    answer = { ok: true, value: { status: "nothing_to_retry", message: "P-0001 is EXECUTED: there is nothing to try again; nothing was paid", settled: null } };
+    expect(await engine.retry("P-0001")).toEqual(answer.value);
     expect(calls).toEqual([
       { name: A, tenantId: A, method: "events", args: [7, 50] },
       { name: A, tenantId: A, method: "upload", args: [{ bytes, filename: "a.pdf" }] },
+      { name: A, tenantId: A, method: "retry", args: ["P-0001"] },
     ]);
   });
 

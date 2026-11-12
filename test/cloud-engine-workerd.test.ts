@@ -186,6 +186,15 @@ describe("the engine in a Durable Object per company, behind the cloud's routes 
     expect((await req("GET", "/v1/engine", { key: A.session })).json.chains).toEqual({ audit: true, ledger: true });
   });
 
+  it("answers a retry of the paid proposal across the stub with 409 and the engine's reason, and pays nothing more", async () => {
+    const r = await req("POST", "/v1/engine/proposals/P-0001/retry", { key: A.session });
+    expect(r.status, JSON.stringify(r.json)).toBe(409);
+    expect(r.json).toMatchObject({ code: "conflict", error: "P-0001 is EXECUTED: there is nothing to try again; nothing was paid" });
+    expect((await req("POST", "/v1/engine/proposals/P-0404/retry", { key: A.session })).status).toBe(404);
+    expect((await req("POST", "/v1/engine/proposals/P-0001/retry", { key: B.session })).status).toBe(404);
+    expect(((await req("GET", "/v1/payments", { key: A.session })).json.items as { status: string }[]).map((p) => p.status)).toEqual(["PAID"]);
+  });
+
   it("lists the archive's three files and hands each out whole across the stub", async () => {
     const r = await req("GET", "/v1/engine/vault", { key: A.session });
     expect(r.status).toBe(200);
