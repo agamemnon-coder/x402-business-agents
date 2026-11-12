@@ -4,7 +4,7 @@
 // data it was made from; the same data is never filed twice, and changed data is filed as a correction beside the
 // original. Nothing in the vault is overwritten or deleted, except each year's index.json, which lists every file.
 
-import { readFileSync } from "node:fs";
+import { readDoc } from "../ap/docStore.js";
 import { COMPANY } from "../config/brand.js";
 import type { DB } from "../db/open.js";
 import { audit } from "../audit/log.js";
@@ -29,7 +29,7 @@ function plan(db: DB, company: string, lang: Lang, today: string): Planned[] {
   const out: Planned[] = [];
   for (const d of invoiceDocs(db)) {
     out.push({ kind: "invoice", key: d.key, id: d.id, year: Number(d.date.slice(0, 4)), base: invoicePath(company, d), dataSha: d.doc_sha256, produce: () => {
-      const bytes = readFileSync(d.doc_path);
+      const bytes = readDoc(db, d.doc_path);
       if (sha256(bytes) !== d.doc_sha256) throw new Error(`the stored document of ${d.id} does not match the hash on record (${d.doc_sha256.slice(0, 12)}…); it is not filed`);
       return Promise.resolve(bytes);
     } });
