@@ -5,11 +5,14 @@
 //   it in the Airwallex web app. Purser never approves at Airwallex and never simulates past that wait.
 //
 //   stand-in              the whole flow on the in-memory Airwallex stand-in with its approval workflow on; 0 network
-//   create                live: propose, sign with the virtual passkey, execute; prints the transfer id (IN_APPROVAL)
+//   create                live: propose, sign with the virtual passkey, execute; prints the transfer id (IN_APPROVAL).
+//                         Only for SLL-2026-11B, and only on a ledger with no active passkey yet.
 //   follow                live: one read of the transfer (GET), recorded; never approves, never resends
 //   settle                live, after Max approved (SCHEDULED): the sandbox's simulation endpoints move it SENT, then PAID
 //   facts                 the run's facts from the ledger and the call log, as JSON; 0 calls
 // Live needs TWO_LOCKS_GO=yes, AIRWALLEX_CALL_BUDGET, AIRWALLEX_CALL_LOG, KIT11_DB=…/two-locks*.sqlite.
+// TWO_LOCKS_INVOICE (default SLL-2026-11B) names the invoice that follow and settle work on: set it to follow and settle
+// a ledger planned by `npm run licence` (e.g. SLL-2026-11) and signed with a person's real Face ID. create refuses it.
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -25,7 +28,8 @@ const text = readFileSync(resolve(repo, "fixtures", FIXTURE), "utf8");
 const { openDb } = await import("../db/open.js");
 const { proposeInvoicePayment, seedTreasury } = await import("../agents/euroBill.js");
 const { parseInvoiceFallback, ibanSha } = await import("../agents/invoice.js");
-const { followTransfer, describeTransferStatus } = await import("../airwallex/approvals.js");
+const { followTransfer, describeTransferStatus, transferOfInvoice } = await import("../airwallex/approvals.js");
+const { twoLocksLedgerRefusal, twoLocksRefusals } = await import("./twoLocksRefusals.js");
 const { approvalOrigin } = await import("../executors/index.js");
 const { executeInvoicePayment, FEE_RETRY } = await import("../executors/invoicePayment.js");
 const { LICENCE_COMMAND, withOrigin } = await import("../provenance/origin.js");
@@ -101,17 +105,17 @@ if (cmd === "stand-in") {
 } else if (cmd === "facts") {
   console.log(JSON.stringify(facts(openDb()), null, 2));
 } else {
-  const why: string[] = [];
-  if (process.env.TWO_LOCKS_GO !== "yes") why.push("TWO_LOCKS_GO=yes (Max's go)");
-  if (!process.env.AIRWALLEX_CALL_BUDGET || !process.env.AIRWALLEX_CALL_LOG) why.push("AIRWALLEX_CALL_BUDGET and AIRWALLEX_CALL_LOG");
-  if (!/two-locks[^/]*\.sqlite$/.test(process.env.KIT11_DB ?? "")) why.push("KIT11_DB=…/two-locks*.sqlite (this run's own ledger)");
+  const { invoiceNo, why } = twoLocksRefusals(cmd, process.env);
   if (why.length) { for (const w of why) console.error(`REFUSED  ${w}`); process.exit(2); }
+  const db = openDb();
+  const transferId = () => transferOfInvoice(db, invoiceNo);
+  // Refused before any Airwallex client exists: a virtual passkey is never enrolled beside a person's.
+  const busy = twoLocksLedgerRefusal(cmd, db);
+  if (busy) { console.error(`REFUSED  ${busy}`); process.exit(2); }
   const { airwallexFromEnv } = await import("../airwallex/adapter.js");
   const a = await airwallexFromEnv();
   if (!a) { console.error("no Airwallex sandbox keys; nothing was called"); process.exit(2); }
   const awx = a.rail as unknown as Rail;
-  const db = openDb();
-  const transferId = () => (db.prepare("SELECT transfer_id FROM transfers WHERE invoice_no = 'SLL-2026-11B' AND transfer_id IS NOT NULL").get() as { transfer_id: string } | undefined)?.transfer_id;
   if (cmd === "create") {
     if (transferId()) { console.error(`already created: ${transferId()}; nothing is sent twice`); process.exit(2); }
     // The test world's payee and floors, without calls: the licensor's Airwallex beneficiary (created in awx-1) and

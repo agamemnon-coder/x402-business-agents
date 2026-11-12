@@ -72,3 +72,9 @@ export async function followTransfer(db: DB, rail: Pick<AirwallexRail, "getTrans
   }
   return { status: tr.status, changed, waitingOnAirwallex: tr.status === "IN_APPROVAL" || tr.status === "APPROVAL_BLOCKED", terminal: TERMINAL.has(tr.status), mismatch };
 }
+
+/** The Airwallex transfer id of an invoice's payout in this ledger, or undefined while none was created. */
+export function transferOfInvoice(db: DB, invoiceNo: string): string | undefined {
+  const r = db.prepare("SELECT transfer_id FROM transfers WHERE invoice_no = ? AND transfer_id IS NOT NULL").get(invoiceNo) as { transfer_id: string } | undefined;
+  return r?.transfer_id;
+}
