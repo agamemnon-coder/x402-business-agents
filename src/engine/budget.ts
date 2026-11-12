@@ -70,6 +70,11 @@ export function tryClaudeClient(apiKey: string): Anthropic {
 
 /** The most an agent's answer may hold in a visitor's company (task A6). */
 export const AGENT_MAX_TOKENS = 2_000;
+/**
+ * The agents' effort in a visitor's company (speed, 12 Nov): low. At medium, the Payer's final answer thought for 1,824
+ * output tokens, 9 s on Haiku, while the visitor waited on Pay; code enforces every boundary of the answer either way.
+ */
+export const AGENT_EFFORT = "low" as const;
 
 /** Why an agent's call was not sent: its worst case did not fit what the action had left. The agent loop stops, and code decides, labelled. */
 export class ActionBudgetSpent extends Error {}
@@ -80,10 +85,13 @@ export class ActionBudgetSpent extends Error {}
  * must fit what the action has left; it is then taken from the budget, as the reader does. A call that does not fit is
  * not sent: the agent's run ends unavailable and code's fallback decides, labelled. The SDK retries nothing.
  */
-export function budgetedClient(inner: Anthropic, budget: Budget, maxTokens = AGENT_MAX_TOKENS): Anthropic {
-  type Params = { model: string; max_tokens: number; system?: unknown; tools?: unknown; messages: unknown; fallbacks?: unknown };
+export function budgetedClient(inner: Anthropic, budget: Budget, maxTokens = AGENT_MAX_TOKENS, effort: "low" | "medium" | "high" = AGENT_EFFORT): Anthropic {
+  type Params = { model: string; max_tokens: number; system?: unknown; tools?: unknown; messages: unknown; fallbacks?: unknown; output_config?: Record<string, unknown> };
   const create = async (params: Params, options?: unknown): Promise<unknown> => {
-    const req = { ...params, max_tokens: Math.min(params.max_tokens, maxTokens) };
+    // Haiku 5.5 thinks by default; a visitor waits on every turn, so the engine's Haiku agents answer without it
+    // (accepted at effort high or below). Other models keep their adaptive thinking.
+    const req = { ...params, max_tokens: Math.min(params.max_tokens, maxTokens), output_config: { ...(params.output_config ?? {}), effort },
+      ...(params.model.startsWith("claude-haiku") ? { thinking: { type: "disabled" } } : {}) };
     const chars = JSON.stringify([req.system ?? null, req.tools ?? null, req.messages]).length;
     const models = req.fallbacks ? [req.model, ...Object.keys(PRICES)] : [req.model];
     const worst = Math.max(...models.map((m) => worstCaseMicros(m, req.max_tokens, chars)));
