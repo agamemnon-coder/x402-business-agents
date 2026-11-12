@@ -100,6 +100,40 @@ async function tapTargets(page: Page, name: string): Promise<void> {
   const small = (await page.evaluate(`[...document.querySelectorAll("main a, main button, main summary")].filter((e) => e.checkVisibility())
     .map((e) => ({ h: Math.round(e.getBoundingClientRect().height * 10) / 10, what: (e.textContent || "").trim().replace(/\\s+/g, " ").slice(0, 40) })).filter((x) => x.h < 44)`)) as { h: number; what: string }[];
   for (const x of small) fail(`${name}: a tap target ${x.h} px high, under 44 ("${x.what}")`);
+  // Each target also owns the middle of every line it is drawn on: no neighbour's padding and no drawing takes its tap
+  // (review, 12 Nov: padded links covered the link above, and a flow arrow covered a fold's header).
+  const covered = (await page.evaluate(`(() => {
+    const out = [];
+    for (const e of document.querySelectorAll("main a, main button, main summary")) {
+      if (!e.checkVisibility()) continue;
+      for (const r0 of [...e.getClientRects()].filter((r) => r.width > 2 && r.height > 2)) {
+        window.scrollTo({ top: window.scrollY + r0.top - innerHeight / 2, behavior: "instant" });
+        const r = [...e.getClientRects()].find((q) => Math.abs(q.width - r0.width) < 0.5 && Math.abs(q.left - r0.left) < 0.5) || r0;
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        if (!hit || !(hit === e || e.contains(hit))) out.push({ what: (e.textContent || "").trim().replace(/\\s+/g, " ").slice(0, 40), by: hit ? hit.tagName.toLowerCase() + (hit.className ? "." + hit.className : "") + " " + (hit.textContent || "").trim().slice(0, 30) : "nothing" });
+      }
+    }
+    window.scrollTo(0, 0);
+    return out;
+  })()`)) as { what: string; by: string }[];
+  for (const x of covered) fail(`${name}: a tap on "${x.what}" lands on ${x.by}`);
+}
+
+/** Every fold header opens and closes with a tap at its middle (on a phone, with the folds open and closed). */
+async function foldTaps(page: Page, name: string): Promise<void> {
+  const n = await page.locator("main summary").count();
+  for (let i = 0; i < n; i++) {
+    const s = page.locator("main summary").nth(i);
+    if (!(await s.isVisible())) continue;
+    for (let k = 0; k < 2; k++) {
+      await s.scrollIntoViewIfNeeded();
+      const was = await s.evaluate((e) => (e.parentElement as HTMLDetailsElement).open);
+      const box = (await s.boundingBox())!;
+      await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+      await page.waitForTimeout(50);
+      if ((await s.evaluate((e) => (e.parentElement as HTMLDetailsElement).open)) === was) { fail(`${name}: a tap on the fold header "${((await s.textContent()) ?? "").trim().slice(0, 40)}" does not ${was ? "close" : "open"} it`); break; }
+    }
+  }
 }
 
 const browser = await chromium.launch();
@@ -417,7 +451,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         if (/Metal earnings|0\.69/.test(first) || !/Issuing/.test(first)) fail(`/airwallex ${tag}: the first screen shows Metal earnings or the simulated deposit, or no product tile`);
         // Transfer approvals: three states in a row, the third as the record has it today.
         const states = (await page.evaluate(`[...document.querySelectorAll("#p-approvals ol.aws li")].map((l) => l.textContent.trim())`)) as string[];
-        if (states.length !== 3 || states[0] !== "Signed in Purser" || !/ at Airwallex$|^Held by Airwallex/.test(states[1] ?? "") || !/^Now: [A-Z_]+/.test(states[2] ?? "")) fail(`/airwallex ${tag}: transfer approvals does not show its three states (${JSON.stringify(states)})`);
+        if (states.length !== 3 || !/^Signed in Purser( \(test passkey\))?$/.test(states[0] ?? "") || !/ at Airwallex$|^Held by Airwallex/.test(states[1] ?? "") || !/^Now: [A-Z_]+/.test(states[2] ?? "")) fail(`/airwallex ${tag}: transfer approvals does not show its three states (${JSON.stringify(states)})`);
         // The platform run's refused payouts are told in its fold, with their cause: never among the tiles.
         if (/refus/i.test(await page.locator("main .awp").innerText())) fail(`/airwallex ${tag}: a refusal on a tile (they belong in the platform run's fold)`);
       }
@@ -427,7 +461,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.evaluate(() => document.querySelectorAll("details").forEach((d) => { d.open = true; }));
       await look(page, `${path} folds open ${tag}`, w);
       const open = await page.evaluate(() => document.body.innerText);
-      if (TAP_PAGES.includes(path) && w < 500) await tapTargets(page, `${path} folds open ${tag}`);
+      if (TAP_PAGES.includes(path) && w < 500) { await tapTargets(page, `${path} folds open ${tag}`); await foldTaps(page, `${path} folds open ${tag}`); }
       if (path === "/visa" && (!/Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours\./.test(open) || !/commit 16d59bd/.test(open) || !/simulated authorisations/.test(open) || !/Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon \(Visa, 5 Nov\)\./.test(open) || !open.includes(VISA_ENTRY_LINE) || /entered for[^.]{0,40}Visa Award/i.test(open.split(VISA_ENTRY_LINE).join(" ")) || /Dev test/.test(open))) fail(`/visa ${tag}: the claim, the award status or the honest label is wrong`);
       if (path === "/airwallex" && !/LIMIT_EXCEEDED|over the card's limit/.test(open)) fail(`/airwallex ${tag}: no decline by Airwallex`);
       // Section B: the hash the CFO signed beside the one Airwallex returns, matched in code; each card's controls beside the policy.
