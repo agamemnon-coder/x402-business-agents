@@ -8,7 +8,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { EXPLORER, MAIN_RUN_CHECK, REPO_BLOB, SEPARATE_RUNS, explorerLink, metalStory, refusalNote, separateRuns } from "../src/redesign/metalStory.js";
-import { HOLD_NOT_FINISHED, INSPECTOR_URL, MAIN_RUN_TRACE, METAL_HOLD_RECORD, METAL_INSPECT_JS, METAL_INSPECTOR_RECORD, coverageRows, inspectorRecord, mandateRows, replaceSigner } from "../src/redesign/metalMandates.js";
+import { HOLD_NOT_FINISHED, INSPECTOR_URL, MAIN_RUN_TRACE, METAL_HOLD_RECORD, METAL_INSPECT_JS, METAL_INSPECTOR_RECORD, coverageRows, holdState, inspectorRecord, mandateRows, replaceSigner } from "../src/redesign/metalMandates.js";
 import { loadRecord } from "../src/redesign/run.js";
 import { METAL_CSP, METAL_PAGE } from "../src/servers/dashboard.js";
 
@@ -206,32 +206,38 @@ describe("what else ran on Metal, folded, each a separate run", () => {
 
   it("dates each run and links its own transaction, none of them the main run's", () => {
     expect(also).not.toBe("");
-    expect(text(also)).toMatch(/^ ?Also on Metal: 5 separate runs, and a hold, not finished/);
+    const hold = holdState(read(METAL_HOLD_RECORD));
+    expect(text(also)).toMatch(hold?.finished ? /^ ?Also on Metal: 6 separate runs / : /^ ?Also on Metal: 5 separate runs, and a hold, not finished/);
     expect(rows.map((r) => r.feature)).toEqual(["Two owners, both must sign", "Passkeys as the owners", "Money from strangers held", "Clearing", "Send policy", "Hold for an approved amount"]);
-    const runs = separateRuns();
+    const runs = separateRuns(), withHold = own + read(METAL_HOLD_RECORD);
     for (const r of rows.filter((x) => x.status === "done")) {
       expect(text(also)).toContain(`${r.feature} ${r.when} tx ↗ ${r.note}`);
       const tx = explorerLink(r.link!.href)!;
       expect(tx.kind).toBe("tx");
-      expect(own).toContain(tx.id);
+      expect(withHold).toContain(tx.id);
       expect(raw).not.toContain(tx.id);
-      expect(runs.some((x) => x.proofs.some((p) => p.href === r.link!.href))).toBe(true);
+      if (r.feature !== "Hold for an approved amount") expect(runs.some((x) => x.proofs.some((p) => p.href === r.link!.href))).toBe(true);
     }
   });
 
-  it("says the hold is not finished, wherever it is mentioned, and its record says why", () => {
-    const hold = rows.find((r) => r.status === "not finished")!;
-    expect(hold).toMatchObject({ feature: "Hold for an approved amount", when: "10 Nov", link: { label: "record", href: `${REPO_BLOB}${METAL_HOLD_RECORD}` } });
-    expect(text(also)).toContain("Hold for an approved amount 10 Nov not finished record ↗ hold placed on testnet; its capture not sent");
-    expect(text(simulated)).toContain(`${HOLD_NOT_FINISHED}.`);
-    const md = read(METAL_HOLD_RECORD);
-    expect(md).toMatch(/`holdFrom` \(spender places a 0\.25 \*USDZ hold\) \| sent, receipt status success/);
-    expect(md).toMatch(/`captureHold` \(0\.25 \*USDZ to the supplier\) \| not sent/);
-    const t = text(main);
-    for (const m of t.matchAll(/\bholds?\b/gi)) {
-      const around = t.slice(Math.max(0, m.index - 10), m.index + 110);
-      if (!/holds? the line/i.test(around)) expect(around, around).toMatch(/not finished|not sent/);
+  it("tells the hold as its record does: placed on 10 Nov, captured on 12 Nov, its capture linked; unfinished only while the record says so", () => {
+    const md = read(METAL_HOLD_RECORD), hold = holdState(md)!;
+    const row = rows.find((r) => r.feature === "Hold for an approved amount")!;
+    if (hold.finished) {
+      expect(hold).toEqual({ finished: true, day: "12 Nov", capture: "0xb371a336f5a0ec74c4e3a26691dc3f2233882535dcac92e8a74b82f28b7a7859" });
+      expect(md).toMatch(/`captureHold` \(holder → supplier [^|]*\| \[0xb371a336…8b7a7859\]\([^)]+\): receipt status success/);
+      expect(row).toMatchObject({ status: "done", when: "10 Nov", link: { label: "tx", href: `${EXPLORER}/tx/${hold.capture}` }, note: "held, then captured to the supplier on 12 Nov" });
+      expect(text(main)).not.toMatch(/not finished|capture not sent/);
+      expect(text(simulated)).not.toContain(HOLD_NOT_FINISHED);
+    } else {
+      expect(row).toMatchObject({ status: "not finished", link: { label: "record", href: `${REPO_BLOB}${METAL_HOLD_RECORD}` } });
+      expect(text(simulated)).toContain(`${HOLD_NOT_FINISHED}.`);
     }
+    // The record's own first state, as it ran on 10 Nov.
+    expect(md).toMatch(/`holdFrom` \(spender places a 0\.25 \*USDZ hold\) \| sent, receipt status success/);
+    // A record in the old, unfinished shape reads as not finished; one in neither shape, as nothing.
+    expect(holdState("**The live run stopped at its budget.**\n| `captureHold` (0.25 *USDZ to the supplier) | not sent: the budget was used up |")).toEqual({ finished: false });
+    expect(holdState("# nothing")).toBeNull();
   });
 
   it("says the stand-ins: software passkeys, not a phone; a test passkey as the second approver", () => {

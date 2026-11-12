@@ -21,8 +21,15 @@ export const METAL_HOLD_RECORD = "docs/runs/2026-11-10-metal-extra.md";
 export const MAIN_RUN_TRACE = "docs/demo/main-run-trace.json";
 /** Where the inspector answers on the hosted site. */
 export const INSPECTOR_URL = `https://kit11.max-31b.workers.dev${METAL_INSPECTOR_PATH}`;
-/** The words that tell the hold is not finished: wherever the hold is mentioned, these come with it. */
+/** The words that tell the hold is not finished: wherever the hold is mentioned while its record says so, these come with it. */
 export const HOLD_NOT_FINISHED = "Holds: not finished; one hold placed on testnet on 10 Nov, its capture not sent";
+
+/** The hold's state as its record tells it: placed on 10 Nov, and finished (captured) on a later day, or not. */
+export function holdState(md: string): { finished: false } | { finished: true; day: string; capture: string } | null {
+  const done = /## Finished on (\d{1,2}) (\w{3})\w* \d{4}/.exec(md), capture = /- captureHold: `(0x[0-9a-f]{64})`/.exec(md);
+  if (done && capture && /`heldBalanceOf\(holder, spender\)` after \| 0 \|/.test(md)) return { finished: true, day: `${done[1]} ${done[2]}`, capture: capture[1]! };
+  return /stopped at its budget/.test(md) && /`captureHold`[^|]*\|\s*not sent/.test(md) ? { finished: false } : null;
+}
 
 const read = (file: string) => readFileSync(new URL(`../../${file}`, import.meta.url), "utf8");
 const tx = (h: string) => `${EXPLORER}/tx/${h}`;
@@ -85,16 +92,15 @@ export function coverageRows(): CoverageRow[] {
     const r = by(id);
     return r ? [{ feature, when: day(r.date), link: { label: r.proofs.length ? "tx" : "record", href: r.proofs.find((p) => /: (paid|done)|held|returned|deposit/.test(p.label))?.href ?? r.proofs[0]?.href ?? r.record.href ?? "" }, status: "done", note }] : [];
   };
-  const hold = read(METAL_HOLD_RECORD);
-  const holdDate = /\((\d{1,2} \w+), testnet, partial\)/.exec(hold)?.[1];
-  const stopped = /stopped at its budget/.test(hold) && /capture is not sent|`captureHold`[^|]*\|\s*not sent/.test(hold);
+  const hold = holdState(read(METAL_HOLD_RECORD));
   return [
     ...row("four-eyes", "Two owners, both must sign", "paid with both signatures; one alone reverted"),
     ...row("passkey-owners", "Passkeys as the owners", "software passkeys, not a phone"),
     ...row("receive", "Money from strangers held", "held by Metal, then returned"),
     ...row("clearing", "Clearing", "one deposit, then each query paid by a signed receipt"),
     ...row("compliance", "Send policy", "Purser's own contract, not Metal's"),
-    ...(holdDate && stopped ? [{ feature: "Hold for an approved amount", when: holdDate.replace(/ (\w{3})\w*$/, " $1"), link: { label: "record", href: `${REPO_BLOB}${METAL_HOLD_RECORD}` }, status: "not finished" as const, note: "hold placed on testnet; its capture not sent" }] : []),
+    ...(hold?.finished ? [{ feature: "Hold for an approved amount", when: "10 Nov", link: { label: "tx", href: tx(hold.capture) }, status: "done" as const, note: `held, then captured to the supplier on ${hold.day}` }]
+      : hold ? [{ feature: "Hold for an approved amount", when: "10 Nov", link: { label: "record", href: `${REPO_BLOB}${METAL_HOLD_RECORD}` }, status: "not finished" as const, note: "hold placed on testnet; its capture not sent" }] : []),
   ];
 }
 
