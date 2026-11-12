@@ -190,3 +190,45 @@ describe("the payables agents in the cloud engine (task A6)", () => {
     expect(roomy.left()).toBeLessThan(100_000);
   });
 });
+
+describe("the demo world's own seed and clean sample (task A6 regression, 12 Nov)", () => {
+  /** A Payer that pays from the EUR balance alone, as Haiku did live: below the floor, so code holds it. */
+  function eurOnlyPayer(inner: Anthropic): Anthropic {
+    const create = async (r: Req) => {
+      const tools = new Set((r.tools ?? []).map((t) => t.name));
+      if (!tools.has("propose_payment")) return (inner.beta.messages.create as unknown as (x: Req) => Promise<unknown>)(r);
+      const today = new Date().toISOString().slice(0, 10);
+      return { id: "msg_eur", _request_id: "req_a6_eur", type: "message", role: "assistant", model: r.model, stop_reason: "tool_use",
+        content: [{ type: "tool_use", id: "tu_eur", name: "propose_payment", input: { rail: "bank_swift", pay_on: today, pay_currency: "EUR", reason: "Pay it today from the EUR balance, by SWIFT." } }],
+        usage: { input_tokens: 1500, output_tokens: 120, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 } };
+    };
+    return { beta: { messages: { create } } } as unknown as Anthropic;
+  }
+
+  it("the clean sample filed, then Pay: the Payer's proposal is held, code's plan stands and waits for Face ID", async () => {
+    const { SAMPLES } = await import("../cloud/src/engine/samples.gen.js");
+    const s = standInClaude();
+    const { access: a } = access({ client: eurOnlyPayer(s.client) });
+    const db = openDb(":memory:");
+    const docs = new Map<string, Buffer>();
+    useDocStore(db, { put: (sha, b) => { docs.set(`mem:${sha}`, Buffer.from(b)); return `mem:${sha}`; }, get: (p) => docs.get(p)! });
+    const store = { text: null as string | null, load() { return this.text; }, save(t: string) { this.text = t; } };
+    const bank = standInBank(store);
+    const h = new EngineHost({ db, reader: parserOnly, rails: { rail: bank, sim: bank }, afterMoney: () => store.save(bankToText(bank)), rp: { rpId: "engine.example.invalid", origin: "https://engine.example.invalid" }, company: { name: "Try Co", lang: "en" }, vault: null, feed: null, samples: SAMPLES, claude: a });
+    await h.seed();
+    const up = await h.uploadSample("clean");
+    expect(up!.invoice).toMatchObject({ status: "ready", payable: true });
+    // The Checker and the Coder both ran on the upload (in parallel), each with its request id.
+    expect(decided(db, "agent.run").map((r) => r.fields.agent).sort()).toEqual(["checker", "treasury"]);
+    const p = await h.propose(up!.invoice!.id);
+    expect(p.ok).toBe(true);
+    const proposal = (p as { proposal: { status: string } }).proposal;
+    expect(proposal.status).toBe("PENDING_APPROVAL");
+    const [payer] = decided(db, "ap.payer_proposed");
+    expect(payer!.fields).toMatchObject({ source: "claude", outcome: "hold", plan_stands: true, request_id: "req_a6_eur" });
+    expect(String(payer!.fields.enforced)).toMatch(/code's own plan goes to the CFO's Face ID/);
+    // Filed as code's: the proposal's origin names code's rule, not the agent.
+    const created = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'proposal.created' ORDER BY seq DESC LIMIT 1").get() as { payload_json: string };
+    expect(JSON.parse(created.payload_json).origin).toMatchObject({ actor: "code" });
+  });
+});

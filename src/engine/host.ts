@@ -315,8 +315,9 @@ export class EngineHost {
     return this.act(async () => {
       const { db, rails } = this.deps;
       try {
-        // Task A6: the Payer proposes the rail, the day and the currency on the engine's plan when the CFO opens Pay.
-        const out = await this.withClaude(`engine.propose:${invoiceId}`, (reader, agents) => payApInvoice(db, rails.rail, invoiceId, this.now(), reader, { on: agents.on, claude: agents.client }));
+        // Task A6: the Payer proposes the rail, the day and the currency on the engine's plan when the CFO opens Pay. It may
+        // only propose within that plan: held or off the plan, code's plan stands and is filed for Face ID, labelled.
+        const out = await this.withClaude(`engine.propose:${invoiceId}`, (reader, agents) => payApInvoice(db, rails.rail, invoiceId, this.now(), reader, { on: agents.on, claude: agents.client, planStands: true }));
         if (out.kind !== "proposed") return { ok: false, reason: out.reason };
         const proposal = this.proposal(out.proposal.proposal_id);
         if (!proposal) return { ok: false, reason: `${out.proposal.proposal_id} was filed but is not in the ledger` };

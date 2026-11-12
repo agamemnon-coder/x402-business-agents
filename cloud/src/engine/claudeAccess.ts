@@ -18,7 +18,9 @@ export const READER_MAX_TOKENS = 4_000;
  * a visitor waits on every read, and the owner measured about 6.4 s a request on the live demo (12 Nov). Low effort and
  * no extended thinking, as every reader call.
  */
-export const READER_MODELS = { act: MODELS.classify } as const;
+// 12 Nov: the review note written when a payment is filed (role review, Opus on the runner) is Haiku here too: the live
+// panel showed Claude Opus for 17 s on Pay.
+export const READER_MODELS = { act: MODELS.classify, review: MODELS.classify } as const;
 
 /** Until lane C's readSwitches is wired in: no switch is set. */
 export const noSwitches = async (): Promise<Record<string, unknown>> => ({});

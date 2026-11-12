@@ -17,6 +17,7 @@ import { claudeClient } from "../claude/reader.js";
 import { COMPANY } from "../config/brand.js";
 import type { DB } from "../db/open.js";
 import type { GateAnswer, PlanGate, PlannedPayment } from "../payouts/planGate.js";
+import { parseOrigin } from "../provenance/origin.js";
 import { runProvenance, type RunProvenance } from "./agentRun.js";
 import { apInvoice } from "./store.js";
 import {
@@ -106,7 +107,7 @@ export function paymentCase(plan: PlannedPayment, about: { invoiceId: string | n
 }
 
 /** The decision row: who proposed, the agent's reason, the enforced outcome with code's reason, and what follows. */
-export function recordProposed(db: DB, about: { invoiceId: string; invoiceNo: string }, out: PayerOutcome, now: Date): void {
+export function recordProposed(db: DB, about: { invoiceId: string; invoiceNo: string }, out: PayerOutcome, now: Date, extra: Record<string, Json> = {}): void {
   audit(db, PAYER_AGENT, PAYER_DECISION, about.invoiceId, {
     invoice_id: about.invoiceId, invoice_no: about.invoiceNo, source: out.source, model: out.source === "claude" ? out.run.model : null,
     rail: out.proposal.rail, pay_on: out.proposal.pay_on, pay_currency: out.proposal.pay_currency, reason: out.proposal.reason,
@@ -114,6 +115,7 @@ export function recordProposed(db: DB, about: { invoiceId: string; invoiceNo: st
     terms: out.enforced.terms as unknown as Json,
     task: out.task, run_id: out.provenance.run_id, request_ids: out.provenance.request_ids, origin: out.provenance.origin as Json | null,
     ...(out.run.note ? { note: out.run.note } : {}),
+    ...extra,
   }, now);
 }
 
@@ -123,7 +125,7 @@ export function recordProposed(db: DB, about: { invoiceId: string; invoiceNo: st
  * pays today on the plan's own route and funding. `last()` is what the gate decided, or null when the engine stopped
  * before the plan reached it.
  */
-export function payerGate(db: DB, about: { invoiceId: string; invoiceNo: string; now: Date; claude?: Anthropic | null }): { gate: PlanGate; last(): PayerOutcome | null } {
+export function payerGate(db: DB, about: { invoiceId: string; invoiceNo: string; now: Date; claude?: Anthropic | null; planStands?: boolean }): { gate: PlanGate; last(): PayerOutcome | null } {
   let last: PayerOutcome | null = null;
   // The invoice as the pay call found it: ready, with the proposal it had (none).
   const before = apInvoice(db, about.invoiceId);
@@ -131,15 +133,17 @@ export function payerGate(db: DB, about: { invoiceId: string; invoiceNo: string;
     const c = paymentCase(plan, { invoiceId: about.invoiceId, invoiceNo: about.invoiceNo, today: about.now.toISOString().slice(0, 10) });
     const out = await runPayer(db, c, { task: `ap.pay.${about.invoiceId}`, ...(about.claude !== undefined ? { claude: about.claude } : {}) });
     last = out;
-    recordProposed(db, about, out, about.now);
     const who = out.source === "claude" ? "the Payer agent's proposal" : "code's own plan (the Payer agent was unavailable)";
     const terms = out.enforced.terms;
-    if (out.next === "hold" || !terms) return { go: false, reason: `${who} is held by code: ${out.enforced.why}` };
-    if (out.next === "pay_later") return { go: false, reason: `the Payer agent plans to pay it on ${terms.pay_on}, not today: ${out.proposal.reason} Nothing is filed for the CFO until then; pay it again on or after that day` };
-    // The terms the CFO signs are the engine's: the enforced proposal must be for that route and that funding.
-    if (terms.method !== plan.method || (terms.conversion !== null) !== (plan.quote !== null)) {
-      return { go: false, reason: `${who} does not match the engine's plan (${plan.method}${plan.quote ? ", with a conversion" : ""}), so nothing is filed` };
-    }
+    const off = out.next === "hold" || !terms ? `${who} is held by code: ${out.enforced.why}`
+      : out.next === "pay_later" ? `the Payer agent plans to pay it on ${terms.pay_on}, not today: ${out.proposal.reason} Nothing is filed for the CFO until then; pay it again on or after that day`
+      // The terms the CFO signs are the engine's: the enforced proposal must be for that route and that funding.
+      : terms.method !== plan.method || (terms.conversion !== null) !== (plan.quote !== null) ? `${who} does not match the engine's plan (${plan.method}${plan.quote ? ", with a conversion" : ""}), so nothing is filed`
+      : null;
+    // The cloud engine (task A6, 12 Nov): the agent may only propose within code's plan. Where its proposal is held or
+    // off the plan, code's own plan stands and goes to the CFO's Face ID, labelled as code's: an agent never dead-ends Pay.
+    recordProposed(db, about, out, about.now, off && about.planStands ? { plan_stands: true, plan_stands_why: off.slice(0, 600) } : {});
+    if (off && !about.planStands) return { go: false, reason: off };
     // While the agent worked, a person may have rejected or held the invoice, or it was filed by another call (review
     // round 1, 12 Nov: a rejection made during the run was overwritten by "waiting_cfo"). Read again, with nothing
     // awaited between this answer and the filing (src/payouts/plan.ts), so a moved invoice is never filed.
@@ -147,6 +151,8 @@ export function payerGate(db: DB, about: { invoiceId: string; invoiceNo: string;
     if (!current || current.status !== "ready" || current.proposal_id !== (before?.proposal_id ?? null)) {
       return { go: false, reason: `the invoice is ${current ? current.status.replace(/_/g, " ") : "gone"} now, no longer ready as when the Payer agent started, so nothing is filed` };
     }
+    // Code's own plan, under code's rule (the reason is in the decision row above; an origin's rule is at most 200 characters).
+    if (off) return { go: true, origin: parseOrigin(JSON.stringify({ actor: "code", rule: "the engine's own plan stands: the Payer agent's proposal was held or off the plan", agent: PAYER_AGENT })) };
     return { go: true, origin: out.provenance.origin };
   };
   return { gate, last: () => last };

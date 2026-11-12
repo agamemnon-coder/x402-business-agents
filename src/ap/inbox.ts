@@ -20,7 +20,7 @@ import { codeFindings, type InvoiceCase } from "./checkerCore.js";
 import { invoiceCase, statusOf, type CheckContext } from "./checks.js";
 import { docStoreOf, readDoc } from "./docStore.js";
 import { classifyDocument, ruleSignals, type DocKind } from "./classify.js";
-import { ensureCoded, type CoderDeps } from "./coderAgent.js";
+import { ensureCoded, startCoder, type CoderAnswer, type CoderDeps } from "./coderAgent.js";
 import { needsNote, writeReviewNote } from "./review.js";
 import { parseApFallback } from "./reading.js";
 import { parseEml } from "./eml.js";
@@ -220,13 +220,22 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
   };
   // KIT11_AP_AGENTS=on: the Checker agent decides on the case first. Code's checks then run as always, right before the
   // invoice is filed, and the agent's decision is enforced against them: it can make the outcome stricter, never looser.
-  const ran = agentsFor(deps) ? await askChecker(db, deps, sha, codeChecks()) : null;
+  const gl = glFor(db, reading, readBy);
+  // Task A6: the Coder agent starts now, in parallel with the Checker, on the invoice as it will be stored. Its answer is
+  // used only if the invoice is bookable once checked, and is enforced on the stored case then (src/ap/coderAgent.ts).
+  const earlyId = nextApId(db);
+  // Only when code's own checks would let it be booked: the Checker can make an outcome stricter, never looser, so an
+  // invoice code holds is never coded early (and costs nothing).
+  const first = agentsFor(deps) && cls.kind === "invoice" ? codeChecks() : null;
+  const early = first && bookable({ status: statusOf(first.findings), findings: first.findings, total: reading.total }) ? startCoder(db, {
+    id: earlyId, reading, vendor: reading.vendor, gl_account: gl.account, gl_rule: gl.rule, cost_centre: AP_COST_CENTRE, received_at: now.toISOString(),
+  } as ApInvoiceRow, checkText, { client: deps.coder, now: deps.now }) : null;
+  const ran = agentsFor(deps) ? await askChecker(db, deps, sha, first ?? codeChecks()) : null;
   const checked = codeChecks();
   const agent = ran ? enforced(ran, checked) : null;
   const findings = agent ? agent.findings : checked.findings;
   const status = agent ? agent.status : statusOf(findings);
   const id = nextApId(db);
-  const gl = glFor(db, reading, readBy);
   // A credit note by any sign (the model's label, its own words, or a total written negative, in brackets or with CR)
   // is stored as one (red team round 4: a negative total kept the "invoice" kind and counted as money owed).
   const kind = findings.some((x) => x.code === "credit_note") && (cls.kind === "invoice" || cls.kind === "credit_note") ? "credit_note" : cls.kind;
@@ -246,7 +255,10 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
   await checkpoint("ap.ingest:stored");
   if (needsNote({ status, findings })) await writeReviewNote(db, deps.reader, id, now);
   const inv = apInvoice(db, id)!;
-  await book(db, deps, inv, checkText);
+  // The early answer is the Coder's only when the invoice is still the one it started on (the same id).
+  await book(db, { ...deps, ...(early && inv.id === earlyId ? { early } : {}) }, inv, checkText);
+  // An early run is waited for either way, so its calls are counted within this action.
+  if (early) await early;
   return { kind: "invoice", invoice: inv };
 }
 
@@ -277,9 +289,9 @@ export async function ingestEmail(db: DB, deps: InboxDeps, raw: Buffer, meta: Re
  * Books an invoice's accrual once it is checked clean (sinks see each invoice once: on its first bookable status).
  * With KIT11_AP_AGENTS=on the Coder agent codes the invoice first, and the accrual is booked from that coding.
  */
-async function book(db: DB, deps: Pick<InboxDeps, "sink" | "now" | "coder" | "agents">, inv: ApInvoiceRow, text?: string): Promise<void> {
+async function book(db: DB, deps: Pick<InboxDeps, "sink" | "now" | "coder" | "agents"> & { early?: Promise<CoderAnswer> }, inv: ApInvoiceRow, text?: string): Promise<void> {
   if (!bookable(inv)) return;
-  const coded = await ensureCoded(db, inv, { text, client: deps.coder, now: deps.now, ...(deps.agents !== undefined ? { env: { KIT11_AP_AGENTS: deps.agents ? "on" : "off" } } : {}) });
+  const coded = await ensureCoded(db, inv, { text, client: deps.coder, now: deps.now, ...(deps.agents !== undefined ? { env: { KIT11_AP_AGENTS: deps.agents ? "on" : "off" } } : {}), ...(deps.early ? { early: deps.early } : {}) });
   await checkpoint("ap.book:coded");
   await pushOnce(db, deps.sink, "accrual", accrualEntries(coded), coded, (deps.now ?? (() => new Date()))());
   await checkpoint("ap.book:booked");

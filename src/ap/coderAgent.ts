@@ -150,47 +150,74 @@ function store(db: DB, inv: ApInvoiceRow, c: CodingCase, e: EnforcedCoding, raw:
   }).immediate();
 }
 
+/** What the Coder agent answered on a case: its accepted coding (or null), its run, and the origin of the answering call. */
+export interface CoderAnswer { raw: Coding | null; run: AgentRun | null; agent: Origin | null }
+
+/** The Coder agent's run on one case (no call when the invoice's own amounts cannot be read). Never throws. */
+async function runCoder(db: DB, built: CodingCase, task: string, deps: CoderDeps): Promise<CoderAnswer> {
+  let raw: Coding | null = null;
+  let agent: Origin | null = null;
+  let run: AgentRun | null = null;
+  try {
+    // An invoice whose own amounts cannot be read has no lines to code: no call is made for it.
+    if (!invoiceAmounts(built.invoice).ok) return { raw, run, agent };
+    const tools = coderTools.map((t): AgentTool<z.ZodType> => ({
+      name: t.name, description: t.description, input: coderInputs[t.name],
+      run: async (input) => {
+        const a = answerCoderTool(built, { name: t.name, input });
+        if (a.final && a.coding) {
+          raw = a.coding;
+          // D24: the origin of this very call (the agent, the model, the API request and the run), as the loop set it.
+          const o = currentOrigin();
+          agent = o && o.actor === "agent" ? o : null;
+        }
+        return { text: a.text, ...(a.blocked ? { blocked: a.blocked } : {}), ...(a.final ? { final: true } : {}) };
+      },
+    }));
+    run = await runAgent(db, {
+      agent: "treasury", task, model: deps.model ?? CODER_MODEL, system: CODER_SYSTEM, prompt: coderPrompt(built), tools, maxTurns: CODER_MAX_TURNS, effort: CODER_EFFORT,
+      unfinished: () => (raw ? null : CODER_UNFINISHED), ...(deps.retryDelayMs === undefined ? {} : { retryDelayMs: deps.retryDelayMs }),
+    }, deps.client === undefined ? claudeClient() : deps.client);
+  } catch {
+    // Whatever went wrong (the case, the loop, the client): code's fallback decides, labelled.
+  }
+  return { raw, run, agent };
+}
+
+/**
+ * Starts the Coder agent early (task A6: in parallel with the Checker, before the invoice is stored), on the case of
+ * the invoice as it will be stored. What it answers is enforced later by codeInvoice on the case as it is then; if the
+ * invoice is not bookable by then, the answer is not used. Never rejects.
+ */
+export function startCoder(db: DB, provisional: ApInvoiceRow, text: string, deps: CoderDeps = {}): Promise<CoderAnswer> {
+  try {
+    const c = codingCaseFor(db, provisional, text, (deps.now ?? (() => new Date()))().toISOString().slice(0, 10));
+    return runCoder(db, c, `ap.code.${provisional.id}`, deps).catch(() => ({ raw: null, run: null, agent: null }));
+  } catch {
+    return Promise.resolve({ raw: null, run: null, agent: null });
+  }
+}
+
 /**
  * Codes one invoice: the Coder agent's answer through enforceCoding, or code's labelled fallback when there is no
  * answer. Stored once: a second call for the same invoice makes no Claude call and returns the stored coding, and of
- * two processes only one stores. Never throws: any failure ends in the fallback.
+ * two processes only one stores. Never throws: any failure ends in the fallback. With `early`, the agent's answer is the
+ * one startCoder began; it is still enforced on the case as it is now.
  */
-export async function codeInvoice(db: DB, inv: ApInvoiceRow, text: string, deps: CoderDeps = {}): Promise<CodedInvoice> {
+export async function codeInvoice(db: DB, inv: ApInvoiceRow, text: string, deps: CoderDeps & { early?: Promise<CoderAnswer> | undefined } = {}): Promise<CodedInvoice> {
   const at = (deps.now ?? (() => new Date()))();
   const model = deps.model ?? CODER_MODEL;
   let c: CodingCase | null = null;
-  let raw: Coding | null = null;
-  let run: AgentRun | null = null;
-  let agent: Origin | null = null;
+  let answer: CoderAnswer = { raw: null, run: null, agent: null };
   try {
     const had = storedCoding(db, inv.id);
     if (had) return { coding: had, fresh: false, raw: null, run: null };
     c = codingCaseFor(db, inv, text, at.toISOString().slice(0, 10));
-    const built = c;
-    // An invoice whose own amounts cannot be read has no lines to code: no call is made for it.
-    if (invoiceAmounts(built.invoice).ok) {
-      const tools = coderTools.map((t): AgentTool<z.ZodType> => ({
-        name: t.name, description: t.description, input: coderInputs[t.name],
-        run: async (input) => {
-          const a = answerCoderTool(built, { name: t.name, input });
-          if (a.final && a.coding) {
-            raw = a.coding;
-            // D24: the origin of this very call (the agent, the model, the API request and the run), as the loop set it.
-            const o = currentOrigin();
-            agent = o && o.actor === "agent" ? o : null;
-          }
-          return { text: a.text, ...(a.blocked ? { blocked: a.blocked } : {}), ...(a.final ? { final: true } : {}) };
-        },
-      }));
-      run = await runAgent(db, {
-        agent: "treasury", task: `ap.code.${inv.id}`, model, system: CODER_SYSTEM, prompt: coderPrompt(built), tools, maxTurns: CODER_MAX_TURNS, effort: CODER_EFFORT,
-        unfinished: () => (raw ? null : CODER_UNFINISHED), ...(deps.retryDelayMs === undefined ? {} : { retryDelayMs: deps.retryDelayMs }),
-      }, deps.client === undefined ? claudeClient() : deps.client);
-    }
+    answer = deps.early ? await deps.early : await runCoder(db, c, `ap.code.${inv.id}`, deps);
   } catch {
     // Whatever went wrong (the case, the loop, the client): code's fallback decides below, labelled.
   }
-  const answered = raw as Coding | null;
+  const { raw: answered, run, agent } = answer;
   const enforced = c && answered ? enforceCoding(c, answered) : fallbackCoding(c as CodingCase);
   try {
     const stored = store(db, inv, c ?? codingCaseFor(db, inv, text, at.toISOString().slice(0, 10)), enforced, answered, run, agent, model, at);
@@ -227,7 +254,7 @@ function accrualBooked(db: DB, id: string): boolean {
  * passes the document's text when it has it; otherwise the stored document is read. Never throws: an invoice that
  * could not be coded is returned as it was, and is booked with the engine's own coding.
  */
-export async function ensureCoded(db: DB, inv: ApInvoiceRow, deps: CoderDeps & { text?: string | undefined; env?: Record<string, string | undefined> | undefined } = {}): Promise<ApInvoiceRow> {
+export async function ensureCoded(db: DB, inv: ApInvoiceRow, deps: CoderDeps & { text?: string | undefined; env?: Record<string, string | undefined> | undefined; early?: Promise<CoderAnswer> | undefined } = {}): Promise<ApInvoiceRow> {
   try {
     if (!apAgentsOn(deps.env) || inv.doc_kind !== "invoice" || !bookable(inv) || inv.coding || accrualBooked(db, inv.id)) return inv;
     await codeInvoice(db, inv, deps.text ?? (await documentText(db, inv)), deps);
