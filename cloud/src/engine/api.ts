@@ -42,3 +42,9 @@ export interface EngineApi {
   /** Forgets everything this company's engine holds (its ledger, its documents, its stand-in bank). */
   wipe(): Promise<void>;
 }
+
+/** Every action of the interface by name, held to the interface by the compiler. */
+const everyMethod = <T extends readonly (keyof EngineApi)[]>(names: keyof EngineApi extends T[number] ? T : never): T => names;
+
+/** What a caller across a boundary may ask a company's engine for (the Worker's stub of its Durable Object passes the name on). */
+export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "approve", "sync", "events", "vaultFiles", "vaultFile", "wipe"] as const);
