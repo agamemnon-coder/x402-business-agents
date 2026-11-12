@@ -45,7 +45,7 @@ export async function pageChecks(page: Page, shot: Shot): Promise<string[]> {
   const { body, menu } = await page.evaluate(() => ({ body: document.body.innerText, menu: (document.querySelector('nav[aria-label="Main"]') as HTMLElement | null)?.innerText ?? "" }));
   const flat = body.replace(/\s+/g, " ");
   const out = shot.must.filter((m) => !flat.includes(m)).map((m) => `missing "${m}"`);
-  if (shot.gate?.menuWithout && new RegExp(`\\b${shot.gate.menuWithout}\\b`).test(menu)) out.push(`gate ${shot.gate.stream}: the menu still has "${shot.gate.menuWithout}"`);
+  if (shot.gate?.menuWithout && menu.split(/\s+/).includes(shot.gate.menuWithout)) out.push(`gate ${shot.gate.stream}: the menu still has "${shot.gate.menuWithout}"`);
   if (shot.gate?.pageWith && !flat.includes(shot.gate.pageWith)) out.push(`gate ${shot.gate.stream}: no "${shot.gate.pageWith}" on the page`);
   return out;
 }
@@ -145,7 +145,8 @@ async function film(page: Page, shot: Shot, out: string, url: string, size: [num
         const from = await page.evaluate(() => scrollY), to = await aim(page, a.scroll, a.at ?? 0.3);
         for (const y of scrollFrames(from, to, a.s)) { await page.evaluate((y) => scrollTo(0, y), y); await write(await snap()); }
       } else if ("click" in a) {
-        await page.locator(`button:has-text("${a.click.replace(/"/g, '\\"')}"), a:has-text("${a.click.replace(/"/g, '\\"')}")`).first().click({ timeout: 10_000 });
+        // By role and accessible name: no selector is built from the text.
+        await page.getByRole("button", { name: a.click }).or(page.getByRole("link", { name: a.click })).first().click({ timeout: 10_000 });
         await page.waitForTimeout(700); await snap();
       } else if ("pick" in a) {
         await page.locator('input[type="file"]').first().setInputFiles(`${o.root}/${a.pick}`);

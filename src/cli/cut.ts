@@ -45,7 +45,7 @@ function ownArgs(): Map<string, { file: string; from: number; to?: number }> {
   return m;
 }
 
-const ff = (args: string[]) => execFileSync("ffmpeg", ["-y", "-hide_banner", "-loglevel", "error", ...args], { stdio: ["ignore", "inherit", "inherit"] });
+const ff = (args: string[], cwd?: string) => execFileSync("ffmpeg", ["-y", "-hide_banner", "-loglevel", "error", ...args], { stdio: ["ignore", "inherit", "inherit"], cwd });
 const ENC = draft ? ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18"] : ["-c:v", "libx264", "-preset", "medium", "-crf", "12"];
 const SEG = [...ENC, "-pix_fmt", "yuv420p", "-r", String(FPS), "-an"];
 const clipOf = (id: string) => resolve(out, "shots", `${id}.mp4`);
@@ -125,8 +125,9 @@ function render(cut: Cut, demoDay: boolean): void {
     audio = `${audio};[mix]${normaliseFilter(parseMeasured(r.stderr))}[aout]`;
   } else audio = audio.replace("[mix]", "[aout]");
   const master = resolve(out, `${name}.mp4`);
-  ff(["-i", picture, ...inputsTrimmed, "-filter_complex", `[0:v]ass='${ass.replace(/'/g, "\\'")}'[v];${audio}`, "-map", "[v]", "-map", "[aout]",
-    ...(draft ? ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20"] : ["-c:v", "libx264", "-preset", "slow", "-crf", "16"]), "-pix_fmt", "yuv420p", "-r", String(FPS), "-c:a", "aac", "-b:a", "320k", "-ar", "48000", "-t", String(len), "-movflags", "+faststart", master]);
+  // The captions file is named relative to the build folder (ffmpeg runs there), so no path is quoted into the filter.
+  ff(["-i", picture, ...inputsTrimmed, "-filter_complex", `[0:v]ass=captions.ass[v];${audio}`, "-map", "[v]", "-map", "[aout]",
+    ...(draft ? ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20"] : ["-c:v", "libx264", "-preset", "slow", "-crf", "16"]), "-pix_fmt", "yuv420p", "-r", String(FPS), "-c:a", "aac", "-b:a", "320k", "-ar", "48000", "-t", String(len), "-movflags", "+faststart", master], build);
   writeFileSync(resolve(out, `${name}.srt`), srt(placed));
   writeFileSync(resolve(out, `cut-${n}${demoDay ? "-demoday" : ""}.json`), JSON.stringify({ cut: cut.id, demoDay, seconds: len, chapters: chapters(placed), rows: placed.map((p) => ({ id: p.row.id, start: p.start, seconds: p.seconds, kind: p.row.kind, words: p.row.words, claims: p.row.claims, segs: p.segs.map((g) => ({ start: g.start, seconds: g.seconds, shot: g.shot ?? g.own ?? "card", caption: g.caption ?? null, badge: g.badge ?? null })) })) }, null, 2) + "\n");
   writeFileSync(resolve(out, `script-${n}${demoDay ? "-demoday" : ""}.md`), scriptMarkdown(cut, placed));

@@ -37,7 +37,9 @@ function list(): void {
 function localSite(): Promise<{ url: string; close: () => void }> {
   const pages = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv);
   const srv = createServer((req, res) => {
-    const r = pageResponse(new Request(`http://local${req.url}`), pages) ?? notFoundResponse(pages);
+    // Only a plain path reaches the Worker's router; the origin is fixed and nothing is fetched.
+    const path = /^\/[A-Za-z0-9._/-]*$/.test(req.url ?? "") ? req.url! : "/";
+    const r = pageResponse(new Request(new URL(path, "http://local.test").href), pages) ?? notFoundResponse(pages);
     void r.arrayBuffer().then((b) => { res.writeHead(r.status, Object.fromEntries(r.headers)); res.end(Buffer.from(b)); });
   });
   return new Promise((ok) => srv.listen(0, "127.0.0.1", () => ok({ url: `http://127.0.0.1:${(srv.address() as AddressInfo).port}`, close: () => srv.close() })));

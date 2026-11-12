@@ -20,7 +20,7 @@ const SITE = "https://x.test";
 const ID = "AbCdEfGhIj_";
 const none = filmWatchPage({ id: null });
 const withFilm = filmWatchPage({ id: ID });
-const text = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(/\s+/g, " ");
+const text = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ");
 const placed = resolveCut(WALKTHROUGH);
 
 describe("/watch without the film (as today)", () => {
