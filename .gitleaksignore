@@ -109,4 +109,6 @@ ff083878d6a3d83d17bbb6be0caf35ce8c56a018:src/cli/awxDepth.ts:generic-api-key:143
 # 12 Nov: reads the key name from env (env.X ?? process.env.X), no secret value
 a0a455444a30a936bb6c5f3b100b41d71cb94fd7:cloud/src/engine/hostWorker.ts:generic-api-key:115
 # 12 Nov: a passkey fingerprint is the hash of a public key (shown on the phone), not a secret
+# 12 Nov: the passkey fingerprint in the same record is the first 8 bytes of SHA-256 of the passkey's public key, the
+# number the enrol page shows on screen to compare with the runner (public by design, not a key)
 596c800a0832e27e3812ffbc8cb15d2728d1926b:docs/runs/2026-11-12-tokenize.json:generic-api-key:25
