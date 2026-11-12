@@ -717,3 +717,19 @@ Cloud) sat on its integration branch, pull request #113, under the note "Do not 
     PDFs, e-mail, tokens and tenancy, before any go-live.
 - **If wrong:** a juror reads the product as part of the Kit 11 submission, or as finished. The README, the form text
   and [after-the-kit.md](after-the-kit.md) therefore keep it apart from the Kit 11 runs and say it is not live.
+
+### D30. The worst case counts the task cards (12 November)
+
+On 6 November the worst case, set by policy (1.1), left the Treasury agent's task cards out of the bold figure and
+named them on a line of their own ("apart"). On 12 November 2026, after the jury panel's review (the bold headline left
+out the largest exposure), the task cards are counted in the bold figure; this replaces the decision of 6 November.
+
+- **What changes:** only what the headline counts and says. `EXPOSURE_TASK_CARDS` in `src/policy/exposure.ts` is
+  `"counted"`: the bold figure is each card's monthly limit, plus the task cards the Treasury agent may issue without
+  Face ID (per day times 31 days), plus each Metal mandate's budget in test USD. The fold, "How this is computed",
+  shows each part per agent, and the parts add up to the bold figure. The README, the CFO's view, step 0 of
+  `/try/sign`, llms.txt and the form's sentence (`worstCaseLine()`, in docs/submission/qa.md) take the same words from
+  the same function.
+- **What stays:** every limit, cap, count and default (`src/config/policy.ts`, the rules). No policy changed.
+- **Held by:** `test/exposure.test.ts`: the bold figure is never smaller than the parts its fold reveals, for the
+  starting policy, the main run's policy and a `/try/sign` world's policy.

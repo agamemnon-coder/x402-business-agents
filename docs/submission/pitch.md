@@ -1,6 +1,6 @@
 # Purser: the pitch
 
-For Max, in English, to say out loud. First the **Demo Day pitch** (3 minutes, in the site's order: Home, Watch, the
+For Max, in English, to say out loud. First the **Demo Day pitch** (3 minutes, in the order of 7 November: Home, the replay at `/watch`, the
 live demo of `/try/sign`, then the proof);
 below it the earlier three lengths, kept for when there is no live demo (the 3-minute version there plays the main
 run's replay instead). One sentence per row, at most 14 words, one message each; the only longer one is the core line,
@@ -26,7 +26,8 @@ Max says the figures as words ("twenty-four"); they are written as digits here s
 
 ## Demo Day: the 3-minute pitch (19 November)
 
-Four parts, in the site's order (Max, 7 Nov): Home, then Watch, then the live demo of `/try/sign`, then the proof. Max
+Four parts, in the order Max set on 7 Nov: Home, then the replay at `/watch` (out of the site's menu since 12 Nov),
+then the live demo of `/try/sign`, then the proof. Max
 speaks at about **2.3 words a second**; each part's budget is its seconds times 2.3, and the words written stay under
 it, so the taps, the Face ID prompts and the tab switches fit in the rest. The words are counted the way
 `test/demo-day-pack.test.ts` counts them (the "Max says" column only).
@@ -57,8 +58,8 @@ Demo Day script".
 | Laptop: Home. Look at the jury, not the screen. | AI agents are starting to spend company money. | [docs/business/problem.md](../business/problem.md), "Why now (sourced)" |
 | | But a prompt is not a financial control; Airwallex says so itself. | [docs/business/problem.md](../business/problem.md) [S1]: "A prompt is not a financial control." (Airwallex, 5 October 2026) |
 | Pause one beat. | So who signs off? | The film's hook (`01-hook`) |
-| Click **Start: watch the agents**: [/watch](https://kit11.max-31b.workers.dev/watch) plays the main run. | This is Purser: three Claude agents running a company, replayed. | `START` and `FLOW` (`src/redesign/home.ts`); `/watch` label "Replay of the main run" (`runLabel`, `src/redesign/run.ts`) |
-| Pick up the phone. | Now I take the CFO's chair. | Home's step 2, "Try it yourself" (`FLOW`) |
+| Switch to the tab with [/watch](https://kit11.max-31b.workers.dev/watch) (Home has no button to it since 12 Nov): it plays the main run. | This is Purser: three Claude agents running a company, replayed. | `/watch`'s heading "Replay of the main run, 3 November" (`replayHead`, `src/redesign/watch.ts`; the words are `runLabel`'s, `src/redesign/run.ts`) |
+| Pick up the phone. | Now I take the CFO's chair. | Home's button, "Try it yourself" (`START`, `src/redesign/home.ts`) |
 
 ### 0:20–1:30 · Live: sign, cheat, trick, change the rule (`/try/sign`)
 
@@ -144,7 +145,7 @@ screen at each step: [demo-day.md](demo-day.md), "The runbook".
 | | Each has its own Airwallex card and its own Metal mandate. | README, third paragraph |
 | | Inside its limits an agent pays alone; beyond them, the CFO signs. | `RULE_LINE` (Max, 5 Nov); form text, Controls |
 | | In this demo, I play the CFO. | Log, "Approvals" (CFO = Max) |
-| **0:40 The run, on /watch** | A replay of our main run, 3 November. | Log; `/watch` label "Replay of the main run, 3 Nov 11:16–11:33 UTC" |
+| **0:40 The run, on /watch** | A replay of our main run, 3 November. | Log; `/watch` heading "Replay of the main run, 3 November", beside it "11:16–11:33 UTC" |
 | | The supplier doubles its price, past the Sourcing agent's cap. | Record: Stockline 0.02 → 0.04, cap 0.03 (`homeFilm`) |
 | | We switched off our own check once to prove the chain holds the line. | Record: `letThroughOf` (`upstream.let_through`, seq 114); `CHAIN_TEST`, `DEFENSE_IN_DEPTH` |
 | | Metal refused it; the refusal is recorded on chain. | `REFUSAL_LINE`; Record: 402 `mandate_cap_exceeded`, tx `0x2e92f9cb…1871` (seq 119) |

@@ -17,6 +17,13 @@ export function designPartnerHtml(url: string = DESIGN_PARTNER_URL): string {
   if (!/^(https:\/\/|mailto:)[^\s"'<>]+$/.test(url)) return "";
   return `<p class="partner"><a href="${url.replace(/&/g, "&amp;")}">${DESIGN_PARTNER_LABEL} →</a></p>`;
 }
+/**
+ * Where the public demo of the product for small companies lives (an invoice inbox with the same Face ID control;
+ * its code is in this repository, docs/after-the-kit.md). Empty until it has a public address; while empty, Home says
+ * nothing about it. Once set (an https: URL), Home shows one line and one link under its last button
+ * (src/redesign/home.ts NEXT_NEXT; test/home-story.test.ts holds both states).
+ */
+export const SMALL_COMPANY_DEMO_URL = "";
 export const TAGLINE = "Give every AI agent its own company card, with limits the CFO sets.";
 
 /**

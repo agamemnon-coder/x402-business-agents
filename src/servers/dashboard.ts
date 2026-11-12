@@ -298,7 +298,9 @@ export const NOT_FOUND_CSP = styleOnlyCsp(NOT_FOUND_PAGE);
 export const HOME_PAGE = homePage();
 export const WATCH_PAGE = watchPage();
 export const PROOF_PAGE = proofPage();
-export const HOME_CSP = cspFor(HOME_PAGE);
+/** Home's hero checks a signature in the browser and Home calls no server: its CSP allows no connection at all. */
+const homeCsp = (html: string) => cspFor(html).replace("connect-src 'self'", "connect-src 'none'");
+export const HOME_CSP = homeCsp(HOME_PAGE);
 /** /try/sign (TRY_SIGN_ENABLED): the page, under the same kind of hash-based CSP; the bundle carries it only when on. */
 export const TRY_SIGN_PAGE = trySignPage();
 export const TRY_SIGN_CSP = cspFor(TRY_SIGN_PAGE);
@@ -311,7 +313,7 @@ export const JUDGE_CSP = cspFor(JUDGE_PAGE).replace("connect-src 'self'", "conne
 /** Home with its "Sign with your own Face ID" button: only in a bundle that also carries /try/sign. */
 export function homeWithTrySign(): { page: string; csp: string } {
   const page = homePage(undefined, { trySign: true });
-  return { page, csp: cspFor(page) };
+  return { page, csp: homeCsp(page) };
 }
 export const WATCH_CSP = cspFor(WATCH_PAGE);
 /**

@@ -12,14 +12,15 @@ export type NavKey = "home" | "watch" | "try" | "proof" | "overview" | "metal" |
 /** The four tabs (redesign, Max 2 Nov); the fifth item, "More", follows them in navHtml (12 Nov). */
 export const NAV_MAIN: [NavKey, string, string][] = ([
   ["home", "Home", "home"],
-  ["watch", "Watch", "watch"],
   ["try", "Try", "try"],
   ["proof", "Proof", "proof"],
 ] as [NavKey, string, string][]).filter(([k]) => k !== "watch" || WATCH_IN_MENU);
 
 /** Which tab a page belongs to: the detail pages and the dashboard sit under Proof. */
 // The partner pages (metal, visa, airwallex, claude) are listed under "More" (12 Nov): they mark it themselves (moreHtml), not Proof.
-const TAB_OF: Partial<Record<NavKey, NavKey>> = { overview: "home", live: "watch", demo: "watch", dashboard: "proof", month: "proof", lab: "proof" };
+// The replay (/replay, and /live and /demo that lead there; /watch until 12 Nov) sits under Proof while the film's
+// Watch tab is off (home-story); with the film in the menu it is Watch's, as main had it.
+const TAB_OF: Partial<Record<NavKey, NavKey>> = { overview: "home", ...(WATCH_IN_MENU ? { live: "watch", demo: "watch" } as const : { watch: "proof", live: "proof", demo: "proof" } as const), dashboard: "proof", month: "proof", lab: "proof" };
 
 /** The navigation, with the current tab marked: the four tabs, then "More". */
 export function navHtml(current: NavKey | null, id?: string, cls?: string): string {
@@ -40,7 +41,8 @@ ${MORE_CSS}
 @media (max-width: 520px) { header.top { flex-wrap: wrap !important; } header.top nav.pnav.pnav > a { padding: 8px 10px !important; font-size: 15px !important; } .pnav .pmore > summary { padding: 8px 8px 8px 10px; } }
 @media (max-width: 460px) { .pnav { gap: 0 !important; } header.top nav.pnav.pnav > a { padding: 8px 8px !important; font-size: 14.5px !important; } .pnav .pmore > summary { padding: 8px 6px 8px 8px; font-size: 14.5px; } }
 @media (max-width: 380px) { header.top nav.pnav.pnav > a { padding: 8px 7px !important; } .pnav .pmore > summary { padding: 8px 5px 8px 7px; } }
-@media (max-width: 340px) { header.top nav.pnav.pnav > a { padding: 8px 5px !important; font-size: 14px !important; } .pnav .pmore > summary { padding: 8px 4px 8px 5px; font-size: 14px; gap: 2px; } }`;
+@media (max-width: 340px) { header.top nav.pnav.pnav > a { padding: 8px 5px !important; font-size: 14px !important; } .pnav .pmore > summary { padding: 8px 4px 8px 5px; font-size: 14px; gap: 2px; } }
+@media (max-width: 430px) { .pnav > a, .pnav summary { display: inline-flex !important; align-items: center; min-height: 44px; } }`;
 
 /** Purser's mark (a feather), the same on every page's brand. */
 const MARK = '<span class="mark"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></svg></span>';
@@ -52,7 +54,11 @@ header.top .brand { display: inline-flex; align-items: center; gap: 9px; font: 7
 header.top .brand .mark { width: 30px; height: 30px; border-radius: 9px; background: var(--text, #0b1220); color: var(--bg, #fff); display: inline-grid; place-items: center; flex: none; }
 header.top .brand .mark svg { width: 16px; height: 16px; }
 header.top nav.pnav { margin-left: auto; width: auto; }
-@media (max-width: 900px) { header.top { padding: 10px 16px; gap: 6px 10px; } }`;
+@media (max-width: 900px) { header.top { padding: 10px 16px; gap: 6px 10px; } }
+/* On a phone every control of the header is a 44 px target, in a header no taller than before: less padding around the
+   menu, and a chip (a page's own "what's real?") keeps its look inside a clear border. */
+@media (max-width: 430px) { header.top { padding-top: 6px !important; padding-bottom: 6px !important; } header.top .brand { min-height: 44px; }
+  header.top button.real { min-height: 44px; border: solid transparent; border-width: 10px 0; background-clip: padding-box; box-shadow: inset 0 0 0 1px currentColor; } }`;
 
 /** Replaces a page's own navigation with the shared one and adds its style (before the page's CSP hash is taken). */
 export function withNav(page: string, current: NavKey | null): string {
