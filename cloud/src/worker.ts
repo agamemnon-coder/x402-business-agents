@@ -9,6 +9,7 @@ import { d1Sql, r2Blobs, type D1Like, type R2Like } from "./store.js";
 import { sqlBlobs } from "./blobsSql.js";
 import { ENGINE_MODE, engineStubs, type EngineNamespace } from "./engine/client.js";
 import { sweepTry } from "./try/sweep.js";
+import { expireStale } from "./engine/spend.js";
 import { logEvent } from "./log.js";
 
 export interface Bindings {
@@ -60,7 +61,8 @@ export default {
     // The hands-on deployment: visitors' companies past their 24 hours are wiped (cloud/src/try/sweep.ts), whatever
     // the other jobs do: it runs first and on its own, so neither of them failing can skip it.
     if (env.tryIt) {
-      try { await sweepTry({ sql: env.sql, blobs: env.blobs, ...(env.engine ? { engine: env.engine } : {}), now: new Date() }); } catch (e) {
+      // Lane A's Claude reservations older than ten minutes are closed at their full amount (cloud/src/engine/spend.ts).
+      try { await sweepTry({ sql: env.sql, blobs: env.blobs, ...(env.engine ? { engine: env.engine } : {}), settle: expireStale, now: new Date() }); } catch (e) {
         logEvent("error", "try_sweep_failed", { error: e instanceof Error ? e.message : String(e) });
       }
     }

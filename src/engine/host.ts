@@ -32,6 +32,7 @@ import { syncVault, type YearIndex } from "../vault/build.js";
 import { closedPeriods, invoiceDocs, receipts } from "../vault/data.js";
 import { yearIndexPath } from "../vault/layout.js";
 import { sha256, type VaultSink } from "../vault/sink.js";
+import { actionBudget, type ClaudeAccess } from "./budget.js";
 import { publicEvent, type EngineEvent, type EventRow } from "./events.js";
 import { checkCompose, invoiceText, SEEDED_SUPPLIERS, type ComposeInput, type ComposeRefusal, type Sample, type SupplierOnFile } from "./tryWorld.js";
 import { pdfOf } from "../e2e/documents.js";
@@ -64,6 +65,11 @@ export interface EngineDeps {
   samples?: readonly Sample[];
   /** At most this many documents in the company's ledger, whatever route brings them (8 for a try company); absent: no limit. */
   maxDocuments?: number;
+  /**
+   * Claude under caps (src/engine/budget.ts): each action that may ask Claude reserves its ceiling first, reads within
+   * it, and settles to what it cost; refused, the parser reads and a claude.capped row says why. Absent: `reader` reads.
+   */
+  claude?: ClaudeAccess;
 }
 
 /** What an upload, a sample or a composed invoice answers. */
@@ -199,16 +205,51 @@ export class EngineHost {
     return run;
   }
 
-  async status(): Promise<{ mode: "test_money"; passkey: { credential_id: string; label: string } | null; balances: Record<string, string>; chains: { audit: boolean; ledger: boolean } }> {
+  async status(): Promise<{
+    mode: "test_money"; passkey: { credential_id: string; label: string } | null; balances: Record<string, string>; chains: { audit: boolean; ledger: boolean };
+    /** Who reads the next document: Claude (when the caps allow it), or the parser. */
+    reader: "claude" | "parser";
+    /** Who decides: the product's agents with Claude, or code. The agents join with task A6. */
+    agents: "live" | "code";
+    /** What this company's Claude calls cost so far, in micro-USD at list price, and its cap (null: none known). */
+    spent_micros: number;
+    cap_micros: number | null;
+  }> {
     const { db, rails } = this.deps;
     const pk = activePasskey(db);
     const balances = await rails.rail.balances();
+    const claude = this.deps.claude ? await this.deps.claude.status() : { on: false, cap_micros: null };
     return {
       mode: "test_money",
       passkey: pk ? { credential_id: pk.credential_id, label: pk.label } : null,
       balances: Object.fromEntries(Object.entries(balances).map(([currency, b]) => [currency, fromCents(b?.availableCents ?? 0)])),
       chains: { audit: verifyAuditChain(db).ok, ledger: verifyLedger(db).ok },
+      reader: claude.on ? "claude" : "parser", agents: "code", spent_micros: claudeCost(db, 0), cap_micros: claude.cap_micros,
     };
+  }
+
+  /**
+   * One action that may ask Claude: its ceiling reserved first. Refused, the parser reads and a claude.capped row says
+   * why. Reserved, `run` gets a reader spending from the action's budget, and afterwards the reservation is settled to
+   * what the action's calls cost: the rows' costs, or what the budget counted (a call that failed after it was sent is
+   * counted at its worst case), never more than the reservation. Without Claude access, the host's own reader reads.
+   */
+  private async withClaude<T>(task: string, run: (reader: Asker) => Promise<T>): Promise<T> {
+    const { db, claude } = this.deps;
+    if (!claude) return run(this.deps.reader);
+    const got = await claude.reserve();
+    if (!got.ok) {
+      audit(db, "system", "claude.capped", task, { reason: got.reason });
+      return run(parserOnly);
+    }
+    const { micros, settle } = got.reservation;
+    const budget = actionBudget(micros);
+    const from = lastSeq(db);
+    try {
+      return await run(claude.reader(db, budget));
+    } finally {
+      await settle(Math.min(micros, Math.max(claudeCost(db, from), micros - budget.left())));
+    }
   }
 
   /** The treasury's test money, floors and payees on the rails, once; safe to repeat. */
@@ -224,13 +265,14 @@ export class EngineHost {
     return this.act(() => this.ingest(doc));
   }
 
-  /** The inbox, inside the queue: filed, read and checked, within the company's document cap. */
+  /** The inbox, inside the queue: filed, read (within the Claude caps when they are on) and checked, within the company's document cap. */
   private async ingest(doc: { bytes: Uint8Array; filename: string; mime?: string }): Promise<UploadResult> {
-    const { db, reader } = this.deps;
+    const { db } = this.deps;
     const bytes = Buffer.isBuffer(doc.bytes) ? doc.bytes : Buffer.from(doc.bytes.buffer, doc.bytes.byteOffset, doc.bytes.byteLength);
     this.pdfOnly(bytes, doc.filename);
     this.roomFor(sha256(bytes));
-    const out = await ingestDocument(db, { dir: NO_FOLDER, reader, now: () => this.now() }, { bytes, filename: doc.filename, ...(doc.mime ? { mime: doc.mime } : {}), source: "upload" });
+    const out = await this.withClaude(`engine.upload:${sha256(bytes).slice(0, 16)}`, (reader) =>
+      ingestDocument(db, { dir: NO_FOLDER, reader, now: () => this.now() }, { bytes, filename: doc.filename, ...(doc.mime ? { mime: doc.mime } : {}), source: "upload" }));
     if (out.kind === "duplicate_document") return { kind: out.kind, sha256: out.sha256, invoice: out.invoice_id ? this.invoice(out.invoice_id) : null };
     const inv = firstInvoice(out);
     // Read again: a note written after the checks is on the row, not on what the inbox returned.
@@ -259,9 +301,9 @@ export class EngineHost {
   /** Files the invoice's payment for the CFO's approval. A reason not to (the engine's own words) comes back, and no proposal is made. */
   propose(invoiceId: string): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }> {
     return this.act(async () => {
-      const { db, rails, reader } = this.deps;
+      const { db, rails } = this.deps;
       try {
-        const out = await payApInvoice(db, rails.rail, invoiceId, this.now(), reader);
+        const out = await this.withClaude(`engine.propose:${invoiceId}`, (reader) => payApInvoice(db, rails.rail, invoiceId, this.now(), reader));
         if (out.kind !== "proposed") return { ok: false, reason: out.reason };
         const proposal = this.proposal(out.proposal.proposal_id);
         if (!proposal) return { ok: false, reason: `${out.proposal.proposal_id} was filed but is not in the ledger` };
@@ -621,4 +663,19 @@ export class EngineHost {
     const batches = batchesFor(this.deps.db, { audit: { seq: 0, hash: null }, ledger: { entry_id: 0, hash: null }, documents: [] }, { now });
     return { format: "purser.cloud-sync/v1", company: this.deps.company.name, made_at: now.toISOString(), batches };
   }
+}
+
+/** The last row of the audit log (0 for none). */
+function lastSeq(db: DB): number {
+  return (db.prepare("SELECT COALESCE(MAX(seq), 0) AS n FROM audit_log").get() as { n: number }).n;
+}
+
+/** What the Claude calls written after `afterSeq` cost, in micro-USD: the readings' and the agents' runs' own figures. */
+function claudeCost(db: DB, afterSeq: number): number {
+  const rows = db.prepare("SELECT payload_json FROM audit_log WHERE seq > ? AND event IN ('claude.read', 'agent.run')").all(afterSeq) as { payload_json: string }[];
+  let n = 0;
+  for (const r of rows) {
+    try { const c = (JSON.parse(r.payload_json) as { cost_usd_micros?: unknown }).cost_usd_micros; if (typeof c === "number" && c > 0) n += c; } catch { /* a row without a cost adds nothing */ }
+  }
+  return n;
 }

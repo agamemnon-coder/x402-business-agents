@@ -243,6 +243,18 @@ for (const { file } of D1 ? CONFIGS : []) describe(`the engine in a Durable Obje
     expect(pay.json.error).toMatch(/^AP-0002 is needs review, not ready to pay/);
   });
 
+  it("holds a company to 2 reads of its events a second, in its own object: past that 429 slow_down with retry_ms", async () => {
+    const answers = await Promise.all([0, 1, 2].map(() => req("GET", "/v1/engine/events?after=0", { key: A.session })));
+    const slowed = answers.filter((a) => a.status === 429);
+    expect(slowed.length, JSON.stringify(answers.map((a) => a.status))).toBeGreaterThanOrEqual(1);
+    expect(slowed[0]!.json).toMatchObject({ code: "slow_down", error: expect.stringContaining("slow down"), retry_ms: expect.any(Number) });
+    expect(slowed[0]!.json.retry_ms as number).toBeGreaterThan(0);
+    expect(slowed[0]!.json.retry_ms as number).toBeLessThanOrEqual(1000);
+    // A second later the company reads again.
+    await new Promise((r) => setTimeout(r, 1_100));
+    expect((await req("GET", "/v1/engine/events?after=0", { key: A.session })).status).toBe(200);
+  });
+
   it("keeps companies apart: the other company finds nothing of this one, and its own engine is empty", async () => {
     const path = ((await req("GET", "/v1/engine/vault", { key: A.session })).json.files as { path: string }[])[0]!.path;
     expect((await req("POST", "/v1/engine/invoices/AP-0001/pay", { key: B.session })).status).toBe(404);
