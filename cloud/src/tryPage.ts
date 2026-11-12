@@ -157,6 +157,18 @@ main > h1 { animation: slide .34s cubic-bezier(.2,.7,.2,1) both; }
 @keyframes slidein { from { opacity: .01; transform: translateX(-10px); } }
 /* Screen 2: the invoice as the engine's answer has it, its rows lit one by one once the answer is in. */
 .inv { margin: 14px 0 4px; padding: 14px 16px; }
+/* Screen 2 while the request is in flight: who reads (with the open call's running time), and the card's skeleton. */
+.reading { display: flex; align-items: center; gap: 8px; margin: 4px 0 0; color: var(--muted); font-size: 15px; }
+.reading .n { color: var(--faint); font-variant-numeric: tabular-nums; font-size: 13px; }
+.reading .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 1.2s ease-in-out infinite; }
+.inv.skel .rows > div { animation: none; }
+.inv.skel .sk { display: inline-block; width: 7.5em; max-width: 100%; height: .9em; border-radius: 6px; vertical-align: middle;
+  background: linear-gradient(90deg, var(--sunken) 0%, var(--border) 50%, var(--sunken) 100%) 0 0 / 200% 100%; animation: shimmer 1.3s linear infinite; }
+.inv.skel .rows > div:nth-child(2) .sk { width: 5em; } .inv.skel .rows > div:nth-child(3) .sk { width: 6em; } .inv.skel .rows > div:nth-child(4) .sk { width: 5.5em; }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@keyframes pulse { 50% { opacity: .35; } }
+/* A calm word under a field or the form: the danger tone, muted, never a red box. */
+.hint.calm { margin: 6px 0 0; color: color-mix(in srgb, var(--bad) 70%, var(--muted)); font-size: 13.5px; }
 .inv .ih { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 6px; font-weight: 650; font-size: 15px; }
 .inv .ih .i { color: var(--accent); }
 .inv .rows { margin: 0; }
@@ -254,7 +266,11 @@ ul.runs .rd { font-size: 13px; color: var(--muted); }
  *   the console's credOf, registrationOf and signedOf, the same as src/approve/client.ts serializeRegistration and
  *   serializeAssertion).
  * - hashDiff(a, b): each hash as runs of [text, differs], every character where the two differ marked.
- * - normAmount(raw, like): an amount typed with a comma or a dot, in the format of the terms' own amount (like), or null.
+ * - normAmount(raw, like?): an amount as people write it (10k, 1.5k, 10.000, 10,000, € 10.000,00, EUR 10,000.00,
+ *   1.850,01, 1850,01, 1850.5), in the format of like (the terms' own amount; two decimals when none), or null. A
+ *   currency sign or code and spaces go; a trailing k is thousands; with both separators the last is the decimal mark;
+ *   one kind of separator before groups of exactly three digits is thousands, otherwise the decimal mark. Negative,
+ *   zero, letters and more decimals than like has: null. A field equal to like stays like. Screens 1 and 4 share it.
  * - payBody(terms, values, credential): the pay route's body: the stored terms with the three fields' values written in,
  *   and the kept credential; nothing else.
  * - changedFields, verdict: what changed, from the signed and the sent values (the route's `changed` is lane C's: an
@@ -273,10 +289,28 @@ const signKit=(()=>{
     a=String(a);b=String(b);return {a:runs(a,b),b:runs(b,a)};
   };
   const normAmount=(raw,like)=>{
-    const m=/^(\d{1,12})(?:[.,](\d{1,6}))?$/.exec(String(raw).replace(/\s/g,''));if(!m)return null;
-    const d=(/\.(\d+)$/.exec(String(like))||['',''])[1].length;const frac=m[2]||'';
+    const L=like===undefined||like===null?'0.00':String(like);let s=String(raw).replace(/\s/g,'');
+    if(like!==undefined&&like!==null&&s===L&&/^\d+(\.\d+)?$/.test(L))return L;
+    s=s.replace(/^(€|eur)/i,'').replace(/(€|eur)$/i,'');
+    const k=/^[^k]*\d[kK]$/.test(s);if(k)s=s.slice(0,-1);
+    if(!/^\d[\d.,]*\d$|^\d$/.test(s))return null;
+    const grouped=(x,t)=>new RegExp('^\\d{1,3}(\\'+t+'\\d{3})+$').test(x);
+    const seps=s.replace(/\d/g,'');let int=s,frac='';
+    if(seps.indexOf('.')>=0&&seps.indexOf(',')>=0){
+      const dec=seps[seps.length-1],thou=dec==='.'?',':'.',at=s.lastIndexOf(dec);
+      if(s.indexOf(dec)!==at||!grouped(s.slice(0,at),thou))return null;
+      int=s.slice(0,at).split(thou).join('');frac=s.slice(at+1);
+    }else if(seps){
+      const c=seps[0];
+      if(grouped(s,c))int=s.split(c).join('');
+      else if(seps.length===1){int=s.slice(0,s.indexOf(c));frac=s.slice(s.indexOf(c)+1)}
+      else return null;
+    }
+    if(k){frac=frac.padEnd(3,'0');int=int+frac.slice(0,3);frac=frac.slice(3)}
+    const d=(/\.(\d+)$/.exec(L)||['',''])[1].length;
     if(frac.length>d)return null;
-    const int=m[1].replace(/^0+(?=\d)/,'');return d?int+'.'+frac.padEnd(d,'0'):int;
+    int=int.replace(/^0+(?=\d)/,'');if(int.length>12||!/[1-9]/.test(int+frac))return null;
+    return d?int+'.'+frac.padEnd(d,'0'):int;
   };
   const FIELDS=['amount','beneficiary_name','iban_last4'];
   const payBody=(terms,v,credential)=>{const t=Object.assign({},terms);for(const k of FIELDS)t[k]=v[k];return {terms:t,credential:credential}};
@@ -530,7 +564,10 @@ screen('start',{heading:C.start.heading,band:false,draw(box){
     const r=await call('POST','/v1/try/start',TOKEN?{token:TOKEN}:{});
     if((r.status===201||r.status===200)&&typeof r.json.session==='string'){
       for(const k of ['tenant','session','visitor_token','expires_at','pool','mode'])S[k]=r.json[k]??null;
-      S.after=0;save();armRenewal();show('invoice');return;
+      // Warm the company's engine while screen 1 is read: its status (which loads the engine object) and the samples, in
+      // parallel and not awaited, so the engine is warm when the visitor files an invoice. Only here, after the click:
+      // never on load or on hover, which would start a company for every crawler and spend the start limits.
+      S.after=0;save();armRenewal();WARM.engine=api('GET','/v1/engine');WARM.samples=api('GET','/v1/engine/samples');show('invoice');return;
     }
     b.disabled=false;label(C.start.button,true);
     const said=typeof r.json.message==='string'&&r.json.message?r.json.message:C.start.failed;
@@ -540,12 +577,17 @@ screen('start',{heading:C.start.heading,band:false,draw(box){
   });
 }});
 
+// The warm-up's answers, taken once by the screen that needs them (screen 1 takes the samples).
+const WARM={engine:null,samples:null};
+
 // 1 Invoice: a sample, or one written here.
 function today(plus){const d=new Date(Date.now()+(plus||0)*86400000);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function field(label,input,id){input.id=id;const l=el('label','',label);l.htmlFor=id;return el('div','f',[l,input])}
 function input(type,value){const i=el('input');i.type=type;if(value!==undefined)i.value=value;return i}
 async function catchUp(){for(let i=0;i<20;i++){const r=await call('GET','/v1/engine/events?after='+encodeURIComponent(S.after||0)+'&limit=200');if(r.status!==200||!Array.isArray(r.json.items))return;if(typeof r.json.next==='number')S.after=r.json.next;save();if(r.json.items.length<200)return}}
-screen('invoice',{heading:C.invoice.heading,draw(box){
+screen('invoice',{heading:C.invoice.heading,draw(box,arg){
+  // arg.draft: the invoice written here, back from a compose the server refused (arg.said: its words, under the form).
+  const draft=arg&&arg.draft&&typeof arg.draft==='object'?arg.draft:null;
   // Two tabs and one main button under both: it files the sample picked, or the invoice written.
   const tabs=el('div','tabs');tabs.setAttribute('role','tablist');
   const pick=el('div','panel'),write=el('div','panel');pick.setAttribute('role','tabpanel');write.setAttribute('role','tabpanel');
@@ -561,7 +603,8 @@ screen('invoice',{heading:C.invoice.heading,draw(box){
   // Pick a sample: one button per sample, the title only; the first is picked.
   let picked=null;
   pick.append(el('p','muted',C.invoice.loading));
-  api('GET','/v1/engine/samples').then((r)=>{
+  const samples=WARM.samples||api('GET','/v1/engine/samples');WARM.samples=null;
+  samples.then((r)=>{
     if(r.status!==200||!Array.isArray(r.json.items)){pick.replaceChildren(el('p','note',typeof r.json.message==='string'?r.json.message:C.invoice.failed));return}
     const list=el('div','samples');list.setAttribute('role','group');
     for(const s of r.json.items){if(!s||typeof s.key!=='string')continue;
@@ -572,41 +615,56 @@ screen('invoice',{heading:C.invoice.heading,draw(box){
   });
   // Write your own: a supplier on file, the number, the amount, the dates and the IBAN (prefilled, editable).
   const sup=el('select');const no=input('text','INV-'+String(1000+crypto.getRandomValues(new Uint16Array(1))[0]%9000));no.required=true;no.maxLength=40;
-  const amt=input('text');amt.inputMode='decimal';amt.required=true;amt.autocomplete='off';amt.placeholder='120.50';
+  const amt=input('text');amt.inputMode='decimal';amt.required=true;amt.autocomplete='off';amt.placeholder='1,850.00';
+  // A calm hint under the amount when it cannot be read (normAmount, shared with screen 4); nothing is sent then.
+  const amtHint=el('p','hint calm',C.invoice.amountBad);amtHint.id='f-amt-hint';amtHint.hidden=true;amtHint.setAttribute('aria-live','polite');
+  amt.setAttribute('aria-describedby','f-amt-hint');
+  const amtRead=()=>{const v=normAmount(amt.value);amtHint.hidden=v!==null;amt.setAttribute('aria-invalid',String(v===null));if(v!==null)amt.value=v;return v};
   const iss=input('date',today(0)),dueOn=input('date',today(14));iss.required=true;dueOn.required=true;
   const iban=input('text');iban.className='mono';iban.required=true;iban.autocomplete='off';iban.spellcheck=false;iban.setAttribute('autocapitalize','characters');
   const msg=el('div','');
-  const form=el('form','',[field(C.invoice.supplier,sup,'f-sup'),el('div','two',[field(C.invoice.invoiceNo,no,'f-no'),field(C.invoice.amount,amt,'f-amt')]),
-    el('div','two',[field(C.invoice.issued,iss,'f-iss'),field(C.invoice.due,dueOn,'f-due')]),field(C.invoice.iban,iban,'f-iban'),el('p','hint',C.invoice.ibanHint),msg]);
+  const amtField=field(C.invoice.amount,amt,'f-amt');amtField.append(amtHint);
+  const said=el('p','hint calm');said.setAttribute('role','status');said.hidden=true;
+  const form=el('form','',[field(C.invoice.supplier,sup,'f-sup'),el('div','two',[field(C.invoice.invoiceNo,no,'f-no'),amtField]),
+    el('div','two',[field(C.invoice.issued,iss,'f-iss'),field(C.invoice.due,dueOn,'f-due')]),field(C.invoice.iban,iban,'f-iban'),el('p','hint',C.invoice.ibanHint),said,msg]);
   write.append(form);
+  if(draft){
+    // Back from a refused compose: the form as it was sent, and the server's words, calmly, under it.
+    for(const [i,k] of [[no,'invoice_no'],[amt,'amount'],[iss,'issue_date'],[dueOn,'due_date'],[iban,'iban']])if(typeof draft[k]==='string')i.value=draft[k];
+    if(typeof arg.said==='string'&&arg.said){said.textContent=arg.said;said.hidden=false}
+    choose(true);
+  }
   let suppliers=[];
   sup.addEventListener('change',()=>{const s=suppliers.find((x)=>x.key===sup.value);if(s)iban.value=String(s.iban??'')});
-  amt.addEventListener('input',()=>amt.setCustomValidity(''));
+  amt.addEventListener('input',()=>{amtHint.hidden=true;amt.removeAttribute('aria-invalid')});
+  amt.addEventListener('blur',()=>{if(amt.value.trim())amtRead()});
   api('GET','/v1/engine/suppliers').then((r)=>{
     if(r.status!==200||!Array.isArray(r.json.items)){msg.replaceChildren(el('p','note',typeof r.json.message==='string'?r.json.message:C.invoice.failed));return}
     suppliers=r.json.items.filter((s)=>s&&typeof s.key==='string');
     sup.replaceChildren(...suppliers.map((s)=>{const o=el('option','',String(s.name??s.key));o.value=s.key;return o}));
-    if(suppliers[0])iban.value=String(suppliers[0].iban??'');
+    if(draft&&suppliers.some((s)=>s.key===draft.supplier_key))sup.value=draft.supplier_key;
+    else if(suppliers[0])iban.value=String(suppliers[0].iban??'');
   });
   function file(){
     if(!writing){if(picked)show('work',{kind:'sample',key:picked.key,title:String(picked.title??'')});return}
-    const raw=amt.value.replace(/\s/g,'');
-    if(raw&&!/^\d{1,9}([.,]\d{1,2})?$/.test(raw)){amt.setCustomValidity(C.invoice.amountBad);amt.reportValidity();return}
+    const v=amtRead();
+    if(v===null){amt.focus();return}
     if(!form.reportValidity())return;
-    show('work',{kind:'compose',body:{supplier_key:sup.value,invoice_no:no.value.trim(),amount:raw.replace(',','.'),issue_date:iss.value,due_date:dueOn.value,iban:iban.value.replace(/\s/g,'').toUpperCase()}});
+    show('work',{kind:'compose',body:{supplier_key:sup.value,invoice_no:no.value.trim(),amount:v,issue_date:iss.value,due_date:dueOn.value,iban:iban.value.replace(/\s/g,'').toUpperCase()}});
   }
   send.addEventListener('click',file);
   form.addEventListener('submit',(ev)=>{ev.preventDefault();file()});
 }});
 
 // 2 At work: the live panel while the request is in flight, then the invoice's status from the answer.
+// A reader's key (its agent, or the reader), and whether a row is a reader's (it closes that reader's open call).
+const keyOf=(e)=>{const a=e.fields&&typeof e.fields.agent==='string'&&/^[A-Za-z_-]{1,32}$/.test(e.fields.agent)?e.fields.agent.toLowerCase():'reader';return a};
+const agentRow=(e)=>typeof e.event==='string'&&(e.event.indexOf('claude.')===0||e.event.indexOf('agent.')===0||!!(e.fields&&e.fields.agent));
 function livePanel(){
   const list=el('ol','live');list.setAttribute('aria-live','off');
   const more=el('button','link steps',C.live.allSteps);more.type='button';more.hidden=true;more.setAttribute('aria-expanded','false');
   more.addEventListener('click',()=>{const open=!list.classList.contains('open');list.classList.toggle('open',open);more.setAttribute('aria-expanded',String(open))});
   const node=el('div','card',[list,more]);node.hidden=true;
-  const keyOf=(e)=>{const a=e.fields&&typeof e.fields.agent==='string'&&/^[A-Za-z_-]{1,32}$/.test(e.fields.agent)?e.fields.agent.toLowerCase():'reader';return a};
-  const agentRow=(e)=>typeof e.event==='string'&&(e.event.indexOf('claude.')===0||e.event.indexOf('agent.')===0||!!(e.fields&&e.fields.agent));
   function add(items,t0){
     for(const e of items){
       if(agentRow(e))askClose(keyOf(e));
@@ -627,6 +685,19 @@ function invoiceCard(inv){
   for(const [k,v] of [[C.fields.vendor,inv.vendor],[C.fields.number,inv.invoice_no],[C.fields.total,[inv.currency,inv.total].filter(Boolean).join(' ')],[C.fields.due,inv.due_date],[C.fields.status,inv.status_words]]){if(v===null||v===undefined||v==='')continue;d.append(el('div','',[el('dt','',k),el('dd','',String(v))]))}
   const chip=el('span','slot');
   return {node:el('section','card inv',[el('p','ih',[icon('file-text',18),el('span','',C.work.invoiceFold),chip]),d]),chip};
+}
+// While the request is in flight: the invoice card's skeleton (the five row labels, shimmering placeholders, no value:
+// nothing of the outcome before its answer) under a line that says who reads, by the band's mode. Claude's line
+// carries the open call's running time (askOpen on an asking row, askClose on the reader's next row, the same count
+// as the live panel's).
+function skeleton(){
+  const live=!!(S.mode&&S.mode.claude==='live');
+  const n=el('span','n');const line=el('p','reading',[el('span','dot'),el('span','',live?C.work.reading:C.work.readingCode),live?n:null]);
+  const d=el('dl','rows');
+  for(const k of [C.fields.vendor,C.fields.number,C.fields.total,C.fields.due,C.fields.status])d.append(el('div','',[el('dt','',k),el('dd','',[el('span','sk')])]));
+  const card=el('section','card inv skel',[el('p','ih',[icon('file-text',18),el('span','',C.work.invoiceFold)]),d]);card.setAttribute('aria-busy','true');
+  const see=(items)=>{if(!live)return;for(const e of items){if(agentRow(e))askClose('skeleton');if(lineOf(e).asking)askOpen('skeleton',n)}};
+  return {node:el('div','',[line,card]),see};
 }
 // Whether this request's events say Claude read the invoice, and that call's request id.
 const CLAUDE={on:false,req:null,slot:null};
@@ -667,14 +738,16 @@ screen('work',{heading:C.work.heading,draw(box,arg){
     drawResult(result,{status:200,json:{invoice:arg.invoice}},null);
     return;
   }
-  result.append(el('p','muted',C.work.working));
+  const sk=skeleton();result.append(sk.node);
   const t0=performance.now();
-  pollStart((items)=>{live.add(items,t0);claudeSeen(items)});
+  pollStart((items)=>{live.add(items,t0);claudeSeen(items);sk.see(items)});
   const req=arg.kind==='sample'?api('POST','/v1/engine/samples/'+encodeURIComponent(arg.key)):api('POST','/v1/engine/compose',arg.body);
   req.then((r)=>{
     const ms=performance.now()-t0;
-    pollDone();
+    pollDone();askClose('skeleton');
     if(S.screen!=='work')return;
+    // A compose the server refused (400): back to the form as it was sent, its words calmly under it.
+    if(arg.kind==='compose'&&r.status===400){show('invoice',{draft:arg.body,said:typeof r.json.message==='string'&&r.json.message?r.json.message:typeof r.json.error==='string'?r.json.error:C.work.failed});return}
     result.replaceChildren();drawResult(result,r,ms);
     const b=result.querySelector('.btn.primary');if(b)b.focus();
   });

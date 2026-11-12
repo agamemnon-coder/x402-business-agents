@@ -48,14 +48,18 @@ export const INVOICE = {
   due: "Due",
   iban: "IBAN",
   ibanHint: "Change the IBAN and see what Purser does",
-  amountBad: "Use digits, like 120.50.",
+  /** A calm hint under the amount when it cannot be read as an amount (nothing is sent). */
+  amountBad: "Write an amount such as 1,850.00 or 10k.",
   send: "File this invoice",
 };
 
 /** Screen 2, outside the live panel. The invoice's status and findings are the engine's own words (data). */
 export const WORK = {
   heading: "Purser reads and checks it.",
-  working: "Working on it…",
+  /** While the request is in flight, over the invoice card's skeleton, by the band's mode; the open Claude call's
+   * running time follows it ("2.4 s", the browser's count from the moment its asking row arrived). */
+  reading: "Claude is reading…",
+  readingCode: "Purser's code is reading…",
   ready: "Ready to pay.",
   readySub: "Nothing is paid until you sign the exact terms.",
   /** Above the engine's own words when the invoice cannot be paid as it is. */
@@ -255,10 +259,13 @@ export const VISIBLE = {
   invoice: [
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.loading, INVOICE.send],
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.failed, INVOICE.send],
+    [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.supplier, INVOICE.invoiceNo, INVOICE.amount, INVOICE.issued, INVOICE.due, INVOICE.iban, INVOICE.ibanHint, INVOICE.send],
+    // An amount that cannot be read: the calm hint under the field (the owner's words, 8), over budget at its own count.
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.supplier, INVOICE.invoiceNo, INVOICE.amount, INVOICE.issued, INVOICE.due, INVOICE.iban, INVOICE.ibanHint, INVOICE.amountBad, INVOICE.send],
   ],
   work: [
-    [WORK.heading, WORK.working],
+    [WORK.heading, WORK.reading, WORK.invoiceFold],
+    [WORK.heading, WORK.readingCode, WORK.invoiceFold],
     [WORK.heading, WORK.ready, WORK.readySub, WORK.took, WORK.invoiceFold, WORK.claudeChip, WORK.pay],
     [WORK.heading, WORK.notReady, WORK.took, WORK.invoiceFold, WORK.another],
     [WORK.heading, WORK.duplicate, WORK.notReady, WORK.took, WORK.invoiceFold, WORK.another],
@@ -313,9 +320,11 @@ export const VISIBLE = {
  * States allowed over the 45 words, each with its count and why. 2026-11-12 (B2): the refused answer of screen 4 holds
  * what lanes/page.md B2 lists for it (the stamp, one row per layer, both hashes, the verdict, the round trip, the
  * transfers, the raw answer and "Put back what you signed") beside the three fields the visitor edits; it cannot fit in
- * 45 words. Raised for that one state only, to its own count, for the lead to decide.
+ * 45 words. Raised for that one state only, to its own count, for the lead to decide. 2026-11-12 (amounts): screen 1's
+ * form with the calm amount hint ("Write an amount such as 1,850.00 or 10k.", the owner's words) is 49; both it and
+ * the IBAN hint are held verbatim, so that state is raised to its count, for the lead to decide.
  */
-export const OVER_BUDGET: Record<string, number> = { "pay 7": 80 };
+export const OVER_BUDGET: Record<string, number> = { "pay 7": 80, "invoice 3": 49 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
