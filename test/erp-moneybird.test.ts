@@ -556,6 +556,12 @@ describe("Moneybird, the sandbox administration's real answers", () => {
     expect(notes).toContain("| `GET contacts.json` | 0 contacts |");
     expect(notes).toContain(`| \`GET tax_rates.json\` | ${realTax.length} tax rates |`);
     expect(notes).toContain(`${onInvoices.length} of the ${realLedger.length} accounts are allowed on a purchase invoice`);
+    expect(notes).toContain(`All ${realLedger.filter((l) => l.allowed_document_types.includes("general_journal_document")).length} take a journal entry`);
+    // The rate limit lines: 150 per window, one fewer left with each request, and "remaining" is the seconds until the reset.
+    const h = SANDBOX.answers.map((a) => a.headers);
+    expect(h.map((x) => x["ratelimit-limit"])).toEqual(["150", "150", "150"]);
+    expect(notes).toContain(`\`RateLimit-RequestsRemaining\`: ${h.map((x) => x["ratelimit-requestsremaining"]).join(", ")})`);
+    for (const x of h) expect(Math.abs(Number(x["ratelimit-reset"]) - Date.parse(x.date!) / 1000 - Number(x["ratelimit-remaining"]))).toBeLessThanOrEqual(1);
     expect(notes).toContain(`${SANDBOX.answers.length} of the 6 approved`);
     expect(notes).toContain(`list of ${MONEYBIRD_ENDPOINTS.length} endpoints`);
     expect(notes).toContain(`\`${ADMIN}\``);

@@ -36,13 +36,13 @@ replay them.
     ledger accounts do not page.
 - **The chart has Moneybird's own account codes** (such as `46801.01`), and none of Purser's. Matching by code finds
   nothing, so every account goes through the map below.
-- **6 of the 27 accounts are allowed on a purchase invoice.** The others take journal entries only.
+- **6 of the 27 accounts are allowed on a purchase invoice.** All 27 take a journal entry.
 - **Purchase tax rates: 21% and 9%.** There is 0% for sales only, and no rate for "no VAT". The connector refuses a
   purchase line with such VAT until the administration has a purchase rate for it. So a test invoice for this
   administration carries 21% or 9% Dutch VAT.
 - **Rate limit.** Each answer said 150 requests per window (`RateLimit-Limit`) and how many were left
-  (`RateLimit-RequestsRemaining`: 149, 148, 147). `RateLimit-Remaining` counted the seconds to the end of the window,
-  not requests. This is read from these three answers, not from documentation.
+  (`RateLimit-RequestsRemaining`: 149, 148, 147). `RateLimit-Remaining` matched the seconds left until
+  `RateLimit-Reset`, not a number of requests. This is read from these three answers, not from documentation.
 
 ### What changed in the code
 
@@ -80,7 +80,7 @@ Not mapped, because this administration has no purchase rate for them: 0% (`NL0`
 | `1200` Bank: Airwallex EUR (incl. company cards) | Financiële rekeningen | journal entries |
 | `1590` Money in transit (between own accounts) | Kruisposten | journal entries |
 
-Cost centres are left out (`ERP_MONEYBIRD_IGNORE_COST_CENTRES=on`): this administration has no projects.
+Cost centres are left out (`ERP_MONEYBIRD_IGNORE_COST_CENTRES=on`): no project was looked up or mapped.
 
 ### Not done in this step
 
