@@ -387,7 +387,7 @@ export function buildOwnersRecord(db: DB, calls: readonly OwnersCall[], inputs: 
   const usedRows = all.filter((r) => used.has(r.seq));
   const ownersRows = usedRows.filter((r) => r.event.startsWith("owners."));
   const record: OwnersRecord = {
-    record: "Two passkey owners sign on chain: run record",
+    record: "The passkey account on chain: run record",
     ran_at: (ownersRows[0] ?? created).ts,
     last_row_at: usedRows.at(-1)!.ts,
     dates_note: "ran_at is the time of this world's first owners audit row. Every time in this record is the time of an audit row (UTC); none is read from the clock.",

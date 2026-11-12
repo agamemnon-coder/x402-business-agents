@@ -365,7 +365,7 @@ describe("npm run owners -- record", () => {
     expect(ok.out.trimEnd().split("\n").at(-1)).toMatch(new RegExp(`^RECORD           ${base}\\.json and ${base}\\.md written from \\d+ audit rows and ${calls} call-log lines; no call was made$`));
     const written = JSON.parse(readFileSync(`${base}.json`, "utf8")) as OwnersRecord;
     expect(written.account).toBe(rows("owners.account_created")[0]!.p.account);
-    expect(readFileSync(`${base}.md`, "utf8")).toMatch(/^# Two passkey owners sign on chain: run record\n/);
+    expect(readFileSync(`${base}.md`, "utf8")).toMatch(/^# The passkey account on chain: run record\n/);
     // Nothing was called: the call log is as it was.
     expect(readOwnersCalls(w.log)).toHaveLength(calls);
   }, 240_000);
