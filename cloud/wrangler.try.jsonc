@@ -47,6 +47,17 @@
   // own headers and only /assets/pdfjs.mjs is ever read from here). npm run cloud:pdfjs fills cloud/public before a deploy.
   "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
   // Hourly: the sweep of the visitors' companies, and the cloud's own job (purge closed companies past their 7-year
-  // retention; clear spent challenges and old rate windows), which is safe to run every hour.
+  // retention; clear spent challenges and old rate windows), which is safe to run every hour; and the nightly autopilot
+  // (cloud/src/edge/autopilot.ts) on its first firing each UTC day: each company's engine synced, its digest written.
   "triggers": { "crons": ["17 * * * *"] }
+  // AUTOPILOT=off or STATS=off (a var) switches the nightly autopilot or the daily counters off; both are on unset.
+  //
+  // Inbound e-mail filed into the company's engine through a Cloudflare Queue (cloud/src/edge/inbox.ts). Off until a
+  // mail domain routes here (MAIL_DOMAIN) and the queues exist: a deploy that binds a queue that was not created fails.
+  // To switch it on: npx wrangler queues create purser-try-inbox && npx wrangler queues create purser-try-inbox-dlq, then
+  // put this block in the configuration (as a key of the object above):
+  //   "queues": {
+  //     "producers": [{ "queue": "purser-try-inbox", "binding": "INBOX_QUEUE" }],
+  //     "consumers": [{ "queue": "purser-try-inbox", "max_batch_size": 5, "max_batch_timeout": 5, "max_retries": 8, "dead_letter_queue": "purser-try-inbox-dlq" }]
+  //   }
 }

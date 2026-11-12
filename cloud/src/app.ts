@@ -23,6 +23,8 @@ import { accountOf, bindingOf, onboardingLink, openAccount, PlatformRefused, rec
 import { cloudHealth, companyStatus, HealthReport, MonitorRefused, notify, receiveReport, removeWebhook, setWebhook, webhookOf, type Outbound } from "./monitor.js";
 import type { EngineApi } from "./engine/api.js";
 import { engineRoutes } from "./engine/routes.js";
+import { isEngineWrite, noteEngineCompany } from "./edge/autopilot.js";
+import { edgeRoutes } from "./edge/routes.js";
 
 export interface CloudEnv {
   sql: Sql;
@@ -63,6 +65,8 @@ export interface CloudEnv {
    * local runs an engine in this process. Test money only. Absent (the default): the /v1/engine routes answer 404.
    */
   engine?: (tenantId: string) => EngineApi;
+  /** Whether the daily counters behind GET /v1/stats are on (cloud/src/edge/stats.ts). Absent: /v1/stats answers 404. */
+  edge?: { stats?: boolean };
 }
 
 interface Ctx { env: CloudEnv; req: Request; url: URL; now: Date; params: string[]; caller: Caller | null; db: TenantDb | null }
@@ -447,6 +451,7 @@ export const ROUTES: Route[] = [
 
   // The company's engine (cloud/src/engine/routes.ts): one block, the caller's own company only, 404 while no engine is wired.
   ...engineRoutes<Ctx>({ json, err, body }),
+  ...edgeRoutes<Ctx>({ json, err }),
 ];
 
 function match(path: string, pattern: string): string[] | null {
@@ -540,6 +545,8 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
       ctx.caller = caller;
       ctx.db = new TenantDb(env.sql, caller.tenantId);
     }
+    // A company that writes to its engine is in tonight's autopilot (cloud/src/edge/autopilot.ts).
+    if (env.engine && ctx.caller && isEngineWrite(req.method, hit.r.path)) await noteEngineCompany(env.sql, ctx.caller.tenantId, now);
     return await hit.r.run(ctx);
   } catch (e) {
     if (e instanceof AuthError) return err(e.status, e.message);
