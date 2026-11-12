@@ -85,9 +85,11 @@ async function executeApproved(db: DB, proposalId: string): Promise<void> {
   }
   if (row.kind === "owners_execute") {
     // Block 1: both owners' passkeys signed the account's Execute digest; the sponsor relays it and pays gas.
+    // Behind the owners guard and call budget (src/metal/ownersBudget.ts): without OWNERS_GO, a budget and a log,
+    // liveRelay throws here, before the proposal is touched, so it stays approved and runs at the runner's next start.
     const { executeOwnersExecute } = await import("./ownersExecute.js");
     const { liveRelay } = await import("../metal/passkeyRelay.js");
-    await executeOwnersExecute(db, proposalId, liveRelay());
+    await executeOwnersExecute(db, proposalId, liveRelay(`execute ${proposalId}`));
     return;
   }
   if (row.kind === "airi_purchase") {

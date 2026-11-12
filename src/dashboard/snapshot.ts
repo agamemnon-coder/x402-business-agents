@@ -738,6 +738,12 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     // Block 1: the account's owners are passkeys; the runner only relays.
     case "owners.account_created": return out(`Business account ${short(str(p.account))} created with two owners, ${(Array.isArray(p.owners) ? (p.owners as unknown[]).map(str) : []).join("'s and ")}'s passkeys (threshold 2): no server key can change its mandates`, "ok");
     case "owners.executed": return out(`Both passkeys signed ${s} on chain and the account ran it: ${str((p.action as P | undefined)?.what)} the ${str((p.action as P | undefined)?.agent)} mandate (up to ${str((p.action as P | undefined)?.cap)} a payment, ${str((p.action as P | undefined)?.budget)} in total); the runner only relayed it`, "ok", { tx: /^0x[0-9a-f]{64}$/i.test(str(p.tx)) ? str(p.tx) : null });
+    case "owners.reverted": return out(`The account refused ${s} on chain: ${str(p.reason)}`, "refusal");
+    // The agent's own payments on the passkey account (npm run owners -- pay): inside the mandate, and one cent over its cap.
+    case "owners.paid": return out(`The Sourcing agent paid ${str(p.amount)} USDZ to ${str(p.payee_name)} inside its mandate on the passkey account: its mandate key signed, no owner did`, "ok");
+    case "owners.refused_on_chain": return out(`Metal refused ${str(p.amount)} USDZ to ${str(p.payee_name)}, over the mandate's ${str(p.cap)} cap, and recorded the refusal on chain`, "refusal");
+    case "owners.pay_not_paid": return out(`The Sourcing agent's ${str(p.amount)} USDZ to ${str(p.payee_name)} on the passkey account was not paid: ${str(p.reason) || str(p.outcome).toLowerCase()}`, "refusal");
+    case "owners.over_cap_not_refused": return out(`A payment of ${str(p.amount)} USDZ over the mandate's ${str(p.cap)} cap was not reported as refused; a person checks it`, "refusal");
     // Block 5.2: a card decline started the agent whose card it is.
     case "card.decline_met": {
       const who = agentWho(str(p.agent));
@@ -1089,7 +1095,10 @@ const askFrom = (actor: string, by: string) => (actor.startsWith("ext:") ? `agen
 
 // policy.version is bookkeeping: each rule change already shows as policy.changed.
 // agent.run: the decision rows below carry the agent's own words; a tool call that simply went through stays quiet.
-const FEED_QUIET = new Set(["card.duplicate_merged", "ask.received", "ask.replied", "policy.version", "agent.run", "query.answered"]);
+// owners.tx_*, owners.unsent, owners.waiting, owners.pay_started: the passkey account's own send journal (a hash recorded
+// before its transaction leaves, src/metal/ownersTx.ts); what those sends did shows as the lines that follow them.
+const FEED_QUIET = new Set(["card.duplicate_merged", "ask.received", "ask.replied", "policy.version", "agent.run", "query.answered",
+  "owners.tx_sent", "owners.tx_unsent", "owners.tx_done", "owners.unsent", "owners.waiting", "owners.pay_started"]);
 const quietTool = (r: { event: string; payload_json: string }) => r.event === "agent.tool" && !(JSON.parse(r.payload_json) as { blocked_by?: string }).blocked_by;
 
 /** What the agents did alone (payments made inside their limits), and what a limit, a check or a person stopped. */

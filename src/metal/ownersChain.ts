@@ -57,6 +57,8 @@ export interface OwnersChain {
   step(name: string): void;
   /** One JSON-RPC request: logged, counted, then sent. */
   readonly rpc: Rpc;
+  /** Logs and counts a call made outside this client under the current step: a run of the metal-agent CLI (`cli:<command>`). */
+  logged(method: string): void;
   /** viem over the same requests, for the SDK's own reads. Its chain-id question is answered here and is no request. */
   readonly client: PublicClient;
   /** The chain id the node itself reports (one request). */
@@ -84,6 +86,8 @@ export interface OwnersChain {
 
 /** Metal makes about 13 blocks a second (measured 30 October), so a receipt is there within a poll or two. */
 const POLLS_MS = [1_000, 2_000, 3_000, 4_000] as const;
+/** How often a receipt is read at most before a step stops with NoReceiptYet. */
+export const RECEIPT_POLLS = POLLS_MS.length;
 
 export function ownersChain(o: { budget: CallBudget; rpc?: Rpc; pollsMs?: readonly number[]; sleep?: (ms: number) => Promise<void> }): OwnersChain {
   const inner: Rpc = o.rpc ?? (http(rpcUrl())({ chain: undefined, retryCount: 0 }).request as Rpc);
@@ -103,6 +107,7 @@ export function ownersChain(o: { budget: CallBudget; rpc?: Rpc; pollsMs?: readon
     budget: o.budget,
     step: (name) => { step = name; },
     rpc,
+    logged: (method) => o.budget.count(method, step),
     client,
     chainId: async () => Number(BigInt((await rpc({ method: "eth_chainId" })) as string)),
     hasCode: async (address) => {

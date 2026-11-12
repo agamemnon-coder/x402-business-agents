@@ -4,7 +4,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  agentKeyOfJwk, sameAgentKey, extractTerms, hashCredential, mandateReference, p256DigestSigner, parseCredential, privateKeyHex, readMandateState,
+  agentKeyOfJwk, sameAgentKey, extractTerms, hashCredential, ingestCredential, mandateReference, p256DigestSigner, parseCredential, parseP256Jwk, privateKeyHex, readMandateState,
   type SignDigest,
 } from "@metalntwx/metal-pay/mandates";
 import type { Address, Hex } from "viem";
@@ -81,4 +81,15 @@ export async function mandateSpent(m: LoadedMandate): Promise<bigint> {
  *  bound (its reference), so this is the cap Metal's Mandate Binding checks every payment against. */
 export function boundCapUnits(m: LoadedMandate): bigint {
   return extractTerms(m.credential).constraints.perPaymentCap;
+}
+
+type TrustedIssuer = Parameters<typeof ingestCredential>[1]["trustedIssuers"][number];
+
+/**
+ * A credential this world issued itself, ingested for binding on `account`: trusted under the issuer whose public file
+ * `metal-agent mandate credential create` printed when it made it. Reads two files; no network.
+ */
+export async function ingestIssued(credentialFile: string, issuerPublicFile: string, account: Address) {
+  const iss = JSON.parse(readFileSync(issuerPublicFile, "utf8")) as { iss: string; kid: string; jwk: unknown };
+  return ingestCredential(parseCredential(JSON.parse(readFileSync(credentialFile, "utf8"))), { trustedIssuers: [{ iss: iss.iss, kid: iss.kid, jwk: parseP256Jwk(iss.jwk, issuerPublicFile) } as TrustedIssuer], account });
 }

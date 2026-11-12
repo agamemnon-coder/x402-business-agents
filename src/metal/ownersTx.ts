@@ -91,17 +91,19 @@ type Row = { payload_json: string };
 const rows = (db: DB, event: string, subject: string) => (db.prepare("SELECT payload_json FROM audit_log WHERE event = ? AND subject = ? ORDER BY seq").all(event, subject) as Row[]).map((r) => JSON.parse(r.payload_json) as Record<string, unknown>);
 
 export interface StepOutcome { tx: Hex; ok: boolean; block: number | null; reason: string | null }
+/** What a step's transaction does, kept with its record so a later run can sign the identical one (a transfer's payee and amount). */
+export type StepDetail = Record<string, string | number>;
 
 /** The journal of one step of an owners command, in the audit log: owners.tx_sent, owners.tx_unsent, owners.tx_done, each under the step's key. */
-export function stepJournal(db: DB, key: string, what = key, now: () => Date = () => new Date()): TxJournal & { done(): StepOutcome | null; finish(o: StepOutcome & { gasUsed?: bigint }): void } {
+export function stepJournal(db: DB, key: string, what = key, now: () => Date = () => new Date(), detail?: StepDetail): Omit<TxJournal, "open"> & { open(): (Sent & { detail?: StepDetail }) | null; done(): StepOutcome | null; finish(o: StepOutcome & { gasUsed?: bigint }): void } {
   const settled = () => new Set([...rows(db, "owners.tx_unsent", key), ...rows(db, "owners.tx_done", key)].map((p) => String(p.tx).toLowerCase()));
   return {
     open() {
       const closed = settled();
       const s = rows(db, "owners.tx_sent", key).filter((p) => !closed.has(String(p.tx).toLowerCase())).at(-1);
-      return s ? { tx: s.tx as Hex, from: s.from as Address | undefined, nonce: s.nonce as number | undefined, gas: s.gas as string | undefined } : null;
+      return s ? { tx: s.tx as Hex, from: s.from as Address | undefined, nonce: s.nonce as number | undefined, gas: s.gas as string | undefined, ...(s.detail ? { detail: s.detail as StepDetail } : {}) } : null;
     },
-    sent: (s) => { audit(db, "owner-signer", "owners.tx_sent", key, { step: key, what, tx: s.tx, ...(s.from ? { from: s.from } : {}), ...(s.nonce === undefined ? {} : { nonce: s.nonce }), ...(s.gas === undefined ? {} : { gas: s.gas }) }, now()); },
+    sent: (s) => { audit(db, "owner-signer", "owners.tx_sent", key, { step: key, what, tx: s.tx, ...(s.from ? { from: s.from } : {}), ...(s.nonce === undefined ? {} : { nonce: s.nonce }), ...(s.gas === undefined ? {} : { gas: s.gas }), ...(detail ? { detail } : {}) }, now()); },
     unsent: (tx, why) => { audit(db, "owner-signer", "owners.tx_unsent", key, { step: key, tx, why: why.slice(0, 300) }, now()); },
     done() {
       const d = rows(db, "owners.tx_done", key).at(-1);
@@ -121,9 +123,9 @@ export function stepJournal(db: DB, key: string, what = key, now: () => Date = (
  */
 export async function stepOnce(
   d: { db: DB; chain: OwnersChain; now?: () => Date }, key: string,
-  o: { what: string; from: Address; gas?: () => Promise<bigint>; sign: (as: { nonce: number; gas?: bigint }) => Promise<SignedTx>; reason?: () => Promise<string | null> },
+  o: { what: string; detail?: StepDetail; from: Address; gas?: () => Promise<bigint>; sign: (as: { nonce: number; gas?: bigint }) => Promise<SignedTx>; reason?: () => Promise<string | null> },
 ): Promise<StepOutcome & { fresh: boolean }> {
-  const j = stepJournal(d.db, key, o.what, d.now);
+  const j = stepJournal(d.db, key, o.what, d.now, o.detail);
   const done = j.done();
   if (done?.ok) return { ...done, fresh: false };
   let receipt: Awaited<ReturnType<OwnersChain["wait"]>> | null = null;

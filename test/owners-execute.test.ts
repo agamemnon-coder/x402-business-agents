@@ -4,9 +4,13 @@
 // not an owner counts, if one person counts twice, or if the quorum built from the two approvals would not verify.
 // Software authenticators (the WebAuthn format a phone produces).
 import { createHash, createPublicKey, verify } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { decodeAbiParameters, parseAbiParameters, type Address, type Hex } from "viem";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { decodeAbiParameters, encodeErrorResult, parseAbiParameters, type Address, type Hex } from "viem";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { describe, expect, it } from "vitest";
+import { mandateBindingAbi } from "@metalntwx/metal-pay/mandates";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 import { openDb, type DB } from "../src/db/open.js";
 import { audit } from "../src/audit/log.js";
@@ -19,6 +23,12 @@ import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 import { approvalHashOf, coseP256, ownersExecuteTerms, quorumOf, type OwnersExecuteTerms } from "../src/metal/ownersExecute.js";
 import { passkeySigner } from "../src/metal/passkeyOwner.js";
 import { executeOwnersExecute, signedCallOf } from "../src/executors/ownersExecute.js";
+import { execute } from "../src/executors/index.js";
+import { callBudget, readOwnersCalls } from "../src/metal/ownersBudget.js";
+import { ChainRefused, NodeRefused, NoReceiptYet, ownersChain } from "../src/metal/ownersChain.js";
+import { ownersRelay } from "../src/metal/passkeyRelay.js";
+import { resuming } from "../src/policy/approvals.js";
+import { fakeMetal } from "./support/fakeMetal.js";
 
 const RP = "kit11.example.workers.dev";
 const ORIGIN = `https://${RP}`;
@@ -204,5 +214,163 @@ describe("the phone and the feed for an owners_execute", () => {
     const line = buildSnapshot(db).feed.find((x) => x.event === "owners.executed")!;
     expect(line.text).toMatch(/^Both passkeys signed P-0001 on chain/);
     expect(line.tx).toBe(`0x${"cd".repeat(32)}`);
+  });
+});
+
+// The live run (12 November): the relay runs behind a call budget, records the hash before the transaction leaves, and
+// says why the account refused. Breaks if the runner relays without the owner's go and a budget; if the hash is
+// recorded after the send; if a revert reads "unknown reason"; if a relay with no receipt yet reads FAILED (it may
+// still land) or is sent a second time; or if a recorded send is thrown away because the deadline passed meanwhile.
+describe("relaying an owners_execute: recorded first, never twice, behind the budget", () => {
+  const TX = `0x${"ab".repeat(32)}` as Hex;
+  async function approved() {
+    const w = await world();
+    await send(w.db, w.max, challengeFor(w.digest), w.terms);
+    await send(w.db, w.anna, challengeFor(w.digest), w.terms);
+    return w;
+  }
+  const events = (db: DB, name: string) => (db.prepare("SELECT payload_json FROM audit_log WHERE event = ? ORDER BY seq").all(name) as { payload_json: string }[]).map((r) => JSON.parse(r.payload_json) as Record<string, unknown>);
+  /** A restart's resume, as src/policy/saga.ts runs it. */
+  async function resume<T>(run: () => Promise<T>): Promise<T> {
+    resuming.add("P-0001");
+    try { return await run(); } finally { resuming.delete("P-0001"); }
+  }
+  const afterDeadline = new Date("2026-11-01T10:17:00Z");
+
+  it("writes the hash to the ledger before the transaction leaves", async () => {
+    const { db } = await approved();
+    let recordedWhenSent: unknown = "not sent";
+    await executeOwnersExecute(db, "P-0001", {
+      send: async (_to, _data, onSigned) => { onSigned?.({ tx: TX, from: ACCOUNT, nonce: 4, gas: "2400000" }); recordedWhenSent = events(db, "owners.sent").at(-1)?.tx; return TX; },
+      wait: async () => true,
+    }, t0);
+    expect(recordedWhenSent).toBe(TX);
+    expect(events(db, "owners.sent")).toEqual([expect.objectContaining({ account: ACCOUNT, tx: TX, nonce: 4, gas: "2400000" })]);
+  });
+
+  it("a revert fails the proposal with the account's own error, not an unknown reason", async () => {
+    const { db } = await approved();
+    await expect(executeOwnersExecute(db, "P-0001", { send: async () => TX, wait: async () => false, why: async () => "AlreadyRevoked()" }, t0)).rejects.toThrow(`the account reverted executeSigned (${TX}): AlreadyRevoked()`);
+    expect(status(db)).toBe("FAILED");
+    expect(events(db, "owners.reverted")).toEqual([{ account: ACCOUNT, tx: TX, reason: "AlreadyRevoked()" }]);
+  });
+
+  it("a call the chain would refuse is not sent, and fails the proposal with the reason", async () => {
+    const { db } = await approved();
+    await expect(executeOwnersExecute(db, "P-0001", { send: async () => { throw new ChainRefused("the account call", "MultiSignerERC7913UnreachableThreshold(signers 1, threshold 2)"); }, wait: async () => true }, t0)).rejects.toThrow(/would refuse the account call: MultiSignerERC7913UnreachableThreshold/);
+    expect(status(db)).toBe("FAILED");
+    expect(events(db, "owners.sent")).toEqual([]);
+  });
+
+  it("no receipt yet is not a failure: the proposal stays executing, and a restart carries on from the recorded hash", async () => {
+    const { db } = await approved();
+    let sends = 0;
+    await expect(executeOwnersExecute(db, "P-0001", { send: async () => { sends++; return TX; }, wait: async () => { throw new NoReceiptYet(TX); } }, t0)).rejects.toThrow(/no receipt yet.*stays executing.*nothing is sent twice/);
+    expect(status(db)).toBe("EXECUTING");
+    expect(events(db, "owners.waiting")).toEqual([expect.objectContaining({ tx: TX })]);
+    const r = await resume(() => executeOwnersExecute(db, "P-0001", { send: async () => { sends++; return `0x${"00".repeat(32)}` as Hex; }, wait: async (h) => h === TX }, t0));
+    expect(r.tx).toBe(TX);
+    expect(sends).toBe(1);
+    expect(status(db)).toBe("EXECUTED");
+  });
+
+  it("a recorded send is past the deadline check: a restart after the deadline still reads how it ended", async () => {
+    const { db } = await approved();
+    await expect(executeOwnersExecute(db, "P-0001", { send: async () => TX, wait: async () => { throw new Error("the runner was stopped"); } }, t0)).rejects.toThrow(/stopped/);
+    const r = await resume(() => executeOwnersExecute(db, "P-0001", { send: async () => { throw new Error("must not send"); }, wait: async () => true }, afterDeadline));
+    expect(r.tx).toBe(TX);
+    expect(status(db)).toBe("EXECUTED");
+  });
+
+  it("after the signed deadline, a send with no receipt can no longer run: the proposal fails and says so", async () => {
+    const { db } = await approved();
+    await expect(executeOwnersExecute(db, "P-0001", { send: async () => TX, wait: async () => { throw new NoReceiptYet(TX); } }, t0)).rejects.toThrow();
+    await expect(resume(() => executeOwnersExecute(db, "P-0001", { send: async () => { throw new Error("must not send"); }, wait: async () => { throw new NoReceiptYet(TX); } }, afterDeadline))).rejects.toThrow(/no receipt and the signed deadline has passed/);
+    expect(status(db)).toBe("FAILED");
+  });
+
+  it("with nothing sent and the deadline passed, a restart closes the proposal instead of leaving it executing for ever", async () => {
+    const { db } = await approved();
+    await expect(executeOwnersExecute(db, "P-0001", { send: async () => { throw new Error("the network is down"); }, wait: async () => true }, t0)).rejects.toThrow(/network is down/);
+    expect(status(db)).toBe("EXECUTING");
+    await expect(resume(() => executeOwnersExecute(db, "P-0001", { send: async () => TX, wait: async () => true }, afterDeadline))).rejects.toThrow(/deadline has passed/);
+    expect(status(db)).toBe("FAILED");
+  });
+
+  it("a send the node refused never left: the record is voided, and a restart signs anew", async () => {
+    const { db } = await approved();
+    await expect(executeOwnersExecute(db, "P-0001", { send: async (_t, _d, on) => { on?.({ tx: TX, from: ACCOUNT, nonce: 1, gas: "9" }); throw new NodeRefused("insufficient funds"); }, wait: async () => true }, t0)).rejects.toThrow(NodeRefused);
+    expect(status(db)).toBe("EXECUTING");
+    expect(events(db, "owners.unsent")).toEqual([expect.objectContaining({ tx: TX })]);
+    const NEXT = `0x${"cd".repeat(32)}` as Hex;
+    const r = await resume(() => executeOwnersExecute(db, "P-0001", { send: async () => NEXT, wait: async (h) => h === NEXT }, t0));
+    expect(r.tx).toBe(NEXT);
+  });
+
+  it("the runner refuses to relay without the owner's go, a budget and a log, and leaves the proposal approved", async () => {
+    const { db } = await approved();
+    const before = { ...process.env };
+    for (const k of ["OWNERS_GO", "OWNERS_CALL_BUDGET", "OWNERS_CALL_LOG"]) delete process.env[k];
+    try {
+      await expect(execute(db, "P-0001")).rejects.toThrow(/OWNERS_GO=yes.*OWNERS_CALL_BUDGET.*OWNERS_CALL_LOG.*Nothing was called/);
+      expect(status(db)).toBe("APPROVED");
+      process.env.OWNERS_GO = "yes";
+      process.env.OWNERS_CALL_BUDGET = "20";
+      await expect(execute(db, "P-0001")).rejects.toThrow(/OWNERS_CALL_LOG/);
+      expect(status(db)).toBe("APPROVED");
+      // With the guard met, it relays with the sponsor key setup made; in a keys folder without one it makes none.
+      const empty = mkdtempSync(join(tmpdir(), "owners-nokeys-"));
+      process.env.OWNERS_CALL_LOG = join(empty, "calls.jsonl");
+      process.env.KIT11_KEYS_DIR = join(empty, "keys");
+      await expect(execute(db, "P-0001")).rejects.toThrow(/no gas sponsor key .*Nothing was called/);
+      expect(status(db)).toBe("APPROVED");
+      expect(existsSync(join(empty, "keys", "passkey-sponsor.key.json"))).toBe(false);
+      expect(existsSync(join(empty, "calls.jsonl"))).toBe(false);
+    } finally {
+      for (const k of ["OWNERS_GO", "OWNERS_CALL_BUDGET", "OWNERS_CALL_LOG", "KIT11_KEYS_DIR"]) { if (before[k] === undefined) delete process.env[k]; else process.env[k] = before[k]; }
+    }
+  });
+
+  it("over the budgeted chain: four counted calls relay it, the hash is recorded before the node has it, and a crash is carried on from it", async () => {
+    const { db } = await approved();
+    const node = fakeMetal();
+    const file = join(mkdtempSync(join(tmpdir(), "owners-relay-")), "calls.jsonl");
+    const sponsor = privateKeyToAccount(generatePrivateKey());
+    const relay = (budget = 30) => {
+      const chain = ownersChain({ budget: callBudget({ budget, file }), rpc: node.rpc, sleep: async () => {}, pollsMs: [1, 1] });
+      chain.step("execute P-0001");
+      return ownersRelay(chain, sponsor);
+    };
+    node.state.receiptAfter = Infinity; // the runner stops before the receipt
+    await expect(executeOwnersExecute(db, "P-0001", relay(), t0)).rejects.toThrow(/no receipt yet/);
+    const recorded = events(db, "owners.sent").at(-1)!.tx as Hex;
+    expect(node.sent().map((t) => t.hash)).toEqual([recorded]);
+    expect(node.sent()[0]).toMatchObject({ from: sponsor.address, data: signedCallOf(db, "P-0001").data });
+    expect(node.sent()[0]!.to.toLowerCase()).toBe(ACCOUNT.toLowerCase());
+    node.mine(recorded);
+    const r = await resume(() => executeOwnersExecute(db, "P-0001", relay(), t0));
+    expect(r.tx).toBe(recorded);
+    expect(node.methods()).toEqual(["eth_estimateGas", "eth_getTransactionCount", "eth_sendRawTransaction", "eth_getTransactionReceipt", "eth_getTransactionReceipt", "eth_getTransactionReceipt"]);
+    expect(readOwnersCalls(file).map((c) => c.step)).toEqual(Array(6).fill("execute P-0001"));
+    expect(status(db)).toBe("EXECUTED");
+  });
+
+  it("over the budgeted chain: a relay the budget cannot cover does not start, and a call the account would revert is decoded and not sent", async () => {
+    const { db } = await approved();
+    const node = fakeMetal();
+    const file = join(mkdtempSync(join(tmpdir(), "owners-relay-")), "calls.jsonl");
+    const sponsor = privateKeyToAccount(generatePrivateKey());
+    const relay = (budget: number) => {
+      const chain = ownersChain({ budget: callBudget({ budget, file }), rpc: node.rpc, sleep: async () => {}, pollsMs: [1] });
+      chain.step("execute P-0001");
+      return ownersRelay(chain, sponsor);
+    };
+    await expect(executeOwnersExecute(db, "P-0001", relay(3), t0)).rejects.toThrow(/needs 4 calls.*3 left/);
+    expect(node.requests).toEqual([]);
+    expect(status(db)).toBe("EXECUTING");
+    node.state.reverts.set(ACCOUNT.toLowerCase(), encodeErrorResult({ abi: mandateBindingAbi, errorName: "PrefixTaken" }));
+    await expect(resume(() => executeOwnersExecute(db, "P-0001", relay(30), t0))).rejects.toThrow(/would refuse the account call: PrefixTaken\(\)/);
+    expect(node.methods()).toEqual(["eth_estimateGas"]);
+    expect(status(db)).toBe("FAILED");
   });
 });
