@@ -7,7 +7,7 @@
 // Every figure from the record (src/redesign/run.ts), the TAP run's record or the read-back records; logos only as "built on",
 // never a Visa logo. No script. Also the clean 404 page.
 // /visa is one story since 12 Nov (visaPage; jury panel the same day): Visa Intelligent Commerce via Airi. The title and
-// the heading name it; under them the basis for calling it that (date, channel, as reported by the builder) and the exact
+// the heading name it; under them which runs are the entry and the exact
 // state of Intelligent Commerce Connect; then the drawing of purchase B, what the sandbox could not show (five lines),
 // purchase B side by side, one summary of the paid run, the run in full, the control test, and folded rows. All TAP
 // material sits in one closed fold at the very end, labelled as outside the entry (Visa, 5 Nov: TAP is not Visa tooling
@@ -23,7 +23,7 @@ import { EXPLORER, REPO_BLOB, metalStory } from "./metalStory.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { AIRI_CSS, AIRI_RUN_FILE, AIRI_RUN_ID, airiAsker, airiRun, airiRunBlock, type AiriRunRecord } from "./airiRun.js";
 import { awxRunBlock } from "./awxRun.js";
-import { VIC3_RUN_FILE, vic3Run, vic3RunHtml } from "./vic3Run.js";
+import { VIC3_RUN_FILE, vic3Run, vic3RunHtml, vic3Summary } from "./vic3Run.js";
 import { PLATFORM_RUN_FILE, PRODUCTS_CSS, airwallexBody, airwallexDescription, productTiles } from "./airwallexProducts.js";
 import { CARD_DATA_CSS, cardDataHtml } from "./cardData.js";
 import { ICC_RUN_ID, iccBlock, iccRecordIn } from "./iccBlock.js";
@@ -209,11 +209,11 @@ export const VISA_H1 = VISA_TITLE;
  */
 export const VISA_LEAD = "First the CFO's limit, then a single-use Visa credential.";
 /**
- * On what basis the Airi credential counts as Visa Intelligent Commerce, and for which award: the date, the channel and
- * who reports it. No dated quote from Visa is on record (docs/evidence/README.md, 7 November: "as reported by the
- * owner"), so the page says "as reported by the builder" and nothing stronger.
+ * Which runs are the entry, and for which award. No dated quote from Visa is on record (docs/evidence/README.md,
+ * 7 November: "as reported by the owner"), and the poster's role is not on record either, so since the jury check of
+ * 12 Nov the page says no more than this: no second-hand basis sentence.
  */
-export const VISA_ENTRY_LINE = "This Airi run is Purser's entry for the Visa Award. Basis for calling it Visa Intelligent Commerce: Visa said in the hackathon Slack on 7 November that the VIC run counts, as reported by the builder.";
+export const VISA_ENTRY_LINE = "The Airi runs are Purser's entry for the Visa Award.";
 /** The one closed fold at the end of /visa that holds all TAP material: its line says it is outside the entry. */
 export const VISA_TAP_HEADING = "Outside the entry: Visa TAP";
 /** The card of folded lines under the runs on /visa: more on the VIC run, each one line until opened. */
@@ -263,7 +263,7 @@ export function assertVicFirst(html: string): void {
   const unfolded = top.replace(/<details\b[\s\S]*?<\/details>/g, " ");
   for (const id of [VIC_FACTS_ID, VIC_COMPARE_ID]) if (top.includes(`id="${id}"`) && !unfolded.includes(`id="${id}"`)) fail(`#${id} is inside a fold`);
   const seen = plainWords(unfolded);
-  if (!seen.includes(VISA_ENTRY_LINE)) fail("the basis for calling it Visa Intelligent Commerce is not on the page, outside any fold");
+  if (!seen.includes(VISA_ENTRY_LINE)) fail("the entry line (which runs are the Visa entry) is not on the page, outside any fold");
   // With an ICC run record (src/redesign/iccBlock.ts), its block takes the status line's place: the line would no longer be true.
   if (!seen.includes(VISA_ICC_LINE) && !main.includes(`id="${ICC_RUN_ID}"`)) fail("the Intelligent Commerce Connect line is not on the page, outside any fold");
   if (plainWords(html.replace(/<script\b[\s\S]*?<\/script\b[^>]*>/gi, " ").replace(/<style\b[\s\S]*?<\/style\b[^>]*>/gi, " ")).split("Intelligent Commerce Connect").length !== 2) fail("Intelligent Commerce Connect is named more than once");
@@ -400,12 +400,14 @@ export function claudePage(run: AgentRun = agentRun()): string {
  */
 export function builtOnItems(run: AgentRun = agentRun()): { name: string; href: string; proof: string }[] {
   const st = metalStory(run.record), tiles = productTiles(run).length, airi = airiRun(), t0 = t0Data().journal;
-  const settled = airi?.purchases.filter((p) => (p as { status?: string }).status === "SETTLED").length ?? 0;
+  // Paid purchases across the live Airi runs, as /visa counts them: 7 Nov (SETTLED) and the latest run (vic-3).
+  const v3 = vic3Run();
+  const settled = (airi?.purchases.filter((p) => (p as { status?: string }).status === "SETTLED").length ?? 0) + (v3 ? vic3Summary(v3).paid : 0);
   const decisions = run.record.snapshot.agent_stats.reduce((n, a) => n + a.decisions, 0);
   return [
     ...(tiles ? [{ name: "Airwallex", href: "airwallex", proof: `${tiles} products, each run dated` }] : []),
     { name: "Metal", href: "metal", proof: `${st.payments.total} payments on testnet` },
-    ...(settled ? [{ name: "Visa (VIC through Airwallex's Airi)", href: "visa", proof: `${settled} purchases settled` }] : []),
+    ...(settled ? [{ name: "Visa (VIC through Airwallex's Airi)", href: "visa", proof: `${settled} purchases paid in ${v3 ? 2 : 1} live run${v3 ? "s" : ""}` }] : []),
     { name: "Claude", href: "claude", proof: `${decisions} decisions` },
     ...(t0 ? [{ name: "T:0", href: "t0", proof: `${t0.posted} journal entries` }] : []),
     { name: "x402", href: `${REPO_BLOB}${METAL_TX_LIST}`, proof: `${st.payments.sales} paid requests` },

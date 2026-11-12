@@ -64,17 +64,12 @@ export const TOKENS = `@font-face { font-family: Inter; src: url(assets/inter.wo
 }
 `;
 
-export const CSS = `${TOKENS}
-@media (min-width: 720px) { :root { --gut: 32px; } }
-* { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 400 17px/1.55 Inter, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
-a { color: inherit; }
-/* Words for screen readers and search engines only (a link's full name, a section's heading), not shown. */
-.vh { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
-.i { flex: none; vertical-align: -3px; }
-.wrap { max-width: 1200px; margin: 0 auto; padding: 0 var(--gut); }
-/* Header: brand, four tabs and "More" (a <details>, no script), nothing else. */
+/**
+ * The header's style (brand, tabs, "More"): part of CSS below, byte for byte, and exported on its own (12 Nov) so Purser
+ * Cloud's pages (cloud/src/siteHeader.ts) draw the very same header. It leans on the page for `.wrap`, `.i`, `a` and
+ * --gut; siteHeader.ts gives those to the header alone.
+ */
+export const HEADER_CSS = `/* Header: brand, four tabs and "More" (a <details>, no script), nothing else. */
 header.top { position: sticky; top: 0; z-index: 40; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px); border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
 header.top .wrap { display: flex; align-items: center; gap: 12px; height: 64px; }
 .brand { display: inline-flex; align-items: center; gap: 9px; font-weight: 750; font-size: 18px; letter-spacing: -.02em; text-decoration: none; }
@@ -91,7 +86,19 @@ nav.tabs .pmore > summary { padding: 7px 12px 7px 14px; }
 @media (max-width: 420px) { .brand span.nm { display: none; } }
 @media (max-width: 380px) { nav.tabs > a { padding: 7px 7px; } nav.tabs .pmore > summary { padding: 7px 5px 7px 7px; } }
 @media (max-width: 340px) { nav.tabs > a { padding: 7px 5px; font-size: 14px; } nav.tabs .pmore > summary { padding: 7px 4px 7px 5px; font-size: 14px; gap: 2px; } }
-@media (max-width: 430px) { .brand, nav.tabs > a, nav.tabs summary { display: inline-flex; align-items: center; min-height: 44px; } }
+@media (max-width: 430px) { .brand, nav.tabs > a, nav.tabs summary { display: inline-flex; align-items: center; min-height: 44px; } }`;
+
+export const CSS = `${TOKENS}
+@media (min-width: 720px) { :root { --gut: 32px; } }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 400 17px/1.55 Inter, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+a { color: inherit; }
+/* Words for screen readers and search engines only (a link's full name, a section's heading), not shown. */
+.vh { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.i { flex: none; vertical-align: -3px; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 var(--gut); }
+${HEADER_CSS}
 /* Type. */
 h1, h2, h3 { margin: 0; letter-spacing: -.025em; line-height: 1.08; }
 .h-hero { font-size: clamp(38px, 5.4vw, 64px); font-weight: 780; }
@@ -216,11 +223,20 @@ details.real .pop ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
 /** The one tagline (jury QA, 6 Nov, Q8: was "Agents spend. Limits hold." in og:title): Home's heading, the film's line. */
 export const HEADLINE = TAGLINE_LINE;
 
+/**
+ * Where the header's links point when it is drawn on another origin (12 Nov: Purser Cloud's /try and console): every
+ * link absolute on `base` (the site's origin), except the keys in `here` (a tab's key, or a "More" key such as "cloud"),
+ * which point to that address on the page's own origin.
+ */
+export interface HeaderLinks { base: string; here: Readonly<Record<string, string>> }
+
 /** The header: the four tabs, then "More". `current` is the page's own key; menuItemOf (src/ui/more.ts) says which item it marks. */
-export function header(current: PageKey | null): string {
+export function header(current: PageKey | null, links?: HeaderLinks): string {
   const item = menuItemOf(current);
-  return `<header class="top"><div class="wrap"><a class="brand" href="home" aria-label="Purser, home"><span class="mk">${icon("feather", 17)}</span><span class="nm">Purser</span></a>
-<nav class="tabs" aria-label="Main">${TABS.map(([k, label, href]) => `<a href="${href}"${k === item ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("")}${moreHtml(current)}</nav></div></header>`;
+  // Without `links` every href is the site's own, unchanged (test/site-header-shared.test.ts holds the output byte for byte).
+  const to = (key: string, href: string) => (links ? links.here[key] ?? new URL(href, `${links.base}/`).href : href);
+  return `<header class="top"><div class="wrap"><a class="brand" href="${to("brand", "home")}" aria-label="Purser, home"><span class="mk">${icon("feather", 17)}</span><span class="nm">Purser</span></a>
+<nav class="tabs" aria-label="Main">${TABS.map(([k, label, href]) => `<a href="${to(k, href)}"${k === item ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("")}${moreHtml(current, links && ((l) => to(l.key, l.href)))}</nav></div></header>`;
 }
 
 /** What is real in the main run, the run the public pages play: test money, sandbox, what is simulated, the world set-up, the second approver. */

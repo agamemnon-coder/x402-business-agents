@@ -122,7 +122,7 @@ async function ledgerOf(session: string, id: string) {
 // the stand-in bank. The pay answer is held payDelay ms (the 800 ms test).
 const kept = new Map<string, unknown>();
 const paid = new Set<string>();
-const stand = { payDelay: 0, payAnswers: 0, fileDelay: 0, refuseCompose: false, suppliersDelay: 0 };
+const stand = { payDelay: 0, payAnswers: 0, fileDelay: 0, refuseCompose: false, suppliersDelay: 0, samplesDelay: 0, samplesFail: 0 };
 async function laneC(method: string, path: string, session: string, body: Record<string, unknown>, res: ServerResponse): Promise<boolean> {
   const m = /^\/v1\/engine\/proposals\/([A-Za-z0-9_-]+)\/(approve|terms|pay)$/.exec(path);
   if (!m) return false;
@@ -180,7 +180,12 @@ const server = createServer(async (req, res) => {
     const t = [...visitors.values()].find((v) => v.id === json().tenant_id);
     return t ? send(res, 200, { session: t.session, expires_at: new Date(Date.now() + 15 * 60_000).toISOString() }) : send(res, 410, { code: "gone", message: "gone" });
   }
-  if (req.method === "GET" && url.pathname === "/v1/engine/samples") return send(res, 200, { items: SAMPLES });
+  if (req.method === "GET" && url.pathname === "/v1/engine/samples") {
+    // H3: held samplesDelay ms (the queued tap's check); samplesFail answers that many 503s first (the Retry's check).
+    if (stand.samplesDelay) await new Promise((r) => setTimeout(r, stand.samplesDelay));
+    if (stand.samplesFail) { stand.samplesFail--; return send(res, 503, { error: "busy" }); }
+    return send(res, 200, { items: SAMPLES });
+  }
   if (req.method === "GET" && url.pathname === "/v1/engine/suppliers") {
     if (stand.suppliersDelay) await new Promise((r) => setTimeout(r, stand.suppliersDelay));
     return send(res, 200, { items: [SUPPLIER] });
@@ -249,7 +254,9 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
       ok(hero.y + hero.height <= card.y + 40 && hero.height >= 0.38 * height, `${tag}: a phone: the illustration's band on top (${Math.round(hero.height)} px, at least 38% of the screen), the card below`);
       ok(trust.y + trust.height >= 0.95 * height && trust.y - (card.y + card.height) < 0.15 * height, `${tag}: no empty band: the trust line ends the screen, close under the card`);
     } else {
-      ok(hero.x === 0 && Math.abs(hero.width - width / 2) < 2 && hero.height >= height - 1 && card.x >= width / 2, `${tag}: a wide screen: the illustration left (the full height), the card right`);
+      // 12 Nov: the site's header (cloud/src/siteHeader.ts, 64 px and its border) runs across the top; the illustration
+      // takes the full height under it.
+      ok(hero.x === 0 && Math.abs(hero.width - width / 2) < 2 && hero.y <= 66 && hero.y + hero.height >= height - 1 && card.x >= width / 2, `${tag}: a wide screen: the illustration left (the full height under the site's header), the card right`);
       const above = card.y, below = height - (trust.y + trust.height);
       ok(Math.abs(above - below) < 0.15 * height, `${tag}: no empty band: the card and the trust line are centred (${Math.round(above)} px above, ${Math.round(below)} px below)`);
     }
@@ -270,6 +277,54 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
   const still = await page.evaluate(() => [...document.querySelectorAll(".scene *")].every((e) => getComputedStyle(e).animationName === "none")
     && getComputedStyle(document.querySelector(".sc-paid")!).opacity === "1" && getComputedStyle(document.querySelector(".sc-refused")!).opacity === "0");
   ok(still, "reduced motion: the illustration does not move, and shows its paid frame");
+  await ctx.close();
+}
+
+// Part 0b (H3, 12 Nov): the samples are slow (held 800 ms). Screen 1 is drawn at once; the button is off and the cards a
+// skeleton while they are held; a tap meanwhile is kept and files the first sample once they arrive. Then a failed read:
+// calm words and Retry, which reads them again.
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  const errors: string[] = [];
+  page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+  page.on("pageerror", (e) => errors.push(String(e)));
+  const filed: string[] = [];
+  const order: string[] = [];
+  page.on("request", (r) => { const u = new URL(r.url()); if (r.method() === "POST" && u.pathname.startsWith("/v1/engine/samples/")) { filed.push(u.pathname); order.push("file"); } });
+  page.on("response", (r) => { if (new URL(r.url()).pathname === "/v1/engine/samples") order.push("samples"); });
+  await page.goto(`${ORIGIN}/try`);
+  await page.waitForSelector(`h1:text-is("${START.heading}")`);
+  stand.samplesDelay = 800;
+  const t0 = Date.now();
+  await page.click(`text=${START.button}`);
+  await page.waitForSelector(`h1:text-is("${INVOICE.heading}")`);
+  const send = page.locator(`.btn.primary:has-text("${INVOICE.send}")`);
+  const off = await send.getAttribute("aria-disabled") === "true" && await page.locator(".samples .btn.skel").count() === 3 && await page.locator(".samples .btn:not(.skel)").count() === 0;
+  ok(off, `H3: while the samples are held: screen 1 is drawn, the button is off and the cards a skeleton (${Date.now() - t0} ms after the click)`);
+  order.push("tap");
+  await send.click();
+  await page.waitForSelector(`h1:text-is("${WORK.heading}")`, { timeout: 15_000 });
+  ok(order.join(" ") === "tap samples file", `H3: the tap came while they were held and filed nothing until they arrived (${order.join(" ")})`);
+  await page.waitForSelector(`h1:text-is("${WORK.heading}")`, { timeout: 15_000 });
+  ok(filed.length === 1 && filed[0] === `/v1/engine/samples/${SAMPLES[0]!.key}`, `H3: the kept tap files the first sample once they arrive (${filed.join(", ") || "none"})`);
+  stand.samplesDelay = 0;
+  // A failed read: calm words and Retry; Retry reads them again and the button comes on.
+  stand.samplesFail = 1;
+  await page.evaluate(() => sessionStorage.clear());
+  await page.goto(`${ORIGIN}/try`);
+  await page.waitForSelector(`h1:text-is("${START.heading}")`);
+  await page.click(`text=${START.button}`);
+  await page.waitForSelector(`h1:text-is("${INVOICE.heading}")`);
+  await page.waitForSelector(`.hint.calm:has-text("${INVOICE.failed}")`);
+  ok(await send.getAttribute("aria-disabled") === "true" && await page.locator(".note").count() === 0, "H3: a failed read says so calmly (no red box), the button stays off");
+  await page.click(`button.link:text-is("${INVOICE.retry}")`);
+  await page.waitForSelector(".samples .btn[aria-pressed=true]");
+  ok(await send.getAttribute("aria-disabled") === null, "H3: Retry reads them again; the first sample is picked and the button is on");
+  // The one 503 asked for above is the browser's own log line of a failed read; anything else counts.
+  const other = errors.filter((e) => !/status of 503/.test(e));
+  ok(other.length === 0 && errors.length <= 1, `H3: no console or CSP errors but the one held 503${other.length ? `: ${other.join(" | ")}` : ""}`);
+  stand.samplesFail = 0;
   await ctx.close();
 }
 
@@ -570,11 +625,33 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await page.waitForSelector(".did-step .bal", { timeout: 20_000 });
   await page.waitForSelector(".did-step .did-match .pill", { timeout: 20_000 });
   const folder = original.path.slice(0, original.path.lastIndexOf("/") + 1);
+  ok(folder.includes("/Purchase invoices/") && !folder.includes("Inkoopfacturen"), `${tag}: did: an English company's archive folder is in English (${folder})`);
   ok((await page.textContent(".did-doc")) === original.path.split("/").pop() && (await page.textContent(".did-folder")) === folder, `${tag}: did: filed, the invoice's folder and file in the archive (${folder}${original.path.split("/").pop()})`);
   const didAccounts = await page.locator(".did-step table.lines tbody td span.mono").allTextContents();
   ok(didAccounts.slice().sort().join() === apiLines.map((l) => l.account).sort().join(), `${tag}: did: booked, every journal line the ledger holds for this invoice (${didAccounts.join(" ")})`);
   const roles = await page.locator(".did-step table.lines tbody td span.role").allTextContents();
   ok(["expense", "VAT", "creditors", "bank"].every((r) => roles.includes(r)), `${tag}: did: the lines named expense, VAT, creditors and bank (${roles.join(", ")})`);
+  // Every amount ends where its column's heading ends (the VAT row like the others).
+  // The text's own right edge (a range over the cell's text) against the heading's (plain loops: no named functions in
+  // the page, which tsx would wrap in a helper the page does not have).
+  await page.waitForTimeout(900);
+  const edges = await page.locator(".did-lines").evaluate((t) => {
+    const ths = t.querySelectorAll("thead th");
+    const out: number[][] = [];
+    const rows = t.querySelectorAll("tbody tr");
+    for (let i = 0; i < rows.length; i++) {
+      const cells = rows[i]!.querySelectorAll("td.r");
+      for (let k = 0; k < cells.length; k++) {
+        if (!cells[k]!.textContent) continue;
+        const r = document.createRange(); r.selectNodeContents(cells[k]!);
+        const h = document.createRange(); h.selectNodeContents(ths[k + 1]!);
+        out.push([Math.round(r.getBoundingClientRect().right), Math.round(h.getBoundingClientRect().right), k]);
+      }
+    }
+    return out;
+  });
+  ok(edges.length > 0 && edges.every(([a, b]) => Math.abs(a! - b!) <= 1) && [0, 1].every((k) => new Set(edges.filter((e) => e[2] === k).map((e) => e[0])).size <= 1), `${tag}: did: every amount, VAT included, ends where its Debit or Credit heading ends (${edges.map(([a, b]) => `${a}/${b}`).join(" ")})`);
+  ok((await page.locator(".did-step tr.vatl td.r").evaluateAll((cs) => cs.map((c) => getComputedStyle(c).fontWeight))).every((w) => w === "400"), `${tag}: did: the VAT amount in the same weight as the others`);
   ok((await page.textContent(".did-step .bal")) === DID.balanced && dr === cr, `${tag}: did: "${DID.balanced}", from the lines' own sums (${dr} = ${cr})`);
   ok((await page.textContent(".did-match .pill")) === ourPay.status && (await page.textContent(".did-match .mono")) === String(ourPay.invoice_no), `${tag}: did: matched, the payment ${ourPay.status as string} with its reference (${ourPay.invoice_no as string})`);
   const nexts = await page.locator("a.did-next").evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).getAttribute("href")));

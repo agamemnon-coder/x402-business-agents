@@ -25,8 +25,9 @@ describe("README badges", () => {
     expect(badge![1]).toBe(line![1]);
   });
 
-  it("links the live demo to /try/sign and says test money only", () => {
-    expect(badgeLine).toContain("(https://kit11.max-31b.workers.dev/try/sign)");
+  // Since 12 Nov (one Try everywhere) the live demo badge opens the hands-on demo, not /try/sign.
+  it("links the live demo to the hands-on demo and says test money only", () => {
+    expect(badgeLine).toContain("(https://purser-try.max-31b.workers.dev/try)");
     expect(badgeLine).toContain("Metal%20testnet%20%C2%B7%20Airwallex%20sandbox");
   });
 });

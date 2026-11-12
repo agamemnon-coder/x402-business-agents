@@ -57,7 +57,7 @@ export function vicFacts(rec: AiriRunRecord): string[] {
   // Who tapped in Airi: the record names the CFO for every paid purchase, so the cardholder and the CFO were one person.
   if (paid.length === 0 || !paid.every((p) => /^the CFO\b[^.]*passkey in Airi/.test(p.tap ?? ""))) missing("who confirmed each paid purchase in Airi (the CFO, with a passkey)");
   const n = vicAttemptCount(rec);
-  const ordinal = ORDINALS[n.passedAt - 1] ?? missing("an attempt count the page has a word for");
+  void (ORDINALS[n.passedAt - 1] ?? missing("an attempt count the page has a word for"));
   // The hosted page, and why: an earlier attempt's direct confirm was refused by the sandbox.
   if (rec.checkout?.kind !== "airwallex-sandbox-hosted" || !/types the card/.test(rec.checkout.what ?? "")) missing("the checkout: the card typed into Airwallex's hosted page");
   if (!rec.attempts.some((a) => /refused the API confirm/.test(a.cause ?? ""))) missing("the attempt in which the sandbox refused the direct confirm");
@@ -65,8 +65,10 @@ export function vicFacts(rec: AiriRunRecord): string[] {
   return [
     "The credential is a test credential, from Airi's test card.",
     "One person played both the CFO and the cardholder.",
-    `It passed on the ${ordinal} attempt that day.`,
-    "The agent's process typed the single-use number into Airwallex's hosted page with a headless browser: the sandbox refuses a direct confirm.",
+    // The attempt history is folded (vicAttempts, "The N attempts that failed first"); in sight, how the card number
+    // travelled here and how it would in production (the jury check, 12 Nov).
+    "Sandbox only: a headless browser in the agent's process typed the number into Airwallex's hosted page; the sandbox refuses a direct confirm.",
+    "In production no card number would enter the agent's process: the merchant would get a network token via the Connect access above.",
     "The merchant is Purser's own sandbox account.",
   ];
 }
@@ -141,8 +143,9 @@ export function vicAttemptLines(rec: AiriRunRecord): string[] {
 export function vicAttemptsHtml(rec: AiriRunRecord): string {
   const lines = vicAttemptLines(rec);
   if (lines.length === 0) return "";
-  const first = vicAttemptCount(rec).failedFirst ? " first" : "";
+  const n = vicAttemptCount(rec), first = n.failedFirst ? " first" : "";
   return `<details class="fold" id="${VIC_ATTEMPTS_ID}"><summary>${esc(lines.length === 1 ? `The attempt that failed${first}` : `The ${lines.length} attempts that failed${first}`)}</summary>
+<p>${esc(`${n.paid} of ${n.all} attempts that day paid.`)}</p>
 <ul class="awc">${lines.map((l) => `<li class="no">${esc(l)}</li>`).join("")}</ul>
 <p class="src">${esc("Each cause in full: ")}<a class="pf" href="${esc(`${REPO_BLOB}${AIRI_RUN_LOG}`)}" target="_blank" rel="noopener">${esc("run log")} ↗</a></p></details>`;
 }

@@ -95,6 +95,8 @@ export const LOGOS: Record<string, { type: string; body: Buffer }> = {
   // Added 12 Nov on the owner's stated permission (docs/evidence/logo-permissions.md); sources in src/ui/logos/README.md.
   "logo-visa.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/visa.png", import.meta.url)) },
   "logo-cloudflare.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/cloudflare.png", import.meta.url)) },
+  // Home's "Works with" row (home-polish, 12 Nov): the partners' official logos on white tiles, rendered by npm run visuals.
+  "built-with.png": { type: "image/png", body: readFileSync(new URL("../../docs/assets/logos/built-with.png", import.meta.url)) },
   // Purser's own mark and its link preview (src/ui/brand/), for every public page's favicon and Open Graph image.
   "favicon.svg": { type: "image/svg+xml", body: readFileSync(new URL("../ui/brand/favicon.svg", import.meta.url)) },
   "og.png": { type: "image/png", body: readFileSync(new URL("../ui/brand/og.png", import.meta.url)) },

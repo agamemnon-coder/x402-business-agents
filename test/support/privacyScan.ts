@@ -2,6 +2,7 @@
 // pack; Max, 6 Nov): IBAN-shaped strings, emails, long base64 or base64url runs, WebAuthn credential or assertion
 // material, JWTs, PEM, sk-/key_/bearer tokens, a field named like a credential, a passkey label, a host other than the
 // public ones, and any 64-hex or 0x40-hex value that is not a known hash, transaction or address. Returns what it found.
+import { TRY_URL } from "../../src/redesign/ui.js";
 import { readFileSync } from "node:fs";
 import { secretsIn } from "../../src/demo/runLedger.js";
 import { TRACE_FILE } from "../../src/demo/runTrace.js";
@@ -31,7 +32,9 @@ const PATTERNS: [string, RegExp][] = [
   ["a credential or assertion field", /"(credential_id|credentialId|assertion|assertion_sha256|attestation|attestationObject|clientDataJSON|authenticatorData|signature|public_key|beneficiary_id|iban|passkey|email|email_sha256|token|secret|private_key|view_key|nonce)"\s*:/i],
   ["a passkey label", /\(passkey [A-Za-z0-9_-]+\)/],
 ];
-const HOSTS = ["testnet.metalntwx.com", "kit11.max-31b.workers.dev", "www.w3.org"];
+// The project's own hosts, Metal's explorer and the SVG namespace. Since 12 Nov (6c58c5b, the owner) every page's Try
+// tab opens the hands-on demo on the project's own Purser Cloud deployment (TRY_URL), so its host is one of ours.
+const HOSTS = ["testnet.metalntwx.com", "kit11.max-31b.workers.dev", new URL(TRY_URL).host, "www.w3.org"];
 
 export function privateFindings(text: string, o: { known64: Set<string>; known40: Set<string>; record?: boolean }): string[] {
   const found: string[] = [];

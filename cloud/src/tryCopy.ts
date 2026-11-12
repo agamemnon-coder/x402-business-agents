@@ -3,7 +3,14 @@
 // page's script reads them from here; it has no words of its own. This page does not use the shared catalogue
 // (src/ui/i18n.ts). Honest words only: "test company", "test money", "simulated bank"; "Claude" only where Claude ran.
 
-/** The page's frame: the brand mark. */
+/**
+ * The page's frame: the brand mark.
+ *
+ * 12 Nov 2026 (owner): the frame is now the site's own header (cloud/src/siteHeader.ts): the brand and the menu, Home,
+ * Try, Proof and More. Its brand word stays counted here, as before; its menu words are left out of the budget: they are
+ * the site's navigation, identical on every page of the site and of Purser Cloud, not this page's copy. Counted, they
+ * would put 14 screen states over 45 (4 more words each) for no word of the demo's own.
+ */
 export const CHROME = { brand: "Purser" };
 
 /** The band on every screen after the start; the second part follows the start answer's mode.claude. */
@@ -263,7 +270,8 @@ export const VISIBLE = {
   ],
   invoice: [
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.loading, INVOICE.send],
-    [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.failed, INVOICE.send],
+    // H3 (12 Nov): the samples did not load: the calm line and its retry, the button off.
+    [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.failed, INVOICE.retry, INVOICE.send],
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.supplier, INVOICE.invoiceNo, INVOICE.amount, INVOICE.issued, INVOICE.due, INVOICE.iban, INVOICE.ibanHint, INVOICE.send],
     // The suppliers did not load: the calm line and its retry, the button off.
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.supplier, INVOICE.invoiceNo, INVOICE.amount, INVOICE.issued, INVOICE.due, INVOICE.iban, INVOICE.ibanHint, INVOICE.suppliersFailed, INVOICE.retry, INVOICE.send],

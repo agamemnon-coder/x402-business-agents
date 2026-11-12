@@ -80,12 +80,13 @@ const eq = (x: { equal: boolean } | null | undefined) => (x ? (x.equal ? "equal"
 export function vic3RunHtml(r: Vic3Record | null = vic3Run(), o: { first?: string } = {}): string {
   if (!r) return "";
   const s = vic3Summary(r);
+  const lead = s.paidSteps[0];
   const short = (id: string) => (id.length > 18 ? `${id.slice(0, 16)}…` : id);
-  const paidLine = s.paidSteps.map((p) => `${p.step} paid ${p.request?.currency} ${p.request?.amount}${p.proposal_id ? " after the CFO's Face ID" : ""}; the signed hash read back ${eq(p.read_back.mandate)} from Airi and ${eq(p.read_back.payment_intent)} from Airwallex`).join(". ");
-  const refusedLine = [s.byPurser.length ? `${s.byPurser.map((p) => p.step).join(", ")} refused by Purser with 0 calls` : "", ...s.other.map((p) => `${p.step}: ${codeOf(p) === "PURSER_NO_TAP" ? "no tap in time" : "refused"}`)].filter(Boolean).join("; ");
+  const paidLine = `${s.paidSteps.map((p) => `${p.step}: ${p.request?.currency} ${p.request?.amount}${p.proposal_id ? " after the CFO's Face ID" : ""}`).join("; ")}. ${s.paid} of ${s.of} purchases paid`;
+  const refusedLine = [s.byPurser.length ? `${s.byPurser.map((p) => p.step).join(", ")} refused by Purser with 0 calls` : "", ...s.other.map((p) => `${p.step}: ${codeOf(p) === "PURSER_NO_TAP" ? "the cardholder did not tap in time; nothing was charged" : `refused (${codeOf(p)})`}`)].filter(Boolean).join(". ");
   const rows = r.purchases.map((p) => `<li><b>${esc(p.step)}</b> · ${esc(p.request ? `${p.request.currency} ${p.request.amount}` : "")} · ${esc(outcomeText(p))}${p.rail_choice?.request_id ? ` · ${esc(`rail chosen by ${p.rail_choice.by}, request ${p.rail_choice.request_id}`)}` : ""}${p.mandate_id ? ` · ${esc(`mandate ${p.mandate_id}`)}` : ""}${p.payment_intent_id ? ` · ${esc(`PaymentIntent ${p.payment_intent_id}`)}` : ""}${p.read_back.mandate ? ` · ${esc(`mandate read-back ${eq(p.read_back.mandate)}`)}` : ""}${p.read_back.payment_intent ? ` · ${esc(`PaymentIntent read-back ${eq(p.read_back.payment_intent)}`)}` : ""} · ${esc(`calls: Anthropic ${p.calls.anthropic}, Airwallex ${p.calls.airwallex}, Airi ${p.calls.airi}`)}</li>`).join("");
   const record = `${REPO_BLOB}${VIC3_RUN_FILE}`;
-  return `<div class="card airi" id="${VIC3_RUN_ID}"><h2>${esc(`Latest live run, ${s.date}: ${s.paid} of ${s.of} purchases paid`)}</h2>
+  return `<div class="card airi" id="${VIC3_RUN_ID}"><h2>${esc(lead ? `Latest live run, ${s.date}: purchase ${lead.step} paid, the signed hash read back ${eq(lead.read_back.mandate)} at Airi and ${eq(lead.read_back.payment_intent)} at Airwallex` : `Latest live run, ${s.date}: ${s.paid} of ${s.of} purchases paid`)}</h2>
 <p class="airi-label">${esc(`Rail chosen by ${s.model ?? "Claude"} from ${s.menu}`)}${s.requestId ? ` · <a class="pf" href="${esc(record)}" target="_blank" rel="noopener">${esc(`request ${short(s.requestId)}`)} ↗</a>` : ""}</p>
 <ul class="airi-out"><li>${esc(`${paidLine}.`)}</li>${refusedLine ? `<li>${esc(`${refusedLine}.`)}</li>` : ""}<li>${esc(s.finding)}</li></ul>
 <details class="fold" id="${VIC3_PURCHASES_ID}"><summary>${esc("Each purchase, with its ids")}</summary><ul class="awc">${rows}</ul>

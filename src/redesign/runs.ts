@@ -237,7 +237,9 @@ export function liveRuns(): RunRow[] {
   if (tap) rows.push({
     key: "tap-1", iso: tap.ranAt, date: day(tap.ranAt), title: "Visa Trusted Agent Protocol: signed agent checkout", rails: "Visa's TAP reference proxy, Airwallex sandbox card",
     name: "A checkout signed with Visa's Trusted Agent Protocol, on an Airwallex card", kind: "sandbox",
-    line: `${tap.steps.filter((s) => s.approved).length} approved, ${tap.steps.filter((s) => !s.approved).length} declined by Airwallex over the card's limit. The merchant was simulated.`,
+    // Outside the Visa entry (Visa, 5 Nov: TAP is not Visa tooling for this hackathon): not counted under Visa.
+    partners: ["Airwallex"],
+    line: `Outside the Visa entry. ${tap.steps.filter((s) => s.approved).length} approved, ${tap.steps.filter((s) => !s.approved).length} declined by Airwallex over the card's limit. The merchant was simulated.`,
     what: `${tap.steps.length} signed checkouts at a merchant we run: ${tap.steps.filter((s) => s.approved).length} approved, ${tap.steps.filter((s) => !s.approved).length} declined over the card's limit by Airwallex.`,
     checks: `Each charge read back from Airwallex (${tap.steps.map((s) => s.getStatus).join(", ")}).`, money: "Simulated merchant · test money",
     ids: tap.steps.map((s) => ({ label: `Card transaction, ${s.currency} ${s.amount}`, value: s.txId })),
