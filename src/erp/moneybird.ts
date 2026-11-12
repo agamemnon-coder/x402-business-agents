@@ -82,7 +82,22 @@ const ENDPOINT_PATTERNS = MONEYBIRD_ENDPOINTS.map((endpoint) => {
 
 interface Ledger { id: string; account_id: string | null; name: string; account_type?: string | null; allowed_document_types?: string[] | null; active?: boolean }
 interface TaxRate { id: string; name: string; percentage: string | null; tax_rate_type: string; active?: boolean }
-interface MbInvoice { id: string; reference: string | null; state: string; total_price_excl_tax: string | null; total_price_incl_tax: string | null; payments?: { id: string; transaction_identifier: string | null; price: string }[]; attachments?: unknown[] }
+interface MbInvoice {
+  id: string; reference: string | null; state: string; total_price_excl_tax: string | null; total_price_incl_tax: string | null;
+  payments?: { id: string; transaction_identifier: string | null; price: string; payment_date?: string | null }[]; attachments?: unknown[];
+  contact_id?: string | null; date?: string | null; due_date?: string | null; currency?: string | null;
+  details?: { ledger_account_id?: string | null; tax_rate_id?: string | null; price?: string | null }[];
+}
+
+/** A purchase invoice as Moneybird holds it now, read back for a reconciliation: amounts in whole cents, ids as strings. */
+export interface MoneybirdDocument {
+  id: string; reference: string | null; state: string; contactId: string | null; date: string | null; dueDate: string | null; currency: string | null;
+  /** Excluding and including VAT, as Moneybird computed them; null when Moneybird wrote no amount. */
+  netCents: number | null; grossCents: number | null;
+  payments: { id: string; cents: number | null; date: string | null; transactionIdentifier: string | null }[];
+  attachments: number;
+  lines: { ledgerAccountId: string | null; taxRateId: string | null; cents: number | null }[];
+}
 
 const ID = /^\d+$/;
 
@@ -480,6 +495,24 @@ export class MoneybirdConnector implements ErpConnector {
         return rows.find((x) => x.reference === ref)?.id ?? null;
       }
     }
+  }
+
+  /**
+   * GET documents/purchase_invoices/{id}.json, for a reconciliation after a sync: the state, the totals, the payments,
+   * the lines and how many files are attached. Moneybird advises against a GET to confirm a push (its GET answers may
+   * come from a cache), so the sync itself never relies on this; a read-back is a later, separate look.
+   */
+  async readPurchaseInvoice(externalId: string): Promise<MoneybirdDocument> {
+    const { data } = await this.call("GET", `documents/purchase_invoices/${externalId}.json`);
+    const d = data as MbInvoice | null;
+    if (!d || typeof d !== "object" || typeof d.id !== "string") throw new ErpError("unexpected", `GET purchase invoice ${externalId}: Moneybird answered without a record`);
+    return {
+      id: d.id, reference: d.reference ?? null, state: String(d.state ?? ""), contactId: d.contact_id ?? null, date: d.date ?? null, dueDate: d.due_date ?? null, currency: d.currency ?? null,
+      netCents: fromMoney(d.total_price_excl_tax), grossCents: fromMoney(d.total_price_incl_tax),
+      payments: (d.payments ?? []).map((x) => ({ id: x.id, cents: fromMoney(x.price), date: x.payment_date ?? null, transactionIdentifier: x.transaction_identifier ?? null })),
+      attachments: (d.attachments ?? []).length,
+      lines: (d.details ?? []).map((x) => ({ ledgerAccountId: x.ledger_account_id ?? null, taxRateId: x.tax_rate_id ?? null, cents: fromMoney(x.price) })),
+    };
   }
 
   // GET documents/purchase_invoices/{id}.json: state is new, saved, open, late, pending_payment or paid; payments lists what was registered.

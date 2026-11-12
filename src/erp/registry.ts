@@ -131,7 +131,8 @@ const chartCodes = [...Object.keys(CHART), "1600"];
 const json = (o: unknown, status = 200): HttpResponse => ({ status, headers: {}, body: JSON.stringify(o) });
 const xml = (v: XmlValue): HttpResponse => ({ status: 200, headers: {}, body: `<?xml version="1.0"?><methodResponse><params><param>${encodeValue(v)}</param></params></methodResponse>` });
 
-function dryAnswer(name: ConnectorName): (req: HttpRequest, n: number) => HttpResponse {
+/** `own`: the customer's own Moneybird settings, when the dry run uses them. */
+function dryAnswer(name: ConnectorName, own?: MoneybirdConfig): (req: HttpRequest, n: number) => HttpResponse {
   if (name === "exact") return (req, n) => {
     if (req.method === "GET" && req.url.includes("/financial/GLAccounts")) return json({ d: { results: chartCodes.map((c) => ({ ID: `dry-gl-${c}`, Code: c, Description: CHART[c] ?? "Accounts payable" })) } });
     if (req.method === "GET") return json({ d: { results: [] } });
@@ -140,9 +141,16 @@ function dryAnswer(name: ConnectorName): (req: HttpRequest, n: number) => HttpRe
   if (name === "moneybird") return (req, n) => {
     const path = new URL(req.url).pathname;
     // Example ledger accounts carry Purser's own codes; example tax rates are purchase-invoice rates; anything created
-    // gets an example id.
-    if (req.method === "GET" && path.endsWith("/ledger_accounts.json")) return json(chartCodes.map((c, i) => ({ id: String(200000000000000000 + i), account_id: c, name: CHART[c] ?? "Accounts payable", allowed_document_types: ["purchase_invoice", "general_journal_document"], active: true })));
-    if (req.method === "GET" && path.endsWith("/tax_rates.json")) return json(Object.entries(EXAMPLE.moneybird.taxRates).map(([code, id]) => ({ id, name: code, percentage: null, tax_rate_type: "purchase_invoice", active: true })));
+    // gets an example id. With the customer's own maps, a dry run asks no administration, so it takes each mapped id
+    // at its word (the account or rate exists and may be used); the live run checks every one against Moneybird's own
+    // chart and tax rates before it sends (found on the sandbox run, 12 November 2026: the dry run stopped at the
+    // first real id, because the example chart did not hold it).
+    const doc = ["purchase_invoice", "general_journal_document"];
+    if (req.method === "GET" && path.endsWith("/ledger_accounts.json")) return json([
+      ...chartCodes.map((c, i) => ({ id: String(200000000000000000 + i), account_id: c, name: CHART[c] ?? "Accounts payable", allowed_document_types: doc, active: true })),
+      ...Object.entries(own?.glMap ?? {}).map(([code, id]) => ({ id, account_id: null, name: `${CHART[code] ?? code} (as mapped; not checked in a dry run)`, allowed_document_types: doc, active: true })),
+    ]);
+    if (req.method === "GET" && path.endsWith("/tax_rates.json")) return json(Object.entries(own ? own.taxRates : EXAMPLE.moneybird.taxRates).map(([code, id]) => ({ id, name: code, percentage: null, tax_rate_type: "purchase_invoice", active: true })));
     if (req.method === "GET" && path.includes("/contacts/customer_id/")) return json({ error: "record not found", symbolic: {} }, 404);
     if (req.method === "GET") return json([]);
     if (path.endsWith("/attachments.json")) return { status: 200, headers: {}, body: "200" };
@@ -163,12 +171,13 @@ function dryAnswer(name: ConnectorName): (req: HttpRequest, n: number) => HttpRe
 
 /** A connector that sends nothing, with the requests it would have sent in `transport.sent`. */
 export function dryRunConnector(name: ConnectorName, env: Env): { connector: ErpConnector; transport: RecordingTransport; usesExampleSettings: boolean } {
-  const transport = new RecordingTransport(dryAnswer(name));
   // The customer's own settings when they are all there (the token step is a placeholder; totals are not compared, since
   // nothing computed them), else the example settings.
   const own = missingSettings(name, env).length === 0;
+  const ownMoneybird = own && name === "moneybird" ? moneybirdConfigFromEnv(env) : undefined;
+  const transport = new RecordingTransport(dryAnswer(name, ownMoneybird));
   const connector = name === "exact" ? new ExactConnector(own ? exactFromEnv(env) : EXAMPLE.exact, transport, staticToken())
-    : name === "moneybird" ? new MoneybirdConnector({ ...(own ? moneybirdConfigFromEnv(env) : EXAMPLE.moneybird), verifyTotals: false }, transport, staticToken())
+    : name === "moneybird" ? new MoneybirdConnector({ ...(ownMoneybird ?? EXAMPLE.moneybird), verifyTotals: false }, transport, staticToken())
     : name === "bc" ? new BusinessCentralConnector({ ...(own ? bcConfigFromEnv(env) : EXAMPLE.bc), verifyTotals: false }, transport, staticToken())
       : new OdooConnector({ ...(own ? odooConfigFromEnv(env) : EXAMPLE.odoo), verifyTotals: false }, transport);
   return { connector, transport, usesExampleSettings: !own };

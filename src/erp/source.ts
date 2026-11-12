@@ -3,10 +3,14 @@
 // The payables inbox (src/ap) feeds its invoices through the same model (below); the bookkeeping core (src/ledger) does
 // not feed it yet.
 //
+// An inbox invoice takes its PDF along (the file the inbox stored, by its sha256), so the ERP holds the document with
+// the booking; an invoice whose file is not on this machine goes without one.
+//
 // Honest limits of this feed: the Treasury flow's own invoices carry no issue date (the due date stands in) and no VAT split (the
 // amount is booked as one line with VAT treatment NONE); movements in Metal's test token (USDZ) are not ISO currencies,
 // so no ERP can hold them and they are left out; opening balances are the accountant's, not sent.
 
+import { existsSync, readFileSync } from "node:fs";
 import { journal as glJournal } from "../accounting/gl.js";
 import { bankAccountFor, bookable } from "../ap/books.js";
 import { ledgerInvoiceNo } from "../ap/ledgerKey.js";
@@ -35,6 +39,13 @@ function apVat(a: ApInvoiceRow): { code: "NL21" | "NL9" | "NONE"; netCents: numb
   return { code: "NONE", netCents: total, vatCents: 0 };
 }
 
+/** The PDF the inbox stored for a document, or nothing when the file is not here (another machine's ledger). */
+function storedPdf(db: DB, sha256: string): { pdf: NonNullable<PurchaseInvoice["pdf"]> } | Record<string, never> {
+  const doc = db.prepare("SELECT filename, path FROM ap_documents WHERE sha256 = ?").get(sha256) as { filename: string; path: string } | undefined;
+  if (!doc || !existsSync(doc.path)) return {};
+  return { pdf: { fileName: doc.filename || `${sha256.slice(0, 12)}.pdf`, bytes: new Uint8Array(readFileSync(doc.path)) } };
+}
+
 export function ledgerItems(db: DB): SyncItem[] {
   const items: SyncItem[] = [];
   for (const b of db.prepare("SELECT beneficiary_id, name, iban_last4, iban_sha256, bic, currency FROM beneficiaries WHERE status = 'ACTIVE' ORDER BY beneficiary_id").all() as
@@ -59,6 +70,7 @@ export function ledgerItems(db: DB): SyncItem[] {
         id: r.invoice_no, vendorId: r.beneficiary_id, number: a.invoice_no, issueDate: a.issue_date || r.due_date, dueDate: a.due_date || r.due_date, currency: a.currency,
         lines: [{ description: `Invoice ${a.invoice_no}, ${a.vendor}`, glAccount: a.gl_account || VENDOR_GL[r.vendor] || "6900", vatCode: vat.code, netCents: vat.netCents, vatCents: vat.vatCents, ...(a.cost_centre ? { costCentre: a.cost_centre } : {}) }],
         totals: { netCents: vat.netCents, vatCents: vat.vatCents, grossCents: vat.netCents + vat.vatCents }, documentSha256: a.doc_sha256,
+        ...storedPdf(db, a.doc_sha256),
       } satisfies PurchaseInvoice });
       continue;
     }

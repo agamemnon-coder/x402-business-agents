@@ -389,7 +389,10 @@ export async function correct(db: DB, c: ErpConnector, item: SyncItem, now: () =
   }
   const hash = contentHash(item.kind, item.object);
   store.put({ ...row, external_id: next, pushed_hash: hash, pushed_json: sentJson(item.kind, item.object), pending_hash: null, status: "synced", updated_at: now().toISOString(), progress_json: null });
-  store.log("erp.corrected", subject, { credit_note: counter, replaced: original, external_id: next, hash });
+  // With the totals of the version the credit note cancels (an invoice): a later reconciliation knows what the two
+  // documents the ERP still holds were, though the row now carries the new version.
+  const credited = item.kind === "invoice" ? (JSON.parse(row.pushed_json) as PurchaseInvoice).totals : null;
+  store.log("erp.corrected", subject, { credit_note: counter, replaced: original, external_id: next, hash, ...(credited ? { credited_net_cents: credited.netCents, credited_vat_cents: credited.vatCents, credited_gross_cents: credited.grossCents } : {}) });
   return { kind: item.kind, id: item.object.id, outcome: "corrected", externalId: next };
 }
 

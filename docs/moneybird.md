@@ -82,8 +82,8 @@ sandbox administration live for the first time: its ledger accounts, contacts an
      may stand on a purchase invoice or a journal entry.
    - Expect to need `ERP_MONEYBIRD_GL_MAP`. The sandbox's chart had Moneybird's own account codes and none of Purser's.
    - `npm run erp -- sync --connector moneybird --dry-run` shows the requests without sending them.
-     - Known gap (12 November): with real ids in the maps a dry run stops at the first of them. It answers from an
-       example chart that does not hold them.
+     - A dry run asks no administration. It takes each id in your maps at its word; the live run checks every one
+       against Moneybird's own chart and tax rates before it sends.
 5. **Confirm in the sandbox before a real administration:**
    - that a negative-price purchase invoice is the right correction;
    - Moneybird's VAT rounding on a few real invoices.

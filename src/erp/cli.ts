@@ -8,15 +8,26 @@
 // npm run erp -- correct --connector exact --object invoice:<id> --live
 //                                                       a credit note (or reversal) and the new version
 // npm run erp -- calls                                  the run's call log by endpoint, against the approved number
+// npm run erp -- readback --connector moneybird --live [--out <file>]
+//                                                       read every purchase invoice back and reconcile it with the ledger
+// npm run erp -- record --connector moneybird [--readback <file>] [--steps <file>] [--idempotency-step <name>] [--markdown]
+//                                                       the run's record as data, from the call log, the audit log and the read-back
+// npm run erp -- world --step build --dir <folder> | --step recode
+//                                                       the sandbox run's test world (src/erp/sandboxWorld.ts); calls nothing
 // The dry run needs no account and no settings: without them it uses example settings and says so.
 // Every --live command needs the owner's go and a call budget (src/erp/callBudget.ts): ERP_LIVE_GO=yes,
 // ERP_CALL_BUDGET and ERP_CALL_LOG. Each request is counted in the log before it is sent; the one over is not sent.
 
+import { readFileSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import type { DB } from "../db/open.js";
 import { callsByEndpoint, liveRefusals, readCallLog } from "./callBudget.js";
 import { CONNECTOR_NAMES, redactRequest, type ConnectorName, type ErpConnector, type HttpRequest, type Transport } from "./connector.js";
+import type { MoneybirdConnector } from "./moneybird.js";
+import { reconcile, reconciliationLines, type Reconciliation } from "./readback.js";
 import { dryRunConnector, liveConnector, missingSettings, SETTINGS } from "./registry.js";
+import { buildRunRecord, runRecordMarkdown, type RunStep } from "./runRecord.js";
+import { buildSandboxWorld, recodeSandboxInvoice } from "./sandboxWorld.js";
 import { ledgerItems } from "./source.js";
 import { correct, resolve, syncAll, syncStatus, type SyncItem } from "./sync.js";
 import { decodeCallForTest } from "./xmlrpc.js";
@@ -88,6 +99,44 @@ export async function runErpCli(args: string[], d: CliDeps): Promise<number> {
     for (const e of callsByEndpoint(calls)) d.out(`${String(e.calls).padStart(3)}  ${e.endpoint}`);
     return 0;
   }
+  if (cmd === "record") {
+    // The run's record as data. Reads the call log, the ledger and the files named; calls nothing.
+    const name = connectorArg(args);
+    const file = d.env.ERP_CALL_LOG;
+    if (!file) throw new Error("ERP_CALL_LOG is not set: name the run's call log");
+    if (!/^\d+$/.test(d.env.ERP_CALL_BUDGET ?? "")) throw new Error("ERP_CALL_BUDGET is not set: the approved number of requests for the whole run");
+    const readback = flag(args, "readback");
+    const steps = flag(args, "steps");
+    const record = buildRunRecord(d.db, {
+      connector: name, administration: name === "moneybird" ? d.env.ERP_MONEYBIRD_ADMINISTRATION_ID ?? null : null, sandboxOnly: d.env.ERP_MONEYBIRD_SANDBOX_ONLY === "on",
+      calls: readCallLog(file), approved: Number(d.env.ERP_CALL_BUDGET),
+      steps: steps ? readFileSync(steps, "utf8").split("\n").filter((l) => l.trim()).map((l) => JSON.parse(l) as RunStep) : [],
+      reconciliation: readback ? (JSON.parse(readFileSync(readback, "utf8")) as Reconciliation) : null,
+      ...(flag(args, "idempotency-step") ? { idempotencyStep: flag(args, "idempotency-step")! } : {}),
+    });
+    d.out(args.includes("--markdown") ? runRecordMarkdown(record) : JSON.stringify(record, null, 2));
+    return 0;
+  }
+  if (cmd === "world") {
+    // The Moneybird sandbox run's test world, in this ledger: stand-in rails, test data, no network.
+    const stepName = flag(args, "step");
+    if (stepName === "build") {
+      const dir = flag(args, "dir");
+      if (!dir) throw new Error("say where the test world keeps its PDFs: --dir <folder outside the repository>");
+      const w = await buildSandboxWorld(d.db, resolvePath(dir));
+      d.out(`Test world "${w.company}": stand-in rails, test data only.`);
+      for (const i of w.invoices) d.out(`invoice ${i.number.padEnd(12)} ${i.supplier.padEnd(34)} net ${i.net}  VAT ${i.vat}  total ${i.total}  ${i.status}  account ${i.account}${i.changed ? `  (${i.changed})` : ""}`);
+      d.out(`paid    ${w.paid.invoice}: ${w.paid.amount}, stand-in payout ${w.paid.transfer}`);
+      d.out(`card    ${w.card.merchant}: ${w.card.amount}, stand-in card transaction ${w.card.transaction}, account ${w.card.account}`);
+      return 0;
+    }
+    if (stepName === "recode") {
+      const r = recodeSandboxInvoice(d.db);
+      d.out(`invoice:${r.ledgerId} moved from account ${r.from} to ${r.to}`);
+      return 0;
+    }
+    throw new Error("say --step build --dir <folder> or --step recode");
+  }
   if (cmd === "resolve") {
     // A person's call on an object the ERP holds in a state they had to look at; nothing is sent to the ERP.
     const name = connectorArg(args);
@@ -102,8 +151,9 @@ export async function runErpCli(args: string[], d: CliDeps): Promise<number> {
     d.out(`${kind} ${id}: ${as} by ${by}`);
     return 0;
   }
-  if (cmd === "sync" || cmd === "pull" || cmd === "correct") {
+  if (cmd === "sync" || cmd === "pull" || cmd === "correct" || cmd === "readback") {
     const name = connectorArg(args);
+    if (cmd === "readback" && name !== "moneybird") throw new Error("readback is built for Moneybird only");
     if (dry === live) throw new Error("say --dry-run (send nothing, print the requests) or --live (send them)");
     if (dry) {
       if (cmd !== "sync") throw new Error(`${cmd} has no dry run; use sync --dry-run to see the requests`);
@@ -135,6 +185,16 @@ export async function runErpCli(args: string[], d: CliDeps): Promise<number> {
         if (taxes) for (const t of await taxes.call(c)) d.out(`  tax rate ${t.name} (${t.percentage}%, ${t.type})  [id ${t.id}]`);
         return 0;
       }
+      if (cmd === "readback") {
+        // One GET per purchase invoice the ERP holds for Purser, then the comparison with the ledger, as data.
+        const mb = c as Partial<Pick<MoneybirdConnector, "readPurchaseInvoice">>;
+        if (!mb.readPurchaseInvoice) throw new Error("this connector cannot read an invoice back");
+        const rec = await reconcile(d.db, name, (id) => mb.readPurchaseInvoice!.call(c, id), { items: items(d.db) });
+        for (const l of reconciliationLines(rec)) d.out(l);
+        const outFile = flag(args, "out");
+        if (outFile) writeFileSync(resolvePath(outFile), `${JSON.stringify(rec, null, 2)}\n`, { mode: 0o600 });
+        return rec.differences > 0 || rec.not_compared.length > 0 ? 1 : 0;
+      }
       if (cmd === "correct") {
         const obj = flag(args, "object") ?? "";
         const [kind, ...rest] = obj.split(":");
@@ -153,6 +213,6 @@ export async function runErpCli(args: string[], d: CliDeps): Promise<number> {
       d.out(`${readCallLog(resolvePath(d.env.ERP_CALL_LOG!)).length} of ${Number(d.env.ERP_CALL_BUDGET)} approved requests used`);
     }
   }
-  d.out("npm run erp -- list | status | calls | sync --connector exact|bc|odoo|moneybird --dry-run|--live | pull --connector … --live | correct --connector … --object invoice:<id> --live | resolve --connector … --object invoice:<id> --as synced|retry --by <who>");
+  d.out("npm run erp -- list | status | calls | readback --connector moneybird --live | record --connector … | world --step build|recode | sync --connector exact|bc|odoo|moneybird --dry-run|--live | pull --connector … --live | correct --connector … --object invoice:<id> --live | resolve --connector … --object invoice:<id> --as synced|retry --by <who>");
   return cmd ? 2 : 0;
 }
