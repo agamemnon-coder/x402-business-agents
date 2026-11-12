@@ -4,8 +4,8 @@
 // enrol their passkey in the cloud itself, with an enrolment an owner starts (docs/cloud.md).
 // The API key comes from the environment (PURSER_CLOUD_KEY), never from code, git or a log.
 
-import { readFileSync } from "node:fs";
 import type { DB } from "../db/open.js";
+import { readDoc } from "../ap/docStore.js";
 import { publicInvoice } from "../ap/public.js";
 import { apInvoices } from "../ap/store.js";
 import { ingestEmail, type InboxDeps } from "../ap/inbox.js";
@@ -56,7 +56,7 @@ export function batchesFor(db: DB, state: CloudState, opts: { now?: Date; maxDoc
   let size = 0;
   const limit = opts.maxDocBytes ?? 20_000_000;
   for (const d of docs.filter((x) => !held.has(x.sha256))) {
-    const b64 = readFileSync(d.path).toString("base64");
+    const b64 = readDoc(db, d.path).toString("base64");
     if (chunk.length && size + b64.length > limit) { out.push({ documents: chunk }); chunk = []; size = 0; }
     chunk.push({ sha256: d.sha256, filename: d.filename, mime: d.mime, base64: b64 });
     size += b64.length;
