@@ -121,7 +121,8 @@ function keysCheck(c: IccEnvConfig, env: Env): IccRunCheck {
     tryOpen(() => readRequestCertificate(c.mle!.requestCertFile, "ICC_MLE_REQUEST_CERT_FILE"));
   }
   const what = [c.scheme === "jwt-p12" ? "the signing key" : "the shared secret", ...(c.mle ? ["the response key", "the request certificate"] : [])];
-  return wrong.length ? { name: "keys", ok: false, detail: wrong.join("; ") } : { name: "keys", ok: true, detail: `${what.join(", ")} open` };
+  const listed = what.length > 1 ? `${what.slice(0, -1).join(", ")} and ${what.at(-1)}` : what[0]!;
+  return wrong.length ? { name: "keys", ok: false, detail: wrong.join("; ") } : { name: "keys", ok: true, detail: `${listed} open` };
 }
 
 /** The request certificate (a public file): its subject's serial number, and its validity for the clock check. */

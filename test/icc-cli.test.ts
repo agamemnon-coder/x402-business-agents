@@ -10,6 +10,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { countByEndpoint, readCallLog } from "../src/airwallex/callBudget.js";
 import { iccCli, type IccCliIo } from "../src/cli/icc.js";
 import { openDb, type DB } from "../src/db/open.js";
+import { ICC_ENV_NAMES } from "../src/icc/config.js";
 import { ICC_PREFLIGHT_NOTE, waitForOutcome } from "../src/icc/conductor.js";
 import { executeIccPurchase } from "../src/icc/purchase.js";
 import { readIccRunRecord } from "../src/icc/record.js";
@@ -380,5 +381,23 @@ describe("record", () => {
 describe("docs/runs", () => {
   it("holds no ICC record: nothing has run, and the page shows a run only when such a file exists", () => {
     expect(readdirSync(new URL("../docs/runs/", import.meta.url)).filter((f) => /-icc\./.test(f))).toEqual([]);
+  });
+
+  it("the runbook opens with the one status sentence, labels its output as the stand-in's, and matches what the code prints", async () => {
+    const book = readFileSync(new URL("../docs/runs/driver/icc-runbook.md", import.meta.url), "utf8");
+    expect(book.split("\n")[0]).toBe("Intelligent Commerce Connect: access requested, not granted yet; not used in this entry.");
+    expect(book).toContain("**Expected shape, from the test stand-in; not a sandbox run.**");
+    expect(book).not.toMatch(/\b(he|she|his|her|him)\b/i);
+    expect(book).not.toMatch(/(Visa|Cybersource) (approved|certified|endorsed)|ICC ran|was paid/i);
+    // The lines a run prints that do not change from run to run are in the runbook as printed.
+    const w = world();
+    await enrol(w);
+    expect(await iccCli(["preflight"], w.io)).toBe(0);
+    expect(await iccCli(["run"], w.io)).toBe(0);
+    const fixed = w.out.filter((l) => !/P-\d+|\d{4}-\d{2}-\d{2}T|[0-9a-f]{12}…|read 2|call\(s\) made/.test(l));
+    expect(fixed.length).toBeGreaterThan(10);
+    for (const l of fixed) expect(book, l).toContain(l);
+    // Every name the runbook tells the owner to set is one the code reads (KIT11_AIRI_RAIL is named to be unset).
+    for (const m of book.matchAll(/`((?:ICC|KIT11)_[A-Z_]+)`/g)) expect(["KIT11_DB", "KIT11_KEYS_DIR", "KIT11_AIRI_RAIL", ...ICC_ENV_NAMES], m[1]).toContain(m[1]);
   });
 });
