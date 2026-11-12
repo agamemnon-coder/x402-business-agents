@@ -109,7 +109,9 @@ describe("the seven near-certain questions (qa.md, 27 to 33)", () => {
 
   it("says plainly: no paying customers yet, design partners wanted, tokens not live, no licence", () => {
     const t = prose(qa.slice(qa.indexOf("### 27. ")));
-    for (const s of ["no paying customers", "looking for design partners", "have not run live yet", "not licensed, certified or audited", "no legal advice"]) expect({ s, has: t.includes(s) }).toEqual({ s, has: true });
+    const tokenizeRun = readdirSync(new URL("../docs/runs/", import.meta.url)).some((f) => /tokeni[sz]/i.test(f) && /\.md$/.test(f));
+    expect(t).toContain(tokenizeRun ? "the one invoice-token run on Metal testnet" : "have not run live yet");
+    for (const s of ["no paying customers", "looking for design partners", "not licensed, certified or audited", "no legal advice"]) expect({ s, has: t.includes(s) }).toEqual({ s, has: true });
   });
 });
 
@@ -172,7 +174,7 @@ describe("the Demo Day runbook, cheat sheet and after-submission list", () => {
     for (const r of rows) expect({ step: r[0], url: r[2]!.length > 0 && /\/|http/.test(r[2]!), fallback: r[4]!.length > 0 }).toEqual({ step: r[0], url: true, fallback: true });
     // The token on Metal is said by its record's status.
     const tokenizeRun = readdirSync(new URL("../docs/runs/", import.meta.url)).some((f) => /tokeni[sz]/i.test(f) && /\.md$/.test(f));
-    if (!tokenizeRun) expect(prose(rows[5]!.join(" "))).toContain("live run pending");
+    expect(prose(rows[5]!.join(" "))).toContain(tokenizeRun ? "one prototype run on Metal testnet" : "live run pending");
   });
 
   it("prints the cheat sheet on one A4 page, with the three sentences", () => {
@@ -244,7 +246,7 @@ describe("the Demo Day video script (docs/submission/demo-day-video.md)", () => 
       expect({ s, said: said.includes(s) }).toEqual({ s, said: true });
     }
     const next = beats.find((b) => b.title === "What's next")!.says;
-    if (tokenizeRun) expect(next).toMatch(/Metal/);
+    if (tokenizeRun) { expect(next).toContain("one prototype run on testnet"); expect(next).not.toMatch(/pending/); }
     else { expect(next).toContain("live run still pending"); expect(next).not.toMatch(/live on testnet/i); }
     expect(doc).toContain("<short URL from /go>");
   });

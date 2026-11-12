@@ -43,9 +43,9 @@ A customer disputed 12 orders, and the chain showed that all 12 carried the buyi
 
 ## 7. Are invoice tokens live on Metal?
 
-Not yet: the token contract is built and tested on an in-memory chain, and the live run on Metal testnet is pending. A CFO-approved invoice becomes one token, financed at a discount and settled to whoever holds it.
+Once, as a prototype: on 12 November an approved EUR 240.00 invoice was minted as a token on Metal testnet, financed at a 2% discount by a simulated financier and settled, with test money. It is one run, not a product yet.
 
-**Source:** [docs/tokenize.md](../../tokenize.md)
+**Source:** [docs/runs/2026-11-12-tokenize.md](../../runs/2026-11-12-tokenize.md); [docs/tokenize.md](../../tokenize.md)
 
 ## 8. What about money from unknown senders?
 

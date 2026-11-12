@@ -69,9 +69,11 @@ describe("the jury cheat sheets", () => {
     }
   });
 
-  it("says plainly what has not run: tokens on Metal pending, Exact next, no customers, testnet and sandbox", () => {
+  it("says plainly what has not run: Exact next, no customers, testnet and sandbox; tokens on Metal by their record", () => {
     const all = COMPANIES.map((c) => prose(sheet(c).text)).join(" ");
-    for (const s of ["live run on Metal testnet is pending", "Exact next", "no customers yet", "testnet and test money only", "not tested yet"]) expect({ s, said: all.includes(s) }).toEqual({ s, said: true });
+    const tokenizeRun = readdirSync(join(ROOT, "docs/runs")).some((f) => /tokeni[sz]/i.test(f) && /\.md$/.test(f));
+    expect(all).toContain(tokenizeRun ? "minted as a token on Metal testnet" : "live run on Metal testnet is pending");
+    for (const s of ["Exact next", "no customers yet", "testnet and test money only", "not tested yet"]) expect({ s, said: all.includes(s) }).toEqual({ s, said: true });
     expect(all).not.toMatch(/tokens? (?:are|is) live on (?:Metal )?testnet/i);
   });
 });

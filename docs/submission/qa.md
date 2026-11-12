@@ -352,8 +352,8 @@ partners, finance teams on Airwallex whose agents pay suppliers.
 Real, in sandboxes and on testnet with test money: Airwallex's own approvals, declines and payouts, Metal's on-chain
 refusals, Claude's decisions, Max's passkey with Face ID, and the posts to the Moneybird and T:0 sandboxes. Simulated
 or ours: the companies, suppliers and customers, the second approver, every settlement (the sandbox's simulation), the
-bank on the hands-on page, and the invoice tokens on Metal, which have not run live yet.
+bank on the hands-on page, and the financier in the one invoice-token run on Metal testnet.
 
 **Evidence:** [docs/runs/README.md](../runs/README.md); [/runs](https://kit11.max-31b.workers.dev/runs);
 [docs/runs/2026-11-12-airwallex-two-locks-paid.md](../runs/2026-11-12-airwallex-two-locks-paid.md);
-[docs/tokenize.md](../tokenize.md).
+[docs/runs/2026-11-12-tokenize.md](../runs/2026-11-12-tokenize.md).

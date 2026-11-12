@@ -26,9 +26,9 @@ Rules for these words, checked by `test/demo-day-pack.test.ts`:
 - **Paid via Airwallex, booked, archived:** 1:10–1:38; budget 64 words; written 52 words
 - **An agent overspends, and the rails refuse:** 1:38–2:05; budget 62 words; written 53 words
 - **The outcome:** 2:05–2:20; budget 34 words; written 29 words
-- **What's next:** 2:20–2:42; budget 50 words; written 35 words
+- **What's next:** 2:20–2:42; budget 50 words; written 36 words
 - **Try it yourself:** 2:42–2:55; budget 29 words; written 22 words
-- **Total:** 2:55; budget 398 words; written 324 words
+- **Total:** 2:55; budget 398 words; written 325 words
 
 ## The beats
 
@@ -95,11 +95,12 @@ Rules for these words, checked by `test/demo-day-pack.test.ts`:
 ### Beat 8 · 2:20–2:42 · What's next
 
 - **Screen:** one plain list, typed on screen as Max says it (no slide): Purser Cloud for small businesses; Moneybird
-  (sandbox run); Exact (next); invoice tokens on Metal (built, live run pending); design partners wanted.
-- **Max says:** "What's next. Purser Cloud for small businesses. Books in Moneybird, which ran in its sandbox, and Exact next. Invoice tokens on Metal: built, the live run still pending. And we are looking for design partners."
+  (sandbox run); Exact (next); invoice tokens on Metal (one prototype run on testnet, the financier simulated); design partners wanted.
+- **Max says:** "What's next. Purser Cloud for small businesses. Books in Moneybird, which ran in its sandbox, and Exact next. Invoice tokens on Metal: one prototype run on testnet so far. And we are looking for design partners."
 - **Source:** [docs/cloud.md](../cloud.md) (Purser Cloud); [docs/runs/2026-11-12-moneybird-sandbox.md](../runs/2026-11-12-moneybird-sandbox.md)
   (Moneybird sandbox run); [docs/erp.md](../erp.md) (Exact Online not tested against a live system yet);
-  [docs/tokenize.md](../tokenize.md) (built and tested on an in-memory chain; nothing has run on Metal testnet yet);
+  [docs/runs/2026-11-12-tokenize.md](../runs/2026-11-12-tokenize.md) (one prototype run on Metal testnet,
+  12 November: mint, finance, settle; the financier simulated; test money);
   [docs/business/README.md](../business/README.md) (no pilots, no revenue).
 
 ### Beat 9 · 2:42–2:55 · Try it yourself
@@ -119,8 +120,8 @@ Rules for these words, checked by `test/demo-day-pack.test.ts`:
 | The vault is tested, not yet run live | Beat 5 words |
 | Metal is testnet | Beat 6 screen (the testnet explorer) and source |
 | Exact has not run | Beat 8: "Exact next" |
-| Invoice tokens on Metal have not run live | Beat 8: "built, the live run still pending" |
+| Invoice tokens on Metal ran once, as a prototype, with a simulated financier | Beat 8: "one prototype run on testnet so far"; the screen |
 | No customers | Beat 8: "we are looking for design partners" |
 
-Before the recording: if the tokenisation live run record (`docs/runs/*tokeni*`) is on main by then, beat 8 may say
-"live on testnet", and only then; the test reads the folder and holds the words to it.
+The token beat follows its record: `docs/runs/2026-11-12-tokenize.md` (12 November) is on main, so beat 8 says one
+prototype run on testnet; the test reads the folder and holds the words to it.
