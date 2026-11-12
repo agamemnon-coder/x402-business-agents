@@ -48,7 +48,7 @@
 @keyframes pv-dash { to { stroke-dashoffset: -20; } }
 @keyframes pv-prog { 0% { stroke-dashoffset: var(--pv-len); } 88% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 0; } }
 @keyframes pv-step { 0% { opacity: 0; } 1.5% { opacity: 1; } 11% { opacity: 1; } 13% { opacity: 0; } 100% { opacity: 0; } }
-</style><defs><marker id="pv-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="pv-tip" d="M0 0 L10 5 L0 10 z"/></marker></defs><rect class="pv-bg" width="1200" height="250"/>
+</style><rect class="pv-bg" width="1200" height="250"/>
 <path class="pv-line" d="M84 104 H1116"/>
 <path class="pv-prog" d="M84 104 H1116" stroke-dasharray="1032" stroke-dashoffset="0"/>
 <rect class="pv-step-hl pv-d0" x="16" y="30" width="136" height="196" rx="16"/>

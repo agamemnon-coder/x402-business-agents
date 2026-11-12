@@ -272,11 +272,13 @@ describe("the redesigned public pages", () => {
     // Home said both "entered for the Visa Award" and "not an award entry" (jury panel, 12 Nov): it now says nothing
     // about awards or Visa, and carries no chip, strip or "Built on" row. /visa and /proof say what is true there.
     expect(homePage()).not.toMatch(/Kit 11|x402 Business Agents|Metal Award|Visa Award|Built on|class="built"/);
-    expect(homePage().replace(/<header class="top">[\s\S]*?<\/header>/, "")).not.toMatch(/Visa|href="visa"/);
+    // Since the jury check of 12 Nov Home has a Visa Intelligent Commerce proof card (vic-3, to /visa) and the logos; still no TAP and no award wording.
+    expect(homePage().replace(/<header class="top">[\s\S]*?<\/header>/, "")).not.toMatch(/Visa TAP|Visa Award|\bTAP\b/);
     // Proof has no footer link to /visa since 12 Nov either: Visa TAP is on /visa only, in its closed fold.
     expect(proofPage()).not.toMatch(/<a class="flink" href="visa">|Extra, not an award entry/);
     expect(JSON.stringify(agentRun().scenes)).not.toMatch(/Visa|TAP/);
-    for (const [name, body] of Object.entries(PAGES)) if (typeof body === "string") expect({ name, img: /<img[^>]*visa/i.test(body), words: body.split(/[.!?"]\s/).filter((s) => /Visa|TAP/.test(s)).map((s) => /\b(certified|endorsed|Visa-approved|open-source)\b/i.exec(s)?.[0]).find(Boolean) ?? null }).toEqual({ name, img: false, words: null });
+    // The partners' logo row (docs/assets/logos/built-with.png, the owner's stated permission in docs/evidence/logo-permissions.md, 12 Nov) is the one image that names Visa.
+    for (const [name, body] of Object.entries(PAGES)) if (typeof body === "string") expect({ name, img: /<img[^>]*visa/i.test(body.replace(/<img src="assets\/built-with\.png"[^>]*>/g, "")), words: body.split(/[.!?"]\s/).filter((s) => /Visa|TAP/.test(s)).map((s) => /\b(certified|endorsed|Visa-approved|open-source)\b/i.exec(s)?.[0]).find(Boolean) ?? null }).toEqual({ name, img: false, words: null });
     expect(PAGES.visa).toContain(VISA_CLAIM.replace(/'/g, "&#39;").replace(/&#39;/g, "'"));
     expect(PAGES.visa).not.toMatch(/Dev test|reference code is not used/);
   });

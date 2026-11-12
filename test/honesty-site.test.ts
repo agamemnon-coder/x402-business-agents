@@ -251,7 +251,8 @@ describe("6. TAP's status (Visa, 5 Nov: not eligible Visa tooling), said once, o
     expect(String(pages.visa)).toContain(VISA_TAP_STATUS);
     for (const [name, body] of Object.entries(pages)) if (typeof body === "string" && name !== "visa") expect({ name, has: body.includes(VISA_TAP_STATUS) }).toEqual({ name, has: false });
     for (const [name, html] of Object.entries({ home: homePage(), proof: proofPage() })) expect({ name, link: /Extra, not an award entry/.test(html) }).toEqual({ name, link: false });
-    expect(homePage().replace(/<header class="top">[\s\S]*?<\/header>/, "")).not.toMatch(/Visa|\bTAP\b|\bawards?\b/);
+    // Since the jury check of 12 Nov Home has a Visa Intelligent Commerce proof card (vic-3, to /visa) and the logos; still no TAP and no award wording.
+    expect(homePage().replace(/<header class="top">[\s\S]*?<\/header>/, "")).not.toMatch(/Visa TAP|Visa Award|\bTAP\b|\bawards?\b/);
     const fold = /<details class="fold" id="visa-tap">[\s\S]*?<\/details>/.exec(String(pages.visa))![0];
     expect(fold).toContain(VISA_TAP_STATUS);
     expect(String(pages.visa).replace(fold, "")).not.toMatch(/\bTAP\b/);
