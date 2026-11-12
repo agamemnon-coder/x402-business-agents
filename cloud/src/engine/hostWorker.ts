@@ -92,7 +92,7 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     events: async (after, limit) => host.events(after, limit),
     vaultFiles: async () => host.vaultFiles(),
     vaultFile: async (path) => host.vaultFile(path),
-    forgetPasskey: async (label) => host.forgetPasskey(label),
+    forgetPasskey: async (person) => host.forgetPasskey(person),
     // The object does this itself (it must also forget this host); here for the interface's sake.
     wipe: async () => { await storage.deleteAll(); },
   };

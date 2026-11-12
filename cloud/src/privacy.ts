@@ -4,6 +4,7 @@
 // seven years (Dutch law, Article 52 AWR); a closed company's records are purged only after that, by the scheduled job.
 
 import type { EngineApi } from "./engine/api.js";
+import { logEvent } from "./log.js";
 import type { Blobs, Sql } from "./store.js";
 import { TENANT_TABLES, TenantDb, WriteConflict } from "./tenant.js";
 
@@ -108,14 +109,20 @@ export async function closeTenant(sql: Sql, tenantId: string, now: Date): Promis
 
 /**
  * The scheduled job: closed companies past their retention day are removed, rows and documents; a tombstone stays.
- * With an engine wired, the company's engine is wiped first (its ledger, documents and passkey); a wipe that fails
- * leaves the company for the next run.
+ * With an engine wired, the company's engine is wiped first (its ledger, documents and passkey). A company whose wipe
+ * fails is logged and left, untouched, for the next run; the others are purged all the same. Returns the purged ones.
  */
 export async function purgeExpired(sql: Sql, blobs: Blobs, now: Date, engine?: (tenantId: string) => Pick<EngineApi, "wipe">): Promise<string[]> {
   const today = now.toISOString().slice(0, 10);
   const due = await sql.all<{ id: string }>("SELECT id FROM tenants WHERE closed_at IS NOT NULL AND purge_after IS NOT NULL AND purge_after < ? AND name <> '[purged]'", [today]);
+  const purged: string[] = [];
   for (const t of due) {
-    if (engine) await engine(t.id).wipe();
+    if (engine) {
+      try { await engine(t.id).wipe(); } catch (e) {
+        logEvent("error", "purge_engine_wipe_failed", { tenant: t.id, error: e instanceof Error ? e.message : String(e) }, now);
+        continue;
+      }
+    }
     for (const key of await blobs.list(`t/${t.id}/`)) await blobs.delete(key);
     for (const key of await blobs.list(`exports/${t.id}/`)) await blobs.delete(key);
     await sql.batch([
@@ -125,9 +132,10 @@ export async function purgeExpired(sql: Sql, blobs: Blobs, now: Date, engine?: (
       // The address stays taken (red team round 5): a purged company's inbox address is never given to someone else.
       { sql: "UPDATE tenants SET name = '[purged]' WHERE id = ?", params: [t.id] },
     ]);
+    purged.push(t.id);
   }
   // Housekeeping: spent challenges and old rate windows.
   await sql.run("DELETE FROM challenges WHERE expires_at < ?", [new Date(now.getTime() - 86_400_000).toISOString()]);
   await sql.run("DELETE FROM rate_hits WHERE window_start < ?", [Math.floor(now.getTime() / 1000) - 86_400]);
-  return due.map((t) => t.id);
+  return purged;
 }
