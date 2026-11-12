@@ -36,6 +36,41 @@ describe("/runs", () => {
     expect(text(pages.runs!)).toContain(`Last live run: ${rows[0]!.date}`);
   });
 
+  // The two-locks run has two dated logs: created and held on 10 Nov, approved at Airwallex and PAID on 12 Nov.
+  const twoLocksFirst = () => readFileSync("docs/runs/2026-11-10-airwallex-two-locks.md", "utf8");
+  const twoLocksPaid = () => readFileSync("docs/runs/2026-11-12-airwallex-two-locks-paid.md", "utf8");
+
+  it("has a 12 Nov log of the two-locks run: the ids, IN_APPROVAL then PROCESSING then PAID, the signer and the approver", () => {
+    const log = twoLocksPaid();
+    for (const id of ["4074d684-4704-406c-a527-2832753baf4f", "c25bfc22-64fe-4ff3-aeb2-102a3684fc19", "SLL-2026-11B", "P-0001", "f9ba0fe8758eadbef3b48f23e571ea92e3208f4ebd802703b413a414d444ac28", "EUR 240.00", "Stockline Data GmbH"]) expect(log).toContain(id);
+    // The steps of 12 Nov, each on its own line with its UTC time, in this order.
+    const steps = [/09:35:59[^\n]*`IN_APPROVAL`/, /owner approved the transfer in the Airwallex sandbox web app[^\n]*Business Accounts, Transfers, Pending your approval/, /09:43:45[^\n]*`PROCESSING`/, /09:43:57[^\n]*`SENT`[^\n]*simulated settlement/, /09:43:58[^\n]*`PAID`[^\n]*simulated settlement/];
+    const at = steps.map((re) => log.search(re));
+    for (const i of at) expect(i).toBeGreaterThan(-1);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
+    // The signer is the labelled virtual test passkey the tool enrols, by its own label; the approver is the owner.
+    expect(readFileSync("src/cli/twoLocks.ts", "utf8")).toContain('TWO_LOCKS_PASSKEY_LABEL = "two-locks virtual test passkey"');
+    expect(log).toMatch(/"two-locks virtual test passkey", a labelled virtual test passkey, not a person's device/);
+    expect(log).toMatch(/At Airwallex[^\n]*the owner/);
+    // The calls: 14 in total, 7 on each day, within the budget the owner raised.
+    expect(log).toMatch(/14 Airwallex calls in total/);
+    expect(log).toMatch(/from 10 to 12 to 14/);
+    const counts = [...log.matchAll(/^\| `(?:POST|GET) [^`]+` \| (\d+) \|$/gm)].map((m) => Number(m[1]));
+    expect(counts).toEqual([5, 3, 1, 3, 2]);
+    expect(counts.reduce((a, b) => a + b, 0)).toBe(14);
+    expect(log).toMatch(/7 of them on 10 November[^\n]*7 on 12 November/);
+    // What it does not show, said plainly.
+    expect(log).toMatch(/not by a real Face ID/);
+    expect(log).toMatch(/approved only at Airwallex/);
+    expect(log).toMatch(/`SENT` and `PAID` came from the sandbox's simulation endpoints/);
+    // The 10 Nov log keeps its sentences and gains one dated line under its title that links this one.
+    const first = twoLocksFirst().split("\n");
+    expect(first[0]).toBe("# Two locks on one payout: the CFO's passkey, then Airwallex's own approval workflow (10 November 2026)");
+    expect(first[2]).toMatch(/^\*\*12 November 2026:\*\* .*PAID.*\(2026-11-12-airwallex-two-locks-paid\.md\)/);
+    expect(first.join("\n")).toMatch(/\*\*Not completed\.\*\*/);
+    expect(log).toContain("(2026-11-10-airwallex-two-locks.md)");
+  });
+
   it("takes every id from its record", () => {
     const raw = (f: string) => readFileSync(f, "utf8");
     const main = rows.find((r) => r.key === "main-1")!;
