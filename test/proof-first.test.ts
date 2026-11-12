@@ -404,13 +404,13 @@ function wordsOutsideFolds(page: string): number {
 describe("/proof's words in sight", () => {
   it("are fewer than before the page started with the guarantees", () => {
     // 12 Nov: 709 by the shared count before (budget 720 in test/site-v4.test.ts); 512 as built now, plus a margin of 8.
-    // +35, 12 Nov wire-in (owner: "T:0 and Visa are missing"): the Visa and T:0 cards, a name and one line each (553 as built).
-    expect(visibleWords(html)).toBeLessThanOrEqual(555);
+    // +25, 12 Nov wire-in (owner: "T:0 and Visa are missing"): the Visa and T:0 cards, a name and one line each (540 as built).
+    expect(visibleWords(html)).toBeLessThanOrEqual(545);
     // The same count is what it says: a fold with nothing folded inside it adds only its header.
     expect(wordsOutsideFolds("<main><p>one two</p><details><summary>three</summary><p>four</p></details></main>")).toBe(3);
     expect(wordsOutsideFolds("<main><details><summary>one</summary><details><summary>two</summary>three</details>four five</details>six</main>")).toBe(2);
     // Outside every fold (a fold inside a closed line counted as closed too): 315 as built on 12 Nov, plus a margin of 8.
-    // +35, 12 Nov wire-in: the Visa and T:0 cards (356 as built).
-    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(358);
+    // +28, 12 Nov wire-in: the Visa and T:0 cards (343 as built).
+    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(345);
   });
 });

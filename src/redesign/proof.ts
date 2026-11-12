@@ -251,8 +251,9 @@ function visaCardParts(r: Vic3 | null): { lead: Lead[]; what: string; facts: str
   const refused = r.purchases.filter((x) => x.outcome?.status === "refused" && /^purser/.test(x.outcome.by ?? "") && x.step !== "A");
   const neg = r.purchases.filter((x) => /^F\d$/.test(x.step));
   return {
-    lead: [{ text: `${b.request.currency} ${b.request.amount} ${b.what}`, href: "visa" }],
-    what: `Visa Intelligent Commerce via Airwallex's Airi, ${dayOf(r.started_at)}: ${r.label}.`,
+    // One line in sight (owner, 12 Nov); the record's own words for the purchase in the fold.
+    lead: [{ text: `${b.request.currency} ${b.request.amount} above the CFO's limit, paid after Face ID`, href: "visa" }],
+    what: `Visa Intelligent Commerce via Airwallex's Airi, ${dayOf(r.started_at)}: ${b.request.currency} ${b.request.amount} ${b.what}. ${r.label[0]!.toUpperCase()}${r.label.slice(1)}.`,
     facts: fact(`${b.request.currency} ${b.request.amount}`, "paid after Face ID") + (refused.length ? fact(String(refused.length), "refused by Purser before any Airi call") : ""),
     items: [
       ...(neg.length ? [li(`Negative test, our own planted misuse (${neg.map((x) => x.step).join(", ")}): not refused by the Airi/Airwallex sandbox; only Purser enforces the binding here`, "no")] : []),
