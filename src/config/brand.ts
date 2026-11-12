@@ -1,6 +1,8 @@
 // The product's name and the example company, in one place (docs/decisions.md D1-D3). The agents keep their
 // internal ids (sourcing, support, treasury); people see the names below.
 
+import { PRICING_LABEL, PRICING_LINE } from "./pricing.js";
+
 export const PRODUCT = "Purser";
 
 /**
@@ -121,17 +123,19 @@ export const BUSINESS_CASE_LINK = "Read the business case ↗";
  * company's name. test/first-screen.test.ts checks each line against its page.
  */
 /**
- * The intended price (hypothesis), approved by Max on 6 November 2026 with Claude decisions included. Said word for word
- * wherever a price is given (test/unit-economics-hypothesis.test.ts); src/business/unitEconomics.ts computes from it.
+ * The price (hypothesis): the pilot pricing of 12 November 2026, one model, built from src/config/pricing.ts (a monthly
+ * plan by supplier invoices, plus a small fee per payout). It replaced the price per agent with Claude decisions
+ * included (6 November). Said word for word wherever a price is given (test/unit-economics-hypothesis.test.ts);
+ * src/business/unitEconomics.ts computes from the same figures.
  */
-export const PRICE_LINE = "€49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions.";
+export const PRICE_LINE = PRICING_LINE;
 export const WHY_COMPANY_NOTE = "Not validated with customers yet: 2 finance conversations (a CFO and a bank finance professional, quoted, anonymous); more in progress; no pilots, no revenue. Every line below is a hypothesis except the cited source.";
 /** The same, as one small line under the lines (Proof, Max 7 Nov: the content first, the disclaimer last). */
 export const WHY_COMPANY_NOTE_LAST = "Not validated with customers yet: 2 finance conversations (a CFO and a bank finance professional, quoted, anonymous); more in progress; no pilots, no revenue; every line above is a hypothesis except the cited source.";
 export const WHY_COMPANY: readonly { label: string; text: string; page: string }[] = [
   { label: "The problem", text: "when an AI agent pays today, its limit lives in a prompt it can be talked out of, or in a month-end review that finds the money after it has left.", page: "problem.md#what-goes-wrong" },
   { label: "Who buys", text: "the finance team of a small company or scale-up that already banks with Airwallex and lets AI agents pay; the CFO uses it and decides.", page: "model.md#who-buys-and-who-uses-it-hypothesis" },
-  { label: "Intended pricing", text: `${PRICE_LINE} A hypothesis.`, page: "model.md#intended-pricing-hypothesis" },
+  { label: PRICING_LABEL, text: `${PRICE_LINE} A hypothesis.`, page: "model.md#pilot-pricing-hypothesis" },
   { label: "Why now", text: "Airwallex wrote on 5 October 2026 that agents moving money need limits enforced \"through underlying infrastructure rather than prompts\" (\"Agentic banking starts with governance\", source S1).", page: "problem.md#why-now-sourced" },
   { label: "Why Purser", text: "it builds on Airwallex's own card controls and Metal's mandates, and adds what sits on top: one CFO policy for card and chain, approvals signed over the exact terms, a hash-chained audit log.", page: "model.md#risks-and-what-we-do-not-know" },
 ];

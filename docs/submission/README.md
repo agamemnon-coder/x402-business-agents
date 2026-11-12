@@ -25,7 +25,7 @@ For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice ov
 
 ## Description
 
-Characters: **3,971** (the text between the markers, as pasted; 3,997 if the form counts each line break as two). Max's target is 3,000–4,000; the form's own limit is
+Characters: **3,970** (the text between the markers, as pasted; 3,996 if the form counts each line break as two). Max's target is 3,000–4,000; the form's own limit is
 not known yet. `test/submission.test.ts` checks this count and keeps the text under 4,000. The long text, as it stood on
 5 November, with Airwallex, Metal, Claude, the controls and the other live tests in full: [long-description.md](long-description.md).
 The Airi run of 7 November (Visa Intelligent Commerce via Airwallex's Airi; Airwallex sandbox, test card, test money)
@@ -74,7 +74,7 @@ repository, the hosted preview stays private, and nothing is said to be live.
 
 **After the kit.** Airwallex's own approval held a passkey-signed payout IN_APPROVAL, unpaid. Payables: in repo, not live.
 
-**The business (not validated with customers yet).** Buyer: a CFO on Airwallex. €49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions. A hypothesis. "At our company invoices go through a full approval process in our ERP. I think Purser is something for SMEs." — CFO at a US company (anonymous)
+**The business (not validated with customers yet).** Buyer: a CFO on Airwallex. Pilot pricing: Starter €49 a month (100 invoices, then €0.25 each); Business from €249 a month; a small fee per payout. A hypothesis. "At our company invoices go through a full approval process in our ERP. I think Purser is something for SMEs." — CFO at a US company (anonymous)
 
 **What's real.** Test money. Simulated: customer, supplier, settlement, second approver. Details → https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/submission/long-description.md#what-is-real-and-what-is-simulated
 
