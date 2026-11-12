@@ -171,7 +171,7 @@ describe("the short Description (Max, 5 Nov)", () => {
     expect(flat).toContain("The business (not validated with customers yet). Buyer: a CFO on Airwallex.");
   });
 
-  it("tells the two-locks run as finished wherever it is one sentence: README, llms.txt, the cheat sheet, and the form's dated history", () => {
+  it("tells the two-locks run as finished wherever it is one sentence: README, llms.txt, the cheat sheet, the demo card, and the form's dated history", () => {
     const paid = read("docs/runs/2026-11-12-airwallex-two-locks-paid.md");
     expect(paid).toMatch(/\(12 November 2026\)/);
     expect(paid).toMatch(/a labelled virtual test passkey, not a person's device/);
@@ -184,6 +184,10 @@ describe("the short Description (Max, 5 Nov)", () => {
     expect(llms).not.toMatch(/stand-in/);
     const cheat = collapse(read("docs/submission/cheat-sheet.md"));
     expect(cheat).toContain("Two locks (10 and 12 Nov): a labelled test passkey signed, Airwallex held the payout `IN_APPROVAL` until the owner approved it in Airwallex's web app; then PAID (sandbox, settlement simulated).");
+    // The owner's own demo card (Dutch, docs/internal) says the same.
+    const card = read("docs/internal/spiekkaart-demo.html");
+    expect(card).toContain("Twee sloten (10 en 12 nov): gelabelde test-passkey tekende, Airwallex hield de betaling <code>IN_APPROVAL</code> tot de eigenaar hem goedkeurde in Airwallex' web-app; daarna PAID (sandbox, settlement gesimuleerd).");
+    expect(card).not.toMatch(/niet goedgekeurd in de web-app|dus niet betaald/);
     for (const [name, t] of [["README", readme], ["llms.txt", llms], ["cheat sheet", cheat]] as const) expect({ name, old: /approval was not completed|nobody approved|is not paid/.test(t) }).toEqual({ name, old: false });
     // The form's history keeps its 10 November note and has one dated sentence for 12 November, linking the record.
     expect(pack).toContain("nobody approved it there, so it is unpaid; [record](../runs/2026-11-10-airwallex-two-locks.md))");
