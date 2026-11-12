@@ -505,22 +505,38 @@ security code, which nothing in the documentation suggests.
 | `ICC_HOST` | optional; only the documented test host is accepted |
 | `ICC_PATH_PREFIX` | optional; `/icc/v1` (default) or `/acp/v1`, the two documented prefixes |
 | `ICC_MERCHANT_ID` | the organisation ID |
-| `ICC_AUTH_SCHEME` | which documented scheme to use: JWT with the P12 key (default), JWT with the shared secret, or HTTP Signature |
+| `ICC_AUTH_SCHEME` | optional; which documented scheme to use: `jwt-p12` (default; the JWT signed with the key of the P12 certificate), `jwt-shared-secret` or `http-signature` |
 | `ICC_JWT_KEY_ID` | the key ID of the P12 signing certificate |
-| `ICC_JWT_P12_FILE` | the path of the P12 signing key file |
-| `ICC_JWT_P12_PASSWORD` | the password of that file |
+| `ICC_JWT_PRIVATE_KEY_FILE` | the path of the signing certificate's private key, as a PEM file |
+| `ICC_JWT_PRIVATE_KEY_PASSPHRASE` | optional; the passphrase of that PEM file, if it has one |
 | `ICC_KEY_ID` | the key ID of the shared secret key pair (shared-secret JWT or HTTP Signature) |
 | `ICC_SHARED_SECRET` | the shared secret |
-| `ICC_MLE_REQUEST_CERT_FILE` | the path of the SJC public certificate that encrypts requests |
+| `ICC_MLE_REQUEST_CERT_FILE` | the path of the SJC public certificate that encrypts requests, as a PEM file |
 | `ICC_MLE_RESPONSE_KEY_ID` | the key ID of the Response MLE key |
-| `ICC_MLE_RESPONSE_KEY_FILE` | the path of the Response MLE private key file |
-| `ICC_MLE_RESPONSE_KEY_PASSWORD` | the password of that file |
+| `ICC_MLE_RESPONSE_PRIVATE_KEY_FILE` | the path of the Response MLE private key, as a PEM file |
+| `ICC_MLE_RESPONSE_PRIVATE_KEY_PASSPHRASE` | optional; the passphrase of that PEM file, if it has one |
+| `ICC_DIGEST_FORM` | optional; `raw` (default: Base64 of the hash's bytes) or `hex` (Base64 of its hexadecimal text), the two forms the pages show |
+| `ICC_HTTP_SIGNATURE_DATE` | optional; `v-c-date` (default) or `date`, the two names the HTTP Signature page uses for its date header |
 | `ICC_INSTRUMENT_IDENTIFIER_ID` | the instrument identifier token of the enrolled test card |
 | `ICC_TOKENIZED_CARD_ID` | optional; the tokenized card's ID, for the second preflight read |
-| `ICC_TOKEN_REFERENCE` | optional; the value for the guide's `tokenizedCard.number`, if the sandbox asks for it |
 | `ICC_ASSURANCE_FILE` | the path of a private file with the device and assurance data from the cardholder's passkey step |
 
 Values are set by the owner and never printed.
+
+Keys are read as PEM files, not as `.p12` files: Node cannot open a PKCS#12 file without an added library, and this
+client adds none. The owner converts each downloaded `.p12` file once with `openssl` (the runbook gives the commands).
+A private key file must belong to the user who runs the command and be readable by nobody else; the client refuses it
+otherwise. The assurance file is held to the same rule.
+
+Message-Level Encryption is on when its three variables are set. With a JWT, a call to an ICC path without it is
+refused before it is sent, because the reference marks it mandatory there [a-app]; the two token reads of the preflight
+may go without. The HTTP Signature has no documented way to ask for an encrypted answer, so that scheme sends plain
+JSON.
+
+Three points have two published forms that only the sandbox can settle (section 10, numbers 3 and 5). Each has one
+switch, with the default this document chose: `ICC_PATH_PREFIX`, `ICC_DIGEST_FORM` and `ICC_HTTP_SIGNATURE_DATE`. There
+are no other switches. Only the API reference's request shapes are built; the guide's other shapes (section 2, "Two
+descriptions that differ"), and with them the guide's `tokenizedCard.number`, are not.
 
 ## 10. Unknown until sandbox access
 
