@@ -67,6 +67,8 @@
     "coder-evals": "tsx src/cli/coderEvals.ts",
     "ledger-evals": "tsx src/cli/ledgerEvals.ts",
     "controller": "tsx src/cli/controller.ts",
+    "autopilot": "tsx src/cli/autopilot.ts",
+    "reconcile-books": "tsx src/cli/reconcileBooks.ts",
     "budget": "tsx src/cli/budget.ts",
     "payables": "tsx src/cli/payables.ts",
     "vault": "tsx src/cli/vault.ts",

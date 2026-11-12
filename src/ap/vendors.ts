@@ -16,6 +16,7 @@ import { ibanSha } from "../agents/invoice.js";
 import { beginExecution, createProposal, expireDue, finishExecution, nextProposalId, type ProposalRow } from "../policy/approvals.js";
 import { assessAgainst, type Beneficiary } from "../policy/fraudCore.js";
 import { recheck, type InboxDeps } from "./inbox.js";
+import { checkpoint } from "../policy/saga.js";
 import { accountKey, chooseRoute, maskAccount, validateDetails, type BankDetails, type Method } from "../payouts/routes.js";
 import { apInvoice } from "./store.js";
 import { suppliersOnFile } from "./bank.js";
@@ -269,5 +270,7 @@ export async function executePayeeAdd(db: DB, rail: PayoutRail, proposalId: stri
     audit(db, "awx-executor", "payee.added", t.add_id, { vendor: t.vendor, account: details.account, currency: bank.currency, method: bank.method, beneficiary_id: ben.id, proposal_id: proposalId }, now);
     finishExecution(db, proposalId, "EXECUTED", { beneficiary_id: ben.id }, now);
   }).immediate();
+  // A process may stop here: the supplier is on file, its invoices not yet checked again (the autopilot checks them).
+  await checkpoint("ap.vendor:added");
   await recheck(db, inbox);
 }

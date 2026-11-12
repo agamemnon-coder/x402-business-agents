@@ -18,6 +18,8 @@ Northwind Outdoor/
       Inkoopfacturen/_Geblokkeerd/Bergtex Textil GmbH/2026-11-02 BTX-2026-22 EUR 1850.00.pdf
       Betalingen/2026-11-08 Bergtex Textil GmbH BTX-2026-21.pdf
       Rapporten/2026-11 Maandrapport.pdf               after the month close
+      Rapporten/2026-11 Maandpakket.pdf                after the month close
+      Rapporten/2026-11 Journaal voor de accountant.csv   and .json, after the month close
       Rapporten/2026-Q4 Btw-overzicht.pdf              after all three months are closed
 ```
 
@@ -30,9 +32,15 @@ Northwind Outdoor/
   transfer and the fee Airwallex charged, who approved, how (Face ID: the passkey) and when, and the terms hash that
   approval signed. `npm run verify` re-checks every Face ID approval offline.
 - **Rapporten**: the month report (received, paid, open, blocked with reasons, spend per supplier, fees and FX, the
-  month's profit and loss), the VAT overview (the ledger's rubrics, with the notice that it is not a filing), and the
-  year report (profit and loss before the closing entry, the balance sheet, the trial balance). Reports are made only
-  for periods closed in the ledger (`npm run ledger -- close --month 2026-11`).
+  month's profit and loss), the month pack (the trial balance and balance sheet at the month's end, the month's profit
+  and loss, the quarter's VAT overview up to the month's end, marked as a preparation, not a filing, and the open
+  payables; `src/ledger/pack.ts`), the accountant's export of the month's journal as CSV and JSON (every entry with the
+  hash of its document, the hash of the payment terms the CFO approved and the Airwallex payment id, where the ledger
+  shows them; `src/ledger/accountantExport.ts`), the VAT overview (the ledger's rubrics, with the notice that it is not
+  a filing), and the year report (profit and loss before the closing entry, the balance sheet, the trial balance).
+  Reports are made only for periods closed in the ledger (`npm run ledger -- close --month 2026-11`). The payables page
+  serves the pack and the export of any month read-only: `/api/payables/reports/2026-11/pack.pdf`, `journal.csv`,
+  `journal.json`.
 - **Leveranciers**: the suppliers on file on that day: name, the last four IBAN digits, BIC, status, number of invoices.
 
 Names are safe on every system (no path tricks, no reserved characters, at most 120 characters per folder or file name)

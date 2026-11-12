@@ -13,6 +13,7 @@ import { apAgentsOn } from "../config/agents.js";
 import { VENDOR_GL } from "../config/gl.js";
 import type { DB } from "../db/open.js";
 import { skeleton } from "../policy/fraudCore.js";
+import { checkpoint } from "../policy/saga.js";
 import { accrualEntries, bookable, pushOnce, type BookkeepingSink } from "./books.js";
 import { enforceAgain, recordChecked, runChecker, statusAfter, type CheckerOutcome } from "./checkerAgent.js";
 import { codeFindings, type InvoiceCase } from "./checkerCore.js";
@@ -113,7 +114,12 @@ function notAnInvoice(kind: DocKind | "unread"): { findings: Finding[] } {
 /** The most PDFs filed from one e-mail; the rest are refused with the reason (a mail of thousands costs thousands of reads). */
 export const MAX_EMAIL_ATTACHMENTS = 20;
 
-export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocument, depth = 0): Promise<IngestResult> {
+/**
+ * `resumeUnread`: a document filed but never read (its process stopped between filing it and storing its invoice) is
+ * read now instead of being called a duplicate (the autopilot, src/ap/autopilot.ts). One document never gets two
+ * invoices: ap_invoices.doc_sha256 is unique.
+ */
+export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocument, depth = 0, opts: { resumeUnread?: boolean } = {}): Promise<IngestResult> {
   if (doc.bytes.length > MAX_DOCUMENT_BYTES) throw new Error(`${doc.filename} is larger than ${MAX_DOCUMENT_BYTES / 1024 / 1024} MB; nothing was filed`);
   if (isEml(doc)) {
     // An e-mail is opened once: an e-mail inside it is not opened again (red team G).
@@ -131,8 +137,10 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
   const known = db.prepare("SELECT sha256 FROM ap_documents WHERE sha256 = ?").get(sha);
   if (known) {
     const inv = db.prepare("SELECT id FROM ap_invoices WHERE doc_sha256 = ?").get(sha) as { id: string } | undefined;
-    audit(db, "system", "ap.duplicate_document", sha, { filename: doc.filename, source: doc.source, invoice_id: inv?.id ?? null }, now);
-    return { kind: "duplicate_document", sha256: sha, invoice_id: inv?.id ?? null };
+    if (inv || !opts.resumeUnread) {
+      audit(db, "system", "ap.duplicate_document", sha, { filename: doc.filename, source: doc.source, invoice_id: inv?.id ?? null }, now);
+      return { kind: "duplicate_document", sha256: sha, invoice_id: inv?.id ?? null };
+    }
   }
 
   const docs = join(deps.dir, "docs");
@@ -159,8 +167,12 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
     noText = `needs a person: the PDF could not be opened (${(e as Error).message.slice(0, 120)})`;
   }
 
-  db.prepare("INSERT INTO ap_documents (sha256, filename, mime, bytes, path, source, meta_json, text_chars, received_at) VALUES (?, ?, 'application/pdf', ?, ?, ?, ?, ?, ?)")
-    .run(sha, doc.filename.slice(0, 200), bytes.length, path, doc.source, JSON.stringify(meta ?? {}), text.length, now.toISOString());
+  if (!known) {
+    db.prepare("INSERT INTO ap_documents (sha256, filename, mime, bytes, path, source, meta_json, text_chars, received_at) VALUES (?, ?, 'application/pdf', ?, ?, ?, ?, ?, ?)")
+      .run(sha, doc.filename.slice(0, 200), bytes.length, path, doc.source, JSON.stringify(meta ?? {}), text.length, now.toISOString());
+  }
+  // Points where a test may stop the process (src/policy/saga.ts checkpoint); in a live run they do nothing.
+  await checkpoint("ap.ingest:filed");
 
   // Haiku labels the document first; only an invoice, a credit note or a reminder is read in full (Sonnet). A scan
   // carries the label its two readings gave.
@@ -217,6 +229,7 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
       .run(id, sha, scan.agreed ? 1 : 0, JSON.stringify(scan.differ), JSON.stringify(scan.boxes), scan.readings, scan.model, now.toISOString(), scan.transcription);
   }
   if (agent) recordChecked(db, id, agent.out, status, now);
+  await checkpoint("ap.ingest:stored");
   if (needsNote({ status, findings })) await writeReviewNote(db, deps.reader, id, now);
   const inv = apInvoice(db, id)!;
   await book(db, deps, inv, checkText);
@@ -253,8 +266,13 @@ export async function ingestEmail(db: DB, deps: InboxDeps, raw: Buffer, meta: Re
 async function book(db: DB, deps: Pick<InboxDeps, "sink" | "now" | "coder">, inv: ApInvoiceRow, text?: string): Promise<void> {
   if (!bookable(inv)) return;
   const coded = await ensureCoded(db, inv, { text, client: deps.coder, now: deps.now });
+  await checkpoint("ap.book:coded");
   await pushOnce(db, deps.sink, "accrual", accrualEntries(coded), coded, (deps.now ?? (() => new Date()))());
+  await checkpoint("ap.book:booked");
 }
+
+/** The accrual of a bookable invoice, coded first with the agents on: what ingestDocument does last (the autopilot calls it after a restart). */
+export const bookAccrual = book;
 
 /**
  * Checks again the invoices waiting for a supplier (after one was added) and any the caller names. An invoice already

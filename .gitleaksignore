@@ -95,6 +95,10 @@ a711ca69f258de95b640a2e7815522611a9eb828:test/owners-runbook.test.ts:generic-api
 # test/tokenize-cli.test.ts in ae1e2dd: a made-up address path for a JSON-RPC server on the test machine itself, written
 # as one literal; the test now builds it at run time.
 ae1e2ddc37804a70b4ddafb581f10e8968742d68:test/tokenize-cli.test.ts:generic-api-key:24
+# test/reconcile-books.test.ts in 63f20c3: made-up values to check that a failure never repeats a credential (a URL's
+# api_key and a settings value); not secrets. The test now uses plain repeated letters.
+63f20c35b4d09ae19b3f50e7565eb6d0facf7c18:test/reconcile-books.test.ts:generic-api-key:233
+63f20c35b4d09ae19b3f50e7565eb6d0facf7c18:test/reconcile-books.test.ts:generic-api-key:310
 
 # 12 Nov: the invoice token id is the invoice document SHA-256 (a public hash, not a key)
 596c800a0832e27e3812ffbc8cb15d2728d1926b:docs/runs/2026-11-12-tokenize.json:generic-api-key:48

@@ -9,11 +9,13 @@ import { COMPANY } from "../config/brand.js";
 import type { DB } from "../db/open.js";
 import { audit } from "../audit/log.js";
 import { closedPeriods, dataSha, invoiceDocs, monthData, receipts, suppliersData, vatData, yearData } from "./data.js";
-import { correctionName, invoicePath, monthReportPath, paymentPath, suppliersPath, vatPath, withId, yearIndexPath, yearReportPath } from "./layout.js";
-import { monthReportPdf, receiptPdf, suppliersPdf, vatPdf, yearReportPdf, type Lang } from "./pdf.js";
+import { correctionName, invoicePath, monthExportPath, monthPackPath, monthReportPath, paymentPath, suppliersPath, vatPath, withId, yearIndexPath, yearReportPath } from "./layout.js";
+import { monthPackPdf, monthReportPdf, receiptPdf, suppliersPdf, vatPdf, yearReportPdf, type Lang } from "./pdf.js";
+import { accountantCsv, accountantExport, accountantJson } from "../ledger/accountantExport.js";
+import { monthPack } from "../ledger/pack.js";
 import { LocalSink, sha256, type VaultSink } from "./sink.js";
 
-export type VaultKind = "invoice" | "receipt" | "month" | "vat" | "year" | "suppliers";
+export type VaultKind = "invoice" | "receipt" | "month" | "pack" | "export" | "vat" | "year" | "suppliers";
 
 export interface IndexEntry { path: string; sha256: string; bytes: number; kind: VaultKind; key: string; data_sha256: string; added_at: string }
 export interface YearIndex { company: string; year: number; note: string; files: IndexEntry[] }
@@ -21,11 +23,11 @@ export interface YearIndex { company: string; year: number; note: string; files:
 export interface VaultOptions { company?: string; lang?: Lang; dryRun?: boolean; now?: Date; today?: string }
 export interface VaultAction { path: string; kind: VaultKind; key: string; sha256: string; correction: boolean }
 
-interface Planned { kind: VaultKind; key: string; year: number; base: string; dataSha: string; id?: string; produce: () => Promise<Buffer> }
+interface Planned { kind: VaultKind; key: string; year: number; base: string; dataSha: string; id?: string; mime?: string; produce: () => Promise<Buffer> }
 
 const INDEX_NOTE = "Every file in this year of the Purser vault, with its sha256. Files are added, never replaced or deleted; a changed document is filed beside the original as a correction.";
 
-function plan(db: DB, company: string, lang: Lang, today: string): Planned[] {
+function plan(db: DB, company: string, lang: Lang, today: string, now: Date): Planned[] {
   const out: Planned[] = [];
   for (const d of invoiceDocs(db)) {
     out.push({ kind: "invoice", key: d.key, id: d.id, year: Number(d.date.slice(0, 4)), base: invoicePath(company, d), dataSha: d.doc_sha256, produce: () => {
@@ -42,6 +44,14 @@ function plan(db: DB, company: string, lang: Lang, today: string): Planned[] {
   for (const m of closed.months) {
     const d = monthData(db, m);
     out.push({ kind: "month", key: d.key, year: Number(m.slice(0, 4)), base: monthReportPath(company, m), dataSha: dataSha(d), produce: () => monthReportPdf(company, d, lang) });
+    // The month pack and the accountant's export of the month's journal (closing a month). The export's data is the
+    // month's entries and the period; the chain check in its JSON changes with every later entry, so it is left out.
+    const pack = monthPack(db, m);
+    out.push({ kind: "pack", key: `pack:${m}`, year: Number(m.slice(0, 4)), base: monthPackPath(company, m), dataSha: dataSha(pack), produce: () => monthPackPdf(company, pack, lang) });
+    const x = accountantExport(db, m);
+    const xSha = dataSha({ month: x.month, period: x.period, entries: x.entries });
+    out.push({ kind: "export", key: `export-csv:${m}`, year: Number(m.slice(0, 4)), base: monthExportPath(company, m, "csv"), dataSha: xSha, mime: "text/csv", produce: () => Promise.resolve(Buffer.from(accountantCsv(x))) });
+    out.push({ kind: "export", key: `export-json:${m}`, year: Number(m.slice(0, 4)), base: monthExportPath(company, m, "json"), dataSha: xSha, mime: "application/json", produce: () => Promise.resolve(Buffer.from(accountantJson(x, now))) });
   }
   for (const q of closed.quarters) {
     const d = vatData(db, q);
@@ -66,7 +76,7 @@ export async function syncVault(db: DB, sink: VaultSink, opts: VaultOptions = {}
   const company = opts.company ?? process.env.KIT11_COMPANY ?? COMPANY;
   const now = opts.now ?? new Date();
   const today = opts.today ?? now.toISOString().slice(0, 10);
-  const items = plan(db, company, opts.lang ?? "nl", today);
+  const items = plan(db, company, opts.lang ?? "nl", today, now);
   const indexes = new Map<number, YearIndex>();
   for (const y of new Set(items.map((i) => i.year))) indexes.set(y, await loadIndex(sink, company, y));
   const changed = new Set<number>();
@@ -87,7 +97,7 @@ export async function syncVault(db: DB, sink: VaultSink, opts: VaultOptions = {}
     for (let n = earlier.length + 1; taken(path); n += 1) path = correctionName(it.base, n);
     const there = opts.dryRun ? null : await sink.stat(path);
     if (there && there.sha256 !== null && there.sha256 !== hash) throw new Error(`${path} is already in the vault with other content; nothing is overwritten`);
-    if (!there && !opts.dryRun) await sink.create(path, bytes, hash, "application/pdf");
+    if (!there && !opts.dryRun) await sink.create(path, bytes, hash, it.mime ?? "application/pdf");
     const entry: IndexEntry = { path, sha256: hash, bytes: bytes.length, kind: it.kind, key: it.key, data_sha256: it.dataSha, added_at: now.toISOString() };
     index.files.push(entry);
     changed.add(it.year);

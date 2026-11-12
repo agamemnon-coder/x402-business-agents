@@ -13,7 +13,7 @@ afterEach(() => rmSync(w.dir, { recursive: true, force: true }));
 describe("filing after a change", () => {
   it("files into the local vault folder", async () => {
     const dir = join(w.dir, "v");
-    expect(await fileIntoLocalVault(w.db, { KIT11_VAULT_DIR: dir })).toMatch(/^vault: 5 new file\(s\)/);
+    expect(await fileIntoLocalVault(w.db, { KIT11_VAULT_DIR: dir })).toMatch(/^vault: 8 new file\(s\)/);
     expect(existsSync(join(dir, "Northwind Outdoor", "2026", "index.json"))).toBe(true);
     expect(await fileIntoLocalVault(w.db, { KIT11_VAULT_DIR: dir })).toMatch(/^vault: 0 new file\(s\)/);
   });

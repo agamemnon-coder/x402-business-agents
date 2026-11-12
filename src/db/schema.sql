@@ -893,3 +893,35 @@ CREATE TABLE IF NOT EXISTS ap_sink_events (
   pushed_at TEXT NOT NULL,
   PRIMARY KEY (invoice_id, event, sink)
 );
+
+-- The autopilot (src/ap/autopilot.ts): its own bookkeeping, never a business fact. One lease per ledger (one autopilot
+-- runs at a time); the files it took in from its folders, by their hash; the items that failed (tried again after a
+-- wait, then parked for a person) and the proposals it began executing (so a restart finishes exactly those); and the
+-- fingerprint of what it last sent to the outside books.
+CREATE TABLE IF NOT EXISTS autopilot_lease (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  owner TEXT NOT NULL,
+  pid INTEGER NOT NULL,
+  host TEXT NOT NULL,
+  heartbeat TEXT NOT NULL,
+  taken_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS autopilot_files (
+  sha256 TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  outcome TEXT NOT NULL,
+  taken_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS autopilot_items (
+  item TEXT PRIMARY KEY,
+  step TEXT NOT NULL,
+  state TEXT NOT NULL CHECK (state IN ('retrying', 'needs_attention', 'executing')),
+  attempts INTEGER NOT NULL DEFAULT 0,
+  next_try TEXT,
+  reason TEXT,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS autopilot_state (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
