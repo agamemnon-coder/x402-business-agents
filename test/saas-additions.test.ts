@@ -21,6 +21,7 @@ import { GUARANTEES, guaranteesHtml } from "../src/redesign/guarantees.js";
 import { PRICING_LEAD, e2eFeeRun, feeFacts, feeLine, feeRun, pricingPage } from "../src/redesign/pricing.js";
 import { proofPage } from "../src/redesign/proof.js";
 import { OVERVIEW_DOC, UNAVAILABLE, securityCards, securityPage, unavailableLines } from "../src/redesign/security.js";
+import { esc } from "../src/redesign/ui.js";
 import { buildPages } from "../src/relay/assets.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
 
@@ -248,8 +249,9 @@ describe("if the approver is unavailable (the panel's review, 12 Nov)", () => {
     expect(plain[0]).toBe("Away or out of reach: nothing above the limits is paid. The payment waits for the signature and expires unsigned; payments inside the limits go on.");
     expect(fold).not.toBeNull();
     expect(fold![1]).toBe("If the approver is unavailable");
-    const items = [...fold![2]!.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => decode(m[1]!.replace(/<[^>]+>/g, "")));
-    expect(items).toEqual([...plain, "docs/security.md ↗"]);
+    // Compared as the page's markup (the doc's lines escaped as the page escapes them), so nothing is unescaped here.
+    const items = [...fold![2]!.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => m[1]!.replace(/<[^>]*>/g, ""));
+    expect(items).toEqual([...plain.map(esc), "docs/security.md ↗"]);
     expect(items.length - 1).toBeLessThanOrEqual(5);
     expect(fold![2]).toContain('<a class="pf" href="https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/security.md#if-the-approver-is-unavailable" target="_blank" rel="noopener">docs/security.md ↗</a>');
     // Folded: in sight it is five words under the signature's card, and one anchor on the page.
@@ -383,7 +385,7 @@ describe("four eyes, worded exactly (the panel's review, 12 Nov)", () => {
 
   it("carries it on the site: on /metal where the on-chain run is named, and in every page's \"What's real?\" lines", () => {
     const pages = buildPages() as unknown as Record<string, string>;
-    const text = (html: string) => decode(html.replace(/<script\b[\s\S]*?<\/script\s*>/gi, " ").replace(/<style\b[\s\S]*?<\/style\s*>/gi, " ").replace(/<svg\b[\s\S]*?<\/svg\s*>/gi, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ");
+    const text = (html: string) => decode(html.replace(/<script\b[\s\S]*?<\/script[^>]*>/gi, " ").replace(/<style\b[\s\S]*?<\/style[^>]*>/gi, " ").replace(/<svg\b[\s\S]*?<\/svg[^>]*>/gi, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ");
     // /metal, folded under "Beyond the kit": the on-chain run with who signed (no words added in sight).
     expect(text(pages.metal!)).toContain(`Four eyes on chain : 1 signature: reverted (${FOUR_EYES_ON_CHAIN_NOTE}).`);
     expect(pages.metal).toMatch(/<details[^>]*>\s*<summary[^>]*>Beyond the kit: separate runs, each dated \(not the main run\)<\/summary>[\s\S]*?two test keys on one machine, not two people/);
