@@ -1,6 +1,8 @@
 // The product's name and the example company, in one place (docs/decisions.md D1-D3). The agents keep their
 // internal ids (sourcing, support, treasury); people see the names below.
 
+import { PRICING_LABEL, PRICING_LINE } from "./pricing.js";
+
 export const PRODUCT = "Purser";
 
 /**
@@ -15,34 +17,48 @@ export function designPartnerHtml(url: string = DESIGN_PARTNER_URL): string {
   if (!/^(https:\/\/|mailto:)[^\s"'<>]+$/.test(url)) return "";
   return `<p class="partner"><a href="${url.replace(/&/g, "&amp;")}">${DESIGN_PARTNER_LABEL} →</a></p>`;
 }
+/**
+ * Where the public demo of the product for small companies lives (an invoice inbox with the same Face ID control;
+ * its code is in this repository, docs/after-the-kit.md). Empty until it has a public address; while empty, Home says
+ * nothing about it. Once set (an https: URL), Home shows one line and one link under its last button
+ * (src/redesign/home.ts NEXT_NEXT; test/home-story.test.ts holds both states).
+ */
+export const SMALL_COMPANY_DEMO_URL = "";
 export const TAGLINE = "Give every AI agent its own company card, with limits the CFO sets.";
 
 /**
- * "Visa TAP" (text, never a logo) in "Built on": off since 5 Nov, and staying off. Visa (hackathon Slack, 5 Nov): TAP is not available as Visa tooling for this hackathon; only Visa
- * Intelligent Commerce (VIC) or Intelligent Commerce Connect (ICC) are. Visa (hackathon Slack, 7 Nov): the VIC run
- * counts, so since 7 Nov Purser is entered for the Metal Award and the Visa Award, on the Airi run (Visa Intelligent
- * Commerce via Airwallex's Airi, docs/runs/2026-11-07-vic-1.md), never on TAP (docs/decisions.md D28,
- * docs/evidence/README.md). KIT_LINE says so on its own; this switch stays off. The TAP work stays on /visa as a
- * labelled extra (VISA_TAP_STATUS).
+ * "Visa (VIC via Airi)" (text, never a logo) in Home's "Built on", since 12 Nov (jury panel): the Visa entry is the
+ * Airi run, Visa Intelligent Commerce via Airwallex's Airi (docs/runs/2026-11-07-vic-1.md), so it stands beside
+ * Airwallex, Metal and Claude. History: Visa (hackathon Slack, 5 Nov) said TAP is not available as Visa tooling for
+ * this hackathon, only Visa Intelligent Commerce (VIC) or Intelligent Commerce Connect are; Visa (hackathon Slack,
+ * 7 Nov, as reported by the builder) said the VIC run counts, so since 7 Nov Purser is entered for the Metal Award and
+ * the Visa Award, on the Airi run, never on TAP (docs/decisions.md D28, docs/evidence/README.md). This switch was
+ * VISA_AWARD_ON (off: it would have put "Visa TAP" in "Built on"); TAP is never in "Built on", and its work sits in
+ * one closed fold at the foot of /visa, outside the entry (VISA_TAP_STATUS).
  */
-export const VISA_AWARD_ON = false;
+export const VISA_VIC_BUILT_ON = true;
+export const VISA_BUILT_ON = "Visa (VIC via Airi)";
+/**
+ * Intelligent Commerce Connect, exactly as it stands (the owner, 12 Nov: access is requested, no answer has come).
+ * Said once, on /visa; no other claim about it anywhere on the site or in the README (test/visa-overview.test.ts).
+ */
+export const VISA_ICC_LINE = "Intelligent Commerce Connect: access requested, not granted yet; not used in this entry.";
 /**
  * The Visa claim in plain words (jury review, 4 Nov), said once per surface (/visa, the README, the form, the deck);
  * nothing stronger anywhere. "Public reference verifier", never "open source": Visa's reference has no open-source
- * licence (docs/decisions.md).
+ * licence (docs/decisions.md). "The Sourcing agent" since 12 Nov (was "each agent"): only the Sourcing agent ran TAP
+ * live, in the TAP run of 2 Nov and in the main run (test/visa-overview.test.ts reads both records).
  */
-export const VISA_CLAIM = "Visa: each agent signs its card checkout with Visa's Trusted Agent Protocol (TAP), so a merchant can check which agent is buying. Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours.";
+export const VISA_CLAIM = "Visa: the Sourcing agent signs its card checkout with Visa's Trusted Agent Protocol (TAP), so a merchant can check which agent is buying. Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours.";
 /**
  * TAP's status, on Max's wording (5 Nov, after Visa's answer in the hackathon Slack), said once per surface (/visa, the
  * form, the deck): built and verified against Visa's public reference verifier, not eligible Visa tooling for this
  * hackathon. Never "certified", "endorsed" or "confirmed by Visa".
  */
 export const VISA_TAP_STATUS = "Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov).";
-/** How Home and Proof link to /visa since 5 Nov: the TAP work as a labelled extra, not an award entry. */
-export const VISA_EXTRA_LINK = "Extra, not an award entry: Visa TAP and its status, on /visa";
 /**
  * The big line under the heading: the kit, the track and the awards entered. The Visa Award since 7 Nov (Visa: the VIC
- * run counts), on the Airi run, not on TAP: it does not follow VISA_AWARD_ON, which would add "Visa TAP" to "Built on".
+ * run counts), on the Airi run, not on TAP.
  */
 export const KIT_LINE = "Kit 11 · x402 Business Agents · entered for the Metal Award and the Visa Award";
 /** Home's badge (Max's mega-prompt v4, C2): the kit, the awards entered (the Visa Award since 7 Nov, on the Airi run, as KIT_LINE), what it is built on. Visa TAP is never in it. */
@@ -74,8 +90,21 @@ export const DEFENSE_IN_DEPTH = "Defense in depth: Purser normally refuses befor
 export const SANDBOX_SETTLED = "in the sandbox, where the settlement is simulated";
 /** How the played run's world was set up (agent run 1 and the main run alike), said wherever the run is shown (Max, 2 Nov). */
 export const WORLD_SETUP = "World set-up: the alternative supplier (Ridgeline) is offline in this world, so the price rise forces a choice. The agents were not told what to do.";
+/**
+ * The note every short mention of four eyes carries (the panel's review, 12 Nov), in these words, until a run with two
+ * people exists: the proof so far had one person, and the second signature came from a labelled test passkey.
+ * test/saas-additions.test.ts keeps the README, the docs and the submission texts to it.
+ */
+export const FOUR_EYES_NOTE = "the second signature from a test passkey, not a second person";
+/** The short form, with its note: how a sentence about what ran says "four eyes". */
+export const FOUR_EYES = `four eyes (${FOUR_EYES_NOTE})`;
+/**
+ * The same honesty for the separate on-chain run of 30 October (a 2-of-2 Metal account, docs/runs/2026-10-30-four-eyes.md):
+ * there both owners' keys were test keys on one machine, so "a test passkey" would not be true of it.
+ */
+export const FOUR_EYES_ON_CHAIN_NOTE = "two test keys on one machine, not two people";
 /** Four eyes, in one line, wherever a page names it. */
-export const FOUR_EYES_LINE = "Four eyes on chain: two signatures required (second approver = a labelled test passkey in this demo)";
+export const FOUR_EYES_LINE = `Four eyes on chain: two signatures required (${FOUR_EYES_NOTE})`;
 
 /**
  * What only Purser has (jury review, 6 Nov, #1): three sentences, word for word and first on every surface (the README's
@@ -121,17 +150,19 @@ export const BUSINESS_CASE_LINK = "Read the business case ↗";
  * company's name. test/first-screen.test.ts checks each line against its page.
  */
 /**
- * The intended price (hypothesis), approved by Max on 6 November 2026 with Claude decisions included. Said word for word
- * wherever a price is given (test/unit-economics-hypothesis.test.ts); src/business/unitEconomics.ts computes from it.
+ * The price (hypothesis): the pilot pricing of 12 November 2026, one model, built from src/config/pricing.ts (a monthly
+ * plan by supplier invoices, plus a small fee per payout). It replaced the price per agent with Claude decisions
+ * included (6 November). Said word for word wherever a price is given (test/unit-economics-hypothesis.test.ts);
+ * src/business/unitEconomics.ts computes from the same figures.
  */
-export const PRICE_LINE = "€49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions.";
+export const PRICE_LINE = PRICING_LINE;
 export const WHY_COMPANY_NOTE = "Not validated with customers yet: 2 finance conversations (a CFO and a bank finance professional, quoted, anonymous); more in progress; no pilots, no revenue. Every line below is a hypothesis except the cited source.";
 /** The same, as one small line under the lines (Proof, Max 7 Nov: the content first, the disclaimer last). */
 export const WHY_COMPANY_NOTE_LAST = "Not validated with customers yet: 2 finance conversations (a CFO and a bank finance professional, quoted, anonymous); more in progress; no pilots, no revenue; every line above is a hypothesis except the cited source.";
 export const WHY_COMPANY: readonly { label: string; text: string; page: string }[] = [
   { label: "The problem", text: "when an AI agent pays today, its limit lives in a prompt it can be talked out of, or in a month-end review that finds the money after it has left.", page: "problem.md#what-goes-wrong" },
   { label: "Who buys", text: "the finance team of a small company or scale-up that already banks with Airwallex and lets AI agents pay; the CFO uses it and decides.", page: "model.md#who-buys-and-who-uses-it-hypothesis" },
-  { label: "Intended pricing", text: `${PRICE_LINE} A hypothesis.`, page: "model.md#intended-pricing-hypothesis" },
+  { label: PRICING_LABEL, text: `${PRICE_LINE} A hypothesis.`, page: "model.md#pilot-pricing-hypothesis" },
   { label: "Why now", text: "Airwallex wrote on 5 October 2026 that agents moving money need limits enforced \"through underlying infrastructure rather than prompts\" (\"Agentic banking starts with governance\", source S1).", page: "problem.md#why-now-sourced" },
   { label: "Why Purser", text: "it builds on Airwallex's own card controls and Metal's mandates, and adds what sits on top: one CFO policy for card and chain, approvals signed over the exact terms, a hash-chained audit log.", page: "model.md#risks-and-what-we-do-not-know" },
 ];

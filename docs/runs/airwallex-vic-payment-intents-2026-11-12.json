@@ -1,0 +1,254 @@
+{
+  "read_at": "2026-11-12T10:02:09.636Z",
+  "method": "GET only, Airwallex sandbox: GET /api/v1/pa/payment_intents/{id}, once per PaymentIntent. Nothing was created, updated or cancelled. The call log of this read-back wrote each GET as /pa/{id}/{id}: it folded the path segment payment_intents as if it were an id (fixed on 12 Nov in src/airwallex/callBudget.ts).",
+  "why": "The PaymentIntents of the Airi run (docs/demo/airi-run.json) as the Airwallex sandbox reports them at the time of reading: Airwallex's own record of each payment.",
+  "run": "docs/demo/airi-run.json",
+  "test_money": true,
+  "redaction": "Each answer is kept as Airwallex returned it, except the values listed under `redacted` (a secret, card data, personal or device data, an authentication value, a card-like number), each replaced by a marker that says why and what was there. Nothing else is added, dropped or renamed (src/airwallex/intentReadback.ts).",
+  "budget": 4,
+  "calls": [
+    {
+      "at": "2026-11-12T10:02:07.593Z",
+      "method": "POST",
+      "endpoint": "/authentication/login"
+    },
+    {
+      "at": "2026-11-12T10:02:08.457Z",
+      "method": "GET",
+      "endpoint": "/pa/{id}/{id}"
+    },
+    {
+      "at": "2026-11-12T10:02:09.281Z",
+      "method": "GET",
+      "endpoint": "/pa/{id}/{id}"
+    }
+  ],
+  "payment_intents": [
+    {
+      "purchase": "A",
+      "id": "int_sgpvzc9hjhnxvpblt2r",
+      "redacted": [
+        {
+          "path": "latest_payment_attempt.payment_method.card.expiry_month",
+          "why": "card data"
+        },
+        {
+          "path": "latest_payment_attempt.payment_method.card.expiry_year",
+          "why": "card data"
+        },
+        {
+          "path": "latest_payment_attempt.payment_method.card.name",
+          "why": "personal or device data"
+        },
+        {
+          "path": "latest_payment_attempt.payment_method.card.fingerprint",
+          "why": "card data"
+        },
+        {
+          "path": "latest_payment_attempt.payment_method.card.billing",
+          "why": "personal or device data"
+        },
+        {
+          "path": "latest_payment_attempt.device_data",
+          "why": "personal or device data"
+        },
+        {
+          "path": "client_secret",
+          "why": "a secret"
+        }
+      ],
+      "intent": {
+        "latest_payment_attempt": {
+          "id": "att_sgpvzc9hjhnxvs5u6y9_pblt2r",
+          "amount": 12,
+          "currency": "EUR",
+          "payment_method": {
+            "type": "card",
+            "card": {
+              "expiry_month": "[redacted: card data, 2 characters]",
+              "expiry_year": "[redacted: card data, 4 characters]",
+              "name": "[redacted: personal or device data, 11 characters]",
+              "bin": "41111111",
+              "last4": "1111",
+              "brand": "visa",
+              "issuer_country_code": "US",
+              "card_type": "DEBIT",
+              "fingerprint": "[redacted: card data, 28 characters]",
+              "billing": "[redacted: personal or device data, an object]",
+              "issuer_name": "CONOTOXIA SP. Z O.O",
+              "is_commercial": false,
+              "number_type": "PAN",
+              "card_updater_info": {
+                "number_updated": false,
+                "expiry_updated": false
+              }
+            }
+          },
+          "merchant_order_id": "airi-mw6gw810-4f53f4f0-mw6gw810",
+          "payment_intent_id": "int_sgpvzc9hjhnxvpblt2r",
+          "status": "SETTLED",
+          "provider_transaction_id": "120436510193016",
+          "payment_method_transaction_id": "368647484465283",
+          "provider_original_response_code": "00",
+          "provider_original_response_description": "Authorized successfully",
+          "authorization_code": "539054",
+          "captured_amount": 12,
+          "refunded_amount": 0,
+          "created_at": "2026-11-07T13:59:51+00:00",
+          "updated_at": "2026-11-07T13:59:52+00:00",
+          "settle_via": "airwallex",
+          "authentication_data": {
+            "ds_data": {
+              "sca_exemption": "ONE_LEG_OUT",
+              "retry_count_for_auth_decline": 0
+            },
+            "fraud_data": {
+              "action": "ACCEPT",
+              "score": "0",
+              "risk_factors": []
+            },
+            "avs_result": "not_attempted",
+            "cvc_result": "matched",
+            "cvc_code": "M",
+            "account_name_verification_result": {
+              "status": "NOT_PERFORMED"
+            }
+          },
+          "payment_method_options": {
+            "card": {
+              "authorization_type": "final_auth"
+            }
+          },
+          "device_data": "[redacted: personal or device data, an object]"
+        },
+        "id": "int_sgpvzc9hjhnxvpblt2r",
+        "request_id": "airi-mw6gw810-4f53f4f0-mw6gw810-pi",
+        "amount": 12,
+        "currency": "EUR",
+        "merchant_order_id": "airi-mw6gw810-4f53f4f0-mw6gw810",
+        "descriptor": "Sandbox Business",
+        "status": "SUCCEEDED",
+        "captured_amount": 12,
+        "created_at": "2026-11-07T13:57:00+00:00",
+        "updated_at": "2026-11-07T13:59:52+00:00",
+        "client_secret": "[redacted: a secret, 416 characters]",
+        "mor_enabled": false,
+        "original_amount": 12,
+        "original_currency": "EUR"
+      }
+    },
+    {
+      "purchase": "B",
+      "id": "int_sgpvzc9hjhnxvxc26ie",
+      "redacted": [
+        {
+          "path": "latest_payment_attempt.payment_method.card.expiry_month",
+          "why": "card data"
+        },
+        {
+          "path": "latest_payment_attempt.payment_method.card.expiry_year",
+          "why": "card data"
+        },
+        {
+          "path": "latest_payment_attempt.payment_method.card.name",
+          "why": "personal or device data"
+        },
+        {
+          "path": "latest_payment_attempt.payment_method.card.fingerprint",
+          "why": "card data"
+        },
+        {
+          "path": "latest_payment_attempt.payment_method.card.billing",
+          "why": "personal or device data"
+        },
+        {
+          "path": "latest_payment_attempt.device_data",
+          "why": "personal or device data"
+        },
+        {
+          "path": "client_secret",
+          "why": "a secret"
+        }
+      ],
+      "intent": {
+        "latest_payment_attempt": {
+          "id": "att_sgpvtdh4nhnxw2gsj60_xc26ie",
+          "amount": 45,
+          "currency": "EUR",
+          "payment_method": {
+            "type": "card",
+            "card": {
+              "expiry_month": "[redacted: card data, 2 characters]",
+              "expiry_year": "[redacted: card data, 4 characters]",
+              "name": "[redacted: personal or device data, 11 characters]",
+              "bin": "41111111",
+              "last4": "1111",
+              "brand": "visa",
+              "issuer_country_code": "US",
+              "card_type": "DEBIT",
+              "fingerprint": "[redacted: card data, 28 characters]",
+              "billing": "[redacted: personal or device data, an object]",
+              "issuer_name": "CONOTOXIA SP. Z O.O",
+              "is_commercial": false,
+              "number_type": "PAN",
+              "card_updater_info": {
+                "number_updated": false,
+                "expiry_updated": false
+              }
+            }
+          },
+          "merchant_order_id": "P-0002-mw6h6ky7",
+          "payment_intent_id": "int_sgpvzc9hjhnxvxc26ie",
+          "status": "SETTLED",
+          "provider_transaction_id": "298878475810061",
+          "payment_method_transaction_id": "907679620111360",
+          "provider_original_response_code": "00",
+          "provider_original_response_description": "Authorized successfully",
+          "authorization_code": "373714",
+          "captured_amount": 45,
+          "refunded_amount": 0,
+          "created_at": "2026-11-07T14:10:14+00:00",
+          "updated_at": "2026-11-07T14:10:15+00:00",
+          "settle_via": "airwallex",
+          "authentication_data": {
+            "ds_data": {
+              "sca_exemption": "ONE_LEG_OUT",
+              "retry_count_for_auth_decline": 0
+            },
+            "fraud_data": {
+              "action": "ACCEPT",
+              "score": "0",
+              "risk_factors": []
+            },
+            "avs_result": "not_attempted",
+            "cvc_result": "matched",
+            "cvc_code": "M",
+            "account_name_verification_result": {
+              "status": "NOT_PERFORMED"
+            }
+          },
+          "payment_method_options": {
+            "card": {
+              "authorization_type": "final_auth"
+            }
+          },
+          "device_data": "[redacted: personal or device data, an object]"
+        },
+        "id": "int_sgpvzc9hjhnxvxc26ie",
+        "request_id": "P-0002-mw6h6ky7-pi",
+        "amount": 45,
+        "currency": "EUR",
+        "merchant_order_id": "P-0002-mw6h6ky7",
+        "descriptor": "Sandbox Business",
+        "status": "SUCCEEDED",
+        "captured_amount": 45,
+        "created_at": "2026-11-07T14:05:04+00:00",
+        "updated_at": "2026-11-07T14:10:15+00:00",
+        "client_secret": "[redacted: a secret, 416 characters]",
+        "mor_enabled": false,
+        "original_amount": 45,
+        "original_currency": "EUR"
+      }
+    }
+  ]
+}

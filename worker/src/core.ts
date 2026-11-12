@@ -8,6 +8,7 @@ import { normalizeCode } from "../../src/passkey/code.js";
 import { publicHealth, publicStatus, type Health } from "../../src/ops/publicHealth.js";
 import { AGENT_LINE_DAILY_USD } from "./agentLine.js";
 import type { RecordedAgents } from "../../src/try/recorded.js";
+import type { MetalRecorded } from "./metalInspector.js";
 
 export type SqlValue = string | number | null;
 export interface Sql {
@@ -39,12 +40,29 @@ export interface Pages {
   visa: string;
   /** /llms.txt: the submission in plain text for tools that read it (the repository's llms.txt); absent in older bundles. */
   llms?: string;
+  /** /metal's mandate inspector: the record's read of 12 November, its answer without a chain call; absent: the inspector answers 503. */
+  metalRecorded?: MetalRecorded | null;
+  /** /proof.json: the runs, guarantees and agents' limits as data (src/redesign/agentData.ts); absent in older bundles. */
+  proofJson?: string;
+  /** /receipt-sample.json: one signed receipt, byte for byte, to verify offline; absent in older bundles. */
+  receiptSample?: string;
   /** The partner pages (src/partners/), no script; absent in a bundle built before them. */
   airwallex?: string;
   claude?: string;
+  /** /pricing and /security, the product pages under "More" (src/redesign/pricing.ts, security.ts), no script; absent in a bundle built before them. */
+  pricing?: string;
+  security?: string;
+  /** /docs, "Docs and API", under "More" too (src/redesign/docs.ts), no script; absent in a bundle built before it. */
+  docs?: string;
+  /** /status, under "More" too (src/redesign/status.ts): its one script reads this Worker's own /health; absent in a bundle built before it. */
+  status?: string;
+  /** /t0 (owner, 12 Nov): Purser's books in T:0's ledger. */
+  t0?: string;
   /** The redesign's public pages (Home, Watch, Proof), no key needed; absent in a bundle built before them. */
   home?: string;
   watch?: string;
+  /** /replay: the main run of 3 November replayed step by step (it was /watch until the film came). */
+  replay?: string;
   proof?: string;
   /** /trace: any payment of the main run, step by step (no script); absent in a bundle built before it. */
   trace?: string;
@@ -74,7 +92,7 @@ export interface Pages {
   font: string;
   /** The sponsors' logos (base64), served as /assets/<name>. */
   images: Record<string, { type: string; data: string }>;
-  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; home?: string; watch?: string; proof?: string; trace?: string; runs?: string; notFound?: string; trySign?: string; tryVerify?: string; judge?: string; approve: string; enrol: string; policy: string };
+  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; pricing?: string; security?: string; docs?: string; status?: string; t0?: string; home?: string; watch?: string; replay?: string; proof?: string; trace?: string; runs?: string; notFound?: string; trySign?: string; tryVerify?: string; judge?: string; approve: string; enrol: string; policy: string };
 }
 
 const MAX_STATE_BYTES = 1_500_000;
@@ -148,6 +166,7 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/") return !new URL(req.url).search && pages.home && pages.csp.home ? page(pages.home, pages.csp.home) : page(pages.dashboard, pages.csp.dashboard);
   if (path === "/home" && pages.home && pages.csp.home) return page(pages.home, pages.csp.home);
   if (path === "/watch" && pages.watch && pages.csp.watch) return page(pages.watch, pages.csp.watch);
+  if (path === "/replay" && pages.replay && pages.csp.replay) return page(pages.replay, pages.csp.replay);
   if (path === "/proof" && pages.proof && pages.csp.proof) return page(pages.proof, pages.csp.proof);
   if (path === "/trace" && pages.trace && pages.csp.trace) return page(pages.trace, pages.csp.trace);
   if (path === "/runs" && pages.runs && pages.csp.runs) return page(pages.runs, pages.csp.runs);
@@ -168,11 +187,18 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/visa" && pages.visa) return page(pages.visa, pages.csp.visa);
   if (path === "/airwallex" && pages.airwallex && pages.csp.airwallex) return page(pages.airwallex, pages.csp.airwallex);
   if (path === "/claude" && pages.claude && pages.csp.claude) return page(pages.claude, pages.csp.claude);
+  if (path === "/pricing" && pages.pricing && pages.csp.pricing) return page(pages.pricing, pages.csp.pricing);
+  if (path === "/security" && pages.security && pages.csp.security) return page(pages.security, pages.csp.security);
+  if (path === "/docs" && pages.docs && pages.csp.docs) return page(pages.docs, pages.csp.docs);
+  if (path === "/status" && pages.status && pages.csp.status) return page(pages.status, pages.csp.status);
+  if (path === "/t0" && pages.t0 && pages.csp.t0) return page(pages.t0, pages.csp.t0);
   if (path === "/metal/report" && pages.metalReport) return page(pages.metalReport, pages.csp.metalReport);
   if (path.startsWith("/approve/") && PROPOSAL_ID.test(path.slice("/approve/".length))) return page(pages.approve, pages.csp.approve);
   if (path === "/enrol") return page(pages.enrol, pages.csp.enrol);
   if (path === "/policy") return page(pages.policy, pages.csp.policy);
   if (path === "/llms.txt" && pages.llms) return new Response(pages.llms, { headers: { ...COMMON_HEADERS, "content-type": "text/plain; charset=utf-8" } });
+  if (path === "/proof.json" && pages.proofJson) return new Response(pages.proofJson, { headers: { ...COMMON_HEADERS, "content-type": "application/json; charset=utf-8" } });
+  if (path === "/receipt-sample.json" && pages.receiptSample) return new Response(pages.receiptSample, { headers: { ...COMMON_HEADERS, "content-type": "application/json; charset=utf-8" } });
   if (path === "/assets/approve.js") return new Response(pages.client, { headers: { ...COMMON_HEADERS, "content-type": "text/javascript; charset=utf-8" } });
   if (path === "/assets/inter.woff2") {
     return new Response(Uint8Array.from(atob(pages.font), (c) => c.charCodeAt(0)), {

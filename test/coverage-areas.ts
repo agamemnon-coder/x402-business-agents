@@ -12,6 +12,11 @@ const AREAS: Record<string, { prefixes: string[]; floor: number }> = {
   clearing: { prefixes: ["metal/clearing"], floor: 90 },
   // 12 November: the payables agents' cores and their runner wiring, which the agent evals (test/ap-agent-evals.test.ts) exercise.
   "ap agents": { prefixes: ["ap/checkerCore", "ap/payerCore", "ap/checkerAgent", "ap/payerAgent"], floor: 90 },
+  // Invoice tokens on Metal (docs/tokenize.md), added 12 November with test/property-tokenize.test.ts: 92.5% from the
+  // tokenize tests alone that day.
+  tokenize: { prefixes: ["tokenize/"], floor: 90 },
+  // The zero-trust model, its coverage view and its report (test/zero-trust.test.ts; added 12 November).
+  zerotrust: { prefixes: ["zerotrust/"], floor: 90 },
 };
 
 const root = resolve(import.meta.dirname, "..");

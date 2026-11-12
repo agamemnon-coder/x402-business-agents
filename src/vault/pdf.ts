@@ -5,6 +5,7 @@
 
 import PDFDocument from "pdfkit";
 import type { MonthData, ReceiptData, SuppliersData, YearData } from "./data.js";
+import type { MonthPack } from "../ledger/pack.js";
 import type { VatOverview } from "../ledger/reports.js";
 
 export type Lang = "nl" | "en";
@@ -30,6 +31,9 @@ export const PDF_STRINGS = {
     year: "Jaarrapport", beforeClose: "vóór de afsluitboeking", balanceSheet: "Balans per", assets: "Activa", liabilities: "Vreemd vermogen", equity: "Eigen vermogen",
     openResult: "Resultaat (nog niet afgesloten)", balanced: "Sluitend", notBalanced: "NIET sluitend", trial: "Proefbalans", debit: "Debet", credit: "Credit", saldo: "Saldo",
     suppliers: "Leveranciers", onDay: "Stand op", iban: "IBAN (laatste 4)", bic: "BIC", currency: "Valuta", invoices: "Facturen",
+    pack: "Maandpakket", period: "Periode", periodLocked: "Afgesloten: er wordt niets meer in geboekt", lockedBy: "Afgesloten door", lockedAt: "Afgesloten op",
+    periodOpen: "Deze periode is nog niet afgesloten: de bedragen kunnen nog veranderen.", preparation: "Voorbereiding, geen aangifte",
+    payables: "Openstaande crediteuren (stand aan het einde van de maand)", party: "Partij", docRef: "Document", bucket: "Ouderdom", quarter: "Kwartaal",
     statusWord: { ACTIVE: "actief", REPLACED: "vervangen" } as Record<string, string>,
     apStatus: {
       blocked: "geblokkeerd", needs_review: "wacht op een mens", needs_vendor: "wacht op een nieuwe leverancier", ready: "klaar om te betalen",
@@ -55,6 +59,9 @@ export const PDF_STRINGS = {
     year: "Year report", beforeClose: "before the closing entry", balanceSheet: "Balance sheet on", assets: "Assets", liabilities: "Liabilities", equity: "Equity",
     openResult: "Result (not yet closed)", balanced: "Balances", notBalanced: "DOES NOT balance", trial: "Trial balance", debit: "Debit", credit: "Credit", saldo: "Balance",
     suppliers: "Suppliers", onDay: "As of", iban: "IBAN (last 4)", bic: "BIC", currency: "Currency", invoices: "Invoices",
+    pack: "Month pack", period: "Period", periodLocked: "Closed: nothing more is posted into it", lockedBy: "Closed by", lockedAt: "Closed on",
+    periodOpen: "This period is not closed yet: the numbers can still change.", preparation: "Preparation, not a filing",
+    payables: "Open payables (as at the end of the month)", party: "Party", docRef: "Document", bucket: "Age", quarter: "Quarter",
     statusWord: { ACTIVE: "active", REPLACED: "replaced" } as Record<string, string>,
     apStatus: {
       blocked: "blocked", needs_review: "needs a person", needs_vendor: "waits for a new supplier", ready: "ready to pay",
@@ -95,7 +102,8 @@ export const ACCOUNT_NAMES_NL: Readonly<Record<string, string>> = {
   "4000": "Omzet: voorraaddata aan winkeliers", "4100": "Terugbetalingen aan klanten", "4200": "Omzet: groothandel aan winkeliers",
   "5000": "Ingekochte voorraaddata (warehouse-API)", "6100": "Softwareabonnementen (bedrijfskaarten)", "6150": "Advertenties (bedrijfskaarten)",
   "6200": "Goederen van de fabrikant", "6300": "Reiskosten (taakkaarten)", "6350": "Datalicentie (Stockline, maandelijks)",
-  "6800": "Bank- en overboekingskosten", "6900": "Overige inkoopfacturen", "8000": "Kostprijs van de omzet",
+  "6800": "Bank- en overboekingskosten", "6900": "Overige inkoopfacturen", "8000": "Kostprijs van de omzet", "2150": "Gesimuleerde financier (testnet): financiering van factuurtokens",
+  "7100": "Financieringskosten: korting op gefinancierde facturen", "7900": "Koersverschillen, gerealiseerd (winst of verlies)",
 };
 
 /** Why an invoice is blocked, in Dutch, by the finding's code (the code's own words stay the English; red team S7). */
@@ -315,6 +323,49 @@ export function yearReportPdf(company: string, y: YearData, lang: Lang = "nl", b
     section(doc, t.trial);
     table(doc, [t.account, "", t.currency, t.debit, t.credit, t.saldo], y.trial.map((r) => [r.account, accountName(r.account, r.name, lang), r.currency, formatMoney("", r.debit, lang), formatMoney("", r.credit, lang), formatMoney("", r.balance, lang)]),
       [45, 170, 45, 75, 75, 85], [3, 4, 5], lang);
+    footer(doc, lang);
+  });
+}
+
+/**
+ * The month pack (src/ledger/pack.ts): the trial balance, the profit and loss, the balance sheet, the quarter's VAT
+ * overview (a preparation, not a filing) and the open payables, every figure as the ledger's report functions give it.
+ */
+export function monthPackPdf(company: string, p: MonthPack, lang: Lang = "nl"): Promise<Buffer> {
+  const t = T[lang];
+  const amount = (currency: string, c: number) => formatMoney(currency, cents(c), lang);
+  return render(`${t.pack} ${p.period.month}`, p.period.to, (doc) => {
+    header(doc, company, `${t.pack} ${p.period.month}`, `${pdfDate(p.period.from, lang)} – ${pdfDate(p.period.to, lang)}`, true, lang);
+    section(doc, t.period);
+    if (p.period.locked) kv(doc, [[t.period, t.periodLocked], [t.lockedBy, p.period.locked_by ?? t.none], [t.lockedAt, p.period.locked_at ? pdfDate(p.period.locked_at, lang) : t.none]]);
+    else doc.font("Helvetica-Bold").fontSize(9.5).fillColor(WARN).text(t.periodOpen, 50, undefined, { width: 495 });
+    section(doc, `${t.trial} ${pdfDate(p.period.to, lang)}`);
+    table(doc, [t.account, "", t.currency, t.debit, t.credit, t.saldo], p.trial.map((r) => [r.account, accountName(r.account, r.name, lang), r.currency, formatMoney("", cents(r.debit_cents), lang), formatMoney("", cents(r.credit_cents), lang), formatMoney("", cents(r.balance_cents), lang)]),
+      [45, 170, 45, 75, 75, 85], [3, 4, 5], lang);
+    section(doc, t.pnl);
+    const pnl = Object.entries(p.pnl).sort(([a], [b]) => a.localeCompare(b));
+    if (!pnl.length) table(doc, [], [], [], [], lang);
+    for (const [currency, x] of pnl) {
+      table(doc, [t.account, "", currency], x.accounts.map((a) => [a.account, accountName(a.account, a.name, lang), formatMoney("", cents(a.cents), lang)]), [60, 335, 100], [2], lang);
+      kv(doc, [[t.revenue, amount(currency, x.revenue_cents)], [t.expense, amount(currency, x.expense_cents)], [t.result, amount(currency, x.result_cents)]]);
+    }
+    section(doc, `${t.balanceSheet} ${pdfDate(p.period.to, lang)}`);
+    const balance = Object.entries(p.balance).sort(([a], [b]) => a.localeCompare(b));
+    if (!balance.length) table(doc, [], [], [], [], lang);
+    for (const [currency, b] of balance) {
+      table(doc, [t.account, "", currency], b.accounts.map((a) => [a.account, accountName(a.account, a.name, lang), formatMoney("", cents(a.cents), lang)]), [60, 335, 100], [2], lang);
+      kv(doc, [[t.assets, amount(currency, b.assets_cents)], [t.liabilities, amount(currency, b.liabilities_cents)], [t.equity, amount(currency, b.equity_cents)],
+        [t.openResult, amount(currency, b.result_cents)], ["", b.balanced ? t.balanced : t.notBalanced]]);
+    }
+    section(doc, `${t.vat} ${p.vat.quarter.replace("Q", "-Q")} (${pdfDate(p.vat.from, lang)} – ${pdfDate(p.period.to, lang)}) · ${t.preparation}`);
+    doc.font("Helvetica-Bold").fontSize(9.5).fillColor(WARN).text(`${t.preparation}. ${t.vatNotice}`, 50, undefined, { width: 495 });
+    doc.moveDown(0.4);
+    table(doc, [t.rubric, t.base, t.vatAmt], Object.entries(p.vat.rubrics).map(([k, x]) => [k, amount("EUR", x.base_cents), amount("EUR", x.vat_cents)]), [95, 200, 200], [1, 2], lang);
+    kv(doc, [[t.owed, amount("EUR", p.vat.owed_5a_cents)], [t.input, amount("EUR", p.vat.input_5b_cents)], [t.balance, amount("EUR", p.vat.balance_5c_cents)],
+      [t.uncoded, String(p.vat.uncoded_lines)], [t.otherCurrency, String(p.vat.other_currency_lines)]]);
+    section(doc, t.payables);
+    table(doc, [t.party, t.docRef, t.dueDate, t.bucket, t.amount], p.payables.items.map((o) => [o.party, o.doc_ref, o.due_date ? pdfDate(o.due_date, lang) : t.none, o.bucket, amount(o.currency, o.open_cents)]),
+      [130, 140, 75, 60, 90], [4], lang);
     footer(doc, lang);
   });
 }

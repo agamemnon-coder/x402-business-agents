@@ -78,6 +78,8 @@ export const SyncBatch = z.object({
   ledger_entries: z.array(z.object({
     entry_id: z.number().int().positive(), posting_date: DAY, doc_date: DAY, description: z.string().max(500), source_key: z.string().nullable(), doc_ref: z.string().nullable(),
     doc_sha256: z.string().nullable(), created_by: z.string(), reverses: z.number().int().nullable(), created_at: STAMP, prev_hash: SHA, entry_hash: SHA, lines: z.array(Line).min(2).max(1000),
+    // Present only on an entry that carries them (src/ledger/core.ts): the CFO's Face ID hash and the rail's id.
+    approval_sha256: SHA.optional(), rail_ref: z.string().min(1).max(200).optional(),
   }).strict()).max(5000).default([]),
   audit_rows: z.array(z.object({ seq: z.number().int().positive(), ts: STAMP, actor: z.string(), event: z.string(), subject: z.string().nullable(), payload_json: JSON_TEXT, prev_hash: SHA, row_hash: SHA }).strict()).max(20000).default([]),
 }).strict();

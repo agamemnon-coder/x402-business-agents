@@ -30,12 +30,13 @@ import { createServer, type Server } from "node:http";
 import type { Browser, Frame, Page } from "playwright";
 import { AirwallexAmbiguous } from "../airwallex/client.js";
 import { AirwallexBudgetSpent } from "../airwallex/callBudget.js";
+import { HPP_ORIGIN } from "./cardData.js";
 import { AirwallexSandboxCheckout, Intent, answerOf, code } from "./checkout.js";
-import { CheckoutOutcomeUnknown, type CheckoutAnswer } from "./client.js";
+import { CheckoutOutcomeUnknown, type CheckoutAnswer, type CheckoutOrder } from "./client.js";
 import { CredentialFileError, type CardForCheckout } from "./credential.js";
 
 /** The only origin the card is ever typed into: Airwallex's sandbox Hosted Payment Page (seen in the probe). */
-export const HPP_ORIGIN = "https://checkout.sandbox.airwallex.com";
+export { HPP_ORIGIN };
 /** Airwallex.js from Airwallex's CDN, as the HPP guide loads it. */
 export const SDK_URL = "https://static.airwallex.com/components/sdk/v1/index.js";
 
@@ -198,7 +199,7 @@ export class AirwallexHostedCheckout extends AirwallexSandboxCheckout {
     return this.outcome(reference, end);
   }
 
-  override async prepare(order: { ref: string; amount: string; currency: string; description: string }): ReturnType<AirwallexSandboxCheckout["prepare"]> {
+  override async prepare(order: CheckoutOrder): ReturnType<AirwallexSandboxCheckout["prepare"]> {
     const r = await super.prepare(order);
     if (!("outcome" in r)) this.currencies.set(r.reference, order.currency);
     return r;

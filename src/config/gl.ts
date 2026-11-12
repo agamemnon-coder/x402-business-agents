@@ -51,6 +51,10 @@ export const LEDGER_CHART: Record<string, string> = {
   "2210": "Output VAT (charged to customers)",
   "3100": "Retained earnings (closed years)",
   "8000": "Cost of goods sold (stock at average cost)",
+  // Master list 126: invoice token financing and realised FX differences (src/ledger/financing.ts, src/ledger/fx.ts).
+  "2150": "Simulated financier (testnet): invoice token financing",
+  "7100": "Finance cost: discount on financed invoices",
+  "7900": "FX differences, realised (gain or loss)",
 };
 
 export const COST_CENTRES: Record<Agent, string> & Record<string, string> = {

@@ -16,9 +16,11 @@ import { ibanSha } from "../agents/invoice.js";
 import { beginExecution, createProposal, expireDue, finishExecution, nextProposalId, type ProposalRow } from "../policy/approvals.js";
 import { assessAgainst, type Beneficiary } from "../policy/fraudCore.js";
 import { recheck, type InboxDeps } from "./inbox.js";
+import { checkpoint } from "../policy/saga.js";
 import { accountKey, chooseRoute, maskAccount, validateDetails, type BankDetails, type Method } from "../payouts/routes.js";
 import { apInvoice } from "./store.js";
 import { suppliersOnFile } from "./bank.js";
+import { nameCheckGate, runNameCheck, type NameCheckRow, type PayeeNameVerifier } from "../airwallex/payeeName.js";
 
 /** A new supplier waits an hour for the CFO, like a change of bank details. */
 const PAYEE_ADD_TTL_MS = 60 * 60 * 1000;
@@ -192,6 +194,27 @@ export function closeDeadAdds(db: DB, now = new Date()): void {
   }
 }
 
+/**
+ * The name the payee's bank is asked to match: always the supplier's own name (review, 12 November: an account holder's
+ * name on the request could name someone else, and its match would then read as the supplier's).
+ */
+const payeeNameOf = (vendor: string, _bank: PayeeBank) => vendor.trim();
+
+/**
+ * Asks the payee's bank, through Airwallex, whether this verified request's account exists and carries the supplier's
+ * name (step 2½, before the proposal; AIRWALLEX_PAYEE_CHECK). Records the answer; moves nothing.
+ */
+export async function checkPayeeAddName(db: DB, verifier: PayeeNameVerifier, id: string, by: Actor, now = new Date()): Promise<NameCheckRow> {
+  const r = row(db, id);
+  if (r.status !== "VERIFIED") throw new Error(`${id} is ${r.status}; only a request a person verified is checked with the bank`);
+  const bank: PayeeBank = r.details_json ? JSON.parse(r.details_json) as PayeeBank : legacyPayeeBank(r.vendor, r.iban, r.bic);
+  return runNameCheck(db, verifier, {
+    name: payeeNameOf(r.vendor, bank), entity: "COMPANY", country: bank.country, currency: bank.currency, accountKey: accountKey(bank),
+    ...(bank.iban ? { iban: bank.iban } : {}), ...(bank.accountNumber ? { accountNumber: bank.accountNumber } : {}),
+    ...(bank.routingType && bank.routingValue ? { routingType: bank.routingType, routingValue: bank.routingValue } : {}),
+  }, by, now);
+}
+
 export function proposePayeeAdd(db: DB, id: string, by: Actor, now = new Date()): ProposalRow {
   closeDeadAdds(db, now);
   const r = row(db, id);
@@ -202,10 +225,14 @@ export function proposePayeeAdd(db: DB, id: string, by: Actor, now = new Date())
   if (taken) throw new Error(`this account is already on file for ${taken}; one account is never added under a second name`);
   const v = JSON.parse(r.verification_json) as { by: string; how: string; at: string; address: Address };
   const bank: PayeeBank = r.details_json ? JSON.parse(r.details_json) as PayeeBank : legacyPayeeBank(r.vendor, r.iban, r.bic);
+  // AIRWALLEX_PAYEE_CHECK=on: the payee's bank must have confirmed this exact account and name first (src/airwallex/payeeName.ts);
+  // its answer goes into the signed terms. Off: no field, the hash as before.
+  const nameCheck = nameCheckGate(db, payeeNameOf(r.vendor, bank), accountKey(bank), now);
   const terms: PayeeAddTerms = {
     schema: TERMS_SCHEMA, kind: "payee_add", proposal_id: nextProposalId(db),
     expires_at: new Date(now.getTime() + PAYEE_ADD_TTL_MS).toISOString().replace(/\.\d{3}Z$/, "Z"),
     add_id: id, vendor: r.vendor, iban: r.iban, bic: r.bic, bank, account: maskAccount(bank), address: v.address, verification: { by: v.by, how: v.how, at: v.at },
+    ...(nameCheck ? { name_check: nameCheck } : {}),
   };
   const p = createProposal(db, { terms, createdBy: by }, now);
   db.prepare("UPDATE payee_adds SET status = 'PROPOSED', proposal_id = ? WHERE add_id = ?").run(p.proposal_id, id);
@@ -269,5 +296,7 @@ export async function executePayeeAdd(db: DB, rail: PayoutRail, proposalId: stri
     audit(db, "awx-executor", "payee.added", t.add_id, { vendor: t.vendor, account: details.account, currency: bank.currency, method: bank.method, beneficiary_id: ben.id, proposal_id: proposalId }, now);
     finishExecution(db, proposalId, "EXECUTED", { beneficiary_id: ben.id }, now);
   }).immediate();
+  // A process may stop here: the supplier is on file, its invoices not yet checked again (the autopilot checks them).
+  await checkpoint("ap.vendor:added");
   await recheck(db, inbox);
 }

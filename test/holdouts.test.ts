@@ -5,7 +5,9 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { recordSpend } from "../src/claude/budget.js";
+import { BUDGET_BLOCKS, recordSpend } from "../src/claude/budget.js";
+
+const EVALS_MICROS = BUDGET_BLOCKS.evals * 1_000_000;
 import { HOLDOUTS, RETIRED_HOLDOUTS, holdoutsMarkdown, runHoldout, runHoldouts } from "../src/evals/holdouts.js";
 import { routerClient, safeTeam, type Script } from "./fakes/claude-router.js";
 
@@ -73,7 +75,7 @@ describe("the holdouts", () => {
     expect(first.ran.map((r) => r.id)).toEqual(["dispute-dutch"]);
     const again = await runHoldouts({ root, outDir: join(root, "2026-11-03"), spendFile: spend, ids: ["dispute-dutch"], client: routerClient(safeTeam) });
     expect(again).toMatchObject({ ran: [], skipped: ["dispute-dutch"] });
-    recordSpend(spend, { block: "evals", usd_micros: 80_000_000, what: "the rest of the block" });
+    recordSpend(spend, { block: "evals", usd_micros: EVALS_MICROS, what: "the rest of the block" });
     const capped = await runHoldouts({ root, outDir: join(root, "2026-11-03"), spendFile: spend, ids: ["dispute-german"], client: routerClient(safeTeam) });
     expect(capped.ran).toEqual([]);
     expect(capped.stopped).toMatch(/evals block/);
@@ -83,7 +85,7 @@ describe("the holdouts", () => {
   it("stops at the evals block's cap and still records what each holdout spent, from its ledger", async () => {
     const root = mkdtempSync(join(tmpdir(), "holdouts-"));
     const spend = join(root, "api-budget.jsonl");
-    recordSpend(spend, { block: "evals", usd_micros: 79_990_000, what: "all but 0.01 USD of the block" });
+    recordSpend(spend, { block: "evals", usd_micros: EVALS_MICROS - 10_000, what: "all but 0.01 USD of the block" });
     const r = await runHoldouts({ root, outDir: join(root, "2026-11-02"), spendFile: spend, ids: ["double-price-rise", "dispute-dutch"], client: routerClient(safeTeam) });
     expect(r.ran.map((x) => x.id)).toEqual(["double-price-rise"]);
     expect(r.stopped).toMatch(/evals block (reached|has reached) its cap/);

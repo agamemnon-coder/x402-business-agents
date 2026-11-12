@@ -1,5 +1,11 @@
 # vic-1: the Airi rail run, plan and runbook
 
+**Resolved (12 November 2026).** The run happened on 7 November, in four attempts: vic-1 (stopped), vic-1b (failed),
+vic-1c attempt 1 (failed) and vic-1c attempt 2, which passed 5 of 5 checks. Nothing was charged in the three that
+failed. Log: [2026-11-07-vic-1.md](2026-11-07-vic-1.md); record: `docs/demo/airi-run.json`. The run was scripted (no
+Claude call) and one person played both the CFO and the cardholder; /visa says both. The status line below is the
+plan's own, as it stood between vic-1b and vic-1c.
+
 **Status: run once live as vic-1b (7 November); the next run goes in a fresh world (vic-1c), only on Max's go.**
 In vic-1b, A was refused at the API confirm and B's tap link never reached Max (see below). Both are fixed on branch
 `airi-camelcase`, which has the hosted-page checkout and the conductor's tap watch. The dry run
@@ -81,7 +87,7 @@ export KIT11_AIRI_RAIL=on KIT11_CARD_POLL_MS=off
 export AIRI_CHECKOUT=hosted             # the default; "api" is the REST confirm our sandbox refuses
 unset METAL_RPC_URL METAL_ENDPOINT_SECRET T0_API_KEY T0_ENABLED KIT11_AUTONOMY HUB_PUSH_ENABLED HUB_DECISIONS_ENABLED
 export AIRWALLEX_CALL_BUDGET=14 AIRWALLEX_CALL_LOG=$KIT11_KEYS_DIR/airwallex-calls.jsonl
-export VIC1_AIRI_CALL_BUDGET=8          # the conductor's airi-cli calls (the runner's 3 for B come on top)
+export VIC1_AIRI_CALL_BUDGET=10         # the conductor's airi-cli calls (the runner's for B come on top)
 # optional: AIRI_PAYMENT_METHOD_ID=<the test card's id from the preflight>  (not a secret)
 ```
 
@@ -99,14 +105,14 @@ conductor prints the link from that file on its own console and deletes the file
 | # | What | Command (Claude Code) | Max | Calls |
 |---|---|---|---|---|
 | 0 | Fresh world; dry run once more | `mkdir -m 700 $KIT11_KEYS_DIR`; `npm run airi:vic-1 -- --dry` | — | 0 |
-| 1 | Preflight: CLI pinned, session alive, an agent-enabled card | `npm run airi:vic-1 -- preflight` | (log in again only if told) | Airi 2 |
+| 1 | Preflight: CLI pinned, session alive, an agent-enabled card, the mandate list readable | `npm run airi:vic-1 -- preflight` | (log in again only if told) | Airi 3 |
 | 2 | Runner with Max's enrolment | `npm run relay -- --enrol` (own process group) | Face ID (enrol), then "Bevestig passkey &lt;fp&gt;" | Airwallex: the runner's login (1) |
 | 3 | The run | `VIC1_GO=yes npm run airi:vic-1 -- live` | tap A in Airi; Face ID B; tap B in Airi | see the budget |
 | 4 | Only after a crash or an unknown outcome | `npm run airi:vic-1 -- recover` | — | ≤ 1 Airwallex + ≤ 2 Airi per open purchase |
 | 5 | The record | `data/vic-1-record.json` and `data/vic-1.log` (both 0600, outside git); then `docs/runs/2026-11-0x-vic-1.md` from them | — | 0 |
 | 6 | Stop | `npm run stop -- vic-1` | — | 0 |
 
-The live run calls the preflight again (2 Airi calls), writes this world's first Airi policy (20.00 alone, 3 a day,
+The live run calls the preflight again (3 Airi calls), writes this world's first Airi policy (20.00 alone, 3 a day,
 the test shop allowed; audited as `airi.policy_initial`), and then runs A, B and C.
 
 ## Abort criteria (stop, record, tell Max)
@@ -129,7 +135,8 @@ the test shop allowed; audited as `airi.policy_initial`), and then runs A, B and
 
 ## Call budget
 
-**airi-cli: 10 commands expected, at most 12.** Each command makes one or more HTTPS requests inside the CLI.
+**airi-cli: 14 commands expected, at most 20** (12 Nov: each mandate is read back before its credential, and each
+preflight reads the mandate list once). Each command makes one or more HTTPS requests inside the CLI.
 `get-credential` polls Airi every 2 s while it waits for the tap, so one command means about 5 to 150 requests.
 `version` makes no network call.
 
@@ -137,11 +144,13 @@ the test shop allowed; audited as `airi.policy_initial`), and then runs A, B and
 |---|---|---|---|---|---|
 | 1 | preflight | `auth whoami` | 1 | 1 | Max's session, and when it ends |
 | 1 | preflight | `payment-methods list` | 1 | 1 | the agent-enabled card (id and type kept; of the card only brand and last four) |
-| 3 | conductor | `auth whoami`, `payment-methods list` | 2 | 2 | the run's own preflight |
+| 1 | preflight | `mandate list` | 1 | 1 | read-only: a shape the client does not know stops the run here, before purchase A |
+| 3 | conductor | `auth whoami`, `payment-methods list`, `mandate list` | 3 | 3 | the run's own preflight |
 | A | conductor | `mandate create` | 1 | 1 | merchant, total, currency, items, from the terms |
+| A | conductor | `mandate list` | 1 | 3 | the mandate read back: its description must carry the action id and the terms hash |
 | A | conductor | `mandate get-credential --file` | 1 | 1 | waits up to 300 s for Max's tap; the credential goes to a 0600 file in a fresh 0700 directory |
 | A | conductor | `mandate result` or `mandate cancel` | 1 | 2 | the checkout's outcome; cancel if Purser stops before the checkout |
-| B | runner | `mandate create`, `get-credential`, `result`/`cancel` | 3 | 4 | as A, after the CFO's Face ID |
+| B | runner | `mandate create`, `mandate list`, `get-credential`, `result`/`cancel` | 4 | 7 | as A, after the CFO's Face ID |
 | C | — | — | 0 | 0 | refused by Purser before any call |
 
 **Airwallex sandbox API: 8 calls expected, at most 14** (`AIRWALLEX_CALL_BUDGET=14`, one log for both processes).

@@ -25,7 +25,7 @@ describe("Google Drive", () => {
     const drive = new FakeDrive();
     const sink = new GoogleDriveSink({ token: "test-token", rootFolderId: drive.root, fetch: drive.fetch });
     const first = await syncVault(w.db, sink, opts());
-    expect(first.added.length).toBe(5);
+    expect(first.added.length).toBe(8);
     const filed = drive.byPath(INVOICE)!;
     expect(Buffer.compare(filed.content, original())).toBe(0);
     expect(filed.appProperties).toMatchObject({ sha256: first.added.find((a) => a.path === INVOICE)!.sha256 });
@@ -59,7 +59,7 @@ describe("OneDrive / SharePoint", () => {
     const graph = new FakeGraph();
     const sink = new OneDriveSink({ token: "test-token", driveId: graph.driveId, fetch: graph.fetch });
     const first = await syncVault(w.db, sink, opts());
-    expect(first.added.length).toBe(5);
+    expect(first.added.length).toBe(8);
     const st = await sink.stat(INVOICE);
     expect(st?.sha256).toBe(first.added.find((a) => a.path === INVOICE)!.sha256);
     expect(Buffer.compare((await sink.read(INVOICE))!, original())).toBe(0);

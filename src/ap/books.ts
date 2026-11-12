@@ -12,6 +12,7 @@ import type { DB } from "../db/open.js";
 import { csvCell } from "../lib/csv.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { VAT_CODES, vatOn } from "../ledger/vat.js";
+import { signedTermsRefusal } from "../ledger/termsLock.js";
 import type { ApInvoiceRow, StoredCoding } from "./store.js";
 import { apInvoices } from "./store.js";
 import { ledgerInvoiceNo } from "./ledgerKey.js";
@@ -181,9 +182,19 @@ export function paymentEntries(db: DB, inv: ApInvoiceRow): ApEntry[] {
   return out;
 }
 
+/**
+ * Why this invoice must not be booked, or null: it was approved under a signed proposal and its stored terms no longer
+ * hash to the hash the CFO signed, or name another amount or currency than the invoice (the books' lock, master list 77).
+ */
+export function bookingRefusal(db: DB, inv: ApInvoiceRow): string | null {
+  if (!inv.proposal_id || !MONEY.test(inv.total)) return null;
+  return signedTermsRefusal(db, inv.proposal_id, { amount_cents: toCents(inv.total), currency: inv.currency });
+}
+
 /** Every payables entry, in order: what the export and the insight read. */
 export function apJournal(db: DB): ApEntry[] {
-  return apInvoices(db).flatMap((inv) => (bookable(inv) ? [...accrualEntries(inv), ...(inv.status === "paid" ? paymentEntries(db, inv) : [])] : []));
+  // An invoice whose signed terms changed after the CFO's approval is not booked here either (src/ledger/termsLock.ts).
+  return apInvoices(db).flatMap((inv) => (bookable(inv) && !bookingRefusal(db, inv) ? [...accrualEntries(inv), ...(inv.status === "paid" ? paymentEntries(db, inv) : [])] : []));
 }
 
 const csv = (header: string[], rows: string[][]) => [header, ...rows].map((r) => r.map(csvCell).join(",")).join("\n") + "\n";

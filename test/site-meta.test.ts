@@ -73,8 +73,8 @@ describe("the film (Q3)", () => {
     expect(FILM_URL).toBe("https://youtu.be/kCUsFHrxE-o");
   });
 
-  it("Watch and Proof link the film of the main run; Proof's archive names /film for what it is", () => {
-    for (const name of ["watch", "proof"] as const) expect({ name, link: pages[name]!.includes(`href="${FILM_URL}"`) }).toEqual({ name, link: true });
+  it("the replay and Proof link the film of the main run; Proof's archive names /film for what it is", () => {
+    for (const name of ["replay", "proof"] as const) expect({ name, link: pages[name]!.includes(`href="${FILM_URL}"`) }).toEqual({ name, link: true });
     expect(pages.proof).toContain('<a class="pf" href="film">The earlier animation (30 October)</a>');
     expect(pages.proof).not.toContain('<a class="pf" href="film">The film</a>');
   });
@@ -89,10 +89,16 @@ describe("the submission pack (Q6, Q7)", () => {
     expect(read("docs/submission/README.md")).toContain(`\`purser-deck.pdf\`: ${words[n]} slides`);
   });
 
-  it("the claims' section on the four tabs is the main run's, checked on 7 November (and on 6 November before)", () => {
+  it("the claims' section on the tabs is the main run's, checked on 7 November (and on 6 November before); its heading names the menu as it is since 12 November", () => {
     const claims = read("docs/claims.md");
-    expect(claims).toContain("Last checked on 7 November 2026");
-    const tabs = claims.slice(claims.indexOf("## The four tabs"), claims.indexOf("## The video"));
+    // The opening (the main run and the site as they stand) was checked on 12 November; the sections below it on 7 November.
+    expect(claims).toContain("Last checked on 12 November 2026");
+    expect(claims).toContain("The sections below were checked on 7 November 2026");
+    // The menu is Home, Try, Proof since Watch left it (12 Nov): the section's heading says so, and no "four tabs" heading is left.
+    const from = claims.indexOf("## The tabs (Home, Try, Proof;");
+    expect(from).toBeGreaterThan(0);
+    expect(claims).not.toMatch(/^## The four tabs/m);
+    const tabs = claims.slice(from, claims.indexOf("## The video"));
     for (const want of ["24 of 24 by Claude", "0.69 swept", "P-0005", "fee EUR 13.42", "P-0001, P-0002, P-0004, P-0005, P-0006", "412 audit rows"]) expect({ want, has: tabs.includes(want) }).toEqual({ want, has: true });
     // Agent run 1's figures only as what the section said before.
     expect(tabs.replace(/this\s+section still had agent run 1's figures[^)]*\)/, "")).not.toMatch(/38\/38|38 of 38|1\.97|P-0007/);

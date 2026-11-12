@@ -214,8 +214,10 @@ const JS = `
       $("v-checks").replaceChildren(el("summary", "", ["All " + v.checks.length + " checks"]), list);
       $("v-checks").hidden = false;
       var t = isObj(mine.terms) ? mine.terms : {};
-      var row = function (k, label, val) { var dd = el("dd", flip && k === field ? "chg" : "", [String(val)]); dd.dataset.field = k; return [el("dt", "", [label]), dd]; };
-      var rows = [].concat(row("payee", "Payee", t.payee), row("amount", "Amount", (t.currency || "") + " " + t.amount), row("payee_iban", "IBAN", t.payee_iban));
+      // A row only for a field the receipt has: /try/sign's terms name payee and payee_iban, a live run's (awx-1's
+      // P-0002) beneficiary_name and iban_last4.
+      var row = function (k, label, val) { if (val === undefined || val === null || val === "") return []; var dd = el("dd", flip && k === field ? "chg" : "", [String(val)]); dd.dataset.field = k; return [el("dt", "", [label]), dd]; };
+      var rows = [].concat(row("payee", "Payee", t.payee || t.beneficiary_name || t.vendor), row("amount", "Amount", (t.currency || "") + " " + t.amount), row("payee_iban", "IBAN", t.payee_iban || (t.iban_last4 ? "···· " + t.iban_last4 : undefined)));
       if (isObj(t.fx)) rows = rows.concat(row("fx.client_rate", "FX rate", t.fx.client_rate));
       rows = rows.concat(row("proposal_id", "Proposal", t.proposal_id));
       if (isObj(mine.chain) && Array.isArray(mine.chain.rows)) rows = rows.concat(row("chain", "Hash chain", mine.chain.rows.length + " rows, head " + String(mine.chain.head).slice(0, 12) + "…"));

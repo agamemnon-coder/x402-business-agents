@@ -2,7 +2,9 @@
 
 > AI agents spend. You sign off. For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice over its limit, the CFO signs the exact terms with Face ID. Built for the Airwallex Agentic Banking Hackathon: Starter Kit 11 (x402 Business Agents), entered for the Metal Award and the Visa Award.
 
-Summary: Purser is a control layer for AI agents that spend company money: within limits the CFO sets they pay through Airwallex and Metal, and above them nothing runs until the CFO's passkey signs a SHA-256 of the exact terms, so changing one cent voids it. Live sandbox and testnet runs show it end to end: 24 Claude decisions, a SWIFT payout carrying the signed hash in Airwallex's own record, Airwallex's card controls and Metal refusing over-limit purchases, a VIC purchase via Airi, a connected-account payout with Purser's fee, and the books posted to T:0. Test money only; customers, suppliers and settlement are simulated, and the business model is not yet validated.
+Summary: within limits the CFO sets, the agents pay through Airwallex and Metal; above them nothing runs until the CFO's passkey signs a SHA-256 of the exact terms, so changing one cent voids it. Live sandbox and testnet runs show it end to end: 24 Claude decisions, a SWIFT payout carrying the signed hash in Airwallex's own record, Airwallex's card controls and Metal refusing over-limit purchases, a scripted Visa Intelligent Commerce (VIC) purchase via Airwallex's Airi, a connected-account payout with Purser's fee, and the books posted to T:0. Test money only; customers, suppliers and settlement are simulated, and the business model is not yet validated.
+
+Worst case, set by policy: EUR 28,200 on cards and task cards + USD 20 on chain a month. Task cards without Face ID: up to EUR 900 a day. Everything above waits for the CFO. Computed from the policy by exposureOf (src/policy/exposure.ts); the parts are in the README.
 
 Why not Airwallex's own approvals? Purser signs the exact terms with the CFO's passkey before the API call, enforces per-agent limits across Airwallex and Metal, and can additionally require Airwallex's approval workflow (IN_APPROVAL handled, src/airwallex/approvals.ts). Live in the sandbox, 10 and 12 Nov: Airwallex held a payout signed by a labelled test passkey IN_APPROVAL until the owner approved it in Airwallex's web app; then PAID, settlement simulated (docs/runs/2026-11-12-airwallex-two-locks-paid.md).
 
@@ -15,28 +17,39 @@ Test money only. Live: Claude's decisions, Airwallex sandbox calls, Metal testne
 - Airwallex: the hash of the exact terms the CFO signed with Face ID is in Airwallex's own record of the EUR 240.00 SWIFT payment, transfer 03360bfa-afce-457b-89d1-e1097fbe3985 (main run, 3 November; settlement simulated in the sandbox): https://kit11.max-31b.workers.dev/airwallex#awx-hash
 - Airwallex: Airwallex's own card controls declined an agent's EUR 45.00 purchase (charge simulated via the sandbox) over its EUR 30.00 limit (LIMIT_EXCEEDED, card transaction 01a1b5e8-6dc2-7000-95bf-c8fc5e6e2f38; the Airwallex-only run, 7 November; 7 of 7 checks): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-07-awx-1.md
 - Metal: a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded) after we switched off our own check once to test the chain: https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871
-- Visa: Visa Intelligent Commerce through Airwallex's Airi (7 November; Airwallex sandbox, test card): within Purser's limit the agent paid without Purser's approval (the cardholder confirmed each purchase in Airi with a passkey); above it PaymentIntent int_sgpvzc9hjhnxvxc26ie succeeded only after the CFO's Face ID; a disallowed merchant was refused by Purser before Airi was asked; 5 of 5 checks: https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-07-vic-1.md
-- Claude: 24 of 24 decisions in the main run by Claude, 0 fallbacks: https://kit11.max-31b.workers.dev/claude
+- Visa: Visa Intelligent Commerce through Airwallex's Airi (7 November; Airwallex sandbox, test card; a scripted run, no Claude call; one person played both the CFO and the cardholder): within Purser's limit a purchase was paid with no Purser approval (the cardholder confirmed each purchase in Airi with a passkey); above it PaymentIntent int_sgpvzc9hjhnxvxc26ie succeeded only after the CFO's Face ID; a disallowed merchant was refused by Purser before Airi was asked; 5 of 5 checks: https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-07-vic-1.md
+- Claude: three tool-use agents (Sourcing on Claude Haiku, Support on Claude Sonnet, Treasury on Claude Opus) made all 24 decisions in the main run, 0 fallbacks; routine payments are code: https://kit11.max-31b.workers.dev/claude and docs/claude.md
+- Claude, measured: 408 decisions in 40 simulated worlds, 10 blind holdouts, each model on each agent, each with its record: https://kit11.max-31b.workers.dev/claude
+- Home: one tap on +1 cent changes EUR 240.00 to 240.01 in the owner's real passkey approval of 7 November (its receipt published on 12 November); the visitor's browser re-checks the signature with WebCrypto and refuses, with both hashes shown: https://kit11.max-31b.workers.dev/
 
 ## Verify in two minutes
 
 - Sign with your own Face ID, then try to change one cent: https://kit11.max-31b.workers.dev/try/sign
 - The judge's tour (3 minutes): https://kit11.max-31b.workers.dev/judge
-- Offline, no keys: git clone https://github.com/agamemnon-coder/x402-business-agents && cd x402-business-agents && npm ci && npm run judge
+- Offline, no keys: git clone https://github.com/agamemnon-coder/x402-business-agents && cd x402-business-agents && npm ci && npm run judge; then npm run verify-approval checks that real signature of 7 November with Node's own crypto
 
 ## Judging criteria and where each is proven
 
 - Airwallex use: https://kit11.max-31b.workers.dev/airwallex (cards per agent with the CFO policy as Airwallex's controls, read back; Airwallex's own declines; SWIFT payouts carrying the signed hash; FX for the shortfall only)
-- Agentic: https://kit11.max-31b.workers.dev/watch and /claude (three Claude agents; an agent read Airwallex's decline and asked the CFO for a raise instead of retrying)
+- Agentic: https://kit11.max-31b.workers.dev/claude (three Claude tool-use agents; an agent read Airwallex's decline and asked the CFO for a raise instead of retrying); the replay of the main run of 3 November: https://kit11.max-31b.workers.dev/watch
 - Technical: https://kit11.max-31b.workers.dev/proof#guarantees (what Purser guarantees, each with its code, its test and where it ran); docs/controls-matrix.md
 - Finance value: https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/business (a hypothesis; 2 finance conversations, quoted, anonymous; more in progress; no customers yet)
-- Metal: https://kit11.max-31b.workers.dev/metal and docs/metal-award.md
+- Metal: https://kit11.max-31b.workers.dev/metal and docs/metal-award.md; the mandates read live, read-only: https://kit11.max-31b.workers.dev/api/metal/mandates
+- T:0: https://kit11.max-31b.workers.dev/t0 (95 journal entries of the main run's books in T:0's sandbox ledger, 10 November, read back with 0 differences)
 - Visa: https://kit11.max-31b.workers.dev/visa and docs/runs/2026-11-07-vic-1.md
 - After the kit: Airwallex connected accounts live in the sandbox (10 Nov: account acct_SC-QD89fOneAeqaRFgOymw ACTIVE; EUR 5.00 payout a9460dba-f31b-4111-be58-6d9a9e71adb1 with Purser's EUR 0.05 fee accepted by Airwallex, settlement simulated); the SME invoice inbox's code is in this repository (src/ap, src/ledger, src/vault, src/erp, src/payouts, cloud/), tested offline on fakes of Airwallex and Claude; it ran once end to end in the sandbox on 10 Nov for three test companies (1 payout PAID, 3 refused by Airwallex for a missing business registration number); a hosted preview exists but is private (behind an access key), no customer uses it, and it is not ready for real money: docs/after-the-kit.md, docs/runs/2026-11-10-platform-e2e.md
 
+## Product pages
+
+- Pricing: https://kit11.max-31b.workers.dev/pricing (pilot prices; nothing is on sale yet)
+- Security and trust: https://kit11.max-31b.workers.dev/security (each control with its proof, and what is not in place yet; sandbox and testnet only)
+- Docs and API: https://kit11.max-31b.workers.dev/docs (the agent API's tools as the code defines them, the Purser Cloud REST API's reference, x402 and the Airwallex webhooks, and how to run it offline; sandbox and testnet only)
+- Status: https://kit11.max-31b.workers.dev/status (the site's own /health in plain words, where no live run in progress is the normal state, and the five latest live runs; sandbox and testnet only)
+
 ## Key files
 
-- README.md: the whole submission, every id
+- README.md: the submission on one screen, then how it works
+- docs/in-depth.md: every live run and every id
 - docs/claims.md: every claim and its source
 - docs/controls-matrix.md: risk, control, test, evidence
 - docs/demo/main-run.json: the main run's record (3 November)
@@ -45,3 +58,11 @@ Test money only. Live: Claude's decisions, Airwallex sandbox calls, Metal testne
 - src/policy/mandates.ts: the Metal mandates
 - src/airi/purchase.ts: Visa Intelligent Commerce through Airwallex's Airi
 - src/audit/log.ts: the hash-chained audit log
+
+## For agents
+
+- Proof as JSON: https://kit11.max-31b.workers.dev/proof.json. A signed receipt you can check offline: https://kit11.max-31b.workers.dev/receipt-sample.json
+- To check a receipt: write the terms as canonical JSON (keys sorted, money as decimal strings); its SHA-256 equals terms_sha256; that hash is the WebAuthn challenge in clientDataJSON; the ES256 signature verifies with public_key. In a clone: npm run verify-receipt -- docs/runs/2026-11-07-awx-1/receipt-P-0002.json
+- The sample is the owner's own passkey approval of 7 November (live, Airwallex sandbox, test money; Face ID, as stated by the owner): the receipt does not prove who holds the key, or that it was Face ID (no attestation is checked).
+- An outside agent can ask for a company card and pay within limits over MCP (npm run mcp, docs/agent-api.md). Only a person's passkey can approve.
+- skills/purser-spend/SKILL.md: how an outside agent should use the agent API

@@ -1,7 +1,8 @@
 // Airi rail (docs/plans/vic-airi.md). What Purser needs from Airwallex's Airi wallet, as the public airi-cli README and
 // its airi-get-credential skill describe it (github.com/airwallex/airi-cli, 0.1.0-beta.4, read 7 November 2026): list
-// the agent-enabled payment methods, create a mandate for one exact checkout, fetch the single-use credential once the
-// wallet owner has approved it with a passkey, report the checkout's result, cancel.
+// the agent-enabled payment methods, create a mandate for one exact checkout, read that mandate back as Airi stores it,
+// fetch the single-use credential once the wallet owner has approved it with a passkey, report the checkout's result,
+// cancel.
 //
 // Two implementations: the real one runs the pinned airi-cli binary (./cli.ts); the stand-in (./standIn.ts) calls
 // nothing. Airwallex's own docs do not use the words "Visa Intelligent Commerce"; nothing in this code says it either.
@@ -9,6 +10,9 @@
 // The credential (tokenized PAN, expiry, CVV, per the README) never passes through AiriClient: getCredential writes it
 // to a 0600 file and returns only the receipt (status, token type, token expiry). Only a checkout adapter reads the
 // file (./credential.ts), and the executor deletes it and its directory afterwards.
+
+import { CVV_PATTERN, SCRUB_DIGITS_FROM } from "./cardData.js";
+import type { SignedTerms } from "./termsMetadata.js";
 
 /** The airi-cli release these flags and output shapes were read from. The real client refuses any other version. */
 export const AIRI_CLI_DOCUMENTED_VERSION = "0.1.0-beta.4";
@@ -52,11 +56,28 @@ export interface AiriMandateRequest {
   description: string;
 }
 
+/**
+ * Purser's own bound for each free-text flag of `mandate create` (source, payment method id, merchant name,
+ * description). airi-cli 0.1.0-beta.4 states no length limit for --description (its README's flag table says "Mandate
+ * description" and nothing more) and its binary holds no such check (read 12 November 2026), so what Airi's server
+ * accepts is not documented. The live run of 7 November (vic-1) sent descriptions of 39 and 56 characters; with the
+ * terms hash in them (src/airi/purchase.ts, mandateDescription) the same two are 110 and 127. Purser keeps to 200, and
+ * reads the mandate back afterwards (readMandate), so a description Airi cut short or changed is found out.
+ */
+export const AIRI_TEXT_MAX = 200;
+
 export interface AiriMandate {
   mandateId: string;
   /** Where the wallet owner approves this mandate with a passkey: a one-time link. Shown to that person on the
    *  operator console only; never written to a log, the audit log, a record, an error or git. */
   passkeyUrl: string;
+}
+
+/** A mandate as Airi stores it, read back from `mandate list`: its id, its status and its description (null when the row has none). */
+export interface AiriMandateRecord {
+  mandateId: string;
+  status: string;
+  description: string | null;
 }
 
 /** What `mandate get-credential --file` prints: no card data. */
@@ -95,6 +116,9 @@ export interface AiriClient {
   createMandate(req: AiriMandateRequest): Promise<AiriMandate>;
   /** A mandate this purchase may already have (after a crash): looked up by its description, never created twice. */
   findMandate(description: string, createdFrom: string): Promise<{ mandateId: string; status: string } | null>;
+  /** The mandate with this id as Airi stores it now, from the mandates created since `createdFrom` (airi-cli has no
+   *  command that reads one mandate: `mandate list` is the only read). Null when Airi does not list it. */
+  readMandate(mandateId: string, createdFrom: string): Promise<AiriMandateRecord | null>;
   /** Waits for the wallet owner's approval, then writes the credential to `file` (0600). Returns the receipt only.
    *  Throws AiriWaitTimeout when the owner did not tap in time, AiriRefusal when Airi refused. */
   getCredential(mandateId: string, file: string): Promise<AiriCredentialReceipt>;
@@ -108,12 +132,16 @@ export type CheckoutAnswer =
   | { outcome: "NOT_SUBMITTED"; reference: string | null; code: string; reason: string };
 
 /** The merchant's checkout: the only code that reads the credential file. */
+/** An order for the merchant's checkout. `signed`: the terms the CFO signed for it (above the limit only); the
+ *  checkout puts their hash and the proposal id on the order (Airwallex: PaymentIntent metadata, src/airi/termsMetadata.ts). */
+export interface CheckoutOrder { ref: string; amount: string; currency: string; description: string; signed?: SignedTerms }
+
 export interface AiriCheckout {
   readonly kind: "stand-in" | "airwallex-sandbox" | "airwallex-sandbox-hosted";
   readonly label: string;
   /** Opens the order at the merchant, without the card (Airwallex: a PaymentIntent). Its reference is recorded
    *  before the card is sent, so a crash can be looked up. NOT_SUBMITTED when the merchant cannot take it. */
-  prepare(order: { ref: string; amount: string; currency: string; description: string }): Promise<{ reference: string } | Extract<CheckoutAnswer, { outcome: "NOT_SUBMITTED" }>>;
+  prepare(order: CheckoutOrder): Promise<{ reference: string } | Extract<CheckoutAnswer, { outcome: "NOT_SUBMITTED" }>>;
   /** Pays the prepared order with the card in `credentialFile`. Throws CheckoutOutcomeUnknown only when the outcome
    *  is unknown; no error carries card data. */
   pay(reference: string, ref: string, credentialFile: string): Promise<CheckoutAnswer>;
@@ -132,15 +160,22 @@ export class CheckoutOutcomeUnknown extends Error {
 // ---- text that leaves the CLI or the checkout ---------------------------------------------------------------------
 
 /**
+ * A run of SCRUB_DIGITS_FROM digits or more, alone or split by single spaces or dashes: of any length, and wherever it
+ * stands (12 Nov: it was held to 19 digits between two word boundaries, so a 20-digit token, or a card number glued to
+ * a letter or an underscore as in "pan_4111…", came through unchanged).
+ */
+const DIGIT_RUN = new RegExp(`\\d(?:[ -]?\\d){${SCRUB_DIGITS_FROM - 1},}`, "g");
+
+/**
  * Text from airi-cli or a checkout, made safe to show or store: no URL (a passkey or device link is a one-time
- * credential), no run of 12 or more digits (a card or token number), no 3–4 digits after cvv/cvc/csc, no e-mail, one
- * line, at most 300 characters.
+ * credential), no run of 12 or more digits (a card or token number; SCRUB_DIGITS_FROM), no 3–4 digits after
+ * cvv/cvc/csc (CVV_PATTERN), no e-mail, one line, at most 300 characters.
  */
 export function scrubText(s: string): string {
   return s
     .replace(/https?:\/\/\S+/gi, "[link]")
-    .replace(/\b(?:\d[ -]?){12,19}\b/g, "[digits]")
-    .replace(/\b(cvv|cvc|csc|cvv2|security[ _-]?code)\b\W{0,3}\d{3,4}/gi, "$1 [digits]")
+    .replace(DIGIT_RUN, "[digits]")
+    .replace(CVV_PATTERN, "$1 [digits]")
     .replace(/[^\s@]+@[^\s@]+\.[^\s@]+/g, "[email]")
     .replace(/\p{Cc}+/gu, " ")
     .slice(0, 300);
@@ -148,7 +183,7 @@ export function scrubText(s: string): string {
 
 // ---- the documented command line ---------------------------------------------------------------------------------
 
-const SAFE_TEXT = /^[^\p{Cc}]{1,200}$/u;
+const SAFE_TEXT = new RegExp(`^[^\\p{Cc}]{1,${AIRI_TEXT_MAX}}$`, "u");
 /** The CLI parses an item as `name:<product>,unit_price:<price>,quantity:<n>`, so a name holding , or : could add fields. */
 const ITEM_NAME = /^[^,:\p{Cc}]{1,120}$/u;
 const AMOUNT = /^(0|[1-9]\d{0,8})\.\d{2}$/;

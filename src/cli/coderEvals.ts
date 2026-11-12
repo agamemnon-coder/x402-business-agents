@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { codeInvoice } from "../ap/coderAgent.js";
 import { CODER_MODEL } from "../ap/coderCore.js";
-import { BUDGET_BLOCKS, budgetStatus, recordSpend } from "../claude/budget.js";
+import { BUDGET_BLOCKS, BUDGET_STOP_USD, budgetStatus, recordSpend } from "../claude/budget.js";
 import { claudeClient } from "../claude/reader.js";
 import { openDb } from "../db/open.js";
 import { CODER_CASES, fileCoderCase, scoreCoding } from "../evals/coderCases.js";
@@ -43,6 +43,9 @@ const SPEND = join(ROOT, "docs/runs/api-budget.jsonl");
 const CAP_MICROS = BUDGET_BLOCKS.coder * 1_000_000;
 const MAX_MICROS = Math.round(maxUsd * 1_000_000);
 const blockMicros = () => Math.round(budgetStatus(SPEND).blocks.coder.spentUsd * 1_000_000);
+/** The room left under the $140 stop of all Claude spend (src/claude/budget.ts). */
+const stopRoomMicros = () => Math.max(0, Math.round((BUDGET_STOP_USD - budgetStatus(SPEND).totalUsd) * 1_000_000));
+if (stopRoomMicros() <= 0) fail("the Claude budget has reached its $140 stop (npm run budget): no live run");
 if (blockMicros() >= CAP_MICROS) fail("the coder block of the API budget is spent (npm run budget): no live run");
 
 // The code the rows ran: the commit, and whether the checkout had changes outside this run's own files.
@@ -62,7 +65,7 @@ try {
         // Checked before every call of the case: the room left under the run's own limit and under the block's cap,
         // with what is already recorded in it. A call that could take either over is not made.
         const blockAtStart = blockMicros();
-        const guard = spendGuard(client, () => Math.min(MAX_MICROS - spent, CAP_MICROS - blockAtStart));
+        const guard = spendGuard(client, () => Math.min(MAX_MICROS - spent, CAP_MICROS - blockAtStart, stopRoomMicros()));
         const db = openDb(":memory:");
         const filed = await fileCoderCase(db, join(dir, `${name}-${c.id}-${run}`), c, new Date());
         const t0 = Date.now();

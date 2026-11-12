@@ -13,8 +13,10 @@ import { proposeInvoicePayment, type InvoiceOutcome } from "../agents/euroBill.j
 import type { DB } from "../db/open.js";
 import type { InboxDeps } from "./inbox.js";
 import { accrualEntries, accrualPushed, paymentEntries, pushOnce, reversalEntries, type BookkeepingSink } from "./books.js";
+import { audit } from "../audit/log.js";
+import type { Terms } from "../lib/terms.js";
 import { ensureCoded } from "./coderAgent.js";
-import { expireDue } from "../policy/approvals.js";
+import { expireDue, signedTerms } from "../policy/approvals.js";
 import { readDoc } from "./docStore.js";
 import { PAY_LATER, payerGate } from "./payerAgent.js";
 import { pdfText } from "./pdfText.js";
@@ -111,6 +113,23 @@ function clearStaleNote(db: DB, id: string): void {
   db.prepare("UPDATE ap_invoices SET review_note = NULL, review_by = NULL WHERE id = ?").run(id);
 }
 
+interface PaidPayout { amount: string; currency: string; approval_sha256: string }
+
+/**
+ * Why a paid payout may not be booked, or null: the proposal's stored terms no longer hash to what the CFO approved
+ * (changed after signing), or the payout's own row is not the payment those terms describe (another approval hash,
+ * amount or currency). The executor checks the same hash before it pays; the books check it again before they book.
+ */
+function bookingProblem(db: DB, proposalId: string, paid: PaidPayout): string | null {
+  const signed = signedTerms<Terms & { amount?: string; currency?: string }>(db, proposalId);
+  if (!signed.ok) return signed.reason;
+  if (paid.approval_sha256 !== signed.sha256) return `the payout carries another approval hash than ${proposalId}'s`;
+  if (paid.amount !== signed.terms.amount || paid.currency !== signed.terms.currency) {
+    return `the payout on record (${paid.currency} ${paid.amount}) is not the ${String(signed.terms.currency)} ${String(signed.terms.amount)} the CFO signed in ${proposalId}`;
+  }
+  return null;
+}
+
 /** Follows each invoice waiting for the CFO: paid when its transfer is PAID; rejected; or ready again when its terms ran out. */
 export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: BookkeepingSink; rail?: PayoutRail } = {}): Promise<ApInvoiceRow[]> {
   const now = (opts.now ?? (() => new Date()))();
@@ -137,8 +156,16 @@ export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: Book
       changed.push(setStatus(db, inv.id, "ready", "system", { proposal_id: null, reason: `${inv.proposal_id} ${p.status.toLowerCase()}; it can be filed again` }, now));
       clearStaleNote(db, inv.id);
     } else if (p.status === "EXECUTED") {
-      const paid = db.prepare("SELECT 1 FROM transfers WHERE invoice_no = ? AND status = 'PAID'").get(ledgerInvoiceNo(inv.invoice_no, inv.vendor));
+      const paid = db.prepare("SELECT amount, currency, approval_sha256 FROM transfers WHERE invoice_no = ? AND status = 'PAID'").get(ledgerInvoiceNo(inv.invoice_no, inv.vendor)) as PaidPayout | undefined;
       if (!paid) continue;
+      // Booked only as the CFO signed it: the same hash the executor checked before the payment is checked again here.
+      const wrong = bookingProblem(db, inv.proposal_id!, paid);
+      if (wrong) {
+        if (!db.prepare("SELECT 1 FROM audit_log WHERE event = 'ap.booking_refused' AND subject = ? AND json_extract(payload_json, '$.reason') = ?").get(inv.id, wrong)) {
+          audit(db, "system", "ap.booking_refused", inv.id, { proposal_id: inv.proposal_id, reason: wrong, note: "not booked as paid; a person checks the payout against what the CFO signed" }, now);
+        }
+        continue;
+      }
       const next = setStatus(db, inv.id, "paid", "awx-executor", { paid_at: now.toISOString(), reason: `paid under ${inv.proposal_id}` }, now);
       clearStaleNote(db, inv.id);
       // The accrual first if the sink never got it (a supplier added by the executor, a sink that was down), then the payment.

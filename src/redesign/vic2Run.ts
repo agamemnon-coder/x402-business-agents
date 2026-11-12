@@ -12,8 +12,12 @@ import { esc, icon } from "./ui.js";
 export const VIC2_RUN_FILE = "docs/demo/vic-2-run.json";
 export const VIC2_RUN_LOG = "docs/runs/2026-11-07-vic-2.md";
 export const VIC2_RUN_ID = "airi-run-2";
-export const VIC2_HEADING = "What Purser adds around Airi: a second live run";
-export const VIC2_LABEL = "A separate run · nothing bought: 0 Airi and 0 Airwallex calls";
+/**
+ * A control test, not a second Visa run (jury panel, 12 Nov): the heading says so, so nobody counts it as one. It read
+ * "What Purser adds around Airi: a second live run".
+ */
+export const VIC2_HEADING = "Control test of Purser's own checks, not a Visa run";
+export const VIC2_LABEL = "Nothing bought: 0 Airi and 0 Airwallex calls";
 export const VIC2_BADGES = { D: "✕ Changed after Face ID: refused", E: "✕ Shop locked by the CFO: refused", F: "✓ Unlocked: offered again" } as const;
 
 export interface Vic2Record {

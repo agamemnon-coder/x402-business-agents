@@ -383,7 +383,7 @@ const KEY='purser.cloud.session';
 const load=()=>{try{const s=JSON.parse(sessionStorage.getItem(KEY)||'null');return s&&s.exp>Date.now()?s:null}catch(e){return null}};
 const save=(s)=>{try{sessionStorage.setItem(KEY,JSON.stringify(s))}catch(e){}};
 const forget=()=>{try{sessionStorage.removeItem(KEY)}catch(e){}};
-let S=load();let ME=null;let notice=null;
+let S=load();let ME=null;let notice=null;let connNote=null;
 
 class Expired extends Error{}
 async function api(path,o){
@@ -1071,8 +1071,26 @@ async function settingsView(){
   const company=el('div','card panel',[el('h2','',t('cs.company')),dl([[t('cs.name'),m.tenant.name],[t('cs.address'),m.tenant.slug],[t('cs.inbox'),m.inbox||t('cs.not_routed'),'mono']]),langBox.children.length?el('h2','sub-h',t('cs.language')):null,langBox.children.length?langBox:null,langMsg]);
   if(!owner){view().replaceChildren(head(t('cs.nav.settings')),company,note(t('cs.only_owner',{name:m.tenant.name})));return}
   const people=el('div','card panel');const keys=el('div','card panel');const dataCard=el('div','card panel');const awx=el('div','card panel');awx.id='awx';awx.hidden=true;
-  const ints=el('div','card panel');ints.id='integrations';
-  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,awx,ints,el('div','split2',[people,keys]),dataCard);
+  const ints=el('div','card panel');ints.id='integrations';const conn=el('div','card panel');conn.id='connect';conn.hidden=true;
+  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
+  // Accounts the company already has, connected by OAuth (docs/real-customers.md): only when the cloud offers it. The
+  // owner signs in at Airwallex or Moneybird and agrees there; Purser keeps the tokens sealed and never shows them.
+  async function drawConn(){
+    const r=await api('/v1/connect');
+    const offered=(r.connections||[]).filter(x=>x.offered);
+    if(!r.switched_on||!offered.length){conn.hidden=true;return}
+    conn.hidden=false;const msg=el('div','');const kids=[el('h2','',t('cs.conn.title')),el('p','',t('cs.conn.lede'))];
+    for(const x of offered){
+      const rows=[[t('cs.conn.status'),el('span','pill'+(x.status==='connected'?' ok':x.ended_reason==='refused'?' warn':''),tk('cs.conn.status.'+x.status,x.status))]];
+      if(x.account)rows.push([t('cs.awx.account'),x.account,'mono']);
+      if(x.connected_at&&x.status==='connected')rows.push([t('cs.awx.since'),stamp(x.connected_at)]);
+      kids.push(el('h2','sub-h',tk('cs.conn.name.'+x.provider,x.provider)),dl(rows));
+      if(x.status==='connected'){const d=btn(t('cs.conn.disconnect'),'','x');d.onclick=async()=>{d.disabled=true;try{const o=await api('/v1/connect/'+x.provider,{method:'DELETE'});await drawConn();if(o.note)conn.append(note(o.note))}catch(e){if(!(e instanceof Expired))msg.replaceChildren(note(e.message,'bad'));d.disabled=false}};kids.push(el('div','row2',[d]))}
+      else{const g=btn(tk('cs.conn.connect.'+x.provider,x.provider),'primary','shield-check');g.onclick=async()=>{g.disabled=true;try{const o=await api('/v1/connect/'+x.provider+'/start',{method:'POST'});location.assign(o.url)}catch(e){if(!(e instanceof Expired))msg.replaceChildren(note(e.message,'bad'));g.disabled=false}};kids.push(el('div','row2',[g]))}
+    }
+    if(connNote){msg.replaceChildren(note(connNote[0],connNote[1]));connNote=null}
+    kids.push(note(t('cs.conn.keeps')),msg);conn.replaceChildren(...kids);
+  }
   // Koppelingen: where the accounting link stands (GET /v1/integrations), from the results the runner's ERP sync wrote
   // in the audit log. The cloud holds no Moneybird token and calls no ERP; a person connects it on the runner.
   async function drawInts(){
@@ -1178,7 +1196,7 @@ async function settingsView(){
   }
   const exp=btn(t('cs.download_all'),'','download');exp.onclick=()=>download('/v1/export','purser-cloud-export.json').catch(e=>{if(!(e instanceof Expired))dataCard.append(note(e.message,'bad'))});
   dataCard.replaceChildren(el('h2','',t('cs.your_data')),el('p','',t('cs.data_lede',{name:m.tenant.name})),exp);
-  await Promise.all([drawPeople(),drawKeys(),drawAwx().catch(e=>{if(!(e instanceof Expired)){awx.hidden=false;awx.replaceChildren(note(e.message,'bad'))}}),drawInts().catch(e=>{if(!(e instanceof Expired))ints.replaceChildren(el('h2','',t('cs.int.title')),note(e.message,'bad'))})]);
+  await Promise.all([drawPeople(),drawKeys(),drawAwx().catch(e=>{if(!(e instanceof Expired)){awx.hidden=false;awx.replaceChildren(note(e.message,'bad'))}}),drawInts().catch(e=>{if(!(e instanceof Expired))ints.replaceChildren(el('h2','',t('cs.int.title')),note(e.message,'bad'))}),drawConn().catch(e=>{if(!(e instanceof Expired)){conn.hidden=false;conn.replaceChildren(note(e.message,'bad'))}})]);
 }
 
 // --- The router ----------------------------------------------------------------------------------------------------
@@ -1226,8 +1244,17 @@ async function route(){
   try{
     if(path==='/enrol')return enrolView(q);
     if(open[path])return open[path]();
+    // A provider's code in the address is spent or useless without a session: it leaves the browser's history at once.
+    if(path==='/connect'&&!S){history.replaceState(null,'','#/settings');return go('#/sign-in')}
     if(!S)return go('#/sign-in');
     if(path==='/'||path==='')return go('#/overview');
+    // Back from Airwallex's or Moneybird's consent screen (GET /v1/connect/{provider}/callback put the code here, in the
+    // fragment, which no server sees): the signed-in owner who started it finishes the connection.
+    if(path==='/connect'){const p=q.get('provider');if(p!=='airwallex'&&p!=='moneybird')return go('#/settings');
+      if(q.get('error')||!q.get('code')){connNote=[t('cs.conn.declined'),'bad'];return go('#/settings')}
+      history.replaceState(null,'','#/settings');
+      try{await api('/v1/connect/'+p+'/finish',{method:'POST',body:{code:q.get('code'),state:q.get('state')}});connNote=[t('cs.conn.done'),'ok']}catch(e){if(e instanceof Expired)return;connNote=[e.message,'bad']}
+      return route()}
     view().replaceChildren(el('p','lede',t('loading')));
     const m=/^\/invoices\/([^/]+)$/.exec(path);
     if(m)return await invoiceView(decodeURIComponent(m[1]));
