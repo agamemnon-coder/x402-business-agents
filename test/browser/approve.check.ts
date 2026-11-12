@@ -33,6 +33,13 @@ import { Tools } from "../../src/claude/tools.js";
 import { draftPolicyFromText, draftSummary } from "../../src/policy/fromText.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { policyValue } from "../../src/policy/rules.js";
+import { readFileSync } from "node:fs";
+import { decodeAgentKey, mandateBindingAbi, mandateReference, revokeCall } from "@metalntwx/metal-pay/mandates";
+import { decodeFunctionData, encodeFunctionData, type Hex } from "viem";
+import { centsToBaseUnits } from "../../src/lib/money.js";
+import { checkOwnersTerms, coseP256, ownersExecuteTerms, type OwnersExecuteTerms } from "../../src/metal/ownersExecute.js";
+import { passkeySigner } from "../../src/metal/passkeyOwner.js";
+import { PASSKEY_VERIFIER } from "../../src/metal/passkeyRelay.js";
 
 const live = process.argv.includes("--live");
 const shots = resolve(process.argv.slice(2).find((a) => !a.startsWith("--")) ?? "docs");
@@ -68,6 +75,10 @@ audit(db, "system", "document.injection_flagged", "dispute", { document_sha256: 
 createProposal(db, { terms: { ...refund, proposal_id: rejectId, expires_at: iso(now.getTime() + 30 * 60_000) }, createdBy: "support",
   evidence: [{ sha256: sha256Hex(plantedDoc) }],
   explanation: "[claude-opus-5-5] REJECT: The customer asks to refund everything without evidence." }, now);
+// A Kit 11 invoice payment, waiting: the rehearsal's own terms (a payout reason, none of the payables inbox's fields).
+const invoiceTerms = JSON.parse((db.prepare("SELECT terms_json FROM proposals WHERE kind = 'invoice_payment' ORDER BY proposal_id LIMIT 1").get() as { terms_json: string }).terms_json) as Terms;
+const invoiceId = nextProposalId(db);
+createProposal(db, { terms: { ...invoiceTerms, proposal_id: invoiceId, expires_at: iso(now.getTime() + 30 * 60_000) }, createdBy: "treasury" }, now);
 const [optA, optB] = ids as [string, string];
 
 const local = live ? null : await startLocalRelay({ port: 0, token: "browser-check" });
@@ -172,6 +183,9 @@ check(recommended.join() === "false,true", `approval view: only option B carries
 check((await page.textContent(".what-title")) === "Option B: sell at 0.07" && (await page.textContent(".hero-amount")) === "0.07 USDZ per query", "approval view: what (option B, 0.07 USDZ per query)");
 const facts = await page.$$eval(".key-facts dt", (n: Element[]) => n.map((x) => x.textContent));
 check(facts.join() === "Payee,Agent,Why you", `approval view: payee, agent and why, nothing else above the fold (${facts.join(", ")})`);
+/** The label column of the first screen's facts, as the browser lays it out. */
+const labelColumn = () => page.$eval(".key-facts", (n: Element) => getComputedStyle(n).gridTemplateColumns.split(" ")[0]);
+check((await labelColumn()) === "64px", `approval view: the labels sit in the 64px column (${await labelColumn()}); the wider one is the payables views' own`);
 check((await page.textContent(".key-facts dd:nth-of-type(2)")) === "Treasury agent", "approval view: the agent is the Treasury agent");
 check(/mandate changes only with your Face ID/.test((await page.textContent(".key-facts dd.why")) ?? ""), "approval view: why it needs the CFO, in one line");
 check((await page.textContent("#approve")) === "Approve option B with Face ID" && (await page.textContent("#reject")) === "Reject", "approval view: the primary button names the option chosen; Reject beside it");
@@ -235,6 +249,137 @@ check((await page.textContent(".key-facts dd:nth-of-type(2)")) === "Support agen
 const fsR = await firstScreen();
 check(allIn(fsR) && fsR.closed && fsR.wide === 0, `a single proposal at 390 x ${fsR.h}: all essentials and both buttons in the first screen (${shortView(fsR)})`);
 await page.screenshot({ path: join(shots, "approve-single-390-light.png") });
+
+// Block 1, Face ID signs on chain (an owners_execute): a bind, a revoke and a replace of the Sourcing mandate on the
+// passkey account, each at 390 px in light and dark. Before the Face ID button the owner can see what is bound,
+// revoked or replaced, the budget (a replace: the new cap beside the old), the payee and the expiry in the first
+// screen; the account, the cap, the budget and the payee in one sentence behind Details; and the full account, the
+// mandate (a replace: the one it replaces too), the digest the passkey signs and the signed deadline under "All
+// terms". The calls are a real bind's (test/fixtures/owners-execute-terms.json, public testnet data); the owners are
+// this check's passkey and a made-up second signer, so only the first approval can be given here.
+process.env.KIT11_PASSKEY_OWNERS = "on";
+const OW = JSON.parse(readFileSync(new URL("../fixtures/owners-execute-terms.json", import.meta.url), "utf8")) as OwnersExecuteTerms;
+const maxKey = (db.prepare("SELECT public_key FROM passkeys WHERE status = 'ACTIVE'").get() as { public_key: string }).public_key;
+const ownerSigners = [passkeySigner(PASSKEY_VERIFIER, coseP256(maxKey)), passkeySigner(PASSKEY_VERIFIER, { qx: `0x${"11".repeat(32)}`, qy: `0x${"22".repeat(32)}` })];
+audit(db, "owner-signer", "owners.account_created", OW.account, { account: OW.account, owners: ["max", "controller (made up for this check)"], signers: ownerSigners, threshold: "2" });
+function ownersProposal(action: OwnersExecuteTerms["action"], callData: Hex, checked = true): OwnersExecuteTerms {
+  const expires = new Date(Date.now() + 15 * 60_000);
+  expires.setUTCMilliseconds(0);
+  const terms = ownersExecuteTerms({ proposal_id: nextProposalId(db), expires_at: iso(expires.getTime()), account: OW.account, chain_id: OW.chain_id, owners: ownerSigners,
+    calls: [{ target: OW.account, value: "0", call_data: callData }], nonce: OW.nonce, valid_until: String(Math.floor(expires.getTime() / 1000) + 120), action });
+  // The same check the runner makes before it counts a signature: the words are what the call does.
+  if (checked) checkOwnersTerms(terms);
+  createProposal(db, { terms, createdBy: "treasury" });
+  return terms;
+}
+const [hashC, issuerKey, agentKey, cons, bound] = decodeFunctionData({ abi: mandateBindingAbi, data: OW.calls[0]!.call_data }).args as unknown as [Hex, Hex, Hex, { perPaymentCap: bigint }, object];
+const ownBind = ownersProposal(OW.action, OW.calls[0]!.call_data);
+const ownRevoke = ownersProposal({ ...OW.action, what: "revoke" }, revokeCall(OW.account, OW.action.mandate).data);
+// The replace raises the cap from 0.05 to 0.10 in one account call; its new mandate's reference follows from the call.
+const EARLIER = `0x${"5e".repeat(32)}` as Hex; // the mandate the replace ends (made up for this check)
+const ownReplace = ownersProposal({ ...OW.action, what: "replace", cap: "0.10", mandate: mandateReference(OW.account, decodeAgentKey(agentKey), hashC), replaces: EARLIER, was_cap: OW.action.cap, was_budget: OW.action.budget },
+  encodeFunctionData({ abi: mandateBindingAbi, functionName: "replace", args: [EARLIER, hashC, issuerKey, agentKey, { ...cons, perPaymentCap: centsToBaseUnits(10) } as never, bound as never] }));
+const ownUnknown = ownersProposal({ ...OW.action, what: "transfer" }, OW.calls[0]!.call_data, false);
+const PAYEE = "Stockline 0x82e5…4b9A";
+const ACCOUNT_SHORT = `${OW.account.slice(0, 6)}…${OW.account.slice(-4)}`;
+
+async function ownersView(t: OwnersExecuteTerms, o: { tag: string; title: string; hero: [string, string]; ends: string; rows: [string, string][] }): Promise<void> {
+  const say = (what: string) => `on chain, ${o.tag} at 390 px: ${what}`;
+  await page.goto(`${url}/approve/${t.proposal_id}`);
+  await page.waitForSelector("#approve");
+  check((await page.textContent(".what-title")) === o.title, say(`what it does, in the title ("${await page.textContent(".what-title")}")`));
+  const hero = [await page.textContent(".hero-label"), await page.textContent(".hero-amount")];
+  check(hero.join("|") === o.hero.join("|"), say(`the amount in the first screen (${hero.join(": ")})`));
+  check((await page.textContent(".key-facts dd:nth-of-type(1)")) === PAYEE && (await page.textContent(".key-facts dd:nth-of-type(2)")) === "Sourcing agent", say(`the payee (${PAYEE}) and the agent`));
+  check((await page.textContent(".key-facts dd.why")) === "The business account on chain runs this only with both owners' passkeys.", say("why it needs the owner: both owners' passkeys, with no word of two people"));
+  const need = (await page.textContent(".eyebrow.need")) ?? "";
+  check(/^Needs your approval, and the second owner's · /i.test(need) && /expires in 1[34]m \d\ds/.test(need), say(`the expiry counts down in the first screen (${need})`));
+  check((await page.textContent("#approve")) === "Approve with Face ID" && (await page.textContent("#reject")) === "Reject" && (await page.isDisabled("#approve")), say("\"Approve with Face ID\" and Reject; Approve is not armed at once"));
+  const fs = await firstScreen();
+  check(allIn(fs) && fs.closed && fs.wide === 0, say(`what, amount, payee, agent, why and both buttons in the first screen, Details closed, nothing wider than the phone (${shortView(fs)}; ${fs.wide} wide)`));
+  await armed("#approve");
+  await page.screenshot({ path: join(shots, `approve-owners-${o.tag}-390-light.png`) });
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: join(shots, `approve-owners-${o.tag}-390-dark.png`) });
+  // Behind Details: one sentence with the account, the cap, the budget and the payee; under "All terms" the rest.
+  await page.click("details.more > summary");
+  const sentence = (await page.textContent("details.more .sentence")) ?? "";
+  check(sentence === `Your Face ID signs this on chain: the business account ${ACCOUNT_SHORT} is owned by two passkeys, yours and the second owner's, and runs this only with both. ${o.ends}`, say(`Details: the account, the cap, the budget and the payee in one sentence ("… ${sentence.slice(sentence.indexOf("both.") + 6)}")`));
+  await page.click("details.more details.all > summary");
+  const rows = await page.$$eval("details.more details.all dl.rows > *", (n: Element[]) => n.map((x) => x.textContent ?? ""));
+  const shown: [string, string][] = [];
+  for (let i = 0; i + 1 < rows.length; i += 2) shown.push([rows[i]!, rows[i + 1]!]);
+  const want: [string, string][] = [...o.rows, ["May pay", OW.action.payee], ["Signed on chain", "the account's Execute digest (what your passkey signs)"], ["Digest", t.onchain_digest]];
+  check(JSON.stringify(shown.slice(0, -1)) === JSON.stringify(want), say(`All terms: ${shown.slice(0, -1).map((r) => r[0]).join(", ")}; the digest is the one the passkey signs`));
+  const until = shown.at(-1) ?? ["", ""];
+  check(until[0] === "Valid until" && /^\d+ [A-Z][a-z]{2} \d{4}, \d\d:\d\d UTC$/.test(until[1]), say(`All terms: the signed deadline (${until.join(" ")})`));
+  const fine = (await page.textContent("details.more .fineprint")) ?? "";
+  check(/signs the account's Execute digest written in these terms, not their SHA-256/.test(fine) && /it does not compute the digest itself/.test(fine) && !/computes that hash itself/.test(fine),
+    say("the fine print says the passkey signs the on-chain digest, not the terms hash, and that this page does not compute that digest"));
+  const words = `${need} ${(await page.textContent("#app")) ?? ""}`;
+  check(!/two people|second person|controller|four eyes/i.test(words), say("no word of two people, a second person or a controller: the second owner's passkey may be a labelled virtual one"));
+  // Everything open: long addresses, the mandate and the digest wrap, and the two buttons neither overlap nor leave the screen.
+  const open = await page.evaluate(() => {
+    const w = document.documentElement.clientWidth;
+    const wide = [...document.querySelectorAll("#app *")].map((e) => e.getBoundingClientRect()).filter((r) => r.width > 0 && (r.right > w + 1 || r.left < -1)).length;
+    const [a, b] = ["#approve", "#reject"].map((q) => (document.querySelector(q) as HTMLElement).getBoundingClientRect());
+    return { wide, scroll: document.documentElement.scrollWidth - w, apart: a!.bottom <= b!.top || b!.bottom <= a!.top || a!.right <= b!.left || b!.right <= a!.left, inside: a!.left >= 0 && a!.right <= w && b!.left >= 0 && b!.right <= w };
+  });
+  check(open.wide === 0 && open.scroll <= 0 && open.apart && open.inside, say(`with every fold open nothing is cut off or overlaps (${open.wide} wide, ${open.scroll} px sideways scroll)`));
+  await page.screenshot({ path: join(shots, `approve-owners-${o.tag}-details-390-dark.png`), fullPage: true });
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: join(shots, `approve-owners-${o.tag}-details-390-light.png`), fullPage: true });
+  await page.click("details.more > summary");
+}
+const LIMITS = "up to 0.05 per payment, 0.50 in total, to Stockline only.";
+await ownersView(ownBind, { tag: "bind", title: "Bind the sourcing mandate, signed on chain", hero: ["Amount", "0.50 USDZ in total"], ends: `U${LIMITS.slice(1)}`,
+  rows: [["Account", OW.account], ["Mandate", OW.action.mandate], ["Per payment", "0.05 USDZ"], ["Budget", "0.50 USDZ"]] });
+await ownersView(ownRevoke, { tag: "revoke", title: "Revoke the sourcing mandate, signed on chain", hero: ["Ends a budget of", "0.50 USDZ"], ends: `It ends the mandate that allowed ${LIMITS}`,
+  rows: [["Account", OW.account], ["Mandate", OW.action.mandate], ["Per payment", "0.05 USDZ"], ["Budget", "0.50 USDZ"]] });
+await ownersView(ownReplace, { tag: "replace", title: "Replace the sourcing mandate, signed on chain", hero: ["Per payment", "0.10 USDZ (0.05 before)"], ends: "It replaces the mandate in one step: up to 0.10 per payment (0.05 before), 0.50 in total (0.50 before), to Stockline only.",
+  rows: [["Account", OW.account], ["Mandate", ownReplace.action.mandate], ["Replaces", EARLIER], ["Per payment", "0.10 USDZ (0.05 before)"], ["Budget", "0.50 USDZ (0.50 before)"]] });
+// A change the page does not know (here: the word "transfer" on a bind's call) is never shown as a bind and cannot be signed.
+await page.goto(`${url}/approve/${ownUnknown.proposal_id}`);
+await page.waitForSelector("#approve");
+await page.waitForTimeout(1200);
+const unknownAlarms = await page.$$eval(".approval .alarm", (n: Element[]) => n.map((x) => x.textContent ?? ""));
+check((await page.textContent(".what-title")) === "An on-chain change this page does not know" && (await page.isDisabled("#approve")) && (await page.locator(".approval .hero").count()) === 0
+  && unknownAlarms.length === 1 && unknownAlarms[0] === "This is not a bind, a replace or a revoke of a mandate. It cannot be signed on this page.",
+  `on chain, an unknown change: not shown as a bind, no amount in the first screen, Approve stays disarmed, and one alarm says why (${unknownAlarms.length} alarm(s))`);
+await page.screenshot({ path: join(shots, "approve-owners-unknown-390-light.png") });
+await page.emulateMedia({ colorScheme: "dark" });
+await page.waitForTimeout(200);
+await page.screenshot({ path: join(shots, "approve-owners-unknown-390-dark.png") });
+await page.emulateMedia({ colorScheme: "light" });
+// The bind, signed: the passkey's challenge is the on-chain digest, and it is the first of two approvals.
+await page.goto(`${url}/approve/${ownBind.proposal_id}`);
+await page.waitForSelector("#approve");
+await armed("#approve");
+await page.click("#approve");
+await page.waitForFunction(() => document.querySelector(".verdict-head")?.textContent === "1 of 2 approvals", null, { timeout: 20_000 });
+const signedOn = db.prepare("SELECT assertion_json FROM passkey_assertions WHERE proposal_id = ?").get(ownBind.proposal_id) as { assertion_json: string } | undefined;
+const challenge = signedOn ? (JSON.parse(Buffer.from((JSON.parse(signedOn.assertion_json) as { response: { clientDataJSON: string } }).response.clientDataJSON, "base64url").toString("utf8")) as { challenge: string }).challenge : "";
+check(Buffer.from(challenge, "base64url").toString("hex") === ownBind.onchain_digest.slice(2), "on chain, the bind signed: Face ID signed the account's Execute digest, and the page says \"1 of 2 approvals\"");
+const waits = (await page.textContent(".verdict-lead")) ?? "";
+const verdictWords = (await page.textContent(".verdict")) ?? "";
+check(waits === "Your Face ID counts. The account runs this only once the second owner's passkey has signed it too." && !/person|someone else|four eyes/i.test(verdictWords),
+  `on chain, the bind signed: it waits for the second owner's passkey, with no word of "a second person" ("${waits}")`);
+await page.screenshot({ path: join(shots, "approve-owners-bind-signed-390-light.png") });
+
+// A Kit 11 invoice payment: its terms carry a payout reason, but its first screen is the same payee, agent and why
+// in the same column (review of 12 November: with the product's views in the same script, a "Reason" row and a wider
+// column had appeared here and pushed the buttons down).
+await page.goto(`${url}/approve/${invoiceId}`);
+await page.waitForSelector("#approve");
+const invoiceFacts = await page.$$eval(".key-facts dt", (n: Element[]) => n.map((x) => x.textContent));
+check(String(invoiceTerms.reason) !== "" && invoiceTerms.document_total_line === undefined && invoiceFacts.join() === "Payee,Agent,Why you" && (await labelColumn()) === "64px",
+  `a Kit 11 invoice payment (reason ${String(invoiceTerms.reason)}): payee, agent and why, nothing else, in the 64px column (${invoiceFacts.join(", ")}; ${await labelColumn()})`);
+check((await page.$(".testmoney")) === null && (await page.textContent(".key-facts dd:nth-of-type(2)")) === "Treasury agent", "a Kit 11 invoice payment: the Treasury agent, and no label the terms do not carry");
+const fsI = await firstScreen();
+check(allIn(fsI) && fsI.closed && fsI.wide === 0, `a Kit 11 invoice payment at 390 x ${fsI.h}: all essentials and both buttons in the first screen (${shortView(fsI)})`);
+await page.screenshot({ path: join(shots, "approve-invoice-390-light.png") });
 
 // The CFO policy editor: lower the sourcing agent's limit, sign it with the passkey, see it applied.
 await page.goto(`${url}/policy`);

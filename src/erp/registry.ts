@@ -5,9 +5,10 @@
 import { CHART } from "../config/gl.js";
 import { entraTokens, exactTokens, fileTokenStore, staticToken } from "./auth.js";
 import { BusinessCentralConnector, type BcConfig } from "./businessCentral.js";
+import { liveTransport } from "./callBudget.js";
 import { fetchTransport, RecordingTransport, type ConnectorName, type ErpConnector, type HttpRequest, type HttpResponse, type Transport } from "./connector.js";
 import { exactConfigFromEnv, ExactConnector, type ExactConfig } from "./exact.js";
-import { moneybirdConfigFromEnv, MoneybirdConnector, type MoneybirdConfig } from "./moneybird.js";
+import { moneybirdCallName, moneybirdConfigFromEnv, MoneybirdConnector, type MoneybirdConfig } from "./moneybird.js";
 import type { VatCode } from "./model.js";
 import { OdooConnector, type OdooConfig } from "./odoo.js";
 import { jsonMap } from "./rest.js";
@@ -15,38 +16,48 @@ import { encodeValue, type XmlValue } from "./xmlrpc.js";
 
 type Env = Record<string, string | undefined>;
 
-/** The settings each connector reads: secrets first (never printed, only whether they are set). */
-export const SETTINGS: Record<ConnectorName, { label: string; secrets: string[]; settings: string[]; optional: string[] }> = {
+const UNTESTED = "not tested against a live ERP yet";
+
+/**
+ * The settings each connector reads: secrets first (never printed, only whether they are set). `live` is what was
+ * really proven against the ERP itself, said by `npm run erp -- list`; it changes only with a recorded run.
+ */
+export const SETTINGS: Record<ConnectorName, { label: string; secrets: string[]; settings: string[]; optional: string[]; live: string }> = {
   exact: {
-    label: "Exact Online",
+    label: "Exact Online", live: UNTESTED,
     secrets: ["ERP_EXACT_CLIENT_ID", "ERP_EXACT_CLIENT_SECRET", "ERP_EXACT_REFRESH_TOKEN"],
     settings: ["ERP_EXACT_DIVISION", "ERP_EXACT_PURCHASE_JOURNAL", "ERP_EXACT_GENERAL_JOURNAL", "ERP_EXACT_BANK_JOURNALS", "ERP_EXACT_VAT_CODES"],
     optional: ["ERP_EXACT_BASE_URL", "ERP_EXACT_GL_MAP", "ERP_EXACT_DOCUMENT_TYPE", "ERP_EXACT_AP_ACCOUNT", "ERP_EXACT_PAYMENT_SIGN"],
   },
   bc: {
-    label: "Microsoft Dynamics 365 Business Central",
+    label: "Microsoft Dynamics 365 Business Central", live: UNTESTED,
     secrets: ["ERP_BC_CLIENT_ID", "ERP_BC_CLIENT_SECRET"],
     settings: ["ERP_BC_TENANT", "ERP_BC_ENVIRONMENT", "ERP_BC_COMPANY_ID", "ERP_BC_GENERAL_JOURNAL_ID", "ERP_BC_PAYMENT_JOURNAL_ID", "ERP_BC_VAT_CODES"],
     optional: ["ERP_BC_LOCAL_CURRENCY", "ERP_BC_GL_MAP", "ERP_BC_POST_INVOICES"],
   },
   odoo: {
-    label: "Odoo",
+    label: "Odoo", live: UNTESTED,
     secrets: ["ERP_ODOO_API_KEY"],
     settings: ["ERP_ODOO_URL", "ERP_ODOO_DB", "ERP_ODOO_LOGIN", "ERP_ODOO_PURCHASE_JOURNAL_ID", "ERP_ODOO_GENERAL_JOURNAL_ID", "ERP_ODOO_BANK_JOURNALS", "ERP_ODOO_TAX_IDS"],
     optional: ["ERP_ODOO_COMPANY_CURRENCY", "ERP_ODOO_GL_MAP", "ERP_ODOO_POST"],
   },
   moneybird: {
-    label: "Moneybird",
+    // 12 November 2026, docs/runs/2026-11-12-moneybird-sandbox.md: read, sent, corrected, read back and reconciled.
+    label: "Moneybird", live: "run live once in a sandbox administration with test data: docs/moneybird.md",
     secrets: ["ERP_MONEYBIRD_TOKEN"],
     settings: ["ERP_MONEYBIRD_ADMINISTRATION_ID", "ERP_MONEYBIRD_TAX_RATES"],
-    optional: ["ERP_MONEYBIRD_GL_MAP", "ERP_MONEYBIRD_PROJECTS", "ERP_MONEYBIRD_IGNORE_COST_CENTRES", "ERP_MONEYBIRD_BASE_CURRENCY", "ERP_MONEYBIRD_BASE_URL"],
+    optional: ["ERP_MONEYBIRD_GL_MAP", "ERP_MONEYBIRD_PROJECTS", "ERP_MONEYBIRD_IGNORE_COST_CENTRES", "ERP_MONEYBIRD_BASE_CURRENCY", "ERP_MONEYBIRD_BASE_URL", "ERP_MONEYBIRD_SANDBOX_ONLY"],
   },
 };
 
-/** Which required settings are missing for a connector (names only). */
-export function missingSettings(name: ConnectorName, env: Env): string[] {
+/** Settings a person fills in from what a pull lists, so a pull itself does not need them (Moneybird's tax rate ids). */
+const FILLED_FROM_A_PULL: Partial<Record<ConnectorName, string[]>> = { moneybird: ["ERP_MONEYBIRD_TAX_RATES"] };
+
+/** Which required settings are missing for a connector (names only); for a pull, without the ones the pull is for. */
+export function missingSettings(name: ConnectorName, env: Env, forPull = false): string[] {
   const s = SETTINGS[name];
-  return [...s.secrets, ...s.settings].filter((k) => !env[k]);
+  const later = forPull ? FILLED_FROM_A_PULL[name] ?? [] : [];
+  return [...s.secrets, ...s.settings].filter((k) => !env[k] && !later.includes(k));
 }
 
 const intMap = (m: Record<string, string>, name: string) => Object.fromEntries(Object.entries(m).map(([k, v]) => {
@@ -73,7 +84,20 @@ export function odooConfigFromEnv(env: Env): OdooConfig {
 
 const exactFromEnv = (env: Env) => exactConfigFromEnv(env, { vat: jsonMap(env, "ERP_EXACT_VAT_CODES"), gl: jsonMap(env, "ERP_EXACT_GL_MAP", true), banks: jsonMap(env, "ERP_EXACT_BANK_JOURNALS") });
 
-export function liveConnector(name: ConnectorName, env: Env, transport: Transport = fetchTransport()): ErpConnector {
+/**
+ * A connector that really calls the ERP. Every request goes through the run's call budget (src/erp/callBudget.ts):
+ * without the owner's go, the approved number and the call log, none is built. `inner` is what sends (fetch; a test's
+ * stand-in).
+ */
+export function liveConnector(name: ConnectorName, env: Env, inner: Transport = fetchTransport()): ErpConnector {
+  if (name === "moneybird") {
+    // A personal API token or an OAuth access token; Moneybird's access tokens do not expire for now (its
+    // Authentication page), so a fixed Bearer token from the environment is all it takes. The call log names each
+    // request under its administration.
+    const cfg = moneybirdConfigFromEnv(env);
+    return new MoneybirdConnector(cfg, liveTransport(env, inner, (req) => moneybirdCallName(req, cfg)), staticToken(env.ERP_MONEYBIRD_TOKEN ?? ""));
+  }
+  const transport = liveTransport(env, inner);
   switch (name) {
     case "exact": {
       const cfg = exactFromEnv(env);
@@ -86,10 +110,6 @@ export function liveConnector(name: ConnectorName, env: Env, transport: Transpor
     }
     case "odoo":
       return new OdooConnector(odooConfigFromEnv(env), transport);
-    case "moneybird":
-      // A personal API token or an OAuth access token; Moneybird's access tokens do not expire for now (its
-      // Authentication page), so a fixed Bearer token from the environment is all it takes.
-      return new MoneybirdConnector(moneybirdConfigFromEnv(env), transport, staticToken(env.ERP_MONEYBIRD_TOKEN ?? ""));
   }
 }
 
@@ -111,7 +131,8 @@ const chartCodes = [...Object.keys(CHART), "1600"];
 const json = (o: unknown, status = 200): HttpResponse => ({ status, headers: {}, body: JSON.stringify(o) });
 const xml = (v: XmlValue): HttpResponse => ({ status: 200, headers: {}, body: `<?xml version="1.0"?><methodResponse><params><param>${encodeValue(v)}</param></params></methodResponse>` });
 
-function dryAnswer(name: ConnectorName): (req: HttpRequest, n: number) => HttpResponse {
+/** `own`: the customer's own Moneybird settings, when the dry run uses them. */
+function dryAnswer(name: ConnectorName, own?: MoneybirdConfig): (req: HttpRequest, n: number) => HttpResponse {
   if (name === "exact") return (req, n) => {
     if (req.method === "GET" && req.url.includes("/financial/GLAccounts")) return json({ d: { results: chartCodes.map((c) => ({ ID: `dry-gl-${c}`, Code: c, Description: CHART[c] ?? "Accounts payable" })) } });
     if (req.method === "GET") return json({ d: { results: [] } });
@@ -120,9 +141,16 @@ function dryAnswer(name: ConnectorName): (req: HttpRequest, n: number) => HttpRe
   if (name === "moneybird") return (req, n) => {
     const path = new URL(req.url).pathname;
     // Example ledger accounts carry Purser's own codes; example tax rates are purchase-invoice rates; anything created
-    // gets an example id.
-    if (req.method === "GET" && path.endsWith("/ledger_accounts.json")) return json(chartCodes.map((c, i) => ({ id: String(200000000000000000 + i), account_id: c, name: CHART[c] ?? "Accounts payable", allowed_document_types: ["purchase_invoice", "general_journal_document"], active: true })));
-    if (req.method === "GET" && path.endsWith("/tax_rates.json")) return json(Object.entries(EXAMPLE.moneybird.taxRates).map(([code, id]) => ({ id, name: code, percentage: null, tax_rate_type: "purchase_invoice", active: true })));
+    // gets an example id. With the customer's own maps, a dry run asks no administration, so it takes each mapped id
+    // at its word (the account or rate exists and may be used); the live run checks every one against Moneybird's own
+    // chart and tax rates before it sends (found on the sandbox run, 12 November 2026: the dry run stopped at the
+    // first real id, because the example chart did not hold it).
+    const doc = ["purchase_invoice", "general_journal_document"];
+    if (req.method === "GET" && path.endsWith("/ledger_accounts.json")) return json([
+      ...chartCodes.map((c, i) => ({ id: String(200000000000000000 + i), account_id: c, name: CHART[c] ?? "Accounts payable", allowed_document_types: doc, active: true })),
+      ...Object.entries(own?.glMap ?? {}).map(([code, id]) => ({ id, account_id: null, name: `${CHART[code] ?? code} (as mapped; not checked in a dry run)`, allowed_document_types: doc, active: true })),
+    ]);
+    if (req.method === "GET" && path.endsWith("/tax_rates.json")) return json(Object.entries(own ? own.taxRates : EXAMPLE.moneybird.taxRates).map(([code, id]) => ({ id, name: code, percentage: null, tax_rate_type: "purchase_invoice", active: true })));
     if (req.method === "GET" && path.includes("/contacts/customer_id/")) return json({ error: "record not found", symbolic: {} }, 404);
     if (req.method === "GET") return json([]);
     if (path.endsWith("/attachments.json")) return { status: 200, headers: {}, body: "200" };
@@ -143,12 +171,13 @@ function dryAnswer(name: ConnectorName): (req: HttpRequest, n: number) => HttpRe
 
 /** A connector that sends nothing, with the requests it would have sent in `transport.sent`. */
 export function dryRunConnector(name: ConnectorName, env: Env): { connector: ErpConnector; transport: RecordingTransport; usesExampleSettings: boolean } {
-  const transport = new RecordingTransport(dryAnswer(name));
   // The customer's own settings when they are all there (the token step is a placeholder; totals are not compared, since
   // nothing computed them), else the example settings.
   const own = missingSettings(name, env).length === 0;
+  const ownMoneybird = own && name === "moneybird" ? moneybirdConfigFromEnv(env) : undefined;
+  const transport = new RecordingTransport(dryAnswer(name, ownMoneybird));
   const connector = name === "exact" ? new ExactConnector(own ? exactFromEnv(env) : EXAMPLE.exact, transport, staticToken())
-    : name === "moneybird" ? new MoneybirdConnector({ ...(own ? moneybirdConfigFromEnv(env) : EXAMPLE.moneybird), verifyTotals: false }, transport, staticToken())
+    : name === "moneybird" ? new MoneybirdConnector({ ...(ownMoneybird ?? EXAMPLE.moneybird), verifyTotals: false }, transport, staticToken())
     : name === "bc" ? new BusinessCentralConnector({ ...(own ? bcConfigFromEnv(env) : EXAMPLE.bc), verifyTotals: false }, transport, staticToken())
       : new OdooConnector({ ...(own ? odooConfigFromEnv(env) : EXAMPLE.odoo), verifyTotals: false }, transport);
   return { connector, transport, usesExampleSettings: !own };

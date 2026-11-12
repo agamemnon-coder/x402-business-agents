@@ -62,6 +62,9 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   // /metal's separate runs, each dated with its own run record; their figures are checked against those records in
   // test/metal-story.test.ts.
   .replace(/Beyond the kit: separate runs, each dated \(not the main run\)[\s\S]*?(?=The Metal features we use)/, " ")
+  // The invoice token (prototype) on /metal, shown only when its run record exists (docs/runs/<date>-tokenize.json): a
+  // separate run, dated with its own record; its figures are checked against that record in test/tokenize-record.test.ts.
+  .replace(/Invoice token \(prototype\)[\s\S]*?run record/, " ")
   // awx-1 (7 Nov), the separate Airwallex-only run on /airwallex and /proof, dated with its own record; its figures are
   // checked against that record (docs/demo/airwallex-run.json) in test/awx-run-page.test.ts.
   .replace(/\d{1,2} November, awx-1: a separate run[\s\S]*?docs\/demo\/airwallex-run\.json/g, " ")
@@ -77,8 +80,9 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   // The connected-accounts run (10 Nov) on /airwallex, dated with its own record; its ids and figures are checked against
   // docs/runs/2026-11-10-connected-accounts-sandbox.md in test/partner-pages.test.ts.
   .replace(esc(CONNECTED_LINE), " ")
-  // The two-locks run (10 Nov) on /airwallex, dated with its own record; its id and amount are checked against
-  // docs/runs/2026-11-10-airwallex-two-locks.md in test/partner-pages.test.ts.
+  // The two-locks run (10 and 12 Nov) on /airwallex, dated with its own records; its id and amount are checked against
+  // docs/runs/2026-11-10-airwallex-two-locks.md and docs/runs/2026-11-12-airwallex-two-locks-paid.md in
+  // test/partner-pages.test.ts.
   .replace(esc(TWO_LOCKS_LINE), " ")
   // Watch's playback speeds (Max, 10 Nov) are a control, not a figure of the run.
   .replace(/\b(?:0\.5|1|2)×/g, " ")

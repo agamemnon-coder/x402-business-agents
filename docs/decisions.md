@@ -14,6 +14,8 @@ why, and what it costs if it turns out wrong. Max can overrule any of them.
 
 ### D2. Internal agent ids stay; people see role names
 
+**Superseded 31 October (D14):** people now see Kit 11's names: Sourcing agent, Support agent, Treasury agent. The ids stay.
+
 - **What:** the code keeps the ids `sourcing`, `support` and `treasury`. Policy keys, mandates, key files and the
   ledger depend on them. People see these names:
 
@@ -105,6 +107,8 @@ why, and what it costs if it turns out wrong. Max can overrule any of them.
 
 ### D9. The `support` agent is shown as the Sales agent
 
+**Superseded 31 October (D14):** the `support` agent is shown as the Support agent, and its card pays helpdesk software.
+
 - **What:** the agent with id `support` was shown as the Marketing agent. It is now the Sales agent: its card pays for
   ads, and it settles the retailers' claims (refunds on Metal). The id stays (D2).
 - **Why:** a fresh juror read "the Marketing agent refunds wrong stock checks" as a leftover. A sales agent owns the
@@ -112,6 +116,8 @@ why, and what it costs if it turns out wrong. Max can overrule any of them.
 - **If wrong:** it is one line in `src/config/brand.ts` and the card's first name in `src/config/policy.ts`.
 
 ### D10. Double-entry bookkeeping waits until after the freeze
+
+**Superseded 31 October:** the double-entry books are in `src/accounting/books.ts` (the data check of 31 October compares each payment with them), and on 10 November 95 journal entries from the main run were posted to T:0's shared sandbox entity with 0 differences ([record](runs/2026-11-10-t0-journal-sandbox.md)).
 
 - **What:** no double-entry ledger before the Friday runs. The GL journal (`npm run gl`) keeps one signed line per
   movement, with its account, cost centre, bank account, proof and approval.
@@ -508,6 +514,8 @@ CFO's policy (no proposal) is code's, asked for by the CFO at the runner.
 
 ### D25. The Visa Award: TAP claimed, and in the rail choice (Max, 1 November evening)
 
+**Superseded 5 and 7 November (D27, D28):** Visa answered on 5 November that TAP is not eligible Visa tooling for this hackathon. Since 7 November Purser is entered for the Visa Award on the Airi run, Visa Intelligent Commerce; TAP is an extra.
+
 Airwallex answered Max in #help: (1) a TAP integration on Visa's open-source reference, with our own agent registry in
 the sandbox, counts as "Visa tooling" for the Visa Award: "Yes"; (2) one project may enter both the Visa Award and the
 Metal Award: "Yes". So TAP moves from "dev test, not claimed" to claimed for the Visa Award, with its honest label: the
@@ -649,6 +657,8 @@ Max, 2 November, 10:15 NL:
 
 ### D27. Visa: TAP is not eligible; the entry is Metal only (Max, 5 November)
 
+**Superseded 7 November (D28):** Purser is entered for the Metal Award and the Visa Award, on the Airi run (Visa Intelligent Commerce); TAP stays not eligible.
+
 On 5 November Visa answered in the hackathon Slack: TAP is not available as Visa tooling for this hackathon; the only
 Visa tooling for the builds is Visa Intelligent Commerce (VIC) or Intelligent Commerce Connect (ICC). So Purser is
 entered for the Metal Award only. `VISA_AWARD_ON` is off: the Kit line, Home's badge and the links on Home and Proof no
@@ -682,9 +692,21 @@ Cloud) sat on its integration branch, pull request #113, under the note "Do not 
 - **What changes:** the code is in this repository: `src/ap`, `src/ledger`, `src/vault`, `src/erp`, `src/payouts` and
   `cloud/`. The texts that said "on a branch", "not public" or "not deployed" now say where the code is and how it
   stands; the design notes of 8 November and the run record of 10 November keep their words and carry a dated line
-  beside them. `test/platform-in-main.test.ts` holds them to it. On the Kit 11 site no public page changes, except
-  that wording in `/llms.txt`. The CFO's phone pages share their script and stylesheet with the product, so those two
-  files now carry its payables and batch views as well.
+  beside them. `test/platform-in-main.test.ts` holds them to it.
+- **What changes on the Kit 11 site:** the site was built from `main` and from this tree and compared on 12 November.
+  Every page, policy header, redirect, font and image is the same byte for byte. Four things differ:
+  - `/llms.txt`: its one line about the product, with the wording above.
+  - The CFO's phone pages share their script and stylesheet with the product, so those two files now also carry its
+    payables and batch views. A Kit 11 approval looks as it did (both trees in Chromium at 390 and 1440 px, light and
+    dark), with one difference under "Details": the advisory review is labelled by who wrote it. A note that no model
+    wrote reads "Purser's code (no model), advisory"; it read "Opus review, advisory: note".
+  - `/try/sign`, "Try to trick the agent": the first fake invoice lists one more line under "What the agent did", "the
+    invoice announces a change of bank". The site shares its invoice-fraud check with the product, and red-team round 4
+    widened the wording that check looks for (`src/policy/fraudCore.ts`). The outcome line is the same and the invoice
+    is still blocked.
+  - Not visible on a Kit 11 run: the relay accepts one more signed request, taking one line out of a payment batch
+    (`worker/src/core.ts`; Kit 11 files no batches), and `src/policy/loosens.ts` knows the product's floor and
+    fee-reserve rules (the site's test world has none).
 - **What stays true:**
   - Sandbox and test money only. No payment has run against live Airwallex.
   - It is not ready for real money; [go-live.md](go-live.md) lists what is missing.

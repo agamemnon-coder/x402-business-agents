@@ -4,13 +4,8 @@ On [/try/sign](https://kit11.max-31b.workers.dev/try/sign) the Treasury agent as
 and the CFO signs the exact terms with Face ID. The payables inbox is built to do the same for every supplier invoice of
 a small company: the same control, the CFO's Face ID over the exact terms, applied to accounts payable.
 
-Why small companies: a CFO we spoke to put it this way (2 finance conversations so far; more in progress):
-
-> "At our company invoices go through a full approval process in our ERP. I think Purser is something for SMEs." — CFO at a US company (anonymous)
-
-And a finance professional at a large Dutch bank, on how invoices are handled there:
-
-> "At the front it's automated, at the back it's a human check." — finance professional at a large Dutch bank (anonymous)
+Why small companies is a hypothesis, not validated with customers yet: 2 finance conversations so far (a CFO and a
+finance professional at a bank, both anonymous); more in progress.
 
 Where it stands: work in progress, built and tested against **stand-ins** for Airwallex and Claude and on Cloudflare's
 local database. Its connected-account payout path ran once in Airwallex's sandbox on 10 November, and later that day
@@ -42,7 +37,7 @@ Where the code is: in this repository. The owner decided on 12 November to merge
 | Payments in any currency | Through Airwallex payouts, with FX only for the shortfall and fees booked. | Built, tested against a stand-in Airwallex |
 | Bookkeeping | Hash-chained ledger, period closing, Dutch VAT overview, a register of every money movement with its approval, booking and proof. | Built, tested |
 | Cloud console | Passkey sign-in (no passwords), onboarding, invoices, transactions, books, people and API keys, GDPR export. It never pays: payments are approved on the phone. Dutch and English. | Built, tested locally on Cloudflare's local D1; the hosted preview is private (behind an access key) |
-| Security | Five red-team rounds on the payables and cloud code; every confirmed finding fixed and covered by a test. | Ongoing |
+| Security | Six red-team rounds on the payables and cloud code. Every confirmed finding is fixed and covered by a test, except one point from round 6 that is still open: in this build the runner still holds the platform key ([go-live.md](go-live.md), "Platform on-behalf-of through a Purser-held service"). | Ongoing |
 
 ## Airwallex connected accounts: run in the sandbox on 10 November
 

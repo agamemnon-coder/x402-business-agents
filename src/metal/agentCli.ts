@@ -3,17 +3,37 @@
 
 import { redactSecrets } from "../lib/redact.js";
 import { execFile, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync } from "node:fs";
-import { join, resolve, sep } from "node:path";
+import { existsSync, mkdirSync, readlinkSync, realpathSync } from "node:fs";
+import { basename, dirname, join, resolve, sep } from "node:path";
 
 const BIN = resolve(import.meta.dirname, "../../node_modules/.bin/metal-agent");
+const REPO = resolve(import.meta.dirname, "../..");
+
+/** Where a path really leads: every link on the way followed, also one to a place that is not there yet; what does not exist is taken as written. */
+function real(path: string): string {
+  let p = resolve(path);
+  let rest = "";
+  for (let hops = 0; hops < 64; hops++) {
+    try { return join(realpathSync(p), rest); } catch { /* not there: a link to nowhere, or its parent decides */ }
+    try { p = resolve(dirname(p), readlinkSync(p)); continue; } catch { /* no link */ }
+    if (dirname(p) === p) return join(p, rest);
+    rest = join(basename(p), rest);
+    p = dirname(p);
+  }
+  throw new Error(`${path} cannot be followed to a place (too many links)`);
+}
+
+/** Whether a path is this code repository or leads into it, links followed: no key, credential or key folder may. */
+export function insideRepo(path: string): boolean {
+  const [p, repo] = [real(path), real(REPO)];
+  return p === repo || p.startsWith(repo + sep);
+}
 
 /** Where owner keys, mandate keys and credentials live: never inside this repo. */
 export function keysDir(env = process.env): string {
   // Absolute, always: metal-agent refuses a relative HOME (and a relative path would move with the working directory).
   const dir = resolve(env.KIT11_KEYS_DIR ?? resolve(import.meta.dirname, "../../../x402-business-agents-keys/testnet"));
-  const repo = resolve(import.meta.dirname, "../..");
-  if (dir === repo || dir.startsWith(repo + sep)) throw new Error("KIT11_KEYS_DIR must be outside the code repo");
+  if (insideRepo(dir)) throw new Error("KIT11_KEYS_DIR must be outside the code repo");
   mkdirSync(join(dir, "home"), { recursive: true, mode: 0o700 });
   return dir;
 }
