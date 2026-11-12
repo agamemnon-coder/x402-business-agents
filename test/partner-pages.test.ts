@@ -6,8 +6,9 @@ import { AGENT_MODELS, airwallexData, claudeData } from "../src/partners/data.js
 import { AIRWALLEX_PAGE, CLAUDE_PAGE } from "../src/servers/dashboard.js";
 import { NAV_MAIN } from "../src/ui/nav.js";
 import { loadRecord } from "../src/redesign/run.js";
-import { esc, OPEN_TARGET_JS } from "../src/redesign/ui.js";
-import { CONNECTED_LINE, TWO_LOCKS_LINE } from "../src/redesign/partners.js";
+import { OPEN_TARGET_JS } from "../src/redesign/ui.js";
+import { AWX_PAGE_LABEL, CONNECTED_KEY, PLATFORM_FACTS_FILE, PLATFORM_FOLD_ID, TWO_LOCKS_KEY, approvalsTile, twoLocksState } from "../src/redesign/airwallexProducts.js";
+import { liveRuns } from "../src/redesign/runs.js";
 import { scriptBlocks } from "./support/scriptBlocks.js";
 import { buildPages } from "../src/relay/assets.js";
 
@@ -21,23 +22,39 @@ const CONNECTED_RUN = read("docs/runs/2026-11-10-connected-accounts-sandbox.md")
 const TWO_LOCKS_RUN = read("docs/runs/2026-11-10-airwallex-two-locks.md");
 
 describe("the partner pages", () => {
-  it("carry the connected-accounts run (10 Nov) only as its run record has it: every id and amount", () => {
-    expect(buildPages().airwallex).toContain(esc(CONNECTED_LINE));
-    for (const id of CONNECTED_LINE.match(/acct_[A-Za-z0-9_-]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) ?? []) expect(CONNECTED_RUN).toContain(id);
-    for (const amount of CONNECTED_LINE.match(/EUR \d+\.\d{2}/g) ?? []) expect(CONNECTED_RUN).toContain(amount);
+  // /airwallex since the jury panel of 12 Nov: no sentence about a run is typed into the page; test/airwallex-products.test.ts
+  // holds each tile to its record. Here: the two runs whose record is a run log.
+  it("carry the first connected-accounts run (10 Nov) only as its run record has it: every id and amount", () => {
+    const row = liveRuns().find((r) => r.key === CONNECTED_KEY)!;
+    const fold = new RegExp(`<details class="fold" id="${PLATFORM_FOLD_ID}"[\\s\\S]*?</details>`).exec(buildPages().airwallex!)![0];
+    const line = /<li>The first connected-account run[^<]*<\/li>/.exec(fold)![0];
+    for (const i of row.ids) { expect(line).toContain(i.value); expect(CONNECTED_RUN).toContain(i.value); }
+    expect((line.match(/acct_[A-Za-z0-9_-]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) ?? []).length).toBe(2);
+    const amounts = line.match(/€\d+\.\d{2}/g) ?? [];
+    expect(amounts.length).toBe(2);
+    for (const amount of amounts) expect(CONNECTED_RUN).toContain(amount.replace("€", "EUR "));
     expect(CONNECTED_RUN).toMatch(/\*\*`PAID`\*\*/);
-    expect(CONNECTED_LINE).toMatch(/simulat/);
+    expect(line).toMatch(/simulat/);
   });
 
-  it("carry the two-locks run (10 Nov) only as its run record has it, and say the web-app approval was not completed", () => {
-    expect(buildPages().airwallex).toContain(esc(TWO_LOCKS_LINE));
-    const ids = TWO_LOCKS_LINE.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) ?? [];
-    expect(ids.length).toBe(1);
-    for (const id of ids) expect(TWO_LOCKS_RUN).toContain(id);
-    for (const amount of TWO_LOCKS_LINE.match(/EUR \d+\.\d{2}/g) ?? []) expect(TWO_LOCKS_RUN).toContain(amount);
-    expect(TWO_LOCKS_RUN).toMatch(/\*\*`IN_APPROVAL`\*\*/);
-    expect(TWO_LOCKS_LINE).toMatch(/IN_APPROVAL; the web-app approval was not completed, so it is not paid/);
-    expect(TWO_LOCKS_RUN).toMatch(/\*\*Not completed\.\*\*/);
+  it("carry the two-locks run (10 Nov) as its run record has it today: the page shows what the record says", () => {
+    const page = buildPages().airwallex!;
+    const tile = /<article class="awt card[^"]*" id="p-approvals"[\s\S]*?<\/article>/.exec(page)![0].replace(/<[^>]+>/g, " ");
+    const s = twoLocksState(TWO_LOCKS_RUN, liveRuns().find((r) => r.key === TWO_LOCKS_KEY))!;
+    expect(s.source).toBe("record");
+    const ids = page.match(new RegExp(s.transferId.slice(0, 8), "g")) ?? [];
+    expect(ids.length).toBeGreaterThan(0);
+    expect(TWO_LOCKS_RUN).toContain(s.transferId);
+    expect(TWO_LOCKS_RUN).toContain(`EUR ${s.amount}`);
+    // The state on create and the state now are the run log's own words, whatever they are when the site is built.
+    expect(TWO_LOCKS_RUN).toMatch(new RegExp(`\\*\\*\`${s.held}\`\\*\\*`));
+    expect(TWO_LOCKS_RUN).toContain(`\`${s.now}\``);
+    for (const x of approvalsTile(s)!.states!) expect(tile).toContain(x.text);
+    expect(tile).toContain(`${s.held} at Airwallex`);
+    expect(tile).toContain(`Now: ${s.now}`);
+    // Unfinished is said only while the record says so.
+    expect(/not paid/.test(tile)).toBe(!s.finished);
+    expect(/\*\*Not completed\.\*\*/.test(TWO_LOCKS_RUN) ? s.finished : false).toBe(false);
   });
 
   it("take each agent's model from code, and it is the model the dry run recorded", () => {
@@ -62,7 +79,7 @@ describe("the partner pages", () => {
   it("invent no id: every Airwallex id, tx and request id on them is in the recorded files", () => {
     for (const page of [AIRWALLEX_PAGE, CLAUDE_PAGE]) {
       for (const tx of page.match(/0x[0-9a-f]{64}/g) ?? []) expect(RECORDED).toContain(tx);
-      for (const id of page.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) ?? []) expect(RECORDED + CONNECTED_RUN + TWO_LOCKS_RUN).toContain(id);
+      for (const id of page.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) ?? []) expect(RECORDED + CONNECTED_RUN + TWO_LOCKS_RUN + (page === AIRWALLEX_PAGE ? read(PLATFORM_FACTS_FILE) : "")).toContain(id);
       for (const req of page.match(/req_[A-Za-z0-9]{10,}/g) ?? []) expect(RECORDED + read("docs/runs/2026-11-01-try-world-dev.md")).toContain(req);
     }
     expect(AIRWALLEX_PAGE).toMatch(/LIMIT_EXCEEDED|over the card's limit/);
@@ -73,7 +90,9 @@ describe("the partner pages", () => {
 
   it("are short, label the run, link the partner's docs (folded), and show no Visa logo and no script", () => {
     for (const [page, docs] of [[AIRWALLEX_PAGE, "https://www.airwallex.com/docs/"], [CLAUDE_PAGE, "https://platform.claude.com/docs/"]] as const) {
-      expect(page).toMatch(/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/);
+      // /airwallex shows several runs, each dated on its own block (jury panel, 12 Nov): its label is true for all of them.
+      if (page === AIRWALLEX_PAGE) { expect(page).toContain(AWX_PAGE_LABEL); expect(page.replace(/<footer[\s\S]*<\/footer>/, "")).not.toMatch(/Replay of the main run/); }
+      else expect(page).toMatch(/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/);
       expect(page).toMatch(/<details class="fold"><summary>The (Airwallex|Claude) [^<]*docs/);
       expect(page.split(docs).length - 1).toBeGreaterThanOrEqual(4);
       expect(page).not.toMatch(/<img[^>]*visa/i);

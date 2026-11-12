@@ -7,6 +7,7 @@ import { buildPages } from "../src/relay/assets.js";
 import { notFoundResponse, pageResponse, type Pages } from "../worker/src/core.js";
 import { agentRun, callBadge, faceIdDecisions, highlights, loadRecord, payments, split, tapRun } from "../src/redesign/run.js";
 import { OPEN_TARGET_JS } from "../src/redesign/ui.js";
+import { AWX_PAGE_LABEL } from "../src/redesign/airwallexProducts.js";
 import { scriptBlocks } from "./support/scriptBlocks.js";
 import { SECOND_APPROVER, SPLIT_LINE, VISA_CLAIM, VISA_TAP_STATUS, WORLD_SETUP } from "../src/config/brand.js";
 
@@ -203,14 +204,17 @@ describe("the site after v4", () => {
       const airi = /<div class="awrb"><div class="card airi" id="airi-run">[\s\S]*?<\/details><\/div><\/div>/.exec(whole)?.[0] ?? "";
       expect({ name, airiFirst: name === "visa" ? airi.length > 0 && whole.indexOf(airi) < whole.indexOf('class="flow card"') : true }).toEqual({ name, airiFirst: true });
       const main = name === "visa" ? whole.replace(airi, "") : whole;
-      expect(main.indexOf('class="flow card"')).toBeLessThan(main.indexOf("<details"));
+      // /airwallex opens on a tile per Airwallex product (jury panel, 12 Nov); its flow of the main run is one of the folds.
+      if (name === "airwallex") expect(main.indexOf('<section class="awp"')).toBeGreaterThan(-1);
+      expect(main.indexOf(name === "airwallex" ? '<section class="awp"' : 'class="flow card"')).toBeLessThan(main.indexOf("<details"));
       expect((main.match(/<details class="fold">/g) ?? []).length).toBeGreaterThanOrEqual(2);
       expect(html).not.toMatch(/<img[^>]*visa/i);
       // No script, but /airwallex's one (src/redesign/ui.ts OPEN_TARGET_JS: a link into its cards' fold opens it).
       expect(scriptBlocks(html)).toEqual(name === "airwallex" ? [`<script>\n${OPEN_TARGET_JS}</script>`] : []);
       // Each page is labelled with the run it shows: the main run, which on /visa has its own TAP-signed card buy
       // (the separate TAP run of 2 Nov is named inside, under its own label).
-      expect(html).toContain(run.label);
+      // (/airwallex shows several runs, each dated on its own block: its label is true for all of them.)
+      expect(html).toContain(name === "airwallex" ? AWX_PAGE_LABEL : run.label);
       if (name === "visa") expect(html).toContain(tapRun()!.label);
     }
   });

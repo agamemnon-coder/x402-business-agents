@@ -11,7 +11,6 @@ import { watchPage } from "../src/redesign/watch.js";
 import { proofPage } from "../src/redesign/proof.js";
 import { CHAIN_TEST, DEFENSE_IN_DEPTH, HOME_BADGE, KIT_LINE, PRICE_LINE, SECOND_APPROVER, VISA_AWARD_ON, VISA_CLAIM, VISA_EXTRA_LINK, VISA_TAP_STATUS } from "../src/config/brand.js";
 import { buildPages } from "../src/relay/assets.js";
-import { CONNECTED_LINE, TWO_LOCKS_LINE } from "../src/redesign/partners.js";
 import { esc } from "../src/redesign/ui.js";
 
 const { file, record } = loadRecord();
@@ -52,7 +51,11 @@ function recount(r: RunRecord): string[] {
 const ALLOWED = new Set([...RECORD_NUMBERS, ...recount(JSON.parse(RAW) as RunRecord)]);
 
 /** The words a person reads on a page as served (scripts, styles and markup left out), without the fixed names that carry digits. */
-const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " ")
+const visibleText = (html: string) => html
+  // /airwallex (jury panel, 12 Nov): a block that names its own record (data-rec: a product tile, the platform run's fold,
+  // the line on SWIFT) is dated with that record; its figures are checked against it in test/airwallex-products.test.ts.
+  .replace(/<(article|details|p|li)\b[^>]*\sdata-rec="[^"]+"[\s\S]*?<\/\1>/g, " ")
+  .replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " ")
   .replace(/&amp;/g, "&").replace(/&#39;|&quot;/g, "'").replace(KIT_LINE, " ").replace(/\bx402\b/g, " ").replace(/Kit 11/g, " ").replace(VISA_CLAIM, " ").replace(/agent run 1/g, " ").replace(HOME_BADGE, " ").replace(/\b404\b/g, " ").replace(/\breq_[A-Za-z0-9]+/g, " ")
   // Other named records /proof cites, each with its own name and date: the variation test, the red team, the archive.
   .replace(/Variation test[\s\S]*?Red team[\s\S]*?\)\./, " ").replace(/\d+ of \d+ attacks failed \([^)]*\)[^.]*\. Against the agent loop: \d+ of \d+ held \([^)]*\)\./, " ")
@@ -74,12 +77,6 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   // The intended price (a hypothesis, not a figure of the run): one sentence, its numbers checked against
   // src/business/unitEconomics.ts's inputs in test/unit-economics-hypothesis.test.ts.
   .replace(PRICE_LINE, " ")
-  // The connected-accounts run (10 Nov) on /airwallex, dated with its own record; its ids and figures are checked against
-  // docs/runs/2026-11-10-connected-accounts-sandbox.md in test/partner-pages.test.ts.
-  .replace(esc(CONNECTED_LINE), " ")
-  // The two-locks run (10 Nov) on /airwallex, dated with its own record; its id and amount are checked against
-  // docs/runs/2026-11-10-airwallex-two-locks.md in test/partner-pages.test.ts.
-  .replace(esc(TWO_LOCKS_LINE), " ")
   // Watch's playback speeds (Max, 10 Nov) are a control, not a figure of the run.
   .replace(/\b(?:0\.5|1|2)×/g, " ")
   // Home's hero demo (10 Nov): the Airwallex-only run's invoice, dated with its own record; its figures are checked

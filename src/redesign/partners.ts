@@ -10,12 +10,13 @@
 import { readFileSync } from "node:fs";
 import { SANDBOX_SETTLED, SPLIT_LINE, VISA_CLAIM, VISA_TAP_STATUS } from "../config/brand.js";
 import { airwallexData } from "../partners/data.js";
-import { agentRun, callBadge, cardRaiseOf, decisionsOf, faceIdDecisions, family, fxOf, ownTap, payments, split, stops, tapRun, timings, type AgentRun, type Ev } from "./run.js";
+import { agentRun, callBadge, cardRaiseOf, decisionsOf, faceIdDecisions, family, fxOf, ownTap, payments, split, tapRun, timings, type AgentRun, type Ev } from "./run.js";
 import { LOGO, earlierLine, fold, partnerProof } from "./proof.js";
 import { EXPLORER, REPO_BLOB, metalStory, refusalNote, separateRuns, type MetalStory } from "./metalStory.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { AIRI_CSS, airiRunBlock } from "./airiRun.js";
-import { awxRun, awxRunBlock } from "./awxRun.js";
+import { awxRunBlock } from "./awxRun.js";
+import { PRODUCTS_CSS, airwallexBody, airwallexDescription } from "./airwallexProducts.js";
 import { vic2RunBlock } from "./vic2Run.js";
 import { VIC_FLOW_CSS, vicFlowBlock } from "./vicFlow.js";
 import { VISA_OVERVIEW_CSS, VISA_TAP_ID, visaOverviewBlock } from "./visaOverview.js";
@@ -72,6 +73,7 @@ a.pf { color: var(--accent); font-weight: 600; text-decoration: none; font-size:
 .nf { padding: 64px 0; } .nf .wrap { display: grid; gap: 16px; justify-items: start; } .nf h1 { font-size: clamp(34px, 5vw, 56px); font-weight: 800; }
 .nf .tabs2 { display: flex; flex-wrap: wrap; gap: 10px; }
 ${READBACK_CSS}
+${PRODUCTS_CSS}
 ${AIRI_CSS}
 ${VIC_FLOW_CSS}
 ${VISA_OVERVIEW_CSS}`;
@@ -164,48 +166,29 @@ export function metalPage(run: AgentRun = agentRun()): string {
   });
 }
 
-/** The payment-acceptance run of 10 November, as it ran (docs/runs/2026-11-10-payment-acceptance-sandbox.md). */
-export const CARD_IN_LINE = "Money in by card, a separate sandbox run: a test customer paid a Northwind invoice with Airwallex's sandbox test card, and Purser booked it only after Airwallex reported PaymentIntent int_sgpv9bnppho0sezgl4a SUCCEEDED. Test money.";
-
-/** The connected-accounts runs of 10 November, as they ran (docs/runs/2026-11-10-connected-accounts-sandbox.md). */
-export const TWO_LOCKS_LINE = "Two locks on one payout, a separate sandbox run: after the CFO's passkey (a labelled test passkey) signed the exact terms, Airwallex's own approval workflow held transfer 4074d684-4704-406c-a527-2832753baf4f (EUR 240.00, the signed hash in its metadata) IN_APPROVAL; the web-app approval was not completed, so it is not paid. Test money.";
-export const CONNECTED_LINE = "Purser as an Airwallex platform, a separate sandbox run: a test company's own connected account acct_SC-QD89fOneAeqaRFgOymw opened through Purser and made ACTIVE (verification simulated), then a EUR 5.00 payout on its behalf (a9460dba-f31b-4111-be58-6d9a9e71adb1) carried Purser's fee as an application fee, accepted by Airwallex at exactly EUR 0.05; PAID by the sandbox's simulation. Test money.";
-
 export function airwallexPage(run: AgentRun = agentRun()): string {
-  const p = partnerProof(run), st = stops(run.record), money = moneyOf(run);
+  const p = partnerProof(run), money = moneyOf(run);
   const booked = money.find((e) => e.via === "deposit" && e.dir === "in");
   const licence = money.find((e) => e.via === "SWIFT" && !e.refused);
-  const earlier = money.filter((e) => e.earlier).length;
   const fx = fxOf(run.record), t = timings(run.record);
-  const used = airwallexData().features.filter((f) => /^(cards|controls|transactions|swift|deposit)$/.test(f.id));
   const eur = licence ? `€${licence.amount.replace(/\.00$/, "")}` : "";
   // Airwallex, read back (section B): the CFO's hash with the payment, and each card's controls beside the CFO policy.
   const hash = hashTravel(run.record), cards = cardsReadback(), rows = cards ? cardControlRows(run.record, cards) : [];
-  // awx-1 (7 Nov): the Airwallex-only run, a separate world, dated and labelled, below the main run's read-backs.
-  const awx1Rec = awxRun();
-  const awx1 = awxRunBlock(awx1Rec);
-  // The Airi run (7 Nov): Visa Intelligent Commerce via Airwallex's Airi, a separate world, dated and labelled.
-  // vic-2 (7 Nov): what Purser adds around Airi, under the first Airi run.
-  const airi = airiRunBlock() + vic2RunBlock(undefined, { short: true });
-  const readBack = hash || rows.length || awx1 || airi ? `<h2 class="vh">Airwallex, read back</h2><div class="awrb">${hashBlockHtml(hash)}${cards ? controlsSideBySideHtml(rows, cards.rec.read_at, cards.file) : ""}${awx1}${airi}</div>` : "";
-  return shell(run, {
-    title: "Airwallex", description: "How Purser uses Airwallex: earnings booked once final, the euro licence paid by SWIFT after the CFO's Face ID, card limits the bank enforces.",
-    logo: LOGO.airwallex, h1: "The bank side of the agents", proofHash: "airwallex",
+  // One story about Airwallex's own products (jury panel, 12 Nov; src/redesign/airwallexProducts.ts): a tile per product
+  // on top, each from its own run's record; the hash block under them; everything else folded. The main run's flow
+  // (Metal earnings booked, the licence paid) is one of the folds, as are awx-1 and the Airi runs, in the blocks /proof
+  // and /visa show. Proof's "Policy and card side by side" opens the cards' fold (#controls, or #card-<agent>).
+  const body = airwallexBody(run, {
+    logo: LOGO.airwallex, proofHash: "airwallex", hash: hashBlockHtml(hash), controls: cards ? controlsSideBySideHtml(rows, cards.rec.read_at, cards.file) : "",
+    awx1: awxRunBlock(), airi: airiRunBlock() + vic2RunBlock(undefined, { short: true }),
     picture: [node("zap", "Metal earnings", "final on chain", "metal"), arrow, node("landmark", booked ? `${booked.amount} USD booked` : "Booked at Airwallex", "simulated deposit", "awx"), arrow,
       node("scan-face", "CFO · Face ID", "approves the invoice"), arrow, ...(fx ? [node("arrow-left-right", `${fx.buy} by FX`, "only the shortfall", "awx"), arrow] : []),
       node("circle-check", licence ? `${eur} by SWIFT, accepted` : "SWIFT, accepted", licence ? `Airwallex accepted it with the signed hash; ${SANDBOX_SETTLED}` : "", "ok")].join(""),
-    nums: nums([[booked?.amount ?? "0", "USD booked after finality"], [eur || "0", "licence paid by SWIFT"], ...(fx ? [[fx.buy.replace(/^EUR /, "€").replace(/\.00$/, ""), "bought by FX for the shortfall"] as [string, string]] : []), [String(st.tapDeclines + (awx1Rec?.declines_met.length ?? 0)), "card declines by Airwallex (TAP run and awx-1)"], ...(earlier ? [[String(earlier), "earlier attempt, nothing paid"] as [string, string]] : [])]),
-    line: "Purser pays an invoice only after the CFO's Face ID; Airwallex enforces each card's limit itself.",
-    extra: readBack,
-    // Proof's "Policy and card side by side" opens the cards' fold here (#controls, or one card's #card-<agent>).
-    ...(rows.length || airi ? { js: OPEN_TARGET_JS } : {}),
-    // Payment acceptance, enabled on our sandbox 10 Nov (docs/runs/2026-11-10-payment-acceptance-sandbox.md): a separate run.
-    folds: fold("The live proof, with every Airwallex id", [...p.airwallex, plainLi(CARD_IN_LINE), plainLi(CONNECTED_LINE), plainLi(TWO_LOCKS_LINE)])
-      + fold("The Airwallex features we use, and their docs", used.map((f) => docsLi(f.title, f.docs)))
-      + fold("What is simulated", [plainLi("The Airwallex sandbox, with test money only."),
-        ...(licence ? [plainLi(`The SWIFT payout's settlement: Purser moves the sandbox transfer to SENT, then PAID, through Airwallex's simulation API${t.faceToPaid !== null ? `; the ${t.faceToPaid} s are measured from the CFO's Face ID to PAID` : ""}.`)] : []),
-        ...money.filter((e) => e.earlier).map((e) => plainLi(earlierLine(e)))]),
+    mainProof: p.airwallex, deposit: booked?.amount ?? null, depositDocs: airwallexData().features.find((f) => f.id === "deposit")?.docs ?? [],
+    simulated: [...(licence ? [`The SWIFT payout's settlement: Purser moves the sandbox transfer to SENT, then PAID, through Airwallex's simulation API${t.faceToPaid !== null ? `; the ${t.faceToPaid} s are measured from the CFO's Face ID to PAID` : ""}.`] : []),
+      ...money.filter((e) => e.earlier).map((e) => earlierLine(e))],
   });
+  return page({ title: "Airwallex", description: airwallexDescription(run), tab: "proof", css: CSS, body, source: SOURCE(run), js: OPEN_TARGET_JS, stage: false });
 }
 
 /**
