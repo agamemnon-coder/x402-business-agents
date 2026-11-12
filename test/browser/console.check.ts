@@ -147,6 +147,8 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
   ok(await p.evaluate(() => document.documentElement.scrollWidth) <= width, `${tag}: nothing wider than ${width} px`);
   ok((await p.textContent(".trust"))!.includes(tr("en", "cs.trust_works")) && (await p.textContent(".trust"))!.includes(tr("en", "cs.trust_test")), `${tag}: the trust line`);
   ok(await p.locator("header .brand .mk svg").count() === 1, `${tag}: the brand's feather mark`);
+  // 12 Nov: signed out too, the test-money chip is on the page, in the console's bar under the site's header.
+  ok(await p.isVisible(".appbar .test") && !(await p.isVisible(".appbar .apptabs")), `${tag}: signed out, the test-money chip shows (the pages do not)`);
   if (shots) { await p.waitForTimeout(5800); await p.screenshot({ path: join(shots, `console-signin-${width}-${scheme}.png`) }); }
   ok(errs.length === 0, `${tag}: no console or CSP errors${errs.length ? `: ${errs.join(" | ")}` : ""}`);
   await c.close();
@@ -409,6 +411,7 @@ async function engineUpload(E: EnginePass) {
   ok(/stand-in bank.*Nothing is sent to Airwallex/.test((await p.textContent("#foot")) ?? ""), "engine pass: the footer says the engine pays on a stand-in bank and nothing goes to Airwallex");
   ok(/stand-in bank.*no real money.*nothing is sent to Airwallex/.test((await p.getAttribute(".appbar .test", "title")) ?? ""), "engine pass: the chip's title says the stand-in bank, no real money, nothing sent to Airwallex");
   ok((await p.$$(".appbar .test")).length === 1 && (await p.$$("header .test")).length === 0, "engine pass: one chip in the header, not two");
+  ok(await p.isVisible(".appbar .test"), "engine pass: signed in, the test-money chip is visible");
 
   await p.setInputFiles("#eng-file", { name: "bergtex-BTX-2026-21.pdf", mimeType: "application/pdf", buffer: E.pdf });
   ok(await p.isDisabled("#view .drop.eng button"), "engine pass: while the upload runs its button is disabled");

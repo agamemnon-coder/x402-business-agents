@@ -44,7 +44,9 @@ ul.plain li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .signed-in .who-am-i { display: inline-flex; }
 .who-am-i button { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 6px; border-radius: 8px; display: inline-flex; }
 .who-am-i button:hover { color: var(--text); background: var(--sunken); }
-.signed-out .appbar, .signed-out .who-am-i { display: none; }
+/* Signed out the bar keeps the test-money chip alone (the honesty label is on every console page); the pages and the person wait. */
+.signed-out .appbar .apptabs, .signed-out .who-am-i { display: none; }
+.signed-out .appbar .wrap { height: 44px; padding-top: 0; align-content: center; }
 .appbar .test { margin-left: 12px; }
 label.check { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0; font-size: 14px; line-height: 1.45; }
 label.check input { margin-top: 3px; }
@@ -326,12 +328,13 @@ ol.stepper li.done .n .ic { display: inline-flex; }
 .signed-out .auth { margin: 0 auto; border-radius: 16px; }
 .signed-out .trust { display: grid; gap: 2px; margin: auto 0 0; padding: 16px var(--gut, 16px) 20px; text-align: center; color: var(--faint); font-size: 12.5px; line-height: 1.5; }
 @media (min-width: 1024px) {
-  .signed-out { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr auto auto 1fr; }
+  .signed-out { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto 1fr auto auto 1fr; }
   .signed-out header.top { grid-column: 1 / -1; grid-row: 1; }
-  .signed-out .hero { grid-column: 1; grid-row: 2 / -1; min-height: 0; padding: 40px 48px; }
-  .signed-out main { grid-column: 2; grid-row: 3; margin: 0; padding: 0 40px; }
+  .signed-out .appbar { grid-column: 1 / -1; grid-row: 2; }
+  .signed-out .hero { grid-column: 1; grid-row: 3 / -1; min-height: 0; padding: 40px 48px; }
+  .signed-out main { grid-column: 2; grid-row: 4; margin: 0; padding: 0 40px; }
   .signed-out .auth { max-width: 460px; }
-  .signed-out .trust { grid-column: 2; grid-row: 4; margin: 0; padding: 18px 40px 0; }
+  .signed-out .trust { grid-column: 2; grid-row: 5; margin: 0; padding: 18px 40px 0; }
 }
 ${SCENE_CSS}`;
 
