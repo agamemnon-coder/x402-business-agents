@@ -89,3 +89,6 @@ a78858859d27df0fdfdc11020a34ded76175d8f7:src/cli/twoLocks.ts:generic-api-key:85
 # 12 Nov: the sample receipt for the home page widget on branch home-story-1112: public WebAuthn authenticatorData of a
 # labelled test key, not a secret (the whole-history scan reads every remote branch).
 a97ac3b46eb9484771bc153d2ace5f2e1425758e:docs/demo/hero-receipt.json:generic-api-key:56
+# 12 Nov: a test on branch faceid-onchain-1112 lists the NAMES of the environment variables a runbook may mention
+# (KIT11_PASSKEY_OWNERS among them): names, never values (the whole-history scan reads every remote branch).
+a711ca69f258de95b640a2e7815522611a9eb828:test/owners-runbook.test.ts:generic-api-key:101
