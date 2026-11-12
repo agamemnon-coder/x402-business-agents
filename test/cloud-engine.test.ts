@@ -456,6 +456,25 @@ describe("erasing a person and purging a closed company reach the company's engi
     } finally { e.close(); }
   });
 
+  it("the purge goes on past a company whose engine will not wipe, and leaves that one for the next run", async () => {
+    const e = testCloud({ engine: true });
+    try {
+      const a = await e.tenant("alpha");
+      const b = await e.tenant("bravo");
+      for (const t of [a, b]) expect((await e.req("POST", "/v1/close", { key: t.key })).status).toBe(200);
+      const purge = (await import("../cloud/src/privacy.js")).purgeExpired;
+      let away = true;
+      const engine = (id: string) => ({ wipe: async () => { if (away && id === a.id) throw new Error("the object is away"); } });
+      const day = new Date("2034-01-01T12:00:00Z");
+      expect(await purge(e.env.sql, e.env.blobs, day, engine)).toEqual([b.id]);
+      const name = async (id: string) => (await e.env.sql.first<{ name: string }>("SELECT name FROM tenants WHERE id = ?", [id]))?.name;
+      expect(await name(b.id)).toBe("[purged]");
+      expect(await name(a.id)).not.toBe("[purged]");
+      away = false;
+      expect(await purge(e.env.sql, e.env.blobs, day, engine)).toEqual([a.id]);
+    } finally { e.close(); }
+  });
+
   it("the purge of a closed company wipes its engine: its ledger, documents and passkey go with its rows", async () => {
     const e = testCloud({ engine: true });
     try {
