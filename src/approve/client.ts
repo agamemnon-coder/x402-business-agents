@@ -1842,14 +1842,14 @@ function enrolPage(): void {
   input.spellcheck = false;
   input.maxLength = 12;
   input.placeholder = "XXXX-XXXX";
-  const go = el("button", "confirm", ["Create passkey with Face ID"]) as HTMLButtonElement;
+  const go = el("button", "confirm", [glyph("btn-ico", FACE_ID), "Create passkey with Face ID"]) as HTMLButtonElement;
   go.type = "button";
   const status = el("p", "sheet-status");
-  const label = el("label", "", ["One-time code from Claude"]);
+  const label = el("label", "", ["One-time code"]);
   label.setAttribute("for", "code");
   const box = el("div", "enrol", [label, input, go, status]);
   // The three steps and how far this phone is: presentation only (data-step drives the style; nothing reads it back).
-  const steps = el("ol", "steps", ["Code", "Face ID", "Fingerprint"].map((s) => el("li", "", [txt("span", "", s)])));
+  const steps = el("ol", "steps", ["Code", "Face ID", "Confirmed"].map((s) => el("li", "", [txt("span", "", s)])));
   steps.setAttribute("aria-label", "Steps");
   const flow = el("section", "enrol-flow", [
     el("div", "enrol-ill", [glyph("faceid", FACE_ID), el("span", "scan")]),
