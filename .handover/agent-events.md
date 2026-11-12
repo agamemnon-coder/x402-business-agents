@@ -29,7 +29,7 @@ interface EngineEvent { seq: number; ts: string; actor: string; event: string; s
 |---|---|---|---|
 | `claude.asking` | `agent?`, `role?`, `model`, `turn?` | Just before a Claude call is sent. The reader writes `role` (`classify`, `read` or `review`); an agent's loop writes `agent` and `turn`. It says a call was sent to that model, and nothing about the answer. | A5 (reader), A6 (agents) |
 | `claude.capped` | `reason` | Claude was not asked, and code reads and decides instead. `reason` is one of `switch_off`, `no_key`, `action_budget`, `company_cap`, `pool_day_cap`, `address_cap`, `all_time_cap`, `busy`. | A5 |
-| `claude.read` | `source: "claude"`, `model`, `request_id`, `cost_usd_micros` | The reader used Claude's reading of a document. | yes |
+| `claude.read` | `source: "claude"`, `model`, `request_id`, `cost_usd_micros` | The reader used Claude's reading of a document. `request_id` is present in live records and null when the SDK runs over a stand-in fetch (the tests): show it only when it is there. | yes |
 | `claude.fallback` | `source: "fallback"`, `model` | The reader's call failed or was refused; the parser's reading was used. | yes |
 | `agent.tool` | `agent`, `tool`, `turn`, `model`, `request_id`, `ms`, `answer` | After each tool an agent called. `answer` is the first sentence of the tool's answer, masked, at most 160 characters. The tool's input is never shown. | A6 (with ap-agents-1112) |
 | `agent.said` | `agent`, `turn`, `model`, `text` | After each model answer that has text: the model's own words, masked, at most 600 characters. | A6 |

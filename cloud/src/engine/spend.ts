@@ -89,9 +89,12 @@ export function d1Spend(sql: Sql, switches: Record<string, unknown>, who: SpendS
         },
       };
     },
-    async status(): Promise<{ on: boolean; cap_micros: number | null }> {
-      const on = isOn(switches.claude);
-      return { on, cap_micros: on ? amount(switches.cap_company_micros) || null : null };
+    /** Whether the next action may ask Claude (the switch on and the company's cap not used up), its cap, and what it has spent or holds reserved. */
+    async status(): Promise<{ on: boolean; cap_micros: number | null; spent_micros: number }> {
+      const scope = `co:${who.tenantId}`;
+      const spent = (await spentOn([scope])).get(scope) ?? 0;
+      const cap = isOn(switches.claude) ? amount(switches.cap_company_micros) || null : null;
+      return { on: cap !== null && spent < cap, cap_micros: cap, spent_micros: spent };
     },
   };
 }

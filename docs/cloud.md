@@ -130,7 +130,10 @@ company is always the caller's own. The deploy's entry point is `cloud/src/entry
 Durable Object, `CompanyEngine`). The routes answer 404 unless the Worker has the `ENGINE` binding and the var
 `ENGINE_MODE=test_money`. With both, each company's engine runs in its own Durable Object on its own SQLite
 (`cloud/src/engine/object.ts`), which keeps its ledger, its documents and its stand-in bank. The engine in
-`cloud/src/engine/node.ts` keeps each ledger in memory and is used by the tests only.
+`cloud/src/engine/node.ts` keeps each ledger in memory and is used by the tests only. With the var `ENGINE_CLAUDE=on`,
+the key and the owner's switches, the engine reads with Claude under hard caps (`cloud/src/engine/claudeAccess.ts`,
+`cloud/src/engine/spend.ts`); otherwise the parser reads. A reading's row carries the model and its cost; its request id
+is present in live records, and null when the SDK runs over a stand-in fetch (the tests).
 
 A deployment without R2 leaves the `DOCS` binding out (`cloud/wrangler.try.jsonc`, the engine's deployment of its own,
 `purser-try`). The Worker then keeps every document it would put in R2 (the read model's documents, the archive under

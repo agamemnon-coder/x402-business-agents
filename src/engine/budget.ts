@@ -36,7 +36,8 @@ export interface Reservation { micros: number; settle(actualMicros: number): Pro
 export interface ClaudeAccess {
   reserve(): Promise<{ ok: true; reservation: Reservation } | { ok: false; reason: CappedReason }>;
   reader(db: DB, budget: Budget): Asker;
-  status(): Promise<{ on: boolean; cap_micros: number | null }>;
+  /** spent_micros: what the company has spent or holds reserved, as the caps count it; null when no figure is kept. */
+  status(): Promise<{ on: boolean; cap_micros: number | null; spent_micros: number | null }>;
 }
 
 /**

@@ -122,10 +122,21 @@ describe("Claude's spend in the cloud's database", () => {
     expect(await d1Spend(sql, { ...ON, cap_day_micros_smoke: undefined }, smoke(), () => T0).reserve()).toEqual({ ok: false, reason: "pool_day_cap" });
   });
 
-  it("says whether Claude may read, and the company's cap", async () => {
+  it("says whether Claude may read, the company's cap and what the company has spent or holds reserved", async () => {
     const sql = await fresh();
-    expect(await d1Spend(sql, ON, smoke(), () => T0).status()).toEqual({ on: true, cap_micros: 400_000 });
-    expect(await d1Spend(sql, {}, smoke(), () => T0).status()).toEqual({ on: false, cap_micros: null });
+    const spend = d1Spend(sql, ON, smoke(), () => T0);
+    expect(await spend.status()).toEqual({ on: true, cap_micros: 400_000, spent_micros: 0 });
+    const a = await spend.reserve();
+    if (!a.ok) throw new Error(a.reason);
+    // Held while in flight, then what it cost (a call counted at its worst case, a stale reservation: all of it counts).
+    expect(await spend.status()).toEqual({ on: true, cap_micros: 400_000, spent_micros: 250_000 });
+    await a.reservation.settle(250_000);
+    const b = await spend.reserve();
+    if (!b.ok) throw new Error(b.reason);
+    await b.reservation.settle(150_000);
+    // The cap is used up: the next action is the parser's, and the status says so.
+    expect(await spend.status()).toEqual({ on: false, cap_micros: 400_000, spent_micros: 400_000 });
+    expect(await d1Spend(sql, {}, smoke(), () => T0).status()).toEqual({ on: false, cap_micros: null, spent_micros: 400_000 });
   });
 });
 
@@ -141,7 +152,7 @@ describe("Claude for a company's engine in the Worker (cloud/src/engine/claudeAc
     const sql = await fresh();
     const a = claudeAccess({ engineClaude: "on", key: undefined, sql, tenantId: "t_a", switches: async () => ON })!;
     expect(await a.reserve()).toEqual({ ok: false, reason: "no_key" });
-    expect(await a.status()).toEqual({ on: false, cap_micros: null });
+    expect(await a.status()).toEqual({ on: false, cap_micros: null, spent_micros: null });
     expect(await scopes(sql)).toEqual({});
   });
 
@@ -169,6 +180,6 @@ describe("Claude for a company's engine in the Worker (cloud/src/engine/claudeAc
     await a.reader(db, actionBudget(250_000)).ask({ task: "t", role: "act", actor: "treasury", schema: z.object({ v: z.string() }), instruction: "Read.", document: "x" }, () => ({ v: "" }));
     expect(asked).toEqual([{ max_tokens: 4_000 }]);
     expect((db.prepare("SELECT event FROM audit_log ORDER BY seq").all() as { event: string }[]).map((r) => r.event)).toEqual(["claude.asking", "claude.read"]);
-    expect(await a.status()).toEqual({ on: true, cap_micros: 400_000 });
+    expect(await a.status()).toEqual({ on: true, cap_micros: 400_000, spent_micros: (await scopes(sql))["co:t_try_1"] });
   });
 });
