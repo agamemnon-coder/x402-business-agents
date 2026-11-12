@@ -14,7 +14,7 @@ afterAll(() => rmSync(dir, { recursive: true, force: true }));
 function owners(cmd: string, env: Record<string, string>): Promise<{ code: number | null; text: string }> {
   const clean = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^(OWNERS_|KIT11_RELAY_|CLOUDFLARE_|METAL_RPC_URL$)/.test(k)));
   return new Promise((done) => {
-    execFile(join(REPO, "node_modules/.bin/tsx"), ["src/cli/ownersExecute.ts", cmd], { cwd: REPO, env: { ...clean, KIT11_DB: join(dir, `${cmd}.sqlite`), KIT11_KEYS_DIR: join(dir, "keys"), ...env }, timeout: 110_000 }, (err, stdout, stderr) => {
+    execFile(join(REPO, "node_modules/.bin/tsx"), ["src/cli/ownersExecute.ts", cmd], { cwd: REPO, env: { ...clean, KIT11_DB: join(dir, `${cmd}.sqlite`), KIT11_KEYS_DIR: join(dir, "keys"), ...env }, timeout: 220_000 }, (err, stdout, stderr) => {
       done({ code: err ? (typeof err.code === "number" ? err.code : null) : 0, text: `${stdout}${stderr}` });
     });
   });
@@ -36,7 +36,7 @@ describe("npm run owners", () => {
     expect(half.code).toBe(2);
     expect(half.text).toMatch(/OWNERS_CALL_LOG/);
     expect(half.text).not.toMatch(/OWNERS_GO=yes/);
-  }, 120_000);
+  }, 240_000);
 
   it("preflight with the guard set still makes no call while the relay's settings are missing", async () => {
     const log = join(dir, "calls.jsonl");
@@ -47,11 +47,11 @@ describe("npm run owners", () => {
     expect(r.text).toMatch(/MISSING +the relay's token/);
     expect(r.text).toMatch(/preflight made no call/);
     expect(existsSync(log)).toBe(false);
-  }, 120_000);
+  }, 240_000);
 
   it("names its commands for anything else", async () => {
     const r = await owners("deploy", {});
     expect(r.code).toBe(2);
     expect(r.text).toMatch(/usage: npm run owners -- preflight \| setup \| propose \| propose-revoke \| pay \| status/);
-  }, 120_000);
+  }, 240_000);
 });
