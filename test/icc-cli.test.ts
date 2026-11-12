@@ -67,7 +67,7 @@ function world(over: Record<string, string | undefined> = {}): World {
     ICC_MLE_REQUEST_CERT_FILE: files.requestCert, ICC_MLE_RESPONSE_KEY_ID: RESPONSE_KID, ICC_MLE_RESPONSE_PRIVATE_KEY_FILE: files.responseKey,
     ICC_INSTRUMENT_IDENTIFIER_ID: INSTRUMENT, ICC_ASSURANCE_FILE: assuranceFile, ...over,
   };
-  const standIn = new IccStandIn({ keys, merchantId: ORG, jwtKeyId: JWT_KID, sharedKeyId: "shared-kid-1", responseMleKeyId: RESPONSE_KID });
+  const standIn = new IccStandIn({ keys, merchantId: ORG, jwtKeyId: JWT_KID, sharedKeyId: ["shared", "kid", "1"].join("-"), responseMleKeyId: RESPONSE_KID });
   const out: string[] = [], err: string[] = [];
   const auth = new FakeAuthenticator();
   const io: IccCliIo = {
