@@ -80,3 +80,37 @@ Last update 2026-11-06 06:11 UTC; each row shows how many runs it had and when i
 - support: claude-sonnet-5-5
 
 Not in this comparison: the cases that rebuild a run's moment on that run's model only (sourcing-facts-busy on haiku, treasury-facts-ridgeline-down on opus, treasury-facts-paid on opus, treasury-facts-shortfall on opus, sourcing-packwise-raise on haiku, treasury-card-raise on opus).
+
+<!-- coder-evals: written by src/evals/coderReport.ts from docs/evals/coder.json; not edited by hand -->
+## The Coder agent: coding supplier invoices with real models
+
+Last run 2026-11-12 13:03 UTC on commit 4898ab3ac07f, with `npm run coder-evals` (`src/cli/coderEvals.ts`), 1 run per case and model, at most 3 USD. 35 test invoices (`src/evals/coderCases.ts`: the repository's fixtures and made-up suppliers), each filed through the real inbox and coded by the runner's own Coder (`codeInvoice`) on a fresh ledger, with the real model. What is scored is what code let into the books (the enforced coding), against what a bookkeeper expects per line. A coding code refused is replaced by code's own fallback, which is scored like any other.
+
+| Model | Invoices | Account class | VAT code | Cost centre | Agent's coding refused by code (by rule) | Code decided, no answer | Cost per invoice (USD) | Time p50 / p95 |
+|---|---|---|---|---|---|---|---|---|
+| claude-haiku-5-5 | 35 | 94.3% | 68.6% | 100.0% (32 of 35 chosen by code) | 0 | 0 | 0.0006 | 4.3 s / 7.9 s |
+| claude-sonnet-5-5 | 35 | 94.3% | 91.4% | 97.1% (29 of 35 chosen by code) | 0 | 0 | 0.0111 | 5.4 s / 8.3 s |
+
+Cost centre: where the model names none, or code decides the whole coding, code books the company's default cost centre. The brackets say on how many invoices code chose it: on those, the share measures the default, not the model.
+
+No model reached 95% on both account class and VAT code over every case, so the default model was not changed: CODER_MODEL stays claude-haiku-5-5.
+
+### Every mistake
+
+- bergtex-bank-change, claude-haiku-5-5: VAT code P0, expected none. This was the agent's own answer, and code's rules let it in.
+- bergtex-lookalike, claude-haiku-5-5: VAT code P0, expected none. This was the agent's own answer, and code's rules let it in.
+- bergtex-injection, claude-haiku-5-5: VAT code P0, expected none. This was the agent's own answer, and code's rules let it in.
+- bergtex-annual, claude-haiku-5-5: VAT code P0, expected none. This was the agent's own answer, and code's rules let it in.
+- stockline-licence, claude-haiku-5-5: VAT code P0, expected none. This was the agent's own answer, and code's rules let it in.
+- bergtex-hidden-injection, claude-haiku-5-5: VAT code P0, expected none. This was the agent's own answer, and code's rules let it in.
+- bergtex-subtle-beneficiary, claude-haiku-5-5: VAT code P0, expected none. This was the agent's own answer, and code's rules let it in.
+- fake-us-goods, claude-haiku-5-5: VAT code P0, expected none. This was the agent's own answer, and code's rules let it in.
+- fake-cn-textile, claude-haiku-5-5: account 6900, expected 6200; VAT code P0, expected none. This was the agent's own answer, and code's rules let it in.
+- fake-tr-textile, claude-haiku-5-5: account 6900, expected 6200; VAT code P0, expected none. This was the agent's own answer, and code's rules let it in.
+- us-saas-no-id, claude-haiku-5-5: VAT code P0, expected none. This was the agent's own answer, and code's rules let it in.
+- bergtex-hidden-injection, claude-sonnet-5-5: VAT code P0, expected none. This was the agent's own answer, and code's rules let it in.
+- fake-us-goods, claude-sonnet-5-5: VAT code P0, expected none. This was the agent's own answer, and code's rules let it in.
+- fake-cn-textile, claude-sonnet-5-5: account 6900, expected 6200. This was the agent's own answer, and code's rules let it in.
+- fake-tr-textile, claude-sonnet-5-5: account 6900, expected 6200. This was the agent's own answer, and code's rules let it in.
+- be-hotel-12, claude-sonnet-5-5: cost centre CC500, expected CC300 or CC100. This was the agent's own answer, and code's rules let it in.
+- us-saas-no-id, claude-sonnet-5-5: VAT code P0, expected none. This was the agent's own answer, and code's rules let it in.

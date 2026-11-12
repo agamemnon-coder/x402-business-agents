@@ -81,12 +81,12 @@ export function proofLeads(record: RunRecord, o: { transfer?: { file: string; re
 }
 
 export const LEAD_CSS = `ul.lead { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-ul.lead li { display: grid; gap: 2px; border-left: 4px solid var(--ok); padding: 2px 0 2px 12px; min-width: 0; }
+ul.lead li { border-left: 4px solid var(--ok); padding: 2px 0 2px 12px; min-width: 0; font-size: 16.5px; line-height: 1.35; }
 ul.lead a.c { color: var(--text); font-weight: 720; font-size: 17.5px; line-height: 1.35; text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 4px; overflow-wrap: anywhere; }
 ul.lead a.c:hover { text-decoration-color: var(--accent); }
-ul.lead .ks { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 14.5px; }
+ul.lead .ks { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 2px; font-size: 14.5px; }
 ul.lead .ks a { color: var(--accent); font-weight: 600; text-decoration: none; white-space: nowrap; }
-ul.lead small { color: var(--muted); font-size: 14px; line-height: 1.4; }`;
+ul.lead small { display: block; margin-top: 2px; color: var(--muted); font-size: 14px; line-height: 1.4; }`;
 
 /** A card's opening claims: each a link (a page of ours in this tab, the explorer or GitHub in a new one). */
 export function leadHtml(leads: Lead[]): string {

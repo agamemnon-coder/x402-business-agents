@@ -188,11 +188,14 @@ export function validate(kind: ObjectKind, o: CanonicalObject): string[] {
   }
 }
 
-/** What an ERP would see of an object, without the PDF bytes or the full IBAN (their hashes stand in for them). */
+/**
+ * What an ERP would see of an object, without the PDF or the full IBAN: the document's hash (documentSha256) and the
+ * IBAN's hash stand in for them. Whether the PDF's file is on this machine is not content, so it is not in here.
+ */
 function hashable(kind: ObjectKind, o: CanonicalObject): Json {
   if (kind === "invoice") {
-    const { pdf, ...rest } = o as PurchaseInvoice;
-    return { ...rest, pdf: pdf ? { fileName: pdf.fileName } : null } as unknown as Json;
+    const { pdf: _pdf, ...rest } = o as PurchaseInvoice;
+    return rest as unknown as Json;
   }
   if (kind === "vendor") {
     const { iban: _iban, ...rest } = o as Vendor;
@@ -201,7 +204,19 @@ function hashable(kind: ObjectKind, o: CanonicalObject): Json {
   return o as unknown as Json;
 }
 
+const hashOf = (kind: ObjectKind, what: Json) => sha256Hex(jcs({ kind, object: JSON.parse(JSON.stringify(what)) as Json }));
+
 /** SHA-256 over the RFC 8785 canonical JSON of what an ERP would see: same content, same hash, in any key order. */
 export function contentHash(kind: ObjectKind, o: CanonicalObject): string {
-  return sha256Hex(jcs({ kind, object: JSON.parse(JSON.stringify(hashable(kind, o))) as Json }));
+  return hashOf(kind, hashable(kind, o));
+}
+
+/**
+ * The hash as it was made until 12 November 2026. For an invoice it also held whether a PDF went along (`pdf`: its
+ * file name, or null), so the same invoice hashed differently on a machine without the file. The sync runner still
+ * recognises a row sent under it (src/erp/sync.ts); nothing new is hashed this way.
+ */
+export function contentHashBefore(kind: ObjectKind, o: CanonicalObject, pdf: { fileName: string } | null): string {
+  if (kind !== "invoice") return contentHash(kind, o);
+  return hashOf(kind, { ...(hashable(kind, o) as Record<string, Json>), pdf: pdf ? { fileName: pdf.fileName } : null });
 }
