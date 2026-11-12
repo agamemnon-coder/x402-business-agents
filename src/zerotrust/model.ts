@@ -590,7 +590,7 @@ export const ATTACKS: readonly Attack[] = [
     breach: ["database"], target: "bank_payout", alsoTries: ["supplier_invoice"],
     action: "Pay a signed payment a second time from a ledger that no longer knows it was paid.",
     bypasses: ["L1", "L2", "L3", "L4"], stoppedBy: "L5",
-    note: "The request id is part of the terms the CFO signed, and the rail keeps one transfer per request id. A backup from before the payment was planned does not have that id (see LIMITS).",
+    note: "The request id is part of the terms the CFO signed, and Airwallex's published API keeps one transfer per request id; the stand-in does so, and no run record shows the live rail doing it. A backup from before the payment was planned does not have that id (see LIMITS).",
   },
   {
     id: "four-eyes-one-person-two-passkeys",
@@ -752,7 +752,7 @@ export const LIMITS: readonly Limit[] = [
   {
     id: "relay-serves-another-script",
     what: "A relay or Cloudflare account that serves a different script to the phone can show one waiting proposal and ask the CFO's passkey to sign another.",
-    stillHolds: "The runner runs only waiting proposals' exact terms, with payees from the allowlist and amounts built by code; the phone can only tighten the policy; four eyes and the rails' own controls still apply; every approval is in the audit log.",
+    stillHolds: "The runner runs only waiting proposals' exact terms, with payees from the allowlist and amounts built by code; the phone can only tighten the policy; four eyes and the rails' own controls still apply; every approval is in the audit log. Not for the passkey-owned demo account, with passkey owners on (KIT11_PASSKEY_OWNERS=on): there a lying script can collect both people's signatures for its own transfer of that account's balance, and the runner never sees it. That account holds at most 1.00 test USD.",
     source: "docs/security.md, accepted risks",
   },
   {
@@ -782,8 +782,14 @@ export const LIMITS: readonly Limit[] = [
   {
     id: "backup-from-before-the-plan",
     what: "A ledger restored from a backup taken before a payment was planned no longer knows that payment. Planned again, it gets a new request id, and Airwallex would treat it as a new transfer: the invoice could be paid twice.",
-    stillHolds: "The second plan needs the CFO's signature again; a backup taken after the plan carries the request id, and then the rail refuses the repeat (the attack ledger-restored-from-backup). Compare the restored ledger with Airwallex before paying from it.",
+    stillHolds: "The second plan needs the CFO's signature again. A backup taken after the plan carries the request id; the Airwallex stand-in then refuses the repeat (the attack ledger-restored-from-backup), as Airwallex's published API describes, and no run record shows the live rail doing so. Compare the restored ledger with Airwallex before paying from it.",
     source: "docs/security.md, accepted risks; src/executors/invoicePayment.ts, the request id in the signed terms",
+  },
+  {
+    id: "no-limit-per-invoice",
+    what: "Purser has no limit per invoice beyond the reserve floors: an invoice from a supplier on file, to the bank details on file, for a larger amount than usual is planned and waits only for the CFO's signature.",
+    stillHolds: "The CFO reads the amount on the confirm screen before Face ID; once the CFO sets a four-eyes threshold, a second person must sign above it; the reserve floors still hold.",
+    source: "docs/security.md, accepted risks",
   },
   {
     id: "optional-controls",

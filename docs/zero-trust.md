@@ -281,16 +281,17 @@ Pending attacks are listed for code that is not in this tree yet. They have no t
 </details>
 
 <details>
-<summary>Open risks: 7, stated plainly</summary>
+<summary>Open risks: 8, stated plainly</summary>
 
 | What can still happen | What still holds | Where it is written |
 |---|---|---|
-| A relay or Cloudflare account that serves a different script to the phone can show one waiting proposal and ask the CFO's passkey to sign another. | The runner runs only waiting proposals' exact terms, with payees from the allowlist and amounts built by code; the phone can only tighten the policy; four eyes and the rails' own controls still apply; every approval is in the audit log. | docs/security.md, accepted risks |
+| A relay or Cloudflare account that serves a different script to the phone can show one waiting proposal and ask the CFO's passkey to sign another. | The runner runs only waiting proposals' exact terms, with payees from the allowlist and amounts built by code; the phone can only tighten the policy; four eyes and the rails' own controls still apply; every approval is in the audit log. Not for the passkey-owned demo account, with passkey owners on (KIT11_PASSKEY_OWNERS=on): there a lying script can collect both people's signatures for its own transfer of that account's balance, and the runner never sees it. That account holds at most 1.00 test USD. | docs/security.md, accepted risks |
 | A runner host taken over together with its keys is out of scope: it holds the Airwallex key and the agents' mandate keys. | The on-chain mandates bound each agent's payments whoever signs; card limits and Airwallex's transfer approval are Airwallex's to enforce. | docs/security.md, out of scope |
 | Someone who can write the ledger file can append forged rows after the last published anchor, and the chain still verifies. | Anchors printed in run records and audit reports limit this to rows after the last published anchor. | docs/security.md, accepted risks |
 | Whoever can write the ledger file gets past Purser's own layers: the executor trusts its own database, so an approval written straight into it, with terms and hashes that agree, is run. | Airwallex's own approval of transfers holds the payout once the company has switched it on, and verify finds the approval afterwards: no stored signature stands behind it (the attack database-approval-forged). With that approval switched off, nothing stops this payout before it is sent. | docs/security.md, accepted risks |
 | Four eyes counts passkeys enrolled under two names. It cannot know that two names are two human beings: a person who enrols a second passkey under another name, with the enrolment opened and the fingerprint confirmed on the runner, counts as two. | A second name can only be added on the runner, by whoever runs it, and the enrolment is in the audit log; the phone and the relay cannot add one. The rails' own controls still apply. | docs/security.md, accepted risks; src/passkey/ledger.ts, openEnrolment |
-| A ledger restored from a backup taken before a payment was planned no longer knows that payment. Planned again, it gets a new request id, and Airwallex would treat it as a new transfer: the invoice could be paid twice. | The second plan needs the CFO's signature again; a backup taken after the plan carries the request id, and then the rail refuses the repeat (the attack ledger-restored-from-backup). Compare the restored ledger with Airwallex before paying from it. | docs/security.md, accepted risks; src/executors/invoicePayment.ts, the request id in the signed terms |
+| A ledger restored from a backup taken before a payment was planned no longer knows that payment. Planned again, it gets a new request id, and Airwallex would treat it as a new transfer: the invoice could be paid twice. | The second plan needs the CFO's signature again. A backup taken after the plan carries the request id; the Airwallex stand-in then refuses the repeat (the attack ledger-restored-from-backup), as Airwallex's published API describes, and no run record shows the live rail doing so. Compare the restored ledger with Airwallex before paying from it. | docs/security.md, accepted risks; src/executors/invoicePayment.ts, the request id in the signed terms |
+| Purser has no limit per invoice beyond the reserve floors: an invoice from a supplier on file, to the bank details on file, for a larger amount than usual is planned and waits only for the CFO's signature. | The CFO reads the amount on the confirm screen before Face ID; once the CFO sets a four-eyes threshold, a second person must sign above it; the reserve floors still hold. | docs/security.md, accepted risks |
 | Four eyes and Airwallex's transfer approval guard a payout only once the company switches them on. | Without them a bank payout still needs Purser's checks and the CFO's signature over the exact terms. | docs/controls-matrix.md; docs/airwallex-approvals.md |
 
 </details>
@@ -305,4 +306,4 @@ Pending attacks are listed for code that is not in this tree yet. They have no t
 
 </details>
 
-Matrix run on 2026-11-12, at commit `d2fd8e9 with uncommitted changes`.
+Matrix run on 2026-11-12, at commit `177ddf8 with uncommitted changes`.

@@ -2546,6 +2546,31 @@ describe("the zero-trust model", () => {
     for (const l of LIMITS) for (const doc of l.source.split(";").map((s) => s.trim().split(",")[0]!)) expect(existsSync(repo(doc)), doc).toBe(true);
   });
 
+  it("hides none of the accepted risks in docs/security.md: each that bears on money is one of its limits", () => {
+    const security = readFileSync(repo("docs/security.md"), "utf8");
+    const section = security.slice(security.indexOf("## Accepted risks"), security.indexOf("## Checks"));
+    const risks = [...section.matchAll(/^- \*\*(.+?)\*\*/gm)].map((m) => m[1]!);
+    // Each accepted risk, and the limit that states it; null with the reason when it is not about money leaving.
+    const LIMIT_OF: Record<string, string | null> = {
+      "zod advisory (fixed 2026-10-29).": null, // a dependency advisory, fixed
+      "The relay serves the phone's script.": "relay-serves-another-script",
+      "Audit anchors are not signed.": "audit-anchors-not-signed",
+      "Whoever can write the ledger file gets past Purser's own layers.": "ledger-file-written",
+      "Four eyes counts passkeys, not people.": "four-eyes-is-two-passkeys",
+      "A ledger restored from an old backup can plan a payment again.": "backup-from-before-the-plan",
+      "No limit per invoice beyond the reserve floors.": "no-limit-per-invoice",
+      "metal-agent runs with zod 4 by override": null, // a dependency override, checked live
+      "The viewer key is a bearer key.": null, // what it sends still needs the CFO's passkey
+      "The *USDZ to Airwallex bridge is simulated:": null, // a simulation, labelled; no control rests on it
+      "Out of scope:": "runner-host-with-keys",
+    };
+    expect(risks).toEqual(Object.keys(LIMIT_OF));
+    const ids = new Set(LIMITS.map((l) => l.id));
+    for (const [risk, id] of Object.entries(LIMIT_OF)) if (id) expect(ids.has(id), `${risk} is not among the limits`).toBe(true);
+    // Where docs/security.md says a risk no longer holds for one account, the limit says so too.
+    expect(LIMITS.find((l) => l.id === "relay-serves-another-script")!.stillHolds).toMatch(/passkey-owned demo account/);
+  });
+
   it("names, for every hole it found and fixed, an attack in the matrix and a file that exists", () => {
     const ids = new Set(ATTACKS.map((a) => a.id));
     expect(FIXES.length).toBeGreaterThan(0);
