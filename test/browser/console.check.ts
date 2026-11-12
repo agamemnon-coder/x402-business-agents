@@ -15,6 +15,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { handle, type CloudEnv } from "../../cloud/src/app.js";
 import { DEMO_SITE } from "../../cloud/src/console.js";
+import { BOOKS_JS } from "../../cloud/src/consoleBooks.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
 import { batchesFor, pushToCloud } from "../../src/cloudsync/client.js";
 import { payApInvoice } from "../../src/ap/pay.js";
@@ -174,9 +175,16 @@ await page.waitForSelector(".trow:not(.th)");
 await settle();
 await shot("08-transacties");
 await page.goto(`${ORIGIN}/#/books`);
-await page.waitForSelector("text=VAT overview");
+await page.waitForSelector("#bookings details.ent");
 await settle();
+ok((await page.$$("#cards [data-card]")).length === 5 && (await page.$("#agree")) !== null, "a signed-in company's books show the five report cards and whether books, payments and signatures agree");
 await shot("09-boekhouding");
+// The vault: this company's runner has filed no vault in the cloud, and the page says so.
+await page.goto(`${ORIGIN}/#/vault`);
+await page.waitForSelector(`text=${tr("en", "cs.vault.none")}`);
+ok((await page.$$("#tabs a")).length <= 5, "the menu has at most five pages (Settings is behind the company's name)");
+await settle();
+await shot("09b-kluis");
 await page.goto(`${ORIGIN}/#/settings`);
 await page.waitForSelector("text=API keys");
 await settle();
@@ -218,7 +226,7 @@ ok(true, "the company's last owner passkey cannot be removed");
 
 // The phone.
 await page.setViewportSize({ width: 390, height: 844 });
-for (const [hash, name, wait] of [["#/overview", "11-telefoon-overzicht", "text=Waits for the CFO's Face ID"], ["#/invoices", "12-telefoon-facturen", ".row:not(.th)"], [`#/invoices/${encodeURIComponent(paidId)}`, "18-telefoon-factuur-met-pdf", "iframe.pdfframe"], ["#/transactions", "14-telefoon-transacties", ".trow:not(.th)"], ["#/settings", "15-telefoon-instellingen", "text=API keys"]] as const) {
+for (const [hash, name, wait] of [["#/overview", "11-telefoon-overzicht", "text=Waits for the CFO's Face ID"], ["#/invoices", "12-telefoon-facturen", ".row:not(.th)"], [`#/invoices/${encodeURIComponent(paidId)}`, "18-telefoon-factuur-met-pdf", "iframe.pdfframe"], ["#/transactions", "14-telefoon-transacties", ".trow:not(.th)"], ["#/books", "14b-telefoon-boekhouding", "#bookings details.ent"], ["#/vault", "14c-telefoon-kluis", `text=${tr("en", "cs.vault.none")}`], ["#/settings", "15-telefoon-instellingen", "text=API keys"]] as const) {
   await page.goto(`${ORIGIN}/${hash}`);
   await page.waitForSelector(wait);
   if (wait === "iframe.pdfframe") await page.frameLocator("iframe.pdfframe").locator("canvas").first().waitFor({ timeout: 20_000 });
@@ -258,8 +266,9 @@ await shot("19-overzicht-nederlands");
 // The Dutch books and settings (screenshot pass, 9 November): no English left in the journal, the VAT overview or the
 // key names, a role or status pill on one line, no "nothing this quarter" above input VAT, the nav on a phone in view.
 await page.goto(`${ORIGIN}/#/books`);
-await page.waitForSelector(`text=${tr("nl", "cs.vat_overview")}`, { timeout: 20_000 });
-await page.waitForSelector("text=#1", { timeout: 20_000 });
+await page.waitForSelector("#bookings details.ent", { timeout: 20_000 });
+await page.click("[data-card=vat]");
+await page.waitForSelector(`#report >> text=${tr("nl", "cs.owed_5a")}`, { timeout: 20_000 });
 await settle();
 const booksText = await page.innerText("main");
 ok(!/\(received\)|Transfer fee|balance before the run|sandbox test money|\binvoice\b/.test(booksText), "the Dutch journal has no English entries");
@@ -331,7 +340,8 @@ const SCREENS: [string, string, string][] = [
   ["03-invoices", `#/c/${first.slug}/invoices`, ".row:not(.th)"],
   ["04-invoice", `#/c/${first.slug}/invoices/${st.paid_foreign_currency}`, "text=Approval and payment"],
   ["05-transactions", `#/c/${first.slug}/transactions`, ".trow:not(.th)"],
-  ["06-books", `#/c/${first.slug}/books`, "text=VAT overview"],
+  ["06-books", `#/c/${first.slug}/books`, "#bookings details.ent"],
+  ["07-vault", `#/c/${first.slug}/vault`, "#proof"],
 ];
 const demoShotPaths: string[] = [];
 for (const scheme of ["light", "dark"] as const) {
@@ -345,6 +355,14 @@ for (const scheme of ["light", "dark"] as const) {
       await dp.goto(`${DEMO_ORIGIN}/${hash}`);
       await dp.waitForSelector(wait, { timeout: 20_000 });
       if (name === "04-invoice") { await dp.frameLocator("iframe.pdfframe").locator("canvas").first().waitFor({ timeout: 20_000 }); await dp.waitForSelector("text=Booked"); }
+      if (name === "07-vault") {
+        await dp.frameLocator("iframe.pdfframe").locator("canvas").first().waitFor({ timeout: 20_000 });
+        await dp.click("#verify");
+        await dp.waitForSelector("#verify-result[data-match=true]");
+        const frame = dp.frames().find((f) => f.url().includes("/pdfview"))!;
+        const inked = await frame.evaluate(() => { const c = document.querySelector("canvas")!; const x = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 0; i < x.length; i += 16) if (x[i]! < 200) n++; return n; });
+        ok(inked > 0, `${name} at ${width} px, ${scheme}: the payment proof's PDF is drawn in the page`);
+      }
       await dp.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => {});
       await dp.waitForTimeout(250);
       const where = `${name} at ${width} px, ${scheme}`;
@@ -357,7 +375,24 @@ for (const scheme of ["light", "dark"] as const) {
       const raw = await dp.evaluate(() => (document.body.textContent ?? "").split(/\s+/).filter((x) => /^[a-z]+(\.[a-z0-9_]+)+$/.test(x) && !/\.(js|pdf|csv|json|eml|com|nl|io|test|dev)$/.test(x)));
       ok(raw.length === 0, `${where}: no raw message keys${raw.length ? ` (${raw.slice(0, 5).join(", ")})` : ""}`);
       if (name === "01-companies") ok(!(await dp.isVisible("#tabs")), `${where}: no company tabs before a company is chosen`);
-      if (demoShots) { const f = join(demoShots, `${scheme}-${width}-${name}.png`); await dp.screenshot({ path: f, fullPage: true }); demoShotPaths.push(f); }
+      if (demoShots) { await dp.evaluate(() => window.scrollTo(0, 0)); const f = join(demoShots, `${scheme}-${width}-${name}.png`); await dp.screenshot({ path: f, fullPage: true }); demoShotPaths.push(f); }
+      // The books' details: a report card opened, and the newest booking with its lines and its proof.
+      if (name === "06-books") {
+        await dp.click("[data-card=vat]");
+        await dp.waitForSelector("#report table.vat");
+        await dp.click("#bookings details.ent summary");
+        await dp.waitForSelector("#bookings details.ent[open] .kv");
+        const over = await dp.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+        ok(over <= 0, `${where}, details open: nothing wider than the screen (${over} px over)`);
+        if (demoShots) { await dp.evaluate(() => window.scrollTo(0, 0)); const f = join(demoShots, `${scheme}-${width}-06b-books-details.png`); await dp.screenshot({ path: f, fullPage: true }); demoShotPaths.push(f); }
+      }
+      // On a phone the PDF sits below the fold, and a full-page capture leaves a frame out of view blank: one more
+      // capture with the document in view.
+      if (name === "07-vault" && width === 390 && demoShots) {
+        await dp.locator("iframe.pdfframe").scrollIntoViewIfNeeded();
+        await dp.waitForTimeout(400);
+        const f = join(demoShots, `${scheme}-${width}-07b-vault-document.png`); await dp.screenshot({ path: f }); demoShotPaths.push(f);
+      }
     }
     await dctx.close();
   }
@@ -400,6 +435,77 @@ for (const scheme of ["light", "dark"] as const) {
   await dp.goto(`${DEMO_ORIGIN}/#/c/${first.slug}/invoices/${st.waiting_for_cfo}`);
   await dp.waitForSelector("text=Approval and payment");
   ok((await dp.innerText("main")).includes("Nothing is paid until then"), "the invoice that waits for the CFO says nothing is paid until then");
+  // Books: the agree line, the five cards against the reports the demo serves, the closed month, a booking's proof.
+  {
+    const B = new Function(`${BOOKS_JS}\nreturn { reportCards, period, agreement };`)() as { period(l: string, today: string, demo: boolean): { end: string; from: string; quarter: string; as_of: string }; agreement(c: unknown): { moved: number }; reportCards(r: unknown): { trial: { by: Record<string, { debit: number }> }; pnl: { by: Record<string, { result: number }> }; balance: { by: Record<string, { assets: number }> }; vat: { balance: number }; payables: { by: Record<string, { open: number }> } } };
+    const api = async <T,>(p: string) => await (await fetch(`${DEMO_ORIGIN}/v1/demo/${first.slug}${p}`)).json() as T;
+    const fmt = (c: number) => `${c < 0 ? "-" : ""}${String(Math.floor(Math.abs(c) / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}.${String(Math.abs(c) % 100).padStart(2, "0")}`;
+    const entries = (await api<{ items: { entry_id: number; posting_date: string }[] }>("/ledger/entries?limit=200")).items;
+    const p = B.period(entries.map((e) => e.posting_date).sort().at(-1)!, new Date().toISOString().slice(0, 10), true);
+    const c = B.reportCards({ trial: await api(`/reports/trial?to=${p.end}`), pnl: await api(`/reports/pnl?from=${p.from}&to=${p.end}`), balance: await api(`/reports/balance?to=${p.end}`), vat: await api(`/reports/vat?quarter=${p.quarter}`), payables: await api(`/reports/payables?as_of=${p.as_of}`) });
+    const sum = await api<{ check: unknown }>("/transactions/summary");
+    await dp.goto(`${DEMO_ORIGIN}/#/c/${first.slug}/books`);
+    await dp.waitForSelector("#bookings details.ent");
+    const card = (k: string) => dp.innerText(`[data-card=${k}]`);
+    ok((await dp.getAttribute("#agree", "class")) === "note-ok" && (await dp.innerText("#agree")).includes(`${B.agreement(sum.check).moved} money movements`), "books, payments and signatures agree, as the register's own check counts them");
+    ok((await card("trial")).includes("Balanced") && (await card("trial")).includes(`EUR ${fmt(c.trial.by.EUR!.debit)}`), "the trial balance card: balanced, with its debits to the cent");
+    ok((await card("pnl")).includes(fmt(c.pnl.by.EUR!.result)), "the profit and loss card shows the result to the cent");
+    ok((await card("balance")).includes("Balanced") && (await card("balance")).includes(fmt(c.balance.by.EUR!.assets)), "the balance sheet card: balanced, with its assets to the cent");
+    ok((await card("vat")).includes(MESSAGES.en["cs.bk.vat_prep"]) && (await card("vat")).includes(fmt(c.vat.balance)), "the VAT card says preparation, not a filing, with its balance to the cent");
+    ok((await card("payables")).includes(fmt(c.payables.by.EUR!.open)), "the open payables card shows what is open to the cent");
+    await dp.click("[data-card=trial]");
+    const trialRows = (await api<{ rows: { account: string }[] }>(`/reports/trial?to=${p.end}`)).rows;
+    const report = await dp.innerText("#report");
+    ok(trialRows.every((r) => report.includes(r.account)), "the trial balance card opens to every account in it");
+    ok((await dp.$$("#bookings details.ent")).length === entries.length, "the timeline holds every booking");
+    ok((await dp.innerText("#bookings h2.sub-h:has-text('Oct 2026')")).includes(MESSAGES.en["cs.bk.closed"]) && !(await dp.innerText("#bookings h2.sub-h:has-text('Nov 2026')")).includes(MESSAGES.en["cs.bk.closed"]), "October, the closed month, shows as locked; November does not");
+    const txs = (await api<{ items: { id: string; rail: string; invoice: { ap_id: string | null } | null; booking: { entry_ids: number[] }; approval: { terms_sha256: string | null; proposal_id: string | null } }[] }>("/transactions?limit=200")).items;
+    const paidTx = txs.find((x) => x.rail === "airwallex_transfer" && x.invoice?.ap_id === st.paid_foreign_currency)!;
+    await dp.click(`details[data-entry="${paidTx.booking.entry_ids[0]}"] summary`);
+    const entry = await dp.innerText(`details[data-entry="${paidTx.booking.entry_ids[0]}"]`);
+    const payments = (await api<{ items: { id: string }[] }>("/payments")).items.map((x) => x.id);
+    const pid = paidTx.id.replace(/^transfer:/, "");
+    ok(payments.includes(pid) && entry.includes(pid) && entry.includes(paidTx.approval.terms_sha256!) && entry.includes(paidTx.approval.proposal_id!) && entry.includes(`Invoice ${st.paid_foreign_currency}`), "a payment's booking shows its payment id, the request the CFO approved, the signed terms' hash and its invoice");
+    // The agree line is computed: a register that says a movement is not booked turns it into what differs.
+    await dp.route("**/transactions/summary*", async (r) => { const res = await r.fetch(); const j = await res.json() as { check: Record<string, unknown> }; j.check.without_booking = ["transfer:not-booked-test"]; await r.fulfill({ response: res, json: j }); });
+    await dp.reload();
+    await dp.waitForSelector("#agree.note-bad");
+    ok((await dp.innerText("#agree")).includes("Not booked: transfer:not-booked-test"), "when the register finds a movement not booked, the books say so instead of the tick");
+    await dp.unroute("**/transactions/summary*");
+  }
+  // The vault: its own folders, a payment proof, the PDF in the page, a download and the document check.
+  {
+    let tamper = false;
+    await dp.route("**/documents/*", async (r) => { const res = await r.fetch(); const b = Buffer.from(await res.body()); if (tamper) b[b.length >> 1] = b[b.length >> 1]! ^ 1; await r.fulfill({ response: res, body: b }); });
+    const v = await (await fetch(`${DEMO_ORIGIN}/v1/demo/${first.slug}/vault`)).json() as { files: { path: string; sha256: string; key: string; kind: string }[] };
+    const txs = (await (await fetch(`${DEMO_ORIGIN}/v1/demo/${first.slug}/transactions?limit=200`)).json() as { items: { id: string; invoice: { ap_id: string | null } | null; approval: { terms_sha256: string | null } }[] }).items;
+    await dp.goto(`${DEMO_ORIGIN}/#/c/${first.slug}/vault`);
+    await dp.waitForSelector("#proof");
+    await dp.frameLocator("iframe.pdfframe").locator("canvas").first().waitFor({ timeout: 20_000 });
+    const tree = await dp.innerText("#folders");
+    ok([["Inkoopfacturen", "Purchase invoices"], ["Betalingen", "Payments"], ["Rapporten", "Reports"], ["_Geblokkeerd", "Blocked"]].every(([nl, en]) => tree.includes(nl!) && tree.includes(en!)), "the vault shows its folders as stored, each Dutch name with its English word");
+    const pays = v.files.filter((f) => f.path.split("/").at(-2) === "Betalingen");
+    ok((await dp.$$("#files li")).length === pays.length && pays.length > 0, "the payments folder lists its payment proofs");
+    const shown = pays[0]!;
+    const proofTx = txs.find((x) => x.invoice?.ap_id === shown.key.replace(/^receipt:/, "") && x.approval.terms_sha256)!;
+    const proof = await dp.innerText("#proof");
+    ok(proof.includes(proofTx.approval.terms_sha256!) && proof.includes(proofTx.id.replace(/^transfer:/, "")) && proof.includes(MESSAGES.en["cs.dt.test_passkey"]), "a payment proof shows the signed terms' hash, the payment id and that a test passkey signed");
+    const [download] = await Promise.all([dp.waitForEvent("download"), dp.click("#download")]);
+    const got = readFileSync((await download.path())!);
+    ok(createHash("sha256").update(got).digest("hex") === shown.sha256, "the download is the file whose hash is on record");
+    await dp.click("#verify");
+    await dp.waitForSelector("#verify-result[data-match=true]");
+    ok((await dp.innerText("#verify-result")).includes(shown.sha256), "Verify: this browser's SHA-256 of the bytes matches the one on record");
+    tamper = true;
+    await dp.click("#verify");
+    await dp.waitForSelector("#verify-result[data-match=false]");
+    ok((await dp.innerText("#verify-result")).includes("Mismatch"), "Verify: one changed byte in the download is a mismatch");
+    tamper = false;
+    await dp.unroute("**/documents/*");
+    await dp.click("#folders button:has-text('Rapporten')");
+    await dp.waitForSelector(`#files >> text=${MESSAGES.en["cs.vault.k.month"]}`);
+    ok((await dp.innerText("#files")).includes("2026-10 Maandrapport.pdf"), "the reports folder holds the closed month's report");
+  }
   // Screens that do not exist here.
   for (const hash of ["#/settings", "#/sign-in", "#/start", "#/platform", `#/c/${first.slug}/settings`, "#/c/not-a-demo-company/overview"]) {
     await dp.goto(`${DEMO_ORIGIN}/${hash}`);

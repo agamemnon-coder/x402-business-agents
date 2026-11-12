@@ -9,6 +9,7 @@ import { consoleKeys, DATA_NL, I18N_JS, keysUsedIn, MESSAGES, t as tr } from "..
 import { escAttr, ICON_SET, PAYABLES_CSS, svg } from "../../src/ui/payablesKit.js";
 import { fromB64 } from "./crypto.js";
 import { INTER_WOFF2_B64 } from "./font.gen.js";
+import { BOOKS_JS } from "./consoleBooks.js";
 import { SITE_URL } from "../../src/ui/meta.js";
 import type { CloudEnv } from "./app.js";
 
@@ -16,7 +17,7 @@ import type { CloudEnv } from "./app.js";
 export const DEMO_SITE = `${SITE_URL}/home`;
 
 const ICONS = ["wallet", "calendar-range", "clock", "inbox", "octagon-x", "chevron-right", "circle-check", "triangle-alert", "circle-minus", "file-text",
-  "download", "mail", "scan-face", "users", "key-round", "log-out", "arrow-left", "flask", "x", "arrow-down-left", "arrow-up-right", "shield-check", "copy", "landmark", "receipt"];
+  "download", "mail", "scan-face", "users", "key-round", "log-out", "arrow-left", "flask", "x", "arrow-down-left", "arrow-up-right", "shield-check", "copy", "landmark", "receipt", "lock"];
 
 const EXTRA_CSS = `
 .pdfframe { display: block; width: 100%; max-width: 820px; height: 600px; border: 0; background: #fff; border-radius: 6px; box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 8px 24px -8px rgba(16,24,40,.18); }
@@ -229,6 +230,14 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
   header.top nav.tabs a { padding: 6px 9px; font-size: 13.5px; }
   .auth { margin-top: 3vh; padding: 20px; }
 }
+/* Books and the vault (12 Nov): a report card opens its details below it; a booking opens in place. */
+.tile[role="button"] { cursor: pointer; }
+.tile[aria-pressed="true"] { border-color: var(--accent); }
+#cards .tile .v { white-space: normal; }
+#folders button.linkish, #files button.linkish { text-align: left; }
+details.ent > summary { cursor: pointer; list-style: none; }
+details.ent > summary::-webkit-details-marker { display: none; }
+details.ent[open] > summary { margin-bottom: 10px; }
 /* Signed out (or the demo's companies, before one is chosen): no company tabs, on a phone too (12 Nov). */
 body.signed-out header.top nav.tabs { display: none; }
 `;
@@ -237,7 +246,7 @@ body.signed-out header.top nav.tabs { display: none; }
 // in the person's language when it starts. The switch to the other language is in the header on every screen.
 const BODY = `
 <header class="top"><div class="wrap"><a class="brand" href="#/" aria-label="Purser Cloud"><span class="mk">${svg("feather", 16)}</span><span>Purser</span><span class="sec">Cloud</span></a>
-<nav class="tabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/books" data-tab="books" data-t="cs.nav.books">${tr("en", "cs.nav.books")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
+<nav class="tabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/books" data-tab="books" data-t="cs.nav.books">${tr("en", "cs.nav.books")}</a><a href="#/vault" data-tab="vault" data-t="cs.nav.vault">${tr("en", "cs.nav.vault")}</a></nav>
 <span class="spacer"></span>
 <span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
 <a class="lang" id="lang" href="#" role="button" lang="nl" title="${escAttr(tr("en", "lang.switch.title"))}"><span class="ll">${tr("en", "lang.switch")}</span><span class="ls">NL</span></a>
@@ -251,6 +260,7 @@ const LS=__CATALOGUES__;
 const PREF=(()=>{try{return localStorage.getItem('purser.cloud.lang')}catch(e){return null}})();
 const L=LS[PREF==='nl'?'nl':'en'];
 __I18N__
+__BOOKS__
 const CFG=JSON.parse(document.querySelector('meta[name=purser-cloud]').content);
 // A demo deployment (cloud/src/demo.ts): anyone may look at its test companies, nobody signs in, and this page sends
 // nothing but GET (api() refuses anything else before it is sent).
@@ -572,7 +582,7 @@ async function invoiceView(id){
   const doc=el('div','card docv',[el('div','bar2',[ic('file-text'),el('span','fn',t('cs.as_received')+(i.doc_sha256?' · SHA-256 '+String(i.doc_sha256).slice(0,12)+'…':'')),getDoc]),pages]);
   const pay=el('div','card panel');pay.hidden=true;const book=el('div','card panel');book.hidden=true;
   view().replaceChildren(back,top,el('div','split',[doc,el('div','stack',[read,checks,pay,book,el('div','card panel',[el('h2','',t('dt.timeline')),tl]),DEMO?null:note(t('cs.approved_on_phone'))])]));
-  drawPdf(id,pages);
+  drawPdf('/v1/invoices/'+encodeURIComponent(id)+'/document',pages);
   movements(i,pay,book).catch((e)=>{if(!(e instanceof Expired)){pay.hidden=false;pay.replaceChildren(note(e.message,'bad'))}});
 }
 // Where a movement's money went: a stand-in rail (the test world's, no money moved) or a sandbox says so, beside its name.
@@ -607,9 +617,9 @@ async function movements(i,pay,book){
 // a worker, under its own policy and time limit; the frame cannot reach this page, its session or the API. This page
 // fetches the bytes (it holds the session) and hands them over; if the frame cannot draw them, the download stays.
 const PDF_MAX_BYTES=16*1024*1024;
-async function drawPdf(id,box){
+async function drawPdf(path,box){
   try{
-    const r=await api('/v1/invoices/'+encodeURIComponent(id)+'/document',{raw:true});
+    const r=await api(path,{raw:true});
     const buf=await r.arrayBuffer();
     if(buf.byteLength>PDF_MAX_BYTES){box.replaceChildren(el('p','wait',t('cs.too_large')));return}
     const f=document.createElement('iframe');f.setAttribute('sandbox','allow-scripts');f.src='/pdfview';f.className='pdfframe';f.title=t('cs.invoice_drawn');f.setAttribute('referrerpolicy','no-referrer');
@@ -656,37 +666,147 @@ async function transactionsView(){
 }
 
 // --- Books ---------------------------------------------------------------------------------------------------------
+// The reports first, as five cards computed by the cloud from the ledger (cloud/src/read.ts, the runner's own report
+// code); a card opens its details below. Then every booking as a timeline, newest first, each opening to its lines and
+// its proof. Whether books, payments and signatures agree is the register's own check (agreement, BOOKS_JS).
 const RUBRIC=(k)=>tk('cs.rubric.'+k,k);
-// Journal entries as a table: each entry's date and words, then its lines (account, debit, credit).
-function journalTable(items){
-  const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('date')),el('th','',t('cs.entry')),el('th','r',t('cs.debit')),el('th','r',t('cs.credit'))])])]);const tb=el('tbody','');
-  for(const e of items){tb.append(el('tr','en',[el('td','',day(e.posting_date)),el('td','',[el('b','','#'+e.entry_id+' '),data('journal',e.description||'')]),el('td',''),el('td','')]));
-    for(const l of e.lines||[])tb.append(el('tr','ln',[el('td',''),el('td','',l.account+(l.vat_code?' · '+t('cs.vat_code',{code:l.vat_code}):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
-  if(!items.length)tb.append(el('tr','',[el('td','',t('cs.no_entries')),el('td',''),el('td',''),el('td','')]));
+const camt=(c,v)=>cur(c)+' '+cents(v);
+// The currency may go to its own line on a narrow card; the amount itself never breaks (not even after its minus).
+const big=(c,v)=>{const s=el('span','');const n=el('span','',cents(v));n.style.whiteSpace='nowrap';s.append(el('small','',cur(c)),' ',n);return s};
+const others2=(cs,f)=>cs.slice(1).map((c)=>camt(c,f(c))).join(' · ');
+const kv=(rows)=>el('div','kv',rows.flatMap(([l,v])=>{const a=el('span','',l);a.title=l;return [a,el('span','',v)]}));
+const monthName=(m)=>MONTHS[Number(m.slice(5,7))-1]+' '+m.slice(0,4);
+// A movement's payment id: the payment the runner asked the rail for (a transfer's request id), else the movement's own.
+const paymentId=(r)=>/^transfer:/.test(r.id||'')?r.id.slice(9):String(r.id||'');
+// Every entry, oldest first: pages of 200, at most 2,000 entries.
+async function allEntries(){let out=[],cursor=null;for(let k=0;k<10;k++){const p=await api('/v1/ledger/entries?limit=200'+(cursor?'&cursor='+encodeURIComponent(cursor):''));out=out.concat(p.items||[]);cursor=p.next_cursor;if(!cursor)break}return out}
+// The vault's index when the cloud holds one; none is not an error (a runner files its vault on its own computer).
+const vaultOf=()=>api('/v1/vault').catch((e)=>{if(e instanceof Expired)throw e;return {years:[],files:[]}});
+function agreeBox(check){
+  const a=agreement(check);let b;
+  if(a.nothing)b=note(t('cs.bk.nothing'));
+  else if(a.ok)b=el('p','note-ok',[el('b','',t('cs.bk.agree')),' · '+t('cs.bk.agree_sub',{n:a.moved})]);
+  else{const ul=el('ul','plain',a.parts.map((p)=>el('li','',t('cs.bk.d.'+p.k,{ids:p.ids.join(', ')}))));if(a.unreconciled)ul.append(el('li','',t('cs.bk.d.unreconciled',{n:a.unreconciled})));
+    b=el('div','note-bad',[el('b','',t('cs.bk.differ')),ul])}
+  b.id='agree';return b}
+function vatTable(v){
+  const tbl=el('table','table vat',[el('thead','',[el('tr','',[el('th','',t('cs.rubric')),el('th','sh',t('cs.vat.share')),el('th','r',t('cs.base')),el('th','r',t('dt.vat'))])])]);const tb=el('tbody','');
+  const maxBase=Math.max(0,...Object.values(v.rubrics||{}).map(r=>Math.abs(r.base_cents||0)));
+  for(const [k,r] of Object.entries(v.rubrics||{})){if(!r.base_cents&&!r.vat_cents)continue;tb.append(el('tr','',[el('td','',RUBRIC(k)),el('td','sh',meter(Math.abs(r.base_cents||0),maxBase)),el('td','r',camt('EUR',r.base_cents)),el('td','r',camt('EUR',r.vat_cents))]))}
+  // No rubric row: the quarter may still hold input VAT (5b), so "nothing" is said only when 5a and 5b are nil too.
+  if(!tb.children.length)tb.append(el('tr','',[el('td','',t(v.owed_5a_cents||v.input_5b_cents?'cs.no_rubrics':'cs.nothing_quarter')),el('td','sh'),el('td',''),el('td','')]));
+  // Each row has the share column the phone hides, so the columns line up there too.
+  tb.append(el('tr','tot',[el('td','',el('b','',t('cs.owed_5a'))),el('td','sh'),el('td',''),el('td','r',camt('EUR',v.owed_5a_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.input_5b'))),el('td','sh'),el('td',''),el('td','r',camt('EUR',v.input_5b_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.balance_5c'))),el('td','sh'),el('td',''),el('td','r',el('b','',camt('EUR',v.balance_5c_cents)))]));
   tbl.append(tb);return el('div','scroll',tbl)}
 async function booksView(){
   title(t('cs.nav.books'));
-  const now=new Date();const qs=[];for(let k=0;k<6;k++){const d=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-3*k,1));qs.push(d.getUTCFullYear()+'Q'+(Math.floor(d.getUTCMonth()/3)+1))}
-  const pick=el('select','field');for(const v of qs){const o=el('option','',v);o.value=v;pick.append(o)}
-  const vat=el('div','card panel');const journal=el('div','card panel');
-  view().replaceChildren(head(t('cs.nav.books'),t('cs.books_lede')),el('div','split2',[vat,journal]));
-  async function drawVat(){
-    const v=await api('/v1/reports/vat?quarter='+encodeURIComponent(pick.value));
-    const tbl=el('table','table vat',[el('thead','',[el('tr','',[el('th','',t('cs.rubric')),el('th','sh',t('cs.vat.share')),el('th','r',t('cs.base')),el('th','r',t('dt.vat'))])])]);const tb=el('tbody','');
-    const maxBase=Math.max(0,...Object.values(v.rubrics||{}).map(r=>Math.abs(r.base_cents||0)));
-    const eur=(c)=>cur('EUR')+' '+cents(c);
-    for(const [k,r] of Object.entries(v.rubrics||{})){if(!r.base_cents&&!r.vat_cents)continue;tb.append(el('tr','',[el('td','',RUBRIC(k)),el('td','sh',meter(Math.abs(r.base_cents||0),maxBase)),el('td','r',eur(r.base_cents)),el('td','r',eur(r.vat_cents))]))}
-    // No rubric row: the quarter may still hold input VAT (5b), so "nothing" is said only when 5a and 5b are nil too.
-    if(!tb.children.length)tb.append(el('tr','',[el('td','',t(v.owed_5a_cents||v.input_5b_cents?'cs.no_rubrics':'cs.nothing_quarter')),el('td',''),el('td',''),el('td','')]));
-    tb.append(el('tr','tot',[el('td','',el('b','',t('cs.owed_5a'))),el('td',''),el('td',''),el('td','r',eur(v.owed_5a_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.input_5b'))),el('td',''),el('td',''),el('td','r',eur(v.input_5b_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.balance_5c'))),el('td',''),el('td',''),el('td','r',el('b','',eur(v.balance_5c_cents)))]));
-    tbl.append(tb);
-    vat.replaceChildren(el('h2','',t('cs.vat_overview')),el('div','form-row',[el('div','',[el('label','',t('cs.quarter')),pick])]),el('div','scroll',tbl),
-      v.uncoded_lines?note(t('cs.uncoded',{n:v.uncoded_lines}),'bad'):null,note(NL?t('cs.vat_notice'):(v.notice||t('cs.vat_notice'))));
+  const [entries,sum,txp,vlt]=await Promise.all([allEntries(),api('/v1/transactions/summary'),api('/v1/transactions?limit=200'),vaultOf()]);
+  const days=entries.map((e)=>e.posting_date).filter(isDay).sort();
+  const p=period(days[days.length-1]||null,today,!!DEMO);
+  const [trial,pnl,balance,vat,payables]=await Promise.all([api('/v1/reports/trial?to='+p.end),api('/v1/reports/pnl?from='+p.from+'&to='+p.end),api('/v1/reports/balance?to='+p.end),api('/v1/reports/vat?quarter='+p.quarter),api('/v1/reports/payables?as_of='+p.as_of)]);
+  const c=reportCards({trial,pnl,balance,vat,payables});
+  const names={};for(const r of trial.rows||[])names[r.account]=r.name;
+  const acct=(a)=>a+(names[a]?' · '+names[a]:'');
+  // The five cards: the result on the card, the details below it on a click.
+  const tm=c.trial.currencies[0],pm=c.pnl.currencies[0],bm=c.balance.currencies[0],ym=c.payables.currencies[0];
+  const detail=el('div','card panel');detail.id='report';detail.hidden=true;
+  const cards=[
+    ['trial',tile(t('cs.bk.trial'),'circle-check',t(c.trial.balanced?'cs.bk.balanced':'cs.bk.not_balanced'),tm?t('cs.bk.trial_x',{amount:camt(tm,c.trial.by[tm].debit)}):null,c.trial.balanced?'calm':'alert'),()=>
+      c.trial.currencies.flatMap((k)=>[el('h2','sub-h',cur(k)||k),kv((trial.rows||[]).filter((r)=>r.currency===k).map((r)=>[acct(r.account),camt(k,r.balance_cents)]))])],
+    ['pnl',tile(t('cs.bk.pnl'),'receipt',pm?big(pm,c.pnl.by[pm].result):t('none'),[t('cs.bk.pnl_x',{from:day(c.pnl.from),to:day(c.pnl.to)}),others2(c.pnl.currencies,(k)=>c.pnl.by[k].result)].filter(Boolean).join(' · ')),()=>
+      c.pnl.currencies.flatMap((k)=>[el('h2','sub-h',cur(k)||k),kv([...(pnl.by_currency[k].accounts||[]).map((a)=>[acct(a.account),camt(k,a.cents)]),[t('cs.bk.result'),camt(k,c.pnl.by[k].result)]])])],
+    ['balance',tile(t('cs.bk.balance'),'landmark',t(c.balance.balanced?'cs.bk.balanced':'cs.bk.not_balanced'),bm?t('cs.bk.balance_x',{amount:camt(bm,c.balance.by[bm].assets)}):null,c.balance.balanced?'calm':'alert'),()=>
+      c.balance.currencies.flatMap((k)=>[el('h2','sub-h',cur(k)||k),kv([...(balance.by_currency[k].accounts||[]).map((a)=>[acct(a.account),camt(k,a.cents)]),[t('cs.bk.result'),camt(k,c.balance.by[k].result)]])])],
+    ['vat',tile(t('cs.bk.vat',{quarter:c.vat.quarter}),'file-text',big('EUR',c.vat.balance),t('cs.bk.vat_prep')),()=>{
+      // The quarters that hold bookings, newest first; the overview is drawn again for the one chosen.
+      const qs=[];if(days.length){let y=Number(days[0].slice(0,4)),q=Math.ceil(Number(days[0].slice(5,7))/3);for(let n=0;n<40;n++){qs.unshift(y+'Q'+q);if(y+'Q'+q===p.quarter)break;q++;if(q>4){q=1;y++}}}
+      const pick=el('select','field');for(const v of qs.length?qs:[p.quarter]){const o=el('option','',v);o.value=v;pick.append(o)}
+      const box=el('div','',[vatTable(vat)]);
+      pick.onchange=()=>api('/v1/reports/vat?quarter='+encodeURIComponent(pick.value)).then((v)=>box.replaceChildren(vatTable(v)),(e)=>{if(!(e instanceof Expired))box.replaceChildren(note(e.message,'bad'))});
+      return [qs.length>1?el('div','form-row',[el('div','',[el('label','',t('cs.quarter')),pick])]):null,box,note(NL?t('cs.vat_notice'):(vat.notice||t('cs.vat_notice')))]}],
+    ['payables',tile(t('cs.bk.payables'),'wallet',ym?big(ym,c.payables.by[ym].open):t('none'),[t('cs.bk.pay_x',{n:c.payables.items,amount:ym?camt(ym,c.payables.by[ym].overdue):'0'}),others2(c.payables.currencies,(k)=>c.payables.by[k].open)].filter(Boolean).join(' · ')),()=>
+      [kv((payables.items||[]).map((i)=>[data('party',i.party)+' · '+(i.due_date?day(i.due_date):''),camt(i.currency,i.open_cents)])),(payables.items||[]).length?null:note(t('none'))]],
+  ];
+  const tiles=el('div','tiles');tiles.id='cards';
+  for(const [k,tl,body] of cards){tl.dataset.card=k;tl.setAttribute('role','button');tl.tabIndex=0;tl.setAttribute('aria-pressed','false');
+    const pick=()=>{const on=tl.getAttribute('aria-pressed')!=='true';for(const x of tiles.children)x.setAttribute('aria-pressed','false');tl.setAttribute('aria-pressed',String(on));
+      detail.hidden=!on;if(on)detail.replaceChildren(el('h2','',tl.querySelector('.l').textContent),...body().filter(Boolean))};
+    tl.onclick=pick;tl.onkeydown=(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick()}};tiles.append(tl)}
+  // The bookings, newest first, by month; a closed month says so (its report is in the vault only once it is closed).
+  const txOf={};for(const r of txp.items||[])for(const id of (r.booking&&r.booking.entry_ids)||[])txOf[id]=r;
+  const closed=new Set(closedMonths(vlt.files));
+  const sorted=entries.slice().sort((a,b)=>String(b.posting_date).localeCompare(String(a.posting_date))||b.entry_id-a.entry_id);
+  const book=el('div','card panel',[el('h2','',[ic('calendar-range'),t('cs.bk.bookings')]),el('p','fine',t('cs.bk.bookings_sub'))]);book.id='bookings';
+  let shown=0,month='',list=null;const more=btn(t('cs.bk.more'));
+  function draw(){
+    for(const e of sorted.slice(shown,shown+60)){const m=String(e.posting_date).slice(0,7);
+      if(m!==month){month=m;const lock=closed.has(m)?el('span','pill ok',[ic('lock'),' '+t('cs.bk.closed')]):null;if(lock)lock.title=t('cs.bk.closed_title');
+        book.insertBefore(el('h2','sub-h',[monthName(m),lock]),more);list=el('ul','timeline');book.insertBefore(list,more)}
+      list.append(entryItem(e,txOf[e.entry_id]))}
+    shown=Math.min(sorted.length,shown+60);more.hidden=shown>=sorted.length}
+  function entryItem(e,tx){
+    const k=entryKind(e);const tot={};for(const l of e.lines||[])tot[l.currency]=(tot[l.currency]||0)+(l.debit_cents||0);
+    const inv=(/^ap-accrual\|([^|@]+)/.exec(e.source_key||'')||[])[1]||(tx&&tx.invoice&&tx.invoice.ap_id)||null;
+    const s=el('summary','',[el('b','',t('cs.bk.k.'+k)),el('span','',[day(e.posting_date),data('journal',e.description||''),Object.keys(tot).map((c)=>camt(c,tot[c])).join(' · ')].filter(Boolean).join(' · '))]);
+    const body=[kv((e.lines||[]).map((l)=>[acct(l.account)+' · '+t(l.debit_cents?'cs.debit':'cs.credit'),camt(l.currency,l.debit_cents||l.credit_cents)]))];
+    if(inv){const a=el('a','btn',[ic('file-text'),t('cs.bk.open_invoice',{id:inv})]);a.href=at('/invoices/'+encodeURIComponent(inv));
+      const d=btn(t('cs.bk.document'),'','download');d.onclick=()=>download('/v1/invoices/'+encodeURIComponent(inv)+'/document',inv+'.pdf').catch((x)=>{if(!(x instanceof Expired))d.after(note(x.message,'bad'))});
+      body.push(el('div','row2',[a,' ',d]))}
+    // Ids and hashes last: the payment, the request the CFO approved, the terms that were signed, the entry's own hash.
+    const ap=tx&&tx.approval;
+    body.push(dl([tx?[t('cs.bk.payment_id'),el('span','',[paymentId(tx),' ',kindPill(kindOf(tx,null))])]:null,ap&&ap.proposal_id?[t('cs.dt.request'),ap.proposal_id,'mono']:null,
+      ap&&ap.terms_sha256?[t('cs.vault.terms'),ap.terms_sha256,'mono']:null,[t('cs.bk.entry_hash'),e.entry_hash||'','mono']].filter(Boolean)));
+    const d=el('details','ent',[s,...body]);d.dataset.entry=String(e.entry_id);return el('li','',[d])}
+  more.onclick=draw;book.append(more);draw();
+  view().replaceChildren(head(t('cs.nav.books'),t('cs.books_lede')),agreeBox(sum.check),tiles,detail,el('section','section',[book]));
+}
+
+// --- Vault ---------------------------------------------------------------------------------------------------------
+// The vault as it files the company's documents: its own folders (Dutch names, with the English word beside them),
+// a folder's files, the chosen PDF drawn in the page, a download, and "Verify this document": this browser hashes the
+// bytes it downloaded and compares the SHA-256 with the one on record. A payment proof shows what was signed.
+async function vaultView(){
+  title(t('cs.nav.vault'));
+  const [v,txp]=await Promise.all([vaultOf(),api('/v1/transactions?limit=200')]);
+  const top=head(t('cs.nav.vault'),t('cs.vault.lede'));
+  if(!(v.files||[]).length){view().replaceChildren(top,el('div','card list',[el('div','empty',[el('b','',t('cs.vault.none')),t('cs.vault.none_sub')])]));return}
+  const root=vaultTree(v.files);const all=[];(function walk(n,d){for(const f of n.folders){all.push([f,d]);walk(f,d+1)}})(root,0);
+  const en=(name)=>{const k=dutchName(name);return k&&!NL?el('span','pill',t('cs.vault.n.'+k)):null};
+  const tree=el('ul','plain');const folders=el('div','card panel',[el('h2','',t('cs.vault.folders')),tree]);folders.id='folders';
+  const files=el('div','card panel');files.id='files';const doc=el('div','stack');
+  let at0=null;
+  function drawTree(){tree.replaceChildren(...all.map(([f,d])=>{const b=el('button','linkish',f===at0?el('b','',f.name):f.name);b.type='button';b.onclick=()=>openFolder(f);if(f===at0)b.setAttribute('aria-current','true');
+    const li=el('li','',[b,en(f.name)]);li.style.paddingLeft=(d*14)+'px';return li}))}
+  function openFolder(f){at0=f;drawTree();
+    // What kind of file each is: once beside the folder's name when all are the same kind, else on each file.
+    const kinds=[...new Set(f.files.map((x)=>x.kind))];const kp=(k)=>el('span','pill',tk('cs.vault.k.'+k,k));
+    const ul=el('ul','plain',f.files.map((x)=>{const b=el('button','linkish',x.name);b.type='button';b.onclick=()=>showFile(x);return el('li','',[b,en(x.name)||(kinds.length>1?kp(x.kind):null),x.stored?null:el('span','pill bad',t('cs.vault.not_stored'))])}));
+    files.replaceChildren(el('h2','',[f.name,en(f.name),kinds.length===1&&!en(f.name)?kp(kinds[0]):null]),f.files.length?ul:note(t('cs.vault.no_files')));
+    if(f.files.length)showFile(f.files[0]);else doc.replaceChildren()}
+  function showFile(f){
+    const path='/v1/documents/'+f.sha256;
+    const getDoc=btn(t('cs.download'),'','download');getDoc.id='download';getDoc.onclick=()=>download(path,f.name.replace(/[^\w.-]+/g,'_')).catch((e)=>{if(!(e instanceof Expired))getDoc.after(note(e.message,'bad'))});
+    const pages=el('div','pages',[el('p','wait',t('drawing_document'))]);
+    const res=el('div','');res.id='verify-result';
+    const ver=btn(t('cs.vault.verify'),'primary','shield-check');ver.id='verify';
+    ver.onclick=async()=>{ver.disabled=true;try{const r=await api(path,{raw:true});const x=await verifyBytes(await r.arrayBuffer(),f.sha256);
+      res.replaceChildren(note(t(x.match?'cs.vault.match':'cs.vault.mismatch'),x.match?'ok':'bad'),dl([[t('cs.vault.on_record'),x.expected,'mono'],[t('cs.vault.computed'),x.actual,'mono']]));res.dataset.match=String(x.match)}
+      catch(e){if(!(e instanceof Expired))res.replaceChildren(note(e.message,'bad'))}finally{ver.disabled=false}};
+    const id=(/^(?:invoice|receipt):(.+)$/.exec(f.key||'')||[])[1]||null;
+    const check=el('div','card panel',[el('div','row2',[ver,id?' ':null,id?(()=>{const a=el('a','btn',[ic('file-text'),t('cs.bk.open_invoice',{id})]);a.href=at('/invoices/'+encodeURIComponent(id));return a})():null]),res]);
+    const kids=[el('div','card docv',[el('div','bar2',[ic('file-text'),el('span','fn',f.name),getDoc]),pages]),check];
+    // A payment proof: the CFO's approval of the exact terms, the payment it released, and the rail's own label.
+    const tx=f.kind==='receipt'&&id?(txp.items||[]).find((r)=>r.invoice&&r.invoice.ap_id===id&&r.approval&&r.approval.decision):null;
+    if(tx){const ap=tx.approval;const pr=el('div','card panel',[el('h2','',[ic('shield-check'),t('cs.dt.pay_title')]),dl([[t('cs.dt.approved'),stamp(ap.approved_at)],
+      [t('cs.dt.signed_with'),kindOf(tx,null)==='stand-in'?t('cs.dt.test_passkey'):ap.method==='passkey'?t('cs.dt.passkey'):String(ap.method||'')],
+      [t('cs.dt.payment'),el('span','',[tk('rail.'+tx.rail,tx.rail_label||tx.rail),' ',kindPill(kindOf(tx,null))])],
+      [t('cs.dt.request'),ap.proposal_id||'','mono'],[t('cs.bk.payment_id'),paymentId(tx),'mono'],[t('cs.vault.terms'),ap.terms_sha256||'','mono']])]);pr.id='proof';kids.push(pr)}
+    doc.replaceChildren(...kids);
+    drawPdf(path,pages);
   }
-  pick.onchange=()=>drawVat().catch(e=>{if(!(e instanceof Expired))vat.append(note(e.message,'bad'))});
-  const j=await api('/v1/ledger/entries?limit=30');
-  journal.replaceChildren(el('h2','',t('cs.journal')),journalTable(j.items.slice().reverse()),note(t('cs.journal_note')));
-  await drawVat();
+  view().replaceChildren(top,el('div','split',[el('div','stack',[folders,files]),doc]));
+  // The payment proofs first: the folder a reader asks about first, else the first folder that holds files.
+  openFolder(all.map((x)=>x[0]).find((f)=>dutchName(f.name)==='payments'&&f.files.length)||all.map((x)=>x[0]).find((f)=>f.files.length)||all[0][0]);
 }
 
 // --- Settings ------------------------------------------------------------------------------------------------------
@@ -885,7 +1005,7 @@ async function route(){
     view().replaceChildren(el('p','lede',t('loading')));
     const m=/^\/invoices\/([^/]+)$/.exec(path);
     if(m)return await invoiceView(decodeURIComponent(m[1]));
-    const pages={'/overview':overviewView,'/invoices':invoicesView,'/transactions':transactionsView,'/books':booksView};if(!DEMO)pages['/settings']=settingsView;
+    const pages={'/overview':overviewView,'/invoices':invoicesView,'/transactions':transactionsView,'/books':booksView,'/vault':vaultView};if(!DEMO)pages['/settings']=settingsView;
     if(!pages[path])return notHere();
     await pages[path](q);shell();
   }catch(e){if(e instanceof Expired)return;view().replaceChildren(note(t('cs.load_failed',{error:e.message}),'bad'))}
@@ -893,9 +1013,8 @@ async function route(){
 if(DEMO){
   // The demo's frame: no settings, no person, no sign-out; a company switcher; and on every screen one line that says
   // what this is, with the way back to the public site.
-  $('#tabs a[data-tab=settings]').remove();
   const sel=el('select','sel');sel.id='cosel';sel.setAttribute('aria-label',t('cs.demo.switch'));
-  sel.onchange=()=>{const parts=location.hash.split('?')[0].split('/');const tab=['overview','invoices','transactions','books'].includes(parts[3])?parts[3]:'overview';go('#/c/'+sel.value+'/'+tab)};
+  sel.onchange=()=>{const parts=location.hash.split('?')[0].split('/');const tab=['overview','invoices','transactions','books','vault'].includes(parts[3])?parts[3]:'overview';go('#/c/'+sel.value+'/'+tab)};
   $('.who-am-i').replaceChildren(sel);
   const what=el('a','',t('cs.demo.what'));what.href=DEMO.site;what.rel='noopener';
   $('main').before(el('div','wrap',[el('p','banner',[ic('flask'),el('span','',t('cs.demo.banner')),what])]));
@@ -924,7 +1043,7 @@ export function consolePage(n: string, c: { origin: string; rpId: string; mailDo
   const keep = (k: string) => consoleKeys(k as keyof typeof MESSAGES.en) || USED.has(k);
   const cat = (lang: "nl" | "en") => ({ lang, m: Object.fromEntries(Object.entries(MESSAGES[lang]).filter(([k]) => keep(k))), data: lang === "nl" ? DATA_NL : {} });
   const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
-  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__I18N__", () => I18N_JS).replace("__ICONS__", ICON_SET(ICONS));
+  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__I18N__", () => I18N_JS).replace("__BOOKS__", () => BOOKS_JS).replace("__ICONS__", ICON_SET(ICONS));
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
@@ -964,7 +1083,8 @@ addEventListener('message',async(ev)=>{
     GlobalWorkerOptions.workerPort=worker;
     task=getDocument({data:new Uint8Array(d.data),isEvalSupported:false,enableXfa:false,useSystemFonts:false,stopAtErrors:false,verbosity:0});
     const doc=await task.promise;
-    for(let i=1;i<=Math.min(doc.numPages,MAX_PAGES)&&!done;i++){const page=await doc.getPage(i);const vp=page.getViewport({scale:2});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;c.setAttribute('aria-label','Page '+i+' of the invoice');document.body.append(c);await page.render({canvasContext:c.getContext('2d'),viewport:vp,canvas:c}).promise;size()}
+    // The print intent draws without waiting for animation frames, which a frame below the fold never gets (12 Nov).
+    for(let i=1;i<=Math.min(doc.numPages,MAX_PAGES)&&!done;i++){const page=await doc.getPage(i);const vp=page.getViewport({scale:2});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;c.setAttribute('aria-label','Page '+i+' of the invoice');document.body.append(c);await page.render({canvasContext:c.getContext('2d'),viewport:vp,canvas:c,intent:'print'}).promise;size()}
     if(doc.numPages>MAX_PAGES){const p=document.createElement('p');p.textContent=(doc.numPages-MAX_PAGES)+' more page(s): download the PDF to see them';document.body.append(p)}
     clearTimeout(timer);done=true;size();
   }catch(e){clearTimeout(timer);fail()}
