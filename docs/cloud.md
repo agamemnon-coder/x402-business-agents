@@ -285,6 +285,49 @@ Nothing here needs to be in git; every secret goes through `wrangler secret put`
    rule "Send to a Worker: purser-cloud", and `MAIL_DOMAIN` set to that domain. Each company is then reached at
    `<its-slug>@in.<domain>`.
 5. **Deploy** (on Max's word): `npm run cloud:pdfjs` (copies pdf.js into `cloud/public`, the Worker's static assets, so the console can draw an invoice; without it the console offers the download only), then `npx wrangler deploy -c cloud/wrangler.jsonc`.
+   Since the engine was merged, `cloud/wrangler.jsonc` adds the `CompanyEngine` class and its migration `v1`, which cannot
+   be rolled back once deployed: it goes out only after 15 November 2026, or earlier on Max's own word.
+
+### Deploying purser-try
+
+`purser-try` is the engine's deployment of its own, on test money (`cloud/wrangler.try.jsonc`): never the product's
+`purser-cloud` and never its stores. It has no R2 bucket, so documents and the archive are kept in its D1 database.
+From the repository root, after `npm ci` and `npm ci --prefix worker`, with wrangler logged in to the account:
+
+1. **The database** (EU), then paste its `database_id` into `cloud/wrangler.try.jsonc`:
+   ```bash
+   worker/node_modules/.bin/wrangler d1 create purser-try --location weur
+   ```
+   ```bash
+   worker/node_modules/.bin/wrangler d1 migrations apply purser-try --remote -c cloud/wrangler.try.jsonc
+   ```
+2. **Secrets** (each typed at the prompt, never on the command line or in chat):
+   ```bash
+   worker/node_modules/.bin/wrangler secret put SESSION_SECRET -c cloud/wrangler.try.jsonc
+   ```
+   ```bash
+   worker/node_modules/.bin/wrangler secret put ADMIN_TOKEN_SHA256 -c cloud/wrangler.try.jsonc
+   ```
+   Later, for Claude in the engine: `KIT11_ANTHROPIC_API_KEY`, the demo's own capped key, set by Max by hand the same way.
+3. **Deploy:** `npm run cloud:pdfjs`, a dry run, then the deploy:
+   ```bash
+   worker/node_modules/.bin/wrangler deploy --dry-run --outdir /tmp/purser-try -c cloud/wrangler.try.jsonc
+   ```
+   ```bash
+   worker/node_modules/.bin/wrangler deploy -c cloud/wrangler.try.jsonc
+   ```
+4. **Smoke** (the admin token in `PURSER_ADMIN_TOKEN`, read and never printed): the cloud alone, then the engine's chain,
+   then a burst with polling:
+   ```bash
+   npm run cloud:smoke -- https://purser-try.max-31b.workers.dev --plain
+   ```
+   ```bash
+   npm run cloud:smoke -- https://purser-try.max-31b.workers.dev
+   ```
+   ```bash
+   npm run cloud:smoke -- https://purser-try.max-31b.workers.dev --parallel 10 --poll 1000
+   ```
+   What they printed goes into [the run record](runs/2026-11-13-engine-in-cloud.md).
 
 ## Limits on what comes in
 
