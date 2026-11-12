@@ -164,6 +164,19 @@ describe("vatRegime: the hints code works out", () => {
     expect(of({ supplierCountry: "NL", text: "Steuerschuldnerschaft des Leistungsempfängers" })).toMatchObject({ states_reverse_charge: true });
   });
 
+  it("a sentence that says no reverse charge applies does not state one", () => {
+    for (const text of [
+      "No reverse charge applies to this invoice.", "This supply is not subject to reverse charge.", "Reverse charge does not apply.", "Reverse charge: not applicable",
+      "The reverse charge mechanism is not applicable here.", "Geen btw verlegd.", "De verleggingsregeling is niet van toepassing.", "BTW verlegd: n.v.t.",
+      "Keine Steuerschuldnerschaft des Leistungsempfängers.", "Reverse-Charge-Verfahren nicht anwendbar",
+    ]) expect(of({ supplierVatId: "NL123456789B01", text }), text).toMatchObject({ reverse_charge: "none", states_reverse_charge: false });
+    // A "no" about the VAT, not about the reverse charge, still states it; so does one plain mention beside a denied one.
+    for (const text of [
+      "No VAT charged: reverse charge.", "VAT not charged, reverse charge applies.", "No VAT is charged under the reverse charge rule.", "Reverse charge: no VAT charged.",
+      "0% btw, btw verlegd", "Keine USt. – Steuerschuldnerschaft des Leistungsempfängers", "No reverse charge on freight. Reverse charge applies to the goods.",
+    ]) expect(of({ supplierVatId: "NL123456789B01", text }), text).toMatchObject({ reverse_charge: "nl", states_reverse_charge: true });
+  });
+
   it("holds the 27 EU member states as data, and a reverse-charge code for each kind", () => {
     expect(EU_COUNTRIES).toHaveLength(27);
     expect(new Set(EU_COUNTRIES).size).toBe(27);
@@ -393,6 +406,17 @@ describe("enforceCoding: the rules, one by one", () => {
     refused(nl, all(nl, "6900", "PRC_NL"), "reverse_charge_mismatch", "VAT code PRC_NL is a reverse-charge code and the invoice charges 84.00 of VAT");
     // The hint is data in the case: a case that says "eu" on an invoice with VAT still gets no reverse charge.
     refused({ ...nl, regime: { ...nl.regime, reverse_charge: "eu" } }, all(nl, "6900", "PRC_EU"), "reverse_charge_mismatch");
+  });
+
+  it("reverse_charge_mismatch: an invoice that says no reverse charge applies gets none", () => {
+    const text = `${SINGLE}\nBTW-nummer: NL123456789B01\nNo reverse charge applies to this invoice.`;
+    const c = caseOf(text, { country: "NL" });
+    expect(c.regime).toEqual({ reverse_charge: "none", states_reverse_charge: false, charges_vat: false, supplier_country: "NL" });
+    expect(answerCoderTool(c, { name: "vat_regime", input: {} }).text).toContain("The invoice does not say the VAT is reverse-charged. Code's hint: no reverse charge (none).");
+    refused(c, all(c, "6200", "PRC_NL"), "reverse_charge_mismatch", "VAT code PRC_NL is not the reverse charge code's checks show for this invoice (none)");
+    // The same invoice saying the VAT is reverse-charged: allowed.
+    const stated = caseOf(text.replace("No reverse charge applies", "Reverse charge applies"), { country: "NL" });
+    expect(enforceCoding(stated, coding(all(stated, "6200", "PRC_NL")))).toMatchObject({ status: "coded", source: "claude", lines: [{ vat_code: "PRC_NL", vat_cents: 0 }] });
   });
 
   it("no VAT code on any line: Claude's accounts stand and a person codes the VAT; on some lines only: vat_code_missing", () => {

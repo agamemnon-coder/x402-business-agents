@@ -260,18 +260,35 @@ export function vatIdCountry(vatId: string): string {
 }
 
 /** The invoice's own words for a reverse charge: English, Dutch, German. */
-const STATES_REVERSE = /reverse[\s-]*charge|btw\s+(?:is\s+)?verlegd|verleggingsregeling|steuerschuldnerschaft\s+des\s+leistungsempf(?:ä|ae)ngers/i;
+const STATES_REVERSE = /reverse[\s-]*charge|btw\s+(?:is\s+)?verlegd|verleggingsregeling|steuerschuldnerschaft\s+des\s+leistungsempf(?:ä|ae)ngers/gi;
+/** A denial right before those words: "no reverse charge", "not subject to reverse charge", "geen btw verlegd", "keine Steuerschuldnerschaft". */
+const DENIED_BEFORE = /(?:\b(?:no|not|without|geen|niet|zonder|kein(?:e[mnrs]?)?|nicht|ohne)|n['’]t)\s+(?:(?:an?|the|de|het|een|der|die|das|dem|den|subject\s+to|under|onder|unter|sprake\s+van)\s+)*$/i;
+/** A denial right after them: "reverse charge does not apply", "reverse charge: not applicable", "niet van toepassing", "nicht anwendbar". */
+const DENIED_AFTER = /^[\s:–-]*(?:(?:mechanism|rule|scheme|procedure|regeling|verfahren)\s+)?(?:(?:does|do|is|are|was|will)\s+not\b|(?:does|do|is|are|was|wo)n['’]t\b|not\s+appl|n\/a\b|n\.v\.t\b|(?:is\s+)?niet\s+van\s+toepassing|(?:ist\s+)?nicht\s+anwendbar|findet\s+keine\s+anwendung)/i;
+
+/**
+ * Whether the text says the VAT is reverse-charged: one mention of it that the words right around it do not deny.
+ * "No reverse charge applies" states none; "No VAT charged: reverse charge" does, because its "no" is about the VAT.
+ */
+function statesReverse(text: string): boolean {
+  for (const m of text.matchAll(STATES_REVERSE)) {
+    const end = m.index + m[0].length;
+    if (!DENIED_BEFORE.test(text.slice(Math.max(0, m.index - 60), m.index)) && !DENIED_AFTER.test(text.slice(end, end + 60))) return true;
+  }
+  return false;
+}
 
 /**
  * The hints code works out from the supplier's VAT id and country, the company's country, the invoice's tax and the
- * invoice's own words. An invoice that charges VAT has nothing reverse-charged. Without VAT: a supplier at home only
- * when the invoice itself says so (nl); a supplier in another EU country when it has a VAT id or the invoice says so
- * (eu); a supplier outside the EU (non_eu); and unknown where code cannot tell the country.
+ * invoice's own words (a mention of a reverse charge that the invoice does not deny). An invoice that charges VAT has
+ * nothing reverse-charged. Without VAT: a supplier at home only when the invoice itself says so (nl); a supplier in
+ * another EU country when it has a VAT id or the invoice says so (eu); a supplier outside the EU (non_eu); and unknown
+ * where code cannot tell the country.
  */
 export function vatRegime(hints: { supplierVatId: string; supplierCountry: string; companyCountry: string; tax: string; text: string }): VatRegime {
   const x = obj(hints);
   const charges = (cents(x.tax) ?? 0) > 0;
-  const states = STATES_REVERSE.test(str(x.text).slice(0, CODER_TEXT_LIMIT).normalize("NFC"));
+  const states = statesReverse(str(x.text).slice(0, CODER_TEXT_LIMIT).normalize("NFC"));
   const named = /^[A-Za-z]{2}$/.test(str(x.supplierCountry).trim()) ? str(x.supplierCountry).trim().toUpperCase() : "";
   const fromId = vatIdCountry(str(x.supplierVatId));
   // A record of one country and a VAT id of another: code cannot tell which it is.
