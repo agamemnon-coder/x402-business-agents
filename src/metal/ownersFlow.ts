@@ -44,6 +44,7 @@ import { countByStep, ownersRefusals, readOwnersCalls } from "./ownersBudget.js"
 import { budgetStop, type OwnersChain } from "./ownersChain.js";
 import { checkOwnersTerms, coseP256, ownersExecuteTerms, type OwnersExecuteTerms } from "./ownersExecute.js";
 import { stepJournal, stepOnce } from "./ownersTx.js";
+import { VIRTUAL_LABELS } from "./ownersRecord.js";
 import { passkeySigner } from "./passkeyOwner.js";
 import { ACCOUNT_FACTORY, PASSKEY_VERIFIER, RELAY_CALLS, SPONSOR_KEY } from "./passkeyRelay.js";
 import { keptPullDir, pullUnder } from "./pull.js";
@@ -321,7 +322,8 @@ export async function setup(d: OwnersWorld): Promise<{ account: Address; created
   d.chain.step("setup");
   const owners = ownersOf(d.db);
   const signers = owners.map((x) => x.signer);
-  const who = owners.map((x) => `${x.label}'s passkey`).join(" and ");
+  // A labelled virtual test passkey (src/metal/ownersRecord.ts VIRTUAL_LABELS) is said to be one wherever it is named.
+  const who = owners.map((x) => `${x.label}'s passkey${Object.hasOwn(VIRTUAL_LABELS, x.label) ? " (a virtual test passkey)" : ""}`).join(" and ");
   const keys = await worldKeys();
   d.say(`KEYS             gas sponsor ${keys.sponsor.address}; payee ${MANDATE.payee.name} ${keys.payee}; the Sourcing agent's mandate key ${keys.agent.kid} (key files in the keys folder; none of them is an owner)`);
   const made = d.db.prepare("SELECT 1 FROM audit_log WHERE event = 'owners.account_created'").get() ? accountOf(d.db) : null;

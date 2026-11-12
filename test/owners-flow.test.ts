@@ -85,6 +85,14 @@ describe("owners setup in a fresh world (no npm run bootstrap)", () => {
     expect(events("owners.tx_sent").map((e) => String(e.subject).split(":").slice(0, 2).join(":"))).toEqual(["setup:fund-sponsor", "setup:create-account", "setup:fund-account"]);
   });
 
+  it("names a labelled virtual test passkey as virtual in its account line, and a person's passkey as a passkey only", async () => {
+    await world({ labels: ["max", "test-controller"] });
+    await setup(w.d);
+    const line = w.said.find((l) => l.startsWith("ACCOUNT")) ?? "";
+    expect(line).toMatch(/max's passkey and test-controller's passkey \(a virtual test passkey\), threshold 2/);
+    expect(line).not.toMatch(/max's passkey \(/);
+  });
+
   it("run again, it costs no call and sends nothing", async () => {
     await world();
     const first = await setup(w.d);
