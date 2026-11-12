@@ -11,7 +11,9 @@ import { watchPage } from "../src/redesign/watch.js";
 import { proofPage } from "../src/redesign/proof.js";
 import { CHAIN_TEST, DEFENSE_IN_DEPTH, HOME_BADGE, KIT_LINE, PRICE_LINE, SECOND_APPROVER, VISA_AWARD_ON, VISA_CLAIM, VISA_EXTRA_LINK, VISA_TAP_STATUS } from "../src/config/brand.js";
 import { buildPages } from "../src/relay/assets.js";
-import { CONNECTED_LINE, TWO_LOCKS_LINE } from "../src/redesign/partners.js";
+import { CONNECTED_LINE, hostileClaimText, TWO_LOCKS_LINE } from "../src/redesign/partners.js";
+
+const HOSTILE_CLAIM = hostileClaimText();
 import { esc } from "../src/redesign/ui.js";
 
 const { file, record } = loadRecord();
@@ -80,14 +82,18 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   // The connected-accounts run (10 Nov) on /airwallex, dated with its own record; its ids and figures are checked against
   // docs/runs/2026-11-10-connected-accounts-sandbox.md in test/partner-pages.test.ts.
   .replace(esc(CONNECTED_LINE), " ")
-  // The two-locks run (10 Nov) on /airwallex, dated with its own record; its id and amount are checked against
-  // docs/runs/2026-11-10-airwallex-two-locks.md in test/partner-pages.test.ts.
+  // The two-locks run (10 and 12 Nov) on /airwallex, dated with its own records; its id and amount are checked against
+  // docs/runs/2026-11-10-airwallex-two-locks.md and docs/runs/2026-11-12-airwallex-two-locks-paid.md in
+  // test/partner-pages.test.ts.
   .replace(esc(TWO_LOCKS_LINE), " ")
   // Watch's playback speeds (Max, 10 Nov) are a control, not a figure of the run.
   .replace(/\b(?:0\.5|1|2)×/g, " ")
   // Home's hero demo (10 Nov): the Airwallex-only run's invoice, dated with its own record; its figures are checked
   // against docs/demo/airwallex-run.json in test/hero-demo.test.ts.
-  .replace(/\b1\s+Ask\s+2\s+Face ID[\s\S]*?Step 4 is the check every payment runs\./g, " ");
+  .replace(/\b1\s+Ask\s+2\s+Face ID[\s\S]*?Step 4 is the check every payment runs\./g, " ")
+  // 12 Nov (jury panel): /claude's hostile-model eval line, from its own record (docs/evals/ap-hostile.json), which
+  // test/ap-agent-evals.test.ts holds to a fresh run of the eval.
+  .replace(HOSTILE_CLAIM || "\u0000", " ");
 
 /** Numbers on the page that are not in the record. */
 export const unknownNumbers = (html: string) => (visibleText(html).match(NUM) ?? []).map(norm).filter((n) => !ALLOWED.has(n));
@@ -279,8 +285,9 @@ describe("the redesigned public pages", () => {
     for (const html of [homePage(), watchPage(), proofPage()]) expect(html).toContain(SECOND_APPROVER);
   });
 
+  // 12 Nov (jury panel): one exception, /claude's hostile-model eval line, which CI computes and its record holds (not sim-31).
   it("claims no '0 unsafe' anywhere until sim-31 is checked (Max, 2 Nov)", () => {
-    for (const [name, body] of Object.entries(buildPages() as unknown as Record<string, unknown>)) if (typeof body === "string") expect({ name, zero: /\b0 unsafe\b/i.test(body.replace(/<[^>]+>/g, " ")) }).toEqual({ name, zero: false });
+    for (const [name, body] of Object.entries(buildPages() as unknown as Record<string, unknown>)) if (typeof body === "string") expect({ name, zero: /\b0 unsafe\b/i.test(body.replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(HOSTILE_CLAIM || "\u0000", " ")) }).toEqual({ name, zero: false });
   });
 });
 

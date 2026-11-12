@@ -216,7 +216,7 @@ export function proposePayeeAdd(db: DB, id: string, by: Actor, now = new Date())
  * After approval: the account is added at Airwallex for its route (beneficiary create with the approved bank details)
  * and to the suppliers on file with that route; the invoices waiting for it are checked again.
  */
-export async function executePayeeAdd(db: DB, rail: PayoutRail, proposalId: string, inbox: Pick<InboxDeps, "now" | "sink"> & { reader?: InboxDeps["reader"] } = {}, now = new Date()): Promise<void> {
+export async function executePayeeAdd(db: DB, rail: PayoutRail, proposalId: string, inbox: Pick<InboxDeps, "now" | "sink" | "claude"> & { reader?: InboxDeps["reader"] } = {}, now = new Date()): Promise<void> {
   const t = beginExecution<PayeeAddTerms>(db, proposalId, (terms) => {
     if (terms.kind !== "payee_add") throw new Error(`${proposalId} is not a new supplier`);
     if (onFile(db).some((b) => b.name.trim() === terms.vendor)) throw new Error(`${terms.vendor} is on file already; nothing was added`);

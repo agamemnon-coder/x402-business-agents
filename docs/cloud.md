@@ -110,7 +110,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/export/staged/{id}` | admin | A staged export's state, with a fresh 15-minute link to its manifest while it is ready. Needs admin and read. |
 | `GET /v1/export/download/{id}/{part}` | anyone | With its signed link only: one part (or the manifest) of a staged export, by its signed link (no key); the manifest carries a signed link per part. |
 | `POST /v1/close` | admin | Close the company's account: access ends; records are kept until the retention day, then purged. |
-| `GET /v1/engine` | read | Where the company's engine stands: `mode` (`test_money`), the approval passkey, the stand-in bank's balances, whether both chains verify. |
+| `GET /v1/engine` | read | Where the company's engine stands: `mode` (`test_money`), the approval passkey, the stand-in bank's balances, whether both chains verify, who reads (`reader`: `claude` under the caps or `parser`), who decides (`agents`: `code` until the agents join), and what this company's Claude calls cost so far against its cap (`spent_micros`, `cap_micros`, micro-USD at list price). |
 | `POST /v1/engine/documents` | admin | Upload a supplier invoice: `{ filename, mime?, base64 }`, at most 15 MB once decoded (22,000,000 bytes of body). Filed, read and checked; answers `{ kind, sha256, invoice }`, or 400 with the inbox's reason when it refuses the file (not a PDF, too large). |
 | `GET /v1/engine/invoices` | read | The engine's invoices: status, whether it can be paid, what the checks found, its proposal; `{ items }`. |
 | `POST /v1/engine/invoices/{id}/pay` | admin | File the invoice's payment for approval: `{ proposal }`, or 409 with the engine's reason; 404 for an invoice the company's engine does not hold. Nothing is paid before the approval. |
@@ -132,7 +132,10 @@ company is always the caller's own. The deploy's entry point is `cloud/src/entry
 Durable Object, `CompanyEngine`). The routes answer 404 unless the Worker has the `ENGINE` binding and the var
 `ENGINE_MODE=test_money`. With both, each company's engine runs in its own Durable Object on its own SQLite
 (`cloud/src/engine/object.ts`), which keeps its ledger, its documents and its stand-in bank. The engine in
-`cloud/src/engine/node.ts` keeps each ledger in memory and is used by the tests only.
+`cloud/src/engine/node.ts` keeps each ledger in memory and is used by the tests only. With the var `ENGINE_CLAUDE=on`,
+the key and the owner's switches, the engine reads with Claude under hard caps (`cloud/src/engine/claudeAccess.ts`,
+`cloud/src/engine/spend.ts`); otherwise the parser reads. A reading's row carries the model and its cost; its request id
+is present in live records, and null when the SDK runs over a stand-in fetch (the tests).
 
 A deployment without R2 leaves the `DOCS` binding out (`cloud/wrangler.try.jsonc`, the engine's deployment of its own,
 `purser-try`). The Worker then keeps every document it would put in R2 (the read model's documents, the archive under

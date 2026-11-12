@@ -11,6 +11,7 @@ import { seedTreasury } from "../src/agents/euroBill.js";
 import { invoiceDetail } from "../src/ap/detail.js";
 import { docStoreOf, readDoc, useDocStore, type DocStore } from "../src/ap/docStore.js";
 import { ingestDocument, recheck, type InboxDeps } from "../src/ap/inbox.js";
+import { ensureCoded } from "../src/ap/coderAgent.js";
 import { payApInvoice } from "../src/ap/pay.js";
 import type { Asker } from "../src/ap/read.js";
 import { apInvoice } from "../src/ap/store.js";
@@ -106,6 +107,14 @@ describe("a ledger with its own document store", () => {
     const [again] = await recheck(db, { now: () => now }, [id]);
     expect(again!.status).toBe("ready");
     expect(store.reads).toContain(pathOf(id));
+  });
+
+  it("the coder agent reads the document's text from the store before the accrual is booked", async () => {
+    const id = await add();
+    const inv = apInvoice(db, id)!;
+    const before = store.reads.length;
+    await ensureCoded(db, { ...inv, coding: undefined }, { now: () => now, env: { KIT11_AP_AGENTS: "on" } });
+    expect(store.reads.slice(before)).toContain(pathOf(id));
   });
 
   it("the invoice's detail shows the supplier's own total line, read from the store", async () => {

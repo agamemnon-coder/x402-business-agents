@@ -10,6 +10,8 @@ const AREAS: Record<string, { prefixes: string[]; floor: number }> = {
   executors: { prefixes: ["executors/"], floor: 90 },
   relay: { prefixes: ["relay/"], floor: 90 },
   clearing: { prefixes: ["metal/clearing"], floor: 90 },
+  // 12 November: the payables agents' cores and their runner wiring, which the agent evals (test/ap-agent-evals.test.ts) exercise.
+  "ap agents": { prefixes: ["ap/checkerCore", "ap/payerCore", "ap/checkerAgent", "ap/payerAgent"], floor: 90 },
 };
 
 const root = resolve(import.meta.dirname, "..");

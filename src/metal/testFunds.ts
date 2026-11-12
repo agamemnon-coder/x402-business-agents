@@ -83,7 +83,9 @@ export async function fundTestWallet(address: Address, minCents: number, opts: {
   return "recycled";
 }
 
-function liveDeps(): FundDeps {
+/** The live deps: the keys folders beside this world's, their ledgers, Purser's own chain client and the faucet. A caller
+ *  that counts its calls (the owners path, behind its call budget) replaces balance, transfer and faucet with its own. */
+export function liveDeps(): FundDeps {
   const dir = keysDir();
   const root = dirname(dir);
   return {
