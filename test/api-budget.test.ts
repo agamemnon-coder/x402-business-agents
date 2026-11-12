@@ -11,8 +11,9 @@ const file = () => join(mkdtempSync(join(tmpdir(), "budget-")), "spend.jsonl");
 
 describe("the API budget per block (D26)", () => {
   it("splits about $250 over the blocks and keeps $30 back", () => {
-    expect(BUDGET_BLOCKS).toEqual({ evals: 80, redteam: 60, soak: 50, reviews: 30, try: 30 });
-    expect(Object.values(BUDGET_BLOCKS).reduce((a, b) => a + b, 0)).toBe(250);
+    // 12 November: the payables agents' live eval got its own block of $8 (npm run ap-agent-evals), beside the D26 $250.
+    expect(BUDGET_BLOCKS).toEqual({ evals: 80, redteam: 60, soak: 50, reviews: 30, try: 30, "ap-agents": 8 });
+    expect(Object.values(BUDGET_BLOCKS).reduce((a, b) => a + b, 0)).toBe(258);
   });
   it("adds up what each block spent, from the cost recorded per call", () => {
     const f = file();

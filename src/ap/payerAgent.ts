@@ -100,7 +100,7 @@ export function paymentCase(plan: PlannedPayment, about: { invoiceId: string | n
 }
 
 /** The decision row: who proposed, the agent's reason, the enforced outcome with code's reason, and what follows. */
-function recordProposed(db: DB, about: { invoiceId: string; invoiceNo: string }, out: PayerOutcome, now: Date): void {
+export function recordProposed(db: DB, about: { invoiceId: string; invoiceNo: string }, out: PayerOutcome, now: Date): void {
   audit(db, PAYER_AGENT, PAYER_DECISION, about.invoiceId, {
     invoice_id: about.invoiceId, invoice_no: about.invoiceNo, source: out.source, model: out.source === "claude" ? out.run.model : null,
     rail: out.proposal.rail, pay_on: out.proposal.pay_on, pay_currency: out.proposal.pay_currency, reason: out.proposal.reason,

@@ -1,29 +1,36 @@
-// npm run agent-evals [-- --runs N] [-- --models haiku,sonnet,opus] [-- --agent treasury | --case a,b]: the three Kit 11 agents' evals with real models
+// npm run agent-evals [-- --render] [-- --runs N] [-- --models haiku,sonnet,opus] [-- --agent treasury | --case a,b]: the three Kit 11 agents' evals with real models
 // (src/evals/agentEvals.ts), per model, N runs each. Writes docs/evals/agents.json and docs/agent-evals.md: per case
 // and model, how often it passed, what it cost and how long it took, and per agent the cheapest model that passed
 // every run. Needs KIT11_ANTHROPIC_API_KEY; spends real money (a few cents a run). Never part of npm test.
 
-import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { claudeClient } from "../claude/reader.js";
 import { PRICES } from "../claude/pricing.js";
 import { budgetStatus, recordSpend } from "../claude/budget.js";
 import { AGENT_CASES, type AgentName } from "../evals/agentEvals.js";
+import { agentEvalsMarkdown, apSectionOf, withApSection, type AgentEvalsRecord } from "../evals/agentEvalsDoc.js";
+import { evalCommit } from "../evals/commit.js";
 
 const args = process.argv.slice(2);
 const runs = Number(args[args.indexOf("--runs") + 1] ?? 1) || 1;
 const ALL = { haiku: "claude-haiku-5-5", sonnet: "claude-sonnet-5-5", opus: "claude-opus-5-5" } as const;
 const pick = args.includes("--models") ? args[args.indexOf("--models") + 1]!.split(",") as (keyof typeof ALL)[] : (["haiku", "sonnet", "opus"] as const);
+// --render: docs/agent-evals.md written again from the records, without calling Claude.
+if (args.includes("--render")) {
+  const mdPath = resolve(import.meta.dirname, "../../docs/agent-evals.md");
+  const record = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../docs/evals/agents.json"), "utf8")) as AgentEvalsRecord;
+  writeFileSync(mdPath, withApSection(agentEvalsMarkdown(record), existsSync(mdPath) ? apSectionOf(readFileSync(mdPath, "utf8")) : ""));
+  console.log("docs/agent-evals.md written from docs/evals/agents.json");
+  process.exit(0);
+}
 const client = claudeClient();
 if (!client) { console.error("KIT11_ANTHROPIC_API_KEY is not set"); process.exit(2); }
 const SPEND = resolve(import.meta.dirname, "../../docs/runs/api-budget.jsonl");
 if (budgetStatus(SPEND).blocks.evals.over) { console.error("the evals block of the API budget is spent (npm run budget)"); process.exit(2); }
 
 // The code each row ran: the commit, and whether the checkout had changes outside this report's own files.
-const git = (a: string[]) => { try { return execFileSync("git", a, { cwd: resolve(import.meta.dirname, "../.."), encoding: "utf8" }).trim(); } catch { return ""; } };
-const COMMIT = git(["rev-parse", "--short=12", "HEAD"]) || "unknown";
-const DIRTY = git(["status", "--porcelain", "--", ".", ":!docs/evals/agents.json", ":!docs/agent-evals.md", ":!docs/runs/api-budget.jsonl"]) !== "";
+const { commit: COMMIT, dirty: DIRTY } = evalCommit(["docs/evals/agents.json", "docs/agent-evals.md", "docs/runs/api-budget.jsonl"]);
 
 interface Row { case: string; agent: AgentName; kind: string; model: string; passed: number; runs: number; cost_usd_micros: number; median_ms: number; details: string[]; commit?: string; dirty?: boolean; words?: string[][] }
 const rows: Row[] = [];
@@ -79,25 +86,14 @@ const cheapest = Object.fromEntries(agents.map((a) => {
   ok.sort((x, y) => (PRICES[x]!.standard.output - PRICES[y]!.standard.output));
   return [a, ok[0] ?? null];
 }));
-const out = { ran_at: stamp, runs, models: [...new Set(rows.map((r) => r.model))], cheapest_passing: cheapest, rows };
+// How the oldest rows' commits were read from git history stays with them.
+const backfill = existsSync(outPath) ? (JSON.parse(readFileSync(outPath, "utf8")) as AgentEvalsRecord).commit_backfill : undefined;
+const out = { ran_at: stamp, runs, models: [...new Set(rows.map((r) => r.model))], cheapest_passing: cheapest, ...(backfill && rows.some((r) => (r as { commit_source?: string }).commit_source) ? { commit_backfill: backfill } : {}), rows };
 mkdirSync(resolve(import.meta.dirname, "../../docs/evals"), { recursive: true });
 writeFileSync(outPath, JSON.stringify(out, null, 2) + "\n");
 
-const md = [
-  "# Agent evals: the three Kit 11 agents with real models",
-  "",
-  `Last update ${out.ran_at.slice(0, 16).replace("T", " ")} UTC; each row shows how many runs it had and when it ran, with \`npm run agent-evals\` (\`src/evals/agentEvals.ts\`). Stand-in tools: no chain, no Airwallex. Code's gates stay on, so an attack passes only when the outcome is right; the detail counts the calls code refused. The quoted words are the models' own. Those from before 1 November 06:00 say "Metal refused": the tool then said so. Since the Metal QA it says "refused before anything was signed" (Purser's check against the mandate's cap).`,
-  "",
-  "| Case | Kind | Model | Passed | Cost (USD) | Median time | Ran (UTC) | Commit | Last run |",
-  "|---|---|---|---|---|---|---|---|---|",
-  ...rows.map((r) => `| ${r.case} | ${r.kind} | ${r.model} | ${r.passed}/${r.runs} | ${(r.cost_usd_micros / 1e6).toFixed(4)} | ${(r.median_ms / 1000).toFixed(1)} s | ${((r as Row & { ran_at?: string }).ran_at ?? "").slice(0, 16).replace("T", " ")} | ${r.commit ? `${r.commit}${r.dirty ? " (dirty)" : ""}` : "not recorded"} | ${r.details.at(-1)!.replace(/\|/g, "/")} |`),
-  "",
-  "## Cheapest model that passed every run",
-  "",
-  ...agents.map((a) => `- ${a}: ${cheapest[a] ?? "none of the models tried"}`),
-  "",
-  `Not in this comparison: the cases that rebuild a run's moment on that run's model only (${AGENT_CASES.filter((c) => c.model).map((c) => `${c.id} on ${c.model}`).join(", ")}).`,
-  "",
-].join("\n");
-writeFileSync(resolve(import.meta.dirname, "../../docs/agent-evals.md"), md);
+// The payables agents' section (npm run ap-agent-evals) is kept as it is.
+const mdPath = resolve(import.meta.dirname, "../../docs/agent-evals.md");
+const md = withApSection(agentEvalsMarkdown(out), existsSync(mdPath) ? apSectionOf(readFileSync(mdPath, "utf8")) : "");
+writeFileSync(mdPath, md);
 console.log(`\ncheapest passing: ${agents.map((a) => `${a} ${cheapest[a] ?? "none"}`).join(", ")}`);
