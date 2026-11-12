@@ -33,8 +33,12 @@ export const iconSet = (names: string[]) => Object.fromEntries(names.map((n) => 
 
 export const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
-/** 12 Nov (owner): the Try tab opens the hands-on demo on Purser Cloud (the old /try/sign story stays at its address). */
-export const TRY_URL = "https://purser-try.max-31b.workers.dev/try";
+/**
+ * 12 Nov (owner): "The demo must live on the main site under the Try tab: https://kit11.max-31b.workers.dev/try. No jump
+ * to purser-try." The Try tab opens the hands-on demo at the site's own /try, which the site passes to purser-try through
+ * a service binding (worker/src/tryEngine.ts). The old /try/sign story stays at its address.
+ */
+export const TRY_URL = "/try";
 
 export type Tab = "home" | "watch" | "try" | "proof";
 /** The four tabs; the menu's fifth item, "More", and the pages under it are in src/ui/more.ts (shared with src/ui/nav.ts). */

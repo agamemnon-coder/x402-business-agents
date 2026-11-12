@@ -18,7 +18,7 @@ import { SlowDown, type EngineApi } from "./api.js";
 
 /** What a handler needs of the request's context (cloud/src/app.ts Ctx is one). */
 export interface EngineCtx {
-  env: { engine?: (tenantId: string) => EngineApi; rpId: string };
+  env: { engine?: (tenantId: string) => EngineApi; rpId: string; origin: string };
   req: Request;
   url: URL;
   params: string[];
@@ -125,7 +125,8 @@ export function engineRoutes<C extends EngineCtx>(kit: EngineKit<C>): EngineRout
     { method: "POST", path: "/v1/engine/passkey/start", summary: "Start the approval passkey of the signed-in person (a session only, never a key): the challenge and code of a short enrolment window, the relying party, the person, and the passkeys to exclude.", need: "admin", run: on(async (c, e) => {
       const user = signedIn(c);
       const name = await displayName(c, user);
-      const s = await e.passkeyStart();
+      // The relying party is this request's (../hostOrigin.ts): a passkey made on the site's /try is bound to the site.
+      const s = await e.passkeyStart({ rpId: c.env.rpId, origin: c.env.origin });
       return json(200, { challenge: s.challenge, code: s.code, rp: { id: c.env.rpId, name: "Purser" }, user: { id: user, name, displayName: name }, exclude: s.exclude });
     }) },
     { method: "POST", path: "/v1/engine/passkey/finish", summary: "Finish the approval passkey (a session only): { code, credential } with the passkey the browser made for the challenge; it is labelled with the signed-in person's name. 409 with the engine's reason when it is refused.", need: "admin", run: on(async (c, e) => {

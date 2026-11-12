@@ -12,6 +12,7 @@ import { talkSource } from "./talkRound.js";
 import { PAGES } from "./pages.gen.js";
 import { X402Desk, X402_PATH } from "./x402.js";
 import { METAL_INSPECTOR_PATH, MetalInspector, inspectorOff } from "./metalInspector.js";
+import { tryEngineResponse } from "./tryEngine.js";
 
 export interface Env {
   RELAY: DurableObjectNamespace<RelayObject>;
@@ -56,6 +57,11 @@ export interface Env {
   METAL_INSPECTOR?: string;
   /** "on": /try/sign's "talk the agent round" step (worker/src/talkRound.ts); off when missing. */
   TRY_TALK?: string;
+  /**
+   * The hands-on demo's engine, purser-try (cloud/wrangler.try.jsonc), as a service binding (wrangler.jsonc): /try and
+   * the paths its page calls go there (./tryEngine.ts). Without it the site answers /try with its own page.
+   */
+  TRY_ENGINE?: Fetcher;
 }
 
 export class RelayObject extends DurableObject<Env> {
@@ -99,6 +105,9 @@ export default {
     // /go: the short URL under the QR code, 302 to the hands-on demo (TRY_GO_URL, or its default).
     const go = goResponse(req, env.TRY_GO_URL);
     if (go) return go;
+    // /try and its page's calls, to purser-try when the binding is there (./tryEngine.ts): the request as it came.
+    const tryEngine = tryEngineResponse(req, env.TRY_ENGINE);
+    if (tryEngine) return tryEngine;
     const page = pageResponse(req, PAGES);
     if (page) return page;
     const path = new URL(req.url).pathname;

@@ -10,5 +10,8 @@
   "durable_objects": {
     "bindings": [{ "name": "RELAY", "class_name": "RelayObject" }]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RelayObject"] }]
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RelayObject"] }],
+  // The hands-on demo on this address (/try, src/tryEngine.ts): purser-try (cloud/wrangler.try.jsonc) answers it. Deploy
+  // purser-try first: a deploy that binds a Worker that does not exist fails.
+  "services": [{ "binding": "TRY_ENGINE", "service": "purser-try" }]
 }

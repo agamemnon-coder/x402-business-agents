@@ -1,7 +1,7 @@
 // The site's header on Purser Cloud's pages (12 Nov, owner: "/try still shows its own logo and has no menu"): /try and
 // the console draw the very header of the site (package.json's homepage), its brand, its four tabs and "More", from
 // the site's own function and style (src/redesign/ui.ts header and HEADER_CSS, src/ui/more.ts), not a copy. Its links
-// go to the site, absolute, except Try (/try here) and Purser Cloud (/ here). "More" is a <details>: no script, so the
+// go to the site, absolute, except Try (/try here) and, on the console, Purser Cloud (/ here; absolute on /try). "More" is a <details>: no script, so the
 // pages' nonce policy (cloud/src/console.ts consoleCsp) stays as it was.
 
 import { HEADER_CSS, header, type HeaderLinks } from "../../src/redesign/ui.js";
@@ -13,8 +13,15 @@ export const SITE_ORIGIN = "https://kit11.max-31b.workers.dev";
 /** Every link to the site, except the two pages this Worker serves itself. */
 export const SITE_HEADER_LINKS: HeaderLinks = { base: SITE_ORIGIN, here: { try: "/try", cloud: "/" } };
 
+/**
+ * /try's: the same, except Purser Cloud, which is absolute, always (src/ui/more.ts's address): /try is served on the
+ * site's own host too (kit11's TRY_ENGINE binding, worker/src/index.ts), where "/" is the site's home. Try stays "/try",
+ * which is this page on either host. The console is never served on the site's host and keeps "/".
+ */
+export const TRY_HEADER_LINKS: HeaderLinks = { base: SITE_ORIGIN, here: { try: "/try" } };
+
 /** The site's header, `current` marked as the site marks it ("try" on /try, "cloud", under "More", on the console). */
-export const siteHeader = (current: PageKey | null): string => header(current, SITE_HEADER_LINKS);
+export const siteHeader = (current: PageKey | null): string => header(current, current === "try" ? TRY_HEADER_LINKS : SITE_HEADER_LINKS);
 
 /**
  * The header's style: what the site's page gives its header (the 1200 px wrap and its gutter, the icon's alignment, the
