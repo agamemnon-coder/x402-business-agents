@@ -21,7 +21,7 @@
 // signed and sent inside the CLI: there the payment id is what is recorded first (metal-agent pays an id at most once).
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, resolve, sep } from "node:path";
+import { dirname, join } from "node:path";
 import { bindCall, readMandateState, replaceCall, revokeCall } from "@metalntwx/metal-pay/mandates";
 import { encodeFunctionData, type Address, type Hex, type LocalAccount } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -32,7 +32,7 @@ import type { DB } from "../db/open.js";
 import { baseUnitsToCents, centsToBaseUnits, fromCents, toCents } from "../lib/money.js";
 import { createProposal, nextProposalId, type ProposalRow } from "../policy/approvals.js";
 import { relayToken } from "../relay/config.js";
-import { keyPath, keysDir, type CliResult } from "./agentCli.js";
+import { insideRepo, keyPath, keysDir, type CliResult } from "./agentCli.js";
 import { readKeyFile } from "./chain.js";
 import { credentialCreateArgs } from "./credentialArgs.js";
 import { accountAbi, factoryAbi, quorumLane } from "./fourEyes.js";
@@ -76,8 +76,6 @@ export const ACCOUNT_CENTS = 60;
 const CENT = centsToBaseUnits(1);
 const ceilCents = (units: bigint) => Number(units / CENT + (units % CENT ? 1n : 0n));
 const usdz = (units: bigint) => fromCents(Number(units / CENT));
-const REPO = resolve(import.meta.dirname, "../..");
-const insideRepo = (path: string) => { const p = resolve(path); return p === REPO || p.startsWith(REPO + sep); };
 
 /** The CLI command an argument list runs, as the call log names it: `fund`, `mandate pull`. */
 export function cliCommand(args: readonly string[]): string {

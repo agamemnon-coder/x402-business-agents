@@ -4,7 +4,7 @@
 // preflight sends anything, reads more than three times or prints a number the code does not follow; if a revoke is
 // proposed for anything but the mandate this world bound; or if a payment over the cap could be paid, or is paid twice.
 // Software passkeys, a stand-in chain and a stand-in for the CLI's network commands; the CLI's offline commands are real.
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { decodeFunctionData, type Address, type Hex } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
@@ -13,7 +13,8 @@ import { mandateBindingAbi } from "@metalntwx/metal-pay/mandates";
 import { centsToBaseUnits } from "../src/lib/money.js";
 import { approvalHashOf, checkOwnersTerms, OWNER_CALL_SELECTORS, type OwnersExecuteTerms } from "../src/metal/ownersExecute.js";
 import { OwnersBudgetSpent, readOwnersCalls } from "../src/metal/ownersBudget.js";
-import { ACCOUNT_CENTS, AGENT_KEY, boundMandate, callsLine, cliCommand, limitsOf, ownersPlan, pay, planTotals, preflight, preflightRefusals, propose, proposeReplace, proposeRevoke, setup, SPONSOR_CENTS, status } from "../src/metal/ownersFlow.js";
+import { keysDir } from "../src/metal/agentCli.js";
+import { ACCOUNT_CENTS, AGENT_KEY, boundMandate, callsLine, cliCommand, donorOf, limitsOf, ownersPlan, pay, planTotals, preflight, preflightRefusals, propose, proposeReplace, proposeRevoke, setup, SPONSOR_CENTS, status } from "../src/metal/ownersFlow.js";
 import { ACCOUNT_FACTORY, PASSKEY_VERIFIER } from "../src/metal/passkeyRelay.js";
 import { keptPullDir } from "../src/metal/pull.js";
 import { USDZ } from "../src/metal/network.js";
@@ -166,6 +167,44 @@ describe("owners setup, refused and resumed", () => {
     await world({ env: { OWNERS_DONOR_KEY: join(REPO, "donor.key.json") } });
     await expect(setup(w.d)).rejects.toThrow(/OWNERS_DONOR_KEY names a file inside the code repo/);
     expect(w.node.sent()).toEqual([]);
+  });
+
+  it("names a donor key file it cannot use by its path alone: nothing the file holds reaches the message", async () => {
+    await world();
+    const key = generatePrivateKey();
+    // A bare hex key, JSON without the key file's fields, and JSON that is no object.
+    for (const [name, text] of [["donor.hex", `${key.slice(2)}\n`], ["donor.other.json", JSON.stringify({ secret: key })], ["donor.null.json", "null"]] as const) {
+      const file = join(w.dir, name);
+      writeFileSync(file, text, { mode: 0o600 });
+      let said = "";
+      try { donorOf({ OWNERS_DONOR_KEY: file }); } catch (e) { said = (e as Error).message; }
+      expect(said, name).toBe(`not a metal-agent key file: ${file}`);
+      expect(said, name).not.toContain(key.slice(2, 10));
+    }
+    expect(() => donorOf({ OWNERS_DONOR_KEY: join(w.dir, "not-there.json") })).toThrow(/^the key file .*not-there\.json cannot be read \(ENOENT\)$/);
+  });
+
+  it("follows links: a keys folder or a donor key that only links into the repository is refused as one inside it", async () => {
+    await world();
+    const env = (over: Record<string, string>) => ({ ...w.d.env, METAL_RPC_URL: "https://rpc.example/v1/key", KIT11_RELAY_URL: "https://kit11.example.workers.dev", KIT11_RELAY_TOKEN: "t".repeat(64), ...over });
+    expect(preflightRefusals(env({}))).toEqual([]);
+    // A link to a folder of the repository, a path below such a link, and a link to a place in the repository that is not there yet.
+    symlinkSync(join(REPO, "test"), join(w.dir, "keys-link"));
+    symlinkSync(join(REPO, "keys-not-there"), join(w.dir, "keys-dangling"));
+    for (const dir of [join(w.dir, "keys-link"), join(w.dir, "keys-link", "deeper", "keys"), join(w.dir, "keys-dangling")]) {
+      expect(preflightRefusals(env({ KIT11_KEYS_DIR: dir })), dir).toEqual([expect.stringMatching(/KIT11_KEYS_DIR outside the code repository/)]);
+      expect(() => keysDir({ KIT11_KEYS_DIR: dir }), dir).toThrow(/KIT11_KEYS_DIR must be outside the code repo/);
+    }
+    // Nothing was made in the repository while checking.
+    for (const made of ["test/home", "test/deeper", "keys-not-there"]) expect(existsSync(join(REPO, made)), made).toBe(false);
+    const donorLink = join(w.dir, "donor-link.json");
+    symlinkSync(join(REPO, "package.json"), donorLink);
+    expect(preflightRefusals(env({ OWNERS_DONOR_KEY: donorLink }))).toEqual([expect.stringMatching(/OWNERS_DONOR_KEY outside the code repository/)]);
+    expect(() => donorOf({ OWNERS_DONOR_KEY: donorLink })).toThrow(/OWNERS_DONOR_KEY names a file inside the code repo/);
+    // A link that stays outside the repository is a keys folder like any other.
+    symlinkSync(w.keys, join(w.dir, "keys-outside"));
+    expect(preflightRefusals(env({ KIT11_KEYS_DIR: join(w.dir, "keys-outside") }))).toEqual([]);
+    expect(keysDir({ KIT11_KEYS_DIR: join(w.dir, "keys-outside") })).toBe(join(w.dir, "keys-outside"));
   });
 
   it("stopped while the sponsor's funding was on its way, the next run sends the identical transfer, and every transaction lands once", async () => {
