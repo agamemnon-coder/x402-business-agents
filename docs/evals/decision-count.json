@@ -1,0 +1,219 @@
+{
+ "target_claude_pct": 95,
+ "total": {
+  "decisions": 1464,
+  "by_claude": 1451,
+  "fallback": 13,
+  "fallback_pct": 0.9,
+  "claude_pct": 99.1,
+  "meets_target": true
+ },
+ "runs": {
+  "decisions": 672,
+  "by_claude": 672,
+  "fallback": 0,
+  "fallback_pct": 0,
+  "claude_pct": 100,
+  "meets_target": true
+ },
+ "evals": {
+  "decisions": 792,
+  "by_claude": 779,
+  "fallback": 13,
+  "fallback_pct": 1.6,
+  "claude_pct": 98.4,
+  "meets_target": true
+ },
+ "per_agent": [
+  {
+   "agent": "coder",
+   "decisions": 70,
+   "by_claude": 70,
+   "fallback": 0,
+   "fallback_pct": 0,
+   "claude_pct": 100,
+   "meets_target": true
+  },
+  {
+   "agent": "payables classifier",
+   "decisions": 55,
+   "by_claude": 55,
+   "fallback": 0,
+   "fallback_pct": 0,
+   "claude_pct": 100,
+   "meets_target": true
+  },
+  {
+   "agent": "payables coder",
+   "decisions": 42,
+   "by_claude": 42,
+   "fallback": 0,
+   "fallback_pct": 0,
+   "claude_pct": 100,
+   "meets_target": true
+  },
+  {
+   "agent": "payables reader",
+   "decisions": 91,
+   "by_claude": 91,
+   "fallback": 0,
+   "fallback_pct": 0,
+   "claude_pct": 100,
+   "meets_target": true
+  },
+  {
+   "agent": "payables review note",
+   "decisions": 89,
+   "by_claude": 89,
+   "fallback": 0,
+   "fallback_pct": 0,
+   "claude_pct": 100,
+   "meets_target": true
+  },
+  {
+   "agent": "sourcing",
+   "decisions": 525,
+   "by_claude": 522,
+   "fallback": 3,
+   "fallback_pct": 0.6,
+   "claude_pct": 99.4,
+   "meets_target": true
+  },
+  {
+   "agent": "support",
+   "decisions": 245,
+   "by_claude": 235,
+   "fallback": 10,
+   "fallback_pct": 4.1,
+   "claude_pct": 95.9,
+   "meets_target": true
+  },
+  {
+   "agent": "treasury",
+   "decisions": 347,
+   "by_claude": 347,
+   "fallback": 0,
+   "fallback_pct": 0,
+   "claude_pct": 100,
+   "meets_target": true
+  }
+ ],
+ "sources": [
+  {
+   "source": "docs/runs/2026-11-01-soak.md",
+   "kind": "run",
+   "agent": "sourcing",
+   "by_claude": 202,
+   "fallback": 0
+  },
+  {
+   "source": "docs/runs/2026-11-01-soak.md",
+   "kind": "run",
+   "agent": "support",
+   "by_claude": 64,
+   "fallback": 0
+  },
+  {
+   "source": "docs/runs/2026-11-01-soak.md",
+   "kind": "run",
+   "agent": "treasury",
+   "by_claude": 125,
+   "fallback": 0
+  },
+  {
+   "source": "docs/runs/2026-11-07-awx-1.md",
+   "kind": "run",
+   "agent": "sourcing",
+   "by_claude": 1,
+   "fallback": 0
+  },
+  {
+   "source": "docs/runs/2026-11-07-awx-1.md",
+   "kind": "run",
+   "agent": "support",
+   "by_claude": 1,
+   "fallback": 0
+  },
+  {
+   "source": "docs/runs/2026-11-07-awx-1.md",
+   "kind": "run",
+   "agent": "treasury",
+   "by_claude": 2,
+   "fallback": 0
+  },
+  {
+   "source": "docs/runs/2026-11-12-chain-soak.json",
+   "kind": "run",
+   "agent": "payables classifier",
+   "by_claude": 55,
+   "fallback": 0
+  },
+  {
+   "source": "docs/runs/2026-11-12-chain-soak.json",
+   "kind": "run",
+   "agent": "payables reader",
+   "by_claude": 91,
+   "fallback": 0
+  },
+  {
+   "source": "docs/runs/2026-11-12-chain-soak.json",
+   "kind": "run",
+   "agent": "payables coder",
+   "by_claude": 42,
+   "fallback": 0
+  },
+  {
+   "source": "docs/runs/2026-11-12-chain-soak.json",
+   "kind": "run",
+   "agent": "payables review note",
+   "by_claude": 89,
+   "fallback": 0
+  },
+  {
+   "source": "docs/evals/agents.json",
+   "kind": "eval",
+   "agent": "sourcing",
+   "by_claude": 290,
+   "fallback": 0
+  },
+  {
+   "source": "docs/evals/agents.json",
+   "kind": "eval",
+   "agent": "treasury",
+   "by_claude": 220,
+   "fallback": 0
+  },
+  {
+   "source": "docs/evals/agents.json",
+   "kind": "eval",
+   "agent": "support",
+   "by_claude": 170,
+   "fallback": 10
+  },
+  {
+   "source": "docs/evals/autonomy-variation.json",
+   "kind": "eval",
+   "agent": "sourcing",
+   "by_claude": 20,
+   "fallback": 0
+  },
+  {
+   "source": "docs/evals/autonomy-redteam.json",
+   "kind": "eval",
+   "agent": "sourcing",
+   "by_claude": 9,
+   "fallback": 3
+  },
+  {
+   "source": "docs/evals/coder.json",
+   "kind": "eval",
+   "agent": "coder",
+   "by_claude": 70,
+   "fallback": 0
+  }
+ ],
+ "not_counted": [
+  "docs/evals/report.json and docs/evals/model-benchmark.json: reader and model comparisons, not agent decisions",
+  "docs/evals/agent-facts-before.json and agent-was-wrong-2026-10-31.json: single cases kept for their lesson"
+ ]
+}

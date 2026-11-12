@@ -3,18 +3,9 @@
 
 import type { DB } from "../db/open.js";
 import type { Beneficiary } from "../policy/fraudCore.js";
-import type { BankDetails } from "../payouts/routes.js";
-import type { ApReading } from "./reading.js";
 
-/** The invoice's account: its IBAN, or account number and routing code; the bank's country; the invoice's currency. */
-export function bankFromReading(r: ApReading): BankDetails {
-  const routing = r.routing_type === "aba" || r.routing_type === "sort_code" || r.routing_type === "cnaps" ? r.routing_type : "";
-  return {
-    country: r.bank_country || (r.iban ? r.iban.slice(0, 2) : r.bic.length >= 6 ? r.bic.slice(4, 6) : ""),
-    currency: r.currency, accountName: r.vendor, iban: r.iban, accountNumber: r.account_number,
-    routingType: routing, routingValue: r.routing_value, swiftCode: r.bic,
-  };
-}
+/** The invoice's account as the payout routes read it: pure, so it lives with the checks' core (src/ap/checkerCore.ts). */
+export { bankFromReading } from "./checkerCore.js";
 
 /**
  * The suppliers on file as the payables fraud check compares an account with them: by name and by account identity

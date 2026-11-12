@@ -3,7 +3,8 @@
 {
   "$schema": "../worker/node_modules/wrangler/config-schema.json",
   "name": "purser-cloud",
-  "main": "src/worker.ts",
+  // The Worker and the class of the company engines' Durable Object.
+  "main": "src/entry.ts",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
@@ -21,10 +22,32 @@
     "RP_ID": "cloud.example.invalid",
     "ORIGIN": "https://cloud.example.invalid"
     // MAIL_DOMAIN: set once a domain's Email Routing sends <slug>@<domain> to this Worker.
+    // ENGINE_MODE: "test_money" turns the /v1/engine routes on (the engine pays on a stand-in bank). Unset: they answer 404.
   },
+  // The engine: one Durable Object per company (cloud/src/engine/object.ts), on its own SQLite. A class is SQLite-backed
+  // only from its first deploy, and a deploy with a migration cannot be rolled back past it.
+  "durable_objects": { "bindings": [{ "name": "ENGINE", "class_name": "CompanyEngine" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CompanyEngine"] }],
+  // The engine's modules read import.meta.url, dirname and filename when they load; a Worker's bundle has none.
+  "define": { "import.meta.url": "\"file:///purser-cloud/worker.js\"", "import.meta.dirname": "\"/purser-cloud\"", "import.meta.filename": "\"/purser-cloud/worker.js\"" },
+  // Packages the engine's import graph names and no Worker can carry: swapped for a file that throws when used.
+  "alias": { "playwright": "./src/engine/stub.ts", "better-sqlite3": "./src/engine/stub.ts" },
+  // The engine's schema (src/db/schema.sql, src/db/ledger.sql) as text modules.
+  "rules": [{ "type": "Text", "globs": ["**/*.sql"], "fallthrough": true }],
   // pdf.js for the console's invoice view, served through the Worker (run_worker_first: every request meets the Worker's
   // own headers and only /assets/pdfjs.mjs is ever read from here). npm run cloud:pdfjs fills cloud/public before a deploy.
   "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
-  // Daily: purge closed companies past their 7-year retention; clear spent challenges and old rate windows.
+  // Daily: purge closed companies past their 7-year retention; clear spent challenges and old rate windows; then the
+  // nightly autopilot (cloud/src/edge/autopilot.ts: each company's engine synced, its digest written; never a payment).
   "triggers": { "crons": ["17 3 * * *"] }
+  // AUTOPILOT=off or STATS=off (a var) switches the nightly autopilot or the daily counters off; both are on unset.
+  //
+  // Inbound e-mail filed into the company's engine through a Cloudflare Queue (cloud/src/edge/inbox.ts). Off until a
+  // mail domain routes here (MAIL_DOMAIN) and the queues exist: a deploy that binds a queue that was not created fails.
+  // To switch it on: npx wrangler queues create purser-cloud-inbox && npx wrangler queues create purser-cloud-inbox-dlq, then
+  // put this block in the configuration (as a key of the object above):
+  //   "queues": {
+  //     "producers": [{ "queue": "purser-cloud-inbox", "binding": "INBOX_QUEUE" }],
+  //     "consumers": [{ "queue": "purser-cloud-inbox", "max_batch_size": 5, "max_batch_timeout": 5, "max_retries": 8, "dead_letter_queue": "purser-cloud-inbox-dlq" }]
+  //   }
 }

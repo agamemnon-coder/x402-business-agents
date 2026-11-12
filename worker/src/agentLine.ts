@@ -87,7 +87,8 @@ export const dayForms = (iso: string): string[] => {
   return [iso, `${d} ${name} ${y}`, `${name} ${d}, ${y}`, `${d} ${name}`, `${name} ${d}`, `${d} ${name.slice(0, 3)}`];
 };
 
-const timeForms = (iso: string): string[] => {
+/** A time the ways a sentence may write it: whole, or its time of day ("12:44:52Z", "12:44:52", "12:44"). */
+export const timeForms = (iso: string): string[] => {
   const m = /T(\d{2}):(\d{2}):(\d{2})Z$/.exec(iso);
   return m ? [iso, `${m[1]}:${m[2]}:${m[3]}Z`, `${m[1]}:${m[2]}:${m[3]}`, `${m[1]}:${m[2]}`] : [iso];
 };

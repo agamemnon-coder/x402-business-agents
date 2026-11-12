@@ -36,7 +36,7 @@ function bodyOf(path: string, pages = ON): string {
   const p = new URL(path, SITE).pathname;
   const by: Record<string, string | undefined> = {
     "/try/sign": pages.trySign, "/try/verify": pages.tryVerify, "/airwallex": pages.airwallex, "/metal": pages.metal,
-    "/proof": pages.proof, "/watch": pages.watch, "/home": pages.home, "/judge": pages.judge,
+    "/proof": pages.proof, "/watch": pages.watch, "/replay": pages.replay, "/home": pages.home, "/judge": pages.judge,
   };
   return by[p] ?? "";
 }
@@ -72,7 +72,8 @@ describe("/judge: the five steps", () => {
     ]);
     expect(JUDGE_STEPS.reduce((t, s) => t + s.seconds, 0)).toBe(180);
     expect(JUDGE_STEPS.map((s) => s.links.map((l) => l.href))).toEqual([
-      ["/home"], ["/try/sign"], ["/try/sign"], ["/try/sign"], ["/proof", "/airwallex#awx-1", "/metal", metalStory(loadRecord().record).refusal!.proof.href],
+      ["/home"], ["/try/sign"], ["/try/sign"], ["/try/sign"], // The Visa run among the proof's links since 12 Nov (jury panel): the Airi run, Visa Intelligent Commerce via Airi.
+      ["/proof", "/airwallex#awx-1", "/metal", "/visa", metalStory(loadRecord().record).refusal!.proof.href],
     ]);
     // The tour starts on Home and ends on the proof; no step is the replay, by its link, its title or its line.
     expect(JUDGE_STEPS[0]!.links[0]!.href).toBe("/home");
@@ -166,9 +167,9 @@ describe("the way in: Home, the README and the form", () => {
     expect(ON.home).toContain('<a class="flink" href="judge">Judging? Take the 3-minute tour</a>');
     expect(/<main[\s\S]*<\/main>/.exec(ON.home!)![0]).not.toContain('href="judge"');
     expect(OFF.home).not.toContain('href="judge"');
-    // Home's two buttons are two of /judge's steps: /try/sign, then the proof. Home no longer sends anyone to Watch.
+    // Home's two buttons are two of /judge's steps: /try/sign, then the proof. Home sends no one to the replay (/replay, at /watch until 12 Nov).
     expect(ON.home).toContain('<a class="btn primary big start" href="try/sign">'); expect(ON.home).toContain('<a class="btn big more" href="proof">');
-    expect(/<main[\s\S]*<\/main>/.exec(ON.home!)![0]).not.toContain('href="watch"');
+    expect(/<main[\s\S]*<\/main>/.exec(ON.home!)![0]).not.toMatch(/href="(?:watch|replay)"/);
   });
 
   it("the README has one line to /judge near the top", () => {

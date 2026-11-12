@@ -3,14 +3,16 @@
 // item that opens as a fold is a <details> element, so it needs no script. Colours come from the page's own tokens,
 // with fallbacks for pages that name them differently.
 
+import { WATCH_IN_MENU } from "../config/film.js";
+
 export type NavKey = "home" | "watch" | "try" | "proof" | "overview" | "metal" | "dashboard" | "live" | "demo" | "month" | "lab" | "visa" | "airwallex" | "claude";
 
 /** Four tabs, nothing else (redesign, Max 2 Nov): every other page is reached from Proof. */
-export const NAV_MAIN: [NavKey, string, string][] = [
+export const NAV_MAIN: [NavKey, string, string][] = ([
   ["home", "Home", "home"],
   ["try", "Try", "try"],
   ["proof", "Proof", "proof"],
-];
+] as [NavKey, string, string][]).filter(([k]) => k !== "watch" || WATCH_IN_MENU);
 
 /** Which tab a page belongs to: the detail pages, the dashboard and the replay (/watch, out of the menu since 12 Nov) sit under Proof. */
 const TAB_OF: Partial<Record<NavKey, NavKey>> = { overview: "home", watch: "proof", live: "proof", demo: "proof", metal: "proof", dashboard: "proof", month: "proof", lab: "proof", visa: "proof", airwallex: "proof", claude: "proof" };

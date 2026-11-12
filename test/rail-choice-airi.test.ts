@@ -13,8 +13,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import { openDb, type DB } from "../src/db/open.js";
 import { AIRI_RAIL, airiRailOffer, airiRailPay, airiRailPayment, chooseRails, type AiriRailPurchase, type RailDeps } from "../src/agents/railChoice.js";
 import { StandInAiriClient, StandInCheckout } from "../src/airi/standIn.js";
-import type { AiriDeps } from "../src/airi/purchase.js";
-import { resuming } from "../src/policy/approvals.js";
+import { airiPurchases, airiRailChoice, executeAiriPurchase, requestAiriPurchase, type AiriDeps } from "../src/airi/purchase.js";
+import { decide, resuming } from "../src/policy/approvals.js";
 
 const ON = { KIT11_AIRI_RAIL: "on" };
 const OFF = {};
@@ -33,15 +33,16 @@ const buyOf = (amount = "12.00", over: Partial<AiriRailPurchase> = {}) => ({ mer
 
 type Call = { name: string; input: unknown };
 /** A fake Claude client that plays the given turns and keeps every request (to read the tools it was offered). */
-function fake(turns: Call[][]) {
+function fake(turns: Call[][], requestIds: string[] = []) {
   let i = 0;
   const requests: { system: unknown; tools: { name: string; input_schema: { properties: Record<string, { enum?: string[] }> } }[]; messages: { content: unknown }[] }[] = [];
   const client = { beta: { messages: { create: async (params: (typeof requests)[number]) => {
     requests.push(JSON.parse(JSON.stringify(params)));
     const t = turns[i++];
     const usage = { input_tokens: 800, output_tokens: 100 };
-    if (!t) return { content: [{ type: "text", text: "Done." }], stop_reason: "end_turn", model: "claude-haiku-5-5", usage };
-    return { content: t.map((c, k) => ({ type: "tool_use", id: `t${i}-${k}`, name: c.name, input: c.input })), stop_reason: "tool_use", model: "claude-haiku-5-5", usage };
+    const rid = requestIds[i - 1] ? { _request_id: requestIds[i - 1] } : {};
+    if (!t) return { content: [{ type: "text", text: "Done." }], stop_reason: "end_turn", model: "claude-haiku-5-5", usage, ...rid };
+    return { content: t.map((c, k) => ({ type: "tool_use", id: `t${i}-${k}`, name: c.name, input: c.input })), stop_reason: "tool_use", model: "claude-haiku-5-5", usage, ...rid };
   } } } } as unknown as Anthropic;
   return { client, requests };
 }
@@ -202,5 +203,64 @@ describe("paying on the Airi rail goes through Purser's checks (stand-ins)", () 
   it("reports every outcome of Purser's Airi rail as the rail choice's answer", () => {
     expect(airiRailPayment({ status: "refused", by: "airi", code: "DENIED", reason: "x", mandateId: "m1" })).toEqual({ ok: false, text: "refused by Airi (DENIED)", ref: "m1" });
     expect(airiRailPayment({ status: "unconfirmed", actionId: "a", orderSha256: "h", mandateId: "m2", reference: "r2", reason: "x" })).toMatchObject({ ok: false, ref: "r2" });
+  });
+});
+
+describe("the rail choice is recorded with the purchase: who chose Airi, and the Claude request id (12 Nov)", () => {
+  function airiDeps() {
+    const airi = new StandInAiriClient(), checkout = new StandInCheckout();
+    const d: AiriDeps = { airi, checkout, tmpRoot: mkdtempSync(join(tmpdir(), "airi-rail-")), showPasskeyUrl: () => {} };
+    return { d, airi, checkout };
+  }
+  const T = () => new Date("2026-11-07T10:00:00Z");
+  const REQ = "req_011CTestRailChoice01";
+  const rows = (db: DB) => airiPurchases(db) as Record<string, unknown>[];
+
+  it("Claude picks airi_vic: its request id stands in the purchase's row beside the mandate id and the checkout's reference", async () => {
+    const db = fresh(), { d } = airiDeps();
+    const { d: rd } = deps(ON, { ...buyOf(), pay: airiRailPay(db, d, buyOf(), "standin-pm-1", T) });
+    const { client } = fake([[pay("stockline", "metal_x402"), pay("packwise", "airwallex_card"), pay(SHOP, AIRI_RAIL)]], [REQ]);
+    const r = await chooseRails(db, rd, client);
+    expect(r.purchases.find((p) => p.supplier === SHOP)).toMatchObject({ rail: AIRI_RAIL, by: "claude", ok: true });
+    const [row] = rows(db);
+    expect(row).toMatchObject({ status: "SETTLED", mandate_id: "standin-mdt-1", checkout_ref: "standin-order-1", rail_choice: { rail: AIRI_RAIL, by: "claude", agent: "sourcing", model: "claude-haiku-5-5", request_id: REQ } });
+    expect(airiRailChoice(db, String(row!.action_id))).toMatchObject({ by: "claude", request_id: REQ });
+    expect(events(db, "airi.rail_choice")).toEqual([expect.objectContaining({ subject: row!.action_id, rail: AIRI_RAIL, by: "claude", request_id: REQ })]);
+  });
+
+  it("above the CFO's limit the choice is kept with the proposal, and stands in the row once the CFO approved and it ran", async () => {
+    const db = fresh(), { d, airi } = airiDeps();
+    const { d: rd } = deps(ON, { ...buyOf("45.00"), pay: airiRailPay(db, d, buyOf("45.00"), "standin-pm-1", T) });
+    const { client } = fake([[pay("stockline", "metal_x402"), pay("packwise", "airwallex_card"), pay(SHOP, AIRI_RAIL)]], [REQ]);
+    await chooseRails(db, rd, client);
+    expect(airi.calls).toEqual([]);
+    expect(rows(db)).toEqual([]);
+    const p = db.prepare("SELECT proposal_id, terms_sha256 FROM proposals WHERE kind = 'airi_purchase'").get() as { proposal_id: string; terms_sha256: string };
+    expect(airiRailChoice(db, p.proposal_id)).toMatchObject({ rail: AIRI_RAIL, by: "claude", request_id: REQ });
+    decide(db, { proposalId: p.proposal_id, decision: "APPROVED", typedPrefix: p.terms_sha256.slice(0, 8), approver: "cfo", method: "passkey", signedSha256: p.terms_sha256, passkey: { credentialId: "test-cred", assertionSha256: "0".repeat(64) } }, T());
+    expect(await executeAiriPurchase(db, d, p.proposal_id, T())).toMatchObject({ status: "succeeded" });
+    expect(rows(db)[0]).toMatchObject({ proposal_id: p.proposal_id, mandate_id: "standin-mdt-1", checkout_ref: "standin-order-1", rail_choice: { by: "claude", request_id: REQ } });
+  });
+
+  it("a purchase asked for by a script, or paid by code's fallback, says so: by code, no request id", async () => {
+    const db = fresh(), { d } = airiDeps();
+    const out = await requestAiriPurchase(db, d, { agent: "sourcing", paymentMethodId: "standin-pm-1", merchantName: "Northwind test shop", merchantUrl: "https://kit11.max-31b.workers.dev/", merchantCountry: "NL", amount: "12.00", currency: "EUR", items: [{ name: "Trail map pack", unitPrice: "12.00", quantity: "1" }], description: "order 1" }, T());
+    expect(out.status).toBe("succeeded");
+    expect(rows(db)[0]!.rail_choice).toEqual({ rail: AIRI_RAIL, by: "code" });
+    // Without Claude (no client), code pays on the Airi rail the policy offered: recorded as code's, never as Claude's.
+    const db2 = fresh(), { d: d2 } = airiDeps();
+    const { d: rd } = deps(ON, { ...buyOf(), pay: airiRailPay(db2, d2, buyOf(), "standin-pm-1", T) });
+    const r = await chooseRails(db2, rd, null);
+    expect(r.source).toBe("fallback");
+    expect(rows(db2)[0]!.rail_choice).toEqual({ rail: AIRI_RAIL, by: "code" });
+    expect(JSON.stringify(rows(db2))).not.toMatch(/request_id/);
+  });
+
+  it("a Claude call that came back without a request id is not passed off as one", async () => {
+    const db = fresh(), { d } = airiDeps();
+    const { d: rd } = deps(ON, { ...buyOf(), pay: airiRailPay(db, d, buyOf(), "standin-pm-1", T) });
+    const { client } = fake([[pay("stockline", "metal_x402"), pay("packwise", "airwallex_card"), pay(SHOP, AIRI_RAIL)]]);
+    await chooseRails(db, rd, client);
+    expect(rows(db)[0]!.rail_choice).toEqual({ rail: AIRI_RAIL, by: "claude", agent: "sourcing", model: "claude-haiku-5-5", request_id: null });
   });
 });

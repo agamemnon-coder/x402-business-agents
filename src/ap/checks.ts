@@ -2,28 +2,26 @@
 // here; a model's reading only feeds it, and only after readingCheck. The order of precedence is fixed: anything that
 // blocks makes the invoice blocked; else anything a person must look at makes it needs_review; else a supplier not on
 // file makes it needs_vendor; else it is ready. Warnings are shown and change nothing.
+//
+// The checks themselves are pure functions over an invoice case (src/ap/checkerCore.ts codeFindings): one
+// implementation for this ledger, for the Checker agent's tools and for a Worker. Every database lookup is here: this
+// module builds the case from the ledger (invoiceCase) and hands it over.
 
-import type { DB } from "../db/open.js";
-import { invoiceKey, sameInvoiceNo } from "../lib/invoiceKey.js";
-import { toCents, fromCents } from "../lib/money.js";
 import { ibanSha } from "../agents/invoice.js";
-import { assessAgainst, skeleton } from "../policy/fraudCore.js";
-import { accountKey, chooseRoute, payableCurrency, validateDetails } from "../payouts/routes.js";
-import { bankFromReading, suppliersOnFile } from "./bank.js";
-import { counterpartyAllowed } from "../policy/rules.js";
+import { COMPANY } from "../config/brand.js";
+import { CONTRACTED_EUR_CENTS } from "../config/policy.js";
+import type { DB } from "../db/open.js";
+import { sameInvoiceNo } from "../lib/invoiceKey.js";
+import { fromCents } from "../lib/money.js";
+import { floorCents, fundingCurrency } from "../payouts/plan.js";
+import { payableCurrency, SWIFT_CURRENCIES } from "../payouts/routes.js";
+import { skeleton } from "../policy/fraudCore.js";
+import { suppliersOnFile } from "./bank.js";
+import { accountOfReading, codeFindings, payableAccount, statusOf, type ApStatus, type ExpectedAmount, type Finding, type HistoryInvoice, type InvoiceCase } from "./checkerCore.js";
 import { handledInLedger } from "./ledgerKey.js";
-import { ibanValid, totalAmbiguity, totalIsNegative, type ApReading } from "./reading.js";
-import type { ApStatus, Finding } from "./store.js";
+import type { ApReading } from "./reading.js";
 
-/** The hash of the account an invoice asks to be paid to, as the ledger keeps it (null when it has none that routes). */
-function accountHash(r: ApReading): string | null {
-  try {
-    const key = accountKey(bankFromReading(r));
-    return key ? ibanSha(key) : null;
-  } catch {
-    return null;
-  }
-}
+export { statusOf, TWIN_DAYS, UNUSUAL_FACTOR } from "./checkerCore.js";
 
 /**
  * Whether Purser pays this currency (src/payouts/routes.ts: a currency SWIFT carries, with two decimals). EUR invoices
@@ -31,14 +29,6 @@ function accountHash(r: ApReading): string | null {
  * supplier_payment (src/payouts/plan.ts).
  */
 export const paysCurrency = payableCurrency;
-
-/** An invoice this many times its supplier's usual (the median of its earlier ones) is flagged. */
-export const UNUSUAL_FACTOR = 2;
-
-/** Invoices from one supplier for the same total dated this close together are a possible duplicate under another number (past a month). */
-export const TWIN_DAYS = 45;
-
-const MONEY = /^\d+\.\d{2}$/;
 
 export interface CheckContext {
   docSha: string;
@@ -49,154 +39,75 @@ export interface CheckContext {
   noText?: string;
 }
 
-function median(xs: number[]): number {
-  const s = [...xs].sort((a, b) => a - b);
-  const m = Math.floor(s.length / 2);
-  return s.length % 2 ? s[m]! : Math.round((s[m - 1]! + s[m]!) / 2);
+/**
+ * The payees the CFO's policy blocks, by name: every `counterparty:<name>` setting that says blocked. The set form of
+ * counterpartyAllowed (src/policy/rules.ts), which asks the same setting for one name.
+ */
+export function blockedPayees(db: DB): string[] {
+  const prefix = "counterparty:";
+  return (db.prepare("SELECT key FROM settings WHERE substr(key, 1, ?) = ? AND value = 'blocked' ORDER BY key").all(prefix.length, prefix) as { key: string }[]).map((r) => r.key.slice(prefix.length));
+}
+
+/** The amount a contract says this supplier's invoice is, where the engine holds one (Kit 11's licence fee, src/config/policy.ts). */
+function expectedFor(vendor: string): ExpectedAmount | null {
+  const contracted = Object.entries(CONTRACTED_EUR_CENTS).find(([name]) => skeleton(name) === skeleton(vendor));
+  return contracted ? { source: "contract", currency: "EUR", amount: fromCents(contracted[1]) } : null;
+}
+
+/**
+ * The case the checks run on, and the Checker agent decides on: the reading and the document's text, with everything
+ * the ledger knows that a decision needs. Plain data: nothing in it is a database handle, and a supplier's account is
+ * in it as the ledger keeps it (a hash and its last four characters).
+ */
+export function invoiceCase(db: DB, r: ApReading, text: string, ctx: CheckContext): InvoiceCase {
+  const self = ctx.selfId ? (db.prepare("SELECT received_at FROM ap_invoices WHERE id = ?").get(ctx.selfId) as { received_at: string } | undefined) : undefined;
+  // The account's hash, as the ledger keeps a supplier's (only of details that route and check out: red team round 3).
+  const account = payableAccount(r);
+  const accountSha256 = account ? ibanSha(account) : null;
+
+  const why = db.prepare("SELECT json_extract(payload_json, '$.reason') AS reason FROM audit_log WHERE subject = ? AND event = 'ap.status' ORDER BY seq DESC LIMIT 1");
+  const history = (db.prepare("SELECT id, vendor, invoice_no, total, currency, issue_date, received_at, status, findings_json, reading_json FROM ap_invoices ORDER BY received_at, id").all() as
+    { id: string; vendor: string; invoice_no: string; total: string; currency: string; issue_date: string; received_at: string; status: ApStatus; findings_json: string; reading_json: string }[])
+    .map((x): HistoryInvoice => ({
+      id: x.id, vendor: x.vendor, invoiceNo: x.invoice_no, total: x.total, currency: x.currency, issueDate: x.issue_date, receivedAt: x.received_at, state: x.status,
+      accountKey: accountOfReading(JSON.parse(x.reading_json) as ApReading),
+      blockedAsDuplicate: x.status === "blocked" && (JSON.parse(x.findings_json) as Finding[]).some((y) => y.code === "duplicate"),
+      // A person's reason is looked up only for a rejected invoice under this invoice's number: the one the checks cite.
+      rejectedWhy: x.status === "rejected" && x.id !== ctx.selfId && !!r.invoice_no && sameInvoiceNo(x.invoice_no, r.invoice_no)
+        ? (why.get(x.id) as { reason: string | null } | undefined)?.reason ?? null
+        : null,
+    }));
+
+  // Name, hash and last four as the fraud check has always read them (suppliersOnFile), with each account's BIC and currency.
+  const more = new Map((db.prepare("SELECT beneficiary_id, bic, currency FROM beneficiaries WHERE status = 'ACTIVE'").all() as { beneficiary_id: string; bic: string; currency: string }[]).map((b) => [b.beneficiary_id, b]));
+  const suppliers = suppliersOnFile(db).map((b) => ({ id: b.beneficiary_id, name: b.name, accountSha256: b.iban_sha256, last4: b.iban_last4, bic: more.get(b.beneficiary_id)?.bic ?? "", currency: more.get(b.beneficiary_id)?.currency ?? "" }));
+
+  const blocked = blockedPayees(db);
+  const floors = [...new Set([fundingCurrency(db), r.currency].filter(payableCurrency))];
+  const pending = r.vendor ? db.prepare("SELECT add_id, status FROM payee_adds WHERE vendor = ? AND status <> 'APPLIED' ORDER BY created_at DESC").get(r.vendor) as { add_id: string; status: string } | undefined : undefined;
+
+  return {
+    invoice: { id: ctx.selfId ?? null, reading: r, text, ...(ctx.noText ? { noText: ctx.noText } : {}), receivedAt: self?.received_at ?? null, accountSha256 },
+    company: { name: process.env.KIT11_COMPANY ?? COMPANY },
+    policy: {
+      // No invoice is paid without the CFO's Face ID (src/ap/pay.ts files every payment for approval): the agent has no limit to pay alone.
+      aloneLimit: null,
+      cashFloors: Object.fromEntries(floors.map((cur) => [cur, fromCents(floorCents(db, cur))])),
+      payees: { allowed: [...new Set(suppliers.map((s) => s.name))].filter((name) => !blocked.includes(name)), blocked },
+      currencies: SWIFT_CURRENCIES.filter(payableCurrency),
+    },
+    suppliers,
+    history,
+    // Already paid or on its way through the payment ledger, under the supplier's number for it (src/ap/ledgerKey.ts).
+    alreadyInLedger: r.invoice_no ? handledInLedger(db, r.invoice_no, r.vendor, ctx.now, accountSha256) : null,
+    supplierRequest: pending ? { id: pending.add_id, status: pending.status } : null,
+    clearedTwins: ctx.selfId ? (db.prepare("SELECT twin_id FROM ap_duplicate_clearances WHERE invoice_id = ?").all(ctx.selfId) as { twin_id: string }[]).map((x) => x.twin_id) : [],
+    expected: expectedFor(r.vendor),
+    today: ctx.now.toISOString().slice(0, 10),
+  };
 }
 
 export function evaluate(db: DB, r: ApReading, text: string, ctx: CheckContext): { status: ApStatus; findings: Finding[] } {
-  const f: Finding[] = [];
-  if (ctx.noText) {
-    f.push({ code: "no_text", level: "review", detail: ctx.noText });
-    return { status: "needs_review", findings: f };
-  }
-  const missing = (["vendor", "invoice_no", "total", "currency"] as const).filter((k) => !r[k]);
-  if (missing.length) f.push({ code: "missing_fields", level: "review", detail: `needs a person: the reading lacks ${missing.join(", ").replace(/_/g, " ")}` });
-  if (r.total && !MONEY.test(r.total)) f.push({ code: "missing_fields", level: "review", detail: `needs a person: the total ${JSON.stringify(r.total)} is not a plain amount` });
-
-  // Where to pay: an IBAN, or an account number with its routing code or BIC, checked against the country's payout
-  // guide before anything else looks at it (src/payouts/routes.ts).
-  const bank = bankFromReading(r);
-  let accountOk = false;
-  if (!r.iban && !r.account_number) f.push({ code: "no_bank_details", level: "review", detail: "the invoice gives no IBAN or account number to pay to; a person checks how this supplier is paid" });
-  else if (r.iban && !ibanValid(r.iban)) f.push({ code: "iban_invalid", level: "block", detail: `the IBAN ending ${r.iban.slice(-4)} fails its checksum: a typing error or a forged number; nothing is paid to it` });
-  else if (r.currency) {
-    const route = chooseRoute(bank);
-    if (!route.ok) {
-      const code = payableCurrency(r.currency) ? "country_not_paid" : "currency_not_paid";
-      f.push({ code, level: "review", detail: `${route.reason}; a person pays this one by hand (it is still booked)` });
-    } else {
-      const wrong = validateDetails(bank, route.route);
-      if (wrong.length) f.push({ code: "bank_details_invalid", level: "block", detail: `${wrong.join("; ")}: nothing is paid to these details` });
-      else accountOk = true;
-    }
-  }
-
-  if (MONEY.test(r.subtotal) && MONEY.test(r.tax) && MONEY.test(r.total) && toCents(r.subtotal) + toCents(r.tax) !== toCents(r.total)) {
-    f.push({ code: "sum_mismatch", level: "block", detail: `the subtotal ${r.subtotal} plus tax ${r.tax} is ${fromCents(toCents(r.subtotal) + toCents(r.tax))}, not the total ${r.total}` });
-  }
-
-  // A total written as negative or in brackets is a credit, never paid as an invoice (red team E).
-  if (totalIsNegative(text)) f.push({ code: "credit_note", level: "review", detail: "the total is written as negative, with CR or in brackets: a credit note; nothing is paid, a person sets it against this supplier's invoices" });
-
-  // Total lines with different amounts (a deposit, an early-payment discount, a line item starting "Total"): code never
-  // picks which one is due (red team round 2).
-  const ambiguous = totalAmbiguity(text);
-  if (ambiguous) f.push({ code: "ambiguous_total", level: "review", detail: ambiguous });
-
-  // The same invoice twice: in the inbox already (another file), or already paid or on its way through the ledger. Only
-  // invoices received before this one count, and not copies that were themselves refused as a copy: a resent copy never
-  // blocks its original (review, 8 November).
-  if (r.invoice_no) {
-    const key = invoiceKey(r.invoice_no);
-    const self = ctx.selfId ? (db.prepare("SELECT received_at FROM ap_invoices WHERE id = ?").get(ctx.selfId) as { received_at: string } | undefined) : undefined;
-    // The same supplier is the same name, or the same account under another name (red team round 3: a supplier added
-    // again under a new name, the same invoice paid twice).
-    const account = accountOk ? accountHash(r) : null;
-    const earlier = (db.prepare("SELECT id, vendor, invoice_no, status, findings_json, received_at, reading_json FROM ap_invoices WHERE status <> 'rejected' ORDER BY received_at, id").all() as
-      { id: string; vendor: string; invoice_no: string; status: string; findings_json: string; received_at: string; reading_json: string }[])
-      .filter((x) => x.id !== ctx.selfId && (!self || x.received_at < self.received_at || (x.received_at === self.received_at && x.id < ctx.selfId!)))
-      .filter((x) => !(x.status === "blocked" && (JSON.parse(x.findings_json) as Finding[]).some((y) => y.code === "duplicate")))
-      .filter((x) => skeleton(x.vendor) === skeleton(r.vendor) || (!!account && accountHash(JSON.parse(x.reading_json) as ApReading) === account));
-    const same = earlier.find((x) => invoiceKey(x.invoice_no) === key);
-    const loose = same ? undefined : earlier.find((x) => sameInvoiceNo(x.invoice_no, r.invoice_no));
-    if (same) f.push({ code: "duplicate", level: "block", detail: `${same.id} is the same invoice ${same.invoice_no} from ${same.vendor} (${same.status.replace(/_/g, " ")}); a second copy is never paid` });
-    else if (loose) f.push({ code: "possible_duplicate", level: "review", detail: `${loose.id} is invoice ${loose.invoice_no} from the same supplier, written differently; a person checks it is not the same invoice` });
-    else {
-      const handled = handledInLedger(db, r.invoice_no, r.vendor, ctx.now, account);
-      if (handled) f.push({ code: "duplicate", level: "block", detail: `${handled}; a second copy is never paid` });
-    }
-    // A copy of an invoice a person rejected goes back to a person, citing that rejection (red team round 4: resent with
-    // one line more, it came back ready to pay as if never rejected).
-    if (!same && !f.some((x) => x.code === "duplicate")) {
-      const rejected = (db.prepare("SELECT id, vendor, invoice_no, reading_json, received_at FROM ap_invoices WHERE status = 'rejected' ORDER BY received_at, id").all() as
-        { id: string; vendor: string; invoice_no: string; reading_json: string; received_at: string }[])
-        .filter((x) => x.id !== ctx.selfId && (!self || x.received_at <= self.received_at))
-        .filter((x) => skeleton(x.vendor) === skeleton(r.vendor) || (!!account && accountHash(JSON.parse(x.reading_json) as ApReading) === account))
-        .find((x) => sameInvoiceNo(x.invoice_no, r.invoice_no));
-      if (rejected) {
-        const why = (db.prepare("SELECT json_extract(payload_json, '$.reason') AS reason FROM audit_log WHERE subject = ? AND event = 'ap.status' ORDER BY seq DESC LIMIT 1").get(rejected.id) as { reason: string | null } | undefined)?.reason;
-        f.push({ code: "rejected_before", level: "review", detail: `${rejected.id}, invoice ${rejected.invoice_no} from ${rejected.vendor}, was rejected by a person${why ? ` (${why})` : ""}; a person decides whether this copy is any different` });
-      }
-    }
-    // The same supplier, the same total, dated within TWIN_DAYS: possibly the same invoice under another number (red team
-    // C; round 2 widened a week to 45 days, past a month). A monthly invoice for the same amount (rent, a subscription)
-    // therefore waits for a person once: their clearance is kept per pair (clearPossibleDuplicate in src/ap/inbox.ts).
-    if (!f.some((x) => x.code === "duplicate" || x.code === "possible_duplicate") && MONEY.test(r.total)) {
-      const day = (s: string) => Date.parse(`${s.slice(0, 10)}T00:00:00Z`);
-      const mine = day(r.issue_date || ctx.now.toISOString());
-      const cleared = new Set(ctx.selfId ? (db.prepare("SELECT twin_id FROM ap_duplicate_clearances WHERE invoice_id = ?").all(ctx.selfId) as { twin_id: string }[]).map((x) => x.twin_id) : []);
-      const twin = earlier.find((x) => {
-        if (["blocked", "needs_review"].includes(x.status) || cleared.has(x.id)) return false;
-        const row = db.prepare("SELECT total, currency, issue_date, received_at FROM ap_invoices WHERE id = ?").get(x.id) as { total: string; currency: string; issue_date: string; received_at: string };
-        return row.total === r.total && row.currency === r.currency && Math.abs(day(row.issue_date || row.received_at) - mine) <= TWIN_DAYS * 86_400_000;
-      });
-      if (twin) f.push({ code: "possible_duplicate", level: "review", twin_of: twin.id, detail: `${twin.id} from the same supplier has the same total ${r.currency} ${r.total} within ${TWIN_DAYS} days; a person checks it is not the same invoice under another number (once cleared, this pair is not asked again)` });
-    }
-  }
-
-  // Who is paid: the existing invoice-fraud check against the suppliers on file (changed bank details, a lookalike name,
-  // another account holder). A supplier that is simply new waits for a person's verification and the CFO's Face ID.
-  if (r.vendor && accountOk) {
-    const key = accountKey(bank);
-    const fraud = assessAgainst(suppliersOnFile(db), { vendor: r.vendor, iban: key, bic: "" }, text, ibanSha(key));
-    const blocking = fraud.signals.filter((s) => s.blocks && s.code !== "unknown_vendor");
-    if (fraud.suspicious) {
-      f.push({ code: "possible_fraud", level: "block", detail: `possible invoice fraud: ${blocking.map((s) => s.detail).join("; ")}. Nothing is paid until a person checks with the supplier on a number already on file`,
-        signals: blocking.map((s) => ({ code: s.code, detail: s.detail })) });
-    } else if (fraud.signals.some((s) => s.code === "unknown_vendor")) {
-      const pending = db.prepare("SELECT add_id, status FROM payee_adds WHERE vendor = ? AND status <> 'APPLIED' ORDER BY created_at DESC").get(r.vendor) as { add_id: string; status: string } | undefined;
-      f.push({ code: "new_supplier", level: "wait", detail: `${r.vendor} is not on file as a supplier yet: a person verifies its bank details with the supplier, then the CFO approves it with Face ID${pending ? ` (request ${pending.add_id}, ${pending.status.toLowerCase()})` : ""}` });
-    }
-    for (const s of fraud.signals.filter((x) => !x.blocks)) f.push({ code: s.code, level: "warn", detail: s.detail });
-    if (fraud.allowlisted && !fraud.suspicious && !counterpartyAllowed(db, fraud.allowlisted.name)) {
-      f.push({ code: "payee_blocked", level: "block", detail: `${fraud.allowlisted.name} is blocked by the CFO policy` });
-    }
-    // A known supplier's account receives one currency: an invoice in another is not paid to it (it would escalate at
-    // planning anyway); a person checks which account and currency are right before it can be paid.
-    const onFile = fraud.allowlisted && !fraud.suspicious
-      ? db.prepare("SELECT currency FROM beneficiaries WHERE beneficiary_id = ?").get(fraud.allowlisted.beneficiary_id) as { currency: string } | undefined
-      : undefined;
-    if (onFile && r.currency && onFile.currency !== r.currency) {
-      f.push({ code: "account_currency", level: "review", detail: `${fraud.allowlisted!.name}'s account on file receives ${onFile.currency}, but the invoice is in ${r.currency}: a person checks which account to pay` });
-    }
-  }
-
-  if (r.currency && !payableCurrency(r.currency) && !f.some((x) => x.code === "currency_not_paid")) {
-    f.push({ code: "currency_not_paid", level: "review", detail: `the invoice is in ${r.currency}; Purser pays only two-decimal currencies that SWIFT carries, so a person pays this one by hand (it is still booked)` });
-  }
-
-  if (MONEY.test(r.total) && r.vendor) {
-    const earlier = (db.prepare("SELECT vendor, total, currency FROM ap_invoices WHERE status NOT IN ('blocked', 'rejected') AND (? IS NULL OR id <> ?)").all(ctx.selfId ?? null, ctx.selfId ?? null) as { vendor: string; total: string; currency: string }[])
-      .filter((x) => skeleton(x.vendor) === skeleton(r.vendor) && x.currency === r.currency && MONEY.test(x.total)).map((x) => toCents(x.total));
-    if (earlier.length >= 2) {
-      const usual = median(earlier);
-      if (usual > 0 && toCents(r.total) > UNUSUAL_FACTOR * usual) {
-        f.push({ code: "unusual_amount", level: "warn", detail: `${r.currency} ${r.total} is more than ${UNUSUAL_FACTOR} times this supplier's usual ${r.currency} ${fromCents(usual)} (the median of ${earlier.length} earlier invoices)` });
-      }
-    }
-  }
-
-  if (r.due_date && r.due_date < ctx.now.toISOString().slice(0, 10)) {
-    f.push({ code: "overdue", level: "warn", detail: `the due date ${r.due_date} has passed` });
-  }
-
-  return { status: statusOf(f), findings: f };
-}
-
-/** The fixed precedence: block, then review, then wait; else ready. */
-export function statusOf(f: Finding[]): ApStatus {
-  const has = (level: Finding["level"]) => f.some((x) => x.level === level);
-  return has("block") ? "blocked" : has("review") ? "needs_review" : has("wait") ? "needs_vendor" : "ready";
+  const findings = codeFindings(invoiceCase(db, r, text, ctx));
+  return { status: statusOf(findings), findings };
 }

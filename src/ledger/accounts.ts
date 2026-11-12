@@ -32,3 +32,8 @@ export const VAT_PAYABLE = "2200";
 export const OUTPUT_VAT = "2210";
 export const RETAINED_EARNINGS = "3100";
 export const COST_OF_GOODS_SOLD = "8000";
+export const MONEY_IN_TRANSIT = "1590";
+/** The financier of an invoice token: simulated on testnet, and every report says so. */
+export const FINANCIER = "2150";
+export const FINANCE_COST = "7100";
+export const FX_DIFFERENCES = "7900";

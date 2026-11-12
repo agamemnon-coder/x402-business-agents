@@ -2,18 +2,23 @@
 // without approval, an FX conversion, a card charge and a decline, Metal sales, purchases, a refund, a sweep and its
 // credit, a clearing withdrawal, an Airi purchase and a payment into a Global Account. Test data only.
 import type { DB } from "../../src/db/open.js";
+import { termsHash, TERMS_SCHEMA, type Terms } from "../../src/lib/terms.js";
 
-const SHA_OK = "a".repeat(64);
+// Signed terms that hash to their approvals, as a real ledger holds them: the books refuse to post what a signed
+// proposal speaks for when its stored terms no longer hash to the signed hash (src/ledger/termsLock.ts).
+const TERMS_OK = { schema: TERMS_SCHEMA, kind: "invoice_payment", proposal_id: "P-1", expires_at: "2026-11-10T00:00:00Z" } as Terms;
+const TERMS_FX = { schema: TERMS_SCHEMA, kind: "fx", proposal_id: "P-2", expires_at: "2026-11-10T00:00:00Z" } as Terms;
+const SHA_OK = termsHash(TERMS_OK);
 const SHA_NONE = "b".repeat(64);
-const SHA_FX = "c".repeat(64);
+const SHA_FX = termsHash(TERMS_FX);
 
 export function moneyWorld(d: DB): void {
   const run = (sql: string, ...p: unknown[]) => d.prepare(sql).run(...p);
   run("INSERT INTO beneficiaries (beneficiary_id, name, iban_last4, iban_sha256, bic, currency, method, status) VALUES ('ben_1', 'Bergtex Textil GmbH', '3000', ?, 'COBADEFFXXX', 'EUR', 'SWIFT', 'ACTIVE')", "d".repeat(64));
   for (const no of ["BTX-1", "BTX-2", "BTX-3"]) run("INSERT INTO invoices (invoice_no, vendor, amount, currency, due_date, iban_sha256, bic, beneficiary_id, doc_sha256, status) VALUES (?, 'Bergtex Textil GmbH', '100.00', 'EUR', '2026-11-30', ?, 'COBADEFFXXX', 'ben_1', ?, 'OPEN')", no, "d".repeat(64), "e".repeat(64));
-  run("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES ('P-1', 'invoice_payment', '{}', ?, 'treasury', 'EXECUTED', '2026-11-10', '2026-11-01')", SHA_OK);
+  run("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES ('P-1', 'invoice_payment', ?, ?, 'treasury', 'EXECUTED', '2026-11-10', '2026-11-01')", JSON.stringify(TERMS_OK), SHA_OK);
   run("INSERT INTO approvals (proposal_id, decision, approved_sha256, approver, method, typed_prefix, created_at) VALUES ('P-1', 'APPROVED', ?, 'cfo', 'passkey', '', '2026-11-01T09:00:00Z')", SHA_OK);
-  run("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES ('P-2', 'fx', '{}', ?, 'treasury', 'EXECUTED', '2026-11-10', '2026-11-01')", SHA_FX);
+  run("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES ('P-2', 'fx', ?, ?, 'treasury', 'EXECUTED', '2026-11-10', '2026-11-01')", JSON.stringify(TERMS_FX), SHA_FX);
   run("INSERT INTO approvals (proposal_id, decision, approved_sha256, approver, method, typed_prefix, created_at) VALUES ('P-2', 'APPROVED', ?, 'cfo', 'passkey', '', '2026-11-01T09:05:00Z')", SHA_FX);
   // Transfers: one paid with a fee, one failed, one paid without any approval on file.
   run("INSERT INTO transfers (transfer_id, request_id, invoice_no, amount, currency, method, fee_estimate, fee_actual, status, approval_sha256, updated_at) VALUES ('tr_1', 'req-1', 'BTX-1', '100.00', 'EUR', 'SWIFT', 'EUR 15.00', 'EUR 12.50', 'PAID', ?, '2026-11-02T10:00:00Z')", SHA_OK);

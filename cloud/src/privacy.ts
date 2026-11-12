@@ -3,6 +3,8 @@
 // (invoices, documents, ledger, payments, the audit log) are not personal data of that person and must be kept for
 // seven years (Dutch law, Article 52 AWR); a closed company's records are purged only after that, by the scheduled job.
 
+import type { EngineApi } from "./engine/api.js";
+import { logEvent } from "./log.js";
 import type { Blobs, Sql } from "./store.js";
 import { TENANT_TABLES, TenantDb, WriteConflict } from "./tenant.js";
 
@@ -101,27 +103,44 @@ export async function closeTenant(sql: Sql, tenantId: string, now: Date): Promis
     { sql: "UPDATE api_keys SET revoked_at = ? WHERE tenant_id = ? AND revoked_at IS NULL", params: [iso, tenantId] },
     // Every session ends at once (fromSession also refuses a closed company).
     { sql: "UPDATE users SET session_gen = session_gen + 1 WHERE tenant_id = ?", params: [tenantId] },
+    // The company's OAuth tokens go at once (docs/real-customers.md): a closed company calls no provider again.
+    { sql: "DELETE FROM oauth_connections WHERE tenant_id = ?", params: [tenantId] },
+    { sql: "DELETE FROM oauth_states WHERE tenant_id = ?", params: [tenantId] },
   ]);
   return { closed_at: iso, purge_after };
 }
 
-/** The scheduled job: closed companies past their retention day are removed, rows and documents; a tombstone stays. */
-export async function purgeExpired(sql: Sql, blobs: Blobs, now: Date): Promise<string[]> {
+/**
+ * The scheduled job: closed companies past their retention day are removed, rows and documents; a tombstone stays.
+ * With an engine wired, the company's engine is wiped first (its ledger, documents and passkey). A company whose wipe
+ * fails is logged and left, untouched, for the next run; the others are purged all the same. Returns the purged ones.
+ */
+export async function purgeExpired(sql: Sql, blobs: Blobs, now: Date, engine?: (tenantId: string) => Pick<EngineApi, "wipe">): Promise<string[]> {
   const today = now.toISOString().slice(0, 10);
   const due = await sql.all<{ id: string }>("SELECT id FROM tenants WHERE closed_at IS NOT NULL AND purge_after IS NOT NULL AND purge_after < ? AND name <> '[purged]'", [today]);
+  const purged: string[] = [];
   for (const t of due) {
+    if (engine) {
+      try { await engine(t.id).wipe(); } catch (e) {
+        logEvent("error", "purge_engine_wipe_failed", { tenant: t.id, error: e instanceof Error ? e.message : String(e) }, now);
+        continue;
+      }
+    }
     for (const key of await blobs.list(`t/${t.id}/`)) await blobs.delete(key);
     for (const key of await blobs.list(`exports/${t.id}/`)) await blobs.delete(key);
     await sql.batch([
       ...TENANT_TABLES.map((table) => ({ sql: `DELETE FROM ${table} WHERE tenant_id = ?`, params: [t.id] })),
       { sql: "DELETE FROM api_keys WHERE tenant_id = ?", params: [t.id] },
       { sql: "DELETE FROM challenges WHERE tenant_id = ?", params: [t.id] },
+      { sql: "DELETE FROM oauth_connections WHERE tenant_id = ?", params: [t.id] },
+      { sql: "DELETE FROM oauth_states WHERE tenant_id = ?", params: [t.id] },
       // The address stays taken (red team round 5): a purged company's inbox address is never given to someone else.
       { sql: "UPDATE tenants SET name = '[purged]' WHERE id = ?", params: [t.id] },
     ]);
+    purged.push(t.id);
   }
   // Housekeeping: spent challenges and old rate windows.
   await sql.run("DELETE FROM challenges WHERE expires_at < ?", [new Date(now.getTime() - 86_400_000).toISOString()]);
   await sql.run("DELETE FROM rate_hits WHERE window_start < ?", [Math.floor(now.getTime() / 1000) - 86_400]);
-  return due.map((t) => t.id);
+  return purged;
 }

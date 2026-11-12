@@ -5,7 +5,9 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync, mkdirSync } from 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { recordSpend } from "../src/claude/budget.js";
+import { BUDGET_BLOCKS, recordSpend } from "../src/claude/budget.js";
+
+const EVALS_MICROS = BUDGET_BLOCKS.evals * 1_000_000;
 import { doneRuns, runBatch, summaryMarkdown, worldSha } from "../src/evals/variationRunner.js";
 import { audit } from "../src/audit/log.js";
 import { openDb, type DB } from "../src/db/open.js";
@@ -84,7 +86,7 @@ describe("the variation batch", () => {
 
   it("hands each world the budget left, and stops the batch when a world stopped early at the cap", async () => {
     const d = dirs();
-    recordSpend(d.spend, { block: "evals", usd_micros: 79_900_000, what: "earlier evals" });
+    recordSpend(d.spend, { block: "evals", usd_micros: EVALS_MICROS - 100_000, what: "earlier evals" });
     const seen: number[] = [];
     const run = async (spec: SimWorldSpec, w: { budgetLeftMicros: number }) => { seen.push(w.budgetLeftMicros); return { ...fakeResult(spec, "x", 100_000), stopped_early: "the evals block reached its cap during the world" }; };
     const r = await runBatch({ root: d.root, outDir: d.out, spendFile: d.spend, seeds: [1, 2], repeat: 1, run });
@@ -102,16 +104,16 @@ describe("the variation batch", () => {
 
   it("stops before a world when the evals block has reached its cap, and spends nothing more", async () => {
     const d = dirs();
-    recordSpend(d.spend, { block: "evals", usd_micros: 80_000_000, what: "earlier evals" });
+    recordSpend(d.spend, { block: "evals", usd_micros: EVALS_MICROS, what: "earlier evals" });
     let calls = 0;
     const r = await runBatch({ root: d.root, outDir: d.out, spendFile: d.spend, seeds: [1, 2], repeat: 1, run: async (spec) => { calls++; return fakeResult(spec, "x", 1); } });
     expect(calls).toBe(0);
-    expect(r.stopped).toMatch(/evals block .*80\.00 of 80/);
+    expect(r.stopped).toContain(`evals block has reached its cap: ${BUDGET_BLOCKS.evals.toFixed(2)} of ${BUDGET_BLOCKS.evals}`);
   });
 
   it("stops mid-batch once a world takes the block to its cap", async () => {
     const d = dirs();
-    recordSpend(d.spend, { block: "evals", usd_micros: 79_990_000, what: "earlier evals" });
+    recordSpend(d.spend, { block: "evals", usd_micros: EVALS_MICROS - 10_000, what: "earlier evals" });
     const r = await runBatch({ root: d.root, outDir: d.out, spendFile: d.spend, seeds: [1, 2, 3], repeat: 1, run: async (spec) => fakeResult(spec, "x", 20_000) });
     expect(r.ran.map((x) => x.seed)).toEqual([1]);
     expect(r.stopped).toMatch(/evals block/);

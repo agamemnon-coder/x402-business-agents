@@ -8,6 +8,7 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { notFoundResponse, pageResponse, Relay, type Sql } from "../../worker/src/core.js";
 import { isTrySignPath, trySignNotFound, TrySignDesk } from "../../worker/src/trySign.js";
+import { METAL_INSPECTOR_PATH, localInspector } from "../../worker/src/metalInspector.js";
 import type { FxSource } from "../../worker/src/fxQuote.js";
 import type { InvoiceReadSource } from "../try/claude.js";
 import type { AgentAsk } from "../try/world.js";
@@ -33,6 +34,8 @@ export async function startLocalRelay(opts: { port: number; token: string; /** /
   const pages = buildPages();
   // /try/sign's test worlds, as on the Worker: their own store (another in-memory database), only when the bundle has the page.
   const trySign = pages.trySign ? new TrySignDesk(sqlOver(new Database(":memory:")), { fx: opts.trySignFx ?? null, reader: opts.trySignReader ?? null, advisor: opts.trySignAdvisor ?? null, recorded: opts.trySignRecorded === undefined ? pages.tryAgentsRecorded ?? null : opts.trySignRecorded, rate: pages.exposureRate ?? null }) : null;
+  // /metal's inspector, as a local copy answers it: the bundle's recorded read, no chain call (the Worker reads the chain).
+  const metal = localInspector(pages.metalRecorded ?? null);
   let base = "";
   const server = createServer((req, res) => {
     const chunks: Buffer[] = [];
@@ -47,6 +50,7 @@ export async function startLocalRelay(opts: { port: number; token: string; /** /
           const path = new URL(request.url).pathname;
           const response = pageResponse(request, pages)
             ?? (isTrySignPath(path) ? await (trySign ? trySign.fetch(request) : trySignNotFound()) : null)
+            ?? (path === METAL_INSPECTOR_PATH ? await metal.fetch(request) : null)
             ?? (path.startsWith("/api/") || path === "/health" || path === "/health/live" ? await relay.fetch(request) : notFoundResponse(pages));
           res.writeHead(response.status, Object.fromEntries(response.headers));
           res.end(Buffer.from(await response.arrayBuffer()));

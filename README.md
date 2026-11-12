@@ -127,7 +127,7 @@ On [/try/sign](https://kit11.max-31b.workers.dev/try/sign) the Treasury agent as
 ## Links
 
 - [docs/in-depth.md](docs/in-depth.md): where each judging criterion is proven, how a payment flows, the site in pictures, the proof per partner, the three live runs with every id, Try step by step, what is real and what is mock, the words
-- [The replay of the main run of 3 November](https://kit11.max-31b.workers.dev/watch): every step of that run, replayed (under Proof, not in the menu)
+- [The replay of the main run of 3 November](https://kit11.max-31b.workers.dev/replay): every step of that run, replayed (under Proof, not in the menu)
 - [docs/README.md](docs/README.md): every doc, grouped by reader (juror, builder, video)
 - [docs/run-it.md](docs/run-it.md): running it live, with sandbox keys and a Metal RPC
 - [docs/runs/](docs/runs/): every run log, dated

@@ -44,7 +44,10 @@ describe("the emergency stop", () => {
     for (const agent of ["sourcing", "support", "treasury"] as const) expect(capRefusal(db, agent, 1)).toMatch(/^frozen_by_cfo/);
     expect(await syncCardsAfterPolicy(db, p.proposal_id, awx, now)).toEqual(["sourcing", "support", "treasury"]);
     expect(awx.cards.map((c) => c.status)).toEqual(["INACTIVE", "INACTIVE", "INACTIVE"]);
-    const t = await buyPlan(db, awx, "packwise-starter", now);
+    // Purser refuses the purchase itself (12 November: also before the freeze has reached the card), and a charge that
+    // reaches the card past Purser is declined by Airwallex.
+    await expect(buyPlan(db, awx, "packwise-starter", now)).rejects.toThrow(/emergency stop/);
+    const t = await awx.simulateCardCharge({ cardId: awx.cards[0]!.cardId, amountCents: 1999, currency: "EUR", merchant: "Packwise", mcc: "5734" });
     expect(t).toMatchObject({ approved: false, failureReason: "CARD_INACTIVE" });
     const s = buildSnapshot(db, now);
     expect(s.frozen).toMatchObject({ by: "Max", proposal_id: p.proposal_id, reason: "suspicious activity" });

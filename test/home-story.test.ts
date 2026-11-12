@@ -5,7 +5,7 @@
 // records here, again. The browser side (the tap, the sizes, the screens) is test/browser/pages.check.ts.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { CAVEAT_LINE, CHAIN_TEST, DESIGN_PARTNER_LABEL, DIFFERENTIATORS, HERO, JUDGE_LINE, SECOND_APPROVER, SMALL_COMPANY_DEMO_URL, VISA_EXTRA_LINK, WHAT_IT_IS } from "../src/config/brand.js";
+import { CAVEAT_LINE, CHAIN_TEST, DESIGN_PARTNER_LABEL, DIFFERENTIATORS, HERO, JUDGE_LINE, SECOND_APPROVER, SMALL_COMPANY_DEMO_URL, WHAT_IT_IS } from "../src/config/brand.js";
 import { DEMO_STEPS, heroDemoFacts, heroProvenance } from "../src/redesign/heroDemo.js";
 import { heroReceipt, HERO_RECEIPT_FILE } from "../src/redesign/heroReceipt.js";
 import { LOCKS_HEAD, NEXT_NEXT, PROOF_BUTTON, REASSURE, START, WHATS_REAL, homePage, proofRows } from "../src/redesign/home.js";
@@ -190,7 +190,7 @@ describe("Home is one story, in this order", () => {
       const rest = html.replace(/<header class="top">[\s\S]*?<\/header>/, " ");
       expect(rest).not.toMatch(/\bWatch\b|href="watch"/);
       expect(rest).not.toMatch(/Visa|TAP\b/);
-      expect(html).not.toContain(VISA_EXTRA_LINK);
+      expect(html).not.toMatch(/Extra, not an award entry/);
       expect(html).not.toMatch(/What comes next|class="(?:awards|agents|next|built|runlabel)"/);
     }
   });

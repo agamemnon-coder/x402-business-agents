@@ -256,7 +256,8 @@ describe("/metal: the invoice-token block, only with a run record", () => {
     // No record is committed until a live run is recorded: the page the site serves is the one without.
     if (!tokenizeRunFile()) { expect(tokenizeRun()).toBeNull(); expect(METAL_PAGE).toBe(without()); }
     else expect(METAL_PAGE).toBe(metalPage(run, tokenizeRun()));
-    expect(visibleWords(without())).toBeLessThanOrEqual(200);
+    // 275 without the block since the jury panel of 12 Nov (the four mandates in one table; test/site-v4.test.ts).
+    expect(visibleWords(without())).toBeLessThanOrEqual(275);
   });
 
   it("with a record it shows one short block: the title, one sentence from the record, the verify badge, and the transactions folded", () => {
@@ -269,13 +270,14 @@ describe("/metal: the invoice-token block, only with a run record", () => {
     // It sits after the main run's proof, before the link to all the proof.
     expect(html.indexOf('<div class="folds card">')).toBeLessThan(html.indexOf('id="invoice-token"'));
     expect(html.indexOf('id="invoice-token"')).toBeLessThan(html.indexOf(">All the proof "));
-    // Short: at most 50 words in sight, and the page within its budget with the block (250; 200 without).
+    // Short: at most 50 words in sight, and the page within its budget with the block (325; 275 without, since the jury
+    // panel of 12 Nov).
     expect(visibleWords(html) - visibleWords(without())).toBeLessThanOrEqual(50);
-    expect(visibleWords(html)).toBeLessThanOrEqual(250);
+    expect(visibleWords(html)).toBeLessThanOrEqual(325);
     // The longest form of the block (a person's approval on an earlier day, named) stays within both budgets too.
     const longest = metalPage(run, { file: FILE, rec: person() });
     expect(visibleWords(longest) - visibleWords(without())).toBeLessThanOrEqual(50);
-    expect(visibleWords(longest)).toBeLessThanOrEqual(250);
+    expect(visibleWords(longest)).toBeLessThanOrEqual(325);
     // Every label a public mention of the run carries.
     const sight = textOf(block.replace(/<details[\s\S]*<\/details>/, ""));
     for (const label of [/\(prototype\)/, /Metal testnet/, /simulated financier/, /Face value divided by 100/, /test USD/, /a separate Metal testnet run/]) expect(sight).toMatch(label);

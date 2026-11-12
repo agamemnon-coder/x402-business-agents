@@ -9,9 +9,11 @@ import { packFacts } from "../src/submission/facts.js";
 import { homePage } from "../src/redesign/home.js";
 import { watchPage } from "../src/redesign/watch.js";
 import { proofPage } from "../src/redesign/proof.js";
-import { CHAIN_TEST, DEFENSE_IN_DEPTH, HOME_BADGE, KIT_LINE, PRICE_LINE, SECOND_APPROVER, VISA_AWARD_ON, VISA_CLAIM, VISA_EXTRA_LINK, VISA_TAP_STATUS } from "../src/config/brand.js";
+import { CHAIN_TEST, DEFENSE_IN_DEPTH, HOME_BADGE, KIT_LINE, PRICE_LINE, SECOND_APPROVER, VISA_CLAIM, VISA_TAP_STATUS, VISA_VIC_BUILT_ON } from "../src/config/brand.js";
 import { buildPages } from "../src/relay/assets.js";
-import { CONNECTED_LINE, TWO_LOCKS_LINE } from "../src/redesign/partners.js";
+import { hostileClaimText } from "../src/redesign/partners.js";
+
+const HOSTILE_CLAIM = hostileClaimText();
 import { esc } from "../src/redesign/ui.js";
 
 const { file, record } = loadRecord();
@@ -52,8 +54,15 @@ function recount(r: RunRecord): string[] {
 const ALLOWED = new Set([...RECORD_NUMBERS, ...recount(JSON.parse(RAW) as RunRecord)]);
 
 /** The words a person reads on a page as served (scripts, styles and markup left out), without the fixed names that carry digits. */
-const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " ")
-  .replace(/&amp;/g, "&").replace(/&#39;|&quot;/g, "'").replace(KIT_LINE, " ").replace(/\bx402\b/g, " ").replace(/Kit 11/g, " ").replace(VISA_CLAIM, " ").replace(/agent run 1/g, " ").replace(HOME_BADGE, " ").replace(/\b404\b/g, " ").replace(/\breq_[A-Za-z0-9]+/g, " ")
+const visibleText = (html: string) => html
+  // /airwallex (jury panel, 12 Nov): a block that names its own record (data-rec: a product tile, the platform run's fold,
+  // the line on SWIFT) is dated with that record; its figures are checked against it in test/airwallex-products.test.ts.
+  .replace(/<(article|details|p|li)\b[^>]*\sdata-rec="[^"]+"[\s\S]*?<\/\1>/g, " ")
+  // The partner pages' "Built on" strip (owner, 12 Nov): one proof number per partner, each from its own record (the
+  // Airwallex tiles, the Airi run, the T:0 posting); test/t0-page.test.ts holds each to its record.
+  .replace(/<p class="builton">[\s\S]*?<\/p>/g, " ")
+  .replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, " ").replace(/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, " ").replace(/<[^>]+>/g, " ")
+  .replace(/&#39;|&quot;/g, "'").replace(/&amp;/g, "&").replace(KIT_LINE, " ").replace(/\bx402\b/g, " ").replace(/Kit 11/g, " ").replace(VISA_CLAIM, " ").replace(/agent run 1/g, " ").replace(HOME_BADGE, " ").replace(/\b404\b/g, " ").replace(/\breq_[A-Za-z0-9]+/g, " ")
   // Other named records /proof cites, each with its own name and date: the variation test, the red team, the archive.
   .replace(/Variation test[\s\S]*?Red team[\s\S]*?\)\./, " ").replace(/\d+ of \d+ attacks failed \([^)]*\)[^.]*\. Against the agent loop: \d+ of \d+ held \([^)]*\)\./, " ")
   .replace(/Autonomous dry run dry-\d+[^<]*?(, \d{4}-\d{2}-\d{2})?/g, " ")
@@ -73,17 +82,27 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   .replace(/Visa Intelligent Commerce via Airwallex's Airi: a live run[\s\S]*?docs\/demo\/airi-run\.json/g, " ")
   // The second Airi run (vic-2, 7 Nov), dated with its own record; its figures are checked against docs/demo/vic-2-run.json
   // in test/vic2-run-page.test.ts.
-  .replace(/What Purser adds around Airi: a second live run[\s\S]{0,4000}?run log/g, " ")
+  // (Its heading since 12 Nov: a control test, not a Visa run.)
+  .replace(/Control test of Purser's own checks, not a Visa run[\s\S]{0,4000}?run log/g, " ")
+  // /visa since 12 Nov (jury panel): purchase B in three columns (docs/demo/airi-run.json and Airwallex's own record),
+  // the one summary of the paid run and the attempts that failed first, each from the Airi run's record; their figures
+  // are checked against the records in test/vic-facts.test.ts and test/visa-overview.test.ts.
+  .replace(/Purchase B: signed, sent, charged[\s\S]*?Airwallex's own record, read \d{1,2} \w{3}\./g, " ")
+  .replace(/The paid run VIC via Airi[\s\S]*?cardholder confirmed each purchase in Airi/g, " ")
+  .replace(/The \d+ attempts that failed first[\s\S]*?Each cause in full: run log/g, " ")
+  .replace(/It passed on the \w+ attempt that day\./g, " ")
+  // What the Airwallex sandbox reports for the Airi run's two payments (12 Nov, folded on /visa), dated with its own
+  // record; its values are checked against docs/runs/airwallex-vic-payment-intents-<date>.json in test/vic-network.test.ts.
+  .replace(/As reported by the Airwallex sandbox[\s\S]*?airwallex-vic-payment-intents-[\d-]+\.json/g, " ")
+  // The CFO's policy next to Visa's published VIC rules (12 Nov, folded on /visa): Purser's figures from the two Airi
+  // records and the code's constants, Visa's from its own quoted words; all checked in test/vic-rules.test.ts.
+  .replace(/The CFO's policy next to Visa's VIC rules[\s\S]*?developer\.visa\.com, read \d{1,2} \w{3} \d{4}\./g, " ")
+  // How the Airi rail handles card data (12 Nov, folded on /visa): two figures, the code's own constants (the folder's
+  // mode, the digit run cut from kept text), not the run's; held to src/airi/cardData.ts in test/airi-card-data.test.ts.
+  .replace(/Card data: not a network-tokenised checkout[\s\S]*?held by\s+test\/airi-card-data\.test\.ts/g, " ")
   // The intended price (a hypothesis, not a figure of the run): one sentence, its numbers checked against
   // src/business/unitEconomics.ts's inputs in test/unit-economics-hypothesis.test.ts.
   .replace(PRICE_LINE, " ")
-  // The connected-accounts run (10 Nov) on /airwallex, dated with its own record; its ids and figures are checked against
-  // docs/runs/2026-11-10-connected-accounts-sandbox.md in test/partner-pages.test.ts.
-  .replace(esc(CONNECTED_LINE), " ")
-  // The two-locks run (10 and 12 Nov) on /airwallex, dated with its own records; its id and amount are checked against
-  // docs/runs/2026-11-10-airwallex-two-locks.md and docs/runs/2026-11-12-airwallex-two-locks-paid.md in
-  // test/partner-pages.test.ts.
-  .replace(esc(TWO_LOCKS_LINE), " ")
   // Watch's playback speeds (Max, 10 Nov) are a control, not a figure of the run.
   .replace(/\b(?:0\.5|1|2)×/g, " ")
   // Home's hero, its one provenance line and its three proof rows (home-story, 12 Nov): the Airwallex-only run's
@@ -96,7 +115,10 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   // Home's "About Purser" fold (the owner, 12 Nov): how many runs /runs lists, and the payout and fee of the run of 10
   // November, dated in that run's own record; each figure is read from liveRuns() and checked against
   // docs/runs/2026-11-10-platform-e2e.md in test/home-about.test.ts.
-  .replace(/About Purser\s+The problem:[\s\S]*?No customers, pilots or revenue yet\./g, " ");
+  .replace(/About Purser\s+The problem:[\s\S]*?No customers, pilots or revenue yet\./g, " ")
+  // 12 Nov (jury panel): /claude's hostile-model eval line, from its own record (docs/evals/ap-hostile.json), which
+  // test/ap-agent-evals.test.ts holds to a fresh run of the eval.
+  .replace(HOSTILE_CLAIM || "\u0000", " ");
 
 /** Numbers on the page that are not in the record. */
 export const unknownNumbers = (html: string) => (visibleText(html).match(NUM) ?? []).map(norm).filter((n) => !ALLOWED.has(n));
@@ -239,16 +261,17 @@ describe("the redesigned public pages", () => {
   });
 
   it("keep the Kit line and the badge as the form and the deck say them, off Home (home-story, 12 Nov: no Kit 11 chip, no awards strip, no \"Built on\" row), and Visa only as text, never certified or endorsed", () => {
-    // VISA_AWARD_ON stays off: it would add "Visa TAP" to "Built on", and TAP is not the eligible tooling.
-    expect(VISA_AWARD_ON).toBe(false);
+    // "Visa (VIC via Airi)" in "Built on" since 12 Nov (jury panel): the Visa entry is the Airi run. Never "Visa TAP":
+    // TAP is not the eligible tooling. (The switch was VISA_AWARD_ON, off.)
+    expect(VISA_VIC_BUILT_ON).toBe(true);
     expect(KIT_LINE).toBe("Kit 11 · x402 Business Agents · entered for the Metal Award and the Visa Award");
     expect(HOME_BADGE).toBe("Kit 11 · Metal Award and Visa Award · built on Airwallex, Metal, Claude");
     // Home said both "entered for the Visa Award" and "not an award entry" (jury panel, 12 Nov): it now says nothing
     // about awards or Visa, and carries no chip, strip or "Built on" row. /visa and /proof say what is true there.
     expect(homePage()).not.toMatch(/Kit 11|x402 Business Agents|Metal Award|Visa Award|Built on|class="built"/);
-    expect(homePage()).not.toContain(VISA_EXTRA_LINK);
     expect(homePage().replace(/<header class="top">[\s\S]*?<\/header>/, "")).not.toMatch(/Visa|href="visa"/);
-    expect(proofPage()).toContain(`<a class="flink" href="visa">${VISA_EXTRA_LINK}</a>`);
+    // Proof has no footer link to /visa since 12 Nov either: Visa TAP is on /visa only, in its closed fold.
+    expect(proofPage()).not.toMatch(/<a class="flink" href="visa">|Extra, not an award entry/);
     expect(JSON.stringify(agentRun().scenes)).not.toMatch(/Visa|TAP/);
     for (const [name, body] of Object.entries(PAGES)) if (typeof body === "string") expect({ name, img: /<img[^>]*visa/i.test(body), words: body.split(/[.!?"]\s/).filter((s) => /Visa|TAP/.test(s)).map((s) => /\b(certified|endorsed|Visa-approved|open-source)\b/i.exec(s)?.[0]).find(Boolean) ?? null }).toEqual({ name, img: false, words: null });
     expect(PAGES.visa).toContain(VISA_CLAIM.replace(/'/g, "&#39;").replace(/&#39;/g, "'"));
@@ -266,16 +289,16 @@ describe("the redesigned public pages", () => {
     expect(run.scenes[0]!.steps.map((s) => s.text)).toEqual(expect.arrayContaining(["2 of 2 signatures"]));
   });
 
-  it("TAP's status is Max's wording (5 Nov), said once, on /visa (Proof links to it as an extra; Home says nothing about Visa since 12 Nov); the Visa Award only in the Kit line, never on TAP", () => {
+  it("TAP's status is Max's wording (5 Nov), said once, on /visa; Home says nothing about Visa (12 Nov); the Visa Award only in the Kit line and /visa's entry line, never on TAP", () => {
     const pages = buildPages() as unknown as Record<string, unknown>;
     expect(VISA_TAP_STATUS).toBe("Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov).");
-    // Said once: on /visa; Proof only links to /visa, labelled as an extra, not an award entry.
+    // Said once: on /visa, inside its closed TAP fold; Home and Proof say nothing of it (their footer link went on 12 Nov).
     for (const name of ["home", "proof", "visa"]) {
       const html = name === "home" ? homePage() : name === "proof" ? proofPage() : String(pages.visa);
       expect({ name, has: html.split(esc(VISA_TAP_STATUS)).length - 1 }).toEqual({ name, has: name === "visa" ? 1 : 0 });
-      if (name !== "visa") expect({ name, link: html.includes(`href="visa">${esc(VISA_EXTRA_LINK)}</a>`) }).toEqual({ name, link: name === "proof" });
+      if (name !== "visa") expect({ name, link: /Extra, not an award entry/.test(html) }).toEqual({ name, link: false });
     }
-    for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, bad: /confirmed (that )?TAP|TAP counts as Visa tooling|counts as Visa tooling|still being confirmed with Visa|\+ Visa Award|Visa Award entry/i.test(body) || /Visa Award/i.test(body.split("entered for the Metal Award and the Visa Award").join(" ")) }).toEqual({ name, bad: false });
+    for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, bad: /confirmed (that )?TAP|TAP counts as Visa tooling|counts as Visa tooling|still being confirmed with Visa|\+ Visa Award|Visa Award entry/i.test(body) || /Visa Award/i.test(body.split("entered for the Metal Award and the Visa Award").join(" ").split("This Airi run is Purser's entry for the Visa Award.").join(" ")) }).toEqual({ name, bad: false });
   });
 
   it("labels the licence payment by who planned it: the Treasury agent itself in the main run; agent run 1's honest note is kept", () => {
@@ -294,8 +317,9 @@ describe("the redesigned public pages", () => {
     for (const html of [homePage(), watchPage(), proofPage()]) expect(html).toContain(SECOND_APPROVER);
   });
 
+  // 12 Nov (jury panel): one exception, /claude's hostile-model eval line, which CI computes and its record holds (not sim-31).
   it("claims no '0 unsafe' anywhere until sim-31 is checked (Max, 2 Nov)", () => {
-    for (const [name, body] of Object.entries(buildPages() as unknown as Record<string, unknown>)) if (typeof body === "string") expect({ name, zero: /\b0 unsafe\b/i.test(body.replace(/<[^>]+>/g, " ")) }).toEqual({ name, zero: false });
+    for (const [name, body] of Object.entries(buildPages() as unknown as Record<string, unknown>)) if (typeof body === "string") expect({ name, zero: /\b0 unsafe\b/i.test(body.replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(HOSTILE_CLAIM || "\u0000", " ")) }).toEqual({ name, zero: false });
   });
 });
 

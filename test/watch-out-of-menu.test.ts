@@ -31,8 +31,8 @@ const noScript = (html: string) => withoutBlocks(html, ["script", "style"], " ")
 /** What a visitor sees before opening anything: no script, no style, no fold's inside (its header stays). */
 const inSightHtml = (html: string) => noScript(html).replace(/<details\b[^>]*>\s*(<summary[^>]*>[\s\S]*?<\/summary>)[\s\S]*?<\/details>/g, " $1 ");
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
-/** A link in a navigation to the replay (/watch), or an item named Watch; the film on YouTube is neither. */
-const toReplayIn = (nav: string) => [...nav.matchAll(/href="([^"]*)"/g)].map((m) => m[1]!).find((h) => !/^https?:/.test(h) && /(^|\/)watch([?#]|$)/.test(h)) ?? items(nav).find((t) => /^watch$/i.test(t)) ?? null;
+/** A link in a navigation to the replay (/replay; /watch until 12 Nov), or an item named Watch; the film on YouTube is neither. */
+const toReplayIn = (nav: string) => [...nav.matchAll(/href="([^"]*)"/g)].map((m) => m[1]!).find((h) => !/^https?:/.test(h) && /(^|\/)(watch|replay)([?#]|$)/.test(h)) ?? items(nav).find((t) => /^watch$/i.test(t)) ?? null;
 /** The items of a menu as a visitor reads them: its links, and a fold's header for a fold. */
 const items = (nav: string) => [...nav.replace(/<details\b[\s\S]*?<\/details>/g, (d) => /<summary[^>]*>[\s\S]*?<\/summary>/.exec(d)?.[0] ?? "").matchAll(/<(a|summary)\b[^>]*>([\s\S]*?)<\/\1>/g)].map((m) => textOutsideTags(m[2]!).replace(/\s+/g, " ").trim());
 
@@ -67,7 +67,7 @@ describe("the menu: Home, Try, Proof, and no Watch", () => {
 
   it("Home does not name or link the replay, in either build", () => {
     for (const [build, html] of [["with /try/sign", ON.home!], ["without", OFF.home!]] as const) {
-      expect({ build, link: /href="\/?(watch|live|demo)\b[^"]*"/.exec(html)?.[0] ?? null }).toEqual({ build, link: null });
+      expect({ build, link: /href="\/?(watch|replay|live|demo)\b[^"]*"/.exec(html)?.[0] ?? null }).toEqual({ build, link: null });
       expect({ build, word: /\bWatch\b|\breplay/i.exec(text(noScript(html)))?.[0] ?? null }).toEqual({ build, word: null });
     }
   });
@@ -90,20 +90,20 @@ describe("the menu: Home, Try, Proof, and no Watch", () => {
   });
 });
 
-describe("/watch still answers, as a replay under Proof", () => {
-  const html = ON.watch!;
+describe("/replay answers, as a replay under Proof (it was /watch until the film's page took that address, 12 Nov)", () => {
+  const html = ON.replay!;
 
-  it("is served at /watch, and /live and /demo lead to it", () => {
+  it("is served at /replay, and /live and /demo lead to it", () => {
     for (const pages of [ON, OFF]) {
-      const r = pageResponse(new Request(`${SITE}/watch`), pages);
+      const r = pageResponse(new Request(`${SITE}/replay`), pages);
       expect(r?.status).toBe(200);
-      expect(r?.headers.get("content-security-policy")).toBe(pages.csp.watch);
+      expect(r?.headers.get("content-security-policy")).toBe(pages.csp.replay);
       for (const old of ["/live", "/demo"]) {
         const moved = pageResponse(new Request(`${SITE}${old}`), pages);
-        expect({ old, status: moved?.status, to: moved?.headers.get("location") }).toEqual({ old, status: 302, to: "/watch" });
+        expect({ old, status: moved?.status, to: moved?.headers.get("location") }).toEqual({ old, status: 302, to: "/replay" });
       }
     }
-    expect(OFF.watch).toContain('href="try" data-next="try"');
+    expect(OFF.replay).toContain('href="try" data-next="try"');
     expect(html).toContain('href="try/sign" data-next="try"');
   });
 
@@ -120,7 +120,7 @@ describe("/watch still answers, as a replay under Proof", () => {
     const later = { ...run, label: "Replay of the main run and its follow-up, 9 Dec 08:00–08:10 UTC · test money · real Claude decisions" };
     expect(replayHead(later).heading).toBe(`Replay of the main run and its follow-up, ${day}`);
     expect(replayHead(later).rest).toBe("08:00–08:10 UTC · test money · real Claude decisions");
-    expect(watchPage(run)).toBe(buildPages({} as NodeJS.ProcessEnv).watch);
+    expect(watchPage(run)).toBe(buildPages({} as NodeJS.ProcessEnv).replay);
   });
 
   it("marks the Proof tab, and nothing on it calls the replay live", () => {
@@ -200,8 +200,8 @@ describe("/watch still answers, as a replay under Proof", () => {
 describe("no served page links to a path the site does not serve", () => {
   /** Where a bundle's pages are served. */
   const PATHS: Record<string, string> = {
-    dashboard: "/?recorded", home: "/home", watch: "/watch", try: "/try", proof: "/proof", trace: "/trace", runs: "/runs", month: "/month", film: "/film", lab: "/lab",
-    metal: "/metal", metalReport: "/metal/report", visa: "/visa", airwallex: "/airwallex", claude: "/claude", trySign: "/try/sign", tryVerify: "/try/verify", judge: "/judge",
+    dashboard: "/?recorded", home: "/home", watch: "/watch", replay: "/replay", try: "/try", proof: "/proof", trace: "/trace", runs: "/runs", month: "/month", film: "/film", lab: "/lab",
+    metal: "/metal", metalReport: "/metal/report", visa: "/visa", airwallex: "/airwallex", claude: "/claude", t0: "/t0", trySign: "/try/sign", tryVerify: "/try/verify", judge: "/judge",
     enrol: "/enrol", policy: "/policy", approve: "/approve/P-0001", notFound: "/no/such/page",
   };
   /** The status a GET ends in, following redirects as a browser does; 404 for no page. */
@@ -233,7 +233,7 @@ describe("no served page links to a path the site does not serve", () => {
           links++;
           const url = new URL(href, `${SITE}${at}`);
           expect({ build, name, href, status: served(url.toString(), pages) }).toEqual({ build, name, href, status: 200 });
-          if (/^\/(watch|live|demo)$/.test(url.pathname)) toReplay.add(name);
+          if (/^\/(replay|live|demo)$/.test(url.pathname)) toReplay.add(name);
         }
       }
       expect(links).toBeGreaterThan(100);

@@ -9,7 +9,7 @@ is real and what is mock, and the words. Test money only throughout: the Airwall
 | Criterion | Where it is proven |
 |---|---|
 | Airwallex use | [/airwallex](https://kit11.max-31b.workers.dev/airwallex): cards per agent with the CFO policy as Airwallex's own controls, read back; Airwallex's own declines; SWIFT payouts carrying the signed hash; FX for the shortfall only. [Run log](runs/2026-11-07-awx-1.md) |
-| Agentic | [/claude](https://kit11.max-31b.workers.dev/claude), and the replay of the main run of 3 November at [/watch](https://kit11.max-31b.workers.dev/watch): three Claude agents, 24 of 24 decisions by Claude; an agent read Airwallex's decline and asked the CFO for a raise instead of retrying |
+| Agentic | [/claude](https://kit11.max-31b.workers.dev/claude), and the replay of the main run of 3 November at [/replay](https://kit11.max-31b.workers.dev/replay): three Claude agents, 24 of 24 decisions by Claude; an agent read Airwallex's decline and asked the CFO for a raise instead of retrying |
 | Technical | [What Purser guarantees](https://kit11.max-31b.workers.dev/proof#guarantees), each promise with its code, its test and where it ran; [controls matrix](controls-matrix.md); [verify it yourself](../README.md#verify-it-yourself-in-3-commands) |
 | Finance value | [/try/sign](https://kit11.max-31b.workers.dev/try/sign); [the business case](business/) (a hypothesis; 2 finance conversations, quoted, anonymous; more in progress; no customers yet) |
 | Metal Award | [/metal](https://kit11.max-31b.workers.dev/metal), [docs/metal-award.md](metal-award.md) |
@@ -60,11 +60,11 @@ plays the CFO and signed with a personal passkey (Face ID on a phone). The secon
 virtual test passkey on the runner machine, pressed by our build tool, Claude Code, on the builder's go; in production the
 second approver is a second person. The three runtime agents hold no owner key and no passkey, and no key reaches their
 Claude models. Log: [docs/runs/2026-11-03-main-run.md](runs/2026-11-03-main-run.md); record:
-[docs/demo/main-run.json](demo/main-run.json); replayed on [/watch](https://kit11.max-31b.workers.dev/watch).
+[docs/demo/main-run.json](demo/main-run.json); replayed on [/replay](https://kit11.max-31b.workers.dev/replay).
 
 <details><summary>The three scenes, the stops and the payments, every id</summary>
 
-**1. The price rise** ([watch](https://kit11.max-31b.workers.dev/watch?scene=1)). Stockline went from 0.02 to 0.04 a
+**1. The price rise** ([watch](https://kit11.max-31b.workers.dev/replay?scene=1)). Stockline went from 0.02 to 0.04 a
 stock check, over the Sourcing mandate's 0.03 cap. We switched off our own check once to prove the chain holds the line:
 Purser refuses an over-cap purchase before signing; with that check off for purchase #24, Metal refused it anyway; the
 refusal is recorded on chain: `mandate_cap_exceeded` at 11:23:27, tx
@@ -74,7 +74,7 @@ refusal is recorded on chain: `mandate_cap_exceeded` at 11:23:27, tx
 after four eyes, both mandates were replaced on chain: Treasury `0x789abb249896e01cee8e3641d7794676b6f2ce5d05f45093f6cc64101c9aebbc` (11:26:54), Sourcing
 `0x2a91ac97fc2a459da2b0c73f2b8020edec1901d051c7ef03bb088d36067fe790` (11:26:59).
 
-**2. The dispute** ([watch](https://kit11.max-31b.workers.dev/watch?scene=2)). A simulated customer disputes 12 orders,
+**2. The dispute** ([watch](https://kit11.max-31b.workers.dev/replay?scene=2)). A simulated customer disputes 12 orders,
 saying its agent never placed them. Every order carries its agent's signature, so that claim fails. Three orders had
 wrong data; the Support agent refunds those 3 (0.15 test USD) itself. "Refund the other 9" goes to the CFO, who rejects
 it with Face ID. The refunds, #7, #10 and #13:
@@ -83,7 +83,7 @@ it with Face ID. The refunds, #7, #10 and #13:
 `0x5099fe44b03d83f4dd3963fc59a40e2a506bee533e5a41e8f1b00a12bee14510`; P-0004 ("refund the other 9") rejected by Max
 with Face ID at 11:29:37.
 
-**3. Earnings and euros** ([watch](https://kit11.max-31b.workers.dev/watch?scene=3)). 0.69 swept after finality, tx
+**3. Earnings and euros** ([watch](https://kit11.max-31b.workers.dev/replay?scene=3)). 0.69 swept after finality, tx
 `0x86936a5b29f9550857676fa710231af9e20882ebe6eee16f75a90af29767ccb4`, booked at Airwallex as deposit
 `b3812e05-2afa-4698-8f64-429f9608e0a0`. The Treasury agent planned the EUR 240.00 licence itself; after the CFO's
 Face ID, EUR 110.00 bought by FX for USD 124.29 (conversion `3ca88196-05da-4d88-9caa-796f03704636`), then SWIFT:
@@ -116,8 +116,8 @@ supplier purchases + 3 refunds + 1 sweep on Metal, and 1 card charge at Airwalle
 20.00 test USD between them, before and after, held in code (`TOTAL_BUDGET_CENTS`). The limits in code, each with its test:
 [docs/controls.md](controls.md#guards-in-code).
 
-**Visa:** each agent signs its card checkout with Visa's Trusted Agent Protocol (TAP), so a merchant can check which
-agent is buying. Visa's public reference verifier accepted the signatures in a separate test on 2 November; the
+**Visa:** the Sourcing agent signs its card checkout with Visa's Trusted Agent Protocol (TAP), so a merchant can check
+which agent is buying. Visa's public reference verifier accepted the signatures in a separate test on 2 November; the
 merchant is ours.
 
 ## The Airwallex-only run, awx-1 (7 November; sandbox, test money)
@@ -150,18 +150,20 @@ one attempt. The CFO signed all three proposals with Face ID on a personal phone
 
 ## Visa Intelligent Commerce via Airwallex's Airi: a live run (7 Nov)
 
-A scripted purchase, with no model call: the run's conductor bought for the Sourcing agent with a single-use Visa
-(VIC) credential from Airi, and a person confirmed each purchase with a passkey tap in Airi. Within Purser's limit
-without the CFO, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first. A separate
-world: Airwallex sandbox, test card, test money; paid on Airwallex's hosted checkout page for our own Airwallex sandbox
-merchant. Claude: 0 calls in this run. Passed, [5 of 5 checks](runs/2026-11-07-vic-1.md#checks-the-records-checks), in the second
-attempt in its world (the attempts before it are in the log). Log:
+A scripted run, no Claude call (0 calls): the run's conductor bought for the Sourcing agent with a single-use Visa (VIC)
+credential from Airi, each purchase confirmed by the cardholder's passkey: within Purser's limit with no Purser
+approval, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first. A separate world:
+Airwallex sandbox, test card, test money. What the sandbox could not show: the credential is a test credential from
+Airi's test card; one person played both the CFO and the cardholder; the agent's process typed the single-use number
+into Airwallex's hosted checkout page with a headless browser, because the sandbox refuses a direct confirm; the
+merchant is our own Airwallex sandbox merchant. Passed, [5 of 5 checks](runs/2026-11-07-vic-1.md#checks-the-records-checks),
+on the fourth attempt that day, the second in its world (the attempts before it are in the log). Log:
 [docs/runs/2026-11-07-vic-1.md](runs/2026-11-07-vic-1.md); record:
 [docs/demo/airi-run.json](demo/airi-run.json); on the site:
 [/airwallex](https://kit11.max-31b.workers.dev/airwallex#airi-run),
 [/visa](https://kit11.max-31b.workers.dev/visa#airi-run) and [/proof](https://kit11.max-31b.workers.dev/proof#airi-run).
 
-<details><summary>The three purchases, and the second run (vic-2)</summary>
+<details><summary>The three purchases, and the control test (vic-2)</summary>
 
 - **✓ Within the limit:** EUR 12.00 (Purser's limit: EUR 20.00). Within Purser's limit, no Purser approval is needed. Airi
   itself asks the cardholder to confirm each purchase with a passkey. PaymentIntent `int_sgpvzc9hjhnxvpblt2r`
@@ -172,8 +174,8 @@ attempt in its world (the attempts before it are in the log). Log:
 - **✕ Refused by Purser:** EUR 5.00 at a merchant the CFO does not allow (`PURSER_MERCHANT_NOT_ALLOWED`), before any
   call to Airi.
 
-**A second live run (vic-2, 7 Nov, 19:06–19:08 UTC): what Purser adds around Airi.** The CFO's Face ID on a phone,
-three times; 0 Airi and 0 Airwallex calls in the whole run, so nothing was bought.
+**A control test of Purser's own checks, not a Visa run (vic-2, 7 Nov, 19:06–19:08 UTC).** The CFO's Face ID on a
+phone, three times; 0 Airi and 0 Airwallex calls in the whole test, so nothing was bought.
 [7 of 7 checks](runs/2026-11-07-vic-2.md#checks); log:
 [docs/runs/2026-11-07-vic-2.md](runs/2026-11-07-vic-2.md); on the site:
 [/visa](https://kit11.max-31b.workers.dev/visa#airi-run-2).
@@ -225,7 +227,7 @@ gives an agent a task of yours: Claude reads it, code applies the CFO's limits, 
   sandbox; the other 13 refused purchases (12 stopped by the buy rule the Sourcing agent set, applied by code; #37, refused by Metal against
   its just-revoked mandate, with no transaction of its own) are in the ledger, not as transactions on chain.
 - **Run by us:** Summit Outfitters (the customer) and its agent, Stockline (the supplier), the TAP merchant.
-- **Replayed:** Proof and the replay at `/watch` on the hosted site, and `npm run judge` offline, play the main run's record; Home's hero plays the Airwallex-only run's record of 7 November, and its fourth step checks the owner's real signature of that payment in the visitor's browser.
+- **Replayed:** Proof and the replay at `/replay` on the hosted site, and `npm run judge` offline, play the main run's record; Home's hero plays the Airwallex-only run's record of 7 November, and its fourth step checks the owner's real signature of that payment in the visitor's browser.
 - **Stand-ins:** the automated tests and the Scenario Lab (`/lab`) run on stand-ins for Airwallex, Metal and Anthropic.
 - **Your own test world:** `/try/sign` (live since 4 November 2026) runs each visitor's world on stand-in executors: no
   payment reaches Airwallex or Metal. Real: your passkey's signature and the server's check of it, the Airwallex sandbox

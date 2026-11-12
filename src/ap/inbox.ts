@@ -3,16 +3,22 @@
 // The document is written once to <dir>/docs/<sha256>.<ext> and never changed; the ledger keeps its hash. Then it is
 // read (src/ap/read.ts), checked (src/ap/checks.ts) and filed with a status and the reasons.
 
+import type Anthropic from "@anthropic-ai/sdk";
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Json } from "@metalntwx/metal-pay/mandates";
 import { audit } from "../audit/log.js";
+import { apAgentsOn } from "../config/agents.js";
 import { VENDOR_GL } from "../config/gl.js";
 import type { DB } from "../db/open.js";
 import { skeleton } from "../policy/fraudCore.js";
+import { checkpoint } from "../policy/saga.js";
 import { accrualEntries, bookable, pushOnce, type BookkeepingSink } from "./books.js";
-import { evaluate, statusOf } from "./checks.js";
+import { enforceAgain, recordChecked, runChecker, statusAfter, type CheckerOutcome } from "./checkerAgent.js";
+import { codeFindings, type InvoiceCase } from "./checkerCore.js";
+import { invoiceCase, statusOf, type CheckContext } from "./checks.js";
+import { docStoreOf, readDoc } from "./docStore.js";
 import { classifyDocument, ruleSignals, type DocKind } from "./classify.js";
 import { ensureCoded, type CoderDeps } from "./coderAgent.js";
 import { needsNote, writeReviewNote } from "./review.js";
@@ -22,7 +28,7 @@ import { isPdf, pdfText } from "./pdfText.js";
 import { EXPENSE_ACCOUNTS, readDocument, type Asker } from "./read.js";
 import { imageInfo, imageToPdf, readScan, scanFinding, scanRefusal, type ScanResult } from "./scan.js";
 import type { ApReading } from "./reading.js";
-import type { Finding } from "./store.js";
+import type { ApStatus, Finding } from "./store.js";
 import { apInvoice, apInvoices, nextApId, setStatus, type ApInvoiceRow } from "./store.js";
 
 export type Source = "upload" | "folder" | "email" | "api";
@@ -34,8 +40,35 @@ export interface InboxDeps {
   now?: () => Date;
   /** Where booked entries go as they happen (src/ap/books.ts); none: the export reads the ledger. */
   sink?: BookkeepingSink;
+  /**
+   * The Claude client of the Checker agent (KIT11_AP_AGENTS=on, src/ap/checkerAgent.ts); null: no key, so code's checks
+   * decide, labelled as the fallback. Default: the runner's own client. Never asked while the flag is off.
+   */
+  claude?: Anthropic | null;
   /** The Claude client the Coder agent uses with KIT11_AP_AGENTS=on (src/ap/coderAgent.ts); absent: claudeClient(). */
   coder?: CoderDeps["client"];
+}
+
+/** The Checker agent's run for a document, by its hash (the invoice has no number yet when it is first checked). */
+const checkTask = (docSha: string) => `ap.check.${docSha.slice(0, 16)}`;
+
+/** Code's own checks on a case (null: not an invoice, so there is no case to decide on). */
+interface CodeChecks { c: InvoiceCase | null; findings: Finding[] }
+
+/** The Checker agent on the case code's checks ran on (only called with KIT11_AP_AGENTS=on); null when there is no case. */
+async function askChecker(db: DB, deps: Pick<InboxDeps, "claude">, docSha: string, first: CodeChecks): Promise<CheckerOutcome | null> {
+  if (!first.c) return null;
+  return runChecker(db, first.c, first.findings, { task: checkTask(docSha), ...(deps.claude !== undefined ? { claude: deps.claude } : {}) });
+}
+
+/**
+ * What the agent decided, enforced on code's checks as they stand now. The ledger may have changed while the agent
+ * worked (a second copy filed, a supplier blocked), so the caller runs code's checks again after the agent and hands
+ * them in here, with nothing awaited between this and the status it writes.
+ */
+function enforced(ran: CheckerOutcome, fresh: CodeChecks): { out: CheckerOutcome; status: ApStatus; findings: Finding[] } {
+  const out = enforceAgain(ran, fresh.c!, fresh.findings);
+  return { out, ...statusAfter(out.enforced, fresh.findings) };
 }
 
 export interface IncomingDocument {
@@ -82,7 +115,12 @@ function notAnInvoice(kind: DocKind | "unread"): { findings: Finding[] } {
 /** The most PDFs filed from one e-mail; the rest are refused with the reason (a mail of thousands costs thousands of reads). */
 export const MAX_EMAIL_ATTACHMENTS = 20;
 
-export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocument, depth = 0): Promise<IngestResult> {
+/**
+ * `resumeUnread`: a document filed but never read (its process stopped between filing it and storing its invoice) is
+ * read now instead of being called a duplicate (the autopilot, src/ap/autopilot.ts). One document never gets two
+ * invoices: ap_invoices.doc_sha256 is unique.
+ */
+export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocument, depth = 0, opts: { resumeUnread?: boolean } = {}): Promise<IngestResult> {
   if (doc.bytes.length > MAX_DOCUMENT_BYTES) throw new Error(`${doc.filename} is larger than ${MAX_DOCUMENT_BYTES / 1024 / 1024} MB; nothing was filed`);
   if (isEml(doc)) {
     // An e-mail is opened once: an e-mail inside it is not opened again (red team G).
@@ -100,16 +138,23 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
   const known = db.prepare("SELECT sha256 FROM ap_documents WHERE sha256 = ?").get(sha);
   if (known) {
     const inv = db.prepare("SELECT id FROM ap_invoices WHERE doc_sha256 = ?").get(sha) as { id: string } | undefined;
-    audit(db, "system", "ap.duplicate_document", sha, { filename: doc.filename, source: doc.source, invoice_id: inv?.id ?? null }, now);
-    return { kind: "duplicate_document", sha256: sha, invoice_id: inv?.id ?? null };
+    if (inv || !opts.resumeUnread) {
+      audit(db, "system", "ap.duplicate_document", sha, { filename: doc.filename, source: doc.source, invoice_id: inv?.id ?? null }, now);
+      return { kind: "duplicate_document", sha256: sha, invoice_id: inv?.id ?? null };
+    }
   }
 
+  // A ledger with its own document store (src/ap/docStore.ts: the engine in a Durable Object has no folder) keeps the
+  // bytes there; without one they are a file in the payables folder, as before.
+  const store = docStoreOf(db);
   const docs = join(deps.dir, "docs");
-  mkdirSync(docs, { recursive: true });
-  const path = join(docs, `${sha}.pdf`);
-  if (!existsSync(path)) {
-    writeFileSync(path, bytes, { flag: "wx" });
-    chmodSync(path, 0o444);
+  const path = store ? store.put(sha, bytes) : join(docs, `${sha}.pdf`);
+  if (!store) {
+    mkdirSync(docs, { recursive: true });
+    if (!existsSync(path)) {
+      writeFileSync(path, bytes, { flag: "wx" });
+      chmodSync(path, 0o444);
+    }
   }
 
   let text = "";
@@ -128,36 +173,51 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
     noText = `needs a person: the PDF could not be opened (${(e as Error).message.slice(0, 120)})`;
   }
 
-  db.prepare("INSERT INTO ap_documents (sha256, filename, mime, bytes, path, source, meta_json, text_chars, received_at) VALUES (?, ?, 'application/pdf', ?, ?, ?, ?, ?, ?)")
-    .run(sha, doc.filename.slice(0, 200), bytes.length, path, doc.source, JSON.stringify(meta ?? {}), text.length, now.toISOString());
+  if (!known) {
+    db.prepare("INSERT INTO ap_documents (sha256, filename, mime, bytes, path, source, meta_json, text_chars, received_at) VALUES (?, ?, 'application/pdf', ?, ?, ?, ?, ?, ?)")
+      .run(sha, doc.filename.slice(0, 200), bytes.length, path, doc.source, JSON.stringify(meta ?? {}), text.length, now.toISOString());
+  }
+  // Points where a test may stop the process (src/policy/saga.ts checkpoint); in a live run they do nothing.
+  await checkpoint("ap.ingest:filed");
 
   // Haiku labels the document first; only an invoice, a credit note or a reminder is read in full (Sonnet). A scan
   // carries the label its two readings gave.
   const cls = scan ? { kind: scan.docKind as DocKind, by: `claude-scan:${scan.model}` } : noText ? { kind: "unread" as const, by: "none" } : await classifyDocument(db, deps.reader, text, sha);
   const readFully = cls.kind === "invoice" || cls.kind === "credit_note" || cls.kind === "reminder";
   const { reading, readBy } = scan ? { reading: scan.reading, readBy: `claude-scan:${scan.model}` } : readFully ? await readDocument(db, deps.reader, text, sha) : { reading: parseApFallback(text), readBy: "parser" };
-  const id = nextApId(db);
   // A scan has no text layer: its checks run on the model's transcription of the pages (red team 6: credit-note words,
   // a bracketed total or a bank-change line on a scan were never seen by any check).
   const checkText = scan ? scan.transcription : text;
-  const checked = readFully || noText ? evaluate(db, reading, checkText, { docSha: sha, now, ...(noText ? { noText } : {}) }) : notAnInvoice(cls.kind);
-  const findings = [...checked.findings];
-  if (scan && readFully) findings.push(scanFinding(scan));
+  const ctx: CheckContext = { docSha: sha, now, ...(noText ? { noText } : {}) };
   // The model's label or the keyword rules: either one saying credit note or reminder is enough (red team round 2: a
   // model that calls a "Gutschrift" or a reminder an invoice does not make it payable).
   const rules = readFully ? ruleSignals(checkText) : { credit_note: false, reminder: false };
-  if ((cls.kind === "credit_note" || rules.credit_note) && !findings.some((x) => x.code === "credit_note")) {
-    findings.push({ code: "credit_note", level: "review", detail: `a credit note${cls.kind === "credit_note" ? "" : " by its own words (whatever the model's label)"}: nothing is paid; a person sets it against this supplier's next invoice` });
-  }
-  if (cls.kind === "reminder" || rules.reminder) {
-    // A reminder is never paid on its own: one that matches an invoice on file is blocked as its copy; one that matches
-    // none goes to a person (red team D).
-    const matched = findings.some((x) => x.code === "duplicate" || x.code === "possible_duplicate");
-    findings.push(matched
-      ? { code: "reminder", level: "warn", detail: "a payment reminder for an invoice on file: it is never paid twice" }
-      : { code: "reminder", level: "review", detail: "a payment reminder that matches no invoice on file: a person finds the invoice it is about; a reminder is never paid on its own" });
-  }
-  const status = statusOf(findings);
+  /** Code's own checks on what was read (src/ap/checks.ts), with what the inbox knows of the document itself. */
+  const codeChecks = (): CodeChecks => {
+    const c = readFully || noText ? invoiceCase(db, reading, checkText, ctx) : null;
+    const findings = c ? [...codeFindings(c)] : [...notAnInvoice(cls.kind).findings];
+    if (scan && readFully) findings.push(scanFinding(scan));
+    if ((cls.kind === "credit_note" || rules.credit_note) && !findings.some((x) => x.code === "credit_note")) {
+      findings.push({ code: "credit_note", level: "review", detail: `a credit note${cls.kind === "credit_note" ? "" : " by its own words (whatever the model's label)"}: nothing is paid; a person sets it against this supplier's next invoice` });
+    }
+    if (cls.kind === "reminder" || rules.reminder) {
+      // A reminder is never paid on its own: one that matches an invoice on file is blocked as its copy; one that matches
+      // none goes to a person (red team D).
+      const matched = findings.some((x) => x.code === "duplicate" || x.code === "possible_duplicate");
+      findings.push(matched
+        ? { code: "reminder", level: "warn", detail: "a payment reminder for an invoice on file: it is never paid twice" }
+        : { code: "reminder", level: "review", detail: "a payment reminder that matches no invoice on file: a person finds the invoice it is about; a reminder is never paid on its own" });
+    }
+    return { c, findings };
+  };
+  // KIT11_AP_AGENTS=on: the Checker agent decides on the case first. Code's checks then run as always, right before the
+  // invoice is filed, and the agent's decision is enforced against them: it can make the outcome stricter, never looser.
+  const ran = apAgentsOn() ? await askChecker(db, deps, sha, codeChecks()) : null;
+  const checked = codeChecks();
+  const agent = ran ? enforced(ran, checked) : null;
+  const findings = agent ? agent.findings : checked.findings;
+  const status = agent ? agent.status : statusOf(findings);
+  const id = nextApId(db);
   const gl = glFor(db, reading, readBy);
   // A credit note by any sign (the model's label, its own words, or a total written negative, in brackets or with CR)
   // is stored as one (red team round 4: a negative total kept the "invoice" kind and counted as money owed).
@@ -174,6 +234,8 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
     db.prepare("INSERT INTO ap_scan_readings (invoice_id, doc_sha256, agreed, differ_json, boxes_json, readings, model, read_at, transcription) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
       .run(id, sha, scan.agreed ? 1 : 0, JSON.stringify(scan.differ), JSON.stringify(scan.boxes), scan.readings, scan.model, now.toISOString(), scan.transcription);
   }
+  if (agent) recordChecked(db, id, agent.out, status, now);
+  await checkpoint("ap.ingest:stored");
   if (needsNote({ status, findings })) await writeReviewNote(db, deps.reader, id, now);
   const inv = apInvoice(db, id)!;
   await book(db, deps, inv, checkText);
@@ -210,14 +272,19 @@ export async function ingestEmail(db: DB, deps: InboxDeps, raw: Buffer, meta: Re
 async function book(db: DB, deps: Pick<InboxDeps, "sink" | "now" | "coder">, inv: ApInvoiceRow, text?: string): Promise<void> {
   if (!bookable(inv)) return;
   const coded = await ensureCoded(db, inv, { text, client: deps.coder, now: deps.now });
+  await checkpoint("ap.book:coded");
   await pushOnce(db, deps.sink, "accrual", accrualEntries(coded), coded, (deps.now ?? (() => new Date()))());
+  await checkpoint("ap.book:booked");
 }
+
+/** The accrual of a bookable invoice, coded first with the agents on: what ingestDocument does last (the autopilot calls it after a restart). */
+export const bookAccrual = book;
 
 /**
  * Checks again the invoices waiting for a supplier (after one was added) and any the caller names. An invoice already
  * on its way to payment, paid or rejected is never re-checked.
  */
-export async function recheck(db: DB, deps: Pick<InboxDeps, "now" | "sink" | "coder"> & { reader?: Asker }, ids?: string[]): Promise<ApInvoiceRow[]> {
+export async function recheck(db: DB, deps: Pick<InboxDeps, "now" | "sink" | "claude" | "coder"> & { reader?: Asker }, ids?: string[]): Promise<ApInvoiceRow[]> {
   const now = (deps.now ?? (() => new Date()))();
   const targets = ids ? ids.map((id) => apInvoice(db, id)).filter((x): x is ApInvoiceRow => x !== null) : apInvoices(db, { status: "needs_vendor" });
   const out: ApInvoiceRow[] = [];
@@ -226,23 +293,35 @@ export async function recheck(db: DB, deps: Pick<InboxDeps, "now" | "sink" | "co
     if (!["invoice", "credit_note", "reminder"].includes(inv.doc_kind)) continue;
     const doc = db.prepare("SELECT path, text_chars FROM ap_documents WHERE sha256 = ?").get(inv.doc_sha256) as { path: string; text_chars: number };
     let text: string;
-    try { text = doc.text_chars ? (await pdfText(readFileSync(doc.path))).text : ""; } catch { text = ""; }
+    try { text = doc.text_chars ? (await pdfText(readDoc(db, doc.path))).text : ""; } catch { text = ""; }
     // A scan has no text: it is checked again on its stored reading, with its scan finding as read.
     const scanned = text ? undefined : (db.prepare("SELECT agreed, differ_json, readings, transcription FROM ap_scan_readings WHERE invoice_id = ?").get(inv.id) as { agreed: number; differ_json: string; readings: number; transcription: string | null } | undefined);
     if (!text && !scanned) { out.push(inv); continue; }
     const wasBookable = bookable(inv);
     // A scan is checked on its transcription (red team 6); one read before transcriptions has none and needs a person.
-    const { findings } = evaluate(db, inv.reading, scanned ? scanned.transcription ?? "" : text, { docSha: inv.doc_sha256, now, selfId: inv.id });
-    if (scanned) findings.push(scanFinding({ agreed: scanned.agreed === 1 && !!scanned.transcription, differ: JSON.parse(scanned.differ_json) as string[], readings: scanned.readings }));
-    if (scanned?.transcription) {
-      const signals = ruleSignals(scanned.transcription);
-      if (signals.credit_note && !findings.some((x) => x.code === "credit_note")) findings.push({ code: "credit_note", level: "review", detail: "a credit note by its own words on the page: nothing is paid; a person sets it against this supplier's next invoice" });
-      if (signals.reminder && !findings.some((x) => x.code === "reminder")) findings.push({ code: "reminder", level: "review", detail: "a payment reminder by its own words on the page: a reminder is never paid on its own" });
-    }
-    const status = statusOf(findings);
+    const codeChecks = (): CodeChecks => {
+      const c = invoiceCase(db, inv.reading, scanned ? scanned.transcription ?? "" : text, { docSha: inv.doc_sha256, now, selfId: inv.id });
+      const findings = [...codeFindings(c)];
+      if (scanned) findings.push(scanFinding({ agreed: scanned.agreed === 1 && !!scanned.transcription, differ: JSON.parse(scanned.differ_json) as string[], readings: scanned.readings }));
+      if (scanned?.transcription) {
+        const signals = ruleSignals(scanned.transcription);
+        if (signals.credit_note && !findings.some((x) => x.code === "credit_note")) findings.push({ code: "credit_note", level: "review", detail: "a credit note by its own words on the page: nothing is paid; a person sets it against this supplier's next invoice" });
+        if (signals.reminder && !findings.some((x) => x.code === "reminder")) findings.push({ code: "reminder", level: "review", detail: "a payment reminder by its own words on the page: a reminder is never paid on its own" });
+      }
+      return { c, findings };
+    };
+    // KIT11_AP_AGENTS=on: the Checker agent decides again on the case as it stands now; code enforces it as on arrival.
+    const ran = apAgentsOn() ? await askChecker(db, deps, inv.doc_sha256, codeChecks()) : null;
+    // While the agent worked the invoice may have been filed for payment, paid or rejected: then it is left as it is.
+    if (ran && apInvoice(db, inv.id)?.status !== inv.status) { out.push(apInvoice(db, inv.id) ?? inv); continue; }
+    const checked = codeChecks();
+    const agent = ran ? enforced(ran, checked) : null;
+    const findings = agent ? agent.findings : checked.findings;
+    const status = agent ? agent.status : statusOf(findings);
     const kept = [...findings, ...inv.findings.filter((x) => (x.code === "credit_note" || x.code === "reminder") && !findings.some((y) => y.code === x.code))];
     if (inv.doc_kind === "invoice" && kept.some((x) => x.code === "credit_note")) db.prepare("UPDATE ap_invoices SET doc_kind = 'credit_note' WHERE id = ?").run(inv.id);
-    const next = setStatus(db, inv.id, status, "system", { findings: kept, reason: "checked again" }, now);
+    const next = setStatus(db, inv.id, status, agent ? "checker" : "system", { findings: kept, reason: "checked again" }, now);
+    if (agent) recordChecked(db, inv.id, agent.out, status, now);
     if (!wasBookable) await book(db, deps, next, scanned ? scanned.transcription ?? "" : text);
     out.push(needsNote(next) ? await writeReviewNote(db, deps.reader, next.id, now) : next);
   }
