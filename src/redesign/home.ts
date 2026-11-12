@@ -13,89 +13,79 @@ import { agentRun, type AgentRun } from "./run.js";
 import { AWX_RUN_FILE, AWX_RUN_STEPS_ID, awxRun } from "./awxRun.js";
 import { metalStory, REPO_BLOB } from "./metalStory.js";
 import { heroDemoFacts } from "./heroDemo.js";
-import { WALK_CSS, WALK_NOTE, walkHtml } from "./walk.js";
+import { FLOW_NOTE, HERO_FLOW_CSS, heroFlowHtml } from "./heroFlow.js";
 import { VIC3_RUN_ID, vic3Run, type Vic3Record } from "./vic3Run.js";
 import { esc, icon, MAIN_RUN_REAL, page, TRY_URL } from "./ui.js";
-import { BUILT_WITH } from "../visuals/logos.js";
+import { COUNT_JS, STATS_CSS, statsHtml, type Stat } from "./stats.js";
+import { split } from "./run.js";
 import { booksData } from "./booksPage.js";
 
-const CSS = `.hero { padding: 24px 0 36px; }
-.hero .wrap { display: grid; gap: 20px; }
-.hero .copy, .hero .show { min-width: 0; }
-/* The heading: two sentences, two lines (jury panel, A10), never broken mid-sentence where there is room for one. */
-.hero .h-hero { font-size: clamp(38px, 4.4vw, 58px); } .hero .h-hero span { display: block; }
-@media (min-width: 1100px) { .hero { padding: 56px 0 56px; } .hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 460px); grid-template-rows: 1fr auto 1fr; gap: 0 52px; } .hero .copy { grid-row: 1; align-self: end; } .hero .cta { grid-row: 2; } .hero .show { grid-column: 2; grid-row: 1 / span 3; } .hero .h-hero span { white-space: nowrap; } }
-.hero .walk-note a { color: var(--accent); font-weight: 650; display: inline-flex; align-items: center; min-height: 44px; }
-.hero .what { margin: 14px 0 0; font-size: 19px; line-height: 1.45; font-weight: 600; max-width: 34em; }
-.btn.big { height: 56px; font-size: 17px; padding: 0 26px; }
-.btn.big.start { margin-top: 18px; }
-@media (max-width: 1099px) { .btn.big { width: 100%; justify-content: center; } }
-.reassure { margin: 10px 0 0; font-size: 15px; color: var(--muted); text-wrap: balance; }
-/* The sentence every juror repeated: it leads into the hero. */
-p.partner { margin: 14px 0 0; font-weight: 650; } p.partner a { color: var(--accent); display: inline-flex; align-items: center; min-height: 44px; }
-/* The one provenance line, under the hero. */
-.prov { margin: 12px 2px 0; font-size: 14.5px; line-height: 1.5; color: var(--muted); }
-.prov a { display: flex; width: fit-content; align-items: center; min-height: 44px; color: var(--accent); font-weight: 650; }
-/* The locks: one card each (an icon, a short title, one line, the id), one tap to the partner's own record. */
-section.locks { padding: 56px 0 64px; border-top: 1px solid var(--border); }
-section.locks .h-sec { font-size: clamp(26px, 2.8vw, 36px); }
-ol.rows { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 14px; }
-@media (min-width: 700px) { ol.rows { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; } }
-@media (min-width: 1100px) { ol.rows { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; } }
-a.row { position: relative; display: grid; gap: 6px; align-content: start; height: 100%; min-height: 44px; padding: 22px 22px 18px; border-radius: var(--r); border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow); color: var(--text); text-decoration: none; transition: border-color .2s, transform .2s; }
-a.row:hover { border-color: var(--accent); transform: translateY(-2px); }
-a.row .ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); margin-bottom: 8px; }
-a.row .ic .i { width: 22px; height: 22px; }
-a.row strong { font-size: 19px; font-weight: 720; letter-spacing: -.01em; line-height: 1.25; }
-a.row span { font-size: 15.5px; color: var(--muted); line-height: 1.45; }
-a.row code { font: 500 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--faint); margin-top: 4px; }
-a.row > .i { position: absolute; top: 22px; right: 20px; color: var(--accent); }
-.btn.big.more { margin-top: 28px; }
-/* On a phone the three cards and their button fit one screen: the icon beside the text, less padding. */
-@media (max-width: 899px) {
-  section.locks { padding: 40px 0 48px; }
-  ol.rows { margin-top: 18px; gap: 10px; }
-  a.row { grid-template-columns: 40px minmax(0, 1fr); column-gap: 14px; row-gap: 2px; padding: 14px 40px 14px 14px; }
-  a.row .ic { grid-column: 1; grid-row: 1 / span 3; align-self: start; width: 40px; height: 40px; margin: 0; }
-  a.row strong, a.row span, a.row code { grid-column: 2; }
-  a.row strong { font-size: 17px; } a.row code { margin-top: 0; }
-  a.row > .i { top: 16px; right: 14px; }
-  .btn.big.more { margin-top: 18px; }
+const CSS = `/* Home, enterprise pass (the owner, 12 Nov): an 8 px grid, 1120 px wide, neutral greys and one accent. */
+main.ent .wrap { max-width: 1120px; }
+main.ent section { padding: 96px 0; border-top: 1px solid var(--border); }
+main.ent section.e-hero { padding: 72px 0 88px; border-top: 0; }
+.eyebrow { margin: 0 0 8px; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.e-h { margin: 0; font-size: clamp(28px, 3.2vw, 40px); line-height: 1.15; font-weight: 760; letter-spacing: -.02em; max-width: 22em; }
+.e-sub { margin: 16px 0 0; font-size: 18px; line-height: 1.5; color: var(--muted); max-width: 36em; }
+/* The hero: words and buttons on the left, the product card on the right. */
+.e-hero .wrap { display: grid; gap: 48px; align-items: center; }
+.e-hero .h-hero { font-size: clamp(40px, 5vw, 60px); line-height: 1.04; letter-spacing: -.03em; } .e-hero .h-hero span { display: block; }
+@media (min-width: 1040px) { .e-hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 540px); gap: 56px; } .e-hero .h-hero { font-size: clamp(44px, 4vw, 54px); } .e-hero .h-hero span { white-space: nowrap; } }
+.e-hero .what { margin: 24px 0 0; font-size: 20px; line-height: 1.5; color: var(--muted); max-width: 30em; }
+.ctas { margin: 32px 0 0; display: flex; flex-wrap: wrap; gap: 12px; }
+.btn.big { height: 56px; font-size: 17px; padding: 0 28px; }
+.btn.ghost { background: transparent; }
+.btn.ghost:hover { border-color: var(--text); }
+.reassure { margin: 16px 0 0; font-size: 15px; color: var(--muted); }
+.trust { margin: 40px 0 0; padding-top: 24px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; }
+.trust span { width: 100%; font-size: 13px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
+.trust img { height: 20px; width: auto; filter: brightness(0); opacity: .45; }
+.trust img.tall { height: 22px; }
+@media (max-width: 640px) { .trust { gap: 12px 14px; } .trust img { height: 16px; } .trust img.tall { height: 18px; } }
+:root[data-theme="dark"] .trust img { filter: brightness(0) invert(1); opacity: .5; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .trust img { filter: brightness(0) invert(1); opacity: .5; } }
+@media (max-width: 640px) {
+  main.ent section { padding: 64px 0; } main.ent section.e-hero { padding: 40px 0 56px; }
+  .ctas .btn { width: 100%; justify-content: center; }
+  .e-hero .what { font-size: 18px; }
 }
-/* About Purser: who decides and who enforces, five steps; across on a wide screen, a tight list on a phone. */
-section.about { padding: 56px 0 72px; border-top: 1px solid var(--border); }
-section.about .h-sec { font-size: clamp(26px, 2.8vw, 36px); }
-ol.flow { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 8px; counter-reset: flow; }
-ol.flow li { counter-increment: flow; display: grid; grid-template-columns: 26px 52px minmax(0, 1fr); align-items: baseline; column-gap: 8px; font-size: 15px; line-height: 1.4; color: var(--muted); }
-ol.flow li::before { content: counter(flow); width: 22px; height: 22px; border-radius: 50%; background: var(--sunken); color: var(--text); font-size: 12px; font-weight: 700; display: grid; place-items: center; align-self: start; }
-ol.flow b { color: var(--text); font-weight: 700; }
-ol.flow li.you b, ol.flow li.you::before { color: var(--accent); }
+/* Four features: an icon, a title, one line. */
+ul.feat { list-style: none; margin: 48px 0 0; padding: 0; display: grid; gap: 16px; }
+@media (min-width: 640px) { ul.feat { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1040px) { ul.feat { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; } }
+ul.feat li { padding: 24px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); box-shadow: 0 1px 2px rgba(16, 24, 40, .04); }
+ul.feat .fi { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+ul.feat b { display: block; margin: 16px 0 8px; font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+ul.feat p { margin: 0; font-size: 15px; line-height: 1.5; color: var(--muted); }
+/* Who decides, who enforces: a stepper across on a wide screen, a list on a phone. */
+ol.flow { list-style: none; margin: 48px 0 0; padding: 0; display: grid; gap: 16px; counter-reset: flow; }
+ol.flow li { counter-increment: flow; position: relative; display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 16px; row-gap: 4px; align-items: center; }
+ol.flow li::before { content: counter(flow); grid-row: 1 / span 2; align-self: start; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 15px; font-weight: 700; }
+ol.flow li.you::before { background: var(--accent); border-color: var(--accent); color: #fff; }
+ol.flow b { font-size: 17px; font-weight: 700; }
+ol.flow span { font-size: 15px; line-height: 1.5; color: var(--muted); }
 ol.flow a { color: var(--accent); font-size: 13px; font-weight: 650; white-space: nowrap; }
 @media (min-width: 900px) {
-  ol.flow { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; }
-  ol.flow li { grid-template-columns: auto 1fr; grid-template-rows: auto 1fr; align-items: center; align-content: start; row-gap: 10px; padding: 0 18px 0 0; position: relative; }
-  ol.flow li span { align-self: start; }
-  ol.flow li span { grid-column: 1 / -1; }
-  ol.flow li:not(:last-child)::after { content: ""; position: absolute; top: 11px; left: 30px; right: 12px; height: 1px; background: var(--border); }
-  ol.flow b { position: relative; z-index: 1; justify-self: start; background: var(--bg); padding-right: 10px; }
+  ol.flow { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px; }
+  ol.flow li { grid-template-columns: 1fr; row-gap: 8px; align-items: start; align-content: start; }
+  ol.flow li::before { grid-row: auto; margin-bottom: 8px; }
+  ol.flow li:not(:last-child)::after { content: ""; position: absolute; top: 20px; left: 52px; right: -12px; height: 1px; background: var(--border); }
 }
-.works { margin: 32px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
-.works span { font-size: 14px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); }
-.works img { height: 40px; width: auto; max-width: 100%; display: block; }
-@media (max-width: 640px) { .works img { height: auto; width: 100%; } }
+/* The stat row: every figure from a run record, counting up once in view. */
+main.ent ul.stats { margin-top: 48px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+main.ent ul.stats li { padding: 20px; border-radius: 16px; }
+main.ent ul.stats b { font-size: 32px; }
+.statnote { margin: 16px 0 0; font-size: 14px; color: var(--faint); }
+.e-more { margin: 32px 0 0; display: flex; flex-wrap: wrap; gap: 12px; }
+p.next { margin: 24px 0 0; font-size: 15.5px; color: var(--muted); max-width: 44em; } p.next a { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; white-space: nowrap; }
 /* Scroll-in: sections rise in once as they come into view; nothing moves for a reader who prefers less motion. */
 @media (prefers-reduced-motion: no-preference) {
-  .js-reveal .reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease; }
+  .js-reveal .reveal { opacity: 0; transform: translateY(16px); transition: opacity .6s ease, transform .6s ease; }
   .js-reveal .reveal.in { opacity: 1; transform: none; }
-  .js-reveal ol.rows li:nth-child(2) .reveal { transition-delay: .08s; } .js-reveal ol.rows li:nth-child(3) .reveal { transition-delay: .16s; } .js-reveal ol.rows li:nth-child(4) .reveal { transition-delay: .24s; }
 }
-p.next { margin: 18px 0 0; font-size: 15.5px; color: var(--muted); max-width: 44em; } p.next a { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; white-space: nowrap; }
 section.band { padding: 60px 0; border-top: 1px solid var(--border); }
 .sechead { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 26px; }
-.sechead .pill { white-space: normal; }
-@media (max-width: 899px) {
-  section.band { padding: 44px 0; }
-}`;
+.sechead .pill { white-space: normal; }`;
 
 /**
  * Home is served at "/" too (worker/src/core.ts). The CFO's viewer link opens "/" with its key after the "#" (never sent
@@ -152,7 +142,7 @@ export function homeHeadingHtml(): string {
   return `<h1 class="h-hero"><span>${esc(first!)}</span> <span>${esc(rest.join(" "))}</span></h1>`;
 }
 /** Home's first button, word for word: where the Try tab goes. */
-export const START = "Try it yourself";
+export const START = "Try it live";
 /** The hero's one sentence under the heading (the owner, 12 Nov: one sentence). WHAT_IT_IS stays the README's and the form's. */
 export const HOME_SUB = "Over its limit, an agent asks; you sign the exact terms with Face ID.";
 /**
@@ -163,7 +153,17 @@ export const HOME_SUB = "Over its limit, an agent asks; you sign the exact terms
 export const REASSURE = { sign: "Your own test company, deleted after 24 hours.", world: "Your own test company, deleted after 24 hours." } as const;
 /** The link in the provenance line: it opens the footer's fold of the same name. */
 export const WHATS_REAL = "What's real?";
-export const LOCKS_HEAD = "Each lock, on record";
+export const LOCKS_HEAD = "Each lock held in a live run";
+export const FLOW_HEAD = "Claude agents decide. Code and the rails enforce.";
+export const FEATURES_HEAD = "Agents do the work. The CFO keeps the say.";
+/** Four features, one line each; each says only what the runs and the code show (see /proof). */
+export const FEATURES = [
+  { icon: "scan-face", title: "Face ID on the exact terms", text: "Above a limit, the CFO signs amount, payee and account. Change one cent and it fails." },
+  { icon: "shield-check", title: "Limits in code, not prompts", text: "Claude agents read and propose; Purser's code holds every limit." },
+  { icon: "ban", title: "Rails that refuse too", text: "Airwallex, Metal and Visa via Airi apply their own controls." },
+  { icon: "file-check", title: "Booked and checkable", text: "Every payment is booked; its signed receipt checks offline." },
+] as const;
+export const STAT_NOTE = "Sandbox and testnet runs, test money. Each figure from its run record.";
 /** Home's second and last button. */
 export const PROOF_BUTTON = "See the proof";
 /** The fold at the end of Home (the owner, 12 Nov, for the Founder's award): no new page, no menu item, no person. */
@@ -188,11 +188,10 @@ export const AGENT_FLOW: readonly FlowStep[] = [
 ];
 export const WORKS_WITH = "Works with";
 function aboutHtml(): string {
-  const names = BUILT_WITH.map((l) => l.name);
-  const alt = `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
-  return `<h2 class="h-sec reveal" id="about">${esc(ABOUT_HEAD)}</h2>
+  return `<p class="eyebrow">${esc(ABOUT_HEAD)}</p>
+  <h2 class="e-h reveal" id="about">${esc(FLOW_HEAD)}</h2>
   <ol class="flow reveal">${AGENT_FLOW.map((f) => `<li${f.verb === "Sign" ? ' class="you"' : ""}><b>${esc(f.verb)}</b><span>${esc(f.who)}${f.evals ? ` <a href="${esc(f.evals)}" target="_blank" rel="noopener">evals</a>` : ""}</span></li>`).join("")}</ol>
-  <div class="works reveal"><span>${esc(WORKS_WITH)}</span><img src="assets/built-with.png" alt="${esc(alt)}" width="1010" height="80"></div>`;
+`;
 }
 
 export interface ProofRow { partner: "Airwallex" | "Metal" | "Visa"; title: string; text: string; icon: string; id: string; full: string; href: string; external: boolean }
@@ -223,6 +222,22 @@ export function proofRows(run: AgentRun = agentRun(), awx: Awx1Record | null = a
   return rows;
 }
 
+/**
+ * The stat row (the owner, 12 Nov: one strong stat row), every figure from a run record: Claude's decisions in the main
+ * run (its agent_stats), Metal payments in the main run, the card Airwallex declined over its limit (the Airwallex-only
+ * run) and the Visa read-backs (vic-3). A figure whose record lacks it drops out.
+ */
+export function homeStats(run: AgentRun, rows: ProofRow[] = proofRows(run)): Stat[] {
+  const sp = split(run.record), pay = metalStory(run.record).payments;
+  const awx = rows.find((r) => r.partner === "Airwallex"), m = awx ? /^(\w+) ([\d.]+) over a ([\d.]+) limit/.exec(awx.text) : null;
+  return [
+    ...(sp.decisions ? [{ n: sp.byClaude, label: `Claude decisions in the main run, ${sp.fallbacks} ${sp.fallbacks === 1 ? "fallback" : "fallbacks"}`, icon: "bot" }] : []),
+    ...(pay.total ? [{ n: pay.total, label: "Metal payments, each its own transaction", icon: "link-2", tone: "ok" as const }] : []),
+    ...(m ? [{ n: Number(m[2]), dec: 2, pre: `${m[1]} `, label: `declined by Airwallex over a ${m[3]} card limit`, icon: "ban", tone: "bad" as const }] : []),
+    ...(rows.some((r) => r.partner === "Visa") ? [{ n: 2, suf: " of 2", label: "Visa: signed hash read back equal at Airi and Airwallex", icon: "credit-card", tone: "ok" as const }] : []),
+  ];
+}
+
 /** The product for small companies, as docs/after-the-kit.md says it: its code in this repository, not live. */
 export const NEXT_NEXT = "Next, not live yet: an invoice inbox for small companies, with the same Face ID control.";
 export const AFTER_KIT_URL = `${REPO_BLOB}docs/after-the-kit.md`;
@@ -243,31 +258,35 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   const tryHref = TRY_URL;
   const awx = awxRun(), facts = heroDemoFacts(awx);
   const rows = proofRows(run, awx);
-  const body = `<main>
-<section class="hero"><div class="wrap">
+  const logos = [["logo-airwallex.png", "Airwallex", 2435, 334, ""], ["logo-visa.png", "Visa", 1920, 622, ""], ["logo-metal.svg", "Metal", 114, 36, ""], ["logo-claude.png", "Claude", 330, 72, "tall"]] as const;
+  const body = `<main class="ent">
+<section class="e-hero"><div class="wrap">
   <div class="copy">
     ${homeHeadingHtml()}
     <p class="what">${esc(HOME_SUB)}</p>
-  </div>
-  <div class="show">${walkHtml()}
-    <p class="walk-note">${esc(WALK_NOTE)} <a href="#real" data-real>${esc(WHATS_REAL)}</a></p></div>
-  <div class="cta">
-    <a class="btn primary big start" href="${tryHref}">${icon("scan-face", 18)}${esc(START)}</a>
+    <div class="ctas"><a class="btn primary big start" href="${tryHref}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost" href="proof">${esc(PROOF_BUTTON)}</a></div>
     <p class="reassure">${esc(opts.trySign ? REASSURE.sign : REASSURE.world)}</p>
+    <div class="trust"><span>${esc(WORKS_WITH)}</span>${logos.map(([src, alt, w, h, cls]) => `<img${cls ? ` class="${cls}"` : ""} src="assets/${src}" alt="${esc(alt)}" width="${w}" height="${h}">`).join("")}</div>
   </div>
+  <div class="show">${heroFlowHtml()}
+    <p class="hf-note">${esc(FLOW_NOTE)} <a href="#real" data-real>${esc(WHATS_REAL)}</a></p></div>
 </div></section>
-<section class="locks" aria-labelledby="h-locks"><div class="wrap">
-  <h2 class="h-sec reveal" id="h-locks">${esc(LOCKS_HEAD)}</h2>
-  <ol class="rows">${rows.map((r) => `
-    <li><a class="row reveal" href="${esc(r.href)}"${r.external ? ' target="_blank" rel="noopener"' : ""}><span class="ic">${icon(r.icon, 22)}</span><strong>${esc(r.title)}</strong><span>${esc(r.text)}</span><code title="${esc(r.full)}">${esc(r.id)}</code>${icon(r.external ? "external-link" : "arrow-right", 18)}</a></li>`).join("")}
-  </ol>
-  <a class="btn big more" href="proof">${esc(PROOF_BUTTON)}${icon("arrow-right", 18)}</a>
-  ${booksCardHtml()}
+<section class="e-feat" aria-labelledby="h-feat"><div class="wrap">
+  <p class="eyebrow">Why Purser</p>
+  <h2 class="e-h reveal" id="h-feat">${esc(FEATURES_HEAD)}</h2>
+  <ul class="feat">${FEATURES.map((f) => `<li class="reveal"><span class="fi">${icon(f.icon, 20)}</span><b>${esc(f.title)}</b><p>${esc(f.text)}</p></li>`).join("")}</ul>
+</div></section>
+<section class="e-flow" aria-labelledby="about"><div class="wrap">
+  ${aboutHtml()}
+</div></section>
+<section class="e-stats" aria-labelledby="h-locks"><div class="wrap">
+  <p class="eyebrow">On record</p>
+  <h2 class="e-h reveal" id="h-locks">${esc(LOCKS_HEAD)}</h2>
+  ${statsHtml(homeStats(run, rows))}
+  <p class="statnote">${esc(STAT_NOTE)}</p>
+  <div class="e-more"><a class="btn big primary" href="proof">${esc(PROOF_BUTTON)}${icon("arrow-right", 18)}</a>${booksCardHtml()}</div>
   ${nextHtml(opts.smallCompanyUrl ?? SMALL_COMPANY_DEMO_URL)}
   ${designPartnerHtml(opts.partnerUrl ?? DESIGN_PARTNER_URL)}
-</div></section>
-<section class="about" aria-labelledby="about"><div class="wrap">
-  ${aboutHtml()}
 </div></section>
 </main>`;
   // The full list behind the one provenance line: the main run's lines, the run the hero replays (its own note), what
@@ -275,17 +294,17 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   const refusedAt = run.events.find((e) => e.k === "money")?.at ?? run.record.snapshot.flows[0]?.at ?? "";
   // What Home shows first (the hero and its two Airwallex rows), then the Metal row and the main run it comes from.
   const real = [
-    "The hero's screens: the hands-on demo (/try), captured from this repository's own engine by test/browser/try.check.ts with no API key set, so Purser's code read the invoice (the screens say so). Test money, a simulated bank, a test passkey.",
+    "The hero's values (supplier, amount, due date, account, the signed hash and the three booking lines): one /try run of its sample invoice on this repository's engine, captured by test/browser/try.check.ts on 12 Nov with no API key set, so Purser's code read that invoice; /try's reader is Claude when it runs live (cloud/src/engine/tryClaude.ts). The ready-to-pay check is Purser's code. Test money, a simulated bank, a test passkey.",
     ...(awx && facts ? [`The Airwallex row: the Airwallex-only run (${awx.run}) of ${facts.date}. ${awx.note}`] : []),
     `The Metal row: the main run${refusedAt ? ` of ${dayMonth(refusedAt)}` : ""}. ${CHAIN_TEST}`,
     ...MAIN_RUN_REAL,
   ];
   return page({
-    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, tab: "home", css: CSS + WALK_CSS, body, js: JS, stage: false,
+    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, tab: "home", css: CSS + STATS_CSS + HERO_FLOW_CSS, body, js: JS + COUNT_JS, stage: false,
     // The judge's tour: one quiet footer link, only where /judge exists.
     links: opts.trySign ? [["judge", JUDGE_LINE]] : [],
     real,
-    source: `Source: the /try screens (docs/assets/try-walk), ${AWX_RUN_FILE} and ${run.file} (${run.name}).`,
+    source: `Source: a /try run of its sample invoice (src/redesign/heroFlow.ts), ${AWX_RUN_FILE} and ${run.file} (${run.name}).`,
   });
 }
 
@@ -293,5 +312,5 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
 export function booksCardHtml(): string {
   const j = booksData().journal;
   if (!j) return "";
-  return `<ol class="rows books"><li><a class="row reveal" href="books"><span class="ic">${icon("database", 22)}</span><strong>${esc("Books")}</strong>${icon("arrow-right", 18)}</a></li></ol>`;
+  return `<a class="btn big ghost" href="books">${icon("database", 18)}${esc("Books")}</a>`;
 }
