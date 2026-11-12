@@ -50,7 +50,9 @@ describe("/airwallex: one tile per Airwallex product, each from its run's record
       at = awx.indexOf(html);
       expect(html).toMatch(new RegExp(`<h2[^>]*>${t.name}</h2>`));
       expect((html.match(/<span class="v">/g) ?? []).length).toBe(1);
-      expect(html).toContain(`<span class="v">${t.value}</span>`);
+      // The figure reads the tile's value; since 12 Nov its number may count up (a data-count span, src/redesign/stats.ts).
+      const v = /<span class="v">((?:<span[^>]*>[^<]*<\/span>|[^<])*)<\/span>/.exec(html)?.[1] ?? "";
+      expect(v.replace(/<[^>]+>/g, "")).toBe(t.value);
       expect(html).toMatch(/<code[^>]*>[^<]+<\/code>/);
       expect(t.id.startsWith(shortId(t.id).replace(/…$/, ""))).toBe(true);
       expect(tt).toContain(shortId(t.id));

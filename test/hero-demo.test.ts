@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import { DEMO_LINES, DEMO_STEPS, HERO_CHECK_JS, HERO_DEMO_CSS, HERO_DEMO_JS, HERO_VERDICT, heroDemoFacts, heroDemoHtml, heroProvenance } from "../src/redesign/heroDemo.js";
 import { HERO_DATA_KEYS, HERO_RECEIPT_FILE, heroReceipt } from "../src/redesign/heroReceipt.js";
-import { homePage } from "../src/redesign/home.js";
+import { page } from "../src/redesign/ui.js";
 import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 import { canonicalTerms, RECEIPT_FORMAT, verifyReceipt, type TryReceipt } from "../src/try/receipt.js";
 import { VERIFY_CORE } from "../src/try/verify.js";
@@ -30,6 +30,14 @@ interface Verdict { ok: boolean; failed: string[]; signed: string; now: string; 
 const web = new Function(`${VERIFY_CORE}\n${HERO_CHECK_JS}\nreturn { heroCheck: heroCheck, heroPlusCent: heroPlusCent, heroOtherIban: heroOtherIban };`)() as {
   heroCheck: (r: unknown, edit?: { amount?: string; iban_last4?: string }) => Promise<Verdict>; heroPlusCent: (a: string) => string | null; heroOtherIban: (s: string) => string;
 };
+/**
+ * Home no longer carries this demo (the enterprise pass of 12 Nov put a product card there; the +1-cent check lives in
+ * /try). The component stays, so it is tested on a page built the way Home built it: the hero, its script, the receipt's data.
+ */
+function demoPage(_run?: unknown, o: { receipt?: string | object } = {}): string {
+  const f = heroDemoFacts(), r = heroReceipt(f, o.receipt ?? HERO_RECEIPT_FILE), hero = heroDemoHtml(f, r);
+  return page({ title: "Hero demo", description: "", tab: null, css: hero ? HERO_DEMO_CSS : "", body: `<main><section class="hero">${hero}</section></main>`, js: hero ? HERO_DEMO_JS : "", stage: false, source: "", ...(hero && r ? { data: r.data } : {}) });
+}
 const dataOf = (html: string) => JSON.parse(/<script type="application\/json" id="run-data">([\s\S]*?)<\/script>/.exec(html)![1]!) as Record<string, unknown>;
 
 /** Another receipt for the same payment, made here: the same terms shape, other values, another key. */
@@ -78,9 +86,10 @@ describe("the hero's steps 1 to 3", () => {
     expect(html).not.toMatch(/Recorded run|sandbox|test money|simulated|\b\d{1,2} Nov/i);
   });
 
-  it("is on Home in the hero section, light enough to inline, with a still frame for reduced motion", () => {
+  it("renders in a hero section, light enough to inline, with a still frame for reduced motion (Home shows the product card since 12 Nov)", () => {
     const home = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).home!;
-    expect(/<section class="hero">[\s\S]*?<\/section>/.exec(home)![0]).toContain('id="hero-demo"');
+    expect(home).toContain('<figure class="hf"');
+    expect(/<section class="hero">[\s\S]*?<\/section>/.exec(demoPage())![0]).toContain('id="hero-demo"');
     expect(Buffer.byteLength(heroDemoHtml() + HERO_DEMO_CSS + HERO_DEMO_JS)).toBeLessThan(48_000);
     expect(HERO_DEMO_CSS).toContain("prefers-reduced-motion: reduce");
     expect(HERO_DEMO_JS).toContain("prefers-reduced-motion: reduce");
@@ -94,8 +103,8 @@ describe("the hero's steps 1 to 3", () => {
 });
 
 describe("the hero's step 4: the check the page embeds, on the published receipt", () => {
-  it("is in Home's one script word for word: the checks of /try/verify and the hero's few lines around them", () => {
-    const script = scriptBody(scriptBlocks(homePage()).find((b) => b.toLowerCase().startsWith("<script>"))!);
+  it("is in the page's one script word for word: the checks of /try/verify and the hero's few lines around them", () => {
+    const script = scriptBody(scriptBlocks(demoPage()).find((b) => b.toLowerCase().startsWith("<script>"))!);
     expect(script).toContain(VERIFY_CORE);
     expect(script).toContain(HERO_CHECK_JS);
     // No verdict but the check's: the script calls no network and holds no hash or amount of its own.
@@ -105,14 +114,14 @@ describe("the hero's step 4: the check the page embeds, on the published receipt
   });
 
   it("passes every check untouched, and shows the hash the passkey signed", async () => {
-    const data = dataOf(homePage());
+    const data = dataOf(demoPage());
     const v = await web.heroCheck(data);
     expect(v).toMatchObject({ ok: true, failed: [], signed: RECEIPT.terms_sha256, now: RECEIPT.terms_sha256 });
     expect(v.now).toBe(sha(canonicalTerms(RECEIPT.terms)));
   });
 
   it("fails on the terms hash and the challenge with one cent more, and the hash shown is the changed terms' own", async () => {
-    const data = dataOf(homePage());
+    const data = dataOf(demoPage());
     const amount = web.heroPlusCent(String(RECEIPT.terms.amount))!;
     expect(amount).toBe("240.01");
     const v = await web.heroCheck(data, { amount });
@@ -129,7 +138,7 @@ describe("the hero's step 4: the check the page embeds, on the published receipt
   });
 
   it("fails the same way with another IBAN, any other amount, and passes again once both are back", async () => {
-    const data = dataOf(homePage());
+    const data = dataOf(demoPage());
     const iban = web.heroOtherIban(String(RECEIPT.terms.iban_last4));
     expect(iban).not.toBe(RECEIPT.terms.iban_last4);
     expect(iban).toMatch(/^\d{4}$/);
@@ -203,7 +212,7 @@ describe("the published receipt of the approval of 7 November (docs/runs/2026-11
 describe("the hero follows the receipt file, not the code", () => {
   const f = heroDemoFacts()!;
   it("puts into the page's data only what the check needs", () => {
-    const data = dataOf(homePage());
+    const data = dataOf(demoPage());
     expect(Object.keys(data)).toEqual([...HERO_DATA_KEYS]);
     expect(Object.keys(data)).toEqual(["receipt", "terms", "terms_sha256", "algorithm", "public_key", "rp_id", "origin", "assertion"]);
     expect(data.terms).toEqual(RECEIPT.terms);
@@ -213,7 +222,7 @@ describe("the hero follows the receipt file, not the code", () => {
 
   it("is driven by another valid receipt of the same shape with no code change", async () => {
     const other = receiptFor();
-    const html = homePage(undefined, { receipt: other });
+    const html = demoPage(undefined, { receipt: other });
     const data = dataOf(html);
     expect(data.terms).toEqual(other.terms);
     expect(html).toContain("Stockline Daten AG");
@@ -232,7 +241,7 @@ describe("the hero follows the receipt file, not the code", () => {
   it("says what step 4 is from the file: the recorded approval itself, or a copy signed with a test key", () => {
     const real = heroReceipt(f)!;
     expect(real.kind).toBe("recorded");
-    expect(heroProvenance(f, real)).toEqual([`Steps 1 to 3: recorded ${f.date} in the Airwallex sandbox.`, CAVEAT_LINE, "Step 4 checks the owner's real passkey signature in your browser."]);
+    expect(heroProvenance(f, real)).toEqual([`Steps 1–3: Airwallex sandbox, ${f.date}.`, CAVEAT_LINE]);
     // Shorter since the homepage polish (12 Nov); whose passkey and how it was approved stay in the What's real? fold (the receipt's own note).
     // A receipt whose hash is the one the record holds is the approval itself, whatever its note says.
     const plain = receiptFor({}, { note: "" });
@@ -256,12 +265,12 @@ describe("the hero follows the receipt file, not the code", () => {
     ];
     for (const [name, source] of cases) {
       expect({ name, receipt: heroReceipt(f, source) }).toEqual({ name, receipt: null });
-      const html = homePage(undefined, { receipt: source });
+      const html = demoPage(undefined, { receipt: source });
       expect({ name, hero: html.includes('id="hero-demo"'), data: html.includes('id="run-data"') }).toEqual({ name, hero: false, data: false });
     }
     expect(heroDemoHtml(null)).toBe("");
     expect(heroDemoHtml(f, null)).toBe("");
-    // The committed file is none of these: the hero is on Home.
-    expect(homePage()).toContain('id="hero-demo"');
+    // The committed file is none of these: the hero renders.
+    expect(demoPage()).toContain('id="hero-demo"');
   });
 });

@@ -58,7 +58,7 @@ describe("/pricing: pilot pricing", () => {
     expect(html).toContain(`<p class="lead">${PRICING_LEAD}</p>`);
     expect((html.match(/<h1\b/g) ?? []).length).toBe(1);
     expect(html).toContain("<h1>Pilot pricing</h1>");
-    expect(html).toContain("<title>Pilot pricing</title>");
+    expect(html).toContain("<title>Purser · Pilot pricing</title>");
   });
 
   it("shows three cards, each price formatted from the module", () => {
@@ -128,7 +128,7 @@ describe("/pricing: pilot pricing", () => {
     expect(real).toContain("Pilot prices. Nothing is on sale yet.");
     expect(real).toContain("are test values, not prices");
     expect(real).toContain("No real-money go-live yet: sandbox and test money only.");
-    expect(real).toContain("Source: src/config/pricing.ts (the prices) and docs/runs/2026-11-10-connected-accounts-sandbox.md (the fee's sandbox run).");
+    expect(real).toContain("Source: Purser's price list in its code and docs/runs/2026-11-10-connected-accounts-sandbox.md (the fee's sandbox run).");
     expect(real).not.toMatch(/Northwind|Real Claude decisions/);
     expect(html).toContain('<span class="pill note">');
     expect(text.startsWith("Sandbox and test money only Pilot pricing")).toBe(true);
@@ -298,7 +298,7 @@ describe("/security: security and trust", () => {
   });
 
   it("not yet: one honest sentence, each part of it a sentence the docs say, word for word", () => {
-    expect(NOT_YET_LINE).toBe("No SOC 2 report, no ISO 27001 audit and no third-party penetration test yet; sandbox and testnet only; the SME product's independent security review is pending.");
+    expect(NOT_YET_LINE).toBe("No SOC 2 report, no ISO 27001 audit and no third-party penetration test yet; sandbox and testnet only; Purser's independent security review is pending.");
     expect(inSight("s-notyet")).toBe(`Not yet ${NOT_YET_LINE} What is not in place ↗ Sources`);
     expect(NOT_YET_SOURCES.map((s) => s.doc)).toEqual(["docs/security.md", "docs/controls.md", "docs/cloud.md"]);
     const flat = (p: string) => read(p).replace(/\*\*|`/g, "").replace(/\s+/g, " ");

@@ -7,7 +7,7 @@
 // amount and date is read from the run records (docs/demo/airwallex-run.json, docs/demo/main-run.json) and the hero's
 // receipt (the published receipt of the approval of 7 November, src/redesign/heroReceipt.ts).
 
-import { designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CHAIN_TEST, CORE_SENTENCE, HERO, JUDGE_LINE, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
+import { designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, HERO, JUDGE_LINE, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
 import type { Awx1Record } from "../awx/scenario.js";
 import { agentRun, type AgentRun } from "./run.js";
 import { AWX_RUN_FILE, AWX_RUN_STEPS_ID, awxRun } from "./awxRun.js";
@@ -153,17 +153,19 @@ export const HOME_SUB = "Over its limit, an agent asks; you sign the exact terms
 export const REASSURE = { sign: "Your own test company, deleted after 24 hours.", world: "Your own test company, deleted after 24 hours." } as const;
 /** The link in the provenance line: it opens the footer's fold of the same name. */
 export const WHATS_REAL = "What's real?";
-export const LOCKS_HEAD = "Each lock held in a live run";
+export const LOCKS_HEAD = "Each lock, on record";
 export const FLOW_HEAD = "Claude agents decide. Code and the rails enforce.";
 export const FEATURES_HEAD = "Agents do the work. The CFO keeps the say.";
 /** Four features, one line each; each says only what the runs and the code show (see /proof). */
 export const FEATURES = [
   { icon: "scan-face", title: "Face ID on the exact terms", text: "Above a limit, the CFO signs amount, payee and account. Change one cent and it fails." },
-  { icon: "shield-check", title: "Limits in code, not prompts", text: "Claude agents read and propose; Purser's code holds every limit." },
+  { icon: "shield-check", title: "Limits in code, not prompts", text: "Claude agents read and propose; Purser's code holds the limits." },
   { icon: "ban", title: "Rails that refuse too", text: "Airwallex, Metal and Visa via Airi apply their own controls." },
   { icon: "file-check", title: "Booked and checkable", text: "Every payment is booked; its signed receipt checks offline." },
 ] as const;
-export const STAT_NOTE = "Sandbox and testnet runs, test money. Each figure from its run record.";
+/** The records behind the stat row (test/home-story.test.ts checks each figure against them). */
+export const STAT_RECORDS = "docs/demo/main-run.json docs/demo/airwallex-run.json docs/runs/2026-11-12-vic-3.json";
+export const STAT_NOTE = "Sandbox and testnet runs. Each figure from its run record.";
 /** Home's second and last button. */
 export const PROOF_BUTTON = "See the proof";
 /** The fold at the end of Home (the owner, 12 Nov, for the Founder's award): no new page, no menu item, no person. */
@@ -233,7 +235,7 @@ export function homeStats(run: AgentRun, rows: ProofRow[] = proofRows(run)): Sta
   return [
     ...(sp.decisions ? [{ n: sp.byClaude, label: `Claude decisions in the main run, ${sp.fallbacks} ${sp.fallbacks === 1 ? "fallback" : "fallbacks"}`, icon: "bot" }] : []),
     ...(pay.total ? [{ n: pay.total, label: "Metal payments, each its own transaction", icon: "link-2", tone: "ok" as const }] : []),
-    ...(m ? [{ n: Number(m[2]), dec: 2, pre: `${m[1]} `, label: `declined by Airwallex over a ${m[3]} card limit`, icon: "ban", tone: "bad" as const }] : []),
+    ...(m ? [{ n: Number(m[2]), dec: 2, pre: `${m[1]} `, label: `declined by Airwallex over a ${m[1]} ${m[3]} card limit`, icon: "ban", tone: "bad" as const }] : []),
     ...(rows.some((r) => r.partner === "Visa") ? [{ n: 2, suf: " of 2", label: "Visa: signed hash read back equal at Airi and Airwallex", icon: "credit-card", tone: "ok" as const }] : []),
   ];
 }
@@ -282,7 +284,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
 <section class="e-stats" aria-labelledby="h-locks"><div class="wrap">
   <p class="eyebrow">On record</p>
   <h2 class="e-h reveal" id="h-locks">${esc(LOCKS_HEAD)}</h2>
-  ${statsHtml(homeStats(run, rows))}
+  <article class="e-statrec" data-rec="${esc(STAT_RECORDS)}">${statsHtml(homeStats(run, rows))}</article>
   <p class="statnote">${esc(STAT_NOTE)}</p>
   <div class="e-more"><a class="btn big primary" href="proof">${esc(PROOF_BUTTON)}${icon("arrow-right", 18)}</a>${booksCardHtml()}</div>
   ${nextHtml(opts.smallCompanyUrl ?? SMALL_COMPANY_DEMO_URL)}
@@ -295,8 +297,8 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   // What Home shows first (the hero and its two Airwallex rows), then the Metal row and the main run it comes from.
   const real = [
     "The hero's values (supplier, amount, due date, account, the signed hash and the three booking lines): one /try run of its sample invoice on Purser's own engine, 12 November, with no API key set, so Purser's code read that invoice; when /try runs live, its reader is Claude. Test money, a simulated bank, a test passkey.",
-    ...(awx && facts ? [`The Airwallex row: the Airwallex-only run (${awx.run}) of ${facts.date}. ${awx.note}`] : []),
-    `The Metal row: the main run${refusedAt ? ` of ${dayMonth(refusedAt)}` : ""}. ${CHAIN_TEST}`,
+    ...(awx && facts ? [`The Airwallex figure: the Airwallex-only run (${awx.run}) of ${facts.date}. ${CAVEAT_LINE} ${awx.note}`] : []),
+    `The Metal figure: the main run${refusedAt ? ` of ${dayMonth(refusedAt)}` : ""}. ${CHAIN_TEST}`,
     ...MAIN_RUN_REAL,
   ];
   return page({

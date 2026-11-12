@@ -1,0 +1,14 @@
+{
+  "what": "One visit of the hands-on demo (/try) with its sample invoice \"A clean invoice from a supplier on file\", on this repository's own engine (cloud/src), run by test/browser/try.check.ts on 12 November 2026. No API key was set, so Purser's code read the invoice (the screens say \"Purser's code reads today\"). Test money, a simulated bank, a test passkey (Chromium's virtual authenticator).",
+  "captured_at": "2026-11-12",
+  "mode": { "reader": "code", "bank": "simulated", "money": "test", "passkey": "virtual test authenticator" },
+  "invoice": { "supplier": "Bergtex Textil GmbH", "number": "BTX-2026-21", "currency": "EUR", "total": "1850.00", "due": "2026-11-16", "account_ending": "3000" },
+  "check": { "status": "Ready to pay", "by": "Purser's code" },
+  "signed": { "terms_hash_prefix": "44d05a016d11" },
+  "paid": { "status": "PAID", "bank": "simulated", "fee": "13.40" },
+  "booked": [
+    { "account": "6200", "name": "Expense", "debit": "1554.62", "credit": null },
+    { "account": "1510", "name": "Input VAT", "debit": "295.38", "credit": null },
+    { "account": "2100", "name": "Creditors", "debit": null, "credit": "1850.00" }
+  ]
+}

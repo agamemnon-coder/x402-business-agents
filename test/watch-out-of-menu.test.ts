@@ -115,7 +115,7 @@ describe("/replay answers, as a replay under Proof (it was /watch until the film
     expect(replayHead(run)).toEqual({ heading: `Replay of the main run, ${day}`, rest: run.label.replace(/^Replay of the main run, 3 Nov /, "") });
     expect(run.label.startsWith("Replay of the main run, 3 Nov ")).toBe(true);
     expect([...html.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/g)].map((m) => m[1])).toEqual([`Replay of the main run, ${day}`]);
-    expect(html).toContain(`<title>Replay of the main run, ${day}</title>`);
+    expect(html).toContain(`<title>Purser · Replay of the main run, ${day}</title>`);
     // A record of another day gives another heading: nothing here is typed by hand.
     const later = { ...run, label: "Replay of the main run and its follow-up, 9 Dec 08:00–08:10 UTC · test money · real Claude decisions" };
     expect(replayHead(later).heading).toBe(`Replay of the main run and its follow-up, ${day}`);
@@ -201,7 +201,7 @@ describe("no served page links to a path the site does not serve", () => {
   /** Where a bundle's pages are served. */
   const PATHS: Record<string, string> = {
     dashboard: "/?recorded", home: "/home", watch: "/watch", replay: "/replay", try: "/try", proof: "/proof", trace: "/trace", runs: "/runs", month: "/month", film: "/film", lab: "/lab",
-    metal: "/metal", metalReport: "/metal/report", visa: "/visa", airwallex: "/airwallex", claude: "/claude", t0: "/t0", pricing: "/pricing", security: "/security", docs: "/docs", status: "/status", trySign: "/try/sign", tryVerify: "/try/verify", judge: "/judge",
+    metal: "/metal", metalReport: "/metal/report", visa: "/visa", airwallex: "/airwallex", claude: "/claude", t0: "/t0", books: "/books", pricing: "/pricing", security: "/security", docs: "/docs", status: "/status", trySign: "/try/sign", tryVerify: "/try/verify", judge: "/judge",
     enrol: "/enrol", policy: "/policy", approve: "/approve/P-0001", notFound: "/no/such/page",
   };
   /** The status a GET ends in, following redirects as a browser does; 404 for no page. */

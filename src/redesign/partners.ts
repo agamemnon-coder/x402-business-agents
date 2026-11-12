@@ -428,8 +428,15 @@ export function builtOnHtml(run: AgentRun = agentRun(), icc = true): string {
   return `<ul class="builton"><li><b>Built on</b></li>${builtOnItems(run).map((i) => `<li><a class="flink" href="${esc(i.href)}"${/^https?:/.test(i.href) ? ' target="_blank" rel="noopener"' : ""}>${esc(`${i.name}: ${i.proof}`)}</a></li>`).join("")}${icc ? `<li>${esc(ICC_LINE)}</li>` : ""}</ul>`;
 }
 // Every page's footer carries it (review, 12 Nov), computed once per process from the same records.
+/**
+ * The same list as plain text, for every other page's footer: no links (the jury's rules keep /visa's link off Home and
+ * /proof, and /trace links no other host) and no "live" (a recorded run or a replay is never called live there).
+ */
+export function builtOnPlainHtml(run: AgentRun = agentRun()): string {
+  return `<ul class="builton"><li><b>Built on</b></li>${builtOnItems(run).map((i) => `<li>${esc(`${i.name}: ${i.proof.replace(/\blive /g, "")}`)}</li>`).join("")}<li>${esc(ICC_LINE)}</li></ul>`;
+}
 let builtOnCache = "";
-setBuiltOn(() => (builtOnCache ||= builtOnHtml()));
+setBuiltOn(() => (builtOnCache ||= builtOnPlainHtml()));
 
 const T0_LOGO = '<span class="logo txt">T:0</span>';
 /** What is real on /t0: its own lines (the main run's would name rails the page does not show). */
