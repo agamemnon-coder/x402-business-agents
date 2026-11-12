@@ -697,12 +697,12 @@ export function isTestMoney(t: Obj): boolean {
 }
 
 /**
- * What the first screen adds for a supplier payment, from the signed terms: the supplier's own total line as the
- * invoice wrote it, and the payout reason in words. Nothing for any other kind.
+ * What the first screen adds for a payment the payables inbox filed, from the signed terms: the supplier's own total
+ * line as the invoice wrote it, and the payout reason in words. Nothing for anything else: a Kit 11 invoice payment
+ * carries a reason too (src/agents/euroBill.ts), and its first screen stays payee, agent and why (docs/phone-approval.md).
  */
 export function firstScreenFacts(t: Obj): [string, string][] {
-  const kind = str(t.kind);
-  if (kind !== "invoice_payment" && kind !== "supplier_payment") return [];
+  if (!isPayablesPayment(t)) return [];
   return [
     ...(t.document_total_line !== undefined ? [["On the invoice", `\u201c${str(t.document_total_line).slice(0, 120)}\u201d`] as [string, string]] : []),
     ...(str(t.reason) ? [["Reason", reasonWords(str(t.reason))] as [string, string]] : []),
@@ -1476,6 +1476,8 @@ async function approvePage(attempt = 0): Promise<void> {
       f ? el("p", "hero", [txt("span", "hero-label", f.amountLabel ?? "Amount"), txt("span", "hero-amount num", f.amount)]) : null,
       f ? el("dl", "key-facts", [
         txt("dt", "", "Payee"), el("dd", "lines", f.recipient.split("; ").map((r) => txt("span", "", r))),
+        // Rows only for a payment the payables inbox filed, should one ever be drawn here (it has its own view,
+        // above): a Kit 11 approval gets none, so its first screen stays payee, agent and why.
         ...firstScreenFacts(terms).flatMap(([k, v]) => [txt("dt", "", k), txt("dd", k === "On the invoice" ? "invoice-line" : "", v)]),
         txt("dt", "", "Agent"), txt("dd", "", agentOf(o.created_by, terms)),
         txt("dt", "", "Why you"), txt("dd", "why", whyYou(terms, a.policy ?? [], o.four_eyes)),
@@ -1603,7 +1605,8 @@ function payablesView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, ter
     isTestMoney(terms) ? txt("p", "testmoney", ph(lang, "ph.test_money")) : null,
     txt("h1", "what-title", p.title),
     el("p", "hero", [txt("span", "hero-label", ph(lang, "ph.amount")), txt("span", "hero-amount num", p.amount)]),
-    el("dl", "key-facts", [
+    // "wide": the payables labels are longer ("Betaald van", "Purser-vergoeding"); Kit 11 approvals keep their column.
+    el("dl", "key-facts wide", [
       ...p.first.flatMap(([k, v]) => [txt("dt", "", k), txt("dd", k === ph(lang, "ph.on_invoice") ? "invoice-line" : "", v)]),
       txt("dt", "", ph(lang, "ph.agent")), txt("dd", "", ph(lang, "ph.agent_inbox")),
       txt("dt", "", ph(lang, "ph.why")), txt("dd", "why", why),
@@ -1726,7 +1729,7 @@ async function batchView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, 
       isTestMoney(terms) ? txt("p", "testmoney", ph(lang, "ph.test_money")) : null,
       txt("h1", "what-title", ph(lang, lines.length === 1 ? "ph.batch_title_one" : "ph.batch_title_other", { n: lines.length })),
       f ? el("p", "hero", [txt("span", "hero-label", ph(lang, "ph.total")), txt("span", "hero-amount num", mon(f.amount))]) : null,
-      el("dl", "key-facts", [
+      el("dl", "key-facts wide", [
         txt("dt", "", ph(lang, "ph.payments")), txt("dd", "", String(lines.length)),
         txt("dt", "", ph(lang, "ph.agent")), txt("dd", "", ph(lang, "ph.agent_inbox")),
         txt("dt", "", ph(lang, "ph.why")), txt("dd", "why", `${ph(lang, "ph.why_batch")}${o.four_eyes ? ` ${ph(lang, "ph.four_eyes")}` : ""}`),

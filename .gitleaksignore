@@ -96,3 +96,12 @@ d28cc7c28e097ff9c6ffae697e7027df74fe430a:test/icc-config.test.ts:generic-api-key
 114155167214b5a44d89f1faacffc27da59a1683:test/icc-purchase.test.ts:generic-api-key:24
 45d6b4e36ed38a73950979441de197982c6d39b0:test/icc-rail-off.test.ts:generic-api-key:26
 08e62fcccd4b5aef51ce7b838ff0e3f35b4affce:test/icc-client.test.ts:generic-api-key:302
+# 12 Nov: the sample receipt for the home page widget on branch home-story-1112: public WebAuthn authenticatorData of a
+# labelled test key, not a secret (the whole-history scan reads every remote branch).
+a97ac3b46eb9484771bc153d2ace5f2e1425758e:docs/demo/hero-receipt.json:generic-api-key:56
+# 12 Nov: a test on branch faceid-onchain-1112 lists the NAMES of the environment variables a runbook may mention
+# (KIT11_PASSKEY_OWNERS among them): names, never values (the whole-history scan reads every remote branch).
+a711ca69f258de95b640a2e7815522611a9eb828:test/owners-runbook.test.ts:generic-api-key:101
+# test/tokenize-cli.test.ts in ae1e2dd: a made-up address path for a JSON-RPC server on the test machine itself, written
+# as one literal; the test now builds it at run time.
+ae1e2ddc37804a70b4ddafb581f10e8968742d68:test/tokenize-cli.test.ts:generic-api-key:24

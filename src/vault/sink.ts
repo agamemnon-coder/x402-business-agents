@@ -1,6 +1,7 @@
-// Where the vault is written. One small interface, so the same tree goes to a local folder, the cloud's R2 (backend
-// branch) or a customer's Google Drive or OneDrive. A sink creates a file once and never replaces it; the one file it
-// may rewrite is a year's index.json, which lists everything.
+// Where the vault is written. One small interface, so the same tree goes to a local folder or to a customer's Google
+// Drive or OneDrive (gdrive.ts, onedrive.ts). A sink to the cloud's own store (R2; the cloud is in cloud/) is not built
+// yet (docs/vault.md, "Not done yet"). A sink creates a file once and never replaces it; the one file it may rewrite
+// is a year's index.json, which lists everything.
 
 import { createHash } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
