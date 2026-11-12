@@ -1,9 +1,13 @@
 // purser-try: a deployment of its own for the company engine on test money (a stand-in bank; no payment reaches a real
-// bank). It is cloud/wrangler.jsonc with only these changed: the name, the workers.dev address (RP_ID, ORIGIN), its own
-// D1 database, no R2 bucket (documents and the archive are kept in D1), and ENGINE_MODE "test_money" (test/cloud-try-config.test.ts holds the two files to that).
+// bank). It is never the product's deployment (purser-cloud, cloud/wrangler.jsonc), and never its stores.
+// It is cloud/wrangler.jsonc with only these changed: the name, the workers.dev address (RP_ID, ORIGIN), its own D1
+// database, ENGINE_MODE "test_money", the capabilities HANDS_ON and ENGINE_CLAUDE (switches decide at run time; a
+// missing switch is off), an hourly cron, and no R2: the DOCS binding is left out, so documents and the archive are
+// kept in D1 (cloud/src/blobsSql.ts, sqlBlobs). test/cloud-try-config.test.ts holds the two files to that.
 // Deploy it only as purser-try, never pointed at an existing Worker: a Durable Object class and its migration cannot be
-// rolled back past their first deploy. No secret goes in this file: SESSION_SECRET and ADMIN_TOKEN_SHA256 are set with
-// wrangler secret put. No mail domain, no real data.
+// rolled back past their first deploy, so the migration list stays as it is. No secret goes in this file:
+// SESSION_SECRET, ADMIN_TOKEN_SHA256 and the demo's capped Claude key are set with wrangler secret put. No mail domain,
+// no real data.
 {
   "$schema": "../worker/node_modules/wrangler/config-schema.json",
   "name": "purser-try",
@@ -23,7 +27,11 @@
     "RP_ID": "purser-try.max-31b.workers.dev",
     "ORIGIN": "https://purser-try.max-31b.workers.dev",
     // The /v1/engine routes on: the engine pays on a stand-in bank, test money only.
-    "ENGINE_MODE": "test_money"
+    "ENGINE_MODE": "test_money",
+    // Capabilities only: the visitors' companies (HANDS_ON) and Claude in the engine (ENGINE_CLAUDE) are on at run time
+    // only where their switches say so; a missing switch is off.
+    "HANDS_ON": "on",
+    "ENGINE_CLAUDE": "on"
   },
   // The engine: one Durable Object per company (cloud/src/engine/object.ts), on its own SQLite. A class is SQLite-backed
   // only from its first deploy, and a deploy with a migration cannot be rolled back past it.
@@ -38,6 +46,7 @@
   // pdf.js for the console's invoice view, served through the Worker (run_worker_first: every request meets the Worker's
   // own headers and only /assets/pdfjs.mjs is ever read from here). npm run cloud:pdfjs fills cloud/public before a deploy.
   "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
-  // Daily: purge closed companies past their 7-year retention; clear spent challenges and old rate windows.
-  "triggers": { "crons": ["17 3 * * *"] }
+  // Hourly: the sweep of the visitors' companies, and the cloud's own job (purge closed companies past their 7-year
+  // retention; clear spent challenges and old rate windows), which is safe to run every hour.
+  "triggers": { "crons": ["17 * * * *"] }
 }
