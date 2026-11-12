@@ -85,7 +85,7 @@ describe("a visitor's whole run, then the end card", () => {
   });
 
   it("books: P&L and VAT before and after, from the ledger's report code over the company's posted lines; and the labelled T0 row", async () => {
-    const path = `/v1/engine/books/effect?invoice_no=${encodeURIComponent(upload.invoice.invoice_no)}&vendor=${encodeURIComponent(upload.invoice.vendor)}`;
+    const path = `/v1/try/books/effect?invoice_no=${encodeURIComponent(upload.invoice.invoice_no)}&vendor=${encodeURIComponent(upload.invoice.vendor)}`;
     expect((await c.req("GET", path, { key: s })).status).toBe(404);
     await set("books_effect", "on");
     const r = await c.req("GET", path, { key: s });

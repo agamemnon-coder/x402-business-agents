@@ -30,7 +30,7 @@ export function decisionOf(out: { kind: string; invoice: { status: string; findi
   if (!inv) return { action: "refuse", why: `not filed as an invoice (${out.kind})` };
   const codes = inv.findings.map((f) => f.code).join(", ");
   if (inv.status === "blocked" || inv.status === "rejected") return { action: "refuse", why: codes || inv.status };
-  if (inv.status === "ready" || inv.status === "approved" || inv.status === "paid" || inv.status === "scheduled") return { action: "pay", why: "the checks passed" };
+  if (inv.status === "ready" || inv.status === "approved" || inv.status === "paid" || inv.status === "scheduled") return { action: "pay", why: codes ? `the checks passed, with a warning: ${codes}` : "the checks passed" };
   return { action: "ask", why: codes || inv.status };
 }
 
