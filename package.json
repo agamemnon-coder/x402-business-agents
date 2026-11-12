@@ -119,6 +119,7 @@
     "reliability": "tsx src/cli/reliability.ts",
     "record-try-agents": "tsx src/cli/recordTryAgents.ts",
     "cloud": "tsx src/cli/cloud.ts",
+    "cloud:seed-demo": "tsx src/cli/cloudSeedDemo.ts",
     "two-locks": "tsx src/cli/twoLocks.ts"
   },
   "dependencies": {

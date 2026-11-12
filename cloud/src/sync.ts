@@ -90,6 +90,12 @@ export interface SyncResult { [kind: string]: { added: number; changed: number; 
 const tally = () => ({ added: 0, changed: 0, unchanged: 0 });
 
 export function docBlobKey(tenantId: string, sha: string): string { return `t/${tenantId}/docs/${sha}`; }
+/**
+ * Where a company's vault index for one year is kept: the runner's own index.json (src/vault/build.ts YearIndex), which
+ * lists every filed document by its folder path and SHA-256. The documents themselves are stored like any other
+ * (docBlobKey). Today only the demo world's seed writes it (src/demoworld/cloud.ts).
+ */
+export function vaultIndexKey(tenantId: string, year: number): string { return `t/${tenantId}/vault/${year}/index.json`; }
 
 /** Versioned objects: same body, nothing; a new body, the old one to history and the new one in place. */
 async function versioned(db: TenantDb, table: Extract<Table, "vendors" | "invoices" | "payments" | "transactions">, kind: string, rows: { id: string; body: Record<string, unknown> }[], cols: (r: never) => Record<string, string | number | null>, now: string, out: Stmt[], t: { added: number; changed: number; unchanged: number }): Promise<void> {

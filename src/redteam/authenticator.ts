@@ -2,7 +2,7 @@
 // hands the page. The tests use it to play the CFO's phone; the red team (src/redteam) uses it as the attacker's own
 // key. Every field it signs can be set wrong on purpose: origin, rpId, challenge, counter, user verification.
 
-import { createHash, generateKeyPairSync, randomBytes, sign, type KeyObject } from "node:crypto";
+import { createHash, createPublicKey, generateKeyPairSync, randomBytes, sign, type KeyObject } from "node:crypto";
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simplewebauthn/server";
 import { isoCBOR } from "@simplewebauthn/server/helpers";
 
@@ -34,9 +34,18 @@ export class FakeAuthenticator {
   /** The public key as a JWK (P-256): what a receipt carries so anyone can check a signature offline. */
   readonly publicJwk: { kty: "EC"; crv: "P-256"; x: string; y: string };
 
-  constructor() {
-    const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
+  /** How the assertion's bytes are signed: OpenSSL (a fresh nonce each time) unless a world gives its own signer. */
+  private readonly signer: (data: Buffer) => Buffer;
+
+  /**
+   * With no argument: a fresh random key, as every test uses it. A seeded world (src/demoworld) passes its own P-256 key,
+   * credential id and a signer whose signatures repeat, so two builds of that world give the same bytes.
+   */
+  constructor(fixed?: { privateKey: KeyObject; credentialId: string; sign: (data: Buffer) => Buffer }) {
+    const privateKey = fixed?.privateKey ?? generateKeyPairSync("ec", { namedCurve: "P-256" }).privateKey;
+    const publicKey = createPublicKey(privateKey);
     this.privateKey = privateKey;
+    this.signer = fixed?.sign ?? ((data) => sign("sha256", data, this.privateKey));
     this.spkiSha256 = createHash("sha256").update(publicKey.export({ type: "spki", format: "der" })).digest("hex");
     const jwk = publicKey.export({ format: "jwk" });
     this.publicJwk = { kty: "EC", crv: "P-256", x: jwk.x!, y: jwk.y! };
@@ -44,7 +53,7 @@ export class FakeAuthenticator {
     this.cosePublicKey = isoCBOR.encode(new Map<number, number | Uint8Array>([
       [1, 2], [3, -7], [-1, 1], [-2, Buffer.from(jwk.x!, "base64url")], [-3, Buffer.from(jwk.y!, "base64url")],
     ]));
-    this.credentialId = b64url(randomBytes(16));
+    this.credentialId = fixed?.credentialId ?? b64url(randomBytes(16));
   }
 
   private flags(c: Ceremony, extra = 0): number {
@@ -73,7 +82,7 @@ export class FakeAuthenticator {
   sign(c: Ceremony & { userHandle?: string }): AuthenticationResponseJSON {
     const authData = Buffer.concat([sha256(c.rpId), Buffer.from([this.flags(c)]), u32(c.counter ?? 0)]);
     const clientDataJSON = Buffer.from(JSON.stringify({ type: "webauthn.get", challenge: c.challenge, origin: c.origin, crossOrigin: false }));
-    const signature = sign("sha256", Buffer.concat([authData, sha256(clientDataJSON)]), this.privateKey);
+    const signature = this.signer(Buffer.concat([authData, sha256(clientDataJSON)]));
     return {
       id: this.credentialId, rawId: this.credentialId, type: "public-key",
       response: {
