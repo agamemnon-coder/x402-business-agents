@@ -1,8 +1,8 @@
 # After the hackathon: one honest card
 
 **A plan, not a promise.** No dates: "next" means the first things we would do, "later" means after those. Nothing
-here is built unless it says so. The longer product roadmap (more agents, more rails) is in
-[docs/roadmap.md](../roadmap.md). **We have not validated demand with customers yet** ([model.md](model.md)).
+here is built unless it says so. The longer product roadmap of October (more agents, more rails) is kept for history in
+[docs/archive/roadmap.md](../archive/roadmap.md). **We have not validated demand with customers yet** ([model.md](model.md)).
 
 Back to the [business case index](README.md).
 

@@ -1,3 +1,5 @@
+> Kept for history (archived 12 November 2026). Replaced by: [README.md](../../README.md) and [decisions.md](../decisions.md).
+
 # Quality plan: from "works" to "best in class" (29 October 2026)
 
 **Rule:** no new features unless they are on this list. Every item ends with proof (a screenshot, a run log or a
@@ -10,7 +12,7 @@ QA test. **Done** means done with evidence.
 ## Already fixed today (QA findings)
 
 These six QA findings were fixed and deployed on 29 October. Run log:
-[runs/2026-10-29-qa-fixes.md](runs/2026-10-29-qa-fixes.md).
+[runs/2026-10-29-qa-fixes.md](../runs/2026-10-29-qa-fixes.md).
 
 1. `/` without a key shows a guest landing and polls nothing.
 2. `/demo` no longer prints "null", and the Face ID steps no longer break on a phone.
