@@ -27,7 +27,7 @@ import { VIC_CREDENTIAL_WHO, VIC_FLOW_CSS, vicFlow } from "../src/redesign/vicFl
 import { VISA_OVERVIEW_ID, VISA_SUMMARY_HEADING, VISA_TAP_ID, airiCard, tapCard, visaOverviewBlock, visaOverviewHeading, visaOverviewHtml } from "../src/redesign/visaOverview.js";
 
 const raw = (f: string) => JSON.parse(readFileSync(new URL(`../${f}`, import.meta.url), "utf8"));
-const text = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+const text = (html: string) => html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<svg[\s\S]*?<\/svg>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
 const mainOf = (html: string) => /<main[\s\S]*<\/main>/.exec(html)![0];
 /** A page without what its folds hide: every <details> reduced to its summary. */
 const unfolded = (html: string) => html.replace(/<details\b[^>]*>\s*(<summary[^>]*>[\s\S]*?<\/summary>)[\s\S]*?<\/details>/g, " $1 ");

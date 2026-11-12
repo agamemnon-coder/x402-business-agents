@@ -296,7 +296,7 @@ export function assertVicFirst(html: string): void {
   const top = tapAt < 0 ? main : main.slice(0, tapAt);
   if (TAP_WORDS.test(plainWords(top))) fail("TAP is named above the TAP fold");
   const after = html.slice(html.indexOf("</main>"));
-  if (TAP_WORDS.test(plainWords(after.replace(/<script[\s\S]*?<\/script>/g, " ")))) fail("TAP is named below the page's body (the footer)");
+  if (TAP_WORDS.test(plainWords(after.replace(/<script[\s\S]*?<\/script>/gi, " ")))) fail("TAP is named below the page's body (the footer)");
   if (tapAt >= 0) {
     const fold = main.slice(tapAt);
     if (!plainWords(fold).startsWith(`${VISA_TAP_HEADING} ${VISA_TAP_STATUS}`)) fail("the TAP fold does not open with its line and its status");
@@ -312,7 +312,7 @@ export function assertVicFirst(html: string): void {
   const seen = plainWords(unfolded);
   if (!seen.includes(VISA_ENTRY_LINE)) fail("the basis for calling it Visa Intelligent Commerce is not on the page, outside any fold");
   if (!seen.includes(VISA_ICC_LINE)) fail("the Intelligent Commerce Connect line is not on the page, outside any fold");
-  if (plainWords(html.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ")).split("Intelligent Commerce Connect").length !== 2) fail("Intelligent Commerce Connect is named more than once");
+  if (plainWords(html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ")).split("Intelligent Commerce Connect").length !== 2) fail("Intelligent Commerce Connect is named more than once");
   const overview = /<section class="card vo"[\s\S]*?<\/section>/.exec(top)?.[0] ?? "";
   if (!overview.includes(`>${esc(VISA_SUMMARY_HEADING)}</h2>`) || (overview.match(/class="vo-run[ "]/g) ?? []).length !== 1 || /class="vo-run tap"/.test(overview)) fail("the summary is not the one paid run's");
   if (!plainWords(after).includes(AIRI_RUN_FILE)) fail(`the footer does not cite ${AIRI_RUN_FILE}`);
