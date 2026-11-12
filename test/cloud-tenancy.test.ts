@@ -98,7 +98,9 @@ describe("two companies", () => {
     const withId = ROUTES.filter((r) => r.path.includes("{id}") && r.need !== "platform");
     expect(withId.length).toBeGreaterThanOrEqual(6);
     // The engine's routes that name an invoice or a proposal are in the walk.
-    expect(withId.filter((r) => r.path.startsWith("/v1/engine/")).map((r) => `${r.method} ${r.path}`)).toEqual(["POST /v1/engine/invoices/{id}/pay", "GET /v1/engine/proposals/{id}", "POST /v1/engine/proposals/{id}/approve", "POST /v1/engine/proposals/{id}/retry"]);
+    expect(withId.filter((r) => r.path.startsWith("/v1/engine/")).map((r) => `${r.method} ${r.path}`)).toEqual(["POST /v1/engine/invoices/{id}/pay", "GET /v1/engine/proposals/{id}", "POST /v1/engine/proposals/{id}/approve", "POST /v1/engine/proposals/{id}/retry",
+      // The hands-on demo's (cloud/src/try/engineRoutes.ts): the signed terms, and the one pay route (a test company's only).
+      "GET /v1/engine/proposals/{id}/terms", "POST /v1/engine/proposals/{id}/pay"]);
     for (const r of withId) {
       const engine = r.path.startsWith("/v1/engine/");
       const id = r.path.includes("/keys/") ? bIds.key : r.path.includes("/users/") ? bIds.user : r.path.includes("/mail/") ? bIds.mail
@@ -111,7 +113,8 @@ describe("two companies", () => {
       // A's signed-in owner passes the gate a key does not (the passkey routes are for a session): B's invoice and
       // proposal are not there for A either, exactly like ones that do not exist.
       const signedIn = await c.req(r.method, path, { key: A.session, ...(r.method === "POST" ? { body: { terms_sha256: "0".repeat(64), credential: {} } } : {}) });
-      expect(signedIn.status, `${r.method} ${path} with A's session: ${JSON.stringify(signedIn.json)}`).toBe(404);
+      // The pay route is a test company's only: A (a product company) is turned away before any proposal is looked up.
+      expect(signedIn.status, `${r.method} ${path} with A's session: ${JSON.stringify(signedIn.json)}`).toBe(r.path.endsWith("/pay") && r.path.includes("/proposals/") ? 403 : 404);
       expect(JSON.stringify(signedIn.json)).not.toContain("Bergtex");
     }
     // A report or the insight never mixes in the other company's ledger or invoices.

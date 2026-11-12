@@ -26,7 +26,7 @@ import { syncLedger } from "../ledger/feed.js";
 import { fromCents } from "../lib/money.js";
 import { confirmPasskey, activePasskey, openEnrolment, pendingPasskeys } from "../passkey/ledger.js";
 import { processAssertion, processRegistration, type InboxItem } from "../passkey/process.js";
-import { challengeFor } from "../passkey/webauthn.js";
+import { challengeFor, verifyApprovalSignature } from "../passkey/webauthn.js";
 import { phonePhrases, t } from "../ui/i18n.js";
 import { syncVault, type YearIndex } from "../vault/build.js";
 import { closedPeriods, invoiceDocs, receipts } from "../vault/data.js";
@@ -36,6 +36,10 @@ import { publicEvent, type EngineEvent, type EventRow } from "./events.js";
 import { checkCompose, invoiceText, SEEDED_SUPPLIERS, type ComposeInput, type ComposeRefusal, type Sample, type SupplierOnFile } from "./tryWorld.js";
 import { pdfOf } from "../e2e/documents.js";
 import { ibanSha } from "../agents/invoice.js";
+import { canonicalTerms, termsHash, type Terms } from "../lib/terms.js";
+import { beginExecution } from "../policy/approvals.js";
+import { batchesFor } from "../cloudsync/client.js";
+import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 
 /** The reader that always takes the parser: no model is asked, and the invoice says it was read by the parser. */
 export const parserOnly: Asker = { ask: async (_a, fallback) => ({ value: fallback(), source: "fallback", model: null, note: "no model is asked: the parser reads" }) } as Asker;
@@ -142,6 +146,33 @@ const LIBRARY_UNREADABLE = /^(Unexpected |Credential |Missing credential|ClientD
 function plainRefusal(message: string): string {
   for (const [library, plain] of LIBRARY_REFUSALS) if (library.test(message)) return plain;
   return LIBRARY_UNREADABLE.test(message) ? "This signature could not be read. Nothing was paid." : message;
+}
+
+/** A proposal's terms as the hands-on demo's pay route shows them. */
+export interface TermsView { proposal_id: string; status: string; terms: Terms; canonical: string; terms_sha256: string; approved: boolean; expires_at: string | null }
+
+/** What the one pay route answers; a layer that did not run says so (null). */
+export interface PaySignedResult {
+  outcome: "paid" | "refused" | "paid_once" | "not_signed" | "expired" | "failed";
+  layers: { signature: { verified: boolean | null; reason: string }; executor: { accepted: boolean | null; said: string | null } };
+  signed_sha256: string; sent_sha256: string; changed: string[]; transfers_before: number; transfers_after: number; settled: Settled | null;
+}
+
+/** The keys the visitor may change on the pay screen; every other key must be the stored one. */
+export const CHANGEABLE_TERMS = ["amount", "beneficiary_name", "iban_last4"] as const;
+
+/** Why the sent terms cannot be tried at all (their shape), or null. */
+function checkSent(stored: Record<string, unknown>, sent: Record<string, unknown>): string | null {
+  const keys = Object.keys(stored).sort(), got = Object.keys(sent).sort();
+  if (keys.length !== got.length || keys.some((k, i) => k !== got[i])) return "the terms must have exactly the keys of the signed terms";
+  for (const k of keys) {
+    if ((CHANGEABLE_TERMS as readonly string[]).includes(k)) continue;
+    if (JSON.stringify(stored[k]) !== JSON.stringify(sent[k])) return "only the amount, the payee and the account ending can be changed here";
+  }
+  if (typeof sent.amount !== "string" || !/^\d{1,9}\.\d{2}$/.test(sent.amount)) return "the amount is a number with two decimals, such as 1850.00";
+  if (typeof sent.iban_last4 !== "string" || !/^[A-Za-z0-9]{4}$/.test(sent.iban_last4)) return "the account ending is four letters or digits";
+  if (typeof sent.beneficiary_name !== "string" || sent.beneficiary_name.length < 1 || sent.beneficiary_name.length > 140) return "the payee is 1 to 140 characters";
+  return null;
 }
 
 const firstInvoice = (r: IngestResult): ApInvoiceRow | null =>
@@ -312,7 +343,7 @@ export class EngineHost {
    * executor run, on the host's rails, and then the payment is followed, booked, archived and fed. An error of the
    * executor or of what follows comes back in settled.error; the approval stays.
    */
-  approve(a: { proposal_id: string; terms_sha256: string; credential: unknown }): Promise<{ status: string; message: string; settled: Settled | null }> {
+  approve(a: { proposal_id: string; terms_sha256: string; credential: unknown; hold?: boolean }): Promise<{ status: string; message: string; settled: Settled | null; held?: true }> {
     return this.act(async () => {
       const { db } = this.deps;
       const now = this.now();
@@ -325,6 +356,8 @@ export class EngineHost {
       const out = await processAssertion(db, item, now);
       if (out.status === "refused") return { status: out.status, message: plainRefusal(out.message), settled: null };
       if (out.status !== "approved" || !out.proposalId) return { status: out.status, message: out.message, settled: null };
+      // The hands-on demo: the approval is stored and the payment held, for the one pay route (paySigned) to run.
+      if (a.hold) return { status: out.status, message: out.message, settled: null, held: true };
       return { status: out.status, message: out.message, settled: await this.pay(out.proposalId) };
     });
   }
@@ -478,5 +511,102 @@ export class EngineHost {
       const bytes = await pdfOf(invoiceText(fields));
       return this.ingest({ bytes, filename: `${fields.invoiceNo.replace(/[^A-Za-z0-9-]/g, "-")}.pdf`, mime: "application/pdf" });
     });
+  }
+
+  // ---- The hands-on demo (purser-try): the signed terms, the one pay route, the export ----
+
+  /** A proposal's stored terms as the passkey signed them: the object, its canonical text and hash, and whether an approval is stored. */
+  terms(proposalId: string): TermsView | null {
+    const { db } = this.deps;
+    const p = db.prepare("SELECT proposal_id, status, terms_json, terms_sha256, expires_at FROM proposals WHERE proposal_id = ?").get(proposalId) as
+      { proposal_id: string; status: string; terms_json: string; terms_sha256: string; expires_at: string | null } | undefined;
+    if (!p) return null;
+    const terms = JSON.parse(p.terms_json) as Terms;
+    const approved = !!db.prepare("SELECT 1 FROM approvals WHERE proposal_id = ? AND decision = 'APPROVED'").get(proposalId);
+    return { proposal_id: p.proposal_id, status: p.status, terms, canonical: canonicalTerms(terms), terms_sha256: termsHash(terms), approved, expires_at: p.expires_at };
+  }
+
+  /**
+   * The one pay route of the hands-on demo: the visitor's terms with the visitor's own signature, through the product's
+   * own verifier and executor. Two layers answer, always both:
+   *   the signature  the product's verifier (verifyApprovalSignature, counter 0 as reverifyPasskeyApprovals) on the
+   *                  credential the browser sent, over the hash of the terms sent;
+   *   the executor   the gate every executor runs (beginExecution), asked with the sent terms written into the
+   *                  payment instruction, inside one synchronous transaction that is always rolled back.
+   * Only when both say yes, and the approved payment is held, does the real executor pay (the private pay(), as approve
+   * and retry do), from the stored terms, which are then the signed ones. Nothing of a refused attempt is kept but its
+   * audit row (try.pay, with no values).
+   */
+  paySigned(proposalId: string, sent: Record<string, unknown>, credential: unknown): Promise<PaySignedResult | { bad: string } | null> {
+    return this.act(async () => {
+      const { db } = this.deps;
+      const now = this.now();
+      const stored = this.terms(proposalId);
+      if (!stored) return null;
+      const bad = checkSent(stored.terms as Record<string, unknown>, sent);
+      if (bad) return { bad };
+      // Transfers made: those the bank created (a payout row whose request failed before the bank answered moved nothing).
+      const transfers = () => (db.prepare("SELECT COUNT(*) AS n FROM transfers WHERE transfer_id IS NOT NULL").get() as { n: number }).n;
+      const sentSha = termsHash(sent as Terms);
+      const changed = Object.keys(stored.terms).filter((k) => JSON.stringify((stored.terms as Record<string, unknown>)[k]) !== JSON.stringify(sent[k]));
+      const base = { signed_sha256: stored.terms_sha256, sent_sha256: sentSha, changed, transfers_before: transfers() };
+      const finish = (outcome: PaySignedResult["outcome"], layers: PaySignedResult["layers"], settled: Settled | null): PaySignedResult => {
+        audit(db, "human", "try.pay", proposalId, { outcome, changed, signature_verified: layers.signature.verified, executor_accepted: layers.executor.accepted }, now);
+        return { outcome, layers, ...base, transfers_after: transfers(), settled };
+      };
+      if (!stored.approved) {
+        return finish("not_signed", { signature: { verified: null, reason: "Not checked: this payment has no approval yet. Approve it first." }, executor: { accepted: null, said: "Not asked: nothing is approved." } }, null);
+      }
+
+      // The signature layer: the product's verifier on the browser's own credential, over the terms sent.
+      let signature: { verified: boolean; reason: string };
+      const pk = activePasskey(db);
+      if (!pk) signature = { verified: false, reason: "This company has no approval passkey. Nothing was paid." };
+      else {
+        try {
+          const v = await verifyApprovalSignature(credential as AuthenticationResponseJSON, sentSha, pk, 0);
+          signature = v.ok ? { verified: true, reason: "Your signature is over exactly these terms." } : { verified: false, reason: plainRefusal(v.reason) };
+        } catch {
+          signature = { verified: false, reason: "This signature could not be read. Nothing was paid." };
+        }
+      }
+
+      // The executor layer: the executor's own gate, asked with the sent terms in the payment instruction, rolled back.
+      const ROLLBACK = Symbol("rollback");
+      let executor: { accepted: boolean; said: string | null } = { accepted: false, said: null };
+      try {
+        db.transaction(() => {
+          db.prepare("UPDATE proposals SET terms_json = ? WHERE proposal_id = ?").run(JSON.stringify(sent), proposalId);
+          try {
+            beginExecution(db, proposalId, () => {}, now);
+            executor = { accepted: true, said: null };
+          } catch (e) {
+            executor = { accepted: false, said: message(e) };
+          }
+          throw ROLLBACK;
+        })();
+      } catch (e) {
+        if (e !== ROLLBACK) throw e;
+      }
+
+      const status = (db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(proposalId) as { status: string }).status;
+      const layers = { signature, executor };
+      if (signature.verified && executor.accepted && status === "APPROVED") {
+        const settled = await this.pay(proposalId);
+        const after = (db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(proposalId) as { status: string }).status;
+        return finish(after === "EXECUTED" ? "paid" : "failed", layers, settled);
+      }
+      if (signature.verified && executor.accepted && status === "FAILED") return finish("failed", layers, null);
+      if (status === "EXECUTED") return finish(signature.verified ? "paid_once" : "refused", layers, null);
+      if (/expired/i.test(executor.said ?? "")) return finish("expired", layers, null);
+      return finish("refused", layers, null);
+    });
+  }
+
+  /** The company as the product's sync format: the batches a runner's push would send to an empty cloud (no archive files). */
+  exportBatch(): { format: "purser.cloud-sync/v1"; company: string; made_at: string; batches: Record<string, unknown>[] } {
+    const now = this.now();
+    const batches = batchesFor(this.deps.db, { audit: { seq: 0, hash: null }, ledger: { entry_id: 0, hash: null }, documents: [] }, { now });
+    return { format: "purser.cloud-sync/v1", company: this.deps.company.name, made_at: now.toISOString(), batches };
   }
 }

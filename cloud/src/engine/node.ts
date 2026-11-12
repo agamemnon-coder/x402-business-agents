@@ -95,6 +95,9 @@ export function nodeEngines(env: NodeEngineEnv): (tenantId: string) => EngineApi
       uploadSample: async (key) => (await host()).uploadSample(key),
       suppliers: async () => (await host()).suppliers(),
       compose: async (input) => (await host()).compose(input),
+      terms: async (id) => (await host()).terms(id),
+      paySigned: async (id, sent, credential) => (await host()).paySigned(id, sent, credential),
+      exportBatch: async () => (await host()).exportBatch(),
       wipe: async () => {
         const e = engines.get(tenantId);
         engines.delete(tenantId);

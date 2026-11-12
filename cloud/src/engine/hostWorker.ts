@@ -103,6 +103,9 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     uploadSample: async (key) => host.uploadSample(key),
     suppliers: async () => host.suppliers(),
     compose: async (input) => host.compose(input),
+    terms: async (id) => host.terms(id),
+    paySigned: async (id, sent, credential) => kept(host.paySigned(id, sent, credential)),
+    exportBatch: async () => host.exportBatch(),
     // The object does this itself (it must also forget this host); here for the interface's sake.
     wipe: async () => { await storage.deleteAll(); },
   };
