@@ -614,6 +614,15 @@ export const ATTACKS: readonly Attack[] = [
     note: "A first signature counts only for the exact terms it was made over. Found here and fixed: a signature made before the terms changed was counted for the changed terms (src/policy/approvals.ts).",
     needs: "the CFO has set a four-eyes threshold (approval.four_eyes_eur)",
   },
+  {
+    id: "four-eyes-mandate-change-kind-swapped",
+    description: "A change of the agents' on-chain mandates is rewritten, terms and all, as a kind one person may approve, signed by the CFO alone, then filed back as a mandate change and run.",
+    breach: ["stored_terms", "phone_page"], target: "policy",
+    action: "Replace both agents' on-chain mandates on the CFO's signature alone, where two people must sign.",
+    bypasses: ["L1", "L2", "L3"], stoppedBy: "L4",
+    note: "The kind inside the signed terms decides whether two people must sign, and the mandate executor runs only a signed mandate change. Found here and fixed: it ran whatever kind was filed beside the terms (src/executors/mandateReplace.ts).",
+    needs: "the CFO has set a four-eyes threshold (approval.four_eyes_eur)",
+  },
   // The hostile model, at every tool.
   {
     id: "hostile-model-every-tool",
@@ -864,6 +873,12 @@ export const FIXES: readonly Fix[] = [
     was: "Whether a payment needs two people was read from the kind stored beside its terms, which the signed hash does not cover: changed to a kind that needs one person while the CFO signed, it let the CFO's signature alone approve a payment above the four-eyes threshold.",
     now: "An approval counts only when the kind stored beside the terms is the kind inside the signed terms; otherwise nothing is approved and the refusal is in the audit log.",
     where: "src/policy/approvals.ts",
+  },
+  {
+    attack: "four-eyes-mandate-change-kind-swapped",
+    was: "The executor of a change of the agents' on-chain mandates ran whatever kind was filed beside the terms: terms signed by one person as a kind that needs one person, filed back as a mandate change, replaced both mandates where two people must sign.",
+    now: "The mandate executor runs only terms whose signed kind is a mandate change; otherwise it changes nothing and closes the proposal with the reason.",
+    where: "src/executors/mandateReplace.ts",
   },
 ];
 

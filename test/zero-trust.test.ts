@@ -17,12 +17,48 @@ import type { LayerId, MoneyPath } from "../src/zerotrust/model.js";
 // The agent's mandate key, stood in (as in test/metal-pay.test.ts): each call signs one x402 payment with a fresh nonce.
 // The x402 client, its hooks and src/metal/pay.ts are the real code; what answers a signed payment is StandInMetal below.
 const metalKey = vi.hoisted(() => ({ n: 0 }));
+/**
+ * The agents' mandates as the business owner's key sees them, for a change of the mandates (src/executors/mandateReplace.ts),
+ * stood in as in test/executors-mandate.test.ts: credential files, the chain's mandate states and the metal-agent CLI
+ * are in memory. Off unless a test switches it on; then only these few calls are stood in, the executor is the real code.
+ */
+const owner = vi.hoisted(() => ({
+  on: false,
+  creds: [] as { agent: string; path: string; hash: string; reference: string; principal: string }[],
+  chain: new Map<string, { boundBlock: bigint; revoked: boolean; spent: bigint }>(),
+  replaced: [] as string[],
+}));
+vi.mock("../src/metal/agentCli.js", async (orig) => {
+  const real = await orig<typeof import("../src/metal/agentCli.js")>();
+  return {
+    ...real,
+    metalAgent: (args: string[]) => {
+      if (!owner.on) return real.metalAgent(args);
+      const arg = (k: string) => args[args.indexOf(k) + 1]!;
+      if (args[1] !== "replace") throw new Error(`unexpected metal-agent ${args.join(" ")}`);
+      const next = owner.creds.find((c) => c.path === arg("--credential"))!;
+      const old = owner.creds.find((c) => c.path === arg("--replaces"))!;
+      const o = owner.chain.get(old.reference)!;
+      owner.chain.set(old.reference, { ...o, revoked: true });
+      owner.chain.set(next.reference, { boundBlock: 50n, revoked: false, spent: o.spent });
+      owner.replaced.push(next.path);
+      return { code: 0, fields: new Map([["transaction", [`0xreplace-${next.agent}`]]]), out: `transaction 0xreplace-${next.agent}` };
+    },
+  };
+});
+vi.mock("../src/metal/chain.js", async (orig) => {
+  const real = await orig<typeof import("../src/metal/chain.js")>();
+  return { ...real, publicClient: () => (owner.on ? ({} as never) : real.publicClient()) };
+});
 vi.mock("@metalntwx/metal-pay/mandates", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@metalntwx/metal-pay/mandates")>();
   const { x402Client } = await import("@x402/core/client");
   const { wrapFetchWithPayment } = await import("@x402/fetch");
   return {
     ...actual,
+    readMandateState: (async (pc: never, principal: never, reference: string) => (owner.on
+      ? owner.chain.get(reference) ?? { boundBlock: 0n, revoked: false, spent: 0n }
+      : actual.readMandateState(pc, principal, reference as never))) as typeof actual.readMandateState,
     createMandatePaymentClient: () => {
       const scheme = {
         scheme: "exact",
@@ -38,11 +74,25 @@ vi.mock("@metalntwx/metal-pay/mandates", async (importOriginal) => {
   };
 });
 // The Sourcing agent's mandate as the chain has it bound: 0.03 a payment (as in test/let-through.test.ts).
-vi.mock("../src/metal/mandate.js", async (orig) => ({
-  ...(await orig<object>()),
-  activeMandate: async () => ({ agent: "sourcing", reference: `0x${"12".repeat(32)}`, credentialPath: "", keyFile: "", credential: {}, credentialHash: `0x${"34".repeat(32)}`, principal: `0x${"56".repeat(20)}`, signDigest: async () => "0x" }),
-  boundCapUnits: () => 3n * 10n ** 16n,
-}));
+vi.mock("../src/metal/mandate.js", async (orig) => {
+  const real = await orig<typeof import("../src/metal/mandate.js")>();
+  const load = (agent: string, path: string) => {
+    const c = owner.creds.find((x) => x.agent === agent && x.path === path)!;
+    return { agent, credentialPath: c.path, credentialHash: c.hash, principal: c.principal, reference: c.reference, keyFile: `${agent}.key.json` };
+  };
+  return {
+    ...real,
+    activeMandate: async (agent: string) => {
+      if (!owner.on) return { agent: "sourcing", reference: `0x${"12".repeat(32)}`, credentialPath: "", keyFile: "", credential: {}, credentialHash: `0x${"34".repeat(32)}`, principal: `0x${"56".repeat(20)}`, signDigest: async () => "0x" };
+      const live = owner.creds.filter((c) => c.agent === agent && (owner.chain.get(c.reference)?.boundBlock ?? 0n) > 0n && !owner.chain.get(c.reference)!.revoked);
+      if (live.length !== 1) throw new Error(`${agent}: expected one bound mandate, found ${live.length}`);
+      return load(agent, live[0]!.path);
+    },
+    credentialFiles: (agent: string) => (owner.on ? owner.creds.filter((c) => c.agent === agent).map((c) => c.path) : real.credentialFiles(agent as never)),
+    loadCredentialFile: (agent: string, path: string) => (owner.on ? load(agent, path) : real.loadCredentialFile(agent as never, path)),
+    boundCapUnits: () => 3n * 10n ** 16n,
+  };
+});
 
 // "Purser's own decision code is forced to say pay": while forced.pay is set, the execution guard every executor calls
 // lets any proposal run, signed or not, and makes none of its checks (the stored terms run as they are).
@@ -87,6 +137,7 @@ const { designPriceRise } = await import("../src/agents/treasuryAgent.js");
 const { ClaudeReader } = await import("../src/claude/reader.js");
 const { Tools } = await import("../src/claude/tools.js");
 const { executeInvoicePayment } = await import("../src/executors/invoicePayment.js");
+const { executeMandateReplace } = await import("../src/executors/mandateReplace.js");
 const { executePolicyChange, proposePolicyChange } = await import("../src/executors/policyChange.js");
 const { TERMS_SCHEMA } = await import("../src/lib/terms.js");
 const { reverifyPasskeyApprovals } = await import("../src/passkey/webauthn.js");
@@ -162,7 +213,7 @@ type TestCloud = import("./support/cloud.js").TestCloud;
 type ApEntry = import("../src/ap/books.js").ApEntry;
 
 vi.setConfig({ testTimeout: 60_000 });
-afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); forced.pay = false; chaos.at = null; });
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); forced.pay = false; chaos.at = null; owner.on = false; });
 
 /** Temporary folders this file made (keys, inbox documents): removed when it is done. */
 const temps: string[] = [];
@@ -2002,6 +2053,54 @@ SCENARIOS["cosignature-before-terms-change"] = async () => {
   expect(cosigned.map((c) => `${String(c.person)} ${String(c.of)}`)).toEqual(["max 1 of 2", "anna 1 of 2"]);
   expect(cosigned.map((c) => c.terms_sha256)).toEqual([signedByCfo, rewritten]);
   return { moved: bankMoved(w), control: "the passkey's signature over the exact terms", record: `proposal.cosigned twice, each 1 of 2, over two different hashes; started anyway: ${refusal}` };
+};
+
+// Four eyes on a change of the agents' on-chain mandates, which always needs two people once the CFO has set a
+// threshold. The stored terms are rewritten to say a kind that needs one person (a dev test), the kind column beside
+// them too, so the two agree and the hash with them; the CFO's own passkey signs on a breached phone page, alone. Then
+// the column is set back to a mandate change and the mandate executor is started: it runs only a signed mandate change.
+SCENARIOS["four-eyes-mandate-change-kind-swapped"] = async () => {
+  const w = await bankWorld({ fourEyes: true });
+  owner.on = true;
+  owner.creds = [];
+  owner.chain = new Map();
+  owner.replaced = [];
+  const principal = "0x00000000000000000000000000000000000000b1";
+  const cred = (agent: string, tag: string, spent?: number) => {
+    const c = { agent, path: `/keys/${agent}.${tag}.credential.json`, hash: `0x${agent}${tag}`.padEnd(66, "0"), reference: `ref-${agent}-${tag}`, principal };
+    owner.creds.push(c);
+    if (spent !== undefined) owner.chain.set(c.reference, { boundBlock: 10n, revoked: false, spent: units(spent) });
+    return c;
+  };
+  const [t0, t1, s0, s1] = [cred("treasury", "v0", 100), cred("treasury", "v1"), cred("sourcing", "v0", 300), cred("sourcing", "v1")];
+  const step = (order: string, agent: string, next: typeof t0, old: typeof t0, cap: string, budget: string, spent: string) =>
+    ({ order, agent, principal, cap, budget, payees: [], expires_at: "2099-01-01T00:00:00Z", credential_hash: next.hash, replaces_credential_hash: old.hash, spent_at_proposal: spent });
+  const change = () => {
+    const id = nextProposalId(w.db);
+    createProposal(w.db, { terms: { schema: TERMS_SCHEMA, kind: "mandate_replace", proposal_id: id, expires_at: new Date(w.now.getTime() + 10 * 60_000).toISOString().replace(/\.\d{3}Z$/, "Z"),
+      option: "raise", query_price: "0.07", upstream_price: "0.04", margin: "0.03", total_budget: "20.00",
+      steps: [step("1", "treasury", t1, t0, "4.00", "4.00", "1.00"), step("2", "sourcing", s1, s0, "0.04", "12.00", "3.00")], evidence: [] } as unknown as Terms, createdBy: "treasury" }, w.now);
+    return id;
+  };
+  // Filed as it is, the CFO's signature alone is one of two: four eyes holds.
+  const genuine = change();
+  expect((await sign(w.db, w.cfo, genuine, w.now)).status).toBe("cosigned");
+  expect(statusOf(w.db, genuine)).toBe("PENDING_APPROVAL");
+  // Rewritten to a kind that needs one person, the column with it: the CFO's signature alone approves that.
+  const id = change();
+  rewriteTerms(w.db, id, { kind: "dev_test" });
+  w.db.prepare("UPDATE proposals SET kind = 'dev_test' WHERE proposal_id = ?").run(id);
+  expect((await sign(w.db, w.cfo, id, w.now)).status).toBe("approved");
+  // Filed back as a mandate change, and run by the mandate executor.
+  w.db.prepare("UPDATE proposals SET kind = 'mandate_replace' WHERE proposal_id = ?").run(id);
+  const refusal = await refusalOf(() => executeMandateReplace(w.db, id, w.now));
+  expect(refusal).toMatch(/is not a mandate change/);
+  expect(owner.replaced).toEqual([]);
+  expect([t0, s0].map((c) => owner.chain.get(c.reference)!.revoked)).toEqual([false, false]);
+  expect(statusOf(w.db, id)).toBe("NEEDS_REAPPROVAL");
+  const closed = events(w.db, "proposal.needs_reapproval");
+  expect(closed.map((c) => String(c.error))).toEqual([refusal]);
+  return { moved: owner.replaced.length + bankMoved(w), control: "four eyes", record: `filed as a mandate change: proposal.cosigned 1 of 2; signed as a dev test and filed back: proposal.needs_reapproval: ${refusal}` };
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
