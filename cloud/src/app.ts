@@ -21,6 +21,8 @@ import { integrations } from "./integrations.js";
 import { platformCompanies } from "./platformView.js";
 import { accountOf, bindingOf, onboardingLink, openAccount, PlatformRefused, receiveAccountEvent, type AwxPlatformEnv } from "./awxPlatform.js";
 import { cloudHealth, companyStatus, HealthReport, MonitorRefused, notify, receiveReport, removeWebhook, setWebhook, webhookOf, type Outbound } from "./monitor.js";
+import type { EngineApi } from "./engine/api.js";
+import { engineRoutes } from "./engine/routes.js";
 
 export interface CloudEnv {
   sql: Sql;
@@ -56,6 +58,11 @@ export interface CloudEnv {
    * hosted onboarding template and the webhook secret. Absent (the default): the /v1/airwallex routes answer 404.
    */
   awxPlatform?: AwxPlatformEnv;
+  /**
+   * A company's engine (cloud/src/engine/api.ts): in the Worker a stub of the company's Durable Object, in tests and
+   * local runs an engine in this process. Test money only. Absent (the default): the /v1/engine routes answer 404.
+   */
+  engine?: (tenantId: string) => EngineApi;
 }
 
 interface Ctx { env: CloudEnv; req: Request; url: URL; now: Date; params: string[]; caller: Caller | null; db: TenantDb | null }
@@ -425,6 +432,9 @@ export const ROUTES: Route[] = [
     return new Response(typeof r.body === "string" ? r.body : new Uint8Array(r.body), { status: r.status, headers: { ...JSON_HEADERS, ...(r.status === 200 ? { "content-disposition": `attachment; filename="${c.params[0]!}-${c.params[1]!}.json"` } : {}) } });
   } },
   { method: "POST", path: "/v1/close", summary: "Close the company's account: access ends; records are kept until the retention day, then purged.", need: "admin", run: async (c) => json(200, await closeTenant(c.env.sql, c.caller!.tenantId, c.now)) },
+
+  // The company's engine (cloud/src/engine/routes.ts): one block, the caller's own company only, 404 while no engine is wired.
+  ...engineRoutes<Ctx>({ json, err, body }),
 ];
 
 function match(path: string, pattern: string): string[] | null {

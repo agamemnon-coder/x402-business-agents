@@ -109,6 +109,24 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/export/staged/{id}` | admin | A staged export's state, with a fresh 15-minute link to its manifest while it is ready. Needs admin and read. |
 | `GET /v1/export/download/{id}/{part}` | anyone | With its signed link only: one part (or the manifest) of a staged export, by its signed link (no key); the manifest carries a signed link per part. |
 | `POST /v1/close` | admin | Close the company's account: access ends; records are kept until the retention day, then purged. |
+| `GET /v1/engine` | read | Where the company's engine stands: `mode` (`test_money`), the approval passkey, the stand-in bank's balances, whether both chains verify. |
+| `POST /v1/engine/documents` | admin | Upload a supplier invoice: `{ filename, mime?, base64 }`, at most 15 MB once decoded (22,000,000 bytes of body). Filed, read and checked; answers `{ kind, sha256, invoice }`. |
+| `GET /v1/engine/invoices` | read | The engine's invoices: status, whether it can be paid, what the checks found, its proposal; `{ items }`. |
+| `POST /v1/engine/invoices/{id}/pay` | admin | File the invoice's payment for approval: `{ proposal }`, or 409 with the engine's reason. Nothing is paid before the approval. |
+| `GET /v1/engine/proposals/{id}` | read | One proposal: the hash of its exact terms, the challenge a passkey signs, the facts a person reads; `{ proposal }`. |
+| `POST /v1/engine/passkey/start` | admin | A session only, never a key. Start the signed-in person's approval passkey: `{ challenge, code, rp, user, exclude }`. |
+| `POST /v1/engine/passkey/finish` | admin | A session only. `{ code, credential }`: the new passkey, labelled with the signed-in person's name; 409 with the engine's reason when refused. |
+| `POST /v1/engine/proposals/{id}/approve` | admin | A session only. `{ terms_sha256, credential }`: the passkey's signature over the proposal's challenge. Answers `{ status, message, settled }`; only `approved` pays, on the stand-in bank. |
+| `POST /v1/engine/sync` | admin | Follow the payments, book, archive and feed the read model again; safe to repeat. |
+| `GET /v1/engine/events` | read | What the engine did, oldest first: `?after=<seq>&limit=<1 to 200>`; `{ items, next }`. |
+| `GET /v1/engine/vault` | read | The archive's files as its indexes list them: `{ files }`. |
+| `GET /v1/engine/vault/file` | read | One file of the archive, `?path=` as the list gives it; 404 for a path the index does not list. |
+
+The `/v1/engine` routes are the company's engine behind the API (`cloud/src/engine/routes.ts`): the same inbox, checks,
+approval and executor a runner has, on **test money only** (a stand-in bank; no payment reaches a real bank). The
+company is always the caller's own. They answer 404 unless the cloud is started with an engine, and the Worker's entry
+point (`cloud/src/worker.ts`) starts it with none: today the engine behind them is the one of the tests and local runs
+(`cloud/src/engine/node.ts`), which keeps each company's ledger in memory.
 
 ### The transactions register
 
