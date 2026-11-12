@@ -1,4 +1,4 @@
-// "Purser live" (storyboard: docs/plans/purser-live-storyboard.md): one working day at Northwind as an animation.
+// "Purser live" (built from a storyboard of 30 October 2026): one working day at Northwind as an animation.
 // Every number on screen comes from a recorded live run: the demo story and dashboard recorded from Friday run 1
 // (docs/demo/), and for the three moments recorded elsewhere, their run logs (LIVE_RUNS below). A fact that cannot
 // be found stops the build: the page never invents one.

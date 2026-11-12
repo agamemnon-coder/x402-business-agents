@@ -97,8 +97,9 @@ const visibleText = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g,
   // The connected-accounts run (10 Nov) on /airwallex, dated with its own record; its ids and figures are checked against
   // docs/runs/2026-11-10-connected-accounts-sandbox.md in test/partner-pages.test.ts.
   .replace(esc(CONNECTED_LINE), " ")
-  // The two-locks run (10 Nov) on /airwallex, dated with its own record; its id and amount are checked against
-  // docs/runs/2026-11-10-airwallex-two-locks.md in test/partner-pages.test.ts.
+  // The two-locks run (10 and 12 Nov) on /airwallex, dated with its own records; its id and amount are checked against
+  // docs/runs/2026-11-10-airwallex-two-locks.md and docs/runs/2026-11-12-airwallex-two-locks-paid.md in
+  // test/partner-pages.test.ts.
   .replace(esc(TWO_LOCKS_LINE), " ")
   // Watch's playback speeds (Max, 10 Nov) are a control, not a figure of the run.
   .replace(/\b(?:0\.5|1|2)×/g, " ")

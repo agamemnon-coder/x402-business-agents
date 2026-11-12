@@ -662,7 +662,7 @@ describe("docs/video/ holds what the code writes", () => {
     expect(README).toContain(`[Film, ${published.length}](https://youtu.be/kCUsFHrxE-o)`);
     expect(read("docs/submission/checklist-max.md")).toContain(`de film duurt ${published.length} (v8).`);
     // The voice-over is an AI voice and the music AI-generated, both ElevenLabs; nowhere does Max voice the film.
-    const docs = ["docs/video/README.md", "docs/video/narrator-script.md", "docs/video/narrator-script-v6.md", "docs/video/elevenlabs-studio-prompt-v6.md", "docs/video/opnames-max.md", "docs/video-script.md", "docs/requirements-matrix.md", "docs/claims.md",
+    const docs = ["docs/video/README.md", "docs/video/narrator-script.md", "docs/video/narrator-script-v6.md", "docs/video/elevenlabs-studio-prompt-v6.md", "docs/video-script.md", "docs/requirements-matrix.md", "docs/claims.md",
       "docs/submission/README.md", "docs/submission/release-notes.md", "docs/submission/checklist-max.md", "docs/video/premiere-script.md", "docs/video/script.md"];
     for (const f of docs) expect({ f, max: /Max (records|reads|speaks|voices)\b|his (own )?voice|Max on camera|on Max's voice|\*\*Max:\*\*/i.test(read(f)) }).toEqual({ f, max: false });
     for (const f of ["docs/video/README.md", "docs/video/narrator-script.md", "docs/video/narrator-script-v6.md", "docs/submission/README.md", "docs/requirements-matrix.md"]) expect({ f, eleven: /AI-generated voice[^.]*ElevenLabs/.test(read(f).replace(/\s+/g, " ")) }).toEqual({ f, eleven: true });
