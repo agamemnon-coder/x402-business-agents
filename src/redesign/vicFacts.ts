@@ -152,5 +152,5 @@ export const VIC_FACTS_CSS = `.vc { padding: 16px 18px; display: grid; gap: 10px
 .vc h2 { font-size: 18px; margin: 0; } .vc p.src { margin: 0; color: var(--faint); font-size: 14px; overflow-wrap: anywhere; }
 .vc .awrow code { font: 600 14px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; color: var(--text); }
 .vc .awrow .k .awm { font-size: 13px; padding: 1px 8px; }
-@media (min-width: 701px) { .vc .awrow, .vc .awhead { grid-template-columns: 9em repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 701px) { .vc .awrow, .vc .awhead { grid-template-columns: 12.5em repeat(3, minmax(0, 1fr)); } }
 ul.pl.vfacts { margin: 0; }`;
