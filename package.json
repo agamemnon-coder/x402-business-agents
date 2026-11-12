@@ -99,6 +99,7 @@
     "submission": "tsx src/cli/submission.ts",
     "social-preview": "tsx src/cli/socialPreview.ts",
     "visuals": "tsx src/cli/visuals.ts",
+    "readme-runs": "tsx src/cli/readmeRuns.ts",
     "site-shots": "tsx src/cli/siteShots.ts",
     "readme-draft": "tsx src/cli/readmeDraft.ts",
     "four-eyes": "tsx src/cli/fourEyes.ts",
