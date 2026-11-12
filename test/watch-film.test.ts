@@ -169,8 +169,9 @@ describe("the page says what the film says", () => {
 
 describe("the next step", () => {
   it("ends in \"Now try it yourself\": /try/sign when the bundle has it, else /try", () => {
-    expect(buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).watch).toContain('<a class="btn primary nextstep" href="try/sign" data-next="try">');
-    expect(buildPages({} as NodeJS.ProcessEnv).watch).toContain('<a class="btn primary nextstep" href="try" data-next="try">');
+    // Since 12 Nov (the owner) every Try call to action opens the hands-on demo (TRY_URL); /try/sign keeps its own page.
+    expect(buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).watch).toContain('<a class="btn primary nextstep" href="https://purser-try.max-31b.workers.dev/try" data-next="try">');
+    expect(buildPages({} as NodeJS.ProcessEnv).watch).toContain('<a class="btn primary nextstep" href="https://purser-try.max-31b.workers.dev/try" data-next="try">');
   });
 });
 

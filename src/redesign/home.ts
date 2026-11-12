@@ -15,7 +15,7 @@ import { metalStory, REPO_BLOB } from "./metalStory.js";
 import { HERO_DEMO_CSS, HERO_DEMO_JS, heroDemoFacts, heroDemoHtml, heroProvenance } from "./heroDemo.js";
 import { HERO_RECEIPT_FILE, heroReceipt } from "./heroReceipt.js";
 import { liveRuns, RUNS_URL } from "./runs.js";
-import { esc, icon, MAIN_RUN_REAL, page } from "./ui.js";
+import { esc, icon, MAIN_RUN_REAL, page, TRY_URL } from "./ui.js";
 
 const CSS = `.hero { padding: 24px 0 36px; }
 .hero .wrap { display: grid; gap: 20px; }
@@ -110,11 +110,11 @@ export function homeHeadingHtml(): string {
 /** Home's first button, word for word: where the Try tab goes. */
 export const START = "Try it yourself";
 /**
- * The one line under it, saying only what the page behind the button does. /try/sign (src/try/sign.ts): the page makes a
- * test passkey (a random id, no name or e-mail) in a test world where nothing real moves, in about a minute. /try
- * (a bundle without /try/sign): a test world on the page, no passkey.
+ * The one line under it, saying only what the page behind the button does. Since 12 Nov the button opens the hands-on
+ * demo on Purser Cloud (TRY_URL): a test company of your own on test money, deleted after 24 hours (its start page says
+ * "Test money · deleted after 24 h"). The same line with /try/sign in the bundle or not; both keys kept for the callers.
  */
-export const REASSURE = { sign: "A test passkey, no account, no money. About a minute.", world: "A test world: no account, no money." } as const;
+export const REASSURE = { sign: "A test company of your own, deleted after 24 hours.", world: "A test company of your own, deleted after 24 hours." } as const;
 /** The link in the provenance line: it opens the footer's fold of the same name. */
 export const WHATS_REAL = "What's real?";
 export const LOCKS_HEAD = "Three locks";
@@ -190,7 +190,8 @@ const dayMonth = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numer
  * opts.receipt: another receipt for the hero (a file of the repository, or a parsed one); the committed one by default.
  */
 export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; partnerUrl?: string; smallCompanyUrl?: string; receipt?: string | object } = {}): string {
-  const tryHref = opts.trySign ? "try/sign" : "try";
+  // The owner, 12 Nov: the button opens the hands-on demo on Purser Cloud (TRY_URL), with /try/sign in the bundle or not.
+  const tryHref = TRY_URL;
   const awx = awxRun(), facts = heroDemoFacts(awx), receipt = heroReceipt(facts, opts.receipt ?? HERO_RECEIPT_FILE);
   const hero = heroDemoHtml(facts, receipt);
   const rows = proofRows(run, awx);

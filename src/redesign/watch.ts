@@ -7,7 +7,7 @@
 
 import { WORLD_SETUP, FILM_LINK, FILM_URL } from "../config/brand.js";
 import { agentRun, callBadge, callTip, highlights, moments, runSpan, type AgentRun, type Ev } from "./run.js";
-import { AVATAR, esc, icon, iconSet, page, stageHtml } from "./ui.js";
+import { AVATAR, esc, icon, iconSet, page, stageHtml, TRY_URL } from "./ui.js";
 
 const CSS = `/* The way on from the replay: try it yourself. */
 .filmlink { color: var(--accent); font-weight: 650; font-size: 15px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
@@ -301,7 +301,7 @@ export function watchPage(run: AgentRun = agentRun()): string {
       <div class="chapters" id="chapters" role="group" aria-label="Chapters"></div>
     </div>
     <div class="wside">
-      <a class="nextstep card" href="try" data-next="try"><span class="ft"><b>Now try it yourself</b><small>Sign with your Face ID · about a minute</small></span>${icon("arrow-right", 20)}</a>
+      <a class="nextstep card" href="${TRY_URL}" data-next="try"><span class="ft"><b>Now try it yourself</b><small>Sign with your Face ID · about a minute</small></span>${icon("arrow-right", 20)}</a>
       <details class="card logp" id="steps"><summary><h2 id="h-log">Every step, with its tools and ids</h2>${icon("chevron-down", 18)}</summary><ol class="log" id="log" aria-labelledby="h-log"></ol></details>
     </div>
   </div>

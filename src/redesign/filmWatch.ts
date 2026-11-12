@@ -13,7 +13,7 @@ import { FILM_YOUTUBE_ID, filmId } from "../config/film.js";
 import { WALKTHROUGH, chapters, clock, narration, resolveCut, total, type Placed } from "../film/cuts.js";
 import { LABELS, runsSeen, type RunShown } from "../film/key.js";
 import { filmStills, stillAsset } from "../film/stills.js";
-import { esc, icon, page } from "./ui.js";
+import { esc, icon, page, TRY_URL } from "./ui.js";
 
 const EMBED = "https://www.youtube-nocookie.com";
 
@@ -136,7 +136,7 @@ export function filmWatchPage(o: { id?: string | null; runs?: RunShown[] } = {})
   <section class="sec" aria-labelledby="h-ch"><h2 id="h-ch">Chapters</h2><ol class="rail">${rail}</ol></section>
   <section class="sec" aria-labelledby="h-runs"><h2 id="h-runs">What you just saw ran for real</h2><ul class="runs">${runs.map((r) => `<li><a href="${esc(r.href)}" target="_blank" rel="noopener"><span class="rl">${icon("circle-check", 16)}${esc(r.rail)}<time>${esc(r.day)}</time></span><span class="tx">${esc(r.text)}</span><span class="go">The record ↗</span></a></li>`).join("")}</ul></section>
   <details class="card tr"><summary>${icon("receipt", 18)}The full transcript</summary><ol class="lines">${f.rows.map((r) => `<li><time>${clock(r.at)}</time><span><small>${esc(r.who)}</small>${esc(r.text)}</span></li>`).join("")}</ol></details>
-  <p class="fnext"><a class="btn primary nextstep" href="try" data-next="try">${icon("scan-face", 18)}Now try it yourself</a></p>
+  <p class="fnext"><a class="btn primary nextstep" href="${TRY_URL}" data-next="try">${icon("scan-face", 18)}Now try it yourself</a></p>
 </div>
 </main>`;
   return page({
