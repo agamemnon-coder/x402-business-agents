@@ -12,7 +12,8 @@ export interface WranglerConfig {
   durable_objects: { bindings: { name: string; class_name: string }[] };
   migrations: { tag: string; new_sqlite_classes?: string[] }[];
   d1_databases: { binding: string; database_name: string; database_id: string }[];
-  r2_buckets: { binding: string; bucket_name: string }[];
+  /** Absent in a deployment without R2 (cloud/wrangler.try.jsonc): the documents are then kept in D1 (cloud/src/blobsSql.ts). */
+  r2_buckets?: { binding: string; bucket_name: string }[];
   vars: Record<string, string>;
   define: Record<string, string>;
   alias: Record<string, string>;
@@ -41,8 +42,9 @@ export function stripJsonComments(text: string): string {
 
 export const CLOUD_CONFIG = resolve("cloud/wrangler.jsonc");
 
-export function cloudWranglerConfig(): WranglerConfig {
-  return JSON.parse(stripJsonComments(readFileSync(CLOUD_CONFIG, "utf8"))) as WranglerConfig;
+/** cloud/wrangler.jsonc, or another configuration beside it (cloud/wrangler.try.jsonc): their paths resolve alike. */
+export function cloudWranglerConfig(path: string = CLOUD_CONFIG): WranglerConfig {
+  return JSON.parse(stripJsonComments(readFileSync(path, "utf8"))) as WranglerConfig;
 }
 
 /** A path the configuration names, from the configuration's own directory (as wrangler takes it). */

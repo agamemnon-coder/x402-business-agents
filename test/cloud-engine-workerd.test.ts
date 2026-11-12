@@ -44,13 +44,17 @@ const EN_NEXT = EN.replace(/BTX-2026-21/g, "BTX-2026-22").replace("1,554.62", "1
 /** Local workerd drops an idle object's memory after about 10 s (measured here on 12 November 2026 with a temporary time stamp in the host: the same after 5 s idle, a new one after 12 s). */
 const IDLE_MS = 12_000;
 
-describe("the engine in a Durable Object per company, behind the cloud's routes (local workerd)", () => {
-  if (!D1) {
-    it.skip("skipped in the plain run: it needs wrangler's toolchain and runs with npm run test:d1", () => undefined);
-    return;
-  }
+/** The product's configuration (documents in R2) and the engine's own deployment (cloud/wrangler.try.jsonc: no R2, the documents in D1). */
+const CONFIGS = [{ file: "cloud/wrangler.jsonc" }, { file: "cloud/wrangler.try.jsonc" }];
 
-  const config = cloudWranglerConfig();
+if (!D1) {
+  describe("the engine in a Durable Object per company, behind the cloud's routes (local workerd)", () => {
+    it.skip("skipped in the plain run: it needs wrangler's toolchain and runs with npm run test:d1", () => undefined);
+  });
+}
+
+for (const { file } of D1 ? CONFIGS : []) describe(`the engine in a Durable Object per company, behind the cloud's routes (local workerd, ${file})`, () => {
+  const config = cloudWranglerConfig(resolve(file));
   let dir: string;
   let workerd: Workerd | undefined;
   let A: Company;
@@ -91,7 +95,7 @@ describe("the engine in a Durable Object per company, behind the cloud's routes 
       name: config.name, main: fromConfig(config.main), compatibility_date: config.compatibility_date, compatibility_flags: config.compatibility_flags,
       durable_objects: config.durable_objects, migrations: config.migrations, define: config.define, alias: aliasOf(config), rules: config.rules,
       d1_databases: [{ binding: config.d1_databases[0]!.binding, database_name: config.d1_databases[0]!.database_name, database_id: "00000000-0000-0000-0000-000000000001" }],
-      r2_buckets: [{ binding: config.r2_buckets[0]!.binding, bucket_name: config.r2_buckets[0]!.bucket_name }],
+      ...(config.r2_buckets?.length ? { r2_buckets: [{ binding: config.r2_buckets[0]!.binding, bucket_name: config.r2_buckets[0]!.bucket_name }] } : {}),
       vars: { RP_ID: RP, ORIGIN, ENGINE_MODE: "test_money", SESSION_SECRET, ADMIN_TOKEN_SHA256 },
     }));
     workerd = await wrangler.unstable_startWorker({ config: join(dir, "wrangler.json"), dev: { persist: false, watch: false, remote: false, inspector: false, logLevel: "error", server: { hostname: "127.0.0.1", port: 0 } } });
@@ -167,6 +171,14 @@ describe("the engine in a Durable Object per company, behind the cloud's routes 
     expect((await req("GET", "/v1/payments", { key: A.session })).json.items).toEqual([]);
   });
 
+  it("refuses the right signature sent with other terms than the proposal's: nothing is paid", async () => {
+    const r = await req("POST", "/v1/engine/proposals/P-0001/approve", { key: A.session, body: { terms_sha256: sha256Hex("other terms"), credential: phone.sign({ challenge: proposal.challenge, origin: ORIGIN, rpId: RP, counter: 2 }) } });
+    expect(r.status, JSON.stringify(r.json)).toBe(200);
+    expect(r.json).toEqual({ status: "refused", message: "The terms sent with this approval are not the ones on screen. Nothing was paid.", settled: null });
+    expect(((await req("GET", "/v1/engine/invoices", { key: A.session })).json.items as Invoice[])[0]).toMatchObject({ id: "AP-0001", status: "waiting_cfo" });
+    expect((await req("GET", "/v1/payments", { key: A.session })).json.items).toEqual([]);
+  });
+
   it("pays on the right signature: paid on the stand-in bank, booked, archived, and the read model shows it", async () => {
     const r = await req("POST", "/v1/engine/proposals/P-0001/approve", { key: A.session, body: { terms_sha256: proposal.terms_sha256, credential: phone.sign({ challenge: proposal.challenge, origin: ORIGIN, rpId: RP, counter: 2 }) } });
     expect(r.status, JSON.stringify(r.json)).toBe(200);
@@ -231,6 +243,18 @@ describe("the engine in a Durable Object per company, behind the cloud's routes 
     expect(pay.json.error).toMatch(/^AP-0002 is needs review, not ready to pay/);
   });
 
+  it("holds a company to 2 reads of its events a second, in its own object: past that 429 slow_down with retry_ms", async () => {
+    const answers = await Promise.all([0, 1, 2].map(() => req("GET", "/v1/engine/events?after=0", { key: A.session })));
+    const slowed = answers.filter((a) => a.status === 429);
+    expect(slowed.length, JSON.stringify(answers.map((a) => a.status))).toBeGreaterThanOrEqual(1);
+    expect(slowed[0]!.json).toMatchObject({ code: "slow_down", error: expect.stringContaining("slow down"), retry_ms: expect.any(Number) });
+    expect(slowed[0]!.json.retry_ms as number).toBeGreaterThan(0);
+    expect(slowed[0]!.json.retry_ms as number).toBeLessThanOrEqual(1000);
+    // A second later the company reads again.
+    await new Promise((r) => setTimeout(r, 1_100));
+    expect((await req("GET", "/v1/engine/events?after=0", { key: A.session })).status).toBe(200);
+  });
+
   it("keeps companies apart: the other company finds nothing of this one, and its own engine is empty", async () => {
     const path = ((await req("GET", "/v1/engine/vault", { key: A.session })).json.files as { path: string }[])[0]!.path;
     expect((await req("POST", "/v1/engine/invoices/AP-0001/pay", { key: B.session })).status).toBe(404);
@@ -275,7 +299,7 @@ describe("the engine in a Durable Object per company, behind the cloud's routes 
     expect(paid).toEqual(["AP-0001", next.id]);
   }, 90_000);
 
-  describe("the switch, on the Worker itself (cloud/src/worker.ts in this process, over local D1 and R2)", () => {
+  if (file === CONFIGS[0]!.file) describe("the switch, on the Worker itself (cloud/src/worker.ts in this process, over local D1 and R2)", () => {
     const asked: string[] = [];
     const ENGINE: EngineNamespace = {
       idFromName: (name) => name,

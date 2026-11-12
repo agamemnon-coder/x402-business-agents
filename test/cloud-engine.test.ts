@@ -6,6 +6,7 @@ import { createHash } from "node:crypto";
 import { build } from "esbuild";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ROUTES } from "../cloud/src/app.js";
+import { SlowDown } from "../cloud/src/engine/api.js";
 import { sessionToken } from "../cloud/src/auth.js";
 import { blobVault, vaultKey } from "../cloud/src/engine/vaultR2.js";
 import { sha256Hex } from "../src/lib/terms.js";
@@ -138,6 +139,14 @@ describe("one supplier invoice, from upload to paid, booked and archived, over H
     expect(r.status, JSON.stringify(r.json)).toBe(200);
     // In plain words, never the WebAuthn library's own sentence (and not as an error: the request itself was fine).
     expect(r.json).toEqual({ status: "refused", message: "This signature is over other terms than the ones on screen. Nothing was paid.", settled: null });
+    expect(((await c.req("GET", "/v1/engine/invoices", { key: A.session })).json.items as Invoice[])[0]).toMatchObject({ id: "AP-0001", status: "waiting_cfo" });
+    expect((await c.req("GET", "/v1/payments", { key: A.session })).json.items).toEqual([]);
+  });
+
+  it("refuses the right signature sent with other terms than the proposal's: nothing is paid", async () => {
+    const r = await c.req("POST", "/v1/engine/proposals/P-0001/approve", { key: A.session, body: { terms_sha256: sha256Hex("other terms"), credential: phone.sign({ challenge: proposal.challenge, origin: ORIGIN, rpId: RP, counter: 2 }) } });
+    expect(r.status, JSON.stringify(r.json)).toBe(200);
+    expect(r.json).toEqual({ status: "refused", message: "The terms sent with this approval are not the ones on screen. Nothing was paid.", settled: null });
     expect(((await c.req("GET", "/v1/engine/invoices", { key: A.session })).json.items as Invoice[])[0]).toMatchObject({ id: "AP-0001", status: "waiting_cfo" });
     expect((await c.req("GET", "/v1/payments", { key: A.session })).json.items).toEqual([]);
   });
@@ -486,6 +495,20 @@ describe("erasing a person and purging a closed company reach the company's engi
       expect(await purge(e.env.sql, e.env.blobs, new Date("2034-01-01T12:00:00Z"), e.env.engine)).toEqual([t.id]);
       expect(await e.env.engine!(t.id).invoices()).toEqual([]);
     } finally { e.close(); }
+  });
+});
+
+describe("the engine's limit on reading the events, through the route", () => {
+  it("answers 429 slow_down with retry_ms when the company's engine says to slow down", async () => {
+    const c = testCloud({ engine: true });
+    try {
+      const t = await c.tenant("slowly");
+      const wired = c.env.engine!;
+      c.env.engine = (tenantId) => ({ ...wired(tenantId), events: async () => { throw new SlowDown(600, "slow down: at most 2 reads of the events a second"); } });
+      const r = await c.req("GET", "/v1/engine/events?after=0", { key: t.session });
+      expect(r.status).toBe(429);
+      expect(r.json).toEqual({ error: "slow down: at most 2 reads of the events a second", code: "slow_down", retry_ms: 600 });
+    } finally { c.close(); }
   });
 });
 

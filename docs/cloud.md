@@ -117,10 +117,10 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/engine/proposals/{id}` | read | One proposal: the hash of its exact terms, the challenge a passkey signs, the facts a person reads; `{ proposal }`. |
 | `POST /v1/engine/passkey/start` | admin | A session only, never a key. Start the signed-in person's approval passkey: `{ challenge, code, rp, user, exclude }`. |
 | `POST /v1/engine/passkey/finish` | admin | A session only. `{ code, credential }`: the new passkey, labelled with the signed-in person's name; answers `{ credential_id }`, or 409 with the engine's reason when refused. |
-| `POST /v1/engine/proposals/{id}/approve` | admin | A session only. `{ terms_sha256, credential }`: the passkey's signature over the proposal's challenge. Answers `{ status, message, settled }`; only `approved` pays, on the stand-in bank. 404 for a proposal the company's engine does not hold. |
+| `POST /v1/engine/proposals/{id}/approve` | admin | A session only. `{ terms_sha256, credential }`: the passkey's signature over the proposal's challenge. Answers `{ status, message, settled }`; only `approved` pays, on the stand-in bank. A `terms_sha256` other than the proposal's is refused before the signature is read. 404 for a proposal the company's engine does not hold. |
 | `POST /v1/engine/proposals/{id}/retry` | admin | Try again: a payment that was approved but whose execution failed (the stand-in bank was away, say) is run once more by the executor's own resume path, which looks a payout written before the failure up by its request id and never pays twice. Answers `{ status: "retried", message, settled }`; 409 with the engine's reason when there is nothing to retry (paid, never approved, refused); 404 for a proposal the company's engine does not hold. |
 | `POST /v1/engine/sync` | admin | Follow the payments, book, archive and feed the read model again; safe to repeat. |
-| `GET /v1/engine/events` | read | What the engine did, oldest first: `?after=<seq>&limit=<1 to 200>`; `{ items, next }`. |
+| `GET /v1/engine/events` | read | What the engine did, oldest first: `?after=<seq>&limit=<1 to 200>`; `{ items, next }`. At most 2 reads a second per company, counted in its object: past that 429 `{ error, code: "slow_down", retry_ms }`. |
 | `GET /v1/engine/vault` | read | The archive's files as its indexes list them: `{ files }`. |
 | `GET /v1/engine/vault/file` | read | One file of the archive, `?path=` as the list gives it; 404 for a path the index does not list. |
 | `GET /v1/autopilot` | read | The company's nightly autopilot runs, newest first (`?limit=` 1 to 90, default 14): each night the engine is synced and a digest written (invoices by status, the overdue ones, payments waiting for an approval, both hash chains). It never pays. 404 when the cloud runs no engine. See [Cloudflare's platform](#cloudflares-platform-cloudsrcedge). |
@@ -133,6 +133,12 @@ Durable Object, `CompanyEngine`). The routes answer 404 unless the Worker has th
 `ENGINE_MODE=test_money`. With both, each company's engine runs in its own Durable Object on its own SQLite
 (`cloud/src/engine/object.ts`), which keeps its ledger, its documents and its stand-in bank. The engine in
 `cloud/src/engine/node.ts` keeps each ledger in memory and is used by the tests only.
+
+A deployment without R2 leaves the `DOCS` binding out (`cloud/wrangler.try.jsonc`, the engine's deployment of its own,
+`purser-try`). The Worker then keeps every document it would put in R2 (the read model's documents, the archive under
+`t/<company>/vault/`, e-mails, staged exports) in D1 instead, in the tables `cloud_blobs` and `cloud_blob_parts`
+(`cloud/src/blobsSql.ts`): base64 in parts of 600,000 bytes, a document's header row written after its last part, so a
+write that fails half way leaves nothing to read. `GET /v1/health` then reports the D1 store under `r2`.
 
 ### The transactions register
 
@@ -281,6 +287,49 @@ Nothing here needs to be in git; every secret goes through `wrangler secret put`
    rule "Send to a Worker: purser-cloud", and `MAIL_DOMAIN` set to that domain. Each company is then reached at
    `<its-slug>@in.<domain>`.
 5. **Deploy** (on Max's word): `npm run cloud:pdfjs` (copies pdf.js into `cloud/public`, the Worker's static assets, so the console can draw an invoice; without it the console offers the download only), then `npx wrangler deploy -c cloud/wrangler.jsonc`.
+   Since the engine was merged, `cloud/wrangler.jsonc` adds the `CompanyEngine` class and its migration `v1`, which cannot
+   be rolled back once deployed: it goes out only after 15 November 2026, or earlier on Max's own word.
+
+### Deploying purser-try
+
+`purser-try` is the engine's deployment of its own, on test money (`cloud/wrangler.try.jsonc`): never the product's
+`purser-cloud` and never its stores. It has no R2 bucket, so documents and the archive are kept in its D1 database.
+From the repository root, after `npm ci` and `npm ci --prefix worker`, with wrangler logged in to the account:
+
+1. **The database** (EU), then paste its `database_id` into `cloud/wrangler.try.jsonc`:
+   ```bash
+   worker/node_modules/.bin/wrangler d1 create purser-try --location weur
+   ```
+   ```bash
+   worker/node_modules/.bin/wrangler d1 migrations apply purser-try --remote -c cloud/wrangler.try.jsonc
+   ```
+2. **Secrets** (each typed at the prompt, never on the command line or in chat):
+   ```bash
+   worker/node_modules/.bin/wrangler secret put SESSION_SECRET -c cloud/wrangler.try.jsonc
+   ```
+   ```bash
+   worker/node_modules/.bin/wrangler secret put ADMIN_TOKEN_SHA256 -c cloud/wrangler.try.jsonc
+   ```
+   Later, for Claude in the engine: `KIT11_ANTHROPIC_API_KEY`, the demo's own capped key, set by Max by hand the same way.
+3. **Deploy:** `npm run cloud:pdfjs`, a dry run, then the deploy:
+   ```bash
+   worker/node_modules/.bin/wrangler deploy --dry-run --outdir /tmp/purser-try -c cloud/wrangler.try.jsonc
+   ```
+   ```bash
+   worker/node_modules/.bin/wrangler deploy -c cloud/wrangler.try.jsonc
+   ```
+4. **Smoke** (the admin token in `PURSER_ADMIN_TOKEN`, read and never printed): the cloud alone, then the engine's chain,
+   then a burst with polling:
+   ```bash
+   npm run cloud:smoke -- https://purser-try.max-31b.workers.dev --plain
+   ```
+   ```bash
+   npm run cloud:smoke -- https://purser-try.max-31b.workers.dev
+   ```
+   ```bash
+   npm run cloud:smoke -- https://purser-try.max-31b.workers.dev --parallel 10 --poll 1000
+   ```
+   What they printed goes into [the run record](runs/2026-11-13-engine-in-cloud.md).
 
 ## Limits on what comes in
 
