@@ -107,7 +107,7 @@ describe("the 402 offer Purser's servers send (PAYMENT-REQUIRED, x402 version 2)
     expect(offer.resource.url).toContain(`${SUPPLIER_ROUTE}?seq=1`);
   });
 
-  it("the supplier's unavailable stock check is refused before any offer, whatever version 1 header a request carries", async () => {
+  it("the supplier's unavailable stock check is refused before any offer, even with an X-PAYMENT header (x402 version 1)", async () => {
     // Fails if: the supplier lets an X-PAYMENT header (x402 version 1, which its middleware does not read) past the
     // unavailable check: the request then gets an offer for a stock check it cannot serve.
     const base = await serve(supplierApp({ payTo: PAY_TO, price: () => "0.04", unavailableEvery: 6 }));
