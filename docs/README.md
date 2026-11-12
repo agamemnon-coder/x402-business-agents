@@ -7,6 +7,7 @@ Back to the [README](../README.md). Test money only throughout: the Airwallex sa
 - [submission/README.md](submission/README.md): the submission text, with the short Description and the jury's instructions.
 - [submission/long-description.md](submission/long-description.md): the long form text, with the separate live tests.
 - [claims.md](claims.md): every number and factual claim, with where it comes from.
+- [in-depth.md](in-depth.md): the README's sections in full: where each judging criterion is proven, the three live runs with every id, Try step by step, what is real and what is mock.
 - [runs/2026-11-03-main-run.md](runs/2026-11-03-main-run.md): the main run of 3 November, the one the site replays.
 - [runs/](runs/): every run log, dated, including awx-1 and the Airi run of 7 November.
 - [airwallex.md](airwallex.md): every Airwallex API Purser calls, and why.

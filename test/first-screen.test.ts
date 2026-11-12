@@ -5,7 +5,7 @@
 // truth: src/config/brand.ts (FIRST_SCREEN, WHY_COMPANY). Breaks when a place drops, adds or reorders a word.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, JUDGE_LINE, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
+import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, FILM_URL, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, JUDGE_LINE, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
 import { PROOF_BUTTON, REASSURE, START, homePage } from "../src/redesign/home.js";
 import { buildPages } from "../src/relay/assets.js";
 
@@ -33,12 +33,15 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(WHAT_IT_IS).not.toMatch(/cannot break|can't break|every limit|holds? no keys?/i);
   });
 
-  it("opens the README under its title, with Try it linked to /try/sign, and the badges only after it", () => {
+  it("opens the README under its title with the pitch once: what Purser is, the sentence every juror repeated, one line of links with Try it, then the badges (jury panel, 12 Nov)", () => {
     const lines = README.split("\n");
     expect(lines[0]).toBe(`# Purser · ${HERO}`);
     const badges = lines.findIndex((l) => l.startsWith("[![CI]"));
-    expect(words(lines.slice(1, badges).join("\n"))).toBe(FIRST_SCREEN_TEXT);
-    expect(lines.slice(1, badges).join("\n")).toContain(`[${TRY_IT}](${TRY_SIGN_URL})`);
+    const links = `**[${TRY_IT}](${TRY_SIGN_URL})** · **[Judge it in 3 minutes →](https://kit11.max-31b.workers.dev/judge)** · [Film, 3:58](${FILM_URL}) · [Verify it offline](#verify-it-yourself-in-3-commands)`;
+    expect(lines.slice(1, badges)).toEqual(["", WHAT_IT_IS, "", DIFFERENTIATORS[0], "", links, ""]);
+    // The first screen ends with the reviewers' block, and "Why this is a company" starts within the first 60 lines.
+    expect(lines[badges + 2]).toBe("## For reviewers in 30 seconds");
+    expect(lines.findIndex((l) => l === "## Why this is a company")).toBeLessThan(60);
   });
 
   it("opens Home under its heading with what Purser is, one button to /try/sign with one reassurance line, then the sentence every juror repeated (home-story, 12 Nov)", () => {

@@ -62,11 +62,14 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     const lines = readme.split("\n");
     // The one tagline in the title (jury QA, 6 Nov, Q8).
     expect(lines[0]).toBe("# Purser · AI agents spend. You sign off.");
+    // The pitch once (jury panel, 12 Nov): what Purser is and the sentence every juror repeated; the other two
+    // sentences stay in the form and the deck.
     const top = words(lines.slice(1, 16).join("\n"));
-    expect(top.startsWith(`${WHAT_IT_IS} ${DIFFERENTIATORS.join(" ")} ${TRY_IT}`)).toBe(true);
+    expect(top.startsWith(`${WHAT_IT_IS} ${DIFFERENTIATORS[0]} ${TRY_IT}`)).toBe(true);
+    for (const d of DIFFERENTIATORS.slice(1)) expect(readme).not.toContain(d);
     expect(top).toContain(KIT11_RUN_LINE.replace(/\.$/, ""));
     expect(lines.slice(0, 10).join("\n")).toContain("(https://kit11.max-31b.workers.dev/try/sign)");
-    expect(readme.indexOf("[![CI]")).toBeGreaterThan(readme.indexOf(DIFFERENTIATORS[2]));
+    expect(readme.indexOf("[![CI]")).toBeGreaterThan(readme.indexOf(DIFFERENTIATORS[0]));
     expect(readme.indexOf(KIT11_RUN_LINE.replace(/\.$/, ""))).toBeGreaterThan(readme.indexOf("[![CI]"));
   });
 
@@ -82,7 +85,7 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     expect(t).not.toContain("Watch the agents");
     // The caveat, word for word, once, in the one provenance line; its link opens the footer's "What's real?", which
     // lists what the line names.
-    expect(t).toContain(`${CAVEAT_LINE} Step 4 runs in your browser`);
+    expect(t).toContain(`${CAVEAT_LINE} Step 4 checks that payment's real signature in your browser`);
     expect(t.split(CAVEAT_LINE)).toHaveLength(2);
     expect(hero).toContain('<a href="#real" data-real>What\'s real?</a>');
     expect(html).toContain('<details class="real" id="real">');
@@ -149,9 +152,9 @@ describe("the let-through, framed as the test it was (jury review, 6 Nov, #8)", 
   it("shows both layers where the refusal is told: Purser refuses first; with that check off once, Metal refused anyway", () => {
     expect(CHAIN_TEST).toBe("We switched off our own check once to prove the chain holds the line: Purser refuses an over-cap purchase before signing; with that check off for one purchase, Metal refused it anyway.");
     expect(agentRun().scenes[0]!.sentence).toContain("we switched off our own check once to prove the chain holds the line");
-    for (const [name, body] of [["proof", proofPage()], ["metal", String(PAGES.metal)], ["README.md", read("README.md")], ["form", form], ["long", read("docs/submission/long-description.md")], ["qa", read("docs/submission/qa.md")]] as const) {
+    for (const [name, body] of [["proof", proofPage()], ["metal", String(PAGES.metal)], ["docs/in-depth.md", read("docs/in-depth.md")], ["form", form], ["long", read("docs/submission/long-description.md")], ["qa", read("docs/submission/qa.md")]] as const) {
       const t = words(body);
-      const has = name === "README.md" ? t.includes("We switched off our own check once to prove the chain holds the line: Purser refuses an over-cap purchase before signing; with that check off for purchase #24, Metal refused it anyway")
+      const has = name === "docs/in-depth.md" ? t.includes("We switched off our own check once to prove the chain holds the line: Purser refuses an over-cap purchase before signing; with that check off for purchase #24, Metal refused it anyway")
         : name === "qa" ? t.includes("we switched off our own check once to prove the chain holds the line") : t.includes(CHAIN_TEST);
       expect({ name, has }).toEqual({ name, has: true });
     }

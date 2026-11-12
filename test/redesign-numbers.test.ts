@@ -298,7 +298,7 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
   const shots = new Proxy({}, { get: () => "" }) as DeckShots;
   const SOURCES: [string, string][] = [
     ["proof", proofPage()],
-    ["README.md", doc("README.md")], ["docs/claims.md", doc("docs/claims.md")], ["docs/submission/README.md", doc("docs/submission/README.md")],
+    ["docs/in-depth.md", doc("docs/in-depth.md")], ["docs/claims.md", doc("docs/claims.md")], ["docs/submission/README.md", doc("docs/submission/README.md")],
     ["docs/submission/long-description.md", doc("docs/submission/long-description.md")],
     ["deck", deckHtml(packFacts(), shots, "")], ["docs/video-script.md", doc("docs/video-script.md")],
   ];
@@ -331,8 +331,9 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
       // The form's Description leaves it out too since 6 Nov (jury review, #7: no TAP there; the long text keeps it).
       // Proof leaves it out too since Max's last round (item 2): TAP only on /visa and in Proof's footer link.
       if (name === "deck" || name === "docs/submission/README.md" || name === "proof") expect({ name, tap: t.includes(TAP_LINE) }).toEqual({ name, tap: false });
-      // The README says it in its own words since the jury review of 7 Nov (#15): what is not counted first.
-      else if (name === "README.md") expect({ name, after: t.lastIndexOf("Not counted (a separate TAP run, 2 November): Airwallex declined EUR 45.00 over the card limit (`LIMIT_EXCEEDED`).") > t.indexOf(LINE) }).toEqual({ name, after: true });
+      // The main run's section (docs/in-depth.md since the README went under 150 lines, 12 Nov) says it in its own
+      // words since the jury review of 7 Nov (#15): what is not counted first.
+      else if (name === "docs/in-depth.md") expect({ name, after: t.lastIndexOf("Not counted (a separate TAP run, 2 November): Airwallex declined EUR 45.00 over the card limit (`LIMIT_EXCEEDED`).") > t.indexOf(LINE) }).toEqual({ name, after: true });
       else expect({ name, after: t.lastIndexOf(TAP_LINE) > t.indexOf(LINE) }).toEqual({ name, after: true });
     }
     // On the site's tiles, a big "16 stops" with "nothing paid over a limit" under it, then the sentence.
@@ -340,21 +341,21 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
   });
 
   it("no longer says \"stopped at a limit\" anywhere it is shown (Max, 5 Nov)", () => {
-    for (const [name, raw] of SOURCES) expect({ name, old: /stopped at a limit/i.test(text(raw)) }).toEqual({ name, old: false });
+    for (const [name, raw] of [...SOURCES, ["README.md", doc("README.md")] as [string, string]]) expect({ name, old: /stopped at a limit/i.test(text(raw)) }).toEqual({ name, old: false });
     for (const [name, body] of Object.entries(buildPages() as unknown as Record<string, unknown>)) if (typeof body === "string") expect({ name, old: /stopped at a limit/i.test(text(body)) }).toEqual({ name, old: false });
   });
 
-  it("says Metal's two in detail where they are told: the README, the claims, the Proof page", () => {
+  it("says Metal's two in detail where they are told: the main run's section (docs/in-depth.md), the claims, the Proof page", () => {
     const d = metalDetail(stopStory(record));
     for (const [name, raw] of SOURCES.filter(([n]) => ["proof", "docs/claims.md"].includes(n))) expect({ name, detail: text(raw).includes(d) }).toEqual({ name, detail: true });
-    expect(text(doc("README.md"))).toMatch(/Metal's 2: 1 over the mandate's cap \(#24[^)]*\), 1 on a mandate that had just been replaced \(#37/);
+    expect(text(doc("docs/in-depth.md"))).toMatch(/Metal's 2: 1 over the mandate's cap \(#24[^)]*\), 1 on a mandate that had just been replaced \(#37/);
   });
 
-  it("tells the main run's card story in the README, the long form text and the deck; the decline only as the TAP run's line", () => {
+  it("tells the main run's card story in its section (docs/in-depth.md), the long form text and the deck; the decline only as the TAP run's line", () => {
     const c = packFacts().main.card_raise;
     // The short Description (Max, 5 Nov) leaves the card story to the long text it links; it names no other decline either.
     expect(/30 October[^.]*declin|declin[^.]*30 October|in the recorded run it declined/i.test(text(doc("docs/submission/README.md")))).toBe(false);
-    for (const [name, raw] of SOURCES.filter(([n]) => ["README.md", "docs/submission/long-description.md", "deck"].includes(n))) {
+    for (const [name, raw] of SOURCES.filter(([n]) => ["docs/in-depth.md", "docs/submission/long-description.md", "deck"].includes(n))) {
       const t = text(raw);
       expect({ name, raise: t.includes(`${c.proposal}, EUR ${c.from} → ${c.to}`), auth: t.includes(c.auth.slice(0, 8)) }).toEqual({ name, raise: true, auth: true });
       // No Airwallex decline from another run outside the labelled TAP line.
@@ -362,13 +363,13 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
     }
   });
 
-  it("tells the main run's dispute in the README and the deck: the refunds with their tx, the refund-all rejected; no 30 October figure (Max's rule)", () => {
+  it("tells the main run's dispute in its section (docs/in-depth.md) and the deck: the refunds with their tx, the refund-all rejected; no 30 October figure (Max's rule)", () => {
     const m = packFacts().main;
     const events = record.ledger?.events ?? [];
     const txs = events.filter((e) => e.event === "refund.paid").map((e) => String((e.payload as { tx?: unknown }).tx ?? ""));
     const rejected = (record.ledger?.proposals ?? []).find((p) => p.kind === "refund_batch" && p.status === "REJECTED")?.proposal_id ?? "";
     expect({ refunds: m.refunded.length, txs: txs.length, rejected: !!rejected }).toEqual({ refunds: 3, txs: 3, rejected: true });
-    const readme = text(doc("README.md"));
+    const readme = text(doc("docs/in-depth.md"));
     expect(readme).toContain(`${m.disputed} orders`);
     expect(readme).toContain(`#${m.refunded.slice(0, -1).join(", #")} and #${m.refunded.at(-1)}`);
     for (const tx of txs) expect(readme).toContain(tx);
@@ -442,12 +443,12 @@ describe("the dispute, one text everywhere (jury review, 4 Nov)", () => {
   it("is told from the run's own dispute case", () => {
     expect(disputeStory(record)).toBe(STORY);
     expect(agentRun().scenes.find((x) => x.n === 2)!.sentence).toBe(STORY);
-    // Home tells no scene since Max's round of 7 Nov; the form and the README tell it (next test).
+    // Home tells no scene since Max's round of 7 Nov; the form and the main run's section tell it (next test).
     expect(homePage().replace(/&quot;/g, '"').replace(/&#39;/g, "'")).not.toContain(STORY);
   });
-  it("is the same text in the submission form and the README, and the same figures in the deck's one-line beat", () => {
+  it("is the same text in the submission form and the main run's section (docs/in-depth.md), and the same figures in the deck's one-line beat", () => {
     expect(doc("docs/submission/README.md")).toContain(STORY);
-    expect(doc("README.md")).toContain(STORY);
+    expect(doc("docs/in-depth.md")).toContain(STORY);
     const deck = deckHtml(packFacts(), new Proxy({}, { get: () => "" }) as DeckShots, "").replace(/&quot;/g, '"');
     // Pitch round, 5 Nov: the deck's beat says the story in two short lines (the juror's review: one message per
     // slide, readable on a shared screen), with the story's own figures, counted from the record.

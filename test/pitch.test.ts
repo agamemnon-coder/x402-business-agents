@@ -35,6 +35,8 @@ const SOURCES: Record<string, string> = {
   // The long form text the short Description replaced (5 Nov), linked from it: its figures are checked as before.
   "form (long)": read("docs/submission/long-description.md"),
   README: read("README.md"),
+  // The README's sections on the runs, moved to docs/in-depth.md when the README went under 150 lines (12 Nov).
+  "in-depth": read("docs/in-depth.md"),
 };
 const TEXT = Object.fromEntries(Object.entries(SOURCES).map(([k, v]) => [k, words(v)]));
 
@@ -119,10 +121,10 @@ describe("the pitch's sentences", () => {
 });
 
 describe("the core line", () => {
-  it("is word for word in the pitch, the runbook, the cheat sheet and the deck; the README and the form open with the three sentences instead (jury review, 6 Nov)", () => {
+  it("is word for word in the pitch, the runbook, the cheat sheet and the deck; the README opens with the first of the three sentences instead (jury panel, 12 Nov: the pitch once)", () => {
     for (const name of ["pitch", "demo-day", "spiekkaart", "deck"]) expect({ name, has: TEXT[name]!.includes(CORE_LINE) }).toEqual({ name, has: true });
     const top = words(SOURCES.README!.split("\n").slice(0, 10).join("\n").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1"));
-    for (const d of DIFFERENTIATORS) expect(top).toContain(d);
+    expect(top).toContain(DIFFERENTIATORS[0]);
     expect(SOURCES.README!.split("\n").slice(0, 10).join("\n")).toContain("https://kit11.max-31b.workers.dev/try/sign");
   });
 });
@@ -140,14 +142,16 @@ describe("one set of figures, the main run's record (3 November)", () => {
     for (const name of Object.keys(TEXT)) {
       expect({ name, figure: /\d+ stopped at a limit|over its cap; the CFO rejected|\b1 \+ 1\b/i.test(TEXT[name]!) }).toEqual({ name, figure: false });
       for (const m of all(/(\d+) stops, nothing paid over a limit: one buy rule Claude set stopped (\d+) overpriced checks?, Metal refused (\d+) purchases? on chain, the CFO rejected (\d+) proposals?, and (\d+) planted/g, name)) expect({ name, parts: m.slice(1).map(Number) }).toEqual({ name, parts: [st.total, st.claude, st.metal, st.cfo, st.planted] });
-      if (["pitch", "deck", "spiekkaart", "form", "form (long)", "README"].includes(name)) expect({ name, said: TEXT[name]!.includes(line.slice(0, -1)) }).toEqual({ name, said: true });
+      if (["pitch", "deck", "spiekkaart", "form", "form (long)", "in-depth"].includes(name)) expect({ name, said: TEXT[name]!.includes(line.slice(0, -1)) }).toEqual({ name, said: true });
     }
   });
 
   it("says Metal's refusal one way, and the passkey as Max's (Max, 5 Nov)", () => {
     for (const name of ["pitch", "qa", "deck", "spiekkaart"]) expect({ name, has: TEXT[name]!.includes(REFUSAL_LINE) }).toEqual({ name, has: true });
-    for (const name of ["form", "form (long)", "README"]) expect({ name, has: /the refusal is recorded on chain/i.test(TEXT[name]!) }).toEqual({ name, has: true });
-    for (const name of ["deck", "spiekkaart", "form (long)", "README"]) expect({ name, has: TEXT[name]!.includes("Max's passkey (Face ID on his phone)") }).toEqual({ name, has: true });
+    for (const name of ["form", "form (long)", "in-depth"]) expect({ name, has: /the refusal is recorded on chain/i.test(TEXT[name]!) }).toEqual({ name, has: true });
+    for (const name of ["deck", "spiekkaart", "form (long)"]) expect({ name, has: TEXT[name]!.includes("Max's passkey (Face ID on his phone)") }).toEqual({ name, has: true });
+    // The README's run sections in docs/in-depth.md (12 Nov): the passkey is Max's, with no "his" (as the form since 7 Nov).
+    expect(TEXT["in-depth"]).toContain("Max's passkey (Face ID on a phone)");
     // The form's short Description since the jury review of 7 Nov (#17): no name twice, no "his".
     expect(TEXT.form).toContain("Max plays the CFO and signs with a personal passkey (Face ID on a phone).");
     // The form's short Description (Max, 5 Nov): Metal's tx "on chain, checkable", Airwallex's ids "published".
@@ -155,7 +159,7 @@ describe("one set of figures, the main run's record (3 November)", () => {
     // test/proof-sentences.test.ts).
     const formRaw = readFileSync(new URL("../docs/submission/README.md", import.meta.url), "utf8");
     for (const p of PROOF_SENTENCES) expect(formRaw).toContain(p.text);
-    for (const name of ["pitch", "deck", "spiekkaart", "form", "form (long)", "README", "qa"]) expect({ name, plays: /(Max|I)(, the builder,)? plays? the CFO/.test(TEXT[name]!) }).toEqual({ name, plays: true });
+    for (const name of ["pitch", "deck", "spiekkaart", "form", "form (long)", "in-depth", "qa"]) expect({ name, plays: /(Max|I)(, the builder,)? plays? the CFO/.test(TEXT[name]!) }).toEqual({ name, plays: true });
     // "published" for the ids (Airwallex's cannot be looked up by a juror); Metal's are on chain, checkable.
     for (const name of ["pitch", "qa", "deck", "spiekkaart"]) expect({ name, public: /\bids? (?:is|are) public\b/i.test(TEXT[name]!) }).toEqual({ name, public: false });
     expect(TEXT.deck).toContain("Every id is published");
@@ -203,8 +207,8 @@ describe("T:0 in one sentence, Metal counted (Max, 5 Nov)", () => {
     expect(T0_STATUS).toBe("T:0: 95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q); debits equal credits, and T:0 matches our books line by line.");
     // Not in the form's short Description since 6 Nov (jury review, #7: no error codes there); the long text keeps it.
     expect(words(read("docs/submission/README.md").split("<!-- description -->")[1]!.split("<!-- /description -->")[0]!)).not.toContain("CAPI");
-    // The README says it in its own words since the jury review of 7 Nov (#16), with the same codes and days.
-    expect(flat("README.md")).toContain(words("T:0 books: 95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q); debits equal credits, and T:0 matches our books line by line"));
+    // The README's "What is real" (docs/in-depth.md since 12 Nov) says it in its own words since the jury review of 7 Nov (#16), with the same codes and days.
+    expect(flat("docs/in-depth.md")).toContain(words("T:0 books: 95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q); debits equal credits, and T:0 matches our books line by line"));
     for (const p of ["docs/submission/long-description.md", "docs/claims.md", "docs/t0.md", "docs/runs/2026-11-10-t0-journal-sandbox.md", "docs/submission/qa.md", "docs/internal/spiekkaart-demo.html"]) expect({ p, has: flat(p).includes(words(T0_STATUS)) }).toEqual({ p, has: true });
     // The codes as the run logs have them.
     expect(read("docs/runs/2026-11-03-t0-sandbox.md")).toMatch(/refused the first POST with `403 CAPI71`/);
@@ -227,8 +231,8 @@ describe("T:0 in one sentence, Metal counted (Max, 5 Nov)", () => {
   it("every marked Metal block counts the run's own payments on chain: 86 (41 + 41 + 3 + 1), no clearing", () => {
     expect([pay.onChain, pay.sales, pay.purchases, pay.refunds, pay.sweeps]).toEqual([86, 41, 41, 3, 1]);
     expect((record.ledger?.events ?? []).filter((e) => e.event === "mandate.replaced")).toHaveLength(2);
-    // The README's line, checked against the chain on 5 November, says the same.
-    expect(words(read("README.md"))).toContain("86 test-USD payments, each its own transaction (41 sales, 41 supplier purchases, 3 refunds, 1 sweep)");
+    // The README's line (docs/in-depth.md since 12 Nov), checked against the chain on 5 November, says the same.
+    expect(words(read("docs/in-depth.md"))).toContain("86 test-USD payments, each its own transaction (41 sales, 41 supplier purchases, 3 refunds, 1 sweep)");
     expect(METAL_LINE).toBe(`Metal testnet: ${pay.onChain} payments and 6 mandate transactions, on chain, checkable; no clearing in this run.`);
     for (const name of ["pitch", "qa", "deck", "spiekkaart"]) {
       const blocks = [...SOURCES[name]!.matchAll(/<!-- METAL-ONCHAIN -->([\s\S]*?)<!-- \/METAL-ONCHAIN -->/g)].map((b) => words(b[1]!));

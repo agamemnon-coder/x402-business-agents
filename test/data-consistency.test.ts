@@ -200,8 +200,8 @@ describe("Claude's cost and the red team, where the docs repeat them", () => {
   });
 });
 
-describe("Kit 11's three mandates (README table) against the main run's record and the policy in code", () => {
-  const readme = text("README.md");
+describe("Kit 11's three mandates (the main run's table, docs/in-depth.md) against the main run's record and the policy in code", () => {
+  const readme = text("docs/in-depth.md");
   const table = readme.split("| Kit 11 agent | Its job in the brief |")[1]!.split("\n\n")[0]!.split("\n").filter((l) => l.startsWith("| ") && !l.startsWith("|---"));
   // When bound: the policy in code. After the CFO's Face ID: the main run's record (3 Nov), as on chain at its end.
   const main = json<{ snapshot: { tower: { agents: { agent: string; mandate: { cap: string; budget: string } | null }[] } } }>("docs/demo/main-run.json");
@@ -226,7 +226,7 @@ describe("Kit 11's three mandates (README table) against the main run's record a
     expect(readme).not.toMatch(/10\.00 → 12\.00|6\.00 → 4\.00|14 \/ 2 \/ 4|4\.00 in the brief/);
   });
 
-  it("both before and after add up to TOTAL_BUDGET_CENTS, as the README says", () => {
+  it("both before and after add up to TOTAL_BUDGET_CENTS, as the main run's section says", () => {
     expect(kit.reduce((s, m) => s + cents(m.bound.budget), 0)).toBe(TOTAL_BUDGET_CENTS);
     expect(kit.reduce((s, m) => s + cents(m.now.budget), 0)).toBe(TOTAL_BUDGET_CENTS);
     expect(readme).toContain(`${fromCents(TOTAL_BUDGET_CENTS)} test USD between them, before and after, held in code (\`TOTAL_BUDGET_CENTS\`)`);

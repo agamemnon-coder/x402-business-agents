@@ -177,7 +177,8 @@ describe("the way in: Home, the README and the form", () => {
     expect(JUDGE_URL).toBe(`${SITE}/judge`);
     expect(at).toBeGreaterThan(0);
     expect(at).toBeLessThan(20);
-    expect(lines[at]).toBe(`**[${JUDGE_LINK}](${JUDGE_URL})**`);
+    // In the README's one line of links under the pitch (jury panel, 12 Nov).
+    expect(lines[at]).toContain(`**[${JUDGE_LINK}](${JUDGE_URL})**`);
     expect(lines.filter((l) => l.includes(JUDGE_URL))).toHaveLength(1);
   });
 

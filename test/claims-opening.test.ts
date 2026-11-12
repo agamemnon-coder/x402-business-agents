@@ -101,7 +101,8 @@ describe("the opening table's numbers are the records' and the code's", () => {
     expect(r.value).toContain(`EUR ${p.terms.amount} by SWIFT for invoice ${p.terms.invoice_no} (${p.proposal_id}), transfer \`${out.proof.ref}\``);
     expect(out.amount).toBe(p.terms.amount);
     expect(r.value).toContain(`EUR ${p.terms.conversion!.buy_amount} bought for USD ${p.terms.conversion!.sell_amount}`);
-    expect(read("README.md")).toContain(out.proof.ref);
+    // The main run's section (docs/in-depth.md since 12 Nov) gives the same transfer.
+    expect(read("docs/in-depth.md")).toContain(out.proof.ref);
   });
 
   it("Metal's refusal on chain, as Home and the README give it", () => {
