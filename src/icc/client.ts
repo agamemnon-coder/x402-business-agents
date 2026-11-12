@@ -26,7 +26,8 @@ import { assertIccBudget, countIccCall, type IccBudget } from "./callBudget.js";
 
 export const ICC_TEST_HOST = "apitest.cybersource.com";
 /** The documented production hosts: named so that the refusal can say what they are. Never called. */
-const PRODUCTION_HOSTS = ["api.cybersource.com", "api.in.cybersource.com"];
+/** Production hosts, refused by name (an exact match; the test host is then required exactly). */
+const PRODUCTION_HOSTS: ReadonlySet<string> = new Set(["api.cybersource.com", "api.in.cybersource.com"]);
 export const ICC_PATH_PREFIXES = ["/icc/v1", "/acp/v1"] as const;
 export type IccPathPrefix = (typeof ICC_PATH_PREFIXES)[number];
 export const ICC_DEFAULT_TIMEOUT_MS = 20_000;
@@ -170,7 +171,7 @@ export class IccClient {
 
   constructor(private readonly cfg: IccClientConfig) {
     const host = cfg.host ?? ICC_TEST_HOST;
-    if (PRODUCTION_HOSTS.includes(host)) throw new IccNotAllowed(`${host} is a production host; this build only talks to the test host ${ICC_TEST_HOST}`);
+    if (PRODUCTION_HOSTS.has(host)) throw new IccNotAllowed(`${host} is a production host; this build only talks to the test host ${ICC_TEST_HOST}`);
     if (host !== ICC_TEST_HOST) throw new IccNotAllowed(`the ICC host must be exactly ${ICC_TEST_HOST}`);
     this.pathPrefix = cfg.pathPrefix ?? "/icc/v1";
     if (!ICC_PATH_PREFIXES.includes(this.pathPrefix)) throw new IccNotAllowed(`the ICC path prefix must be one of ${ICC_PATH_PREFIXES.join(", ")}`);

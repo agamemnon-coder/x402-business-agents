@@ -307,7 +307,7 @@ describe("run", () => {
       await enrol(w);
       expect(await iccCli(["run"], { ...w.io, awaitCfo: async () => end })).toBe(1);
       const text = w.out.join("\n");
-      expect(text).toMatch(new RegExp(`^A {5}P-\\d+ ${end.replace(/[()]/g, "\\$&")}: `, "m"));
+      expect(text).toMatch(new RegExp(`^A {5}P-\\d+ ${end.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}: `, "m"));
       expect(text).toMatch(/^FAIL {2}a_credential_received_not_used /m);
       expect(text).toMatch(/^ok {4}b_refused_before_any_call /m);
       expect(text).not.toMatch(/no such table/);

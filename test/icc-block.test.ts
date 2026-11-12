@@ -37,7 +37,7 @@ const dirWith = (files: Record<string, string>) => {
 };
 const json = (r: unknown) => `${JSON.stringify(r, null, 2)}\n`;
 /** What a person reads: no tags, entities decoded. */
-const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\s+/g, " ").trim();
+const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
 
 describe("the ICC block, with no record", () => {
   it("is exactly the status sentence, in a quiet line: no heading, no link, no number", () => {
