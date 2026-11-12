@@ -45,15 +45,11 @@ const eventLineOf=(W)=>{
     if(!/^[a-z_]+\.[a-z_]+$/.test(name)||!own(W.ev,name))return {who:W.who.purser,text:W.step,tag:null,asking:false};
     const asking=name==='claude.asking';
     let who=W.who.code,tag='code';
-    if(name.indexOf('claude.')===0){const src=code(f.source);if(asking||src==='claude'||(!src&&code(f.model))){who=modelName(f.model);tag='claude'}}
+    if(name.indexOf('claude.')===0||name.indexOf('agent.')===0||name==='ap.checker_decided'||name==='ap.payer_proposed'){const src=code(f.source);if(asking||src==='claude'||(!src&&code(f.model))){who=modelName(f.model);tag='claude'}}
     if(asking){const a=code(f.agent);who=(a?cap(words(a)):W.reader)+' · '+who}
-    // An agent's own step (lane A's events): the agent and its model. A nudge is code's; a decision is Claude's only
-    // when Claude made it and code did not override it.
-    if(/^agent\.(tool|said|run)$/.test(name)&&code(f.agent)){who=cap(words(f.agent))+(code(f.model)?' · '+modelName(f.model):'');tag='claude'}
-    if((name==='ap.checker_decided'||name==='ap.payer_proposed')&&code(f.source)==='claude'&&f.overridden!==true){who=(name==='ap.checker_decided'?'Checker':'Payer')+' · '+modelName(f.model);tag='claude'}
     if(PERSON.test(name)){who=W.who.you;tag=null}
     if(SIGN.test(name))tag='sign';else if(MONEY.test(name))tag='money';
-    const v={money:amount(f),status:status(f.status),why:found(f.findings),method:code(f.method)&&own(W.method,f.method)?W.method[f.method]:'',pages:num(f.pages),files:num(f.files),paid:num(f.paid),of:num(f.of),tool:words(f.tool),state:words(f.status),outcome:words(f.outcome)};
+    const v={money:amount(f),status:status(f.status),why:found(f.findings),method:code(f.method)&&own(W.method,f.method)?W.method[f.method]:'',pages:num(f.pages),files:num(f.files),paid:num(f.paid),of:num(f.of)};
     let text=null;
     for(const k of [name+'_why',name,name+'_plain'])if(text===null&&own(W.ev,k))text=fill(W.ev[k],v);
     if(text===null)text=W.step;

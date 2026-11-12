@@ -70,8 +70,8 @@ export const INVOICE_FIELDS = { vendor: "Supplier", number: "Invoice number", to
  * current step's name in words (the others are segments, named for screen readers only). Counted in each screen's budget.
  */
 export const STEPS = {
-  names: { invoice: "Invoice", work: "At work", approve: "Approve", pay: "Pay", books: "Done" } as Record<string, string>,
-  order: ["start", "invoice", "work", "approve", "pay", "books"],
+  names: { invoice: "Invoice", work: "At work", approve: "Approve", pay: "Pay", books: "Paid", company: "Company" } as Record<string, string>,
+  order: ["start", "invoice", "work", "approve", "pay", "books", "company"],
   start: "Start",
   /** For screen readers: where the visit stands ({n} of {of}). */
   where: "Step {n} of {of}",
@@ -150,14 +150,67 @@ export const PAY = {
   failed: "Purser could not send this payment. Nothing was paid.",
 };
 
-/** Screen 5, until B3 draws it: the pay route's settled answer, as it came back. */
+/**
+ * Screen 5. Three blocks, each drawn when its own read has returned: the payment (GET /v1/payments and
+ * /v1/transactions), this invoice's journal lines (GET /v1/ledger/entries) and its files (GET /v1/engine/vault). The
+ * amounts, statuses, accounts and file names are data. When the pay route's settled answer carries an error, the
+ * engine's words are shown as they are, with the one button that asks the engine's retry route: nothing retries by itself.
+ */
 export const BOOKS = {
-  heading: "Paid.",
-  sub: "Paid on the simulated bank · test money",
-  invoice: "Invoice",
-  transfer: "Payment",
-  ledger: "Ledger entries",
+  heading: "Paid, booked, filed.",
+  /** When settled.error is set: what failed is the engine's own words, beneath. */
+  headingError: "Not everything went through.",
+  paid: "Paid on the simulated bank · test money",
+  /** The payment found for this invoice is not PAID (its status is beside it). */
+  payment: "Payment on the simulated bank · test money",
+  fee: "Fee",
+  booked: "Booked in Purser's ledger",
+  account: "Account",
+  debit: "Debit",
+  credit: "Credit",
+  even: "Debits equal credits.",
+  uneven: "Debits and credits differ.",
+  /** The fold with the ledger chain's head (the newest entry's own hash). */
+  head: "Chain head",
+  filed: "Filed in the archive",
+  original: "Invoice",
+  receipt: "Receipt",
+  /** The engine did not feed the read model (settled.fed is false): nothing of the books is shown. */
+  notIn: "The books are not in yet.",
+  /** A read came back without this invoice's part in it. */
+  noPayment: "No payment for this invoice yet.",
+  noLines: "No lines for this invoice yet.",
+  noFiles: "Not in the archive yet.",
+  failed: "Purser could not read this.",
+  retry: "Try the payment again",
+  next: "See your company",
 };
+
+/**
+ * Screen 6. The export is lane C's route (GET /v1/engine/export, a JSON file); the recorded runs are links to the site's
+ * /runs, in a fold, each with the date src/redesign/runs.ts gives it (RECORDED, below).
+ */
+export const COMPANY = {
+  heading: "Your company.",
+  download: "Download your company (SyncBatch)",
+  line: "Purser Cloud's own sync format: your test company's invoices with their documents, payments, ledger and audit log.",
+  downloading: "Downloading…",
+  /** In the line's place when the export did not come back. */
+  failed: "Purser could not export your company.",
+  again: "Start again",
+  runs: "Recorded real runs",
+  recorded: "recorded {date}",
+};
+
+/**
+ * The recorded real runs screen 6 links to (kit11 /runs#<key>): each key and its date as src/redesign/runs.ts gives them
+ * (test/try-page.test.ts holds both to that file; the Worker does not read the site's run records itself).
+ */
+export const RECORDED: { key: string; date: string; title: string }[] = [
+  { key: "awx-1", date: "7 Nov 2026", title: "An agent's overspend, declined by Airwallex" },
+  { key: "connected-1", date: "10 Nov 2026", title: "A connected-account payout" },
+  { key: "t0-1", date: "10 Nov 2026", title: "The books posted to T:0" },
+];
 
 /** The session's renewal answered that the company is gone (410). */
 export const GONE = {
@@ -217,7 +270,24 @@ export const VISIBLE = {
     [PAY.heading, PAY.button, PAY.stamp, PAY.signature, PAY.signatureOff, PAY.executor, PAY.executorFold,
       PAY.signed, PAY.sent, PAY.vAmountCent, PAY.vCover, PAY.roundTrip, PAY.transfers, PAY.raw, PAY.putBack],
   ],
-  books: [[BOOKS.heading, BOOKS.sub, BOOKS.invoice, BOOKS.transfer, BOOKS.ledger]],
+  books: [
+    // Paid, booked and filed, all three back (the original and the receipt as two downloads).
+    [BOOKS.heading, BOOKS.paid, BOOKS.fee, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.even, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.next],
+    [BOOKS.heading, BOOKS.payment, BOOKS.fee, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.uneven, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.next],
+    // A block whose part is not there yet says so in one sentence, without its heading (it claims nothing).
+    [BOOKS.heading, BOOKS.noPayment, BOOKS.noLines, BOOKS.noFiles, BOOKS.next],
+    [BOOKS.heading, BOOKS.failed, BOOKS.failed, BOOKS.failed, BOOKS.next],
+    // The read model was not fed: one sentence for the books, the archive as the engine has it.
+    [BOOKS.heading, BOOKS.notIn, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.next],
+    // settled.error: the engine's words (data), the retry as the main button, the next screen beside it; no blocks
+    // until a payment that went through is drawn again from the retry's answer.
+    [BOOKS.headingError, BOOKS.retry, BOOKS.next],
+  ],
+  company: [
+    [COMPANY.heading, COMPANY.download, COMPANY.line, COMPANY.again, COMPANY.runs],
+    [COMPANY.heading, COMPANY.downloading, COMPANY.line, COMPANY.again, COMPANY.runs],
+    [COMPANY.heading, COMPANY.download, COMPANY.failed, COMPANY.again, COMPANY.runs],
+  ],
   gone: [[GONE.heading, GONE.button]],
   ended: [[ENDED.heading, ENDED.button]],
 };
@@ -276,17 +346,13 @@ export const LIVE = {
     "claude.fallback": "Read by Purser's code. No model answer was used.",
     "claude.rejected": "Its answer did not pass Purser's check and was not used.",
     "claude.asking": "asking…",
-    "claude.capped": "Claude was not asked for this step. Purser's code read and decided it.",
-    "agent.tool": "used a tool: {tool}.",
-    "agent.tool_plain": "used a tool.",
-    "agent.said": "wrote down its reasoning.",
-    "agent.nudged": "Purser's code told the agent its task was not finished.",
-    "agent.run": "finished its run: {state}.",
-    "agent.run_plain": "finished its run.",
-    "ap.checker_decided": "The invoice check ended: {outcome}.",
-    "ap.checker_decided_plain": "The invoice check ended.",
-    "ap.payer_proposed": "The payment plan ended: {outcome}.",
-    "ap.payer_proposed_plain": "The payment plan ended.",
+    "claude.capped": "Claude was not asked for this step. Purser's code read and decided.",
+    "agent.tool": "Asked Purser's code a question and got its answer.",
+    "agent.said": "Its own words, not checked yet.",
+    "agent.nudged": "Reminded to finish with a decision.",
+    "agent.run": "Finished its work on this step.",
+    "ap.checker_decided": "The check is decided. Purser's code compared it with its own rules.",
+    "ap.payer_proposed": "A way to pay was proposed. Purser's code checked it.",
     "document.injection_flagged": "The document holds text that tries to give instructions. It was flagged and not followed.",
     "passkey.enrolment_opened": "A short window opened to set up the approval passkey.",
     "passkey.pending": "A new passkey came in. It waits to be confirmed.",

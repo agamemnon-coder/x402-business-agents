@@ -17,18 +17,25 @@
 //   ends) and askTimer (the running time of an open Claude call).
 // - Screens 3 (approve) and 4 (pay) sign and pay: the pure helpers are SIGN_JS (below, tested in Node). S also keeps
 //   the proposal ({id, challenge, terms_sha256, invoice}) and the approval's credential (cred) for screen 4, and the
-//   pay route's settled answer for screen 5 (books, a placeholder until B3 draws it).
+//   pay route's settled answer for screen 5.
+// - Screen 5 (books) draws three blocks, each when its own reads return: the payment, this invoice's journal lines and
+//   its files (pure helpers: BOOKS_JS, tested in Node); not fed (settled.fed false), the books say they are not in yet;
+//   settled.error shows the engine's words and the retry route on the visitor's button. Files fetched with the session
+//   open from blob URLs (BLOBS), revoked on the next screen. Screen 6 (company): the export, start again, the runs.
 // - Icons are SVG elements made one by one with createElementNS from shape data (src/ui/icons.ts), never from markup.
 import { consoleCsp } from "./console.js";
-import { APPROVE, BAND, BOOKS, CHROME, ENDED, GONE, INVOICE, INVOICE_FIELDS, LIVE, METHOD, PAY, PROPOSAL_FIELDS, START, STEPS, WORK } from "./tryCopy.js";
+import { APPROVE, BAND, BOOKS, CHROME, COMPANY, ENDED, GONE, INVOICE, INVOICE_FIELDS, LIVE, METHOD, PAY, PROPOSAL_FIELDS, RECORDED, START, STEPS, WORK } from "./tryCopy.js";
 import { EVENT_LINE_JS } from "./tryEvents.js";
 import { TOKENS } from "../../src/redesign/ui.js";
 import { ICONS } from "../../src/ui/icons.js";
 import { MORE } from "../../src/ui/payablesKit.js";
 import type { CloudEnv } from "./app.js";
 
-/** Recorded real runs on the site, for when the demo is busy or paused. */
-const RUNS_URL = "https://kit11.max-31b.workers.dev/runs";
+/**
+ * Recorded real runs on the site (kit11, package.json's homepage): its /runs, for when the demo is busy or paused, and
+ * screen 6's dated links to single runs (/runs#<key>, keys and dates from src/redesign/runs.ts, held there by a test).
+ */
+export const RUNS_URL = "https://kit11.max-31b.workers.dev/runs";
 
 const CSS = `${TOKENS.replace("url(assets/inter.woff2)", "url(/assets/inter.woff2)")}
 * { box-sizing: border-box; }
@@ -116,6 +123,35 @@ pre.terms { margin: 8px 0 0; padding: 12px; border-radius: 12px; background: var
 .verdict { margin: 12px 0 8px; font-weight: 650; }
 .proof { margin: 0; font-size: 14px; color: var(--muted); }
 pre.raw { margin: 8px 0 0; padding: 12px; border-radius: 12px; background: var(--sunken); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.slot:empty { display: none; }
+.blk { margin: 12px 0 0; animation: rise .24s ease-out; }
+.blk .bh { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-weight: 650; font-size: 15px; }
+.blk .bh.ok .i { color: var(--ok); }
+.blk .bh.bad .i { color: var(--bad); }
+.blk .amount { margin: 4px 0 6px; }
+.pill { display: inline-block; padding: 1px 10px; border-radius: 999px; font-size: 13px; font-weight: 650; letter-spacing: .02em; background: var(--sunken); color: var(--muted); }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.wait { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; color: var(--muted); font-size: 15px; }
+.scroll { overflow-x: auto; }
+table.lines { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+table.lines th { text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); padding: 4px 0; }
+table.lines td { padding: 4px 0; border-top: 1px solid var(--border); white-space: nowrap; }
+table.lines td.en { padding-top: 10px; color: var(--muted); font-size: 13px; white-space: normal; overflow-wrap: anywhere; }
+table.lines .r { text-align: right; padding-left: 12px; }
+.bal { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; font-weight: 650; font-size: 14px; }
+.bal.ok { color: var(--ok); }
+.bal.bad { color: var(--bad); }
+ul.files, ul.runs { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 8px; }
+a.file { display: grid; grid-template-columns: auto 1fr; gap: 0 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; text-decoration: none; color: var(--text); }
+a.file .i { grid-row: 1 / span 2; color: var(--accent); }
+a.file .fl { font-weight: 650; }
+a.file .fn { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 16px; }
+.acts .btn.big { margin-top: 0; }
+ul.runs a { display: grid; padding: 8px 0; text-decoration: none; }
+ul.runs .rt { color: var(--text); font-weight: 600; }
+ul.runs .rd { font-size: 13px; color: var(--muted); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 520px) { .btn.big { width: 100%; } h1 { font-size: 26px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
@@ -175,12 +211,85 @@ const signKit=(()=>{
 })();
 `;
 
+/**
+ * The page's pure helpers for screen 5, as plain script (the page carries this text as it is; test/try-page.test.ts runs
+ * the same text in Node). This invoice's part of what the read model and the archive hold, by the console's rules
+ * (engine-console-1112, cloud/src/console.ts paymentOf, booked and filesOf), ported here:
+ * - paymentOf(i, payments, txs): the payment the transactions register links to this invoice's own id (its row
+ *   'transfer:<payment id>' with invoice.ap_id), a PAID one first; else the single PAID payment of this invoice's
+ *   number, supplier, currency and amount; else null. Two invoices may share a number and a supplier; the read model
+ *   links a payment by "<invoice no> · <supplier>", so only the register's id tells them apart.
+ * - isPaid(p): its status is PAID (a FAILED payment is never shown as paid). feeOf(p, tx): the fee the payment reports,
+ *   else the register's.
+ * - entriesOf(i, p, txs, entries): the accrual on receipt (source_key 'ap-accrual|<id>', any version '@v<n>'), the
+ *   payment's entries as the register books them (booking.entry_ids) and every entry that reverses one of those.
+ * - balance(entries): debits equal credits per currency, summed from the lines. headOf(entries): the newest entry of
+ *   the whole ledger (its own entry_hash is the chain's head; a session cannot ask /v1/sync/state).
+ * - filesOf(i, files, invoices): the original by its own hash (doc_sha256), and the receipt by the name the archive
+ *   gives it: '<date> <supplier> <invoice no>.pdf' cleaned as one piece (src/vault/layout.ts paymentPath, safeSegment;
+ *   seg here), a correction beside it ' (correctie[ n])', or this invoice's own id beside it when another document had
+ *   the name first (layout.ts withId). The plain name is taken as this invoice's only when no other paid invoice of the
+ *   same number and supplier could have it.
+ * - money(currency, amount), fromCents(n): amounts as the page shows them.
+ */
+export const BOOKS_JS = String.raw`
+const booksKit=(()=>{
+  const seg=(s)=>{let v=String(s||'').normalize('NFC').replace(/\p{Cf}/gu,'').replace(/[\u0000-\u001f\u007f<>:"/\\|?*]+/g,' ').replace(/\.{2,}/g,' ').replace(/\s+/g,' ').trim().replace(/^[.\s]+|[.\s]+$/g,'');if(v.length>120)v=v.slice(0,120).replace(/[.\s]+$/g,'');return v||'_'};
+  const fileName=(p)=>String(p).slice(String(p).lastIndexOf('/')+1);
+  const toCents=(s)=>{const m=/^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(String(s==null?'':s).trim());return m?(m[1]?-1:1)*(Number(m[2])*100+Number((m[3]||'').padEnd(2,'0'))):null};
+  const fromCents=(n)=>{const c=Math.round(Number(n)||0),a=Math.abs(c);return (c<0?'-':'')+Math.floor(a/100)+'.'+String(a%100).padStart(2,'0')};
+  const money=(cur,amount)=>{const c=toCents(amount);if(c===null)return [cur,amount].filter(Boolean).join(' ');const s=fromCents(c),neg=s[0]==='-',t=neg?s.slice(1):s,dot=t.indexOf('.');
+    return [cur,(neg?'-':'')+t.slice(0,dot).replace(/\B(?=(\d{3})+(?!\d))/g,',')+t.slice(dot)].filter(Boolean).join(' ')};
+  const isPaid=(p)=>!!p&&String(p.status||'').toUpperCase()==='PAID';
+  const txOf=(p,txs)=>p?(txs||[]).find((y)=>y&&y.id==='transfer:'+p.id)||null:null;
+  const paymentOf=(i,ps,txs)=>{
+    if(!i)return null;
+    const same=(ps||[]).filter((x)=>x&&x.invoice_no===i.invoice_no+' · '+i.vendor);
+    const byId=same.filter((x)=>{const y=txOf(x,txs);return !!(y&&y.invoice&&y.invoice.ap_id===i.id)}).sort((a,b)=>String(a.updated_at).localeCompare(String(b.updated_at)));
+    if(byId.length){const ok=byId.filter(isPaid);return (ok.length?ok:byId)[(ok.length?ok:byId).length-1]}
+    const sure=same.filter((x)=>isPaid(x)&&x.currency===i.currency&&toCents(x.amount)!==null&&toCents(x.amount)===toCents(i.total));
+    return sure.length===1?sure[0]:null;
+  };
+  const feeOf=(p,tx)=>{const m=/^([A-Z]{3,4}) (-?\d+\.\d{2})$/.exec(String(p&&p.fee_actual||''));if(m)return {currency:m[1],amount:m[2]};
+    return tx&&tx.fee&&typeof tx.fee.amount==='string'?{currency:String(tx.fee.currency||''),amount:tx.fee.amount}:null};
+  const entriesOf=(i,p,txs,es)=>{
+    const tx=txOf(p,txs);const ids=new Set(tx&&tx.booking&&Array.isArray(tx.booking.entry_ids)?tx.booking.entry_ids:[]);
+    const all=(es||[]).filter(Boolean);
+    const mine=all.filter((e)=>String(e.source_key||'').split('@')[0]==='ap-accrual|'+i.id||ids.has(e.entry_id));
+    const have=new Set(mine.map((e)=>e.entry_id));
+    for(const e of all)if(e.reverses!==null&&e.reverses!==undefined&&have.has(e.reverses)&&!have.has(e.entry_id)){mine.push(e);have.add(e.entry_id)}
+    return mine.sort((a,b)=>a.entry_id-b.entry_id);
+  };
+  const balance=(es)=>{const dr={},cr={};let lines=0;
+    for(const e of es||[])for(const l of e.lines||[]){lines++;dr[l.currency]=(dr[l.currency]||0)+(Number(l.debit_cents)||0);cr[l.currency]=(cr[l.currency]||0)+(Number(l.credit_cents)||0)}
+    return {even:lines>0&&Object.keys(Object.assign({},dr,cr)).every((c)=>(dr[c]||0)===(cr[c]||0)),lines}};
+  const headOf=(es)=>(es||[]).reduce((h,e)=>e&&(!h||e.entry_id>h.entry_id)?e:h,null);
+  const filesOf=(i,files,invoices)=>{
+    const fs=(files||[]).filter((f)=>f&&typeof f.path==='string');
+    const original=fs.find((f)=>f.kind==='invoice'&&!!i.doc_sha256&&f.sha256===i.doc_sha256)||null;
+    const own=[],plain=[];
+    for(const f of fs){if(f.kind!=='receipt')continue;
+      const n=fileName(f.path),d=n.slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(d))continue;
+      const want=seg(d+' '+i.vendor+' '+i.invoice_no+'.pdf');const base=/\.pdf$/.test(want)?want.slice(0,-4):null;
+      if(base!==null&&n===base+' ('+seg(i.id)+').pdf')own.push(f);
+      else if(n===want||(base!==null&&n.indexOf(base)===0&&/^ \(correctie(?: \d+)?\)\.pdf$/.test(n.slice(base.length))))plain.push(f)}
+    // Another paid invoice of this number and supplier, without a receipt of its own id: the plain name may be its.
+    const rival=(invoices||[]).some((o)=>o&&o.id!==i.id&&o.vendor===i.vendor&&o.invoice_no===i.invoice_no&&String(o.status)==='paid'
+      &&!fs.some((f)=>f.kind==='receipt'&&fileName(f.path).endsWith(' ('+seg(o.id)+').pdf')));
+    const receipts=(own.length?own:rival?[]:plain).sort((a,b)=>a.path.localeCompare(b.path));
+    return {original,receipts};
+  };
+  return {seg,fileName,toCents,fromCents,money,isPaid,txOf,paymentOf,feeOf,entriesOf,balance,headOf,filesOf};
+})();
+`;
+
 // The client: plain JS (no template literals in it, so it sits in this file as a raw string).
 const SCRIPT = String.raw`
 const C=__COPY__;
 const W=C.live;
 __EVENT_LINE__
 __SIGN__
+__BOOKS__
 const {fromB64u,registrationOf,signedOf,hashDiff,normAmount,payBody,verdict,methodOf}=signKit;
 const IC=__ICONS__;
 const lineOf=eventLineOf(W);
@@ -305,7 +414,7 @@ function steps(name){
 }
 function show(name,arg){
   const d=SCREENS[name];if(!d)return false;
-  pollStop();askCloseAll();
+  pollStop();askCloseAll();revokeAll();
   S.screen=name;save();
   const h=el('h1','',typeof d.heading==='function'?d.heading(arg):d.heading);h.tabIndex=-1;
   const box=el('div','screen');
@@ -651,13 +760,127 @@ screen('pay',{heading:C.pay.heading,draw(box){
   }
 }});
 
-// 5 Paid (a placeholder until B3 draws the books): the pay route's settled answer, as it came back.
-screen('books',{heading:C.books.heading,draw(box,arg){
-  const s=arg&&arg.settled&&typeof arg.settled==='object'?arg.settled:{};
-  const d=el('dl','read');
-  for(const [k,v] of [[C.books.invoice,s.invoice_status],[C.books.transfer,s.transfer_status],[C.books.ledger,s.ledger_entries]]){if(v===null||v===undefined||v==='')continue;d.append(el('dt','',k),el('dd','',String(v)))}
-  box.append(el('span','art ok pop',icon('circle-check',30)),el('p','lede',C.books.sub),d);
-  if(typeof s.error==='string'&&s.error)box.append(note(s.error));
+// Files fetched with the session are opened from blob URLs; each is revoked when the screen changes or the page goes.
+const BLOBS=[];
+function revokeAll(){for(const u of BLOBS.splice(0))URL.revokeObjectURL(u)}
+window.addEventListener('pagehide',revokeAll);
+// A file with the session: a 401 renews once. {status, blob, name} (name from the answer's content-disposition).
+async function fetchFile(path){
+  const once=async()=>{try{const r=await fetch(path,{headers:S.session?{authorization:'Bearer '+S.session}:{}});return r}catch(e){return null}};
+  let r=await once();
+  if(r&&r.status===401&&S.session&&(await renew()))r=await once();
+  if(!r)return {status:0,blob:null,json:{}};
+  if(r.status!==200){let json={};try{json=await r.json()}catch(e){}return {status:r.status,blob:null,json:json&&typeof json==='object'?json:{}}}
+  const m=/filename="([^"]+)"/.exec(r.headers.get('content-disposition')||'');
+  return {status:200,blob:await r.blob(),name:m?m[1].replace(/[^\w. -]+/g,'_'):null,json:{}};
+}
+const blobUrl=(blob)=>{const u=URL.createObjectURL(blob);BLOBS.push(u);return u};
+// Every page of a list route of the read model (limit 200, its cursor): {status, items}.
+async function everyPage(path){let items=[],cursor=null;
+  for(let n=0;n<50;n++){const r=await api('GET',path+(path.indexOf('?')>=0?'&':'?')+'limit=200'+(cursor?'&cursor='+encodeURIComponent(cursor):''));
+    if(r.status!==200||!Array.isArray(r.json.items))return {status:r.status||0,items:null,json:r.json};
+    items=items.concat(r.json.items);cursor=typeof r.json.next_cursor==='string'&&r.json.next_cursor?r.json.next_cursor:null;if(!cursor)break}
+  return {status:200,items};
+}
+
+// 5 Paid, booked, filed: from the pay route's settled answer, then each block from its own reads, drawn when they return.
+const {paymentOf,isPaid,txOf,feeOf,entriesOf,balance,headOf,filesOf,money,fromCents,fileName}=booksKit;
+const settledErr=(arg)=>{const s=arg&&arg.settled;return s&&typeof s.error==='string'&&s.error?s.error:null};
+screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.heading,draw(box,arg){
+  const B=C.books;const s=arg&&arg.settled&&typeof arg.settled==='object'?arg.settled:{};
+  const pid=S.proposal&&S.proposal.id,invId=S.proposal&&S.proposal.invoice;
+  const main=mainButton();
+  const toCompany=()=>show('company');
+  const err=settledErr(arg);
+  if(err){
+    // What failed, in the engine's words as they came; the engine's retry route runs only when the visitor asks.
+    const said=el('div','',[note(err)]);said.setAttribute('role','status');
+    const next=btn(B.next);next.addEventListener('click',toCompany);
+    main.set(B.retry,async()=>{
+      main.off(B.retry);
+      const r=await api('POST','/v1/engine/proposals/'+encodeURIComponent(pid)+'/retry');
+      if(S.screen!=='books')return;
+      if(r.status===200&&r.json.settled&&typeof r.json.settled==='object'){S.settled=r.json.settled;save();show('books',{settled:S.settled});return}
+      said.replaceChildren(note(words(r.json,B.failed)));next.remove();main.set(B.next,toCompany);
+    });
+    box.append(said,el('div','acts',[main.node,next]));
+    return;
+  }
+  main.set(B.next,toCompany);
+  const slot=()=>el('div','slot');
+  const paid=slot(),booked=slot(),filed=slot();
+  box.append(el('span','art ok pop',icon('circle-check',30)),paid,booked,filed,main.node);
+  // A block: its icon and heading, then what its read returned.
+  const block=(name,head,kids,tone)=>el('section','card blk '+name,[el('p','bh'+(tone?' '+tone:''),[icon(name==='paid'?'landmark':name==='booked'?'database':'file-lock-2',20),el('span','',head)]),...kids.filter(Boolean)]);
+  const wait=(words)=>el('p','wait',[icon('clock',18),el('span','',words)]);
+  const failedOf=(r)=>note(words(r.json||{},B.failed));
+  const inv=api('GET','/v1/engine/invoices').then((r)=>{const items=r.status===200&&Array.isArray(r.json.items)?r.json.items:[];return {r,items,i:items.find((x)=>x&&x.id===invId)||null}});
+  if(s.fed===false){
+    // The read model is fed by the engine during pay: not fed, nothing of the books is shown.
+    paid.replaceChildren(wait(B.notIn));
+  }else{
+    const reads=Promise.all([inv,everyPage('/v1/payments'),everyPage('/v1/transactions')]);
+    reads.then(([v,ps,txs])=>{
+      if(S.screen!=='books')return;
+      if(ps.status!==200){paid.replaceChildren(failedOf(ps));return}
+      const p=v.i?paymentOf(v.i,ps.items,txs.items||[]):null;
+      if(!p){paid.replaceChildren(wait(B.noPayment));return}
+      const tx=txOf(p,txs.items||[]);const fee=feeOf(p,tx);const ok=isPaid(p);
+      const d=el('dl','read');d.append(el('dt','',B.fee),el('dd','',fee?money(fee.currency,fee.amount):'—'));
+      paid.replaceChildren(block('paid',ok?B.paid:B.payment,[el('p','amount',money(p.currency,p.amount)),el('p','',el('span','pill'+(ok?' ok':' bad'),String(p.status||''))),d],ok?'ok':'bad'));
+    });
+    Promise.all([reads,everyPage('/v1/ledger/entries')]).then(([[v,ps,txs],es])=>{
+      if(S.screen!=='books')return;
+      if(es.status!==200){booked.replaceChildren(failedOf(es));return}
+      const p=v.i&&ps.items?paymentOf(v.i,ps.items,txs.items||[]):null;
+      const mine=v.i?entriesOf(v.i,p,txs.items||[],es.items):[];
+      if(!mine.length){booked.replaceChildren(wait(B.noLines));return}
+      const bal=balance(mine);const head=headOf(es.items);
+      const tb=el('tbody');
+      for(const e of mine){const h=el('td','en',String(e.description||''));h.colSpan=3;tb.append(el('tr','',[h]));
+        for(const l of e.lines||[])tb.append(el('tr','',[el('td','mono',String(l.account||'')),el('td','r',l.debit_cents?money(l.currency,fromCents(l.debit_cents)):''),el('td','r',l.credit_cents?money(l.currency,fromCents(l.credit_cents)):'')]))}
+      const table=el('table','lines',[el('thead','',[el('tr','',[el('th','',B.account),el('th','r',B.debit),el('th','r',B.credit)])]),tb]);
+      booked.replaceChildren(block('booked',B.booked,[el('div','scroll',table),el('p','bal '+(bal.even?'ok':'bad'),[icon(bal.even?'check':'triangle-alert',16),el('span','',bal.even?B.even:B.uneven)]),
+        head?el('details','',[el('summary','',B.head),el('p','hash mono',[el('span','hl','#'+head.entry_id),' ',String(head.entry_hash||'')])]):null],bal.even?'ok':'bad'));
+    });
+  }
+  // The archive is the engine's own (not the read model): read whether or not the books are in.
+  Promise.all([inv,api('GET','/v1/engine/vault')]).then(async ([v,r])=>{
+    if(S.screen!=='books')return;
+    if(r.status!==200||!Array.isArray(r.json.files)){filed.replaceChildren(failedOf(r));return}
+    const fs=v.i?filesOf(v.i,r.json.files,v.items):{original:null,receipts:[]};
+    const want=[...(fs.original?[[B.original,fs.original]]:[]),...fs.receipts.map((f)=>[B.receipt,f])];
+    if(!want.length){filed.replaceChildren(wait(B.noFiles));return}
+    // Each file fetched with the session, then a link to its blob URL that opens it in a new tab.
+    const got=await Promise.all(want.map(([,f])=>fetchFile('/v1/engine/vault/file?path='+encodeURIComponent(f.path))));
+    if(S.screen!=='books')return;
+    const list=el('ul','files');
+    want.forEach(([label,f],k)=>{const g=got[k];
+      if(g.status!==200||!g.blob){list.append(el('li','',[el('span','fl',label),note(words(g.json||{},B.failed))]));return}
+      const a=el('a','file',[icon('file-text',20),el('span','fl',label),el('span','fn',fileName(f.path))]);a.href=blobUrl(g.blob);a.target='_blank';
+      list.append(el('li','',a))});
+    filed.replaceChildren(block('filed',B.filed,[list],'ok'));
+  });
+}});
+
+// 6 Your company: the export as a file, start again, and the recorded real runs (links to the site's /runs, dated).
+screen('company',{heading:C.company.heading,draw(box){
+  const Y=C.company;const main=mainButton();main.set(Y.download,download);
+  const line=el('p','muted',Y.line);
+  // A new company: this one is forgotten in this tab (the server deletes it after 24 hours), and the start shown.
+  const again=btn(Y.again);again.addEventListener('click',()=>{clearTimeout(renewTimer);renewTimer=null;forget();show('start')});
+  const runs=el('ul','runs');
+  for(const r of C.recorded){const a=el('a','',[el('span','rt',r.title),el('span','rd',fill(Y.recorded,{date:r.date}))]);a.href=RUNS+'#'+r.key;a.rel='noopener';a.target='_blank';runs.append(el('li','',a))}
+  box.append(el('span','art',icon('download',28)),line,el('div','acts',[main.node,again]),el('details','',[el('summary','',Y.runs),runs]));
+  async function download(){
+    main.off(Y.downloading);
+    const g=await fetchFile('/v1/engine/export');
+    if(S.screen!=='company')return;
+    main.set(Y.download,download);
+    if(g.status!==200||!g.blob){line.replaceChildren(el('span','note',words(g.json||{},Y.failed)));return}
+    line.textContent=Y.line;
+    const a=el('a');a.href=blobUrl(g.blob);a.download=g.name||'purser-test-company.json';a.hidden=true;box.append(a);a.click();a.remove();
+  }
 }});
 
 // The visit is over: the company is gone, or the session could not be renewed.
@@ -676,6 +899,7 @@ async function boot(){
   const items=r.status===200&&Array.isArray(r.json.items)?r.json.items:[];
   const last=items[items.length-1];
   // Signing and paying return where they were: the proposal and the kept signature are in this tab's state.
+  if(S.screen==='company'){show('company');return}
   if(S.screen==='books'&&S.settled){show('books',{settled:S.settled});return}
   if(S.screen==='pay'&&S.proposal){show('pay');return}
   if(S.screen==='approve'&&last){show('approve',{invoice:last});return}
@@ -696,9 +920,10 @@ const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 
 /** The page: one document, its config in a meta tag (the origin and the passkey RP id, for the screens that sign). */
 export function tryPage(n: string, cfg: { origin: string; rpId: string }): string {
-  const copy = { band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, proposal: PROPOSAL_FIELDS, method: METHOD, pay: PAY, books: BOOKS, gone: GONE, ended: ENDED, live: LIVE };
-  const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"] };
-  const script = SCRIPT.replace("__COPY__", () => json(copy)).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__SIGN__", () => SIGN_JS)
+  const copy = { band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, proposal: PROPOSAL_FIELDS, method: METHOD, pay: PAY, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
+  const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
+    clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download };
+  const script = SCRIPT.replace("__COPY__", () => json(copy)).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__SIGN__", () => SIGN_JS).replace("__BOOKS__", () => BOOKS_JS)
     .replace("__ICONS__", () => json(icons)).replace("__RUNS__", () => json(RUNS_URL));
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">

@@ -6,7 +6,8 @@ import { Script } from "node:vm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { consoleCsp } from "../cloud/src/console.js";
 import * as COPY from "../cloud/src/tryCopy.js";
-import { SIGN_JS, tryPage } from "../cloud/src/tryPage.js";
+import { BOOKS_JS, RUNS_URL, SIGN_JS, tryPage } from "../cloud/src/tryPage.js";
+import { liveRuns } from "../src/redesign/runs.js";
 import { scriptBlocks, scriptBody, textOutsideTags, withoutBlocks } from "./support/scriptBlocks.js";
 import { ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
 
@@ -121,13 +122,14 @@ describe("the copy", () => {
   });
 
   it("counts every string of a screen in at least one of its states", () => {
-    const groups: Record<string, Record<string, string>> = { start: COPY.START, invoice: COPY.INVOICE, work: COPY.WORK, approve: COPY.APPROVE, pay: COPY.PAY, books: COPY.BOOKS, gone: COPY.GONE, ended: COPY.ENDED };
+    const groups: Record<string, Record<string, string>> = { start: COPY.START, invoice: COPY.INVOICE, work: COPY.WORK, approve: COPY.APPROVE, pay: COPY.PAY, books: COPY.BOOKS, company: COPY.COMPANY, gone: COPY.GONE, ended: COPY.ENDED };
     expect(Object.keys(COPY.VISIBLE).sort()).toEqual(Object.keys(groups).sort());
     for (const [screen, group] of Object.entries(groups)) {
       const seen = new Set(COPY.VISIBLE[screen as keyof typeof COPY.VISIBLE].flat());
       // A {method} line is counted with a method filled in; PAY's sandbox line shows only when the rail is on (one more line,
-      // 4 words), the executor's note sits in its fold, and the verdict is counted with its one-cent sentence.
-      for (const [k, v] of Object.entries(group)) if (!["sandbox", "executorNote", "vAmount", "vPayee", "vAccount", "vOther"].includes(k)) expect(seen.has(v) || [...seen].some((x) => v.includes("{method}") && x === v.replace("{method}", COPY.METHOD.other)), `${screen}.${k}`).toBe(true);
+      // 4 words), the executor's note sits in its fold, and the verdict is counted with its one-cent sentence. Screen 6's
+    // "recorded {date}" labels the runs inside the "Recorded real runs" fold.
+      for (const [k, v] of Object.entries(group)) if (!["sandbox", "executorNote", "vAmount", "vPayee", "vAccount", "vOther", "recorded"].includes(k)) expect(seen.has(v) || [...seen].some((x) => v.includes("{method}") && x === v.replace("{method}", COPY.METHOD.other)), `${screen}.${k}`).toBe(true);
     }
     expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["pay 7"]);
   });
@@ -170,6 +172,177 @@ describe("the copy", () => {
     expect(COPY.GONE.button).toBe("Start again");
     expect(COPY.INVOICE.ibanHint).toBe("Change the IBAN and see what Purser does");
     expect(script).toContain("mode.claude==='live'");
+  });
+
+  it("holds screens 5 and 6 to the words of lanes/page.md B3, and never says that Purser retries by itself", () => {
+    expect(COPY.BOOKS.heading).toBe("Paid, booked, filed.");
+    expect(COPY.BOOKS.paid).toBe("Paid on the simulated bank · test money");
+    expect(COPY.BOOKS.booked).toBe("Booked in Purser's ledger");
+    expect(COPY.BOOKS.filed).toBe("Filed in the archive");
+    expect(COPY.BOOKS.retry).toBe("Try the payment again");
+    expect(COPY.BOOKS.next).toBe("See your company");
+    expect(COPY.COMPANY.download).toBe("Download your company (SyncBatch)");
+    expect(COPY.COMPANY.line).toBe("Purser Cloud's own sync format: your test company's invoices with their documents, payments, ledger and audit log.");
+    expect(COPY.COMPANY.again).toBe("Start again");
+    expect(COPY.COMPANY.runs).toBe("Recorded real runs");
+    expect(COPY.COMPANY.recorded).toBe("recorded {date}");
+    for (const group of Object.values(COPY)) expect(JSON.stringify(group)).not.toMatch(/retr(y|ies) (by itself|automatically|later)|will (re)?try|tries again by itself/i);
+    // Money on screen 5 is on the simulated bank, with test money; never real money.
+    for (const v of [...Object.values(COPY.BOOKS), ...Object.values(COPY.COMPANY)]) expect(v).not.toMatch(/real money/i);
+  });
+});
+
+describe("the recorded runs on screen 6", () => {
+  it("links only to runs that exist on the site's /runs, each labelled with the date that file gives it", () => {
+    const rows = liveRuns();
+    expect(COPY.RECORDED.map((r) => r.key)).toEqual(["awx-1", "connected-1", "t0-1"]);
+    for (const r of COPY.RECORDED) {
+      const row = rows.find((x) => x.key === r.key);
+      expect(row, r.key).toBeDefined();
+      expect(r.date, r.key).toBe(row!.date);
+    }
+    // Every /runs# link the page can draw names one of these keys, on the site's own origin (package.json homepage).
+    const homepage = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { homepage: string }).homepage;
+    expect(RUNS_URL).toBe(`${homepage}/runs`);
+    const linked = [...html.matchAll(/runs#([\w-]+)/g)].map((m) => m[1]);
+    for (const k of linked) expect(rows.some((x) => x.key === k), `linked key ${k}`).toBe(true);
+    expect(script).toContain("RUNS+'#'+r.key");
+    expect(script).toContain(JSON.stringify(COPY.RECORDED).slice(1, 40));
+  });
+});
+
+describe("screens 5 and 6 in the page's script", () => {
+  it("downloads a file of the archive with the session, as a blob URL, and revokes it after", () => {
+    expect(script).toContain("'/v1/engine/vault/file?path='+encodeURIComponent(");
+    expect(script).toContain("URL.createObjectURL(");
+    expect(script).toContain("URL.revokeObjectURL(");
+    expect(script).toContain("'/v1/engine/export'");
+  });
+
+  it("tries the payment again only on the visitor's button, through the engine's retry route built on the proposal's id", () => {
+    expect([...script.matchAll(/'\/retry'/g)]).toHaveLength(2);
+    expect(script).toMatch(/api\('POST','\/v1\/engine\/proposals\/'\+encodeURIComponent\(pid\)\+'\/retry'\)/);
+  });
+
+  it("reads the books only from the read model, once the engine fed it", () => {
+    expect(script).toContain("s.fed===false");
+    for (const p of ["/v1/payments", "/v1/transactions", "/v1/ledger/entries", "/v1/engine/vault"]) expect(script).toContain(`'${p}'`);
+  });
+});
+
+// The page's pure helpers for screen 5 (BOOKS_JS): this invoice's payment, journal lines and files, run here as the page
+// runs them.
+interface Pay { id: string; invoice_no: string; status: string; amount: string; currency: string; updated_at: string; fee_actual?: string | null }
+interface BooksKit {
+  seg(s: string): string;
+  paymentOf(i: unknown, ps: unknown[], txs: unknown[]): Pay | null;
+  isPaid(p: unknown): boolean;
+  feeOf(p: unknown, tx: unknown): { currency: string; amount: string } | null;
+  txOf(p: unknown, txs: unknown[]): unknown;
+  entriesOf(i: unknown, p: unknown, txs: unknown[], es: unknown[]): { entry_id: number }[];
+  balance(es: unknown[]): { even: boolean; lines: number };
+  headOf(es: unknown[]): { entry_id: number; entry_hash: string } | null;
+  filesOf(i: unknown, files: unknown[], invoices: unknown[]): { original: { path: string } | null; receipts: { path: string }[] };
+  money(currency: string, amount: string): string;
+  fromCents(n: number): string;
+}
+const books = new Function(`${BOOKS_JS}\nreturn booksKit;`)() as BooksKit;
+const inv = (o: Record<string, unknown> = {}) => ({ id: "AP-0001", vendor: "Bergtex Textil GmbH", invoice_no: "BTX-1", currency: "EUR", total: "1850.00", status: "paid", doc_sha256: "a".repeat(64), ...o });
+const pay = (o: Partial<Pay> = {}): Pay => ({ id: "req-1", invoice_no: "BTX-1 · Bergtex Textil GmbH", status: "PAID", amount: "1850.00", currency: "EUR", updated_at: "2026-11-12T10:00:00Z", fee_actual: "EUR 0.50", ...o });
+const tx = (paymentId: string, apId: string | null, entryIds: number[] = []) => ({ id: `transfer:${paymentId}`, invoice: { ap_id: apId }, booking: { entry_ids: entryIds }, fee: { amount: "0.50", currency: "EUR" } });
+const line = (account: string, d: number, c: number) => ({ account, debit_cents: d, credit_cents: c, currency: "EUR" });
+const entry = (entry_id: number, source_key: string | null, lines: unknown[], reverses: number | null = null) => ({ entry_id, source_key, reverses, lines, entry_hash: `h${entry_id}`, posting_date: "2026-11-12", description: `entry ${entry_id}` });
+
+describe("this invoice's payment, lines and files, in the page's own script", () => {
+  it("is in the page as it is tested here", () => {
+    expect(script).toContain(BOOKS_JS.trim());
+  });
+
+  it("finds the payment by the transactions register's invoice id first, else a single PAID payment of the same amount", () => {
+    expect(books.paymentOf(inv(), [pay()], [tx("req-1", "AP-0001")])?.id).toBe("req-1");
+    // Without the register: the one PAID payment of this invoice's amount.
+    expect(books.paymentOf(inv(), [pay()], [])?.id).toBe("req-1");
+    expect(books.paymentOf(inv(), [pay({ amount: "1850.01" })], [])).toBeNull();
+    expect(books.paymentOf(inv(), [pay({ currency: "USD" })], [])).toBeNull();
+    expect(books.feeOf(pay(), null)).toEqual({ currency: "EUR", amount: "0.50" });
+    expect(books.feeOf(pay({ fee_actual: null }), tx("req-1", "AP-0001"))).toEqual({ currency: "EUR", amount: "0.50" });
+    expect(books.feeOf(pay({ fee_actual: null }), null)).toBeNull();
+  });
+
+  it("never shows a FAILED payment as paid", () => {
+    const failed = pay({ status: "FAILED", fee_actual: null });
+    // Linked by the register: it is this invoice's payment, and it is not paid.
+    const p = books.paymentOf(inv(), [failed], [tx("req-1", "AP-0001")]);
+    expect(p?.status).toBe("FAILED");
+    expect(books.isPaid(p)).toBe(false);
+    // Not linked: a FAILED payment of the same amount is no proof of anything.
+    expect(books.paymentOf(inv(), [failed], [])).toBeNull();
+    // A FAILED attempt and a PAID one for the invoice: the PAID one, though the FAILED one is newer.
+    const both = books.paymentOf(inv(), [pay({ id: "req-2", status: "FAILED", updated_at: "2026-11-12T11:00:00Z" }), pay()], [tx("req-1", "AP-0001"), tx("req-2", "AP-0001")]);
+    expect(both?.id).toBe("req-1");
+    expect(books.isPaid(both)).toBe(true);
+    expect(books.isPaid(pay({ status: "paid" }))).toBe(true);
+  });
+
+  it("tells two invoices that share a number and a supplier apart: their payments, their lines and their receipts", () => {
+    const a = inv(), b = inv({ id: "AP-0002", doc_sha256: "b".repeat(64) });
+    const ps = [pay(), pay({ id: "req-2", updated_at: "2026-11-12T11:00:00Z" })];
+    const txs = [tx("req-1", "AP-0001", [3]), tx("req-2", "AP-0002", [4])];
+    expect(books.paymentOf(a, ps, txs)?.id).toBe("req-1");
+    expect(books.paymentOf(b, ps, txs)?.id).toBe("req-2");
+    // Without the register two PAID payments of one amount are not told apart: nothing is shown as this one's.
+    expect(books.paymentOf(a, ps, [])).toBeNull();
+    const es = [entry(1, "ap-accrual|AP-0001", [line("4000", 185000, 0), line("1600", 0, 185000)]), entry(2, "ap-accrual|AP-0002@v2", [line("4000", 185000, 0), line("1600", 0, 185000)]),
+      entry(3, "pay:1", [line("1600", 185000, 0), line("1200", 0, 185000)]), entry(4, "pay:2", [line("1600", 185000, 0), line("1200", 0, 185000)])];
+    expect(books.entriesOf(a, books.paymentOf(a, ps, txs), txs, es).map((e) => e.entry_id)).toEqual([1, 3]);
+    expect(books.entriesOf(b, books.paymentOf(b, ps, txs), txs, es).map((e) => e.entry_id)).toEqual([2, 4]);
+    // The archive names the second receipt with the invoice's own id beside it.
+    const dir = "Test company/2026/2026-Q4/Betalingen/";
+    const files = [{ path: `${dir}2026-11-12 Bergtex Textil GmbH BTX-1.pdf`, kind: "receipt", sha256: "r1" }, { path: `${dir}2026-11-12 Bergtex Textil GmbH BTX-1 (AP-0002).pdf`, kind: "receipt", sha256: "r2" },
+      { path: "Test company/2026/2026-Q4/Inkoop/a.pdf", kind: "invoice", sha256: "a".repeat(64) }, { path: "Test company/2026/2026-Q4/Inkoop/b.pdf", kind: "invoice", sha256: "b".repeat(64) }];
+    const both = [a, b];
+    expect(books.filesOf(a, files, both)).toEqual({ original: files[2], receipts: [files[0]] });
+    expect(books.filesOf(b, files, both)).toEqual({ original: files[3], receipts: [files[1]] });
+    // Before the second receipt is filed, the first one's plain name is not taken for the second invoice's.
+    expect(books.filesOf(b, [files[0]!, files[2]!, files[3]!], both).receipts).toEqual([]);
+  });
+
+  it("finds a B.V. supplier's receipt by the archive's cleaning of the whole name, a correction beside it too", () => {
+    const i = inv({ vendor: "Hollandia Logistiek B.V.", invoice_no: "HL/2026:118" });
+    expect(books.seg("2026-11-12 Hollandia Logistiek B.V. HL/2026:118.pdf")).toBe("2026-11-12 Hollandia Logistiek B.V. HL 2026 118.pdf");
+    const dir = "Test company/2026/2026-Q4/Betalingen/";
+    const files = [
+      { path: `${dir}2026-11-12 Hollandia Logistiek B.V. HL 2026 118.pdf`, kind: "receipt", sha256: "r1" },
+      { path: `${dir}2026-11-13 Hollandia Logistiek B.V. HL 2026 118 (correctie).pdf`, kind: "receipt", sha256: "r2" },
+      // Cleaned piece by piece (the supplier's trailing dot dropped): not the archive's name, so not this receipt.
+      { path: `${dir}2026-11-12 Hollandia Logistiek B.V HL 2026 118.pdf`, kind: "receipt", sha256: "r3" },
+      { path: `${dir}2026-11-12 Hollandia Logistiek B.V. HL 2026 118 (AP-0009).pdf`, kind: "receipt", sha256: "r4" },
+      { path: `${dir}not-a-date Hollandia Logistiek B.V. HL 2026 118.pdf`, kind: "receipt", sha256: "r5" },
+      { path: "Test company/2026/2026-Q4/Inkoop/x.pdf", kind: "invoice", sha256: "f".repeat(64) },
+    ];
+    expect(books.filesOf(i, files, [i]).receipts.map((f) => f.path)).toEqual([files[0]!.path, files[1]!.path]);
+    expect(books.filesOf(i, files, [i]).original).toBeNull();
+  });
+
+  it("takes this invoice's lines: its accrual in any version, the payment's entries and what reverses them; debits equal credits from the lines", () => {
+    const i = inv();
+    const p = pay();
+    const txs = [tx("req-1", "AP-0001", [5])];
+    const es = [entry(1, "ap-accrual|AP-0001", [line("4000", 155462, 0), line("1520", 29538, 0), line("1600", 0, 185000)]),
+      entry(2, "ap-accrual|AP-00010", [line("4000", 100, 0), line("1600", 0, 100)]), entry(3, "ap-accrual|AP-0001@v2", [line("4000", 100, 0), line("1600", 0, 100)]),
+      entry(4, null, [line("4000", 0, 100), line("1600", 100, 0)], 3), entry(5, "pay", [line("1600", 185000, 0), line("1200", 0, 185000)]), entry(6, "other", [line("4000", 1, 0), line("1600", 0, 1)])];
+    const mine = books.entriesOf(i, p, txs, es);
+    expect(mine.map((e) => e.entry_id)).toEqual([1, 3, 4, 5]);
+    expect(books.balance(mine)).toEqual({ even: true, lines: 9 });
+    expect(books.balance([entry(9, null, [line("4000", 100, 0), line("1600", 0, 99)])])).toEqual({ even: false, lines: 2 });
+    expect(books.balance([])).toEqual({ even: false, lines: 0 });
+    // The ledger chain's head: the newest entry of the whole ledger, whatever order the pages came in.
+    expect(books.headOf([es[5], es[0], es[4]])).toEqual(es[5]);
+    expect(books.headOf([])).toBeNull();
+    expect(books.money("EUR", "1850.00")).toBe("EUR 1,850.00");
+    expect(books.money("EUR", "1234567.5")).toBe("EUR 1,234,567.50");
+    expect(books.fromCents(185000)).toBe("1850.00");
+    expect(books.fromCents(5)).toBe("0.05");
   });
 });
 

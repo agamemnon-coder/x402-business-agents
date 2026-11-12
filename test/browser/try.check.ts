@@ -11,7 +11,7 @@
 //    session is renewed before the next poll.
 // npx tsx test/browser/try.check.ts [screenshot dir]
 import { createHash, randomUUID } from "node:crypto";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createServer, type ServerResponse } from "node:http";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
@@ -20,11 +20,15 @@ import type { BrowserContext, Page, Route } from "playwright";
 import { handle, type CloudEnv } from "../../cloud/src/app.js";
 import { nodeEngines } from "../../cloud/src/engine/node.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
-import { APPROVE, BAND, BOOKS, ENDED, GONE, INVOICE, PAY, START, STEPS, WORK } from "../../cloud/src/tryCopy.js";
+import { SyncBatch } from "../../cloud/src/sync.js";
+import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INVOICE, PAY, START, STEPS, WORK } from "../../cloud/src/tryCopy.js";
+import { RUNS_URL } from "../../cloud/src/tryPage.js";
+import { batchesFor } from "../../src/cloudsync/client.js";
 import type { DB } from "../../src/db/open.js";
 import { EngineHost } from "../../src/engine/host.js";
 import { termsHash, type Terms } from "../../src/lib/terms.js";
 import { softPasskey } from "../../src/metal/softPasskey.js";
+import { liveRuns } from "../../src/redesign/runs.js";
 import { EN } from "../fakes/apInvoices.js";
 import { pdfOf } from "../fakes/pdf.js";
 
@@ -97,11 +101,14 @@ EngineHost.prototype.proposal = function (this: EngineHost, id: string) {
   ledgers.set(id, (this as unknown as { deps: { db: DB } }).deps.db);
   return proposalOf.call(this, id);
 };
+/** Each visitor's engine database, by session, once one of its proposals was read (for the export's stand-in). */
+const dbOf = new Map<string, DB>();
 /** The proposal's exact terms as the engine holds them, and the count of the stand-in bank's transfers, read from its ledger. */
 async function ledgerOf(session: string, id: string) {
   const p = await cloud("GET", `/v1/engine/proposals/${encodeURIComponent(id)}`, session);
   if (p.status !== 200) return null;
   const db = ledgers.get(id)!;
+  dbOf.set(session, db);
   const row = db.prepare("SELECT terms_json, terms_sha256, status FROM proposals WHERE proposal_id = ?").get(id) as { terms_json: string; terms_sha256: string; status: string };
   const transfers = () => (db.prepare("SELECT COUNT(*) AS n FROM transfers").get() as { n: number }).n;
   return { terms: JSON.parse(row.terms_json) as Terms, terms_sha256: row.terms_sha256, status: row.status, transfers };
@@ -178,6 +185,16 @@ const server = createServer(async (req, res) => {
   if (req.method === "POST" && sample) { const r = await upload(session, clean, `${sample[1]}.pdf`); return send(res, r.status, r.json); }
   if (req.method === "POST" && url.pathname === "/v1/engine/compose") { const b = json(); const r = await upload(session, await composed(b), `${b.invoice_no}.pdf`); return send(res, r.status, r.json); }
   if (await laneC(req.method ?? "GET", url.pathname, session, body ? JSON.parse(body.toString()) as Record<string, unknown> : {}, res)) return;
+  if (req.method === "GET" && url.pathname === "/v1/engine/export") {
+    // Lane C's export, stood in for here: the company in the product's sync format (src/cloudsync/client.ts batchesFor,
+    // what the engine feeds the read model with), every batch in one, as a JSON file.
+    const db = dbOf.get(session);
+    if (!db) return send(res, 404, { error: "no company" });
+    const all: Record<string, unknown[]> = {};
+    for (const b of batchesFor(db, { audit: { seq: 0, hash: null }, ledger: { entry_id: 0, hash: null }, documents: [] })) for (const [k, v] of Object.entries(b)) if (Array.isArray(v)) all[k] = [...(all[k] ?? []), ...v];
+    res.writeHead(200, { "content-type": "application/json", "content-disposition": 'attachment; filename="purser-test-company.json"' });
+    return res.end(JSON.stringify(all));
+  }
   // Everything else is the cloud's own answer.
   const r = await handle(new Request(`${ORIGIN}${req.url}`, { method: req.method, headers: req.headers as Record<string, string>, ...(body ? { body } : {}) }), env);
   res.writeHead(r.status, Object.fromEntries(r.headers));
@@ -207,6 +224,8 @@ async function passkeyContext(width: number, scheme: "light" | "dark"): Promise<
 for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   const ctx = await passkeyContext(width, scheme);
   const page = await ctx.newPage();
+  // The blobs the page makes, kept here so the check can read a file's first bytes (no fetch: the page's policy allows none).
+  await page.addInitScript({ content: "window.__blobs=new Map();const mk=URL.createObjectURL.bind(URL);URL.createObjectURL=(b)=>{const u=mk(b);window.__blobs.set(u,b);return u};" });
   const cdp = await ctx.newCDPSession(page);
   await cdp.send("WebAuthn.enable");
   await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
@@ -369,10 +388,64 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await page.waitForSelector(`h1:text-is("${BOOKS.heading}")`, { timeout: 20_000 });
   const L1 = (await ledgerOf(visitor.session, pid))!;
   ok(L1.transfers() === transfers0 + 1 && L1.status === "EXECUTED", `${tag}: paid: one transfer on the stand-in bank, by the engine's own approve (${L1.status})`);
-  ok((await page.textContent("#main"))!.includes(BOOKS.sub) && await page.locator(".art.ok svg").count() === 1, `${tag}: paid: the placeholder screen 5 says paid on the simulated bank, with its check`);
-  await screenChecks(page, `${tag} screen 5 (placeholder)`, width, 0);
-  // The screenshot waits out the paid check's half-second entry animation (CSS only; the page drew everything already).
-  if (width === 390) { await page.waitForTimeout(600); await shot2("4-paid"); }
+  // Screen 5: each block filled, and compared with what the API returns for this invoice.
+  await page.waitForSelector(".blk.paid", { timeout: 20_000 });
+  await page.waitForSelector(".blk.booked", { timeout: 20_000 });
+  await page.waitForSelector(".blk.filed a.file", { timeout: 20_000 });
+  const every = async (path: string) => { let items: Record<string, unknown>[] = [], cursor: string | null = null; for (let n = 0; n < 50; n++) { const r = await cloud("GET", `${path}${path.includes("?") ? "&" : "?"}limit=200${cursor ? `&cursor=${cursor}` : ""}`, visitor.session); items = items.concat(r.json.items as Record<string, unknown>[]); cursor = (r.json.next_cursor as string | null) ?? null; if (!cursor) break; } return items; };
+  const invId = ((await keptState(page)).proposal as { invoice: string }).invoice;
+  const theInv = ((await cloud("GET", "/v1/engine/invoices", visitor.session)).json.items as Record<string, string>[]).find((i) => i.id === invId)!;
+  const txs = await every("/v1/transactions");
+  const ourTx = txs.find((t) => (t.invoice as { ap_id?: string } | null)?.ap_id === invId)!;
+  const ourPay = (await every("/v1/payments")).find((p) => `transfer:${p.id as string}` === ourTx.id)!;
+  ok(!!ourTx && !!ourPay && (await page.textContent(".blk.paid .pill")) === ourPay.status && ourPay.status === "PAID", `${tag}: paid: the status is the payment's own (${ourPay?.status as string})`);
+  ok((await page.textContent(".blk.paid .amount"))!.replace(/[^\d.]/g, "") === String(ourPay.amount), `${tag}: paid: the amount is the payment's (${await page.textContent(".blk.paid .amount")})`);
+  ok((await page.textContent(".blk.paid .bh"))!.includes(BOOKS.paid), `${tag}: paid: on the simulated bank, test money`);
+  const entries = await every("/v1/ledger/entries") as { entry_id: number; source_key: string | null; entry_hash: string; lines: { account: string; debit_cents: number; credit_cents: number }[] }[];
+  const ids = new Set((ourTx.booking as { entry_ids: number[] }).entry_ids);
+  const mine = entries.filter((e) => String(e.source_key ?? "").split("@")[0] === `ap-accrual|${invId}` || ids.has(e.entry_id));
+  const apiLines = mine.flatMap((e) => e.lines);
+  const shownAccounts = await page.locator(".blk.booked tbody td.mono").allTextContents();
+  ok(apiLines.length > 0 && shownAccounts.join() === apiLines.map((l) => l.account).join(), `${tag}: booked: the invoice's journal lines, as the ledger holds them (${shownAccounts.join(" ")})`);
+  const dr = apiLines.reduce((n, l) => n + l.debit_cents, 0), cr = apiLines.reduce((n, l) => n + l.credit_cents, 0);
+  ok(dr === cr && (await page.textContent(".blk.booked .bal")) === BOOKS.even, `${tag}: booked: debits equal credits (${dr} = ${cr})`);
+  const head = entries.reduce((h, e) => (e.entry_id > h.entry_id ? e : h));
+  ok((await page.locator(".blk.booked .hash").textContent())!.includes(head.entry_hash), `${tag}: booked: the chain's head is the newest entry's own hash`);
+  const vault = (await cloud("GET", "/v1/engine/vault", visitor.session)).json.files as { path: string; kind: string; sha256: string }[];
+  const names = await page.locator(".blk.filed a.file .fn").allTextContents();
+  const original = vault.find((f) => f.kind === "invoice" && f.sha256 === theInv.doc_sha256)!;
+  const receipt = vault.find((f) => f.kind === "receipt" && f.path.includes(theInv.invoice_no!))!;
+  ok(names.length === 2 && names[0] === original.path.split("/").pop() && names[1] === receipt.path.split("/").pop(), `${tag}: filed: the original and the receipt, as the archive lists them (${names.join(" | ")})`);
+  await screenChecks(page, `${tag} screen 5`, width);
+  const popup = ctx.waitForEvent("page");
+  await page.locator(".blk.filed a.file").nth(1).click();
+  const pop = await popup;
+  await pop.waitForURL(/^blob:/).catch(() => undefined);
+  const href = await page.locator(".blk.filed a.file").nth(1).getAttribute("href");
+  const head4 = await page.evaluate((u) => (window as unknown as { __blobs: Map<string, Blob> }).__blobs.get(u!)!.slice(0, 4).text(), href);
+  ok(href!.startsWith("blob:") && head4 === "%PDF", `${tag}: filed: the receipt opens in a new tab (${pop.url()}) from a blob, and it is a PDF (${head4})`);
+  await pop.close();
+  if (shots) { await page.waitForTimeout(600); await page.screenshot({ path: join(shots, `b3-5-books-${width}-${scheme}.png`), fullPage: true }); }
+
+  // Screen 6: the export as a file, the recorded runs, start again.
+  await page.click(`.btn.primary:has-text("${BOOKS.next}")`);
+  await page.waitForSelector(`h1:text-is("${COMPANY.heading}")`);
+  await screenChecks(page, `${tag} screen 6`, width);
+  const dl = page.waitForEvent("download");
+  await page.click(`.btn.primary:has-text("${COMPANY.download}")`);
+  const file = await (await dl).path();
+  const batch = JSON.parse(readFileSync(file, "utf8")) as { invoices: { id: string }[]; ledger_entries: unknown[] };
+  ok(SyncBatch.safeParse(batch).success && batch.invoices.some((i) => i.id === invId) && batch.ledger_entries.length === entries.length, `${tag}: the export downloads the company as JSON in the sync format`);
+  await page.click(`summary:has-text("${COMPANY.runs}")`);
+  const runs = liveRuns();
+  const links = await page.locator("ul.runs a").evaluateAll((as) => as.map((a) => [(a as HTMLAnchorElement).href, a.textContent ?? ""]));
+  ok(links.length === 3 && links.every(([h, t]) => { const k = h!.slice(`${RUNS_URL}#`.length); const r = runs.find((x) => x.key === k); return h!.startsWith(`${RUNS_URL}#`) && !!r && t!.includes(`recorded ${r.date}`); }), `${tag}: the recorded runs link to keys on /runs, with their dates`);
+  await page.click(`summary:has-text("${COMPANY.runs}")`);
+  await screenChecks(page, `${tag} screen 6 (after the download)`, width, 1, false);
+  if (shots) await page.screenshot({ path: join(shots, `b3-6-company-${width}-${scheme}.png`), fullPage: true });
+  await page.click(`button:has-text("${COMPANY.again}")`);
+  await page.waitForSelector(`h1:text-is("${START.heading}")`);
+  ok(!(await keptState(page)).session, `${tag}: start again shows screen 0 and forgets the company in this tab`);
   ok(errors.length === 0, `${tag}: no console or CSP errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
   await ctx.close();
 }
