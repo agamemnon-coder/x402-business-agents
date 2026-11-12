@@ -8,9 +8,12 @@
 //                   (the sponsor's key, the payee's, the Sourcing agent's mandate key), with no transaction of its own
 //   propose         bind a Sourcing mandate on the account (cap 0.05, budget 0.50, Stockline only): an owners_execute
 //                   both passkeys sign on the phone
-//   propose-revoke  revoke the mandate this world bound: the same kind of proposal
+//   propose-replace replace the mandate this world has bound by one with a higher cap (and a budget): the same kind of
+//                   proposal; what was spent under the old mandate carries into the new one
+//   propose-revoke  revoke the mandate this world has bound: the same kind of proposal
 //   pay             the Sourcing agent's mandate key pays 0.05 inside the mandate, then tries one cent over the cap,
-//                   which Metal must refuse and record on chain
+//                   which Metal must refuse and record on chain. Once the owners raised the cap over an amount Metal
+//                   refused, pay makes that one payment, and tries nothing over the new cap
 //   status          the mandate as the chain has it (one read)
 //   record          the run's record, written from the audit rows and the call log; no call (src/metal/ownersRecord.ts)
 //
@@ -19,14 +22,14 @@
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
-import { bindCall, readMandateState, revokeCall } from "@metalntwx/metal-pay/mandates";
+import { bindCall, readMandateState, replaceCall, revokeCall } from "@metalntwx/metal-pay/mandates";
 import { encodeFunctionData, type Address, type Hex, type LocalAccount } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { audit } from "../audit/log.js";
 import { passkeyOwnersOn } from "../config/agents.js";
 import { SUPPLIERS } from "../config/suppliers.js";
 import type { DB } from "../db/open.js";
-import { baseUnitsToCents, centsToBaseUnits, fromCents } from "../lib/money.js";
+import { baseUnitsToCents, centsToBaseUnits, fromCents, toCents } from "../lib/money.js";
 import { createProposal, nextProposalId, type ProposalRow } from "../policy/approvals.js";
 import { relayToken } from "../relay/config.js";
 import { keyPath, keysDir, type CliResult } from "./agentCli.js";
@@ -128,14 +131,72 @@ interface Filed { id: string; status: string; terms: OwnersExecuteTerms }
 const filed = (db: DB): Filed[] => (db.prepare("SELECT proposal_id, status, terms_json FROM proposals WHERE kind = 'owners_execute' ORDER BY created_at, proposal_id").all() as { proposal_id: string; status: string; terms_json: string }[])
   .map((r) => ({ id: r.proposal_id, status: r.status, terms: JSON.parse(r.terms_json) as OwnersExecuteTerms }));
 
-/** The mandate this world bound on the passkey account and has not revoked: its bind proposal. Throws when there is none. */
+const same = (a: string | undefined, b: string | undefined) => a !== undefined && b !== undefined && a.toLowerCase() === b.toLowerCase();
+/** Whether a proposal's call ends this mandate: a revoke of it, or a replace that names it as the one it replaces. */
+const ends = (p: Filed, mandate: string) => (p.terms.action.what === "revoke" && same(p.terms.action.mandate, mandate)) || (p.terms.action.what === "replace" && same(p.terms.action.replaces, mandate));
+
+/**
+ * The mandate this world has bound on the passkey account now: the latest bind or replace the account ran that no
+ * revoke or replace it ran has ended. A replace binds the new mandate and revokes the one it names in the same call,
+ * so after one the new mandate is the bound one. Throws when there is none.
+ */
 export function boundMandate(db: DB): Filed {
+  const ran = filed(db).filter((p) => p.status === "EXECUTED");
+  const bound = ran.filter((p) => p.terms.action.what === "bind" || p.terms.action.what === "replace");
+  const live = bound.filter((p) => !ran.some((x) => ends(x, p.terms.action.mandate))).at(-1);
+  if (live) return live;
+  const last = bound.at(-1);
+  if (!last) throw new Error("this world has bound no mandate on the passkey account yet (npm run owners -- propose, then both passkeys sign)");
+  const by = ran.find((x) => ends(x, last.terms.action.mandate))!;
+  throw new Error(`the mandate ${last.id} bound was ${by.terms.action.what === "revoke" ? "revoked" : "replaced"} by ${by.id}`);
+}
+
+/** A proposal still on its way that would end this mandate (a revoke, or a replace of it): one change at a time. */
+function waitingChange(d: OwnersWorld, mandate: string): Filed | undefined {
+  return filed(d.db).find((p) => ends(p, mandate) && ["PENDING_APPROVAL", "APPROVED", "EXECUTING"].includes(p.status) && Date.parse(p.terms.expires_at) > d.now().getTime());
+}
+const alreadyAsks = (p: Filed) => new Error(`${p.id} already asks to ${p.terms.action.what} this mandate (${p.status.toLowerCase().replace("_", " ")}); sign that one`);
+
+/**
+ * What this ledger says was paid under a mandate and the ones it replaced, in cents and as a count. A replace carries
+ * its predecessor's spend and payment count into the new mandate (Metal's `replace`), so both add up along the line.
+ */
+function paidUnder(db: DB, bound: Filed): { cents: number; payments: number } {
   const all = filed(db);
-  const bind = all.filter((p) => p.status === "EXECUTED" && p.terms.action.what === "bind").at(-1);
-  if (!bind) throw new Error("this world has bound no mandate on the passkey account yet (npm run owners -- propose, then both passkeys sign)");
-  const revoked = all.find((p) => p.status === "EXECUTED" && p.terms.action.what === "revoke" && p.terms.action.mandate.toLowerCase() === bind.terms.action.mandate.toLowerCase());
-  if (revoked) throw new Error(`the mandate ${bind.id} bound was revoked by ${revoked.id}`);
-  return bind;
+  const line = new Set<string>();
+  for (let p: Filed | undefined = bound; p && !line.has(p.terms.action.mandate.toLowerCase());) {
+    line.add(p.terms.action.mandate.toLowerCase());
+    const before: string | undefined = p.terms.action.what === "replace" ? p.terms.action.replaces : undefined;
+    p = before === undefined ? undefined : all.find((x) => x.status === "EXECUTED" && x.terms.action.what !== "revoke" && same(x.terms.action.mandate, before));
+    if (before !== undefined) line.add(before.toLowerCase());
+  }
+  const paid = (db.prepare("SELECT payload_json FROM audit_log WHERE event = 'owners.paid' ORDER BY seq").all() as { payload_json: string }[])
+    .map((r) => JSON.parse(r.payload_json) as { mandate?: string; amount?: string }).filter((x) => x.mandate !== undefined && line.has(x.mandate.toLowerCase()));
+  return { cents: paid.reduce((n, x) => n + toCents(String(x.amount)), 0), payments: paid.length };
+}
+
+// ---- the limits a proposal may ask for --------------------------------------------------------------------------------
+
+export interface Limits { capCents: number; budgetCents: number }
+
+/** The cap and budget as the command takes them ("0.10 0.50"); null when neither is given. Anything else is refused. */
+export function limitsOf(cap: string | undefined, budget: string | undefined): Limits | null {
+  if (cap === undefined && budget === undefined) return null;
+  try {
+    const limits = { capCents: toCents(cap ?? ""), budgetCents: toCents(budget ?? "") };
+    if (limits.capCents > 0) return limits;
+  } catch { /* said below */ }
+  throw new Error("the cap and the budget are amounts like 0.10 0.50: test USD with two decimals, the cap above zero");
+}
+
+/**
+ * Refuses limits the chain or this small account would not take, before any call: whole cents, a budget that holds at
+ * least one payment, and no more than the account was funded with (it stays a small demo account).
+ */
+function checkLimits(l: Limits): void {
+  if (!Number.isSafeInteger(l.capCents) || !Number.isSafeInteger(l.budgetCents) || l.capCents <= 0) throw new Error("refused: the cap and the budget are whole cents, the cap above zero; nothing was called");
+  if (l.budgetCents < l.capCents) throw new Error(`refused: the budget ${fromCents(l.budgetCents)} is below the cap ${fromCents(l.capCents)}; nothing was called`);
+  if (l.budgetCents > ACCOUNT_CENTS) throw new Error(`refused: the budget ${fromCents(l.budgetCents)} is above the ${fromCents(ACCOUNT_CENTS)} this account was funded with (it stays a small demo account); nothing was called`);
 }
 
 // ---- setup ----------------------------------------------------------------------------------------------------------
@@ -298,33 +359,84 @@ function file(d: OwnersWorld, id: string, account: Address, signers: Hex[], call
   return { proposal: createProposal(d.db, { terms, createdBy: "treasury" }, d.now()), terms };
 }
 
-export async function propose(d: OwnersWorld): Promise<{ proposal: ProposalRow; terms: OwnersExecuteTerms }> {
+/** The file `metal-agent mandate credential create` keeps the issuer's public half in, beside the key that issues (0.3.3: `<key>.issuer.public.json`). */
+const issuerPublicFile = () => keyPath(SPONSOR_KEY.replace(/\.json$/, ".issuer.public.json"));
+
+/**
+ * The credential of proposal `id`, made by the pinned CLI (offline: no request) unless an earlier run left it, and
+ * ingested for binding on the account. A credential already there was made for this same proposal number by a run
+ * that did not get to file it: the same one is used (the terms check refuses it if it is not for these limits and payee).
+ */
+async function credentialFor(d: OwnersWorld, id: string, account: Address, l: Limits, payee: Address, agentKeyFile: string) {
+  const cred = keyPath(`owners/${id}.credential.json`);
+  if (!existsSync(cred)) {
+    mkdirSync(dirname(cred), { recursive: true });
+    const c = d.cliOffline([
+      ...credentialCreateArgs({ principal: account, capCents: l.capCents, budgetCents: l.budgetCents, payees: [{ address: payee, name: MANDATE.payee.name }], expiresInSeconds: MANDATE.expiresInSeconds, description: `kit11 ${id} sourcing on the passkey account` }),
+      "--key", keyPath(SPONSOR_KEY), "--out", cred, "--mandate-key-file", agentKeyFile,
+    ]);
+    if (c.fields.get("issuer-public-file")?.[0] !== issuerPublicFile()) throw new Error("the credential's issuer file is not where this flow expects metal-agent to keep it");
+  }
+  return ingestIssued(cred, issuerPublicFile(), account);
+}
+
+export async function propose(d: OwnersWorld, limits: Limits = MANDATE): Promise<{ proposal: ProposalRow; terms: OwnersExecuteTerms }> {
   d.chain.step("propose");
+  checkLimits(limits);
   const made = accountOf(d.db);
   const signers = made.signers ?? ownersOf(d.db).map((x) => x.signer);
   const keys = await worldKeys();
   const id = nextProposalId(d.db);
   // The one read first: a run the call budget stops here has made nothing.
   const nonce = await laneNonce(d, made.account);
-  const cred = keyPath(`owners/${id}.credential.json`);
-  // The issuer's public half, where metal-agent 0.3.3 keeps it beside the key that issues (`<key>.issuer.public.json`).
-  const issuerFile = keyPath(SPONSOR_KEY.replace(/\.json$/, ".issuer.public.json"));
-  // A credential already there was made by an earlier run for this same proposal number, which it did not get to file:
-  // the same one is used (the checks below refuse it if it is not for this account, these limits and this payee).
-  if (!existsSync(cred)) {
-    mkdirSync(dirname(cred), { recursive: true });
-    const c = d.cliOffline([
-      ...credentialCreateArgs({ principal: made.account, capCents: MANDATE.capCents, budgetCents: MANDATE.budgetCents, payees: [{ address: keys.payee, name: MANDATE.payee.name }], expiresInSeconds: MANDATE.expiresInSeconds, description: `kit11 ${id} sourcing on the passkey account` }),
-      "--key", keyPath(SPONSOR_KEY), "--out", cred, "--mandate-key-file", keys.agent.file,
-    ]);
-    if (c.fields.get("issuer-public-file")?.[0] !== issuerFile) throw new Error("the credential's issuer file is not where this flow expects metal-agent to keep it");
-  }
-  const ingested = await ingestIssued(cred, issuerFile, made.account);
+  const ingested = await credentialFor(d, id, made.account, limits, keys.payee, keys.agent.file);
   const call = bindCall(ingested);
   const out = file(d, id, made.account, signers, call, {
-    what: "bind", agent: MANDATE.agent, cap: fromCents(MANDATE.capCents), budget: fromCents(MANDATE.budgetCents), payee: keys.payee, payee_name: MANDATE.payee.name, mandate: ingested.reference,
+    what: "bind", agent: MANDATE.agent, cap: fromCents(limits.capCents), budget: fromCents(limits.budgetCents), payee: keys.payee, payee_name: MANDATE.payee.name, mandate: ingested.reference,
   }, nonce);
-  d.say(`PROPOSED         ${id}: bind the sourcing mandate on ${made.account}, cap ${fromCents(MANDATE.capCents)}, budget ${fromCents(MANDATE.budgetCents)}, ${MANDATE.payee.name} only`);
+  d.say(`PROPOSED         ${id}: bind the sourcing mandate on ${made.account}, cap ${fromCents(limits.capCents)}, budget ${fromCents(limits.budgetCents)}, ${MANDATE.payee.name} only`);
+  d.say(whereToSign(id, out.terms));
+  return out;
+}
+
+/**
+ * Proposes the replace of the mandate this world has bound by one with a higher cap: Metal's `replace` on the account,
+ * which binds the new mandate and revokes the old one in the same call, and carries what was spent (and how many
+ * payments were made) under the old one into the new one. The new mandate has the same payee and the same agent key,
+ * under a new credential (owners/<id>.credential.json).
+ *
+ * What the chain would refuse is refused here first, where code can know it, before any call: a budget not above what
+ * was already paid, or a payment count already used up (the account's SuccessorExhausted). The new mandate's reference
+ * is keccak256(account ‖ agent key ‖ the credential's hash), and the account refuses a reference whose first 12 bytes
+ * an earlier mandate has (PrefixTaken). The key and the account stay the same here, so the reference differs because
+ * the credential does: it carries this proposal's number, its own limits and its own issue time. Were the CLI ever to
+ * hand back the very credential the old mandate has, the references would be equal, and that is refused below.
+ */
+export async function proposeReplace(d: OwnersWorld, limits: Limits): Promise<{ proposal: ProposalRow; terms: OwnersExecuteTerms }> {
+  d.chain.step("propose-replace");
+  const bound = boundMandate(d.db);
+  const a = bound.terms.action;
+  checkLimits(limits);
+  if (limits.capCents <= toCents(a.cap)) throw new Error(`refused: the new cap ${fromCents(limits.capCents)} is not above the ${a.cap} the mandate has now (to lower a cap, revoke and bind anew); nothing was called`);
+  const paid = paidUnder(d.db, bound);
+  if (limits.budgetCents <= paid.cents) throw new Error(`refused: the budget ${fromCents(limits.budgetCents)} is not above the ${fromCents(paid.cents)} already paid under this mandate, which the new one carries (the chain would refuse it); nothing was called`);
+  const waiting = waitingChange(d, a.mandate);
+  if (waiting) throw alreadyAsks(waiting);
+  const made = accountOf(d.db);
+  if (!same(made.account, bound.terms.account)) throw new Error(`${bound.id} bound its mandate on ${bound.terms.account}, not on this world's passkey account ${made.account}`);
+  const keys = await worldKeys();
+  const id = nextProposalId(d.db);
+  // The one read first: a run the call budget stops here has made nothing.
+  const nonce = await laneNonce(d, made.account);
+  const ingested = await credentialFor(d, id, made.account, limits, a.payee as Address, keys.agent.file);
+  if (same(ingested.reference, a.mandate)) throw new Error(`the new credential is the mandate ${bound.id} bound already; nothing was filed`);
+  if (ingested.constraints.maxOccurrences <= BigInt(paid.payments)) throw new Error(`the new credential allows ${ingested.constraints.maxOccurrences} payment(s) and ${paid.payments} were made already, which it carries (the chain would refuse it); nothing was filed`);
+  const call = replaceCall(a.mandate, ingested);
+  const out = file(d, id, made.account, bound.terms.owners, call, {
+    what: "replace", agent: a.agent, cap: fromCents(limits.capCents), budget: fromCents(limits.budgetCents), payee: a.payee, payee_name: a.payee_name, mandate: ingested.reference,
+    replaces: a.mandate, was_cap: a.cap, was_budget: a.budget,
+  }, nonce);
+  d.say(`PROPOSED         ${id}: replace the sourcing mandate ${a.mandate.slice(0, 18)}… that ${bound.id} bound on ${made.account}: cap ${a.cap} → ${fromCents(limits.capCents)}, budget ${a.budget} → ${fromCents(limits.budgetCents)}, ${a.payee_name} only; what was spent under it carries over`);
   d.say(whereToSign(id, out.terms));
   return out;
 }
@@ -332,15 +444,16 @@ export async function propose(d: OwnersWorld): Promise<{ proposal: ProposalRow; 
 export async function proposeRevoke(d: OwnersWorld): Promise<{ proposal: ProposalRow; terms: OwnersExecuteTerms }> {
   d.chain.step("propose-revoke");
   const bind = boundMandate(d.db);
-  const mandate = bind.terms.action.mandate;
-  const waiting = filed(d.db).find((p) => p.terms.action.what === "revoke" && p.terms.action.mandate.toLowerCase() === mandate.toLowerCase() && ["PENDING_APPROVAL", "APPROVED", "EXECUTING"].includes(p.status) && Date.parse(p.terms.expires_at) > d.now().getTime());
-  if (waiting) throw new Error(`${waiting.id} already asks to revoke this mandate (${waiting.status.toLowerCase().replace("_", " ")}); sign that one`);
+  const a = bind.terms.action;
+  const mandate = a.mandate;
+  const waiting = waitingChange(d, mandate);
+  if (waiting) throw alreadyAsks(waiting);
   const made = accountOf(d.db);
   if (made.account.toLowerCase() !== bind.terms.account.toLowerCase()) throw new Error(`${bind.id} bound its mandate on ${bind.terms.account}, not on this world's passkey account ${made.account}`);
   const id = nextProposalId(d.db);
   const call = revokeCall(made.account, mandate);
-  // The same words as the bind, so the phone shows which mandate goes: its agent, its limits and its payee.
-  const out = file(d, id, made.account, bind.terms.owners, call, { ...bind.terms.action, what: "revoke" }, await laneNonce(d, made.account));
+  // The same words as the bind (or the replace) that bound it, so the phone shows which mandate goes: its agent, its limits and its payee.
+  const out = file(d, id, made.account, bind.terms.owners, call, { what: "revoke", agent: a.agent, cap: a.cap, budget: a.budget, payee: a.payee, payee_name: a.payee_name, mandate }, await laneNonce(d, made.account));
   d.say(`PROPOSED         ${id}: revoke the sourcing mandate ${mandate.slice(0, 18)}… that ${bind.id} bound on ${made.account}`);
   d.say(whereToSign(id, out.terms));
   return out;
@@ -366,7 +479,38 @@ function keptOutcome(reference: Hex, paymentId: string): { outcome: string; tx: 
   return null;
 }
 
-export interface PayResult { inside: { outcome: string; tx: string | null; reason: string | null }; over: { refused: boolean; tx: string | null; reason: string } }
+/** The payment Metal refused before the owners raised the cap, made now: which amount, how it ended, and the refusal it answers. */
+export interface PaidAfterRefusal { amount: string; outcome: string; tx: string | null; refused: { tx: string | null; proposal_id: string; payment_id: string } }
+/** What `pay` did: the payment inside the mandate and the attempt over its cap, or (alone) the earlier refused amount paid under the raised cap. */
+export interface PayResult { inside: { outcome: string; tx: string | null; reason: string | null } | null; over: { refused: boolean; tx: string | null; reason: string } | null; afterRefusal: PaidAfterRefusal | null }
+
+/** Who decided the payment of an amount Metal refused before: the person's command, by code's fixed rule. */
+const AFTER_REFUSAL_ORIGIN = { actor: "code", rule: "npm run owners -- pay: the amount Metal refused before, paid once after the owners raised the cap, started by a person", agent: MANDATE.agent } as const;
+
+interface Refusal { payment_id: string; tx: string | null; cents: number; cap: string; proposal_id: string; mandate: string; to: string }
+
+/**
+ * The refusals this ledger holds on chain that the mandate bound now would pay: refused under an earlier mandate, to
+ * this mandate's payee, for an amount within this mandate's cap. `open` is the oldest of them not paid since; `paid` the
+ * latest one this mandate has paid. Read from the audit rows alone: owners.refused_on_chain, and owners.paid rows that
+ * name the refusal they answer.
+ */
+function refusedBefore(db: DB, bound: Filed, capCents: number): { open: Refusal | null; paid: { refusal: Refusal; tx: string | null } | null } {
+  const rows = (event: string) => (db.prepare("SELECT subject, payload_json FROM audit_log WHERE event = ? ORDER BY seq").all(event) as { subject: string; payload_json: string }[]).map((r) => ({ subject: r.subject, p: JSON.parse(r.payload_json) as Record<string, unknown> }));
+  const within = rows("owners.refused_on_chain").flatMap(({ subject, p }): Refusal[] => {
+    let cents: number;
+    try { cents = toCents(String(p.amount)); } catch { return []; }
+    if (same(String(p.mandate), bound.terms.action.mandate) || !same(String(p.to), bound.terms.action.payee) || cents > capCents) return [];
+    return [{ payment_id: subject, tx: typeof p.tx === "string" ? p.tx : null, cents, cap: String(p.cap), proposal_id: String(p.proposal_id), mandate: String(p.mandate), to: String(p.to) }];
+  });
+  const answers = rows("owners.paid").flatMap(({ p }) => {
+    const after = p.after_refusal as { payment_id?: unknown } | undefined;
+    return typeof after?.payment_id === "string" ? [{ payment_id: after.payment_id, mandate: String(p.mandate), tx: typeof p.tx === "string" ? p.tx : null }] : [];
+  });
+  const open = within.find((r) => !answers.some((x) => x.payment_id === r.payment_id)) ?? null;
+  const paid = within.flatMap((r) => answers.filter((x) => x.payment_id === r.payment_id && same(x.mandate, bound.terms.action.mandate)).map((x) => ({ refusal: r, tx: x.tx }))).at(-1) ?? null;
+  return { open, paid };
+}
 
 export async function pay(d: OwnersWorld): Promise<PayResult> {
   d.chain.step("pay");
@@ -382,9 +526,40 @@ export async function pay(d: OwnersWorld): Promise<PayResult> {
   const base = { proposal_id: bind.id, mandate: a.mandate, account: bind.terms.account, to: payee, payee_name: a.payee_name, origin: PAY_ORIGIN };
   const outcomeOf = (id: string) => d.db.prepare("SELECT event, payload_json FROM audit_log WHERE subject = ? AND event IN ('owners.paid', 'owners.refused_on_chain') ORDER BY seq DESC LIMIT 1").get(id) as { event: string; payload_json: string } | undefined;
 
+  // 0. The cap was raised over an amount Metal refused before (a replace, or a revoke and a new bind): that one payment
+  //    is made now, once, under the mandate bound now, and this command tries nothing over the new cap.
+  const before = refusedBefore(d.db, bind, capCents);
+  if (before.open || before.paid) {
+    const refusal = before.open ?? before.paid!.refusal;
+    const amount = fromCents(refusal.cents);
+    const refused = { tx: refusal.tx, proposal_id: refusal.proposal_id, payment_id: refusal.payment_id };
+    const then = refusal.tx ? `\n                 refused on chain then: ${EXPLORER_TX}${refusal.tx}` : "";
+    if (!before.open) {
+      const tx = before.paid!.tx;
+      d.say(`PAID             ${amount} to ${a.payee_name}: the payment Metal refused before, now inside the ${fromCents(capCents)} cap ${bind.id} set (recorded earlier)${then}${tx ? `\n                 paid: ${EXPLORER_TX}${tx}` : ""}`);
+      return { inside: null, over: null, afterRefusal: { amount, outcome: "PAID", tx, refused } };
+    }
+    // Its own payment id, in the ledger before the CLI starts; metal-agent pays an id at most once, so a run that
+    // stopped after the CLI paid is answered "already paid" by the same command, and nothing is sent again.
+    const id = `owners-${bind.id}-after-${refusal.proposal_id}`;
+    const again = { ...base, origin: AFTER_REFUSAL_ORIGIN, amount };
+    if (!d.db.prepare("SELECT 1 FROM audit_log WHERE event = 'owners.pay_started' AND subject = ?").get(id)) audit(d.db, "sourcing", "owners.pay_started", id, { ...again, kind: "the amount Metal refused before", refused }, d.now());
+    const r = await pullUnder(m, (args, ok) => d.cli(args, ok))({ agent: "sourcing", to: payee, amountCents: refusal.cents, paymentId: id });
+    if (r.outcome !== "PAID") {
+      audit(d.db, "sourcing", "owners.pay_not_paid", id, { ...again, outcome: r.outcome, reason: r.reason, tx: r.tx, refused }, d.now());
+      throw new Error(`the payment of ${amount} Metal refused before was not paid now: ${r.outcome.toLowerCase()}${r.reason ? ` (${r.reason})` : ""}`);
+    }
+    audit(d.db, "sourcing", "owners.paid", id, {
+      ...again, tx: r.tx, signed_by: "the Sourcing agent's mandate key alone; no owner signed",
+      after_refusal: { ...refused, cap_then: refusal.cap, cap_now: fromCents(capCents) }, ...(r.already ? { already: true } : {}),
+    }, d.now());
+    d.say(`PAID             ${amount} to ${a.payee_name}: the payment Metal refused before, now inside the ${fromCents(capCents)} cap ${bind.id} set; the mandate key alone signed${then}${r.tx ? `\n                 paid now: ${EXPLORER_TX}${r.tx}` : ""}`);
+    return { inside: null, over: null, afterRefusal: { amount, outcome: r.outcome, tx: r.tx, refused } };
+  }
+
   // 1. Inside the mandate. The payment id is recorded before the CLI starts; metal-agent pays an id at most once.
   const insideId = `owners-${bind.id}-inside`;
-  let inside: PayResult["inside"];
+  let inside: NonNullable<PayResult["inside"]>;
   const paid = outcomeOf(insideId);
   if (paid) {
     const p = JSON.parse(paid.payload_json) as { tx: string | null };
@@ -405,7 +580,7 @@ export async function pay(d: OwnersWorld): Promise<PayResult> {
 
   // 2. One cent over the cap written in the credential (which the chain bound): Metal must refuse it, and records the refusal.
   const overId = `owners-${bind.id}-over-cap`;
-  let over: PayResult["over"];
+  let over: NonNullable<PayResult["over"]>;
   const refused = outcomeOf(overId);
   const kept = refused ? null : keptOutcome(m.reference, overId);
   if (refused) {
@@ -427,7 +602,7 @@ export async function pay(d: OwnersWorld): Promise<PayResult> {
     audit(d.db, "sourcing", "owners.refused_on_chain", overId, { ...base, amount: fromCents(overCents), cap: fromCents(capCents), tx: over.tx, reason: over.reason, gas_paid_by: "the gas sponsor, which owns nothing" }, d.now());
   }
   d.say(`REFUSED          ${fromCents(overCents)} to ${a.payee_name}, one cent over the ${fromCents(capCents)} cap: ${over.reason}${over.tx ? `\n                 recorded on chain: ${EXPLORER_TX}${over.tx}` : ""}`);
-  return { inside, over };
+  return { inside, over, afterRefusal: null };
 }
 
 // ---- status ---------------------------------------------------------------------------------------------------------
@@ -469,7 +644,7 @@ const NOTHING = "nothing";
  * The live run, step by step, with what each sends and what it costs in calls. `polls` is how often a receipt is read
  * at most. The numbers follow from what the code does (test/owners-flow.test.ts runs each step and compares).
  */
-export function ownersPlan(o: { funding: "donor" | "faucet" | "recycle"; polls: number }): PlanStep[] {
+export function ownersPlan(o: { funding: "donor" | "faucet" | "recycle"; polls: number; replace?: Limits }): PlanStep[] {
   const receipt = { min: 1, max: o.polls };
   // A transfer: the sender's nonce, the send, the receipt. An account call: a gas estimate before those.
   const transfer = { min: 2 + receipt.min, max: 2 + receipt.max };
@@ -477,7 +652,10 @@ export function ownersPlan(o: { funding: "donor" | "faucet" | "recycle"; polls: 
   const sum = (...xs: { min: number; max: number }[]) => ({ min: xs.reduce((n, x) => n + x.min, 0), max: xs.reduce((n, x) => n + x.max, 0) });
   const exactly = (n: number) => ({ min: n, max: n });
   const [cap, over, budget, sponsor, account] = [MANDATE.capCents, MANDATE.capCents + 1, MANDATE.budgetCents, SPONSOR_CENTS, ACCOUNT_CENTS].map(fromCents);
-  const sign = (title: string) => `Open the approval link within ${SIGN_MINUTES} minutes. Check: "${title}", ${budget} USDZ budget, up to ${cap} per payment, ${MANDATE.payee.name} only. Tap "Approve with Face ID" and look at the phone. It shows "1 of 2 approvals"; then the second approver signs.`;
+  // The replace's amounts are the command's arguments: named when the caller knows them, placeholders when not (preflight).
+  const [newCap, newBudget] = o.replace ? [fromCents(o.replace.capCents), fromCents(o.replace.budgetCents)] : ["<new cap>", "<new budget>"];
+  const sign = (title: string, limits = { cap, budget }, was = "") => `Open the approval link within ${SIGN_MINUTES} minutes. Check: "${title}", ${limits.budget} USDZ budget, up to ${limits.cap} per payment${was}, ${MANDATE.payee.name} only. Tap "Approve with Face ID" and look at the phone. It shows "1 of 2 approvals"; then the second approver signs.`;
+  const raised = { cap: newCap, budget: newBudget };
   const setup = o.funding === "donor"
     // The verifier's code, the transfer to the sponsor, the account's address, its code, the creation, the transfer to the account.
     ? { requests: sum(exactly(3), transfer, call, transfer), cli_runs: 0, transactions: [`donor key → gas sponsor, ${sponsor} test USD`, "create the account (gas sponsor → account factory)", `donor key → account, ${account} test USD`] }
@@ -496,11 +674,15 @@ export function ownersPlan(o: { funding: "donor" | "faucet" | "recycle"; polls: 
     { step: "5 propose the bind", command: "npm run owners -- propose", transactions: [], requests: exactly(1), cli_runs: 0, phone: sign("Bind the sourcing mandate, signed on chain") },
     { step: "5 the runner relays it", command: "npm run relay (running)", transactions: ["executeSigned: the account binds the mandate (gas sponsor → account)"], requests: call, cli_runs: 0, phone: NOTHING },
     { step: "6 pay", command: "npm run owners -- pay", transactions: [`${cap} to ${MANDATE.payee.name} inside the mandate (signed by the mandate key, sent by Metal's facilitator)`, `${over}, over the cap: refused, and the refusal recorded on chain (sent by the gas sponsor)`], requests: exactly(1), cli_runs: 2, phone: NOTHING },
-    { step: "7 propose the revoke", command: "npm run owners -- propose-revoke", transactions: [], requests: exactly(1), cli_runs: 0, phone: sign("Revoke the sourcing mandate, signed on chain") },
-    { step: "7 the runner relays it", command: "npm run relay (running)", transactions: ["executeSigned: the account revokes the mandate (gas sponsor → account)"], requests: call, cli_runs: 0, phone: NOTHING },
-    { step: "8 status", command: "npm run owners -- status", transactions: [], requests: exactly(1), cli_runs: 0, phone: NOTHING },
+    // The owners raise the cap, and the payment Metal refused in step 6 is made: the same amount, now inside the mandate.
+    { step: "7 propose the replace", command: `npm run owners -- propose-replace ${newCap} ${newBudget}`, transactions: [], requests: exactly(1), cli_runs: 0, phone: sign("Replace the sourcing mandate, signed on chain", raised, ` (it was ${cap})`) },
+    { step: "7 the runner relays it", command: "npm run relay (running)", transactions: ["executeSigned: the account replaces the mandate (gas sponsor → account)"], requests: call, cli_runs: 0, phone: NOTHING },
+    { step: "7 pay again", command: "npm run owners -- pay", transactions: [`${over} to ${MANDATE.payee.name}, the amount refused in step 6, now inside the new cap (signed by the mandate key, sent by Metal's facilitator)`], requests: exactly(0), cli_runs: 1, phone: NOTHING },
+    { step: "8 propose the revoke", command: "npm run owners -- propose-revoke", transactions: [], requests: exactly(1), cli_runs: 0, phone: sign("Revoke the sourcing mandate, signed on chain", raised) },
+    { step: "8 the runner relays it", command: "npm run relay (running)", transactions: ["executeSigned: the account revokes the mandate (gas sponsor → account)"], requests: call, cli_runs: 0, phone: NOTHING },
+    { step: "9 status", command: "npm run owners -- status", transactions: [], requests: exactly(1), cli_runs: 0, phone: NOTHING },
     // The record is written from the ledger and the call log alone (src/metal/ownersRecord.ts): no call.
-    { step: "8 record", command: "npm run owners -- record", transactions: [], requests: exactly(0), cli_runs: 0, phone: NOTHING },
+    { step: "9 record", command: "npm run owners -- record", transactions: [], requests: exactly(0), cli_runs: 0, phone: NOTHING },
   ];
 }
 

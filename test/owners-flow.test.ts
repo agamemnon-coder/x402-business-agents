@@ -13,7 +13,7 @@ import { mandateBindingAbi } from "@metalntwx/metal-pay/mandates";
 import { centsToBaseUnits } from "../src/lib/money.js";
 import { approvalHashOf, checkOwnersTerms, OWNER_CALL_SELECTORS, type OwnersExecuteTerms } from "../src/metal/ownersExecute.js";
 import { OwnersBudgetSpent, readOwnersCalls } from "../src/metal/ownersBudget.js";
-import { ACCOUNT_CENTS, AGENT_KEY, callsLine, cliCommand, ownersPlan, pay, planTotals, preflight, preflightRefusals, propose, proposeRevoke, setup, SPONSOR_CENTS, status } from "../src/metal/ownersFlow.js";
+import { ACCOUNT_CENTS, AGENT_KEY, boundMandate, callsLine, cliCommand, limitsOf, ownersPlan, pay, planTotals, preflight, preflightRefusals, propose, proposeReplace, proposeRevoke, setup, SPONSOR_CENTS, status } from "../src/metal/ownersFlow.js";
 import { ACCOUNT_FACTORY, PASSKEY_VERIFIER } from "../src/metal/passkeyRelay.js";
 import { keptPullDir } from "../src/metal/pull.js";
 import { USDZ } from "../src/metal/network.js";
@@ -347,6 +347,115 @@ describe("owners propose-revoke", () => {
   });
 });
 
+/** The bound mandate replaced by one with these limits: proposed, signed by both passkeys and relayed. */
+async function replaced(capCents: number, budgetCents: number): Promise<{ id: string; terms: OwnersExecuteTerms }> {
+  const { proposal, terms } = await proposeReplace(w.again(), { capCents, budgetCents });
+  await w.signBoth(proposal.proposal_id);
+  await w.relay(proposal.proposal_id);
+  return { id: proposal.proposal_id, terms };
+}
+
+describe("owners propose-replace", () => {
+  it("builds the replace of the mandate this world bound, with the new limits: a new credential for the same payee and agent key, and one read", async () => {
+    await world();
+    await expect(proposeReplace(w.d, { capCents: 10, budgetCents: 50 })).rejects.toThrow(/no passkey account|bound no mandate/);
+    const b = await bound();
+    const from = readOwnersCalls(w.log).length;
+    const { proposal, terms } = await proposeReplace(w.again(), { capCents: 10, budgetCents: 50 });
+    expect(proposal).toMatchObject({ kind: "owners_execute", status: "PENDING_APPROVAL" });
+    expect(() => checkOwnersTerms(terms)).not.toThrow();
+    expect(() => approvalHashOf(proposal)).not.toThrow();
+    // The action as filed: the bind's words with the new limits, the new mandate, and what it replaces.
+    expect(terms.action).toEqual({ what: "replace", agent: "sourcing", cap: "0.10", budget: "0.50", payee: b.terms.action.payee, payee_name: "Stockline", mandate: expect.stringMatching(/^0x[0-9a-f]{64}$/), replaces: b.terms.action.mandate, was_cap: "0.05", was_budget: "0.50" });
+    expect(terms.action.mandate).not.toBe(b.terms.action.mandate);
+    expect(terms.owners).toEqual(b.terms.owners);
+    expect(terms.calls[0]!.target).toBe(b.account);
+    const call = decodeFunctionData({ abi: mandateBindingAbi, data: terms.calls[0]!.call_data });
+    expect(call.functionName).toBe("replace");
+    const [predecessor, , , agentKey] = call.args as unknown as [Hex, Hex, Hex, Hex];
+    expect(predecessor).toBe(b.terms.action.mandate);
+    // The same agent key as the mandate it replaces: the Sourcing agent's own.
+    expect(agentKey).toBe((decodeFunctionData({ abi: mandateBindingAbi, data: b.terms.calls[0]!.call_data }).args as unknown as [Hex, Hex, Hex])[2]);
+    expect(existsSync(join(w.keys, "owners", `${proposal.proposal_id}.credential.json`))).toBe(true);
+    // One read (the account's nonce lane); the credential is made offline.
+    expect(w.calls(from)).toEqual(["propose-replace:eth_call"]);
+    expect(w.cliRuns).toEqual([]);
+    expect(w.said.at(-2)).toBe(`PROPOSED         ${proposal.proposal_id}: replace the sourcing mandate ${b.terms.action.mandate.slice(0, 18)}… that ${b.id} bound on ${b.account}: cap 0.05 → 0.10, budget 0.50 → 0.50, Stockline only; what was spent under it carries over`);
+    expect(w.said.at(-1)).toMatch(new RegExp(`Execute digest ${terms.onchain_digest.slice(0, 18)}… within 15 minutes: .*/approve/${proposal.proposal_id} \\(npm run relay prints the address\\)$`));
+    // One change of this mandate at a time.
+    await expect(proposeReplace(w.again(), { capCents: 20, budgetCents: 50 })).rejects.toThrow(new RegExp(`${proposal.proposal_id} already asks to replace this mandate`));
+    await expect(proposeRevoke(w.again())).rejects.toThrow(new RegExp(`${proposal.proposal_id} already asks to replace this mandate`));
+  });
+
+  it("refuses, before any call, limits the chain or this small account would not take", async () => {
+    await world();
+    await bound();
+    const [calls, credentials] = [readOwnersCalls(w.log).length, readdirSync(join(w.keys, "owners")).length];
+    const refused = (capCents: number, budgetCents: number, why: RegExp) => expect(proposeReplace(w.again(), { capCents, budgetCents })).rejects.toThrow(why);
+    await refused(5, 50, /the new cap 0\.05 is not above the 0\.05 the mandate has now/);
+    await refused(4, 50, /not above/);
+    await refused(10, 9, /the budget 0\.09 is below the cap 0\.10/);
+    await refused(10, ACCOUNT_CENTS + 1, /the budget 0\.61 is above the 0\.60 this account was funded with/);
+    await refused(10.5, 50, /whole cents/);
+    // What the ledger says was paid under the mandate carries into its successor: a budget not above it would be refused on chain (SuccessorExhausted).
+    const { audit } = await import("../src/audit/log.js");
+    const b = boundMandate(w.db);
+    audit(w.db, "sourcing", "owners.paid", "owners-test-paid", { mandate: b.terms.action.mandate, amount: "0.45", tx: null }, T0);
+    await refused(10, 45, /the budget 0\.45 is not above the 0\.45 already paid under this mandate, which the new one carries/);
+    expect(readOwnersCalls(w.log)).toHaveLength(calls);
+    expect(readdirSync(join(w.keys, "owners"))).toHaveLength(credentials);
+    expect(w.db.prepare("SELECT COUNT(*) AS n FROM proposals").get()).toEqual({ n: 1 });
+    // A waiting revoke of the same mandate stands in the way too.
+    const revoke = await proposeRevoke(w.again());
+    await refused(10, 50, new RegExp(`${revoke.proposal.proposal_id} already asks to revoke this mandate`));
+  });
+
+  it("reads amounts as the command takes them: two decimals, nothing else", () => {
+    expect(limitsOf("0.10", "0.50")).toEqual({ capCents: 10, budgetCents: 50 });
+    expect(limitsOf(undefined, undefined)).toBeNull();
+    for (const [cap, budget] of [["0.1", "0.50"], ["0.10", undefined], ["ten", "0.50"], ["-0.10", "0.50"], ["0.10", "1e3"], ["0.00", "0.50"], ["0.10", "0.50 "]] as const) {
+      expect(() => limitsOf(cap, budget), `${cap} ${budget}`).toThrow(/amounts like 0\.10 0\.50/);
+    }
+  });
+
+  it("once both passkeys signed it and the account ran it, the replaced mandate is the bound one: revoke, pay and status follow it", async () => {
+    await world();
+    const b = await bound();
+    const r = await replaced(10, 50);
+    expect(boundMandate(w.db)).toMatchObject({ id: r.id });
+    expect(w.node.mandates.get(b.terms.action.mandate.toLowerCase())).toMatchObject({ revoked: true });
+    expect(await status(w.again())).toMatchObject({ bound: true, revoked: false });
+    expect(w.said.at(-1)).toMatch(new RegExp(`proposal ${r.id} \\(replace\\) EXECUTED; bound yes; revoked no`));
+    // A second replace builds on the first; a revoke ends the mandate bound now, not the one it replaced.
+    const again = await proposeReplace(w.again(), { capCents: 20, budgetCents: 60 });
+    expect(again.terms.action).toMatchObject({ replaces: r.terms.action.mandate, was_cap: "0.10", was_budget: "0.50", cap: "0.20", budget: "0.60" });
+    w.clock.now = new Date(T0.getTime() + 16 * 60_000); // that one runs out unsigned
+    const revoke = await proposeRevoke(w.again());
+    // The revoke's words are the bound mandate's limits and payee; what the replace replaced is no part of them.
+    expect(revoke.terms.action).toEqual({ what: "revoke", agent: "sourcing", cap: "0.10", budget: "0.50", payee: r.terms.action.payee, payee_name: "Stockline", mandate: r.terms.action.mandate });
+    expect(decodeFunctionData({ abi: mandateBindingAbi, data: revoke.terms.calls[0]!.call_data })).toMatchObject({ functionName: "revoke", args: [r.terms.action.mandate] });
+    await w.signBoth(revoke.proposal.proposal_id);
+    await w.relay(revoke.proposal.proposal_id);
+    await expect(proposeReplace(w.again(), { capCents: 30, budgetCents: 60 })).rejects.toThrow(/was revoked by/);
+    await expect(pay(w.again())).rejects.toThrow(/was revoked/);
+  });
+});
+
+describe("owners propose with limits of its own", () => {
+  it("binds a mandate with the cap and budget given, and refuses what the account would not take", async () => {
+    await world();
+    await setup(w.d);
+    const calls = readOwnersCalls(w.log).length;
+    await expect(propose(w.again(), { capCents: 10, budgetCents: 9 })).rejects.toThrow(/the budget 0\.09 is below the cap 0\.10/);
+    await expect(propose(w.again(), { capCents: 10, budgetCents: 61 })).rejects.toThrow(/above the 0\.60 this account was funded with/);
+    expect(readOwnersCalls(w.log)).toHaveLength(calls);
+    const { terms } = await propose(w.again(), { capCents: 10, budgetCents: 40 });
+    expect(terms.action).toMatchObject({ what: "bind", cap: "0.10", budget: "0.40" });
+    expect(() => checkOwnersTerms(terms)).not.toThrow();
+    expect(w.said.at(-2)).toMatch(/bind the sourcing mandate on 0x[0-9a-fA-F]{40}, cap 0\.10, budget 0\.40, Stockline only$/);
+  });
+});
+
 describe("owners pay", () => {
   it("pays 0.05 inside the mandate, and one cent over the cap is refused on chain; both are in the audit log with their transactions", async () => {
     await world();
@@ -356,6 +465,7 @@ describe("owners pay", () => {
     const payee = keyAddress("supplier.key.json");
     expect(r.inside).toMatchObject({ outcome: "PAID", tx: expect.stringMatching(/^0x[0-9a-f]{64}$/) });
     expect(r.over).toEqual({ refused: true, tx: expect.stringMatching(/^0x[0-9a-f]{64}$/), reason: "mandate_cap_exceeded (the amount is above the mandate's per-payment cap)" });
+    expect(r.afterRefusal).toBeNull();
     // Two runs of the CLI: 0.05 with the mandate key alone, then 0.06 with the refusal recorded by the gas sponsor.
     const arg = (run: string[], k: string) => run[run.indexOf(k) + 1];
     expect(w.cliRuns.map((run) => [cliCommand(run), arg(run, "--amount"), arg(run, "--to"), arg(run, "--payment-id"), run.includes("--record-refusal")])).toEqual([
@@ -364,8 +474,8 @@ describe("owners pay", () => {
     expect(arg(w.cliRuns[0]!, "--mandate-key-file")).toBe(join(w.keys, AGENT_KEY));
     expect(arg(w.cliRuns[1]!, "--key")).toBe(join(w.keys, "passkey-sponsor.key.json"));
     expect(w.calls(from)).toEqual(["pay:cli:mandate pull", "pay:eth_call", "pay:cli:mandate pull"]);
-    expect(events("owners.paid")).toEqual([expect.objectContaining({ subject: `owners-${b.id}-inside`, amount: "0.05", to: payee, tx: r.inside.tx, mandate: b.terms.action.mandate })]);
-    expect(events("owners.refused_on_chain")).toEqual([expect.objectContaining({ subject: `owners-${b.id}-over-cap`, amount: "0.06", cap: "0.05", tx: r.over.tx, reason: r.over.reason })]);
+    expect(events("owners.paid")).toEqual([expect.objectContaining({ subject: `owners-${b.id}-inside`, amount: "0.05", to: payee, tx: r.inside!.tx, mandate: b.terms.action.mandate })]);
+    expect(events("owners.refused_on_chain")).toEqual([expect.objectContaining({ subject: `owners-${b.id}-over-cap`, amount: "0.06", cap: "0.05", tx: r.over!.tx, reason: r.over!.reason })]);
     // The payment id is in the ledger before the CLI starts.
     expect(events("owners.pay_started").map((e) => e.subject)).toEqual([`owners-${b.id}-inside`, `owners-${b.id}-over-cap`]);
   });
@@ -376,8 +486,8 @@ describe("owners pay", () => {
     await pay(w.again());
     const [runs, calls] = [w.cliRuns.length, readOwnersCalls(w.log).length];
     const again = await pay(w.again());
-    expect(again.inside.outcome).toBe("PAID");
-    expect(again.over.refused).toBe(true);
+    expect(again.inside!.outcome).toBe("PAID");
+    expect(again.over!.refused).toBe(true);
     expect(w.cliRuns).toHaveLength(runs);
     expect(readOwnersCalls(w.log)).toHaveLength(calls);
     expect(events("owners.paid")).toHaveLength(1);
@@ -419,6 +529,111 @@ describe("owners pay", () => {
     await w.relay(revoke.proposal.proposal_id);
     await expect(pay(w.again())).rejects.toThrow(/was revoked/);
     expect(w.cliRuns).toEqual([]);
+  });
+});
+
+describe("owners pay, once the owners raised the cap", () => {
+  const arg = (run: string[], k: string) => run[run.indexOf(k) + 1];
+
+  it("pays exactly the amount Metal refused before, once, under the replaced mandate, and tries nothing over the new cap", async () => {
+    await world();
+    const b = await bound();
+    const first = await pay(w.again());
+    const r = await replaced(10, 50);
+    const [from, runs, told] = [readOwnersCalls(w.log).length, w.cliRuns.length, w.said.length];
+    const again = await pay(w.again());
+    const payee = keyAddress("supplier.key.json");
+    const id = `owners-${r.id}-after-${b.id}`;
+    expect(again).toEqual({ inside: null, over: null, afterRefusal: { amount: "0.06", outcome: "PAID", tx: expect.stringMatching(/^0x[0-9a-f]{64}$/), refused: { tx: first.over!.tx, proposal_id: b.id, payment_id: `owners-${b.id}-over-cap` } } });
+    // One run of the CLI: 0.06 to the same payee, under the new credential, with the mandate key alone.
+    expect(w.cliRuns.slice(runs).map((run) => [cliCommand(run), arg(run, "--amount"), arg(run, "--to"), arg(run, "--payment-id"), arg(run, "--credential"), run.includes("--record-refusal"), run.includes("--key")])).toEqual([
+      ["mandate pull", "0.06", payee, id, join(w.keys, "owners", `${r.id}.credential.json`), false, false],
+    ]);
+    expect(w.calls(from)).toEqual(["pay:cli:mandate pull"]);
+    // The ledger: the payment id before the CLI started, then the payment, naming the refusal it makes good.
+    expect(events("owners.pay_started").at(-1)).toMatchObject({ subject: id, amount: "0.06", kind: "the amount Metal refused before" });
+    expect(events("owners.paid").at(-1)).toMatchObject({
+      subject: id, proposal_id: r.id, mandate: r.terms.action.mandate, amount: "0.06", to: payee, tx: again.afterRefusal!.tx,
+      after_refusal: { tx: first.over!.tx, proposal_id: b.id, payment_id: `owners-${b.id}-over-cap`, cap_then: "0.05", cap_now: "0.10" },
+      origin: { actor: "code", agent: "sourcing", rule: expect.stringMatching(/the amount Metal refused before/) },
+    });
+    expect(again.afterRefusal!.tx).not.toBe(first.over!.tx);
+    expect(events("owners.refused_on_chain")).toHaveLength(1);
+    expect(w.said.slice(told).join("\n")).toMatch(new RegExp(`^PAID +0\\.06 to Stockline: the payment Metal refused before, now inside the 0\\.10 cap ${r.id} set; the mandate key alone signed\n +refused on chain then: \\S+${first.over!.tx}\n +paid now: \\S+${again.afterRefusal!.tx}$`));
+    expect(w.node.mandates.get(r.terms.action.mandate.toLowerCase())).toMatchObject({ spent: centsToBaseUnits(11) });
+
+    // Run again: nothing is paid, nothing is tried over the new cap, no call.
+    const [calls, cli] = [readOwnersCalls(w.log).length, w.cliRuns.length];
+    const third = await pay(w.again());
+    expect(third.afterRefusal).toMatchObject({ outcome: "PAID", tx: again.afterRefusal!.tx });
+    expect(readOwnersCalls(w.log)).toHaveLength(calls);
+    expect(w.cliRuns).toHaveLength(cli);
+    expect(events("owners.paid")).toHaveLength(2);
+    expect(w.said.at(-1)).toMatch(/recorded earlier/);
+  });
+
+  it("stopped after the CLI paid and before the ledger had it, the next run asks the CLI, which pays an id once", async () => {
+    await world();
+    const b = await bound();
+    await pay(w.again());
+    const r = await replaced(10, 50);
+    const d = w.again();
+    await expect(pay({ ...d, cli: (args, ok) => { d.cli(args, ok); throw new Error("the process stopped here"); } })).rejects.toThrow(/stopped here/);
+    expect(events("owners.paid")).toHaveLength(1);
+    const again = await pay(w.again());
+    expect(again.afterRefusal).toMatchObject({ outcome: "PAID", amount: "0.06" });
+    expect(events("owners.paid").at(-1)).toMatchObject({ subject: `owners-${r.id}-after-${b.id}`, already: true });
+    // Paid once: the mandate's spend on the stand-in chain is 0.05 and 0.06, not 0.06 twice.
+    expect(w.node.mandates.get(r.terms.action.mandate.toLowerCase())).toMatchObject({ spent: centsToBaseUnits(11), occurrences: 2n });
+    expect(events("owners.pay_started").filter((e) => e.subject === `owners-${r.id}-after-${b.id}`)).toHaveLength(1);
+  });
+
+  it("the same when the cap was raised by a revoke and a new bind", async () => {
+    await world();
+    const b = await bound();
+    const first = await pay(w.again());
+    const revoke = await proposeRevoke(w.again());
+    await w.signBoth(revoke.proposal.proposal_id);
+    await w.relay(revoke.proposal.proposal_id);
+    const { proposal } = await propose(w.again(), { capCents: 10, budgetCents: 50 });
+    await w.signBoth(proposal.proposal_id);
+    await w.relay(proposal.proposal_id);
+    const runs = w.cliRuns.length;
+    const again = await pay(w.again());
+    expect(again.afterRefusal).toMatchObject({ amount: "0.06", outcome: "PAID", refused: { tx: first.over!.tx, proposal_id: b.id } });
+    expect(w.cliRuns.slice(runs).map((run) => [arg(run, "--amount"), arg(run, "--payment-id"), arg(run, "--credential")])).toEqual([["0.06", `owners-${proposal.proposal_id}-after-${b.id}`, join(w.keys, "owners", `${proposal.proposal_id}.credential.json`)]]);
+  });
+
+  it("a refusal still over the cap is left alone: pay does what it does for any bound mandate", async () => {
+    await world();
+    await bound();
+    await pay(w.again());
+    const revoke = await proposeRevoke(w.again());
+    await w.signBoth(revoke.proposal.proposal_id);
+    await w.relay(revoke.proposal.proposal_id);
+    // Bound again with the same 0.05 cap: 0.06 is still over it.
+    const { proposal } = await propose(w.again());
+    await w.signBoth(proposal.proposal_id);
+    await w.relay(proposal.proposal_id);
+    const runs = w.cliRuns.length;
+    const r = await pay(w.again());
+    expect(r.afterRefusal).toBeNull();
+    expect(r.inside).toMatchObject({ outcome: "PAID" });
+    expect(r.over).toMatchObject({ refused: true });
+    expect(w.cliRuns.slice(runs).map((run) => [arg(run, "--amount"), arg(run, "--payment-id")])).toEqual([["0.05", `owners-${proposal.proposal_id}-inside`], ["0.06", `owners-${proposal.proposal_id}-over-cap`]]);
+  });
+
+  it("when Metal does not pay it, the ledger says so and nothing is called paid", async () => {
+    await world();
+    await bound();
+    await pay(w.again());
+    // 0.45 more spent under the mandate on chain than this ledger knows: 0.06 would pass the 0.50 budget.
+    const r = await replaced(10, 50);
+    const ref = r.terms.action.mandate.toLowerCase();
+    w.node.mandates.set(ref, { ...w.node.mandates.get(ref)!, spent: centsToBaseUnits(45) });
+    await expect(pay(w.again())).rejects.toThrow(/the payment of 0\.06 Metal refused before was not paid now: refused \(mandate_budget_spent/);
+    expect(events("owners.pay_not_paid").at(-1)).toMatchObject({ amount: "0.06", outcome: "REFUSED", reason: expect.stringMatching(/mandate_budget_spent/) });
+    expect(events("owners.paid")).toHaveLength(1);
   });
 });
 
@@ -468,7 +683,10 @@ describe("owners preflight", () => {
     for (const step of r.plan) expect(text).toContain(step.step);
     expect(text).toMatch(/4 setup +npm run owners -- setup\n +calls: 13 to 22 requests; transactions: donor key → gas sponsor, 5\.00 test USD; create the account .*; donor key → account, 0\.60 test USD\n +on the phone: nothing/);
     expect(text).toMatch(/on the phone: Open the approval link within 15 minutes\. Check: "Bind the sourcing mandate, signed on chain", 0\.50 USDZ budget, up to 0\.05 per payment, Stockline only\. Tap "Approve with Face ID"/);
-    expect(text).toMatch(/TOTAL +7 transactions; 30 to 45 lines in the call log \(2 of them CLI runs\)/);
+    // The replace: what the phone shows is the command's own amounts, which preflight cannot know yet.
+    expect(text).toMatch(/7 propose the replace +npm run owners -- propose-replace <new cap> <new budget>\n +calls: 1 request; transactions: none\n +on the phone: Open the approval link within 15 minutes\. Check: "Replace the sourcing mandate, signed on chain", <new budget> USDZ budget, up to <new cap> per payment \(it was 0\.05\), Stockline only\./);
+    expect(text).toMatch(/7 pay again +npm run owners -- pay\n +calls: 0 requests and 1 CLI run; transactions: 0\.06 to Stockline, the amount refused in step 6, now inside the new cap \(signed by the mandate key, sent by Metal's facilitator\)\n +on the phone: nothing/);
+    expect(text).toMatch(/TOTAL +9 transactions; 36 to 54 lines in the call log \(3 of them CLI runs\)/);
     expect(text).toMatch(/the donor key 0x[0-9a-fA-F]{40} holds 99\.00 test USD; this run takes 5\.60/);
     expect(text).toMatch(/READY/);
     expect(text).not.toMatch(/rpc\.example|tttt/);
@@ -488,7 +706,7 @@ describe("owners preflight", () => {
     w.node.balances.set(w.donor.address.toLowerCase(), centsToBaseUnits(300));
     const r = await preflight({ ...w.d, env: ready() }, 4);
     expect(r.ok).toBe(false);
-    expect(r.problems).toEqual([expect.stringMatching(/no WebAuthn verifier/), expect.stringMatching(/holds 3\.00 test USD, not enough/), expect.stringMatching(/budget of 20 \(3 used, 17 left\) is below the 42 lines .*and below the 27 it takes at least/)]);
+    expect(r.problems).toEqual([expect.stringMatching(/no WebAuthn verifier/), expect.stringMatching(/holds 3\.00 test USD, not enough/), expect.stringMatching(/budget of 20 \(3 used, 17 left\) is below the 51 lines .*and below the 33 it takes at least/)]);
     w.close();
     await world();
     const real = w.node.rpc;
@@ -515,10 +733,14 @@ describe("owners preflight", () => {
       await w.signBoth(id);
       await step("5 the runner relays it", () => w.relay(id));
       await step("6 pay", () => pay(w.again()));
-      await step("7 propose the revoke", async () => { id = (await proposeRevoke(w.again())).proposal.proposal_id; });
+      await step("7 propose the replace", async () => { id = (await proposeReplace(w.again(), { capCents: 10, budgetCents: 50 })).proposal.proposal_id; });
       await w.signBoth(id);
       await step("7 the runner relays it", () => w.relay(id));
-      await step("8 status", () => status(w.again()));
+      await step("7 pay again", () => pay(w.again()));
+      await step("8 propose the revoke", async () => { id = (await proposeRevoke(w.again())).proposal.proposal_id; });
+      await w.signBoth(id);
+      await step("8 the runner relays it", () => w.relay(id));
+      await step("9 status", () => status(w.again()));
       const t = planTotals(plan);
       expect(used()).toBe(t.lines[pick]);
       expect(w.node.sent().length + w.cliRuns.length).toBe(t.transactions);
@@ -528,7 +750,18 @@ describe("owners preflight", () => {
 
   it("ends with the record, which costs no call, and offers both ways to a second approver", () => {
     const plan = ownersPlan({ funding: "donor", polls: 4 });
-    expect(plan.at(-1)).toEqual({ step: "8 record", command: "npm run owners -- record", transactions: [], requests: { min: 0, max: 0 }, cli_runs: 0, phone: "nothing" });
+    expect(plan.at(-1)).toEqual({ step: "9 record", command: "npm run owners -- record", transactions: [], requests: { min: 0, max: 0 }, cli_runs: 0, phone: "nothing" });
+    // The scene in order: bind, pay and the refusal, the replace and the refused amount paid, the revoke; then status and the record.
+    expect(plan.map((s) => s.step)).toEqual([
+      "1 preflight", "2 the owner's passkey", "3 the second approver", "4 setup", "5 propose the bind", "5 the runner relays it", "6 pay",
+      "7 propose the replace", "7 the runner relays it", "7 pay again", "8 propose the revoke", "8 the runner relays it", "9 status", "9 record",
+    ]);
+    expect(planTotals(plan)).toEqual({ transactions: 9, cli_runs: 3, lines: { min: 36, max: 54 } });
+    // With the replace's amounts known, the phone text names them, for the replace and for the revoke after it.
+    const known = ownersPlan({ funding: "donor", polls: 4, replace: { capCents: 10, budgetCents: 50 } });
+    expect(known.find((s) => s.step === "7 propose the replace")).toMatchObject({ command: "npm run owners -- propose-replace 0.10 0.50", phone: expect.stringMatching(/"Replace the sourcing mandate, signed on chain", 0\.50 USDZ budget, up to 0\.10 per payment \(it was 0\.05\), Stockline only/) });
+    expect(known.find((s) => s.step === "8 propose the revoke")!.phone).toMatch(/"Revoke the sourcing mandate, signed on chain", 0\.50 USDZ budget, up to 0\.10 per payment, Stockline only/);
+    expect(plan.find((s) => s.step === "8 propose the revoke")!.phone).toMatch(/<new budget> USDZ budget, up to <new cap> per payment/);
     expect(plan.find((s) => s.step === "3 the second approver")).toMatchObject({
       command: "npm run passkey -- add <name>, then confirm its fingerprint (a second device); or npx tsx docs/runs/driver/test-controller.ts enrol (a labelled virtual approver), then confirm its fingerprint",
       phone: "nothing: the second approver enrols on their own device, or the virtual approver is driven from the runner's machine",
@@ -566,8 +799,21 @@ describe("the CFO's feed of an owners world", () => {
     // No line is a raw event name: every owners line is a sentence.
     expect(feed.filter((f) => f.event.startsWith("owners.")).filter((f) => f.text.startsWith("owners."))).toEqual([]);
     expect(feed.find((f) => f.event === "owners.sent")).toMatchObject({ text: expect.stringMatching(/^P-0001, signed by both passkeys, was sent to the business account on chain$/), tx: expect.stringMatching(/^0x[0-9a-f]{64}$/) });
-    expect(feed.find((f) => f.event === "owners.paid")).toMatchObject({ text: "The Sourcing agent paid 0.05 USDZ to Stockline inside its mandate on the passkey account: its mandate key signed, no owner did", tone: "ok", tx: r.inside.tx });
-    expect(feed.find((f) => f.event === "owners.refused_on_chain")).toMatchObject({ text: "Metal refused 0.06 USDZ to Stockline, over the mandate's 0.05 cap, and recorded the refusal on chain", tone: "refusal", tx: r.over.tx });
+    expect(feed.find((f) => f.event === "owners.paid")).toMatchObject({ text: "The Sourcing agent paid 0.05 USDZ to Stockline inside its mandate on the passkey account: its mandate key signed, no owner did", tone: "ok", tx: r.inside!.tx });
+    expect(feed.find((f) => f.event === "owners.refused_on_chain")).toMatchObject({ text: "Metal refused 0.06 USDZ to Stockline, over the mandate's 0.05 cap, and recorded the refusal on chain", tone: "refusal", tx: r.over!.tx });
+  });
+
+  it("reads right for a replace and for the refused amount paid after it", async () => {
+    const { buildSnapshot } = await import("../src/dashboard/snapshot.js");
+    await world();
+    await bound();
+    await pay(w.again());
+    const r = await replaced(10, 50);
+    const again = await pay(w.again());
+    const feed = buildSnapshot(w.db).feed;
+    expect(feed.find((f) => f.event === "owners.executed" && f.text.includes(r.id))).toMatchObject({ text: `Both passkeys signed ${r.id} on chain and the account ran it: replace the sourcing mandate (up to 0.10 a payment, 0.50 in total); the runner only relayed it`, tone: "ok" });
+    expect(feed.find((f) => f.event === "owners.paid" && f.text.includes("0.06"))).toMatchObject({ text: "The Sourcing agent paid 0.06 USDZ to Stockline inside its mandate on the passkey account: its mandate key signed, no owner did", tone: "ok", tx: again.afterRefusal!.tx });
+    expect(feed.filter((f) => f.event.startsWith("owners.")).filter((f) => f.text.startsWith("owners."))).toEqual([]);
   });
 
   it("says in plain words that the account refused a call, with its reason", async () => {
