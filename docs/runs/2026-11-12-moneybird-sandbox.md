@@ -228,6 +228,16 @@ The answers are kept in
 per request the fields Purser reads, as Moneybird wrote them. The rest is left out, because a contact's answer holds a
 customer-portal link and several answers hold the user id of the token's owner. A test replays the read-back from it.
 
+### Fixed after the run
+
+A review of the run found three gaps, fixed offline in commit `7f30364`. No request was sent for them.
+
+- **A moved PDF looked like a changed invoice.** The hash held whether the PDF's file was on this machine. It now holds
+  only the document's own hash. A copy of this run's ledger, with its files and without them, syncs as unchanged.
+- **A lost answer during a correction could post a second version.** Moneybird takes a second invoice with the same
+  number, so a lookup cannot tell them apart. Such a part now goes to a person, who says what Moneybird holds.
+- **The test world could be built in any ledger.** It now needs a ledger of its own, named with `KIT11_DB`.
+
 ### Deviations and limits
 
 - **One invoice is not as in the fixtures.** The fixtures have no invoice at the low VAT rate. `MM-2026-114` keeps its
