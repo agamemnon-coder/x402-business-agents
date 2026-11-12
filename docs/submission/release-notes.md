@@ -30,9 +30,10 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   moves).
 - Offline, no keys: `npm ci && npm run judge` (Node.js 22.13 or later).
 
-## Checked at this tag
+## Checked when this note was written (7 November, the day before the tag)
 
-- 2291 tests in 245 files, all passing; typecheck, lint and `npm run judge -- --check` clean; CI green.
+- 2291 tests in 245 files, all passing; typecheck, lint and `npm run judge -- --check` clean; CI green. The tree has
+  grown since: the latest measured count is in [docs/assets/test-summary.json](../assets/test-summary.json).
 - `gitleaks` over every commit on every branch: no leaks (the checked false positives are listed in `.gitleaksignore`).
 - Every tx hash and id in the README, the submission pack, the claims, the site and the video script is in a run
   record.

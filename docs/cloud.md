@@ -281,7 +281,6 @@ real engine, from `POST /v1/try/start` (code in `cloud/src/try/`). Purser Cloud 
   capped per action, company, address, pool and day, and in all (`cloud/src/engine/spend.ts`). A test company may call
   only the routes listed in `cloud/src/try/gate.ts`; its expired session counts against itself, never against the
   address, so one phone cannot turn away a room on the same Wi-Fi.
-- **Measured limits:** in [the run record](runs/2026-11-13-engine-in-cloud.md); its numbers are not copied here.
 - **The sweep.** Hourly, every company past its 24 hours is wiped: its object, its rows and its documents.
 - **The export.** `GET /v1/engine/export` gives the company in the product's sync format (`purser.cloud-sync/v1`): the
   invoices with their documents, payments, transactions, the ledger and the audit log; no archive files.
@@ -398,7 +397,7 @@ From the repository root, after `npm ci` and `npm ci --prefix worker`, with wran
    ```bash
    npm run cloud:smoke -- https://purser-try.max-31b.workers.dev --parallel 10 --poll 1000
    ```
-   What they printed goes into [the run record](runs/2026-11-13-engine-in-cloud.md).
+   What they printed goes into a run record in docs/runs, dated the day it ran (none yet).
 
 ## Limits on what comes in
 

@@ -59,6 +59,7 @@ describe("the hands-on docs", () => {
   it("says what is not there, and what a public launch still needs", () => {
     expect(section()).toMatch(/What is not there/);
     expect(section()).toMatch(/bot check/);
-    expect(section()).toMatch(/runs\/2026-11-13-engine-in-cloud\.md/);
+    // 12 Nov (jury check): the empty template dated the next day is gone; no measured limits are claimed.
+    expect(section()).not.toMatch(/2026-11-13-engine-in-cloud|Measured limits/);
   });
 });
