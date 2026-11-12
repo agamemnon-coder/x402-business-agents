@@ -257,12 +257,18 @@ export function visaPage(run: AgentRun = agentRun()): string {
 /** The hostile-model eval's record (jury panel, 12 Nov): a script in Claude's place, run in CI (npm run ap-hostile-eval). */
 export const HOSTILE_RECORD_FILE = "docs/evals/ap-hostile.json";
 
-/** /claude's line from that record, with its link; "" when there is no record. */
-export function hostileClaimHtml(file = HOSTILE_RECORD_FILE): string {
+/** /claude's line from that record, as a visitor reads it; "" when there is no record. */
+export function hostileClaimText(file = HOSTILE_RECORD_FILE): string {
   const url = new URL(`../../${file}`, import.meta.url);
   if (!existsSync(url)) return "";
   const { line } = JSON.parse(readFileSync(url, "utf8")) as { line?: string };
-  return line ? `<p class="claim">${esc(`In CI, a script in Claude's place: ${line}.`)} <a class="pf" href="${esc(`${REPO_BLOB}${file}`)}" target="_blank" rel="noopener">${esc("record")} ↗</a></p>` : "";
+  return line ? `In CI, a script in Claude's place: ${line}.` : "";
+}
+
+/** That line with its link to the record; "" when there is no record. */
+export function hostileClaimHtml(file = HOSTILE_RECORD_FILE): string {
+  const text = hostileClaimText(file);
+  return text ? `<p class="claim">${esc(text)} <a class="pf" href="${esc(`${REPO_BLOB}${file}`)}" target="_blank" rel="noopener">${esc("record")} ↗</a></p>` : "";
 }
 
 export function claudePage(run: AgentRun = agentRun()): string {
