@@ -1,0 +1,906 @@
+// Purser Cloud's console: the pages a company uses in the browser, served by the same Worker as the API. One page with
+// one script (the response's nonce, no inline handlers, no 'unsafe-inline'), which talks to /v1 with the person's
+// passkey session as a bearer token kept in the tab (sessionStorage): no cookie, so another site cannot ride on it,
+// and the Worker refuses a state change whose Origin is not this one (app.ts). Every value from the API is put on the
+// page as text (textContent), never as HTML; account numbers come masked from the runner. The console reads and
+// manages; it never pays: a payment is approved on the CFO's phone with Face ID, through the runner's approval flow.
+
+import { consoleKeys, DATA_NL, I18N_JS, keysUsedIn, MESSAGES, t as tr } from "../../src/ui/i18n.js";
+import { escAttr, ICON_SET, PAYABLES_CSS, svg } from "../../src/ui/payablesKit.js";
+import { fromB64 } from "./crypto.js";
+import { INTER_WOFF2_B64 } from "./font.gen.js";
+import type { CloudEnv } from "./app.js";
+
+const ICONS = ["wallet", "calendar-range", "clock", "inbox", "octagon-x", "chevron-right", "circle-check", "triangle-alert", "circle-minus", "file-text",
+  "download", "mail", "scan-face", "users", "key-round", "log-out", "arrow-left", "flask", "x", "arrow-down-left", "arrow-up-right", "shield-check", "copy"];
+
+const EXTRA_CSS = `
+.pdfframe { display: block; width: 100%; max-width: 820px; height: 600px; border: 0; background: #fff; border-radius: 6px; box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 8px 24px -8px rgba(16,24,40,.18); }
+ul.plain { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+ul.plain li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tabs { display: flex; gap: 4px; margin-left: 18px; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs a { padding: 7px 11px; border-radius: 10px; text-decoration: none; color: var(--muted); font-weight: 600; font-size: 14px; white-space: nowrap; }
+.tabs a[aria-current="page"] { color: var(--text); background: var(--sunken); }
+.who-am-i { display: none; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; white-space: nowrap; }
+/* The tabs never give way: the person and company line shrinks with an ellipsis instead (desktop cut "Instellingen" short). */
+header.top nav.tabs { flex: none; }
+.who-am-i { min-width: 0; flex: 1 1 auto; justify-content: flex-end; }
+.who-am-i #who { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.who-am-i #who .wn { color: var(--text); font-weight: 600; }
+.who-am-i #who .we { display: none; }
+@media (min-width: 1500px) { .who-am-i #who .we { display: inline; } }
+.signed-in .who-am-i { display: inline-flex; }
+.who-am-i button { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 6px; border-radius: 8px; display: inline-flex; }
+.who-am-i button:hover { color: var(--text); background: var(--sunken); }
+.signed-out .tabs, .signed-out .who-am-i { display: none; }
+header.top .test { margin-left: 12px; }
+label.check { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0; font-size: 14px; line-height: 1.45; }
+label.check input { margin-top: 3px; }
+header.top .spacer { margin-left: auto; }
+.auth { max-width: 460px; margin: 7vh auto 40px; padding: 28px; }
+.auth h1 { font-size: 26px; letter-spacing: -.02em; margin: 0 0 6px; }
+.auth p { color: var(--muted); margin: 0 0 18px; }
+.auth label { display: block; font-weight: 650; font-size: 14px; margin: 14px 0 6px; }
+.field { width: 100%; font: inherit; padding: 11px 13px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+.field:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.addr { display: flex; align-items: center; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); overflow: hidden; }
+.addr .field { border: 0; border-radius: 0; min-width: 0; }
+.addr span { padding: 0 12px; color: var(--muted); font-size: 14px; white-space: nowrap; }
+.auth .btn.primary { width: 100%; justify-content: center; margin-top: 18px; }
+.auth .alt { margin-top: 14px; font-size: 14px; text-align: center; }
+.note-ok, .note-bad, .note-info { padding: 10px 13px; border-radius: 12px; font-size: 14px; font-weight: 550; margin: 12px 0 0; }
+.note-ok { background: var(--ok-soft); color: var(--ok); }
+.note-bad { background: var(--bad-soft); color: var(--bad); }
+.note-info { background: var(--sunken); color: var(--muted); }
+.steps { list-style: none; padding: 0; margin: 18px 0 18px; display: grid; gap: 10px; }
+.auth .inbox { margin: 0 0 12px; }
+.auth .btn + .btn, .auth .note-ok + .btn { margin-left: 8px; }
+.auth p + .btn, .auth .once + p { margin-top: 12px; }
+.steps li { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.steps li .n { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--sunken); color: var(--muted); font-weight: 700; font-size: 13px; }
+.steps li.done .n { background: var(--ok-soft); color: var(--ok); }
+.steps li.now { border-color: var(--accent); }
+.steps li.now .n { background: var(--accent); color: #fff; }
+.steps li b { display: block; }
+.steps li span.s { color: var(--muted); font-size: 14px; }
+.cmd { display: block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; line-height: 1.55; background: var(--sunken); padding: 12px 14px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; margin: 10px 0 0; }
+.waits { margin-top: 22px; }
+.form-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-top: 12px; }
+.form-row > div { flex: 1 1 180px; min-width: 0; }
+.form-row label { display: block; font-size: 13px; font-weight: 650; color: var(--muted); margin-bottom: 5px; }
+.table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.table th { text-align: left; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; font-weight: 650; padding: 10px 14px; background: var(--sunken); }
+.table td { padding: 11px 14px; border-top: 1px solid var(--border); vertical-align: top; overflow-wrap: anywhere; }
+.table td.r, .table th.r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.scroll { overflow-x: auto; }
+.pill { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 650; background: var(--sunken); color: var(--muted); white-space: nowrap; }
+/* A row's buttons wrap under each other rather than squeeze the role or status beside them (screenshot pass, 9 Nov). */
+.table td.r.acts { white-space: normal; text-align: right; }
+.table td.r.acts .btn { margin: 2px 0; }
+.panel h2.sub-h { margin-top: 22px; }
+.panel > .row2 { margin-top: 14px; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); } .pill.bad { background: var(--bad-soft); color: var(--bad); } .pill.warn { background: var(--warn-soft); color: var(--warn); }
+.split2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-top: 16px; }
+@media (max-width: 900px) { .split2 { grid-template-columns: minmax(0, 1fr); } }
+.panel h2 { margin: 0 0 12px; font-size: 17px; }
+.findings { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.findings li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; }
+.findings li .ic { flex: none; margin-top: 2px; }
+.findings li.block { color: var(--bad); } .findings li.review, .findings li.wait { color: var(--warn); } .findings li.ok { color: var(--ok); }
+.timeline { list-style: none; margin: 0; padding: 0 0 0 4px; display: grid; gap: 12px; }
+.timeline li { padding-left: 16px; border-left: 2px solid var(--border); font-size: 14px; }
+.timeline li b { display: block; }
+.timeline li span { color: var(--muted); }
+.once { border: 1px dashed var(--warn); background: var(--warn-soft); color: var(--text); padding: 12px 14px; border-radius: 12px; margin-top: 12px; font-size: 14px; }
+.once code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+.once.invite { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.once.invite > div { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.once.invite p { margin: 0; }
+.once.invite .row2 { display: flex; gap: 8px; }
+img.qr { width: 180px; height: 180px; background: #fff; border-radius: 8px; padding: 6px; flex: none; }
+.docv .bar2 .btn { margin-left: auto; }
+.expired { max-width: 460px; margin: 10vh auto; text-align: center; }
+
+/* The company this session is in and its Airwallex account (10 Nov: a platform runs several companies). */
+.co { display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 460px; flex: 0 1 auto; padding: 3px 11px 3px 3px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); text-decoration: none; color: var(--text); font: 600 13px/1.2 Inter, system-ui, sans-serif; }
+.co:empty { display: none; }
+.co:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+.co .av { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; font-weight: 700; font-size: 12px; }
+.co .cn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.co .aw { flex: none; display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-weight: 600; font-size: 12px; white-space: nowrap; padding-left: 8px; border-left: 1px solid var(--border); }
+.co .aw i { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+.co .aw.active i { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
+.co .aw.created i, .co .aw.pending i, .co .aw.action_required i, .co .aw.opening i { background: var(--warn); }
+.co .aw.refused i, .co .aw.closed i, .co .aw.dormant i { background: var(--bad); }
+.who-am-i { gap: 10px; }
+.btn[hidden] { display: none; }
+@media (max-width: 1499px) { .co .awl { display: none; } }
+/* The person's name sits in the chip's title below 1500 px, so the company's name is never cut short. */
+@media (max-width: 1499px) { .who-am-i #who { display: none; } }
+code.idc { font: 500 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--sunken); color: var(--muted); padding: 1px 6px; border-radius: 6px; white-space: nowrap; }
+/* A status chip stays on one line on a laptop: its column is wide enough for the longest words. */
+@media (min-width: 861px) { .row { grid-template-columns: minmax(0, 2fr) minmax(0, 1.3fr) 104px 138px 248px minmax(0, 2fr) 18px; } .row .st { white-space: nowrap; } }
+.tile { transition: border-color .15s; }
+.card.list { border-radius: var(--r); }
+.pft td .sub { display: block; color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+.pft td .pill + .sub { margin-top: 5px; }
+@media (max-width: 900px) { .co .aw .aww { display: none; } .co .aw { padding-left: 6px; } }
+@media (max-width: 640px) { .co { max-width: 50vw; padding-left: 10px; } .co .av { display: none; } .tiles.pf .tile:last-child { grid-column: auto; } }
+/* A rail's name wraps rather than end in an ellipsis. */
+.trow > .rail { white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
+/* The platform's companies as cards on a phone: name and payouts, account and fees, last sync. */
+@media (max-width: 640px) {
+  .pfl .scroll { overflow: visible; }
+  .pft thead { display: none; }
+  .pft, .pft tbody { display: block; }
+  .pft tr { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 16px; border-top: 1px solid var(--border); }
+  .pft tr:first-child { border-top: 0; }
+  .pft td, .pft td.r { border: 0; padding: 0; text-align: left; white-space: normal; overflow-wrap: normal; }
+  .pft td[data-l] { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .pft td[data-l]::before { content: attr(data-l); color: var(--muted); font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; min-width: 9em; }
+  .pft td[data-l] .sub { display: inline; margin: 0; }
+  .pft td.pay[data-l] .pv { display: inline-flex; gap: 8px; align-items: baseline; }
+  .pft td.pay[data-l] .meter { flex-basis: 100%; max-width: none; margin-top: 2px; }
+  .trow > .what { white-space: normal; overflow-wrap: anywhere; }
+}
+/* A tile's label that wraps keeps its icon on its first line. */
+.tile .l { align-items: flex-start; } .tile .l .ic { margin-top: 1px; }
+
+/* Round 2 (10 Nov): denser pages, initials, one-hue bars from the store's own numbers. */
+header.top .wrap { height: 56px; }
+header.top .test { padding: 5px 9px; font-size: 12px; }
+.av2 { flex: none; width: 28px; height: 28px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--accent-soft); color: var(--accent); font: 700 11px/1 Inter, system-ui, sans-serif; letter-spacing: .02em; }
+.row > .sup { display: flex; align-items: center; gap: 10px; }
+.row .sup .sn { min-width: 0; }
+.row > .why { display: flex; align-items: center; gap: 6px; }
+.row > .why .ic { flex: none; display: inline-flex; color: var(--faint); }
+.trow > .what { display: flex; align-items: center; gap: 10px; }
+.trow > .what .wt { min-width: 0; }
+.seg { display: flex; gap: 2px; height: 10px; border-radius: 999px; overflow: hidden; background: var(--sunken); }
+.seg span { height: 100%; }
+.seg.empty { opacity: .6; }
+.s0 { background: var(--accent); } .s1 { background: color-mix(in srgb, var(--accent) 64%, var(--surface)); } .s2 { background: color-mix(in srgb, var(--accent) 38%, var(--surface)); } .s3 { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); }
+ul.legend { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; }
+ul.legend li { display: inline-flex; align-items: center; gap: 6px; }
+ul.legend li i { width: 10px; height: 10px; border-radius: 3px; }
+ul.legend li span { color: var(--muted); }
+ul.legend li.zero { opacity: .55; }
+.meter { display: block; width: 100%; max-width: 220px; height: 6px; border-radius: 999px; background: var(--sunken); overflow: hidden; margin-top: 6px; }
+.meter > span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.ovtop { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 12px; margin-top: 18px; }
+@media (max-width: 900px) { .ovtop { grid-template-columns: minmax(0, 1fr); } }
+a.next { display: flex; align-items: center; gap: 14px; padding: 18px 20px; text-decoration: none; color: var(--text); }
+a.next.act { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+a.next .nic { flex: none; width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+a.next:not(.act) .nic { background: var(--ok-soft); color: var(--ok); }
+a.next > div { min-width: 0; flex: 1; }
+a.next .nl { display: block; color: var(--muted); font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; }
+a.next b { display: block; font-size: 17px; letter-spacing: -.01em; margin-top: 2px; }
+a.next .ns { display: block; color: var(--muted); font-size: 14px; margin-top: 2px; }
+a.next > .ic { color: var(--faint); }
+.panel.due h2 { margin: 0 0 12px; }
+p.fine { color: var(--muted); font-size: 12.5px; margin: 8px 0 0; }
+.waits { margin-top: 18px; }
+.inbox { margin: 14px 0 0; }
+.tile.quiet .v { color: var(--muted); font-size: clamp(18px, 1.8vw, 22px); }
+.tiles.pf { grid-template-columns: minmax(0, 1fr) minmax(0, 1.9fr) minmax(0, 1.1fr) minmax(0, 1fr); }
+@media (max-width: 900px) { .tiles.pf { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tiles.pf .tile.wide { grid-column: 1 / -1; } }
+.pfgate { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.pfin { display: flex; gap: 8px; align-items: center; }
+.pfin .field { width: 260px; padding: 9px 12px; }
+.pfin .btn { white-space: nowrap; }
+.pfgate p.fine { margin: 0; }
+.pfchip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 13px; font-weight: 600; color: var(--ok); }
+.pfchip .dot { color: var(--faint); }
+button.linkish { border: 0; background: none; padding: 0; font: inherit; color: var(--accent); cursor: pointer; }
+.pft td.pco { display: flex; align-items: center; gap: 10px; }
+.pft td.pay .pv { display: block; }
+.table.vat th.sh, .table.vat td.sh { width: 34%; }
+.table.vat td.sh .meter { margin-top: 7px; max-width: none; }
+.table.vat tr.tot td { background: color-mix(in srgb, var(--sunken) 55%, var(--surface)); }
+.table tr.ln td { padding-top: 3px; padding-bottom: 3px; border-top: 0; font-size: 13.5px; color: var(--muted); }
+.table tr.ln:last-child td, .table tr.ln + tr.en td { }
+.table tr.en td { padding-top: 12px; padding-bottom: 4px; }
+.table tr.ln td.r { color: var(--text); font-variant-numeric: tabular-nums; }
+.table td.pn { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 640px) {
+  .pfgate { align-items: stretch; width: 100%; } .pfin { flex-wrap: wrap; } .pfin .field { width: 100%; flex: 1 1 100%; }
+  a.next { padding: 16px; } a.next b { font-size: 16px; }
+  .table.vat th.sh, .table.vat td.sh { display: none; }
+}
+@media (max-width: 900px) {
+  /* Two rows on a phone or a narrow window: the brand, who is signed in and the test-money label; then the pages. */
+  header.top .wrap { height: auto; flex-wrap: wrap; row-gap: 0; padding-top: 10px; }
+  header.top nav.tabs { order: 9; flex: 1 0 100%; margin: 6px 0 0; padding-bottom: 8px; }
+  .who-am-i #who { max-width: 46vw; overflow: hidden; text-overflow: ellipsis; }
+}
+@media (max-width: 640px) {
+  header.top .test .tl { display: none; }
+  .who-am-i #who { max-width: 52vw; }
+  .who-am-i #who .wc { display: none; }
+  /* Five pages do not fit one row on a phone: they wrap, never run off the edge. */
+  header.top nav.tabs { display: flex; flex-wrap: wrap; gap: 2px; }
+  header.top nav.tabs a { padding: 6px 9px; font-size: 13.5px; }
+  .auth { margin-top: 3vh; padding: 20px; }
+}
+`;
+
+// The page's frame in Dutch (the default); the script re-words it in the person's language when it starts.
+const BODY = `
+<header class="top"><div class="wrap"><a class="brand" href="#/"><span class="mk">P</span><span>Purser</span><span class="sec">Cloud</span></a>
+<nav class="tabs" id="tabs" aria-label="${tr("nl", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("nl", "cs.nav.overview")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("nl", "nav.invoices")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("nl", "nav.transactions")}</a><a href="#/books" data-tab="books" data-t="cs.nav.books">${tr("nl", "cs.nav.books")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("nl", "cs.nav.settings")}</a></nav>
+<span class="spacer"></span>
+<span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("nl", "cs.sign_out")}" aria-label="${tr("nl", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
+<span class="test" title="${escAttr(tr("nl", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("nl", "test.label")}</span></span></div></header>
+<main><div class="wrap" id="view" aria-live="polite"></div></main>
+<p class="foot wrap" id="foot">${tr("nl", "cs.foot")}</p>`;
+
+// The client: plain JS (no template literals in it, so it can sit in this file as a raw string).
+const SCRIPT = String.raw`
+const LS=__CATALOGUES__;
+const PREF=(()=>{try{return localStorage.getItem('purser.cloud.lang')}catch(e){return null}})();
+const L=LS[PREF==='en'?'en':'nl'];
+__I18N__
+document.documentElement.lang=L.lang;
+for(const a of document.querySelectorAll('[data-t]'))a.textContent=(a.classList.contains('tl')?' ':'')+t(a.dataset.t);
+document.querySelector('#foot').textContent=t('cs.foot');
+for(const b of [document.querySelector('#out')]){b.title=t('cs.sign_out');b.setAttribute('aria-label',t('cs.sign_out'))}
+document.querySelector('header .test').title=t('test.title');
+const IC=__ICONS__;
+const CFG=JSON.parse(document.querySelector('meta[name=purser-cloud]').content);
+const $=(s)=>document.querySelector(s);
+const el=(tag,cls,kids)=>{const e=document.createElement(tag);if(cls)e.className=cls;for(const k of [].concat(kids??[])){if(k===null||k===undefined||k===false)continue;e.append(typeof k==='string'?document.createTextNode(k):k)}return e};
+const ic=(name)=>{const s=document.createElement('span');s.className='ic';s.innerHTML=IC[name]||'';return s};
+const btn=(label,cls,icon)=>{const b=el('button','btn'+(cls?' '+cls:''),[icon?ic(icon):null,label]);b.type='button';return b};
+const today=new Date().toISOString().slice(0,10);
+const view=()=>$('#view');
+const note=(text,tone)=>el('p','note-'+(tone||'info'),text);
+const chip=(status,words)=>el('span','st '+String(status||'').replace(/[^a-z_]/g,''),statusWords(status,words));
+const dl=(pairs)=>{const d=el('dl','read');for(const [k,v,cls] of pairs){if(v===null||v===undefined||v==='')continue;d.append(el('dt','',k));const dd=el('dd',cls||'');if(v instanceof Node)dd.append(v);else dd.textContent=String(v);d.append(dd)}return d};
+
+// Base64url and the passkey: WebAuthn hands out ArrayBuffers; the API takes base64url.
+const b64u=(buf)=>{let s='';for(const b of new Uint8Array(buf))s+=String.fromCharCode(b);return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')};
+const fromB64u=(s)=>{const n=s.replace(/-/g,'+').replace(/_/g,'/');const bin=atob(n+'==='.slice((n.length+3)%4));return Uint8Array.from(bin,(c)=>c.charCodeAt(0))};
+const assertionOf=(cred)=>({authenticatorData:b64u(cred.response.authenticatorData),clientDataJSON:b64u(cred.response.clientDataJSON),signature:b64u(cred.response.signature)});
+const hasPasskeys=()=>!!(window.PublicKeyCredential&&navigator.credentials);
+
+// The session: in this tab only, gone when it closes or after 15 minutes.
+const KEY='purser.cloud.session';
+const load=()=>{try{const s=JSON.parse(sessionStorage.getItem(KEY)||'null');return s&&s.exp>Date.now()?s:null}catch(e){return null}};
+const save=(s)=>{try{sessionStorage.setItem(KEY,JSON.stringify(s))}catch(e){}};
+const forget=()=>{try{sessionStorage.removeItem(KEY)}catch(e){}};
+let S=load();let ME=null;let notice=null;
+
+class Expired extends Error{}
+async function api(path,o){
+  o=o||{};const token=o.token||(S&&S.token);
+  const headers={};if(token)headers.authorization='Bearer '+token;if(o.body!==undefined)headers['content-type']='application/json';
+  const r=await fetch(path,{method:o.method||'GET',headers,body:o.body===undefined?undefined:JSON.stringify(o.body)});
+  if(r.status===401&&!o.token&&S){forget();S=null;ME=null;notice=t('cs.session_ended');go('#/sign-in');throw new Expired('signed out')}
+  if(o.raw){if(!r.ok){const j=await r.json().catch(()=>({error:r.statusText}));throw new Error(j.error||r.statusText)}return r}
+  const j=await r.json().catch(()=>({error:r.statusText}));
+  if(!r.ok)throw new Error(j.error||r.statusText);
+  return j}
+async function download(path,name){const r=await api(path,{raw:true});const url=URL.createObjectURL(await r.blob());const a=el('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000)}
+const go=(h)=>{if(location.hash===h)route();else location.hash=h};
+
+function shell(){
+  document.body.className=S?'signed-in':'signed-out';
+  if(S){const left=Math.max(0,Math.round((S.exp-Date.now())/60000));const n=ME&&ME.user&&ME.user.display_name?ME.user.display_name:'',c=ME&&ME.tenant?ME.tenant.name:'',e=t('cs.ends_in',{n:left});const w=$('#who');
+    // Who, the company and the session's time left; a narrow header drops the company, then the time (both stay in the title).
+    w.replaceChildren(el('span','wn',n),el('span','we',(n?' · ':'')+e));w.title=[n,c,e].filter(Boolean).join(' · ');
+    // The company this session is in, and its Airwallex account as Airwallex last reported it (a platform runs several).
+    const co=$('#co'),aw=ME&&ME.airwallex;co.replaceChildren();if(c){co.append(el('span','av',c.trim().charAt(0).toUpperCase()),el('span','cn',c));
+      co.append(aw?el('span','aw '+String(aw.status).replace(/[^a-z_]/g,''),[el('i',''),el('span','aww',[el('span','awl','Airwallex · '),tk('cs.awx.status.'+aw.status,aw.status)])]):el('span','aw none',[el('i',''),el('span','aww',t('cs.awx.none'))]));
+      co.title=[n,c,aw?'Airwallex '+(aw.account_id||'')+' · '+tk('cs.awx.status.'+aw.status,aw.status):''].filter(Boolean).join(' · ')}}
+  const tab=(location.hash.split('/')[1]||'').split('?')[0];
+  for(const a of document.querySelectorAll('#tabs a'))if(a.dataset.tab===tab)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
+}
+// The person's language (their own, else the company's): when it is not the page's, remember it and load the page again.
+function useLanguage(lang){if(lang!=='nl'&&lang!=='en')return;try{localStorage.setItem('purser.cloud.lang',lang)}catch(e){}if(lang!==L.lang)location.reload()}
+async function me(){if(!ME){ME=await api('/v1/me');if(ME.language&&ME.language!==L.lang)useLanguage(ME.language)}return ME}
+const title=(t)=>{document.title=t?'Purser Cloud · '+t:'Purser Cloud'};
+const head=(h,sub,tools)=>el('div','head',[el('div','',[el('h1','',h),sub?el('p','lede',sub):null]),tools?el('div','tools',tools):null]);
+
+// --- Signing in -------------------------------------------------------------------------------------------------
+async function signIn(slug,status){
+  status.replaceChildren(note(t('cs.waiting_passkey')));
+  const ch=await api('/v1/auth/challenge',{method:'POST',body:{tenant:slug},token:'-'});
+  const cred=await navigator.credentials.get({publicKey:{challenge:fromB64u(ch.challenge),rpId:CFG.rpId,userVerification:'required',timeout:60000}});
+  const r=await api('/v1/auth/login',{method:'POST',token:'-',body:{tenant:slug,challenge_id:ch.challenge_id,credential_id:b64u(cred.rawId),assertion:assertionOf(cred)}});
+  S={token:r.session,exp:Date.now()+r.expires_in*1000-5000,slug:slug};save(S);ME=null;
+}
+function signInView(){
+  title(t('cs.sign_in'));
+  const slug=el('input','field');slug.id='slug';slug.autocomplete='organization';slug.placeholder='your-company';slug.spellcheck=false;
+  try{slug.value=localStorage.getItem('purser.cloud.slug')||''}catch(e){}
+  const status=el('div','');status.setAttribute('role','status');
+  const b=btn(t('cs.sign_in_passkey'),'primary big','scan-face');
+  const card=el('div','card auth',[el('h1','',t('cs.sign_in')),el('p','',t('cs.sign_in_lede')),
+    el('label','',t('cs.company_address')),el('div','addr',[slug,el('span','',CFG.mailDomain?'@'+CFG.mailDomain:'.purser')]),b,status,
+    el('p','alt',[t('cs.new_company'),(()=>{const a=el('a','',t('cs.set_it_up'));a.href='#/start';return a})()])]);
+  if(notice){status.append(note(notice,'bad'));notice=null}
+  if(!hasPasskeys()){b.disabled=true;status.append(note(t('cs.no_passkeys'),'bad'))}
+  b.onclick=async()=>{const s=slug.value.trim().toLowerCase();if(!/^[a-z0-9][a-z0-9-]{1,40}$/.test(s)){status.replaceChildren(note(t('cs.slug_rule'),'bad'));return}
+    b.disabled=true;try{await signIn(s,status);try{localStorage.setItem('purser.cloud.slug',s)}catch(e){}go('#/overview')}catch(e){if(!(e instanceof Expired))status.replaceChildren(note(e.name==='NotAllowedError'?t('cs.passkey_cancelled'):e.message,'bad'))}finally{b.disabled=false}};
+  slug.onkeydown=(e)=>{if(e.key==='Enter')b.click()};
+  view().replaceChildren(card);slug.focus();
+}
+
+// --- A passkey made and enrolled: two prompts, one to make it, one to prove it by signing the enrolment's secret ----
+async function enrolPasskey(o){
+  const userId=crypto.getRandomValues(new Uint8Array(16));
+  const made=await navigator.credentials.create({publicKey:{rp:{id:CFG.rpId,name:'Purser Cloud'},user:{id:userId,name:o.name,displayName:o.name},challenge:crypto.getRandomValues(new Uint8Array(32)),
+    pubKeyCredParams:[{type:'public-key',alg:-7}],authenticatorSelection:{userVerification:'required',residentKey:'required'},attestation:'none',timeout:120000}});
+  const spki=new Uint8Array(made.response.getPublicKey());
+  // A P-256 key in SPKI ends with 0x04, x (32 bytes), y (32 bytes).
+  const pt=spki.slice(spki.length-65);if(pt[0]!==4)throw new Error(t('cs.not_p256'));
+  const signed=await navigator.credentials.get({publicKey:{challenge:fromB64u(o.token),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:made.rawId}],userVerification:'required',timeout:120000}});
+  await api('/v1/auth/enrol',{method:'POST',token:'-',body:{tenant:o.slug,enrolment_id:o.enrolment_id,token:o.token,credential_id:b64u(made.rawId),x:b64u(pt.slice(1,33)),y:b64u(pt.slice(33,65)),assertion:assertionOf(signed)}});
+}
+
+// --- First run: a new company, with the owner key Purser handed over ------------------------------------------------
+function startView(){
+  title(t('cs.setup'));
+  let key='',slug='',info=null,sync=null;
+  const box=el('div','card auth');
+  const steps=el('ol','steps');const status=el('div','');status.setAttribute('role','status');
+  function stepItem(n,t,s,state){return el('li',state||'',[el('span','n',state==='done'?ic('circle-check'):String(n)),el('div','',[el('b','',t),el('span','s',s)])])}
+  function draw(stage){
+    steps.replaceChildren(
+      stepItem(1,t('cs.step1'),t('cs.step1_sub'),stage>1?'done':'now'),
+      stepItem(2,t('cs.step2'),t('cs.step2_sub'),stage>2?'done':stage===2?'now':''),
+      stepItem(3,t('cs.step3'),t('cs.step3_sub'),stage===3?'now':''));
+  }
+  const body=el('div','');
+  function stage1(){
+    draw(1);
+    const s=el('input','field');s.placeholder='your-company';s.spellcheck=false;s.id='start-slug';
+    const k=el('input','field');k.type='password';k.placeholder='pck_…';k.autocomplete='off';k.id='start-key';
+    const b=btn(t('cs.continue'),'primary big');
+    body.replaceChildren(el('label','',t('cs.company_address')),el('div','addr',[s,el('span','',CFG.mailDomain?'@'+CFG.mailDomain:'.purser')]),el('label','',t('cs.starter_key')),k,
+      note(t('cs.starter_note')),b);
+    b.onclick=async()=>{slug=s.value.trim().toLowerCase();key=k.value.trim();
+      try{info=await api('/v1/me',{token:key});if(info.tenant.slug!==slug)throw new Error(t('cs.other_company_key'));if(!info.user)throw new Error(t('cs.not_owner_key'));stage2()}catch(e){status.replaceChildren(note(e.message,'bad'))}};
+  }
+  function stage2(){
+    draw(2);status.replaceChildren();
+    const name=el('input','field');name.value=info.tenant.name||'';name.id='start-name';
+    const b=btn(t('cs.make_passkey'),'primary big','scan-face');
+    body.replaceChildren(el('label','',t('cs.company_name')),name,info.owner_has_passkey?note(t('cs.owner_has_passkey'),'bad'):null,b);
+    if(info.owner_has_passkey)b.disabled=true;
+    if(!hasPasskeys()){b.disabled=true;status.append(note(t('cs.no_passkeys_short'),'bad'))}
+    b.onclick=async()=>{b.disabled=true;try{
+      if(name.value.trim()&&name.value.trim()!==info.tenant.name)await api('/v1/company',{method:'POST',token:key,body:{name:name.value.trim()}});
+      status.replaceChildren(note(t('cs.follow_device')));
+      const e=await api('/v1/users/'+encodeURIComponent(info.user.id)+'/enrolment',{method:'POST',token:key});
+      await enrolPasskey({slug,name:(info.user.display_name||t('cs.owner'))+' · '+slug,enrolment_id:e.enrolment_id,token:e.token});
+      status.replaceChildren(note(t('cs.passkey_saved'),'ok'));
+      await signIn(slug,status);
+      stage3()}catch(e){if(!(e instanceof Expired))status.replaceChildren(note(e.name==='NotAllowedError'?t('cs.passkey_cancelled'):e.message,'bad'));b.disabled=false}};
+  }
+  async function stage3(){
+    draw(3);status.replaceChildren();
+    ME=null;const m=await me();
+    const inbox=m.inbox?el('p','inbox',[ic('mail'),t('cs.mail_to'),el('b','mono',m.inbox)]):note(t('cs.inbox_later'));
+    const make=btn(t('cs.make_runner_key'),'primary','key-round');
+    const out=el('div','');
+    body.replaceChildren(inbox,el('p','',[t('cs.connect_runner')]),make,out,
+      note(t('cs.starter_gone'),'ok'),
+      (()=>{const a=el('a','btn big',t('cs.open_console'));a.href='#/overview';return a})());
+    make.onclick=async()=>{make.disabled=true;try{sync=await api('/v1/keys',{method:'POST',body:{name:t('cs.runner_key_name'),scopes:['sync'],expires_in_days:90}});
+      out.replaceChildren(el('div','once',[el('b','',t('cs.shown_once')),t('cs.run_this'),
+        el('code','cmd','PURSER_CLOUD_URL='+CFG.origin+' PURSER_CLOUD_KEY='+sync.api_key+' npm run cloud -- push')]))}catch(e){out.replaceChildren(note(e.message,'bad'));make.disabled=false}};
+    key='';
+  }
+  box.append(el('h1','',t('cs.setup')),el('p','',t('cs.setup_lede')),steps,body,status);
+  view().replaceChildren(box);stage1();
+}
+
+// --- An invited person makes their passkey (the owner shares the link; its secret is in the fragment, never sent) ---
+function enrolView(q){
+  // The secret leaves the address bar and the history at once (red team round 5); the page keeps it in memory only.
+  const e=q.get('e')||'',k=q.get('k')||'';
+  history.replaceState(null,'','#/enrol');
+  title(t('cs.enrol_title'));
+  const status=el('div','');status.setAttribute('role','status');
+  const b=btn(t('cs.make_passkey'),'primary big','scan-face');b.disabled=true;
+  const who=el('p','',t('cs.checking_invite'));
+  const card=el('div','card auth',[el('h1','',t('cs.enrol_title')),who,b,status]);
+  view().replaceChildren(card);
+  if(!e||!k){who.replaceChildren(note(t('cs.link_used'),'bad'));return}
+  if(!hasPasskeys()){status.append(note(t('cs.no_passkeys_short'),'bad'))}
+  // Which company and person the secret is for comes from the server, never from the link (red team round 5).
+  api('/v1/auth/invite',{method:'POST',token:'-',body:{enrolment_id:e,token:k}}).then((inv)=>{
+    who.replaceChildren(t('cs.enrol_added'),el('b','',inv.company),' (',el('span','mono',inv.tenant),')',t('cs.enrol_as'),el('b','',inv.person),t('cs.enrol_no_password'));
+    if(hasPasskeys())b.disabled=false;
+    b.onclick=async()=>{b.disabled=true;try{status.replaceChildren(note(t('cs.follow_device')));
+      await enrolPasskey({slug:inv.tenant,name:inv.person+' · '+inv.tenant,enrolment_id:e,token:k});
+      history.replaceState(null,'','#/sign-in');try{localStorage.setItem('purser.cloud.slug',inv.tenant)}catch(x){}
+      status.replaceChildren(note(t('cs.enrol_done'),'ok'));setTimeout(()=>go('#/sign-in'),900)}catch(x){status.replaceChildren(note(x.name==='NotAllowedError'?t('cs.passkey_cancelled'):x.message,'bad'));b.disabled=false}};
+  },(x)=>{who.replaceChildren(note(x.message,'bad'))});
+}
+
+// --- Overview ------------------------------------------------------------------------------------------------------
+const byCur=(m)=>Object.entries(m||{}).filter(([,v])=>v!==0).sort(([a],[b])=>a.localeCompare(b));
+function money(m,emptyWord){const e=byCur(m);if(!e.length)return emptyWord||t('none');const s=el('span','');s.append(el('small','',cur(e[0][0])),cents(e[0][1]));return s}
+function others(m){const e=byCur(m).slice(1);return e.length?e.map(([c,v])=>cur(c)+' '+cents(v)).join(' · '):''}
+function tile(label,icon,value,extra,tone){const t=el('div','card tile'+(tone?' '+tone:''));const v=el('div','v num');if(value instanceof Node)v.append(value);else v.textContent=value;t.append(el('div','l',[ic(icon),label]),v);if(extra)t.append(el('div','x',extra));return t}
+const initials=(n)=>{const w=String(n||'?').replace(/\([^)]*\)/g,' ').replace(/[^\p{L}\p{N} ]/gu,' ').trim().split(/\s+/).filter(Boolean);return (((w[0]||'?')[0]||'?')+((w[1]||'')[0]||'')).toUpperCase()};
+const av=(n)=>{const a=el('span','av2',initials(n));a.setAttribute('aria-hidden','true');return a};
+// A labelled bar in one hue (dataviz rule: one hue, light to dark, every part named with its value, never colour alone).
+function segbar(parts,label){const tot=parts.reduce((n,p)=>n+Math.max(0,p.v),0);const bar=el('div','seg');bar.setAttribute('role','img');bar.setAttribute('aria-label',label+': '+parts.map(p=>p.l+' '+p.t).join(', '));
+  parts.forEach((p,i)=>{if(p.v<=0||!tot)return;const s=el('span','s'+i);s.style.width=(p.v/tot*100).toFixed(2)+'%';s.title=p.l+': '+p.t;bar.append(s)});
+  if(!tot)bar.classList.add('empty');
+  return el('div','segwrap',[bar,el('ul','legend',parts.map((p,i)=>el('li',p.v>0?'':'zero',[el('i','s'+i),el('span','',p.l),el('b','num',p.t)])))])}
+const meter=(v,max)=>{const m=el('span','meter');const f=el('span','');f.style.width=(max>0&&v>0?Math.max(2,v/max*100):0).toFixed(1)+'%';m.append(f);m.setAttribute('aria-hidden','true');return m};
+const toCents=(v)=>{const m=/^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(String(v||''));if(!m)return 0;const c=Number(m[2])*100+Number((m[3]||'').padEnd(2,'0'));return m[1]?-c:c};
+async function overviewView(){
+  title(t('cs.nav.overview'));
+  const [m,x,all]=await Promise.all([me(),api('/v1/insights'),api('/v1/invoices?limit=200')]);shell();
+  const items=all.items||[];
+  const blocked=Object.entries(x.blocked_by_reason||{}).sort((a,b)=>b[1]-a[1]);const nb=blocked.reduce((n,[,c])=>n+c,0);
+  const waits=x.waiting.for_cfo+x.waiting.for_supplier_check+x.waiting.for_a_person;
+  const tiles=el('div','tiles',[
+    tile(t('cs.t.open'),'wallet',money(x.open_net_cents,t('cs.nothing_open')),others(x.open_net_cents)||null),
+    tile(t('cs.t.due7'),'calendar-range',money(x.due_7_days_cents),byCur(x.due_30_days_cents).length?t('cs.x.due30',{amount:byCur(x.due_30_days_cents).map(([c,v])=>cur(c)+' '+cents(v)).join(' · ')}):null),
+    tile(t('cs.t.overdue'),'clock',money(x.overdue_cents),byCur(x.overdue_cents).length?t('cs.x.pay_first'):t('cs.x.in_time'),byCur(x.overdue_cents).length?'alert':'calm'),
+    tile(t('cs.t.waits'),'inbox',String(waits),t('cs.x.waits',{faceid:x.waiting.for_cfo,other:x.waiting.for_a_person+x.waiting.for_supplier_check})),
+    tile(t('cs.t.blocked'),'octagon-x',String(nb),blocked.length?tk('cs.w.f.'+blocked[0][0],t('cs.w.blocked')):t('cs.x.none_blocked'),nb?'alert':'calm')]);
+  // The next thing to do, from the same invoices: the CFO's Face ID first, then what needs a person.
+  const faceid=items.filter(i=>i.status==='waiting_cfo').length,todo=items.filter(i=>['ready','needs_review','needs_vendor'].includes(i.status)).length;
+  const nx=el('a','card next'+(faceid||todo?' act':''));nx.href=faceid?'#/invoices?f=waiting_cfo':'#/invoices?f=act';
+  nx.append(el('span','nic',ic(faceid?'scan-face':todo?'triangle-alert':'circle-check')),el('div','',[el('span','nl',t('cs.next.label')),el('b','',faceid?t(faceid===1?'cs.next.faceid_1':'cs.next.faceid_n',{n:faceid}):todo?t(todo===1?'cs.next.todo_1':'cs.next.todo_n',{n:todo}):t('cs.next.done')),
+    el('span','ns',faceid?t('cs.next.faceid_go'):todo?t('cs.next.todo_go'):t('cs.next.done_sub'))]),faceid||todo?ic('chevron-right'):null);
+  // When the open invoices fall due, in their main currency (other currencies are said, not mixed in).
+  const open=items.filter(i=>!['paid','rejected'].includes(i.status));const per={};for(const i of open)per[i.currency]=(per[i.currency]||0)+toCents(i.total);
+  const main=Object.entries(per).sort((a,b)=>b[1]-a[1])[0];const days=(d)=>Math.round((Date.parse(d)-Date.parse(today))/86400000);
+  const b=[0,0,0,0];for(const i of open){if(!main||i.currency!==main[0])continue;const n=i.due_date?days(i.due_date):99999;b[n<=0?0:n<=7?1:n<=30?2:3]+=toCents(i.total)}
+  const lab=['cs.due.late','cs.due.d7','cs.due.d30','cs.due.later'];
+  const due=el('div','card panel due',[el('h2','',t('cs.due.title')),main?segbar(b.map((v,k)=>({l:t(lab[k]),v,t:cur(main[0])+' '+cents(v)})),t('cs.due.title')):el('p','lede',t('cs.due.none')),
+    Object.keys(per).length>1?el('p','fine',t('cs.due.other_cur')):null]);
+  const inbox=m.inbox?el('p','inbox',[ic('mail'),t('cs.mail_to'),el('b','mono',m.inbox)]):null;
+  const w=items.filter(i=>i.status==='waiting_cfo');
+  const wl=el('div','card list');
+  if(!w.length)wl.append(el('div','empty',[el('b','',t('cs.nothing_waits')),t('cs.nothing_waits_sub')]));
+  else{wl.append(rowHead());for(const i of w)wl.append(invoiceRow(i))}
+  view().replaceChildren(head(t('cs.nav.overview'),t('cs.overview_lede',{name:m.tenant.name||''})),el('div','ovtop',[nx,due]),tiles,inbox,
+    el('section','section waits',[el('div','bar',[el('h2','',t('cs.waits_head'))]),wl]));
+}
+
+// --- Invoices ------------------------------------------------------------------------------------------------------
+// Why, in two or three words with an icon; the whole finding stays in the row's title and on the invoice's page.
+function why(i){const fs=i.findings||[];const f=fs.filter(x=>x.level!=='warn')[0]||fs[0];const full=f?cap(finding(f)):'';
+  if(i.status==='paid')return ['circle-check',i.paid_at?t('cs.w.paid',{date:day(i.paid_at)}):t('paid'),''];if(i.status==='ready')return ['circle-check',t('cs.w.ready'),t('all_checks_passed')];
+  if(i.status==='waiting_cfo')return ['scan-face',t('cs.w.phone'),t('cs.why_on_phone')];if(i.status==='rejected')return ['circle-minus',t('cs.w.rejected'),full];
+  if(i.status==='needs_vendor')return ['clock',t('cs.w.vendor'),full];if(i.status==='blocked')return ['octagon-x',f?tk('cs.w.f.'+f.code,t('cs.w.blocked')):t('cs.w.blocked'),full];
+  return ['triangle-alert',f?tk('cs.w.f.'+f.code,t('cs.w.review')):t('cs.w.review'),full]}
+const rowHead=()=>el('div','row th',[el('span','',t('supplier')),el('span','',t('invoice')),el('span','',t('due')),el('span','amt',t('amount')),el('span','',t('status')),el('span','',t('why')),el('span','')]);
+function invoiceRow(i){
+  const a=el('a','row');a.href='#/invoices/'+encodeURIComponent(i.id);
+  const sup=el('span','sup',[av(i.vendor),el('span','sn',i.vendor||t('unknown_supplier'))]);sup.title=i.vendor||'';
+  const no=el('span','no',[i.invoice_no||t('no_number'),el('span','sub',[el('code','idc',i.id)])]);no.title=i.invoice_no||'';
+  const late=i.due_date&&i.due_date<today&&!['paid','rejected'].includes(i.status);
+  const w=why(i);const wy=el('span','why',[ic(w[0]),el('span','',w[1])]);wy.title=w[2]||w[1];
+  a.append(sup,no,el('span','due num'+(late?' late':''),i.due_date?day(i.due_date):'–'),el('span','amt',[el('span','c',cur(i.currency)),amount(i.total)||'–']),el('span','stc',[chip(i.status,i.status_words)]),wy);
+  const g=ic('chevron-right');g.className='go';a.append(g);return a}
+const FILTERS=[['all',t('filter.all'),()=>true],['act',t('filter.act'),(i)=>['ready','needs_review','needs_vendor'].includes(i.status)],['waiting_cfo',t('filter.waiting_cfo'),(i)=>i.status==='waiting_cfo'],['paid',t('filter.paid'),(i)=>i.status==='paid'],['blocked',t('filter.blocked'),(i)=>i.status==='blocked'],['rejected',t('filter.rejected'),(i)=>i.status==='rejected']];
+async function invoicesView(q){
+  title(t('nav.invoices'));
+  let all=[];let cursor=null;let filter=q&&FILTERS.some(f=>f[0]===q.get('f'))?q.get('f'):'all';
+  const list=el('div','card list');const bar=el('div','bar',[el('h2','',t('nav.invoices'))]);const more=btn(t('cs.load_more'));more.hidden=true;
+  function draw(){
+    bar.querySelectorAll('.chip').forEach(c=>c.remove());
+    for(const [k,label,fn] of FILTERS){const n=all.filter(fn).length;if(k!=='all'&&!n&&k!=='act')continue;const b=el('button','chip',[label,' ',el('b','',String(n))]);b.type='button';b.setAttribute('aria-pressed',String(filter===k));b.onclick=()=>{filter=k;draw()};bar.append(b)}
+    list.replaceChildren();
+    if(!all.length){list.append(el('div','empty',[el('b','',t('no_invoices_yet')),t('cs.invoices_empty_sub')]));return}
+    const shown=all.filter(FILTERS.find(f=>f[0]===filter)[2]).slice().reverse();
+    list.append(rowHead());if(!shown.length)list.append(el('div','empty',[el('b','',t('nothing_here')),t('no_invoice_in_state')]));
+    for(const i of shown)list.append(invoiceRow(i));
+  }
+  async function page(){const p=await api('/v1/invoices?limit=200'+(cursor?'&cursor='+encodeURIComponent(cursor):''));all=all.concat(p.items);cursor=p.next_cursor;more.hidden=!cursor;draw()}
+  more.onclick=()=>page();
+  view().replaceChildren(head(t('nav.invoices'),t('cs.invoices_lede')),el('section','section',[bar,list,more]));
+  await page();
+}
+const RES={block:['octagon-x',t('res.block')],review:['triangle-alert',t('res.review')],wait:['clock',t('res.wait')],warn:['triangle-alert',t('res.warn')]};
+async function invoiceView(id){
+  title(t('cs.invoice'));
+  const i=await api('/v1/invoices/'+encodeURIComponent(id));const r=i.reading||{};
+  title((i.vendor||t('cs.invoice'))+' '+(i.invoice_no||i.id));
+  const late=i.due_date&&i.due_date<today&&!['paid','rejected'].includes(i.status);
+  const back=el('a','back',[ic('arrow-left'),' '+t('dt.all')]);back.href='#/invoices';
+  const top=el('div','dhead',[el('div','who',[el('h1','',i.vendor||t('unknown_supplier')),el('div','meta',[chip(i.status,i.status_words),el('span','',t('dt.invoice',{no:i.invoice_no||t('no_number')})),el('span','','·'),el('span','',i.id),el('span','','·'),el('span','',t('cs.received_on',{date:day(i.received_at)}))])]),
+    el('div','money',[el('div','big',[el('small','',cur(i.currency)),amount(i.total)||'–']),el('div','when',i.status==='paid'&&i.paid_at?t('paid_on',{date:day(i.paid_at)}):i.due_date?t(late?'dt.was_due':'dt.due',{date:day(i.due_date)}):t('dt.no_due'))])]);
+  const acct=r.iban?'IBAN …'+String(r.iban).slice(-4):r.account_number?t('dt.account')+' …'+String(r.account_number).slice(-4):(i.iban_last4?'…'+i.iban_last4:'');
+  const rc=r.currency||i.currency||'';
+  const read=el('div','card panel',[el('h2','',t('dt.read')),dl([[t('supplier'),r.vendor||i.vendor],[t('cs.vat_number'),r.vat_id],[t('dt.invoice_number'),r.invoice_no||i.invoice_no],[t('dt.invoice_date'),day(r.issue_date||i.issue_date)],[t('dt.due_date'),day(r.due_date||i.due_date)],
+    [t('dt.subtotal'),r.subtotal?ma(rc,r.subtotal):''],[t('dt.vat'),r.tax?ma(rc,r.tax):''],[t('dt.total'),ma(rc,r.total||i.total)],
+    [t('dt.pay_to'),[acct,r.bic?'BIC '+r.bic:''].filter(Boolean).join(' · '),'mono'],[t('dt.bank_country'),r.bank_country],[t('dt.reference'),r.reference],[t('dt.booked_to'),i.gl_account?(i.gl_account+(i.cost_centre?' · '+i.cost_centre:'')):'']])]);
+  const fs=i.findings||[];const fl=el('ul','findings');
+  if(!fs.length)fl.append(el('li','ok',[ic('circle-check'),el('span','',t('cs.all_passed'))]));
+  for(const f of fs){const m=RES[f.level]||['circle-minus',f.level];fl.append(el('li',f.level,[ic(m[0]),el('span','',[el('b','',m[1]+': '),finding(f)])]))}
+  const checks=el('div','card panel',[el('h2','',t('dt.checks')),fl]);
+  const tl=el('ul','timeline');
+  tl.append(el('li','',[el('b','',t('tl.received')),el('span','',stamp(i.received_at))]));
+  for(const v of i.earlier_versions||[])tl.append(el('li','',[el('b','',t('cs.changed_version',{n:v.version})),el('span','',stamp(v.replaced_at))]));
+  if(i.status==='waiting_cfo')tl.append(el('li','',[el('b','',t('filed_for_face_id')),el('span','',i.proposal_id?t('cs.payment',{id:i.proposal_id}):'')]));
+  if(i.paid_at)tl.append(el('li','',[el('b','',t('paid')),el('span','',stamp(i.paid_at))]));
+  tl.append(el('li','',[el('b','',t('cs.last_update')),el('span','',stamp(i.updated_at))]));
+  const getDoc=btn(t('cs.download'),'','download');
+  getDoc.onclick=async()=>{getDoc.disabled=true;try{await download('/v1/invoices/'+encodeURIComponent(id)+'/document',(i.invoice_no||i.id).replace(/[^\w.-]+/g,'_')+'.pdf')}catch(e){if(!(e instanceof Expired))getDoc.after(note(e.message,'bad'))}finally{getDoc.disabled=false}};
+  const pages=el('div','pages',[el('p','wait',t('drawing_document'))]);
+  const doc=el('div','card docv',[el('div','bar2',[ic('file-text'),el('span','fn',t('cs.as_received')+(i.doc_sha256?' · SHA-256 '+String(i.doc_sha256).slice(0,12)+'…':'')),getDoc]),pages]);
+  view().replaceChildren(back,top,el('div','split',[doc,el('div','stack',[read,checks,el('div','card panel',[el('h2','',t('dt.timeline')),tl]),note(t('cs.approved_on_phone'))])]));
+  drawPdf(id,pages);
+}
+// The supplier's PDF is drawn in a sandboxed frame with an opaque origin (red team round 5): pdf.js parses it there, in
+// a worker, under its own policy and time limit; the frame cannot reach this page, its session or the API. This page
+// fetches the bytes (it holds the session) and hands them over; if the frame cannot draw them, the download stays.
+const PDF_MAX_BYTES=16*1024*1024;
+async function drawPdf(id,box){
+  try{
+    const r=await api('/v1/invoices/'+encodeURIComponent(id)+'/document',{raw:true});
+    const buf=await r.arrayBuffer();
+    if(buf.byteLength>PDF_MAX_BYTES){box.replaceChildren(el('p','wait',t('cs.too_large')));return}
+    const f=document.createElement('iframe');f.setAttribute('sandbox','allow-scripts');f.src='/pdfview';f.className='pdfframe';f.title=t('cs.invoice_drawn');f.setAttribute('referrerpolicy','no-referrer');
+    let sent=false;
+    const onMsg=(ev)=>{if(ev.source!==f.contentWindow||ev.origin!=='null')return;const d=ev.data||{};
+      if(d.type==='ready'&&!sent){sent=true;f.contentWindow.postMessage({type:'pdf',data:buf},'*',[buf])}
+      else if(d.type==='size'&&typeof d.h==='number')f.style.height=Math.max(120,Math.min(20000,Math.round(d.h)))+'px';
+      else if(d.type==='failed'){window.removeEventListener('message',onMsg);box.replaceChildren(el('p','wait',t('cs.not_drawn')))}};
+    window.addEventListener('message',onMsg);
+    box.replaceChildren(f);
+  }catch(e){if(e instanceof Expired)return;box.replaceChildren(el('p','wait',t('cs.not_drawn')))}
+}
+
+// --- Transactions --------------------------------------------------------------------------------------------------
+const RAILS=[['',t('cs.every_rail')],...['airwallex_transfer','airwallex_fx','airwallex_card','airwallex_airi','airwallex_receipt','metal','metal_clearing'].map(k=>[k,t('tx.rail.'+k)])];
+const RECS=[['',t('tx.every_state')],['matched',t('rec.matched')],['missing_booking',t('rec.missing_booking')],['missing_rail_record',t('cs.no_rail_record')],['amount_mismatch',t('cs.amounts_differ')]];
+async function transactionsView(){
+  title(t('nav.transactions'));
+  const q=new URLSearchParams();
+  const sel=(opts,key)=>{const s=el('select','field');for(const [v,l] of opts){const o=el('option','',l);o.value=v;s.append(o)}s.onchange=()=>{if(s.value)q.set(key,s.value);else q.delete(key);load()};return s};
+  const curIn=el('input','field');curIn.placeholder='EUR';curIn.maxLength=4;curIn.onchange=()=>{const v=curIn.value.trim().toUpperCase();if(/^[A-Z]{3,4}$/.test(v))q.set('currency',v);else q.delete('currency');load()};
+  const from=el('input','field');from.type='date';from.onchange=()=>{if(from.value)q.set('from',from.value);else q.delete('from');load()};
+  const to=el('input','field');to.type='date';to.onchange=()=>{if(to.value)q.set('to',to.value);else q.delete('to');load()};
+  const csv=btn('CSV','','download');csv.onclick=()=>download('/v1/transactions/export.csv?'+q.toString(),'transactions.csv').catch(e=>{if(!(e instanceof Expired))list.before(note(e.message,'bad'))});
+  const tiles=el('div','tiles');const list=el('div','card list');
+  const filters=el('div','form-row',[el('div','',[el('label','',t('rail')),sel(RAILS,'rail')]),el('div','',[el('label','',t('tx.state')),sel(RECS,'reconciliation')]),el('div','',[el('label','',t('tx.currency')),curIn]),el('div','',[el('label','',t('cs.from')),from]),el('div','',[el('label','',t('cs.to')),to])]);
+  view().replaceChildren(head(t('nav.transactions'),t('cs.tx_lede'),[csv]),tiles,filters,el('section','section',[list]));
+  async function load(){
+    const [s,p]=await Promise.all([api('/v1/transactions/summary?'+q.toString()),api('/v1/transactions?limit=200&'+q.toString())]);
+    const tot=s.totals||[];const inn={},out={},fee={};for(const t of tot){inn[t.currency]=Math.round(Number(t.in||0)*100);out[t.currency]=Math.round(Number(t.out||0)*100);if(t.fees)fee[t.currency]=Math.round(Number(t.fees)*100)}
+    tiles.replaceChildren(tile(t('cs.tile.in'),'arrow-down-left',money(inn),others(inn)||null),tile(t('cs.tile.out'),'arrow-up-right',money(out),others(out)||null),tile(t('cs.tile.fees'),'wallet',money(fee),t('cs.x.rails')),
+      tile(t('tx.tile.unreconciled'),'shield-check',String(s.check.unreconciled),s.check.unreconciled?t('cs.x.look'):t('cs.x.all_match'),s.check.unreconciled?'alert':'calm'),
+      tile(t('tx.tile.no_approval'),'octagon-x',String(s.check.without_approval.length),s.check.without_approval.length?t('cs.x.look'):t('cs.x.all_approved'),s.check.without_approval.length?'alert':'calm'));
+    list.replaceChildren(el('div','trow th',[el('span','',t('date')),el('span','',t('what')),el('span','',t('rail')),el('span','amt',t('amount')),el('span','',t('status')),el('span','',t('books')),el('span','')]));
+    if(!p.items.length)list.append(el('div','empty',[el('b','',t('cs.no_movements')),t('cs.nothing_matches')]));
+    for(const r of p.items){const b=el('div','trow');
+      const amt=el('span','amt'+(r.flow==='in'?' in':''),[el('span','c',cur(r.currency)),(r.flow==='in'?'+':'−')+amount(r.amount)]);if(!r.moved)amt.classList.add('not');
+      b.append(el('span','when',day(r.at)),el('span','what',[av(r.counterparty||'?'),el('span','wt',[el('b','',data('counterparty',r.counterparty||'')),el('span','sub',data('description',r.description||''))])]),el('span','rail',[tk('rail.'+r.rail,r.rail_label||r.rail),el('span','sub',r.proof?el('code','idc',String(r.proof).slice(0,18)):t('tx.no_proof_short'))]),amt,
+        el('span','',[el('span','pill '+(r.moved?'ok':'bad'),data('status',r.status_words||r.status))]),el('span','',[el('span','pill '+(r.reconciliation==='matched'?'ok':r.reconciliation==='not_applicable'?'':'warn'),tk('rec.'+r.reconciliation,r.reconciliation_words||r.reconciliation))]),el('span',''));
+      list.append(b)}
+    if(p.next_cursor)list.append(note(t('cs.newest_200')));
+  }
+  await load();
+}
+
+// --- Books ---------------------------------------------------------------------------------------------------------
+const RUBRIC=(k)=>tk('cs.rubric.'+k,k);
+async function booksView(){
+  title(t('cs.nav.books'));
+  const now=new Date();const qs=[];for(let k=0;k<6;k++){const d=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-3*k,1));qs.push(d.getUTCFullYear()+'Q'+(Math.floor(d.getUTCMonth()/3)+1))}
+  const pick=el('select','field');for(const v of qs){const o=el('option','',v);o.value=v;pick.append(o)}
+  const vat=el('div','card panel');const journal=el('div','card panel');
+  view().replaceChildren(head(t('cs.nav.books'),t('cs.books_lede')),el('div','split2',[vat,journal]));
+  async function drawVat(){
+    const v=await api('/v1/reports/vat?quarter='+encodeURIComponent(pick.value));
+    const tbl=el('table','table vat',[el('thead','',[el('tr','',[el('th','',t('cs.rubric')),el('th','sh',t('cs.vat.share')),el('th','r',t('cs.base')),el('th','r',t('dt.vat'))])])]);const tb=el('tbody','');
+    const maxBase=Math.max(0,...Object.values(v.rubrics||{}).map(r=>Math.abs(r.base_cents||0)));
+    const eur=(c)=>cur('EUR')+' '+cents(c);
+    for(const [k,r] of Object.entries(v.rubrics||{})){if(!r.base_cents&&!r.vat_cents)continue;tb.append(el('tr','',[el('td','',RUBRIC(k)),el('td','sh',meter(Math.abs(r.base_cents||0),maxBase)),el('td','r',eur(r.base_cents)),el('td','r',eur(r.vat_cents))]))}
+    // No rubric row: the quarter may still hold input VAT (5b), so "nothing" is said only when 5a and 5b are nil too.
+    if(!tb.children.length)tb.append(el('tr','',[el('td','',t(v.owed_5a_cents||v.input_5b_cents?'cs.no_rubrics':'cs.nothing_quarter')),el('td',''),el('td',''),el('td','')]));
+    tb.append(el('tr','tot',[el('td','',el('b','',t('cs.owed_5a'))),el('td',''),el('td',''),el('td','r',eur(v.owed_5a_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.input_5b'))),el('td',''),el('td',''),el('td','r',eur(v.input_5b_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.balance_5c'))),el('td',''),el('td',''),el('td','r',el('b','',eur(v.balance_5c_cents)))]));
+    tbl.append(tb);
+    vat.replaceChildren(el('h2','',t('cs.vat_overview')),el('div','form-row',[el('div','',[el('label','',t('cs.quarter')),pick])]),el('div','scroll',tbl),
+      v.uncoded_lines?note(t('cs.uncoded',{n:v.uncoded_lines}),'bad'):null,note(NL?t('cs.vat_notice'):(v.notice||t('cs.vat_notice'))));
+  }
+  pick.onchange=()=>drawVat().catch(e=>{if(!(e instanceof Expired))vat.append(note(e.message,'bad'))});
+  const j=await api('/v1/ledger/entries?limit=30');
+  const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('date')),el('th','',t('cs.entry')),el('th','r',t('cs.debit')),el('th','r',t('cs.credit'))])])]);const tb=el('tbody','');
+  for(const e of j.items.slice().reverse()){tb.append(el('tr','en',[el('td','',day(e.posting_date)),el('td','',[el('b','','#'+e.entry_id+' '),data('journal',e.description||'')]),el('td',''),el('td','')]));
+    for(const l of e.lines||[])tb.append(el('tr','ln',[el('td',''),el('td','',l.account+(l.vat_code?' · '+t('cs.vat_code',{code:l.vat_code}):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
+  if(!j.items.length)tb.append(el('tr','',[el('td','',t('cs.no_entries')),el('td',''),el('td',''),el('td','')]));
+  tbl.append(tb);journal.replaceChildren(el('h2','',t('cs.journal')),el('div','scroll',tbl),note(t('cs.journal_note')));
+  await drawVat();
+}
+
+// --- Settings ------------------------------------------------------------------------------------------------------
+async function settingsView(){
+  title(t('cs.nav.settings'));
+  const m=await me();
+  const owner=m.scopes.includes('admin');
+  // The pages' language: an owner sets the company's; a signed-in person may choose their own (or follow the company).
+  const langSel=(opts,value)=>{const s=el('select','field');for(const [v,l] of opts){const o=el('option','',l);o.value=v;if(v===value)o.selected=true;s.append(o)}return s};
+  const langNames=[['nl','Nederlands'],['en','English']];
+  const langBox=el('div','form-row');const langMsg=el('div','');
+  if(owner){const c=langSel(langNames,m.tenant.language||'nl');c.onchange=async()=>{try{await api('/v1/company',{method:'POST',body:{language:c.value}});ME=null;langMsg.replaceChildren(note(t('cs.language_saved'),'ok'));if(!m.user||!m.user.language)useLanguage(c.value)}catch(e){if(!(e instanceof Expired))langMsg.replaceChildren(note(e.message,'bad'))}};langBox.append(el('div','',[el('label','',t('cs.language_company')),c]))}
+  if(m.kind==='session'&&m.user){const p=langSel([['',t('cs.language_follow')],...langNames],m.user.language||'');p.onchange=async()=>{try{const r=await api('/v1/me/language',{method:'POST',body:{language:p.value||null}});ME=null;langMsg.replaceChildren(note(t('cs.language_saved'),'ok'));useLanguage(r.language||m.tenant.language||'nl')}catch(e){if(!(e instanceof Expired))langMsg.replaceChildren(note(e.message,'bad'))}};langBox.append(el('div','',[el('label','',t('cs.language_mine')),p]))}
+  const company=el('div','card panel',[el('h2','',t('cs.company')),dl([[t('cs.name'),m.tenant.name],[t('cs.address'),m.tenant.slug],[t('cs.inbox'),m.inbox||t('cs.not_routed'),'mono']]),langBox.children.length?el('h2','sub-h',t('cs.language')):null,langBox.children.length?langBox:null,langMsg]);
+  if(!owner){view().replaceChildren(head(t('cs.nav.settings')),company,note(t('cs.only_owner',{name:m.tenant.name})));return}
+  const people=el('div','card panel');const keys=el('div','card panel');const dataCard=el('div','card panel');const awx=el('div','card panel');awx.id='awx';awx.hidden=true;
+  const ints=el('div','card panel');ints.id='integrations';
+  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,awx,ints,el('div','split2',[people,keys]),dataCard);
+  // Koppelingen: where the accounting link stands (GET /v1/integrations), from the results the runner's ERP sync wrote
+  // in the audit log. The cloud holds no Moneybird token and calls no ERP; a person connects it on the runner.
+  async function drawInts(){
+    const r=await api('/v1/integrations');
+    const kids=[el('h2','',t('cs.int.title')),el('p','',t('cs.int.lede'))];
+    for(const x of r.connectors){
+      const tone={connected:'ok',attention:'warn'}[x.status]||'';
+      const rows=[[tk('cs.int.'+x.connector,x.connector),el('span','pill'+(tone?' '+tone:''),tk('cs.int.status.'+x.status,x.status))]];
+      if(x.last_sync_at)rows.push([t('cs.int.last_sync'),stamp(x.last_sync_at)]);
+      if(x.status!=='not_connected')rows.push([t('cs.int.sent'),String(x.sent)],[t('cs.int.failed'),String(x.failed)],[t('cs.int.to_check'),String(x.to_check)]);
+      if(x.last_error)rows.push([t('cs.int.last_error'),x.last_error,'mono']);
+      kids.push(dl(rows));
+      if(x.status==='not_connected')kids.push(note(t('cs.int.how')));
+    }
+    ints.replaceChildren(...kids);
+  }
+  // The company's own Airwallex account, opened through Purser as a platform (docs/airwallex-platform.md): only when the
+  // cloud offers it. The owner agrees to Airwallex's terms before anything is sent; Airwallex checks the company in its
+  // own hosted pages; the status follows Airwallex's messages. Payments are still approved on the CFO's phone.
+  async function drawAwx(){
+    const r=await api('/v1/airwallex/account');
+    if(!r.switched_on){awx.hidden=true;return}
+    awx.hidden=false;
+    const msg=el('div','');
+    const a=r.account;
+    if(a){
+      const tone={active:'ok',refused:'bad',closed:'bad',action_required:'warn',dormant:'warn'}[a.status]||'';
+      const kids=[el('h2','',t('cs.awx.title')),dl([[t('cs.awx.business'),a.business_name],[t('cs.awx.account'),a.account_id||'…','mono'],[t('cs.awx.status'),el('span','pill'+(tone?' '+tone:''),tk('cs.awx.status.'+a.status,a.status))],[t('cs.awx.since'),stamp(a.updated_at)]])];
+      if(a.account_id&&!['active','refused','closed'].includes(a.status)){
+        const go=btn(t('cs.awx.verify'),'primary','shield-check');
+        go.onclick=async()=>{go.disabled=true;try{const l=await api('/v1/airwallex/onboarding-link',{method:'POST'});location.assign(l.url)}catch(e){if(!(e instanceof Expired))msg.replaceChildren(note(e.message,'bad'))}finally{go.disabled=false}};
+        kids.push(el('div','row2',[go]));
+      }
+      kids.push(note(t(a.status==='active'?'cs.awx.active_note':'cs.awx.status_note')),msg);
+      awx.replaceChildren(...kids);return;
+    }
+    const name=el('input','field');name.value=m.tenant.name||'';name.maxLength=200;
+    const country=el('select','field');for(const c of ['NL','DE','BE','FR','GB','US']){const o=el('option','',tk('cs.awx.country.'+c,c));o.value=c;country.append(o)}
+    const email=el('input','field');email.type='email';email.maxLength=200;email.placeholder='finance@…';
+    const agree=el('input','');agree.type='checkbox';agree.id='awx-agree';
+    const lab=el('label','check',[agree,' ',t('cs.awx.agree')]);lab.htmlFor='awx-agree';
+    const open=btn(t('cs.awx.open'),'primary','wallet');open.disabled=true;agree.onchange=()=>{open.disabled=!agree.checked};
+    open.onclick=async()=>{if(!agree.checked||!name.value.trim()||!email.value.trim())return;open.disabled=true;
+      try{await api('/v1/airwallex/account',{method:'POST',body:{business_name:name.value.trim(),country_code:country.value,email:email.value.trim(),agreed:true}});await drawAwx()}catch(e){if(!(e instanceof Expired)){msg.replaceChildren(note(e.message,'bad'));open.disabled=false}}};
+    awx.replaceChildren(el('h2','',t('cs.awx.title')),el('p','',t('cs.awx.lede')),
+      el('div','form-row',[el('div','',[el('label','',t('cs.awx.business')),name]),el('div','',[el('label','',t('cs.awx.country')),country]),el('div','',[el('label','',t('cs.awx.email')),email])]),
+      lab,el('div','row2',[open]),note(t('cs.awx.keeps')),msg);
+  }
+  // An invite: a one-time link to this console (the secret after the #, so opening it sends it to no server) and its
+  // QR code, for 30 minutes and one passkey. The owner passes it on; nothing is mailed.
+  const invites=el('div','');
+  async function invite(p){
+    const e=await api('/v1/users/'+encodeURIComponent(p.id)+'/enrolment',{method:'POST'});
+    const qr=el('img','qr');qr.alt=t('cs.qr_alt',{name:p.display_name});qr.width=180;qr.height=180;qr.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(e.qr_svg);
+    const link=el('code','cmd',e.link);link.id='invite-link';
+    const copy=btn(t('cs.copy_link'),'primary','copy');copy.onclick=async()=>{try{await navigator.clipboard.writeText(e.link);copy.replaceChildren(ic('circle-check'),t('cs.copied'))}catch(x){const r=document.createRange();r.selectNodeContents(link);const sel=getSelection();sel.removeAllRanges();sel.addRange(r)}};
+    invites.replaceChildren(el('div','once invite',[qr,el('div','',[el('b','',t('cs.invite_for',{name:p.display_name})),el('p','',t('cs.invite_until',{when:stamp(e.expires_at)})),link,el('div','row2',[copy])])]));
+    invites.scrollIntoView({block:'nearest'});
+  }
+  // A person's passkeys, each removable by an owner (red team round 5: a passkey planted with a leaked starter key was
+  // invisible). Removing one ends that person's sessions; the company's last owner passkey cannot go.
+  const keysOf=el('div','');keysOf.id='passkeys';
+  async function passkeys(p){
+    const r=await api('/v1/users/'+encodeURIComponent(p.id)+'/passkeys');
+    const list=el('ul','plain');
+    for(const k of r.items){const rm=btn(t('cs.remove'),'danger','x');
+      rm.onclick=async()=>{if(!confirm(t('cs.remove_passkey_q',{name:p.display_name})))return;rm.disabled=true;
+        try{await api('/v1/users/'+encodeURIComponent(p.id)+'/passkeys/'+encodeURIComponent(k.credential_id),{method:'DELETE'});await passkeys(p)}catch(e){if(!(e instanceof Expired)){rm.disabled=false;keysOf.append(note(e.message,'bad'))}}};
+      list.append(el('li','',[el('span','mono',k.credential_id.slice(0,10)+'…'),' '+t('cs.enrolled',{when:stamp(k.created_at)})+' ',rm]))}
+    keysOf.replaceChildren(el('div','once',[el('b','',t('cs.passkeys_of',{name:p.display_name})),r.items.length?list:el('p','',t('cs.no_passkey_yet'))]));
+    keysOf.scrollIntoView({block:'nearest'});
+  }
+  async function drawPeople(){
+    const u=await api('/v1/users?limit=200');
+    const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('cs.person')),el('th','',t('cs.role')),el('th','')])])]);const tb=el('tbody','');
+    for(const p of u.items){const acts=el('td','r acts');
+      if(!p.erased_at){const inv=btn(t('cs.invite'),'','key-round');inv.onclick=async()=>{inv.disabled=true;try{await invite(p)}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{inv.disabled=false}};
+        const er=btn(t('cs.erase'),'danger','x');er.onclick=async()=>{const typed=prompt(t('cs.erase_prompt',{name:p.display_name}));if(typed===null)return;if(typed.trim()!==p.display_name){people.append(note(t('cs.name_mismatch'),'bad'));return}
+          try{await api('/v1/users/'+encodeURIComponent(p.id)+'/erase',{method:'POST'});await drawPeople()}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}};
+        const pks=btn(t('cs.passkeys'),'','scan-face');pks.onclick=async()=>{pks.disabled=true;try{await passkeys(p)}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{pks.disabled=false}};
+        acts.append(inv,' ',pks,' ',er)}
+      tb.append(el('tr','',[el('td','pn',[p.erased_at?null:av(p.display_name),el('b','',p.erased_at?t('cs.erased'):p.display_name),p.email?el('span','sub',' '+p.email):null]),el('td','',[el('span','pill'+(p.role==='owner'?' warn':''),tk('cs.role.'+p.role,p.role))]),acts]))}
+    tbl.append(tb);
+    const name=el('input','field');name.placeholder=t('cs.name');const role=el('select','field');for(const r of ['cfo','accountant','viewer','owner']){const o=el('option','',tk('cs.role.'+r,r));o.value=r;role.append(o)}
+    const add=btn(t('cs.add_invite'),'primary');add.onclick=async()=>{const n=name.value.trim();if(!n)return;add.disabled=true;try{const u=await api('/v1/users',{method:'POST',body:{display_name:n,role:role.value}});await drawPeople();await invite({id:u.id,display_name:n})}catch(e){if(!(e instanceof Expired))people.append(note(e.message,'bad'))}finally{add.disabled=false}};
+    people.replaceChildren(el('h2','',t('cs.people')),el('div','scroll',tbl),el('div','form-row',[el('div','',[el('label','',t('cs.name')),name]),el('div','',[el('label','',t('cs.role')),role]),el('div','',[add])]),
+      note(t('cs.people_note')),invites,keysOf);
+  }
+  async function drawKeys(){
+    const k=await api('/v1/keys?limit=200');
+    const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('cs.key')),el('th','',t('cs.may')),el('th','',t('cs.expires')),el('th','')])])]);const tb=el('tbody','');
+    for(const x of k.items){const live=!x.revoked_at&&x.expires_at>new Date().toISOString();const acts=el('td','r acts');
+      if(live){const rv=btn(t('cs.revoke'),'danger','x');rv.onclick=async()=>{if(!confirm(t('cs.revoke_confirm',{name:data('key',x.name)})))return;try{await api('/v1/keys/'+encodeURIComponent(x.id),{method:'DELETE'});await drawKeys()}catch(e){if(!(e instanceof Expired))keys.append(note(e.message,'bad'))}};acts.append(rv)}
+      tb.append(el('tr','',[el('td','',[el('b','',data('key',x.name)),el('span','sub',' '+x.id)]),el('td','',String(x.scopes||'').split(/[ ,]+/).filter(Boolean).map(sc=>tk('cs.scope.'+sc,sc)).join(', ')),el('td','',live?day(x.expires_at):[el('span','pill bad',x.revoked_at?t('cs.revoked'):t('cs.expired'))]),acts]))}
+    tbl.append(tb);
+    const name=el('input','field');name.placeholder=t('cs.key_placeholder');const scope=el('select','field');for(const [v,l] of [['read',t('cs.scope.read')],['sync',t('cs.scope.sync')],['read sync',t('cs.scope.read_sync')]]){const o=el('option','',l);o.value=v;scope.append(o)}
+    const days=el('input','field');days.type='number';days.min='1';days.max='365';days.value='90';
+    const out=el('div','');
+    const mk=btn(t('cs.make_key'),'primary','key-round');mk.onclick=async()=>{if(!name.value.trim())return;mk.disabled=true;try{const r=await api('/v1/keys',{method:'POST',body:{name:name.value.trim(),scopes:scope.value.split(' '),expires_in_days:Math.max(1,Math.min(365,Number(days.value)||90))}});
+        await drawKeys();keys.append(el('div','once',[el('b','',t('cs.shown_once')),t('cs.copy_now'),el('code','cmd',r.api_key)]))}catch(e){if(!(e instanceof Expired))keys.append(note(e.message,'bad'))}finally{mk.disabled=false}};
+    keys.replaceChildren(el('h2','',t('cs.api_keys')),el('div','scroll',tbl),el('div','form-row',[el('div','',[el('label','',t('cs.name')),name]),el('div','',[el('label','',t('cs.may')),scope]),el('div','',[el('label','',t('cs.days')),days]),el('div','',[mk])]),out,
+      note(t('cs.keys_note')));
+  }
+  const exp=btn(t('cs.download_all'),'','download');exp.onclick=()=>download('/v1/export','purser-cloud-export.json').catch(e=>{if(!(e instanceof Expired))dataCard.append(note(e.message,'bad'))});
+  dataCard.replaceChildren(el('h2','',t('cs.your_data')),el('p','',t('cs.data_lede',{name:m.tenant.name})),exp);
+  await Promise.all([drawPeople(),drawKeys(),drawAwx().catch(e=>{if(!(e instanceof Expired)){awx.hidden=false;awx.replaceChildren(note(e.message,'bad'))}}),drawInts().catch(e=>{if(!(e instanceof Expired))ints.replaceChildren(el('h2','',t('cs.int.title')),note(e.message,'bad'))})]);
+}
+
+// --- The router ----------------------------------------------------------------------------------------------------
+// --- The platform's companies: for Purser's operator, with the platform admin token (kept in this page only) ---------
+function platformView(){
+  title(t('cs.pf.title'));
+  const tok=el('input','field');tok.type='password';tok.autocomplete='off';tok.id='pf-token';tok.placeholder=t('cs.pf.token');tok.setAttribute('aria-label',t('cs.pf.token'));
+  const b=btn(t('cs.pf.show'),'primary','users');const out=el('div','');const status=el('div','');status.setAttribute('role','status');
+  const sum=(m)=>{const e=Object.entries(m||{});return e.length?e.map(([c,v])=>cur(c)+' '+amount(v)).join(' · '):''};
+  const lab=(td,l)=>{td.dataset.l=l;return td};
+  // The token lives in this closure only: never in storage, gone when the page is left or the person signs out here.
+  let token='';
+  const gate=el('div','pfgate',[el('div','pfin',[tok,b]),el('p','fine',t('cs.pf.token_note')),status]);
+  function signOut(){token='';tok.value='';out.replaceChildren();gate.replaceChildren(el('div','pfin',[tok,b]),el('p','fine',t('cs.pf.token_note')),status);tok.focus()}
+  b.onclick=async()=>{b.disabled=true;status.replaceChildren();token=tok.value.trim();
+    try{const r=await fetch('/v1/admin/companies',{headers:{authorization:'Bearer '+token}});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||r.statusText);
+      tok.value='';const so=el('button','linkish',t('cs.pf.sign_out'));so.type='button';so.onclick=signOut;
+      gate.replaceChildren(el('span','pfchip',[ic('shield-check'),el('span','',t('cs.pf.admin')),el('span','dot','·'),so]));
+      const tt=j.totals,cs=j.companies;const act=cs.filter(c=>c.airwallex&&c.airwallex.status==='active').length,none=cs.filter(c=>!c.airwallex).length,chk=cs.length-act-none;
+      const fees=sum(tt.fees);
+      const split=el('div','card tile wide',[el('div','l',[ic('shield-check'),t('cs.pf.split')]),segbar([{l:t('cs.pf.s.active'),v:act,t:String(act)},{l:t('cs.pf.s.checking'),v:chk,t:String(chk)},{l:t('cs.pf.s.none'),v:none,t:String(none)}],t('cs.pf.split'))]);
+      const tiles=el('div','tiles pf',[tile(t('cs.pf.companies'),'users',String(tt.companies),null),split,tile(t('cs.pf.payouts'),'arrow-up-right',sum(tt.payouts)||t('none'),null),tile(t('cs.pf.fees'),'wallet',fees||t('cs.pf.no_fees'),null,fees?null:'quiet')]);
+      // Each company's bar is its payouts in the cloud's main currency, against the largest: one hue, the amount beside it.
+      const mainCur=Object.entries(tt.payouts||{}).sort((x,y)=>toCents(y[1])-toCents(x[1]))[0];const maxP=mainCur?Math.max(...cs.map(c=>toCents((c.payouts.totals||{})[mainCur[0]]))):0;
+      const tbl=el('table','table pft',[el('thead','',[el('tr','',[el('th','',t('cs.pf.company')),el('th','',t('cs.pf.account')),el('th','',t('cs.pf.payouts')),el('th','r',t('cs.pf.fees')),el('th','',t('cs.pf.last_push'))])])]);const tb=el('tbody','');
+      for(const c of cs){const aw=c.airwallex;const pc=mainCur?toCents((c.payouts.totals||{})[mainCur[0]]):0;
+        tb.append(el('tr','',[el('td','pco',[av(c.name),el('span','',[el('b','',c.name),el('span','sub',[el('code','idc',c.slug),c.closed?' · '+t('cs.pf.closed'):''])])]),
+          el('td','',aw?[el('span','pill '+(aw.status==='active'?'ok':['refused','closed'].includes(aw.status)?'bad':'warn'),tk('cs.awx.status.'+aw.status,aw.status)),aw.account_id?el('span','sub',[el('code','idc',aw.account_id)]):null]:el('span','pill',t('cs.awx.none'))),
+          lab(el('td','pay',[el('span','pv',[el('b','num',sum(c.payouts.totals)||'–'),el('span','sub',[t('cs.pf.paid',{n:c.payouts.count}),c.waiting?' · '+t('cs.pf.waiting',{n:c.waiting}):''])]),mainCur?meter(pc,maxP):null]),t('cs.pf.payouts')),
+          lab(el('td','r',sum(c.fees)||t('cs.pf.no_fees')),t('cs.pf.fees')),lab(el('td','',c.last_push?stamp(c.last_push):t('cs.pf.never')),t('cs.pf.last_push'))]))}
+      if(!cs.length)tb.append(el('tr','',[el('td','',t('cs.pf.none')),el('td',''),el('td',''),el('td',''),el('td','')]));
+      tbl.append(tb);out.replaceChildren(tiles,el('section','section',[el('div','card list pfl',[el('div','scroll',tbl)])]))}
+    catch(e){token='';status.replaceChildren(note(e.message,'bad'))}finally{b.disabled=false}};
+  tok.onkeydown=(e)=>{if(e.key==='Enter')b.click()};
+  view().replaceChildren(el('div','head',[el('div','',[el('h1','',t('cs.pf.title')),el('p','lede',t('cs.pf.lede'))]),el('div','tools',[gate])]),out);
+}
+
+async function route(){
+  const h=location.hash||'#/';const [path,qs]=h.slice(1).split('?');const q=new URLSearchParams(qs||'');
+  S=load();shell();
+  const open={'/sign-in':signInView,'/start':startView,'/platform':platformView};
+  try{
+    if(path==='/enrol')return enrolView(q);
+    if(open[path])return open[path]();
+    if(!S)return go('#/sign-in');
+    if(path==='/'||path==='')return go('#/overview');
+    view().replaceChildren(el('p','lede',t('loading')));
+    const m=/^\/invoices\/([^/]+)$/.exec(path);
+    if(m)return await invoiceView(decodeURIComponent(m[1]));
+    const pages={'/overview':overviewView,'/invoices':invoicesView,'/transactions':transactionsView,'/books':booksView,'/settings':settingsView};
+    if(!pages[path])return view().replaceChildren(el('div','expired',[el('h1','',t('cs.not_here')),(()=>{const a=el('a','btn',t('cs.back_overview'));a.href='#/overview';return a})()]));
+    await pages[path](q);shell();
+  }catch(e){if(e instanceof Expired)return;view().replaceChildren(note(t('cs.load_failed',{error:e.message}),'bad'))}
+}
+$('#out').onclick=async()=>{try{await api('/v1/auth/logout',{method:'POST'})}catch(e){}forget();S=null;ME=null;go('#/sign-in')};
+window.addEventListener('hashchange',route);
+setInterval(()=>{if(S&&S.exp<=Date.now()){forget();S=null;ME=null;notice=t('cs.session_ended');go('#/sign-in')}else shell()},30000);
+route();
+`;
+
+const nonce = () => {
+  const b = crypto.getRandomValues(new Uint8Array(18));
+  let s = "";
+  for (const x of b) s += String.fromCharCode(x);
+  return btoa(s);
+};
+
+/** The keys the console's script and HTML ask for by name: always in its catalogue, whatever the prefix rules say. */
+const USED = keysUsedIn(SCRIPT + BODY);
+
+/** The console's page: one document, its config in a meta tag (the origin, the passkey RP id, the mail domain). */
+export function consolePage(n: string, cfg: { origin: string; rpId: string; mailDomain: string }): string {
+  // Both languages' words (the console's only) as JSON: the script picks the person's, Dutch until it knows.
+  const keep = (k: string) => consoleKeys(k as keyof typeof MESSAGES.en) || USED.has(k);
+  const cat = (lang: "nl" | "en") => ({ lang, m: Object.fromEntries(Object.entries(MESSAGES[lang]).filter(([k]) => keep(k))), data: lang === "nl" ? DATA_NL : {} });
+  const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
+  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__I18N__", () => I18N_JS).replace("__ICONS__", ICON_SET(ICONS));
+  return `<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="purser-cloud" content="${escAttr(JSON.stringify(cfg))}">
+<title>Purser Cloud</title>
+<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}</style></head><body class="signed-out">
+${BODY}
+<script type="module" nonce="${n}">${script}</script>
+</body></html>`;
+}
+
+/**
+ * The frame an invoice's PDF is drawn in (red team round 5): served sandboxed (opaque origin, by its own policy too, so
+ * even opened on its own it reaches nothing of this origin), it takes the bytes from the console by postMessage, parses
+ * them with pdf.js in a worker (a blob worker that imports this origin's pdf.js; a module worker does not start in an
+ * opaque origin), draws up to six pages, and stops
+ * after 15 seconds. It has no session and no network but pdf.js itself.
+ */
+export function pdfViewPage(n: string, origin: string): string {
+  const lib = JSON.stringify(`${origin}/assets/pdfjs.mjs`);
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<style nonce="${n}">html,body{margin:0;background:#fff}canvas{display:block;width:100%;height:auto;margin:0 0 8px}p{font:14px system-ui,sans-serif;color:#555;margin:8px}</style></head><body>
+<script type="module" nonce="${n}">
+import {getDocument,GlobalWorkerOptions} from ${lib};
+const LIMIT_MS=15000,MAX_PAGES=6;
+let worker=null,task=null,timer=null,done=false;
+const size=()=>parent.postMessage({type:'size',h:document.documentElement.scrollHeight},'*');
+function fail(){if(done)return;done=true;try{task&&task.destroy()}catch(e){}try{worker&&worker.terminate()}catch(e){}document.body.textContent='';parent.postMessage({type:'failed'},'*')}
+addEventListener('message',async(ev)=>{
+  if(ev.source!==parent||done)return;const d=ev.data||{};if(d.type!=='pdf'||!(d.data instanceof ArrayBuffer))return;
+  timer=setTimeout(fail,LIMIT_MS);
+  worker=new Worker(URL.createObjectURL(new Blob(['import('+JSON.stringify(${lib})+');'],{type:'text/javascript'})));
+  try{
+    // pdf.js in the worker says it is ready once its import has run; anything sent before that would be lost.
+    await new Promise((ok,no)=>{worker.addEventListener('message',ok,{once:true});worker.addEventListener('error',no,{once:true})});
+    GlobalWorkerOptions.workerPort=worker;
+    task=getDocument({data:new Uint8Array(d.data),isEvalSupported:false,enableXfa:false,useSystemFonts:false,stopAtErrors:false,verbosity:0});
+    const doc=await task.promise;
+    for(let i=1;i<=Math.min(doc.numPages,MAX_PAGES)&&!done;i++){const page=await doc.getPage(i);const vp=page.getViewport({scale:2});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;c.setAttribute('aria-label','Page '+i+' of the invoice');document.body.append(c);await page.render({canvasContext:c.getContext('2d'),viewport:vp,canvas:c}).promise;size()}
+    if(doc.numPages>MAX_PAGES){const p=document.createElement('p');p.textContent=(doc.numPages-MAX_PAGES)+' more page(s): download the PDF to see them';document.body.append(p)}
+    clearTimeout(timer);done=true;size();
+  }catch(e){clearTimeout(timer);fail()}
+});
+parent.postMessage({type:'ready'},'*');
+</script></body></html>`;
+}
+
+export const pdfViewCsp = (n: string, origin: string) =>
+  `sandbox allow-scripts; default-src 'none'; script-src 'nonce-${n}' ${origin}/assets/pdfjs.mjs; worker-src blob:; style-src 'nonce-${n}'; img-src blob: data:; font-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'self'`;
+
+export const consoleCsp = (n: string) =>
+  `default-src 'none'; script-src 'nonce-${n}' 'self'; style-src 'nonce-${n}'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'`;
+
+const PAGE_HEADERS = {
+  "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer",
+  "cross-origin-opener-policy": "same-origin", "permissions-policy": "publickey-credentials-get=(self), publickey-credentials-create=(self), camera=(), microphone=(), geolocation=()",
+  "strict-transport-security": "max-age=31536000",
+};
+
+let font: Uint8Array | null = null;
+
+/** Everything outside /v1: the console page at /, its font, pdf.js from the bundle's assets, and a plain 404. Only GET and HEAD. */
+export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Promise<Response> {
+  if (req.method !== "GET" && req.method !== "HEAD") return new Response("method not allowed", { status: 405, headers: { "content-type": "text/plain; charset=utf-8", allow: "GET, HEAD" } });
+  if (url.pathname === "/") {
+    const n = nonce();
+    return new Response(consolePage(n, { origin: env.origin, rpId: env.rpId, mailDomain: env.mailDomain ?? "" }), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": consoleCsp(n) } });
+  }
+  if (url.pathname === "/pdfview") {
+    const n = nonce();
+    return new Response(pdfViewPage(n, env.origin), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": pdfViewCsp(n, env.origin) } });
+  }
+  if (url.pathname === "/assets/inter.woff2") {
+    font ??= fromB64(INTER_WOFF2_B64);
+    return new Response(new Uint8Array(font), { status: 200, headers: { "content-type": "font/woff2", "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff" } });
+  }
+  // pdf.js, to draw a supplier's PDF on a canvas in the invoice's page (eval off; the PDF is data, never a page). Only this
+  // one path is asked of the assets, whatever the bundle holds.
+  if (url.pathname === "/assets/pdfjs.mjs" && env.asset) {
+    const r = await env.asset("/assets/pdfjs.mjs");
+    if (r && r.ok) return new Response(r.body, { status: 200, headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff",
+      // Loaded by the sandboxed PDF frame (an opaque origin) and its worker, so it is a CORS fetch: the library is public.
+      "access-control-allow-origin": "*", "cross-origin-resource-policy": "cross-origin" } });
+  }
+  return new Response("not found", { status: 404, headers: { "content-type": "text/plain; charset=utf-8", "x-content-type-options": "nosniff" } });
+}

@@ -3,9 +3,10 @@
 // strings (conversions, transfers); responses are numbers in major units. We convert to integer cents
 // at this boundary and nowhere else.
 
+import { bankNameFromBic } from "./bankNames.js";
 import { randomUUID } from "node:crypto";
 import { Airwallex, fromEnv } from "./client.js";
-import type { AirwallexRail, Balance, Beneficiary, Conversion, Currency, Deposit, NewBeneficiary, NewTransfer, Quote, SandboxSim, Transfer, MarketRate } from "./port.js";
+import type { AirwallexRail, AnyQuote, Balance, Beneficiary, Conversion, Currency, Deposit, NewBeneficiary, NewPayoutBeneficiary, NewPayoutTransfer, NewTransfer, PayoutRail, ApplicationFee, Quote, SandboxSim, Transfer, MarketRate } from "./port.js";
 import { fromCents } from "../lib/money.js";
 
 /** Major units (number or numeric string) -> integer cents. Refuses negatives and anything finer than a cent. */
@@ -32,6 +33,21 @@ interface AwxTransfer {
   fee_amount?: number | string | null;
   fee_currency?: string | null;
   beneficiary_id?: string | null;
+  application_fees?: { amount?: number | string; currency?: string; source_type?: string }[] | null;
+}
+
+/** The TRANSFER application fees Airwallex reports on a payout, in one currency; null when there are none. */
+function applicationFeeOf(t: AwxTransfer): { cents: number; currency: string } | null {
+  const fees = (t.application_fees ?? []).filter((f) => f.source_type === "TRANSFER" && f.amount != null && typeof f.currency === "string");
+  if (!fees.length || new Set(fees.map((f) => f.currency)).size !== 1) return null;
+  return { cents: fees.reduce((s, f) => s + cents(f.amount!), 0), currency: fees[0]!.currency! };
+}
+
+/** Purser's fee as Airwallex's application_fee_options: one FIXED fee on the transfer, in its currency. */
+function feeOptions(f: ApplicationFee | undefined): { application_fee_options?: { source_type: "TRANSFER"; type: "FIXED"; amount: string; currency: string }[] } {
+  if (!f) return {};
+  if (!Number.isSafeInteger(f.amountCents) || f.amountCents <= 0) throw new Error("an application fee is a whole number of cents above zero");
+  return { application_fee_options: [{ source_type: "TRANSFER", type: "FIXED", amount: fromCents(f.amountCents), currency: f.currency }] };
 }
 
 function toTransfer(t: AwxTransfer): Transfer {
@@ -46,6 +62,7 @@ function toTransfer(t: AwxTransfer): Transfer {
     failureReason: t.failure_reason ?? t.failure?.message ?? null,
     fee: t.fee_amount != null && t.fee_currency ? { cents: cents(t.fee_amount), currency: t.fee_currency } : null,
     beneficiaryId: t.beneficiary_id ?? null,
+    applicationFee: applicationFeeOf(t),
   };
 }
 
@@ -60,10 +77,49 @@ export function onlyRequestId<T extends { request_id?: unknown }>(r: { items?: T
   return r.items[0];
 }
 
-export class AirwallexRest implements AirwallexRail, SandboxSim {
+/** Airwallex's beneficiary form schema (POST /beneficiaries/schema): request paths with required and relevant flags. */
+export type BeneficiarySchema = Record<string, { required?: boolean; relevant?: boolean; type?: string }>;
+
+/** The request paths the schema requires (required and relevant, not objects) that the body does not carry. */
+export function missingFromSchema(schema: BeneficiarySchema, body: unknown): string[] {
+  return Object.entries(schema)
+    .filter(([key, v]) => v.required && v.relevant && v.type !== "object" && key.startsWith("create_beneficiary_request."))
+    .map(([key]) => key.slice("create_beneficiary_request.".length))
+    .filter((path) => path.split(".").reduce<unknown>((o, key) => (o && typeof o === "object" ? (o as Record<string, unknown>)[key] : undefined), body) === undefined);
+}
+
+/** POST /beneficiaries/create's body for a supplier's account (create-beneficiaries.md: beneficiary.bank_details, transfer_methods). */
+export function payoutBeneficiaryBody(b: NewPayoutBeneficiary): Record<string, unknown> {
+  const k = b.bank;
+  const bank_details: Record<string, string> = { account_currency: k.currency, account_name: k.accountName, bank_country_code: k.country };
+  if (k.iban) bank_details.iban = k.iban;
+  if (k.accountNumber) bank_details.account_number = k.accountNumber;
+  if (k.routingType && k.routingValue) { bank_details.account_routing_type1 = k.routingType; bank_details.account_routing_value1 = k.routingValue; }
+  if (k.swiftCode) bank_details.swift_code = k.swiftCode;
+  if (b.clearing) bank_details.local_clearing_system = b.clearing;
+  const bankName = k.bankName ?? bankNameFromBic(k.swiftCode);
+  if (bankName) bank_details.bank_name = bankName;
+  return {
+    beneficiary: {
+      entity_type: "COMPANY", company_name: b.name, type: "BANK_ACCOUNT",
+      address: { country_code: b.address.countryCode, street_address: b.address.street, city: b.address.city, postcode: b.address.postcode },
+      bank_details,
+    },
+    nickname: `${b.name} ${k.currency} ${b.method}`,
+    // Both names: the API reference documents transfer_methods; the schema the sandbox answers asks for payment_methods
+    // (NL EUR LOCAL, 10 November; DE EUR SWIFT, 29 October). Kit 11's payees were created live with both.
+    transfer_methods: [b.method],
+    payment_methods: [b.method],
+  };
+}
+
+export class AirwallexRest implements AirwallexRail, SandboxSim, PayoutRail {
   private usdAccount: string | undefined;
 
   constructor(private readonly api: Airwallex) {}
+
+  /** The connected account this rail acts for (x-on-behalf-of), or null for the company's own account. */
+  get payingAccount(): string | null { return this.api.onBehalfOf; }
 
   async balances(): Promise<Partial<Record<Currency, Balance>>> {
     const rows = await this.api.call<{ currency: string; available_amount?: number; pending_amount?: number; reserved_amount?: number; account_type?: string }[]>(
@@ -193,7 +249,7 @@ export class AirwallexRest implements AirwallexRail, SandboxSim {
     const r = await this.api.call<AwxTransfer>("POST", "/transfers/create", {
       request_id: t.requestId, beneficiary_id: t.beneficiaryId, transfer_amount: fromCents(t.amountCents), transfer_currency: t.currency,
       source_currency: t.sourceCurrency, transfer_method: "SWIFT", reference: t.reference, reason: t.reason,
-      metadata: { approval_sha256: t.approvalSha256 },
+      metadata: { approval_sha256: t.approvalSha256 }, ...feeOptions(t.applicationFee),
     });
     return toTransfer(r);
   }
@@ -217,10 +273,93 @@ export class AirwallexRest implements AirwallexRail, SandboxSim {
   async transitionTransfer(id: string, to: "SENT" | "PAID" | "FAILED", failureType?: string): Promise<Transfer> {
     return toTransfer(await this.api.call<AwxTransfer>("POST", `/simulation/transfers/${id}/transition`, { next_status: to, ...(failureType ? { failure_type: failureType } : {}) }));
   }
+
+  // ---- Payables in any currency (PayoutRail). Cents assume two decimals: src/payouts/routes.ts pays no other currency.
+
+  async balancesAll(): Promise<Record<string, Balance>> {
+    const rows = await this.api.call<{ currency: string; available_amount?: number; pending_amount?: number; reserved_amount?: number }[]>(
+      "GET", "/balances/current", undefined, { account_type: "cash" },
+    );
+    const out: Record<string, Balance> = {};
+    for (const r of rows) out[r.currency] = { availableCents: cents(r.available_amount ?? 0), pendingCents: cents(r.pending_amount ?? 0), reservedCents: cents(r.reserved_amount ?? 0) };
+    return out;
+  }
+
+  async currentRateAny(a: { buyCurrency: string; sellCurrency: string; buyAmountCents: number }): Promise<MarketRate> {
+    return this.currentRate(a as { buyCurrency: Currency; sellCurrency: Currency; buyAmountCents: number });
+  }
+
+  async createQuoteAny(a: { buyCurrency: string; sellCurrency: string; buyAmountCents: number; validity: "MIN_1" | "MIN_15" | "MIN_30" | "HR_1" }): Promise<AnyQuote> {
+    return this.createQuote(a as { buyCurrency: Currency; sellCurrency: Currency; buyAmountCents: number; validity: "MIN_1" | "MIN_15" | "MIN_30" | "HR_1" });
+  }
+
+  async createConversionAny(a: { requestId: string; quote: AnyQuote; approvalSha256: string }): Promise<Conversion> {
+    return this.createConversion({ ...a, quote: a.quote as Quote });
+  }
+
+  /**
+   * POST /beneficiaries/create with bank_details for the route (create-beneficiaries.md: beneficiary.bank_details,
+   * transfer_methods; the US example uses account_number, account_routing_type1/value1 and local_clearing_system).
+   * Airwallex's schema for the country, currency and method is asked first, and /beneficiaries/validate runs before
+   * the create (validate-a-beneficiary.md), as for the Kit 11 payees.
+   */
+  async createPayoutBeneficiary(b: NewPayoutBeneficiary): Promise<{ id: string }> {
+    const body = payoutBeneficiaryBody(b);
+    const k = b.bank;
+    const schema = await this.api.call<{ schema: BeneficiarySchema }>("POST", "/beneficiaries/schema",
+      { bank_country_code: k.country, account_currency: k.currency, payment_method: b.method, entity_type: "COMPANY", ...(b.clearing ? { local_clearing_system: b.clearing } : {}) });
+    const missing = missingFromSchema(schema.schema, body);
+    if (missing.length) throw new Error(`Airwallex's beneficiary schema for ${k.country}, ${k.currency}, ${b.method} needs ${missing.join(", ")}`);
+    await this.api.call("POST", "/beneficiaries/validate", body);
+    const r = await this.api.call<{ id: string }>("POST", "/beneficiaries/create", body);
+    return { id: r.id };
+  }
+
+  /**
+   * GET /beneficiaries, every page: the one with this company name, transfer method and exactly these bank details
+   * (an earlier create whose answer was lost), so a re-run adopts it instead of creating a second.
+   */
+  async findPayoutBeneficiary(b: NewPayoutBeneficiary): Promise<{ id: string } | undefined> {
+    type B = { id: string; transfer_methods?: string[]; beneficiary: { company_name?: string; bank_details?: Record<string, string | undefined> } };
+    const norm = (v: string | undefined) => (v ?? "").replace(/\s+/g, "").toUpperCase();
+    const k = b.bank;
+    // The account itself, as sent to /beneficiaries/create (the clearing system is not compared: the method is).
+    const want: Record<string, string | undefined> = {
+      bank_country_code: k.country, account_currency: k.currency, iban: k.iban, account_number: k.accountNumber,
+      account_routing_value1: k.routingType && k.routingValue ? k.routingValue : undefined, swift_code: k.swiftCode,
+    };
+    for (let page = 0; ; page++) {
+      const r = await this.api.call<{ has_more: boolean; items: B[] }>("GET", "/beneficiaries", undefined, { page_num: String(page), page_size: "100" });
+      const hit = r.items.find((x) => x.beneficiary.company_name === b.name && (x.transfer_methods ?? []).includes(b.method)
+        && Object.entries(want).every(([key, v]) => norm(x.beneficiary.bank_details?.[key]) === norm(v)));
+      if (hit) return { id: hit.id };
+      if (!r.has_more) return undefined;
+    }
+  }
+
+  /** POST /transfers/create (create-a-transfer.md: transfer_method LOCAL or SWIFT, transfer_currency, source_currency). */
+  async createPayoutTransfer(t: NewPayoutTransfer): Promise<Transfer> {
+    const r = await this.api.call<AwxTransfer>("POST", "/transfers/create", {
+      request_id: t.requestId, beneficiary_id: t.beneficiaryId, transfer_amount: fromCents(t.amountCents), transfer_currency: t.currency,
+      source_currency: t.sourceCurrency, transfer_method: t.method, reference: t.reference, reason: t.reason,
+      metadata: { approval_sha256: t.approvalSha256 }, ...feeOptions(t.applicationFee), ...payerOf(t.payer),
+    });
+    return toTransfer(r);
+  }
+}
+
+/** The transfer's `payer` (transfers/create: entity_type and address required; additional_info.business_registration_number). */
+export function payerOf(p: NewPayoutTransfer["payer"]): { payer?: Record<string, unknown> } {
+  if (!p) return {};
+  return { payer: {
+    entity_type: "COMPANY", company_name: p.companyName,
+    address: { country_code: p.address.countryCode, city: p.address.city, postcode: p.address.postcode, street_address: p.address.street },
+    additional_info: { business_registration_number: p.registrationNumber },
+  } };
 }
 
 /** The adapter when the sandbox keys are set; null otherwise, so callers stop instead of pretending. */
-export async function airwallexFromEnv(): Promise<{ rail: AirwallexRail; sim: SandboxSim } | null> {
+export async function airwallexFromEnv(): Promise<{ rail: AirwallexRail & PayoutRail; sim: SandboxSim } | null> {
   const cfg = fromEnv();
   if (!cfg) return null;
   const rest = new AirwallexRest(new Airwallex(cfg));

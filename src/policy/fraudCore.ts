@@ -31,7 +31,7 @@ export interface FraudFinding {
 }
 
 // Letters from other alphabets that look like Latin ones (Cyrillic, Greek), and digits that pass for letters.
-const CONFUSABLES: Record<string, string> = {
+export const CONFUSABLES: Readonly<Record<string, string>> = {
   а: "a", в: "b", е: "e", ё: "e", к: "k", м: "m", н: "h", о: "o", р: "p", с: "c", т: "t", у: "y", х: "x", і: "i", ї: "i", ј: "j", ѕ: "s", ԁ: "d", ӏ: "l", ԛ: "q", ԝ: "w",
   α: "a", β: "b", ε: "e", ζ: "z", η: "n", ι: "i", κ: "k", μ: "m", ν: "v", ο: "o", ρ: "p", τ: "t", υ: "u", χ: "x", γ: "y",
   "0": "o", "1": "l",
@@ -43,6 +43,18 @@ export function skeleton(name: string): string {
     .map((ch) => CONFUSABLES[ch] ?? ch)
     .join("")
     .replace(/[^a-z0-9]/g, "");
+}
+
+/**
+ * An account in words, leaving out what is not known (screenshot pass S1: "and BIC ; on file: IBAN …3000 () and BIC ."):
+ * "IBAN ...3000 (DE) and BIC COBADEFFXXX", "IBAN ...3000", "an account with no IBAN".
+ */
+export function accountWords(last4: string, country: string, bic: string): string {
+  const l4 = (last4 ?? "").trim();
+  const cc = (country ?? "").trim();
+  const b = (bic ?? "").trim();
+  const iban = l4 ? `IBAN ...${l4}${cc ? ` (${cc})` : ""}` : "an account with no IBAN";
+  return b ? `${iban} and BIC ${b}` : iban;
 }
 
 /** Edits (insert, delete, change, or swap two neighbours) between two strings. */
@@ -61,7 +73,21 @@ export function editDistance(a: string, b: string): number {
 const hasOtherScript = (s: string) => [...s].some((ch) => /\p{L}/u.test(ch) && !/\p{Script=Latin}/u.test(ch));
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-const BANK_CHANGE = /bank (details|account)[^.\n]{0,40}(changed|new)|\bnew (bank|account)\b|update your records|changed (our )?bank/i;
+// A change of bank announced in the text, in the languages Purser's suppliers write in (English, German, Dutch). A
+// signal for the person who verifies, never a block on its own: the bank details themselves are what is checked.
+const BANK_CHANGE = new RegExp([
+  // English
+  "bank (details|account)[^.\\n]{0,40}(changed|new)", "\\bnew (bank|account|iban)\\b", "update your records", "changed (our )?banks?",
+  // English, red team round 4: "Our payment details have changed", "banking details have been updated", "we have moved
+  // our account", "our IBAN has changed"
+  "(bank|banking|payment|account) (details|information)[^.\\n]{0,40}(changed|updated)", "\\b(iban|account number)[^.\\n]{0,20}(has|have) (been )?(changed|updated)",
+  "\\bmoved our (bank )?account", "(updated|changed|new) (bank|banking|payment) details",
+  // German: "Unsere Bankverbindung hat sich geändert", "neue Bankverbindung", "geänderte Kontodaten", "unserem neuen Konto"
+  "(bank|konto)(verbindung|daten|angaben|nummer)[^.\\n]{0,40}(ge(ä|ae)ndert|neu\\b)", "\\bneue[mnrs]? (bank|konto|iban)", "\\bge(ä|ae)nderte[mnrs]? (bank|konto|iban)",
+  "\\b(iban|bankverbindung)[^.\\n]{0,30}(ge(ä|ae)ndert|gewechselt)", "\\bbankwechsel",
+  // Dutch: "ons rekeningnummer is gewijzigd", "een nieuw rekeningnummer", "bankgegevens zijn gewijzigd"
+  "(rekening(nummer)?|bankrekening(nummer)?|bankgegevens)[^.\\n]{0,40}(gewijzigd|veranderd)", "\\bnieuwe? (bank)?(rekening|gegevens)", "\\bnieuwe? iban", "\\biban[^.\\n]{0,30}(gewijzigd|veranderd)",
+].join("|"), "i");
 const PRESSURE = /\burgent(ly)?\b|\bimmediately\b|\btoday\b|avoid (an? )?(interruption|suspension|penalt)|final notice|\bconfidential\b/i;
 
 /** How close a name must be to count as a lookalike: two edits for names of eight letters or more, one below. */
@@ -99,7 +125,7 @@ export function assessAgainst(all: Beneficiary[], inv: { vendor: string; iban: s
     const iban = inv.iban.replace(/\s+/g, "").toUpperCase();
     signals.push({
       code: "bank_details_changed", blocks: true,
-      detail: `the invoice asks for IBAN ...${iban.slice(-4)} (${iban.slice(0, 2)}) and BIC ${inv.bic}; on file: IBAN ...${onFile.iban_last4} (${onFile.bic.slice(4, 6)}) and BIC ${onFile.bic}`,
+      detail: `the invoice asks for ${accountWords(iban.slice(-4), iban.slice(0, 2), inv.bic)}; on file: ${accountWords(onFile.iban_last4, onFile.bic.slice(4, 6), onFile.bic)}`,
     });
   }
   const holder = /^Account name:\s*(.+)$/m.exec(text)?.[1]?.trim();

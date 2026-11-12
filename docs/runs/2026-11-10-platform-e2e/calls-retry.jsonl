@@ -1,0 +1,14 @@
+{"at":"2026-11-10T09:00:52.474Z","service":"airwallex","method":"POST","endpoint":"/authentication/login"}
+{"at":"2026-11-10T09:00:53.229Z","service":"airwallex","method":"GET","endpoint":"/balances/current"}
+{"at":"2026-11-10T09:00:54.042Z","service":"airwallex","method":"GET","endpoint":"/balances/current"}
+{"at":"2026-11-10T09:00:54.484Z","service":"airwallex","method":"GET","endpoint":"/balances/current"}
+{"at":"2026-11-10T09:00:54.836Z","service":"airwallex","method":"GET","endpoint":"/balances/current"}
+{"at":"2026-11-10T09:00:55.229Z","service":"airwallex","method":"POST","endpoint":"/transfers/create"}
+{"at":"2026-11-10T09:00:55.730Z","service":"airwallex","method":"GET","endpoint":"/balances/current"}
+{"at":"2026-11-10T09:00:56.108Z","service":"airwallex","method":"GET","endpoint":"/balances/current"}
+{"at":"2026-11-10T09:00:56.671Z","service":"airwallex","method":"POST","endpoint":"/transfers/create"}
+{"at":"2026-11-10T09:04:46.526Z","service":"airwallex","method":"POST","endpoint":"/authentication/login"}
+{"at":"2026-11-10T09:04:47.184Z","service":"airwallex","method":"GET","endpoint":"/balances/current"}
+{"at":"2026-11-10T09:04:47.989Z","service":"airwallex","method":"GET","endpoint":"/balances/current"}
+{"at":"2026-11-10T09:04:48.410Z","service":"airwallex","method":"GET","endpoint":"/balances/current"}
+{"at":"2026-11-10T09:04:48.785Z","service":"airwallex","method":"POST","endpoint":"/transfers/create"}

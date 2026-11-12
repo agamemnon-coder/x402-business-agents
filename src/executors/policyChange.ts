@@ -7,7 +7,7 @@ import { PROPOSAL_TTL_MS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { beginExecution, createProposal, finishExecution, nextProposalId, type ProposalRow } from "../policy/approvals.js";
-import { policyValue, rules, validateChange } from "../policy/rules.js";
+import { policyValue, ruleFor, validateChange } from "../policy/rules.js";
 import { autonomyOn } from "../config/agents.js";
 import { publish, type AgentName } from "../autonomy/bus.js";
 
@@ -31,7 +31,7 @@ export function checkChanges(db: DB, changes: PolicyChange[]): void {
   for (const c of changes) {
     if (keys.has(c.key)) throw new Error(`${c.key} is changed twice`);
     keys.add(c.key);
-    const label = rules(db).find((r) => r.key === c.key)?.label;
+    const label = ruleFor(db, c.key)?.label;
     if (label !== undefined && c.label !== label) throw new Error(`${c.key} is labelled ${JSON.stringify(c.label)}, not ${JSON.stringify(label)}`);
     const problem = validateChange(db, c);
     if (problem) throw new Error(problem);
@@ -39,7 +39,7 @@ export function checkChanges(db: DB, changes: PolicyChange[]): void {
 }
 
 export function proposePolicyChange(db: DB, req: { changes: { key: string; to: string }[]; reason: string; ttlMs?: number }, createdBy: Actor, now = new Date()): ProposalRow {
-  const changes = req.changes.map((c) => ({ key: c.key, label: rules(db).find((r) => r.key === c.key)?.label ?? c.key, from: policyValue(db, c.key), to: c.to }));
+  const changes = req.changes.map((c) => ({ key: c.key, label: ruleFor(db, c.key)?.label ?? c.key, from: policyValue(db, c.key), to: c.to }));
   checkChanges(db, changes);
   const terms: PolicyChangeTerms = {
     schema: TERMS_SCHEMA, kind: "policy_change", proposal_id: nextProposalId(db),

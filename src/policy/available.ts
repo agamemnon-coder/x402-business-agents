@@ -9,6 +9,7 @@ import type { DB } from "../db/open.js";
 import { toCents } from "../lib/money.js";
 import { cardLimits } from "./rules.js";
 import { heldCents, spendLimits } from "./holds.js";
+import { heldPayoutCents, owedPlatformFeeCents } from "./payoutLock.js";
 
 export interface MandateAvailability {
   budgetCents: number | null;
@@ -161,11 +162,13 @@ export function cardAvailability(db: DB, agent: string, now = new Date()): CardA
 }
 
 /**
- * Euro payouts written but not yet at Airwallex (SUBMITTING): Airwallex's available balance does not show them
- * yet, so they are subtracted here. One payout can be left out (the one being checked).
+ * Euro payouts written but not yet at Airwallex (SUBMITTING), and what executing payments hold in euros
+ * (payout_reservations: a payout not yet written, by either executor; red team round 3): Airwallex's available balance
+ * does not show them yet, so they are subtracted here. One payout and one payment's own holds can be left out (the one
+ * being checked).
  */
-export function eurInFlightCents(db: DB, exceptRequestId?: string): number {
+export function eurInFlightCents(db: DB, exceptRequestId?: string, exceptProposalId?: string): number {
   if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'transfers'").get()) return 0;
   const rows = db.prepare("SELECT amount, fee_estimate FROM transfers WHERE status = 'SUBMITTING' AND currency = 'EUR' AND request_id <> ?").all(exceptRequestId ?? "") as { amount: string; fee_estimate: string }[];
-  return rows.reduce((s, r) => s + toCents(r.amount) + toCents(r.fee_estimate), 0);
+  return rows.reduce((s, r) => s + toCents(r.amount) + toCents(r.fee_estimate), 0) + heldPayoutCents(db, "EUR", exceptProposalId) + owedPlatformFeeCents(db, "EUR", exceptProposalId);
 }

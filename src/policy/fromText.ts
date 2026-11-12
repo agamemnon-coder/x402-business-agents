@@ -16,7 +16,7 @@ import { proposePolicyChange } from "../executors/policyChange.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { centsWritten } from "../lib/numbers.js";
 import type { ProposalRow } from "./approvals.js";
-import { currentPolicy, loosens, policyValue, rules, validateChange } from "./rules.js";
+import { currentPolicy, loosens, policyValue, ruleFor, validateChange } from "./rules.js";
 
 const MAX_TEXT = 2000;
 
@@ -68,7 +68,7 @@ export async function draftPolicyFromText(db: DB, tools: Tools, text: string, no
   const said = norm(text);
   for (const c of draft.changes) {
     const refuse = (why: string) => refused.push({ key: c.key, to: c.to, quote: c.quote, why });
-    const rule = rules(db).find((r) => r.key === c.key);
+    const rule = ruleFor(db, c.key);
     if (!rule) { refuse(`unknown policy setting ${c.key}`); continue; }
     if (c.quote.trim() === "" || !said.includes(norm(c.quote))) { refuse(`the quote is not in your words: "${c.quote}"`); continue; }
     if (rule.kind !== "choice" && c.to !== "") {
@@ -97,7 +97,7 @@ export async function draftPolicyFromText(db: DB, tools: Tools, text: string, no
   let proposal: PolicyDraftResult["proposal"] = null;
   if (accepted.length > 0) {
     const p = proposePolicyChange(db, { changes: accepted.map((a) => ({ key: a.key, to: a.to })), reason: `The CFO's policy in plain words, drafted into rules by Opus: "${text.trim()}"` }, "claude", now);
-    const unit = (key: string) => rules(db).find((r) => r.key === key)?.unit ?? "";
+    const unit = (key: string) => ruleFor(db, key)?.unit ?? "";
     const lines = [
       ...accepted.map((a) => `"${a.quote}" → ${a.label}: ${a.from || "not set"} → ${a.to}${unit(a.key) ? ` ${unit(a.key)}` : ""}.`),
       ...(draft.not_mapped.length || refused.length ? [`Not turned into a rule: ${[...draft.not_mapped.map((n) => `"${n.quote}" (${n.why})`), ...refused.map((r) => `"${r.quote}" (${r.why})`)].join("; ")}.`] : []),

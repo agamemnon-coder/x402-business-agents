@@ -148,6 +148,17 @@ CREATE TABLE IF NOT EXISTS proposals (
   created_at TEXT NOT NULL
 );
 
+-- A payment batch (src/policy/batch.ts): one proposal of kind payment_batch whose signed terms list each line's own
+-- payment proposal and terms hash. A line is in at most one waiting batch (checked when filed and when approved).
+CREATE TABLE IF NOT EXISTS batch_lines (
+  batch_id TEXT NOT NULL,
+  proposal_id TEXT NOT NULL,
+  position INTEGER NOT NULL,
+  terms_sha256 TEXT NOT NULL,
+  PRIMARY KEY (batch_id, proposal_id)
+);
+CREATE INDEX IF NOT EXISTS batch_lines_by_line ON batch_lines (proposal_id);
+
 CREATE TABLE IF NOT EXISTS approvals (
   approval_id INTEGER PRIMARY KEY,
   proposal_id TEXT NOT NULL UNIQUE REFERENCES proposals(proposal_id),
@@ -194,6 +205,15 @@ CREATE TABLE IF NOT EXISTS passkey_enrolments (
 );
 
 -- Every verified passkey signature over a proposal's terms, kept so `npm run verify` can check it again offline.
+-- Refused passkey submissions, counted per hour and fixed reason code (src/passkey/failures.ts). Never the sender's
+-- text: anyone can post to the relay, so unverified submissions stay out of the audit log but still show as a number.
+CREATE TABLE IF NOT EXISTS passkey_failures (
+  hour TEXT NOT NULL,
+  code TEXT NOT NULL,
+  n INTEGER NOT NULL,
+  PRIMARY KEY (hour, code)
+);
+
 CREATE TABLE IF NOT EXISTS passkey_assertions (
   assertion_sha256 TEXT PRIMARY KEY,
   proposal_id TEXT NOT NULL REFERENCES proposals(proposal_id),
@@ -321,6 +341,21 @@ CREATE TABLE IF NOT EXISTS obligations (
   label TEXT NOT NULL
 );
 
+-- Purser as an Airwallex platform (docs/airwallex-platform.md): Purser's fee per paid payout, taken from the company's
+-- connected account once, under its own request id from the signed terms.
+CREATE TABLE IF NOT EXISTS platform_fees (
+  request_id TEXT PRIMARY KEY,
+  proposal_id TEXT NOT NULL,
+  payout_request_id TEXT NOT NULL,
+  amount TEXT NOT NULL,
+  currency TEXT NOT NULL,
+  destination TEXT NOT NULL,
+  fee_transfer_id TEXT,
+  status TEXT NOT NULL,
+  approval_sha256 TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS transfers (
   transfer_id TEXT,
   request_id TEXT PRIMARY KEY,
@@ -339,6 +374,18 @@ CREATE TABLE IF NOT EXISTS transfers (
 );
 -- Only one live payout per invoice can exist at any moment.
 CREATE UNIQUE INDEX IF NOT EXISTS one_live_transfer_per_invoice ON transfers(invoice_no) WHERE status NOT IN ('CANCELLED');
+
+-- Supplier payouts (src/executors/supplierPayment.ts): money an approved payment has spoken for that Airwallex's
+-- balances do not show yet (a conversion on its way, a payout not yet written). Counted by freeCents
+-- (src/payouts/plan.ts), so two payments executed at once cannot both take a currency under its floor.
+CREATE TABLE IF NOT EXISTS payout_reservations (
+  key TEXT PRIMARY KEY,
+  proposal_id TEXT NOT NULL,
+  currency TEXT NOT NULL,
+  cents INTEGER NOT NULL CHECK (cents >= 0),
+  status TEXT NOT NULL CHECK (status IN ('HELD', 'RELEASED')),
+  updated_at TEXT NOT NULL
+);
 
 CREATE TABLE IF NOT EXISTS balance_snapshots (
   id INTEGER PRIMARY KEY,
@@ -724,3 +771,110 @@ CREATE TABLE IF NOT EXISTS airi_purchases (
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS airi_purchases_day ON airi_purchases (day, route, status);
+
+-- Payables (src/ap): every supplier document as it came in, kept unchanged at `path` (data/ap/docs/<sha256>.<ext>);
+-- the invoice read from it, its checks and where it stands; and new suppliers, added only after a person verified
+-- the account and the CFO approved (src/ap/vendors.ts, like payee_changes).
+CREATE TABLE IF NOT EXISTS ap_documents (
+  sha256 TEXT PRIMARY KEY,
+  filename TEXT NOT NULL,
+  mime TEXT NOT NULL,
+  bytes INTEGER NOT NULL,
+  path TEXT NOT NULL,
+  source TEXT NOT NULL CHECK (source IN ('upload', 'folder', 'email', 'api')),
+  meta_json TEXT NOT NULL DEFAULT '{}',
+  text_chars INTEGER NOT NULL,
+  received_at TEXT NOT NULL
+);
+
+-- A scanned invoice's two model readings (src/ap/scan.ts): whether they agree, on what they differ, and where on the
+-- page each field was read (boxes, 0..1 of the page) so a person checks each field against the image.
+CREATE TABLE IF NOT EXISTS ap_scan_readings (
+  invoice_id TEXT PRIMARY KEY,
+  doc_sha256 TEXT NOT NULL,
+  agreed INTEGER NOT NULL CHECK (agreed IN (0, 1)),
+  differ_json TEXT NOT NULL,
+  boxes_json TEXT NOT NULL,
+  readings INTEGER NOT NULL,
+  model TEXT NOT NULL,
+  read_at TEXT NOT NULL,
+  -- The model's transcription of the pages (red team 6): the text checks run on it again when the scan is rechecked.
+  transcription TEXT
+);
+
+CREATE TABLE IF NOT EXISTS ap_invoices (
+  id TEXT PRIMARY KEY,
+  doc_sha256 TEXT NOT NULL UNIQUE REFERENCES ap_documents(sha256),
+  -- What the document is (Claude Haiku's label, checked by code, or keyword rules): only an invoice, a credit note or a
+  -- reminder is read in full; a reminder goes through the duplicate check like any copy.
+  doc_kind TEXT NOT NULL CHECK (doc_kind IN ('invoice', 'credit_note', 'receipt', 'reminder', 'other', 'unread')),
+  classified_by TEXT NOT NULL,
+  vendor TEXT NOT NULL,
+  invoice_no TEXT NOT NULL,
+  issue_date TEXT NOT NULL,
+  due_date TEXT NOT NULL,
+  currency TEXT NOT NULL,
+  subtotal TEXT NOT NULL,
+  tax TEXT NOT NULL,
+  total TEXT NOT NULL,
+  iban_last4 TEXT NOT NULL,
+  bic TEXT NOT NULL,
+  reading_json TEXT NOT NULL,
+  read_by TEXT NOT NULL,
+  gl_account TEXT NOT NULL,
+  gl_rule TEXT NOT NULL,
+  cost_centre TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('blocked', 'needs_review', 'needs_vendor', 'ready', 'waiting_cfo', 'paid', 'rejected')),
+  findings_json TEXT NOT NULL,
+  proposal_id TEXT,
+  -- Claude Opus's advisory note on an irregular invoice (blocked, warned, or waiting for Face ID), or the code's own
+  -- reasons without a key. Advisory only: it never changes a status.
+  review_note TEXT,
+  review_by TEXT,
+  -- A credit note a person accepted (red team round 4: an unverified credit note from anyone who can mail the inbox
+  -- zeroed a supplier's open payables): only an accepted one is set against the supplier's invoices.
+  credit_accepted_at TEXT,
+  credit_accepted_by TEXT,
+  received_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  paid_at TEXT
+);
+CREATE INDEX IF NOT EXISTS ap_invoices_vendor ON ap_invoices (vendor, received_at);
+
+-- A person's word that an invoice is not a copy of an earlier one with the same supplier and total (monthly rent, a
+-- subscription): once per pair, with who and why; the audit log has it too (red team round 2). A match on the invoice
+-- number itself is never cleared this way.
+CREATE TABLE IF NOT EXISTS ap_duplicate_clearances (
+  invoice_id TEXT NOT NULL REFERENCES ap_invoices(id),
+  twin_id TEXT NOT NULL REFERENCES ap_invoices(id),
+  cleared_by TEXT NOT NULL,
+  note TEXT NOT NULL,
+  cleared_at TEXT NOT NULL,
+  PRIMARY KEY (invoice_id, twin_id)
+);
+
+CREATE TABLE IF NOT EXISTS payee_adds (
+  add_id TEXT PRIMARY KEY,
+  vendor TEXT NOT NULL,
+  iban TEXT NOT NULL,
+  bic TEXT NOT NULL,
+  source TEXT,
+  requested_by TEXT NOT NULL,
+  verification_json TEXT,
+  -- The full bank details for the route (src/payouts/routes.ts): country, currency, method, IBAN or account and routing.
+  details_json TEXT,
+  proposal_id TEXT,
+  -- CLOSED: its proposal expired, was rejected or can no longer run; a new request for the supplier may follow.
+  status TEXT NOT NULL CHECK (status IN ('REQUESTED', 'VERIFIED', 'PROPOSED', 'APPLIED', 'CLOSED')),
+  created_at TEXT NOT NULL
+);
+
+-- What each payables invoice has handed to the bookkeeping sink, once per event: an accrual a sink missed is pushed
+-- before the payment, and a rejected invoice's accrual is reversed there (review, 8 November).
+CREATE TABLE IF NOT EXISTS ap_sink_events (
+  invoice_id TEXT NOT NULL REFERENCES ap_invoices(id),
+  event TEXT NOT NULL CHECK (event IN ('accrual', 'payment', 'reversal')),
+  sink TEXT NOT NULL,
+  pushed_at TEXT NOT NULL,
+  PRIMARY KEY (invoice_id, event, sink)
+);

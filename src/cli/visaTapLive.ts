@@ -29,12 +29,12 @@ const pre = liveRunPreflight(process.env, {
 });
 if ("problem" in pre) stop(pre.problem);
 const ok = pre as Exclude<typeof pre, { problem: string }>;
-const issuing = issuingFromEnv();
+const db = openDb(ok.dbPath);
+const issuing = issuingFromEnv(db);
 const awxCfg = fromEnv();
 const client = claudeClient();
 if (!issuing || !awxCfg || !client) stop("the keys are not readable");
 
-const db = openDb(ok.dbPath);
 const api = new Airwallex(awxCfg!);
 const record = await runTapLive({
   db,
