@@ -78,6 +78,7 @@
     "mcp": "tsx src/cli/mcp.ts",
     "outside-agent": "tsx src/cli/outside-agent.ts",
     "judge": "tsx src/cli/judge.ts",
+    "zero-trust": "tsx src/cli/zeroTrust.ts",
     "submission": "tsx src/cli/submission.ts",
     "social-preview": "tsx src/cli/socialPreview.ts",
     "four-eyes": "tsx src/cli/fourEyes.ts",

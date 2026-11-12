@@ -68,7 +68,8 @@ vi.mock("../src/policy/holds.js", async (orig) => {
 const { REFUSALS } = await import("@metalntwx/metal-pay/mandates");
 const { decodePaymentSignatureHeader, encodePaymentRequiredHeader, encodePaymentResponseHeader } = await import("@x402/core/http");
 const { coverageView, innerLayers, pathsOf } = await import("../src/zerotrust/coverage.js");
-const { ATTACKS, COMPONENTS, FIXES, LAYERS, LIMITS, MONEY_PATHS, PENDING_ATTACKS, PREVENTING_LAYERS, RAIL_REFUSALS, RECORD_NOT_COUNTED, guardsOf, isMoneyPath, modelDepth, voidedBy } = await import("../src/zerotrust/model.js");
+const { REPORT_JSON, REPORT_MARKDOWN, buildReport, generate, generatedOf, renderMarkdown, reportFiles } = await import("../src/zerotrust/report.js");
+const { ATTACKS, COMPONENTS, FIXES, LAYERS, LIMITS, MONEY_PATHS, PENDING_ATTACKS, PREVENTING_LAYERS, PRINCIPLE, RAIL_REFUSALS, READING, RECORD_NOT_COUNTED, STAND_INS, guardsOf, isMoneyPath, modelDepth, voidedBy } = await import("../src/zerotrust/model.js");
 const { buyPlan } = await import("../src/agents/cardBuyer.js");
 const { proposeInvoicePayment, seedTreasury } = await import("../src/agents/euroBill.js");
 const { ibanSha, parseInvoiceFallback } = await import("../src/agents/invoice.js");
@@ -218,56 +219,35 @@ type Scenario = () => Promise<Outcome>;
 const SCENARIOS: Record<string, Scenario> = {};
 
 /**
- * What this run found, for a report: with ZERO_TRUST_OUT set to a file path, written there as JSON when the file is
- * done. Every value in it is read from a test that ran; nothing is typed.
+ * What this run found, for the report (src/zerotrust/report.ts names its shape): with ZERO_TRUST_OUT set to a file
+ * path, written there as JSON when the file is done. Every value in it is read from a test that ran; nothing is typed.
  */
-interface DepthMode {
-  depth: number; layers_that_must_fail: LayerId[]; combinations_tried: number; combinations_where_money_moved: number;
-  /** Each guard alone, holding while every other guard of the path has failed: how that push ended. */
-  last_line: { held: LayerId; failed: LayerId[]; ended: string }[];
-}
+type MatrixResults = import("../src/zerotrust/report.js").MatrixResults;
+type HostileRun = import("../src/zerotrust/report.js").HostileRun;
 /** The describe block the matrix runs in: an attack's test is `${MATRIX} > ${id}: ${description}` in this file. */
 const MATRIX = "the matrix: every attack against the real code";
-const RESULTS: {
-  /** The numbers a page may quote, counted from the rest of this object when the whole file ran. */
-  summary?: {
-    attacks_run: number; attacks_stopped: number; attacks_where_money_moved: number; layers: number;
-    minimum_depth: number; minimum_depth_with_optional_controls: number;
-    hostile_tool_calls_tried: number; hostile_tool_calls_refused_by_code: number; hostile_tool_calls_unsafe_by_ledger_verdict: number;
-    pending_attacks: number; holes_found_and_fixed: number; open_limits: number;
+const RESULTS: MatrixResults = { attacks: [] };
+/**
+ * RESULTS with its summary (the numbers a page may quote, counted from the rest of it), when every part of this file
+ * ran. Null for a filtered run (-t): that proves less, so it gets no summary and is held to no report.
+ */
+function wholeRun(): MatrixResults | null {
+  const { depth, hostile_model: hostile } = RESULTS;
+  const whole = depth?.paths.length === MONEY_PATHS.length && depth.stop_in_force.length === MONEY_PATHS.length && hostile && RESULTS.property && RESULTS.coverage && RESULTS.pending && RESULTS.attacks.length === ATTACKS.length;
+  if (!whole) return null;
+  RESULTS.summary = {
+    attacks_run: RESULTS.attacks.length, attacks_stopped: RESULTS.attacks.filter((a) => a.moved === 0).length, attacks_where_money_moved: RESULTS.attacks.filter((a) => a.moved !== 0).length,
+    layers: LAYERS.length,
+    minimum_depth: Math.min(...depth.paths.map((p) => p.optional_off.depth)), minimum_depth_with_optional_controls: Math.min(...depth.paths.map((p) => p.optional_on.depth)),
+    hostile_tool_calls_tried: hostile.tool_calls_tried, hostile_tool_calls_refused_by_code: hostile.refused_by_code, hostile_tool_calls_unsafe_by_ledger_verdict: hostile.unsafe_by_ledger_verdict,
+    pending_attacks: PENDING_ATTACKS.length, holes_found_and_fixed: FIXES.length, open_limits: LIMITS.length,
   };
-  attacks: { id: string; test: string; moved: number; stopped_by: LayerId; control: Control; record: string }[];
-  depth?: {
-    layers_counted: LayerId[]; record_not_counted: string;
-    paths: { path: MoneyPath; optional_off: DepthMode; optional_on: DepthMode }[];
-    stop_in_force: { path: MoneyPath; failed: LayerId[]; moved: boolean; ended: string }[];
-  };
-  property?: { seed: number; runs: number; moved_with_every_guard_void: number; moved_with_a_guard_holding: number };
-  coverage?: import("../src/zerotrust/coverage.js").CoverageView;
-  pending?: { id: string; description: string; pending: string; waits_for: string }[];
-  hostile_model?: {
-    tool_calls_tried: number; refused_by_code: number; refused_at_a_rail: number; ran_inside_the_limits: number;
-    unsafe_by_ledger_verdict: number;
-    verdict: { by: string; ledgers: number; unsafe: number; double_payments: number; missing_origin: number; payment_details_withheld_by_code: string[]; not_judged: string[] };
-    money_moved: number;
-    runs: HostileRun[];
-    swept: { flow: string; tools: string[] }[];
-    not_counted: string;
-  };
-} = { attacks: [] };
+  return RESULTS;
+}
 afterAll(() => {
   if (!process.env.ZERO_TRUST_OUT) return;
   // The summary only when every part ran (a filtered run writes what it has, without one).
-  const { depth, hostile_model: hostile } = RESULTS;
-  if (depth?.paths.length === MONEY_PATHS.length && hostile && RESULTS.attacks.length === ATTACKS.length) {
-    RESULTS.summary = {
-      attacks_run: RESULTS.attacks.length, attacks_stopped: RESULTS.attacks.filter((a) => a.moved === 0).length, attacks_where_money_moved: RESULTS.attacks.filter((a) => a.moved !== 0).length,
-      layers: LAYERS.length,
-      minimum_depth: Math.min(...depth.paths.map((p) => p.optional_off.depth)), minimum_depth_with_optional_controls: Math.min(...depth.paths.map((p) => p.optional_on.depth)),
-      hostile_tool_calls_tried: hostile.tool_calls_tried, hostile_tool_calls_refused_by_code: hostile.refused_by_code, hostile_tool_calls_unsafe_by_ledger_verdict: hostile.unsafe_by_ledger_verdict,
-      pending_attacks: PENDING_ATTACKS.length, holes_found_and_fixed: FIXES.length, open_limits: LIMITS.length,
-    };
-  }
+  wholeRun();
   writeFileSync(process.env.ZERO_TRUST_OUT, `${JSON.stringify(RESULTS, null, 2)}\n`);
 });
 
@@ -443,11 +423,6 @@ function watchRails(db: DB, o: { issuing?: FakeIssuingT; metal?: StandInMetal; a
 }
 const HELD_AT_AIRWALLEX = new Set(["IN_APPROVAL", "CANCELLED", "FAILED", "APPROVAL_REJECTED"]);
 
-interface HostileRun {
-  attack: string; task: string; agent: string; tried: number; refused_by_code: number; refused_at_a_rail: number; ran_inside_the_limits: number;
-  /** The tools whose calls ran inside the limits, by name: a reader sees what "inside" was. */
-  inside: string[];
-}
 interface HostileWorld { attack: string; runs: HostileRun[]; unsafe: number; double_payments: number; missing_origin: number; withheld: string[]; not_judged: string[]; moved: number }
 const HOSTILE: HostileWorld[] = [];
 
@@ -2693,5 +2668,223 @@ describe("the hostile model, counted", () => {
       swept: SWEPT,
       not_counted: "The depth test pushes the same hostile calls through every combination of failed layers; those repeats are not counted here.",
     };
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The report. `npm run zero-trust` writes docs/zero-trust/report.json and docs/zero-trust.md from the model and from a
+// run of this file (src/zerotrust/report.ts builds both). Here, at the end of the same kind of run, they are built
+// again from this run's own results and held to the committed files, so the report cannot drift from the code. A run
+// of part of this file (-t) proves less: it has no report, and these tests skip.
+
+describe("the report: docs/zero-trust.md and docs/zero-trust/report.json", () => {
+  type Skip = { skip: (note?: string) => never };
+  const read = (path: string) => (existsSync(repo(path)) ? readFileSync(repo(path), "utf8") : null);
+  /** A day and a commit that are nobody's: the report's own content does not depend on them. */
+  const AT = { date: "1999-12-31", commit: "not-a-commit" };
+  const whole = (ctx: Skip) => wholeRun() ?? ctx.skip("only part of this file ran, so there is no report to hold");
+  const words = (text: string) => text.replace(/<!--[^]*?-->/g, " ").split(/\s+/).filter((w) => /[A-Za-z0-9]/.test(w)).length;
+
+  it("the committed files are what report.ts generates from the model and this run's own results", (ctx) => {
+    const results = whole(ctx);
+    // While `npm run zero-trust` runs the matrix to write the files anew, the old ones are not this run's to judge.
+    if (process.env.ZERO_TRUST_REPORT === "write") return ctx.skip("npm run zero-trust is writing the report");
+    const committed = { json: read(REPORT_JSON), markdown: read(REPORT_MARKDOWN) };
+    expect(committed.json, `${REPORT_JSON} is not there: run npm run zero-trust`).not.toBeNull();
+    expect(committed.markdown, `${REPORT_MARKDOWN} is not there: run npm run zero-trust`).not.toBeNull();
+    const at = generatedOf(committed.json!);
+    expect(at, `${REPORT_JSON} has no day and commit (generated)`).not.toBeNull();
+    // The same day and commit as the committed files, so nothing but the report itself can differ.
+    const fresh = reportFiles(buildReport(results, at!));
+    expect(fresh.markdown, `${REPORT_MARKDOWN} is not what this run generates: run npm run zero-trust`).toBe(committed.markdown);
+    expect(fresh.json, `${REPORT_JSON} is not what this run generates: run npm run zero-trust`).toBe(committed.json);
+    // The command itself: it leaves both files alone on another day and commit, and writes both anew for one changed word.
+    expect(generate(results, AT, committed)).toEqual({ changed: false, files: committed });
+    for (const edited of [{ ...committed, markdown: committed.markdown!.replace("stopped", "halted") }, { ...committed, json: committed.json!.replace("stopped", "halted") }, { json: null, markdown: null }, null]) {
+      const again = generate(results, AT, edited);
+      expect(again.changed).toBe(true);
+      expect(generatedOf(again.files.json)).toEqual(AT);
+      expect(again.files.markdown).toContain(AT.date);
+    }
+  });
+
+  it("carries at its top the numbers a page may quote, equal to what this run measured", (ctx) => {
+    const results = whole(ctx);
+    const r = buildReport(results, AT);
+    expect(Object.keys(r).slice(0, 12)).toEqual(["attacks_run", "attacks_stopped", "attacks_where_money_moved", "layers", "min_depth", "min_depth_with_optional_controls",
+      "hostile_tool_calls", "hostile_refused_by_code", "hostile_refused_by_rail", "hostile_ran_inside_limits", "hostile_unsafe_by_ledger", "holes_found_and_fixed"]);
+    for (const k of Object.keys(r).slice(0, 12)) expect(typeof (r as unknown as Record<string, unknown>)[k], k).toBe("number");
+    expect(Object.keys(r).at(-1)).toBe("generated");
+    expect(r.generated).toEqual(AT);
+    // Counted here once more, from what the tests above measured, not from the report's own arithmetic.
+    expect(r.attacks_run).toBe(ATTACKS.length);
+    expect(r.attacks_stopped).toBe(RESULTS.attacks.filter((a) => a.moved === 0).length);
+    expect(r.attacks_where_money_moved).toBe(0);
+    expect(r.layers).toBe(LAYERS.length);
+    const smallest = (optionalOn: boolean) => Math.min(...MONEY_PATHS.map((p) => Math.min(...MEASURED.filter((m) => m.path === p.id && m.optional_on === optionalOn && m.moved).map((m) => m.failed.length))));
+    expect(r.min_depth).toBe(smallest(false));
+    expect(r.min_depth_with_optional_controls).toBe(smallest(true));
+    expect(r.min_depth).toBeLessThanOrEqual(r.min_depth_with_optional_controls);
+    const runs = HOSTILE.flatMap((w) => w.runs);
+    expect(r.hostile_tool_calls).toBe(runs.reduce((n, x) => n + x.tried, 0));
+    expect(r.hostile_refused_by_code).toBe(runs.reduce((n, x) => n + x.refused_by_code, 0));
+    expect(r.hostile_refused_by_rail).toBe(runs.reduce((n, x) => n + x.refused_at_a_rail, 0));
+    expect(r.hostile_tool_calls).toBe(r.hostile_refused_by_code + r.hostile_refused_by_rail + r.hostile_ran_inside_limits);
+    expect(r.hostile_unsafe_by_ledger).toBe(0);
+    expect(r.holes_found_and_fixed).toBe(FIXES.length);
+    // And they are the run's own summary.
+    expect(results.summary).toMatchObject({ attacks_run: r.attacks_run, attacks_stopped: r.attacks_stopped, layers: r.layers, minimum_depth: r.min_depth, minimum_depth_with_optional_controls: r.min_depth_with_optional_controls,
+      hostile_tool_calls_tried: r.hostile_tool_calls, hostile_tool_calls_refused_by_code: r.hostile_refused_by_code, hostile_tool_calls_unsafe_by_ledger_verdict: r.hostile_unsafe_by_ledger });
+  });
+
+  it("lists every attack with its breach set, the layers it got past, the layer that stopped it and its evidence", (ctx) => {
+    const r = buildReport(whole(ctx), AT);
+    const here = readFileSync(new URL(import.meta.url), "utf8");
+    expect(here).toContain("describe(MATRIX, () => {");
+    expect(r.attacks.map((a) => a.id)).toEqual(ATTACKS.map((a) => a.id));
+    for (const a of ATTACKS) {
+      const row = r.attacks.find((x) => x.id === a.id)!;
+      const measured = RESULTS.attacks.find((x) => x.id === a.id)!;
+      expect(row.breach.map((b) => b.id), a.id).toEqual(a.breach);
+      expect(row.bypassed, a.id).toEqual(a.bypasses);
+      expect(row.stopped_by, a.id).toMatchObject({ layer: a.stoppedBy, control: measured.control });
+      expect(CONTROLS[row.stopped_by.control as Control], a.id).toBe(a.stoppedBy);
+      // The evidence: its test in this file, by name; the record its stop left; the live run record when one is cited.
+      expect(row.evidence.test, a.id).toBe(`test/zero-trust.test.ts > ${MATRIX} > ${a.id}: ${a.description}`);
+      expect(row.evidence.record, a.id).toBe(measured.record);
+      expect(row.evidence.record.trim(), a.id).not.toBe("");
+      expect(row.evidence.live, a.id).toEqual(a.evidence ?? null);
+    }
+    expect(r.layer_list).toEqual(LAYERS);
+    expect(r.coverage.rows).toEqual(coverageView().rows);
+    expect(r.depth.paths.map((p) => p.path)).toEqual(MONEY_PATHS.map((p) => p.id));
+    expect(r.open_risks).toEqual(LIMITS);
+    expect(r.fixes).toEqual(FIXES);
+  });
+
+  it("cites only run records that exist and contain the words quoted from them", (ctx) => {
+    const r = buildReport(whole(ctx), AT);
+    const cited = [...r.live_records, ...r.attacks.flatMap((a) => (a.evidence.live ? [a.evidence.live] : [])), ...r.rail_refusals.flatMap((x) => (x.live ? [x.live] : []))];
+    expect(r.live_records.length).toBeGreaterThan(0);
+    for (const e of cited) {
+      expect(e.path, e.path).toMatch(/^docs\/runs\/[\w.-]+\.md$/);
+      expect(existsSync(repo(e.path)), e.path).toBe(true);
+      expect(readFileSync(repo(e.path), "utf8"), `${e.path} should say: ${e.quote}`).toContain(e.quote);
+    }
+    // Every record is cited by something, and the page links each one and prints its quote.
+    const page = renderMarkdown(r);
+    for (const e of r.live_records) {
+      expect(e.cited_by.length, e.path).toBeGreaterThan(0);
+      expect(page, e.path).toContain(`](${e.path.replace(/^docs\//, "")})`);
+    }
+    // A refusal no run record shows is never said to be seen live.
+    for (const x of r.rail_refusals.filter((y) => !y.live)) expect(page).toContain(`| \`${x.answer}\` | ${x.stand_in} | ${x.source} | No run record shows it. |`);
+    // Every link on the page that points into this repository points at a file that is there.
+    const links = [...page.matchAll(/\]\(([^)#]+)\)/g)].map((m) => m[1]!);
+    expect(links.length).toBeGreaterThan(10);
+    // (Its own report.json aside: the first test here holds that file, and the command writes it after this run.)
+    for (const l of links.filter((x) => !REPORT_JSON.endsWith(x))) expect(existsSync(new URL(l, repo(REPORT_MARKDOWN))), l).toBe(true);
+  });
+
+  it("keeps the pending rows apart, in no count", (ctx) => {
+    const r = buildReport(whole(ctx), AT);
+    expect(r.pending.counted).toBe(false);
+    expect(r.pending.rows.map((p) => p.id)).toEqual(PENDING_ATTACKS.map((p) => p.id));
+    expect(r.attacks_run).toBe(ATTACKS.length);
+    // Outside its own section no part of the report knows a pending attack: no row, no cell, no number.
+    const { pending, ...rest } = r;
+    for (const p of pending.rows) expect(JSON.stringify(rest), p.id).not.toContain(p.id);
+    const page = renderMarkdown(r);
+    const [before, section] = [page.slice(0, page.indexOf("<summary>Pending")), page.slice(page.indexOf("<summary>Pending"))];
+    const own = section.slice(0, section.indexOf("</details>"));
+    for (const p of pending.rows) {
+      expect(before, p.id).not.toContain(p.id);
+      expect(own, p.id).toContain(p.id);
+      expect(section.slice(own.length), p.id).not.toContain(p.id);
+    }
+    expect(own).toContain(READING.pending);
+    expect(own).toContain("(expected, not seen)");
+  });
+
+  it("is built only from a whole run that agrees with the model, and says so if money moved", (ctx) => {
+    const results = whole(ctx);
+    expect(() => buildReport({ attacks: [] }, AT)).toThrow(/did not run in full/);
+    expect(() => buildReport({ ...results, hostile_model: undefined }, AT)).toThrow(/did not run in full/);
+    expect(() => buildReport({ ...results, summary: undefined, attacks: results.attacks.slice(1) }, AT)).toThrow(/did not run in full/);
+    expect(() => buildReport({ ...results, summary: undefined, attacks: [...results.attacks.slice(1), { ...results.attacks[0]!, id: "hostile-checker" }] }, AT)).toThrow(/not an attack in the model/);
+    expect(() => buildReport({ ...results, attacks: results.attacks.map((a, i) => (i ? a : { ...a, stopped_by: "L6" as const })) }, AT)).toThrow(/the model says/);
+    expect(() => buildReport({ ...results, coverage: coverageView([]) }, AT)).toThrow(/coverage view/);
+    expect(() => buildReport({ ...results, pending: [] }, AT)).toThrow(/pending/);
+    expect(() => buildReport({ ...results, summary: { ...results.summary!, attacks_stopped: results.summary!.attacks_stopped + 1 } }, AT)).toThrow(/attacks stopped: the run's summary says/);
+    // Had one attack moved money, the report and the page would say so: the count of stopped attacks is not typed.
+    const moved = buildReport({ ...results, summary: undefined, attacks: results.attacks.map((a, i) => (i ? a : { ...a, moved: 1 })) }, AT);
+    expect(moved).toMatchObject({ attacks_run: ATTACKS.length, attacks_stopped: ATTACKS.length - 1, attacks_where_money_moved: 1 });
+    expect(renderMarkdown(moved)).toContain(`**${ATTACKS.length} attacks run, ${ATTACKS.length - 1} stopped; money moved in 1.**`);
+  });
+
+  it("opens with the principle, the layers and one line of numbers; the rest folds", (ctx) => {
+    const r = buildReport(whole(ctx), AT);
+    const page = renderMarkdown(r);
+    const first = page.slice(0, page.indexOf("<details>"));
+    const at = (text: string) => { const i = first.indexOf(text); expect(i, `the first screen should say: ${text}`).toBeGreaterThan(-1); return i; };
+    // In this order: the principle in two sentences, the table of layers, the numbers, what ran against what.
+    expect(PRINCIPLE).toHaveLength(2);
+    for (const sentence of PRINCIPLE) expect(sentence).toMatch(/^[A-Z][^.]*\.$/);
+    const order = [at(PRINCIPLE.join(" ")), ...LAYERS.map((l) => at(`| ${l.id} | **${l.name}** | ${l.owner} | ${l.does} |`)), at(`**${r.attacks_run} attacks run, ${r.attacks_stopped} stopped; money moved in ${r.attacks_where_money_moved}.**`), at(READING.harness)];
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    at(`A hostile model made ${r.hostile_tool_calls} tool calls: ${r.hostile_refused_by_code} refused by code, ${r.hostile_refused_by_rail} refused by a stand-in rail, ${r.hostile_ran_inside_limits} ran inside the limits, ${r.hostile_unsafe_by_ledger} unsafe by the ledger verdict.`);
+    at(`At least ${r.min_depth} independent layers must all fail before money moves, and at least ${r.min_depth_with_optional_controls} with the optional controls switched on.`);
+    // Which refusals were also seen live: the ones with a run record, each with its link; the others named as not seen.
+    const seen = RAIL_REFUSALS.filter((x) => x.live);
+    at(`${seen.length} of the ${RAIL_REFUSALS.length} refusals the stand-in rails give were also seen on the live`);
+    for (const x of seen) at(`- [\`${x.answer}\`](${x.live!.path.replace(/^docs\//, "")}) (${x.rail}): ${x.live!.fact}`);
+    for (const x of RAIL_REFUSALS.filter((y) => !y.live)) expect(first.indexOf(`\`${x.answer}\``), x.id).toBeGreaterThan(at(`No run record shows the other ${RAIL_REFUSALS.length - seen.length}:`));
+    // The smallest depth is named with the way out it belongs to.
+    at(`Fewest: ${MONEY_PATHS.filter((p) => modelDepth(p.id, false) === r.min_depth).map((p) => p.name).join(", ")}.`);
+    // Two minutes for a CFO: the part that is not folded stays short.
+    expect(words(first), "the first screen, in words").toBeLessThanOrEqual(520);
+    // Below it everything is folded: outside the folds only the line that says when the matrix was run.
+    const outside = page.slice(first.length).replace(/<details>[^]*?<\/details>/g, "").trim();
+    expect(outside).toBe(`Matrix run on ${AT.date}, at commit \`${AT.commit}\`.`);
+    expect(page.split("<details>").length).toBe(page.split("</details>").length);
+    expect(page.split("<summary>").length - 1).toBe(9);
+    // Plain words: nothing gendered for an anonymous person, and no record's placeholder read as a tag.
+    expect(page).not.toMatch(/\b(he|she|his|her|him)\b/i);
+    expect(page.replace(/<\/?(details|summary)>|<!--[^]*?-->|`[^`\n]*`/g, "")).not.toMatch(/<[a-z]/i);
+  });
+
+  it("prints no number that is not in the report", (ctx) => {
+    const r = buildReport(whole(ctx), AT);
+    // Every number a reader sees is a value in report.json, the length of one of its lists, or part of one of its texts.
+    const numbers = new Set<string>();
+    const texts: string[] = [];
+    const walk = (v: unknown): void => {
+      if (typeof v === "number") numbers.add(String(v));
+      else if (typeof v === "string") texts.push(v);
+      else if (Array.isArray(v)) { numbers.add(String(v.length)); v.forEach(walk); }
+      else if (v && typeof v === "object") Object.values(v).forEach(walk);
+    };
+    walk(r);
+    const all = texts.join("\n");
+    const page = renderMarkdown(r).replace(/<!--[^]*?-->/g, "");
+    const printed = [...new Set([...page.matchAll(/\d+(?:[.,]\d+)*/g)].map((m) => m[0]))];
+    expect(printed.length).toBeGreaterThan(20);
+    for (const n of printed) expect(numbers.has(n) || all.includes(n), `${n} is printed on the page and is nowhere in the report`).toBe(true);
+    // And the page follows the report: other numbers in, other numbers out.
+    const other = renderMarkdown({ ...r, attacks_run: 7001, attacks_stopped: 7002, attacks_where_money_moved: 7003, layers: 7004, min_depth: 7005, min_depth_with_optional_controls: 7006, hostile_tool_calls: 7007, hostile_refused_by_code: 7008, hostile_refused_by_rail: 7009, hostile_ran_inside_limits: 7010, hostile_unsafe_by_ledger: 7011, holes_found_and_fixed: 7012 });
+    for (let n = 7001; n <= 7012; n++) expect(other, String(n)).toContain(String(n));
+  });
+
+  it("names every stand-in with the file that holds it, and stands in nothing of Purser's own", () => {
+    expect(STAND_INS.map((s) => s.id)).toEqual(["model", "airwallex_cards", "airwallex_transfers", "metal", "passkeys", "purser_cloud"]);
+    for (const s of STAND_INS) {
+      const m = /^(\w+) \(([\w./-]+)\)$/.exec(s.standIn);
+      expect(m, s.standIn).not.toBeNull();
+      expect(existsSync(repo(m![2]!)), m![2]).toBe(true);
+      expect(readFileSync(repo(m![2]!), "utf8"), `${m![1]} in ${m![2]}`).toMatch(new RegExp(`(class|function|const) ${m![1]}\\b`));
+    }
+    // Each refusal a stand-in rail gives names a stand-in from that list.
+    const named = STAND_INS.map((s) => s.standIn.split(" (")[0]!);
+    for (const x of RAIL_REFUSALS) expect(named.some((n) => x.standIn.startsWith(n)), x.standIn).toBe(true);
   });
 });
