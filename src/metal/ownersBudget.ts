@@ -11,7 +11,8 @@
 // Set by the run's environment: OWNERS_GO=yes (the owner's go), OWNERS_CALL_BUDGET (a whole number, for this world: the
 // log adds up across commands and processes) and OWNERS_CALL_LOG (the JSONL file). Without all three nothing is called.
 
-import { appendFileSync, closeSync, existsSync, openSync, readFileSync, statSync, unlinkSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { appendFileSync, closeSync, existsSync, linkSync, openSync, readFileSync, renameSync, statSync, unlinkSync } from "node:fs";
 
 export interface OwnersCall { at: string; method: string; step: string; pid: number }
 
@@ -71,6 +72,24 @@ export interface CallBudget {
   need(calls: number, what: string): void;
 }
 
+/** Held for microseconds by a living process; a lock older than this was left by a process that died. */
+const STALE_MS = 10_000;
+const isStale = (path: string) => Date.now() - statSync(path).mtimeMs > STALE_MS;
+
+/**
+ * Takes a dead process's lock away. Two processes can both see the same dead lock; were each to remove "the lock", the
+ * second would remove the fresh lock the first has made since, and both would go on. So the lock is first renamed to a
+ * name of this process's own, which only one process can do to one file, and then looked at again under that name:
+ * if it is the dead one, it is removed; if it is a living process's fresh lock (taken in between), it is put back
+ * where it was, unless a lock is there again.
+ */
+function takeStale(lock: string): void {
+  const mine = `${lock}.${process.pid}.${randomUUID()}`;
+  renameSync(lock, mine);
+  try { if (!isStale(mine)) linkSync(mine, lock); } catch { /* a lock is there again: its holder goes first */ }
+  unlinkSync(mine);
+}
+
 /** One process at a time reads the log and appends to it, so two processes can never both take the last call. */
 function locked<T>(file: string, run: () => T): T {
   const lock = `${file}.lock`;
@@ -78,8 +97,8 @@ function locked<T>(file: string, run: () => T): T {
   for (;;) {
     try { closeSync(openSync(lock, "wx", 0o600)); break; } catch (e) {
       if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
-      // Held for microseconds by a living process; one older than ten seconds was left by a process that died.
-      try { if (Date.now() - statSync(lock).mtimeMs > 10_000) { unlinkSync(lock); continue; } } catch { continue; }
+      // Gone or taken by another process in between: look again.
+      try { if (isStale(lock)) { takeStale(lock); continue; } } catch { continue; }
       if (Date.now() >= giveUp) throw new Error(`the call log ${file} is locked by another process; nothing was sent`, { cause: e });
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20);
     }
