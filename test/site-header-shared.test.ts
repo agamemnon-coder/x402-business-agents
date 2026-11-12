@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import { CSS, header, page } from "../src/redesign/ui.js";
 import { MORE_CSS, moreHtml, moreLinks } from "../src/ui/more.js";
 import { NAV_CSS, navHtml } from "../src/ui/nav.js";
+import { MOTION_CSS, SITE_MOTION_CSS } from "../src/ui/motion.js";
 import { SITE_HEADER_LINKS, SITE_ORIGIN, siteHeader } from "../cloud/src/siteHeader.js";
 import { tryPage } from "../cloud/src/tryPage.js";
 import { consoleCsp, consolePage } from "../cloud/src/console.js";
@@ -29,7 +30,8 @@ describe("the site's header, byte for byte as before", () => {
     expect(sha(CSS)).toBe(snap.cssSha256);
     expect(sha(NAV_CSS)).toBe(snap.navCssSha256);
     expect(sha(MORE_CSS)).toBe(snap.moreCssSha256);
-    expect(sha(page({ title: "T", description: "D", tab: "home", css: "", body: "<main></main>", source: "s" }))).toBe(snap.pageSha256);
+    // 12 Nov (wire-in): every page's stylesheet carries the shared motion (src/ui/motion.ts) after CSS; the rest is unchanged.
+    expect(sha(page({ title: "T", description: "D", tab: "home", css: "", body: "<main></main>", source: "s" }).replace(`\n${MOTION_CSS}${SITE_MOTION_CSS}`, ""))).toBe(snap.pageSha256);
   });
 });
 

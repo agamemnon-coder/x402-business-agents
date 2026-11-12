@@ -66,7 +66,9 @@ h2.sec { font-size: clamp(22px, 2.2vw, 28px); font-weight: 750; margin: 24px 0 1
 @media (min-width: 900px) { .partners { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 /* A partner card, closed: its name, its strongest claim as its one link, and the fold's header in the name's row. */
 .pcard { position: relative; padding: 14px 18px; display: flex; flex-direction: column; gap: 6px; }
-.pcard .ph { display: flex; align-items: center; min-height: 28px; }
+.pcard .ph { display: flex; align-items: center; gap: 10px; min-height: 28px; }
+.pcard .ph .logo { height: 30px; padding: 0 10px; }
+.pcard .ph .logo + h3 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .pcard .ph h3 { font-size: 19px; }
 /* The card's main claim reads as a link, the same on all three cards (review 12 Nov): the accent colour, an accent underline. */
 .pcard > ul.lead a.c { font-size: 16.5px; color: var(--accent); text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent); }
@@ -191,6 +193,10 @@ const fact = (v: string, l: string) => `<span class="fact"><b>${esc(v)}</b> ${es
  * dark one), the name in alt. A mark names a service Purser uses, never an endorsement.
  */
 const mark = (file: string, name: string, w: number, dark = false) => `<span class="logo${dark ? " dark" : ""}"><img src="assets/${file}" alt="${name}" width="${w}" height="15"></span>`;
+/** /proof's partner cards (owner, 12 Nov: "each partner card with its logo"): the same marks, beside the name (alt empty: the name is the heading). T:0 has no logo file: its name alone. */
+const CARD_MARK: Record<string, string> = {
+  airwallex: mark("logo-airwallex.png", "", 109), visa: mark("logo-visa.png", "", 46), metal: mark("logo-metal.svg", "", 48), claude: mark("logo-claude.png", "", 69, true),
+};
 export const LOGO = {
   metal: mark("logo-metal.svg", "Metal", 48),
   airwallex: mark("logo-airwallex.png", "Airwallex", 109),
@@ -290,7 +296,7 @@ export function partnerCards(run: AgentRun, lead: Record<"airwallex" | "metal" |
   const recOf: Record<string, string> = { visa: VIC3_RECORD, t0: T0_JOURNAL_RECORD };
   const card = (id: "metal" | "airwallex" | "claude" | "visa" | "t0", name: string, what: string, facts: string, items: string[], extra = "") => {
     const [first, ...rest] = leads[id] ?? [];
-    return `<article class="pcard card" id="${id}"${recOf[id] ? ` data-rec="${recOf[id]}"` : ""}><div class="ph"><h3>${esc(name)}</h3></div>${first ? leadHtml([{ text: first.text, href: first.href }]) : ""}<details class="fold"><summary>Show the live proof</summary><div class="facts">${facts}</div>${first?.note && !first.links?.length ? `<p class="note">${esc(first.note)}</p>` : ""}${leadHtml(first?.links?.length ? leads[id]! : rest)}<p class="what">${esc(what)}</p>${extra}${items.length ? `<ul class="pl">${items.join("")}</ul>` : ""}<a class="open" href="${id}">More<span class="vh"> about ${esc(name)}</span> ${icon("arrow-right", 14)}</a></details></article>`;
+    return `<article class="pcard card" id="${id}"${recOf[id] ? ` data-rec="${recOf[id]}"` : ""}><div class="ph">${CARD_MARK[id] ?? ""}<h3>${esc(name)}</h3></div>${first ? leadHtml([{ text: first.text, href: first.href }]) : ""}<details class="fold"><summary>Show the live proof</summary><div class="facts">${facts}</div>${first?.note && !first.links?.length ? `<p class="note">${esc(first.note)}</p>` : ""}${leadHtml(first?.links?.length ? leads[id]! : rest)}<p class="what">${esc(what)}</p>${extra}${items.length ? `<ul class="pl">${items.join("")}</ul>` : ""}<a class="open" href="${id}">More<span class="vh"> about ${esc(name)}</span> ${icon("arrow-right", 14)}</a></details></article>`;
   };
   const cardsMatch = /^(\d+ of \d+) cards carry the CFO's policy$/.exec(lead.airwallex.find((l) => / cards carry the CFO's policy$/.test(l.text))?.text ?? "");
   // Owner, 12 Nov: Airwallex, Visa, Metal, T:0, Claude (before: in the README's order, jury review, 7 Nov, #12: Airwallex, Metal, Claude). (The signed hash was the Airwallex card's

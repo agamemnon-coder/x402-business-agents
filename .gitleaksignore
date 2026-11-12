@@ -122,3 +122,6 @@ a0a455444a30a936bb6c5f3b100b41d71cb94fd7:cloud/src/engine/hostWorker.ts:generic-
 # 12 Nov: the passkey fingerprint in the same record is the first 8 bytes of SHA-256 of the passkey's public key, the
 # number the enrol page shows on screen to compare with the runner (public by design, not a key)
 596c800a0832e27e3812ffbc8cb15d2728d1926b:docs/runs/2026-11-12-tokenize.json:generic-api-key:25
+# 12 Nov: the passkey account's address on Metal testnet (a public contract, linked on the explorer), next to the word
+# "Passkey account" in the runs list: an address, not a key
+f26d0b8e945485109e36bcaca78a26604ebdae25:docs/runs/README.md:generic-api-key:16

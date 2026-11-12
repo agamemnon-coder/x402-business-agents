@@ -656,6 +656,41 @@ export function faceIdToPaid(t: RunTimes = runTimes()): string {
   return `<details class="ftp"><summary>${icon("scan-face", 16)}<span>${line}</span></summary><ul>${rows}${out}</ul></details>`;
 }
 
+/**
+ * The live runs as one strip (owner, 12 Nov: "showing works better"): a dot per live run on a line of days, coloured by
+ * its kind (testnet, sandbox, both), stacked when several ran on one day; each dot links to its entry. Drawn in SVG with
+ * the site's tokens; the dots rise in, one after another, unless the reader asked for reduced motion.
+ */
+export function runsStrip(live: RunRow[]): string {
+  const dayOf = (r: RunRow) => r.iso.slice(0, 10);
+  const days = [...new Set(live.map(dayOf))].sort();
+  if (days.length < 2) return "";
+  const t = (d: string) => Date.parse(`${d}T12:00:00Z`);
+  const t0 = t(days[0]!), t1 = t(days[days.length - 1]!);
+  const W = 1000, X0 = 40, X1 = 960, BASE = 96, STEP = 22;
+  const x = (d: string) => Math.round(X0 + ((t(d) - t0) / (t1 - t0)) * (X1 - X0));
+  const stack = new Map<string, number>();
+  const dots = [...live].sort((a, b) => a.iso.localeCompare(b.iso)).map((r) => {
+    const d = dayOf(r), n = stack.get(d) ?? 0;
+    stack.set(d, n + 1);
+    return `<a href="#${esc(r.key)}"><title>${esc(`${r.date}: ${nameOf(r)}`)}</title><circle class="rd k-${kindOf(r)}" cx="${x(d)}" cy="${BASE - 18 - n * STEP}" r="8"/></a>`;
+  });
+  const top = Math.min(...[...stack.values()].map((n) => BASE - 18 - (n - 1) * STEP)) - 14;
+  const label = (d: string, anchor: string, xx: number) => `<text x="${xx}" y="${BASE + 22}" text-anchor="${anchor}">${esc(day(`${d}T12:00:00Z`).replace(/ \d{4}$/, ""))}</text>`;
+  return `<svg class="rstrip" viewBox="0 ${top} ${W} ${BASE + 32 - top}" role="img" aria-label="${esc(`${live.length} live runs, ${day(`${days[0]}T12:00:00Z`)} to ${day(`${days[days.length - 1]}T12:00:00Z`)}`)}"><line x1="${X0}" y1="${BASE}" x2="${X1}" y2="${BASE}"/>${dots.join("")}${label(days[0]!, "start", X0 - 8)}${label(days[days.length - 1]!, "end", X1 + 8)}</svg>`;
+}
+const STRIP_CSS = `.runsp .rstrip { display: block; width: 100%; max-width: 760px; height: auto; margin: 6px 0 10px; }
+.runsp .rstrip line { stroke: var(--border); stroke-width: 3; stroke-linecap: round; }
+.runsp .rstrip text { fill: var(--muted); font: 600 22px Inter, system-ui, sans-serif; }
+.runsp .rstrip .rd { fill: var(--accent); stroke: var(--surface); stroke-width: 3; }
+.runsp .rstrip .rd.k-testnet { fill: var(--metal); } .runsp .rstrip .rd.k-sandbox { fill: var(--awx); } .runsp .rstrip .rd.k-nothing { fill: var(--muted); }
+.runsp .rstrip a:hover .rd, .runsp .rstrip a:focus-visible .rd { stroke: var(--text); }
+@media (prefers-reduced-motion: no-preference) {
+  .runsp .rstrip .rd { animation: rd-in .4s ease-out both; transform-box: fill-box; transform-origin: center; }
+${Array.from({ length: 30 }, (_, i) => `  .runsp .rstrip a:nth-of-type(${i + 1}) .rd { animation-delay: ${(i * 0.05).toFixed(2)}s; }`).join("\n")}
+}
+@keyframes rd-in { from { opacity: 0; transform: translateY(14px) scale(.6); } to { opacity: 1; transform: none; } }`;
+
 export function runsPage(all: RunRow[] = liveRuns(), times: RunTimes = runTimes()): string {
   const rows = newestFirst(all), live = rows.filter((r) => !isRehearsal(r)), rehearsals = rows.filter(isRehearsal);
   const last = lastLive(live);
@@ -665,6 +700,7 @@ export function runsPage(all: RunRow[] = liveRuns(), times: RunTimes = runTimes(
   const signed = signedByRun();
   const body = `<main class="wrap runsp">
 <h1>${esc(RUNS_TITLE)}</h1>
+${runsStrip(live)}
 <p class="last">Last live run: ${esc(last.date)}. ${pl(live.length, "live run")}, newest first, every id from its own record. Test money only; what was simulated is said on each run.</p>
 ${faceIdToPaid(times)}
 <span class="fa" id="all"></span>${filters.map((f) => `<span class="fa" id="${f.id}"></span>`).join("")}
@@ -683,7 +719,7 @@ ${MAIN_RUN_GLOSSARY.map(([k, v]) => `<dt><code>${esc(k)}</code></dt><dd>${esc(v)
 <p class="more-links">Per agent: <a href="agents/sourcing">Sourcing</a><a href="agents/support">Support</a><a href="agents/treasury">Treasury</a><a href="trace">Trace any payment</a><a href="proof">Proof</a></p>
 </main>`;
   return page({
-    title: `Purser · ${RUNS_TITLE}`, description: `Every live run of Purser, newest first, with its ids, checks and records. Last live run: ${last.date}.`, tab: "runs", css: `${CSS}\n${VERIFY_CSS}\n${FTP_CSS}`, body,
+    title: `Purser · ${RUNS_TITLE}`, description: `Every live run of Purser, newest first, with its ids, checks and records. Last live run: ${last.date}.`, tab: "runs", css: `${CSS}\n${VERIFY_CSS}\n${FTP_CSS}\n${STRIP_CSS}`, body,
     js: `${COPY_JS}\n${OPEN_TARGET_JS}\n${FILTER_JS}\n${VERIFY_TERMS_JS}`, stage: false,
     source: "Source: each run's record in docs/demo and docs/runs (listed per run).",
   });

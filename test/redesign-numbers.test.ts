@@ -221,7 +221,8 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
 });
 
 /** 12 Nov (wire-in): Visa's official mark on /visa's header, on the owner's stated permission (docs/evidence/logo-permissions.md). */
-const VISA_MARK = /<img src="assets\/logo-visa\.png" alt="Visa" width="46" height="15">/g;
+// and on /proof's Visa card (alt empty there: the card's heading names it).
+const VISA_MARK = /<img src="assets\/logo-visa\.png" alt="(Visa)?" width="46" height="15">/g;
 
 describe("the redesigned public pages", () => {
   const PAGES = buildPages();
