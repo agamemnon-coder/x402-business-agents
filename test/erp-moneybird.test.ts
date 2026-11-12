@@ -1,13 +1,15 @@
 // The Moneybird connector (src/erp/moneybird.ts) against a stand-in administration that checks every request against
 // Moneybird's own OpenAPI request schemas (test/fakes/moneybird.ts). No live calls: there is no Moneybird account yet.
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { openDb } from "../src/db/open.js";
 import { staticToken } from "../src/erp/auth.js";
+import { readCallLog } from "../src/erp/callBudget.js";
 import { runErpCli } from "../src/erp/cli.js";
 import { ErpError } from "../src/erp/connector.js";
-import { missingSettings } from "../src/erp/registry.js";
+import { liveConnector, missingSettings } from "../src/erp/registry.js";
 import { MONEYBIRD_ENDPOINTS, MONEYBIRD_SANDBOX_ADMINISTRATION, moneybirdConfigFromEnv, MoneybirdConnector, moneybirdEndpoint, moneybirdRetryAfterMs, parseMoneybirdJson, toMoney, type MoneybirdConfig } from "../src/erp/moneybird.js";
 import { syncAll, type SyncItem } from "../src/erp/sync.js";
 import { FakeMoneybird, LEDGER, OPENAPI_VERSION, TAX } from "./fakes/moneybird.js";
@@ -423,5 +425,21 @@ describe("Moneybird guard: one administration, a fixed list of endpoints", () =>
     await expect(c.pushVendor(sampleVendor())).rejects.toThrow(/only the sandbox administration/);
     expect(fake.transport.sent).toHaveLength(0);
     expect(() => moneybirdEndpoint("GET", "https://moneybird.com/api/v2/503585935808530148/ledger_accounts.json", cfgOf("503585935808530148", true))).not.toThrow();
+  });
+
+  it("live, writes each request to the call log under the administration it went to, object ids left out", async () => {
+    const fake = new FakeMoneybird();
+    const file = join(mkdtempSync(join(tmpdir(), "erp-mb-")), "calls.jsonl");
+    const env = { ERP_MONEYBIRD_TOKEN: fake.token, ERP_MONEYBIRD_ADMINISTRATION_ID: fake.admin, ERP_MONEYBIRD_TAX_RATES: JSON.stringify({ NL21: TAX[0]!.id, NL9: TAX[1]!.id }), ERP_MONEYBIRD_IGNORE_COST_CENTRES: "on", ERP_LIVE_GO: "yes", ERP_CALL_BUDGET: "20", ERP_CALL_LOG: file };
+    const res = await syncAll(openDb(":memory:"), liveConnector("moneybird", env, fake.transport), all().slice(0, 3), { sleep: noSleep });
+    expect(res.map((r) => r.outcome)).toEqual(["pushed", "pushed", "pushed"]);
+    const a = `moneybird.com/api/v2/${fake.admin}`;
+    expect(readCallLog(file).map((l) => `${l.method} ${l.endpoint}`)).toEqual([
+      `POST ${a}/contacts.json`, `GET ${a}/tax_rates.json`, `GET ${a}/ledger_accounts.json`, `POST ${a}/documents/purchase_invoices.json`,
+      `POST ${a}/documents/purchase_invoices/{id}/attachments.json`, `POST ${a}/documents/purchase_invoices/{id}/payments.json`,
+    ]);
+    expect(readCallLog(file)).toHaveLength(fake.transport.sent.length);
+    // Without the go and the budget there is no live connector at all.
+    expect(() => liveConnector("moneybird", { ...env, ERP_LIVE_GO: undefined }, fake.transport)).toThrow(/ERP_LIVE_GO=yes.*nothing was called/);
   });
 });

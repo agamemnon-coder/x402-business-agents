@@ -1,17 +1,23 @@
 // npm run erp (src/erp/cli.ts): a dry run sends nothing and prints the requests without secrets; a live run needs the
 // connector's settings and says --live; list names the missing settings, never a value.
+import { existsSync, mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { openDb } from "../src/db/open.js";
+import { readCallLog } from "../src/erp/callBudget.js";
 import { runErpCli } from "../src/erp/cli.js";
+import type { ErpConnector, Transport } from "../src/erp/connector.js";
 import { ensureErpSchema, type SyncItem } from "../src/erp/sync.js";
 import { sampleInvoice, samplePayment, sampleVendor } from "./fakes/erp.js";
+import { FakeMoneybird, LEDGER, TAX } from "./fakes/moneybird.js";
 
 const items = (): SyncItem[] => [{ kind: "vendor", object: sampleVendor() }, { kind: "invoice", object: sampleInvoice() }, { kind: "payment", object: samplePayment() }];
 
-async function run(args: string[], env: Record<string, string | undefined> = {}) {
+async function run(args: string[], env: Record<string, string | undefined> = {}, transport?: Transport) {
   const lines: string[] = [];
   const db = openDb(":memory:");
-  const code = await runErpCli(args, { db, env, out: (l) => lines.push(l), items });
+  const code = await runErpCli(args, { db, env, out: (l) => lines.push(l), items, ...(transport ? { transport } : {}) });
   return { code, text: lines.join("\n"), db };
 }
 
@@ -58,5 +64,98 @@ describe("npm run erp -- resolve", () => {
     expect(await runErpCli(["resolve", "--connector", "bc", "--object", "invoice:INV-1", "--as", "synced", "--by", "accountant"], { db, env: {}, out, items })).toBe(0);
     expect(lines.join("\n")).toMatch(/invoice INV-1: synced by accountant/);
     await expect(runErpCli(["resolve", "--connector", "bc", "--object", "invoice:INV-1", "--as", "synced", "--by", "accountant"], { db, env: {}, out, items })).rejects.toThrow(/does not wait for a person/);
+  });
+});
+
+describe("npm run erp, live (a go, a call budget and a call log)", () => {
+  const callLog = () => join(mkdtempSync(join(tmpdir(), "erp-cli-")), "calls.jsonl");
+  const settings = (fake: FakeMoneybird) => ({ ERP_MONEYBIRD_TOKEN: fake.token, ERP_MONEYBIRD_ADMINISTRATION_ID: fake.admin });
+  const go = (file: string, budget = "6") => ({ ERP_LIVE_GO: "yes", ERP_CALL_BUDGET: budget, ERP_CALL_LOG: file });
+  const taxes = { ERP_MONEYBIRD_TAX_RATES: JSON.stringify({ NL21: TAX[0]!.id, NL9: TAX[1]!.id }), ERP_MONEYBIRD_IGNORE_COST_CENTRES: "on" };
+
+  it("refuses every live command without the owner's go, the approved number of requests and the log that counts them", async () => {
+    const fake = new FakeMoneybird();
+    const file = callLog();
+    for (const cmd of ["pull", "sync", "correct"]) {
+      for (const leftOut of ["ERP_LIVE_GO", "ERP_CALL_BUDGET", "ERP_CALL_LOG"]) {
+        const env = { ...settings(fake), ...taxes, ...go(file), [leftOut]: undefined };
+        await expect(run([cmd, "--connector", "moneybird", "--live", "--object", "invoice:INV-1"], env, fake.transport), `${cmd} without ${leftOut}`).rejects.toThrow(new RegExp(`a live run needs ${leftOut}.*nothing was called`));
+      }
+    }
+    await expect(run(["sync", "--connector", "moneybird", "--live"], { ...settings(fake), ...taxes }, fake.transport)).rejects.toThrow(/ERP_LIVE_GO=yes.*ERP_CALL_BUDGET.*ERP_CALL_LOG.*nothing was called/);
+    expect(fake.transport.sent).toHaveLength(0);
+    expect(existsSync(file)).toBe(false);
+    // The command itself refuses, however its connector is made: one handed in is never asked anything.
+    const asked: string[] = [];
+    const handedIn = new Proxy({ name: "moneybird" }, { get: (t, k) => (k === "name" ? t.name : async () => { asked.push(String(k)); return []; }) }) as unknown as ErpConnector;
+    await expect(runErpCli(["pull", "--connector", "moneybird", "--live"], { db: openDb(":memory:"), env: settings(fake), out: () => {}, items, live: () => handedIn })).rejects.toThrow(/a live run needs ERP_LIVE_GO=yes/);
+    expect(asked).toEqual([]);
+  });
+
+  it("pulls Moneybird's ledger accounts and tax rates with their ids before any tax rate is mapped: the map is made from this list", async () => {
+    const fake = new FakeMoneybird();
+    const file = callLog();
+    const { code, text } = await run(["pull", "--connector", "moneybird", "--live"], { ...settings(fake), ...go(file) }, fake.transport);
+    expect(code).toBe(0);
+    expect(text).toContain(`${LEDGER.length} accounts, 0 suppliers in Moneybird`);
+    expect(text).toContain(`account 6200  Inkoop  [id ${LEDGER[0]!.id}]`);
+    expect(text).toContain(`account -  Software  [id ${LEDGER[4]!.id}]`);
+    expect(text).toContain(`tax rate 21% btw (21.0%, purchase_invoice)  [id ${TAX[0]!.id}]`);
+    // Three requests, each in the log before it left, and the count is said at the end.
+    expect(readCallLog(file).map((l) => `${l.method} ${l.endpoint}`)).toEqual([
+      `GET moneybird.com/api/v2/${fake.admin}/ledger_accounts.json`, `GET moneybird.com/api/v2/${fake.admin}/contacts.json`, `GET moneybird.com/api/v2/${fake.admin}/tax_rates.json`,
+    ]);
+    expect(fake.transport.sent).toHaveLength(3);
+    expect(text).toMatch(/3 of 6 approved requests used/);
+    expect(text).not.toContain(fake.token);
+  });
+
+  it("still refuses to send anything while the tax rates are not mapped", async () => {
+    const fake = new FakeMoneybird();
+    await expect(run(["sync", "--connector", "moneybird", "--live"], { ...settings(fake), ...go(callLog()) }, fake.transport)).rejects.toThrow(/Moneybird is not set up: missing ERP_MONEYBIRD_TAX_RATES/);
+    expect(fake.transport.sent).toHaveLength(0);
+  });
+
+  it("stops a live command at the approved number and says how many were used", async () => {
+    const fake = new FakeMoneybird();
+    const file = callLog();
+    const lines: string[] = [];
+    await expect(runErpCli(["pull", "--connector", "moneybird", "--live"], { db: openDb(":memory:"), env: { ...settings(fake), ...go(file, "2") }, out: (l) => lines.push(l), items, transport: fake.transport }))
+      .rejects.toThrow(/call budget of 2 is spent.*tax_rates\.json was not sent/);
+    expect(fake.transport.sent).toHaveLength(2);
+    expect(lines.join("\n")).toMatch(/2 of 2 approved requests used/);
+  });
+
+  it("sends a live sync through the same count, and a second run sends nothing", async () => {
+    const fake = new FakeMoneybird();
+    const file = callLog();
+    const env = { ...settings(fake), ...taxes, ...go(file, "10") };
+    const lines: string[] = [];
+    const db = openDb(":memory:");
+    const deps = { db, env, out: (l: string) => lines.push(l), items, transport: fake.transport };
+    expect(await runErpCli(["sync", "--connector", "moneybird", "--live"], deps)).toBe(0);
+    expect(lines.join("\n")).toMatch(/vendor\s+V-1\s+pushed/);
+    expect(lines.join("\n")).toMatch(/6 of 10 approved requests used/);
+    expect(readCallLog(file)).toHaveLength(6);
+    expect(await runErpCli(["sync", "--connector", "moneybird", "--live"], deps)).toBe(0);
+    expect(readCallLog(file)).toHaveLength(6);
+    expect(fake.transport.sent).toHaveLength(6);
+  });
+
+  it("shows the call log by endpoint against the approved number, and calls nothing to do so", async () => {
+    const fake = new FakeMoneybird();
+    const file = callLog();
+    await run(["pull", "--connector", "moneybird", "--live"], { ...settings(fake), ...go(file) }, fake.transport);
+    const { code, text } = await run(["calls"], { ERP_CALL_LOG: file, ERP_CALL_BUDGET: "44" }, fake.transport);
+    expect(code).toBe(0);
+    expect(text.split("\n")).toEqual([
+      "3 of 44 approved requests used",
+      `  1  GET moneybird.com/api/v2/${fake.admin}/ledger_accounts.json`,
+      `  1  GET moneybird.com/api/v2/${fake.admin}/contacts.json`,
+      `  1  GET moneybird.com/api/v2/${fake.admin}/tax_rates.json`,
+    ]);
+    expect((await run(["calls"], { ERP_CALL_LOG: file })).text.split("\n")[0]).toBe("3 requests in the call log (no ERP_CALL_BUDGET is set)");
+    await expect(run(["calls"], {})).rejects.toThrow(/ERP_CALL_LOG is not set/);
+    expect(fake.transport.sent).toHaveLength(3);
   });
 });

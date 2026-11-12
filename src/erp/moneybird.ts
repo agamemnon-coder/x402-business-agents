@@ -510,7 +510,8 @@ export function moneybirdConfigFromEnv(env: Record<string, string | undefined>):
   if (guard === "on" && baseUrl !== MONEYBIRD_BASE_URL) {
     throw new ErpError("config", `ERP_MONEYBIRD_SANDBOX_ONLY is on: only ${MONEYBIRD_BASE_URL} may be called, and ERP_MONEYBIRD_BASE_URL names another address; nothing was called`);
   }
-  const taxRates = map("ERP_MONEYBIRD_TAX_RATES", false);
+  // Not needed to read (a pull lists the tax rates this map is made from); sending refuses a VAT treatment without one.
+  const taxRates = map("ERP_MONEYBIRD_TAX_RATES", true);
   for (const k of Object.keys(taxRates)) if (!(VAT_CODES as readonly string[]).includes(k)) throw new ErpError("config", `ERP_MONEYBIRD_TAX_RATES: ${k} is not one of Purser's VAT treatments (${VAT_CODES.join(", ")})`);
   const base = env.ERP_MONEYBIRD_BASE_CURRENCY ?? "EUR";
   if (!/^[A-Z]{3}$/.test(base)) throw new ErpError("config", "ERP_MONEYBIRD_BASE_CURRENCY must be a three-letter currency code");

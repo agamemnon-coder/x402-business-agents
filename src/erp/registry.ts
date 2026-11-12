@@ -5,9 +5,10 @@
 import { CHART } from "../config/gl.js";
 import { entraTokens, exactTokens, fileTokenStore, staticToken } from "./auth.js";
 import { BusinessCentralConnector, type BcConfig } from "./businessCentral.js";
+import { liveTransport } from "./callBudget.js";
 import { fetchTransport, RecordingTransport, type ConnectorName, type ErpConnector, type HttpRequest, type HttpResponse, type Transport } from "./connector.js";
 import { exactConfigFromEnv, ExactConnector, type ExactConfig } from "./exact.js";
-import { moneybirdConfigFromEnv, MoneybirdConnector, type MoneybirdConfig } from "./moneybird.js";
+import { moneybirdCallName, moneybirdConfigFromEnv, MoneybirdConnector, type MoneybirdConfig } from "./moneybird.js";
 import type { VatCode } from "./model.js";
 import { OdooConnector, type OdooConfig } from "./odoo.js";
 import { jsonMap } from "./rest.js";
@@ -39,14 +40,18 @@ export const SETTINGS: Record<ConnectorName, { label: string; secrets: string[];
     label: "Moneybird",
     secrets: ["ERP_MONEYBIRD_TOKEN"],
     settings: ["ERP_MONEYBIRD_ADMINISTRATION_ID", "ERP_MONEYBIRD_TAX_RATES"],
-    optional: ["ERP_MONEYBIRD_GL_MAP", "ERP_MONEYBIRD_PROJECTS", "ERP_MONEYBIRD_IGNORE_COST_CENTRES", "ERP_MONEYBIRD_BASE_CURRENCY", "ERP_MONEYBIRD_BASE_URL"],
+    optional: ["ERP_MONEYBIRD_GL_MAP", "ERP_MONEYBIRD_PROJECTS", "ERP_MONEYBIRD_IGNORE_COST_CENTRES", "ERP_MONEYBIRD_BASE_CURRENCY", "ERP_MONEYBIRD_BASE_URL", "ERP_MONEYBIRD_SANDBOX_ONLY"],
   },
 };
 
-/** Which required settings are missing for a connector (names only). */
-export function missingSettings(name: ConnectorName, env: Env): string[] {
+/** Settings a person fills in from what a pull lists, so a pull itself does not need them (Moneybird's tax rate ids). */
+const FILLED_FROM_A_PULL: Partial<Record<ConnectorName, string[]>> = { moneybird: ["ERP_MONEYBIRD_TAX_RATES"] };
+
+/** Which required settings are missing for a connector (names only); for a pull, without the ones the pull is for. */
+export function missingSettings(name: ConnectorName, env: Env, forPull = false): string[] {
   const s = SETTINGS[name];
-  return [...s.secrets, ...s.settings].filter((k) => !env[k]);
+  const later = forPull ? FILLED_FROM_A_PULL[name] ?? [] : [];
+  return [...s.secrets, ...s.settings].filter((k) => !env[k] && !later.includes(k));
 }
 
 const intMap = (m: Record<string, string>, name: string) => Object.fromEntries(Object.entries(m).map(([k, v]) => {
@@ -73,7 +78,20 @@ export function odooConfigFromEnv(env: Env): OdooConfig {
 
 const exactFromEnv = (env: Env) => exactConfigFromEnv(env, { vat: jsonMap(env, "ERP_EXACT_VAT_CODES"), gl: jsonMap(env, "ERP_EXACT_GL_MAP", true), banks: jsonMap(env, "ERP_EXACT_BANK_JOURNALS") });
 
-export function liveConnector(name: ConnectorName, env: Env, transport: Transport = fetchTransport()): ErpConnector {
+/**
+ * A connector that really calls the ERP. Every request goes through the run's call budget (src/erp/callBudget.ts):
+ * without the owner's go, the approved number and the call log, none is built. `inner` is what sends (fetch; a test's
+ * stand-in).
+ */
+export function liveConnector(name: ConnectorName, env: Env, inner: Transport = fetchTransport()): ErpConnector {
+  if (name === "moneybird") {
+    // A personal API token or an OAuth access token; Moneybird's access tokens do not expire for now (its
+    // Authentication page), so a fixed Bearer token from the environment is all it takes. The call log names each
+    // request under its administration.
+    const cfg = moneybirdConfigFromEnv(env);
+    return new MoneybirdConnector(cfg, liveTransport(env, inner, (req) => moneybirdCallName(req, cfg)), staticToken(env.ERP_MONEYBIRD_TOKEN ?? ""));
+  }
+  const transport = liveTransport(env, inner);
   switch (name) {
     case "exact": {
       const cfg = exactFromEnv(env);
@@ -86,10 +104,6 @@ export function liveConnector(name: ConnectorName, env: Env, transport: Transpor
     }
     case "odoo":
       return new OdooConnector(odooConfigFromEnv(env), transport);
-    case "moneybird":
-      // A personal API token or an OAuth access token; Moneybird's access tokens do not expire for now (its
-      // Authentication page), so a fixed Bearer token from the environment is all it takes.
-      return new MoneybirdConnector(moneybirdConfigFromEnv(env), transport, staticToken(env.ERP_MONEYBIRD_TOKEN ?? ""));
   }
 }
 

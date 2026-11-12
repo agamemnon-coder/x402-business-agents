@@ -7,10 +7,15 @@
 //                                                       a person settles an object left for them (needs_review)
 // npm run erp -- correct --connector exact --object invoice:<id> --live
 //                                                       a credit note (or reversal) and the new version
+// npm run erp -- calls                                  the run's call log by endpoint, against the approved number
 // The dry run needs no account and no settings: without them it uses example settings and says so.
+// Every --live command needs the owner's go and a call budget (src/erp/callBudget.ts): ERP_LIVE_GO=yes,
+// ERP_CALL_BUDGET and ERP_CALL_LOG. Each request is counted in the log before it is sent; the one over is not sent.
 
+import { resolve as resolvePath } from "node:path";
 import type { DB } from "../db/open.js";
-import { CONNECTOR_NAMES, redactRequest, type ConnectorName, type ErpConnector, type HttpRequest } from "./connector.js";
+import { callsByEndpoint, liveRefusals, readCallLog } from "./callBudget.js";
+import { CONNECTOR_NAMES, redactRequest, type ConnectorName, type ErpConnector, type HttpRequest, type Transport } from "./connector.js";
 import { dryRunConnector, liveConnector, missingSettings, SETTINGS } from "./registry.js";
 import { ledgerItems } from "./source.js";
 import { correct, resolve, syncAll, syncStatus, type SyncItem } from "./sync.js";
@@ -22,6 +27,8 @@ export interface CliDeps {
   out: (line: string) => void;
   /** The connector for a live call (tests pass a fake). */
   live?: (name: ConnectorName) => ErpConnector;
+  /** What a live connector sends through, under the call budget: fetch, unless a test passes its stand-in. */
+  transport?: Transport;
   items?: (db: DB) => SyncItem[];
 }
 
@@ -71,6 +78,16 @@ export async function runErpCli(args: string[], d: CliDeps): Promise<number> {
     for (const r of rows) d.out(`${r.connector.padEnd(6)} ${r.kind.padEnd(8)} ${r.object_id.padEnd(28)} ${r.status.padEnd(17)} ${r.external_id ?? "-"}${r.last_error ? `  (${r.last_error})` : ""}`);
     return 0;
   }
+  if (cmd === "calls") {
+    // What the run's call log holds, by endpoint, against the approved number. Reads the log; calls nothing.
+    const file = d.env.ERP_CALL_LOG;
+    if (!file) throw new Error("ERP_CALL_LOG is not set: name the run's call log");
+    const calls = readCallLog(file);
+    const budget = d.env.ERP_CALL_BUDGET ?? "";
+    d.out(/^\d+$/.test(budget) ? `${calls.length} of ${Number(budget)} approved requests used` : `${calls.length} requests in the call log (no ERP_CALL_BUDGET is set)`);
+    for (const e of callsByEndpoint(calls)) d.out(`${String(e.calls).padStart(3)}  ${e.endpoint}`);
+    return 0;
+  }
   if (cmd === "resolve") {
     // A person's call on an object the ERP holds in a state they had to look at; nothing is sent to the ERP.
     const name = connectorArg(args);
@@ -98,35 +115,44 @@ export async function runErpCli(args: string[], d: CliDeps): Promise<number> {
       for (const r of transport.sent) printRequest(r, d.out);
       return 0;
     }
-    const miss = missingSettings(name, d.env);
+    // A pull lists what some settings are made from (Moneybird's tax rate ids), so it does not need those yet.
+    const miss = missingSettings(name, d.env, cmd === "pull");
     if (miss.length && !d.live) throw new Error(`${SETTINGS[name].label} is not set up: missing ${miss.join(", ")} (see docs/erp.md)`);
-    const c = d.live ? d.live(name) : liveConnector(name, d.env);
-    if (cmd === "pull") {
-      const accounts = await c.pullChartOfAccounts();
-      const vendors = await c.pullVendors();
-      d.out(`${accounts.length} accounts, ${vendors.length} suppliers in ${SETTINGS[name].label}`);
-      // Moneybird maps by ledger account id (ERP_MONEYBIRD_GL_MAP) and tax rate id (ERP_MONEYBIRD_TAX_RATES): show them.
-      const ids = name === "moneybird";
-      for (const a of accounts) d.out(`  account ${a.code || "-"}  ${a.name}${ids ? `  [id ${a.externalId}]` : ""}`);
-      for (const v of vendors) d.out(`  supplier ${v.name}${v.vatId ? ` (${v.vatId})` : ""}`);
-      const taxes = (c as { pullTaxRates?: () => Promise<{ id: string; name: string; percentage: string; type: string }[]> }).pullTaxRates;
-      if (taxes) for (const t of await taxes.call(c)) d.out(`  tax rate ${t.name} (${t.percentage}%, ${t.type})  [id ${t.id}]`);
-      return 0;
+    // The owner's go, the approved number of requests and the log that counts them, before a connector is even built.
+    const why = liveRefusals(d.env);
+    if (why.length) throw new Error(`a live run needs ${why.join(", ")}; nothing was called`);
+    const c = d.live ? d.live(name) : liveConnector(name, d.env, d.transport);
+    try {
+      if (cmd === "pull") {
+        const accounts = await c.pullChartOfAccounts();
+        const vendors = await c.pullVendors();
+        d.out(`${accounts.length} accounts, ${vendors.length} suppliers in ${SETTINGS[name].label}`);
+        // Moneybird maps by ledger account id (ERP_MONEYBIRD_GL_MAP) and tax rate id (ERP_MONEYBIRD_TAX_RATES): show them.
+        const ids = name === "moneybird";
+        for (const a of accounts) d.out(`  account ${a.code || "-"}  ${a.name}${ids ? `  [id ${a.externalId}]` : ""}`);
+        for (const v of vendors) d.out(`  supplier ${v.name}${v.vatId ? ` (${v.vatId})` : ""}`);
+        const taxes = (c as { pullTaxRates?: () => Promise<{ id: string; name: string; percentage: string; type: string }[]> }).pullTaxRates;
+        if (taxes) for (const t of await taxes.call(c)) d.out(`  tax rate ${t.name} (${t.percentage}%, ${t.type})  [id ${t.id}]`);
+        return 0;
+      }
+      if (cmd === "correct") {
+        const obj = flag(args, "object") ?? "";
+        const [kind, ...rest] = obj.split(":");
+        const id = rest.join(":");
+        const item = items(d.db).find((i) => i.kind === kind && i.object.id === id);
+        if (!item) throw new Error(`no ${kind || "object"} ${id || "(none given)"} in the ledger; give --object invoice:<id> or journal:<id>`);
+        const r = await correct(d.db, c, item);
+        d.out(`${r.kind} ${r.id}: corrected, now ${r.externalId}`);
+        return 0;
+      }
+      const res = await syncAll(d.db, c, items(d.db));
+      for (const r of res) d.out(`${r.kind.padEnd(8)} ${r.id.padEnd(28)} ${r.outcome}${r.externalId ? ` ${r.externalId}` : ""}${r.detail ? `: ${r.detail}` : ""}`);
+      return res.some((r) => r.outcome === "failed" || r.outcome === "invalid") ? 1 : 0;
+    } finally {
+      // Said after every live command, also one that stopped: the count is the log's, written before each request left.
+      d.out(`${readCallLog(resolvePath(d.env.ERP_CALL_LOG!)).length} of ${Number(d.env.ERP_CALL_BUDGET)} approved requests used`);
     }
-    if (cmd === "correct") {
-      const obj = flag(args, "object") ?? "";
-      const [kind, ...rest] = obj.split(":");
-      const id = rest.join(":");
-      const item = items(d.db).find((i) => i.kind === kind && i.object.id === id);
-      if (!item) throw new Error(`no ${kind || "object"} ${id || "(none given)"} in the ledger; give --object invoice:<id> or journal:<id>`);
-      const r = await correct(d.db, c, item);
-      d.out(`${r.kind} ${r.id}: corrected, now ${r.externalId}`);
-      return 0;
-    }
-    const res = await syncAll(d.db, c, items(d.db));
-    for (const r of res) d.out(`${r.kind.padEnd(8)} ${r.id.padEnd(28)} ${r.outcome}${r.externalId ? ` ${r.externalId}` : ""}${r.detail ? `: ${r.detail}` : ""}`);
-    return res.some((r) => r.outcome === "failed" || r.outcome === "invalid") ? 1 : 0;
   }
-  d.out("npm run erp -- list | status | sync --connector exact|bc|odoo|moneybird --dry-run|--live | pull --connector … --live | correct --connector … --object invoice:<id> --live | resolve --connector … --object invoice:<id> --as synced|retry --by <who>");
+  d.out("npm run erp -- list | status | calls | sync --connector exact|bc|odoo|moneybird --dry-run|--live | pull --connector … --live | correct --connector … --object invoice:<id> --live | resolve --connector … --object invoice:<id> --as synced|retry --by <who>");
   return cmd ? 2 : 0;
 }
