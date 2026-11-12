@@ -73,8 +73,8 @@ describe("the film (Q3)", () => {
     expect(FILM_URL).toBe("https://youtu.be/kCUsFHrxE-o");
   });
 
-  it("Watch and Proof link the film of the main run; Proof's archive names /film for what it is", () => {
-    for (const name of ["watch", "proof"] as const) expect({ name, link: pages[name]!.includes(`href="${FILM_URL}"`) }).toEqual({ name, link: true });
+  it("the replay and Proof link the film of the main run; Proof's archive names /film for what it is", () => {
+    for (const name of ["replay", "proof"] as const) expect({ name, link: pages[name]!.includes(`href="${FILM_URL}"`) }).toEqual({ name, link: true });
     expect(pages.proof).toContain('<a class="pf" href="film">The earlier animation (30 October)</a>');
     expect(pages.proof).not.toContain('<a class="pf" href="film">The film</a>');
   });

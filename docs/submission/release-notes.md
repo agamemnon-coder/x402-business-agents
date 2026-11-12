@@ -470,7 +470,7 @@ Claude Code, on Max's go; in production a second person). Sources for every clai
   behind "Details"; on /airwallex, at the top of /visa (above the TAP run) and on /proof under the partners
   (src/redesign/airiRun.ts, test/airi-run-page.test.ts). Also in the README, one sentence in the form (Description
   3,999 characters), the long text, the deck's Airwallex slide, the pitch and Q&A 25 and 26. Still entered for the Metal
-  Award only; the Visa Award lines wait for Visa's confirmation (docs/submission/visa-award-pending.md). Page budgets:
+  Award only; the Visa Award lines wait for Visa's confirmation (docs/submission/visa-award.md, then named visa-award-pending.md). Page budgets:
   /airwallex 345, /visa 275 words. 3029 tests in 295 files, all passing.
 - 7 November, the recorded Treasury advice is usable again when the live agent cannot answer: it was refused only for
   naming its own quote's end ("runs out today at 13:00:35Z"), a time and no amount. Its amounts are still checked

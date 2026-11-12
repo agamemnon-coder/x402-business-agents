@@ -5,6 +5,7 @@
 import { redactSecrets } from "../lib/redact.js";
 import { AirwallexBudgetSpent, budgetFromEnv } from "./callBudget.js";
 import { ACCOUNT_ID } from "./platform.js";
+import { airwallexOAuthConfig, airwallexOAuthOn, cloudTargetFromEnv } from "../cloudsync/connections.js";
 
 export const SANDBOX_BASE = "https://api.sandbox.airwallex.com/api/v1";
 
@@ -15,9 +16,23 @@ export const SANDBOX_BASE = "https://api.sandbox.airwallex.com/api/v1";
  */
 export const AIRWALLEX_FEE_CODES: ReadonlySet<string> = new Set(["fee_unknown", "unconfigured_client_fee"]);
 
+/**
+ * A company's own access token for its connected Airwallex account (OAuth, docs/real-customers.md): handed to this
+ * runner by Purser Cloud for this company only (src/cloudsync/connections.ts). With it the client never logs in with an
+ * API key and never acts on behalf of another account: the token itself names the account.
+ */
+export interface AirwallexAccessToken {
+  token(): Promise<string>;
+  /** Forget the held token (after a 401), so the next call fetches a fresh one. */
+  invalidate(): void;
+}
+
 export interface AirwallexConfig {
-  clientId: string;
-  apiKey: string;
+  /** The company's own API key pair (Purser's sandbox today). Not used with `oauth`. */
+  clientId?: string;
+  apiKey?: string;
+  /** The company's own OAuth access token instead of an API key (behind AIRWALLEX_OAUTH=on). */
+  oauth?: AirwallexAccessToken;
   baseUrl?: string;
   fetchImpl?: typeof fetch;
   /** Minimum gap between calls. 200 ms keeps us at 5/s, half the sandbox's per-endpoint limit. */
@@ -93,6 +108,9 @@ const MAX_429_RETRIES = 4;
 const TRANSIENT = new Set([502, 503, 504]);
 
 export function fromEnv(env = process.env): AirwallexConfig | null {
+  // AIRWALLEX_OAUTH=on (docs/real-customers.md): the company's own connected account, with its own token from Purser
+  // Cloud; no API key is read. Off (the default): the API key pair, exactly as before.
+  if (airwallexOAuthOn(env)) return airwallexOAuthConfig(cloudTargetFromEnv(env), env);
   const clientId = env.AIRWALLEX_CLIENT_ID;
   const apiKey = env.AIRWALLEX_API_KEY;
   if (!clientId || !apiKey) return null;
@@ -119,6 +137,10 @@ export class Airwallex {
 
   constructor(private readonly cfg: AirwallexConfig) {
     if (cfg.onBehalfOf !== undefined && !ACCOUNT_ID.test(cfg.onBehalfOf)) throw new Error("onBehalfOf is not an Airwallex account id (acct_…)");
+    // A company's own OAuth token acts for that company's account only: never on behalf of another one, never with a key.
+    if (cfg.oauth && cfg.onBehalfOf !== undefined) throw new Error("a company's own OAuth token is never used on behalf of another account");
+    if (cfg.oauth && (cfg.clientId || cfg.apiKey)) throw new Error("use the company's OAuth token or an API key, not both");
+    if (!cfg.oauth && (!cfg.clientId || !cfg.apiKey)) throw new Error("the Airwallex client needs an API key pair or the company's OAuth token");
     this.base = cfg.baseUrl ?? SANDBOX_BASE;
     if (!this.base.startsWith("https://api.sandbox.airwallex.com/")) throw new Error("this build only talks to the Airwallex sandbox");
     this.fetch = cfg.fetchImpl ?? fetch;
@@ -141,6 +163,7 @@ export class Airwallex {
   }
 
   private async login(): Promise<string> {
+    if (!this.cfg.clientId || !this.cfg.apiKey) throw new Error("no Airwallex API key to log in with");
     const res = await this.fetch(`${this.base}/authentication/login`, {
       method: "POST",
       headers: { "x-client-id": this.cfg.clientId, "x-api-key": this.cfg.apiKey, "content-type": "application/json" },
@@ -153,6 +176,7 @@ export class Airwallex {
   }
 
   private async bearer(): Promise<string> {
+    if (this.cfg.oauth) return this.cfg.oauth.token();
     if (this.token && this.token.expiresAt - TOKEN_REFRESH_EARLY_MS > this.now()) return this.token.value;
     return this.login();
   }
@@ -182,7 +206,7 @@ export class Airwallex {
           if (attempt < MAX_429_RETRIES) { await this.sleep(500 * 2 ** attempt); continue; }
           throw err;
         }
-        if (res.status === 401 && attempt === 0) { this.token = null; continue; }
+        if (res.status === 401 && attempt === 0) { this.token = null; this.cfg.oauth?.invalidate(); continue; }
         if (res.status === 429 && attempt < MAX_429_RETRIES) {
           const after = Number(res.headers.get("retry-after"));
           await this.sleep(Number.isFinite(after) && after > 0 ? after * 1000 : 500 * 2 ** attempt);

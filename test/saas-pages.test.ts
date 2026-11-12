@@ -7,6 +7,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CHECK_PATHS } from "../src/cli/judge.js";
 import { repoHref } from "../src/redesign/productPage.js";
+import { hostileClaimText } from "../src/redesign/partners.js";
 import { FEE_BPS_CAP } from "../src/airwallex/platform.js";
 import { PRICING, euro, percentOfBps } from "../src/config/pricing.js";
 import { FEE_FOLD, PRICING_LEAD, TEST_VALUES, e2eFeeRun, feeLine, feeRun, pricingPage } from "../src/redesign/pricing.js";
@@ -206,7 +207,10 @@ describe("/security: security and trust", () => {
   });
 
   it("agents propose, code enforces: the models hold no key or tool, code checks what they return; secrets stay with the runner and every push is scanned", () => {
-    expect(inSight("s-code")).toBe("Agents propose, code enforces Agents hold no keys; code checks what they propose before anything moves. Least privilege ↗ How");
+    expect(inSight("s-code")).toBe("Agents propose, code enforces Agents hold no keys; code checks what they propose before anything moves. Least privilege ↗ Hostile-model eval ↗ How");
+    // The hostile-model eval (12 Nov): the record's own line, as /claude says it.
+    expect(folded("s-code")).toContain(hostileClaimText());
+    expect(hostileClaimText()).toMatch(/^In CI, a script in place of the payables agents, on \d+ test invoices: \d+ hostile tool calls, \d+ refused by code, 0 unsafe by the ledger verdict\.$/);
     expect(folded("s-code")).toContain("“Models: no key, URL, credential or tool. They read text and return typed data that code checks");
     expect(inSight("s-secrets")).toBe("Secrets Only the runner holds keys, and every push is scanned for leaked secrets. Trust boundaries ↗ How");
     for (const q of ["Only the runner holds keys and writes the ledger.", "gitleaks on the pushed commits and the whole history of the branch under check", "cloud/src/log.ts cleans every field: anything named like a secret becomes [redacted]"]) expect(folded("s-secrets")).toContain(`“${q}”`);
@@ -273,7 +277,8 @@ describe("/security: security and trust", () => {
     const first = json<R>(REDTEAM_REPORT);
     const after = first.results.filter((r) => r.caught === "after").length, before = first.results.filter((r) => r.outcome === "blocked" && r.caught === "before").length;
     expect([first.attempts, before + after, after]).toEqual([first.results.length, first.blocked, first.caught_after]);
-    expect(inSight("s-redteam")).toBe(`Tested by attack Test world Our red team ran ${first.attempts} attacks: ${before} stopped before anything moved, ${after} found afterwards. The report ↗ Later rounds`);
+    expect(inSight("s-redteam")).toBe(`Tested by attack Test world Our red team ran ${first.attempts} attacks: ${before} stopped before anything moved, ${after} found afterwards. The report ↗ Zero-trust report ↗ Later rounds`);
+    expect(card(html, "s-redteam")).toContain(`href="${repoHref("docs/zero-trust/report.json")}"`);
     expect(redTeamRound([REDTEAM_REPORT])).toMatchObject({ day: "30 October", attempts: first.attempts, before, after, inconclusive: 0, notBlocked: 0 });
     // 31 October, three runs: counted from each run's results.
     const oct = { attempts: sum(REDTEAM_OCT31, (r) => r.results.length), after: sum(REDTEAM_OCT31, (r) => r.results.filter((x) => x.caught === "after").length), blocked: sum(REDTEAM_OCT31, (r) => r.results.filter((x) => x.outcome === "blocked").length), inconclusive: sum(REDTEAM_OCT31, (r) => r.results.filter((x) => x.outcome === "inconclusive").length) };
@@ -321,6 +326,8 @@ describe("/security: security and trust", () => {
     const allowed = new Set([first.attempts, first.before, first.after, oct.attempts, oct.before, oct.after, oct.inconclusive, night.attempts, night.blocked, night.notBlocked, night.inconclusive, audit.rows].map(String)
       // And the days of the dated rounds and of the published log's run.
       .concat(first.day.split(" ")[0]!, oct.day.split(" ")[0]!, night.day.split(" ")[0]!, audit.day.split(" ")[0]!)
+      // And the hostile-model eval's figures, from its own record.
+      .concat(((r) => [r.cases.length, r.calls, r.refused, r.unsafe].map(String))(json<{ cases: unknown[]; calls: number; refused: number; unsafe: number }>("docs/evals/ap-hostile.json")))
       // And the day the two-locks run's record names, from its own heading.
       .concat(/^# [^\n]*\((\d{1,2}) [A-Z][a-z]+ \d{4}\)/.exec(read("docs/runs/2026-11-12-airwallex-two-locks-paid.md"))![1]!));
     // Names that carry a digit are not figures: "SOC 2", "SHA-256", and the files the folds name.

@@ -5,7 +5,7 @@
 import type { DB } from "../db/open.js";
 
 /** The rows where an agent's decision is recorded, each with source "claude" or "fallback". */
-export const DECISION_EVENTS = ["price_rise.met", "price_rise.plan", "dispute.settled_by_agent", "purchase.rails_chosen", "card.decline_met", "licence.timing_advised", "agent.decision"] as const;
+export const DECISION_EVENTS = ["price_rise.met", "price_rise.plan", "dispute.settled_by_agent", "purchase.rails_chosen", "card.decline_met", "licence.timing_advised", "agent.decision", "ap.checker_decided", "ap.payer_proposed"] as const;
 
 export interface AgentStats {
   agent: string;
@@ -13,6 +13,8 @@ export interface AgentStats {
   by_claude: number;
   fallback: number;
   fallback_pct: number;
+  /** Claude's decisions that code made stricter or stopped (a decision row's `overridden`): the agent was wrong, the boundary held. */
+  overridden: number;
   claude_calls: number;
   calls_without_request_id: number;
   tokens: { input: number; output: number; cache_read: number; cache_write: number };
@@ -27,15 +29,16 @@ export function agentStats(db: DB, now = new Date()): AgentStats[] {
   const out = new Map<string, AgentStats>();
   const get = (agent: string) => {
     let s = out.get(agent);
-    if (!s) out.set(agent, (s = { agent, decisions: 0, by_claude: 0, fallback: 0, fallback_pct: 0, claude_calls: 0, calls_without_request_id: 0, tokens: { input: 0, output: 0, cache_read: 0, cache_write: 0 }, cost_usd_micros: 0, cost_last_hour_usd_micros: 0, models: [] }));
+    if (!s) out.set(agent, (s = { agent, decisions: 0, by_claude: 0, fallback: 0, fallback_pct: 0, overridden: 0, claude_calls: 0, calls_without_request_id: 0, tokens: { input: 0, output: 0, cache_read: 0, cache_write: 0 }, cost_usd_micros: 0, cost_last_hour_usd_micros: 0, models: [] }));
     return s;
   };
   const marks = DECISION_EVENTS.map(() => "?").join(", ");
-  for (const r of db.prepare(`SELECT actor, json_extract(payload_json, '$.source') AS source FROM audit_log WHERE event IN (${marks})`).all(...DECISION_EVENTS) as { actor: string; source: string | null }[]) {
+  for (const r of db.prepare(`SELECT actor, json_extract(payload_json, '$.source') AS source, json_extract(payload_json, '$.overridden') AS overridden FROM audit_log WHERE event IN (${marks})`).all(...DECISION_EVENTS) as { actor: string; source: string | null; overridden: number | null }[]) {
     if (r.source !== "claude" && r.source !== "fallback") continue;
     const s = get(r.actor);
     s.decisions++;
     if (r.source === "claude") s.by_claude++; else s.fallback++;
+    if (r.source === "claude" && r.overridden === 1) s.overridden++;
   }
   for (const r of db.prepare("SELECT actor, ts, payload_json FROM audit_log WHERE event = 'agent.run'").all() as { actor: string; ts: string; payload_json: string }[]) {
     const p = JSON.parse(r.payload_json) as { claude_calls?: { request_id: string | null; model: string; tokens: AgentStats["tokens"]; cost_usd_micros: number }[]; cost_usd_micros?: number };
@@ -49,8 +52,13 @@ export function agentStats(db: DB, now = new Date()): AgentStats[] {
     s.cost_usd_micros += p.cost_usd_micros ?? 0;
     if (r.ts > hourAgo && r.ts <= now.toISOString()) s.cost_last_hour_usd_micros += p.cost_usd_micros ?? 0;
   }
-  for (const s of out.values()) s.fallback_pct = s.decisions ? Math.round((s.fallback / s.decisions) * 1000) / 10 : 0;
+  for (const s of out.values()) s.fallback_pct = fallbackPct(s.fallback, s.decisions);
   return [...out.values()].sort((a, b) => a.agent.localeCompare(b.agent));
+}
+
+/** The fallback share in percent, one decimal (0 when there were no decisions): the dashboard's and the records' figure. */
+export function fallbackPct(fallback: number, decisions: number): number {
+  return decisions ? Math.round((fallback / decisions) * 1000) / 10 : 0;
 }
 
 export interface ChatLine {

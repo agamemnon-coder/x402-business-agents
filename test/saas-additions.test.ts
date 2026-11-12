@@ -89,19 +89,15 @@ describe("one pricing model (the panel's review, 12 Nov)", () => {
     expect(flat("docs/business/model.md")).toContain("This replaces the price of 6 November 2026, which was per agent with Claude decisions included.");
   });
 
-  it("shows the model's own arithmetic in docs/business/model.md and in the claims register, as the generator computes it, with what it leaves out", () => {
-    const u = unitEconomics(), f = modelFigures(u), model = flat("docs/business/model.md"), claims = flat("docs/claims.md");
+  // 12 Nov (the owner's pricing decision): no gross margin is computed or shown; the doc and the claims register say so.
+  it("shows no computed margin in docs/business/model.md or in the claims register, and keeps the Claude estimate labelled", () => {
+    const f = modelFigures(unitEconomics()), model = flat("docs/business/model.md"), claims = flat("docs/claims.md");
     const row = claims.slice(claims.indexOf("| Unit economics (hypothesis;"), claims.indexOf("| Claude cost per decision |", claims.indexOf("| Unit economics (hypothesis;")));
     expect(row).not.toBe("");
-    // The claims row says each scenario as computed: invoices, cost, price, margin.
-    expect(row).toContain(`at ${u.scenarios.map((s) => s.invoices).join(", ").replace(/, (\d+)$/, " and $1")} supplier invoices a month costs ${u.scenarios.map((s) => s.costEurText).join(", ").replace(/, (€[\d.]+)$/, " and $1")} against ${u.scenarios.map((s) => s.priceEurText).join(", ").replace(/, (€[\d.]+)$/, " and $1")}, gross margin ${u.scenarios.map((s) => s.marginText).join(", ").replace(/, (\d+%)$/, " and $1")} before the platform costs`);
+    expect(model).toContain("No gross margin is computed here.");
+    for (const t of [model, row]) expect(t).not.toMatch(/gross margin of|gross margin \d|\d+% to \d+%|margin \d+%/i);
     expect(row).toContain(`USD ${f.perInvoiceUsd} (${f.e2eCalls} Claude calls for ${f.e2eInvoices} invoices in the end-to-end sandbox run, at the main run's USD ${f.perCallUsd} a call)`);
-    expect(row).toContain(`the price before 12 November gave ${f.earlierMargin} at the usage it included`);
-    // The doc: the margin range, what is not in it, and the replaced price's own figure, not hidden.
-    expect(model).toContain(`Gross margin per company (hypothesis): ${f.marginRange} across low, mid and high usage, before the platform costs (A8).`);
-    expect(model).toContain("so the real margin is lower");
-    expect(model).toContain(`its own table gave a gross margin of ${f.earlierMargin}`);
-    expect(f.earlierMargin).toBe("48%");
+    expect(row).toContain("no gross margin is computed");
   });
 });
 
@@ -318,7 +314,7 @@ describe("four eyes, worded exactly (the panel's review, 12 Nov)", () => {
     // Names: the four-eyes run, world, rule, check and test, their files and command, a link's own name.
     "four[- ]eyes (?:rule|run|world|check|approval|test)", "four-eyes and compliance runs", "four-eyes(?:-onchain)?\\.(?:md|test|json)", "npm run four-eyes", "cfo-policy\\.md, four eyes",
     // The glossary's heading, the list of what was built, a requirement's own text, a line kept off the site, a row's name.
-    "Mandate, x402, terms hash, four eyes", "the video, four eyes, the open items", "four eyes\\), the agents' tools", "Four eyes on chain: a Metal account with several owners", ", four eyes on chain, limits enforced", "\"Four eyes on the mandate change\"",
+    "Mandate, x402, terms hash, four eyes", "Four eyes counts passkeys", "the video, four eyes, the open items", "four eyes\\), the agents' tools", "Four eyes on chain: a Metal account with several owners", ", four eyes on chain, limits enforced", "\"Four eyes on the mandate change\"",
   ].join("|"), "i");
 
   /** The places a reader meets the short form: the README, llms.txt, the current docs and the submission texts. Run records and design specs are history. */
@@ -375,7 +371,6 @@ describe("four eyes, worded exactly (the panel's review, 12 Nov)", () => {
       ["README.md", `four eyes on chain (${FOUR_EYES_ON_CHAIN_NOTE}), the compliance contract`],
       ["docs/claims.md", `In a separate test world, with ${FOUR_EYES_ON_CHAIN_NOTE}; Northwind's recorded account is one-owner`],
       ["docs/claims.md", `| Four eyes on chain (2-of-2 account; ${FOUR_EYES_ON_CHAIN_NOTE}) |`],
-      ["docs/claims.md", `| Four eyes on chain (30 Oct; ${FOUR_EYES_ON_CHAIN_NOTE}), passkeys as owners`],
       ["docs/controls-matrix.md", `the CFO and the controller together passed (${FOUR_EYES_ON_CHAIN_NOTE}) |`],
       ["docs/compliance.md", `30 October, with ${FOUR_EYES_ON_CHAIN_NOTE}; Northwind's recorded account has one owner`],
       ["docs/requirements-matrix.md", `two passed (${FOUR_EYES_ON_CHAIN_NOTE}).`],
@@ -388,10 +383,14 @@ describe("four eyes, worded exactly (the panel's review, 12 Nov)", () => {
     const pages = buildPages() as unknown as Record<string, string>;
     const text = (html: string) => decode(html.replace(/<script\b[\s\S]*?<\/script[^>]*>/gi, " ").replace(/<style\b[\s\S]*?<\/style[^>]*>/gi, " ").replace(/<svg\b[\s\S]*?<\/svg[^>]*>/gi, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ");
     // /metal, folded under "Beyond the kit": the on-chain run with who signed (no words added in sight).
-    expect(text(pages.metal!)).toContain(`Four eyes on chain : 1 signature: reverted (${FOUR_EYES_ON_CHAIN_NOTE}).`);
-    expect(pages.metal).toMatch(/<details[^>]*>\s*<summary[^>]*>Beyond the kit: separate runs, each dated \(not the main run\)<\/summary>[\s\S]*?two test keys on one machine, not two people/);
+    // 12 Nov merge: main's /metal says "Two owners, both must sign" without the short form; where it says "four eyes",
+    // the note goes with it.
+    // The feature list names Metal's "Four eyes on chain: Smart account" with Metal's docs: a feature, not a claim.
+    const metalClaims = text(pages.metal!).replace(/Four eyes on chain: Smart account/g, " ");
+    if (/four eyes/i.test(metalClaims)) expect(metalClaims).toContain(FOUR_EYES_ON_CHAIN_NOTE);
     // Every page built on the site's frame says who the second approver was, in its "What's real?" lines.
-    for (const name of ["home", "watch", "proof", "metal", "airwallex", "visa", "claude", "trace", "runs"]) expect({ name, says: text(pages[name]!).includes(SECOND_APPROVER) }).toEqual({ name, says: true });
+    // /visa left the list in the 12 Nov merge: main's /visa says what is real of the Airi run (no second approver there).
+    for (const name of ["home", "watch", "proof", "metal", "airwallex", "claude", "trace", "runs"]) expect({ name, says: text(pages[name]!).includes(SECOND_APPROVER) }).toEqual({ name, says: true });
     // On the public pages a reader reaches, every "four eyes" in the text is the on-chain run with its note, a name or
     // the control as it works; /pricing's "Four-eyes approval" is a feature of the Business plan, not a claim.
     const bare: string[] = [];

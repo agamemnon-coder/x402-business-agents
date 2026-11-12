@@ -166,7 +166,7 @@ describe("/docs: docs and API", () => {
     expect(plain(pay)).toMatch(/webhooks?/i);
     // What the two lines say is what the documents say.
     expect(read("docs/metal-award.md")).toContain("## 3. x402 on Metal: agents pay per request");
-    expect(read("docs/airwallex.md")).toContain("The relay checks the signature and keeps the event. The runner then checks the signature again");
+    expect(read("docs/airwallex.md")).toContain("The relay checks the signature and keeps the event. The runner checks it again with its own copy of the secret");
     expect(plain(pay)).toContain("Metal's testnet");
     expect(plain(pay)).toContain("Airwallex's sandbox");
   });

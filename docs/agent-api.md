@@ -42,6 +42,33 @@ The agent cannot approve, set a limit, or reach another agent's card. Once its c
 On stdio the server runs on the runner's machine, under the name the person who set it up gave it. Serving agents
 on other machines (over HTTP, each with its own token) is the next step.
 
+## Try it yourself: an x402 endpoint (test money, Metal testnet)
+
+`GET /x402/proof` on the relay Worker (`worker/src/x402.ts`) sells one small resource over x402: the signed receipt of
+the Airwallex run awx-1 (the exact terms the CFO approved). The price is 0.01 test *USDZ on Metal testnet. It is test
+money, never real money. The route is in the code; it is live only after the next deploy of the Worker.
+
+Ask for it without paying. The answer is HTTP 402, with the x402 version 2 requirements in the `PAYMENT-REQUIRED`
+header (base64) and in the body:
+
+```sh
+curl -i https://kit11.max-31b.workers.dev/x402/proof
+```
+
+Pay with a local stand-in payment. No money moves, and the answer says so. A second use of the same nonce is
+refused (409), and a wrong amount is refused (402):
+
+```sh
+URL=https://kit11.max-31b.workers.dev/x402/proof
+ACCEPTED=$(curl -s $URL | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.stringify(JSON.parse(s).accepts[0])))')
+PAY=$(node -e 'const a=JSON.parse(process.argv[1]);console.log(Buffer.from(JSON.stringify({x402Version:2,accepted:a,payload:{standIn:"local stand-in payment, test money, nothing moves",nonce:"juror-"+Date.now()}})).toString("base64"))' "$ACCEPTED")
+curl -s -H "PAYMENT-SIGNATURE: $PAY" $URL
+```
+
+A signed payment (the `exact` scheme, as Metal's x402 clients send it) is verified and settled by Metal's
+facilitator only when `X402_TESTNET_SETTLE` is `on`. It is off by default; with it off, a signed payment is refused
+(503) and nothing is sent. When on, each request settles at most 0.01 test *USDZ and at most 20 settle per UTC day.
+
 ## GL coding and export for the ERP
 
 `npm run gl -- csv|json [file]` writes the GL journal: one line for every movement of money. Each line has:

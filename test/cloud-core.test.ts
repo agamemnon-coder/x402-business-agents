@@ -17,7 +17,7 @@ describe("the schema", () => {
     expect(SCHEMA).toBe(readFileSync("cloud/migrations/0001_init.sql", "utf8"));
     const parts = splitScript(SCHEMA);
     expect(parts.length).toBeGreaterThan(15);
-    expect(parts.every((p) => /^CREATE (TABLE|INDEX)/.test(p))).toBe(true);
+    expect(parts.every((p) => /^CREATE (UNIQUE )?(TABLE|INDEX)/.test(p))).toBe(true);
   });
 });
 

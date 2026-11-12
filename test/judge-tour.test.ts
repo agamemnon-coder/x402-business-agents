@@ -34,7 +34,7 @@ function bodyOf(path: string, pages = ON): string {
   const p = new URL(path, SITE).pathname;
   const by: Record<string, string | undefined> = {
     "/try/sign": pages.trySign, "/try/verify": pages.tryVerify, "/airwallex": pages.airwallex, "/metal": pages.metal,
-    "/proof": pages.proof, "/watch": pages.watch, "/home": pages.home, "/judge": pages.judge,
+    "/proof": pages.proof, "/watch": pages.watch, "/replay": pages.replay, "/home": pages.home, "/judge": pages.judge,
   };
   return by[p] ?? "";
 }
@@ -47,7 +47,7 @@ const ownLinks = (s: (typeof JUDGE_STEPS)[number]) => s.links.map((l) => l.href)
  * both of the trick screen's lines).
  */
 const SEES: Record<string, { path: string; marks: (string | RegExp)[] }[]> = {
-  watch: [{ path: "/watch", marks: ["Watch the agents work", "Replay of the main run"] }],
+  watch: [{ path: "/replay", marks: ["Watch the agents work", "Replay of the main run"] }],
   sign: [{ path: "/try/sign", marks: ["Your Treasury agent wants to pay an invoice above its limit.", "Now try to cheat: change one cent", 'id="go-cheat"', "Sign with Face ID"] }],
   trick: [{ path: "/try/sign", marks: ["Try to trick the agent.", "Send your agent a fake invoice", "Sonnet", "Purser's code checks it"] }],
   policy: [{ path: "/try/sign", marks: ["Change the rule.", 'id="rule-chips"', /worst.case/i, "The agent pays it alone.", "That's Purser."] }],
@@ -69,10 +69,11 @@ describe("/judge: the five steps", () => {
     ]);
     expect(JUDGE_STEPS.reduce((t, s) => t + s.seconds, 0)).toBe(180);
     expect(JUDGE_STEPS.map((s) => s.links.map((l) => l.href))).toEqual([
-      ["/watch"], ["/try/sign"], ["/try/sign"], ["/try/sign"], ["/proof", "/airwallex#awx-1", "/metal", metalStory(loadRecord().record).refusal!.proof.href],
+      ["/replay"], ["/try/sign"], ["/try/sign"], ["/try/sign"], // The Visa run among the proof's links since 12 Nov (jury panel): the Airi run, Visa Intelligent Commerce via Airi.
+      ["/proof", "/airwallex#awx-1", "/metal", "/visa", metalStory(loadRecord().record).refusal!.proof.href],
     ]);
     // Home's three steps, in Home's order: the tour's first link is Home's first step, its last is Home's last.
-    expect(JUDGE_STEPS[0]!.links[0]!.href).toBe("/watch");
+    expect(JUDGE_STEPS[0]!.links[0]!.href).toBe("/replay");
     expect(JUDGE_STEPS.at(-1)!.links[0]!.href).toBe("/proof");
     // Each says in one line what the juror will see.
     for (const s of JUDGE_STEPS) expect({ step: s.id, oneLine: s.see.length > 0 && !s.see.includes("\n") && s.see.length <= 200 }).toEqual({ step: s.id, oneLine: true });
@@ -157,7 +158,7 @@ describe("the way in: Home, the README and the form", () => {
     expect(ON.home).toContain('<a href="judge">Judging? Take the 3-minute tour</a>');
     expect(OFF.home).not.toContain('href="judge"');
     // Home's three steps are /judge's first ones: the agents, then /try/sign, then the proof.
-    expect(ON.home).toContain('<a href="watch">'); expect(ON.home).toContain('<a class="btn primary big start" href="try/sign">'); expect(ON.home).toContain('<a href="proof">');
+    expect(ON.home).toContain('<a href="replay">'); expect(ON.home).toContain('<a class="btn primary big start" href="try/sign">'); expect(ON.home).toContain('<a href="proof">');
   });
 
   it("the README has one line to /judge near the top", () => {

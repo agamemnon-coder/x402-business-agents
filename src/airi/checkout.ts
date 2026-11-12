@@ -28,8 +28,9 @@
 import { z } from "zod";
 import { AirwallexAmbiguous, AirwallexError, type Airwallex } from "../airwallex/client.js";
 import { AirwallexBudgetSpent } from "../airwallex/callBudget.js";
-import { CheckoutOutcomeUnknown, scrubText, type AiriCheckout, type CheckoutAnswer } from "./client.js";
+import { CheckoutOutcomeUnknown, scrubText, type AiriCheckout, type CheckoutAnswer, type CheckoutOrder } from "./client.js";
 import { CredentialFileError, readCredentialFile, type CardForCheckout } from "./credential.js";
+import { readIntentMetadata, termsMetadata, type IntentMetadataReader } from "./termsMetadata.js";
 
 export const Intent = z.object({
   id: z.string().min(1).max(100),
@@ -68,7 +69,11 @@ function errCode(e: AirwallexError): string {
   return code(e.code) ?? `HTTP_${e.status}`;
 }
 
-export class AirwallexSandboxCheckout implements AiriCheckout {
+/** Airwallex's code for a request_id it has seen before. */
+export const DUPLICATE_REQUEST = "duplicate_request";
+const RETRY_SUFFIX = "-pi-r2";
+
+export class AirwallexSandboxCheckout implements AiriCheckout, IntentMetadataReader {
   readonly kind: AiriCheckout["kind"] = "airwallex-sandbox";
   readonly label: string = "Airwallex sandbox PaymentIntent, confirmed over the API (our own test shop; test money)";
 
@@ -77,13 +82,27 @@ export class AirwallexSandboxCheckout implements AiriCheckout {
   /** The create's raw answer, for a subclass that needs more of it than the id (the hosted page: its client_secret). */
   protected created(_id: string, _raw: unknown): void {}
 
-  async prepare(order: { ref: string; amount: string; currency: string; description: string }): ReturnType<AiriCheckout["prepare"]> {
+  async prepare(order: CheckoutOrder): ReturnType<AiriCheckout["prepare"]> {
     if (!/^\d+\.\d{2}$/.test(order.amount)) throw new Error("the amount must be a two-decimal string");
+    // Signed terms (above the limit): their hash and the proposal id go on the PaymentIntent as metadata, and are read
+    // back after (readMetadata). Without signed terms there is no metadata at all.
+    const metadata = order.signed ? termsMetadata(order.signed) : undefined;
+    // Airwallex takes a request_id once. A retry of this same order after a create that got no answer comes back
+    // duplicate_request (seen live on 7 Nov, vic-1c): the create is then asked once more under a fresh request id. No
+    // card is in a create, and only the PaymentIntent this returns is ever paid.
+    const create = (requestId: string) => this.api.call("POST", "/pa/payment_intents/create", {
+      request_id: requestId, amount: Number(order.amount), currency: order.currency,
+      merchant_order_id: order.ref.slice(0, 64), descriptor: scrubText(order.description).slice(0, 22),
+      ...(metadata ? { metadata } : {}),
+    });
     try {
-      const raw = await this.api.call("POST", "/pa/payment_intents/create", {
-        request_id: `${order.ref}-pi`.slice(0, 64), amount: Number(order.amount), currency: order.currency,
-        merchant_order_id: order.ref.slice(0, 64), descriptor: scrubText(order.description).slice(0, 22),
-      });
+      let raw: unknown;
+      try {
+        raw = await create(`${order.ref}-pi`.slice(0, 64));
+      } catch (e) {
+        if (!(e instanceof AirwallexError) || errCode(e) !== DUPLICATE_REQUEST) throw e;
+        raw = await create(`${order.ref.slice(0, 64 - RETRY_SUFFIX.length)}${RETRY_SUFFIX}`);
+      }
       const i = Intent.parse(raw);
       this.created(i.id, raw);
       return { reference: i.id };
@@ -128,6 +147,11 @@ export class AirwallexSandboxCheckout implements AiriCheckout {
     const a = answerOf(i.data);
     if (!a) throw new CheckoutOutcomeUnknown(reference, `the PaymentIntent is ${code(i.data.status) ?? "in an unknown state"}; outcome not final yet`);
     return a;
+  }
+
+  /** GET only: the PaymentIntent's metadata as Airwallex keeps it (src/airi/termsMetadata.ts). Throws as the call does. */
+  async readMetadata(reference: string): Promise<Record<string, string> | null> {
+    return readIntentMetadata(this.api, reference);
   }
 
   async lookup(reference: string): Promise<CheckoutAnswer | null> {

@@ -113,25 +113,15 @@ agents, in test money: [unit-economics.md](../unit-economics.md).
 | A5 | Hosting | one Cloudflare Workers Paid account per company, USD 5 a month [U2]; usage inside the plan's included amounts; a month of 30 days | An upper bound for a company's own Worker and Durable Object: one account could serve many companies. The check below shows one Durable Object awake all month, and the high scenario's requests, fit inside what the plan includes. |
 | A6 | The runner | runs on Cloudflare too | Today the runner (agents, ledger, keys) is a separate process and the relay is on Cloudflare ([architecture](../architecture.md#the-shape-today)). We assume production moves the runner onto Workers and a Durable Object per company; compute elsewhere is not priced. |
 | A7 | Currency | everything in EUR at EUR 1 = USD 1.1165 [U3] | Claude and Cloudflare charge in USD and the price is in EUR. One rate, the ECB's reference rate of the day we first wrote this. |
-| A8 | Not in the model | the platform costs: Airwallex platform or partner fees, Metal fees on mainnet, the cost of collecting our own invoices, support and people. On the revenue side: the fee per payout, which has no rate set | Airwallex prices platform use on request [P1], so the cost is unknown; Purser has run on Metal testnet only. Gross margin here is the price minus Claude and hosting, so the real margin is lower. |
+| A8 | Not in the model | the platform costs: Airwallex platform or partner fees, Metal fees on mainnet, the cost of collecting our own invoices, support and people. On the revenue side: the fee per payout, which has no rate set | Airwallex prices platform use on request [P1], so the cost is unknown; Purser has run on Metal testnet only. |
 
 **Hosting check (A5), at Cloudflare's prices [U2].** The Workers Paid plan costs USD 5 a month per account and includes 10,000,000 Worker requests, 1,000,000 Durable Object requests and 400,000 GB-s of Durable Object duration a month. A Durable Object is billed for 128 MB; awake all 30 days, one uses 324,000 GB-s, inside what is included. At high usage (500 invoices a month), the included requests allow 20,000 Worker requests and 2,000 Durable Object requests per invoice. Hosting is USD 5.00, or €4.48, per company a month.
 
-### Outcome: one company on Starter a month (hypothesis)
+### No margin computed (pilot)
 
-In EUR only, at EUR 1 = USD 1.1165, the ECB's reference rate of 6 November 2026 [U3]. Gross margin = (price − Claude − hosting) ÷ price. Price per company = €49, plus €0.25 for each invoice above 100 (at high usage, 400 of them).
-
-| Usage (A2) | Invoices per company a month | Price per company | Claude | Hosting | Cost per company | Gross margin | Per invoice: price · cost |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Low | 50 | €49.00 | €1.23 | €4.48 | **€5.71** | **88%** | €0.98 · €0.11 |
-| Mid | 100 | €49.00 | €2.47 | €4.48 | **€6.95** | **86%** | €0.49 · €0.07 |
-| High | 500 | €149.00 | €12.34 | €4.48 | **€16.82** | **89%** | €0.30 · €0.03 |
+No gross margin is computed here. No company has used Purser for a month, so there is no measured usage to set against the pilot prices, and the platform costs (A8) are not known. The measured parts above are what the runs recorded.
 
 If every agent ran on Opus, Claude costs would be about 2.1× higher; Purser gives each agent the smallest model that passed its evals.
-
-**Gross margin per company (hypothesis): 86% to 89%** across low, mid and high usage, before the platform costs (A8). It is lowest at exactly 100 invoices a month, the most Starter includes; above that, each extra invoice earns €0.25 and costs €0.02 in Claude on this estimate.
-
-**What this margin leaves out, and what it replaced.** It is the price minus Claude and hosting only. Airwallex's platform or partner fees, support and people are not in it (A8), so the real margin is lower; the fee per payout is not in it either, because it has no rate set. The price before 12 November 2026 was per agent, with 1,500 Claude decisions included in €49 a company a month; at exactly that usage its own table gave a gross margin of 48%, because it sold Claude decisions close to what they cost. The pilot pricing replaces it and sells the supplier invoice instead.
 
 **Where the Opus factor comes from (A4).** It is the run's own Claude calls repriced at Opus list prices: USD 0.7771 instead of USD 0.3761, 2.07 times. The agents' own calls, from their recorded tokens, would cost USD 0.6970; the other calls are scaled by 2 (Sonnet) and at most 40 (Haiku); the Opus calls stay as they were. At that factor, an extra invoice would cost €0.05 in Claude against the €0.25 it earns. On the benchmark's eval cases the factor is higher [R2], because Purser's split there runs only the reviews on Opus; in the main run the Treasury agent already ran on Opus.
 

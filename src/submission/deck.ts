@@ -10,7 +10,7 @@ import { readFileSync } from "node:fs";
 import type { PackFacts } from "./facts.js";
 import { DIFFERENTIATORS, HERO, KIT11_RUN_LINE, NORTHWIND_LINE, PROOF_SENTENCES, TRY_IT, VISA_TAP_STATUS, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../config/brand.js";
 import { cardControlRows, hashTravel } from "../redesign/airwallexProof.js";
-import { AIRI_RUN_LABEL, AIRI_SUMMARY, airiRun, airiRunSummary } from "../redesign/airiRun.js";
+import { AIRI_RUN_LABEL, airiRun, airiRunSummary } from "../redesign/airiRun.js";
 import { agentRun, homeFilm, stopsLine } from "../redesign/run.js";
 import { INPUTS, USAGE_LABEL, invoiceLine, opusLine, unitEconomics } from "../business/unitEconomics.js";
 import { PRICING, PRICING_LABEL } from "../config/pricing.js";
@@ -158,7 +158,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
           <div><h2>Each agent's card: the CFO policy as Airwallex's own controls</h2><ul class="cards">${cards.map((r) => `<li><b>${esc(r.name)}</b> ····${esc(r.last4)}: ${r.checks.filter((c) => c.ok).length} of ${r.checks.length} controls match${r.match ? "" : " (not all)"}</li>`).join("")}</ul>
           <p class="small">Limit per purchase and per month, merchant category, currency, end date.</p></div>
         </div>
-        ${airi ? `<div class="vic"><b>${esc(airi.heading)}</b> <span>${esc(AIRI_RUN_LABEL)}</span><p>${esc(AIRI_SUMMARY)}</p><p class="badges">${airi.outcomes.map((o) => `<em class="${o.ok ? "ok" : "bad"}">${esc(o.badge)}</em>`).join("")}<em class="${airi.checksOk === airi.checksAll ? "ok" : "bad"}">${esc(`${airi.checksOk} of ${airi.checksAll} checks pass`)}</em></p></div>` : ""}
+        ${airi ? `<div class="vic"><b>${esc(airi.heading)}</b> <span>${esc(AIRI_RUN_LABEL)}</span><p>${esc(airi.summary)}</p><p class="badges">${airi.outcomes.map((o) => `<em class="${o.ok ? "ok" : "bad"}">${esc(o.badge)}</em>`).join("")}<em class="${airi.checksOk === airi.checksAll ? "ok" : "bad"}">${esc(`${airi.checksOk} of ${airi.checksAll} checks pass`)}</em></p></div>` : ""}
         <p class="src">Read on ${esc(hash?.readAt.slice(0, 10) ?? "")} from the sandbox: <code>${esc(hash?.file ?? "")}</code> and the cards' record beside it. Also on /proof and /airwallex; the Airi run on /airwallex, /visa and /proof (<code>docs/demo/airi-run.json</code>).</p>`,
     },
     {

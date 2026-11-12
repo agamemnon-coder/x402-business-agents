@@ -4,7 +4,10 @@
 // sentences, read from the docs where the page is built (a doc that no longer says one is an error, never a guess).
 // Sandbox and testnet only. No script.
 
+import { existsSync } from "node:fs";
+import { ZERO_TRUST_REPORT } from "./claudeEvidence.js";
 import { GUARANTEES } from "./guarantees.js";
+import { HOSTILE_RECORD_FILE, hostileClaimText } from "./partners.js";
 import { existingDoc, foldHtml, outLink, productPage, repoHref, repoText, siteLink } from "./productPage.js";
 
 export { existingDoc };
@@ -185,8 +188,10 @@ export function securityCards(): SecurityCard[] {
     {
       id: "s-code", icon: "bot", title: "Agents propose, code enforces",
       line: esc("Agents hold no keys; code checks what they propose before anything moves."),
-      links: [outLink(repoHref(MODELS_LINE.doc, MODELS_LINE.anchor), "Least privilege")],
-      fold: { summary: "How", lines: [quoted(MODELS_LINE)] },
+      // The hostile-model eval (12 Nov, docs/evals/ap-hostile.json): its record's own line, built by /claude's own
+      // function; shown only once the record is in the tree.
+      links: [outLink(repoHref(MODELS_LINE.doc, MODELS_LINE.anchor), "Least privilege"), ...(hostileClaimText() ? [outLink(repoHref(HOSTILE_RECORD_FILE), "Hostile-model eval")] : [])],
+      fold: { summary: "How", lines: [quoted(MODELS_LINE), ...(hostileClaimText() ? [`${esc(hostileClaimText())} ${outLink(repoHref(HOSTILE_RECORD_FILE), HOSTILE_RECORD_FILE)}`] : [])] },
     },
     {
       id: "s-secrets", icon: "shield-check", title: "Secrets",
@@ -209,7 +214,8 @@ export function securityCards(): SecurityCard[] {
     {
       id: "s-redteam", icon: "shield-alert", title: "Tested by attack", pill: "Test world",
       line: esc(`Our red team ran ${first.attempts} attacks: ${first.before} stopped before anything moved, ${first.after} found afterwards.`),
-      links: [outLink(repoHref(REDTEAM_REPORT), "The report")],
+      // The zero-trust report (12 Nov, docs/zero-trust/report.json): linked once it is in the tree.
+      links: [outLink(repoHref(REDTEAM_REPORT), "The report"), ...(existsSync(new URL(`../../${ZERO_TRUST_REPORT}`, import.meta.url)) ? [outLink(repoHref(ZERO_TRUST_REPORT), "Zero-trust report")] : [])],
       fold: { summary: "Later rounds", lines: [
         `${esc(oct31.day)}, three runs in a row: ${oct31.attempts} attacks, ${oct31.before} stopped before anything moved, ${oct31.after} found afterwards, ${oct31.inconclusive} inconclusive. ${outLink(repoHref(REDTEAM_OCT31_README), "The runs")}`,
         `${esc(night.day)}, tests written by Claude Opus as the attacker: ${night.attempts} run, ${night.blocked} blocked, ${night.notBlocked} not blocked by code's verdict (checked by hand: ${esc(recheck.words)}), ${night.inconclusive} inconclusive. ${outLink(repoHref(REDTEAM_NIGHT_RECORD), "The record")}`,

@@ -78,6 +78,8 @@ export const SyncBatch = z.object({
   ledger_entries: z.array(z.object({
     entry_id: z.number().int().positive(), posting_date: DAY, doc_date: DAY, description: z.string().max(500), source_key: z.string().nullable(), doc_ref: z.string().nullable(),
     doc_sha256: z.string().nullable(), created_by: z.string(), reverses: z.number().int().nullable(), created_at: STAMP, prev_hash: SHA, entry_hash: SHA, lines: z.array(Line).min(2).max(1000),
+    // Present only on an entry that carries them (src/ledger/core.ts): the CFO's Face ID hash and the rail's id.
+    approval_sha256: SHA.optional(), rail_ref: z.string().min(1).max(200).optional(),
   }).strict()).max(5000).default([]),
   audit_rows: z.array(z.object({ seq: z.number().int().positive(), ts: STAMP, actor: z.string(), event: z.string(), subject: z.string().nullable(), payload_json: JSON_TEXT, prev_hash: SHA, row_hash: SHA }).strict()).max(20000).default([]),
 }).strict();
@@ -90,6 +92,14 @@ export interface SyncResult { [kind: string]: { added: number; changed: number; 
 const tally = () => ({ added: 0, changed: 0, unchanged: 0 });
 
 export function docBlobKey(tenantId: string, sha: string): string { return `t/${tenantId}/docs/${sha}`; }
+
+/** Where the cloud's copy stands: the heads of the audit and ledger chains, and the documents it holds (GET /v1/sync/state). */
+export async function syncState(db: TenantDb): Promise<{ audit: { seq: number; hash: string | null }; ledger: { entry_id: number; hash: string | null }; documents: string[] }> {
+  const a = (await db.select<{ seq: number; row_hash: string }>("audit_rows", {}, { order: ["seq"], desc: true, limit: 1 }))[0];
+  const l = (await db.select<{ entry_id: number; entry_hash: string }>("ledger_entries", {}, { order: ["entry_id"], desc: true, limit: 1 }))[0];
+  const docs = await db.select<{ sha256: string }>("documents", {}, { order: ["sha256"] });
+  return { audit: { seq: a?.seq ?? 0, hash: a?.row_hash ?? null }, ledger: { entry_id: l?.entry_id ?? 0, hash: l?.entry_hash ?? null }, documents: docs.map((d) => d.sha256) };
+}
 
 /** Versioned objects: same body, nothing; a new body, the old one to history and the new one in place. */
 async function versioned(db: TenantDb, table: Extract<Table, "vendors" | "invoices" | "payments" | "transactions">, kind: string, rows: { id: string; body: Record<string, unknown> }[], cols: (r: never) => Record<string, string | number | null>, now: string, out: Stmt[], t: { added: number; changed: number; unchanged: number }): Promise<void> {

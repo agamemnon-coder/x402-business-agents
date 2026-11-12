@@ -159,9 +159,6 @@ describe("the calculation", () => {
   it("says what the margin leaves out (the platform costs, the fee per payout) and what the replaced price's own table gave", () => {
     // Not in the model: said in the assumptions, under the margin and on the slide. The margin is not the real margin.
     expect(ASSUMPTIONS.find((a) => a.id === "A8")!.value).toMatch(/^the platform costs: Airwallex platform or partner fees/);
-    expect(ASSUMPTIONS.find((a) => a.id === "A8")!.why).toContain("Gross margin here is the price minus Claude and hosting, so the real margin is lower.");
-    expect(SECTION).toContain("before the platform costs (A8)");
-    expect(SECTION).toContain("It is the price minus Claude and hosting only. Airwallex's platform or partner fees, support and people are not in it (A8), so the real margin is lower; the fee per payout is not in it either, because it has no rate set.");
     expect(DECK_TEXT).toContain("Gross margin, before platform costs");
     expect(DECK_TEXT).toContain("Not counted: Airwallex's platform fees, people, the fee per payout.");
     // The price before 12 November, at the usage it included, computed again here from the same record: 48%. It is
@@ -171,7 +168,9 @@ describe("the calculation", () => {
     expect(Math.round((EARLIER.baseEur - cost) / EARLIER.baseEur * 100)).toBe(48);
     expect(ue.earlier.margin).toBeCloseTo((EARLIER.baseEur - cost) / EARLIER.baseEur, 10);
     expect(earlierLine()).toBe("The price before 12 November 2026 was per agent, with 1,500 Claude decisions included in €49 a company a month; at exactly that usage its own table gave a gross margin of 48%, because it sold Claude decisions close to what they cost. The pilot pricing replaces it and sells the supplier invoice instead.");
-    expect(SECTION.split(earlierLine()).length).toBe(2);
+    // 12 Nov (the owner): no margin in the doc, so the replaced price's figure is not in it either.
+    expect(SECTION).not.toContain(earlierLine());
+    expect(SECTION).toContain("No gross margin is computed here.");
     expect(DECK_TEXT).not.toContain("48%");
   });
 
@@ -268,11 +267,11 @@ describe("docs/business/model.md", () => {
     expect(SECTION).toContain("## Unit economics (hypothesis)");
     expect(SECTION).toContain(assumptionsTable());
     expect(SECTION).toContain(measuredTable());
-    expect(SECTION).toContain(scenarioTable());
+    expect(SECTION).not.toContain(scenarioTable());
     expect(SECTION).toContain(sourcesList());
     expect(SECTION.match(/hypothesis/gi)!.length).toBeGreaterThanOrEqual(3);
     // The Opus line sits right under the outcome table (Max, 6 Nov).
-    expect(SECTION).toContain(`${scenarioTable()}\n\n${opusLine()}`);
+    expect(SECTION).toContain(opusLine());
   });
 
   it("says the outcome in one currency (EUR), with the rate, its date and its source", () => {

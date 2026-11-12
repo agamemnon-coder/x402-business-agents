@@ -20,31 +20,38 @@ export function designPartnerHtml(url: string = DESIGN_PARTNER_URL): string {
 export const TAGLINE = "Give every AI agent its own company card, with limits the CFO sets.";
 
 /**
- * "Visa TAP" (text, never a logo) in "Built on": off since 5 Nov, and staying off. Visa (hackathon Slack, 5 Nov): TAP is not available as Visa tooling for this hackathon; only Visa
- * Intelligent Commerce (VIC) or Intelligent Commerce Connect (ICC) are. Visa (hackathon Slack, 7 Nov): the VIC run
- * counts, so since 7 Nov Purser is entered for the Metal Award and the Visa Award, on the Airi run (Visa Intelligent
- * Commerce via Airwallex's Airi, docs/runs/2026-11-07-vic-1.md), never on TAP (docs/decisions.md D28,
- * docs/evidence/README.md). KIT_LINE says so on its own; this switch stays off. The TAP work stays on /visa as a
- * labelled extra (VISA_TAP_STATUS).
+ * "Visa (VIC via Airi)" (text, never a logo) in Home's "Built on", since 12 Nov (jury panel): the Visa entry is the
+ * Airi run, Visa Intelligent Commerce via Airwallex's Airi (docs/runs/2026-11-07-vic-1.md), so it stands beside
+ * Airwallex, Metal and Claude. History: Visa (hackathon Slack, 5 Nov) said TAP is not available as Visa tooling for
+ * this hackathon, only Visa Intelligent Commerce (VIC) or Intelligent Commerce Connect are; Visa (hackathon Slack,
+ * 7 Nov, as reported by the builder) said the VIC run counts, so since 7 Nov Purser is entered for the Metal Award and
+ * the Visa Award, on the Airi run, never on TAP (docs/decisions.md D28, docs/evidence/README.md). This switch was
+ * VISA_AWARD_ON (off: it would have put "Visa TAP" in "Built on"); TAP is never in "Built on", and its work sits in
+ * one closed fold at the foot of /visa, outside the entry (VISA_TAP_STATUS).
  */
-export const VISA_AWARD_ON = false;
+export const VISA_VIC_BUILT_ON = true;
+export const VISA_BUILT_ON = "Visa (VIC via Airi)";
+/**
+ * Intelligent Commerce Connect, exactly as it stands (the owner, 12 Nov: access is requested, no answer has come).
+ * Said once, on /visa; no other claim about it anywhere on the site or in the README (test/visa-overview.test.ts).
+ */
+export const VISA_ICC_LINE = "Intelligent Commerce Connect: access requested, not granted yet; not used in this entry.";
 /**
  * The Visa claim in plain words (jury review, 4 Nov), said once per surface (/visa, the README, the form, the deck);
  * nothing stronger anywhere. "Public reference verifier", never "open source": Visa's reference has no open-source
- * licence (docs/decisions.md).
+ * licence (docs/decisions.md). "The Sourcing agent" since 12 Nov (was "each agent"): only the Sourcing agent ran TAP
+ * live, in the TAP run of 2 Nov and in the main run (test/visa-overview.test.ts reads both records).
  */
-export const VISA_CLAIM = "Visa: each agent signs its card checkout with Visa's Trusted Agent Protocol (TAP), so a merchant can check which agent is buying. Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours.";
+export const VISA_CLAIM = "Visa: the Sourcing agent signs its card checkout with Visa's Trusted Agent Protocol (TAP), so a merchant can check which agent is buying. Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours.";
 /**
  * TAP's status, on Max's wording (5 Nov, after Visa's answer in the hackathon Slack), said once per surface (/visa, the
  * form, the deck): built and verified against Visa's public reference verifier, not eligible Visa tooling for this
  * hackathon. Never "certified", "endorsed" or "confirmed by Visa".
  */
 export const VISA_TAP_STATUS = "Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov).";
-/** How Home and Proof link to /visa since 5 Nov: the TAP work as a labelled extra, not an award entry. */
-export const VISA_EXTRA_LINK = "Extra, not an award entry: Visa TAP and its status, on /visa";
 /**
  * The big line under the heading: the kit, the track and the awards entered. The Visa Award since 7 Nov (Visa: the VIC
- * run counts), on the Airi run, not on TAP: it does not follow VISA_AWARD_ON, which would add "Visa TAP" to "Built on".
+ * run counts), on the Airi run, not on TAP.
  */
 export const KIT_LINE = "Kit 11 · x402 Business Agents · entered for the Metal Award and the Visa Award";
 /** Home's badge (Max's mega-prompt v4, C2): the kit, the awards entered (the Visa Award since 7 Nov, on the Airi run, as KIT_LINE), what it is built on. Visa TAP is never in it. */
@@ -182,6 +189,12 @@ export const AGENT_DISPLAY: Record<"sourcing" | "support" | "treasury", { name: 
   treasury: { name: "Treasury agent", job: "watches spending, sweeps earnings to Airwallex once final, and pays the monthly licence fee in EUR (Airwallex FX and SWIFT, after the CFO's Face ID)" },
 };
 
+/** The payables chain's own agents (KIT11_AP_AGENTS=on): each decides one step, and code enforces the limits around it. */
+export const AP_AGENT_DISPLAY: Record<"checker" | "payer", { name: string; job: string }> = {
+  checker: { name: "Checker agent", job: "decides what happens to each supplier invoice: pay, ask the CFO, hold or reject; code's own checks can only make that stricter" },
+  payer: { name: "Payer agent", job: "proposes how and when a checked invoice is paid: the rail, the day and the currency; code holds what breaks a floor, and the CFO signs the exact terms" },
+};
+
 /** Each agent's Kit 11 job, short, for the deck. */
 export const KIT11_JOBS: Record<"sourcing" | "support" | "treasury", string> = {
   sourcing: "buys upstream data per query",
@@ -197,7 +210,7 @@ export const RECORDING_NAMES_NOTE = "Recorded on 30 October, before the agents t
 
 /** The display name of an agent id, or the id itself for anything else. */
 export function agentName(id: string): string {
-  return (AGENT_DISPLAY as Record<string, { name: string }>)[id]?.name ?? id;
+  return (AGENT_DISPLAY as Record<string, { name: string }>)[id]?.name ?? (AP_AGENT_DISPLAY as Record<string, { name: string }>)[id]?.name ?? id;
 }
 
 /**

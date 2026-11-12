@@ -115,7 +115,7 @@ export const ASSUMPTIONS: readonly Assumption[] = [
   },
   {
     id: "A8", what: "Not in the model", value: "the platform costs: Airwallex platform or partner fees, Metal fees on mainnet, the cost of collecting our own invoices, support and people. On the revenue side: the fee per payout, which has no rate set",
-    why: "Airwallex prices platform use on request [P1], so the cost is unknown; Purser has run on Metal testnet only. Gross margin here is the price minus Claude and hosting, so the real margin is lower.",
+    why: "Airwallex prices platform use on request [P1], so the cost is unknown; Purser has run on Metal testnet only.",
     inputs: [],
   },
 ];
@@ -308,8 +308,7 @@ export function sourcesList(): string {
  * is never typed by hand. To renew the doc after a record or an input changes, print this and paste it between the marks.
  */
 export function sectionMarkdown(u: UnitEconomics = unitEconomics()): string {
-  const f = figures(u), fx = INPUTS.usdPerEur.value, mid = u.scenarios.find((s) => s.usage === "mid")!;
-  const rate = `EUR 1 = USD ${fx}`;
+  const f = figures(u);
   return [
     SECTION_START,
     "## Unit economics (hypothesis)",
@@ -332,17 +331,13 @@ export function sectionMarkdown(u: UnitEconomics = unitEconomics()): string {
     "",
     `**Hosting check (A5), at Cloudflare's prices [U2].** The Workers Paid plan costs USD ${INPUTS.workersPlanUsd.value} a month per account and includes ${n(INPUTS.workerIncludedRequests.value)} Worker requests, ${n(INPUTS.doIncludedRequests.value)} Durable Object requests and ${n(INPUTS.doIncludedGbS.value)} GB-s of Durable Object duration a month. A Durable Object is billed for ${INPUTS.doMemoryMb.value} MB; awake all ${INPUTS.daysPerMonth.value} days, one uses ${f.doGbSeconds} GB-s, inside what is included. At high usage (${n(INPUTS.usageHigh.value)} invoices a month), the included requests allow ${f.workerRequestsPerInvoice} Worker requests and ${f.doRequestsPerInvoice} Durable Object requests per invoice. Hosting is USD ${f.hostingUsd}, or ${f.hostingEur}, per company a month.`,
     "",
-    `### Outcome: one company on ${PRICING.starter.name} a month (hypothesis)`,
+    // 12 Nov (the owner's pricing decision): no gross margin is computed or shown. No company has used Purser for a
+    // month, so there is no usage to set against the price; the replaced per-agent price's table is gone with it.
+    "### No margin computed (pilot)",
     "",
-    `In EUR only, at ${rate}, the ECB's reference rate of 6 November 2026 [U3]. Gross margin = (price − Claude − hosting) ÷ price. Price per company = €${plain(INPUTS.basePlanEur.value)}, plus ${f.extraInvoicePriceEur} for each invoice above ${n(INPUTS.includedInvoices.value)} (at high usage, ${f.highExtraInvoices} of them).`,
-    "",
-    scenarioTable(u),
+    "No gross margin is computed here. No company has used Purser for a month, so there is no measured usage to set against the pilot prices, and the platform costs (A8) are not known. The measured parts above are what the runs recorded.",
     "",
     opusLine(u),
-    "",
-    `**Gross margin per company (hypothesis): ${f.marginRange}** across low, mid and high usage, before the platform costs (A8). It is lowest at exactly ${n(mid.invoices)} invoices a month, the most ${PRICING.starter.name} includes; above that, each extra invoice earns ${f.extraInvoicePriceEur} and costs ${f.extraInvoiceClaudeEur} in Claude on this estimate.`,
-    "",
-    `**What this margin leaves out, and what it replaced.** It is the price minus Claude and hosting only. Airwallex's platform or partner fees, support and people are not in it (A8), so the real margin is lower; the fee per payout is not in it either, because it has no rate set. ${earlierLine(u)}`,
     "",
     `**Where the Opus factor comes from (A4).** It is the run's own Claude calls repriced at Opus list prices: USD ${f.opusUsd} instead of USD ${f.allInUsd}, ${f.opusFactorExact} times. The agents' own calls, from their recorded tokens, would cost USD ${f.agentsAtOpusUsd}; the other calls are scaled by ${f.sonnetRatio} (Sonnet) and at most ${f.haikuRatio} (Haiku); the Opus calls stay as they were. At that factor, an extra invoice would cost ${f.extraInvoiceOpusEur} in Claude against the ${f.extraInvoicePriceEur} it earns. On the benchmark's eval cases the factor is higher [R2], because Purser's split there runs only the reviews on Opus; in the main run the Treasury agent already ran on Opus.`,
     "",
