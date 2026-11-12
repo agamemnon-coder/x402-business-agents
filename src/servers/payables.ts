@@ -27,6 +27,7 @@ import { FONT, PDFJS, detailPage, overviewPage } from "./payablesPage.js";
 import { transactionsPage } from "./transactionsPage.js";
 import { isLang, pickLang, type Lang } from "../ui/i18n.js";
 import { COMPANY } from "../config/brand.js";
+import { latestReconciliations } from "../accounting/reconcileBooks.js";
 import { accountantCsv, accountantExport, accountantJson } from "../ledger/accountantExport.js";
 import { monthPack } from "../ledger/pack.js";
 import { monthPackPdf } from "../vault/pdf.js";
@@ -256,6 +257,8 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
     res.type("application/json").setHeader("Content-Disposition", `attachment; filename="journal-${m}.json"`);
     res.send(accountantJson(accountantExport(db, m), (opts.inbox.now ?? (() => new Date()))()));
   });
+  // The latest reconciliation with each outside book (npm run reconcile-books; src/accounting/reconcileBooks.ts), read-only.
+  app.get("/api/payables/reconciliations", (_req, res) => { res.json({ reconciliations: latestReconciliations(db) }); });
   app.get("/api/payables/export/invoices.csv", (_req, res) => { res.type("text/csv").setHeader("Content-Disposition", 'attachment; filename="payables-invoices.csv"'); res.send(invoicesCsv(apInvoices(db))); });
 
   app.post("/api/payables/documents", express.raw({ type: () => true, limit: "16mb" }), async (req: Request, res: Response) => {
