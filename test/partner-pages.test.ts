@@ -25,6 +25,9 @@ const auto = JSON.parse(read(AGENT_RUN)) as { snapshot: { agent_stats: { agent: 
 const CONNECTED_RUN = read("docs/runs/2026-11-10-connected-accounts-sandbox.md");
 const TWO_LOCKS_RUN = read("docs/runs/2026-11-10-airwallex-two-locks.md");
 
+/** 12 Nov (jury check): /airwallex's tiles behind flags, each from its own record of 12 Nov. */
+const FLAGGED_RECORDS = ["docs/runs/2026-11-12-airwallex-payee-check.json", "docs/runs/2026-11-12-airwallex-batch-transfer.json", "docs/runs/2026-11-12-airwallex-financial-transactions.json"].map((f) => readFileSync(new URL(`../${f}`, import.meta.url), "utf8")).join("\n");
+
 describe("the partner pages", () => {
   // /airwallex since the jury panel of 12 Nov: no sentence about a run is typed into the page; test/airwallex-products.test.ts
   // holds each tile to its record. Here: the two runs whose record is a run log.
@@ -88,7 +91,7 @@ describe("the partner pages", () => {
   it("invent no id: every Airwallex id, tx and request id on them is in the recorded files", () => {
     for (const page of [AIRWALLEX_PAGE, CLAUDE_PAGE]) {
       for (const tx of page.match(/0x[0-9a-f]{64}/g) ?? []) expect(RECORDED).toContain(tx);
-      for (const id of page.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) ?? []) expect(RECORDED + CONNECTED_RUN + TWO_LOCKS_RUN + (page === AIRWALLEX_PAGE ? read(PLATFORM_FACTS_FILE) : "")).toContain(id);
+      for (const id of page.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) ?? []) expect(RECORDED + CONNECTED_RUN + TWO_LOCKS_RUN + (page === AIRWALLEX_PAGE ? read(PLATFORM_FACTS_FILE) + FLAGGED_RECORDS : "")).toContain(id);
       for (const req of page.match(/req_[A-Za-z0-9]{10,}/g) ?? []) expect(RECORDED + read("docs/runs/2026-11-01-try-world-dev.md")).toContain(req);
     }
     expect(AIRWALLEX_PAGE).toMatch(/LIMIT_EXCEEDED|over the card's limit/);

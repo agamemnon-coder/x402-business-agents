@@ -71,7 +71,7 @@ export const productDocs = () => PRODUCT_ORDER.map((key) => ({ key, ...PRODUCTS[
 
 export interface TileState { text: string; tone: "ok" | "hold" | "bad" }
 export interface ProductTile {
-  key: ProductKey; name: string;
+  key: ProductKey | "payee-check" | "batch" | "ledger"; name: string;
   /** The one number. */
   value: string;
   /** What happened, one short line; empty when the tile shows states instead. */
@@ -402,6 +402,50 @@ export function firstConnectedRunOfRecord(): FirstConnectedRun | null {
   return md ? firstConnectedRun(md) : null;
 }
 
+// ── Behind flags in this build, each run live on 12 Nov (jury check, 12 Nov): the payee check, the batch transfer and
+// Airwallex's own ledger against Purser's. Every figure and id is read from its record; a missing record leaves its tile out.
+export const PAYEE_CHECK_FILE = "docs/runs/2026-11-12-airwallex-payee-check.json";
+export const BATCH_FILE = "docs/runs/2026-11-12-airwallex-batch-transfer.json";
+export const FT_FILE = "docs/runs/2026-11-12-airwallex-financial-transactions.json";
+export const FLAGGED_LINE = "Behind flags in this build; each ran live on 12 Nov.";
+const json = <T>(file: string): T | null => { const t = read(file); try { return t ? JSON.parse(t) as T : null; } catch { return null; } };
+
+export function payeeCheckTile(r: { checks: { match: string; proceed: number; checked_at: string }[] } | null): ProductTile | null {
+  if (!r?.checks.length) return null;
+  const ok = r.checks.filter((c) => c.proceed).length, refused = r.checks.length - ok;
+  return {
+    key: "payee-check", name: "Payee check", value: `${refused} of ${r.checks.length}`,
+    what: `name checks stopped before the CFO is asked; ${ok} full match let through.`, why: "Airwallex asks the payee's bank for the account's name.",
+    id: PAYEE_CHECK_FILE.replace(/^docs\/runs\/|\.json$/g, ""), idLabel: "Run record", href: `${REPO_BLOB}${PAYEE_CHECK_FILE.replace(/\.json$/, ".md")}`, iso: r.checks[0]!.checked_at, files: [PAYEE_CHECK_FILE],
+  };
+}
+export function batchTile(r: { audit: { ts: string }[]; awx_batches: { awx_batch_id: string; status: string }[]; transfers: { amount: string; currency: string }[] } | null): ProductTile | null {
+  const b = r?.awx_batches[0];
+  if (!r || !b || !r.transfers.length) return null;
+  const total = (r.transfers.reduce((n, t) => n + toCents(t.amount), 0) / 100).toFixed(2);
+  return {
+    key: "batch", name: "Batch transfer", value: money(r.transfers[0]!.currency, total),
+    what: `${WORDS[r.transfers.length] ?? r.transfers.length} payouts, signed once, one batch; read back, then held ${b.status}.`, why: "Airwallex's approval workflow holds the batch.",
+    id: b.awx_batch_id, idLabel: "Airwallex batch", href: `${REPO_BLOB}${BATCH_FILE.replace(/\.json$/, ".md")}`, iso: r.audit[0]!.ts, files: [BATCH_FILE],
+  };
+}
+export function ledgerTile(r: { audit: { ts: string; event: string; payload: { agree?: number; checked?: number; differences?: number; items?: { id: string }[] } }[] } | null): ProductTile | null {
+  const rec = r?.audit.filter((a) => a.event === "awx_ft.reconciled").pop(), read0 = r?.audit.find((a) => a.event === "awx_ft.read");
+  const id = read0?.payload.items?.[0]?.id;
+  if (!rec || rec.payload.checked === undefined || !id) return null;
+  return {
+    key: "ledger", name: "Ledger reconciliation", value: `${rec.payload.agree} of ${rec.payload.checked}`,
+    what: `movements agree with Airwallex's own ledger to the cent; ${rec.payload.differences} differences.`, why: "Airwallex books each movement in its financial transactions.",
+    id, idLabel: "Airwallex financial transaction", href: `${REPO_BLOB}${FT_FILE.replace(/\.json$/, ".md")}`, iso: rec.ts, files: [FT_FILE],
+  };
+}
+export function flaggedTiles(): ProductTile[] {
+  return [payeeCheckTile(json(PAYEE_CHECK_FILE)), batchTile(json(BATCH_FILE)), ledgerTile(json(FT_FILE))].filter((t): t is ProductTile => t !== null);
+}
+export function flaggedHtml(tiles: ProductTile[] = flaggedTiles()): string {
+  return tiles.length ? `<h2 class="vh">Behind flags</h2><p class="awflag">${esc(FLAGGED_LINE)}</p><section class="awp" aria-label="Airwallex products behind flags, each run live on 12 Nov">${tiles.map(tileHtml).join("\n")}</section>` : "";
+}
+
 /** The tiles that have their facts, in the fixed order. */
 export function productTiles(run: AgentRun): ProductTile[] {
   return [
@@ -459,7 +503,10 @@ export function platformFoldHtml(p: PlatformRun | null, first: FirstConnectedRun
     ...(first ? [liPlain(`The first connected-account run${firstDay ? `, ${firstDay}` : ""}: €${first.amount} payout ${first.status}${first.simulated ? " (simulated)" : ""} with Purser's €${first.fee} fee. Account ${first.account}; payout ${first.transferId}. ${TEST_VALUES}`)] : []),
   ];
   const src = `<p class="src"><time datetime="${esc(p.iso)}">${esc(dayShort(p.iso))}</time>${esc(` · sandbox, test money · ${PLATFORM_FACTS_FILE}`)} · ${runLog(PLATFORM_RUN_FILE)}</p>`;
-  return foldHtml("Platform run, with its refusals", `<ul class="pl">${items.join("")}</ul>${src}`, ` id="${PLATFORM_FOLD_ID}" data-rec="${esc([PLATFORM_FACTS_FILE, PLATFORM_RUN_FILE, ...(first ? [CONNECTED_RUN_FILE] : [])].join(" "))}"`);
+  // Its title (jury check, 12 Nov): what the run shows, with Airwallex's own code from the run log.
+  const code = /code (\d{3})\*\*/.exec(read(PLATFORM_RUN_FILE) ?? "")?.[1];
+  const title = p.cause?.nonRegistered && code ? `${p.accounts} test companies onboarded; Airwallex refused unregistered sole-trader payouts (code ${code}), as it should` : "Platform run, with its refusals";
+  return foldHtml(title, `<ul class="pl">${items.join("")}</ul>${src}`, ` id="${PLATFORM_FOLD_ID}" data-rec="${esc([PLATFORM_FACTS_FILE, PLATFORM_RUN_FILE, ...(first ? [CONNECTED_RUN_FILE] : [])].join(" "))}"`);
 }
 
 export interface AirwallexBody {
@@ -512,6 +559,7 @@ export function airwallexBody(run: AgentRun, o: AirwallexBody): string {
   return `<main class="pp awxp"><div class="wrap">
   <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(AWX_PAGE_LABEL)}</span><h1>${esc(tiles.length > 1 ? `Purser uses ${count} Airwallex products` : "Purser on Airwallex")}</h1></div>
   ${tilesHtml(tiles)}
+  ${flaggedHtml()}
   ${o.hash || o.controls ? `<h2 class="vh">Airwallex, read back</h2><div class="awrb">${o.hash}${swiftLineHtml(kitSwift(read(KIT_FILE)), platform)}${o.controls}</div>` : ""}
   <div class="folds card">${folds}</div>
   <a class="open" href="proof#${esc(o.proofHash)}">All the proof ${icon("arrow-right", 15)}</a>
@@ -519,7 +567,8 @@ export function airwallexBody(run: AgentRun, o: AirwallexBody): string {
 }
 
 /** The tiles' styles and the page's tap targets, from the design system's tokens (the patterns of .num.card, .st and .awcard). */
-export const PRODUCTS_CSS = `.awp { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+export const PRODUCTS_CSS = `.awflag { margin: 18px 0 8px; color: var(--muted); font-size: 14.5px; }
+.awp { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
 .awt { padding: 14px 16px 4px; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 4px; align-items: baseline; align-content: start; min-width: 0; scroll-margin-top: 80px; }
 .awt h2 { font-size: 14px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--awx); line-height: 1.3; }
 .awt .v { font-size: 26px; font-weight: 780; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.05; }
