@@ -504,6 +504,20 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await look(page, `${path} folds open ${tag}`, w);
       await page.screenshot({ path: join(shots, `${path.slice(1)}-open-${tag}.png`), fullPage: true });
     }
+    // Proof's guarantee 1 links "If the approver is unavailable" (12 Nov): it lands on /security#unavailable with the
+    // fold's heading in view, below the sticky header. At 390 and 1440 px.
+    if (w === 390 || w === 1440) {
+      await page.goto(`${base}/proof`, { waitUntil: "load" });
+      await page.locator("#g-terms details > summary").click();
+      await page.locator("#g-terms a", { hasText: "If the approver is unavailable" }).click();
+      await page.waitForURL(/\/security#unavailable$/);
+      await page.waitForTimeout(300);
+      const r = (await page.evaluate(`(() => {
+        const t = document.getElementById("unavailable"), head = document.querySelector("header.top").getBoundingClientRect().bottom, b = t.getBoundingClientRect();
+        return { top: Math.round(b.top), head: Math.round(head), inView: b.top >= head - 2 && b.top < innerHeight / 2 };
+      })()`)) as { top: number; head: number; inView: boolean };
+      if (!r.inView) fail(`/proof ${tag}: "If the approver is unavailable" does not land on /security#unavailable in view (${JSON.stringify(r)})`);
+    }
     // /docs and /status (12 Nov), the other two product pages under "More": short, "More" marked as where the reader is,
     // no text under 14 px in a card. /docs lists the agent API's tools as the code defines them, every description
     // folded. /status: the judge's copy says it has no live status and asks for nothing (it has no /health); a hosted

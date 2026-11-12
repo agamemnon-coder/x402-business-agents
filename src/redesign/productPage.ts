@@ -33,6 +33,7 @@ ul.ticks li .i { color: var(--ok); margin-top: 3px; }
 a.pf { display: inline-flex; align-items: center; min-height: 24px; color: var(--accent); font-weight: 600; text-decoration: none; font-size: 15px; }
 a.pf:hover { text-decoration: underline; }
 details.fold { margin-top: auto; border-top: 1px solid var(--border); padding-top: 4px; }
+details.fold[id] { scroll-margin-top: 80px; }
 details.fold > summary { cursor: pointer; font-weight: 650; font-size: 15px; color: var(--accent); list-style: none; display: flex; align-items: center; gap: 6px; min-height: 40px; }
 details.fold > summary::-webkit-details-marker { display: none; }
 details.fold > summary::after { content: "▾"; font-size: 14px; } details.fold[open] > summary::after { content: "▴"; }
