@@ -277,7 +277,7 @@ export class EngineHost {
     let fed = false;
     await step("following the payments", () => syncPayments(db, { now: () => this.now(), rail: rails.rail }));
     await step("booking", () => syncLedger(db, this.now()));
-    if (vault) await step("the archive", async () => { vaultAdded.push(...(await syncVault(db, vault, { company: company.name, lang: company.lang, now: this.now() })).added.map((x) => x.path)); });
+    if (vault) await step("the archive", async () => { vaultAdded.push(...(await syncVault(db, vault, { company: company.name, lang: company.lang, now: this.now(), bank: "stand-in" })).added.map((x) => x.path)); });
     if (feed) await step("the read model", async () => { await feed(db, this.now()); fed = true; });
     const one = (sql: string, ...args: unknown[]) => (db.prepare(sql).get(...args) as { v: string | number | null } | undefined)?.v ?? null;
     return {

@@ -10,7 +10,7 @@ import type { DB } from "../db/open.js";
 import { audit } from "../audit/log.js";
 import { closedPeriods, dataSha, invoiceDocs, monthData, receipts, suppliersData, vatData, yearData } from "./data.js";
 import { correctionName, invoicePath, monthReportPath, paymentPath, suppliersPath, vatPath, withId, yearIndexPath, yearReportPath } from "./layout.js";
-import { monthReportPdf, receiptPdf, suppliersPdf, vatPdf, yearReportPdf, type Lang } from "./pdf.js";
+import { monthReportPdf, receiptPdf, suppliersPdf, vatPdf, yearReportPdf, type Bank, type Lang } from "./pdf.js";
 import { LocalSink, sha256, type VaultSink } from "./sink.js";
 
 export type VaultKind = "invoice" | "receipt" | "month" | "vat" | "year" | "suppliers";
@@ -18,14 +18,15 @@ export type VaultKind = "invoice" | "receipt" | "month" | "vat" | "year" | "supp
 export interface IndexEntry { path: string; sha256: string; bytes: number; kind: VaultKind; key: string; data_sha256: string; added_at: string }
 export interface YearIndex { company: string; year: number; note: string; files: IndexEntry[] }
 
-export interface VaultOptions { company?: string; lang?: Lang; dryRun?: boolean; now?: Date; today?: string }
+/** bank: the bank the payments ran on, as the pages name it (default the Airwallex sandbox; the cloud's engine passes "stand-in"). */
+export interface VaultOptions { company?: string; lang?: Lang; dryRun?: boolean; now?: Date; today?: string; bank?: Bank }
 export interface VaultAction { path: string; kind: VaultKind; key: string; sha256: string; correction: boolean }
 
 interface Planned { kind: VaultKind; key: string; year: number; base: string; dataSha: string; id?: string; produce: () => Promise<Buffer> }
 
 const INDEX_NOTE = "Every file in this year of the Purser vault, with its sha256. Files are added, never replaced or deleted; a changed document is filed beside the original as a correction.";
 
-function plan(db: DB, company: string, lang: Lang, today: string): Planned[] {
+function plan(db: DB, company: string, lang: Lang, today: string, bank: Bank): Planned[] {
   const out: Planned[] = [];
   for (const d of invoiceDocs(db)) {
     out.push({ kind: "invoice", key: d.key, id: d.id, year: Number(d.date.slice(0, 4)), base: invoicePath(company, d), dataSha: d.doc_sha256, produce: () => {
@@ -36,12 +37,12 @@ function plan(db: DB, company: string, lang: Lang, today: string): Planned[] {
   }
   for (const r of receipts(db)) {
     const day = r.paid_at.slice(0, 10);
-    out.push({ kind: "receipt", key: r.key, id: r.id, year: Number(day.slice(0, 4)), base: paymentPath(company, { vendor: r.vendor, invoice_no: r.invoice_no, date: day }), dataSha: dataSha(r), produce: () => receiptPdf(company, r, lang) });
+    out.push({ kind: "receipt", key: r.key, id: r.id, year: Number(day.slice(0, 4)), base: paymentPath(company, { vendor: r.vendor, invoice_no: r.invoice_no, date: day }), dataSha: dataSha(r), produce: () => receiptPdf(company, r, lang, bank) });
   }
   const closed = closedPeriods(db);
   for (const m of closed.months) {
     const d = monthData(db, m);
-    out.push({ kind: "month", key: d.key, year: Number(m.slice(0, 4)), base: monthReportPath(company, m), dataSha: dataSha(d), produce: () => monthReportPdf(company, d, lang) });
+    out.push({ kind: "month", key: d.key, year: Number(m.slice(0, 4)), base: monthReportPath(company, m), dataSha: dataSha(d), produce: () => monthReportPdf(company, d, lang, bank) });
   }
   for (const q of closed.quarters) {
     const d = vatData(db, q);
@@ -49,7 +50,7 @@ function plan(db: DB, company: string, lang: Lang, today: string): Planned[] {
   }
   for (const y of closed.years) {
     const d = yearData(db, y);
-    out.push({ kind: "year", key: d.key, year: y, base: yearReportPath(company, y), dataSha: dataSha(d), produce: () => yearReportPdf(company, d, lang) });
+    out.push({ kind: "year", key: d.key, year: y, base: yearReportPath(company, y), dataSha: dataSha(d), produce: () => yearReportPdf(company, d, lang, bank) });
   }
   const s = suppliersData(db);
   if (s.rows.length) out.push({ kind: "suppliers", key: s.key, year: Number(today.slice(0, 4)), base: suppliersPath(company, today), dataSha: dataSha(s.rows), produce: () => suppliersPdf(company, s, today, lang) });
@@ -66,7 +67,7 @@ export async function syncVault(db: DB, sink: VaultSink, opts: VaultOptions = {}
   const company = opts.company ?? process.env.KIT11_COMPANY ?? COMPANY;
   const now = opts.now ?? new Date();
   const today = opts.today ?? now.toISOString().slice(0, 10);
-  const items = plan(db, company, opts.lang ?? "nl", today);
+  const items = plan(db, company, opts.lang ?? "nl", today, opts.bank ?? "sandbox");
   const indexes = new Map<number, YearIndex>();
   for (const y of new Set(items.map((i) => i.year))) indexes.set(y, await loadIndex(sink, company, y));
   const changed = new Set<number>();

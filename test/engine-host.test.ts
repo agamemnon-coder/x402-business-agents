@@ -5,6 +5,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { useDocStore, type DocStore } from "../src/ap/docStore.js";
+import { pdfText } from "../src/ap/pdfText.js";
 import { verifyAuditChain } from "../src/audit/log.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { publicEvent, type EngineEvent } from "../src/engine/events.js";
@@ -140,6 +141,13 @@ describe("the chain: one supplier invoice from upload to paid, booked and archiv
     expect(index).toBeTruthy();
     expect(await w.host.vaultFile(index)).toBeNull();
     expect(await w.host.vaultFile("Engine Test Co/2026/nothing.pdf")).toBeNull();
+
+    // The receipt names the bank it ran on: test money on the stand-in bank, never the Airwallex sandbox or its fee.
+    const receipt = files.find((f) => f.kind === "receipt")!;
+    const { text } = await pdfText(Buffer.from((await w.host.vaultFile(receipt.path))!));
+    expect(text).toContain("Test money (stand-in bank)");
+    expect(text).toContain("Fee (set by the stand-in bank)");
+    expect(text.replace(/, not Airwallex;|, niet Airwallex;/g, "")).not.toMatch(/Airwallex|npm run verify/);
   });
 
   it("seeds the treasury once, however often it is asked", async () => {
