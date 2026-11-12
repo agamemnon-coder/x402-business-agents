@@ -12,7 +12,7 @@ export type NavKey = "home" | "watch" | "try" | "proof" | "overview" | "metal" |
 /** The four tabs (redesign, Max 2 Nov); the fifth item, "More", follows them in navHtml (12 Nov). */
 export const NAV_MAIN: [NavKey, string, string][] = ([
   ["home", "Home", "home"],
-  ["try", "Try", "try"],
+  ["try", "Try", "https://purser-try.max-31b.workers.dev/try"],
   ["proof", "Proof", "proof"],
 ] as [NavKey, string, string][]).filter(([k]) => k !== "watch" || WATCH_IN_MENU);
 

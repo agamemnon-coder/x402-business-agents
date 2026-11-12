@@ -116,10 +116,11 @@ describe("the site after v4", () => {
 
   it("has four tabs and More in the menu, on every public page; under More the pages the site serves, in one order: Pricing, Security, Docs, Status, then Airwallex, Metal, Visa, Claude", () => {
     // The whole list, in the menu's order (src/ui/more.ts): the product pages, then the partner pages.
-    expect(MORE_LINKS.map((l) => [l.label, l.href])).toEqual([["Pricing", "pricing"], ["Security", "security"], ["Docs", "docs"], ["Status", "status"], ["Airwallex", "airwallex"], ["Metal", "metal"], ["Visa", "visa"], ["Claude", "claude"]]);
+    expect(MORE_LINKS.map((l) => [l.label, l.href])).toEqual([["Purser Cloud", "https://purser-try.max-31b.workers.dev/"], ["Pricing", "pricing"], ["Security", "security"], ["Docs", "docs"], ["Status", "status"], ["Airwallex", "airwallex"], ["Metal", "metal"], ["Visa", "visa"], ["Claude", "claude"]]);
     // The menu lists a page exactly when the site serves it, so "More" never opens onto a 404 (a page not built yet is
     // left out until it is registered; then the menu must list it).
-    const served = MORE_LINKS.filter((l) => pageResponse(new Request(`https://x.test/${l.href}`), pages as Pages)?.status === 200).map((l) => l.label);
+    // 12 Nov: Purser Cloud is its own deployment (an absolute link), served there, not by this Worker.
+    const served = MORE_LINKS.filter((l) => /^https:\/\//.test(l.href) || pageResponse(new Request(`https://x.test/${l.href}`), pages as Pages)?.status === 200).map((l) => l.label);
     expect(served).toEqual(expect.arrayContaining(["Pricing", "Security", "Airwallex", "Metal", "Visa", "Claude"]));
     expect(served).toEqual(expect.arrayContaining(["Docs", "Status"]));
     for (const [name, html] of Object.entries(PUBLIC)) {
@@ -135,7 +136,7 @@ describe("the site after v4", () => {
       expect({ name, rest: (more?.[2] ?? "").replace(/<a [^>]*>[^<]+<\/a>/g, "") }).toEqual({ name, rest: product.length ? "<hr>" : "" });
       // The footer repeats the product pages' links (not the partner pages), in the same order; Try, an older page, has no footer.
       const foot = /<footer class="foot">[\s\S]*?<\/footer>/.exec(html)?.[0] ?? "";
-      if (name !== "try") expect({ name, footer: [...foot.matchAll(/<a class="flink" href="\/?([a-z]+)">([^<]+)<\/a>/g)].map((m) => [m[1], m[2]]).filter(([href]) => MORE_LINKS.some((l) => l.href === href && l.group === "product")) }).toEqual({ name, footer: product.map((l) => [l.href, l.label]) });
+      if (name !== "try") expect({ name, footer: [...foot.matchAll(/<a class="flink" href="\/?([a-z]+)">([^<]+)<\/a>/g)].map((m) => [m[1], m[2]]).filter(([href]) => MORE_LINKS.some((l) => l.href === href && l.group === "product")) }).toEqual({ name, footer: product.filter((l) => !/^https:/.test(l.href)).map((l) => [l.href, l.label]) });
     }
   });
 

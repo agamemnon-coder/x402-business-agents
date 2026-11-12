@@ -3,7 +3,7 @@
 // so the two definitions cannot drift apart. "More" is a <details> element: it opens and closes without any script, by
 // mouse, touch or keyboard (Enter or Space on the summary; its links take focus only while it is open).
 
-export type MoreKey = "pricing" | "security" | "docs" | "status" | "airwallex" | "metal" | "visa" | "claude";
+export type MoreKey = "cloud" | "pricing" | "security" | "docs" | "status" | "airwallex" | "metal" | "visa" | "claude";
 
 export interface MoreLink {
   key: MoreKey;
@@ -23,6 +23,8 @@ export const MORE_LABEL = "More";
 
 /** The whole menu, in its order: the product pages first, then the partner pages (names as text, never a logo). */
 export const MORE_LINKS: readonly MoreLink[] = [
+  // 12 Nov (owner): the hosted product, Purser Cloud, on its own test-money deployment.
+  { key: "cloud", label: "Purser Cloud", href: "https://purser-try.max-31b.workers.dev/", group: "product" },
   { key: "pricing", label: "Pricing", href: "pricing", group: "product" },
   { key: "security", label: "Security", href: "security", group: "product" },
   { key: "docs", label: "Docs", href: "docs", group: "product" },

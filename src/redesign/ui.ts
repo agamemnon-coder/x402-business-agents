@@ -32,9 +32,12 @@ export const iconSet = (names: string[]) => Object.fromEntries(names.map((n) => 
 
 export const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
+/** 12 Nov (owner): the Try tab opens the hands-on demo on Purser Cloud (the old /try/sign story stays at its address). */
+export const TRY_URL = "https://purser-try.max-31b.workers.dev/try";
+
 export type Tab = "home" | "watch" | "try" | "proof";
 /** The four tabs; the menu's fifth item, "More", and the pages under it are in src/ui/more.ts (shared with src/ui/nav.ts). */
-const TABS: [Tab, string, string][] = ([["home", "Home", "home"], ["watch", "Watch", "watch"], ["try", "Try", "try"], ["proof", "Proof", "proof"]] as [Tab, string, string][]).filter(([t]) => t !== "watch" || WATCH_IN_MENU);
+const TABS: [Tab, string, string][] = ([["home", "Home", "home"], ["watch", "Watch", "watch"], ["try", "Try", TRY_URL], ["proof", "Proof", "proof"]] as [Tab, string, string][]).filter(([t]) => t !== "watch" || WATCH_IN_MENU);
 
 /** The design tokens, light and dark: the same on every page. */
 export const TOKENS = `@font-face { font-family: Inter; src: url(assets/inter.woff2) format("woff2"); font-weight: 100 900; font-display: swap; }
