@@ -16,7 +16,7 @@ export const BAND = {
 /** Screen 0. The text describes the product, never this visit: what this visit runs on is in the band, from the answer. */
 export const START = {
   heading: "Run a company's payables with Purser.",
-  text: "AI agents read and check each invoice. Nothing is paid until a person signs the exact terms. Try it in a test company on Purser's real engine, with test money, deleted after 24 hours.",
+  text: "AI agents read and check each invoice. Nothing is paid until a person signs the exact terms. Try a test company on Purser's real engine, with test money, deleted after 24 hours.",
   button: "Start with a test company",
   starting: "Starting…",
   /** In the text's place when the start answer has no sentence of its own. */
