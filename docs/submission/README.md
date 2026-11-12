@@ -25,7 +25,7 @@ For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice ov
 
 ## Description
 
-Characters: **3,971** (the text between the markers, as pasted; 3,997 if the form counts each line break as two). Max's target is 3,000–4,000; the form's own limit is
+Characters: **3,826** (the text between the markers, as pasted; 3,852 if the form counts each line break as two). Max's target is 3,000–4,000; the form's own limit is
 not known yet. `test/submission.test.ts` checks this count and keeps the text under 4,000. The long text, as it stood on
 5 November, with Airwallex, Metal, Claude, the controls and the other live tests in full: [long-description.md](long-description.md).
 The Airi run of 7 November (Visa Intelligent Commerce via Airwallex's Airi; Airwallex sandbox, test card, test money)
@@ -49,6 +49,8 @@ passkey-signed payout `IN_APPROVAL`; nobody approved it there, so it is unpaid; 
 and the inbox's status (its sandbox run is in [after-the-kit.md](../after-the-kit.md); the console is not public).
 On 12 November the owner approved that transfer in Airwallex's web app and it went PAID, settlement simulated, so the
 line now says so in the same number of characters ([record](../runs/2026-11-12-airwallex-two-locks-paid.md)).
+The same day the owner decided that no quotes appear anywhere, so the CFO's quote left the business paragraph (the
+text went from 3,971 to 3,826 characters).
 On 12 November the owner decided to merge the product's code into `main` now ([decisions.md](../decisions.md), D29), so
 the line's last sentence, "Payables inbox: not public.", became "Payables: in repo, not live.": the code is in this
 repository, the hosted preview stays private, and nothing is said to be live.
@@ -76,7 +78,7 @@ repository, the hosted preview stays private, and nothing is said to be live.
 
 **After the kit.** Airwallex held a test-passkey payout; a person approved; PAID (simulated). Payables: in repo, not live.
 
-**The business (not validated with customers yet).** Buyer: a CFO on Airwallex. €49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions. A hypothesis. "At our company invoices go through a full approval process in our ERP. I think Purser is something for SMEs." — CFO at a US company (anonymous)
+**The business (not validated with customers yet).** Buyer: a CFO on Airwallex. €49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions. A hypothesis.
 
 **What's real.** Test money. Simulated: customer, supplier, settlement, second approver. Details → https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/submission/long-description.md#what-is-real-and-what-is-simulated
 
