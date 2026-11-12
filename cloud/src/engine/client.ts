@@ -2,7 +2,7 @@
 // Durable Object (./object.ts). Every method is one call across the stub, with the company's id; the object's answer
 // is data, and a refusal in it is thrown here in the object's own words (so the routes treat this engine as they treat
 // the one in this process). Only types and the list of method names are imported: nothing of the engine.
-import { ENGINE_METHODS, type EngineApi } from "./api.js";
+import { ENGINE_METHODS, SlowDown, type EngineApi } from "./api.js";
 import type { EngineAnswer } from "./object.js";
 
 /** The ENGINE binding: the namespace of the company engines. */
@@ -19,7 +19,7 @@ export function engineStubs(ns: EngineNamespace): (tenantId: string) => EngineAp
     const stub = ns.get(ns.idFromName(tenantId));
     const method = (name: keyof EngineApi) => async (...args: unknown[]): Promise<unknown> => {
       const answer = await stub.call(tenantId, name, args);
-      if (!answer.ok) throw new Error(answer.error);
+      if (!answer.ok) throw typeof answer.retry_ms === "number" ? new SlowDown(answer.retry_ms, answer.error) : new Error(answer.error);
       return answer.value;
     };
     return Object.fromEntries(ENGINE_METHODS.map((name) => [name, method(name)])) as unknown as EngineApi;

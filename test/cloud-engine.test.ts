@@ -6,6 +6,7 @@ import { createHash } from "node:crypto";
 import { build } from "esbuild";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ROUTES } from "../cloud/src/app.js";
+import { SlowDown } from "../cloud/src/engine/api.js";
 import { sessionToken } from "../cloud/src/auth.js";
 import { blobVault, vaultKey } from "../cloud/src/engine/vaultR2.js";
 import { sha256Hex } from "../src/lib/terms.js";
@@ -494,6 +495,20 @@ describe("erasing a person and purging a closed company reach the company's engi
       expect(await purge(e.env.sql, e.env.blobs, new Date("2034-01-01T12:00:00Z"), e.env.engine)).toEqual([t.id]);
       expect(await e.env.engine!(t.id).invoices()).toEqual([]);
     } finally { e.close(); }
+  });
+});
+
+describe("the engine's limit on reading the events, through the route", () => {
+  it("answers 429 slow_down with retry_ms when the company's engine says to slow down", async () => {
+    const c = testCloud({ engine: true });
+    try {
+      const t = await c.tenant("slowly");
+      const wired = c.env.engine!;
+      c.env.engine = (tenantId) => ({ ...wired(tenantId), events: async () => { throw new SlowDown(600, "slow down: at most 2 reads of the events a second"); } });
+      const r = await c.req("GET", "/v1/engine/events?after=0", { key: t.session });
+      expect(r.status).toBe(429);
+      expect(r.json).toEqual({ error: "slow down: at most 2 reads of the events a second", code: "slow_down", retry_ms: 600 });
+    } finally { c.close(); }
   });
 });
 
