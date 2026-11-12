@@ -170,6 +170,25 @@ describe("the Checker agent decides, code enforces", () => {
     expect(decisions()[0]).toMatchObject({ action: "ask_cfo", outcome: "hold", overridden_by: "new_supplier", overridden: true, status: "needs_vendor" });
   });
 
+  it("enforces the decision on code's checks as they stand when it is filed: a second copy that arrived meanwhile is seen", async () => {
+    // While the agent is thinking about this file, another copy of the same invoice is filed through another door.
+    const copy = await pdfOf(`${EN}\nCopy for your records.`);
+    const script = fake([[decide("ask_cfo", "Nothing is wrong with this invoice, so the CFO can approve it.")]]);
+    const create = script.beta.messages.create.bind(script.beta.messages);
+    let other: Promise<unknown> | null = null;
+    (script.beta.messages as unknown as { create: typeof create }).create = (async (...args: Parameters<typeof create>) => {
+      other ??= ingestDocument(db, { ...deps, claude: null }, { bytes: copy, filename: "copy.pdf", source: "folder" });
+      await other;
+      return create(...args);
+    }) as typeof create;
+    const inv = await add(EN, script);
+    // The copy took the first number; this one is filed after it, and code's duplicate check holds it whatever the agent said.
+    expect(inv.id).toBe("AP-0002");
+    expect(inv.status).toBe("blocked");
+    expect(inv.findings.map((f) => f.code)).toContain("duplicate");
+    expect(decisions().find((d) => d.subject === "AP-0002")).toMatchObject({ source: "claude", action: "ask_cfo", outcome: "hold", overridden_by: "duplicate", overridden: true });
+  });
+
   it("writes no money event and leaves the origins check clean", async () => {
     await add(FORGED, fake([[decide("pay", "Everything on this invoice looks in order, so it can be paid now.")]]));
     expect(originsCheck(db).missing).toEqual([]);
