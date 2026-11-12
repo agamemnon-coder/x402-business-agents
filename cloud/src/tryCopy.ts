@@ -25,7 +25,8 @@ export const START = {
   runs: "Watch the recorded runs",
 };
 
-/** Screen 1. Sample titles, suppliers and the server's sentences are data, not copy. */
+/** Screen 1. One main button under both tabs files the sample picked or the invoice written. Sample titles, suppliers
+ * and the server's sentences are data, not copy. */
 export const INVOICE = {
   heading: "An invoice comes in.",
   tabSample: "Pick a sample",
@@ -88,8 +89,8 @@ export const VISIBLE = {
     [START.heading, START.runs, START.button],
   ],
   invoice: [
-    [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.loading],
-    [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.failed],
+    [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.loading, INVOICE.send],
+    [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.failed, INVOICE.send],
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.supplier, INVOICE.invoiceNo, INVOICE.amount, INVOICE.issued, INVOICE.due, INVOICE.iban, INVOICE.ibanHint, INVOICE.amountBad, INVOICE.send],
   ],
   work: [

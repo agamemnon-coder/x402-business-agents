@@ -53,6 +53,8 @@ a { color: var(--accent); }
 .tabs button[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
 .samples { display: grid; gap: 8px; }
 .samples .btn { justify-content: flex-start; text-align: left; border-radius: 14px; padding: 12px 16px; font-weight: 600; }
+.samples .btn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.panel + .panel + .btn.big { margin-top: 16px; }
 form { display: grid; gap: 12px; }
 .f { display: grid; gap: 4px; min-width: 0; }
 .f label { font-size: 13px; font-weight: 600; color: var(--muted); }
@@ -233,20 +235,28 @@ function field(label,input,id){input.id=id;const l=el('label','',label);l.htmlFo
 function input(type,value){const i=el('input');i.type=type;if(value!==undefined)i.value=value;return i}
 async function catchUp(){for(let i=0;i<20;i++){const r=await call('GET','/v1/engine/events?after='+encodeURIComponent(S.after||0)+'&limit=200');if(r.status!==200||!Array.isArray(r.json.items))return;if(typeof r.json.next==='number')S.after=r.json.next;save();if(r.json.items.length<200)return}}
 screen('invoice',{heading:C.invoice.heading,draw(box){
+  // Two tabs and one main button under both: it files the sample picked, or the invoice written.
   const tabs=el('div','tabs');tabs.setAttribute('role','tablist');
   const pick=el('div','panel'),write=el('div','panel');pick.setAttribute('role','tabpanel');write.setAttribute('role','tabpanel');
   const tA=el('button','',C.invoice.tabSample),tB=el('button','',C.invoice.tabWrite);
   for(const [t,p,id] of [[tA,pick,'tab-pick'],[tB,write,'tab-write']]){t.type='button';t.id=id;t.setAttribute('role','tab');p.setAttribute('aria-labelledby',id)}
-  const choose=(a)=>{tA.setAttribute('aria-selected',String(a));tB.setAttribute('aria-selected',String(!a));pick.hidden=!a;write.hidden=a};
-  tA.addEventListener('click',()=>choose(true));tB.addEventListener('click',()=>choose(false));
-  tabs.append(tA,tB);box.append(tabs,pick,write);choose(true);
+  let writing=false;
+  const choose=(w)=>{writing=w;tA.setAttribute('aria-selected',String(!w));tB.setAttribute('aria-selected',String(w));pick.hidden=w;write.hidden=!w};
+  tA.addEventListener('click',()=>choose(false));tB.addEventListener('click',()=>choose(true));
+  const send=btn(C.invoice.send,true);
+  tabs.append(tA,tB);box.append(tabs,pick,write,send);choose(false);
   // Where the events stand now, so the live panel shows only what this invoice's request does.
   catchUp();
+  // Pick a sample: one button per sample, the title only; the first is picked.
+  let picked=null;
   pick.append(el('p','muted',C.invoice.loading));
   api('GET','/v1/engine/samples').then((r)=>{
     if(r.status!==200||!Array.isArray(r.json.items)){pick.replaceChildren(el('p','note',typeof r.json.message==='string'?r.json.message:C.invoice.failed));return}
-    const list=el('div','samples');
-    for(const s of r.json.items){if(!s||typeof s.key!=='string')continue;const b=btn(String(s.title??s.key));b.addEventListener('click',()=>show('work',{kind:'sample',key:s.key,title:String(s.title??'')}));list.append(b)}
+    const list=el('div','samples');list.setAttribute('role','group');
+    for(const s of r.json.items){if(!s||typeof s.key!=='string')continue;
+      const b=btn(String(s.title??s.key));b.setAttribute('aria-pressed','false');
+      b.addEventListener('click',()=>{picked=s;for(const x of list.children)x.setAttribute('aria-pressed',String(x===b))});
+      list.append(b);if(!picked){picked=s;b.setAttribute('aria-pressed','true')}}
     pick.replaceChildren(list);
   });
   // Write your own: a supplier on file, the number, the amount, the dates and the IBAN (prefilled, editable).
@@ -254,10 +264,9 @@ screen('invoice',{heading:C.invoice.heading,draw(box){
   const amt=input('text');amt.inputMode='decimal';amt.required=true;amt.autocomplete='off';amt.placeholder='120.50';
   const iss=input('date',today(0)),dueOn=input('date',today(14));iss.required=true;dueOn.required=true;
   const iban=input('text');iban.className='mono';iban.required=true;iban.autocomplete='off';iban.spellcheck=false;iban.setAttribute('autocapitalize','characters');
-  const send=btn(C.invoice.send,true);send.type='submit';
   const msg=el('div','');
   const form=el('form','',[field(C.invoice.supplier,sup,'f-sup'),el('div','two',[field(C.invoice.invoiceNo,no,'f-no'),field(C.invoice.amount,amt,'f-amt')]),
-    el('div','two',[field(C.invoice.issued,iss,'f-iss'),field(C.invoice.due,dueOn,'f-due')]),field(C.invoice.iban,iban,'f-iban'),el('p','hint',C.invoice.ibanHint),msg,send]);
+    el('div','two',[field(C.invoice.issued,iss,'f-iss'),field(C.invoice.due,dueOn,'f-due')]),field(C.invoice.iban,iban,'f-iban'),el('p','hint',C.invoice.ibanHint),msg]);
   write.append(form);
   let suppliers=[];
   sup.addEventListener('change',()=>{const s=suppliers.find((x)=>x.key===sup.value);if(s)iban.value=String(s.iban??'')});
@@ -268,13 +277,15 @@ screen('invoice',{heading:C.invoice.heading,draw(box){
     sup.replaceChildren(...suppliers.map((s)=>{const o=el('option','',String(s.name??s.key));o.value=s.key;return o}));
     if(suppliers[0])iban.value=String(suppliers[0].iban??'');
   });
-  form.addEventListener('submit',(ev)=>{
-    ev.preventDefault();
+  function file(){
+    if(!writing){if(picked)show('work',{kind:'sample',key:picked.key,title:String(picked.title??'')});return}
     const raw=amt.value.replace(/\s/g,'');
-    if(!/^\d{1,9}([.,]\d{1,2})?$/.test(raw)){amt.setCustomValidity(C.invoice.amountBad);amt.reportValidity();return}
+    if(raw&&!/^\d{1,9}([.,]\d{1,2})?$/.test(raw)){amt.setCustomValidity(C.invoice.amountBad);amt.reportValidity();return}
     if(!form.reportValidity())return;
     show('work',{kind:'compose',body:{supplier_key:sup.value,invoice_no:no.value.trim(),amount:raw.replace(',','.'),issue_date:iss.value,due_date:dueOn.value,iban:iban.value.replace(/\s/g,'').toUpperCase()}});
-  });
+  }
+  send.addEventListener('click',file);
+  form.addEventListener('submit',(ev)=>{ev.preventDefault();file()});
 }});
 
 // 2 At work: the live panel while the request is in flight, then the invoice's status from the answer.
