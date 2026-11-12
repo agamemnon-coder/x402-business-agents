@@ -476,7 +476,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
           // 2,657 px; 5,386 before the timeline). The frame's pin leaves room for one more line of filters.
           const m = await page.evaluate(`(() => { const main = document.querySelector("main"); const lis = [...main.querySelectorAll(":scope > ol.tl > li.run")]; const hs = lis.map((li) => ({ key: li.id, h: li.getBoundingClientRect().height })); return { entries: hs, frame: main.getBoundingClientRect().height - hs.reduce((n, x) => n + x.h, 0) }; })()`) as { entries: { key: string; h: number }[]; frame: number };
           for (const e of m.entries.filter((x) => x.h > 270)) fail(`/runs ${tag}: the entry ${e.key} is ${Math.round(e.h)}px tall with its fold closed (at most 270)`);
-          if (m.frame > 470) fail(`/runs ${tag}: the frame around the entries (heading, line, filters, closed groups, last links) is ${Math.round(m.frame)}px tall (at most 470)`);
+          // +14 px, 12 Nov wire-in: the one "Face ID to paid" line, a 44 px tap target (master list 81).
+          if (m.frame > 484) fail(`/runs ${tag}: the frame around the entries (heading, line, filters, closed groups, last links) is ${Math.round(m.frame)}px tall (at most 484)`);
           for (const s of await small()) fail(`/runs ${tag}: a tap target under 44px, folds closed: ${s}`);
           await page.evaluate(`document.querySelectorAll("main details").forEach((d) => { d.open = true; })`);
           for (const s of await small()) fail(`/runs ${tag}: a tap target under 44px, every fold open: ${s}`);
@@ -920,7 +921,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (first.next !== "guarantees" || first.open) fail(`/proof ${tag}: "What Purser guarantees" is not directly under the heading (${first.next || "something else"} is), or a fold is open on load (${first.open})`);
       if (w === 390) {
         if (first.guarantees < 0 || first.guarantees >= 780) fail(`/proof ${tag}: the guarantees start at ${first.guarantees} px, not on the first screen (under 780 px)`);
-        if (first.fold < 0 || first.fold > 2249) fail(`/proof ${tag}: the first closed line starts at ${first.fold} px, over 2,249 px (half of the 4,499 px before)`);
+        // +200 px, 12 Nov (owner): the Visa and T:0 partner cards, a name and one line each (2,427 px as built at 390).
+        if (first.fold < 0 || first.fold > 2449) fail(`/proof ${tag}: the first closed line starts at ${first.fold} px, over 2,449 px (half of the 4,499 px before, plus the two cards)`);
         const closed = await targets();
         for (const x of closed.filter((y) => y.h < 44)) fail(`/proof ${tag}: a tap target under 44 px with the folds closed: ${Math.round(x.h * 10) / 10} px "${x.t}"`);
         if (closed.length < 30) fail(`/proof ${tag}: only ${closed.length} links and fold headers in sight, the check is not looking at the page`);

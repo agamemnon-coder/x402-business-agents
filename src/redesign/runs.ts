@@ -599,11 +599,11 @@ ${FILTER_CSS}
   .runsp .ln { font-size: 15px; max-width: 80ch; }
 }`;
 
-const FTP_CSS = `.runsp details.ftp { margin: 4px 0 14px; } .runsp details.ftp summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; font-weight: 600; font-size: 14px; }
+const FTP_CSS = `.runsp details.ftp { margin: 4px 0 14px; } .runsp details.ftp summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; font-weight: 600; font-size: 14px; min-height: 44px; }
 .runsp details.ftp summary::-webkit-details-marker { display: none; } .runsp details.ftp summary .i:first-child { color: var(--ok); flex: none; }
 /* The newest run's pulsing dot (src/ui/motion.ts .live-dot), drawn by CSS on its "Newest" mark: no extra line. */
-.runsp li.newest .mk.new { position: relative; padding-left: 18px; }
-.runsp li.newest .mk.new::before { content: ""; position: absolute; left: 6px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%; background: var(--ok); }
+.runsp li.newest .mk.new { position: relative; }
+.runsp li.newest .mk.new::before { content: ""; position: absolute; right: -3px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
 @media (prefers-reduced-motion: no-preference) { .runsp li.newest .mk.new::before { animation: mo-pulse-in 2s ease-out infinite; } }
 @keyframes mo-pulse-in { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 55%, transparent); } 100% { box-shadow: 0 0 0 7px transparent; } }
 .runsp details.ftp ul { margin: 6px 0 0; padding-left: 24px; font-size: 14px; } .runsp details.ftp .mo-count { font-variant-numeric: tabular-nums; }`;
