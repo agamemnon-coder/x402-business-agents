@@ -299,6 +299,11 @@ describe("the two pages on the site", () => {
     expect(pages.security).toBe(SECURITY_PAGE);
     expect((buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv) as Pages).security).toContain('href="try/sign" data-next="try"');
     expect(CHECK_PATHS).toEqual(expect.arrayContaining(["/pricing", "/security"]));
+    // 12 Nov (review): the README said "18 pages" while the list grew; it now names the list, which no count can outdate.
+    const check = read("README.md").split("\n").find((l) => l.startsWith("- `npm run judge -- --check`")) ?? "";
+    expect(check).toContain("builds every page in `CHECK_PATHS` (src/cli/judge.ts) from the main run's committed record");
+    expect(check).not.toMatch(/\b\d+ pages\b/);
+    expect(read("src/cli/judge.ts")).toContain("for (const path of CHECK_PATHS) {");
     expect(HEADER_PATHS.filter((h) => ["/pricing", "/security"].includes(h.path))).toEqual([{ path: "/pricing", kind: "page", status: 200 }, { path: "/security", kind: "page", status: 200 }]);
   });
 
