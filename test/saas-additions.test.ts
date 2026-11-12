@@ -182,7 +182,9 @@ describe("if the approver is unavailable (the panel's review, 12 Nov)", () => {
     expect(text).toContain("A lost phone: the passkey is replaced, not recovered.");
     // Who may enrol a new passkey: on the runner, and in Purser Cloud.
     expect(text).toContain("Who may enrol a new passkey, on the runner: only the person at the runner");
-    expect(text).toContain("Who may enrol, in Purser Cloud (built, not live): a signed-in owner starts a person's enrolment");
+    // 12 Nov (review): the route needs only the admin scope, so an admin key may start a person's enrolment too;
+    // an owner's passkey, once any owner has one, only a signed-in owner (cloud/src/auth.ts startEnrolment).
+    expect(text).toContain("Who may enrol, in Purser Cloud (built, not live): a signed-in owner or an API key with the admin scope starts a person's enrolment; an owner's passkey, once any owner has one, only a signed-in owner.");
     // Not built, said so: no deputy, no delegation. And the runs had one person.
     expect(text).toContain("No deputy, no delegation: neither is built.");
     expect(text).toContain("Our runs had one person: the second signature came from a test passkey.");
@@ -220,7 +222,10 @@ describe("if the approver is unavailable (the panel's review, 12 Nov)", () => {
     expect(read("src/cli/relay.ts")).toContain("//   --enrol    opens a ten-minute window and prints a one-time code for enrolling the approver's passkey");
     expect(read("src/cli/relay.ts")).toContain("//   --replace  with --enrol: the new passkey replaces the enrolled one once it is enrolled");
     expect(read("src/cli/passkey.ts")).toContain('if (cmd === "confirm")');
-    // 5. In Purser Cloud, as its doc says it.
+    // 5. In Purser Cloud, as its doc says it: the route needs the admin scope (a signed-in owner, or a key with it);
+    //    an owner's passkey, once any owner has one, only a signed-in owner.
+    expect(read("cloud/src/app.ts")).toMatch(/path: "\/v1\/users\/\{id\}\/enrolment", [^\n]*need: "admin"/);
+    expect(read("cloud/src/auth.ts")).toContain(`if (ownerPasskeys > 0 && !(caller.kind === "session" && caller.role === "owner")) throw new AuthError(403, "only a signed-in owner may enrol an owner's passkey");`);
     const cloud = flat("docs/cloud.md");
     expect(cloud).toContain("| POST /v1/users/{id}/enrolment | admin | Start a person's passkey enrolment: a single-use secret for 30 minutes (an owner's passkey: a signed-in owner only, once any owner has one). |");
     expect(cloud).toContain("| POST /v1/admin/tenants/{id}/recovery | platform admin | An owner lost their passkey: after checking out of band who asks (checked_by says how), issue a one-time recovery key for that owner");
