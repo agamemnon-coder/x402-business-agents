@@ -68,6 +68,8 @@ function expected(): Record<string, string | string[]> {
     "limits replaced on chain": String(ev.filter((e) => e.event === "mandate.replaced").length),
     "calls to Claude, each logged": String(sum((a) => a.claude_calls)),
     "cards carry the CFO's limits": (() => { const rows = cardControlRows(loadRecord().record); return `${rows.filter((r) => r.match).length} of ${rows.length}`; })(),
+    // Proof's Airwallex tile (12 Nov): the same count, from the same card read-back.
+    "cards carry the CFO's policy as Airwallex's own controls": (() => { const rows = cardControlRows(loadRecord().record); return `${rows.filter((r) => r.match).length} of ${rows.length}`; })(),
     "refused by Metal: mandate just replaced": String(revoked),
     "mandates replaced": String(ev.filter((e) => e.event === "mandate.replaced").length),
     // The FX conversion (fx.converted in the ledger) is a movement at Airwallex too.
@@ -133,14 +135,15 @@ describe("every labelled figure on Home, Proof and Watch", () => {
       const html = String((pages as unknown as Record<string, string>)[name]);
       expect({ name, wrong: mismatches(html) }).toEqual({ name, wrong: [] });
     }
-    // Proof shows its numbers: at least the five cards, the facts and the checks' headings.
+    // Proof shows its numbers: at least the four cards (five until 12 Nov), the facts and the checks' headings.
     expect(figures(pages.proof!).length).toBeGreaterThanOrEqual(15);
   });
 
   it("would have caught the Face ID mismatch of 2 Nov (5 on one card, 6 on another)", () => {
     const old = pages.proof!.replace("</main>", `<div class="card" id="faceid2"><h3>Face ID decisions</h3><p>6 decisions signed on the CFO's phone.</p></div></main>`);
     expect(mismatches(old).join("\n")).toMatch(/6 "decisions signed on the CFO's phone"/);
-    const five = pages.proof!.replace(/<span class="v">\d+<\/span><span class="l">decisions signed with Face ID \(\+1 co-signature\)<\/span>/, '<span class="v">6</span><span class="l">decisions signed with Face ID (+1 co-signature)</span>');
+    // The Face ID figure is the check's heading under #faceid since 12 Nov (before: also a tile in the row of numbers).
+    const five = pages.proof!.replace(/<span class="n">\d+<\/span>decisions signed with Face ID \(\+1 co-signature\)<\/h3>/, '<span class="n">6</span>decisions signed with Face ID (+1 co-signature)</h3>');
     expect(five).not.toBe(pages.proof);
     expect(mismatches(five).join("\n")).toMatch(/6 "decisions signed with Face ID \(\+1 co-signature\)", the record says 5/);
   });

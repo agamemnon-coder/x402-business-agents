@@ -98,3 +98,7 @@ ae1e2ddc37804a70b4ddafb581f10e8968742d68:test/tokenize-cli.test.ts:generic-api-k
 # src/cli/awxDepth.ts in ff08387: the stand-in deletes these environment variable NAMES before it runs (as
 # src/cli/twoLocks.ts does); no values.
 ff083878d6a3d83d17bbb6be0caf35ce8c56a018:src/cli/awxDepth.ts:generic-api-key:143
+
+# 12 Nov: the invoice token id is the invoice document SHA-256 (a public hash, not a key)
+596c800a0832e27e3812ffbc8cb15d2728d1926b:docs/runs/2026-11-12-tokenize.json:generic-api-key:48
+596c800a0832e27e3812ffbc8cb15d2728d1926b:docs/runs/2026-11-12-tokenize.md:generic-api-key:20

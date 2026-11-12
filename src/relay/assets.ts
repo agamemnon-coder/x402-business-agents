@@ -5,6 +5,7 @@
 import { readFileSync } from "node:fs";
 import { recordedRate, type RecordForExposure } from "../policy/exposureSources.js";
 import { loadRecord } from "../redesign/run.js";
+import { proofData, RECEIPT_SAMPLE_FILE } from "../redesign/agentData.js";
 import ts from "typescript";
 import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, JUDGE_CSP, JUDGE_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, CSP as DASHBOARD_CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE as DASHBOARD_PAGE, TRY_CSP, TRY_PAGE, TRY_SIGN_CSP, TRY_SIGN_PAGE, TRY_VERIFY_CSP, TRY_VERIFY_PAGE, demoPage, homeWithTrySign, filmPage, labPage, livePage, monthPage } from "../servers/dashboard.js";
 import type { Pages } from "../../worker/src/core.js";
@@ -35,6 +36,9 @@ const PHONE_CSP = [
 const TRY_AGENTS_RECORDED = (() => { try { return readRecorded(JSON.parse(read(`../../${RECORDED_PATH}`)) as unknown); } catch { return null; } })();
 /** The repository's llms.txt, served at /llms.txt; missing: not served. */
 const LLMS = (() => { try { return read("../../llms.txt"); } catch { return undefined; } })();
+/** The signed receipt served at /receipt-sample.json (src/redesign/agentData.ts names it), byte for byte. proofData()
+ * reads it too, so a missing file fails the build rather than quietly dropping the proof. */
+const RECEIPT_SAMPLE = read(`../../${RECEIPT_SAMPLE_FILE}`);
 const EXPOSURE_RATE = (() => { try { return recordedRate(loadRecord().record as unknown as RecordForExposure); } catch { return null; } })();
 
 /**
@@ -63,6 +67,9 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     dashboard: DASHBOARD_PAGE,
     exposureRate: EXPOSURE_RATE,
     ...(LLMS ? { llms: LLMS } : {}),
+    // The proof as data for a tool that fetches the site, and one receipt it can verify itself (agent-surface, 12 Nov).
+    proofJson: JSON.stringify(proofData(), null, 2),
+    receiptSample: RECEIPT_SAMPLE,
     tryAgentsRecorded: TRY_AGENTS_RECORDED,
     month: monthPage(),
     demo: demoPage(),

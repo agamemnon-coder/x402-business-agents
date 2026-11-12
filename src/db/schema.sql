@@ -879,6 +879,21 @@ CREATE TABLE IF NOT EXISTS ap_duplicate_clearances (
   PRIMARY KEY (invoice_id, twin_id)
 );
 
+-- The Coder agent's coding of an invoice as code let it into the books (src/ap/coderAgent.ts): the ledger account, VAT
+-- code and cost centre of each line. Stored once, before the accrual is first booked, and never changed: the database
+-- refuses UPDATE and DELETE. `source` says who decided: the agent (claude) or code's own labelled fallback.
+CREATE TABLE IF NOT EXISTS ap_codings (
+  invoice_id TEXT PRIMARY KEY REFERENCES ap_invoices(id),
+  coding_json TEXT NOT NULL,
+  source TEXT NOT NULL CHECK (source IN ('claude', 'fallback')),
+  status TEXT NOT NULL CHECK (status IN ('coded', 'needs_review')),
+  -- The model that answered; NULL for a fallback.
+  model TEXT,
+  coded_at TEXT NOT NULL
+);
+CREATE TRIGGER IF NOT EXISTS ap_codings_no_update BEFORE UPDATE ON ap_codings BEGIN SELECT RAISE(ABORT, 'a coding is stored once and never changed'); END;
+CREATE TRIGGER IF NOT EXISTS ap_codings_no_delete BEFORE DELETE ON ap_codings BEGIN SELECT RAISE(ABORT, 'a coding is stored once and never changed'); END;
+
 CREATE TABLE IF NOT EXISTS payee_adds (
   add_id TEXT PRIMARY KEY,
   vendor TEXT NOT NULL,

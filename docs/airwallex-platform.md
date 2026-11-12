@@ -68,9 +68,10 @@ platform-level webhook uses the same signature scheme is **unconfirmed**.
 - "As a platform, you can call all Transfers API endpoints on behalf of your connected accounts by specifying the
   connected account's open ID (in the format `acct_xxxxxx`) in the `x-on-behalf-of` header." The same note appears on
   get-transfer and list-transfers. — `docs/payments-for-platforms/pay-out-funds/create-a-transfer`
-- **Unconfirmed:** that balances, beneficiaries, rates, quotes and conversions accept `x-on-behalf-of` too. Purser sends
+- Confirmed in the sandbox on 10 Nov: beneficiaries, transfers and the transfer simulation accept `x-on-behalf-of`
+  (`docs/runs/2026-11-10-connected-accounts-sandbox.md`). **Unconfirmed:** rates, quotes and conversions. Purser sends
   the header on every call of the payout rail when the company has a connected account (so everything happens in that
-  company's wallet); the sandbox test below checks each one.
+  company's wallet).
 
 ### Platform fee
 
@@ -111,12 +112,15 @@ platform-level webhook uses the same signature scheme is **unconfirmed**.
   or Airwallex's hosted onboarding (template id from Airwallex) once in the browser.
 - **Live check, 9 Nov (two calls, reported to this session):** our sandbox account is registered in the Netherlands.
   `GET /api/v1/accounts` → 200 with 0 items; `POST /api/v1/accounts/create` → 400 `invalid_argument` "This account cannot
-  onboard business accounts". So the platform API is reachable but connected accounts are **not enabled** on our
-  sandbox yet; Max is asking Airwallex to enable it.
+  onboard business accounts". So on 9 Nov the platform API was reachable but connected accounts were not enabled on our
+  sandbox; Airwallex enabled them on 10 Nov (the run above).
 - Airwallex's own staff in the hackathon Slack (#platforms-kits-5-6-7-and-8, 9 Nov) confirmed that connected accounts
   are enabled per sandbox on request, and that *payments acceptance* depends on the platform's registration country
-  (an India-registered sandbox may see `configuration_error`). Purser uses payouts, not acceptance; whether payouts on
-  behalf of an NL/DE connected account work from our sandbox is **unconfirmed**.
+  (an India-registered sandbox may see `configuration_error`). Purser uses payouts, not acceptance: a EUR 5.00 payout on
+  behalf of a Netherlands connected account went PAID in our sandbox on 10 Nov (`a9460dba-f31b-4111-be58-6d9a9e71adb1`,
+  settlement simulated); payouts from two accounts opened later as non-registered sole traders were refused by Airwallex,
+  which wants the paying company's registration number (`docs/runs/2026-11-10-platform-e2e.md`). No run covers a German
+  account.
 
 ## What Purser built (behind the flag)
 
@@ -211,8 +215,9 @@ keeps no platform key. This is a go-live item (`docs/go-live.md`).
 - The id field of `account.*` events: the cloud applies an event **only** by `data.object.id` (the account object's own
   id, as Airwallex documents the account object), and an event that also names another account in `account_id` or
   elsewhere changes nothing.
-- `application_fee_options` / `application_fees` on a live payout from a connected account (the fee's field names are
-  from Airwallex's docs; not yet called).
+- `application_fees` on `GET /transfers/{id}` and on a live (non-simulated) PAID answer: at create Airwallex accepted
+  `application_fee_options` and reported the fee at exactly EUR 0.05 (10 Nov, payout `a9460dba-…`); the simulation's
+  SENT and PAID answers leave it out.
 
 The cloud keeps the account's id, status, the opening's idempotency id and the owner's **consent record** (who agreed
 to Airwallex's terms, when, and which version, `awxPlatform.termsVersion`), never the onboarding link (short-lived, made
@@ -225,18 +230,23 @@ file).
 1. ~~Enable **connected accounts / Payments for Platforms** on our sandbox~~ (done 10 Nov) (account id and client id as in the Slack
    thread example; never post the API key).
 2. The **hosted onboarding flow template id** for KYC (`template` in `hosted_flows/create`).
-3. Confirm the **platform fee mechanism for payouts** (see "Platform fee"): which call, from which account, and whether a
-   fee can be taken from a connected account's wallet at all.
+3. ~~Confirm the **platform fee mechanism for payouts** (see "Platform fee"): which call, from which account, and whether a
+   fee can be taken from a connected account's wallet at all~~ (10 Nov: `application_fee_options` on the payout itself,
+   accepted by the sandbox at exactly EUR 0.05).
 4. Confirm which endpoints accept **`x-on-behalf-of`** besides Transfers (balances, beneficiaries, rates, quotes,
    conversions).
-5. Confirm that a **Netherlands-registered** connected account can receive SWIFT/SEPA payouts on our sandbox, and the
-   webhook signature scheme for platform-level `account.*` events.
+5. ~~Confirm that a **Netherlands-registered** connected account can pay out by SWIFT and SEPA on our sandbox~~ (10 Nov:
+   one SWIFT and one SEPA payout PAID from `acct_SC-QD89fOneAeqaRFgOymw`; two newer accounts were refused for a missing
+   registration number). Still to confirm: the webhook signature scheme for platform-level `account.*` events.
 
-## The sandbox test that would confirm it (needs Max's go and a call budget)
+## The sandbox test (run on 10 November)
 
-The first 4 calls of it ran on 10 Nov (see above); the next run's plan is in the run record.
+It ran on 10 Nov in three parts, 17 calls in all: create (4 calls); verification details, submit and `ACTIVE` through
+the simulation (7); funding from the platform, a beneficiary and a EUR 5.00 payout with Purser's fee, `PAID` through the
+simulation (6) (`docs/runs/2026-11-10-connected-accounts-sandbox.md`). The hosted onboarding flow was not used; the fee
+went with the payout as `application_fee_options`, not as a connected-account transfer.
 
-About 12 calls, in this order: login (1); `POST /accounts/create` (1); `POST /hosted_flows/create` (1);
+The plan as written before it ran: about 12 calls, in this order: login (1); `POST /accounts/create` (1); `POST /hosted_flows/create` (1);
 `POST /hosted_flows/{id}/authorize` (1); after the KYC is done in the browser and `account.active` arrives:
 `GET /accounts/{id}` (1); with `x-on-behalf-of`: `GET /balances/current` (1), `POST /beneficiaries/validate` (1),
 `POST /beneficiaries/create` (1), `POST /transfers/create` (1), `GET /transfers/{id}` (1); fee:

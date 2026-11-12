@@ -92,7 +92,26 @@ export const GUARANTEES_CSS = `/* The guarantees on the dark stage of Home's dem
 .gtee details p { margin: 6px 0 0; line-height: 1.45; }
 .gtee .src { display: flex; flex-wrap: wrap; gap: 6px; }
 .gtee .src a { display: inline-block; padding: 3px 9px; border-radius: 8px; background: rgba(255,255,255,.06); border: 1px solid var(--g-line); color: #d9dbff; font: 600 12.5px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-@media (max-width: 640px) { .gtee { padding: 18px 14px 14px; border-radius: 20px; } .gtee li { padding: 14px 12px 12px 48px; } .gtee li::before { left: 12px; top: 13px; } }
+@media (max-width: 640px) { .gtee { padding: 16px 10px 10px; border-radius: 20px; } .gtee h2 { margin: 0 4px 12px; } }
+/* A phone or a tablet (jury, 12 Nov: the guarantees start the page and the page is half as long): the same card, more
+ * compact. The number beside the promise; under it who enforces it with "How" at the end of the same row (the fold opens
+ * under that row), then the evidence. Every link and "How" is at least 44 px high to tap: a link in a line of text grows
+ * by padding above and below, which moves no line; the file chips grow by a clear border around the same chip. */
+@media (max-width: 899px) {
+  .gtee ul { gap: 8px; }
+  .gtee li { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 12px 12px 10px; }
+  .gtee li::before { left: 12px; top: 11px; }
+  .gtee li b { min-height: 24px; padding-left: 36px; }
+  .gtee .by { grid-area: 2 / 1; justify-self: start; margin-top: 3px; max-width: calc(100% - 56px); }
+  .gtee details { grid-area: 2 / 1; border-top: 0; padding-top: 0; }
+  .gtee summary { width: fit-content; margin: -7px 0 -7px auto; padding: 11px 0 11px 10px; line-height: 22px; }
+  .gtee details[open] summary { margin-bottom: 0; }
+  .gtee details p { margin: 2px 0 0; }
+  .gtee .ev { grid-row: 3; }
+  .gtee .ev a { padding-block: 14px; }
+  .gtee .src { gap: 0 6px; margin-top: -4px; }
+  .gtee .src a { padding: 3px 9px; border: solid transparent; border-width: 10px 0; border-radius: 8px / 18px; background-clip: padding-box; box-shadow: inset 0 0 0 1px var(--g-line); }
+}
 @media (prefers-reduced-motion: reduce) { .gtee li { transition: none; } }`;
 
 const ext = (href: string) => /^https:\/\//.test(href);
