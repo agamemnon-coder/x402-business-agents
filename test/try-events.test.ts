@@ -73,8 +73,14 @@ describe("eventLine", () => {
     expect(`${fb.who} ${fb.text}`).not.toMatch(/Claude/);
     // A model's answer that was refused: Claude answered, Purser's check said no.
     expect(eventLine(ev("claude.rejected", { model: "claude-sonnet-4-5" })).who).toBe("Claude Sonnet 4.5");
-    // An event that is not Claude's never says Claude, whatever its fields hold.
-    for (const e of LISTED.filter((x) => !x.startsWith("claude."))) {
+    // The agents' rows (lane A, from ap-agents-1112) are Claude's turns: Claude is named when the row's own fields say so
+    // (a model and no other source, or source "claude"); a decision code made says Purser's code.
+    expect(eventLine(ev("agent.said", { agent: "checker", model: "claude-haiku-4-5", text: "x" })).who).toBe("Claude Haiku 4.5");
+    expect(eventLine(ev("ap.checker_decided", { source: "code", model: "claude-haiku-4-5" })).who).toBe(LIVE.who.code);
+    expect(eventLine(ev("agent.run", { status: "done" })).who).toBe(LIVE.who.code);
+    const agents = (x: string) => x.startsWith("agent.") || x === "ap.checker_decided" || x === "ap.payer_proposed";
+    // Any other event that is not Claude's never says Claude, whatever its fields hold.
+    for (const e of LISTED.filter((x) => !x.startsWith("claude.") && !agents(x))) {
       const l = eventLine(ev(e, allowed(e)));
       expect(l.who, e).not.toMatch(/Claude/);
       expect(l.tag, e).not.toBe("claude");
@@ -108,7 +114,8 @@ describe("eventLine", () => {
     expect(a.tag).toBe("claude");
     expect(`${a.who} · ${a.text}`).toBe("Checker · Claude Haiku 4.5 · asking…");
     expect(`${eventLine(ev("claude.asking", { model: "claude-haiku-4-5" })).who}`).toBe("Reader · Claude Haiku 4.5");
-    for (const e of LISTED) expect(eventLine(ev(e, allowed(e))).asking, e).toBe(false);
+    // The engine's allowlist now holds claude.asking itself (lane A); every other listed event is never an open call.
+    for (const e of LISTED.filter((x) => x !== "claude.asking")) expect(eventLine(ev(e, allowed(e))).asking, e).toBe(false);
   });
 
   it("is plain script with no DOM, clock or network, so the page carries the same text", () => {
