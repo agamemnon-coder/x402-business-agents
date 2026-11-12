@@ -63,17 +63,19 @@ describe("the agents' events on a page", () => {
       agent: "checker", model: "claude-haiku-4-5", status: "done", turns: 3, tools: ["read_invoice", "decide"], blocked: [], said: `paid to ${IBAN}`,
       cost_usd_micros: 4210, latency_ms: 2100, from_seq: 4, run_id: "run_1", tokens: { input: 1000, output: 200 }, claude_ms: [700], claude_calls: [], request_ids: ["req_011"],
     });
-    expect(f).toEqual({ agent: "checker", model: "claude-haiku-4-5", status: "done", turns: 3, cost_usd_micros: 4210, latency_ms: 2100 });
+    // Task A6: with the request id of the call that gave the answer.
+    expect(f).toEqual({ agent: "checker", model: "claude-haiku-4-5", status: "done", turns: 3, cost_usd_micros: 4210, latency_ms: 2100, request_id: "req_011" });
   });
 
-  it("ap.checker_decided: who decided and what code required; the codes of code's findings, never their words or the agent's reason", () => {
+  it("ap.checker_decided: who decided and what code required; the codes of code's findings, never their words; the agent's reason and code's why, masked (task A6)", () => {
     const f = fieldsOf("ap.checker_decided", {
       invoice_id: "AP-0001", source: "claude", model: "claude-haiku-4-5", action: "hold", reason: `the account ${IBAN} is new`, agent_findings: [{ code: "x", detail: IBAN }],
       code_findings: [{ code: "bank_details_changed", level: "review" }, { code: "possible_duplicate", level: "review" }],
       outcome: "hold", overridden_by: null, overridden: false, code_requires: "hold", why: `code holds ${IBAN}`, status: "needs_review",
       task: "ap.check.AP-0001", run_id: "run_1", request_ids: ["req_011"], origin: { actor: "agent" },
     });
-    expect(f).toEqual({ source: "claude", model: "claude-haiku-4-5", action: "hold", outcome: "hold", overridden: false, overridden_by: null, code_requires: "hold", codes: "bank_details_changed,possible_duplicate" });
+    expect(f).toEqual({ source: "claude", model: "claude-haiku-4-5", action: "hold", outcome: "hold", overridden: false, overridden_by: null, code_requires: "hold", codes: "bank_details_changed,possible_duplicate",
+      reason: "the account ****3000 is new", enforced: "code holds ****3000", request_id: "req_011" });
   });
 
   it("ap.payer_proposed: the proposal's rail, day and currency, and whether code overrode it; never the terms", () => {
@@ -81,7 +83,7 @@ describe("the agents' events on a page", () => {
       invoice_id: "AP-0001", invoice_no: "BTX-2026-21", source: "fallback", model: null, rail: "airwallex", pay_on: "2026-11-16", pay_currency: "EUR", reason: `to ${IBAN}`,
       outcome: "pay_today", overridden_by: "code", overridden: true, why: "due soon", next: "file", terms: { iban: IBAN }, task: "ap.pay.AP-0001", run_id: "r", request_ids: [], origin: null,
     }, );
-    expect(f).toEqual({ source: "fallback", model: null, rail: "airwallex", pay_on: "2026-11-16", pay_currency: "EUR", outcome: "pay_today", overridden: true, overridden_by: "code" });
+    expect(f).toEqual({ source: "fallback", model: null, rail: "airwallex", pay_on: "2026-11-16", pay_currency: "EUR", outcome: "pay_today", overridden: true, overridden_by: "code", reason: "to ****3000", enforced: "due soon" });
   });
 
   it("claude.capped: the reason, one of the known ones; anything else is left out", () => {

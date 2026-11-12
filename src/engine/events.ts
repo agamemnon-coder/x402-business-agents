@@ -60,6 +60,11 @@ const firstSentence = (v: unknown, max: number): string | undefined => {
   const m = masked(v, 10_000);
   return m === undefined ? undefined : masked(m.split(/(?<=[.!?])\s/)[0], max);
 };
+/** The last of a run's request ids (the call that gave the answer): an Anthropic request id, nothing else. */
+const lastRequest = (v: unknown): string | undefined => {
+  const last = Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").at(-1) : undefined;
+  return last && /^[\w-]{1,80}$/.test(last) ? last : undefined;
+};
 /** Why Claude was not asked (src/engine/budget.ts): one of these words, nothing else. */
 const CAPPED = new Set(["switch_off", "no_key", "action_budget", "company_cap", "pool_day_cap", "address_cap", "all_time_cap", "busy"]);
 const transfer: Pick = (p) => ({ ...money(p.amount), status: p.status, request_id: p.request_id });
@@ -100,11 +105,31 @@ const EVENTS: Record<string, Pick> = {
   "agent.tool": (p) => ({ agent: p.agent, tool: p.tool, turn: p.turn, model: p.model, request_id: p.request_id, ms: p.ms, answer: firstSentence(p.result, 160) }),
   "agent.said": (p) => ({ agent: p.agent, turn: p.turn, model: p.model, text: masked(p.text, 600) }),
   "agent.nudged": (p) => ({ agent: p.agent, reason: masked(p.reason, 160) }),
-  "agent.run": copy("agent", "model", "status", "turns", "cost_usd_micros", "latency_ms"),
-  // The agents' decisions (src/ap/checkerAgent.ts, src/ap/payerAgent.ts): who decided, what code required or overrode;
-  // the codes of code's findings, never their words, the agent's reason or the payment's terms.
-  "ap.checker_decided": (p) => ({ ...copy("source", "model", "action", "outcome", "overridden", "overridden_by", "code_requires")(p), codes: codes(p.code_findings) }),
-  "ap.payer_proposed": copy("source", "model", "rail", "pay_on", "pay_currency", "outcome", "overridden", "overridden_by"),
+  "agent.run": (p) => ({ ...copy("agent", "model", "status", "turns", "cost_usd_micros", "latency_ms")(p), request_id: lastRequest(p.request_ids) }),
+  // The agents' decisions (src/ap/checkerAgent.ts, src/ap/coderAgent.ts, src/ap/payerAgent.ts; task A6): who decided,
+  // the agent's one-line reason (masked, its first sentence), what code required, enforced or overrode, and the request
+  // that gave the answer. The codes of code's findings, never their words; never the payment's terms.
+  "ap.checker_decided": (p) => ({
+    ...copy("source", "model", "action", "outcome", "overridden", "overridden_by", "code_requires")(p), codes: codes(p.code_findings),
+    reason: firstSentence(p.reason, 160), enforced: firstSentence(p.why, 160), request_id: lastRequest(p.request_ids),
+  }),
+  "ap.coded": (p) => {
+    const lines = Array.isArray(p.lines) ? (p.lines as { account?: unknown; vat_code?: unknown; cost_centre?: unknown }[]) : [];
+    const first = lines[0] ?? {};
+    // The agent's own call: the origin's (its answer was used) or the one code refused (set_by).
+    const origin = typeof p.origin === "object" && p.origin !== null ? (p.origin as { request_id?: unknown; model?: unknown; set_by?: { request_id?: unknown; model?: unknown } }) : {};
+    const agent = origin.set_by && typeof origin.set_by === "object" ? origin.set_by : origin;
+    return {
+      source: p.source, model: p.model, agent_model: p.overridden_by && typeof agent.model === "string" ? agent.model : undefined, status: p.status, lines: lines.length, refused: firstSentence(p.refused_because, 160),
+      account: typeof first.account === "string" ? first.account : undefined, vat_code: typeof first.vat_code === "string" ? first.vat_code : undefined,
+      cost_centre: typeof first.cost_centre === "string" ? first.cost_centre : undefined, overridden_by: p.overridden_by,
+      reason: firstSentence(p.reason, 160), request_id: typeof agent.request_id === "string" ? agent.request_id : undefined,
+    };
+  },
+  "ap.payer_proposed": (p) => ({
+    ...copy("source", "model", "rail", "pay_on", "pay_currency", "outcome", "overridden", "overridden_by")(p),
+    reason: firstSentence(p.reason, 160), enforced: firstSentence(p.why, 160), request_id: lastRequest(p.request_ids),
+  }),
   // The passkey (src/passkey).
   "passkey.enrolment_opened": NONE,
   "passkey.pending": NONE,

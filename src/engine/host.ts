@@ -10,6 +10,7 @@
 //
 // It has no payables folder: the ledger must have its own document store (src/ap/docStore.ts useDocStore) before a
 // host is made over it, so no file is ever written.
+import type Anthropic from "@anthropic-ai/sdk";
 import { seedTreasury } from "../agents/euroBill.js";
 import { actionsFor } from "../ap/detail.js";
 import { docStoreOf } from "../ap/docStore.js";
@@ -44,6 +45,9 @@ import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 
 /** The reader that always takes the parser: no model is asked, and the invoice says it was read by the parser. */
 export const parserOnly: Asker = { ask: async (_a, fallback) => ({ value: fallback(), source: "fallback", model: null, note: "no model is asked: the parser reads" }) } as Asker;
+
+/** What an action hands the payables agents (task A6): whether they run, and their client within the action's budget (null: code decides, labelled). */
+interface ActionAgents { on: boolean; client: Anthropic | null }
 
 export interface EngineDeps {
   /** The company's ledger, with its own document store (useDocStore). */
@@ -209,7 +213,7 @@ export class EngineHost {
     mode: "test_money"; passkey: { credential_id: string; label: string } | null; balances: Record<string, string>; chains: { audit: boolean; ledger: boolean };
     /** Who reads the next document: Claude (when the caps allow it), or the parser. */
     reader: "claude" | "parser";
-    /** Who decides: the product's agents with Claude, or code. The agents join with task A6. */
+    /** Who decides: the payables agents with Claude (when Claude may be asked), or code (task A6). */
     agents: "live" | "code";
     /**
      * What this company's Claude calls cost so far, in micro-USD at list price: as the caps count it where the cloud keeps
@@ -227,7 +231,7 @@ export class EngineHost {
       passkey: pk ? { credential_id: pk.credential_id, label: pk.label } : null,
       balances: Object.fromEntries(Object.entries(balances).map(([currency, b]) => [currency, fromCents(b?.availableCents ?? 0)])),
       chains: { audit: verifyAuditChain(db).ok, ledger: verifyLedger(db).ok },
-      reader: claude.on ? "claude" : "parser", agents: "code", spent_micros: claude.spent_micros ?? claudeCost(db, 0), cap_micros: claude.cap_micros,
+      reader: claude.on ? "claude" : "parser", agents: claude.on && this.deps.claude?.agents ? "live" : "code", spent_micros: claude.spent_micros ?? claudeCost(db, 0), cap_micros: claude.cap_micros,
     };
   }
 
@@ -237,19 +241,23 @@ export class EngineHost {
    * what the action's calls cost: the rows' costs, or what the budget counted (a call that failed after it was sent is
    * counted at its worst case), never more than the reservation. Without Claude access, the host's own reader reads.
    */
-  private async withClaude<T>(task: string, run: (reader: Asker) => Promise<T>): Promise<T> {
+  private async withClaude<T>(task: string, run: (reader: Asker, agents: ActionAgents) => Promise<T>): Promise<T> {
     const { db, claude } = this.deps;
-    if (!claude) return run(this.deps.reader);
+    // Task A6: the payables agents run wherever the engine has Claude access that offers them. Refused a reservation
+    // (a switch, no key, a cap), they still run, with no client: each writes its run as unavailable and code's own
+    // decision stands, labelled as the fallback.
+    const agentsOn = !!claude?.agents;
+    if (!claude) return run(this.deps.reader, { on: false, client: null });
     const got = await claude.reserve();
     if (!got.ok) {
       audit(db, "system", "claude.capped", task, { reason: got.reason });
-      return run(parserOnly);
+      return run(parserOnly, { on: agentsOn, client: null });
     }
     const { micros, settle } = got.reservation;
     const budget = actionBudget(micros);
     const from = lastSeq(db);
     try {
-      return await run(claude.reader(db, budget));
+      return await run(claude.reader(db, budget), { on: agentsOn, client: claude.agents?.(budget) ?? null });
     } finally {
       await settle(Math.min(micros, Math.max(claudeCost(db, from), micros - budget.left())));
     }
@@ -274,8 +282,9 @@ export class EngineHost {
     const bytes = Buffer.isBuffer(doc.bytes) ? doc.bytes : Buffer.from(doc.bytes.buffer, doc.bytes.byteOffset, doc.bytes.byteLength);
     this.pdfOnly(bytes, doc.filename);
     this.roomFor(sha256(bytes));
-    const out = await this.withClaude(`engine.upload:${sha256(bytes).slice(0, 16)}`, (reader) =>
-      ingestDocument(db, { dir: NO_FOLDER, reader, now: () => this.now() }, { bytes, filename: doc.filename, ...(doc.mime ? { mime: doc.mime } : {}), source: "upload" }));
+    const out = await this.withClaude(`engine.upload:${sha256(bytes).slice(0, 16)}`, (reader, agents) =>
+      // Task A6: the Checker decides on the invoice as it is read, and the Coder codes it before its accrual is booked.
+      ingestDocument(db, { dir: NO_FOLDER, reader, now: () => this.now(), agents: agents.on, claude: agents.client, coder: agents.client }, { bytes, filename: doc.filename, ...(doc.mime ? { mime: doc.mime } : {}), source: "upload" }));
     if (out.kind === "duplicate_document") return { kind: out.kind, sha256: out.sha256, invoice: out.invoice_id ? this.invoice(out.invoice_id) : null };
     const inv = firstInvoice(out);
     // Read again: a note written after the checks is on the row, not on what the inbox returned.
@@ -306,7 +315,8 @@ export class EngineHost {
     return this.act(async () => {
       const { db, rails } = this.deps;
       try {
-        const out = await this.withClaude(`engine.propose:${invoiceId}`, (reader) => payApInvoice(db, rails.rail, invoiceId, this.now(), reader));
+        // Task A6: the Payer proposes the rail, the day and the currency on the engine's plan when the CFO opens Pay.
+        const out = await this.withClaude(`engine.propose:${invoiceId}`, (reader, agents) => payApInvoice(db, rails.rail, invoiceId, this.now(), reader, { on: agents.on, claude: agents.client }));
         if (out.kind !== "proposed") return { ok: false, reason: out.reason };
         const proposal = this.proposal(out.proposal.proposal_id);
         if (!proposal) return { ok: false, reason: `${out.proposal.proposal_id} was filed but is not in the ledger` };

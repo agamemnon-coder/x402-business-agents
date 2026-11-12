@@ -6,11 +6,11 @@
 // lands, the stand-ins below say nothing is set, so Claude is off (switch_off) and nothing is spent.
 import type Anthropic from "@anthropic-ai/sdk";
 import { ClaudeReader, MODELS } from "../../../src/claude/reader.js";
-import { tryClaudeClient, type ClaudeAccess } from "../../../src/engine/budget.js";
+import { budgetedClient, tryClaudeClient, type ClaudeAccess } from "../../../src/engine/budget.js";
 import type { Sql } from "../store.js";
 import { d1Spend } from "./spend.js";
 
-/** The most an answer may hold for a visitor's company (the agents' turns get 2,000 with task A6). */
+/** The most an answer may hold for a visitor's company (the agents' turns get 2,000: AGENT_MAX_TOKENS, task A6). */
 export const READER_MAX_TOKENS = 4_000;
 
 /**
@@ -41,6 +41,8 @@ export function claudeAccess(o: {
   return {
     reserve: async () => (client ? (await spend()).reserve() : { ok: false, reason: "no_key" }),
     reader: (db, budget) => new ClaudeReader(db, client, Date.now, READER_MODELS, { budget, maxTokens: READER_MAX_TOKENS, announce: true }),
+    // Task A6: the payables agents, on the same key and the same action's budget (each call's worst case first).
+    agents: (budget) => (client ? budgetedClient(client, budget) : null),
     status: async () => (client ? (await spend()).status() : { on: false, cap_micros: null, spent_micros: null }),
   };
 }

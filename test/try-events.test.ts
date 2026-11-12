@@ -78,7 +78,7 @@ describe("eventLine", () => {
     expect(eventLine(ev("agent.said", { agent: "checker", model: "claude-haiku-4-5", text: "x" })).who).toBe("Claude Haiku 4.5");
     expect(eventLine(ev("ap.checker_decided", { source: "code", model: "claude-haiku-4-5" })).who).toBe(LIVE.who.code);
     expect(eventLine(ev("agent.run", { status: "done" })).who).toBe(LIVE.who.code);
-    const agents = (x: string) => x.startsWith("agent.") || x === "ap.checker_decided" || x === "ap.payer_proposed";
+    const agents = (x: string) => x.startsWith("agent.") || x === "ap.checker_decided" || x === "ap.payer_proposed" || x === "ap.coded";
     // Any other event that is not Claude's never says Claude, whatever its fields hold.
     for (const e of LISTED.filter((x) => !x.startsWith("claude.") && !agents(x))) {
       const l = eventLine(ev(e, allowed(e)));

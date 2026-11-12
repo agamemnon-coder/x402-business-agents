@@ -358,6 +358,9 @@ export const LIVE = {
   /** Added to every line where money moves. */
   money: "simulated bank · test money",
   who: { claude: "Claude", code: "Purser's code", you: "You", purser: "Purser" },
+  /** Task A6: the payables agents' decisions, each its own step on the "At work" panel. */
+  agents: { "ap.checker_decided": "Checker agent", "ap.coded": "Coder agent", "ap.payer_proposed": "Payer agent" } as Record<string, string>,
+  noVat: "none (a person books it)",
   method: { passkey: "with your passkey" } as Record<string, string>,
   status: {
     blocked: "blocked", needs_review: "needs a person", needs_vendor: "waits for a new supplier", waiting_cfo: "waits for a signature",
@@ -395,7 +398,12 @@ export const LIVE = {
     "agent.said": "Its own words, not checked yet.",
     "agent.nudged": "Reminded to finish with a decision.",
     "agent.run": "Finished its work on this step.",
+    "ap.checker_decided_why": "Decided: {action}, because {reason}. Purser's code enforced: {outcome}; {enforced}.",
     "ap.checker_decided": "The check is decided. Purser's code compared it with its own rules.",
+    "ap.coded_why": "{account}, VAT {vat}: {reason}. Purser's code enforced: {enforced}.",
+    "ap.coded": "{account}, VAT {vat}: {reason}. Purser's code checked it and booked it.",
+    "ap.coded_plain": "The invoice was coded. Purser's code checked it.",
+    "ap.payer_proposed_why": "Proposed: pay on {pay_on} via {rail} from {currency}, because {reason}. Purser's code enforced: {outcome}; {enforced}.",
     "ap.payer_proposed": "A way to pay was proposed. Purser's code checked it.",
     "document.injection_flagged": "The document holds text that tries to give instructions. It was flagged and not followed.",
     "passkey.enrolment_opened": "A short window opened to set up the approval passkey.",

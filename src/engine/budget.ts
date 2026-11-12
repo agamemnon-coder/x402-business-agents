@@ -36,6 +36,11 @@ export interface Reservation { micros: number; settle(actualMicros: number): Pro
 export interface ClaudeAccess {
   reserve(): Promise<{ ok: true; reservation: Reservation } | { ok: false; reason: CappedReason }>;
   reader(db: DB, budget: Budget): Asker;
+  /**
+   * Task A6: the Anthropic client the payables agents (the Checker, the Coder, the Payer) use within the same action,
+   * spending from the same budget (budgetedClient); null without a key. Absent: the agents are not run.
+   */
+  agents?(budget: Budget): Anthropic | null;
   /** spent_micros: what the company has spent or holds reserved, as the caps count it; null when no figure is kept. */
   status(): Promise<{ on: boolean; cap_micros: number | null; spent_micros: number | null }>;
 }
@@ -61,4 +66,32 @@ export function worstCaseMicros(model: string, maxTokens: number, promptChars: n
  */
 export function tryClaudeClient(apiKey: string): Anthropic {
   return new Anthropic({ apiKey, timeout: 30_000, maxRetries: 0 });
+}
+
+/** The most an agent's answer may hold in a visitor's company (task A6). */
+export const AGENT_MAX_TOKENS = 2_000;
+
+/** Why an agent's call was not sent: its worst case did not fit what the action had left. The agent loop stops, and code decides, labelled. */
+export class ActionBudgetSpent extends Error {}
+
+/**
+ * An agent's client within one action's budget (task A6): every call's max_tokens is held to `maxTokens`, and before it
+ * is sent its worst case (worstCaseMicros, over every model that may answer it when a server-side fallback is asked for)
+ * must fit what the action has left; it is then taken from the budget, as the reader does. A call that does not fit is
+ * not sent: the agent's run ends unavailable and code's fallback decides, labelled. The SDK retries nothing.
+ */
+export function budgetedClient(inner: Anthropic, budget: Budget, maxTokens = AGENT_MAX_TOKENS): Anthropic {
+  type Params = { model: string; max_tokens: number; system?: unknown; tools?: unknown; messages: unknown; fallbacks?: unknown };
+  const create = async (params: Params, options?: unknown): Promise<unknown> => {
+    const req = { ...params, max_tokens: Math.min(params.max_tokens, maxTokens) };
+    const chars = JSON.stringify([req.system ?? null, req.tools ?? null, req.messages]).length;
+    const models = req.fallbacks ? [req.model, ...Object.keys(PRICES)] : [req.model];
+    const worst = Math.max(...models.map((m) => worstCaseMicros(m, req.max_tokens, chars)));
+    if (!(worst <= budget.left())) throw new ActionBudgetSpent(`action_budget: the next call could cost up to ${worst} micro-USD and the action has ${Math.max(0, budget.left())} left`);
+    budget.spend(worst);
+    const c = typeof inner.withOptions === "function" ? inner.withOptions({ maxRetries: 0 }) : inner;
+    return (c.beta.messages.create as unknown as (r: Params, o?: unknown) => Promise<unknown>)(req, options);
+  };
+  const wrapped = { beta: { messages: { create } }, withOptions: (): Anthropic => wrapped as unknown as Anthropic };
+  return wrapped as unknown as Anthropic;
 }
