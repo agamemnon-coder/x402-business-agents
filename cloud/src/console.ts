@@ -702,6 +702,7 @@ async function invoiceView(id){
   // The read model again, once the engine filed or paid it: the head (its status chip), the timeline and the proof follow.
   const again=async()=>{const j=await api('/v1/invoices/'+encodeURIComponent(id));if(!top.isConnected)return;const nt=detailTop(j),nl=timelineOf(j);top.replaceWith(nt);tl.replaceWith(nl);top=nt;tl=nl;
     if(!eng||j.status!=='paid')return;
+    if(pay)for(const x of pay.querySelectorAll('.acts'))x.remove();
     if(proof){await proof.refresh(j);return}
     proof=proofCard(j);if(pay&&pay.isConnected)pay.after(proof);else stack.prepend(proof)};
   const mine=ev&&(ev.items||[]).find((x)=>x.id===id);
@@ -731,16 +732,19 @@ async function invoiceView(id){
 // Every page of a list route (limit 200, its cursor), so nothing is missed on a busy company.
 async function everyPage(path){let out=[],cursor=null;for(let n=0;n<50;n++){const r=await api(path+(path.includes('?')?'&':'?')+'limit=200'+(cursor?'&cursor='+encodeURIComponent(cursor):''));out=out.concat(r.items||[]);cursor=r.next_cursor;if(!cursor)break}return out}
 // A path segment as the archive names it (src/vault/layout.ts safeSegment), to find this invoice's receipt by its name.
-const seg=(s)=>{let v=String(s||'').normalize('NFC').replace(/\p{Cf}/gu,'').replace(/[\u0000-\u001f\u007f<>:"/\\|?*]+/g,' ').replace(/\.{2,}/g,' ').replace(/\s+/g,' ').trim().replace(/^[.\s]+|[.\s]+$/g,'');return v||'_'};
+const seg=(s)=>{let v=String(s||'').normalize('NFC').replace(/\p{Cf}/gu,'').replace(/[\u0000-\u001f\u007f<>:"/\\|?*]+/g,' ').replace(/\.{2,}/g,' ').replace(/\s+/g,' ').trim().replace(/^[.\s]+|[.\s]+$/g,'');if(v.length>120)v=v.slice(0,120).replace(/[.\s]+$/g,'');return v||'_'};
 const fileName=(p)=>String(p).slice(String(p).lastIndexOf('/')+1);
 // A file's folder as a person reads it: below the company's own root folder, the steps spaced so it wraps between them.
 const folderWords=(p)=>String(p).split('/').slice(1,-1).join(' / ');
 const kb=(n)=>t('cs.eng.kb',{n:(Math.max(0,Number(n)||0)/1024).toFixed(1)});
 // This invoice's files: the original by its own hash (the invoice's doc_sha256), the receipt by the name the archive gives it
 // (Betalingen/<date> <supplier> <invoice no>.pdf, or that name with a correction or id beside it).
-function filesOf(i,files){const base=seg(i.vendor)+' '+seg(i.invoice_no);
+// The archive cleans the receipt's whole name as one piece (src/vault/layout.ts paymentPath and safeSegment), so it is
+// cleaned here the same way, from the file's own date; a correction or an id stands in brackets before .pdf.
+function filesOf(i,files){
   const ours=files.filter((f)=>{if(f.kind==='invoice')return !!i.doc_sha256&&f.sha256===i.doc_sha256;if(f.kind!=='receipt')return false;
-    const n=fileName(f.path).replace(/^\d{4}-\d{2}-\d{2} /,'').replace(/\.pdf$/i,'');return n===base||n.startsWith(base+' (')});
+    const n=fileName(f.path),d=n.slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return false;
+    const want=seg(d+' '+i.vendor+' '+i.invoice_no+'.pdf');return n===want||n.replace(/ \([^()]*\)(\.pdf)$/i,'$1')===want});
   return ours.sort((a,b)=>(a.kind===b.kind?a.path.localeCompare(b.path):a.kind==='invoice'?-1:1))}
 // A file's name to open it in the viewer, its folder small beneath.
 function fileItem(f,open){const b=el('button','linkish',fileName(f.path));b.type='button';b.setAttribute('aria-pressed','false');b.onclick=()=>open(f,b);
@@ -756,10 +760,19 @@ function proofCard(i0){
   const failed=(e)=>e&&e.message?note(e.message,'bad'):null;
   // Each source on its own: one that fails leaves the others standing.
   const get=(p)=>p.then((v)=>({v}),(e)=>{if(e instanceof Expired)throw e;return {e}});
+  // This invoice's payment. The read model links a payment to its invoice by "<invoice no> · <supplier>" (src/cloudsync/client.ts
+  // batchesFor), which two invoices can share; the transactions register names the invoice's own id (invoice.ap_id), so that
+  // decides first. Without it only a single PAID payment of this invoice's amount counts; anything less certain waits.
+  function paymentOf(i,ps,txs){
+    const same=(ps.v||[]).filter((x)=>x.invoice_no===i.invoice_no+' · '+i.vendor);
+    const tx=(x)=>txs.v?txs.v.find((y)=>y.id==='transfer:'+x.id):null;
+    const byId=same.filter((x)=>{const y=tx(x);return y&&y.invoice&&y.invoice.ap_id===i.id}).sort((a,b)=>String(a.updated_at).localeCompare(String(b.updated_at)));
+    if(byId.length)return byId.pop();
+    const sure=same.filter((x)=>x.status==='PAID'&&x.currency===i.currency&&toCents(x.amount)===toCents(i.total));
+    return sure.length===1?sure[0]:null}
   function paid(i,ps,txs){
     if(ps.e)return block('paid wait','clock',t('cs.eng.paid_h'),'',[failed(ps.e)]);
-    // The read model links a payment to its invoice by "<invoice no> · <supplier>" (src/cloudsync/client.ts batchesFor).
-    const p=ps.v.filter((x)=>x.invoice_no===i.invoice_no+' · '+i.vendor).sort((a,b)=>String(a.updated_at).localeCompare(String(b.updated_at))).pop();
+    const p=paymentOf(i,ps,txs);
     if(!p)return waiting('paid',t('cs.eng.paid_h'),t('cs.eng.paid_wait'));
     const tx=txs.v?txs.v.find((x)=>x.id==='transfer:'+p.id):null;
     const fm=/^([A-Z]{3,4}) (\d+\.\d{2})$/.exec(String(p.fee_actual||''));const fee=fm?ma(fm[1],fm[2]):tx&&tx.fee?ma(tx.fee.currency,tx.fee.amount):'';
@@ -771,7 +784,7 @@ function proofCard(i0){
     return b}
   function booked(i,ps,txs,es){
     if(es.e)return block('booked wait','clock',t('cs.eng.booked_h'),'',[failed(es.e)]);
-    const p=ps.v?ps.v.filter((x)=>x.invoice_no===i.invoice_no+' · '+i.vendor).sort((a,b)=>String(a.updated_at).localeCompare(String(b.updated_at))).pop():null;
+    const p=ps.v?paymentOf(i,ps,txs):null;
     const tx=p&&txs.v?txs.v.find((x)=>x.id==='transfer:'+p.id):null;
     // This invoice's entries: its accrual on receipt (source ap-accrual|<id>, any version), the payment's entries as the
     // transactions register books them, and any entry that reverses one of these.
@@ -825,7 +838,7 @@ async function approvalPasskey(){
   const s=await engineCall('/v1/engine/passkey/start',{method:'POST'});
   const made=await navigator.credentials.create({publicKey:{rp:{id:s.rp.id,name:s.rp.name},user:{id:new TextEncoder().encode(s.user.id),name:s.user.name,displayName:s.user.displayName},challenge:fromB64u(s.challenge),
     pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],excludeCredentials:(s.exclude||[]).map((id)=>({type:'public-key',id:fromB64u(id)})),
-    authenticatorSelection:{userVerification:'required',residentKey:'preferred'},attestation:'none',timeout:120000}});
+    authenticatorSelection:{userVerification:'required',residentKey:'discouraged'},attestation:'none',timeout:120000}});
   await engineCall('/v1/engine/passkey/finish',{method:'POST',body:{code:s.code,credential:registrationOf(made)}});
   engineStale()}
 // The engine's own view of the invoice (o.inv, from GET /v1/engine/invoices) decides what the card offers; o.write: an owner;
@@ -853,9 +866,11 @@ function payCard(o){
     const b=eng&&eng.passkey?btn(t('cs.eng.approve'),'primary','scan-face'):btn(t('cs.eng.setup'),'primary','key-round');
     if(eng&&eng.passkey)act(b,()=>approve(p));
     else act(b,async()=>{await approvalPasskey();eng=await engineStatus();proposal(p);said.replaceChildren(note(t('cs.eng.set_up'),'ok'))});
-    draw([...terms(p),el('p','fine',t('cs.eng.signs')),el('div','acts',[b]),said,print(p)])}
+    draw([...terms(p),el('p','fine',t('cs.eng.signs')),el('div','acts',[b]),eng&&eng.passkey?el('p','fine',t('cs.eng.holder',{name:eng.passkey.label})):null,said,print(p)])}
   async function approve(p){
-    const c=await navigator.credentials.get({publicKey:{challenge:fromB64u(p.challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(eng.passkey.credential_id)}],userVerification:'required',timeout:120000}});
+    let c;
+    try{c=await navigator.credentials.get({publicKey:{challenge:fromB64u(p.challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(eng.passkey.credential_id)}],userVerification:'required',timeout:120000}})}
+    catch(e){if(e&&e.name==='NotAllowedError')throw new Error(t('cs.eng.cancelled')+' '+t('cs.eng.other_device',{name:eng.passkey.label}));throw e}
     const r=await engineCall('/v1/engine/proposals/'+encodeURIComponent(p.id)+'/approve',{method:'POST',body:{terms_sha256:p.terms_sha256,credential:signedOf(c)}});
     // The engine's own words, for a refusal as for an approval.
     if(r.status!=='approved'){said.replaceChildren(note(r.message,'bad'));return}
@@ -879,9 +894,12 @@ function payCard(o){
 // src: this origin's API path that answers the PDF (an invoice's document, a file of the archive); name: the frame's title.
 const PDF_MAX_BYTES=16*1024*1024;
 async function drawPdf(src,box,name){
+  // The box's latest request only: a slow answer for a file opened earlier never replaces the one opened since.
+  const mine={};box._pdf=mine;
   try{
     const r=await api(src,{raw:true});
     const buf=await r.arrayBuffer();
+    if(box._pdf!==mine)return;
     if(buf.byteLength>PDF_MAX_BYTES){box.replaceChildren(el('p','wait',t('cs.too_large')));return}
     const f=document.createElement('iframe');f.setAttribute('sandbox','allow-scripts');f.src='/pdfview';f.className='pdfframe';f.title=name||t('cs.invoice_drawn');f.setAttribute('referrerpolicy','no-referrer');
     let sent=false;
@@ -891,7 +909,7 @@ async function drawPdf(src,box,name){
       else if(d.type==='failed'){window.removeEventListener('message',onMsg);box.replaceChildren(el('p','wait',t('cs.not_drawn')))}};
     window.addEventListener('message',onMsg);
     box.replaceChildren(f);
-  }catch(e){if(e instanceof Expired)return;box.replaceChildren(el('p','wait',t('cs.not_drawn')))}
+  }catch(e){if(e instanceof Expired||box._pdf!==mine)return;box.replaceChildren(el('p','wait',t('cs.not_drawn')))}
 }
 
 // --- Transactions --------------------------------------------------------------------------------------------------
@@ -1145,7 +1163,7 @@ async function route(){
   S=load();shell();
   // No timer of the panel "At work" outlives the view it was mounted in.
   workStop();
-  if(CFG.engine){if(S)engineStatus().then((st)=>engineChip(!!st),()=>{});else engineChip(false)}
+  if(CFG.engine){engineChip(true);if(S)engineStatus().then((st)=>engineChip(!!st),()=>{})}
   const open={'/sign-in':signInView,'/start':startView,'/platform':platformView};
   try{
     if(path==='/enrol')return enrolView(q);
