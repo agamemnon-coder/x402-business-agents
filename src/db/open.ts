@@ -65,6 +65,8 @@ function migrate(db: DB): void {
   for (const t of ["proposals", "approvals", "holds"]) if (!has(t, "policy_version")) db.exec(`ALTER TABLE ${t} ADD COLUMN policy_version INTEGER`);
   // Bookkeeping core: a sale's key on its stock move (review of PR #108, finding 4), once per sale.
   if (!has("stock_moves", "ref")) db.exec("ALTER TABLE stock_moves ADD COLUMN ref TEXT");
+  // Books (master list 126): the CFO's Face ID hash and the rail's id next to doc_sha256; nullable, never back-filled.
+  for (const c of ["approval_sha256", "rail_ref"]) if (!has("ledger_entries", c)) db.exec(`ALTER TABLE ledger_entries ADD COLUMN ${c} TEXT`);
   db.exec("CREATE UNIQUE INDEX IF NOT EXISTS stock_moves_ref ON stock_moves (sku, ref) WHERE ref IS NOT NULL");
   if (!has("sales", "requirements_json")) db.exec("ALTER TABLE sales ADD COLUMN requirements_json TEXT");
   if (!has("upstream_purchases", "supplier")) db.exec("ALTER TABLE upstream_purchases ADD COLUMN supplier TEXT");

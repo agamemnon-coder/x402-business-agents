@@ -33,7 +33,7 @@ describe("reconcile3", () => {
     const v = purserView(ledgerRows(w.db));
     const total = [...v.accounts.values()].reduce((s, c) => s + c, 0);
     expect(total).toBe(0);
-    const paid = [...v.documents.values()].find((d) => d.paid > 0)!;
+    const paid = [...v.documents.values()].find((d) => (d.paid ?? 0) > 0)!;
     expect(paid.paid).toBe(paid.gross);
   }, 60_000);
 });

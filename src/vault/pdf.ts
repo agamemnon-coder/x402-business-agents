@@ -77,7 +77,8 @@ export const ACCOUNT_NAMES_NL: Readonly<Record<string, string>> = {
   "4000": "Omzet: voorraaddata aan winkeliers", "4100": "Terugbetalingen aan klanten", "4200": "Omzet: groothandel aan winkeliers",
   "5000": "Ingekochte voorraaddata (warehouse-API)", "6100": "Softwareabonnementen (bedrijfskaarten)", "6150": "Advertenties (bedrijfskaarten)",
   "6200": "Goederen van de fabrikant", "6300": "Reiskosten (taakkaarten)", "6350": "Datalicentie (Stockline, maandelijks)",
-  "6800": "Bank- en overboekingskosten", "6900": "Overige inkoopfacturen", "8000": "Kostprijs van de omzet",
+  "6800": "Bank- en overboekingskosten", "6900": "Overige inkoopfacturen", "8000": "Kostprijs van de omzet", "2150": "Gesimuleerde financier (testnet): financiering van factuurtokens",
+  "7100": "Financieringskosten: korting op gefinancierde facturen", "7900": "Koersverschillen, gerealiseerd (winst of verlies)",
 };
 
 /** Why an invoice is blocked, in Dutch, by the finding's code (the code's own words stay the English; red team S7). */
