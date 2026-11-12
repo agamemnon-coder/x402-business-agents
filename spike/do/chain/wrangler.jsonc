@@ -1,0 +1,22 @@
+{
+  // SPIKE: the engine in one SQLite-backed Durable Object per company. Never deployed: built with
+  // `wrangler deploy --dry-run` and run in local workerd only.
+  "name": "purser-do-spike",
+  "main": "./engineWorker.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": { "bindings": [{ "name": "COMPANY", "class_name": "CompanyEngine" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CompanyEngine"] }],
+  // Two engine files (src/metal/agentCli.ts, src/metal/testFunds.ts) call resolve(import.meta.dirname, ...) as they
+  // load; a bundle has no such thing, so the load would throw. Nothing a payables company runs uses those paths.
+  // pdfkit's browser build (reached through src/ap/scan.ts, photo to PDF) builds a URL from import.meta.url as it
+  // loads, which workerd leaves undefined in a bundle: "Invalid URL string".
+  "define": { "import.meta.dirname": "\"/bundle\"", "import.meta.url": "\"file:///bundle/engineWorker.js\"" },
+  "alias": {
+    // The PDF text reader's stand-in (the other explorer's question) and the golden comparison's counted randomness.
+    "./pdfText.js": "./pdfTextStub.ts",
+    // A browser cannot run here (reached only through the Airi checkout executor, never by a payables company).
+    "playwright": "./stubPlaywright.ts",
+    "node:crypto": "./detCrypto.ts"
+  }
+}
