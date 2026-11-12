@@ -6,7 +6,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { proposeInvoicePayment, seedTreasury } from "../src/agents/euroBill.js";
 import { parseInvoiceFallback } from "../src/agents/invoice.js";
-import { describeTransferStatus, followTransfer, inAirwallexApproval } from "../src/airwallex/approvals.js";
+import { describeTransferStatus, followTransfer, inAirwallexApproval, transferOfInvoice } from "../src/airwallex/approvals.js";
+import { TWO_LOCKS_DEFAULT_INVOICE, twoLocksLedgerRefusal, twoLocksRefusals } from "../src/cli/twoLocksRefusals.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { approvalOrigin } from "../src/executors/index.js";
 import { executeInvoicePayment } from "../src/executors/invoicePayment.js";
@@ -88,6 +89,41 @@ describe("Airwallex's approval workflow as a second lock", () => {
     const c = checkEvent(db, "payout.transfer.approval_rejected", { id: transferId, status: "APPROVAL_REJECTED" });
     expect(c.agrees).toBe(false);
     expect(inAirwallexApproval("APPROVAL_BLOCKED")).toBe(true);
+  });
+
+  it("finds an invoice's transfer id on a ledger with two invoices, and none for an unknown invoice", async () => {
+    const { db, transferId } = await paidWithWorkflow(true);
+    db.prepare("INSERT INTO invoices (invoice_no, vendor, amount, currency, due_date, iban_sha256, bic, doc_sha256, status) VALUES ('SLL-2026-11B', 'Stockline Data GmbH', '240.00', 'EUR', '2026-12-01', 'x', 'BYLADEM1001', 'd', 'PAYING')").run();
+    db.prepare("INSERT INTO transfers (transfer_id, request_id, invoice_no, amount, currency, method, fee_estimate, status, approval_sha256, updated_at) VALUES ('tr-other', 'rq-other', 'SLL-2026-11B', '240.00', 'EUR', 'SWIFT', '20.00', 'IN_APPROVAL', 'h', 'now')").run();
+    expect(transferOfInvoice(db, "SLL-2026-11")).toBe(transferId);
+    expect(transferOfInvoice(db, "SLL-2026-11B")).toBe("tr-other");
+    expect(transferOfInvoice(db, "NO-SUCH-INVOICE")).toBeUndefined();
+  });
+});
+
+describe("two locks: which invoice the CLI follows, and when create refuses", () => {
+  const ready = { TWO_LOCKS_GO: "yes", AIRWALLEX_CALL_BUDGET: "6", AIRWALLEX_CALL_LOG: "/tmp/calls.jsonl", KIT11_DB: "/tmp/two-locks-licence.sqlite" };
+
+  it("refuses create when TWO_LOCKS_INVOICE names a ledger planned elsewhere, but follows and settles it", () => {
+    const env = { ...ready, TWO_LOCKS_INVOICE: "SLL-2026-11" };
+    expect(twoLocksRefusals("create", env).invoiceNo).toBe("SLL-2026-11");
+    expect(twoLocksRefusals("create", env).why).toContain("create only pays SLL-2026-11B with the virtual test passkey; a TWO_LOCKS_INVOICE ledger was planned elsewhere and is signed by a person");
+    expect(twoLocksRefusals("follow", env).why).toEqual([]);
+    expect(twoLocksRefusals("settle", env).why).toEqual([]);
+  });
+
+  it("defaults to SLL-2026-11B, for which create is not refused", () => {
+    expect(TWO_LOCKS_DEFAULT_INVOICE).toBe("SLL-2026-11B");
+    expect(twoLocksRefusals("create", ready)).toEqual({ invoiceNo: "SLL-2026-11B", why: [] });
+    expect(twoLocksRefusals("create", {}).why).toHaveLength(3);
+  });
+
+  it("refuses create on a ledger that already has an active passkey, so no virtual passkey sits beside a person's", () => {
+    const db = openDb(":memory:");
+    expect(twoLocksLedgerRefusal("create", db)).toBeUndefined();
+    db.prepare("INSERT INTO passkeys (credential_id, public_key, counter, rp_id, origin, label, registration_json, enrolled_at, status) VALUES ('c1', 'pk', 0, 'rp', 'https://rp', 'Max', '{}', 'now', 'ACTIVE')").run();
+    expect(twoLocksLedgerRefusal("create", db)).toMatch(/already has an active passkey \(Max\)/);
+    expect(twoLocksLedgerRefusal("follow", db)).toBeUndefined();
   });
 });
 
