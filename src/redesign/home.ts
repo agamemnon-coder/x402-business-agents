@@ -182,11 +182,12 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   // The full list behind the one provenance line: the main run's lines, the run the hero replays (its own note), what
   // step 4's receipt is (the file's own note), and the test behind the Metal row.
   const refusedAt = run.events.find((e) => e.k === "money")?.at ?? run.record.snapshot.flows[0]?.at ?? "";
+  // What Home shows first (the hero and its two Airwallex rows), then the Metal row and the main run it comes from.
   const real = [
-    ...MAIN_RUN_REAL,
     ...(awx && facts ? [`The hero's steps 1 to 3 and the two Airwallex rows: the Airwallex-only run (${awx.run}) of ${facts.date}. ${awx.note}`] : []),
     ...(receipt ? [receipt.kind === "recorded" ? `The hero's step 4 checks the published receipt of this approval in your browser: ${receipt.note}` : `The hero's step 4: ${receipt.note}`] : []),
     `The Metal row: the main run${refusedAt ? ` of ${dayMonth(refusedAt)}` : ""}. ${CHAIN_TEST}`,
+    ...MAIN_RUN_REAL,
   ];
   return page({
     title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, tab: "home", css: CSS + (hero ? HERO_DEMO_CSS : ""), body, js: JS + (hero ? HERO_DEMO_JS : ""), stage: false,

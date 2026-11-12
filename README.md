@@ -10,9 +10,10 @@ An approval is usually a button. In Purser it's a signature over the exact terms
 
 ## For reviewers in 30 seconds
 
-Purser is a control layer for AI agents that spend a company's money: within the limits the CFO sets they pay on
-their own, and above them nothing runs until the CFO's passkey signs a SHA-256 of the exact terms. The Kit 11 scenario, run live on 3 November. Starter Kit 11 · x402 Business Agents · entered for the Metal Award and the Visa Award.
-Northwind Outdoor, the example company, is an outdoor wholesaler that sells live stock data to retailers per query: the kit's data business.
+**What it is:** the control layer between a company's AI agents and its money on Airwallex and Metal, built for
+Starter Kit 11 (x402 Business Agents) and entered for the Metal Award and the Visa Award. Northwind Outdoor, the example
+company, is an outdoor wholesaler that sells live stock data to retailers per query: the kit's data business.
+The Kit 11 scenario, run live on 3 November, and the separate runs after it:
 
 | Rail | What ran live (Airwallex sandbox, Metal testnet, test money) | One id |
 |---|---|---|
@@ -128,6 +129,7 @@ On [/try/sign](https://kit11.max-31b.workers.dev/try/sign) the Treasury agent as
 - [docs/in-depth.md](docs/in-depth.md): where each judging criterion is proven, how a payment flows, the site in pictures, the proof per partner, the three live runs with every id, Try step by step, what is real and what is mock, the words
 - [The replay of the main run of 3 November](https://kit11.max-31b.workers.dev/watch): every step of that run, replayed (under Proof, not in the menu)
 - [docs/README.md](docs/README.md): every doc, grouped by reader (juror, builder, video)
+- [docs/run-it.md](docs/run-it.md): running it live, with sandbox keys and a Metal RPC
 - [docs/runs/](docs/runs/): every run log, dated
 - [docs/controls.md](docs/controls.md): every guard in code, its test, and what needs a person
 - [docs/claims.md](docs/claims.md): every claim in this repo and its source
@@ -137,8 +139,5 @@ On [/try/sign](https://kit11.max-31b.workers.dev/try/sign) the Treasury agent as
 - [docs/submission/README.md](docs/submission/README.md): the submission text, with the short Description
 - [docs/submission/long-description.md](docs/submission/long-description.md): the long form text it replaced, in full
 - [The Visa TAP note](docs/submission/long-description.md#visa): built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov)
-
-All money here is test money: the Airwallex sandbox and Metal testnet. Built with Claude (Anthropic) as the developer,
-directed and reviewed by Max Geurtsen. Licence: MIT.
 
 All money here is test money: the Airwallex sandbox and Metal testnet. Licence: MIT.

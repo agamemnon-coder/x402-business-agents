@@ -50,6 +50,28 @@ describe("docs/claims.md opens with the main run", () => {
     expect(flat).toContain("docs/demo/airwallex-run.json");
   });
 
+  it("each row's 'Where it is said' names README and docs/in-depth.md sections that exist, and the claim is there", () => {
+    const heads = (file: string) => read(file).split("\n").filter((l) => /^#{2,3} /.test(l)).map((l) => l.replace(/^#+ /, ""));
+    const files: Record<string, string[]> = { README: heads("README.md"), "docs/in-depth.md": heads("docs/in-depth.md") };
+    for (const r of rows) {
+      for (const m of r[3]!.matchAll(/(README|docs\/in-depth\.md), "([^"]+)"( and "([^"]+)")?/g)) {
+        for (const h of [m[2], m[4]].filter(Boolean) as string[]) expect({ claim: r[0], file: m[1], heading: h, found: files[m[1]!]!.includes(h) }).toEqual({ claim: r[0], file: m[1], heading: h, found: true });
+      }
+      // A bare "README" is not a place: every README citation names its section.
+      expect({ claim: r[0], bare: /\bREADME(?![,"]| ")(;|$)/.test(r[3]!) || /\bREADME;/.test(r[3]!) }).toEqual({ claim: r[0], bare: false });
+    }
+    // The ids the README's reviewers' table gives are the ones this table traces.
+    const readme = read("README.md");
+    for (const id of ["0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871", "01a1b5e8-6dc2-7000-95bf-c8fc5e6e2f38"]) {
+      expect(readme).toContain(id);
+      expect(flat).toContain(id);
+    }
+    // What moved to docs/in-depth.md is there: the main run's stops and its transfer.
+    const depth = read("docs/in-depth.md").replace(/\s+/g, " ");
+    expect(depth).toContain(row("Stops").value);
+    expect(depth).toContain("03360bfa-afce-457b-89d1-e1097fbe3985");
+  });
+
   it("each row names its run, or the code it is computed by", () => {
     expect(rows.length).toBeGreaterThanOrEqual(10);
     for (const r of rows) expect({ claim: r[0], named: /^(Main run|awx-1):|^Computed by|`[^`]+\.ts`/.test(r[2]!) }).toEqual({ claim: r[0], named: true });
