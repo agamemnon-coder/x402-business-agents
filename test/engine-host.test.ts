@@ -104,6 +104,9 @@ describe("the chain: one supplier invoice from upload to paid, booked and archiv
     expect(proposal.challenge).toBe(challengeFor(proposal.terms_sha256));
     expect(proposal.facts).toEqual(expect.arrayContaining([["Amount", "EUR 1,850.00"], ["Payee", "Bergtex Textil GmbH, IBAN …3000"], ["On the invoice", "“Total due EUR 1,850.00”"], ["Reason", "Goods purchased"]]));
     expect(proposal.facts.flat().join(" ")).not.toMatch(/\bph\.[a-z_]+/);
+    // The bank is the stand-in: no fact names Airwallex or its fee.
+    expect(proposal.facts).toEqual(expect.arrayContaining([["Bank fee (stand-in bank, test money)", expect.stringMatching(/^at most EUR /)]]));
+    expect(proposal.facts.flat().join(" ")).not.toMatch(/Airwallex/);
     expect(w.host.proposal("P-0001")).toEqual(proposal);
     expect(w.host.invoice("AP-0001")).toMatchObject({ status: "waiting_cfo", payable: false, proposal });
 

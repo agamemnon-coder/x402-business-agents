@@ -102,8 +102,11 @@ function termsFacts(terms: Record<string, unknown>, lang: "en" | "nl"): { facts:
   const g = globalThis as { PURSER_PHRASES?: unknown };
   g.PURSER_PHRASES ??= phonePhrases();
   const p = payablesFacts(terms, lang);
-  return { facts: [[t(lang, "ph.amount"), p.amount], ...p.first, ...p.details], warnings: p.warnings };
+  return { facts: [[t(lang, "ph.amount"), p.amount], ...p.first, ...p.details].map(([k, v]): [string, string] => [k === t(lang, "ph.bank_fee") ? STAND_IN_FEE[lang] : k, v]), warnings: p.warnings };
 }
+
+/** The phone page's fee label (ph.bank_fee) names Airwallex; the host's bank is the stand-in, so its facts name that instead. */
+const STAND_IN_FEE = { en: "Bank fee (stand-in bank, test money)", nl: "Bankkosten (nagebootste bank, testgeld)" } as const;
 
 const firstInvoice = (r: IngestResult): ApInvoiceRow | null =>
   r.kind === "invoice" ? r.invoice : r.kind === "email" ? r.results.map(firstInvoice).find((i) => i !== null) ?? null : null;
