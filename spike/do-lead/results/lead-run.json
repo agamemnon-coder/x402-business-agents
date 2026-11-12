@@ -1,13 +1,13 @@
 {
  "http": 200,
- "start_ms": 194,
- "total_ms": 6514,
+ "start_ms": 379,
+ "total_ms": 9024,
  "ok": true,
  "engine_run": {
   "status": 200,
-  "ms": 519,
+  "ms": 879,
   "open": {
-   "ms": 18,
+   "ms": 41,
    "statements": 58,
    "shim_added": 0,
    "rows_read": 3418,
@@ -18,7 +18,7 @@
    }
   },
   "seed": {
-   "ms": 4,
+   "ms": 6,
    "statements": 30,
    "shim_added": 11,
    "rows_read": 533,
@@ -29,18 +29,18 @@
    }
   },
   "enrol": {
-   "ms": 8,
+   "ms": 10,
    "statements": 22,
    "shim_added": 10,
    "rows_read": 19,
    "rows_written": 18,
    "value": {
     "status": "pending",
-    "confirmed": "pkSwP6_neOmFT5Y1JZRZYQ"
+    "confirmed": "yggpIsFp74KOrFvVgRUZdw"
    }
   },
   "ingest_real_pdf_reader": {
-   "ms": 72,
+   "ms": 147,
    "statements": 28,
    "shim_added": 3,
    "rows_read": 33,
@@ -58,7 +58,7 @@
    }
   },
   "propose": {
-   "ms": 18,
+   "ms": 45,
    "statements": 336,
    "shim_added": 13,
    "rows_read": 906,
@@ -67,34 +67,34 @@
     "proposal_id": "P-0001",
     "kind": "invoice_payment",
     "status": "PENDING_APPROVAL",
-    "terms_sha256": "55a2dd64767da6adcdc6db6c51ee1b6f6c5c3c614e661b7fb4344b9b764705e8",
+    "terms_sha256": "48101ea6e9fef1450310ca40e107cbde1e075c48217afac8758c4bcf3d0ca96f",
     "invoice_status": "waiting_cfo"
    }
   },
   "approve_signature_over_other_terms": {
-   "ms": 2,
+   "ms": 9,
    "statements": 5,
    "shim_added": 2,
    "rows_read": 3,
    "rows_written": 2,
    "value": {
     "status": "refused",
-    "message": "Unexpected authentication response challenge \"KpBZ3vyGsERE_Vbr5guFCQ-XBvGRTCGobNeyR8ffftc\", expected \"VaLdZHZ9pq3NxttsUe4bb2xcPGFOZht_tDRLm3ZHBeg\""
+    "message": "Unexpected authentication response challenge \"KpBZ3vyGsERE_Vbr5guFCQ-XBvGRTCGobNeyR8ffftc\", expected \"SBAepun-8UUDEMpA4QfL3h4HXEghevrIdYxLzz0MqW8\""
    }
   },
   "approve_signature_over_these_terms": {
-   "ms": 5,
+   "ms": 12,
    "statements": 289,
    "shim_added": 5,
    "rows_read": 337,
    "rows_written": 9,
    "value": {
     "status": "approved",
-    "message": "P-0001 approved with software passkey (not Face ID) (passkey pkSwP6_n)"
+    "message": "P-0001 approved with software passkey (not Face ID) (passkey yggpIsFp)"
    }
   },
   "execute": {
-   "ms": 8,
+   "ms": 26,
    "statements": 107,
    "shim_added": 30,
    "rows_read": 1463,
@@ -112,7 +112,7 @@
    }
   },
   "syncPayments": {
-   "ms": 1,
+   "ms": 6,
    "statements": 18,
    "shim_added": 3,
    "rows_read": 193,
@@ -125,7 +125,7 @@
    ]
   },
   "syncLedger": {
-   "ms": 11,
+   "ms": 23,
    "statements": 76,
    "shim_added": 22,
    "rows_read": 946,
@@ -140,7 +140,7 @@
    }
   },
   "feed_read_model_with_applySync": {
-   "ms": 64,
+   "ms": 121,
    "statements": 41,
    "shim_added": 0,
    "rows_read": 1719,
@@ -224,7 +224,7 @@
       }
      }
     ],
-    "ms": 64,
+    "ms": 121,
     "calls": {
      "d1": 18,
      "d1_statements": 68,
@@ -233,7 +233,7 @@
    }
   },
   "vault_into_r2": {
-   "ms": 50,
+   "ms": 60,
    "statements": 16,
    "shim_added": 2,
    "rows_read": 32,
@@ -249,7 +249,7 @@
    }
   },
   "vault_again_adds_nothing": {
-   "ms": 3,
+   "ms": 4,
    "statements": 14,
    "shim_added": 0,
    "rows_read": 30,
@@ -260,7 +260,7 @@
    }
   },
   "feed_again_only_what_is_new": {
-   "ms": 24,
+   "ms": 22,
    "statements": 41,
    "shim_added": 0,
    "rows_read": 1698,
@@ -307,7 +307,7 @@
       }
      }
     ],
-    "ms": 24,
+    "ms": 22,
     "calls": {
      "d1": 14,
      "d1_statements": 14,
@@ -316,7 +316,7 @@
    }
   },
   "one_row_of_5MB": {
-   "ms": 12,
+   "ms": 10,
    "statements": 0,
    "shim_added": 0,
    "rows_read": 0,
@@ -324,7 +324,7 @@
    "value": "accepted"
   },
   "document_of_15MB_in_pieces": {
-   "ms": 116,
+   "ms": 225,
    "statements": 0,
    "shim_added": 0,
    "rows_read": 0,
@@ -338,12 +338,12 @@
    "audit": {
     "ok": true,
     "rows": 23,
-    "head": "1ae09e9e52527c534ba4a751ac1b9af222bee13dde52989d79677d027f5772e3"
+    "head": "2065460a0b3474858696a32530ab20e9c55029139477bac317bfd0d2761e31c2"
    },
    "ledger": {
     "ok": true,
     "entries": 7,
-    "head": "f6bdf47d0eb0b6a92e04f91f26a58058e96c5a565295d8849324f62bc24b234d"
+    "head": "4bae082cdbfe8e96a14e253c8bdf3e2622ebcf0cbddfa92c548049e9a0ae3c59"
    }
   },
   "sqlite_bytes": 21762048,
@@ -395,21 +395,152 @@
   "Lead Probe (test)/2026/Leveranciers 2026-11-12.pdf",
   "Lead Probe (test)/2026/index.json"
  ],
+ "catches_by_the_engines_own_checks": {
+  "status": 200,
+  "same_file_again": {
+   "kind": "duplicate_document"
+  },
+  "renumbered_copy_same_total": {
+   "kind": "invoice",
+   "id": "AP-0002",
+   "status": "needs_review",
+   "invoice_no": "BTX-2026-17",
+   "findings": [
+    "review:possible_duplicate"
+   ]
+  },
+  "changed_bank_details": {
+   "kind": "invoice",
+   "id": "AP-0003",
+   "status": "needs_review",
+   "invoice_no": "BTX-2027-01",
+   "findings": [
+    "review:country_not_paid"
+   ]
+  },
+  "pay_the_stopped_invoice": {
+   "threw": "AP-0003 is needs review, not ready to pay: Purser has no payout guide for bank country LT yet; a person pays this supplier, or adds the country from Airwallex's payout network guide; a person pays thi"
+  },
+  "proposals": 1,
+  "feed": {
+   "batches": 2,
+   "batch_bytes": 18365,
+   "applied": [
+    {
+     "documents": {
+      "added": 2,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "vendors": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "invoices": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "payments": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "transactions": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "ledger_entries": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "audit_rows": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     }
+    },
+    {
+     "documents": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "vendors": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 2
+     },
+     "invoices": {
+      "added": 2,
+      "changed": 0,
+      "unchanged": 1
+     },
+     "payments": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 1
+     },
+     "transactions": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 3
+     },
+     "ledger_entries": {
+      "added": 1,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "audit_rows": {
+      "added": 5,
+      "changed": 0,
+      "unchanged": 0
+     }
+    }
+   ],
+   "ms": 116,
+   "calls": {
+    "d1": 23,
+    "d1_statements": 33,
+    "r2": 4
+   }
+  },
+  "chains": {
+   "audit": {
+    "ok": true,
+    "rows": 28,
+    "head": "b176b4972b670c6bb400f03733e82babc5430e2b6f05c1e11c933d377082b8a2"
+   },
+   "ledger": {
+    "ok": true,
+    "entries": 8,
+    "head": "144de1fa34cd233780cc98b71e0740397cd685b4b588bde5a1dc15be6caefa42"
+   }
+  }
+ },
+ "console_invoices_with_the_catches": [
+  "AP-0001 paid BTX-2026-21",
+  "AP-0002 needs_review BTX-2026-17",
+  "AP-0003 needs_review BTX-2027-01"
+ ],
  "after_dropping_the_objects_memory": {
   "status": 200,
   "bank_restored_from_sqlite": true,
-  "reopened_ms": 8,
+  "reopened_ms": 3,
   "transfers_the_bank_still_knows": 1,
   "bank_eur_available_cents": 3350660,
   "syncPayments_changed": 0,
   "syncLedger": {
    "posted": 0,
-   "already": 7,
+   "already": 8,
    "reversed": 0
   },
   "feed": {
    "batches": 1,
-   "batch_bytes": 5693,
+   "batch_bytes": 9723,
    "applied": [
     {
      "documents": {
@@ -425,7 +556,7 @@
      "invoices": {
       "added": 0,
       "changed": 0,
-      "unchanged": 1
+      "unchanged": 3
      },
      "payments": {
       "added": 0,
@@ -449,10 +580,10 @@
      }
     }
    ],
-   "ms": 21,
+   "ms": 33,
    "calls": {
-    "d1": 13,
-    "d1_statements": 13,
+    "d1": 17,
+    "d1_statements": 17,
     "r2": 0
    }
   },
@@ -460,17 +591,19 @@
   "chains": {
    "audit": {
     "ok": true,
-    "rows": 23,
-    "head": "1ae09e9e52527c534ba4a751ac1b9af222bee13dde52989d79677d027f5772e3"
+    "rows": 28,
+    "head": "b176b4972b670c6bb400f03733e82babc5430e2b6f05c1e11c933d377082b8a2"
    },
    "ledger": {
     "ok": true,
-    "entries": 7,
-    "head": "f6bdf47d0eb0b6a92e04f91f26a58058e96c5a565295d8849324f62bc24b234d"
+    "entries": 8,
+    "head": "144de1fa34cd233780cc98b71e0740397cd685b4b588bde5a1dc15be6caefa42"
    }
   }
  },
  "console_invoices_afterwards": [
-  "AP-0001 paid"
+  "AP-0001 paid",
+  "AP-0002 needs_review",
+  "AP-0003 needs_review"
  ]
 }

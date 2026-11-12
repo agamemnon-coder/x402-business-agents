@@ -44,8 +44,10 @@ import { FakeAuthenticator } from "../../src/redteam/authenticator.js";
 import { syncVault } from "../../src/vault/build.js";
 import { sha256 as sha256Of, type VaultSink } from "../../src/vault/sink.js";
 import invoicePdf from "./fixtures/bergtex.pdf";
+import bankChangePdf from "./fixtures/bankchange.pdf";
+import renumberedPdf from "./fixtures/renumbered.pdf";
 
-interface EngineStub { runChain(tenantId: string, opts?: { bigDoc?: boolean }): Promise<unknown>; again(tenantId: string): Promise<unknown>; rows(): Promise<unknown> }
+interface EngineStub { runChain(tenantId: string, opts?: { bigDoc?: boolean }): Promise<unknown>; catches(tenantId: string): Promise<unknown>; again(tenantId: string): Promise<unknown>; rows(): Promise<unknown> }
 interface Env extends Bindings { ENGINE: { idFromName(name: string): { toString(): string }; get(id: unknown): EngineStub } }
 
 const parserOnly = { ask: async (_a: unknown, fallback: () => unknown) => ({ value: fallback(), source: "fallback", model: null, note: "no key" }) } as unknown as Asker;
@@ -214,6 +216,30 @@ export class Engine extends DurableObject<Env> {
     return out;
   }
 
+  /** The catches, by the engine's own checks in this object: the same file again, a renumbered copy, changed bank details. */
+  async catches(tenantId: string): Promise<unknown> {
+    const { db, awx } = this.open();
+    const now = () => new Date();
+    const file = async (bytes: ArrayBuffer, filename: string) => {
+      const r = await ingestDocument(db, { dir: "/do", reader: parserOnly, now }, { bytes: Buffer.from(bytes), filename, source: "upload" });
+      if (r.kind !== "invoice") return { kind: r.kind };
+      const i = r.invoice;
+      return { kind: r.kind, id: i.id, status: i.status, invoice_no: i.invoice_no, findings: i.findings.map((f) => `${f.level}:${f.code}`) };
+    };
+    const out: Record<string, unknown> = {};
+    out.same_file_again = await file(invoicePdf, "bergtex-BTX-2026-21 (copy).pdf");
+    out.renumbered_copy_same_total = await file(renumberedPdf, "bergtex-BTX-2026-17.pdf");
+    const changed = (out.changed_bank_details = await file(bankChangePdf, "bergtex-BTX-2027-01.pdf")) as { id?: string };
+    // Paying the stopped one: the engine refuses before any proposal exists.
+    if (changed.id) out.pay_the_stopped_invoice = await payApInvoice(db, awx, changed.id, now()).then((r) => (r.kind === "proposed" ? { kind: r.kind } : { kind: r.kind, reason: r.reason.slice(0, 200) }), (e: Error) => ({ threw: e.message.slice(0, 200) }));
+    out.proposals = (db.prepare("SELECT COUNT(*) AS n FROM proposals").get() as { n: number }).n;
+    this.keepBank();
+    syncLedger(db, now());
+    out.feed = await this.feed(db, tenantId, now());
+    out.chains = { audit: verifyAuditChain(db), ledger: verifyLedger(db) };
+    return out;
+  }
+
   /** As after an eviction: the handle and the bank are dropped and rebuilt from this object's SQLite; then the engine goes on. */
   async again(tenantId: string): Promise<unknown> {
     this.db = null; this.shim = null; this.awx = null;
@@ -248,6 +274,7 @@ async function engineRoute(req: Request, env: Env): Promise<Response> {
   const url = new URL(req.url);
   try {
     if (url.pathname === "/v1/engine/run" && req.method === "POST") { need(caller, "admin"); return json(await stubFor(env, caller.tenantId).runChain(caller.tenantId, { bigDoc: url.searchParams.get("big") === "1" })); }
+    if (url.pathname === "/v1/engine/catches" && req.method === "POST") { need(caller, "admin"); return json(await stubFor(env, caller.tenantId).catches(caller.tenantId)); }
     if (url.pathname === "/v1/engine/again" && req.method === "POST") { need(caller, "admin"); return json(await stubFor(env, caller.tenantId).again(caller.tenantId)); }
     if (url.pathname === "/v1/engine/rows") { need(caller, "read"); return json(await stubFor(env, caller.tenantId).rows()); }
   } catch (e) { return json({ error: (e as Error).message, stack: String((e as Error).stack).split("\n").slice(0, 10) }, e instanceof AuthError ? 403 : 500); }
@@ -297,6 +324,9 @@ async function scenario(env: Env): Promise<Response> {
     out.other_company_sees = { invoices: (await get("/v1/invoices", b.session)).body.items?.length, engine_rows: (await get("/v1/engine/rows", b.session)).body };
     const vault = await r2Blobs(env.DOCS).list(`t/${a.tenantId}/vault/`);
     out.vault_objects_in_r2 = vault.map((k) => k.slice(`t/${a.tenantId}/vault/`.length));
+    const caught = await call("/v1/engine/catches", { method: "POST", token: a.session });
+    out.catches_by_the_engines_own_checks = { status: caught.status, ...((await caught.json()) as object) };
+    out.console_invoices_with_the_catches = (await get("/v1/invoices")).body.items?.map((i) => `${String(i.id)} ${String(i.status)} ${String(i.invoice_no)}`);
     const again = await call("/v1/engine/again", { method: "POST", token: a.session });
     out.after_dropping_the_objects_memory = { status: again.status, ...((await again.json()) as object) };
     out.console_invoices_afterwards = (await get("/v1/invoices")).body.items?.map((i) => `${String(i.id)} ${String(i.status)}`);

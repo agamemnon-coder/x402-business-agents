@@ -13,4 +13,10 @@ What ran (local workerd through wrangler 4.155.0, nodejs_compat, a SQLite-backed
 - Node tests of the modules the merged tree touches: 18 files, 196 tests pass (vault-*, ap-inbox, ap-pay, ap-detail,
   ap-migration, ap-redteam2, cloud-sync, cloud-core, executors-dispatch, passkey, payment-batch, rt4-web).
 
+- The catches, in the object and on better-sqlite3 in Node (`npx tsx spike/do-lead/tools/node-catches.ts`), same answers in both:
+  the same file again is `duplicate_document`; a renumbered copy with the same total is `needs_review` with
+  `possible_duplicate`; the repository's changed-bank-details fixture is `needs_review` with `country_not_paid`
+  (not `possible_fraud`: the demo's scenarios should pick their catch invoices by what the checks answer).
+- The two runtime probes not covered by the joined one, re-run: `node spike/do-runtime/run.mjs p5-claude p6-airwallex`, both HTTP 200.
+
 One engine change beyond the explorers': `src/vault/build.ts` reads a filed document through the document store seam.
