@@ -26,6 +26,8 @@ export interface TryConfig {
   claude?: boolean;
   /** Whether the Airwallex sandbox leg is wired and its key set (C9): the switch alone never says "on". */
   railAwx?: boolean;
+  /** The bot check's HMAC secret (TRY_BOTCHECK_SECRET, a Worker secret); with the switch bot_check on and no secret, starts are refused. */
+  botSecret?: string;
 }
 
 export const TRY_PREFIX = "t_try_";

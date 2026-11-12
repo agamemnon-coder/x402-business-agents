@@ -14,7 +14,7 @@ import { canonicalTerms, termsHash, type Terms } from "../src/lib/terms.js";
 import { challengeFor } from "../src/passkey/webauthn.js";
 import { SyncBatch } from "../cloud/src/sync.js";
 import { FakeAuthenticator } from "../src/redteam/authenticator.js";
-import { importGraph } from "./support/importGraph.js";
+import { bundleGraph } from "./support/bundleGraph.js";
 import { ADMIN_TOKEN, ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
 
 interface Proposal { id: string; status: string; terms_sha256: string; challenge: string }
@@ -235,7 +235,7 @@ describe("the export", () => {
 describe("the import graph", () => {
   it("the pay route and the engine host reach the simulated bank only, never the Airwallex sandbox client", async () => {
     for (const entry of ["cloud/src/try/engineRoutes.ts", "src/engine/host.ts", "cloud/src/engine/node.ts"]) {
-      const files = importGraph(entry).files;
+      const files = [...(await bundleGraph(entry))];
       expect(files.length, entry).toBeGreaterThan(5);
       expect(files.filter((f) => /src\/rails\/sandboxPayout|cloud\/src\/try\/rail/.test(f)), entry).toEqual([]);
     }

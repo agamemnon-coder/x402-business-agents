@@ -43,6 +43,8 @@ export interface Bindings {
   ENGINE_CLAUDE?: string;
   /** The demo's own capped Claude key (a secret, set by hand on purser-try); only whether it is set is read here. */
   KIT11_ANTHROPIC_API_KEY?: string;
+  /** The hands-on demo's bot check secret (cloud/src/try/botCheck.ts); a secret set by hand, read only by that check. */
+  TRY_BOTCHECK_SECRET?: string;
 }
 
 /** The part of the Workers runtime's ExecutionContext used here: work that may finish after the answer is sent. */
@@ -55,7 +57,7 @@ function envOf(b: Bindings): CloudEnv {
   return { sql, blobs: b.DOCS ? r2Blobs(b.DOCS) : sqlBlobs(sql), sessionSecret: b.SESSION_SECRET, adminTokenSha256: b.ADMIN_TOKEN_SHA256 ?? "", rpId: b.RP_ID, origin: b.ORIGIN, mailDomain: b.MAIL_DOMAIN ?? "",
     version: b.VERSION ?? "dev", outbound: (url: string, init: RequestInit) => fetch(url, init),
     ...(assets ? { asset: async (path: string) => assets.fetch(new Request(new URL(path, b.ORIGIN))) } : {}),
-    ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE ? { engine: engineStubs(b.ENGINE), ...(b.HANDS_ON === "on" ? { tryIt: { claude: b.ENGINE_CLAUDE === "on" && !!b.KIT11_ANTHROPIC_API_KEY } } : {}) } : {}),
+    ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE ? { engine: engineStubs(b.ENGINE), ...(b.HANDS_ON === "on" ? { tryIt: { claude: b.ENGINE_CLAUDE === "on" && !!b.KIT11_ANTHROPIC_API_KEY, ...(b.TRY_BOTCHECK_SECRET ? { botSecret: b.TRY_BOTCHECK_SECRET } : {}) } } : {}) } : {}),
     edge: { stats: b.STATS !== "off" } };
 }
 
