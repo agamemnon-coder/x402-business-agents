@@ -53,6 +53,13 @@ function contentHash(kind: Versioned, row: Row): string {
 export async function feedCloud(db: DB, target: FeedTarget, now: Date = new Date(), opts: { all?: boolean } = {}): Promise<FeedResult> {
   if (has(db, "ledger_entries")) syncLedger(db, now);
   const state = await target.state();
+  // The read model is this engine's alone: where it stands must be a point of this ledger's own chains. A read model a
+  // runner pushes (or another ledger fed) is refused before anything is sent, so a test-money invoice never replaces a
+  // company's own one of the same id.
+  const head = (sql: string, at: number) => (db.prepare(sql).get(at) as { h: string } | undefined)?.h ?? null;
+  const ours = (state.audit.seq === 0 || (has(db, "audit_log") && head("SELECT row_hash AS h FROM audit_log WHERE seq = ?", state.audit.seq) === state.audit.hash))
+    && (state.ledger.entry_id === 0 || (has(db, "ledger_entries") && head("SELECT entry_hash AS h FROM ledger_entries WHERE entry_id = ?", state.ledger.entry_id) === state.ledger.hash));
+  if (!ours) throw new Error("the company's read model was not written by this engine (a runner pushes it): nothing was sent");
   // The feed's own table, made here and not in the engine's schema: a ledger that is never fed has none.
   db.exec("CREATE TABLE IF NOT EXISTS cloud_feed_sent (kind TEXT, id TEXT, sha256 TEXT, PRIMARY KEY (kind, id))");
   const known = new Map<string, string>();

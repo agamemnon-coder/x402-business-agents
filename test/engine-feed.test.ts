@@ -3,19 +3,25 @@
 // costs the cloud's database only for what changed. Here: an EngineHost on better-sqlite3 in memory (the stand-in
 // bank on test money, the parser as reader, a software passkey) and the test cloud. Nothing reaches the network.
 import { createHash } from "node:crypto";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cloudTarget } from "../cloud/src/engine/target.js";
 import type { Sql } from "../cloud/src/store.js";
 import { syncState } from "../cloud/src/sync.js";
 import { TenantDb } from "../cloud/src/tenant.js";
 import { useDocStore, type DocStore } from "../src/ap/docStore.js";
+import { ingestDocument } from "../src/ap/inbox.js";
+import { audit } from "../src/audit/log.js";
+import { pushToCloud } from "../src/cloudsync/client.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { feedCloud, type FeedTarget } from "../src/engine/feed.js";
 import { EngineHost, parserOnly } from "../src/engine/host.js";
 import { bankToText, standInBank } from "../src/engine/standInBank.js";
 import { transactionRegister } from "../src/money/register.js";
 import { FakeAuthenticator } from "../src/redteam/authenticator.js";
-import { EN } from "./fakes/apInvoices.js";
+import { EN, NL } from "./fakes/apInvoices.js";
 import { pdfOf } from "./fakes/pdf.js";
 import { ORIGIN, RP, testCloud, type TestCloud, type TestTenant } from "./support/cloud.js";
 
@@ -246,5 +252,28 @@ describe("what was sent is remembered only once the cloud took it", () => {
     expect(rows.filter((r) => r.kind === "invoices").map((r) => r.id)).toEqual(["AP-0001"]);
     for (const r of rows) expect(r.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(rows).toHaveLength(1 + 1 + transactionRegister(w.db).rows.length + count(w.db, "beneficiaries"));
+  });
+});
+
+describe("the feed writes only a read model that this engine wrote", () => {
+  it("refuses a company whose read model a runner pushes, and sends nothing: the runner's AP-0001 stays its own", async () => {
+    // A runner's ledger, pushed the way a runner pushes: its own AP-0001 and a longer audit chain than the engine's.
+    const runner = openDb(":memory:");
+    const dir = mkdtempSync(join(tmpdir(), "runner-"));
+    await ingestDocument(runner, { dir, reader: parserOnly, now: () => NOW }, { bytes: await pdfOf(NL), filename: "zeeland.pdf", source: "upload" });
+    for (let i = 0; i < 300; i++) audit(runner, "human", "test.note", "x", { i }, NOW);
+    await pushToCloud(runner, { url: "https://cloud.test", key: tenant.key, fetch: c.fetch }, NOW);
+    const before = await invoices();
+    expect(before).toEqual([expect.objectContaining({ id: "AP-0001", vendor: "Zeeland Verpakkingen B.V." })]);
+    const docs = await tdb.count("documents");
+
+    const w = world({ feed: true });
+    await w.host.seed();
+    await w.host.upload({ bytes: await pdfOf(EN), filename: "bergtex-BTX-2026-21.pdf" });
+    await expect(feedCloud(w.db, target, NOW)).rejects.toThrow(/not written by this engine/);
+    expect(await w.host.sync()).toMatchObject({ fed: false, error: expect.stringMatching(/not written by this engine/) });
+    expect(await invoices()).toEqual(before);
+    expect(await tdb.count("documents")).toBe(docs);
+    expect(w.db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'cloud_feed_sent'").get()).toBeUndefined();
   });
 });
