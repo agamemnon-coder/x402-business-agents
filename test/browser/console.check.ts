@@ -147,6 +147,8 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
   ok(await p.evaluate(() => document.documentElement.scrollWidth) <= width, `${tag}: nothing wider than ${width} px`);
   ok((await p.textContent(".trust"))!.includes(tr("en", "cs.trust_works")) && (await p.textContent(".trust"))!.includes(tr("en", "cs.trust_test")), `${tag}: the trust line`);
   ok(await p.locator("header .brand .mk svg").count() === 1, `${tag}: the brand's feather mark`);
+  // 12 Nov: signed out too, the test-money chip is on the page, in the console's bar under the site's header.
+  ok(await p.isVisible(".appbar .test") && !(await p.isVisible(".appbar .apptabs")), `${tag}: signed out, the test-money chip shows (the pages do not)`);
   if (shots) { await p.waitForTimeout(5800); await p.screenshot({ path: join(shots, `console-signin-${width}-${scheme}.png`) }); }
   ok(errs.length === 0, `${tag}: no console or CSP errors${errs.length ? `: ${errs.join(" | ")}` : ""}`);
   await c.close();
@@ -404,10 +406,12 @@ async function engineUpload(E: EnginePass) {
   await p.goto(`${E.origin}/#/invoices`);
   await p.waitForSelector("#work");
   await p.waitForSelector("#eng-file", { state: "attached" });
-  ok((await p.textContent("header .test .tl"))?.trim() === "Engine: test money", "engine pass: the header's test-money chip reads \"Engine: test money\"");
+  // 12 Nov: the test-money chip sits in the console's own bar (.appbar) under the site's header (cloud/src/siteHeader.ts).
+  ok((await p.textContent(".appbar .test .tl"))?.trim() === "Engine: test money", "engine pass: the header's test-money chip reads \"Engine: test money\"");
   ok(/stand-in bank.*Nothing is sent to Airwallex/.test((await p.textContent("#foot")) ?? ""), "engine pass: the footer says the engine pays on a stand-in bank and nothing goes to Airwallex");
-  ok(/stand-in bank.*no real money.*nothing is sent to Airwallex/.test((await p.getAttribute("header .test", "title")) ?? ""), "engine pass: the chip's title says the stand-in bank, no real money, nothing sent to Airwallex");
-  ok((await p.$$("header .test")).length === 1, "engine pass: one chip in the header, not two");
+  ok(/stand-in bank.*no real money.*nothing is sent to Airwallex/.test((await p.getAttribute(".appbar .test", "title")) ?? ""), "engine pass: the chip's title says the stand-in bank, no real money, nothing sent to Airwallex");
+  ok((await p.$$(".appbar .test")).length === 1 && (await p.$$("header .test")).length === 0, "engine pass: one chip in the header, not two");
+  ok(await p.isVisible(".appbar .test"), "engine pass: signed in, the test-money chip is visible");
 
   await p.setInputFiles("#eng-file", { name: "bergtex-BTX-2026-21.pdf", mimeType: "application/pdf", buffer: E.pdf });
   ok(await p.isDisabled("#view .drop.eng button"), "engine pass: while the upload runs its button is disabled");
@@ -440,8 +444,9 @@ async function engineUpload(E: EnginePass) {
   ok(over <= 0, `engine pass: the Invoices page at 390 px is no wider than the phone (${over} px over)`);
   const head = await p.evaluate(() => {
     // (No named function in here: the bundler would wrap it in a helper the page does not have.)
-    const chip = document.querySelector("header .test")!.getBoundingClientRect(), brand = document.querySelector("header .brand")!.getBoundingClientRect();
-    return { sameRow: Math.abs(chip.top - brand.top) < 12, inView: chip.right <= window.innerWidth, label: getComputedStyle(document.querySelector("header .test .tl")!).display };
+    // 12 Nov: the first row of the console's bar (.appbar), beside the company and sign-out; the brand is the site header's now.
+    const chip = document.querySelector(".appbar .test")!.getBoundingClientRect(), brand = document.querySelector(".appbar .who-am-i")!.getBoundingClientRect();
+    return { sameRow: Math.abs(chip.top - brand.top) < 12, inView: chip.right <= window.innerWidth, label: getComputedStyle(document.querySelector(".appbar .test .tl")!).display };
   });
   ok(head.sameRow && head.inView && head.label === "none", `engine pass: at 390 px the chip keeps to the header's first row as an icon, as before (${JSON.stringify(head)})`);
   await p.setViewportSize({ width: 1440, height: 1000 });
