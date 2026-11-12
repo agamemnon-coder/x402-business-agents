@@ -65,6 +65,8 @@
     "dispute": "tsx src/cli/dispute.ts",
     "video": "tsx src/cli/video.ts",
     "agent-evals": "tsx src/cli/agentEvals.ts",
+    "ap-agent-evals": "tsx src/cli/apAgentEvals.ts",
+    "ap-hostile-eval": "tsx src/cli/apHostile.ts",
     "coder-evals": "tsx src/cli/coderEvals.ts",
     "budget": "tsx src/cli/budget.ts",
     "payables": "tsx src/cli/payables.ts",

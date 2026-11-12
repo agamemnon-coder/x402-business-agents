@@ -34,6 +34,6 @@ export function claudeAccess(o: {
   return {
     reserve: async () => (client ? (await spend()).reserve() : { ok: false, reason: "no_key" }),
     reader: (db, budget) => new ClaudeReader(db, client, Date.now, {}, { budget, maxTokens: READER_MAX_TOKENS, announce: true }),
-    status: async () => (client ? (await spend()).status() : { on: false, cap_micros: null }),
+    status: async () => (client ? (await spend()).status() : { on: false, cap_micros: null, spent_micros: null }),
   };
 }

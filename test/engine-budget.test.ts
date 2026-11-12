@@ -3,7 +3,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { ClaudeReader, MODELS } from "../src/claude/reader.js";
+import { ClaudeReader, MODELS, PDF_PAGES_BOUND } from "../src/claude/reader.js";
+import { SCAN_MAX_PAGES } from "../src/ap/scan.js";
 import { callCostMicros } from "../src/claude/pricing.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { useDocStore } from "../src/ap/docStore.js";
@@ -21,16 +22,16 @@ const Reading = z.object({ vendor: z.string(), total: z.string() });
 const fallback = () => ({ vendor: "from the parser", total: "0.00" });
 const ask = { task: "ap.read:test", role: "act" as const, actor: "treasury" as const, schema: Reading, instruction: "Read this invoice.", document: "Bergtex Textil GmbH, total EUR 1,850.00" };
 
-interface Seen { model: string; max_tokens: number; chars: number }
+interface Seen { model: string; max_tokens: number; chars: number; fallbacks?: unknown; beta: string | null }
 /** A fetch that answers every call with a reading and the usage `usage(body)` says, and records what it was asked. */
 function standIn(usage: (b: { max_tokens: number; chars: number }) => { input: number; output: number } = () => ({ input: 1200, output: 80 }), answer: (schemaKeys: string[]) => unknown = () => ({ vendor: "Bergtex Textil GmbH", total: "1850.00" })) {
   const seen: Seen[] = [];
   let n = 0;
   const f = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const req = new Request(input as RequestInfo, init);
-    const body = (await req.json()) as { model: string; max_tokens: number; output_config?: { format?: { schema?: { properties?: Record<string, unknown> } } } };
+    const body = (await req.json()) as { model: string; max_tokens: number; fallbacks?: unknown; output_config?: { format?: { schema?: { properties?: Record<string, unknown> } } } };
     const chars = JSON.stringify(body).length;
-    seen.push({ model: body.model, max_tokens: body.max_tokens, chars });
+    seen.push({ model: body.model, max_tokens: body.max_tokens, chars, fallbacks: body.fallbacks, beta: req.headers.get("anthropic-beta") });
     const u = usage({ max_tokens: body.max_tokens, chars });
     return new Response(JSON.stringify({
       id: `msg_${++n}`, type: "message", role: "assistant", model: body.model, stop_reason: "end_turn", stop_sequence: null,
@@ -110,6 +111,27 @@ describe("the reader's options for the engine (budget, maxTokens, announce)", ()
     expect(1_000_000 - budget.left()).toBeLessThanOrEqual(worstCaseMicros(MODELS.act, 4_000, 100_000));
   });
 
+  it("asks for no server-side fallback under a budget (a second, dearer attempt the ceiling cannot see); a runner keeps it", async () => {
+    const budgeted = standIn();
+    await new ClaudeReader(openDb(":memory:"), budgeted.client, Date.now, {}, { budget: actionBudget(1_000_000) }).ask(ask, fallback);
+    expect(budgeted.seen[0]).toMatchObject({ fallbacks: undefined });
+    expect(budgeted.seen[0]!.beta ?? "").not.toMatch(/server-side-fallback/);
+    const runner = standIn();
+    await new ClaudeReader(openDb(":memory:"), runner.client).ask(ask, fallback);
+    expect(runner.seen[0]).toMatchObject({ fallbacks: "default" });
+  });
+
+  it("bounds a scan by its pages, not its bytes: a small PDF of 3 pages is counted at 3 pages' worth", async () => {
+    const db = openDb(":memory:");
+    const s = standIn();
+    // Just enough for the bytes of a 3 KB file, far too little for 3 pages read as images.
+    const budget = actionBudget(worstCaseMicros(MODELS.act, 4_000, 20_000));
+    const r = await new ClaudeReader(db, s.client, Date.now, {}, { budget, maxTokens: 4_000 }).askPdf({ task: "ap.scan", role: "act", actor: "treasury", schema: Reading, instruction: "Read.", pdf: new Uint8Array(3_000) }, fallback);
+    expect(s.seen).toHaveLength(0);
+    expect(r.source).toBe("fallback");
+    expect(PDF_PAGES_BOUND).toBe(SCAN_MAX_PAGES);
+  });
+
   it("bounds a call's worst case from the price list, and cannot bound a model it has no price for", () => {
     expect(worstCaseMicros(MODELS.act, 4_000, 3_000)).toBeGreaterThan(callCostMicros(MODELS.act, { input: 1_000, output: 4_000, cache_read: 0, cache_write: 0 })!);
     expect(worstCaseMicros("claude-unknown", 1, 1)).toBe(Infinity);
@@ -147,7 +169,7 @@ function access(o: { refuse?: CappedReason; micros?: number; client?: Anthropic 
       return { ok: true, reservation: { micros: o.micros ?? 250_000, settle: async (m: number) => { log.settled.push(m); } } };
     },
     reader: (db, budget) => new ClaudeReader(db, client, Date.now, {}, { budget, maxTokens: 4_000, announce: true }),
-    status: async () => ({ on: !o.refuse, cap_micros: 400_000 }),
+    status: async () => ({ on: !o.refuse, cap_micros: 400_000, spent_micros: null }),
   };
   return { access: a, log };
 }
@@ -201,7 +223,12 @@ describe("the engine's actions with Claude under caps (src/engine/host.ts)", () 
     await h.upload({ bytes: await pdfOf(EN), filename: "bergtex.pdf" });
     const st = await h.status();
     expect(st).toMatchObject({ reader: "claude", agents: "code", cap_micros: 400_000 });
+    // Without the cloud's own figure, what this ledger's rows say.
     expect(st.spent_micros).toBeGreaterThan(0);
+    // With it, the cloud's figure: it also holds calls counted at their worst case and stale reservations.
+    const { access: b } = access();
+    const withSpend = host({ ...b, status: async () => ({ on: true, cap_micros: 400_000, spent_micros: 123_456 }) });
+    expect(await withSpend.host.status()).toMatchObject({ reader: "claude", spent_micros: 123_456 });
     expect(await host().host.status()).toMatchObject({ reader: "parser", agents: "code", spent_micros: 0, cap_micros: null });
   });
 

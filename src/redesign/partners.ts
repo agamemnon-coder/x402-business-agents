@@ -7,7 +7,7 @@
 // Every figure from the record (src/redesign/run.ts), the TAP run's record or the read-back records; logos only as "built on",
 // never a Visa logo. No script. Also the clean 404 page.
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { SANDBOX_SETTLED, SPLIT_LINE, VISA_CLAIM, VISA_TAP_STATUS } from "../config/brand.js";
 import { airwallexData } from "../partners/data.js";
 import { agentRun, callBadge, cardRaiseOf, decisionsOf, faceIdDecisions, family, fxOf, ownTap, payments, split, stops, tapRun, timings, type AgentRun, type Ev } from "./run.js";
@@ -260,6 +260,27 @@ export function visaPage(run: AgentRun = agentRun()): string {
   });
 }
 
+/** The hostile-model eval's record (jury panel, 12 Nov): a script in Claude's place, run in CI (npm run ap-hostile-eval). */
+export const HOSTILE_RECORD_FILE = "docs/evals/ap-hostile.json";
+
+/**
+ * /claude's line from that record, as a visitor reads it; "" when there is no record. It names its scope (review round
+ * 1, 12 Nov: the page shows the three Kit 11 agents, and the eval is of the payables agents): the agents and the number
+ * of test invoices, counted from the record's cases.
+ */
+export function hostileClaimText(file = HOSTILE_RECORD_FILE): string {
+  const url = new URL(`../../${file}`, import.meta.url);
+  if (!existsSync(url)) return "";
+  const { line, cases } = JSON.parse(readFileSync(url, "utf8")) as { line?: string; cases?: unknown[] };
+  return line ? `In CI, a script in place of the payables agents, on ${cases?.length ?? 0} test invoices: ${line}.` : "";
+}
+
+/** That line with its link to the record; "" when there is no record. */
+export function hostileClaimHtml(file = HOSTILE_RECORD_FILE): string {
+  const text = hostileClaimText(file);
+  return text ? `<p class="claim">${esc(text)} <a class="pf" href="${esc(`${REPO_BLOB}${file}`)}" target="_blank" rel="noopener">${esc("record")} ↗</a></p>` : "";
+}
+
 export function claudePage(run: AgentRun = agentRun()): string {
   const p = partnerProof(run), sp = split(run.record), s = run.record.snapshot;
   const calls = s.agent_stats.reduce((n, a) => n + a.claude_calls, 0);
@@ -277,6 +298,7 @@ export function claudePage(run: AgentRun = agentRun()): string {
     nums: nums([[`${sp.byClaude}/${sp.decisions}`, `decisions by Claude (${sp.fallbacks} fallbacks)`], [String(sp.routine), "routine payments by code"], [String(calls), "Claude calls, each with a request id"], [String(faceIdDecisions(run.record)), "Face ID decisions by the CFO"]]),
     // What a decision is here (jury review, 7 Nov, #19): holding and doing nothing count, as the record's own rows show.
     line: `${SPLIT_LINE} ${sp.decisions} decisions, including the ones to hold or do nothing.`,
+    extra: hostileClaimHtml(),
     folds: fold("Each agent: decisions, calls, cost", p.claude)
       // All the decisions the headline counts (final review, 4 Nov: the chat's 21 of 24), cut at a word, never inside a number.
       + fold("Every decision, with its Claude call", decisionsOf(run.record).map((d) => `<li class="ok">${esc(`${d.agent[0]!.toUpperCase()}${d.agent.slice(1)}, ${d.at.slice(11, 16)} UTC: ${d.text.length > 140 ? `${d.text.slice(0, 140).replace(/\s+\S*$/, "")}…` : d.text}`)}${d.call ? `<br><span class="call" title="${esc(d.call.requestIds.join(", "))}">${esc(callBadge(d.call))}</span>` : ""}</li>`))

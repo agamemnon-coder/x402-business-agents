@@ -42,6 +42,9 @@ jobs:
       # a Durable Object's storage (vitest.shim.config.ts): plain Node, no browser, no wrangler.
       - name: Engine tests through the Durable Object handle
         run: npm run test:shim
+      # Jury panel, 12 Nov: a script in Claude's place makes the worst tool call it can on every turn; no network, no key.
+      - name: Hostile-model eval of the payables agents (the line /claude shows)
+        run: npm run -s ap-hostile-eval
       - run: npm run relay:pages
       - name: Relay Worker type check
         working-directory: worker

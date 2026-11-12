@@ -48,6 +48,10 @@ export function claudeClient(env = process.env): Anthropic | null {
  */
 export interface ReaderOptions { budget?: Budget; maxTokens?: number; announce?: boolean }
 
+/** The most pages of a scan sent to a model (src/ap/scan.ts SCAN_MAX_PAGES), and the most tokens a page as an image takes. */
+export const PDF_PAGES_BOUND = 3;
+const PDF_PAGE_TOKENS = 3_000;
+
 /** The roles as a page names them: the reader classifies, reads, or writes the review note. */
 const ROLE_WORD: Record<Role, string> = { classify: "classify", act: "read", review: "review" };
 
@@ -107,7 +111,9 @@ export class ClaudeReader {
         messages: [{ role: "user", content }],
         output_config: { effort: a.effort ?? "low", format: betaZodOutputFormat(a.schema) },
         // Haiku has no server-side fallback; Sonnet 5.5 and Opus 5.5 take the "default" routing.
-        ...(model.startsWith("claude-haiku") ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }),
+        // Under a budget, no server-side fallback: its second attempt, on another model, is billed beyond the call's
+        // worst case. A refusal then falls back to the parser, as any refusal does.
+        ...(model.startsWith("claude-haiku") || this.opts.budget ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }),
       });
       const latencyMs = this.clock() - started;
       const requestId = (res as { _request_id?: string | null })._request_id ?? null;
@@ -152,7 +158,9 @@ export class ClaudeReader {
       return { value, source: "fallback", model: null, note };
     };
     if (!this.client) return useFallback("no KIT11_ANTHROPIC_API_KEY");
-    const go = this.before(a, model, SYSTEM.length + a.instruction.length + 200 + Math.ceil(a.pdf.byteLength * 4 / 3) + JSON.stringify(a.schema).length);
+    // A scan is billed by its pages (each one an image), not its bytes: at least PDF_PAGES_BOUND pages' worth is counted.
+    const pdfChars = Math.max(Math.ceil(a.pdf.byteLength * 4 / 3), PDF_PAGES_BOUND * PDF_PAGE_TOKENS * 3);
+    const go = this.before(a, model, SYSTEM.length + a.instruction.length + 200 + pdfChars + JSON.stringify(a.schema).length);
     if ("refused" in go) return useFallback(go.refused);
     try {
       const started = this.clock();
@@ -168,7 +176,9 @@ export class ClaudeReader {
           ],
         }],
         output_config: { effort: a.effort ?? "medium", format: betaZodOutputFormat(a.schema) },
-        ...(model.startsWith("claude-haiku") ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }),
+        // Under a budget, no server-side fallback: its second attempt, on another model, is billed beyond the call's
+        // worst case. A refusal then falls back to the parser, as any refusal does.
+        ...(model.startsWith("claude-haiku") || this.opts.budget ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }),
       });
       const latencyMs = this.clock() - started;
       const requestId = (res as { _request_id?: string | null })._request_id ?? null;
