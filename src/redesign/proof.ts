@@ -60,7 +60,9 @@ h2.sec { font-size: clamp(22px, 2.2vw, 28px); font-weight: 750; margin: 24px 0 1
 .pcard { position: relative; padding: 14px 18px; display: flex; flex-direction: column; gap: 6px; }
 .pcard .ph { display: flex; align-items: center; min-height: 28px; }
 .pcard .ph h3 { font-size: 19px; }
-.pcard > ul.lead a.c { font-size: 16.5px; }
+/* The card's main claim reads as a link, the same on all three cards (review 12 Nov): the accent colour, an accent underline. */
+.pcard > ul.lead a.c { font-size: 16.5px; color: var(--accent); text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.pcard > ul.lead a.c:hover { text-decoration-color: var(--accent); }
 .pcard .what { font-size: 16.5px; }
 .pcard > details.fold { border-top: 0; padding-top: 0; }
 .pcard > details.fold > summary { position: absolute; top: 6px; right: 14px; min-height: 44px; font-size: 15px; }
