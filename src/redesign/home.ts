@@ -56,7 +56,7 @@ a.row > .i { position: absolute; top: 22px; right: 20px; color: var(--accent); }
   section.locks { padding: 40px 0 48px; }
   ol.rows { margin-top: 18px; gap: 10px; }
   a.row { grid-template-columns: 40px minmax(0, 1fr); column-gap: 14px; row-gap: 2px; padding: 14px 40px 14px 14px; }
-  a.row .ic { grid-row: 1 / span 3; width: 40px; height: 40px; margin: 0; }
+  a.row .ic { grid-column: 1; grid-row: 1 / span 3; align-self: start; width: 40px; height: 40px; margin: 0; }
   a.row strong, a.row span, a.row code { grid-column: 2; }
   a.row strong { font-size: 17px; } a.row code { margin-top: 0; }
   a.row > .i { top: 16px; right: 14px; }
