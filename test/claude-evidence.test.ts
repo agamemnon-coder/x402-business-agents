@@ -14,6 +14,8 @@ import {
   claudeEvidence, firstTry, holdoutsOf, mcpOf, measuredBlock, modelLines, sweepOf, variationOf,
 } from "../src/redesign/claudeEvidence.js";
 import { REPO_BLOB } from "../src/redesign/metalStory.js";
+import { hostileClaimText } from "../src/redesign/partners.js";
+import { esc } from "../src/redesign/ui.js";
 import { FakeIssuing } from "../src/redteam/issuing.js";
 import { CLAUDE_PAGE } from "../src/servers/dashboard.js";
 
@@ -64,8 +66,9 @@ describe("/claude's measured block", () => {
     const links = [...block.matchAll(/href="([^"]+)"/g)].map((m) => m[1]!);
     expect(links).toEqual([VARIATION_RECORD, HOLDOUTS_RECORD, AGENT_EVALS, SWEEP_RECORD].map((f) => `${REPO_BLOB}${f}`));
     for (const f of [VARIATION_RECORD, HOLDOUTS_RECORD, AGENT_EVALS, SWEEP_RECORD, MCP_TRANSCRIPT]) expect(existsSync(new URL(`../${f}`, import.meta.url)), f).toBe(true);
-    // Never the word the site keeps off its pages, never a claim of no unsafe action.
-    expect(CLAUDE_PAGE).not.toMatch(/stand-in|\b0 unsafe\b/i);
+    // Never the word the site keeps off its pages, never a claim of no unsafe action. One exception, as in
+    // test/site-v4.test.ts: the hostile-model eval's line (12 Nov), whose "0 unsafe" CI computes and its record holds.
+    expect(CLAUDE_PAGE.replace(esc(hostileClaimText()) || "\u0000", " ")).not.toMatch(/stand-in|\b0 unsafe\b/i);
   });
 
   it("says the hostile model only when its report exists", () => {

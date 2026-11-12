@@ -17,7 +17,12 @@ describe("the rail's policy keys", () => {
     const db = openDb(":memory:");
     expect(rules(db).some((r) => r.key.startsWith("approval.airi"))).toBe(false);
     process.env.KIT11_AIRI_RAIL = "on";
-    expect(rules(db).filter((r) => r.key.includes("airi")).map((r) => `${r.key}=${r.fallback}`)).toEqual(["approval.airi_alone=20.00", "approval.airi_alone_per_day=3", "airi.merchant.northwind-sandbox=blocked"]);
+    expect(rules(db).filter((r) => r.key.includes("airi")).map((r) => `${r.key}=${r.fallback}`)).toEqual([
+      "approval.airi_alone=20.00", "approval.airi_alone_per_day=3",
+      // The Support agent's own limit (12 Nov, Visa #4b; test/airi-agents.test.ts).
+      "approval.airi_alone.support=10.00", "approval.airi_alone_per_day.support=2",
+      "airi.merchant.northwind-sandbox=blocked",
+    ]);
     expect(airiPolicy(db)).toMatchObject({ aloneMaxCents: 2000, alonePerDay: 3, merchants: [] });
   });
 
