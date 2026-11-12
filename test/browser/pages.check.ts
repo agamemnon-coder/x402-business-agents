@@ -581,8 +581,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // heads show from 700 px); 325 with the invoice token's block.
       // /claude: 195 since the jury panel of 12 Nov (measured, not asserted: four figures with their records).
       // /claude: 225 since the merge of 12 Nov, the budget of test/site-v4.test.ts, for the hostile-model eval's line beside
-      // the measured block.
-      const budget = path === "/airwallex" ? 374 : path === "/visa" ? 625 : path === "/metal" ? (tokenizeRun() ? 325 : 275) : path === "/claude" ? 225 : 150;
+      // the measured block; 240 with the measured block's line on the zero-trust report (the budget of test/site-v4.test.ts).
+      const budget = path === "/airwallex" ? 374 : path === "/visa" ? 625 : path === "/metal" ? (tokenizeRun() ? 325 : 275) : path === "/claude" ? 240 : 150;
       if (words > budget + 25) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       // Each page is labelled with the run it shows: the main run; /visa with the Airi run's own label (the main run's
       // label is inside its closed TAP fold, with the main run's TAP-signed buy).

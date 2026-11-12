@@ -64,7 +64,8 @@ describe("/claude's measured block", () => {
     for (const line of ["Measured, not asserted", "408 decisions in 40 simulated worlds, all by Claude; 2 unsafe actions, fixed.", "10 blind holdouts, 10 safe; H3 only on code's rule.",
       "0 of 10 : Haiku as Support on one attack; code refused each stray call.", "9 model and agent pairs: pass rate, cost, time.", INJECTION_LINE]) expect(t).toContain(line);
     const links = [...block.matchAll(/href="([^"]+)"/g)].map((m) => m[1]!);
-    expect(links).toEqual([VARIATION_RECORD, HOLDOUTS_RECORD, AGENT_EVALS, SWEEP_RECORD].map((f) => `${REPO_BLOB}${f}`));
+    // The zero-trust report's line links it too, once the report is in the tree (zero-trust-1112, merged 12 Nov).
+    expect(links).toEqual([VARIATION_RECORD, HOLDOUTS_RECORD, AGENT_EVALS, SWEEP_RECORD, ...(ev.zeroTrust ? [ZERO_TRUST_REPORT] : [])].map((f) => `${REPO_BLOB}${f}`));
     for (const f of [VARIATION_RECORD, HOLDOUTS_RECORD, AGENT_EVALS, SWEEP_RECORD, MCP_TRANSCRIPT]) expect(existsSync(new URL(`../${f}`, import.meta.url)), f).toBe(true);
     // Never the word the site keeps off its pages, never a claim of no unsafe action. One exception, as in
     // test/site-v4.test.ts: the hostile-model eval's line (12 Nov), whose "0 unsafe" CI computes and its record holds.
