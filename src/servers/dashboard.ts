@@ -31,6 +31,7 @@ import { tryVerifyPage } from "../try/verify.js";
 import { watchPage } from "../redesign/watch.js";
 import { filmWatchCsp, filmWatchPage } from "../redesign/filmWatch.js";
 import { filmId } from "../config/film.js";
+import { filmStills } from "../film/stills.js";
 import { proofPage } from "../redesign/proof.js";
 import { judgePage } from "../redesign/judge.js";
 import { loadTrace, TRACE_LINK, tracePage } from "../redesign/trace.js";
@@ -89,6 +90,8 @@ export const LOGOS: Record<string, { type: string; body: Buffer }> = {
   "favicon.svg": { type: "image/svg+xml", body: readFileSync(new URL("../ui/brand/favicon.svg", import.meta.url)) },
   "og.png": { type: "image/png", body: readFileSync(new URL("../ui/brand/og.png", import.meta.url)) },
 };
+/** /watch's stills (src/film/stills/: the poster and the chapter thumbnails, real frames of the film's shots), as /assets/film-<name>. */
+export const FILM_STILLS = filmStills();
 const MONTH_TEMPLATE = withNav(readFileSync(new URL("../dashboard/month.html", import.meta.url), "utf8"), "month");
 const DEMO_TEMPLATE = withNav(readFileSync(new URL("../demo/demo.html", import.meta.url), "utf8"), "demo");
 const LAB_TEMPLATE = withNav(readFileSync(new URL("../dashboard/lab.html", import.meta.url), "utf8"), "lab");

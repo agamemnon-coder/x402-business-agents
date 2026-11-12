@@ -6,6 +6,8 @@
 // src/film/captions.ts), the voice-over lines and Max's camera sound mixed and loudness-normalised (src/film/mix.ts).
 // Writes to out/video/v9/: <file>.mp4 (1920x1080, 60 fps, H.264 + AAC), <file>.srt, cut-<n>.json, script-<n>.md and
 // missing-<n>.txt (what is still a placeholder or not captured). Not in git.
+//   --stills    the stills /watch shows, from the shot clips: src/film/stills/poster.webp (a frame of D1a, Home's
+//               hero) and one thumbnail per chapter (its first shot's last frame), and nothing else
 //   --check     the honesty and timing check of both cuts (and the Demo Day close), nothing rendered; exit 1 on a problem
 //   --draft     x264 veryfast (a first look); the narration runs as a line at the bottom while there is no voice
 //   --demo-day  the 3:00 with the Demo Day close (M2-DD) and the QR end card
@@ -21,6 +23,7 @@ import { BG, FPS, guardDisk } from "../film/capture.js";
 import { CUTS, checkCut, chapters, clock, resolveCut, scriptMarkdown, srt, total, type Cut, type Placed } from "../film/cuts.js";
 import { measureFilter, normaliseFilter, parseMeasured, placeFilter, type Piece } from "../film/mix.js";
 import { OWN_FOOTAGE, shot as shotOf } from "../film/shots.js";
+import { STILL_SHOTS } from "../film/stills.js";
 import { maskExpr } from "../film/slots.js";
 
 const root = resolve(import.meta.dirname, "../..");
@@ -132,7 +135,27 @@ function render(cut: Cut, demoDay: boolean): void {
   console.log(`\n${master} (${clock(len)})${missing.length ? `\n${missing.length} placeholders or missing shots: out/video/v9/missing-${n}${demoDay ? "-demoday" : ""}.txt` : ""}`);
 }
 
+/** /watch's stills: real frames of the shot clips (a still image as it is), small WebP files kept in the repository. */
+function stills(): void {
+  const dir = resolve(root, "src/film/stills");
+  mkdirSync(dir, { recursive: true });
+  const webp = (input: string[], vf: string, file: string) => ff([...input, "-frames:v", "1", "-vf", vf, "-c:v", "libwebp", "-quality", "72", "-compression_level", "6", resolve(dir, file)]);
+  webp(["-ss", "7", "-i", clipOf("D1a")], "scale=1600:900:flags=lanczos", "poster.webp");
+  const done: string[] = ["poster.webp"];
+  for (const shot of STILL_SHOTS) {
+    const s = shotOf(shot);
+    const vf = "scale=480:270:force_original_aspect_ratio=decrease:flags=lanczos,pad=480:270:(ow-iw)/2:(oh-ih)/2:color=0x0a0c11";
+    if (s.still) webp(["-i", resolve(root, s.still)], vf, `${shot}.webp`);
+    // A page frame is cropped to its middle (the content column, under the header) so its words read at card size.
+    else if (existsSync(clipOf(shot))) webp(["-sseof", "-0.2", "-i", clipOf(shot)], `crop=iw*0.74:ih*0.74:iw*0.11:ih*0.07,${vf}`, `${shot}.webp`);
+    else continue;
+    done.push(`${shot}.webp`);
+  }
+  console.log(`${done.length} stills in src/film/stills/: ${done.join(", ")}`);
+}
+
 function main(): void {
+  if (flag("--stills")) return stills();
   if (flag("--check")) {
     const problems = [...checkCut(CUTS["submission-3"]), ...checkCut(CUTS["submission-3"], { demoDay: true }).map((p) => `demo day: ${p}`), ...checkCut(CUTS["walkthrough-5"])];
     for (const c of Object.values(CUTS)) console.log(`${c.id}: ${clock(total(resolveCut(c)))}`);

@@ -7,7 +7,8 @@ import { describe, expect, it } from "vitest";
 import { FILM_YOUTUBE_ID, WATCH_IN_MENU, filmId } from "../src/config/film.js";
 import { WALKTHROUGH, chapters, claimHolds, clock, resolveCut, total } from "../src/film/cuts.js";
 import { CLAIMS } from "../src/film/claims.js";
-import { REAL, SIMULATED } from "../src/film/key.js";
+import { LABELS, REPO_BLOB, RUNS_SEEN, runsSeen } from "../src/film/key.js";
+import { STILL_SHOTS, filmStills, stillAsset } from "../src/film/stills.js";
 import { filmFacts, filmWatchCsp, filmWatchPage } from "../src/redesign/filmWatch.js";
 import { buildPages } from "../src/relay/assets.js";
 import { FILM_WATCH_CSP, FILM_WATCH_PAGE, WATCH_PAGE } from "../src/servers/dashboard.js";
@@ -27,18 +28,40 @@ describe("/watch without the film (as today)", () => {
     expect(FILM_YOUTUBE_ID).toBe("");
     expect(filmId()).toBeNull();
     expect(FILM_WATCH_PAGE).toBe(none);
-    expect(none).toContain("<h1>The film</h1>");
-    expect(none).toContain(`Film coming · about ${clock(total(placed))}`);
+    expect(none).toContain("<h1>Purser, in under five minutes</h1>");
+    expect(none).toContain(`Film coming · ${clock(total(placed))}`);
+    // The poster is a real frame of the film (Home's hero), served from the site's own assets.
+    expect(none).toContain('<img src="assets/film-poster.webp" alt="" width="1600" height="900" fetchpriority="high">');
     expect(none).not.toMatch(/<script|<iframe|youtube|youtu\.be/);
     expect(FILM_WATCH_CSP).not.toMatch(/script-src|frame-src/);
     expect(FILM_WATCH_CSP).toMatch(/^default-src 'none'; style-src 'sha256-/);
   });
 
-  it("lists the chapters with the film's times, as plain lines (nothing to jump to yet)", () => {
+  it("shows the chapters as a rail of thumbnails with the film's times, nothing to jump to yet", () => {
     const ch = chapters(placed);
     expect(ch.length).toBeGreaterThanOrEqual(10);
-    for (const c of ch) expect(none).toContain(`<span class="it"><time>${clock(c.at)}</time><span>${c.title.replace(/&/g, "&amp;")}</span></span>`);
+    for (const c of ch) expect(none).toMatch(new RegExp(`<li><span class="ch"><span class="th">[\\s\\S]*?<time>${clock(c.at)}</time></span><b>${c.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}</b></span></li>`));
     expect(none).not.toContain("data-t=");
+  });
+
+  it("each thumbnail is a real frame of the chapter's first shot; a chapter on footage not yet recorded is a plain tile", () => {
+    const facts = filmFacts();
+    const stills = filmStills();
+    for (const c of facts.chapters) {
+      if (c.still) { expect(stills[c.still]?.type).toBe("image/webp"); expect(none).toContain(`<img src="assets/${c.still}"`); }
+      else expect(["Max on camera", "On the phone"]).toContain(c.tile!.label);
+    }
+    expect(facts.chapters.filter((c) => c.still).length).toBeGreaterThanOrEqual(9);
+    expect(facts.chapters[0]!.tile?.label).toBe("Max on camera");
+    // Each still is small, and the Worker serves it at /assets/film-<name> with its type.
+    const pages = buildPages({} as NodeJS.ProcessEnv);
+    for (const [name, s] of Object.entries(stills)) {
+      expect(s.body.length).toBeLessThan(name === "film-poster.webp" ? 120_000 : 40_000);
+      const r = pageResponse(new Request(`${SITE}/assets/${name}`), pages)!;
+      expect({ name, status: r.status, type: r.headers.get("content-type") }).toEqual({ name, status: 200, type: "image/webp" });
+    }
+    expect(stillAsset("poster.webp") in stills).toBe(true);
+    expect(STILL_SHOTS).toContain("T3");
   });
 
   it("is served at /watch in both builds; the replay answers at /replay, and its old addresses lead there", () => {
@@ -46,7 +69,7 @@ describe("/watch without the film (as today)", () => {
       const r = pageResponse(new Request(`${SITE}/watch`), pages)!;
       expect(r.status).toBe(200);
       expect(r.headers.get("content-security-policy")).toBe(pages.csp.watch);
-      expect(pages.watch).toContain("<h1>The film</h1>");
+      expect(pages.watch).toContain("<h1>Purser, in under five minutes</h1>");
       const replay = pageResponse(new Request(`${SITE}/replay`), pages)!;
       expect(replay.status).toBe(200);
       expect(pages.replay).toContain("Watch the agents work");
@@ -81,7 +104,7 @@ describe("/watch with the film's id set", () => {
   });
 
   it("makes each chapter a link that jumps to its time (the script plays it in place)", () => {
-    for (const c of chapters(placed)) expect(withFilm).toContain(`<a href="https://youtu.be/${ID}?t=${c.at}" data-t="${c.at}"><time>${clock(c.at)}</time>`);
+    for (const c of chapters(placed)) expect(withFilm).toContain(`<li><a class="ch" href="https://youtu.be/${ID}?t=${c.at}" data-t="${c.at}"><span class="th">`);
   });
 
   it("allows its one script and youtube-nocookie.com's frame, nothing more", () => {
@@ -98,16 +121,33 @@ describe("/watch with the film's id set", () => {
 });
 
 describe("the page says what the film says", () => {
-  it("the key of what is real and what is simulated rests on claims that hold in their records", () => {
-    for (const l of [...REAL, ...SIMULATED]) {
-      expect(text(none)).toContain(l.text.replace(/&/g, "&"));
-      for (const c of l.claims) {
-        expect(CLAIMS.some((x) => x.id === c)).toBe(true);
-        expect({ line: l.text, c, holds: claimHolds(c) }).toEqual({ line: l.text, c, holds: true });
-      }
+  it("\"What you just saw ran for real\": each run links its own record, and rests on claims that hold", () => {
+    const shown = runsSeen();
+    expect(shown.map((r) => r.rail)).toEqual(["Airwallex", "Metal", "Visa via Airi", "Claude", "Moneybird"]);
+    for (const r of shown) {
+      expect(none).toContain(`<a href="${r.href}" target="_blank" rel="noopener">`);
+      expect(r.href).toBe(REPO_BLOB + r.file);
+      expect(text(none)).toContain(r.text);
     }
-    expect(text(none)).toContain("Ran for real, with test money");
-    expect(text(none)).toContain("Simulated, and said so");
+    for (const r of RUNS_SEEN) for (const c of r.claims) {
+      expect(CLAIMS.some((x) => x.id === c)).toBe(true);
+      expect({ run: r.rail, c, holds: claimHolds(c) }).toEqual({ run: r.rail, c, holds: true });
+    }
+    for (const l of LABELS) { expect(text(none)).toContain(l.text); for (const c of l.claims) expect(claimHolds(c)).toBe(true); }
+    expect(text(none)).toMatch(/paid by SWIFT \(settlement simulated\)/);
+  });
+
+  it("a run recorded later (Face ID on chain, the invoice token) appears once its record is here, in its record's own words", () => {
+    const files = ["2026-11-07-awx-1.md", "2026-11-03-main-run.md", "2026-11-12-faceid-onchain.md", "2026-11-12-tokenize.md", "2026-11-12-tokenize.json"];
+    const heads: Record<string, string> = { "docs/runs/2026-11-12-faceid-onchain.md": "# The owners' Face ID on chain, 12 November\n", "docs/runs/2026-11-12-tokenize.md": "# An invoice token on Metal, 12 November\n" };
+    const shown = runsSeen(files, (p) => heads[p] ?? "# x\n");
+    expect(shown.map((r) => [r.rail, r.day, r.text])).toEqual([
+      ["Airwallex", "7 Nov", RUNS_SEEN[0]!.text], ["Metal", "3 Nov", RUNS_SEEN[1]!.text],
+      ["Metal", "12 Nov", "The owners' Face ID on chain, 12 November"], ["Metal", "12 Nov", "An invoice token on Metal, 12 November"],
+      ["Claude", "3 Nov", RUNS_SEEN[5]!.text],
+    ]);
+    // Not here: not shown (today's repository has neither record).
+    expect(runsSeen().some((r) => /faceid|tokeni/.test(r.file))).toBe(false);
   });
 
   it("the transcript, folded, is the film's narration row by row, with its times", () => {
@@ -129,5 +169,13 @@ describe("the next step", () => {
   it("ends in \"Now try it yourself\": /try/sign when the bundle has it, else /try", () => {
     expect(buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).watch).toContain('<a class="btn primary nextstep" href="try/sign" data-next="try">');
     expect(buildPages({} as NodeJS.ProcessEnv).watch).toContain('<a class="btn primary nextstep" href="try" data-next="try">');
+  });
+});
+
+describe("motion", () => {
+  it("the poster drifts, the play button pulses and the rail rises in, and all of it stops under prefers-reduced-motion", () => {
+    for (const k of ["@keyframes drift", "@keyframes ping", "@keyframes rise"]) expect(none).toContain(k);
+    expect(none).toContain("@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }");
+    expect(withFilm).toContain('matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"');
   });
 });
