@@ -6,7 +6,7 @@
 import { ICONS, type Icon } from "../ui/icons.js";
 import { NORTHWIND_LINE, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js";
 import { OG_IMAGE, TAGLINE_LINE, ogTitle } from "../ui/meta.js";
-import { MORE_CSS, footerLinks, moreHtml, type MoreKey } from "../ui/more.js";
+import { MORE_CSS, footerLinks, menuItemOf, moreHtml, type PageKey } from "../ui/more.js";
 
 const EXTRA: Record<string, Icon> = {
   copy: [["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2" }], ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" }]],
@@ -207,10 +207,11 @@ details.real .pop ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
 /** The one tagline (jury QA, 6 Nov, Q8: was "Agents spend. Limits hold." in og:title): Home's heading, the film's line. */
 export const HEADLINE = TAGLINE_LINE;
 
-/** The header: the four tabs, then "More". `current` is the tab the page sits under, or its own key when it is a page under "More". */
-export function header(current: Tab | MoreKey | null): string {
+/** The header: the four tabs, then "More". `current` is the page's own key; menuItemOf (src/ui/more.ts) says which item it marks. */
+export function header(current: PageKey | null): string {
+  const item = menuItemOf(current);
   return `<header class="top"><div class="wrap"><a class="brand" href="home" aria-label="Purser, home"><span class="mk">${icon("feather", 17)}</span><span class="nm">Purser</span></a>
-<nav class="tabs" aria-label="Main">${TABS.map(([k, label, href]) => `<a href="${href}"${k === current ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("")}${moreHtml(current)}</nav></div></header>`;
+<nav class="tabs" aria-label="Main">${TABS.map(([k, label, href]) => `<a href="${href}"${k === item ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("")}${moreHtml(current)}</nav></div></header>`;
 }
 
 /** What is real in the main run, the run the public pages play: test money, sandbox, what is simulated, the world set-up, the second approver. */
@@ -449,7 +450,7 @@ export const OPEN_TARGET_JS = `(function () {
 })();`;
 
 /** A page around a body: one style, one script, the run's data in a data block ("<" escaped). */
-export function page(o: { title: string; description: string; tab: Tab | MoreKey | null; css: string; body: string; data?: unknown; js?: string; stage?: boolean; source: string; real?: string[]; links?: [string, string][] }): string {
+export function page(o: { title: string; description: string; tab: PageKey | null; css: string; body: string; data?: unknown; js?: string; stage?: boolean; source: string; real?: string[]; links?: [string, string][] }): string {
   const script = o.js === undefined ? "" : `${o.data === undefined ? "" : `<script type="application/json" id="run-data">${JSON.stringify(o.data).replace(/</g, "\\u003c")}</script>\n`}<script>${o.stage === false ? "" : STAGE_JS}
 ${o.js}</script>`;
   return `<!doctype html>

@@ -11,7 +11,9 @@ import { PRICING, euro, percentOfBps } from "../src/config/pricing.js";
 import { FEE_FOLD, PRICING_LEAD, TEST_VALUES, e2eFeeRun, feeLine, feeRun, pricingPage } from "../src/redesign/pricing.js";
 import { AUDIT_COMMAND, AUDIT_LOG, NOT_YET_LINE, NOT_YET_SOURCES, docLine, publishedAudit, redTeamRound, securityCards, securityPage, REDTEAM_NIGHT, REDTEAM_NIGHT_RECORD, REDTEAM_OCT31, REDTEAM_REPORT } from "../src/redesign/security.js";
 import { buildPages, flowLinks } from "../src/relay/assets.js";
-import { PRICING_CSP, PRICING_PAGE, SECURITY_CSP, SECURITY_PAGE } from "../src/servers/dashboard.js";
+import { AIRWALLEX_PAGE, CLAUDE_PAGE, METAL_PAGE, PRICING_CSP, PRICING_PAGE, PROOF_PAGE, RUNS_PAGE, SECURITY_CSP, SECURITY_PAGE, VISA_PAGE } from "../src/servers/dashboard.js";
+import { menuItemOf } from "../src/ui/more.js";
+import { navHtml } from "../src/ui/nav.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
 import { HEADER_PATHS } from "./security-headers.rules.js";
 import { scriptBlocks } from "./support/scriptBlocks.js";
@@ -333,6 +335,31 @@ describe("the two pages on the site", () => {
     const home = /<nav class="tabs" aria-label="Main">([\s\S]*?)<\/nav>/.exec(pages.home!)![1]!;
     expect(home).toContain('<details class="pmore"><summary>More</summary>');
     expect(home).not.toMatch(/<details class="pmore" open/);
+  });
+
+  // 12 Nov (orchestrator's preview): the marked item follows the page. A page listed under More marks More and its own
+  // link there, never a tab; /runs marks Proof. One mapping in the nav code (src/ui/more.ts menuItemOf).
+  it("mark the item the page sits under: partner pages mark More, /runs marks Proof", () => {
+    const state = (html: string) => {
+      const nav = /<nav class="tabs" aria-label="Main">([\s\S]*?)<\/nav>/.exec(html)![1]!;
+      return { more: /<summary class="on">More<\/summary>/.test(nav), tabs: [...nav.matchAll(/<a href="(\w+)" class="on" aria-current="page">/g)].map((m) => m[1]) };
+    };
+    for (const [key, html] of [["airwallex", AIRWALLEX_PAGE], ["metal", METAL_PAGE], ["visa", VISA_PAGE], ["claude", CLAUDE_PAGE]] as const) {
+      expect({ key, ...state(html), here: html.includes(`<a href="${key}" aria-current="page">`) }).toEqual({ key, more: true, tabs: [], here: true });
+    }
+    expect(state(RUNS_PAGE)).toEqual({ more: false, tabs: ["proof"] });
+    expect(state(PROOF_PAGE)).toEqual({ more: false, tabs: ["proof"] });
+    expect(state(pages.home!)).toEqual({ more: false, tabs: ["home"] });
+    // The older navigation (src/ui/nav.ts) maps the same way.
+    for (const key of ["airwallex", "metal", "visa", "claude"] as const) {
+      const nav = navHtml(key);
+      expect({ key, proof: /data-nav="proof" class="on"/.test(nav), more: /<summary class="on">More<\/summary>/.test(nav) }).toEqual({ key, proof: false, more: true });
+    }
+    expect(navHtml("month")).toMatch(/data-nav="proof" class="on"/);
+    expect(menuItemOf("runs")).toBe("proof");
+    expect(menuItemOf("pricing")).toBe("more");
+    expect(menuItemOf("proof")).toBe("proof");
+    expect(menuItemOf(null)).toBeNull();
   });
 
   it("link only to repository files that exist", () => {

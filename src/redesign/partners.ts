@@ -83,7 +83,7 @@ const nums = (items: [string, string][]) => `<div class="nums">${items.map(([v, 
 const docsLi = (title: string, docs: { label: string; href: string }[]) => `<li>${esc(title)}: ${docs.map((d) => `<a class="pf" href="${esc(d.href)}" target="_blank" rel="noopener">${esc(d.label)} ↗</a>`).join(" · ")}</li>`;
 const plainLi = (t: string) => `<li>${esc(t)}</li>`;
 
-function shell(run: AgentRun, o: { intro?: string; lead?: string; top?: string; underTop?: string; label?: string; title: string; description: string; logo: string; h1: string; picture: string; flowClass?: string; nums: string; line: string; extra?: string; folds: string; proofHash: string; js?: string }): string {
+function shell(run: AgentRun, o: { key: "metal" | "airwallex" | "visa" | "claude"; intro?: string; lead?: string; top?: string; underTop?: string; label?: string; title: string; description: string; logo: string; h1: string; picture: string; flowClass?: string; nums: string; line: string; extra?: string; folds: string; proofHash: string; js?: string }): string {
   const body = `<main class="pp"><div class="wrap">
   ${o.intro ? `<p class="vintro">${esc(o.intro)}</p>` : ""}${o.lead ?? ""}${o.top ? `<div class="awrb">${o.top}</div>` : ""}${o.underTop ?? ""}
   <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(o.label ?? run.label)}</span><h1>${esc(o.h1)}</h1></div>
@@ -94,7 +94,7 @@ function shell(run: AgentRun, o: { intro?: string; lead?: string; top?: string; 
   <div class="folds card">${o.folds}</div>
   <a class="open" href="proof#${o.proofHash}">All the proof ${icon("arrow-right", 15)}</a>
 </div></main>`;
-  return page({ title: o.title, description: o.description, tab: "proof", css: CSS, body, source: SOURCE(run), ...(o.js ? { js: o.js, stage: false } : {}) });
+  return page({ title: o.title, description: o.description, tab: o.key, css: CSS, body, source: SOURCE(run), ...(o.js ? { js: o.js, stage: false } : {}) });
 }
 
 const moneyOf = (run: AgentRun) => run.events.filter((e): e is Extract<Ev, { k: "money" }> => e.k === "money");
@@ -148,6 +148,7 @@ export function metalPage(run: AgentRun = agentRun()): string {
   const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${iso}T12:00:00Z`));
   const beyond = separateRuns().map((x) => `<li><b>${esc(`${day(x.date)}, a separate run · ${x.title}`)}</b>: ${esc(x.what.replace(/^\d{1,2} \w+: /, ""))}. ${x.proofs.map((q) => ext(q)).join(" · ")}${x.proofs.length ? " · " : ""}${ext(x.record)}</li>`);
   return shell(run, {
+    key: "metal",
     title: "Metal", description: "How Purser uses Metal: each agent's limit is a mandate on chain; payments per query over x402; a payment over the cap is refused on chain.",
     logo: LOGO.metal, h1: "A limit the agent cannot talk past", proofHash: "metal",
     picture: metalStoryHtml(st), flowClass: "story",
@@ -189,6 +190,7 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
   const airi = airiRunBlock() + vic2RunBlock(undefined, { short: true });
   const readBack = hash || rows.length || awx1 || airi ? `<h2 class="vh">Airwallex, read back</h2><div class="awrb">${hashBlockHtml(hash)}${cards ? controlsSideBySideHtml(rows, cards.rec.read_at, cards.file) : ""}${awx1}${airi}</div>` : "";
   return shell(run, {
+    key: "airwallex",
     title: "Airwallex", description: "How Purser uses Airwallex: earnings booked once final, the euro licence paid by SWIFT after the CFO's Face ID, card limits the bank enforces.",
     logo: LOGO.airwallex, h1: "The bank side of the agents", proofHash: "airwallex",
     picture: [node("zap", "Metal earnings", "final on chain", "metal"), arrow, node("landmark", booked ? `${booked.amount} USD booked` : "Booked at Airwallex", "simulated deposit", "awx"), arrow,
@@ -233,6 +235,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
   // the same block as /airwallex, its heading an h2 here, since it comes before the page's h1.
   const airi = airiRunBlock(undefined, { h: "h2" });
   return shell(run, {
+    key: "visa",
     // One plain sentence first (Max, 10 Nov): what the Visa Award entry is, in words a juror reads at a glance.
     ...(airi ? { intro: VISA_ENTRY_LINE } : {}),
     // First the overview (Max, 10 Nov: more Visa, fewer words): the flow in four nodes and the three Visa runs as cards.
@@ -265,6 +268,7 @@ export function claudePage(run: AgentRun = agentRun()): string {
     { title: "Cost", docs: [{ label: "Prompt caching", href: "https://platform.claude.com/docs/en/build-with-claude/prompt-caching" }] },
   ];
   return shell(run, {
+    key: "claude",
     title: "Claude", description: "How Purser uses Claude: three agents decide the exceptions, each decision a recorded Claude call; routine payments per query are code.",
     logo: LOGO.claude, h1: "Claude decides the exceptions", proofHash: "claude",
     picture: run.agents.map((a) => node(a.id === "sourcing" ? "package" : a.id === "support" ? "headphones" : "landmark", `${a.short} · ${a.family}`, `${s.agent_stats.find((x) => x.agent === a.id)?.decisions ?? 0} decisions`, "claude")).join(arrow),

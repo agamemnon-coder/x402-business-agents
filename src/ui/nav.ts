@@ -16,7 +16,8 @@ export const NAV_MAIN: [NavKey, string, string][] = [
 ];
 
 /** Which tab a page belongs to: the detail pages and the dashboard sit under Proof. */
-const TAB_OF: Partial<Record<NavKey, NavKey>> = { overview: "home", live: "watch", demo: "watch", metal: "proof", dashboard: "proof", month: "proof", lab: "proof", visa: "proof", airwallex: "proof", claude: "proof" };
+// The partner pages (metal, visa, airwallex, claude) are listed under "More" (12 Nov): they mark it themselves (moreHtml), not Proof.
+const TAB_OF: Partial<Record<NavKey, NavKey>> = { overview: "home", live: "watch", demo: "watch", dashboard: "proof", month: "proof", lab: "proof" };
 
 /** The navigation, with the current tab marked: the four tabs, then "More". */
 export function navHtml(current: NavKey | null, id?: string, cls?: string): string {

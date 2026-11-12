@@ -39,6 +39,16 @@ export const moreLinks = (): MoreLink[] => MORE_LINKS.filter((l) => l.built !== 
 export const footerLinks = (): MoreLink[] => moreLinks().filter((l) => l.group === "product");
 export const isMoreKey = (key: string | null): key is MoreKey => MORE_LINKS.some((l) => l.key === key);
 
+/** A page's own key, as it tells the navigation where it is: one of the four tabs, a page under "More", or a page that sits under a tab. */
+export type PageKey = "home" | "watch" | "try" | "proof" | "runs" | MoreKey;
+/** The menu item a page marks (12 Nov): a tab marks itself, a page listed under "More" marks "More", /runs sits under Proof. The one mapping both navigations use. */
+const UNDER_TAB: Readonly<Record<string, "home" | "watch" | "try" | "proof">> = { home: "home", watch: "watch", try: "try", proof: "proof", runs: "proof" };
+export function menuItemOf(page: string | null): "home" | "watch" | "try" | "proof" | "more" | null {
+  if (!page) return null;
+  if (isMoreKey(page)) return "more";
+  return UNDER_TAB[page] ?? null;
+}
+
 /**
  * "More" and its dropdown, the same markup in both navigations: a <details> whose summary is the menu's fifth item, the
  * product pages, one divider, the partner pages. `current` is the page the reader is on, when it is one of these: its
