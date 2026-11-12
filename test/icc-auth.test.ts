@@ -101,6 +101,13 @@ describe("the JWT", () => {
     expect(h.authorization).toMatch(/^Bearer [\w-]+\.[\w-]+\.[\w-]+$/);
     expect(h["content-type"]).toBe("application/json");
   });
+
+  it("requestHeaders: the content type on a GET too, as the page lists it among the required headers", () => {
+    for (const signer of [{ scheme: "jwt-p12", keyId: "k", privateKey: keys.signing.privateKey }, { scheme: "http-signature", keyId: "k", secret: Buffer.alloc(32, 1) }] as const) {
+      const h = requestHeaders(signer as never, { method: "GET", host: "apitest.cybersource.com", path: `/tms/v1/instrumentidentifiers/${"A1B2C3D4".repeat(4)}`, body: null, merchantId: "purser_sandbox", at: T0, jti: JTI });
+      expect(h["content-type"]).toBe("application/json");
+    }
+  });
 });
 
 describe("the HTTP signature", () => {

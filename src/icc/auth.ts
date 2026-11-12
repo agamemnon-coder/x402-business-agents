@@ -158,7 +158,8 @@ export function httpSignatureHeaders(key: { keyId: string; secret: Buffer }, r: 
 
 /** The headers that prove who is calling, for one request, in the signer's scheme. The host header is fetch's own. */
 export function requestHeaders(signer: IccSigner, r: SignedRequest & { jti: string; responseMleKeyId?: string }): Record<string, string> {
-  const content: Record<string, string> = r.body === null ? {} : { "content-type": "application/json" };
+  // content-type on every call, a GET included: the page lists content-type, host and authorization as required.
+  const content: Record<string, string> = { "content-type": "application/json" };
   if (signer.scheme === "http-signature") return { ...content, ...httpSignatureHeaders(signer, r) };
   const claims = jwtClaims({ method: r.method, host: r.host, path: r.path, body: r.body, merchantId: r.merchantId, issuedAt: r.at, jti: r.jti, digestForm: r.digestForm, responseMleKeyId: r.responseMleKeyId });
   return { ...content, authorization: `Bearer ${signJwt(signer, claims)}` };
