@@ -8,7 +8,7 @@ import { randomUUID } from "node:crypto";
 import type { AirwallexRail, Currency, MarketRate, Quote, SandboxSim } from "../airwallex/port.js";
 import { AirwallexAmbiguous, AirwallexError } from "../airwallex/client.js";
 import { audit } from "../audit/log.js";
-import { EUR_FLOOR_CENTS, INVOICE_PROPOSAL_TTL_MS, LICENSOR_NAME, QUOTE_SAFETY_MS, TARGET_FREE_EUR_CENTS, FX_QUOTE_MAX_MARKUP_BPS } from "../config/policy.js";
+import { EUR_FLOOR_CENTS, INVOICE_PROPOSAL_TTL_MS, QUOTE_SAFETY_MS, TARGET_FREE_EUR_CENTS, FX_QUOTE_MAX_MARKUP_BPS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
@@ -31,33 +31,9 @@ export const SEED_USD_CENTS = 2_500_000;
 /** The USD floor sits this far below the seeded balance. */
 export const USD_HEADROOM_CENTS = 500_000;
 
-export const MANUFACTURER = {
-  name: "Bergtex Textil GmbH",
-  iban: "DE89370400440532013000",
-  bic: "COBADEFFXXX",
-  currency: "EUR" as const,
-  countryCode: "DE" as const,
-  bankName: "Commerzbank",
-  address: { street: "Textilweg 4", city: "Reutlingen", postcode: "72760", countryCode: "DE" as const },
-};
-
-/** Kit 11's licensor: Stockline's monthly data licence, invoiced in euros (LICENCE_FEE_EUR_CENTS in code). */
-export const LICENSOR = {
-  name: LICENSOR_NAME,
-  iban: "DE02120300000000202051",
-  bic: "BYLADEM1001",
-  currency: "EUR" as const,
-  countryCode: "DE" as const,
-  bankName: "Deutsche Kreditbank",
-  address: { street: "Datenallee 12", city: "Berlin", postcode: "10115", countryCode: "DE" as const },
-};
-
-/**
- * The payees code allowlists, and the only ones: seedTreasury creates each once at Airwallex and records it in the
- * ledger's beneficiaries. Neither an agent nor an invoice adds to it; a supplier's new account replaces its entry only
- * through a person's verified payee change (src/policy/payeeChange.ts).
- */
-export const ALLOWLISTED_PAYEES = [MANUFACTURER, LICENSOR] as const;
+// The payees as data (src/config/payees.ts), so the cloud Worker's pages can show the try sample without the engine.
+export { ALLOWLISTED_PAYEES, LICENSOR, MANUFACTURER } from "../config/payees.js";
+import { ALLOWLISTED_PAYEES } from "../config/payees.js";
 
 /** A payee on the allowlist as code compares an invoice with it: the name, the IBAN's hash, the BIC. */
 export interface AllowlistedPayee { name: string; ibanSha256: string; bic: string }

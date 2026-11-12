@@ -2,6 +2,7 @@
 // dashboard replay of the main run (/?autonomy: read-only, public, no viewer key), with one line at its top. Before it
 // was linked, its page was audited for anything private; the audit is kept here as a test that fails if a key, a token,
 // a viewer key, an RPC URL, an email or other personal data ever reaches that page (its HTML and its inline data).
+import { TRY_URL } from "../src/redesign/ui.js";
 import { describe, expect, it } from "vitest";
 import { CFO_VIEW_LINE, CFO_VIEW_LINK, CFO_VIEW_URL } from "../src/config/brand.js";
 import { homePage } from "../src/redesign/home.js";
@@ -98,7 +99,8 @@ describe("the CFO's view holds nothing private (audit before linking it)", () =>
 
   it("links only to public hosts: Metal's testnet explorer, the project's own site and repository, and the SVG namespace", () => {
     const hosts = new Set([...SERVED.matchAll(/https?:\/\/([A-Za-z0-9.-]+)/g)].map((m) => m[1]!));
-    expect([...hosts].filter((h) => !["testnet.metalntwx.com", "kit11.max-31b.workers.dev", "www.w3.org", "github.com"].includes(h))).toEqual([]);
+    // The Try tab's hands-on demo (TRY_URL) is the project's own Purser Cloud deployment (6c58c5b, 12 Nov).
+    expect([...hosts].filter((h) => !["testnet.metalntwx.com", "kit11.max-31b.workers.dev", new URL(TRY_URL).host, "www.w3.org", "github.com"].includes(h))).toEqual([]);
     expect(hosts.has("testnet.metalntwx.com")).toBe(true);
     for (const m of SERVED.matchAll(/https:\/\/github\.com\/([^/"\s]+)/g)) expect(m[1]).toBe("agamemnon-coder");
   });

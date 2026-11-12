@@ -167,8 +167,11 @@ describe("/visa is one Visa Intelligent Commerce story; TAP folded away", () => 
     expect(VIC_FLOW_CSS).not.toMatch(/--vf-airi|#be185d|#f472b6/);
   });
 
-  it("gives the basis for calling it VIC in a visible line, with its date, its channel and who reports it", () => {
-    expect(VISA_ENTRY_LINE).toBe("This Airi run is Purser's entry for the Visa Award. Basis for calling it Visa Intelligent Commerce: Visa said in the hackathon Slack on 7 November that the VIC run counts, as reported by the builder.");
+  // The jury check of 12 Nov: the second-hand basis sentence ("as reported by the builder") went; the record names no
+  // poster's role to put in its place. The line says which runs are the entry, and nothing more.
+  it("says in a visible line which runs are the Visa entry, and repeats no second-hand basis", () => {
+    expect(VISA_ENTRY_LINE).toBe("The Airi runs are Purser's entry for the Visa Award.");
+    expect(text(html)).not.toMatch(/as reported by the builder/);
     expect(text(unfolded(main))).toContain(VISA_ENTRY_LINE);
     // What is on record for it: the evidence list's row of 7 November, reported by the owner, with no quote from Visa.
     const row = readFileSync(new URL("../docs/evidence/README.md", import.meta.url), "utf8").split("\n").find((l) => l.startsWith("| 7 November 2026"))!;
@@ -247,7 +250,7 @@ describe("/visa is one Visa Intelligent Commerce story; TAP folded away", () => 
     expect(() => assertVicFirst(html.replace(`<h1>${esc(VISA_H1)}</h1>`, "<h1>The agent signs before it pays</h1>"))).toThrow(/heading/);
     expect(() => assertVicFirst(html.replace(`<title>${esc(VISA_TITLE)}</title>`, "<title>Visa</title>"))).toThrow(/title/);
     // The basis or the Connect line gone, or Connect claimed a second time.
-    expect(() => assertVicFirst(html.replace(esc(VISA_ENTRY_LINE), ""))).toThrow(/basis/);
+    expect(() => assertVicFirst(html.replace(esc(VISA_ENTRY_LINE), ""))).toThrow(/entry line/);
     expect(() => assertVicFirst(html.replace(esc(VISA_ICC_LINE), ""))).toThrow(/Intelligent Commerce Connect/);
     expect(() => assertVicFirst(html.replace(esc(VISA_LEAD), `${esc(VISA_LEAD)} Built with Intelligent Commerce Connect.`))).toThrow(/more than once/);
     // The old overview, which counted the TAP run and the run that bought nothing as "three live runs".
@@ -265,12 +268,16 @@ describe("the Visa entry on the rest of the site", () => {
     expect("VISA_EXTRA_LINK" in brand).toBe(false);
   });
 
-  it("puts \"Visa (VIC via Airi)\" in Home's \"Built on\", as text; the flag is renamed and TAP is never in it", () => {
+  // Since 12 Nov "Built on" is one strip in the partner pages' footer, not on Home (the owner; src/redesign/partners.ts,
+  // builtOnItems): Home is one story and has none. Visa stands in it as text, on the VIC run, never TAP, never a logo.
+  it("puts Visa (VIC through Airwallex's Airi) in the partner pages' \"Built on\", as text; the flag is renamed and TAP is never in it", () => {
     expect(VISA_VIC_BUILT_ON).toBe(true);
     expect("VISA_AWARD_ON" in brand).toBe(false);
     expect(VISA_BUILT_ON).toBe("Visa (VIC via Airi)");
-    const built = /<div class="built">[\s\S]*?<\/div>/.exec(home)![0];
-    expect(built).toContain('<span class="logo txt">Visa (VIC via Airi)</span>');
+    expect(home).not.toMatch(/<div class="built">|<p class="builton">/);
+    const built = /<p class="builton">[\s\S]*?<\/p>/.exec(airwallex)![0];
+    // The same count /visa shows: the purchases paid across the live Airi runs (the jury check, 12 Nov).
+    expect(built).toMatch(/<a class="flink" href="visa">Visa \(VIC through Airwallex's Airi\): \d+ purchases paid in \d+ live runs?<\/a>/);
     expect(built).not.toMatch(/TAP|<img[^>]*visa/i);
   });
 
@@ -284,10 +291,11 @@ describe("the Visa entry on the rest of the site", () => {
     const line = airiSummaryLine(airiRun()!);
     for (const [name, html] of Object.entries({ visa, airwallex, proof })) expect({ name, scripted: text(html).includes(line) }).toEqual({ name, scripted: true });
     const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8").replace(/\s+/g, " ");
-    // Every README paragraph that says a purchase was paid with a single-use Visa credential says the run was scripted.
-    const paras = readFileSync(new URL("../README.md", import.meta.url), "utf8").split(/\n\s*\n/).map((p) => p.replace(/\s+/g, " ")).filter((p) => /paid with a single-use Visa/.test(p));
-    expect(paras.length).toBeGreaterThanOrEqual(2);
-    for (const p of paras) expect({ p: p.slice(0, 80), scripted: /scripted run, no Claude call/.test(p) }).toEqual({ p: p.slice(0, 80), scripted: true });
+    // The README of 12 Nov (#185) names the 7 November Airi run in one table row: it says the purchase was scripted, with
+    // no model call. Any README line that names that run says so.
+    const lines = readFileSync(new URL("../README.md", import.meta.url), "utf8").split("\n").filter((l) => /7 November/.test(l) && /Airi/.test(l));
+    expect(lines.length).toBeGreaterThanOrEqual(1);
+    for (const l of lines) expect({ l: l.slice(0, 80), scripted: /scripted (?:run, no Claude call|purchase with no model call)/.test(l) }).toEqual({ l: l.slice(0, 80), scripted: true });
     expect(readme).not.toMatch(/a second live run|second run \(vic-2\)/i);
     expect(readFileSync(new URL("../llms.txt", import.meta.url), "utf8")).toMatch(/a scripted run, no Claude call/);
     for (const [name, t] of Object.entries({ readme, ...(buildPages() as unknown as Record<string, unknown>) })) {
@@ -323,6 +331,9 @@ describe("only the Sourcing agent signed with TAP", () => {
       const stale = [...t.matchAll(/(each agent signs|every agent signs|our agents sign)[^.|]{0,160}(TAP|Trusted Agent Protocol)/gi)].filter((m) => !/\bWas\b[^|]{0,400}$/.test(t.slice(Math.max(0, m.index - 400), m.index)));
       expect({ f, stale: stale.map((m) => m[0]) }).toEqual({ f, stale: [] });
     }
-    for (const f of ["README.md", "docs/submission/long-description.md"]) expect({ f, says: read(f).replace(/\*\*/g, "").includes(VISA_CLAIM) }).toEqual({ f, says: true });
+    // The README of 12 Nov (#185) no longer carries the claim itself: it links the TAP note in the long description, which
+    // says it word for word.
+    expect(read("docs/submission/long-description.md").replace(/\*\*/g, "").includes(VISA_CLAIM)).toBe(true);
+    expect(read("README.md")).toContain("(docs/submission/long-description.md#visa)");
   });
 });

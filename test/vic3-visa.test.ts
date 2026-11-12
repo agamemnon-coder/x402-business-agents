@@ -20,21 +20,25 @@ describe("/visa's lead: the vic-3 live run", () => {
     expect(text(html)).toContain(`The first live run, 7 Nov, follows below.`);
   });
 
-  it("says N of M paid, counted from the record (A to E; F1 and F2 are the negative test)", () => {
+  // The jury check of 12 Nov: the card leads with the paid purchase and its two read-backs; A in one line.
+  it("leads with the paid purchase and says N of M paid, counted from the record (A to E; F1 and F2 are the negative test)", () => {
     const abcde = raw.purchases.filter((p) => !/^F/.test(p.step));
     const paid = abcde.filter((p) => p.outcome?.status === "succeeded");
-    expect(text(block)).toContain(`Latest live run, 12 Nov: ${paid.length} of ${abcde.length} purchases paid`);
+    expect(/<h2>([^<]*)<\/h2>/.exec(block)![1]).toMatch(new RegExp(`^Latest live run, 12 Nov: purchase ${paid[0]!.step} paid, `));
+    expect(text(block)).toContain(`${paid.length} of ${abcde.length} purchases paid`);
     expect(vic3Summary(raw)).toMatchObject({ paid: paid.length, of: abcde.length });
-    for (const p of paid) expect(text(block)).toContain(`${p.step} paid ${p.request!.currency} ${p.request!.amount}`);
+    for (const p of paid) expect(text(block)).toContain(`${p.step}: ${p.request!.currency} ${p.request!.amount}`);
+    const a = raw.purchases.find((p) => p.step === "A")!;
+    if (a.outcome?.code === "PURSER_NO_TAP") expect(text(block)).toContain("A: the cardholder did not tap in time; nothing was charged.");
   });
 
   it("says equal for each read-back only where the record says equal", () => {
     const b = raw.purchases.find((p) => p.step === "B")!;
     const w = (x: { equal: boolean } | null) => (x?.equal ? "equal" : "NOT equal");
-    expect(text(block)).toContain(`the signed hash read back ${w(b.read_back.mandate)} from Airi and ${w(b.read_back.payment_intent)} from Airwallex`);
+    expect(text(block)).toContain(`the signed hash read back ${w(b.read_back.mandate)} at Airi and ${w(b.read_back.payment_intent)} at Airwallex`);
     const flipped = JSON.parse(JSON.stringify(raw)) as Vic3Record;
     flipped.purchases.find((p) => p.step === "B")!.read_back.payment_intent!.equal = false;
-    expect(text(vic3RunHtml(flipped))).toContain("NOT equal from Airwallex");
+    expect(text(vic3RunHtml(flipped))).toContain("NOT equal at Airwallex");
   });
 
   it("lists the refusals by Purser only when the record shows 0 calls, and names who chose the rail with the request id", () => {
