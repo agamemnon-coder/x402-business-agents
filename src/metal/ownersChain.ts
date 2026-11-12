@@ -36,11 +36,13 @@ export class ChainRefused extends Error {
   constructor(what: string, readonly reason: string) { super(`the chain would refuse ${what}: ${reason}; nothing was sent`); this.name = "ChainRefused"; }
 }
 
-/** Whether an error, however viem wrapped it, is the call budget stopping a request before it was sent. */
-export function isBudgetStop(e: unknown): boolean {
-  for (let x: unknown = e, i = 0; x && typeof x === "object" && i < 12; x = (x as { cause?: unknown }).cause, i++) if ((x as { name?: unknown }).name === "OwnersBudgetSpent") return true;
-  return false;
+/** The call budget's own stop inside an error, however viem (or anything else) wrapped it on the way; null when the error is no budget stop. */
+export function budgetStop(e: unknown): Error | null {
+  for (let x: unknown = e, i = 0; x && typeof x === "object" && i < 12; x = (x as { cause?: unknown }).cause, i++) if ((x as { name?: unknown }).name === "OwnersBudgetSpent") return x as Error;
+  return null;
 }
+/** Whether an error, however viem wrapped it, is the call budget stopping a request before it was sent. */
+export const isBudgetStop = (e: unknown): boolean => budgetStop(e) !== null;
 
 /** A send the node answered with a JSON-RPC error whose words say the transaction can never land. Anything else stays in doubt. */
 function refusedForGood(e: unknown): boolean {

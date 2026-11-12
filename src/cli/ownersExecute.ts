@@ -32,9 +32,9 @@ import { existsSync } from "node:fs";
 import { openDb } from "../db/open.js";
 import { redactSecrets } from "../lib/redact.js";
 import { metalAgent } from "../metal/agentCli.js";
-import { OwnersBudgetSpent, OwnersGuardRefused, ownersBudget } from "../metal/ownersBudget.js";
-import { ownersChain, RECEIPT_POLLS } from "../metal/ownersChain.js";
-import { callsLine, countedCli, limitsOf, pay, preflight, preflightRefusals, propose, proposeReplace, proposeRevoke, setup, status, type Limits, type OwnersWorld } from "../metal/ownersFlow.js";
+import { OwnersGuardRefused, ownersBudget } from "../metal/ownersBudget.js";
+import { budgetStop, ownersChain, RECEIPT_POLLS } from "../metal/ownersChain.js";
+import { callsLine, countedCli, limitsOf, pay, preflight, preflightRefusals, propose, proposeReplace, proposeRevoke, setup, status, worldRefusals, type Limits, type OwnersWorld } from "../metal/ownersFlow.js";
 import { approvalHint } from "./hint.js";
 
 const COMMANDS = ["preflight", "setup", "propose [<cap> <budget>]", "propose-replace <cap> <budget>", "propose-revoke", "pay", "status", "record"] as const;
@@ -59,8 +59,10 @@ if (cmd === "propose" || cmd === "propose-replace") {
 // The record is written from the ledger and the call log: no chain client is made, and no go or endpoint is asked for.
 if (cmd === "record") {
   const { RecordRefused, recordRefusals, recordRun } = await import("../metal/ownersRecord.js");
-  const ledger = process.env.KIT11_DB ?? "data/kit11.sqlite";
+  const ledger = process.env.KIT11_DB ?? "";
   try {
+    // The world is named, never the default ledger: a record of the wrong world would be worse than none.
+    if (!ledger) throw new RecordRefused("refused: the record needs KIT11_DB (this world's ledger). Nothing was written, and nothing was called.");
     const missing = recordRefusals(process.env);
     // A ledger that is not there is not made here: an empty one would have nothing to record.
     if (!missing.length && !existsSync(ledger)) throw new RecordRefused("refused: this world's ledger is not there (KIT11_DB); there is nothing to record. Nothing was written.");
@@ -72,7 +74,13 @@ if (cmd === "record") {
   process.exit(0);
 }
 
-// The guard first: without the owner's go, a budget and a log, nothing is opened and nothing is called.
+// The guard first: without the owner's go, a budget and a log, nothing is opened and nothing is called. Nor without
+// the world named (KIT11_DB, KIT11_KEYS_DIR): the defaults would set up an account and spend donor money elsewhere.
+const unnamed = worldRefusals(process.env);
+if (unnamed.length && cmd !== "preflight") {
+  console.error(`refused: the owners commands work on a named world only: ${unnamed.join("; ")}. Nothing was opened and nothing was called.`);
+  process.exit(2);
+}
 if (cmd === "preflight") {
   const missing = preflightRefusals(process.env);
   if (missing.length) {
@@ -107,8 +115,10 @@ try {
   else await status(world);
 } catch (e) {
   // A stop by the budget is the budget working: said plainly, with nothing of the error's inner text (it can quote the endpoint).
-  console.error(redactSecrets(e instanceof OwnersBudgetSpent ? `STOPPED          ${e.message}` : `FAILED           ${(e as Error).message}`));
-  code = e instanceof OwnersBudgetSpent ? 3 : 1;
+  // viem wraps an error thrown inside its transport, so the budget's own stop is looked for inside it.
+  const stop = budgetStop(e);
+  console.error(redactSecrets(stop ? `STOPPED          ${stop.message}` : `FAILED           ${(e as Error).message}`));
+  code = stop ? 3 : 1;
 }
 say(callsLine(world, before));
 process.exit(code);

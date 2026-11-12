@@ -483,7 +483,7 @@ describe("relaying an owners_execute: recorded first, never twice, behind the bu
       chain.step("execute P-0001");
       return ownersRelay(chain, sponsor);
     };
-    await expect(executeOwnersExecute(db, "P-0001", relay(3), t0)).rejects.toThrow(/needs 4 calls.*3 left/);
+    await expect(executeOwnersExecute(db, "P-0001", relay(3), t0)).rejects.toThrow(/needs 4 lines in the call log.*3 left/);
     expect(node.requests).toEqual([]);
     expect(status(db)).toBe("EXECUTING");
     node.state.reverts.set(ACCOUNT.toLowerCase(), encodeErrorResult({ abi: mandateBindingAbi, errorName: "PrefixTaken" }));

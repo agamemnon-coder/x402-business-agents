@@ -1,9 +1,13 @@
 // Metal testnet's JSON-RPC, in process: enough of a chain for the owners path's tests. Every request is recorded in the
 // order it arrives. A transaction is its signed bytes (hash = keccak256 of them, as on the chain), checked for its
 // sender's nonce, mined after a set number of receipt reads, and then applied: a factory call deploys the account, a
-// *USDZ transfer moves balance. Nothing here signs or decides anything for the code under test.
-import { decodeFunctionData, encodeAbiParameters, encodeFunctionResult, erc20Abi, fromRlp, keccak256, numberToHex, parseAbiParameters, parseTransaction, recoverTransactionAddress, slice, toFunctionSelector, type Address, type Hex } from "viem";
-import { mandateBindingAbi } from "@metalntwx/metal-pay/mandates";
+// *USDZ transfer moves balance, and an account's executeSigned runs the mandate calls it carries (bind, replace,
+// revoke), read from the call data itself with the SDK's ABI, never from a proposal's words. A mandate call the
+// account could not run (a revoke or a replace of a mandate it does not hold live, a bind of one it holds) reverts.
+// It does not check the owners' signatures: that is the real account's work, and no test here claims it.
+// Nothing here signs or decides anything for the code under test.
+import { decodeAbiParameters, decodeFunctionData, encodeAbiParameters, getAddress, encodeFunctionResult, erc20Abi, fromRlp, keccak256, numberToHex, parseAbiParameters, parseTransaction, recoverTransactionAddress, slice, toFunctionSelector, type Address, type Hex } from "viem";
+import { decodeAgentKey, mandateBindingAbi, mandateReference } from "@metalntwx/metal-pay/mandates";
 import { accountAbi, factoryAbi } from "../../src/metal/fourEyes.js";
 import { USDZ } from "../../src/metal/network.js";
 import { ACCOUNT_FACTORY } from "../../src/metal/passkeyRelay.js";
@@ -18,7 +22,22 @@ const SEL = {
   predict: toFunctionSelector(factoryAbi.find((x) => x.name === "predictAccount")!), create: toFunctionSelector(factoryAbi.find((x) => x.name === "createAccount")!),
   nonces: toFunctionSelector(accountAbi.find((x) => x.name === "nonces")!), mandates: toFunctionSelector(mandateBindingAbi.find((x) => x.type === "function" && x.name === "mandates")!),
   balanceOf: toFunctionSelector(erc20Abi.find((x) => x.type === "function" && x.name === "balanceOf")!), transfer: toFunctionSelector(erc20Abi.find((x) => x.type === "function" && x.name === "transfer")!),
+  execute: toFunctionSelector(accountAbi.find((x) => x.name === "executeSigned")!),
 };
+
+type Mandate = { principal: Address; revoked: boolean; boundBlock: bigint; spent: bigint; occurrences: bigint };
+/** The mandate calls an executeSigned carries to the account itself, decoded from its call data: what each does to which mandate. */
+function mandateCalls(account: Address, data: Hex): ({ what: "bind"; ref: string } | { what: "replace"; ref: string; predecessor: string } | { what: "revoke"; ref: string })[] {
+  const [, execution] = decodeFunctionData({ abi: accountAbi, data }).args as unknown as [Hex, Hex];
+  const [calls] = decodeAbiParameters(parseAbiParameters("(address target, uint256 value, bytes callData)[]"), execution);
+  return calls.filter((c) => lower(c.target) === lower(account)).map((c) => {
+    const d = decodeFunctionData({ abi: mandateBindingAbi, data: c.callData });
+    if (d.functionName === "bind") { const [hashC, , agentKey] = d.args as unknown as [Hex, Hex, Hex]; return { what: "bind" as const, ref: lower(mandateReference(account, decodeAgentKey(agentKey), hashC)) }; }
+    if (d.functionName === "replace") { const [predecessor, hashC, , agentKey] = d.args as unknown as [Hex, Hex, Hex, Hex]; return { what: "replace" as const, ref: lower(mandateReference(account, decodeAgentKey(agentKey), hashC)), predecessor: lower(predecessor) }; }
+    if (d.functionName === "revoke") return { what: "revoke" as const, ref: lower((d.args as unknown as [Hex])[0]) };
+    throw new Error(`the stand-in account does not run ${d.functionName}`);
+  });
+}
 
 /** The address this stand-in's factory gives a set of signers: fixed by them, as the real factory's is. */
 export function predictedAccount(calldata: Hex): Address {
@@ -32,7 +51,8 @@ export function fakeMetal() {
   const pending = new Map<string, number>();
   const latest = new Map<string, number>();
   const txs = new Map<Hex, FakeTx>();
-  const mandates = new Map<string, { principal: Address; revoked: boolean; boundBlock: bigint; spent: bigint; occurrences: bigint }>();
+  const mandates = new Map<string, Mandate>();
+  const live = (ref: string) => { const m = mandates.get(ref); return !!m && m.boundBlock > 0n && !m.revoked; };
   let lastAsked: Address | null = null;
   const state = {
     /** How many receipt reads a transaction stays unmined; Infinity keeps it pending until mine() is called. */
@@ -45,7 +65,21 @@ export function fakeMetal() {
     fail: new Map<string, Error>(),
   };
 
+  /** Whether the account can run the mandate calls of this transaction, on the mandates it holds now. Any other transaction passes. */
+  function accountRuns(t: FakeTx): boolean {
+    if (!t.data.startsWith(SEL.execute)) return true;
+    return mandateCalls(t.to, t.data).every((c) => (c.what === "bind" ? !mandates.has(c.ref) : c.what === "replace" ? live(c.predecessor) && !mandates.has(c.ref) : live(c.ref)));
+  }
   function apply(t: FakeTx): void {
+    if (t.data.startsWith(SEL.execute)) {
+      for (const c of mandateCalls(t.to, t.data)) {
+        if (c.what === "revoke") { mandates.set(c.ref, { ...mandates.get(c.ref)!, revoked: true }); continue; }
+        // A replace ends its predecessor and carries what was spent, and how many payments were made, into the new mandate.
+        const old = c.what === "replace" ? mandates.get(c.predecessor)! : undefined;
+        if (old && c.what === "replace") mandates.set(c.predecessor, { ...old, revoked: true });
+        mandates.set(c.ref, { principal: getAddress(t.to), boundBlock: 5n, spent: old?.spent ?? 0n, occurrences: old?.occurrences ?? 0n, revoked: false });
+      }
+    }
     if (lower(t.to) === lower(ACCOUNT_FACTORY) && t.data.startsWith(SEL.create)) code.set(lower(predictedAccount(t.data)), "0x363d3d37");
     if (lower(t.to) === lower(USDZ) && t.data.startsWith(SEL.transfer)) {
       const [to, amount] = decodeFunctionData({ abi: erc20Abi, data: t.data }).args as [Address, bigint];
@@ -57,7 +91,7 @@ export function fakeMetal() {
     const t = txs.get(hash);
     if (!t || t.mined) return;
     t.mined = true;
-    t.ok = !state.reverts.has(lower(t.to));
+    t.ok = !state.reverts.has(lower(t.to)) && accountRuns(t);
     latest.set(lower(t.from), Math.max(latest.get(lower(t.from)) ?? 0, t.nonce + 1));
     if (t.ok) apply(t);
   }

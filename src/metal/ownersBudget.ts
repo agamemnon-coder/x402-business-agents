@@ -1,12 +1,14 @@
 // The call budget of a live owners run (Face ID signs on chain, Metal testnet; npm run owners, and the runner when it
-// relays an owners_execute). The owner agrees a number of calls before anything runs, and code keeps to it. Every
+// relays an owners_execute). The owner agrees a number before anything runs, and code keeps to it: the number of lines
+// the world's call log may hold. Every
 // JSON-RPC request on this path counts: reads, sends and receipt polls, from every process of the run (the CLI's
 // commands and the runner). Each is appended to one log file before it is sent, and the request that would go over the
 // agreed number is refused before it leaves this machine. The log holds the time, the method, the step and the
 // process; never a parameter, an address or a URL.
 //
 // A run of the pinned metal-agent CLI that reaches the network (fund, mandate pull) is one line, `cli:<command>`: the
-// requests the CLI makes inside cannot be counted from here, and every record of a run says so.
+// requests the CLI makes inside cannot be counted from here, and every record of a run says so. So the budget counts
+// lines in the call log, not Metal calls: a line is one request, or one whole run of the CLI.
 //
 // Set by the run's environment: OWNERS_GO=yes (the owner's go), OWNERS_CALL_BUDGET (a whole number, for this world: the
 // log adds up across commands and processes) and OWNERS_CALL_LOG (the JSONL file). Without all three nothing is called.
@@ -20,8 +22,8 @@ export interface OwnersCall { at: string; method: string; step: string; pid: num
 export function ownersRefusals(env: Record<string, string | undefined>): string[] {
   const why: string[] = [];
   if (env.OWNERS_GO !== "yes") why.push("OWNERS_GO=yes (the owner's go for this run)");
-  if (!/^\d+$/.test(env.OWNERS_CALL_BUDGET ?? "")) why.push("OWNERS_CALL_BUDGET (a whole number: the Metal calls the owner agreed for this world, counted across commands and processes)");
-  if (!env.OWNERS_CALL_LOG) why.push("OWNERS_CALL_LOG (a JSONL file: every call is appended to it before it is sent)");
+  if (!/^\d+$/.test(env.OWNERS_CALL_BUDGET ?? "")) why.push("OWNERS_CALL_BUDGET (a whole number: the lines in the call log the owner agreed for this world, one for each request and one for each run of the metal-agent CLI, counted across commands and processes)");
+  if (!env.OWNERS_CALL_LOG) why.push("OWNERS_CALL_LOG (a JSONL file: every request and every run of the CLI is appended to it, one line each, before it is sent)");
   return why;
 }
 
@@ -63,12 +65,12 @@ export function countByStep(calls: readonly OwnersCall[]): { step: string; reque
 export interface CallBudget {
   readonly budget: number;
   readonly file: string;
-  /** Calls in the log: this world's, from every process. */
+  /** Lines in the log: this world's, from every process. */
   used(): number;
   left(): number;
-  /** Logs one call, before it is made. Throws OwnersBudgetSpent, logging nothing, when the budget is spent. */
+  /** Logs one line (a request, or a run of the CLI), before it is made. Throws OwnersBudgetSpent, logging nothing, when the budget is spent. */
   count(method: string, step: string): void;
-  /** Throws OwnersBudgetSpent unless at least `calls` are left: asked before a step that must not stop halfway. */
+  /** Throws OwnersBudgetSpent unless at least `calls` lines are left: asked before a step that must not stop halfway. */
   need(calls: number, what: string): void;
 }
 
@@ -117,14 +119,14 @@ export function callBudget(o: { budget: number; file: string; now?: () => Date; 
     count(method, step) {
       locked(o.file, () => {
         const n = used();
-        if (n >= o.budget) throw new OwnersBudgetSpent(`the owners call budget of ${o.budget} is spent (${n} used); ${method} (${step}) was not sent. Ask the owner before raising OWNERS_CALL_BUDGET.`);
+        if (n >= o.budget) throw new OwnersBudgetSpent(`the owners call budget of ${o.budget} lines is spent (the call log holds ${n}); ${method} (${step}) was not sent. Ask the owner before raising OWNERS_CALL_BUDGET.`);
         const line: OwnersCall = { at: (o.now ?? (() => new Date()))().toISOString(), method, step, pid: o.pid ?? process.pid };
         appendFileSync(o.file, `${JSON.stringify(line)}\n`, { mode: 0o600 });
       });
     },
     need(calls, what) {
       const left = Math.max(0, o.budget - used());
-      if (left < calls) throw new OwnersBudgetSpent(`${what} needs ${calls} calls and the owners call budget of ${o.budget} has ${left} left; nothing was sent. Ask the owner before raising OWNERS_CALL_BUDGET.`);
+      if (left < calls) throw new OwnersBudgetSpent(`${what} needs ${calls} lines in the call log and the owners call budget of ${o.budget} has ${left} left; nothing was sent. Ask the owner before raising OWNERS_CALL_BUDGET.`);
     },
   };
 }

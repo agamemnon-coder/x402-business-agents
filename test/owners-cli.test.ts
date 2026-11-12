@@ -39,6 +39,25 @@ describe("npm run owners", () => {
     expect(half.text).not.toMatch(/OWNERS_GO=yes/);
   }, 240_000);
 
+  it("refuses every command on an unnamed world (no KIT11_DB or no KIT11_KEYS_DIR), with the guard set, and opens nothing", async () => {
+    const log = join(dir, "unnamed.jsonl");
+    const guard = { OWNERS_GO: "yes", OWNERS_CALL_BUDGET: "40", OWNERS_CALL_LOG: log };
+    const commands = ["setup", "propose", "propose-replace 0.10 0.50", "propose-revoke", "pay", "status"];
+    const runs = await Promise.all([
+      ...commands.map((c) => owners(c, { ...guard, KIT11_DB: "" })),
+      ...commands.map((c) => owners(c, { ...guard, KIT11_KEYS_DIR: "" })),
+      owners("record", { ...guard, KIT11_DB: "" }),
+    ]);
+    for (const r of runs) {
+      expect(r.code, r.text).toBe(2);
+      expect(r.text).toMatch(/KIT11_DB|KIT11_KEYS_DIR/);
+      expect(r.text).toMatch(/[Nn]othing was (opened|written)/);
+    }
+    expect(runs.slice(0, commands.length).every((r) => /KIT11_DB \(this world's ledger/.test(r.text))).toBe(true);
+    expect(runs.slice(commands.length, 2 * commands.length).every((r) => /KIT11_KEYS_DIR \(this world's keys folder/.test(r.text))).toBe(true);
+    expect(existsSync(log)).toBe(false);
+  }, 240_000);
+
   it("preflight with the guard set still makes no call while the relay's settings are missing", async () => {
     const log = join(dir, "calls.jsonl");
     const r = await owners("preflight", { OWNERS_GO: "yes", OWNERS_CALL_BUDGET: "40", OWNERS_CALL_LOG: log, KIT11_PASSKEY_OWNERS: "on" });

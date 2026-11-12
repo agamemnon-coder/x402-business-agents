@@ -6,7 +6,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { extractTerms } from "@metalntwx/metal-pay/mandates";
-import type { Address, Hex } from "viem";
+import type { Hex } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { openDb, type DB } from "../../src/db/open.js";
 import { termsHash } from "../../src/lib/terms.js";
@@ -137,7 +137,8 @@ export async function ownersWorld(o: { budget?: number; pollsMs?: number[]; dono
     }
     throw new Error(`the stand-in CLI does not run ${args.slice(0, 2).join(" ")}`);
   };
-  const env = { OWNERS_GO: "yes", OWNERS_CALL_BUDGET: String(o.budget ?? 200), OWNERS_CALL_LOG: log, KIT11_KEYS_DIR: keys, KIT11_PASSKEY_OWNERS: "on", ...(o.donor === false ? {} : { OWNERS_DONOR_KEY: donorFile }), ...(o.env ?? {}) };
+  // The ledger's name as a live run sets it (the owners commands refuse to run without one); here the ledger itself is in memory unless `dbFile` names a file.
+  const env = { OWNERS_GO: "yes", OWNERS_CALL_BUDGET: String(o.budget ?? 200), OWNERS_CALL_LOG: log, KIT11_DB: o.dbFile ?? join(dir, "world.sqlite"), KIT11_KEYS_DIR: keys, KIT11_PASSKEY_OWNERS: "on", ...(o.donor === false ? {} : { OWNERS_DONOR_KEY: donorFile }), ...(o.env ?? {}) };
   const make = (m: { budget?: number; pollsMs?: number[] } = {}): OwnersWorld => {
     const chain = ownersChain({ budget: callBudget({ budget: m.budget ?? o.budget ?? 200, file: log, now: () => clock.now }), rpc: (a) => node.rpc(a), sleep: async () => {}, pollsMs: m.pollsMs ?? o.pollsMs ?? [1, 1, 1, 1] });
     return { db, chain, env, say: (l) => said.push(l), now: () => clock.now, sleep: async () => {}, cli: countedCli(chain, network), cliOffline: (args) => metalAgent(args) };
@@ -167,17 +168,8 @@ export async function ownersWorld(o: { budget?: number; pollsMs?: number[]; dono
       w.chain.step(`execute ${id}`);
       const sponsor = privateKeyToAccount((JSON.parse(readFileSync(join(keys, "passkey-sponsor.key.json"), "utf8")) as { privateKey: Hex }).privateKey);
       if (r.resume) resuming.add(id);
-      let tx: Hex;
-      try { ({ tx } = await executeOwnersExecute(db, id, ownersRelay(w.chain, sponsor), clock.now)); } finally { resuming.delete(id); }
-      // What the account did, as the chain would hold it after the call: the mandate bound, replaced (the earlier one
-      // revoked, its spend and payment count carried into the new one) or revoked.
-      const t = JSON.parse(terms(id).terms_json) as OwnersExecuteTerms;
-      const ref = t.action.mandate.toLowerCase();
-      const m = node.mandates.get(ref);
-      const old = t.action.what === "replace" ? node.mandates.get(t.action.replaces!.toLowerCase()) : undefined;
-      if (old) node.mandates.set(t.action.replaces!.toLowerCase(), { ...old, revoked: true });
-      node.mandates.set(ref, { principal: t.account as Address, boundBlock: 5n, spent: old?.spent ?? m?.spent ?? 0n, occurrences: old?.occurrences ?? m?.occurrences ?? 0n, revoked: t.action.what === "revoke" });
-      return tx;
+      // What the account does with it is the stand-in chain's own work: it reads the relayed call data (test/support/fakeMetal.ts).
+      try { return (await executeOwnersExecute(db, id, ownersRelay(w.chain, sponsor), clock.now)).tx; } finally { resuming.delete(id); }
     },
     close() {
       for (const [k, v] of [["KIT11_KEYS_DIR", before.keys], ["KIT11_PASSKEY_OWNERS", before.on]] as const) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }

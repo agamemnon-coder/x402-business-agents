@@ -9,8 +9,11 @@
 //       what it had sent;
 //   (c) a crash between a send and its receipt leads to a second send;
 //   (d) a proposal past its fifteen minutes can still be signed or run, or a fresh one cannot;
-//   (e) the record says anything else than the audit rows, or holds a credential.
-// Software passkeys, the stand-in chain and a stand-in for the CLI's network commands; no network.
+//   (e) the record says anything else than the audit rows, or holds a credential;
+//   (f) the runner's own path (execute, behind the guard, over the endpoint the environment names) relays differently
+//       from the executor the other steps drive directly.
+// Software passkeys, the stand-in chain (which runs the relayed mandate calls from their call data) and a stand-in for
+// the CLI's network commands; no network.
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -19,10 +22,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { centsToBaseUnits } from "../src/lib/money.js";
 import { EXPLORER_TX, USDZ } from "../src/metal/network.js";
 import { countByStep, OwnersBudgetSpent, readOwnersCalls } from "../src/metal/ownersBudget.js";
-import { cliCommand, ownersPlan, pay, planTotals, preflight, propose, proposeReplace, proposeRevoke, setup, status } from "../src/metal/ownersFlow.js";
+import { execute } from "../src/executors/index.js";
+import { cliCommand, ownersPlan, pay, planTotals, preflight, propose, proposeReplace, proposeRevoke, REPLACE, setup, status } from "../src/metal/ownersFlow.js";
 import { recordRun, renderOwnersRecord, type OwnersRecord } from "../src/metal/ownersRecord.js";
 import { ACCOUNT_FACTORY, PASSKEY_VERIFIER } from "../src/metal/passkeyRelay.js";
 import { ownersWorld, T0, type TestWorld } from "./support/ownersWorld.js";
+import { serveRpc } from "./support/rpcServer.js";
 
 // Each proposal's credential is made by the real pinned CLI (offline), a child process: slow on a loaded machine.
 vi.setConfig({ testTimeout: 60_000 });
@@ -106,7 +111,9 @@ function recordHoldsOnlyRows(r: OwnersRecord, page: string): void {
 describe("the live run, rehearsed", () => {
   it("(a) and (e): the whole planned run logs exactly what it sends, step by step as the plan says, and its record is what the audit rows say", async () => {
     await world({ budget: 60 });
-    const plan = ownersPlan({ funding: "donor", polls: POLLS, replace: { capCents: 10, budgetCents: 50 } });
+    // The plan as preflight prints it and the runbook carries it: the scene's own replace (REPLACE).
+    const plan = ownersPlan({ funding: "donor", polls: POLLS });
+    expect(plan.find((s) => s.step === "7 propose the replace")!.command).toBe("npm run owners -- propose-replace 0.10 0.50");
     const planned = (name: string) => plan.find((s) => s.step === name)!;
     // Every receipt is there on the first poll, so each step logs the plan's lower number.
     const ran: { plan: string; log: string }[] = [];
@@ -144,7 +151,7 @@ describe("the live run, rehearsed", () => {
     expect(first.inside).toMatchObject({ outcome: "PAID" });
     expect(first.over).toMatchObject({ refused: true, reason: expect.stringMatching(/^mandate_cap_exceeded/) });
     // 7. The owners raise the cap; the refused amount is paid.
-    const replace = await step("7 propose the replace", "propose-replace", () => proposeReplace(w.again(), { capCents: 10, budgetCents: 50 }));
+    const replace = await step("7 propose the replace", "propose-replace", () => proposeReplace(w.again(), REPLACE));
     const replaceId = replace.proposal.proposal_id;
     expect(await w.sign(replaceId, 0)).toMatchObject({ status: "cosigned" });
     tick();
@@ -237,8 +244,8 @@ describe("the live run, rehearsed", () => {
       const id = p.proposal_id;
       expect(p).toMatchObject({ terms_sha256: filed.proposal.terms_sha256, onchain_digest: filed.terms.onchain_digest, expires_at: filed.terms.expires_at, mandate: filed.terms.action.mandate, created_at: rows("proposal.created", id)[0]!.ts, explorer: `${EXPLORER_TX}${p.tx}`, not_counted: [] });
       expect(p.approvals).toEqual([
-        { by: "max", role: "CFO", fingerprint: enrolled[0]!.p.fingerprint, at: rows("proposal.cosigned", id)[0]!.ts, of: "1 of 2" },
-        { by: "controller", role: "second approver", fingerprint: enrolled[1]!.p.fingerprint, at: rows("proposal.approved", id)[0]!.ts, of: "2 of 2" },
+        { by: "max", role: "CFO", fingerprint: enrolled[0]!.p.fingerprint, at: rows("proposal.cosigned", id)[0]!.ts, of: "1 of 2", virtual: false },
+        { by: "controller", role: "second approver", fingerprint: enrolled[1]!.p.fingerprint, at: rows("proposal.approved", id)[0]!.ts, of: "2 of 2", virtual: false },
       ]);
       expect((rows("proposal.cosigned", id)[0]!.p.passkey as { credential_id: string }).credential_id).toBe(enrolled[0]!.subject);
       expect((rows("proposal.approved", id)[0]!.p.passkey as { credential_id: string }).credential_id).toBe(enrolled[1]!.subject);
@@ -290,7 +297,7 @@ describe("the live run, rehearsed", () => {
     await w.signBoth(id);
     w.node.state.receiptAfter = 1; // the receipt is there on the second poll
     budget = used() + 4;
-    await expect(w.relay(id, { budget })).rejects.toThrow(/owners call budget of \d+ is spent.*eth_getTransactionReceipt.*was not sent.*stays executing/);
+    await expect(w.relay(id, { budget })).rejects.toThrow(/owners call budget of \d+ lines is spent.*eth_getTransactionReceipt.*was not sent.*stays executing/);
     expect(used()).toBe(budget);
     expect(w.node.requests).toHaveLength(budget);
     expect(lines().slice(-4).map((c) => c.method)).toEqual(["eth_estimateGas", "eth_getTransactionCount", "eth_sendRawTransaction", "eth_getTransactionReceipt"]);
@@ -306,10 +313,12 @@ describe("the live run, rehearsed", () => {
     w.node.state.receiptAfter = 0;
 
     // A relay the budget cannot cover does not start; a payment's CLI run over the budget does not start either.
-    const second = await propose(w.again(), { capCents: 10, budgetCents: 50 });
+    // (The second proposal is a replace: with a mandate live, a second bind is refused.)
+    await expect(propose(w.again(), REPLACE)).rejects.toThrow(/bound a mandate on this account that is live/);
+    const second = await proposeReplace(w.again(), REPLACE);
     await w.signBoth(second.proposal.proposal_id);
     const [requests, runs] = [w.node.requests.length, w.cliRuns.length];
-    await expect(w.relay(second.proposal.proposal_id, { budget: used() + 3 })).rejects.toThrow(/needs 4 calls and the owners call budget of \d+ has 3 left; nothing was sent/);
+    await expect(w.relay(second.proposal.proposal_id, { budget: used() + 3 })).rejects.toThrow(/needs 4 lines in the call log and the owners call budget of \d+ has 3 left; nothing was sent/);
     await expect(pay(w.again({ budget: used() }))).rejects.toThrow(OwnersBudgetSpent);
     expect(w.node.requests).toHaveLength(requests);
     expect(w.cliRuns).toHaveLength(runs);
@@ -410,5 +419,36 @@ describe("the live run, rehearsed", () => {
     expect(outcomes(slow.proposal.proposal_id)).toEqual([["proposal", "filed"], ["approvals", "2 of 2 approvals"], ["relay", "not run"]]);
     expect(outcomes(fresh.proposal.proposal_id)).toEqual([["proposal", "filed"], ["approvals", "2 of 2 approvals"], ["relay", "executed"]]);
     recordHoldsOnlyRows(r, renderOwnersRecord(r));
+  });
+
+  it("(f): the runner's own path relays the same way: execute, behind the guard and the same call log, over the endpoint the environment names", async () => {
+    // The runner's clock is the machine's, so this world starts now.
+    await world({ at: new Date() });
+    await setup(w.again());
+    const { proposal, terms } = await propose(w.again());
+    const id = proposal.proposal_id;
+    await w.signBoth(id);
+    const endpoint = await serveRpc((a) => w.node.rpc(a));
+    const names = ["METAL_RPC_URL", "OWNERS_GO", "OWNERS_CALL_BUDGET", "OWNERS_CALL_LOG"] as const;
+    const before = names.map((k) => process.env[k]);
+    Object.assign(process.env, { METAL_RPC_URL: endpoint.url, OWNERS_GO: "yes", OWNERS_CALL_BUDGET: "200", OWNERS_CALL_LOG: w.log });
+    const from = used();
+    try {
+      await execute(w.db, id);
+    } finally {
+      names.forEach((k, i) => { if (before[i] === undefined) delete process.env[k]; else process.env[k] = before[i]; });
+      await endpoint.close();
+    }
+    expect(statusOf(id)).toBe("EXECUTED");
+    // The same four lines as the plan's relay, under the same step name, in the world's one call log.
+    expect(lines().slice(from).map((c) => `${c.step}:${c.method}`)).toEqual(["eth_estimateGas", "eth_getTransactionCount", "eth_sendRawTransaction", "eth_getTransactionReceipt"].map((m) => `execute ${id}:${m}`));
+    logIsWhatWasSent();
+    nothingSentTwice();
+    const sent = rows("owners.sent", id)[0]!.p.tx as Hex;
+    expect(w.node.sent().at(-1)).toMatchObject({ hash: sent, ok: true });
+    expect(rows("owners.executed", id)[0]!.p.tx).toBe(sent);
+    // The stand-in account ran the call it was sent: the mandate the words name is the one the call data bound.
+    expect(w.node.mandates.get(terms.action.mandate.toLowerCase())).toMatchObject({ principal: terms.account, revoked: false });
+    expect((await pay(w.again())).inside).toMatchObject({ outcome: "PAID" });
   });
 });

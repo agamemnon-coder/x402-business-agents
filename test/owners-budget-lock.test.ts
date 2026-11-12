@@ -42,7 +42,7 @@ describe("a lock a dead process left on the call log", () => {
     other.atAppend = () => { appendedWhileOtherHeld ||= otherHolds; };
     const b = callBudget({ budget: 1, file, pid: 1 });
     // The other process took the last line: this one is refused, and never wrote while the other held the lock.
-    expect(() => b.count("eth_call", "mine")).toThrow(/budget of 1 is spent/);
+    expect(() => b.count("eth_call", "mine")).toThrow(/budget of 1 lines is spent/);
     expect(appendedWhileOtherHeld).toBe(false);
     expect(readOwnersCalls(file).map((c) => c.step)).toEqual(["other"]);
     expect(readFileSync(file, "utf8").trim().split("\n")).toHaveLength(1);
