@@ -33,6 +33,11 @@ Test money only. Live: Claude's decisions, Airwallex sandbox calls, Metal testne
 - Visa: https://kit11.max-31b.workers.dev/visa and docs/runs/2026-11-07-vic-1.md
 - After the kit: Airwallex connected accounts live in the sandbox (10 Nov: account acct_SC-QD89fOneAeqaRFgOymw ACTIVE; EUR 5.00 payout a9460dba-f31b-4111-be58-6d9a9e71adb1 with Purser's EUR 0.05 fee accepted by Airwallex, settlement simulated); the SME invoice inbox is built on a branch, not public; it ran once end to end in the sandbox on 10 Nov for three test companies (1 payout PAID, 3 refused by Airwallex for a missing business registration number): docs/after-the-kit.md, docs/runs/2026-11-10-platform-e2e.md
 
+## Product pages
+
+- Pricing: https://kit11.max-31b.workers.dev/pricing (pilot prices for design partners; nothing is on sale yet)
+- Security and trust: https://kit11.max-31b.workers.dev/security (each control with its proof, and what is not in place yet; sandbox and testnet only)
+
 ## Key files
 
 - README.md: the whole submission, every id

@@ -5,7 +5,7 @@ import type { Server } from "node:http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { startJudge } from "../src/cli/judge.js";
 
-const PAGES = ["/", "/metal", "/metal/report", "/visa", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab"];
+const PAGES = ["/", "/metal", "/metal/report", "/visa", "/pricing", "/security", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab"];
 let server: Server;
 let base: string;
 

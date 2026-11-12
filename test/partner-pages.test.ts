@@ -100,7 +100,7 @@ describe("the partner pages", () => {
     expect([...nav.slice(0, more?.index).matchAll(/<a href="[^"]+" data-nav="([a-z]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => [m[1], m[2]])).toEqual([["home", "Home"], ["watch", "Watch"], ["try", "Try"], ["proof", "Proof"]]);
     expect(more?.[1]).toBe("More");
     expect([...(more?.[2] ?? "").matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => [m[1], m[2]])).toEqual(moreLinks().map((l) => [l.href, l.label]));
-    expect(moreLinks().map((l) => l.label)).toEqual(expect.arrayContaining(["Airwallex", "Metal", "Visa", "Claude"]));
+    expect(moreLinks().map((l) => l.label)).toEqual(expect.arrayContaining(["Pricing", "Security", "Airwallex", "Metal", "Visa", "Claude"]));
     expect(nav).toContain('<a href="try" data-nav="try" class="on" aria-current="page">Try</a>');
     const pages = buildPages();
     expect(pages.airwallex).toBe(AIRWALLEX_PAGE);

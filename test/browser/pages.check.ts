@@ -3,7 +3,7 @@
 // "undefined" or "NaN" anywhere on screen, on a page wider than the screen, and on basic accessibility faults (no page
 // language, not exactly one h1, a link or button with no name, an image with no alt text), and on a menu that wraps, is
 // not the four tabs and "More" with the pages under it, or opens "More" off the screen (12 Nov; the dropdown needs no
-// script and works from the keyboard).
+// script and works from the keyboard). Also /pricing and /security, the product pages under "More".
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
 import { VISA_ENTRY_LINE } from "../../src/redesign/partners.js";
@@ -466,6 +466,37 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (path === "/metal" && (await page.locator("a.pf[href*='testnet.metalntwx.com/tx/0x']").count()) < 3) fail(`/metal ${tag}: fewer than three transactions`);
       await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
     }
+    // /pricing and /security (12 Nov), the product pages under "More": short, the prices and the cards in sight, every
+    // detail folded and readable once open, "More" marked as where the reader is, and no text under 14 px in a card.
+    for (const path of ["/pricing", "/security"]) {
+      const res = await page.goto(`${base}${path}`, { waitUntil: "load" });
+      if (!res || res.status() !== 200) { fail(`${path} ${tag}: status ${res?.status()}`); continue; }
+      await look(page, `${path} ${tag}`, w);
+      const body = await page.locator("main").innerText();
+      const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
+      // The budgets of test/site-v4.test.ts, counted here as the browser shows the page's body (folds closed).
+      const budget = path === "/pricing" ? 150 : 220;
+      if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
+      const here = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null, tabs: document.querySelectorAll('nav[aria-label="Main"] > a.on').length }; })()`) as { more: boolean; link: string | null; tabs: number };
+      if (!here.more || here.link !== path.slice(1) || here.tabs) fail(`${path} ${tag}: "More" and the page's own link are not marked as where the reader is (${JSON.stringify(here)})`);
+      const small = await page.evaluate(`[...document.querySelectorAll("main .card *, main .lead, main .notyet")].filter((e) => (e.offsetParent || getComputedStyle(e).position === "fixed") && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) && parseFloat(getComputedStyle(e).fontSize) < 14).map((e) => (e.textContent || "").trim().slice(0, 30))`) as string[];
+      for (const t of small.slice(0, 5)) fail(`${path} ${tag}: text under 14 px: ${t}`);
+      if (!(await page.evaluate(() => document.fonts.check("16px Inter")))) fail(`${path} ${tag}: Inter did not load`);
+      const cards = await page.locator("main article.pc.card").count();
+      if (path === "/pricing") {
+        if (cards !== 3 || !/Pilot pricing\s+These are pilot prices for design partners\. Nothing is on sale yet\./.test(body) || !/€49\s+a month/.test(body) || !/from\s+€249\s+a month/.test(body)) fail(`/pricing ${tag}: not the heading, the lead line and three cards with their prices`);
+        if (!/a EUR \d+\.\d{2} test fee on a EUR \d+\.\d{2} test payout\.\s+Test values, not prices/.test(body) || !(await page.locator('#platform-fee a[href$="docs/runs/2026-11-10-connected-accounts-sandbox.md"]').count())) fail(`/pricing ${tag}: the platform fee's test values are not labelled, or its run record is not linked`);
+        if (!/Not yet: no real-money go-live\./.test(body) || (await page.locator("main details").count())) fail(`/pricing ${tag}: no "Not yet" line, or a fold that should not be there`);
+      } else {
+        if (cards !== 7 || (await page.locator("main article.pc.card details.fold").count()) !== 7 || (await page.locator("main details[open]").count())) fail(`/security ${tag}: not seven cards, each with its detail folded`);
+        if (!/Our red team ran \d+ attacks in a test world: \d+ were stopped before anything moved and \d+ were found afterwards, not prevented\./.test(body) || !/npm run verify-log/.test(body) || !/No third-party penetration test and no SOC 2 report yet/.test(body)) fail(`/security ${tag}: the red team's counts, the audit command or the "Not yet" line is missing`);
+        if (!/^try(\/sign)?$/.test((await page.locator("#s-sign .links a").getAttribute("href")) ?? "")) fail(`/security ${tag}: the signature card does not link to Try`);
+      }
+      await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
+      await page.evaluate(() => document.querySelectorAll("main details").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
+      await look(page, `${path} folds open ${tag}`, w);
+      await page.screenshot({ path: join(shots, `${path.slice(1)}-open-${tag}.png`), fullPage: true });
+    }
     // Proof carries the read-back briefly (section B): the hash pair and the cards' match, with each card in a fold.
     await page.goto(`${base}/proof`, { waitUntil: "load" });
     await look(page, `/proof ${tag}`, w);
@@ -649,4 +680,4 @@ if (failures.length) {
   console.log(`\npages check: ${failures.length} problem(s)`);
   process.exit(1);
 }
-console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /visa, /claude (folds open), the menu (four tabs and More, by keyboard too), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? ", /judge (ticks kept across a reload, and with storage blocked) and Home's link to it" : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);
+console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /visa, /claude (folds open), /pricing, /security (folds open), the menu (four tabs and More, by keyboard too), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? ", /judge (ticks kept across a reload, and with storage blocked) and Home's link to it" : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);

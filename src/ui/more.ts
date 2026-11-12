@@ -23,8 +23,8 @@ export const MORE_LABEL = "More";
 
 /** The whole menu, in its order: the product pages first, then the partner pages (names as text, never a logo). */
 export const MORE_LINKS: readonly MoreLink[] = [
-  { key: "pricing", label: "Pricing", href: "pricing", group: "product", built: false },
-  { key: "security", label: "Security", href: "security", group: "product", built: false },
+  { key: "pricing", label: "Pricing", href: "pricing", group: "product" },
+  { key: "security", label: "Security", href: "security", group: "product" },
   { key: "docs", label: "Docs", href: "docs", group: "product", built: false },
   { key: "status", label: "Status", href: "status", group: "product", built: false },
   { key: "airwallex", label: "Airwallex", href: "airwallex", group: "partner" },

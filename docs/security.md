@@ -223,3 +223,6 @@ Rate limits, where the docs say them (each asserted in the same test or the test
   service levels (decisions under 10 s, 0 double payments, 0 missing origin, fallbacks under 10%), from the ledger.
 - Before each commit, the real secret values are searched for in the diff. On 2026-10-29 the full history of the
   code, plan and keys repos was searched for every secret value. Nothing was found.
+- No third-party penetration test has been run: every check above is our own, and no auditor has tested the controls
+  ([controls.md](controls.md)). An outside audit is on the list for a real launch
+  ([compliance.md](compliance.md#what-a-real-launch-would-add)). Stated on 12 November.
