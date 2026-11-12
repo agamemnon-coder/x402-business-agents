@@ -1,6 +1,6 @@
 # The engine's events, for the page (lane B)
 
-Written by lane A (engine) on 12 November 2026. The source of truth is `src/engine/events.ts` (the allowlist) and its tests
+Written for the hands-on demo's page on 12 November 2026. The source of truth is `src/engine/events.ts` (the allowlist) and its tests
 `test/engine-events.test.ts`; if this note and the code differ, the code wins and this note is fixed.
 
 ## How to read them

@@ -5,7 +5,7 @@
 // that is not on the list says that it happened and when, and nothing else: no fields and no subject.
 //
 // The agents' events (claude.asking, agent.*, ap.checker_decided, ap.payer_proposed, claude.capped) are described for
-// the page in .handover/agent-events.md. Every text among them is masked (masked()): no IBAN, key or full account number.
+// the page in docs/engine-events.md. Every text among them is masked (masked()): no IBAN, key or full account number.
 //
 // The list is read from the audit( calls of what the engine host runs: src/ap, src/claude, src/passkey,
 // src/policy/approvals.ts, src/executors (the payment executors), src/payouts, src/vault and the treasury's seed
