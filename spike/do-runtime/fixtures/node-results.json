@@ -1,0 +1,41 @@
+{
+ "node": "v22.22.0",
+ "invoice": {
+  "bytes": 1668,
+  "sha256": "d9443f2f2732c1c3c4365025f6f1871533b08823bd4b0b9feba664d9fc2220ed",
+  "text": "Zeeland Verpakkingen B.V. (test)\nBTW-nummer: NL123456789B01\nFactuur\nFactuurnummer: ZV-5001\nFactuurdatum: 05-11-2026\nVervaldatum: 19-11-2026\nSubtotaal € 4,00\nBTW 21% € 0,84\nTotaal te betalen € 4,84\nIBAN: NL91 ABNA 0417 1643 00\nBIC: ABNANL2A\nBetalingskenmerk: ZV-5001",
+  "pages": 1,
+  "ms": 183
+ },
+ "receipt": {
+  "bytes": 3223,
+  "sha256": "538513495a158d737f746467c26274ed6bdf34cfdc1f644244dd3c3fb160bd84",
+  "deterministic": true,
+  "text": "N O RT H W I N D O U T D O O R B. V. ( T E S T )\nBetaalbewijs\nBergtex Textil GmbH · Factuur BTX-2026-21\nTestgeld (Airwallex sandbox)\nAlle bedragen in dit document zijn testgeld uit de Airwallex-sandbox; er is geen echt geld bewogen.\nFactuur\nLeverancier Bergtex Textil GmbH\nFactuur BTX-2026-21\nFactuurdatum 2 november 2026\nVervaldatum 16 november 2026\nBetalingskenmerk BTX-2026-21\nRekening •••• 3000 · BIC COBADEFFXXX\nBetaald\nBedrag EUR 1.850,00\nBetaald op 12 november 2026\nBetaalwijze SWIFT-overboeking\nAirwallex-overboeking tr_6\nKosten (door Airwallex berekend) EUR 13,40\nValuta omgewisseld\nKoers 1.0850\nGekocht EUR 370,00\nVerkocht USD 401,45\nGoedkeuring\nGoedgekeurd door cfo\nHoe cli: getypte hashprefix (geen passkey)\nWanneer 12 november 2026, 10:14 UTC\nVoorstel P-0001\nHash van de voorwaarden b21687cfd2bb1c0a5b8e709cfb11b723cc2a7ebc254808d9c5225d05414fc6b0\nOndertekende hash b21687cfd2bb1c0a5b8e709cfb11b723cc2a7ebc254808d9c5225d05414fc6b0\nControleren: npm run verify controleert elke goedkeuring met Face ID opnieuw tegen de opgeslagen handtekening en de\nvastgelegde publieke sleutel, zonder netwerk.\nGemaakt door Purser uit de administratie: elk bedrag komt uit het grootboek of de inkoopadministratie.",
+  "pages": 1,
+  "ms": 14
+ },
+ "month": {
+  "bytes": 3444,
+  "sha256": "78d571a997d33d1a3bf4dc1e3731dd8122c150523d97324008c72d03c5848708",
+  "text": "N O RT H W I N D O U T D O O R B. V. ( T E S T )\nMaandrapport 2026-11\n1 november 2026 – 30 november 2026\nTestgeld (Airwallex sandbox)\nAlle bedragen in dit document zijn testgeld uit de Airwallex-sandbox; er is geen echt geld bewogen.\nOntvangen facturen\nValuta Aantal Bedrag\nEUR 2 EUR 3.700,00\nBetaald\nLeverancier Factuur Betaald op Bedrag\nBergtex Textil GmbH BTX-2026-21 12 november 2026 EUR 1.850,00\nNog open (stand aan het einde van de maand)\nNiets in deze periode.\nGeblokkeerd\nLeverancier Factuur Bedrag Reden\nBergtex Textil GmbH BTX-2026-22 EUR 1.850,00 subtotaal plus btw is niet het totaal\nUitgaven per leverancier\nLeverancier Aantal Bedrag\nBergtex Textil GmbH 1 EUR 1.850,00\nKosten overboekingen · Valuta\nKosten overboekingen EUR 13,40\nValuta 1 omwisseling: Gekocht EUR 370,00; Verkocht USD 401,45\nWinst en verlies (grootboek)\nRekening EUR\n6200 Goederen van de fabrikant 1.554,62\n6800 Bank- en overboekingskosten 13,40\nOpbrengsten EUR 0,00\nKosten EUR 1.568,02\nResultaat EUR -1.568,02\nGemaakt door Purser uit de administratie: elk bedrag komt uit het grootboek of de inkoopadministratie.",
+  "pages": 1
+ },
+ "company": "Northwind Outdoor B.V. (test)",
+ "sync": {
+  "batches": 2,
+  "kinds": [
+   {
+    "documents": 2
+   },
+   {
+    "vendors": 2,
+    "invoices": 2,
+    "payments": 1,
+    "transactions": 3,
+    "ledger_entries": 7,
+    "audit_rows": 21
+   }
+  ]
+ }
+}
