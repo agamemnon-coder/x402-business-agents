@@ -69,7 +69,7 @@ const { REFUSALS } = await import("@metalntwx/metal-pay/mandates");
 const { decodePaymentSignatureHeader, encodePaymentRequiredHeader, encodePaymentResponseHeader } = await import("@x402/core/http");
 const { coverageView, innerLayers, pathsOf } = await import("../src/zerotrust/coverage.js");
 const { REPORT_JSON, REPORT_MARKDOWN, buildReport, generate, generatedOf, renderMarkdown, reportFiles } = await import("../src/zerotrust/report.js");
-const { ATTACKS, COMPONENTS, FIXES, LAYERS, LIMITS, MONEY_PATHS, PENDING_ATTACKS, PREVENTING_LAYERS, PRINCIPLE, RAIL_REFUSALS, READING, RECORD_NOT_COUNTED, STAND_INS, guardsOf, isMoneyPath, modelDepth, voidedBy } = await import("../src/zerotrust/model.js");
+const { ATTACKS, COMPONENTS, FIXES, LAYERS, LIMITS, MONEY_PATHS, PENDING_ATTACKS, PREVENTING_LAYERS, PRINCIPLE, RAIL_REFUSALS, READING, RECORD_NOT_COUNTED, STAND_INS, guardsOf, isMoneyPath, modelDepth, singleBreaches, voidedBy } = await import("../src/zerotrust/model.js");
 const { buyPlan } = await import("../src/agents/cardBuyer.js");
 const { proposeInvoicePayment, seedTreasury } = await import("../src/agents/euroBill.js");
 const { ibanSha, parseInvoiceFallback } = await import("../src/agents/invoice.js");
@@ -2434,6 +2434,24 @@ describe("the depth test: every combination of failed layers on every way money 
     expect(RESULTS.depth.paths.map((p) => p.optional_off.depth)).toEqual(MONEY_PATHS.map((p) => p.guards.length));
   });
 
+  // A depth counts layers, not break-ins. The model names the single break-ins whose voids cover every guard of a way
+  // out; the exhaustive pushes above tried each of their sets of failed layers. Money moved there, and only there.
+  it("one break-in alone: money moved exactly where the model says one break-in fails every guard", () => {
+    for (const optionalOn of [false, true]) {
+      const named = singleBreaches(optionalOn);
+      for (const c of COMPONENTS) {
+        const failed = inOrder(voidedBy([c.id]).filter((l) => PREVENTING_LAYERS.includes(l)));
+        for (const p of MONEY_PATHS) {
+          const run = MEASURED.find((m) => m.path === p.id && m.optional_on === optionalOn && m.failed.join() === failed.join())!;
+          expect(run, `${c.id} on ${p.id}: pushed`).toBeDefined();
+          expect(named.some((b) => b.component === c.id && b.paths.includes(p.id)), `${c.id} on ${p.id}, optional ${optionalOn ? "on" : "off"}: ${run.ended}`).toBe(run.moved);
+        }
+      }
+    }
+    // Not vacuous: with the optional controls off, some single break-in does fail every guard of a way out.
+    expect(singleBreaches(false).length).toBeGreaterThan(0);
+  });
+
   // L6, honestly. With every guard of a path failed (optional controls off) and the emergency stop pulled before the
   // money step: the stop still refuses a bank payout and an inbox invoice, in the executor; it does not stop a card or
   // an on-chain payment once Purser's checks and the rail have both failed, because those are what carry it out.
@@ -2525,7 +2543,7 @@ describe("the zero-trust model", () => {
   });
 
   it("says where each stand-in rail's refusal comes from, in the words the stand-ins answer", async () => {
-    expect(RAIL_REFUSALS.map((r) => r.id).sort()).toEqual(["card_category", "card_limit", "mandate_cap", "mandate_payee", "mandate_revoked", "transfer_approval", "transfer_request_id"]);
+    expect(RAIL_REFUSALS.map((r) => r.id).sort()).toEqual(["card_category", "card_inactive", "card_limit", "mandate_cap", "mandate_payee", "mandate_revoked", "transfer_approval", "transfer_request_id"]);
     // The Metal reasons are Metal's own, from its published library.
     expect(RAIL_REFUSALS.find((r) => r.id === "mandate_cap")!.answer).toBe(REFUSALS.OverPerPaymentCap.reason);
     expect(RAIL_REFUSALS.find((r) => r.id === "mandate_payee")!.answer).toBe(REFUSALS.PayeeNotAllowed.reason);
@@ -2539,6 +2557,11 @@ describe("the zero-trust model", () => {
     expect(await refusalOf(() => awx.createTransfer(once))).toContain(RAIL_REFUSALS.find((r) => r.id === "transfer_request_id")!.answer);
     expect(awx.transfers).toHaveLength(1);
     for (const r of RAIL_REFUSALS.filter((x) => x.live)) expect(readFileSync(repo(r.live!.path), "utf8"), r.id).toContain(r.answer);
+    // Every card decline a test in this file expects from the card stand-in is one the model lists, with its source.
+    const here = readFileSync(new URL(import.meta.url), "utf8");
+    const declines = new Set([...here.matchAll(/failureReason: "([A-Z_]+)"/g)].map((m) => m[1]!));
+    expect(declines.size).toBeGreaterThan(0);
+    for (const d of declines) expect(RAIL_REFUSALS.map((r) => r.answer), `${d} is expected from the card stand-in and is not in RAIL_REFUSALS`).toContain(d);
   });
 
   it("states its limits, each with the document that says so", () => {
@@ -2878,12 +2901,16 @@ describe("the report: docs/zero-trust.md and docs/zero-trust/report.json", () =>
     const order = [at(PRINCIPLE.join(" ")), ...LAYERS.map((l) => at(`| ${l.id} | **${l.name}** | ${l.owner} | ${l.does} |`)), at(`**${r.attacks_run} attacks run, ${r.attacks_stopped} stopped; money moved in ${r.attacks_where_money_moved}.**`), at(READING.harness)];
     expect(order).toEqual([...order].sort((a, b) => a - b));
     at(`A hostile model made ${r.hostile_tool_calls} tool calls: ${r.hostile_refused_by_code} refused by code, ${r.hostile_refused_by_rail} refused by a stand-in rail, ${r.hostile_ran_inside_limits} ran inside the limits, ${r.hostile_unsafe_by_ledger} unsafe by the ledger verdict.`);
-    at(`At least ${r.min_depth} independent layers must all fail before money moves, and at least ${r.min_depth_with_optional_controls} with the optional controls switched on.`);
-    // Which refusals were also seen live: the ones with a run record, each with its link; the others named as not seen.
+    at(`At least ${r.min_depth} layers must all fail before money moves, and at least ${r.min_depth_with_optional_controls} with four eyes and Airwallex's transfer approval switched on (both optional).`);
+    // A depth counts layers: the single break-ins that fail every guard of a way out are named next to it.
+    at(READING.breaches);
+    for (const b of r.depth.single_breaches.optional_off) at(b.name);
+    // How many refusals were also seen live is said in one sentence; which ones, with their records, is in a fold.
     const seen = RAIL_REFUSALS.filter((x) => x.live);
-    at(`${seen.length} of the ${RAIL_REFUSALS.length} refusals the stand-in rails give were also seen on the live`);
-    for (const x of seen) at(`- [\`${x.answer}\`](${x.live!.path.replace(/^docs\//, "")}) (${x.rail}): ${x.live!.fact}`);
-    for (const x of RAIL_REFUSALS.filter((y) => !y.live)) expect(first.indexOf(`\`${x.answer}\``), x.id).toBeGreaterThan(at(`No run record shows the other ${RAIL_REFUSALS.length - seen.length}:`));
+    at(`${seen.length} of the ${RAIL_REFUSALS.length} refusals the matrix relies on from the stand-in rails were also seen on the live`);
+    for (const x of RAIL_REFUSALS) expect(first, x.id).not.toContain(`\`${x.answer}\``);
+    const standIns = page.slice(page.indexOf("<summary>The stand-ins"));
+    for (const x of seen) expect(standIns, x.id).toContain(`| ${x.rail} | \`${x.answer}\` |`);
     // The smallest depth is named with the way out it belongs to.
     at(`Fewest: ${MONEY_PATHS.filter((p) => modelDepth(p.id, false) === r.min_depth).map((p) => p.name).join(", ")}.`);
     // Two minutes for a CFO: the part that is not folded stays short.

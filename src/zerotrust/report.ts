@@ -8,7 +8,7 @@
 
 import { coverageView, type CoverageView } from "./coverage.js";
 import {
-  ATTACKS, COMPONENTS, FIXES, LAYERS, LIMITS, MONEY_PATHS, PENDING_ATTACKS, PRINCIPLE, RAIL_REFUSALS, READING, STAND_INS,
+  ATTACKS, COMPONENTS, FIXES, LAYERS, LIMITS, MONEY_PATHS, PENDING_ATTACKS, PRINCIPLE, RAIL_REFUSALS, READING, STAND_INS, singleBreaches,
   type ComponentId, type Evidence, type Fix, type Layer, type LayerId, type Limit, type MoneyPath, type Owner, type RailRefusal, type StandIn, type Target,
 } from "./model.js";
 
@@ -81,6 +81,8 @@ export interface ReportAttack {
 }
 
 type Minimum = { depth: number; paths: MoneyPath[] };
+/** A break-in that alone gets past every layer guarding the ways out it names. */
+type SingleBreach = { component: ComponentId; name: string; paths: MoneyPath[] };
 
 export interface Report {
   // The numbers a page may quote.
@@ -101,6 +103,8 @@ export interface Report {
   depth: {
     layers_counted: LayerId[]; record_not_counted: string;
     minimum: { optional_off: Minimum; optional_on: Minimum };
+    /** The depth counts layers; these single break-ins each fail every guard of a way out (from the model's voids). */
+    single_breaches: { optional_off: SingleBreach[]; optional_on: SingleBreach[] };
     paths: { path: MoneyPath; name: string; hostile: string; optional: { layer: LayerId; when: string }[]; not_counted: string | null; optional_off: DepthMode; optional_on: DepthMode }[];
     stop_in_force: { path: MoneyPath; failed: LayerId[]; moved: boolean; ended: string }[];
     property: NonNullable<MatrixResults["property"]>;
@@ -190,6 +194,7 @@ export function buildReport(results: MatrixResults, generated: Generated): Repor
     depth: {
       layers_counted: depth.layers_counted, record_not_counted: depth.record_not_counted,
       minimum: { optional_off: minimum(depth.paths, "optional_off"), optional_on: minimum(depth.paths, "optional_on") },
+      single_breaches: { optional_off: singleBreaches(false), optional_on: singleBreaches(true) },
       paths: MONEY_PATHS.map((m) => {
         const p = depth.paths.find((x) => x.path === m.id)!;
         return { path: m.id, name: m.name, hostile: m.hostile, optional: m.optional.map((o) => ({ ...o })), not_counted: m.notCounted ?? null, optional_off: p.optional_off, optional_on: p.optional_on };
@@ -244,6 +249,8 @@ export function renderMarkdown(r: Report): string {
   const notLive = r.rail_refusals.filter((x) => !x.live);
   const names = (ids: MoneyPath[]) => ids.map((id) => r.coverage.paths.find((p) => p.id === id)!.name);
   const min = r.depth.minimum;
+  const alone = (bs: SingleBreach[]) => bs.map((b) => `${plain(b.name)} on ${names(b.paths).join(" and ")}`).join("; ");
+  const single = r.depth.single_breaches;
 
   const out: string[] = [
     `<!-- Written by npm run zero-trust from src/zerotrust/model.ts and a run of test/zero-trust.test.ts. Not edited by hand: a test fails when this file differs from what the command writes. -->`,
@@ -254,15 +261,15 @@ export function renderMarkdown(r: Report): string {
     ...table(["", "Layer", "Who owns it", "What it does"], r.layer_list.map((l) => [l.id, `**${plain(l.name)}**`, plain(l.owner), plain(l.does)])),
     "",
     `**${r.attacks_run} attacks run, ${r.attacks_stopped} stopped; money moved in ${r.attacks_where_money_moved}.** ${r.layers} layers. `
-    + `At least ${r.min_depth} independent layers must all fail before money moves, and at least ${r.min_depth_with_optional_controls} with the optional controls switched on. `
+    + `At least ${r.min_depth} layers must all fail before money moves, and at least ${r.min_depth_with_optional_controls} with four eyes and Airwallex's transfer approval switched on (both optional). `
     + `Fewest: ${list(names(min.optional_off.paths))}. `
     + `A hostile model made ${r.hostile_tool_calls} tool calls: ${r.hostile_refused_by_code} refused by code, ${r.hostile_refused_by_rail} refused by a stand-in rail, ${r.hostile_ran_inside_limits} ran inside the limits, ${r.hostile_unsafe_by_ledger} unsafe by the ledger verdict.`,
     "",
-    `${r.reading.harness} ${live.length} of the ${r.rail_refusals.length} refusals the stand-in rails give were also seen on the live Airwallex sandbox or the Metal testnet, with test money, each in a run record:`,
+    `${r.reading.breaches} With the optional controls off, one break-in alone gets past every layer that guards a way out: ${single.optional_off.length ? alone(single.optional_off) : "none"}. `
+    + `With them on, ${single.optional_on.length ? `these still do: ${alone(single.optional_on)}` : "no single break-in does"}.`,
     "",
-    ...live.map((x) => `- ${link(x.live!.path, code(x.answer))} (${x.rail}): ${plain(x.live!.fact)}`),
+    `${r.reading.harness} ${live.length} of the ${r.rail_refusals.length} refusals the matrix relies on from the stand-in rails were also seen on the live Airwallex sandbox or the Metal testnet, with test money, each in a run record; ${notLive.length} ${notLive.length === 1 ? "was" : "were"} not. Each is under the stand-ins below.`,
     "",
-    ...(notLive.length ? [`No run record shows the other ${notLive.length}: ${notLive.map((x) => `${code(x.answer)} (${x.rail})`).join(", ")}.`, ""] : []),
     `Every number here, and every row below, is also in ${link(REPORT_JSON, "report.json")}.`,
     "",
   ];
@@ -349,7 +356,7 @@ export function renderMarkdown(r: Report): string {
   out.push(...fold("The stand-ins, and where each gets its behaviour", [
     ...table(["Stands for", "Stand-in", "How it behaves"], r.stand_ins.map((s) => [plain(s.stands_for), plain(s.stand_in), plain(s.behaves)])),
     "",
-    "The refusals the stand-in rails give:",
+    "The refusals the matrix relies on from the stand-in rails:",
     "",
     ...table(["Rail", "It answers", "Stand-in", "Where that comes from", "Seen live"], r.rail_refusals.map((x) => [
       x.rail, code(x.answer), plain(x.stand_in), plain(x.source), x.live ? `${plain(x.live.fact)} ${link(x.live.path, "Run record")}: "${plain(x.live.quote)}"` : "No run record shows it.",

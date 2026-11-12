@@ -8,21 +8,15 @@ A spending limit written in a prompt can be talked out of, so Purser enforces it
 | L1 | **The agent** | the model | A Claude agent proposes what to pay; it may be wrong, manipulated or fully hostile, so nothing relies on it. |
 | L2 | **Purser's own checks** | Purser's code | Plain code checks every request before anything is signed: fixed tools, invoice and fraud checks, and the CFO's policy (limits, reserve floors, payee rules, speed limits). |
 | L3 | **The CFO's signature** | the CFO's device | The CFO's passkey signs the hash of the exact terms; the signature works once, for those terms only, until they expire. |
-| L4 | **Four eyes** | a second person | Above the CFO's threshold a second person signs the same terms with their own passkey; one person twice does not count. |
-| L5 | **The rail's own controls** | the rail | Airwallex and Metal refuse by themselves, whatever Purser says: card limits and merchant categories per agent, Airwallex's transfer approval, and the on-chain mandate per agent (cap, budget, payee, end date). |
+| L4 | **Four eyes** | a second person | Optional, off until the CFO sets a threshold: above it a second person signs the same terms with their own passkey; one person twice does not count. |
+| L5 | **The rail's own controls** | the rail | Airwallex and Metal refuse by themselves, whatever Purser says: card limits and merchant categories per agent, Airwallex's transfer approval (optional, once the company switches it on), and the on-chain mandate per agent (cap, budget, payee, end date). |
 | L6 | **The record and the stop** | the record | A hash-chained audit log and ledger, verify and reconcile find what changed afterwards; a pause per agent and the emergency stop refuse what comes next. |
 
-**48 attacks run, 48 stopped; money moved in 0.** 6 layers. At least 2 independent layers must all fail before money moves, and at least 2 with the optional controls switched on. Fewest: Card purchase (Airwallex card), Bank payout (Airwallex transfer), On-chain payment (Metal mandate), Supplier invoice (payables inbox). A hostile model made 147 tool calls: 124 refused by code, 3 refused by a stand-in rail, 20 ran inside the limits, 0 unsafe by the ledger verdict.
+**48 attacks run, 48 stopped; money moved in 0.** 6 layers. At least 2 layers must all fail before money moves, and at least 2 with four eyes and Airwallex's transfer approval switched on (both optional). Fewest: Card purchase (Airwallex card), Bank payout (Airwallex transfer), On-chain payment (Metal mandate), Supplier invoice (payables inbox). A hostile model made 147 tool calls: 124 refused by code, 3 refused by a stand-in rail, 20 ran inside the limits, 0 unsafe by the ledger verdict.
 
-Every attack ran in this repository's test harness. Purser's own code is the real code; Airwallex, Metal, the model and the phones are stand-ins. Nothing here attacked a live rail. 5 of the 7 refusals the stand-in rails give were also seen on the live Airwallex sandbox or the Metal testnet, with test money, each in a run record:
+The depth counts layers, not separate break-ins: one break-in can fail several layers at once. With the optional controls off, one break-in alone gets past every layer that guards a way out: Purser's own decision code on Bank payout (Airwallex transfer) and Supplier invoice (payables inbox); the database file on Bank payout (Airwallex transfer) and Supplier invoice (payables inbox). With them on, no single break-in does.
 
-- [`LIMIT_EXCEEDED`](runs/2026-11-07-awx-1.md) (Airwallex): On 7 November the Airwallex sandbox declined the Sourcing agent's EUR 45.00 purchase on a card limited to EUR 30.00.
-- [`MERCHANT_CATEGORY_NOT_ALLOWED`](runs/2026-11-07-awx-1.md) (Airwallex): On 7 November the Airwallex sandbox declined a purchase outside the Support card's merchant category.
-- [`mandate_cap_exceeded`](runs/2026-11-03-main-run.md) (Metal): On 3 November Metal itself refused a purchase of 0.04 under a mandate capped at 0.03, and the refusal is on chain.
-- [`mandate_revoked`](runs/2026-10-29-s1.md) (Metal): On 29 October the chain refused a payment under a credential that had been replaced.
-- [`IN_APPROVAL`](runs/2026-11-10-airwallex-two-locks.md) (Airwallex): On 10 November Airwallex held a transfer made over the API until a person approves it in Airwallex; it was not paid.
-
-No run record shows the other 2: `mandate_payee_not_listed` (Metal), `duplicate request_id` (Airwallex).
+Every attack ran in this repository's test harness. Purser's own code is the real code; Airwallex, Metal, the model and the phones are stand-ins. Nothing here attacked a live rail. 6 of the 8 refusals the matrix relies on from the stand-in rails were also seen on the live Airwallex sandbox or the Metal testnet, with test money, each in a run record; 2 were not. Each is under the stand-ins below.
 
 Every number here, and every row below, is also in [report.json](zero-trust/report.json).
 
@@ -226,12 +220,13 @@ The depth test pushes the same hostile calls through every combination of failed
 | the CFO's phone and the second person's phone | FakeAuthenticator (src/redteam/authenticator.ts) | A passkey in software that makes genuine WebAuthn signatures. Enrolment and every signature check are the real code. |
 | Purser Cloud as hosted | testCloud (test/support/cloud.ts) | The cloud's own request handler on a local database and a temporary folder: no Cloudflare, no network. |
 
-The refusals the stand-in rails give:
+The refusals the matrix relies on from the stand-in rails:
 
 | Rail | It answers | Stand-in | Where that comes from | Seen live |
 |---|---|---|---|---|
 | Airwallex | `LIMIT_EXCEEDED` | FakeIssuing.simulateCardCharge (src/redteam/issuing.ts) | The Airwallex sandbox's decline of a charge over the card's limit per purchase. | On 7 November the Airwallex sandbox declined the Sourcing agent's EUR 45.00 purchase on a card limited to EUR 30.00. [Run record](runs/2026-11-07-awx-1.md): "Packwise Pro 45.00 EUR on Sourcing ····2441 (limit 30.00): **declined `LIMIT_EXCEEDED`**" |
 | Airwallex | `MERCHANT_CATEGORY_NOT_ALLOWED` | FakeIssuing.simulateCardCharge (src/redteam/issuing.ts) | The Airwallex sandbox's decline of a charge outside the card's merchant categories. | On 7 November the Airwallex sandbox declined a purchase outside the Support card's merchant category. [Run record](runs/2026-11-07-awx-1.md): "on Support ····4175 (MCC 7372 only): **declined `MERCHANT_CATEGORY_NOT_ALLOWED`**" |
+| Airwallex | `CARD_INACTIVE` | FakeIssuing.simulateCardCharge (src/redteam/issuing.ts) | The Airwallex sandbox's decline of a charge on a card set INACTIVE: a card frozen by a pause or the emergency stop. | On 30 October the Airwallex sandbox declined a charge on a card Purser had set INACTIVE. [Run record](runs/2026-10-30-single-use.md): "a second charge, 10.00 \| declined, `CARD_INACTIVE`" |
 | Metal | `mandate_cap_exceeded` | StandInMetal (test/zero-trust.test.ts) | Metal's facilitator answering 402 for a payment over the mandate's cap per payment; the reason text is REFUSALS.OverPerPaymentCap in @metalntwx/metal-pay. | On 3 November Metal itself refused a purchase of 0.04 under a mandate capped at 0.03, and the refusal is on chain. [Run record](runs/2026-11-03-main-run.md): "Metal refused it itself with 402 `mandate_cap_exceeded`" |
 | Metal | `mandate_payee_not_listed` | StandInMetal (test/zero-trust.test.ts) | Metal's published library, not a run: REFUSALS.PayeeNotAllowed in @metalntwx/metal-pay, checked before the cap in the order of REASONS (the order Mandate Binding checks them in). | No run record shows it. |
 | Metal | `mandate_revoked` | StandInMetal (test/zero-trust.test.ts) | The chain's refusal of a payment under a replaced or revoked credential; the reason text is REFUSALS.Revoked in @metalntwx/metal-pay. | On 29 October the chain refused a payment under a credential that had been replaced. [Run record](runs/2026-10-29-s1.md): "a pull under the old sourcing credential is refused, `mandate_revoked`" |
@@ -242,6 +237,7 @@ Every run record cited on this page, with the words quoted from it:
 
 - [docs/runs/2026-11-07-awx-1.md](runs/2026-11-07-awx-1.md): "Packwise Pro 45.00 EUR on Sourcing ····2441 (limit 30.00): **declined `LIMIT_EXCEEDED`**" (cited by rail refusal card_limit, attack hostile-agent-card, attack hostile-model-every-tool)
 - [docs/runs/2026-11-07-awx-1.md](runs/2026-11-07-awx-1.md): "on Support ····4175 (MCC 7372 only): **declined `MERCHANT_CATEGORY_NOT_ALLOWED`**" (cited by rail refusal card_category, attack decision-code-over-card-limit)
+- [docs/runs/2026-10-30-single-use.md](runs/2026-10-30-single-use.md): "a second charge, 10.00 \| declined, `CARD_INACTIVE`" (cited by rail refusal card_inactive)
 - [docs/runs/2026-11-03-main-run.md](runs/2026-11-03-main-run.md): "Metal refused it itself with 402 `mandate_cap_exceeded`" (cited by rail refusal mandate_cap, attack stolen-agent-key-above-mandate, attack decision-code-over-mandate)
 - [docs/runs/2026-10-29-s1.md](runs/2026-10-29-s1.md): "a pull under the old sourcing credential is refused, `mandate_revoked`" (cited by rail refusal mandate_revoked, attack paused-agent-ignored)
 - [docs/runs/2026-11-10-airwallex-two-locks.md](runs/2026-11-10-airwallex-two-locks.md): "Airwallex answered **`IN_APPROVAL`** on create and still held it there on a read-back" (cited by rail refusal transfer_approval, attack decision-code-unsigned-payout, attack database-approval-forged, attack supplier-invoice-forced-past-signatures)
@@ -292,7 +288,7 @@ Pending attacks are listed for code that is not in this tree yet. They have no t
 | Four eyes counts passkeys enrolled under two names. It cannot know that two names are two human beings: a person who enrols a second passkey under another name, with the enrolment opened and the fingerprint confirmed on the runner, counts as two. | A second name can only be added on the runner, by whoever runs it, and the enrolment is in the audit log; the phone and the relay cannot add one. The rails' own controls still apply. | docs/security.md, accepted risks; src/passkey/ledger.ts, openEnrolment |
 | A ledger restored from a backup taken before a payment was planned no longer knows that payment. Planned again, it gets a new request id, and Airwallex would treat it as a new transfer: the invoice could be paid twice. | The second plan needs the CFO's signature again. A backup taken after the plan carries the request id; the Airwallex stand-in then refuses the repeat (the attack ledger-restored-from-backup), as Airwallex's published API describes, and no run record shows the live rail doing so. Compare the restored ledger with Airwallex before paying from it. | docs/security.md, accepted risks; src/executors/invoicePayment.ts, the request id in the signed terms |
 | Purser has no limit per invoice beyond the reserve floors: an invoice from a supplier on file, to the bank details on file, for a larger amount than usual is planned and waits only for the CFO's signature. | The CFO reads the amount on the confirm screen before Face ID; once the CFO sets a four-eyes threshold, a second person must sign above it; the reserve floors still hold. | docs/security.md, accepted risks |
-| Four eyes and Airwallex's transfer approval guard a payout only once the company switches them on. | Without them a bank payout still needs Purser's checks and the CFO's signature over the exact terms. | docs/controls-matrix.md; docs/airwallex-approvals.md |
+| Four eyes and Airwallex's transfer approval guard a payout only once the company switches them on. | Without them a bank payout still needs Purser's checks and the CFO's signature over the exact terms, unless Purser's own decision code or the ledger file is in the attacker's hands: each of those alone gets past both (the attacks decision-code-unsigned-payout and database-approval-forged). | docs/controls-matrix.md; docs/airwallex-approvals.md |
 
 </details>
 
@@ -306,4 +302,4 @@ Pending attacks are listed for code that is not in this tree yet. They have no t
 
 </details>
 
-Matrix run on 2026-11-12, at commit `177ddf8 with uncommitted changes`.
+Matrix run on 2026-11-12, at commit `5f14637 with uncommitted changes`.
