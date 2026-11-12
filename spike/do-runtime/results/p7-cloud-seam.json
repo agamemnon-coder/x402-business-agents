@@ -1,0 +1,338 @@
+{
+ "probe": "p7-cloud-seam",
+ "http": 200,
+ "start_ms": 472,
+ "total_ms": 10225,
+ "mailprobe_company_for_the_real_email_event": {
+  "ok": true,
+  "value": "t_hZNa",
+  "ms": 392
+ },
+ "two_companies_by_the_clouds_own_admin_route": {
+  "ok": true,
+  "value": {
+   "a": "t_lrgb",
+   "b": "t_FXmQ"
+  },
+  "ms": 1023
+ },
+ "session_reaches_its_own_object": {
+  "ok": true,
+  "value": {
+   "a_status": 200,
+   "a_object_is_named_by_tenant": true,
+   "ctx_id_name_inside_object": "t_lrgblZjsEaqFjq1Q",
+   "different_objects": true,
+   "without_session": 401,
+   "forged": 401
+  },
+  "ms": 645
+ },
+ "applySync_with_a_made_up_key_is_refused": {
+  "ok": true,
+  "value": {
+   "status": 500,
+   "error": "the key this push came with was revoked or expired while this push ran; nothing of it was written"
+  },
+  "ms": 107
+ },
+ "object_feeds_read_model_with_applySync": {
+  "ok": true,
+  "value": {
+   "status": 200,
+   "applied": [
+    {
+     "documents": {
+      "added": 2,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "vendors": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "invoices": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "payments": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "transactions": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "ledger_entries": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "audit_rows": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     }
+    },
+    {
+     "documents": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "vendors": {
+      "added": 2,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "invoices": {
+      "added": 2,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "payments": {
+      "added": 1,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "transactions": {
+      "added": 3,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "ledger_entries": {
+      "added": 7,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "audit_rows": {
+      "added": 21,
+      "changed": 0,
+      "unchanged": 0
+     }
+    }
+   ],
+   "ms": 133,
+   "calls": {
+    "d1": 18,
+    "d1_statements": 69,
+    "r2": 4
+   }
+  },
+  "ms": 142
+ },
+ "console_api_shows_what_the_object_fed": {
+  "ok": true,
+  "value": {
+   "invoices": [
+    "AP-0001 paid",
+    "AP-0002 blocked"
+   ],
+   "document": {
+    "status": 200,
+    "bytes": 1620,
+    "is_pdf": true,
+    "sha_matches_invoice": true
+   },
+   "trial_status": 200,
+   "trial_keys": [
+    "to",
+    "rows"
+   ],
+   "ledger_entries": 7,
+   "transactions": 3,
+   "vendors": 2,
+   "payments": 1,
+   "fixture_had": [
+    {
+     "documents": 2
+    },
+    {
+     "vendors": 2,
+     "invoices": 2,
+     "payments": 1,
+     "transactions": 3,
+     "ledger_entries": 7,
+     "audit_rows": 21
+    }
+   ]
+  },
+  "ms": 1662
+ },
+ "one_cloud_read_request_ms": {
+  "ok": true,
+  "value": {
+   "cloud_route_ms": 174,
+   "engine_route_ms": 23
+  },
+  "ms": 197
+ },
+ "other_company_sees_nothing": {
+  "ok": true,
+  "value": {
+   "status": 200,
+   "invoices": 0
+  },
+  "ms": 175
+ },
+ "feed_again_changes_nothing": {
+  "ok": true,
+  "value": {
+   "applied": [
+    {
+     "documents": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 2
+     },
+     "vendors": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "invoices": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "payments": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "transactions": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "ledger_entries": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "audit_rows": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     }
+    },
+    {
+     "documents": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 0
+     },
+     "vendors": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 2
+     },
+     "invoices": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 2
+     },
+     "payments": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 1
+     },
+     "transactions": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 3
+     },
+     "ledger_entries": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 7
+     },
+     "audit_rows": {
+      "added": 0,
+      "changed": 0,
+      "unchanged": 21
+     }
+    }
+   ],
+   "ms": 214,
+   "calls": {
+    "d1": 44,
+    "d1_statements": 44,
+    "r2": 0
+   }
+  },
+  "ms": 225
+ },
+ "a_viewer_cannot_feed": {
+  "ok": true,
+  "value": {
+   "feed": 403,
+   "whoami": 200
+  },
+  "ms": 31
+ },
+ "email_handler_hands_the_mail_to_the_object": {
+  "ok": true,
+  "value": {
+   "rejected": null,
+   "object_got_mail": 1,
+   "attachment": "ZV-5001.pdf",
+   "attachment_is_the_invoice_pdf": true,
+   "other_object_got": 0,
+   "unknown_address": "unknown address"
+  },
+  "ms": 584
+ },
+ "websocket_stream_through_the_route": {
+  "ok": true,
+  "value": {
+   "status": 101,
+   "got": [
+    "echo:hello",
+    "treasury: reading invoice ZV-5001"
+   ],
+   "listeners_the_object_saw": 1,
+   "without_session": 401
+  },
+  "ms": 18
+ },
+ "alarm_wakes_the_object": {
+  "ok": true,
+  "value": {
+   "fired": 1
+  },
+  "ms": 716
+ },
+ "object_identity_after_use": {
+  "ok": true,
+  "value": {
+   "tenant": "t_lrgblZjsEaqFjq1Q",
+   "id": "c759aa20bb347bcb5cc17819ec9f116b5ad18870482f2bb5ec41dd9b55824c02",
+   "name": "t_lrgblZjsEaqFjq1Q",
+   "sqliteBytes": 32768
+  },
+  "ms": 23
+ },
+ "real_email_event": {
+  "status": 200,
+  "text": "Worker successfully processed email"
+ },
+ "second_request": {
+  "second_request_real_email_event_reached_the_object": {
+   "ok": true,
+   "value": {
+    "cloud_queue": [
+     "queued 2831 bytes"
+    ],
+    "object_got_mail": 1,
+    "attachment": "ZV-5001.pdf",
+    "attachment_is_the_invoice_pdf": true
+   },
+   "ms": 20
+  }
+ }
+}

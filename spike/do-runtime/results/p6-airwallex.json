@@ -1,0 +1,79 @@
+{
+ "probe": "p6-airwallex",
+ "http": 200,
+ "start_ms": 12,
+ "total_ms": 1055,
+ "fromEnv_reads_process_env": {
+  "ok": true,
+  "value": {
+   "clientId": true,
+   "hasBudgetedFetch": false
+  },
+  "ms": 14
+ },
+ "airwallexFromEnv_constructs": {
+  "ok": true,
+  "value": {
+   "rail": "function"
+  },
+  "ms": 0
+ },
+ "client_login_then_call": {
+  "ok": true,
+  "value": {
+   "rows": 2,
+   "requests": [
+    "POST /authentication/login",
+    "GET /balances/current?account_type=cash",
+    "GET /balances/current"
+   ],
+   "loginOnce": true,
+   "bearer": "Bearer stand-in-token"
+  },
+  "ms": 4
+ },
+ "client_spacing_and_timeouts": {
+  "ok": true,
+  "value": {
+   "three_calls_ms": 171,
+   "abortSignalTimeout": true
+  },
+  "ms": 171
+ },
+ "adapter_balances_on_behalf_of": {
+  "ok": true,
+  "value": {
+   "eur_cents": 125050,
+   "payingAccount": "acct_SC-QD89fOneAeqaRFgOymw",
+   "header_on_call": "acct_SC-QD89fOneAeqaRFgOymw",
+   "header_on_login": null
+  },
+  "ms": 1
+ },
+ "errors_typed": {
+  "ok": true,
+  "value": {
+   "notFound": "AirwallexError 404 not_found trace trace-spike-1",
+   "ambiguous": "AirwallexAmbiguous (a POST that got 503 is not resent)",
+   "second": "tr_spike_1"
+  },
+  "ms": 3
+ },
+ "call_budget_on_tmp_file": {
+  "ok": true,
+  "value": {
+   "counted": 2,
+   "third": "refused: the approved Airwallex call budget of 2 is spent; GET /balances/curren",
+   "sent": 2
+  },
+  "ms": 3
+ },
+ "call_budget_file_from_an_earlier_request": {
+  "ok": true,
+  "value": {
+   "exists": true,
+   "lines": 2
+  },
+  "ms": 0
+ }
+}

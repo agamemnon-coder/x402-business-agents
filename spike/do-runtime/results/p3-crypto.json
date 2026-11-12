@@ -1,0 +1,230 @@
+{
+ "probe": "p3-crypto",
+ "http": 200,
+ "start_ms": 13,
+ "total_ms": 2218,
+ "ok": true,
+ "createHash_sha256": {
+  "ok": true,
+  "value": true,
+  "ms": 0
+ },
+ "createHmac_sha256": {
+  "ok": true,
+  "value": true,
+  "ms": 1
+ },
+ "randomUUID": {
+  "ok": true,
+  "value": true,
+  "ms": 0
+ },
+ "randomBytes": {
+  "ok": true,
+  "value": true,
+  "ms": 0
+ },
+ "timingSafeEqual": {
+  "ok": true,
+  "value": true,
+  "ms": 0
+ },
+ "engine_termsHash": {
+  "ok": true,
+  "value": {
+   "hash": "707e8d5f3d0fa54b922a13eb2944371038d365861945290d06819121f53088db",
+   "isHex64": true,
+   "sha256Hex_abc": true,
+   "rejection": true
+  },
+  "ms": 1
+ },
+ "ecdsa_p256_sync": {
+  "ok": true,
+  "value": {
+   "verifies": true,
+   "tamperRefused": true,
+   "spki": 91
+  },
+  "ms": 1
+ },
+ "verifyEnrolmentResponse_node_fixture": {
+  "ok": true,
+  "value": {
+   "ok": true,
+   "samePublicKeyAsNode": true,
+   "sameCredentialId": true
+  },
+  "ms": 3
+ },
+ "verifyApprovalSignature_node_fixture": {
+  "ok": true,
+  "value": {
+   "ok": true,
+   "newCounter": 1
+  },
+  "ms": 3
+ },
+ "node_verdict_was": {
+  "ok": true,
+  "newCounter": 1
+ },
+ "assertionSha256": {
+  "ok": true,
+  "value": true,
+  "ms": 0
+ },
+ "refuses_other_terms": {
+  "ok": true,
+  "value": {
+   "ok": false,
+   "reason": "Unexpected authentication response challenge \"shaHz9K7HApbjnCc-xG3I8wqfrwlSAjZxSJdBUFPxrA\", expected \"KpBZ3vyGsERE_Vbr5guFCQ-XBvGRTCGobNeyR8ffftc\""
+  },
+  "ms": 0
+ },
+ "refuses_other_origin": {
+  "ok": true,
+  "value": {
+   "ok": false,
+   "reason": "Unexpected authentication response origin \"https://cloud.example.invalid\", expected \"https://evil.example\""
+  },
+  "ms": 0
+ },
+ "refuses_replayed_counter": {
+  "ok": true,
+  "value": {
+   "ok": false,
+   "reason": "Response counter value 1 was lower than expected 5"
+  },
+  "ms": 1
+ },
+ "ceremony_inside_workerd": {
+  "ok": true,
+  "value": {
+   "enrolled": true,
+   "approved": {
+    "ok": true,
+    "newCounter": 1
+   },
+   "tampered": {
+    "ok": false,
+    "reason": "Unexpected authentication response challenge \"6jxK9hkN5rMXRUkFkhLbTK4nhr0dbwwCtqGFbkFoipo\", expected \"1n4ulEmUSWyNjsdu7Qz58JZ5RI1YS1Mr6_lBhSo39e0\""
+   },
+   "verify_ms": 2
+  },
+  "ms": 3
+ },
+ "second_request": {
+  "ok": true,
+  "createHash_sha256": {
+   "ok": true,
+   "value": true,
+   "ms": 0
+  },
+  "createHmac_sha256": {
+   "ok": true,
+   "value": true,
+   "ms": 0
+  },
+  "randomUUID": {
+   "ok": true,
+   "value": true,
+   "ms": 0
+  },
+  "randomBytes": {
+   "ok": true,
+   "value": true,
+   "ms": 0
+  },
+  "timingSafeEqual": {
+   "ok": true,
+   "value": true,
+   "ms": 0
+  },
+  "engine_termsHash": {
+   "ok": true,
+   "value": {
+    "hash": "707e8d5f3d0fa54b922a13eb2944371038d365861945290d06819121f53088db",
+    "isHex64": true,
+    "sha256Hex_abc": true,
+    "rejection": true
+   },
+   "ms": 0
+  },
+  "ecdsa_p256_sync": {
+   "ok": true,
+   "value": {
+    "verifies": true,
+    "tamperRefused": true,
+    "spki": 91
+   },
+   "ms": 1
+  },
+  "verifyEnrolmentResponse_node_fixture": {
+   "ok": true,
+   "value": {
+    "ok": true,
+    "samePublicKeyAsNode": true,
+    "sameCredentialId": true
+   },
+   "ms": 1
+  },
+  "verifyApprovalSignature_node_fixture": {
+   "ok": true,
+   "value": {
+    "ok": true,
+    "newCounter": 1
+   },
+   "ms": 0
+  },
+  "node_verdict_was": {
+   "ok": true,
+   "newCounter": 1
+  },
+  "assertionSha256": {
+   "ok": true,
+   "value": true,
+   "ms": 0
+  },
+  "refuses_other_terms": {
+   "ok": true,
+   "value": {
+    "ok": false,
+    "reason": "Unexpected authentication response challenge \"shaHz9K7HApbjnCc-xG3I8wqfrwlSAjZxSJdBUFPxrA\", expected \"KpBZ3vyGsERE_Vbr5guFCQ-XBvGRTCGobNeyR8ffftc\""
+   },
+   "ms": 0
+  },
+  "refuses_other_origin": {
+   "ok": true,
+   "value": {
+    "ok": false,
+    "reason": "Unexpected authentication response origin \"https://cloud.example.invalid\", expected \"https://evil.example\""
+   },
+   "ms": 0
+  },
+  "refuses_replayed_counter": {
+   "ok": true,
+   "value": {
+    "ok": false,
+    "reason": "Response counter value 1 was lower than expected 5"
+   },
+   "ms": 1
+  },
+  "ceremony_inside_workerd": {
+   "ok": true,
+   "value": {
+    "enrolled": true,
+    "approved": {
+     "ok": true,
+     "newCounter": 1
+    },
+    "tampered": {
+     "ok": false,
+     "reason": "Unexpected authentication response challenge \"tx6QaOVibnnOBZLQKT0SRDqxo5z9lx8Ce4fvSYFNdsU\", expected \"1n4ulEmUSWyNjsdu7Qz58JZ5RI1YS1Mr6_lBhSo39e0\""
+    },
+    "verify_ms": 1
+   },
+   "ms": 2
+  }
+ }
+}

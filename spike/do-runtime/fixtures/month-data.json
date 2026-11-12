@@ -1,0 +1,93 @@
+{
+ "key": "month:2026-11",
+ "month": "2026-11",
+ "from": "2026-11-01",
+ "to": "2026-11-30",
+ "received": [
+  {
+   "currency": "EUR",
+   "total": "3700.00",
+   "count": 2
+  }
+ ],
+ "credits": [],
+ "open_net": [],
+ "paid": [
+  {
+   "vendor": "Bergtex Textil GmbH",
+   "invoice_no": "BTX-2026-21",
+   "amount": "EUR 1850.00",
+   "paid_on": "2026-11-12"
+  }
+ ],
+ "open": [],
+ "blocked": [
+  {
+   "vendor": "Bergtex Textil GmbH",
+   "invoice_no": "BTX-2026-22",
+   "amount": "EUR 1850.00",
+   "reasons": [
+    "the subtotal 1554.62 plus tax 295.00 is 1849.62, not the total 1850.00"
+   ],
+   "why": [
+    {
+     "code": "sum_mismatch",
+     "detail": "the subtotal 1554.62 plus tax 295.00 is 1849.62, not the total 1850.00",
+     "signals": []
+    }
+   ]
+  }
+ ],
+ "spend": [
+  {
+   "vendor": "Bergtex Textil GmbH",
+   "currency": "EUR",
+   "total": "1850.00",
+   "count": 1
+  }
+ ],
+ "fees": [
+  {
+   "currency": "EUR",
+   "total": "13.40",
+   "count": 1
+  }
+ ],
+ "fx": {
+  "conversions": 1,
+  "bought": [
+   {
+    "currency": "EUR",
+    "total": "370.00",
+    "count": 1
+   }
+  ],
+  "sold": [
+   {
+    "currency": "USD",
+    "total": "401.45",
+    "count": 1
+   }
+  ]
+ },
+ "pnl": [
+  {
+   "currency": "EUR",
+   "revenue": "0.00",
+   "expense": "1568.02",
+   "result": "-1568.02",
+   "accounts": [
+    {
+     "account": "6200",
+     "name": "Goods from the manufacturer",
+     "amount": "1554.62"
+    },
+    {
+     "account": "6800",
+     "name": "Bank and transfer fees",
+     "amount": "13.40"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,31 @@
+// SPIKE: what cloud/wrangler.jsonc needs for one Durable Object per company that runs the engine. It is cloud/wrangler.jsonc
+// plus the five marked settings; `main` here is the spike's probe (the cloud Worker with the object in front). Checked
+// with: worker/node_modules/.bin/wrangler deploy --dry-run --outdir /dev/shm/x --config spike/do-runtime/wrangler.cloud-engine.jsonc
+{
+  "$schema": "../../worker/node_modules/wrangler/config-schema.json",
+  "name": "purser-cloud",
+  "main": "probes/p7-cloud-seam.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "d1_databases": [{ "binding": "DB", "database_name": "purser-cloud", "database_id": "SET-AFTER-wrangler-d1-create", "migrations_dir": "../../cloud/migrations" }],
+  "r2_buckets": [{ "binding": "DOCS", "bucket_name": "purser-cloud-docs", "jurisdiction": "eu" }],
+  "vars": { "RP_ID": "cloud.example.invalid", "ORIGIN": "https://cloud.example.invalid" },
+  "triggers": { "crons": ["17 3 * * *"] },
+
+  // (1) The object: one per company, named by the tenant id (env.ENGINE.idFromName(tenantId)).
+  "durable_objects": { "bindings": [{ "name": "ENGINE", "class_name": "Engine" }] },
+  // (2) Its migration: a SQLite-backed class (ctx.storage.sql). A class is made SQLite-backed only when it is first
+  //     created, so this must be right the first time it is deployed.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Engine"] }],
+  // (3) The engine's modules read import.meta.url and import.meta.dirname when they load (pdfkit's browser build, and
+  //     src/metal/agentCli.ts); a Worker bundle has neither.
+  "define": { "import.meta.url": "\"file:///purser-cloud/worker.js\"", "import.meta.dirname": "\"/purser-cloud\"", "import.meta.filename": "\"/purser-cloud/worker.js\"" },
+  // (4) Packages in the engine's import graph that no Worker can carry: swapped for a stub that throws when used.
+  "alias": { "playwright": "./probes/_stub.ts", "better-sqlite3": "./probes/_stub.ts" },
+  // (5) The engine's .sql files as text modules (src/db/open.ts reads them from disk today).
+  "rules": [{ "type": "Text", "globs": ["**/*.sql"], "fallthrough": true }, { "type": "Data", "globs": ["**/*.pdf"], "fallthrough": true }],
+  // Optional: CPU time one invocation may use (default 30 s; this is the documented maximum of 5 minutes).
+  "limits": { "cpu_ms": 300000 }
+}

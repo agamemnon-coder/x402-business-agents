@@ -1,0 +1,30 @@
+{
+ "key": "receipt:AP-0001",
+ "id": "AP-0001",
+ "vendor": "Bergtex Textil GmbH",
+ "invoice_no": "BTX-2026-21",
+ "invoice_date": "2026-11-02",
+ "due_date": "2026-11-16",
+ "reference": "BTX-2026-21",
+ "currency": "EUR",
+ "amount": "1850.00",
+ "paid_at": "2026-11-12T10:14:04.817Z",
+ "proposal_id": "P-0001",
+ "terms_sha256": "b21687cfd2bb1c0a5b8e709cfb11b723cc2a7ebc254808d9c5225d05414fc6b0",
+ "transfer_id": "tr_6",
+ "fee": "EUR 13.40",
+ "method": "SWIFT",
+ "fx": {
+  "rate": "1.0850",
+  "bought": "EUR 370.00",
+  "sold": "USD 401.45"
+ },
+ "approval": {
+  "approver": "cfo",
+  "method": "cli",
+  "at": "2026-11-12T10:14:04.817Z",
+  "signed_sha256": "b21687cfd2bb1c0a5b8e709cfb11b723cc2a7ebc254808d9c5225d05414fc6b0"
+ },
+ "cosigner": null,
+ "account": "•••• 3000 · BIC COBADEFFXXX"
+}
