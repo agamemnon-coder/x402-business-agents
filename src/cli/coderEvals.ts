@@ -3,8 +3,8 @@
 // ledger and coded by the runner's own Coder (src/ap/coderAgent.ts codeInvoice) with that model. Writes
 // docs/evals/coder.json (the run record) and the Coder section of docs/agent-evals.md (rendered from it by
 // src/evals/coderReport.ts). Needs KIT11_ANTHROPIC_API_KEY; spends real money, recorded in the coder block of the API
-// budget (docs/runs/api-budget.jsonl), and stops before a case could take the run over --max-usd or the block over its
-// cap. Without a key, or when every call fails, it says so and writes no numbers. Never part of npm test.
+// budget (docs/runs/api-budget.jsonl), and stops before a call could take the run over --max-usd or the block over its
+// cap (src/evals/coderSpend.ts checks the worst cost of every call). Without a key, or when every call fails, it says so and writes no numbers. Never part of npm test.
 
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -13,11 +13,11 @@ import { join, resolve } from "node:path";
 import { codeInvoice } from "../ap/coderAgent.js";
 import { CODER_MODEL } from "../ap/coderCore.js";
 import { BUDGET_BLOCKS, budgetStatus, recordSpend } from "../claude/budget.js";
-import { callCostMicros } from "../claude/pricing.js";
 import { claudeClient } from "../claude/reader.js";
 import { openDb } from "../db/open.js";
 import { CODER_CASES, fileCoderCase, scoreCoding } from "../evals/coderCases.js";
 import { coderSummary, withCoderSection, type CoderEvalRecord, type CoderEvalRow } from "../evals/coderReport.js";
+import { spendGuard } from "../evals/coderSpend.js";
 
 const ALL = { haiku: "claude-haiku-5-5", sonnet: "claude-sonnet-5-5", opus: "claude-opus-5-5" } as const;
 const args = process.argv.slice(2);
@@ -36,8 +36,7 @@ const unknown = only?.filter((c) => !CODER_CASES.some((x) => x.id === c)) ?? [];
 if (unknown.length) fail(`no such case: ${unknown.join(", ")}`);
 const cases = CODER_CASES.filter((c) => !only || only.includes(c.id));
 
-const client = claudeClient();
-if (!client) fail("KIT11_ANTHROPIC_API_KEY is not set: no live run, and nothing written");
+const client = claudeClient() ?? fail("KIT11_ANTHROPIC_API_KEY is not set: no live run, and nothing written");
 
 const ROOT = resolve(import.meta.dirname, "../..");
 const SPEND = join(ROOT, "docs/runs/api-budget.jsonl");
@@ -51,13 +50,6 @@ const git = (a: string[]) => { try { return execFileSync("git", a, { cwd: ROOT, 
 const COMMIT = git(["rev-parse", "--short=12", "HEAD"]) || "unknown";
 const DIRTY = git(["status", "--porcelain", "--", ".", ":!docs/evals/coder.json", ":!docs/agent-evals.md", ":!docs/runs/api-budget.jsonl"]) !== "";
 
-/**
- * What the next case may cost: the most one case of this model has cost in this run, or before the first one, four
- * turns of a long prompt (8,000 tokens in, 1,000 out). The run stops before a case when this could take it over.
- */
-const seen = new Map<string, number>();
-const estimate = (model: string) => seen.get(model) ?? 4 * (callCostMicros(model, { input: 8000, output: 1000, cache_read: 0, cache_write: 0 }) ?? 0);
-
 const dir = mkdtempSync(join(tmpdir(), "coder-evals-"));
 const rows: CoderEvalRow[] = [];
 let spent = 0;
@@ -67,20 +59,22 @@ try {
     const model = ALL[name as keyof typeof ALL];
     for (const c of cases) {
       for (let run = 1; run <= runs; run++) {
-        // Checked before every case: the run's own limit, and the block's cap with what is already recorded in it.
-        const next = estimate(model);
-        if (spent + next > MAX_MICROS) { stopped = `the next case (${c.id} on ${model}, up to ${(next / 1e6).toFixed(4)} USD) could take the run over --max-usd ${maxUsd}`; break outer; }
-        if (blockMicros() + next > CAP_MICROS) { stopped = `the next case (${c.id} on ${model}) could take the coder block over its cap of ${BUDGET_BLOCKS.coder} USD`; break outer; }
+        // Checked before every call of the case: the room left under the run's own limit and under the block's cap,
+        // with what is already recorded in it. A call that could take either over is not made.
+        const blockAtStart = blockMicros();
+        const guard = spendGuard(client, () => Math.min(MAX_MICROS - spent, CAP_MICROS - blockAtStart));
         const db = openDb(":memory:");
         const filed = await fileCoderCase(db, join(dir, `${name}-${c.id}-${run}`), c, new Date());
         const t0 = Date.now();
-        const out = await codeInvoice(db, filed.inv, filed.text, { client, model });
+        const out = await codeInvoice(db, filed.inv, filed.text, { client: guard.client, model });
         const latency = Date.now() - t0;
         db.close();
         const cost = out.run?.costMicros ?? 0;
         spent += cost;
-        seen.set(model, Math.max(seen.get(model) ?? 0, cost));
         if (cost > 0) recordSpend(SPEND, { block: "coder", usd_micros: cost, what: `coder-evals ${c.id} ${name} run ${run}` });
+        // A case the guard cut short measures nothing about the model: its money is recorded above, its row is not kept.
+        const refused = guard.refused();
+        if (refused) { stopped = `${c.id} on ${model}: ${refused} under --max-usd ${maxUsd} or the coder block's cap of ${BUDGET_BLOCKS.coder} USD`; break outer; }
         const lines = out.coding.lines.map((l) => ({ line_no: l.line_no, account: l.account, vat_code: l.vat_code, cost_centre: l.cost_centre }));
         const row: CoderEvalRow = {
           case: c.id, model, run, expected: c.expect, raw: out.raw,

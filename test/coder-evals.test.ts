@@ -8,15 +8,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { accrualEntries, AP_ACCOUNTS, type ApEntry } from "../src/ap/books.js";
+import { codeInvoice } from "../src/ap/coderAgent.js";
 import { codingHolds, enforceCoding, fallbackCoding, REVERSE_CODES, vatAt, type CodingCase, type EnforcedCoding } from "../src/ap/coderCore.js";
 import { EXPENSE_ACCOUNTS } from "../src/ap/read.js";
 import type { ApInvoiceRow } from "../src/ap/store.js";
+import { callCostMicros } from "../src/claude/pricing.js";
 import { COST_CENTRE_NAMES } from "../src/config/gl.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { toCents } from "../src/lib/money.js";
 import { postEntry, verifyLedger } from "../src/ledger/core.js";
 import { VAT_CODES } from "../src/ledger/vat.js";
 import { CODER_CASES, expectedLine, fileCoderCase, scoreCoding } from "../src/evals/coderCases.js";
+import { spendGuard, worstCallMicros } from "../src/evals/coderSpend.js";
+import { scriptedCoder } from "./fakes/coderClient.js";
 
 const now = new Date("2026-11-08T10:00:00Z");
 let dir: string;
@@ -140,4 +144,55 @@ describe("a wrong coder never causes a wrong booking", () => {
       expect(sides[0]!.c).toBe(variants.length * total + (ledger.prepare("SELECT COALESCE(SUM(credit_cents), 0) AS n FROM ledger_lines WHERE account = '2210'").get() as { n: number }).n);
     });
   }
+});
+
+describe("the live run's spend guard (src/evals/coderSpend.ts): no call is made that could take the run over its limit", () => {
+  const request = { model: "claude-haiku-5-5", max_tokens: 16000, system: [{ type: "text", text: "You code invoices." }], tools: [], messages: [{ role: "user", content: "Code this invoice: € 100,00." }] };
+
+  it("prices a call at its worst: every byte of the request at the dearest input rate, all of max_tokens as output", () => {
+    const worst = worstCallMicros(request);
+    expect(worst).toBeGreaterThanOrEqual(callCostMicros("claude-haiku-5-5", { input: 0, output: 16000, cache_read: 0, cache_write: 2000 })!);
+    // A request that may fall back to another model is priced at the dearest one; an unpriced model has no bound.
+    expect(worstCallMicros({ ...request, model: "claude-sonnet-5-5", fallbacks: "default" })).toBe(worstCallMicros({ ...request, model: "claude-opus-5-5" }));
+    expect(worstCallMicros({ ...request, model: "claude-unknown" })).toBe(Infinity);
+  });
+
+  it("with 2.99 of 3 dollars spent, the next case makes no call, and the guard says why", async () => {
+    const db = openDb(":memory:");
+    const filed = await fileCoderCase(db, join(dir, "guard-1"), CODER_CASES[0]!, now);
+    const inner = scriptedCoder([[{ name: "code_invoice", input: { lines: [{ line_no: 1, account: "6900", vat_code: "P21", cost_centre: null }], reason: "x" } }]]);
+    const guard = spendGuard(inner, () => 3_000_000 - 2_990_000);
+    // One Sonnet call can write 16,000 tokens (0.16 USD at 10 USD per million): more than the 0.01 USD left.
+    const out = await codeInvoice(db, filed.inv, filed.text, { client: guard.client, model: "claude-sonnet-5-5", now: () => now });
+    expect(inner.asked).toBe(0);
+    expect(guard.refused()).toMatch(/^the next call could cost up to \d+\.\d{4} USD and only 0\.0100 USD is left$/);
+    expect(out.run?.status).toBe("unavailable");
+    expect(guard.used()).toBe(0);
+  });
+
+  it("checks before every call of a case, not only before the case, and counts what each call cost", async () => {
+    const db = openDb(":memory:");
+    const filed = await fileCoderCase(db, join(dir, "guard-2"), CODER_CASES[0]!, now);
+    const wrong = { name: "code_invoice", input: { lines: [{ line_no: 1, account: "9999", vat_code: "P21", cost_centre: null }], reason: "x" } };
+    const inner = scriptedCoder([[wrong], [wrong]]);
+    let asked = 0;
+    // Room for the first call only: by the second, the rest of the budget is gone.
+    const guard = spendGuard(inner, () => (asked++ === 0 ? 1_000_000 : 0));
+    const out = await codeInvoice(db, filed.inv, filed.text, { client: guard.client, model: "claude-haiku-5-5", now: () => now });
+    expect(inner.asked).toBe(1);
+    expect(guard.refused()).not.toBeNull();
+    expect(guard.used()).toBe(callCostMicros("claude-haiku-5-5", { input: 1000, output: 100, cache_read: 0, cache_write: 0 }));
+    expect(out.run?.costMicros).toBe(guard.used());
+  });
+
+  it("lets every call through while there is room, and what it counts is what the run cost", async () => {
+    const db = openDb(":memory:");
+    const filed = await fileCoderCase(db, join(dir, "guard-3"), CODER_CASES[0]!, now);
+    const inner = scriptedCoder([[{ name: "code_invoice", input: { lines: [{ line_no: 1, account: "9999", vat_code: "P21", cost_centre: null }], reason: "x" } }], "stop"]);
+    const guard = spendGuard(inner, () => 3_000_000);
+    const out = await codeInvoice(db, filed.inv, filed.text, { client: guard.client, model: "claude-haiku-5-5", now: () => now });
+    expect(guard.refused()).toBeNull();
+    expect(inner.asked).toBeGreaterThan(1);
+    expect(guard.used()).toBe(out.run?.costMicros);
+  });
 });
