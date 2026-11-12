@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ICC_RECORD_SCHEMA, type IccRunRecord } from "../src/icc/record.js";
-import { ICC_STATUS, iccBlock, iccRecordIn } from "../src/redesign/iccBlock.js";
+import { ICC_RUN_EXTRA_WORDS, ICC_STATUS, iccBlock, iccRecordIn } from "../src/redesign/iccBlock.js";
 import { visaPage } from "../src/redesign/partners.js";
 import { esc } from "../src/redesign/ui.js";
 
@@ -93,9 +93,24 @@ describe("the ICC block, with a record", () => {
     expect(html.indexOf("keys_read")).toBeGreaterThan(details);
   });
 
-  it("shows the record's not-done statements in sight, not folded", () => {
+  it("keeps the record's not-done statements first in the fold, and says in sight that nothing was paid", () => {
+    // In sight: the result. The outcome lines carry "no payment was made" in the record's own words; what was not
+    // done, sentence by sentence, opens first under Details (progressive disclosure; /visa's word budget).
     const sight = html.slice(0, html.indexOf("<details"));
-    for (const s of rec.not_done) expect(text(sight)).toContain(s);
+    expect(text(sight)).toContain("no payment was made");
+    const fold = html.slice(html.indexOf("<details"));
+    for (const s of rec.not_done) expect(text(fold)).toContain(s);
+    expect(fold.indexOf(rec.not_done[0]!)).toBeLessThan(fold.indexOf("keys_read"));
+  });
+
+  it("adds at most ICC_RUN_EXTRA_WORDS words in sight to /visa over the status sentence, also with the longest outcomes", () => {
+    const visible = (h: string) => text(h.replace(/<details\b[^>]*>\s*<summary[^>]*>([\s\S]*?)<\/summary>[\s\S]*?<\/details>/g, " $1 ")).split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
+    const absent = visible(iccBlock(dirWith({})));
+    const longest = record({ purchases: [
+      { ...record().purchases[0]!, merchant: "M".repeat(39) + " x", outcome: "the credential call has no answer; nothing was sent again" },
+      { ...record().purchases[1]!, outcome: "refused by the service", refusal_code: "PURSER_ICC_CREDENTIAL_SHAPE" },
+    ] });
+    for (const r of [rec, longest]) expect(visible(iccBlock(dirWith({ "2026-10-01-icc.json": json(r) }))) - absent).toBeLessThanOrEqual(ICC_RUN_EXTRA_WORDS);
   });
 
   it("says no more than the record: nothing paid, approved by, certified or endorsed", () => {

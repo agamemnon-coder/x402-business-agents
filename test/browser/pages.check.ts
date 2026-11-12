@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { chromium, type Page } from "playwright";
 import { startJudge } from "../../src/cli/judge.js";
 import { tokenizeRun } from "../../src/redesign/tokenizeRun.js";
+import { ICC_RUN_EXTRA_WORDS, iccRecordIn } from "../../src/redesign/iccBlock.js";
 import { METAL_CSP } from "../../src/servers/dashboard.js";
 
 const args = process.argv.slice(2);
@@ -389,9 +390,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // heading and checks (the same budgets as test/site-v4.test.ts).
       // /visa 495 since 10 Nov (Max: we compete for the Visa Award, keep it visible): one plain sentence on top; 600 the
       // same day with the overview of the three Visa runs above the Airi run (Max, 10 Nov: more Visa); 610 on 12 Nov 2026
-      // for the one ICC status sentence (13 words), as in test/site-v4.test.ts.
+      // for the one ICC status sentence (13 words), and + ICC_RUN_EXTRA_WORDS only while an ICC run record exists, as in test/site-v4.test.ts.
       // /metal: 230 only while a run record of the invoice token exists (12 Nov), for its one block (50 words in sight).
-      const budget = path === "/airwallex" ? 365 : path === "/visa" ? 610 : path === "/metal" ? (tokenizeRun() ? 230 : 180) : 150;
+      const budget = path === "/airwallex" ? 365 : path === "/visa" ? 610 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) : path === "/metal" ? (tokenizeRun() ? 230 : 180) : 150;
       if (words > budget + 25) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(pt)) fail(`${path} ${tag}: its run is not labelled`);
       if ((await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);

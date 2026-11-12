@@ -8,6 +8,7 @@ import { notFoundResponse, pageResponse, type Pages } from "../worker/src/core.j
 import { agentRun, callBadge, faceIdDecisions, highlights, loadRecord, payments, split, tapRun } from "../src/redesign/run.js";
 import { OPEN_TARGET_JS } from "../src/redesign/ui.js";
 import { tokenizeRun } from "../src/redesign/tokenizeRun.js";
+import { ICC_RUN_EXTRA_WORDS, iccRecordIn } from "../src/redesign/iccBlock.js";
 import { scriptBlocks } from "./support/scriptBlocks.js";
 import { SECOND_APPROVER, SPLIT_LINE, VISA_CLAIM, VISA_TAP_STATUS, WORLD_SETUP } from "../src/config/brand.js";
 
@@ -73,7 +74,7 @@ describe("the site after v4", () => {
     // block: the title, one sentence from the record, the verify badge and the summary of its fold (50 words with its
     // hidden section heading; the transactions folded). Without a record the page is unchanged and its budget stays 200 (test/tokenize-record.test.ts
     // holds both states).
-    const budget: Record<string, number> = { home: 250, watch: 125, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, metal: tokenizeRun() ? 250 : 200, airwallex: 370 /* +5, panel review 10 Nov */, visa: 620 /* +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa); +10 on 12 Nov 2026 for the one ICC status sentence (13 words; 620 as built) */, claude: 150, notFound: 40 };
+    const budget: Record<string, number> = { home: 250, watch: 125, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, metal: tokenizeRun() ? 250 : 200, airwallex: 370 /* +5, panel review 10 Nov */, visa: 620 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) /* +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa); +10 on 12 Nov 2026 for the one ICC status sentence (13 words; 620 as built); + ICC_RUN_EXTRA_WORDS only while an ICC run record exists (test/icc-block.test.ts holds the block to it) */, claude: 150, notFound: 40 };
     for (const [name, html] of Object.entries(PUBLIC)) expect({ name, over: visibleWords(html) > budget[name]! ? visibleWords(html) : 0 }).toEqual({ name, over: 0 });
   });
 

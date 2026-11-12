@@ -2,7 +2,7 @@
 // the block is one quiet line, the only status sentence the stream allows (ICC_STATUS), and nothing else. Once
 // `npm run icc -- record` has written docs/runs/<date>-icc.json, the block reads every number and id from that file,
 // through readIccRunRecord (src/icc/record.ts), and says no more than it does: the result first (the date, each
-// purchase's outcome in the record's own words, what was not done), then the checks, the calls and the budget in a
+// purchase's outcome in the record's own words), then what was not done, the checks, the calls and the budget in a
 // fold, the ids and hashes last. A file that fails the reader's checks counts as absent. Classes from the Airi run's
 // block and the read-back (AIRI_CSS, READBACK_CSS, both on /visa already): no new style.
 
@@ -18,6 +18,9 @@ export const ICC_STATUS = "Intelligent Commerce Connect: access requested, not g
 /** Where `npm run icc -- record` writes the run record. */
 export const ICC_RUNS_DIR = fileURLToPath(new URL("../../docs/runs/", import.meta.url));
 export const ICC_RUN_ID = "icc-run";
+/** The words a run record's block may add in sight to /visa over the status sentence: /visa's word budgets
+ * (test/site-v4.test.ts, test/browser/pages.check.ts) grow by this much only while a valid record exists. */
+export const ICC_RUN_EXTRA_WORDS = 45;
 
 /** The newest valid ICC run record in dir, by its own date, with its file name; null when there is none. */
 export function iccRecordFileIn(dir = ICC_RUNS_DIR): { rec: IccRunRecord; file: string } | null {
@@ -38,8 +41,9 @@ const day = (date: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric",
 export function iccRunHtml(r: IccRunRecord, md: string | null = null): string {
   // A refusal wears the red badge, as purchase C's does on the Airi run; any other outcome a neutral one: the words are the record's.
   const out = `<ul class="airi-out">${r.purchases.map((p) => `<li${p.refusal_code ? ' class="no"' : ""}><span class="${p.refusal_code ? "awm bad" : "pill"}">${esc(p.label)}</span> ${esc(`${p.currency} ${p.amount} at ${p.merchant}: ${p.outcome}${p.refusal_code ? ` (${p.refusal_code})` : ""}.`)}</li>`).join("")}</ul>`;
-  // What was not done, in sight but quiet: one line in the sources' style, the record's own sentences.
-  const notDone = r.not_done.length ? `<p class="src">${esc(`Not done: ${r.not_done.join(" ")}`)}</p>` : "";
+  // What was not done opens first under Details, sentence by sentence, in the record's own words; in sight, the
+  // outcome lines already say what happened ("no payment was made" where the record says so).
+  const notDone = r.not_done.length ? `<p><b>${esc("Not done")}</b></p><ul class="awc">${r.not_done.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>` : "";
   const checks = r.checks.length ? `<p><b>${esc("Checks")}</b></p><ul class="awc">${r.checks.map((k) => `<li${k.ok ? "" : ' class="no"'}>${esc(`${k.ok ? "✓" : "✕"} ${k.stage} · ${k.name}: ${k.detail}`)}</li>`).join("")}</ul>` : "";
   const calls = `<p><b>${esc("Calls")}</b></p><ul class="awc">${r.calls.by_endpoint.map((e) => `<li><code>${esc(e.endpoint)}</code>: ${esc(`${e.calls}`)}</li>`).join("")}</ul>
 <p class="src">${esc(`${r.calls.total} calls in the call log, of a budget of ${r.calls.budget}.`)}</p>`;
@@ -56,8 +60,8 @@ export function iccRunHtml(r: IccRunRecord, md: string | null = null): string {
   return `<div class="awrb"><div class="card airi" id="${ICC_RUN_ID}"><h3 class="airi-h">${icon("credit-card", 18)}${esc(`Intelligent Commerce Connect: a ${r.environment} run (${day(r.run_date)})`)}</h3>
 <p class="airi-label">${esc("A separate run, read from its record")}</p>
 ${out}
-${notDone}
 <details class="fold"><summary>${esc("Details")}</summary>
+${notDone}
 ${checks}
 ${calls}
 ${idList}
