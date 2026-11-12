@@ -35,6 +35,8 @@ export interface RailRefusal {
   control: string;
   /** What happened, two short sentences, every figure from the record. */
   what: string;
+  /** The same in one line, for the card (the owner, 12 Nov: one line each); the full sentences stay in what. */
+  short: string;
   /** The date of the run (ISO date) and its label. */
   date: string;
   label: string;
@@ -63,6 +65,7 @@ export function airwallexHold(log = read(TWO_LOCKS_LOG), paid = read(TWO_LOCKS_P
   const approvedDay = new Date(`${day} 12:00 UTC`).toISOString().slice(0, 10);
   return {
     rail: "airwallex", name: "Airwallex", code: status, control: "Its own transfer approval workflow",
+    short: `Held ${transfer.slice(0, 8)}… (${amount}) until a person approved it at Airwallex.`,
     what: `A labelled virtual test passkey signed the terms in Purser; Purser created transfer ${transfer.slice(0, 8)}… for ${amount}. Airwallex held it ${status} until a person approved it at Airwallex, ${shortDay(approvedDay)}; then ${ended} (simulated settlement).`,
     date: isoDay(created), label: "Airwallex sandbox, test money", record: TWO_LOCKS_LOG,
   };
@@ -78,6 +81,7 @@ export function metalRefusal(): RailRefusal | null {
   if (!r || !r.code || !r.amount || !r.cap || !day) return null;
   return {
     rail: "metal", name: "Metal", code: r.code, control: "The agent's mandate cap, on chain",
+    short: `Refused #${r.seq} on chain: ${r.amount} over the ${r.cap} cap.`,
     what: `As a test, Purser's own check was switched off for one purchase. Metal refused #${r.seq} (${r.amount} test USD, over the ${r.cap} cap) and recorded the refusal on chain; nothing settled.`,
     date: isoDay(day), label: "Metal testnet, test money", record: MAIN_RUN_LOG, ...(r.proof.href ? { proof: { label: r.proof.label, href: r.proof.href } } : {}),
   };
@@ -93,6 +97,7 @@ export function airiHold(record: AiriRecord = JSON.parse(read(AIRI_RUN_FILE)) as
   if (!a || !minutes) return null;
   return {
     rail: "airi", name: "Visa Intelligent Commerce via Airi", code: null, held: "Airi's passkey step", control: "The cardholder's passkey in Airi, each purchase",
+    short: `No tap within ${minutes} minutes: no card credential, nothing charged.`,
     what: `In a failed attempt, a purchase waited for the cardholder to confirm it with a passkey in Airi. The tap did not come within ${minutes} minutes: no card credential, nothing charged. Purser's own timeout (PURSER_NO_TAP) then cancelled the mandate.`,
     date: isoDay(a.at), label: "Airwallex sandbox, test card, test money", record: AIRI_RUN_LOG,
     note: "Airi has not refused a purchase outright in a live run.",
