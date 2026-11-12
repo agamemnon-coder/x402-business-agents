@@ -264,7 +264,7 @@ describe("/metal: the invoice-token block, only with a run record", () => {
     const html = withRecord();
     expect(html.split(TOKENIZE_RUN_TITLE)).toHaveLength(2);
     const block = tokenizeRunBlock({ file: FILE, rec });
-    expect(textOf(block)).toBe(`Prototype Invoice token (prototype) ${day(rec.date)}, a separate Metal testnet run. An invoice approved with a labelled test passkey${onDay(rec)} became a token. A simulated financier bought it for 2.35 test USD; the debtor paid its holder 2.40. Face value divided by 100. Chain record verified 7 transactions ${rec.transactions.slice(4).map((t) => `${t.what} ${t.hash.slice(0, 6)}…${t.hash.slice(-4)} ↗`).join(" ")} Prototype · test money · ${rec.calls.used} requests to Metal testnet of a budget of 200 · run record ↗`);
+    expect(textOf(block)).toBe(`Prototype Invoice token (prototype) ${day(rec.date)}, a separate Metal testnet run. An invoice approved with a labelled test passkey${onDay(rec)} became a token. A simulated financier bought it for 2.35 test USD; the debtor paid its holder 2.40. Amounts are scaled down 100× for testnet. Chain record verified 7 transactions ${rec.transactions.slice(4).map((t) => `${t.what} ${t.hash.slice(0, 6)}…${t.hash.slice(-4)} ↗`).join(" ")} Prototype · test money · ${rec.calls.used} requests to Metal testnet of a budget of 200 · run record ↗`);
     // One word for the paying party, in sight and in the fold: the debtor.
     expect(textOf(block)).not.toMatch(/\bpayer\b|RPC/);
     // It sits after the main run's proof, before the link to all the proof.
@@ -272,15 +272,16 @@ describe("/metal: the invoice-token block, only with a run record", () => {
     expect(html.indexOf('id="invoice-token"')).toBeLessThan(html.indexOf(">All the proof "));
     // Short: at most 50 words in sight, and the page within its budget with the block (325; 275 without, since the jury
     // panel of 12 Nov; +50 each, 12 Nov wire-in: "Face ID signs on chain", 49 words as built).
-    expect(visibleWords(html) - visibleWords(without())).toBeLessThanOrEqual(50);
+    // 55 since 12 Nov (review): "Amounts are scaled down 100× for testnet" says it in plain words (2 more).
+    expect(visibleWords(html) - visibleWords(without())).toBeLessThanOrEqual(55);
     expect(visibleWords(html)).toBeLessThanOrEqual(380);
     // The longest form of the block (a person's approval on an earlier day, named) stays within both budgets too.
     const longest = metalPage(run, { file: FILE, rec: person() });
-    expect(visibleWords(longest) - visibleWords(without())).toBeLessThanOrEqual(50);
+    expect(visibleWords(longest) - visibleWords(without())).toBeLessThanOrEqual(55); // 55 since 12 Nov (review): the scaling said in plain words
     expect(visibleWords(longest)).toBeLessThanOrEqual(380);
     // Every label a public mention of the run carries.
     const sight = textOf(block.replace(/<details[\s\S]*<\/details>/, ""));
-    for (const label of [/\(prototype\)/, /Metal testnet/, /simulated financier/, /Face value divided by 100/, /test USD/, /a separate Metal testnet run/]) expect(sight).toMatch(label);
+    for (const label of [/\(prototype\)/, /Metal testnet/, /simulated financier/, /Amounts are scaled down 100× for testnet/, /test USD/, /a separate Metal testnet run/]) expect(sight).toMatch(label);
     // One design system: only classes the partner pages already style.
     const classes = new Set([...block.matchAll(/class="([^"]+)"/g)].flatMap((m) => m[1]!.split(" ")));
     expect([...classes].sort()).toEqual(["awc", "awm", "awrb", "card", "fold", "i", "ok", "pf", "src", "vh"]);
@@ -302,9 +303,9 @@ describe("/metal: the invoice-token block, only with a run record", () => {
     const other: TokenizeRunRecord = { ...rec, date: "2026-12-03", labels: { ...rec.labels, face_value_scaled_by: 50 }, received: { ...rec.received, creditor: "4.70", holder: "4.80" }, calls: { ...rec.calls, used: 41, budget_total: 45 } };
     const changed = textOf(tokenizeRunBlock({ file: "docs/runs/2026-12-03-tokenize.json", rec: other }));
     expect(changed).toContain("3 December, a separate Metal testnet run.");
-    expect(changed).toContain("bought it for 4.70 test USD; the debtor paid its holder 4.80. Face value divided by 50.");
+    expect(changed).toContain("bought it for 4.70 test USD; the debtor paid its holder 4.80. Amounts are scaled down 50× for testnet.");
     expect(changed).toContain("41 requests to Metal testnet of a budget of 45");
-    expect(changed).not.toMatch(/2\.35|2\.40|divided by 100/);
+    expect(changed).not.toMatch(/2\.35|2\.40|scaled down 100×/);
     expect(changed).not.toContain(`${day(rec.date)}, a separate`);
     // Every figure in sight is one of the record's.
     const sight = textOf(block.replace(/<details[\s\S]*<\/details>/, ""));
@@ -317,17 +318,17 @@ describe("/metal: the invoice-token block, only with a run record", () => {
     const drop = (keys: string[]): TokenizeRunRecord => ({ ...rec, transactions: rec.transactions.filter((t) => !keys.includes(t.key)) });
     const unsettled: TokenizeRunRecord = { ...drop(["payer-approve", "settle"]), received: { ...rec.received, holder: null, holder_address: null }, verify: null };
     const start = `${day(rec.date)}, a separate Metal testnet run. An invoice approved with a labelled test passkey${onDay(rec)} became a token.`;
-    expect(tokenizeRunSentence(unsettled)).toBe(`${start} A simulated financier bought it for 2.35 test USD. Face value divided by 100.`);
+    expect(tokenizeRunSentence(unsettled)).toBe(`${start} A simulated financier bought it for 2.35 test USD. Amounts are scaled down 100× for testnet.`);
     expect(tokenizeRunBlock({ file: FILE, rec: unsettled })).not.toContain("Chain record verified");
     const mintedOnly: TokenizeRunRecord = { ...drop(["offer", "financier-approve", "accept", "payer-approve", "settle"]), received: { creditor: null, creditor_address: null, holder: null, holder_address: null }, verify: null };
-    expect(tokenizeRunSentence(mintedOnly)).toBe(`${start} Its face value is 2.40 test USD. Face value divided by 100.`);
+    expect(tokenizeRunSentence(mintedOnly)).toBe(`${start} Its face value is 2.40 test USD. Amounts are scaled down 100× for testnet.`);
     expect(textOf(tokenizeRunBlock({ file: FILE, rec: mintedOnly }))).toContain(" 2 transactions ");
     // Settled without a financier: the debtor paid the holder.
     const direct: TokenizeRunRecord = { ...drop(["offer", "financier-approve", "accept"]), received: { ...rec.received, creditor: null, creditor_address: null } };
-    expect(tokenizeRunSentence(direct)).toBe(`${start} The debtor paid its holder 2.40 test USD. Face value divided by 100.`);
+    expect(tokenizeRunSentence(direct)).toBe(`${start} The debtor paid its holder 2.40 test USD. Amounts are scaled down 100× for testnet.`);
     // "The CFO approved" only when the record links a committed run record that names the approving passkey; the
     // approval's own day is named when it is not the day of the run.
-    expect(tokenizeRunSentence(person())).toBe("12 November, a separate Metal testnet run. An invoice the CFO approved with a passkey on 7 November became a token. A simulated financier bought it for 2.35 test USD; the debtor paid its holder 2.40. Face value divided by 100.");
+    expect(tokenizeRunSentence(person())).toBe("12 November, a separate Metal testnet run. An invoice the CFO approved with a passkey on 7 November became a token. A simulated financier bought it for 2.35 test USD; the debtor paid its holder 2.40. Amounts are scaled down 100× for testnet.");
     // A passkey with no test label and no such record proves no person: neutral words.
     const unnamed: TokenizeRunRecord = { ...person(), invoice: { ...person().invoice, approval: { ...person().invoice.approval, described_in: null } } };
     expect(tokenizeRunSentence(unnamed)).toContain("An invoice approved with a passkey on 7 November became a token.");
