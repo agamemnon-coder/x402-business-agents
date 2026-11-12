@@ -38,6 +38,28 @@ once; run it as often as you like.
   counts those lines as "no VAT code yet". Documents booked with a code (purchase and sales invoices) are added up into
   the rubrics.
 
+- **Signed terms are booked only as signed.** Before the feed or a document posts an accrual or a payment that a signed
+  proposal speaks for, it recomputes the hash of the stored terms and compares it with the hash the CFO signed
+  (`src/ledger/termsLock.ts`). One cent changed after the Face ID is refused with a sentence that quotes the signed
+  hash, and nothing is posted or reversed. Payment and tokenizing refuse the same change
+  (`test/one-cent-three-locks.test.ts`).
+- **An entry can name its approval and its rail.** `approval_sha256` (the CFO's Face ID hash) and `rail_ref` (an
+  Airwallex transfer or conversion id, or a transaction hash) sit next to `doc_sha256`. Both are nullable columns added
+  on 12 November; an entry carries them in its hash only when they are set, so every earlier entry hashes as before.
+
+## FX differences and token financing
+
+- **Realised FX** (`src/ledger/fx.ts`): an invoice in another currency is carried at its booked rate. When the
+  conversion that paid it sold more or less of the functional currency, the difference is posted against money in
+  transit (1590) and 7900 "FX differences, realised". The booked value is rounded half up to a whole cent; a property
+  test holds that booked value plus difference is always what was paid.
+- **Invoice token financing** (`src/ledger/financing.ts`), for a company's own sales invoice that was tokenized. With
+  recourse (the default): on the financier's accept, the bank receives the price and 2150 holds what is owed to the
+  financier; at settlement the receivable (1300) and 2150 are cleared and the discount is posted to 7100 "Finance
+  cost". Without recourse: the receivable goes at once and the discount is the cost then. The price is the token
+  contract's own (`discountedPrice`, rounded down to a cent). The financier is a test key on testnet: account 2150 is
+  named "Simulated financier (testnet)" in every report.
+
 ## For other parts of Purser
 
 `src/ledger/documents.ts` books a purchase invoice (expense or stock, input VAT, payables), a sales invoice
