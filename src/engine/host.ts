@@ -93,6 +93,8 @@ export interface VaultFile { path: string; kind: string; bytes: number; sha256: 
 
 /** The inbox's folder argument. It is never used: the ledger has its own document store (checked when the host is made). */
 const NO_FOLDER = "/purser-engine-has-no-folder";
+/** Whose each passkey is, by the id the caller (the cloud) gives its person; the host's own table, as feed.ts keeps one. */
+const PASSKEY_PEOPLE = "CREATE TABLE IF NOT EXISTS engine_passkey_people (credential_id TEXT PRIMARY KEY, person TEXT NOT NULL)";
 const message = (e: unknown): string => (e instanceof Error ? e.message : String(e)).slice(0, 500);
 
 /** What the phone's approval page shows of these terms, in the company's language, and what it warns about. */
@@ -247,7 +249,7 @@ export class EngineHost {
    * The new passkey, verified against the window by the engine, then confirmed by the host itself: on a runner a
    * person confirms the fingerprint the phone shows; here the caller is the signed-in owner, and that is the confirmation.
    */
-  passkeyFinish(a: { code: string; credential: unknown; label: string }): Promise<{ ok: true; credential_id: string } | { ok: false; reason: string }> {
+  passkeyFinish(a: { code: string; credential: unknown; label: string; person?: string }): Promise<{ ok: true; credential_id: string } | { ok: false; reason: string }> {
     return this.act(async () => {
       const { db } = this.deps;
       const now = this.now();
@@ -259,19 +261,26 @@ export class EngineHost {
         if (!waiting) return { ok: false, reason: "the enrolment window closed before the passkey was confirmed; start again" };
         try { confirmPasskey(db, waiting.fingerprint, now); } catch (e) { return { ok: false, reason: message(e) }; }
       }
+      // Whose passkey it is, by the caller's own id for the person: a name is free text and two people may share one.
+      if (a.person !== undefined) {
+        db.exec(PASSKEY_PEOPLE);
+        db.prepare("INSERT INTO engine_passkey_people (credential_id, person) VALUES (?, ?) ON CONFLICT(credential_id) DO UPDATE SET person = excluded.person").run(out.credentialId, a.person);
+      }
       return { ok: true, credential_id: out.credentialId };
     });
   }
 
   /**
-   * A person the cloud erased (POST /v1/users/{id}/erase): every passkey labelled with their name is revoked and
-   * labelled "[erased]". The approvals they signed keep their name: those are bookkeeping records, kept seven years.
+   * A person the cloud erased (POST /v1/users/{id}/erase): every passkey enrolled for that person (passkeyFinish's
+   * person, never the name: another person may have the same one) is revoked and labelled "[erased]". Asking again
+   * changes nothing. The approvals they signed keep their name: those are bookkeeping records, kept seven years.
    */
-  forgetPasskey(label: string): Promise<{ revoked: number }> {
+  forgetPasskey(person: string): Promise<{ revoked: number }> {
     return this.act(async () => {
       const { db } = this.deps;
       const now = this.now();
-      const rows = db.prepare("SELECT credential_id, status FROM passkeys WHERE label = ?").all(label) as { credential_id: string; status: string }[];
+      db.exec(PASSKEY_PEOPLE);
+      const rows = db.prepare(`SELECT k.credential_id, k.status FROM passkeys k JOIN engine_passkey_people p ON p.credential_id = k.credential_id WHERE p.person = ?`).all(person) as { credential_id: string; status: string }[];
       db.transaction(() => {
         for (const r of rows) {
           db.prepare("UPDATE passkeys SET status = 'REVOKED', label = '[erased]' WHERE credential_id = ?").run(r.credential_id);

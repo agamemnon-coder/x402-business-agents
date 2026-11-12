@@ -30,7 +30,8 @@ export interface EngineApi {
   propose(invoiceId: string): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }>;
   proposal(id: string): Promise<ProposalView | null>;
   passkeyStart(): Promise<{ challenge: string; code: string; exclude: string[] }>;
-  passkeyFinish(a: { code: string; credential: unknown; label: string }): Promise<{ ok: true; credential_id: string } | { ok: false; reason: string }>;
+  /** label: the person's name, shown; person: the cloud's id for them, by which forgetPasskey finds the passkey. */
+  passkeyFinish(a: { code: string; credential: unknown; label: string; person: string }): Promise<{ ok: true; credential_id: string } | { ok: false; reason: string }>;
   /** A passkey's signature over a proposal's exact terms; only an approval pays, and what follows is in settled. */
   approve(a: { proposal_id: string; terms_sha256: string; credential: unknown }): Promise<{ status: string; message: string; settled: Settled | null }>;
   /**
@@ -44,8 +45,8 @@ export interface EngineApi {
   vaultFiles(): Promise<VaultFile[]>;
   /** A file's bytes, only for a path the archive's index lists. */
   vaultFile(path: string): Promise<Uint8Array | null>;
-  /** A person erased by the cloud: every passkey labelled with their name is revoked, and the name leaves it. */
-  forgetPasskey(label: string): Promise<{ revoked: number }>;
+  /** A person erased by the cloud, by the id passkeyFinish was given: their passkeys are revoked and their name leaves them; safe to repeat. */
+  forgetPasskey(person: string): Promise<{ revoked: number }>;
   /** Forgets everything this company's engine holds (its ledger, its documents, its stand-in bank). */
   wipe(): Promise<void>;
 }

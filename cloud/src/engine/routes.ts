@@ -131,7 +131,7 @@ export function engineRoutes<C extends EngineCtx>(kit: EngineKit<C>): EngineRout
     { method: "POST", path: "/v1/engine/passkey/finish", summary: "Finish the approval passkey (a session only): { code, credential } with the passkey the browser made for the challenge; it is labelled with the signed-in person's name. 409 with the engine's reason when it is refused.", need: "admin", run: on(async (c, e) => {
       const user = signedIn(c);
       const b = await kit.body(c, PasskeyFinish, 64_000);
-      const out = await e.passkeyFinish({ code: b.code, credential: b.credential, label: await displayName(c, user) });
+      const out = await e.passkeyFinish({ code: b.code, credential: b.credential, label: await displayName(c, user), person: user });
       return out.ok ? json(200, { credential_id: out.credential_id }) : err(409, out.reason);
     }) },
     { method: "POST", path: "/v1/engine/proposals/{id}/approve", summary: "Approve a proposal with the approval passkey (a session only): { terms_sha256, credential } with the passkey's signature over the proposal's challenge. Answers { status, message, settled }: only status approved pays (on the stand-in bank), and settled says paid, booked, archived and fed; a signature over other terms is refused and nothing runs.", need: "admin", run: on(async (c, e) => {

@@ -401,6 +401,61 @@ describe("erasing a person and purging a closed company reach the company's engi
     } finally { e.close(); }
   });
 
+  it("erasing a person revokes only their own passkey, never that of a living person with the same name", async () => {
+    const e = testCloud({ engine: true });
+    try {
+      const t = await e.tenant("namesake");
+      // Display names are free text: a second owner may be called "Owner" too, and never enrolled an engine passkey.
+      const second = await e.req("POST", "/v1/users", { key: t.session, body: { display_name: "Owner", role: "owner" } });
+      expect(second.status).toBe(201);
+      const own = new FakeAuthenticator();
+      const start = await e.req("POST", "/v1/engine/passkey/start", { key: t.session });
+      expect((await e.req("POST", "/v1/engine/passkey/finish", { key: t.session, body: { code: start.json.code, credential: own.register({ challenge: start.json.challenge as string, origin: ORIGIN, rpId: RP }) } })).status).toBe(200);
+
+      expect((await e.req("POST", `/v1/users/${second.json.id as string}/erase`, { key: t.session })).status).toBe(200);
+      expect((await e.req("GET", "/v1/engine", { key: t.session })).json.passkey).toEqual({ credential_id: own.credentialId, label: "Owner" });
+      const events = (await e.env.engine!(t.id).events(0, 200)).items.map((x) => x.event);
+      expect(events).not.toContain("passkey.revoked");
+    } finally { e.close(); }
+  });
+
+  it("an engine that fails the revocation: the erase says so, the export parts still go, and erasing again finishes it", async () => {
+    const e = testCloud({ engine: true });
+    try {
+      const t = await e.tenant("retry");
+      const second = await e.req("POST", "/v1/users", { key: t.session, body: { display_name: "Second Owner", role: "owner" } });
+      const other = await sessionToken(e.env.sessionSecret, { tenantId: t.id, userId: second.json.id as string, role: "owner", gen: 0 }, e.clock.now);
+      const own = new FakeAuthenticator();
+      const start = await e.req("POST", "/v1/engine/passkey/start", { key: t.session });
+      expect((await e.req("POST", "/v1/engine/passkey/finish", { key: t.session, body: { code: start.json.code, credential: own.register({ challenge: start.json.challenge as string, origin: ORIGIN, rpId: RP }) } })).status).toBe(200);
+      // A staged export holds the person's data as it was: the erase ends it, and its parts leave the store.
+      expect((await e.req("POST", "/v1/export/staged", { key: other })).status).toBe(201);
+      const parts = async () => (await e.env.blobs.list(`exports/${t.id}/`)).length;
+      expect(await parts()).toBeGreaterThan(0);
+
+      const real = e.env.engine!;
+      let away = true;
+      // The engine is a proxy (test/support/cloud.ts): only forgetPasskey is replaced, every other call goes through.
+      e.env.engine = (id) => new Proxy(real(id), { get: (inner, name) => name !== "forgetPasskey" ? Reflect.get(inner, name) : async (person: string) => {
+        if (away) throw new Error("the object is away");
+        return inner.forgetPasskey(person);
+      } });
+      const first = await e.req("POST", `/v1/users/${t.owner}/erase`, { key: other });
+      expect(first.status).toBe(502);
+      expect(first.json.error).toMatch(/erased.*approval passkey.*erase again/);
+      expect(first.json.error).not.toContain("the object is away");
+      expect(await parts()).toBe(0);
+      expect((await e.req("GET", "/v1/engine", { key: other })).json.passkey).toEqual({ credential_id: own.credentialId, label: "Owner" });
+
+      away = false;
+      const again = await e.req("POST", `/v1/users/${t.owner}/erase`, { key: other });
+      expect(again.status).toBe(409);
+      expect(again.json.error).toMatch(/already erased/);
+      expect((await e.req("GET", "/v1/engine", { key: other })).json.passkey).toBeNull();
+      expect(JSON.stringify(await real(t.id).status())).not.toContain("Owner");
+    } finally { e.close(); }
+  });
+
   it("the purge of a closed company wipes its engine: its ledger, documents and passkey go with its rows", async () => {
     const e = testCloud({ engine: true });
     try {
