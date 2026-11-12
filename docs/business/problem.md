@@ -1,8 +1,9 @@
 # The problem: when software has to pay
 
-**Status: hypothesis.** This page describes a problem we believe finance teams have. **We have not validated demand
-with customers yet:** we have held no customer interviews and done no discovery. Every outside fact below has a
-source we opened on the date given; everything else is our own reasoning and is labelled as such.
+**Status: hypothesis.** This page describes a problem we believe finance teams have.
+Not validated with customers yet: 2 finance conversations (a CFO and a bank finance professional, quoted, anonymous); more in progress; no pilots, no revenue.
+Every outside fact below has a source we opened on the date given; everything else is our own reasoning and is
+labelled as such.
 
 Back to the [business case index](README.md).
 

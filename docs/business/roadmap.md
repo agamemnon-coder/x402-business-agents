@@ -2,7 +2,9 @@
 
 **A plan, not a promise.** No dates: "next" means the first things we would do, "later" means after those. Nothing
 here is built unless it says so. The longer product roadmap of October (more agents, more rails) is kept for history in
-[docs/archive/roadmap.md](../archive/roadmap.md). **We have not validated demand with customers yet** ([model.md](model.md)).
+[docs/archive/roadmap.md](../archive/roadmap.md).
+Not validated with customers yet: 2 finance conversations (a CFO and a bank finance professional, quoted, anonymous); more in progress; no pilots, no revenue.
+The business model: [model.md](model.md).
 
 Back to the [business case index](README.md).
 
