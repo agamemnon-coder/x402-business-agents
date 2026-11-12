@@ -2,7 +2,9 @@
 // starter key with a virtual passkey (Chromium's WebAuthn test authenticator), the runner's test world pushed to it,
 // then every page at laptop and phone width. It checks: the passkey first run and sign-in, a supplier name that is
 // HTML shows as text, no console or CSP errors, nothing wider than the phone, and an ended session goes back to sign-in.
-// npx tsx test/browser/console.check.ts [screenshot dir]
+// Then the demo deployment (cloud/src/demo.ts) over the seeded test world (src/demoworld): no sign-in, every screen at
+// 390 and 1440 px in light and dark, in English, with no console error and no request that is not a GET.
+// npx tsx test/browser/console.check.ts [screenshot dir] [demo screenshot dir, by default ../cloud-demo next to the first]
 import { t as tr } from "../../src/ui/i18n.js";
 import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
@@ -10,21 +12,32 @@ import { fileURLToPath } from "node:url";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { handle, type CloudEnv } from "../../cloud/src/app.js";
+import { DEMO_SITE } from "../../cloud/src/console.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
 import { batchesFor, pushToCloud } from "../../src/cloudsync/client.js";
 import { payApInvoice } from "../../src/ap/pay.js";
 import { DE, EN, NL } from "../fakes/apInvoices.js";
 import { world } from "../support/rt4World.js";
+import { localDemo } from "../../src/demoworld/bundle.js";
+import { MESSAGES } from "../../src/ui/i18n.js";
 
 const shots = process.argv[2] ?? "";
 if (shots) mkdirSync(shots, { recursive: true });
+const demoShots = process.argv[3] ?? (shots ? join(dirname(shots), "cloud-demo") : "");
+if (demoShots) mkdirSync(demoShots, { recursive: true });
 const PORT = 8790 + Math.floor(Math.random() * 100);
 const ORIGIN = `http://localhost:${PORT}`;
 const ADMIN = "console-check-admin-token-not-a-secret";
 let failed = 0;
 const ok = (cond: unknown, what: string) => { if (cond) console.log(`ok    ${what}`); else { failed++; console.log(`FAIL  ${what}`); } };
+
+// The demo's seeded world is built first and alone: its build sets a fixed clock for the whole process while it runs.
+const demoDir = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "console-demo-"));
+const DEMO_PORT = 8890 + Math.floor(Math.random() * 100);
+const DEMO_ORIGIN = `http://localhost:${DEMO_PORT}`;
+const demo = await localDemo(demoDir, { origin: DEMO_ORIGIN });
 
 // The runner's test world: one invoice paid, one waiting for the CFO, two waiting for a new supplier.
 const now = new Date();
@@ -58,7 +71,7 @@ const call = async (method: string, path: string, key: string, body?: unknown) =
 };
 const made = await call("POST", "/v1/admin/tenants", ADMIN, { slug: "northwind", name: "Northwind Outdoor (test company)", owner: { display_name: "The CFO" } });
 const starter = made.json.api_key as string;
-// The console is Dutch by default (src/ui/i18n.ts); this check walks it in English, then looks at the Dutch pages near the end.
+// The console is English by default (since 12 November); this check walks it in English, then looks at the Dutch pages near the end.
 ok((await call("POST", "/v1/company", starter, { language: "en" })).status === 200, "the company's pages can be set to English");
 
 
@@ -293,9 +306,132 @@ await page.setViewportSize({ width: 1440, height: 1000 });
 
 // 401 (an ended session) and 409 (the last owner passkey refused) are answers the check asks for, not errors.
 ok(errors.filter((e) => !/(401 \(Unauthorized\)|409 \(Conflict\))/.test(e)).length === 0, `no console or CSP errors${errors.length ? ` (${errors.join(" | ")})` : ""}`);
+
+// --- The demo deployment: the seeded test world, read-only, no sign-in -------------------------------------------------
+const demoEnvWithPdf = { ...demo.env, asset: env.asset };
+const demoServer = createServer(async (req, res) => {
+  const chunks: Buffer[] = [];
+  for await (const c of req) chunks.push(c as Buffer);
+  const r = await handle(new Request(`${DEMO_ORIGIN}${req.url}`, { method: req.method, headers: req.headers as Record<string, string>, ...(chunks.length ? { body: Buffer.concat(chunks) } : {}) }), demoEnvWithPdf);
+  res.writeHead(r.status, Object.fromEntries(r.headers));
+  res.end(Buffer.from(await r.arrayBuffer()));
+});
+await new Promise<void>((r) => demoServer.listen(DEMO_PORT, "127.0.0.1", () => r()));
+const listed = await (await fetch(`${DEMO_ORIGIN}/v1/demo/companies`)).json() as { companies: { slug: string; name: string; counts: Record<string, number>; invoices_by_status: Record<string, number> }[] };
+ok(listed.companies.length === 3, "the demo lists its three test companies");
+const first = demo.companies[0]!;
+const st = first.states;
+// Words a Dutch page has and an English one must not (the console's frame and the demo's own lines).
+const DUTCH = /\b(Overzicht|Facturen|Transacties|Boekhouding|Instellingen|Testgeld|Testbedrijven|testwereld|Betaald|Geblokkeerd|Goedkeuring|Geboekt)\b/;
+const demoErrors: string[] = [];
+const notGet: string[] = [];
+const SCREENS: [string, string, string][] = [
+  ["01-companies", "#/", ".grid2 .card"],
+  ["02-overview", `#/c/${first.slug}/overview`, "text=When it is due"],
+  ["03-invoices", `#/c/${first.slug}/invoices`, ".row:not(.th)"],
+  ["04-invoice", `#/c/${first.slug}/invoices/${st.paid_foreign_currency}`, "text=Approval and payment"],
+  ["05-transactions", `#/c/${first.slug}/transactions`, ".trow:not(.th)"],
+  ["06-books", `#/c/${first.slug}/books`, "text=VAT overview"],
+];
+const demoShotPaths: string[] = [];
+for (const scheme of ["light", "dark"] as const) {
+  for (const width of [1440, 390]) {
+    const dctx = await browser.newContext({ viewport: { width, height: width === 390 ? 844 : 1000 }, deviceScaleFactor: demoShots ? 2 : 1, colorScheme: scheme });
+    const dp = await dctx.newPage();
+    dp.on("console", (m) => { if (m.type() === "error") demoErrors.push(`${scheme} ${width}: ${m.text()}`); });
+    dp.on("pageerror", (e) => demoErrors.push(`${scheme} ${width}: ${String(e)}`));
+    dctx.on("request", (r) => { if (r.url().startsWith(DEMO_ORIGIN) && r.method() !== "GET") notGet.push(`${r.method()} ${r.url()}`); });
+    for (const [name, hash, wait] of SCREENS) {
+      await dp.goto(`${DEMO_ORIGIN}/${hash}`);
+      await dp.waitForSelector(wait, { timeout: 20_000 });
+      if (name === "04-invoice") { await dp.frameLocator("iframe.pdfframe").locator("canvas").first().waitFor({ timeout: 20_000 }); await dp.waitForSelector("text=Booked"); }
+      await dp.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => {});
+      await dp.waitForTimeout(250);
+      const where = `${name} at ${width} px, ${scheme}`;
+      const body = await dp.innerText("body");
+      ok((await dp.evaluate(() => document.documentElement.lang)) === "en" && !DUTCH.test(body), `${where}: in English (${DUTCH.exec(body)?.[0] ?? "no Dutch word"})`);
+      ok(body.includes(MESSAGES.en["cs.demo.banner"]) && (await dp.$(`.banner a[href="${DEMO_SITE}"]`)) !== null, `${where}: the test-world line and "What is this?" are on the screen`);
+      ok((await dp.$$("#tabs a[data-tab=settings], #out, #who, #co")).length === 0, `${where}: no settings, no person, no sign-out`);
+      const wide = await dp.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      ok(wide <= 0, `${where}: nothing wider than the screen (${wide} px over)`);
+      const raw = await dp.evaluate(() => (document.body.textContent ?? "").split(/\s+/).filter((x) => /^[a-z]+(\.[a-z0-9_]+)+$/.test(x) && !/\.(js|pdf|csv|json|eml|com|nl|io|test|dev)$/.test(x)));
+      ok(raw.length === 0, `${where}: no raw message keys${raw.length ? ` (${raw.slice(0, 5).join(", ")})` : ""}`);
+      if (name === "01-companies") ok(!(await dp.isVisible("#tabs")), `${where}: no company tabs before a company is chosen`);
+      if (demoShots) { const f = join(demoShots, `${scheme}-${width}-${name}.png`); await dp.screenshot({ path: f, fullPage: true }); demoShotPaths.push(f); }
+    }
+    await dctx.close();
+  }
+}
+// What the screens say, against the demo's own answers (light, laptop).
+{
+  const dctx = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  const dp = await dctx.newPage();
+  dp.on("console", (m) => { if (m.type() === "error") demoErrors.push(`content: ${m.text()}`); });
+  dp.on("pageerror", (e) => demoErrors.push(`content: ${String(e)}`));
+  dctx.on("request", (r) => { if (r.url().startsWith(DEMO_ORIGIN) && r.method() !== "GET") notGet.push(`${r.method()} ${r.url()}`); });
+  await dp.goto(`${DEMO_ORIGIN}/`);
+  await dp.waitForSelector(".grid2 .card");
+  const cards = await dp.$$eval(".grid2 .card", (cs) => cs.map((c) => c.textContent ?? ""));
+  ok(cards.length === 3 && listed.companies.every((c, k) => cards[k]!.includes(c.name) && cards[k]!.includes(`${c.counts.invoices} invoices`) && cards[k]!.includes(`Documents in the archive${c.counts.documents}`) && cards[k]!.includes(`Payments${c.counts.payments}`)),
+    "each company's card shows its name and its counts as the demo counts them");
+  ok(listed.companies.every((c, k) => cards[k]!.includes(`Paid${c.invoices_by_status.paid ?? 0}`)), "each card shows its paid invoices from the demo's count by state");
+  ok((await dp.$("#tabs")) !== null && !(await dp.isVisible("#tabs")), "the companies' page shows no company tabs");
+  // Into a company, then the switcher to another.
+  await dp.click(`.grid2 .card:first-child a.btn`);
+  await dp.waitForSelector("text=When it is due");
+  ok(new URL(dp.url()).hash === `#/c/${first.slug}/overview`, "a card opens its company's overview");
+  ok((await dp.innerText("main")).includes(MESSAGES.en["cs.demo.next.cfo_1"]), "the overview says what waits for the CFO, and asks nobody to sign");
+  await dp.goto(`${DEMO_ORIGIN}/#/c/${first.slug}/invoices`);
+  await dp.waitForSelector(".row:not(.th)");
+  await dp.selectOption("#cosel", listed.companies[1]!.slug);
+  await dp.waitForFunction((h) => location.hash === h, `#/c/${listed.companies[1]!.slug}/invoices`);
+  await dp.waitForSelector(".row:not(.th)");
+  ok(await dp.inputValue("#cosel") === listed.companies[1]!.slug, "the switcher in the header goes to the same page of another company");
+  // The invoice paid in a foreign currency: document, reading, checks, approval with its signed terms, payment, booking.
+  await dp.goto(`${DEMO_ORIGIN}/#/c/${first.slug}/invoices/${st.paid_foreign_currency}`);
+  await dp.waitForSelector("text=Booked");
+  const inv = await dp.innerText("main");
+  ok(["What Purser read", "Checks", "Approval and payment", MESSAGES.en["cs.dt.test_passkey"], "Signed terms, SHA-256:", "stand-in", "Booked"].every((x) => inv.includes(x)), "an invoice shows its reading, checks, approval with a test passkey, signed terms, stand-in payment and booking");
+  ok(/Airwallex FX/.test(inv) && /Airwallex transfer/.test(inv), "the foreign-currency payment shows the conversion and the transfer");
+  const fraud = await (await fetch(`${DEMO_ORIGIN}/v1/demo/${first.slug}/invoices/${st.held_possible_fraud}`)).json() as { findings: { detail: string }[] };
+  await dp.goto(`${DEMO_ORIGIN}/#/c/${first.slug}/invoices/${st.held_possible_fraud}`);
+  await dp.waitForSelector("text=Blocks payment");
+  ok((await dp.innerText("main")).includes(fraud.findings[0]!.detail), "the invoice held as possible fraud shows the finding that holds it");
+  await dp.goto(`${DEMO_ORIGIN}/#/c/${first.slug}/invoices/${st.waiting_for_cfo}`);
+  await dp.waitForSelector("text=Approval and payment");
+  ok((await dp.innerText("main")).includes("Nothing is paid until then"), "the invoice that waits for the CFO says nothing is paid until then");
+  // Screens that do not exist here.
+  for (const hash of ["#/settings", "#/sign-in", "#/start", "#/platform", `#/c/${first.slug}/settings`, "#/c/not-a-demo-company/overview"]) {
+    await dp.goto(`${DEMO_ORIGIN}/${hash}`);
+    await dp.waitForSelector(`text=${MESSAGES.en["cs.not_here"]}`);
+  }
+  ok(true, "settings, sign-in, first run, the platform and a company not in the demo are not here");
+  // The language: Dutch on one click, remembered, and back.
+  await dp.goto(`${DEMO_ORIGIN}/#/c/${first.slug}/overview`);
+  await dp.waitForSelector("text=When it is due");
+  ok(!/\bnull\b/.test(await dp.innerText("main")), "the overview writes no 'null' where a company has no inbox");
+  await dp.click("#lang");
+  await dp.waitForSelector(`text=${MESSAGES.nl["cs.demo.banner"]}`);
+  ok((await dp.evaluate(() => document.documentElement.lang)) === "nl", "the switch shows the console in Dutch");
+  await dp.reload();
+  await dp.waitForSelector(`text=${MESSAGES.nl["cs.demo.banner"]}`);
+  ok((await dp.evaluate(() => document.documentElement.lang)) === "nl", "the choice is remembered in this browser");
+  if (demoShots) { const f = join(demoShots, "light-1440-07-overview-dutch.png"); await dp.screenshot({ path: f, fullPage: true }); demoShotPaths.push(f); }
+  await dp.click("#lang");
+  await dp.waitForSelector(`text=${MESSAGES.en["cs.demo.banner"]}`);
+  ok((await dp.evaluate(() => document.documentElement.lang)) === "en", "and back to English");
+  await dctx.close();
+}
+ok(notGet.length === 0, `the demo console sent nothing but GET${notGet.length ? ` (${notGet.slice(0, 5).join(", ")})` : ""}`);
+ok(demoErrors.length === 0, `the demo console had no console or CSP errors${demoErrors.length ? ` (${demoErrors.slice(0, 5).join(" | ")})` : ""}`);
+if (demoShotPaths.length) console.log(`demo screenshots (${demoShotPaths.length}):\n${demoShotPaths.join("\n")}`);
+
 await browser.close();
 server.close();
+demoServer.close();
+demo.close();
 rmSync(dir, { recursive: true, force: true });
 rmSync(w.dir, { recursive: true, force: true });
+rmSync(demoDir, { recursive: true, force: true });
 console.log(failed ? `\nconsole check: ${failed} problem(s)` : "\nconsole check: all passed");
 process.exit(failed ? 1 : 0);

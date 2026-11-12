@@ -6,6 +6,8 @@ import { readFileSync } from "node:fs";
 import { Script } from "node:vm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { consolePage } from "../cloud/src/console.js";
+import { demoEnv } from "../cloud/src/demo.js";
+import { SITE_URL } from "../src/ui/meta.js";
 import { INTER_WOFF2_B64 } from "../cloud/src/font.gen.js";
 import { scriptBlocks, scriptBody, withoutBlocks } from "./support/scriptBlocks.js";
 import { ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
@@ -76,6 +78,38 @@ describe("the console page", () => {
     expect((await c.fetch(`${ORIGIN}/admin`)).status).toBe(404);
     expect((await c.fetch(`${ORIGIN}/.env`)).status).toBe(404);
     expect((await c.fetch(`${ORIGIN}/`, { method: "POST" })).status).toBe(405);
+  });
+});
+
+/** The page's config, as the meta tag carries it. */
+const configOf = (html: string) => JSON.parse(/<meta name="purser-cloud" content="([^"]*)">/.exec(html)![1]!.replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")) as Record<string, unknown>;
+
+describe("the console's language and its demo mode", () => {
+  it("is English by default, with a visible switch to Dutch that the browser remembers", () => {
+    const html = consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "" });
+    expect(html).toContain('<html lang="en">');
+    expect(html).toMatch(/<a class="lang" id="lang" href="#"[^>]*>/);
+    const js = script(html);
+    // Dutch only when this browser chose it; English otherwise.
+    expect(js).toContain("const L=LS[PREF==='nl'?'nl':'en'];");
+    expect(js).toContain("localStorage.setItem('purser.cloud.lang',lang)");
+    expect(js).toContain("document.documentElement.lang=L.lang;");
+  });
+
+  it("says it is a demo, and which companies, only on a demo deployment", async () => {
+    expect(configOf(await (await c.fetch(`${ORIGIN}/`)).text()).demo).toBeNull();
+    c.env.demo = demoEnv(["acme", "other-co"]);
+    const cfg = configOf(await (await c.fetch(`${ORIGIN}/`)).text());
+    expect(cfg.demo).toEqual({ slugs: ["acme", "other-co"], site: `${SITE_URL}/home` });
+  });
+
+  it("in demo mode sends nothing but GET, carries no session, and stops polling", () => {
+    const js = script(consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "", demo: { slugs: ["acme"], site: `${SITE_URL}/home` } }));
+    // Every request goes through api(), which refuses anything but GET in demo mode before it is sent.
+    expect([...js.matchAll(/\bfetch\(/g)].length).toBe(2);
+    expect(js).toContain("if(DEMO&&method!=='GET')throw new Error(t('cs.demo.read_only'));");
+    expect(js).toContain("const token=DEMO?null:(o.token||(S&&S.token));");
+    expect(js).toContain("if(!DEMO)setInterval(");
   });
 });
 
