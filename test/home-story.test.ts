@@ -59,8 +59,8 @@ describe("Home is one story, in this order", () => {
     const buttons = (html: string) => [...mainOf(html).matchAll(/<a class="btn[^"]*" href="([^"]+)">([\s\S]*?)<\/a>/g)].map((m) => [m[1], text(m[2]!)]);
     expect([START, PROOF_BUTTON]).toEqual(["Try it yourself", "See the proof"]);
     // Since 12 Nov (the owner) the first button opens the hands-on demo (TRY_URL) in both bundles.
-    expect(buttons(ON)).toEqual([["https://purser-try.max-31b.workers.dev/try", START], ["proof", PROOF_BUTTON]]);
-    expect(buttons(OFF)).toEqual([["https://purser-try.max-31b.workers.dev/try", START], ["proof", PROOF_BUTTON]]);
+    expect(buttons(ON)).toEqual([["/try", START], ["proof", PROOF_BUTTON]]);
+    expect(buttons(OFF)).toEqual([["/try", START], ["proof", PROOF_BUTTON]]);
     expect(OFF).not.toContain('href="try/sign"');
     expect(ON.match(/class="btn\b/g)).toHaveLength(2);
     // The bundles agree (TRY_SIGN_ENABLED on and off).

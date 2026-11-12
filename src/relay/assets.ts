@@ -46,13 +46,14 @@ const EXPOSURE_RATE = (() => { try { return recordedRate(loadRecord().record as 
 export const METAL_RECORDED = (() => { try { return metalRecordedOf(JSON.parse(read(`../../${METAL_INSPECTOR_RECORD}`)) as unknown); } catch { return null; } })();
 
 /**
- * The site's one way through (Home, try it yourself, see the proof; the replay at /watch left the menu on 12 Nov). With
- * /try/sign in the bundle the header's "Try" tab leads there; without it, a link to /try/sign (Home's button, the way on
- * under the replay at /watch) leads to /try, so no page links to a 404.
+ * The site's one way through (Home, try it yourself, see the proof; the replay at /watch left the menu on 12 Nov). The
+ * header's "Try" tab is the hands-on demo at /try in either bundle (owner, 12 Nov: "The demo must live on the main site
+ * under the Try tab"; src/redesign/ui.ts TRY_URL); it no longer leads to /try/sign. Without /try/sign in the bundle, a
+ * link to /try/sign leads to /try, so no page links to a 404.
  */
 export function flowLinks(html: string, trySign: boolean): string {
   if (!trySign) return html.replace(/href="(\/?)try\/sign"/g, 'href="$1try"');
-  return html.replace(/(<nav class="tabs" aria-label="Main">(?:(?!<\/nav>)[\s\S])*?<a href=")(\/?)try"/, "$1$2try/sign\"").replace(/href="try" data-next="try"/g, 'href="try/sign" data-next="try"');
+  return html.replace(/href="try" data-next="try"/g, 'href="try/sign" data-next="try"');
 }
 
 export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {

@@ -159,13 +159,14 @@ describe("/try/sign in the bundle (TRY_SIGN_ENABLED)", () => {
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).not.toMatch(/unsafe|https?:|\*/);
     expect(html).not.toMatch(/\son[a-z]+=/i);
-    // Nothing is loaded from another origin. The only absolute links go to the project's own Purser Cloud deployment
-    // (the owner, 12 Nov, 6c58c5b): the Try tab's hands-on demo (TRY_URL) and Purser Cloud under More. Navigations,
-    // not resources.
+    // Nothing is loaded from another origin. The Try tab opens the hands-on demo at the site's own /try (TRY_URL, the
+    // owner, 12 Nov: "No jump to purser-try"); the only absolute link goes to the project's own Purser Cloud deployment,
+    // under More. Navigations, not resources.
     expect(html).not.toMatch(/src="https?:/);
+    expect(TRY_URL).toBe("/try");
+    expect(html).toContain(`href="${TRY_URL}"`);
     const abs = [...html.matchAll(/href="(https?:[^"]*)"/g)].map((m) => m[1]!);
-    expect(abs).toContain(TRY_URL);
-    expect(abs.filter((u) => new URL(u).origin !== new URL(TRY_URL).origin)).toEqual([]);
+    expect(abs.filter((u) => new URL(u).origin !== "https://purser-try.max-31b.workers.dev")).toEqual([]);
     expect(res.headers.get("permissions-policy")).toContain("publickey-credentials-create=(self)");
     // The label, first thing in the body.
     expect(html).toMatch(new RegExp(`<body>\\n<div class="testband" role="note"><div class="row"><span class="tl">.*${TRY_SIGN_LABEL}</span>`));
@@ -175,8 +176,8 @@ describe("/try/sign in the bundle (TRY_SIGN_ENABLED)", () => {
     expect(html).toContain("url(/assets/inter.woff2)");
     // The landing's button, only in this bundle.
     // Since 12 Nov (the owner) every Try call to action opens the hands-on demo (TRY_URL); /try/sign keeps its own page.
-    expect(on.home).toContain('href="https://purser-try.max-31b.workers.dev/try"');
-    expect(on.home).toMatch(/<a class="btn primary big start" href="https:\/\/purser-try\.max-31b\.workers\.dev\/try">[\s\S]*?Try it yourself<\/a>/);
+    expect(on.home).toContain('href="/try"');
+    expect(on.home).toMatch(/<a class="btn primary big start" href="\/try">[\s\S]*?Try it yourself<\/a>/);
   });
 
   it("the local relay: off, /try/sign and its API are 404; on, the whole visit works", async () => {
