@@ -34,7 +34,7 @@ Sources: the [hackathon site](https://airwallex.hackerearth.com/) (H rows), the 
 
 ## 2. How we read the brief: the judging areas (not official)
 
-Source: Dan Kim's X article ([link](https://x.com/dankimxyz/article/2107199865004634605)), section "How we'll judge the projects", as quoted in `docs/rules.md` (unverified). These areas are not on the official site (airwallex.hackerearth.com); they are our reading of the brief, not official judging criteria. No weights are published. The same caveat as above applies to these quotes. Our reading, area by area: [docs/judging-map.md](archive/judging-map.md).
+Source: Dan Kim's X article ([link](https://x.com/dankimxyz/article/2107199865004634605)), section "How we'll judge the projects", as quoted in `docs/rules.md` (unverified). These areas are not on the official site (airwallex.hackerearth.com); they are our reading of the brief, not official judging criteria. No weights are published. The same caveat as above applies to these quotes. Our reading, area by area: [docs/archive/judging-map.md](archive/judging-map.md).
 
 | Id | Requirement | Where Purser does it | Evidence | Status |
 |---|---|---|---|---|
