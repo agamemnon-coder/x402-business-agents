@@ -9,7 +9,7 @@
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 import { isoCBOR } from "@simplewebauthn/server/helpers";
 import { decodeFunctionData, type Address, type Hex } from "viem";
-import { mandateBindingAbi } from "@metalntwx/metal-pay/mandates";
+import { decodeAgentKey, mandateBindingAbi, mandateReference } from "@metalntwx/metal-pay/mandates";
 import { CHAIN_ID, USDZ } from "./network.js";
 import { centsToBaseUnits, toCents } from "../lib/money.js";
 import { executeDigest, executionData } from "./fourEyes.js";
@@ -30,10 +30,17 @@ export interface OwnersExecuteTerms extends Terms {
   /** The account's Execute digest over the calls, nonce and deadline: what both passkeys sign. */
   onchain_digest: Hex;
   /** What the calls do, in words the phone shows; the calls themselves are what the account runs. */
-  action: { what: string; agent: string; cap: string; budget: string; payee: string; payee_name: string; mandate: Hex };
+  action: {
+    what: string; agent: string; cap: string; budget: string; payee: string; payee_name: string;
+    /** The mandate the call binds or revokes; for a replace, the NEW mandate's reference. */
+    mandate: Hex;
+    /** A replace only: the mandate it ends (its predecessor on chain), and that mandate's cap and budget, so the phone shows what changes. */
+    replaces?: Hex; was_cap?: string; was_budget?: string;
+  };
 }
 
 const HEX32 = /^0x[0-9a-f]{64}$/;
+const MONEY = /^\d+\.\d{2}$/;
 
 export function digestOfTerms(t: OwnersExecuteTerms): Hex {
   const data = executionData(t.calls.map((c) => ({ target: c.target, value: BigInt(c.value), callData: c.call_data })));
@@ -46,15 +53,18 @@ export function ownersExecuteTerms(a: Omit<OwnersExecuteTerms, "schema" | "kind"
   return t;
 }
 
-/** The account calls an owners_execute may carry: binding or revoking a mandate on the account itself. */
-export const OWNER_CALL_SELECTORS = { bind: "0x240c29bb", revoke: "0xb75c7dc6" } as const;
+/** The account calls an owners_execute may carry: binding, replacing or revoking a mandate on the account itself. */
+export const OWNER_CALL_SELECTORS = { bind: "0x240c29bb", replace: "0x2f2c2052", revoke: "0xb75c7dc6" } as const;
 /** How long the signed deadline may outlive the proposal's expiry: enough to relay it, no more. */
 export const DEADLINE_SLACK_S = 300;
 
 /**
  * The terms describe exactly what the account will run (security review of block 1): one call, to the account itself,
- * with no value, that binds or revokes a mandate whose cap, budget and payee are the ones the phone shows; the chain
- * is Metal testnet; the nonce lane is a quorum lane; the deadline ends within minutes of the proposal's expiry.
+ * with no value, that binds, replaces or revokes a mandate whose cap, budget and payee are the ones the phone shows;
+ * the chain is Metal testnet; the nonce lane is a quorum lane; the deadline ends within minutes of the proposal's expiry.
+ * A replace also names the mandate it ends (the call's predecessor), the new mandate's own reference (which follows
+ * from the call: the account, the agent key and the credential's hash) and the earlier cap and budget as amounts. Those
+ * two earlier amounts are words only: the call does not carry them, so whoever files the proposal answers for them.
  */
 export function checkOwnersTerms(t: OwnersExecuteTerms): void {
   const bad = (why: string): never => { throw new Error(`these owners_execute terms are refused: ${why}`); };
@@ -68,13 +78,28 @@ export function checkOwnersTerms(t: OwnersExecuteTerms): void {
   let d: ReturnType<typeof decodeFunctionData<typeof mandateBindingAbi>>;
   try { d = decodeFunctionData({ abi: mandateBindingAbi, data: c.call_data }); } catch { return bad("the call is not a mandate call"); }
   const a = t.action;
-  if (d.functionName === "bind") {
-    if (a.what !== "bind") bad("the call binds, the words say otherwise");
-    const [, , , cons, terms] = d.args as unknown as [Hex, Hex, Hex, { token: Address; perPaymentCap: bigint; budget: bigint }, { payees: readonly { account: Address }[]; openSdHash: Hex }];
+  type Limits = { token: Address; perPaymentCap: bigint; budget: bigint };
+  type Payees = { payees: readonly { account: Address }[]; openSdHash: Hex };
+  /** The limits a bind or a replace writes on chain are the ones the words show: *USDZ, this cap, this budget, this one payee. */
+  const limitsAsShown = (cons: Limits, terms: Payees) => {
     if (cons.token.toLowerCase() !== USDZ.toLowerCase()) bad("the mandate is not in USDZ");
     if (cons.perPaymentCap !== centsToBaseUnits(toCents(a.cap))) bad(`the call's cap is not the ${a.cap} shown`);
     if (cons.budget !== centsToBaseUnits(toCents(a.budget))) bad(`the call's budget is not the ${a.budget} shown`);
     if (terms.payees.length !== 1 || terms.payees[0]!.account.toLowerCase() !== a.payee.toLowerCase() || !/^0x0{64}$/.test(terms.openSdHash)) bad(`the call's payees are not ${a.payee_name} alone`);
+  };
+  if (d.functionName === "bind") {
+    if (a.what !== "bind") bad("the call binds, the words say otherwise");
+    const [, , , cons, terms] = d.args as unknown as [Hex, Hex, Hex, Limits, Payees];
+    limitsAsShown(cons, terms);
+  } else if (d.functionName === "replace") {
+    if (a.what !== "replace") bad("the call replaces, the words say otherwise");
+    const [predecessor, hashC, , agentKey, cons, terms] = d.args as unknown as [Hex, Hex, Hex, Hex, Limits, Payees];
+    if (typeof a.replaces !== "string" || predecessor.toLowerCase() !== a.replaces.toLowerCase()) bad("the call replaces another mandate than the one shown");
+    limitsAsShown(cons, terms);
+    let successor: Hex;
+    try { successor = mandateReference(t.account, decodeAgentKey(agentKey), hashC); } catch { return bad("the call's agent key is not a P-256 mandate key"); }
+    if (successor.toLowerCase() !== String(a.mandate).toLowerCase()) bad("the new mandate's reference is not the one shown");
+    if (![a.was_cap, a.was_budget].every((x) => typeof x === "string" && MONEY.test(x))) bad("a replace names the earlier cap and budget as amounts");
   } else if (d.functionName === "revoke") {
     if (a.what !== "revoke" || (d.args as unknown as [Hex])[0].toLowerCase() !== a.mandate.toLowerCase()) bad("the call revokes another mandate than the one shown");
   } else bad(`${d.functionName} is not allowed here`);

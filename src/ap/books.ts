@@ -7,16 +7,19 @@
 import { appendFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { audit } from "../audit/log.js";
-import { AP_CHART, bankAccountFor, CHART } from "../config/gl.js";
+import { AP_CHART, bankAccountFor, CHART, LEDGER_CHART } from "../config/gl.js";
 import type { DB } from "../db/open.js";
 import { csvCell } from "../lib/csv.js";
 import { fromCents, toCents } from "../lib/money.js";
-import type { ApInvoiceRow } from "./store.js";
+import { VAT_CODES, vatOn } from "../ledger/vat.js";
+import type { ApInvoiceRow, StoredCoding } from "./store.js";
 import { apInvoices } from "./store.js";
 import { ledgerInvoiceNo } from "./ledgerKey.js";
 import { paymentDay } from "../vault/data.js";
 
 export const AP_ACCOUNTS = { inputVat: "1510", payable: "2100", bank: "1200", fees: "6800", transit: "1590" } as const;
+/** VAT the company itself owes on a reverse-charged purchase (the stored ledger's output VAT account). */
+const VAT_OWED = "2210";
 
 /** The Airwallex bank account per currency: EUR, USD and GBP have their own in the chart; others share 1203. */
 export { bankAccountFor };
@@ -32,6 +35,11 @@ export interface ApEntry {
   currency: string;
   memo: string;
   doc_sha256: string;
+  /** Only on the net lines of an accrual built from the Coder's coding: what the stored ledger keeps on the line. */
+  cost_centre?: string;
+  vat_code?: string;
+  /** The VAT of this line's group in cents: its share of the invoice's VAT, or for a reverse-charge code the VAT the company owes itself. */
+  vat_cents?: number;
 }
 
 /** Where entries go as they happen. push is called once per event; it must not throw for a bookkeeping outage to stop a payment. */
@@ -50,16 +58,84 @@ export function bookable(inv: Pick<ApInvoiceRow, "status" | "findings" | "total"
 }
 
 const line = (inv: ApInvoiceRow, event: ApEntry["event"], date: string, account: string, debitCents: number, creditCents: number, memo: string, currency = inv.currency): ApEntry => ({
-  date, invoice_id: inv.id, event, account, account_name: CHART[account] ?? AP_CHART[account] ?? "", debit: debitCents ? fromCents(debitCents) : "", credit: creditCents ? fromCents(creditCents) : "",
+  date, invoice_id: inv.id, event, account, account_name: CHART[account] ?? AP_CHART[account] ?? LEDGER_CHART[account] ?? "", debit: debitCents ? fromCents(debitCents) : "", credit: creditCents ? fromCents(creditCents) : "",
   currency, memo, doc_sha256: inv.doc_sha256,
 });
 
-/** The invoice as received: expense (net) and input VAT on the debit side, the supplier's claim on the credit side. */
+/** The Dutch purchase VAT code an invoice's own tax amounts to (21% or 9% of its net, within a cent), or null: the engine's own VAT coding. */
+export function dutchVat(netCents: number, vatCents: number): "P21" | "P9" | null {
+  if (Math.abs(Math.round((netCents * 21) / 100) - vatCents) <= 1) return "P21";
+  if (Math.abs(Math.round((netCents * 9) / 100) - vatCents) <= 1) return "P9";
+  return null;
+}
+
+const cents = (x: unknown): x is number => Number.isSafeInteger(x) && (x as number) >= 0;
+
+/**
+ * The Coder's coding an accrual is built from, or null (then the engine's own accrual is booked). Code does not take
+ * a stored coding on trust: it must have lines, its amounts must be the invoice row's own total to the cent, every
+ * account must be an expense account of the chart, and every VAT code a purchase code. Its VAT must stay below the
+ * total and sit on lines with a net, as the engine's own accrual requires: VAT with no expense under it would be booked
+ * as input VAT that no VAT code supports.
+ */
+function bookedCoding(inv: ApInvoiceRow): StoredCoding | null {
+  const c = inv.coding;
+  if (!c || !Array.isArray(c.lines) || c.lines.length === 0 || !MONEY.test(inv.total)) return null;
+  const sound = c.lines.every((l) => cents(l.net_cents) && cents(l.vat_cents) && /^[56]\d{3}$/.test(l.account) && l.account in CHART && typeof l.cost_centre === "string" && l.cost_centre !== ""
+    && (l.vat_code === null || VAT_CODES[l.vat_code]?.kind === "purchase") && (l.vat_cents === 0 || l.net_cents > 0));
+  const sum = c.lines.reduce((s, l) => s + l.net_cents + l.vat_cents, 0);
+  const vat = c.lines.reduce((s, l) => s + l.vat_cents, 0);
+  return sound && vat < sum && sum === toCents(inv.total) && c.total_cents === sum ? c : null;
+}
+
+/** Whether this invoice's accrual is built from the Coder's coding (and not the engine's own one-line coding). */
+export const codedAccrual = (inv: ApInvoiceRow): boolean => bookedCoding(inv) !== null;
+
+/**
+ * The accrual from the Coder's coding: one debit per group of lines with the same account, cost centre and VAT code,
+ * in the order they first appear; the VAT the invoice charges to input VAT; for a reverse-charge group the VAT the
+ * company owes itself, as input VAT and as VAT owed (nothing extra goes to the supplier); and the invoice's total as
+ * what is owed. Debits equal credits.
+ */
+function codedEntries(inv: ApInvoiceRow, c: StoredCoding, date: string, memo: string): ApEntry[] {
+  const groups: { account: string; cost_centre: string; vat_code: string | null; net: number; vat: number }[] = [];
+  for (const l of c.lines) {
+    let g = groups.find((x) => x.account === l.account && x.cost_centre === l.cost_centre && x.vat_code === l.vat_code);
+    if (!g) groups.push(g = { account: l.account, cost_centre: l.cost_centre, vat_code: l.vat_code, net: 0, vat: 0 });
+    g.net += l.net_cents;
+    g.vat += l.vat_cents;
+  }
+  const out: ApEntry[] = [];
+  const owed: number[] = [];
+  for (const g of groups) {
+    // A group without a net has nothing to book.
+    if (g.net === 0) continue;
+    const reverse = g.vat_code !== null && VAT_CODES[g.vat_code]?.reverse === true;
+    const self = reverse ? vatOn(g.net, g.vat_code!) : 0;
+    out.push({ ...line(inv, "accrual", date, g.account, g.net, 0, memo), cost_centre: g.cost_centre, ...(g.vat_code !== null ? { vat_code: g.vat_code, vat_cents: reverse ? self : g.vat } : {}) });
+    if (self) owed.push(self);
+  }
+  const vat = c.lines.reduce((s, l) => s + l.vat_cents, 0);
+  if (vat) out.push(line(inv, "accrual", date, AP_ACCOUNTS.inputVat, vat, 0, `${memo}: input VAT`));
+  for (const self of owed) {
+    out.push(line(inv, "accrual", date, AP_ACCOUNTS.inputVat, self, 0, `${memo}: input VAT, reverse charge`), line(inv, "accrual", date, VAT_OWED, 0, self, `${memo}: VAT owed, reverse charge`));
+  }
+  out.push(line(inv, "accrual", date, AP_ACCOUNTS.payable, 0, toCents(inv.total), memo));
+  return out;
+}
+
+/**
+ * The invoice as received: expense (net) and input VAT on the debit side, the supplier's claim on the credit side.
+ * An invoice the Coder coded (KIT11_AP_AGENTS=on, src/ap/coderAgent.ts) is booked from that coding, line group by
+ * line group; any other exactly as before: its net to the row's own account.
+ */
 export function accrualEntries(inv: ApInvoiceRow): ApEntry[] {
   const total = toCents(inv.total);
   const tax = MONEY.test(inv.tax) && toCents(inv.tax) > 0 && toCents(inv.tax) < total ? toCents(inv.tax) : 0;
   const date = inv.issue_date || inv.received_at.slice(0, 10);
   const memo = `${inv.vendor} invoice ${inv.invoice_no}`;
+  const coding = bookedCoding(inv);
+  if (coding) return codedEntries(inv, coding, date, memo);
   return [
     line(inv, "accrual", date, inv.gl_account, total - tax, 0, memo),
     ...(tax ? [line(inv, "accrual", date, AP_ACCOUNTS.inputVat, tax, 0, `${memo}: input VAT`)] : []),
