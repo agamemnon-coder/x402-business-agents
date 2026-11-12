@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { chromium, type Page } from "playwright";
 import { startJudge } from "../../src/cli/judge.js";
 import { checkHome } from "./homeStory.js";
+import { CHROME, checkTaps } from "./tapTargets.js";
 
 const args = process.argv.slice(2);
 const liveAt = args.indexOf("--live");
@@ -105,6 +106,19 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     await checkHome(page, { url: `${base}/`, name: `/ (Home) ${tag}`, width: w, height: h, touch: w < 500, tryHref: liveAt >= 0 ? "try/sign" : "try", fail, shot: async (n) => { await page.locator("#hero-demo").screenshot({ path: join(shots, `home-demo-${n}-${tag}.png`) }); } });
     await page.goto(`${base}/home?demo=4`, { waitUntil: "load" });
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
+
+    // Tap targets on a phone (jury review, 12 Nov: menu links 37 px): every link, button and fold header of the shared
+    // header and footer is at least 44 px high, on the three tabs and on the replay at /watch, and the redesign's
+    // header is no taller for it (test/browser/tapTargets.ts; the whole of /judge below).
+    if (w <= 430) {
+      for (const path of ["/home", "/try", "/proof", "/watch?autoplay=0"]) {
+        await page.goto(`${base}${path}`, { waitUntil: "load" });
+        await checkTaps(page, { name: `${path} ${tag}, header and footer`, scopes: CHROME, fail });
+        const head = await page.locator("header").first().evaluate((e) => e.getBoundingClientRect().height);
+        if (head > 65.5) fail(`${path} ${tag}: the header is ${head} px high, taller than before (65)`);
+        if (await page.locator('header nav a[href*="watch"]').count()) fail(`${path} ${tag}: Watch is in the menu`);
+      }
+    }
 
     // Every button works without a key: "CFO sign-in" explains how the CFO gets in, and the way back to the recording.
     await page.goto(`${base}/?signin`, { waitUntil: "load" });
@@ -511,6 +525,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await checkHome(page, { url: `${judgeBase}/`, name: `/ (Home, with /try/sign) ${tag}`, width: w, height: h, touch: w < 500, tryHref: "try/sign", fail, quick: true });
       await page.goto(`${judgeBase}/home?demo=4`, { waitUntil: "load" });
       await look(page, `/ (Home, with /try/sign) ${tag}`, w);
+      if (w <= 430) await checkTaps(page, { name: `/ (Home, with /try/sign) ${tag}, header and footer`, scopes: CHROME, fail });
       await page.screenshot({ path: join(shots, `home-trysign-${tag}.png`) });
       await top.click();
       await page.waitForURL(/\/judge$/);
@@ -524,6 +539,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (steps.length !== 5 || steps.some((s) => !s.box || !s.secs || !s.links)) fail(`/judge ${tag}: not five steps, each with a checkbox, a time and a link (${JSON.stringify(steps)})`);
       if (steps.reduce((t, s) => t + s.secs, 0) !== 180) fail(`/judge ${tag}: the times do not add up to 3 minutes`);
       if (!(await page.isVisible("text=Want the code?")) || !(await page.isVisible("section.more >> text=How it works in 5 files"))) fail(`/judge ${tag}: no "Want the code? How it works in 5 files" at the bottom`);
+      // The tour starts on Home, not on the replay, and on a phone the whole page is 44 px targets: every box, title,
+      // button and link, the menu and the footer.
+      if ((await page.locator("ol.steps > li").first().locator(".go a").getAttribute("href")) !== "/home" || (await page.locator('a[href*="watch"]').count())) fail(`/judge ${tag}: the tour does not start on Home, or links to the replay`);
+      if (w <= 430) await checkTaps(page, { name: `/judge ${tag}`, scopes: ["body"], fail });
       // Tick steps 2 and 3 (one by its box, one by its title), reload: both still ticked, the count says so.
       await page.locator("#step-sign").check();
       await page.locator('label[for="step-trick"]').click();
