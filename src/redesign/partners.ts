@@ -82,6 +82,7 @@ a.pf { color: var(--accent); font-weight: 600; text-decoration: none; font-size:
   .st b { font-size: 16.5px; } .st span { font-size: 14px; line-height: 1.35; } .st .tx { margin-top: 2px; } .st .tx a.pf { font-size: 14px; } .st code { font-size: 12.5px; } }
 h2.vsec { font-size: clamp(22px, 2.2vw, 28px); font-weight: 750; margin: 18px 0 0; scroll-margin-top: 80px; }
 details.fold > .flow.card, details.fold > .claim, details.fold > .vo-run, details.fold > .phd { margin: 0 0 12px; }
+details.fold > p.src { color: var(--faint); font-size: 14px; overflow-wrap: anywhere; }
 .nf { padding: 64px 0; } .nf .wrap { display: grid; gap: 16px; justify-items: start; } .nf h1 { font-size: clamp(34px, 5vw, 56px); font-weight: 800; }
 .nf .tabs2 { display: flex; flex-wrap: wrap; gap: 10px; }
 ${READBACK_CSS}
