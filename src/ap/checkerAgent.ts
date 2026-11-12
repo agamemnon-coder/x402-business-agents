@@ -15,7 +15,7 @@ import { claudeClient, MODELS } from "../claude/reader.js";
 import type { DB } from "../db/open.js";
 import { runProvenance, type RunProvenance } from "./agentRun.js";
 import {
-  answerTool, CHECKER_EFFORT, CHECKER_MAX_TURNS, CHECKER_SYSTEM, CHECKER_UNFINISHED, checkerInputs, checkerPrompt, checkerTools, enforce, fallbackDecision, statusOf,
+  answerTool, CHECKER_EFFORT, CHECKER_MAX_TURNS, CHECKER_SYSTEM, CHECKER_UNFINISHED, checkerInputs, checkerPrompt, checkerTools, codeRequires, enforce, fallbackDecision, statusOf,
   type ApStatus, type CheckerDecision, type CheckerToolName, type Enforced, type Finding, type InvoiceCase,
 } from "./checkerCore.js";
 
@@ -37,6 +37,8 @@ export interface CheckerOutcome {
   enforced: Enforced;
   /** Whether code made the outcome stricter than what Claude decided. Code's own fallback is never overridden. */
   overridden: boolean;
+  /** What code alone requires for this invoice, and why, in code's words (codeRequires). */
+  required: { action: string; why: string };
   run: AgentRun;
   task: string;
   provenance: RunProvenance;
@@ -75,7 +77,8 @@ export async function runChecker(db: DB, c: InvoiceCase, findings: Finding[], op
   const decision: CheckerDecision = own ?? { action: fallback.action, reason: fallback.reason, findings: fallback.findings };
   const enforced = enforce(c, decision, findings);
   const provenance = runProvenance(db, CHECKER_AGENT, opts.task, run, source === "claude", "the payables checks decide alone (the Checker agent was unavailable or did not decide)");
-  return { source, decision, enforced, overridden: source === "claude" && enforced.overridden_by !== null, run, task: opts.task, provenance };
+  const need = codeRequires(c, findings);
+  return { source, decision, enforced, overridden: source === "claude" && enforced.overridden_by !== null, required: { action: need.action, why: need.why }, run, task: opts.task, provenance };
 }
 
 /**
@@ -86,7 +89,8 @@ export function enforceAgain(out: CheckerOutcome, c: InvoiceCase, findings: Find
   const fallback = fallbackDecision(c, findings);
   const decision: CheckerDecision = out.source === "claude" ? out.decision : { action: fallback.action, reason: fallback.reason, findings: fallback.findings };
   const enforced = enforce(c, decision, findings);
-  return { ...out, decision, enforced, overridden: out.source === "claude" && enforced.overridden_by !== null };
+  const need = codeRequires(c, findings);
+  return { ...out, decision, enforced, overridden: out.source === "claude" && enforced.overridden_by !== null, required: { action: need.action, why: need.why } };
 }
 
 /**
@@ -114,7 +118,7 @@ export function recordChecked(db: DB, invoiceId: string, out: CheckerOutcome, st
     invoice_id: invoiceId, source: out.source, model: out.source === "claude" ? out.run.model : null,
     action: out.decision.action, reason: out.decision.reason, agent_findings: out.decision.findings,
     code_findings: out.enforced.findings.map((f) => ({ code: f.code, level: f.level })) as unknown as Json,
-    outcome: out.enforced.outcome, overridden_by: out.enforced.overridden_by, overridden: out.overridden, status,
+    outcome: out.enforced.outcome, overridden_by: out.enforced.overridden_by, overridden: out.overridden, code_requires: out.required.action, why: out.required.why.slice(0, 600), status,
     task: out.task, run_id: out.provenance.run_id, request_ids: out.provenance.request_ids, origin: out.provenance.origin as Json | null,
     ...(out.run.note ? { note: out.run.note } : {}),
   }, now);
