@@ -1,3 +1,5 @@
+> Kept for history (archived 12 November 2026). Replaced by: [requirements-matrix.md](../requirements-matrix.md).
+
 # Purser: requirements QA (independent review, 1 November 2026)
 
 Project: `/home/user/x402-business-agents`, Airwallex Agentic Banking Hackathon, Starter Kit 11, Metal Award.
