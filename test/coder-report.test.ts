@@ -1,6 +1,7 @@
 // The Coder evals' section of docs/agent-evals.md is written by code from docs/evals/coder.json alone
 // (src/evals/coderReport.ts): no number in it is typed by hand, and the default model is the one the run chose.
-import { existsSync, readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { CODER_MODEL } from "../src/ap/coderCore.js";
@@ -92,4 +93,25 @@ describe("docs/agent-evals.md", () => {
     const chosen = coderSummary(r).chosen;
     if (chosen) expect(CODER_MODEL).toBe(chosen);
   });
+});
+
+describe("npm run coder-evals", () => {
+  it("without a key says so, makes no call and writes nothing", () => {
+    const root = resolve(import.meta.dirname, "..");
+    const files = ["docs/agent-evals.md", "docs/runs/api-budget.jsonl", "docs/evals/coder.json"].map((f) => resolve(root, f));
+    const before = files.map((f) => (existsSync(f) ? statSync(f).mtimeMs : null));
+    const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/ANTHROPIC/.test(k)));
+    let out = "";
+    let code = 0;
+    try {
+      execFileSync(resolve(root, "node_modules/.bin/tsx"), ["src/cli/coderEvals.ts", "--models", "haiku", "--cases", "nl-books-9"], { cwd: root, env, encoding: "utf8", stdio: "pipe" });
+    } catch (e) {
+      const x = e as { status: number; stderr: string };
+      code = x.status;
+      out = x.stderr;
+    }
+    expect(code).toBe(2);
+    expect(out).toContain("KIT11_ANTHROPIC_API_KEY is not set: no live run, and nothing written");
+    expect(files.map((f) => (existsSync(f) ? statSync(f).mtimeMs : null))).toEqual(before);
+  }, 30_000);
 });
