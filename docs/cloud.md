@@ -192,13 +192,13 @@ network but pdf.js, and cannot reach the console page; the console page parses n
 5: a PDF bomb froze the tab that held the session). The download stays. `test/cloud-console.test.ts` checks the page and the routes; `test/browser/console.check.ts` runs the whole thing
 in Chromium with a virtual passkey (CI, judge job).
 
-## Public demo mode
+## Demo mode: a read-only deployment of test companies
 
-For showing the product without an account: a deployment of its own, with its own D1 database and R2 bucket that hold
-seeded test companies and nothing else. Two variables switch it on: `DEMO_PUBLIC` set to `on`, and `DEMO_SLUGS`, the demo
+A mode for a deployment of its own that is read without an account: its own D1 database and R2 bucket, holding seeded
+test companies and nothing else. Two variables switch it on: `DEMO_PUBLIC` set to `on`, and `DEMO_SLUGS`, the demo
 companies' addresses separated by commas. With `DEMO_PUBLIC` unset (every other deployment) no demo route exists and
-nothing on this page changes. **Not deployed yet.** The code is `cloud/src/demo.ts`; the gate is `demoRoute` in
-`cloud/src/app.ts`.
+nothing else on this page changes. **No deployment runs in this mode today (12 November): the mode is built and
+tested on stand-ins only.** The code is `cloud/src/demo.ts`; the gate is `demoRoute` in `cloud/src/app.ts`.
 
 In demo mode there is one caller, an anonymous read-only visitor, and only this answers:
 

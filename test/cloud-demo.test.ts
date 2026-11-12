@@ -1,4 +1,4 @@
-// Purser Cloud's public demo mode (cloud/src/demo.ts; docs/cloud.md, "Public demo mode"). A deployment variable switches
+// Purser Cloud's public demo mode (cloud/src/demo.ts; docs/cloud.md, "Demo mode"). A deployment variable switches
 // it on, for a deployment that holds seeded test companies only. Here a real world is built first through the normal
 // API: three companies whose runners push a paid invoice each, one of them NOT a demo company, with keys, sessions, an
 // invite, a webhook secret, queued mail and a staged export in the database. Then every route in the route table is
@@ -395,7 +395,7 @@ describe("demo mode, what a visitor gets", () => {
 describe("demo mode, in docs/cloud.md", () => {
   it("is described as the code has it: the reads, the limits and the times are the code's own", () => {
     const doc = readFileSync("docs/cloud.md", "utf8");
-    const section = doc.slice(doc.indexOf("## Public demo mode"), doc.indexOf("## Tested on D1 itself"));
+    const section = doc.slice(doc.indexOf("## Demo mode: a read-only deployment of test companies"), doc.indexOf("## Tested on D1 itself"));
     expect(section.length).toBeGreaterThan(500);
     // Every read the demo serves is named in the table, and no route that is off.
     const row = section.split("\n").find((l) => l.startsWith("| `GET /v1/demo/{company}/…`"))!;
@@ -412,8 +412,9 @@ describe("demo mode, in docs/cloud.md", () => {
     expect(section).toContain(`a document by its hash for ${DEMO_DOCUMENT_BROWSER_SEC} seconds`);
     expect(section).toContain(`the health check for ${DEMO_HEALTH_SEC} seconds`);
     expect(section).toContain(`never\n  larger than ${DEMO_MAX_DOCUMENT_BYTES / 1024 / 1024} MB`);
-    // It is not deployed, and says so.
-    expect(section).toContain("**Not deployed yet.**");
+    // Nothing runs in this mode yet, and the page says so, in words that announce nothing that does not exist.
+    expect(section.replace(/\s+/g, " ")).toContain("**No deployment runs in this mode today (12 November): the mode is built and tested on stand-ins only.**");
+    expect(section).not.toMatch(/public(ly)? (jury )?(demo|preview|console)|open to (the public|everyone|anyone)|anyone can (try|sign in)|not deployed|deployed yet|not public/i);
   });
 });
 

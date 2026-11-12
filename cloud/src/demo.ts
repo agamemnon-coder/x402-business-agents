@@ -99,9 +99,9 @@ export function demoFromVars(v: { DEMO_PUBLIC?: string; DEMO_SLUGS?: string }, o
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" };
 const json = (status: number, body: unknown, more: Record<string, string> = {}) => new Response(JSON.stringify(body), { status, headers: { ...JSON_HEADERS, ...more } });
 
-/** The one answer to everything the demo does not do. */
+/** The one answer to everything the demo does not do: a sentence a person can read on a page, and a code for a program. */
 export function demoRefused(): Response {
-  return json(403, { error: "This is a read-only demo with test companies and test money. Nothing can be changed here and nobody signs in. GET /v1/demo/companies lists the companies.", code: "demo_read_only" });
+  return json(403, { error: "This is a read-only demo with test companies and test money. Nothing can be changed here, and nobody can sign in.", code: "demo_read_only" });
 }
 
 /** A company the demo does not have: not on the list, never seeded, or closed. One answer for all, naming nothing. */
