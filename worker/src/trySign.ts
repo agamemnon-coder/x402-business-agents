@@ -496,8 +496,9 @@ export class TrySignDesk {
     this.invoiceAmount = opts.invoiceAmount ?? "1850.00";
     this.adviceDeadlineMs = opts.adviceDeadlineMs;
     this.talk = opts.talk;
-    // "Talk the agent round": its counter per UTC day, computed from each result (no attempt text, no address).
-    this.sql.exec("CREATE TABLE IF NOT EXISTS ts_talk (day TEXT PRIMARY KEY, attempts INTEGER NOT NULL, went_along INTEGER NOT NULL, rail_refused INTEGER NOT NULL, moved INTEGER NOT NULL)");
+    // "Talk the agent round": its counter per UTC day, computed from each result (no attempt text, no address); made
+    // only while the step is switched on, so a desk without it keeps exactly its tables.
+    if (this.talk !== undefined) this.sql.exec("CREATE TABLE IF NOT EXISTS ts_talk (day TEXT PRIMARY KEY, attempts INTEGER NOT NULL, went_along INTEGER NOT NULL, rail_refused INTEGER NOT NULL, moved INTEGER NOT NULL)");
     // Each world's trick readings, kept: a second click on the same attack asks no model again.
     this.sql.exec("CREATE TABLE IF NOT EXISTS ts_tricks (world TEXT NOT NULL, attack TEXT NOT NULL, json TEXT NOT NULL, PRIMARY KEY (world, attack))");
     // Spec 6b: what the agents did on each world's T-0002, step by step (step = how many are done; busy = a step's lease).

@@ -59,19 +59,21 @@ export async function noteReader(sql: Sql, readBy: string | null | undefined, no
   } catch { /* as above */ }
 }
 
-export interface Window { requests: number; by_class: Record<string, number>; p50_ms_at_most: number | null; p95_ms_at_most: number | null }
+/** A bucket bound in ms, or SLOWER for past the last bucket (JSON has no Infinity). */
+export const SLOWER = `slower than ${BUCKETS_MS[BUCKETS_MS.length - 1]} ms`;
+export interface Window { requests: number; by_class: Record<string, number>; p50_ms_at_most: number | string | null; p95_ms_at_most: number | string | null }
 
 /** A percentile from bucket counts: the upper bound of the bucket it falls in (null for no requests; "slower" past the last). */
-export function percentile(buckets: number[], q: number): number | null {
+export function percentile(buckets: number[], q: number): number | string | null {
   const total = buckets.reduce((a, b) => a + b, 0);
   if (!total) return null;
   const want = Math.ceil(q * total);
   let run = 0;
   for (let i = 0; i < buckets.length; i++) {
     run += buckets[i]!;
-    if (run >= want) return i < BUCKETS_MS.length ? BUCKETS_MS[i]! : Number.POSITIVE_INFINITY;
+    if (run >= want) return i < BUCKETS_MS.length ? BUCKETS_MS[i]! : SLOWER;
   }
-  return Number.POSITIVE_INFINITY;
+  return SLOWER;
 }
 
 /** The requests since a moment, every route together. */

@@ -213,10 +213,10 @@ describe("the owner's read-only page", () => {
     expect(r.status).toBe(200);
     const j = r.json as Record<string, Record<string, unknown>>;
     expect(j.visitors).toMatchObject({ last_hour: { started: 1, invoices_played: 1 }, open_companies: 1 });
-    const hour = (j.requests as { last_hour: { requests: number; by_class: Record<string, number>; p95_ms_at_most: number } }).last_hour;
+    const hour = (j.requests as { last_hour: { requests: number; by_class: Record<string, number>; p95_ms_at_most: number | string } }).last_hour;
     expect(hour.requests).toBeGreaterThan(3);
     expect(hour.by_class["404"]).toBeGreaterThanOrEqual(1);
-    expect(hour.p95_ms_at_most).toBeGreaterThan(0);
+    expect(hour.p95_ms_at_most).not.toBeNull();
     expect(j.claude).toMatchObject({ spent_today_by_pool: { public: { cap_micros: 2_000_000 } }, readers: { code_reads: 1, claude_reads: 0 } });
     expect((j.switches as Record<string, string>).tokens).toBe("1 tokens");
     const text = JSON.stringify(j);
@@ -227,7 +227,7 @@ describe("the owner's read-only page", () => {
   it("reads percentiles as bucket bounds", () => {
     expect(percentile([0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 0.5)).toBeNull();
     expect(percentile([10, 0, 0, 0, 0, 0, 0, 0, 0, 0], 0.95)).toBe(25);
-    expect(percentile([50, 40, 0, 0, 0, 0, 0, 0, 0, 10], 0.95)).toBe(Number.POSITIVE_INFINITY);
+    expect(percentile([50, 40, 0, 0, 0, 0, 0, 0, 0, 10], 0.95)).toBe("slower than 6400 ms");
     expect(percentile([50, 45, 0, 0, 0, 0, 0, 0, 0, 5], 0.95)).toBe(50);
   });
 });
