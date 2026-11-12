@@ -1,7 +1,7 @@
 # Runbook: the invoice token on Metal testnet (live run)
 
 Prototype. Metal testnet, test money only. The financier is simulated. The face value is the invoice amount divided
-by 100. Nothing here has run live yet; this page is the order of the run. What it is: [docs/tokenize.md](../../tokenize.md).
+by 100. It ran live once on 12 November 2026: [the run record](../2026-11-12-tokenize.md). This page is the order of the run. What it is: [docs/tokenize.md](../../tokenize.md).
 
 ## Before the first call
 
