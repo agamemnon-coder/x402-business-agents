@@ -65,6 +65,100 @@ export const WORK = {
 /** The invoice's fields in its fold (the invoice itself: outside the word budget). */
 export const INVOICE_FIELDS = { vendor: "Supplier", number: "Invoice number", total: "Amount", due: "Due", status: "Status" };
 
+/**
+ * The steps of a visit, shown small under the band on every screen after the start: one segment per step, and only the
+ * current step's name in words (the others are segments, named for screen readers only). Counted in each screen's budget.
+ */
+export const STEPS = {
+  names: { invoice: "Invoice", work: "At work", approve: "Approve", pay: "Pay", books: "Done" } as Record<string, string>,
+  order: ["start", "invoice", "work", "approve", "pay", "books"],
+  start: "Start",
+  /** For screen readers: where the visit stands ({n} of {of}). */
+  where: "Step {n} of {of}",
+};
+
+/**
+ * Screen 3. The proposal's facts are the engine's (its labels and values: the invoice's terms, outside the budget); the
+ * account ending and the due date are labelled here. {host}: the passkey's relying party; {amount}: the facts' amount;
+ * {method}: the device's own word for its passkey, by a simple guess from the platform (never proven by the server).
+ */
+export const APPROVE = {
+  heading: "Approve the payment.",
+  filing: "Filing the payment…",
+  terms: "Show the exact terms",
+  /** Before the passkey exists, both sentences; once it exists, the first only. */
+  signs: "Your passkey signs exactly these terms.",
+  saves: "This saves a test passkey for {host} on this device; you can delete it afterwards.",
+  create: "Create your approval passkey",
+  approve: "Approve {amount} with {method}",
+  waiting: "Waiting for your passkey…",
+  approved: "Approved. Nothing is paid yet.",
+  next: "Pay it with your signature",
+  cancelled: "Nothing was signed. Try again when you are ready.",
+  noPasskey: "This device cannot make a passkey here. Open this page in Safari or Chrome on your phone.",
+  fileAgain: "File it again",
+  failed: "Purser could not file this payment.",
+};
+
+/**
+ * The terms' own labels: screen 3's rows beside the engine's facts, and screen 4's three fields (the terms: outside the
+ * word budget, as the invoice's fields are).
+ */
+export const PROPOSAL_FIELDS = { account: "Account ending", due: "Due", amount: "Amount", payee: "Payee" };
+
+/** The device's word for its passkey ({method} of APPROVE.approve), by a simple guess from the platform. */
+export const METHOD = { ios: "Face ID", mac: "Touch ID", android: "fingerprint", windows: "Windows Hello", other: "your passkey" };
+
+/**
+ * Screen 4. The fields hold the terms the passkey signed; the visitor may change one and try to pay with the same
+ * signature. Everything of the outcome is drawn from the pay route's answer, after it returned.
+ */
+export const PAY = {
+  heading: "Pay it with your signature.",
+  loading: "Loading the terms you signed…",
+  line: "Your signature covers exactly these terms. Change one and try to pay, or pay them as signed.",
+  /** The deadline, from the terms' expires_at ({time}: the browser's local time). */
+  until: "Pay before {time}.",
+  button: "Pay with my signature",
+  sending: "Sending…",
+  amountBad: "Digits only: 120.50",
+  /** Refused: the stamp, then one row per layer that refused. */
+  stamp: "Refused by Purser",
+  signature: "Your signature: {reason}",
+  /** When the route's reason is a code, not a sentence. */
+  signatureOff: "it covers other terms",
+  executor: "Purser's payment check: refused (the terms do not match what was approved)",
+  executorFold: "Its own words",
+  executorNote: "asked with your changed terms; nothing was kept",
+  signed: "Signed",
+  sent: "Sent",
+  /** The verdict, computed from the signed and the sent values. */
+  vAmountCent: "You changed the amount by one cent.",
+  vAmount: "You changed the amount from {from} to {to}.",
+  vPayee: "You changed the payee.",
+  vAccount: "You changed the account ending.",
+  vOther: "The terms you sent are not the ones you signed.",
+  vCover: "Your signature does not cover that.",
+  roundTrip: "Round trip {n} ms, measured in your browser",
+  transfers: "Transfers made: {n}",
+  sandbox: "Airwallex sandbox calls: {n}",
+  raw: "Raw answer",
+  putBack: "Put back what you signed",
+  paidOnce: "These are the terms you signed. They were paid once.",
+  fileAgain: "File it again",
+  retry: "Try the payment again",
+  failed: "Purser could not send this payment. Nothing was paid.",
+};
+
+/** Screen 5, until B3 draws it: the pay route's settled answer, as it came back. */
+export const BOOKS = {
+  heading: "Paid.",
+  sub: "Paid on the simulated bank · test money",
+  invoice: "Invoice",
+  transfer: "Payment",
+  ledger: "Ledger entries",
+};
+
 /** The session's renewal answered that the company is gone (410). */
 export const GONE = {
   heading: "Your test company was deleted after 24 hours.",
@@ -101,9 +195,40 @@ export const VISIBLE = {
     [WORK.heading, WORK.noInvoice, WORK.took, WORK.another],
     [WORK.heading, WORK.failed, WORK.another],
   ],
+  approve: [
+    [APPROVE.heading, APPROVE.filing],
+    [APPROVE.heading, APPROVE.failed, APPROVE.fileAgain],
+    [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.saves, APPROVE.create],
+    [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.saves, APPROVE.waiting],
+    [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.approve.replace("{method}", METHOD.windows)],
+    [APPROVE.heading, APPROVE.terms, APPROVE.cancelled, APPROVE.approve.replace("{method}", METHOD.other)],
+    [APPROVE.heading, APPROVE.terms, APPROVE.noPasskey],
+    [APPROVE.heading, APPROVE.terms, APPROVE.approved, APPROVE.next],
+  ],
+  pay: [
+    [PAY.heading, PAY.loading],
+    [PAY.heading, PAY.line, PAY.until, PAY.button],
+    [PAY.heading, PAY.line, PAY.until, PAY.amountBad, PAY.button],
+    [PAY.heading, PAY.line, PAY.until, PAY.sending],
+    [PAY.heading, PAY.paidOnce, PAY.button],
+    [PAY.heading, PAY.fileAgain],
+    [PAY.heading, PAY.failed, PAY.retry],
+    // Refused: the fields stay (edits can be repeated); the line and the deadline give way to the answer.
+    [PAY.heading, PAY.button, PAY.stamp, PAY.signature, PAY.signatureOff, PAY.executor, PAY.executorFold,
+      PAY.signed, PAY.sent, PAY.vAmountCent, PAY.vCover, PAY.roundTrip, PAY.transfers, PAY.raw, PAY.putBack],
+  ],
+  books: [[BOOKS.heading, BOOKS.sub, BOOKS.invoice, BOOKS.transfer, BOOKS.ledger]],
   gone: [[GONE.heading, GONE.button]],
   ended: [[ENDED.heading, ENDED.button]],
 };
+
+/**
+ * States allowed over the 45 words, each with its count and why. 2026-11-12 (B2): the refused answer of screen 4 holds
+ * what lanes/page.md B2 lists for it (the stamp, one row per layer, both hashes, the verdict, the round trip, the
+ * transfers, the raw answer and "Put back what you signed") beside the three fields the visitor edits; it cannot fit in
+ * 45 words. Raised for that one state only, to its own count, for the lead to decide.
+ */
+export const OVER_BUDGET: Record<string, number> = { "pay 7": 80 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).

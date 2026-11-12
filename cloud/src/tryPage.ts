@@ -15,10 +15,16 @@
 //   slow_down waits retry_ms.
 // - Timers exist for three things only (a test holds this): pollTimer, renewTimer (two minutes before the session
 //   ends) and askTimer (the running time of an open Claude call).
+// - Screens 3 (approve) and 4 (pay) sign and pay: the pure helpers are SIGN_JS (below, tested in Node). S also keeps
+//   the proposal ({id, challenge, terms_sha256, invoice}) and the approval's credential (cred) for screen 4, and the
+//   pay route's settled answer for screen 5 (books, a placeholder until B3 draws it).
+// - Icons are SVG elements made one by one with createElementNS from shape data (src/ui/icons.ts), never from markup.
 import { consoleCsp } from "./console.js";
-import { BAND, CHROME, ENDED, GONE, INVOICE, INVOICE_FIELDS, LIVE, START, WORK } from "./tryCopy.js";
+import { APPROVE, BAND, BOOKS, CHROME, ENDED, GONE, INVOICE, INVOICE_FIELDS, LIVE, METHOD, PAY, PROPOSAL_FIELDS, START, STEPS, WORK } from "./tryCopy.js";
 import { EVENT_LINE_JS } from "./tryEvents.js";
 import { TOKENS } from "../../src/redesign/ui.js";
+import { ICONS } from "../../src/ui/icons.js";
+import { MORE } from "../../src/ui/payablesKit.js";
 import type { CloudEnv } from "./app.js";
 
 /** Recorded real runs on the site, for when the demo is busy or paused. */
@@ -85,9 +91,88 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; }
 dl.read { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; margin: 8px 0 0; font-size: 14px; }
 dl.read dt { color: var(--muted); }
 dl.read dd { margin: 0; overflow-wrap: anywhere; }
+.progw { display: flex; align-items: center; gap: 10px; margin: 10px 2px 0; }
+.prog { flex: 1; display: flex; gap: 4px; list-style: none; margin: 0; padding: 0; }
+.prog li { flex: 1; height: 4px; border-radius: 2px; background: var(--border); }
+.prog li.done, .prog li.on { background: var(--accent); }
+.stepname { font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.screen { animation: rise .24s ease-out; }
+@keyframes rise { from { opacity: .01; transform: translateY(6px); } }
+.i { flex: none; vertical-align: -3px; }
+.art { display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 18px; background: var(--accent-soft); color: var(--accent); margin: 4px 0 8px; }
+.art.ok { background: var(--ok-soft); color: var(--ok); }
+.art.pop { animation: pop .5s ease-out; }
+@keyframes pop { 0% { transform: scale(.6); opacity: .01; } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
+.amount { font-size: 40px; line-height: 1.1; font-weight: 750; letter-spacing: -.02em; font-variant-numeric: tabular-nums; margin: 4px 0 12px; overflow-wrap: anywhere; }
+.short { margin: 12px 0 0; font-size: 13px; color: var(--muted); }
+pre.terms { margin: 8px 0 0; padding: 12px; border-radius: 12px; background: var(--sunken); font-size: 12px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.f.big input { height: 60px; font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.outcome { margin-top: 16px; }
+.stamp { display: inline-block; margin: 0 0 10px; padding: 2px 10px; border: 2px solid var(--bad); border-radius: 8px; color: var(--bad); font-weight: 750; font-size: 17px; letter-spacing: .02em; }
+.layer { margin: 0 0 6px; font-size: 15px; }
+.hash { margin: 0; font-size: 12px; line-height: 1.6; color: var(--faint); overflow-wrap: anywhere; }
+.hash .hl { display: inline-block; min-width: 52px; color: var(--muted); font-family: Inter, system-ui, sans-serif; font-weight: 600; }
+.hash mark { background: none; color: var(--text); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+.verdict { margin: 12px 0 8px; font-weight: 650; }
+.proof { margin: 0; font-size: 14px; color: var(--muted); }
+pre.raw { margin: 8px 0 0; padding: 12px; border-radius: 12px; background: var(--sunken); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 520px) { .btn.big { width: 100%; } h1 { font-size: 26px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
+`;
+
+/**
+ * The page's pure helpers for signing and paying (screens 3 and 4), as plain script: the page carries this text as it
+ * is, and test/try-page.test.ts runs the same text in Node. No DOM, no clock, no network.
+ * - b64u, fromB64u: base64url, as WebAuthn's ArrayBuffers go to the API and come back.
+ * - registrationOf, signedOf: a new passkey and a passkey's signature as @simplewebauthn/server reads them (copied from
+ *   the console's credOf, registrationOf and signedOf, the same as src/approve/client.ts serializeRegistration and
+ *   serializeAssertion).
+ * - hashDiff(a, b): each hash as runs of [text, differs], every character where the two differ marked.
+ * - normAmount(raw, like): an amount typed with a comma or a dot, in the format of the terms' own amount (like), or null.
+ * - payBody(terms, values, credential): the pay route's body: the stored terms with the three fields' values written in,
+ *   and the kept credential; nothing else.
+ * - changedFields, verdict: what changed, from the signed and the sent values (the route's `changed` is lane C's: an
+ *   array of field names or of {field, from, to}; only its field names are read, the values are the page's own).
+ * - methodOf(M, ua): the device's word for its passkey, by a simple guess from the platform.
+ */
+export const SIGN_JS = String.raw`
+const signKit=(()=>{
+  const b64u=(buf)=>{let s='';for(const b of new Uint8Array(buf))s+=String.fromCharCode(b);return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')};
+  const fromB64u=(s)=>{const n=String(s).replace(/-/g,'+').replace(/_/g,'/');const bin=atob(n+'==='.slice((n.length+3)%4));return Uint8Array.from(bin,(c)=>c.charCodeAt(0))};
+  const credOf=(c,response)=>Object.assign({id:c.id,rawId:b64u(c.rawId),type:c.type,response:response,clientExtensionResults:c.getClientExtensionResults()},c.authenticatorAttachment?{authenticatorAttachment:c.authenticatorAttachment}:{});
+  const registrationOf=(c)=>{const r=c.response;return credOf(c,{clientDataJSON:b64u(r.clientDataJSON),attestationObject:b64u(r.attestationObject),transports:typeof r.getTransports==='function'?r.getTransports():[]})};
+  const signedOf=(c)=>{const r=c.response;return credOf(c,Object.assign({clientDataJSON:b64u(r.clientDataJSON),authenticatorData:b64u(r.authenticatorData),signature:b64u(r.signature)},r.userHandle?{userHandle:b64u(r.userHandle)}:{}))};
+  const hashDiff=(a,b)=>{
+    const runs=(s,o)=>{const out=[];for(let i=0;i<s.length;i++){const d=s[i]!==o[i];const last=out[out.length-1];if(last&&last[1]===d)last[0]+=s[i];else out.push([s[i],d])}return out};
+    a=String(a);b=String(b);return {a:runs(a,b),b:runs(b,a)};
+  };
+  const normAmount=(raw,like)=>{
+    const m=/^(\d{1,12})(?:[.,](\d{1,6}))?$/.exec(String(raw).replace(/\s/g,''));if(!m)return null;
+    const d=(/\.(\d+)$/.exec(String(like))||['',''])[1].length;const frac=m[2]||'';
+    if(frac.length>d)return null;
+    const int=m[1].replace(/^0+(?=\d)/,'');return d?int+'.'+frac.padEnd(d,'0'):int;
+  };
+  const FIELDS=['amount','beneficiary_name','iban_last4'];
+  const payBody=(terms,v,credential)=>{const t=Object.assign({},terms);for(const k of FIELDS)t[k]=v[k];return {terms:t,credential:credential}};
+  const changedFields=(signed,sent,changed)=>{
+    const named=Array.isArray(changed)?changed.map((x)=>typeof x==='string'?x:x&&typeof x.field==='string'?x.field:'').filter(Boolean):null;
+    const differ=FIELDS.filter((k)=>String(signed[k])!==String(sent[k]));
+    return named?FIELDS.filter((k)=>named.indexOf(k)>=0&&differ.indexOf(k)>=0):differ;
+  };
+  const cents=(s)=>{const m=/^(\d+)\.(\d{2})$/.exec(String(s));return m?Number(m[1])*100+Number(m[2]):null};
+  const verdict=(W,signed,sent,changed)=>{
+    const out=[];
+    for(const k of changedFields(signed,sent,changed)){
+      if(k==='amount'){const a=cents(signed.amount),b=cents(sent.amount);out.push(a!==null&&b!==null&&Math.abs(a-b)===1?W.vAmountCent:W.vAmount.replace('{from}',String(signed.amount)).replace('{to}',String(sent.amount)))}
+      else if(k==='beneficiary_name')out.push(W.vPayee);else out.push(W.vAccount);
+    }
+    if(!out.length)out.push(W.vOther);
+    return out.join(' ')+' '+W.vCover;
+  };
+  const methodOf=(M,ua)=>/iPhone|iPad|iPod/.test(ua)?M.ios:/Android/.test(ua)?M.android:/Macintosh|Mac OS X/.test(ua)?M.mac:/Windows/.test(ua)?M.windows:M.other;
+  return {b64u,fromB64u,registrationOf,signedOf,hashDiff,normAmount,payBody,changedFields,verdict,methodOf};
+})();
 `;
 
 // The client: plain JS (no template literals in it, so it sits in this file as a raw string).
@@ -95,6 +180,9 @@ const SCRIPT = String.raw`
 const C=__COPY__;
 const W=C.live;
 __EVENT_LINE__
+__SIGN__
+const {fromB64u,registrationOf,signedOf,hashDiff,normAmount,payBody,verdict,methodOf}=signKit;
+const IC=__ICONS__;
 const lineOf=eventLineOf(W);
 const CFG=JSON.parse(document.querySelector('meta[name=purser-try]').content);
 const RUNS=__RUNS__;
@@ -104,6 +192,15 @@ const btn=(label,main)=>{const b=el('button','btn'+(main?' primary big':''),labe
 const fill=(s,v)=>s.replace(/\{(\w+)\}/g,(_,k)=>String(v[k]??''));
 const secs=(ms)=>(Math.max(0,ms)/1000).toFixed(1);
 const say=(text)=>{$('#say').textContent=text};
+const note=(text)=>el('p','note',text);
+const words=(j,fallback)=>typeof j.message==='string'&&j.message?j.message:typeof j.error==='string'&&j.error?j.error:fallback;
+// An icon: an SVG element made here from shape data, one element at a time.
+function icon(name,size){
+  const s=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  for(const [k,v] of [['viewBox','0 0 24 24'],['width',size],['height',size],['fill','none'],['stroke','currentColor'],['stroke-width','1.75'],['stroke-linecap','round'],['stroke-linejoin','round'],['aria-hidden','true'],['class','i']])s.setAttribute(k,String(v));
+  for(const [tag,a] of IC[name]||[]){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const k of Object.keys(a))e.setAttribute(k,a[k]);s.append(e)}
+  return s;
+}
 
 // The token from the link (#e=… or #j=…): read once, taken out of the address bar at once, and sent only in the start
 // request's body.
@@ -111,19 +208,20 @@ const TOKEN=(()=>{const m=/^#([ej])=([A-Za-z0-9_.~-]{1,256})$/.exec(location.has
 
 // The state: one object, kept in this tab (sessionStorage), or in memory only where storage throws.
 const KEY='purser.try';
-const KEEP=['tenant','session','visitor_token','expires_at','pool','mode','screen','after'];
-const S={tenant:null,session:null,visitor_token:null,expires_at:null,pool:null,mode:null,screen:null,after:0};
+const KEEP=['tenant','session','visitor_token','expires_at','pool','mode','screen','after','proposal','cred','settled'];
+const S={tenant:null,session:null,visitor_token:null,expires_at:null,pool:null,mode:null,screen:null,after:0,proposal:null,cred:null,settled:null};
 const save=()=>{const o={};for(const k of KEEP)o[k]=S[k];try{sessionStorage.setItem(KEY,JSON.stringify(o))}catch(e){}};
 const restore=()=>{try{const o=JSON.parse(sessionStorage.getItem(KEY)||'null');if(o&&typeof o==='object')for(const k of KEEP)if(o[k]!==undefined)S[k]=o[k]}catch(e){}};
 const forget=()=>{for(const k of KEEP)S[k]=k==='after'?0:null;try{sessionStorage.removeItem(KEY)}catch(e){}};
 const tenantId=()=>typeof S.tenant==='string'?S.tenant:S.tenant&&S.tenant.id;
 
-// One request with the session. Status 0: no answer came.
+// One request with the session. Status 0: no answer came. text: the answer exactly as it came (the raw answer's fold).
 async function call(method,path,body){
   const headers={};if(S.session)headers.authorization='Bearer '+S.session;if(body!==undefined)headers['content-type']='application/json';
-  let r;try{r=await fetch(path,{method,headers,body:body===undefined?undefined:JSON.stringify(body)})}catch(e){return {status:0,json:{}}}
-  let json={};try{json=await r.json()}catch(e){}
-  return {status:r.status,json:json&&typeof json==='object'?json:{}};
+  let r;try{r=await fetch(path,{method,headers,body:body===undefined?undefined:JSON.stringify(body)})}catch(e){return {status:0,json:{},text:''}}
+  let text='';try{text=await r.text()}catch(e){}
+  let json={};try{json=JSON.parse(text)}catch(e){}
+  return {status:r.status,json:json&&typeof json==='object'?json:{},text};
 }
 // The same, renewing the session once when it answers 401.
 async function api(method,path,body){
@@ -198,13 +296,21 @@ function askCloseAll(){for(const k of [...OPEN.keys()])askClose(k)}
 const SCREENS={};
 function screen(name,def){SCREENS[name]=def}
 function band(){const live=!!(S.mode&&S.mode.claude==='live');return el('p','band',[el('span','',C.band.line),el('span','mode'+(live?' live':''),live?C.band.claudeLive:C.band.claudeCode)])}
+// Where the visit stands: one segment per step, and the current step's name.
+function steps(name){
+  const order=C.steps.order,at=order.indexOf(name);if(at<1)return null;
+  const ol=el('ol','prog');ol.setAttribute('aria-label',fill(C.steps.where,{n:at+1,of:order.length}));
+  for(let i=0;i<order.length;i++){const li=el('li',i<at?'done':i===at?'on':'');if(i===at)li.setAttribute('aria-current','step');ol.append(li)}
+  return el('div','progw',[ol,el('span','stepname',C.steps.names[name])]);
+}
 function show(name,arg){
   const d=SCREENS[name];if(!d)return false;
   pollStop();askCloseAll();
   S.screen=name;save();
   const h=el('h1','',typeof d.heading==='function'?d.heading(arg):d.heading);h.tabIndex=-1;
   const box=el('div','screen');
-  $('#main').replaceChildren(...(d.band===false||!S.session?[]:[band()]),h,box);
+  const top=d.band===false||!S.session?[]:[band(),steps(name)].filter(Boolean);
+  $('#main').replaceChildren(...top,h,box);
   d.draw(box,arg);
   window.scrollTo(0,0);h.focus();
   return true;
@@ -359,6 +465,201 @@ screen('work',{heading:C.work.heading,draw(box,arg){
   });
 }});
 
+// The passkey: whether this device can make one, and its word for it (a guess from the platform, never proven).
+const hasPasskeys=()=>!!(window.PublicKeyCredential&&navigator.credentials);
+const method=()=>methodOf(C.method,navigator.userAgent||'');
+// The engine's approval passkey signs the proposal's challenge (the SHA-256 of its exact terms).
+async function signTerms(challenge,credentialId){
+  const c=await navigator.credentials.get({publicKey:{challenge:fromB64u(challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(credentialId)}],userVerification:'required',timeout:120000}});
+  return signedOf(c);
+}
+const cancelled=(e)=>e&&typeof e.name==='string'&&/^(NotAllowedError|AbortError|InvalidStateError|SecurityError|NotSupportedError)$/.test(e.name);
+// One main button whose label and action change with the step; it is off while a request or a prompt is open.
+function mainButton(){
+  const b=btn('',true);let act=null;
+  b.addEventListener('click',async()=>{if(b.disabled||!act)return;b.disabled=true;try{await act()}finally{if(b.isConnected)b.disabled=false}});
+  return {node:b,set(label,fn){b.textContent=label;act=fn;b.hidden=false},off(label){b.textContent=label;act=null;b.disabled=true}};
+}
+
+// 3 Approve: the proposal's facts, its short hash and the exact terms in a fold; one button in two labelled stages.
+function factRows(p,inv){
+  const facts=Array.isArray(p.facts)?p.facts.filter((f)=>Array.isArray(f)&&f.length===2):[];
+  const amount=facts[0]?String(facts[0][1]):'';
+  const payee=facts.find((f)=>f[0]==='Payee')||facts[1];
+  const m=payee?/^(.*), IBAN \S*?(\w{2,8})$/.exec(String(payee[1])):null;
+  const pairs=[];
+  if(payee)pairs.push(m?[String(payee[0]),m[1]]:[String(payee[0]),String(payee[1])]);
+  if(m)pairs.push([C.proposal.account,'…'+m[2]]);
+  if(inv&&inv.due_date)pairs.push([C.proposal.due,String(inv.due_date)]);
+  const d=el('dl','read');for(const [k,v] of pairs)d.append(el('dt','',k),el('dd','',v));
+  return {amount,list:d};
+}
+function termsFold(p){
+  const pre=el('pre','terms mono');const f=el('details','',[el('summary','',C.approve.terms),pre]);
+  let asked=false;
+  f.addEventListener('toggle',()=>{if(!f.open||asked)return;asked=true;
+    api('GET','/v1/engine/proposals/'+encodeURIComponent(p.id)+'/terms').then((r)=>{
+      if(r.status===200&&typeof r.json.canonical==='string')pre.textContent=r.json.canonical;else{asked=false;pre.replaceWith(note(words(r.json,C.approve.failed)))}})});
+  return f;
+}
+screen('approve',{heading:C.approve.heading,draw(box,arg){
+  const A=C.approve;const inv=arg&&arg.invoice||null;
+  const top=el('div','');const said=el('div','');said.setAttribute('role','status');
+  const main=mainButton();main.off(A.filing);
+  const live=livePanel();
+  box.append(top,said,main.node,live.node);
+  let p=null,eng=null;
+  const saves=el('span','',' '+fill(A.saves,{host:CFG.rpId}));
+  const track=(req)=>{const t0=performance.now();pollStart((items)=>live.add(items,t0));return req.then((r)=>{pollDone();return r})};
+  async function file(){
+    said.replaceChildren();main.off(A.filing);
+    const ready=inv&&inv.proposal&&inv.proposal.status==='PENDING_APPROVAL'&&!arg.again?inv.proposal:null;
+    const r=ready?{status:200,json:{proposal:ready}}
+      :inv&&inv.id?await track(api('POST','/v1/engine/invoices/'+encodeURIComponent(inv.id)+'/pay'))
+      :S.proposal?await api('GET','/v1/engine/proposals/'+encodeURIComponent(S.proposal.id)):{status:0,json:{}};
+    const st=await api('GET','/v1/engine');
+    if(S.screen!=='approve')return;
+    if(r.status!==200||!r.json.proposal||typeof r.json.proposal.id!=='string'){said.replaceChildren(note(words(r.json,A.failed)));main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});return}
+    p=r.json.proposal;eng=st.status===200?st.json:{passkey:null};
+    S.proposal={id:p.id,challenge:p.challenge,terms_sha256:p.terms_sha256,invoice:inv&&inv.id||(S.proposal&&S.proposal.invoice)||null};S.cred=null;save();
+    const f=factRows(p,inv);
+    top.replaceChildren(el('span','art',icon('key-round',28)),el('p','amount',f.amount),f.list,
+      el('p','short mono',String(p.terms_sha256||'').slice(0,12)+'…'),termsFold(p),el('p','muted',[A.signs,saves]));
+    stage();
+  }
+  function stage(){
+    if(!hasPasskeys()){main.node.hidden=true;said.replaceChildren(note(A.noPasskey));return}
+    saves.hidden=!!(eng&&eng.passkey);
+    if(!eng||!eng.passkey){main.set(A.create,createPasskey);return}
+    main.set(fill(A.approve,{amount:factRows(p,inv).amount,method:method()}),approve);
+  }
+  async function createPasskey(){
+    said.replaceChildren();main.node.textContent=A.waiting;
+    const s=await api('POST','/v1/engine/passkey/start');
+    if(s.status!==200||!s.json.user){said.replaceChildren(note(words(s.json,A.failed)));stage();return}
+    let made;
+    try{made=await navigator.credentials.create({publicKey:{rp:{id:s.json.rp.id,name:s.json.rp.name},user:{id:new TextEncoder().encode(s.json.user.id),name:s.json.user.name,displayName:s.json.user.displayName},
+      challenge:fromB64u(s.json.challenge),pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],excludeCredentials:(s.json.exclude||[]).map((id)=>({type:'public-key',id:fromB64u(id)})),
+      authenticatorSelection:{userVerification:'required',residentKey:'discouraged'},attestation:'none',timeout:120000}})}
+    catch(e){said.replaceChildren(note(cancelled(e)?A.cancelled:A.failed));stage();return}
+    const f=await api('POST','/v1/engine/passkey/finish',{code:s.json.code,credential:registrationOf(made)});
+    if(f.status!==200){said.replaceChildren(note(words(f.json,A.failed)));stage();return}
+    const st=await api('GET','/v1/engine');if(st.status===200)eng=st.json;
+    stage();
+  }
+  async function approve(){
+    said.replaceChildren();main.node.textContent=A.waiting;
+    let signed;
+    try{signed=await signTerms(p.challenge,eng.passkey.credential_id)}catch(e){said.replaceChildren(note(A.cancelled));stage();return}
+    const r=await track(api('POST','/v1/engine/proposals/'+encodeURIComponent(p.id)+'/approve',{terms_sha256:p.terms_sha256,credential:signed}));
+    if(S.screen!=='approve')return;
+    if(r.status===200&&r.json.status==='approved'&&r.json.held===true){
+      // Held: the approval is stored and nothing is paid; the signature is kept for screen 4.
+      S.cred=signed;save();
+      said.replaceChildren(el('p','big ok',A.approved));
+      main.set(A.next,()=>show('pay'));main.node.focus();return;
+    }
+    if(r.status===200&&r.json.status==='approved'){S.settled=r.json.settled||null;save();show('books',{settled:S.settled});return}
+    said.replaceChildren(note(words(r.json,A.failed)));
+    if(r.json.status==='expired')main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});else stage();
+  }
+  file();
+}});
+
+// 4 Pay with your signature: the signed terms in three fields; the one button sends the fields' terms with the kept
+// signature to the one pay route, and only the answer, once back, is drawn.
+screen('pay',{heading:C.pay.heading,draw(box){
+  const Y=C.pay;const pid=S.proposal&&S.proposal.id;
+  const top=el('div','',[el('p','muted',Y.loading)]);const out=el('div','outcome');out.setAttribute('role','status');
+  const main=mainButton();main.off(Y.button);
+  const live=livePanel();
+  box.append(top,main.node,out,live.node);
+  if(!pid){top.replaceChildren(note(Y.failed));return}
+  let T=null;const F={};
+  const field4=(label,key,cls)=>{const i=input('text');i.autocomplete='off';i.spellcheck=false;F[key]=i;return el('div','f'+(cls?' '+cls:''),[el('label','',label),i])};
+  const reset=()=>{F.amount.value=String(T.terms.amount);F.beneficiary_name.value=String(T.terms.beneficiary_name);F.iban_last4.value=String(T.terms.iban_last4);F.amount.setCustomValidity('')};
+  const values=()=>({amount:normAmount(F.amount.value,T.terms.amount),beneficiary_name:F.beneficiary_name.value.trim(),iban_last4:F.iban_last4.value.trim()});
+  api('GET','/v1/engine/proposals/'+encodeURIComponent(pid)+'/terms').then((r)=>{
+    if(S.screen!=='pay')return;
+    if(r.status!==200||!r.json.terms||typeof r.json.terms!=='object'){top.replaceChildren(note(words(r.json,Y.failed)));return}
+    T=r.json;
+    const form=el('form','',[field4(C.proposal.amount,'amount','big'),field4(C.proposal.payee,'beneficiary_name'),field4(C.proposal.account,'iban_last4')]);
+    for(const [k,id] of [['amount','p-amt'],['beneficiary_name','p-payee'],['iban_last4','p-acct']]){F[k].id=id;F[k].parentNode.firstChild.htmlFor=id}
+    F.amount.inputMode='decimal';F.amount.classList.add('mono');F.iban_last4.classList.add('mono');F.amount.addEventListener('input',()=>F.amount.setCustomValidity(''));
+    form.addEventListener('submit',(ev)=>{ev.preventDefault();if(!main.node.disabled)main.node.click()});
+    const when=Date.parse(T.expires_at||'');
+    const intro=el('div','',[el('p','muted',Y.line),isFinite(when)?el('p','hint',fill(Y.until,{time:new Date(when).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})})):null]);
+    top.replaceChildren(form,intro);reset();
+    main.set(Y.button,()=>send(intro));
+  });
+  async function send(intro){
+    const v=values();
+    if(v.amount===null){F.amount.setCustomValidity(Y.amountBad);F.amount.reportValidity();return}
+    let cred=S.cred;
+    if(!cred){
+      // After a reload without the kept signature: the passkey again, for the same terms (the challenge is their hash).
+      const st=await api('GET','/v1/engine');
+      try{cred=await signTerms(S.proposal.challenge,st.json.passkey&&st.json.passkey.credential_id)}catch(e){out.replaceChildren(note(C.approve.cancelled));return}
+      S.cred=cred;save();
+    }
+    main.node.textContent=Y.sending;out.replaceChildren();
+    const body=payBody(T.terms,v,cred);
+    const t0=performance.now();
+    pollStart((items)=>live.add(items,t0));
+    const r=await api('POST','/v1/engine/proposals/'+encodeURIComponent(pid)+'/pay',body);
+    const ms=performance.now()-t0;
+    pollDone();
+    if(S.screen!=='pay')return;
+    main.set(Y.button,()=>send(intro));
+    outcome(r,ms,body.terms,intro);
+  }
+  function outcome(r,ms,sent,intro){
+    const j=r.json,o=r.status===200?j.outcome:null;
+    if(o==='paid'){S.settled=j.settled||null;save();show('books',{settled:S.settled});return}
+    if(o==='not_signed'){S.cred=null;save();show('approve',{});return}
+    if(o==='refused'){intro.hidden=true;out.replaceChildren(refused(r,ms,sent));return}
+    if(o==='paid_once'){out.replaceChildren(el('p','big',Y.paidOnce));return}
+    if(o==='expired'){out.replaceChildren(note(words(j,Y.failed)));main.set(Y.fileAgain,()=>show('approve',{invoice:S.proposal.invoice?{id:S.proposal.invoice}:null,again:true}));return}
+    if(o==='failed'){out.replaceChildren(note(words(j,j.settled&&j.settled.error||Y.failed)));main.set(Y.retry,retry);return}
+    out.replaceChildren(note(words(j,Y.failed)));
+  }
+  async function retry(){
+    const r=await api('POST','/v1/engine/proposals/'+encodeURIComponent(pid)+'/retry');
+    if(S.screen!=='pay')return;
+    if(r.status===200&&r.json.settled&&!r.json.settled.error){S.settled=r.json.settled;save();show('books',{settled:S.settled});return}
+    out.replaceChildren(note(words(r.json,r.json.settled&&r.json.settled.error||Y.failed)));
+  }
+  function refused(r,ms,sent){
+    const j=r.json,L=j.layers&&typeof j.layers==='object'?j.layers:{};const sig=L.signature||{},ex=L.executor||{};
+    const card=el('div','card',[el('p','stamp',Y.stamp)]);
+    if(sig.verified===false){const why=typeof sig.reason==='string'&&/\s/.test(sig.reason.trim())?sig.reason.trim():Y.signatureOff;card.append(el('p','layer',fill(Y.signature,{reason:why})))}
+    if(ex.accepted===false){card.append(el('p','layer',Y.executor));
+      if(typeof ex.said==='string'&&ex.said)card.append(el('details','',[el('summary','',Y.executorFold),el('p','',ex.said),el('p','hint',Y.executorNote)]))}
+    const d=hashDiff(typeof j.signed_sha256==='string'?j.signed_sha256:'',typeof j.sent_sha256==='string'?j.sent_sha256:'');
+    const line=(label,runs)=>el('p','hash mono',[el('span','hl',label),...runs.map((x)=>x[1]?el('mark','',x[0]):x[0])]);
+    card.append(line(Y.signed,d.a),line(Y.sent,d.b));
+    card.append(el('p','verdict',verdict(Y,T.terms,sent,j.changed)));
+    card.append(el('p','proof',fill(Y.roundTrip,{n:Math.round(ms)})));
+    const made=Number(j.transfers_after)-Number(j.transfers_before);
+    if(isFinite(made))card.append(el('p','proof',fill(Y.transfers,{n:made})));
+    if(S.mode&&S.mode.rail_awx==='on'&&typeof j.sandbox_calls==='number')card.append(el('p','proof',fill(Y.sandbox,{n:j.sandbox_calls})));
+    const raw=el('pre','raw mono');raw.textContent=r.text;
+    card.append(el('details','',[el('summary','',Y.raw),raw]));
+    const back=el('button','link',Y.putBack);back.type='button';back.addEventListener('click',()=>{reset();F.amount.focus()});
+    card.append(el('p','',back));
+    return card;
+  }
+}});
+
+// 5 Paid (a placeholder until B3 draws the books): the pay route's settled answer, as it came back.
+screen('books',{heading:C.books.heading,draw(box,arg){
+  const s=arg&&arg.settled&&typeof arg.settled==='object'?arg.settled:{};
+  const d=el('dl','read');
+  for(const [k,v] of [[C.books.invoice,s.invoice_status],[C.books.transfer,s.transfer_status],[C.books.ledger,s.ledger_entries]]){if(v===null||v===undefined||v==='')continue;d.append(el('dt','',k),el('dd','',String(v)))}
+  box.append(el('span','art ok pop',icon('circle-check',30)),el('p','lede',C.books.sub),d);
+  if(typeof s.error==='string'&&s.error)box.append(note(s.error));
+}});
+
 // The visit is over: the company is gone, or the session could not be renewed.
 for(const [name,words] of [['gone',C.gone],['ended',C.ended]])screen(name,{heading:words.heading,band:false,draw(box){
   const b=btn(words.button,true);b.addEventListener('click',()=>{forget();show('start')});box.append(b);
@@ -373,7 +674,12 @@ async function boot(){
   const r=await api('GET','/v1/engine/invoices');
   if(!S.session)return;
   const items=r.status===200&&Array.isArray(r.json.items)?r.json.items:[];
-  if(items.length)show('work',{kind:'reload',invoice:items[items.length-1]});else show('invoice');
+  const last=items[items.length-1];
+  // Signing and paying return where they were: the proposal and the kept signature are in this tab's state.
+  if(S.screen==='books'&&S.settled){show('books',{settled:S.settled});return}
+  if(S.screen==='pay'&&S.proposal){show('pay');return}
+  if(S.screen==='approve'&&last){show('approve',{invoice:last});return}
+  if(last)show('work',{kind:'reload',invoice:last});else show('invoice');
 }
 boot();
 `;
@@ -390,8 +696,10 @@ const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 
 /** The page: one document, its config in a meta tag (the origin and the passkey RP id, for the screens that sign). */
 export function tryPage(n: string, cfg: { origin: string; rpId: string }): string {
-  const copy = { band: BAND, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, gone: GONE, ended: ENDED, live: LIVE };
-  const script = SCRIPT.replace("__COPY__", () => json(copy)).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__RUNS__", () => json(RUNS_URL));
+  const copy = { band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, proposal: PROPOSAL_FIELDS, method: METHOD, pay: PAY, books: BOOKS, gone: GONE, ended: ENDED, live: LIVE };
+  const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"] };
+  const script = SCRIPT.replace("__COPY__", () => json(copy)).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__SIGN__", () => SIGN_JS)
+    .replace("__ICONS__", () => json(icons)).replace("__RUNS__", () => json(RUNS_URL));
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
