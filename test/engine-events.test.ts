@@ -43,6 +43,17 @@ describe("the agents' events on a page", () => {
     expect(fieldsOf("agent.said", { agent: "payer", turn: 1, model: "m", text: "Pay EUR 1,850.00 on 2026-11-16." }).text).toBe("Pay EUR 1,850.00 on 2026-11-16.");
   });
 
+  it("masks an IBAN or an account number however it is written: hyphens, non-breaking or double spaces, dots", () => {
+    for (const text of ["IBAN is DE89-3704-0044-0532-0130-00. ok", "IBAN is DE89\u00a03704\u00a00044\u00a00532\u00a00130\u00a000. ok", "IBAN is DE89  3704  0044  0532  0130  00. ok", "IBAN is DE89370400440532013000. ok", "IBAN is de89 3704 0044 0532 0130 00. ok"]) {
+      expect(fieldsOf("agent.said", { agent: "a", turn: 1, model: "m", text }).text).toBe("IBAN is ****3000. ok");
+    }
+    for (const text of ["acct 1234-5678-9012-3456", "acct 1234 5678 9012 3456", "acct 1234.5678.9012.3456", "acct 1234\u00a05678\u00a09012\u00a03456"]) {
+      expect(fieldsOf("agent.said", { agent: "a", turn: 1, model: "m", text }).text).toBe("acct ****3456");
+    }
+    // A date and an amount are not account numbers.
+    expect(fieldsOf("agent.said", { agent: "a", turn: 1, model: "m", text: "Due 2026-11-16, EUR 1,850.00 (16.11.2026)." }).text).toBe("Due 2026-11-16, EUR 1,850.00 (16.11.2026).");
+  });
+
   it("agent.nudged: which agent, and why, masked", () => {
     expect(fieldsOf("agent.nudged", { agent: "checker", model: "claude-haiku-4-5", reason: `no decision yet for ${IBAN}` })).toEqual({ agent: "checker", reason: "no decision yet for ****3000" });
   });
