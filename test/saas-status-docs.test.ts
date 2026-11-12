@@ -488,7 +488,7 @@ describe("/status: the latest live runs", () => {
     expect([...all].sort((a, b) => b.iso.localeCompare(a.iso)).map((r) => r.key)).toEqual(all.map((r) => r.key));
     const five = latestRuns();
     expect(five.map((r) => r.key)).toEqual(all.slice(0, 5).map((r) => r.key));
-    const items = [...runs.matchAll(/<li><time datetime="([^"]+)">([^<]+)<\/time> <a class="pf" href="([^"]+)" target="_blank" rel="noopener" title="([^"]+)">([^<]+) ↗<\/a>(?: <span class="lbl">([^<]+)<\/span>)?<\/li>/g)].map((m) => ({ iso: m[1]!, day: m[2]!, href: m[3]!, full: decode(m[4]!), short: decode(m[5]!), label: m[6] === undefined ? null : decode(m[6]) }));
+    const items = [...runs.matchAll(/<li><time datetime="([^"]+)">([^<]+)<\/time> <a class="pf" href="([^"]+)" target="_blank" rel="noopener" title="([^"]+)">([^<]+) ↗<\/a><\/li>/g)].map((m) => ({ iso: m[1]!, day: m[2]!, href: m[3]!, full: decode(m[4]!), short: decode(m[5]!) }));
     expect(items.length).toBe(5);
     items.forEach((it, i) => {
       const row = all[i]!;
@@ -514,20 +514,28 @@ describe("/status: the latest live runs", () => {
   });
 
   // 12 Nov (review): one pill of all five runs' labels read as if each applied to every run ("Nothing bought" is the
-  // Airi run's alone). Each run now carries its own label, as /runs does; one pill only when all five share it.
+  // Airi run's alone). Now each label heads the runs it belongs to, as /runs labels each run; one pill only when all
+  // five share it. Each label is said once per group, so the page stays within its 90 words.
   it("labels each run with its own money label, as /runs does, and links to every live run", () => {
     const five = all.slice(0, 5), labels = [...new Set(five.map((r) => r.money))];
     for (const l of labels) expect(l).toMatch(/test money|Nothing bought/i);
-    expect(runLabels([{ money: "A" }, { money: "A" }])).toEqual({ pill: "A", each: false });
-    expect(runLabels([{ money: "A" }, { money: "B" }])).toEqual({ pill: null, each: true });
-    const { pill, each } = runLabels(five);
+    expect(runLabels([{ money: "A" }, { money: "A" }])).toEqual({ pill: "A", groups: false });
+    expect(runLabels([{ money: "A" }, { money: "B" }])).toEqual({ pill: null, groups: true });
+    const { pill, groups } = runLabels(five);
     const head = /<h2>[\s\S]*?<\/h2>/.exec(runs)?.[0] ?? "";
     if (pill === null) expect(head).not.toContain('<span class="pill">');
     else expect(head).toContain(`<span class="pill">${pill}</span>`);
-    const shown = [...runs.matchAll(/↗<\/a>(?: <span class="lbl">([^<]+)<\/span>)?<\/li>/g)].map((m) => (m[1] === undefined ? null : decode(m[1])));
-    expect(shown).toEqual(five.map((r) => (each ? r.money : null)));
-    // With today's five runs the labels differ, so each run carries its own.
-    expect(each).toBe(labels.length > 1);
+    // Walk the list: a label item heads the runs after it, until the next one.
+    let current: string | null = null, heads = 0;
+    const labelled: (string | null)[] = [];
+    for (const m of runs.matchAll(/<li class="grp">([^<]+)<\/li>|<li><time /g)) {
+      if (m[1] !== undefined) { current = decode(m[1]); heads++; } else labelled.push(current);
+    }
+    expect(labelled).toEqual(five.map((r) => (groups ? r.money : null)));
+    // One label item where the label changes, never two in a row for the same label.
+    expect(heads).toBe(groups ? five.filter((r, i) => i === 0 || r.money !== five[i - 1]!.money).length : 0);
+    // With today's five runs the labels differ, so the list is grouped by them.
+    expect(groups).toBe(labels.length > 1);
     expect(runs).toContain(`<a class="pf" href="runs">${RUNS_TITLE}</a>`);
   });
 
