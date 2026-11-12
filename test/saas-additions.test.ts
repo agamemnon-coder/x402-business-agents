@@ -318,7 +318,8 @@ describe("four eyes, worded exactly (the panel's review, 12 Nov)", () => {
   /** The places a reader meets the short form: the README, llms.txt, the current docs and the submission texts. Run records and design specs are history. */
   const PLACES = ["README.md", "llms.txt", "docs/security.md", "docs/claims.md", "docs/overview.md", "docs/after-the-kit.md", "docs/idea-vs-build.md", "docs/requirements-matrix.md", "docs/controls.md", "docs/controls-matrix.md", "docs/compliance.md",
     "docs/metal-award.md", "docs/cfo-policy.md", "docs/architecture.md", "docs/business/model.md", "docs/business/problem.md", "docs/business/roadmap.md",
-    "docs/submission/README.md", "docs/submission/demo-day.md", "docs/submission/long-description.md", "docs/submission/pitch.md", "docs/submission/qa.md"];
+    "docs/submission/README.md", "docs/submission/demo-day.md", "docs/submission/long-description.md", "docs/submission/pitch.md", "docs/submission/qa.md",
+    "docs/submission/release-notes.md"];
 
   it("has the note in one place, in these words", () => {
     expect(FOUR_EYES_NOTE).toBe("the second signature from a test passkey, not a second person");

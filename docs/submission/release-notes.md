@@ -12,7 +12,8 @@ anything beyond them, with Face ID on the exact terms.
 ## The main run (3 November, world `main-1`)
 
 - **The price rise:** Metal refused purchase #24 on chain (`mandate_cap_exceeded`, tx `0x2e92f9cb…1871`; let through on
-  purpose, Purser normally refuses first). After four eyes, both mandates were replaced on chain.
+  purpose, Purser normally refuses first). After four eyes (the second signature from a test passkey, not a second
+  person), both mandates were replaced on chain.
 - **The dispute:** 12 orders disputed, all signed by the customer's own agent; the Support agent refunded the 3 with
   wrong data; "refund the other 9" was rejected with Face ID.
 - **The euro bill:** EUR 240.00 by FX and SWIFT, PAID 6 s after Face ID (transfer
@@ -124,9 +125,9 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
 - 6 November, the Metal story: /metal opens with the main run on one screen, each claim linked to Metal's testnet
   explorer and every figure read from the record (`src/redesign/metalStory.ts`): 3 mandates on chain, one per agent;
   86 Metal payments, each its own transaction (41 sales, 41 supplier purchases, 3 refunds, 1 sweep; each matched on
-  chain by the run's data-qa); #24 refused on chain; the mandates replaced after Face ID. The separate runs (four eyes,
-  passkeys as owners, clearing, clearing load, receive policy, compliance) are folded below it, each dated with its
-  run record. A review of Purser's use of `metal-agent` and `metal-pay` against their own docs
+  chain by the run's data-qa); #24 refused on chain; the mandates replaced after Face ID. The separate runs (four eyes
+  on chain with two test keys on one machine, not two people; passkeys as owners; clearing; clearing load; receive
+  policy; compliance) are folded below it, each dated with its run record. A review of Purser's use of `metal-agent` and `metal-pay` against their own docs
   ([metal-review.md](../metal-review.md)) fixed four things: a pull retried after a mandate replace first asks the old
   credential, so it is never paid twice (this did not occur in the main run: its 4 pulls, 1 sweep and 3 refunds, were each paid once with their own transaction, and none was retried across a mandate replace; a regression test, `test/metal-pull-after-replace.test.ts`, fails without the fix); a clearing wallet is kept for one Clearing deployment; a lost clearing answer
   is read from `ClearingRefusal.reason`; a disputed order counts as signed from `verifyMandatePayment`'s outcome, not
