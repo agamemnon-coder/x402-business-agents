@@ -408,17 +408,36 @@ export function limitRule(limit: { currency: string; amount: string } | null, cu
 const aloneRule = (c: InvoiceCase) => limitRule(c.policy.aloneLimit, c.invoice.reading.currency, c.invoice.reading.total);
 
 /**
+ * Why the invoice is not the amount its contract or purchase order says, or null when there is none to compare or it
+ * is the same (the currency and the plain amount). Review round 1, 12 Nov: below the limit, a wrong agent's "pay" of
+ * an invoice that asks more than the contract was paid alone; code now sends it to the CFO (codeRequires).
+ */
+export function expectedMismatch(c: InvoiceCase): string | null {
+  const e = c.expected;
+  if (!e) return null;
+  const r = c.invoice.reading;
+  const asked = cents(r.total);
+  if (asked !== null && r.currency === e.currency && asked === cents(e.amount)) return null;
+  const doc = e.source === "contract" ? "contract" : "purchase order";
+  return `the invoice asks ${money(r.currency, r.total) || "no total that was read"}, not the ${money(e.currency, e.amount)} the ${doc}${e.reference ? ` (${e.reference})` : ""} says, so the CFO decides`;
+}
+
+/**
  * What code alone requires for this invoice, from its findings and the policy's limit: hold when a finding stops
  * payment (a block, something for a person, a supplier not on file yet; the first of the gravest level names it),
- * else ask_cfo when the agent may not pay the amount alone, else pay. Code never requires a rejection: that is a
- * person's word, or the agent's. `by` is the finding's code or the limit's rule; `why` says it in code's words.
+ * else ask_cfo when the agent may not pay the amount alone, or when the amount is not the one its contract or purchase
+ * order says (by "amount_not_expected"), else pay. Code never requires a rejection: that is a person's word, or the
+ * agent's. `by` is the finding's code, the limit's rule or amount_not_expected; `why` says it in code's words. Only
+ * enforce and the fallback ask this: the checks' own findings (codeFindings) and the flag-off chain do not change.
  */
 export function codeRequires(c: InvoiceCase, findings: Finding[]): { action: Action; by: string | null; why: string } {
   // A level this code does not know is not a warning: it stops payment too.
   const stop = findings.find((f) => f.level === "block") ?? findings.find((f) => f.level === "review") ?? findings.find((f) => f.level === "wait") ?? findings.find((f) => f.level !== "warn");
   if (stop) return { action: "hold", by: stop.code, why: stop.detail };
   const alone = aloneRule(c);
-  return alone.rule ? { action: "ask_cfo", by: alone.rule, why: alone.why } : { action: "pay", by: null, why: alone.why };
+  if (alone.rule) return { action: "ask_cfo", by: alone.rule, why: alone.why };
+  const differs = expectedMismatch(c);
+  return differs ? { action: "ask_cfo", by: "amount_not_expected", why: differs } : { action: "pay", by: null, why: alone.why };
 }
 
 /** The agent's final answer (the decide tool's input), or code's own when Claude is unavailable. */
@@ -451,8 +470,10 @@ export interface Enforced<D extends CheckerDecision = CheckerDecision> {
  */
 export function enforce<D extends CheckerDecision>(c: InvoiceCase, decision: D, findings: Finding[]): Enforced<D> {
   const need = codeRequires(c, findings);
-  const known = (ACTIONS as readonly string[]).includes(decision.action);
-  const asked: Action = known ? decision.action : "hold";
+  // Anything that is no object with an action (null, a string, an array) is no decision either: a hold, never a throw.
+  const action: unknown = decision !== null && typeof decision === "object" ? (decision as { action?: unknown }).action : undefined;
+  const known = typeof action === "string" && (ACTIONS as readonly string[]).includes(action);
+  const asked: Action = known ? (action as Action) : "hold";
   const stricter = strictness(need.action) > strictness(asked);
   return { decision, outcome: stricter ? need.action : asked, overridden_by: stricter ? need.by : known ? null : "invalid_action", findings };
 }

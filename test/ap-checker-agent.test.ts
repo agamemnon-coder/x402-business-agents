@@ -140,6 +140,16 @@ describe("the Checker agent decides, code enforces", () => {
     expect(inv.findings.find((f) => f.code === "checker_reject")).toMatchObject({ level: "block" });
   });
 
+  it("of two decisions in one turn, the first stands: a later, looser pay is refused and cannot replace its reject (review round 1)", async () => {
+    const reason = "This invoice must not be paid as it is; a person should reject it.";
+    const inv = await add(EN, fake([[decide("reject", reason, ["other"]), decide("pay", "Nothing is wrong with this invoice from Bergtex Textil GmbH, so it can be paid.")]]));
+    expect(inv.status).toBe("blocked");
+    expect(decisions()).toHaveLength(1);
+    expect(decisions()[0]).toMatchObject({ action: "reject", outcome: "reject", reason });
+    const tools = (db.prepare("SELECT json_extract(payload_json, '$.tool') AS tool, json_extract(payload_json, '$.blocked_by') AS b FROM audit_log WHERE event = 'agent.tool' AND actor = 'checker' ORDER BY seq").all() as { tool: string; b: string | null }[]);
+    expect(tools).toEqual([{ tool: "decide", b: null }, { tool: "decide", b: "already decided" }]);
+  });
+
   it("a pay on a clean invoice goes to the CFO: nothing is paid without Face ID", async () => {
     const inv = await add(EN, fake([[decide("pay", "Nothing is wrong with this invoice from Bergtex Textil GmbH, so it can be paid.")]]));
     expect(inv.status).toBe("ready");

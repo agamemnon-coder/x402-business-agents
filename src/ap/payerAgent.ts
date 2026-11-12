@@ -18,6 +18,7 @@ import { COMPANY } from "../config/brand.js";
 import type { DB } from "../db/open.js";
 import type { GateAnswer, PlanGate, PlannedPayment } from "../payouts/planGate.js";
 import { runProvenance, type RunProvenance } from "./agentRun.js";
+import { apInvoice } from "./store.js";
 import {
   answerPayerTool, enforceProposal, fallbackProposal, PAYER_EFFORT, PAYER_MODEL, PAYER_MAX_TURNS, PAYER_SYSTEM, PAYER_UNFINISHED, payerInputs, payerPrompt, payerTools, railFromRoute,
   type EnforcedProposal, type PaymentCase, type PaymentProposal, type PayerToolName,
@@ -55,6 +56,9 @@ export interface PayerOptions {
   model?: string;
 }
 
+/** What the agent is told when it proposes a second time: its first proposal stands. */
+export const ALREADY_PROPOSED = "Not recorded: your proposal is already recorded, and the first one stands. Nothing more was done.";
+
 /** Runs the Payer on a case and enforces what it proposed (enforceProposal: the rail, the day, the floors, the limit). */
 export async function runPayer(db: DB, c: PaymentCase, opts: PayerOptions): Promise<PayerOutcome> {
   let proposed: PaymentProposal | null = null;
@@ -62,6 +66,8 @@ export async function runPayer(db: DB, c: PaymentCase, opts: PayerOptions): Prom
   const tools = (Object.keys(payerInputs) as PayerToolName[]).map((name): AgentTool<z.ZodType> => ({
     name, description: describe.get(name)!, input: payerInputs[name],
     run: async (input) => {
+      // The first proposal recorded is the agent's answer (review round 1: of two in one turn, the last one counted).
+      if (name === "propose_payment" && proposed) return { text: ALREADY_PROPOSED, blocked: "already proposed" };
       const a = answerPayerTool(c, { name, input });
       if (a.proposal) proposed = a.proposal;
       return { text: a.text, ...(a.blocked ? { blocked: a.blocked } : {}), ...(a.final ? { final: true } : {}) };
@@ -119,6 +125,8 @@ export function recordProposed(db: DB, about: { invoiceId: string; invoiceNo: st
  */
 export function payerGate(db: DB, about: { invoiceId: string; invoiceNo: string; now: Date; claude?: Anthropic | null }): { gate: PlanGate; last(): PayerOutcome | null } {
   let last: PayerOutcome | null = null;
+  // The invoice as the pay call found it: ready, with the proposal it had (none).
+  const before = apInvoice(db, about.invoiceId);
   const gate: PlanGate = async (plan): Promise<GateAnswer> => {
     const c = paymentCase(plan, { invoiceId: about.invoiceId, invoiceNo: about.invoiceNo, today: about.now.toISOString().slice(0, 10) });
     const out = await runPayer(db, c, { task: `ap.pay.${about.invoiceId}`, ...(about.claude !== undefined ? { claude: about.claude } : {}) });
@@ -131,6 +139,13 @@ export function payerGate(db: DB, about: { invoiceId: string; invoiceNo: string;
     // The terms the CFO signs are the engine's: the enforced proposal must be for that route and that funding.
     if (terms.method !== plan.method || (terms.conversion !== null) !== (plan.quote !== null)) {
       return { go: false, reason: `${who} does not match the engine's plan (${plan.method}${plan.quote ? ", with a conversion" : ""}), so nothing is filed` };
+    }
+    // While the agent worked, a person may have rejected or held the invoice, or it was filed by another call (review
+    // round 1, 12 Nov: a rejection made during the run was overwritten by "waiting_cfo"). Read again, with nothing
+    // awaited between this answer and the filing (src/payouts/plan.ts), so a moved invoice is never filed.
+    const current = apInvoice(db, about.invoiceId);
+    if (!current || current.status !== "ready" || current.proposal_id !== (before?.proposal_id ?? null)) {
+      return { go: false, reason: `the invoice is ${current ? current.status.replace(/_/g, " ") : "gone"} now, no longer ready as when the Payer agent started, so nothing is filed` };
     }
     return { go: true, origin: out.provenance.origin };
   };

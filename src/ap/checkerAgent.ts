@@ -52,6 +52,9 @@ export interface CheckerOptions {
   model?: string;
 }
 
+/** What the agent is told when it decides a second time: its first decision stands. */
+export const ALREADY_DECIDED = "Not recorded: your decision is already recorded, and the first one stands. Nothing more was done.";
+
 /**
  * Runs the Checker on a case. `findings` are code's own for it (codeFindings, and any the inbox adds beside them):
  * enforce judges the agent's action against these, never against the findings the agent names.
@@ -62,6 +65,9 @@ export async function runChecker(db: DB, c: InvoiceCase, findings: Finding[], op
   const tools = (Object.keys(checkerInputs) as CheckerToolName[]).map((name): AgentTool<z.ZodType> => ({
     name, description: describe.get(name)!, input: checkerInputs[name],
     run: async (input) => {
+      // The first decision recorded is the agent's answer (review round 1: of two in one turn, the last one counted, so
+      // a looser second could replace a stricter first). A later decide is refused and changes nothing.
+      if (name === "decide" && decided) return { text: ALREADY_DECIDED, blocked: "already decided" };
       const a = answerTool(c, { name, input });
       if (a.decision) decided = a.decision;
       return { text: a.text, ...(a.blocked ? { blocked: a.blocked } : {}), ...(a.final ? { final: true } : {}) };

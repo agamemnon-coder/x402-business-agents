@@ -15,7 +15,7 @@ import { ingestDocument, type InboxDeps } from "../src/ap/inbox.js";
 import { payApInvoice, syncPayments } from "../src/ap/pay.js";
 import { PAY_LATER, PAYER_DECISION } from "../src/ap/payerAgent.js";
 import type { Asker } from "../src/ap/read.js";
-import { apInvoice } from "../src/ap/store.js";
+import { apInvoice, setStatus } from "../src/ap/store.js";
 import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
 import { audit } from "../src/audit/log.js";
 import { MODELS } from "../src/claude/reader.js";
@@ -139,6 +139,37 @@ describe("the Payer agent proposes, code enforces, the CFO signs", () => {
     expect(inv.status).toBe("ready");
     expect(inv.findings.find((f) => f.code === "payment_not_planned")?.detail).toMatch(/the Payer agent's proposal is held by code: .*EUR/);
     expect(agentStats(db).find((s) => s.agent === "payer")).toMatchObject({ decisions: 1, by_claude: 1, overridden: 1 });
+  });
+
+  it("an invoice a person rejects while the agent works is not filed, and the rejection stands (review round 1)", async () => {
+    const id = await add(EN);
+    const script = fake([[propose("bank_swift", TODAY, "USD", ON_QUOTE)]]);
+    const create = script.beta.messages.create.bind(script.beta.messages);
+    let rejected = false;
+    const claude = { beta: { messages: { create: async (...a: unknown[]) => {
+      if (!rejected) { rejected = true; setStatus(db, id, "rejected", "human", { reason: "looks like fraud" }, now); }
+      return (create as (...b: unknown[]) => unknown)(...a);
+    } } } } as unknown as Anthropic;
+    const out = await payApInvoice(db, awx, id, now, parserOnly, { claude });
+    expect(out.kind).toBe("escalated");
+    if (out.kind === "escalated") expect(out.reason).toMatch(/rejected now, no longer ready/);
+    expect(filed()).toBe(0);
+    expect(apInvoice(db, id)!.status).toBe("rejected");
+    const moves = (db.prepare("SELECT json_extract(payload_json, '$.from') AS f, json_extract(payload_json, '$.to') AS t FROM audit_log WHERE event = 'ap.status' AND subject = ? ORDER BY seq").all(id) as { f: string; t: string }[]).map((r) => `${r.f}->${r.t}`);
+    expect(moves).not.toContain("rejected->waiting_cfo");
+    expect(moves.at(-1)).toBe("ready->rejected");
+  });
+
+  it("of two proposals in one turn, the first stands: the second is refused and changes nothing (review round 1)", async () => {
+    const id = await add(EN);
+    // The first (from EUR) is held by code at the floor; the second (from the quote) would be filed if it counted.
+    const claude = fake([[propose("bank_swift", TODAY, "EUR", "Paying today from the EUR balance avoids a conversion."), propose("bank_swift", TODAY, "USD", ON_QUOTE)]]);
+    const out = await payApInvoice(db, awx, id, now, parserOnly, { claude });
+    expect(out.kind).toBe("escalated");
+    expect(filed()).toBe(0);
+    expect(blockedBy()).toEqual([null, "already proposed"]);
+    expect(proposals()).toHaveLength(1);
+    expect(proposals()[0]).toMatchObject({ source: "claude", pay_currency: "EUR", outcome: "hold", next: "hold" });
   });
 
   it("a rail the supplier does not accept is refused by the tool, and the agent proposes again", async () => {

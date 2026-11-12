@@ -38,25 +38,36 @@ const anyLimit = fc.oneof(
   fc.record({ currency: fc.constantFrom("EUR", "USD", "GBP", ""), amount: fc.oneof(fc.integer({ min: 0, max: 5_000_000 }).map(money), fc.constantFrom("500.00", "lots", "", "-500.00")) }),
 );
 
-function caseWith(total: string, currency: string, aloneLimit: InvoiceCase["policy"]["aloneLimit"]): InvoiceCase {
+function caseWith(total: string, currency: string, aloneLimit: InvoiceCase["policy"]["aloneLimit"], expected: InvoiceCase["expected"] = null): InvoiceCase {
   return {
     invoice: { id: null, reading: { ...parseApFallback(EN), total, currency }, text: EN, receivedAt: null, accountSha256: null },
     company: { name: "Northwind Outdoor (test)" },
     policy: { aloneLimit, cashFloors: {}, payees: { allowed: [], blocked: [] }, currencies: ["EUR"] },
-    suppliers: [], history: [], alreadyInLedger: null, supplierRequest: null, clearedTwins: [], expected: null, today: "2026-11-08",
+    suppliers: [], history: [], alreadyInLedger: null, supplierRequest: null, clearedTwins: [], expected, today: "2026-11-08",
   };
 }
-const anyCase = fc.tuple(anyTotal, fc.constantFrom("EUR", "USD", ""), anyLimit).map(([total, currency, limit]) => caseWith(total, currency, limit));
+/** A contract or purchase order amount as the engine may hold one: none, the invoice's own total, or another amount. */
+const anyExpected = (total: string, currency: string): fc.Arbitrary<InvoiceCase["expected"]> => fc.oneof(
+  fc.constant(null),
+  fc.constant({ source: "contract" as const, currency, amount: total }),
+  fc.record({ source: fc.constantFrom("contract" as const, "purchase_order" as const), currency: fc.constantFrom("EUR", "USD", ""), amount: fc.oneof(anyTotal, fc.constant(total)) }),
+);
+const anyCase = fc.tuple(anyTotal, fc.constantFrom("EUR", "USD", ""), anyLimit)
+  .chain(([total, currency, limit]) => anyExpected(total, currency).map((expected) => caseWith(total, currency, limit, expected)));
 
 /** What the findings alone require, written out again here so the test does not lean on the code under test. */
 const holds = (f: Finding[]) => f.some((x) => x.level === "block" || x.level === "review" || x.level === "wait");
-/** Whether the agent may pay this case alone, by the rule as the spec states it: a limit, in the invoice's currency, a plain total at or below it. */
+/**
+ * Whether the agent may pay this case alone, by the rule as the spec states it: a limit, in the invoice's currency, a
+ * plain total at or below it; and, where a contract or purchase order gives the amount, exactly that amount and currency.
+ */
 function mayPayAlone(c: InvoiceCase): boolean {
   const plain = /^(0|[1-9]\d*)\.\d{2}$/;
   const limit = c.policy.aloneLimit;
   const { total, currency } = c.invoice.reading;
   if (!limit || !plain.test(limit.amount) || !plain.test(total) || !currency || limit.currency !== currency) return false;
   const cents = (a: string) => BigInt(a.replace(".", ""));
+  if (c.expected && (c.expected.currency !== currency || !plain.test(c.expected.amount) || cents(c.expected.amount) !== cents(total))) return false;
   return cents(total) <= cents(limit.amount) && cents(total) <= BigInt(Number.MAX_SAFE_INTEGER);
 }
 
@@ -97,7 +108,7 @@ describe("enforce, for any decision, findings, total and limit", () => {
       const e = enforce(c, d, f);
       if (e.outcome === d.action) expect(e.overridden_by).toBeNull();
       else if (e.outcome === "hold") expect(f.filter((x) => x.level !== "warn").map((x) => x.code)).toContain(e.overridden_by);
-      else expect(["above_alone_limit", "no_alone_limit", "alone_limit_other_currency", "amount_unreadable"]).toContain(e.overridden_by);
+      else expect(["above_alone_limit", "no_alone_limit", "alone_limit_other_currency", "amount_unreadable", "amount_not_expected"]).toContain(e.overridden_by);
     }), RUNS);
   });
 
@@ -121,6 +132,30 @@ describe("enforce, for anything handed in as a decision", () => {
       if (e.outcome === "pay") expect(action).toBe("pay");
       if (!(ACTIONS as readonly string[]).includes(action)) expect(strictness(e.outcome)).toBeGreaterThanOrEqual(strictness("hold"));
     }), RUNS);
+  });
+
+  // Breaks if enforce reads a field of what it was handed before it knows it is an object (review round 1: null threw).
+  it("never throws on something that is no decision at all (null, a string, a number, an array, an object without an action): a hold", () => {
+    const notADecision = fc.oneof(fc.constantFrom(null, undefined, "pay", 0, [], {}, { action: null }, { action: ["pay"] }), fc.anything());
+    fc.assert(fc.property(anyCase, notADecision, anyFindings, (c, d, f) => {
+      const e = enforce(c, d as unknown as CheckerDecision, f);
+      expect(ACTIONS).toContain(e.outcome);
+      const action = d !== null && typeof d === "object" ? (d as { action?: unknown }).action : undefined;
+      if (!(typeof action === "string" && (ACTIONS as readonly string[]).includes(action))) {
+        expect(strictness(e.outcome)).toBeGreaterThanOrEqual(strictness("hold"));
+        if (e.outcome === "hold" && codeRequires(c, f).action !== "hold") expect(e.overridden_by).toBe("invalid_action");
+      }
+    }), RUNS);
+    expect(enforce(caseWith("10.00", "EUR", { currency: "EUR", amount: "500.00" }), null as unknown as CheckerDecision, [])).toMatchObject({ outcome: "hold", overridden_by: "invalid_action" });
+  });
+
+  // Breaks if code lets an amount that is not its contract's be paid alone (review round 1: below the limit it was).
+  it("never pays alone an invoice whose amount is not the one its contract or purchase order says, whatever the agent decides", () => {
+    const limit = { currency: "EUR", amount: "1000.00" };
+    const c = caseWith("900.00", "EUR", limit, { source: "contract", currency: "EUR", amount: "500.00", reference: "K-1" });
+    expect(enforce(c, { action: "pay", reason: "Pay it.", findings: [] }, [])).toMatchObject({ outcome: "ask_cfo", overridden_by: "amount_not_expected" });
+    expect(enforce(caseWith("500.00", "EUR", limit, { source: "contract", currency: "EUR", amount: "500.00" }), { action: "pay", reason: "Pay it.", findings: [] }, [])).toMatchObject({ outcome: "pay", overridden_by: null });
+    expect(enforce(caseWith("500.00", "EUR", limit, { source: "purchase_order", currency: "USD", amount: "500.00" }), { action: "pay", reason: "Pay it.", findings: [] }, []).outcome).toBe("ask_cfo");
   });
 });
 
