@@ -7,6 +7,10 @@ import { CHAIN_ID, USDZ, rpcUrl } from "./network.js";
 
 const TRANSFER_GAS_LIMIT = 200_000n;
 
+/** A plain *USDZ transfer as Purser sends it through metal-ts: gas paid in *USDZ, a fixed limit, 1 per gas. One shape
+ *  for transferUsdz here and for the owners path, which signs the same transaction behind its call budget. */
+export const USDZ_TRANSFER = { abi: erc20Abi, address: USDZ, functionName: "transfer", gasToken: USDZ, gasFallback: TRANSFER_GAS_LIMIT, gasLimit: TRANSFER_GAS_LIMIT, maxFeePerGas: 1n } as const;
+
 let client: PublicClient | undefined;
 
 export function publicClient(): PublicClient {
@@ -38,10 +42,7 @@ export async function transferUsdz(fromKeyFile: string, to: Address, amount: big
   const account = privateKeyToAccount(readKeyFile(fromKeyFile).privateKey);
   const walletClient = createWalletClient({ account, chain: pc.chain, transport: custom(pc) });
   const { writeMip20Contract } = await import("@metalntwx/metal-ts");
-  const hash = await writeMip20Contract({
-    walletClient, publicClient: pc, abi: erc20Abi, address: USDZ, functionName: "transfer", args: [to, amount],
-    gasToken: USDZ, gasFallback: TRANSFER_GAS_LIMIT, gasLimit: TRANSFER_GAS_LIMIT, maxFeePerGas: 1n,
-  });
+  const hash = await writeMip20Contract({ walletClient, publicClient: pc, ...USDZ_TRANSFER, args: [to, amount] });
   const receipt = await pc.waitForTransactionReceipt({ hash });
   if (receipt.status !== "success") throw new Error(`transfer ${hash} reverted`);
   return hash;

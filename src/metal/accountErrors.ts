@@ -113,6 +113,13 @@ export function nodeSaid(e: unknown): string {
   return redactSecrets(text.split("\n")[0]!).slice(0, 200);
 }
 
+/** The chain's own reason inside an error, when the error is a revert; null when it is something else (the network, a spent call budget). */
+export function revertReason(e: unknown): string | null {
+  const data = revertDataOf(e);
+  if (data && data !== "0x") return decodeRevert(data);
+  return isRevert(e) ? `${NO_DATA}; the node said: ${nodeSaid(e)}` : null;
+}
+
 /**
  * Why the chain would refuse a call: runs `call` (one read-only eth_call or gas estimate) and decodes its revert.
  * Null when the call passes. An error that is not a revert (the network, a spent call budget) is thrown on as it is.
@@ -122,9 +129,8 @@ export async function whyRefused(call: () => Promise<unknown>): Promise<string |
     await call();
     return null;
   } catch (e) {
-    const data = revertDataOf(e);
-    if (data && data !== "0x") return decodeRevert(data);
-    if (!isRevert(e)) throw e;
-    return `${NO_DATA}; the node said: ${nodeSaid(e)}`;
+    const why = revertReason(e);
+    if (why === null) throw e;
+    return why;
   }
 }
