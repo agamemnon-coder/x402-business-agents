@@ -7,6 +7,7 @@
 // in a short table: the separate runs, and the hold that is not finished. Every figure, hash and address is read here
 // from the records (the main run's record and trace, the check of 12 November, the separate runs' records).
 
+import { ownersRun } from "./metalOnchain.js";
 import { readFileSync } from "node:fs";
 import { INSPECTOR_DAILY_CEILING, INSPECTOR_TTL_SECONDS, METAL_INSPECTOR_PATH, metalRecordedOf, type MetalRecorded } from "../../worker/src/metalInspector.js";
 import { EXPLORER, MAIN_RUN_CHECK, REPO_BLOB, metalStory, refusalNote, separateRuns, type MetalStory } from "./metalStory.js";
@@ -195,7 +196,7 @@ ${live ? `<details class="fold" data-rec="${esc(METAL_INSPECTOR_RECORD)}"><summa
   const payCard = `<div class="mc card"><h2>${esc(`${st.payments.total} Metal payments, each its own transaction`)}</h2><p>${esc(`${st.payments.sales} sales, ${st.payments.purchases} supplier purchases, ${st.payments.refunds} refunds and ${st.payments.sweeps} sweep, in *USDZ.`)}</p><p class="tx2">${a(st.payments.account.href!, st.payments.account.label)}${a(`${REPO_BLOB}${MAIN_RUN_CHECK}`, "checked one by one")}</p></div>`;
   const refusalCard = r ? `<div class="mc card"><h2>${esc(`#${r.seq} refused on chain`)}</h2><p>${esc(`Our own check was off for this one test. Metal's facilitator answered 402; a second call had Metal record the refusal on chain: ${r.amount} *USDZ over the ${r.cap} cap. Nothing moved.`)}</p><p class="tx2">${a(r.proof.href!, `tx ${short(r.proof.href!.split("/").pop()!)}`)}</p></div>` : "";
   const signer = replaceSigner(record), x = st.replace;
-  const replaceCard = x ? `<div class="mc card"><h2>${esc("Mandates replaced after Face ID")}</h2><p>${esc(`${x.proposal}: the CFO's Face ID and a test passkey approved it in Purser${signer?.actor === "owner-signer" ? "; one owner key, held by Purser's runner, signed on chain. The chain did not check Face ID." : "."}`)}</p><p class="tx2">${x.steps.map((s) => a(tx(s.proof.href!.split("/").pop()!), `${AGENT(s.agent)} ${s.cap}`)).join("")}</p>${x.revoked ? `<p class="mnote">${esc(`#${x.revoked.seq} on the old mandate: refused by Metal's facilitator (${x.revoked.code}), no transaction.`)}</p>` : ""}</div>` : "";
+  const replaceCard = x ? `<div class="mc card"><h2>${esc("Mandates replaced after Face ID")}</h2><p>${esc(`${x.proposal}: the CFO's Face ID and a test passkey approved it in Purser${signer?.actor === "owner-signer" ? "; one owner key, held by Purser's runner, signed on chain. The chain did not check Face ID." : "."}`)}${signer?.actor === "owner-signer" && ownersRun() ? ` <a class="pf" href="#faceid-onchain">${esc("Since 12 Nov it does")} ↓</a>` : ""}</p><p class="tx2">${x.steps.map((s) => a(tx(s.proof.href!.split("/").pop()!), `${AGENT(s.agent)} ${s.cap}`)).join("")}</p>${x.revoked ? `<p class="mnote">${esc(`#${x.revoked.seq} on the old mandate: refused by Metal's facilitator (${x.revoked.code}), no transaction.`)}</p>` : ""}</div>` : "";
 
   const cov = coverageRows();
   const done = cov.filter((c) => c.status === "done").length, open = cov.length - done;

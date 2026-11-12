@@ -173,7 +173,8 @@ describe("/security: security and trust", () => {
   });
 
   it("signatures: the exact terms, signed with a passkey, one changed cent refused; the proof is the Try tab", () => {
-    expect(inSight("s-sign")).toBe("Signed terms The CFO signs the exact terms with a passkey (Face ID); one changed cent is refused. Try it yourself How If the approver is unavailable");
+    // 12 Nov (jury check): the Face ID on chain run linked beside it.
+    expect(inSight("s-sign")).toBe("Signed terms The CFO signs the exact terms with a passkey (Face ID); one changed cent is refused. Try it yourself Face ID signs on chain How If the approver is unavailable");
     // Since 12 Nov (the owner) every Try call to action opens the hands-on demo (TRY_URL); /try/sign keeps its own page.
     expect(card(html, "s-sign")).toContain('<a class="pf" href="https://purser-try.max-31b.workers.dev/try" data-next="https://purser-try.max-31b.workers.dev/try">Try it yourself</a>');
     expect(flowLinks(html, true)).toContain('<a class="pf" href="https://purser-try.max-31b.workers.dev/try" data-next="https://purser-try.max-31b.workers.dev/try">Try it yourself</a>');
@@ -277,13 +278,14 @@ describe("/security: security and trust", () => {
     const first = json<R>(REDTEAM_REPORT);
     const after = first.results.filter((r) => r.caught === "after").length, before = first.results.filter((r) => r.outcome === "blocked" && r.caught === "before").length;
     expect([first.attempts, before + after, after]).toEqual([first.results.length, first.blocked, first.caught_after]);
-    expect(inSight("s-redteam")).toBe(`Tested by attack Test world Our red team ran ${first.attempts} attacks: ${before} stopped before anything moved, ${after} found afterwards. The report ↗ Zero-trust report ↗ Later rounds`);
+    // 12 Nov (jury check): "not prevented (detected after)", with how the two were detected linked.
+    expect(inSight("s-redteam")).toBe(`Tested by attack Test world Red team: ${first.attempts} attacks, ${before} stopped before anything moved, ${after} not prevented (detected after). The report ↗ How the ${after} were detected ↗ Zero-trust report ↗ Later rounds`);
     expect(card(html, "s-redteam")).toContain(`href="${repoHref("docs/zero-trust/report.json")}"`);
     expect(redTeamRound([REDTEAM_REPORT])).toMatchObject({ day: "30 October", attempts: first.attempts, before, after, inconclusive: 0, notBlocked: 0 });
     // 31 October, three runs: counted from each run's results.
     const oct = { attempts: sum(REDTEAM_OCT31, (r) => r.results.length), after: sum(REDTEAM_OCT31, (r) => r.results.filter((x) => x.caught === "after").length), blocked: sum(REDTEAM_OCT31, (r) => r.results.filter((x) => x.outcome === "blocked").length), inconclusive: sum(REDTEAM_OCT31, (r) => r.results.filter((x) => x.outcome === "inconclusive").length) };
     expect(redTeamRound(REDTEAM_OCT31)).toMatchObject({ day: "31 October", attempts: oct.attempts, before: oct.blocked - oct.after, after: oct.after, inconclusive: oct.inconclusive, notBlocked: 0 });
-    expect(folded("s-redteam")).toContain(`31 October, three runs in a row: ${oct.attempts} attacks, ${oct.blocked - oct.after} stopped before anything moved, ${oct.after} found afterwards, ${oct.inconclusive} inconclusive.`);
+    expect(folded("s-redteam")).toContain(`31 October, three runs in a row: ${oct.attempts} attacks, ${oct.blocked - oct.after} stopped before anything moved, ${oct.after} not prevented (detected after), ${oct.inconclusive} inconclusive.`);
     // 2 November, the night batch: its three files' own totals, and the record's own words on the re-check by hand.
     const night = { attempts: sum(REDTEAM_NIGHT, (r) => r.results.length), blocked: sum(REDTEAM_NIGHT, (r) => r.blocked), notBlocked: sum(REDTEAM_NIGHT, (r) => r.not_blocked ?? 0), inconclusive: sum(REDTEAM_NIGHT, (r) => r.inconclusive ?? 0) };
     expect(night.blocked + night.notBlocked + night.inconclusive).toBe(night.attempts);

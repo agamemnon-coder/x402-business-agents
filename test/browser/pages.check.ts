@@ -639,7 +639,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // /claude: 195 since the jury panel of 12 Nov (measured, not asserted: four figures with their records).
       // /claude: 225 since the merge of 12 Nov, the budget of test/site-v4.test.ts, for the hostile-model eval's line beside
       // the measured block; 240 with the measured block's line on the zero-trust report (the budget of test/site-v4.test.ts).
-      const budget = path === "/airwallex" ? 415 /* +41, jury check 12 Nov: three tiles behind flags (test/site-v4.test.ts) */ : path === "/visa" ? 710 : path === "/metal" ? (tokenizeRun() ? 375 : 325) /* +50, 12 Nov wire-in: "Face ID signs on chain" (test/site-v4.test.ts) */ : path === "/claude" ? 240 : 150;
+      const budget = path === "/airwallex" ? 415 /* +41, jury check 12 Nov: three tiles behind flags (test/site-v4.test.ts) */ : path === "/visa" ? 710 : path === "/metal" ? (tokenizeRun() ? 380 : 330) /* +50, 12 Nov wire-in: "Face ID signs on chain" (test/site-v4.test.ts) */ : path === "/claude" ? 240 : 150;
       if (words > budget + 26) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       // Each page is labelled with the run it shows: the main run; /visa with the Airi run's own label (the main run's
       // label is inside its closed TAP fold, with the main run's TAP-signed buy).
@@ -881,7 +881,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const stripWords = (await page.locator("footer .builton").innerText().catch(() => "")).split(/\s+/).filter((x) => /\w/.test(x)).length;
       const words = (await page.evaluate(() => document.body.innerText)).split(/\s+/).filter((x) => /\w/.test(x)).length - stripWords;
       // 375 since the 12 Nov wire-in ("Face ID signs on chain", +50; test/site-v4.test.ts).
-      if (words > 375 + 26) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 375 plus the frame`);
+      if (words > 380 + 26) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 380 plus the frame`);
       const block = page.locator("#invoice-token");
       const sight = await block.innerText().catch(() => "");
       if (!/^Invoice token \(prototype\)\s+\d{1,2} \w+, a separate Metal testnet run\. An invoice approved with a labelled test passkey(?: on \d{1,2} \w+)? became a token\. A simulated financier bought it for 2\.35 test USD; the debtor paid its holder 2\.40\. Face value divided by 100\.\s+Chain record verified\s+7 transactions$/.test(sight.trim())) fail(`/metal with an invoice-token record ${tag}: the block is not the title, one sentence, the badge and a closed fold (${JSON.stringify(sight)})`);

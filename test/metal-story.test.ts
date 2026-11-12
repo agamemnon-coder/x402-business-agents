@@ -175,7 +175,8 @@ describe("the payments, the refusal and the replace", () => {
     const links = hrefs(top);
     expect(links.length).toBeGreaterThanOrEqual(10);
     for (const h of links) {
-      if ([`${REPO_BLOB}${MAIN_RUN_CHECK}`, `${REPO_BLOB}docs/runs/2026-11-12-metal-inspector.md`].includes(h)) continue;
+      // 12 Nov (jury check): "Since 12 Nov it does" leads to the Face ID on chain section on this page.
+      if ([`${REPO_BLOB}${MAIN_RUN_CHECK}`, `${REPO_BLOB}docs/runs/2026-11-12-metal-inspector.md`, "#faceid-onchain"].includes(h)) continue;
       const l = explorerLink(h);
       expect(l, h).not.toBeNull();
       expect(raw.includes(l!.id) || traceRaw.includes(l!.id), h).toBe(true);

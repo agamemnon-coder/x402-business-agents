@@ -257,7 +257,7 @@ describe("/metal: the invoice-token block, only with a run record", () => {
     if (!tokenizeRunFile()) { expect(tokenizeRun()).toBeNull(); expect(METAL_PAGE).toBe(without()); }
     else expect(METAL_PAGE).toBe(metalPage(run, tokenizeRun()));
     // 275 without the block since the jury panel of 12 Nov (the four mandates in one table; test/site-v4.test.ts). +50, 12 Nov wire-in: "Face ID signs on chain".
-    expect(visibleWords(without())).toBeLessThanOrEqual(325);
+    expect(visibleWords(without())).toBeLessThanOrEqual(330); // +5, jury check 12 Nov: "Since 12 Nov it does"
   });
 
   it("with a record it shows one short block: the title, one sentence from the record, the verify badge, and the transactions folded", () => {
@@ -273,11 +273,11 @@ describe("/metal: the invoice-token block, only with a run record", () => {
     // Short: at most 50 words in sight, and the page within its budget with the block (325; 275 without, since the jury
     // panel of 12 Nov; +50 each, 12 Nov wire-in: "Face ID signs on chain", 49 words as built).
     expect(visibleWords(html) - visibleWords(without())).toBeLessThanOrEqual(50);
-    expect(visibleWords(html)).toBeLessThanOrEqual(375);
+    expect(visibleWords(html)).toBeLessThanOrEqual(380);
     // The longest form of the block (a person's approval on an earlier day, named) stays within both budgets too.
     const longest = metalPage(run, { file: FILE, rec: person() });
     expect(visibleWords(longest) - visibleWords(without())).toBeLessThanOrEqual(50);
-    expect(visibleWords(longest)).toBeLessThanOrEqual(375);
+    expect(visibleWords(longest)).toBeLessThanOrEqual(380);
     // Every label a public mention of the run carries.
     const sight = textOf(block.replace(/<details[\s\S]*<\/details>/, ""));
     for (const label of [/\(prototype\)/, /Metal testnet/, /simulated financier/, /Face value divided by 100/, /test USD/, /a separate Metal testnet run/]) expect(sight).toMatch(label);
