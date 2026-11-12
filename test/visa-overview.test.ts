@@ -2,7 +2,7 @@
 // hackathon). Held here, on the built page and against the raw run records:
 //   - the title and the first heading name Visa Intelligent Commerce via Airi; a visible line gives the basis for
 //     calling it that, with its date, channel and source ("as reported by the builder");
-//   - one line reads "Intelligent Commerce Connect: access requested, not granted yet; not used in this entry", and no
+//   - one line reads "We have requested Visa Intelligent Commerce Connect access; it is not used here", and no
 //     other claim about it exists on the site or in the README;
 //   - one summary of the paid run: purchase B paid after the CFO's Face ID, scripted with no Claude call; the day's
 //     attempts ("1 of 4 paid") and its failures in a fold;
@@ -11,6 +11,7 @@
 //   - Home and /proof no longer carry "Extra, not an award entry"; "Visa (VIC via Airi)" is in Home's "Built on"; /judge
 //     links the Visa run; the 7 November run is called scripted wherever it appears.
 // The page build fails when any of it is lost (assertVicFirst).
+import { vic3Run } from "../src/redesign/vic3Run.js";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import * as brand from "../src/config/brand.js";
@@ -19,7 +20,7 @@ import { buildPages } from "../src/relay/assets.js";
 import { AIRI_RUN_FILE, AIRI_SCRIPTED, AIRI_SUMMARY, airiAsker, airiRun, airiSummaryLine } from "../src/redesign/airiRun.js";
 import { homePage } from "../src/redesign/home.js";
 import { judgePage, judgeSteps } from "../src/redesign/judge.js";
-import { ICC_LINE, VISA_ENTRY_LINE, VISA_H1, VISA_LEAD, VISA_TAP_HEADING, VISA_TITLE, airwallexPage, assertVicFirst, visaPage, visaRunLabel } from "../src/redesign/partners.js";
+import { ICC_LINE, VISA_ENTRY_LINE, VISA_H1, VISA_LEAD, VISA_TAP_HEADING, VISA_TITLE, airwallexPage, assertVicFirst, visaLatestLabel, visaPage, visaRunLabel } from "../src/redesign/partners.js";
 import { proofPage } from "../src/redesign/proof.js";
 import { loadRecord, ownTap, tapRun } from "../src/redesign/run.js";
 import { MAIN_RUN_REAL, esc } from "../src/redesign/ui.js";
@@ -92,8 +93,9 @@ describe("/visa: one summary of the paid run", () => {
     expect(c.kind).toBe("tap");
     expect(c.stats).toEqual([
       { v: `${ok}/${steps.length}`, l: "signatures accepted" },
-      { v: `€${yes.airwallex.confirmed_by_get.amount}`, l: "approved" },
-      { v: `€${no.airwallex.confirmed_by_get.amount}`, l: `declined (${no.airwallex.failure_reason})` },
+      // "EUR 45.00" everywhere (the review at 390 px, 12 Nov), never "€".
+      { v: `EUR ${yes.airwallex.confirmed_by_get.amount}`, l: "approved" },
+      { v: `EUR ${no.airwallex.confirmed_by_get.amount}`, l: `declined (${no.airwallex.failure_reason})` },
     ]);
     expect(c.ids).toEqual([["Visa reference verifier", `commit ${tap.reference.commit.slice(0, 7)}`]]);
     expect(c.label).toMatch(/simulated/);
@@ -142,7 +144,9 @@ describe("/visa is one Visa Intelligent Commerce story; TAP folded away", () => 
     expect(visaRunLabel(airiRun()!)).toBe(`7 Nov · ${String(rec.label).split(", ").join(" · ")}`);
     expect(rec.started_at.slice(0, 10)).toBe("2026-11-07");
     const head = main.slice(0, main.indexOf("</h1>"));
-    expect(text(head)).toContain(visaRunLabel(airiRun()!));
+    // Since the review at 390 px (12 Nov) the latest live run leads, so the label beside the heading is its date, marked latest.
+    expect(text(head)).toContain(visaLatestLabel(airiRun()!, vic3Run()!.started_at));
+    expect(visaLatestLabel(airiRun()!, vic3Run()!.started_at)).toBe(`12 Nov (latest) · ${String(rec.label).split(", ").join(" · ")}`);
     // 12 Nov (wire-in): the mark is Visa's official file (docs/evidence/logo-permissions.md), its name in alt.
     expect(head).toContain('<span class="logo"><img src="assets/logo-visa.png" alt="Visa" width="46" height="15"></span>');
     // The order: heading, the story, the basis, the drawing, the five facts, purchase B's table, the summary, the run,
@@ -186,7 +190,7 @@ describe("/visa is one Visa Intelligent Commerce story; TAP folded away", () => 
   });
 
   it("says exactly where Intelligent Commerce Connect stands, once, and nowhere else on the site or in the README", () => {
-    expect(VISA_ICC_LINE).toBe("Intelligent Commerce Connect: access requested, not granted yet; not used in this entry.");
+    expect(VISA_ICC_LINE).toBe("We have requested Visa Intelligent Commerce Connect access; it is not used here.");
     expect(text(unfolded(main))).toContain(VISA_ICC_LINE);
     expect(text(html).split("Intelligent Commerce Connect")).toHaveLength(2);
     for (const [name, page] of Object.entries(buildPages() as unknown as Record<string, unknown>)) {

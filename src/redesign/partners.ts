@@ -224,6 +224,10 @@ export const VISA_MORE_ID = "vic-more";
 const dayShort = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
 /** The label beside /visa's heading, from the Airi run's record: its date and its own label, "7 Nov · Airwallex sandbox · test card · test money". */
 export const visaRunLabel = (rec: AiriRunRecord) => `${dayShort(rec.started_at)} · ${rec.label.split(", ").join(" · ")}`;
+/** The label once a later live run leads the page (the review at 390 px, 12 Nov): its date, marked latest, in the same environment's words. */
+export const visaLatestLabel = (rec: AiriRunRecord, latestIso: string) => `${dayShort(latestIso)} (latest) · ${rec.label.split(", ").join(" · ")}`;
+/** The fold that holds the first live run's summary card and full block, under the latest run (12 Nov). */
+export const VISA_FIRST_RUN_ID = "visa-first-run";
 
 const plainWords = (html: string) => html.replace(/<svg\b[\s\S]*?<\/svg\b[^>]*>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
 const TAP_WORDS = /\bTAP\b|Trusted Agent Protocol/;
@@ -323,15 +327,17 @@ export function visaPage(run: AgentRun = agentRun()): string {
   const vic3 = vic3Run();
   const more = [vicAttemptsHtml(rec), vicNetworkBlock(rec), vicRulesBlock(rec, vic2Run()), cardDataHtml()].join("");
   const body = `<main class="pp"><div class="wrap">
-  <div class="phd">${LOGO.visa}<span class="pill run">${icon("database", 14)}${esc(visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
+  <div class="phd">${LOGO.visa}<span class="pill run">${icon("database", 14)}${esc(vic3 ? visaLatestLabel(rec, vic3.started_at) : visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
   <p class="vintro">${esc(VISA_LEAD)}</p>
   <p class="vbasis">${esc(VISA_ENTRY_LINE)}${iccLine ? `<br>${iccLine}` : ""}</p>${icc}
   ${vic3 ? `<div class="awrb">${vic3RunHtml(vic3, { first: dayShort(rec.started_at) })}</div>` : ""}
   ${vicFlowBlock(rec, { h: "h2" })}
   ${vicFactsHtml(vicFacts(rec))}
   ${vicCompareHtml(vicCompare(rec, vicNetworkRecord()))}
+  ${vic3 ? `<details class="fold" id="${VISA_FIRST_RUN_ID}"><summary>${esc(`The first live run (${dayShort(rec.started_at)}): every purchase, check and id`)}</summary>
   ${visaOverviewBlock(rec)}
-  <div class="awrb">${airiRunBlock(rec, { h: "h2" })}</div>
+  <div class="awrb">${airiRunBlock(rec, { h: "h2" })}</div></details>` : `${visaOverviewBlock(rec)}
+  <div class="awrb">${airiRunBlock(rec, { h: "h2" })}</div>`}
   <div class="awrb">${vic2RunBlock(undefined, { fold: false })}</div>
   ${more ? `<div class="awrb"><div class="card" id="${VISA_MORE_ID}">${more}</div></div>` : ""}
   <a class="open" href="proof#${AIRI_RUN_ID}">All the proof ${icon("arrow-right", 15)}</a>

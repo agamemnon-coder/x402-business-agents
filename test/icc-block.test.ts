@@ -10,7 +10,7 @@ import { ICC_RUN_EXTRA_WORDS, ICC_STATUS, iccBlock, iccRecordIn } from "../src/r
 import { visaPage } from "../src/redesign/partners.js";
 import { esc } from "../src/redesign/ui.js";
 
-const STATUS = "Intelligent Commerce Connect: access requested, not granted yet; not used in this entry.";
+const STATUS = "We have requested Visa Intelligent Commerce Connect access; it is not used here.";
 const HASH = "c7".repeat(32);
 /** A made-up instruction ID, built from parts. Not a real one. */
 const INSTRUCTION = ["7", "QXR4K2"].join("-");

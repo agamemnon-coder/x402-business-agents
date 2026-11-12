@@ -51,7 +51,7 @@ export function tapCard(tap: Tap): RunCard {
   const approved = tap.steps.filter((s) => s.approved), declined = tap.steps.filter((s) => !s.approved);
   return {
     kind: "tap", tag: `Visa TAP · ${day(tap.ranAt)}`, title: "The agent signs its checkout",
-    stats: [{ v: `${ok}/${tap.steps.length}`, l: "signatures accepted" }, ...(approved[0] ? [{ v: `€${approved[0].amount}`, l: "approved" }] : []), ...(declined[0] ? [{ v: `€${declined[0].amount}`, l: `declined (${declined[0].reason ?? "by Airwallex"})` }] : [])],
+    stats: [{ v: `${ok}/${tap.steps.length}`, l: "signatures accepted" }, ...(approved[0] ? [{ v: `EUR ${approved[0].amount}`, l: "approved" }] : []), ...(declined[0] ? [{ v: `EUR ${declined[0].amount}`, l: `declined (${declined[0].reason ?? "by Airwallex"})` }] : [])],
     ids: [["Visa reference verifier", `commit ${tap.commit}`]],
     label: "Our merchant (simulated) · Airwallex sandbox authorisations",
   };

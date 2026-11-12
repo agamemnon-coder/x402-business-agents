@@ -14,7 +14,7 @@ import { REPO_BLOB } from "./metalStory.js";
 import { esc, icon } from "./ui.js";
 
 /** The one status sentence the stream allows while no ICC run record exists, word for word. */
-export const ICC_STATUS = "Intelligent Commerce Connect: access requested, not granted yet; not used in this entry.";
+export const ICC_STATUS = "We have requested Visa Intelligent Commerce Connect access; it is not used here.";
 /** Where `npm run icc -- record` writes the run record. */
 export const ICC_RUNS_DIR = fileURLToPath(new URL("../../docs/runs/", import.meta.url));
 export const ICC_RUN_ID = "icc-run";

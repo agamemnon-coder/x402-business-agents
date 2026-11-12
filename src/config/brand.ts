@@ -42,7 +42,7 @@ export const VISA_BUILT_ON = "Visa (VIC via Airi)";
  * Intelligent Commerce Connect, exactly as it stands (the owner, 12 Nov: access is requested, no answer has come).
  * Said once, on /visa; no other claim about it anywhere on the site or in the README (test/visa-overview.test.ts).
  */
-export const VISA_ICC_LINE = "Intelligent Commerce Connect: access requested, not granted yet; not used in this entry.";
+export const VISA_ICC_LINE = "We have requested Visa Intelligent Commerce Connect access; it is not used here.";
 /**
  * The Visa claim in plain words (jury review, 4 Nov), said once per surface (/visa, the README, the form, the deck);
  * nothing stronger anywhere. "Public reference verifier", never "open source": Visa's reference has no open-source

@@ -48,10 +48,11 @@ const codeOf = (p: Vic3Purchase) => p.outcome?.code ?? (p.outcome?.refusal ? p.o
 /** The finding of the negative test, word for word from one of two templates, from the sandbox's answers. */
 export function vic3Finding(r: Vic3Record): string {
   const fs = r.purchases.filter((p) => p.negative_test);
-  const what = `${fs.map((p) => p.step).join(", ")}, a credential reused for another amount`;
+  const steps = fs.map((p) => p.step).join(", ");
   const refused = fs.map((p) => p.negative_test!.airwallex).filter((a) => a && a.outcome && a.outcome !== "SUCCEEDED");
-  if (refused.length) return `${what}: the Airi/Airwallex sandbox refused it: ${refused.map((a) => a!.code ?? a!.outcome).join(", ")}.`;
-  return `${what}: the Airi/Airwallex sandbox did not refuse it; here only Purser enforces the amount.`;
+  const tried = `We also tried reusing a credential, for a different amount and a second time (${steps}).`;
+  if (refused.length) return `${tried} The sandbox refused it: ${refused.map((a) => a!.code ?? a!.outcome).join(", ")}.`;
+  return `${tried} The sandbox accepted ${fs.length === 2 ? "both" : "it"}, so in this test only Purser's check stops it.`;
 }
 
 /** What the record says, counted: the paid purchases, the refusals with their codes and calls, who chose the rail. */
@@ -87,17 +88,20 @@ export function vic3RunHtml(r: Vic3Record | null = vic3Run(), o: { first?: strin
   const refusedLine = [s.byPurser.length ? `${s.byPurser.map((p) => p.step).join(", ")} refused by Purser with 0 calls` : "", ...s.other.map((p) => `${p.step}: ${codeOf(p) === "PURSER_NO_TAP" ? "the cardholder did not tap in time; nothing was charged" : `refused (${codeOf(p)})`}`)].filter(Boolean).join(". ");
   const rows = r.purchases.map((p) => `<li><b>${esc(p.step)}</b> · ${esc(p.request ? `${p.request.currency} ${p.request.amount}` : "")} · ${esc(outcomeText(p))}${p.rail_choice?.request_id ? ` · ${esc(`rail chosen by ${p.rail_choice.by}, request ${p.rail_choice.request_id}`)}` : ""}${p.mandate_id ? ` · ${esc(`mandate ${p.mandate_id}`)}` : ""}${p.payment_intent_id ? ` · ${esc(`PaymentIntent ${p.payment_intent_id}`)}` : ""}${p.read_back.mandate ? ` · ${esc(`mandate read-back ${eq(p.read_back.mandate)}`)}` : ""}${p.read_back.payment_intent ? ` · ${esc(`PaymentIntent read-back ${eq(p.read_back.payment_intent)}`)}` : ""} · ${esc(`calls: Anthropic ${p.calls.anthropic}, Airwallex ${p.calls.airwallex}, Airi ${p.calls.airi}`)}</li>`).join("");
   const record = `${REPO_BLOB}${VIC3_RUN_FILE}`;
+  // The purchases whose rail Claude chose (the others went straight to Purser's rules), from the record.
+  const chosen = r.purchases.filter((p) => p.rail_choice?.by === "claude" && p.rail_choice.chosen).map((p) => p.step);
   // The owner, 12 Nov ("less text, numbers as count-up stats"): a short heading, four figures, the finding in one line;
   // the rail line, the paid and refused lines and every purchase with its ids in the fold.
   const equal = lead ? [lead.read_back.mandate, lead.read_back.payment_intent].filter((x) => x?.equal).length : 0;
   const stats: Stat[] = [
     { n: s.paid, suf: ` of ${s.of}`, label: "purchases paid", icon: "credit-card", tone: "ok" },
-    ...(lead?.request ? [{ n: Number(lead.request.amount), dec: 2, pre: `${lead.request.currency} `, label: `purchase ${lead.step}, after the CFO's Face ID`, icon: "scan-face" }] : []),
-    ...(lead ? [{ n: equal, suf: " of 2", label: "signed hash read back equal (Airi, Airwallex)", icon: "file-check", tone: "ok" as const }] : []),
+    ...(lead?.request ? [{ n: Number(lead.request.amount), dec: 2, pre: `${lead.request.currency} `, label: `purchase ${lead.step}, paid after Face ID`, icon: "scan-face" }] : []),
+    ...(lead ? [{ n: equal, suf: " of 2", label: "hash matched at Airi and Airwallex", icon: "file-check", tone: "ok" as const }] : []),
     ...(s.byPurser.length ? [{ n: s.byPurser.length, label: "refused by Purser, 0 calls", icon: "ban", tone: "bad" as const }] : []),
   ];
   return `<div class="card airi" id="${VIC3_RUN_ID}"><h2>${esc(`Latest live run, ${s.date}`)}</h2>
 ${statsHtml(stats)}
+${chosen.length ? `<p class="airi-finding">${esc(`Claude picked the Airi rail for each purchase it was asked about (${chosen.join(", ")}); Purser's code enforced the limit.`)}</p>` : ""}
 <p class="airi-finding">${esc(s.finding)}</p>
 <details class="fold" id="${VIC3_PURCHASES_ID}"><summary>${esc("Each purchase, with its ids")}</summary>
 <p class="airi-label">${esc(`Rail chosen by ${s.model ?? "Claude"} from ${s.menu}`)}${s.requestId ? ` · <a class="pf" href="${esc(record)}" target="_blank" rel="noopener">${esc(`request ${short(s.requestId)}`)} ↗</a>` : ""}</p>
