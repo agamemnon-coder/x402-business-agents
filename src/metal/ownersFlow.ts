@@ -278,6 +278,13 @@ async function laneNonce(d: OwnersWorld, account: Address): Promise<bigint> {
   return (lane << 64n) | ((await d.chain.read({ address: account, abi: accountAbi, functionName: "nonces", args: [account, lane] })) as bigint);
 }
 
+/**
+ * Where both owners sign: the proposal's approval page on the relay. Only the path is said here: the relay's address is a
+ * setting, and the runner (npm run relay) is what prints it.
+ */
+const whereToSign = (id: string, terms: OwnersExecuteTerms) =>
+  `                 both passkeys sign the account's Execute digest ${terms.onchain_digest.slice(0, 18)}… within ${SIGN_MINUTES} minutes: on the phone, open the relay's address followed by /approve/${id} (npm run relay prints the address)`;
+
 /** Files the owners_execute for one account call: fifteen minutes to sign, the deadline two minutes later. Terms the runner would refuse are not filed. */
 function file(d: OwnersWorld, id: string, account: Address, signers: Hex[], call: { to: Address; data: Hex }, action: OwnersExecuteTerms["action"], nonce: bigint): { proposal: ProposalRow; terms: OwnersExecuteTerms } {
   const expires = new Date(d.now().getTime() + SIGN_MINUTES * 60_000);
@@ -317,6 +324,7 @@ export async function propose(d: OwnersWorld): Promise<{ proposal: ProposalRow; 
     what: "bind", agent: MANDATE.agent, cap: fromCents(MANDATE.capCents), budget: fromCents(MANDATE.budgetCents), payee: keys.payee, payee_name: MANDATE.payee.name, mandate: ingested.reference,
   }, nonce);
   d.say(`PROPOSED         ${id}: bind the sourcing mandate on ${made.account}, cap ${fromCents(MANDATE.capCents)}, budget ${fromCents(MANDATE.budgetCents)}, ${MANDATE.payee.name} only`);
+  d.say(whereToSign(id, out.terms));
   return out;
 }
 
@@ -333,6 +341,7 @@ export async function proposeRevoke(d: OwnersWorld): Promise<{ proposal: Proposa
   // The same words as the bind, so the phone shows which mandate goes: its agent, its limits and its payee.
   const out = file(d, id, made.account, bind.terms.owners, call, { ...bind.terms.action, what: "revoke" }, await laneNonce(d, made.account));
   d.say(`PROPOSED         ${id}: revoke the sourcing mandate ${mandate.slice(0, 18)}… that ${bind.id} bound on ${made.account}`);
+  d.say(whereToSign(id, out.terms));
   return out;
 }
 

@@ -273,6 +273,7 @@ describe("owners propose", () => {
     await world();
     const { account } = await setup(w.d);
     const from = readOwnersCalls(w.log).length;
+    const told = w.said.length;
     const { proposal, terms } = await propose(w.again());
     expect(proposal).toMatchObject({ kind: "owners_execute", status: "PENDING_APPROVAL" });
     expect(() => approvalHashOf(proposal)).not.toThrow();
@@ -286,6 +287,9 @@ describe("owners propose", () => {
     // One read (the account's nonce lane); the credential is made offline and is no call.
     expect(w.calls(from)).toEqual(["propose:eth_call"]);
     expect(w.cliRuns).toEqual([]);
+    // It says where both owners sign: this proposal's approval page, under the address the runner prints (no address here: it is a setting).
+    expect(w.said.at(-1)).toMatch(new RegExp(`both passkeys sign the account's Execute digest ${terms.onchain_digest.slice(0, 18)}… within 15 minutes: .*/approve/${proposal.proposal_id} \\(npm run relay prints the address\\)$`));
+    expect(w.said.slice(told).join("\n")).not.toMatch(/https?:\/\//);
   });
 
   it("stopped before the proposal was filed, it leaves nothing that blocks the next propose", async () => {
@@ -332,6 +336,7 @@ describe("owners propose-revoke", () => {
     expect(decodeFunctionData({ abi: mandateBindingAbi, data: terms.calls[0]!.call_data })).toMatchObject({ functionName: "revoke", args: [b.terms.action.mandate] });
     expect(terms.calls[0]!.target).toBe(b.account);
     expect(w.calls(from)).toEqual(["propose-revoke:eth_call"]);
+    expect(w.said.at(-1)).toMatch(new RegExp(`Execute digest ${terms.onchain_digest.slice(0, 18)}… within 15 minutes: .*/approve/${proposal.proposal_id} \\(npm run relay prints the address\\)$`));
     // One revoke at a time; once both passkeys signed it and the account ran it, there is nothing left to revoke.
     await expect(proposeRevoke(w.again())).rejects.toThrow(new RegExp(`${proposal.proposal_id} already asks to revoke`));
     await w.signBoth(proposal.proposal_id);
