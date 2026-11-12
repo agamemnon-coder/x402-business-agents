@@ -204,7 +204,8 @@ describe("the site after v4", () => {
   it("gives Proof three partner cards (no Visa TAP on it) and says the fixed lines word for word", () => {
     const proof = pages.proof!;
     // Three partner cards since 6 Nov (jury review, #7): Visa TAP is a footer link to /visa, not a card.
-    expect((proof.match(/<article class="pcard card"/g) ?? []).length).toBe(3);
+    // 12 Nov (wire-in, owner): five cards, Visa (VIC via Airi, vic-3) and T:0 added; still no Visa TAP card.
+    expect((proof.match(/<article class="pcard card"/g) ?? []).length).toBe(5);
     expect(proof).not.toMatch(/<span class="logo txt">Visa TAP<\/span>/);
     // The Visa paragraph is said once, on /visa (jury review, 4 Nov); TAP's status too (Visa, 5 Nov: not eligible Visa
     // tooling), both inside /visa's one closed TAP fold. Proof's footer link to it went on 12 Nov (jury panel).

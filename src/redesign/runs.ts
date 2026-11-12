@@ -445,7 +445,7 @@ ${FILTER_CSS}
   .runsp .ln { font-size: 15px; max-width: 80ch; }
 }`;
 
-const FTP_CSS = `.runsp details.ftp { margin: 4px 0 14px; } .runsp details.ftp summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; font-weight: 650; }
+const FTP_CSS = `.runsp details.ftp { margin: 4px 0 14px; } .runsp details.ftp summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; font-weight: 650; font-size: 14.5px; }
 .runsp details.ftp summary::-webkit-details-marker { display: none; } .runsp details.ftp summary .i:first-child { color: var(--ok); flex: none; }
 .runsp details.ftp summary .i:last-child { color: var(--muted); flex: none; } .runsp details.ftp[open] summary .i:last-child { transform: rotate(180deg); }
 .runsp details.ftp ul { margin: 6px 0 0; padding-left: 24px; font-size: 14px; } .runsp details.ftp .mo-count { font-variant-numeric: tabular-nums; }`;
@@ -489,7 +489,8 @@ const FILTER_JS = `(function () {
 export function faceIdToPaid(t: RunTimes = runTimes()): string {
   if (!t.n || t.medianMs === null || t.minMs === null || t.maxMs === null) return "";
   const n = (ms: number) => `<span class="mo-count">${esc(secs(ms))}</span>`;
-  const line = `Face ID to paid: median ${n(t.medianMs)}${t.n > 1 ? `, from ${n(t.minMs)} to ${n(t.maxMs)}` : ""}, over ${esc(pl(t.n, "payout"))}`;
+  // One line on a phone (the frame's height, test/browser/pages.check.ts): the median, the spread, the count.
+  const line = `Face ID to paid: median ${n(t.medianMs)}${t.n > 1 ? ` (${n(t.minMs)}–${n(t.maxMs)})` : ""}, ${esc(pl(t.n, "payout"))}`;
   const rows = t.payouts.map((p) => `<li>${esc(`${p.proposal}: ${secs(p.ms)} (Face ID ${p.approvedAt.slice(11, 19)}, PAID ${p.paidAt.slice(11, 19)} UTC, ${p.approvedAt.slice(0, 10)})`)} <a class="f" href="${esc(blob(p.record))}" target="_blank" rel="noopener">Log ↗</a></li>`).join("");
   const out = t.leftOut.map((l) => `<li class="q">${esc(`Left out: ${l.record.replace(/^docs\/runs\//, "")}, ${l.why}.`)}</li>`).join("");
   return `<details class="ftp"><summary>${icon("scan-face", 16)}<span>${line}</span>${icon("chevron-down", 16)}</summary><ul>${rows}${out}</ul></details>`;

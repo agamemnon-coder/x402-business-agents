@@ -133,7 +133,7 @@ export const VERIFY_CSS = `
 .vfl { margin: 8px 0; display: grid; gap: 8px; }
 .vf { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 14px; line-height: 1.45; min-width: 0; }
 .vf .vfw { flex: 1 1 220px; min-width: 0; }
-.vf .vfb { font: 650 13px/1 Inter, system-ui, sans-serif; padding: 7px 12px; min-height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+.vf .vfb { font: 650 13px/1 Inter, system-ui, sans-serif; padding: 7px 14px; min-height: 44px; min-width: 44px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
 .vf .vfb:hover { border-color: var(--accent); }
 .vf .vfb:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .vf .vfo { font-weight: 650; } .vf .vfo.ok { color: var(--ok); } .vf .vfo.bad { color: var(--bad); }

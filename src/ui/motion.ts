@@ -45,7 +45,7 @@ export const SITE_MOTION_CSS = `
     a.card:hover, .card.lift:hover, .nums .card:hover, .pcard:hover { transform: translateY(-2px); box-shadow: 0 6px 18px color-mix(in srgb, var(--text) 10%, transparent); }
   }
   @supports (animation-timeline: view()) {
-    main section, main .nums, main .reveal, main details.deep, main ol.tl > li { animation: mo-lift linear both; animation-timeline: view(); animation-range: entry 0% entry 60%; }
+    main .reveal, main .pvis, main .moc { animation: mo-lift linear both; animation-timeline: view(); animation-range: entry 0% entry 60%; }
   }
 }
 @keyframes mo-pulse { 0% { transform: scale(1); opacity: .55; } 100% { transform: scale(2.6); opacity: 0; } }

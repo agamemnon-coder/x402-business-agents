@@ -202,7 +202,8 @@ describe("/proof as served: each card shows its strongest claim as its one link 
     const cards = partnerCards(agentRun(), { airwallex: [], metal: leads.metal, claude: [] });
     for (const id of ["airwallex", "claude"]) expect(afterHeader(cardOf(cards, id)).startsWith('<details class="fold"><summary>Show the live proof</summary>')).toBe(true);
     expect(afterHeader(cardOf(cards, "metal")).startsWith('<ul class="lead"><li><a class="c" href="')).toBe(true);
-    expect((cards.match(/<article class="pcard card"/g) ?? []).length).toBe(3);
+    // 12 Nov (wire-in, owner): five cards, Airwallex, Visa, Metal, T:0, Claude; Visa and T:0 from their own records.
+    expect((cards.match(/<article class="pcard card"/g) ?? []).length).toBe(5);
   });
 
   it("a first claim with links of its own (each card's anchor) keeps them: it is said again in the fold, with them", () => {
@@ -402,11 +403,13 @@ function wordsOutsideFolds(page: string): number {
 describe("/proof's words in sight", () => {
   it("are fewer than before the page started with the guarantees", () => {
     // 12 Nov: 709 by the shared count before (budget 720 in test/site-v4.test.ts); 512 as built now, plus a margin of 8.
-    expect(visibleWords(html)).toBeLessThanOrEqual(520);
+    // +35, 12 Nov wire-in (owner: "T:0 and Visa are missing"): the Visa and T:0 cards, a name and one line each (553 as built).
+    expect(visibleWords(html)).toBeLessThanOrEqual(555);
     // The same count is what it says: a fold with nothing folded inside it adds only its header.
     expect(wordsOutsideFolds("<main><p>one two</p><details><summary>three</summary><p>four</p></details></main>")).toBe(3);
     expect(wordsOutsideFolds("<main><details><summary>one</summary><details><summary>two</summary>three</details>four five</details>six</main>")).toBe(2);
     // Outside every fold (a fold inside a closed line counted as closed too): 315 as built on 12 Nov, plus a margin of 8.
-    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(323);
+    // +35, 12 Nov wire-in: the Visa and T:0 cards (356 as built).
+    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(358);
   });
 });
