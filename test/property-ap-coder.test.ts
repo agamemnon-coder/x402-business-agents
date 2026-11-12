@@ -133,6 +133,9 @@ const coveringCoding = (c: CodingCase) => fc.record({
 
 // ── The promise, recomputed here ──
 
+/** Whether the regime shows the supplier in another country than the company (both known). */
+const foreign = (c: CodingCase) => c.regime.supplier_country !== "" && c.company.country !== "" && c.regime.supplier_country !== c.company.country;
+
 /** Why a returned coding does not hold to its invoice, or null. Nothing here calls the core. */
 function broken(c: CodingCase, out: EnforcedCoding): string | null {
   if (!Array.isArray(out.lines)) return "lines is no list";
@@ -175,6 +178,8 @@ function broken(c: CodingCase, out: EnforcedCoding): string | null {
     const want = code.reverse || code.rate === 0 ? 0 : rated;
     if (sum(of.map((l) => l.vat_cents)) !== BigInt(want)) return `VAT code ${name} does not reproduce the VAT of its lines`;
     if ((code.reverse || code.rate === 0) && tax !== 0n) return `VAT code ${name} charges nothing on an invoice that charges VAT`;
+    // foreign_vat: input VAT of the company's own country is never booked for a supplier the regime shows in another one.
+    if (!code.reverse && code.rate > 0 && foreign(c)) return `VAT code ${name} is the company's own input VAT, on a supplier in ${c.regime.supplier_country}`;
   }
   return null;
 }
@@ -231,6 +236,43 @@ describe("enforceCoding: for every case and every coding", () => {
       expect(out).toMatchObject({ status: "needs_review", source: "fallback", lines: [] });
       expect(typeof out.review).toBe("string");
       expect(fallbackCoding(c as never)).toMatchObject({ status: "needs_review", source: "fallback", lines: [] });
+    }), RUNS);
+  });
+});
+
+describe("a supplier in another country (foreign_vat): for every case and every coding", () => {
+  const abroad = anyCase.map((c): CodingCase => ({ ...c, regime: { ...c.regime, supplier_country: c.regime.supplier_country === "" || c.regime.supplier_country === "NL" ? "DE" : c.regime.supplier_country } }));
+  const rated = (c: CodingCase, out: EnforcedCoding) => out.lines.filter((l) => c.vatCodes.some((v) => v.code === l.vat_code && !v.reverse && v.rate > 0));
+
+  it("no rate code is ever booked, by the agent's coding or by the fallback", () => {
+    fc.assert(fc.property(abroad.chain((c) => fc.tuple(fc.constant(c), fc.oneof(coveringCoding(c), anyCoding))), ([c, coding]) => {
+      const out = enforceCoding(c, coding);
+      expect(broken(c, out)).toBeNull();
+      expect(rated(c, out)).toEqual([]);
+      expect(rated(c, fallbackCoding(c))).toEqual([]);
+      if (out.overridden_by === "foreign_vat") {
+        expect(out).toMatchObject({ source: "fallback", status: "needs_review" });
+        expect(out.lines.every((l) => l.vat_code === null)).toBe(true);
+      }
+    }), RUNS);
+  });
+
+  it("the Dutch rate that reproduces the VAT to the cent is refused for a supplier abroad, and stands for one whose country is not known", () => {
+    fc.assert(fc.property(fc.integer({ min: 100, max: 50_000_000 }), fc.constantFrom(["P21", 21] as const, ["P9", 9] as const), fc.constantFrom("DE", "BE", "US", "GB"), (net, [code, rate], country) => {
+      const tax = Math.round((net * rate) / 100);
+      const make = (supplier_country: string): CodingCase => ({
+        invoice: { id: null, vendor: "Kempen Karton BV", vat_id: "", invoice_no: "KK-1", issue_date: "", currency: "EUR", subtotal: str(net), tax: str(tax), total: str(net + tax), lines: [{ line_no: 1, description: "The whole invoice", net: str(net), vat_rate: null }], text: "" },
+        supplier: { name: "Kempen Karton BV", country: supplier_country, vat_id: "" }, company: { name: "Northwind Outdoor", country: "NL" },
+        chart: realChart, vatCodes: realCodes, costCentres: realCentres, history: [],
+        regime: { reverse_charge: "none", states_reverse_charge: false, charges_vat: true, supplier_country }, engineDefault: { account: "6900", rule: "", cost_centre: "CC300" }, today: "2026-11-12",
+      });
+      const coding = { lines: [{ line_no: 1, account: "6200", vat_code: code, cost_centre: null }], reason: "Booked as other supplier invoices, as the chart says." };
+      const out = enforceCoding(make(country), coding);
+      expect(out).toMatchObject({ source: "fallback", overridden_by: "foreign_vat", status: "needs_review", vat_cents: tax, total_cents: net + tax });
+      expect(out.lines).toEqual([{ line_no: 1, account: "6900", vat_code: null, cost_centre: "CC300", net_cents: net, vat_cents: tax }]);
+      expect(out.review).toContain(country);
+      expect(broken(make(country), out)).toBeNull();
+      expect(enforceCoding(make(""), coding)).toMatchObject({ source: "claude", status: "coded", overridden_by: null });
     }), RUNS);
   });
 });

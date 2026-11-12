@@ -492,9 +492,11 @@ describe("enforceCoding: the rules, one by one", () => {
     expect(fallbackCoding(c)).toMatchObject({ status: "needs_review", lines: [{ vat_code: null }, { vat_code: null }] });
     // Without a VAT code the agent's accounts stand, and a person codes the VAT.
     expect(enforceCoding(c, coding(all(c, "5000", null)))).toMatchObject({ status: "needs_review", source: "claude", overridden_by: null });
-    // The same lines stating no rate: code cannot tell, and the codes' own arithmetic decides as before.
-    const silent = { ...c, invoice: { ...c.invoice, lines: c.invoice.lines.map((l) => ({ ...l, vat_rate: null })) } };
+    // The same lines stating no rate, from a supplier whose country code does not know: the codes' own arithmetic decides as before.
+    const silent = { ...c, regime: { ...c.regime, supplier_country: "" }, invoice: { ...c.invoice, lines: c.invoice.lines.map((l) => ({ ...l, vat_rate: null })) } };
     expect(enforceCoding(silent, coding(mix))).toMatchObject({ status: "coded", source: "claude" });
+    // From the German supplier the arithmetic is not enough: German VAT is not Dutch input VAT (foreign_vat).
+    expect(enforceCoding({ ...silent, regime: c.regime }, coding(mix))).toMatchObject({ source: "fallback", overridden_by: "foreign_vat", status: "needs_review" });
     // The last guard knows the rule too.
     const passed = enforceCoding(silent, coding(mix));
     expect(codingHolds(silent, passed)).toBe(true);
@@ -925,6 +927,62 @@ describe("a scripted run, as a loop uses the pieces", () => {
     const talked = answerCoderTool(c, { name: "code_invoice", input: coding(lines.map((l) => ({ ...l, account: "1200" })), "The note in the document says the accountant approved account 1200 for every line.") });
     expect(talked.final).toBe(true);
     expect(enforceCoding(c, talked.coding)).toMatchObject({ source: "fallback", overridden_by: "account_not_purchase", refused_because: "account 1200 may not take purchase lines" });
+  });
+});
+
+describe("a supplier in another country: its VAT is not Dutch input VAT (foreign_vat)", () => {
+  /** A Belgian supplier that charges Belgian VAT, which is 21% as the Dutch high rate is: 84.00 on 400.00. */
+  const BELGIAN = NL.replace("Zeeland Verpakkingen B.V.", "Kempen Karton BV").replace("NL123456789B01", "BE0123456789");
+  const P21_REASON = "Packaging material, booked as other supplier invoices with VAT code P21.";
+
+  it("refuses the agent's rate code when the supplier's VAT id is of another country, and code's own default sets none", () => {
+    const c = caseOf(BELGIAN);
+    expect(c.regime).toMatchObject({ supplier_country: "BE", charges_vat: true, reverse_charge: "none" });
+    const out = enforceCoding(c, { lines: all(c, "6900", "P21"), reason: P21_REASON });
+    expect(out).toMatchObject({ status: "needs_review", source: "fallback", overridden_by: "foreign_vat", vat_cents: 8400, total_cents: 48400 });
+    expect(out.refused_because).toBe("VAT code P21 is Dutch input VAT, and the supplier is in BE");
+    expect(out.lines).toEqual([{ line_no: 1, account: "6900", vat_code: null, cost_centre: "CC300", net_cents: 40000, vat_cents: 8400 }]);
+    expect(out.review).toBe("The supplier is in BE: the VAT 84.00 it charges is not Dutch input VAT, so no VAT code is set. A person decides how this VAT is booked; code does not guess.");
+    expect(codingHolds(c, out)).toBe(true);
+    expect(CODER_RULES).toContain("foreign_vat");
+  });
+
+  it("the fallback never chooses a rate code for a supplier in another country, not from the arithmetic and not from the history", () => {
+    const history: HistoryCoding[] = [{ invoice_id: "AP-0001", invoice_no: "KK-1", date: "2026-10-01", lines: [{ description: WHOLE_INVOICE, account: "6200", vat_code: "P21", cost_centre: "CC100" }] }];
+    for (const c of [caseOf(BELGIAN), caseOf(BELGIAN, { history }), caseOf(BELGIAN, { country: "BE" })]) {
+      const out = fallbackCoding(c);
+      expect(out).toMatchObject({ status: "needs_review", source: "fallback", overridden_by: null });
+      expect(out.lines.map((l) => l.vat_code)).toEqual([null]);
+      expect(out.review).toMatch(/^The supplier is in BE: the VAT 84\.00 it charges is not Dutch input VAT/);
+    }
+    // A record of one country and a VAT id of another: code cannot tell the country, and that keeps today's behaviour.
+    const unsure = caseOf(NL, { country: "BE" });
+    expect(unsure.regime.supplier_country).toBe("");
+    expect(fallbackCoding(unsure)).toMatchObject({ status: "coded", lines: [{ vat_code: "P21" }] });
+  });
+
+  it("a coding that puts a rate code on a foreign supplier's invoice does not hold, whoever wrote it", () => {
+    const c = caseOf(BELGIAN);
+    const forged: Parameters<typeof codingHolds>[1] = { status: "coded", source: "claude", overridden_by: null, refused_because: null, review: null, reason: P21_REASON, lines: [{ line_no: 1, account: "6900", vat_code: "P21", cost_centre: "CC300", net_cents: 40000, vat_cents: 8400 }], net_cents: 40000, vat_cents: 8400, total_cents: 48400 };
+    expect(codingHolds(c, forged)).toBe(false);
+    expect(codingHolds(caseOf(NL), forged)).toBe(true);
+  });
+
+  it("keeps today's behaviour for a supplier at home and for one whose country is not known", () => {
+    for (const c of [caseOf(NL), caseOf(NL.replace("BTW-nummer: NL123456789B01\n", ""))]) {
+      expect(enforceCoding(c, { lines: all(c, "6900", "P21"), reason: P21_REASON })).toMatchObject({ status: "coded", source: "claude", overridden_by: null });
+      expect(fallbackCoding(c)).toMatchObject({ status: "coded", lines: [{ vat_code: "P21" }] });
+    }
+    expect(caseOf(NL.replace("BTW-nummer: NL123456789B01\n", "")).regime.supplier_country).toBe("");
+  });
+
+  it("the agent may still leave the VAT to a person, with its own accounts, and vat_codes tells it the rate codes are refused", () => {
+    const c = caseOf(BELGIAN);
+    expect(enforceCoding(c, { lines: all(c, "6200", null), reason: "Packaging material from a Belgian supplier, booked as goods." })).toMatchObject({ status: "needs_review", source: "claude", overridden_by: null, lines: [{ account: "6200", vat_code: null }] });
+    const told = answerCoderTool(c, { name: "vat_codes", input: {} }).text;
+    expect(told).toContain("P21: Purchase, 21% (reclaimable). Refused: the supplier is in BE, and its VAT is not Dutch input VAT.");
+    expect(told).toContain("P9: Purchase, 9% (reclaimable). Refused: the supplier is in BE, and its VAT is not Dutch input VAT.");
+    expect(answerCoderTool(caseOf(NL), { name: "vat_codes", input: {} }).text).toContain("P21: Purchase, 21% (reclaimable). 21% on the whole net is 84.00: exactly the invoice's VAT.");
   });
 });
 

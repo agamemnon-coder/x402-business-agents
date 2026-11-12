@@ -439,6 +439,18 @@ function vatCodeOf(c: CodingCase, code: string): CaseVatCode | null {
   return v && code !== "" && Number.isFinite(v.rate) && v.rate >= 0 && v.rate <= 100 ? v : null;
 }
 
+/**
+ * The supplier's country when the regime shows it is another one than the company's (both known), else "". The VAT such
+ * a supplier charges is its own country's: it is never the company's own input VAT, whatever the rate.
+ */
+function abroadCountry(c: CodingCase): string {
+  const supplier = c.regime.supplier_country.trim().toUpperCase();
+  const home = c.company.country.trim().toUpperCase();
+  return supplier && home && supplier !== home ? cleanText(supplier, 40) : "";
+}
+/** The company's own input VAT as a sentence names it: "Dutch input VAT" for a Dutch company. */
+const homeVat = (c: CodingCase) => `${c.company.country.trim().toUpperCase() === "NL" ? "Dutch" : cleanText(c.company.country.trim().toUpperCase(), 40)} input VAT`;
+
 // ── The coding, and the rules code enforces ──
 
 /** How one line is coded. `vat_code` null: no VAT code fits and a person codes the VAT. `cost_centre` absent, null or "": the default one. */
@@ -469,6 +481,8 @@ export const CODER_RULES = [
   "zero_rate_mismatch",
   /** The VAT codes do not reproduce the invoice's VAT to the cent, or a rate code is on a line that itself states another VAT rate. */
   "vat_mismatch",
+  /** A rate code of the company's own country (Dutch input VAT that is reclaimed) on the invoice of a supplier in another country. */
+  "foreign_vat",
   /** The reason may not be shown to the CFO (its shape, or a number that is not in the case). */
   "reason_refused",
   /** The last guard: the coded lines do not reconcile with the invoice to the cent. */
@@ -525,6 +539,7 @@ function coverage(v: View, lineNos: readonly number[]): string | null {
  * rounded as the ledger rounds; all codes together must give the invoice's VAT exactly, and a rate code fits a line
  * only when the line itself states no other VAT rate. A reverse-charge code and a 0% code charge nothing on the
  * invoice, so they fit only an invoice without VAT; a reverse-charge code also only when the regime shows that kind.
+ * A rate code is the company's own input VAT, so it fits no invoice of a supplier the regime shows in another country.
  * Lines without any VAT code carry the invoice's VAT in proportion to their nets.
  */
 function applyRules(v: View & { amounts: { ok: true; net: number; tax: number; total: number } }, coded: readonly LineCoding[]): { lines: CodedLine[]; uncoded: boolean } | Refused {
@@ -585,6 +600,10 @@ function applyRules(v: View & { amounts: { ok: true; net: number; tax: number; t
     const other = code.reverse || code.rate === 0 ? undefined : lines.find((l) => l.vat_rate !== null && l.vat_rate !== code.rate);
     if (other) return { rule: "vat_mismatch", why: `line ${other.line_no} itself states ${other.vat_rate}% VAT, and VAT code ${code.code} charges ${code.rate}%` };
   }
+  // A rate code books input VAT of the company's own country: a supplier in another country charges its own, even at the same rate.
+  const abroad = abroadCountry(c);
+  const homeRate = abroad ? [...groups.values()].find(({ code }) => !code.reverse && code.rate > 0) : undefined;
+  if (homeRate) return { rule: "foreign_vat", why: `VAT code ${homeRate.code.code} is ${homeVat(c)}, and the supplier is in ${abroad}` };
   const vatOfLine = new Map<number, number>();
   for (const [name, g] of groups) share(charged.get(name)!, g.lines.map((l) => l.net)).forEach((vat, i) => vatOfLine.set(g.lines[i]!.line_no, vat));
   return { uncoded: false, lines: picked.map((p) => ({ line_no: p.line.line_no, account: p.coding.account, vat_code: p.coding.vat_code, cost_centre: centre(p.coding), net_cents: p.line.net, vat_cents: vatOfLine.get(p.line.line_no)! })) };
@@ -613,6 +632,7 @@ function holds(v: View, e: EnforcedCoding): boolean {
     const want = code.reverse || code.rate === 0 ? 0 : vatAt(sum(of.map((l) => l.net_cents)), code.rate);
     if (sum(of.map((l) => l.vat_cents)) !== want) return false;
     if (!code.reverse && code.rate > 0 && v.lines.some((l, i) => r.lines[i]!.vat_code === name && l.vat_rate !== null && l.vat_rate !== code.rate)) return false;
+    if (!code.reverse && code.rate > 0 && abroadCountry(c)) return false;
   }
   return true;
 }
@@ -622,7 +642,8 @@ function holds(v: View, e: EnforcedCoding): boolean {
  * no lines at all (and says why a person must look), or its lines are the invoice's, their nets add up to the
  * invoice's net, their VAT to the invoice's VAT, net plus VAT is the total (all to the cent), every account may take
  * purchase lines, every cost centre is one of the company's, and every VAT code on a line is a purchase code that
- * reproduces the VAT of its lines to the cent and stands on no line that itself states another VAT rate.
+ * reproduces the VAT of its lines to the cent and stands on no line that itself states another VAT rate, and no rate
+ * code stands on the invoice of a supplier in another country than the company.
  */
 export function codingHolds(c: CodingCase, e: EnforcedCoding): boolean {
   try {
@@ -685,7 +706,9 @@ function fallbackOf(v: View): EnforcedCoding {
   const every = (vat_code: string | null): LineCoding[] => v.lines.map((l) => ({ line_no: l.line_no, account: def.account, vat_code, cost_centre: null }));
   // A rate code only when its rate on the invoice's net is exactly the invoice's VAT, to the cent, and no other rate
   // code's is: on a net of a few cents 21% and 9% round to the same VAT, and code does not pick one.
-  const fits = amounts.tax > 0 ? c.vatCodes.filter((x) => x.kind === "purchase" && !x.reverse && x.rate > 0 && vatCodeOf(c, x.code) !== null && vatAt(amounts.net, x.rate) === amounts.tax) : [];
+  // Never for a supplier in another country: the VAT it charges is not the company's own input VAT, whatever the rate.
+  const abroad = abroadCountry(c);
+  const fits = amounts.tax > 0 && !abroad ? c.vatCodes.filter((x) => x.kind === "purchase" && !x.reverse && x.rate > 0 && vatCodeOf(c, x.code) !== null && vatAt(amounts.net, x.rate) === amounts.tax) : [];
   const rate = fits.length === 1 ? fits[0]! : null;
   const withRate = rate ? applyRules(sound, every(rate.code)) : null;
   if (rate && withRate && "lines" in withRate) {
@@ -699,7 +722,9 @@ function fallbackOf(v: View): EnforcedCoding {
     : fits.length > 1 ? `More than one VAT code gives ${onNet} (${fits.map((x) => x.code).join(", ")}).`
       : rate && withRate && "rule" in withRate ? `VAT code ${rate.code} gives ${onNet}, but ${withRate.why}.`
         : `No single VAT code gives ${onNet}: the lines may carry different rates, the rate may be a foreign one, or the amounts may differ by rounding.`;
-  const review = `${found} A person codes the VAT; code does not guess.`;
+  const review = abroad && amounts.tax > 0
+    ? `The supplier is in ${abroad}: the VAT ${money(amounts.tax)} it charges is not ${homeVat(c)}, so no VAT code is set. A person decides how this VAT is booked; code does not guess.`
+    : `${found} A person codes the VAT; code does not guess.`;
   const out: EnforcedCoding = { ...base, status: "needs_review", review, lines: "lines" in none ? none.lines : [], reason: `Code's default: ${where}, with no VAT code. A person codes the VAT.` };
   return out.lines.length > 0 && holds(v, out) ? out : nothing("code could not lay its default coding on this invoice's lines");
 }
@@ -707,8 +732,8 @@ function fallbackOf(v: View): EnforcedCoding {
 /**
  * What code alone decides, labelled as the fallback: the supplier's last coding when it still fits this invoice under
  * the same rules; otherwise the engine's default account and cost centre on every line, with a rate code only when
- * that rate, and no other rate code's, reproduces the invoice's VAT exactly to the cent, and otherwise no VAT code at
- * all: a person codes it, and code does not guess. Nothing is coded when the invoice's own amounts cannot be read or do not reconcile. Never
+ * that rate, and no other rate code's, reproduces the invoice's VAT exactly to the cent and the supplier is not in
+ * another country than the company, and otherwise no VAT code at all: a person codes it, and code does not guess. Nothing is coded when the invoice's own amounts cannot be read or do not reconcile. Never
  * throws; whatever it returns holds to the invoice (codingHolds).
  */
 export function fallbackCoding(c: CodingCase): EnforcedCoding {
@@ -729,7 +754,8 @@ const AnyCoding = z.object({
  * The agent's coding as code lets it into the books. Every account exists and may take purchase lines; every VAT code
  * exists and is a purchase code; a cost centre, when given, exists (absent: the default one); every line is coded
  * exactly once; the VAT codes reproduce the invoice's VAT to the cent, and a rate code stands on no line that itself
- * states another VAT rate; reverse-charge and 0% codes agree with the invoice; the totals reconcile to the invoice's
+ * states another VAT rate; no rate code stands on the invoice of a supplier in another country (its VAT is not the
+ * company's own input VAT); reverse-charge and 0% codes agree with the invoice; the totals reconcile to the invoice's
  * total to the cent; the reason may be shown to the CFO. Anything else is refused: code's fallback is returned in its
  * place, with `overridden_by` naming the rule and `refused_because` the reason. The agent may leave the VAT code of
  * every line null: its accounts and cost centres stand, and a person codes the VAT (needs_review). Never throws, on
@@ -918,6 +944,7 @@ function vatCodesAnswer(v: View): string {
   const { c, amounts } = v;
   const kind = c.regime.reverse_charge;
   const implied = impliedRate(amounts.net, amounts.tax);
+  const abroad = abroadCountry(c);
   const names = [...new Set(c.vatCodes.filter((x) => x.kind === "purchase").map((x) => x.code))];
   const rows = names.map((name) => {
     const code = vatCodeOf(c, name);
@@ -926,7 +953,8 @@ function vatCodesAnswer(v: View): string {
       ? `Reverse charge: ${amounts.tax > 0 ? "refused, because the invoice charges VAT" : kind !== "none" && kind !== "unknown" && REVERSE_CODES[kind] === code.code ? "allowed, code's checks show this kind" : "refused, code's checks do not show this kind"}.`
       : code.rate === 0 ? `Charges nothing: ${amounts.tax > 0 ? "refused, because the invoice charges VAT" : "allowed"}.`
         : amounts.tax === 0 ? "Refused: the invoice charges no VAT."
-          : `${code.rate}% on the whole net is ${money(vatAt(amounts.net, code.rate))}: ${vatAt(amounts.net, code.rate) === amounts.tax ? "exactly the invoice's VAT" : "not the invoice's VAT"}.`;
+          : abroad ? `Refused: the supplier is in ${abroad}, and its VAT is not ${homeVat(c)}.`
+            : `${code.rate}% on the whole net is ${money(vatAt(amounts.net, code.rate))}: ${vatAt(amounts.net, code.rate) === amounts.tax ? "exactly the invoice's VAT" : "not the invoice's VAT"}.`;
     return `${code.code}: ${cleanText(code.label)}. ${says}`;
   }).filter((x): x is string => x !== null);
   return [
