@@ -102,7 +102,8 @@ function termsFacts(terms: Record<string, unknown>, lang: "en" | "nl"): { facts:
   const g = globalThis as { PURSER_PHRASES?: unknown };
   g.PURSER_PHRASES ??= phonePhrases();
   const p = payablesFacts(terms, lang);
-  return { facts: [[t(lang, "ph.amount"), p.amount], ...p.first, ...p.details].map(([k, v]): [string, string] => [k === t(lang, "ph.bank_fee") ? STAND_IN_FEE[lang] : k, v]), warnings: p.warnings };
+  const facts: [string, string][] = [[t(lang, "ph.amount"), p.amount], ...p.first, ...p.details];
+  return { facts: facts.map(([k, v]): [string, string] => [k === t(lang, "ph.bank_fee") ? STAND_IN_FEE[lang] : k, v]), warnings: p.warnings };
 }
 
 /** The phone page's fee label (ph.bank_fee) names Airwallex; the host's bank is the stand-in, so its facts name that instead. */
