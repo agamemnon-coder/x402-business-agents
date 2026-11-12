@@ -20,6 +20,17 @@ All calls go to the Airwallex sandbox (`https://api.sandbox.airwallex.com/api/v1
 
 Runs of 29 and 30 October are cited only where no later run shows the step, each with its date. Every live run: [docs/runs/README.md](runs/README.md).
 
+## Three more Airwallex capabilities (12 November; sandbox, test money; each behind its own flag, off by default)
+
+32 Airwallex calls in all, of the 40 approved for this work, counted by the call log. Signed by a labelled virtual test
+passkey, not a person's Face ID. Nothing was approved in Airwallex's web app.
+
+| Capability | Endpoints | What ran live | Run record |
+|---|---|---|---|
+| One signed batch as ONE Airwallex batch transfer (`AIRWALLEX_BATCH_TRANSFER=on`; `src/executors/airwallexBatch.ts`) | `POST /batch_transfers/create`, `/{id}/add_items`, `/{id}/quote`, `/{id}/submit`, `/{id}/delete` (only a DRAFTING batch, on a read-back difference); `GET /batch_transfers` (by request_id, after a lost answer), `/{id}`, `/{id}/items` | twice: two EUR 240.00 test invoices, signed once, became one Airwallex batch with the batch hash in its metadata (`3960a081-b058-422b-95b1-6298e45fe257`; then `40486a4e-a08c-4480-847b-d22012f3c604` under the stricter read-back: fee EUR 13.53 per item, total EUR 507.06); read back item by item with 0 differences; submitted; Airwallex's approval workflow holds both `IN_APPROVAL`. Not approved, booked or paid. A line of an Airwallex batch is never sent on its own. | [batch transfer](runs/2026-11-12-airwallex-batch-transfer.md) |
+| The payee's bank checks the account and name before the CFO is asked (`AIRWALLEX_PAYEE_CHECK=on`; `src/airwallex/payeeName.ts`) | `POST /beneficiaries/verify_account` | four checks: `NOT_MATCHED` twice on our German test IBAN, `PARTIAL_MATCH` on Airwallex's documented example (held as "Betty Morris"), `FULL_MATCH` on the name the bank gave back | [payee check](runs/2026-11-12-airwallex-payee-check.md) |
+| Reconciliation with Airwallex's own ledger, to the cent (`AIRWALLEX_FINANCIAL_TX=on`: `npm run reconcile -- --financial-transactions <from> <to>`; `src/finance/awxFinancialTx.ts`) | `GET /financial_transactions` | the awx-1 window: both payouts (a PAYOUT debit and a FEE debit each), and the conversion's credit and debit, agree with the awx-1 record exactly, with their signs; 0 differences; no payout, fee or conversion at Airwallex that the record lacks (2 card holds not compared) | [financial transactions](runs/2026-11-12-airwallex-financial-transactions.md) |
+
 ## The Airwallex-only run (7 November)
 
 One fresh world on the Airwallex sandbox only: 0 Metal calls, test money, all seven checks passed. [Log](runs/2026-11-07-awx-1.md), [record](demo/airwallex-run.json), [plan and call budget](runs/awx-1-plan.md). Shown on `/airwallex`.
@@ -263,9 +274,10 @@ The key of a company's own Airwallex account, as in the main run and on 7 Novemb
 | Balances | `GET /balances/current` | Read |
 | Global accounts | `GET /global_accounts`; `POST /global_accounts/create` (once, at setup) | Read; Write only until the account exists |
 | Deposits | `GET /deposits` | Read |
-| Beneficiaries | `GET /beneficiaries`; `POST /beneficiaries/schema`; `POST /beneficiaries/validate`; `POST /beneficiaries/create` | Write |
+| Beneficiaries | `GET /beneficiaries`; `POST /beneficiaries/schema`; `POST /beneficiaries/validate`; `POST /beneficiaries/create`; `POST /beneficiaries/verify_account` (with `AIRWALLEX_PAYEE_CHECK=on`) | Write |
 | FX | `GET /fx/rates/current`; `POST /fx/quotes/create`; `POST /fx/conversions/create`; `GET /fx/conversions` | Write |
-| Transfers | `POST /transfers/create`; `GET /transfers`; `GET /transfers/{id}` | Write |
+| Transfers | `POST /transfers/create`; `GET /transfers`; `GET /transfers/{id}`; batch transfers (`/batch_transfers…`, with `AIRWALLEX_BATCH_TRANSFER=on`) | Write |
+| Financial transactions | `GET /financial_transactions` (with `AIRWALLEX_FINANCIAL_TX=on`) | Read |
 | Issuing | `GET /issuing/cardholders`; `POST /issuing/cardholders/create`; `GET /issuing/cards`; `POST /issuing/cards/create`; `GET /issuing/cards/{id}`; `POST /issuing/cards/{id}/update`; `GET /issuing/transactions` | Write |
 | Webhooks | `GET /webhooks`; `POST /webhooks/create`; `POST /webhooks/{id}/delete` | Write at setup, then none |
 | Payment acceptance (Airi rail, or `AIRWALLEX_PAYMENT_ACCEPTANCE=on`) | `POST /pa/payment_intents/create`; `POST /pa/payment_intents/{id}/confirm`; `GET /pa/payment_intents/{id}` | Write |

@@ -150,6 +150,18 @@ async function executeApproved(db: DB, proposalId: string, rails?: Rails): Promi
       return;
     }
     case "payment_batch": {
+      // AIRWALLEX_BATCH_TRANSFER=on: the signed batch goes to Airwallex as ONE batch transfer, read back item by item
+      // before it is submitted (src/executors/airwallexBatch.ts). Off (the default): line by line, as below.
+      const { batchTransferOn, AirwallexBatchRest } = await import("../airwallex/batchTransfers.js");
+      if (batchTransferOn() && awx) {
+        const { fromEnv, Airwallex } = await import("../airwallex/client.js");
+        const cfg = fromEnv();
+        if (!cfg) throw new Error("Airwallex sandbox keys are not set; the batch cannot run");
+        const { executeAsOneAirwallexBatch } = await import("./airwallexBatch.js");
+        const r = await executeAsOneAirwallexBatch(db, { batches: new AirwallexBatchRest(new Airwallex(cfg)), rail: awx.rail }, proposalId);
+        if (r.outcome !== "SUBMITTED") throw new Error(`the Airwallex batch was refused at the read-back and deleted: ${r.differences.join("; ").slice(0, 280)}`);
+        return;
+      }
       // One Face ID for many payments: each line runs as its own payment, with its own checks and idempotency.
       const { executePaymentBatch } = await import("./paymentBatch.js");
       const r = await executePaymentBatch(db, proposalId, (id) => executeApproved(db, id, rails));

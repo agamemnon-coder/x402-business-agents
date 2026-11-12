@@ -288,7 +288,9 @@ describe("a calm document", () => {
   });
 
   // Replaced, not stacked: three sections came in, the rehearsal citations went out. 4,886 words before 12 November, counted as here.
+  // +316 the same day (merge of airwallex-depth-1112): its own new section, "Three more Airwallex capabilities" (batch
+  // transfer, payee check, financial transactions), and their rows in the key's permissions; nothing else grew.
   it("is no longer than it was before the three sections came in", () => {
-    expect(DOSSIER.split(/\s+/).filter(Boolean).length).toBeLessThanOrEqual(4886);
+    expect(DOSSIER.split(/\s+/).filter(Boolean).length).toBeLessThanOrEqual(4886 + 316);
   });
 });

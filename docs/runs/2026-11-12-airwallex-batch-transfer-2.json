@@ -1,0 +1,374 @@
+{
+  "stream": "airwallex-depth-1112",
+  "sandbox": "api.sandbox.airwallex.com",
+  "test_money": true,
+  "source": "built by `npm run awx-depth -- record` from the run ledger's audit rows and AIRWALLEX_CALL_LOG only",
+  "budget": {
+    "approved_for_stream": 40,
+    "used_by_stream": 32
+  },
+  "capability": "batch-transfer",
+  "calls": {
+    "total": 10,
+    "by_endpoint": [
+      {
+        "endpoint": "POST /authentication/login",
+        "calls": 1
+      },
+      {
+        "endpoint": "GET /balances/current",
+        "calls": 3
+      },
+      {
+        "endpoint": "POST /batch_transfers/create",
+        "calls": 1
+      },
+      {
+        "endpoint": "POST /batch_transfers/{id}/add_items",
+        "calls": 1
+      },
+      {
+        "endpoint": "POST /batch_transfers/{id}/quote",
+        "calls": 1
+      },
+      {
+        "endpoint": "GET /batch_transfers/{id}/items",
+        "calls": 2
+      },
+      {
+        "endpoint": "POST /batch_transfers/{id}/submit",
+        "calls": 1
+      }
+    ],
+    "lines": [
+      {
+        "at": "2026-11-12T14:11:19.001Z",
+        "method": "POST",
+        "endpoint": "/authentication/login",
+        "pid": 16046
+      },
+      {
+        "at": "2026-11-12T14:11:19.707Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 16046
+      },
+      {
+        "at": "2026-11-12T14:11:20.377Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 16046
+      },
+      {
+        "at": "2026-11-12T14:11:20.755Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 16046
+      },
+      {
+        "at": "2026-11-12T14:11:21.063Z",
+        "method": "POST",
+        "endpoint": "/batch_transfers/create",
+        "pid": 16046
+      },
+      {
+        "at": "2026-11-12T14:11:21.711Z",
+        "method": "POST",
+        "endpoint": "/batch_transfers/{id}/add_items",
+        "pid": 16046
+      },
+      {
+        "at": "2026-11-12T14:11:22.665Z",
+        "method": "POST",
+        "endpoint": "/batch_transfers/{id}/quote",
+        "pid": 16046
+      },
+      {
+        "at": "2026-11-12T14:11:23.522Z",
+        "method": "GET",
+        "endpoint": "/batch_transfers/{id}/items",
+        "pid": 16046
+      },
+      {
+        "at": "2026-11-12T14:11:23.833Z",
+        "method": "POST",
+        "endpoint": "/batch_transfers/{id}/submit",
+        "pid": 16046
+      },
+      {
+        "at": "2026-11-12T14:11:25.048Z",
+        "method": "GET",
+        "endpoint": "/batch_transfers/{id}/items",
+        "pid": 16046
+      }
+    ]
+  },
+  "signer": "awx-depth virtual test passkey",
+  "proposals": [
+    {
+      "proposal_id": "P-0001",
+      "kind": "invoice_payment",
+      "status": "EXECUTED",
+      "terms_sha256": "473c2a069fea7560334754eee7ea0cf9707d52fec828114a7754ee6ee88ea484",
+      "approver": "awx-depth virtual test passkey (passkey -ciiYF-q)",
+      "method": "passkey"
+    },
+    {
+      "proposal_id": "P-0002",
+      "kind": "invoice_payment",
+      "status": "EXECUTED",
+      "terms_sha256": "9d03f3c330a11c02d9e47065049a5cefd5b100494fc0e54cd80cc8a6f13e1cb6",
+      "approver": "awx-depth virtual test passkey (passkey -ciiYF-q)",
+      "method": "passkey"
+    },
+    {
+      "proposal_id": "P-0003",
+      "kind": "payment_batch",
+      "status": "EXECUTED",
+      "terms_sha256": "31743bbaa047aed9e66557cca6ef2a8050bffe2be18e9af62b30494b12090b96",
+      "approver": "awx-depth virtual test passkey (passkey -ciiYF-q)",
+      "method": "passkey"
+    }
+  ],
+  "transfers": [
+    {
+      "request_id": "3042a371-9d20-4d0f-8c29-496a5c14eb2c",
+      "transfer_id": null,
+      "invoice_no": "SLL-2026-11G",
+      "amount": "240.00",
+      "currency": "EUR",
+      "status": "IN_APPROVAL",
+      "approval_sha256": "473c2a069fea7560334754eee7ea0cf9707d52fec828114a7754ee6ee88ea484"
+    },
+    {
+      "request_id": "9b9f724c-3bc3-4308-8e8a-5e84c71debd4",
+      "transfer_id": null,
+      "invoice_no": "SLL-2026-11H",
+      "amount": "240.00",
+      "currency": "EUR",
+      "status": "IN_APPROVAL",
+      "approval_sha256": "9d03f3c330a11c02d9e47065049a5cefd5b100494fc0e54cd80cc8a6f13e1cb6"
+    }
+  ],
+  "awx_batches": [
+    {
+      "batch_id": "P-0003",
+      "request_id": "a4f520ea-4d0a-462e-ad1b-5279f696ea0e",
+      "awx_batch_id": "40486a4e-a08c-4480-847b-d22012f3c604",
+      "status": "IN_APPROVAL",
+      "batch_sha256": "31743bbaa047aed9e66557cca6ef2a8050bffe2be18e9af62b30494b12090b96",
+      "detail_json": null
+    }
+  ],
+  "audit": [
+    {
+      "seq": 11,
+      "ts": "2026-11-12T14:11:20.730Z",
+      "actor": "treasury",
+      "event": "batch.filed",
+      "subject": "P-0003",
+      "payload": {
+        "count": "2",
+        "lines": [
+          {
+            "proposal_id": "P-0001",
+            "terms_sha256": "473c2a069fea7560334754eee7ea0cf9707d52fec828114a7754ee6ee88ea484"
+          },
+          {
+            "proposal_id": "P-0002",
+            "terms_sha256": "9d03f3c330a11c02d9e47065049a5cefd5b100494fc0e54cd80cc8a6f13e1cb6"
+          }
+        ],
+        "terms_sha256": "31743bbaa047aed9e66557cca6ef2a8050bffe2be18e9af62b30494b12090b96",
+        "totals": {
+          "EUR": "480.00"
+        }
+      }
+    },
+    {
+      "seq": 12,
+      "ts": "2026-11-12T14:11:20.736Z",
+      "actor": "human",
+      "event": "proposal.approved",
+      "subject": "P-0003",
+      "payload": {
+        "approver": "awx-depth virtual test passkey (passkey -ciiYF-q)",
+        "method": "passkey",
+        "note": null,
+        "passkey": {
+          "assertion_sha256": "c09765d4b76397bb8848dc4425310b5cad1f22df149fd33f26b06bc8acace23e",
+          "credential_id": "-ciiYF-qXjQmwO98MJWx2A"
+        },
+        "policy_version": 1,
+        "terms_sha256": "31743bbaa047aed9e66557cca6ef2a8050bffe2be18e9af62b30494b12090b96"
+      }
+    },
+    {
+      "seq": 13,
+      "ts": "2026-11-12T14:11:20.736Z",
+      "actor": "human",
+      "event": "proposal.approved",
+      "subject": "P-0001",
+      "payload": {
+        "approver": "awx-depth virtual test passkey (passkey -ciiYF-q)",
+        "batch": {
+          "id": "P-0003",
+          "terms_sha256": "31743bbaa047aed9e66557cca6ef2a8050bffe2be18e9af62b30494b12090b96"
+        },
+        "method": "passkey",
+        "note": "in batch P-0003 (batch hash 31743bbaa047aed9e66557cca6ef2a8050bffe2be18e9af62b30494b12090b96)",
+        "passkey": {
+          "assertion_sha256": "c09765d4b76397bb8848dc4425310b5cad1f22df149fd33f26b06bc8acace23e",
+          "credential_id": "-ciiYF-qXjQmwO98MJWx2A"
+        },
+        "policy_version": 1,
+        "terms_sha256": "473c2a069fea7560334754eee7ea0cf9707d52fec828114a7754ee6ee88ea484"
+      }
+    },
+    {
+      "seq": 14,
+      "ts": "2026-11-12T14:11:20.736Z",
+      "actor": "human",
+      "event": "proposal.approved",
+      "subject": "P-0002",
+      "payload": {
+        "approver": "awx-depth virtual test passkey (passkey -ciiYF-q)",
+        "batch": {
+          "id": "P-0003",
+          "terms_sha256": "31743bbaa047aed9e66557cca6ef2a8050bffe2be18e9af62b30494b12090b96"
+        },
+        "method": "passkey",
+        "note": "in batch P-0003 (batch hash 31743bbaa047aed9e66557cca6ef2a8050bffe2be18e9af62b30494b12090b96)",
+        "passkey": {
+          "assertion_sha256": "c09765d4b76397bb8848dc4425310b5cad1f22df149fd33f26b06bc8acace23e",
+          "credential_id": "-ciiYF-qXjQmwO98MJWx2A"
+        },
+        "policy_version": 1,
+        "terms_sha256": "9d03f3c330a11c02d9e47065049a5cefd5b100494fc0e54cd80cc8a6f13e1cb6"
+      }
+    },
+    {
+      "seq": 15,
+      "ts": "2026-11-12T14:11:20.751Z",
+      "actor": "system",
+      "event": "awx_depth.batch_signed",
+      "subject": "P-0003",
+      "payload": {
+        "lines": [
+          "P-0001",
+          "P-0002"
+        ],
+        "signer": "awx-depth virtual test passkey",
+        "terms_sha256": "31743bbaa047aed9e66557cca6ef2a8050bffe2be18e9af62b30494b12090b96"
+      }
+    },
+    {
+      "seq": 19,
+      "ts": "2026-11-12T14:11:21.710Z",
+      "actor": "awx-executor",
+      "event": "awx_batch.created",
+      "subject": "40486a4e-a08c-4480-847b-d22012f3c604",
+      "payload": {
+        "approval_sha256": "31743bbaa047aed9e66557cca6ef2a8050bffe2be18e9af62b30494b12090b96",
+        "batch_id": "P-0003",
+        "items": 2,
+        "request_id": "a4f520ea-4d0a-462e-ad1b-5279f696ea0e",
+        "status": "DRAFTING"
+      }
+    },
+    {
+      "seq": 20,
+      "ts": "2026-11-12T14:11:23.830Z",
+      "actor": "awx-executor",
+      "event": "awx_batch.read_back",
+      "subject": "40486a4e-a08c-4480-847b-d22012f3c604",
+      "payload": {
+        "agrees": true,
+        "batch_id": "P-0003",
+        "differences": [],
+        "items": 2,
+        "quotes": [
+          {
+            "fee": "27.06",
+            "fee_currency": "EUR",
+            "payer_pays": "507.06",
+            "source_currency": "EUR",
+            "transfer_currency": "EUR"
+          }
+        ],
+        "read": [
+          {
+            "amount": "240.00",
+            "currency": "EUR",
+            "fee": "13.53",
+            "fee_currency": "EUR",
+            "payer_pays": "253.53",
+            "request_id": "9b9f724c-3bc3-4308-8e8a-5e84c71debd4",
+            "status": "VALIDATED"
+          },
+          {
+            "amount": "240.00",
+            "currency": "EUR",
+            "fee": "13.53",
+            "fee_currency": "EUR",
+            "payer_pays": "253.53",
+            "request_id": "3042a371-9d20-4d0f-8c29-496a5c14eb2c",
+            "status": "VALIDATED"
+          }
+        ],
+        "valid": 2
+      }
+    },
+    {
+      "seq": 21,
+      "ts": "2026-11-12T14:11:25.048Z",
+      "actor": "awx-executor",
+      "event": "awx_batch.submitted",
+      "subject": "40486a4e-a08c-4480-847b-d22012f3c604",
+      "payload": {
+        "approval_sha256": "31743bbaa047aed9e66557cca6ef2a8050bffe2be18e9af62b30494b12090b96",
+        "batch_id": "P-0003",
+        "in_words": "waiting for Airwallex approval",
+        "status": "IN_APPROVAL"
+      }
+    },
+    {
+      "seq": 22,
+      "ts": "2026-11-12T14:11:25.342Z",
+      "actor": "system",
+      "event": "proposal.executed",
+      "subject": "P-0001",
+      "payload": {
+        "awx_batch_id": "40486a4e-a08c-4480-847b-d22012f3c604",
+        "batch_id": "P-0003",
+        "status": "IN_APPROVAL",
+        "waiting_for": "Airwallex approval"
+      }
+    },
+    {
+      "seq": 23,
+      "ts": "2026-11-12T14:11:25.343Z",
+      "actor": "system",
+      "event": "proposal.executed",
+      "subject": "P-0002",
+      "payload": {
+        "awx_batch_id": "40486a4e-a08c-4480-847b-d22012f3c604",
+        "batch_id": "P-0003",
+        "status": "IN_APPROVAL",
+        "waiting_for": "Airwallex approval"
+      }
+    },
+    {
+      "seq": 24,
+      "ts": "2026-11-12T14:11:25.343Z",
+      "actor": "system",
+      "event": "proposal.executed",
+      "subject": "P-0003",
+      "payload": {
+        "awx_batch_id": "40486a4e-a08c-4480-847b-d22012f3c604",
+        "status": "IN_APPROVAL",
+        "waiting_for": "Airwallex approval"
+      }
+    }
+  ]
+}
