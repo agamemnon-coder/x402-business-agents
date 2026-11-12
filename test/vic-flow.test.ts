@@ -42,15 +42,21 @@ describe("the VIC flow on /visa", () => {
     expect(flow).toMatch(/<ol class="vf" role="list">/);
     const s = steps(flow);
     expect(s.map((x) => x.owner)).toEqual(["agent", "purser", "airi", "airi", "airi", "airwallex", "purser"]);
-    expect(s.map((x) => x.text.split(" ")[0])).toEqual(["Agent", "Purser", "Airi", "Airi", "Airi", "Airwallex", "Purser"]);
-    for (const [i, title] of ["Agent asks to buy", "Purser's policy", "Airi mandate", "Cardholder confirms", "Single-use Visa credential (VIC)", "Airwallex hosted checkout", "Result read back"].entries())
+    // Step 1 is the script's while purchase B was not asked for inside a Claude call (the record of 7 Nov: scripted).
+    expect(s.map((x) => x.text.split(" ")[0])).toEqual(["Script", "Purser", "Airi", "Airi", "Airi", "Airwallex", "Purser"]);
+    for (const [i, title] of ["Asks to buy", "Purser's policy", "Airi mandate", "Cardholder confirms", "Single-use Visa credential (VIC)", "Airwallex hosted checkout", "Result read back"].entries())
       expect({ i, has: s[i]!.text.includes(title) }).toEqual({ i, has: true });
   });
 
   it("shows purchase B's own ids and values under the steps, all from the record, and C's branch off step 2", () => {
     const b = buy("B"), c = buy("C"), s = steps(flow);
     expect(text(flow)).toContain(`How it works: purchase B`);
-    expect(s[0]!.text).toContain(`Sourcing agent ${b.currency} ${b.amount}`);
+    expect(s[0]!.text).toBe(`Script Asks to buy Purser's script as the Sourcing agent; no Claude call ${b.currency} ${b.amount}`);
+    expect(b.rail_choice).toBeUndefined();
+    // A record whose purchase B was asked for inside the agent's Claude call: the agent's step, said so.
+    const asked = vicFlow({ ...rec, purchases: rec.purchases.map((p) => (p.step === "B" ? { ...p, rail_choice: { by: "claude" as const, model: "claude-haiku-4-5", request_id: "req_1" } } : p)) });
+    expect(asked.steps[0]).toMatchObject({ owner: "agent", title: "Agent asks to buy", what: "Sourcing agent, in a Claude call" });
+    expect(asked.steps[0]!.who).toBeUndefined();
     expect(s[1]!.text).toContain(`Limit ${b.currency} ${rec.policy.alone_max_eur}, allowed merchants; above it, the CFO's Face ID on the exact terms`);
     expect(s[1]!.text).toContain(`${b.proposal_id} · terms ${b.terms_sha256!.slice(0, 8)}…`);
     expect(s[1]!.text).toContain(`✕ Refused by Purser — ${c.airi_calls} Airi calls Purchase C, a disallowed merchant`);
@@ -58,7 +64,8 @@ describe("the VIC flow on /visa", () => {
     expect(s[2]!.text).toContain(b.mandate_id!);
     expect(s[3]!.text).toContain("Passkey in Airi Once");
     expect(b.tap).toMatch(/once, with a passkey in Airi/);
-    expect(s[4]!.text).toContain(`${b.credential_type} · test card`);
+    // The credential's type as Airi's receipt names it: Airwallex's own record says number_type PAN (/visa's fold).
+    expect(s[4]!.text).toContain(`Airi's receipt: ${b.credential_type} · test card`);
     expect(s[5]!.text).toContain(`Our own sandbox merchant ${b.payment_intent_id}`);
     expect(s[6]!.text).toBe(`Purser Result read back Reported to Airi ${b.outcome}`);
     expect([b.outcome, b.reported_to_airi]).toEqual(["SUCCEEDED", "SUCCEEDED"]);

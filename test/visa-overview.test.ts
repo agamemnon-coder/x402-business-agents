@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
 import * as brand from "../src/config/brand.js";
 import { VISA_BUILT_ON, VISA_CLAIM, VISA_ICC_LINE, VISA_TAP_STATUS, VISA_VIC_BUILT_ON } from "../src/config/brand.js";
 import { buildPages } from "../src/relay/assets.js";
-import { AIRI_RUN_FILE, AIRI_SCRIPTED, AIRI_SUMMARY, airiRun, airiSummaryLine } from "../src/redesign/airiRun.js";
+import { AIRI_RUN_FILE, AIRI_SCRIPTED, AIRI_SUMMARY, airiAsker, airiRun, airiSummaryLine } from "../src/redesign/airiRun.js";
 import { homePage } from "../src/redesign/home.js";
 import { judgePage, judgeSteps } from "../src/redesign/judge.js";
 import { VISA_ENTRY_LINE, VISA_H1, VISA_LEAD, VISA_TAP_HEADING, VISA_TITLE, airwallexPage, assertVicFirst, visaPage, visaRunLabel } from "../src/redesign/partners.js";
@@ -43,12 +43,8 @@ describe("/visa: one summary of the paid run", () => {
     expect(attempts.every((a) => a.at.slice(0, 10) === airi.started_at.slice(0, 10))).toBe(true);
     expect(attempts.filter((a) => a.outcome === "passed")).toHaveLength(1);
     expect(c.kind).toBe("paid");
-    expect(c.stats).toEqual([
-      { v: `1 of ${attempts.length}`, l: "attempts paid" },
-      { v: String(airi.purchases.filter((p: { outcome?: string }) => p.outcome === "SUCCEEDED").length), l: "purchases paid" },
-      { v: String(airi.purchases.filter((p: { by?: string }) => p.by === "purser").length), l: "refused by Purser" },
-      { v: `${Object.values(airi.checks).filter((x) => (x as { ok: boolean }).ok).length}/${Object.keys(airi.checks).length}`, l: "checks" },
-    ]);
+    // The series alone, counted: what was paid, refused and checked is the run block's, right under the card.
+    expect(c.stats).toEqual([{ v: `${attempts.filter((a) => a.outcome === "passed").length} of ${attempts.length}`, l: "attempts paid" }]);
     expect(c.stats[0]!.v).toBe("1 of 4");
     expect(c.ids).toEqual([["Mandate", b.mandate_id], ["Payment", b.payment_intent_id]]);
   });
@@ -63,17 +59,26 @@ describe("/visa: one summary of the paid run", () => {
     expect(airiSummaryLine(rec)).toBe(`A scripted run, no Claude call: ${AIRI_SUMMARY}`);
     expect(AIRI_SUMMARY).toMatch(/within Purser's limit with no Purser approval/);
     expect(AIRI_SUMMARY).not.toMatch(/without the CFO/);
-    // A later record whose rail the Sourcing agent's Claude call chose: Claude is named, with the request id beside the
-    // mandate and the payment.
+    // A later record with purchase B asked for inside the Sourcing agent's Claude call: that purchase names Claude, with
+    // the request id beside the mandate and the payment; the others stay scripted. Never "chose": the prompt names the rail.
     const chosen = { ...rec, purchases: rec.purchases.map((p) => (p.step === "B" ? { ...p, rail_choice: { by: "claude" as const, model: "claude-haiku-4-5", request_id: "req_011CTest" } } : p)) };
-    expect(airiSummaryLine(chosen)).toMatch(/^The Sourcing agent \(Claude\) chose this rail \(request req_011CTest\): paid with/);
+    expect(airiSummaryLine(chosen)).toBe(`Purchase B was asked for inside the Sourcing agent's Claude call (request req_011CTest); purchases A and C scripted, no Claude call: ${AIRI_SUMMARY}`);
     const c = airiCard(chosen)!;
-    expect(c.tag).toBe("VIC via Airi · 7 Nov · rail chosen by Claude");
+    expect(c.tag).toBe("VIC via Airi · 7 Nov · 1 of 3 purchases asked for in a Claude call");
     expect(c.ids).toEqual([["Mandate", expect.any(String)], ["Payment", expect.any(String)], ["Claude request", "req_011CTest"]]);
-    // Code's own choice, or a Claude call without an id, is never passed off as a Claude decision.
-    for (const rail_choice of [{ by: "code" as const }, { by: "claude" as const, request_id: null }]) {
-      expect(airiSummaryLine({ ...rec, purchases: rec.purchases.map((p) => ({ ...p, rail_choice })) })).toMatch(/^A scripted run, no Claude call:/);
-    }
+    // A Claude call with no request id is still Claude's, said so; code's own choice is scripted.
+    const noId = { ...rec, purchases: rec.purchases.map((p) => ({ ...p, rail_choice: { by: "claude" as const, request_id: null } })) };
+    expect(airiAsker(noId)).toEqual({ scripted: false, short: "asked for in a Claude call", sentence: "Purchase A was asked for inside the Sourcing agent's Claude call (no request id returned); purchase B was asked for inside the Sourcing agent's Claude call (no request id returned); purchase C was asked for inside the Sourcing agent's Claude call (no request id returned)" });
+    expect(airiCard(noId)!.ids.map(([k]) => k)).toEqual(["Mandate", "Payment"]);
+    expect(airiSummaryLine({ ...rec, purchases: rec.purchases.map((p) => ({ ...p, rail_choice: { by: "code" as const } })) })).toMatch(/^A scripted run, no Claude call:/);
+    for (const r of [rec, chosen, noId]) expect(airiSummaryLine(r)).not.toMatch(/\bchose\b/);
+  });
+
+  it("builds /visa's description and \"What's real?\" line from the same words as the summary", () => {
+    const page = visaPage();
+    const asker = airiAsker(airiRun()!);
+    expect(/<meta name="description" content="([^"]*)"/.exec(page)![1]!.replace(/&#39;/g, "'")).toMatch(new RegExp(`${asker.sentence}\\.$`));
+    expect(page.replace(/&#39;/g, "'")).toContain(`(7 Nov), ${asker.short}:`);
   });
 
   it("reads the TAP card from the TAP run record: signatures the proxy accepted, Airwallex's approval and decline", () => {
@@ -152,10 +157,10 @@ describe("/visa is one Visa Intelligent Commerce story; TAP folded away", () => 
 
   it("labels steps 3 and 4 Airi and only step 5 Airi · VIC, in a neutral badge colour", () => {
     const steps = vicFlow(airiRun()!).steps;
-    expect(steps.map((s) => s.who ?? s.owner)).toEqual(["agent", "purser", "airi", "airi", VIC_CREDENTIAL_WHO, "airwallex", "purser"]);
+    expect(steps.map((s) => s.who ?? s.owner)).toEqual(["Script", "purser", "airi", "airi", VIC_CREDENTIAL_WHO, "airwallex", "purser"]);
     expect(VIC_CREDENTIAL_WHO).toBe("Airi · VIC");
     const labels = [...main.matchAll(/<span class="vf-who">([^<]*)<\/span>/g)].map((m) => m[1]!.replace(/&amp;/g, "&"));
-    expect(labels).toEqual(["Agent", "Purser", "Airi", "Airi", "Airi · VIC", "Airwallex", "Purser"]);
+    expect(labels).toEqual(["Script", "Purser", "Airi", "Airi", "Airi · VIC", "Airwallex", "Purser"]);
     expect(labels.filter((l) => /VIC|Visa/.test(l))).toEqual(["Airi · VIC"]);
     // Neutral: the Airi steps take the text's own colour; no colour of their own, in light or dark.
     expect(VIC_FLOW_CSS).toContain("ol.vf > li.vf-airi { --vf-c: var(--text); }");

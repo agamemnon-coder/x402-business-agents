@@ -88,6 +88,10 @@ export function vicNetwork(src: { file: string; rec: IntentsRecord }, run: AiriR
   const airiTypes = [...new Set(run.purchases.flatMap((p) => (p.credential_type && rec.payment_intents.some((x) => x.purchase === p.step) ? [p.credential_type] : [])))];
   const statuses = [...new Set(rec.payment_intents.map((p) => String(p.intent.status)))];
   const said = (ts: string[]) => ts.map((t) => (GLOSS[t] ? `${t} (${GLOSS[t]})` : t)).join(", ");
+  // The digits Airwallex shows for each payment, compared (review, 12 Nov): when every payment shows the same BIN and
+  // last four, the page says so, because the fingerprints that would tell two numbers apart are redacted.
+  const digits = rec.payment_intents.map((p) => `${plain(at(p.intent, "latest_payment_attempt.payment_method.card.bin")) ?? ""}/${plain(at(p.intent, "latest_payment_attempt.payment_method.card.last4")) ?? ""}`);
+  const sameDigits = digits.length > 1 && digits.every((d) => d === digits[0] && !d.startsWith("/") && !d.endsWith("/"));
   return {
     purchases, rows,
     summary: VIC_NETWORK_LABEL,
@@ -95,6 +99,7 @@ export function vicNetwork(src: { file: string; rec: IntentsRecord }, run: AiriR
     notes: [
       ...(none.length ? [`Airwallex returned no field for ${none.length > 1 ? `${none.slice(0, -1).join(", ")} or ${none.at(-1)}` : none[0]}.`] : []),
       ...(types.length && airiTypes.length ? [`Airi's receipt named the credential's type ${said(airiTypes)}; Airwallex's record says number_type ${said(types)}.`] : []),
+      ...(sameDigits ? [`${digits.length === 2 ? "Both" : `All ${digits.length}`} payments show the same BIN and last four, so this record cannot show that the single-use numbers differed.`] : []),
     ],
     readAt: rec.read_at, calls: rec.calls.length, file,
   };

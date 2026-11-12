@@ -8,10 +8,10 @@
 //   3. The committed run records hold no card number and no security-code pattern: none at all in the Airi rail's own
 //      records; elsewhere under docs/runs and docs/demo only a published test number, in the files named below.
 //   4. /visa's folded block says plainly what this is not, and its figures are the code's constants.
-import { chmodSync, existsSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AirwallexAmbiguous, AirwallexError } from "../src/airwallex/client.js";
 import { VIC_INTENTS_PREFIX, luhnValid } from "../src/airwallex/intentReadback.js";
 import { CREDENTIAL_DIR_MODE, CREDENTIAL_FILE_NAME, CREDENTIAL_OTHERS_MASK, CVV_PATTERN, HPP_ORIGIN, SCRUB_DIGITS_FROM } from "../src/airi/cardData.js";
@@ -105,6 +105,8 @@ function expectNoCard(what: string, text: string) {
 
 let tmpRoot: string;
 beforeEach(() => { tmpRoot = mkdtempSync(join(tmpdir(), "airi-card-test-")); });
+// Each test has checked by then that the credential is gone; the folders the purchases made are removed after it.
+afterEach(() => rmSync(tmpRoot, { recursive: true, force: true }));
 
 /** One purchase within the limit, paid through `co` with the card-like credential; everything a person or a record could see. */
 async function purchase(co: AiriCheckout, airi = new CardAiri()) {

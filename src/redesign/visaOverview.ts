@@ -1,7 +1,7 @@
 // /visa's summary of the paid run (jury panel, 12 Nov: one summary of the paid run; it was "three live runs", then a
-// paid run beside a controls run): one card with a few big numbers, purchase B's ids and the run's honest label. The
-// heading says who asked (scripted, no Claude call, until a record holds a Claude request id for the rail choice) and
-// the series as "N of M attempts paid"; the attempts that failed are listed in a fold on the page
+// paid run beside a controls run): one card with the series as "N of M attempts paid", purchase B's ids and the run's
+// honest label. Its tag says who asked (airiAsker: scripted, no Claude call, unless a purchase was asked for inside an
+// agent's Claude call); the attempts that failed are listed in a fold on the page
 // (src/redesign/vicFacts.ts). Every figure is read from the run's own record (docs/demo/airi-run.json); the card links
 // to the run's full block lower on the page.
 //
@@ -10,7 +10,7 @@
 // part of the summary either: TAP is not eligible Visa tooling for this hackathon (Visa, 5 Nov), so its card sits in
 // the one closed TAP fold at the foot of the page (tapCardHtml). visaOverviewHtml refuses both. No motion.
 
-import { AIRI_SCRIPTED, airiClaudeChoices, airiRun, AIRI_RUN_ID, type AiriRunRecord } from "./airiRun.js";
+import { airiAsker, airiClaudeChoices, airiRun, AIRI_RUN_ID, type AiriRunRecord } from "./airiRun.js";
 import { tapRun } from "./run.js";
 import { esc } from "./ui.js";
 import { vicAttemptCount } from "./vicFacts.js";
@@ -27,22 +27,20 @@ export interface RunCard { kind: RunKind; tag: string; title: string; stats: Sta
 
 const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
 const short = (s: string) => (s.length > 14 ? `${s.slice(0, 12)}…` : s);
-const okOf = (c: Record<string, { ok: boolean }>) => { const v = Object.values(c); return `${v.filter((x) => x.ok).length}/${v.length}`; };
 
 /**
- * The paid run's card: the attempts of the day as "N of M", what was paid, what Purser refused, its checks and purchase
- * B's ids. Null when a fact is missing.
+ * The paid run's card: the attempts of the day as "N of M" (counted), who asked (airiAsker) and purchase B's ids. Null
+ * when a fact is missing.
  */
 export function airiCard(rec: AiriRunRecord): RunCard | null {
-  const paid = rec.purchases.filter((p) => p.outcome === "SUCCEEDED");
-  const refused = rec.purchases.filter((p) => p.route === "refused" && p.by === "purser");
   const b = rec.purchases.find((p) => p.route === "cfo" && p.outcome === "SUCCEEDED");
   if (!b?.payment_intent_id || !b.mandate_id) return null;
   const n = vicAttemptCount(rec), claude = airiClaudeChoices(rec);
+  // The series alone (review, 12 Nov): what was paid, refused and checked is the run block's, right under this card.
   return {
-    kind: "paid", tag: `VIC via Airi · ${day(rec.started_at)} · ${claude.length ? `rail chosen by Claude` : AIRI_SCRIPTED}`, title: "Single-use Visa credential",
-    stats: [{ v: `1 of ${n.all}`, l: "attempts paid" }, { v: String(paid.length), l: "purchases paid" }, { v: String(refused.length), l: "refused by Purser" }, { v: okOf(rec.checks), l: "checks" }],
-    ids: [["Mandate", b.mandate_id], ["Payment", b.payment_intent_id], ...(claude[0] ? [["Claude request", claude[0]] as [string, string]] : [])],
+    kind: "paid", tag: `VIC via Airi · ${day(rec.started_at)} · ${airiAsker(rec).short}`, title: "Single-use Visa credential",
+    stats: [{ v: `${n.paid} of ${n.all}`, l: "attempts paid" }],
+    ids: [["Mandate", b.mandate_id], ["Payment", b.payment_intent_id], ...claude.map((id) => ["Claude request", id] as [string, string])],
     label: "Airwallex sandbox · test card · cardholder confirmed each purchase in Airi", href: `#${AIRI_RUN_ID}`,
   };
 }
