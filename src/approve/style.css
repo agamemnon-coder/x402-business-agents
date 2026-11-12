@@ -209,6 +209,15 @@ button:focus-visible, .option:focus-visible, .reject-btn:focus-visible, a:focus-
 /* Enrolment */
 .enrol { display: grid; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 20px; box-shadow: var(--shadow); min-width: 0; }
 .enrol label { font-weight: 650; }
+/* A guest without the viewer link: one card, what to do, two ways on. */
+.guest { display: grid; gap: 12px; margin: 24px 0 0; padding: 28px 20px 20px; text-align: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow); animation: rise .35s ease-out both; }
+.guest-ill { justify-self: center; width: 72px; height: 72px; border-radius: 22px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); margin-bottom: 4px; }
+.guest-ill .lock { width: 36px; height: 36px; }
+.guest h1 { font-size: 22px; font-weight: 750; line-height: 1.2; letter-spacing: -.02em; margin: 0; text-wrap: balance; }
+.guest .muted { margin: 0 0 6px; font-size: 15px; text-wrap: balance; }
+.guest a.confirm, .guest a.secondary { display: flex; align-items: center; justify-content: center; text-decoration: none; font-weight: 650; font-size: 16px; min-height: 52px; padding: 12px 20px; border-radius: 999px; }
+.guest a.confirm { background: var(--text); color: var(--bg); }
+.guest a.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
 /* Enrolment: the Face ID mark, three steps and the card. data-step (set as the page moves on; nothing reads it back) drives it. */
 .enrol-flow { display: grid; justify-items: stretch; }
 .enrol-flow > h1 { font-size: 26px; font-weight: 750; line-height: 1.15; margin: 4px 0 6px; letter-spacing: -.025em; text-align: center; }

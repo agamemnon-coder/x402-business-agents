@@ -841,6 +841,8 @@ const txt = (tag: string, cls: string, s: unknown) => el(tag, cls, [str(s)]);
 
 /** The Face ID mark (the site's line icon), drawn from fixed paths here: presentation only, hidden from screen readers. */
 const FACE_ID = ["M3 7V5a2 2 0 0 1 2-2h2", "M17 3h2a2 2 0 0 1 2 2v2", "M21 17v2a2 2 0 0 1-2 2h-2", "M7 21H5a2 2 0 0 1-2-2v-2", "M8 14s1.5 2 4 2 4-2 4-2", "M9 9h.01", "M15 9h.01"];
+/** A padlock (the same icon set): the guest card. */
+const LOCK = ["M7 11V7a5 5 0 0 1 10 0v4", "M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z", "M12 15v3"];
 function glyph(cls: string, paths: string[]): SVGSVGElement {
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
@@ -1072,11 +1074,18 @@ const NEEDS_LINK = "This device needs the viewer link. Open the link Claude gave
  */
 function guestWithoutLink(app: HTMLElement): boolean {
   if (viewKey || /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) return false;
-  const signin = el("a", "", ["how the CFO signs in"]) as HTMLAnchorElement;
+  // One calm card: what to do, the same two places to go (the sign-in explained first), and the same words a check reads.
+  const signin = el("a", "confirm", ["How the CFO signs in"]) as HTMLAnchorElement;
   signin.href = "/?signin";
-  const rec = el("a", "", ["the recorded CFO dashboard"]) as HTMLAnchorElement;
+  const rec = el("a", "secondary", ["The recorded CFO dashboard"]) as HTMLAnchorElement;
   rec.href = "/?recorded";
-  app.replaceChildren(el("p", "alarm", ["This page is for the CFO and needs the private viewer link. As a guest, see ", signin, " or ", rec, "."]));
+  app.replaceChildren(el("section", "guest", [
+    el("div", "guest-ill", [glyph("lock", LOCK)]),
+    txt("h1", "", "Open your private link once on this phone to approve"),
+    txt("p", "muted", "This page is for the CFO and needs the private viewer link. As a guest:"),
+    signin,
+    rec,
+  ]));
   return true;
 }
 

@@ -129,27 +129,29 @@ async function layout(page: import("playwright").Page, tag: string): Promise<voi
   for (const p of problems) fail(`${tag}: ${p}`);
 }
 
-const browser = await chromium.launch();
+// purser.test points at the same server: a host that is not localhost, where a guest without the viewer link sees the guest card.
+const browser = await chromium.launch({ args: ["--host-resolver-rules=MAP purser.test 127.0.0.1"] });
 const sizes = [{ w: 390, h: 844 }, { w: 1440, h: 900 }] as const;
 const schemes = ["light", "dark"] as const;
 let shotsTaken = 0;
 
 /** One state, at every size and scheme: a fresh context each time (its own passkey and pinned runner key). */
-async function state(name: string, path: string, scenario: () => Scenario, drive: (page: import("playwright").Page) => Promise<void>): Promise<void> {
+async function state(name: string, path: string, scenario: () => Scenario, drive: (page: import("playwright").Page) => Promise<void>, guest = false): Promise<void> {
   for (const size of sizes) for (const scheme of schemes) {
     const tag = `${name} ${size.w} ${scheme}`;
     S = scenario();
     const ctx = await browser.newContext({ viewport: { width: size.w, height: size.h }, colorScheme: scheme, deviceScaleFactor: size.w === 390 ? 2 : 1 });
     const page = await ctx.newPage();
     const errors: string[] = [];
-    page.on("console", (m) => { if (m.type() === "error" && !/Failed to load resource: the server responded with a status of (404|503|400)/.test(m.text())) errors.push(m.text()); });
+    // The guest host is plain HTTP and not localhost, so Chromium says it ignores the relay's COOP header: true, and only here.
+    page.on("console", (m) => { if (m.type() === "error" && !/Failed to load resource: the server responded with a status of (404|503|400)/.test(m.text()) && !(guest && /Cross-Origin-Opener-Policy header has been ignored/.test(m.text()))) errors.push(m.text()); });
     page.on("pageerror", (e) => errors.push(e.message));
     const cdp = await ctx.newCDPSession(page);
     await cdp.send("WebAuthn.enable", { enableUI: false });
     const { authenticatorId } = await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
     await cdp.send("WebAuthn.addCredential", { authenticatorId, credential: { credentialId: credId.toString("base64"), isResidentCredential: false, rpId: "localhost", privateKey: (passkey.privateKey.export({ type: "pkcs8", format: "der" })).toString("base64"), signCount: 0 } });
     try {
-      await page.goto(`${base}${path}${link}`);
+      await page.goto(guest ? `${base.replace("localhost", "purser.test")}${path}` : `${base}${path}${link}`);
       await drive(page);
       await page.waitForTimeout(900); // the entrance animations (.35 s) and the tick (.6 s) have finished
       await layout(page, tag);
@@ -251,6 +253,12 @@ await state("approve-error", "/approve/P-0004", () => ({ approvals: invoice, tic
 await state("approve-unsigned", "/approve/P-0004", () => ({ approvals: () => approvals([proposal("P-0004", "G-4", 30 * 60_000)], { badSignature: true }) }), async (p) => { await see(p, ".alarm", /not signed by the runner/); });
 await state("approve-offline", "/approve/P-0004", () => ({ approvalsStatus: 503 }), async (p) => { await see(p, ".alarm", /not connected yet/); });
 
+await state("approve-guest", "/approve/P-0004", () => ({ approvals: invoice }), async (p) => {
+  await see(p, ".guest h1", /Open your private link/);
+  if (!(await p.isVisible("text=needs the private viewer link"))) throw new Error("the guest card lost the words the pages check reads");
+  for (const [q, href] of [[".guest a.confirm", "/?signin"], [".guest a.secondary", "/?recorded"]] as const) if ((await p.getAttribute(q, "href")) !== href) throw new Error(`${q} does not lead to ${href}`);
+}, true);
+
 // ── Policy ──
 await state("policy", "/policy", () => ({ approvals: () => approvals([]) }), async (p) => { await see(p, ".policy-row"); });
 
@@ -260,4 +268,4 @@ if (failures.length) {
   console.error(`approve-design check: ${failures.length} failure(s); screenshots in ${shots}`);
   process.exit(1);
 }
-console.log(`approve-design check passes: enrol (code, wrong code, fingerprint, enrolled), approve (loading, invoice, options, against advice, signing, waiting, approved, rejected, expired, too late, error, unsigned, offline) and policy at 390 x 844 and 1440 x 900, light and dark: ${shotsTaken} screenshots in ${shots}`);
+console.log(`approve-design check passes: enrol (code, wrong code, fingerprint, enrolled), approve (loading, invoice, options, against advice, signing, waiting, approved, rejected, expired, too late, error, unsigned, offline, guest without the link) and policy at 390 x 844 and 1440 x 900, light and dark: ${shotsTaken} screenshots in ${shots}`);
