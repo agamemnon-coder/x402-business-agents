@@ -142,6 +142,14 @@ describe("one supplier invoice, from upload to paid, booked and archived, over H
     expect((await c.req("GET", "/v1/payments", { key: A.session })).json.items).toEqual([]);
   });
 
+  it("refuses the right signature sent with other terms than the proposal's: nothing is paid", async () => {
+    const r = await c.req("POST", "/v1/engine/proposals/P-0001/approve", { key: A.session, body: { terms_sha256: sha256Hex("other terms"), credential: phone.sign({ challenge: proposal.challenge, origin: ORIGIN, rpId: RP, counter: 2 }) } });
+    expect(r.status, JSON.stringify(r.json)).toBe(200);
+    expect(r.json).toEqual({ status: "refused", message: "The terms sent with this approval are not the ones on screen. Nothing was paid.", settled: null });
+    expect(((await c.req("GET", "/v1/engine/invoices", { key: A.session })).json.items as Invoice[])[0]).toMatchObject({ id: "AP-0001", status: "waiting_cfo" });
+    expect((await c.req("GET", "/v1/payments", { key: A.session })).json.items).toEqual([]);
+  });
+
   it("pays on the right signature: paid on the stand-in bank, booked, archived, and the read model fed", async () => {
     const r = await c.req("POST", "/v1/engine/proposals/P-0001/approve", { key: A.session, body: { terms_sha256: proposal.terms_sha256, credential: phone.sign({ challenge: proposal.challenge, origin: ORIGIN, rpId: RP, counter: 2 }) } });
     expect(r.status, JSON.stringify(r.json)).toBe(200);
