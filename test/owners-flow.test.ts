@@ -440,7 +440,7 @@ describe("owners preflight", () => {
     const text = w.said.join("\n");
     // Each step with its transactions, its calls and what the owner does on the phone; then the total.
     for (const step of r.plan) expect(text).toContain(step.step);
-    expect(text).toMatch(/4 setup +npm run owners -- setup\n +calls: 13 to 22 request\(s\); transactions: donor key → gas sponsor, 5\.00 test USD; create the account .*; donor key → account, 0\.60 test USD\n +on the phone: nothing/);
+    expect(text).toMatch(/4 setup +npm run owners -- setup\n +calls: 13 to 22 requests; transactions: donor key → gas sponsor, 5\.00 test USD; create the account .*; donor key → account, 0\.60 test USD\n +on the phone: nothing/);
     expect(text).toMatch(/on the phone: Open the approval link within 15 minutes\. Check: "Bind the sourcing mandate, signed on chain", 0\.50 USDZ budget, up to 0\.05 per payment, Stockline only\. Tap "Approve with Face ID"/);
     expect(text).toMatch(/TOTAL +7 transactions; 30 to 45 lines in the call log \(2 of them CLI runs\)/);
     expect(text).toMatch(/the donor key 0x[0-9a-fA-F]{40} holds 99\.00 test USD; this run takes 5\.60/);

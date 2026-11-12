@@ -6,8 +6,8 @@
 //     keyed nonces, ERC-7579 execution), word for word from the pinned sources (@openzeppelin/contracts 5.6.1;
 //     test/account-errors.test.ts compares the two);
 //   - Solidity's own Error(string) and Panic(uint256).
-// Metal has not published the account's full ABI, so an error outside these lists is shown by its 4-byte selector and
-// said to be unknown: never a guess, never "unknown reason". Add its line here once its name is known.
+// The pinned SDK carries no ABI of the account's own errors beyond these, so an error outside the lists is shown by its
+// 4-byte selector and said to be unknown: never a guess, never "unknown reason". Add its line here once its name is known.
 
 import { decodeAbiParameters, decodeErrorResult, parseAbi, parseAbiParameters, size, slice, type Abi, type Hex } from "viem";
 import { mandateBindingAbi } from "@metalntwx/metal-pay/mandates";

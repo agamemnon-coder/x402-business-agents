@@ -269,11 +269,14 @@ export async function setup(d: OwnersWorld): Promise<{ account: Address; created
 
 // ---- propose and propose-revoke -------------------------------------------------------------------------------------
 
+/** How long both owners have to sign a proposal on their phones. */
+const SIGN_MINUTES = 15;
+
 /** Files the owners_execute for one account call: a fresh two-owner nonce lane (one read), fifteen minutes to sign, the deadline two minutes later. */
 async function file(d: OwnersWorld, id: string, account: Address, signers: Hex[], call: { to: Address; data: Hex }, action: OwnersExecuteTerms["action"]): Promise<{ proposal: ProposalRow; terms: OwnersExecuteTerms }> {
   const lane = quorumLane();
   const nonce = (lane << 64n) | ((await d.chain.read({ address: account, abi: accountAbi, functionName: "nonces", args: [account, lane] })) as bigint);
-  const expires = new Date(d.now().getTime() + 15 * 60_000);
+  const expires = new Date(d.now().getTime() + SIGN_MINUTES * 60_000);
   expires.setUTCMilliseconds(0);
   const terms = ownersExecuteTerms({
     proposal_id: id, expires_at: expires.toISOString().replace(".000Z", "Z"), account, chain_id: String(CHAIN_ID), owners: signers,
@@ -450,24 +453,25 @@ export function ownersPlan(o: { funding: "donor" | "faucet" | "recycle"; polls: 
   const call = { min: RELAY_CALLS, max: RELAY_CALLS - 1 + receipt.max };
   const sum = (...xs: { min: number; max: number }[]) => ({ min: xs.reduce((n, x) => n + x.min, 0), max: xs.reduce((n, x) => n + x.max, 0) });
   const exactly = (n: number) => ({ min: n, max: n });
-  const sign = (title: string) => `Open the approval link within 15 minutes. Check: "${title}", 0.50 USDZ budget, up to 0.05 per payment, Stockline only. Tap "Approve with Face ID" and look at the phone. It shows "1 of 2 approvals"; then the second approver signs.`;
+  const [cap, over, budget, sponsor, account] = [MANDATE.capCents, MANDATE.capCents + 1, MANDATE.budgetCents, SPONSOR_CENTS, ACCOUNT_CENTS].map(fromCents);
+  const sign = (title: string) => `Open the approval link within ${SIGN_MINUTES} minutes. Check: "${title}", ${budget} USDZ budget, up to ${cap} per payment, ${MANDATE.payee.name} only. Tap "Approve with Face ID" and look at the phone. It shows "1 of 2 approvals"; then the second approver signs.`;
   const setup = o.funding === "donor"
     // The verifier's code, the transfer to the sponsor, the account's address, its code, the creation, the transfer to the account.
-    ? { requests: sum(exactly(3), transfer, call, transfer), cli_runs: 0, transactions: ["donor key → gas sponsor, 5.00 test USD", "create the account (gas sponsor → account factory)", "donor key → account, 0.60 test USD"] }
+    ? { requests: sum(exactly(3), transfer, call, transfer), cli_runs: 0, transactions: [`donor key → gas sponsor, ${sponsor} test USD`, "create the account (gas sponsor → account factory)", `donor key → account, ${account} test USD`] }
     : o.funding === "faucet"
       // As above, with the sponsor's balance read before and after the faucet's grant, and the account funded by the sponsor.
-      ? { requests: sum(exactly(5), call, transfer), cli_runs: 1, transactions: ["the faucet's grant to the gas sponsor (sent by the faucet)", "create the account (gas sponsor → account factory)", "gas sponsor → account, 0.60 test USD"] }
+      ? { requests: sum(exactly(5), call, transfer), cli_runs: 1, transactions: ["the faucet's grant to the gas sponsor (sent by the faucet)", "create the account (gas sponsor → account factory)", `gas sponsor → account, ${account} test USD`] }
       // Recycling reads each finished world's balance and sends one transfer per world that gives: at least one of each.
-      : { requests: sum(exactly(5), transfer, call, transfer), cli_runs: 0, transactions: ["finished dry-run world(s) → gas sponsor (one transfer per world that gives; more worlds, more calls)", "create the account (gas sponsor → account factory)", "gas sponsor → account, 0.60 test USD"] };
+      : { requests: sum(exactly(5), transfer, call, transfer), cli_runs: 0, transactions: ["finished dry-run world(s) → gas sponsor (one transfer per world that gives; more worlds, more calls)", "create the account (gas sponsor → account factory)", `gas sponsor → account, ${account} test USD`] };
   return [
     { step: "1 preflight", command: "npm run owners -- preflight", transactions: [], requests: exactly(o.funding === "donor" ? 3 : 2), cli_runs: 0, phone: NOTHING },
     { step: "2 the owner's passkey", command: "npm run relay -- --enrol, then npm run passkey -- confirm <fingerprint>", transactions: [], requests: exactly(0), cli_runs: 0,
       phone: 'Open the viewer link once. Open the enrol page and type the code. Tap "Create passkey with Face ID" and look at the phone. Read the fingerprint it shows aloud.' },
-    { step: "3 the second approver", command: "npm run passkey -- add <name>, then confirm its fingerprint", transactions: [], requests: exactly(0), cli_runs: 0, phone: "nothing (the second approver enrols on a second device)" },
+    { step: "3 the second approver", command: "npm run passkey -- add <name>, then confirm its fingerprint", transactions: [], requests: exactly(0), cli_runs: 0, phone: "nothing: the second approver enrols on their own device" },
     { step: "4 setup", command: "npm run owners -- setup", ...setup, phone: NOTHING },
     { step: "5 propose the bind", command: "npm run owners -- propose", transactions: [], requests: exactly(1), cli_runs: 0, phone: sign("Bind the sourcing mandate, signed on chain") },
     { step: "5 the runner relays it", command: "npm run relay (running)", transactions: ["executeSigned: the account binds the mandate (gas sponsor → account)"], requests: call, cli_runs: 0, phone: NOTHING },
-    { step: "6 pay", command: "npm run owners -- pay", transactions: ["0.05 to Stockline inside the mandate (signed by the mandate key, sent by Metal's facilitator)", "0.06, over the cap: refused, and the refusal recorded on chain (sent by the gas sponsor)"], requests: exactly(1), cli_runs: 2, phone: NOTHING },
+    { step: "6 pay", command: "npm run owners -- pay", transactions: [`${cap} to ${MANDATE.payee.name} inside the mandate (signed by the mandate key, sent by Metal's facilitator)`, `${over}, over the cap: refused, and the refusal recorded on chain (sent by the gas sponsor)`], requests: exactly(1), cli_runs: 2, phone: NOTHING },
     { step: "7 propose the revoke", command: "npm run owners -- propose-revoke", transactions: [], requests: exactly(1), cli_runs: 0, phone: sign("Revoke the sourcing mandate, signed on chain") },
     { step: "7 the runner relays it", command: "npm run relay (running)", transactions: ["executeSigned: the account revokes the mandate (gas sponsor → account)"], requests: call, cli_runs: 0, phone: NOTHING },
     { step: "8 status", command: "npm run owners -- status", transactions: [], requests: exactly(1), cli_runs: 0, phone: NOTHING },
@@ -514,7 +518,7 @@ export async function preflight(d: OwnersWorld, polls: number): Promise<Prefligh
   const id = await d.chain.chainId();
   check(id === CHAIN_ID, `the endpoint answers as Metal testnet (chain ${CHAIN_ID})`, `the endpoint answers as chain ${id}, not Metal testnet (${CHAIN_ID})`);
   if (id === CHAIN_ID) {
-    check(await d.chain.hasCode(PASSKEY_VERIFIER), `the WebAuthn verifier is deployed at ${PASSKEY_VERIFIER}`, `no WebAuthn verifier at ${PASSKEY_VERIFIER}`);
+    check(await d.chain.hasCode(PASSKEY_VERIFIER), `the WebAuthn verifier's address ${PASSKEY_VERIFIER} holds contract code`, `no WebAuthn verifier at ${PASSKEY_VERIFIER}`);
     const donor = donorOf(d.env);
     if (donor) {
       const have = await d.chain.balance(donor.address);
@@ -528,7 +532,8 @@ export async function preflight(d: OwnersWorld, polls: number): Promise<Prefligh
   d.say("PLAN             requests are counted one by one; a CLI run is one line in the log, and the requests inside it are not counted");
   for (const s of plan) {
     d.say(`${s.step.padEnd(24)} ${s.command}`);
-    d.say(`${"".padEnd(24)} calls: ${s.requests.min === s.requests.max ? s.requests.min : `${s.requests.min} to ${s.requests.max}`} request(s)${s.cli_runs ? ` and ${s.cli_runs} CLI run(s)` : ""}; transactions: ${s.transactions.length ? s.transactions.join("; ") : "none"}`);
+    const requests = s.requests.min === s.requests.max ? `${s.requests.min} ${s.requests.min === 1 ? "request" : "requests"}` : `${s.requests.min} to ${s.requests.max} requests`;
+    d.say(`${"".padEnd(24)} calls: ${requests}${s.cli_runs ? ` and ${s.cli_runs} CLI ${s.cli_runs === 1 ? "run" : "runs"}` : ""}; transactions: ${s.transactions.length ? s.transactions.join("; ") : "none"}`);
     d.say(`${"".padEnd(24)} on the phone: ${s.phone}`);
   }
   const t = planTotals(plan);
@@ -538,7 +543,7 @@ export async function preflight(d: OwnersWorld, polls: number): Promise<Prefligh
   d.say("");
   d.say(`TOTAL            ${t.transactions} transactions; ${t.lines.min} to ${t.lines.max} lines in the call log (${t.cli_runs} of them CLI runs), the higher number when every receipt takes all ${polls} polls${funding === "recycle" ? "; more when several finished worlds give" : ""}`);
   check(b.left() >= rest.max, `the budget of ${b.budget} (${b.used()} used) covers the rest of the run (${rest.min} to ${rest.max} more lines)`, `the budget of ${b.budget} (${b.used()} used, ${b.left()} left) is below the ${rest.max} lines the rest of the run can take${b.left() < rest.min ? `, and below the ${rest.min} it takes at least` : ""}: the run would stop partway`);
-  d.say(problems.length ? `NOT READY        ${problems.length} problem(s) above` : "READY            nothing was sent; the next step is the owner's passkey");
+  d.say(problems.length ? `NOT READY        ${problems.length === 1 ? "1 problem" : `${problems.length} problems`} above; nothing was sent` : "READY            nothing was sent");
   return { ok: problems.length === 0, problems, plan };
 }
 
