@@ -526,6 +526,18 @@ describe("owners preflight", () => {
     }
   });
 
+  it("ends with the record, which costs no call, and offers both ways to a second approver", () => {
+    const plan = ownersPlan({ funding: "donor", polls: 4 });
+    expect(plan.at(-1)).toEqual({ step: "8 record", command: "npm run owners -- record", transactions: [], requests: { min: 0, max: 0 }, cli_runs: 0, phone: "nothing" });
+    expect(plan.find((s) => s.step === "3 the second approver")).toMatchObject({
+      command: "npm run passkey -- add <name>, then confirm its fingerprint (a second device); or npx tsx docs/runs/driver/test-controller.ts enrol (a labelled virtual approver), then confirm its fingerprint",
+      phone: "nothing: the second approver enrols on their own device, or the virtual approver is driven from the runner's machine",
+      requests: { min: 0, max: 0 }, cli_runs: 0, transactions: [],
+    });
+    // The record adds nothing to the totals preflight prints.
+    expect(planTotals(plan)).toEqual(planTotals(plan.slice(0, -1)));
+  });
+
   it("plans the faucet and the recycling paths too, with their CLI run and their extra reads", () => {
     const faucet = ownersPlan({ funding: "faucet", polls: 4 }).find((s) => s.step === "4 setup")!;
     expect(faucet).toMatchObject({ requests: { min: 12, max: 18 }, cli_runs: 1 });

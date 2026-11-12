@@ -12,6 +12,7 @@
 //   pay             the Sourcing agent's mandate key pays 0.05 inside the mandate, then tries one cent over the cap,
 //                   which Metal must refuse and record on chain
 //   status          the mandate as the chain has it (one read)
+//   record          the run's record, written from the audit rows and the call log; no call (src/metal/ownersRecord.ts)
 //
 // Every send is recorded before it leaves and made at most once (src/metal/ownersTx.ts). The two payments in `pay` are
 // signed and sent inside the CLI: there the payment id is what is recorded first (metal-agent pays an id at most once).
@@ -489,7 +490,8 @@ export function ownersPlan(o: { funding: "donor" | "faucet" | "recycle"; polls: 
     { step: "1 preflight", command: "npm run owners -- preflight", transactions: [], requests: exactly(o.funding === "donor" ? 3 : 2), cli_runs: 0, phone: NOTHING },
     { step: "2 the owner's passkey", command: "npm run relay -- --enrol, then npm run passkey -- confirm <fingerprint>", transactions: [], requests: exactly(0), cli_runs: 0,
       phone: 'Open the viewer link once. Open the enrol page and type the code. Tap "Create passkey with Face ID" and look at the phone. Read the fingerprint it shows aloud.' },
-    { step: "3 the second approver", command: "npm run passkey -- add <name>, then confirm its fingerprint", transactions: [], requests: exactly(0), cli_runs: 0, phone: "nothing: the second approver enrols on their own device" },
+    { step: "3 the second approver", command: "npm run passkey -- add <name>, then confirm its fingerprint (a second device); or npx tsx docs/runs/driver/test-controller.ts enrol (a labelled virtual approver), then confirm its fingerprint", transactions: [], requests: exactly(0), cli_runs: 0,
+      phone: "nothing: the second approver enrols on their own device, or the virtual approver is driven from the runner's machine" },
     { step: "4 setup", command: "npm run owners -- setup", ...setup, phone: NOTHING },
     { step: "5 propose the bind", command: "npm run owners -- propose", transactions: [], requests: exactly(1), cli_runs: 0, phone: sign("Bind the sourcing mandate, signed on chain") },
     { step: "5 the runner relays it", command: "npm run relay (running)", transactions: ["executeSigned: the account binds the mandate (gas sponsor → account)"], requests: call, cli_runs: 0, phone: NOTHING },
@@ -497,6 +499,8 @@ export function ownersPlan(o: { funding: "donor" | "faucet" | "recycle"; polls: 
     { step: "7 propose the revoke", command: "npm run owners -- propose-revoke", transactions: [], requests: exactly(1), cli_runs: 0, phone: sign("Revoke the sourcing mandate, signed on chain") },
     { step: "7 the runner relays it", command: "npm run relay (running)", transactions: ["executeSigned: the account revokes the mandate (gas sponsor → account)"], requests: call, cli_runs: 0, phone: NOTHING },
     { step: "8 status", command: "npm run owners -- status", transactions: [], requests: exactly(1), cli_runs: 0, phone: NOTHING },
+    // The record is written from the ledger and the call log alone (src/metal/ownersRecord.ts): no call.
+    { step: "8 record", command: "npm run owners -- record", transactions: [], requests: exactly(0), cli_runs: 0, phone: NOTHING },
   ];
 }
 
