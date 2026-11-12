@@ -165,6 +165,12 @@ export const AGENT_DISPLAY: Record<"sourcing" | "support" | "treasury", { name: 
   treasury: { name: "Treasury agent", job: "watches spending, sweeps earnings to Airwallex once final, and pays the monthly licence fee in EUR (Airwallex FX and SWIFT, after the CFO's Face ID)" },
 };
 
+/** The payables chain's own agents (KIT11_AP_AGENTS=on): each decides one step, and code enforces the limits around it. */
+export const AP_AGENT_DISPLAY: Record<"checker" | "payer", { name: string; job: string }> = {
+  checker: { name: "Checker agent", job: "decides what happens to each supplier invoice: pay, ask the CFO, hold or reject; code's own checks can only make that stricter" },
+  payer: { name: "Payer agent", job: "proposes how and when a checked invoice is paid: the rail, the day and the currency; code holds what breaks a floor, and the CFO signs the exact terms" },
+};
+
 /** Each agent's Kit 11 job, short, for the deck. */
 export const KIT11_JOBS: Record<"sourcing" | "support" | "treasury", string> = {
   sourcing: "buys upstream data per query",
@@ -180,7 +186,7 @@ export const RECORDING_NAMES_NOTE = "Recorded on 30 October, before the agents t
 
 /** The display name of an agent id, or the id itself for anything else. */
 export function agentName(id: string): string {
-  return (AGENT_DISPLAY as Record<string, { name: string }>)[id]?.name ?? id;
+  return (AGENT_DISPLAY as Record<string, { name: string }>)[id]?.name ?? (AP_AGENT_DISPLAY as Record<string, { name: string }>)[id]?.name ?? id;
 }
 
 /**
