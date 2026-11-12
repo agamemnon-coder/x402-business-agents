@@ -353,12 +353,14 @@ function entry(r: RunRow, o: { newest?: boolean; folded: boolean }): string {
   const kind = kindOf(r), [first, ...rest] = r.ids;
   // The fold lists every id in full, the first one included: the chip in sight may be cut on a phone (review 12 Nov).
   const more = rest.filter(isId).length;
+  // An entry shown without a fold of its own does not repeat what ran when its one line already says it (review 12 Nov).
+  const said = !o.folded && lineOf(r).includes(r.what);
   const cls = ["run", `k-${kind}`, ...FILTERS.filter((f) => f.has(r)).map((f) => `f-${f.id}`), ...(r.product ? ["prod"] : []), ...(o.newest ? ["newest"] : [])].join(" ");
   // A rate that fell short is not a success: no tick, no green.
   const full = r.rate && r.rate.done === r.rate.of;
   const rate = r.rate ? `<span class="rt${full ? " ok" : ""}">${full ? icon("check", 14) : ""}${esc(rateWords(r.rate))}</span>` : "";
   const files = r.files.map((f) => `<a class="f" href="${esc(siteHref(f.href))}" target="_blank" rel="noopener"${linkWords(f.label) === f.label ? "" : ` aria-label="${esc(f.label)}"`}>${esc(linkWords(f.label))} ↗</a>`).join(" ");
-  const fold = `<div class="fold">${r.ids.length ? `<div class="ids">${r.ids.map(idChip).join("")}</div>` : ""}<p>${esc(r.what)}</p><p><b>Checks:</b> ${esc(r.checks)}</p>${r.stats?.length ? `<p class="q">${r.stats.map((x) => `${esc(x.v)} ${esc(x.l)}`).join(" · ")}</p>` : ""}<p class="q">Rails: ${esc(r.rails)}. Money: ${esc(r.money)}.</p></div>`;
+  const fold = `<div class="fold">${r.ids.length ? `<div class="ids">${r.ids.map(idChip).join("")}</div>` : ""}${said ? "" : `<p>${esc(r.what)}</p>`}<p><b>Checks:</b> ${esc(r.checks)}</p>${r.stats?.length ? `<p class="q">${r.stats.map((x) => `${esc(x.v)} ${esc(x.l)}`).join(" · ")}</p>` : ""}<p class="q">Rails: ${esc(r.rails)}. Money: ${esc(r.money)}.</p></div>`;
   const label = `Ids, what ran and the checks${more ? `: ${pl(more, "more id")}` : ""}`;
   return `<li class="${cls}" id="${esc(r.key)}"><article${o.folded ? ' class="fd"' : ""} aria-label="${esc(nameOf(r))}">
 <p class="meta"><time datetime="${esc(r.iso)}" title="${esc(r.date)}">${esc(r.date.replace(/ \d{4}$/, ""))}</time><span class="kd ${kind}">${esc(KIND_LABEL[kind])}</span>${o.newest ? '<span class="mk new">Newest</span>' : ""}${r.product ? `<span class="mk prod">${esc(PRODUCT_MARK)}</span>` : ""}</p>

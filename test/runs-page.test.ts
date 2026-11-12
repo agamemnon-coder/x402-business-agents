@@ -546,6 +546,9 @@ describe("/runs as a timeline", () => {
     for (const e of entriesOf(rehGroup(html))) {
       expect(e.html).not.toContain("<details");
       for (const part of [row(e.key).what, row(e.key).checks, row(e.key).money]) expect(e.html).toContain(escAttr(part));
+      // Review 12 Nov (DC-8): what ran is said once; an entry whose one line already says it does not repeat it below.
+      expect(e.text.split(row(e.key).what).length - 1, e.key).toBe(1);
+      expect(e.html, e.key).toContain(`Rails: ${escAttr(row(e.key).rails)}. Money: ${escAttr(row(e.key).money)}.`);
       // Every id once, in full, in the list under it (no cut chip above it).
       expect(/<div class="ch">([^\n]*)<\/div>/.exec(e.html)![1], e.key).not.toContain('class="idc"');
       for (const i of row(e.key).ids) expect(e.text.split(i.value).length - 1, `${e.key} ${i.value}`).toBe(1);
