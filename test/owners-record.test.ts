@@ -12,8 +12,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { audit } from "../src/audit/log.js";
 import { EXPLORER_TX } from "../src/metal/network.js";
 import { readOwnersCalls } from "../src/metal/ownersBudget.js";
-import { propose, setup } from "../src/metal/ownersFlow.js";
-import { buildOwnersRecord, CLI_NOTE, DEVICE_NOTE, RecordRefused, recordRefusals, recordRun, renderOwnersRecord, writeOwnersRecord, type OwnersRecord, type RecordInputs } from "../src/metal/ownersRecord.js";
+import { propose, proposeReplace, proposeRevoke, setup } from "../src/metal/ownersFlow.js";
+import { buildOwnersRecord, CLI_NOTE, DEVICE_NOTE, NO_STAND_IN, RecordRefused, recordRefusals, recordRun, renderOwnersRecord, writeOwnersRecord, type OwnersRecord, type RecordInputs } from "../src/metal/ownersRecord.js";
 import { PASSKEY_VERIFIER } from "../src/metal/passkeyRelay.js";
 import { loadVerifier } from "../src/metal/verifierCompile.js";
 import { ownersWorld, T0, type TestWorld } from "./support/ownersWorld.js";
@@ -114,8 +114,20 @@ describe("what the owner states about the devices", () => {
     expect(page).toContain("Attestation is none, so the device type cannot be proven: a device description here is the owner's statement, not a finding of this record.");
     // Nothing says a device was proven, verified or attested, or that a phone signed.
     const all = text(r).replaceAll(DEVICE_NOTE, "");
-    expect(all).not.toMatch(/proven|verified device|attested|device (is|was) (proven|verified|confirmed)|phone signed|signed (on|with) (a|the|his|her|their) (phone|iphone)/i);
+    expect(all.replaceAll(NO_STAND_IN.slice(1), "")).not.toMatch(/proven|verified device|attested|device (is|was) (proven|verified|confirmed)|phone signed|signed (on|with) (a|the|his|her|their) (phone|iphone)/i);
     expect(r.stand_in).toBeNull();
+  });
+
+  it("with no virtual label it does not say no stand-in was used: only that no label says so, and that the devices are not proven", async () => {
+    await world();
+    await setup(w.d);
+    const r = build({ devices: { cfo: "iPhone 15", controller: "a second phone" } });
+    expect(NO_STAND_IN).toBe("No passkey carries a virtual test label. What device holds each passkey is not proven (see The owners).");
+    expect([r.stand_in, r.stand_in_note]).toEqual([null, NO_STAND_IN]);
+    const page = renderOwnersRecord(r);
+    expect(page).toContain("\n**Stand-in:** no passkey carries a virtual test label. What device holds each passkey is not proven (see The owners).\n");
+    expect(page).toMatch(/^# The passkey account on chain: run record\n/);
+    expect(text(r)).not.toMatch(/Stand-in:\*\* none|no stand-in|without a stand-in/i);
   });
 });
 
@@ -131,10 +143,52 @@ describe("a virtual second approver, or a virtual CFO", () => {
     });
     expect(r.owners[0]).toMatchObject({ role: "CFO", label: "max", virtual: false, device: "iPhone 15", device_basis: "as stated by the owner" });
     expect(r.stand_in).toBe(`the second approver "test-controller" is a ${virtual}`);
+    expect(r.stand_in_note).toBe("Read from the passkeys' labels. What device holds any other passkey is not proven (see The owners).");
     expect(text(r)).not.toContain("a real second phone");
     expect(renderOwnersRecord(r)).toContain(`**Stand-in:** the second approver "test-controller" is a ${virtual}.`);
     // Without a statement there is nothing to ignore, and nothing says so.
     expect(build().owners[1]).not.toHaveProperty("stated_device_ignored");
+  });
+
+  it("names the virtual approver as virtual wherever it is named: the title, each approval, the steps and the command's ACCOUNT line", async () => {
+    await world({ labels: ["max", "test-controller"] });
+    await setup(w.d);
+    const { proposal } = await propose(w.again());
+    const id = proposal.proposal_id;
+    await w.signBoth(id);
+    await w.relay(id);
+    const [fpMax, fpVirtual] = rows("passkey.enrolled").map((e) => String(e.p.fingerprint));
+    const [first, second] = [rows("proposal.cosigned")[0]!.ts, rows("proposal.approved")[0]!.ts];
+    const said: string[] = [];
+    const { record: r } = recordRun(w.db, { OWNERS_CALL_BUDGET: "60", OWNERS_CALL_LOG: w.log, OWNERS_DEVICE_CFO: "iPhone 15" }, (l) => said.push(l), temp());
+    expect(r.record).toBe("The passkey account on chain: run record (with a virtual test passkey)");
+    expect(r.proposals[0]!.approvals).toEqual([
+      { by: "max", role: "CFO", fingerprint: fpMax, virtual: false, at: first, of: "1 of 2" },
+      { by: "test-controller", role: "second approver", fingerprint: fpVirtual, virtual: true, at: second, of: "2 of 2" },
+    ]);
+    expect(r.steps.find((s) => s.kind === "approvals")!.detail).toBe(`max (passkey ${fpMax}) at ${first}; test-controller (virtual test passkey ${fpVirtual}) at ${second}`);
+    const page = renderOwnersRecord(r);
+    expect(page).toMatch(/^# The passkey account on chain: run record \(with a virtual test passkey\)\n/);
+    expect(page).toContain(`- approval 1 of 2: max, the CFO, passkey ${fpMax}, at ${first}\n`);
+    expect(page).toContain(`- approval 2 of 2: test-controller (virtual test passkey), the second approver, passkey ${fpVirtual}, at ${second}\n`);
+    expect(said[0]).toBe(`ACCOUNT          ${r.account}: CFO max (passkey ${fpMax}), second approver test-controller (virtual test passkey ${fpVirtual}); threshold 2`);
+    expect(said[1]).toMatch(/^STAND-IN +the second approver "test-controller" is a virtual test passkey: /);
+    // No line of the page or of the command's output names it without saying it is virtual, and none gives it a second role name.
+    for (const line of [...page.split("\n"), ...said].filter((l) => l.includes("test-controller"))) expect(line).toMatch(/test-controller"? (is a |\()virtual test passkey|\| test-controller \| .* virtual test passkey/);
+    expect(text(r)).not.toMatch(/the controller\b/);
+    // A signature of its that came too late is named the same way.
+    const late = await propose(w.again());
+    await w.sign(late.proposal.proposal_id, 0);
+    w.clock.now = new Date(Date.parse(late.terms.expires_at) + 60_000);
+    await w.sign(late.proposal.proposal_id, 1);
+    const notCounted = build().proposals[1]!.not_counted;
+    expect(notCounted.map((x) => x.why)).toEqual([`a signature by test-controller (virtual test passkey) arrived after the terms ran out (${late.terms.expires_at}) and was not counted`]);
+  });
+
+  it("two virtual passkeys: the title says so in the plural", async () => {
+    await world({ labels: ["test-cfo", "test-controller"] });
+    await setup(w.d);
+    expect(build().record).toBe("The passkey account on chain: run record (with virtual test passkeys)");
   });
 
   it("the label test-cfo is a virtual CFO: the record says no person's device signed as the CFO", async () => {
@@ -242,12 +296,12 @@ describe("a proposal that is not done", () => {
     expect(await w.sign(id, 0)).toMatchObject({ status: "cosigned" });
     now = of(build());
     const cosigned = rows("proposal.cosigned")[0]!;
-    expect(now.p).toMatchObject({ status: "PENDING_APPROVAL", approvals: [{ by: "max", role: "CFO", fingerprint: rows("passkey.enrolled")[0]!.p.fingerprint, at: cosigned.ts, of: "1 of 2" }] });
+    expect(now.p).toMatchObject({ status: "PENDING_APPROVAL", approvals: [{ by: "max", role: "CFO", fingerprint: rows("passkey.enrolled")[0]!.p.fingerprint, virtual: false, at: cosigned.ts, of: "1 of 2" }] });
     expect(now.steps[1]).toEqual(["approvals", "1 of 2 approvals"]);
 
     w.clock.now = new Date(T0.getTime() + 180_000);
     expect(await w.sign(id, 1)).toMatchObject({ status: "approved" });
-    expect(of(build()).p).toMatchObject({ status: "APPROVED", approvals: [{ by: "max", of: "1 of 2" }, { by: "controller", role: "second approver", fingerprint: rows("passkey.enrolled")[1]!.p.fingerprint, at: rows("proposal.approved")[0]!.ts, of: "2 of 2" }] });
+    expect(of(build()).p).toMatchObject({ status: "APPROVED", approvals: [{ by: "max", of: "1 of 2" }, { by: "controller", role: "second approver", fingerprint: rows("passkey.enrolled")[1]!.p.fingerprint, virtual: false, at: rows("proposal.approved")[0]!.ts, of: "2 of 2" }] });
 
     // Relayed, and the runner stopped before the receipt: executing, sent, and no more than that.
     w.node.state.receiptAfter = Infinity;
@@ -278,8 +332,45 @@ describe("a proposal that is not done", () => {
     const { proposal } = await propose(w.again());
     w.db.prepare("UPDATE proposals SET terms_json = replace(terms_json, '\"0.05\"', '\"9.99\"') WHERE proposal_id = ?").run(proposal.proposal_id);
     const p = build().proposals[0]!;
-    expect(p).toMatchObject({ what: null, onchain_digest: null, cap: null, terms_sha256: proposal.terms_sha256, note: expect.stringMatching(/do not hash to the terms_sha256 in the audit row/) });
+    expect(p).toMatchObject({ what: null, onchain_digest: null, cap: null, terms_sha256: proposal.terms_sha256, note: expect.stringMatching(/do not hash to the terms hash in the audit row/) });
     expect(text(build())).not.toContain("9.99");
+  });
+});
+
+describe("the record's words", () => {
+  it("a replace says what stays, a revoke says what ends, amounts have one unit, and a technical name stands in brackets once", async () => {
+    await world();
+    await setup(w.d);
+    const bind = await propose(w.again());
+    await w.signBoth(bind.proposal.proposal_id);
+    await w.relay(bind.proposal.proposal_id);
+    const replace = await proposeReplace(w.again(), { capCents: 10, budgetCents: 50 });
+    await w.signBoth(replace.proposal.proposal_id);
+    await w.relay(replace.proposal.proposal_id);
+    const revoke = await proposeRevoke(w.again());
+    const r = build();
+    const filed = r.steps.filter((s) => s.kind === "proposal");
+    expect(filed.map((s) => s.step)).toEqual([
+      `propose ${bind.proposal.proposal_id}: bind the sourcing mandate: up to 0.05 a payment, 0.50 in all, Stockline only`,
+      `propose ${replace.proposal.proposal_id}: replace the sourcing mandate: cap 0.05 → 0.10, budget 0.50 (unchanged), Stockline only`,
+      `propose ${revoke.proposal.proposal_id}: revoke the sourcing mandate: it ends the mandate that allowed up to 0.10 a payment, 0.50 in all, Stockline only`,
+    ]);
+    expect(filed[0]!.detail).toBe(`terms hash ${bind.proposal.terms_sha256}; the digest the passkeys sign ${bind.terms.onchain_digest}; to be signed by ${bind.terms.expires_at}`);
+    expect(r.steps.filter((s) => s.kind === "relay").map((s) => s.step)).toEqual([bind, replace, revoke].map((x) => `the runner relays ${x.proposal.proposal_id} to the account`));
+    // One unit, said once: every amount is test USD, the token the approval page calls USDZ.
+    expect(r.money).toBe("amounts are in test USD (the testnet's token USDZ): test money, nothing here has real value");
+    const page = renderOwnersRecord(r);
+    expect(page.split("\n")[2]).toMatch(/^Metal testnet \(chain 63825\); amounts are in test USD \(the testnet's token USDZ\): test money, nothing here has real value\. It started \S+Z; its last audit row is from \S+Z\.$/);
+    // The proposals: a replace beside what was, a revoke as what ends.
+    expect(page).toContain("- up to 0.10 a payment, 0.50 in all (before: 0.05 a payment, 0.50 in all)\n");
+    expect(page).toContain("- ends the mandate that allowed up to 0.10 a payment, 0.50 in all\n");
+    expect(page).toContain(`- terms hash \`${revoke.proposal.terms_sha256}\`\n- the digest the passkeys sign \`${revoke.terms.onchain_digest}\`\n`);
+    // No field name of the JSON in the page's sentences, and each technical name once, in brackets, where it is explained.
+    expect(page).not.toMatch(/ran_at|last_row_at|the last row is of|owners_execute/);
+    for (const name of ["terms_sha256", "executeSigned", "Execute digest"]) expect(page.split(name), name).toHaveLength(2);
+    expect(page).toContain("(`terms_sha256`)");
+    expect(page).toContain("(`executeSigned`)");
+    expect(JSON.stringify(r)).not.toMatch(/ran_at is|the last row is of/);
   });
 });
 

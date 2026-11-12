@@ -31,6 +31,11 @@ export const VIRTUAL_LABELS = {
 const STATED = "as stated by the owner";
 const NOT_STATED = "not stated";
 export const DEVICE_NOTE = "Attestation is none, so the device type cannot be proven: a device description here is the owner's statement, not a finding of this record.";
+/** What the record says when no label marks a virtual test passkey: that, and no more. The rows cannot show that no stand-in was used. */
+export const NO_STAND_IN = "No passkey carries a virtual test label. What device holds each passkey is not proven (see The owners).";
+const TITLE = "The passkey account on chain: run record";
+/** The page's own words, each with its technical name once. */
+const WORDS = "The terms hash is the SHA-256 of a proposal's terms (`terms_sha256`). The digest the passkeys sign is the account's own hash of the call, its sequence number and its deadline (its Execute digest). The runner relays an approved proposal as one call to the account that carries both signatures (`executeSigned`); the account checks them itself.";
 export const CLI_NOTE = "A cli:<command> line is one whole run of the metal-agent CLI; the requests it makes inside are not counted.";
 
 /** The command cannot write a record: something it needs is missing, or the target holds another world's record. Nothing was written. */
@@ -78,7 +83,12 @@ export interface RecordStep {
   after_refusal?: { payment_id: string; tx: string | null; explorer: string | null; under_proposal: string; cap_then: string; cap_now: string };
 }
 
-export interface RecordApproval { by: string; role: RecordOwner["role"] | null; fingerprint: string | null; at: string; of: string }
+export interface RecordApproval {
+  by: string; role: RecordOwner["role"] | null; fingerprint: string | null;
+  /** The passkey's label marks a virtual test passkey: it is named as one wherever this approval is. */
+  virtual: boolean;
+  at: string; of: string;
+}
 export interface RecordProposal {
   proposal_id: string;
   what: string | null;
@@ -119,6 +129,8 @@ export interface OwnersRecord {
   chain_id: number;
   money: string;
   stand_in: string | null;
+  /** What stand_in does and does not say: it is read from the labels; the devices are not proven. */
+  stand_in_note: string;
   verifier: string | null;
   verifier_artifact: { openzeppelin: string; compiler: string; evm: string; bytecode_sha256: string };
   verifier_note: string;
@@ -154,6 +166,9 @@ const STATUS_OF: Record<string, string> = {
 const str = (x: unknown): string | null => (typeof x === "string" && x ? x : null);
 const isTx = (x: unknown): x is string => typeof x === "string" && /^0x[0-9a-fA-F]{64}$/.test(x);
 const link = (tx: string | null) => (tx ? `${EXPLORER_TX}${tx}` : null);
+const isVirtual = (label: string) => Object.hasOwn(VIRTUAL_LABELS, label);
+/** "test-controller (virtual test passkey 5117-…)", "max (passkey DD36-…)": a virtual test passkey is named as one wherever it is named. */
+const passkeyName = (label: string, fingerprint: string | null) => (isVirtual(label) ? `${label} (virtual test passkey${fingerprint ? ` ${fingerprint}` : ""})` : `${label}${fingerprint ? ` (passkey ${fingerprint})` : ""}`);
 const same = (a: unknown, b: unknown) => typeof a === "string" && typeof b === "string" && a.toLowerCase() === b.toLowerCase();
 
 /**
@@ -214,7 +229,7 @@ export function buildOwnersRecord(db: DB, calls: readonly OwnersCall[], inputs: 
   const stated = (role: RecordOwner["role"]) => { const t = role === "CFO" ? inputs.devices?.cfo : inputs.devices?.controller; return t && t.trim() ? clean(t, DEVICE_CAP) : null; };
   const owners: RecordOwner[] = enrolments.map((e): RecordOwner => {
     const role = roles.get(e.label)!;
-    const virtual = (VIRTUAL_LABELS as Record<string, string>)[e.label];
+    const virtual = isVirtual(e.label) ? (VIRTUAL_LABELS as Record<string, string>)[e.label] : undefined;
     const text = stated(role);
     const base = { role, label: e.label, fingerprint: str(e.row?.p.fingerprint), enrolled_at: e.row?.ts ?? null };
     if (virtual) return { ...base, virtual: true, device: virtual, device_basis: "the passkey's label marks a virtual test passkey", ...(text ? { stated_device_ignored: "a device description was stated for this owner and is not recorded: the label marks a virtual test passkey" } : {}) };
@@ -262,12 +277,14 @@ export function buildOwnersRecord(db: DB, calls: readonly OwnersCall[], inputs: 
     let t: OwnersExecuteTerms | null = null;
     try { const parsed = stored ? (JSON.parse(stored.terms_json) as OwnersExecuteTerms) : null; if (parsed && termsHash(parsed) === filed.p.terms_sha256) t = parsed; } catch { /* recorded as unreadable below */ }
     const a = t?.action;
-    const words = !a ? "an owners_execute whose stored terms do not hash to the terms_sha256 in its audit row"
-      : a.what === "replace" ? `replace the ${a.agent} mandate: cap ${a.was_cap} → ${a.cap}, budget ${a.was_budget} → ${a.budget}, ${a.payee_name} only`
-        : a.what === "revoke" ? `revoke the ${a.agent} mandate (up to ${a.cap} a payment, ${a.budget} in all, ${a.payee_name} only)`
+    // A limit a replace leaves as it was is said to be unchanged; a revoke's limits are what ends, not what is granted.
+    const change = (name: string, was: string | undefined, now: string) => (was === now ? `${name} ${now} (unchanged)` : `${name} ${was} → ${now}`);
+    const words = !a ? "a proposal whose stored terms do not hash to the terms hash in its audit row"
+      : a.what === "replace" ? `replace the ${a.agent} mandate: ${change("cap", a.was_cap, a.cap)}, ${change("budget", a.was_budget, a.budget)}, ${a.payee_name} only`
+        : a.what === "revoke" ? `revoke the ${a.agent} mandate: it ends the mandate that allowed up to ${a.cap} a payment, ${a.budget} in all, ${a.payee_name} only`
           : `${a.what} the ${a.agent} mandate: up to ${a.cap} a payment, ${a.budget} in all, ${a.payee_name} only`;
     add(filed.seq, { kind: "proposal", step: `propose ${id}: ${clean(words, LINE_CAP)}`, outcome: "filed", at: filed.ts, tx: null, explorer: null, proposal_id: id,
-      detail: t ? `terms_sha256 ${String(filed.p.terms_sha256)}; the account's Execute digest ${t.onchain_digest}; to be signed by ${t.expires_at}` : `terms_sha256 ${String(filed.p.terms_sha256)}; no digest is recorded` });
+      detail: t ? `terms hash ${String(filed.p.terms_sha256)}; the digest the passkeys sign ${t.onchain_digest}; to be signed by ${t.expires_at}` : `terms hash ${String(filed.p.terms_sha256)}; no digest is recorded` });
 
     const approvals: RecordApproval[] = [];
     const signed = mine.filter((r) => r.event === "proposal.cosigned" || r.event === "proposal.approved");
@@ -276,15 +293,15 @@ export function buildOwnersRecord(db: DB, calls: readonly OwnersCall[], inputs: 
       const owner = credential ? byCredential.get(credential) : undefined;
       // The approved row names both approvers; the one who signed last is its passkey.
       const by = owner?.label ?? clean(String(r.event === "proposal.cosigned" ? r.p.person ?? r.p.approver : String(r.p.approver).split(" + ").at(-1)), 80);
-      approvals.push({ by, role: owner?.role ?? null, fingerprint: owner?.fingerprint ?? null, at: r.ts, of: r.event === "proposal.cosigned" ? String(r.p.of ?? "1 of 2") : `${approvals.length + 1} of ${approvals.length + 1}` });
+      approvals.push({ by, role: owner?.role ?? null, fingerprint: owner?.fingerprint ?? null, virtual: owner?.virtual ?? isVirtual(by), at: r.ts, of: r.event === "proposal.cosigned" ? String(r.p.of ?? "1 of 2") : `${approvals.length + 1} of ${approvals.length + 1}` });
     }
     const signerOf = (r: Row) => byCredential.get(str((r.p.passkey as { credential_id?: unknown } | undefined)?.credential_id) ?? "")?.label;
     const notCounted = mine.filter((r) => r.event === "approval.too_late" || r.event === "passkey.refused").map((r) => ({ at: r.ts, why: r.event === "approval.too_late"
-      ? `a signature${signerOf(r) ? ` by ${signerOf(r)}` : ""} arrived after the terms ran out (${String(r.p.expires_at)}) and was not counted` : clean(String(r.p.reason ?? "refused"), LINE_CAP) }));
+      ? `a signature${signerOf(r) ? ` by ${passkeyName(signerOf(r)!, null)}` : ""} arrived after the terms ran out (${String(r.p.expires_at)}) and was not counted` : clean(String(r.p.reason ?? "refused"), LINE_CAP) }));
     const ended = mine.find((r) => r.event === "proposal.expired" || r.event === "proposal.rejected");
     add(signed[0]?.seq ?? filed.seq + 0.1, { kind: "approvals", step: `the owners sign ${id}`, proposal_id: id, at: signed.at(-1)?.ts ?? ended?.ts ?? null, tx: null, explorer: null,
       outcome: approvals.length ? `${approvals.length} of 2 approvals` : ended ? (ended.event === "proposal.expired" ? "expired: no approval counted" : "rejected") : "no approval recorded",
-      detail: [...approvals.map((x) => `${x.by}${x.fingerprint ? ` (passkey ${x.fingerprint})` : ""} at ${x.at}`), ...notCounted.map((x) => `not counted at ${x.at}: ${x.why}`)].join("; ") });
+      detail: [...approvals.map((x) => `${passkeyName(x.by, x.fingerprint)} at ${x.at}`), ...notCounted.map((x) => `not counted at ${x.at}: ${x.why}`)].join("; ") });
 
     // Each transaction the runner signed for it (owners.sent), with how it ended.
     const sends = mine.filter((r) => r.event === "owners.sent");
@@ -295,7 +312,7 @@ export function buildOwnersRecord(db: DB, calls: readonly OwnersCall[], inputs: 
       const reverted = mine.find((r) => r.event === "owners.reverted" && same(r.p.tx, tx));
       const unsent = mine.find((r) => r.event === "owners.unsent" && same(r.p.tx, tx));
       if (executed) ranTx = tx;
-      add(sent.seq, { kind: "relay", step: `the runner relays ${id} to the account (executeSigned)`, proposal_id: id, at: (executed ?? reverted ?? unsent ?? sent).ts, tx: unsent ? null : tx, explorer: unsent ? null : link(tx),
+      add(sent.seq, { kind: "relay", step: `the runner relays ${id} to the account`, proposal_id: id, at: (executed ?? reverted ?? unsent ?? sent).ts, tx: unsent ? null : tx, explorer: unsent ? null : link(tx),
         outcome: executed ? "executed" : reverted ? "reverted" : unsent ? "not sent" : "sent, no receipt recorded",
         detail: executed ? `the account ran it: ${a ? `${a.what} the ${a.agent} mandate` : "the call in its terms"}` : reverted ? `the account's reason: ${clean(String(reverted.p.reason ?? ""), LINE_CAP)}` : unsent ? `it never left this machine: ${clean(String(unsent.p.why ?? ""), LINE_CAP)}` : "" });
       if (executed) {
@@ -305,7 +322,7 @@ export function buildOwnersRecord(db: DB, calls: readonly OwnersCall[], inputs: 
     }
     if (!sends.length) {
       const failed = mine.filter((r) => r.event === "proposal.failed").at(-1);
-      add(failed?.seq ?? (signed.at(-1)?.seq ?? filed.seq) + 0.2, { kind: "relay", step: `the runner relays ${id} to the account (executeSigned)`, proposal_id: id, at: failed?.ts ?? null, tx: null, explorer: null,
+      add(failed?.seq ?? (signed.at(-1)?.seq ?? filed.seq) + 0.2, { kind: "relay", step: `the runner relays ${id} to the account`, proposal_id: id, at: failed?.ts ?? null, tx: null, explorer: null,
         outcome: failed ? "failed, nothing sent" : "not run", detail: failed ? clean(String(failed.p.error ?? ""), LINE_CAP) : "no transaction for it in this world's audit rows" });
     }
     proposals.push({
@@ -313,7 +330,7 @@ export function buildOwnersRecord(db: DB, calls: readonly OwnersCall[], inputs: 
       mandate: a?.mandate ?? null, cap: a?.cap ?? null, budget: a?.budget ?? null,
       ...(a?.what === "replace" && a.replaces && a.was_cap && a.was_budget ? { replaces: a.replaces, was_cap: a.was_cap, was_budget: a.was_budget } : {}),
       approvals, not_counted: notCounted, tx: ranTx, explorer: link(ranTx),
-      ...(t ? {} : { note: "the stored terms do not hash to the terms_sha256 in the audit row: nothing of them is recorded" }),
+      ...(t ? {} : { note: "the stored terms do not hash to the terms hash in the audit row: nothing of them is recorded" }),
     });
   }
   for (const what of ["bind", "replace", "revoke"]) {
@@ -387,16 +404,18 @@ export function buildOwnersRecord(db: DB, calls: readonly OwnersCall[], inputs: 
   const usedRows = all.filter((r) => used.has(r.seq));
   const ownersRows = usedRows.filter((r) => r.event.startsWith("owners."));
   const record: OwnersRecord = {
-    record: "The passkey account on chain: run record",
+    // The title says so when a passkey's label marks a virtual test passkey; what the others are it does not say.
+    record: standIns.length ? `${TITLE} (with ${standIns.length > 1 ? "virtual test passkeys" : "a virtual test passkey"})` : TITLE,
     ran_at: (ownersRows[0] ?? created).ts,
     last_row_at: usedRows.at(-1)!.ts,
-    dates_note: "ran_at is the time of this world's first owners audit row. Every time in this record is the time of an audit row (UTC); none is read from the clock.",
+    dates_note: "The run's start is the time of this world's first audit row about the account. Every time in this record is the time of an audit row (UTC); none is read from the clock.",
     written_from: {
       audit_rows: usedRows.length, call_log_lines: calls.length, audit_log: { rows: chain.rows, head: chain.head, chain: "verified" },
-      note: "Written from the ledger's audit rows and the call log; no call was made to write it. A proposal's digest, deadline and limits are read from its stored terms, which hash to the terms_sha256 in its audit row. A step with no row is recorded as not run.",
+      note: "Written from the ledger's audit rows and the call log; no call was made to write it. A proposal's digest, deadline and limits are read from its stored terms, which hash to the terms hash in its audit row (terms_sha256). A step with no row is recorded as not run.",
     },
-    network: "Metal testnet", chain_id: CHAIN_ID, money: "test money (test USD on a testnet); nothing here has real value",
+    network: "Metal testnet", chain_id: CHAIN_ID, money: "amounts are in test USD (the testnet's token USDZ): test money, nothing here has real value",
     stand_in: standIns.length ? standIns.join("; ") : null,
+    stand_in_note: standIns.length ? "Read from the passkeys' labels. What device holds any other passkey is not proven (see The owners)." : NO_STAND_IN,
     verifier: str(created.p.verifier),
     verifier_artifact: { openzeppelin: verifier.openzeppelin, compiler: verifier.compiler, evm: verifier.evmVersion, bytecode_sha256: verifier.bytecode_sha256 },
     verifier_note: "The artifact is the one this repository compiles from OpenZeppelin's source (contracts/ERC7913WebAuthnVerifier.json), deployed on 1 November (docs/runs/passkey-owners.json). This run did not deploy it or compare the deployed code with it.",
@@ -429,9 +448,9 @@ export function renderOwnersRecord(r: OwnersRecord): string {
   const out: string[] = [];
   const p = (...lines: string[]) => { out.push(...lines, ""); };
   p(`# ${r.record}`);
-  p(`${r.network} (chain ${r.chain_id}); ${r.money}. Ran ${r.ran_at}; the last row is of ${r.last_row_at}.`,
+  p(`${r.network} (chain ${r.chain_id}); ${r.money}. It started ${r.ran_at}; its last audit row is from ${r.last_row_at}.`,
     `Written from ${r.written_from.audit_rows} audit rows and ${r.written_from.call_log_lines} call-log lines; no call was made to write it. The audit log's hash chain verifies (${r.written_from.audit_log.rows} rows, head \`${r.written_from.audit_log.head.slice(0, 16)}…\`). ${r.dates_note}`);
-  p(r.stand_in ? `**Stand-in:** ${md(r.stand_in)}.` : "**Stand-in:** none. No owner's passkey carries a virtual test label.");
+  p(r.stand_in ? `**Stand-in:** ${md(r.stand_in)}.` : `**Stand-in:** ${NO_STAND_IN.charAt(0).toLowerCase()}${NO_STAND_IN.slice(1)}`);
   p("## The account");
   p(`- Account \`${r.account}\`: ${r.owners.length} owners, threshold ${r.threshold}.`,
     `- WebAuthn verifier \`${r.verifier ?? "not in the account's row"}\`: OpenZeppelin ${r.verifier_artifact.openzeppelin}, ${r.verifier_artifact.compiler}, EVM ${r.verifier_artifact.evm}, bytecode sha256 \`${r.verifier_artifact.bytecode_sha256}\`. ${r.verifier_note}`);
@@ -440,6 +459,7 @@ export function renderOwnersRecord(r: OwnersRecord): string {
     ...r.owners.map((o) => `| ${o.role} | ${md(o.label)} | ${o.fingerprint ?? "not in the enrolment row"} | ${o.enrolled_at ?? "no enrolment row"} | ${md(o.device)}${o.device_basis === STATED ? ` (${STATED})` : ""}${o.stated_device_ignored ? `; ${o.stated_device_ignored}` : ""} |`));
   p(`${r.device_note} ${r.signing_note}`);
   p("## The steps, in the order of the audit rows");
+  p(WORDS);
   p("| # | When (UTC) | Step | Outcome | Transaction |", "| --- | --- | --- | --- | --- |",
     ...r.steps.map((s, i) => `| ${i + 1} | ${s.at ?? ""} | ${md(s.step)}${s.detail ? `<br>${md(s.detail)}` : ""} | ${s.outcome === "not run" ? "not run" : `**${md(s.outcome)}**`} | ${tx(s.tx, s.explorer)} |`));
   if (r.refused_then_paid.length) {
@@ -455,10 +475,10 @@ export function renderOwnersRecord(r: OwnersRecord): string {
   for (const q of r.proposals) {
     p(`### ${q.proposal_id}: ${q.what ?? "terms not recorded"} (${q.status})`);
     p(`- filed ${q.created_at}${q.expires_at ? `; to be signed by ${q.expires_at}` : ""}`,
-      `- terms_sha256 \`${q.terms_sha256}\``,
-      `- the account's Execute digest ${q.onchain_digest ? `\`${q.onchain_digest}\`` : "not recorded"}`,
-      ...(q.cap && q.budget ? [`- up to ${q.cap} a payment, ${q.budget} in all${q.was_cap && q.was_budget ? ` (before: ${q.was_cap} a payment, ${q.was_budget} in all)` : ""}`] : []),
-      ...(q.approvals.length ? q.approvals.map((x) => `- approval ${x.of}: ${md(x.by)}${x.role ? `, the ${x.role}` : ""}${x.fingerprint ? `, passkey ${x.fingerprint}` : ""}, at ${x.at}`) : ["- no approval recorded"]),
+      `- terms hash \`${q.terms_sha256}\``,
+      `- the digest the passkeys sign ${q.onchain_digest ? `\`${q.onchain_digest}\`` : "not recorded"}`,
+      ...(q.cap && q.budget ? [`- ${q.what === "revoke" ? "ends the mandate that allowed " : ""}up to ${q.cap} a payment, ${q.budget} in all${q.was_cap && q.was_budget ? ` (before: ${q.was_cap} a payment, ${q.was_budget} in all)` : ""}`] : []),
+      ...(q.approvals.length ? q.approvals.map((x) => `- approval ${x.of}: ${md(x.by)}${x.virtual ? " (virtual test passkey)" : ""}${x.role ? `, the ${x.role}` : ""}${x.fingerprint ? `, passkey ${x.fingerprint}` : ""}, at ${x.at}`) : ["- no approval recorded"]),
       ...q.not_counted.map((x) => `- not counted at ${x.at}: ${md(x.why)}`),
       ...(q.tx ? [`- run by the account in ${tx(q.tx, q.explorer)}`] : []),
       ...(q.note ? [`- ${q.note}`] : []));
@@ -520,7 +540,7 @@ export function recordRun(db: DB, env: Record<string, string | undefined>, say: 
   });
   const written = writeOwnersRecord(record, dir);
   const shown = (path: string) => { const rel = relative(process.cwd(), path); return rel.startsWith("..") ? path : rel; };
-  say(`ACCOUNT          ${record.account}: ${record.owners.map((o) => `${o.role} ${o.label}${o.fingerprint ? ` (passkey ${o.fingerprint})` : ""}`).join(", ")}; threshold ${record.threshold}`);
+  say(`ACCOUNT          ${record.account}: ${record.owners.map((o) => `${o.role} ${passkeyName(o.label, o.fingerprint)}`).join(", ")}; threshold ${record.threshold}`);
   if (record.stand_in) say(`STAND-IN         ${record.stand_in}`);
   for (const s of record.steps) say(`${s.outcome === "not run" ? "not run " : "step    "}         ${s.step}${s.outcome === "not run" ? "" : `: ${s.outcome}`}`);
   say(`CALLS            ${record.calls.used} of ${record.calls.budget} used in this world, as the call log holds them`);
