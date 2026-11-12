@@ -7,10 +7,10 @@ import { createHash, createPublicKey, verify } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { decodeAbiParameters, encodeErrorResult, parseAbiParameters, type Address, type Hex } from "viem";
+import { decodeAbiParameters, decodeFunctionData, encodeErrorResult, encodeFunctionData, parseAbiParameters, type Address, type Hex } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { describe, expect, it } from "vitest";
-import { mandateBindingAbi } from "@metalntwx/metal-pay/mandates";
+import { decodeAgentKey, mandateBindingAbi, mandateReference } from "@metalntwx/metal-pay/mandates";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 import { openDb, type DB } from "../src/db/open.js";
 import { audit } from "../src/audit/log.js";
@@ -20,7 +20,7 @@ import { processAssertion, processRegistration, type InboxItem } from "../src/pa
 import { challengeFor, reverifyPasskeyApprovals } from "../src/passkey/webauthn.js";
 import { createProposal } from "../src/policy/approvals.js";
 import { FakeAuthenticator } from "../src/redteam/authenticator.js";
-import { approvalHashOf, coseP256, ownersExecuteTerms, quorumOf, type OwnersExecuteTerms } from "../src/metal/ownersExecute.js";
+import { approvalHashOf, coseP256, OWNER_CALL_SELECTORS, ownersExecuteTerms, quorumOf, type OwnersExecuteTerms } from "../src/metal/ownersExecute.js";
 import { passkeySigner } from "../src/metal/passkeyOwner.js";
 import { executeOwnersExecute, signedCallOf } from "../src/executors/ownersExecute.js";
 import { execute } from "../src/executors/index.js";
@@ -120,6 +120,38 @@ describe("an owners_execute proposal, approved by the account's Execute digest",
     refused({ valid_until: String(EXP - 1) }, /deadline/);
     refused({ nonce: String(1n << 255n) }, /top bit/);
     refused({ chain_id: "1" }, /not Metal testnet/);
+  });
+
+  it("accepts one replace call whose predecessor, cap, budget and payee are the ones shown, and nothing looser", () => {
+    // The fixture's bind, as the replace of an earlier mandate: the same arguments after the predecessor.
+    const [hashC, issuerKey, agentKey, cons, bound] = decodeFunctionData({ abi: mandateBindingAbi, data: F.calls[0]!.call_data }).args as unknown as [Hex, Hex, Hex, { perPaymentCap: bigint; budget: bigint }, { payees: readonly { account: Address }[] }];
+    const OLD = `0x${"5e".repeat(32)}` as Hex;
+    const replaceData = (predecessor: Hex, c: object = cons, t: object = bound) => encodeFunctionData({ abi: mandateBindingAbi, functionName: "replace", args: [predecessor, hashC, issuerKey, agentKey, c as never, t as never] });
+    const successor = mandateReference(ACCOUNT, decodeAgentKey(agentKey), hashC);
+    const action = { ...F.action, what: "replace", mandate: successor, replaces: OLD, was_cap: "0.03", was_budget: "0.50" };
+    const base = { proposal_id: "P-9", expires_at: "2026-11-01T10:15:00Z", account: ACCOUNT, chain_id: "63825", owners: [] as Hex[], calls: [{ ...F.calls[0]!, call_data: replaceData(OLD) }], nonce: F.nonce, valid_until: String(EXP + 60), action };
+    const check = (over: Partial<typeof base>) => () => approvalHashOf({ kind: "owners_execute", terms_json: JSON.stringify(ownersExecuteTerms({ ...base, ...over })), terms_sha256: "x" });
+    expect(base.calls[0]!.call_data.startsWith(OWNER_CALL_SELECTORS.replace)).toBe(true);
+    expect(check({})).not.toThrow();
+    expect(check({ action: { ...action, replaces: `0x${"5f".repeat(32)}` as Hex } })).toThrow(/replaces another mandate than the one shown/);
+    expect(check({ action: { ...action, replaces: undefined as never } })).toThrow(/replaces another mandate than the one shown/);
+    expect(check({ action: { ...action, cap: "0.50" } })).toThrow(/cap is not the 0.50 shown/);
+    expect(check({ action: { ...action, budget: "5.00" } })).toThrow(/budget is not/);
+    expect(check({ action: { ...action, payee: "0x000000000000000000000000000000000000dEaD" } })).toThrow(/payees are not/);
+    expect(check({ action: { ...action, what: "bind" } })).toThrow(/replaces, the words say otherwise/);
+    expect(check({ action: { ...action, what: "revoke" } })).toThrow(/replaces, the words say otherwise/);
+    // The words name the mandate the call binds, and what it had before, as amounts.
+    expect(check({ action: { ...action, mandate: OLD } })).toThrow(/new mandate's reference is not the one shown/);
+    expect(check({ action: { ...action, was_cap: "a lot" } })).toThrow(/earlier cap and budget/);
+    expect(check({ action: { ...action, was_budget: undefined as never } })).toThrow(/earlier cap and budget/);
+    // A bind's words on a replace call, and a replace's words on a bind call, are both refused.
+    expect(check({ calls: F.calls })).toThrow(/binds, the words say otherwise/);
+    // Still one call, to the account itself, with no value; another token is no mandate of this account's.
+    expect(check({ calls: [...base.calls, ...base.calls] })).toThrow(/exactly one/);
+    expect(check({ calls: [{ ...base.calls[0]!, value: "1" }] })).toThrow(/no value/);
+    expect(check({ calls: [{ ...base.calls[0]!, target: "0x000000000000000000000000000000000000B5d5" as Address }] })).toThrow(/to the account itself/);
+    expect(check({ calls: [{ ...base.calls[0]!, call_data: replaceData(OLD, { ...cons, token: "0x000000000000000000000000000000000000dEaD" }) }] })).toThrow(/not in USDZ/);
+    expect(check({ calls: [{ ...base.calls[0]!, call_data: replaceData(OLD, cons, { ...bound, payees: [...bound.payees, ...bound.payees] }) }] })).toThrow(/payees are not/);
   });
 
   it("builds the account signature from the two approvals: each an owner, each a P-256 signature over authData ‖ sha256(clientData) with the digest as challenge", async () => {
