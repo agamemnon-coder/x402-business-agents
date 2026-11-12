@@ -119,6 +119,7 @@ input, select { width: 100%; min-width: 0; height: 46px; padding: 0 12px; font: 
 .live .t { grid-column: 2; grid-row: 1 / span 2; color: var(--faint); font-variant-numeric: tabular-nums; font-size: 13px; }
 .steps { margin-top: 4px; font-size: 14px; }
 .result { margin-top: 20px; }
+.card[hidden]:first-child + .result { margin-top: 0; }
 .result .big { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
 .result .ok { color: var(--ok); }
 .result .bad { color: var(--bad); }
