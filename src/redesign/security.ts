@@ -183,8 +183,8 @@ export function securityCards(): SecurityCard[] {
       fold: { summary: "How", lines: [`Airwallex: ${esc(cards.how)} ${code(cards)}`, `Metal: ${esc(chain.how)} ${code(chain)}`] },
     },
     {
-      id: "s-code", icon: "bot", title: "Code decides",
-      line: esc("Claude reads and advises without keys or tools; code checks every answer."),
+      id: "s-code", icon: "bot", title: "Agents propose, code enforces",
+      line: esc("Agents hold no keys; code checks what they propose before anything moves."),
       links: [outLink(repoHref(MODELS_LINE.doc, MODELS_LINE.anchor), "Least privilege")],
       fold: { summary: "How", lines: [quoted(MODELS_LINE)] },
     },

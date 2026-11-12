@@ -143,7 +143,7 @@ describe("/security: security and trust", () => {
   // The owner, 12 Nov 15:55: the strongest page of the site, enterprise grade and calm: one header line, a grid of
   // controls each with its proof, and a short honest "Not yet".
   it("has nine controls and a \"Not yet\" box in this order, each one short sentence, a link to its proof and a folded detail", () => {
-    expect(cards.map((c) => [c.id, c.title])).toEqual([["s-sign", "Signed terms"], ["s-locks", "Two locks"], ["s-limits", "Limits outside the prompt"], ["s-code", "Code decides"], ["s-secrets", "Secrets"], ["s-tenants", "Each company apart"], ["s-audit", "Audit trail"], ["s-redteam", "Tested by attack"], ["s-data", "Money and data"], ["s-notyet", "Not yet"]]);
+    expect(cards.map((c) => [c.id, c.title])).toEqual([["s-sign", "Signed terms"], ["s-locks", "Two locks"], ["s-limits", "Limits outside the prompt"], ["s-code", "Agents propose, code enforces"], ["s-secrets", "Secrets"], ["s-tenants", "Each company apart"], ["s-audit", "Audit trail"], ["s-redteam", "Tested by attack"], ["s-data", "Money and data"], ["s-notyet", "Not yet"]]);
     // A grid of three at desktop width, the "Not yet" box across it.
     expect(html).toContain('<div class="cols c3">');
     expect(cards.filter((c) => c.wide).map((c) => c.id)).toEqual(["s-notyet"]);
@@ -205,8 +205,8 @@ describe("/security: security and trust", () => {
     for (const q of ["a labelled virtual test passkey signed the exact terms in Purser", "Airwallex's own approval workflow held it IN_APPROVAL", "On 12 November the owner approved it at Airwallex and it ended PAID, with simulated settlement."]) expect(folded("s-locks")).toContain(`“${q}”`);
   });
 
-  it("code decides: the models hold no key or tool, code checks their answers; secrets stay with the runner and every push is scanned", () => {
-    expect(inSight("s-code")).toBe("Code decides Claude reads and advises without keys or tools; code checks every answer. Least privilege ↗ How");
+  it("agents propose, code enforces: the models hold no key or tool, code checks what they return; secrets stay with the runner and every push is scanned", () => {
+    expect(inSight("s-code")).toBe("Agents propose, code enforces Agents hold no keys; code checks what they propose before anything moves. Least privilege ↗ How");
     expect(folded("s-code")).toContain("“Models: no key, URL, credential or tool. They read text and return typed data that code checks");
     expect(inSight("s-secrets")).toBe("Secrets Only the runner holds keys, and every push is scanned for leaked secrets. Trust boundaries ↗ How");
     for (const q of ["Only the runner holds keys and writes the ledger.", "gitleaks on the pushed commits and the whole history of the branch under check", "cloud/src/log.ts cleans every field: anything named like a secret becomes [redacted]"]) expect(folded("s-secrets")).toContain(`“${q}”`);
