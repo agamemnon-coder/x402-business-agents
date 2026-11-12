@@ -2888,7 +2888,9 @@ describe("the report: docs/zero-trust.md and docs/zero-trust/report.json", () =>
   /** A day and a commit that are nobody's: the report's own content does not depend on them. */
   const AT = { date: "1999-12-31", commit: "not-a-commit" };
   const whole = (ctx: Skip) => wholeRun() ?? ctx.skip("only part of this file ran, so there is no report to hold");
-  const words = (text: string) => text.replace(/<!--[^]*?-->/g, " ").split(/\s+/).filter((w) => /[A-Za-z0-9]/.test(w)).length;
+  /** The page without its HTML comments, cut at the markers (no pattern that a later comment could slip past). */
+  const uncommented = (text: string) => text.split("<!--").map((part, i) => (i === 0 ? part : part.slice(part.includes("-->") ? part.indexOf("-->") + 3 : part.length))).join(" ");
+  const words = (text: string) => uncommented(text).split(/\s+/).filter((w) => /[A-Za-z0-9]/.test(w)).length;
 
   it("the committed files are what report.ts generates from the model and this run's own results", (ctx) => {
     const results = whole(ctx);
@@ -3063,7 +3065,14 @@ describe("the report: docs/zero-trust.md and docs/zero-trust/report.json", () =>
     expect(page.split("<summary>").length - 1).toBe(9);
     // Plain words: nothing gendered for an anonymous person, and no record's placeholder read as a tag.
     expect(page).not.toMatch(/\b(he|she|his|her|him)\b/i);
-    expect(page.replace(/<\/?(details|summary)>|<!--[^]*?-->|`[^`\n]*`/g, "")).not.toMatch(/<[a-z]/i);
+    expect(uncommented(page).replace(/<\/?(details|summary)>|`[^`\n]*`/g, "")).not.toMatch(/<[a-z]/i);
+  });
+
+  it("escapes a backslash in a table cell before the pipe, so a text cannot break out of its cell", (ctx) => {
+    const r = buildReport(whole(ctx), AT);
+    const page = renderMarkdown({ ...r, layer_list: r.layer_list.map((l, i) => (i === 0 ? { ...l, does: "a \\| b" } : l)) });
+    // The backslash is escaped first, then the pipe: "a \\\| b" in the file, read as "a \| b" in the table's one cell.
+    expect(page).toContain("a \\\\\\| b");
   });
 
   it("prints no number that is not in the report", (ctx) => {
@@ -3079,7 +3088,7 @@ describe("the report: docs/zero-trust.md and docs/zero-trust/report.json", () =>
     };
     walk(r);
     const all = texts.join("\n");
-    const page = renderMarkdown(r).replace(/<!--[^]*?-->/g, "");
+    const page = uncommented(renderMarkdown(r));
     const printed = [...new Set([...page.matchAll(/\d+(?:[.,]\d+)*/g)].map((m) => m[0]))];
     expect(printed.length).toBeGreaterThan(20);
     for (const n of printed) expect(numbers.has(n) || all.includes(n), `${n} is printed on the page and is nowhere in the report`).toBe(true);

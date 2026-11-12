@@ -235,7 +235,8 @@ export function buildReport(results: MatrixResults, generated: Generated): Repor
 // ran against what); everything else folds.
 
 /** Text inside a table cell or a list: no table bars, and no angle brackets (a record's `<time>` is not a tag). */
-const plain = (s: string) => s.replace(/\s+/g, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\|/g, "\\|").trim();
+// A table cell's text: a backslash is escaped first, then the pipe, so no text can end its cell early.
+const plain = (s: string) => s.replace(/\s+/g, " ").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").trim();
 const code = (s: string) => `\`${s.replace(/`/g, "'")}\``;
 /** A link from docs/zero-trust.md to a file named from the repository root. */
 const link = (path: string, text = path) => `[${text}](${path.startsWith("docs/") ? path.slice("docs/".length) : `../${path}`})`;
