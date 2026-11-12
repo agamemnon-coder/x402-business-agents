@@ -247,7 +247,9 @@ describe("6. TAP's status (Visa, 5 Nov: not eligible Visa tooling), said once, o
     const pages = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv) as unknown as Record<string, unknown>;
     expect(String(pages.visa)).toContain(VISA_TAP_STATUS);
     for (const [name, body] of Object.entries(pages)) if (typeof body === "string" && name !== "visa") expect({ name, has: body.includes(VISA_TAP_STATUS) }).toEqual({ name, has: false });
-    for (const [name, html] of Object.entries({ home: homePage(), proof: proofPage() })) expect({ name, link: /<a [^>]*href="visa"[^>]*>Extra, not an award entry: Visa TAP[^<]*<\/a>/.test(html) && html.includes(VISA_EXTRA_LINK) }).toEqual({ name, link: true });
+    // Home links it; Proof no longer does (12 Nov, jury: Proof starts with the guarantees, the footer link left it).
+    for (const [name, html, link] of [["home", homePage(), true], ["proof", proofPage(), false]] as const) expect({ name, link: /<a [^>]*href="visa"[^>]*>Extra, not an award entry: Visa TAP[^<]*<\/a>/.test(html) && html.includes(VISA_EXTRA_LINK) }).toEqual({ name, link });
+    expect(proofPage()).not.toContain(VISA_EXTRA_LINK);
     for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, entered: /\+ Visa Award|TAP counts as Visa tooling/i.test(body) || /Visa Award/i.test(body.split("entered for the Metal Award and the Visa Award").join(" ")) }).toEqual({ name, entered: false });
   });
 });

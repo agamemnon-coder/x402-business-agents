@@ -251,11 +251,12 @@ describe("the redesigned public pages", () => {
   it("TAP's status is Max's wording (5 Nov), said once, on /visa (Home and Proof link to it as an extra); the Visa Award only in the Kit line, never on TAP", () => {
     const pages = buildPages() as unknown as Record<string, unknown>;
     expect(VISA_TAP_STATUS).toBe("Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov).");
-    // Said once: on /visa; Home and Proof only link to /visa, labelled as an extra, not an award entry.
+    // Said once: on /visa; Home only links to /visa, labelled as an extra, not an award entry. Proof carried the same
+    // footer link until 12 Nov (jury: Proof starts with the guarantees); it says nothing of TAP now.
     for (const name of ["home", "proof", "visa"]) {
       const html = name === "home" ? homePage() : name === "proof" ? proofPage() : String(pages.visa);
       expect({ name, has: html.split(esc(VISA_TAP_STATUS)).length - 1 }).toEqual({ name, has: name === "visa" ? 1 : 0 });
-      if (name !== "visa") expect({ name, link: html.includes(`href="visa">${esc(VISA_EXTRA_LINK)}</a>`) }).toEqual({ name, link: true });
+      if (name !== "visa") expect({ name, link: html.includes(`href="visa">${esc(VISA_EXTRA_LINK)}</a>`) }).toEqual({ name, link: name === "home" });
     }
     for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, bad: /confirmed (that )?TAP|TAP counts as Visa tooling|counts as Visa tooling|still being confirmed with Visa|\+ Visa Award|Visa Award entry/i.test(body) || /Visa Award/i.test(body.split("entered for the Metal Award and the Visa Award").join(" ")) }).toEqual({ name, bad: false });
   });

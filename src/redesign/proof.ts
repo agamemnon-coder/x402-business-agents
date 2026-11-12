@@ -1,23 +1,27 @@
-// Proof (mega-prompt v4, C5 and D3): everything from the played run (the main run, 3 Nov), compact. Who decides what (decisions by Claude next
-// to routine payments by code), the run's numbers, four partner cards (Metal, Airwallex, Visa TAP as text, Claude) with
-// their live proof folded, who stopped what, the Face ID decisions (one number, from the run's ledger), the earlier
-// licence attempt that paid nothing, the checks, and a folded, labelled Archive. Nothing typed in by hand.
+// Proof (mega-prompt v4, C5 and D3; the jury's order, 12 Nov): everything from the played run (the main run, 3 Nov),
+// compact. It opens with "What Purser guarantees"; then the three partner cards (Airwallex, Metal, Claude), each with its
+// strongest claim as its one link in sight and its live proof folded; then the run's label with its numbers (four tiles:
+// decisions by Claude, payments by code, Airwallex's own figure, the stops by cause); then one closed line each for the
+// Airi runs, Airwallex read back, every check (who stopped what, the Face ID decisions: one number, from the run's
+// ledger), the business and the Archive; the utility links last. Nothing typed in by hand.
 
 import { whyCompanyHtml } from "./home.js";
 import { readFileSync } from "node:fs";
-import { CFO_VIEW_LINK, CFO_VIEW_URL, CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, SPLIT_LINE, VISA_EXTRA_LINK } from "../config/brand.js";
-import { agentRun, faceIdDecisions, faceIdLine, family, letThroughOf, ownTap, payments, sandboxRails, runName, split, metalDetail, stopFigure, stopStory, stopSub, stops, stopsLine, tapRun, type AgentRun, type Ev, type RunRecord, type Tile } from "./run.js";
-import { AWX_HASH_ID, READBACK_CSS, cardControlRows, cardsReadback, controlsShortHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
+import { CFO_VIEW_LINK, CFO_VIEW_URL, CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, SPLIT_LINE } from "../config/brand.js";
+import { agentRun, faceIdDecisions, faceIdLine, family, letThroughOf, ownTap, payments, sandboxRails, runName, split, metalDetail, stopFigure, stopStory, stopSub, stops, stopsLine, tapRun, type AgentRun, type Ev, type RunRecord, type StopStory, type Tile } from "./run.js";
+import { AWX_CONTROLS_ID, READBACK_CSS, cardControlRows, cardsReadback, controlsShortHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { AIRI_CSS, airiRunBlock } from "./airiRun.js";
 import { vic2RunBlock } from "./vic2Run.js";
 import { awxRunBlock } from "./awxRun.js";
 import { esc, icon, page } from "./ui.js";
 import { GUARANTEES_CSS, guaranteesHtml } from "./guarantees.js";
-import { LEAD_CSS, leadHtml, proofLeads } from "./proofLead.js";
+import { LEAD_CSS, leadHtml, proofLeads, type Lead } from "./proofLead.js";
 import { TRACE_LINK, TRACE_URL } from "./trace.js";
 import { PACK_LINK, PACK_NAME } from "../accounting/monthPack.js";
 
 const readJson = <T>(p: string): T => JSON.parse(readFileSync(new URL(`../../${p}`, import.meta.url), "utf8")) as T;
+/** "3 Nov": a record's day, as the run's label writes it. */
+const shortDay = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
 
 const CSS = `/* The deep proof, one closed line each (Max, 7 Nov: less text in sight). */
 details.deep { margin-top: 14px; border-top: 1px solid var(--border); }
@@ -31,34 +35,45 @@ details.deep h2.sec { display: none; }
 .company li { font-size: 17px; line-height: 1.45; border-left: 3px solid var(--accent); padding-left: 12px; }
 .company a { color: var(--accent); font-weight: 600; text-decoration: none; white-space: nowrap; }
 details.deep section.band { padding: 8px 0 20px; border-top: 0; } details.deep section.band .wrap { padding: 0; } details.deep .sechead { display: none; }
-.proofp { padding: 26px 0 24px; }
-.phead { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 10px; }
-.phead h1 { font-size: clamp(32px, 3.4vw, 44px); font-weight: 780; margin-right: auto; }
-.split { margin: 0 0 18px; font-size: clamp(18px, 1.8vw, 21px); font-weight: 650; max-width: 46em; }
+/* The jury's order (12 Nov): the heading, then the guarantees at once; the partners; the run's label with its numbers. */
+.proofp { padding: 18px 0 24px; }
+.proofp h1 { font-size: clamp(32px, 3.4vw, 44px); font-weight: 780; margin: 0 0 12px; }
+.proofp .gtee { margin: 0 0 6px; }
+.proofp [id] { scroll-margin-top: 80px; }
+.runline { margin: 26px 0 10px; }
+.split { margin: 0 0 14px; font-size: clamp(17px, 1.8vw, 21px); font-weight: 650; max-width: 46em; }
 .nums { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-@media (min-width: 900px) { .nums { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
-.num { padding: 16px 18px; text-decoration: none; display: flex; flex-direction: column; gap: 2px; transition: border-color .2s; }
+@media (min-width: 900px) { .nums { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.num { padding: 14px 16px; text-decoration: none; display: flex; flex-direction: column; gap: 2px; transition: border-color .2s; }
 .num:hover { border-color: var(--accent); }
 .num .v { font-size: clamp(30px, 3vw, 40px); font-weight: 780; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.05; }
 .num .l { font-size: 15px; font-weight: 650; color: var(--muted); line-height: 1.3; }
 .num .note, .more p.note, .pcard p.note { font-size: 14px; font-weight: 500; color: var(--muted); line-height: 1.35; margin-top: 4px; }
-.num.claude .v { color: var(--claude); } .num.code .v { color: var(--metal); } .num.face .v { color: var(--accent); } .num.stop .v { color: var(--bad); }
-h2.sec { font-size: clamp(22px, 2.2vw, 28px); font-weight: 750; margin: 36px 0 14px; }
-.partners { display: grid; gap: 12px; }
-@media (min-width: 900px) { .partners { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.pcard { padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; scroll-margin-top: 80px; }
-.pcard .ph { display: flex; align-items: center; gap: 12px; }
-.pcard .ph h3 { font-size: 20px; margin-right: auto; }
-.pcard .what { margin: 0; font-size: 17px; }
+/* The stops by cause, under their figure: one short line each. */
+.num .parts { display: grid; gap: 1px; margin-top: 6px; font-size: 14px; font-weight: 500; color: var(--muted); line-height: 1.35; }
+.num .parts b { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+.num.claude .v { color: var(--claude); } .num.code .v { color: var(--metal); } .num.awx .v { color: var(--awx); } .num.stop .v { color: var(--bad); }
+h2.sec { font-size: clamp(22px, 2.2vw, 28px); font-weight: 750; margin: 24px 0 10px; }
+.partners { display: grid; gap: 10px; align-items: start; }
+@media (min-width: 900px) { .partners { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+/* A partner card, closed: its name, its strongest claim as its one link, and the fold's header in the name's row. */
+.pcard { position: relative; padding: 14px 18px; display: flex; flex-direction: column; gap: 6px; }
+.pcard .ph { display: flex; align-items: center; min-height: 28px; }
+.pcard .ph h3 { font-size: 19px; }
+.pcard > ul.lead a.c { font-size: 16.5px; }
+.pcard .what { font-size: 16.5px; }
+.pcard > details.fold { border-top: 0; padding-top: 0; }
+.pcard > details.fold > summary { position: absolute; top: 6px; right: 14px; min-height: 44px; font-size: 15px; }
+.pcard > details.fold[open] { border-top: 1px solid var(--border); margin-top: 6px; padding-bottom: 2px; }
+.pcard > details.fold > :not(summary) { margin: 10px 0 0; }
 .facts { display: flex; flex-wrap: wrap; gap: 6px; }
 .fact { font: 650 14px/1.35 Inter, system-ui, sans-serif; padding: 4px 10px; border-radius: 999px; background: var(--sunken); color: var(--text); }
 .fact b { font-variant-numeric: tabular-nums; }
-a.fact.hash { text-decoration: none; background: var(--ok-soft); color: var(--ok); } a.fact.hash:hover { text-decoration: underline; }
 .logo { display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 10px; background: #fff; border: 1px solid var(--border); flex: none; }
 .logo.dark { background: #191919; border-color: #191919; } .logo img { display: block; height: 15px; width: auto; }
 .logo.txt { background: var(--surface); color: var(--text); font-weight: 750; font-size: 14px; white-space: nowrap; }
 details.fold { border-top: 1px solid var(--border); padding-top: 6px; }
-details.fold > summary { cursor: pointer; font-weight: 650; font-size: 15.5px; color: var(--accent); list-style: none; display: flex; align-items: center; gap: 6px; min-height: 40px; }
+details.fold > summary { cursor: pointer; font-weight: 650; font-size: 15.5px; color: var(--accent); list-style: none; display: flex; align-items: center; gap: 6px; min-height: 44px; }
 details.fold > summary::-webkit-details-marker { display: none; }
 details.fold > summary::after { content: "▾"; font-size: 14px; }
 details.fold[open] > summary::after { content: "▴"; }
@@ -77,13 +92,39 @@ a.pf { color: var(--accent); font-weight: 600; text-decoration: none; font-size:
 .more h3 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 8px; }
 .more h3 .n { font-variant-numeric: tabular-nums; color: var(--accent); white-space: nowrap; flex: none; }
 .more p { margin: 0; color: var(--muted); font-size: 15.5px; }
+/* The archive, its own closed line: one link a row. */
+#archive ul.pl { margin: 4px 4px 16px; gap: 0; } #archive ul.pl li { border-left: 0; padding-left: 0; }
+#archive ul.pl a.pf { display: flex; align-items: center; min-height: 44px; padding-block: 0; }
+/* The utility links, last: one quiet row. */
+.util { display: flex; flex-wrap: wrap; gap: 0 22px; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border); }
+.util .open { color: var(--muted); font-weight: 600; min-height: 44px; } .util .open:hover { color: var(--accent); }
 ${READBACK_CSS}
 ${AIRI_CSS}
-${LEAD_CSS}`;
+${LEAD_CSS}
+/* Tap targets on a phone or a tablet (jury, 12 Nov): every link and every fold header at least 44 px high. A link in a
+ * line of text grows by padding above and below, which moves no line; a link or header that is a box gets the height. */
+@media (max-width: 899px) {
+  :where(.proofp) a { padding-block: 15px; }
+  :where(.proofp) summary { min-height: 44px; }
+  .proofp .open, .proofp ul.lead .ks a { display: inline-flex; align-items: center; min-height: 44px; padding-block: 0; }
+  .proofp ul.lead .ks { gap: 0 14px; }
+  /* A link that is a filled pill ("5 of 5 checks pass"): the same pill, inside a clear border that makes up the height. */
+  .proofp a.awm { border: solid transparent; border-width: 9px 0; background-clip: padding-box; margin-block: -9px -5px; }
+}`;
 
 const JS = `
-// A link to a part behind a closed line (#airwallex-readback, say) opens that line.
-(function () { var open = function () { var t = location.hash && document.getElementById(location.hash.slice(1)); var d = t && t.closest("details.deep"); if (d) { d.open = true; t.scrollIntoView(); } }; open(); window.addEventListener("hashchange", open); })();(function () { var h = location.hash.slice(1); if (!h) return; var t = document.getElementById(h); if (!t) return; t.querySelectorAll("details").forEach(function (d) { d.open = true; }); })();`;
+// A link to a part behind a closed line (#faceid, #airi-run, #archive, say) opens every fold around it, also a fold
+// inside a fold, and a card's own folds; then it is scrolled to. On load and when the hash changes (the tiles).
+(function () {
+  var open = function () {
+    var t = location.hash && document.getElementById(location.hash.slice(1));
+    if (!t) return;
+    for (var d = t; d; d = d.parentElement) if (d.tagName === "DETAILS") d.open = true;
+    if (t.classList.contains("card")) t.querySelectorAll("details").forEach(function (x) { x.open = true; });
+    (t.getClientRects().length ? t : t.closest("details") || t).scrollIntoView();
+  };
+  open(); window.addEventListener("hashchange", open);
+})();`;
 
 /** Plain words, with the raw code (a refusal code, a proposal id) kept in a tooltip. */
 const CODES: [RegExp, (m: RegExpExecArray) => string][] = [
@@ -175,27 +216,29 @@ export function partnerProof(run: AgentRun, o: { tap?: boolean } = {}): Record<"
 }
 
 /**
- * The partner cards: logo, the strongest proof first (proofLeads: each claim a link, its numbers from its record), one
- * line, two or three numbers, the live proof folded, a link to the partner's page.
+ * The partner cards (the jury's order, 12 Nov): the name, then the partner's strongest proof as the card's one link in
+ * sight, one tap from the partner's own record (the first lead of proofLeads: its numbers from its record); behind the
+ * card's fold the two or three numbers, the other claims, one line, the live proof and a link to the partner's page.
+ * A partner without a lead shows its fold only.
  */
-function partnerCards(run: AgentRun): string {
-  const s = run.record.snapshot, p = partnerProof(run, { tap: false }), st = stops(run.record), sp = split(run.record), pay = payments(run.record), lead = proofLeads(run.record);
+export function partnerCards(run: AgentRun, lead: Record<"airwallex" | "metal" | "claude", Lead[]> = proofLeads(run.record)): string {
+  const s = run.record.snapshot, p = partnerProof(run, { tap: false }), st = stops(run.record), sp = split(run.record), pay = payments(run.record);
   const money = run.events.filter((e): e is Extract<Ev, { k: "money" }> => e.k === "money");
   const onChain = money.filter((e) => e.rail === "metal" && !e.refused).reduce((n, e) => n + e.count, 0);
   const mandates = run.events.filter((e) => e.k === "mandate").length;
   const awx = money.filter((e) => e.rail === "airwallex" && !e.refused).length;
-  // Max, 7 Nov: the name above, 2–3 short facts each with its number in bold, no brackets or jargon; the claims, the
-  // sentence and the live proof behind one fold. Names as text, never a brand logo.
-  const card = (id: "metal" | "airwallex" | "claude", name: string, what: string, facts: string, items: string[], extra = "") =>
-    `<article class="pcard card" id="${id}"><div class="ph"><h3>${esc(name)}</h3><a class="open" href="${id}">More<span class="vh"> about ${esc(name)}</span> ${icon("arrow-right", 14)}</a></div><div class="facts">${facts}</div><details class="fold"><summary>Show the live proof</summary>${leadHtml(lead[id])}<p class="what">${esc(what)}</p>${extra}${items.length ? `<ul class="pl">${items.join("")}</ul>` : ""}</details></article>`;
+  // Max, 7 Nov: 2–3 short facts each with its number in bold, no brackets or jargon. Names as text, never a brand logo.
+  // In the fold the first claim is not said twice: only its note stays there, or the claim itself when it has links of
+  // its own (each card's anchor).
+  const card = (id: "metal" | "airwallex" | "claude", name: string, what: string, facts: string, items: string[], extra = "") => {
+    const [first, ...rest] = lead[id];
+    return `<article class="pcard card" id="${id}"><div class="ph"><h3>${esc(name)}</h3></div>${first ? leadHtml([{ text: first.text, href: first.href }]) : ""}<details class="fold"><summary>Show the live proof</summary><div class="facts">${facts}</div>${first?.note && !first.links?.length ? `<p class="note">${esc(first.note)}</p>` : ""}${leadHtml(first?.links?.length ? lead[id] : rest)}<p class="what">${esc(what)}</p>${extra}${items.length ? `<ul class="pl">${items.join("")}</ul>` : ""}<a class="open" href="${id}">More<span class="vh"> about ${esc(name)}</span> ${icon("arrow-right", 14)}</a></details></article>`;
+  };
   const cardsMatch = /^(\d+ of \d+) cards carry the CFO's policy$/.exec(lead.airwallex.find((l) => / cards carry the CFO's policy$/.test(l.text))?.text ?? "");
-  // The strongest Airwallex proof as the card's first chip (jury review, 7 Nov, #12), linked to where it is shown: only
-  // when the two read-backs agree (hashTravel), as the lead claim in the fold.
-  const h = hashTravel(run.record);
-  const hashChip = h?.match ? `<a class="fact hash" href="airwallex#${AWX_HASH_ID}">${esc(`Signed hash in Airwallex's ${h.transferMethod} record ✓`)}</a>` : "";
-  // In the README's order (jury review, 7 Nov, #12): Airwallex, Metal, Claude.
+  // In the README's order (jury review, 7 Nov, #12): Airwallex, Metal, Claude. (The signed hash was the Airwallex card's
+  // first chip since 7 Nov, #12; it is the card's main link now, from the same two read-backs.)
   return `<div class="partners">
-${card("airwallex", "Airwallex", "Earnings booked once final, the euro licence by SWIFT (sandbox, settlement simulated), cards with limits the bank enforces.", hashChip + fact(String(awx), "movements at Airwallex") + (cardsMatch ? fact(cardsMatch[1]!, "cards carry the CFO's limits") : "") + (st.airwallex ? fact(String(st.airwallex), "declined by Airwallex") : ""), p.airwallex)}
+${card("airwallex", "Airwallex", "Earnings booked once final, the euro licence by SWIFT (sandbox, settlement simulated), cards with limits the bank enforces.", fact(String(awx), "movements at Airwallex") + (cardsMatch ? fact(cardsMatch[1]!, "cards carry the CFO's limits") : "") + (st.airwallex ? fact(String(st.airwallex), "declined by Airwallex") : ""), p.airwallex)}
 ${card("metal", "Metal", "Each agent's limit is a mandate on chain; payments per query over x402.", fact(String(onChain), "payments on chain") + fact(String(st.metal), "refused by Metal at the limit") + fact(String(mandates), "limits replaced on chain"), p.metal, (st.revoked ? `<p class="note">${esc(`${st.revoked} refused by Metal because its mandate had just been replaced.`)}</p>` : "") + (pay.sums && pay.onChain === onChain ? `<p class="note">${esc(`${pay.onChainLine}.`)}</p>` : ""))}
 ${card("claude", "Claude", `The agents decide with Claude: ${run.agents.map((a) => `${a.short} on ${a.family}`).join(", ")}.`, fact(`${sp.byClaude}/${sp.decisions}`, "decisions by Claude") + fact(String(s.agent_stats.reduce((n, a) => n + a.claude_calls, 0)), "calls to Claude, each logged"), p.claude)}
 </div>`;
@@ -232,11 +275,6 @@ function moreCards(run: AgentRun): string {
   const checked = t ? new Set(t.steps.filter((x) => x.tool === "verify_order").map((x) => JSON.stringify(x.input))).size : 0;
   const refunded = money.filter((e) => e.agent === "support" && /refund/i.test(e.what) && !e.refused).length;
   const box = (id: string, ic: string, h: string, n: string, p: string, inner: string, link?: [string, string]) => `<div class="card" id="${id}"><h3>${icon(ic, 18)}${n ? `<span class="n">${esc(n)}</span>` : ""}${esc(h)}</h3><p>${plain(p)}</p>${inner}${link ? `<a class="open" href="${esc(link[1])}">${esc(link[0])} ${icon("arrow-right", 14)}</a>` : ""}</div>`;
-  const archive = [
-    `<li><a class="pf" href="./?recorded">The CFO dashboard of the earlier recorded run (30 October)</a></li>`,
-    `<li><a class="pf" href="metal/report">The Dispute desk's evidence report (30 October)</a></li>`,
-    `<li><a class="pf" href="film">The earlier animation (30 October)</a></li>`, `<li><a class="pf" href="month">A month in 90 seconds (simulated)</a></li>`, `<li><a class="pf" href="lab">The Scenario Lab</a></li>`,
-  ];
   return `<div class="more">
 ${box("stops", "ban", stopSub(story), stopFigure(story), `${stopsLine(story)}${story.metal && metalDetail(story) ? ` Metal's ${story.metal}: ${metalDetail(story)}.` : ""}`, fold("Show each one", stopItems))}
 ${box("faceid", "scan-face", faceIdLine(faceIdDecisions(r), faces.length).label, String(faceIdDecisions(r)), `Proposals the CFO decided on his phone${faces.some((f) => f.status === "COSIGNED") ? "; the mandate change needed a second signature too" : ""}. ${SECOND_APPROVER}`, fold(`Show the ${faces.length} signatures: ${faceIdDecisions(r)} decisions + ${faces.length - faceIdDecisions(r)} co-signature${faces.length - faceIdDecisions(r) === 1 ? "" : "s"}`, faceItems))}
@@ -247,18 +285,44 @@ ${box("redteam", "shield-check", "attacks stopped", `${stoppedBefore}/${red.atte
   `<li>${esc(`${dayLong(night.ran_at)}, Claude ${family(night.model)} as the attacker:`)} <a class="pf" href="https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-02-night-batch.md#5-red-team-opus-as-the-attacker" target="_blank" rel="noopener">the night batch's report, with what got through ↗</a></li>`,
 ]))}
 ${box("health", "database", "audit rows", String(s.audit.rows), `Hash chain ${s.audit.intact ? "intact" : "broken"} (${runName(r)}).`, "", ["Open the CFO dashboard", "./?autonomy"])}
-${box("archive", "clock", "Archive", "", "Earlier runs and tools, kept as they were.", fold("Show the archive", archive))}
 </div>`;
+}
+
+/**
+ * The Archive, its own closed line at the end of Proof (12 Nov; before: a card inside "Every check"): the replay of the
+ * played run first, its name and day from the record, then the earlier runs and tools, kept as they were.
+ */
+function archiveFold(run: AgentRun): string {
+  const links: [string, string][] = [
+    ["watch", `Replay of ${run.name}, ${shortDay(run.recordedAt)}`],
+    ["./?recorded", "The CFO dashboard of the earlier recorded run (30 October)"], ["metal/report", "The Dispute desk's evidence report (30 October)"],
+    ["film", "The earlier animation (30 October)"], ["month", "A month in 90 seconds (simulated)"], ["lab", "The Scenario Lab"],
+  ];
+  return `<details class="deep" id="archive"><summary>Archive</summary><ul class="pl">${links.map(([href, label]) => `<li><a class="pf" href="${esc(href)}">${esc(label)}</a></li>`).join("")}</ul></details>`;
+}
+
+/**
+ * The stops by cause, for the stops tile: one part per cause that is not 0, in the sentence's order (stopParts). The
+ * parts sum to the story's total, the record's own count: `other` is whatever no cause names, so nothing is hidden.
+ */
+export function stopBreakdown(st: StopStory): { value: number; label: string }[] {
+  return [
+    { value: st.claude, label: "by a buy rule Claude set" },
+    { value: st.metal, label: "by Metal" },
+    { value: st.cfo, label: "by the CFO" },
+    { value: st.planted, label: `planted instruction${st.planted === 1 ? "" : "s"} flagged` },
+    { value: st.other, label: "other" },
+  ].filter((x) => x.value !== 0);
 }
 
 /** The finish (Max, 10 Nov: "same level as the homepage"): the run's label as a clear honest tag, each figure with its
  * colour as a top line, the partner cards lifting on hover, the folds as clear rows. Style only; no words change. */
 const POLISH = `
-.phead .pill.run { background: color-mix(in srgb, var(--awx) 12%, var(--surface)); color: var(--text); border: 1px solid color-mix(in srgb, var(--awx) 40%, var(--border)); font-weight: 650; }
-.phead .pill.run .i { color: var(--awx); }
+.runline .pill.run { background: color-mix(in srgb, var(--awx) 12%, var(--surface)); color: var(--text); border: 1px solid color-mix(in srgb, var(--awx) 40%, var(--border)); font-weight: 650; }
+.runline .pill.run .i { color: var(--awx); }
 .nums .num { position: relative; overflow: hidden; border-radius: 18px; background: linear-gradient(180deg, color-mix(in srgb, var(--sunken) 60%, var(--surface)), var(--surface) 70%); transition: border-color .2s ease-out, transform .2s ease-out; }
 .nums .num::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--text); opacity: .7; }
-.nums .num.claude::before { background: var(--claude); } .nums .num.code::before { background: var(--metal); } .nums .num.face::before { background: var(--accent); } .nums .num.stop::before { background: var(--bad); }
+.nums .num.claude::before { background: var(--claude); } .nums .num.code::before { background: var(--metal); } .nums .num.awx::before { background: var(--awx); } .nums .num.stop::before { background: var(--bad); }
 .nums .num:hover { transform: translateY(-2px); }
 .partners .pcard { transition: border-color .2s ease-out, transform .2s ease-out; }
 .partners .pcard:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); transform: translateY(-2px); }
@@ -285,34 +349,45 @@ export function readBack(run: AgentRun): string {
 
 export function proofPage(run: AgentRun = agentRun()): string {
   const r = run.record, sp = split(r), story = stopStory(r), pay = payments(r);
-  // The Airi run (7 Nov): Visa Intelligent Commerce via Airwallex's Airi, in sight under the partners (owner, 7 Nov),
-  // short: its outcomes and checks, then a link to every id on /airwallex.
+  // The Airi runs (7 Nov): Visa Intelligent Commerce via Airwallex's Airi, short: its outcomes and checks, then a link
+  // to every id on /airwallex. In sight under the partners from 7 Nov; behind the first closed line since 12 Nov (the
+  // jury's order and half the height on a phone); guarantee 3, at the top, links the Airi run on /visa.
   const airi = airiRunBlock(undefined, { short: true }) + vic2RunBlock(undefined, { short: true });
+  // Airwallex's own figure (jury, 12 Nov): the agent cards whose controls, as Airwallex returns them, are the CFO's
+  // policy (cardControlRows, from the dated read-back); without that read-back, the run's movements at Airwallex.
+  const cards = cardsReadback(), rows = cards ? cardControlRows(r, cards) : [];
+  const moved = run.events.filter((e) => e.k === "money" && e.rail === "airwallex" && !e.refused).length;
+  // Four tiles. The Face ID decisions stay one number under #faceid ("Every check"), where guarantee 1 links.
   const nums: (Tile & { cls: string })[] = [
     { cls: "claude", value: String(sp.byClaude), label: `decisions by Claude (${sp.fallbacks} fallbacks)`, explain: "", href: "#claude" },
+    // Second, so that on a phone the two short tiles share a row and the two with lines under them share the next.
+    rows.length
+      ? { cls: "awx", value: `${rows.filter((x) => x.match).length} of ${rows.length}`, label: "cards carry the CFO's policy as Airwallex's own controls", explain: "", href: `airwallex#${AWX_CONTROLS_ID}` }
+      : { cls: "awx", value: String(moved), label: "movements at Airwallex", explain: "", href: "#airwallex" },
     // One canonical set (jury review, 6 Nov, #5): "86 Metal payments + 1 card charge", never 82 or 87 beside it.
     { cls: "code", value: String(pay.onChain), label: pay.canonical.replace(/^\d+ /, ""), explain: "", href: "#metal", ...(pay.sums ? { note: `${pay.metalParts} on Metal, all inside the limits.` } : {}) },
-    { cls: "face", value: String(faceIdDecisions(r)), label: faceIdLine(faceIdDecisions(r), run.events.filter((e) => e.k === "face").length).label, explain: "", href: "#faceid" },
-    // No TAP remark under the figures (Max's last round, item 2): TAP is on /visa, linked from the footer.
-    { cls: "stop", value: stopFigure(story), label: stopSub(story), explain: "", href: "#stops" },
-    { cls: "", value: `$${run.derived.perDecision}`, label: "Claude cost per decision (agent calls)", explain: "", href: "#claude" },
+    // The stops by cause, summing to the figure (stopBreakdown). No TAP remark under the figures: TAP is on /visa.
+    { cls: "stop", value: stopFigure(story), label: stopSub(story), explain: "", href: "#stops", parts: stopBreakdown(story).map((x) => ({ value: String(x.value), label: x.label })) },
   ];
+  const tile = (n: Tile & { cls: string }) => `<a class="num card ${n.cls}" href="${esc(n.href)}"><span class="v">${esc(n.value)}</span><span class="l">${esc(n.label)}</span>${noteHtml(n.note, "span")}${n.parts?.length ? `<span class="parts">${n.parts.map((x) => `<span><b>${esc(x.value)}</b> ${esc(x.label)}</span>`).join("")}</span>` : ""}</a>`;
   const body = `<main class="proofp"><div class="wrap">
-  <div class="phead"><h1>Proof</h1><span class="pill run">${icon("database", 14)}${esc(run.label)}</span><a class="open" href="${FILM_URL}" target="_blank" rel="noopener">${icon("play", 14)}${esc(FILM_LINK)} ↗</a><a class="open" href="${CFO_VIEW_URL}">${icon("layout-dashboard", 14)}${esc(CFO_VIEW_LINK)}</a><a class="open" href="${TRACE_URL}">${icon("receipt", 14)}${esc(TRACE_LINK)}</a><a class="open" href="assets/${PACK_NAME}" download>${icon("file-check", 14)}${esc(PACK_LINK)}</a></div>
-  <p class="split">${esc(SPLIT_LINE)}</p>
-  <div class="nums">${nums.map((n) => `<a class="num card ${n.cls}" href="${n.href}"><span class="v">${esc(n.value)}</span><span class="l">${esc(n.label)}</span>${noteHtml(n.note, "span")}</a>`).join("")}</div>
+  <h1>Proof</h1>
   ${guaranteesHtml()}
   <h2 class="sec">The partners</h2>
   ${partnerCards(run)}
-  ${airi ? `<div class="awrb">${airi}</div>` : ""}
+  <div class="runline"><span class="pill run">${icon("database", 14)}${esc(run.label)}</span></div>
+  <p class="split">${esc(SPLIT_LINE)}</p>
+  <div class="nums">${nums.map(tile).join("")}</div>
+  ${airi ? `<details class="deep"><summary>Visa Intelligent Commerce via Airwallex's Airi</summary><div class="awrb">${airi}</div></details>` : ""}
   <details class="deep"><summary>Airwallex, read back</summary>${readBack(run)}</details>
   <details class="deep"><summary>Every check</summary>${moreCards(run)}</details>
   <details class="deep"><summary>Why this is a company</summary>${whyCompanyHtml()}</details>
+  ${archiveFold(run)}
+  <nav class="util" aria-label="More from this run"><a class="open" href="${FILM_URL}" target="_blank" rel="noopener">${icon("play", 14)}${esc(FILM_LINK)} ↗</a><a class="open" href="${CFO_VIEW_URL}">${icon("layout-dashboard", 14)}${esc(CFO_VIEW_LINK)}</a><a class="open" href="${TRACE_URL}">${icon("receipt", 14)}${esc(TRACE_LINK)}</a><a class="open" href="assets/${PACK_NAME}" download>${icon("file-check", 14)}${esc(PACK_LINK)}</a></nav>
 </div></main>`;
+  // No footer link to /visa since 12 Nov (before: "Extra, not an award entry", jury review, 6 Nov, #7): Home keeps it.
   return page({
-    title: "Proof", description: "Every proof of the main run in one place: who decided, who paid, who stopped what, each partner's live proof.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH, body, js: JS, stage: false,
-    // Visa TAP as a footer link (jury review, 6 Nov, #7): an extra, not an award entry.
-    links: [["visa", VISA_EXTRA_LINK]],
+    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH, body, js: JS, stage: false,
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,
   });
 }
