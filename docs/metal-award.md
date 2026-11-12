@@ -102,6 +102,21 @@ rehearsals of 29 October.
 | A dispute re-checks each payment and its signed order from the chain (`verifyMandatePayment`): 12 of 12 ordered | `src/agents/disputes.ts` | [S2 run log](runs/2026-10-29-s2.md) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
 | A payment in doubt is looked up in the facilitator's `/settlements` by its nonce, never paid twice | `src/metal/pay.ts` | tested in code (`test/` in-doubt cases); not yet exercised live (Metal QA, 1 November) | [Facilitator](https://docs.metalntwx.com/agents/facilitator.md), [Verify and reconcile payments](https://docs.metalntwx.com/build/payments/verify-and-reconcile-payments.md) |
 | The sweep is credited only once final, locked once by `chainId:tx:logIndex` | `src/agents/sweep.ts` | [S3 run log](runs/2026-10-29-s3.md) | [Settlement and finality](https://docs.metalntwx.com/reference/network-fundamentals/settlement.md) |
+| x402 version 2 on the wire, tested offline: the seller's and the supplier's offer in `PAYMENT-REQUIRED`, the buyer's `PAYMENT-SIGNATURE`, the outcome read from `PAYMENT-RESPONSE` | `src/servers/seller.ts`, `src/servers/supplier.ts`, `src/metal/pay.ts` | `test/x402-wire.test.ts` | — |
+
+Which words are x402's and which are Metal's or Purser's. Purser runs x402 version 2 (`@x402/*` 2.29.0) on Metal
+testnet, through Metal's facilitator.
+
+| Our word | x402's word | Whose it is |
+|---|---|---|
+| `exact` on `eip155:63825` | the `exact` scheme, on a CAIP-2 network id | x402's standard scheme; the network is Metal testnet |
+| 503, and nothing settles | the default `authorization` flow: verify, resource, settle, respond | x402's flow: when the handler answers with an error, `@x402/express` does not settle, so a refused upstream purchase costs the customer nothing |
+| Prepaid clearing (`bajillion`) | none; it settles before the handler runs (x402's `upfront` flow) | Metal's scheme, not an x402 standard scheme. The money is committed before the work, so Purser offers it only after a free price check |
+| The buyer's signed order | none; not x402's offer-and-receipt extension, where the seller signs | Metal's `requireSignedOffer`: the offer asks for it (`extra.signedOffer: "required"`), the payment carries it under the `metal-mandate` extension key |
+| Never paid twice | the ERC-3009 nonce in the `exact` payment | the nonce, plus Metal's `/settlements` lookup by that nonce; x402's payment-identifier extension is not used |
+| The CFO's limit | client-side budgets, out of scope for x402 | Purser's: checked in the x402 client hook `onBeforePaymentCreation`, before anything is signed |
+| Not used | x402 over MCP, A2A, Bazaar, sign-in-with-x, `upto`, seller receipts | none of these is in Purser's code |
+| Ran against | facilitator | Metal's hosted facilitator, on Metal testnet only |
 
 ## 4. Offer Pay-per-Call Clearing (new on testnet, October 2026)
 
@@ -166,7 +181,7 @@ real person signed, Northwind as the seller settles it on its own terms (`src/se
 
 | What the seller holds | From Metal | Proves |
 |---|---|---|
-| The order the customer's agent signed | the signed offer in the x402 payment (`signedOfferOf`), with the checkout: amount, payee, resource | what the agent agreed to, and the price |
+| The order the customer's agent signed | the buyer's signed order, carried in the x402 payment by Metal's mandate extension (`signedOfferOf`), with the checkout: amount, payee, resource | what the agent agreed to, and the price |
 | The payment checked against the customer's mandate | `verifyMandatePayment` (step 4: the payment is the agent's per-payment mandate, inside the mandate at its block) | the agent acted inside limits its principal set |
 | The mandate | its `MandateBound` event on the customer's account: limits, payee, expiry, bound by the owner key | who stood behind it: the account's owner |
 | The settlement and the delivery | the tx and `/settlements`; the SHA-256 of the data delivered | that it was paid once and what was delivered |
