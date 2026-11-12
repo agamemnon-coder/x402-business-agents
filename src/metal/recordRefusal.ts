@@ -39,11 +39,17 @@ export async function refusalGasKey(): Promise<string> {
   return file;
 }
 
+/** How the recording reaches the chain and the CLI: Purser's own client and the pinned CLI, unless a caller counts its calls (the owners path, behind its call budget). */
+export interface RefusalPorts {
+  client?: Parameters<typeof readMandateState>[0];
+  run?: (args: string[], okCodes: number[]) => CliResult | Promise<CliResult>;
+}
+
 /** onPullStart: called right before the CLI is started (the caller stamps it: from then on the pull may reach Metal). */
-export async function recordCapRefusalOnChain(m: LoadedMandate, to: Address, cents: number, paymentId: string, gasKey?: string, onPullStart?: () => void): Promise<RecordedRefusal> {
+export async function recordCapRefusalOnChain(m: LoadedMandate, to: Address, cents: number, paymentId: string, gasKey?: string, onPullStart?: () => void, ports: RefusalPorts = {}): Promise<RecordedRefusal> {
   const cap = extractTerms(m.credential).constraints.perPaymentCap;
   if (centsToBaseUnits(cents) <= cap) throw new Error(`${fromCents(cents)} is not over this mandate's cap; Metal would pay it, so nothing is sent`);
-  const state = await readMandateState(publicClient(), m.principal, m.reference);
+  const state = await readMandateState(ports.client ?? publicClient(), m.principal, m.reference);
   if (state.boundBlock === 0n || state.revoked) throw new Error("this mandate is not bound (or is revoked); nothing to record against");
   const key = gasKey ?? await refusalGasKey();
   // The caller's last check before anything is sent (its claim still open, its hold still held): an error here is
@@ -53,7 +59,7 @@ export async function recordCapRefusalOnChain(m: LoadedMandate, to: Address, cen
   try {
     // Asynchronous: the world's process keeps serving the suppliers and the seller while Metal records it (agent run 1).
     // The customer's request that met the refusal still waits for it (at most the CLI's 180 s timeout).
-    r = await metalAgentAsync(["mandate", "pull", "--credential", m.credentialPath, "--mandate-key-file", m.keyFile, "--to", to, "--amount", fromCents(cents),
+    r = await (ports.run ?? metalAgentAsync)(["mandate", "pull", "--credential", m.credentialPath, "--mandate-key-file", m.keyFile, "--to", to, "--amount", fromCents(cents),
       "--payment-id", paymentId, "--record-refusal", "--key", key], [0, 1]);
   } catch (e) {
     // From here on the pull may have reached Metal: the caller treats this as an incident, not a quiet failure.
