@@ -52,8 +52,13 @@ Threat model: [security.md](security.md). Controls: [controls.md](controls.md). 
 
 ## Partners, and what ran live on each
 
-Text only: no logos, no endorsement implied. Every run is in sandbox or testnet with test money; dates and records
-in [runs/README.md](runs/README.md).
+Built with:
+
+<img src="assets/logos/built-with.png" alt="Built with Airwallex, Metal, Claude" height="44">
+
+The logos are the partners' official files, unmodified ([sources](assets/logos/SOURCES.md)); no endorsement is
+implied. Named in text only: Visa, Cloudflare, Moneybird, T:0 (why: [sources](assets/logos/SOURCES.md#left-out-named-in-text-only)).
+Every run is in sandbox or testnet with test money; dates and records in [runs/README.md](runs/README.md).
 
 - **Airwallex (sandbox).** Main run, 3 Nov: the hash the CFO signed is in Airwallex's own record of SWIFT transfer `03360bfa…` (EUR 240.00). awx-1, 7 Nov: Airwallex declined agents' cards with its own controls (`LIMIT_EXCEEDED`, `MERCHANT_CATEGORY_NOT_ALLOWED`). Two locks, 10 Nov: its approval workflow held a signed transfer `IN_APPROVAL`.
 - **Metal (testnet).** Main run: a mandate on chain per agent; 86 payments, each its own transaction; #24 refused on chain (`mandate_cap_exceeded`); the mandates replaced on chain after the CFO's Face ID.
@@ -81,12 +86,12 @@ Running it live (sandbox keys, a Metal RPC): [run-it.md](run-it.md).
 
 | Folder | What | Files |
 |---|---|---|
-| `src/` | Purser: agents, policy, passkey approvals, executors per rail, ledger, the site's pages | 527 |
+| `src/` | Purser: agents, policy, passkey approvals, executors per rail, ledger, the site's pages | 528 |
 | `cloud/` | Purser Cloud: the small-company product (invoices in, read, paid after Face ID, booked, archived) | 28 |
 | `worker/` | The hosted site and relay (Cloudflare Worker): /try/sign, the phone-to-runner relay | 13 |
 | `contracts/` | Solidity contracts used on Metal testnet, with their ABIs | 7 |
-| `test/` | Unit, integration and browser checks | 471 |
-| `docs/` | Run logs, records, security, plans, the visuals | 422 |
+| `test/` | Unit, integration and browser checks | 472 |
+| `docs/` | Run logs, records, security, plans, the visuals | 413 |
 | `fixtures/` | Test invoices, including the hostile ones (bank change, look-alike, injection) | 19 |
 
 ## Tests and CI
@@ -94,7 +99,7 @@ Running it live (sandbox keys, a Metal RPC): [run-it.md](run-it.md).
 - **4448 of 4449 tests passed** in 419 files, 1 skipped (vitest report of this draft's build; CI runs them on every push).
 - 415 test files, 11 browser checks (Playwright, 390 and 1440 px), 2 workflows.
 - CI steps (from `.github/workflows/ci.yml`): Tests with coverage, per area; Relay Worker type check; Cloud tests on local D1; npm run judge (no keys, no ledger); Guest pages in Chromium (/, /demo, /month at 390 and 1440 px); Agent trace in Chromium (390 and 1440 px, light and dark); /try/sign in Chromium (360, 390 and 1440 px, light and dark; layout after signing and after the tamper); Purser Cloud's console in Chromium (first run and sign-in with a virtual passkey, every page at 1440 and 390 px); /try/sign in WebKit (390 px light, 1440 px dark; up to the passkey step where WebKit has WebAuthn); gitleaks, whole history of this commit; SBOM (CycloneDX, runtime dependencies); Semgrep (blocking; public sets plus .semgrep/purser.yml).
-- 62 dated run logs in [runs/](runs/).
+- 64 dated run logs in [runs/](runs/).
 
 ## Limits, and what is simulated
 

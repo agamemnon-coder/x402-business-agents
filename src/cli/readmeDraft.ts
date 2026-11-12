@@ -13,6 +13,7 @@ import { hashTravel } from "../redesign/airwallexProof.js";
 import { awxRun } from "../redesign/awxRun.js";
 import { AIRI_RUN_FILE, AIRI_RUN_LOG } from "../redesign/airiRun.js";
 import { SOCIAL_SENTENCE } from "../visuals/svg.js";
+import { BUILT_WITH, BUILT_WITH_PNG, LEFT_OUT } from "../visuals/logos.js";
 
 const OUT = "docs/readme-v2-draft.md";
 const LIVE = "https://kit11.max-31b.workers.dev";
@@ -107,8 +108,13 @@ Threat model: [security.md](security.md). Controls: [controls.md](controls.md). 
 
 ## Partners, and what ran live on each
 
-Text only: no logos, no endorsement implied. Every run is in sandbox or testnet with test money; dates and records
-in [runs/README.md](runs/README.md).
+Built with:
+
+<img src="${BUILT_WITH_PNG.replace(/^docs\//, "")}" alt="Built with ${BUILT_WITH.map((l) => l.name).join(", ")}" height="44">
+
+The logos are the partners' official files, unmodified ([sources](assets/logos/SOURCES.md)); no endorsement is
+implied. Named in text only: ${LEFT_OUT.map((l) => l.name).join(", ")} (why: [sources](assets/logos/SOURCES.md#left-out-named-in-text-only)).
+Every run is in sandbox or testnet with test money; dates and records in [runs/README.md](runs/README.md).
 
 - **Airwallex (sandbox).** Main run, ${day(mainDay)}: ${h ? `the hash the CFO signed is in Airwallex's own record of ${h.transferMethod} transfer \`${h.transferId.slice(0, 8)}…\` (${h.currency} ${h.amount})` : "the SWIFT payment after the CFO's Face ID"}. awx-1${awx?.attempts[0]?.at ? `, ${day(awx.attempts[0].at)}` : ""}: Airwallex declined agents' cards with its own controls${declines.length ? ` (${declines.map((d) => `\`${d}\``).join(", ")})` : ""}. Two locks${refusals.find((x) => x.rail === "airwallex") ? `, ${day(`${refusals.find((x) => x.rail === "airwallex")!.date}T12:00:00Z`)}` : ""}: its approval workflow held a signed transfer \`IN_APPROVAL\`.
 - **Metal (testnet).** Main run: a mandate on chain per agent; ${m.payments.total} payments, each its own transaction${m.refusal ? `; #${m.refusal.seq} refused on chain (\`${m.refusal.code}\`)` : ""}${m.replace ? `; the mandates replaced on chain after the CFO's Face ID` : ""}.

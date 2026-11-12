@@ -88,3 +88,23 @@ describe("refused by the rail itself: from the records", () => {
 it("wrap keeps words whole", () => {
   expect(wrap("one two three four", 9)).toEqual(["one two", "three", "four"]);
 });
+
+describe("partner logos", async () => {
+  const { createHash } = await import("node:crypto");
+  const { BUILT_WITH, LEFT_OUT } = await import("../src/visuals/logos.js");
+  const sources = read("docs/assets/logos/SOURCES.md");
+  it("every logo shown is an official file whose hash is on record, unmodified", () => {
+    for (const l of BUILT_WITH) {
+      const hash = createHash("sha256").update(readFileSync(new URL(l.file, root))).digest("hex");
+      expect(sources, l.file).toContain(hash);
+    }
+  });
+  it("every logo left out is named with its reason", () => {
+    for (const l of LEFT_OUT) expect(sources).toContain(`| ${l.name} |`);
+  });
+  it("never claims more than 'built with'", () => {
+    const draft = read("docs/readme-v2-draft.md");
+    expect(draft).toMatch(/Built with/);
+    expect(`${draft}\n${sources.replace(/never with "certified", "endorsed",\n"approved by" or "partner of"/, "")}`).not.toMatch(/certified|endorsed by|approved by|partner of/i);
+  });
+});
