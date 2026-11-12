@@ -11,6 +11,7 @@ import { handle } from "../cloud/src/app.js";
 import { BOOKS_JS } from "../cloud/src/consoleBooks.js";
 import { vaultIndex, type BuiltCompany } from "../src/demoworld/build.js";
 import { localDemo, type LocalDemo } from "../src/demoworld/bundle.js";
+import { pdfText } from "../src/ap/pdfText.js";
 import { ageing, balanceSheet, profitAndLoss, trialBalance, vatOverview } from "../src/ledger/reports.js";
 
 interface Cards {
@@ -177,6 +178,18 @@ describe("the vault, as the engine filed it", () => {
     expect((await B.verifyBytes(one, "")).match).toBe(false);
     expect((await B.verifyBytes(one, "not a hash")).match).toBe(false);
     expect((await B.verifyBytes(one, sha(one).toUpperCase())).match).toBe(true);
+  });
+
+  it("files payment proofs and month reports that say stand-in and test passkey, never sandbox or Face ID", async () => {
+    const c = demo.companies[0]!;
+    const v = await get<{ files: { sha256: string; kind: string }[] }>(`/v1/demo/${c.slug}/vault`);
+    for (const kind of ["receipt", "month"]) {
+      const f = v.files.find((x) => x.kind === kind)!;
+      const { text } = await pdfText(new Uint8Array(await (await res(`/v1/demo/${c.slug}/documents/${f.sha256}`)).arrayBuffer()));
+      expect(text, kind).toMatch(/stand-in for the bank/);
+      expect(text, kind).not.toMatch(/sandbox/i);
+      if (kind === "receipt") { expect(text).toMatch(/a test passkey/); expect(text).not.toMatch(/Face ID \(passkey\)/); }
+    }
   });
 
   it("matches an invoice's original in the vault to the hash on the invoice's record", async () => {
