@@ -304,6 +304,12 @@ export function firstSentence(text: string): string {
   }
   return text;
 }
+/** A text's full sentences, in order (firstSentence, again and again). */
+const sentencesOf = (text: string): string[] => {
+  const out: string[] = [];
+  for (let rest = text.trim(); rest;) { const s = firstSentence(rest); out.push(s); rest = rest.slice(s.length).trim(); }
+  return out;
+};
 /** A row's one line: its own, or the first full sentence of what ran. */
 const lineOf = (r: RunRow) => r.line ?? firstSentence(r.what);
 const newestFirst = (rows: RunRow[]) => [...rows].sort((a, b) => b.iso.localeCompare(a.iso));
@@ -487,6 +493,8 @@ export function runsReadme(all: RunRow[] = liveRuns()): string {
   const rows = newestFirst(all), live = rows.filter((r) => !isRehearsal(r)), rehearsals = rows.filter(isRehearsal);
   const cell = mdCell;
   const idCell = (i: RunId) => `${i.label}: ${i.href?.startsWith("http") ? `[\`${i.value}\`](${i.href})` : `\`${i.value}\``}`;
+  // What the entry's one line says was simulated, where what ran does not already say it in the same words.
+  const whatRan = (r: RunRow) => [r.what, ...sentencesOf(lineOf(r)).filter((x) => FAKED.test(x) && !r.what.includes(x))].join(" ");
   const ids = (r: RunRow) => r.ids.filter(isId).map((i) => cell(idCell(i))).join("<br>");
   const files = (r: RunRow) => r.files.map((f) => `[${f.label}](${f.href.replace(REPO_BLOB, "../../")})`).join("<br>");
   // The money words the kind does not already say ("Rehearsal · test money" after "Rehearsal": "test money").
@@ -503,7 +511,7 @@ said per run. The other files in this folder are build notes, dry runs and rehea
 
 | Date | Run | Rails | What ran | Checks | Key ids | Files |
 |---|---|---|---|---|---|---|
-${live.map((r) => `| ${r.date} | ${run(r)} | ${cell(r.rails)} | ${cell(r.what)} | ${cell(r.checks)} | ${ids(r)} | ${files(r)} |`).join("\n")}
+${live.map((r) => `| ${r.date} | ${run(r)} | ${cell(r.rails)} | ${cell(whatRan(r))} | ${cell(r.checks)} | ${ids(r)} | ${files(r)} |`).join("\n")}
 
 ## Rehearsals and dry runs
 
@@ -511,7 +519,7 @@ Not counted as live runs. The dry runs' logs are the other files in this folder.
 
 | Date | Run | What ran | Key ids | Files |
 |---|---|---|---|---|
-${rehearsals.map((r) => `| ${r.date} | ${run(r)} | ${cell(r.what)} | ${ids(r)} | ${files(r)} |`).join("\n")}
+${rehearsals.map((r) => `| ${r.date} | ${run(r)} | ${cell(whatRan(r))} | ${ids(r)} | ${files(r)} |`).join("\n")}
 
 ## What \`docs/demo/main-run.json\` holds
 

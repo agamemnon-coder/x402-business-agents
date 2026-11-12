@@ -581,6 +581,17 @@ describe("/runs as a timeline", () => {
     expect(rehTable).toContain("| Date | Run | What ran | Key ids | Files |");
     expect(liveTable).not.toContain(row("agent-1").name!);
     expect(liveTable).toContain("The product, end to end");
+    // Review 12 Nov (DC-9): each row says what the page's entry says was simulated: every sentence of its one line that
+    // says simulated, fake or mock is in its row of the table (the main run and its rehearsal included).
+    const rowOf = (r: RunRow) => md.split("\n").find((l) => l.includes(`**${mdCell(r.name ?? r.title)}**`))!;
+    const saidSimulated = (r: RunRow) => r.line!.split(/(?<=[.!?]) (?=[A-Z0-9])/).filter((x) => /simulat|fake|mock/i.test(x));
+    let simulated = 0;
+    for (const r of rows) for (const sentence of saidSimulated(r)) {
+      expect(rowOf(r), r.key).toContain(mdCell(sentence));
+      simulated++;
+    }
+    expect(simulated).toBeGreaterThanOrEqual(7);
+    for (const k of ["main-1", "agent-1"]) expect(rowOf(row(k)), k).toContain("Simulated: customer, supplier, settlement, second approver.");
     // The name a run goes by in the docs follows its plain name, only where the docs use that name.
     const docs = readdirSync("docs", { recursive: true, encoding: "utf8" }).filter((f) => f.endsWith(".md") && f !== "runs/README.md").map((f) => raw(`docs/${f}`)).join("\n");
     const named = [...md.matchAll(/\(in the docs: `([^`]+)`\)/g)].map((m) => m[1]!);
