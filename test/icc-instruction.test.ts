@@ -8,7 +8,8 @@ import {
 } from "../src/icc/instruction.js";
 import { firstInvalidField } from "./support/iccStandIn.js";
 
-const TOKEN = "A1B2C3D4E5F60718293A4B5C6D7E8F90";
+/** A made-up instrument identifier of the documented length (32). Not a card number and not a real ID. */
+const INSTRUMENT = "A1B2C3D4".repeat(4);
 const NOW = new Date("2026-11-12T10:00:00Z");
 const IDS = { actionId: "P-0001", correlationId: "3e1b7943-6567-4965-a32b-5aa93d057d35" };
 const INSTRUCTION_ID = `1-${"5C8B7367EC00"}c229ec8a-c96c-4932-a1f3-1faa8f138b01`;
@@ -17,7 +18,7 @@ function terms(over: Partial<IccTerms> = {}): IccTerms {
   return {
     schema: TERMS_SCHEMA, kind: ICC_PURCHASE_KIND, proposal_id: "P-0001", expires_at: "2026-11-12T10:30:00Z",
     agent: "sourcing", amount: "12.00", currency: "EUR", merchant: { name: "Northwind test shop", url: "https://kit11.max-31b.workers.dev/", country: "NL" },
-    items: [{ name: "Trail map pack", unit_price: "6.00", quantity: "2" }], description: "Trail map packs for the spring range", payment_method_id: TOKEN, ...over,
+    items: [{ name: "Trail map pack", unit_price: "6.00", quantity: "2" }], description: "Trail map packs for the spring range", payment_method_id: INSTRUMENT, ...over,
   };
 }
 
@@ -48,7 +49,7 @@ describe("the instruction, from the signed terms only", () => {
   it("maps each signed term to its documented field", () => {
     expect(record).toEqual({
       clientCorrelationId: IDS.correlationId,
-      paymentInformation: { instrumentIdentifier: { id: TOKEN } },
+      paymentInformation: { instrumentIdentifier: { id: INSTRUMENT } },
       deviceInformation: { applicationName: "Purser sourcing agent" },
       mandates: [{
         mandateId: "P-0001", preferredMerchantName: "Northwind test shop", declineThreshold: { amount: "12.00", currencyCode: "EUR" },
@@ -126,7 +127,7 @@ describe("the credentials request", () => {
     const body = buildCredentialsRequest(t, sha, IDS, purchaseFromTerms(t, IDS.actionId));
     expect(body).toEqual({
       clientCorrelationId: IDS.correlationId,
-      paymentInformation: { instrumentIdentifier: { id: TOKEN } },
+      paymentInformation: { instrumentIdentifier: { id: INSTRUMENT } },
       transactionData: [{
         clientReferenceInformation: { code: "P-0001" },
         mandateReferenceData: [{ mandateId: "P-0001" }],

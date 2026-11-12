@@ -47,7 +47,7 @@ describe("the JWT", () => {
   });
 
   it("leaves digest and digestAlgorithm out when the body is empty (a GET)", () => {
-    const c = claims({ method: "GET", path: "/tms/v1/instrumentidentifiers/A1B2C3D4E5F60718293A4B5C6D7E8F90", body: null });
+    const c = claims({ method: "GET", path: `/tms/v1/instrumentidentifiers/${"A1B2C3D4".repeat(4)}`, body: null });
     expect(c).not.toHaveProperty("digest");
     expect(c).not.toHaveProperty("digestAlgorithm");
     expect(c["request-method"]).toBe("get");

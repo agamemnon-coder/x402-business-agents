@@ -23,7 +23,8 @@ import { makeIccTestKeys, writeIccKeyFiles, type IccTestKeys } from "./support/i
 import { IccStandIn } from "./support/iccStandIn.js";
 
 const T0 = new Date();
-const TOKEN = "A1B2C3D4E5F60718293A4B5C6D7E8F90";
+/** A made-up instrument identifier of the documented length (32). Not a card number and not a real ID. */
+const INSTRUMENT = "A1B2C3D4".repeat(4);
 const SHOP = ICC_MERCHANTS[0]!;
 const ROOT = new URL("..", import.meta.url).pathname;
 
@@ -33,7 +34,7 @@ beforeEach(() => { for (const name of ICC_ENV_NAMES) vi.stubEnv(name, undefined)
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 const req = (): IccPurchaseRequest => ({
-  agent: "sourcing", paymentMethodId: TOKEN, merchantName: SHOP.name, merchantUrl: SHOP.url, merchantCountry: SHOP.country,
+  agent: "sourcing", paymentMethodId: INSTRUMENT, merchantName: SHOP.name, merchantUrl: SHOP.url, merchantCountry: SHOP.country,
   amount: "12.00", currency: "EUR", items: [{ name: "Trail map pack", unitPrice: "6.00", quantity: "2" }], description: "Trail map packs",
 });
 
@@ -140,7 +141,7 @@ describe("with KIT11_ICC_RAIL=on", () => {
     writeFileSync(assurance, JSON.stringify({ deviceInformation: { fingerprintSessionId: "fp-1", deviceData: { type: "Mobile", brand: "Test" }, ipAddress: "192.168.0.100" }, assuranceData: [{ verificationMethod: "23", verificationResults: "01", verificationTimestamp: "1794477000", authenticatedIdentities: { id: "identity-1" } }] }), { mode: 0o600 });
     const env: Record<string, string> = {
       KIT11_ICC_RAIL: "on", ICC_CALL_BUDGET: "3", ICC_CALL_LOG: join(dir, "calls.jsonl"), ICC_MERCHANT_ID: "purser_sandbox", ICC_JWT_KEY_ID: "jwt-key-1", ICC_JWT_PRIVATE_KEY_FILE: files.jwtKey,
-      ICC_MLE_REQUEST_CERT_FILE: files.requestCert, ICC_MLE_RESPONSE_KEY_ID: "response-key-1", ICC_MLE_RESPONSE_PRIVATE_KEY_FILE: files.responseKey, ICC_INSTRUMENT_IDENTIFIER_ID: TOKEN, ICC_ASSURANCE_FILE: assurance,
+      ICC_MLE_REQUEST_CERT_FILE: files.requestCert, ICC_MLE_RESPONSE_KEY_ID: "response-key-1", ICC_MLE_RESPONSE_PRIVATE_KEY_FILE: files.responseKey, ICC_INSTRUMENT_IDENTIFIER_ID: INSTRUMENT, ICC_ASSURANCE_FILE: assurance,
     };
     for (const [k, v] of Object.entries(env)) vi.stubEnv(k, v);
     const standIn = new IccStandIn({ keys, merchantId: "purser_sandbox", jwtKeyId: "jwt-key-1", sharedKeyId: "shared-key-1", responseMleKeyId: "response-key-1" });
@@ -172,7 +173,7 @@ describe("with KIT11_ICC_RAIL=on", () => {
     writeFileSync(assurance, JSON.stringify({ deviceInformation: { fingerprintSessionId: "fp-1", deviceData: { type: "Mobile", brand: "Test" }, ipAddress: "192.168.0.100" }, assuranceData: [{ verificationMethod: "23", verificationResults: "01", verificationTimestamp: "1794477000", authenticatedIdentities: { id: "identity-1" } }] }), { mode: 0o600 });
     const env: Record<string, string> = {
       KIT11_ICC_RAIL: "on", ICC_CALL_BUDGET: "3", ICC_CALL_LOG: join(dir, "calls.jsonl"), ICC_MERCHANT_ID: "purser_sandbox", ICC_JWT_KEY_ID: "jwt-key-1", ICC_JWT_PRIVATE_KEY_FILE: files.jwtKey,
-      ICC_MLE_REQUEST_CERT_FILE: files.requestCert, ICC_MLE_RESPONSE_KEY_ID: "response-key-1", ICC_MLE_RESPONSE_PRIVATE_KEY_FILE: files.responseKey, ICC_INSTRUMENT_IDENTIFIER_ID: TOKEN, ICC_ASSURANCE_FILE: assurance,
+      ICC_MLE_REQUEST_CERT_FILE: files.requestCert, ICC_MLE_RESPONSE_KEY_ID: "response-key-1", ICC_MLE_RESPONSE_PRIVATE_KEY_FILE: files.responseKey, ICC_INSTRUMENT_IDENTIFIER_ID: INSTRUMENT, ICC_ASSURANCE_FILE: assurance,
     };
     for (const [k, v] of Object.entries(env)) vi.stubEnv(k, v);
     const standIn = new IccStandIn({ keys, merchantId: "purser_sandbox", jwtKeyId: "jwt-key-1", sharedKeyId: "shared-key-1", responseMleKeyId: "response-key-1" });

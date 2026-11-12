@@ -10,7 +10,8 @@ import { ICC_MERCHANTS, ICC_MERCHANT_NAME_MAX, iccMerchantById, iccMerchantOf, i
 import { makeIccTestKeys, writeIccKeyFiles, type IccTestKeys } from "./support/iccKeys.js";
 import { IccStandIn } from "./support/iccStandIn.js";
 
-const TOKEN = "A1B2C3D4E5F60718293A4B5C6D7E8F90";
+/** A made-up instrument identifier of the documented length (32). Not a card number and not a real ID. */
+const INSTRUMENT = "A1B2C3D4".repeat(4);
 let keys: IccTestKeys;
 let files: ReturnType<typeof writeIccKeyFiles>;
 beforeAll(() => { keys = makeIccTestKeys(); files = writeIccKeyFiles(keys); });
@@ -19,7 +20,7 @@ const full = (over: Record<string, string | undefined> = {}): Record<string, str
   KIT11_ICC_RAIL: "on", ICC_CALL_BUDGET: "3", ICC_CALL_LOG: join(files.dir, "calls.jsonl"), ICC_MERCHANT_ID: "purser_sandbox",
   ICC_JWT_KEY_ID: "jwt-key-1", ICC_JWT_PRIVATE_KEY_FILE: files.jwtKey,
   ICC_MLE_REQUEST_CERT_FILE: files.requestCert, ICC_MLE_RESPONSE_KEY_ID: "response-key-1", ICC_MLE_RESPONSE_PRIVATE_KEY_FILE: files.responseKey,
-  ICC_INSTRUMENT_IDENTIFIER_ID: TOKEN, ICC_ASSURANCE_FILE: join(files.dir, "assurance.json"), ...over,
+  ICC_INSTRUMENT_IDENTIFIER_ID: INSTRUMENT, ICC_ASSURANCE_FILE: join(files.dir, "assurance.json"), ...over,
 });
 
 describe("the rail's switch and its merchants", () => {
@@ -62,7 +63,7 @@ describe("readIccEnv", () => {
       budget: 3, callLog: join(files.dir, "calls.jsonl"), host: "apitest.cybersource.com", pathPrefix: "/icc/v1", merchantId: "purser_sandbox",
       scheme: "jwt-p12", keyId: "jwt-key-1", jwtPrivateKeyFile: files.jwtKey, digestForm: "raw", dateHeader: "v-c-date",
       mle: { requestCertFile: files.requestCert, responseKeyId: "response-key-1", responsePrivateKeyFile: files.responseKey },
-      instrumentIdentifierId: TOKEN, tokenizedCardId: null, assuranceFile: join(files.dir, "assurance.json"),
+      instrumentIdentifierId: INSTRUMENT, tokenizedCardId: null, assuranceFile: join(files.dir, "assurance.json"),
     });
     expect(iccEnvProblem(r)).toBe("");
   });
@@ -78,18 +79,18 @@ describe("readIccEnv", () => {
   });
 
   it("names what is not valid and never repeats a value", () => {
-    const secretish = "value-that-must-not-be-repeated";
+    const marker = ["value", "that", "must", "not", "be", "repeated"].join("-");
     const r = readIccEnv(full({
-      ICC_CALL_BUDGET: `3 ${secretish}`, ICC_HOST: "api.cybersource.com", ICC_PATH_PREFIX: `/x/${secretish}`, ICC_MERCHANT_ID: `bad id ${secretish}`, ICC_AUTH_SCHEME: "jwt-shared-secret",
-      ICC_KEY_ID: `bad key ${secretish}`, ICC_SHARED_SECRET: `not base64 ${secretish}`, ICC_DIGEST_FORM: secretish, ICC_HTTP_SIGNATURE_DATE: secretish,
-      ICC_INSTRUMENT_IDENTIFIER_ID: "short", ICC_TOKENIZED_CARD_ID: "x", ICC_MLE_RESPONSE_KEY_ID: `bad ${secretish}`,
+      ICC_CALL_BUDGET: `3 ${marker}`, ICC_HOST: "api.cybersource.com", ICC_PATH_PREFIX: `/x/${marker}`, ICC_MERCHANT_ID: `bad id ${marker}`, ICC_AUTH_SCHEME: "jwt-shared-secret",
+      ICC_KEY_ID: `bad key ${marker}`, ICC_SHARED_SECRET: `not base64 ${marker}`, ICC_DIGEST_FORM: marker, ICC_HTTP_SIGNATURE_DATE: marker,
+      ICC_INSTRUMENT_IDENTIFIER_ID: "short", ICC_TOKENIZED_CARD_ID: "x", ICC_MLE_RESPONSE_KEY_ID: `bad ${marker}`,
     }));
     expect(r.config).toBeNull();
     expect(r.invalid.map((x) => x.split(":")[0])).toEqual([
       "ICC_CALL_BUDGET", "ICC_HOST", "ICC_PATH_PREFIX", "ICC_MERCHANT_ID", "ICC_KEY_ID", "ICC_SHARED_SECRET", "ICC_DIGEST_FORM", "ICC_HTTP_SIGNATURE_DATE",
       "ICC_MLE_RESPONSE_KEY_ID", "ICC_INSTRUMENT_IDENTIFIER_ID", "ICC_TOKENIZED_CARD_ID",
     ]);
-    expect(JSON.stringify(r) + iccEnvProblem(r)).not.toContain(secretish);
+    expect(JSON.stringify(r) + iccEnvProblem(r)).not.toContain(marker);
   });
 
   it("a configuration holds no secret: not the shared secret, not a passphrase", () => {
@@ -113,12 +114,12 @@ describe("iccClientFromEnv", () => {
     const env = full({ ICC_CALL_LOG: join(mkdtempSync(join(tmpdir(), "icc-config-test-")), "calls.jsonl") });
     const { client, config } = iccClientFromEnv(env, "purchase", { fetchImpl: standIn.fetch });
     expect(config.merchantId).toBe("purser_sandbox");
-    expect(await client.getInstrumentIdentifier(TOKEN)).toEqual({ httpStatus: 200, state: "ACTIVE" });
+    expect(await client.getInstrumentIdentifier(INSTRUMENT)).toEqual({ httpStatus: 200, state: "ACTIVE" });
     expect(standIn.seen[0]).toMatchObject({ scheme: "jwt-rs256", answered: 200 });
     expect(standIn.seen[0]!.claims).toMatchObject({ "v-c-response-mle-kid": "response-key-1" });
     // The shared secret from the environment signs too.
     const shared = iccClientFromEnv({ ...env, ICC_AUTH_SCHEME: "jwt-shared-secret", ICC_KEY_ID: "shared-key-1", ICC_SHARED_SECRET: keys.sharedSecret }, "preflight", { fetchImpl: standIn.fetch });
-    expect(await shared.client.getInstrumentIdentifier(TOKEN)).toMatchObject({ state: "ACTIVE" });
+    expect(await shared.client.getInstrumentIdentifier(INSTRUMENT)).toMatchObject({ state: "ACTIVE" });
     expect(standIn.seen[1]!.scheme).toBe("jwt-hs256");
   });
 

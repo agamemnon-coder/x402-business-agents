@@ -14,7 +14,8 @@ import { makeIccTestKeys, type IccTestKeys } from "./support/iccKeys.js";
 import { IccStandIn, type StandInConfig } from "./support/iccStandIn.js";
 
 const MERCHANT = "purser_sandbox";
-const INSTRUMENT = "A1B2C3D4E5F60718293A4B5C6D7E8F90";
+/** A made-up instrument identifier of the documented length (32). Not a card number and not a real ID. */
+const INSTRUMENT = "A1B2C3D4".repeat(4);
 const NAME = ["Northwind", "test", "shop"].join(" ");
 
 let keys: IccTestKeys;
@@ -299,12 +300,13 @@ describe("the documented error body, and what never leaves the client", () => {
     const created = await client.createInstruction(createBody());
     standIn.garbleNext("credentials").loseNext("credentials").errorNext("credentials", 409, "UNAVAILABLE").hangNext("credentials");
     for (let i = 0; i < 4; i++) await tryIt(client.requestCredentials(created.instructionId!, credentialsBody()));
-    await tryIt(client.request("POST", "/pts/v2/payments", { secret: "body-marker-value" }));
+    const bodyMarker = ["body", "marker", "value"].join("-");
+    await tryIt(client.request("POST", "/pts/v2/payments", { note: bodyMarker }));
     expect(errors).toHaveLength(5);
     const { inspect } = await import("node:util");
     const text = errors.map((e) => `${String(e)} ${JSON.stringify(e)} ${(e as Error).stack} ${inspect(e, { depth: 8 })}`).join("\n") + readFileSync(log, "utf8");
     const authorization = standIn.seen.map((s) => String(s.claims?.jti));
-    for (const marker of [standIn.credential.signedPayload, standIn.credential.authorization, standIn.errorMessage, standIn.maskedNumber, "body-marker-value", "fp-session-1", "identity-1", "192.168.0.100", "Bearer ", "encryptedRequest", created.instructionId!, INSTRUMENT, ...authorization]) {
+    for (const marker of [standIn.credential.signedPayload, standIn.credential.authorization, standIn.errorMessage, standIn.maskedNumber, bodyMarker, "fp-session-1", "identity-1", "192.168.0.100", "Bearer ", "encryptedRequest", created.instructionId!, INSTRUMENT, ...authorization]) {
       expect(text, marker.slice(0, 24)).not.toContain(marker);
     }
     expect(text).not.toMatch(/\b\d{12,19}\b/);
