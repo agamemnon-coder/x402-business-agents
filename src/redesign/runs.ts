@@ -62,6 +62,8 @@ export interface RunRow {
 
 const readJson = <T>(file: string): T => JSON.parse(readFileSync(new URL(`../../${file}`, import.meta.url), "utf8")) as T;
 const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(iso));
+/** The moment of a run, from its own iso ("10 Nov, 05:02 UTC"): two runs of one day never read as one (orchestrator, 12 Nov). */
+export const moment = (iso: string) => `${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso))}, ${iso.slice(11, 16)} UTC`;
 const short = (id: string) => id.length > 20 ? `${id.slice(0, 10)}…${id.slice(-4)}` : id;
 const tx = (label: string, hash: string): RunId => ({ label, value: short(hash), href: `${EXPLORER_TX}${hash}` });
 const pl = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
@@ -133,9 +135,9 @@ export function liveRuns(): RunRow[] {
   rows.push({
     key: "platform-e2e-1", iso: "2026-11-10T07:06:03.000Z", date: day("2026-11-10T07:06:03.000Z"), kind: "sandbox",
     name: "Three test companies, each on its own Airwallex account", rate: { done: 1, of: 4, what: "payouts paid" },
-    line: "One EUR 4.84 invoice paid and booked in T:0; Airwallex refused the new accounts' payouts. A test passkey signed.",
+    line: `Run of ${moment("2026-11-10T07:06:03.000Z")}: one EUR 4.84 payout PAID, Purser's fee EUR 0.02, booked in T:0; the new accounts' payouts refused by Airwallex. A test passkey signed.`,
     title: "Three test companies on their own Airwallex accounts (built after the kit)", rails: "Airwallex sandbox (connected accounts, SEPA payouts), Claude, T:0",
-    what: "Purser opened two more connected accounts (3 ACTIVE). Invoices came in by upload and e-mail and were read by Claude. New suppliers and payments were approved with a test passkey (not Face ID). One EUR 4.84 payout went PAID on the company's behalf, with Purser's EUR 0.02 fee taken; it was booked and posted to T:0. The new accounts' payouts were refused by Airwallex.",
+    what: `Purser opened two more connected accounts (3 ACTIVE). Invoices came in by upload and e-mail and were read by Claude. New suppliers and payments were approved with a test passkey (not Face ID). In this run (${moment("2026-11-10T07:06:03.000Z")}) one EUR 4.84 payout went PAID on the company's behalf, with Purser's EUR 0.02 fee taken; it was booked and posted to T:0. The new accounts' payouts were refused by Airwallex.`,
     checks: "The receipt verifies offline (signature over the exact terms, 8 hash-chained steps to T:0). Airwallex refused the new accounts' payouts: the paying company's registration number is required (they were opened as non-registered sole traders), and a payer object on the transfer is refused (code 048). 75 Airwallex, 20 Claude and 12 T:0 calls, within the budgets Max approved.", money: "Sandbox · test money",
     ids: [{ label: "Payout PAID", value: "593c340b-1752-4537-9ef2-0eb3558897cc" }, { label: "New accounts", value: "acct_O07lI0VvMLagXlj5aeOgyg, acct_XFhJLpkwNp6lzl8rpySE_Q" }, { label: "T:0 entries", value: "je_prod_wop0vx1B8xOmHQl0, je_prod_WN96JsvKXGCY7mYs" }],
     files: [{ label: "run log", href: "../../docs/runs/2026-11-10-platform-e2e.md" }],
@@ -157,9 +159,9 @@ export function liveRuns(): RunRow[] {
   rows.push({
     key: "connected-1", iso: "2026-11-10T05:02:45.871Z", date: day("2026-11-10T05:02:45.871Z"), kind: "sandbox",
     name: "Purser opens a test company's Airwallex account and pays on its behalf",
-    line: "EUR 5.00 paid out, Purser's fee EUR 0.05. Simulated: company, verification, settlement.",
+    line: `Run of ${moment("2026-11-10T05:02:45.871Z")}: EUR 5.00 paid out, Purser's fee EUR 0.05. Simulated: company, verification, settlement.`,
     title: "Connected accounts in the sandbox (built after the kit)", rails: "Airwallex sandbox (connected accounts, payouts)",
-    what: "Purser's platform rail opened a connected account for a fake test company; fake verification details, submitted, made ACTIVE by the sandbox's simulation. Then a EUR 5.00 payout on its behalf, with Purser's fee sent as an application fee.",
+    what: `Purser's platform rail opened a connected account for a fake test company; fake verification details, submitted, made ACTIVE by the sandbox's simulation. Then, in this run (${moment("2026-11-10T05:02:45.871Z")}), a EUR 5.00 payout on its behalf, with Purser's fee sent as an application fee.`,
     checks: "Airwallex accepted the fee at exactly EUR 0.05; the payout went PAID through the sandbox's simulation (settlement simulated, no Face ID on this payout). 17 calls, each within the budget Max approved.", money: "Sandbox · test money",
     ids: [{ label: "Connected account", value: "acct_SC-QD89fOneAeqaRFgOymw" }, { label: "Payout", value: "a9460dba-f31b-4111-be58-6d9a9e71adb1" }],
     files: [{ label: "run log", href: "../../docs/runs/2026-11-10-connected-accounts-sandbox.md" }],

@@ -568,6 +568,30 @@ describe("/runs as a timeline", () => {
     expect(row("vic-2").ids[0]!.value).toMatch(/^[0-9a-f]{64}$/);
   });
 
+  it("names the moment of each connected-account payout beside its own record, so two runs of one day never read as one", () => {
+    // The orchestrator, 12 Nov: /runs showed EUR 5.00 with a EUR 0.05 fee while /airwallex shows EUR 4.84 with EUR 0.02;
+    // both are real sandbox runs of 10 Nov. Each entry's line names its run's moment (from its own iso), its amount and
+    // its fee, and the link right after the line opens that run's own log.
+    const html = pages.runs!;
+    const cases = [
+      { key: "connected-1", moment: "10 Nov, 05:02 UTC", amount: "EUR 5.00", fee: "EUR 0.05", log: "docs/runs/2026-11-10-connected-accounts-sandbox.md" },
+      { key: "platform-e2e-1", moment: "10 Nov, 07:06 UTC", amount: "EUR 4.84", fee: "EUR 0.02", log: "docs/runs/2026-11-10-platform-e2e.md" },
+    ];
+    for (const c of cases) {
+      const row = rows.find((r) => r.key === c.key)!;
+      expect(row.iso.slice(11, 16)).toBe(c.moment.slice(8, 13));
+      const ln = /<p class="ln">([\s\S]*?)<\/p>/.exec(entriesOf(html).find((e) => e.key === c.key)!.html)![1]!;
+      const line = allText(ln.split("<a ")[0]!);
+      for (const w of [`Run of ${c.moment}`, c.amount, c.fee]) expect({ key: c.key, w, has: line.includes(w) }).toEqual({ key: c.key, w, has: true });
+      // The first link after the line is this run's own log, and the log has the amount, the fee and the moment.
+      expect(/<a class="f" href="([^"]+)"/.exec(ln)?.[1]).toBe(`${REPO_BLOB}${c.log}`);
+      const log = readFileSync(c.log, "utf8");
+      for (const w of [c.amount, c.fee, c.moment.slice(8, 13)]) expect({ log: c.log, w, has: log.includes(w) }).toEqual({ log: c.log, w, has: true });
+      // The fold says the same moment.
+      expect(row.what).toContain(`(${c.moment})`);
+    }
+  });
+
   it("starts its title with Purser, once", () => {
     expect(html).toContain("<title>Purser · Every live run</title>");
     expect(html).toContain('<meta property="og:title" content="Purser · Every live run">');
