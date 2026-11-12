@@ -101,7 +101,7 @@ if (args.includes("--enrol")) {
 if (passkeyOwnersOn()) {
   const missing = ownersRefusals(process.env);
   if (missing.length) console.log(`owners   on-chain signing is on, but nothing is relayed until this runner has ${missing.join("; ")}. An approved proposal stays approved and runs at the next start.`);
-  else { const b = ownersBudget(); console.log(`owners   relays behind the call budget: ${b.used()} of ${b.budget} Metal calls used in this world`); }
+  else { const b = ownersBudget(); console.log(`owners   relays behind the call budget: ${b.used()} of ${b.budget} lines in the call log used in this world`); }
 }
 
 // Airwallex's webhooks reach the relay; with the secret here too, the runner checks each one again and records it.

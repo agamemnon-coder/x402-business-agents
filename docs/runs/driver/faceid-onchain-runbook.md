@@ -6,11 +6,11 @@ The scene: the owner's phone passkey becomes one of two owners of a small on-cha
 
 ## Before the run
 
-Set these for every command and for the runner. Names only: no value belongs in this file or in a chat.
+First, by the operator: `npm run relay:deploy`, so the hosted relay serves this branch's approval page (an older page cannot show or sign a replace). Then set these for every command and for the runner. Names only: no value belongs in this file or in a chat.
 
 | For | Settings |
 |---|---|
-| The world | `KIT11_DB`, `KIT11_KEYS_DIR` (a folder outside the repository) |
+| The world | `KIT11_DB`, `KIT11_KEYS_DIR` (a folder outside the repository). Every owners command refuses without `KIT11_DB`, and every one but record without `KIT11_KEYS_DIR`: none falls back to a default |
 | Metal testnet | `METAL_RPC_URL` |
 | The switch | `KIT11_PASSKEY_OWNERS`, set to `on` |
 | The owner's go and the call budget | `OWNERS_GO`, set to `yes`; `OWNERS_CALL_BUDGET`; `OWNERS_CALL_LOG` (a file) |
@@ -19,9 +19,7 @@ Set these for every command and for the runner. Names only: no value belongs in 
 | The runner | `KIT11_CARD_POLL_MS`, set to `off`: the runner then polls no card transactions at Airwallex |
 | The record | `OWNERS_DEVICE_CFO`, `OWNERS_DEVICE_CONTROLLER` (free text, recorded as stated by the owner), `OWNERS_DEVIATIONS` (optional text file, one deviation per line) |
 
-Set `OWNERS_CALL_BUDGET` to the higher number of the line "Lines in the call log" below. The owner agrees that number before anything runs. Preflight prints the same plan and says whether the budget covers it.
-
-The hosted relay must serve the approval page of this branch (`npm run relay:deploy`, by the operator, before the run). An older page cannot show or sign a replace.
+Set `OWNERS_CALL_BUDGET` to the higher number of the line "Lines in the call log" below; the owner agrees that number before anything runs. The budget counts those lines, so the requests the metal-agent CLI makes inside each CLI run are not counted. Preflight prints the same plan and says whether the budget covers it.
 
 ## The plan and its calls
 
@@ -58,9 +56,9 @@ On the phone, by step:
 
 ## Each step: run, expect, and what the owner does
 
-Every owners command ends with its count. A stop by the budget prints `STOPPED` and exits with code 3.
+Every owners command ends with its count.
 
-Expect: `CALLS            <used> of <budget> used in this world (this command: <n>); …`
+Expect: `CALLS            <used> of <budget> lines in the call log used in this world (this command: <n>); …`
 
 **1 Preflight.** `npm run owners -- preflight`. It checks the settings, reads the chain and prints the plan. Nothing is sent.
 
@@ -69,18 +67,18 @@ Expect: `READY            nothing was sent`
 **2 The owner's passkey.** `npm run relay -- --enrol`. Keep it running: it is the runner for the whole run.
 
 Expect: `ENROL    on the phone open <address>/enrol and type <code> (valid until <time> UTC, five tries)`
-Expect: `owners   relays behind the call budget: <used> of <budget> Metal calls used in this world`
+Expect: `owners   relays behind the call budget: <used> of <budget> lines in the call log used in this world`
 
-The owner opens the `viewer` link once, then the enrol page, types the code and taps "Create passkey with Face ID". The screen shows "Confirm on the runner" and "Fingerprint XXXX-XXXX-XXXX-XXXX". The owner reads the fingerprint aloud. Then `npm run passkey -- confirm <fingerprint>`.
+The viewer link is on the runner's `viewer` line. After Face ID the screen shows "Confirm on the runner" and "Fingerprint XXXX-XXXX-XXXX-XXXX"; the owner reads the fingerprint aloud. Then `npm run passkey -- confirm <fingerprint>`.
 
 Expect: `confirmed  passkey <id> (fingerprint <fingerprint>); approvals now need it`
 
 **3 The second approver.** The account needs two different approvers. One of two ways:
 
-- A second real device: `npm run passkey -- add <name>`. That person opens the viewer link and the enrol page on their own device, a moment after the command, and reads their fingerprint aloud. Confirm it as in step 2.
+- A second real device: `npm run passkey -- add <name>`. That person opens the same viewer link and the enrol page on their own device, a moment after the command, and reads their fingerprint aloud. Confirm it as in step 2.
 
   Expect: `ENROL    <name>: on their phone open <address>/enrol and type <code> (valid until <time> UTC, five tries); the runner must be running`
-- The owner has one device: `npx tsx docs/runs/driver/test-controller.ts enrol`, with `KIT11_DB`, `KIT11_KEYS_DIR`, `KIT11_RELAY_URL` and `KIT11_RELAY_TOKEN`. This is a virtual test passkey (test-controller) in Chromium's virtual authenticator: not a person and not a device. It keeps its key in the keys folder, prints its fingerprint and does not confirm itself. The operator names the fingerprint to the owner and, on the owner's go, runs the confirm line it prints. The record labels this owner as virtual.
+- The owner has one device: `npx tsx docs/runs/driver/test-controller.ts enrol`, with the settings of The world and The relay; it needs Playwright with Chromium on the runner's machine. This is a virtual test passkey (test-controller): not a person and not a device. It keeps its key in the keys folder and does not confirm itself: on the owner's go, the operator runs the confirm line it prints. The record labels this owner as virtual.
 
   Expect: `CONFIRM          virtual test passkey (test-controller): it counts only once the operator confirms it on the runner, on the owner's go:`
 
@@ -92,45 +90,44 @@ Expect: `ACCOUNT          <account>: owners <the two passkeys>, threshold 2; no 
 
 Expect: `PROPOSED         <id>: bind the sourcing mandate on <account>, cap <cap>, budget <budget>, <payee> only`
 
-The owner opens the relay's address followed by `/approve/<id>` within 15 minutes. The first screen shows "Bind the sourcing mandate, signed on chain", "0.50 USDZ in total", the payee Stockline, why it needs two people, and a countdown. Behind "Details": the account and "Up to 0.05 per payment". Under "All terms": the full account, the mandate, the digest the passkey signs and "Valid until". The owner taps "Approve with Face ID" and looks at the phone. The screen shows "1 of 2 approvals".
+The owner opens the relay's address followed by `/approve/<id>` and follows the plan above. The first screen shows "Bind the sourcing mandate, signed on chain", the budget, the payee and "Needs your approval, and the second owner's" (the page's name for the second approver). "Details" holds the account, the limits and the digest the passkey signs.
 
-Then the second approver signs: on the second device in the same way, or with `npx tsx docs/runs/driver/test-controller.ts approve <id>`. The virtual approver never signs first, never rejects, and signs nothing but this kind of proposal.
+Then the second approver signs: on the second device in the same way, or with `npx tsx docs/runs/driver/test-controller.ts approve <id>`. The virtual approver never signs first, never rejects, and signs nothing but this kind of proposal. The runner then relays the account call, and the second approver's page shows "Done".
 
 Expect: `APPROVED         virtual test passkey (test-controller): signed <id> as the second approver, after <name>; the page says "<verdict>"`
-
-The runner relays the account call. The second approver's page then shows "Done".
 
 **6 Pay.** `npm run owners -- pay`. The agent pays inside the mandate, then tries one cent over the cap. The phone does nothing.
 
 Expect: `PAID             <amount> to <payee> inside the mandate: the mandate key alone signed`
 Expect: `REFUSED          <amount> to <payee>, one cent over the <cap> cap: <reason>`
 
-**7 Replace.** `npm run owners -- propose-replace <cap> <budget>`. The two arguments are the new cap and the new budget. This is ONE proposal with one on-chain `replace` call; each owner signs it once. It is not a revoke followed by a bind.
+**7 Replace.** `npm run owners -- propose-replace` with the amounts in the plan above (the new cap, then the new budget). This is ONE proposal with one on-chain `replace` call; each owner signs it once. It is not a revoke followed by a bind.
 
 Expect: `PROPOSED         <id>: replace the sourcing mandate <mandate>… that <id> bound on <account>: cap <cap> → <cap>, budget <budget> → <budget>, <payee> only; what was spent under it carries over`
 
-The first screen shows "Replace the sourcing mandate, signed on chain" and, under "Per payment", the new cap with "(0.05 before)" beside it. Behind "Details": "It replaces the mandate in one step", with each new limit and the earlier one. Under "All terms": "Replaces" (the mandate that ends), the digest and "Valid until". Both sign as in step 5 and the runner relays it. Then run `npm run owners -- pay` again: it pays the amount that was refused in step 6, once, and makes no new attempt over the cap.
+The first screen shows "Replace the sourcing mandate, signed on chain" and, under "Per payment", the new cap with "(0.05 before)" beside it. Both sign as in step 5 and the runner relays it. Then `npm run owners -- pay` again: it pays the amount refused in step 6, once, and makes no new attempt over the cap.
 
 Expect: `PAID             <amount> to <payee>: the payment Metal refused before, now inside the <cap> cap <id> set; the mandate key alone signed`
 
-**8 Revoke.** `npm run owners -- propose-revoke`. The first screen shows "Revoke the sourcing mandate, signed on chain"; behind "Details": "It ends the mandate that allowed up to" the limits shown. Both sign; the runner relays it.
+**8 Revoke.** `npm run owners -- propose-revoke`. The first screen shows "Revoke the sourcing mandate, signed on chain" and, under "Ends a budget of", the budget that ends. Both sign; the runner relays it.
 
 Expect: `PROPOSED         <id>: revoke the sourcing mandate <mandate>… that <id> bound on <account>`
 
-**9 Status and record.** `npm run owners -- status`, then `npm run owners -- record`. The record needs `OWNERS_CALL_LOG` and `OWNERS_CALL_BUDGET`, not the owner's go. It makes no call. It is written from the audit rows and the call log only.
+**9 Status and record.** `npm run owners -- status`, then `npm run owners -- record`. The record needs `OWNERS_CALL_LOG` and `OWNERS_CALL_BUDGET`, not the owner's go. It makes no call: it is written from the audit rows and the call log only.
 
 Expect: `MANDATE          <mandate>… on <account>: proposal <id> (<what>) <status>; bound <yes or no>; revoked <yes or no>; spent <amount>`
 Expect: `RECORD           <the .json file> and <the .md file> written from <n> audit rows and <m> call-log lines; no call was made`
 
 ## When something goes wrong
 
-- **A proposal expires** (15 minutes; its signed deadline ends 120 seconds later). The phone shows "Too late" and nothing was approved. Run the same propose command again; both sign the new proposal.
+- **A proposal expires** (15 minutes; its signed deadline ends 120 seconds later). Signed too late: the phone shows "Too late" and nothing was approved. Signed in time but relayed too late (the runner was not running, or lacked a setting): the approval is void and the proposal is EXPIRED. Either way, run the same propose command again; both sign the new proposal.
+
+  Expect: `<id> was approved, but execution stopped: <id> expired at <time>; approval void`
 - **A signature is refused.** The phone shows "Refused" with the reason; nothing was approved. Usual reasons: the passkey is not confirmed yet, it is not an owner of this account, or the runner runs without `KIT11_PASSKEY_OWNERS`. Put that right and sign the same proposal again while it is open. A cancelled Face ID signs nothing: tap again.
 - **A transaction reverts.** The proposal is FAILED and the runner's line gives the account's own error, decoded. Nothing is retried by itself: file a new proposal. If the replace reverts: `npm run owners -- propose-revoke`, both sign; then `npm run owners -- propose <cap> <budget>`, both sign; then `npm run owners -- pay`.
 
   Expect: `the account reverted executeSigned (<tx>): <reason>`
-- **The outcome is open** (no receipt yet, the network, a spent budget in the runner). The proposal stays EXECUTING. Start the runner again: it carries on from the recorded hash, and nothing is sent twice.
+- **The outcome is open** (no receipt yet, the network, a spent budget in the runner). The proposal stays EXECUTING. Start the runner again: it carries on from the recorded hash, and nothing is sent twice. Setup or pay stopped halfway: run the same command again; every send is recorded before it leaves and is made at most once.
 - **The budget is spent.** The command stops before the request that would go over and exits with code 3. Ask the owner before raising `OWNERS_CALL_BUDGET`.
 
   Expect: `STOPPED          <reason>`
-- **Setup or pay stops halfway.** Run the same command again. Every send is recorded before it leaves and is made at most once.

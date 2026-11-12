@@ -93,7 +93,9 @@ describe("the runbook of the live Face ID run", () => {
     expect(book).toContain("npm run passkey -- add <name>");
     expect(book).toContain("npx tsx docs/runs/driver/test-controller.ts enrol");
     expect(book).toContain("npx tsx docs/runs/driver/test-controller.ts approve <id>");
-    expect(book).toContain("npm run owners -- propose-replace <cap> <budget>");
+    // The replace's amounts are the plan's (the block above holds them); the words name none of their own.
+    expect(prose).toContain("`npm run owners -- propose-replace` with the amounts in the plan above (the new cap, then the new budget)");
+    expect(prose).not.toMatch(/propose-replace[ `]+<?\d/);
   });
 
   it("names only settings the code reads, by name and never with a value", () => {
@@ -114,7 +116,9 @@ describe("the runbook of the live Face ID run", () => {
   });
 
   it("quotes expected output lines the commands really print", () => {
-    const printers = ["src/metal/ownersFlow.ts", "src/metal/ownersRecord.ts", "src/cli/ownersExecute.ts", "src/cli/relay.ts", "src/cli/passkey.ts", "src/executors/ownersExecute.ts", "src/metal/ownersBudget.ts", "docs/runs/driver/test-controller.ts"].map(read).join("\n")
+    const printers = ["src/metal/ownersFlow.ts", "src/metal/ownersRecord.ts", "src/cli/ownersExecute.ts", "src/cli/relay.ts", "src/cli/passkey.ts", "src/executors/ownersExecute.ts", "src/metal/ownersBudget.ts", "docs/runs/driver/test-controller.ts",
+      // What the runner says when an approved proposal does not run, and why (an approval relayed after its time).
+      "src/relay/runner.ts", "src/policy/approvals.ts"].map(read).join("\n")
       // The driver prints its label through a constant.
       .replaceAll("${LABEL}", LABEL).replaceAll("${NAME}", NAME).replaceAll("${CREDENTIAL_FILE}", CREDENTIAL_FILE);
     const expected = [...book.matchAll(/^\s*Expect: `(.+)`$/gm)].map((m) => m[1]!);
@@ -164,7 +168,30 @@ describe("the runbook of the live Face ID run", () => {
     expect(read("src/executors/ownersExecute.ts")).toContain("nothing is sent twice");
   });
 
+  it("says what a runner needs to know that the plan's table does not", () => {
+    // Where the viewer link comes from, and what the virtual approver's driver needs on the runner's machine.
+    expect(prose).toMatch(/The viewer link is on the runner's `viewer` line/);
+    expect(read("src/cli/relay.ts")).toMatch(/console\.log\(`viewer {3}\$\{viewerLink\(/);
+    expect(prose).toMatch(/test-controller\.ts enrol`[^\n]* it needs Playwright with Chromium on the runner's machine/);
+    expect(read("docs/runs/driver/test-controller.ts")).toMatch(/\("playwright"\)/);
+    // Both world settings, for every owners command; and what the budget does not count, without a number.
+    expect(prose).toMatch(/`KIT11_DB`, `KIT11_KEYS_DIR` \(a folder outside the repository\)\. Every owners command refuses without `KIT11_DB`, and every one but record without `KIT11_KEYS_DIR`: none falls back to a default/);
+    expect(flow).toMatch(/export function worldRefusals\(/);
+    expect(prose).toMatch(/the requests the metal-agent CLI makes inside each CLI run are not counted/);
+    // The runner's own word for the budget's unit is the plan's: lines in the call log.
+    expect(prose).toContain("Expect: `owners   relays behind the call budget: <used> of <budget> lines in the call log used in this world`");
+    expect(prose).toContain("Expect: `CALLS            <used> of <budget> lines in the call log used in this world (this command: <n>); …`");
+    expect(prose).not.toMatch(/Metal calls/);
+    // Both signed, relayed too late: the approval is void and the proposal expired, as beginExecution has it.
+    expect(prose).toMatch(/Signed in time but relayed too late \([^)]*\): the approval is void and the proposal is EXPIRED\. Either way, run the same propose command again/);
+    expect(read("src/policy/approvals.ts")).toMatch(/expireIfDue\(db, p, now\), p\.expires_at\) : null;[\s\S]{0,120}expired at \$\{expired\}; approval void/);
+    // The page's word for the second approver is said once, so the two names are known to be one.
+    expect(prose).toContain("\"Needs your approval, and the second owner's\" (the page's name for the second approver)");
+    expect(prose).not.toMatch(/two people|second person|the controller/);
+  });
+
+  // 12 November: lowered from 140 to the runbook's own length after the review's additions, so it cannot grow again unnoticed.
   it("fits one page", () => {
-    expect(book.split("\n").length).toBeLessThanOrEqual(140);
+    expect(book.split("\n").length).toBeLessThanOrEqual(134);
   });
 });
