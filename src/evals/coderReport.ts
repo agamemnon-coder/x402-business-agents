@@ -61,6 +61,8 @@ export interface CoderModelSummary {
   account: number;
   vat_code: number;
   cost_centre: number;
+  /** Invoices whose cost centre code chose: the model named none on any line, or code decided the whole coding. */
+  cost_centre_by_code: number;
   /** The agent's answers code refused, by rule. */
   refused: Partial<Record<CoderRule, number>>;
   no_answer: number;
@@ -79,6 +81,9 @@ export const CODER_SECTION_MARK = "<!-- coder-evals: written by src/evals/coderR
 const percentile = (sorted: number[], p: number) => (sorted.length ? sorted[Math.max(0, Math.ceil(p * sorted.length) - 1)]! : 0);
 const share = (rows: CoderEvalRow[], f: keyof CoderEvalRow["correct"]) => (rows.length ? rows.filter((r) => r.correct[f]).length / rows.length : 0);
 
+/** The model gave no answer on any case: every coding is code's fallback, so its scores are not the model's. */
+const silent = (m: Pick<CoderModelSummary, "invoices" | "no_answer">) => m.no_answer === m.invoices;
+
 /** Per model: accuracy of the enforced coding, refusals, answers missing, cost and time; and the model the run chooses. */
 export function coderSummary(r: CoderEvalRecord): { models: CoderModelSummary[]; chosen: string | null } {
   const models = r.models.filter((m) => r.rows.some((x) => x.model === m)).map((model): CoderModelSummary => {
@@ -90,13 +95,14 @@ export function coderSummary(r: CoderEvalRecord): { models: CoderModelSummary[];
       model, invoices: rows.length,
       complete: r.cases.every((c) => rows.filter((x) => x.case === c).length >= r.runs),
       account: share(rows, "account"), vat_code: share(rows, "vat_code"), cost_centre: share(rows, "cost_centre"),
+      cost_centre_by_code: rows.filter((x) => x.enforced.source === "fallback" || !x.raw || x.raw.lines.every((l) => l.cost_centre === null)).length,
       refused, no_answer: rows.filter((x) => x.no_answer).length,
       cost_per_invoice_micros: Math.round(rows.reduce((s, x) => s + x.cost_usd_micros, 0) / rows.length),
       p50_ms: percentile(times, 0.5), p95_ms: percentile(times, 0.95),
     };
   });
-  // Only a run of every case chooses: a few cases say little about a model.
-  const passing = models.filter((m) => r.cases.length === r.all_cases && m.complete && m.account >= CODER_BAR && m.vat_code >= CODER_BAR).sort((a, b) => a.cost_per_invoice_micros - b.cost_per_invoice_micros);
+  // Only a run of every case chooses: a few cases say little about a model, and a model that never answered nothing.
+  const passing = models.filter((m) => r.cases.length === r.all_cases && m.complete && !silent(m) && m.account >= CODER_BAR && m.vat_code >= CODER_BAR).sort((a, b) => a.cost_per_invoice_micros - b.cost_per_invoice_micros);
   return { models, chosen: passing[0]?.model ?? null };
 }
 
@@ -126,7 +132,8 @@ function mistake(x: CoderEvalRow): string {
 export function coderEvalSection(r: CoderEvalRecord): string {
   const s = coderSummary(r);
   const chosen = s.models.find((m) => m.model === s.chosen);
-  const wrong = r.rows.filter((x) => !x.correct.account || !x.correct.vat_code || !x.correct.cost_centre);
+  const mute = s.models.filter(silent);
+  const wrong = r.rows.filter((x) => !mute.some((m) => m.model === x.model) && (!x.correct.account || !x.correct.vat_code || !x.correct.cost_centre));
   return [
     CODER_SECTION_MARK,
     "## The Coder agent: coding supplier invoices with real models",
@@ -139,7 +146,14 @@ export function coderEvalSection(r: CoderEvalRecord): string {
     ...s.models.map((m) => {
       const refused = Object.entries(m.refused).sort(([a], [b]) => a.localeCompare(b));
       const n = refused.reduce((t, [, k]) => t + (k ?? 0), 0);
-      return `| ${m.model} | ${m.invoices} | ${pct(m.account)} | ${pct(m.vat_code)} | ${pct(m.cost_centre)} | ${n}${n ? ` (${refused.map(([rule, k]) => `${rule} ${k}`).join(", ")})` : ""} | ${m.no_answer} | ${usd(m.cost_per_invoice_micros)} | ${secs(m.p50_ms)} / ${secs(m.p95_ms)} |`;
+      const scores = silent(m) ? "no answer | no answer | no answer" : `${pct(m.account)} | ${pct(m.vat_code)} | ${pct(m.cost_centre)} (${m.cost_centre_by_code} of ${m.invoices} chosen by code)`;
+      return `| ${m.model} | ${m.invoices} | ${scores} | ${n}${n ? ` (${refused.map(([rule, k]) => `${rule} ${k}`).join(", ")})` : ""} | ${m.no_answer} | ${usd(m.cost_per_invoice_micros)} | ${secs(m.p50_ms)} / ${secs(m.p95_ms)} |`;
+    }),
+    "",
+    "Cost centre: where the model names none, or code decides the whole coding, code books the company's default cost centre. The brackets say on how many invoices code chose it: on those, the share measures the default, not the model.",
+    ...mute.flatMap((m) => {
+      const first = r.rows.find((x) => x.model === m.model)!;
+      return ["", cell(`${m.model} gave no answer on any of its ${m.invoices} invoices (${first.run_status}${first.run_note ? `: ${first.run_note}` : ""}): code's fallback coded every one, so this run measures nothing about that model.`)];
     }),
     "",
     chosen

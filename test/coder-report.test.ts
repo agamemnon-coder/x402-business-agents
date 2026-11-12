@@ -66,11 +66,43 @@ describe("the section", () => {
     ]);
     const md = coderEvalSection(r);
     expect(md.startsWith(`${CODER_SECTION_MARK}\n## The Coder agent`)).toBe(true);
-    expect(md).toContain("| claude-haiku-5-5 | 2 | 50.0% | 50.0% | 100.0% | 1 (foreign_vat 1) | 0 | 0.0010 | 1.0 s / 1.0 s |");
+    expect(md).toContain("| claude-haiku-5-5 | 2 | 50.0% | 50.0% | 100.0% (2 of 2 chosen by code) | 1 (foreign_vat 1) | 0 | 0.0010 | 1.0 s / 1.0 s |");
     expect(md).toContain("No model reached 95%");
     expect(md).toContain("CODER_MODEL stays claude-haiku-5-5");
     expect(md).toContain("- b, claude-haiku-5-5: account 6900, expected 6200; VAT code none, expected P21. The agent answered 6200 / P21; code refused it (foreign_vat: VAT code P21 is Dutch input VAT, and the supplier is in DE).");
     expect(coderEvalSection(r)).toBe(md);
+  });
+
+  it("shows no accuracy for a model that gave no answer on any case, and says so: the numbers would be code's fallback's", () => {
+    const failed = { raw: null, no_answer: true, run_status: "unavailable", run_note: "call failed: API 404 NotFoundError", cost_usd_micros: 0, turns: 1,
+      enforced: { status: "needs_review" as const, source: "fallback" as const, overridden_by: null, refused_because: null, lines: [{ line_no: 1, account: "6900", vat_code: null, cost_centre: "CC300" }] },
+      correct: { account: false, vat_code: false, cost_centre: true } };
+    const r = record([
+      row({ case: "a", model: "claude-haiku-5-5" }), row({ case: "b", model: "claude-haiku-5-5" }),
+      row({ case: "a", model: "claude-sonnet-5-5", ...failed }), row({ case: "b", model: "claude-sonnet-5-5", ...failed }),
+    ]);
+    const md = coderEvalSection(r);
+    expect(md).toContain("| claude-sonnet-5-5 | 2 | no answer | no answer | no answer | 0 | 2 | 0.0000 |");
+    expect(md).not.toMatch(/\| claude-sonnet-5-5 \| 2 \| \d/);
+    expect(md).toContain("claude-sonnet-5-5 gave no answer on any of its 2 invoices (unavailable: call failed: API 404 NotFoundError): code's fallback coded every one, so this run measures nothing about that model.");
+    expect(md).not.toContain("- a, claude-sonnet-5-5:");
+    expect(coderSummary(r).chosen).toBe("claude-haiku-5-5");
+    // Code's fallback alone never makes a model the default, whatever its score.
+    const lucky = { ...failed, enforced: { ...failed.enforced, status: "coded" as const, lines: [{ line_no: 1, account: "6200", vat_code: "P21", cost_centre: "CC300" }] }, correct: { account: true, vat_code: true, cost_centre: true } };
+    expect(coderSummary(record([row({ case: "a", model: "claude-haiku-5-5", ...lucky }), row({ case: "b", model: "claude-haiku-5-5", ...lucky })])).chosen).toBeNull();
+  });
+
+  it("says on how many invoices code chose the cost centre, because the model named none or code decided the coding", () => {
+    const r = record([
+      row({ case: "a", model: "claude-haiku-5-5" }),
+      row({ case: "b", model: "claude-haiku-5-5", raw: { lines: [{ line_no: 1, account: "6200", vat_code: "P21", cost_centre: "CC100" }], reason: "Goods." } }),
+      row({ case: "a", model: "claude-sonnet-5-5", raw: { lines: [{ line_no: 1, account: "6200", vat_code: "P21", cost_centre: "CC300" }], reason: "Goods." } }),
+      row({ case: "b", model: "claude-sonnet-5-5", raw: null, no_answer: true, enforced: { status: "coded", source: "fallback", overridden_by: null, refused_because: null, lines: [{ line_no: 1, account: "6200", vat_code: "P21", cost_centre: "CC300" }] } }),
+    ]);
+    expect(coderSummary(r).models.map((m) => m.cost_centre_by_code)).toEqual([1, 1]);
+    const md = coderEvalSection(r);
+    expect(md).toContain("| claude-haiku-5-5 | 2 | 100.0% | 100.0% | 100.0% (1 of 2 chosen by code) |");
+    expect(md).toContain("The brackets say on how many invoices code chose it: on those, the share measures the default, not the model.");
   });
 
   it("replaces an earlier section at the end of the file and keeps what comes before it", () => {

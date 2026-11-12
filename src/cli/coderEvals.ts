@@ -110,6 +110,7 @@ writeFileSync(mdPath, withCoderSection(readFileSync(mdPath, "utf8"), record));
 
 const s = coderSummary(record);
 for (const m of s.models) {
-  console.log(`\n${m.model}: account ${(m.account * 100).toFixed(1)}%, VAT code ${(m.vat_code * 100).toFixed(1)}%, cost centre ${(m.cost_centre * 100).toFixed(1)}%, refused ${JSON.stringify(m.refused)}, no answer ${m.no_answer}, ${(m.cost_per_invoice_micros / 1e6).toFixed(4)} USD per invoice, p50 ${(m.p50_ms / 1000).toFixed(1)} s, p95 ${(m.p95_ms / 1000).toFixed(1)} s${m.complete ? "" : " (not every case ran)"}`);
+  if (m.no_answer === m.invoices) { console.log(`\n${m.model}: no answer on any of its ${m.invoices} invoices: code's fallback coded every one, so no numbers for this model`); continue; }
+  console.log(`\n${m.model}: account ${(m.account * 100).toFixed(1)}%, VAT code ${(m.vat_code * 100).toFixed(1)}%, cost centre ${(m.cost_centre * 100).toFixed(1)}% (${m.cost_centre_by_code} chosen by code), refused ${JSON.stringify(m.refused)}, no answer ${m.no_answer}, ${(m.cost_per_invoice_micros / 1e6).toFixed(4)} USD per invoice, p50 ${(m.p50_ms / 1000).toFixed(1)} s, p95 ${(m.p95_ms / 1000).toFixed(1)} s${m.complete ? "" : " (not every case ran)"}`);
 }
 console.log(`\nthis run spent ${(spent / 1e6).toFixed(4)} USD; default model by the 95% bar: ${s.chosen ?? `none (CODER_MODEL stays ${CODER_MODEL})`}`);

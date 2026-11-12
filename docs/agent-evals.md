@@ -88,8 +88,10 @@ Last run 2026-11-12 13:03 UTC on commit 4898ab3ac07f, with `npm run coder-evals`
 
 | Model | Invoices | Account class | VAT code | Cost centre | Agent's coding refused by code (by rule) | Code decided, no answer | Cost per invoice (USD) | Time p50 / p95 |
 |---|---|---|---|---|---|---|---|---|
-| claude-haiku-5-5 | 35 | 94.3% | 68.6% | 100.0% | 0 | 0 | 0.0006 | 4.3 s / 7.9 s |
-| claude-sonnet-5-5 | 35 | 94.3% | 91.4% | 97.1% | 0 | 0 | 0.0111 | 5.4 s / 8.3 s |
+| claude-haiku-5-5 | 35 | 94.3% | 68.6% | 100.0% (32 of 35 chosen by code) | 0 | 0 | 0.0006 | 4.3 s / 7.9 s |
+| claude-sonnet-5-5 | 35 | 94.3% | 91.4% | 97.1% (29 of 35 chosen by code) | 0 | 0 | 0.0111 | 5.4 s / 8.3 s |
+
+Cost centre: where the model names none, or code decides the whole coding, code books the company's default cost centre. The brackets say on how many invoices code chose it: on those, the share measures the default, not the model.
 
 No model reached 95% on both account class and VAT code over every case, so the default model was not changed: CODER_MODEL stays claude-haiku-5-5.
 
