@@ -294,7 +294,10 @@ export async function iccRun(io: IccRunIo): Promise<{ ok: boolean; checks: IccRu
     aWho = a.proposalId;
   }
   const aLines = log().slice(aStart);
-  const aRow = a.status === "pending_approval"
+  // The rail's table exists only once the runner has run a purchase: a CFO who rejects, or does not approve in time,
+  // leaves none, and A counts as not run. B and the checks still run.
+  const hasRows = !!io.db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'icc_purchases'").get();
+  const aRow = a.status === "pending_approval" && hasRows
     ? io.db.prepare("SELECT status, code FROM icc_purchases WHERE proposal_id = ?").get(a.proposalId) as { status: string; code: string | null } | undefined
     : undefined;
   const received = aRow?.status === "CREDENTIAL_RECEIVED_NOT_USED";

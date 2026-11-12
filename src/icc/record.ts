@@ -112,8 +112,16 @@ export function iccRunRecord(db: DB, callLog: readonly CallLine[]): IccRunRecord
     (Array.isArray(r?.payload.checks) ? (r.payload.checks as Record<string, unknown>[]) : []).map((k) => ({ stage, name: String(k.name), ok: k.ok === true, detail: String(k.detail) }));
   const byEndpoint = countByEndpoint(callLog);
   const sent = (suffix: string) => callLog.some((l) => l.method !== "GET" && l.endpoint.endsWith(suffix));
+  // A record says ICC was used (it turns /visa's status sentence into a run block), so it needs an instruction the
+  // service created in this run. A run that never got that far is refused here and stays unrecorded.
+  const createdAny = after.some((r) => r.event === "icc.instruction_created");
+  if (!createdAny || !sent("/instructions")) throw new IccNoRun("the service created no instruction in this run; nothing was written (the page keeps its status sentence)");
+  const receivedAny = after.some((r) => r.event === "icc.credential_received_not_used");
+  // Each sentence says only what the rows show.
   const notDone = [
-    "No payment was made: the flow stops before checkout, and a credential that came was dropped unused.",
+    receivedAny
+      ? "No payment was made: the flow stops before checkout, and the credential that came was dropped unused."
+      : "No payment was made: the flow stops before checkout. No credential was received.",
     ...(sent("/confirmations") ? [] : ["No confirmation was sent: what to report for a credential that was not used is not documented."]),
     "No instruction was read back from Visa: the documented API has no such call. Purser compared its own record of the instruction it sent, and the create answer, with the signed terms.",
     ...(sent("/cancel") ? [] : ["No instruction was cancelled."]),

@@ -13,7 +13,7 @@ import { openDb, type DB } from "../src/db/open.js";
 import { ICC_ENV_NAMES } from "../src/icc/config.js";
 import { ICC_PREFLIGHT_NOTE, waitForOutcome } from "../src/icc/conductor.js";
 import { executeIccPurchase } from "../src/icc/purchase.js";
-import { readIccRunRecord } from "../src/icc/record.js";
+import { iccRunRecord, readIccRunRecord } from "../src/icc/record.js";
 import { confirmPasskey, fingerprintOf, openEnrolment } from "../src/passkey/ledger.js";
 import { processAssertion, processRegistration } from "../src/passkey/process.js";
 import { challengeFor } from "../src/passkey/webauthn.js";
@@ -301,6 +301,21 @@ describe("run", () => {
     expect(w.standIn.seen.map((s) => s.op)).toEqual(["create", "credentials"]);
   });
 
+  it("when the CFO does not approve in time, or rejects, A is not run: B and the checks still run, and nothing is called", async () => {
+    for (const end of ["still PENDING_APPROVAL after 35 min", "REJECTED"]) {
+      const w = world();
+      await enrol(w);
+      expect(await iccCli(["run"], { ...w.io, awaitCfo: async () => end })).toBe(1);
+      const text = w.out.join("\n");
+      expect(text).toMatch(new RegExp(`^A {5}P-\\d+ ${end.replace(/[()]/g, "\\$&")}: `, "m"));
+      expect(text).toMatch(/^FAIL {2}a_credential_received_not_used /m);
+      expect(text).toMatch(/^ok {4}b_refused_before_any_call /m);
+      expect(text).not.toMatch(/no such table/);
+      expect(w.standIn.seen).toEqual([]);
+      expect(withDb(w, (db) => db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'icc.run_checks'").get())).toEqual({ n: 1 });
+    }
+  });
+
   it("without the runner's answer in time the wait ends and says so", async () => {
     const db = openDb(":memory:");
     db.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES ('P-0009', 'icc_purchase', '{}', ?, 'sourcing', 'PENDING_APPROVAL', ?, ?)").run("0".repeat(64), T0.toISOString(), T0.toISOString());
@@ -360,6 +375,29 @@ describe("record", () => {
       expect(text).not.toMatch(/\b\d{13,19}\b|-----BEGIN|\bBearer\b|eyJ[\w-]{10,}|signedPayload|authorization"|assuranceData|deviceInformation/);
       expect(text).not.toMatch(/Visa (approved|certified|endorsed)|Cybersource (approved|certified|endorsed)/i);
     }
+  });
+
+  it("refuses a run in which the service created no instruction: a record would say ICC was used when it was not", async () => {
+    // The CFO never approved A (or the runner refused it before any call): the call log is empty. A record of that run
+    // would turn /visa's status sentence into a run block, so record refuses and writes nothing.
+    const w = world();
+    await enrol(w);
+    expect(await iccCli(["run"], { ...w.io, awaitCfo: async () => "REJECTED" })).toBe(1);
+    expect(await iccCli(["record"], { ...w.io, env: { KIT11_DB: w.env.KIT11_DB, ICC_CALL_LOG: w.env.ICC_CALL_LOG } })).toBe(2);
+    expect(w.err.join("\n")).toMatch(/the service created no instruction in this run; nothing was written/);
+    expect(existsSync(w.io.recordDir!)).toBe(false);
+  });
+
+  it("a run whose credential did not come says so: no sentence about a credential or a comparison that did not happen", async () => {
+    const w = world();
+    await enrol(w);
+    w.standIn.pendingNext("credentials");
+    expect(await iccCli(["run"], w.io)).toBe(1);
+    const rec = withDb(w, (db) => iccRunRecord(db, readCallLog(w.env.ICC_CALL_LOG!)));
+    expect(rec.not_done.join(" ")).not.toMatch(/credential that came|dropped unused/);
+    expect(rec.not_done).toEqual(expect.arrayContaining([expect.stringMatching(/^No payment was made/), expect.stringMatching(/No credential was received\./)]));
+    // The instruction was created and compared, so that sentence stays.
+    expect(rec.not_done).toEqual(expect.arrayContaining([expect.stringMatching(/Purser compared its own record of the instruction it sent/)]));
   });
 
   it("refuses when the ledger holds no ICC run, and writes nothing", async () => {
