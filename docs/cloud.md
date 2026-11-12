@@ -207,7 +207,7 @@ In demo mode there is one caller, an anonymous read-only visitor, and only this 
 |---|---|
 | `GET /v1/demo/companies` | The demo companies in the configured order: `slug`, `name`, `language` and counts from their rows (invoices, paid invoices, suppliers, payments, transactions, documents, ledger entries). Says `test_world` and `read_only`. |
 | `GET /v1/demo/{company}/…` | A demo company's reads, with the same answers as the routes above: `me`, `invoices`, `invoices/{id}`, `invoices/{id}/document`, `vendors`, `payments`, `transactions`, `transactions/summary`, `transactions/export.csv`, `transactions/{id}`, `ledger/entries`, `reports/{name}`, `insights`, `documents/{sha256}`. `me` answers `kind: "demo"`. |
-| `GET /v1/health`, `GET /v1/openapi.json` | As above; the OpenAPI document lists the demo's own routes only. |
+| `GET /v1/health`, `GET /v1/openapi.json` | The health check says whether the database and the document store answer and how many of the demo companies are there (`demo_companies`); it counts nothing over every company, so it has no mail queue. The OpenAPI document lists the demo's own routes only. |
 
 - **Everything else is off.** Every other method, and every route that signs in, enrols a passkey, recovers an owner,
   makes a key, pushes, administers, exports or takes mail answers `403` with the code `demo_read_only`. The platform

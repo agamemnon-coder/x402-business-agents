@@ -84,6 +84,8 @@ if (onD1) describe("the cloud Worker in workerd, in demo mode", () => {
       expect(createHash("sha256").update(doc.bytes).digest("hex"), p).toBe(SHA);
     }
     for (const p of ["/v1/demo/alder/insights", "/v1/demo/alder/reports/trial", "/v1/demo/alder/transactions/summary", "/v1/health", "/v1/openapi.json"]) expect((await get(demo, p)).status, p).toBe(200);
+    // The health check counts the demo's own companies that are there: "never-seeded" is on the list and not in the database.
+    expect((await get(demo, "/v1/health")).json).toEqual({ ok: true, version: "dev", d1: "ok", r2: "ok", demo_companies: 1 });
     // A company that is not a demo company, one that was never seeded and one that does not exist: one answer.
     const other = await get(demo, "/v1/demo/other-co/invoices");
     expect(other.status).toBe(404);

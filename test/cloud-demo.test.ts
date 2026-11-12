@@ -365,9 +365,36 @@ describe("demo mode, what a visitor gets", () => {
     } finally { delete c.env.mailDomain; }
   });
 
+  it("checks its health by its own companies: how many of them are there, never a count over every company in the database", async () => {
+    // Outside demo mode the health check counts the mail waiting for all companies, the other company's included.
+    const all = (await c.env.sql.first<{ n: number }>("SELECT COUNT(*) AS n FROM inbound_mail WHERE status = 'queued'"))!.n;
+    expect(all).toBeGreaterThanOrEqual(3);
+    expect((await get("/v1/health")).json).toEqual({ ok: true, version: "dev", d1: "ok", r2: "ok", mail_queued: all });
+    // In demo mode: the demo companies that are seeded and open ("ghost-co" never was), and no word about mail.
+    demoOn({}, ["alder", "birch", "ghost-co"]);
+    const h = await get("/v1/health");
+    expect([h.status, h.json]).toEqual([200, { ok: true, version: "dev", d1: "ok", r2: "ok", demo_companies: 2 }]);
+    // The other company's mail changes nothing in the answer: one statement, about the demo companies only.
+    demoOn({}, ["alder"]);
+    const watch = watchSql(c.env.sql);
+    try {
+      expect((await get("/v1/health")).json).toEqual({ ok: true, version: "dev", d1: "ok", r2: "ok", demo_companies: 1 });
+      expect(watch.seen).toHaveLength(1);
+      expect(watch.seen[0]).toMatch(/FROM tenants WHERE closed_at IS NULL AND slug IN \(\?\)/);
+    } finally { watch.stop(); }
+    // A database without the demo's tables (the schema was never loaded) is down, not healthy.
+    demoOn({}, ["alder"]);
+    const real = c.env.sql.first.bind(c.env.sql);
+    c.env.sql.first = (async (q: string, p?: SqlValue[]) => { if (/FROM tenants/.test(q)) throw new Error("no such table: tenants"); return real(q, p); }) as Sql["first"];
+    try {
+      const down = await get("/v1/health");
+      expect([down.status, down.json]).toEqual([503, { ok: false, version: "dev", d1: "down", r2: "ok", demo_companies: null }]);
+    } finally { c.env.sql.first = real; }
+  });
+
   it("describes itself: the OpenAPI document lists the demo's own routes and nothing else, and each of them answers", async () => {
     demoOn();
-    const doc = (await get("/v1/openapi.json")).json as { info: { title: string; description: string }; paths: Record<string, Record<string, { security: unknown[] }>>; components: { securitySchemes?: unknown; schemas: { Error: { properties: { code: { enum: string[] } } } } } };
+    const doc = (await get("/v1/openapi.json")).json as { info: { title: string; description: string }; paths: Record<string, Record<string, { summary: string; security: unknown[] }>>; components: { securitySchemes?: unknown; schemas: { Error: { properties: { code: { enum: string[] } } } } } };
     const reads = Object.entries(DEMO).filter(([, v]) => v === "read").map(([k]) => `/v1/demo/{company}${k.split(" ")[1]!.slice("/v1".length)}`);
     expect(Object.keys(doc.paths).sort()).toEqual(["/v1/health", "/v1/openapi.json", "/v1/demo/companies", ...reads].sort());
     for (const [path, methods] of Object.entries(doc.paths)) {
@@ -375,6 +402,9 @@ describe("demo mode, what a visitor gets", () => {
       expect(methods.get!.security, path).toEqual([]);
     }
     expect(doc.info.description).toMatch(/read-only demo/);
+    // The health check is described as the demo has it: its own companies, no mail.
+    expect(doc.paths["/v1/health"]!.get!.summary).toMatch(/how many of the demo companies are there/);
+    expect(doc.paths["/v1/health"]!.get!.summary).not.toMatch(/mail/i);
     expect(doc.components.securitySchemes).toBeUndefined();
     expect(doc.components.schemas.Error.properties.code.enum).toContain("demo_read_only");
     for (const path of Object.keys(doc.paths)) {
@@ -422,6 +452,7 @@ describe("demo mode, in docs/cloud.md", () => {
     for (const k of DEMO_OPEN) expect(section).toContain(`\`${k}\``);
     expect(section).toContain("`GET /v1/demo/companies`");
     expect(section).toContain("`demo_read_only`");
+    expect(section).toContain("`demo_companies`");
     // The numbers.
     expect(section).toContain(`Each address gets ${DEMO_RATE.perMinute} requests a minute`);
     expect(section).toContain(`at most ${DEMO_RATE.uncachedPerMinute} uncached reads`);
@@ -517,7 +548,7 @@ describe("demo mode, cost and abuse", () => {
     // A health check that fails is never remembered: the next one asks again.
     const real = c.env.sql.first.bind(c.env.sql);
     c.clock.now = new Date(NOW.getTime() + 120_000);
-    c.env.sql.first = (async (q: string, p?: SqlValue[]) => { if (q.startsWith("SELECT 1")) throw new Error("D1 down"); return real(q, p); }) as Sql["first"];
+    c.env.sql.first = (async (q: string, p?: SqlValue[]) => { if (/FROM tenants/.test(q)) throw new Error("D1 down"); return real(q, p); }) as Sql["first"];
     try { expect((await get("/v1/health")).status).toBe(503); } finally { c.env.sql.first = real; }
     const back = await get("/v1/health");
     expect([back.status, back.headers.get("x-purser-cache")]).toEqual([200, "miss"]);

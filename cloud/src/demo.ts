@@ -46,6 +46,8 @@ export const DEMO_DOCUMENT_ROUTES: ReadonlySet<string> = new Set(["/v1/invoices/
 /** What the demo says about itself wherever it answers in its own words. */
 export const DEMO_NOTE = "A public, read-only demo of Purser Cloud: test companies and test money, no real company and no real money. Nothing can be changed here.";
 export const DEMO_LABEL = { read_only: true, test_world: true, note: DEMO_NOTE } as const;
+/** The health check as the demo answers it (demoHealth), for the API's description. */
+export const DEMO_HEALTH_SUMMARY = "For an uptime monitor: whether the database and the document store answer, the version, and how many of the demo companies are there; 503 when something is down.";
 /** Why the demo takes no mail (the Worker's e-mail handler). */
 export const DEMO_MAIL_REFUSAL = "this address is a read-only demo and takes no mail";
 
@@ -287,6 +289,22 @@ export async function demoCompanies(sql: Sql, slugs: readonly string[]): Promise
       counts: { invoices: r.invoices, invoices_paid: r.invoices_paid, suppliers: r.suppliers, payments: r.payments, transactions: r.transactions, documents: r.documents, ledger_entries: r.ledger_entries } }] : [];
   });
   return { ...DEMO_LABEL, companies };
+}
+
+/**
+ * The demo's health check, for an uptime monitor: whether the database and the document store answer, and how many of
+ * the demo companies are there (0 before the seed is loaded; "down" while the schema is not there at all). It counts
+ * the demo's own companies only: the cloud's health check counts the mail waiting for every company, and a demo says
+ * nothing about a company that is not on its list.
+ */
+export async function demoHealth(sql: Sql, blobs: Blobs, version: string, slugs: readonly string[]): Promise<{ status: number; body: Record<string, unknown> }> {
+  let d1 = "ok", r2 = "ok", companies: number | null = null;
+  try {
+    companies = (await sql.first<{ n: number }>(`SELECT COUNT(*) AS n FROM tenants WHERE closed_at IS NULL AND slug IN (${slugs.map(() => "?").join(", ")})`, [...slugs]))?.n ?? 0;
+  } catch { d1 = "down"; }
+  try { await blobs.list("health/"); } catch { r2 = "down"; }
+  const ok = d1 === "ok" && r2 === "ok";
+  return { status: ok ? 200 : 503, body: { ok, version, d1, r2, demo_companies: companies } };
 }
 
 /** The stored types the demo serves as they are; every other type (HTML, SVG, scripts, anything unknown) goes out as plain bytes. */

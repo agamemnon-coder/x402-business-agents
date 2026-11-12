@@ -21,7 +21,7 @@ import { integrations } from "./integrations.js";
 import { platformCompanies } from "./platformView.js";
 import { accountOf, bindingOf, onboardingLink, openAccount, PlatformRefused, receiveAccountEvent, type AwxPlatformEnv } from "./awxPlatform.js";
 import { cloudHealth, companyStatus, HealthReport, MonitorRefused, notify, receiveReport, removeWebhook, setWebhook, webhookOf, type Outbound } from "./monitor.js";
-import { DEMO_BROWSER_SEC, DEMO_DOCUMENT_BROWSER_SEC, DEMO_DOCUMENT_ROUTES, DEMO_HEALTH_SEC, DEMO_LABEL, DEMO_NOTE, DEMO_OPEN, DEMO_READS, demoBusy, demoCompanies, demoDocument, demoKey, demoNoCompany, demoRefused, demoTenantId, remembered, type DemoEnv } from "./demo.js";
+import { DEMO_BROWSER_SEC, DEMO_DOCUMENT_BROWSER_SEC, DEMO_DOCUMENT_ROUTES, DEMO_HEALTH_SEC, DEMO_HEALTH_SUMMARY, DEMO_LABEL, DEMO_NOTE, DEMO_OPEN, DEMO_READS, demoBusy, demoCompanies, demoDocument, demoHealth, demoKey, demoNoCompany, demoRefused, demoTenantId, remembered, type DemoEnv } from "./demo.js";
 
 export interface CloudEnv {
   sql: Sql;
@@ -139,7 +139,8 @@ const NEW_SLUG = SLUG.refine((v) => !RESERVED_SLUGS.has(v), "this address is res
 
 export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/health", summary: "For an uptime monitor: whether the database and the document store answer, the version, the mail waiting in all (no company's data); 503 when something is down.", need: "public", run: async (c) => {
-    const h = await cloudHealth(c.env.sql, c.env.blobs, c.env.version ?? "dev");
+    // Through the public demo: the demo's own check (its companies only; nothing counted over every company).
+    const h = c.demo && c.env.demo ? await demoHealth(c.env.sql, c.env.blobs, c.env.version ?? "dev", c.env.demo.slugs) : await cloudHealth(c.env.sql, c.env.blobs, c.env.version ?? "dev");
     return json(h.status, h.body);
   } },
   { method: "GET", path: "/v1/status", summary: "Where the company stands, for its owners: the last push from the runner, the mail queue, today's mail quota, the runner's alert codes and the webhook (never its secret).", need: "admin", run: async (c) => json(200, await companyStatus(c.env.sql, c.caller!.tenantId, c.now)) },
@@ -627,7 +628,8 @@ function demoOpenApi(origin: string): Record<string, unknown> {
   const paths: Record<string, unknown> = { "/v1/demo/companies": get("The demo's test companies: each one's address, name and counts of what it holds.", []) };
   for (const r of ROUTES) {
     const params = [...r.path.matchAll(/\{(\w+)\}/g)].map((m) => m[1]!);
-    if (DEMO_OPEN.has(`${r.method} ${r.path}`)) paths[r.path] = get(r.summary, params);
+    // The health check answers in the demo's own words there (demoHealth): its own companies, no mail queue.
+    if (DEMO_OPEN.has(`${r.method} ${r.path}`)) paths[r.path] = get(r.path === "/v1/health" ? DEMO_HEALTH_SUMMARY : r.summary, params);
     else if (DEMO_READS.has(`${r.method} ${r.path}`)) paths[`/v1/demo/{company}${r.path.replace(/^\/v1/, "")}`] = get(r.summary, ["company", ...params]);
   }
   return {
