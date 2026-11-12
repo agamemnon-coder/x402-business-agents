@@ -1,0 +1,159 @@
+{
+  "note": "Written by npm run books:statement (scripts/books-statement.ts). Do not edit.",
+  "company": "Bakkerij De Test (fake)",
+  "day": "2026-11-12",
+  "record": "docs/runs/2026-11-12-moneybird-sandbox.json",
+  "pdf": "books-balance-sheet-2026-11-12.pdf",
+  "invoices_checked": 4,
+  "balance": [
+    {
+      "currency": "EUR",
+      "assets": "980.17",
+      "liabilities": "14.16",
+      "equity": "1000.00",
+      "result": "-33.99",
+      "balanced": true,
+      "accounts": [
+        {
+          "account": "1200",
+          "name": "Bank: Airwallex EUR (incl. company cards)",
+          "type": "asset",
+          "amount": "977.59"
+        },
+        {
+          "account": "1510",
+          "name": "Input VAT receivable (supplier invoices)",
+          "type": "asset",
+          "amount": "2.58"
+        },
+        {
+          "account": "2100",
+          "name": "Accounts payable (supplier invoices)",
+          "type": "liability",
+          "amount": "14.16"
+        },
+        {
+          "account": "3000",
+          "name": "Owner's equity: opening balances and owner funding",
+          "type": "equity",
+          "amount": "1000.00"
+        }
+      ]
+    }
+  ],
+  "pnl": [
+    {
+      "currency": "EUR",
+      "revenue": "0.00",
+      "expense": "33.99",
+      "result": "-33.99",
+      "accounts": [
+        {
+          "account": "6100",
+          "name": "Software subscriptions (company cards)",
+          "amount": "19.99"
+        },
+        {
+          "account": "6300",
+          "name": "Travel (task cards)",
+          "amount": "5.00"
+        },
+        {
+          "account": "6900",
+          "name": "Other supplier invoices",
+          "amount": "9.00"
+        }
+      ]
+    }
+  ],
+  "sorted": {
+    "eval": "docs/evals/coder.json",
+    "ran_at": "2026-11-12T13:03:11.719Z",
+    "rows": [
+      {
+        "case": "fake-nl-packaging-21",
+        "model": "claude-haiku-5-5",
+        "path": [
+          "2026",
+          "2026-Q4",
+          "Purchase invoices",
+          "Zeeland Verpakkingen B.V",
+          "2026-11-03 ZV-4471 EUR 484.00.pdf"
+        ],
+        "account": "6900",
+        "vat": "P21",
+        "cost_centre": "CC300"
+      },
+      {
+        "case": "nl-software-21",
+        "model": "claude-haiku-5-5",
+        "path": [
+          "2026",
+          "2026-Q4",
+          "Purchase invoices",
+          "Wolkwerk Software B.V",
+          "2026-11-02 WW-2026-1107 EUR 217.80.pdf"
+        ],
+        "account": "6100",
+        "vat": "P21",
+        "cost_centre": "CC200"
+      },
+      {
+        "case": "nl-books-9",
+        "model": "claude-haiku-5-5",
+        "path": [
+          "2026",
+          "2026-Q4",
+          "Purchase invoices",
+          "Boekhandel De Kade B.V",
+          "2026-11-03 DK-55120 EUR 163.50.pdf"
+        ],
+        "account": "6900",
+        "vat": "P9",
+        "cost_centre": "CC300"
+      },
+      {
+        "case": "de-reverse-charge",
+        "model": "claude-haiku-5-5",
+        "path": [
+          "2026",
+          "2026-Q4",
+          "Purchase invoices",
+          "Allgäu Daunen GmbH",
+          "2026-11-05 AD-2026-0412 EUR 2600.00.pdf"
+        ],
+        "account": "6200",
+        "vat": "PRC_EU",
+        "cost_centre": "CC300"
+      },
+      {
+        "case": "ie-saas-reverse",
+        "model": "claude-haiku-5-5",
+        "path": [
+          "2026",
+          "2026-Q4",
+          "Purchase invoices",
+          "Liffey Cloud Tools Ltd",
+          "2026-11-01 LCT-10422 EUR 320.00.pdf"
+        ],
+        "account": "6100",
+        "vat": "PRC_EU",
+        "cost_centre": "CC300"
+      },
+      {
+        "case": "no-data-reverse",
+        "model": "claude-haiku-5-5",
+        "path": [
+          "2026",
+          "2026-Q4",
+          "Purchase invoices",
+          "Fjordvind Data AS",
+          "2026-11-02 FD-7731 EUR 90.00.pdf"
+        ],
+        "account": "6900",
+        "vat": "PRC_NONEU",
+        "cost_centre": "CC300"
+      }
+    ]
+  }
+}

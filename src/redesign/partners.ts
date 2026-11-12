@@ -38,7 +38,7 @@ import { tokenizeRun, tokenizeRunBlock, type TokenizeRun } from "./tokenizeRun.j
 import { METAL_ONCHAIN_CSS, faceIdOnChainSection } from "./metalOnchain.js";
 import { HOLD_NOT_FINISHED, METAL_CSS, METAL_HOLD_RECORD, METAL_INSPECT_JS, holdState, metalBody } from "./metalMandates.js";
 import { EVIDENCE_CSS, claudeEvidence, failureFold, mcpFold, measuredBlock, sweepFold } from "./claudeEvidence.js";
-import { BOOKS_CSS, CODER_EVAL, LEDGER_AGENTS_RECORD, MONEYBIRD_RECORD, booksBody, booksData } from "./booksPage.js";
+import { BOOKS_CSS, CODER_EVAL, MONEYBIRD_RECORD, STATEMENT_FILE, booksBody, booksData } from "./booksPage.js";
 import { T0_CSS, T0_FIRST_RECORD, T0_JOURNAL_RECORD, T0_LABEL, T0_SECOND_RECORD, t0Body, t0Data } from "./t0Page.js";
 import { OPEN_TARGET_JS, esc, icon, page, TRY_URL } from "./ui.js";
 
@@ -436,8 +436,8 @@ export function t0Page(run: AgentRun = agentRun()): string {
 
 /** /books (owner, 12 Nov): Purser's bookkeeping with AI agents, from the run records and evals alone (src/redesign/booksPage.ts). */
 export function booksPage(run: AgentRun = agentRun()): string {
-  return page({ title: "Books", description: "Purser's bookkeeping with AI agents: the journal posted to T:0, the Coder agent's coding, the ledger agents, and the books synced to Moneybird and T:0, from the run records.", tab: "books", css: `${CSS}\n${BOOKS_CSS}`, body: booksBody(booksData()),
-    source: `Source: ${T0_JOURNAL_RECORD}, ${CODER_EVAL}, ${LEDGER_AGENTS_RECORD} and ${MONEYBIRD_RECORD}.`, real: ["The journal is the main run's books of 3 November, test money, posted to T:0's shared sandbox entity.", "Moneybird is a sandbox administration with test data.", "The ledger agents are behind flags, off by default; their figures are from one eval run each."], builtOn: builtOnHtml(run) });
+  return page({ title: "Books", description: "Purser's bookkeeping with AI agents: the balance sheet and P&L of a test company, as a PDF too, the invoices Claude sorted into the vault, and the books synced to Moneybird and T:0.", tab: "books", css: `${CSS}\n${BOOKS_CSS}`, body: booksBody(booksData()),
+    source: `Source: ${STATEMENT_FILE} (npm run books:statement, from ${MONEYBIRD_RECORD}), ${CODER_EVAL} and ${T0_JOURNAL_RECORD}.`, real: ["The balance sheet is a test company's, test money: its opening equity is the test bank's opening balance.", "The invoices Claude sorted are the Coder eval's test invoices.", "Moneybird and T:0 are sandboxes with test data."], builtOn: builtOnHtml(run) });
 }
 
 /** The clean 404: what happened, and the four tabs. No script. */
