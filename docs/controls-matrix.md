@@ -28,9 +28,9 @@ What to do when a control fires: [runbook.md](runbook.md). Claims and their sour
 
 | Risk | Control | Enforced by | Test | Evidence (live run, or red team on stand-ins) |
 |---|---|---|---|---|
-| Money moves without the CFO beyond the limits | Proposals; the CFO signs the exact terms' hash with a passkey (Face ID); the runner verifies the signature and the hash before executing | Code, person | `test/approvals.test.ts`, `test/passkey.test.ts`, `test/property-terms.test.ts` | Every live run: approvals by Max's passkey |
-| An approval is replayed or reused for other terms | Hash-bound, single-use approvals; expiry | Code | `test/approvals.test.ts`, `test/adversarial.test.ts` | Red team on stand-ins: replayed and swapped approvals refused |
-| One person alone approves a large payment | Four eyes off chain: above a threshold, two different people's passkeys; the proposer never approves | Code, two people | `test/four-eyes.test.ts` | Optional; off in the recorded run |
+| Money moves without the CFO beyond the limits | Proposals; the CFO signs the exact terms' hash with a passkey (Face ID); the runner verifies the signature and the hash before executing, and checks the same hash again before a paid payout is booked and before its receipt is archived | Code, person | `test/approvals.test.ts`, `test/passkey.test.ts`, `test/property-terms.test.ts`, `test/zero-trust.test.ts` | Every live run: approvals by Max's passkey |
+| An approval is replayed or reused for other terms | Hash-bound, single-use approvals; the expiry inside the signed terms; each payment executor runs only its own kind of payment | Code | `test/approvals.test.ts`, `test/adversarial.test.ts`, `test/zero-trust.test.ts` | Red team on stand-ins: replayed and swapped approvals refused |
+| One person alone approves a large payment | Four eyes off chain: above a threshold, two different people's passkeys; a first signature counts only for the exact terms it was made over; the proposer never approves | Code, two people | `test/four-eyes.test.ts`, `test/zero-trust.test.ts` | Optional; off in the recorded run |
 | One person alone changes a mandate or moves the account's money | Four eyes on chain: a 2-of-2 Metal account (CFO + controller) | Chain | `test/four-eyes-onchain.test.ts` | [Four-eyes run](runs/2026-10-30-four-eyes.md): the CFO alone reverted twice on chain (a payment, a revoke), the CFO with a stranger's key once; the CFO and the controller together passed |
 | A compromised relay forges or alters an approval | The runner trusts no relay: runner-signed terms on the phone, passkey checked on the runner, origin and fingerprint pinned | Code | `test/relay-sign.test.ts`, `test/relay-e2e.test.ts`, `test/relay-worker.test.ts` | Security review fixes ([hardening.md](hardening.md)) |
 | The policy is loosened quietly | Only tightening from the phone; loosening is a proposal with Face ID; policy versions hashed and recorded with each decision | Code, person | `test/policy.test.ts`, `test/policy-versions.test.ts` | Red team on stand-ins: a taken-over phone page could only tighten |
@@ -64,7 +64,7 @@ What to do when a control fires: [runbook.md](runbook.md). Claims and their sour
 |---|---|---|---|---|
 | An agent's key leaks | Principals: revoke, expire, rotate; a revoked agent's card freezes | Code, Airwallex | `test/principals.test.ts` | Red team on stand-ins: a revoked agent and an old key refused |
 | A secret ends up in git, a log or a model | Redaction of the RPC credential, a secret scan before each commit, gitleaks on all history, no key ever sent to a model | Code, CI | `test/redact.test.ts`, `test/adversarial.test.ts` | CI on every push |
-| Something is badly wrong and it is not clear what | Emergency stop: every agent payment refused, every card frozen at Airwallex | Code, Airwallex, person | `test/freeze.test.ts` | Tested on stand-ins; `CARD_INACTIVE` checked live on one card |
+| Something is badly wrong and it is not clear what | Emergency stop: every agent payment refused by Purser's own code (a card purchase too, also before the freeze has reached the card), an approved payout started afterwards refused, every card frozen at Airwallex | Code, Airwallex, person | `test/freeze.test.ts`, `test/zero-trust.test.ts` | Tested on stand-ins; `CARD_INACTIVE` checked live on one card |
 | The runner crashes in the middle of a payment | Step log per action; resume from the last finished step; lookups by request id | Code | `test/chaos-kill.test.ts` (16 kill points), `test/chaos.test.ts` | |
 | Load: many small payments | Metal clearing: one receipt per payment, no transaction per payment | Chain | `test/clearing.test.ts` | Clearing load test ([run](runs/2026-10-30-clearing-load.md)): 2,000 of 2,000 paid, 4.24 a second, about $0.0007 RPC per payment |
 
@@ -77,3 +77,8 @@ What to do when a control fires: [runbook.md](runbook.md). Claims and their sour
 - **Northwind's own account in the recorded run is one-owner.** The 2-of-2 ran in a test world.
 - **Mandate payments bypass the compliance send policy** (Metal's design). Agents' mandates keep their own on-chain
   limits.
+- **Someone who can write the ledger file gets past Purser's own checks and both signatures.** Airwallex's own
+  approval of transfers (optional) holds such a payout, and `npm run verify` finds it afterwards.
+- **Four eyes counts passkeys under two names, not two human beings.**
+- **A ledger restored from a backup taken before a payment was planned can plan that payment again.** The last three
+  are set out in [security.md](security.md), under accepted risks.

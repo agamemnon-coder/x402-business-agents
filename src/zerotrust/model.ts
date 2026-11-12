@@ -729,16 +729,22 @@ export const LIMITS: readonly Limit[] = [
     source: "docs/security.md, accepted risks",
   },
   {
+    id: "ledger-file-written",
+    what: "Whoever can write the ledger file gets past Purser's own layers: the executor trusts its own database, so an approval written straight into it, with terms and hashes that agree, is run.",
+    stillHolds: "Airwallex's own approval of transfers holds the payout once the company has switched it on, and verify finds the approval afterwards: no stored signature stands behind it (the attack database-approval-forged). With that approval switched off, nothing stops this payout before it is sent.",
+    source: "docs/security.md, accepted risks",
+  },
+  {
     id: "four-eyes-is-two-passkeys",
     what: "Four eyes counts passkeys enrolled under two names. It cannot know that two names are two human beings: a person who enrols a second passkey under another name, with the enrolment opened and the fingerprint confirmed on the runner, counts as two.",
     stillHolds: "A second name can only be added on the runner, by whoever runs it, and the enrolment is in the audit log; the phone and the relay cannot add one. The rails' own controls still apply.",
-    source: "src/passkey/ledger.ts, openEnrolment: found by this matrix and not in docs/security.md yet",
+    source: "docs/security.md, accepted risks; src/passkey/ledger.ts, openEnrolment",
   },
   {
     id: "backup-from-before-the-plan",
     what: "A ledger restored from a backup taken before a payment was planned no longer knows that payment. Planned again, it gets a new request id, and Airwallex would treat it as a new transfer: the invoice could be paid twice.",
     stillHolds: "The second plan needs the CFO's signature again; a backup taken after the plan carries the request id, and then the rail refuses the repeat (the attack ledger-restored-from-backup). Compare the restored ledger with Airwallex before paying from it.",
-    source: "src/executors/invoicePayment.ts, the request id in the signed terms: found by this matrix and not in docs/security.md yet",
+    source: "docs/security.md, accepted risks; src/executors/invoicePayment.ts, the request id in the signed terms",
   },
   {
     id: "optional-controls",
