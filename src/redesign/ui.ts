@@ -221,8 +221,11 @@ details.real { position: relative; }
 details.real > summary { list-style: none; cursor: pointer; border: solid transparent; border-width: 10px 0; background-clip: padding-box; } details.real > summary::-webkit-details-marker { display: none; }
 details.real { flex-basis: 100%; }
 footer.foot a.flink { color: var(--muted); display: inline-flex; align-items: center; min-height: 44px; }
-footer.foot .builton { flex-basis: 100%; margin: 0; color: var(--muted); line-height: 1.9; }
+footer.foot .builton { flex-basis: 100%; list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; color: var(--muted); }
+footer.foot .builton li { white-space: nowrap; display: inline-flex; align-items: center; min-height: 44px; }
+footer.foot .builton li + li:not(:nth-child(2))::before { content: "·"; margin-right: 8px; color: var(--faint); }
 footer.foot .builton b { color: var(--text); font-weight: 650; }
+@media (max-width: 520px) { footer.foot .builton { flex-direction: column; align-items: flex-start; } footer.foot .builton li { white-space: normal; min-height: 36px; } footer.foot .builton li + li::before { content: none; } }
 details.real .pop { margin: 0 0 10px; max-width: 640px; padding: 16px 18px; font-size: 15px; color: var(--text); }
 details.real .pop ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }`;
@@ -260,7 +263,13 @@ export const MAIN_RUN_REAL = [
  * 4 Nov: /try/sign, which calls no Airwallex, Metal or Claude, carried the main run's), then the page's source. After it,
  * the product pages under "More" (pricing, security, docs, status; src/ui/more.ts), then a page's own extra links.
  */
-export function footer(source: string, real: string[] = MAIN_RUN_REAL, links: [string, string][] = [], builtOn = ""): string {
+/**
+ * The "Built on" list in every page's footer (review, 12 Nov: one footer everywhere). src/redesign/partners.ts registers
+ * it (its figures come from the run records, which ui.ts does not read); a page may still pass its own.
+ */
+let builtOnDefault: (() => string) | null = null;
+export const setBuiltOn = (f: () => string) => { builtOnDefault = f; };
+export function footer(source: string, real: string[] = MAIN_RUN_REAL, links: [string, string][] = [], builtOn = builtOnDefault?.() ?? ""): string {
   return `<footer class="foot"><div class="wrap"><details class="real" id="real"><summary class="pill">${icon("info", 15)} What's real?</summary><div class="pop card"><ul>
 ${real.map((line) => `<li>${esc(line)}</li>`).join("\n")}
 <li>${esc(source)}</li></ul></div></details>${builtOn}<span>Built for the Airwallex Agentic Banking Hackathon</span>${footerLinks().map((l) => `<a class="flink" href="${l.href}">${l.label}</a>`).join("")}${links.map(([href, label]) => `<a class="flink" href="${esc(href)}">${esc(label)}</a>`).join("")}</div></footer>`;
@@ -482,6 +491,8 @@ export const OPEN_TARGET_JS = `(function () {
 })();`;
 
 /** A page around a body: one style, one script, the run's data in a data block ("<" escaped). */
+/** Every <title> is branded "Purser · <Page>" (review, 12 Nov); a title that already starts with Purser stays. */
+export const pageTitle = (t: string) => (/^Purser\b/.test(t) ? t : `Purser · ${t}`);
 export function page(o: { title: string; description: string; tab: PageKey | null; css: string; body: string; data?: unknown; js?: string; stage?: boolean; source: string; real?: string[]; links?: [string, string][]; /** The partner pages' "Built on" strip (src/redesign/partners.ts builtOnHtml). */ builtOn?: string }): string {
   const script = o.js === undefined ? "" : `${o.data === undefined ? "" : `<script type="application/json" id="run-data">${JSON.stringify(o.data).replace(/</g, "\\u003c")}</script>\n`}<script>${o.stage === false ? "" : STAGE_JS}
 ${o.js}</script>`;
@@ -499,7 +510,7 @@ ${o.js}</script>`;
 <meta property="og:image" content="${OG_IMAGE}">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-<title>${esc(o.title)}</title>
+<title>${esc(pageTitle(o.title))}</title>
 <style>${CSS}
 ${MOTION_CSS}${SITE_MOTION_CSS}
 ${o.css}</style>

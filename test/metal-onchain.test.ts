@@ -63,7 +63,7 @@ describe("Invoice → token → pre-financing → settlement", () => {
   });
 
   it("labels prototype, testnet, test money, simulated financier and the scaling", () => {
-    expect(text(html)).toMatch(new RegExp(`Prototype · Metal testnet · test money · financier simulated · face value divided by ${token.labels.face_value_scaled_by}`));
+    expect(text(html)).toMatch(new RegExp(`Prototype · Metal testnet · test money · financier simulated · amounts scaled down ${token.labels.face_value_scaled_by}× for testnet`));
     expect(text(html)).toContain("approved with a labelled test passkey");
   });
 

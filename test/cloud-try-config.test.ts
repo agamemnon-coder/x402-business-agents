@@ -44,6 +44,9 @@ describe("the engine's deployment of its own on test money (cloud/wrangler.try.j
       "vars.ENGINE_CLAUDE": [undefined, "on"],
       // Hourly, for the sweep of the visitors' companies; the cloud's own daily job is safe to run every hour.
       "triggers.crons.0": [base.get("triggers.crons.0"), "17 * * * *"],
+      // Next to its D1 database (WEUR), not next to the visitor: each request makes several D1 calls in a row (12 Nov, speed).
+      "placement.mode": [undefined, "targeted"],
+      "placement.region": [undefined, "aws:eu-central-1"],
     });
     // Its own database, never the product's, and no bucket at all.
     expect(mine.get("d1_databases.0.database_id")).not.toBe(base.get("d1_databases.0.database_id"));

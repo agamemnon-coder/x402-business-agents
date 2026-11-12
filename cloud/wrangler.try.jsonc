@@ -1,7 +1,7 @@
 // purser-try: a deployment of its own for the company engine on test money (a stand-in bank; no payment reaches a real
 // bank). It is never the product's deployment (purser-cloud, cloud/wrangler.jsonc), and never its stores.
 // It is cloud/wrangler.jsonc with only these changed: the name, the workers.dev address (RP_ID, ORIGIN), its own D1
-// database, ENGINE_MODE "test_money", the capabilities HANDS_ON and ENGINE_CLAUDE (switches decide at run time; a
+// database, ENGINE_MODE "test_money", its placement next to that database, the capabilities HANDS_ON and ENGINE_CLAUDE (switches decide at run time; a
 // missing switch is off), an hourly cron, and no R2: the DOCS binding is left out, so documents and the archive are
 // kept in D1 (cloud/src/blobsSql.ts, sqlBlobs). test/cloud-try-config.test.ts holds the two files to that.
 // Deploy it only as purser-try, never pointed at an existing Worker: a Durable Object class and its migration cannot be
@@ -16,6 +16,11 @@
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
+  // 12 Nov (speed): run the Worker next to its D1 database (WEUR) instead of next to the visitor. Each /v1/engine request
+  // makes several D1 calls in a row; from Atlanta each cost about 0.5 s, so every request waited about 6 s (Cloudflare's
+  // own figures: the Worker's wall time 6.1 s at its median on 29 ms of CPU; the Durable Object's 0.19 s). An explicit
+  // Placement Hint, not Smart Placement: smart only uses locations the Worker already runs in, and the demo's traffic is low.
+  "placement": { "mode": "targeted", "region": "aws:eu-central-1" },
   "preview_urls": false,
   "d1_databases": [
     // wrangler d1 create purser-try --location weur  → paste its database_id here.

@@ -8,6 +8,12 @@
 // own signing and approval steps. Everything else is "Purser's code". Lines where money moves end with "simulated bank
 // · test money".
 //
+// The agents (task A6): a decision (ap.checker_decided, ap.coded, ap.payer_proposed) is one row, "<Agent> agent ·
+// Claude {model}" (or "· Purser's code" when code decided), its lead ("Decided: pay, because"), the reason in the
+// line's own words (own, marked so on the page), and under it what Purser's code enforced (enforced), each from the
+// event's allowlisted fields only. Their working rows (agent.*, and claude.asking or claude.read of an agent's turn) are
+// fold rows: the page keeps them in the "All steps" fold.
+//
 // One implementation serves the page and this module: EVENT_LINE_JS is plain script the page carries as it is
 // (cloud/src/tryPage.ts), and eventLine() below runs that same text once, here in Node. It is pure: no DOM, no clock, no
 // network. The page never builds code from text; a Worker never calls eventLine().
@@ -20,6 +26,13 @@ export interface TryEventLine {
   tag: "claude" | "code" | "money" | "sign" | null;
   /** A Claude call that has not answered yet: the page counts its running time. */
   asking: boolean;
+  /** An agent's working step (a tool call, its words, its run): shown only in the "All steps" fold. */
+  fold: boolean;
+  /** An agent's decision: the line's start, and the reason in its own words after it ("" when the event has none). */
+  lead: string;
+  own: string;
+  /** An agent's decision: "Purser's code enforced: …", when the event says what code enforced ("" otherwise). */
+  enforced: string;
 }
 
 /** eventLineOf(W): W is LIVE of tryCopy.ts. It returns the function from an event to its line. */
@@ -42,26 +55,35 @@ const eventLineOf=(W)=>{
     e=e&&typeof e==='object'?e:{};
     const f=e.fields&&typeof e.fields==='object'?e.fields:{};
     const name=typeof e.event==='string'?e.event:'';
-    if(!/^[a-z_]+\.[a-z_]+$/.test(name)||!own(W.ev,name))return {who:W.who.purser,text:W.step,tag:null,asking:false};
+    if(!/^[a-z_]+\.[a-z_]+$/.test(name)||!own(W.ev,name))return {who:W.who.purser,text:W.step,tag:null,asking:false,fold:false,lead:'',own:'',enforced:''};
     const asking=name==='claude.asking';
     let who=W.who.code,tag='code';
     // Task A6: an agent's decision is the agent's line when a model answered; agent_model names the model whose answer code overrode.
     const DECIDED=own(W.agents,name);
     if(name.indexOf('claude.')===0||name.indexOf('agent.')===0||DECIDED){const src=code(f.source);if(asking||src==='claude'||(!src&&code(f.model))){who=modelName(f.model);tag='claude'}else if(DECIDED&&code(f.agent_model)){who=modelName(f.agent_model);tag='claude'}}
     if(asking){const a=code(f.agent);who=(a?cap(words(a)):W.reader)+' · '+who}
-    if(DECIDED&&tag==='claude')who=W.agents[name]+' · '+who;
+    if(DECIDED)who=W.agents[name]+' · '+who;
+    // An agent's working rows go in the fold: its tool calls, words and run, and a Claude call made in one of its turns.
+    const fold=name.indexOf('agent.')===0||((asking||name==='claude.read')&&!!(code(f.agent)||num(f.turn)||/^(checker|coder|payer)$/.test(String(e.actor))));
     if(PERSON.test(name)){who=W.who.you;tag=null}
     if(SIGN.test(name))tag='sign';else if(MONEY.test(name))tag='money';
     // An agent's own sentence and code's, as the server masked and cut them (text nodes only, never markup).
     const said=(v)=>typeof v==='string'&&v.length<=200?v.replace(/[.\s]+$/,''):'';
     const v={money:amount(f),status:status(f.status),why:found(f.findings),method:code(f.method)&&own(W.method,f.method)?W.method[f.method]:'',pages:num(f.pages),files:num(f.files),paid:num(f.paid),of:num(f.of),
       action:code(f.action)?words(f.action):'',outcome:code(f.outcome)?words(f.outcome):'',reason:said(f.reason),enforced:said(f.enforced)||said(f.refused),
-      account:code(f.account),vat:code(f.vat_code)||W.noVat,rail:code(f.rail)?words(f.rail):'',pay_on:code(f.pay_on),currency:/^[A-Z]{3}$/.test(String(f.pay_currency))?f.pay_currency:''};
+      account:code(f.account),vat:/^P\d{1,2}$/.test(code(f.vat_code))?code(f.vat_code).slice(1)+'%':code(f.vat_code)||W.noVat,rail:code(f.rail)?words(f.rail):'',pay_on:code(f.pay_on),currency:/^[A-Z]{3}$/.test(String(f.pay_currency))?f.pay_currency:''};
     let text=null;
     for(const k of [name+'_why',name,name+'_plain'])if(text===null&&own(W.ev,k))text=fill(W.ev[k],v);
     if(text===null)text=W.step;
     if(tag==='money')text=text.replace(/\.$/,'')+' · '+W.money;
-    return {who:who,text:text,tag:tag,asking:asking};
+    let lead='',mine='',enforced='';
+    if(DECIDED){
+      lead=(v.reason&&fill(W.lead[name],v))||'';
+      if(lead)mine=v.reason;else lead=fill(W.lead[name+'_plain'],v)||'';
+      const e=v.outcome&&v.enforced?v.outcome+'; '+v.enforced:v.enforced||v.outcome;
+      if(e)enforced=fill(W.enforced,{enforced:e})||'';
+    }
+    return {who:who,text:text,tag:tag,asking:asking,fold:fold,lead:lead,own:mine,enforced:enforced};
   };
 };
 `;

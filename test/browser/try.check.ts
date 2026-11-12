@@ -22,7 +22,7 @@ import { nodeEngines } from "../../cloud/src/engine/node.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
 import { DID } from "../../cloud/src/try/books.js";
 import { SyncBatch } from "../../cloud/src/sync.js";
-import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INVOICE, PAY, START, STEPS, WORK } from "../../cloud/src/tryCopy.js";
+import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INVOICE, LIVE, PAY, START, STEPS, WORK } from "../../cloud/src/tryCopy.js";
 import { PROOF_URL, RUNS_URL } from "../../cloud/src/tryPage.js";
 import { batchesFor } from "../../src/cloudsync/client.js";
 import type { DB } from "../../src/db/open.js";
@@ -122,13 +122,15 @@ async function ledgerOf(session: string, id: string) {
 // the stand-in bank. The pay answer is held payDelay ms (the 800 ms test).
 const kept = new Map<string, unknown>();
 const paid = new Set<string>();
-const stand = { payDelay: 0, payAnswers: 0, fileDelay: 0, refuseCompose: false, suppliersDelay: 0, samplesDelay: 0, samplesFail: 0 };
+// finishDelay, statusDelay, approveDelay hold the passkey's finish, GET /v1/engine and the approval (screen 3's labels).
+const stand = { payDelay: 0, payAnswers: 0, fileDelay: 0, refuseCompose: false, suppliersDelay: 0, samplesDelay: 0, samplesFail: 0, finishDelay: 0, statusDelay: 0, approveDelay: 0 };
 async function laneC(method: string, path: string, session: string, body: Record<string, unknown>, res: ServerResponse): Promise<boolean> {
   const m = /^\/v1\/engine\/proposals\/([A-Za-z0-9_-]+)\/(approve|terms|pay)$/.exec(path);
   if (!m) return false;
   const [, id, what] = m as unknown as [string, string, string];
   if (method === "POST" && what === "approve") {
     if (!body.credential || typeof body.terms_sha256 !== "string") { send(res, 400, { error: "terms_sha256 and credential are required" }); return true; }
+    if (stand.approveDelay) await new Promise((r) => setTimeout(r, stand.approveDelay));
     kept.set(`${session} ${id}`, body.credential);
     send(res, 200, { status: "approved", message: `${id} is approved and held: nothing is paid until it is paid with this signature.`, settled: null, held: true });
     return true;
@@ -196,6 +198,8 @@ const server = createServer(async (req, res) => {
   if (req.method === "POST" && sample) { const r = await upload(session, clean, `${sample[1]}.pdf`); return send(res, r.status, r.json); }
   if (req.method === "POST" && url.pathname === "/v1/engine/compose" && stand.refuseCompose) { stand.refuseCompose = false; return send(res, 400, { error: "invalid", message: "amount is in euros with two decimals, such as 1850.00" }); }
   if (req.method === "POST" && url.pathname === "/v1/engine/compose") { const b = json(); const r = await upload(session, await composed(b), `${b.invoice_no}.pdf`); return send(res, r.status, r.json); }
+  if (req.method === "POST" && url.pathname === "/v1/engine/passkey/finish" && stand.finishDelay) await new Promise((r) => setTimeout(r, stand.finishDelay));
+  if (req.method === "GET" && url.pathname === "/v1/engine" && stand.statusDelay) await new Promise((r) => setTimeout(r, stand.statusDelay));
   if (await laneC(req.method ?? "GET", url.pathname, session, body ? JSON.parse(body.toString()) as Record<string, unknown> : {}, res)) return;
   if (req.method === "GET" && url.pathname === "/v1/engine/export") {
     // Lane C's export, stood in for here: the company in the product's sync format (src/cloudsync/client.ts batchesFor,
@@ -489,18 +493,48 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   ok(createHash("sha256").update((await page.textContent("pre.terms"))!).digest("hex") === L0.terms_sha256, `${tag}: the fold holds the canonical terms, whose SHA-256 is the proposal's hash`);
   await page.click(`summary:has-text("${APPROVE.terms}")`);
   await screenChecks(page, `${tag} screen 3 (create)`, width, 1, false);
+  // The main button's labels as they change, with " [ring]" while it carries the ring (a string: no helpers in the page).
+  await page.evaluate(`window.__labels=[];new MutationObserver(()=>{const b=document.querySelector('main .btn.primary');const t=(b?b.textContent:'')+(b&&b.classList.contains('asking')?' [ring]':'');if(window.__labels[window.__labels.length-1]!==t)window.__labels.push(t)}).observe(document.getElementById('main'),{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class']})`);
+  const labels = () => page.evaluate("window.__labels.splice(0)") as Promise<string[]>;
+  const inOrder = (seen: string[], want: string[]) => { let i = 0; for (const x of seen) if (x === want[i]) i++; return i === want.length; };
+  // Finish held 800 ms and the engine's status 4 s: the approve button is drawn from finish's own answer, without waiting
+  // for a status read.
+  stand.finishDelay = 800; stand.statusDelay = 4000;
+  const statusAnswers: number[] = [];
+  page.on("response", (r) => { if (new URL(r.url()).pathname === "/v1/engine") statusAnswers.push(Date.now()); });
+  const finRes = page.waitForResponse((r) => r.url().endsWith("/v1/engine/passkey/finish"));
   await page.click(`.btn.primary:has-text("${APPROVE.create}")`);
+  await page.waitForSelector(`.btn.primary.asking:text-is("${APPROVE.saving}")`);
+  ok(!(await page.innerText("#main")).includes(APPROVE.saves.replace("{host}", "localhost")), `${tag}: while finish runs: "${APPROVE.saving}" with the ring, the saving sentence gone`);
+  await finRes;
+  const tFin = Date.now(), answeredBefore = statusAnswers.length;
   await page.waitForSelector(`.btn.primary:has-text("Approve EUR 1,850.00 with your passkey")`, { timeout: 20_000 });
+  const redraw = Date.now() - tFin;
+  ok(redraw < 1500 && statusAnswers.length === answeredBefore, `${tag}: the approve button right after finish (${redraw} ms), with no status answer between (the status held 4 s)`);
+  stand.finishDelay = 0; stand.statusDelay = 0;
+  const made = await labels();
+  ok(inOrder(made, [`${APPROVE.waiting} [ring]`, `${APPROVE.saving} [ring]`, "Approve EUR 1,850.00 with your passkey"]) && !made.slice(made.indexOf(`${APPROVE.saving} [ring]`) + 1).includes(`${APPROVE.waiting} [ring]`),
+    `${tag}: the labels per step: the prompt, saving, then approve (${made.join(" > ")})`);
   ok(((await cloud("GET", "/v1/engine", visitor.session)).json.passkey as { credential_id?: string } | null)?.credential_id !== undefined, `${tag}: the engine holds the approval passkey the browser made`);
   ok(!(await page.innerText("#main")).includes(APPROVE.saves.replace("{host}", "localhost")), `${tag}: once it exists, the saving sentence goes`);
   await screenChecks(page, `${tag} screen 3 (approve)`, width, 1, false);
   await shot2("3-approve");
+  // The approval held 800 ms: "Approving…" with the ring while it runs, then the tick as soon as the answer is in.
+  stand.approveDelay = 800;
   const approveReq = page.waitForRequest((r) => r.url().endsWith(`/proposals/${pid}/approve`));
+  const approveRes = page.waitForResponse((r) => r.url().endsWith(`/proposals/${pid}/approve`));
   await page.click(`.btn.primary:has-text("Approve EUR 1,850.00")`);
   const ab = JSON.parse((await approveReq).postData() ?? "{}") as { terms_sha256?: string; credential?: { response?: { signature?: string } } };
   ok(ab.terms_sha256 === L0.terms_sha256 && typeof ab.credential?.response?.signature === "string" && Object.keys(ab).sort().join() === "credential,terms_sha256", `${tag}: approve carries the terms' hash and the passkey's signature, nothing else`);
+  await page.waitForTimeout(300);
+  ok(await page.locator(`.btn.primary.asking:text-is("${APPROVE.approving}")`).count() === 1 && await page.locator(".tick").count() === 0, `${tag}: held approval: "${APPROVE.approving}" with the ring, no tick yet`);
+  await approveRes;
+  const tAp = Date.now();
   await page.waitForSelector(`text=${APPROVE.approved}`);
-  ok(await page.locator(".tick svg").count() === 1, `${tag}: the approval's tick, once its answer is back`);
+  ok(Date.now() - tAp < 500 && await page.locator(".tick svg").count() === 1 && await page.locator(".btn.asking").count() === 0, `${tag}: the approval's tick as soon as its answer is back (${Date.now() - tAp} ms), the ring gone`);
+  stand.approveDelay = 0;
+  const signedLabels = await labels();
+  ok(inOrder(signedLabels, [`${APPROVE.waiting} [ring]`, `${APPROVE.approving} [ring]`, APPROVE.next]), `${tag}: the labels per step: the prompt, approving, then next (${signedLabels.join(" > ")})`);
   await design("3-approve", { full: true });
   ok((await ledgerOf(visitor.session, pid))!.transfers() === transfers0, `${tag}: approved and held: no transfer`);
   const cred1 = (await keptState(page)).cred as { response: { signature: string } } | null;
@@ -567,9 +601,20 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
     await page.waitForFunction(() => (document.querySelector("#p-amt") as HTMLInputElement | null)?.value === "1850.00");
     ok((await keptState(page)).cred === null, `${tag}: after the reload no signature is kept`);
   }
+  // Pay as signed, the answer held 800 ms: "Paying…" with the ring, then screen 5's stamp the moment it is in.
+  stand.payDelay = 800;
   const paidReq = page.waitForRequest((r) => r.url().endsWith(`/proposals/${pid}/pay`));
+  const paidRes = page.waitForResponse((r) => r.url().endsWith(`/proposals/${pid}/pay`));
   await page.click(`.btn.primary:has-text("${PAY.button}")`);
   const pp = JSON.parse((await paidReq).postData() ?? "{}") as { terms: Record<string, unknown>; credential: { response: { signature: string; clientDataJSON: string } } | null };
+  await page.waitForTimeout(300);
+  ok(await page.locator(`.btn.primary.asking:text-is("${PAY.paying}")`).count() === 1, `${tag}: pay as signed: "${PAY.paying}" with the ring while the answer is held`);
+  await paidRes;
+  const tPaid = Date.now();
+  await page.waitForSelector(".paidstamp .ring");
+  const stamp = await page.evaluate(() => [getComputedStyle(document.querySelector(".paidstamp .ring")!).animationName, getComputedStyle(document.querySelector(".screen")!).animationName]);
+  ok(Date.now() - tPaid < 500 && stamp[0] === "stampin" && stamp[1] === "none", `${tag}: paid: the stamp lands as soon as the answer is in (${Date.now() - tPaid} ms; ${stamp.join(", ")})`);
+  stand.payDelay = 0;
   ok(JSON.stringify(pp.terms) === JSON.stringify(L0.terms) && !!pp.credential, `${tag}: pay as signed: the signed terms and a signature`);
   if (width === 390) {
     const cd = JSON.parse(Buffer.from(pp.credential!.response.clientDataJSON, "base64url").toString()) as { challenge: string };
@@ -821,6 +866,38 @@ const setHidden = (page: Page, hidden: boolean) => page.evaluate((h) => { (windo
   const stopped = await row.locator(".t").textContent();
   await run(p.page, 2000);
   ok((await row.locator(".t").textContent()) === stopped, `asking: the count stops at the reader's next row (${stopped})`);
+  p.release();
+  await p.ctx.close();
+}
+{
+  // The agents (A6), as stand-in events: each decision is one line in view (the agent, Claude and its model, the lead,
+  // the reason marked as its own words, what Purser's code enforced), and their working rows wait in "All steps".
+  const at = (seq: number, actor: string, event: string, fields: Record<string, unknown>) => ({ seq, ts: "t", actor, event, subject: "AP-0001", fields });
+  const items = [
+    at(1, "checker", "claude.asking", { agent: "checker", model: "claude-haiku-4-5", turn: 1 }),
+    at(2, "checker", "agent.tool", { agent: "checker", tool: "vendor_on_file", turn: 1, model: "claude-haiku-4-5", request_id: "req_1", ms: 3, answer: "Bergtex is on file." }),
+    at(3, "checker", "agent.said", { agent: "checker", turn: 2, model: "claude-haiku-4-5", text: "All checks pass." }),
+    at(4, "checker", "agent.run", { agent: "checker", model: "claude-haiku-4-5", status: "done", turns: 2, cost_usd_micros: 900, latency_ms: 2100, request_id: "req_2" }),
+    at(5, "checker", "ap.checker_decided", { source: "claude", model: "claude-haiku-4-5", action: "pay", outcome: "ask_cfo", overridden: true, overridden_by: "agent_may_not_pay_alone", code_requires: "ask_cfo", codes: "",
+      reason: "Bergtex is on file and the totals add up.", enforced: "The agent may pay no invoice alone.", request_id: "req_2", secret: "SECRET-1" }),
+    at(6, "treasury", "agent.tool", { agent: "coder", tool: "chart", turn: 1, model: "claude-haiku-4-5", request_id: "req_3", ms: 2, answer: "6200 Office costs." }),
+    at(7, "treasury", "ap.coded", { source: "claude", model: "claude-haiku-4-5", status: "coded", lines: 1, account: "6200", vat_code: "P21", cost_centre: "OPS", reason: "Office supplies at the high rate.", request_id: "req_3" }),
+    at(8, "payer", "agent.run", { agent: "payer", model: "claude-haiku-4-5", status: "done", turns: 1, cost_usd_micros: 700, latency_ms: 1800, request_id: "req_4" }),
+    at(9, "payer", "ap.payer_proposed", { source: "claude", model: "claude-haiku-4-5", rail: "bank_swift", pay_on: "2026-11-20", pay_currency: "EUR", outcome: "ask_cfo", overridden: false,
+      reason: "Due on the 26th; paying on the 20th keeps the float.", enforced: "Over the agent's limit: the CFO signs these exact terms.", request_id: "req_4" }),
+  ];
+  const p = await poller({ events: (n) => ({ status: 200, body: n === 1 ? { items, next: 9 } : { items: [], next: 9 } }), session: () => ({ status: 200, body: {} }) });
+  await run(p.page, 1000);
+  const shown = await p.page.locator(".live li:visible").allInnerTexts();
+  ok(shown.length === 3 && await p.page.locator(".live li.agent:visible").count() === 3, `agents: three lines in view, one per agent (${shown.length})`);
+  ok(/^Checker agent · Claude Haiku 4\.5\s+Decided: pay, because “?Bergtex is on file and the totals add up”? \(its own words\)\s+Purser's code enforced: ask cfo; The agent may pay no invoice alone/.test(shown[0] ?? ""), `agents: the Checker's line (${shown[0]?.replace(/\s+/g, " ")})`);
+  ok(/^Coder agent · Claude Haiku 4\.5\s+6200 expense, VAT 21%: “?Office supplies at the high rate”? \(its own words\)/.test(shown[1] ?? "") && !(shown[1] ?? "").includes("enforced"), `agents: the Coder's line (${shown[1]?.replace(/\s+/g, " ")})`);
+  ok(/^Payer agent · Claude Haiku 4\.5\s+Proposed: pay on 2026-11-20 via bank swift from EUR, because .*\(its own words\)\s+Purser's code enforced: ask cfo/.test(shown[2] ?? ""), `agents: the Payer's line (${shown[2]?.replace(/\s+/g, " ")})`);
+  ok(await p.page.locator(".live .own").count() === 3 && await p.page.locator(".live .enf:visible").count() === 2, "agents: each reason marked as its own words; what code enforced, where the event says it");
+  ok(await p.page.locator(".live li.fold").count() === 6 && await p.page.locator(".live li.fold:visible").count() === 0, "agents: the tool calls, words, runs and the agent's Claude call wait in the fold");
+  ok(!(await p.page.textContent(".live"))!.includes("SECRET"), "agents: a field the allowlist does not name is never shown");
+  await p.page.click(`button:has-text("${LIVE.allSteps}")`);
+  ok(await p.page.locator(".live li:visible").count() === 9, "agents: All steps opens every row");
   p.release();
   await p.ctx.close();
 }

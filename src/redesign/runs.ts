@@ -38,7 +38,7 @@ export interface RunStat { v: string; l: string }
  * on Purser's own fakes (no payment partner called), a rehearsal or dry run, or a live run that called no partner and
  * moved nothing.
  */
-export type RunKind = "sandbox" | "testnet" | "both" | "simulated" | "rehearsal" | "nothing";
+export type RunKind = "sandbox" | "testnet" | "both" | "simulated" | "rehearsal" | "nothing" | "control";
 /** A partner a run can take part in: its chip, its filter and its count. */
 export type RunPartner = "Airwallex" | "Metal" | "T:0" | "Visa" | "Claude";
 /** A series as a rate: "done of of what" ("7 of 7 checks passed", "18 of 20 paid"). */
@@ -182,7 +182,8 @@ export function liveRuns(): RunRow[] {
       line: `${s.paid} of ${s.of} purchases paid, after the CFO's Face ID; ${s.byPurser.map((p) => p.step).join(", ")} refused by Purser with 0 calls. Test card.`,
       what: `${s.paid} of ${s.of} purchases paid. The rail was chosen by ${s.model ?? "Claude"} from ${s.menu}. ${s.byPurser.map((p) => p.step).join(", ")} refused by Purser with 0 calls. ${vic3Finding(v3)}`,
       checks: `${okOf(v3.checks)}.`, money: "Test card · test money",
-      ids: v3.purchases.filter((p) => p.payment_intent_id).map((p) => ({ label: `PaymentIntent, ${p.step}`, value: p.payment_intent_id! })),
+      // The paid one only (review 12 Nov): the others (A unpaid, F1 and F2 our planted misuse) stay in the record.
+      ids: v3.purchases.filter((p) => p.step === "B" && p.payment_intent_id).map((p) => ({ label: `Paid PaymentIntent (${p.step})`, value: p.payment_intent_id! })),
       files: [{ label: "record (JSON)", href: blob(VIC3_RUN_FILE) }, { label: "run log", href: blob(VIC3_RUN_LOG) }],
     });
   }
@@ -191,7 +192,7 @@ export function liveRuns(): RunRow[] {
   const v2Terms = v2?.audit?.find((a) => a.event === "proposal.created")?.payload.terms_sha256;
   if (v2) rows.push({
     key: "vic-2", iso: v2.started_at, date: day(v2.started_at), title: "Airi, second run: what Purser adds around it", rails: "Purser relay, CFO passkey",
-    name: "A purchase changed after the CFO signed is refused; nothing is bought", kind: "nothing", rate: checkRate(v2.checks),
+    name: "A purchase changed after the CFO signed is refused; nothing is bought", kind: v2.outside_calls.airi + v2.outside_calls.airwallex === 0 ? "control" : "nothing", rate: checkRate(v2.checks),
     // The partners its record shows called: an Airi call is an Airwallex wallet paying with a Visa credential.
     partners: [...(v2.outside_calls.airi + v2.outside_calls.airwallex > 0 ? ["Airwallex" as const] : []), ...(v2.outside_calls.airi > 0 ? ["Visa" as const] : [])],
     line: `Our own test changed it; the CFO's Face ID was real. ${v2.outside_calls.airi} Airi and ${v2.outside_calls.airwallex} Airwallex calls.`,
@@ -322,7 +323,7 @@ function extraRuns(): RunRow[] {
     out.push({
       key: "tokenize-1", iso: last.at, date: day(last.at), kind: "testnet", partners: ["Metal"],
       name: "An approved invoice becomes a token, is pre-financed, then settled (prototype)",
-      line: `Face value ${tk.face_value.amount} test USD (divided by ${tk.labels.face_value_scaled_by}); a simulated financier paid ${tk.received.creditor ?? "nothing"}. Metal testnet.`,
+      line: `Face value ${tk.face_value.amount} test USD (amounts scaled down ${tk.labels.face_value_scaled_by}× for testnet); a simulated financier paid ${tk.received.creditor ?? "nothing"}. Metal testnet.`,
       title: "Invoice token (prototype)", rails: "Metal testnet (an invoice token contract)",
       what: "An invoice the CFO approved with Face ID on 7 Nov became a token on Metal testnet, was bought by a simulated financier, and was settled by the debtor to its holder.",
       checks: "Each transaction's receipt status success; the record verified against the chain.", money: "Prototype · testnet · test money",
@@ -387,8 +388,11 @@ function extraRuns(): RunRow[] {
   // that both pages count the same runs (jury check, 12 Nov).
   for (const m of separateRuns()) {
     const what = m.what.replace(/^\d{1,2} \w+: /, "");
-    const short = what.length <= 168 ? what : `${firstSentence(what).slice(0, 164).replace(/\s+\S*$/, "")}…`;
-    const line = `${short[0]!.toUpperCase()}${short.slice(1)}${/[.…]$/.test(short) ? "" : "."}`;
+    // Review 12 Nov: no file paths in sight, whole sentences, units said out loud.
+    const plain = what.replace(/\s*\([^)]*\.ts\)/g, "").replace(/ a second\b/g, " payments per second").replace(/\b0 tx per call\b/g, "no on-chain transaction per call");
+    const first = plain.split("; ")[0]!.replace(/[.,]$/, "");
+    const soft = /software passkeys/.test(plain) && !/software passkeys/.test(first) ? " Software passkeys, not a phone." : "";
+    const line = `${first[0]!.toUpperCase()}${first.slice(1)}.${soft}`;
     out.push({
       key: `metal-${m.id}`, iso: m.date, date: day(`${m.date}T12:00:00Z`), kind: "testnet", partners: ["Metal"],
       name: m.title, line, title: m.title, rails: "Metal testnet", what, checks: `As its run record says.${m.proofs.length ? ` ${pl(m.proofs.length, "transaction")} linked.` : ""}`, money: "Testnet · test money",
@@ -430,7 +434,7 @@ const partnersOf = (r: RunRow) => r.partners ? RAILS.filter(([, n]) => (r.partne
 
 /** The honest badge: the kind of run, in the words the page shows. */
 export const KIND_LABEL: Record<RunKind, string> = {
-  sandbox: "Live sandbox", testnet: "Live testnet", both: "Live testnet and sandbox", simulated: "Simulated", rehearsal: "Rehearsal", nothing: "Live, nothing bought",
+  sandbox: "Live sandbox", testnet: "Live testnet", both: "Live testnet and sandbox", simulated: "Simulated", rehearsal: "Rehearsal", nothing: "Live, nothing bought", control: "Local control test",
 };
 /** Words that say a run, or a part of it, was not real: such a row can claim no more than Simulated. */
 const FAKED = /simulat|\bfake|\bmock|\bstub|\bdummy|\bemulat/i;
@@ -447,7 +451,8 @@ export function kindOf(r: Pick<RunRow, "kind" | "title" | "rails" | "money">): R
   const testnet = /Metal/i.test(r.rails), sandbox = /Airwallex|Airi\b|T:0|sandbox/i.test(r.rails);
   return testnet && sandbox ? "both" : testnet ? "testnet" : sandbox ? "sandbox" : "simulated";
 }
-const isRehearsal = (r: RunRow) => kindOf(r) === "rehearsal";
+// A local control test (no partner called) sits with the rehearsals, outside the live runs (review 12 Nov).
+const isRehearsal = (r: RunRow) => kindOf(r) === "rehearsal" || kindOf(r) === "control";
 const nameOf = (r: RunRow) => r.name ?? r.title;
 /** Words whose point does not end a sentence: a month ("12 Nov. at 09:00"), "e.g.", "i.e." and their like. */
 const ABBREV = /(?:\b(?:Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|etc|vs|approx|incl|No|Nr|cf|Inc|Ltd|Co)|\be\.g|\bi\.e)$/;
@@ -531,8 +536,8 @@ ${o.folded ? `<details class="more"><summary aria-label="${esc(label)}">${more ?
 </article></li>`;
 }
 
-/** The filtering, CSS only: a filter's anchor, once it is the target, hides the entries without its class, never the newest. */
-const FILTER_CSS = `${FILTERS.map((f) => `#${f.id}:target ~ ol.tl > li.run:not(.f-${f.id}):not(.newest) { display: none; }`).join("\n")}
+/** The filtering, CSS only: a filter's anchor, once it is the target, hides the entries without its class (the newest too, review 12 Nov). */
+const FILTER_CSS = `${FILTERS.map((f) => `#${f.id}:target ~ ol.tl > li.run:not(.f-${f.id}) { display: none; }`).join("\n")}
 .runsp nav.flt a.all, ${FILTERS.map((f) => `#${f.id}:target ~ nav.flt a[href="#${f.id}"]`).join(", ")} { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 .runsp .fa:not(#all):target ~ nav.flt a.all { background: var(--surface); border-color: var(--border); color: var(--muted); }`;
 
@@ -650,7 +655,12 @@ export function faceIdToPaid(t: RunTimes = runTimes()): string {
   if (!t.n || t.medianMs === null || t.minMs === null || t.maxMs === null) return "";
   const n = (ms: number) => `<span class="mo-count">${esc(secs(ms))}</span>`;
   // One line on a phone (the frame's height, test/browser/pages.check.ts): the median, the spread, the count.
-  const line = `Face ID to paid: median ${n(t.medianMs)}${t.n > 1 ? ` (${n(t.minMs)}–${n(t.maxMs)})` : ""}, ${esc(pl(t.n, "payout"))}`;
+  // Review 12 Nov: with so few payouts, each time, not a median; the day the record gives them.
+  const days = [...new Set(t.payouts.map((p) => p.approvedAt.slice(0, 10)))].map((d) => day(`${d}T12:00:00Z`).replace(/ \d{4}$/, ""));
+  const each = t.payouts.map((p) => n(p.ms));
+  const line = t.n <= 3
+    ? `Face ID to paid: ${each.length > 1 ? `${each.slice(0, -1).join(", ")} and ${each[each.length - 1]}` : each[0]} (${esc(pl(t.n, "payout"))}, ${esc(days.join(", "))})`
+    : `Face ID to paid: median ${n(t.medianMs)} (${n(t.minMs)}–${n(t.maxMs)}), ${esc(pl(t.n, "payout"))}`;
   const rows = t.payouts.map((p) => `<li>${esc(`${p.proposal}: ${secs(p.ms)} (Face ID ${p.approvedAt.slice(11, 19)}, PAID ${p.paidAt.slice(11, 19)} UTC, ${p.approvedAt.slice(0, 10)})`)} <a class="f" href="${esc(blob(p.record))}" target="_blank" rel="noopener">Log ↗</a></li>`).join("");
   const out = t.leftOut.map((l) => `<li class="q">${esc(`Left out: ${l.record.replace(/^docs\/runs\//, "")}, ${l.why}.`)}</li>`).join("");
   return `<details class="ftp"><summary>${icon("scan-face", 16)}<span>${line}</span></summary><ul>${rows}${out}</ul></details>`;
@@ -708,7 +718,7 @@ ${faceIdToPaid(times)}
 <ol class="tl">
 ${live.map((r, i) => entry(r, { newest: i === 0, folded: true, signed: signed[r.key] })).join("\n")}
 </ol>
-${rehearsals.length ? `<details class="rehs" id="rehearsals"><summary>Rehearsals and dry runs · ${rehearsals.length}${chevron}</summary>
+${rehearsals.length ? `<details class="rehs" id="rehearsals"><summary>Rehearsals, dry runs and control tests · ${rehearsals.length}${chevron}</summary>
 <ol class="tl">
 ${rehearsals.map((r) => entry(r, { folded: false, signed: signed[r.key] })).join("\n")}
 </ol>
