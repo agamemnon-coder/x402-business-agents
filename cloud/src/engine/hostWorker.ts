@@ -28,7 +28,7 @@ import { sqlBlobs } from "../blobsSql.js";
 import { d1Sql, r2Blobs, type D1Like, type R2Like } from "../store.js";
 import { TenantDb } from "../tenant.js";
 import type { EngineApi } from "./api.js";
-import { claudeAccess } from "./claudeAccess.js";
+import { tryClaudeAccess } from "./tryClaude.js";
 import { docChunks } from "./docChunks.js";
 import { SAMPLES } from "./samples.gen.js";
 import { cloudTarget } from "./target.js";
@@ -122,6 +122,7 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
 
 /** Claude under the caps when the Worker says so (ENGINE_CLAUDE "on"); otherwise nothing, and the parser reads. */
 function withClaude(env: HostEnv, sql: ReturnType<typeof d1Sql>, tenantId: string) {
-  const claude = claudeAccess({ engineClaude: env.ENGINE_CLAUDE, key: env.KIT11_ANTHROPIC_API_KEY ?? process.env.KIT11_ANTHROPIC_API_KEY, sql, tenantId });
+  // The demo's own switches and the company's pool (./tryClaude.ts), the ones the start answer's mode is read from.
+  const claude = tryClaudeAccess({ ENGINE_CLAUDE: env.ENGINE_CLAUDE, KIT11_ANTHROPIC_API_KEY: env.KIT11_ANTHROPIC_API_KEY ?? process.env.KIT11_ANTHROPIC_API_KEY }, sql, tenantId);
   return claude ? { claude } : {};
 }
