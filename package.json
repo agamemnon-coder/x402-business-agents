@@ -103,6 +103,7 @@
     "autonomy-redteam": "tsx src/cli/autonomyRedteam.ts",
     "dashboard-vs-chain": "tsx src/cli/dashboardVsChain.ts",
     "origins": "tsx src/cli/origins.ts",
+    "chain:gate": "tsx src/cli/chainGate.ts",
     "test-funds": "tsx src/cli/testFunds.ts",
     "metal-balance": "tsx src/cli/metalBalance.ts",
     "awx-readback": "tsx src/cli/awxReadback.ts",
