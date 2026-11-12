@@ -94,6 +94,10 @@ const { apInvoice, setStatus } = await import("../src/ap/store.js");
 const { ledgerInvoiceNo } = await import("../src/ap/ledgerKey.js");
 const { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } = await import("../src/ap/vendors.js");
 const { executeSupplierPayment } = await import("../src/executors/supplierPayment.js");
+const { executePaymentBatch } = await import("../src/executors/paymentBatch.js");
+const { payApInvoices } = await import("../src/ap/batchPay.js");
+const { chaos, resumeInterrupted } = await import("../src/policy/saga.js");
+const { TR } = await import("./fakes/fxInvoices.js");
 const { syncVault } = await import("../src/vault/build.js");
 const { LocalSink } = await import("../src/vault/sink.js");
 const { checkOption, freshEnough, judgeRunnerKey, verifyRunnerSignature } = await import("../src/approve/client.js");
@@ -147,7 +151,7 @@ type TestCloud = import("./support/cloud.js").TestCloud;
 type ApEntry = import("../src/ap/books.js").ApEntry;
 
 vi.setConfig({ testTimeout: 60_000 });
-afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); forced.pay = false; });
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); forced.pay = false; chaos.at = null; });
 
 /** Temporary folders this file made (keys, inbox documents): removed when it is done. */
 const temps: string[] = [];
@@ -170,11 +174,13 @@ const CONTROLS = {
   "webhook signature and single record": "L2",
   "the phone may only tighten": "L2",
   "tenant isolation": "L2",
+  "a payout is looked up by its request id, never sent blind": "L2",
   "the passkey's signature over the exact terms": "L3",
   "four eyes": "L4",
   "Airwallex card controls": "L5",
   "Airwallex transfer approval": "L5",
   "Metal mandate": "L5",
+  "Airwallex keeps one transfer per request id": "L5",
   "hash chain and verify": "L6",
   "pause and emergency stop": "L6",
 } as const satisfies Record<string, LayerId>;
@@ -1213,6 +1219,12 @@ SCENARIOS["injection-email"] = async () => {
   expect(w.awx.transfers).toHaveLength(0);
   const received = events(w.db, "ap.received").at(-1)!;
   expect(received).toMatchObject({ status: "blocked", source: "email" });
+  // The same account under a look-alike of the supplier's name (a Cyrillic letter in it): not taken for the supplier
+  // on file, and not ready to pay.
+  const alike = await w.add(hostile.replaceAll("BTX-2026-23", "BTX-2026-25").replace("Bergtex Textil GmbH", "B\u0435rgtex Textil GmbH"), "alike.pdf");
+  expect(alike.status).not.toBe("ready");
+  expect(await refusalOf(() => payApInvoice(w.db, w.awx, alike.id, w.now))).toMatch(/not ready to pay/);
+  expect(count(w.db, "SELECT COUNT(*) AS n FROM proposals")).toBe(0);
   return { moved: bankMoved(w), control: "invoice and fraud checks", record: `ap.received: blocked (${r.invoice.findings.filter((f) => f.level === "block").map((f) => f.code).join(", ")}); ${refusal.slice(0, 160)}` };
 };
 
@@ -1507,6 +1519,371 @@ SCENARIOS["supplier-invoice-after-stop"] = async () => {
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
+// Attacked by hand, as someone who has read the code: one approval run twice, an approval run by another executor,
+// stored terms rewritten to look the same, the edges of the expiry, a rail that fails midway, a ledger restored from
+// a backup, one person with two passkeys, and a cosignature from before a change of terms.
+
+/** The payments Airwallex's stand-in holds beyond the ones that were signed: what "paid twice" or "paid wrong" would add. */
+const extra = (w: { awx: FakeAirwallexT }, signed: number) => Math.max(0, w.awx.transfers.length - signed);
+const settled = async <T>(ps: Promise<T>[]) => (await Promise.allSettled(ps)).map((r) => (r.status === "fulfilled" ? "ran" : (r.reason as Error).message));
+
+// One approval, started twice: at the same moment and again afterwards, by the same executor and by the other one,
+// and a batch's line on its own while its batch runs. Each signed payment leaves once.
+SCENARIOS["one-approval-two-executions"] = async () => {
+  const said: string[] = [];
+  let moved = 0;
+  // A euro invoice payment: twice at once, then once more, then through the supplier payment's executor.
+  const a = await bankWorld();
+  const idA = await propose(a, GENUINE);
+  expect((await sign(a.db, a.cfo, idA, a.now)).status).toBe("approved");
+  const raceA = await settled([executeInvoicePayment(a.db, a.awx, a.awx, idA), executeInvoicePayment(a.db, a.awx, a.awx, idA), executeSupplierPayment(a.db, a.awx, a.awx, idA)]);
+  const laterA = await refusalOf(() => executeInvoicePayment(a.db, a.awx, a.awx, idA));
+  expect(raceA.filter((r) => r === "ran")).toHaveLength(1);
+  expect(laterA).toMatch(/EXECUTED, not approved/);
+  expect(a.awx.transfers.map((t) => `${t.status} ${t.amountCents}`)).toEqual(["PAID 185000"]);
+  said.push(`a euro payment started three times at once: ${raceA.filter((r) => r !== "ran").join(" | ")}; later: ${laterA}`);
+  moved += extra(a, 1);
+
+  // A supplier payment: twice at once and through the euro executor, then once more.
+  const b = await supplierWorld();
+  const idB = await planSupplier(b);
+  expect((await sign(b.db, b.cfo, idB, b.now)).status).toBe("approved");
+  const raceB = await settled([executeSupplierPayment(b.db, b.awx, b.awx, idB), executeInvoicePayment(b.db, b.awx, b.awx, idB), executeSupplierPayment(b.db, b.awx, b.awx, idB)]);
+  const laterB = await refusalOf(() => executeSupplierPayment(b.db, b.awx, b.awx, idB));
+  expect(raceB.filter((r) => r === "ran")).toHaveLength(1);
+  expect(laterB).toMatch(/EXECUTED, not approved/);
+  expect(b.awx.transfers.map((t) => `${t.status} ${t.currency} ${t.amountCents}`)).toEqual(["PAID EUR 985000"]);
+  said.push(`a supplier payment started three times at once: ${raceB.filter((r) => r !== "ran").join(" | ")}`);
+  moved += extra(b, 1);
+
+  // A batch of two invoices under one signature: the batch and one of its lines started at the same moment, then the
+  // batch again, then each line again.
+  const c = await inboxWorld();
+  const [one, two] = [await c.add(EN, "one.pdf"), await c.add(EN.replaceAll("BTX-2026-21", "BTX-2026-24").replace("1,554.62", "1,000.00").replace("295.38", "190.00").replace("1,850.00", "1,190.00"), "two.pdf")];
+  const filed = await payApInvoices(c.db, c.awx, [one.id, two.id], c.now);
+  expect(filed.planned).toHaveLength(2);
+  const batchId = filed.batch!.proposal_id;
+  // A line of a waiting batch cannot be approved on its own.
+  const alone = await sign(c.db, c.cfo, filed.planned[1]!.proposal_id, c.now);
+  expect(alone).toMatchObject({ status: "refused", message: expect.stringMatching(/is in batch/) });
+  expect((await sign(c.db, c.cfo, batchId, c.now)).status).toBe("approved");
+  const runLine = (id: string) => executeInvoicePayment(c.db, c.awx, c.awx, id).then(() => {});
+  const raceC = await settled([executePaymentBatch(c.db, batchId, runLine).then(() => {}), runLine(filed.planned[1]!.proposal_id)]);
+  // Whatever the race left, running the batch again runs only what is not paid yet; then nothing runs any more.
+  if (statusOf(c.db, batchId) === "FAILED") await executePaymentBatch(c.db, batchId, runLine);
+  const again = [await refusalOf(() => executePaymentBatch(c.db, batchId, runLine)), ...(await settled(filed.planned.map((p) => runLine(p.proposal_id))))];
+  expect(statusOf(c.db, batchId)).toBe("EXECUTED");
+  for (const r of again) expect(r).toMatch(/EXECUTED, not approved/);
+  expect(c.awx.transfers.map((t) => `${t.status} ${t.amountCents}`).sort()).toEqual(["PAID 119000", "PAID 185000"]);
+  expect(new Set(c.awx.transfers.map((t) => t.reference)).size).toBe(2);
+  said.push(`a batch and one of its lines at once: ${raceC.join(" | ")}; the batch again: ${again[0]}`);
+  moved += extra(c, 2);
+  return { moved, control: "the passkey's signature over the exact terms", record: said.join("; ") };
+};
+
+// An approval run by another executor than its kind's. A supplier payment in Turkish lira fails on its first try (the
+// request never reaches Airwallex); then the proposal's kind is changed in the database, where the hash does not reach,
+// and the euro executor is started on it: it would send the same number as euros. A signed policy change is put to the
+// payment executors, and a signed payment to the policy executor.
+SCENARIOS["approval-run-by-another-executor"] = async () => {
+  const w = await supplierWorld({}, TR);
+  const id = await planSupplier(w);
+  expect((await sign(w.db, w.cfo, id, w.now)).status).toBe("approved");
+  w.awx.dropNextTransfer = true;
+  expect(await refusalOf(() => executeSupplierPayment(w.db, w.awx, w.awx, id))).not.toBe("");
+  expect(statusOf(w.db, id)).toBe("FAILED");
+  expect(w.awx.transfers).toHaveLength(0);
+  w.db.prepare("UPDATE proposals SET kind = 'invoice_payment' WHERE proposal_id = ?").run(id);
+  const asEuros = await refusalOf(() => executeInvoicePayment(w.db, w.awx, w.awx, id));
+  expect(asEuros).toMatch(/is not an invoice payment/);
+  // Nothing was sent as euros; the lira payment can still be run by its own executor, once, as signed.
+  expect(w.awx.transfers).toHaveLength(0);
+  w.db.prepare("UPDATE proposals SET kind = 'supplier_payment' WHERE proposal_id = ?").run(id);
+  await executeSupplierPayment(w.db, w.awx, w.awx, id);
+  expect(w.awx.transfers.map((t) => `${t.status} ${t.currency} ${t.amountCents}`)).toEqual(["PAID TRY 5200000"]);
+
+  // A signed policy change (the emergency stop, on) is no payment; a signed payment is no policy change.
+  const b = await bankWorld();
+  const stop = proposePolicyChange(b.db, { changes: [{ key: "freeze", to: "on" }], reason: "something is wrong" }, "human", b.now);
+  expect((await sign(b.db, b.cfo, stop.proposal_id, b.now)).status).toBe("approved");
+  const policyAsEuro = await refusalOf(() => executeInvoicePayment(b.db, b.awx, b.awx, stop.proposal_id));
+  const policyAsSupplier = await refusalOf(() => executeSupplierPayment(b.db, b.awx, b.awx, stop.proposal_id));
+  expect(policyAsEuro).toMatch(/is not an invoice payment/);
+  expect(policyAsSupplier).toMatch(/is not a supplier payment/);
+  const pay = await propose(b, GENUINE);
+  expect((await sign(b.db, b.cfo, pay, b.now)).status).toBe("approved");
+  const before = policyValue(b.db, "eur_floor");
+  const payAsPolicy = await refusalOf(() => executePolicyChange(b.db, pay, b.now));
+  expect(payAsPolicy).not.toBe("");
+  expect(policyValue(b.db, "eur_floor")).toBe(before);
+  expect(b.awx.transfers).toHaveLength(0);
+  expect([statusOf(b.db, stop.proposal_id), statusOf(b.db, pay)]).toEqual(["APPROVED", "APPROVED"]);
+  return { moved: extra(w, 1) + bankMoved(b), control: "the passkey's signature over the exact terms", record: `lira signed, started as euros: ${asEuros}; a policy change as a payment: ${policyAsEuro}; ${policyAsSupplier}; a payment as a policy change: ${payAsPolicy.slice(0, 120)}` };
+};
+
+// The stored terms rewritten after the CFO signed so that they look the same, or hash the same. A form that changes
+// the hash is refused; a form that keeps the hash (another key order, spaces, a planted first copy of a key) pays
+// exactly what was signed, because the executor pays what it parsed and hashed, never the text.
+SCENARIOS["terms-rewritten-to-look-the-same"] = async () => {
+  const signedWorld = async () => {
+    const w = await bankWorld();
+    const id = await propose(w, GENUINE);
+    expect((await sign(w.db, w.cfo, id, w.now)).status).toBe("approved");
+    const row = w.db.prepare("SELECT terms_json FROM proposals WHERE proposal_id = ?").get(id) as { terms_json: string };
+    return { ...w, id, text: row.terms_json, terms: JSON.parse(row.terms_json) as Record<string, unknown> };
+  };
+  const store = (w: { db: DB; id: string }, text: string) => w.db.prepare("UPDATE proposals SET terms_json = ? WHERE proposal_id = ?").run(text, w.id);
+  const refused: string[] = [];
+  let moved = 0;
+  // Forms that are another amount, or another name, to a reader: each changes the hash.
+  const changed: [string, (t: Record<string, unknown>) => Record<string, unknown>][] = [
+    ["the amount as a number", (t) => ({ ...t, amount: 1850 })],
+    ["the amount as 1850.0", (t) => ({ ...t, amount: "1850.0" })],
+    ["the amount as 1.85e3", (t) => ({ ...t, amount: "1.85e3" })],
+    ["the amount with a leading zero", (t) => ({ ...t, amount: "01850.00" })],
+    ["the amount in full-width digits", (t) => ({ ...t, amount: "１８５０.００" })],
+    ["a look-alike letter in the payee's name", (t) => ({ ...t, beneficiary_name: String(t.beneficiary_name).replace("e", "е") })],
+    ["one more key", (t) => ({ ...t, amount_override: "18500.00" })],
+  ];
+  for (const [what, change] of changed) {
+    const w = await signedWorld();
+    const next = change(w.terms);
+    expect(JSON.stringify(next), what).not.toBe(w.text);
+    store(w, JSON.stringify(next));
+    const refusal = await refusalOf(() => executeInvoicePayment(w.db, w.awx, w.awx, w.id));
+    expect(refusal, what).toMatch(/terms do not match the approved hash|terms must not contain numbers/);
+    expect(w.awx.transfers, what).toHaveLength(0);
+    refused.push(what);
+    moved += bankMoved(w);
+  }
+  // Forms that keep the hash: the same terms in another key order, with spaces, and with a first copy of two keys
+  // planted before the real ones (a JSON reader keeps the last; SQLite's json_extract shows the first).
+  const other = "ben_planted";
+  const kept: [string, (text: string, t: Record<string, unknown>) => string][] = [
+    ["another key order", (_text, t) => JSON.stringify(Object.fromEntries(Object.entries(t).reverse()))],
+    ["spaces and line breaks", (_text, t) => JSON.stringify(t, null, 2)],
+    ["a planted first copy of the amount and the payee", (text) => `{"amount":"18500.00","beneficiary_id":"${other}",${text.slice(1)}`],
+  ];
+  const paid: string[] = [];
+  for (const [what, rewrite] of kept) {
+    const w = await signedWorld();
+    store(w, rewrite(w.text, w.terms));
+    await executeInvoicePayment(w.db, w.awx, w.awx, w.id);
+    // Exactly the signed payment: EUR 1,850.00 to the signed payee, once.
+    expect(w.awx.transfers.map((t) => `${t.status} ${t.amountCents} ${t.beneficiaryId}`), what).toEqual([`PAID 185000 ${String(w.terms.beneficiary_id)}`]);
+    paid.push(what);
+    moved += extra(w, 1);
+    if (what.startsWith("a planted")) expect((w.db.prepare("SELECT json_extract(terms_json, '$.amount') AS a FROM proposals WHERE proposal_id = ?").get(w.id) as { a: string }).a).toBe("18500.00");
+  }
+  return { moved, control: "the passkey's signature over the exact terms", record: `refused, the terms do not match the approved hash: ${refused.join(", ")}; paid exactly as signed (EUR 1,850.00 to the signed payee): ${paid.join(", ")}` };
+};
+
+// The edges of the expiry. The approval arrives at the very moment the terms run out; the payment is started at that
+// moment; the expiry column beside the terms is pushed out by a day (the hash does not cover the column) and the
+// payment is started after the expiry the CFO signed.
+SCENARIOS["expiry-edges"] = async () => {
+  const expiryOf = (w: { db: DB }, id: string) => Date.parse((w.db.prepare("SELECT expires_at FROM proposals WHERE proposal_id = ?").get(id) as { expires_at: string }).expires_at);
+  // 1. The approval at the very moment of expiry: too late, nothing approved.
+  const a = await bankWorld();
+  const idA = await propose(a, GENUINE);
+  const atExpiry = new Date(expiryOf(a, idA));
+  const late = await processAssertion(a.db, assertion(a.cfo, idA, hashOf(a.db, idA), a.now), atExpiry);
+  expect(late.status).toBe("too_late");
+  expect(count(a.db, "SELECT COUNT(*) AS n FROM approvals")).toBe(0);
+  // 2. Approved a millisecond before; started at the very moment of expiry.
+  const b = await bankWorld();
+  const idB = await propose(b, GENUINE);
+  const endB = expiryOf(b, idB);
+  expect((await processAssertion(b.db, assertion(b.cfo, idB, hashOf(b.db, idB), b.now), new Date(endB - 1))).status).toBe("approved");
+  const atEnd = await refusalOf(() => executeInvoicePayment(b.db, b.awx, b.awx, idB, () => new Date(endB)));
+  expect(atEnd).toMatch(/expired at .*; approval void/);
+  expect(statusOf(b.db, idB)).toBe("EXPIRED");
+  // 3. Approved in time; then the expiry column is pushed out by a day, in the other clock format, and the payment is
+  //    started a minute after the expiry in the signed terms.
+  const c = await bankWorld();
+  const idC = await propose(c, GENUINE);
+  const endC = expiryOf(c, idC);
+  expect((await sign(c.db, c.cfo, idC, c.now)).status).toBe("approved");
+  c.db.prepare("UPDATE proposals SET expires_at = ? WHERE proposal_id = ?").run(new Date(endC + 86_400_000).toISOString(), idC);
+  const pushedOut = await refusalOf(() => executeInvoicePayment(c.db, c.awx, c.awx, idC, () => new Date(endC + 60_000)));
+  expect(pushedOut).toMatch(/expired at .*; approval void/);
+  expect(c.awx.transfers).toHaveLength(0);
+  // 4. The same instant written with milliseconds is the same expiry: not a moment later.
+  const d = await bankWorld();
+  const idD = await propose(d, GENUINE);
+  const endD = expiryOf(d, idD);
+  expect((await sign(d.db, d.cfo, idD, d.now)).status).toBe("approved");
+  d.db.prepare("UPDATE proposals SET expires_at = ? WHERE proposal_id = ?").run(new Date(endD).toISOString(), idD);
+  expect(await refusalOf(() => executeInvoicePayment(d.db, d.awx, d.awx, idD, () => new Date(endD)))).toMatch(/expired at/);
+  for (const w of [a, b, c, d]) expect(w.awx.transfers).toHaveLength(0);
+  const tooLate = events(a.db, "approval.too_late");
+  expect(tooLate).toHaveLength(1);
+  const fixed = (text: string) => text.replace(/\d{4}-\d{2}-\d{2}T[\d:.]+Z/g, "the signed expiry");
+  return { moved: [a, b, c, d].reduce((n, w) => n + bankMoved(w), 0), control: "the passkey's signature over the exact terms", record: fixed(`approval.too_late at the moment of expiry: ${late.message}; started at the moment of expiry: ${atEnd}; the expiry column pushed out a day: ${pushedOut}`) };
+};
+
+// The rail, or the network to it, fails at the worst moment: Airwallex accepts the transfer and its answer is lost;
+// the request never arrives; the runner dies right after Airwallex accepted; the runner dies after the payment was
+// begun and before its payout row was written. Each is retried. The payout leaves once.
+SCENARIOS["rail-fails-after-accepting"] = async () => {
+  const said: string[] = [];
+  let moved = 0;
+  // 1. The euro executor, the answer lost: it looks the request id up and adopts the transfer Airwallex holds.
+  const a = await bankWorld();
+  const idA = await propose(a, GENUINE);
+  expect((await sign(a.db, a.cfo, idA, a.now)).status).toBe("approved");
+  a.awx.loseNextTransferAnswer = true;
+  await executeInvoicePayment(a.db, a.awx, a.awx, idA);
+  expect(await refusalOf(() => executeInvoicePayment(a.db, a.awx, a.awx, idA))).toMatch(/EXECUTED, not approved/);
+  expect(a.awx.transfers.map((t) => t.status)).toEqual(["PAID"]);
+  expect(events(a.db, "transfer.adopted")).toHaveLength(1);
+  said.push("the answer lost (euro payment): transfer.adopted, paid once");
+  moved += extra(a, 1);
+  // 2. The supplier executor: the answer lost, and in a second company the request never arriving.
+  const b = await supplierWorld();
+  const idB = await planSupplier(b);
+  expect((await sign(b.db, b.cfo, idB, b.now)).status).toBe("approved");
+  b.awx.loseNextTransferAnswer = true;
+  await executeSupplierPayment(b.db, b.awx, b.awx, idB);
+  expect(b.awx.transfers.map((t) => t.status)).toEqual(["PAID"]);
+  expect(events(b.db, "transfer.adopted")).toHaveLength(1);
+  const c = await supplierWorld();
+  const idC = await planSupplier(c);
+  expect((await sign(c.db, c.cfo, idC, c.now)).status).toBe("approved");
+  c.awx.dropNextTransfer = true;
+  const dropped = await refusalOf(() => executeSupplierPayment(c.db, c.awx, c.awx, idC));
+  expect(dropped).not.toBe("");
+  expect(c.awx.transfers).toHaveLength(0);
+  expect(events(c.db, "transfer.left_open")).toHaveLength(1);
+  await executeSupplierPayment(c.db, c.awx, c.awx, idC);
+  await refusalOf(() => executeSupplierPayment(c.db, c.awx, c.awx, idC));
+  expect(c.awx.transfers.map((t) => t.status)).toEqual(["PAID"]);
+  said.push("the answer lost (supplier payment): transfer.adopted, paid once; the request never arrived: transfer.left_open, then sent once");
+  moved += extra(b, 1) + extra(c, 1);
+  // 3 and 4. The runner dies at a chosen point. What it leaves behind is the ledger as it stood at that point (a copy
+  // taken there) and Airwallex's stand-in as it stood; a new runner starts on that ledger and resumes.
+  for (const [point, what, atRail] of [["transfer:after-create", "right after Airwallex accepted the transfer", 1], ["transfer:before", "after the payment was begun, before its payout row was written", 0]] as const) {
+    const w = await bankWorld();
+    const id = await propose(w, GENUINE);
+    expect((await sign(w.db, w.cfo, id, w.now)).status).toBe("approved");
+    let left: Buffer | null = null;
+    chaos.at = (at) => { if (at === point && !left) { left = w.db.serialize(); throw new Error("the runner died here"); } };
+    await refusalOf(() => executeInvoicePayment(w.db, w.awx, w.awx, id));
+    chaos.at = null;
+    expect(left, point).not.toBeNull();
+    expect(w.awx.transfers, point).toHaveLength(atRail);
+    const restarted = new Database(left!) as unknown as DB;
+    expect(statusOf(restarted, id), point).toBe("EXECUTING");
+    expect(count(restarted, "SELECT COUNT(*) AS n FROM transfers WHERE transfer_id IS NOT NULL"), point).toBe(0);
+    const resumed = await resumeInterrupted(restarted, async (db, pid) => { await executeInvoicePayment(db, w.awx, w.awx, pid); });
+    expect(resumed, point).toEqual([{ id, outcome: "EXECUTED" }]);
+    expect(await refusalOf(() => executeInvoicePayment(restarted, w.awx, w.awx, id)), point).toMatch(/EXECUTED, not approved/);
+    expect(w.awx.transfers.map((t) => t.status), point).toEqual(["PAID"]);
+    expect(count(restarted, "SELECT COUNT(*) AS n FROM transfers WHERE status = 'PAID'"), point).toBe(1);
+    said.push(`the runner died ${what}: proposal.resumed, ${atRail ? "the transfer adopted" : "the transfer sent"}, paid once`);
+    moved += extra(w, 1);
+  }
+  return { moved, control: "a payout is looked up by its request id, never sent blind", record: said.join("; ") };
+};
+
+// The ledger is restored from a backup taken after the CFO approved and before the payment ran: in it the approval is
+// unused again. The payment is started a second time. Nothing in the restored ledger knows it was paid; the request id
+// is part of the signed terms, and Airwallex's stand-in keeps one transfer per request id.
+SCENARIOS["ledger-restored-from-backup"] = async () => {
+  const said: string[] = [];
+  let moved = 0;
+  // A euro invoice payment.
+  const a = await bankWorld();
+  const idA = await propose(a, GENUINE);
+  expect((await sign(a.db, a.cfo, idA, a.now)).status).toBe("approved");
+  const backupA = a.db.serialize();
+  await executeInvoicePayment(a.db, a.awx, a.awx, idA);
+  const restoredA = new Database(backupA) as unknown as DB;
+  expect(statusOf(restoredA, idA)).toBe("APPROVED");
+  expect(count(restoredA, "SELECT COUNT(*) AS n FROM transfers")).toBe(0);
+  const secondA = await refusalOf(() => executeInvoicePayment(restoredA, a.awx, a.awx, idA));
+  expect(secondA).toMatch(/duplicate request_id/);
+  // A third try finds the transfer Airwallex holds under the request id, and takes it as the payment: no new one.
+  await executeInvoicePayment(restoredA, a.awx, a.awx, idA);
+  expect(a.awx.transfers.map((t) => `${t.status} ${t.amountCents}`)).toEqual(["PAID 185000"]);
+  expect(events(restoredA, "transfer.adopted")).toHaveLength(1);
+  said.push(`a euro payment run again on the restored ledger: Airwallex (stand-in) answered "${secondA}"; then transfer.adopted, one transfer`);
+  moved += extra(a, 1);
+  // A supplier payment.
+  const b = await supplierWorld();
+  const idB = await planSupplier(b);
+  expect((await sign(b.db, b.cfo, idB, b.now)).status).toBe("approved");
+  const backupB = b.db.serialize();
+  await executeSupplierPayment(b.db, b.awx, b.awx, idB);
+  const restoredB = new Database(backupB) as unknown as DB;
+  expect(statusOf(restoredB, idB)).toBe("APPROVED");
+  await executeSupplierPayment(restoredB, b.awx, b.awx, idB);
+  expect(b.awx.transfers.map((t) => `${t.status} ${t.amountCents}`)).toEqual(["PAID 985000"]);
+  expect(events(restoredB, "transfer.adopted")).toHaveLength(1);
+  said.push("a supplier payment run again on the restored ledger: duplicate request id, transfer.adopted, one transfer");
+  moved += extra(b, 1);
+  return { moved, control: "Airwallex keeps one transfer per request id", record: said.join("; ") };
+};
+
+// Four eyes, and one person who wants to be two. The phone page is the attacker's, so the CFO's passkey signs what it
+// is given. A second passkey for the CFO's own name is refused; a passkey made without an enrolment window opened on
+// the runner is refused; one made in a window but never confirmed on the runner does not count.
+SCENARIOS["four-eyes-one-person-two-passkeys"] = async () => {
+  const w = await bankWorld();
+  const p = proposePolicyChange(w.db, { changes: [{ key: "approval.four_eyes_eur", to: "500.00" }], reason: "two people above EUR 500.00" }, "human", w.now);
+  expect((await sign(w.db, w.cfo, p.proposal_id, w.now)).status).toBe("approved");
+  executePolicyChange(w.db, p.proposal_id, w.now);
+  const id = await propose(w, LARGE);
+  expect((await sign(w.db, w.cfo, id, w.now)).status).toBe("cosigned");
+  // 1. A second passkey under the CFO's own name.
+  const ownName = await refusalOf(() => openEnrolment(w.db, { rpId: RP, origin: ORIGIN, addPerson: "max" }, w.now));
+  expect(ownName).toMatch(/max already has a passkey/);
+  // 2. A passkey made with no window open: there is nothing to register against.
+  const second = new FakeAuthenticator();
+  const noWindow = await processRegistration(w.db, item("registration", { code: "000000", credential: second.register({ challenge: "AAAA", origin: ORIGIN, rpId: RP }) }, null, w.now), { label: "max" }, w.now);
+  expect(noWindow).toMatchObject({ status: "refused", message: expect.stringMatching(/no enrolment window is open/) });
+  // 3. A window for another name is opened on the runner and the passkey made, but nobody confirms its fingerprint there.
+  const { window, code } = openEnrolment(w.db, { rpId: RP, origin: ORIGIN, addPerson: "maxine" }, w.now);
+  const pending = await processRegistration(w.db, item("registration", { code, credential: second.register({ challenge: window.challenge, origin: ORIGIN, rpId: RP }) }, null, w.now), { label: "max" }, w.now);
+  expect(pending.status).toBe("pending");
+  const unconfirmed = await sign(w.db, second, id, w.now);
+  expect(unconfirmed).toMatchObject({ status: "refused", message: "this passkey is not enrolled" });
+  // The CFO's own passkey again: still one person.
+  const again = await sign(w.db, w.cfo, id, w.now);
+  expect(again).toMatchObject({ status: "refused", message: expect.stringMatching(/a second person must approve/) });
+  expect(statusOf(w.db, id)).toBe("PENDING_APPROVAL");
+  expect(await refusalOf(() => executeInvoicePayment(w.db, w.awx, w.awx, id))).toMatch(/not approved/);
+  expect(w.awx.transfers).toHaveLength(0);
+  return { moved: bankMoved(w), control: "four eyes", record: `a second passkey under the same name: ${ownName}; with no window: ${noWindow.message}; made but not confirmed on the runner: ${unconfirmed.message}; the CFO again: ${again.message}` };
+};
+
+// A cosignature from before a change of terms. The CFO signs the genuine EUR 9,850.00 payment: one of two. Then the
+// stored terms are rewritten to the attacker's account, the stored hash with them, and the second person's passkey
+// signs the new terms on a phone page the attacker controls. The CFO never signed those.
+SCENARIOS["cosignature-before-terms-change"] = async () => {
+  const w = await bankWorld({ fourEyes: true });
+  const id = await propose(w, LARGE);
+  expect((await sign(w.db, w.cfo, id, w.now)).status).toBe("cosigned");
+  const other = await w.awx.createBeneficiary(ATTACKER_PAYEE);
+  w.db.prepare("INSERT INTO beneficiaries (beneficiary_id, name, iban_last4, iban_sha256, bic, currency, method) VALUES (?, ?, ?, ?, ?, 'EUR', 'SWIFT')").run(other.id, ATTACKER_PAYEE.name, ATTACKER_IBAN.slice(-4), ibanSha(ATTACKER_IBAN), ATTACKER_PAYEE.bic);
+  const signedByCfo = hashOf(w.db, id);
+  const rewritten = rewriteTerms(w.db, id, { beneficiary_id: other.id, beneficiary_name: ATTACKER_PAYEE.name, iban_last4: ATTACKER_IBAN.slice(-4), bic: ATTACKER_PAYEE.bic });
+  expect(rewritten).not.toBe(signedByCfo);
+  const second = await sign(w.db, w.controller!, id, w.now);
+  // The second person's signature is the first over these terms: one of two, not an approval.
+  expect(second.status).toBe("cosigned");
+  expect(statusOf(w.db, id)).toBe("PENDING_APPROVAL");
+  expect(count(w.db, "SELECT COUNT(*) AS n FROM approvals WHERE proposal_id = ?", id)).toBe(0);
+  const refusal = await refusalOf(() => executeInvoicePayment(w.db, w.awx, w.awx, id));
+  expect(refusal).toMatch(/not approved/);
+  expect(w.awx.transfers).toHaveLength(0);
+  const cosigned = events(w.db, "proposal.cosigned");
+  expect(cosigned.map((c) => `${String(c.person)} ${String(c.of)}`)).toEqual(["max 1 of 2", "anna 1 of 2"]);
+  expect(cosigned.map((c) => c.terms_sha256)).toEqual([signedByCfo, rewritten]);
+  return { moved: bankMoved(w), control: "the passkey's signature over the exact terms", record: `proposal.cosigned twice, each 1 of 2, over two different hashes; started anyway: ${refusal}` };
+};
+
+// ---------------------------------------------------------------------------------------------------------------------
 // The depth test. For each way money leaves, the path's hostile payment (PathSpec.hostile in the model) is pushed
 // through the real code with a chosen set of layers failed, and what failing means is the same on every path:
 //   L1 failed: the agent is hostile and asks for the payment (holding, it asks for nothing);
@@ -1792,14 +2169,20 @@ describe("the zero-trust model", () => {
     }
   });
 
-  it("says where each stand-in rail's refusal comes from, in the words the stand-ins answer", () => {
-    expect(RAIL_REFUSALS.map((r) => r.id).sort()).toEqual(["card_category", "card_limit", "mandate_cap", "mandate_payee", "mandate_revoked", "transfer_approval"]);
+  it("says where each stand-in rail's refusal comes from, in the words the stand-ins answer", async () => {
+    expect(RAIL_REFUSALS.map((r) => r.id).sort()).toEqual(["card_category", "card_limit", "mandate_cap", "mandate_payee", "mandate_revoked", "transfer_approval", "transfer_request_id"]);
     // The Metal reasons are Metal's own, from its published library.
     expect(RAIL_REFUSALS.find((r) => r.id === "mandate_cap")!.answer).toBe(REFUSALS.OverPerPaymentCap.reason);
     expect(RAIL_REFUSALS.find((r) => r.id === "mandate_payee")!.answer).toBe(REFUSALS.PayeeNotAllowed.reason);
     expect(RAIL_REFUSALS.find((r) => r.id === "mandate_revoked")!.answer).toBe(REFUSALS.Revoked.reason);
     // Where no run record shows the live rail answering so, the model says so instead of citing one.
-    expect(RAIL_REFUSALS.filter((r) => r.live === null).map((r) => r.id)).toEqual(["mandate_payee"]);
+    expect(RAIL_REFUSALS.filter((r) => r.live === null).map((r) => r.id)).toEqual(["mandate_payee", "transfer_request_id"]);
+    // The stand-in's answer to a repeated request id, in its own words.
+    const awx = new FakeAirwallex();
+    const once = { requestId: "zt-req-1", beneficiaryId: "ben_1", amountCents: 100, currency: "EUR" as const, sourceCurrency: "EUR" as const, reference: "r", reason: "x", approvalSha256: "0".repeat(64) };
+    await awx.createTransfer(once);
+    expect(await refusalOf(() => awx.createTransfer(once))).toContain(RAIL_REFUSALS.find((r) => r.id === "transfer_request_id")!.answer);
+    expect(awx.transfers).toHaveLength(1);
     for (const r of RAIL_REFUSALS.filter((x) => x.live)) expect(readFileSync(repo(r.live!.path), "utf8"), r.id).toContain(r.answer);
   });
 

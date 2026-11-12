@@ -61,7 +61,7 @@ export const LAYERS: readonly Layer[] = [
 /** What an attacker may be assumed to control. */
 export type ComponentId =
   | "agent_output" | "document" | "agent_key" | "relay" | "phone_page" | "approval_in_transit"
-  | "decision_code" | "stored_terms" | "database" | "webhook_sender" | "other_tenant";
+  | "second_phone_page" | "decision_code" | "stored_terms" | "database" | "network" | "webhook_sender" | "other_tenant";
 
 export interface Component {
   id: ComponentId;
@@ -78,10 +78,12 @@ export const COMPONENTS: readonly Component[] = [
   { id: "agent_key", name: "an agent's key", voids: ["L1", "L2"], means: "The attacker holds an agent's own signing key and pays with it directly, past the agent and past Purser's checks." },
   { id: "relay", name: "the hosted relay Worker", voids: [], means: "The attacker changes, drops, replays or invents what the relay carries between the phone and the runner. The relay holds no approval power." },
   { id: "phone_page", name: "the phone page", voids: ["L3"], means: "The attacker controls the page the CFO signs on, so the CFO's own passkey may sign what the page sends." },
+  { id: "second_phone_page", name: "the second person's phone page", voids: ["L4"], means: "The attacker controls the page the second person signs on, so that person's own passkey may sign what the page sends." },
   { id: "approval_in_transit", name: "a signed approval in transit", voids: [], means: "The attacker holds a genuine signed approval and sends it again, later, or for something else." },
   { id: "decision_code", name: "Purser's own decision code", voids: ["L2", "L3", "L4"], means: "Every check in Purser's own code is forced to answer pay, the signature checks included. It does not reach further: a runner host taken over with its keys is out of scope (docs/security.md)." },
   { id: "stored_terms", name: "a payment's stored terms", voids: ["L1", "L2"], means: "The attacker rewrites the terms of one payment in the ledger file (the payee, the amount, the currency), so neither the agent nor the checks made when it was planned protect it any more. The approval is out of reach: forging that too is the breach \"the database file\"." },
   { id: "database", name: "the database file", voids: ["L1", "L2", "L3", "L4"], means: "The attacker writes any row in the ledger file: a payment nobody asked for, an approval with terms and hashes that agree, the log itself. Purser's executor trusts its own database, so this gets past the agent, the checks and both signatures; only the rail and verify answer it." },
+  { id: "network", name: "the network to the rail", voids: [], means: "The attacker, or bad luck, drops an answer from Airwallex, cuts the connection or stops the runner at the worst moment. They cannot read or change what is sent." },
   { id: "webhook_sender", name: "a webhook sender", voids: [], means: "The attacker posts events that claim to come from Airwallex, or sends a real one again." },
   { id: "other_tenant", name: "another company's session", voids: [], means: "The attacker is signed in to Purser Cloud as another company, with that company's full rights." },
 ];
@@ -529,11 +531,78 @@ export const ATTACKS: readonly Attack[] = [
     action: "Run an approved supplier payment after the stop.",
     bypasses: ["L1"], stoppedBy: "L6",
   },
+  // Attacked by hand, as someone who has read the code.
+  {
+    id: "one-approval-two-executions",
+    description: "One approval is started twice: at the same moment, again later, by the other executor, and as a batch's line beside its batch.",
+    breach: ["approval_in_transit", "relay"], target: "bank_payout", alsoTries: ["supplier_invoice"],
+    action: "Pay one signed payment twice.",
+    bypasses: [], stoppedBy: "L3",
+    note: "The signature works once: the step that begins a payment takes the approval in one database transaction, so of two starts one finds it taken.",
+  },
+  {
+    id: "approval-run-by-another-executor",
+    description: "A signed payment in Turkish lira fails on its first try, its kind is changed in the database, and the euro executor is started on it.",
+    breach: ["stored_terms"], target: "supplier_invoice", alsoTries: ["bank_payout"],
+    action: "Send TRY 52,000.00 as EUR 52,000.00 under the CFO's signature; run a signed policy change as a payment.",
+    bypasses: ["L1", "L2"], stoppedBy: "L3",
+    note: "The kind is part of the signed terms, and each payment executor runs only its own kind. Found here and fixed: the euro executor did not check it (src/executors/invoicePayment.ts).",
+  },
+  {
+    id: "terms-rewritten-to-look-the-same",
+    description: "The stored terms are rewritten after signing so that they look the same or hash the same: number formats, a look-alike letter, key order, a planted copy of a key.",
+    breach: ["stored_terms"], target: "bank_payout",
+    action: "Pay another amount or payee under a signature that still seems to fit.",
+    bypasses: ["L1", "L2"], stoppedBy: "L3",
+    note: "The executor pays what it parsed and hashed, never the stored text: a form that changes the hash is refused, a form that keeps it pays exactly what was signed.",
+  },
+  {
+    id: "expiry-edges",
+    description: "The approval arrives, or the payment is started, at the very moment the terms run out; or the expiry stored beside the terms is pushed out after signing.",
+    breach: ["approval_in_transit", "stored_terms"], target: "bank_payout",
+    action: "Pay on terms that have run out.",
+    bypasses: ["L1", "L2"], stoppedBy: "L3",
+    note: "The expiry the CFO signed is the one inside the terms. Found here and fixed: the step that begins a payment read only the copy beside them, which the hash does not cover (src/policy/approvals.ts).",
+    evidence: EVIDENCE.lateApproval,
+  },
+  {
+    id: "rail-fails-after-accepting",
+    description: "Airwallex accepts a transfer and the answer is lost, or the runner stops right then, and the payment is tried again.",
+    breach: ["network"], target: "bank_payout", alsoTries: ["supplier_invoice"],
+    action: "Get one signed payment sent twice by failing it midway.",
+    bypasses: [], stoppedBy: "L2",
+    note: "A payout whose outcome is unknown is looked up at Airwallex by its request id and taken over; it is never sent again blind.",
+  },
+  {
+    id: "ledger-restored-from-backup",
+    description: "The ledger is restored from a backup taken after the CFO approved and before the payment ran, and the payment is started again.",
+    breach: ["database"], target: "bank_payout", alsoTries: ["supplier_invoice"],
+    action: "Pay a signed payment a second time from a ledger that no longer knows it was paid.",
+    bypasses: ["L1", "L2", "L3", "L4"], stoppedBy: "L5",
+    note: "The request id is part of the terms the CFO signed, and the rail keeps one transfer per request id. A backup from before the payment was planned does not have that id (see LIMITS).",
+  },
+  {
+    id: "four-eyes-one-person-two-passkeys",
+    description: "One person tries to count as two: a second passkey under their own name, one made without the runner, one never confirmed on the runner.",
+    breach: ["phone_page"], target: "bank_payout",
+    action: "Pay EUR 9,850.00, above the four-eyes threshold, with two passkeys held by one person.",
+    bypasses: ["L3"], stoppedBy: "L4",
+    needs: "the CFO has set a four-eyes threshold (approval.four_eyes_eur)",
+  },
+  {
+    id: "cosignature-before-terms-change",
+    description: "The CFO signs the genuine payment as the first of two; then the stored terms are rewritten and the second person's passkey signs the new ones on a breached page.",
+    breach: ["stored_terms", "second_phone_page"], target: "bank_payout",
+    action: "Pay EUR 9,850.00 to the attacker's account on terms the CFO never signed.",
+    bypasses: ["L1", "L2", "L4"], stoppedBy: "L3",
+    note: "A first signature counts only for the exact terms it was made over. Found here and fixed: a signature made before the terms changed was counted for the changed terms (src/policy/approvals.ts).",
+    needs: "the CFO has set a four-eyes threshold (approval.four_eyes_eur)",
+  },
 ];
 
 /** A refusal a stand-in rail gives in the tests, and where that behaviour comes from. */
 export interface RailRefusal {
-  id: "card_limit" | "card_category" | "mandate_cap" | "mandate_payee" | "mandate_revoked" | "transfer_approval";
+  id: "card_limit" | "card_category" | "mandate_cap" | "mandate_payee" | "mandate_revoked" | "transfer_approval" | "transfer_request_id";
   rail: "Airwallex" | "Metal";
   /** What the rail answers. */
   answer: string;
@@ -582,6 +651,12 @@ export const RAIL_REFUSALS: readonly RailRefusal[] = [
     source: "Airwallex's own approval workflow holding a transfer made over the API until a person approves it in Airwallex.",
     live: EVIDENCE.transferApproval,
   },
+  {
+    id: "transfer_request_id", rail: "Airwallex", answer: "duplicate request_id",
+    standIn: "FakeAirwallex.createTransfer and createPayoutTransfer (src/redteam/airwallex.ts)",
+    source: "Airwallex's published API, not a run: a transfer is made under a request id the caller chooses, and a second create under the same id is answered with an error that names the first transfer, never with a second transfer. The executors' handling of that answer is tested against the adapter (the contract tests named in src/executors/invoicePayment.ts).",
+    live: null,
+  },
 ];
 
 /** Where the model stops: what it does not cover, said plainly, with the document that says so. */
@@ -611,6 +686,18 @@ export const LIMITS: readonly Limit[] = [
     what: "Someone who can write the ledger file can append forged rows after the last published anchor, and the chain still verifies.",
     stillHolds: "Anchors printed in run records and audit reports limit this to rows after the last published anchor.",
     source: "docs/security.md, accepted risks",
+  },
+  {
+    id: "four-eyes-is-two-passkeys",
+    what: "Four eyes counts passkeys enrolled under two names. It cannot know that two names are two human beings: a person who enrols a second passkey under another name, with the enrolment opened and the fingerprint confirmed on the runner, counts as two.",
+    stillHolds: "A second name can only be added on the runner, by whoever runs it, and the enrolment is in the audit log; the phone and the relay cannot add one. The rails' own controls still apply.",
+    source: "docs/security.md; src/passkey/ledger.ts",
+  },
+  {
+    id: "backup-from-before-the-plan",
+    what: "A ledger restored from a backup taken before a payment was planned no longer knows that payment. Planned again, it gets a new request id, and Airwallex would treat it as a new transfer: the invoice could be paid twice.",
+    stillHolds: "The second plan needs the CFO's signature again; a backup taken after the plan carries the request id, and then the rail refuses the repeat (the attack ledger-restored-from-backup). Compare the restored ledger with Airwallex before paying from it.",
+    source: "docs/security.md; src/executors/invoicePayment.ts",
   },
   {
     id: "optional-controls",

@@ -186,7 +186,7 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
       if (args.method !== "passkey" || !passkey) throw new Error(`${p.proposal_id} needs the passkeys of two different people (four eyes)`);
       const person = args.approver.split(" (")[0]!;
       if (person === p.created_by) throw new Error(`${person} proposed ${p.proposal_id}, so ${person} cannot approve it (four eyes)`);
-      const signed = db.prepare("SELECT person, approver FROM cosignatures WHERE proposal_id = ? ORDER BY created_at, rowid").all(p.proposal_id) as { person: string; approver: string }[];
+      const signed = db.prepare("SELECT person, approver FROM cosignatures WHERE proposal_id = ? AND terms_sha256 = ? ORDER BY created_at, rowid").all(p.proposal_id, p.terms_sha256) as { person: string; approver: string }[]; // only a first signature over these exact terms counts: one made before the stored terms changed signed other terms (zero-trust matrix, 12 November)
       if (signed.some((x) => x.person === person)) throw new Error(`${person} already approved ${p.proposal_id}; a second person must approve it with their own passkey`);
       db.prepare("INSERT INTO cosignatures (proposal_id, credential_id, person, approver, terms_sha256, assertion_sha256, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
         .run(p.proposal_id, passkey.credential_id, person, args.approver, p.terms_sha256, passkey.assertion_sha256, now.toISOString());
@@ -247,7 +247,10 @@ export function beginExecution<T extends Terms>(db: DB, proposalId: string, prec
   // Expiry is committed on its own, so the EXPIRED status survives the error thrown below.
   const expired = db.transaction(() => {
     const p = get(db, proposalId);
-    return (p.status === "APPROVED" || p.status === "FAILED") && Date.parse(p.expires_at) <= now.getTime() ? (expireIfDue(db, p, now), p.expires_at) : null;
+    // The expiry the CFO signed is the one inside the terms. The column is a copy the hash does not cover, so the
+    // earlier of the two counts: pushing the column out buys no time (zero-trust matrix, 12 November).
+    const due = signedExpiry(p);
+    return (p.status === "APPROVED" || p.status === "FAILED") && Date.parse(due) <= now.getTime() ? (expireIfDue(db, { ...p, expires_at: due }, now), due) : null;
   }).immediate();
   if (expired) throw new Error(`${proposalId} expired at ${expired}; approval void`);
   // The hub gate (src/hub/gate.ts), an extra gate on top of every check below, never instead of one; off unless
@@ -284,6 +287,13 @@ export function beginExecution<T extends Terms>(db: DB, proposalId: string, prec
     audit(db, "system", "proposal.executing", proposalId, { terms_sha256: recomputed }, now);
     return terms;
   }).immediate();
+}
+
+/** When a proposal runs out: the expiry in its terms (the one the hash covers), or the column's when that is earlier or the terms cannot be read. */
+function signedExpiry(p: Pick<ProposalRow, "terms_json" | "expires_at">): string {
+  let inTerms: unknown;
+  try { inTerms = (JSON.parse(p.terms_json) as { expires_at?: unknown }).expires_at; } catch { return p.expires_at; }
+  return typeof inTerms === "string" && Date.parse(inTerms) < Date.parse(p.expires_at) ? inTerms : p.expires_at;
 }
 
 export function finishExecution(db: DB, proposalId: string, outcome: "EXECUTED" | "FAILED" | "NEEDS_REAPPROVAL", detail: Json = {}, now = new Date()): void {
