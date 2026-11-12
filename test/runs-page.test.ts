@@ -304,9 +304,12 @@ describe("/runs as a timeline", () => {
     for (const r of rows.filter((x) => x.key in KINDS)) {
       expect(r.kind, r.key).toBe(KINDS[r.key]);
       expect(kindOf(r)).toBe(KINDS[r.key]);
-      // A row in the old shape (no kind of its own) gets the same badge from its rails and money words.
-      expect(kindOf({ ...r, kind: undefined }), r.key).toBe(KINDS[r.key]);
+      // A row in the old shape (no kind of its own) gets the same badge from its rails and money words, except the one
+      // whose money words say simulated (review 12 Nov, DC-4): the TAP run's merchant was simulated, so without its own
+      // kind it can claim no more than Simulated; its explicit kind keeps it a live sandbox run.
+      expect(kindOf({ ...r, kind: undefined }), r.key).toBe(r.key === "tap-1" ? "simulated" : KINDS[r.key]);
     }
+    expect(row("tap-1").money).toBe("Simulated merchant · test money");
     // What the records say: the main run ran on Metal testnet and in the Airwallex sandbox; the second Airi run was live
     // and called nobody; the two rehearsals call themselves rehearsals.
     expect(row("main-1").rails).toMatch(/Metal testnet, Airwallex sandbox/);
@@ -328,6 +331,53 @@ describe("/runs as a timeline", () => {
     expect(page).toMatch(/<a href="#simulated">Simulated <b>1<\/b><\/a>/);
     expect(html).not.toContain('<a href="#simulated">');
     expect(html).not.toContain('id="simulated"');
+  });
+
+  // Review 12 Nov (DC-4): an old-shape row for a run on Purser's own fakes that names the partners it faked was badged
+  // "Live testnet and sandbox", counted as live and could become the last live run.
+  it("never badges a row as live when its own words say simulated, fake or mock", () => {
+    const faked: RunRow[] = [
+      { ...oldShape, key: "fake-a", iso: "2026-11-13T09:00:00.000Z", date: "13 Nov 2026", title: "A day on simulated rails", rails: "Simulated Airwallex and Metal (Purser's own fakes)", money: "Simulated · test money" },
+      { ...oldShape, key: "fake-b", iso: "2026-11-13T08:00:00.000Z", date: "13 Nov 2026", title: "Payouts on fakes", rails: "Fake Airwallex sandbox, fake Metal testnet", money: "Simulated · no partner called" },
+      { ...oldShape, key: "fake-c", iso: "2026-11-13T07:00:00.000Z", date: "13 Nov 2026", title: "Payouts to a mock bank", rails: "Airwallex sandbox (mocked), Metal testnet", money: "Test money" },
+    ];
+    for (const f of faked) expect(kindOf(f), f.key).toBe("simulated");
+    const page = runsPage([...rows, ...faked]);
+    for (const f of faked) {
+      const e = entriesOf(page).find((x) => x.key === f.key)!;
+      expect(e.html, f.key).toContain('<span class="kd simulated">Simulated</span>');
+      expect(e.html, f.key).not.toMatch(/class="kd (sandbox|testnet|both)"/);
+      expect(e.cls, f.key).not.toEqual(expect.arrayContaining(["f-sandbox"]));
+      expect(e.cls, f.key).not.toEqual(expect.arrayContaining(["f-testnet"]));
+      // The partners it names are the ones it faked: no partner chip or filter for them.
+      expect(e.cls.filter((c) => /^f-(airwallex|metal|visa)$/.test(c)), f.key).toEqual([]);
+      expect(e.html, f.key).not.toMatch(/class="rl (awx|metal|visa)"/);
+    }
+    // Not counted as live sandbox or testnet runs, and not the last live run: the counts are today's.
+    const count = (h: string, id: string) => Number(new RegExp(`<a href="#${id}">[^<]+ <b>(\\d+)</b>`).exec(h)?.[1] ?? 0);
+    for (const id of ["sandbox", "testnet", "airwallex", "metal"]) expect(count(page, id), id).toBe(count(html, id));
+    expect(count(page, "simulated")).toBe(3);
+    expect(text(page)).toContain(`Last live run: ${rows[0]!.date}.`);
+    expect(runsReadme([...rows, ...faked])).toContain(`**Last live run:** ${rows[0]!.date}.`);
+    // "Rehearsal" is read from the money words, not from a title that mentions one.
+    const after: RunRow = { ...oldShape, key: "again-x", title: "The main run again, after its rehearsal", rails: "Metal testnet, Airwallex sandbox", money: "Test money" };
+    expect(kindOf(after)).toBe("both");
+    expect(kindOf({ ...after, money: "Rehearsal · test money" })).toBe("rehearsal");
+    // A row with its own kind keeps it.
+    expect(kindOf({ ...faked[0]!, kind: "sandbox" })).toBe("sandbox");
+  });
+
+  it("cuts an old-shape row's one line at its first full sentence, not at an abbreviation or a date", () => {
+    const line = (what: string) => {
+      const e = entriesOf(runsPage([...rows, { ...oldShape, what }])).find((x) => x.key === "old-x")!;
+      return /<p class="ln">([\s\S]*?) <a /.exec(e.html)![1];
+    };
+    expect(line("Paid on 12 Nov. at 09:00 UTC by the owner. Simulated settlement.")).toBe("Paid on 12 Nov. at 09:00 UTC by the owner.");
+    expect(line("Paid on 12 Nov. 2026, then booked. Each read back.")).toBe("Paid on 12 Nov. 2026, then booked.");
+    expect(line("Fees, e.g. EUR 0.05, were taken. Each read back.")).toBe("Fees, e.g. EUR 0.05, were taken.");
+    expect(line("Five payouts of EUR 1.50 were created. Each went PAID.")).toBe("Five payouts of EUR 1.50 were created.");
+    expect(line("One sentence only")).toBe("One sentence only");
+    expect(line("Did it pay? Yes, PAID.")).toBe("Did it pay?");
   });
 
   it("keeps the rehearsals out of the live list, in one closed group with its count", () => {

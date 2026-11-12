@@ -264,28 +264,51 @@ const railChip = ([, name, ic, cls]: (typeof RAILS)[number]) => `<span class="rl
  * The partners shown as chips and counted by the filters: the row's own list where it has one, else read from its words
  * (T:0 where it took part). A passkey is not a partner: it stays in the fold's rails line.
  */
-const partnersOf = (r: RunRow) => r.partners ? RAILS.filter(([, n]) => (r.partners as string[]).includes(n)) : railsOf(r).filter(([, , , cls]) => cls !== "pk");
+const partnersOf = (r: RunRow) => r.partners ? RAILS.filter(([, n]) => (r.partners as string[]).includes(n))
+  // A simulated run without its own list names the partners it faked: none of them took part.
+  : kindOf(r) === "simulated" ? [] : railsOf(r).filter(([, , , cls]) => cls !== "pk");
 
 /** The honest badge: the kind of run, in the words the page shows. */
 export const KIND_LABEL: Record<RunKind, string> = {
   sandbox: "Live sandbox", testnet: "Live testnet", both: "Live testnet and sandbox", simulated: "Simulated", rehearsal: "Rehearsal", nothing: "Live, nothing bought",
 };
+/** Words that say a run, or a part of it, was not real: such a row can claim no more than Simulated. */
+const FAKED = /simulat|\bfake|\bmock|\bstub|\bdummy|\bemulat/i;
 /**
  * A row's kind: its own, or (a row in the old shape) read from its money words and the payment rails it names. A row
- * that names no payment partner's sandbox or testnet is Simulated: the least it can claim.
+ * whose own money, rails or title words say simulated, fake or mock, or that names no payment partner's sandbox or
+ * testnet, is Simulated: the least it can claim. "Rehearsal" is read from the money words only.
  */
 export function kindOf(r: Pick<RunRow, "kind" | "title" | "rails" | "money">): RunKind {
   if (r.kind) return r.kind;
-  if (/rehearsal|dry run/i.test(`${r.money} ${r.title}`)) return "rehearsal";
+  if (/rehearsal|dry run/i.test(r.money)) return "rehearsal";
+  if (FAKED.test(`${r.money} ${r.rails} ${r.title}`)) return "simulated";
   if (/no money moved|nothing bought/i.test(r.money)) return "nothing";
   const testnet = /Metal/i.test(r.rails), sandbox = /Airwallex|Airi\b|T:0|sandbox/i.test(r.rails);
   return testnet && sandbox ? "both" : testnet ? "testnet" : sandbox ? "sandbox" : "simulated";
 }
 const isRehearsal = (r: RunRow) => kindOf(r) === "rehearsal";
 const nameOf = (r: RunRow) => r.name ?? r.title;
-/** A row's one line: its own, or the first sentence of what ran (the point in "EUR 4.84" does not end a sentence). */
-const lineOf = (r: RunRow) => r.line ?? /^.*?[.!?](?=\s|$)/.exec(r.what)?.[0] ?? r.what;
+/** Words whose point does not end a sentence: a month ("12 Nov. at 09:00"), "e.g.", "i.e." and their like. */
+const ABBREV = /(?:\b(?:Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|etc|vs|approx|incl|No|Nr|cf|Inc|Ltd|Co)|\be\.g|\bi\.e)$/;
+/**
+ * The first full sentence of a text: up to the first ".", "!" or "?" followed by a space and a word that starts a
+ * sentence, not after an abbreviation (the point in "EUR 4.84", "12 Nov. at 09:00" or "e.g. EUR 0.05" does not end it).
+ */
+export function firstSentence(text: string): string {
+  for (const m of text.matchAll(/[.!?](?=\s+(\S)|\s*$)/g)) {
+    const at = m.index!, next = m[1];
+    if (next === undefined) return text.slice(0, at + 1);
+    if (/[a-z]/.test(next) || ABBREV.test(text.slice(0, at))) continue;
+    return text.slice(0, at + 1);
+  }
+  return text;
+}
+/** A row's one line: its own, or the first full sentence of what ran. */
+const lineOf = (r: RunRow) => r.line ?? firstSentence(r.what);
 const newestFirst = (rows: RunRow[]) => [...rows].sort((a, b) => b.iso.localeCompare(a.iso));
+/** The last live run, newest first: a run on Purser's own fakes is listed but never dates the last live run. */
+const lastLive = (live: RunRow[]) => live.find((r) => kindOf(r) !== "simulated") ?? live[0]!;
 /** The main run's "Trace any payment" is a link among its ids, not an id. */
 const isId = (i: RunId) => i.value !== "Trace any payment";
 /** A record link's words in sight: "JSON" for "record (JSON)", "Log" for "run log" (the full label stays its name). */
@@ -426,7 +449,7 @@ const FILTER_JS = `(function () {
 
 export function runsPage(all: RunRow[] = liveRuns()): string {
   const rows = newestFirst(all), live = rows.filter((r) => !isRehearsal(r)), rehearsals = rows.filter(isRehearsal);
-  const last = live[0]!;
+  const last = lastLive(live);
   const filters = FILTERS.map((f) => ({ ...f, n: live.filter(f.has).length })).filter((f) => f.n > 0);
   const chevron = icon("chevron-down", 16);
   const body = `<main class="wrap runsp">
@@ -474,7 +497,7 @@ Every live run, newest first, generated from the records by \`src/redesign/runs.
 The same list is on the site at [/runs](https://kit11.max-31b.workers.dev/runs). Test money only; what is simulated is
 said per run. The other files in this folder are build notes, dry runs and rehearsals.
 
-**Last live run:** ${live[0]!.date}.
+**Last live run:** ${lastLive(live).date}.
 
 | Date | Run | Rails | What ran | Checks | Key ids | Files |
 |---|---|---|---|---|---|---|
