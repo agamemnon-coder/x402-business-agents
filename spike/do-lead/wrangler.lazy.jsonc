@@ -1,0 +1,15 @@
+// SPIKE: never deployed. The cloud Worker with the Engine object and the whole engine, as wrangler would bundle it:
+//   wrangler deploy --dry-run --outdir <dir> -c spike/do-lead/wrangler.jsonc
+{
+  "name": "purser-cloud-lazy-probe",
+  "main": "./lazyWorker.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": { "bindings": [{ "name": "ENGINE", "class_name": "Engine" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Engine"] }],
+  "d1_databases": [{ "binding": "DB", "database_name": "purser-cloud", "database_id": "00000000-0000-0000-0000-000000000001" }],
+  "r2_buckets": [{ "binding": "DOCS", "bucket_name": "purser-cloud-docs" }],
+  "rules": [{ "type": "Data", "globs": ["**/*.pdf"], "fallthrough": true }, { "type": "Text", "globs": ["**/*.sql"], "fallthrough": true }],
+  "define": { "import.meta.url": "\"file:///purser-cloud/worker.js\"", "import.meta.dirname": "\"/purser-cloud\"", "import.meta.filename": "\"/purser-cloud/worker.js\"" },
+  "alias": { "playwright": "../do-runtime/probes/_stub.ts", "better-sqlite3": "../do-runtime/probes/_stub.ts" }
+}
