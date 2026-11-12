@@ -1,5 +1,5 @@
 // /visa's summary of the paid run (jury panel, 12 Nov: one summary of the paid run; it was "three live runs", then a
-// paid run beside a controls run): one card with the series as "N of M attempts paid", purchase B's ids and the run's
+// paid run beside a controls run): one card with the paid purchase (its amount, after the CFO's Face ID), its ids and the run's
 // honest label. Its tag says who asked (airiAsker: scripted, no Claude call, unless a purchase was asked for inside an
 // agent's Claude call); the attempts that failed are listed in a fold on the page
 // (src/redesign/vicFacts.ts). Every figure is read from the run's own record (docs/demo/airi-run.json); the card links
@@ -13,7 +13,6 @@
 import { airiAsker, airiClaudeChoices, airiRun, AIRI_RUN_ID, type AiriRunRecord } from "./airiRun.js";
 import { tapRun } from "./run.js";
 import { esc } from "./ui.js";
-import { vicAttemptCount } from "./vicFacts.js";
 
 /** The TAP fold's anchor on /visa: the last thing on the page, closed (src/redesign/partners.ts). */
 export const VISA_TAP_ID = "visa-tap";
@@ -35,11 +34,12 @@ const short = (s: string) => (s.length > 14 ? `${s.slice(0, 12)}…` : s);
 export function airiCard(rec: AiriRunRecord): RunCard | null {
   const b = rec.purchases.find((p) => p.route === "cfo" && p.outcome === "SUCCEEDED");
   if (!b?.payment_intent_id || !b.mandate_id) return null;
-  const n = vicAttemptCount(rec), claude = airiClaudeChoices(rec);
-  // The series alone (review, 12 Nov): what was paid, refused and checked is the run block's, right under this card.
+  const claude = airiClaudeChoices(rec);
+  // The paid purchase leads (the jury check, 12 Nov): purchase B's amount, paid after the CFO's Face ID. The day's
+  // attempts, "N of M paid", are counted in their fold lower on the page (vicAttemptsHtml), not on this card.
   return {
     kind: "paid", tag: `VIC via Airi · ${day(rec.started_at)} · ${airiAsker(rec).short}`, title: "Single-use Visa credential",
-    stats: [{ v: `${n.paid} of ${n.all}`, l: "attempts paid" }],
+    stats: [{ v: `${b.currency} ${b.amount}`, l: "paid after the CFO's Face ID" }],
     ids: [["Mandate", b.mandate_id], ["Payment", b.payment_intent_id], ...claude.map((id) => ["Claude request", id] as [string, string])],
     label: "Airwallex sandbox · test card · cardholder confirmed each purchase in Airi", href: `#${AIRI_RUN_ID}`,
   };
