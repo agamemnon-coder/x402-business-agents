@@ -1,13 +1,13 @@
 // Home: ONE story (home-story, 12 Nov, after seven jurors judged the live site). Top to bottom: the heading and what
 // Purser is in one sentence; one button ("Try it yourself") with one reassurance line; the sentence every juror repeated
-// (DIFFERENTIATORS[0]); the hero, which is also "how it works" in four steps and whose fourth step is the visitor's own
+// (now carried by the demo); the hero, which is also "how it works" in four steps and whose fourth step is the visitor's own
 // real check (src/redesign/heroDemo.ts); ONE provenance line with the "What's real?" link; three proof rows, each one
 // tap from the partner's own record; and the second and last button, "See the proof". No replay of the agents' run, no
 // awards strip, no run counts, no second caveat: the full list of what is real stays in the footer's fold. Every id,
 // amount and date is read from the run records (docs/demo/airwallex-run.json, docs/demo/main-run.json) and the hero's
 // receipt (the published receipt of the approval of 7 November, src/redesign/heroReceipt.ts).
 
-import { designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CHAIN_TEST, CORE_SENTENCE, DIFFERENTIATORS, HERO, JUDGE_LINE, SMALL_COMPANY_DEMO_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
+import { designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CHAIN_TEST, CORE_SENTENCE, HERO, JUDGE_LINE, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
 import type { Awx1Record } from "../awx/scenario.js";
 import { agentRun, type AgentRun } from "./run.js";
 import { AWX_RUN_FILE, AWX_RUN_STEPS_ID, awxRun } from "./awxRun.js";
@@ -16,7 +16,6 @@ import { HERO_DEMO_CSS, HERO_DEMO_JS, heroDemoFacts, heroDemoHtml, heroProvenanc
 import { HERO_RECEIPT_FILE, heroReceipt } from "./heroReceipt.js";
 import { VIC3_RUN_ID, vic3Run, type Vic3Record } from "./vic3Run.js";
 import { esc, icon, MAIN_RUN_REAL, page, TRY_URL } from "./ui.js";
-import { lifecycleSvg, VISUAL_CSS } from "../visuals/svg.js";
 import { BUILT_WITH } from "../visuals/logos.js";
 
 const CSS = `.hero { padding: 24px 0 36px; }
@@ -31,7 +30,6 @@ const CSS = `.hero { padding: 24px 0 36px; }
 @media (max-width: 1099px) { .btn.big { width: 100%; justify-content: center; } }
 .reassure { margin: 10px 0 0; font-size: 15px; color: var(--muted); text-wrap: balance; }
 /* The sentence every juror repeated: it leads into the hero. */
-.oneline { margin: 26px 0 0; padding-left: 13px; border-left: 3px solid var(--accent); font-size: 18px; line-height: 1.45; font-weight: 600; max-width: 30em; }
 p.partner { margin: 14px 0 0; font-weight: 650; } p.partner a { color: var(--accent); display: inline-flex; align-items: center; min-height: 44px; }
 /* The one provenance line, under the hero. */
 .prov { margin: 12px 2px 0; font-size: 14.5px; line-height: 1.5; color: var(--muted); }
@@ -41,7 +39,7 @@ section.locks { padding: 56px 0 64px; border-top: 1px solid var(--border); }
 section.locks .h-sec { font-size: clamp(26px, 2.8vw, 36px); }
 ol.rows { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 14px; }
 @media (min-width: 700px) { ol.rows { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; } }
-@media (min-width: 1100px) { ol.rows { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; } }
+@media (min-width: 1100px) { ol.rows { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; } }
 a.row { position: relative; display: grid; gap: 6px; align-content: start; height: 100%; min-height: 44px; padding: 22px 22px 18px; border-radius: var(--r); border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow); color: var(--text); text-decoration: none; transition: border-color .2s, transform .2s; }
 a.row:hover { border-color: var(--accent); transform: translateY(-2px); }
 a.row .ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); margin-bottom: 8px; }
@@ -62,13 +60,23 @@ a.row > .i { position: absolute; top: 22px; right: 20px; color: var(--accent); }
   a.row > .i { top: 16px; right: 14px; }
   .btn.big.more { margin-top: 18px; }
 }
-/* About Purser: two sentences and the payment's life, then the partners' logos. */
+/* About Purser: who decides and who enforces, five steps; across on a wide screen, a tight list on a phone. */
 section.about { padding: 56px 0 72px; border-top: 1px solid var(--border); }
 section.about .h-sec { font-size: clamp(26px, 2.8vw, 36px); }
-section.about p.lede { margin: 14px 0 0; font-size: 18px; line-height: 1.5; color: var(--muted); max-width: 40em; }
-section.about .life { margin: 28px 0 0; }
-section.about .life .pv-life-tall { display: none; }
-@media (max-width: 640px) { section.about .life .pv-life-wide { display: none; } section.about .life .pv-life-tall { display: block; max-width: 420px; } }
+ol.flow { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 8px; counter-reset: flow; }
+ol.flow li { counter-increment: flow; display: grid; grid-template-columns: 26px 52px minmax(0, 1fr); align-items: baseline; column-gap: 8px; font-size: 15px; line-height: 1.4; color: var(--muted); }
+ol.flow li::before { content: counter(flow); width: 22px; height: 22px; border-radius: 50%; background: var(--sunken); color: var(--text); font-size: 12px; font-weight: 700; display: grid; place-items: center; align-self: start; }
+ol.flow b { color: var(--text); font-weight: 700; }
+ol.flow li.you b, ol.flow li.you::before { color: var(--accent); }
+ol.flow a { color: var(--accent); font-size: 13px; font-weight: 650; white-space: nowrap; }
+@media (min-width: 900px) {
+  ol.flow { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; }
+  ol.flow li { grid-template-columns: auto 1fr; grid-template-rows: auto 1fr; align-items: center; align-content: start; row-gap: 10px; padding: 0 18px 0 0; position: relative; }
+  ol.flow li span { align-self: start; }
+  ol.flow li span { grid-column: 1 / -1; }
+  ol.flow li:not(:last-child)::after { content: ""; position: absolute; top: 11px; left: 30px; right: 12px; height: 1px; background: var(--border); }
+  ol.flow b { position: relative; z-index: 1; justify-self: start; background: var(--bg); padding-right: 10px; }
+}
 .works { margin: 32px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
 .works span { font-size: 14px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); }
 .works img { height: 40px; width: auto; max-width: 100%; display: block; }
@@ -142,6 +150,8 @@ export function homeHeadingHtml(): string {
 }
 /** Home's first button, word for word: where the Try tab goes. */
 export const START = "Try it yourself";
+/** The hero's one sentence under the heading (the owner, 12 Nov: one sentence). WHAT_IT_IS stays the README's and the form's. */
+export const HOME_SUB = "Over its limit, an agent asks; you sign the exact terms with Face ID.";
 /**
  * The one line under it, saying only what the page behind the button does. Since 12 Nov the button opens the hands-on
  * demo on Purser Cloud (TRY_URL): a test company of your own on test money, deleted after 24 hours (its start page says
@@ -156,30 +166,42 @@ export const PROOF_BUTTON = "See the proof";
 /** The fold at the end of Home (the owner, 12 Nov, for the Founder's award): no new page, no menu item, no person. */
 export const ABOUT_HEAD = "About Purser";
 
-/** About Purser (home-polish, 12 Nov): two sentences and the payment's life (src/visuals/svg.ts); the business, the
- * runs and the pricing are on their own pages (/pricing, /runs, /docs). No customer, pilot or revenue is claimed. */
-export const ABOUT_LINES = [
-  "Purser keeps AI agents inside limits a CFO signs.",
-] as const;
+/**
+ * About Purser (the owner, 12 Nov): five steps, who decides and who enforces. A step is marked Claude only where a run
+ * record or an eval shows it ran: the reader read the invoices in live sandbox runs (7 and 10 Nov,
+ * docs/runs/2026-11-07-awx-1.md and 2026-11-10-platform-e2e.md); the Coder agent coded them with live Claude calls in
+ * the chain soak (docs/runs/2026-11-12-chain-soak.md, the bank a stand-in there); the Checker and the Payer agents
+ * (src/ap/checkerAgent.ts and payerAgent.ts, behind KIT11_AP_AGENTS) have run in evals only (docs/agent-evals.md,
+ * docs/evals/ap-agents.json), so their steps link the evals. No customer, pilot or revenue is claimed.
+ */
+export interface FlowStep { verb: string; who: string; evals?: string }
+const AP_EVALS = `${REPO_BLOB}docs/agent-evals.md#the-payables-agents-the-checker-and-the-payer-with-real-models`;
+export const AGENT_FLOW: readonly FlowStep[] = [
+  { verb: "Read", who: "Claude reader agent" },
+  { verb: "Check", who: "Checker agent (Claude) decides, code enforces the limits", evals: AP_EVALS },
+  { verb: "Code", who: "Coder agent (Claude) books account and VAT" },
+  { verb: "Sign", who: "You, with Face ID" },
+  { verb: "Pay", who: "Payer agent (Claude) proposes, the rail and code enforce", evals: AP_EVALS },
+];
 export const WORKS_WITH = "Works with";
 function aboutHtml(): string {
   const names = BUILT_WITH.map((l) => l.name);
   const alt = `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
   return `<h2 class="h-sec reveal" id="about">${esc(ABOUT_HEAD)}</h2>
-  <p class="lede reveal">${ABOUT_LINES.map(esc).join(" ")}</p>
-  <div class="life reveal">${lifecycleSvg("wide")}${lifecycleSvg("tall")}</div>
+  <ol class="flow reveal">${AGENT_FLOW.map((f) => `<li${f.verb === "Sign" ? ' class="you"' : ""}><b>${esc(f.verb)}</b><span>${esc(f.who)}${f.evals ? ` <a href="${esc(f.evals)}" target="_blank" rel="noopener">evals</a>` : ""}</span></li>`).join("")}</ol>
   <div class="works reveal"><span>${esc(WORKS_WITH)}</span><img src="assets/built-with.png" alt="${esc(alt)}" width="1010" height="80"></div>`;
 }
 
-export interface ProofRow { partner: "Airwallex" | "Metal" | "Visa" | "The CFO"; title: string; text: string; icon: string; id: string; full: string; href: string; external: boolean }
+export interface ProofRow { partner: "Airwallex" | "Metal" | "Visa"; title: string; text: string; icon: string; id: string; full: string; href: string; external: boolean }
 
 /**
  * The three proof rows, every value from a run record; a row whose record lacks a piece drops out.
  * 1. Airwallex declined an agent's card over its limit (the Airwallex-only run: the declined charge and the card's
  *    limit as Airwallex returned it), to the site's section with Airwallex's record of it.
  * 2. Metal refused a purchase on chain (the main run), to the transaction on Metal's testnet explorer.
- * 3. The hash the CFO signed is in Airwallex's record of the payment the hero shows (the run's own verify line says
- *    so for that transfer), to the same section.
+ * 3. Visa Intelligent Commerce: the hash the CFO signed, read back equal at Airi and Airwallex (vic-3), to /visa.
+ * The CFO's own row (the signed hash in Airwallex's record) left Home on 12 Nov to keep it under 180 words: the hero
+ * shows that same approval and its hash, and step 3 says the hash is in Airwallex's record.
  */
 export function proofRows(run: AgentRun = agentRun(), awx: Awx1Record | null = awxRun(), vic3: Vic3Record | null = vic3Run()): ProofRow[] {
   const rows: ProofRow[] = [];
@@ -187,16 +209,14 @@ export function proofRows(run: AgentRun = agentRun(), awx: Awx1Record | null = a
   const cents = (a: string) => Math.round(Number(a) * 100);
   const limitOf = (agent: string) => String(awx?.cards.find((c) => c.agent === agent)?.read_back.per_tx ?? "");
   const decline = awx?.card_transactions.find((t) => !t.approved && !!t.decline_code && !!limitOf(t.agent) && cents(t.amount) > cents(limitOf(t.agent)));
-  if (decline) rows.push({ partner: "Airwallex", title: "Airwallex declined the card", text: `${decline.currency} ${decline.amount} over a ${decline.currency} ${limitOf(decline.agent)} limit.`, icon: "ban", id: `${decline.id.slice(0, 8)}…`, full: decline.id, href: steps, external: false });
+  if (decline) rows.push({ partner: "Airwallex", title: "Airwallex declined the card", text: `${decline.currency} ${decline.amount} over a ${limitOf(decline.agent)} limit.`, icon: "ban", id: `${decline.id.slice(0, 8)}…`, full: decline.id, href: steps, external: false });
   const refusal = metalStory(run.record).refusal;
   const tx = /\/tx\/(0x[0-9a-f]{64})$/.exec(refusal?.proof.href ?? "")?.[1];
-  if (refusal && tx && refusal.code === "mandate_cap_exceeded") rows.push({ partner: "Metal", title: "Metal refused it on chain", text: "Over the agent's cap.", icon: "link-2", id: refusal.proof.label, full: tx, href: refusal.proof.href!, external: true });
+  if (refusal && tx && refusal.code === "mandate_cap_exceeded") rows.push({ partner: "Metal", title: "Metal refused it on chain", text: "Over its cap.", icon: "link-2", id: refusal.proof.label, full: tx, href: refusal.proof.href!, external: true });
   // Visa Intelligent Commerce (vic-3, 12 Nov): purchase B, above the CFO's limit, paid after Face ID; the signed hash read
   // back equal in Airi's mandate and in Airwallex's PaymentIntent (docs/runs/2026-11-12-vic-3.json), to /visa's block.
   const b = vic3?.purchases.find((p) => p.step === "B" && p.outcome?.status === "succeeded" && p.read_back.mandate?.equal && p.read_back.payment_intent?.equal && p.payment_intent_id);
   if (b?.payment_intent_id) rows.push({ partner: "Visa", title: "Visa: hash read back", text: "Equal at Airi and Airwallex.", icon: "credit-card", id: `${b.payment_intent_id.slice(0, 10)}…`, full: b.payment_intent_id, href: `visa#${VIC3_RUN_ID}`, external: false });
-  const f = heroDemoFacts(awx);
-  if (f?.inRecord) rows.push({ partner: "The CFO", title: "Your signature (Face ID)", text: "Hash in Airwallex's record.", icon: "file-check", id: `${f.hash.slice(0, 8)}…`, full: f.hash, href: steps, external: false });
   return rows;
 }
 
@@ -225,10 +245,9 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
 <section class="hero"><div class="wrap">
   <div class="copy">
     ${homeHeadingHtml()}
-    <p class="what">${esc(WHAT_IT_IS)}</p>
+    <p class="what">${esc(HOME_SUB)}</p>
     <a class="btn primary big start" href="${tryHref}">${icon("scan-face", 18)}${esc(START)}</a>
     <p class="reassure">${esc(opts.trySign ? REASSURE.sign : REASSURE.world)}</p>
-    <p class="oneline">${esc(DIFFERENTIATORS[0])}</p>
   </div>
   <div class="show">${hero}${hero && facts && receipt ? `
     <p class="prov">${esc(heroProvenance(facts, receipt).join(" "))} <a href="#real" data-real>${esc(WHATS_REAL)}</a></p>` : ""}</div>
@@ -257,7 +276,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
     ...MAIN_RUN_REAL,
   ];
   return page({
-    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, tab: "home", css: CSS + VISUAL_CSS + (hero ? HERO_DEMO_CSS : ""), body, js: JS + (hero ? HERO_DEMO_JS : ""), stage: false,
+    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, tab: "home", css: CSS + (hero ? HERO_DEMO_CSS : ""), body, js: JS + (hero ? HERO_DEMO_JS : ""), stage: false,
     // The judge's tour: one quiet footer link, only where /judge exists.
     links: opts.trySign ? [["judge", JUDGE_LINE]] : [],
     ...(hero && receipt ? { data: receipt.data } : {}),

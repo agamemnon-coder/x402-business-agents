@@ -23,9 +23,9 @@ export const DEMO_ID = "hero-demo";
 export const DEMO_STEPS = ["Ask", "Face ID", "Paid", "+1 cent"] as const;
 /** One short line per step, shown while it is current: what docs/runs/2026-11-07-awx-1.md and the record show. */
 export const DEMO_LINES = [
-  "The agent may not pay this alone. It asks.",
-  "The CFO signs the exact terms with Face ID.",
-  "Airwallex pays. The hash is in its record.",
+  "Over its limit, the agent asks.",
+  "The CFO signs with Face ID.",
+  "Airwallex pays, the hash on record.",
   "Your turn: change one cent.",
 ] as const;
 /** Step 4's verdicts, word for word; which one shows is the browser's check, nothing else. */
@@ -59,9 +59,10 @@ export function heroDemoFacts(rec: Awx1Record | null = awxRun()): HeroDemoFacts 
  */
 export function heroProvenance(f: HeroDemoFacts, r: HeroReceipt): string[] {
   return [
-    `Steps 1 to 3: recorded ${f.date} in the Airwallex sandbox.`,
+    `Steps 1–3: Airwallex sandbox, ${f.date}.`,
     CAVEAT_LINE,
-    r.kind === "recorded" ? "Step 4 checks the owner's real passkey signature in your browser." : "Step 4 runs in your browser, on a copy of these terms signed with a test key.",
+    // A recorded receipt needs no line here (the "What's real?" fold says what step 4 checks); a stand-in always says so.
+    ...(r.kind === "recorded" ? [] : ["Step 4 runs in your browser, on a copy of these terms signed with a test key."]),
   ];
 }
 
