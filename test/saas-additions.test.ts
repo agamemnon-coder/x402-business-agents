@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 import { platformFeeCents } from "../src/airwallex/binding.js";
 import { FEE_BPS_CAP } from "../src/airwallex/platform.js";
 import { figures as modelFigures, unitEconomics } from "../src/business/unitEconomics.js";
-import { PRICE_LINE, WHY_COMPANY } from "../src/config/brand.js";
+import { FOUR_EYES, FOUR_EYES_LINE, FOUR_EYES_NOTE, FOUR_EYES_ON_CHAIN_NOTE, PRICE_LINE, SECOND_APPROVER, WHY_COMPANY } from "../src/config/brand.js";
 import { PRICING, PRICING_LABEL, PRICING_LINE, PRICING_STATEMENT, euro, percentOfBps } from "../src/config/pricing.js";
 import { E2E_FEE_BPS } from "../src/e2e/setup.js";
 import { ENROLMENT_TTL_MS } from "../src/passkey/ledger.js";
@@ -269,5 +269,127 @@ describe("if the approver is unavailable (the panel's review, 12 Nov)", () => {
     const pages = buildPages() as Pages;
     expect(pageResponse(new Request("https://x.test/security"), pages)?.status).toBe(200);
     expect(pages.security).toContain('<details class="fold" id="unavailable">');
+  });
+});
+
+// 2b. "Four eyes", worded exactly. The four-eyes proof had one person: the second signature came from a test passkey.
+// So wherever the short form says what ran, it carries the note, in these words, until a run with two people exists:
+// "four eyes (the second signature from a test passkey, not a second person)". The separate on-chain run of 30 October
+// had two test keys on one machine, so its short form says that instead (a test passkey would not be true of it).
+describe("four eyes, worded exactly (the panel's review, 12 Nov)", () => {
+  /**
+   * A doc as its units of meaning: paragraphs, list items and table cells, each as running text (link targets out).
+   * `row` is the table row a cell is in: a short cell is a row's label, and the row says what it means.
+   */
+  const units = (md: string) => md.split(/\n\s*\n|\n(?=\s*[-*] |\s*\d+\. |\|)/).flatMap((block) => {
+    const text = block.replace(/\]\([^)]*\)/g, "]").replace(/\s+/g, " ").trim();
+    if (!text.startsWith("|")) return text ? [{ text, row: text }] : [];
+    return text.split("|").map((cell) => cell.trim()).filter(Boolean).map((cell) => ({ text: cell, row: text }));
+  });
+  /** The sentence a mention is in, and the next one. */
+  const around = (unit: string, at: number) => {
+    const ends = [...unit.matchAll(/[.!?;](?=\s+["“(*`[]?[A-Z0-9])/g)].map((m) => m.index + 1);
+    const from = [0, ...ends].filter((e) => e <= at).at(-1)!, after = ends.filter((e) => e > at);
+    return unit.slice(from, after[1] ?? unit.length);
+  };
+  /** Who signed, said: the note itself, the on-chain run's own, or the earlier wording that names the test passkey. */
+  const NOTED = new RegExp(`${FOUR_EYES_NOTE}|${FOUR_EYES_ON_CHAIN_NOTE}|came from a test passkey, not a second person|labelled (?:virtual )?test passkey|a test passkey, not`);
+  /**
+   * Not a claim about what ran, so no note: the control as it works (two people, a threshold, on or off), a plan, a
+   * name (the four-eyes run, world, rule, test or file), or the glossary's own heading.
+   */
+  const NOT_A_RUN = new RegExp([
+    // How the control works: who must sign, and when it applies.
+    "two (?:different )?people", "a second person", "second person's", "both (?:passkeys|signatures|owners|must)", "two approvers", "four[- ]eyes threshold", "four eyes above", "four eyes at any amount", "toward four eyes",
+    "four eyes (?:is|are) (?:on|off|built|tested)", "four eyes (?:on|off) ", "with four eyes", "(?:when|once|turning) four eyes", "optional four eyes", "Four eyes off chain",
+    // A plan, not a run.
+    "four eyes (?:by|as the) default", "second human approver for four eyes",
+    // Names: the four-eyes run, world, rule, check and test, their files and command, a link's own name.
+    "four[- ]eyes (?:rule|run|world|check|approval|test)", "four-eyes and compliance runs", "four-eyes(?:-onchain)?\\.(?:md|test|json)", "npm run four-eyes", "cfo-policy\\.md, four eyes",
+    // The glossary's heading, the list of what was built, a requirement's own text, a line kept off the site, a row's name.
+    "Mandate, x402, terms hash, four eyes", "four eyes\\), the agents' tools", "Four eyes on chain: a Metal account with several owners", ", four eyes on chain, limits enforced", "\"Four eyes on the mandate change\"",
+  ].join("|"), "i");
+
+  /** The places a reader meets the short form: the README, llms.txt, the current docs and the submission texts. Run records and design specs are history. */
+  const PLACES = ["README.md", "llms.txt", "docs/security.md", "docs/claims.md", "docs/overview.md", "docs/after-the-kit.md", "docs/idea-vs-build.md", "docs/requirements-matrix.md", "docs/controls.md", "docs/controls-matrix.md", "docs/compliance.md",
+    "docs/metal-award.md", "docs/cfo-policy.md", "docs/architecture.md", "docs/business/model.md", "docs/business/problem.md", "docs/business/roadmap.md",
+    "docs/submission/README.md", "docs/submission/demo-day.md", "docs/submission/long-description.md", "docs/submission/pitch.md", "docs/submission/qa.md"];
+
+  it("has the note in one place, in these words", () => {
+    expect(FOUR_EYES_NOTE).toBe("the second signature from a test passkey, not a second person");
+    expect(FOUR_EYES).toBe("four eyes (the second signature from a test passkey, not a second person)");
+    expect(FOUR_EYES_ON_CHAIN_NOTE).toBe("two test keys on one machine, not two people");
+    expect(FOUR_EYES_LINE).toBe("Four eyes on chain: two signatures required (the second signature from a test passkey, not a second person)");
+    // What the records say, so the two notes are true: the main run's second approver was a labelled test passkey, and
+    // in the on-chain run of 30 October both keys sat on one machine.
+    expect(SECOND_APPROVER).toBe("Second approver: a labelled test passkey in this demo. In production this is a second person.");
+    expect(read("docs/runs/2026-10-30-four-eyes.md")).toContain("**The two keys sat on one machine here.**");
+    expect(read("docs/runs/2026-10-30-four-eyes.md")).toContain("Its keys are test keys (sponsor for gas, CFO, controller, a");
+  });
+
+  it("carries the note wherever the short form says what ran: the README, llms.txt, the docs and the submission texts", () => {
+    const bare: string[] = [];
+    let mentions = 0;
+    for (const place of PLACES) {
+      for (const unit of units(read(place).replace(/\*\*|`/g, ""))) {
+        for (const m of unit.text.matchAll(/four[- ]eyes/gi)) {
+          mentions += 1;
+          // The mention's own sentence and the next one; for a short cell (a row's label), the row it names.
+          const near = unit.text.length <= 80 ? unit.row : around(unit.text, m.index);
+          if (!NOTED.test(near) && !NOT_A_RUN.test(near)) bare.push(`${place}: …${unit.text.slice(Math.max(0, m.index - 70), m.index + 90)}…`);
+        }
+      }
+    }
+    expect(bare).toEqual([]);
+    expect(mentions).toBeGreaterThan(40);
+    // The check catches a bare mention: the README's sentence as it stood before 12 November.
+    const before = "The CFO signed A; after four eyes, both mandates were replaced on chain: Treasury 0x789a (11:26:54).";
+    expect(NOTED.test(around(before, before.indexOf("four eyes"))) || NOT_A_RUN.test(around(before, before.indexOf("four eyes")))).toBe(false);
+    const now = before.replace("four eyes", FOUR_EYES);
+    expect(NOTED.test(around(now, now.indexOf("four eyes")))).toBe(true);
+  });
+
+  it("says it in these words where this work changed a sentence", () => {
+    // The main run's mandate change (P-0002): the exact short form.
+    expect(flat("README.md")).toContain(`The CFO signed A; after ${FOUR_EYES}, both mandates were replaced on chain`);
+    expect(flat("README.md")).toContain("in the main run the second signature came from a test passkey, not a second person); the proposer never approves.");
+    expect(flat("docs/requirements-matrix.md")).toContain(`Treasury's options 40 s later; ${FOUR_EYES}, then the mandates replaced (P-0002);`);
+    expect(flat("docs/submission/demo-day.md")).toContain(`Treasury proposes options 40 s later; ${FOUR_EYES} |`);
+    expect(flat("docs/idea-vs-build.md")).toContain(`Four eyes ran in the main run (P-0002; ${FOUR_EYES_NOTE});`);
+    expect(flat("docs/claims.md")).toContain(`"${FOUR_EYES_LINE}" (FOUR_EYES_LINE; the short form everywhere is "${FOUR_EYES}", FOUR_EYES in src/config/brand.ts`);
+    expect(flat("docs/security.md")).toContain("Our runs had one person: the second signature came from a test passkey.");
+    // The on-chain run of 30 October: its own note.
+    for (const [doc, said] of [
+      ["README.md", `four eyes on chain (${FOUR_EYES_ON_CHAIN_NOTE}), the compliance contract`],
+      ["docs/claims.md", `In a separate test world, with ${FOUR_EYES_ON_CHAIN_NOTE}; Northwind's recorded account is one-owner`],
+      ["docs/claims.md", `| Four eyes on chain (2-of-2 account; ${FOUR_EYES_ON_CHAIN_NOTE}) |`],
+      ["docs/claims.md", `| Four eyes on chain (30 Oct; ${FOUR_EYES_ON_CHAIN_NOTE}), passkeys as owners`],
+      ["docs/controls-matrix.md", `the CFO and the controller together passed (${FOUR_EYES_ON_CHAIN_NOTE}) |`],
+      ["docs/compliance.md", `30 October, with ${FOUR_EYES_ON_CHAIN_NOTE}; Northwind's recorded account has one owner`],
+      ["docs/requirements-matrix.md", `two passed (${FOUR_EYES_ON_CHAIN_NOTE}).`],
+      ["docs/submission/long-description.md", `Four eyes on chain. A 2-of-2 Metal account: the CFO and a controller (${FOUR_EYES_ON_CHAIN_NOTE}).`],
+      ["docs/metal-award.md", `Four eyes on chain (run log; ${FOUR_EYES_ON_CHAIN_NOTE}).`],
+    ] as const) expect({ doc, said, found: flat(doc).replace(/\]\([^)]*\)/g, "").replace(/\[/g, "").includes(said) }).toEqual({ doc, said, found: true });
+  });
+
+  it("carries it on the site: on /metal where the on-chain run is named, and in every page's \"What's real?\" lines", () => {
+    const pages = buildPages() as unknown as Record<string, string>;
+    const text = (html: string) => decode(html.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ");
+    // /metal, folded under "Beyond the kit": the on-chain run with who signed (no words added in sight).
+    expect(text(pages.metal!)).toContain(`Four eyes on chain : 1 signature: reverted (${FOUR_EYES_ON_CHAIN_NOTE}).`);
+    expect(pages.metal).toMatch(/<details[^>]*>\s*<summary[^>]*>Beyond the kit: separate runs, each dated \(not the main run\)<\/summary>[\s\S]*?two test keys on one machine, not two people/);
+    // Every page built on the site's frame says who the second approver was, in its "What's real?" lines.
+    for (const name of ["home", "watch", "proof", "metal", "airwallex", "visa", "claude", "trace", "runs"]) expect({ name, says: text(pages[name]!).includes(SECOND_APPROVER) }).toEqual({ name, says: true });
+    // On the public pages a reader reaches, every "four eyes" in the text is the on-chain run with its note, a name or
+    // the control as it works; /pricing's "Four-eyes approval" is a feature of the Business plan, not a claim.
+    const bare: string[] = [];
+    for (const name of ["home", "watch", "proof", "pricing", "security", "metal", "airwallex", "visa", "claude", "trace", "runs", "notFound"]) {
+      const t = text(pages[name]!);
+      for (const m of t.matchAll(/four[- ]eyes/gi)) {
+        const near = t.slice(Math.max(0, m.index - 160), m.index + 200);
+        if (!NOTED.test(near) && !NOT_A_RUN.test(near) && !/Four-eyes approval|Four eyes on chain: Smart account/.test(near)) bare.push(`${name}: …${t.slice(Math.max(0, m.index - 60), m.index + 80)}…`);
+      }
+    }
+    expect(bare).toEqual([]);
   });
 });

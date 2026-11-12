@@ -76,8 +76,21 @@ export const DEFENSE_IN_DEPTH = "Defense in depth: Purser normally refuses befor
 export const SANDBOX_SETTLED = "in the sandbox, where the settlement is simulated";
 /** How the played run's world was set up (agent run 1 and the main run alike), said wherever the run is shown (Max, 2 Nov). */
 export const WORLD_SETUP = "World set-up: the alternative supplier (Ridgeline) is offline in this world, so the price rise forces a choice. The agents were not told what to do.";
+/**
+ * The note every short mention of four eyes carries (the panel's review, 12 Nov), in these words, until a run with two
+ * people exists: the proof so far had one person, and the second signature came from a labelled test passkey.
+ * test/saas-additions.test.ts keeps the README, the docs and the submission texts to it.
+ */
+export const FOUR_EYES_NOTE = "the second signature from a test passkey, not a second person";
+/** The short form, with its note: how a sentence about what ran says "four eyes". */
+export const FOUR_EYES = `four eyes (${FOUR_EYES_NOTE})`;
+/**
+ * The same honesty for the separate on-chain run of 30 October (a 2-of-2 Metal account, docs/runs/2026-10-30-four-eyes.md):
+ * there both owners' keys were test keys on one machine, so "a test passkey" would not be true of it.
+ */
+export const FOUR_EYES_ON_CHAIN_NOTE = "two test keys on one machine, not two people";
 /** Four eyes, in one line, wherever a page names it. */
-export const FOUR_EYES_LINE = "Four eyes on chain: two signatures required (second approver = a labelled test passkey in this demo)";
+export const FOUR_EYES_LINE = `Four eyes on chain: two signatures required (${FOUR_EYES_NOTE})`;
 
 /**
  * What only Purser has (jury review, 6 Nov, #1): three sentences, word for word and first on every surface (the README's
