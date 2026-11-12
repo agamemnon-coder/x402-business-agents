@@ -6,7 +6,7 @@ import { Script } from "node:vm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { consoleCsp } from "../cloud/src/console.js";
 import * as COPY from "../cloud/src/tryCopy.js";
-import { BOOKS_JS, RUNS_URL, SIGN_JS, tryPage } from "../cloud/src/tryPage.js";
+import { BOOKS_JS, PROOF_URL, RUNS_URL, SIGN_JS, tryPage } from "../cloud/src/tryPage.js";
 import { liveRuns } from "../src/redesign/runs.js";
 import { ICONS } from "../src/ui/icons.js";
 import { SCENE_CSS, sceneSvg } from "../cloud/src/scene.js";
@@ -133,6 +133,14 @@ describe("the frame and the start", () => {
   });
 });
 
+describe("screen 6's proof link", () => {
+  it("goes to the site's /proof (src/redesign/proof.ts) on the homepage's origin", () => {
+    const home = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { homepage: string }).homepage;
+    expect(PROOF_URL).toBe(`${home}/proof`);
+    expect(script).toContain(`const PROOF=${JSON.stringify(PROOF_URL)};`);
+  });
+});
+
 describe("the copy", () => {
   it("keeps every screen at 45 visible words or fewer outside the live panel and the invoice, in each of its states", () => {
     for (const [screen, states] of Object.entries(COPY.VISIBLE)) {
@@ -154,8 +162,8 @@ describe("the copy", () => {
       const seen = new Set(COPY.VISIBLE[screen as keyof typeof COPY.VISIBLE].flat());
       // A {method} line is counted with a method filled in; PAY's sandbox line shows only when the rail is on (one more line,
       // 4 words), the executor's note sits in its fold, and the verdict is counted with its one-cent sentence. Screen 6's
-    // "recorded {date}" labels the runs inside the "Recorded real runs" fold.
-      for (const [k, v] of Object.entries(group)) if (!["sandbox", "executorNote", "vAmount", "vPayee", "vAccount", "vOther", "recorded"].includes(k)) expect(seen.has(v) || [...seen].some((x) => v.includes("{method}") && x === v.replace("{method}", COPY.METHOD.other)), `${screen}.${k}`).toBe(true);
+    // "recorded {date}" labels the runs inside the "Recorded real runs" fold; "What you just did" names the three icons for screen readers only.
+      for (const [k, v] of Object.entries(group)) if (!["sandbox", "executorNote", "vAmount", "vPayee", "vAccount", "vOther", "recorded", "did"].includes(k)) expect(seen.has(v) || [...seen].some((x) => v.includes("{method}") && x === v.replace("{method}", COPY.METHOD.other)), `${screen}.${k}`).toBe(true);
     }
     expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["pay 7"]);
   });

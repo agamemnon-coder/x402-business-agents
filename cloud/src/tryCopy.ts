@@ -66,6 +66,8 @@ export const WORK = {
   /** The request's round trip, measured in the browser ({s}: seconds). */
   took: "Answered in {s} s, measured in your browser.",
   invoiceFold: "The invoice",
+  /** A chip on the invoice card, with the request id, only when the events say Claude read it (claude.read, source claude). */
+  claudeChip: "Claude",
   pay: "Pay this invoice",
   another: "Try another invoice",
 };
@@ -208,6 +210,13 @@ export const COMPANY = {
   again: "Start again",
   runs: "Recorded real runs",
   recorded: "recorded {date}",
+  /** What the visit did: three icons with a word each, named for screen readers by `did` (not shown: the word budget). */
+  did: "What you just did",
+  didFiled: "Filed",
+  didSigned: "Signed",
+  didPaid: "Paid",
+  /** The site's proof page (PROOF_URL). */
+  proof: "Proof",
 };
 
 /**
@@ -250,7 +259,7 @@ export const VISIBLE = {
   ],
   work: [
     [WORK.heading, WORK.working],
-    [WORK.heading, WORK.ready, WORK.readySub, WORK.took, WORK.invoiceFold, WORK.pay],
+    [WORK.heading, WORK.ready, WORK.readySub, WORK.took, WORK.invoiceFold, WORK.claudeChip, WORK.pay],
     [WORK.heading, WORK.notReady, WORK.took, WORK.invoiceFold, WORK.another],
     [WORK.heading, WORK.duplicate, WORK.notReady, WORK.took, WORK.invoiceFold, WORK.another],
     [WORK.heading, WORK.noInvoice, WORK.took, WORK.another],
@@ -292,9 +301,9 @@ export const VISIBLE = {
     [BOOKS.headingError, BOOKS.retry, BOOKS.next],
   ],
   company: [
-    [COMPANY.heading, COMPANY.download, COMPANY.line, COMPANY.again, COMPANY.runs],
-    [COMPANY.heading, COMPANY.downloading, COMPANY.line, COMPANY.again, COMPANY.runs],
-    [COMPANY.heading, COMPANY.download, COMPANY.failed, COMPANY.again, COMPANY.runs],
+    [COMPANY.heading, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.download, COMPANY.line, COMPANY.again, COMPANY.proof, COMPANY.runs],
+    [COMPANY.heading, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.downloading, COMPANY.line, COMPANY.again, COMPANY.proof, COMPANY.runs],
+    [COMPANY.heading, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.download, COMPANY.failed, COMPANY.again, COMPANY.proof, COMPANY.runs],
   ],
   gone: [[GONE.heading, GONE.button]],
   ended: [[ENDED.heading, ENDED.button]],

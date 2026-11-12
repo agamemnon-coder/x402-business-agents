@@ -37,6 +37,8 @@ import type { CloudEnv } from "./app.js";
  * screen 6's dated links to single runs (/runs#<key>, keys and dates from src/redesign/runs.ts, held there by a test).
  */
 export const RUNS_URL = "https://kit11.max-31b.workers.dev/runs";
+/** The site's proof page (src/redesign/proof.ts, served at /proof on the same origin): screen 6's last link. */
+export const PROOF_URL = new URL("/proof", RUNS_URL).href;
 
 const CSS = `${TOKENS.replace("url(assets/inter.woff2)", "url(/assets/inter.woff2)")}
 * { box-sizing: border-box; }
@@ -49,7 +51,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font: 400 16px/1.5 
 .brand .mk { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--text); color: var(--bg); }
 .brand .mk .i { vertical-align: 0; }
 .brand .nm { font-weight: 750; }
-main { padding-bottom: 56px; }
+main { padding-bottom: 56px; overflow-x: clip; }
 /* Screen 0 in two zones (the console's sign-in has the same): the illustration (cloud/src/scene.ts) in a band on the
    brand's tokens, the card with the words and the button, the trust line under it. A phone: the band on top (with the
    brand over it), the card below. A wide screen: the band left, the card right, centred. Other screens: neither. */
@@ -126,13 +128,72 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; }
 dl.read { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; margin: 8px 0 0; font-size: 14px; }
 dl.read dt { color: var(--muted); }
 dl.read dd { margin: 0; overflow-wrap: anywhere; }
-.progw { display: flex; align-items: center; gap: 10px; margin: 10px 2px 0; }
-.prog { flex: 1; display: flex; gap: 4px; list-style: none; margin: 0; padding: 0; }
-.prog li { flex: 1; height: 4px; border-radius: 2px; background: var(--border); }
-.prog li.done, .prog li.on { background: var(--accent); }
-.stepname { font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; }
-.screen { animation: rise .24s ease-out; }
+/* The rail of the seven steps, on top of every screen after the start: a dot per step on one line, the steps done
+   filled, the current one lit with a halo and its name beside the rail. */
+.progw { display: flex; align-items: center; gap: 12px; margin: 6px 0 10px; }
+.prog { flex: 1; display: flex; list-style: none; margin: 0; padding: 0; }
+.prog li { flex: 1; display: grid; place-items: center; height: 16px; background: linear-gradient(var(--border), var(--border)) center / 100% 2px no-repeat; }
+.prog li:first-child { background-size: 50% 2px; background-position: right center; }
+.prog li:last-child { background-size: 50% 2px; background-position: left center; }
+.prog li::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--surface); border: 2px solid var(--border); }
+.prog li.done { background-image: linear-gradient(var(--accent), var(--accent)); }
+.prog li.done::before { background: var(--accent); border-color: var(--accent); }
+.prog li.on::before { width: 13px; height: 13px; background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent); }
+.stepname { font-size: 12.5px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+/* Screens 1 to 6 in the start's look: the brand's band behind the top of the page, each screen in a soft card that
+   slides in; a card inside it is a quiet panel. */
+body:not(:has(.screen.start)) { background: radial-gradient(70% 300px at 8% 0, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%) no-repeat, linear-gradient(180deg, var(--accent-soft), var(--bg) 360px) no-repeat, var(--bg); }
+.screen:not(.start) { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); padding: 20px; }
+.screen:not(.start) .card { background: var(--bg); box-shadow: none; border-radius: 14px; }
+main > h1 { animation: slide .34s cubic-bezier(.2,.7,.2,1) both; }
+.screen { animation: slide .34s cubic-bezier(.2,.7,.2,1) .04s both; }
+@keyframes slide { from { opacity: .01; transform: translateX(18px); } }
 @keyframes rise { from { opacity: .01; transform: translateY(6px); } }
+@keyframes litrow { 0% { opacity: .01; background: transparent; } 35% { opacity: 1; background: var(--accent-soft); } 100% { background: transparent; } }
+@keyframes ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent); } 100% { box-shadow: 0 0 0 16px transparent; } }
+@keyframes shake { 0%, 100% { transform: none; } 20% { transform: translateX(-7px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(2px); } }
+@keyframes glow { from { box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 14%, transparent); } to { box-shadow: 0 0 0 6px color-mix(in srgb, var(--bad) 24%, transparent); } }
+@keyframes stampin { 0% { opacity: .01; transform: scale(1.18) rotate(-4deg); } 100% { opacity: 1; transform: none; } }
+@keyframes slidein { from { opacity: .01; transform: translateX(-10px); } }
+/* Screen 2: the invoice as the engine's answer has it, its rows lit one by one once the answer is in. */
+.inv { margin: 14px 0 4px; padding: 14px 16px; }
+.inv .ih { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 6px; font-weight: 650; font-size: 15px; }
+.inv .ih .i { color: var(--accent); }
+.inv .rows { margin: 0; }
+.inv .rows > div { display: grid; grid-template-columns: auto 1fr; gap: 12px; padding: 7px 8px; margin: 0 -8px; border-radius: 8px; font-size: 14px; animation: litrow .9s ease-out both; }
+.inv .rows dt { color: var(--muted); }
+.inv .rows dd { margin: 0; text-align: right; font-weight: 600; overflow-wrap: anywhere; }
+.inv .rows > div:nth-child(2) { animation-delay: .18s; } .inv .rows > div:nth-child(3) { animation-delay: .36s; } .inv .rows > div:nth-child(4) { animation-delay: .54s; } .inv .rows > div:nth-child(5) { animation-delay: .72s; }
+.chip { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 650; background: var(--claude-soft); color: var(--claude); animation: rise .3s ease-out both; }
+.chip .mono { font-weight: 500; opacity: .85; }
+/* Screen 3: the terms as a receipt, the hash in a mono pill; a ring round the button while the passkey prompt is open,
+   a tick once the approval is back. */
+.receipt { margin: 4px 0 12px; padding: 16px; border-radius: 14px; background: var(--bg); border: 1px solid var(--border); }
+.receipt .amount { margin: 0 0 8px; }
+.receipt dl.read { gap: 0; margin: 0; }
+.receipt dl.read dt, .receipt dl.read dd { padding: 8px 0; border-top: 1px dashed var(--border); }
+.receipt dl.read dd { text-align: right; font-weight: 600; }
+.hashpill { display: inline-block; margin: 10px 0 0; padding: 3px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; }
+.btn.asking { animation: ring 1.3s ease-out infinite; }
+.tick { display: flex; align-items: center; gap: 8px; color: var(--ok); font-weight: 700; }
+.tick .i { animation: pop .5s ease-out both; }
+/* Screen 4: a field that differs from the signed value glows; the refusal shakes once and says the transfers in big type. */
+.f.changed input { border-color: var(--bad); animation: glow 1.2s ease-in-out infinite alternate; }
+.refusal.shake { animation: shake .5s ease-in-out both; }
+.proof.xfer { margin: 6px 0 4px; font-size: 26px; line-height: 1.2; font-weight: 750; color: var(--text); font-variant-numeric: tabular-nums; }
+/* Screen 5: a calm stamp, the terms' hash, the books' lines sliding in. */
+.paidstamp { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 2px 0 6px; }
+.paidstamp .ring { display: inline-grid; place-items: center; width: 60px; height: 60px; border-radius: 50%; border: 2.5px solid var(--ok); background: var(--ok-soft); color: var(--ok); animation: stampin .6s ease-out both; }
+.paidstamp .hashpill { margin: 0; }
+table.lines tbody tr { animation: slidein .4s ease-out both; }
+table.lines tbody tr:nth-child(2) { animation-delay: .08s; } table.lines tbody tr:nth-child(3) { animation-delay: .16s; } table.lines tbody tr:nth-child(4) { animation-delay: .24s; }
+table.lines tbody tr:nth-child(5) { animation-delay: .32s; } table.lines tbody tr:nth-child(6) { animation-delay: .4s; } table.lines tbody tr:nth-child(n+7) { animation-delay: .48s; }
+/* Screen 6: what the visit did, three icons; the site's proof page. */
+ul.did { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 0 0 14px; padding: 0; }
+ul.did li { display: grid; justify-items: center; gap: 6px; padding: 14px 6px; border-radius: 14px; background: var(--bg); border: 1px solid var(--border); font-weight: 650; font-size: 14px; animation: rise .4s ease-out both; }
+ul.did li:nth-child(2) { animation-delay: .12s; } ul.did li:nth-child(3) { animation-delay: .24s; }
+ul.did .dic { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; background: var(--ok-soft); color: var(--ok); }
+a.proofl { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; text-decoration: none; }
 .i { flex: none; vertical-align: -3px; }
 .art { display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 18px; background: var(--accent-soft); color: var(--accent); margin: 4px 0 8px; }
 .art.ok { background: var(--ok-soft); color: var(--ok); }
@@ -323,6 +384,7 @@ const IC=__ICONS__;
 const lineOf=eventLineOf(W);
 const CFG=JSON.parse(document.querySelector('meta[name=purser-try]').content);
 const RUNS=__RUNS__;
+const PROOF=__PROOF__;
 const $=(s)=>document.querySelector(s);
 const el=(tag,cls,kids)=>{const e=document.createElement(tag);if(cls)e.className=cls;for(const k of [].concat(kids??[])){if(k===null||k===undefined||k===false)continue;e.append(typeof k==='string'?document.createTextNode(k):k)}return e};
 const btn=(label,main)=>{const b=el('button','btn'+(main?' primary big':''),label);b.type='button';return b};
@@ -449,7 +511,7 @@ function show(name,arg){
   S.screen=name;save();
   const h=el('h1','',typeof d.heading==='function'?d.heading(arg):d.heading);h.tabIndex=-1;
   const box=el('div','screen');
-  const top=d.band===false||!S.session?[]:[band(),steps(name)].filter(Boolean);
+  const top=d.band===false||!S.session?[]:[steps(name),band()].filter(Boolean);
   $('#main').replaceChildren(...top,h,box);
   d.draw(box,arg);
   window.scrollTo(0,0);h.focus();
@@ -558,11 +620,19 @@ function livePanel(){
   }
   return {node,add};
 }
-function invoiceFold(inv){
-  const d=el('dl','read');
-  for(const [k,v] of [[C.fields.vendor,inv.vendor],[C.fields.number,inv.invoice_no],[C.fields.total,[inv.currency,inv.total].filter(Boolean).join(' ')],[C.fields.due,inv.due_date],[C.fields.status,inv.status_words]]){if(v===null||v===undefined||v==='')continue;d.append(el('dt','',k),el('dd','',String(v)))}
-  return el('details','',[el('summary','',C.work.invoiceFold),d]);
+// The invoice as the answer has it, in a card whose rows light one by one (CSS, drawn only once the answer is in), and a
+// slot for the chip that says Claude read it (filled only from a claude.read event whose source is Claude).
+function invoiceCard(inv){
+  const d=el('dl','rows');
+  for(const [k,v] of [[C.fields.vendor,inv.vendor],[C.fields.number,inv.invoice_no],[C.fields.total,[inv.currency,inv.total].filter(Boolean).join(' ')],[C.fields.due,inv.due_date],[C.fields.status,inv.status_words]]){if(v===null||v===undefined||v==='')continue;d.append(el('div','',[el('dt','',k),el('dd','',String(v))]))}
+  const chip=el('span','slot');
+  return {node:el('section','card inv',[el('p','ih',[icon('file-text',18),el('span','',C.work.invoiceFold),chip]),d]),chip};
 }
+// Whether this request's events say Claude read the invoice, and that call's request id.
+const CLAUDE={on:false,req:null,slot:null};
+function claudeSeen(items){for(const e of items){const f=e&&e.fields;if(e&&e.event==='claude.read'&&f&&f.source==='claude'){CLAUDE.on=true;CLAUDE.req=typeof f.request_id==='string'&&/^[\w-]{1,80}$/.test(f.request_id)?f.request_id:null}}chipFill()}
+function chipFill(){if(!CLAUDE.on||!CLAUDE.slot||!CLAUDE.slot.isConnected||CLAUDE.slot.children.length)return;
+  CLAUDE.slot.append(el('span','chip',[icon('sparkles',13),el('span','',C.work.claudeChip),CLAUDE.req?el('span','mono',CLAUDE.req):null]))}
 function drawResult(box,r,ms){
   const took=ms===null?null:el('p','muted',fill(C.work.took,{s:secs(ms)}));
   const inv=r.json&&r.json.invoice&&typeof r.json.invoice==='object'?r.json.invoice:null;
@@ -578,7 +648,8 @@ function drawResult(box,r,ms){
       if(fs.length)box.append(el('ul','',fs.map((f)=>el('li','',f.message))));
       main=btn(C.work.another,true);main.addEventListener('click',()=>show('invoice'));
     }
-    box.append(...(took?[took]:[]),invoiceFold(inv),main);
+    const card=invoiceCard(inv);CLAUDE.slot=card.chip;
+    box.append(...(took?[took]:[]),card.node,main);chipFill();
     return;
   }
   if(r.status===200||r.status===201)box.append(el('p','big',C.work.noInvoice),...(took?[took]:[]));
@@ -588,16 +659,17 @@ function drawResult(box,r,ms){
 }
 screen('work',{heading:C.work.heading,draw(box,arg){
   const live=livePanel();const result=el('div','result');
+  CLAUDE.on=false;CLAUDE.req=null;CLAUDE.slot=null;
   box.append(live.node,result);
   if(arg&&arg.kind==='reload'){
     // After a reload: the newest invoice as the server has it, and its steps so far (no times: they were not measured here).
-    call('GET','/v1/engine/events?after=0&limit=200').then((r)=>{if(r.status===200&&Array.isArray(r.json.items))live.add(r.json.items)});
+    call('GET','/v1/engine/events?after=0&limit=200').then((r)=>{if(r.status===200&&Array.isArray(r.json.items)){live.add(r.json.items);claudeSeen(r.json.items)}});
     drawResult(result,{status:200,json:{invoice:arg.invoice}},null);
     return;
   }
   result.append(el('p','muted',C.work.working));
   const t0=performance.now();
-  pollStart((items)=>live.add(items,t0));
+  pollStart((items)=>{live.add(items,t0);claudeSeen(items)});
   const req=arg.kind==='sample'?api('POST','/v1/engine/samples/'+encodeURIComponent(arg.key)):api('POST','/v1/engine/compose',arg.body);
   req.then((r)=>{
     const ms=performance.now()-t0;
@@ -666,8 +738,8 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     p=r.json.proposal;eng=st.status===200?st.json:{passkey:null};
     S.proposal={id:p.id,challenge:p.challenge,terms_sha256:p.terms_sha256,invoice:inv&&inv.id||(S.proposal&&S.proposal.invoice)||null};S.cred=null;save();
     const f=factRows(p,inv);
-    top.replaceChildren(el('span','art',icon('key-round',28)),el('p','amount',f.amount),f.list,
-      el('p','short mono',String(p.terms_sha256||'').slice(0,12)+'…'),termsFold(p),el('p','muted',[A.signs,saves]));
+    top.replaceChildren(el('div','receipt',[el('p','amount',f.amount),f.list,el('p','short mono hashpill',String(p.terms_sha256||'').slice(0,12)+'…')]),
+      termsFold(p),el('p','muted',[A.signs,saves]));
     stage();
   }
   function stage(){
@@ -680,11 +752,12 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     said.replaceChildren();main.node.textContent=A.waiting;
     const s=await api('POST','/v1/engine/passkey/start');
     if(s.status!==200||!s.json.user){said.replaceChildren(note(words(s.json,A.failed)));stage();return}
-    let made;
+    let made;main.node.classList.add('asking');
     try{made=await navigator.credentials.create({publicKey:{rp:{id:s.json.rp.id,name:s.json.rp.name},user:{id:new TextEncoder().encode(s.json.user.id),name:s.json.user.name,displayName:s.json.user.displayName},
       challenge:fromB64u(s.json.challenge),pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],excludeCredentials:(s.json.exclude||[]).map((id)=>({type:'public-key',id:fromB64u(id)})),
       authenticatorSelection:{userVerification:'required',residentKey:'discouraged'},attestation:'none',timeout:120000}})}
-    catch(e){said.replaceChildren(note(cancelled(e)?A.cancelled:A.failed));stage();return}
+    catch(e){main.node.classList.remove('asking');said.replaceChildren(note(cancelled(e)?A.cancelled:A.failed));stage();return}
+    main.node.classList.remove('asking');
     const f=await api('POST','/v1/engine/passkey/finish',{code:s.json.code,credential:registrationOf(made)});
     if(f.status!==200){said.replaceChildren(note(words(f.json,A.failed)));stage();return}
     const st=await api('GET','/v1/engine');if(st.status===200)eng=st.json;
@@ -693,13 +766,15 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
   async function approve(){
     said.replaceChildren();main.node.textContent=A.waiting;
     let signed;
-    try{signed=await signTerms(p.challenge,eng.passkey.credential_id)}catch(e){said.replaceChildren(note(A.cancelled));stage();return}
+    main.node.classList.add('asking');
+    try{signed=await signTerms(p.challenge,eng.passkey.credential_id)}catch(e){main.node.classList.remove('asking');said.replaceChildren(note(A.cancelled));stage();return}
+    main.node.classList.remove('asking');
     const r=await track(api('POST','/v1/engine/proposals/'+encodeURIComponent(p.id)+'/approve',{terms_sha256:p.terms_sha256,credential:signed}));
     if(S.screen!=='approve')return;
     if(r.status===200&&r.json.status==='approved'&&r.json.held===true){
       // Held: the approval is stored and nothing is paid; the signature is kept for screen 4.
       S.cred=signed;save();
-      said.replaceChildren(el('p','big ok',A.approved));
+      said.replaceChildren(el('p','big ok tick',[icon('circle-check',24),el('span','',A.approved)]));
       main.set(A.next,()=>show('pay'));main.node.focus();return;
     }
     if(r.status===200&&r.json.status==='approved'){S.settled=r.json.settled||null;save();show('books',{settled:S.settled});return}
@@ -720,7 +795,9 @@ screen('pay',{heading:C.pay.heading,draw(box){
   if(!pid){top.replaceChildren(note(Y.failed));return}
   let T=null;const F={};
   const field4=(label,key,cls)=>{const i=input('text');i.autocomplete='off';i.spellcheck=false;F[key]=i;return el('div','f'+(cls?' '+cls:''),[el('label','',label),i])};
-  const reset=()=>{F.amount.value=String(T.terms.amount);F.beneficiary_name.value=String(T.terms.beneficiary_name);F.iban_last4.value=String(T.terms.iban_last4);F.amount.setCustomValidity('')};
+  // A field that differs from the signed value glows (compared as the pay route would send it).
+  const mark=()=>{for(const k of ['amount','beneficiary_name','iban_last4']){const v=k==='amount'?normAmount(F.amount.value,T.terms.amount):F[k].value.trim();F[k].parentNode.classList.toggle('changed',String(v)!==String(T.terms[k]))}};
+  const reset=()=>{F.amount.value=String(T.terms.amount);F.beneficiary_name.value=String(T.terms.beneficiary_name);F.iban_last4.value=String(T.terms.iban_last4);F.amount.setCustomValidity('');mark()};
   const values=()=>({amount:normAmount(F.amount.value,T.terms.amount),beneficiary_name:F.beneficiary_name.value.trim(),iban_last4:F.iban_last4.value.trim()});
   api('GET','/v1/engine/proposals/'+encodeURIComponent(pid)+'/terms').then((r)=>{
     if(S.screen!=='pay')return;
@@ -729,6 +806,7 @@ screen('pay',{heading:C.pay.heading,draw(box){
     const form=el('form','',[field4(C.proposal.amount,'amount','big'),field4(C.proposal.payee,'beneficiary_name'),field4(C.proposal.account,'iban_last4')]);
     for(const [k,id] of [['amount','p-amt'],['beneficiary_name','p-payee'],['iban_last4','p-acct']]){F[k].id=id;F[k].parentNode.firstChild.htmlFor=id}
     F.amount.inputMode='decimal';F.amount.classList.add('mono');F.iban_last4.classList.add('mono');F.amount.addEventListener('input',()=>F.amount.setCustomValidity(''));
+    for(const k of ['amount','beneficiary_name','iban_last4'])F[k].addEventListener('input',mark);
     form.addEventListener('submit',(ev)=>{ev.preventDefault();if(!main.node.disabled)main.node.click()});
     const when=Date.parse(T.expires_at||'');
     const intro=el('div','',[el('p','muted',Y.line),isFinite(when)?el('p','hint',fill(Y.until,{time:new Date(when).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})})):null]);
@@ -774,7 +852,7 @@ screen('pay',{heading:C.pay.heading,draw(box){
   }
   function refused(r,ms,sent){
     const j=r.json,L=j.layers&&typeof j.layers==='object'?j.layers:{};const sig=L.signature||{},ex=L.executor||{};
-    const card=el('div','card',[el('p','stamp',Y.stamp)]);
+    const card=el('div','card refusal shake',[el('p','stamp',Y.stamp)]);
     if(sig.verified===false){const why=typeof sig.reason==='string'&&/\s/.test(sig.reason.trim())?sig.reason.trim():Y.signatureOff;card.append(el('p','layer',fill(Y.signature,{reason:why})))}
     if(ex.accepted===false){card.append(el('p','layer',Y.executor));
       if(typeof ex.said==='string'&&ex.said)card.append(el('details','',[el('summary','',Y.executorFold),el('p','',ex.said),el('p','hint',Y.executorNote)]))}
@@ -784,7 +862,7 @@ screen('pay',{heading:C.pay.heading,draw(box){
     card.append(el('p','verdict',verdict(Y,T.terms,sent,j.changed)));
     card.append(el('p','proof',fill(Y.roundTrip,{n:Math.round(ms)})));
     const made=Number(j.transfers_after)-Number(j.transfers_before);
-    if(isFinite(made))card.append(el('p','proof',fill(Y.transfers,{n:made})));
+    if(isFinite(made))card.append(el('p','proof xfer',fill(Y.transfers,{n:made})));
     if(S.mode&&S.mode.rail_awx==='on'&&typeof j.sandbox_calls==='number')card.append(el('p','proof',fill(Y.sandbox,{n:j.sandbox_calls})));
     const raw=el('pre','raw mono');raw.textContent=r.text;
     card.append(el('details','',[el('summary','',Y.raw),raw]));
@@ -843,7 +921,9 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
   main.set(B.next,toCompany);
   const slot=()=>el('div','slot');
   const paid=slot(),booked=slot(),filed=slot();
-  box.append(el('span','art ok pop',icon('circle-check',30)),paid,booked,filed,main.node);
+  // A calm stamp, and the hash of the terms that were signed and paid (the proposal's own, kept from screen 3).
+  const sha=S.proposal&&typeof S.proposal.terms_sha256==='string'?S.proposal.terms_sha256:'';
+  box.append(el('div','paidstamp',[el('span','ring',icon('circle-check',30)),sha?el('span','hashpill mono',[icon('key-round',13),' '+sha.slice(0,12)+'…']):null]),paid,booked,filed,main.node);
   // A block: its icon and heading, then what its read returned.
   const block=(name,head,kids,tone)=>el('section','card blk '+name,[el('p','bh'+(tone?' '+tone:''),[icon(name==='paid'?'landmark':name==='booked'?'database':'file-lock-2',20),el('span','',head)]),...kids.filter(Boolean)]);
   const wait=(words)=>el('p','wait',[icon('clock',18),el('span','',words)]);
@@ -905,7 +985,10 @@ screen('company',{heading:C.company.heading,draw(box){
   const again=btn(Y.again);again.addEventListener('click',()=>{clearTimeout(renewTimer);renewTimer=null;forget();show('start')});
   const runs=el('ul','runs');
   for(const r of C.recorded){const a=el('a','',[el('span','rt',r.title),el('span','rd',fill(Y.recorded,{date:r.date}))]);a.href=RUNS+'#'+r.key;a.rel='noopener';a.target='_blank';runs.append(el('li','',a))}
-  box.append(el('span','art',icon('download',28)),line,el('div','acts',[main.node,again]),el('details','',[el('summary','',Y.runs),runs]));
+  // What this visit did: filed, signed, paid (three icons, named for screen readers as one list).
+  const did=el('ul','did',[['file-check',Y.didFiled],['scan-face',Y.didSigned],['circle-check',Y.didPaid]].map(([n,w])=>el('li','',[el('span','dic',icon(n,22)),el('span','',w)])));did.setAttribute('aria-label',Y.did);
+  const proof=el('a','proofl',[el('span','',Y.proof),icon('external-link',14)]);proof.href=PROOF;proof.rel='noopener';proof.target='_blank';
+  box.append(did,line,el('div','acts',[main.node,again,proof]),el('details','',[el('summary','',Y.runs),runs]));
   async function download(){
     main.off(Y.downloading);
     const g=await fetchFile('/v1/engine/export');
@@ -957,9 +1040,10 @@ export function tryPage(n: string, cfg: { origin: string; rpId: string }): strin
   const copy = { band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, proposal: PROPOSAL_FIELDS, method: METHOD, pay: PAY, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
     clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,
-    feather: ICONS.feather, "arrow-right": ICONS["arrow-right"] };
+    feather: ICONS.feather, "arrow-right": ICONS["arrow-right"], sparkles: ICONS.sparkles, "scan-face": ICONS["scan-face"], "file-check": ICONS["file-check"],
+    "external-link": ICONS["external-link"] };
   const script = SCRIPT.replace("__COPY__", () => json(copy)).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__SIGN__", () => SIGN_JS).replace("__BOOKS__", () => BOOKS_JS)
-    .replace("__ICONS__", () => json(icons)).replace("__RUNS__", () => json(RUNS_URL));
+    .replace("__ICONS__", () => json(icons)).replace("__RUNS__", () => json(RUNS_URL)).replace("__PROOF__", () => json(PROOF_URL));
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
