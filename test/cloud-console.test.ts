@@ -9,6 +9,7 @@ import { consoleCsp, consolePage } from "../cloud/src/console.js";
 import { INTER_WOFF2_B64 } from "../cloud/src/font.gen.js";
 import { EVENT_LINE_JS } from "../src/ui/engineEvents.js";
 import { MESSAGES } from "../src/ui/i18n.js";
+import { svg } from "../src/ui/payablesKit.js";
 import { scriptBlocks, scriptBody, withoutBlocks } from "./support/scriptBlocks.js";
 import { ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
 
@@ -230,5 +231,78 @@ describe("the API behind the console", () => {
     expect((await c.req("POST", "/v1/company", { key: t.key, body: { name: "" } })).status).toBe(400);
     expect((await c.req("POST", "/v1/company", { key: t.key, body: { name: "x".repeat(201) } })).status).toBe(400);
     expect((await c.req("POST", "/v1/company", { body: { name: "No key" } })).status).toBe(401);
+  });
+});
+
+// The console polish (12 Nov): English unless a person chose Dutch, the site's own mark in the header, a calmer first run.
+describe("the console's language, mark and first run", () => {
+  const html = consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "" });
+  const js = script(html);
+  const markup = withoutBlocks(html, ["script", "style"]);
+
+  it("paints in English first: the page's language and the menu's words", () => {
+    expect(html).toContain('<html lang="en">');
+    const nav = /<nav class="tabs"[^]*?<\/nav>/.exec(markup)![0];
+    for (const w of ["Overview", "Invoices", "Transactions", "Books", "Settings"]) expect(nav).toContain(`>${w}<`);
+    expect(nav).not.toMatch(/Overzicht|Facturen|Boekhouding|Instellingen/);
+    expect(markup).toContain(MESSAGES.en["cs.foot"]);
+  });
+
+  it("is Dutch only on an explicit choice: the person's own, or one made in the page, never the company's default", () => {
+    const rule = /const langOf=([^;]+);/.exec(js)?.[1];
+    expect(rule).toBeTruthy();
+    const langOf = new Script(`(${rule})`).runInNewContext() as (saved: unknown, person: unknown) => string;
+    expect(langOf(null, null)).toBe("en");
+    expect(langOf(null, undefined)).toBe("en");
+    expect(langOf("nl", null)).toBe("nl");
+    expect(langOf("en", null)).toBe("en");
+    expect(langOf("de", null)).toBe("en");
+    expect(langOf(null, "nl")).toBe("nl");
+    expect(langOf("nl", "en")).toBe("en");
+    // The first paint and the person's account both go through the rule; the company's language (Dutch by default in
+    // the cloud's data) and the language an older page saved on its own (the key it wrote unasked) are not read.
+    expect(js).toContain("const L=LS[langOf(PREF,null)];");
+    expect(js).toContain("langOf(PREF,ME.user&&ME.user.language)");
+    expect(js).toContain("localStorage.getItem('purser.cloud.language')");
+    expect(js).not.toContain("'purser.cloud.lang'");
+    expect(js).not.toMatch(/ME\.language/);
+  });
+
+  it("carries Purser's own mark in the header: the feather, the word Purser and a quieter Cloud, no letter P", () => {
+    const brand = /<a class="brand"[^]*?<\/a>/.exec(markup)![0];
+    expect(brand).not.toMatch(/<span class="mk">P<\/span>/);
+    expect(brand).toMatch(/<span class="mk"><svg [^>]*aria-hidden="true">/);
+    expect(brand).toContain(svg("feather", 17));
+    expect(brand).toMatch(/<span class="nm">Purser<\/span><span class="sec">Cloud<\/span>/);
+    // Inline, through the page's own icons: the policy stays what it was.
+    expect(consoleCsp("N")).toBe("default-src 'none'; script-src 'nonce-N' 'self'; style-src 'nonce-N'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'");
+  });
+
+  it("marks the first run's steps (numbered, the current one, done ones ticked), with motion off for those who ask", () => {
+    expect(js).toContain("el('ol','stepper')");
+    expect(js).toContain("setAttribute('aria-current','step')");
+    expect(js).toContain("ic('circle-check')");
+    expect(html).toMatch(/@media \(prefers-reduced-motion: reduce\) \{[^}]*\.stage[^}]*animation: none/);
+  });
+
+  it("says the first run in fewer words, in both languages, and keeps its honesty points", () => {
+    const keys = ["cs.setup", "cs.setup_lede", "cs.step1", "cs.step1_sub", "cs.step2", "cs.step2_sub", "cs.step3", "cs.step3_sub", "cs.company_address", "cs.starter_key", "cs.starter_note",
+      "cs.continue", "cs.company_name", "cs.make_passkey", "cs.owner_has_passkey", "cs.mail_to", "cs.inbox_later", "cs.make_runner_key", "cs.connect_runner", "cs.starter_gone", "cs.open_console",
+      "cs.run_this", "cs.shown_once", "cs.sign_in", "cs.sign_in_lede", "cs.sign_in_passkey", "cs.new_company", "cs.set_it_up"] as const;
+    const words = (lang: "en" | "nl") => keys.reduce((n, k) => n + MESSAGES[lang][k].trim().split(/\s+/).length, 0);
+    // Before the polish: 257 English and 261 Dutch words. The ceilings are the polished counts.
+    expect(words("en")).toBeLessThanOrEqual(183);
+    expect(words("nl")).toBeLessThanOrEqual(179);
+    for (const k of keys) expect(js.includes(`t('${k}'`) || html.includes(`"${k}":`), k).toBe(true);
+    // One line per step, a one-sentence starter-key note.
+    for (const k of ["cs.step1_sub", "cs.step2_sub", "cs.step3_sub", "cs.starter_note"] as const) for (const lang of ["en", "nl"] as const) {
+      expect(MESSAGES[lang][k].split(/\s+/).length, `${lang} ${k}`).toBeLessThanOrEqual(12);
+      expect(MESSAGES[lang][k].match(/[.!?](\s|$)/g) ?? [], `${lang} ${k}`).toHaveLength(1);
+    }
+    // Test money only; the cloud pays nothing on its own; the CFO approves.
+    expect(MESSAGES.en["cs.setup_lede"]).toMatch(/Test money only.*pays nothing.*CFO approves/);
+    expect(MESSAGES.nl["cs.setup_lede"]).toMatch(/Alleen testgeld.*betaalt niets.*CFO keurt/);
+    expect(MESSAGES.en["cs.connect_runner"]).toMatch(/only after the CFO's Face ID/);
+    expect(MESSAGES.nl["cs.connect_runner"]).toMatch(/pas na de Face ID van de CFO/);
   });
 });

@@ -73,7 +73,8 @@ const server = await serve(env, PORT);
 const call = caller(ORIGIN);
 const made = await call("POST", "/v1/admin/tenants", ADMIN, { slug: "northwind", name: "Northwind Outdoor (test company)", owner: { display_name: "The CFO" } });
 const starter = made.json.api_key as string;
-// The console is Dutch by default (src/ui/i18n.ts); this check walks it in English, then looks at the Dutch pages near the end.
+// The console is English unless a person chose Dutch (12 Nov); the company is set to English all the same, and the
+// check turns Dutch near the end through the person's own language, as a person would.
 ok((await call("POST", "/v1/company", starter, { language: "en" })).status === 200, "the company's pages can be set to English");
 
 
@@ -88,7 +89,6 @@ const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePa
  */
 async function passkeyContext(): Promise<{ ctx: BrowserContext; page: Page; errors: string[]; urls: string[] }> {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: shots ? 2 : 1 });
-  await ctx.addInitScript(() => { try { if (!localStorage.getItem("purser.cloud.lang")) localStorage.setItem("purser.cloud.lang", "en"); } catch { /* none */ } });
   const urls: string[] = [];
   ctx.on("request", (r) => urls.push(r.url()));
   const page = await ctx.newPage();
@@ -105,9 +105,14 @@ async function firstRun(p: Page, origin: string, slug: string, key: string, snap
   await p.goto(`${origin}/#/start`);
   await p.fill("#start-slug", slug);
   await p.fill("#start-key", key);
+  ok((await p.evaluate(() => document.documentElement.lang)) === "en" && (await p.textContent("h1")) === "Set up your company", "the first run paints in English, with nothing chosen");
+  ok(await p.evaluate(() => document.querySelector("ol.stepper li.now")?.getAttribute("aria-current") === "step" && document.querySelectorAll("ol.stepper li").length === 3), "the first run marks the current of its three steps");
   await snap("01-eerste-keer-1-bedrijf");
   await p.click("text=Continue");
   await p.waitForSelector("#start-name");
+  // Each stage fades in (a quarter of a second); the screenshot waits for it.
+  await p.waitForTimeout(400);
+  ok(await p.evaluate(() => { const li = document.querySelectorAll("ol.stepper li"); return li[0]?.className === "done" && !!li[0]?.querySelector("svg") && li[1]?.className === "now"; }), "the first run ticks the step that is done");
   await snap("02-eerste-keer-2-passkey");
   await p.click("text=Make my passkey");
   await p.waitForSelector("text=Make the key for my computer", { timeout: 20_000 });
@@ -138,7 +143,7 @@ ok(push.status === 200, "a supplier name with HTML in it is pushed like any othe
 await page.evaluate(() => { const c = document.querySelector(".once code"); if (c) c.textContent = (c.textContent ?? "").replace(/(pck_k\w{4})\w*_[\w-]+/, "$1…"); });
 await settle();
 await shot("03-eerste-keer-3-inbox-en-computer");
-ok((await text()).includes("The starter key stopped working when your passkey was made"), "the first run says the starter key is gone");
+ok((await text()).includes(tr("en", "cs.starter_gone")), "the first run says the starter key is gone");
 ok((await call("GET", "/v1/me", starter)).status === 401, "the starter key stopped working once the owner's passkey existed (red team round 5)");
 
 // Sign out, sign in with the passkey.
