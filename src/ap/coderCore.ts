@@ -1045,8 +1045,8 @@ function strayNumber(sentence: string, given: Given): string | null {
       from = whole ? i + 3 : i + 1;
     }
   }
-  const m = /\p{Nd}[\p{Nd},.:\-]*/u.exec(rest);
-  return m ? m[0].replace(/[.,:\-]+$/, "") : null;
+  const m = /\p{Nd}[\p{Nd},.:-]*/u.exec(rest);
+  return m ? m[0].replace(/[.,:-]+$/, "") : null;
 }
 
 type ReasonCheck = { reason: string; refusal: null } | { reason: null; refusal: { rule: "shape" | "numbers"; why: string } };
