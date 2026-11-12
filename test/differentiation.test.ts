@@ -153,16 +153,14 @@ describe("the let-through, framed as the test it was (jury review, 6 Nov, #8)", 
   });
 });
 
-describe("Visa TAP as a footer link on Home (jury review, 6 Nov, #7); not on Proof since 12 Nov", () => {
-  it("is not in Home's main part or Proof's cards; Home links to /visa from the footer, Proof no longer does", () => {
-    for (const [name, html, link] of [["home", PAGES.home!, true], ["proof", PAGES.proof!, false]] as const) {
+describe("Visa TAP as a footer link on Home and Proof (jury review, 6 Nov, #7)", () => {
+  it("is not in Home's main part or Proof's cards, and both link to /visa from the footer", () => {
+    for (const [name, html] of [["home", PAGES.home!], ["proof", PAGES.proof!]] as const) {
       const main = /<main[\s\S]*<\/main>/.exec(html)![0];
       // "Visa" alone is the card brand Airwallex issues (a virtual Visa card); TAP is what moved to the footer.
       expect({ name, tap: /Visa TAP|Trusted Agent|\bTAP\b(?! run)/.test(words(main)) }).toEqual({ name, tap: false });
-      // The footer link left Proof on 12 Nov (jury: Proof starts with the guarantees and ends with its utility links).
-      expect({ name, link: html.includes(`<a class="flink" href="visa">${VISA_EXTRA_LINK}</a>`) }).toEqual({ name, link });
+      expect({ name, link: html.includes(`<a class="flink" href="visa">${VISA_EXTRA_LINK}</a>`) }).toEqual({ name, link: true });
     }
-    expect(PAGES.proof!).not.toContain(VISA_EXTRA_LINK);
   });
 
   it("the form's screenshots are the live site's, /try/sign signed and tampered among them, not /visa", () => {

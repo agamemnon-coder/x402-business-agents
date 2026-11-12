@@ -568,7 +568,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (!/The hash the CFO signed travels with the payment\./.test(rb) || (rb.match(/\b[0-9a-f]{64}\b/g) ?? []).length !== 2 || !/Match: the same hash/.test(rb) || !/3 of 3 cards match the CFO policy/.test(rb)) fail(`/proof ${tag}: Airwallex read back missing or not matching`);
     }
     // The strongest proof first (Max's last round, item 2; the jury, 12 Nov): each partner card shows its strongest
-    // claim as its one link, right under its name; no TAP remark anywhere (TAP is on /visa; no footer link on Proof).
+    // claim as its one link, right under its name; no TAP remark under the figures (TAP is the footer link to /visa).
     {
       // Each card: its name, then its first claim, a link in sight; in its closed fold 2–3 facts with a bold number,
       // then its other claims, each a link.
@@ -589,8 +589,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         if (!c?.lead || c.claims.length !== res.length || res.some((re, i) => !re.test(c.claims[i] ?? ""))) fail(`/proof ${tag}: the ${id} card does not show its first claim in sight, then 2–3 facts and its other claims in the fold (${JSON.stringify(c?.claims)})`);
       }
       if (await page.locator(".septest").count()) fail(`/proof ${tag}: a TAP remark under the figures`);
-      if (/\bTAP\b/.test((await page.locator("body").innerText()))) fail(`/proof ${tag}: TAP on the page`);
-      if (await page.locator("footer a.flink").count()) fail(`/proof ${tag}: a footer link (the Visa TAP extra left Proof on 12 Nov)`);
+      if (/\bTAP\b/.test((await page.locator("main").innerText()))) fail(`/proof ${tag}: TAP outside the footer link`);
+      if ((await page.locator('footer a.flink[href="visa"]').count()) !== 1) fail(`/proof ${tag}: no footer link to /visa ("Extra, not an award entry")`);
       // The four tiles under the run's label, Airwallex's among them; the stops' parts sum to their figure.
       const tiles = (await page.evaluate(`[...document.querySelectorAll(".nums a.num")].map((a) => ({ cls: a.className, v: a.querySelector(".v").textContent, parts: [...a.querySelectorAll(".parts b")].map((b) => Number(b.textContent)) }))`)) as { cls: string; v: string; parts: number[] }[];
       const stop = tiles.find((t) => / stop$/.test(t.cls));

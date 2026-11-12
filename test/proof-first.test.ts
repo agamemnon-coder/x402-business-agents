@@ -1,6 +1,7 @@
 // /proof puts the strongest proof first (Max's last round, item 2): each partner card opens with its strongest claim,
 // one link from its proof, and every number in it read from its record, never typed in (as
-// test/proof-sentences.test.ts does for PROOF_SENTENCES). TAP stays on /visa only.
+// test/proof-sentences.test.ts does for PROOF_SENTENCES). TAP stays on /visa and
+// in the footer link only (the orchestrator, 12 Nov: the footer link lives on Proof).
 // Since the jury of 12 Nov the page opens with "What Purser guarantees", then the partners (one claim each in sight),
 // then the main run's numbers (four tiles, one of them Airwallex's, the stops with their breakdown), then the folds,
 // and the utility links last: the last describe blocks hold that order, the tiles, the folds, the anchors and the words.
@@ -226,18 +227,17 @@ describe("/proof as served: each card shows its strongest claim as its one link 
   });
 });
 
-describe("TAP on /proof: nowhere; the footer link to /visa left the page (jury, 12 Nov)", () => {
-  it("has no TAP remark under the figures or anywhere else on the page, the footer included", () => {
+describe("TAP on /proof: only the footer link to /visa (Max's last round, item 2)", () => {
+  it("has no TAP remark under the figures or anywhere else on the page", () => {
     expect(html).not.toContain('class="septest"');
+    const body = words(dropBlocks(html)).split(VISA_EXTRA_LINK);
+    expect(body).toHaveLength(2);
     // (The red team's night batch of 2 November stays: it is not the TAP run.)
-    expect(words(dropBlocks(html))).not.toMatch(/\bTAP\b|LIMIT_EXCEEDED|card limit/);
+    expect(body.join(" ")).not.toMatch(/\bTAP\b|LIMIT_EXCEEDED|card limit/);
   });
 
-  it("does not carry the footer link \"Extra, not an award entry\"; Home keeps it", () => {
-    expect(html).not.toContain(VISA_EXTRA_LINK);
-    expect(html).not.toMatch(/Extra, not an award entry/);
-    expect(html).not.toMatch(/<a class="flink"/);
-    expect(buildPages().home).toMatch(/<a [^>]*href="visa"[^>]*>Extra, not an award entry: Visa TAP[^<]*<\/a>/);
+  it("keeps the footer link to /visa (the orchestrator, 12 Nov: it lives on Proof)", () => {
+    expect(html).toMatch(/<a [^>]*href="visa"[^>]*>Extra, not an award entry: Visa TAP[^<]*<\/a>/);
   });
 });
 
