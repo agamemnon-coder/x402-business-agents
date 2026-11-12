@@ -7,7 +7,8 @@
 import { VISA_ENTRY_LINE } from "../../src/redesign/partners.js";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { chromium, type Page } from "playwright";
+import type { Page } from "playwright";
+import { browserName, launchBrowser } from "./support/browser.js";
 import { startJudge } from "../../src/cli/judge.js";
 import { tokenizeRun } from "../../src/redesign/tokenizeRun.js";
 import { METAL_CSP } from "../../src/servers/dashboard.js";
@@ -90,7 +91,9 @@ async function look(page: Page, name: string, width: number): Promise<void> {
   if (navRows > 12) fail(`${name}: the menu wraps onto a second line (${navRows}px between its links)`);
 }
 
-const browser = await chromium.launch();
+const BROWSER = browserName();
+const browser = await launchBrowser(BROWSER);
+console.log(`info  browser: ${BROWSER}`);
 for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const) {
   for (const scheme of ["light", "dark"] as const) {
     const context = await browser.newContext({ viewport: { width: w, height: h }, colorScheme: scheme, isMobile: w < 500, hasTouch: w < 500 });
@@ -99,7 +102,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // The 404 page's own status is the one console error expected (Chromium logs every 404 document).
     page.on("console", (m) => { if (m.type() === "error" && !(/\/no\/such\/page$/.test(page.url()) && /status of 404/.test(m.text()))) fail(`${tag} ${page.url()}: console error: ${m.text()}`); });
     page.on("pageerror", (e) => fail(`${tag} ${page.url()}: page error: ${e.message}`));
-    page.on("requestfailed", (r) => fail(`${tag} ${page.url()}: request failed: ${r.url()}`));
+    // Firefox reports a request it cancelled itself when the page navigated on (NS_BINDING_ABORTED, e.g. the favicon) as
+    // failed; that is the browser's own cancel, not a failed answer, so it is not counted there.
+    page.on("requestfailed", (r) => { if (!(BROWSER === "firefox" && /NS_BINDING_ABORTED/.test(r.failure()?.errorText ?? ""))) fail(`${tag} ${page.url()}: request failed: ${r.url()} (${r.failure()?.errorText ?? "?"})`); });
 
     // A guest who opens "/" gets Home itself, with no redirect, so a reader without script sees Home too (the four tabs
     // are checked in test/browser/redesign.check.ts; the CFO's link on "/" in test/browser/root.check.ts).
@@ -778,6 +783,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (asked.length) fail(`/judge ${tag}: asked a server for ${asked.join(", ")}`);
       await page.evaluate((key) => { try { localStorage.removeItem(key); } catch { /* blocked */ } }, JUDGE_KEY);
       // With localStorage throwing (blocked site data): no error, and the boxes still tick for as long as the page is open.
+      // Emulated by replacing window.localStorage with a throwing getter, which Firefox's page load does not survive (the
+      // load never ends), so this one emulation runs in Chromium and WebKit only, and says so.
+      if (BROWSER === "firefox") console.log(`info  /judge (storage blocked) ${tag}: not emulated in Firefox`);
+      else {
       const blocked = await browser.newContext({ viewport: { width: w, height: h }, colorScheme: scheme, isMobile: w < 500, hasTouch: w < 500 });
       await blocked.addInitScript(() => { Object.defineProperty(window, "localStorage", { get() { throw new DOMException("The operation is insecure.", "SecurityError"); } }); });
       const bp = await blocked.newPage();
@@ -789,6 +798,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if ((await bp.locator("#prog").innerText()) !== "1 of 5 done" || !(await bp.locator("#s-proof").evaluate((li) => li.classList.contains("done")))) fail(`/judge (storage blocked) ${tag}: the box does not tick`);
       await look(bp, `/judge (storage blocked) ${tag}`, w);
       await blocked.close();
+      }
     }
 
     // The film: a moment from each scene draws without an error and without spilling over (it scales to fit).
@@ -814,4 +824,4 @@ if (failures.length) {
   console.log(`\npages check: ${failures.length} problem(s)`);
   process.exit(1);
 }
-console.log(`pages check passes: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /visa, /claude (folds open), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? ", /judge (ticks kept across a reload, and with storage blocked) and Home's link to it" : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);
+console.log(`pages check passes in ${BROWSER}: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /visa, /claude (folds open), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? `, /judge (ticks kept across a reload${BROWSER === "firefox" ? "; storage blocked not emulated in Firefox" : ", and with storage blocked"}) and Home's link to it` : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);

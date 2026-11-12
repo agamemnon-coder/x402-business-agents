@@ -1,6 +1,6 @@
 # Runs on every push and pull request: type checks, the full test suite (including the adversarial suite in
 # test/adversarial.test.ts), the relay Worker's type check, npm audit (root and worker/), a juror's first run
-# (npm run judge on a fresh clone, then the guest pages in Chromium, and /try/sign in WebKit), the SBOM and Semgrep (blocking), and gitleaks on the pushed commits and on the whole history of the commit under check (accepted false positives are listed by fingerprint in .gitleaksignore).
+# (npm run judge on a fresh clone, then the guest pages in Chromium, /try/sign in WebKit, and both in Firefox), the SBOM and Semgrep (blocking), and gitleaks on the pushed commits and on the whole history of the commit under check (accepted false positives are listed by fingerprint in .gitleaksignore).
 # No secrets and no network beyond npm and GitHub: the tests use fakes for Metal, Airwallex and Claude.
 name: ci
 on:
@@ -108,6 +108,27 @@ jobs:
           docker run --rm --ipc=host -v "$PWD:/repo" -w /repo
           mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
           npx tsx test/browser/trysign-webkit.check.ts test-results/trysign-webkit
+  # Firefox (master list 408): the guest pages and /try/sign, the same checks as Chromium's in judge, with BROWSER=firefox
+  # (test/browser/support/browser.ts). Firefox has no virtual authenticator, so /try/sign signs with the software passkey
+  # (test/browser/support/softPasskey.ts) and the server verifies every signature for real. Only Firefox is installed
+  # here, with its system libraries. About 9 minutes on a laptop on 12 November.
+  firefox:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.22.0
+          cache: npm
+      - run: npm ci
+      - name: Playwright Firefox, with its system libraries
+        timeout-minutes: 10
+        run: npx playwright install --with-deps firefox
+      - name: Guest pages in Firefox (360, 390, 768 and 1440 px, light and dark)
+        run: BROWSER=firefox npx tsx test/browser/pages.check.ts test-results/pages-firefox
+      - name: /try/sign in Firefox (360, 390 and 1440 px, light and dark; signed with the software passkey)
+        run: BROWSER=firefox npx tsx test/browser/trysign.check.ts test-results/trysign-firefox
   secrets:
     runs-on: ubuntu-24.04
     timeout-minutes: 10

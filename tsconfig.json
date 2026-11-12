@@ -12,5 +12,5 @@
     "types": ["node"],
     "noEmit": true
   },
-  "include": ["src", "test", "examples", "cloud/src"]
+  "include": ["src", "test", "examples", "cloud/src", "scripts"]
 }
