@@ -1,5 +1,7 @@
 # Two locks on one payout: the CFO's passkey, then Airwallex's own approval workflow (10 November 2026)
 
+**12 November 2026:** the run continued: the owner approved the transfer in Airwallex's web app and it went PAID, with simulated settlement ([2026-11-12-airwallex-two-locks-paid.md](2026-11-12-airwallex-two-locks-paid.md)). The text below is as written on 10 November.
+
 Airwallex sandbox, test money only. Tool: `npm run two-locks` (src/cli/twoLocks.ts). Ledger: a fresh world of its own
 (`data/two-locks.sqlite`, local, not committed).
 

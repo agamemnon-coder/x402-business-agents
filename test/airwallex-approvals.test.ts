@@ -126,3 +126,38 @@ describe("two locks: which invoice the CLI follows, and when create refuses", ()
     expect(twoLocksLedgerRefusal("follow", db)).toBeUndefined();
   });
 });
+
+describe("docs/airwallex-approvals.md, since the two-locks run ended PAID (12 Nov)", () => {
+  const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
+  const doc = read("docs/airwallex-approvals.md");
+  const logs = [read("docs/runs/2026-11-10-airwallex-two-locks.md"), read("docs/runs/2026-11-12-airwallex-two-locks-paid.md")];
+
+  it("says what ran live, held to the run's two logs, and no longer that nothing ran", () => {
+    expect(doc).not.toMatch(/Not yet run live/);
+    expect(doc).toMatch(/Run live in the Airwallex sandbox on 10 and 12 November 2026, with test money/);
+    for (const href of ["runs/2026-11-10-airwallex-two-locks.md", "runs/2026-11-12-airwallex-two-locks-paid.md"]) expect(doc).toContain(`(${href})`);
+    const ids = doc.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) ?? [];
+    expect(ids).toEqual(["4074d684-4704-406c-a527-2832753baf4f"]);
+    for (const log of logs) expect(log).toContain(ids[0]);
+    expect(doc).toMatch(/EUR 240\.00/);
+    for (const log of logs) expect(log).toContain("EUR 240.00");
+    expect(logs[1]).toMatch(/owner approved the transfer in the Airwallex sandbox web app/);
+    expect(logs[1]).toMatch(/09:43:45[^\n]*`PROCESSING`/);
+    expect(logs[1]).toMatch(/09:43:58[^\n]*`PAID`, simulated settlement/);
+  });
+
+  it("states the run's three limits, and that every sandbox payout then needs a person at Airwallex", () => {
+    const flat = doc.replace(/\s+/g, " ");
+    expect(flat).toMatch(/signed by a labelled virtual test passkey, not by a real Face ID/);
+    expect(flat).toMatch(/the person approved only at Airwallex/);
+    expect(flat).toMatch(/`SENT` and `PAID` came from the sandbox's simulation endpoints/);
+    expect(flat).toMatch(/every sandbox payout also needs a person to approve it there/);
+  });
+
+  it("keeps Airwallex's documented status after an approval and adds what our sandbox run read", () => {
+    const line = doc.split("\n").findIndex((l) => l.startsWith("- approves it in the web app: `SCHEDULED`"));
+    expect(line).toBeGreaterThan(-1);
+    expect(doc.split("\n").slice(line, line + 2).join(" ").replace(/\s+/g, " ")).toMatch(/in our sandbox run the first read after the approval showed `PROCESSING`/);
+    expect(doc).toContain("PaymentIntent `int_sgpv9bnppho0sezgl4a`, `SUCCEEDED`, EUR 24.90, 4 calls.");
+  });
+});
