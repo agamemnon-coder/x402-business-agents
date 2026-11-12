@@ -163,3 +163,18 @@ describe("the partner line per screen", () => {
     expect("approved by Visa").toMatch(BANNED_PARTNER_WORDS);
   });
 });
+
+describe("the 30-second tour", () => {
+  it("has at most four short steps, the why first, and every one skippable", async () => {
+    const { TOUR_STEPS, tourHtml, TOUR_JS } = await import("../src/try/tour.js");
+    expect(TOUR_STEPS.length).toBeLessThanOrEqual(4);
+    expect(TOUR_STEPS[0]!.text).toBe("Limits in a prompt can be talked out of. Signatures can't.");
+    const words = TOUR_STEPS.map((s) => `${s.title} ${s.text}`).join(" ").split(/\s+/).length;
+    expect(words).toBeLessThanOrEqual(65);
+    expect(tourHtml()).toContain('id="tour-skip"');
+    expect(tourHtml()).toMatch(/<aside[^>]* hidden>/);
+    expect(TOUR_JS).toMatch(/try \{ return localStorage\.getItem/);
+    expect(TOUR_JS).toMatch(/try \{ localStorage\.setItem/);
+    for (const s of TOUR_STEPS) expect(`${s.title} ${s.text}`).not.toMatch(BANNED_PARTNER_WORDS);
+  });
+});
