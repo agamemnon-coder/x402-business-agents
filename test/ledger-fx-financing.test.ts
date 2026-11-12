@@ -89,12 +89,18 @@ describe("realised FX differences", () => {
     expect(bookedCents(3, "0.5")).toBe(2);
     expect(() => bookedCents(1, "0")).toThrow(/not a rate/);
     expect(() => bookedCents(1, "-1")).toThrow(/not a rate/);
+    expect(() => bookedCents(9_226_636_487, "976217")).toThrow(/too large/);
     fc.assert(fc.property(fc.integer({ min: 0, max: 10_000_000_000 }), fc.integer({ min: 1, max: 999_999 }), fc.integer({ min: 0, max: 8 }), fc.integer({ min: 0, max: 20_000_000_000 }), (amount, rateInt, decimals, paid) => {
       const digits = String(rateInt).padStart(decimals + 1, "0");
       const rate = decimals ? `${digits.slice(0, -decimals)}.${digits.slice(-decimals)}` : digits;
+      const scale = 10n ** BigInt(decimals);
+      // Past 2^53 cents (12 Nov: a run drew 9226636487 cents at 976217) the value is refused, not rounded silently.
+      if ((2n * BigInt(amount) * BigInt(rateInt) + scale) / (2n * scale) > BigInt(Number.MAX_SAFE_INTEGER)) {
+        expect(() => bookedCents(amount, rate)).toThrow(/too large/);
+        return;
+      }
       const booked = bookedCents(amount, rate);
       // Exact: |booked - amount * rate| <= 1/2 cent, computed in integers.
-      const scale = 10n ** BigInt(decimals);
       const exact2 = 2n * BigInt(amount) * BigInt(rateInt);
       const diff2 = 2n * BigInt(booked) * scale - exact2;
       expect(diff2 <= scale && diff2 > -scale).toBe(true);

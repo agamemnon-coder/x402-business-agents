@@ -23,6 +23,8 @@ export function bookedCents(amountCents: number, rate: string): number {
   const num = BigInt(amountCents) * scaled;
   // Half away from zero (amounts are never negative here, so half up).
   const out = (num * 2n + scale) / (2n * scale);
+  // Past 2^53 cents a number is no longer whole cents exactly: refused, never rounded silently.
+  if (out > BigInt(Number.MAX_SAFE_INTEGER)) throw new LedgerRefused("the booked value is too large to keep in whole cents");
   return Number(out);
 }
 
